@@ -39,16 +39,22 @@ endfunction()
 
 message(STATUS "Attempting zstd dependency resolution...")
 
-# Tier 1: Git Submodule (existing approach, matches Makefile)
-message(STATUS "Tier 1: Trying git submodule...")
-execute_process(
-    COMMAND git submodule update --init --single-branch --depth 1 deps/zstd
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-    RESULT_VARIABLE GIT_SUBMOD_RESULT
-    OUTPUT_QUIET ERROR_QUIET
-)
-
+# Check if zstd is already available
 check_zstd_available(ZSTD_AVAILABLE)
+if(ZSTD_AVAILABLE)
+    message(STATUS "zstd dependency already present")
+else()
+    # Tier 1: Git Submodule (existing approach, matches Makefile)
+    message(STATUS "Tier 1: Trying git submodule...")
+    execute_process(
+        COMMAND git submodule update --init --single-branch --depth 1 deps/zstd
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        RESULT_VARIABLE GIT_SUBMOD_RESULT
+        OUTPUT_QUIET ERROR_QUIET
+    )
+
+    check_zstd_available(ZSTD_AVAILABLE)
+endif()
 
 # Tier 2: FetchContent + URL with Hash Verification
 if(NOT ZSTD_AVAILABLE)
