@@ -7,9 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "test": "vitest",
-    "test:run": "vitest run"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@chakra-ui/react": "3.27.0",
@@ -34,8 +32,7 @@
     "globals": "16.1.0",
     "typescript": "5.8.3",
     "typescript-eslint": "8.32.1",
-    "vite": "7.1.5",
-    "vitest": "3.2.4"
+    "vite": "7.1.5"
   },
   "resolutions": {
     "@eslint/plugin-kit": "0.3.5",
