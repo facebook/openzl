@@ -1,0 +1,1 @@
+./make-pareto-optimal-figures.py --lzbench ../../benchmark/lzbench/lzbench/lzbench --title Binance /home/terrelln/datasets/openzl-corpus/binance-canonical/BTC-USDT.parquet --output /home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/binance --profile parquet --num-test-files 1 --num-train-files 1

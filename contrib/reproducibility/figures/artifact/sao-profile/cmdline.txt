@@ -1,0 +1,1 @@
+./make-pareto-optimal-figures.py --lzbench ../../benchmark/lzbench/lzbench/lzbench --title SAO /home/terrelln/datasets/silesia/sao --output /tmp/sao-parser --profile sao --num-test-files 1 --num-train-files 1

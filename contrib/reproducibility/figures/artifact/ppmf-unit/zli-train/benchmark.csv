@@ -1,0 +1,27 @@
+Algorithm, Compressor, Compression Ratio, Compression Speed MB/s, Decompression Speed MB/s
+   OpenZL,       0.zc,             91.56,                  57.24,                   103.24
+   OpenZL,       1.zc,             91.56,                  57.77,                   114.04
+   OpenZL,       2.zc,             91.53,                  53.51,                   110.11
+   OpenZL,       3.zc,             84.31,                  49.83,                   112.05
+   OpenZL,       4.zc,             84.26,                  50.11,                   110.28
+   OpenZL,       5.zc,             81.88,                  52.33,                   112.79
+   OpenZL,       6.zc,             68.96,                  61.27,                   112.50
+   OpenZL,       7.zc,             62.02,                  68.67,                   117.14
+   OpenZL,       8.zc,             62.00,                  70.32,                   119.47
+   OpenZL,       9.zc,             62.00,                  64.14,                   114.61
+   OpenZL,      10.zc,             52.95,                  69.03,                   121.70
+   OpenZL,      11.zc,             45.07,                  83.84,                   114.63
+   OpenZL,      12.zc,             18.97,                  85.78,                   120.23
+   OpenZL,      13.zc,              1.36,                  84.39,                   114.79
+   OpenZL,      14.zc,              1.36,                  88.50,                   119.29
+   OpenZL,      15.zc,              1.24,                  84.74,                   118.80
+   OpenZL,      16.zc,              1.23,                  86.11,                   120.08
+   OpenZL,      17.zc,              1.16,                  86.36,                   118.45
+   OpenZL,      18.zc,              1.14,                  84.85,                   119.20
+   OpenZL,      19.zc,              1.10,                  80.65,                   118.67
+   OpenZL,      20.zc,              1.07,                  82.60,                   123.14
+   OpenZL,      21.zc,              1.03,                  86.73,                   120.66
+   OpenZL,      22.zc,              1.02,                  80.77,                   122.50
+   OpenZL,      23.zc,              1.01,                  84.84,                   122.02
+   OpenZL,      24.zc,              1.01,                  81.40,                   119.43
+   OpenZL,      25.zc,              1.00,                  80.44,                   117.83

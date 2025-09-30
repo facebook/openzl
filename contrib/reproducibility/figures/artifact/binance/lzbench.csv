@@ -1,0 +1,21 @@
+Compressor name,Compression speed,Decompression speed,Original size,Compressed size,Ratio,Filename
+zstd 1.5.7 -1,442.59,993.60,121150518,89512261,73.89,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/binance/samples/test/0
+zstd 1.5.7 -3,150.36,741.35,121150518,81549884,67.31,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/binance/samples/test/0
+zstd 1.5.7 -5,88.45,717.81,121150518,80751525,66.65,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/binance/samples/test/0
+zstd 1.5.7 -7,69.34,752.41,121150518,80522091,66.46,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/binance/samples/test/0
+zstd 1.5.7 -9,57.08,734.98,121150518,79376758,65.52,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/binance/samples/test/0
+zstd 1.5.7 -11,28.96,681.08,121150518,78973435,65.19,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/binance/samples/test/0
+zstd 1.5.7 -13,11.24,661.11,121150518,78845792,65.08,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/binance/samples/test/0
+zstd 1.5.7 -15,10.09,676.93,121150518,78744587,65.00,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/binance/samples/test/0
+zstd 1.5.7 -16,5.57,629.09,121150518,78263114,64.60,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/binance/samples/test/0
+zstd 1.5.7 -19,3.19,482.10,121150518,74556443,61.54,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/binance/samples/test/0
+xz 5.8.1 -1,6.43,36.07,121150518,71851175,59.31,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/binance/samples/test/0
+xz 5.8.1 -3,3.90,35.84,121150518,72026109,59.45,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/binance/samples/test/0
+xz 5.8.1 -5,2.41,33.58,121150518,66252192,54.69,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/binance/samples/test/0
+xz 5.8.1 -7,2.32,35.69,121150518,64769157,53.46,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/binance/samples/test/0
+xz 5.8.1 -9,1.85,34.44,121150518,65478293,54.05,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/binance/samples/test/0
+zlib 1.3.1 -1,32.38,182.14,121150518,82128330,67.79,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/binance/samples/test/0
+zlib 1.3.1 -3,25.81,192.95,121150518,82238282,67.88,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/binance/samples/test/0
+zlib 1.3.1 -5,18.79,178.99,121150518,81577723,67.34,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/binance/samples/test/0
+zlib 1.3.1 -7,11.03,176.61,121150518,81214406,67.04,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/binance/samples/test/0
+zlib 1.3.1 -9,2.76,188.75,121150518,81014364,66.87,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/binance/samples/test/0

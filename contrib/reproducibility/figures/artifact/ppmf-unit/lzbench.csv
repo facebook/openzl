@@ -1,0 +1,21 @@
+Compressor name,Compression speed,Decompression speed,Original size,Compressed size,Ratio,Filename
+zstd 1.5.7 -1,1247.08,3322.67,99984943,3775615,3.78,/tmp/ppmf-unit/samples/test/0
+zstd 1.5.7 -3,935.71,3063.48,99984943,3725407,3.73,/tmp/ppmf-unit/samples/test/0
+zstd 1.5.7 -5,291.31,3123.86,99984943,3565439,3.57,/tmp/ppmf-unit/samples/test/0
+zstd 1.5.7 -7,191.20,3555.67,99984943,3224242,3.22,/tmp/ppmf-unit/samples/test/0
+zstd 1.5.7 -9,182.73,4908.67,99984943,1854540,1.85,/tmp/ppmf-unit/samples/test/0
+zstd 1.5.7 -11,113.49,4965.40,99984943,1712276,1.71,/tmp/ppmf-unit/samples/test/0
+zstd 1.5.7 -13,46.67,4984.10,99984943,1776349,1.78,/tmp/ppmf-unit/samples/test/0
+zstd 1.5.7 -15,19.20,4917.17,99984943,1578470,1.58,/tmp/ppmf-unit/samples/test/0
+zstd 1.5.7 -16,6.34,5371.71,99984943,1522117,1.52,/tmp/ppmf-unit/samples/test/0
+zstd 1.5.7 -19,4.32,5432.17,99984943,1462381,1.46,/tmp/ppmf-unit/samples/test/0
+xz 5.8.1 -1,65.43,496.68,99984943,3688735,3.69,/tmp/ppmf-unit/samples/test/0
+xz 5.8.1 -3,46.30,857.62,99984943,2043690,2.04,/tmp/ppmf-unit/samples/test/0
+xz 5.8.1 -5,10.23,1031.38,99984943,1503948,1.50,/tmp/ppmf-unit/samples/test/0
+xz 5.8.1 -7,7.08,1120.82,99984943,1436631,1.44,/tmp/ppmf-unit/samples/test/0
+xz 5.8.1 -9,6.89,797.54,99984943,1372821,1.37,/tmp/ppmf-unit/samples/test/0
+zlib 1.3.1 -1,286.09,699.16,99984943,7038177,7.04,/tmp/ppmf-unit/samples/test/0
+zlib 1.3.1 -3,240.66,752.93,99984943,6158905,6.16,/tmp/ppmf-unit/samples/test/0
+zlib 1.3.1 -5,104.82,747.85,99984943,4905151,4.91,/tmp/ppmf-unit/samples/test/0
+zlib 1.3.1 -7,56.72,790.61,99984943,4499492,4.50,/tmp/ppmf-unit/samples/test/0
+zlib 1.3.1 -9,22.71,809.54,99984943,4401686,4.40,/tmp/ppmf-unit/samples/test/0

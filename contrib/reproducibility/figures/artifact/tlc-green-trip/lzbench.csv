@@ -1,0 +1,21 @@
+Compressor name,Compression speed,Decompression speed,Original size,Compressed size,Ratio,Filename
+zstd 1.5.7 -1,519.40,1288.07,6913987,1178783,17.05,/tmp/green-trip/samples/test/0
+zstd 1.5.7 -3,382.06,1203.00,6913987,987595,14.28,/tmp/green-trip/samples/test/0
+zstd 1.5.7 -5,177.16,1233.47,6913987,991494,14.34,/tmp/green-trip/samples/test/0
+zstd 1.5.7 -7,89.39,1397.39,6913987,965679,13.97,/tmp/green-trip/samples/test/0
+zstd 1.5.7 -9,69.32,1447.89,6913987,951510,13.76,/tmp/green-trip/samples/test/0
+zstd 1.5.7 -11,33.47,1591.83,6913987,925151,13.38,/tmp/green-trip/samples/test/0
+zstd 1.5.7 -13,21.57,1638.54,6913987,915973,13.25,/tmp/green-trip/samples/test/0
+zstd 1.5.7 -15,13.04,1746.58,6913987,896940,12.97,/tmp/green-trip/samples/test/0
+zstd 1.5.7 -16,8.78,1870.57,6913987,835130,12.08,/tmp/green-trip/samples/test/0
+zstd 1.5.7 -19,3.20,1843.64,6913987,829671,12.00,/tmp/green-trip/samples/test/0
+xz 5.8.1 -1,30.35,162.15,6913987,829975,12.00,/tmp/green-trip/samples/test/0
+xz 5.8.1 -3,18.35,185.10,6913987,803291,11.62,/tmp/green-trip/samples/test/0
+xz 5.8.1 -5,5.42,187.29,6913987,743835,10.76,/tmp/green-trip/samples/test/0
+xz 5.8.1 -7,4.26,195.40,6913987,735622,10.64,/tmp/green-trip/samples/test/0
+xz 5.8.1 -9,4.47,188.90,6913987,735622,10.64,/tmp/green-trip/samples/test/0
+zlib 1.3.1 -1,159.76,545.16,6913987,1161829,16.80,/tmp/green-trip/samples/test/0
+zlib 1.3.1 -3,102.96,606.55,6913987,1083002,15.66,/tmp/green-trip/samples/test/0
+zlib 1.3.1 -5,63.77,579.60,6913987,1025730,14.84,/tmp/green-trip/samples/test/0
+zlib 1.3.1 -7,19.07,620.17,6913987,969249,14.02,/tmp/green-trip/samples/test/0
+zlib 1.3.1 -9,2.76,638.95,6913987,939169,13.58,/tmp/green-trip/samples/test/0

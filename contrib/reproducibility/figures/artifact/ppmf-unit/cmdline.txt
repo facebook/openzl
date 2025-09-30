@@ -1,0 +1,1 @@
+./make-pareto-optimal-figures.py --lzbench ../../benchmark/lzbench/lzbench/lzbench --title PPMF Unit /home/terrelln/datasets/openzl-corpus/ppmf_unit/unit_59.csv --output /tmp/ppmf-unit --profile csv --num-test-files 1 --num-train-files 1

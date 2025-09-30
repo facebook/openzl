@@ -1,0 +1,21 @@
+Compressor name,Compression speed,Decompression speed,Original size,Compressed size,Ratio,Filename
+zstd 1.5.7 -1,272.40,976.63,7251944,6250010,86.18,/tmp/sao-parser/samples/test/0
+zstd 1.5.7 -3,102.15,703.46,7251944,5527504,76.22,/tmp/sao-parser/samples/test/0
+zstd 1.5.7 -5,55.90,794.32,7251944,5305353,73.16,/tmp/sao-parser/samples/test/0
+zstd 1.5.7 -7,42.75,813.43,7251944,5232509,72.15,/tmp/sao-parser/samples/test/0
+zstd 1.5.7 -9,33.71,778.66,7251944,5215722,71.92,/tmp/sao-parser/samples/test/0
+zstd 1.5.7 -11,17.78,766.92,7251944,5200429,71.71,/tmp/sao-parser/samples/test/0
+zstd 1.5.7 -13,6.86,779.44,7251944,5210147,71.84,/tmp/sao-parser/samples/test/0
+zstd 1.5.7 -15,5.78,772.55,7251944,5204784,71.77,/tmp/sao-parser/samples/test/0
+zstd 1.5.7 -16,4.31,672.54,7251944,5063268,69.82,/tmp/sao-parser/samples/test/0
+zstd 1.5.7 -19,3.33,658.81,7251944,5000572,68.95,/tmp/sao-parser/samples/test/0
+xz 5.8.1 -1,6.07,37.74,7251944,4924632,67.91,/tmp/sao-parser/samples/test/0
+xz 5.8.1 -3,3.16,39.20,7251944,4852943,66.92,/tmp/sao-parser/samples/test/0
+xz 5.8.1 -5,2.32,41.42,7251944,4413275,60.86,/tmp/sao-parser/samples/test/0
+xz 5.8.1 -7,2.32,42.51,7251944,4414351,60.87,/tmp/sao-parser/samples/test/0
+xz 5.8.1 -9,2.27,40.44,7251944,4414351,60.87,/tmp/sao-parser/samples/test/0
+zlib 1.3.1 -1,36.75,203.70,7251944,5567774,76.78,/tmp/sao-parser/samples/test/0
+zlib 1.3.1 -3,27.48,212.16,7251944,5439345,75.01,/tmp/sao-parser/samples/test/0
+zlib 1.3.1 -5,18.88,214.27,7251944,5370122,74.05,/tmp/sao-parser/samples/test/0
+zlib 1.3.1 -7,12.77,221.64,7251944,5327683,73.47,/tmp/sao-parser/samples/test/0
+zlib 1.3.1 -9,10.68,226.09,7251944,5325920,73.44,/tmp/sao-parser/samples/test/0

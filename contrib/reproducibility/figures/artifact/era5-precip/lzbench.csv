@@ -1,0 +1,21 @@
+Compressor name,Compression speed,Decompression speed,Original size,Compressed size,Ratio,Filename
+zstd 1.5.7 -1,460.40,993.68,8305920,1265936,15.24,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-precip/samples/test/0
+zstd 1.5.7 -3,371.26,963.29,8305920,1272631,15.32,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-precip/samples/test/0
+zstd 1.5.7 -5,164.18,944.72,8305920,1231999,14.83,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-precip/samples/test/0
+zstd 1.5.7 -7,73.61,1098.38,8305920,1160890,13.98,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-precip/samples/test/0
+zstd 1.5.7 -9,52.84,1089.64,8305920,1128994,13.59,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-precip/samples/test/0
+zstd 1.5.7 -11,26.99,1270.76,8305920,1069040,12.87,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-precip/samples/test/0
+zstd 1.5.7 -13,14.63,1577.45,8305920,1013307,12.20,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-precip/samples/test/0
+zstd 1.5.7 -15,6.74,1961.78,8305920,939948,11.32,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-precip/samples/test/0
+zstd 1.5.7 -16,5.08,1873.37,8305920,929405,11.19,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-precip/samples/test/0
+zstd 1.5.7 -19,2.49,1891.35,8305920,888540,10.70,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-precip/samples/test/0
+xz 5.8.1 -1,33.18,167.64,8305920,929072,11.19,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-precip/samples/test/0
+xz 5.8.1 -3,14.64,194.13,8305920,891599,10.73,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-precip/samples/test/0
+xz 5.8.1 -5,3.07,232.31,8305920,783595,9.43,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-precip/samples/test/0
+xz 5.8.1 -7,2.46,245.10,8305920,755356,9.09,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-precip/samples/test/0
+xz 5.8.1 -9,2.45,228.21,8305920,755356,9.09,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-precip/samples/test/0
+zlib 1.3.1 -1,169.91,505.89,8305920,1403941,16.90,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-precip/samples/test/0
+zlib 1.3.1 -3,98.45,588.67,8305920,1258658,15.15,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-precip/samples/test/0
+zlib 1.3.1 -5,61.77,532.34,8305920,1177233,14.17,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-precip/samples/test/0
+zlib 1.3.1 -7,25.24,538.61,8305920,1133725,13.65,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-precip/samples/test/0
+zlib 1.3.1 -9,3.16,553.13,8305920,1106374,13.32,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-precip/samples/test/0

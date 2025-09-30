@@ -1,0 +1,21 @@
+Compressor name,Compression speed,Decompression speed,Original size,Compressed size,Ratio,Filename
+zstd 1.5.7 -1,491.35,1196.77,8305920,1359535,16.37,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-flux/samples/test/0
+zstd 1.5.7 -3,293.13,1098.33,8305920,1428480,17.20,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-flux/samples/test/0
+zstd 1.5.7 -5,181.71,1125.01,8305920,1394185,16.79,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-flux/samples/test/0
+zstd 1.5.7 -7,84.43,1075.61,8305920,1363956,16.42,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-flux/samples/test/0
+zstd 1.5.7 -9,61.42,1110.12,8305920,1268059,15.27,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-flux/samples/test/0
+zstd 1.5.7 -11,30.52,1163.94,8305920,1281308,15.43,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-flux/samples/test/0
+zstd 1.5.7 -13,16.11,1343.96,8305920,1277503,15.38,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-flux/samples/test/0
+zstd 1.5.7 -15,8.93,1751.49,8305920,1244612,14.98,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-flux/samples/test/0
+zstd 1.5.7 -16,6.47,1449.72,8305920,1286879,15.49,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-flux/samples/test/0
+zstd 1.5.7 -19,4.00,1130.85,8305920,1141608,13.74,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-flux/samples/test/0
+xz 5.8.1 -1,23.43,152.74,8305920,1123024,13.52,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-flux/samples/test/0
+xz 5.8.1 -3,10.81,141.14,8305920,1122863,13.52,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-flux/samples/test/0
+xz 5.8.1 -5,3.18,167.47,8305920,968170,11.66,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-flux/samples/test/0
+xz 5.8.1 -7,3.29,168.30,8305920,967176,11.64,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-flux/samples/test/0
+xz 5.8.1 -9,3.24,153.50,8305920,967176,11.64,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-flux/samples/test/0
+zlib 1.3.1 -1,144.58,463.63,8305920,1516144,18.25,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-flux/samples/test/0
+zlib 1.3.1 -3,97.26,508.01,8305920,1490476,17.94,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-flux/samples/test/0
+zlib 1.3.1 -5,52.85,414.70,8305920,1444216,17.39,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-flux/samples/test/0
+zlib 1.3.1 -7,19.06,419.53,8305920,1436970,17.30,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-flux/samples/test/0
+zlib 1.3.1 -9,2.42,420.10,8305920,1435658,17.28,/home/terrelln/keep/2025-09-22-openzl-whitepaper-pareto-optimal/era5-flux/samples/test/0

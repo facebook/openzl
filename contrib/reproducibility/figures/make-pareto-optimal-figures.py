@@ -23,7 +23,7 @@ def hg_root():
 
 
 def buck_build(target: str, output: str, save: bool = True) -> None:
-    openzl_dir = Path(__file__).parents[2]
+    openzl_dir = Path(__file__).parents[3]
     if save:
         run(
             [
@@ -185,7 +185,7 @@ def main():
         shutil.copy(args.zli, os.path.join(args.output, "bin"))
     if args.tradeoff_plots is None:
         args.tradeoff_plots = buck_build(
-            "contrib/figures:tradeoff-plots[inplace]",
+            "contrib/reproducibility/figures:tradeoff-plots[inplace]",
             os.path.join(args.output, "bin", "tradeoff-plots"),
             save=False,
         )

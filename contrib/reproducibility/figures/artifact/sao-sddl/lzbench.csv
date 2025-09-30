@@ -1,0 +1,21 @@
+Compressor name,Compression speed,Decompression speed,Original size,Compressed size,Ratio,Filename
+zstd 1.5.7 -1,239.06,871.99,7251944,6250010,86.18,/tmp/sao-sddl/samples/test/0
+zstd 1.5.7 -3,95.33,574.17,7251944,5527504,76.22,/tmp/sao-sddl/samples/test/0
+zstd 1.5.7 -5,49.85,759.84,7251944,5305353,73.16,/tmp/sao-sddl/samples/test/0
+zstd 1.5.7 -7,40.91,769.81,7251944,5232509,72.15,/tmp/sao-sddl/samples/test/0
+zstd 1.5.7 -9,33.68,736.90,7251944,5215722,71.92,/tmp/sao-sddl/samples/test/0
+zstd 1.5.7 -11,17.55,735.58,7251944,5200429,71.71,/tmp/sao-sddl/samples/test/0
+zstd 1.5.7 -13,6.19,787.89,7251944,5210147,71.84,/tmp/sao-sddl/samples/test/0
+zstd 1.5.7 -15,5.22,752.43,7251944,5204784,71.77,/tmp/sao-sddl/samples/test/0
+zstd 1.5.7 -16,4.13,638.82,7251944,5063268,69.82,/tmp/sao-sddl/samples/test/0
+zstd 1.5.7 -19,3.05,632.39,7251944,5000572,68.95,/tmp/sao-sddl/samples/test/0
+xz 5.8.1 -1,5.99,37.14,7251944,4924632,67.91,/tmp/sao-sddl/samples/test/0
+xz 5.8.1 -3,2.90,35.47,7251944,4852943,66.92,/tmp/sao-sddl/samples/test/0
+xz 5.8.1 -5,2.25,38.78,7251944,4413275,60.86,/tmp/sao-sddl/samples/test/0
+xz 5.8.1 -7,2.27,39.09,7251944,4414351,60.87,/tmp/sao-sddl/samples/test/0
+xz 5.8.1 -9,2.21,36.77,7251944,4414351,60.87,/tmp/sao-sddl/samples/test/0
+zlib 1.3.1 -1,34.02,182.74,7251944,5567774,76.78,/tmp/sao-sddl/samples/test/0
+zlib 1.3.1 -3,25.97,209.14,7251944,5439345,75.01,/tmp/sao-sddl/samples/test/0
+zlib 1.3.1 -5,18.06,200.88,7251944,5370122,74.05,/tmp/sao-sddl/samples/test/0
+zlib 1.3.1 -7,11.66,212.97,7251944,5327683,73.47,/tmp/sao-sddl/samples/test/0
+zlib 1.3.1 -9,10.42,215.98,7251944,5325920,73.44,/tmp/sao-sddl/samples/test/0

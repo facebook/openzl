@@ -1,0 +1,1 @@
+./make-pareto-optimal-figures.py --lzbench ../../benchmark/lzbench/lzbench/lzbench --title TLC Green Trip /home/terrelln/datasets/openzl-corpus/tlc-canonical/green/green_tripdata_2025-01.parquet --output /tmp/green-trip --profile parquet --num-test-files 1 --num-train-files 1
