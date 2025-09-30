@@ -150,13 +150,7 @@ int main(int argc, char** argv)
         Logger::log(ERRORS, "OpenZL Library Exception:\n\t", oe.what());
         return 1;
     } catch (const std::exception& e) {
-        Logger::log(
-                ERRORS,
-                "Unexpected runtime error. This may mean that your inputs are "
-                "invalid (eg your file is invalid, the compressor is invalid, or "
-                "the compressor doesn't match the file format), or it may be a bug. "
-                "Please report bugs to the OpenZL developers!\n\t",
-                e.what());
+        Logger::log(ERRORS, "Unhandled Exception:\n\t", e.what());
         return 1;
     }
     return 1;
