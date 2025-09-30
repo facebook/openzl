@@ -1,6 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "tools/io/InputSetLogger.h"
+#include "tools/io/IOException.h"
 
 #include <iostream>
 
@@ -109,7 +110,7 @@ InputSetLogger::InputSetLogger(
         : input_set_(std::move(input_set)), verbosity_(verbosity)
 {
     if (!input_set_) {
-        throw std::runtime_error(
+        throw IOException(
                 "InputSet passed into InputSetLogger() cannot be nullptr!");
     }
 }

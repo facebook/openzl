@@ -1,13 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "tools/io/OutputFile.h"
+#include "tools/io/IOException.h"
 #include "tools/logger/Logger.h"
 
 #include <cerrno>
 #include <fstream>
 #include <system_error>
-
-#include "openzl/cpp/Exception.hpp"
 
 namespace openzl::tools::io {
 
@@ -30,7 +29,7 @@ void OutputFile::open()
         os_->open(filename_, std::ios::binary);
     } catch (const std::system_error&) {
         os_.reset();
-        throw Exception(
+        throw IOException(
                 "Failed to open output file '" + filename_
                 + "': " + std::system_category().message(errno));
     }
@@ -41,7 +40,7 @@ void OutputFile::close()
     try {
         os_.reset();
     } catch (const std::system_error&) {
-        throw Exception(
+        throw IOException(
                 "Failed to close output file '" + filename_
                 + "': " + std::system_category().message(errno));
     }
@@ -59,7 +58,7 @@ void OutputFile::write(poly::string_view contents)
     } catch (const std::system_error& err) {
         // It's not clear that errno is set during failed write() calls.
         // But err.code().message() sucks.
-        throw Exception(
+        throw IOException(
                 "Failed to write to output file '" + filename_
                 + "': " + err.code().message());
     }

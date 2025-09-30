@@ -21,6 +21,7 @@
 
 #include "tools/arg/ParseException.h"
 #include "tools/arg/arg_parser.h"
+#include "tools/io/IOException.h"
 #include "tools/logger/Logger.h"
 
 #include "openzl/common/logging.h"
@@ -145,6 +146,9 @@ int main(int argc, char** argv)
         return 1;
     } catch (const CLIException& ce) {
         Logger::log(ERRORS, "CLI Exception:\n\t", ce.what());
+        return 1;
+    } catch (const tools::io::IOException& ioe) {
+        Logger::log(ERRORS, "I/O Exception:\n\t", ioe.what());
         return 1;
     } catch (const openzl::Exception& oe) {
         Logger::log(ERRORS, "OpenZL Library Exception:\n\t", oe.what());

@@ -1,6 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "tools/io/InputFile.h"
+#include "tools/io/IOException.h"
 
 #include <cerrno>
 #include <filesystem>
@@ -9,8 +10,6 @@
 #include <system_error>
 
 #include "tools/logger/Logger.h"
-
-#include "openzl/cpp/Exception.hpp"
 
 namespace openzl::tools::io {
 
@@ -49,7 +48,7 @@ void InputFile::read()
 
     std::filesystem::path path(filename_);
     if (std::filesystem::exists(path) && std::filesystem::is_directory(path)) {
-        throw Exception(
+        throw IOException(
                 "Input path '" + filename_
                 + "' is a directory, but a file is required.");
     }
@@ -60,7 +59,7 @@ void InputFile::read()
     try {
         in.open(filename_, std::ios::binary);
     } catch (const std::system_error&) {
-        throw Exception(
+        throw IOException(
                 "Failed to open input file '" + filename_
                 + "': " + std::system_category().message(errno));
     }
@@ -70,7 +69,7 @@ void InputFile::read()
         ss << in.rdbuf();
         contents_ = std::move(ss).str();
     } catch (const std::system_error& err) {
-        throw Exception(
+        throw IOException(
                 "Failed to read input file '" + filename_
                 + "': " + err.code().message());
     }
