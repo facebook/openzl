@@ -153,6 +153,14 @@ cp sra0 /tmp/sampleDir
 ./zli train --profile le-u64 /tmp/sampleDir --output sra0.zlc
 ```
 
+??? note "Setting max training time"
+    The trainer is multi-threaded, and machines with less cores will take longer
+    to train. If it is taking too long, the `--max-time-secs` flag can be used to
+    limit the training time. It currently limits the time spent in each step of
+    training, not the total time. But, the trained result may be worse given less
+    time to train.
+
+
 The training session will generate some messages on the consoles.
 The last lines should look something like that:
 
