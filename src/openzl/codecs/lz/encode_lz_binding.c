@@ -12,6 +12,12 @@
 #include "openzl/zl_graph_api.h"
 #include "openzl/zl_reflection.h"
 
+/**
+ * Set the maximum bytes to process to 4B to avoid overflow in the match finder.
+ * It could likely be higher, but this is close enough to 2^32-1.
+ */
+static const size_t kFieldLzContentSizeBytes = 4000000000u;
+
 static void* allocEICtx(void* opaque, size_t size)
 {
     ZL_Encoder* eictx = opaque;
@@ -25,6 +31,8 @@ static ZL_FieldLz_Allocator getAlloc(ZL_Encoder* eictx)
 
 ZL_Report EI_fieldLz(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
+
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
     const ZL_Input* in    = ins[0];
@@ -35,8 +43,13 @@ ZL_Report EI_fieldLz(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     ZL_ASSERT_EQ(ZL_Input_type(in), ZL_Type_struct);
     // TODO(terrelln): Enable field-lz for more field sizes
     if (!ZL_isPow2(eltWidth) || eltWidth == 1 || eltWidth > 8) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
+    ZL_ERR_IF_GT(
+            ZL_Input_contentSize(in),
+            kFieldLzContentSizeBytes,
+            temporaryLibraryLimitation,
+            "FieldLZ only supports up to 4B of input due to 32-bit overflow in the match finder");
 
     ZL_Output* literals =
             ZL_Encoder_createTypedStream(eictx, 0, nbElts, eltWidth);
@@ -49,7 +62,7 @@ ZL_Report EI_fieldLz(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 
     if (literals == NULL || tokens == NULL || offsets == NULL
         || extraLiteralLengths == NULL || extraMatchLengths == NULL) {
-        ZL_RET_R_ERR(allocation);
+        ZL_ERR(allocation);
     }
 
     ZL_FieldLz_OutSequences dst = {
@@ -98,13 +111,12 @@ ZL_Report EI_fieldLz(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 
     ZL_Encoder_sendCodecHeader(eictx, header, headerSize);
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(literals, dst.nbLiteralElts));
-    ZL_RET_R_IF_ERR(ZL_Output_commit(tokens, dst.nbTokens));
-    ZL_RET_R_IF_ERR(ZL_Output_commit(offsets, dst.nbOffsets));
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(ZL_Output_commit(literals, dst.nbLiteralElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(tokens, dst.nbTokens));
+    ZL_ERR_IF_ERR(ZL_Output_commit(offsets, dst.nbOffsets));
+    ZL_ERR_IF_ERR(
             ZL_Output_commit(extraLiteralLengths, dst.nbExtraLiteralLengths));
-    ZL_RET_R_IF_ERR(
-            ZL_Output_commit(extraMatchLengths, dst.nbExtraMatchLengths));
+    ZL_ERR_IF_ERR(ZL_Output_commit(extraMatchLengths, dst.nbExtraMatchLengths));
 
     ZL_LOG(TRANSFORM, "#literals = %zu", dst.nbLiteralElts);
     ZL_LOG(TRANSFORM, "#tokens = %zu", dst.nbTokens);
