@@ -24,6 +24,7 @@ set(ZSTD_LEGACY_SUPPORT OFF)
 
 set(ZSTD_VERSION "1.5.7")
 set(ZSTD_DIRNAME "zstd-${ZSTD_VERSION}")
+set(ZSTD_TARBALL_SHA256 "eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3")
 set(ZSTD_EXPECTED_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/deps/zstd/lib/zstd.h")
 set(ZSTD_EXPECTED_CMAKE "${CMAKE_CURRENT_SOURCE_DIR}/deps/zstd/build/cmake/CMakeLists.txt")
 
@@ -33,35 +34,6 @@ function(check_zstd_available RESULT_VAR)
         set(${RESULT_VAR} TRUE PARENT_SCOPE)
     else()
         set(${RESULT_VAR} FALSE PARENT_SCOPE)
-    endif()
-endfunction()
-
-# Helper function to automatically retrieve and parse hash from GitHub
-function(get_zstd_tarball_hash VERSION RESULT_VAR)
-    set(HASH_URL "https://github.com/facebook/zstd/releases/download/v${VERSION}/zstd-${VERSION}.tar.gz.sha256")
-    set(HASH_FILE "${CMAKE_CURRENT_BINARY_DIR}/zstd-${VERSION}.sha256")
-
-    message(STATUS "Retrieving hash for zstd-${VERSION}.tar.gz...")
-    file(DOWNLOAD "${HASH_URL}" "${HASH_FILE}"
-         TIMEOUT 30
-         STATUS HASH_DOWNLOAD_STATUS
-         QUIET)
-
-    list(GET HASH_DOWNLOAD_STATUS 0 HASH_DOWNLOAD_RESULT)
-    if(HASH_DOWNLOAD_RESULT EQUAL 0)
-        file(READ "${HASH_FILE}" HASH_FILE_CONTENT)
-        # Extract hash from format: "hash  filename" or just "hash"
-        string(REGEX MATCH "^([a-f0-9]+)" EXTRACTED_HASH "${HASH_FILE_CONTENT}")
-        if(EXTRACTED_HASH)
-            set(${RESULT_VAR} "${EXTRACTED_HASH}" PARENT_SCOPE)
-            message(STATUS "Retrieved zstd tarball hash: ${EXTRACTED_HASH}")
-        else()
-            set(${RESULT_VAR} "" PARENT_SCOPE)
-            message(WARNING "Could not parse hash from ${HASH_FILE}")
-        endif()
-    else()
-        set(${RESULT_VAR} "" PARENT_SCOPE)
-        message(WARNING "Could not download hash file from ${HASH_URL}")
     endif()
 endfunction()
 
@@ -78,7 +50,7 @@ execute_process(
 
 check_zstd_available(ZSTD_AVAILABLE)
 
-# Tier 2: FetchContent + URL with Automated Hash Verification
+# Tier 2: FetchContent + URL with Hash Verification
 if(NOT ZSTD_AVAILABLE)
     message(STATUS "Tier 1 failed. Tier 2: Trying FetchContent with verified tarball...")
 
@@ -88,25 +60,13 @@ if(NOT ZSTD_AVAILABLE)
     file(REMOVE_RECURSE "${CMAKE_CURRENT_SOURCE_DIR}/deps/zstd")
     file(REMOVE_RECURSE "${CMAKE_CURRENT_SOURCE_DIR}/deps/${ZSTD_DIRNAME}")
 
-    # Get the tarball hash automatically
-    get_zstd_tarball_hash(${ZSTD_VERSION} ZSTD_TARBALL_SHA256)
-
-    if(ZSTD_TARBALL_SHA256)
-        message(STATUS "Using automated hash verification for tarball download")
-        FetchContent_Declare(zstd_tarball
-            URL https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/${ZSTD_DIRNAME}.tar.gz
-            URL_HASH SHA256=${ZSTD_TARBALL_SHA256}
-            DOWNLOAD_EXTRACT_TIMESTAMP ON
-            SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/zstd"
-        )
-    else()
-        message(WARNING "Could not retrieve hash, downloading without verification")
-        FetchContent_Declare(zstd_tarball
-            URL https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/${ZSTD_DIRNAME}.tar.gz
-            DOWNLOAD_EXTRACT_TIMESTAMP ON
-            SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/zstd"
-        )
-    endif()
+    message(STATUS "Using hash verification for tarball download")
+    FetchContent_Declare(zstd_tarball
+        URL https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/${ZSTD_DIRNAME}.tar.gz
+        URL_HASH SHA256=${ZSTD_TARBALL_SHA256}
+        DOWNLOAD_EXTRACT_TIMESTAMP ON
+        SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/zstd"
+    )
 
     FetchContent_MakeAvailable(zstd_tarball)
     check_zstd_available(ZSTD_AVAILABLE)
