@@ -18,10 +18,9 @@ endif()
 
 set(ZSTD_LEGACY_SUPPORT OFF)
 
-# Three-tier zstd dependency resolution with automated hash verification
+# Two-tier zstd dependency resolution with automated hash verification
 # 1. Git submodule (matches Makefile behavior)
-# 2. FetchContent + Git (modern CMake with git)
-# 3. FetchContent + URL (no git required, cryptographically verified)
+# 2. FetchContent + URL (no git required, cryptographically verified)
 
 set(ZSTD_VERSION "1.5.7")
 set(ZSTD_DIRNAME "zstd-${ZSTD_VERSION}")
@@ -79,27 +78,11 @@ execute_process(
 
 check_zstd_available(ZSTD_AVAILABLE)
 
-# Tier 2: FetchContent + Git (modern CMake with git)
+# Tier 2: FetchContent + URL with Automated Hash Verification
 if(NOT ZSTD_AVAILABLE)
-    message(STATUS "Tier 1 failed. Tier 2: Trying FetchContent with git...")
+    message(STATUS "Tier 1 failed. Tier 2: Trying FetchContent with verified tarball...")
 
     include(FetchContent)
-    FetchContent_Declare(zstd_git
-        GIT_REPOSITORY https://github.com/facebook/zstd.git
-        GIT_TAG v${ZSTD_VERSION}
-        GIT_SHALLOW ON
-        SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/zstd"
-        QUIET
-    )
-
-    set(FETCHCONTENT_QUIET ON)
-    FetchContent_MakeAvailable(zstd_git)
-    check_zstd_available(ZSTD_AVAILABLE)
-endif()
-
-# Tier 3: FetchContent + URL with Automated Hash Verification
-if(NOT ZSTD_AVAILABLE)
-    message(STATUS "Tier 2 failed. Tier 3: Trying FetchContent with verified tarball...")
 
     # Clean up any partial downloads first
     file(REMOVE_RECURSE "${CMAKE_CURRENT_SOURCE_DIR}/deps/zstd")
@@ -131,7 +114,7 @@ endif()
 
 # Final check
 if(NOT ZSTD_AVAILABLE)
-    message(FATAL_ERROR "Failed to obtain zstd dependency through all available methods (git submodule, FetchContent+git, FetchContent+tarball)")
+    message(FATAL_ERROR "Failed to obtain zstd dependency through all available methods (git submodule, FetchContent+tarball)")
 endif()
 
 message(STATUS "zstd dependency resolved successfully")
