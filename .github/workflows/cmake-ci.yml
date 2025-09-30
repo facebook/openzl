@@ -113,3 +113,19 @@ jobs:
       - uses: actions/checkout@v4
       - name: Test CMake installation
         run: ./build/cmake/tests/test-install.py
+
+  # Tarball build test (no git repository)
+  cmake-tarball-test:
+    name: CMake Tarball Build Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test tarball build scenario
+        run: |
+          # Simulate tarball environment by removing git repo and deps
+          rm -rf .git deps/zstd
+          # Configure and build -- should download deps
+          cmake -B cmakebuild -DOPENZL_BUILD_TESTS=ON -DOPENZL_ALLOW_INTROSPECTION=OFF
+          cmake --build cmakebuild
+          # quick runtime check, to verify it works
+          cmakebuild/cli/zli --version
