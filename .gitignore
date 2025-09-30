@@ -49,6 +49,7 @@ build-*/
 __pycache__/
 .cache/
 cmakebuild/
+cmake-build/
 
 # VSCode CMake artifacts
 .vs

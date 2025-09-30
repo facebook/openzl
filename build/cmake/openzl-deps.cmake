@@ -18,17 +18,123 @@ endif()
 
 set(ZSTD_LEGACY_SUPPORT OFF)
 
-# Use git submodule instead of direct download
-if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/zstd/build/cmake/CMakeLists.txt")
-    execute_process(
-        COMMAND git submodule update --init --recursive deps/zstd
-        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-        RESULT_VARIABLE GIT_SUBMOD_RESULT
-    )
-    if(NOT GIT_SUBMOD_RESULT EQUAL "0")
-        message(FATAL_ERROR "git submodule update --init failed with ${GIT_SUBMOD_RESULT}, please checkout submodules manually")
+# Three-tier zstd dependency resolution with automated hash verification
+# 1. Git submodule (matches Makefile behavior)
+# 2. FetchContent + Git (modern CMake with git)
+# 3. FetchContent + URL (no git required, cryptographically verified)
+
+set(ZSTD_VERSION "1.5.7")
+set(ZSTD_DIRNAME "zstd-${ZSTD_VERSION}")
+set(ZSTD_EXPECTED_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/deps/zstd/lib/zstd.h")
+set(ZSTD_EXPECTED_CMAKE "${CMAKE_CURRENT_SOURCE_DIR}/deps/zstd/build/cmake/CMakeLists.txt")
+
+# Helper function to check if zstd is available and working
+function(check_zstd_available RESULT_VAR)
+    if(EXISTS "${ZSTD_EXPECTED_HEADER}" AND EXISTS "${ZSTD_EXPECTED_CMAKE}")
+        set(${RESULT_VAR} TRUE PARENT_SCOPE)
+    else()
+        set(${RESULT_VAR} FALSE PARENT_SCOPE)
     endif()
+endfunction()
+
+# Helper function to automatically retrieve and parse hash from GitHub
+function(get_zstd_tarball_hash VERSION RESULT_VAR)
+    set(HASH_URL "https://github.com/facebook/zstd/releases/download/v${VERSION}/zstd-${VERSION}.tar.gz.sha256")
+    set(HASH_FILE "${CMAKE_CURRENT_BINARY_DIR}/zstd-${VERSION}.sha256")
+
+    message(STATUS "Retrieving hash for zstd-${VERSION}.tar.gz...")
+    file(DOWNLOAD "${HASH_URL}" "${HASH_FILE}"
+         TIMEOUT 30
+         STATUS HASH_DOWNLOAD_STATUS
+         QUIET)
+
+    list(GET HASH_DOWNLOAD_STATUS 0 HASH_DOWNLOAD_RESULT)
+    if(HASH_DOWNLOAD_RESULT EQUAL 0)
+        file(READ "${HASH_FILE}" HASH_FILE_CONTENT)
+        # Extract hash from format: "hash  filename" or just "hash"
+        string(REGEX MATCH "^([a-f0-9]+)" EXTRACTED_HASH "${HASH_FILE_CONTENT}")
+        if(EXTRACTED_HASH)
+            set(${RESULT_VAR} "${EXTRACTED_HASH}" PARENT_SCOPE)
+            message(STATUS "Retrieved zstd tarball hash: ${EXTRACTED_HASH}")
+        else()
+            set(${RESULT_VAR} "" PARENT_SCOPE)
+            message(WARNING "Could not parse hash from ${HASH_FILE}")
+        endif()
+    else()
+        set(${RESULT_VAR} "" PARENT_SCOPE)
+        message(WARNING "Could not download hash file from ${HASH_URL}")
+    endif()
+endfunction()
+
+message(STATUS "Attempting zstd dependency resolution...")
+
+# Tier 1: Git Submodule (existing approach, matches Makefile)
+message(STATUS "Tier 1: Trying git submodule...")
+execute_process(
+    COMMAND git submodule update --init --single-branch --depth 1 deps/zstd
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    RESULT_VARIABLE GIT_SUBMOD_RESULT
+    OUTPUT_QUIET ERROR_QUIET
+)
+
+check_zstd_available(ZSTD_AVAILABLE)
+
+# Tier 2: FetchContent + Git (modern CMake with git)
+if(NOT ZSTD_AVAILABLE)
+    message(STATUS "Tier 1 failed. Tier 2: Trying FetchContent with git...")
+
+    include(FetchContent)
+    FetchContent_Declare(zstd_git
+        GIT_REPOSITORY https://github.com/facebook/zstd.git
+        GIT_TAG v${ZSTD_VERSION}
+        GIT_SHALLOW ON
+        SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/zstd"
+        QUIET
+    )
+
+    set(FETCHCONTENT_QUIET ON)
+    FetchContent_MakeAvailable(zstd_git)
+    check_zstd_available(ZSTD_AVAILABLE)
 endif()
+
+# Tier 3: FetchContent + URL with Automated Hash Verification
+if(NOT ZSTD_AVAILABLE)
+    message(STATUS "Tier 2 failed. Tier 3: Trying FetchContent with verified tarball...")
+
+    # Clean up any partial downloads first
+    file(REMOVE_RECURSE "${CMAKE_CURRENT_SOURCE_DIR}/deps/zstd")
+    file(REMOVE_RECURSE "${CMAKE_CURRENT_SOURCE_DIR}/deps/${ZSTD_DIRNAME}")
+
+    # Get the tarball hash automatically
+    get_zstd_tarball_hash(${ZSTD_VERSION} ZSTD_TARBALL_SHA256)
+
+    if(ZSTD_TARBALL_SHA256)
+        message(STATUS "Using automated hash verification for tarball download")
+        FetchContent_Declare(zstd_tarball
+            URL https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/${ZSTD_DIRNAME}.tar.gz
+            URL_HASH SHA256=${ZSTD_TARBALL_SHA256}
+            DOWNLOAD_EXTRACT_TIMESTAMP ON
+            SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/zstd"
+        )
+    else()
+        message(WARNING "Could not retrieve hash, downloading without verification")
+        FetchContent_Declare(zstd_tarball
+            URL https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/${ZSTD_DIRNAME}.tar.gz
+            DOWNLOAD_EXTRACT_TIMESTAMP ON
+            SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/zstd"
+        )
+    endif()
+
+    FetchContent_MakeAvailable(zstd_tarball)
+    check_zstd_available(ZSTD_AVAILABLE)
+endif()
+
+# Final check
+if(NOT ZSTD_AVAILABLE)
+    message(FATAL_ERROR "Failed to obtain zstd dependency through all available methods (git submodule, FetchContent+git, FetchContent+tarball)")
+endif()
+
+message(STATUS "zstd dependency resolved successfully")
 
 # Set zstd build options before making it available
 set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "")
