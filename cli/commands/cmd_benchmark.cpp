@@ -125,9 +125,9 @@ BenchmarkResult runCompressionBenchmarks(const BenchmarkArgs& args)
             uncompressed_size += input.contentSize();
         }
         // TODO: Size limitations should be a library feature
-        if (uncompressed_size > 1 * BYTES_TO_GiB) {
+        if (uncompressed_size > 2 * BYTES_TO_GiB) {
             throw std::runtime_error(
-                    "Chunking support is required for compressing inputs larger than 1 GiB. ");
+                    "Chunking support is required for compressing inputs larger than 2 GiB. ");
         }
         // get the compressed size
         const auto compressed = cctx.compress(inputVec);
