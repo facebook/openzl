@@ -12,7 +12,7 @@
 #include "openzl/zl_decompress.h"
 
 namespace openzl::cli {
-constexpr size_t BYTES_TO_MiB = 1024 * 1024;
+constexpr size_t BYTES_TO_MB = 1000 * 1000;
 
 using namespace tools::logger;
 
@@ -49,14 +49,14 @@ int cmdDecompress(const DecompressArgs& args)
     const auto end     = std::chrono::steady_clock::now();
     const auto time_ms = std::chrono::duration<double, std::milli>(end - start);
 
-    const auto time_s               = time_ms.count() / 1000.0;
-    const auto decompressedSize_mib = (double)dstBuffer.size() / BYTES_TO_MiB;
+    const auto time_s              = time_ms.count() / 1000.0;
+    const auto decompressedSize_mb = (double)dstBuffer.size() / BYTES_TO_MB;
 
-    const auto compressionSpeed = decompressedSize_mib / time_s;
+    const auto compressionSpeed = decompressedSize_mb / time_s;
 
     Logger::log_c(
             INFO,
-            "Decompressed: %2.2f%% (%s -> %s) in %.3f ms, %.2f MiB/s",
+            "Decompressed: %2.2f%% (%s -> %s) in %.3f ms, %.2f MB/s",
             (double)srcBuffer.size() / dstBuffer.size() * 100,
             util::sizeString(srcBuffer.size()).c_str(),
             util::sizeString(dstBuffer.size()).c_str(),

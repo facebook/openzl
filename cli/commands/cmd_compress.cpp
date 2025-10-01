@@ -23,8 +23,8 @@ using namespace openzl::tools;
 using namespace logger;
 
 namespace openzl::cli {
-constexpr size_t BYTES_TO_MiB = 1024 * 1024;
-constexpr size_t BYTES_TO_GiB = 1024 * 1024 * 1024;
+constexpr size_t BYTES_TO_MB = 1000 * 1000;
+constexpr size_t BYTES_TO_GB = BYTES_TO_MB * 1000;
 
 namespace {
 
@@ -145,9 +145,9 @@ int performCompression(const CompressArgs& args)
     // ahead of time.
     const auto inputSize = input.size().value();
     // TODO: Size limitations should be a library feature
-    if (inputSize > 2 * BYTES_TO_GiB) {
+    if (inputSize > 2 * BYTES_TO_GB) {
         throw std::runtime_error(
-                "Chunking support is required for compressing inputs larger than 2 GiB. ");
+                "Chunking support is required for compressing inputs larger than 2 GB. ");
     }
     Logger::log(VERBOSE1, "Input size: ", inputSize);
 
@@ -175,16 +175,16 @@ int performCompression(const CompressArgs& args)
     const auto end     = std::chrono::steady_clock::now();
     const auto time_ms = std::chrono::duration<double, std::milli>(end - start);
 
-    const auto time_s        = time_ms.count() / 1000.0;
-    const auto inputSize_mib = (double)inputSize / BYTES_TO_MiB;
+    const auto time_s       = time_ms.count() / 1000.0;
+    const auto inputSize_mb = (double)inputSize / BYTES_TO_MB;
 
-    const auto compressionSpeed = inputSize_mib / time_s;
+    const auto compressionSpeed = inputSize_mb / time_s;
 
     // write output
     dstBuffer.resize(compressedSize);
     Logger::log_c(
             INFO,
-            "Compressed %zu -> %zu (%.2fx) in %.3f ms, %.2f MiB/s",
+            "Compressed %zu -> %zu (%.2fx) in %.3f ms, %.2f MB/s",
             srcBuffer.size(),
             dstBuffer.size(),
             (double)srcBuffer.size() / dstBuffer.size(),

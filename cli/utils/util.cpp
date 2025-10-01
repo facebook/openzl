@@ -15,8 +15,8 @@ using namespace std::string_view_literals;
 
 namespace openzl::cli::util {
 
-static constexpr std::array suffix{ "B"sv, "KiB"sv, "MiB"sv, "GiB"sv, "TiB"sv };
-static constexpr double kilo = 1024.0;
+static constexpr std::array suffix{ "B"sv, "KB"sv, "MB"sv, "GB"sv, "TB"sv };
+static constexpr double kilo = 1000.0;
 static constexpr double tenK = 10000.0;
 std::string sizeString(size_t sz)
 {
