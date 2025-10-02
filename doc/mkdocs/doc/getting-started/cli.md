@@ -16,29 +16,29 @@ todo
 The input file names in the code snippets correspond to files in the `openzl_corpus/getting_started` folder.
 
 # Basic usage
-### ZStd in OpenZL
-Let's start with a simple example. We will use the CLI to compress a file named `myfile.txt` using ZStd.
+### Serial data in OpenZL
+Let's start with a simple example. We will use the CLI to compress a file named `myfile.txt` using the serial compression profile.
 ```
-zli compress --profile zstd myfile.txt --output myfile.zs2
+zli compress --profile serial myfile.txt --output myfile.zs2
 ```
-The `--profile` option allows you to select a predefined **compression profile**. In this case, we are using the `zstd` profile, which is a wrapper around a ZStd compression call.
+The `--profile` option allows you to select a predefined **compression profile**. In this case, we are using the `serial` profile, which is suited for serial data.
 
-> **More about profiles:** Under the hood, a `profile` is simply a pre-configured OpenZL **graph**. In this case, the graph just contains one node: the Zstd node. Other profiles contain more complex graphs, as we will see later.
+> **More about profiles:** Under the hood, a `profile` is simply a pre-configured OpenZL **graph**. Since we did not do any [ACE](./using-openzl.md#ace-training) training, the graph contains a single Zstd node. Other profiles contain more complex graphs, as we will see later.
 
-### Field LZ for numeric data
-Now let's try to compress a file of numbers. We have preconfigured a graph called `field_lz` that takes advantage of fixed-width structure of integer data to compress better than byte-wise LZ.
-
-```
-zli compress --profile field_lz ints.txt --output ints.field_lz.zs2
-```
-
-For comparison, we can try compressing the same output with Zstd.
+### Numeric data in OpenZL
+Now let's try to compress a file of numbers. We have preconfigured profile called `le-i32` that takes advantage of fixed-width structure of integer data to compress better than byte-wise LZ.
 
 ```
-zli compress --profile zstd ints.txt --output ints.zstd.zs2
+zli compress --profile le-i32 ints.txt --output ints.le_i32.zs2
 ```
 
-We can see the immediate benefit of moving from Zstd to Field LZ.
+For comparison, we can try compressing the same output with serial.
+
+```
+zli compress --profile serial ints.txt --output ints.serial.zs2
+```
+
+We can see the immediate benefit of moving from serial to le-i32.
 
 > **Tip:** The more you know about your data, the better you can tune your compression. Simply knowing that your data is integral dramatically improves compression.
 

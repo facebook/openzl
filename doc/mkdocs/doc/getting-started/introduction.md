@@ -40,19 +40,23 @@ Although OpenZL is a toolkit of components that can be arbitrarily composed into
 
 ``` mermaid
 graph LR
-    classDef hidden display: none;
-
-    input:::hidden --> Parse;
-    Parse --> Group;
-    Group --> Transform;
-    Transform --> Compress;
+  input["input"] --> Parse["Parse"]
+  subgraph s1["Frontend"]
+    Parse --> Group["Group"]
+  end
+  subgraph s2["Backend"]
+    Group --> Transform["Transform"]
+    Transform --> Compress["Compress"]
+  end
+  input:::hidden
+  classDef hidden display: none
 ```
 
 This is because OpenZL's components that are actually good at compressing data—its suite of transforms and compressors—work best on homogenous streams of data. For inputs that aren't already organized that way, those backend components require a frontend to parse and group the input into streams, which the backend can then compress effectively.
 
 OpenZL offers a number of options for accomplishing that organization of your data:
 
-1. **Pre-Built Profiles**: Use a profile that has already been built to compress a particular format. (TODO: link?)
+1. **Pre-Built Profiles**: Use a profile that has already been built to compress a [particular format](quick-start.md#compress-with-trained-profile).
 
 2. **Describe Your Data**: The [Simple Data Description Language](../api/c/graphs/sddl.md) profile lets you describe the format of your input with a simple syntax, which OpenZL uses to split your input into component streams.
 

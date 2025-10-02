@@ -57,9 +57,7 @@ The typical usage pattern is for users to insert a small number of codecs or use
 
 ### Static Graph
 
-A static graph is a graph that takes one input, and that consists of a head node, whose outputs are passed to other graphs.
-This graph does not make any dynamic decisions during compression; it always passes the input to the head node.
-However, the graphs that compress the output of the head node may make dynamic decisions.
+A static graph is a graph with fixed routing behavior. It accepts a single input via a head node whose output is passed to other graphs. During compression, the static graph does not make any dynamic routing decisions. The graphs that receive output from the head node, however, may still make dynamic decisions about how to compress the data.
 
 ### Selector Graph
 
@@ -71,16 +69,18 @@ If the data is sorted, it may pass it to a specialized compression graph for sor
 
 ### Function Graph
 
-A function graph is a graph that takes one or more input, and passes it to a user defined input that defines the graph at compression time.
+A function graph is a graph that takes one or more inputs, and passes it to a user defined function that defines the graph at compression time.
 This function may:
 
 * Inspect the data of any edge it has access to (including all input data).
 * Run [codecs][codecs] directly on any edge, and customize the configuration of codecs that get run.
 * Dynamically select the output graph for any edge.
 
-The function graph starts with a set of unterminated edges which is the inputs.
-It can update the set by running a node, which removes the inputs passed to that node, and adds its outputs.
-It can remove from the set by setting the output graph for an edge.
+The function graph starts with a set of unterminated edges which is the inputs. The set can change in two ways:
+
+* Running a node removes the inputs passed to that node and adds its outputs to the set.
+* Setting the output graph for an edge removes it from the set.
+
 The set of unterminated edges must be empty before the function graph finishes.
 
 The function graph is very powerful, but in exchange it gives up ease of use.
@@ -91,4 +91,4 @@ It is recommended to make each function graph as small as possible, and prefer s
 The store graph is the "base" graph that takes a single input and produces no outputs.
 Passing data to this graph denotes that the data should be written as-is into the compressed output.
 All other graphs must eventually terminate all of their edges with store.
-However, it may not be written into the graph directly, because e.g. it terminates an edge in a standard graph, which itself eventually terminates all edges in store.
+However, graphs don't always terminate explicitly with the store graph. For example, a graph might terminate their edges with a standard graph, which eventually routes all edges to the store graph.

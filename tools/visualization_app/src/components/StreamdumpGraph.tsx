@@ -8,7 +8,7 @@ import {StreamdumpGraphView} from '../graphVisualization/views/StreamdumpGraphVi
 import {ReactFlowProvider} from '@xyflow/react';
 import {Box, Code, CodeBlock, Float, IconButton, Text, Tabs, useTabs, Heading, Span} from '@chakra-ui/react';
 
-const cliInvocation = 'zli compress --trace /tmp/streamdump.cbor -p zstd -o /dev/null myfile.txt';
+const cliInvocation = 'zli compress --trace /tmp/streamdump.cbor -p serial -o /dev/null myfile.txt';
 const files = [
   {
     language: 'C++',

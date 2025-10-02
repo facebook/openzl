@@ -51,6 +51,7 @@ It is a trivial example, but it is enough to show that you can improve compressi
 OpenZL allows constructing graphs at runtime, similar to the [Selector][openzl.ext.Selector] that we saw in the [quick start example](./quick-start.md), but more powerful.
 This is done through [`FunctionGraph`s][openzl.ext.FunctionGraph].
 Inside a function graph you can:
+
 * Inspect the input edge, and the data attached to that edge.
 * Run a node on any edge, and get the resulting edges back.
 * Send an edge to a destination graph.

@@ -2,11 +2,17 @@
 A simple way to enhance generic compressors is to parse the input data before compression. Furthermore, if the data is homogeneous training can also be done. After parsing into structured outputs, OpenZL offers a training tool that clusters these outputs to exploit correlations and tries multiple compression strategies per cluster to create a good compressor.
 
 ## Running the example
-First generate some data using `parsing_data_generator_correlated.py`. This is in its own [custom format](#the-data-format). We will use `/tmp/openzl` as the working directory for this exercise and generate a single file to compress. [Trainining Orchestration](training-orchestration.md) will properly set up a test/train split for your data. For now, we will train and test on the single file. Run:
+First generate some data using `parsing_data_generator_correlated.py` (which can be found in `openzl/examples` folder). This is in its own [custom format](#the-data-format). We will use `/tmp/openzl` as the working directory for this exercise and generate a single file to compress. [Training Orchestration](training-orchestration.md) will properly set up a test/train split for your data. For now, we will train and test on the single file. Inside `/tmp/openzl`, create a `train` directory and an empty file called `correlated`. The following command will populate the file with data:
+
+Run:
 ```
 python3 parsing_data_generator_correlated.py /tmp/openzl/train/correlated
 ```
-Next, run cmake and go to the build directory. Then run the training binary:
+Next, run cmake. If you used [these cmake steps](../../quick-start.md#building-the-openzl-cli) to build `zli` you can run the following command to run cmake.
+```
+cmake --build cmakebuild --target training
+```
+Then go to the `cmakebuild/examples` directory and run the training binary:
 ```
 ./training train /tmp/openzl/train /tmp/openzl/compressor.zlc
 ```
@@ -171,7 +177,7 @@ The next step is to paramaterize the graph with the required parameters. In our 
 --8<-- "src/examples/training.cpp:register-parser-parameterize"
 ```
 
-After creating a generic registration function for the parser, we must create a specialized compressor profile for the parser. The compressor profile allows you to specify successors, and optionally clustering codecs. Good successors to pick here depends on the parsed data. For example, time series data will work well with compressors which have `ZL_NODE_DELTA`. A reasonable set of successors can be found in "custom_parsers/shared_components/clustering.cpp". We have also built a [graph builder]()(Documentation under construction) that can be used at this stage of successor selection.
+After creating a generic registration function for the parser, we must create a specialized compressor profile for the parser. The compressor profile allows you to specify successors, and optionally clustering codecs. Good successors to pick here depends on the parsed data. For example, time series data will work well with compressors which have `ZL_NODE_DELTA`. A reasonable set of successors can be found in `custom_parsers/shared_components/clustering.cpp`. We have also built a [graph builder]()(Documentation under construction) that can be used at this stage of successor selection.
 
 ## Running training and compression
  After handling I/O, create a compressor, register the new compressor profile built and set the starting graph for the compressor as this graph. Then we can can train directly by calling `train` with the appropriate parameters.

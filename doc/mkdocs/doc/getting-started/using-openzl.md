@@ -35,7 +35,8 @@ graph TD
 Most data formats can benefit from parsing although to different extents. Csv and json are both highly structured and repetitive and are representative examples as formats that benefit significantly from parsing correctly. On the other hand, html is structured but not repetitive and will therefore not benefit much from parsing.
 
 ### SDDL Compatibility
-While SDDL has the capability to describe any data format, some formats are easier to describe. The following properties are:
+While SDDL has the capability to describe any data format, some formats are easier to describe. Simpler formats have the following properties:
+
 * No nested structures
 * No variably sized structures
 

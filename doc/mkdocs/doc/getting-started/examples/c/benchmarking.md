@@ -2,10 +2,8 @@
 A lightweight benchmarking tool `unitBench` is provided in the codebase as a helper to benchmark some common compression use cases.
 
 ## Build and Use
-Toggle the `DOPENZL_BUILD_BENCHMARKS` CMake option to enable benchmarking.
 ```bash
-cmake .. -DCMAKE_BUILD_TYPE=Release -DOPENZL_BUILD_BENCHMARKS=ON
-make -j unitBench
+make unitBench
 ```
 The `unitBench` binary expects a scenario and some number of input files. Here is a sample command to benchmark Zstd compression on a few files
 ```bash

@@ -19,7 +19,7 @@ Using this trained compressor, we can now benchmark the test set. It is first ne
 ```
 Deserialization requires all dependencies to be registered in the compressor. In this example, we register the compressor profile we used in training with `registerGraph_ParsingCompressor`. This enables the compressor to be deserialized by calling `compressor.deserialize` and passing in the serialized compressor.
 
-Even though we have built a custom compressor, to decompress, there are no requirements other than the the format version of the compressor set to a version less than or equal to the library's format version on the decompressor side. The following two lines of code are all that is necessary to decompress.
+Decompression only requires that the compressor's configured format version to be less than or equal to the decompressor's format version. The following two lines of code are all that is necessary to decompress.
 ```cpp
 --8<-- "src/examples/training.cpp:decompression"
 ```
