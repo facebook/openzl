@@ -1,6 +1,6 @@
 {
     "cmake.copyCompileCommands": "${workspaceFolder}/compile_commands.json",
-    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "cmake.buildDirectory": "${workspaceFolder}/cmakebuild",
     "cmake.useCMakePresets": "always",
     "files.associations": {
         "array": "cpp",
@@ -9,5 +9,13 @@
         "vector": "cpp",
         "*.make": "makefile"
     },
-    "files.trimTrailingWhitespace": true
+    "files.trimTrailingWhitespace": true,
+    "C_Cpp.default.compileCommands": "${workspaceFolder}/compile_commands.json",
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "C_Cpp.intelliSenseEngine": "default",
+    "C_Cpp.codeAnalysis.runAutomatically": true,
+    "clangd.arguments": [
+        "--compile-commands-dir=${workspaceFolder}",
+        "--header-insertion=iwyu"
+    ]
 }
