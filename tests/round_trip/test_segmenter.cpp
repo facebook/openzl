@@ -534,11 +534,11 @@ static ZL_GraphID registerSelectorAndSegmenter(
             ZL_Compressor_registerSegmenter(compressor, g_segmenterDescPtr);
 
     ZL_SelectorDesc const selectorDesc = {
-        .name           = "Selector justSelectFirst",
         .selector_f     = justSelectFirst,
         .inStreamType   = ZL_Type_serial,
         .customGraphs   = &segid,
         .nbCustomGraphs = 1,
+        .name           = "Selector justSelectFirst",
     };
 
     return ZL_Compressor_registerSelectorGraph(compressor, &selectorDesc);
