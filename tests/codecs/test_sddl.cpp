@@ -524,6 +524,17 @@ TEST_F(SimpleDataDescriptionLanguageTest, avoidScopeCopiesInTemporaryFunctions)
     roundtrip(prog, input);
 }
 
+TEST_F(SimpleDataDescriptionLanguageTest, directlyUseAggregateFieldDecls)
+{
+    const auto prog  = R"(
+        : {}[1][1]
+        : {Byte}[1][1]
+        : {{Byte}}[1][1]
+    )";
+    const auto input = iota(2);
+    roundtrip(prog, input);
+}
+
 TEST_F(SimpleDataDescriptionLanguageTest, consumeTooMuch)
 {
     const auto program = R"(
