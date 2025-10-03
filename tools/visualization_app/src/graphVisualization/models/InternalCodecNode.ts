@@ -34,7 +34,6 @@ export class InternalCodecNode extends InternalNode {
 
   constructor(rfid: RF_codecId, type: NodeType, codec: Codec, parentGraph: InternalGraphNode | null) {
     super(rfid, type);
-    this.rfid = rfid;
     this.id = codec.id;
     this.cID = codec.cID;
     this.name = codec.name;
