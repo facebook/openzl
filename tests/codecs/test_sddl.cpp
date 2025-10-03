@@ -570,6 +570,24 @@ TEST_F(SimpleDataDescriptionLanguageTest, consumeTooMuch)
             << err_str;
 }
 
+TEST_F(SimpleDataDescriptionLanguageTest, indeterminateArrayLength)
+{
+    const auto program = R"(
+        : UInt32LE[]
+        expect _rem == 0
+    )";
+
+    for (size_t i = 4; i < 33; i++) {
+        exec(program,
+             iota(i),
+             (i % 4) ? Expected::FAIL_TO_EXECUTE : Expected::SUCCEED);
+    }
+
+    // Zero-sized objects can't be expanded.
+    exec(": {}[]; :Byte[3]", iota(3), Expected::FAIL_TO_EXECUTE);
+    exec(": Byte[0][]; :Byte[3]", iota(3), Expected::FAIL_TO_EXECUTE);
+}
+
 class SimpleDataDescriptionLanguageSourceCodePrettyPrintingTest : public Test {
    protected:
     void SetUp() override
