@@ -14,9 +14,9 @@ export class InternalGraphNode extends InternalNode {
   incomingEdges: InternalEdge[] = [];
   outgoingEdges: InternalEdge[] = [];
 
-  constructor(id: RF_graphId, type: NodeType, graph: Graph) {
-    super(id, type);
-    this.id = id;
+  constructor(rfid: RF_graphId, type: NodeType, graph: Graph) {
+    super(rfid, type);
+    this.rfid = rfid;
     this.graph = graph;
     this.codecIds = graph.codecIDs.map((codecID) => `T${codecID}` as RF_codecId);
   }

@@ -29,7 +29,7 @@ export class InteractiveStreamdumpGraph {
   private edgeViewModels = new Map<RF_edgeId, InternalEdge>();
   //   private streamIdToInputCodecs = new Map<StreamID, number[]>();
 
-  constructor(obj: SerializedStreamdump, isDefaultCollapsed: boolean = false) {
+  constructor(obj: SerializedStreamdump, isDefaultCollapsed = false) {
     this.buildFromSerialized(obj);
     this.markLargestCompressionPath(this.codecs[InteractiveStreamdumpGraph.ROOT_CODEC_ID].rfId, this.streams);
     if (isDefaultCollapsed) {
@@ -159,7 +159,7 @@ export class InteractiveStreamdumpGraph {
     });
 
     if (largestStream !== null) {
-      let streamStream = largestStream as Stream;
+      const streamStream = largestStream as Stream;
       // Traverse down this path to keep going
       const nextCodecId = streamStream.targetCodec;
       const nextCodec = this.codecs[nextCodecId];
@@ -298,8 +298,8 @@ export class InteractiveStreamdumpGraph {
   getVisibleStreamdumpGraph(): {dagOrderedNodes: InternalNode[]; edges: InternalEdge[]} {
     // Walk down the graph in DAG order. Add visible nodes and graphs
     const order = this.codecDag!.dagOrder();
-    let visibleNodeSet: InsertOnlyJournal<InternalNode> = new InsertOnlyJournal();
-    let visibleEdgeSet: InsertOnlyJournal<InternalEdge> = new InsertOnlyJournal();
+    const visibleNodeSet = new InsertOnlyJournal<InternalNode>();
+    const visibleEdgeSet = new InsertOnlyJournal<InternalEdge>();
     for (const codecId of order) {
       const codec = this.codecs[codecId];
       const maybeGraph = codec.owningGraph == null ? null : this.graphs[codec.owningGraph];
@@ -360,7 +360,7 @@ export class InteractiveStreamdumpGraph {
     // temporary filter to de-dup multiple edges
     const edgeMap = new Map<string, InternalEdge[]>();
     for (const edge of visibleEdgeSet) {
-      const key = `${edge.source.id}-${edge.target.id}`;
+      const key = `${edge.source.rfid}-${edge.target.rfid}`;
       const edges = edgeMap.get(key);
       if (edges) {
         edges.push(edge);
@@ -368,7 +368,7 @@ export class InteractiveStreamdumpGraph {
         edgeMap.set(key, [edge]);
       }
     }
-    let dedupedEdges = [];
+    const dedupedEdges = [];
     for (const edges of edgeMap.values()) {
       if (edges.length === 1) {
         dedupedEdges.push(edges[0]);
@@ -428,7 +428,7 @@ export class InteractiveStreamdumpGraph {
   }
 
   toggleSubgraphCollapse(codec: InternalCodecNode): RF_nodeId[] {
-    const codecId = codec.id;
+    const codecId = codec.rfid;
     const newlyVisibleNodes: RF_nodeId[] = [];
 
     // Expanding this node's subgraph
@@ -464,7 +464,7 @@ export class InteractiveStreamdumpGraph {
       codec.isCollapsed = true;
       // Focus on just the codec that is being collapsed
       newlyVisibleNodes.push(codecId);
-      let graphsToCheck = new Set<RF_graphId>();
+      const graphsToCheck = new Set<RF_graphId>();
       const childCodecs = this.getCodecDescendantsToHide(codecId as RF_codecId, new Set<RF_codecId>());
       childCodecs.forEach((childCodecId) => {
         const graphId = this.codecViewModels.get(childCodecId)!.codec.owningGraph;
@@ -497,7 +497,7 @@ export class InteractiveStreamdumpGraph {
 
   // Function to support the feature of level-by-level expansion of the graph
   expandOneLevel(codecViewModel: InternalCodecNode): RF_nodeId[] {
-    const codecRfId = codecViewModel.id;
+    const codecRfId = codecViewModel.rfid;
     const newlyVisibleNodes: RF_nodeId[] = [];
     codecViewModel.isCollapsed = false;
     newlyVisibleNodes.push(codecRfId);
@@ -515,7 +515,7 @@ export class InteractiveStreamdumpGraph {
       } else {
         const codecViewModel = this.codecViewModels.get(this.codecs[childCodecId].rfId)!;
         codecViewModel.isVisible = true;
-        newlyVisibleNodes.push(codecViewModel.id);
+        newlyVisibleNodes.push(codecViewModel.rfid);
       }
       // Collapse the child if it has children itself to preserve the 1 level expansion
       const childCodecHasChildren = this.codecDag!.getChildren(childCodecId).length !== 0;
@@ -551,8 +551,8 @@ export class InteractiveStreamdumpGraph {
 
   // Function to support the feature of collapsing/expanding a function graph
   toggleGraphCollapse(graph: InternalGraphNode): RF_nodeId[] {
-    const graphId = graph.id;
-    let newlyVisibleNodes: RF_nodeId[] = [];
+    const graphId = graph.rfid;
+    const newlyVisibleNodes: RF_nodeId[] = [];
     // Expanding this function graph
     if (this.graphViewModels.get(graphId as RF_graphId)!.isCollapsed) {
       graph.isCollapsed = false;
@@ -577,10 +577,10 @@ export class InteractiveStreamdumpGraph {
     let nodesToFocus = this.toggleSubgraphCollapse(this.codecViewModels.get(graph.codecIds[0])!);
     if (graph.isCollapsed) {
       graph.isCollapsed = false;
-      nodesToFocus.push(graph.id);
+      nodesToFocus.push(graph.rfid);
     } else {
       graph.isCollapsed = true;
-      nodesToFocus = [graph.id];
+      nodesToFocus = [graph.rfid];
     }
     console.assert(graph.isVisible);
     return nodesToFocus;

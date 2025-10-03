@@ -10,14 +10,14 @@ import {Box} from '@chakra-ui/react/box';
 import {Button} from '@chakra-ui/react/button';
 import {HStack} from '@chakra-ui/react/stack';
 
-type StreamdumpGraphViewProps = {
+interface StreamdumpGraphViewProps {
   nodes: Node[];
   edges: Edge[];
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   handleAllStandardGraphsCollapse: () => void;
   areStandardGraphsCollapsed: boolean;
-};
+}
 
 export function StreamdumpGraphView({
   nodes,

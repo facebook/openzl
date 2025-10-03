@@ -13,13 +13,13 @@ import {Box} from '@chakra-ui/react/box';
 import {Portal} from '@chakra-ui/react/portal';
 import {ScrollablePopover} from './ScrollablePopover';
 
-type NodeViewProps = {
+interface NodeViewProps {
   data: {
     internalNode: InternalCodecNode;
     onToggleCollapse: (node: InternalCodecNode) => void;
     expandOneLevel: (node: InternalCodecNode) => void;
   };
-};
+}
 
 export function CodecNode({data}: NodeViewProps) {
   const {internalNode} = data;
@@ -59,7 +59,7 @@ export function CodecNode({data}: NodeViewProps) {
             <Handle type="target" position={Position.Top} id="target" style={{background: '#555'}} />
             {codec.cLocalParams.hasLocalParams() && <LocalParamsPopover localParams={codec.cLocalParams} />}
             <div className="node-header">
-              {codec.name} ({codec.cID}) ({internalNode.id})
+              {codec.name} ({codec.cID}) ({internalNode.rfid})
             </div>
             <div className="node-content">
               <div>
@@ -95,7 +95,7 @@ export function CodecNode({data}: NodeViewProps) {
       <Handle type="target" position={Position.Top} id="target" style={{background: '#555'}} />
       {codec.cLocalParams.hasLocalParams() && <LocalParamsPopover localParams={codec.cLocalParams} />}
       <div className="node-header">
-        {codec.name} ({codec.cID}) ({internalNode.id})
+        {codec.name} ({codec.cID}) ({internalNode.rfid})
       </div>
       <div className="node-content">
         <div>

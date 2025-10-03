@@ -48,7 +48,7 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
 
               // Go back to node that was just expanded
               setTimeout(() => {
-                const expandedNode = updatedNodes.find((n) => n.id === node.id);
+                const expandedNode = updatedNodes.find((n) => n.id === node.rfid);
                 if (expandedNode) {
                   reactFlowInstance.fitView({
                     padding: 0.2,
@@ -99,7 +99,7 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
 
               // Then focus on the expanded graph with a smoother animation
               setTimeout(() => {
-                const expandedGraph = updatedNodes.find((n) => n.id === graph.id);
+                const expandedGraph = updatedNodes.find((n) => n.id === graph.rfid);
                 if (expandedGraph) {
                   reactFlowInstance.fitView({
                     padding: 0.2,

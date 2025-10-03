@@ -13,9 +13,9 @@ export class InternalCodecNode extends InternalNode {
   // isCollapsed: boolean = false;
   // isHidden: boolean = false;
 
-  constructor(id: RF_codecId, type: NodeType, codec: Codec, parentGraph: InternalGraphNode | null) {
-    super(id, type);
-    this.id = id;
+  constructor(rfid: RF_codecId, type: NodeType, codec: Codec, parentGraph: InternalGraphNode | null) {
+    super(rfid, type);
+    this.rfid = rfid;
     this.codec = codec;
     this.parentGraph = parentGraph;
   }
