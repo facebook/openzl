@@ -278,9 +278,11 @@ poly::optional<ASTPtr> GrammarRule::match_lhs(const ASTPtr& op, ASTPtr arg)
                 return poly::nullopt;
             }
             break;
-        case ArgType::LIST_PAREN:
         case ArgType::LIST_SQUARE:
-        case ArgType::LIST_CURLY: {
+        case ArgType::LIST_CURLY:
+            arg = unwrap_parens(std::move(arg));
+            ZL_FALLTHROUGH;
+        case ArgType::LIST_PAREN: {
             const auto* const list = some(arg).as_list();
             if (list == nullptr) {
                 return poly::nullopt;
@@ -296,6 +298,9 @@ poly::optional<ASTPtr> GrammarRule::match_lhs(const ASTPtr& op, ASTPtr arg)
                 return poly::nullopt;
             }
             arg = unwrap_parens(std::move(arg));
+            if (some(arg).as_list() != nullptr) {
+                return poly::nullopt;
+            }
             break;
         }
         default:
@@ -316,9 +321,11 @@ poly::optional<ASTPtr> GrammarRule::match_rhs(const ASTPtr& op, ASTPtr arg)
                 return poly::nullopt;
             }
             break;
-        case ArgType::LIST_PAREN:
         case ArgType::LIST_SQUARE:
-        case ArgType::LIST_CURLY: {
+        case ArgType::LIST_CURLY:
+            arg = unwrap_parens(std::move(arg));
+            ZL_FALLTHROUGH;
+        case ArgType::LIST_PAREN: {
             const auto* const list = some(arg).as_list();
             if (list == nullptr) {
                 return poly::nullopt;
@@ -334,6 +341,9 @@ poly::optional<ASTPtr> GrammarRule::match_rhs(const ASTPtr& op, ASTPtr arg)
                 return poly::nullopt;
             }
             arg = unwrap_parens(arg);
+            if (some(arg).as_list() != nullptr) {
+                return poly::nullopt;
+            }
             break;
         }
         default:
