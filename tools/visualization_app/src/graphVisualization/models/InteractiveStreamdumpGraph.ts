@@ -4,7 +4,6 @@ import {InternalCodecNode} from './InternalCodecNode';
 import {InternalGraphNode} from './InternalGraphNode';
 import type {RF_edgeId, RF_nodeId} from './types';
 import {NodeType} from './types';
-import type {RF_graphId} from './types';
 import {InternalEdge} from './InternalEdge';
 import {Stream} from '../../models/Stream';
 import type {CodecID} from '../../models/idTypes';
@@ -21,13 +20,10 @@ export class InteractiveStreamdumpGraph {
 
   private codecs: InternalCodecNode[] = [];
   private streams: Stream[] = [];
-  private graphs: Graph[] = [];
+  private graphs: InternalGraphNode[] = [];
   private codecDag: CodecDag | null = null;
 
-  // private codecViewModels = new Map<RF_codecId, InternalCodecNode>();
-  private graphViewModels = new Map<RF_graphId, InternalGraphNode>();
   private edgeViewModels = new Map<RF_edgeId, InternalEdge>();
-  //   private streamIdToInputCodecs = new Map<StreamID, number[]>();
 
   constructor(obj: SerializedStreamdump, isDefaultCollapsed = false) {
     this.buildFromSerialized(obj);
@@ -41,10 +37,10 @@ export class InteractiveStreamdumpGraph {
   private buildFromSerialized(obj: SerializedStreamdump): void {
     const intermediateCodecs = obj.codecs.map((codec, idx) => Codec.fromObject(codec, idx));
     this.streams = obj.streams.map((stream, idx) => Stream.fromObject(stream, idx));
-    this.graphs = obj.graphs.map((graph, idx) => Graph.fromObject(graph, idx));
+    const intermediateGraphs = obj.graphs.map((graph, idx) => Graph.fromObject(graph, idx));
 
     // populate graph-codec relationships
-    this.graphs.forEach((graph) => {
+    intermediateGraphs.forEach((graph) => {
       graph.codecIDs.forEach((codecId) => {
         intermediateCodecs[codecId].owningGraph = graph.gNum;
       });
@@ -97,16 +93,36 @@ export class InteractiveStreamdumpGraph {
     }
 
     // Create the graph view models
-    this.graphs.forEach((graph) => {
-      this.graphViewModels.set(graph.rfId, new InternalGraphNode(graph.rfId, NodeType.Graph, graph));
+    this.graphs = intermediateGraphs.map((graph) => {
+      return new InternalGraphNode(graph.rfId, NodeType.Graph, graph);
     });
+    // this.graphs.forEach((graph) => {
+    //   this.graphViewModels.set(
+    //     graph.rfId,
+    //     new InternalGraphNode(graph.rfId, NodeType.Graph, graph)
+    //   );
+    // });
 
     // Create the codec node view models
     this.codecs = intermediateCodecs.map((codec) => {
-      const owningGraph = codec.owningGraph;
-      const graphViewModel = owningGraph == null ? null : this.graphViewModels.get(this.graphs[owningGraph].rfId)!;
-      return new InternalCodecNode(codec.rfId, NodeType.Codec, codec, graphViewModel);
+      const owningGraphId = codec.owningGraph;
+      const graphViewModel = owningGraphId == null ? null : this.graphs[owningGraphId];
+      const codecViewModel = new InternalCodecNode(codec.rfId, NodeType.Codec, codec, graphViewModel);
+      if (graphViewModel !== null) {
+        graphViewModel.codecs.push(codecViewModel);
+      }
+      return codecViewModel;
     });
+
+    // Verification
+    console.assert(this.graphs.length === intermediateGraphs.length);
+    for (let i = 0; i < this.graphs.length; i++) {
+      console.assert(this.graphs[i].rfid === intermediateGraphs[i].rfId);
+      console.assert(this.graphs[i].codecs.length === intermediateGraphs[i].codecIDs.length);
+      for (let j = 0; j < this.graphs[i].codecs.length; j++) {
+        console.assert(this.graphs[i].codecs[j].id === intermediateGraphs[i].codecIDs[j]);
+      }
+    }
 
     // populate codecDag
     this.codecDag = new CodecDag(this.codecs, this.streams);
@@ -428,7 +444,7 @@ export class InteractiveStreamdumpGraph {
       codec.isCollapsed = true;
       // Focus on just the codec that is being collapsed
       newlyVisibleNodes.push(codec.rfid);
-      const graphsToCheck = new Set<RF_graphId>();
+      const graphsToCheck = new Set<InternalGraphNode>();
       const childCodecs = this.getCodecDescendantsToHide(codec, new Set<InternalCodecNode>());
       childCodecs.forEach((childCodec) => {
         const graph = childCodec.parentGraph;
@@ -438,16 +454,15 @@ export class InteractiveStreamdumpGraph {
           if (graph.isCollapsed) {
             graph.isVisible = false;
           } else {
-            graphsToCheck.add(graph.rfid as RF_graphId);
+            graphsToCheck.add(graph);
           }
         }
         childCodec.isVisible = false;
       });
 
       // For function graphs that aren't collapsed, if all codecs within it are hidden, we want to hide the function graph as well
-      graphsToCheck.forEach((graphId) => {
-        const graph = this.graphViewModels.get(graphId)!;
-        const allNodesHidden = graph.graph.codecIDs.every((codecId) => !this.codecs[codecId].isVisible);
+      graphsToCheck.forEach((graph) => {
+        const allNodesHidden = graph.codecs.every((codec) => !codec.isVisible);
         if (allNodesHidden) {
           graph.isVisible = false;
         }
@@ -467,11 +482,9 @@ export class InteractiveStreamdumpGraph {
       const childGraph = childCodec.parentGraph;
       // If the child codec is part of a (different) collapsed function graph, display the collapsed function graph, not the child codec
       if (childGraph != null && childGraph != codec.parentGraph) {
-        // const owningGraph = this.graphs[childGraphId];
-        const owningGraphViewModel = this.graphViewModels.get(childGraph.rfid as RF_graphId)!;
-        owningGraphViewModel.isVisible = true; // Make sure the collapsed graph is visible
-        owningGraphViewModel.isCollapsed = true;
-        newlyVisibleNodes.push(owningGraphViewModel.rfid);
+        childGraph.isVisible = true; // Make sure the collapsed graph is visible
+        childGraph.isCollapsed = true;
+        newlyVisibleNodes.push(childGraph.rfid);
       } else {
         childCodec.isVisible = true;
         newlyVisibleNodes.push(childCodec.rfid);
@@ -489,7 +502,7 @@ export class InteractiveStreamdumpGraph {
   // Helper function to display codecs in a function graph without overriding any collapsed odecs within the function graph
   displayCodecsInGraph(
     codec: InternalCodecNode,
-    graphId: RF_graphId,
+    graph: InternalGraphNode,
     visited: Set<InternalCodecNode>,
     newlyVisibleNodes: RF_nodeId[],
   ) {
@@ -498,37 +511,30 @@ export class InteractiveStreamdumpGraph {
     if (codec.isCollapsed || visited.has(codec)) {
       return;
     }
-    const graphViewModel = this.graphViewModels.get(graphId)!;
     this.codecDag!.getChildren(codec).forEach((childCodec) => {
-      if (childCodec.parentGraph === graphViewModel) {
-        this.displayCodecsInGraph(childCodec, graphId, visited, newlyVisibleNodes);
+      if (childCodec.parentGraph === graph) {
+        this.displayCodecsInGraph(childCodec, graph, visited, newlyVisibleNodes);
       }
     });
   }
 
   // Function to support the feature of collapsing/expanding a function graph
   toggleGraphCollapse(graph: InternalGraphNode): RF_nodeId[] {
-    const graphId = graph.rfid;
     const newlyVisibleNodes: RF_nodeId[] = [];
     // Expanding this function graph
-    if (this.graphViewModels.get(graphId as RF_graphId)!.isCollapsed) {
+    if (graph.isCollapsed) {
       graph.isCollapsed = false;
-      this.displayCodecsInGraph(
-        this.codecs[graph.graph.codecIDs[0]],
-        graphId as RF_graphId,
-        new Set<InternalCodecNode>(),
-        newlyVisibleNodes,
-      );
+      this.displayCodecsInGraph(graph.codecs[0], graph, new Set<InternalCodecNode>(), newlyVisibleNodes);
     }
     // Collapsing this function graph
     else {
       graph.isCollapsed = true;
       // Hide all codecs within the function graph
-      graph.graph.codecIDs.forEach((codecId) => {
-        this.codecs[codecId].isVisible = false;
+      graph.codecs.forEach((codec) => {
+        codec.isVisible = false;
       });
       // Add the function graph itself as a newly visible node as we want the screen to focus on it
-      newlyVisibleNodes.push(graphId);
+      newlyVisibleNodes.push(graph.rfid);
     }
 
     return newlyVisibleNodes;
@@ -536,7 +542,7 @@ export class InteractiveStreamdumpGraph {
 
   // collapses the graph component and all its successors into one node
   toggleGraphHide(graph: InternalGraphNode): RF_nodeId[] {
-    let nodesToFocus = this.toggleSubgraphCollapse(this.codecs[graph.graph.codecIDs[0]]);
+    let nodesToFocus = this.toggleSubgraphCollapse(graph.codecs[0]);
     if (graph.isCollapsed) {
       graph.isCollapsed = false;
       nodesToFocus.push(graph.rfid);
@@ -550,12 +556,8 @@ export class InteractiveStreamdumpGraph {
 
   // Function to support the feature of collapsing/expanding all standard graphs
   toggleAllStandardGraphs(isCollapsed: boolean) {
-    this.graphViewModels.forEach((graph, _) => {
-      if (
-        graph.isVisible &&
-        graph.isCollapsed !== isCollapsed &&
-        graph.graph.gType === ZL_GraphType.ZL_GraphType_standard
-      ) {
+    this.graphs.forEach((graph, _) => {
+      if (graph.isVisible && graph.isCollapsed !== isCollapsed && graph.gType === ZL_GraphType.ZL_GraphType_standard) {
         this.toggleGraphHide(graph);
       }
     });
@@ -571,29 +573,28 @@ export class InteractiveStreamdumpGraph {
       if (codec.parentGraph == null) {
         continue;
       }
-      // const graph = this.graphs[this.codecs[codecId].owningGraph];
-      const graphModel = codec.parentGraph;
-      if (!graphModel.isVisible) {
+      const graph = codec.parentGraph;
+      if (!graph.isVisible) {
         console.assert(!codec.isVisible);
         continue;
       }
-      if (graphModel.isCollapsed) {
+      if (graph.isCollapsed) {
         continue;
       }
       // catch stragglers graphs that haven't been collapsed (for some reason)
-      // if (!codecModel.isVisible && !graphModel.isCollapsed) {
-      //   console.log('found straggler ' + codecModel.id + ' ' + graphModel.id);
-      //   graphModel.isVisible = false;
+      // if (!codecModel.isVisible && !graph.isCollapsed) {
+      //   console.log('found straggler ' + codecModel.id + ' ' + graph.id);
+      //   graph.isVisible = false;
       //   continue;
       // }
 
       // we've found a graph that should potentially be collapsed
-      if (graphModel.graph.gType === ZL_GraphType.ZL_GraphType_standard) {
-        const rootCodec = this.codecs[graphModel.graph.codecIDs[0]];
+      if (graph.gType === ZL_GraphType.ZL_GraphType_standard) {
+        const rootCodec = graph.codecs[0];
         console.assert(rootCodec === codec);
-        this.toggleGraphHide(graphModel);
+        this.toggleGraphHide(graph);
         codec.isVisible = false;
-        graphModel.isCollapsed = true;
+        graph.isCollapsed = true;
       }
     }
   }
