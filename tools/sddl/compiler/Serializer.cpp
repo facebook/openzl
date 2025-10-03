@@ -60,7 +60,10 @@ void log_serialized(std::ostream& log, const poly::string_view& ser)
 
 } // namespace
 
-Serializer::Serializer(const Logger& logger) : log_(logger) {}
+Serializer::Serializer(const Logger& logger, bool include_debug_info)
+        : log_(logger), include_debug_info_(include_debug_info)
+{
+}
 
 std::string Serializer::serialize(const ASTVec& ast, const Source& source) const
 {
@@ -70,7 +73,7 @@ std::string Serializer::serialize(const ASTVec& ast, const Source& source) const
 
     SerializationOptions ser_opts = {
         .arena                    = &a1c_arena,
-        .include_source_locations = true,
+        .include_source_locations = include_debug_info_,
     };
 
     A1C_Item root;
@@ -96,7 +99,7 @@ std::string Serializer::serialize(const ASTVec& ast, const Source& source) const
         }
     }
 
-    {
+    if (include_debug_info_) {
         auto* const src_pair = A1C_MapBuilder_add(root_map_builder);
         if (src_pair == nullptr) {
             throw SerializationError("Failed to add element to root map.");

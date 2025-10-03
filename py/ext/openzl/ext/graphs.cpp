@@ -257,8 +257,10 @@ void registerSDDLGraph(nb::module_& g)
                 std::stringstream logs;
                 auto compiled = std::make_shared<std::string>();
                 try {
-                    *compiled = sddl::Compiler{ logs }.compile(
-                            description, "[local_input]");
+                    *compiled =
+                            sddl::Compiler{ sddl::Compiler::Options{}.with_log(
+                                                    logs) }
+                                    .compile(description, "[local_input]");
                 } catch (const sddl::CompilerException&) {
                     // To-Do: allow adding the error logs somehow?
                     (void)logs;

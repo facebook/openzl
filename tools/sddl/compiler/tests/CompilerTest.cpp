@@ -13,7 +13,8 @@ class CompilerTest : public Test {
    protected:
     void SetUp() override
     {
-        compiler_ = std::make_unique<Compiler>(logs_, verbosity_);
+        compiler_ = std::make_unique<Compiler>(
+                Compiler::Options{}.with_log(logs_).with_verbosity(verbosity_));
     }
 
     void expect_error(std::string_view source, std::string_view msg)

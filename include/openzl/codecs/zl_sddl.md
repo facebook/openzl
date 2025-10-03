@@ -100,7 +100,7 @@ The description given to the graph must be pre-compiled. Use the SDDL Compiler t
 
 #### API
 
-::: openzl::sddl::Compiler
+::: openzl::sddl::Compiler::compile
 
 #### Compiled Representation
 

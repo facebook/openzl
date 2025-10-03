@@ -41,8 +41,9 @@ int main(int argc, char* argv[])
 
     try {
         std::istreambuf_iterator<char> begin{ std::cin }, end;
-        const auto input    = std::string{ begin, end };
-        const auto compiler = Compiler{ std::cerr, verbosity };
+        const auto input = std::string{ begin, end };
+        const auto compiler =
+                Compiler{ Compiler::Options{}.with_verbosity(verbosity) };
         const auto compiled = compiler.compile(input, "[stdin]");
         std::cout << compiled;
     } catch (const CompilerException& ex) {

@@ -15,12 +15,23 @@ namespace openzl::sddl {
  */
 class Serializer {
    public:
-    explicit Serializer(const detail::Logger& logger);
+    /**
+     * @param include_debug_info controls whether debugging information is
+     *                           included in the emitted serialized object.
+     *                           This information is not necessary for correct
+     *                           execution, but helps the execution engine
+     *                           produce useful error messages when execution
+     *                           fails.
+     */
+    explicit Serializer(
+            const detail::Logger& logger,
+            bool include_debug_info = true);
 
     std::string serialize(const ASTVec& ast, const Source& source) const;
 
    private:
     const detail::Logger& log_;
+    const bool include_debug_info_;
 };
 
 } // namespace openzl::sddl

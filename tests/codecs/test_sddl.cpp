@@ -61,13 +61,17 @@ class SimpleDataDescriptionLanguageTest : public Test {
 
     std::string compile(std::string_view program, Expected expected)
     {
-        int verbosity = 2;
+        const int verbosity = 2;
         std::stringstream logs;
         std::string code;
 
         try {
-            code = sddl::Compiler{ logs, verbosity }.compile(
-                    program, "[local_input]");
+            code =
+                    sddl::Compiler{
+                        sddl::Compiler::Options{}.with_log(logs).with_verbosity(
+                                verbosity)
+                    }
+                            .compile(program, "[local_input]");
         } catch (const sddl::CompilerException&) {
             if (expected == Expected::FAIL_TO_COMPILE) {
                 // Good.

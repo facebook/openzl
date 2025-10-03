@@ -10,12 +10,13 @@
 
 namespace openzl::sddl {
 
-Compiler::Compiler(std::ostream& os, int verbosity)
-        : logger_(os, verbosity),
+Compiler::Compiler(Options options)
+        : options_(std::move(options)),
+          logger_(*options_.log_os, options_.verbosity),
           tokenizer_(logger_),
           grouper_(logger_),
           parser_(logger_),
-          serializer_(logger_)
+          serializer_(logger_, options_.include_debug_info)
 {
 }
 
@@ -104,5 +105,67 @@ std::string Compiler::compile(
     const auto groups = grouper_.group(tokens);
     const auto tree   = parser_.parse(groups);
     return serializer_.serialize(tree, src);
+}
+
+Compiler::Options::Options() {}
+
+Compiler::Options& Compiler::Options::with_log(std::ostream& os) &
+{
+    log_os = &os;
+    return *this;
+}
+Compiler::Options&& Compiler::Options::with_log(std::ostream& os) &&
+{
+    return std::move(with_log(os));
+}
+
+Compiler::Options& Compiler::Options::with_verbosity(int v) &
+{
+    verbosity = v;
+    return *this;
+}
+Compiler::Options&& Compiler::Options::with_verbosity(int v) &&
+{
+    return std::move(with_verbosity(v));
+}
+
+Compiler::Options& Compiler::Options::with_more_verbose() &
+{
+    verbosity++;
+    return *this;
+}
+Compiler::Options&& Compiler::Options::with_more_verbose() &&
+{
+    return std::move(with_more_verbose());
+}
+
+Compiler::Options& Compiler::Options::with_less_verbose() &
+{
+    verbosity--;
+    return *this;
+}
+Compiler::Options&& Compiler::Options::with_less_verbose() &&
+{
+    return std::move(with_less_verbose());
+}
+
+Compiler::Options& Compiler::Options::with_debug_info(bool d) &
+{
+    include_debug_info = d;
+    return *this;
+}
+Compiler::Options&& Compiler::Options::with_debug_info(bool d) &&
+{
+    return std::move(with_debug_info(d));
+}
+
+Compiler::Options& Compiler::Options::with_no_debug_info() &
+{
+    include_debug_info = false;
+    return *this;
+}
+Compiler::Options&& Compiler::Options::with_no_debug_info() &&
+{
+    return std::move(with_no_debug_info());
 }
 } // namespace openzl::sddl
