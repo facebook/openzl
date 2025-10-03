@@ -9,6 +9,7 @@ cpp_unittest(
     name = "test_training",
     srcs = [
         "test_ace.cpp",
+        "test_ace_combination.cpp",
         "test_clustering.cpp",
         "test_clustering_benchmarks.cpp",
         "test_clustering_config_builder.cpp",
