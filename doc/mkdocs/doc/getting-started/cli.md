@@ -9,11 +9,8 @@ cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
 make openzl zli
 ```
-The examples in the guide assume you have the **OpenZL benchmark corpus** on your machine. Download it here:
-```
-todo
-```
-The input file names in the code snippets correspond to files in the `openzl_corpus/getting_started` folder.
+
+The input file names in the code snippets correspond to files in the `examples/getting_started` folder.
 
 # Basic usage
 ### Serial data in OpenZL
@@ -26,16 +23,16 @@ The `--profile` option allows you to select a predefined **compression profile**
 > **More about profiles:** Under the hood, a `profile` is simply a pre-configured OpenZL **graph**. Since we did not do any [ACE](./using-openzl.md#ace-training) training, the graph contains a single Zstd node. Other profiles contain more complex graphs, as we will see later.
 
 ### Numeric data in OpenZL
-Now let's try to compress a file of numbers. We have preconfigured profile called `le-i32` that takes advantage of fixed-width structure of integer data to compress better than byte-wise LZ.
+Now let's try to compress a file of numbers. We have preconfigured profile called `le-i32` that takes advantage of fixed-width structure of integer data to compress better than byte-wise LZ. In this example, we will compress a small sample of integers from the [ERA5](https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels?tab=overview) dataset.
 
 ```
-zli compress --profile le-i32 ints.txt --output ints.le_i32.zs2
+zli compress --profile le-i32 era5_ints.bin --output era5_ints.le_i32.zs2
 ```
 
 For comparison, we can try compressing the same output with serial.
 
 ```
-zli compress --profile serial ints.txt --output ints.serial.zs2
+zli compress --profile serial era5_ints.bin --output era5_ints.serial.zs2
 ```
 
 We can see the immediate benefit of moving from serial to le-i32.
@@ -43,7 +40,7 @@ We can see the immediate benefit of moving from serial to le-i32.
 > **Tip:** The more you know about your data, the better you can tune your compression. Simply knowing that your data is integral dramatically improves compression.
 
 ## Custom Compressors
-The true power of OpenZL lies in its configurability. Creating your own custom compressor is documented in the API reference. Once created, a compressor can be *serialized* into a CBOR file. The CLI supports compressing with a serialized compressor.
+The true power of OpenZL lies in its configurability. Creating your own custom compressor is documented in the API reference. Once created, a compressor can be *serialized* into a CBOR file. The CLI supports compressing with a serialized compressor. Here is a sample command, we will be creating a custom compressor in the next section.
 ```
 zli compress --compressor custom1.zsc custom_data.txt -o custom_data.zs2
 ```
@@ -59,7 +56,7 @@ The `train` command takes an **unconfigured compressor** in the form of a `profi
 
 > **Terminology - (Un)configured graph:** A graph is considered *configured* if all of its graph components are configured. A codec is configurable only via its `LocalParams`. Thus, an unconfigured codec is one that takes params but has blank `LocalParams` passed to it. A configured codec is then one with populated `LocalParams`. Selectors and function graphs additionally can set successor graph IDs. Then, a selector or function graph without a complete list of successors is also unconfigured.
 
-Let's see what happens when we run a compression using the trained graph. First, the untrained graph...
+Let's see what happens when we run a compression using the trained graph. In this example, we will use a small sample from the [PUMS](https://www.census.gov/programs-surveys/acs/microdata/access.html) dataset. First, the untrained graph...
 ```
 zli compress --profile csv csv_samples/0001.csv -o no_train.zs2
 ```
