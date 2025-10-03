@@ -189,6 +189,10 @@ typedef enum {
     // Binary arithmetic operations
     ZL_SDDL_OpCode_eq,
     ZL_SDDL_OpCode_ne,
+    ZL_SDDL_OpCode_gt,
+    ZL_SDDL_OpCode_ge,
+    ZL_SDDL_OpCode_lt,
+    ZL_SDDL_OpCode_le,
     ZL_SDDL_OpCode_add,
     ZL_SDDL_OpCode_sub,
     ZL_SDDL_OpCode_mul,
@@ -311,6 +315,14 @@ static const char* ZL_SDDL_OpCode_toString(ZL_SDDL_OpCode opcode)
             return "eq";
         case ZL_SDDL_OpCode_ne:
             return "ne";
+        case ZL_SDDL_OpCode_gt:
+            return "gt";
+        case ZL_SDDL_OpCode_ge:
+            return "ge";
+        case ZL_SDDL_OpCode_lt:
+            return "lt";
+        case ZL_SDDL_OpCode_le:
+            return "le";
         case ZL_SDDL_OpCode_add:
             return "add";
         case ZL_SDDL_OpCode_sub:
@@ -470,6 +482,10 @@ static size_t ZL_SDDL_OpCode_numArgs(const ZL_SDDL_OpCode opcode)
             return 1;
         case ZL_SDDL_OpCode_eq:
         case ZL_SDDL_OpCode_ne:
+        case ZL_SDDL_OpCode_gt:
+        case ZL_SDDL_OpCode_ge:
+        case ZL_SDDL_OpCode_lt:
+        case ZL_SDDL_OpCode_le:
         case ZL_SDDL_OpCode_add:
         case ZL_SDDL_OpCode_sub:
         case ZL_SDDL_OpCode_mul:
@@ -993,6 +1009,18 @@ static ZL_Report ZL_SDDL_Program_decodeExprType(
     } else if (StringView_eqCStr(&type_sv, "ne")) {
         expr->type  = ZL_SDDL_ExprType_op;
         expr->op.op = ZL_SDDL_OpCode_ne;
+    } else if (StringView_eqCStr(&type_sv, "gt")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_gt;
+    } else if (StringView_eqCStr(&type_sv, "ge")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_ge;
+    } else if (StringView_eqCStr(&type_sv, "lt")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_lt;
+    } else if (StringView_eqCStr(&type_sv, "le")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_le;
     } else if (StringView_eqCStr(&type_sv, "add")) {
         expr->type  = ZL_SDDL_ExprType_op;
         expr->op.op = ZL_SDDL_OpCode_add;
@@ -2469,6 +2497,30 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr_op_inner(
             ZL_ERR_IF_NE(args[0].type, ZL_SDDL_ExprType_num, corruption);
             ZL_ERR_IF_NE(args[1].type, ZL_SDDL_ExprType_num, corruption);
             result = ZL_SDDL_Expr_makeNum(args[0].num.val != args[1].num.val);
+            break;
+        }
+        case ZL_SDDL_OpCode_gt: {
+            ZL_ERR_IF_NE(args[0].type, ZL_SDDL_ExprType_num, corruption);
+            ZL_ERR_IF_NE(args[1].type, ZL_SDDL_ExprType_num, corruption);
+            result = ZL_SDDL_Expr_makeNum(args[0].num.val > args[1].num.val);
+            break;
+        }
+        case ZL_SDDL_OpCode_ge: {
+            ZL_ERR_IF_NE(args[0].type, ZL_SDDL_ExprType_num, corruption);
+            ZL_ERR_IF_NE(args[1].type, ZL_SDDL_ExprType_num, corruption);
+            result = ZL_SDDL_Expr_makeNum(args[0].num.val >= args[1].num.val);
+            break;
+        }
+        case ZL_SDDL_OpCode_lt: {
+            ZL_ERR_IF_NE(args[0].type, ZL_SDDL_ExprType_num, corruption);
+            ZL_ERR_IF_NE(args[1].type, ZL_SDDL_ExprType_num, corruption);
+            result = ZL_SDDL_Expr_makeNum(args[0].num.val < args[1].num.val);
+            break;
+        }
+        case ZL_SDDL_OpCode_le: {
+            ZL_ERR_IF_NE(args[0].type, ZL_SDDL_ExprType_num, corruption);
+            ZL_ERR_IF_NE(args[1].type, ZL_SDDL_ExprType_num, corruption);
+            result = ZL_SDDL_Expr_makeNum(args[0].num.val <= args[1].num.val);
             break;
         }
         case ZL_SDDL_OpCode_add: {

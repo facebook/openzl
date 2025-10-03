@@ -75,6 +75,10 @@ static const std::map<Symbol, SymbolType> sym_types{
 
     { Symbol::EQ, SymbolType::OPERATOR },
     { Symbol::NE, SymbolType::OPERATOR },
+    { Symbol::GT, SymbolType::OPERATOR },
+    { Symbol::GE, SymbolType::OPERATOR },
+    { Symbol::LT, SymbolType::OPERATOR },
+    { Symbol::LE, SymbolType::OPERATOR },
     { Symbol::ADD, SymbolType::OPERATOR },
     { Symbol::SUB, SymbolType::OPERATOR },
     { Symbol::MUL, SymbolType::OPERATOR },
@@ -157,6 +161,10 @@ static const std::map<Symbol, poly::string_view> syms_to_debug_strs{
 
     { Symbol::EQ, "EQ" },
     { Symbol::NE, "NE" },
+    { Symbol::GT, "GT" },
+    { Symbol::GE, "GE" },
+    { Symbol::LT, "LT" },
+    { Symbol::LE, "LE" },
     { Symbol::ADD, "ADD" },
     { Symbol::SUB, "SUB" },
     { Symbol::MUL, "MUL" },
@@ -225,6 +233,10 @@ const std::vector<std::pair<poly::string_view, Symbol>> strs_to_syms{
     { "]", Symbol::SQUARE_CLOSE },
     { "==", Symbol::EQ },
     { "!=", Symbol::NE },
+    { ">=", Symbol::GE },
+    { ">", Symbol::GT },
+    { "<=", Symbol::LE },
+    { "<", Symbol::LT },
     { "=", Symbol::ASSIGN },
     { "+", Symbol::ADD },
     { "-", Symbol::SUB },
@@ -303,6 +315,8 @@ poly::string_view sym_to_repr_str(Symbol sym)
 
 static const std::map<Symbol, poly::string_view> syms_to_ser_strs{
     { Symbol::EQ, "eq" },           { Symbol::NE, "ne" },
+    { Symbol::GT, "gt" },           { Symbol::GE, "ge" },
+    { Symbol::LT, "lt" },           { Symbol::LE, "le" },
     { Symbol::ADD, "add" },         { Symbol::SUB, "sub" },
     { Symbol::MUL, "mul" },         { Symbol::DIV, "div" },
     { Symbol::MOD, "mod" },

@@ -63,6 +63,10 @@ ZL_BEGIN_C_DECLS
  * | bind    | Op        |
  * | eq      | Op        |
  * | ne      | Op        |
+ * | gt      | Op        |
+ * | ge      | Op        |
+ * | lt      | Op        |
+ * | le      | Op        |
  * | neg     | Op        |
  * | add     | Op        |
  * | sub     | Op        |
@@ -101,6 +105,10 @@ ZL_BEGIN_C_DECLS
  * | bind    | 2    | Func | Func| Tuple | Applies args to func.
  * | eq      | 2    | I    | IV  | IV    | eval(lhs) == eval(rhs)
  * | ne      | 2    | I    | IV  | IV    | eval(lhs) != eval(rhs)
+ * | gt      | 2    | I    | IV  | IV    | eval(lhs) >  eval(rhs)
+ * | ge      | 2    | I    | IV  | IV    | eval(lhs) >= eval(rhs)
+ * | lt      | 2    | I    | IV  | IV    | eval(lhs) <  eval(rhs)
+ * | le      | 2    | I    | IV  | IV    | eval(lhs) <= eval(rhs)
  * | neg     | 1    | I    | IV  |       | - eval(arg)
  * | add     | 2    | I    | IV  | IV    | eval(lhs) + eval(rhs)
  * | sub     | 2    | I    | IV  | IV    | eval(lhs) - eval(rhs)
