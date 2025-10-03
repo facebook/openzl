@@ -635,8 +635,52 @@ class ArrayRule : public GrammarRule {
    private:
     ASTPtr do_gen(ASTPtr, ASTPtr lhs, ASTPtr rhs) const override
     {
-        const auto& rhs_nodes = unwrap_square(rhs);
-        if (rhs_nodes.size() != 1) {
+        const auto& rhs_nodes                      = unwrap_square(rhs);
+        constexpr bool allow_implicit_array_sizing = true;
+        if (allow_implicit_array_sizing && rhs_nodes.size() == 0) {
+            const Codegen cg{ maybe_loc(lhs) + maybe_loc(rhs) };
+
+            /**
+             * This expands:
+             * ```
+             * field[]
+             * ```
+             * into
+             * ```
+             * (: (__field, __rem) {
+             *   __size = sizeof __field
+             *   expect __rem % __size == 0
+             *   __len = __rem / __size
+             *   __resolved = __field[__len]
+             * } (field, _rem)).__resolved
+             * ```
+             */
+
+            const auto field_var    = cg.var("__field");
+            const auto rem_var      = cg.var("__rem");
+            const auto size_var     = cg.var("__size");
+            const auto len_var      = cg.var("__len");
+            const auto resolved_var = cg.var("__resolved");
+            return cg.member(
+                    cg.consume(cg.bind(
+                            cg.func(cg.vec(field_var, rem_var),
+                                    cg.vec(cg.assign(
+                                                   size_var,
+                                                   cg.size_of(field_var)),
+                                           cg.assign(
+                                                   len_var,
+                                                   cg.div(rem_var, size_var)),
+                                           cg.expect(cg.eq(
+                                                   cg.mod(rem_var, size_var),
+                                                   cg.num(0))),
+                                           cg.assign(
+                                                   resolved_var,
+                                                   cg.array(
+                                                           field_var,
+                                                           len_var)))),
+                            cg.tuple(cg.vec(std::move(lhs), cg.var("_rem"))))),
+                    resolved_var);
+        } else if (rhs_nodes.size() != 1) {
             throw ParseError(
                     some(rhs).loc(),
                     "Array declaration right-hand side list must have single element.");
