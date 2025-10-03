@@ -348,44 +348,54 @@ ZL_Report ZL_Edge_setParameterizedDestination(
             successor_invalidNumInputs,
             "A Graph Successor must have at least 1 Input.");
 
-    // === Phase 2: Graph Descriptor Lookup ===
+    // === Phase 2: Input Descriptor Lookup ===
+    typedef struct {
+        const char* name;
+        size_t numInputs;
+        bool lastInputIsVariable;
+    } InputGraphDesc;
+
     const ZL_Compressor* const compressor = CCTX_getCGraph(gctx->cctx);
-    ZL_FunctionGraphDesc localMigd;
-    const ZL_FunctionGraphDesc* migd = NULL;
     ZL_DLOG(SEQ,
             "CGRAPH_graphType(compressor, gid) = %i",
             CGRAPH_graphType(compressor, gid));
+    InputGraphDesc inputGD;
     if (CGRAPH_graphType(compressor, gid) == gt_segmenter) {
         const ZL_SegmenterDesc* const segd =
                 CGRAPH_getSegmenterDesc(compressor, gid);
-        localMigd = (ZL_FunctionGraphDesc){
+        ZL_ASSERT_NN(segd);
+        inputGD = (InputGraphDesc){
             .name                = segd->name,
-            .inputTypeMasks      = segd->inputTypeMasks,
-            .nbInputs            = segd->numInputs,
+            .numInputs           = segd->numInputs,
             .lastInputIsVariable = segd->lastInputIsVariable,
         };
-        migd = &localMigd;
     } else {
-        migd = CGRAPH_getMultiInputGraphDesc(compressor, gid);
+        const ZL_FunctionGraphDesc* const fgd =
+                CGRAPH_getMultiInputGraphDesc(compressor, gid);
+        ZL_ERR_IF_NULL(fgd, graph_invalid);
+        inputGD = (InputGraphDesc){
+            .name                = fgd->name,
+            .numInputs           = fgd->nbInputs,
+            .lastInputIsVariable = fgd->lastInputIsVariable,
+        };
     };
 
-    ZL_ERR_IF_NULL(migd, graph_invalid);
-
     // === Phase 3: Validate number of inputs ===
-    if (migd->lastInputIsVariable) {
+    if (inputGD.lastInputIsVariable) {
         // Variable Input: last Input can be present [0-N] times
         // Must provide at least (required_inputs - 1) since last is optional
-        ZL_ASSERT_GE(migd->nbInputs, 1);
-        ZL_ERR_IF_LT(nbInputs, migd->nbInputs - 1, successor_invalidNumInputs);
+        ZL_ASSERT_GE(inputGD.numInputs, 1);
+        ZL_ERR_IF_LT(
+                nbInputs, inputGD.numInputs - 1, successor_invalidNumInputs);
     } else {
         // Only Singular Inputs: count must be exact
         ZL_ERR_IF_NE(
                 nbInputs,
-                migd->nbInputs,
+                inputGD.numInputs,
                 successor_invalidNumInputs,
                 "Graph '%s' should have received %zu Inputs (!= %zu)",
-                STR_REPLACE_NULL(migd->name),
-                migd->nbInputs,
+                STR_REPLACE_NULL(inputGD.name),
+                inputGD.numInputs,
                 nbInputs);
     }
 
