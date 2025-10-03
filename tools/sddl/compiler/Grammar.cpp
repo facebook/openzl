@@ -107,6 +107,183 @@ const std::map<ArgType, poly::string_view> arg_types_to_strs{
     { ArgType::EXPR, "EXPR" },
 };
 
+/**
+ * Helper to build a synthetic AST tree rather than translating tokens 1:1.
+ */
+class Codegen {
+   public:
+    explicit Codegen(SourceLocation loc) : loc_(std::move(loc)) {}
+
+    Token token(Symbol sym) const
+    {
+        return Token{ loc_, sym };
+    }
+
+    template <typename... Args>
+    ASTVec vec(Args... args) const
+    {
+        return ASTVec{ std::move(args)... };
+    }
+
+    template <typename... Args>
+    ASTPtr op(Symbol sym, Args... args) const
+    {
+        return std::make_shared<ASTOp>(token(sym), vec(std::move(args)...));
+    }
+
+    // Ops
+
+    ASTPtr expect(ASTPtr arg) const
+    {
+        return op(Symbol::EXPECT, std::move(arg));
+    }
+
+    ASTPtr consume(ASTPtr arg) const
+    {
+        return op(Symbol::CONSUME, std::move(arg));
+    }
+
+    ASTPtr size_of(ASTPtr arg) const
+    {
+        return op(Symbol::SIZEOF, std::move(arg));
+    }
+
+    ASTPtr send(ASTPtr lhs, ASTPtr rhs) const
+    {
+        return op(Symbol::SEND, std::move(lhs), std::move(rhs));
+    }
+
+    ASTPtr assign(ASTPtr lhs, ASTPtr rhs) const
+    {
+        return op(Symbol::ASSIGN, std::move(lhs), std::move(rhs));
+    }
+
+    ASTPtr member(ASTPtr lhs, ASTPtr rhs) const
+    {
+        return op(Symbol::MEMBER, std::move(lhs), std::move(rhs));
+    }
+
+    ASTPtr bind(ASTPtr lhs, ASTPtr rhs) const
+    {
+        return op(Symbol::BIND, std::move(lhs), std::move(rhs));
+    }
+
+    ASTPtr neg(ASTPtr arg) const
+    {
+        return op(Symbol::NEG, std::move(arg));
+    }
+
+    ASTPtr eq(ASTPtr lhs, ASTPtr rhs) const
+    {
+        return op(Symbol::EQ, std::move(lhs), std::move(rhs));
+    }
+
+    ASTPtr ne(ASTPtr lhs, ASTPtr rhs) const
+    {
+        return op(Symbol::NE, std::move(lhs), std::move(rhs));
+    }
+
+    ASTPtr add(ASTPtr lhs, ASTPtr rhs) const
+    {
+        return op(Symbol::ADD, std::move(lhs), std::move(rhs));
+    }
+
+    ASTPtr sub(ASTPtr lhs, ASTPtr rhs) const
+    {
+        return op(Symbol::SUB, std::move(lhs), std::move(rhs));
+    }
+
+    ASTPtr mul(ASTPtr lhs, ASTPtr rhs) const
+    {
+        return op(Symbol::MUL, std::move(lhs), std::move(rhs));
+    }
+
+    ASTPtr div(ASTPtr lhs, ASTPtr rhs) const
+    {
+        return op(Symbol::DIV, std::move(lhs), std::move(rhs));
+    }
+
+    ASTPtr mod(ASTPtr lhs, ASTPtr rhs) const
+    {
+        return op(Symbol::MOD, std::move(lhs), std::move(rhs));
+    }
+
+    // Other types of things
+
+    ASTPtr num(int64_t val) const
+    {
+        return std::make_shared<ASTNum>(Token{ loc_, val });
+    }
+
+    ASTPtr array(ASTPtr field, ASTPtr len) const
+    {
+        return std::make_shared<ASTArray>(std::move(field), std::move(len));
+    }
+
+    ASTPtr record(ASTVec fields) const
+    {
+        return std::make_shared<ASTRecord>(curly_list(std::move(fields)));
+    }
+
+    ASTPtr dest() const
+    {
+        return std::make_shared<ASTDest>(Token{ loc_, 0 }, nullptr);
+    }
+
+    ASTPtr var(poly::string_view name) const
+    {
+        return std::make_shared<ASTVar>(Token{ loc_, name });
+    }
+
+    ASTPtr tuple(poly::string_view name) const
+    {
+        return std::make_shared<ASTVar>(Token{ loc_, name });
+    }
+
+    ASTPtr list(Symbol open_sym, ASTVec elts) const
+    {
+        const auto& list_sym_set = list_sym_sets.at(open_sym);
+        return std::make_shared<ASTList>(
+                list_sym_set.type,
+                std::make_shared<ASTSym>(token(list_sym_set.open)),
+                std::make_shared<ASTSym>(token(list_sym_set.close)),
+                std::move(elts));
+    }
+
+    ASTPtr paren_list(ASTVec elts) const
+    {
+        return list(Symbol::PAREN_OPEN, std::move(elts));
+    }
+
+    ASTPtr square_list(ASTVec elts) const
+    {
+        return list(Symbol::SQUARE_OPEN, std::move(elts));
+    }
+
+    ASTPtr curly_list(ASTVec elts) const
+    {
+        return list(Symbol::CURLY_OPEN, std::move(elts));
+    }
+
+    ASTPtr tuple(ASTVec elts) const
+    {
+        return std::make_shared<ASTTuple>(paren_list(std::move(elts)));
+    }
+
+    ASTPtr func(ASTVec args, ASTVec body) const
+    {
+        const auto args_ast   = paren_list(std::move(args));
+        const auto body_ast   = curly_list(std::move(body));
+        const auto& args_list = some(args_ast).as_list();
+        const auto& body_list = some(body_ast).as_list();
+        return std::make_shared<ASTFunc>(
+                args_list->nodes(), body_list->nodes());
+    }
+
+   private:
+    const SourceLocation loc_;
+};
+
 } // anonymous namespace
 
 poly::string_view precedence_to_str(Precedence precedence)
