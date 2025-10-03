@@ -2394,9 +2394,7 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr_op_inner(
             ZL_ERR_IF_NE(args[1].type, ZL_SDDL_ExprType_num, corruption);
             ZL_ERR_IF_EQ(
                     args[1].num.val, 0, corruption, "Modulus can't be zero.");
-            result.type    = ZL_SDDL_ExprType_num;
-            result.num.val = args[0].num.val % args[1].num.val;
-            result = ZL_SDDL_Expr_makeNum(args[0].num.val == args[1].num.val);
+            result = ZL_SDDL_Expr_makeNum(args[0].num.val % args[1].num.val);
             break;
         }
 
