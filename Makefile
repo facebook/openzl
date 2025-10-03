@@ -65,7 +65,7 @@ lib: libopenzl.a libopenzl.so
 # =====================================
 
 .PHONY: all
-all : lib gtests unitBench zli stream_dump2 examples
+all : lib gtests unitBench zli sddl_compiler stream_dump2 examples
 
 # Define a function to generate a list of C++ object files from directory
 cxx_objs = $(patsubst %.cpp,%.o,$(wildcard $(addsuffix /*.cpp, $(1))))
@@ -137,6 +137,13 @@ $(eval $(call c_program_shared_o,unitBench,tools/time/timefn.o tools/fileio/file
 stream_dump2:
 $(eval $(call c_program_shared_o,stream_dump2, \
     $(STREAMDUMP_COBJS) tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A)))
+
+$(eval $(call cxx_program,sddl_compiler, \
+	$(SDDL_COMPILER_DIR)/main.o \
+	$(SDDL_COMPILER_CXXOBJS) \
+	$(ZLCPP_OBJS), \
+	libopenzl.a \
+	$(LIBZSTD_A)))
 
 # Selection of gtest units (by file name convention)
 CXX_FILE_OBJS := $(notdir $(CXX_OBJS))
