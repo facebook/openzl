@@ -10,12 +10,12 @@ import {Box} from '@chakra-ui/react/box';
 import {Portal} from '@chakra-ui/react/portal';
 import {ScrollablePopover} from './ScrollablePopover';
 
-type GraphViewProps = {
+interface GraphViewProps {
   data: {
     internalNode: InternalGraphNode;
     onToggleGraphCollapse: (graph: InternalGraphNode) => void;
   };
-};
+}
 
 export function GraphNodeView({data}: GraphViewProps) {
   const {internalNode} = data;
@@ -29,7 +29,7 @@ export function GraphNodeView({data}: GraphViewProps) {
             <Handle type="target" position={Position.Top} id="target" style={{background: '#555'}} />
             {graph.gLocalParams.hasLocalParams() && <LocalParamsPopover localParams={graph.gLocalParams} />}
             <div className="node-header">
-              {graph.gName} ({internalNode.id})
+              {graph.gName} ({internalNode.rfid})
               <br />
               Type: {graph.getGraphTypeString()}
             </div>
@@ -68,7 +68,7 @@ export function GraphNodeView({data}: GraphViewProps) {
       {graph.gLocalParams.hasLocalParams() && <LocalParamsPopover localParams={graph.gLocalParams} />}
 
       <div className="graph-node-header">
-        {graph.gName} ({internalNode.id})
+        {graph.gName} ({internalNode.rfid})
         <br />
         Type: {graph.getGraphTypeString()}
       </div>

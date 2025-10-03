@@ -28,7 +28,7 @@ export class LayoutController {
       if (node instanceof InternalGraphNode && !node.isCollapsed) {
         // expanded graphs are not draggable
         return {
-          id: node.id,
+          id: node.rfid,
           type: node.type,
           position: {x: 0, y: 0}, // Default position, will be updated by layout
           data: {internalNode: node},
@@ -36,7 +36,7 @@ export class LayoutController {
         };
       } else {
         return {
-          id: node.id,
+          id: node.rfid,
           type: node.type,
           position: {x: 0, y: 0}, // Default position, will be updated by layout
           data: {internalNode: node},
@@ -46,8 +46,8 @@ export class LayoutController {
 
     const reactFlowEdges: Edge[] = edges.map((edge) => ({
       id: edge.id,
-      source: edge.source.id,
-      target: edge.target.id,
+      source: edge.source.rfid,
+      target: edge.target.rfid,
       sourceHandle: edge.sourceHandle,
       targetHandle: edge.targetHandle,
       label: edge.label,
@@ -62,7 +62,7 @@ export class LayoutController {
   }
 
   // Calculate layout positions for nodes
-  static calculateLayout(nodes: Node[], edges: Edge[], direction: string = 'TB'): Node[] {
+  static calculateLayout(nodes: Node[], edges: Edge[], direction = 'TB'): Node[] {
     const dagreGraph = new dagre.graphlib.Graph({compound: true});
     dagreGraph.setDefaultEdgeLabel(() => ({}));
     dagreGraph.setGraph({
@@ -89,8 +89,8 @@ export class LayoutController {
         dagreGraph.setNode(node.id, {width: NODEWIDTH, height: NODEHEIGHT});
         const internalNode = node.data.internalNode as InternalCodecNode;
 
-        if (internalNode.parentGraph != null && dagreGraph.hasNode(internalNode.parentGraph.id)) {
-          dagreGraph.setParent(node.id, internalNode.parentGraph.id);
+        if (internalNode.parentGraph != null && dagreGraph.hasNode(internalNode.parentGraph.rfid)) {
+          dagreGraph.setParent(node.id, internalNode.parentGraph.rfid);
         }
       }
     });
@@ -157,7 +157,7 @@ export class LayoutController {
   static applyLayout(
     dagOrderedNodes: InternalNode[],
     edges: InternalEdge[],
-    direction: string = 'TB',
+    direction = 'TB',
   ): {nodes: Node[]; edges: Edge[]} {
     // Convert internal structures of graph to React Flow structures
     const {nodes: reactFlowNodes, edges: reactFlowEdges} = this.convertToReactFlowElements(dagOrderedNodes, edges);
