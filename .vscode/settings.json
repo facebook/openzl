@@ -1,7 +1,10 @@
 {
     "cmake.copyCompileCommands": "${workspaceFolder}/compile_commands.json",
     "cmake.buildDirectory": "${workspaceFolder}/cmakebuild",
-    "cmake.useCMakePresets": "always",
+    "cmake.useCMakePresets": "auto",
+    "cmake.configureArgs": [
+        "-DOPENZL_BUILD_TESTS=ON"
+    ],
     "files.associations": {
         "array": "cpp",
         "string_view": "cpp",
