@@ -180,9 +180,6 @@ MCM_ALL_BINS += $(1)
 $$(CACHE_ROOT)/%/$(1) : $$(addprefix $$(CACHE_ROOT)/%/,$(2)) $(3)
 	@echo AR $$@
 	$$(AR) $$(ARFLAGS) $$@ $$(filter-out %.a,$$^)
-ifeq ($(MCM_STRIP),1)
-	-$(STRIP) -S $$@
-endif
 	$(4)
 
 .PHONY: $(1)
