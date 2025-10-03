@@ -9,6 +9,18 @@
 
 using namespace openzl::sddl;
 
+namespace {
+
+const char* const help_message =
+        "SDDL Compiler for OpenZL\n"
+        "\n"
+        "Options:\n"
+        "  -h  Print this help message.\n"
+        "  -v  Increase verbosity.\n"
+        "  -q  Decrease verbosity.\n";
+
+}
+
 int main(int argc, char* argv[])
 {
     int verbosity = 0;
@@ -17,6 +29,13 @@ int main(int argc, char* argv[])
             verbosity++;
         } else if (argv[i] == std::string{ "-q" }) {
             verbosity--;
+        } else if (argv[i] == std::string{ "-h" }) {
+            std::cerr << help_message << std::endl;
+            return 0;
+        } else {
+            std::cerr << "Unrecognized option." << std::endl;
+            std::cerr << help_message << std::endl;
+            return 1;
         }
     }
 
