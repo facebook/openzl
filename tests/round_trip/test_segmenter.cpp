@@ -17,6 +17,7 @@
 #include "openzl/zl_input.h"
 #include "openzl/zl_opaque_types.h"
 #include "openzl/zl_segmenter.h"
+#include "openzl/zl_selector.h"
 #include "openzl/zl_version.h" // ZL_MIN_FORMAT_VERSION
 
 namespace {
@@ -505,6 +506,55 @@ TEST(Segmenter, string)
             ZL_Type_string, registerSegmenter, g_segmenterDescPtr->name);
 }
 
+/* =======   Segmenter after a Selector   ======== */
+
+static ZL_GraphID justSelectFirst(
+        const ZL_Selector* selectorAPI,
+        const ZL_Input* input,
+        const ZL_GraphID* gids,
+        size_t nbGids) ZL_NOEXCEPT_FUNC_PTR
+{
+    printf("Selector 'justSelectFirst'\n");
+    (void)selectorAPI;
+    (void)input;
+    assert(nbGids == 1);
+    assert(gids != NULL);
+    return gids[0];
+}
+
+static ZL_GraphID registerSelectorAndSegmenter(
+        ZL_Compressor* compressor) noexcept
+{
+    ZL_Report const setr = ZL_Compressor_setParameter(
+            compressor, ZL_CParam_formatVersion, g_testVersion);
+    if (ZL_isError(setr))
+        abort();
+
+    ZL_GraphID const segid =
+            ZL_Compressor_registerSegmenter(compressor, g_segmenterDescPtr);
+
+    ZL_SelectorDesc const selectorDesc = {
+        .name           = "Selector justSelectFirst",
+        .selector_f     = justSelectFirst,
+        .inStreamType   = ZL_Type_serial,
+        .customGraphs   = &segid,
+        .nbCustomGraphs = 1,
+    };
+
+    return ZL_Compressor_registerSelectorGraph(compressor, &selectorDesc);
+}
+
+TEST(Segmenter, selectorThenSegmenter)
+{
+    if (g_testVersion < ZL_CHUNK_VERSION_MIN)
+        return;
+    g_segmenterDescPtr = &serialSegmenter;
+    (void)roundTripGen(
+            ZL_Type_serial,
+            registerSelectorAndSegmenter,
+            "selector then segmenter");
+}
+
 /* *********************************************** */
 /* =======   Expected clean failure tests ======== */
 /* *********************************************** */
@@ -532,7 +582,7 @@ TEST(Segmenter, input_incomplete)
     (void)cFailTest(registerSegmenter, g_segmenterDescPtr->name);
 }
 
-/* =======   Codec precedes segmenter   ======== */
+/* =======   Codec precedes segmenter (must fail)  ======== */
 
 ZL_GraphID registerInvalidGraph(ZL_Compressor* compressor) noexcept
 {

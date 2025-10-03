@@ -89,17 +89,10 @@ ZL_Segmenter* SEGM_init(
 /* ===   internal actions   === */
 
 /**
- * Implementation Notes for SEGM_runSegmenter():
- *
- * Delegation Strategy: This function acts as a thin wrapper around the
- * user-provided segmenter function, handling validation and error checking
- * while delegating the actual chunking logic to the registered callback.
- *
- * Consumption Validation: Only accets complete input consumption on
- * successful execution.
- *
- * Error Propagation: Preserves the original error from the segmenter function.
- * This ensures the root cause of failures is visible to callers.
+ * SEGM_runSegmenter(): acts as a thin wrapper around the user-provided
+ * segmenter callback. User code is in charge of actual chunking logic. The
+ * wrapper just checks that all conditions are correctly respected. In current
+ * implementation, it enforces that input is entirely consumed.
  */
 ZL_Report SEGM_runSegmenter(ZL_Segmenter* segCtx)
 {
@@ -107,6 +100,8 @@ ZL_Report SEGM_runSegmenter(ZL_Segmenter* segCtx)
     ZL_SegmenterFn const segfn = segCtx->segDesc->segmenterFn;
     ZL_ASSERT_NN(segfn);
     ZL_Report const r = segfn(segCtx);
+
+    // if successful, check that all inputs were consumed
     if (!ZL_isError(r)) {
         for (size_t n = 0; n < segCtx->nbInputs; n++) {
             ZL_RET_R_IF_LT(

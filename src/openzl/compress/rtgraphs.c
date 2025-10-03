@@ -419,10 +419,14 @@ const ZL_Data* RTGM_getRStream(const RTGraph* rtgraph, RTStreamID rtstreamid)
  * but requires the state to be writable in order to receive the reference */
 ZL_Data* RTGM_getWStream(RTGraph* rtgraph, RTStreamID rtstreamid)
 {
+    ZL_DLOG(SEQ, "RTGM_getWStream (streamid==%u)", rtstreamid.rtsid);
     ZL_ASSERT_NN(rtgraph);
     ZL_IDType const rtsid = rtstreamid.rtsid;
-    ZL_Data* stream       = VECTOR_AT(rtgraph->streams, rtsid).stream;
+    ZL_Data* const stream = VECTOR_AT(rtgraph->streams, rtsid).stream;
 
+    if (stream == NULL) {
+        ZL_DLOG(ERROR, "streamID=%u is invalid", rtsid);
+    }
     ZL_ASSERT_NN(stream); // should be valid
     return stream;
 }
@@ -468,6 +472,10 @@ void RTGM_guardRTStream(
         RTStreamID rtstream,
         unsigned protectRank)
 {
+    ZL_DLOG(SEQ,
+            "RTGM_guardRTStream (rtstream=%u, protectRank=%u)",
+            rtstream.rtsid,
+            protectRank);
     if (protectRank == 0)
         return;
     ZL_IDType const rtsid = rtstream.rtsid;
@@ -489,6 +497,10 @@ void RTGM_clearRTStream(
         RTStreamID rtstream,
         unsigned protectRank)
 {
+    ZL_DLOG(SEQ,
+            "RTGM_clearRTStream (rtstream=%u, protectRank=%u)",
+            rtstream.rtsid,
+            protectRank);
     ZL_ASSERT_NN(rtgraph);
     ZL_IDType const rtsid  = rtstream.rtsid;
     RT_CStream* const rtcs = &VECTOR_AT(rtgraph->streams, rtsid);

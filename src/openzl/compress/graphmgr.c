@@ -754,8 +754,13 @@ const ZL_FunctionGraphDesc* GM_getMultiInputGraphDesc(
     ZL_DLOG(BLOCK, "GM_getMultiInputGraphDesc (graphid=%u)", lgid);
     ZL_IDType const lid = GM_GraphID_to_lgid(graphid);
     ZL_ASSERT_NN(gm);
-    if (lid >= VECTOR_SIZE(gm->gdv))
+    if (lid >= VECTOR_SIZE(gm->gdv)) {
+        ZL_DLOG(ERROR,
+                "requested graphid=%u is invalid (too large, >= %zu max)",
+                lgid,
+                VECTOR_SIZE(gm->gdv));
         return NULL;
+    }
     if (VECTOR_AT(gm->gdv, lid).originalGraphType == ZL_GraphType_segmenter)
         return NULL;
     return &VECTOR_AT(gm->gdv, lid).migd;

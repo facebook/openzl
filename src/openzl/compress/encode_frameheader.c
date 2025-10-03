@@ -846,7 +846,9 @@ static ZL_Report writeChunkHeaderV8orMore(
         }
     }
     EFH_Workspace_destroy(&wksp);
-    ZL_DLOG(SEQ, "ZL_isError(ret) = %i", ZL_isError(ret));
+    if (ZL_isError(ret)) {
+        ZL_DLOG(ERROR, "writeChunkHeaderV8orMore() error");
+    }
     return ret;
 }
 

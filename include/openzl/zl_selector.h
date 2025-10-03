@@ -154,8 +154,8 @@ ZL_GraphID ZL_Compressor_registerSerialSelectorGraph(
  */
 
 typedef ZL_GraphID (*ZL_SelectorFn)(
-        const ZL_Selector* selCtx,
-        const ZL_Input* inputStream,
+        const ZL_Selector* selectorAPI,
+        const ZL_Input* input,
         const ZL_GraphID*
                 customGraphs, // list custom Graphs that the selector may choose
                               // as successor. Can be NULL when none needed.

@@ -1100,9 +1100,10 @@ static ZL_Report CCTX_triggerBackupMode(
 }
 
 /* Implementation note:
- * CCTX_runSuccessor_internal(), invoked by CCTX_runSuccessor(), features
- * multiple exit points. This 2-stages design ensures that Stream cleaning
- * cannot be skipped.
+ * CCTX_runSuccessor_internal(), invoked by CCTX_runSuccessor().
+ * This 2-stages design ensures that Stream cleaning cannot be skipped despite
+ * multiple exit points. Will invoke CCTX_runSupervisedGraph(). Is also in
+ * charge of Permissive (backup) mode.
  */
 static ZL_Report CCTX_runSuccessor_internal(
         ZL_CCtx* cctx,
@@ -1172,8 +1173,9 @@ static ZL_Report CCTX_runSuccessor_internal(
 }
 
 /* Invoked from: CCTX_startGraph(), CCTX_runSuccessors()
- * Upper echelon, will invoke CCTX_runSupervisedGraph(),
- * is also in charge of Permissive (backup) mode */
+ * Upper echelon, acts as a graph type dispatcher,
+ * routing between segmenter and normal graphs.
+ * Is also in charge of Stream cleaning */
 ZL_Report CCTX_runSuccessor(
         ZL_CCtx* cctx,
         ZL_GraphID graphid,
@@ -1184,19 +1186,15 @@ ZL_Report CCTX_runSuccessor(
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
     ZL_DLOG(BLOCK, "CCTX_runSuccessor (graphid=%u)", graphid.gid);
-    if (rtInputs[0].rtsid == 0 && nbInputs == cctx->nbInputs
-        && !cctx->segmenterStarted) {
-        // Original input
-        if (CGRAPH_graphType(cctx->cgraph, graphid) == gt_segmenter) {
+    int const isSegmentable = (rtInputs[0].rtsid == 0 && nbInputs == cctx->nbInputs && !cctx->segmenterStarted);
+
+    // Segmenter
+    if (CGRAPH_graphType(cctx->cgraph, graphid) == gt_segmenter) {
+        if (isSegmentable) {
             return CCTX_runSegmenter(cctx, graphid, rgp, rtInputs, nbInputs);
         }
+        ZL_ERR(graph_invalid, "Segmenter can only be used on full input");
     }
-
-    ZL_ERR_IF_EQ(
-            CGRAPH_graphType(cctx->cgraph, graphid),
-            gt_segmenter,
-            GENERIC,
-            "Invalid usage of Segmenter: can only be employed on full input");
 
     // Normal Graph
     for (size_t n = 0; n < nbInputs; n++) {
@@ -1204,8 +1202,10 @@ ZL_Report CCTX_runSuccessor(
     }
     ZL_Report const r = CCTX_runSuccessor_internal(
             cctx, graphid, rgp, rtInputs, nbInputs, depth);
-    for (size_t n = 0; n < nbInputs; n++) {
-        RTGM_clearRTStream(&cctx->rtgraph, rtInputs[n], depth);
+    if (!isSegmentable) {
+        for (size_t n = 0; n < nbInputs; n++) {
+            RTGM_clearRTStream(&cctx->rtgraph, rtInputs[n], depth);
+        }
     }
     return r;
 }

@@ -342,17 +342,39 @@ ZL_Report ZL_Edge_setParameterizedDestination(
     ZL_ASSERT_NN(gctx);
     ZL_RESULT_DECLARE_SCOPE_REPORT(gctx->cctx);
 
+    // === Phase 1: Basic Input Sanitization ===
     ZL_ERR_IF_NULL(
             nbInputs,
             successor_invalidNumInputs,
             "A Graph Successor must have at least 1 Input.");
 
+    // === Phase 2: Graph Descriptor Lookup ===
     const ZL_Compressor* const compressor = CCTX_getCGraph(gctx->cctx);
-    const ZL_FunctionGraphDesc* const migd =
-            CGRAPH_getMultiInputGraphDesc(compressor, gid);
+    ZL_FunctionGraphDesc localMigd;
+    const ZL_FunctionGraphDesc* migd = NULL;
+    ZL_DLOG(SEQ,
+            "CGRAPH_graphType(compressor, gid) = %i",
+            CGRAPH_graphType(compressor, gid));
+    if (CGRAPH_graphType(compressor, gid) == gt_segmenter) {
+        const ZL_SegmenterDesc* const segd =
+                CGRAPH_getSegmenterDesc(compressor, gid);
+        localMigd = (ZL_FunctionGraphDesc){
+            .name                = segd->name,
+            .inputTypeMasks      = segd->inputTypeMasks,
+            .nbInputs            = segd->numInputs,
+            .lastInputIsVariable = segd->lastInputIsVariable,
+        };
+        migd = &localMigd;
+    } else {
+        migd = CGRAPH_getMultiInputGraphDesc(compressor, gid);
+    };
+
     ZL_ERR_IF_NULL(migd, graph_invalid);
+
+    // === Phase 3: Validate number of inputs ===
     if (migd->lastInputIsVariable) {
         // Variable Input: last Input can be present [0-N] times
+        // Must provide at least (required_inputs - 1) since last is optional
         ZL_ASSERT_GE(migd->nbInputs, 1);
         ZL_ERR_IF_LT(nbInputs, migd->nbInputs - 1, successor_invalidNumInputs);
     } else {
@@ -366,6 +388,8 @@ ZL_Report ZL_Edge_setParameterizedDestination(
                 migd->nbInputs,
                 nbInputs);
     }
+
+    // === Phase 4: Process Each Input Edge ===
     for (size_t n = 0; n < nbInputs; n++) {
         ZL_ASSERT_NN(inputs[n]);
         DG_StreamCtx* const sctx =
@@ -384,15 +408,22 @@ ZL_Report ZL_Edge_setParameterizedDestination(
     }
     ZL_ASSERT_GE(VECTOR_SIZE(gctx->rtsids), nbInputs);
 
-    // Transfer optional Graph parameters in Session memory
+    // === Phase 5: Transfer Runtime Parameters to Session Memory ===
     rGraphParams =
             ZL_transferRuntimeGraphParams(gctx->chunkArena, rGraphParams);
+
+    // === Phase 6: Create and Store Destination Graph Descriptor ===
+    // This descriptor is stored for deferred execution - not used immediately
+    // 1. When the current graph completes execution (in CCTX_runGraph_internal)
+    // 2. GCTX_getSuccessors() will iterate through stored descriptors
+    // 3. For each "trigger" stream, it extracts the stored descriptor
+    // 4. The SuccessorInfo array is passed to CCTX_runSuccessors()
     DestGraphDesc const sd = {
         gid, rGraphParams, nbInputs, VECTOR_SIZE(gctx->rtsids) - nbInputs
     };
     ZL_ERR_IF_NOT(VECTOR_PUSHBACK(gctx->dstGraphDescs, sd), allocation);
 
-    // note : Input Type compatibility is checked when starting Successor Graph
+    // note: Input Type compatibility is checked on starting the Successor Graph
     return ZL_returnSuccess();
 }
 
