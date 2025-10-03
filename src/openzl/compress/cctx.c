@@ -1186,7 +1186,9 @@ ZL_Report CCTX_runSuccessor(
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
     ZL_DLOG(BLOCK, "CCTX_runSuccessor (graphid=%u)", graphid.gid);
-    int const isSegmentable = (rtInputs[0].rtsid == 0 && nbInputs == cctx->nbInputs && !cctx->segmenterStarted);
+    int const isSegmentable =
+            (rtInputs[0].rtsid == 0 && nbInputs == cctx->nbInputs
+             && !cctx->segmenterStarted);
 
     // Segmenter
     if (CGRAPH_graphType(cctx->cgraph, graphid) == gt_segmenter) {
