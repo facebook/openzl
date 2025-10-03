@@ -22,8 +22,7 @@ interface NodeViewProps {
 }
 
 export function CodecNode({data}: NodeViewProps) {
-  const {internalNode} = data;
-  const codec = internalNode.codec;
+  const codec = data.internalNode;
   const [showLocalParams] = useState(false);
 
   if (codec.name === 'zl.#in_progress') {
@@ -59,7 +58,7 @@ export function CodecNode({data}: NodeViewProps) {
             <Handle type="target" position={Position.Top} id="target" style={{background: '#555'}} />
             {codec.cLocalParams.hasLocalParams() && <LocalParamsPopover localParams={codec.cLocalParams} />}
             <div className="node-header">
-              {codec.name} ({codec.cID}) ({internalNode.rfid})
+              {codec.name} ({codec.cID}) ({codec.rfid})
             </div>
             <div className="node-content">
               <div>
@@ -87,15 +86,13 @@ export function CodecNode({data}: NodeViewProps) {
   }
   return (
     <div
-      className={`codec-node ${internalNode.isCollapsed ? 'collapsed' : ''} ${
-        internalNode.codec.name === 'zl.store' ? 'store-node' : ''
-      }`}
-      style={internalNode.inLargestCompressionPath ? {border: '7px solid #2ed78b'} : {}}>
+      className={`codec-node ${codec.isCollapsed ? 'collapsed' : ''} ${codec.name === 'zl.store' ? 'store-node' : ''}`}
+      style={codec.inLargestCompressionPath ? {border: '7px solid #2ed78b'} : {}}>
       {/* Input edge handle declaration for a node*/}
       <Handle type="target" position={Position.Top} id="target" style={{background: '#555'}} />
       {codec.cLocalParams.hasLocalParams() && <LocalParamsPopover localParams={codec.cLocalParams} />}
       <div className="node-header">
-        {codec.name} ({codec.cID}) ({internalNode.rfid})
+        {codec.name} ({codec.cID}) ({codec.rfid})
       </div>
       <div className="node-content">
         <div>
@@ -104,11 +101,11 @@ export function CodecNode({data}: NodeViewProps) {
         {showLocalParams && renderLocalParams(codec.cLocalParams)}
       </div>
       <Float placement={'bottom-end'} offsetX={10} offsetY={5}>
-        {internalNode.isCollapsed && (
+        {codec.isCollapsed && (
           <IconButton
             variant={'ghost'}
             onClick={() => {
-              data.expandOneLevel(internalNode);
+              data.expandOneLevel(codec);
             }}>
             <VscChevronDown />
           </IconButton>
@@ -117,9 +114,9 @@ export function CodecNode({data}: NodeViewProps) {
           <IconButton
             variant={'ghost'}
             onClick={() => {
-              data.onToggleCollapse(internalNode);
+              data.onToggleCollapse(codec);
             }}>
-            {internalNode.isCollapsed ? <VscFoldDown /> : <VscFoldUp />}
+            {codec.isCollapsed ? <VscFoldDown /> : <VscFoldUp />}
           </IconButton>
         )}
       </Float>
