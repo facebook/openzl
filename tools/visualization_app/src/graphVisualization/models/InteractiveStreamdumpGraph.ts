@@ -141,17 +141,7 @@ export class InteractiveStreamdumpGraph {
       // Make edge
       this.edgeViewModels.set(
         stream.rfId,
-        new InternalEdge(
-          stream.rfId,
-          stream,
-          this.codecs[sourceCodec.id],
-          this.codecs[targetCodec.id],
-          'source',
-          'target',
-          label,
-          'custom',
-          {stroke: 'black', strokeWidth: 2},
-        ),
+        new InternalEdge(stream.rfId, stream, this.codecs[sourceCodec.id], this.codecs[targetCodec.id], label),
       );
     }
 
@@ -204,85 +194,31 @@ export class InteractiveStreamdumpGraph {
           // add graph-to-graph and codec-to-graph (in both directions)
           {
             const proxyId = `proxy-${sourceGraph.rfid}-${stream.rfId}-${targetGraph.rfid}`;
-            const proxyEdge = new InternalEdge(
-              proxyId,
-              stream,
-              sourceGraph,
-              targetGraph,
-              'source',
-              'target',
-              originalEdge.label,
-              originalEdge.type,
-              originalEdge.style,
-            );
+            const proxyEdge = new InternalEdge(proxyId, stream, sourceGraph, targetGraph, originalEdge.label);
             sourceGraph.outgoingEdges.push(proxyEdge);
             targetGraph.incomingEdges.push(proxyEdge);
           }
           {
             const proxyId = `proxy-${sourceGraph.rfid}-${stream.rfId}-${targetCodec.rfid}`;
             sourceGraph.outgoingEdges.push(
-              new InternalEdge(
-                proxyId,
-                stream,
-                sourceGraph,
-                targetCodec,
-                'source',
-                originalEdge.targetHandle,
-                originalEdge.label,
-                originalEdge.type,
-                originalEdge.style,
-              ),
+              new InternalEdge(proxyId, stream, sourceGraph, targetCodec, originalEdge.label),
             );
           }
           {
             const proxyId = `proxy-${sourceCodec.rfid}-${stream.rfId}-${targetGraph.rfid}`;
             targetGraph.incomingEdges.push(
-              new InternalEdge(
-                proxyId,
-                stream,
-                sourceCodec,
-                targetGraph,
-                originalEdge.sourceHandle,
-                'target',
-                originalEdge.label,
-                originalEdge.type,
-                originalEdge.style,
-              ),
+              new InternalEdge(proxyId, stream, sourceCodec, targetGraph, originalEdge.label),
             );
           }
         }
       } else if (sourceGraph != null) {
         const proxyId = `proxy-${sourceGraph.rfid}-${stream.rfId}-${targetCodec.rfid}`;
-        sourceGraph.outgoingEdges.push(
-          new InternalEdge(
-            proxyId,
-            stream,
-            sourceGraph,
-            targetCodec,
-            'source',
-            originalEdge.targetHandle,
-            originalEdge.label,
-            originalEdge.type,
-            originalEdge.style,
-          ),
-        );
+        sourceGraph.outgoingEdges.push(new InternalEdge(proxyId, stream, sourceGraph, targetCodec, originalEdge.label));
       } else if (targetGraph != null) {
         // const sourceCodecRfId = this.codecs[sourceCodecId].rfId;
         // const targetGraphRfId = this.graphs[targetGraphId].rfId;
         const proxyId = `proxy-${sourceCodec.rfid}-${stream.rfId}-${targetGraph.rfid}`;
-        targetGraph.incomingEdges.push(
-          new InternalEdge(
-            proxyId,
-            stream,
-            sourceCodec,
-            targetGraph,
-            originalEdge.sourceHandle,
-            'target',
-            originalEdge.label,
-            originalEdge.type,
-            originalEdge.style,
-          ),
-        );
+        targetGraph.incomingEdges.push(new InternalEdge(proxyId, stream, sourceCodec, targetGraph, originalEdge.label));
       }
     });
   }
@@ -361,11 +297,7 @@ export class InteractiveStreamdumpGraph {
           edges[0].stream,
           edges[0].source,
           edges[0].target,
-          edges[0].sourceHandle,
-          edges[0].targetHandle,
           `#- (-) | Multiple edges\n${totCSize} [${totShare.toFixed(2)}%]\n- [-]`,
-          'custom',
-          edges[0].style,
         );
         dedupedEdges.push(coalescedEdge);
       }

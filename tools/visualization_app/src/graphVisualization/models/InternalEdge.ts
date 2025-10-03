@@ -8,33 +8,15 @@ export class InternalEdge {
   stream: Stream;
   source: InternalNode;
   target: InternalNode;
-  sourceHandle: string;
-  targetHandle: string;
   label: string;
-  type: string;
-  style: Record<string, string | number>;
-  hidden: boolean = false;
-  inLargestCompressionPath: boolean = false;
+  hidden = false;
+  inLargestCompressionPath = false;
 
-  constructor(
-    id: string,
-    stream: Stream,
-    source: InternalNode,
-    target: InternalNode,
-    sourceHandle: string,
-    targetHandle: string,
-    label: string,
-    type: string,
-    style: Record<string, string | number> = {},
-  ) {
+  constructor(id: string, stream: Stream, source: InternalNode, target: InternalNode, label: string) {
     this.id = id;
     this.stream = stream;
     this.source = source;
     this.target = target;
-    this.sourceHandle = sourceHandle;
-    this.targetHandle = targetHandle;
     this.label = label;
-    this.type = type;
-    this.style = style;
   }
 }
