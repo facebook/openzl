@@ -875,6 +875,11 @@ const std::vector<std::unique_ptr<const GrammarRule>> grammar_rules{ []() {
     add_rule<BinaryOpRule>(r, Symbol::EQ, Precedence::EQUALITY);
     add_rule<BinaryOpRule>(r, Symbol::NE, Precedence::EQUALITY);
 
+    add_rule<BinaryOpRule>(r, Symbol::GT, Precedence::RELATION);
+    add_rule<BinaryOpRule>(r, Symbol::GE, Precedence::RELATION);
+    add_rule<BinaryOpRule>(r, Symbol::LT, Precedence::RELATION);
+    add_rule<BinaryOpRule>(r, Symbol::LE, Precedence::RELATION);
+
     add_rule<BinaryOpRule>(r, Symbol::ADD, Precedence::ADD_SUB);
     add_rule<BinaryOpRule>(r, Symbol::SUB, Precedence::ADD_SUB);
 

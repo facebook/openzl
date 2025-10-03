@@ -432,6 +432,50 @@ TEST_F(SimpleDataDescriptionLanguageTest, consumeFloats)
     roundtrip(prog, input);
 }
 
+TEST_F(SimpleDataDescriptionLanguageTest, arithmetic)
+{
+    const auto prog  = R"(
+        expect 5 + 10 == 15
+        expect -5 + 10 == 5
+        expect 5 + -10 == -5
+        expect -5 + -10 == -15
+
+        expect 5 - 10 == -5
+        expect 10 - 5 == 5
+        expect -10 - 5 == -15
+        expect 10 - -5 == 15
+        expect -10 - -5 == -5
+
+        expect 5 * 10 == 50
+
+        expect 73 / 10 == 7
+        expect 73 % 10 == 3
+
+        expect 10 == 10
+        expect 10 == 9 == 0
+
+        expect 10 != 9
+        expect 10 != 10 == 0
+
+        expect 10 > 9
+        expect 10 > 10 == 0
+        expect 10 > 11 == 0
+        expect 10 >= 9
+        expect 10 >= 10
+        expect 10 >= 11 == 0
+        expect 10 < 9 == 0
+        expect 10 < 10 == 0
+        expect 10 < 11
+        expect 10 <= 9 == 0
+        expect 10 <= 10
+        expect 10 <= 11
+
+        : Byte[]
+    )";
+    const auto input = iota(10);
+    roundtrip(prog, input);
+}
+
 TEST_F(SimpleDataDescriptionLanguageTest, mildlyVexingParses)
 {
     const auto prog  = R"(

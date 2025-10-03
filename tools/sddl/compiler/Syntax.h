@@ -41,6 +41,10 @@ enum class Symbol {
 
     EQ,
     NE,
+    GT,
+    GE,
+    LT,
+    LE,
     ADD,
     SUB,
     MUL,
