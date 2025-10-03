@@ -109,6 +109,9 @@ typedef struct {
     size_t width;
 
     ZL_Type type;
+
+    // For numeric types
+    bool is_integer;
     bool is_signed;
     bool is_big_endian;
 
@@ -553,77 +556,176 @@ static ZL_Report ZL_SDDL_Program_decodeExpr_field_atom(
         if (StringView_eqCStr(&sv, "byte")) {
             atom->width         = 1;
             atom->type          = ZL_Type_serial;
+            atom->is_integer    = true;
             atom->is_signed     = false;
             atom->is_big_endian = false;
         } else if (StringView_eqCStr(&sv, "i1")) {
             atom->width         = 1;
             atom->type          = ZL_Type_numeric;
+            atom->is_integer    = true;
             atom->is_signed     = true;
             atom->is_big_endian = false;
         } else if (StringView_eqCStr(&sv, "u1")) {
             atom->width         = 1;
             atom->type          = ZL_Type_numeric;
+            atom->is_integer    = true;
             atom->is_signed     = false;
             atom->is_big_endian = false;
         } else if (StringView_eqCStr(&sv, "i2l")) {
             atom->width         = 2;
             atom->type          = ZL_Type_numeric;
+            atom->is_integer    = true;
             atom->is_signed     = true;
             atom->is_big_endian = false;
         } else if (StringView_eqCStr(&sv, "i2b")) {
             atom->width         = 2;
             atom->type          = ZL_Type_numeric;
+            atom->is_integer    = true;
             atom->is_signed     = true;
             atom->is_big_endian = true;
         } else if (StringView_eqCStr(&sv, "u2l")) {
             atom->width         = 2;
             atom->type          = ZL_Type_numeric;
+            atom->is_integer    = true;
             atom->is_signed     = false;
             atom->is_big_endian = false;
         } else if (StringView_eqCStr(&sv, "u2b")) {
             atom->width         = 2;
             atom->type          = ZL_Type_numeric;
+            atom->is_integer    = true;
             atom->is_signed     = false;
             atom->is_big_endian = true;
         } else if (StringView_eqCStr(&sv, "i4l")) {
             atom->width         = 4;
             atom->type          = ZL_Type_numeric;
+            atom->is_integer    = true;
             atom->is_signed     = true;
             atom->is_big_endian = false;
         } else if (StringView_eqCStr(&sv, "i4b")) {
             atom->width         = 4;
             atom->type          = ZL_Type_numeric;
+            atom->is_integer    = true;
             atom->is_signed     = true;
             atom->is_big_endian = true;
         } else if (StringView_eqCStr(&sv, "u4l")) {
             atom->width         = 4;
             atom->type          = ZL_Type_numeric;
+            atom->is_integer    = true;
             atom->is_signed     = false;
             atom->is_big_endian = false;
         } else if (StringView_eqCStr(&sv, "u4b")) {
             atom->width         = 4;
             atom->type          = ZL_Type_numeric;
+            atom->is_integer    = true;
             atom->is_signed     = false;
             atom->is_big_endian = true;
         } else if (StringView_eqCStr(&sv, "i8l")) {
             atom->width         = 8;
             atom->type          = ZL_Type_numeric;
+            atom->is_integer    = true;
             atom->is_signed     = true;
             atom->is_big_endian = false;
         } else if (StringView_eqCStr(&sv, "i8b")) {
             atom->width         = 8;
             atom->type          = ZL_Type_numeric;
+            atom->is_integer    = true;
             atom->is_signed     = true;
             atom->is_big_endian = true;
         } else if (StringView_eqCStr(&sv, "u8l")) {
             atom->width         = 8;
             atom->type          = ZL_Type_numeric;
+            atom->is_integer    = true;
             atom->is_signed     = false;
             atom->is_big_endian = false;
         } else if (StringView_eqCStr(&sv, "u8b")) {
             atom->width         = 8;
             atom->type          = ZL_Type_numeric;
+            atom->is_integer    = true;
             atom->is_signed     = false;
+            atom->is_big_endian = true;
+        } else if (StringView_eqCStr(&sv, "f1")) {
+            atom->width         = 1;
+            atom->type          = ZL_Type_numeric;
+            atom->is_integer    = false;
+            atom->is_signed     = true;
+            atom->is_big_endian = false;
+        } else if (StringView_eqCStr(&sv, "f2l")) {
+            atom->width         = 2;
+            atom->type          = ZL_Type_numeric;
+            atom->is_integer    = false;
+            atom->is_signed     = true;
+            atom->is_big_endian = false;
+        } else if (StringView_eqCStr(&sv, "f2b")) {
+            atom->width         = 2;
+            atom->type          = ZL_Type_numeric;
+            atom->is_integer    = false;
+            atom->is_signed     = true;
+            atom->is_big_endian = true;
+        } else if (StringView_eqCStr(&sv, "f4l")) {
+            atom->width         = 4;
+            atom->type          = ZL_Type_numeric;
+            atom->is_integer    = false;
+            atom->is_signed     = true;
+            atom->is_big_endian = false;
+        } else if (StringView_eqCStr(&sv, "f4b")) {
+            atom->width         = 4;
+            atom->type          = ZL_Type_numeric;
+            atom->is_integer    = false;
+            atom->is_signed     = true;
+            atom->is_big_endian = true;
+        } else if (StringView_eqCStr(&sv, "f8l")) {
+            atom->width         = 8;
+            atom->type          = ZL_Type_numeric;
+            atom->is_integer    = false;
+            atom->is_signed     = true;
+            atom->is_big_endian = false;
+        } else if (StringView_eqCStr(&sv, "f8b")) {
+            atom->width         = 8;
+            atom->type          = ZL_Type_numeric;
+            atom->is_integer    = false;
+            atom->is_signed     = true;
+            atom->is_big_endian = true;
+        } else if (StringView_eqCStr(&sv, "bf1")) {
+            atom->width         = 1;
+            atom->type          = ZL_Type_numeric;
+            atom->is_integer    = false;
+            atom->is_signed     = true;
+            atom->is_big_endian = false;
+        } else if (StringView_eqCStr(&sv, "bf2l")) {
+            atom->width         = 2;
+            atom->type          = ZL_Type_numeric;
+            atom->is_integer    = false;
+            atom->is_signed     = true;
+            atom->is_big_endian = false;
+        } else if (StringView_eqCStr(&sv, "bf2b")) {
+            atom->width         = 2;
+            atom->type          = ZL_Type_numeric;
+            atom->is_integer    = false;
+            atom->is_signed     = true;
+            atom->is_big_endian = true;
+        } else if (StringView_eqCStr(&sv, "bf4l")) {
+            atom->width         = 4;
+            atom->type          = ZL_Type_numeric;
+            atom->is_integer    = false;
+            atom->is_signed     = true;
+            atom->is_big_endian = false;
+        } else if (StringView_eqCStr(&sv, "bf4b")) {
+            atom->width         = 4;
+            atom->type          = ZL_Type_numeric;
+            atom->is_integer    = false;
+            atom->is_signed     = true;
+            atom->is_big_endian = true;
+        } else if (StringView_eqCStr(&sv, "bf8l")) {
+            atom->width         = 8;
+            atom->type          = ZL_Type_numeric;
+            atom->is_integer    = false;
+            atom->is_signed     = true;
+            atom->is_big_endian = false;
+        } else if (StringView_eqCStr(&sv, "bf8b")) {
+            atom->width         = 8;
+            atom->type          = ZL_Type_numeric;
+            atom->is_integer    = false;
+            atom->is_signed     = true;
             atom->is_big_endian = true;
         } else {
             ZL_ERR(corruption,
@@ -1716,56 +1818,62 @@ static ZL_SDDL_Expr ZL_SDDL_State_readAtom(
                     (ZL_SDDL_IntT)ZL_read8(state->src + state->pos));
         }
         case ZL_Type_numeric:
-            switch (atom->width) {
-                case 1: {
-                    uint8_t narrow = ZL_read8(state->src + state->pos);
-                    if (atom->is_signed) {
-                        return ZL_SDDL_Expr_makeNum(
-                                (ZL_SDDL_IntT)(int8_t)narrow);
-                    } else {
-                        return ZL_SDDL_Expr_makeNum((ZL_SDDL_IntT)narrow);
+            if (atom->is_integer) {
+                switch (atom->width) {
+                    case 1: {
+                        uint8_t narrow = ZL_read8(state->src + state->pos);
+                        if (atom->is_signed) {
+                            return ZL_SDDL_Expr_makeNum(
+                                    (ZL_SDDL_IntT)(int8_t)narrow);
+                        } else {
+                            return ZL_SDDL_Expr_makeNum((ZL_SDDL_IntT)narrow);
+                        }
                     }
+                    case 2: {
+                        uint16_t narrow;
+                        if (atom->is_big_endian) {
+                            narrow = ZL_readBE16(state->src + state->pos);
+                        } else {
+                            narrow = ZL_readLE16(state->src + state->pos);
+                        }
+                        if (atom->is_signed) {
+                            return ZL_SDDL_Expr_makeNum(
+                                    (ZL_SDDL_IntT)(int16_t)narrow);
+                        } else {
+                            return ZL_SDDL_Expr_makeNum((ZL_SDDL_IntT)narrow);
+                        }
+                    }
+                    case 4: {
+                        uint32_t narrow;
+                        if (atom->is_big_endian) {
+                            narrow = ZL_readBE32(state->src + state->pos);
+                        } else {
+                            narrow = ZL_readLE32(state->src + state->pos);
+                        }
+                        if (atom->is_signed) {
+                            return ZL_SDDL_Expr_makeNum(
+                                    (ZL_SDDL_IntT)(int32_t)narrow);
+                        } else {
+                            return ZL_SDDL_Expr_makeNum((ZL_SDDL_IntT)narrow);
+                        }
+                    }
+                    case 8: {
+                        if (atom->is_big_endian) {
+                            return ZL_SDDL_Expr_makeNum(
+                                    (ZL_SDDL_IntT)ZL_readBE64(
+                                            state->src + state->pos));
+                        } else {
+                            return ZL_SDDL_Expr_makeNum(
+                                    (ZL_SDDL_IntT)ZL_readLE64(
+                                            state->src + state->pos));
+                        }
+                    }
+                    default:
+                        ZL_ASSERT_FAIL("Illegal width");
+                        return ZL_SDDL_Expr_makeNull();
                 }
-                case 2: {
-                    uint16_t narrow;
-                    if (atom->is_big_endian) {
-                        narrow = ZL_readBE16(state->src + state->pos);
-                    } else {
-                        narrow = ZL_readLE16(state->src + state->pos);
-                    }
-                    if (atom->is_signed) {
-                        return ZL_SDDL_Expr_makeNum(
-                                (ZL_SDDL_IntT)(int16_t)narrow);
-                    } else {
-                        return ZL_SDDL_Expr_makeNum((ZL_SDDL_IntT)narrow);
-                    }
-                }
-                case 4: {
-                    uint32_t narrow;
-                    if (atom->is_big_endian) {
-                        narrow = ZL_readBE32(state->src + state->pos);
-                    } else {
-                        narrow = ZL_readLE32(state->src + state->pos);
-                    }
-                    if (atom->is_signed) {
-                        return ZL_SDDL_Expr_makeNum(
-                                (ZL_SDDL_IntT)(int32_t)narrow);
-                    } else {
-                        return ZL_SDDL_Expr_makeNum((ZL_SDDL_IntT)narrow);
-                    }
-                }
-                case 8: {
-                    if (atom->is_big_endian) {
-                        return ZL_SDDL_Expr_makeNum((ZL_SDDL_IntT)ZL_readBE64(
-                                state->src + state->pos));
-                    } else {
-                        return ZL_SDDL_Expr_makeNum((ZL_SDDL_IntT)ZL_readLE64(
-                                state->src + state->pos));
-                    }
-                }
-                default:
-                    ZL_ASSERT_FAIL("Illegal width");
-                    return ZL_SDDL_Expr_makeNull();
+            } else {
+                return ZL_SDDL_Expr_makeNull();
             }
         case ZL_Type_struct:
             ZL_ASSERT_FAIL("Unsupported atom type.");

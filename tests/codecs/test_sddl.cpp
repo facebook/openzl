@@ -235,12 +235,12 @@ TEST_F(SimpleDataDescriptionLanguageTest, SAO)
         }
 
         Row = {
-            SRA0 : UInt64LE  # Right ascension in degrees
-            SDEC0: UInt64LE  # Declination in degrees
-            IS   : Byte[2]   # Instrument status flags
-            MAG  : UInt16LE  # Magnitude * 100
-            XRPM : UInt32LE  # X-axis rate per minute
-            XDPM : UInt32LE  # X-axis drift per minute
+            SRA0 : Float64LE  # Right ascension in degrees
+            SDEC0: Float64LE  # Declination in degrees
+            IS   : Byte[2]    # Instrument status flags
+            MAG  : UInt16LE   # Magnitude * 100
+            XRPM : Float32LE  # X-axis rate per minute
+            XDPM : Float32LE  # X-axis drift per minute
         }
 
         # Read the header
@@ -377,6 +377,58 @@ TEST_F(SimpleDataDescriptionLanguageTest, consumeVals)
         "\x01\x23\x45\x67\x89\xab\xcd\xef"
         "\x6f\xcd\xab\x89\x67\x45\x23\x01"
     };
+    roundtrip(prog, input);
+}
+
+TEST_F(SimpleDataDescriptionLanguageTest, consumeFloats)
+{
+    const auto prog  = R"(
+        F1 = Float8
+        F2L = Float16LE
+        F2B = Float16BE
+        F4L = Float32LE
+        F4B = Float32BE
+        F8L = Float64LE
+        F8B = Float64BE
+        BF1 = BFloat8
+        BF2L = BFloat16LE
+        BF2B = BFloat16BE
+        BF4L = BFloat32LE
+        BF4B = BFloat32BE
+        BF8L = BFloat64LE
+        BF8B = BFloat64BE
+
+        expect sizeof F1 == 1
+        expect sizeof F2L == 2
+        expect sizeof F2B == 2
+        expect sizeof F4L == 4
+        expect sizeof F4B == 4
+        expect sizeof F8L == 8
+        expect sizeof F8B == 8
+        expect sizeof BF1 == 1
+        expect sizeof BF2L == 2
+        expect sizeof BF2B == 2
+        expect sizeof BF4L == 4
+        expect sizeof BF4B == 4
+        expect sizeof BF8L == 8
+        expect sizeof BF8B == 8
+
+        : F1
+        : F2L
+        : F2B
+        : F4L
+        : F4B
+        : F8L
+        : F8B
+        : BF1
+        : BF2L
+        : BF2B
+        : BF4L
+        : BF4B
+        : BF8L
+        : BF8B
+    )";
+    const auto input = iota(58);
     roundtrip(prog, input);
 }
 

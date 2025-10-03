@@ -817,9 +817,14 @@ class BindRule : public OpRule {
 };
 
 const std::vector<Symbol> builtin_field_ops{
-    Symbol::BYTE,  Symbol::U8,    Symbol::I8,    Symbol::U16LE, Symbol::U16BE,
-    Symbol::I16LE, Symbol::I16BE, Symbol::U32LE, Symbol::U32BE, Symbol::I32LE,
-    Symbol::I32BE, Symbol::U64LE, Symbol::U64BE, Symbol::I64LE, Symbol::I64BE,
+    Symbol::BYTE,   Symbol::U8,     Symbol::I8,     Symbol::U16LE,
+    Symbol::U16BE,  Symbol::I16LE,  Symbol::I16BE,  Symbol::U32LE,
+    Symbol::U32BE,  Symbol::I32LE,  Symbol::I32BE,  Symbol::U64LE,
+    Symbol::U64BE,  Symbol::I64LE,  Symbol::I64BE,  Symbol::F8,
+    Symbol::F16LE,  Symbol::F16BE,  Symbol::F32LE,  Symbol::F32BE,
+    Symbol::F64LE,  Symbol::F64BE,  Symbol::BF8,    Symbol::BF16LE,
+    Symbol::BF16BE, Symbol::BF32LE, Symbol::BF32BE, Symbol::BF64LE,
+    Symbol::BF64BE,
 };
 
 template <typename RuleT, typename... Args>
