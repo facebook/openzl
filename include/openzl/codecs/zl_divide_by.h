@@ -27,7 +27,7 @@ extern "C" {
     }
 
 /// If set, 8-byte local param key containing the divisor
-/// If unset, the disor is computed to be the GSD
+/// If unset, the divisor is computed to be the GCD
 #define ZL_DIVIDE_BY_PID 112
 
 /**

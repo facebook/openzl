@@ -1,51 +1,11 @@
-## Writing an SDDL Description
+## SDDL Syntax Reference
 
-The Simple Data Description Language is a Domain-Specific Language that makes it easy to describe to OpenZL the components that make up simple data formats.
-
-The fundamental task of an SDDL Description is to associate each byte of the input stream with a corresponding **Field**, whose purpose is to give OpenZL a hint for how to group and handle that part of the input.
-
-The operative part of an SDDL Description, the part that actually constructs that association between a part of the input stream and a **Field**, is an operation called **consumption**.
-
-When executing an SDDL Description over an input, the SDDL graph maintains an implicit cursor which starts at the beginning of the input. As the execution proceeds, and the description is applied to the input, each consumption operation associates the next byte(s) at the current cursor position with the consumed field and advances the cursor past those byte(s).
-
-The task of the description is complete when the cursor reaches the end of the input. If the description ends and the whole input hasn't been consumed, or if the description tries to consume bytes past the end of the input, the execution will fail.
-
-!!! example "Example SDDL Description"
-
-    ```
-    # Declares a header field, which is 8 bytes.
-    Header = Byte[8]
-
-    # Consume the header.
-    # I.e., mark the first 8 bytes of the input as belonging to a generic
-    # Byte field and advance the cursor past those 8 bytes.
-    header : Header
-
-    # Declare a compound field which consists of 4 bytes followed by an
-    # integer field.
-    Row = {
-      Byte[4]
-      UInt32LE
-    }
-
-    # Calculate how many copies of the Row fit in the remainder of the input.
-    row_count = _rem / sizeof Row
-
-    # Ensure that the row size evenly divides the remaining input.
-    expect _rem % sizeof Row == 0
-
-    # Consume the rest of the input as an array of Rows.
-    body : Row[row_count]
-    ```
-
-The above example should give you an intuition for what an SDDL Description looks like. The following sections describe the syntax of the SDDL Description Language and its semantics in more rigorous detail.
+This section serves as an in-depth reference for the features of SDDL. For an introduction to SDDL, see the overall SDDL documentation.
 
 !!! warning
     The SDDL Language is under active development. Its capabilities are expected to grow significantly. As part of that development, the syntax and semantics of existing features may change or break without warning.
 
-An SDDL Description is a series of **Expressions**. At the top level of a description, these expressions are implicitly newline terminated but can also optionally be explicitly terminated with a semicolon.
-
-There are multiple kinds of **Expressions**:
+An SDDL Description is a series of **Statements**. A statement is a newline or semicolon-terminated **Expression**. There are multiple kinds of **Expressions**:
 
 ### Fields
 
@@ -57,124 +17,37 @@ Fields are declared either by instantiating a built-in field or by composing one
 
 The following table enumerates the predefined fields available in SDDL:
 
-<table>
-  <tr>
-    <th>Name</th>
-    <th><pre>ZL_Type</pre></th>
-    <th>Size</th>
-    <th>Signed</th>
-    <th>Endianness</th>
-  </tr>
-
-  <tr>
-    <td><pre>Byte</pre></td>
-    <td>Serial</td>
-    <td>1</td>
-    <td>No</td>
-    <td>N/A</td>
-  </tr>
-  <tr>
-    <td><pre>Int8</pre></td>
-    <td>Numeric</td>
-    <td>1</td>
-    <td>Yes</td>
-    <td>N/A</td>
-  </tr>
-  <tr>
-    <td><pre>UInt8</pre></td>
-    <td>Numeric</td>
-    <td>1</td>
-    <td>No</td>
-    <td>N/A</td>
-  </tr>
-
-  <tr>
-    <td><pre>Int16LE</pre></td>
-    <td>Numeric</td>
-    <td>2</td>
-    <td>Yes</td>
-    <td>Little</td>
-  </tr>
-  <tr>
-    <td><pre>Int16BE</pre></td>
-    <td>Numeric</td>
-    <td>2</td>
-    <td>Yes</td>
-    <td>Big</td>
-  </tr>
-  <tr>
-    <td><pre>UInt16LE</pre></td>
-    <td>Numeric</td>
-    <td>2</td>
-    <td>No</td>
-    <td>Little</td>
-  </tr>
-  <tr>
-    <td><pre>UInt16BE</pre></td>
-    <td>Numeric</td>
-    <td>2</td>
-    <td>No</td>
-    <td>Big</td>
-  </tr>
-
-  <tr>
-    <td><pre>Int32LE</pre></td>
-    <td>Numeric</td>
-    <td>4</td>
-    <td>Yes</td>
-    <td>Little</td>
-  </tr>
-  <tr>
-    <td><pre>Int32BE</pre></td>
-    <td>Numeric</td>
-    <td>4</td>
-    <td>Yes</td>
-    <td>Big</td>
-  </tr>
-  <tr>
-    <td><pre>UInt32LE</pre></td>
-    <td>Numeric</td>
-    <td>4</td>
-    <td>No</td>
-    <td>Little</td>
-  </tr>
-  <tr>
-    <td><pre>UInt32BE</pre></td>
-    <td>Numeric</td>
-    <td>4</td>
-    <td>No</td>
-    <td>Big</td>
-  </tr>
-
-  <tr>
-    <td><pre>Int64LE</pre></td>
-    <td>Numeric</td>
-    <td>8</td>
-    <td>Yes</td>
-    <td>Little</td>
-  </tr>
-  <tr>
-    <td><pre>Int64BE</pre></td>
-    <td>Numeric</td>
-    <td>8</td>
-    <td>Yes</td>
-    <td>Big</td>
-  </tr>
-  <tr>
-    <td><pre>UInt64LE</pre></td>
-    <td>Numeric</td>
-    <td>8</td>
-    <td>No</td>
-    <td>Little</td>
-  </tr>
-  <tr>
-    <td><pre>UInt64BE</pre></td>
-    <td>Numeric</td>
-    <td>8</td>
-    <td>No</td>
-    <td>Big</td>
-  </tr>
-</table>
+Name         | `ZL_Type` | Size | Sign? | Endian? | Returns
+------------ | --------- | ---- | ----- | ------- | -------
+`Byte`       | Serial    | 1    | No    | N/A     | `int64_t`
+ `Int8`      | Numeric   | 1    | Yes   | N/A     | `int64_t`
+`UInt8`      | Numeric   | 1    | No    | N/A     | `int64_t`
+ `Int16LE`   | Numeric   | 2    | Yes   | Little  | `int64_t`
+ `Int16BE`   | Numeric   | 2    | Yes   | Big     | `int64_t`
+`UInt16LE`   | Numeric   | 2    | No    | Little  | `int64_t`
+`UInt16BE`   | Numeric   | 2    | No    | Big     | `int64_t`
+ `Int32LE`   | Numeric   | 4    | Yes   | Little  | `int64_t`
+ `Int32BE`   | Numeric   | 4    | Yes   | Big     | `int64_t`
+`UInt32LE`   | Numeric   | 4    | No    | Little  | `int64_t`
+`UInt32BE`   | Numeric   | 4    | No    | Big     | `int64_t`
+ `Int64LE`   | Numeric   | 8    | Yes   | Little  | `int64_t`
+ `Int64BE`   | Numeric   | 8    | Yes   | Big     | `int64_t`
+`UInt64LE`   | Numeric   | 8    | No    | Little  | `int64_t` (2s-complement)
+`UInt64BE`   | Numeric   | 8    | No    | Big     | `int64_t` (2s-complement)
+ `Float8`    | Numeric   | 1    | Yes   | N/A     | None
+ `Float16LE` | Numeric   | 2    | Yes   | Little  | None
+ `Float16BE` | Numeric   | 2    | Yes   | Big     | None
+ `Float32LE` | Numeric   | 4    | Yes   | Little  | None
+ `Float32BE` | Numeric   | 4    | Yes   | Big     | None
+ `Float64LE` | Numeric   | 8    | Yes   | Little  | None
+ `Float64BE` | Numeric   | 8    | Yes   | Big     | None
+`BFloat8`    | Numeric   | 1    | Yes   | N/A     | None
+`BFloat16LE` | Numeric   | 2    | Yes   | Little  | None
+`BFloat16BE` | Numeric   | 2    | Yes   | Big     | None
+`BFloat32LE` | Numeric   | 4    | Yes   | Little  | None
+`BFloat32BE` | Numeric   | 4    | Yes   | Big     | None
+`BFloat64LE` | Numeric   | 8    | Yes   | Little  | None
+`BFloat64BE` | Numeric   | 8    | Yes   | Big     | None
 
 A consumption operation invoked on one of these field types will evaluate to the value of the bytes consumed, interpreted according to the type of the field. E.g., if the next 4 bytes of the input are `"\x01\x23\x45\x67"`, the expression `result : UInt32BE` will store the value 0x01234567 in `result`. `"\xff"` consumed as a `Int8` will produce -1 where if it were instead consumed as `UInt8` or `Byte` it would evaluate to 255.
 
@@ -298,143 +171,36 @@ Other than **Fields**, the other value that SDDL manipulates is **Numbers**.
 
 ### Operations
 
-<table>
-  <tr>
-    <th>Operation</th>
-    <th>Syntax</th>
-    <th>Args</th>
-    <th>Result</th>
-    <th>Arg #1</th>
-    <th>Arg #2</th>
-    <th>Effect</th>
-  </tr>
-  <!-- <tr>
-    <td>Die</td>
-    <td><pre>die</pre></td>
-    <td>0</td>
-    <td><pre>N</pre></td>
-    <td><pre></pre></td>
-    <td><pre></pre></td>
-    <td>Executing this operation unconditionally fails the run.</td>
-  </tr> -->
-  <tr>
-    <td>Expect</td>
-    <td><pre>expect ARG</pre></td>
-    <td>1</td>
-    <td><pre>N</pre></td>
-    <td><pre>IV</pre></td>
-    <td><pre></pre></td>
-    <td>Fails the run if the argument is 0.</td>
-  </tr>
-  <tr>
-    <td>Consume</td>
-    <td><pre>ARG1? : ARG2</pre></td>
-    <td>1-2</td>
-    <td><pre>I?</pre></td>
-    <td><pre>V?</pre></td>
-    <td><pre>FV</pre></td>
-    <td>Consumes the field provided as ARG2, stores the result into an optional variable ARG1. The expression as a whole also evaluates to that result value.</td>
-  </tr>
-  <tr>
-    <td>Sizeof</td>
-    <td><pre>sizeof ARG</pre></td>
-    <td>1</td>
-    <td><pre>I</pre></td>
-    <td><pre>FV</pre></td>
-    <td><pre></pre></td>
-    <td>Evaluates to the size in bytes of the given field.</td>
-  </tr>
-  <tr>
-    <td>Assign</td>
-    <td><pre>ARG1 = ARG2</pre></td>
-    <td>2</td>
-    <td><pre>IF</pre></td>
-    <td><pre>V</pre></td>
-    <td><pre>IFV</pre></td>
-    <td>Stores the resolved value of the expression in ARG2 and stores it in the variable ARG1. The assignment expression also evaluates as a whole to that resolved value.</td>
-  </tr>
-  <tr>
-    <td>Member</td>
-    <td><pre>ARG1.ARG2</pre></td>
-    <td>2</td>
-    <td><pre>IF</pre></td>
-    <td><pre>SV</pre></td>
-    <td><pre>V</pre></td>
-    <td>Retrieves the value of variable ARG2 in scope ARG1. The result of the member access operator is the value, not the variable. This means that this result cannot be assigned to.</td>
-  </tr>
-  <tr>
-    <td>Negate</td>
-    <td><pre>- ARG1</pre></td>
-    <td>1</td>
-    <td><pre>I</pre></td>
-    <td><pre>IV</pre></td>
-    <td><pre></pre></td>
-    <td>Negates the provided numeric argument.</td>
-  </tr>
-  <tr>
-    <td>Equality</td>
-    <td><pre>ARG1 == ARG2</pre></td>
-    <td>2</td>
-    <td><pre>I</pre></td>
-    <td><pre>IV</pre></td>
-    <td><pre>IV</pre></td>
-    <td>Evaluates to 1 if integer arguments are equal, 0 if not.</td>
-  </tr>
-  <tr>
-    <td>Inequality</td>
-    <td><pre>ARG1 != ARG2</pre></td>
-    <td>2</td>
-    <td><pre>I</pre></td>
-    <td><pre>IV</pre></td>
-    <td><pre>IV</pre></td>
-    <td>Evaluates to 0 if integer arguments are equal, 1 if not.</td>
-  </tr>
-  <tr>
-    <td>Addition</td>
-    <td><pre>ARG1 + ARG2</pre></td>
-    <td>2</td>
-    <td><pre>I</pre></td>
-    <td><pre>IV</pre></td>
-    <td><pre>IV</pre></td>
-    <td>Returns the sum of the two integer arguments.</td>
-  </tr>
-  <tr>
-    <td>Subtraction</td>
-    <td><pre>ARG1 - ARG2</pre></td>
-    <td>2</td>
-    <td><pre>I</pre></td>
-    <td><pre>IV</pre></td>
-    <td><pre>IV</pre></td>
-    <td>Returns the difference of the two integer arguments.</td>
-  </tr>
-  <tr>
-    <td>Multiplication</td>
-    <td><pre>ARG1 * ARG2</pre></td>
-    <td>2</td>
-    <td><pre>I</pre></td>
-    <td><pre>IV</pre></td>
-    <td><pre>IV</pre></td>
-    <td>Returns the product of the two integer arguments.</td>
-  </tr>
-  <tr>
-    <td>Division</td>
-    <td><pre>ARG1 / ARG2</pre></td>
-    <td>2</td>
-    <td><pre>I</pre></td>
-    <td><pre>IV</pre></td>
-    <td><pre>IV</pre></td>
-    <td>Returns the integer division of the two integer arguments. ARG2 must be non-zero.</td>
-  </tr>
-  <tr>
-    <td>Remainder</td>
-    <td><pre>ARG1 % ARG2</pre></td>
-    <td>2</td>
-    <td><pre>I</pre></td>
-    <td><pre>IV</pre></td>
-    <td><pre>IV</pre></td>
-    <td>Returns the remainder of dividing the two integer arguments. ARG2 must be non-zero.</td>
-  </tr>
-</table>
+Op        | Syntax        | Types         | Effect
+--------- | ------------- | ------------- | ------
+`expect`  | `expect <A>`  | I -> N        | Fails the run if `A` evaluates to 0.
+`consume` | `[L] : <R>`   | V?, FL -> IS? | Consumes the field provided as `R`, stores the result into an optional variable `L`. The expression as a whole also evaluates to that result value.
+`sizeof`  | `sizeof <A>`  | F -> I        | Evaluates to the size in bytes of the given field `A`. Fails the run if invoked on anything other than a static field.
+`assign`  | `<L> = <R>`   | V, * -> *     | Stores the resolved value of the expression in `R` and stores it in the variable `L`. The assignment expression also evaluates as a whole to that resolved value.
+`member`  | `<L>.<R>`     | S, V -> *     | Retrieves the value held by the variable `R` in the scope `L`. Cannot be used as the left-hand argument of assignment.
+`bind`    | `<L>(<R...>)` | L, T -> L     | Binds the first `n` args of function `L` to the `n` comma-separated args `R`, returning a new function with `n` fewer unbound arguments.
+`eq`      | `<L> == <R>`  | I, I -> I     | Evaluates to 1 if `L` and `R` are equal, 0 otherwise.
+`neq`     | `<L> != <R>`  | I, I -> I     | Evaluates to 0 if `L` and `R` are equal, 1 otherwise.
+`gt`      | `<L> > <R>`   | I, I -> I     | Evaluates to 1 if `L` is greater than `R`, 0 otherwise.
+`ge`      | `<L> >= <R>`  | I, I -> I     | Evaluates to 1 if `L` is greater than or equal to `R`, 0 otherwise.
+`lt`      | `<L> < <R>`   | I, I -> I     | Evaluates to 1 if `L` is less than `R`, 0 otherwise.
+`le`      | `<L> <= <R>`  | I, I -> I     | Evaluates to 1 if `L` is less than or equal to `R`, 0 otherwise.
+`neg`     | `- <A>`       | I -> I        | Negates `A`.
+`add`     | `<L> + <R>`   | I, I -> I     | Evaluates to the sum of `L` and `R`.
+`sub`     | `<L> - <R>`   | I, I -> I     | Evaluates to the difference of `L` and `R`.
+`mul`     | `<L> * <R>`   | I, I -> I     | Evaluates to the product of `L` and `R`.
+`div`     | `<L> / <R>`   | I, I -> I     | Evaluates to the quotient of `L` divided by `R`.
+`mod`     | `<L> % <R>`   | I, I -> I     | Evaluates to the remainder of `L` divided by `R`.
+
+In this table, the "Types" column denotes the signature of the operation, using the following abbreviations for the types of objects in SDDL:
+
+- `F`: Field.
+- `I`: Integer.
+- `N`: Null.
+- `V`: Variable name.
+- `L`: Function (a "lambda").
+- `S`: Scope.
+- `T`: Tuple.
 
 ???+ note "Evaluation Order"
     Note that unlike C, which largely avoids defining the relative order in
