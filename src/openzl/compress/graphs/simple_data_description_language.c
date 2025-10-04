@@ -115,7 +115,7 @@ typedef struct {
     bool is_signed;
     bool is_big_endian;
 
-    uint32_t dest;
+    ZL_SDDL_Dest dest;
 } ZL_SDDL_Field_Atom;
 
 typedef struct {
@@ -438,7 +438,7 @@ ZL_SDDL_Program* ZL_SDDL_Program_create(ZL_OperationContext* opCtx)
         ZL_OC_init(opCtx);
     }
     prog->opCtx     = opCtx;
-    prog->num_dests = 1;
+    prog->num_dests = 0;
     ZL_SDDL_SourceCode_initEmpty(arena, &prog->source_code);
     return prog;
 }
@@ -764,7 +764,9 @@ static ZL_Report ZL_SDDL_Program_decodeExpr_field_atom(
     }
 
     // Assigned in send op.
-    atom->dest = 0;
+    atom->dest = (ZL_SDDL_Dest){
+        .dest = 0,
+    };
 
     // TODO: integer/float/struct? signedness? endianness?
     return ZL_returnSuccess();
@@ -1957,7 +1959,7 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_consumeAtom(
     ZL_RESULT_DECLARE_SCOPE(ZL_SDDL_Expr, state->opCtx);
 
     const size_t width = atom->width;
-    const uint32_t tag = atom->dest;
+    const uint32_t tag = atom->dest.dest;
 
     ZL_ASSERT_LT(tag, state->num_tags);
 
@@ -1995,7 +1997,7 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_consumeArray_ofAtoms(
     ZL_RESULT_DECLARE_SCOPE(ZL_SDDL_Expr, state->opCtx);
 
     const size_t atom_width = atom->width;
-    const uint32_t tag      = atom->dest;
+    const uint32_t tag      = atom->dest.dest;
 
     // TODO: handle overflow?
     const size_t width = atom_width * arr_len;
@@ -2343,7 +2345,7 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr_send(
             ZL_SDDL_FieldType_atom,
             corruption,
             "Can't send non-atom field.");
-    result.field.atom.dest = dest->dest.dest;
+    result.field.atom.dest = dest->dest;
     return ZL_WRAP_VALUE(result);
 }
 

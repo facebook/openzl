@@ -40,6 +40,19 @@ detail::NonNullUniqueCPtr<ZL_SDDL_State> make_state(const ZL_SDDL_Program* prog)
             ZL_SDDL_State_create(prog, nullptr), ZL_SDDL_State_free);
 }
 
+std::shared_ptr<ZL_SDDL_Instructions> make_dispatch_instructions(
+        const ZL_SDDL_Instructions& instrs,
+        detail::NonNullUniqueCPtr<ZL_SDDL_State> state)
+{
+    auto owning_ptr = std::make_shared<std::pair<
+            ZL_SDDL_Instructions,
+            detail::NonNullUniqueCPtr<ZL_SDDL_State>>>(
+            instrs, std::move(state));
+    auto instr_ptr = &owning_ptr->first;
+    return std::shared_ptr<ZL_SDDL_Instructions>{ std::move(owning_ptr),
+                                                  instr_ptr };
+}
+
 std::string iota(size_t len)
 {
     std::string ret;
@@ -48,6 +61,44 @@ std::string iota(size_t len)
         ret[i] = (char)(i + 1);
     }
     return ret;
+}
+
+std::ostream& operator<<(std::ostream& os, const ZL_SDDL_Instructions& instrs)
+{
+    static const std::map<ZL_Type, const char*> zl_type_names{
+        { ZL_Type_serial, "ZL_Type_serial" },
+        { ZL_Type_numeric, "ZL_Type_numeric" },
+        { ZL_Type_struct, "ZL_Type_struct" },
+        { ZL_Type_string, "ZL_Type_string" },
+    };
+
+    os << "(ZL_SDDL_Instructions){\n";
+    os << "  .dispatch_instructions = (ZL_DispatchInstructions){\n";
+    os << "    .nbSegments = " << instrs.dispatch_instructions.nbSegments
+       << ",\n";
+    os << "    .nbTags = " << instrs.dispatch_instructions.nbTags << ",\n";
+    os << "    .segmentSizes = " << instrs.dispatch_instructions.segmentSizes
+       << ",\n";
+    os << "    .tags = " << instrs.dispatch_instructions.tags << ",\n";
+    os << "  },\n";
+    os << "  .outputs = {\n";
+    for (size_t i = 0; i < instrs.numOutputs; i++) {
+        const auto& oi          = instrs.outputs[i];
+        const auto type_name_it = zl_type_names.find(oi.type);
+        os << "    (ZL_SDDL_OutputInfo) {\n";
+        os << "      .type = " << oi.type << ", // ("
+           << (type_name_it != zl_type_names.end() ? type_name_it->second
+                                                   : "unknown")
+           << ")\n";
+        os << "      .width = " << oi.width << ",\n";
+        os << "      .big_endian = " << (oi.big_endian ? "true" : "false")
+           << ",\n";
+        os << "    },\n";
+    }
+    os << "  },\n";
+    os << "  .numOutputs = " << instrs.numOutputs << ",\n";
+    os << "}";
+    return os;
 }
 
 class SimpleDataDescriptionLanguageTest : public Test {
@@ -95,7 +146,7 @@ class SimpleDataDescriptionLanguageTest : public Test {
         return code;
     }
 
-    void
+    std::shared_ptr<ZL_SDDL_Instructions>
     exec(std::string_view program, std::string_view input, Expected expected)
     {
         const auto code = compile(program, expected);
@@ -104,7 +155,7 @@ class SimpleDataDescriptionLanguageTest : public Test {
         {
             const auto res =
                     ZL_SDDL_Program_load(prog.get(), code.data(), code.size());
-            ASSERT_EQ(
+            EXPECT_EQ(
                     ZL_RES_isError(res),
                     expected == Expected::FAIL_TO_DESERIALIZE)
                     << ZL_SDDL_Program_getErrorContextString_fromError(
@@ -115,11 +166,17 @@ class SimpleDataDescriptionLanguageTest : public Test {
         {
             const auto res =
                     ZL_SDDL_State_exec(state.get(), input.data(), input.size());
-            ASSERT_EQ(
+            EXPECT_EQ(
                     ZL_RES_isError(res), expected == Expected::FAIL_TO_EXECUTE)
                     << ZL_SDDL_State_getErrorContextString_fromError(
                                state.get(), ZL_RES_error(res));
+            if (!ZL_RES_isError(res)) {
+                return make_dispatch_instructions(
+                        ZL_RES_value(res), std::move(state));
+            }
         }
+
+        return {};
     }
 
     void roundtrip(std::string_view program, std::string_view input)
@@ -153,6 +210,8 @@ class SimpleDataDescriptionLanguageTest : public Test {
 
         ASSERT_EQ(input, decompressed);
     }
+
+    std::shared_ptr<ZL_SDDL_Instructions> exec_instr;
 };
 
 } // anonymous namespace
@@ -686,6 +745,48 @@ TEST_F(SimpleDataDescriptionLanguageTest, indeterminateArrayLength)
     // Zero-sized objects can't be expanded.
     exec(": {}[]; :Byte[3]", iota(3), Expected::FAIL_TO_EXECUTE);
     exec(": Byte[0][]; :Byte[3]", iota(3), Expected::FAIL_TO_EXECUTE);
+}
+
+TEST_F(SimpleDataDescriptionLanguageTest, unusedFields)
+{
+    const auto prog  = R"(
+        A = UInt32LE
+        B = UInt64LE
+        C = UInt32LE
+        D = UInt64LE
+        E = UInt32LE
+
+        : A[5]
+        : C[7]
+        : D[9]
+        : E[11]
+    )";
+    const auto input = iota((5 + 7 + 11) * 4 + 9 * 8);
+    roundtrip(prog, input);
+
+    const auto instrs = exec(prog, input, Expected::SUCCEED);
+    ASSERT_TRUE(instrs);
+    EXPECT_EQ(instrs->numOutputs, 5);
+}
+
+TEST_F(SimpleDataDescriptionLanguageTest, multipleDeclsInFunction)
+{
+    const auto prog  = R"(
+        func = (){
+            : UInt32LE
+        }
+
+        : func
+        : func
+        : func
+        : func
+    )";
+    const auto input = iota(4 * 4);
+    roundtrip(prog, input);
+
+    const auto instrs = exec(prog, input, Expected::SUCCEED);
+    ASSERT_TRUE(instrs);
+    EXPECT_EQ(instrs->numOutputs, 1);
 }
 
 class SimpleDataDescriptionLanguageSourceCodePrettyPrintingTest : public Test {

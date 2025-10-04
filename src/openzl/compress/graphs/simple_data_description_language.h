@@ -248,8 +248,8 @@ const char* ZL_SDDL_Program_getErrorContextString_fromError(
 typedef struct ZL_SDDL_State_s ZL_SDDL_State;
 
 typedef struct {
-    ZL_Type type;
-    size_t width; // 0 when not unused.
+    ZL_Type type; // 0 when unused.
+    size_t width; // 0 when unused.
     bool big_endian;
 } ZL_SDDL_OutputInfo;
 
