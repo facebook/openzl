@@ -6,7 +6,7 @@ OpenZL takes a description of your data and builds from it a specialized compres
 
 OpenZL consists of a core library and tools to generate specialized compressors —
 all compatible with a single universal decompressor.
-It is designed for data engineers that deal with large quantities of specialized datasets (like AI workloads for example) and require high speed for their processing pipelines.
+It is designed for engineers that deal with large quantities of specialized datasets (like AI workloads for example) and require high speed for their processing pipelines.
 
 Here are some examples:
 
