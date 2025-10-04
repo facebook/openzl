@@ -141,7 +141,11 @@ if(NOT DEFINED ZL_HAVE_FBCODE)
     set(ZL_HAVE_FBCODE 0)
 endif()
 if(NOT DEFINED ZL_HAVE_X86_64_ASM)
-    set(ZL_HAVE_X86_64_ASM $<BOOL:${OPENZL_HAVE_X86_64_ASM}>)
+    if(CMAKE_DETECTED_X86_64_ASM_SUPPORT)
+        set(ZL_HAVE_X86_64_ASM 1)
+    else()
+        set(ZL_HAVE_X86_64_ASM 0)
+    endif()
 endif()
 
 # Add configuration as preprocessor defines (unified with Makefile approach)
@@ -149,6 +153,7 @@ add_compile_definitions(
     ZL_ALLOW_INTROSPECTION=${ZL_ALLOW_INTROSPECTION}
     ZL_HAVE_FBCODE=${ZL_HAVE_FBCODE}
     ZL_HAVE_X86_64_ASM=${ZL_HAVE_X86_64_ASM}
+    ZSTD_ENABLE_ASM_X86_64_BMI2=${ZL_HAVE_X86_64_ASM}
 )
 
 file(GLOB_RECURSE sources CONFIGURE_DEPENDS "${OPENZL_SRC_DIR}/*.c")
