@@ -19,7 +19,11 @@ USER_CXXFLAGS := $(CXXFLAGS)
 USER_CPPFLAGS := $(CPPFLAGS)
 USER_LDFLAGS := $(LDFLAGS)
 
-# base compilation flags
+# OpenZL configuration detection for Makefile builds
+# This integrates with the multiconf system to ensure different configurations
+# use different object file caches.
+
+# baseline compilation flags
 CPPFLAGS += -I. -Iinclude -Isrc -Icpp/include -Icpp/src
 CFLAGS   += -O1 -std=c11  # code must be compliant with C11
 CXXFLAGS += -O1 -std=c++1z  # for gtests
@@ -38,7 +42,6 @@ CPPFLAGS += -Ideps/zstd/lib/ # "zstd.h"
 ARFLAGS  += -c # do not print warning message when creating the archive (expected)
 
 # build modes
-# Default build mode
 BUILD_TYPE ?= DEFAULT
 
 # Sanitizer flags
@@ -74,6 +77,7 @@ else ifeq ($(BUILD_TYPE),OPT)
     CXXFLAGS += -g0 -O3
     CPPFLAGS += -DNDEBUG
     MCM_STRIP = 1
+    ZL_ALLOW_INTROSPECTION ?= 0
 else ifeq ($(BUILD_TYPE),OPT_ASAN)
     CFLAGS += -O3 -DNDEBUG
     CXXFLAGS += -O3 -DNDEBUG
@@ -99,20 +103,53 @@ else
     $(error Invalid BUILD_TYPE: $(BUILD_TYPE). Valid options: DEFAULT, DEV, DEV_NOSAN, OPT, OPT_ASAN, DBGO, DBGO_ASAN, TRACES, TRACES_NOSAN)
 endif
 
+# Configuration variables (can be overridden)
+ZL_ALLOW_INTROSPECTION ?= 1
+ZL_HAVE_FBCODE ?= 0
+
+# Detect architecture and platform capabilities
+UNAME_M ?= $(shell uname -m)
+UNAME_S ?= $(shell uname -s)
+
+# Detect x86-64 assembly support
+ifeq ($(UNAME_M),x86_64)
+    ifneq ($(UNAME_S),Windows_NT)
+        # Enable x86-64 assembly on non-Windows x86-64 platforms
+        ZL_HAVE_X86_64_ASM ?= 1
+    endif
+endif
+ZL_HAVE_X86_64_ASM ?= 0
+
+CPPFLAGS += -DZL_ALLOW_INTROSPECTION=$(ZL_ALLOW_INTROSPECTION)
+CPPFLAGS += -DZL_HAVE_FBCODE=$(ZL_HAVE_FBCODE)
+CPPFLAGS += -DZL_HAVE_X86_64_ASM=$(ZL_HAVE_X86_64_ASM)
+
 # position user flags at the end, so that they have higher priority
 CFLAGS += $(USER_CFLAGS)
 CXXFLAGS += $(USER_CXXFLAGS)
 CPPFLAGS += $(USER_CPPFLAGS)
 LDFLAGS += $(USER_LDFLAGS)
 
-# Show current build configuration
-.PHONY: show-config
-show-config:
+# Show compilation flags (CFLAGS, CPPFLAGS, etc.)
+.PHONY: show-build-flags
+show-build-flags:
 	@echo "Build Type: $(BUILD_TYPE)"
 	@echo "CFLAGS: $(CFLAGS)"
 	@echo "CXXFLAGS: $(CXXFLAGS)"
 	@echo "CPPFLAGS: $(CPPFLAGS)"
 	@echo "LDFLAGS: $(LDFLAGS)"
+
+# Show current build configuration (features and settings)
+.PHONY: show-config
+show-config:
+	@echo "OpenZL Build Configuration:"
+	@echo "  Architecture: $(UNAME_M)"
+	@echo "  Platform: $(UNAME_S)"
+	@echo "  ZL_ALLOW_INTROSPECTION: $(ZL_ALLOW_INTROSPECTION)"
+	@echo "  ZL_HAVE_FBCODE: $(ZL_HAVE_FBCODE)"
+	@echo "  ZL_HAVE_X86_64_ASM: $(ZL_HAVE_X86_64_ASM)"
+	@echo "  Configuration method: CPPFLAGS preprocessor defines"
+	@echo "  Relevant CPPFLAGS: $(filter -DZL_%,$(CPPFLAGS))"
 
 # Help target
 .PHONY: help
@@ -127,11 +164,22 @@ help:
 	@echo "  BUILD_TYPE=TRACES     - Debug build with asserts, sanitizers and traces"
 	@echo "  BUILD_TYPE=TRACES_NOSAN - Debug build with asserts and traces"
 	@echo ""
+	@echo "Configuration options (unified with CMake):"
+	@echo "  ZL_ALLOW_INTROSPECTION=0/1  # Enable compression introspection (default: 1)"
+	@echo "                              # Disabling reduces binary size but removes debugging features"
+	@echo "  ZL_HAVE_X86_64_ASM=0/1      # x86-64 assembly optimizations (auto-detected)"
+	@echo "                              # Override to disable optimizations on x86-64 platforms"
+	@echo ""
+	@echo "Configuration targets:"
+	@echo "  show-config            # Show current build configuration"
+	@echo "  show-build-flags       # Show compilation flags (CFLAGS, CPPFLAGS, etc.)"
+	@echo ""
 	@echo "Usage examples:"
 	@echo "  make lib                        # Build library with DEFAULT type"
 	@echo "  make lib BUILD_TYPE=DBGO_ASAN   # Build library with DBGO_ASAN type"
 	@echo "  make zli BUILD_TYPE=DEV         # Build executable with DEV type"
 	@echo "  make show-config BUILD_TYPE=DEV # Show configuration for DEV type"
+	@echo "  make lib ZL_ALLOW_INTROSPECTION=0 # Build with introspection disabled"
 
 # Paths to source files
 EXROOT  := examples

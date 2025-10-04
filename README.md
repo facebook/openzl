@@ -32,10 +32,10 @@ Example:
 make lib BUILD_TYPE=DEV
 ```
 
-Build types are documented in `make help`, and their exact flags are detailed with `make show-config`
-Usual ones are:
+Build types are documented in `make help`, and their exact flags are detailed with `make show-build-flags`
+Common ones are:
 * `BUILD_TYPE=DEV` = debug build with asserts enabled and ASAN / UBSAN enabled
-* `BUILD_TYPE=OPT` = optimized build with asserts disabled (default)
+* `BUILD_TYPE=OPT` = optimized build with asserts disabled
 
 
 ## Build with `cmake`

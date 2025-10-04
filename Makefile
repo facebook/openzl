@@ -4,7 +4,7 @@
 .PHONY: default
 default : zli
 
-# Common repository-wide definitions
+# Configuration
 include build/make/zldefs.make
 
 # Provides macros to generate targets

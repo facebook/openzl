@@ -1,12 +1,32 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#ifndef ZSTRONG_ZS2_CONFIG_H
-#define ZSTRONG_ZS2_CONFIG_H
+#ifndef OPENZL_ZL_CONFIG_H
+#define OPENZL_ZL_CONFIG_H
 
-#define ZL_HAVE_FBCODE 1
+// Configuration header for OpenZL library.
+// These macros control optional features and optimizations.
+// Values can be overridden using preprocessor variables (-D flags in CPPFLAGS)
 
-#define ZL_HAVE_X86_64_ASM 1
+// Ensure all configuration defines have defaults if not provided by build system
+#ifndef ZL_ALLOW_INTROSPECTION
+# define ZL_ALLOW_INTROSPECTION 1
+#endif
 
-#define ZL_ALLOW_INTROSPECTION 1
+#ifndef ZL_HAVE_FBCODE
+# define ZL_HAVE_FBCODE 0
+#endif
 
-#endif // ZSTRONG_ZS2_CONFIG_H
+#ifndef ZL_HAVE_X86_64_ASM
+# define ZL_HAVE_X86_64_ASM 0
+#endif
+
+// BEGIN CODEMOD DEFINES - Legacy compatibility
+#ifndef OPENZL_HAVE_FBCODE
+# define OPENZL_HAVE_FBCODE ZL_HAVE_FBCODE // TODO(T223464378): Delete
+#endif
+#ifndef OPENZL_HAVE_X86_64_ASM
+# define OPENZL_HAVE_X86_64_ASM ZL_HAVE_X86_64_ASM // TODO(T223464378): Delete
+#endif
+// END CODEMOD DEFINES
+
+#endif  // OPENZL_ZL_CONFIG_H

@@ -118,7 +118,6 @@ if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
 endif()
 
 # Select appropriate compiler configuration
-set(ZL_ALLOW_INTROSPECTION ${OPENZL_ALLOW_INTROSPECTION})
 
 if (WIN32 AND (MSVC OR
               (CMAKE_C_COMPILER_ID STREQUAL "Clang" AND CMAKE_C_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC") OR
@@ -132,11 +131,25 @@ include(OpenZLFunctions)
 
 include(openzl-deps)
 include(OpenZLConfigChecks)
-configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/build/cmake/zl_config.h.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/include/openzl/zl_config.h
+
+# Set configuration variables for preprocessor flags
+# Convert CMake boolean to 0/1 for C preprocessor (allow user override)
+if(NOT DEFINED ZL_ALLOW_INTROSPECTION)
+    set(ZL_ALLOW_INTROSPECTION $<BOOL:${OPENZL_ALLOW_INTROSPECTION}>)
+endif()
+if(NOT DEFINED ZL_HAVE_FBCODE)
+    set(ZL_HAVE_FBCODE 0)
+endif()
+if(NOT DEFINED ZL_HAVE_X86_64_ASM)
+    set(ZL_HAVE_X86_64_ASM $<BOOL:${OPENZL_HAVE_X86_64_ASM}>)
+endif()
+
+# Add configuration as preprocessor defines (unified with Makefile approach)
+add_compile_definitions(
+    ZL_ALLOW_INTROSPECTION=${ZL_ALLOW_INTROSPECTION}
+    ZL_HAVE_FBCODE=${ZL_HAVE_FBCODE}
+    ZL_HAVE_X86_64_ASM=${ZL_HAVE_X86_64_ASM}
 )
-set(CONFIG "${CMAKE_CURRENT_BINARY_DIR}/include/openzl/zl_config.h")
 
 file(GLOB_RECURSE sources CONFIGURE_DEPENDS "${OPENZL_SRC_DIR}/*.c")
 file(GLOB_RECURSE headers CONFIGURE_DEPENDS "${OPENZL_SRC_DIR}/*.h")
@@ -157,8 +170,7 @@ list(APPEND openzl_files
 )
 
 add_library(openzl
-    ${openzl_files}
-    "${CONFIG}")
+    ${openzl_files})
 
 # We need PIC to build shared libraries. For now just enable it for all builds.
 # Later we could build both PIC & non-PIC versions of the library.
@@ -170,17 +182,11 @@ source_group(
     TREE ${CMAKE_CURRENT_SOURCE_DIR}
     PREFIX "openzl"
     FILES ${sources} ${headers} ${public_headers})
-source_group(
-    TREE ${CMAKE_CURRENT_BINARY_DIR}
-    PREFIX "openzl"
-    FILES "${CONFIG}")
-
 # TODO: pkgconfig
 
 target_include_directories(openzl_deps
     BEFORE
     INTERFACE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
