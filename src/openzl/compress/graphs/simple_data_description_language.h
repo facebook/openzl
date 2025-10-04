@@ -154,6 +154,20 @@ ZL_BEGIN_C_DECLS
  *   | i8b     | Numeric | 8    | Yes    | Big        | Yes          |
  *   | u8l     | Numeric | 8    | No     | Little     | Yes          |
  *   | u8b     | Numeric | 8    | No     | Big        | Yes          |
+ *   | f1      | Numeric | 1    | Yes    | N/A        | No           |
+ *   | f2l     | Numeric | 2    | Yes    | Little     | No           |
+ *   | f2b     | Numeric | 2    | Yes    | Big        | No           |
+ *   | f4l     | Numeric | 4    | Yes    | Little     | No           |
+ *   | f4b     | Numeric | 4    | Yes    | Big        | No           |
+ *   | f8l     | Numeric | 8    | Yes    | Little     | No           |
+ *   | f8b     | Numeric | 8    | Yes    | Big        | No           |
+ *   | bf1     | Numeric | 1    | Yes    | N/A        | No           |
+ *   | bf2l    | Numeric | 2    | Yes    | Little     | No           |
+ *   | bf2b    | Numeric | 2    | Yes    | Big        | No           |
+ *   | bf4l    | Numeric | 4    | Yes    | Little     | No           |
+ *   | bf4b    | Numeric | 4    | Yes    | Big        | No           |
+ *   | bf8l    | Numeric | 8    | Yes    | Little     | No           |
+ *   | bf8b    | Numeric | 8    | Yes    | Big        | No           |
  *
  * - Record: a struct-like compound type. The map value is a list of
  *   expressions each of which must resolve to a field at record evaluation
