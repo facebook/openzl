@@ -1,0 +1,7 @@
+requests
+kaggle
+cdsapi>=0.7.4
+numpy
+pyarrow~=18.0.0
+pandas
+zstandard
