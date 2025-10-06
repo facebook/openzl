@@ -1,6 +1,8 @@
 # Dataset Manager
 
 ## Setup
+For `era5` datasets, make sure GDAL is installed using the instructions [here](https://mothergeo-py.readthedocs.io/en/latest/development/how-to/gdal-ubuntu-pkg.html#install-gdal-for-python). If you don't need these datasets, you can skip this step.
+
 For `.parquet` files (`binance` datasets), run the following commands to compile binary files:
 
 ```bash
@@ -19,6 +21,10 @@ Some datasets require API keys for access. Set up the following keys as needed:
 
 **For Kaggle datasets:**
 - Follow the instructions under `Authentication`: https://www.kaggle.com/docs/api
+
+**For Climate Data Store datasets:**
+- Follow the instructions under `Setup the CDS API personal token`: https://cds.climate.copernicus.eu/how-to-api
+
 
 ## Usage
 Navigate to the `reproducibility` directory and use the following sample command to download all available datasets:
