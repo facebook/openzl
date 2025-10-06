@@ -4,6 +4,7 @@ from .era5 import ERA5DatasetBuilder
 from .ppmf import PPMFDatasetBuilder
 from .psam import PSAMDatasetBuilder
 from .rea6 import REA6DatasetBuilder
+from .tlc import TLCDatasetBuilder
 
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "PPMFDatasetBuilder",
     "PSAMDatasetBuilder",
     "REA6DatasetBuilder",
+    "TLCDatasetBuilder",
 ]
