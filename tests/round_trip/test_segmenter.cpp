@@ -555,6 +555,54 @@ TEST(Segmenter, selectorThenSegmenter)
             "selector then segmenter");
 }
 
+/* =======   Segmenter after a Function Graph that only selects   ======== */
+
+static ZL_Report graphSelectFirst(
+        ZL_Graph* graph,
+        ZL_Edge* inputs[],
+        size_t nbInputs) ZL_NOEXCEPT_FUNC_PTR
+{
+    printf("Graph 'graphSelectFirst'\n");
+    assert(nbInputs == 1);
+    assert(inputs != NULL);
+    const ZL_GraphIDList gids = ZL_Graph_getCustomGraphs(graph);
+    assert(gids.nbGraphIDs >= 1);
+    assert(gids.graphids != NULL);
+    return ZL_Edge_setDestination(inputs[0], gids.graphids[0]);
+}
+
+static ZL_GraphID registerGraphAndSegmenter(ZL_Compressor* compressor) noexcept
+{
+    ZL_Report const setr = ZL_Compressor_setParameter(
+            compressor, ZL_CParam_formatVersion, g_testVersion);
+    if (ZL_isError(setr))
+        abort();
+
+    ZL_GraphID const segid =
+            ZL_Compressor_registerSegmenter(compressor, g_segmenterDescPtr);
+
+    const ZL_Type inType                 = ZL_Type_serial;
+    ZL_FunctionGraphDesc const graphDesc = {
+        .name           = "Graph justSelectFirst",
+        .graph_f        = graphSelectFirst,
+        .inputTypeMasks = &inType,
+        .nbInputs       = 1,
+        .customGraphs   = &segid,
+        .nbCustomGraphs = 1,
+    };
+
+    return ZL_Compressor_registerFunctionGraph(compressor, &graphDesc);
+}
+
+TEST(Segmenter, graphThenSegmenter)
+{
+    if (g_testVersion < ZL_CHUNK_VERSION_MIN)
+        return;
+    g_segmenterDescPtr = &serialSegmenter;
+    (void)roundTripGen(
+            ZL_Type_serial, registerGraphAndSegmenter, "graph then segmenter");
+}
+
 /* *********************************************** */
 /* =======   Expected clean failure tests ======== */
 /* *********************************************** */
