@@ -1,0 +1,31 @@
+{
+  "name": "binance",
+  "description": "cryptocurrency pairs data from Binance.com",
+  "format": "parquet",
+  "source_url": "https://www.kaggle.com/datasets/jorijnsmit/binance-full-history",
+  "download_method": "kaggle",
+  "download_config": {
+    "kaggle_slug": "jorijnsmit/binance-full-history",
+    "kaggle_files": [
+      "BTC-AUD.parquet",
+      "BTC-BIDR.parquet",
+      "BTC-BRL.parquet",
+      "BTC-BUSD.parquet",
+      "BTC-DAI.parquet",
+      "BTC-EUR.parquet",
+      "BTC-GBP.parquet",
+      "BTC-NGN.parquet",
+      "BTC-PAX.parquet",
+      "BTC-RUB.parquet",
+      "BTC-TRY.parquet",
+      "BTC-TUSD.parquet",
+      "BTC-UAH.parquet",
+      "BTC-USDC.parquet",
+      "BTC-USDT.parquet"
+    ]
+  },
+  "tags": [
+    "crypto",
+    "parquet"
+  ]
+}
