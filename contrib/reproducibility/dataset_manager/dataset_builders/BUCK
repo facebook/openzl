@@ -9,5 +9,6 @@ python_library(
     deps = [
         "//data_compression/experimental/zstrong/contrib/reproducibility/dataset_manager/dataset_builders/binance:__init__",
         "//data_compression/experimental/zstrong/contrib/reproducibility/dataset_manager/dataset_builders/era5:__init___py_lib",
+        "//data_compression/experimental/zstrong/contrib/reproducibility/dataset_manager/dataset_builders/ppmf:__init___py_lib",
     ],
 )

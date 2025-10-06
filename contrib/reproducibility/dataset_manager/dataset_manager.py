@@ -5,16 +5,22 @@ import sys
 from typing import Dict
 
 from .base_dataset_builder import BaseDatasetBuilder
-from .dataset_builders import BinanceDatasetBuilder, ERA5DatasetBuilder
+from .dataset_builders import (
+    BinanceDatasetBuilder,
+    ERA5DatasetBuilder,
+    # PPMFDatasetBuilder,
+)
 
 
 class DatasetManager:
     """Central manager for dataset downloading and catalog generation"""
 
     def __init__(self):
+        # Commented out for now since census website is down
         self.available_datasets: Dict[str, BaseDatasetBuilder] = {
             "binance": BinanceDatasetBuilder(),
             "era5": ERA5DatasetBuilder(),
+            # "ppmf": PPMFDatasetBuilder(),
         }
 
     def list_datasets(self):

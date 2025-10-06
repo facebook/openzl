@@ -1,0 +1,20 @@
+{
+  "name": "ppmf",
+  "description": "Census data on individual people and housing units (successor to PSAM or PUMS data)",
+  "format": "csv",
+  "source_url": "https://www.census.gov/data/tables/2024/dec/2020-census-ppmf.html",
+  "download_method": "url",
+  "download_config": {
+    "urls": [
+      "https://www2.census.gov/programs-surveys/decennial/2020/data/privacy-protected-microdata-file/2020_ppmf.zip"
+    ],
+    "chunk_size": {
+      "2020_ppmf_person": 266666,
+      "2020_ppmf_unit": 260000
+    }
+  },
+  "tags": [
+    "census",
+    "csv"
+  ]
+}

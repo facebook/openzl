@@ -3,6 +3,8 @@
 ## Setup
 For `era5` datasets, make sure GDAL is installed using the instructions [here](https://mothergeo-py.readthedocs.io/en/latest/development/how-to/gdal-ubuntu-pkg.html#install-gdal-for-python). If you don't need these datasets, you can skip this step.
 
+For the `ppmf` dataset, ensure `awk` is installed on your system for better chunking performance. Without `awk`, the system will fall back to pandas chunking, which is significantly slower. If you don't need the `ppmf` dataset, you can skip this step.
+
 For `.parquet` files (`binance` datasets), run the following commands to compile binary files:
 
 ```bash
