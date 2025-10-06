@@ -1,0 +1,13 @@
+load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
+
+oncall("data_compression")
+
+python_binary(
+    name = "verify_datasets",
+    srcs = ["verify_datasets.py"],
+    main_module = "data_compression.experimental.zstrong.contrib.reproducibility.dataset_manager.tests.verify_datasets",
+    deps = [
+        "fbsource//third-party/pypi/pyarrow:pyarrow",
+        "fbsource//third-party/pypi/zstandard:zstandard",
+    ],
+)
