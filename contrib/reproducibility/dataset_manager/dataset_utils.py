@@ -3,15 +3,64 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
+import cdsapi
 from kaggle.api.kaggle_api_extended import KaggleApi
+
+# Doing this since gdal has extra installation steps
+gdal_installed = True
+try:
+    from osgeo import gdal
+except ImportError:
+    gdal_installed = False
 
 class DownloadUtils:
     """Shared download utilities for all datasets"""
 
     def __init__(self) -> None:
         pass
+
+    @staticmethod
+    def download_file_from_cds(
+        dataset: str,
+        request: Dict[str, Any],
+        output_dir: str,
+        simplified_names: Optional[List[str]] = None,
+        max_bands: Optional[int] = None,
+    ) -> bool:
+        """Download a single file from Climate Data Store (CDS)"""
+        try:
+            output_path = os.path.join(
+                output_dir, dataset + "." + request["data_format"]
+            )
+            client = cdsapi.Client()
+            client.retrieve(dataset, request, target=output_path)
+
+            if output_path.endswith("grib"):
+                if DownloadUtils.grib_to_bin(
+                    output_path,
+                    output_dir,
+                    (
+                        simplified_names
+                        if simplified_names is not None
+                        else request["variable"]
+                    ),
+                    max_bands,
+                ):
+                    os.remove(output_path)
+        except Exception as e:
+            if "incomplete configuration file" in str(e):
+                print(f"Please make sure to set up CDS api key - {e}")
+            else:
+                print(f"Unexpected Error: {e}")
+                print(
+                    "Error most likely from Climate Data Store, please try again or download directly from CDS"
+                )
+
+            return False
+
+        return True
 
     @staticmethod
     def download_file_from_kaggle(
@@ -117,4 +166,82 @@ class DownloadUtils:
             return True
         except Exception as e:
             print(f"Failed to verify and convert parquet file to canonical: {e}")
+            return False
+
+    @staticmethod
+    def grib_to_bin(
+        grib_file_path: str,
+        dir_path: str,
+        file_names: List[str],
+        max_bands: Optional[int] = None,
+    ) -> bool:
+        """Convert GRIB file to binary format."""
+        if not gdal_installed:
+            print("Please install gdal in order to convert grib into bin file")
+            return False
+        try:
+            dataset = gdal.Open(grib_file_path)
+            num_bands = dataset.RasterCount
+            xsize = dataset.RasterXSize
+            ysize = dataset.RasterYSize
+
+            gdal.UseExceptions()
+
+            # Create directories
+            base_dir = os.path.dirname(grib_file_path)
+            dir_paths = [os.path.join(base_dir, kind) for kind in file_names]
+            for dir_path in dir_paths:
+                os.makedirs(dir_path, exist_ok=True)
+
+            num_bands_to_process = (
+                num_bands if max_bands is None else min(max_bands, num_bands) + 1
+            )
+            for i in range(1, num_bands_to_process):
+                band = dataset.GetRasterBand(i)
+
+                # Validate data type
+                dt = band.DataType
+                if dt != gdal.GDT_Float64:
+                    print(
+                        f"Warning: Band {i} data type is {gdal.GetDataTypeName(dt)}, expected Float64"
+                    )
+
+                # Validate dimensions
+                if band.XSize != xsize or band.YSize != ysize:
+                    print(f"Error: Band {i} dimensions don't match dataset")
+                    return False
+
+                raster_data = band.ReadRaster(
+                    0,
+                    0,  # x_offset, y_offset
+                    xsize,
+                    ysize,  # x_size, y_size
+                    xsize,
+                    ysize,  # buf_x_size, buf_y_size
+                    gdal.GDT_Float64,  # data_type
+                    0,
+                    0,
+                )
+
+                if raster_data is None:
+                    return False
+
+                # Round-robin distribution
+                which_kind_idx = (i - 1) % len(file_names)
+                dir_path = dir_paths[which_kind_idx]
+                out_path = os.path.join(
+                    dir_path, f"{file_names[which_kind_idx]}_{i}.bin"
+                )
+
+                print(
+                    f"\rWriting to {out_path}",
+                    end="",
+                    flush=True,
+                )
+                with open(out_path, "wb") as f:
+                    f.write(raster_data)
+
+            return True
+        except Exception as e:
+            print(f"Failed to convert GRIB to binary: {e}")
             return False
