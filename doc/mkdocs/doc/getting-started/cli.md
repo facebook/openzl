@@ -1,41 +1,31 @@
 This guide serves as a gentle introduction to OpenZL concepts via hands-on application of the CLI and API. Through this exercise, you will develop a conceptual understanding of the OpenZL engine, learn some common use patterns, and have a good grasp of the CLI.
 
 # Prerequisites
-Build the library and CLI tool using CMake
-```
-cd [openzl root]
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make openzl zli
-```
-The examples in the guide assume you have the **OpenZL benchmark corpus** on your machine. Download it here:
-```
-todo
-```
-The input file names in the code snippets correspond to files in the `openzl_corpus/getting_started` folder.
+[Build](../getting-started/quick-start.md#building-the-openzl-cli) the library and CLI tool using CMake
+
+The input file names in the code snippets correspond to files in the `examples/getting_started/sample_inputs` folder.
 
 # Basic usage
 ### Serial data in OpenZL
-Let's start with a simple example. We will use the CLI to compress a file named `myfile.txt` using the serial compression profile.
-```
-zli compress --profile serial myfile.txt --output myfile.zs2
+Let's start with a simple example. We will use the CLI to compress a file named `lorem_ipsum.txt` using the serial compression profile.
+```sh
+./zli compress --profile serial examples/getting_started/sample_inputs/lorem_ipsum.txt --output lorem_ipsum.zl
 ```
 The `--profile` option allows you to select a predefined **compression profile**. In this case, we are using the `serial` profile, which is suited for serial data.
 
 > **More about profiles:** Under the hood, a `profile` is simply a pre-configured OpenZL **graph**. Since we did not do any [ACE](./using-openzl.md#ace-training) training, the graph contains a single Zstd node. Other profiles contain more complex graphs, as we will see later.
 
 ### Numeric data in OpenZL
-Now let's try to compress a file of numbers. We have preconfigured profile called `le-i32` that takes advantage of fixed-width structure of integer data to compress better than byte-wise LZ.
+Now let's try to compress a file of numbers. We have preconfigured profile called `le-i32` that takes advantage of fixed-width structure of integer data to compress better than byte-wise LZ. In this example, we will compress a small sample of integers from the [ERA5](https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels?tab=overview) dataset.
 
-```
-zli compress --profile le-i32 ints.txt --output ints.le_i32.zs2
+```sh
+./zli compress --profile le-i32 examples/getting_started/sample_inputs/era5_ints.bin --output era5_ints.le_i32.zl
 ```
 
 For comparison, we can try compressing the same output with serial.
 
-```
-zli compress --profile serial ints.txt --output ints.serial.zs2
+```sh
+./zli compress --profile serial examples/getting_started/sample_inputs/era5_ints.bin --output era5_ints.serial.zl
 ```
 
 We can see the immediate benefit of moving from serial to le-i32.
@@ -43,29 +33,29 @@ We can see the immediate benefit of moving from serial to le-i32.
 > **Tip:** The more you know about your data, the better you can tune your compression. Simply knowing that your data is integral dramatically improves compression.
 
 ## Custom Compressors
-The true power of OpenZL lies in its configurability. Creating your own custom compressor is documented in the API reference. Once created, a compressor can be *serialized* into a CBOR file. The CLI supports compressing with a serialized compressor.
-```
-zli compress --compressor custom1.zsc custom_data.txt -o custom_data.zs2
+The true power of OpenZL lies in its configurability. Creating your own custom compressor is documented in the API reference. Once created, a compressor can be *serialized* into a CBOR file. The CLI supports compressing with a serialized compressor. Here is a sample command, we will be creating a custom compressor in the next section.
+```sh
+./zli compress --compressor custom1.zsc examples/getting_started/sample_inputs/custom_data.txt -o custom_data.zl
 ```
 The main way of creating serialized compressors is via export from code. The other way is via training.
 > **What's in a serialized compressor?** A serialized compressor contains one or more serialized graphs along with associated `LocalParams`. Although there may be multiple graphs registered to a compressor, only one, the *starting graph*, is used as the graph when compressing with that compressor. You can explore a sample serialized compressor by putting a `.zsc` file into a CBOR-to-JSON converter.
 
 ## Training
 Oftentimes, the performance of a configurable graph is much improved by preconfiguring it with a number of representative data samples. This process is called **training** the graph. Conceptually, the rationale and outcome of graph training is very similar to training [Zstd dictionaries](https://facebook.github.io/zstd/#small-data). However, the mechanics are quite different.
-```
-zli train --profile csv csv_samples/ -o trained_csv.zsc
+```sh
+./zli train --profile csv examples/getting_started/sample_inputs/csv_samples/ -o trained_csv.zsc
 ```
 The `train` command takes an **unconfigured compressor** in the form of a `profile` or serialized compressor and outputs a serialized compressor with a configuration trained on the provided samples.
 
 > **Terminology - (Un)configured graph:** A graph is considered *configured* if all of its graph components are configured. A codec is configurable only via its `LocalParams`. Thus, an unconfigured codec is one that takes params but has blank `LocalParams` passed to it. A configured codec is then one with populated `LocalParams`. Selectors and function graphs additionally can set successor graph IDs. Then, a selector or function graph without a complete list of successors is also unconfigured.
 
-Let's see what happens when we run a compression using the trained graph. First, the untrained graph...
-```
-zli compress --profile csv csv_samples/0001.csv -o no_train.zs2
+Let's see what happens when we run a compression using the trained graph. In this example, we will use a small sample from the [PUMS](https://www.census.gov/programs-surveys/acs/microdata/access.html) dataset. First, the untrained graph...
+```sh
+./zli compress --profile csv examples/getting_started/sample_inputs/csv_samples/0001.csv -o no_train.zl
 ```
 ...and now the trained graph. The CLI allows you to compress using a **serialized compressor**. We will use the one generated by the train command
-```
-zli compress --compressor trained_csv.zsc csv_samples/0001.csv -o yes_train.zs2
+```sh
+./zli compress --compressor trained_csv.zsc examples/getting_started/sample_inputs/csv_samples/0001.csv -o yes_train.zl
 ```
 The difference is stark. Training is able to net us a 10% ratio win at no other cost. (Technically, if we wanted to be rigorous we should have split our data into train and test directories. But the result is very similar.)
 
@@ -73,7 +63,7 @@ The difference is stark. Training is able to net us a 10% ratio win at no other 
 
 ### Inline Training
 Because the impact of training is so stark, the CLI requires that trainable compressors be trained in some form before using them. The typical way to do this is by first training then compressing with the trained `.zsc` compressor, but **inline training** is also supported.
-```
-zli compress --profile csv --train-inline csv_samples/0001.csv -o inline_train.zs2
+```sh
+./zli compress --profile csv --train-inline examples/getting_started/sample_inputs/csv_samples/0001.csv -o inline_train.zl
 ```
 The results are obviously better when we overfit to just one sample, however the power of training is lost because this cost is paid per compression instead of being spread over many compressions.
