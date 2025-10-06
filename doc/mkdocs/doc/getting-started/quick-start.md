@@ -189,6 +189,71 @@ and check that it is effectively identical to the original `sra0`.
 
 This exercise shows the importance of training to generate enhanced solutions for homogeneous datasets.
 
+### Find the Pareto frontier of compressors
+
+The previous training command searched only for the smallest compressed size.
+Adding the `--pareto-frontier` flag makes the trainer output the entire Pareto frontier of optimal tradeoffs of compression ratio, compression speed, and decompression speed.
+Instead of outputting a single compressor, it will create a directory of compressors, along with the benchmark results in `benchmark.csv`.
+
+```
+./zli train --profile le-u64 sra0 --output compressors/ --pareto-frontier
+```
+
+The `compressors/` directory will look like this:
+
+```
+compressors/
+├─ benchmark.csv
+├─ 0.zc
+├─ 1.zc
+├─ 2.zc
+├─ ...
+```
+
+Opening up `benchmark.csv` will show the performance of each compressor as show below.
+
+```
+Algorithm, Compressor, Compression Ratio, Compression Speed MB/s, Decompression Speed MB/s
+   OpenZL,       0.zc,              3.44,                  82.30,                   859.41
+   OpenZL,       1.zc,              3.44,                  74.72,                   890.28
+   OpenZL,       2.zc,              3.41,                  63.51,                   995.84
+   OpenZL,       3.zc,              3.37,                  71.48,                  1068.47
+   OpenZL,       4.zc,              3.36,                  79.40,                  1086.73
+   OpenZL,       5.zc,              3.36,                  74.87,                  1082.06
+   OpenZL,       6.zc,              2.87,                  91.93,                  1360.87
+   OpenZL,       7.zc,              2.87,                  89.69,                  1319.01
+   OpenZL,       8.zc,              2.86,                  87.85,                  1301.64
+   OpenZL,       9.zc,              2.17,                 112.89,                   781.85
+   OpenZL,      10.zc,              2.17,                 114.48,                   772.73
+   OpenZL,      11.zc,              2.16,                 126.49,                   862.90
+   OpenZL,      12.zc,              2.16,                 148.20,                   891.53
+   OpenZL,      13.zc,              2.16,                 177.49,                   877.77
+   OpenZL,      14.zc,              1.53,                 161.59,                  1284.70
+   OpenZL,      15.zc,              1.53,                 155.75,                  1193.33
+   OpenZL,      16.zc,              1.53,                 205.63,                  1413.22
+   OpenZL,      17.zc,              1.53,                 199.96,                  1480.62
+   OpenZL,      18.zc,              1.53,                 209.57,                  1461.65
+   OpenZL,      19.zc,              1.52,                 268.06,                  1301.43
+   OpenZL,      20.zc,              1.52,                 509.61,                   724.33
+   OpenZL,      21.zc,              1.52,                 798.76,                  1175.44
+   OpenZL,      22.zc,              1.50,                 111.81,                  2087.11
+   OpenZL,      23.zc,              1.45,                 300.39,                  2084.80
+   OpenZL,      24.zc,              1.45,                 229.43,                  2124.02
+   OpenZL,      25.zc,              1.42,                 791.30,                  2215.84
+   OpenZL,      26.zc,              1.42,                 832.52,                  1507.42
+   OpenZL,      27.zc,              1.42,                 806.65,                  1513.20
+   OpenZL,      28.zc,              1.02,                1235.24,                  1670.63
+   OpenZL,      29.zc,              1.02,                2027.32,                  3553.12
+   OpenZL,      30.zc,              1.00,                2663.61,                  3846.78
+   OpenZL,      31.zc,              1.00,                1489.72,                  5519.57
+```
+
+At this point, you can pick the compressor from `benchmark.csv` with the tradeoff that fits your needs.
+
+??? note "Pruning"
+    Currently, the trainer produces too many compressors that have tradeoffs that are very close.
+    We are currently working on pruning the number of choices down.
+
 ## Visualizing the Compression Graph
 
 The compression graph is the ultimate driver of both compression and decompression.
