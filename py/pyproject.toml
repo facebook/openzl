@@ -4,9 +4,10 @@
 requires = ["scikit-build-core >=0.11.5", "nanobind >=2.7.0"]
 build-backend = "scikit_build_core.build"
 
+# TODO: Figure out how to get the version from zl_version.h
 [project]
 name = "openzl"
-version = "0.0.22"
+version = "0.1.0"
 requires-python = ">=3.8"
 
 [project.urls]

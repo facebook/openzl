@@ -65,21 +65,21 @@ jobs:
 
   # This can be uncommented to support automatic uploads to PyPI on release
   # once OpenZL is publicly available.
-  # upload_all:
-  #   name: Upload if release
-  #   needs: [build_wheels, build_sdist]
-  #   runs-on: ubuntu-latest
-  #   if: github.event_name == 'release' && github.event.action == 'published'
+  upload_all:
+    name: Upload if release
+    needs: [build_wheels, build_sdist]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'published'
 
-  #   steps:
-  #   - uses: actions/setup-python@v5
-  #   - uses: actions/download-artifact@v4
-  #     with:
-  #       path: dist
-  #       pattern: dist-*
-  #       merge-multiple: true
+    steps:
+    - uses: actions/setup-python@v5
+    - uses: actions/download-artifact@v4
+      with:
+        path: dist
+        pattern: dist-*
+        merge-multiple: true
 
-  #   - uses: pypa/gh-action-pypi-publish@release/v1
-  #     with:
-  #       user: __token__
-  #       password: ${{ secrets.pypi_password }}
+    - uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        user: __token__
+        password: ${{ secrets.pypi_password }}
