@@ -1,6 +1,6 @@
 # OpenZL
 
-OpenZL delivers high compression ratios _while preserving high speed_, a level of performance that is out of reach for generic compressors.
+OpenZL delivers high compression ratios _while preserving high speed_, a level of performance that is out of reach for generic compressors. **Check out the [blog post](https://engineering.fb.com/2025/10/06/developer-tools/openzl-open-source-format-aware-compression-framework/) and [whitepaper](https://arxiv.org/abs/2510.03203) for a breakdown of how it works.**
 
 OpenZL takes a description of your data and builds from it a specialized compressor optimized for your specific format. [Learn how it works →](https://facebook.github.io/openzl/getting-started/introduction/)
 
