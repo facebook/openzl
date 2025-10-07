@@ -18,6 +18,8 @@ namespace openzl::sddl {
  */
 
 enum class Precedence : size_t {
+    CONTROL_FLOW,
+
     NULLARY,
 
     ACCESS,

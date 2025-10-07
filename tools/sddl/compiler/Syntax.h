@@ -38,6 +38,8 @@ enum class Symbol {
 
     BIND,
 
+    WHILE,
+
     NEG, // `-` is tokenized as SUB, but the unary form is converted into this
          // during parsing.
 

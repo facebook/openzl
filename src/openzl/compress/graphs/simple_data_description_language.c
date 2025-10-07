@@ -185,6 +185,8 @@ typedef enum {
 
     ZL_SDDL_OpCode_bind,
 
+    ZL_SDDL_OpCode_while,
+
     // Unary arithmetic operations
     ZL_SDDL_OpCode_neg,
 
@@ -313,6 +315,8 @@ static const char* ZL_SDDL_OpCode_toString(ZL_SDDL_OpCode opcode)
             return "member";
         case ZL_SDDL_OpCode_bind:
             return "bind";
+        case ZL_SDDL_OpCode_while:
+            return "while";
         case ZL_SDDL_OpCode_neg:
             return "neg";
         case ZL_SDDL_OpCode_eq:
@@ -482,6 +486,7 @@ static size_t ZL_SDDL_OpCode_numArgs(const ZL_SDDL_OpCode opcode)
         case ZL_SDDL_OpCode_assign:
         case ZL_SDDL_OpCode_member:
         case ZL_SDDL_OpCode_bind:
+        case ZL_SDDL_OpCode_while:
             return 2;
         case ZL_SDDL_OpCode_neg:
             return 1;
@@ -1010,6 +1015,9 @@ static ZL_Report ZL_SDDL_Program_decodeExprType(
     } else if (StringView_eqCStr(&type_sv, "bind")) {
         expr->type  = ZL_SDDL_ExprType_op;
         expr->op.op = ZL_SDDL_OpCode_bind;
+    } else if (StringView_eqCStr(&type_sv, "while")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_while;
     } else if (StringView_eqCStr(&type_sv, "neg")) {
         expr->type  = ZL_SDDL_ExprType_op;
         expr->op.op = ZL_SDDL_OpCode_neg;
@@ -2535,6 +2543,9 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr_op_inner(
                             state, scope, &args[0], &args[1]));
             break;
         }
+        case ZL_SDDL_OpCode_while:
+            ZL_ERR(GENERIC,
+                   "Should be unreachable; 'while' op handled elsewhere.");
         case ZL_SDDL_OpCode_neg: {
             ZL_ERR_IF_NE(args[0].type, ZL_SDDL_ExprType_num, corruption);
             result = ZL_SDDL_Expr_makeNum(-args[0].num.val);
@@ -2620,12 +2631,55 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr_op_inner(
     return ZL_WRAP_VALUE(result);
 }
 
+static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr_while(
+        ZL_SDDL_State* const state,
+        ZL_SDDL_Scope* const scope,
+        const ZL_SDDL_Op* const op)
+{
+    ZL_RESULT_DECLARE_SCOPE(ZL_SDDL_Expr, state->opCtx);
+
+    const ZL_SDDL_Expr* const cond_expr = op->args[0];
+    const ZL_SDDL_Expr* const body_expr = op->args[1];
+
+    ZL_ERR_IF_NULL(cond_expr, corruption);
+    ZL_ERR_IF_NULL(body_expr, corruption);
+    ZL_ERR_IF_NE(body_expr->type, ZL_SDDL_ExprType_tuple, corruption);
+
+    while (true) {
+        ZL_TRY_LET(
+                ZL_SDDL_Expr,
+                cond_eval,
+                ZL_SDDL_State_execExpr(state, scope, cond_expr));
+        ZL_ERR_IF_NE(cond_eval.type, ZL_SDDL_ExprType_num, corruption);
+        const ZL_SDDL_IntT cond_val = cond_eval.num.val;
+        ZL_SDDL_Expr_decref(state, &cond_eval);
+        if (cond_val == 0) {
+            break;
+        }
+
+        for (size_t i = 0; i < body_expr->tuple.num_exprs; i++) {
+            ZL_TRY_LET(
+                    ZL_SDDL_Expr,
+                    body_eval,
+                    ZL_SDDL_State_execExpr(
+                            state, scope, &body_expr->tuple.exprs[i]));
+            ZL_SDDL_Expr_decref(state, &body_eval);
+        }
+    }
+
+    return ZL_WRAP_VALUE(ZL_SDDL_Expr_makeNull());
+}
+
 static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr_op(
         ZL_SDDL_State* const state,
         ZL_SDDL_Scope* const scope,
         const ZL_SDDL_Op* const op)
 {
     ZL_RESULT_DECLARE_SCOPE(ZL_SDDL_Expr, state->opCtx);
+
+    if (op->op == ZL_SDDL_OpCode_while) {
+        return ZL_SDDL_State_execExpr_while(state, scope, op);
+    }
 
     const size_t num_args = ZL_SDDL_OpCode_numArgs(op->op);
     ZL_SDDL_Expr args[ZL_SDDL_OP_ARG_COUNT];

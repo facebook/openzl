@@ -47,12 +47,14 @@ constexpr Associativity LTR = Associativity::LEFT_TO_RIGHT;
 constexpr Associativity RTL = Associativity::RIGHT_TO_LEFT;
 
 const std::map<Precedence, Associativity> associativities{
+    { Precedence::CONTROL_FLOW, LTR },
+
     { Precedence::ACCESS, LTR },
 
-    { Precedence::UNARY, RTL },       { Precedence::NULLARY, LTR },
+    { Precedence::UNARY, RTL },        { Precedence::NULLARY, LTR },
 
-    { Precedence::MUL_DIV_MOD, LTR }, { Precedence::ADD_SUB, LTR },
-    { Precedence::RELATION, LTR },    { Precedence::EQUALITY, LTR },
+    { Precedence::MUL_DIV_MOD, LTR },  { Precedence::ADD_SUB, LTR },
+    { Precedence::RELATION, LTR },     { Precedence::EQUALITY, LTR },
 
     { Precedence::ASSIGNMENT, RTL },
 };
@@ -70,6 +72,8 @@ std::string enum_to_str_of_int(T e)
 }
 
 const std::map<Precedence, std::string> precedences_to_strs{
+    { Precedence::CONTROL_FLOW,
+      "CONTROL_FLOW(" + enum_to_str_of_int(Precedence::CONTROL_FLOW) + ")" },
     { Precedence::UNARY,
       "UNARY(" + enum_to_str_of_int(Precedence::UNARY) + ")" },
     { Precedence::NULLARY,
@@ -735,9 +739,32 @@ class UnaryOpRule : public OpRule {
 
 class BinaryOpRule : public OpRule {
    public:
-    explicit BinaryOpRule(Symbol op, Precedence precedence)
-            : OpRule(op, precedence, ArgType::EXPR, ArgType::EXPR)
+    explicit BinaryOpRule(
+            Symbol op,
+            Precedence precedence,
+            ArgType lhs_type = ArgType::EXPR,
+            ArgType rhs_type = ArgType::EXPR)
+            : OpRule(op, precedence, lhs_type, rhs_type)
     {
+    }
+};
+
+class WhileRule : public BinaryOpRule {
+   public:
+    explicit WhileRule()
+            : BinaryOpRule(
+                      Symbol::WHILE,
+                      Precedence::CONTROL_FLOW,
+                      ArgType::LIST_CURLY,
+                      ArgType::LIST_PAREN)
+    {
+    }
+
+    ASTPtr do_gen(ASTPtr op, ASTPtr lhs, ASTPtr rhs) const override
+    {
+        auto cond = unwrap_parens(std::move(rhs));
+        auto body = std::make_shared<ASTTuple>(std::move(lhs));
+        return std::make_shared<ASTWhile>(std::move(cond), std::move(body));
     }
 };
 
@@ -865,6 +892,8 @@ const std::vector<std::unique_ptr<const GrammarRule>> grammar_rules{ []() {
 
     add_rule<UnaryOpRule>(r, Symbol::CONSUME);
     add_rule<UnaryOpRule>(r, Symbol::SIZEOF);
+
+    add_rule<WhileRule>(r);
 
     add_rule<NegationRule>(r);
 

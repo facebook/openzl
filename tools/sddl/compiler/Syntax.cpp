@@ -72,6 +72,7 @@ static const std::map<Symbol, SymbolType> sym_types{
     { Symbol::ASSUME, SymbolType::OPERATOR },
     { Symbol::MEMBER, SymbolType::OPERATOR },
     { Symbol::BIND, SymbolType::OPERATOR },
+    { Symbol::WHILE, SymbolType::OPERATOR },
 
     { Symbol::NEG, SymbolType::OPERATOR },
 
@@ -160,6 +161,7 @@ static const std::map<Symbol, poly::string_view> syms_to_debug_strs{
     { Symbol::ASSUME, "ASSUME" },
     { Symbol::MEMBER, "MEMBER" },
     { Symbol::BIND, "BIND" },
+    { Symbol::WHILE, "WHILE" },
 
     { Symbol::NEG, "NEG" },
 
@@ -255,6 +257,7 @@ const std::vector<std::pair<poly::string_view, Symbol>> strs_to_syms{
     { "consume", Symbol::CONSUME },
     { "sizeof", Symbol::SIZEOF },
     { "sendto", Symbol::SEND },
+    { "while", Symbol::WHILE },
     { "Byte", Symbol::BYTE },
     { "UInt8", Symbol::U8 },
     { "Int8", Symbol::I8 },
@@ -332,7 +335,8 @@ static const std::map<Symbol, poly::string_view> syms_to_ser_strs{
     { Symbol::CONSUME, "consume" }, { Symbol::SIZEOF, "sizeof" },
     { Symbol::SEND, "send" },       { Symbol::ASSIGN, "assign" },
     { Symbol::ASSUME, "assume" },   { Symbol::MEMBER, "member" },
-    { Symbol::BIND, "bind" },       { Symbol::NEG, "neg" },
+    { Symbol::BIND, "bind" },       { Symbol::WHILE, "while" },
+    { Symbol::NEG, "neg" },
 
     { Symbol::BYTE, "byte" },       { Symbol::U8, "u1" },
     { Symbol::I8, "i1" },           { Symbol::U16LE, "u2l" },
