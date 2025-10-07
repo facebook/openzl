@@ -175,6 +175,8 @@ typedef struct {
 typedef enum {
     ZL_SDDL_OpCode_die,
     ZL_SDDL_OpCode_expect,
+    ZL_SDDL_OpCode_log,
+
     ZL_SDDL_OpCode_consume,
     ZL_SDDL_OpCode_sizeof,
     ZL_SDDL_OpCode_send,
@@ -297,6 +299,8 @@ static const char* ZL_SDDL_OpCode_toString(ZL_SDDL_OpCode opcode)
             return "die";
         case ZL_SDDL_OpCode_expect:
             return "expect";
+        case ZL_SDDL_OpCode_log:
+            return "log";
         case ZL_SDDL_OpCode_consume:
             return "consume";
         case ZL_SDDL_OpCode_sizeof:
@@ -366,28 +370,28 @@ static const char* ZL_SDDL_ExprType_toString(ZL_SDDL_ExprType type)
 
 static void log_expr(const ZL_SDDL_Expr* const expr)
 {
-    ZL_LOG(ALWAYS,
-           "expr %p: type = %s",
-           expr,
-           ZL_SDDL_ExprType_toString(expr->type));
+    ZL_RLOG(ALWAYS,
+            "Logging value of expr %p:\n  type: %s\n",
+            expr,
+            ZL_SDDL_ExprType_toString(expr->type));
     switch (expr->type) {
         case ZL_SDDL_ExprType_null:
             break;
         case ZL_SDDL_ExprType_op:
-            ZL_LOG(ALWAYS, "op = %s", ZL_SDDL_OpCode_toString(expr->op.op));
+            ZL_RLOG(ALWAYS, "  op: %s\n", ZL_SDDL_OpCode_toString(expr->op.op));
             break;
         case ZL_SDDL_ExprType_num:
-            ZL_LOG(ALWAYS, "val = %lld", (long long)expr->num.val);
+            ZL_RLOG(ALWAYS, "  val: %lld\n", (long long)expr->num.val);
             break;
         case ZL_SDDL_ExprType_field:
             break;
         case ZL_SDDL_ExprType_dest:
             break;
         case ZL_SDDL_ExprType_var:
-            ZL_LOG(ALWAYS,
-                   "name = '%.*s'",
-                   expr->var.name.size,
-                   expr->var.name.data);
+            ZL_RLOG(ALWAYS,
+                    "  name: '%.*s'\n",
+                    expr->var.name.size,
+                    expr->var.name.data);
             break;
         case ZL_SDDL_ExprType_scope:
             break;
@@ -470,6 +474,7 @@ static size_t ZL_SDDL_OpCode_numArgs(const ZL_SDDL_OpCode opcode)
         case ZL_SDDL_OpCode_die:
             return 0;
         case ZL_SDDL_OpCode_expect:
+        case ZL_SDDL_OpCode_log:
         case ZL_SDDL_OpCode_consume:
         case ZL_SDDL_OpCode_sizeof:
             return 1;
@@ -984,6 +989,9 @@ static ZL_Report ZL_SDDL_Program_decodeExprType(
     } else if (StringView_eqCStr(&type_sv, "expect")) {
         expr->type  = ZL_SDDL_ExprType_op;
         expr->op.op = ZL_SDDL_OpCode_expect;
+    } else if (StringView_eqCStr(&type_sv, "log")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_log;
     } else if (StringView_eqCStr(&type_sv, "consume")) {
         expr->type  = ZL_SDDL_ExprType_op;
         expr->op.op = ZL_SDDL_OpCode_consume;
@@ -2440,6 +2448,37 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr_op_inner(
                     0,
                     corruption,
                     "Expect op got 0-valued argument. Failing the parse.");
+            break;
+        }
+        case ZL_SDDL_OpCode_log: {
+            // #ifndef NDEBUG
+
+            log_expr(&args[0]);
+
+            const ZL_RESULT_OF(ZL_SDDL_SourceLocationPrettyString) pstr_res =
+                    ZL_SDDL_SourceLocationPrettyString_create(
+                            ZL_ERR_CTX_PTR,
+                            state->arena,
+                            &state->prog->source_code,
+                            &state->cur_src_loc,
+                            2);
+
+            ZL_ASSERT(
+                    !ZL_RES_isError(pstr_res),
+                    "Error in ZL_SDDL_SourceLocationPrettyString_create(): %s",
+                    ZL_E_str(ZL_RES_error(pstr_res)));
+
+            if (!ZL_RES_isError(pstr_res)) {
+                const ZL_SDDL_SourceLocationPrettyString pstr =
+                        ZL_RES_value(pstr_res);
+                if (pstr.str.data != NULL) {
+                    ZL_RLOG(ALWAYS, "at %.*s", pstr.str.size, pstr.str.data);
+                }
+
+                ZL_SDDL_SourceLocationPrettyString_destroy(state->arena, &pstr);
+            }
+            // #endif
+            result = args[0];
             break;
         }
         case ZL_SDDL_OpCode_consume: {

@@ -55,6 +55,7 @@ ZL_BEGIN_C_DECLS
  * +---------+-----------+
  * | die     | Op        |
  * | expect  | Op        |
+ * | log     | Op        |
  * | consume | Op        |
  * | sizeof  | Op        |
  * | send    | Op        |
@@ -97,6 +98,7 @@ ZL_BEGIN_C_DECLS
  * +---------+------+------+-----+-------+--------
  * | die     | 0    | N    |     |       | Unconditionally fail
  * | expect  | 1    | N    | IV  |       | Fail the parse if arg is 0
+ * | log     | 1    | *    | *   |       | Logs the arg to stderr for debug
  * | consume | 1    | INS  | FV  |       | Consumes a field, see below
  * | sizeof  | 1    | I    | FV  |       | (Recursize) size of given field
  * | send    | 2    | F    | FV  | DV    | New field assoc'ed w/ dest
