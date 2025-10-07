@@ -824,6 +824,18 @@ class NegationRule : public UnaryOpRule {
     }
 };
 
+class PeekRule : public UnaryOpRule {
+   public:
+    explicit PeekRule() : UnaryOpRule(Symbol::MUL, Precedence::UNARY) {}
+
+    ASTPtr do_gen(ASTPtr op, ASTPtr, ASTPtr rhs) const override
+    {
+        ASTVec args{ std::move(rhs) };
+        return std::make_shared<ASTOp>(
+                Token{ some(op).loc(), Symbol::PEEK }, std::move(args));
+    }
+};
+
 class BindRule : public OpRule {
    public:
     explicit BindRule()
@@ -891,6 +903,7 @@ const std::vector<std::unique_ptr<const GrammarRule>> grammar_rules{ []() {
     add_rule<UnaryOpRule>(r, Symbol::LOG);
 
     add_rule<UnaryOpRule>(r, Symbol::CONSUME);
+    add_rule<PeekRule>(r);
     add_rule<UnaryOpRule>(r, Symbol::SIZEOF);
 
     add_rule<WhileRule>(r);

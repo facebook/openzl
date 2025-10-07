@@ -178,6 +178,7 @@ typedef enum {
     ZL_SDDL_OpCode_log,
 
     ZL_SDDL_OpCode_consume,
+    ZL_SDDL_OpCode_peek,
     ZL_SDDL_OpCode_sizeof,
     ZL_SDDL_OpCode_send,
     ZL_SDDL_OpCode_assign,
@@ -305,6 +306,8 @@ static const char* ZL_SDDL_OpCode_toString(ZL_SDDL_OpCode opcode)
             return "log";
         case ZL_SDDL_OpCode_consume:
             return "consume";
+        case ZL_SDDL_OpCode_peek:
+            return "peek";
         case ZL_SDDL_OpCode_sizeof:
             return "sizeof";
         case ZL_SDDL_OpCode_send:
@@ -480,6 +483,7 @@ static size_t ZL_SDDL_OpCode_numArgs(const ZL_SDDL_OpCode opcode)
         case ZL_SDDL_OpCode_expect:
         case ZL_SDDL_OpCode_log:
         case ZL_SDDL_OpCode_consume:
+        case ZL_SDDL_OpCode_peek:
         case ZL_SDDL_OpCode_sizeof:
             return 1;
         case ZL_SDDL_OpCode_send:
@@ -1000,6 +1004,9 @@ static ZL_Report ZL_SDDL_Program_decodeExprType(
     } else if (StringView_eqCStr(&type_sv, "consume")) {
         expr->type  = ZL_SDDL_ExprType_op;
         expr->op.op = ZL_SDDL_OpCode_consume;
+    } else if (StringView_eqCStr(&type_sv, "peek")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_peek;
     } else if (StringView_eqCStr(&type_sv, "sizeof")) {
         expr->type  = ZL_SDDL_ExprType_op;
         expr->op.op = ZL_SDDL_OpCode_sizeof;
@@ -2494,6 +2501,17 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr_op_inner(
                     ZL_SDDL_Expr,
                     result,
                     ZL_SDDL_State_consume(state, &args[0]));
+            break;
+        }
+        case ZL_SDDL_OpCode_peek: {
+            ZL_ERR_IF_NE(args[0].type, ZL_SDDL_ExprType_field, corruption);
+            // TODO: extend peeking to compound types??
+            ZL_ERR_IF_NE(
+                    args[0].field.type, ZL_SDDL_FieldType_atom, corruption);
+            const ZL_SDDL_Field_Atom* const atom = &args[0].field.atom;
+            const size_t width                   = atom->width;
+            ZL_ERR_IF_GT(state->pos + width, state->size, srcSize_tooSmall);
+            result = ZL_SDDL_State_readAtom(state, atom);
             break;
         }
         case ZL_SDDL_OpCode_sizeof: {

@@ -28,6 +28,8 @@ enum class Symbol {
     LOG,
 
     CONSUME,
+    PEEK, // `*` is tokenized as MUL, but the unary form is converted into this
+          // during parsing.
     SIZEOF,
     SEND,
     ASSIGN,

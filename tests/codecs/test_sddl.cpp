@@ -495,6 +495,136 @@ TEST_F(SimpleDataDescriptionLanguageTest, consumeFloats)
     roundtrip(prog, input);
 }
 
+TEST_F(SimpleDataDescriptionLanguageTest, peekVals)
+{
+    const auto prog  = R"(
+        B = Byte
+        I1L = Int8
+        I1B = Int8
+        U1L = UInt8
+        U1B = UInt8
+        I2L = Int16LE
+        I2B = Int16BE
+        U2L = UInt16LE
+        U2B = UInt16BE
+        I4L = Int32LE
+        I4B = Int32BE
+        U4L = UInt32LE
+        U4B = UInt32BE
+        I8L = Int64LE
+        I8B = Int64BE
+        U8L = UInt64LE
+        U8B = UInt64BE
+
+        expect (*B) == 1
+        expect (:B) == 1
+        expect (*B) == 254
+        expect (:B) == 254
+
+        expect (*I1L) == 1
+        expect (:I1L) == 1
+        expect (*I1L) == -2
+        expect (:I1L) == -2
+        expect (*I1B) == 1
+        expect (:I1B) == 1
+        expect (*I1B) == -2
+        expect (:I1B) == -2
+        expect (*U1L) == 1
+        expect (:U1L) == 1
+        expect (*U1L) == 239
+        expect (:U1L) == 239
+        expect (*U1B) == 1
+        expect (:U1B) == 1
+        expect (*U1B) == 239
+        expect (:U1B) == 239
+        expect (*I2L) == 291
+        expect (:I2L) == 291
+        expect (*I2L) == -292
+        expect (:I2L) == -292
+        expect (*I2B) == 291
+        expect (:I2B) == 291
+        expect (*I2B) == -292
+        expect (:I2B) == -292
+        expect (*U2L) == 291
+        expect (:U2L) == 291
+        expect (*U2L) == 61389
+        expect (:U2L) == 61389
+        expect (*U2B) == 291
+        expect (:U2B) == 291
+        expect (*U2B) == 61389
+        expect (:U2B) == 61389
+        expect (*I4L) == 19088743
+        expect (:I4L) == 19088743
+        expect (*I4L) == -19088744
+        expect (:I4L) == -19088744
+        expect (*I4B) == 19088743
+        expect (:I4B) == 19088743
+        expect (*I4B) == -19088744
+        expect (:I4B) == -19088744
+        expect (*U4L) == 19088743
+        expect (:U4L) == 19088743
+        expect (*U4L) == 4023233417
+        expect (:U4L) == 4023233417
+        expect (*U4B) == 19088743
+        expect (:U4B) == 19088743
+        expect (*U4B) == 4023233417
+        expect (:U4B) == 4023233417
+        expect (*I8L) == 81985529216486895
+        expect (:I8L) == 81985529216486895
+        expect (*I8L) == -81985529216486896
+        expect (:I8L) == -81985529216486896
+        expect (*I8B) == 81985529216486895
+        expect (:I8B) == 81985529216486895
+        expect (*I8B) == -81985529216486896
+        expect (:I8B) == -81985529216486896
+        expect (*U8L) == 81985529216486895
+        expect (:U8L) == 81985529216486895
+        expect (*U8L) == 8056283915067138817
+        expect (:U8L) == 8056283915067138817
+        expect (*U8B) == 81985529216486895
+        expect (:U8B) == 81985529216486895
+        expect (*U8B) == 8056283915067138817
+        expect (:U8B) == 8056283915067138817
+    )";
+    const auto input = std::string{
+        "\x01"
+        "\xfe"
+        "\x01"
+        "\xfe"
+        "\x01"
+        "\xfe"
+        "\x01"
+        "\xef"
+        "\x01"
+        "\xef"
+        "\x23\x01"
+        "\xdc\xfe"
+        "\x01\x23"
+        "\xfe\xdc"
+        "\x23\x01"
+        "\xcd\xef"
+        "\x01\x23"
+        "\xef\xcd"
+        "\x67\x45\x23\x01"
+        "\x98\xba\xdc\xfe"
+        "\x01\x23\x45\x67"
+        "\xfe\xdc\xba\x98"
+        "\x67\x45\x23\x01"
+        "\x89\xab\xcd\xef"
+        "\x01\x23\x45\x67"
+        "\xef\xcd\xab\x89"
+        "\xef\xcd\xab\x89\x67\x45\x23\x01"
+        "\x10\x32\x54\x76\x98\xba\xdc\xfe"
+        "\x01\x23\x45\x67\x89\xab\xcd\xef"
+        "\xfe\xdc\xba\x98\x76\x54\x32\x10"
+        "\xef\xcd\xab\x89\x67\x45\x23\x01"
+        "\x01\x23\x45\x67\x89\xab\xcd\x6f"
+        "\x01\x23\x45\x67\x89\xab\xcd\xef"
+        "\x6f\xcd\xab\x89\x67\x45\x23\x01"
+    };
+    roundtrip(prog, input);
+}
+
 TEST_F(SimpleDataDescriptionLanguageTest, arithmetic)
 {
     const auto prog  = R"(

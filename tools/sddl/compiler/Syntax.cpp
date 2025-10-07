@@ -66,6 +66,7 @@ static const std::map<Symbol, SymbolType> sym_types{
     { Symbol::LOG, SymbolType::OPERATOR },
 
     { Symbol::CONSUME, SymbolType::OPERATOR },
+    { Symbol::PEEK, SymbolType::OPERATOR },
     { Symbol::SIZEOF, SymbolType::OPERATOR },
     { Symbol::SEND, SymbolType::OPERATOR },
     { Symbol::ASSIGN, SymbolType::OPERATOR },
@@ -154,6 +155,7 @@ static const std::map<Symbol, poly::string_view> syms_to_debug_strs{
     { Symbol::LOG, "LOG" },
 
     { Symbol::CONSUME, "CONSUME" },
+    { Symbol::CONSUME, "PEEK" },
     { Symbol::SIZEOF, "SIZEOF" },
     { Symbol::SEND, "SEND" },
     { Symbol::ASSIGN, "ASSIGN" },
@@ -293,10 +295,10 @@ const std::vector<std::pair<poly::string_view, Symbol>> strs_to_syms{
 /* These symbols can't actually be accessed via these names. */
 static const std::vector<std::pair<poly::string_view, Symbol>>
         addl_strs_to_syms{
-            { "\\n", Symbol::NL },        { "Atom", Symbol::ATOM },
-            { "Record", Symbol::RECORD }, { "Array", Symbol::ARRAY },
-            { "Dest", Symbol::DEST },     { "bind", Symbol::BIND },
-            { "-", Symbol::NEG },
+            { "\\n", Symbol::NL },      { "*", Symbol::PEEK },
+            { "Atom", Symbol::ATOM },   { "Record", Symbol::RECORD },
+            { "Array", Symbol::ARRAY }, { "Dest", Symbol::DEST },
+            { "bind", Symbol::BIND },   { "-", Symbol::NEG },
         };
 
 static const std::map<Symbol, poly::string_view> syms_to_repr_strs{ []() {
@@ -332,11 +334,11 @@ static const std::map<Symbol, poly::string_view> syms_to_ser_strs{
     { Symbol::DIE, "die" },         { Symbol::EXPECT, "expect" },
     { Symbol::LOG, "log" },
 
-    { Symbol::CONSUME, "consume" }, { Symbol::SIZEOF, "sizeof" },
-    { Symbol::SEND, "send" },       { Symbol::ASSIGN, "assign" },
-    { Symbol::ASSUME, "assume" },   { Symbol::MEMBER, "member" },
-    { Symbol::BIND, "bind" },       { Symbol::WHILE, "while" },
-    { Symbol::NEG, "neg" },
+    { Symbol::CONSUME, "consume" }, { Symbol::PEEK, "peek" },
+    { Symbol::SIZEOF, "sizeof" },   { Symbol::SEND, "send" },
+    { Symbol::ASSIGN, "assign" },   { Symbol::ASSUME, "assume" },
+    { Symbol::MEMBER, "member" },   { Symbol::BIND, "bind" },
+    { Symbol::WHILE, "while" },     { Symbol::NEG, "neg" },
 
     { Symbol::BYTE, "byte" },       { Symbol::U8, "u1" },
     { Symbol::I8, "i1" },           { Symbol::U16LE, "u2l" },
