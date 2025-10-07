@@ -59,7 +59,7 @@ Let's see what happens when we run a compression using the trained graph. In thi
 ```
 The difference is stark. Training is able to net us a 10% ratio win at no other cost. (Technically, if we wanted to be rigorous we should have split our data into train and test directories. But the result is very similar.)
 
-> **Training effectively:** The typical training workflow is to collect a small number of representative samples, train on those samples, and use the trained compressor on the entire dataset. In production settings, data may evolve over time. So it is useful to collect new samples at designated intervals (maybe daily or weekly) and replace the trained compressor with the newly trained one.
+> **Training effectively:** The typical training workflow is to collect a small number of representative samples, train on those samples, and use the trained compressor on the entire dataset. For more details on sizing training inputs, see [training usage](examples/cli/training-usage.md). In production settings, data may evolve over time. So it is useful to collect new samples at designated intervals (maybe daily or weekly) and replace the trained compressor with the newly trained one.
 
 ### Inline Training
 Because the impact of training is so stark, the CLI requires that trainable compressors be trained in some form before using them. The typical way to do this is by first training then compressing with the trained `.zsc` compressor, but **inline training** is also supported.

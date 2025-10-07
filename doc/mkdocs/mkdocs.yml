@@ -28,6 +28,7 @@ nav:
       - CLI:
         - Parquet: getting-started/examples/cli/parquet.md
         - Protobuf: getting-started/examples/cli/protobuf.md
+        - Training usage: getting-started/examples/cli/training-usage.md
     - CLI: getting-started/cli.md
     - Advanced Build Settings: getting-started/advanced-build.md
   - API Reference:
