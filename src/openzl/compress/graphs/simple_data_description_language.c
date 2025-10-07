@@ -2748,6 +2748,9 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr_var(
         return ZL_WRAP_VALUE(ZL_SDDL_Expr_makeNum(
                 (ZL_SDDL_IntT)state->size - (ZL_SDDL_IntT)state->pos));
     }
+    if (StringView_eqCStr(&var->name, "_pos")) {
+        return ZL_WRAP_VALUE(ZL_SDDL_Expr_makeNum((ZL_SDDL_IntT)state->pos));
+    }
 
     return ZL_SDDL_Scope_get(state, scope, var);
 }
