@@ -9,6 +9,7 @@ cpp_library(
     name = "automated_compressor_explorer",
     srcs = [
         "ace.cpp",
+        "ace_combination.cpp",
         "ace_compressor.cpp",
         "ace_compressors.cpp",
         "ace_utils.cpp",
@@ -16,6 +17,7 @@ cpp_library(
     ],
     headers = [
         "ace.h",
+        "ace_combination.h",
         "ace_compressor.h",
         "ace_compressors.h",
         "ace_crossover.h",
