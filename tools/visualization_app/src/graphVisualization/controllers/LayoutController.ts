@@ -45,7 +45,7 @@ export class LayoutController {
     });
 
     const reactFlowEdges: Edge[] = edges.map((edge) => ({
-      id: edge.id,
+      id: edge.rfid,
       source: edge.source.rfid,
       target: edge.target.rfid,
       sourceHandle: 'source',
