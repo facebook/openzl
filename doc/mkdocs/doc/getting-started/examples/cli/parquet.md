@@ -8,7 +8,7 @@ You can use the `make_canonical_parquet` tool from the `tools/parquet` directory
 
 The canonicalization tool takes a dependency on parquet and arrow, and is thus not built by default. You can build the tool by passing the following flag when building the OpenZL library with CMake:
 ```
-cmake -DBUILD_PARQUET_TOOLS=ON
+cmake -DOPENZL_BUILD_PARQUET_TOOLS=ON
 ```
 
 Once built, you can use the tool to convert some input Parquet file or directory into the canonical format.
