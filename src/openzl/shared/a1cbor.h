@@ -220,7 +220,7 @@ void A1C_LimitedArena_reset(A1C_LimitedArena* limitedArena);
 // Decoder
 ////////////////////////////////////////
 
-#define A1C_MAX_DEPTH_DEFAULT 32
+#define A1C_MAX_DEPTH_DEFAULT 128
 
 typedef struct {
     /**
