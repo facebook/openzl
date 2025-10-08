@@ -10,6 +10,8 @@ import {Box} from '@chakra-ui/react/box';
 import {Button} from '@chakra-ui/react/button';
 import {HStack} from '@chakra-ui/react/stack';
 
+const showExpansionButton = false;
+
 interface StreamdumpGraphViewProps {
   nodes: Node[];
   edges: Edge[];
@@ -27,9 +29,6 @@ export function StreamdumpGraphView({
   handleAllStandardGraphsCollapse,
   areStandardGraphsCollapsed,
 }: StreamdumpGraphViewProps) {
-  areStandardGraphsCollapsed as unknown;
-  handleAllStandardGraphsCollapse as unknown;
-
   const [isTrackpadMode, setIsTrackpadMode] = useState<boolean>(false);
   const reactFlowInstance = useReactFlow();
 
@@ -66,9 +65,11 @@ export function StreamdumpGraphView({
               {isTrackpadMode ? 'Switch to Mouse Controls' : 'Switch to Trackpad Controls'}
             </Button>
             {/* TODO: re-enable once expansion is fixed */}
-            {/* <Button onClick={handleAllStandardGraphsCollapse}>
-              {areStandardGraphsCollapsed ? 'Expand all standard graphs' : 'Collapse all standard graphs'}
-            </Button> */}
+            {showExpansionButton && (
+              <Button onClick={handleAllStandardGraphsCollapse}>
+                {areStandardGraphsCollapsed ? 'Expand all standard graphs' : 'Collapse all standard graphs'}
+              </Button>
+            )}
           </HStack>
         </Panel>
       </ReactFlow>

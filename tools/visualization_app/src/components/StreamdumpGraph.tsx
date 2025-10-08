@@ -53,9 +53,9 @@ function NoDataHelper() {
       </Heading>
       <Text className="no-data-helper-text">
         This is on by default for CMake builds.{' '}
-        <b>You do not need to worry about this step if you don't see any errors!</b> If you've disabled introspection in
-        your CMake build, you can re-enable it by adding the following flag to your CMake configure command:{' '}
-        <Code>{`-DOPENZL_ALLOW_INTROSPECTION=ON`}</Code>
+        <b>You do not need to worry about this step if you don&apos;t see any errors!</b> If you&apos;ve disabled
+        introspection in your CMake build, you can re-enable it by adding the following flag to your CMake configure
+        command: <Code>{`-DOPENZL_ALLOW_INTROSPECTION=ON`}</Code>
       </Text>
       <br />
 
@@ -66,7 +66,8 @@ function NoDataHelper() {
         Using the CLI
       </Heading>
       <Text className="no-data-helper-text">
-        Specify the 'trace' option when compressing, and provide a .cbor path to write the trace to. For example:
+        Specify the &lsquo;trace&rsquo; option when compressing, and provide a .cbor path to write the trace to. For
+        example:
       </Text>
       <CodeBlock.Root code={cliInvocation} language={'bash'} display="inline-flex">
         <CodeBlock.Content>
@@ -126,10 +127,10 @@ function NoDataHelper() {
         2. Upload the trace
       </Heading>
       <Text className="no-data-helper-text">
-        Navigate to this website (hooray! you've already done it!) and upload the CBOR file.
+        Navigate to this website (hooray! you&apos;ve already done it!) and upload the CBOR file.
       </Text>
       <Text className="no-data-helper-text" fontWeight="bold">
-        That's it!
+        That&apos;s it!
       </Text>
     </Box>
   );

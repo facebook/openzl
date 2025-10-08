@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-export type SerializedCopyParamInfo = {
+export interface SerializedCopyParamInfo {
   paramId: number;
   paramSize: number;
   paramData: Uint8Array;
-};
+}
