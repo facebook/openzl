@@ -5,7 +5,6 @@ import {ReactFlow, Controls, Background, ConnectionLineType, Panel, useReactFlow
 import type {Node, Edge, NodeChange, EdgeChange} from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {nodeTypes} from './NodeView';
-import {edgeTypes} from './CustomEdge';
 import {Box} from '@chakra-ui/react/box';
 import {Button} from '@chakra-ui/react/button';
 import {HStack} from '@chakra-ui/react/stack';
@@ -44,8 +43,7 @@ export function StreamdumpGraphView({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        connectionLineType={ConnectionLineType.SmoothStep}
+        connectionLineType={ConnectionLineType.SimpleBezier}
         fitView
         minZoom={0.01}
         zoomOnScroll={!isTrackpadMode}

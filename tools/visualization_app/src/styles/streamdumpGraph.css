@@ -86,19 +86,6 @@
   border: 1px solid #fff;
 }
 
-.edge-label {
-  border-style: 'solid';
-  border-color: 'black';
-  border-width: '1px';
-  padding: '5px';
-  color: black;
-  background-color: white;
-  font-size: 20px;
-  text-align: center;
-  /* z-index: 3; */
-  font-weight: bold;
-}
-
 /* Custom styling for graph's control buttons */
 .react-flow__controls-button {
   background-color: #f8f9fa;
