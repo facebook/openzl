@@ -81,6 +81,53 @@ class ACECombinationTest : public testing::Test {
     std::uniform_int_distribution<unsigned> distribution_{ 1, 10000 };
 };
 
+TEST_F(ACECombinationTest, ParetoFrontierFiltersCorrectly)
+{
+    ThreadPool threadPool(1);
+    size_t numCandidates = 1000;
+    std::vector<std::vector<size_t>> fitness;
+    fitness.reserve(numCandidates);
+    for (size_t j = 0; j < numCandidates; ++j) {
+        fitness.push_back(getRandomFitness());
+    }
+    auto candidates = getCandidates("0", fitness);
+    auto frontier   = filterParetoFrontier(std::move(candidates), threadPool);
+    EXPECT_TRUE(isPareto(frontier));
+}
+
+TEST_F(ACECombinationTest, TestCandidatePruning)
+{
+    ThreadPool threadPool(1);
+    size_t numCandidates = 1000;
+    std::vector<std::vector<size_t>> fitness;
+    fitness.reserve(numCandidates);
+    for (size_t j = 0; j < numCandidates; ++j) {
+        fitness.push_back(getRandomFitness());
+    }
+    auto candidates = getCandidates("0", fitness);
+    auto frontier   = filterParetoFrontier(std::move(candidates), threadPool);
+    EXPECT_TRUE(isPareto(frontier));
+    // The filtered pareto frontier can be small so the only guarantee is
+    // returning <= numCandidates
+    auto pruned = pruneCandidates(std::move(frontier), 10);
+    EXPECT_LE(pruned.size(), 10);
+}
+
+TEST_F(ACECombinationTest, TestCandidatePruningWithDuplicateFitness)
+{
+    std::vector<std::vector<size_t>> fitness;
+    fitness.push_back({ 20, 15, 15 });
+    fitness.push_back({ 20, 13, 17 });
+    fitness.push_back({ 25, 15, 10 });
+    fitness.push_back({ 35, 10, 10 });
+    fitness.push_back({ 35, 25, 5 });
+    fitness.push_back({ 45, 12, 6 });
+    auto candidates = getCandidates("0", fitness);
+    EXPECT_TRUE(isPareto(candidates));
+    auto pruned = pruneCandidates(std::move(candidates), 6);
+    EXPECT_EQ(pruned.size(), 6);
+}
+
 TEST_F(ACECombinationTest, CombinationSizeIsLimited)
 {
     setUpRandomFitnessCandidates(10, 40);

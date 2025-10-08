@@ -14,6 +14,7 @@ cpp_library(
         "ace_compressors.cpp",
         "ace_utils.cpp",
         "automated_compressor_explorer.cpp",
+        "crowding_distance_selector.cpp",
     ],
     headers = [
         "ace.h",

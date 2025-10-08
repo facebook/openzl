@@ -21,7 +21,9 @@ std::vector<float> crowdingDistance(
 
     const size_t numDims = fitness[0].size();
     for (size_t dim = 0; dim < numDims; ++dim) {
-        auto metric = [&](size_t idx) { return fitness[subset[idx]][dim]; };
+        auto metric = [&](size_t idx) {
+            return std::make_pair(fitness[subset[idx]][dim], idx);
+        };
 
         detail::sortByKey(indices, metric);
         dist[indices.front()] = std::numeric_limits<float>::infinity();
@@ -30,8 +32,8 @@ std::vector<float> crowdingDistance(
         float minMetric = std::numeric_limits<float>::infinity();
         float maxMetric = -std::numeric_limits<float>::infinity();
         for (auto idx : indices) {
-            minMetric = std::min(minMetric, metric(idx));
-            maxMetric = std::max(maxMetric, metric(idx));
+            minMetric = std::min(minMetric, metric(idx).first);
+            maxMetric = std::max(maxMetric, metric(idx).first);
         }
         const float metricRange = maxMetric - minMetric;
         if (!std::isnormal(metricRange)) {
@@ -40,8 +42,8 @@ std::vector<float> crowdingDistance(
         }
         assert(minMetric <= maxMetric);
         for (size_t i = 1; i < indices.size() - 1; ++i) {
-            const auto prevMetric = metric(indices[i - 1]);
-            const auto nextMetric = metric(indices[i + 1]);
+            const auto prevMetric = metric(indices[i - 1]).first;
+            const auto nextMetric = metric(indices[i + 1]).first;
             assert(nextMetric >= prevMetric);
             dist[indices[i]] += (nextMetric - prevMetric) / metricRange;
         }

@@ -1,9 +1,11 @@
-#include "tools/training/ace/ace_combination.h"
+#include <set>
+
 #include "openzl/zl_reflection.h"
 #include "tools/logger/Logger.h"
+#include "tools/training/ace/ace_combination.h"
+#include "tools/training/ace/crowding_distance_selector.h"
 #include "tools/training/graph_mutation/graph_mutation_utils.h"
 #include "tools/training/utils/genetic_algorithm.h"
-#include "tools/training/utils/thread_pool.h"
 
 namespace openzl::training {
 
@@ -46,67 +48,6 @@ std::shared_ptr<const std::string_view> runReplacements(
 
     return graph_mutation::createSharedStringView(
             std::move(serializedForReplacements));
-}
-
-/** Filters @param candidates down to its Pareto Frontier and returns it.
- */
-std::vector<CandidateSelection> filterParetoFrontier(
-        std::vector<CandidateSelection>&& candidates,
-        ThreadPool& threadPool)
-{
-    // TODO: Filter pareto optimal candidates out in a better way (divide and
-    // conquer is O(n log^2 n) as opposed to the current O(n^2) runtime).
-    std::vector<std::future<bool>> futures;
-    std::vector<CandidateSelection> frontier;
-    futures.reserve(candidates.size());
-    for (size_t i = 0; i < candidates.size(); i++) {
-        auto task = [i, &candidates]() {
-            bool isDominated = false;
-            for (size_t j = 0; j < candidates.size(); j++) {
-                if (candidates[j].dominates(candidates[i])) {
-                    isDominated = true;
-                    break;
-                }
-            }
-            return isDominated;
-        };
-        futures.emplace_back(threadPool.run(task));
-    }
-    for (size_t i = 0; i < candidates.size(); i++) {
-        if (!futures[i].get()) {
-            frontier.emplace_back(std::move(candidates[i]));
-        }
-    }
-    return frontier;
-}
-
-/** Prunes the list of candidates provided in @param candidates based on
- * crowdingDistance and returns it. Picks the  @param numCandidates number of
- * candidates with the highest crowdingDistance.
- */
-std::vector<CandidateSelection> pruneCandidates(
-        std::vector<CandidateSelection>&& candidates,
-        size_t numCandidates)
-{
-    std::vector<std::vector<float>> fitness;
-    std::vector<size_t> indices;
-    fitness.reserve(candidates.size());
-    indices.reserve(candidates.size());
-    size_t candidateIdx = 0;
-    for (const auto& candidate : candidates) {
-        fitness.emplace_back(candidate.fitness());
-        indices.emplace_back(candidateIdx++);
-    }
-    auto crowdingDistances = crowdingDistance(fitness, indices);
-    detail::sortByKey(
-            indices, [&](size_t idx) { return -crowdingDistances[idx]; });
-    numCandidates = std::min(numCandidates, candidates.size());
-    std::vector<CandidateSelection> prunedCandidates;
-    prunedCandidates.reserve(numCandidates);
-    for (size_t i = 0; i < numCandidates; i++) {
-        prunedCandidates.emplace_back(std::move(candidates[indices[i]]));
-    }
-    return prunedCandidates;
 }
 
 /**
@@ -205,6 +146,64 @@ std::shared_ptr<const std::string_view> makeCombinedCompressor(
 }
 } // namespace
 
+/**
+ * Selects the least crowded candidates from the given @param candidates.
+ */
+std::vector<CandidateSelection> pruneCandidates(
+        std::vector<CandidateSelection>&& candidates,
+        size_t numCandidates)
+{
+    // Initialize info
+    std::vector<std::vector<float>> fitness;
+    std::vector<size_t> indices;
+    fitness.reserve(candidates.size());
+    indices.reserve(candidates.size());
+    size_t candidateIdx = 0;
+    for (const auto& candidate : candidates) {
+        fitness.emplace_back(candidate.fitness());
+        indices.emplace_back(candidateIdx++);
+    }
+
+    auto crowdingDistances = crowdingDistance(fitness, indices);
+    std::vector<CandidateSelection> prunedCandidates;
+    prunedCandidates.reserve(numCandidates);
+    for (const auto& index :
+         selectLeastCrowded(fitness, crowdingDistances, numCandidates)) {
+        prunedCandidates.emplace_back(candidates[index]);
+    }
+    return prunedCandidates;
+}
+
+std::vector<CandidateSelection> filterParetoFrontier(
+        std::vector<CandidateSelection>&& candidates,
+        ThreadPool& threadPool)
+{
+    // TODO: Filter pareto optimal candidates out in a better way (divide and
+    // conquer is O(n log^2 n) as opposed to the current O(n^2) runtime).
+    std::vector<std::future<bool>> futures;
+    std::vector<CandidateSelection> frontier;
+    futures.reserve(candidates.size());
+    for (size_t i = 0; i < candidates.size(); i++) {
+        auto task = [i, &candidates]() {
+            bool isDominated = false;
+            for (size_t j = 0; j < candidates.size(); j++) {
+                if (candidates[j].dominates(candidates[i])) {
+                    isDominated = true;
+                    break;
+                }
+            }
+            return isDominated;
+        };
+        futures.emplace_back(threadPool.run(task));
+    }
+    for (size_t i = 0; i < candidates.size(); i++) {
+        if (!futures[i].get()) {
+            frontier.emplace_back(std::move(candidates[i]));
+        }
+    }
+    return frontier;
+}
+
 std::vector<CandidateSelection> combineCandidates(
         const std::vector<std::vector<CandidateSelection>>& candidates,
         const TrainParams& trainParams)
@@ -251,7 +250,6 @@ std::vector<std::shared_ptr<const std::string_view>> getCombinedCompressors(
         candidates.emplace_back(candidatesFromVec(name, subCompressors));
     }
     auto frontier = combineCandidates(candidates, trainParams);
-    /* TODO: Alternative pruning for surfacing candidates to users*/
     frontier = pruneCandidates(std::move(frontier), kNumFinalParetoCandidates);
     std::sort(frontier.begin(), frontier.end());
     std::vector<std::shared_ptr<const std::string_view>> paretoOptimalResults;

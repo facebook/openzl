@@ -4,6 +4,7 @@
 
 #include <functional>
 #include <memory>
+#include <set>
 #include <unordered_map>
 #include <vector>
 
@@ -11,6 +12,7 @@
 
 #include "tools/training/ace/ace_compressor.h"
 #include "tools/training/train_params.h"
+#include "tools/training/utils/thread_pool.h"
 
 namespace openzl::training {
 
@@ -92,7 +94,6 @@ class CandidateSelection {
     // combined compressor is expected to produce
     ACECompressionResult mergedResult_;
 };
-
 /**
  * Takes the Pareto Frontier of solutions for all sub-compressor, and produces a
  * Pareto-optimal vector of solutions for the entire compressor. Returns each
@@ -120,4 +121,17 @@ std::vector<CandidateSelection> combineCandidates(
         const std::vector<std::vector<CandidateSelection>>& candidates,
         const TrainParams& trainParams);
 
+/** Prunes the list of candidates provided in @param candidates based on
+ * crowdingDistance and returns it. Picks the  @param numCandidates number of
+ * candidates and tries to maximize minimum crowding distance.
+ */
+std::vector<CandidateSelection> pruneCandidates(
+        std::vector<CandidateSelection>&& candidates,
+        size_t numCandidates);
+
+/** Filters @param candidates down to its Pareto Frontier and returns it.
+ */
+std::vector<CandidateSelection> filterParetoFrontier(
+        std::vector<CandidateSelection>&& candidates,
+        ThreadPool& threadPool);
 } // namespace openzl::training
