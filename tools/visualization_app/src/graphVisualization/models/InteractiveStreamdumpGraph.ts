@@ -279,44 +279,46 @@ export class InteractiveStreamdumpGraph {
       }
     }
 
-    // temporary filter to de-dup multiple edges
-    const edgeMap = new Map<string, InternalEdge[]>();
-    for (const edge of visibleEdgeSet) {
-      const key = `${edge.source.rfid}-${edge.target.rfid}`;
-      const edges = edgeMap.get(key);
-      if (edges) {
-        edges.push(edge);
-      } else {
-        edgeMap.set(key, [edge]);
+    if (0) {
+      // filter to de-dup multiple edges
+      const edgeMap = new Map<string, InternalEdge[]>();
+      for (const edge of visibleEdgeSet) {
+        const key = `${edge.source.rfid}-${edge.target.rfid}`;
+        const edges = edgeMap.get(key);
+        if (edges) {
+          edges.push(edge);
+        } else {
+          edgeMap.set(key, [edge]);
+        }
       }
-    }
-    const dedupedEdges = [];
-    for (const edges of edgeMap.values()) {
-      if (edges.length === 1) {
-        dedupedEdges.push(edges[0]);
-      } else {
-        const totShare = edges.reduce((acc, item) => acc + item.share, 0);
-        const totCSize = edges.reduce((acc, item) => acc + item.cSize, 0);
-        const coalescedEdge = new InternalEdge(
-          '-' as RF_edgeId,
-          edges[0].streamId,
-          edges[0].type,
-          -1,
-          -1,
-          -1,
-          totCSize,
-          totShare,
-          -1,
-          edges[0].source,
-          edges[0].target,
-        );
-        dedupedEdges.push(coalescedEdge);
+      const dedupedEdges = [];
+      for (const edges of edgeMap.values()) {
+        if (edges.length === 1) {
+          dedupedEdges.push(edges[0]);
+        } else {
+          const totShare = edges.reduce((acc, item) => acc + item.share, 0);
+          const totCSize = edges.reduce((acc, item) => acc + item.cSize, 0);
+          const coalescedEdge = new InternalEdge(
+            '-' as RF_edgeId,
+            edges[0].streamId,
+            edges[0].type,
+            -1,
+            -1,
+            -1,
+            totCSize,
+            totShare,
+            -1,
+            edges[0].source,
+            edges[0].target,
+          );
+          dedupedEdges.push(coalescedEdge);
+        }
       }
     }
 
     console.log(visibleEdgeSet);
     console.log(visibleNodeSet);
-    return {dagOrderedNodes: Array.from(visibleNodeSet), edges: dedupedEdges};
+    return {dagOrderedNodes: Array.from(visibleNodeSet), edges: Array.from(visibleEdgeSet)};
   }
 
   // Function to get descendants of a codec under some defined recursion condition
