@@ -14,7 +14,7 @@ const NODEWIDTH = 180;
 const NODEHEIGHT = 100;
 const DAGRE_NODE_SEPARATION = 300;
 const DAGRE_RANK_SEPARATION = 50;
-const EDGEDIST = 3;
+const EDGEDIST = 1;
 const GRAPH_OFFSET_X = 60;
 const GRAPH_OFFSET_Y = -75;
 
@@ -60,10 +60,7 @@ export class LayoutController {
         target: edge.rfid,
         sourceHandle: 'source',
         targetHandle: 'target',
-        style: {stroke: 'black', strokeWidth: 2},
-        data: {
-          offset: Math.floor(Math.random() * 100) - 50,
-        },
+        style: {strokeWidth: 3},
       });
       reactFlowEdges.push({
         id: `${edge.rfid}-out`,
@@ -71,10 +68,7 @@ export class LayoutController {
         target: edge.target.rfid,
         sourceHandle: 'source',
         targetHandle: 'target',
-        style: {stroke: 'black', strokeWidth: 2},
-        data: {
-          offset: Math.floor(Math.random() * 100) - 50,
-        },
+        style: {strokeWidth: 3},
       });
     });
 

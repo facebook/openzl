@@ -96,7 +96,7 @@ export class InternalEdge {
   streamTypeToString(): string {
     switch (this.type) {
       case ZL_Type.ZL_Type_serial:
-        return 'Serialized';
+        return 'Serial';
       case ZL_Type.ZL_Type_struct:
         return 'Fixed_Width';
       case ZL_Type.ZL_Type_numeric:
@@ -106,13 +106,5 @@ export class InternalEdge {
       default:
         return 'default';
     }
-  }
-
-  genLabel(): string {
-    return (
-      `#${this.outputIdx} (${this.rfid}) | ${this.streamTypeToString()}\n` +
-      `${this.cSize} [${this.share.toFixed(2)}%]\n` +
-      `${this.numElts} [${this.eltWidth}]`
-    );
   }
 }
