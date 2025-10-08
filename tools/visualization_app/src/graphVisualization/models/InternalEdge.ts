@@ -18,9 +18,6 @@ export class InternalEdge {
   readonly share: number;
   readonly contentSize: number;
 
-  // derived properties
-  readonly label: string;
-
   // graph properties
   readonly source: InternalNode;
   readonly target: InternalNode;
@@ -29,7 +26,6 @@ export class InternalEdge {
 
   constructor(
     rfid: RF_edgeId,
-    // stream: Stream,
     streamId: StreamID,
     type: ZL_Type,
     outputIdx: number,
@@ -40,7 +36,6 @@ export class InternalEdge {
     contentSize: number,
     source: InternalNode,
     target: InternalNode,
-    label: string,
   ) {
     this.rfid = rfid;
     this.streamId = streamId;
@@ -54,14 +49,12 @@ export class InternalEdge {
 
     this.source = source;
     this.target = target;
-    this.label = label;
   }
 
   static constructFromStream(
     rfid: RF_edgeId,
     source: InternalNode,
     target: InternalNode,
-    label: string,
     stream: Stream,
   ): InternalEdge {
     return new InternalEdge(
@@ -76,7 +69,6 @@ export class InternalEdge {
       stream.contentSize,
       source,
       target,
-      label,
     );
   }
 
@@ -84,7 +76,6 @@ export class InternalEdge {
     rfid: RF_edgeId,
     source: InternalNode,
     target: InternalNode,
-    label: string,
     edge: InternalEdge,
   ): InternalEdge {
     return new InternalEdge(
@@ -99,7 +90,6 @@ export class InternalEdge {
       edge.contentSize,
       source,
       target,
-      label,
     );
   }
 
@@ -116,5 +106,13 @@ export class InternalEdge {
       default:
         return 'default';
     }
+  }
+
+  genLabel(): string {
+    return (
+      `#${this.outputIdx} (${this.rfid}) | ${this.streamTypeToString()}\n` +
+      `${this.cSize} [${this.share.toFixed(2)}%]\n` +
+      `${this.numElts} [${this.eltWidth}]`
+    );
   }
 }

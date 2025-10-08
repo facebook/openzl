@@ -50,7 +50,7 @@ export class LayoutController {
       target: edge.target.rfid,
       sourceHandle: 'source',
       targetHandle: 'target',
-      label: edge.label,
+      label: edge.genLabel(),
       type: 'custom',
       style: {stroke: 'black', strokeWidth: 2},
       data: {
