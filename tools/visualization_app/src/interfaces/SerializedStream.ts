@@ -2,7 +2,7 @@
 
 import {ZL_Type} from '../models/idTypes';
 
-export type SerializedStream = {
+export interface SerializedStream {
   type: ZL_Type;
   outputIdx: number;
   eltWidth: number;
@@ -10,4 +10,4 @@ export type SerializedStream = {
   cSize: number;
   share: number;
   contentSize: number;
-};
+}

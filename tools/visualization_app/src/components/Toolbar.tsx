@@ -5,9 +5,9 @@ import {Legend} from './Legend';
 import logoUrl from '/OpenZL_logo.png?url';
 import {Box, Flex, HStack, VStack, Heading} from '@chakra-ui/react';
 
-type ToolbarProps = {
+interface ToolbarProps {
   onUploadCborFile: () => void;
-};
+}
 
 interface Props {
   key: string;
@@ -35,7 +35,7 @@ const NavLink = (props: Props) => {
   );
 };
 
-const Toolbar: React.FC<ToolbarProps> = ({onUploadCborFile}) => {
+const Toolbar: React.FC<ToolbarProps> = (props: ToolbarProps) => {
   return (
     <Box bg="#23554a" px={4}>
       <VStack align="left" gap={0}>
@@ -58,7 +58,7 @@ const Toolbar: React.FC<ToolbarProps> = ({onUploadCborFile}) => {
               <NavLink key={link.name} name={link.name} link={link.link} />
             ))}
           </HStack>
-          <Box as="button" className="toolbar-button" onClick={onUploadCborFile}>
+          <Box as="button" className="toolbar-button" onClick={props.onUploadCborFile}>
             <p className="toolbar-button-text">UPLOAD CBOR FILE</p>
           </Box>
         </Flex>
