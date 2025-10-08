@@ -13,9 +13,8 @@ This 15 minute exercise will teach you:
 ## Clone OpenZL
 
 ```sh
-git clone --depth 1 https://github.com/facebook/openzl.git
+git clone --depth 1 -b release https://github.com/facebook/openzl.git
 cd openzl
-git checkout release
 ```
 
 ## Building the OpenZL CLI
@@ -148,7 +147,6 @@ Now train a compressor using the `sra0` sample:
     limit the training time. It currently limits the time spent in each step of
     training, not the total time. But, the trained result may be worse given less
     time to train.
-
 
 The training session will generate some messages on the consoles.
 The last lines should look something like that:
