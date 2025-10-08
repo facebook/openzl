@@ -50,10 +50,10 @@ struct ZL_Output_s {
 // Allocation & lifetime management
 // ================================
 
-ZL_Data* STREAM_createInArena(Arena* a, ZL_DataID id)
+Stream* STREAM_createInArena(Arena* a, ZL_DataID id)
 {
     ZL_ASSERT_NN(a);
-    ZL_Data* const s = ALLOC_Arena_calloc(a, sizeof(*s));
+    Stream* const s = ALLOC_Arena_calloc(a, sizeof(*s));
     if (!s)
         return NULL;
     s->id    = id;
@@ -83,12 +83,12 @@ static Arena kIsolatedStreamAllocator = {
     .free   = isolatedStream_free,
 };
 
-ZL_Data* STREAM_create(ZL_DataID id)
+Stream* STREAM_create(ZL_DataID id)
 {
     return STREAM_createInArena(&kIsolatedStreamAllocator, id);
 }
 
-void STREAM_free(ZL_Data* s)
+void STREAM_free(Stream* s)
 {
     if (s == NULL)
         return;
@@ -107,7 +107,7 @@ void STREAM_free(ZL_Data* s)
  * the main idea is to add Type and other metadata
  * to an existing Stream with a main buffer already allocated */
 ZL_Report STREAM_initWritableStream(
-        ZL_Data* s,
+        Stream* s,
         ZL_Type type,
         size_t eltWidth,
         size_t eltCapacity)
@@ -151,7 +151,7 @@ ZL_Report STREAM_initWritableStream(
     return ZL_returnSuccess();
 }
 
-ZL_Report STREAM_reserveRawBuffer(ZL_Data* s, size_t byteCapacity)
+ZL_Report STREAM_reserveRawBuffer(Stream* s, size_t byteCapacity)
 {
     ZL_ASSERT_NN(s);
     // For the time being, only one allocation is allowed. No resizing.
@@ -174,7 +174,7 @@ ZL_Report STREAM_reserveRawBuffer(ZL_Data* s, size_t byteCapacity)
 }
 
 ZL_Report
-STREAM_reserve(ZL_Data* s, ZL_Type type, size_t eltWidth, size_t eltsCapacity)
+STREAM_reserve(Stream* s, ZL_Type type, size_t eltWidth, size_t eltsCapacity)
 {
     size_t byteCapacity;
     ZL_RET_R_IF(
@@ -191,7 +191,7 @@ STREAM_reserve(ZL_Data* s, ZL_Type type, size_t eltWidth, size_t eltsCapacity)
     return r;
 }
 
-uint32_t* STREAM_reserveStringLens(ZL_Data* stream, size_t nbStrings)
+uint32_t* STREAM_reserveStringLens(Stream* stream, size_t nbStrings)
 {
     ZL_DLOG(SEQ, "STREAM_reserveStringLens (nbStrings=%zu)", nbStrings);
     if (STREAM_type(stream) != ZL_Type_string)
@@ -213,13 +213,13 @@ uint32_t* STREAM_reserveStringLens(ZL_Data* stream, size_t nbStrings)
     return ZL_Refcount_getMut(&stream->stringLens);
 }
 
-uint32_t* ZL_Data_reserveStringLens(ZL_Data* stream, size_t nbStrings)
+uint32_t* ZL_Data_reserveStringLens(Stream* stream, size_t nbStrings)
 {
     return STREAM_reserveStringLens(stream, nbStrings);
 }
 
 ZL_Report
-STREAM_reserveStrings(ZL_Data* s, size_t numStrings, size_t bufferCapacity)
+STREAM_reserveStrings(Stream* s, size_t numStrings, size_t bufferCapacity)
 {
     ZL_RET_R_IF_ERR(STREAM_reserveRawBuffer(s, bufferCapacity));
     ZL_ASSERT_EQ(s->type, 0);
@@ -234,7 +234,7 @@ STREAM_reserveStrings(ZL_Data* s, size_t numStrings, size_t bufferCapacity)
 }
 
 static ZL_Report STREAM_referenceInternal(
-        ZL_Data* s,
+        Stream* s,
         ZL_Type type,
         size_t eltWidth,
         size_t eltCount,
@@ -282,7 +282,7 @@ static ZL_Report STREAM_referenceInternal(
 }
 
 ZL_Report STREAM_refConstBuffer(
-        ZL_Data* s,
+        Stream* s,
         const void* ref,
         ZL_Type type,
         size_t eltWidth,
@@ -298,7 +298,7 @@ ZL_Report STREAM_refConstBuffer(
 }
 
 ZL_Report STREAM_refConstExtString(
-        ZL_Data* s,
+        Stream* s,
         const void* strBuffer,
         size_t bufferSize,
         const uint32_t* strLengths,
@@ -321,7 +321,7 @@ ZL_Report STREAM_refConstExtString(
 }
 
 ZL_Report STREAM_refMutBuffer(
-        ZL_Data* s,
+        Stream* s,
         void* ref,
         ZL_Type type,
         size_t eltWidth,
@@ -340,7 +340,7 @@ ZL_Report STREAM_refMutBuffer(
 }
 
 ZL_Report
-STREAM_refMutStringLens(ZL_Data* s, uint32_t* stringLens, size_t eltsCapacity)
+STREAM_refMutStringLens(Stream* s, uint32_t* stringLens, size_t eltsCapacity)
 {
     ZL_ASSERT_NN(s);
     ZL_RET_R_IF_NE(streamType_incorrect, s->type, ZL_Type_string);
@@ -352,7 +352,7 @@ STREAM_refMutStringLens(ZL_Data* s, uint32_t* stringLens, size_t eltsCapacity)
     return ZL_returnSuccess();
 }
 
-ZL_Report STREAM_refMutRawBuffer(ZL_Data* s, void* rawBuf, size_t bufByteSize)
+ZL_Report STREAM_refMutRawBuffer(Stream* s, void* rawBuf, size_t bufByteSize)
 {
     ZL_DLOG(SEQ, "STREAM_refMutRawBuffer (bufByteSize=%zu)", bufByteSize);
     ZL_ASSERT_NN(s);
@@ -364,7 +364,7 @@ ZL_Report STREAM_refMutRawBuffer(ZL_Data* s, void* rawBuf, size_t bufByteSize)
     return ZL_returnSuccess();
 }
 
-ZL_Report STREAM_refStreamWithoutRefcount(ZL_Data* s, const ZL_Data* ref)
+ZL_Report STREAM_refStreamWithoutRefcount(Stream* s, const Stream* ref)
 {
     ZL_ASSERT_NN(s);
     ZL_ASSERT_NN(ref);
@@ -405,8 +405,8 @@ ZL_Report STREAM_refStreamWithoutRefcount(ZL_Data* s, const ZL_Data* ref)
 }
 
 ZL_Report STREAM_refStreamByteSlice(
-        ZL_Data* dst,
-        const ZL_Data* src,
+        Stream* dst,
+        const Stream* src,
         ZL_Type type,
         size_t offsetBytes,
         size_t eltWidth,
@@ -435,8 +435,8 @@ ZL_Report STREAM_refStreamByteSlice(
  * the entire @p src. The work is to reduce the range to just the wanted slice.
  */
 static ZL_Report STREAM_refStreamStringSlice(
-        ZL_Data* dst,
-        const ZL_Data* src,
+        Stream* dst,
+        const Stream* src,
         size_t startingEltNum,
         size_t numElts)
 {
@@ -469,8 +469,8 @@ static ZL_Report STREAM_refStreamStringSlice(
  * - startingEltNum + numElts <= src.numElts
  */
 ZL_Report STREAM_refStreamSliceWithoutRefCount(
-        ZL_Data* dst,
-        const ZL_Data* src,
+        Stream* dst,
+        const Stream* src,
         size_t startingEltNum,
         size_t numElts)
 {
@@ -505,8 +505,8 @@ ZL_Report STREAM_refStreamSliceWithoutRefCount(
  * - startingEltNum <= src.numElts
  */
 ZL_Report STREAM_refEndStreamWithoutRefCount(
-        ZL_Data* dst,
-        const ZL_Data* src,
+        Stream* dst,
+        const Stream* src,
         size_t startingEltNum)
 {
     ZL_DLOG(SEQ, "STREAM_refStreamFrom (start:%zu)", startingEltNum);
@@ -521,17 +521,17 @@ ZL_Report STREAM_refEndStreamWithoutRefCount(
 // Accessors
 // ================================
 
-ZL_DataID STREAM_id(const ZL_Data* in)
+ZL_DataID STREAM_id(const Stream* in)
 {
     return in->id;
 }
 
-ZL_DataID ZL_Data_id(const ZL_Data* in)
+ZL_DataID ZL_Data_id(const Stream* in)
 {
     return STREAM_id(in);
 }
 
-ZL_Type STREAM_type(const ZL_Data* in)
+ZL_Type STREAM_type(const Stream* in)
 {
     ZL_ASSERT_NN(in);
     ZL_ASSERT(
@@ -541,12 +541,12 @@ ZL_Type STREAM_type(const ZL_Data* in)
     return in->type;
 }
 
-ZL_Type ZL_Data_type(const ZL_Data* in)
+ZL_Type ZL_Data_type(const Stream* in)
 {
     return STREAM_type(in);
 }
 
-size_t STREAM_eltWidth(const ZL_Data* in)
+size_t STREAM_eltWidth(const Stream* in)
 {
     ZL_ASSERT_NN(in);
     if (in->type == ZL_Type_string)
@@ -554,24 +554,24 @@ size_t STREAM_eltWidth(const ZL_Data* in)
     return in->eltWidth;
 }
 
-size_t ZL_Data_eltWidth(const ZL_Data* in)
+size_t ZL_Data_eltWidth(const Stream* in)
 {
     return STREAM_eltWidth(in);
 }
 
-size_t STREAM_eltCapacity(const ZL_Data* in)
+size_t STREAM_eltCapacity(const Stream* in)
 {
     ZL_ASSERT_NN(in);
     return in->eltsCapacity - in->numElts; // remaining capacity
 }
 
-size_t STREAM_byteCapacity(const ZL_Data* in)
+size_t STREAM_byteCapacity(const Stream* in)
 {
     ZL_ASSERT_NN(in);
     return in->bufferCapacity - in->bufferUsed;
 }
 
-static ZL_RBuffer STREAM_lastCommittedStringLens(const ZL_Data* in)
+static ZL_RBuffer STREAM_lastCommittedStringLens(const Stream* in)
 {
     ZL_ASSERT_NN(in);
     ZL_ASSERT(in->writeCommitted);
@@ -589,7 +589,7 @@ static ZL_RBuffer STREAM_lastCommittedStringLens(const ZL_Data* in)
     };
 }
 
-static ZL_RBuffer STREAM_lastCommittedStringContent(const ZL_Data* in)
+static ZL_RBuffer STREAM_lastCommittedStringContent(const Stream* in)
 {
     ZL_ASSERT_NN(in);
     ZL_ASSERT(in->writeCommitted);
@@ -606,7 +606,7 @@ static ZL_RBuffer STREAM_lastCommittedStringContent(const ZL_Data* in)
     };
 }
 
-static ZL_RBuffer STREAM_lastCommittedBufferContent(const ZL_Data* in)
+static ZL_RBuffer STREAM_lastCommittedBufferContent(const Stream* in)
 {
     ZL_DLOG(SEQ, "STREAM_lastCommittedBufferContent");
     ZL_ASSERT_NN(in);
@@ -631,7 +631,7 @@ static ZL_RBuffer STREAM_lastCommittedBufferContent(const ZL_Data* in)
     };
 }
 
-size_t STREAM_numElts(const ZL_Data* in)
+size_t STREAM_numElts(const Stream* in)
 {
     ZL_ASSERT_NN(in);
     if (ZL_Refcount_mutable(&in->buffer))
@@ -639,12 +639,12 @@ size_t STREAM_numElts(const ZL_Data* in)
     return in->numElts;
 }
 
-size_t ZL_Data_numElts(const ZL_Data* in)
+size_t ZL_Data_numElts(const Stream* in)
 {
     return STREAM_numElts(in);
 }
 
-size_t STREAM_byteSize(const ZL_Data* s)
+size_t STREAM_byteSize(const Stream* s)
 {
     ZL_ASSERT_NN(s);
     if (!s->writeCommitted) {
@@ -666,31 +666,31 @@ size_t STREAM_byteSize(const ZL_Data* s)
     return s->bufferUsed;
 }
 
-size_t ZL_Data_contentSize(const ZL_Data* s)
+size_t ZL_Data_contentSize(const Stream* s)
 {
     return STREAM_byteSize(s);
 }
 
-int STREAM_isCommitted(const ZL_Data* s)
+int STREAM_isCommitted(const Stream* s)
 {
     ZL_ASSERT_NN(s);
     ZL_ASSERT(s->writeCommitted == 0 || s->writeCommitted == 1);
     return s->writeCommitted;
 }
 
-const void* STREAM_rPtr(const ZL_Data* in)
+const void* STREAM_rPtr(const Stream* in)
 {
     if (in == NULL || ZL_Refcount_null(&in->buffer))
         return NULL;
     return ZL_Refcount_get(&in->buffer);
 }
 
-const void* ZL_Data_rPtr(const ZL_Data* in)
+const void* ZL_Data_rPtr(const Stream* in)
 {
     return STREAM_rPtr(in);
 }
 
-void* STREAM_wPtr(ZL_Data* s)
+void* STREAM_wPtr(Stream* s)
 {
     if (s == NULL || ZL_Refcount_null(&s->buffer))
         return NULL;
@@ -699,12 +699,12 @@ void* STREAM_wPtr(ZL_Data* s)
     return (char*)basePtr + s->bufferUsed;
 }
 
-void* ZL_Data_wPtr(ZL_Data* s)
+void* ZL_Data_wPtr(Stream* s)
 {
     return STREAM_wPtr(s);
 }
 
-ZL_RBuffer STREAM_getRBuffer(const ZL_Data* s)
+ZL_RBuffer STREAM_getRBuffer(const Stream* s)
 {
     ZL_ASSERT_NN(s);
     size_t const sizeInBytes = STREAM_byteSize(s);
@@ -715,7 +715,7 @@ ZL_RBuffer STREAM_getRBuffer(const ZL_Data* s)
     };
 }
 
-static size_t STREAM_getBufferCapacity(const ZL_Data* s)
+static size_t STREAM_getBufferCapacity(const Stream* s)
 {
     ZL_ASSERT_NN(s);
     if (STREAM_byteCapacity(s)) {
@@ -726,7 +726,7 @@ static size_t STREAM_getBufferCapacity(const ZL_Data* s)
     return s->bufferCapacity - s->bufferUsed;
 }
 
-ZL_WBuffer STREAM_getWBuffer(ZL_Data* s)
+ZL_WBuffer STREAM_getWBuffer(Stream* s)
 {
     ZL_ASSERT_NN(s);
     ZL_ASSERT_NN(STREAM_wPtr(s));
@@ -737,7 +737,7 @@ ZL_WBuffer STREAM_getWBuffer(ZL_Data* s)
 }
 
 ZL_Report STREAM_hashLastCommit_xxh3low32(
-        const ZL_Data* streams[],
+        const Stream* streams[],
         size_t nbStreams,
         unsigned formatVersion)
 {
@@ -787,7 +787,7 @@ ZL_Report STREAM_hashLastCommit_xxh3low32(
 // Actions
 // **********************************
 
-static ZL_Report STREAM_commitStrings(ZL_Data* s, size_t numStrings)
+static ZL_Report STREAM_commitStrings(Stream* s, size_t numStrings)
 {
     ZL_DLOG(SEQ, "STREAM_commitStrings (numStrings=%zu)", numStrings);
     ZL_ASSERT_NN(s);
@@ -814,7 +814,7 @@ static ZL_Report STREAM_commitStrings(ZL_Data* s, size_t numStrings)
     return ZL_returnSuccess();
 }
 
-ZL_Report STREAM_commit(ZL_Data* s, size_t numElts)
+ZL_Report STREAM_commit(Stream* s, size_t numElts)
 {
     ZL_DLOG(SEQ, "STREAM_commit (numElts=%zu)", numElts);
     ZL_ASSERT_NN(s);
@@ -839,12 +839,12 @@ ZL_Report STREAM_commit(ZL_Data* s, size_t numElts)
     return ZL_returnSuccess();
 }
 
-ZL_Report ZL_Data_commit(ZL_Data* s, size_t numElts)
+ZL_Report ZL_Data_commit(Stream* s, size_t numElts)
 {
     return STREAM_commit(s, numElts);
 }
 
-const uint32_t* STREAM_rStringLens(const ZL_Data* stream)
+const uint32_t* STREAM_rStringLens(const Stream* stream)
 {
     ZL_ASSERT_NN(stream);
     if (STREAM_type(stream) != ZL_Type_string) {
@@ -853,12 +853,12 @@ const uint32_t* STREAM_rStringLens(const ZL_Data* stream)
     return ZL_Refcount_get(&stream->stringLens);
 }
 
-const uint32_t* ZL_Data_rStringLens(const ZL_Data* stream)
+const uint32_t* ZL_Data_rStringLens(const Stream* stream)
 {
     return STREAM_rStringLens(stream);
 }
 
-uint32_t* STREAM_wStringLens(ZL_Data* stream)
+uint32_t* STREAM_wStringLens(Stream* stream)
 {
     ZL_ASSERT_NN(stream);
     if (STREAM_type(stream) != ZL_Type_string) {
@@ -877,12 +877,12 @@ uint32_t* STREAM_wStringLens(ZL_Data* stream)
     return (uint32_t*)ZL_Refcount_getMut(&stream->stringLens) + stream->numElts;
 }
 
-uint32_t* ZL_Data_wStringLens(ZL_Data* stream)
+uint32_t* ZL_Data_wStringLens(Stream* stream)
 {
     return STREAM_wStringLens(stream);
 }
 
-void STREAM_clear(ZL_Data* s)
+void STREAM_clear(Stream* s)
 {
     ZL_ASSERT_NN(s);
     s->writeCommitted = 0;
@@ -893,7 +893,7 @@ void STREAM_clear(ZL_Data* s)
 
 /* Only works for elts of fixed width */
 static ZL_Report STREAM_addElts(
-        ZL_Data* dst,
+        Stream* dst,
         const void* eltBuffer,
         size_t numElts,
         size_t eltWidth)
@@ -921,7 +921,7 @@ static ZL_Report STREAM_addElts(
 }
 
 /* append variant dedicated to String Type */
-static ZL_Report STREAM_appendStrings(ZL_Data* dst, const ZL_Data* src)
+static ZL_Report STREAM_appendStrings(Stream* dst, const Stream* src)
 {
     ZL_ASSERT_NN(dst);
     ZL_ASSERT_NN(src);
@@ -942,7 +942,7 @@ static ZL_Report STREAM_appendStrings(ZL_Data* dst, const ZL_Data* src)
     return STREAM_commit(dst, numStrings);
 }
 
-ZL_Report STREAM_append(ZL_Data* dst, const ZL_Data* src)
+ZL_Report STREAM_append(Stream* dst, const Stream* src)
 {
     ZL_ASSERT_NN(src);
     ZL_DLOG(SEQ, "STREAM_append (numElts=%zu)", STREAM_numElts(src));
@@ -961,7 +961,7 @@ ZL_Report STREAM_append(ZL_Data* dst, const ZL_Data* src)
             dst, STREAM_rPtr(src), STREAM_numElts(src), STREAM_eltWidth(src));
 }
 
-ZL_Report STREAM_copyBytes(ZL_Data* dst, const ZL_Data* src, size_t size)
+ZL_Report STREAM_copyBytes(Stream* dst, const Stream* src, size_t size)
 {
     ZL_DLOG(BLOCK, "STREAM_copyBytes (%zu bytes)", size);
     ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
@@ -979,7 +979,7 @@ ZL_Report STREAM_copyBytes(ZL_Data* dst, const ZL_Data* src, size_t size)
     return STREAM_addElts(dst, STREAM_rPtr(src), numElts, eltWidth);
 }
 
-ZL_Report STREAM_copyStringStream(ZL_Data* dst, const ZL_Data* src)
+ZL_Report STREAM_copyStringStream(Stream* dst, const Stream* src)
 {
     ZL_ASSERT_NN(dst);
     ZL_ASSERT_NN(src);
@@ -1000,7 +1000,7 @@ ZL_Report STREAM_copyStringStream(ZL_Data* dst, const ZL_Data* src)
     return ZL_returnValue(stringsTotalSize);
 }
 
-static ZL_Report STREAM_copyIntMetas(ZL_Data* dst, const ZL_Data* src)
+static ZL_Report STREAM_copyIntMetas(Stream* dst, const Stream* src)
 {
     ZL_ASSERT_NN(dst);
     ZL_ASSERT_NN(src);
@@ -1018,7 +1018,7 @@ static ZL_Report STREAM_copyIntMetas(ZL_Data* dst, const ZL_Data* src)
     return ZL_returnSuccess();
 }
 
-ZL_Report STREAM_copy(ZL_Data* dst, const ZL_Data* src)
+ZL_Report STREAM_copy(Stream* dst, const Stream* src)
 {
     ZL_ASSERT(!STREAM_hasBuffer(dst));
     ZL_ASSERT(src->writeCommitted);
@@ -1038,7 +1038,7 @@ ZL_Report STREAM_copy(ZL_Data* dst, const ZL_Data* src)
 
 // data must be valid
 // numElts must be <= numElts(data)
-static ZL_Report STREAM_consumeStrings(ZL_Data* data, size_t numElts)
+static ZL_Report STREAM_consumeStrings(Stream* data, size_t numElts)
 {
     ZL_ASSERT_NN(data);
     ZL_ASSERT_LE(numElts, STREAM_numElts(data));
@@ -1048,7 +1048,7 @@ static ZL_Report STREAM_consumeStrings(ZL_Data* data, size_t numElts)
 
 // data must be valid
 // numElts must be <= numElts(data)
-ZL_Report STREAM_consume(ZL_Data* data, size_t numElts)
+ZL_Report STREAM_consume(Stream* data, size_t numElts)
 {
     ZL_ASSERT_NN(data);
     ZL_ASSERT_EQ(data->writeCommitted, 1);
@@ -1079,7 +1079,7 @@ static int findIntMeta(VECTOR(IntMeta) m, int id)
     return -1;
 }
 
-ZL_Report STREAM_setIntMetadata(ZL_Data* s, int mId, int mValue)
+ZL_Report STREAM_setIntMetadata(Stream* s, int mId, int mValue)
 {
     ZL_ASSERT_NN(s);
     // Currently forbids setting same metadata ID multiple times
@@ -1094,13 +1094,13 @@ ZL_Report STREAM_setIntMetadata(ZL_Data* s, int mId, int mValue)
     return ZL_returnSuccess();
 }
 
-ZL_Report ZL_Data_setIntMetadata(ZL_Data* s, int mId, int mValue)
+ZL_Report ZL_Data_setIntMetadata(Stream* s, int mId, int mValue)
 {
     return STREAM_setIntMetadata(s, mId, mValue);
 }
 
 #define ZS2_INTMETADATA_NOT_PRESENT (-1)
-ZL_IntMetadata STREAM_getIntMetadata(const ZL_Data* s, int mId)
+ZL_IntMetadata STREAM_getIntMetadata(const Stream* s, int mId)
 {
     ZL_ASSERT_NN(s);
     int const idx = findIntMeta(s->intMetas, mId);
@@ -1115,12 +1115,12 @@ ZL_IntMetadata STREAM_getIntMetadata(const ZL_Data* s, int mId)
     };
 }
 
-ZL_IntMetadata ZL_Data_getIntMetadata(const ZL_Data* s, int mId)
+ZL_IntMetadata ZL_Data_getIntMetadata(const Stream* s, int mId)
 {
     return STREAM_getIntMetadata(s, mId);
 }
 
-int STREAM_hasBuffer(const ZL_Data* s)
+int STREAM_hasBuffer(const Stream* s)
 {
     return !ZL_Refcount_null(&s->buffer);
 }
@@ -1145,7 +1145,7 @@ ZL_TypedBuffer* ZL_TypedBuffer_createWrapString(
         uint32_t* lenBuffer,
         size_t maxNumStrings)
 {
-    ZL_Data* const stream = STREAM_create(ZL_DATA_ID_INPUTSTREAM);
+    Stream* const stream = STREAM_create(ZL_DATA_ID_INPUTSTREAM);
     if (stream == NULL)
         return NULL;
     ZL_ASSERT(ZL_Refcount_null(&stream->buffer));
@@ -1169,7 +1169,7 @@ ZL_TypedBuffer* ZL_TypedBuffer_createWrapString(
 static ZL_TypedBuffer*
 ZL_wrapGeneric(ZL_Type type, size_t eltWidth, size_t numElts, void* src)
 {
-    ZL_Data* const stream = STREAM_create(ZL_DATA_ID_INPUTSTREAM);
+    Stream* const stream = STREAM_create(ZL_DATA_ID_INPUTSTREAM);
     if (stream == NULL)
         return NULL;
     ZL_Report ret = STREAM_refMutBuffer(stream, src, type, eltWidth, numElts);
