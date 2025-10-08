@@ -141,11 +141,21 @@ ZL_Report STREAM_refConstExtString(
         size_t nbStrings);
 
 // Accessors
+ZL_DataID STREAM_id(const ZL_Data* s);
+ZL_Type STREAM_type(const ZL_Data* s);
+size_t STREAM_numElts(const ZL_Data* s);
+size_t STREAM_eltWidth(const ZL_Data* s);
 int STREAM_hasBuffer(const ZL_Data* s);
 size_t STREAM_byteSize(const ZL_Data* s);
+const void* STREAM_rPtr(const ZL_Data* s);
+void* STREAM_wPtr(ZL_Data* s);
+const uint32_t* STREAM_rStringLens(const ZL_Data* s);
+uint32_t* STREAM_wStringLens(ZL_Data* s);
+uint32_t* STREAM_reserveStringLens(ZL_Data* s, size_t nbStrings);
 ZL_RBuffer STREAM_getRBuffer(const ZL_Data* s);
 ZL_WBuffer STREAM_getWBuffer(ZL_Data* s);
 int STREAM_isCommitted(const ZL_Data* s);
+ZL_Report STREAM_commit(ZL_Data* s, size_t numElts);
 
 // Request capacity in nb of elts
 // Note: String type can't get capacity of its primary buffer size this way
@@ -153,6 +163,9 @@ size_t STREAM_eltCapacity(const ZL_Data* s);
 
 // Request capacity of primary buffer in bytes
 size_t STREAM_byteCapacity(const ZL_Data* s);
+
+ZL_Report STREAM_setIntMetadata(ZL_Data* s, int mId, int mValue);
+ZL_IntMetadata STREAM_getIntMetadata(const ZL_Data* s, int mId);
 
 // Hash the content of all streams provided in @streams.
 // Only makes sense if all streams have already been committed.
