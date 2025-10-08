@@ -6,6 +6,7 @@ import {InternalCodecNode} from '../models/InternalCodecNode';
 import {InternalGraphNode} from '../models/InternalGraphNode';
 import {InternalEdge} from '../models/InternalEdge';
 import type {InternalNode} from '../models/InternalNode';
+import {NodeType} from '../models/types';
 
 // Values useful for dagre laying out the graph.
 // IMPORTANT: These values are not the final values used for sizing of nodes, this happens from the css definitions
@@ -44,19 +45,38 @@ export class LayoutController {
       }
     });
 
-    const reactFlowEdges: Edge[] = edges.map((edge) => ({
-      id: edge.rfid,
-      source: edge.source.rfid,
-      target: edge.target.rfid,
-      sourceHandle: 'source',
-      targetHandle: 'target',
-      label: edge.genLabel(),
-      type: 'custom',
-      style: {stroke: 'black', strokeWidth: 2},
-      data: {
-        offset: Math.floor(Math.random() * 100) - 50,
-      },
-    }));
+    // Edges are also displayed as React Flow nodes, so they can be properly spaced
+    const reactFlowEdges: Edge[] = [];
+    edges.forEach((edge) => {
+      reactFlowNodes.push({
+        id: edge.rfid,
+        type: NodeType.Edge,
+        position: {x: 0, y: 0}, // Default position, will be updated by layout
+        data: {internalNode: edge},
+      });
+      reactFlowEdges.push({
+        id: `${edge.rfid}-in`,
+        source: edge.source.rfid,
+        target: edge.rfid,
+        sourceHandle: 'source',
+        targetHandle: 'target',
+        style: {stroke: 'black', strokeWidth: 2},
+        data: {
+          offset: Math.floor(Math.random() * 100) - 50,
+        },
+      });
+      reactFlowEdges.push({
+        id: `${edge.rfid}-out`,
+        source: edge.rfid,
+        target: edge.target.rfid,
+        sourceHandle: 'source',
+        targetHandle: 'target',
+        style: {stroke: 'black', strokeWidth: 2},
+        data: {
+          offset: Math.floor(Math.random() * 100) - 50,
+        },
+      });
+    });
 
     return {nodes: reactFlowNodes, edges: reactFlowEdges};
   }
@@ -84,14 +104,16 @@ export class LayoutController {
         else {
           dagreGraph.setNode(node.id, {width: undefined, height: undefined});
         }
-      } else {
-        console.assert(node.data.internalNode instanceof InternalCodecNode);
+      } else if (node.data.internalNode instanceof InternalCodecNode) {
         dagreGraph.setNode(node.id, {width: NODEWIDTH, height: NODEHEIGHT});
         const internalNode = node.data.internalNode as InternalCodecNode;
 
         if (internalNode.parentGraph != null && dagreGraph.hasNode(internalNode.parentGraph.rfid)) {
           dagreGraph.setParent(node.id, internalNode.parentGraph.rfid);
         }
+      } else {
+        console.assert(node.data.internalNode instanceof InternalEdge);
+        dagreGraph.setNode(node.id, {width: NODEWIDTH, height: NODEHEIGHT});
       }
     });
 
@@ -137,14 +159,23 @@ export class LayoutController {
             },
           };
         }
-      } else {
-        console.assert(node.data.internalNode instanceof InternalCodecNode);
+      } else if (node.data.internalNode instanceof InternalCodecNode) {
         const nodeWithPosition = dagreGraph.node(node.id);
         return {
           ...node,
           position: {
             x: nodeWithPosition.x - nodeWithPosition.width / 2,
             y: nodeWithPosition.y - nodeWithPosition.height / 2,
+          },
+        };
+      } else {
+        console.assert(node.data.internalNode instanceof InternalEdge);
+        const edgeWithPosition = dagreGraph.node(node.id);
+        return {
+          ...node,
+          position: {
+            x: edgeWithPosition.x - edgeWithPosition.width / 2,
+            y: edgeWithPosition.y - edgeWithPosition.height / 2,
           },
         };
       }
