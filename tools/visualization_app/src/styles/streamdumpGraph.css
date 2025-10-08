@@ -87,13 +87,15 @@
 }
 
 .edge-label {
-  position: absolute;
+  border-style: 'solid';
+  border-color: 'black';
+  border-width: '1px';
+  padding: '5px';
   color: black;
   background-color: white;
   font-size: 20px;
-  white-space: pre-line; /* Allow line breaks for multi-line labels */
   text-align: center;
-  z-index: 3;
+  /* z-index: 3; */
   font-weight: bold;
 }
 
