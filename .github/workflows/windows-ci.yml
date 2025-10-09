@@ -132,7 +132,7 @@ jobs:
         working-directory: ${{github.workspace}}/build
         run: |
           echo "=== Building with clang-cl ==="
-          cmake --build . --config ${{ matrix.config }} --target openzl --verbose
+          cmake --build . --config ${{ matrix.config }} --target ALL_BUILD --verbose
           echo "=== Build completed ==="
         shell: cmd
 
