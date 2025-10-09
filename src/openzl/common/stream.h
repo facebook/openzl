@@ -69,6 +69,9 @@ STREAM_reserve(Stream* s, ZL_Type type, size_t eltWidth, size_t eltCount);
 /** Allocate a raw buffer to be typed later. */
 ZL_Report STREAM_reserveRawBuffer(Stream* s, size_t byteCapacity);
 
+/* ========================================================= */
+/* Read-only references and type tagging to external buffers */
+
 /**
  * References the contents of @p src into @p dst as a read-only reference.
  * All original properties (type, size, metadata) are referenced.
@@ -123,6 +126,9 @@ ZL_Report STREAM_refConstBuffer(
         size_t eltWidth,
         size_t eltCount);
 
+/* ====================================================================== */
+/* Writable references: attach to external buffers or type owned storage. */
+
 /**
  * Initialize a new stream as a writable reference into an externally owned
  * buffer and set its type.
@@ -156,7 +162,8 @@ ZL_Report STREAM_initWritableStream(
         size_t eltWidth,
         size_t eltCapacity);
 
-/* String helpers: utilities dedicated to ZL_Type_string streams. */
+/* =================================================================== */
+/* String type helpers: utilities dedicated to ZL_Type_string streams. */
 
 /** Allocate internal buffers specifically for string streams. */
 ZL_Report
