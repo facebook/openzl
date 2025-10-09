@@ -1,6 +1,8 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "tools/io/InputSet.h"
+#include <stdexcept>
+
 
 namespace openzl::tools::io {
 

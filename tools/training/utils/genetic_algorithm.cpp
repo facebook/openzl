@@ -1,5 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+#include <numeric>
+
 #include "tools/training/utils/genetic_algorithm.h"
 
 namespace openzl {

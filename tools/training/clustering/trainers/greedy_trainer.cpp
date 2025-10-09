@@ -3,6 +3,7 @@
 #include "tools/training/clustering/trainers/greedy_trainer.h"
 
 #include <algorithm>
+#include <chrono>
 #include "tools/logger/Logger.h"
 
 #include "tools/training/clustering/clustering_config_builder.h"
