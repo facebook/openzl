@@ -2,9 +2,9 @@
 
 #include <chrono>
 
-#include "tools/training/clustering/trainers/bottom_up_trainer.h"
 #include "tools/logger/Logger.h"
 #include "tools/training/clustering/clustering_config_builder.h"
+#include "tools/training/clustering/trainers/bottom_up_trainer.h"
 
 namespace openzl::training {
 

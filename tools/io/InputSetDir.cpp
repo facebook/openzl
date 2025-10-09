@@ -5,7 +5,6 @@
 #include <filesystem>
 #include <stdexcept>
 
-
 #include "tools/io/InputFile.h"
 
 namespace openzl::tools::io {

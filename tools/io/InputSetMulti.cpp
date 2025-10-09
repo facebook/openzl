@@ -3,7 +3,6 @@
 #include "tools/io/InputSetMulti.h"
 #include <stdexcept>
 
-
 namespace openzl::tools::io {
 
 class InputSetMulti::IteratorStateMulti : public InputSet::IteratorState {
