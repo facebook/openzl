@@ -6,13 +6,16 @@ import sys
 from typing import Dict
 
 from .base_dataset_builder import BaseDatasetBuilder
+from .dataset_builders import BinanceDatasetBuilder
 
 
 class DatasetManager:
     """Central manager for dataset downloading and catalog generation"""
 
     def __init__(self) -> None:
-        self.available_datasets: Dict[str, BaseDatasetBuilder] = {}
+        self.available_datasets: Dict[str, BaseDatasetBuilder] = {
+            "binance": BinanceDatasetBuilder()
+        }
 
     def list_datasets(self) -> None:
         """List all available datasets"""

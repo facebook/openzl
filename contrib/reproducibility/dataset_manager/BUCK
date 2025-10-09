@@ -17,6 +17,7 @@ python_binary(
     typing = True,
     deps = [
         ":base_dataset_builder",
+        "//data_compression/experimental/zstrong/contrib/reproducibility/dataset_manager/dataset_builders:__init__",
     ],
 )
 
