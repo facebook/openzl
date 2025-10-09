@@ -15,6 +15,14 @@
 ZL_BEGIN_C_DECLS
 
 /**
+ * Convenience typedefs so downstream units can use VECTOR_POINTERS(ZL_Data) or
+ * VECTOR_CONST_POINTERS(ZL_Data) without redeclaring them. These do not expose
+ * additional Stream functionality.
+ */
+DECLARE_VECTOR_POINTERS_TYPE(ZL_Data)
+DECLARE_VECTOR_CONST_POINTERS_TYPE(ZL_Data)
+
+/**
  * Internal Stream interface.
  *
  * Public callers should continue to rely on the ZL_Data_* façade declared in
@@ -41,9 +49,6 @@ ZL_BEGIN_C_DECLS
  *   - Reserve lengths with STREAM_reserveStrings()/STREAM_reserveStringLens()
  *   - Attach external length arrays via STREAM_refMutStringLens()
  */
-
-DECLARE_VECTOR_POINTERS_TYPE(ZL_Data)
-DECLARE_VECTOR_CONST_POINTERS_TYPE(ZL_Data)
 
 Stream* STREAM_create(ZL_DataID id);
 Stream* STREAM_createInArena(Arena* a, ZL_DataID id);
