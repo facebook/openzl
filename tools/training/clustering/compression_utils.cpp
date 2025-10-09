@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include "openzl/common/a1cbor_helpers.h"
 #include "openzl/common/allocation.h"
+#include <future>
 
 #include "openzl/common/operation_context.h"
 #include "openzl/cpp/CCtx.hpp"
@@ -197,10 +198,14 @@ std::future<SizeTimePair> CompressionUtils::tryCompress(
         };
         futures.emplace_back(threadPool_->run(task, configPtr, funcPtr));
     }
-    return threadPool_->run([futures = std::move(futures)]() mutable {
+    // Make the lambda copyable for MSVC's packaged_task by capturing a shared_ptr:
+    auto futures_ptr =
+        std::make_shared<std::vector<std::future<SizeTimePair>>>(std::move(futures));
+
+    return threadPool_->run([futures_ptr]() {
         SizeTimePair result{};
-        for (auto& future : futures) {
-            result = result + future.get();
+        for (auto& fut : *futures_ptr) {
+            result = result + fut.get();
         }
         return result;
     });

@@ -5,9 +5,13 @@
 #include <condition_variable>
 #include <functional>
 #include <future>
+#include <tuple>
+#include <type_traits>
+#include <utility>
 #include <queue>
 #include <thread>
 #include <vector>
+#include <mutex>
 
 namespace openzl::training {
 class ThreadPool {
@@ -33,21 +37,27 @@ class ThreadPool {
      * @return std::future<ReturnType> A future object that holds the result of
      * the task.
      */
-    template <typename Func, typename... Args>
-    auto run(Func&& func, Args&&... args)
-            -> std::future<decltype(func(args...))>
-    {
-        using ReturnType = decltype(func(args...));
-        auto task =
-                std::make_shared<std::packaged_task<ReturnType()>>(std::bind(
-                        std::forward<Func>(func), std::forward<Args>(args)...));
-        std::future<ReturnType> result = task->get_future();
+     template <class F, class... Args>
+    auto run(F&& f, Args&&... args)
+        -> std::future<std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>> {
+        using ReturnType = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
+        using Task = std::packaged_task<ReturnType()>;
+
+        // Capture callable + args by MOVE into a tuple (no copies of move-only types).
+        auto bound = [fn = std::forward<F>(f),
+                    tup = std::make_tuple(std::forward<Args>(args)...)]() mutable -> ReturnType {
+            return std::apply(fn, tup);
+        };
+
+        auto task = std::make_shared<Task>(std::move(bound));
+        auto fut  = task->get_future();
+
         {
-            std::lock_guard<std::mutex> lock(queueMutex_);
-            taskQueue_.emplace([task]() { (*task)(); });
+            std::lock_guard<std::mutex> lock(queueMutex_);   // correct name
+            taskQueue_.emplace([task]() mutable { (*task)(); }); // correct name
         }
-        condition_.notify_one();
-        return result;
+        condition_.notify_one();  // correct name
+        return fut;
     }
 
     const size_t numThreads;
