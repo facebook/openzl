@@ -56,10 +56,6 @@ STREAM_reserve(Stream* s, ZL_Type type, size_t eltWidth, size_t eltCount);
 /** Allocate a raw buffer to be typed later. */
 ZL_Report STREAM_reserveRawBuffer(Stream* s, size_t byteCapacity);
 
-/** Allocate internal buffers specifically for string streams. */
-ZL_Report
-STREAM_reserveStrings(Stream* s, size_t numStrings, size_t bufferCapacity);
-
 /**
  * References the contents of @p src into @p dst as a read-only reference.
  * All original properties (type, size, metadata) are referenced.
@@ -127,16 +123,6 @@ ZL_Report STREAM_refMutBuffer(
         size_t eltCapacity);
 
 /**
- * Complete an existing string stream by attaching a buffer that stores string
- * lengths.
- * The stream must already be initialized and typed, but must not yet have a
- * lengths buffer.
- * Typically used for the last decompression stream (write output).
- */
-ZL_Report
-STREAM_refMutStringLens(Stream* s, uint32_t* stringLens, size_t eltsCapacity);
-
-/**
  * Initialize a new stream as a writable reference into an externally owned
  * buffer without yet setting its type.
  * The buffer will be typed later, once the output type is known, using
@@ -158,6 +144,16 @@ ZL_Report STREAM_initWritableStream(
         size_t eltCapacity);
 
 /**
+ * @name String helpers
+ * Utilities dedicated to streams of type ZL_Type_string.
+ * @{
+ */
+
+/** Allocate internal buffers specifically for string streams. */
+ZL_Report
+STREAM_reserveStrings(Stream* s, size_t numStrings, size_t bufferCapacity);
+
+/**
  * Initialize a new stream as a read-only reference into externally owned
  * buffers representing strings in flat format.
  * Typically used for the first stream (read input).
@@ -170,10 +166,31 @@ ZL_Report STREAM_refConstExtString(
         size_t nbStrings);
 
 /**
+ * Complete an existing string stream by attaching a buffer that stores string
+ * lengths.
+ * The stream must already be initialized and typed, but must not yet have a
+ * lengths buffer.
+ * Typically used for the last decompression stream (write output).
+ */
+ZL_Report
+STREAM_refMutStringLens(Stream* s, uint32_t* stringLens, size_t eltsCapacity);
+
+/** Read-only access to the string length array. */
+const uint32_t* STREAM_rStringLens(const Stream* s);
+
+/** Mutable access to the string length array. */
+uint32_t* STREAM_wStringLens(Stream* s);
+
+/** Reserve space for @p nbStrings string length entries. */
+uint32_t* STREAM_reserveStringLens(Stream* s, size_t nbStrings);
+
+/** @} */
+
+/**
  * @name Accessors
  * Helpers expect a fully initialized stream unless noted otherwise.
- * Writable accessors (STREAM_wPtr / STREAM_wStringLens) require a mutable
- * buffer and an uncommitted stream.
+ * Writable accessors (for example STREAM_wPtr) require a mutable buffer and an
+ * uncommitted stream.
  * @{
  */
 ZL_DataID STREAM_id(const Stream* s);
@@ -184,9 +201,6 @@ int STREAM_hasBuffer(const Stream* s);
 size_t STREAM_byteSize(const Stream* s);
 const void* STREAM_rPtr(const Stream* s);
 void* STREAM_wPtr(Stream* s);
-const uint32_t* STREAM_rStringLens(const Stream* s);
-uint32_t* STREAM_wStringLens(Stream* s);
-uint32_t* STREAM_reserveStringLens(Stream* s, size_t nbStrings);
 ZL_RBuffer STREAM_getRBuffer(const Stream* s);
 ZL_WBuffer STREAM_getWBuffer(Stream* s);
 int STREAM_isCommitted(const Stream* s);
