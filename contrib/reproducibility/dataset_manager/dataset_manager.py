@@ -6,7 +6,7 @@ import sys
 from typing import Dict
 
 from .base_dataset_builder import BaseDatasetBuilder
-from .dataset_builders import BinanceDatasetBuilder
+from .dataset_builders import BinanceDatasetBuilder, ERA5DatasetBuilder
 
 
 class DatasetManager:
@@ -14,7 +14,8 @@ class DatasetManager:
 
     def __init__(self) -> None:
         self.available_datasets: Dict[str, BaseDatasetBuilder] = {
-            "binance": BinanceDatasetBuilder()
+            "binance": BinanceDatasetBuilder(),
+            "era5": ERA5DatasetBuilder(),
         }
 
     def list_datasets(self) -> None:
