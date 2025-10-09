@@ -11,5 +11,6 @@ python_library(
         "//data_compression/experimental/zstrong/contrib/reproducibility/dataset_manager/dataset_builders/era5:__init___py_lib",
         "//data_compression/experimental/zstrong/contrib/reproducibility/dataset_manager/dataset_builders/ppmf:__init___py_lib",
         "//data_compression/experimental/zstrong/contrib/reproducibility/dataset_manager/dataset_builders/psam:__init___py_lib",
+        "//data_compression/experimental/zstrong/contrib/reproducibility/dataset_manager/dataset_builders/rea6:__init___py_lib",
     ],
 )

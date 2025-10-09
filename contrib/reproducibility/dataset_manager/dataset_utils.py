@@ -46,7 +46,6 @@ class DownloadUtils:
             if output_path.endswith("grib"):
                 if DownloadUtils.grib_to_bin(
                     output_path,
-                    output_dir,
                     (
                         simplified_names
                         if simplified_names is not None
@@ -55,6 +54,8 @@ class DownloadUtils:
                     max_bands,
                 ):
                     os.remove(output_path)
+            else:
+                return False
         except Exception as e:
             if "incomplete configuration file" in str(e):
                 print(f"Please make sure to set up CDS api key - {e}")
@@ -199,6 +200,8 @@ class DownloadUtils:
 
             if DownloadUtils.extract_data(output_path, output_dir):
                 os.remove(output_path)
+            else:
+                success = False
 
         return success
 
@@ -286,18 +289,26 @@ class DownloadUtils:
                 print(f"Extracting bin from {os.path.basename(filepath)}")
 
                 # decompress to .grb
-                temp_grb_file = filepath.replace(".bz2", "")
+                temp_grb_file = os.path.join(
+                    # Move two files up since grib_to_bin creates nested folders
+                    os.path.dirname(os.path.dirname(filepath)),
+                    os.path.basename(filepath).replace(".bz2", ""),
+                )
+
                 with bz2.open(filepath, "rb") as f_in, open(
                     temp_grb_file, "wb"
                 ) as f_out:
                     f_out.write(f_in.read())
 
                 # convert to .bin
-                DownloadUtils.grib_to_bin(
-                    temp_grb_file, output_dir, [filepath.replace(".grb.bz2", "")]
+                result = DownloadUtils.grib_to_bin(
+                    temp_grb_file, [os.path.basename(filepath.replace(".grb.bz2", ""))]
                 )
 
                 os.remove(temp_grb_file)
+
+                if not result:
+                    return False
             else:
                 return False
 
@@ -311,7 +322,6 @@ class DownloadUtils:
     @staticmethod
     def grib_to_bin(
         grib_file_path: str,
-        dir_path: str,
         file_names: List[str],
         max_bands: Optional[int] = None,
     ) -> bool:

@@ -1,0 +1,16 @@
+{
+  "name": "REA6_precip",
+  "description": "Data on regional climate change in the European continent",
+  "format": "bin",
+  "source_url": "https://reanalysis.meteo.uni-bonn.de/?COSMO-REA6",
+  "download_method": "url",
+  "download_config": {
+    "urls": [
+      "https://opendata.dwd.de/climate_environment/REA/COSMO_REA6/hourly/2D/TOT_PRECIP/TOT_PRECIP.2D.201512.grb.bz2"
+    ]
+  },
+  "tags": [
+    "climate",
+    "bin"
+  ]
+}

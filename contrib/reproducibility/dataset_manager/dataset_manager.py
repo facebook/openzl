@@ -11,6 +11,7 @@ from .dataset_builders import (
     ERA5DatasetBuilder,
     PPMFDatasetBuilder,
     PSAMDatasetBuilder,
+    REA6DatasetBuilder,
 )
 
 
@@ -23,6 +24,7 @@ class DatasetManager:
             "era5": ERA5DatasetBuilder(),
             "ppmf": PPMFDatasetBuilder(),
             "psam": PSAMDatasetBuilder(),
+            "rea6": REA6DatasetBuilder(),
         }
 
     def list_datasets(self) -> None:
