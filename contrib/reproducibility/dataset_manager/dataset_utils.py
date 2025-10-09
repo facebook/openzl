@@ -5,8 +5,9 @@ import shutil
 import subprocess
 import zipfile
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
+import cdsapi
 from kaggle.api.kaggle_api_extended import KaggleApi
 
 # Doing this since gdal has extra installation steps
@@ -21,6 +22,47 @@ class DownloadUtils:
 
     def __init__(self) -> None:
         pass
+
+    @staticmethod
+    def download_file_from_cds(
+        dataset: str,
+        request: Dict[str, Any],
+        output_dir: str,
+        simplified_names: Optional[List[str]] = None,
+        max_bands: Optional[int] = None,
+    ) -> bool:
+        """Download a single file from Climate Data Store (CDS)"""
+        try:
+            output_path = os.path.join(
+                output_dir, dataset + "." + request["data_format"]
+            )
+            client = cdsapi.Client()
+            client.retrieve(dataset, request, target=output_path)
+
+            if output_path.endswith("grib"):
+                if DownloadUtils.grib_to_bin(
+                    output_path,
+                    output_dir,
+                    (
+                        simplified_names
+                        if simplified_names is not None
+                        else request["variable"]
+                    ),
+                    max_bands,
+                ):
+                    os.remove(output_path)
+        except Exception as e:
+            if "incomplete configuration file" in str(e):
+                print(f"Please make sure to set up CDS api key - {e}")
+            else:
+                print(f"Unexpected Error: {e}")
+                print(
+                    "Error most likely from Climate Data Store, please try again or download directly from CDS"
+                )
+
+            return False
+
+        return True
 
     @staticmethod
     def download_file_from_kaggle(
