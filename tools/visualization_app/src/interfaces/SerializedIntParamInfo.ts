@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-export type SerializedIntParamInfo = {
+export interface SerializedIntParamInfo {
   paramId: number;
   paramValue: number;
-};
+}

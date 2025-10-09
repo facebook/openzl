@@ -14,7 +14,7 @@ import {createSimpleTreeWithGraph, createBranchingTreeWithGraph} from './createT
 
 describe('Test interactive streamdump graph creation', () => {
   it('Should initialize with a chain of codecs A->B->C->D where B and C are in a graph', () => {
-    let interactiveGraph = createSimpleTreeWithGraph();
+    const interactiveGraph = createSimpleTreeWithGraph();
     // Test that thge model graph was created properly
     const {nodes, edges, graphs} = interactiveGraph.getVisibleStreamdumpGraph();
     expect(nodes.length).toBe(4);
@@ -46,7 +46,7 @@ describe('Test interactive streamdump graph creation', () => {
 
 describe('Test collapsing and expanding a graph', () => {
   it('Should collapse and expand a graph, preserving its successors upon collapse and preserving its codecs upon expand', () => {
-    let interactiveGraph = createSimpleTreeWithGraph();
+    const interactiveGraph = createSimpleTreeWithGraph();
     const {nodes, edges, graphs} = interactiveGraph.getVisibleStreamdumpGraph();
 
     // Test collapsing the graph
@@ -79,7 +79,7 @@ describe('Test collapsing and expanding a graph', () => {
 
 describe('Test preserving collapsed descendant node', () => {
   it('Should collapse a node, collapse an ancestor of the collapsed node, and upon expanding the ancestor, the descendant should be collapse', () => {
-    let interactiveGraph = createSimpleTreeWithGraph();
+    const interactiveGraph = createSimpleTreeWithGraph();
     const {nodes, edges, graphs} = interactiveGraph.getVisibleStreamdumpGraph();
 
     // collapse a node with an ancestor
@@ -113,7 +113,7 @@ describe('Test preserving collapsed descendant node', () => {
 
 describe('Test preserving collapsed descendant graph', () => {
   it('Should collapse a graph, collapse an ancestor of the graph, and upon expanding the ancestor, the graph should still be collapsed', () => {
-    let interactiveGraph = createSimpleTreeWithGraph();
+    const interactiveGraph = createSimpleTreeWithGraph();
     const {nodes, edges, graphs} = interactiveGraph.getVisibleStreamdumpGraph();
 
     // collapse the graph
@@ -141,7 +141,7 @@ describe('Test preserving collapsed descendant graph', () => {
 
 describe('Test preserving collapsed node in collapsed graph', () => {
   it('Should collapse a node within a graph, collapse and expand the graph, and see if the internal collapsed node is still collapsed', () => {
-    let interactiveGraph = createSimpleTreeWithGraph();
+    const interactiveGraph = createSimpleTreeWithGraph();
     const {nodes, edges, graphs} = interactiveGraph.getVisibleStreamdumpGraph();
 
     // Collapse a node within the graph
@@ -170,7 +170,7 @@ describe('Test preserving collapsed node in collapsed graph', () => {
 
 describe('Test expanding 1 level of a graph', () => {
   it('Should expand a graph by just 1 level', () => {
-    let interactiveGraph = createSimpleTreeWithGraph();
+    const interactiveGraph = createSimpleTreeWithGraph();
     const {nodes, edges, graphs} = interactiveGraph.getVisibleStreamdumpGraph();
 
     // Collapse child to root node
@@ -194,7 +194,7 @@ describe('Test expanding 1 level of a graph', () => {
 
 describe('Test expanding 1 level of a graph with child collapsed graph', () => {
   it('Should expand a graph by just 1 level, amd the child codec is in a collapsed graph, so the level expansion should should the collapsed graph', () => {
-    let interactiveGraph = createSimpleTreeWithGraph();
+    const interactiveGraph = createSimpleTreeWithGraph();
     const {nodes, edges, graphs} = interactiveGraph.getVisibleStreamdumpGraph();
     // Collapse the graph
     interactiveGraph.toggleGraphCollapse(graphs[0]);
@@ -230,7 +230,7 @@ describe('Test expanding 1 level of a graph with child collapsed graph', () => {
 
 describe('Collapse/Expanding all standard graphs', () => {
   it('Should test default standard graph collapsed state, where successors are also hidden', () => {
-    let interactiveGraph = createSimpleTreeWithGraph(true); // Default collapse all standard graphs
+    const interactiveGraph = createSimpleTreeWithGraph(true); // Default collapse all standard graphs
     const {nodes, edges, graphs} = interactiveGraph.getVisibleStreamdumpGraph();
     expect(nodes.length).toBe(1);
     expect(edges.length).toBe(1);
@@ -252,7 +252,7 @@ describe('Collapse/Expanding all standard graphs', () => {
 
 describe('Collapse/Expanding all standard graphs with all hidden', () => {
   it('Attempts to collapse/expand all standard graphs when they are all hidden, should do nothing', () => {
-    let interactiveGraph = createSimpleTreeWithGraph();
+    const interactiveGraph = createSimpleTreeWithGraph();
     const {nodes, edges, graphs} = interactiveGraph.getVisibleStreamdumpGraph();
     // Collapse root node to hide standard graph
     interactiveGraph.toggleSubgraphCollapse(nodes[0]);
@@ -277,7 +277,7 @@ describe('Collapse/Expanding all standard graphs with all hidden', () => {
 
 describe('Collapse/Expanding all standard graphs with no standard graphs', () => {
   it('Attempts to collapse/expand all standard graphs when there are no standard graphs, should do nothing', () => {
-    let interactiveGraph = createBranchingTreeWithGraph();
+    const interactiveGraph = createBranchingTreeWithGraph();
     // Collapse all standard graphs
     interactiveGraph.toggleAllStandardGraphs(true);
     const {nodes, edges, graphs} = interactiveGraph.getVisibleStreamdumpGraph();
@@ -288,7 +288,7 @@ describe('Collapse/Expanding all standard graphs with no standard graphs', () =>
 
 describe('Test the largest compression path', () => {
   it('Creates a graph, and ensures that the largest compression path is the correct path', () => {
-    let interactiveGraph = createBranchingTreeWithGraph();
+    const interactiveGraph = createBranchingTreeWithGraph();
     const {nodes, edges, graphs} = interactiveGraph.getVisibleStreamdumpGraph();
     // A -> B -> C is the largest compression path
     expect(nodes[0].inLargestCompressionPath).toBe(true); // A

@@ -1,5 +1,7 @@
 /* Copyright (c) Meta Platforms, Inc. and affiliates. */
 
+@import '../index.css';
+
 /* Usage hints for when no data is provided */
 .no-data-helper {
   text-align: left;

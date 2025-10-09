@@ -25,12 +25,20 @@ export default defineConfig([
   {...pluginReact.configs.flat['jsx-runtime'], files: ['**/*.{jsx,tsx}']},
   {
     files: ['**/*.json'],
-    ignores: ['package.json'],
+    ignores: ['package.json', 'tsconfig.app.json', 'tsconfig.node.json'],
     plugins: {json},
     language: 'json/json',
     extends: ['json/recommended'],
   },
-  {files: ['**/*.css'], plugins: {css}, language: 'css/css', extends: ['css/recommended']},
+  {
+    files: ['**/*.css'],
+    plugins: {css},
+    language: 'css/css',
+    rules: {
+      'css/no-invalid-properties': 'off',
+    },
+    extends: ['css/recommended'],
+  },
   // prettier needs to be at the bottom
   pluginPrettier,
 ]);
