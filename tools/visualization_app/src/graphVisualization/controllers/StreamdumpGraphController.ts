@@ -4,7 +4,7 @@ import {useCallback, useState, useEffect, useMemo} from 'react';
 import {useNodesState, useEdgesState, useReactFlow} from '@xyflow/react';
 import type {Node, Edge} from '@xyflow/react';
 import {InteractiveStreamdumpGraph} from '../models/InteractiveStreamdumpGraph';
-import {LayoutController} from './LayoutController';
+import {applyLayout} from './LayoutController';
 import type {NullableStreamdump} from '../../interfaces/NullableStreamdump';
 import {InternalCodecNode} from '../models/InternalCodecNode';
 import {InternalGraphNode} from '../models/InternalGraphNode';
@@ -30,7 +30,7 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
         const newlyVisibleNodes = interactiveStreamdumpGraph.toggleSubgraphCollapse(node);
         const {dagOrderedNodes: visibleNodes, edges: visibleEdges} =
           interactiveStreamdumpGraph.getVisibleStreamdumpGraph();
-        const {nodes: updatedNodes, edges: updatedEdges} = LayoutController.applyLayout(visibleNodes, visibleEdges);
+        const {nodes: updatedNodes, edges: updatedEdges} = applyLayout(visibleNodes, visibleEdges);
         setNodes(updatedNodes);
         setEdges(updatedEdges);
 
@@ -81,7 +81,7 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
         const newlyVisibleNodes = interactiveStreamdumpGraph.toggleGraphCollapse(graph);
         const {dagOrderedNodes: visibleNodes, edges: visibleEdges} =
           interactiveStreamdumpGraph.getVisibleStreamdumpGraph();
-        const {nodes: updatedNodes, edges: updatedEdges} = LayoutController.applyLayout(visibleNodes, visibleEdges);
+        const {nodes: updatedNodes, edges: updatedEdges} = applyLayout(visibleNodes, visibleEdges);
         setNodes(updatedNodes);
         setEdges(updatedEdges);
 
@@ -130,7 +130,7 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
       interactiveStreamdumpGraph.toggleAllStandardGraphs(!areStandardGraphsCollapsed);
       const {dagOrderedNodes: visibleNodes, edges: visibleEdges} =
         interactiveStreamdumpGraph.getVisibleStreamdumpGraph();
-      const {nodes: updatedNodes, edges: updatedEdges} = LayoutController.applyLayout(visibleNodes, visibleEdges);
+      const {nodes: updatedNodes, edges: updatedEdges} = applyLayout(visibleNodes, visibleEdges);
       setNodes(updatedNodes);
       setEdges(updatedEdges);
       toggleStandardGraphsCollapsedFlag(!areStandardGraphsCollapsed);
@@ -152,7 +152,7 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
         const newlyVisibleNodes = interactiveStreamdumpGraph.expandOneLevel(node);
         const {dagOrderedNodes: visibleNodes, edges: visibleEdges} =
           interactiveStreamdumpGraph.getVisibleStreamdumpGraph();
-        const {nodes: updatedNodes, edges: updatedEdges} = LayoutController.applyLayout(visibleNodes, visibleEdges);
+        const {nodes: updatedNodes, edges: updatedEdges} = applyLayout(visibleNodes, visibleEdges);
         setNodes(updatedNodes);
         setEdges(updatedEdges);
 
@@ -202,7 +202,7 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
       setInteractiveStreamdumpGraph(newInteractiveStreamdumpGraph);
       const {dagOrderedNodes: visibleNodes, edges: visibleEdges} =
         newInteractiveStreamdumpGraph.getVisibleStreamdumpGraph();
-      const {nodes: laidOutNodes, edges: laidOutEdges} = LayoutController.applyLayout(visibleNodes, visibleEdges);
+      const {nodes: laidOutNodes, edges: laidOutEdges} = applyLayout(visibleNodes, visibleEdges);
       setNodes(laidOutNodes);
       setEdges(laidOutEdges);
       toggleStandardGraphsCollapsedFlag(!areStandardGraphsCollapsed);
