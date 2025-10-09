@@ -10,6 +10,7 @@ from .dataset_builders import (
     BinanceDatasetBuilder,
     ERA5DatasetBuilder,
     PPMFDatasetBuilder,
+    PSAMDatasetBuilder,
 )
 
 
@@ -21,6 +22,7 @@ class DatasetManager:
             "binance": BinanceDatasetBuilder(),
             "era5": ERA5DatasetBuilder(),
             "ppmf": PPMFDatasetBuilder(),
+            "psam": PSAMDatasetBuilder(),
         }
 
     def list_datasets(self) -> None:
