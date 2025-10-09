@@ -157,10 +157,10 @@ void CompressionTraceHooks::on_ZL_Edge_setMultiInputDestination_wParams(
 
 void CompressionTraceHooks::on_ZL_CCtx_compressMultiTypedRef_start(
         ZL_CCtx const* const cctx,
-        void const* const,
-        size_t const,
-        ZL_TypedRef const* const[],
-        size_t const)
+        void const* const dst,
+        size_t const dstCapacity,
+        ZL_TypedRef const* const inputs[],
+        size_t const nbInputs)
 {
     // Reset the output stream
     outStream_.str("");
@@ -173,6 +173,8 @@ void CompressionTraceHooks::on_ZL_CCtx_compressMultiTypedRef_start(
                 "Corrupted state. Trace context already exists!");
     }
     tracer_ = std::make_unique<Tracer>(cctx);
+    tracer_->on_ZL_CCtx_compressMultiTypedRef_start(
+            cctx, dst, dstCapacity, inputs, nbInputs);
 }
 
 void CompressionTraceHooks::on_ZL_CCtx_compressMultiTypedRef_end(

@@ -84,6 +84,7 @@ void Tracer::on_codecEncode_start(
         if (streamInfo_.find(streamID) == streamInfo_.end()) {
             const ZL_Type stype        = ZL_Input_type(inStreams[i]);
             streamInfo_[streamID].type = stype;
+            codecOutEdges_[0].push_back(streamID);
         }
     }
     // set codec metadata
@@ -262,6 +263,27 @@ void Tracer::on_ZL_Edge_setMultiInputDestination_wParams(
         ZL_GraphID,
         const ZL_LocalParams*)
 {
+}
+
+void Tracer::on_ZL_CCtx_compressMultiTypedRef_start(
+        ZL_CCtx const* const cctx,
+        void const* const dst,
+        size_t const dstCapacity,
+        ZL_TypedRef const* const inputs[],
+        size_t const nbInputs)
+{
+    // Create a "placeholder" node representing compression start, so the first
+    // streams are not orphaned
+    Codec compressionStart = {
+        .name         = "zl.#start",
+        .cType        = true, // standard
+        .cID          = 0,
+        .cHeaderSize  = 0,
+        .cLocalParams = {},
+    };
+    codecInfo_.push_back(std::move(compressionStart));
+    codecInEdges_[currCodecNum_] = {};
+    ++currCodecNum_;
 }
 
 void Tracer::on_ZL_CCtx_compressMultiTypedRef_end(

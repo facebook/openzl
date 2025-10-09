@@ -87,7 +87,7 @@ export function CodecNode({data}: NodeViewProps) {
   }
   return (
     <div
-      className={`codec-node ${codec.isCollapsed ? 'collapsed' : ''} ${codec.name === 'zl.store' ? 'store-node' : ''}`}
+      className={`codec-node ${codec.isCollapsed ? 'collapsed' : ''} ${codec.name === 'zl.store' || codec.name === 'zl.#start' ? 'special-node' : ''}`}
       style={codec.inLargestCompressionPath ? {border: '7px solid #2ed78b'} : {}}>
       {/* Input edge handle declaration for a node*/}
       <Handle type="target" position={Position.Top} id="target" style={{background: '#555'}} />

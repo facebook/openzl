@@ -43,7 +43,7 @@
   box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
 }
 
-.codec-node.store-node {
+.codec-node.special-node {
   background-color: #dadee2ad;
   border: 3px solid #a5a5a5;
 }

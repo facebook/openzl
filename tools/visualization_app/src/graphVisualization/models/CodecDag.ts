@@ -20,10 +20,6 @@ export class CodecDag {
     codecs.forEach((codec) => {
       const childSet = new Set<CodecID>();
       for (const streamId of codec.outputStreams) {
-        if (streams[streamId] == undefined) {
-          // because of temp hack
-          continue;
-        }
         const targetCodecId = streams[streamId].targetCodec;
         childSet.add(targetCodecId);
       }

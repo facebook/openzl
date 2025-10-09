@@ -55,43 +55,6 @@ export class InteractiveStreamdumpGraph {
       });
     });
 
-    // Temporary hack: null out all leaf streams that don't have a target codec.
-    // Leaf codecs technically generate a store stream that has no target.
-    for (let i = 0; i < this.streams.length; i++) {
-      const stream = this.streams[i];
-      if (stream.targetCodec == Stream.NO_TARGET) {
-        console.assert(stream.sourceCodec != Stream.NO_SOURCE);
-        intermediateCodecs[stream.sourceCodec].outputStreams = intermediateCodecs[
-          stream.sourceCodec
-        ].outputStreams.filter((val) => {
-          return val !== stream.streamId;
-        });
-        delete this.streams[i];
-      }
-    }
-
-    // Temporary hack: null out the 0th stream, which is the root stream.
-    // The root codec is assumed to have no input streams
-    console.assert(this.streams[0].targetCodec == InteractiveStreamdumpGraph.ROOT_CODEC_ID);
-    console.assert(intermediateCodecs[InteractiveStreamdumpGraph.ROOT_CODEC_ID].inputStreams.length === 1);
-    console.assert(intermediateCodecs[InteractiveStreamdumpGraph.ROOT_CODEC_ID].inputStreams[0] === 0);
-    delete this.streams[0];
-    {
-      const codec = intermediateCodecs[InteractiveStreamdumpGraph.ROOT_CODEC_ID];
-      intermediateCodecs[InteractiveStreamdumpGraph.ROOT_CODEC_ID] = new Codec(
-        codec.id,
-        codec.name,
-        codec.cType,
-        codec.cID,
-        codec.cHeaderSize,
-        codec.cFailureString,
-        codec.cLocalParams,
-        [], // null out inputStreams
-        codec.outputStreams,
-        codec.owningGraph,
-      );
-    }
-
     // Create the graph view models
     this.graphs = intermediateGraphs.map((graph) => {
       return new InternalGraphNode(graph.rfId, NodeType.Graph, graph);
@@ -129,9 +92,6 @@ export class InteractiveStreamdumpGraph {
 
     // Create the edges view models for codec -> codec edges
     for (const stream of this.streams) {
-      if (stream == undefined) {
-        continue; // consequence of the hack
-      }
       const sourceCodec = this.codecs[stream.sourceCodec];
       const targetCodec = this.codecs[stream.targetCodec];
       // Make edge
