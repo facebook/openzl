@@ -6,9 +6,13 @@ import subprocess
 import zipfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse
 
 import cdsapi
+import pandas as pd
+import requests
 from kaggle.api.kaggle_api_extended import KaggleApi
+
 
 # Doing this since gdal has extra installation steps
 gdal_installed = True
@@ -104,6 +108,99 @@ class DownloadUtils:
             print(f"Unexpected error: {e}")
             return False
 
+
+    @staticmethod
+    def download_file_from_url(
+        url: str,
+        output_path: str,
+        chunk_size: int = 8192,
+    ) -> bool:
+        """Download a single file from URL"""
+        try:
+            response = requests.get(url, stream=True)
+            response.raise_for_status()
+
+            # Get total file size from headers
+            total_size = int(response.headers.get("content-length", 0))
+
+            with open(output_path, "wb") as f:
+                downloaded = 0
+
+                for chunk in response.iter_content(chunk_size=chunk_size):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+
+                        # Print progress
+                        if total_size > 0:
+                            percent = (downloaded / total_size) * 100
+                            print(
+                                f"\rDownloading {os.path.basename(output_path)}: {percent:.1f}% "
+                                f"({downloaded:,} / {total_size:,} bytes)",
+                                end="",
+                                flush=True,
+                            )
+                        else:
+                            print(
+                                f"\rDownloading {os.path.basename(output_path)}: {downloaded:,} bytes",
+                                end="",
+                                flush=True,
+                            )
+
+            print(" - Finished Downloading")
+            return True
+
+        except Exception as e:
+            print(f"Failed to download {url}: {e}")
+            return False
+
+    @staticmethod
+    def download_files(
+        file_urls: List[str],
+        output_dir: str,
+        alt_file_names: Optional[List[str]] = None,
+    ) -> bool:
+        """Download multiple files
+        Args:
+            file_urls: List of file names
+            download_dir: Directory to download files to
+            alt_file_names: Optional list of alternative file names to use for each file.
+        """
+        success = True
+
+        # Make sure directory exists
+        os.makedirs(output_dir, exist_ok=True)
+        for ind, url in enumerate(file_urls):
+
+            # Extract filename from URL and create output path
+            parsed_url = urlparse(url)
+            alt_file_name = (
+                alt_file_names[ind]
+                if (alt_file_names is not None and ind < len(alt_file_names))
+                else None
+            )
+            filename = (
+                os.path.basename(parsed_url.path)
+                if alt_file_name is None
+                else alt_file_name
+            )
+            output_path = os.path.join(output_dir, filename)
+
+            # Download the file
+            if not DownloadUtils.download_file_from_url(
+                url,
+                output_path,
+            ):
+                success = False
+
+            if not zipfile.is_zipfile(output_path) and output_path.endswith(".zip"):
+                print("Zip file is malformed - most likely issue with download link")
+                success = False
+
+            if DownloadUtils.extract_data(output_path, output_dir):
+                os.remove(output_path)
+
+        return success
 
     @staticmethod
     def find_openzl_root(max_levels: int = 5) -> Optional[Path]:
@@ -287,4 +384,72 @@ class DownloadUtils:
             return True
         except Exception as e:
             print(f"Failed to convert GRIB to binary: {e}")
+            return False
+
+    @staticmethod
+    def chunk_csv_file(file: str, download_dir: str, chunk_size: int) -> bool:
+        """Chunk csv file and saves chunks into `download_dir`"""
+        file_path = os.path.join(download_dir, file)
+        base_name = os.path.splitext(file)[0]
+
+        if not shutil.which("awk"):
+            print(
+                "awk not found. Using pandas to chunk CSV file - this may take a while"
+            )
+            chunk_num = 0
+            for chunk in pd.read_csv(file_path, chunksize=chunk_size):
+                output_file = os.path.join(download_dir, f"{base_name}_{chunk_num}.csv")
+                chunk.to_csv(output_file, index=False)
+                print(
+                    f"\rProcessed chunk {chunk_num}",
+                    end="",
+                    flush=True,
+                )
+                chunk_num += 1
+            return True
+
+        try:
+            print(f"Chunking {file} with awk...")
+            # Using awk for fast CSV chunking
+            awk_cmd = f"""
+            cd "{download_dir}" &&
+            awk -v chunk_size="{chunk_size}" -v base_name="{base_name}" -v output_dir="{download_dir}" '
+            # Save the header line for the very first line
+            NR == 1 {{
+                header = $0;
+                next
+            }}
+            # If we hit the file line of a new chunk create a new file,
+            # add header and print out update
+            (NR - 1) % chunk_size == 1 {{
+                chunk_num = int((NR - 2) / chunk_size)
+                filename = output_dir "/" base_name "_" chunk_num ".csv"
+                print header > filename
+                printf "\\rProcessing chunk %d...", chunk_num
+                fflush()
+            }}
+            # Save the current line to the current file
+            {{
+                chunk_num = int((NR - 2) / chunk_size)
+                filename = output_dir "/" base_name "_" chunk_num ".csv"
+                print $0 >> filename
+            }}
+            END {{
+                print "Chunking complete! Created " chunk_num + 1 " chunks"
+            }}
+            ' "{file_path}"
+            """
+
+            result = subprocess.run(
+                awk_cmd, shell=True, capture_output=False, text=True
+            )
+
+            if result.returncode != 0:
+                print(f"Awk command failed with return code: {result.returncode}")
+                return False
+
+            return True
+
+        except Exception as e:
+            print(f"Chunking error: {e}")
             return False
