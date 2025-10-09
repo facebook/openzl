@@ -156,11 +156,7 @@ ZL_Report STREAM_initWritableStream(
         size_t eltWidth,
         size_t eltCapacity);
 
-/**
- * @name String helpers
- * Utilities dedicated to streams of type ZL_Type_string.
- * @{
- */
+/* String helpers: utilities dedicated to ZL_Type_string streams. */
 
 /** Allocate internal buffers specifically for string streams. */
 ZL_Report
@@ -197,15 +193,9 @@ uint32_t* STREAM_wStringLens(Stream* s);
 /** Reserve space for @p nbStrings string length entries. */
 uint32_t* STREAM_reserveStringLens(Stream* s, size_t nbStrings);
 
-/** @} */
-
-/**
- * @name Accessors
- * Helpers expect a fully initialized stream unless noted otherwise.
- * Writable accessors (for example STREAM_wPtr) require a mutable buffer and an
- * uncommitted stream.
- * @{
- */
+/* Accessors (expect a fully initialized stream unless noted). Writable
+ * accessors like STREAM_wPtr require a mutable buffer on an uncommitted
+ * stream. */
 ZL_DataID STREAM_id(const Stream* s);
 ZL_Type STREAM_type(const Stream* s);
 size_t STREAM_numElts(const Stream* s);
@@ -217,7 +207,6 @@ void* STREAM_wPtr(Stream* s);
 ZL_RBuffer STREAM_getRBuffer(const Stream* s);
 ZL_WBuffer STREAM_getWBuffer(Stream* s);
 int STREAM_isCommitted(const Stream* s);
-/** @} */
 
 /**
  * Finalize the stream after writing @p numElts elements (or strings).
@@ -252,10 +241,7 @@ ZL_Report STREAM_hashLastCommit_xxh3low32(
         size_t nbStreams,
         unsigned formatVersion);
 
-/**
- * @name Actions
- * @{
- */
+/* Bulk operations and stream actions. */
 
 /**
  * Copy @p sizeInBytes bytes from @p src into @p dst, performing boundary
@@ -298,8 +284,6 @@ ZL_Report STREAM_consume(Stream* data, size_t numElts);
 /** Clear a stream for reuse with the same type, element width, and element
  * count. */
 void STREAM_clear(Stream* s);
-
-/** @} */
 
 ZL_END_C_DECLS
 
