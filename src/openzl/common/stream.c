@@ -213,11 +213,6 @@ uint32_t* STREAM_reserveStringLens(Stream* stream, size_t nbStrings)
     return ZL_Refcount_getMut(&stream->stringLens);
 }
 
-uint32_t* ZL_Data_reserveStringLens(Stream* stream, size_t nbStrings)
-{
-    return STREAM_reserveStringLens(stream, nbStrings);
-}
-
 ZL_Report
 STREAM_reserveStrings(Stream* s, size_t numStrings, size_t bufferCapacity)
 {
@@ -526,11 +521,6 @@ ZL_DataID STREAM_id(const Stream* in)
     return in->id;
 }
 
-ZL_DataID ZL_Data_id(const Stream* in)
-{
-    return STREAM_id(in);
-}
-
 ZL_Type STREAM_type(const Stream* in)
 {
     ZL_ASSERT_NN(in);
@@ -541,22 +531,12 @@ ZL_Type STREAM_type(const Stream* in)
     return in->type;
 }
 
-ZL_Type ZL_Data_type(const Stream* in)
-{
-    return STREAM_type(in);
-}
-
 size_t STREAM_eltWidth(const Stream* in)
 {
     ZL_ASSERT_NN(in);
     if (in->type == ZL_Type_string)
         return 0;
     return in->eltWidth;
-}
-
-size_t ZL_Data_eltWidth(const Stream* in)
-{
-    return STREAM_eltWidth(in);
 }
 
 size_t STREAM_eltCapacity(const Stream* in)
@@ -639,11 +619,6 @@ size_t STREAM_numElts(const Stream* in)
     return in->numElts;
 }
 
-size_t ZL_Data_numElts(const Stream* in)
-{
-    return STREAM_numElts(in);
-}
-
 size_t STREAM_byteSize(const Stream* s)
 {
     ZL_ASSERT_NN(s);
@@ -666,11 +641,6 @@ size_t STREAM_byteSize(const Stream* s)
     return s->bufferUsed;
 }
 
-size_t ZL_Data_contentSize(const Stream* s)
-{
-    return STREAM_byteSize(s);
-}
-
 int STREAM_isCommitted(const Stream* s)
 {
     ZL_ASSERT_NN(s);
@@ -685,11 +655,6 @@ const void* STREAM_rPtr(const Stream* in)
     return ZL_Refcount_get(&in->buffer);
 }
 
-const void* ZL_Data_rPtr(const Stream* in)
-{
-    return STREAM_rPtr(in);
-}
-
 void* STREAM_wPtr(Stream* s)
 {
     if (s == NULL || ZL_Refcount_null(&s->buffer))
@@ -697,11 +662,6 @@ void* STREAM_wPtr(Stream* s)
     void* basePtr = ZL_Refcount_getMut(&s->buffer);
     ZL_ASSERT_LE(s->bufferUsed, s->bufferCapacity);
     return (char*)basePtr + s->bufferUsed;
-}
-
-void* ZL_Data_wPtr(Stream* s)
-{
-    return STREAM_wPtr(s);
 }
 
 ZL_RBuffer STREAM_getRBuffer(const Stream* s)
@@ -839,11 +799,6 @@ ZL_Report STREAM_commit(Stream* s, size_t numElts)
     return ZL_returnSuccess();
 }
 
-ZL_Report ZL_Data_commit(Stream* s, size_t numElts)
-{
-    return STREAM_commit(s, numElts);
-}
-
 const uint32_t* STREAM_rStringLens(const Stream* stream)
 {
     ZL_ASSERT_NN(stream);
@@ -851,11 +806,6 @@ const uint32_t* STREAM_rStringLens(const Stream* stream)
         return NULL;
     }
     return ZL_Refcount_get(&stream->stringLens);
-}
-
-const uint32_t* ZL_Data_rStringLens(const Stream* stream)
-{
-    return STREAM_rStringLens(stream);
 }
 
 uint32_t* STREAM_wStringLens(Stream* stream)
@@ -875,11 +825,6 @@ uint32_t* STREAM_wStringLens(Stream* stream)
         ZL_ASSERT(stream->numElts == 0);
     }
     return (uint32_t*)ZL_Refcount_getMut(&stream->stringLens) + stream->numElts;
-}
-
-uint32_t* ZL_Data_wStringLens(Stream* stream)
-{
-    return STREAM_wStringLens(stream);
 }
 
 void STREAM_clear(Stream* s)
@@ -1094,11 +1039,6 @@ ZL_Report STREAM_setIntMetadata(Stream* s, int mId, int mValue)
     return ZL_returnSuccess();
 }
 
-ZL_Report ZL_Data_setIntMetadata(Stream* s, int mId, int mValue)
-{
-    return STREAM_setIntMetadata(s, mId, mValue);
-}
-
 #define ZS2_INTMETADATA_NOT_PRESENT (-1)
 ZL_IntMetadata STREAM_getIntMetadata(const Stream* s, int mId)
 {
@@ -1115,14 +1055,78 @@ ZL_IntMetadata STREAM_getIntMetadata(const Stream* s, int mId)
     };
 }
 
-ZL_IntMetadata ZL_Data_getIntMetadata(const Stream* s, int mId)
-{
-    return STREAM_getIntMetadata(s, mId);
-}
-
 int STREAM_hasBuffer(const Stream* s)
 {
     return !ZL_Refcount_null(&s->buffer);
+}
+
+// --------------------------------
+// ZL_Data compatibility wrappers
+// --------------------------------
+
+uint32_t* ZL_Data_reserveStringLens(ZL_Data* stream, size_t nbStrings)
+{
+    return STREAM_reserveStringLens(stream, nbStrings);
+}
+
+ZL_DataID ZL_Data_id(const ZL_Data* data)
+{
+    return STREAM_id(data);
+}
+
+ZL_Type ZL_Data_type(const ZL_Data* data)
+{
+    return STREAM_type(data);
+}
+
+size_t ZL_Data_eltWidth(const ZL_Data* data)
+{
+    return STREAM_eltWidth(data);
+}
+
+size_t ZL_Data_numElts(const ZL_Data* data)
+{
+    return STREAM_numElts(data);
+}
+
+size_t ZL_Data_contentSize(const ZL_Data* data)
+{
+    return STREAM_byteSize(data);
+}
+
+const void* ZL_Data_rPtr(const ZL_Data* data)
+{
+    return STREAM_rPtr(data);
+}
+
+void* ZL_Data_wPtr(ZL_Data* data)
+{
+    return STREAM_wPtr(data);
+}
+
+ZL_Report ZL_Data_commit(ZL_Data* data, size_t numElts)
+{
+    return STREAM_commit(data, numElts);
+}
+
+const uint32_t* ZL_Data_rStringLens(const ZL_Data* stream)
+{
+    return STREAM_rStringLens(stream);
+}
+
+uint32_t* ZL_Data_wStringLens(ZL_Data* stream)
+{
+    return STREAM_wStringLens(stream);
+}
+
+ZL_Report ZL_Data_setIntMetadata(ZL_Data* stream, int mId, int mValue)
+{
+    return STREAM_setIntMetadata(stream, mId, mValue);
+}
+
+ZL_IntMetadata ZL_Data_getIntMetadata(const ZL_Data* stream, int mId)
+{
+    return STREAM_getIntMetadata(stream, mId);
 }
 
 /* ======    TypedBuffer interface    ====== */
