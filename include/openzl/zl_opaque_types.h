@@ -34,7 +34,8 @@ typedef struct {
 } ZL_GraphID;
 
 // Incomplete types
-typedef struct ZL_Data_s ZL_Data;
+typedef struct Stream_s Stream;
+typedef Stream ZL_Data;
 typedef struct ZL_Input_s ZL_Input;
 typedef struct ZL_Output_s ZL_Output;
 typedef ZL_Input ZL_TypedRef;

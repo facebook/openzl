@@ -22,7 +22,7 @@ typedef struct {
 
 DECLARE_VECTOR_TYPE(IntMeta)
 
-struct ZL_Data_s { // typedef'd to ZL_Data in zs2_data.h
+struct Stream_s { // exposed publicly as ZL_Data
     ZL_Refcount buffer;
     ZL_DataID id; // unique ID used to identify this Data object
     ZL_Type type;
@@ -39,11 +39,11 @@ struct ZL_Data_s { // typedef'd to ZL_Data in zs2_data.h
 };
 
 struct ZL_Input_s {
-    ZL_Data data;
+    Stream data;
 };
 
 struct ZL_Output_s {
-    ZL_Data data;
+    Stream data;
 };
 
 // ================================

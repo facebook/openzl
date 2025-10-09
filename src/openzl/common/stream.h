@@ -15,7 +15,6 @@
 
 ZL_BEGIN_C_DECLS
 
-typedef ZL_Data Stream; // Internal alias while public ABI remains ZL_Data
 
 DECLARE_VECTOR_POINTERS_TYPE(ZL_Data)
 DECLARE_VECTOR_CONST_POINTERS_TYPE(ZL_Data)
