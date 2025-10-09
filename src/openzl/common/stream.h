@@ -15,6 +15,15 @@
 
 ZL_BEGIN_C_DECLS
 
+/**
+ * Internal Stream interface.
+ *
+ * Public callers should continue to rely on the ZL_Data_* façade declared in
+ * include/openzl/zl_data.h. Those entry points forward to the STREAM_* symbols
+ * below. New internal code should prefer STREAM_* so that future refactors only
+ * have to update a single namespace.
+ */
+
 DECLARE_VECTOR_POINTERS_TYPE(ZL_Data)
 DECLARE_VECTOR_CONST_POINTERS_TYPE(ZL_Data)
 
@@ -116,6 +125,8 @@ ZL_Report STREAM_refMutRawBuffer(Stream* s, void* rawBuf, size_t bufByteSize);
 
 // Type a Stream which already owns or references a buffer.
 // Typically used for the last stream (write output)
+// Preconditions: `s` already references a writable buffer sized at least
+// `eltWidth * eltCapacity` bytes.
 ZL_Report STREAM_initWritableStream(
         Stream* s,
         ZL_Type type,
@@ -133,6 +144,9 @@ ZL_Report STREAM_refConstExtString(
         size_t nbStrings);
 
 // Accessors
+// Unless specified otherwise these helpers expect a fully initialized stream.
+// Writable accessors (STREAM_wPtr / STREAM_wStringLens) require a mutable
+// buffer and an uncommitted stream.
 ZL_DataID STREAM_id(const Stream* s);
 ZL_Type STREAM_type(const Stream* s);
 size_t STREAM_numElts(const Stream* s);
@@ -147,6 +161,8 @@ uint32_t* STREAM_reserveStringLens(Stream* s, size_t nbStrings);
 ZL_RBuffer STREAM_getRBuffer(const Stream* s);
 ZL_WBuffer STREAM_getWBuffer(Stream* s);
 int STREAM_isCommitted(const Stream* s);
+// Finalize the stream after writing `numElts` elements (or strings).
+// Must be invoked exactly once by writers; readers expect committed streams.
 ZL_Report STREAM_commit(Stream* s, size_t numElts);
 
 // Request capacity in nb of elts
@@ -156,6 +172,8 @@ size_t STREAM_eltCapacity(const Stream* s);
 // Request capacity of primary buffer in bytes
 size_t STREAM_byteCapacity(const Stream* s);
 
+// Lightweight metadata channel used by co-operating nodes to exchange small
+// integer hints alongside the stream payload.
 ZL_Report STREAM_setIntMetadata(Stream* s, int mId, int mValue);
 ZL_IntMetadata STREAM_getIntMetadata(const Stream* s, int mId);
 
