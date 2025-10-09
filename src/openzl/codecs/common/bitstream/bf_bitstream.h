@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
-#ifndef ZS2_BF_BITSTREAM_H
-#define ZS2_BF_BITSTREAM_H
+#ifndef ZL_BF_BITSTREAM_H
+#define ZL_BF_BITSTREAM_H
 
 #include "openzl/codecs/common/bitstream/ff_bitstream.h"
 #include "openzl/shared/bits.h"
@@ -129,4 +129,4 @@ ZL_INLINE ZL_Report ZS_BitDStreamBF_finish(ZS_BitDStreamBF* bits)
 
 ZL_END_C_DECLS
 
-#endif // ZS2_BF_BITSTREAM_H
+#endif // ZL_BF_BITSTREAM_H

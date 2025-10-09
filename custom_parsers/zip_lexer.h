@@ -11,27 +11,27 @@
 
 ZL_BEGIN_C_DECLS
 
-typedef struct ZS2_ZipLexer_s ZS2_ZipLexer;
+typedef struct ZL_ZipLexer_s ZL_ZipLexer;
 
 /**
  * The type of a token in a zip file, corresponding to the Zip spec.
  */
 typedef enum {
-    ZS2_ZipTokenType_LocalFileHeader,
-    ZS2_ZipTokenType_CompressedData,
-    ZS2_ZipTokenType_DataDescriptor,
-    ZS2_ZipTokenType_CentralDirectory,
-    ZS2_ZipTokenType_Zip64EndOfCentralDirectoryRecord,
-    ZS2_ZipTokenType_Zip64EndOfCentralDirectoryLocator,
-    ZS2_ZipTokenType_EndOfCentralDirectoryRecord,
-    ZS2_ZipTokenType_Unknown,
-} ZS2_ZipTokenType;
+    ZL_ZipTokenType_LocalFileHeader,
+    ZL_ZipTokenType_CompressedData,
+    ZL_ZipTokenType_DataDescriptor,
+    ZL_ZipTokenType_CentralDirectory,
+    ZL_ZipTokenType_Zip64EndOfCentralDirectoryRecord,
+    ZL_ZipTokenType_Zip64EndOfCentralDirectoryLocator,
+    ZL_ZipTokenType_EndOfCentralDirectoryRecord,
+    ZL_ZipTokenType_Unknown,
+} ZL_ZipTokenType;
 
 typedef struct {
     /// Pointer to the beginning of the token in the source buffer.
     const char* ptr;
     size_t size;           //< Size of the token in bytes.
-    ZS2_ZipTokenType type; //< Type of the token.
+    ZL_ZipTokenType type; //< Type of the token.
     /// Compression method for the file, or 0 if not a file.
     uint16_t compressionMethod;
     /// Size of the filename, or 0 if not a file.
@@ -39,7 +39,7 @@ typedef struct {
     /// Pointer to the filename, or NULL if not a file.
     /// @warning Not zero terminated.
     const char* filename;
-} ZS2_ZipToken;
+} ZL_ZipToken;
 
 /**
  * Initializes a Zip lexer on the given input buffer. The lexer allows for
@@ -53,14 +53,14 @@ typedef struct {
  *       is listed in order of occurrence in the file.
  */
 ZL_Report
-ZS2_ZipLexer_init(ZS2_ZipLexer* lexer, const void* src, size_t srcSize);
+ZL_ZipLexer_init(ZL_ZipLexer* lexer, const void* src, size_t srcSize);
 
 /**
  * Initializes a Zip lexer with a known offset to the EOCD.
- * @see ZS2_ZipLexer_init()
+ * @see ZL_ZipLexer_init()
  */
-ZL_Report ZS2_ZipLexer_initWithEOCD(
-        ZS2_ZipLexer* lexer,
+ZL_Report ZL_ZipLexer_initWithEOCD(
+        ZL_ZipLexer* lexer,
         const void* src,
         size_t srcSize,
         size_t eocdOffset);
@@ -76,12 +76,12 @@ ZL_Report ZS2_ZipLexer_initWithEOCD(
  *          on subsequent calls.
  */
 ZL_Report
-ZS2_ZipLexer_lex(ZS2_ZipLexer* lexer, ZS2_ZipToken* out, size_t outCapacity);
+ZL_ZipLexer_lex(ZL_ZipLexer* lexer, ZL_ZipToken* out, size_t outCapacity);
 
 /// @returns true if the lexer has finished lexing the source.
-bool ZS2_ZipLexer_finished(const ZS2_ZipLexer* lexer);
+bool ZL_ZipLexer_finished(const ZL_ZipLexer* lexer);
 
-size_t ZS2_ZipLexer_expectedNumTokens(const ZS2_ZipLexer* lexer);
+size_t ZL_ZipLexer_expectedNumTokens(const ZL_ZipLexer* lexer);
 
 /**
  * @returns the number of files in the zip file.
@@ -89,10 +89,10 @@ size_t ZS2_ZipLexer_expectedNumTokens(const ZS2_ZipLexer* lexer);
  * however it is validated that the number of files is at least plausible,
  * and is no more than the source size / 76.
  */
-size_t ZS2_ZipLexer_numFiles(const ZS2_ZipLexer* lexer);
+size_t ZL_ZipLexer_numFiles(const ZL_ZipLexer* lexer);
 
 /// @returns true if the input buffer is likely a zip file.
-bool ZS2_isLikelyZipFile(const void* src, size_t srcSize);
+bool ZL_isLikelyZipFile(const void* src, size_t srcSize);
 
 /// @section Implementation details
 
@@ -107,9 +107,9 @@ typedef struct {
     uint16_t compressionMethod;
     uint16_t filenameSize;
     const char* filename; //< Not zero terminated, may be NULL.
-} ZS2_ZipLexer_FileState;
+} ZL_ZipLexer_FileState;
 
-struct ZS2_ZipLexer_s {
+struct ZL_ZipLexer_s {
     /// Pointer to the current position in the input buffer.
     /// Everything before this pointer has already been lexed.
     const char* srcPtr;
@@ -138,7 +138,7 @@ struct ZS2_ZipLexer_s {
     const char* endOfCentralDirectoryRecordPtr;
     uint32_t endOfCentralDirectoryRecordSize;
 
-    ZS2_ZipLexer_FileState fileState;
+    ZL_ZipLexer_FileState fileState;
 };
 
 ZL_END_C_DECLS

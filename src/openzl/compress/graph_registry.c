@@ -24,7 +24,7 @@
 #include "openzl/shared/utils.h" // ZL_ARRAY_SIZE
 #include "openzl/zl_data.h"
 #include "openzl/zl_errors.h"    // ZL_TRY_LET_T
-#include "openzl/zl_graph_api.h" // ZS2_Graph_*
+#include "openzl/zl_graph_api.h" // ZL_Graph_*
 #include "openzl/zl_localParams.h"
 #include "openzl/zl_opaque_types.h"
 

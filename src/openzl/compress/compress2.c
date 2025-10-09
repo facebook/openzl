@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include "openzl/common/allocation.h"
-#include "openzl/common/errors_internal.h" // ZS2_RET_IF*
+#include "openzl/common/errors_internal.h" // ZL_RET_IF*
 #include "openzl/common/introspection.h" // WAYPOINT, ZL_CompressIntrospectionHooks
 #include "openzl/common/limits.h"        // ZL_runtimeInputLimit
 #include "openzl/common/logging.h"       // ZL_LOG
@@ -11,11 +11,11 @@
 #include "openzl/common/wire_format.h"          // ZSTRONG_MAGIC_NUMBER
 #include "openzl/compress/cctx.h"               // createCCtx, GraphInfo
 #include "openzl/compress/encode_frameheader.h" // EFH_writeFrameHeader
-#include "openzl/compress/private_nodes.h"      // ZS2_GRAPH_xxx
+#include "openzl/compress/private_nodes.h"      // ZL_GRAPH_xxx
 #include "openzl/shared/mem.h"                  // writeLE32
 #include "openzl/shared/xxhash.h"               // XXH3_64bits
 #include "openzl/zl_common_types.h" // ZL_TernaryParam_enable, ZL_TernaryParam_disable
-#include "openzl/zl_compress.h" // ZS2_compress_*
+#include "openzl/zl_compress.h" // ZL_compress_*
 #include "openzl/zl_data.h"
 #include "openzl/zl_errors.h"
 

@@ -23,7 +23,7 @@ DECLARE_VECTOR_TYPE(LabeledFeature)
  * unsigned integers.
  * Note: Calculates sample variance, sample skewness and sample kurtosis (not
  * population!).
- * @returns ZS2_REPORT specifying success or failure of generating feature
+ * @returns ZL_REPORT specifying success or failure of generating feature
  * operation.
  */
 ZL_Report FeatureGen_integer(
@@ -35,7 +35,7 @@ ZL_Report FeatureGen_integer(
  * Defines type Feature Generator, which takes a stream and generates various
  * features from it. These features are then pushed into the
  * features vector parameter.
- * @returns ZS2_REPORT specifying success or failure of generating feature
+ * @returns ZL_REPORT specifying success or failure of generating feature
  */
 typedef ZL_Report (*FeatureGenerator)(
         const ZL_Input* inputStream,

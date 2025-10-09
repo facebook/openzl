@@ -108,7 +108,7 @@ ZL_FORCE_INLINE ZL_Report ZL_quantize32DecodePow2_impl(
 }
 
 #define GEN_ZS2_QUANTIZE32_DECODE(kUnroll)                                \
-    static ZL_QUANTIZE_NOINLINE ZL_Report ZS2_quantize32Decode_##kUnroll( \
+    static ZL_QUANTIZE_NOINLINE ZL_Report ZL_quantize32Decode_##kUnroll( \
             uint32_t* dst,                                                \
             uint8_t const* codes,                                         \
             size_t nbCodes,                                               \
@@ -126,7 +126,7 @@ GEN_ZS2_QUANTIZE32_DECODE(3)
 GEN_ZS2_QUANTIZE32_DECODE(4)
 
 #define GEN_ZS2_QUANTIZE32_POW2_DECODE(kUnroll)                               \
-    static ZL_QUANTIZE_NOINLINE ZL_Report ZS2_quantize32DecodePow2_##kUnroll( \
+    static ZL_QUANTIZE_NOINLINE ZL_Report ZL_quantize32DecodePow2_##kUnroll( \
             uint32_t* dst,                                                    \
             uint8_t const* codes,                                             \
             size_t nbCodes,                                                   \
@@ -159,7 +159,7 @@ static bool ZL_isPow2Code(ZL_Quantize32Params const* params)
     return isPow2;
 }
 
-ZL_Report ZS2_quantize32Decode(
+ZL_Report ZL_quantize32Decode(
         uint32_t* dst,
         uint8_t const* codes,
         size_t nbCodes,
@@ -174,30 +174,30 @@ ZL_Report ZS2_quantize32Decode(
 
     if (ZL_isPow2Code(params)) {
         if (maxNbBits <= 14) {
-            return ZS2_quantize32DecodePow2_4(
+            return ZL_quantize32DecodePow2_4(
                     dst, codes, nbCodes, bits, bitsSize);
         } else if (maxNbBits <= 19) {
-            return ZS2_quantize32DecodePow2_3(
+            return ZL_quantize32DecodePow2_3(
                     dst, codes, nbCodes, bits, bitsSize);
         } else if (maxNbBits <= 28) {
-            return ZS2_quantize32DecodePow2_2(
+            return ZL_quantize32DecodePow2_2(
                     dst, codes, nbCodes, bits, bitsSize);
         } else {
-            return ZS2_quantize32DecodePow2_1(
+            return ZL_quantize32DecodePow2_1(
                     dst, codes, nbCodes, bits, bitsSize);
         }
     } else {
         if (maxNbBits <= 14) {
-            return ZS2_quantize32Decode_4(
+            return ZL_quantize32Decode_4(
                     dst, codes, nbCodes, bits, bitsSize, params);
         } else if (maxNbBits <= 19) {
-            return ZS2_quantize32Decode_3(
+            return ZL_quantize32Decode_3(
                     dst, codes, nbCodes, bits, bitsSize, params);
         } else if (maxNbBits <= 28) {
-            return ZS2_quantize32Decode_2(
+            return ZL_quantize32Decode_2(
                     dst, codes, nbCodes, bits, bitsSize, params);
         } else {
-            return ZS2_quantize32Decode_1(
+            return ZL_quantize32Decode_1(
                     dst, codes, nbCodes, bits, bitsSize, params);
         }
     }

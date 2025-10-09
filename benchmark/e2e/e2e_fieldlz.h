@@ -48,11 +48,11 @@ class FieldLzCompressor : public ZstrongCompressor {
 
         // Set additional graph parameters: compression level and
         // decompression level
-        ZS2_unwrap(
+        ZL_unwrap(
                 ZL_Compressor_setParameter(
                         cgraph, ZL_CParam_compressionLevel, clevel_),
                 "Failed setting compression level");
-        ZS2_unwrap(
+        ZL_unwrap(
                 ZL_Compressor_setParameter(
                         cgraph, ZL_CParam_decompressionLevel, dlevel_),
                 "Failed setting decompression level");

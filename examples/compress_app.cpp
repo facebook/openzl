@@ -5,7 +5,7 @@
 #include <sstream>
 
 #include "openzl/common/assertion.h" // ZS_REQUIRE_,
-#include "openzl/zl_compressor.h" // ZL_Compressor_create, ZS2_Compressor_compress, ZS2_Compressor_compressBound
+#include "openzl/zl_compressor.h" // ZL_Compressor_create, ZL_Compressor_compress, ZL_Compressor_compressBound
 
 /* The format version used when compressing in the example.  */
 #define ZSTRONG_EXAMPLE_FORMAT_VERSION (16)

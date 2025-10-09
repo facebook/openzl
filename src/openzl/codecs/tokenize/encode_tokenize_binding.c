@@ -598,7 +598,7 @@ ZL_Compressor_buildTokenizeGraph(
             compressor, node, ZL_GRAPHLIST(alphabetGraph, indicesGraph), NULL);
 }
 
-ZL_NodeID ZS2_createNode_customTokenize(
+ZL_NodeID ZL_createNode_customTokenize(
         ZL_Compressor* cgraph,
         ZL_Type streamType,
         ZL_CustomTokenizeFn customTokenizeFn,
@@ -627,7 +627,7 @@ ZL_GraphID ZL_Compressor_registerCustomTokenizeGraph(
         ZL_GraphID alphabetGraph,
         ZL_GraphID indicesGraph)
 {
-    ZL_NodeID node = ZS2_createNode_customTokenize(
+    ZL_NodeID node = ZL_createNode_customTokenize(
             cgraph, streamType, customTokenizeFn, opaque);
     return ZL_Compressor_registerStaticGraph_fromNode(
             cgraph, node, ZL_GRAPHLIST(alphabetGraph, indicesGraph));

@@ -3,7 +3,7 @@
 #ifndef ZSTRONG_TRANSFORMS_CONCAT_DEDUP_H
 #define ZSTRONG_TRANSFORMS_CONCAT_DEDUP_H
 
-#include "openzl/zl_data.h" // ZS2_Type_*
+#include "openzl/zl_data.h" // ZL_Type_*
 
 #define DEDUP_NUM_GRAPH(id)                                           \
     {                                                                 \

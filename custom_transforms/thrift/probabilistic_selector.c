@@ -5,7 +5,7 @@
 #include "openzl/shared/xxhash.h"
 #include "openzl/zl_graph_api.h"
 
-#define ZS2_PROBABILISTIC_SELECTOR_PROBABILITIES_CTID 85
+#define ZL_PROBABILISTIC_SELECTOR_PROBABILITIES_CTID 85
 
 static ZL_Report
 probabilisticSelectorImpl(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
@@ -16,7 +16,7 @@ probabilisticSelectorImpl(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
 
     const size_t* probWeights =
             (const size_t*)ZL_Graph_getLocalRefParam(
-                    gctx, ZS2_PROBABILISTIC_SELECTOR_PROBABILITIES_CTID)
+                    gctx, ZL_PROBABILISTIC_SELECTOR_PROBABILITIES_CTID)
                     .paramRef;
     size_t totalWeight = 0;
     for (size_t i = 0; i < nbCustomGraphs; ++i) {
@@ -61,7 +61,7 @@ ZL_GraphID getProbabilisticSelectorGraph(
         size_t nbInputs)
 {
     ZL_CopyParam copyParam = {
-        .paramId   = ZS2_PROBABILISTIC_SELECTOR_PROBABILITIES_CTID,
+        .paramId   = ZL_PROBABILISTIC_SELECTOR_PROBABILITIES_CTID,
         .paramPtr  = probWeights,
         .paramSize = nbSuccessors * sizeof(size_t)
     };

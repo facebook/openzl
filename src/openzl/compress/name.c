@@ -104,7 +104,7 @@ ZL_Report ZL_Name_init(
     return ZL_returnSuccess();
 }
 
-ZL_Name ZS2_Name_wrapStandard(const char* cstr)
+ZL_Name ZL_Name_wrapStandard(const char* cstr)
 {
     ZL_ASSERT_NN(cstr);
     ZL_ASSERT_SUCCESS(

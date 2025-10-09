@@ -6,8 +6,8 @@
  * Defines portability macros needed for Zstrong's public interface.
  */
 
-#ifndef ZSTRONG_ZS2_PORTABILITY_H
-#define ZSTRONG_ZS2_PORTABILITY_H
+#ifndef ZSTRONG_ZL_PORTABILITY_H
+#define ZSTRONG_ZL_PORTABILITY_H
 
 #if defined(__cplusplus)
 extern "C" {
@@ -123,4 +123,4 @@ extern "C" {
 } // extern "C"
 #endif
 
-#endif // ZSTRONG_ZS2_PORTABILITY_H
+#endif // ZSTRONG_ZL_PORTABILITY_H

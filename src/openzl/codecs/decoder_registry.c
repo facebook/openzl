@@ -31,7 +31,7 @@
 #include "openzl/codecs/transpose/decode_transpose_binding.h"
 #include "openzl/codecs/zigzag/decode_zigzag_binding.h"
 #include "openzl/codecs/zstd/decode_zstd_binding.h"
-#include "openzl/common/wire_format.h" // ZS2_strid_*
+#include "openzl/common/wire_format.h" // ZL_strid_*
 
 /// Register a standard Typed Transform,
 /// provided that it follows a naming convention for its defining macros

@@ -11,7 +11,7 @@
 
 // Zstrong
 #include "openzl/common/debug.h"           // ZL_REQUIRE
-#include "openzl/compress/private_nodes.h" // ZS2_GRAPH_TRANSPOSE_SPLIT_4BYTES
+#include "openzl/compress/private_nodes.h" // ZL_GRAPH_TRANSPOSE_SPLIT_4BYTES
 #include "openzl/zl_compress.h"
 #include "openzl/zl_compressor.h" // ZL_Compressor_registerStaticGraph_fromNode, ZL_Compressor_registerStaticGraph_fromPipelineNodes1o
 #include "openzl/zl_ctransform.h" // ZL_SplitEncoderDesc

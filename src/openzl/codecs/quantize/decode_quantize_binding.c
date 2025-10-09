@@ -40,7 +40,7 @@ static ZL_Report DI_quantize(
     // if it is available.
     uint8_t maxCode = ZL_maxCode(codes);
 
-    ZL_Report const ret = ZS2_quantize32Decode(
+    ZL_Report const ret = ZL_quantize32Decode(
             (uint32_t*)ZL_Output_ptr(out),
             (uint8_t const*)ZL_Input_ptr(codes),
             nbCodes,

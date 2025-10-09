@@ -16,14 +16,14 @@ struct DynamicOutputTypes {};
 
 template <>
 struct DynamicOutputTypes<uint32_t> {
-    using CSlice = ZS2_ThriftKernel_Slice32;
-    using CType  = ZS2_ThriftKernel_DynamicOutput32;
+    using CSlice = ZL_ThriftKernel_Slice32;
+    using CType  = ZL_ThriftKernel_DynamicOutput32;
 };
 
 template <>
 struct DynamicOutputTypes<uint64_t> {
-    using CSlice = ZS2_ThriftKernel_Slice64;
-    using CType  = ZS2_ThriftKernel_DynamicOutput64;
+    using CSlice = ZL_ThriftKernel_Slice64;
+    using CType  = ZL_ThriftKernel_DynamicOutput64;
 };
 } // namespace detail
 
@@ -55,7 +55,7 @@ class DynamicOutputBase {
 };
 
 /**
- * C++ helper class implementing ZS2_ThriftKernel_DynamicOutput{32,64}.
+ * C++ helper class implementing ZL_ThriftKernel_DynamicOutput{32,64}.
  * You construct the class, pass the return value of .asCType() to C,
  * then call .written() to get the vector that is written.
  */

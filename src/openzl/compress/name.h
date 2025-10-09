@@ -63,7 +63,7 @@ ZL_Report ZL_Name_init(
  * Construct a ZL_Name from a standard name. This validates that the standard
  * name is an anchor that starts with "!zl.".
  */
-ZL_Name ZS2_Name_wrapStandard(const char* name);
+ZL_Name ZL_Name_wrapStandard(const char* name);
 
 /**
  * Constructs a ZL_Name for the purpose of looking up @p key in a map keyed by

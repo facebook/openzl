@@ -28,7 +28,7 @@
 ZL_BEGIN_C_DECLS
 
 // Note : naming
-// We use ZS2_ prefix
+// We use ZL_ prefix
 // for consistency with names already defined in public zs2_buffer.h
 
 ZL_RESULT_DECLARE_TYPE(ZL_RBuffer);

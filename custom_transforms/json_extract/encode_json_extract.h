@@ -26,7 +26,7 @@ ZL_BEGIN_C_DECLS
  *
  * Output 3: variable_size_field: ASCII strings extracted from the input.
  */
-ZL_NodeID ZS2_Compressor_registerJsonExtract(
+ZL_NodeID ZL_Compressor_registerJsonExtract(
         ZL_Compressor* cgraph,
         ZL_IDType transformID);
 

@@ -21,7 +21,7 @@ FUZZ(PytorchModelParserTest, FuzzCompress)
     ZL_REQUIRE_SUCCESS(ZL_Compressor_setParameter(
             cgraph, ZL_CParam_formatVersion, formatVersion));
     ZL_REQUIRE_SUCCESS(ZL_Compressor_selectStartingGraphID(
-            cgraph, ZS2_createGraph_pytorchModelCompressor(cgraph)));
+            cgraph, ZL_createGraph_pytorchModelCompressor(cgraph)));
 
     ZL_CCtx* cctx = ZL_CCtx_create();
     ZL_REQUIRE_SUCCESS(ZL_CCtx_refCompressor(cctx, cgraph));

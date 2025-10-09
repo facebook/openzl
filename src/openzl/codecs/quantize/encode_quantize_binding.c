@@ -4,7 +4,7 @@
 #include "openzl/codecs/quantize/common_quantize.h"
 #include "openzl/codecs/quantize/encode_quantize_kernel.h"
 #include "openzl/common/debug.h"
-#include "openzl/common/errors_internal.h" // ZS2_RET_IF*
+#include "openzl/common/errors_internal.h" // ZL_RET_IF*
 #include "openzl/zl_ctransform.h"
 
 static ZL_Report EI_quantize(
@@ -25,7 +25,7 @@ static ZL_Report EI_quantize(
     ZL_RET_R_IF_NULL(allocation, codes);
     ZL_RET_R_IF_NULL(allocation, bits);
 
-    ZL_Report const bitsSize = ZS2_quantize32Encode(
+    ZL_Report const bitsSize = ZL_quantize32Encode(
             (uint8_t*)ZL_Output_ptr(bits),
             bitsCapacity,
             (uint8_t*)ZL_Output_ptr(codes),

@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#ifndef ZSTRONG_ZS2_DYNGRAPH_H
-#define ZSTRONG_ZS2_DYNGRAPH_H
+#ifndef ZSTRONG_ZL_DYNGRAPH_H
+#define ZSTRONG_ZL_DYNGRAPH_H
 
 #include <stdbool.h> // bool
 #include <stddef.h>  // size_t
@@ -64,7 +64,7 @@ typedef ZL_Report (*ZL_FunctionGraphFn)(
  * It is invoked at registration time, to ensure that the Function Graph
  * descriptor is correctly setup (notably its parameters). If the validation
  * function fails (@return 0), the registration will fail, and return
- * ZS2_GRAPH_INVALID (can be checked with ZL_GraphID_isValid()). When no
+ * ZL_GRAPH_INVALID (can be checked with ZL_GraphID_isValid()). When no
  * validation function is provided, registration is always successful.
  */
 typedef int (*ZL_FunctionGraphValidateFn)(
@@ -302,4 +302,4 @@ ZL_Report ZL_Edge_setParameterizedDestination(
 } // extern "C"
 #endif
 
-#endif // ZSTRONG_ZS2_DYNGRAPH_H
+#endif // ZSTRONG_ZL_DYNGRAPH_H

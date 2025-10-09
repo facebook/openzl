@@ -353,7 +353,7 @@ ZL_Report parseEncode(ZL_Encoder* eictx, ZL_Input const* input) noexcept
 } // namespace
 } // namespace zstrong
 
-ZL_NodeID ZS2_Compressor_registerParseInt64(
+ZL_NodeID ZL_Compressor_registerParseInt64(
         ZL_Compressor* cgraph,
         ZL_IDType transformID)
 {
@@ -374,7 +374,7 @@ ZL_NodeID ZS2_Compressor_registerParseInt64(
     return ZL_Compressor_registerTypedEncoder(cgraph, &desc);
 }
 
-ZL_NodeID ZS2_Compressor_registerParseFloat64(
+ZL_NodeID ZL_Compressor_registerParseFloat64(
         ZL_Compressor* cgraph,
         ZL_IDType transformID)
 {

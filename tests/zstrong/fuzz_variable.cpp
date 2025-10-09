@@ -221,7 +221,7 @@ FUZZ_F(VariableTest, FuzzParseIntRoundTrip)
     auto const [input, fieldSizes] =
             zstrong::tests::datagen::IntegerStringProducer::flatten(data);
 
-    std::vector<std::unique_ptr<ZL_TypedRef, ZS2_TypedRef_Deleter>> inputs;
+    std::vector<std::unique_ptr<ZL_TypedRef, ZL_TypedRef_Deleter>> inputs;
     std::vector<TypedInputDesc> inputDescs;
     inputDescs.emplace_back(
             std::move(input), ZL_Type_string, 1, std::move(fieldSizes));
@@ -246,7 +246,7 @@ FUZZ_F(VariableTest, FuzzParseIntSafeRoundTrip)
     const auto tmpSegments = getSegments(f, input.size(), false);
     std::vector<uint32_t> fieldSizes(tmpSegments.begin(), tmpSegments.end());
 
-    std::vector<std::unique_ptr<ZL_TypedRef, ZS2_TypedRef_Deleter>> inputs;
+    std::vector<std::unique_ptr<ZL_TypedRef, ZL_TypedRef_Deleter>> inputs;
     std::vector<TypedInputDesc> inputDescs;
     inputDescs.emplace_back(
             std::move(input), ZL_Type_string, 1, std::move(fieldSizes));

@@ -38,46 +38,46 @@ class ThriftKernelTest : public ZStrongTest {
         setLargeCompressBound(8);
 
         nodes_[(unsigned)TransformIDs::MapI32Float] =
-                ZS2_ThriftKernel_registerCTransformMapI32Float(
+                ZL_ThriftKernel_registerCTransformMapI32Float(
                         cgraph_, (unsigned)TransformIDs::MapI32Float);
         nodes_[(unsigned)TransformIDs::MapI32ArrayFloat] =
-                ZS2_ThriftKernel_registerCTransformMapI32ArrayFloat(
+                ZL_ThriftKernel_registerCTransformMapI32ArrayFloat(
                         cgraph_, (unsigned)TransformIDs::MapI32ArrayFloat);
         nodes_[(unsigned)TransformIDs::MapI32ArrayI64] =
-                ZS2_ThriftKernel_registerCTransformMapI32ArrayI64(
+                ZL_ThriftKernel_registerCTransformMapI32ArrayI64(
                         cgraph_, (unsigned)TransformIDs::MapI32ArrayI64);
         nodes_[(unsigned)TransformIDs::MapI32ArrayArrayI64] =
-                ZS2_ThriftKernel_registerCTransformMapI32ArrayArrayI64(
+                ZL_ThriftKernel_registerCTransformMapI32ArrayArrayI64(
                         cgraph_, (unsigned)TransformIDs::MapI32ArrayArrayI64);
         nodes_[(unsigned)TransformIDs::MapI32MapI64Float] =
-                ZS2_ThriftKernel_registerCTransformMapI32MapI64Float(
+                ZL_ThriftKernel_registerCTransformMapI32MapI64Float(
                         cgraph_, (unsigned)TransformIDs::MapI32MapI64Float);
         nodes_[(unsigned)TransformIDs::ArrayI64] =
-                ZS2_ThriftKernel_registerCTransformArrayI64(
+                ZL_ThriftKernel_registerCTransformArrayI64(
                         cgraph_, (unsigned)TransformIDs::ArrayI64);
         nodes_[(unsigned)TransformIDs::ArrayI32] =
-                ZS2_ThriftKernel_registerCTransformArrayI32(
+                ZL_ThriftKernel_registerCTransformArrayI32(
                         cgraph_, (unsigned)TransformIDs::ArrayI32);
         nodes_[(unsigned)TransformIDs::ArrayFloat] =
-                ZS2_ThriftKernel_registerCTransformArrayFloat(
+                ZL_ThriftKernel_registerCTransformArrayFloat(
                         cgraph_, (unsigned)TransformIDs::ArrayFloat);
 
-        ZL_REQUIRE_SUCCESS(ZS2_ThriftKernel_registerDTransformMapI32Float(
+        ZL_REQUIRE_SUCCESS(ZL_ThriftKernel_registerDTransformMapI32Float(
                 dctx_, (unsigned)TransformIDs::MapI32Float));
-        ZL_REQUIRE_SUCCESS(ZS2_ThriftKernel_registerDTransformMapI32ArrayFloat(
+        ZL_REQUIRE_SUCCESS(ZL_ThriftKernel_registerDTransformMapI32ArrayFloat(
                 dctx_, (unsigned)TransformIDs::MapI32ArrayFloat));
-        ZL_REQUIRE_SUCCESS(ZS2_ThriftKernel_registerDTransformMapI32ArrayI64(
+        ZL_REQUIRE_SUCCESS(ZL_ThriftKernel_registerDTransformMapI32ArrayI64(
                 dctx_, (unsigned)TransformIDs::MapI32ArrayI64));
         ZL_REQUIRE_SUCCESS(
-                ZS2_ThriftKernel_registerDTransformMapI32ArrayArrayI64(
+                ZL_ThriftKernel_registerDTransformMapI32ArrayArrayI64(
                         dctx_, (unsigned)TransformIDs::MapI32ArrayArrayI64));
-        ZL_REQUIRE_SUCCESS(ZS2_ThriftKernel_registerDTransformMapI32MapI64Float(
+        ZL_REQUIRE_SUCCESS(ZL_ThriftKernel_registerDTransformMapI32MapI64Float(
                 dctx_, (unsigned)TransformIDs::MapI32MapI64Float));
-        ZL_REQUIRE_SUCCESS(ZS2_ThriftKernel_registerDTransformArrayI64(
+        ZL_REQUIRE_SUCCESS(ZL_ThriftKernel_registerDTransformArrayI64(
                 dctx_, (unsigned)TransformIDs::ArrayI64));
-        ZL_REQUIRE_SUCCESS(ZS2_ThriftKernel_registerDTransformArrayI32(
+        ZL_REQUIRE_SUCCESS(ZL_ThriftKernel_registerDTransformArrayI32(
                 dctx_, (unsigned)TransformIDs::ArrayI32));
-        ZL_REQUIRE_SUCCESS(ZS2_ThriftKernel_registerDTransformArrayFloat(
+        ZL_REQUIRE_SUCCESS(ZL_ThriftKernel_registerDTransformArrayFloat(
                 dctx_, (unsigned)TransformIDs::ArrayFloat));
     }
 

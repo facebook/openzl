@@ -12,12 +12,12 @@ extern "C" {
 
 // State
 
-void ZS2_SelectorOpt_setEnabled(int enabled);
+void ZL_SelectorOpt_setEnabled(int enabled);
 
-int ZS2_SelectorOpt_isEnabled(void);
+int ZL_SelectorOpt_isEnabled(void);
 
-typedef struct ZS2_SelectorOptState_s ZS2_SelectorOptState;
-struct ZS2_SelectorOptState_s {
+typedef struct ZL_SelectorOptState_s ZL_SelectorOptState;
+struct ZL_SelectorOptState_s {
     ZL_GraphID* possibleGraphs;
     size_t nbPossibleGraphs;
     size_t idx;
@@ -25,19 +25,19 @@ struct ZS2_SelectorOptState_s {
     int done;
 };
 
-ZS2_SelectorOptState ZS2_SelectorOptState_init(void);
+ZL_SelectorOptState ZL_SelectorOptState_init(void);
 
-void ZS2_SelectorOptState_next(
-        ZS2_SelectorOptState* state,
+void ZL_SelectorOptState_next(
+        ZL_SelectorOptState* state,
         const ZL_GraphID* possibleGraphs,
         size_t nbPossibleGraphs);
 
-void ZS2_SelectorOptState_destroy(ZS2_SelectorOptState* state);
+void ZL_SelectorOptState_destroy(ZL_SelectorOptState* state);
 
 // Shim
 
-ZL_GraphID ZS2_selector_opt_shim_generic(
-        ZS2_SelectorOptState* state,
+ZL_GraphID ZL_selector_opt_shim_generic(
+        ZL_SelectorOptState* state,
         ZL_SerialSelectorFn selector,
         const void* src,
         size_t srcSize,
@@ -51,24 +51,24 @@ typedef struct {
     size_t srcSize;
     size_t size;
     double durationNs;
-} ZS2_SelectorOptResult;
+} ZL_SelectorOptResult;
 
 typedef struct {
-    ZS2_SelectorOptResult* results;
+    ZL_SelectorOptResult* results;
     size_t nbResults;
-} ZS2_SelectorOptResults;
+} ZL_SelectorOptResults;
 
-ZS2_SelectorOptResults ZS2_SelectorOptResults_init(void);
+ZL_SelectorOptResults ZL_SelectorOptResults_init(void);
 
-void ZS2_SelectorOptResults_addResult(
-        ZS2_SelectorOptResults* results,
-        ZS2_SelectorOptResult result);
+void ZL_SelectorOptResults_addResult(
+        ZL_SelectorOptResults* results,
+        ZL_SelectorOptResult result);
 
-void ZS2_SelectorOptResults_print(const ZS2_SelectorOptResults* results);
+void ZL_SelectorOptResults_print(const ZL_SelectorOptResults* results);
 
-size_t ZS2_SelectorOptResults_lastSize(const ZS2_SelectorOptResults* results);
+size_t ZL_SelectorOptResults_lastSize(const ZL_SelectorOptResults* results);
 
-void ZS2_SelectorOptResults_destroy(ZS2_SelectorOptResults* results);
+void ZL_SelectorOptResults_destroy(ZL_SelectorOptResults* results);
 
 // Results Aggregation
 
@@ -93,49 +93,49 @@ typedef struct {
     size_t best_exc_size; // for how many bytes was this uniquely best
     size_t sel_size;      // for how many bytes was this selected
     size_t selbest_size;  // for how many bytes was this best & selected
-} ZS2_SelectorOptAggrChoiceResult;
+} ZL_SelectorOptAggrChoiceResult;
 
 typedef struct {
     // Aggregations for if the selector had always chosen a particular graph.
-    ZS2_SelectorOptAggrChoiceResult* graph_results;
+    ZL_SelectorOptAggrChoiceResult* graph_results;
     size_t nb_graphs;
 
     // A synthetic aggregation for if the selector had always chosen the best
     // graph.
-    ZS2_SelectorOptAggrChoiceResult best_result;
+    ZL_SelectorOptAggrChoiceResult best_result;
 
     // An aggregation based on the selections actually made by the selector.
-    ZS2_SelectorOptAggrChoiceResult selected_result;
-} ZS2_SelectorOptAggrResults;
+    ZL_SelectorOptAggrChoiceResult selected_result;
+} ZL_SelectorOptAggrResults;
 
-ZS2_SelectorOptAggrChoiceResult ZS2_SelectorOptAggrChoiceResult_init(void);
+ZL_SelectorOptAggrChoiceResult ZL_SelectorOptAggrChoiceResult_init(void);
 
-ZS2_SelectorOptAggrResults ZS2_SelectorOptAggrResults_init(void);
+ZL_SelectorOptAggrResults ZL_SelectorOptAggrResults_init(void);
 
-ZS2_SelectorOptAggrChoiceResult* ZS2_SelectorOptAggrResults_getChoiceResult(
-        ZS2_SelectorOptAggrResults* aggr,
+ZL_SelectorOptAggrChoiceResult* ZL_SelectorOptAggrResults_getChoiceResult(
+        ZL_SelectorOptAggrResults* aggr,
         ZL_GraphID graphid);
 
-void ZS2_SelectorOptAggrResults_addResult(
-        ZS2_SelectorOptAggrResults* aggr,
-        const ZS2_SelectorOptResults* result);
+void ZL_SelectorOptAggrResults_addResult(
+        ZL_SelectorOptAggrResults* aggr,
+        const ZL_SelectorOptResults* result);
 
-void ZS2_SelectorOptAggrResults_print(const ZS2_SelectorOptAggrResults* aggr);
+void ZL_SelectorOptAggrResults_print(const ZL_SelectorOptAggrResults* aggr);
 
-void ZS2_SelectorOptAggrResults_destroy(ZS2_SelectorOptAggrResults* aggr);
+void ZL_SelectorOptAggrResults_destroy(ZL_SelectorOptAggrResults* aggr);
 
 // Runner
 
-ZS2_SelectorOptResults ZS2_selector_opt_run(
-        ZS2_SelectorOptState* state,
+ZL_SelectorOptResults ZL_selector_opt_run(
+        ZL_SelectorOptState* state,
         void* dst,
         size_t dstCapacity,
         void const* src,
         size_t srcSize,
         ZL_GraphFn graph);
 
-ZS2_SelectorOptResults ZS2_selector_opt_run_cgraph(
-        ZS2_SelectorOptState* state,
+ZL_SelectorOptResults ZL_selector_opt_run_cgraph(
+        ZL_SelectorOptState* state,
         void* dst,
         size_t dstCapacity,
         void const* src,

@@ -15,7 +15,7 @@ void processDependencies(Compressor& compressor, poly::string_view serialized)
     const auto deps = compressor.getUnmetDependencies(serialized);
     if (deps.graphNames.size() > 0) {
         // Generic clustering graph
-        auto clustering = ZS2_createGraph_genericClustering(compressor.get());
+        auto clustering = ZL_createGraph_genericClustering(compressor.get());
         if (clustering == ZL_GRAPH_ILLEGAL) {
             throw std::runtime_error(
                     "Failed to create generic clustering graph");

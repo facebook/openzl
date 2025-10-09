@@ -250,7 +250,7 @@ ZL_Report jsonExtractDecode(
 } // namespace
 } // namespace zstrong
 
-ZL_Report ZS2_DCtx_registerJsonExtract(ZL_DCtx* dctx, ZL_IDType transformID)
+ZL_Report ZL_DCtx_registerJsonExtract(ZL_DCtx* dctx, ZL_IDType transformID)
 {
     std::array<ZL_Type, 4> const kOutStreams = {
         ZL_Type_serial, ZL_Type_string, ZL_Type_string, ZL_Type_string

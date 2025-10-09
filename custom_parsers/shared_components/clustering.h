@@ -16,7 +16,7 @@ extern "C" {
  * @param compressor The compressor to register the graph with
  * @returns The graph ID registered for the clustering graph
  */
-ZL_GraphID ZS2_createGraph_genericClustering(ZL_Compressor* compressor);
+ZL_GraphID ZL_createGraph_genericClustering(ZL_Compressor* compressor);
 
 #if defined(__cplusplus)
 }

@@ -9,17 +9,17 @@
 FUZZ(ZipLexerTest, FuzzLexer)
 {
     std::string_view data{ (const char*)Data, Size };
-    std::array<ZS2_ZipToken, 10> tokens;
+    std::array<ZL_ZipToken, 10> tokens;
 
-    ZS2_ZipLexer lexer;
-    auto report = ZS2_ZipLexer_init(&lexer, data.data(), data.size());
+    ZL_ZipLexer lexer;
+    auto report = ZL_ZipLexer_init(&lexer, data.data(), data.size());
     if (ZL_isError(report)) {
         return;
     }
 
     size_t offset = 0;
-    while (!ZS2_ZipLexer_finished(&lexer)) {
-        report = ZS2_ZipLexer_lex(&lexer, tokens.data(), tokens.size());
+    while (!ZL_ZipLexer_finished(&lexer)) {
+        report = ZL_ZipLexer_lex(&lexer, tokens.data(), tokens.size());
         if (ZL_isError(report)) {
             return;
         }

@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#ifndef ZSTRONG_ZS2_COMPRESS_H
-#define ZSTRONG_ZS2_COMPRESS_H
+#ifndef ZSTRONG_ZL_COMPRESS_H
+#define ZSTRONG_ZL_COMPRESS_H
 
 #include <stddef.h>                  // size_t
 #include "openzl/zl_errors.h"        // ZL_Report, ZL_isError()
@@ -23,13 +23,13 @@ extern "C" {
  * Zstrong is a drop in replacement for Zstd.
  * If this is something you are sure you want, use ZL_CCtx_compress().
  *
- * Delegates processing to ZS2_profile_undefined profile.
+ * Delegates processing to ZL_profile_undefined profile.
  * Note 1 : Currently ignores compressionLevel.
  *          In the future, compressionLevel may trigger different back ends.
  * Note 2 : @compressionLevel is the only parameter
  *          both available and compulsory.
  */
-// ZL_Report ZS2_compress(
+// ZL_Report ZL_compress(
 //         void* dst,
 //         size_t dstCapacity,
 //         const void* src,
@@ -86,7 +86,7 @@ typedef enum {
     /// Permissive mode engages a generic backup compression mechanism,
     /// to successfully complete compression, at the cost of efficiency.
     /// At the time of this writing, backup is ZL_GRAPH_COMPRESS_GENERIC.
-    /// Valid values for this parameter use the ZS2_cv3_* format.
+    /// Valid values for this parameter use the ZL_cv3_* format.
     /// @default 0 currently means strict mode. This may change in the
     /// future.
     ZL_CParam_permissiveCompression = 5,
@@ -94,7 +94,7 @@ typedef enum {
     /// Enable checksum of the compressed frame.
     /// This is useful to check for corruption that happens after
     /// compression.
-    /// Valid values for this parameter use the ZS2_cv3_* format.
+    /// Valid values for this parameter use the ZL_cv3_* format.
     /// @default 0 currently means checksum, might change in the future.
     ZL_CParam_compressedChecksum = 6,
 
@@ -105,7 +105,7 @@ typedef enum {
     /// distinguish the two alone. In order to determine whether it is
     /// corruption or a bug in the ZStrong library, you have to enable both
     /// compressed and content checksums.
-    /// Valid values for this parameter use the ZS2_cv3_* format.
+    /// Valid values for this parameter use the ZL_cv3_* format.
     /// @default 0 currently means checksum, might change in the future.
     ZL_CParam_contentChecksum = 7,
 
@@ -381,4 +381,4 @@ void ZL_TypedRef_free(ZL_TypedRef* tref);
 } // extern "C"
 #endif
 
-#endif // ZSTRONG_ZS2_COMPRESS_H
+#endif // ZSTRONG_ZL_COMPRESS_H

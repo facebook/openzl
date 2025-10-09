@@ -10,7 +10,7 @@ For general mkdocs capabilities see:
 For automatic Doxygen symbol documentation importing with:
 
 ```
-::: ZS2_symbolName
+::: ZL_symbolName
 ```
 
 See [mkdocstrings](https://mkdocstrings.github.io/usage/).

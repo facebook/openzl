@@ -23,7 +23,7 @@ ZL_BEGIN_C_DECLS
  * @param bitsSize The size of the bits buffer.
  * @returns Success or an error code upon failure.
  */
-ZL_Report ZS2_quantize32Decode(
+ZL_Report ZL_quantize32Decode(
         uint32_t* dst,
         uint8_t const* codes,
         size_t nbCodes,

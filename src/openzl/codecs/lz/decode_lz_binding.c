@@ -91,7 +91,7 @@ ZL_Report DI_fieldLz(ZL_Decoder* dictx, const ZL_Input* ins[])
             ZL_Decoder_create1OutStream(dictx, dstEltsCapacity, eltWidth);
     ZL_RET_R_IF_NULL(allocation, dst);
 
-    ZL_Report const dstSize = ZS2_FieldLz_decompress(
+    ZL_Report const dstSize = ZL_FieldLz_decompress(
             ZL_Output_ptr(dst), dstEltsCapacity, eltWidth, &src);
     if (ZL_isError(dstSize)) {
         return dstSize;

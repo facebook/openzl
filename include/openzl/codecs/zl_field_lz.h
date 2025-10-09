@@ -15,7 +15,7 @@ extern "C" {
 // matches entire fields.
 // NOTE: This node is for advanced users. You probably want to use either
 // ZL_Compressor_registerFieldLZGraph() or
-// ZS2_createGraph_fieldLzWithLiteralsGraph() to get a pre-built Field LZ graph.
+// ZL_createGraph_fieldLzWithLiteralsGraph() to get a pre-built Field LZ graph.
 //
 // Input: A fixed size stream of width 1, 2, 4, or 8.
 // Output 1: Literals: A fixed size stream of the same width as the input.

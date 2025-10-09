@@ -145,7 +145,7 @@ static ZL_Report writeOutSequences(
     return ZL_returnSuccess();
 }
 
-ZL_Report ZS2_FieldLz_compress(
+ZL_Report ZL_FieldLz_compress(
         ZL_FieldLz_OutSequences* dst,
         void const* src,
         size_t nbElts,

@@ -15,7 +15,7 @@ ZL_BEGIN_C_DECLS
 
 #if 0
 // Public symbols already declared in public headers :
-// Note : Public symbols use the prefix ZS2_Encoder_*
+// Note : Public symbols use the prefix ZL_Encoder_*
 
 ZL_Data* ZL_Encoder_createTypedStream(
         ZL_Encoder* ectx,
@@ -25,7 +25,7 @@ ZL_Data* ZL_Encoder_createTypedStream(
 void ZL_Encoder_sendCodecHeader(ZL_Encoder* ei, const void* trh, size_t trhSize);
 
 int ZL_Encoder_getCParam(const ZL_Encoder* eic, ZL_CParam gparam);
-ZL_LocalCopyParams ZS2_Encoder_getLocalCopyParams(const ZL_Encoder* eic);
+ZL_LocalCopyParams ZL_Encoder_getLocalCopyParams(const ZL_Encoder* eic);
 
 #endif
 

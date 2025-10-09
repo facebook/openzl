@@ -97,7 +97,7 @@ ZL_NodeID createCustomTokenizeNode(ZL_Compressor* cg)
 
         return ZL_returnSuccess();
     };
-    return ZS2_createNode_customTokenize(cg, ZL_Type_struct, tokenize, nullptr);
+    return ZL_createNode_customTokenize(cg, ZL_Type_struct, tokenize, nullptr);
 }
 
 ZL_NodeID createDispatchNByTagNode(ZL_Compressor* cgraph)
@@ -254,12 +254,12 @@ std::unordered_map<TransformID, CustomNode> makeCustomNodes()
     std::unordered_map<TransformID, CustomNode> customNodes;
     auto rw = std::make_shared<PRNGWrapper>(std::make_shared<std::mt19937>());
 
-#define ZS2_REGISTER_THRIFT_KERNEL(kernel)               \
+#define ZL_REGISTER_THRIFT_KERNEL(kernel)               \
     registerCustomTransform(                             \
             customNodes,                                 \
             TransformID::ThriftKernel##kernel,           \
-            ZS2_ThriftKernel_registerCTransform##kernel, \
-            ZS2_ThriftKernel_registerDTransform##kernel, \
+            ZL_ThriftKernel_registerCTransform##kernel, \
+            ZL_ThriftKernel_registerDTransform##kernel, \
             std::make_unique<thrift::tests::ThriftProducer<kernel>>(rw))
 
     using MapI32Float      = std::map<int32_t, float>;
@@ -272,16 +272,16 @@ std::unordered_map<TransformID, CustomNode> makeCustomNodes()
     using ArrayI32          = std::vector<int32_t>;
     using ArrayFloat        = std::vector<float>;
 
-    ZS2_REGISTER_THRIFT_KERNEL(MapI32Float);
-    ZS2_REGISTER_THRIFT_KERNEL(MapI32ArrayFloat);
-    ZS2_REGISTER_THRIFT_KERNEL(MapI32ArrayI64);
-    ZS2_REGISTER_THRIFT_KERNEL(MapI32ArrayArrayI64);
-    ZS2_REGISTER_THRIFT_KERNEL(MapI32MapI64Float);
-    ZS2_REGISTER_THRIFT_KERNEL(ArrayI64);
-    ZS2_REGISTER_THRIFT_KERNEL(ArrayI32);
-    ZS2_REGISTER_THRIFT_KERNEL(ArrayFloat);
+    ZL_REGISTER_THRIFT_KERNEL(MapI32Float);
+    ZL_REGISTER_THRIFT_KERNEL(MapI32ArrayFloat);
+    ZL_REGISTER_THRIFT_KERNEL(MapI32ArrayI64);
+    ZL_REGISTER_THRIFT_KERNEL(MapI32ArrayArrayI64);
+    ZL_REGISTER_THRIFT_KERNEL(MapI32MapI64Float);
+    ZL_REGISTER_THRIFT_KERNEL(ArrayI64);
+    ZL_REGISTER_THRIFT_KERNEL(ArrayI32);
+    ZL_REGISTER_THRIFT_KERNEL(ArrayFloat);
 
-#undef ZS2_REGISTER_THRIFT_KERNEL
+#undef ZL_REGISTER_THRIFT_KERNEL
 
     registerCustomParser(
             customNodes,

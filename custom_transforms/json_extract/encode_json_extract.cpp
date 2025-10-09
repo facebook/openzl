@@ -487,7 +487,7 @@ ZL_Report jsonExtractEncode(ZL_Encoder* eictx, const ZL_Input* input) noexcept
 } // namespace
 } // namespace zstrong
 
-ZL_NodeID ZS2_Compressor_registerJsonExtract(
+ZL_NodeID ZL_Compressor_registerJsonExtract(
         ZL_Compressor* cgraph,
         ZL_IDType transformID)
 {

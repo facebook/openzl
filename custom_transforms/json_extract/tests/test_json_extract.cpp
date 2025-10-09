@@ -20,7 +20,7 @@ namespace {
 std::string compressJson(std::string_view data)
 {
     CGraph cgraph;
-    auto node = ZS2_Compressor_registerJsonExtract(cgraph.get(), 0);
+    auto node = ZL_Compressor_registerJsonExtract(cgraph.get(), 0);
     std::vector<ZL_GraphID> store(4, ZL_GRAPH_STORE);
     ZL_GraphID graph = ZL_Compressor_registerStaticGraph_fromNode(
             cgraph.get(), node, store.data(), store.size());
@@ -32,7 +32,7 @@ std::string compressJson(std::string_view data)
 std::string decompressJson(std::string_view compressed)
 {
     DCtx dctx;
-    dctx.unwrap(ZS2_DCtx_registerJsonExtract(dctx.get(), 0));
+    dctx.unwrap(ZL_DCtx_registerJsonExtract(dctx.get(), 0));
     return decompress(dctx, compressed);
 }
 

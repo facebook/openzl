@@ -81,7 +81,7 @@ DEFINE_ERROR_MESSAGE_CONTAINS(pi_1, const int32_t*)
 
 DEFINE_ERROR_MESSAGE_CONTAINS(e_1, Foo)
 
-ZL_Report ZS2_test_errors_binary_arg_types_deduced_in_c_inner(
+ZL_Report ZL_test_errors_binary_arg_types_deduced_in_c_inner(
         ZL_ScopeContext ZL__scopeContext)
 {
     const char c_1       = (char)1;

@@ -1005,7 +1005,7 @@ TEST(ErrorsTest, BinaryTestArgTypesDeducedInC)
     ZL_ScopeContext scopeCtx{ &opCtx, {} };
 
     ZL_Report report =
-            ZS2_test_errors_binary_arg_types_deduced_in_c_inner(scopeCtx);
+            ZL_test_errors_binary_arg_types_deduced_in_c_inner(scopeCtx);
     if (ZL_RES_isError(report)) {
         ZL_E_print(ZL_RES_error(report));
     }

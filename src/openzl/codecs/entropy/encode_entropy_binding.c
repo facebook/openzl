@@ -12,7 +12,7 @@
 #include "openzl/codecs/entropy/encode_entropy_selector.h"
 #include "openzl/codecs/entropy/encode_huffman_kernel.h"
 #include "openzl/common/assertion.h"
-#include "openzl/common/errors_internal.h" // ZS2_RET_IF*
+#include "openzl/common/errors_internal.h" // ZL_RET_IF*
 #include "openzl/compress/enc_interface.h"
 #include "openzl/compress/private_nodes.h"
 #include "openzl/fse/fse.h"

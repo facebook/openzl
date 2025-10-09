@@ -63,7 +63,7 @@ static ZL_PipeEncoderDesc const zerobuffer_CDesc = {
 /* ------   Selector   -------- */
 
 #include "openzl/common/assertion.h"
-#include "openzl/zl_compressor.h" // ZL_Compressor_registerPipeEncoder, ZL_Compressor_registerStaticGraph_fromNode1o, ZS2_setStreamDestination_usingGraph
+#include "openzl/zl_compressor.h" // ZL_Compressor_registerPipeEncoder, ZL_Compressor_registerStaticGraph_fromNode1o, ZL_setStreamDestination_usingGraph
 #include "openzl/zl_errors.h"
 #include "openzl/zl_selector.h"
 
@@ -121,7 +121,7 @@ static ZL_GraphID dynSelector_graph(ZL_Compressor* cgraph)
 
 #include "openzl/zl_compress.h"
 
-// This graph function follows the ZS2_Node_1i_f definition
+// This graph function follows the ZL_Node_1i_f definition
 // It's a pass-through for dynSelector_graph(),
 // and could be used to add global parameters on top of it.
 static ZL_GraphID graph_and_parameters(ZL_Compressor* cgraph)

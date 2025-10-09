@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#ifndef ZSTRONG_ZS2_OUTPUT_H
-#define ZSTRONG_ZS2_OUTPUT_H
+#ifndef ZSTRONG_ZL_OUTPUT_H
+#define ZSTRONG_ZL_OUTPUT_H
 
 #include <stddef.h>
 #include <stdint.h>

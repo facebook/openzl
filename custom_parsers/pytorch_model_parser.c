@@ -84,10 +84,10 @@ pytorchModelDynGraph(ZL_Graph* gctx, ZL_Edge* sctxs[], size_t nbIns)
     ZL_Input const* const input = ZL_Edge_getData(sctx);
     const size_t inputSize      = ZL_Input_numElts(input);
 
-    ZS2_ZipLexer lexer;
-    ZL_RET_R_IF_ERR(ZS2_ZipLexer_init(&lexer, ZL_Input_ptr(input), inputSize));
+    ZL_ZipLexer lexer;
+    ZL_RET_R_IF_ERR(ZL_ZipLexer_init(&lexer, ZL_Input_ptr(input), inputSize));
 
-    const size_t nbFiles = ZS2_ZipLexer_numFiles(&lexer);
+    const size_t nbFiles = ZL_ZipLexer_numFiles(&lexer);
     const size_t maxNbSegments =
             nbFiles * 4 + 2 + (inputSize / kMaxSegmentSize);
 
@@ -101,15 +101,15 @@ pytorchModelDynGraph(ZL_Graph* gctx, ZL_Edge* sctxs[], size_t nbIns)
     // Iterate over all the tokens in the Zip file, and fill out segmentSizes
     // and tags.
     size_t nbSegments = 0;
-    while (!ZS2_ZipLexer_finished(&lexer)) {
-        ZS2_ZipToken tokens[32];
-        ZL_TRY_LET_R(nbTokens, ZS2_ZipLexer_lex(&lexer, tokens, 32));
+    while (!ZL_ZipLexer_finished(&lexer)) {
+        ZL_ZipToken tokens[32];
+        ZL_TRY_LET_R(nbTokens, ZL_ZipLexer_lex(&lexer, tokens, 32));
         for (size_t i = 0; i < nbTokens; ++i) {
             ZL_RET_R_IF_GE(corruption, nbSegments, maxNbSegments);
-            const ZS2_ZipToken token = tokens[i];
+            const ZL_ZipToken token = tokens[i];
 
             // Assign the appropiate tag to the token.
-            if (token.type == ZS2_ZipTokenType_CompressedData) {
+            if (token.type == ZL_ZipTokenType_CompressedData) {
                 if (token.compressionMethod != 0) {
                     tags[nbSegments] = PytorchModelSuccessor_Precompressed;
                 } else if (isDataFile(token.filename, token.filenameSize)) {
@@ -160,7 +160,7 @@ pytorchModelDynGraph(ZL_Graph* gctx, ZL_Edge* sctxs[], size_t nbIns)
     return ZL_returnSuccess();
 }
 
-ZL_GraphID ZS2_createGraph_pytorchModelCompressor(ZL_Compressor* cgraph)
+ZL_GraphID ZL_createGraph_pytorchModelCompressor(ZL_Compressor* cgraph)
 {
     ZL_GraphID f16Graph = ZL_Compressor_registerStaticGraph_fromNode(
             cgraph,

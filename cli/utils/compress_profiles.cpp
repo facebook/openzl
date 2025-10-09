@@ -157,7 +157,7 @@ compressProfiles()
                 kPytorchName,
                 "Pytorch model generated from torch.save(). Training is not supported.",
                 [](ZL_Compressor* comp, void*, const ProfileArgs&) {
-                    return ZS2_createGraph_pytorchModelCompressor(comp);
+                    return ZL_createGraph_pytorchModelCompressor(comp);
                 });
 
         std::string kCsvName = "csv";
@@ -192,7 +192,7 @@ compressProfiles()
                 kParquetName,
                 "Parquet in the canonical format (no compression, plain encoding)",
                 [](ZL_Compressor* comp, void*, const ProfileArgs&) {
-                    auto clustering = ZS2_createGraph_genericClustering(comp);
+                    auto clustering = ZL_createGraph_genericClustering(comp);
                     return ZL_Parquet_registerGraph(comp, clustering);
                 });
 

@@ -8,8 +8,8 @@
 // This file not only declares standard nodes for the compiler.
 // Documentation details about Codecs are provided in their respective header.
 
-#ifndef ZSTRONG_ZS2_PUBLIC_NODES_H
-#define ZSTRONG_ZS2_PUBLIC_NODES_H
+#ifndef ZSTRONG_ZL_PUBLIC_NODES_H
+#define ZSTRONG_ZL_PUBLIC_NODES_H
 
 #include "openzl/codecs/zl_ace.h"                  // IWYU pragma: export
 #include "openzl/codecs/zl_bitpack.h"              // IWYU pragma: export
@@ -43,4 +43,4 @@
 #include "openzl/codecs/zl_zigzag.h"               // IWYU pragma: export
 #include "openzl/codecs/zl_zstd.h"                 // IWYU pragma: export
 
-#endif // ZSTRONG_ZS2_PUBLIC_NODES_H
+#endif // ZSTRONG_ZL_PUBLIC_NODES_H

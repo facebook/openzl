@@ -6,7 +6,7 @@
 #include <numeric>
 #include <unordered_map>
 
-#include "openzl/compress/private_nodes.h" // ZS2_NODE_*
+#include "openzl/compress/private_nodes.h" // ZL_NODE_*
 #include "openzl/shared/mem.h"
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_data.h"

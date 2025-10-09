@@ -2,7 +2,7 @@
 
 #include "openzl/compress/selectors/selector_compress.h"
 #include "openzl/common/assertion.h"
-#include "openzl/compress/private_nodes.h" // ZS2_GRAPH_COMPRESS_*
+#include "openzl/compress/private_nodes.h" // ZL_GRAPH_COMPRESS_*
 #include "openzl/zl_ctransform.h"
 #include "openzl/zl_data.h"
 #include "openzl/zl_graph_api.h"

@@ -9,8 +9,8 @@
  * issues.
  */
 
-#ifndef ZSTRONG_ZS2_ERRORS_TYPES_H
-#define ZSTRONG_ZS2_ERRORS_TYPES_H
+#ifndef ZSTRONG_ZL_ERRORS_TYPES_H
+#define ZSTRONG_ZL_ERRORS_TYPES_H
 
 #include "openzl/zl_portability.h"
 
@@ -110,4 +110,4 @@ typedef enum {
 } // extern "C"
 #endif
 
-#endif // ZSTRONG_ZS2_ERRORS_TYPES_H
+#endif // ZSTRONG_ZL_ERRORS_TYPES_H

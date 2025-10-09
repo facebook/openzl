@@ -11,9 +11,9 @@
 // Zstrong
 #include "openzl/common/debug.h" // ZL_REQUIRE
 #include "openzl/zl_compress.h"
-#include "openzl/zl_compressor.h" // ZS2_Compressor_*, ZL_Compressor_registerStaticGraph_fromPipelineNodes1o
+#include "openzl/zl_compressor.h" // ZL_Compressor_*, ZL_Compressor_registerStaticGraph_fromPipelineNodes1o
 #include "openzl/zl_ctransform.h" // ZL_TypedEncoderDesc
-#include "openzl/zl_data.h"       // ZS2_Data_*
+#include "openzl/zl_data.h"       // ZL_Data_*
 #include "openzl/zl_decompress.h" // ZL_decompress
 #include "openzl/zl_dtransform.h"
 #include "openzl/zl_graph_api.h"

@@ -16,7 +16,7 @@ namespace tests {
 namespace datagen {
 
 namespace {
-struct ZS2_Compressor_Deleter {
+struct ZL_Compressor_Deleter {
     void operator()(ZL_Compressor* compressor)
     {
         ZL_Compressor_free(compressor);
@@ -241,7 +241,7 @@ void RandomCompressorMultiBuilder::record_standard_nodes()
             ZL_NODE_INTERPRET_AS_LE64,
             ZL_NODE_CONVERT_NUM_TO_SERIAL,
             ZL_NODE_SEPARATE_STRING_COMPONENTS,
-            ZS2_NODE_BITUNPACK,
+            ZL_NODE_BITUNPACK,
             ZL_NODE_RANGE_PACK,
             ZL_NODE_MERGE_SORTED,
             ZL_NODE_PREFIX,
@@ -1004,14 +1004,14 @@ RandomCompressorMultiBuilder::make_multi(
     for (size_t i = 0; i < num_full_compressors; i++) {
         auto c = ZL_Compressor_create();
         ZL_ASSERT_NN(c);
-        auto p = std::unique_ptr<ZL_Compressor, ZS2_Compressor_Deleter>(c);
+        auto p = std::unique_ptr<ZL_Compressor, ZL_Compressor_Deleter>(c);
         full_compressors_.push_back(std::move(p));
     }
 
     for (size_t i = 0; i < num_base_compressors; i++) {
         auto c = ZL_Compressor_create();
         ZL_ASSERT_NN(c);
-        auto p = std::unique_ptr<ZL_Compressor, ZS2_Compressor_Deleter>(c);
+        auto p = std::unique_ptr<ZL_Compressor, ZL_Compressor_Deleter>(c);
         base_compressors_.push_back(std::move(p));
     }
 

@@ -56,8 +56,8 @@ inline std::string compress(std::vector<std::string> const& data, Type type)
 {
     CGraph cgraph;
     auto node = type == Type::Int64
-            ? ZS2_Compressor_registerParseInt64(cgraph.get(), 0)
-            : ZS2_Compressor_registerParseFloat64(cgraph.get(), 1);
+            ? ZL_Compressor_registerParseInt64(cgraph.get(), 0)
+            : ZL_Compressor_registerParseFloat64(cgraph.get(), 1);
     std::vector<ZL_GraphID> store(3, ZL_GRAPH_STORE);
     ZL_GraphID graph = ZL_Compressor_registerStaticGraph_fromNode(
             cgraph.get(), node, store.data(), store.size());
@@ -93,9 +93,9 @@ inline std::string decompress(
 {
     DCtx dctx;
     if (type == Type::Int64) {
-        dctx.unwrap(ZS2_DCtx_registerParseInt64(dctx.get(), 0));
+        dctx.unwrap(ZL_DCtx_registerParseInt64(dctx.get(), 0));
     } else {
-        dctx.unwrap(ZS2_DCtx_registerParseFloat64(dctx.get(), 1));
+        dctx.unwrap(ZL_DCtx_registerParseFloat64(dctx.get(), 1));
     }
     return decompress(dctx, compressed, maxDstSize);
 }

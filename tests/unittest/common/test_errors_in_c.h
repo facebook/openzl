@@ -8,7 +8,7 @@
 
 ZL_BEGIN_C_DECLS
 
-ZL_Report ZS2_test_errors_binary_arg_types_deduced_in_c_inner(
+ZL_Report ZL_test_errors_binary_arg_types_deduced_in_c_inner(
         ZL_ScopeContext scopeCtx);
 
 ZL_END_C_DECLS

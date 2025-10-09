@@ -39,7 +39,7 @@ static ZL_Report GM_fillStandardGraphsCallback(
         const InternalGraphDesc* desc)
 {
     GraphsMgr* gm      = opaque;
-    const ZL_Name name = ZS2_Name_wrapStandard(desc->gdi.migd.name);
+    const ZL_Name name = ZL_Name_wrapStandard(desc->gdi.migd.name);
     GraphMap_Insert insert =
             GraphMap_insertVal(&gm->nameMap, (GraphMap_Entry){ name, graph });
     ZL_RET_R_IF(allocation, insert.badAlloc);
@@ -696,7 +696,7 @@ GM_GraphMetadata GM_getGraphMetadata(const GraphsMgr* gm, ZL_GraphID gid)
 
     // name
     if (GR_isStandardGraph(gid)) {
-        meta.name = ZS2_Name_wrapStandard(desc->name);
+        meta.name = ZL_Name_wrapStandard(desc->name);
     } else {
         ZL_IDType const lgid = GM_GraphID_to_lgid(gid);
         meta.name            = VECTOR_AT(gm->gdv, lgid).maybeName;

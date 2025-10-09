@@ -44,7 +44,7 @@ FUZZ_F(MultiInputTest, FuzzConcatRoundTrip)
             cgraph_, concat, successors, 2);
     ZL_REQUIRE_SUCCESS(ZL_Compressor_selectStartingGraphID(cgraph_, graph));
     size_t numInputs = f.usize_range("num_inputs", 1, 512);
-    std::vector<std::unique_ptr<ZL_TypedRef, ZS2_TypedRef_Deleter>> inputs;
+    std::vector<std::unique_ptr<ZL_TypedRef, ZL_TypedRef_Deleter>> inputs;
     std::vector<TypedInputDesc> inputDescs;
     inputs.reserve(numInputs);
     inputDescs.reserve(numInputs);
@@ -133,7 +133,7 @@ FUZZ_F(MultiInputTest, FuzzClusterRoundTrip)
                                        ZL_NODE_CONCAT_STRING };
 
     size_t numInputs = f.usize_range("num_inputs", 1, 512);
-    std::vector<std::unique_ptr<ZL_TypedRef, ZS2_TypedRef_Deleter>> inputs;
+    std::vector<std::unique_ptr<ZL_TypedRef, ZL_TypedRef_Deleter>> inputs;
     std::vector<TypedInputDesc> inputDescs;
     inputs.reserve(numInputs);
     inputDescs.reserve(numInputs);

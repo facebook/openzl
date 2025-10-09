@@ -121,7 +121,7 @@ FUZZ_F(SerializedTest, FuzzBitunpackRoundTrip)
     ZL_IntParam intParam  = { ZL_Bitunpack_numBits, (int)integerBitWidth };
     ZL_LocalParams params = { { &intParam, 1 }, { NULL, 0 }, { NULL, 0 } };
     setLargeCompressBound(8);
-    testParameterizedNodeOnInput(ZS2_NODE_BITUNPACK, params, input);
+    testParameterizedNodeOnInput(ZL_NODE_BITUNPACK, params, input);
 }
 
 FUZZ_F(SerializedTest, FuzzSplitByStructRoundTrip)

@@ -9,28 +9,28 @@
 
 #include "tools/time/timefn.h"
 
-int ZS2_SelectorOpt_enabled = 1;
+int ZL_SelectorOpt_enabled = 1;
 
-void ZS2_SelectorOpt_setEnabled(int enabled)
+void ZL_SelectorOpt_setEnabled(int enabled)
 {
-    ZS2_SelectorOpt_enabled = !!enabled;
+    ZL_SelectorOpt_enabled = !!enabled;
 }
 
-int ZS2_SelectorOpt_isEnabled(void)
+int ZL_SelectorOpt_isEnabled(void)
 {
-    return ZS2_SelectorOpt_enabled;
+    return ZL_SelectorOpt_enabled;
 }
 
-ZL_GraphID ZS2_selector_opt_shim_generic(
-        ZS2_SelectorOptState* state,
+ZL_GraphID ZL_selector_opt_shim_generic(
+        ZL_SelectorOptState* state,
         ZL_SerialSelectorFn selector,
         const void* src,
         size_t srcSize,
         const ZL_GraphID* customGraphs,
         size_t nbCustomGraphs)
 {
-    if (ZS2_SelectorOpt_isEnabled()) {
-        ZS2_SelectorOptState_next(state, customGraphs, nbCustomGraphs);
+    if (ZL_SelectorOpt_isEnabled()) {
+        ZL_SelectorOptState_next(state, customGraphs, nbCustomGraphs);
         if (state->idx < state->nbPossibleGraphs) {
             state->selected = state->possibleGraphs[state->idx];
         } else {
@@ -44,9 +44,9 @@ ZL_GraphID ZS2_selector_opt_shim_generic(
     }
 }
 
-ZS2_SelectorOptState ZS2_SelectorOptState_init(void)
+ZL_SelectorOptState ZL_SelectorOptState_init(void)
 {
-    ZS2_SelectorOptState state;
+    ZL_SelectorOptState state;
     state.possibleGraphs   = NULL;
     state.nbPossibleGraphs = 0;
     state.idx              = (size_t)-1;
@@ -54,8 +54,8 @@ ZS2_SelectorOptState ZS2_SelectorOptState_init(void)
     return state;
 }
 
-void ZS2_SelectorOptState_next(
-        ZS2_SelectorOptState* state,
+void ZL_SelectorOptState_next(
+        ZL_SelectorOptState* state,
         const ZL_GraphID* possibleGraphs,
         size_t nbPossibleGraphs)
 {
@@ -79,47 +79,47 @@ void ZS2_SelectorOptState_next(
            state->nbPossibleGraphs + 1);
 }
 
-void ZS2_SelectorOptState_destroy(ZS2_SelectorOptState* state)
+void ZL_SelectorOptState_destroy(ZL_SelectorOptState* state)
 {
     ZL_REQUIRE_NN(state);
     free(state->possibleGraphs);
 }
 
-ZS2_SelectorOptResults ZS2_SelectorOptResults_init(void)
+ZL_SelectorOptResults ZL_SelectorOptResults_init(void)
 {
-    ZS2_SelectorOptResults results;
+    ZL_SelectorOptResults results;
     results.results   = NULL;
     results.nbResults = 0;
     return results;
 }
 
-void ZS2_SelectorOptResults_addResult(
-        ZS2_SelectorOptResults* results,
-        ZS2_SelectorOptResult result)
+void ZL_SelectorOptResults_addResult(
+        ZL_SelectorOptResults* results,
+        ZL_SelectorOptResult result)
 {
     results->results =
             realloc(results->results,
-                    sizeof(ZS2_SelectorOptResult) * ++(results->nbResults));
+                    sizeof(ZL_SelectorOptResult) * ++(results->nbResults));
     ZL_ASSERT_NN(results->results);
     results->results[results->nbResults - 1] = result;
 }
 
-void ZS2_SelectorOptResults_print(const ZS2_SelectorOptResults* results)
+void ZL_SelectorOptResults_print(const ZL_SelectorOptResults* results)
 {
     ZL_LOG(ALWAYS, "Selector Benchmark Results:");
     ZL_RLOG(ALWAYS, "Choice   : Sel?Best?Graph Size\n");
-    const ZS2_SelectorOptResult* selected =
+    const ZL_SelectorOptResult* selected =
             &results->results[results->nbResults - 1];
     size_t bestSize = results->results[0].size;
     for (size_t i = 1; i < results->nbResults - 1; i++) {
-        const ZS2_SelectorOptResult* result = &results->results[i];
+        const ZL_SelectorOptResult* result = &results->results[i];
         if (result->size < bestSize) {
             bestSize = result->size;
         }
     }
 
     for (size_t i = 0; i < results->nbResults - 1; i++) {
-        const ZS2_SelectorOptResult* result = &results->results[i];
+        const ZL_SelectorOptResult* result = &results->results[i];
         ZL_RLOG(ALWAYS,
                 "Choice %2lu: %3s %4s %5u %7lu\n",
                 i + 1,
@@ -130,22 +130,22 @@ void ZS2_SelectorOptResults_print(const ZS2_SelectorOptResults* results)
     }
 }
 
-void ZS2_SelectorOptResults_destroy(ZS2_SelectorOptResults* results)
+void ZL_SelectorOptResults_destroy(ZL_SelectorOptResults* results)
 {
     free(results->results);
     results->results   = NULL;
     results->nbResults = 0;
 }
 
-size_t ZS2_SelectorOptResults_lastSize(const ZS2_SelectorOptResults* results)
+size_t ZL_SelectorOptResults_lastSize(const ZL_SelectorOptResults* results)
 {
     ZL_ASSERT_GE(results->nbResults, 1);
     return results->results[results->nbResults - 1].size;
 }
 
-ZS2_SelectorOptAggrChoiceResult ZS2_SelectorOptAggrChoiceResult_init(void)
+ZL_SelectorOptAggrChoiceResult ZL_SelectorOptAggrChoiceResult_init(void)
 {
-    return (ZS2_SelectorOptAggrChoiceResult){
+    return (ZL_SelectorOptAggrChoiceResult){
         .in_size_sum     = 0,
         .out_size_sum    = 0,
         .improvement_sum = 0,
@@ -156,42 +156,42 @@ ZS2_SelectorOptAggrChoiceResult ZS2_SelectorOptAggrChoiceResult_init(void)
     };
 }
 
-ZS2_SelectorOptAggrResults ZS2_SelectorOptAggrResults_init(void)
+ZL_SelectorOptAggrResults ZL_SelectorOptAggrResults_init(void)
 {
-    ZS2_SelectorOptAggrResults results;
+    ZL_SelectorOptAggrResults results;
     results.graph_results   = NULL;
     results.nb_graphs       = 0;
-    results.best_result     = ZS2_SelectorOptAggrChoiceResult_init();
-    results.selected_result = ZS2_SelectorOptAggrChoiceResult_init();
+    results.best_result     = ZL_SelectorOptAggrChoiceResult_init();
+    results.selected_result = ZL_SelectorOptAggrChoiceResult_init();
     return results;
 }
 
-ZS2_SelectorOptAggrChoiceResult* ZS2_SelectorOptAggrResults_getChoiceResult(
-        ZS2_SelectorOptAggrResults* aggr,
+ZL_SelectorOptAggrChoiceResult* ZL_SelectorOptAggrResults_getChoiceResult(
+        ZL_SelectorOptAggrResults* aggr,
         ZL_GraphID graphid)
 {
     if (aggr->nb_graphs <= graphid.gid) {
         aggr->graph_results = realloc(
                 aggr->graph_results,
-                sizeof(ZS2_SelectorOptAggrChoiceResult) * (graphid.gid + 1));
+                sizeof(ZL_SelectorOptAggrChoiceResult) * (graphid.gid + 1));
         for (size_t i = aggr->nb_graphs; i <= graphid.gid; i++) {
-            aggr->graph_results[i] = ZS2_SelectorOptAggrChoiceResult_init();
+            aggr->graph_results[i] = ZL_SelectorOptAggrChoiceResult_init();
         }
         aggr->nb_graphs = graphid.gid + 1;
     }
     return &aggr->graph_results[graphid.gid];
 }
 
-void ZS2_SelectorOptAggrResults_addResult(
-        ZS2_SelectorOptAggrResults* aggr,
-        const ZS2_SelectorOptResults* result)
+void ZL_SelectorOptAggrResults_addResult(
+        ZL_SelectorOptAggrResults* aggr,
+        const ZL_SelectorOptResults* result)
 {
-    const ZS2_SelectorOptResult* selected =
+    const ZL_SelectorOptResult* selected =
             &result->results[result->nbResults - 1];
     size_t bestSize = result->results[0].size;
     size_t nbBest   = 1;
     for (size_t i = 1; i < result->nbResults - 1; i++) {
-        const ZS2_SelectorOptResult* graph_result = &result->results[i];
+        const ZL_SelectorOptResult* graph_result = &result->results[i];
         if (graph_result->size < bestSize) {
             bestSize = graph_result->size;
             nbBest   = 1;
@@ -202,7 +202,7 @@ void ZS2_SelectorOptAggrResults_addResult(
 
     const size_t srcSize = selected->srcSize;
     for (size_t i = 0; i < result->nbResults - 1; i++) {
-        const ZS2_SelectorOptResult* graph_result = &result->results[i];
+        const ZL_SelectorOptResult* graph_result = &result->results[i];
         ZL_ASSERT_EQ(srcSize, graph_result->srcSize);
     }
 
@@ -236,9 +236,9 @@ void ZS2_SelectorOptAggrResults_addResult(
     }
 
     for (size_t i = 0; i < result->nbResults - 1; i++) {
-        const ZS2_SelectorOptResult* graph_result = &result->results[i];
-        ZS2_SelectorOptAggrChoiceResult* graph_aggr =
-                ZS2_SelectorOptAggrResults_getChoiceResult(
+        const ZL_SelectorOptResult* graph_result = &result->results[i];
+        ZL_SelectorOptAggrChoiceResult* graph_aggr =
+                ZL_SelectorOptAggrResults_getChoiceResult(
                         aggr, graph_result->graphid);
 
         graph_aggr->in_size_sum += graph_result->srcSize;
@@ -265,7 +265,7 @@ void ZS2_SelectorOptAggrResults_addResult(
 
             size_t secondBestSize = (size_t)-1;
             for (size_t j = 0; j < result->nbResults - 1; j++) {
-                const ZS2_SelectorOptResult* second_result =
+                const ZL_SelectorOptResult* second_result =
                         &result->results[j];
                 if (second_result->graphid.gid != graph_result->graphid.gid) {
                     if (second_result->size < secondBestSize) {
@@ -279,12 +279,12 @@ void ZS2_SelectorOptAggrResults_addResult(
     }
 }
 
-void ZS2_SelectorOptAggrResults_print(const ZS2_SelectorOptAggrResults* aggr)
+void ZL_SelectorOptAggrResults_print(const ZL_SelectorOptAggrResults* aggr)
 {
     (void)aggr;
     ZL_LOG(ALWAYS, "Selector Benchmark Aggregate Results:");
 
-    if (!ZS2_SelectorOpt_isEnabled()) {
+    if (!ZL_SelectorOpt_isEnabled()) {
         ZL_LOG(ALWAYS,
                "Note: Selector Optimization is Disabled. Limited results available.");
     }
@@ -315,7 +315,7 @@ void ZS2_SelectorOptAggrResults_print(const ZS2_SelectorOptAggrResults* aggr)
             "Value B");
 
     for (size_t gid = 0; gid < aggr->nb_graphs; gid++) {
-        const ZS2_SelectorOptAggrChoiceResult* graph_aggr =
+        const ZL_SelectorOptAggrChoiceResult* graph_aggr =
                 &aggr->graph_results[gid];
         if (graph_aggr->avail_count == 0) {
             continue;
@@ -417,15 +417,15 @@ void ZS2_SelectorOptAggrResults_print(const ZS2_SelectorOptAggrResults* aggr)
                     / (double)aggr->selected_result.out_size_sum);
 }
 
-void ZS2_SelectorOptAggrResults_destroy(ZS2_SelectorOptAggrResults* aggr)
+void ZL_SelectorOptAggrResults_destroy(ZL_SelectorOptAggrResults* aggr)
 {
     free(aggr->graph_results);
     aggr->graph_results = NULL;
     aggr->nb_graphs     = 0;
 }
 
-ZS2_SelectorOptResults ZS2_selector_opt_run(
-        ZS2_SelectorOptState* state,
+ZL_SelectorOptResults ZL_selector_opt_run(
+        ZL_SelectorOptState* state,
         void* dst,
         size_t dstCapacity,
         void const* src,
@@ -438,39 +438,39 @@ ZS2_SelectorOptResults ZS2_selector_opt_run(
     ZL_REQUIRE(!ZL_isError(
             ZL_Compressor_selectStartingGraphID(cgraph, startingNode)));
 
-    ZS2_SelectorOptResults const results = ZS2_selector_opt_run_cgraph(
+    ZL_SelectorOptResults const results = ZL_selector_opt_run_cgraph(
             state, dst, dstCapacity, src, srcSize, cgraph);
     ZL_Compressor_free(cgraph);
 
     return results;
 }
 
-ZS2_SelectorOptResults ZS2_selector_opt_run_cgraph(
-        ZS2_SelectorOptState* state,
+ZL_SelectorOptResults ZL_selector_opt_run_cgraph(
+        ZL_SelectorOptState* state,
         void* dst,
         size_t dstCapacity,
         void const* src,
         size_t srcSize,
         ZL_Compressor const* cgraph)
 {
-    *state = ZS2_SelectorOptState_init();
+    *state = ZL_SelectorOptState_init();
 
-    ZS2_SelectorOptResults results = ZS2_SelectorOptResults_init();
+    ZL_SelectorOptResults results = ZL_SelectorOptResults_init();
 
     while (!state->done) {
         TIME_t start      = TIME_getTime();
         ZL_Report const r = ZL_compress_usingCompressor(
                 dst, dstCapacity, src, srcSize, cgraph);
         double duration = (double)TIME_clockSpan_ns(start);
-        ZS2_SelectorOptResults_addResult(
+        ZL_SelectorOptResults_addResult(
                 &results,
-                (ZS2_SelectorOptResult){ .graphid    = state->selected,
+                (ZL_SelectorOptResult){ .graphid    = state->selected,
                                          .srcSize    = srcSize,
                                          .durationNs = duration,
                                          .size       = ZL_validResult(r) });
     }
 
-    ZS2_SelectorOptState_destroy(state);
+    ZL_SelectorOptState_destroy(state);
 
     return results;
 }

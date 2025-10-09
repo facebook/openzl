@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#ifndef ZSTRONG_ZS2_GRAPHS_H
-#define ZSTRONG_ZS2_GRAPHS_H
+#ifndef ZSTRONG_ZL_GRAPHS_H
+#define ZSTRONG_ZL_GRAPHS_H
 
 #if defined(__cplusplus)
 extern "C" {

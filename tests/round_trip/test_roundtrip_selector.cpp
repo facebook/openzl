@@ -10,7 +10,7 @@
 // Zstrong
 #include "openzl/common/debug.h" // ZL_REQUIRE
 #include "openzl/zl_compress.h"
-#include "openzl/zl_compressor.h" // ZS2_Compressor_*
+#include "openzl/zl_compressor.h" // ZL_Compressor_*
 #include "openzl/zl_decompress.h" // ZL_decompress
 #include "openzl/zl_selector.h"   // ZL_SelectorDesc
 

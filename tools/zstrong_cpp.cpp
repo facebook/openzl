@@ -659,7 +659,7 @@ ParameterizedTransformMap const& getStandardTransforms()
         transforms.emplace(
                 "bitunpack",
                 std::make_unique<StandardTransform>(
-                        ZS2_NODE_BITUNPACK,
+                        ZL_NODE_BITUNPACK,
                         "Converts a serial stream of packed integers into a "
                         "numeric stream. The number of bytes must be exact, "
                         "but any leftover bits can be any value. "
@@ -785,7 +785,7 @@ ParameterizedTransformMap const& getStandardTransforms()
                         [](ZL_Compressor& cgraph,
                            std::span<ZL_GraphID const> successors,
                            ZL_LocalParams const&) {
-                            auto node = ZS2_Compressor_registerJsonExtract(
+                            auto node = ZL_Compressor_registerJsonExtract(
                                     &cgraph, kJsonExtractTransformID);
                             return ZL_Compressor_registerStaticGraph_fromNode(
                                     &cgraph,
@@ -807,7 +807,7 @@ ParameterizedTransformMap const& getStandardTransforms()
                         [](ZL_Compressor& cgraph,
                            std::span<ZL_GraphID const> successors,
                            ZL_LocalParams const&) {
-                            auto node = ZS2_Compressor_registerParseInt64(
+                            auto node = ZL_Compressor_registerParseInt64(
                                     &cgraph, kParseInt64TransformID);
                             return ZL_Compressor_registerStaticGraph_fromNode(
                                     &cgraph,
@@ -828,7 +828,7 @@ ParameterizedTransformMap const& getStandardTransforms()
                         [](ZL_Compressor& cgraph,
                            std::span<ZL_GraphID const> successors,
                            ZL_LocalParams const&) {
-                            auto node = ZS2_Compressor_registerParseFloat64(
+                            auto node = ZL_Compressor_registerParseFloat64(
                                     &cgraph, kParseFloat64TransformID);
                             return ZL_Compressor_registerStaticGraph_fromNode(
                                     &cgraph,
@@ -1249,10 +1249,10 @@ std::vector<std::string> decompressMulti(
     dctx.unwrap(thrift::registerBinaryTransform(
             dctx.get(), thrift::kThriftBinaryConfigurable));
     dctx.unwrap(
-            ZS2_DCtx_registerJsonExtract(dctx.get(), kJsonExtractTransformID));
+            ZL_DCtx_registerJsonExtract(dctx.get(), kJsonExtractTransformID));
     dctx.unwrap(
-            ZS2_DCtx_registerParseInt64(dctx.get(), kParseInt64TransformID));
-    dctx.unwrap(ZS2_DCtx_registerParseFloat64(
+            ZL_DCtx_registerParseInt64(dctx.get(), kParseInt64TransformID));
+    dctx.unwrap(ZL_DCtx_registerParseFloat64(
             dctx.get(), kParseFloat64TransformID));
     graph.registerGraph(*dctx);
     return decompressMulti(dctx, compressed, std::nullopt);

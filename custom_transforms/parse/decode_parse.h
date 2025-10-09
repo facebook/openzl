@@ -9,14 +9,14 @@
 ZL_BEGIN_C_DECLS
 
 /// Registers the parseInt64 transform with ID @p transformID.
-/// See @p ZS2_Compressor_registerParseInt64 for details.
-extern "C" ZL_Report ZS2_DCtx_registerParseInt64(
+/// See @p ZL_Compressor_registerParseInt64 for details.
+extern "C" ZL_Report ZL_DCtx_registerParseInt64(
         ZL_DCtx* dctx,
         ZL_IDType transformID);
 
 /// Registers the parseFloat64 transform with ID @p transformID.
-/// See @p ZS2_Compressor_registerParseFloat64 for details.
-extern "C" ZL_Report ZS2_DCtx_registerParseFloat64(
+/// See @p ZL_Compressor_registerParseFloat64 for details.
+extern "C" ZL_Report ZL_DCtx_registerParseFloat64(
         ZL_DCtx* dctx,
         ZL_IDType transformID);
 

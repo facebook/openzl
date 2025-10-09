@@ -10,8 +10,8 @@
 // Note : the following API is provided for the decoding side.
 // Look at ctransform.h for the encoding side.
 
-#ifndef ZSTRONG_ZS2_DTRANSFORM_H
-#define ZSTRONG_ZS2_DTRANSFORM_H
+#ifndef ZSTRONG_ZL_DTRANSFORM_H
+#define ZSTRONG_ZL_DTRANSFORM_H
 
 #include "openzl/zl_common_types.h"
 #include "openzl/zl_ctransform.h" // ZL_TypedGraphDesc, ZL_CodecStateManager
@@ -89,7 +89,7 @@ typedef struct {
 
 /**
  * Register a custom typed decoder transform.
- * Counterpart to ZS2_registerTypedTransform().
+ * Counterpart to ZL_registerTypedTransform().
  *
  * Note: Split transforms and Pipe Transforms
  * can be converted into Typed transforms, since it's a strict superset.
@@ -172,7 +172,7 @@ typedef struct {
 
 /**
  * Register a variable output decoder transform.
- * Counterpart to ZS2_registerVOTransform().
+ * Counterpart to ZL_registerVOTransform().
  **/
 ZL_Report ZL_DCtx_registerVODecoder(ZL_DCtx* dctx, const ZL_VODecoderDesc* dtd);
 
@@ -212,7 +212,7 @@ typedef struct {
 
 /**
  * Register an MI decoder transform.
- * Counterpart to ZS2_registerMITransform().
+ * Counterpart to ZL_registerMITransform().
  **/
 ZL_Report ZL_DCtx_registerMIDecoder(ZL_DCtx* dctx, const ZL_MIDecoderDesc* dtd);
 
@@ -327,4 +327,4 @@ void* ZL_Decoder_getState(const ZL_Decoder* dictx);
 } // extern "C"
 #endif
 
-#endif // ZSTRONG_ZS2_DTRANSFORM_H
+#endif // ZSTRONG_ZL_DTRANSFORM_H

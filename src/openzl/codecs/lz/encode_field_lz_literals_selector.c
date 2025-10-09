@@ -43,7 +43,7 @@ static ZL_UNUSED_ATTR size_t histU8_getNumUnique(unsigned int const* hist)
 static ZL_GraphID ZL_fastTransposedLiteralStreamSelector(
         const ZL_Selector* selCtx,
         const ZL_Input* input,
-        const ZS2_transposedLiteralStreamSelector_Successors* successors)
+        const ZL_transposedLiteralStreamSelector_Successors* successors)
 {
     ZL_ASSERT_EQ(ZL_Input_type(input), ZL_Type_serial);
     size_t const inputSize = ZL_Input_numElts(input);
@@ -90,10 +90,10 @@ static ZL_GraphID ZL_fastTransposedLiteralStreamSelector(
     return bestGraph;
 }
 
-ZL_GraphID ZS2_transposedLiteralStreamSelector_impl(
+ZL_GraphID ZL_transposedLiteralStreamSelector_impl(
         const ZL_Selector* selCtx,
         const ZL_Input* input,
-        const ZS2_transposedLiteralStreamSelector_Successors* successors)
+        const ZL_transposedLiteralStreamSelector_Successors* successors)
 {
     if (ZL_Selector_getCParam(selCtx, ZL_CParam_decompressionLevel) == 1) {
         return ZL_fastTransposedLiteralStreamSelector(

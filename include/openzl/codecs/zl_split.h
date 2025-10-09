@@ -34,7 +34,7 @@ extern "C" {
 //     };
 // ZL_LocalCopyParams lcp = { &ssp, 1 };
 // ZL_LocalParams lParams = { .copyParams = lcp };
-// ZL_NodeID nid = ZL_Compressor_cloneNode(cgraph, ZS2_NODE_SPLITN, &lParams);
+// ZL_NodeID nid = ZL_Compressor_cloneNode(cgraph, ZL_NODE_SPLITN, &lParams);
 //
 // The whole declaration logic is abstracted behind a public function
 // ZL_Compressor_registerSplitNode_withParams(), which achieves the same thing

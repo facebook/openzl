@@ -30,7 +30,7 @@
 #include "openzl/codecs/divide_by/encode_divide_by_binding.h"
 #include "openzl/compress/private_nodes.h"
 #include "openzl/zl_compressor.h"
-#include "openzl/zl_data.h" // ZS2_Data_*
+#include "openzl/zl_data.h" // ZL_Data_*
 #include "openzl/zl_opaque_types.h"
 #include "openzl/zl_public_nodes.h"
 

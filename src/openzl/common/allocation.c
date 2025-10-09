@@ -12,14 +12,14 @@
 
 #ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 
-__attribute__((weak)) bool ZS2_malloc_should_fail(size_t size);
+__attribute__((weak)) bool ZL_malloc_should_fail(size_t size);
 
 #endif
 
 void* ZL_malloc(size_t s)
 {
 #ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
-    if (ZS2_malloc_should_fail && ZS2_malloc_should_fail(s)) {
+    if (ZL_malloc_should_fail && ZL_malloc_should_fail(s)) {
         return NULL;
     }
     // Cap allocations at 100MB for fuzzer builds
@@ -33,7 +33,7 @@ void* ZL_malloc(size_t s)
 void* ZL_calloc(size_t s)
 {
 #ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
-    if (ZS2_malloc_should_fail && ZS2_malloc_should_fail(s)) {
+    if (ZL_malloc_should_fail && ZL_malloc_should_fail(s)) {
         return NULL;
     }
     // Cap allocations at 100MB for fuzzer builds
@@ -47,7 +47,7 @@ void* ZL_calloc(size_t s)
 void* ZL_realloc(void* ptr, size_t size)
 {
 #ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
-    if (ZS2_malloc_should_fail && ZS2_malloc_should_fail(size)) {
+    if (ZL_malloc_should_fail && ZL_malloc_should_fail(size)) {
         return NULL;
     }
 #endif

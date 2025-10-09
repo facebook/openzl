@@ -9,7 +9,7 @@
 #include "openzl/compress/enc_interface.h" // eictx, ENC_refTypedStream, ZL_Encoder_getScratchSpace
 #include "openzl/compress/private_nodes.h"
 #include "openzl/shared/varint.h"
-#include "openzl/zl_data.h"      // ZS2_Data_*
+#include "openzl/zl_data.h"      // ZL_Data_*
 #include "openzl/zl_graph_api.h" // ZL_Edge_runNode_withParams
 #include "openzl/zl_selector.h"  // ZL_SelectorDesc
 

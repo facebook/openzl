@@ -287,7 +287,7 @@ ZL_GraphID ZL_Compressor_registerGBTModelGraph(
         return ZL_GRAPH_ILLEGAL;
     }
 
-    ZS2_MLModel_Desc zs2_model = {
+    ZL_MLModel_Desc zs2_model = {
         .predict = GBTModel_Desc_predict,
         .free    = NULL,
         .opaque  = gbtModel,

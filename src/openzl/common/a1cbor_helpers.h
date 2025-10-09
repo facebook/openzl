@@ -180,7 +180,7 @@ ZL_INLINE ZL_RESULT_OF(A1C_ItemPtr)
  * error. E.g.:
  *
  * ```
- * ZS2_RESULT(Foo) some_function() {
+ * ZL_RESULT(Foo) some_function() {
  *   ZL_RESULT_DECLARE_SCOPE(Foo, ...);
  *   // ...
  *   const A1C_Item* item = ...;

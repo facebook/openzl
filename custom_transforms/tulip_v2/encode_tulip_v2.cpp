@@ -398,7 +398,7 @@ ZL_GraphID defaultFloatFeatures(
         ZL_Compressor* cgraph,
         unsigned customTransformId)
 {
-    auto const node = ZS2_ThriftKernel_registerCTransformMapI32Float(
+    auto const node = ZL_ThriftKernel_registerCTransformMapI32Float(
             cgraph, customTransformId);
     return declareGraph(
             cgraph,
@@ -410,7 +410,7 @@ ZL_GraphID defaultIdListFeatures(
         ZL_Compressor* cgraph,
         unsigned customTransformId)
 {
-    auto const node = ZS2_ThriftKernel_registerCTransformMapI32ArrayI64(
+    auto const node = ZL_ThriftKernel_registerCTransformMapI32ArrayI64(
             cgraph, customTransformId);
     return declareGraph(
             cgraph,
@@ -425,7 +425,7 @@ ZL_GraphID defaultIdListListFeatures(
         ZL_Compressor* cgraph,
         unsigned customTransformId)
 {
-    auto const node = ZS2_ThriftKernel_registerCTransformMapI32ArrayArrayI64(
+    auto const node = ZL_ThriftKernel_registerCTransformMapI32ArrayArrayI64(
             cgraph, customTransformId);
     return declareGraph(
             cgraph,
@@ -441,7 +441,7 @@ ZL_GraphID defaultFloatListFeatures(
         ZL_Compressor* cgraph,
         unsigned customTransformId)
 {
-    auto const node = ZS2_ThriftKernel_registerCTransformMapI32ArrayFloat(
+    auto const node = ZL_ThriftKernel_registerCTransformMapI32ArrayFloat(
             cgraph, customTransformId);
     return declareGraph(
             cgraph,
@@ -456,7 +456,7 @@ ZL_GraphID defaultIdScoreListFeatures(
         ZL_Compressor* cgraph,
         unsigned customTransformId)
 {
-    auto const node = ZS2_ThriftKernel_registerCTransformMapI32MapI64Float(
+    auto const node = ZL_ThriftKernel_registerCTransformMapI32MapI64Float(
             cgraph, customTransformId);
     return declareGraph(
             cgraph,

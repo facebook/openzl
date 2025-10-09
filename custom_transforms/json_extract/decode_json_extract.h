@@ -10,9 +10,9 @@ ZL_BEGIN_C_DECLS
 
 /**
  * Registers JSON extract custom transform using the given @p transformID.
- * @see ZS2_Compressor_registerJsonExtract for details.
+ * @see ZL_Compressor_registerJsonExtract for details.
  */
-ZL_Report ZS2_DCtx_registerJsonExtract(ZL_DCtx* dctx, ZL_IDType transformID);
+ZL_Report ZL_DCtx_registerJsonExtract(ZL_DCtx* dctx, ZL_IDType transformID);
 
 ZL_END_C_DECLS
 

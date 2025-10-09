@@ -4,7 +4,7 @@
 #define ZSTRONG_TRANSFORMS_CONVERSION_GRAPH_CONVERSION_H
 
 #include "openzl/codecs/zl_conversion.h"
-#include "openzl/zl_data.h" // ZS2_Type_*
+#include "openzl/zl_data.h" // ZL_Type_*
 
 /* contains graph definition for conversion operations,
  * used by both encoder and decoder sides */

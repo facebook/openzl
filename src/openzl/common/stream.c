@@ -5,7 +5,7 @@
 #include "openzl/common/allocation.h"
 #include "openzl/common/assertion.h"
 #include "openzl/common/limits.h"
-#include "openzl/common/refcount.h" // ZS2_RefCount_*
+#include "openzl/common/refcount.h" // ZL_RefCount_*
 #include "openzl/common/stream.h"
 #include "openzl/shared/mem.h"                // ZL_memcpy
 #include "openzl/shared/numeric_operations.h" // NUMOP_*
@@ -1047,7 +1047,7 @@ ZL_Report ZL_Data_setIntMetadata(ZL_Data* s, int mId, int mValue)
     return ZL_returnSuccess();
 }
 
-#define ZS2_INTMETADATA_NOT_PRESENT (-1)
+#define ZL_INTMETADATA_NOT_PRESENT (-1)
 ZL_IntMetadata ZL_Data_getIntMetadata(const ZL_Data* s, int mId)
 {
     ZL_ASSERT_NN(s);
@@ -1055,7 +1055,7 @@ ZL_IntMetadata ZL_Data_getIntMetadata(const ZL_Data* s, int mId)
     if (idx < 0)
         return (ZL_IntMetadata){
             .isPresent = 0,
-            .mValue    = ZS2_INTMETADATA_NOT_PRESENT,
+            .mValue    = ZL_INTMETADATA_NOT_PRESENT,
         };
     return (ZL_IntMetadata){
         .isPresent = 1,
@@ -1072,7 +1072,7 @@ int STREAM_hasBuffer(const ZL_Data* s)
 
 /* Note: for the time being, TypedBuffer is the same as Stream.
  * This may change in the future, but for the time being,
- * its methods are just thin wrappers around ZS2_Data_*() methods.
+ * its methods are just thin wrappers around ZL_Data_*() methods.
  * As a consequence, these methods are hosted in `stream.c`.
  * */
 

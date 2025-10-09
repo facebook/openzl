@@ -4,7 +4,7 @@
 
 namespace zstrong {
 namespace tests {
-std::unique_ptr<ZL_TypedRef, ZS2_TypedRef_Deleter>
+std::unique_ptr<ZL_TypedRef, ZL_TypedRef_Deleter>
 MultiInputTest::getTypedInput(TypedInputDesc const& inputDesc)
 {
     ZL_TypedRef* tref;
@@ -35,7 +35,7 @@ MultiInputTest::getTypedInput(TypedInputDesc const& inputDesc)
         default:
             throw std::runtime_error("Unknown type provided");
     }
-    return std::unique_ptr<ZL_TypedRef, ZS2_TypedRef_Deleter>(tref);
+    return std::unique_ptr<ZL_TypedRef, ZL_TypedRef_Deleter>(tref);
 }
 } // namespace tests
 } // namespace zstrong

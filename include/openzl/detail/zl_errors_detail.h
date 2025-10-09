@@ -8,8 +8,8 @@
  * understand, or even be aware of.
  */
 
-#ifndef ZSTRONG_ZS2_ERRORS_DETAIL_H
-#define ZSTRONG_ZS2_ERRORS_DETAIL_H
+#ifndef ZSTRONG_ZL_ERRORS_DETAIL_H
+#define ZSTRONG_ZL_ERRORS_DETAIL_H
 
 #include <stddef.h> // size_t
 #include <string.h> // memset
@@ -310,18 +310,18 @@ typedef struct {
 // Destruction //
 /////////////////
 
-// There is no destructor for ZS2_Errors! The memory is managed elsewhere and
+// There is no destructor for ZL_Errors! The memory is managed elsewhere and
 // therefore there's nothing to do to destroy an error.
 
 /**************
- * ZS2_Result *
+ * ZL_Result *
  **************/
 
 ////////////////////////////
 // Implementation Details //
 ////////////////////////////
 
-// The ZS2_Result should be treated as an opaque type. Its members should never
+// The ZL_Result should be treated as an opaque type. Its members should never
 // be accessed directly. You should only interact with it via the accessors and
 // methods provided.
 #define ZL_RESULT_DECLARE_TYPE_IMPL(_result_type, _value_type)           \
@@ -767,4 +767,4 @@ typedef struct {
 } // extern "C"
 #endif
 
-#endif // ZSTRONG_ZS2_ERRORS_DETAIL_H
+#endif // ZSTRONG_ZL_ERRORS_DETAIL_H

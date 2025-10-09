@@ -119,7 +119,7 @@ ZL_Report registerDTransform(ZL_DCtx* dctx, ZL_IDType transformID)
 }
 } // namespace
 
-ZL_Report ZS2_ThriftKernel_registerDTransformMapI32Float(
+ZL_Report ZL_ThriftKernel_registerDTransformMapI32Float(
         ZL_DCtx* dctx_,
         ZL_IDType transformID)
 {
@@ -136,7 +136,7 @@ ZL_Report ZS2_ThriftKernel_registerDTransformMapI32Float(
             auto& [keys, values] = in;
             ZL_RET_R_IF_NE(corruption, keys.size(), values.size());
             ZL_RET_R_IF_LT(corruption, keys.size(), mapSize);
-            auto ret = ZS2_ThriftKernel_serializeMapI32Float(
+            auto ret = ZL_ThriftKernel_serializeMapI32Float(
                     out.data(),
                     out.size(),
                     keys.data(),
@@ -151,7 +151,7 @@ ZL_Report ZS2_ThriftKernel_registerDTransformMapI32Float(
     return registerDTransform<Transform>(dctx_, transformID);
 }
 
-ZL_Report ZS2_ThriftKernel_registerDTransformMapI32ArrayFloat(
+ZL_Report ZL_ThriftKernel_registerDTransformMapI32ArrayFloat(
         ZL_DCtx* dctx_,
         ZL_IDType transformID)
 {
@@ -172,7 +172,7 @@ ZL_Report ZS2_ThriftKernel_registerDTransformMapI32ArrayFloat(
             ZL_RET_R_IF_LT(corruption, keys.size(), mapSize);
             auto* innerValuesPtr = innerValues.data();
             auto* innerValuesEnd = innerValues.data() + innerValues.size();
-            auto ret             = ZS2_ThriftKernel_serializeMapI32ArrayFloat(
+            auto ret             = ZL_ThriftKernel_serializeMapI32ArrayFloat(
                     out.data(),
                     out.size(),
                     keys.data(),
@@ -191,7 +191,7 @@ ZL_Report ZS2_ThriftKernel_registerDTransformMapI32ArrayFloat(
     return registerDTransform<Transform>(dctx_, transformID);
 }
 
-ZL_Report ZS2_ThriftKernel_registerDTransformMapI32ArrayI64(
+ZL_Report ZL_ThriftKernel_registerDTransformMapI32ArrayI64(
         ZL_DCtx* dctx_,
         ZL_IDType transformID)
 {
@@ -212,7 +212,7 @@ ZL_Report ZS2_ThriftKernel_registerDTransformMapI32ArrayI64(
             ZL_RET_R_IF_LT(corruption, keys.size(), mapSize);
             auto* innerValuesPtr = innerValues.data();
             auto* innerValuesEnd = innerValues.data() + innerValues.size();
-            auto ret             = ZS2_ThriftKernel_serializeMapI32ArrayI64(
+            auto ret             = ZL_ThriftKernel_serializeMapI32ArrayI64(
                     out.data(),
                     out.size(),
                     keys.data(),
@@ -231,7 +231,7 @@ ZL_Report ZS2_ThriftKernel_registerDTransformMapI32ArrayI64(
     return registerDTransform<Transform>(dctx_, transformID);
 }
 
-ZL_Report ZS2_ThriftKernel_registerDTransformMapI32ArrayArrayI64(
+ZL_Report ZL_ThriftKernel_registerDTransformMapI32ArrayArrayI64(
         ZL_DCtx* dctx_,
         ZL_IDType transformID)
 {
@@ -256,7 +256,7 @@ ZL_Report ZS2_ThriftKernel_registerDTransformMapI32ArrayArrayI64(
             auto* innerInnerValuesPtr = innerInnerValues.data();
             auto* innerInnerValuesEnd =
                     innerInnerValues.data() + innerInnerValues.size();
-            auto ret = ZS2_ThriftKernel_serializeMapI32ArrayArrayI64(
+            auto ret = ZL_ThriftKernel_serializeMapI32ArrayArrayI64(
                     out.data(),
                     out.size(),
                     keys.data(),
@@ -279,7 +279,7 @@ ZL_Report ZS2_ThriftKernel_registerDTransformMapI32ArrayArrayI64(
     return registerDTransform<Transform>(dctx_, transformID);
 }
 
-ZL_Report ZS2_ThriftKernel_registerDTransformMapI32MapI64Float(
+ZL_Report ZL_ThriftKernel_registerDTransformMapI32MapI64Float(
         ZL_DCtx* dctx_,
         ZL_IDType transformID)
 {
@@ -303,7 +303,7 @@ ZL_Report ZS2_ThriftKernel_registerDTransformMapI32MapI64Float(
             auto* innerKeysEnd   = innerKeys.data() + innerKeys.size();
             auto* innerValuesPtr = innerValues.data();
             auto* innerValuesEnd = innerValues.data() + innerValues.size();
-            auto ret             = ZS2_ThriftKernel_serializeMapI32MapI64Float(
+            auto ret             = ZL_ThriftKernel_serializeMapI32MapI64Float(
                     out.data(),
                     out.size(),
                     keys.data(),
@@ -326,7 +326,7 @@ ZL_Report ZS2_ThriftKernel_registerDTransformMapI32MapI64Float(
     return registerDTransform<Transform>(dctx_, transformID);
 }
 
-ZL_Report ZS2_ThriftKernel_registerDTransformArrayI64(
+ZL_Report ZL_ThriftKernel_registerDTransformArrayI64(
         ZL_DCtx* dctx_,
         ZL_IDType transformID)
 {
@@ -341,7 +341,7 @@ ZL_Report ZS2_ThriftKernel_registerDTransformArrayI64(
         {
             auto& [values] = in;
             ZL_RET_R_IF_LT(corruption, values.size(), arraySize);
-            auto ret = ZS2_ThriftKernel_serializeArrayI64(
+            auto ret = ZL_ThriftKernel_serializeArrayI64(
                     out.data(), out.size(), values.data(), arraySize);
             values = values.subspan(arraySize);
             return ret;
@@ -351,7 +351,7 @@ ZL_Report ZS2_ThriftKernel_registerDTransformArrayI64(
     return registerDTransform<Transform>(dctx_, transformID);
 }
 
-ZL_Report ZS2_ThriftKernel_registerDTransformArrayI32(
+ZL_Report ZL_ThriftKernel_registerDTransformArrayI32(
         ZL_DCtx* dctx_,
         ZL_IDType transformID)
 {
@@ -366,7 +366,7 @@ ZL_Report ZS2_ThriftKernel_registerDTransformArrayI32(
         {
             auto& [values] = in;
             ZL_RET_R_IF_LT(corruption, values.size(), arraySize);
-            auto ret = ZS2_ThriftKernel_serializeArrayI32(
+            auto ret = ZL_ThriftKernel_serializeArrayI32(
                     out.data(), out.size(), values.data(), arraySize);
             values = values.subspan(arraySize);
             return ret;
@@ -376,7 +376,7 @@ ZL_Report ZS2_ThriftKernel_registerDTransformArrayI32(
     return registerDTransform<Transform>(dctx_, transformID);
 }
 
-ZL_Report ZS2_ThriftKernel_registerDTransformArrayFloat(
+ZL_Report ZL_ThriftKernel_registerDTransformArrayFloat(
         ZL_DCtx* dctx_,
         ZL_IDType transformID)
 {
@@ -391,7 +391,7 @@ ZL_Report ZS2_ThriftKernel_registerDTransformArrayFloat(
         {
             auto& [values] = in;
             ZL_RET_R_IF_LT(corruption, values.size(), arraySize);
-            auto ret = ZS2_ThriftKernel_serializeArrayFloat(
+            auto ret = ZL_ThriftKernel_serializeArrayFloat(
                     out.data(), out.size(), values.data(), arraySize);
             values = values.subspan(arraySize);
             return ret;

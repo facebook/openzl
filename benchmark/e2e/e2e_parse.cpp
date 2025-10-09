@@ -40,8 +40,8 @@ class ParseCompressor : public ZstrongStringCompressor {
     ZL_GraphID configureStringGraph(ZL_Compressor* cgraph) override
     {
         auto const node = type_ == Type::Float64
-                ? ZS2_Compressor_registerParseFloat64(cgraph, 0)
-                : ZS2_Compressor_registerParseInt64(cgraph, 1);
+                ? ZL_Compressor_registerParseFloat64(cgraph, 0)
+                : ZL_Compressor_registerParseInt64(cgraph, 1);
         std::vector<ZL_GraphID> successors(3, ZL_GRAPH_STORE);
         return ZL_Compressor_registerStaticGraph_fromNode(
                 cgraph, node, successors.data(), successors.size());
@@ -49,8 +49,8 @@ class ParseCompressor : public ZstrongStringCompressor {
 
     void registerDTransforms(ZL_DCtx* dctx) override
     {
-        ZL_REQUIRE_SUCCESS(ZS2_DCtx_registerParseFloat64(dctx, 0));
-        ZL_REQUIRE_SUCCESS(ZS2_DCtx_registerParseInt64(dctx, 1));
+        ZL_REQUIRE_SUCCESS(ZL_DCtx_registerParseFloat64(dctx, 0));
+        ZL_REQUIRE_SUCCESS(ZL_DCtx_registerParseInt64(dctx, 1));
     }
 
    private:

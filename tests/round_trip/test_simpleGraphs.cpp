@@ -11,7 +11,7 @@
 
 // Zstrong
 #include "openzl/common/debug.h"           // ZL_REQUIRE
-#include "openzl/compress/private_nodes.h" // ZS2_GRAPH_SELECT_BYTE_ENTROPY
+#include "openzl/compress/private_nodes.h" // ZL_GRAPH_SELECT_BYTE_ENTROPY
 #include "openzl/zl_common_types.h" // ZL_TernaryParam_enable, ZL_TernaryParam_disable
 #include "openzl/zl_compress.h"
 #include "openzl/zl_compressor.h" // ZL_Compressor_registerStaticGraph_fromPipelineNodes1o

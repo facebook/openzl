@@ -7,8 +7,8 @@
  * and processing mechanisms.
  */
 
-#ifndef ZSTRONG_ZS2_ERRORS_H
-#define ZSTRONG_ZS2_ERRORS_H
+#ifndef ZSTRONG_ZL_ERRORS_H
+#define ZSTRONG_ZL_ERRORS_H
 
 #include <assert.h>
 #include <stddef.h> // size_t
@@ -28,17 +28,17 @@ extern "C" {
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 /**********************************
- * ZS2_Result Handling in Zstrong *
+ * ZL_Result Handling in Zstrong *
  **********************************/
 
 /**
- * Zstrong employs the `ZS2_Result` type as a primary method for error handling
- * and value returning. A `ZS2_Result` acts as a sum-type, encapsulating either
+ * Zstrong employs the `ZL_Result` type as a primary method for error handling
+ * and value returning. A `ZL_Result` acts as a sum-type, encapsulating either
  * an error or a successful value, ensuring that error checking is systematic
  * and robust across the library.
  *
  * Usage:
- * - A `ZS2_Result` must always be checked using `ZL_RES_isError` before
+ * - A `ZL_Result` must always be checked using `ZL_RES_isError` before
  * accessing the value.
  * - On success, the value can be retrieved using `ZL_RES_value`.
  * - On error, the error code is accessible through `ZL_RES_code`, the
@@ -71,7 +71,7 @@ extern "C" {
 /**
  * When an error occurs, Zstrong can provide a rich error message using the
  * context object where the error has ocurred. This message is a string that can
- * be retrieved using ZS2_{context}_getErrorContextString()  which contains the
+ * be retrieved using ZL_{context}_getErrorContextString()  which contains the
  * call stack of the error source. For example, @ref
  * ZL_CCtx_getErrorContextString is the variant that takes the compression
  * context as input. Below is an example of printing the rich error.
@@ -556,7 +556,7 @@ ZL_Report ZL_reportError(
  * I.e., it doesn't assume the result type of @p _expr is @ref ZL_Report and
  * that the type of @p _var is `size_t`. Instead, it takes @p _type, which
  * indicates both the type of @p _var and also the inner type of the @ref
- * ZS2_Result that @p _expr returns.
+ * ZL_Result that @p _expr returns.
  */
 
 #define ZL_TRY_SET_T(_type, _var, _expr) \
@@ -606,4 +606,4 @@ ZL_Report ZL_reportError(
 } // extern "C"
 #endif
 
-#endif // ZSTRONG_ZS2_ERRORS_H
+#endif // ZSTRONG_ZL_ERRORS_H

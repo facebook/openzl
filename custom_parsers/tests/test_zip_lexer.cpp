@@ -116,19 +116,19 @@ std::array<uint8_t, 22> kTestEmptyZip = { 0x50, 0x4b, 0x05, 0x06, 0x00, 0x00,
                                           0x00, 0x00, 0x00, 0x00 };
 
 void testZipLexer(
-        ZS2_ZipLexer* lexer,
+        ZL_ZipLexer* lexer,
         std::string_view data,
         bool empty = false)
 {
-    ZL_REQUIRE_SUCCESS(ZS2_ZipLexer_init(lexer, data.data(), data.size()));
-    const size_t numFiles = ZS2_ZipLexer_numFiles(lexer);
+    ZL_REQUIRE_SUCCESS(ZL_ZipLexer_init(lexer, data.data(), data.size()));
+    const size_t numFiles = ZL_ZipLexer_numFiles(lexer);
     if (empty) {
         ASSERT_EQ(numFiles, 0);
     } else {
         ASSERT_NE(numFiles, 0);
     }
-    ZS2_ZipToken tokens[32];
-    const auto report = ZS2_ZipLexer_lex(lexer, tokens, 32);
+    ZL_ZipToken tokens[32];
+    const auto report = ZL_ZipLexer_lex(lexer, tokens, 32);
     ZL_REQUIRE_SUCCESS(report);
     const auto numTokens = ZL_validResult(report);
     ASSERT_LT(numTokens, 32);
@@ -138,18 +138,18 @@ void testZipLexer(
     bool hasEndOfCentralDirectory = false;
     auto ptr                      = data.data();
     for (size_t i = 0; i < numTokens; ++i) {
-        if (tokens[i].type == ZS2_ZipTokenType_CentralDirectory) {
+        if (tokens[i].type == ZL_ZipTokenType_CentralDirectory) {
             hasCentralDirectory = true;
         }
-        if (tokens[i].type == ZS2_ZipTokenType_EndOfCentralDirectoryRecord) {
+        if (tokens[i].type == ZL_ZipTokenType_EndOfCentralDirectoryRecord) {
             hasEndOfCentralDirectory = true;
         }
-        if (tokens[i].type == ZS2_ZipTokenType_LocalFileHeader) {
+        if (tokens[i].type == ZL_ZipTokenType_LocalFileHeader) {
             ++numFilesFound;
         }
-        if (tokens[i].type == ZS2_ZipTokenType_CompressedData) {
+        if (tokens[i].type == ZL_ZipTokenType_CompressedData) {
             ASSERT_NE(i, 0);
-            ASSERT_EQ(tokens[i - 1].type, ZS2_ZipTokenType_LocalFileHeader);
+            ASSERT_EQ(tokens[i - 1].type, ZL_ZipTokenType_LocalFileHeader);
         }
         ASSERT_EQ(tokens[i].ptr - data.data(), ptr - data.data());
         ASSERT_LE(ptr + tokens[i].size, data.data() + data.size());
@@ -164,13 +164,13 @@ void testZipLexer(
 
 TEST(ZipLexerTest, Basic)
 {
-    ZS2_ZipLexer lexer;
+    ZL_ZipLexer lexer;
     testZipLexer(&lexer, { (const char*)kTestZip.begin(), kTestZip.size() });
 }
 
 TEST(ZipLexerTest, GarbageAtBeginning)
 {
-    ZS2_ZipLexer lexer;
+    ZL_ZipLexer lexer;
     for (size_t garbage = 1; garbage < 1000; ++garbage) {
         std::string data(garbage, 'x');
         data.append(kTestZip.begin(), kTestZip.end());
@@ -193,7 +193,7 @@ TEST(ZipLexerTest, GarbageAtBeginning)
 
 TEST(ZipLexerTest, GarbageAtEnd)
 {
-    ZS2_ZipLexer lexer;
+    ZL_ZipLexer lexer;
     for (size_t garbage = 1; garbage < 1000; ++garbage) {
         std::string data((const char*)kTestZip.begin(), kTestZip.size());
         data.append(garbage, 'x');
@@ -216,7 +216,7 @@ TEST(ZipLexerTest, GarbageAtEnd)
 
 TEST(ZipLexerTest, GarbageAtBeginningAndEnd)
 {
-    ZS2_ZipLexer lexer;
+    ZL_ZipLexer lexer;
     for (size_t garbage = 1; garbage < 1000; ++garbage) {
         std::string data(garbage, 'x');
         data.append(kTestZip.begin(), kTestZip.end());
@@ -242,14 +242,14 @@ TEST(ZipLexerTest, GarbageAtBeginningAndEnd)
 
 TEST(ZipLexerTest, Zip64)
 {
-    ZS2_ZipLexer lexer;
+    ZL_ZipLexer lexer;
     testZipLexer(
             &lexer, { (const char*)kTestZip64.begin(), kTestZip64.size() });
 }
 
 TEST(ZipLexerTest, EmptyZip)
 {
-    ZS2_ZipLexer lexer;
+    ZL_ZipLexer lexer;
     testZipLexer(
             &lexer,
             { (const char*)kTestEmptyZip.begin(), kTestEmptyZip.size() },

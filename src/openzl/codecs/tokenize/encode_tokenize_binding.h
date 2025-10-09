@@ -13,7 +13,7 @@ ZL_Report EI_tokenize(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 ZL_Report
 EI_tokenizeVSF(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 
-ZL_NodeID ZS2_createNode_customTokenize(
+ZL_NodeID ZL_createNode_customTokenize(
         ZL_Compressor* cgraph,
         ZL_Type streamType,
         ZL_CustomTokenizeFn customTokenizeFn,

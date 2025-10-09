@@ -26,7 +26,7 @@ datagen::CompressorProducer makeCompressorProducer()
     return datagen::CompressorProducer{ rw };
 }
 
-struct ZS2_Compressor_Deleter {
+struct ZL_Compressor_Deleter {
     void operator()(ZL_Compressor* compressor)
     {
         ZL_Compressor_free(compressor);
@@ -66,16 +66,16 @@ class CompressorSerializationTest : public Test {
    protected:
     void SetUp() override
     {
-        compressor_ = std::unique_ptr<ZL_Compressor, ZS2_Compressor_Deleter>{
+        compressor_ = std::unique_ptr<ZL_Compressor, ZL_Compressor_Deleter>{
             ZL_Compressor_create()
         };
-        materialized_ = std::unique_ptr<ZL_Compressor, ZS2_Compressor_Deleter>{
+        materialized_ = std::unique_ptr<ZL_Compressor, ZL_Compressor_Deleter>{
             ZL_Compressor_create()
         };
     }
 
-    std::unique_ptr<ZL_Compressor, ZS2_Compressor_Deleter> compressor_;
-    std::unique_ptr<ZL_Compressor, ZS2_Compressor_Deleter> materialized_;
+    std::unique_ptr<ZL_Compressor, ZL_Compressor_Deleter> compressor_;
+    std::unique_ptr<ZL_Compressor, ZL_Compressor_Deleter> materialized_;
 };
 
 struct SerialiedGraphBundle {

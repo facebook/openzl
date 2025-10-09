@@ -116,7 +116,7 @@ ZL_Report parseDecode(ZL_Decoder* dictx, ZL_Input const* inputs[]) noexcept
 } // namespace
 } // namespace zstrong
 
-extern "C" ZL_Report ZS2_DCtx_registerParseFloat64(
+extern "C" ZL_Report ZL_DCtx_registerParseFloat64(
         ZL_DCtx* dctx,
         ZL_IDType transformID)
 {

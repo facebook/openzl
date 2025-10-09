@@ -3,7 +3,7 @@
 #ifndef ZSTRONG_TRANSFORMS_PARSE_INT_H
 #define ZSTRONG_TRANSFORMS_PARSE_INT_H
 
-#include "openzl/zl_data.h" // ZS2_Type_*
+#include "openzl/zl_data.h" // ZL_Type_*
 
 #define PARSE_INT_GRAPH(id)                                          \
     {                                                                \

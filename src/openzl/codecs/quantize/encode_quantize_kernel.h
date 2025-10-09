@@ -24,7 +24,7 @@ ZL_BEGIN_C_DECLS
  * @returns The size of the `bits` stream, or an error if the `bitsCapacity` is
  * too small.
  */
-ZL_Report ZS2_quantize32Encode(
+ZL_Report ZL_quantize32Encode(
         uint8_t* bits,
         size_t bitsCapacity,
         uint8_t* codes,

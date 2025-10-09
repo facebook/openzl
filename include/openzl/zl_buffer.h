@@ -4,8 +4,8 @@
 // Provides definition of xBuffer and xCursor
 // which can be useful when employing the Custom Transform API.
 
-#ifndef ZSTRONG_ZS2_BUFFER_H
-#define ZSTRONG_ZS2_BUFFER_H
+#ifndef ZSTRONG_ZL_BUFFER_H
+#define ZSTRONG_ZL_BUFFER_H
 
 #include <stddef.h> // size_t
 
@@ -82,4 +82,4 @@ typedef struct {
 } // extern "C"
 #endif
 
-#endif // ZSTRONG_ZS2_BUFFER_H
+#endif // ZSTRONG_ZL_BUFFER_H

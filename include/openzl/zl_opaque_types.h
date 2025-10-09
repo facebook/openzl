@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#ifndef ZSTRONG_ZS2_OPAQUE_TYPES_H
-#define ZSTRONG_ZS2_OPAQUE_TYPES_H
+#ifndef ZSTRONG_ZL_OPAQUE_TYPES_H
+#define ZSTRONG_ZL_OPAQUE_TYPES_H
 
 #include <stddef.h> // size_t
 
@@ -60,4 +60,4 @@ typedef struct ZL_Edge_s ZL_Edge;
 } // extern "C"
 #endif
 
-#endif // ZSTRONG_ZS2_OPAQUE_TYPES_H
+#endif // ZSTRONG_ZL_OPAQUE_TYPES_H

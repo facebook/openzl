@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#ifndef ZSTRONG_ZS2_INPUT_H
-#define ZSTRONG_ZS2_INPUT_H
+#ifndef ZSTRONG_ZL_INPUT_H
+#define ZSTRONG_ZL_INPUT_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -90,7 +90,7 @@ ZL_INLINE size_t ZL_Input_eltWidth(const ZL_Input* input)
  *
  * @note invoking this symbol only makes sense if Data was
  * previously committed.
- * @note (@cyan): ZS2_Data_byteSize() is another name candidate.
+ * @note (@cyan): ZL_Data_byteSize() is another name candidate.
  */
 ZL_INLINE size_t ZL_Input_contentSize(const ZL_Input* input)
 {

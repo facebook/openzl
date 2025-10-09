@@ -41,7 +41,7 @@ typedef struct {
     void* opaque;
 } ZL_FieldLz_Allocator;
 
-ZL_Report ZS2_FieldLz_compress(
+ZL_Report ZL_FieldLz_compress(
         ZL_FieldLz_OutSequences* dst,
         void const* src,
         size_t nbElts,
@@ -67,7 +67,7 @@ typedef struct {
     size_t nbExtraMatchLengths;
 } ZL_FieldLz_InSequences;
 
-ZL_Report ZS2_FieldLz_decompress(
+ZL_Report ZL_FieldLz_decompress(
         void* dst,
         size_t dstEltCapacity,
         size_t eltWidth,

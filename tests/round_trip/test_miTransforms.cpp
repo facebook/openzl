@@ -10,7 +10,7 @@
 #include "openzl/common/debug.h"  // ZL_REQUIRE
 #include "openzl/common/limits.h" // ZL_ENCODER_INPUT_LIMIT
 #include "openzl/zl_compress.h"
-#include "openzl/zl_compressor.h" // ZS2_Compressor_*, ZL_Compressor_registerStaticGraph_fromNode1o
+#include "openzl/zl_compressor.h" // ZL_Compressor_*, ZL_Compressor_registerStaticGraph_fromNode1o
 #include "openzl/zl_ctransform.h"
 #include "openzl/zl_data.h"
 #include "openzl/zl_decompress.h" // ZL_decompress
@@ -284,7 +284,7 @@ static ZL_GraphID simpleGraph1(ZL_Compressor* cgraph) noexcept
 }
 
 // dispatchToSimpleGraph1 is a dynamic graph which only accept multiple inputs
-// compatible with ZS2_Type_Serial.
+// compatible with ZL_Type_Serial.
 // It just dispatches each input to simpleGraph1.
 static ZL_Report dispatchToSimpleGraph1(
         ZL_Graph* gctx,

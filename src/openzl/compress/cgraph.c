@@ -3,7 +3,7 @@
 #include "openzl/compress/cgraph.h"
 #include "openzl/common/allocation.h" // ZL_malloc, ZL_free
 #include "openzl/common/assertion.h"
-#include "openzl/common/errors_internal.h" // ZS2_RET_IF_ERR
+#include "openzl/common/errors_internal.h" // ZL_RET_IF_ERR
 #include "openzl/common/opaque.h"
 #include "openzl/common/operation_context.h"
 #include "openzl/compress/cctx.h" // CCTX_setOutBufferSizes
@@ -14,7 +14,7 @@
 #include "openzl/compress/graphmgr.h"       // Graphs_manager
 #include "openzl/compress/nodemgr.h"        // Nodes_manager
 #include "openzl/zl_compress.h"             // ZL_Compressor*
-#include "openzl/zl_compressor.h"           // ZS2_declare*_*
+#include "openzl/zl_compressor.h"           // ZL_declare*_*
 #include "openzl/zl_ctransform.h"
 #include "openzl/zl_data.h"
 #include "openzl/zl_errors.h"

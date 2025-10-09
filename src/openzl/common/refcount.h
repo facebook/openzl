@@ -23,7 +23,7 @@ typedef void (*ZL_Refcount_FreeFn)(void* opaque, void* ptr)
  */
 typedef struct {
     void* _ptr;
-    struct ZS2_Refcount_Control* _ref;
+    struct ZL_Refcount_Control* _ref;
     bool _mutable;
 } ZL_Refcount;
 
@@ -31,7 +31,7 @@ typedef struct {
  * Takes ownership of @p ptr and frees it with `(*freeFn)(opaque, ptr)`.
  *
  * @p ptr The pointer to reference count.
- * @p ctrlAlloc Used to manage ZS2_Refcount_Control* lifetime.
+ * @p ctrlAlloc Used to manage ZL_Refcount_Control* lifetime.
  * If == NULL, @p ptr is considered an externally managed memory,
  * and just referenced (no Free operation will be triggered).
  * @p freeBufferFn The function used to free the pointer on reaching 0.
@@ -47,7 +47,7 @@ ZL_Report ZL_Refcount_init(
         void* opaque);
 
 /// Initializes the reference with a pointer that has been created with
-/// malloc(). ZS2_Refcount_Control* will be allocated with malloc() too.
+/// malloc(). ZL_Refcount_Control* will be allocated with malloc() too.
 ZL_Report ZL_Refcount_initMalloc(ZL_Refcount* rc, void* ptr);
 
 /// Initializes the reference with a constant reference that will not be freed.
@@ -60,7 +60,7 @@ ZL_Report ZL_Refcount_initConstRef(ZL_Refcount* rc, void const* ptr);
 ZL_Report ZL_Refcount_initMutRef(ZL_Refcount* rc, void* ptr);
 
 /// Helper function, which **allocates** a buffer of size @s within provided
-/// @arena, and also allocated the control structure ZS2_Refcount_Control* in
+/// @arena, and also allocated the control structure ZL_Refcount_Control* in
 /// the same Arena, for compatibility with Arena's freeAll().
 /// @return NULL on error.
 void* ZL_Refcount_inArena(ZL_Refcount* rc, Arena* arena, size_t s);

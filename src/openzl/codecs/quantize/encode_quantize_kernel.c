@@ -17,7 +17,7 @@ static uint8_t ZL_code32(uint32_t value, ZL_Quantize32Params const* params)
     return params->valueToCode[value];
 }
 
-ZL_Report ZS2_quantize32Encode(
+ZL_Report ZL_quantize32Encode(
         uint8_t* bits,
         size_t bitsCapacity,
         uint8_t* codes,

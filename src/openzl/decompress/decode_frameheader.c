@@ -19,7 +19,7 @@
 #include "openzl/shared/mem.h"    // ZL_readLE32, etc.
 #include "openzl/shared/xxhash.h" // XXH3_64bits
 #include "openzl/zl_data.h"
-#include "openzl/zl_decompress.h" // ZS2_* public methods
+#include "openzl/zl_decompress.h" // ZL_* public methods
 #include "openzl/zl_errors.h"     // ZL_Report
 #include "openzl/zl_version.h"
 

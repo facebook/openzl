@@ -8,8 +8,8 @@
 // it would be possible to regroup multiple of them into
 // some kind of generic zs2_public_types.h header.
 
-#ifndef ZSTRONG_ZS2_DATA_H
-#define ZSTRONG_ZS2_DATA_H
+#ifndef ZSTRONG_ZL_DATA_H
+#define ZSTRONG_ZL_DATA_H
 
 #include <stddef.h> // size_t
 #include <stdint.h> // uint32_t
@@ -96,7 +96,7 @@ size_t ZL_Data_eltWidth(const ZL_Data* data);
  *
  * @note invoking this symbol only makes sense if Data was
  * previously committed.
- * @note (@cyan): ZS2_Data_byteSize() is another name candidate.
+ * @note (@cyan): ZL_Data_byteSize() is another name candidate.
  */
 size_t ZL_Data_contentSize(const ZL_Data* data);
 
@@ -292,12 +292,12 @@ typedef struct {
     int mId;
     const void* mPtr;
     size_t mSize;
-} ZS2_GenericMetadata;
+} ZL_GenericMetadata;
 
 // Note : Metadata content { mPtr, mSize } is copied internally
-void ZS2_Data_setGenericMetadata(ZL_Data* s, ZS2_GenericMetadata m);
+void ZL_Data_setGenericMetadata(ZL_Data* s, ZL_GenericMetadata m);
 
-ZS2_GenericMetadata ZS2_Data_getGenericMetadata(const ZL_Data* s, int mId);
+ZL_GenericMetadata ZL_Data_getGenericMetadata(const ZL_Data* s, int mId);
 
 /* Standard Stream Features
  * =========================
@@ -368,15 +368,15 @@ ZS2_GenericMetadata ZS2_Data_getGenericMetadata(const ZL_Data* s, int mId);
 typedef struct {
     const unsigned* count;
     size_t alphabetSize; // size of count[], must be <= 256
-} ZS2_ByteHistogram;
-ZS2_ByteHistogram ZS2_Data_tryByteHistogram(const ZL_Data* s);
-ZS2_ByteHistogram ZS2_Data_getByteHistogram(const ZL_Data* s);
+} ZL_ByteHistogram;
+ZL_ByteHistogram ZL_Data_tryByteHistogram(const ZL_Data* s);
+ZL_ByteHistogram ZL_Data_getByteHistogram(const ZL_Data* s);
 
 /* set*() can only be employed by the Stream's generator.
  * It's up for debate if it's acceptable to trust such an input.
  * Maybe this should be reserved for internal Standard transforms only.
  */
-void ZS2_Data_setByteHistogram(ZL_Data* s, ZS2_ByteHistogram h);
+void ZL_Data_setByteHistogram(ZL_Data* s, ZL_ByteHistogram h);
 
 /* to be continued */
 
@@ -386,4 +386,4 @@ void ZS2_Data_setByteHistogram(ZL_Data* s, ZS2_ByteHistogram h);
 } // extern "C"
 #endif
 
-#endif // ZSTRONG_ZS2_DATA_H
+#endif // ZSTRONG_ZL_DATA_H

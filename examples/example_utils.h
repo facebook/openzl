@@ -17,25 +17,25 @@ namespace examples {
 static constexpr int kExampleFormatVersion    = 16;
 static constexpr int kExampleCompressionLevel = 6;
 
-/// Wrapper around ZS2_*_getErrorContextString()
+/// Wrapper around ZL_*_getErrorContextString()
 inline const char* getErrorContextString(ZL_CCtx* ctx, ZL_Report report)
 {
     return ZL_CCtx_getErrorContextString(ctx, report);
 }
 
-/// Wrapper around ZS2_*_getErrorContextString()
+/// Wrapper around ZL_*_getErrorContextString()
 inline const char* getErrorContextString(ZL_Compressor* ctx, ZL_Report report)
 {
     return ZL_Compressor_getErrorContextString(ctx, report);
 }
 
-/// Wrapper around ZS2_*_getErrorContextString()
+/// Wrapper around ZL_*_getErrorContextString()
 inline const char* getErrorContextString(ZL_DCtx* ctx, ZL_Report report)
 {
     return ZL_DCtx_getErrorContextString(ctx, report);
 }
 
-/// Wrapper around ZS2_*_getErrorContextString()
+/// Wrapper around ZL_*_getErrorContextString()
 inline const char* getErrorContextString(std::nullptr_t, ZL_Report report)
 {
     return ZL_ErrorCode_toString(ZL_errorCode(report));

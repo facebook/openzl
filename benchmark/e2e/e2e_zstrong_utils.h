@@ -35,7 +35,7 @@ struct DCTXDeleter {
     }
 };
 
-inline size_t ZS2_unwrap(ZL_Report r, const std::string& message)
+inline size_t ZL_unwrap(ZL_Report r, const std::string& message)
 {
     if (ZL_isError(r)) {
         throw std::runtime_error{ (message + ", ")
@@ -60,7 +60,7 @@ inline CCTX_unique createCCTX()
     if (cctx == nullptr) {
         throw std::bad_alloc{};
     }
-    ZS2_unwrap(
+    ZL_unwrap(
             ZL_CCtx_setParameter(
                     cctx.get(), ZL_CParam_formatVersion, ZL_MAX_FORMAT_VERSION),
             "Failed setting format version");

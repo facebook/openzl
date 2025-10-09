@@ -29,7 +29,7 @@ class JsonExtractCompressor : public ZstrongCompressor {
 
     ZL_GraphID configureGraph(ZL_Compressor* cgraph) override
     {
-        auto const node = ZS2_Compressor_registerJsonExtract(cgraph, 0);
+        auto const node = ZL_Compressor_registerJsonExtract(cgraph, 0);
         std::vector<ZL_GraphID> successors(4, ZL_GRAPH_STORE);
         return ZL_Compressor_registerStaticGraph_fromNode(
                 cgraph, node, successors.data(), successors.size());
@@ -37,7 +37,7 @@ class JsonExtractCompressor : public ZstrongCompressor {
 
     void registerDTransforms(ZL_DCtx* dctx) override
     {
-        ZL_REQUIRE_SUCCESS(ZS2_DCtx_registerJsonExtract(dctx, 0));
+        ZL_REQUIRE_SUCCESS(ZL_DCtx_registerJsonExtract(dctx, 0));
     }
 };
 

@@ -6,8 +6,8 @@
  * This API provides information about ZStrong nodes and graphs.
  */
 
-#ifndef ZSTRONG_ZS2_REFLECTION_H
-#define ZSTRONG_ZS2_REFLECTION_H
+#ifndef ZSTRONG_ZL_REFLECTION_H
+#define ZSTRONG_ZL_REFLECTION_H
 
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_data.h"
@@ -250,7 +250,7 @@ size_t ZL_Compressor_Node_getNumVariableOutcomes(
  * @returns The output stream type that @p node has at index @p outputIndex in
  * the context of the @p cgraph
  *
- * @pre @p outputIndex is less than #ZS2_Compressor_Node_getNbOutputs(@p cgraph
+ * @pre @p outputIndex is less than #ZL_Compressor_Node_getNbOutputs(@p cgraph
  * , @p node)
  */
 ZL_Type ZL_Compressor_Node_getOutputType(
@@ -320,7 +320,7 @@ bool ZL_Compressor_Node_isStandard(ZL_Compressor const* cgraph, ZL_NodeID node);
  * 3. Set the compressed frame to process with
  *    ZL_ReflectionCtx_setCompressedFrame().
  * 4. Get the information you need with the various
- * ZS2_ReflectionCtx_get*()
+ * ZL_ReflectionCtx_get*()
  * 5. Free the context with ZL_ReflectionCtx_free().
  *
  * NOTE: This API is guaranteed to be safe on corrupted input.

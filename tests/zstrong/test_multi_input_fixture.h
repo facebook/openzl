@@ -9,7 +9,7 @@ namespace zstrong {
 namespace tests {
 class MultiInputTest : public ZStrongTest {
    public:
-    std::unique_ptr<ZL_TypedRef, ZS2_TypedRef_Deleter> getTypedInput(
+    std::unique_ptr<ZL_TypedRef, ZL_TypedRef_Deleter> getTypedInput(
             TypedInputDesc const& inputDesc);
 };
 } // namespace tests

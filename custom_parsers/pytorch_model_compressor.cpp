@@ -31,7 +31,7 @@ int main(int argc, char** argv)
 
     zstrong::DCtx dctx;
 
-    const auto graphID = ZS2_createGraph_pytorchModelCompressor(cgraph.get());
+    const auto graphID = ZL_createGraph_pytorchModelCompressor(cgraph.get());
 
     std::string compressed(ZL_compressBound(src.size()), '\0');
     try {

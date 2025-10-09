@@ -37,7 +37,7 @@ TEST(ThriftKernelTest, ArrayI64)
         auto buf  = serialize(input);
         auto data = buf->coalesce();
         std::vector<uint64_t> extracted(input.size());
-        auto ret = ZS2_ThriftKernel_deserializeArrayI64(
+        auto ret = ZL_ThriftKernel_deserializeArrayI64(
                 extracted.data(), data.data(), data.size(), input.size());
         ASSERT_FALSE(ZL_isError(ret));
         ASSERT_EQ(ZL_validResult(ret), data.size());
@@ -50,7 +50,7 @@ TEST(ThriftKernelTest, ArrayI64)
         }
 
         std::vector<uint8_t> out(data.size());
-        ret = ZS2_ThriftKernel_serializeArrayI64(
+        ret = ZL_ThriftKernel_serializeArrayI64(
                 out.data(), out.size(), extracted.data(), extracted.size());
         ASSERT_FALSE(ZL_isError(ret));
         ASSERT_EQ(ZL_validResult(ret), out.size());
@@ -79,7 +79,7 @@ TEST(ThriftKernelTest, ArrayI32)
         auto buf  = serialize(input);
         auto data = buf->coalesce();
         std::vector<uint32_t> extracted(input.size());
-        auto ret = ZS2_ThriftKernel_deserializeArrayI32(
+        auto ret = ZL_ThriftKernel_deserializeArrayI32(
                 extracted.data(), data.data(), data.size(), input.size());
         ASSERT_FALSE(ZL_isError(ret));
         ASSERT_EQ(ZL_validResult(ret), data.size());
@@ -92,7 +92,7 @@ TEST(ThriftKernelTest, ArrayI32)
         }
 
         std::vector<uint8_t> out(data.size());
-        ret = ZS2_ThriftKernel_serializeArrayI32(
+        ret = ZL_ThriftKernel_serializeArrayI32(
                 out.data(), out.size(), extracted.data(), extracted.size());
         ASSERT_FALSE(ZL_isError(ret));
         ASSERT_EQ(ZL_validResult(ret), out.size());
@@ -121,7 +121,7 @@ TEST(ThriftKernelTest, ArrayFloat)
         auto buf  = serialize(input);
         auto data = buf->coalesce();
         std::vector<uint32_t> extracted(input.size());
-        auto ret = ZS2_ThriftKernel_deserializeArrayFloat(
+        auto ret = ZL_ThriftKernel_deserializeArrayFloat(
                 extracted.data(), data.data(), data.size(), input.size());
         ASSERT_FALSE(ZL_isError(ret));
         ASSERT_EQ(ZL_validResult(ret), data.size());
@@ -134,7 +134,7 @@ TEST(ThriftKernelTest, ArrayFloat)
         }
 
         std::vector<uint8_t> out(data.size());
-        ret = ZS2_ThriftKernel_serializeArrayFloat(
+        ret = ZL_ThriftKernel_serializeArrayFloat(
                 out.data(), out.size(), extracted.data(), extracted.size());
         ASSERT_FALSE(ZL_isError(ret));
         ASSERT_EQ(ZL_validResult(ret), out.size());
@@ -173,7 +173,7 @@ TEST(ThriftKernelTest, MapI32Float)
         auto data = buf->coalesce();
         std::vector<uint32_t> keys(input.size());
         std::vector<uint32_t> values(input.size());
-        auto ret = ZS2_ThriftKernel_deserializeMapI32Float(
+        auto ret = ZL_ThriftKernel_deserializeMapI32Float(
                 keys.data(),
                 values.data(),
                 data.data(),
@@ -194,7 +194,7 @@ TEST(ThriftKernelTest, MapI32Float)
         }
 
         std::vector<uint8_t> out(data.size());
-        ret = ZS2_ThriftKernel_serializeMapI32Float(
+        ret = ZL_ThriftKernel_serializeMapI32Float(
                 out.data(),
                 out.size(),
                 keys.data(),
@@ -228,7 +228,7 @@ TEST(ThriftKernelTest, MapI32ArrayFloat)
                 std::vector<uint32_t> keys(input.size());
                 std::vector<uint32_t> lengths(input.size());
                 VectorDynamicOutput<uint32_t> innerValuesOut;
-                auto ret = ZS2_ThriftKernel_deserializeMapI32ArrayFloat(
+                auto ret = ZL_ThriftKernel_deserializeMapI32ArrayFloat(
                         keys.data(),
                         lengths.data(),
                         innerValuesOut.asCType(),
@@ -261,7 +261,7 @@ TEST(ThriftKernelTest, MapI32ArrayFloat)
                         innerValuesPtr + innerValues.size();
 
                 std::vector<uint8_t> out(data.size());
-                ret = ZS2_ThriftKernel_serializeMapI32ArrayFloat(
+                ret = ZL_ThriftKernel_serializeMapI32ArrayFloat(
                         out.data(),
                         out.size(),
                         keys.data(),
@@ -300,7 +300,7 @@ TEST(ThriftKernelTest, MapI32ArrayI64)
                 std::vector<uint32_t> keys(input.size());
                 std::vector<uint32_t> lengths(input.size());
                 VectorDynamicOutput<uint64_t> innerValuesOut;
-                auto ret = ZS2_ThriftKernel_deserializeMapI32ArrayI64(
+                auto ret = ZL_ThriftKernel_deserializeMapI32ArrayI64(
                         keys.data(),
                         lengths.data(),
                         innerValuesOut.asCType(),
@@ -334,7 +334,7 @@ TEST(ThriftKernelTest, MapI32ArrayI64)
                         innerValuesPtr + innerValues.size();
 
                 std::vector<uint8_t> out(data.size());
-                ret = ZS2_ThriftKernel_serializeMapI32ArrayI64(
+                ret = ZL_ThriftKernel_serializeMapI32ArrayI64(
                         out.data(),
                         out.size(),
                         keys.data(),
@@ -376,7 +376,7 @@ TEST(ThriftKernelTest, MapI32ArrayArrayI64)
                 std::vector<uint32_t> lengths(input.size());
                 VectorDynamicOutput<uint32_t> innerLengthsOut;
                 VectorDynamicOutput<uint64_t> innerInnerValuesOut;
-                auto ret = ZS2_ThriftKernel_deserializeMapI32ArrayArrayI64(
+                auto ret = ZL_ThriftKernel_deserializeMapI32ArrayArrayI64(
                         keys.data(),
                         lengths.data(),
                         innerLengthsOut.asCType(),
@@ -422,7 +422,7 @@ TEST(ThriftKernelTest, MapI32ArrayArrayI64)
                         innerInnerValuesPtr + innerInnerValues.size();
 
                 std::vector<uint8_t> out(data.size());
-                ret = ZS2_ThriftKernel_serializeMapI32ArrayArrayI64(
+                ret = ZL_ThriftKernel_serializeMapI32ArrayArrayI64(
                         out.data(),
                         out.size(),
                         keys.data(),
@@ -472,7 +472,7 @@ TEST(ThriftKernelTest, MapI32MapI64Float)
                 std::vector<uint32_t> lengths(input.size());
                 VectorDynamicOutput<uint64_t> innerKeysOut;
                 VectorDynamicOutput<uint32_t> innerValuesOut;
-                auto ret = ZS2_ThriftKernel_deserializeMapI32MapI64Float(
+                auto ret = ZL_ThriftKernel_deserializeMapI32MapI64Float(
                         keys.data(),
                         lengths.data(),
                         innerKeysOut.asCType(),
@@ -515,7 +515,7 @@ TEST(ThriftKernelTest, MapI32MapI64Float)
                         innerValuesPtr + innerValues.size();
 
                 std::vector<uint8_t> out(data.size());
-                ret = ZS2_ThriftKernel_serializeMapI32MapI64Float(
+                ret = ZL_ThriftKernel_serializeMapI32MapI64Float(
                         out.data(),
                         out.size(),
                         keys.data(),

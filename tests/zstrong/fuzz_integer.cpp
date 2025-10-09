@@ -7,7 +7,7 @@
 #include "tests/fuzz_utils.h"
 #include "tests/zstrong/test_integer_fixture.h"
 
-#include "openzl/zl_compressor.h" // ZS2_Compressor_*, ZL_Compressor_registerStaticGraph_fromNode1o
+#include "openzl/zl_compressor.h" // ZL_Compressor_*, ZL_Compressor_registerStaticGraph_fromNode1o
 
 namespace zstrong {
 namespace tests {

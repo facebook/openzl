@@ -8,8 +8,8 @@
  * such as Transforms, Selectors, and Graphs.
  */
 
-#ifndef ZSTRONG_ZS2_LOCALPARAMS_H
-#define ZSTRONG_ZS2_LOCALPARAMS_H
+#ifndef ZSTRONG_ZL_LOCALPARAMS_H
+#define ZSTRONG_ZL_LOCALPARAMS_H
 
 #include <stddef.h> // size_t
 
@@ -46,7 +46,7 @@ extern "C" {
 /* single local integer parameter.
  * The ID plane of integer parameters is separated from other types.
  * On the Transform's side, these parameters can be requested
- * using ZS2_*_getLocalIntParam() (see "zs2_ctransform.h") */
+ * using ZL_*_getLocalIntParam() (see "zs2_ctransform.h") */
 typedef struct {
     int paramId; /* prefer employing an enum for improved readability */
     int paramValue;
@@ -69,7 +69,7 @@ typedef struct {
  * - by copy: notably suitable for small arrays, or POD types
  * - by reference: suitable for large arrays, or opaque objects
  * On the Transform's side, these parameters can be requested
- * using ZS2_*_getLocalParam(), which requires a parameter ID.
+ * using ZL_*_getLocalParam(), which requires a parameter ID.
  * They are always received by read-only reference.
  */
 
@@ -179,4 +179,4 @@ typedef struct {
 } // extern "C"
 #endif
 
-#endif // ZSTRONG_ZS2_LOCALPARAMS_H
+#endif // ZSTRONG_ZL_LOCALPARAMS_H

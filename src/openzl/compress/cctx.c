@@ -13,7 +13,7 @@
 #include "openzl/common/operation_context.h"
 #include "openzl/common/stream.h"               // STREAM_*
 #include "openzl/common/vector.h"               // VECTOR_*
-#include "openzl/compress/cctx.h"               // ZS2_CCtx_*
+#include "openzl/compress/cctx.h"               // ZL_CCtx_*
 #include "openzl/compress/cgraph.h"             // CGRAPH_*
 #include "openzl/compress/cnode.h"              // CNODE_*
 #include "openzl/compress/dyngraph_interface.h" // GCtx

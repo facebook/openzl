@@ -195,7 +195,7 @@ struct AllocState {
 
 AllocState gAllocState{};
 
-extern "C" bool ZS2_malloc_should_fail(size_t size)
+extern "C" bool ZL_malloc_should_fail(size_t size)
 {
     return gAllocState();
 }

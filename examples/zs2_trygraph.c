@@ -74,7 +74,7 @@ static ZL_PipeEncoderDesc const addisquare_CDesc = {
 /* ------   Bruteforce selector utils   -------- */
 
 #include "openzl/common/assertion.h"
-#include "openzl/zl_compressor.h" // ZL_Compressor_registerPipeEncoder, ZL_Compressor_registerStaticGraph_fromNode1o, ZS2_setStreamDestination_usingGraph
+#include "openzl/zl_compressor.h" // ZL_Compressor_registerPipeEncoder, ZL_Compressor_registerStaticGraph_fromNode1o, ZL_setStreamDestination_usingGraph
 #include "openzl/zl_errors.h"
 #include "openzl/zl_selector.h"
 

@@ -8,7 +8,7 @@
 
 #include <gtest/gtest.h>
 
-#include "openzl/compress/private_nodes.h" // ZS2_NODE_*
+#include "openzl/compress/private_nodes.h" // ZL_NODE_*
 #include "openzl/zl_opaque_types.h"
 #include "tests/utils.h"
 #include "tests/zstrong/test_serialized_fixture.h"
@@ -100,7 +100,7 @@ TEST_F(SerializedTest, Bitunpack)
                                         .paramValue = (int)nbBits };
         ZL_LocalParams const params = { .intParams = { &param, 1 } };
         const ZL_NodeID node =
-                createParameterizedNode(ZS2_NODE_BITUNPACK, params);
+                createParameterizedNode(ZL_NODE_BITUNPACK, params);
         finalizeGraph(declareGraph(node, ZL_GRAPH_BITPACK_INT), 1);
 
         // Run test for different number of elements
@@ -441,7 +441,7 @@ TEST_F(SerializedTest, SplitOptimizationSimple)
 
 TEST_F(SerializedTest, SplitOptimizationInMultiInputGraph)
 {
-    using TypedRef = std::unique_ptr<ZL_TypedRef, ZS2_TypedRef_Deleter>;
+    using TypedRef = std::unique_ptr<ZL_TypedRef, ZL_TypedRef_Deleter>;
 
     auto segments = genSplitSegments();
     std::string concatenated;

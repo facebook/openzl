@@ -135,15 +135,15 @@ ZL_Report EI_mergeSorted(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 }
 
 ZL_DECLARE_SELECTOR(
-        ZS2_SelectMergeSorted,
+        ZL_SelectMergeSorted,
         ZL_Type_numeric,
         SUCCESSOR(mergeSortedGraph),
         SUCCESSOR(backupGraph))
 
-ZL_GraphID ZS2_SelectMergeSorted_impl(
+ZL_GraphID ZL_SelectMergeSorted_impl(
         ZL_Selector const* selCtx,
         ZL_Input const* in,
-        ZS2_SelectMergeSorted_Successors const* successors)
+        ZL_SelectMergeSorted_Successors const* successors)
 {
     (void)selCtx;
     if (ZL_Input_eltWidth(in) != 4) {
@@ -185,8 +185,8 @@ ZL_GraphID ZL_Compressor_registerMergeSortedGraph(
                     cgraph,
                     ZL_NODE_MERGE_SORTED,
                     ZL_GRAPHLIST(bitsetGraph, mergedGraph));
-    return ZS2_SelectMergeSorted_declareGraph(
+    return ZL_SelectMergeSorted_declareGraph(
             cgraph,
-            ZS2_SelectMergeSorted_successors_init(
+            ZL_SelectMergeSorted_successors_init(
                     mergeSortedGraph, backupGraph));
 }

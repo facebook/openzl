@@ -5,7 +5,7 @@
 #include "openzl/codecs/divide_by/decode_divide_by_binding.h"
 #include "openzl/codecs/divide_by/encode_divide_by_binding.h"
 #include "openzl/common/debug.h" // ZL_REQUIRE
-#include "openzl/zl_compressor.h" // ZS2_Compressor_*, ZL_Compressor_registerStaticGraph_fromNode1o
+#include "openzl/zl_compressor.h" // ZL_Compressor_*, ZL_Compressor_registerStaticGraph_fromNode1o
 #include "openzl/zl_data.h"
 #include "openzl/zl_opaque_types.h"
 

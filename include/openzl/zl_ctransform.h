@@ -7,8 +7,8 @@
  * For the decoding side API, look at zs2_dtransform.h.
  **/
 
-#ifndef ZSTRONG_ZS2_CTRANSFORM_H
-#define ZSTRONG_ZS2_CTRANSFORM_H
+#ifndef ZSTRONG_ZL_CTRANSFORM_H
+#define ZSTRONG_ZL_CTRANSFORM_H
 
 #include <stddef.h> // size_t
 #include "openzl/zl_common_types.h"
@@ -110,7 +110,7 @@ _Static_assert(
  *          Specific error codes can be provided using `zs2_error.h` API.
  **/
 
-#include "openzl/zl_data.h" // ZL_Data, ZL_Type, ZS2_Data_*()
+#include "openzl/zl_data.h" // ZL_Data, ZL_Type, ZL_Data_*()
 
 // Custom Typed Transform's signature
 typedef ZL_Report (*ZL_TypedEncoderFn)(ZL_Encoder* ectx, const ZL_Input* in)
@@ -548,4 +548,4 @@ const void* ZL_Encoder_getOpaquePtr(const ZL_Encoder* eictx);
 } // extern "C"
 #endif
 
-#endif // ZSTRONG_ZS2_CTRANSFORM_H
+#endif // ZSTRONG_ZL_CTRANSFORM_H

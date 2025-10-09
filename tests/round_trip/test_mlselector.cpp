@@ -10,7 +10,7 @@
 #include "openzl/zl_compress.h"
 
 #include "openzl/compress/selectors/ml/gbt.h"
-#include "openzl/shared/mem.h" // For ZS2_read64
+#include "openzl/shared/mem.h" // For ZL_read64
 #include "openzl/zl_graph_api.h"
 #include "openzl/zl_selector.h" // ZL_SelectorDesc
 
@@ -199,7 +199,7 @@ class MLSelectorTest : public ::testing::Test {
     std::vector<uint64_t> deltaData;
     std::vector<uint64_t> tokenizeData;
 
-    ZS2_MLModel_Desc* zs2_model;
+    ZL_MLModel_Desc* zs2_model;
     ZL_MLSelectorDesc mlSelector;
     std::vector<ZL_LabeledGraphID> labeledGraphs;
 

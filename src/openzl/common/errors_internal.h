@@ -208,7 +208,7 @@ ZL_INLINE ZL_ErrorInfo ZL_EI_fromSt(const ZL_StaticErrorInfo* const st)
 // Destruction //
 /////////////////
 
-// There is no destructor for ZS2_Errors! The memory is managed elsewhere and
+// There is no destructor for ZL_Errors! The memory is managed elsewhere and
 // therefore there's nothing to do to destroy an error.
 
 ///////////////
@@ -408,7 +408,7 @@ typedef struct {
 } ZL_ErrorFrame;
 
 /*****************************
- * ZS2_EE: The ZL_ErrorInfo *
+ * ZL_EE: The ZL_ErrorInfo *
  *****************************/
 
 /// Create a new ZL_DynamicErrorInfo.

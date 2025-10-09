@@ -12,7 +12,7 @@ ZL_BEGIN_C_DECLS
  * Descriptor for a ML model, would allow us to support
  * multiple / custom models in the future
  */
-typedef struct ZL_MLModelDesc ZS2_MLModel_Desc;
+typedef struct ZL_MLModelDesc ZL_MLModel_Desc;
 
 /**
  * Defines type ZL_MLModelPredictFn, which is a function that takes an input
@@ -57,7 +57,7 @@ typedef struct {
 } ZL_LabeledGraphID;
 
 typedef struct {
-    ZS2_MLModel_Desc model; // The model to used
+    ZL_MLModel_Desc model; // The model to used
     ZL_Type inStreamType;   // The stream type that the selector expects
     /// The labeled graphs that the selector can use
     const ZL_LabeledGraphID* graphs;

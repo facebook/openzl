@@ -8,8 +8,8 @@
 // produced frame. Consequently, they don't need any "reverse selector" at
 // decoding time.
 
-#ifndef ZSTRONG_ZS2_SELECTOR_H
-#define ZSTRONG_ZS2_SELECTOR_H
+#ifndef ZSTRONG_ZL_SELECTOR_H
+#define ZSTRONG_ZL_SELECTOR_H
 
 #include <stdbool.h> // bool
 #include <stddef.h>  // size_t
@@ -92,7 +92,7 @@ extern "C" {
  *   process to take over and fix the issue.
  *
  * Note 1 : This variant is only compatible with ZL_Type_serial inputs.
- *          Other types of input (ZL_Type_numeric, ZS2_Type_structs, etc.) are
+ *          Other types of input (ZL_Type_numeric, ZL_Type_structs, etc.) are
  *          not compatible.
  *
  * Note 2 : This simple variant can only take decisions based on input's
@@ -341,4 +341,4 @@ void* ZL_Selector_getScratchSpace(const ZL_Selector* selCtx, size_t size);
 } // extern "C"
 #endif
 
-#endif // ZSTRONG_ZS2_SELECTOR_H
+#endif // ZSTRONG_ZL_SELECTOR_H

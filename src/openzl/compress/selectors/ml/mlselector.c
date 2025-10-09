@@ -14,7 +14,7 @@ typedef struct {
      * prediction function based on the stream. We use the graphs to match the
      * resulting label from the prediction function.
      */
-    ZS2_MLModel_Desc model;
+    ZL_MLModel_Desc model;
     ZL_Type inStreamType;
     ZL_LabeledGraphID* graphs;
     size_t nbGraphs;

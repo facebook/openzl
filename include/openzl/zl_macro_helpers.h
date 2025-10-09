@@ -7,8 +7,8 @@
  * lists, which are illegal.
  */
 
-#ifndef ZSTRONG_ZS2_MACRO_HELPERS_H
-#define ZSTRONG_ZS2_MACRO_HELPERS_H
+#ifndef ZSTRONG_ZL_MACRO_HELPERS_H
+#define ZSTRONG_ZL_MACRO_HELPERS_H
 
 #define ZS_MACRO_CONCAT_INNER(a, b) a##b
 #define ZS_MACRO_CONCAT(a, b) ZS_MACRO_CONCAT_INNER(a, b)
@@ -405,4 +405,4 @@
 #    define ZS_GENERIC_PRINTF_CAST(expr) (long long)(expr)
 #endif
 
-#endif // ZSTRONG_ZS2_MACRO_HELPERS_H
+#endif // ZSTRONG_ZL_MACRO_HELPERS_H

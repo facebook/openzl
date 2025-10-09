@@ -95,7 +95,7 @@ ZL_Report EI_fieldLz(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
         compressionLevel = compressionLevelOverride.paramValue;
     }
 
-    ZL_Report const ret = ZS2_FieldLz_compress(
+    ZL_Report const ret = ZL_FieldLz_compress(
             &dst,
             ZL_Input_ptr(in),
             nbElts,
@@ -317,9 +317,9 @@ ZL_GraphID SI_fieldLzLiteralsChannelSelector(
     (void)customGraphs;
     ZL_ASSERT_EQ(nbCustomGraphs, 0);
     // Wrap the existing selector to make it compatible with graph_registry.c
-    ZS2_transposedLiteralStreamSelector_Successors const successors =
-            ZS2_transposedLiteralStreamSelector_successors_init();
-    return ZS2_transposedLiteralStreamSelector_impl(selCtx, input, &successors);
+    ZL_transposedLiteralStreamSelector_Successors const successors =
+            ZL_transposedLiteralStreamSelector_successors_init();
+    return ZL_transposedLiteralStreamSelector_impl(selCtx, input, &successors);
 }
 
 ZL_GraphID ZL_Compressor_registerFieldLZGraph_withLiteralsGraph(

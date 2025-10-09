@@ -9,7 +9,7 @@
 // Zstrong
 #include "openzl/common/debug.h" // ZL_REQUIRE
 #include "openzl/zl_compress.h"
-#include "openzl/zl_compressor.h" // ZS2_Compressor_*, ZL_Compressor_registerStaticGraph_fromNode1o
+#include "openzl/zl_compressor.h" // ZL_Compressor_*, ZL_Compressor_registerStaticGraph_fromNode1o
 #include "openzl/zl_ctransform.h"
 #include "openzl/zl_data.h"
 #include "openzl/zl_decompress.h" // ZL_decompress

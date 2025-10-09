@@ -13,7 +13,7 @@ namespace nodes {
 
 class Bitunpack : public Node {
    public:
-    static constexpr NodeID node = ZS2_NODE_BITUNPACK;
+    static constexpr NodeID node = ZL_NODE_BITUNPACK;
 
     static constexpr NodeMetadata<1, 1> metadata = {
         .inputs           = { InputMetadata{

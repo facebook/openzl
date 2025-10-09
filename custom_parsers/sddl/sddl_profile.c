@@ -10,7 +10,7 @@ ZL_SDDL_setupProfile(
         const void* const description,
         const size_t descriptionSize)
 {
-    const ZL_GraphID clustering = ZS2_createGraph_genericClustering(compressor);
+    const ZL_GraphID clustering = ZL_createGraph_genericClustering(compressor);
     return ZL_Compressor_buildSDDLGraph(
             compressor, description, descriptionSize, clustering);
 }

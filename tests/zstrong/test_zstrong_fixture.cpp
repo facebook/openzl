@@ -270,7 +270,7 @@ std::pair<ZL_Report, std::optional<std::string>> ZStrongTest::compress(
 }
 
 std::pair<ZL_Report, std::optional<std::string>> ZStrongTest::compressMI(
-        std::vector<std::unique_ptr<ZL_TypedRef, ZS2_TypedRef_Deleter>>& inputs)
+        std::vector<std::unique_ptr<ZL_TypedRef, ZL_TypedRef_Deleter>>& inputs)
 {
     size_t compressBound = 0;
     std::vector<const ZL_TypedRef*> constInputs;
@@ -473,7 +473,7 @@ void ZStrongTest::assertEqual(
 }
 
 void ZStrongTest::testRoundTripMIImpl(
-        std::vector<std::unique_ptr<ZL_TypedRef, ZS2_TypedRef_Deleter>>& inputs,
+        std::vector<std::unique_ptr<ZL_TypedRef, ZL_TypedRef_Deleter>>& inputs,
         std::vector<TypedInputDesc>& inputDescs,
         bool compressionMayFail)
 {

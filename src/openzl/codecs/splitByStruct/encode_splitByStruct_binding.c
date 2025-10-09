@@ -4,10 +4,10 @@
 #include "openzl/codecs/splitByStruct/encode_splitByStruct_kernel.h"
 #include "openzl/common/assertion.h"
 #include "openzl/common/logging.h"         // ZL_DLOG
-#include "openzl/common/wire_format.h"     // ZS2_strid_*
+#include "openzl/common/wire_format.h"     // ZL_strid_*
 #include "openzl/compress/cgraph.h"        // CGRAPH_registerStandardVOTransform
 #include "openzl/compress/enc_interface.h" // ZL_Encoder_getScratchSpace
-#include "openzl/compress/private_nodes.h" // ZS2_NODE_SPLITBYSTRUCT_TRANSFORM
+#include "openzl/compress/private_nodes.h" // ZL_NODE_SPLITBYSTRUCT_TRANSFORM
 #include "openzl/zl_ctransform.h"
 #include "openzl/zl_data.h"
 #include "openzl/zl_graph_api.h"

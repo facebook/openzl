@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#ifndef ZSTRONG_ZS2_DECOMPRESS_H
-#define ZSTRONG_ZS2_DECOMPRESS_H
+#ifndef ZSTRONG_ZL_DECOMPRESS_H
+#define ZSTRONG_ZL_DECOMPRESS_H
 
 // basic definitions
 #include "openzl/zl_errors.h" // ZL_Report, ZL_isError()
@@ -108,7 +108,7 @@ typedef enum {
      * already fast. Expected improvements: ~20-30% for speeds > 2GB/s, 10-15%
      * for speeds between 1GB/s and 2GB/s, and 1-5% for speeds < 1GB/s.
      *
-     * Valid values use the ZS2_GPARAM_* format.
+     * Valid values use the ZL_GPARAM_* format.
      * @note Default 0 currently means check the checksum, might change in
      * future
      */
@@ -117,7 +117,7 @@ typedef enum {
     /**
      * @brief Enable checking the checksum of the uncompressed content.
      *
-     * Valid values use the ZS2_GPARAM_* format.
+     * Valid values use the ZL_GPARAM_* format.
      * @note Default 0 currently means check the checksum, might change in
      * future
      */
@@ -609,4 +609,4 @@ ZL_Report ZL_getHeaderSize(const void* src, size_t srcSize);
 } // extern "C"
 #endif
 
-#endif // ZSTRONG_ZS2_DECOMPRESS_H
+#endif // ZSTRONG_ZL_DECOMPRESS_H

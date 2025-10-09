@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#ifndef ZSTRONG_ZS2_SELECTOR_DECLARE_HELPER_H
-#define ZSTRONG_ZS2_SELECTOR_DECLARE_HELPER_H
+#ifndef ZSTRONG_ZL_SELECTOR_DECLARE_HELPER_H
+#define ZSTRONG_ZL_SELECTOR_DECLARE_HELPER_H
 
 #include <assert.h> // TODO: remove/replace
 
@@ -204,7 +204,7 @@ extern "C" {
 // clang-format on
 #define ZL_DECLARE_SELECTOR(SELECTOR_NAME, STREAM_TYPE, ...)                \
     typedef struct {                                                        \
-        _ZS2_SELECTOR_STRUCT_DEFINITION(__VA_ARGS__)                        \
+        _ZL_SELECTOR_STRUCT_DEFINITION(__VA_ARGS__)                        \
     } SELECTOR_NAME##_Successors;                                           \
     ZL_GraphID SELECTOR_NAME##_impl(                                        \
             const ZL_Selector*,                                             \
@@ -217,7 +217,7 @@ extern "C" {
             size_t nbCustomGraphs) ZL_NOEXCEPT_FUNC_PTR                     \
     {                                                                       \
         (void)nbCustomGraphs;                                               \
-        assert(nbCustomGraphs == _ZS2__NARG__(__VA_ARGS__));                \
+        assert(nbCustomGraphs == _ZL__NARG__(__VA_ARGS__));                \
         void const* _successors = customGraphs;                             \
         return SELECTOR_NAME##_impl(                                        \
                 selCtx,                                                     \
@@ -226,9 +226,9 @@ extern "C" {
     }                                                                       \
     static ZL_UNUSED_ATTR SELECTOR_NAME##_Successors                        \
             SELECTOR_NAME##_successors_init(                                \
-                    _ZS2_SELECTOR_INIT_ARGS(__VA_ARGS__))                   \
+                    _ZL_SELECTOR_INIT_ARGS(__VA_ARGS__))                   \
     {                                                                       \
-        return (SELECTOR_NAME##_Successors){ _ZS2_SELECTOR_INIT_SET(        \
+        return (SELECTOR_NAME##_Successors){ _ZL_SELECTOR_INIT_SET(        \
                 __VA_ARGS__) };                                             \
     }                                                                       \
     static ZL_UNUSED_ATTR ZL_GraphID SELECTOR_NAME##_declareNamedGraph(     \
@@ -257,4 +257,4 @@ extern "C" {
 } // extern "C"
 #endif
 
-#endif // ZSTRONG_ZS2_SELECTOR_DECLARE_HELPER_H
+#endif // ZSTRONG_ZL_SELECTOR_DECLARE_HELPER_H

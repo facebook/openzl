@@ -8,7 +8,7 @@
 #include "openzl/common/logging.h"            // ZL_DLOG
 #include "openzl/decompress/dictx.h"          // DI_getFrameFormatVersion
 #include "openzl/shared/numeric_operations.h" // NUMOP_*
-#include "openzl/zl_data.h"                   // ZS2_Data_*
+#include "openzl/zl_data.h"                   // ZL_Data_*
 
 // DI_dispatchN_byTag design notes:
 // - Generates a single stream of type ZL_Type_serial

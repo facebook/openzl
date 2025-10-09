@@ -504,7 +504,7 @@ ZL_FORCE_INLINE ZL_Report ZL_FieldLz_decompress_impl2(
 #endif
 
 #define ZL_FIELD_LZ_DECOMPRESS_FN(eltBits, shortLLCode, shortMLCode) \
-    ZS2_FieldLz_decompress_##eltBits##_##shortLLCode##_##shortMLCode
+    ZL_FieldLz_decompress_##eltBits##_##shortLLCode##_##shortMLCode
 
 #define ZL_GEN_FIELDLZ_DECOMPRESS(eltBits, shortLLCode, shortMLCode)          \
     ZL_FORCE_NOINLINE ZL_Report ZL_FIELD_LZ_DECOMPRESS_FN(                    \
@@ -747,7 +747,7 @@ static void tokenStats(uint16_t const* tokens, size_t nbTokens)
 }
 #endif
 
-ZL_Report ZS2_FieldLz_decompress(
+ZL_Report ZL_FieldLz_decompress(
         void* dst,
         size_t dstEltCapacity,
         size_t eltWidth,

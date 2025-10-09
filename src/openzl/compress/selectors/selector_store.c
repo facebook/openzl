@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "openzl/compress/selectors/selector_store.h"
-#include "openzl/compress/private_nodes.h" // ZS2_GRAPH_*
+#include "openzl/compress/private_nodes.h" // ZL_GRAPH_*
 #include "openzl/zl_data.h"
 #include "openzl/zl_graph_api.h"
 
@@ -18,7 +18,7 @@ MultiInputGraph_store(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
 /* SI_selector_store():
  *
  * Just dispatch between Variable-Size-Fields (VSF)
- * and other stream types which go towards ZS2_GRAPH_STORE_SERIAL.
+ * and other stream types which go towards ZL_GRAPH_STORE_SERIAL.
  */
 ZL_GraphID SI_selector_store(
         const ZL_Selector* selCtx,

@@ -19,7 +19,7 @@
 namespace zstrong {
 namespace tests {
 
-struct ZS2_TypedRef_Deleter {
+struct ZL_TypedRef_Deleter {
     void operator()(ZL_TypedRef* tref) const noexcept
     {
         ZL_TypedRef_free(tref);
@@ -150,13 +150,13 @@ class ZStrongTest : public testing::Test {
     std::pair<ZL_Report, std::optional<std::string>> compressTyped(
             ZL_TypedRef* typedRef);
     std::pair<ZL_Report, std::optional<std::string>> compressMI(
-            std::vector<std::unique_ptr<ZL_TypedRef, ZS2_TypedRef_Deleter>>&
+            std::vector<std::unique_ptr<ZL_TypedRef, ZL_TypedRef_Deleter>>&
                     inputs);
 
     void assertEqual(const ZL_TypedBuffer* buffer, const TypedInputDesc& desc);
 
     void testRoundTripMI(
-            std::vector<std::unique_ptr<ZL_TypedRef, ZS2_TypedRef_Deleter>>&
+            std::vector<std::unique_ptr<ZL_TypedRef, ZL_TypedRef_Deleter>>&
                     inputs,
             std::vector<TypedInputDesc>& inputDescs)
     {
@@ -164,7 +164,7 @@ class ZStrongTest : public testing::Test {
     }
 
     void testRoundTripMICompressionMayFail(
-            std::vector<std::unique_ptr<ZL_TypedRef, ZS2_TypedRef_Deleter>>&
+            std::vector<std::unique_ptr<ZL_TypedRef, ZL_TypedRef_Deleter>>&
                     inputs,
             std::vector<TypedInputDesc>& inputDescs)
     {
@@ -202,7 +202,7 @@ class ZStrongTest : public testing::Test {
    private:
     void testRoundTripImpl(std::string_view data, bool compressionMayFail);
     void testRoundTripMIImpl(
-            std::vector<std::unique_ptr<ZL_TypedRef, ZS2_TypedRef_Deleter>>&
+            std::vector<std::unique_ptr<ZL_TypedRef, ZL_TypedRef_Deleter>>&
                     inputs,
             std::vector<TypedInputDesc>& inputDescs,
             bool compressionMayFail);

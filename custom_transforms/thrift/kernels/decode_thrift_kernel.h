@@ -22,7 +22,7 @@ extern "C" {
  */
 
 /// @returns the number of bytes written into @p dst.
-ZL_Report ZS2_ThriftKernel_serializeMapI32Float(
+ZL_Report ZL_ThriftKernel_serializeMapI32Float(
         void* dst,
         size_t dstCapacity,
         uint32_t const* keys,
@@ -30,7 +30,7 @@ ZL_Report ZS2_ThriftKernel_serializeMapI32Float(
         size_t mapSize);
 
 /// @returns the number of bytes written into @p dst.
-ZL_Report ZS2_ThriftKernel_serializeMapI32ArrayFloat(
+ZL_Report ZL_ThriftKernel_serializeMapI32ArrayFloat(
         void* dst,
         size_t dstCapacity,
         uint32_t const* keys,
@@ -40,7 +40,7 @@ ZL_Report ZS2_ThriftKernel_serializeMapI32ArrayFloat(
         uint32_t const* innerValuesEnd);
 
 /// @returns the number of bytes written into @p dst.
-ZL_Report ZS2_ThriftKernel_serializeMapI32ArrayI64(
+ZL_Report ZL_ThriftKernel_serializeMapI32ArrayI64(
         void* dst,
         size_t dstCapacity,
         uint32_t const* keys,
@@ -50,7 +50,7 @@ ZL_Report ZS2_ThriftKernel_serializeMapI32ArrayI64(
         uint64_t const* innerValuesEnd);
 
 /// @returns the number of bytes written into @p dst.
-ZL_Report ZS2_ThriftKernel_serializeMapI32ArrayArrayI64(
+ZL_Report ZL_ThriftKernel_serializeMapI32ArrayArrayI64(
         void* dst,
         size_t dstCapacity,
         uint32_t const* keys,
@@ -62,7 +62,7 @@ ZL_Report ZS2_ThriftKernel_serializeMapI32ArrayArrayI64(
         uint64_t const* innerinnerValuesEnd);
 
 /// @returns the number of bytes written into @p dst.
-ZL_Report ZS2_ThriftKernel_serializeMapI32MapI64Float(
+ZL_Report ZL_ThriftKernel_serializeMapI32MapI64Float(
         void* dst,
         size_t dstCapacity,
         uint32_t const* keys,
@@ -74,21 +74,21 @@ ZL_Report ZS2_ThriftKernel_serializeMapI32MapI64Float(
         uint32_t const* innerValuesEnd);
 
 /// @returns the number of bytes written into @p dst.
-ZL_Report ZS2_ThriftKernel_serializeArrayI64(
+ZL_Report ZL_ThriftKernel_serializeArrayI64(
         void* dst,
         size_t dstCapacity,
         uint64_t const* values,
         size_t arraySize);
 
 /// @returns the number of bytes written into @p dst.
-ZL_Report ZS2_ThriftKernel_serializeArrayI32(
+ZL_Report ZL_ThriftKernel_serializeArrayI32(
         void* dst,
         size_t dstCapacity,
         uint32_t const* values,
         size_t arraySize);
 
 /// @returns the number of bytes written into @p dst.
-ZL_Report ZS2_ThriftKernel_serializeArrayFloat(
+ZL_Report ZL_ThriftKernel_serializeArrayFloat(
         void* dst,
         size_t dstCapacity,
         uint32_t const* values,

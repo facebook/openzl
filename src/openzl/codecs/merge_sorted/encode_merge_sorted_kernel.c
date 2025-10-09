@@ -114,7 +114,7 @@ static void PQ_destroy(PriorityQueue* pq)
     PQSet_destroy(&pq->set);
 }
 
-ZL_FORCE_INLINE ZL_Report ZS2_MergeSorted_merge(
+ZL_FORCE_INLINE ZL_Report ZL_MergeSorted_merge(
         PriorityQueue* pq,
         char* bitsets,
         uint32_t* merged,
@@ -174,7 +174,7 @@ ZL_Report ZL_MergeSorted_merge8x32(
         size_t nbSrcs)
 {
     PriorityQueue pq;
-    ZL_Report ret = ZS2_MergeSorted_merge(
+    ZL_Report ret = ZL_MergeSorted_merge(
             &pq, (char*)bitsets, merged, srcs, srcEnds, nbSrcs, 1);
     PQ_destroy(&pq);
     return ret;
@@ -188,7 +188,7 @@ ZL_Report ZL_MergeSorted_merge16x32(
         size_t nbSrcs)
 {
     PriorityQueue pq;
-    ZL_Report ret = ZS2_MergeSorted_merge(
+    ZL_Report ret = ZL_MergeSorted_merge(
             &pq, (char*)bitsets, merged, srcs, srcEnds, nbSrcs, 2);
     PQ_destroy(&pq);
     return ret;
@@ -202,7 +202,7 @@ ZL_Report ZL_MergeSorted_merge32x32(
         size_t nbSrcs)
 {
     PriorityQueue pq;
-    ZL_Report ret = ZS2_MergeSorted_merge(
+    ZL_Report ret = ZL_MergeSorted_merge(
             &pq, (char*)bitsets, merged, srcs, srcEnds, nbSrcs, 4);
     PQ_destroy(&pq);
     return ret;
@@ -216,7 +216,7 @@ ZL_Report ZL_MergeSorted_merge64x32(
         size_t nbSrcs)
 {
     PriorityQueue pq;
-    ZL_Report ret = ZS2_MergeSorted_merge(
+    ZL_Report ret = ZL_MergeSorted_merge(
             &pq, (char*)bitsets, merged, srcs, srcEnds, nbSrcs, 8);
     PQ_destroy(&pq);
     return ret;

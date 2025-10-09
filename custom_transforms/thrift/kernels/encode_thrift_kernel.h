@@ -22,7 +22,7 @@ extern "C" {
  *
  * When the extracted streams cardinality could be much larger than the
  * container, e.g. a map<i32, array<i64>>, we use a
- * `ZS2_ThriftKernel_DynamicOutput{32,64}` to write the output. This is a vtable
+ * `ZL_ThriftKernel_DynamicOutput{32,64}` to write the output. This is a vtable
  * that allows us to stream output. See "thrift_kernel_utils.h" for an
  * implementation wrapping std::vector<>.
  *
@@ -44,12 +44,12 @@ extern "C" {
 typedef struct {
     uint32_t* ptr;
     uint32_t* end;
-} ZS2_ThriftKernel_Slice32;
+} ZL_ThriftKernel_Slice32;
 
 typedef struct {
     uint64_t* ptr;
     uint64_t* end;
-} ZS2_ThriftKernel_Slice64;
+} ZL_ThriftKernel_Slice64;
 
 typedef struct {
     void* opaque;
@@ -58,11 +58,11 @@ typedef struct {
     /// The second size_t is the total number of elements we need to process.
     /// This may be used as a hint of how much space to allocate.
     /// WARNING: This invalides previously returned slices.
-    ZS2_ThriftKernel_Slice32 (*next)(void*, size_t, size_t);
+    ZL_ThriftKernel_Slice32 (*next)(void*, size_t, size_t);
     /// Commit values up to the pointer in the final slice.
     /// WARNING: This invalides all slices.
     void (*finish)(void*, uint32_t*);
-} ZS2_ThriftKernel_DynamicOutput32;
+} ZL_ThriftKernel_DynamicOutput32;
 
 typedef struct {
     void* opaque;
@@ -71,14 +71,14 @@ typedef struct {
     /// The second size_t is the total number of elements we need to process.
     /// This may be used as a hint of how much space to allocate.
     /// WARNING: This invalides previously returned slices.
-    ZS2_ThriftKernel_Slice64 (*next)(void*, size_t, size_t);
+    ZL_ThriftKernel_Slice64 (*next)(void*, size_t, size_t);
     /// Commit values up to the pointer in the final slice.
     /// WARNING: This invalides all slices.
     void (*finish)(void*, uint64_t*);
-} ZS2_ThriftKernel_DynamicOutput64;
+} ZL_ThriftKernel_DynamicOutput64;
 
 /// @returns the number of bytes consumed from the source.
-ZL_Report ZS2_ThriftKernel_deserializeMapI32Float(
+ZL_Report ZL_ThriftKernel_deserializeMapI32Float(
         uint32_t* keys,
         uint32_t* floats,
         void const* src,
@@ -86,69 +86,69 @@ ZL_Report ZS2_ThriftKernel_deserializeMapI32Float(
         size_t mapSize);
 
 /// @returns the number of bytes consumed from the source.
-ZL_Report ZS2_ThriftKernel_deserializeMapI32ArrayFloat(
+ZL_Report ZL_ThriftKernel_deserializeMapI32ArrayFloat(
         uint32_t* keys,
         uint32_t* lengths,
-        ZS2_ThriftKernel_DynamicOutput32 innerValues,
+        ZL_ThriftKernel_DynamicOutput32 innerValues,
         void const* src,
         size_t srcSize,
         size_t mapSize);
 
 /// @returns the number of bytes consumed from the source.
-ZL_Report ZS2_ThriftKernel_deserializeMapI32ArrayI64(
+ZL_Report ZL_ThriftKernel_deserializeMapI32ArrayI64(
         uint32_t* keys,
         uint32_t* lengths,
-        ZS2_ThriftKernel_DynamicOutput64 innerValues,
+        ZL_ThriftKernel_DynamicOutput64 innerValues,
         void const* src,
         size_t srcSize,
         size_t mapSize);
 
 /// @returns the number of bytes consumed from the source.
-ZL_Report ZS2_ThriftKernel_deserializeMapI32ArrayArrayI64(
+ZL_Report ZL_ThriftKernel_deserializeMapI32ArrayArrayI64(
         uint32_t* keys,
         uint32_t* lengths,
-        ZS2_ThriftKernel_DynamicOutput32 innerLengths,
-        ZS2_ThriftKernel_DynamicOutput64 innerInnerValues,
+        ZL_ThriftKernel_DynamicOutput32 innerLengths,
+        ZL_ThriftKernel_DynamicOutput64 innerInnerValues,
         void const* src,
         size_t srcSize,
         size_t mapSize);
 
 /// @returns the number of bytes consumed from the source.
-ZL_Report ZS2_ThriftKernel_deserializeMapI32MapI64Float(
+ZL_Report ZL_ThriftKernel_deserializeMapI32MapI64Float(
         uint32_t* keys,
         uint32_t* lengths,
-        ZS2_ThriftKernel_DynamicOutput64 innerKeys,
-        ZS2_ThriftKernel_DynamicOutput32 innerValues,
+        ZL_ThriftKernel_DynamicOutput64 innerKeys,
+        ZL_ThriftKernel_DynamicOutput32 innerValues,
         void const* src,
         size_t srcSize,
         size_t mapSize);
 
 /// @returns the number of bytes consumed from the source.
-ZL_Report ZS2_ThriftKernel_deserializeArrayI64(
+ZL_Report ZL_ThriftKernel_deserializeArrayI64(
         uint64_t* values,
         void const* src,
         size_t srcSize,
         size_t arraySize);
 
 /// @returns the number of bytes consumed from the source.
-ZL_Report ZS2_ThriftKernel_deserializeArrayI32(
+ZL_Report ZL_ThriftKernel_deserializeArrayI32(
         uint32_t* values,
         void const* src,
         size_t srcSize,
         size_t arraySize);
 
 /// @returns the number of bytes consumed from the source.
-ZL_Report ZS2_ThriftKernel_deserializeArrayFloat(
+ZL_Report ZL_ThriftKernel_deserializeArrayFloat(
         uint32_t* values,
         void const* src,
         size_t srcSize,
         size_t arraySize);
 
 /// @returns The size of the map starting at src.
-ZL_Report ZS2_ThriftKernel_getMapSize(void const* src, size_t srcSize);
+ZL_Report ZL_ThriftKernel_getMapSize(void const* src, size_t srcSize);
 
 /// @returns The size of the array starting at src.
-ZL_Report ZS2_ThriftKernel_getArraySize(void const* src, size_t srcSize);
+ZL_Report ZL_ThriftKernel_getArraySize(void const* src, size_t srcSize);
 
 #ifdef __cplusplus
 }

@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#ifndef ZSTRONG_ZS2_VERSION_H
-#define ZSTRONG_ZS2_VERSION_H
+#ifndef ZSTRONG_ZL_VERSION_H
+#define ZSTRONG_ZL_VERSION_H
 
 #include <stddef.h>
 
@@ -103,4 +103,4 @@ ZL_Report ZL_getFormatVersionFromFrame(void const* src, size_t srcSize);
 } // extern "C"
 #endif
 
-#endif // ZSTRONG_ZS2_VERSION_H
+#endif // ZSTRONG_ZL_VERSION_H

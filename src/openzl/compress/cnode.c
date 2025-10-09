@@ -180,7 +180,7 @@ ZL_Name CNODE_getNameObj(CNode const* cnode)
 {
     if (ZL_Name_isEmpty(&cnode->maybeName)) {
         ZL_ASSERT_EQ(cnode->publicIDtype, trt_standard);
-        return ZS2_Name_wrapStandard(cnode->transformDesc.publicDesc.name);
+        return ZL_Name_wrapStandard(cnode->transformDesc.publicDesc.name);
     } else {
         ZL_ASSERT_EQ(
                 strcmp(ZL_Name_unique(&cnode->maybeName),

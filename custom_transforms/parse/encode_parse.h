@@ -22,7 +22,7 @@ ZL_BEGIN_C_DECLS
  * Output 2: variable_size_field: The fields that don't losslessly parse into
  * int64's.
  */
-extern "C" ZL_NodeID ZS2_Compressor_registerParseInt64(
+extern "C" ZL_NodeID ZL_Compressor_registerParseInt64(
         ZL_Compressor* cgraph,
         ZL_IDType transformID);
 
@@ -48,7 +48,7 @@ extern "C" ZL_NodeID ZS2_Compressor_registerParseInt64(
  * work with other float encodings, we will likely need some more output streams
  * to encode serialization parameters.
  */
-extern "C" ZL_NodeID ZS2_Compressor_registerParseFloat64(
+extern "C" ZL_NodeID ZL_Compressor_registerParseFloat64(
         ZL_Compressor* cgraph,
         ZL_IDType transformID);
 

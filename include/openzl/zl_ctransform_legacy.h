@@ -6,8 +6,8 @@
  * They can also serve as simple examples to learn how to write Transforms.
  **/
 
-#ifndef ZSTRONG_ZS2_CTRANSFORM_LEGACY_H
-#define ZSTRONG_ZS2_CTRANSFORM_LEGACY_H
+#ifndef ZSTRONG_ZL_CTRANSFORM_LEGACY_H
+#define ZSTRONG_ZL_CTRANSFORM_LEGACY_H
 
 #include <stddef.h>               // size_t
 #include "openzl/zl_compressor.h" // ZL_Compressor
@@ -191,4 +191,4 @@ ZL_Report ZL_Encoder_createAllOutBuffers(
 } // extern "C"
 #endif
 
-#endif // ZSTRONG_ZS2_CTRANSFORM_LEGACY_H
+#endif // ZSTRONG_ZL_CTRANSFORM_LEGACY_H

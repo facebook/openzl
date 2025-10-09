@@ -160,7 +160,7 @@ size_t unwrap(ZL_Report report)
 /// Input: Thrift Compact map<i32, float>
 /// Output 1: numeric i32 keys
 /// Output 2: numeric floats
-ZL_NodeID ZS2_ThriftKernel_registerCTransformMapI32Float(
+ZL_NodeID ZL_ThriftKernel_registerCTransformMapI32Float(
         ZL_Compressor* cgraph,
         ZL_IDType transformID)
 {
@@ -169,12 +169,12 @@ ZL_NodeID ZS2_ThriftKernel_registerCTransformMapI32Float(
                 std::string_view& src)
         {
             auto const mapSize =
-                    unwrap(ZS2_ThriftKernel_getMapSize(src.data(), src.size()));
+                    unwrap(ZL_ThriftKernel_getMapSize(src.data(), src.size()));
             std::vector<uint32_t> keys, values;
             folly::resizeWithoutInitialization(keys, mapSize);
             folly::resizeWithoutInitialization(values, mapSize);
             size_t const srcConsumed =
-                    unwrap(ZS2_ThriftKernel_deserializeMapI32Float(
+                    unwrap(ZL_ThriftKernel_deserializeMapI32Float(
                             keys.data(),
                             values.data(),
                             src.data(),
@@ -192,7 +192,7 @@ ZL_NodeID ZS2_ThriftKernel_registerCTransformMapI32Float(
 /// Output 1: numeric i32 keys
 /// Output 2: numeric u32 lengths
 /// Output 3: numeric floats
-ZL_NodeID ZS2_ThriftKernel_registerCTransformMapI32ArrayFloat(
+ZL_NodeID ZL_ThriftKernel_registerCTransformMapI32ArrayFloat(
         ZL_Compressor* cgraph,
         ZL_IDType transformID)
 {
@@ -204,13 +204,13 @@ ZL_NodeID ZS2_ThriftKernel_registerCTransformMapI32ArrayFloat(
         operator()(std::string_view& src)
         {
             auto const mapSize =
-                    unwrap(ZS2_ThriftKernel_getMapSize(src.data(), src.size()));
+                    unwrap(ZL_ThriftKernel_getMapSize(src.data(), src.size()));
             std::vector<uint32_t> keys, lengths;
             folly::resizeWithoutInitialization(keys, mapSize);
             folly::resizeWithoutInitialization(lengths, mapSize);
             ZeroCopyDynamicOutput<uint32_t> innerValues;
             size_t const srcConsumed =
-                    unwrap(ZS2_ThriftKernel_deserializeMapI32ArrayFloat(
+                    unwrap(ZL_ThriftKernel_deserializeMapI32ArrayFloat(
                             keys.data(),
                             lengths.data(),
                             innerValues.asCType(),
@@ -231,7 +231,7 @@ ZL_NodeID ZS2_ThriftKernel_registerCTransformMapI32ArrayFloat(
 /// Output 1: numeric i32 keys
 /// Output 2: numeric u32 lengths
 /// Output 3: numeric i64
-ZL_NodeID ZS2_ThriftKernel_registerCTransformMapI32ArrayI64(
+ZL_NodeID ZL_ThriftKernel_registerCTransformMapI32ArrayI64(
         ZL_Compressor* cgraph,
         ZL_IDType transformID)
 {
@@ -243,13 +243,13 @@ ZL_NodeID ZS2_ThriftKernel_registerCTransformMapI32ArrayI64(
         operator()(std::string_view& src)
         {
             auto const mapSize =
-                    unwrap(ZS2_ThriftKernel_getMapSize(src.data(), src.size()));
+                    unwrap(ZL_ThriftKernel_getMapSize(src.data(), src.size()));
             std::vector<uint32_t> keys, lengths;
             folly::resizeWithoutInitialization(keys, mapSize);
             folly::resizeWithoutInitialization(lengths, mapSize);
             ZeroCopyDynamicOutput<uint64_t> innerValues;
             size_t const srcConsumed =
-                    unwrap(ZS2_ThriftKernel_deserializeMapI32ArrayI64(
+                    unwrap(ZL_ThriftKernel_deserializeMapI32ArrayI64(
                             keys.data(),
                             lengths.data(),
                             innerValues.asCType(),
@@ -271,7 +271,7 @@ ZL_NodeID ZS2_ThriftKernel_registerCTransformMapI32ArrayI64(
 /// Output 2: numeric u32 outter list lengths
 /// Output 3: numeric u32 inner list lengths
 /// Output 4: numeric i64
-ZL_NodeID ZS2_ThriftKernel_registerCTransformMapI32ArrayArrayI64(
+ZL_NodeID ZL_ThriftKernel_registerCTransformMapI32ArrayArrayI64(
         ZL_Compressor* cgraph,
         ZL_IDType transformID)
 {
@@ -284,14 +284,14 @@ ZL_NodeID ZS2_ThriftKernel_registerCTransformMapI32ArrayArrayI64(
         operator()(std::string_view& src)
         {
             auto const mapSize =
-                    unwrap(ZS2_ThriftKernel_getMapSize(src.data(), src.size()));
+                    unwrap(ZL_ThriftKernel_getMapSize(src.data(), src.size()));
             std::vector<uint32_t> keys, lengths;
             folly::resizeWithoutInitialization(keys, mapSize);
             folly::resizeWithoutInitialization(lengths, mapSize);
             ZeroCopyDynamicOutput<uint32_t> innerLengths;
             ZeroCopyDynamicOutput<uint64_t> innerInnerValues;
             size_t const srcConsumed =
-                    unwrap(ZS2_ThriftKernel_deserializeMapI32ArrayArrayI64(
+                    unwrap(ZL_ThriftKernel_deserializeMapI32ArrayArrayI64(
                             keys.data(),
                             lengths.data(),
                             innerLengths.asCType(),
@@ -315,7 +315,7 @@ ZL_NodeID ZS2_ThriftKernel_registerCTransformMapI32ArrayArrayI64(
 /// Output 2: numeric u32 lengths
 /// Output 3: numeric i64 keys
 /// Output 4: numeric float values
-ZL_NodeID ZS2_ThriftKernel_registerCTransformMapI32MapI64Float(
+ZL_NodeID ZL_ThriftKernel_registerCTransformMapI32MapI64Float(
         ZL_Compressor* cgraph,
         ZL_IDType transformID)
 {
@@ -328,14 +328,14 @@ ZL_NodeID ZS2_ThriftKernel_registerCTransformMapI32MapI64Float(
         operator()(std::string_view& src)
         {
             auto const mapSize =
-                    unwrap(ZS2_ThriftKernel_getMapSize(src.data(), src.size()));
+                    unwrap(ZL_ThriftKernel_getMapSize(src.data(), src.size()));
             std::vector<uint32_t> keys, lengths;
             folly::resizeWithoutInitialization(keys, mapSize);
             folly::resizeWithoutInitialization(lengths, mapSize);
             ZeroCopyDynamicOutput<uint64_t> innerKeys;
             ZeroCopyDynamicOutput<uint32_t> innerValues;
             size_t const srcConsumed =
-                    unwrap(ZS2_ThriftKernel_deserializeMapI32MapI64Float(
+                    unwrap(ZL_ThriftKernel_deserializeMapI32MapI64Float(
                             keys.data(),
                             lengths.data(),
                             innerKeys.asCType(),
@@ -356,7 +356,7 @@ ZL_NodeID ZS2_ThriftKernel_registerCTransformMapI32MapI64Float(
 
 /// Input: Thrift Compact list<i64>
 /// Output 1: numeric i64
-ZL_NodeID ZS2_ThriftKernel_registerCTransformArrayI64(
+ZL_NodeID ZL_ThriftKernel_registerCTransformArrayI64(
         ZL_Compressor* cgraph,
         ZL_IDType transformID)
 {
@@ -364,11 +364,11 @@ ZL_NodeID ZS2_ThriftKernel_registerCTransformArrayI64(
         std::tuple<std::vector<uint64_t>> operator()(std::string_view& src)
         {
             auto const arraySize = unwrap(
-                    ZS2_ThriftKernel_getArraySize(src.data(), src.size()));
+                    ZL_ThriftKernel_getArraySize(src.data(), src.size()));
             std::vector<uint64_t> values;
             folly::resizeWithoutInitialization(values, arraySize);
             size_t const srcConsumed =
-                    unwrap(ZS2_ThriftKernel_deserializeArrayI64(
+                    unwrap(ZL_ThriftKernel_deserializeArrayI64(
                             values.data(), src.data(), src.size(), arraySize));
             src.remove_prefix(srcConsumed);
             return std::tuple{ std::move(values) };
@@ -380,7 +380,7 @@ ZL_NodeID ZS2_ThriftKernel_registerCTransformArrayI64(
 
 /// Input: Thrift Compact list<i32>
 /// Output 1: numeric i32
-ZL_NodeID ZS2_ThriftKernel_registerCTransformArrayI32(
+ZL_NodeID ZL_ThriftKernel_registerCTransformArrayI32(
         ZL_Compressor* cgraph,
         ZL_IDType transformID)
 {
@@ -388,11 +388,11 @@ ZL_NodeID ZS2_ThriftKernel_registerCTransformArrayI32(
         std::tuple<std::vector<uint32_t>> operator()(std::string_view& src)
         {
             auto const arraySize = unwrap(
-                    ZS2_ThriftKernel_getArraySize(src.data(), src.size()));
+                    ZL_ThriftKernel_getArraySize(src.data(), src.size()));
             std::vector<uint32_t> values;
             folly::resizeWithoutInitialization(values, arraySize);
             size_t const srcConsumed =
-                    unwrap(ZS2_ThriftKernel_deserializeArrayI32(
+                    unwrap(ZL_ThriftKernel_deserializeArrayI32(
                             values.data(), src.data(), src.size(), arraySize));
             src.remove_prefix(srcConsumed);
             return std::tuple{ std::move(values) };
@@ -404,7 +404,7 @@ ZL_NodeID ZS2_ThriftKernel_registerCTransformArrayI32(
 
 /// Input: Thrift Compact list<float>
 /// Output 1: numeric float
-ZL_NodeID ZS2_ThriftKernel_registerCTransformArrayFloat(
+ZL_NodeID ZL_ThriftKernel_registerCTransformArrayFloat(
         ZL_Compressor* cgraph,
         ZL_IDType transformID)
 {
@@ -412,11 +412,11 @@ ZL_NodeID ZS2_ThriftKernel_registerCTransformArrayFloat(
         std::tuple<std::vector<uint32_t>> operator()(std::string_view& src)
         {
             auto const arraySize = unwrap(
-                    ZS2_ThriftKernel_getArraySize(src.data(), src.size()));
+                    ZL_ThriftKernel_getArraySize(src.data(), src.size()));
             std::vector<uint32_t> values;
             folly::resizeWithoutInitialization(values, arraySize);
             size_t const srcConsumed =
-                    unwrap(ZS2_ThriftKernel_deserializeArrayFloat(
+                    unwrap(ZL_ThriftKernel_deserializeArrayFloat(
                             values.data(), src.data(), src.size(), arraySize));
             src.remove_prefix(srcConsumed);
             return std::tuple{ std::move(values) };

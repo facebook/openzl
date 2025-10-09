@@ -8,12 +8,12 @@
 #include "openzl/zl_public_nodes.h"
 #include "openzl/zl_selector_declare_helper.h"
 
-/**ZS2_transposedLiteralStreamSelector::
+/**ZL_transposedLiteralStreamSelector::
  * A selector for the coding of transposed literals stream in FieldLZ.
  * This selector is format version aware, and supports all format versions.
  */
 ZL_DECLARE_SELECTOR(
-        ZS2_transposedLiteralStreamSelector,
+        ZL_transposedLiteralStreamSelector,
         ZL_Type_serial,
         SUCCESSOR(deltaHuff, ZL_GRAPH_DELTA_HUFFMAN),
         SUCCESSOR(deltaFlatpack, ZL_GRAPH_DELTA_FLATPACK),

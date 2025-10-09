@@ -24,7 +24,7 @@ extern "C" {
 
 /* The zstd Node supports advanced compression parameters,
  * both at registration and compression times,
- * via the ZS2_IntParams interface.
+ * via the ZL_IntParams interface.
  * All advanced parameters that can be set via the ZSTD_CCtx_setParameter() can be set this way,
  * and take precedence over Global parameters in case of conflict.
  * For example, { ZSTD_c_compressionLevel, 1 } will set the compression level to 1.
@@ -32,7 +32,7 @@ extern "C" {
  * Exception:
  * Some parameters (ZSTD_c_format, ZSTD_c_contentSizeFlag) cannot be changed,
  * in order to remain compatible with the decoder side.
- * If these parameters are specified within ZS2_IntParams, Node execution will fail.
+ * If these parameters are specified within ZL_IntParams, Node execution will fail.
  */
 #define ZL_NODE_ZSTD       (ZL_NodeID){ZL_PrivateStandardNodeID_zstd}
 

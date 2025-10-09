@@ -124,7 +124,7 @@ ZL_GraphID ZL_Compressor_registerTokenizeGraph(
 typedef struct ZL_CustomTokenizeState_s ZL_CustomTokenizeState;
 
 /**
- * @returns The opaque pointer passed into @fn ZS2_createGraph_customTokenize().
+ * @returns The opaque pointer passed into @fn ZL_createGraph_customTokenize().
  */
 void const* ZL_CustomTokenizeState_getOpaquePtr(
         ZL_CustomTokenizeState const* ctx);

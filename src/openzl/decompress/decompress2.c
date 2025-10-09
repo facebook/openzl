@@ -6,7 +6,7 @@
 #include "openzl/common/allocation.h"      // ZL_calloc, ZL_free
 #include "openzl/common/assertion.h"       // ZS_ASSERT_*
 #include "openzl/common/buffer_internal.h" // ZL_RCursor
-#include "openzl/common/errors_internal.h" // ZS2_RET_IF_ERR
+#include "openzl/common/errors_internal.h" // ZL_RET_IF_ERR
 #include "openzl/common/limits.h"
 #include "openzl/common/logging.h"
 #include "openzl/common/operation_context.h"
@@ -461,7 +461,7 @@ static ZL_Report ZL_AppendToOutputOptimization_commitInput(
  * the output buffer, and all inputs starting from `tailInputIdx` by prepending
  * to the tail of the output buffer. Stops when an uncommitted input is reached.
  */
-static ZL_Report ZS2_AppendToOutputOptimization_commitInputs(
+static ZL_Report ZL_AppendToOutputOptimization_commitInputs(
         ZL_AppendToOutputOptimization* append)
 {
     for (; append->headInputIdx < append->tailInputIdx;) {
@@ -507,7 +507,7 @@ static ZL_Report ZL_AppendToOutputOptimization_preTransformHook(
     ZL_AppendToOutputOptimization* append = info->appendOpt;
     ZL_ASSERT_NN(append);
 
-    ZL_RET_R_IF_ERR(ZS2_AppendToOutputOptimization_commitInputs(append));
+    ZL_RET_R_IF_ERR(ZL_AppendToOutputOptimization_commitInputs(append));
 
     if (info == info->appendOpt->outputInfo) {
         ZL_RET_R_IF_NE(
@@ -580,7 +580,7 @@ static ZL_Report ZL_AppendToOutputOptimization_newStreamHook(
         return ZL_returnValue(0);
     }
 
-    ZL_RET_R_IF_ERR(ZS2_AppendToOutputOptimization_commitInputs(append));
+    ZL_RET_R_IF_ERR(ZL_AppendToOutputOptimization_commitInputs(append));
 
     size_t bytesNeeded;
     ZL_RET_R_IF(

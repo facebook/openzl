@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#ifndef ZSTRONG_ZS2_NODES_H
-#define ZSTRONG_ZS2_NODES_H
+#ifndef ZSTRONG_ZL_NODES_H
+#define ZSTRONG_ZL_NODES_H
 
 #if defined(__cplusplus)
 extern "C" {

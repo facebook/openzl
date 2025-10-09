@@ -6,11 +6,11 @@
  * They can also serve as simple examples to learn how to write Transforms.
  **/
 
-#ifndef ZSTRONG_ZS2_DTRANSFORM_LEGACY_H
-#define ZSTRONG_ZS2_DTRANSFORM_LEGACY_H
+#ifndef ZSTRONG_ZL_DTRANSFORM_LEGACY_H
+#define ZSTRONG_ZL_DTRANSFORM_LEGACY_H
 
 // basic definitions
-#include "openzl/zl_buffer.h"       // ZS2_XBuffer
+#include "openzl/zl_buffer.h"       // ZL_XBuffer
 #include "openzl/zl_ctransform.h"   // ZL_TypedGraphDesc
 #include "openzl/zl_decompress.h"   // ZL_DCtx
 #include "openzl/zl_errors.h"       // ZL_Report, ZL_isError()
@@ -115,7 +115,7 @@ typedef struct {
 /**
  * Register a custom split decoder transform.
  * This is supposed to be the reverse of the encoding transform of same @CTid.
- * Counterpart to ZS2_registerSplitTransform().
+ * Counterpart to ZL_registerSplitTransform().
  */
 ZL_Report ZL_DCtx_registerSplitDecoder(
         ZL_DCtx* dctx,
@@ -125,4 +125,4 @@ ZL_Report ZL_DCtx_registerSplitDecoder(
 } // extern "C"
 #endif
 
-#endif // ZSTRONG_ZS2_DTRANSFORM_LEGACY_H
+#endif // ZSTRONG_ZL_DTRANSFORM_LEGACY_H

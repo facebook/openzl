@@ -48,7 +48,7 @@ static ZL_GraphID conversionGraph(ZL_Compressor* cgraph) noexcept
         ZL_NODE_INTERPRET_AS_LE32,
         ZL_NODE_DELTA_INT,
         /* implicit conversion: numeric -> token */
-        // ZS2_NODE_CONVERT_NUM_TOKEN,
+        // ZL_NODE_CONVERT_NUM_TOKEN,
         ZL_NODE_CONVERT_TOKEN_TO_SERIAL,
         ZL_NODE_CONVERT_SERIAL_TO_TOKEN2,
         /* implicit conversion: token -> serial */

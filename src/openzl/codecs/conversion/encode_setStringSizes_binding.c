@@ -10,7 +10,7 @@
 #include "openzl/shared/mem.h"                // ZL_memcpy
 #include "openzl/shared/numeric_operations.h" // NUMOP_*
 #include "openzl/zl_ctransform.h"
-#include "openzl/zl_data.h"      // ZS2_Data_*
+#include "openzl/zl_data.h"      // ZL_Data_*
 #include "openzl/zl_graph_api.h" // ZL_Edge_runNode_withParams
 #include "openzl/zl_localParams.h"
 #include "openzl/zl_public_nodes.h"

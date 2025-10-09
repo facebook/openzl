@@ -5,7 +5,7 @@
 #include "custom_parsers/shared_components/string_graphs.h"
 #include "openzl/compress/graphs/generic_clustering_graph.h"
 
-ZL_GraphID ZS2_createGraph_genericClustering(ZL_Compressor* compressor)
+ZL_GraphID ZL_createGraph_genericClustering(ZL_Compressor* compressor)
 {
     static const size_t NUM_SUCCESSORS          = 9;
     const ZL_GraphID successors[NUM_SUCCESSORS] = {

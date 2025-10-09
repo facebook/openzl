@@ -82,7 +82,7 @@ static ZL_GraphID id_score_list_features_graph(ZL_Compressor* cgraph)
 
     ZL_GraphID const graph_zstd = ZL_Compressor_registerStaticGraph_fromNode1o(
             cgraph, node_zstd, ZL_GRAPH_STORE);
-    (void)graph_zstd; // ZS2_GRAPH_FASTLZ ZS2_GRAPH_ROLZ
+    (void)graph_zstd; // ZL_GRAPH_FASTLZ ZL_GRAPH_ROLZ
     return ZL_Compressor_registerStaticGraph_fromNode1o(
             cgraph, node_s16, graph_zstd);
 }

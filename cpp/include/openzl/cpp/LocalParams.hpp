@@ -14,7 +14,7 @@
 namespace openzl {
 
 /**
- * Provides a safe wrapper on top of ZS2_LocalParams that reference stability of
+ * Provides a safe wrapper on top of ZL_LocalParams that reference stability of
  * the parameters, and eases dynamically appending params.
  */
 class LocalParams {

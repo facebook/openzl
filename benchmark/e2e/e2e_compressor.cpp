@@ -19,17 +19,17 @@ void graphCompress(
     if (output.size() == 0)
         output.resize(ZL_compressBound(src.size()) * 8);
     if (graph != nullptr) {
-        ZS2_unwrap(
+        ZL_unwrap(
                 ZL_CCtx_refCompressor(cctx, graph),
                 "Zstrong failure:: failed ZL_CCtx_refCompressor");
     }
-    ZS2_unwrap(
+    ZL_unwrap(
             ZL_CCtx_setParameter(
                     cctx, ZL_CParam_formatVersion, ZL_MAX_FORMAT_VERSION),
             "Failed setting format version");
     ZL_Report r = ZL_CCtx_compress(
             cctx, output.data(), output.size(), src.data(), src.size());
-    output.resize(ZS2_unwrap(r, "Failed compressing"));
+    output.resize(ZL_unwrap(r, "Failed compressing"));
 }
 
 } // namespace
@@ -38,7 +38,7 @@ CGraph_unique ZstrongCompressor::getGraph()
 {
     auto cgraph = createCGraph();
     auto gid    = configureGraph(cgraph.get());
-    ZS2_unwrap(
+    ZL_unwrap(
             ZL_Compressor_selectStartingGraphID(cgraph.get(), gid),
             "Failed setting starting graph id");
     return cgraph;
@@ -64,14 +64,14 @@ void ZstrongCompressor::decompress(
 {
     registerDTransforms(dctx_.get());
     if (output.size() == 0) {
-        size_t decompressedSize = ZS2_unwrap(
+        size_t decompressedSize = ZL_unwrap(
                 ZL_getDecompressedSize(src.data(), src.size()),
                 "Zstrong failure: failed getting decompressed size");
         output.resize(decompressedSize);
     }
     ZL_Report r = ZL_DCtx_decompress(
             dctx_.get(), output.data(), output.size(), src.data(), src.size());
-    output.resize(ZS2_unwrap(r, "Failed decompressing"));
+    output.resize(ZL_unwrap(r, "Failed decompressing"));
 }
 
 void ZstrongCompressor::decompress(
