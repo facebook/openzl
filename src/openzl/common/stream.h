@@ -50,6 +50,14 @@ DECLARE_VECTOR_CONST_POINTERS_TYPE(ZL_Data)
  *   - Attach external length arrays via STREAM_refMutStringLens()
  */
 
+/**
+ * Allocate or destroy stream handles.
+ * STREAM_create() uses an internal heap-backed arena and returns an
+ * initialized stream tagged with @p id (NULL on failure).
+ * STREAM_createInArena() binds the stream to caller-managed @p a, which must
+ * outlive the stream.
+ * STREAM_free() releases buffers and returns arena memory; safe on NULL.
+ */
 Stream* STREAM_create(ZL_DataID id);
 Stream* STREAM_createInArena(Arena* a, ZL_DataID id);
 void STREAM_free(Stream* s);
