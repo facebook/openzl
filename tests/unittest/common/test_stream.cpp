@@ -126,7 +126,7 @@ TEST(Stream, refStream)
     ASSERT_ZS_VALID(ZL_Data_setIntMetadata(ref, 2, 2002));
 
     ZL_Data* const s = STREAM_create(kZeroID);
-    ZL_REQUIRE_SUCCESS(STREAM_refStreamWithoutRefcount(s, ref));
+    ZL_REQUIRE_SUCCESS(STREAM_refStreamWithoutRefCount(s, ref));
 
     // Check that all fields are copied
     ASSERT_EQ(ZL_Data_type(s), ZL_Data_type(ref));

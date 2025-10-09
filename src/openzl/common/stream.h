@@ -64,7 +64,7 @@ STREAM_reserveStrings(Stream* s, size_t numStrings, size_t bufferCapacity);
  * References the contents of @p src into @p dst as a read-only reference.
  * All original properties (type, size, metadata) are referenced.
  */
-ZL_Report STREAM_refStreamWithoutRefcount(Stream* dst, const Stream* src);
+ZL_Report STREAM_refStreamWithoutRefCount(Stream* dst, const Stream* src);
 
 /**
  * Initialize @p dst as a read-only slice of @p src using byte offsets.

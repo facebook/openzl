@@ -303,7 +303,7 @@ RTGM_refInput(RTGraph* rtgraph, const ZL_Data* stream)
     ZL_RET_T_IF_NULL(RTStreamID, allocation, rtstream.stream);
     ZL_RET_T_IF_ERR(
             RTStreamID,
-            STREAM_refStreamWithoutRefcount(rtstream.stream, stream));
+            STREAM_refStreamWithoutRefCount(rtstream.stream, stream));
     ZL_RET_T_IF_NOT(
             RTStreamID,
             allocation,

@@ -72,7 +72,7 @@ ZL_Segmenter* SEGM_init(
     for (size_t n = 0; n < nbInputs; n++) {
         seg->inputs[n] =
                 STREAM_createInArena(arena, (ZL_DataID){ (ZL_IDType)n });
-        ZL_Report ref = STREAM_refStreamWithoutRefcount(
+        ZL_Report ref = STREAM_refStreamWithoutRefCount(
                 seg->inputs[n], VECTOR_AT(rtgm->streams, n).stream);
         if (ZL_isError(ref))
             return NULL;

@@ -359,7 +359,7 @@ ZL_Report STREAM_refMutRawBuffer(Stream* s, void* rawBuf, size_t bufByteSize)
     return ZL_returnSuccess();
 }
 
-ZL_Report STREAM_refStreamWithoutRefcount(Stream* s, const Stream* ref)
+ZL_Report STREAM_refStreamWithoutRefCount(Stream* s, const Stream* ref)
 {
     ZL_ASSERT_NN(s);
     ZL_ASSERT_NN(ref);
@@ -426,7 +426,7 @@ ZL_Report STREAM_refStreamByteSlice(
 }
 
 /** At this point, @p dst is expected to have been initialized with
- * STREAM_refStreamWithoutRefcount(), which means it is by now a reference to
+ * STREAM_refStreamWithoutRefCount(), which means it is by now a reference to
  * the entire @p src. The work is to reduce the range to just the wanted slice.
  */
 static ZL_Report STREAM_refStreamStringSlice(
@@ -476,7 +476,7 @@ ZL_Report STREAM_refStreamSliceWithoutRefCount(
     ZL_ASSERT_NN(src);
     ZL_ASSERT_LE(startingEltNum + numElts, STREAM_numElts(src));
     ZL_ASSERT_NN(dst);
-    ZL_RET_R_IF_ERR(STREAM_refStreamWithoutRefcount(dst, src));
+    ZL_RET_R_IF_ERR(STREAM_refStreamWithoutRefCount(dst, src));
     if (numElts == STREAM_numElts(src))
         return ZL_returnSuccess();
 
