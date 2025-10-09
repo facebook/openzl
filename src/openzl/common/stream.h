@@ -2,16 +2,15 @@
 
 #ifndef ZSTRONG_COMMON_STREAM_H
 #define ZSTRONG_COMMON_STREAM_H
+/** Implements methods associated with ZL_Data. */
 
-// Implement methods associated with ZL_Data
-
-#include "openzl/common/allocation.h" // Allocator*
-#include "openzl/common/vector.h"
-#include "openzl/shared/portability.h"
-#include "openzl/zl_buffer.h" // ZL_RBuffer
-#include "openzl/zl_data.h"   // ZL_Data, ZL_Type
-#include "openzl/zl_errors.h"
-#include "openzl/zl_opaque_types.h"
+#include "openzl/common/allocation.h"  // Allocator*
+#include "openzl/common/vector.h"      // DECLARE_VECTOR_POINTERS_TYPE
+#include "openzl/shared/portability.h" // ZL_BEGIN_C_DECLS
+#include "openzl/zl_buffer.h"          // ZL_RBuffer/ZL_WBuffer
+#include "openzl/zl_data.h"            // ZL_Data, ZL_Type
+#include "openzl/zl_errors.h"          // ZL_Report codes
+#include "openzl/zl_opaque_types.h"    // Stream forward decls
 
 ZL_BEGIN_C_DECLS
 
@@ -24,6 +23,25 @@ ZL_BEGIN_C_DECLS
  * have to update a single namespace.
  */
 
+/**
+ * Stream lifecycle helpers (typical usage):
+ *
+ * Producer:
+ *   1. STREAM_create()/STREAM_createInArena()
+ *   2. STREAM_reserve()/STREAM_refMut*() to obtain a writable buffer
+ *   3. Populate the buffer via STREAM_wPtr()/STREAM_wStringLens()
+ *   4. STREAM_commit() to publish `numElts`, STREAM_clear() to reuse
+ *
+ * Consumer:
+ *   1. STREAM_create()/STREAM_ref*() to attach to a committed source
+ *   2. Inspect metadata (STREAM_type(), STREAM_numElts(), etc.)
+ *   3. Read through STREAM_rPtr()/STREAM_rStringLens()
+ *
+ * Strings:
+ *   - Reserve lengths with STREAM_reserveStrings()/STREAM_reserveStringLens()
+ *   - Attach external length arrays via STREAM_refMutStringLens()
+ */
+
 DECLARE_VECTOR_POINTERS_TYPE(ZL_Data)
 DECLARE_VECTOR_CONST_POINTERS_TYPE(ZL_Data)
 
@@ -31,14 +49,14 @@ Stream* STREAM_create(ZL_DataID id);
 Stream* STREAM_createInArena(Arena* a, ZL_DataID id);
 void STREAM_free(Stream* s);
 
-// Allocate a typed buffer
+/** Allocate a typed buffer. */
 ZL_Report
 STREAM_reserve(Stream* s, ZL_Type type, size_t eltWidth, size_t eltCount);
 
-// Allocate a raw buffer, to be typed later
+/** Allocate a raw buffer to be typed later. */
 ZL_Report STREAM_reserveRawBuffer(Stream* s, size_t byteCapacity);
 
-// Allocate internal buffers, only for String type
+/** Allocate internal buffers specifically for string streams. */
 ZL_Report
 STREAM_reserveStrings(Stream* s, size_t numStrings, size_t bufferCapacity);
 
@@ -48,11 +66,12 @@ STREAM_reserveStrings(Stream* s, size_t numStrings, size_t bufferCapacity);
  */
 ZL_Report STREAM_refStreamWithoutRefcount(Stream* dst, const Stream* src);
 
-// Init new stream, as read-only reference of a slice into an existing stream.
-// The type of the reference can be different from the source.
-// The slice is provided using byte length.
-// It only takes care of the buffer portion of the Stream.
-// String type must still take care of the array of Lenghts.
+/**
+ * Initialize @p dst as a read-only slice of @p src using byte offsets.
+ * The reference may reinterpret the element type.
+ * Only the primary buffer is referenced; string streams must manage length data
+ * separately.
+ */
 ZL_Report STREAM_refStreamByteSlice(
         Stream* dst,
         const Stream* src,
@@ -62,13 +81,10 @@ ZL_Report STREAM_refStreamByteSlice(
         size_t eltCount);
 
 /**
- * @p dst references a slice of @p src
- * of size @p numElts,
- * starting from element @p startingEltNum.
- * The type remains the same.
- * Only suitable to read into stable @p src, like user Input.
- * All parameters must be valid,
- * in particular, startingEltNum + numElts <= src.numElts
+ * @p dst references a slice of @p src spanning @p numElts elements starting at
+ * @p startingEltNum. The type remains unchanged.
+ * Only safe when @p src stays stable (e.g. input buffers).
+ * Callers must ensure startingEltNum + numElts <= src.numElts.
  */
 ZL_Report STREAM_refStreamSliceWithoutRefCount(
         Stream* dst,
@@ -77,20 +93,20 @@ ZL_Report STREAM_refStreamSliceWithoutRefCount(
         size_t numElts);
 
 /**
- * @p dst references the latter part of @p src
- * starting from element @p startingEltNum.
- * Only suitable to read into stable @p src, like user Input.
- * All parameters must be valid,
- * in particular, startingEltNum <= src.numElts
+ * @p dst references the tail of @p src starting at element @p startingEltNum.
+ * Only safe when @p src remains stable (e.g. input buffers).
+ * Callers must ensure startingEltNum <= src.numElts.
  */
 ZL_Report STREAM_refEndStreamWithoutRefCount(
         Stream* dst,
         const Stream* src,
         size_t startingEltNum);
 
-// Init a new stream, as a read-only reference into an externally owned buffer
-// and Type it.
-// Typically used for the first compression stream (read input)
+/**
+ * Initialize a new stream as a read-only reference into an externally owned
+ * buffer and set its type.
+ * Typically used for the first compression stream (read input).
+ */
 ZL_Report STREAM_refConstBuffer(
         Stream* s,
         const void* ref,
@@ -98,9 +114,11 @@ ZL_Report STREAM_refConstBuffer(
         size_t eltWidth,
         size_t eltCount);
 
-// Init a new stream, as a writable reference into an externally owned buffer
-// and Type it.
-// Typically used for the last decompression stream (write output)
+/**
+ * Initialize a new stream as a writable reference into an externally owned
+ * buffer and set its type.
+ * Typically used for the last decompression stream (write output).
+ */
 ZL_Report STREAM_refMutBuffer(
         Stream* s,
         void* buffer,
@@ -108,34 +126,42 @@ ZL_Report STREAM_refMutBuffer(
         size_t eltWidth,
         size_t eltCapacity);
 
-// Complete an existing stream of type String
-// and provide a buffer for the array of String Lengths.
-// The Stream must be already initialized and typed,
-// but not have received or allocated a buffer for String Lengths.
-// Typically used for the last decompression stream (write output)
+/**
+ * Complete an existing string stream by attaching a buffer that stores string
+ * lengths.
+ * The stream must already be initialized and typed, but must not yet have a
+ * lengths buffer.
+ * Typically used for the last decompression stream (write output).
+ */
 ZL_Report
 STREAM_refMutStringLens(Stream* s, uint32_t* stringLens, size_t eltsCapacity);
 
-// Init a new stream, as a writable reference into an externally owned buffer,
-// but do not initialize its type yet.
-// The buffer will be typed later, on discovering the output type,
-// using STREAM_initWritableStream().
-// Typically used for the last decompression stream (write output)
+/**
+ * Initialize a new stream as a writable reference into an externally owned
+ * buffer without yet setting its type.
+ * The buffer will be typed later, once the output type is known, using
+ * STREAM_initWritableStream().
+ * Typically used for the last decompression stream (write output).
+ */
 ZL_Report STREAM_refMutRawBuffer(Stream* s, void* rawBuf, size_t bufByteSize);
 
-// Type a Stream which already owns or references a buffer.
-// Typically used for the last stream (write output)
-// Preconditions: `s` already references a writable buffer sized at least
-// `eltWidth * eltCapacity` bytes.
+/**
+ * Type a stream that already owns or references a buffer.
+ * Typically used for the last stream (write output).
+ * @pre @p s references a writable buffer sized at least
+ *      @p eltWidth * @p eltCapacity bytes.
+ */
 ZL_Report STREAM_initWritableStream(
         Stream* s,
         ZL_Type type,
         size_t eltWidth,
         size_t eltCapacity);
 
-// Init a new stream, as a read-only reference into externally owned buffers
-// representing Strings in flat format. Typically used for the first stream
-// (read input)
+/**
+ * Initialize a new stream as a read-only reference into externally owned
+ * buffers representing strings in flat format.
+ * Typically used for the first stream (read input).
+ */
 ZL_Report STREAM_refConstExtString(
         Stream* s,
         const void* strBuffer,
@@ -143,10 +169,13 @@ ZL_Report STREAM_refConstExtString(
         const uint32_t* strLengths,
         size_t nbStrings);
 
-// Accessors
-// Unless specified otherwise these helpers expect a fully initialized stream.
-// Writable accessors (STREAM_wPtr / STREAM_wStringLens) require a mutable
-// buffer and an uncommitted stream.
+/**
+ * @name Accessors
+ * Helpers expect a fully initialized stream unless noted otherwise.
+ * Writable accessors (STREAM_wPtr / STREAM_wStringLens) require a mutable
+ * buffer and an uncommitted stream.
+ * @{
+ */
 ZL_DataID STREAM_id(const Stream* s);
 ZL_Type STREAM_type(const Stream* s);
 size_t STREAM_numElts(const Stream* s);
@@ -161,59 +190,73 @@ uint32_t* STREAM_reserveStringLens(Stream* s, size_t nbStrings);
 ZL_RBuffer STREAM_getRBuffer(const Stream* s);
 ZL_WBuffer STREAM_getWBuffer(Stream* s);
 int STREAM_isCommitted(const Stream* s);
-// Finalize the stream after writing `numElts` elements (or strings).
-// Must be invoked exactly once by writers; readers expect committed streams.
+/** @} */
+
+/**
+ * Finalize the stream after writing @p numElts elements (or strings).
+ * Writers must invoke this exactly once; readers expect committed streams.
+ */
 ZL_Report STREAM_commit(Stream* s, size_t numElts);
 
-// Request capacity in nb of elts
-// Note: String type can't get capacity of its primary buffer size this way
+/**
+ * Request capacity in number of elements.
+ * Note: string streams cannot derive their primary buffer capacity through this
+ * helper.
+ */
 size_t STREAM_eltCapacity(const Stream* s);
 
-// Request capacity of primary buffer in bytes
+/** Request capacity of the primary buffer in bytes. */
 size_t STREAM_byteCapacity(const Stream* s);
 
-// Lightweight metadata channel used by co-operating nodes to exchange small
-// integer hints alongside the stream payload.
+/**
+ * Lightweight metadata channel used by co-operating nodes to exchange small
+ * integer hints alongside the stream payload.
+ */
 ZL_Report STREAM_setIntMetadata(Stream* s, int mId, int mValue);
 ZL_IntMetadata STREAM_getIntMetadata(const Stream* s, int mId);
 
-// Hash the content of all streams provided in @streams.
-// Only makes sense if all streams have already been committed.
-// Return the low 32-bit of XXH3_64bits.
+/**
+ * Hash the content of all streams provided in @p streams.
+ * Only meaningful when all streams have been committed.
+ * Returns the low 32-bit of XXH3_64bits.
+ */
 ZL_Report STREAM_hashLastCommit_xxh3low32(
         const Stream* streams[],
         size_t nbStreams,
         unsigned formatVersion);
 
-// *************************************
-// Actions
-// *************************************
+/**
+ * @name Actions
+ * @{
+ */
 
-// STREAM_copyBytes
-// Bundle memcpy operation, boundary checks, eltWidth multiples, and commit.
-// @dst and @src must be large enough for the operation to succeed.
-// Designed primarily for conversion operations
+/**
+ * Copy @p sizeInBytes bytes from @p src into @p dst, performing boundary
+ * checks, element-width validation, and commit bookkeeping.
+ * Both streams must provide sufficient capacity for the operation.
+ * Intended primarily for conversion operations.
+ */
 ZL_Report STREAM_copyBytes(Stream* dst, const Stream* src, size_t sizeInBytes);
 
 /**
- * Append content of @param src into @param dst.
- * @param src must have same type and width and @param dst.
- * @param dst must be already allocated, and be large enough to host the entire
- * @param src content.
- * @return numElts added, or an error
+ * Append the contents of @p src into @p dst.
+ * @p src must have the same type and element width as @p dst.
+ * @p dst must already own enough capacity to hold the additional elements.
+ * @return Number of elements appended, or an error.
  */
 ZL_Report STREAM_append(Stream* dst, const Stream* src);
 
-// STREAM_copyStringStream
-// Duplicate a Stream, of type String (only!)
-// onto an empty destination Stream (no buffer allocated nor referenced)
+/**
+ * Duplicate a string stream into an empty destination stream (no buffer
+ * allocated nor referenced).
+ */
 ZL_Report STREAM_copyStringStream(
         Stream* emptyStreamDst,
         const Stream* stringStreamSrc);
 
 /**
- * Copy a stream from @p src to @p dst
- * @pre @p dst must be empty and @p src must be committed
+ * Copy a stream from @p src to @p dst.
+ * @pre @p dst must be empty and @p src must be committed.
  */
 ZL_Report STREAM_copy(Stream* dst, const Stream* src);
 
@@ -225,9 +268,12 @@ ZL_Report STREAM_copy(Stream* dst, const Stream* src);
  */
 ZL_Report STREAM_consume(Stream* data, size_t numElts);
 
-// Clear a stream for reuse with the same type/eltWidth/eltCount
+/** Clear a stream for reuse with the same type, element width, and element
+ * count. */
 void STREAM_clear(Stream* s);
+
+/** @} */
 
 ZL_END_C_DECLS
 
-#endif // ZSTRONG_COMMON_STREAM_H
+#endif /* ZSTRONG_COMMON_STREAM_H */
