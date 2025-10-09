@@ -4,6 +4,10 @@
 
 #include <memory>
 #include <vector>
+#include <string>
+#include <optional>
+#include <stdexcept>
+
 
 #include "tools/io/InputSet.h"
 
