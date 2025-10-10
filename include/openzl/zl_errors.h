@@ -159,7 +159,7 @@ extern "C" {
  * ZL_Report serialize_something(...) {
  *   ZL_RESULT_DECLARE_SCOPE(Foo, NULL);
  *   ZL_CompressorSerializer serializer;
- *   ZL_ERR_IF_ERR(ZL_CompressorSerializer_init(&serialier));
+ *   ZL_ERR_IF_ERR(ZL_CompressorSerializer_init(&serializer));
  *   ZL_RESULT_UPDATE_SCOPE_CONTEXT(&serializer);
  *   // ...
  * }

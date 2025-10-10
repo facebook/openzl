@@ -108,7 +108,7 @@ pytorchModelDynGraph(ZL_Graph* gctx, ZL_Edge* sctxs[], size_t nbIns)
             ZL_RET_R_IF_GE(corruption, nbSegments, maxNbSegments);
             const ZS2_ZipToken token = tokens[i];
 
-            // Assign the appropiate tag to the token.
+            // Assign the appropriate tag to the token.
             if (token.type == ZS2_ZipTokenType_CompressedData) {
                 if (token.compressionMethod != 0) {
                     tags[nbSegments] = PytorchModelSuccessor_Precompressed;

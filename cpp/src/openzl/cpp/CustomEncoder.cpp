@@ -83,7 +83,7 @@ static ZL_Report encodeFn(
                 (const CustomEncoder*)ZL_Encoder_getOpaquePtr(encoder);
         customEncoder->encode(state);
     } catch (const Exception& e) {
-        // TODO(terrelln): Beter wrap the error
+        // TODO(terrelln): Better wrap the error
         ZL_ERR(GENERIC, "C++ openzl::Exception: %s", e.what());
     } catch (const std::exception& e) {
         ZL_ERR(GENERIC, "C++ std::exception: %s", e.what());

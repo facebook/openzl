@@ -750,7 +750,7 @@ ParameterizedTransformMap const& getStandardTransforms()
                                                       | ZL_Type_numeric),
                                               ZL_Type_numeric },
                         "Tokenizes the input into an alphabet stream and an indicies stream. "
-                        "The alphabet is either sorted in ascending order, or in occurence order.",
+                        "The alphabet is either sorted in ascending order, or in occurrence order.",
                         std::vector<std::string>{ "alphabet", "indices" },
                         std::vector<ParamInfo>{
                                 { 0, "stream_type", "The input stream type" },
@@ -771,7 +771,7 @@ ParameterizedTransformMap const& getStandardTransforms()
                         std::vector<ZL_Type>{ ZL_Type_struct },
                         "Compresses a fixed-size stream using LZ compression "
                         "that matches entire fields, with a custom literals "
-                        "grap.",
+                        "graph.",
                         std::vector<std::string>{ "literals" }));
         // TODO(terrelln): These don't belong here, but lets get this up and
         // working first...

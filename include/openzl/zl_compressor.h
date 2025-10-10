@@ -149,7 +149,7 @@ ZL_Error_Array ZL_Compressor_getWarnings(const ZL_Compressor* compressor);
  * @param value The value to set for the global parameter.
  */
 ZL_Report ZL_Compressor_setParameter(
-        ZL_Compressor* compresor,
+        ZL_Compressor* compressor,
         ZL_CParam gcparam,
         int value);
 
