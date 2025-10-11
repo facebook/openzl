@@ -18,7 +18,7 @@ give a graph component a name:
 3. Let OpenZL pick a name. Some entry points for creating new graph components
    let you decline to provide a name. In the case that you don't provide one,
    OpenZL will assign a (possibly not very meaningful) unique name. Other entry
-   points don't let you provde a name at all, and instead implicitly name the
+   points don't let you provide a name at all, and instead implicitly name the
    new object based on the component they enclose / were based on / modify.
    Whether that component had an explicit or base name, OpenZL will name the
    new component by appending or updating the suffix to create a new unique
