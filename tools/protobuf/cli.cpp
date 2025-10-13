@@ -5,6 +5,7 @@
 #include <google/protobuf/util/message_differencer.h>
 #include <filesystem>
 #include <iomanip>
+#include "custom_parsers/dependency_registration.h"
 #include "openzl/common/assertion.h"
 #include "openzl/common/logging.h"
 #include "tools/arg/arg_parser.h"
@@ -320,6 +321,8 @@ int handleTrain(TrainArgs args)
     auto compressor = args.serializer.getCompressor();
 
     auto params = training::TrainParams();
+    params.compressorGenFunc =
+            openzl::custom_parsers::createCompressorFromSerialized;
 
     auto serialized = training::train(samples, *compressor, params)[0];
 
