@@ -20,13 +20,17 @@ cd openzl
 ## Building the OpenZL CLI
 
 OpenZL consists of a core library and a set of tools, each of which can be compiled independently. However, for usage simplicity, many of them are bundled into a CLI called `zli`.
-Compile it; it will be your main tool for the next sections.
+It will be your main tool for the next sections.
+
+???+ important "System requirements"
+    OpenZL uses modern C11 and C++17 features. Ensure your compiler has full support. GCC 9+ and Clang 13+ are known to be supported.
 
 ```sh
 make zli
 ```
 
 ??? note "Alternative: Using cmake instead of make"
+    Use CMake 3.20.2+ when generating:
     ```bash
     mkdir -p cmakebuild
     cmake -S . -B cmakebuild
