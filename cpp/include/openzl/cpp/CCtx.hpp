@@ -4,6 +4,7 @@
 
 #include <map>
 #include "openzl/cpp/CParam.hpp"
+#include "openzl/cpp/CompressIntrospectionHooks.hpp"
 #include "openzl/cpp/Compressor.hpp"
 #include "openzl/cpp/Exception.hpp"
 #include "openzl/cpp/Input.hpp"
@@ -107,7 +108,7 @@ class CCtx {
 
    private:
     detail::NonNullUniqueCPtr<ZL_CCtx> cctx_;
-    std::unique_ptr<visualizer::CompressionTraceHooks> hooks_{ nullptr };
+    std::unique_ptr<CompressIntrospectionHooks> visHooks_{ nullptr };
 };
 
 class CCtxRef : public CCtx {
