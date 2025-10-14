@@ -1,5 +1,11 @@
 ## CPU Requirements
-Training can be CPU intensive, but is expected to work for even laptop cpus for smaller workloads. The following tests are done using a Intel(R) Xeon(R) Gold 6138 CPU @ 2.00GHz.
+Training can be CPU intensive, but is expected to work for even laptop cpus for smaller workloads. Training does not use GPU. The following tests are done using a Intel(R) Xeon(R) Gold 6138 CPU @ 2.00GHz.
+
+## RAM Usage
+The RAM usage is dependent on the size of the input file or chunk, and the number of threads used. Given a file size of x, approximately 10x RAM is used per thread.
+
+## Limitations
+Currently, training does not support large files greater than 500MB at a time. A segmenter must be used for larger files.
 
 ## Training Times
 
