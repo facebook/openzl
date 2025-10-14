@@ -22,6 +22,9 @@ Despite the big scary warnings above, we consider the core to have reached produ
 
 ## Building OpenZL
 
+### Prerequisites
+OpenZL requires a compiler that supports C11 and C++17. When building with `cmake`, `cmake 3.20.2` or newer is required. There is ongoing work to relax these restrictions. As that happens, this section will be updated.
+
 ### Build with `make`
 
 The OpenZL library and essential tools can be built using `make`:
