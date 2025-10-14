@@ -4,10 +4,9 @@
 requires = ["scikit-build-core >=0.11.5", "nanobind >=2.7.0"]
 build-backend = "scikit_build_core.build"
 
-# TODO: Figure out how to get the version from zl_version.h
 [project]
 name = "openzl"
-version = "0.1.0"
+dynamic = ["version"]
 requires-python = ">=3.8"
 
 [project.urls]
@@ -30,6 +29,19 @@ wheel.py-api = "cp312"
 
 # Point it at the project build directory
 cmake.source-dir = ".."
+
+[tool.scikit-build.metadata.version]
+# https://scikit-build-core.readthedocs.io/en/stable/configuration/dynamic.html#regex
+provider = "scikit_build_core.metadata.regex"
+input = "../include/openzl/zl_version.h"
+regex = '''(?sx)
+\#define \s+ ZL_LIBRARY_VERSION_MAJOR \s+ (?P<major>\d+) .*?
+\#define \s+ ZL_LIBRARY_VERSION_MINOR \s+ (?P<minor>\d+) .*?
+\#define \s+ ZL_LIBRARY_VERSION_PATCH \s+ (?P<patch>\d+) .*?
+\#define \s+ ZL_FBCODE_IS_RELEASE \s+ (?P<dev>\d+) .*?
+'''
+result = "{major}.{minor}.{patch}dev{dev}"
+remove = "dev1"
 
 [tool.scikit-build.cmake.define]
 # Build the Python extension, but don't install OpenZL.
