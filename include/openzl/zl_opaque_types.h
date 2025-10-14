@@ -12,7 +12,7 @@ extern "C" {
 // This is a list of opaque types
 // employed by Zstrong's Public APIs.
 // Their declaration is required for compilers.
-// However, users shoud _never_ access private members of these opaque types.
+// However, users should _never_ access private members of these opaque types.
 // This is extremely important, there is no stability guarantee.
 // Moreover, the main reason for these opaque types to exist is
 // to prevent confusion between different opaque types

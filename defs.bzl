@@ -106,7 +106,7 @@ ZS_FUZZ_METADATA = Metadata(
     privilege_required = Priv.PRE_AUTH,
     # Not reachable through network
     reachability = Reachability.LOCAL,
-    # no clicks neede by user
+    # no clicks needed by user
     user_interaction_required = Interaction.ZERO_CLICK,
 )
 
@@ -212,7 +212,7 @@ def zs_fuzzers(ftest_names, generator = None, **kwargs):
         Each should have a matching FUZZ(test_suite, test_case) in the source file.
 
         generator: Optionally a binary target that accepts three parameters:
-        test_suite, test_case, and output_directory. It should generate an appropiate
+        test_suite, test_case, and output_directory. It should generate an appropriate
         seed corpus for the given ftest in the output_directory. This is used to seed
         the fuzzer during corpus expansion. This allows us to e.g. dynamically generate
         relevant Zstrong compressed frame with interesting transforms for decompression

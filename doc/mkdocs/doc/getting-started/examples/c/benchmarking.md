@@ -1,4 +1,4 @@
-# Lighweight Benchmarking
+# Lightweight Benchmarking
 A lightweight benchmarking tool `unitBench` is provided in the codebase as a helper to benchmark some common compression use cases.
 
 ## Build and Use
@@ -34,7 +34,7 @@ If the scenario is not representable as a graph, it is still benchmarkable, but 
 // scenario definition
 --8<-- "src/benchmark/unitBench/benchList.h:example-wrapper-scenario"
 ```
-This scenario also declares the `outSize` function. This tells `unitBench` how much space to allocate for the compressed output. `out_identical` is a convenience funtion meaning "allocate a buffer with the same size as the input".
+This scenario also declares the `outSize` function. This tells `unitBench` how much space to allocate for the compressed output. `out_identical` is a convenience function meaning "allocate a buffer with the same size as the input".
 ::: BMK_outSize_f
 ```cpp title="benchmark/unitBench/benchList.h"
 --8<-- "src/benchmark/unitBench/benchList.h:out-identical"

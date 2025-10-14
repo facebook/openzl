@@ -272,7 +272,7 @@ FUZZ(AllocFailureTest, FuzzAllocFailure)
             input.size());
     if (ZL_isError(cSize)) {
         // An allocation failure must have caused this because permissive mode
-        // is enabled. Ensure we get an appropiate error code.
+        // is enabled. Ensure we get an appropriate error code.
         ZL_REQUIRE_GT(gAllocState.numAllocsFailed, 0);
         auto code = ZL_errorCode(cSize);
         // We currently can't reliably differentiate containers running into

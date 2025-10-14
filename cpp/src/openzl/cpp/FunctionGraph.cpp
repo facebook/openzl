@@ -192,7 +192,7 @@ graphFn(ZL_Graph* graph, ZL_Edge* edges[], size_t nbEdges) noexcept
                 (const FunctionGraph*)ZL_Graph_getOpaquePtr(graph);
         functionGraph->graph(state);
     } catch (const Exception& e) {
-        // TODO(terrelln): Beter wrap the error
+        // TODO(terrelln): Better wrap the error
         ZL_ERR(GENERIC, "C++ openzl::Exception: %s", e.what());
     } catch (const std::exception& e) {
         ZL_ERR(GENERIC, "C++ std::exception: %s", e.what());

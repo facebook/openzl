@@ -275,7 +275,7 @@ class VariableSizeData : public BenchmarkData {
     std::string name() override
     {
         return fmt::format(
-                "{}Variable(nbBytes={}, nbSegments={}, minSegLenth={}, maxSegLenth={}, alphabetSize={})",
+                "{}Variable(nbBytes={}, nbSegments={}, minSegLength={}, maxSegLength={}, alphabetSize={})",
                 sorted_ ? "Sorted" : "Unsorted",
                 data_.size(),
                 fieldSizes_.size(),

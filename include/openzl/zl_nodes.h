@@ -25,7 +25,7 @@ typedef enum {
 
     ZL_StandardNodeID_field_lz,
 
-    // Autoamtic down-conversion nodes
+    // Automatic down-conversion nodes
     ZL_StandardNodeID_convert_struct_to_serial,
     ZL_StandardNodeID_convert_num_to_struct_le,
     ZL_StandardNodeID_convert_num_to_serial_le,
