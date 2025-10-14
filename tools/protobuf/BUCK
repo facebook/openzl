@@ -40,6 +40,7 @@ zs_cxxbinary(
         "fbsource//third-party/protobuf:libprotobuf",
         ":schema-cpp",
         ":serializer",
+        "//data_compression/experimental/zstrong/custom_parsers:custom_parsers",
         "//data_compression/experimental/zstrong/tools:arg",
         "//data_compression/experimental/zstrong/tools:io",
         "//data_compression/experimental/zstrong/tools/training:train",
