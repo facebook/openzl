@@ -54,9 +54,10 @@ ZL_GraphID saoProfile(Compressor& compressor)
      * Real*4 XRPM      R.A. proper motion (radians per year)
      * Real*4 XDPM      Dec. proper motion (radians per year)
      */
-    ZL_GraphID sra0 = nodes::ConvertStructToNumLE()(
+    ZL_GraphID sra0 = graphs::ACE(nodes::ConvertStructToNumLE()(
             compressor,
-            nodes::DeltaInt()(compressor, graphs::FieldLz()(compressor)));
+            nodes::DeltaInt()(compressor, graphs::FieldLz()(compressor))))(
+            compressor);
     ZL_GraphID sdec0          = graphs::ACE(nodes::TransposeSplit()(
             compressor, graphs::Zstd()(compressor)))(compressor);
     ZL_GraphID token_compress = nodes::TokenizeStruct()(
