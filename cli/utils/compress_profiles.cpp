@@ -118,8 +118,10 @@ static void addLEintProfile(
             isSigned ? ([](ZL_Compressor* comp,
                            void* opaque,
                            const ProfileArgs&) {
-                return ZL_Compressor_registerStaticGraph_fromPipelineNodes1o(
-                        comp, (ZL_NodeID*)opaque, 2, ZL_GRAPH_FIELD_LZ);
+                auto graph =
+                        ZL_Compressor_registerStaticGraph_fromPipelineNodes1o(
+                                comp, (ZL_NodeID*)opaque, 2, ZL_GRAPH_FIELD_LZ);
+                return ZL_Compressor_buildACEGraphWithDefault(comp, graph);
             })
                      : ([](ZL_Compressor* comp,
                            void* opaque,
