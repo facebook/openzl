@@ -176,11 +176,13 @@ class SerializeArgs : public Args {
         outputType = parseProtocol(
                 args.cmdFlag(Cmd::SERIALIZE, kOutputType).value_or("zl"));
 
-        check = args.cmdHasFlag(Cmd::SERIALIZE, kCheck);
+        check  = args.cmdHasFlag(Cmd::SERIALIZE, kCheck);
+        output = args.cmdFlag(Cmd::SERIALIZE, kOutput);
     }
 
     Protocol outputType;
     bool check;
+    std::optional<std::string> output;
 };
 
 class TrainArgs : public Args {
@@ -296,8 +298,13 @@ int handleSerialize(SerializeArgs args)
         };
 
         // Write the serialized object to a file
-        auto path = std::filesystem::path(input->name());
-        path.replace_extension(ext(args.outputType));
+        std::filesystem::path path;
+        if (!args.output) {
+            path = std::filesystem::path(input->name());
+            path.replace_extension(ext(args.outputType));
+        } else {
+            path = std::filesystem::path(args.output.value());
+        }
         std::make_unique<tools::io::OutputFile>(path)->write(serialized);
     }
     return 0;
