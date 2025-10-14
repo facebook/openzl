@@ -145,9 +145,9 @@ int performCompression(const CompressArgs& args)
     // ahead of time.
     const auto inputSize = input.size().value();
     // TODO: Size limitations should be a library feature
-    if (inputSize > 2 * BYTES_TO_GB) {
+    if (inputSize > BYTES_TO_GB / 2) {
         throw std::runtime_error(
-                "Chunking support is required for compressing inputs larger than 2 GB. ");
+                "Chunking support is required for compressing inputs larger than 500 MB. ");
     }
     Logger::log(VERBOSE1, "Input size: ", inputSize);
 
