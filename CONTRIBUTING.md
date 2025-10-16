@@ -13,6 +13,11 @@ We actively welcome your pull requests.
 5. Make sure your code lints.
 6. If you haven't already, complete the Contributor License Agreement ("CLA").
 
+### Common reasons for a rejected pull request
+- OpenZL currently expects its library of standard codecs to be generalized and well-tested. We are happy to link to useful custom codecs, but cannot accept pull requests adding them to the library. If you have a general codec that you would like to contribute, please create an issue for discussion before submitting a pull request.
+- Large codemods are difficult to verify and will be rejected unless they are accompanied with the generating scripts.
+- Low-impact pull requests that are transparently for "stat-padding" will be rejected.
+
 ## Contributor License Agreement ("CLA")
 In order to accept your pull request, we need you to submit a CLA. You only need
 to do this once to work on any of Facebook's open source projects.
