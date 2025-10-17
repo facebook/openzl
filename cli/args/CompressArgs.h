@@ -51,6 +51,14 @@ struct CompressArgs : public GlobalArgs {
                 "Train the compressor on the input file before compressing.");
         parser.addCommandFlag(
                 cmd(),
+                kTrainInlineTestLimit,
+                0,
+                true,
+                // "Lime limit spent on inline training, in seconds, for
+                // testing."
+                "");
+        parser.addCommandFlag(
+                cmd(),
                 kTrace,
                 0,
                 true,
@@ -80,6 +88,10 @@ struct CompressArgs : public GlobalArgs {
         output = std::make_unique<tools::io::OutputFile>(std::move(outputPath));
 
         trainInline = parsed.cmdHasFlag(cmd(), kTrainInline);
+        if (parsed.cmdHasFlag(cmd(), kTrainInlineTestLimit)) {
+            trainInlineTestLimit = std::stoul(
+                    parsed.cmdFlag(cmd(), kTrainInlineTestLimit).value());
+        }
 
         if (parsed.cmdHasFlag(cmd(), kTrace)) {
             auto path   = parsed.cmdFlag(cmd(), kTrace).value();
@@ -100,6 +112,8 @@ struct CompressArgs : public GlobalArgs {
     std::shared_ptr<tools::io::Output> output;
 
     bool trainInline{};
+    poly::optional<size_t> trainInlineTestLimit;
+
     std::shared_ptr<tools::io::Output> traceOutput;
     std::optional<std::string> traceStreamsDir;
 
@@ -112,9 +126,11 @@ struct CompressArgs : public GlobalArgs {
     inline static const std::string kProfileArg = "profile-arg";
     inline static const std::string kCompressor = "compressor";
 
-    inline static const std::string kVerbose         = "verbose";
-    inline static const std::string kRecursive       = "recursive";
-    inline static const std::string kTrainInline     = "train-inline";
+    inline static const std::string kVerbose     = "verbose";
+    inline static const std::string kRecursive   = "recursive";
+    inline static const std::string kTrainInline = "train-inline";
+    inline static const std::string kTrainInlineTestLimit =
+            "train-inline-test-limit";
     inline static const std::string kTrace           = "trace";
     inline static const std::string kTraceStreamsDir = "trace-streams-dir";
 };
