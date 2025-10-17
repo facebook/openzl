@@ -210,7 +210,7 @@ def execute_train(
     cstr = compressor_info.compressor_str
     cflag = compressor_info.compressor_type.value
 
-    train_args = f"train --{cflag} {cstr} {str(uncompressed_dir)} -o {str(trained_compressor_path)}"
+    train_args = f"train --max-time-secs 1 --{cflag} {cstr} {str(uncompressed_dir)} -o {str(trained_compressor_path)}"
     if trainer_name:
         train_args += f" -t {trainer_name}"
 
@@ -233,7 +233,7 @@ def execute_train_inline(
     cstr = compressor_info.compressor_str
     cflag = compressor_info.compressor_type.value
 
-    train_args = f"compress --train-inline --{cflag} {cstr} {str(uncompressed_file)} -o {str(compressed_file_path)}"
+    train_args = f"compress --train-inline --train-inline-test-limit 1 --{cflag} {cstr} {str(uncompressed_file)} -o {str(compressed_file_path)}"
 
     if execute_command(train_args) != 0:
         raise ValueError("Executing train command failed")

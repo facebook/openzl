@@ -69,6 +69,9 @@ int trainCompressorOnSampleFile(CompressArgs& args)
             std::make_unique<tools::io::InputSetStatic>(std::move(inputVec));
     trainArgs.output     = compressorOutput;
     trainArgs.compressor = args.compressor;
+    if (args.trainInlineTestLimit) {
+        trainArgs.trainParams.maxTimeSecs = args.trainInlineTestLimit.value();
+    }
 
     // Train the compressor
     int result = cmdTrain(trainArgs);
