@@ -36,13 +36,13 @@ DECLARE_VECTOR_CONST_POINTERS_TYPE(ZL_Data)
  *
  * Producer:
  *   1. STREAM_create()/STREAM_createInArena()
- *   2. STREAM_reserve()/STREAM_refMut*() to obtain a writable buffer
+ *   2. STREAM_reserve()/STREAM_attach*() to obtain a writable buffer
  *   3. Populate the buffer via STREAM_wPtr()/STREAM_wStringLens()
  *   4. STREAM_commit() to publish `numElts`, STREAM_clear() to reuse
  *
  * Consumer:
  *   1. STREAM_create()/STREAM_ref*() to attach to a committed source
- *   2. Inspect metadata (STREAM_type(), STREAM_numElts(), etc.)
+ *   2. Inspect metadata (STREAM_type(), STREAM_eltCount(), etc.)
  *   3. Read through STREAM_rPtr()/STREAM_rStringLens()
  *
  * Strings:
@@ -68,6 +68,42 @@ STREAM_reserve(Stream* s, ZL_Type type, size_t eltWidth, size_t eltCount);
 
 /** Allocate a raw buffer to be typed later. */
 ZL_Report STREAM_reserveRawBuffer(Stream* s, size_t byteCapacity);
+
+/* ====================================================================== */
+/* Writable references: attach to external buffers or type owned storage. */
+
+/**
+ * Initialize a new stream as a writable reference into an externally owned
+ * buffer and set its type.
+ * Typically used for the last decompression stream (write output).
+ */
+ZL_Report STREAM_attachWritableBuffer(
+        Stream* s,
+        void* buffer,
+        ZL_Type type,
+        size_t eltWidth,
+        size_t eltCapacity);
+
+/**
+ * Initialize a new stream as a writable reference into an externally owned
+ * buffer without yet setting its type.
+ * The buffer will be typed later, once the output type is known, using
+ * STREAM_typeAttachedBuffer().
+ * Typically used for the last decompression stream (write output).
+ */
+ZL_Report STREAM_attachRawBuffer(Stream* s, void* rawBuf, size_t bufByteSize);
+
+/**
+ * Type a stream that already owns or references a buffer
+ * but has not yet been typed.
+ * @pre @p s references a writable buffer sized at least
+ *      @p eltWidth * @p eltCapacity bytes.
+ */
+ZL_Report STREAM_typeAttachedBuffer(
+        Stream* s,
+        ZL_Type type,
+        size_t eltWidth,
+        size_t eltCapacity);
 
 /* ========================================================= */
 /* Read-only references and type tagging to external buffers */
@@ -126,42 +162,6 @@ ZL_Report STREAM_refConstBuffer(
         size_t eltWidth,
         size_t eltCount);
 
-/* ====================================================================== */
-/* Writable references: attach to external buffers or type owned storage. */
-
-/**
- * Initialize a new stream as a writable reference into an externally owned
- * buffer and set its type.
- * Typically used for the last decompression stream (write output).
- */
-ZL_Report STREAM_refMutBuffer(
-        Stream* s,
-        void* buffer,
-        ZL_Type type,
-        size_t eltWidth,
-        size_t eltCapacity);
-
-/**
- * Initialize a new stream as a writable reference into an externally owned
- * buffer without yet setting its type.
- * The buffer will be typed later, once the output type is known, using
- * STREAM_initWritableStream().
- * Typically used for the last decompression stream (write output).
- */
-ZL_Report STREAM_refMutRawBuffer(Stream* s, void* rawBuf, size_t bufByteSize);
-
-/**
- * Type a stream that already owns or references a buffer.
- * Typically used for the last stream (write output).
- * @pre @p s references a writable buffer sized at least
- *      @p eltWidth * @p eltCapacity bytes.
- */
-ZL_Report STREAM_initWritableStream(
-        Stream* s,
-        ZL_Type type,
-        size_t eltWidth,
-        size_t eltCapacity);
-
 /* =================================================================== */
 /* String type helpers: utilities dedicated to ZL_Type_string streams. */
 
@@ -205,7 +205,7 @@ uint32_t* STREAM_reserveStringLens(Stream* s, size_t nbStrings);
  * stream. */
 ZL_DataID STREAM_id(const Stream* s);
 ZL_Type STREAM_type(const Stream* s);
-size_t STREAM_numElts(const Stream* s);
+size_t STREAM_eltCount(const Stream* s);
 size_t STREAM_eltWidth(const Stream* s);
 int STREAM_hasBuffer(const Stream* s);
 size_t STREAM_byteSize(const Stream* s);

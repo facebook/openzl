@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 // standard C
+#include <array>
 #include <cstdio>  // printf
 #include <cstring> // memcpy
 
@@ -516,6 +517,17 @@ TEST(TypedInput, numeric_cUnaligned)
             basicGenericGraph,
             ZL_Type_numeric,
             "Typed Compression of Numeric: Buffer is not aligned correctly");
+}
+
+TEST(TypedInput, numeric_invalidWidth)
+{
+    std::array<uint8_t, 20> input{};
+    ZL_TypedRef* const tref =
+            ZL_TypedRef_createNumeric(input.data(), 5, input.size() / 5);
+    EXPECT_EQ(tref, nullptr);
+    if (tref != nullptr) {
+        ZL_TypedRef_free(tref);
+    }
 }
 
 /* ------   unaligned buffer for numeric output   ------ */

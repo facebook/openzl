@@ -369,7 +369,7 @@ static ZL_Report ZL_AppendToOutputOptimization_register(
     append->outputHeadPtr = outputPtr;
     append->outputTailPtr = outputPtr + outputCapacity;
 
-    ZL_RET_R_IF_ERR(STREAM_initWritableStream(
+    ZL_RET_R_IF_ERR(STREAM_typeAttachedBuffer(
             outputData, ZL_Type_serial, 1, outputCapacity));
 
     // Everything succeeded, make stateful changes to infos
@@ -602,7 +602,7 @@ static ZL_Report ZL_AppendToOutputOptimization_newStreamHook(
         return ZL_returnValue(0);
     }
 
-    ZL_RET_R_IF_ERR(STREAM_refMutBuffer(
+    ZL_RET_R_IF_ERR(STREAM_attachWritableBuffer(
             info->data, append->outputHeadPtr, type, eltWidth, eltsCapacity));
 
     return ZL_returnValue(1);
@@ -927,7 +927,7 @@ ZL_Data* DCTX_newStream(
                 ZL_DLOG(BLOCK, "DCTX_newStream: EltWidth=0 is not allowed");
                 return NULL;
             }
-            if (ZL_isError(STREAM_initWritableStream(
+            if (ZL_isError(STREAM_typeAttachedBuffer(
                         output, stype, eltWidth, eltsCapacity))) {
                 ZL_DLOG(ERROR,
                         "error initializing pre-allocated output stream!");
@@ -1399,10 +1399,10 @@ static ZL_Report addChunksIntoFinalStreams(ZL_DCtx* dctx)
             // @note (@cyan): this step is only necessary to write eltWidth.
             // At this stage, stream is already sized for the entire output.
             // Note that @p numElts is only for current chunk.
-            // But that's fine, STREAM_initWritableStream() only checks that
+            // But that's fine, STREAM_typeAttachedBuffer() only checks that
             // size is large enough. It will not size it down to numElts.
             ZL_ERR_IF_ERR(
-                    STREAM_initWritableStream(output, type, eltWidth, numElts));
+                    STREAM_typeAttachedBuffer(output, type, eltWidth, numElts));
         }
 
         // Append chunk data into final output
@@ -1792,7 +1792,7 @@ ZL_Report ZL_DCtx_decompressTyped(
     ZL_TypedBuffer* const tbuffer = ZL_TypedBuffer_create();
     ZL_RET_R_IF_NULL(allocation, tbuffer);
 
-    ZL_Report const tbir = STREAM_refMutRawBuffer(
+    ZL_Report const tbir = STREAM_attachRawBuffer(
             ZL_codemodOutputAsData(tbuffer), dst, dstByteCapacity);
     if (ZL_isError(tbir)) {
         ZL_TypedBuffer_free(tbuffer);
