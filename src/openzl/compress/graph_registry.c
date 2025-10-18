@@ -95,6 +95,15 @@
         },                                    \
     }
 
+#define REGISTER_SEGMENTER(id, _sdesc) \
+    [id] = {                                 \
+        .type = GR_segmenter,                \
+        .gdi  = {                            \
+            .segDesc = _sdesc,               \
+            .baseGraphID = ZL_GRAPH_ILLEGAL, \
+        },                                   \
+    }
+
 #define REGISTER_SPECIAL(id, _name, _type) \
     [id] = {                                                              \
         .type = _type,                                                    \

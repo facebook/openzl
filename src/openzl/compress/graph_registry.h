@@ -14,7 +14,12 @@
 
 ZL_BEGIN_C_DECLS
 
-typedef enum { GR_illegal = 0, GR_store, GR_dynamicGraph } GraphFunctionType_e;
+typedef enum {
+    GR_illegal = 0,
+    GR_store,
+    GR_dynamicGraph,
+    GR_segmenter
+} GraphFunctionType_e;
 
 typedef struct {
     union {

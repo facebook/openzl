@@ -1,21 +1,21 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "openzl/compress/graphmgr.h"
-#include "openzl/common/allocation.h"
-#include "openzl/common/assertion.h"
-#include "openzl/common/limits.h"
-#include "openzl/common/logging.h"
-#include "openzl/common/map.h"
-#include "openzl/common/opaque.h"
-#include "openzl/compress/cgraph.h"
-#include "openzl/compress/graph_registry.h" // ZL_PrivateStandardGraphID_end, DynGraph_Desc_internal
-#include "openzl/compress/implicit_conversion.h" // ICONV_isCompatible
-#include "openzl/compress/localparams.h"         // LP_*
-#include "openzl/compress/name.h"
-#include "openzl/shared/mem.h"
-#include "openzl/shared/overflow.h"
-#include "openzl/zl_opaque_types.h"
-#include "openzl/zl_reflection.h"
+#include "openzl/compress/graphmgr.h" // GraphsMgr interface and GM_* function declarations
+#include "openzl/common/allocation.h" // ALLOC_Arena_malloc, ALLOC_HeapArena_create, arena memory management
+#include "openzl/common/assertion.h" // ZL_ASSERT_* macros for runtime checks
+#include "openzl/common/limits.h"    // ZL_ENCODER_GRAPH_LIMIT constant
+#include "openzl/common/logging.h" // ZL_DLOG, STR_REPLACE_NULL for logging and debugging
+#include "openzl/common/map.h" // ZL_DECLARE_PREDEF_MAP_TYPE, GraphMap for name-to-GraphID mapping
+#include "openzl/common/opaque.h" // ZL_OpaquePtrRegistry for managing opaque pointers
+#include "openzl/compress/cgraph.h" // CNODE_getName, CNode definitions, graph context functions
+#include "openzl/compress/graph_registry.h" // ZL_PrivateStandardGraphID_end, GR_standardGraphs, InternalGraphDesc
+#include "openzl/compress/implicit_conversion.h" // ICONV_isCompatible for type checking
+#include "openzl/compress/localparams.h" // LP_transferLocalParams for parameter management
+#include "openzl/compress/name.h" // ZL_Name_*, ZS2_Name_* for graph name handling
+#include "openzl/shared/mem.h" // ZL_malloc, ZL_free, ZL_memcpy memory utilities
+#include "openzl/shared/overflow.h" // ZL_overflowMulST for integer overflow checks
+#include "openzl/zl_opaque_types.h" // Opaque type definitions used by the API
+#include "openzl/zl_reflection.h" // ZL_MIGraphDesc and type reflection utilities
 
 /* ===   State Management   === */
 
@@ -792,6 +792,8 @@ GraphType_e GM_graphType(const GraphsMgr* gm, ZL_GraphID graphid)
                 return gt_store;
             case GR_dynamicGraph:
                 return gt_miGraph;
+            case GR_segmenter:
+                return gt_segmenter;
             case GR_illegal:
             default:
                 return gt_illegal;
