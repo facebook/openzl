@@ -7,6 +7,7 @@ on:
     branches: [dev]
   pull_request:
     branches: [dev, master, actionsTest]
+  workflow_dispatch: {}
 
 env:
   # Common environment variables
