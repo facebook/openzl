@@ -1,32 +1,32 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "openzl/compress/graph_registry.h"
+#include "openzl/compress/graph_registry.h" // InternalGraphDesc, GR_standardGraphs declarations
 #include "openzl/codecs/bitpack/encode_bitpack_binding.h" // SI_selector_bitpack
-#include "openzl/codecs/encoder_registry.h"               // ER_standardNodes
-#include "openzl/codecs/entropy/encode_entropy_binding.h"
-#include "openzl/codecs/lz/encode_lz_binding.h"
+#include "openzl/codecs/encoder_registry.h" // ER_standardNodes, CNode definitions
+#include "openzl/codecs/entropy/encode_entropy_binding.h" // EI_fseDynamicGraph, EI_huffmanDynamicGraph, EI_entropyDynamicGraph
+#include "openzl/codecs/lz/encode_lz_binding.h" // EI_fieldLzDynGraph, EI_fieldLzLiteralsDynGraph, SI_fieldLzLiteralsChannelSelector
 #include "openzl/codecs/parse_int/encode_parse_int_binding.h" // MIGRAPH_TRY_PARSE_INT
-#include "openzl/common/assertion.h"
-#include "openzl/common/logging.h"
-#include "openzl/compress/compress_types.h"
-#include "openzl/compress/dyngraph_interface.h" // ZL_Graph definition
-#include "openzl/compress/graphs/generic_clustering_graph.h" // graph_compressClustered
-#include "openzl/compress/graphs/simple_data_description_language.h"
-#include "openzl/compress/graphs/split_graph.h"
-#include "openzl/compress/implicit_conversion.h" // ICONV_*
-#include "openzl/compress/private_nodes.h" // ZL_PrivateStandardGraphID_end
-#include "openzl/compress/selector.h"      // SelectorCtx
-#include "openzl/compress/selectors/selector_compress.h"
-#include "openzl/compress/selectors/selector_constant.h"
-#include "openzl/compress/selectors/selector_genericLZ.h"
-#include "openzl/compress/selectors/selector_numeric.h"
-#include "openzl/compress/selectors/selector_store.h"
-#include "openzl/shared/utils.h" // ZL_ARRAY_SIZE
-#include "openzl/zl_data.h"
-#include "openzl/zl_errors.h"    // ZL_TRY_LET_T
-#include "openzl/zl_graph_api.h" // ZS2_Graph_*
-#include "openzl/zl_localParams.h"
-#include "openzl/zl_opaque_types.h"
+#include "openzl/common/assertion.h" // ZL_ASSERT_* macros for runtime checks
+#include "openzl/common/logging.h"   // STR_REPLACE_NULL, logging utilities
+#include "openzl/compress/compress_types.h" // Compression-related type definitions
+#include "openzl/compress/dyngraph_interface.h" // ZL_Graph definition and graph context functions
+#include "openzl/compress/graphs/generic_clustering_graph.h" // MIGRAPH_CLUSTERING
+#include "openzl/compress/graphs/simple_data_description_language.h" // ZL_SDDL_dynGraph
+#include "openzl/compress/graphs/split_graph.h" // ZL_splitFnGraph
+#include "openzl/compress/implicit_conversion.h" // ICONV_isCompatible for type checking
+#include "openzl/compress/private_nodes.h" // ZL_PrivateStandardGraphID_end, private node ID definitions
+#include "openzl/compress/selector.h" // SelectorCtx, ZL_SelectorFn, SelCtx_* functions
+#include "openzl/compress/selectors/selector_compress.h" // SI_selector_compress, SI_selector_compress_* functions
+#include "openzl/compress/selectors/selector_constant.h" // SI_selector_constant
+#include "openzl/compress/selectors/selector_genericLZ.h" // SI_selector_genericLZ
+#include "openzl/compress/selectors/selector_numeric.h"   // SI_selector_numeric
+#include "openzl/compress/selectors/selector_store.h" // SI_selector_store, MIGRAPH_STORE
+#include "openzl/shared/utils.h"                      // ZL_ARRAY_SIZE macro
+#include "openzl/zl_data.h"   // ZL_Type definitions and data structures
+#include "openzl/zl_errors.h" // ZL_TRY_LET_T, ZL_RET_R_IF_* error handling macros
+#include "openzl/zl_graph_api.h"    // ZL_Graph_*, ZL_Edge_* API functions
+#include "openzl/zl_localParams.h"  // ZL_LocalParams structure and functions
+#include "openzl/zl_opaque_types.h" // Opaque type definitions used by the API
 
 #define _1_SUCCESSOR(s) (const ZL_GraphID[]){ { s } }, 1
 #define _2_SUCCESSORS(s1, s2) (const ZL_GraphID[]){ { s1 }, { s2 } }, 2
