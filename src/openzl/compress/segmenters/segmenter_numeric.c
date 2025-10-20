@@ -1,8 +1,8 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "openzl/compress/segmenters/segmenter_numeric.h"
-#include "openzl/compress/private_nodes.h"
 #include "openzl/common/assertion.h"
+#include "openzl/compress/private_nodes.h"
 
 ZL_Report SEGM_numeric(ZL_Segmenter* sctx)
 {
@@ -16,7 +16,7 @@ ZL_Report SEGM_numeric(ZL_Segmenter* sctx)
     // Note: Currently, static chunk size.
     // Tomorrow: global parameter, then local parameter.
     size_t const chunkByteSizeMax = 16 << 20;
-    size_t const chunkEltSizeMax = chunkByteSizeMax / width;
+    size_t const chunkEltSizeMax  = chunkByteSizeMax / width;
 
     // Note: Currently, static head graph.
     // Tomorrow: selectable
@@ -24,11 +24,13 @@ ZL_Report SEGM_numeric(ZL_Segmenter* sctx)
 
     size_t numElts = ZL_Input_numElts(input);
     while (numElts > chunkEltSizeMax) {
-        ZL_RET_R_IF_ERR(ZL_Segmenter_processChunk(sctx, &chunkEltSizeMax,1, headGraph, NULL));
+        ZL_RET_R_IF_ERR(ZL_Segmenter_processChunk(
+                sctx, &chunkEltSizeMax, 1, headGraph, NULL));
         numElts -= chunkEltSizeMax;
     }
     ZL_ASSERT_LE(numElts, chunkEltSizeMax);
-    ZL_RET_R_IF_ERR(ZL_Segmenter_processChunk(sctx, &numElts,1, headGraph, NULL));
+    ZL_RET_R_IF_ERR(
+            ZL_Segmenter_processChunk(sctx, &numElts, 1, headGraph, NULL));
 
     return ZL_returnSuccess();
 }

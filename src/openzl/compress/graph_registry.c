@@ -15,6 +15,7 @@
 #include "openzl/compress/graphs/split_graph.h" // ZL_splitFnGraph
 #include "openzl/compress/implicit_conversion.h" // ICONV_isCompatible for type checking
 #include "openzl/compress/private_nodes.h" // ZL_PrivateStandardGraphID_end, private node ID definitions
+#include "openzl/compress/segmenters/segmenter_numeric.h" // SEGM_numeric_desc
 #include "openzl/compress/selector.h" // SelectorCtx, ZL_SelectorFn, SelCtx_* functions
 #include "openzl/compress/selectors/selector_compress.h" // SI_selector_compress, SI_selector_compress_* functions
 #include "openzl/compress/selectors/selector_constant.h" // SI_selector_constant
@@ -134,6 +135,7 @@ const InternalGraphDesc GR_standardGraphs[ZL_PrivateStandardGraphID_end] = {
     REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_field_lz, "!zl.field_lz", ZL_Type_struct | ZL_Type_numeric, EI_fieldLzDynGraph),
     REGISTER_MIGRAPH(ZL_StandardGraphID_compress_generic, MIGRAPH_COMPRESS),
     REGISTER_SELECTOR(ZL_StandardGraphID_select_generic_lz_backend, "!zl.select_generic_lz_backend", SI_selector_genericLZ, ZL_Type_serial),
+    REGISTER_SEGMENTER(ZL_StandardGraphID_segment_numeric, SEGM_NUMERIC_DESC),
     REGISTER_SELECTOR(ZL_StandardGraphID_select_numeric, "!zl.select_numeric", SI_selector_numeric, ZL_Type_numeric),
     REGISTER_MIGRAPH(ZL_StandardGraphID_clustering, MIGRAPH_CLUSTERING),
     REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_simple_data_description_language, "!zl.sddl", ZL_Type_serial, ZL_SDDL_dynGraph),

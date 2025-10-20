@@ -10,13 +10,14 @@ ZL_BEGIN_C_DECLS
 
 ZL_Report SEGM_numeric(ZL_Segmenter* sctx);
 
-const ZL_SegmenterDesc SEGM_numeric_desc = {
-    .name                = "segmenter_numeric",
-    .segmenterFn         = SEGM_numeric,
-    .inputTypeMasks      = &(const ZL_Type){ ZL_Type_numeric },
-    .numInputs           = 1,
-    .lastInputIsVariable = false,
-};
+#define SEGM_NUMERIC_DESC                                           \
+    {                                                               \
+        .name                = "!zl.segmenter_numeric",             \
+        .segmenterFn         = SEGM_numeric,                        \
+        .inputTypeMasks      = &(const ZL_Type){ ZL_Type_numeric }, \
+        .numInputs           = 1,                                   \
+        .lastInputIsVariable = false,                               \
+    }
 
 ZL_END_C_DECLS
 

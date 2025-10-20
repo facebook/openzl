@@ -747,7 +747,7 @@ const ZL_FunctionGraphDesc* GM_getMultiInputGraphDesc(
     ZL_IDType const ggid = graphid.gid;
     ZL_DLOG(BLOCK, "GM_getMultiInputGraphDesc (graphid=%u)", ggid);
     if (GR_isStandardGraph(graphid)) {
-        switch(GR_standardGraphs[ggid].type) {
+        switch (GR_standardGraphs[ggid].type) {
             case GR_store:
             case GR_dynamicGraph:
                 return &GR_standardGraphs[ggid].gdi.migd;
