@@ -341,6 +341,7 @@ ZL_Report ZL_Edge_setParameterizedDestination(
     ZL_Graph* const gctx = inputs[0]->gctx;
     ZL_ASSERT_NN(gctx);
     ZL_RESULT_DECLARE_SCOPE_REPORT(gctx->cctx);
+    ZL_DLOG(SEQ, "ZL_Edge_setDestination(%zu inputs => gid=%u)", nbInputs, gid);
 
     // === Phase 1: Basic Input Sanitization ===
     ZL_ERR_IF_NULL(

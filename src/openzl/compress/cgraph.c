@@ -924,6 +924,7 @@ const ZL_FunctionGraphDesc* CGRAPH_getMultiInputGraphDesc(
         const ZL_Compressor* compressor,
         ZL_GraphID graphid)
 {
+    ZL_DLOG(SEQ, "CGRAPH_getMultiInputGraphDesc (gid=%u)", graphid.gid);
     ZL_ASSERT_NN(compressor);
     return GM_getMultiInputGraphDesc(compressor->gm, graphid);
 }
