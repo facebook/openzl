@@ -744,44 +744,52 @@ const ZL_FunctionGraphDesc* GM_getMultiInputGraphDesc(
         const GraphsMgr* gm,
         ZL_GraphID graphid)
 {
+    ZL_IDType const ggid = graphid.gid;
+    ZL_DLOG(BLOCK, "GM_getMultiInputGraphDesc (graphid=%u)", ggid);
     if (GR_isStandardGraph(graphid)) {
-        if (GR_standardGraphs[graphid.gid].type == GR_illegal) {
-            return NULL;
+        switch(GR_standardGraphs[ggid].type) {
+            case GR_store:
+            case GR_dynamicGraph:
+                return &GR_standardGraphs[ggid].gdi.migd;
+            case GR_illegal:
+            case GR_segmenter:
+            default:
+                return NULL;
         }
-        return &GR_standardGraphs[graphid.gid].gdi.migd;
     }
-    ZL_IDType const lgid = graphid.gid;
-    ZL_DLOG(BLOCK, "GM_getMultiInputGraphDesc (graphid=%u)", lgid);
-    ZL_IDType const lid = GM_GraphID_to_lgid(graphid);
+    ZL_IDType const lgid = GM_GraphID_to_lgid(graphid);
     ZL_ASSERT_NN(gm);
-    if (lid >= VECTOR_SIZE(gm->gdv)) {
+    if (lgid >= VECTOR_SIZE(gm->gdv)) {
         ZL_DLOG(ERROR,
                 "requested graphid=%u is invalid (too large, >= %zu max)",
-                lgid,
+                ggid,
                 VECTOR_SIZE(gm->gdv));
         return NULL;
     }
-    if (VECTOR_AT(gm->gdv, lid).originalGraphType == ZL_GraphType_segmenter)
+    if (VECTOR_AT(gm->gdv, lgid).originalGraphType == ZL_GraphType_segmenter)
         return NULL;
-    return &VECTOR_AT(gm->gdv, lid).migd;
+    return &VECTOR_AT(gm->gdv, lgid).migd;
 }
 
 const ZL_SegmenterDesc* GM_getSegmenterDesc(
         const GraphsMgr* gm,
         ZL_GraphID graphid)
 {
+    ZL_IDType const ggid = graphid.gid;
+    ZL_DLOG(BLOCK, "GM_getSelectorDesc (graphid=%u)", ggid);
     if (GR_isStandardGraph(graphid)) {
-        return NULL; // not supported yet
+        if (GR_standardGraphs[graphid.gid].type != GR_segmenter) {
+            return NULL;
+        }
+        return &GR_standardGraphs[graphid.gid].gdi.segDesc;
     }
-    ZL_IDType const lgid = graphid.gid;
-    ZL_DLOG(BLOCK, "GM_getSelectorDesc (graphid=%u)", lgid);
-    ZL_IDType const lid = GM_GraphID_to_lgid(graphid);
+    ZL_IDType const lgid = GM_GraphID_to_lgid(graphid);
     ZL_ASSERT_NN(gm);
-    if (lid >= VECTOR_SIZE(gm->gdv))
+    if (lgid >= VECTOR_SIZE(gm->gdv))
         return NULL;
-    ZL_ASSERT_EQ(
-            VECTOR_AT(gm->gdv, lid).originalGraphType, ZL_GraphType_segmenter);
-    return &VECTOR_AT(gm->gdv, lid).segDesc;
+    if (VECTOR_AT(gm->gdv, lgid).originalGraphType != ZL_GraphType_segmenter)
+        return NULL;
+    return &VECTOR_AT(gm->gdv, lgid).segDesc;
 }
 
 GraphType_e GM_graphType(const GraphsMgr* gm, ZL_GraphID graphid)
