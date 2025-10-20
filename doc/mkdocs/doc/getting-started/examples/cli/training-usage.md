@@ -5,7 +5,7 @@ Training can be CPU intensive, but is expected to work for even laptop cpus for 
 The RAM usage is dependent on the size of the input file or chunk, and the number of threads used. Given a file size of x, approximately 10x RAM is used per thread.
 
 ## Limitations
-Currently, training does not support large files greater than 500MB at a time. A segmenter must be used for larger files.
+Currently, training does not support large files greater than 500MB at a time. A segmenter must be used for larger files. Running training also requires a C++17 compiler support. The trainer produces compressors that are compatible with the core library.
 
 ## Training Times
 
