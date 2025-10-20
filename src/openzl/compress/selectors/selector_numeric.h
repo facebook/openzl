@@ -18,4 +18,4 @@ ZL_GraphID SI_selector_numeric(
 
 ZL_END_C_DECLS
 
-#endif
+#endif // ZSTRONG_COMPRESS_SELECTORS_SELECTOR_NUMERIC_H
