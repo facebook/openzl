@@ -23,36 +23,36 @@ if (OPENZL_BUILD_PROTOBUF_TOOLS)
     endif()
     find_package(protobuf CONFIG REQUIRED)
 
-    # Make the protobuf_serializer library
-    file(GLOB protobuf_serializer_sources CONFIGURE_DEPENDS
+    # Make the protobuf_serializer_dynamic library
+    file(GLOB protobuf_serializer_dynamic_sources CONFIGURE_DEPENDS
         "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
     )
-    list(REMOVE_ITEM protobuf_serializer_sources "${CMAKE_CURRENT_SOURCE_DIR}/cli.cpp")
+    list(REMOVE_ITEM protobuf_serializer_dynamic_sources "${CMAKE_CURRENT_SOURCE_DIR}/cli_dynamic.cpp")
 
-    add_library(protobuf_serializer ${protobuf_serializer_sources})
+    add_library(protobuf_serializer_dynamic ${protobuf_serializer_dynamic_sources})
 
-    target_link_libraries(protobuf_serializer PUBLIC
+    target_link_libraries(protobuf_serializer_dynamic PUBLIC
         openzl_cpp
         protobuf::libprotobuf
     )
-    apply_openzl_compile_options_to_target(protobuf_serializer)
+    apply_openzl_compile_options_to_target(protobuf_serializer_dynamic)
 
-    # Make the protobuf_cli tool
-    file(GLOB protobuf_cli_sources CONFIGURE_DEPENDS
-        "${CMAKE_CURRENT_SOURCE_DIR}/cli.cpp"
+    # Make the protobuf_cli_dynamic tool
+    file(GLOB protobuf_cli_dynamic_sources CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/cli_dynamic.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/schema.proto")
-    add_executable(protobuf_cli ${protobuf_cli_sources})
+    add_executable(protobuf_cli_dynamic ${protobuf_cli_dynamic_sources})
 
     include(FindProtobuf)
-    protobuf_generate(TARGET protobuf_cli)
+    protobuf_generate(TARGET protobuf_cli_dynamic)
 
-    target_link_libraries(protobuf_cli PRIVATE
-        protobuf_serializer
+    target_link_libraries(protobuf_cli_dynamic PRIVATE
+        protobuf_serializer_dynamic
         arg
         tools_io
         tools_training
     )
-    target_include_directories(protobuf_cli PRIVATE ${PROJECT_BINARY_DIR})
+    target_include_directories(protobuf_cli_dynamic PRIVATE ${PROJECT_BINARY_DIR})
 
-    apply_openzl_compile_options_to_target(protobuf_cli)
+    apply_openzl_compile_options_to_target(protobuf_cli_dynamic)
 endif()

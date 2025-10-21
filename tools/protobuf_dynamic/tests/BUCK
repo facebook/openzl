@@ -1,0 +1,53 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("@fbcode_macros//build_defs:protobuf_library.bzl", "protobuf_library")
+load("//data_compression/experimental/zstrong:defs.bzl", "zs_fuzzers", "zs_unittest")
+
+oncall("data_compression")
+
+zs_unittest(
+    name = "test_proto_serializer",
+    srcs = ["test_proto_serializer.cpp"],
+    compiler_flags = [
+        "-Wno-switch-enum",
+        "-Wno-cast-qual",
+    ],
+    deps = [
+        ":test_schema-cpp",
+        "//data_compression/experimental/zstrong:zstronglib",
+        "//data_compression/experimental/zstrong/tools/protobuf:serializer",
+    ],
+)
+
+zs_unittest(
+    name = "test_proto_utils",
+    srcs = ["test_proto_utils.cpp"],
+    deps = [
+        "//data_compression/experimental/zstrong/tools/protobuf:utils",
+    ],
+)
+
+protobuf_library(
+    name = "test_schema",
+    srcs = ["test_schema.proto"],
+    base_path = "data_compression/experimental/zstrong/tools/protobuf/tests",
+    langs = [
+        "cpp",
+    ],
+)
+
+zs_fuzzers(
+    srcs = [
+        "fuzz_protobuf_serializer.cpp",
+    ],
+    ftest_names = [
+        ("ProtobufSerializerTest", "FuzzRandomInput"),
+    ],
+    deps = [
+        "fbsource//third-party/protobuf:libprotobuf",
+        "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
+        ":test_schema-cpp",
+        "//data_compression/experimental/zstrong:zstronglib",
+        "//data_compression/experimental/zstrong/tools/protobuf:serializer",
+    ],
+)
