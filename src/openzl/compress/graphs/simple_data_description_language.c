@@ -2897,7 +2897,10 @@ ZL_SDDL_State_exec(
 
     instructions.dispatch_instructions.nbSegments =
             VECTOR_SIZE(state->segment_sizes);
-    instructions.dispatch_instructions.nbTags = state->num_tags;
+    ZL_ERR_IF_GT(
+            VECTOR_SIZE(state->dests), UINT_MAX, nodeExecution_invalidOutputs);
+    instructions.dispatch_instructions.nbTags =
+            (uint32_t)VECTOR_SIZE(state->dests);
 
     instructions.dispatch_instructions.segmentSizes =
             VECTOR_DATA(state->segment_sizes);
