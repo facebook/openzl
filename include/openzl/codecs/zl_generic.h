@@ -31,6 +31,12 @@ extern "C" {
         ZL_StandardGraphID_select_numeric \
     }
 
+#define ZL_GRAPH_SEGMENT_NUMERIC           \
+    (ZL_GraphID)                           \
+    {                                      \
+        ZL_StandardGraphID_segment_numeric \
+    }
+
 #if defined(__cplusplus)
 }
 #endif

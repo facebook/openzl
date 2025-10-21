@@ -1,21 +1,21 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "openzl/compress/graphmgr.h"
-#include "openzl/common/allocation.h"
-#include "openzl/common/assertion.h"
-#include "openzl/common/limits.h"
-#include "openzl/common/logging.h"
-#include "openzl/common/map.h"
-#include "openzl/common/opaque.h"
-#include "openzl/compress/cgraph.h"
-#include "openzl/compress/graph_registry.h" // ZL_PrivateStandardGraphID_end, DynGraph_Desc_internal
-#include "openzl/compress/implicit_conversion.h" // ICONV_isCompatible
-#include "openzl/compress/localparams.h"         // LP_*
-#include "openzl/compress/name.h"
-#include "openzl/shared/mem.h"
-#include "openzl/shared/overflow.h"
-#include "openzl/zl_opaque_types.h"
-#include "openzl/zl_reflection.h"
+#include "openzl/compress/graphmgr.h" // GraphsMgr interface and GM_* function declarations
+#include "openzl/common/allocation.h" // ALLOC_Arena_malloc, ALLOC_HeapArena_create, arena memory management
+#include "openzl/common/assertion.h" // ZL_ASSERT_* macros for runtime checks
+#include "openzl/common/limits.h"    // ZL_ENCODER_GRAPH_LIMIT constant
+#include "openzl/common/logging.h" // ZL_DLOG, STR_REPLACE_NULL for logging and debugging
+#include "openzl/common/map.h" // ZL_DECLARE_PREDEF_MAP_TYPE, GraphMap for name-to-GraphID mapping
+#include "openzl/common/opaque.h" // ZL_OpaquePtrRegistry for managing opaque pointers
+#include "openzl/compress/cgraph.h" // CNODE_getName, CNode definitions, graph context functions
+#include "openzl/compress/graph_registry.h" // ZL_PrivateStandardGraphID_end, GR_standardGraphs, InternalGraphDesc
+#include "openzl/compress/implicit_conversion.h" // ICONV_isCompatible for type checking
+#include "openzl/compress/localparams.h" // LP_transferLocalParams for parameter management
+#include "openzl/compress/name.h" // ZL_Name_*, ZS2_Name_* for graph name handling
+#include "openzl/shared/mem.h" // ZL_malloc, ZL_free, ZL_memcpy memory utilities
+#include "openzl/shared/overflow.h" // ZL_overflowMulST for integer overflow checks
+#include "openzl/zl_opaque_types.h" // Opaque type definitions used by the API
+#include "openzl/zl_reflection.h" // ZL_MIGraphDesc and type reflection utilities
 
 /* ===   State Management   === */
 
@@ -109,6 +109,7 @@ static ZL_GraphID GM_lgid_to_zgid(ZL_IDType lgid)
 
 bool GM_isValidGraphID(const GraphsMgr* gm, ZL_GraphID gid)
 {
+    ZL_DLOG(SEQ, "GM_isValidGraphID(%u)", gid.gid);
     ZL_IDType const cid   = gid.gid;
     size_t const nbGraphs = VECTOR_SIZE(gm->gdv);
     return ZL_StandardGraphID_illegal < cid
@@ -477,6 +478,9 @@ GM_registerParameterizedGraph(
     ZL_RESULT_DECLARE_SCOPE(ZL_GraphID, gm->opCtx);
     ZL_ASSERT_NN(gm);
     ZL_ASSERT_NN(desc);
+    ZL_DLOG(SEQ,
+            "GM_registerParameterizedGraph (name=%s)",
+            STR_REPLACE_NULL(desc->name));
 
     const ZL_FunctionGraphDesc* miDescPtr =
             GM_getMultiInputGraphDesc(gm, desc->graph);
@@ -631,13 +635,16 @@ static GM_GraphMetadata GM_getSegmenterMetadata(
         ZL_GraphID gid)
 {
     ZL_ASSERT(GM_isValidGraphID(gm, gid));
-    ZL_ASSERT(!GR_isStandardGraph(gid));
     GM_GraphMetadata meta;
+    ZL_DLOG(SEQ, "GM_getSegmenterMetadata (graphid=%u)", gid.gid);
 
     // graphType
-    ZL_IDType const lgid = GM_GraphID_to_lgid(gid);
-    ZL_ASSERT_EQ(
-            VECTOR_AT(gm->gdv, lgid).originalGraphType, ZL_GraphType_segmenter);
+    if (!GR_isStandardGraph(gid)) {
+        ZL_IDType const lgid = GM_GraphID_to_lgid(gid);
+        ZL_ASSERT_EQ(
+                VECTOR_AT(gm->gdv, lgid).originalGraphType,
+                ZL_GraphType_segmenter);
+    }
     meta.graphType = ZL_GraphType_segmenter;
 
     const ZL_SegmenterDesc* desc = GM_getSegmenterDesc(gm, gid);
@@ -647,12 +654,18 @@ static GM_GraphMetadata GM_getSegmenterMetadata(
     meta.baseGraphID = ZL_GRAPH_ILLEGAL;
 
     // name
-    meta.name = VECTOR_AT(gm->gdv, lgid).maybeName;
-    ZL_ASSERT_EQ(
-            strcmp(ZL_Name_unique(&meta.name), desc->name),
-            0,
-            "Name mismatch in %s",
-            desc->name);
+    ZL_ASSERT_NN(desc);
+    if (GR_isStandardGraph(gid)) {
+        meta.name = ZS2_Name_wrapStandard(desc->name);
+    } else {
+        ZL_IDType const lgid = GM_GraphID_to_lgid(gid);
+        meta.name            = VECTOR_AT(gm->gdv, lgid).maybeName;
+        ZL_ASSERT_EQ(
+                strcmp(ZL_Name_unique(&meta.name), desc->name),
+                0,
+                "Name mismatch in %s",
+                desc->name);
+    }
     ZL_ASSERT(!ZL_Name_isEmpty(&meta.name));
 
     meta.inputTypeMasks      = desc->inputTypeMasks;
@@ -672,10 +685,13 @@ GM_GraphMetadata GM_getGraphMetadata(const GraphsMgr* gm, ZL_GraphID gid)
 {
     ZL_ASSERT(GM_isValidGraphID(gm, gid));
     GM_GraphMetadata meta;
+    ZL_DLOG(SEQ, "GM_getGraphMetadata (graphid=%u)", gid.gid);
 
     // graphType
     if (GR_isStandardGraph(gid)) {
         meta.graphType = ZL_GraphType_standard;
+        if (GR_standardGraphs[gid.gid].type == GR_segmenter)
+            meta.graphType = ZL_GraphType_segmenter;
     } else {
         ZL_IDType const lgid = GM_GraphID_to_lgid(gid);
         meta.graphType       = VECTOR_AT(gm->gdv, lgid).originalGraphType;
@@ -695,6 +711,7 @@ GM_GraphMetadata GM_getGraphMetadata(const GraphsMgr* gm, ZL_GraphID gid)
     }
 
     // name
+    ZL_ASSERT_NN(desc);
     if (GR_isStandardGraph(gid)) {
         meta.name = ZS2_Name_wrapStandard(desc->name);
     } else {
@@ -744,44 +761,52 @@ const ZL_FunctionGraphDesc* GM_getMultiInputGraphDesc(
         const GraphsMgr* gm,
         ZL_GraphID graphid)
 {
+    ZL_IDType const ggid = graphid.gid;
+    ZL_DLOG(BLOCK, "GM_getMultiInputGraphDesc (graphid=%u)", ggid);
     if (GR_isStandardGraph(graphid)) {
-        if (GR_standardGraphs[graphid.gid].type == GR_illegal) {
-            return NULL;
+        switch (GR_standardGraphs[ggid].type) {
+            case GR_store:
+            case GR_dynamicGraph:
+                return &GR_standardGraphs[ggid].gdi.migd;
+            case GR_illegal:
+            case GR_segmenter:
+            default:
+                return NULL;
         }
-        return &GR_standardGraphs[graphid.gid].gdi.migd;
     }
-    ZL_IDType const lgid = graphid.gid;
-    ZL_DLOG(BLOCK, "GM_getMultiInputGraphDesc (graphid=%u)", lgid);
-    ZL_IDType const lid = GM_GraphID_to_lgid(graphid);
+    ZL_IDType const lgid = GM_GraphID_to_lgid(graphid);
     ZL_ASSERT_NN(gm);
-    if (lid >= VECTOR_SIZE(gm->gdv)) {
+    if (lgid >= VECTOR_SIZE(gm->gdv)) {
         ZL_DLOG(ERROR,
                 "requested graphid=%u is invalid (too large, >= %zu max)",
-                lgid,
+                ggid,
                 VECTOR_SIZE(gm->gdv));
         return NULL;
     }
-    if (VECTOR_AT(gm->gdv, lid).originalGraphType == ZL_GraphType_segmenter)
+    if (VECTOR_AT(gm->gdv, lgid).originalGraphType == ZL_GraphType_segmenter)
         return NULL;
-    return &VECTOR_AT(gm->gdv, lid).migd;
+    return &VECTOR_AT(gm->gdv, lgid).migd;
 }
 
 const ZL_SegmenterDesc* GM_getSegmenterDesc(
         const GraphsMgr* gm,
         ZL_GraphID graphid)
 {
+    ZL_IDType const ggid = graphid.gid;
+    ZL_DLOG(BLOCK, "GM_getSelectorDesc (graphid=%u)", ggid);
     if (GR_isStandardGraph(graphid)) {
-        return NULL; // not supported yet
+        if (GR_standardGraphs[graphid.gid].type != GR_segmenter) {
+            return NULL;
+        }
+        return &GR_standardGraphs[graphid.gid].gdi.segDesc;
     }
-    ZL_IDType const lgid = graphid.gid;
-    ZL_DLOG(BLOCK, "GM_getSelectorDesc (graphid=%u)", lgid);
-    ZL_IDType const lid = GM_GraphID_to_lgid(graphid);
+    ZL_IDType const lgid = GM_GraphID_to_lgid(graphid);
     ZL_ASSERT_NN(gm);
-    if (lid >= VECTOR_SIZE(gm->gdv))
+    if (lgid >= VECTOR_SIZE(gm->gdv))
         return NULL;
-    ZL_ASSERT_EQ(
-            VECTOR_AT(gm->gdv, lid).originalGraphType, ZL_GraphType_segmenter);
-    return &VECTOR_AT(gm->gdv, lid).segDesc;
+    if (VECTOR_AT(gm->gdv, lgid).originalGraphType != ZL_GraphType_segmenter)
+        return NULL;
+    return &VECTOR_AT(gm->gdv, lgid).segDesc;
 }
 
 GraphType_e GM_graphType(const GraphsMgr* gm, ZL_GraphID graphid)
@@ -792,6 +817,8 @@ GraphType_e GM_graphType(const GraphsMgr* gm, ZL_GraphID graphid)
                 return gt_store;
             case GR_dynamicGraph:
                 return gt_miGraph;
+            case GR_segmenter:
+                return gt_segmenter;
             case GR_illegal:
             default:
                 return gt_illegal;
