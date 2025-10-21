@@ -1,0 +1,64 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+name: OpenZL Demo Wheels
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - openzl-demo
+  push:
+    branches:
+     - openzl-demo
+
+jobs:
+  build_sdist:
+    name: Build SDist
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Build SDist
+      run: pipx run build --sdist contrib/openzl-demo
+
+    - name: Check metadata
+      run: pipx run twine check contrib/openzl-demo/dist/*
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: dist-sdist
+        path: contrib/openzl-demo/dist/*.tar.gz
+
+
+  build_wheels:
+    name: Wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Once MSVC is supported we can build Windows packages as well by adding windows-latest
+        # Once we're public we can build on ubuntu-24.04-arm & windows-11-arm.
+        # They are not supported for private repos.
+        # TODO: Remove filesystem for macos-13
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - uses: pypa/cibuildwheel@v3.0.0
+      with:
+        package-dir: contrib/openzl-demo
+
+    - name: Verify clean directory
+      run: git diff --exit-code
+      shell: bash
+
+    - name: Upload wheels
+      uses: actions/upload-artifact@v4
+      with:
+        path: wheelhouse/*.whl
+        name: dist-${{ matrix.os }}
