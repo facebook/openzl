@@ -6,8 +6,6 @@
 
 #include "openzl/cpp/Compressor.hpp"
 
-#include "custom_parsers/dependency_registration.h"
-
 #include "tools/logger/Logger.h"
 #include "tools/training/ace/ace.h"
 #include "tools/training/ace/ace_combination.h"

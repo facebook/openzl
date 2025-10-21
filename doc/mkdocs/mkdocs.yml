@@ -98,6 +98,9 @@ nav:
   - Tools:
     - Trace Visualizer: tools/trace
 
+not_in_nav: |
+  demo.md
+
 theme:
   name: material
   custom_dir: ./doc/theme-overrides

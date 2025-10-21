@@ -31,9 +31,12 @@ In open source, first make sure these dependencies are installed:
 
 * System: doxygen
 * System: clang-format
-* Python: mkdocs>=1.6.1
-* Python: mkdocstrings>=0.27.0
-* Python: mkdocs-material>=9.5.50
+* System: node
+* System: yarn
+* Python: mkdocs==1.6.1
+* Python: mkdocstrings==0.27.0
+* Python: mkdocs-material==9.5.50
+* Python: mkdocstrings-python=1.13.0
 
 Then run:
 
