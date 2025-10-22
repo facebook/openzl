@@ -41,7 +41,7 @@ LogicalCluster::LogicalCluster(const cpp2::LogicalCluster& rawCluster)
 
 void BaseConfig::setBaseConfig(cpp2::BaseConfig config)
 {
-    const auto rawPathMap = std::move(*config.pathMap_ref());
+    const auto rawPathMap = std::move(*config.pathMap());
     for (const auto& [rawPath, rawInfo] : rawPathMap) {
         logicalStreamIds_.insert(
                 LogicalId(folly::copy(rawInfo.logicalId().value())));
@@ -75,22 +75,22 @@ cpp2::BaseConfig BaseConfig::toThriftObj() const
     std::map<std::vector<int>, cpp2::PathInfo> rawPathMap;
     for (const auto& [path, info] : pathMap_) {
         cpp2::PathInfo rawInfo;
-        rawInfo.logicalId_ref() = folly::to<int16_t>(info.id);
-        rawInfo.type_ref()      = folly::to<int8_t>(info.type);
+        rawInfo.logicalId() = folly::to<int16_t>(info.id);
+        rawInfo.type()      = folly::to<int8_t>(info.type);
         rawPathMap.emplace(convertVec<int>(path), rawInfo);
     }
-    baseConfig.pathMap_ref()  = std::move(rawPathMap);
-    baseConfig.rootType_ref() = folly::to<int8_t>(rootType_);
+    baseConfig.pathMap()  = std::move(rawPathMap);
+    baseConfig.rootType() = folly::to<int8_t>(rootType_);
 
     std::vector<cpp2::LogicalCluster> rawClusters;
     rawClusters.reserve(clusters_.size());
     for (const auto& cluster : clusters_) {
         cpp2::LogicalCluster rawCluster;
-        rawCluster.idList_ref()    = convertVec<int16_t>(cluster.idList);
-        rawCluster.successor_ref() = cluster.successor;
+        rawCluster.idList()    = convertVec<int16_t>(cluster.idList);
+        rawCluster.successor() = cluster.successor;
         rawClusters.push_back(rawCluster);
     }
-    baseConfig.clusters_ref() = std::move(rawClusters);
+    baseConfig.clusters() = std::move(rawClusters);
 
     return baseConfig;
 }
@@ -346,7 +346,7 @@ void EncoderConfig::validate() const
 cpp2::EncoderConfig EncoderConfig::toThriftObj() const
 {
     cpp2::EncoderConfig config;
-    config.baseConfig_ref() = BaseConfig::toThriftObj();
+    config.baseConfig() = BaseConfig::toThriftObj();
     std::map<int, int> rawSuccessorMap;
     for (const auto& [id, successor] : successors_) {
         rawSuccessorMap.emplace(folly::to<int>(id), successor);
@@ -361,10 +361,10 @@ cpp2::EncoderConfig EncoderConfig::toThriftObj() const
         }
         rawTypeSuccessorMap.emplace(folly::to<int>(type), successor);
     }
-    config.typeSuccessorMap_ref() = std::move(rawTypeSuccessorMap);
-    config.successorMap_ref()     = std::move(rawSuccessorMap);
-    config.parseTulipV2_ref()     = parseTulipV2_;
-    config.minFormatVersion_ref() = minFormatVersion_;
+    config.typeSuccessorMap() = std::move(rawTypeSuccessorMap);
+    config.successorMap()     = std::move(rawSuccessorMap);
+    config.parseTulipV2()     = parseTulipV2_;
+    config.minFormatVersion() = minFormatVersion_;
     return config;
 }
 
@@ -400,9 +400,9 @@ DecoderConfig::DecoderConfig(
 cpp2::DecoderConfig DecoderConfig::toThriftObj() const
 {
     cpp2::DecoderConfig config;
-    config.baseConfig_ref()            = BaseConfig::toThriftObj();
-    config.originalSize_ref()          = originalSize_;
-    config.unparseMessageHeaders_ref() = unparseMessageHeaders_;
+    config.baseConfig()            = BaseConfig::toThriftObj();
+    config.originalSize()          = originalSize_;
+    config.unparseMessageHeaders() = unparseMessageHeaders_;
     return config;
 }
 
