@@ -25,6 +25,8 @@ enum class Symbol {
     // Operators
     DIE,
     EXPECT,
+    LOG,
+
     CONSUME,
     SIZEOF,
     SEND,

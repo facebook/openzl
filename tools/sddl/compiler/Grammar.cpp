@@ -861,6 +861,8 @@ const std::vector<std::unique_ptr<const GrammarRule>> grammar_rules{ []() {
     add_rule<NullaryOpRule>(r, Symbol::DIE);
 
     add_rule<UnaryOpRule>(r, Symbol::EXPECT, Precedence::ASSIGNMENT);
+    add_rule<UnaryOpRule>(r, Symbol::LOG);
+
     add_rule<UnaryOpRule>(r, Symbol::CONSUME);
     add_rule<UnaryOpRule>(r, Symbol::SIZEOF);
 

@@ -63,6 +63,8 @@ static const std::map<Symbol, SymbolType> sym_types{
 
     { Symbol::DIE, SymbolType::OPERATOR },
     { Symbol::EXPECT, SymbolType::OPERATOR },
+    { Symbol::LOG, SymbolType::OPERATOR },
+
     { Symbol::CONSUME, SymbolType::OPERATOR },
     { Symbol::SIZEOF, SymbolType::OPERATOR },
     { Symbol::SEND, SymbolType::OPERATOR },
@@ -148,6 +150,8 @@ static const std::map<Symbol, poly::string_view> syms_to_debug_strs{
 
     { Symbol::DIE, "DIE" },
     { Symbol::EXPECT, "EXPECT" },
+    { Symbol::LOG, "LOG" },
+
     { Symbol::CONSUME, "CONSUME" },
     { Symbol::SIZEOF, "SIZEOF" },
     { Symbol::SEND, "SEND" },
@@ -247,6 +251,7 @@ const std::vector<std::pair<poly::string_view, Symbol>> strs_to_syms{
     { ".", Symbol::MEMBER },
     { "die", Symbol::DIE },
     { "expect", Symbol::EXPECT },
+    { "log", Symbol::LOG },
     { "consume", Symbol::CONSUME },
     { "sizeof", Symbol::SIZEOF },
     { "sendto", Symbol::SEND },
@@ -322,6 +327,8 @@ static const std::map<Symbol, poly::string_view> syms_to_ser_strs{
     { Symbol::MOD, "mod" },
 
     { Symbol::DIE, "die" },         { Symbol::EXPECT, "expect" },
+    { Symbol::LOG, "log" },
+
     { Symbol::CONSUME, "consume" }, { Symbol::SIZEOF, "sizeof" },
     { Symbol::SEND, "send" },       { Symbol::ASSIGN, "assign" },
     { Symbol::ASSUME, "assume" },   { Symbol::MEMBER, "member" },
