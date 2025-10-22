@@ -175,13 +175,18 @@ typedef struct {
 typedef enum {
     ZL_SDDL_OpCode_die,
     ZL_SDDL_OpCode_expect,
+    ZL_SDDL_OpCode_log,
+
     ZL_SDDL_OpCode_consume,
+    ZL_SDDL_OpCode_peek,
     ZL_SDDL_OpCode_sizeof,
     ZL_SDDL_OpCode_send,
     ZL_SDDL_OpCode_assign,
     ZL_SDDL_OpCode_member,
 
     ZL_SDDL_OpCode_bind,
+
+    ZL_SDDL_OpCode_while,
 
     // Unary arithmetic operations
     ZL_SDDL_OpCode_neg,
@@ -297,8 +302,12 @@ static const char* ZL_SDDL_OpCode_toString(ZL_SDDL_OpCode opcode)
             return "die";
         case ZL_SDDL_OpCode_expect:
             return "expect";
+        case ZL_SDDL_OpCode_log:
+            return "log";
         case ZL_SDDL_OpCode_consume:
             return "consume";
+        case ZL_SDDL_OpCode_peek:
+            return "peek";
         case ZL_SDDL_OpCode_sizeof:
             return "sizeof";
         case ZL_SDDL_OpCode_send:
@@ -309,6 +318,8 @@ static const char* ZL_SDDL_OpCode_toString(ZL_SDDL_OpCode opcode)
             return "member";
         case ZL_SDDL_OpCode_bind:
             return "bind";
+        case ZL_SDDL_OpCode_while:
+            return "while";
         case ZL_SDDL_OpCode_neg:
             return "neg";
         case ZL_SDDL_OpCode_eq:
@@ -366,28 +377,28 @@ static const char* ZL_SDDL_ExprType_toString(ZL_SDDL_ExprType type)
 
 static void log_expr(const ZL_SDDL_Expr* const expr)
 {
-    ZL_LOG(ALWAYS,
-           "expr %p: type = %s",
-           expr,
-           ZL_SDDL_ExprType_toString(expr->type));
+    ZL_RLOG(ALWAYS,
+            "Logging value of expr %p:\n  type: %s\n",
+            expr,
+            ZL_SDDL_ExprType_toString(expr->type));
     switch (expr->type) {
         case ZL_SDDL_ExprType_null:
             break;
         case ZL_SDDL_ExprType_op:
-            ZL_LOG(ALWAYS, "op = %s", ZL_SDDL_OpCode_toString(expr->op.op));
+            ZL_RLOG(ALWAYS, "  op: %s\n", ZL_SDDL_OpCode_toString(expr->op.op));
             break;
         case ZL_SDDL_ExprType_num:
-            ZL_LOG(ALWAYS, "val = %lld", (long long)expr->num.val);
+            ZL_RLOG(ALWAYS, "  val: %lld\n", (long long)expr->num.val);
             break;
         case ZL_SDDL_ExprType_field:
             break;
         case ZL_SDDL_ExprType_dest:
             break;
         case ZL_SDDL_ExprType_var:
-            ZL_LOG(ALWAYS,
-                   "name = '%.*s'",
-                   expr->var.name.size,
-                   expr->var.name.data);
+            ZL_RLOG(ALWAYS,
+                    "  name: '%.*s'\n",
+                    expr->var.name.size,
+                    expr->var.name.data);
             break;
         case ZL_SDDL_ExprType_scope:
             break;
@@ -470,13 +481,16 @@ static size_t ZL_SDDL_OpCode_numArgs(const ZL_SDDL_OpCode opcode)
         case ZL_SDDL_OpCode_die:
             return 0;
         case ZL_SDDL_OpCode_expect:
+        case ZL_SDDL_OpCode_log:
         case ZL_SDDL_OpCode_consume:
+        case ZL_SDDL_OpCode_peek:
         case ZL_SDDL_OpCode_sizeof:
             return 1;
         case ZL_SDDL_OpCode_send:
         case ZL_SDDL_OpCode_assign:
         case ZL_SDDL_OpCode_member:
         case ZL_SDDL_OpCode_bind:
+        case ZL_SDDL_OpCode_while:
             return 2;
         case ZL_SDDL_OpCode_neg:
             return 1;
@@ -984,9 +998,15 @@ static ZL_Report ZL_SDDL_Program_decodeExprType(
     } else if (StringView_eqCStr(&type_sv, "expect")) {
         expr->type  = ZL_SDDL_ExprType_op;
         expr->op.op = ZL_SDDL_OpCode_expect;
+    } else if (StringView_eqCStr(&type_sv, "log")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_log;
     } else if (StringView_eqCStr(&type_sv, "consume")) {
         expr->type  = ZL_SDDL_ExprType_op;
         expr->op.op = ZL_SDDL_OpCode_consume;
+    } else if (StringView_eqCStr(&type_sv, "peek")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_peek;
     } else if (StringView_eqCStr(&type_sv, "sizeof")) {
         expr->type  = ZL_SDDL_ExprType_op;
         expr->op.op = ZL_SDDL_OpCode_sizeof;
@@ -1002,6 +1022,9 @@ static ZL_Report ZL_SDDL_Program_decodeExprType(
     } else if (StringView_eqCStr(&type_sv, "bind")) {
         expr->type  = ZL_SDDL_ExprType_op;
         expr->op.op = ZL_SDDL_OpCode_bind;
+    } else if (StringView_eqCStr(&type_sv, "while")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_while;
     } else if (StringView_eqCStr(&type_sv, "neg")) {
         expr->type  = ZL_SDDL_ExprType_op;
         expr->op.op = ZL_SDDL_OpCode_neg;
@@ -1789,6 +1812,11 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr(
         const ZL_SDDL_Expr* const expr);
 
 // Forward declaration
+static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_consume(
+        ZL_SDDL_State* const state,
+        const ZL_SDDL_Expr* const expr);
+
+// Forward declaration
 static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_consumeField(
         ZL_SDDL_State* const state,
         const ZL_SDDL_Field* const field);
@@ -2139,44 +2167,51 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_consumeArray(
     ZL_ERR_IF_NULL(dyn, GENERIC);
     const ZL_SDDL_Expr* const inner_expr = &dyn->exprs[0];
     const ZL_SDDL_Expr* const len_expr   = &dyn->exprs[1];
-    ZL_ERR_IF_NE(inner_expr->type, ZL_SDDL_ExprType_field, corruption);
+    ZL_ERR_IF(
+            inner_expr->type != ZL_SDDL_ExprType_field
+                    && inner_expr->type != ZL_SDDL_ExprType_func,
+            corruption);
     ZL_ERR_IF_NE(len_expr->type, ZL_SDDL_ExprType_num, corruption);
     ZL_ERR_IF_LT(len_expr->num.val, 0, corruption);
     const size_t len = (size_t)len_expr->num.val;
 
-    if (inner_expr->field.type == ZL_SDDL_FieldType_atom) {
-        // Optimization
-        return ZL_SDDL_State_consumeArray_ofAtoms(
-                state, &inner_expr->field.atom, len);
-    }
-
-    if (inner_expr->field.type == ZL_SDDL_FieldType_record && len > 1) {
-        // Optimization
-        ZL_ERR_IF_ERR(ZL_SDDL_State_consumeRecord_noScope(
-                state, &inner_expr->field.record, true));
-
-        const size_t instr_count = inner_expr->field.record.dyn->instrs->count;
-
-        // As an optimization, these reserves are allowed to fail.
-        (void)VECTOR_RESERVE(
-                state->segment_sizes,
-                VECTOR_SIZE(state->segment_sizes) + instr_count * (len - 1));
-        (void)VECTOR_RESERVE(
-                state->segment_tags,
-                VECTOR_SIZE(state->segment_tags) + instr_count * (len - 1));
-
-        for (size_t i = 1; i < len; i++) {
-            ZL_ERR_IF_ERR(ZL_SDDL_State_consumeRecord_noScope(
-                    state, &inner_expr->field.record, false));
+    if (inner_expr->type == ZL_SDDL_ExprType_field) {
+        if (inner_expr->field.type == ZL_SDDL_FieldType_atom) {
+            // Optimization
+            return ZL_SDDL_State_consumeArray_ofAtoms(
+                    state, &inner_expr->field.atom, len);
         }
-        return ZL_WRAP_VALUE(ZL_SDDL_Expr_makeNull());
+
+        if (inner_expr->field.type == ZL_SDDL_FieldType_record && len > 1) {
+            // Optimization
+            ZL_ERR_IF_ERR(ZL_SDDL_State_consumeRecord_noScope(
+                    state, &inner_expr->field.record, true));
+
+            const size_t instr_count =
+                    inner_expr->field.record.dyn->instrs->count;
+
+            // As an optimization, these reserves are allowed to fail.
+            (void)VECTOR_RESERVE(
+                    state->segment_sizes,
+                    VECTOR_SIZE(state->segment_sizes)
+                            + instr_count * (len - 1));
+            (void)VECTOR_RESERVE(
+                    state->segment_tags,
+                    VECTOR_SIZE(state->segment_tags) + instr_count * (len - 1));
+
+            for (size_t i = 1; i < len; i++) {
+                ZL_ERR_IF_ERR(ZL_SDDL_State_consumeRecord_noScope(
+                        state, &inner_expr->field.record, false));
+            }
+            return ZL_WRAP_VALUE(ZL_SDDL_Expr_makeNull());
+        }
     }
 
     for (size_t i = 0; i < len; i++) {
         ZL_TRY_LET(
                 ZL_SDDL_Expr,
                 field_result,
-                ZL_SDDL_State_consumeField(state, &inner_expr->field));
+                ZL_SDDL_State_consume(state, inner_expr));
         ZL_SDDL_Expr_decref(state, &field_result);
     }
     return ZL_WRAP_VALUE(ZL_SDDL_Expr_makeNull());
@@ -2430,11 +2465,53 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr_op_inner(
                     "Expect op got 0-valued argument. Failing the parse.");
             break;
         }
+        case ZL_SDDL_OpCode_log: {
+            // #ifndef NDEBUG
+
+            log_expr(&args[0]);
+
+            const ZL_RESULT_OF(ZL_SDDL_SourceLocationPrettyString) pstr_res =
+                    ZL_SDDL_SourceLocationPrettyString_create(
+                            ZL_ERR_CTX_PTR,
+                            state->arena,
+                            &state->prog->source_code,
+                            &state->cur_src_loc,
+                            2);
+
+            ZL_ASSERT(
+                    !ZL_RES_isError(pstr_res),
+                    "Error in ZL_SDDL_SourceLocationPrettyString_create(): %s",
+                    ZL_E_str(ZL_RES_error(pstr_res)));
+
+            if (!ZL_RES_isError(pstr_res)) {
+                const ZL_SDDL_SourceLocationPrettyString pstr =
+                        ZL_RES_value(pstr_res);
+                if (pstr.str.data != NULL) {
+                    ZL_RLOG(ALWAYS, "at %.*s", pstr.str.size, pstr.str.data);
+                }
+
+                ZL_SDDL_SourceLocationPrettyString_destroy(state->arena, &pstr);
+            }
+            // #endif
+            result = args[0];
+            break;
+        }
         case ZL_SDDL_OpCode_consume: {
             ZL_TRY_SET(
                     ZL_SDDL_Expr,
                     result,
                     ZL_SDDL_State_consume(state, &args[0]));
+            break;
+        }
+        case ZL_SDDL_OpCode_peek: {
+            ZL_ERR_IF_NE(args[0].type, ZL_SDDL_ExprType_field, corruption);
+            // TODO: extend peeking to compound types??
+            ZL_ERR_IF_NE(
+                    args[0].field.type, ZL_SDDL_FieldType_atom, corruption);
+            const ZL_SDDL_Field_Atom* const atom = &args[0].field.atom;
+            const size_t width                   = atom->width;
+            ZL_ERR_IF_GT(state->pos + width, state->size, srcSize_tooSmall);
+            result = ZL_SDDL_State_readAtom(state, atom);
             break;
         }
         case ZL_SDDL_OpCode_sizeof: {
@@ -2484,6 +2561,9 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr_op_inner(
                             state, scope, &args[0], &args[1]));
             break;
         }
+        case ZL_SDDL_OpCode_while:
+            ZL_ERR(GENERIC,
+                   "Should be unreachable; 'while' op handled elsewhere.");
         case ZL_SDDL_OpCode_neg: {
             ZL_ERR_IF_NE(args[0].type, ZL_SDDL_ExprType_num, corruption);
             result = ZL_SDDL_Expr_makeNum(-args[0].num.val);
@@ -2569,12 +2649,55 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr_op_inner(
     return ZL_WRAP_VALUE(result);
 }
 
+static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr_while(
+        ZL_SDDL_State* const state,
+        ZL_SDDL_Scope* const scope,
+        const ZL_SDDL_Op* const op)
+{
+    ZL_RESULT_DECLARE_SCOPE(ZL_SDDL_Expr, state->opCtx);
+
+    const ZL_SDDL_Expr* const cond_expr = op->args[0];
+    const ZL_SDDL_Expr* const body_expr = op->args[1];
+
+    ZL_ERR_IF_NULL(cond_expr, corruption);
+    ZL_ERR_IF_NULL(body_expr, corruption);
+    ZL_ERR_IF_NE(body_expr->type, ZL_SDDL_ExprType_tuple, corruption);
+
+    while (true) {
+        ZL_TRY_LET(
+                ZL_SDDL_Expr,
+                cond_eval,
+                ZL_SDDL_State_execExpr(state, scope, cond_expr));
+        ZL_ERR_IF_NE(cond_eval.type, ZL_SDDL_ExprType_num, corruption);
+        const ZL_SDDL_IntT cond_val = cond_eval.num.val;
+        ZL_SDDL_Expr_decref(state, &cond_eval);
+        if (cond_val == 0) {
+            break;
+        }
+
+        for (size_t i = 0; i < body_expr->tuple.num_exprs; i++) {
+            ZL_TRY_LET(
+                    ZL_SDDL_Expr,
+                    body_eval,
+                    ZL_SDDL_State_execExpr(
+                            state, scope, &body_expr->tuple.exprs[i]));
+            ZL_SDDL_Expr_decref(state, &body_eval);
+        }
+    }
+
+    return ZL_WRAP_VALUE(ZL_SDDL_Expr_makeNull());
+}
+
 static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr_op(
         ZL_SDDL_State* const state,
         ZL_SDDL_Scope* const scope,
         const ZL_SDDL_Op* const op)
 {
     ZL_RESULT_DECLARE_SCOPE(ZL_SDDL_Expr, state->opCtx);
+
+    if (op->op == ZL_SDDL_OpCode_while) {
+        return ZL_SDDL_State_execExpr_while(state, scope, op);
+    }
 
     const size_t num_args = ZL_SDDL_OpCode_numArgs(op->op);
     ZL_SDDL_Expr args[ZL_SDDL_OP_ARG_COUNT];
@@ -2747,6 +2870,9 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr_var(
     if (StringView_eqCStr(&var->name, "_rem")) {
         return ZL_WRAP_VALUE(ZL_SDDL_Expr_makeNum(
                 (ZL_SDDL_IntT)state->size - (ZL_SDDL_IntT)state->pos));
+    }
+    if (StringView_eqCStr(&var->name, "_pos")) {
+        return ZL_WRAP_VALUE(ZL_SDDL_Expr_makeNum((ZL_SDDL_IntT)state->pos));
     }
 
     return ZL_SDDL_Scope_get(state, scope, var);

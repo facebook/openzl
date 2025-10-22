@@ -63,13 +63,17 @@ static const std::map<Symbol, SymbolType> sym_types{
 
     { Symbol::DIE, SymbolType::OPERATOR },
     { Symbol::EXPECT, SymbolType::OPERATOR },
+    { Symbol::LOG, SymbolType::OPERATOR },
+
     { Symbol::CONSUME, SymbolType::OPERATOR },
+    { Symbol::PEEK, SymbolType::OPERATOR },
     { Symbol::SIZEOF, SymbolType::OPERATOR },
     { Symbol::SEND, SymbolType::OPERATOR },
     { Symbol::ASSIGN, SymbolType::OPERATOR },
     { Symbol::ASSUME, SymbolType::OPERATOR },
     { Symbol::MEMBER, SymbolType::OPERATOR },
     { Symbol::BIND, SymbolType::OPERATOR },
+    { Symbol::WHILE, SymbolType::OPERATOR },
 
     { Symbol::NEG, SymbolType::OPERATOR },
 
@@ -148,7 +152,10 @@ static const std::map<Symbol, poly::string_view> syms_to_debug_strs{
 
     { Symbol::DIE, "DIE" },
     { Symbol::EXPECT, "EXPECT" },
+    { Symbol::LOG, "LOG" },
+
     { Symbol::CONSUME, "CONSUME" },
+    { Symbol::CONSUME, "PEEK" },
     { Symbol::SIZEOF, "SIZEOF" },
     { Symbol::SEND, "SEND" },
     { Symbol::ASSIGN, "ASSIGN" },
@@ -156,6 +163,7 @@ static const std::map<Symbol, poly::string_view> syms_to_debug_strs{
     { Symbol::ASSUME, "ASSUME" },
     { Symbol::MEMBER, "MEMBER" },
     { Symbol::BIND, "BIND" },
+    { Symbol::WHILE, "WHILE" },
 
     { Symbol::NEG, "NEG" },
 
@@ -247,9 +255,11 @@ const std::vector<std::pair<poly::string_view, Symbol>> strs_to_syms{
     { ".", Symbol::MEMBER },
     { "die", Symbol::DIE },
     { "expect", Symbol::EXPECT },
+    { "log", Symbol::LOG },
     { "consume", Symbol::CONSUME },
     { "sizeof", Symbol::SIZEOF },
     { "sendto", Symbol::SEND },
+    { "while", Symbol::WHILE },
     { "Byte", Symbol::BYTE },
     { "UInt8", Symbol::U8 },
     { "Int8", Symbol::I8 },
@@ -285,10 +295,10 @@ const std::vector<std::pair<poly::string_view, Symbol>> strs_to_syms{
 /* These symbols can't actually be accessed via these names. */
 static const std::vector<std::pair<poly::string_view, Symbol>>
         addl_strs_to_syms{
-            { "\\n", Symbol::NL },        { "Atom", Symbol::ATOM },
-            { "Record", Symbol::RECORD }, { "Array", Symbol::ARRAY },
-            { "Dest", Symbol::DEST },     { "bind", Symbol::BIND },
-            { "-", Symbol::NEG },
+            { "\\n", Symbol::NL },      { "*", Symbol::PEEK },
+            { "Atom", Symbol::ATOM },   { "Record", Symbol::RECORD },
+            { "Array", Symbol::ARRAY }, { "Dest", Symbol::DEST },
+            { "bind", Symbol::BIND },   { "-", Symbol::NEG },
         };
 
 static const std::map<Symbol, poly::string_view> syms_to_repr_strs{ []() {
@@ -322,10 +332,13 @@ static const std::map<Symbol, poly::string_view> syms_to_ser_strs{
     { Symbol::MOD, "mod" },
 
     { Symbol::DIE, "die" },         { Symbol::EXPECT, "expect" },
-    { Symbol::CONSUME, "consume" }, { Symbol::SIZEOF, "sizeof" },
-    { Symbol::SEND, "send" },       { Symbol::ASSIGN, "assign" },
-    { Symbol::ASSUME, "assume" },   { Symbol::MEMBER, "member" },
-    { Symbol::BIND, "bind" },       { Symbol::NEG, "neg" },
+    { Symbol::LOG, "log" },
+
+    { Symbol::CONSUME, "consume" }, { Symbol::PEEK, "peek" },
+    { Symbol::SIZEOF, "sizeof" },   { Symbol::SEND, "send" },
+    { Symbol::ASSIGN, "assign" },   { Symbol::ASSUME, "assume" },
+    { Symbol::MEMBER, "member" },   { Symbol::BIND, "bind" },
+    { Symbol::WHILE, "while" },     { Symbol::NEG, "neg" },
 
     { Symbol::BYTE, "byte" },       { Symbol::U8, "u1" },
     { Symbol::I8, "i1" },           { Symbol::U16LE, "u2l" },

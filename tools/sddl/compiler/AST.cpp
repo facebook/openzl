@@ -663,10 +663,45 @@ ASTVec ASTTuple::extract_exprs(
         throw InvariantViolation(
                 loc, "Tuple declaration must be given a list as argument.");
     }
-    if (list->list_type() != ListType::PAREN) {
-        throw InvariantViolation(
-                loc, "Tuple declaration argument list must be curly-braced.");
-    }
     return unwrap_parens(list->nodes());
+}
+
+ASTWhile::ASTWhile(ASTPtr cond, ASTPtr body)
+        : ASTConverted(maybe_loc(cond) + maybe_loc(body)),
+          cond_(std::move(cond)),
+          body_(std::move(body))
+{
+}
+
+void ASTWhile::print(std::ostream& os, size_t indent) const
+{
+    os << std::string(indent, ' ') << "While:" << std::endl;
+    os << std::string(indent + 2, ' ') << "Cond:" << std::endl;
+    some(cond_).print(os, indent + 4);
+    os << std::string(indent + 2, ' ') << "Body:" << std::endl;
+    some(body_).print(os, indent + 4);
+}
+
+A1C_Item ASTWhile::serialize(const SerializationOptions& opts) const
+{
+    auto* const arena = opts.arena;
+    A1C_Item map;
+    const auto builder = A1C_Item_map_builder(&map, 2, arena);
+    auto* const pair   = A1C_MapBuilder_add(builder);
+    if (pair == nullptr) {
+        throw SerializationError(loc(), "Failed to allocate A1C_Item map.");
+    }
+    A1C_Item_string_refCStr(&pair->key, "while");
+
+    auto* const val_items = A1C_Item_array(&pair->val, 2, arena);
+    if (val_items == nullptr) {
+        throw SerializationError(loc(), "Failed to allocate A1C_Item array.");
+    }
+
+    val_items[0] = some(cond_).serialize(opts);
+    val_items[1] = some(body_).serialize(opts);
+
+    add_debug_info(*this, opts, builder);
+    return map;
 }
 } // namespace openzl::sddl

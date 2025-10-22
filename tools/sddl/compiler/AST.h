@@ -280,4 +280,17 @@ class ASTTuple : public ASTConverted {
     const ASTVec tuple_;
 };
 
+class ASTWhile : public ASTConverted {
+   public:
+    explicit ASTWhile(ASTPtr cond, ASTPtr body);
+
+    void print(std::ostream& os, size_t indent) const override;
+
+    A1C_Item serialize(const SerializationOptions& opts) const override;
+
+   private:
+    const ASTPtr cond_;
+    const ASTPtr body_;
+};
+
 } // namespace openzl::sddl
