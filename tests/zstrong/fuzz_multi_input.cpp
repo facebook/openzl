@@ -1,5 +1,4 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
-#include "security/lionhead/utils/lib_ftest/ftest.h"
 
 #include "openzl/codecs/zl_concat.h"
 #include "openzl/compress/graphs/generic_clustering_graph.h"
@@ -9,17 +8,19 @@
 namespace zstrong {
 namespace tests {
 namespace {
-template <typename FDP>
-std::vector<uint32_t>
-getSegments(FDP& f, size_t const srcSize, size_t maxSegments = 512)
+
+std::vector<uint32_t> getSegments(
+        datagen::DataGen& dg,
+        size_t const srcSize,
+        size_t maxSegments = 512)
 {
-    size_t const numSegments = f.usize_range("num_segments", 0, maxSegments);
+    size_t const numSegments = dg.usize_range("num_segments", 0, maxSegments);
     std::vector<uint32_t> segmentSizes;
     size_t totalSize = 0;
     segmentSizes.reserve(numSegments);
     for (size_t i = 0; i < numSegments; ++i) {
         size_t const segmentSize =
-                f.usize_range("segment_size", 0, srcSize - totalSize);
+                dg.usize_range("segment_size", 0, srcSize - totalSize);
         segmentSizes.push_back(segmentSize);
         totalSize += segmentSize;
     }
@@ -31,30 +32,31 @@ getSegments(FDP& f, size_t const srcSize, size_t maxSegments = 512)
 
 FUZZ_F(MultiInputTest, FuzzConcatRoundTrip)
 {
+    datagen::DataGen dg = fromFDP(f);
     reset();
     setLargeCompressBound(2);
-    auto concat = f.choices(
+    auto concat = dg.choices(
             "concat",
-            { ZL_NODE_CONCAT_SERIAL,
-              ZL_NODE_CONCAT_NUMERIC,
-              ZL_NODE_CONCAT_STRUCT,
-              ZL_NODE_CONCAT_STRING });
+            std::vector<ZL_NodeID>{ ZL_NODE_CONCAT_SERIAL,
+                                    ZL_NODE_CONCAT_NUMERIC,
+                                    ZL_NODE_CONCAT_STRUCT,
+                                    ZL_NODE_CONCAT_STRING });
     const ZL_GraphID successors[2] = { ZL_GRAPH_STORE, ZL_GRAPH_STORE };
     auto graph                     = ZL_Compressor_registerStaticGraph_fromNode(
             cgraph_, concat, successors, 2);
     ZL_REQUIRE_SUCCESS(ZL_Compressor_selectStartingGraphID(cgraph_, graph));
-    size_t numInputs = f.usize_range("num_inputs", 1, 512);
+    size_t numInputs = dg.usize_range("num_inputs", 1, 512);
     std::vector<std::unique_ptr<ZL_TypedRef, ZS2_TypedRef_Deleter>> inputs;
     std::vector<TypedInputDesc> inputDescs;
     inputs.reserve(numInputs);
     inputDescs.reserve(numInputs);
     for (size_t i = 0; i < numInputs; ++i) {
-        ZL_Type type = f.choices(
+        ZL_Type type = dg.choices(
                 "type",
-                { ZL_Type_serial,
-                  ZL_Type_struct,
-                  ZL_Type_numeric,
-                  ZL_Type_string });
+                std::vector<ZL_Type>{ ZL_Type_serial,
+                                      ZL_Type_struct,
+                                      ZL_Type_numeric,
+                                      ZL_Type_string });
         std::string input;
         size_t eltWidth = 1;
         std::vector<uint32_t> strLens;
@@ -62,17 +64,19 @@ FUZZ_F(MultiInputTest, FuzzConcatRoundTrip)
             case ZL_Type_serial:
                 break;
             case ZL_Type_struct:
-                eltWidth = f.choices("elt_width", { 1, 2, 4, 8 });
+                eltWidth = dg.choices(
+                        "elt_width", std::vector<size_t>{ 1, 2, 4, 8 });
                 break;
             case ZL_Type_numeric:
-                eltWidth = f.choices("elt_width", { 1, 2, 4, 8 });
+                eltWidth = dg.choices(
+                        "elt_width", std::vector<size_t>{ 1, 2, 4, 8 });
                 break;
             case ZL_Type_string:
                 break;
         }
-        input = gen_str(f, "input_str", InputLengthInBytes(eltWidth));
+        input = dg.randStringWithQuantizedLength("input_str", eltWidth);
         if (type == ZL_Type_string) {
-            strLens = getSegments(f, input.size(), false);
+            strLens = getSegments(dg, input.size(), false);
         }
         inputDescs.emplace_back(
                 std::move(input), type, eltWidth, std::move(strLens));
@@ -123,6 +127,7 @@ FUZZ_F(MultiInputTest, FuzzConcatRoundTrip)
 
 FUZZ_F(MultiInputTest, FuzzClusterRoundTrip)
 {
+    datagen::DataGen dg = fromFDP(f);
     reset();
     setLargeCompressBound(2);
     const ZL_GraphID successors[3] = { ZL_GRAPH_STORE,
@@ -132,14 +137,16 @@ FUZZ_F(MultiInputTest, FuzzClusterRoundTrip)
                                        ZL_NODE_CONCAT_NUMERIC,
                                        ZL_NODE_CONCAT_STRING };
 
-    size_t numInputs = f.usize_range("num_inputs", 1, 512);
+    size_t numInputs = dg.usize_range("num_inputs", 1, 512);
     std::vector<std::unique_ptr<ZL_TypedRef, ZS2_TypedRef_Deleter>> inputs;
     std::vector<TypedInputDesc> inputDescs;
     inputs.reserve(numInputs);
     inputDescs.reserve(numInputs);
     for (size_t i = 0; i < numInputs; ++i) {
-        ZL_Type type = f.choices(
-                "type", { ZL_Type_serial, ZL_Type_numeric, ZL_Type_string });
+        ZL_Type type = dg.choices(
+                "type",
+                std::vector<ZL_Type>{
+                        ZL_Type_serial, ZL_Type_numeric, ZL_Type_string });
         std::string input;
         size_t eltWidth = 1;
         std::vector<uint32_t> strLens;
@@ -154,14 +161,14 @@ FUZZ_F(MultiInputTest, FuzzClusterRoundTrip)
             default:
                 throw std::runtime_error("Unsupported type");
         }
-        input = gen_str(f, "input_str", InputLengthInBytes(eltWidth));
+        input = dg.randStringWithQuantizedLength("input_str", eltWidth);
         if (type == ZL_Type_string) {
-            strLens = getSegments(f, input.size(), false);
+            strLens = getSegments(dg, input.size(), false);
         }
         inputDescs.emplace_back(
                 std::move(input), type, eltWidth, std::move(strLens));
         inputs.emplace_back(getTypedInput(inputDescs[i]));
-        int metadata = f.usize_range("num_inputs", 1, 1024);
+        int metadata = dg.usize_range("num_inputs", 1, 1024);
         if (ZL_isError(ZL_Input_setIntMetadata(inputs[i].get(), 0, metadata))) {
             throw std::runtime_error("Failed to set metadata");
         }
@@ -184,24 +191,26 @@ FUZZ_F(MultiInputTest, FuzzClusterRoundTrip)
                             .successorIdx       = 2,
                             .clusteringCodecIdx = 2 };
     config.typeDefaults = defaultSuccs;
-    config.nbClusters   = f.usize_range("num_inputs", 1, 512);
+    config.nbClusters   = dg.usize_range("num_inputs", 1, 512);
     config.clusters     = (ZL_ClusteringConfig_Cluster*)malloc(
             sizeof(ZL_ClusteringConfig_Cluster) * config.nbClusters);
     for (size_t i = 0; i < config.nbClusters; i++) {
         // Member tag
-        auto nbMemberTags               = f.usize_range("members", 1, 10);
+        auto nbMemberTags               = dg.usize_range("members", 1, 10);
         config.clusters[i].nbMemberTags = nbMemberTags;
         config.clusters[i].memberTags =
                 (int*)malloc(sizeof(int) * nbMemberTags);
         for (size_t j = 0; j < nbMemberTags; j++) {
-            config.clusters[i].memberTags[j] = f.usize_range("tags", 1, 1024);
+            config.clusters[i].memberTags[j] = dg.usize_range("tags", 1, 1024);
         }
         // Type successor
         // TODO: Allow the fuzzer to generate out of range successor indices
         config.clusters[i].typeSuccessor.successorIdx =
-                f.usize_range("num_inputs", 0, 2);
-        config.clusters[i].typeSuccessor.type = f.choices(
-                "type", { ZL_Type_serial, ZL_Type_numeric, ZL_Type_string });
+                dg.usize_range("num_inputs", 0, 2);
+        config.clusters[i].typeSuccessor.type = dg.choices(
+                "type",
+                std::vector<ZL_Type>{
+                        ZL_Type_serial, ZL_Type_numeric, ZL_Type_string });
         switch (config.clusters[i].typeSuccessor.type) {
             case ZL_Type_serial:
                 config.clusters[i].typeSuccessor.eltWidth = 1;
@@ -218,7 +227,7 @@ FUZZ_F(MultiInputTest, FuzzClusterRoundTrip)
         // Clustering codec
         // TODO: Allow the fuzzer to generate out of range codec indices
         config.clusters[i].typeSuccessor.clusteringCodecIdx =
-                f.usize_range("cluster_codec_idx", 0, 2);
+                dg.usize_range("cluster_codec_idx", 0, 2);
     }
 
     auto graph = ZL_Clustering_registerGraphWithCustomClusteringCodecs(

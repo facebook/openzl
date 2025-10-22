@@ -1,8 +1,9 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 #include "custom_parsers/parquet/parquet_lexer.h"
+#include "custom_parsers/parquet/tests/fuzz_utils.h"
 #include "custom_parsers/parquet/tests/test_utils.h"
 #include "openzl/common/errors_internal.h"
-#include "security/lionhead/utils/lib_ftest/ftest.h"
+
 namespace zstrong {
 namespace parquet {
 namespace testing {

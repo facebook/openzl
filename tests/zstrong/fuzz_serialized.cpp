@@ -1,8 +1,8 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "security/lionhead/utils/lib_ftest/ftest.h"
-
 #include "openzl/compress/private_nodes.h"
+#include "tests/datagen/DataGen.h"
+#include "tests/datagen/distributions/VecLengthDistribution.h"
 #include "tests/fuzz_utils.h"
 #include "tests/zstrong/test_serialized_fixture.h"
 
@@ -32,9 +32,11 @@ ZL_NodeID selectNode(
 
 FUZZ_F(SerializedTest, FuzzInterpretSerializedAsLEIntRoundTrip)
 {
-    size_t const eltWidth = f.choices("elt_width", { 1, 2, 4, 8 });
+    datagen::DataGen dg = fromFDP(f);
+    size_t const eltWidth =
+            dg.choices("elt_width", std::vector<size_t>{ 1, 2, 4, 8 });
     std::string input =
-            gen_str(f, "input_data", ShortInputLengthInBytes(eltWidth));
+            dg.randStringWithQuantizedLength("input_data", eltWidth);
     ZL_NodeID const node = selectNode(
             eltWidth,
             ZL_NODE_INTERPRET_AS_LE8,
@@ -46,9 +48,11 @@ FUZZ_F(SerializedTest, FuzzInterpretSerializedAsLEIntRoundTrip)
 
 FUZZ_F(SerializedTest, FuzzConvertSerialToTokenRoundTrip)
 {
-    size_t const eltWidth = f.choices("elt_width", { 4, 8 });
+    datagen::DataGen dg = fromFDP(f);
+    size_t const eltWidth =
+            dg.choices("elt_width", std::vector<size_t>{ 4, 8 });
     std::string input =
-            gen_str(f, "input_data", ShortInputLengthInBytes(eltWidth));
+            dg.randStringWithQuantizedLength("input_data", eltWidth);
     ZL_NodeID const node = selectNode(
             eltWidth,
             {},
@@ -60,8 +64,9 @@ FUZZ_F(SerializedTest, FuzzConvertSerialToTokenRoundTrip)
 
 FUZZ_F(SerializedTest, FuzzHuffmanRoundTrip)
 {
-    bool const useNode = f.coin("use_node");
-    std::string input  = gen_str(f, "input_data", InputLengthInBytes(1));
+    datagen::DataGen dg = fromFDP(f);
+    bool const useNode  = dg.coin("use_node");
+    std::string input   = dg.randString("input_data");
     reset();
     if (useNode) {
         setLargeCompressBound(8);
@@ -79,8 +84,9 @@ FUZZ_F(SerializedTest, FuzzHuffmanRoundTrip)
 
 FUZZ_F(SerializedTest, FuzzFSERoundTrip)
 {
-    bool const useNode = f.coin("use_node");
-    std::string input  = gen_str(f, "input_data", InputLengthInBytes(1));
+    datagen::DataGen dg = fromFDP(f);
+    bool const useNode  = dg.coin("use_node");
+    std::string input   = dg.randString("input_data");
     reset();
     // Only the graph guarantees that copmression succeeds on every input
     if (useNode) {
@@ -96,27 +102,31 @@ FUZZ_F(SerializedTest, FuzzFSERoundTrip)
 
 FUZZ_F(SerializedTest, FuzzZstdRoundTrip)
 {
-    std::string input = gen_str(f, "input_data", InputLengthInBytes(1));
+    datagen::DataGen dg = fromFDP(f);
+    std::string input   = dg.randString("input_data");
     testNodeOnInput(ZL_NODE_ZSTD, input);
 }
 
 FUZZ_F(SerializedTest, FuzzBitpackRoundTrip)
 {
-    std::string input = gen_str(f, "input_data", InputLengthInBytes(1));
+    datagen::DataGen dg = fromFDP(f);
+    std::string input   = dg.randString("input_data");
     testNodeOnInput(ZL_NODE_BITPACK_SERIAL, input);
 }
 
 FUZZ_F(SerializedTest, FuzzFlatpackRoundTrip)
 {
-    std::string input = gen_str(f, "input_data", InputLengthInBytes(1));
+    datagen::DataGen dg = fromFDP(f);
+    std::string input   = dg.randString("input_data");
     testNodeOnInput(ZL_NODE_FLATPACK, input);
 }
 
 FUZZ_F(SerializedTest, FuzzBitunpackRoundTrip)
 {
-    size_t integerBitWidth = f.i32_range("integer_bit_width", 1, 64);
+    datagen::DataGen dg    = fromFDP(f);
+    size_t integerBitWidth = dg.i32_range("integer_bit_width", 1, 64);
     std::string input =
-            gen_str(f, "input_str", InputLengthInBytes(integerBitWidth));
+            dg.randStringWithQuantizedLength("input_str", integerBitWidth);
     ASSERT_LT((input.size() * 8) % integerBitWidth, 8);
     ZL_IntParam intParam  = { ZL_Bitunpack_numBits, (int)integerBitWidth };
     ZL_LocalParams params = { { &intParam, 1 }, { NULL, 0 }, { NULL, 0 } };
@@ -126,14 +136,15 @@ FUZZ_F(SerializedTest, FuzzBitunpackRoundTrip)
 
 FUZZ_F(SerializedTest, FuzzSplitByStructRoundTrip)
 {
-    std::string input = gen_str(f, "input_str", InputLengthInBytes(1));
-    size_t numFields  = f.usize_range("num_fields", 1, 16);
+    datagen::DataGen dg = fromFDP(f);
+    std::string input   = dg.randString("input_str");
+    size_t numFields    = dg.usize_range("num_fields", 1, 16);
     std::vector<size_t> fieldSizes;
     size_t structSize = 0;
     fieldSizes.reserve(numFields);
     for (size_t i = 0; i < numFields && structSize < input.size(); ++i) {
         size_t const fieldSize =
-                f.usize_range("field_size", 1, input.size() - structSize);
+                dg.usize_range("field_size", 1, input.size() - structSize);
         fieldSizes.push_back(fieldSize);
         structSize += fieldSize;
     }
@@ -153,12 +164,13 @@ FUZZ_F(SerializedTest, FuzzSplitByStructRoundTrip)
 
 FUZZ_F(SerializedTest, FuzzSplitNRoundTrip)
 {
-    std::string input = gen_str(f, "input_str", InputLengthInBytes(1));
+    datagen::DataGen dg = fromFDP(f);
+    std::string input   = dg.randString("input_str");
 
     StructuredFDP<HarnessMode>* fPtr = &f;
 
     reset();
-    if (f.u8("split_by_param") >= 128) {
+    if (dg.u8("split_by_param") >= 128) {
         auto segmentSizes = getSplitNSegments(f, input.size());
         std::vector<ZL_GraphID> successors(segmentSizes.size(), ZL_GRAPH_STORE);
         auto graph = ZL_Compressor_registerSplitGraph(
@@ -195,7 +207,8 @@ FUZZ_F(SerializedTest, FuzzSplitNRoundTrip)
 
 FUZZ_F(SerializedTest, FuzzDispatchNByTagRoundTrip)
 {
-    std::string input = gen_str(f, "input_str", InputLengthInBytes(1));
+    datagen::DataGen dg = fromFDP(f);
+    std::string input   = dg.randString("input_str");
 
     reset();
     StructuredFDP<HarnessMode>* fPtr = &f;
@@ -248,7 +261,8 @@ FUZZ_F(SerializedTest, FuzzDispatchNByTagRoundTrip)
 
 FUZZ_F(SerializedTest, FuzzSetStringSizesRoundTrip)
 {
-    std::string input = gen_str(f, "input_str", InputLengthInBytes(1));
+    datagen::DataGen dg = fromFDP(f);
+    std::string input   = dg.randString("input_str");
 
     StructuredFDP<HarnessMode>* fPtr = &f;
 
@@ -279,8 +293,10 @@ FUZZ_F(SerializedTest, FuzzSetStringSizesRoundTrip)
 
 FUZZ_F(SerializedTest, FuzzConstantRoundTrip)
 {
-    uint8_t const rptChr = f.u8_range("rptChr", 0, 255);
-    size_t const nbRpts  = InputLengthInBytes(1).gen("nbRpts", f);
+    datagen::DataGen dg  = fromFDP(f);
+    uint8_t const rptChr = dg.u8_range("rptChr", 0, 255);
+    datagen::VecLengthDistribution lengthDist(dg.getRandWrapper(), 1);
+    size_t const nbRpts = lengthDist("nbRpts");
     const std::string input(nbRpts == 0 ? 1 : nbRpts, rptChr);
 
     testNodeOnInput(ZL_NODE_CONSTANT_SERIAL, input, 1);

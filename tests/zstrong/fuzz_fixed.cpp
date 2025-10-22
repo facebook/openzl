@@ -2,8 +2,6 @@
 
 #include <limits.h>
 
-#include "security/lionhead/utils/lib_ftest/ftest.h"
-
 #include "openzl/compress/private_nodes.h"
 #include "tests/datagen/DataGen.h"
 #include "tests/fuzz_utils.h"
