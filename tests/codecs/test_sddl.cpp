@@ -755,6 +755,7 @@ TEST_F(SimpleDataDescriptionLanguageTest, unusedFields)
         C = UInt32LE
         D = UInt64LE
         E = UInt32LE
+        F = UInt64LE
 
         : A[5]
         : C[7]
@@ -767,6 +768,8 @@ TEST_F(SimpleDataDescriptionLanguageTest, unusedFields)
     const auto instrs = exec(prog, input, Expected::SUCCEED);
     ASSERT_TRUE(instrs);
     EXPECT_EQ(instrs->numOutputs, 5);
+
+    roundtrip(prog, input);
 }
 
 TEST_F(SimpleDataDescriptionLanguageTest, multipleDeclsInFunction)
