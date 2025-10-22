@@ -172,13 +172,13 @@ zs_cxxlibrary(
     name = "fuzz_utils",
     headers = ["fuzz_utils.h"],
     exported_deps = [
+        "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
         "fbsource//xplat/security/lionhead/utils/lib_ftest/fdp:lib",
         "//data_compression/experimental/zstrong/tests/datagen:datagen",
     ],
 )
 
 FUZZER_DEPS = [
-    "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
     ":constants",
     ":fuzz_utils",
     ":test_zstrong_fixtures",

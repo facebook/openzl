@@ -105,6 +105,12 @@ class PRNGWrapper : public RandWrapper {
         return true;
     }
 
+    std::vector<uint8_t> all_remaining_bytes() override
+    {
+        throw std::runtime_error(
+                "all_remaining_bytes() only available for fuzzers");
+    }
+
    private:
     std::shared_ptr<std::mt19937> generator_;
     std::uniform_int_distribution<uint8_t> u8dist_;

@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "security/lionhead/utils/lib_ftest/ftest.h"
+#include "tests/datagen/DataGen.h"
 #include "tests/fuzz_utils.h"
 
 #include "openzl/common/assertion.h"
@@ -106,8 +106,9 @@ ZL_GraphID setCopyGraph(ZL_Compressor* cgraph)
 
 FUZZ(CompressTest, ReuseCCtx)
 {
-    ZL_g_logLevel       = ZL_LOG_LVL_ALWAYS;
-    ZL_CCtx* const cctx = ZL_CCtx_create();
+    zstrong::tests::datagen::DataGen dg = zstrong::tests::fromFDP(f);
+    ZL_g_logLevel                       = ZL_LOG_LVL_ALWAYS;
+    ZL_CCtx* const cctx                 = ZL_CCtx_create();
     ZL_REQUIRE_NN(cctx);
     ZL_Compressor* const cgraph1 = ZL_Compressor_create();
     ZL_REQUIRE_NN(cgraph1);
@@ -133,15 +134,16 @@ FUZZ(CompressTest, ReuseCCtx)
                 ZL_Compressor_selectStartingGraphID(cgraph3, sgid);
         EXPECT_EQ(ZL_isError(gssr), 0) << "setting cgraph3 failed\n";
     }
-    while (f.has_more_data()) {
-        std::string input =
-                gen_str(f, "input_data", zstrong::tests::InputLengthInBytes(1));
+
+    while (dg.has_more_data()) {
+        std::string input        = dg.randString("input_data");
         const char* const data   = input.c_str();
         size_t const isize       = input.length();
         size_t const dstCapacity = ZL_compressBound(isize);
         auto dst                 = std::make_unique<uint8_t[]>(dstCapacity);
-        const ZL_Compressor* const cgraph =
-                f.choices("cgraph", { cgraph1, cgraph2, cgraph3 });
+        const ZL_Compressor* const cgraph = dg.choices(
+                "cgraph",
+                std::vector<const ZL_Compressor*>{ cgraph1, cgraph2, cgraph3 });
         ZL_Report const cgr = ZL_CCtx_refCompressor(cctx, cgraph);
         EXPECT_EQ(ZL_isError(cgr), 0) << "CGraph reference failed\n";
         ZL_Report const creport =

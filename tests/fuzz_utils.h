@@ -3,7 +3,9 @@
 #pragma once
 
 #include <stddef.h>
+
 #include "security/lionhead/utils/lib_ftest/fdp/fdp/fdp_impl.h"
+#include "security/lionhead/utils/lib_ftest/ftest.h" // FUZZ_F
 
 #include "tests/datagen/DataGen.h"
 #include "tests/datagen/random_producer/LionheadFDPWrapper.h"

@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
+#include <vector>
 
 namespace zstrong::tests::datagen {
 
@@ -45,7 +46,9 @@ class RandWrapper {
     virtual float f32_range(NameType name, float min, float max)          = 0;
     virtual double f64_range(NameType name, double min, double max)       = 0;
 
-    virtual bool has_more_data() = 0;
+    // only applicable to fuzzers
+    virtual bool has_more_data()                       = 0;
+    virtual std::vector<uint8_t> all_remaining_bytes() = 0;
 
     virtual bool boolean(NameType name)
     {

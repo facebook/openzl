@@ -1,7 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "security/lionhead/utils/lib_ftest/ftest.h"
-
+#include "tests/datagen/DataGen.h"
 #include "tests/datagen/InputExpander.h"
 #include "tests/datagen/random_producer/LionheadFDPWrapper.h"
 #include "tests/datagen/test_registry/CustomNodes.h"
@@ -51,10 +50,11 @@ FUZZ_F(LargeInputTest, FuzzSerialTransform)
 
 FUZZ_F(LargeInputTest, FuzzSerialGraph)
 {
+    datagen::DataGen dg = fromFDP(f);
     using datagen::test_registry::TransformID;
 
     // transposeSplit and fieldLZ both take serial input
-    const auto coin = f.coin("transform_id");
+    const auto coin = dg.coin("transform_id");
     TransformID trId;
     if (coin) {
         trId = TransformID::TransposeSplit;
@@ -64,7 +64,7 @@ FUZZ_F(LargeInputTest, FuzzSerialGraph)
     const auto& customGraph =
             datagen::test_registry::getCustomGraphs().at(trId);
 
-    const auto inputVec = f.all_remaining_bytes();
+    const auto inputVec = dg.all_remaining_bytes();
     const auto input    = std::string(inputVec.begin(), inputVec.end());
     if (input.size() == 0) {
         return;

@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <cassert>
 #include <iostream>
 #include <random>
 
@@ -177,6 +178,17 @@ class DataGen {
     double f64_range(RandWrapper::NameType name, double min, double max)
     {
         return UniformDistribution<double>(rw_, min, max)(name);
+    }
+
+    // convenience functions for fuzzer inputs
+    bool has_more_data()
+    {
+        return rw_->has_more_data();
+    }
+
+    std::vector<uint8_t> all_remaining_bytes()
+    {
+        return rw_->all_remaining_bytes();
     }
 
    private:

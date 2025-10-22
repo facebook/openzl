@@ -34,7 +34,7 @@ class LionheadFDPWrapper : public RandWrapper {
     {
         return fdp_->remaining_input_length();
     }
-    std::vector<uint8_t> all_remaining_bytes()
+    std::vector<uint8_t> all_remaining_bytes() override
     {
         return fdp_->all_remaining_bytes();
     }
