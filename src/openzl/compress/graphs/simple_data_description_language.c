@@ -1789,6 +1789,11 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr(
         const ZL_SDDL_Expr* const expr);
 
 // Forward declaration
+static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_consume(
+        ZL_SDDL_State* const state,
+        const ZL_SDDL_Expr* const expr);
+
+// Forward declaration
 static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_consumeField(
         ZL_SDDL_State* const state,
         const ZL_SDDL_Field* const field);
@@ -2139,44 +2144,51 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_consumeArray(
     ZL_ERR_IF_NULL(dyn, GENERIC);
     const ZL_SDDL_Expr* const inner_expr = &dyn->exprs[0];
     const ZL_SDDL_Expr* const len_expr   = &dyn->exprs[1];
-    ZL_ERR_IF_NE(inner_expr->type, ZL_SDDL_ExprType_field, corruption);
+    ZL_ERR_IF(
+            inner_expr->type != ZL_SDDL_ExprType_field
+                    && inner_expr->type != ZL_SDDL_ExprType_func,
+            corruption);
     ZL_ERR_IF_NE(len_expr->type, ZL_SDDL_ExprType_num, corruption);
     ZL_ERR_IF_LT(len_expr->num.val, 0, corruption);
     const size_t len = (size_t)len_expr->num.val;
 
-    if (inner_expr->field.type == ZL_SDDL_FieldType_atom) {
-        // Optimization
-        return ZL_SDDL_State_consumeArray_ofAtoms(
-                state, &inner_expr->field.atom, len);
-    }
-
-    if (inner_expr->field.type == ZL_SDDL_FieldType_record && len > 1) {
-        // Optimization
-        ZL_ERR_IF_ERR(ZL_SDDL_State_consumeRecord_noScope(
-                state, &inner_expr->field.record, true));
-
-        const size_t instr_count = inner_expr->field.record.dyn->instrs->count;
-
-        // As an optimization, these reserves are allowed to fail.
-        (void)VECTOR_RESERVE(
-                state->segment_sizes,
-                VECTOR_SIZE(state->segment_sizes) + instr_count * (len - 1));
-        (void)VECTOR_RESERVE(
-                state->segment_tags,
-                VECTOR_SIZE(state->segment_tags) + instr_count * (len - 1));
-
-        for (size_t i = 1; i < len; i++) {
-            ZL_ERR_IF_ERR(ZL_SDDL_State_consumeRecord_noScope(
-                    state, &inner_expr->field.record, false));
+    if (inner_expr->type == ZL_SDDL_ExprType_field) {
+        if (inner_expr->field.type == ZL_SDDL_FieldType_atom) {
+            // Optimization
+            return ZL_SDDL_State_consumeArray_ofAtoms(
+                    state, &inner_expr->field.atom, len);
         }
-        return ZL_WRAP_VALUE(ZL_SDDL_Expr_makeNull());
+
+        if (inner_expr->field.type == ZL_SDDL_FieldType_record && len > 1) {
+            // Optimization
+            ZL_ERR_IF_ERR(ZL_SDDL_State_consumeRecord_noScope(
+                    state, &inner_expr->field.record, true));
+
+            const size_t instr_count =
+                    inner_expr->field.record.dyn->instrs->count;
+
+            // As an optimization, these reserves are allowed to fail.
+            (void)VECTOR_RESERVE(
+                    state->segment_sizes,
+                    VECTOR_SIZE(state->segment_sizes)
+                            + instr_count * (len - 1));
+            (void)VECTOR_RESERVE(
+                    state->segment_tags,
+                    VECTOR_SIZE(state->segment_tags) + instr_count * (len - 1));
+
+            for (size_t i = 1; i < len; i++) {
+                ZL_ERR_IF_ERR(ZL_SDDL_State_consumeRecord_noScope(
+                        state, &inner_expr->field.record, false));
+            }
+            return ZL_WRAP_VALUE(ZL_SDDL_Expr_makeNull());
+        }
     }
 
     for (size_t i = 0; i < len; i++) {
         ZL_TRY_LET(
                 ZL_SDDL_Expr,
                 field_result,
-                ZL_SDDL_State_consumeField(state, &inner_expr->field));
+                ZL_SDDL_State_consume(state, inner_expr));
         ZL_SDDL_Expr_decref(state, &field_result);
     }
     return ZL_WRAP_VALUE(ZL_SDDL_Expr_makeNull());
