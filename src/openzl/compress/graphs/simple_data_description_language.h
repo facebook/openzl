@@ -192,6 +192,14 @@ ZL_BEGIN_C_DECLS
  * context other than as the left-hand argument to the assignment operator, it
  * resolves to the expression that was most recently assigned into that var.
  *
+ * There are some built-in variables which can be read but which can't be
+ * assigned to:
+ *
+ * | Variable | Type | Evaluates To           |
+ * +----------+------+------------------------+
+ * | `_pos`   | Int  | Bytes consumed so far. |
+ * | `_rem`   | Int  | Bytes remaining.       |
+ *
  * ### Tuple:
  *
  * A Tuple expression is just a list of expressions, used by the bind op to
