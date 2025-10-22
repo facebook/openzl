@@ -38,16 +38,16 @@ template <typename Parser, typename Serializer>
 void testPrimitiveTypes()
 {
     cpp2::PrimitiveTestStruct testStruct;
-    testStruct.field_bool_ref()    = false;
-    testStruct.field_byte_ref()    = 0xbe;
-    testStruct.field_i16_ref()     = 0xbeef;
-    testStruct.field_i32_ref()     = 0xdeadbeef;
-    testStruct.field_i64_ref()     = 0xfaceb00cdeadbeef;
-    testStruct.field_float32_ref() = (float)0.42;
-    testStruct.field_float64_ref() = (double)0.42;
+    testStruct.field_bool()    = false;
+    testStruct.field_byte()    = 0xbe;
+    testStruct.field_i16()     = 0xbeef;
+    testStruct.field_i32()     = 0xdeadbeef;
+    testStruct.field_i64()     = 0xfaceb00cdeadbeef;
+    testStruct.field_float32() = (float)0.42;
+    testStruct.field_float64() = (double)0.42;
     std::string const testString(42, (char)0x42);
-    testStruct.field_string_ref() = std::string(42, (char)0x42);
-    size_t constexpr kNumFields   = 8;
+    testStruct.field_string()   = std::string(42, (char)0x42);
+    size_t constexpr kNumFields = 8;
 
     std::string const data =
             Serializer::template serialize<std::string>(testStruct);
@@ -138,11 +138,11 @@ void testCollectionTypes()
         }
 
         cpp2::CollectionTestStruct testStruct;
-        testStruct.field_list_bool_ref()      = testListBool;
-        testStruct.field_set_int32_ref()      = testSetInt32;
-        testStruct.field_map_diff_types_ref() = testMapDiffTypes;
-        testStruct.field_map_same_types_ref() = testMapSameTypes;
-        size_t constexpr kNumFields           = 4;
+        testStruct.field_list_bool()      = testListBool;
+        testStruct.field_set_int32()      = testSetInt32;
+        testStruct.field_map_diff_types() = testMapDiffTypes;
+        testStruct.field_map_same_types() = testMapSameTypes;
+        size_t constexpr kNumFields       = 4;
 
         std::string const data =
                 Serializer::template serialize<std::string>(testStruct);
