@@ -53,6 +53,10 @@ enum class Symbol {
     DIV,
     MOD,
 
+    LOG_AND,
+    LOG_OR,
+    LOG_NOT,
+
     // Keywords
 
     // Integer Numeric Types
