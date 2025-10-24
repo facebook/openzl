@@ -200,6 +200,12 @@ typedef enum {
     ZL_SDDL_OpCode_mul,
     ZL_SDDL_OpCode_div,
     ZL_SDDL_OpCode_mod,
+
+    // Logical operations
+    ZL_SDDL_OpCode_log_and,
+    ZL_SDDL_OpCode_log_or,
+    ZL_SDDL_OpCode_log_not,
+
 } ZL_SDDL_OpCode;
 
 #define ZL_SDDL_OP_ARG_COUNT 2
@@ -337,6 +343,12 @@ static const char* ZL_SDDL_OpCode_toString(ZL_SDDL_OpCode opcode)
             return "div";
         case ZL_SDDL_OpCode_mod:
             return "mod";
+        case ZL_SDDL_OpCode_log_and:
+            return "log_and";
+        case ZL_SDDL_OpCode_log_or:
+            return "log_or";
+        case ZL_SDDL_OpCode_log_not:
+            return "log_not";
         default:
             return "unknown";
     }
@@ -496,6 +508,11 @@ static size_t ZL_SDDL_OpCode_numArgs(const ZL_SDDL_OpCode opcode)
         case ZL_SDDL_OpCode_mul:
         case ZL_SDDL_OpCode_div:
         case ZL_SDDL_OpCode_mod:
+            return 2;
+        case ZL_SDDL_OpCode_log_not:
+            return 1;
+        case ZL_SDDL_OpCode_log_and:
+        case ZL_SDDL_OpCode_log_or:
             return 2;
         default:
             return 0;
@@ -1046,6 +1063,15 @@ static ZL_Report ZL_SDDL_Program_decodeExprType(
     } else if (StringView_eqCStr(&type_sv, "mod")) {
         expr->type  = ZL_SDDL_ExprType_op;
         expr->op.op = ZL_SDDL_OpCode_mod;
+    } else if (StringView_eqCStr(&type_sv, "log_and")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_log_and;
+    } else if (StringView_eqCStr(&type_sv, "log_or")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_log_or;
+    } else if (StringView_eqCStr(&type_sv, "log_not")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_log_not;
     }
     // Num
     else if (StringView_eqCStr(&type_sv, "int")) {
@@ -2610,7 +2636,23 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr_op_inner(
             result = ZL_SDDL_Expr_makeNum(args[0].num.val % args[1].num.val);
             break;
         }
-
+        case ZL_SDDL_OpCode_log_and: {
+            ZL_ERR_IF_NE(args[0].type, ZL_SDDL_ExprType_num, corruption);
+            ZL_ERR_IF_NE(args[1].type, ZL_SDDL_ExprType_num, corruption);
+            result = ZL_SDDL_Expr_makeNum(args[0].num.val && args[1].num.val);
+            break;
+        }
+        case ZL_SDDL_OpCode_log_or: {
+            ZL_ERR_IF_NE(args[0].type, ZL_SDDL_ExprType_num, corruption);
+            ZL_ERR_IF_NE(args[1].type, ZL_SDDL_ExprType_num, corruption);
+            result = ZL_SDDL_Expr_makeNum(args[0].num.val || args[1].num.val);
+            break;
+        }
+        case ZL_SDDL_OpCode_log_not: {
+            ZL_ERR_IF_NE(args[0].type, ZL_SDDL_ExprType_num, corruption);
+            result = ZL_SDDL_Expr_makeNum(!args[0].num.val);
+            break;
+        }
         default:
             ZL_ERR(corruption, "Unknown opcode %d", op->op);
     }

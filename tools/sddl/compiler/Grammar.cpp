@@ -53,6 +53,7 @@ const std::map<Precedence, Associativity> associativities{
 
     { Precedence::MUL_DIV_MOD, LTR }, { Precedence::ADD_SUB, LTR },
     { Precedence::RELATION, LTR },    { Precedence::EQUALITY, LTR },
+    { Precedence::LOG_AND, LTR },     { Precedence::LOG_OR, LTR },
 
     { Precedence::ASSIGNMENT, RTL },
 };
@@ -84,6 +85,10 @@ const std::map<Precedence, std::string> precedences_to_strs{
       "RELATION(" + enum_to_str_of_int(Precedence::RELATION) + ")" },
     { Precedence::EQUALITY,
       "EQUALITY(" + enum_to_str_of_int(Precedence::EQUALITY) + ")" },
+    { Precedence::LOG_AND,
+      "LOG_AND(" + enum_to_str_of_int(Precedence::LOG_AND) + ")" },
+    { Precedence::LOG_OR,
+      "LOG_OR(" + enum_to_str_of_int(Precedence::LOG_OR) + ")" },
     { Precedence::ASSIGNMENT,
       "ASSIGNMENT(" + enum_to_str_of_int(Precedence::ASSIGNMENT) + ")" },
 };
@@ -888,6 +893,10 @@ const std::vector<std::unique_ptr<const GrammarRule>> grammar_rules{ []() {
     add_rule<BinaryOpRule>(r, Symbol::MUL, Precedence::MUL_DIV_MOD);
     add_rule<BinaryOpRule>(r, Symbol::DIV, Precedence::MUL_DIV_MOD);
     add_rule<BinaryOpRule>(r, Symbol::MOD, Precedence::MUL_DIV_MOD);
+
+    add_rule<BinaryOpRule>(r, Symbol::LOG_AND, Precedence::LOG_AND);
+    add_rule<BinaryOpRule>(r, Symbol::LOG_OR, Precedence::LOG_OR);
+    add_rule<UnaryOpRule>(r, Symbol::LOG_NOT);
 
     // TODO: check that all ops have rules
 

@@ -74,6 +74,9 @@ ZL_BEGIN_C_DECLS
  * | mul     | Op        |
  * | div     | Op        |
  * | mod     | Op        |
+ * | log_and | Op        |
+ * | log_or  | Op        |
+ * | log_not | Op        |
  * | int     | Num       |
  * | poison  | Field     |
  * | atom    | Field     |
@@ -117,6 +120,9 @@ ZL_BEGIN_C_DECLS
  * | mul     | 2    | I    | IV  | IV    | eval(lhs) * eval(rhs)
  * | div     | 2    | I    | IV  | IV    | eval(lhs) / eval(rhs)
  * | mod     | 2    | I    | IV  | IV    | eval(lhs) % eval(rhs)
+ * | log_and | 2    | I    | IV  | IV    | eval(lhs) && eval(rhs)
+ * | log_or  | 2    | I    | IV  | IV    | eval(lhs) || eval(rhs)
+ * | log_not | 1    | I    | IV  |       | !eval(arg)
  *
  * ### Num
  *
