@@ -539,6 +539,46 @@ TEST_F(SimpleDataDescriptionLanguageTest, arithmetic)
     roundtrip(prog, input);
 }
 
+TEST_F(SimpleDataDescriptionLanguageTest, logical_ops)
+{
+    const auto prog = R"(
+        expect 1 && 1
+        expect (1 && 1) == 1
+        expect !(1 && 0)
+        expect (1 && 0) == 0
+        expect !(0 && 1)
+        expect (0 && 1) == 0
+        expect !(0 && 0)
+        expect (0 && 0) == 0
+
+        expect 1 || 1
+        expect (1 || 1) == 1
+        expect 1 || 0
+        expect (1 || 0) == 1
+        expect 0 || 1
+        expect (0 || 1) == 1
+        expect !(0 || 0)
+        expect (0 || 0) == 0
+
+        expect !0
+        expect !0 == 1
+        expect !1 == 0
+        expect !!1
+
+        expect !2 == 0
+        expect 4 && 5
+        expect (4 && 5) == 1
+        expect 4 || 5
+        expect (4 || 5) == 1
+        expect !(4 && 0)
+
+        : Byte[]
+    )";
+
+    const auto input = iota(10);
+    roundtrip(prog, input);
+}
+
 TEST_F(SimpleDataDescriptionLanguageTest, mildlyVexingParses)
 {
     const auto prog  = R"(

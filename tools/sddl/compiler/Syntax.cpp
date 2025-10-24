@@ -87,6 +87,10 @@ static const std::map<Symbol, SymbolType> sym_types{
     { Symbol::DIV, SymbolType::OPERATOR },
     { Symbol::MOD, SymbolType::OPERATOR },
 
+    { Symbol::LOG_AND, SymbolType::OPERATOR },
+    { Symbol::LOG_OR, SymbolType::OPERATOR },
+    { Symbol::LOG_NOT, SymbolType::OPERATOR },
+
     { Symbol::BYTE, SymbolType::KEYWORD },
     { Symbol::U8, SymbolType::KEYWORD },
     { Symbol::I8, SymbolType::KEYWORD },
@@ -175,6 +179,10 @@ static const std::map<Symbol, poly::string_view> syms_to_debug_strs{
     { Symbol::DIV, "DIV" },
     { Symbol::MOD, "MOD" },
 
+    { Symbol::LOG_AND, "LOG_AND" },
+    { Symbol::LOG_OR, "LOG_OR" },
+    { Symbol::LOG_NOT, "LOG_NOT" },
+
     { Symbol::BYTE, "BYTE" },
     { Symbol::U8, "U8" },
     { Symbol::I8, "I8" },
@@ -247,6 +255,9 @@ const std::vector<std::pair<poly::string_view, Symbol>> strs_to_syms{
     { "*", Symbol::MUL },
     { "/", Symbol::DIV },
     { "%", Symbol::MOD },
+    { "&&", Symbol::LOG_AND },
+    { "||", Symbol::LOG_OR },
+    { "!", Symbol::LOG_NOT },
     { ":", Symbol::ASSUME },
     { ".", Symbol::MEMBER },
     { "die", Symbol::DIE },
@@ -325,6 +336,9 @@ static const std::map<Symbol, poly::string_view> syms_to_ser_strs{
     { Symbol::ADD, "add" },         { Symbol::SUB, "sub" },
     { Symbol::MUL, "mul" },         { Symbol::DIV, "div" },
     { Symbol::MOD, "mod" },
+
+    { Symbol::LOG_AND, "log_and" }, { Symbol::LOG_OR, "log_or" },
+    { Symbol::LOG_NOT, "log_not" },
 
     { Symbol::DIE, "die" },         { Symbol::EXPECT, "expect" },
     { Symbol::LOG, "log" },
