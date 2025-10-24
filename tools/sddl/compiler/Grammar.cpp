@@ -289,26 +289,53 @@ class Codegen {
     const SourceLocation loc_;
 };
 
+Associativity associativity_of(Precedence precedence)
+{
+    try {
+        return associativities.at(precedence);
+    } catch (const std::out_of_range&) {
+        throw InvariantViolation(
+                "Lookup failed in associativity_of(Precendence::"
+                + std::string{ precedence_to_str(precedence) } + ")");
+    }
+}
+
 } // anonymous namespace
 
 poly::string_view precedence_to_str(Precedence precedence)
 {
-    return precedences_to_strs.at(precedence);
+    try {
+        return precedences_to_strs.at(precedence);
+    } catch (const std::out_of_range&) {
+        throw InvariantViolation("Lookup failed in precedence_to_str()");
+    }
 }
 
 poly::string_view associativity_to_str(Associativity associativity)
 {
-    return associativities_to_strs.at(associativity);
+    try {
+        return associativities_to_strs.at(associativity);
+    } catch (const std::out_of_range&) {
+        throw InvariantViolation("Lookup failed in associativity_to_str()");
+    }
 }
 
 poly::string_view arity_to_str(Arity arity)
 {
-    return arities_to_strs.at(arity);
+    try {
+        return arities_to_strs.at(arity);
+    } catch (const std::out_of_range&) {
+        throw InvariantViolation("Lookup failed in arity_to_str()");
+    }
 }
 
 poly::string_view arg_type_to_str(ArgType arg_type)
 {
-    return arg_types_to_strs.at(arg_type);
+    try {
+        return arg_types_to_strs.at(arg_type);
+    } catch (const std::out_of_range&) {
+        throw InvariantViolation("Lookup failed in arg_type_to_str()");
+    }
 }
 
 GrammarRule::GrammarRule(
@@ -318,7 +345,7 @@ GrammarRule::GrammarRule(
         ArgType rhs_type)
         : op_(op),
           precedence_(precedence),
-          associativity_(associativities.at(precedence)),
+          associativity_(associativity_of(precedence)),
           arity_(arity_of(lhs_type, rhs_type)),
           lhs_type_(lhs_type),
           rhs_type_(rhs_type)
