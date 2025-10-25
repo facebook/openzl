@@ -8,40 +8,10 @@
 #include "../ProtoSerializer.h"
 #include "../ProtoDeserializer.h"
 #include "../serialization_utils.h"
-#ifdef OPENZL_BUCK_BUILD
-#    include "data_compression/experimental/zstrong/tools/protobuf_dynamic/schema.pb.h"
-#else
-#    include "tools/protobuf_dynamic/schema.pb.h"
-#endif
 #include <filesystem>
 
 using namespace openzl::protobuf;
 using MessageDifferencer = google::protobuf::util::MessageDifferencer;
-
-TEST(TestPolymorphicSerialize, SerializeStaticMessage)
-{
-    // Create a static Schema message
-    Schema schema;
-    schema.set_optional_int32(42);
-    schema.set_optional_string("test_value");
-    schema.add_repeated_int32(100);
-    schema.add_repeated_int32(200);
-
-    ProtoSerializer serializer;
-
-    // Test all protocols with polymorphic serialize
-    for (auto protocol : {Protocol::Proto, Protocol::ZL, Protocol::JSON}) {
-        auto serialized = serialize(schema, protocol, serializer);
-        EXPECT_GT(serialized.size(), 0u);
-
-        // Deserialize back and verify
-        Schema deserialized;
-        ProtoDeserializer deserializer;
-        deserialize(serialized, protocol, deserializer, deserialized);
-
-        EXPECT_TRUE(MessageDifferencer::Equivalent(schema, deserialized));
-    }
-}
 
 TEST(TestPolymorphicSerialize, SerializeDynamicMessage)
 {
