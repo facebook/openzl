@@ -1,0 +1,2 @@
+This is not valid proto syntax!
+It should cause a parse error.

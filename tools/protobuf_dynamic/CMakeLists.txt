@@ -34,6 +34,7 @@ if (OPENZL_BUILD_PROTOBUF_TOOLS)
     target_link_libraries(protobuf_serializer_dynamic PUBLIC
         openzl_cpp
         protobuf::libprotobuf
+        protobuf::libprotoc
     )
     apply_openzl_compile_options_to_target(protobuf_serializer_dynamic)
 
@@ -55,4 +56,16 @@ if (OPENZL_BUILD_PROTOBUF_TOOLS)
     target_include_directories(protobuf_cli_dynamic PRIVATE ${PROJECT_BINARY_DIR})
 
     apply_openzl_compile_options_to_target(protobuf_cli_dynamic)
+
+    # Build tests if enabled
+    if(OPENZL_BUILD_TESTS)
+        # Test for DescriptorLoader
+        add_executable(test_descriptor_loader
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_descriptor_loader.cpp")
+        target_link_libraries(test_descriptor_loader PRIVATE
+            protobuf_serializer_dynamic
+            GTest::gtest_main
+        )
+        gtest_discover_tests(test_descriptor_loader)
+    endif()
 endif()
