@@ -39,13 +39,8 @@ if (OPENZL_BUILD_PROTOBUF_TOOLS)
     apply_openzl_compile_options_to_target(protobuf_serializer_dynamic)
 
     # Make the protobuf_cli_dynamic tool
-    file(GLOB protobuf_cli_dynamic_sources CONFIGURE_DEPENDS
-        "${CMAKE_CURRENT_SOURCE_DIR}/cli_dynamic.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/schema.proto")
-    add_executable(protobuf_cli_dynamic ${protobuf_cli_dynamic_sources})
-
-    include(FindProtobuf)
-    protobuf_generate(TARGET protobuf_cli_dynamic)
+    add_executable(protobuf_cli_dynamic
+        "${CMAKE_CURRENT_SOURCE_DIR}/cli_dynamic.cpp")
 
     target_link_libraries(protobuf_cli_dynamic PRIVATE
         protobuf_serializer_dynamic
@@ -53,7 +48,6 @@ if (OPENZL_BUILD_PROTOBUF_TOOLS)
         tools_io
         tools_training
     )
-    target_include_directories(protobuf_cli_dynamic PRIVATE ${PROJECT_BINARY_DIR})
 
     apply_openzl_compile_options_to_target(protobuf_cli_dynamic)
 

@@ -15,14 +15,11 @@
 #include "tools/io/OutputFile.h"
 #include "tools/protobuf/ProtoDeserializer.h"
 #include "tools/protobuf/ProtoSerializer.h"
-#ifdef OPENZL_BUCK_BUILD
-#    include "data_compression/experimental/zstrong/tools/protobuf_dynamic/schema.pb.h"
-#else
-#    include "tools/protobuf_dynamic/schema.pb.h"
-#endif
 #include "tools/training/train.h"
 #include "tools/training/train_params.h"
 #include "serialization_utils.h"
+#include "DescriptorLoader.h"
+#include "DynamicMessageHelper.h"
 
 namespace openzl {
 namespace protobuf {
@@ -112,12 +109,67 @@ class Args {
             compressor.deserialize(file->contents());
             serializer.setCompressor(std::move(compressor));
         }
+
+        // Runtime schema loading is REQUIRED
+        bool has_proto = args.globalHasFlag(kProto);
+        bool has_descriptor = args.globalHasFlag(kDescriptor);
+
+        if (!has_proto && !has_descriptor) {
+            throw std::runtime_error(
+                "Runtime schema is required. Please specify either:\n"
+                "  --proto <file.proto> --proto-path <dir> --message-type <type>\n"
+                "  or\n"
+                "  --descriptor <file.desc> --message-type <type>");
+        }
+
+        if (has_proto && has_descriptor) {
+            throw std::runtime_error("Cannot specify both --proto and --descriptor");
+        }
+
+        if (!args.globalHasFlag(kMessageType)) {
+            throw std::runtime_error("--message-type is required");
+        }
+
+        message_type = args.globalRequiredFlag(kMessageType);
+
+        // Load the schema
+        auto loader = std::make_unique<DescriptorLoader>();
+
+        // Add proto path if specified
+        if (args.globalHasFlag(kProtoPath)) {
+            loader->addProtoPath(args.globalRequiredFlag(kProtoPath));
+        }
+
+        // Load schema from file
+        if (has_proto) {
+            descriptor_pool = loader->loadProtoFile(args.globalRequiredFlag(kProto));
+        } else {
+            descriptor_pool = loader->loadDescriptorFile(args.globalRequiredFlag(kDescriptor));
+        }
+
+        if (!descriptor_pool) {
+            throw std::runtime_error("Failed to load protobuf schema");
+        }
+
+        // Create the message helper
+        message_helper = std::make_unique<DynamicMessageHelper>(descriptor_pool.get());
     };
+
+    // Create a new dynamic message
+    std::unique_ptr<google::protobuf::Message> newMessage() const
+    {
+        return message_helper->newMessage(message_type);
+    }
 
     std::unique_ptr<tools::io::InputSet> inputs;
     Protocol inputType;
     ProtoSerializer serializer;
     ProtoDeserializer deserializer;
+
+    // Runtime schema loading members
+    std::string message_type;
+    std::shared_ptr<const google::protobuf::DescriptorPool> descriptor_pool;
+    std::unique_ptr<DynamicMessageHelper> message_helper;
 };
 
 class BenchmarkArgs : public Args {
@@ -202,31 +254,31 @@ int handleBenchmark(BenchmarkArgs args)
         total_inputs++;
         // Deserialize object with the input protocol
         const auto contents = std::string(input->contents());
-        Schema obj;
-        deserialize(contents, args.inputType, args.deserializer, obj);
+        auto obj = args.newMessage();
+        deserialize(contents, args.inputType, args.deserializer, *obj);
         for (auto protocol : { Protocol::Proto, Protocol::ZL }) {
             // Get the serialized size of the object with the chosen
             // protocol
-            auto serialized = serialize(obj, protocol, args.serializer);
-            Schema deserialized;
-            deserialize(serialized, protocol, args.deserializer, deserialized);
+            auto serialized = serialize(*obj, protocol, args.serializer);
+            auto deserialized = args.newMessage();
+            deserialize(serialized, protocol, args.deserializer, *deserialized);
             serialized_size[static_cast<int>(protocol)] += serialized.size();
 
             // Check if the round trip is correct
             ZL_REQUIRE(
-                    MessageDifferencer::Equivalent(obj, deserialized),
+                    MessageDifferencer::Equivalent(*obj, *deserialized),
                     "Round trip check failed!");
 
             // Benchmark serialization and deserialization speeds
             const auto serialization_start = std::chrono::steady_clock::now();
             for (size_t n = 0; n < args.numIters; ++n) {
-                auto val = serialize(deserialized, protocol, args.serializer);
+                auto val = serialize(*deserialized, protocol, args.serializer);
             }
             const auto serialization_end     = std::chrono::steady_clock::now();
             const auto deserialization_start = std::chrono::steady_clock::now();
             for (size_t n = 0; n < args.numIters; ++n) {
-                Schema val;
-                deserialize(serialized, protocol, args.deserializer, val);
+                auto val = args.newMessage();
+                deserialize(serialized, protocol, args.deserializer, *val);
             }
             const auto deserialization_end = std::chrono::steady_clock::now();
             cdur[static_cast<int>(protocol)] += serialization_end - serialization_start;
@@ -249,17 +301,17 @@ int handleSerialize(SerializeArgs args)
 
         // Deserialize and serialize the protobuf object with the chosen
         // protocol
-        Schema obj;
-        deserialize(contents, args.inputType, args.deserializer, obj);
-        auto serialized = serialize(obj, args.outputType, args.serializer);
+        auto obj = args.newMessage();
+        deserialize(contents, args.inputType, args.deserializer, *obj);
+        auto serialized = serialize(*obj, args.outputType, args.serializer);
         ZL_LOG(ALWAYS, "Serialized to %d bytes!", serialized.size());
 
         // Check if the round trip is correct
         if (args.check) {
-            Schema deserialized;
-            deserialize(serialized, args.outputType, args.deserializer, deserialized);
+            auto deserialized = args.newMessage();
+            deserialize(serialized, args.outputType, args.deserializer, *deserialized);
             ZL_REQUIRE(
-                    MessageDifferencer::Equivalent(obj, deserialized),
+                    MessageDifferencer::Equivalent(*obj, *deserialized),
                     "Round trip check failed!");
             ZL_LOG(ALWAYS, "Round trip check passed!");
         };
@@ -279,18 +331,20 @@ int handleSerialize(SerializeArgs args)
 
 int handleTrain(TrainArgs args)
 {
-    std::vector<Schema> schemas;
+    // Collect all messages
+    std::vector<std::unique_ptr<google::protobuf::Message>> messages;
     for (auto& input : *args.inputs) {
         const auto contents = std::string(input->contents());
-        Schema schema;
-        deserialize(contents, args.inputType, args.deserializer, schema);
-        schemas.emplace_back(std::move(schema));
+        auto message = args.newMessage();
+        deserialize(contents, args.inputType, args.deserializer, *message);
+        messages.push_back(std::move(message));
     }
 
-    std::vector<training::MultiInput> samples(schemas.size());
-    for (size_t i = 0; i < schemas.size(); i++) {
+    // Extract training inputs from each message
+    std::vector<training::MultiInput> samples(messages.size());
+    for (size_t i = 0; i < messages.size(); i++) {
         samples[i] = training::MultiInput(
-                args.serializer.getTrainingInputs(schemas[i]));
+                args.serializer.getTrainingInputs(*messages[i]));
     }
 
     auto compressor = args.serializer.getCompressor();
@@ -349,7 +403,7 @@ int main(int argc, char** argv)
             kProtoPath,
             0,
             true,
-            "Add directory to protobuf import search path (can be specified multiple times)");
+            "Directory to search for protobuf imports");
     parser.addGlobalFlag(
             kMessageType,
             'm',
