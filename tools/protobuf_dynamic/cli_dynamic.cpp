@@ -86,16 +86,6 @@ std::string ext(Protocol protocol)
     throw std::runtime_error("Invalid protocol!");
 }
 
-// Legacy wrapper for backward compatibility - returns Schema by value
-Schema deserialize(
-        const std::string& serialized,
-        Protocol protocol,
-        ProtoDeserializer& deserializer)
-{
-    Schema obj;
-    deserialize(serialized, protocol, deserializer, obj);
-    return obj;
-}
 
 /**
  * @brief This class is used to store the global arguments passed to the CLI
@@ -207,13 +197,14 @@ int handleBenchmark(BenchmarkArgs args)
         total_inputs++;
         // Deserialize object with the input protocol
         const auto contents = std::string(input->contents());
-        auto obj = deserialize(contents, args.inputType, args.deserializer);
+        Schema obj;
+        deserialize(contents, args.inputType, args.deserializer, obj);
         for (auto protocol : { Protocol::Proto, Protocol::ZL }) {
             // Get the serialized size of the object with the chosen
             // protocol
             auto serialized = serialize(obj, protocol, args.serializer);
-            auto deserialized =
-                    deserialize(serialized, protocol, args.deserializer);
+            Schema deserialized;
+            deserialize(serialized, protocol, args.deserializer, deserialized);
             serialized_size[static_cast<int>(protocol)] += serialized.size();
 
             // Check if the round trip is correct
@@ -229,7 +220,8 @@ int handleBenchmark(BenchmarkArgs args)
             const auto serialization_end     = std::chrono::steady_clock::now();
             const auto deserialization_start = std::chrono::steady_clock::now();
             for (size_t n = 0; n < args.numIters; ++n) {
-                auto val = deserialize(serialized, protocol, args.deserializer);
+                Schema val;
+                deserialize(serialized, protocol, args.deserializer, val);
             }
             const auto deserialization_end = std::chrono::steady_clock::now();
             cdur[static_cast<int>(protocol)] += serialization_end - serialization_start;
@@ -252,14 +244,15 @@ int handleSerialize(SerializeArgs args)
 
         // Deserialize and serialize the protobuf object with the chosen
         // protocol
-        auto obj = deserialize(contents, args.inputType, args.deserializer);
+        Schema obj;
+        deserialize(contents, args.inputType, args.deserializer, obj);
         auto serialized = serialize(obj, args.outputType, args.serializer);
         ZL_LOG(ALWAYS, "Serialized to %d bytes!", serialized.size());
 
         // Check if the round trip is correct
         if (args.check) {
-            auto deserialized =
-                    deserialize(serialized, args.outputType, args.deserializer);
+            Schema deserialized;
+            deserialize(serialized, args.outputType, args.deserializer, deserialized);
             ZL_REQUIRE(
                     MessageDifferencer::Equivalent(obj, deserialized),
                     "Round trip check failed!");
@@ -284,8 +277,9 @@ int handleTrain(TrainArgs args)
     std::vector<Schema> schemas;
     for (auto& input : *args.inputs) {
         const auto contents = std::string(input->contents());
-        schemas.emplace_back(
-                deserialize(contents, args.inputType, args.deserializer));
+        Schema schema;
+        deserialize(contents, args.inputType, args.deserializer, schema);
+        schemas.emplace_back(std::move(schema));
     }
 
     std::vector<training::MultiInput> samples(schemas.size());
