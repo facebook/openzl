@@ -1,9 +1,9 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "serialization_utils.h"
-#include "ProtoSerializer.h"
-#include "ProtoDeserializer.h"
 #include <google/protobuf/util/json_util.h>
+#include "ProtoDeserializer.h"
+#include "ProtoSerializer.h"
 #include "openzl/common/assertion.h"
 
 namespace openzl {
@@ -13,9 +13,9 @@ using JsonPrintOptions = google::protobuf::util::JsonPrintOptions;
 using JsonParseOptions = google::protobuf::util::JsonParseOptions;
 
 std::string serialize(
-    const google::protobuf::Message& obj,
-    Protocol protocol,
-    ProtoSerializer& serializer)
+        const google::protobuf::Message& obj,
+        Protocol protocol,
+        ProtoSerializer& serializer)
 {
     std::string serialized;
     if (protocol == Protocol::Proto) {
@@ -34,10 +34,10 @@ std::string serialize(
 }
 
 void deserialize(
-    const std::string& serialized,
-    Protocol protocol,
-    ProtoDeserializer& deserializer,
-    google::protobuf::Message& obj)
+        const std::string& serialized,
+        Protocol protocol,
+        ProtoDeserializer& deserializer,
+        google::protobuf::Message& obj)
 {
     if (protocol == Protocol::Proto) {
         obj.ParseFromString(serialized);

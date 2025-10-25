@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
-#include "tools/protobuf_dynamic/DescriptorLoader.h"
 #include <gtest/gtest.h>
 #include <filesystem>
+#include "tools/protobuf_dynamic/DescriptorLoader.h"
 
 using namespace openzl::protobuf;
 
@@ -48,7 +48,8 @@ TEST(TestDescriptorLoader, LoadProtoFile)
 {
     DescriptorLoader loader;
     // Add the directory containing the proto files (derived from __FILE__)
-    std::filesystem::path test_dir = std::filesystem::path(__FILE__).parent_path();
+    std::filesystem::path test_dir =
+            std::filesystem::path(__FILE__).parent_path();
     loader.addProtoPath(test_dir.string());
 
     // Load the .proto file
@@ -77,16 +78,15 @@ TEST(TestDescriptorLoader, ErrorOnMissingFile)
             std::runtime_error);
 
     // Test missing proto file
-    EXPECT_THROW(
-            loader.loadProtoFile("nonexistent.proto"),
-            std::runtime_error);
+    EXPECT_THROW(loader.loadProtoFile("nonexistent.proto"), std::runtime_error);
 }
 
 TEST(TestDescriptorLoader, ProtoWithImports)
 {
     DescriptorLoader loader;
     // Add the directory containing the proto files (derived from __FILE__)
-    std::filesystem::path test_dir = std::filesystem::path(__FILE__).parent_path();
+    std::filesystem::path test_dir =
+            std::filesystem::path(__FILE__).parent_path();
     loader.addProtoPath(test_dir.string());
 
     // Load a proto file that has imports
@@ -100,7 +100,8 @@ TEST(TestDescriptorLoader, ProtoWithImports)
     EXPECT_EQ(main_desc->field_count(), 3);
 
     // Verify the imported message type is also loaded
-    const auto* imported_desc = pool->FindMessageTypeByName("test.ImportedMessage");
+    const auto* imported_desc =
+            pool->FindMessageTypeByName("test.ImportedMessage");
     ASSERT_NE(imported_desc, nullptr);
     EXPECT_EQ(imported_desc->field_count(), 2);
 
@@ -113,9 +114,11 @@ TEST(TestDescriptorLoader, ProtoWithImports)
 TEST(TestDescriptorLoader, InvalidProtoSyntax)
 {
     DescriptorLoader loader;
-    std::filesystem::path test_dir = std::filesystem::path(__FILE__).parent_path();
+    std::filesystem::path test_dir =
+            std::filesystem::path(__FILE__).parent_path();
     loader.addProtoPath(test_dir.string());
 
     // Should throw on parse error
-    EXPECT_THROW(loader.loadProtoFile("test_invalid.proto"), std::runtime_error);
+    EXPECT_THROW(
+            loader.loadProtoFile("test_invalid.proto"), std::runtime_error);
 }

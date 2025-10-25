@@ -2,13 +2,14 @@
 syntax = "proto3";
 package test;
 
-message ImportedMessage {
-    string data = 1;
+message ImportedMessage
+{
+    string data     = 1;
     int64 timestamp = 2;
 }
 
 enum ImportedEnum {
-    UNKNOWN = 0;
-    ACTIVE = 1;
+    UNKNOWN  = 0;
+    ACTIVE   = 1;
     INACTIVE = 2;
 }

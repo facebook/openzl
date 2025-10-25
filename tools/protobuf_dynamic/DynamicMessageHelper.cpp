@@ -9,9 +9,10 @@
 namespace openzl {
 namespace protobuf {
 
-DynamicMessageHelper::DynamicMessageHelper(const google::protobuf::DescriptorPool* pool)
-    : pool_(pool)
-    , factory_(std::make_unique<google::protobuf::DynamicMessageFactory>())
+DynamicMessageHelper::DynamicMessageHelper(
+        const google::protobuf::DescriptorPool* pool)
+        : pool_(pool),
+          factory_(std::make_unique<google::protobuf::DynamicMessageFactory>())
 {
     if (!pool_) {
         throw std::invalid_argument("DescriptorPool cannot be null");
@@ -20,11 +21,13 @@ DynamicMessageHelper::DynamicMessageHelper(const google::protobuf::DescriptorPoo
 
 DynamicMessageHelper::~DynamicMessageHelper() = default;
 
-DynamicMessageHelper::DynamicMessageHelper(DynamicMessageHelper&&) noexcept = default;
-DynamicMessageHelper& DynamicMessageHelper::operator=(DynamicMessageHelper&&) noexcept = default;
+DynamicMessageHelper::DynamicMessageHelper(DynamicMessageHelper&&) noexcept =
+        default;
+DynamicMessageHelper& DynamicMessageHelper::operator=(
+        DynamicMessageHelper&&) noexcept = default;
 
 std::unique_ptr<google::protobuf::Message> DynamicMessageHelper::newMessage(
-    const std::string& type_name) const
+        const std::string& type_name) const
 {
     const auto* descriptor = getDescriptor(type_name);
     if (!descriptor) {
@@ -40,9 +43,9 @@ std::unique_ptr<google::protobuf::Message> DynamicMessageHelper::newMessage(
 }
 
 std::unique_ptr<google::protobuf::Message> DynamicMessageHelper::parseMessage(
-    const std::string& type_name,
-    const void* data,
-    size_t size) const
+        const std::string& type_name,
+        const void* data,
+        size_t size) const
 {
     auto message = newMessage(type_name);
     if (!message) {
@@ -57,7 +60,7 @@ std::unique_ptr<google::protobuf::Message> DynamicMessageHelper::parseMessage(
 }
 
 const google::protobuf::Descriptor* DynamicMessageHelper::getDescriptor(
-    const std::string& type_name) const
+        const std::string& type_name) const
 {
     return pool_->FindMessageTypeByName(type_name);
 }

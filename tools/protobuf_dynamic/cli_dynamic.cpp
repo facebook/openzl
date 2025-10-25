@@ -5,9 +5,12 @@
 #include <google/protobuf/util/message_differencer.h>
 #include <filesystem>
 #include <iomanip>
+#include "DescriptorLoader.h"
+#include "DynamicMessageHelper.h"
 #include "custom_parsers/dependency_registration.h"
 #include "openzl/common/assertion.h"
 #include "openzl/common/logging.h"
+#include "serialization_utils.h"
 #include "tools/arg/arg_parser.h"
 #include "tools/io/InputFile.h"
 #include "tools/io/InputSet.h"
@@ -17,9 +20,6 @@
 #include "tools/protobuf/ProtoSerializer.h"
 #include "tools/training/train.h"
 #include "tools/training/train_params.h"
-#include "serialization_utils.h"
-#include "DescriptorLoader.h"
-#include "DynamicMessageHelper.h"
 
 namespace openzl {
 namespace protobuf {
@@ -29,13 +29,13 @@ using JsonPrintOptions   = google::protobuf::util::JsonPrintOptions;
 using JsonParseOptions   = google::protobuf::util::JsonParseOptions;
 using nano               = std::chrono::nanoseconds;
 
-std::string kInput       = "input";
-std::string kOutput      = "output";
-std::string kInputType   = "input-protocol";
-std::string kOutputType  = "output-protocol";
-std::string kCheck       = "check";
-std::string kNumIters    = "num-iters";
-std::string kCompressor  = "compressor";
+std::string kInput      = "input";
+std::string kOutput     = "output";
+std::string kInputType  = "input-protocol";
+std::string kOutputType = "output-protocol";
+std::string kCheck      = "check";
+std::string kNumIters   = "num-iters";
+std::string kCompressor = "compressor";
 // Runtime schema loading flags
 std::string kProto       = "proto";
 std::string kDescriptor  = "descriptor";
@@ -88,7 +88,6 @@ std::string ext(Protocol protocol)
     throw std::runtime_error("Invalid protocol!");
 }
 
-
 /**
  * @brief This class is used to store the global arguments passed to the CLI
  * tool.
@@ -111,19 +110,20 @@ class Args {
         }
 
         // Runtime schema loading is REQUIRED
-        bool has_proto = args.globalHasFlag(kProto);
+        bool has_proto      = args.globalHasFlag(kProto);
         bool has_descriptor = args.globalHasFlag(kDescriptor);
 
         if (!has_proto && !has_descriptor) {
             throw std::runtime_error(
-                "Runtime schema is required. Please specify either:\n"
-                "  --proto <file.proto> --proto-path <dir> --message-type <type>\n"
-                "  or\n"
-                "  --descriptor <file.desc> --message-type <type>");
+                    "Runtime schema is required. Please specify either:\n"
+                    "  --proto <file.proto> --proto-path <dir> --message-type <type>\n"
+                    "  or\n"
+                    "  --descriptor <file.desc> --message-type <type>");
         }
 
         if (has_proto && has_descriptor) {
-            throw std::runtime_error("Cannot specify both --proto and --descriptor");
+            throw std::runtime_error(
+                    "Cannot specify both --proto and --descriptor");
         }
 
         if (!args.globalHasFlag(kMessageType)) {
@@ -142,9 +142,11 @@ class Args {
 
         // Load schema from file
         if (has_proto) {
-            descriptor_pool = loader->loadProtoFile(args.globalRequiredFlag(kProto));
+            descriptor_pool =
+                    loader->loadProtoFile(args.globalRequiredFlag(kProto));
         } else {
-            descriptor_pool = loader->loadDescriptorFile(args.globalRequiredFlag(kDescriptor));
+            descriptor_pool = loader->loadDescriptorFile(
+                    args.globalRequiredFlag(kDescriptor));
         }
 
         if (!descriptor_pool) {
@@ -152,7 +154,8 @@ class Args {
         }
 
         // Create the message helper
-        message_helper = std::make_unique<DynamicMessageHelper>(descriptor_pool.get());
+        message_helper =
+                std::make_unique<DynamicMessageHelper>(descriptor_pool.get());
     };
 
     // Create a new dynamic message
@@ -219,16 +222,17 @@ void updateResults(
 {
     constexpr size_t BYTES_TO_MiB = 1024 * 1024;
 
-    const auto uncompressed_size = serialized_size[static_cast<int>(Protocol::Proto)];
+    const auto uncompressed_size =
+            serialized_size[static_cast<int>(Protocol::Proto)];
 
     for (auto protocol : { Protocol::Proto, Protocol::ZL }) {
         const auto ratio = static_cast<double>(uncompressed_size)
                 / serialized_size[static_cast<int>(protocol)];
 
-        const auto cmicros =
-                std::chrono::duration<double, std::micro>(cdur[static_cast<int>(protocol)]);
-        const auto dmicros =
-                std::chrono::duration<double, std::micro>(ddur[static_cast<int>(protocol)]);
+        const auto cmicros = std::chrono::duration<double, std::micro>(
+                cdur[static_cast<int>(protocol)]);
+        const auto dmicros = std::chrono::duration<double, std::micro>(
+                ddur[static_cast<int>(protocol)]);
 
         const auto cmibps = (uncompressed_size * iter_count * 1000 * 1000.0)
                 / (cmicros.count() * BYTES_TO_MiB);
@@ -236,9 +240,9 @@ void updateResults(
                 / (dmicros.count() * BYTES_TO_MiB);
 
         std::cout << toString(protocol) << ": " << uncompressed_size << " -> "
-                  << serialized_size[static_cast<int>(protocol)] << " (" << std::setprecision(2)
-                  << std::fixed << ratio << "),  " << cmibps << " MiB/s  "
-                  << dmibps << " MiB/s\n";
+                  << serialized_size[static_cast<int>(protocol)] << " ("
+                  << std::setprecision(2) << std::fixed << ratio << "),  "
+                  << cmibps << " MiB/s  " << dmibps << " MiB/s\n";
     }
     std::cout << std::flush;
 }
@@ -254,12 +258,12 @@ int handleBenchmark(BenchmarkArgs args)
         total_inputs++;
         // Deserialize object with the input protocol
         const auto contents = std::string(input->contents());
-        auto obj = args.newMessage();
+        auto obj            = args.newMessage();
         deserialize(contents, args.inputType, args.deserializer, *obj);
         for (auto protocol : { Protocol::Proto, Protocol::ZL }) {
             // Get the serialized size of the object with the chosen
             // protocol
-            auto serialized = serialize(*obj, protocol, args.serializer);
+            auto serialized   = serialize(*obj, protocol, args.serializer);
             auto deserialized = args.newMessage();
             deserialize(serialized, protocol, args.deserializer, *deserialized);
             serialized_size[static_cast<int>(protocol)] += serialized.size();
@@ -281,8 +285,10 @@ int handleBenchmark(BenchmarkArgs args)
                 deserialize(serialized, protocol, args.deserializer, *val);
             }
             const auto deserialization_end = std::chrono::steady_clock::now();
-            cdur[static_cast<int>(protocol)] += serialization_end - serialization_start;
-            ddur[static_cast<int>(protocol)] += deserialization_end - deserialization_start;
+            cdur[static_cast<int>(protocol)] +=
+                    serialization_end - serialization_start;
+            ddur[static_cast<int>(protocol)] +=
+                    deserialization_end - deserialization_start;
         }
         updateResults(args.numIters, serialized_size, cdur, ddur);
     }
@@ -309,7 +315,11 @@ int handleSerialize(SerializeArgs args)
         // Check if the round trip is correct
         if (args.check) {
             auto deserialized = args.newMessage();
-            deserialize(serialized, args.outputType, args.deserializer, *deserialized);
+            deserialize(
+                    serialized,
+                    args.outputType,
+                    args.deserializer,
+                    *deserialized);
             ZL_REQUIRE(
                     MessageDifferencer::Equivalent(*obj, *deserialized),
                     "Round trip check failed!");
@@ -335,7 +345,7 @@ int handleTrain(TrainArgs args)
     std::vector<std::unique_ptr<google::protobuf::Message>> messages;
     for (auto& input : *args.inputs) {
         const auto contents = std::string(input->contents());
-        auto message = args.newMessage();
+        auto message        = args.newMessage();
         deserialize(contents, args.inputType, args.deserializer, *message);
         messages.push_back(std::move(message));
     }
@@ -400,10 +410,7 @@ int main(int argc, char** argv)
             true,
             "Load protobuf schema from .desc descriptor file at runtime");
     parser.addGlobalFlag(
-            kProtoPath,
-            0,
-            true,
-            "Directory to search for protobuf imports");
+            kProtoPath, 0, true, "Directory to search for protobuf imports");
     parser.addGlobalFlag(
             kMessageType,
             'm',

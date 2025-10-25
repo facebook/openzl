@@ -14,8 +14,8 @@ namespace protobuf {
 /**
  * Error collector for protobuf compiler that stores error messages
  */
-class ErrorCollector : public google::protobuf::compiler::MultiFileErrorCollector
-{
+class ErrorCollector
+        : public google::protobuf::compiler::MultiFileErrorCollector {
    public:
     void RecordError(
             absl::string_view filename,
@@ -125,4 +125,3 @@ class DescriptorLoader {
 
 } // namespace protobuf
 } // namespace openzl
-

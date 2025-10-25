@@ -15,7 +15,7 @@ namespace openzl {
 namespace protobuf {
 
 DescriptorLoader::DescriptorLoader()
-    : error_collector_(std::make_unique<ErrorCollector>())
+        : error_collector_(std::make_unique<ErrorCollector>())
 {
 }
 
@@ -106,7 +106,8 @@ DescriptorLoader::loadDescriptorFile(const std::string& desc_file)
     // Read the descriptor file
     std::ifstream file(desc_file, std::ios::binary);
     if (!file) {
-        throw std::runtime_error("Failed to open descriptor file: " + desc_file);
+        throw std::runtime_error(
+                "Failed to open descriptor file: " + desc_file);
     }
 
     // Parse FileDescriptorSet
