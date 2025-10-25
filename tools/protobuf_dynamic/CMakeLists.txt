@@ -67,5 +67,14 @@ if (OPENZL_BUILD_PROTOBUF_TOOLS)
             GTest::gtest_main
         )
         gtest_discover_tests(test_descriptor_loader)
+        
+        # Test for DynamicMessageHelper
+        add_executable(test_dynamic_messages
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_dynamic_messages.cpp")
+        target_link_libraries(test_dynamic_messages PRIVATE
+            protobuf_serializer_dynamic
+            GTest::gtest_main
+        )
+        gtest_discover_tests(test_dynamic_messages)
     endif()
 endif()
