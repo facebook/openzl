@@ -32,13 +32,18 @@ using JsonPrintOptions   = google::protobuf::util::JsonPrintOptions;
 using JsonParseOptions   = google::protobuf::util::JsonParseOptions;
 using nano               = std::chrono::nanoseconds;
 
-std::string kInput      = "input";
-std::string kOutput     = "output";
-std::string kInputType  = "input-protocol";
-std::string kOutputType = "output-protocol";
-std::string kCheck      = "check";
-std::string kNumIters   = "num-iters";
-std::string kCompressor = "compressor";
+std::string kInput       = "input";
+std::string kOutput      = "output";
+std::string kInputType   = "input-protocol";
+std::string kOutputType  = "output-protocol";
+std::string kCheck       = "check";
+std::string kNumIters    = "num-iters";
+std::string kCompressor  = "compressor";
+// Runtime schema loading flags
+std::string kProto       = "proto";
+std::string kDescriptor  = "descriptor";
+std::string kProtoPath   = "proto-path";
+std::string kMessageType = "message-type";
 
 enum Cmd : int {
     UNSPECIFIED = 0,
@@ -328,6 +333,28 @@ int main(int argc, char** argv)
             'c',
             true,
             "An optional compressor to use for the ZL protocol.");
+
+    // Runtime schema loading flags
+    parser.addGlobalFlag(
+            kProto,
+            'p',
+            true,
+            "Load protobuf schema from .proto file at runtime");
+    parser.addGlobalFlag(
+            kDescriptor,
+            'd',
+            true,
+            "Load protobuf schema from .desc descriptor file at runtime");
+    parser.addGlobalFlag(
+            kProtoPath,
+            0,
+            true,
+            "Add directory to protobuf import search path (can be specified multiple times)");
+    parser.addGlobalFlag(
+            kMessageType,
+            'm',
+            true,
+            "Fully qualified message type name (e.g., package.MessageName)");
 
     // serialize
     parser.addCommand(Cmd::SERIALIZE, "serialize", 's');
