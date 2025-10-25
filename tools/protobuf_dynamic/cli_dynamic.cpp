@@ -22,6 +22,7 @@
 #endif
 #include "tools/training/train.h"
 #include "tools/training/train_params.h"
+#include "serialization_utils.h"
 
 namespace openzl {
 namespace protobuf {
@@ -44,12 +45,6 @@ enum Cmd : int {
     SERIALIZE   = 1,
     BENCHMARK   = 2,
     TRAIN       = 3,
-};
-
-enum Protocol {
-    Proto = 0,
-    ZL    = 1,
-    JSON  = 2,
 };
 
 Protocol parseProtocol(const std::string& protocol)
@@ -91,40 +86,14 @@ std::string ext(Protocol protocol)
     throw std::runtime_error("Invalid protocol!");
 }
 
-std::string
-serialize(const Schema& obj, Protocol protocol, ProtoSerializer& serializer)
-{
-    std::string serialized;
-    if (protocol == Protocol::Proto) {
-        serialized = obj.SerializeAsString();
-    } else if (protocol == Protocol::ZL) {
-        serialized = serializer.serialize(obj);
-    } else if (protocol == Protocol::JSON) {
-        auto status = google::protobuf::util::MessageToJsonString(
-                obj, &serialized, JsonPrintOptions());
-        ZL_REQUIRE(
-                status.ok(),
-                "Failed to serialize to JSON: %s",
-                status.message());
-    }
-    return serialized;
-}
-
+// Legacy wrapper for backward compatibility - returns Schema by value
 Schema deserialize(
         const std::string& serialized,
         Protocol protocol,
         ProtoDeserializer& deserializer)
 {
     Schema obj;
-    if (protocol == Protocol::Proto) {
-        obj.ParseFromString(serialized);
-    } else if (protocol == Protocol::ZL) {
-        deserializer.deserialize(serialized, obj);
-    } else if (protocol == Protocol::JSON) {
-        auto status = google::protobuf::util::JsonStringToMessage(
-                serialized, &obj, JsonParseOptions());
-        ZL_REQUIRE(status.ok(), "Failed to parse JSON: %s", status.message());
-    }
+    deserialize(serialized, protocol, deserializer, obj);
     return obj;
 }
 
@@ -203,16 +172,16 @@ void updateResults(
 {
     constexpr size_t BYTES_TO_MiB = 1024 * 1024;
 
-    const auto uncompressed_size = serialized_size[Protocol::Proto];
+    const auto uncompressed_size = serialized_size[static_cast<int>(Protocol::Proto)];
 
     for (auto protocol : { Protocol::Proto, Protocol::ZL }) {
         const auto ratio = static_cast<double>(uncompressed_size)
-                / serialized_size[protocol];
+                / serialized_size[static_cast<int>(protocol)];
 
         const auto cmicros =
-                std::chrono::duration<double, std::micro>(cdur[protocol]);
+                std::chrono::duration<double, std::micro>(cdur[static_cast<int>(protocol)]);
         const auto dmicros =
-                std::chrono::duration<double, std::micro>(ddur[protocol]);
+                std::chrono::duration<double, std::micro>(ddur[static_cast<int>(protocol)]);
 
         const auto cmibps = (uncompressed_size * iter_count * 1000 * 1000.0)
                 / (cmicros.count() * BYTES_TO_MiB);
@@ -220,7 +189,7 @@ void updateResults(
                 / (dmicros.count() * BYTES_TO_MiB);
 
         std::cout << toString(protocol) << ": " << uncompressed_size << " -> "
-                  << serialized_size[protocol] << " (" << std::setprecision(2)
+                  << serialized_size[static_cast<int>(protocol)] << " (" << std::setprecision(2)
                   << std::fixed << ratio << "),  " << cmibps << " MiB/s  "
                   << dmibps << " MiB/s\n";
     }
@@ -245,7 +214,7 @@ int handleBenchmark(BenchmarkArgs args)
             auto serialized = serialize(obj, protocol, args.serializer);
             auto deserialized =
                     deserialize(serialized, protocol, args.deserializer);
-            serialized_size[protocol] += serialized.size();
+            serialized_size[static_cast<int>(protocol)] += serialized.size();
 
             // Check if the round trip is correct
             ZL_REQUIRE(
@@ -263,8 +232,8 @@ int handleBenchmark(BenchmarkArgs args)
                 auto val = deserialize(serialized, protocol, args.deserializer);
             }
             const auto deserialization_end = std::chrono::steady_clock::now();
-            cdur[protocol] += serialization_end - serialization_start;
-            ddur[protocol] += deserialization_end - deserialization_start;
+            cdur[static_cast<int>(protocol)] += serialization_end - serialization_start;
+            ddur[static_cast<int>(protocol)] += deserialization_end - deserialization_start;
         }
         updateResults(args.numIters, serialized_size, cdur, ddur);
     }

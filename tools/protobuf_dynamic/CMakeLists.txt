@@ -67,7 +67,7 @@ if (OPENZL_BUILD_PROTOBUF_TOOLS)
             GTest::gtest_main
         )
         gtest_discover_tests(test_descriptor_loader)
-        
+
         # Test for DynamicMessageHelper
         add_executable(test_dynamic_messages
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_dynamic_messages.cpp")
@@ -76,5 +76,17 @@ if (OPENZL_BUILD_PROTOBUF_TOOLS)
             GTest::gtest_main
         )
         gtest_discover_tests(test_dynamic_messages)
+
+        # Test for polymorphic serialization
+        add_executable(test_polymorphic_serialize
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_polymorphic_serialize.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/schema.proto")
+        protobuf_generate(TARGET test_polymorphic_serialize)
+        target_link_libraries(test_polymorphic_serialize PRIVATE
+            protobuf_serializer_dynamic
+            GTest::gtest_main
+        )
+        target_include_directories(test_polymorphic_serialize PRIVATE ${PROJECT_BINARY_DIR})
+        gtest_discover_tests(test_polymorphic_serialize)
     endif()
 endif()
