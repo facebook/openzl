@@ -15,6 +15,7 @@ make
 ```
 
 ### Using the Protobuf CLI
+#### Serialization
 The `protobuf_cli` tool can be used to serialize Protobuf messages. You can serialize a Protobuf message by running the following command:
 ```
 protobuf_cli serialize --input <input_file> --output <output_file>
@@ -22,7 +23,28 @@ protobuf_cli serialize --input <input_file> --output <output_file>
 
 By default, the input is expected to be a proto serialized message and the output will be in the OpenZL format. You can change these defaults using the `--input-protocol` and `--output-protocol` flags. The supported protocols are `zl`, `proto`, and `json`.
 
-For example, if your input file is in the OpenZL format and you want your output to be protobuf, you can run the following command:
+For example, if your input file is in the OpenZL format and you want your output to be json, you can run the following command:
+```
+protobuf_cli serialize --input <input_file> --output <output_file> --input-protocol zl --output-protocol json
+```
+#### Deserialization
+You can deserialize an OpenZL-serialized Protobuf message by running the following command:
+
 ```
 protobuf_cli serialize --input <input_file> --output <output_file> --input-protocol zl --output-protocol proto
+```
+
+This will deserialize the message and write it to the output file in the proto format.
+
+#### Training
+You can train a custom compressor for your data by running the following command:
+
+```
+protobuf_cli train --input <input_files> --output trained.zlc
+```
+
+This will train a custom compressor for your data and write it to the `trained.zlc` file. You can then use this file to compress your data using the `--compressor` flag:
+
+```
+protobuf_cli serialize --input <input_file> --output <output_file> --compressor trained.zlc
 ```
