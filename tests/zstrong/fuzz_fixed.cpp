@@ -38,8 +38,9 @@ FUZZ_F(FixedTest, FuzzHuffRoundtrip)
     if (useNode) {
         setLargeCompressBound(8);
         finalizeGraph(
-                declareGraph(ZL_NodeID{
-                        ZL_PrivateStandardNodeID_huffman_struct_v2 }),
+                declareGraph(
+                        ZL_NodeID{
+                                ZL_PrivateStandardNodeID_huffman_struct_v2 }),
                 eltWidth);
         testRoundTripCompressionMayFail(input);
     } else {

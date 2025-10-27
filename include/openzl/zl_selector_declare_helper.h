@@ -225,8 +225,7 @@ extern "C" {
                 (const SELECTOR_NAME##_Successors*)_successors);            \
     }                                                                       \
     static ZL_UNUSED_ATTR SELECTOR_NAME##_Successors                        \
-            SELECTOR_NAME##_successors_init(                                \
-                    _ZS2_SELECTOR_INIT_ARGS(__VA_ARGS__))                   \
+    SELECTOR_NAME##_successors_init(_ZS2_SELECTOR_INIT_ARGS(__VA_ARGS__))   \
     {                                                                       \
         return (SELECTOR_NAME##_Successors){ _ZS2_SELECTOR_INIT_SET(        \
                 __VA_ARGS__) };                                             \

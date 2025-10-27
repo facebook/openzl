@@ -1463,7 +1463,7 @@ PYBIND11_MODULE(zstrong_json, m)
                  py::arg("input_type"),
                  py::arg("docs") = "")
             .def("select",
-                 (ZL_GraphID(PyCustomSelector::*)(
+                 (ZL_GraphID (PyCustomSelector::*)(
                          PySelectorCtx, py::object, py::tuple)
                           const)(&PyCustomSelector::select));
 

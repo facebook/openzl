@@ -460,9 +460,10 @@ class GeneticAlgorithm {
                 population_.push_back(std::move(*begin));
             }
         }
-        auto fitness = computeFitness(poly::span<const GeneT>(
-                population_.data() + oldSize,
-                population_.data() + population_.size()));
+        auto fitness = computeFitness(
+                poly::span<const GeneT>(
+                        population_.data() + oldSize,
+                        population_.data() + population_.size()));
         fitness_.insert(fitness_.end(), fitness.begin(), fitness.end());
         return updateRankAndCrowdingDistance();
     }

@@ -178,65 +178,66 @@ ZL_INLINE void* ZL_unconstify(void const* ptr)
 }
 
 #    define ZL_GET_SCOPE_CONTEXT_IMPL_SCOPE_CONTEXT() \
-        (ZL_launderScopeContext(_Generic(             \
-                ZL__scopeContext,                     \
-                default: NULL,                        \
-                ZL_ScopeContext: &ZL__scopeContext)))
+        (ZL_launderScopeContext(                      \
+                _Generic(                             \
+                        ZL__scopeContext,             \
+                        default: NULL,                \
+                        ZL_ScopeContext: &ZL__scopeContext)))
 #    define ZL_GET_SCOPE_CONTEXT_IMPL_CCTX()                 \
-        (ZL_launderScopeContext(_Generic(                    \
-                cctx,                                        \
-                default: NULL,                               \
-                ZL_CCtx                                      \
-                        *: ZL_OC_defaultScopeContext(        \
+        (ZL_launderScopeContext(                             \
+                _Generic(                                    \
+                        cctx,                                \
+                        default: NULL,                       \
+                        ZL_CCtx*: ZL_OC_defaultScopeContext( \
                                 ZL_CCtx_getOperationContext( \
                                         ZL_unconstify((void const*)cctx))))))
 #    define ZL_GET_SCOPE_CONTEXT_IMPL_DCTX()                 \
-        (ZL_launderScopeContext(_Generic(                    \
-                dctx,                                        \
-                default: NULL,                               \
-                ZL_DCtx                                      \
-                        *: ZL_OC_defaultScopeContext(        \
+        (ZL_launderScopeContext(                             \
+                _Generic(                                    \
+                        dctx,                                \
+                        default: NULL,                       \
+                        ZL_DCtx*: ZL_OC_defaultScopeContext( \
                                 ZL_DCtx_getOperationContext( \
                                         ZL_unconstify((void const*)dctx))))))
 #    define ZL_GET_SCOPE_CONTEXT_IMPL_EICTX()                   \
-        (ZL_launderScopeContext(_Generic(                       \
-                eictx,                                          \
-                default: NULL,                                  \
-                ZL_Encoder                                      \
-                        *: ZL_OC_defaultScopeContext(           \
+        (ZL_launderScopeContext(                                \
+                _Generic(                                       \
+                        eictx,                                  \
+                        default: NULL,                          \
+                        ZL_Encoder*: ZL_OC_defaultScopeContext( \
                                 ZL_Encoder_getOperationContext( \
                                         ZL_unconstify((void const*)eictx))))))
 #    define ZL_GET_SCOPE_CONTEXT_IMPL_DICTX()                   \
-        (ZL_launderScopeContext(_Generic(                       \
-                dictx,                                          \
-                default: NULL,                                  \
-                ZL_Decoder                                      \
-                        *: ZL_OC_defaultScopeContext(           \
+        (ZL_launderScopeContext(                                \
+                _Generic(                                       \
+                        dictx,                                  \
+                        default: NULL,                          \
+                        ZL_Decoder*: ZL_OC_defaultScopeContext( \
                                 ZL_Decoder_getOperationContext( \
                                         ZL_unconstify((void const*)dictx))))))
 #    define ZL_GET_SCOPE_CONTEXT_IMPL_CGRAPH()                     \
-        (ZL_launderScopeContext(_Generic(                          \
-                cgraph,                                            \
-                default: NULL,                                     \
-                ZL_Compressor                                      \
-                        *: ZL_OC_defaultScopeContext(              \
+        (ZL_launderScopeContext(                                   \
+                _Generic(                                          \
+                        cgraph,                                    \
+                        default: NULL,                             \
+                        ZL_Compressor*: ZL_OC_defaultScopeContext( \
                                 ZL_Compressor_getOperationContext( \
                                         ZL_unconstify(             \
                                                 (void const*)cgraph))))))
 #    define ZL_GET_SCOPE_CONTEXT_IMPL_GCTX()                  \
-        (ZL_launderScopeContext(_Generic(                     \
-                gctx,                                         \
-                default: NULL,                                \
-                ZL_Graph                                      \
-                        *: ZL_OC_defaultScopeContext(         \
+        (ZL_launderScopeContext(                              \
+                _Generic(                                     \
+                        gctx,                                 \
+                        default: NULL,                        \
+                        ZL_Graph*: ZL_OC_defaultScopeContext( \
                                 ZL_Graph_getOperationContext( \
                                         ZL_unconstify((void const*)gctx))))))
 #    define ZL_GET_SCOPE_CONTEXT_IMPL_SCTX()                 \
-        (ZL_launderScopeContext(_Generic(                    \
-                sctx,                                        \
-                default: NULL,                               \
-                ZL_Edge                                      \
-                        *: ZL_OC_defaultScopeContext(        \
+        (ZL_launderScopeContext(                             \
+                _Generic(                                    \
+                        sctx,                                \
+                        default: NULL,                       \
+                        ZL_Edge*: ZL_OC_defaultScopeContext( \
                                 ZL_Edge_getOperationContext( \
                                         ZL_unconstify((void const*)sctx))))))
 

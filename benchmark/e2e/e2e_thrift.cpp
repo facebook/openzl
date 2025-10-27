@@ -418,8 +418,9 @@ std::vector<ThriftTestCase> buildTestCases()
                 buildManySmallMapsTestCase<int64_t, int32_t>(targetSizeBytes));
         testCases.push_back(
                 buildManySmallMapsTestCase<int64_t, int64_t>(targetSizeBytes));
-        testCases.push_back(buildManySmallMapsTestCase<int64_t, std::string>(
-                targetSizeBytes));
+        testCases.push_back(
+                buildManySmallMapsTestCase<int64_t, std::string>(
+                        targetSizeBytes));
     }
 
     return testCases;

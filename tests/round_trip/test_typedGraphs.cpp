@@ -89,13 +89,12 @@ static ZL_Report add1_int(
 }
 // We use a #define, to be employed as initializer in static const declarations
 // below.
-#define ADD1_GDESC                                              \
-    (ZL_TypedGraphDesc)                                         \
-    {                                                           \
-        .CTid = CT_ADD1_ID, .inStreamType = ZL_Type_numeric,    \
-        .outStreamTypes = (const ZL_Type[]){ ZL_Type_numeric }, \
-        .nbOutStreams   = 1                                     \
-    }
+#define ADD1_GDESC                                                     \
+    (ZL_TypedGraphDesc){ .CTid         = CT_ADD1_ID,                   \
+                         .inStreamType = ZL_Type_numeric,              \
+                         .outStreamTypes =                             \
+                                 (const ZL_Type[]){ ZL_Type_numeric }, \
+                         .nbOutStreams = 1 }
 static ZL_TypedEncoderDesc const add1_CDesc = {
     .gd          = ADD1_GDESC,
     .transform_f = add1_int,
@@ -151,7 +150,8 @@ static ZL_Report tokenize_u32(ZL_Encoder* eictx, const ZL_Input* in) noexcept
 }
 #define TOKENIZE32_GDESC                                                     \
     {                                                                        \
-        .CTid = CT_TOKENIZEU32_ID, .inStreamType = ZL_Type_numeric,          \
+        .CTid           = CT_TOKENIZEU32_ID,                                 \
+        .inStreamType   = ZL_Type_numeric,                                   \
         .outStreamTypes = (const ZL_Type[]){ ZL_Type_numeric /* alphabet */, \
                                              ZL_Type_numeric /* index */ },  \
         .nbOutStreams   = 2,                                                 \
@@ -178,13 +178,12 @@ static ZL_Report forgetCommit(
 
     return ZL_returnValue(1); // nb Out Streams
 }
-#define FORGETCOMMIT_GDESC                                          \
-    (ZL_TypedGraphDesc)                                             \
-    {                                                               \
-        .CTid = CT_FORGETCOMMIT_ID, .inStreamType = ZL_Type_serial, \
-        .outStreamTypes = (const ZL_Type[]){ ZL_Type_serial },      \
-        .nbOutStreams   = 1                                         \
-    }
+#define FORGETCOMMIT_GDESC                                            \
+    (ZL_TypedGraphDesc){ .CTid         = CT_FORGETCOMMIT_ID,          \
+                         .inStreamType = ZL_Type_serial,              \
+                         .outStreamTypes =                            \
+                                 (const ZL_Type[]){ ZL_Type_serial }, \
+                         .nbOutStreams = 1 }
 static ZL_TypedEncoderDesc const forgetCommit_CDesc = {
     .gd          = FORGETCOMMIT_GDESC,
     .transform_f = forgetCommit,
@@ -345,9 +344,9 @@ static ZL_Report split2_reverseDeclarationOrder(
 }
 // Use a #define, to be employed as initializer in const declarations
 #define SPLIT2RDO_DESC                                                         \
-    (ZL_TypedGraphDesc)                                                        \
-    {                                                                          \
-        .CTid = CT_SPLIT2_ID, .inStreamType = ZL_Type_serial,                  \
+    (ZL_TypedGraphDesc){                                                       \
+        .CTid           = CT_SPLIT2_ID,                                        \
+        .inStreamType   = ZL_Type_serial,                                      \
         .outStreamTypes = (const ZL_Type[]){ ZL_Type_serial, ZL_Type_serial }, \
         .nbOutStreams   = 2                                                    \
     }

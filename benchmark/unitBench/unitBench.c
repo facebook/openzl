@@ -662,11 +662,13 @@ int main(int argc, const char* argv[])
 
         CMD_FLAG("--list", return display_target_names());
 
-        CMD_FLAG2("-d", "--decompress-only", bp.decompressOnly = true;
-                  bp.noDecompress = false)
+        CMD_FLAG2(
+                "-d", "--decompress-only", bp.decompressOnly = true;
+                bp.noDecompress = false)
 
-        CMD_FLAG2("-z", "--no-decompress", bp.noDecompress = true;
-                  bp.decompressOnly = false)
+        CMD_FLAG2(
+                "-z", "--no-decompress", bp.noDecompress = true;
+                bp.decompressOnly = false)
 
         CMD_FLAG2("-m", "--memory", bp.memory = true);
 
@@ -685,8 +687,9 @@ int main(int argc, const char* argv[])
 
         CMD_FLAG("-q", bp.notification = 0);
         CMD_FLAG("--quiet", bp.notification = 0);
-        CMD_FLAG("--csv", dispform = disp_csv; bp.notification = 0;
-                 bp.noDecompress = true);
+        CMD_FLAG(
+                "--csv", dispform = disp_csv; bp.notification = 0;
+                bp.noDecompress = true);
 
         CMD_FLAG("--save-result", bp.saveArtifact = true);
 

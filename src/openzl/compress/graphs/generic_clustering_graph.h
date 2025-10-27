@@ -65,12 +65,12 @@ ZL_Clustering_deserializeClusteringConfig(
 ZL_Report
 graph_compressClustered(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs);
 
-#define MIGRAPH_CLUSTERING                                                 \
-    {                                                                      \
-        .name = "!zl.cluster", .graph_f = graph_compressClustered,         \
-        .inputTypeMasks = (const ZL_Type[]){ ZL_Type_any }, .nbInputs = 1, \
-        .lastInputIsVariable = 1                                           \
-    }
+#define MIGRAPH_CLUSTERING                                     \
+    { .name                = "!zl.cluster",                    \
+      .graph_f             = graph_compressClustered,          \
+      .inputTypeMasks      = (const ZL_Type[]){ ZL_Type_any }, \
+      .nbInputs            = 1,                                \
+      .lastInputIsVariable = 1 }
 
 #if defined(__cplusplus)
 } // extern "C"

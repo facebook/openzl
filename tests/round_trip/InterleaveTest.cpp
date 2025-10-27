@@ -33,9 +33,10 @@ TEST_F(InterleaveTest, MultipleInputs)
             continue;
         }
         preInputs.push_back(std::move(stringInput));
-        zlInputs.push_back(Input::refString(
-                preInputs[preInputs.size() - 1].first,
-                preInputs[preInputs.size() - 1].second));
+        zlInputs.push_back(
+                Input::refString(
+                        preInputs[preInputs.size() - 1].first,
+                        preInputs[preInputs.size() - 1].second));
     }
     roundtrip(zlInputs);
 }

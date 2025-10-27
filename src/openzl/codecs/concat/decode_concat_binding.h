@@ -16,25 +16,17 @@ ZL_Report DI_concat(
         const ZL_Input* variableSrcs[],
         size_t nbVariableSrcs);
 
-#define DI_CONCAT_SERIAL(id)                                      \
-    {                                                             \
-        .transform_f = DI_concat, .name = "concat_serial_decoder" \
-    }
+#define DI_CONCAT_SERIAL(id) \
+    { .transform_f = DI_concat, .name = "concat_serial_decoder" }
 
-#define DI_CONCAT_NUM(id)                                      \
-    {                                                          \
-        .transform_f = DI_concat, .name = "concat_num_decoder" \
-    }
+#define DI_CONCAT_NUM(id) \
+    { .transform_f = DI_concat, .name = "concat_num_decoder" }
 
-#define DI_CONCAT_STRUCT(id)                                      \
-    {                                                             \
-        .transform_f = DI_concat, .name = "concat_struct_decoder" \
-    }
+#define DI_CONCAT_STRUCT(id) \
+    { .transform_f = DI_concat, .name = "concat_struct_decoder" }
 
-#define DI_CONCAT_STRING(id)                                      \
-    {                                                             \
-        .transform_f = DI_concat, .name = "concat_string_decoder" \
-    }
+#define DI_CONCAT_STRING(id) \
+    { .transform_f = DI_concat, .name = "concat_string_decoder" }
 
 ZL_END_C_DECLS
 

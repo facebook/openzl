@@ -12,10 +12,8 @@ ZL_BEGIN_C_DECLS
 // Use and generate Integer streams
 ZL_Report DI_divide_by_int(ZL_Decoder* dictx, const ZL_Input* in[]);
 
-#define DI_DIVIDE_BY_INT(id)                                 \
-    {                                                        \
-        .transform_f = DI_divide_by_int, .name = "divide by" \
-    }
+#define DI_DIVIDE_BY_INT(id) \
+    { .transform_f = DI_divide_by_int, .name = "divide by" }
 
 ZL_END_C_DECLS
 

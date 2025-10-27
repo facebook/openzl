@@ -280,9 +280,10 @@ size_t DataStatsU8_getHuffmanSize(DataStatsU8* stats)
 
 size_t DataStatsU8_getDeltaHuffmanSize(DataStatsU8* stats)
 {
-    RETURN_OR_SET_LAZY(stats,
-                       deltaHuffmanSize,
-                       DataStatsU8_estimateHuffmanSize(stats, true););
+    RETURN_OR_SET_LAZY(
+            stats,
+            deltaHuffmanSize,
+            DataStatsU8_estimateHuffmanSize(stats, true););
 }
 
 size_t DataStatsU8_estimateHuffmanSizeFast(DataStatsU8* stats, bool delta)

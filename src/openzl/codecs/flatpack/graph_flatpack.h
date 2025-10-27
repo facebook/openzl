@@ -7,10 +7,11 @@
 /// Graph definition for the flabpack transform
 /// used by both the encoder and decoder side.
 
-#define FLATPACK_GRAPH(id)                                            \
-    {                                                                 \
-        .CTid = id, .inputTypes = ZL_STREAMTYPELIST(ZL_Type_serial),  \
-        .soTypes = ZL_STREAMTYPELIST(ZL_Type_serial, ZL_Type_serial), \
+#define FLATPACK_GRAPH(id)                                               \
+    {                                                                    \
+        .CTid       = id,                                                \
+        .inputTypes = ZL_STREAMTYPELIST(ZL_Type_serial),                 \
+        .soTypes    = ZL_STREAMTYPELIST(ZL_Type_serial, ZL_Type_serial), \
     }
 
 #endif

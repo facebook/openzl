@@ -101,8 +101,10 @@ void testPrimitiveTypes()
     expectedVariableStreams.at(LogicalId(5)).writeValue<float>(0.42);
     expectedVariableStreams.at(LogicalId(6)).writeValue<double>(0.42);
     expectedVariableStreams.at(LogicalId(7))
-            .writeBytes(folly::ByteRange(
-                    (const uint8_t*)testString.data(), testString.size()));
+            .writeBytes(
+                    folly::ByteRange(
+                            (const uint8_t*)testString.data(),
+                            testString.size()));
 
     // These streams are used for string VSF splits
     folly::F14FastMap<LogicalId, WriteStream>

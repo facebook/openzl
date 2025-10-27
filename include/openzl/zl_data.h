@@ -48,11 +48,7 @@ typedef enum {
             ZL_Type_serial | ZL_Type_struct | ZL_Type_numeric \
             | ZL_Type_string)
 
-#define ZL_DATA_ID_INPUTSTREAM \
-    (ZL_DataID)                \
-    {                          \
-        .sid = (ZL_IDType) - 1 \
-    }
+#define ZL_DATA_ID_INPUTSTREAM (ZL_DataID){ .sid = (ZL_IDType) - 1 }
 
 /* ============================== */
 /* =====    Data object     ===== */

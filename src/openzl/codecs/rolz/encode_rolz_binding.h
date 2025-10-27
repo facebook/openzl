@@ -16,17 +16,15 @@ EI_fastlz_typed(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 
 // Following ZL_TypedEncoderDesc declaration,
 // presumed to be used as initializer only
-#define EI_ROLZ(id)                                         \
-    {                                                       \
-        .gd = PIPE_GRAPH(id), .transform_f = EI_rolz_typed, \
-        .name = "!zl.private.rolz_deprecated"               \
-    }
+#define EI_ROLZ(id)                  \
+    { .gd          = PIPE_GRAPH(id), \
+      .transform_f = EI_rolz_typed,  \
+      .name        = "!zl.private.rolz_deprecated" }
 
-#define EI_FASTLZ(id)                                         \
-    {                                                         \
-        .gd = PIPE_GRAPH(id), .transform_f = EI_fastlz_typed, \
-        .name = "!zl.private.fast_lz_deprecated"              \
-    }
+#define EI_FASTLZ(id)                 \
+    { .gd          = PIPE_GRAPH(id),  \
+      .transform_f = EI_fastlz_typed, \
+      .name        = "!zl.private.fast_lz_deprecated" }
 
 /* =============================================
  * LEGACY transforms

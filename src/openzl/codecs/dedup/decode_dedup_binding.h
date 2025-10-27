@@ -17,10 +17,8 @@ ZL_Report DI_dedup_num(
         const ZL_Input* variableSrcs[],
         size_t nbVariableSrcs);
 
-#define DI_DEDUP_NUM(id)                                         \
-    {                                                            \
-        .transform_f = DI_dedup_num, .name = "dedup_num_decoder" \
-    }
+#define DI_DEDUP_NUM(id) \
+    { .transform_f = DI_dedup_num, .name = "dedup_num_decoder" }
 
 ZL_END_C_DECLS
 

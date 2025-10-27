@@ -8,9 +8,7 @@
 
 ZL_Report DI_mergeSorted(ZL_Decoder* dictx, const ZL_Input* ins[]);
 
-#define DI_MERGE_SORTED(id)                                   \
-    {                                                         \
-        .transform_f = DI_mergeSorted, .name = "merge sorted" \
-    }
+#define DI_MERGE_SORTED(id) \
+    { .transform_f = DI_mergeSorted, .name = "merge sorted" }
 
 #endif

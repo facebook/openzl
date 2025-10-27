@@ -935,11 +935,13 @@ TEST_F(A1CBorTest, JsonRoundTrip)
     data["array"].push_back(false);
     data["array"].push_back(nullptr);
     data["array"].push_back("hello world1");
-    data["array"].push_back(json::object({
-            { "type", "tag" },
-            { "tag", 100 },
-            { "value", json::array({ 0, 1, 2 }) },
-    }));
+    data["array"].push_back(
+            json::object(
+                    {
+                            { "type", "tag" },
+                            { "tag", 100 },
+                            { "value", json::array({ 0, 1, 2 }) },
+                    }));
     data["false"]  = false;
     data["true"]   = true;
     data["map"]    = json::object();

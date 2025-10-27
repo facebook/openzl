@@ -161,9 +161,10 @@ TEST_F(IntegerTest, MergeSorted)
     testMergeSorted(std::vector<uint32_t>({ 0, 1, 2, 0, 2, 1, 1, 2 }));
     testMergeSorted(std::vector<uint32_t>({ 0, 1, 2, 10, (uint32_t)-1 }));
     testMergeSorted(std::vector<uint32_t>({ 0, 0, 0, 0, 0, 0 }));
-    testMergeSorted(std::vector<uint32_t>(
-            { 0,  1, 2, 3, 4,      10, 10, 9,  8, 7,  8, 9,
-              12, 0, 5, 9, 100000, 15, 18, 25, 0, 13, 5, 18 }));
+    testMergeSorted(
+            std::vector<uint32_t>({ 0,      1,  2,  3,  4,  10, 10, 9,
+                                    8,      7,  8,  9,  12, 0,  5,  9,
+                                    100000, 15, 18, 25, 0,  13, 5,  18 }));
     for (size_t i = 1; i < 65; ++i) {
         testMergeSorted(std::vector<uint32_t>(i));
         std::vector<uint32_t> data;

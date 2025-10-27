@@ -55,13 +55,12 @@ static ZL_Report decFail_encoder(
 
 // We use a #define, to be employed as initializer in static const declarations
 // below.
-#define DECFAIL_GDESC                                          \
-    (ZL_TypedGraphDesc)                                        \
-    {                                                          \
-        .CTid = CT_DECFAIL_ID, .inStreamType = ZL_Type_serial, \
-        .outStreamTypes = (const ZL_Type[]){ ZL_Type_serial }, \
-        .nbOutStreams   = 1                                    \
-    }
+#define DECFAIL_GDESC                                                 \
+    (ZL_TypedGraphDesc){ .CTid         = CT_DECFAIL_ID,               \
+                         .inStreamType = ZL_Type_serial,              \
+                         .outStreamTypes =                            \
+                                 (const ZL_Type[]){ ZL_Type_serial }, \
+                         .nbOutStreams = 1 }
 
 // Encoder declaration
 static ZL_TypedEncoderDesc const decFail_CDesc = {
@@ -81,13 +80,12 @@ static ZL_Report compressFail_encoder(
 
 // We use a #define, to be employed as initializer in static const declarations
 // below.
-#define COMPRESSFAIL_GDESC                                          \
-    (ZL_TypedGraphDesc)                                             \
-    {                                                               \
-        .CTid = CT_COMPRESSFAIL_ID, .inStreamType = ZL_Type_serial, \
-        .outStreamTypes = (const ZL_Type[]){ ZL_Type_serial },      \
-        .nbOutStreams   = 1                                         \
-    }
+#define COMPRESSFAIL_GDESC                                            \
+    (ZL_TypedGraphDesc){ .CTid         = CT_COMPRESSFAIL_ID,          \
+                         .inStreamType = ZL_Type_serial,              \
+                         .outStreamTypes =                            \
+                                 (const ZL_Type[]){ ZL_Type_serial }, \
+                         .nbOutStreams = 1 }
 
 // Encoder declaration
 static ZL_TypedEncoderDesc const compressFail_CDesc = {
@@ -115,13 +113,12 @@ static ZL_Report justCopy_encoder(
 
 // We use a #define, to be employed as initializer in static const declarations
 // below.
-#define JUSTCOPY_GDESC                                          \
-    (ZL_TypedGraphDesc)                                         \
-    {                                                           \
-        .CTid = CT_JUSTCOPY_ID, .inStreamType = ZL_Type_serial, \
-        .outStreamTypes = (const ZL_Type[]){ ZL_Type_serial },  \
-        .nbOutStreams   = 1                                     \
-    }
+#define JUSTCOPY_GDESC                                                \
+    (ZL_TypedGraphDesc){ .CTid         = CT_JUSTCOPY_ID,              \
+                         .inStreamType = ZL_Type_serial,              \
+                         .outStreamTypes =                            \
+                                 (const ZL_Type[]){ ZL_Type_serial }, \
+                         .nbOutStreams = 1 }
 
 // Encoder declaration
 static ZL_TypedEncoderDesc const justCopy_CDesc = {

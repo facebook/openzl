@@ -102,7 +102,7 @@ void initMlSubmodule(py::module& m)
                 .def(py::init<std::unordered_set<std::string>>(),
                      py::arg("feature_names"))
                 .def("getFeatures",
-                     (FeatureMap(PyFeatureGenerator::*)(py::array) const)
+                     (FeatureMap (PyFeatureGenerator::*)(py::array) const)
                              & PyFeatureGenerator::getFeatures,
                      py::arg("data"))
                 .doc() =

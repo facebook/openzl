@@ -21,17 +21,19 @@ ZL_Report EI_zstd(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 void* EIZSTD_createCCtx(void);
 void EIZSTD_freeCCtx(void* state);
 
-#define EI_ZSTD(id)                                   \
-    {                                                 \
-        .gd = PIPE_GRAPH(id), .transform_f = EI_zstd, \
-        .name                  = "!zl.private.zstd",  \
-        .trStateMgr.stateAlloc = EIZSTD_createCCtx,   \
-        .trStateMgr.stateFree  = EIZSTD_freeCCtx,     \
+#define EI_ZSTD(id)                                  \
+    {                                                \
+        .gd                    = PIPE_GRAPH(id),     \
+        .transform_f           = EI_zstd,            \
+        .name                  = "!zl.private.zstd", \
+        .trStateMgr.stateAlloc = EIZSTD_createCCtx,  \
+        .trStateMgr.stateFree  = EIZSTD_freeCCtx,    \
     }
 
 #define EI_ZSTD_FIXED(id)                                             \
     {                                                                 \
-        .gd = FIXED_ENTROPY_GRAPH(id), .transform_f = EI_zstd,        \
+        .gd                    = FIXED_ENTROPY_GRAPH(id),             \
+        .transform_f           = EI_zstd,                             \
         .name                  = "!zl.private.zstd_fixed_deprecated", \
         .trStateMgr.stateAlloc = EIZSTD_createCCtx,                   \
         .trStateMgr.stateFree  = EIZSTD_freeCCtx,                     \

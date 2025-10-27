@@ -161,10 +161,8 @@ ZL_BEGIN_C_DECLS
  * VECTOR_EMPTY:
  * Initializes an empty vector as an expression.
  */
-#define VECTOR_EMPTY(max_capacity)                    \
-    {                                                 \
-        ._generic = GenericVector_empty(max_capacity) \
-    }
+#define VECTOR_EMPTY(max_capacity) \
+    { ._generic = GenericVector_empty(max_capacity) }
 
 /*
  * VECTOR_RESET:

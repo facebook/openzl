@@ -19,15 +19,10 @@ ZL_Report DI_transpose_split(
         const ZL_Input* inVOs[],
         size_t nbInVOs);
 
-#define DI_TRANSPOSE(id)                                 \
-    {                                                    \
-        .transform_f = DI_transpose, .name = "transpose" \
-    }
+#define DI_TRANSPOSE(id) { .transform_f = DI_transpose, .name = "transpose" }
 
-#define DI_TRANSPOSE_SPLIT(id)                                       \
-    {                                                                \
-        .transform_f = DI_transpose_split, .name = "transpose split" \
-    }
+#define DI_TRANSPOSE_SPLIT(id) \
+    { .transform_f = DI_transpose_split, .name = "transpose split" }
 
 /* =============================================
  * LEGACY transforms
@@ -66,35 +61,17 @@ ZL_Report DI_transposesplit8_bytes(ZL_Decoder* dictx, const ZL_Input* in[]);
 
 // Following ZL_TypedEncoderDesc declaration,
 // presumed to be used as initializer only
-#define DI_TRANSPOSE_2(id)                 \
-    {                                      \
-        .transform_f = DI_transpose2_typed \
-    }
+#define DI_TRANSPOSE_2(id) { .transform_f = DI_transpose2_typed }
 
-#define DI_TRANSPOSE_4(id)                 \
-    {                                      \
-        .transform_f = DI_transpose4_typed \
-    }
+#define DI_TRANSPOSE_4(id) { .transform_f = DI_transpose4_typed }
 
-#define DI_TRANSPOSE_8(id)                 \
-    {                                      \
-        .transform_f = DI_transpose8_typed \
-    }
+#define DI_TRANSPOSE_8(id) { .transform_f = DI_transpose8_typed }
 
-#define DI_TRANSPOSE_SPLIT2(id)                 \
-    {                                           \
-        .transform_f = DI_transposesplit2_bytes \
-    }
+#define DI_TRANSPOSE_SPLIT2(id) { .transform_f = DI_transposesplit2_bytes }
 
-#define DI_TRANSPOSE_SPLIT4(id)                 \
-    {                                           \
-        .transform_f = DI_transposesplit4_bytes \
-    }
+#define DI_TRANSPOSE_SPLIT4(id) { .transform_f = DI_transposesplit4_bytes }
 
-#define DI_TRANSPOSE_SPLIT8(id)                 \
-    {                                           \
-        .transform_f = DI_transposesplit8_bytes \
-    }
+#define DI_TRANSPOSE_SPLIT8(id) { .transform_f = DI_transposesplit8_bytes }
 
 ZL_END_C_DECLS
 

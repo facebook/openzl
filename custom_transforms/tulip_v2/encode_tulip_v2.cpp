@@ -61,11 +61,12 @@ class TulipV2Parser {
         int8_t byte1;
         reader_.readByte(byte1);
         if (byte0 != int8_t(0x80) || byte1 != int8_t(0x00)) {
-            throw std::runtime_error(fmt::format(
-                    "Bad TulipV2 Header {} {}: {}",
-                    byte0,
-                    byte1,
-                    reader_.getCursorPosition()));
+            throw std::runtime_error(
+                    fmt::format(
+                            "Bad TulipV2 Header {} {}: {}",
+                            byte0,
+                            byte1,
+                            reader_.getCursorPosition()));
         }
         return true;
     }

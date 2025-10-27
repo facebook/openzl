@@ -98,12 +98,11 @@ static ZL_Report swap_lastfirst(ZL_Encoder* eictx, const ZL_Input* in) noexcept
 
 // Prefer a #define, to be used as initializer in static const declarations
 #define SWAP_LASTFIRST_GDESC                                          \
-    (ZL_TypedGraphDesc)                                               \
-    {                                                                 \
-        .CTid = CT_SWAP_LASTFIRST_ID, .inStreamType = ZL_Type_string, \
-        .outStreamTypes = (const ZL_Type[]){ ZL_Type_string },        \
-        .nbOutStreams   = 1                                           \
-    }
+    (ZL_TypedGraphDesc){ .CTid         = CT_SWAP_LASTFIRST_ID,        \
+                         .inStreamType = ZL_Type_string,              \
+                         .outStreamTypes =                            \
+                                 (const ZL_Type[]){ ZL_Type_string }, \
+                         .nbOutStreams = 1 }
 static ZL_TypedEncoderDesc const swap_lastfirst_CDesc = {
     .gd          = SWAP_LASTFIRST_GDESC,
     .transform_f = swap_lastfirst,
@@ -139,13 +138,12 @@ static ZL_Report swap_lastfirst_v2(
 }
 
 // Prefer a #define, to be used as initializer in static const declarations
-#define SWAP_LASTFIRST_V2_GDESC                                          \
-    (ZL_TypedGraphDesc)                                                  \
-    {                                                                    \
-        .CTid = CT_SWAP_LASTFIRST_V2_ID, .inStreamType = ZL_Type_string, \
-        .outStreamTypes = (const ZL_Type[]){ ZL_Type_string },           \
-        .nbOutStreams   = 1                                              \
-    }
+#define SWAP_LASTFIRST_V2_GDESC                                       \
+    (ZL_TypedGraphDesc){ .CTid         = CT_SWAP_LASTFIRST_V2_ID,     \
+                         .inStreamType = ZL_Type_string,              \
+                         .outStreamTypes =                            \
+                                 (const ZL_Type[]){ ZL_Type_string }, \
+                         .nbOutStreams = 1 }
 static ZL_TypedEncoderDesc const swap_lastfirst_v2_CDesc = {
     .gd          = SWAP_LASTFIRST_V2_GDESC,
     .transform_f = swap_lastfirst_v2,
@@ -166,13 +164,12 @@ static ZL_Report inString_justFail(
 }
 
 // Prefer a #define, to be used as initializer in static const declarations
-#define STRING_JUSTFAIL_GDESC                                          \
-    (ZL_TypedGraphDesc)                                                \
-    {                                                                  \
-        .CTid = CT_STRING_JUSTFAIL_ID, .inStreamType = ZL_Type_string, \
-        .outStreamTypes = (const ZL_Type[]){ ZL_Type_serial },         \
-        .nbOutStreams   = 1                                            \
-    }
+#define STRING_JUSTFAIL_GDESC                                         \
+    (ZL_TypedGraphDesc){ .CTid         = CT_STRING_JUSTFAIL_ID,       \
+                         .inStreamType = ZL_Type_string,              \
+                         .outStreamTypes =                            \
+                                 (const ZL_Type[]){ ZL_Type_serial }, \
+                         .nbOutStreams = 1 }
 static ZL_TypedEncoderDesc const string_justFail_CDesc = {
     .gd          = STRING_JUSTFAIL_GDESC,
     .transform_f = inString_justFail,

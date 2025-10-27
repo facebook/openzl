@@ -16,10 +16,8 @@ ZL_Report DI_interleave(
         const ZL_Input* variableSrcs[],
         size_t nbVariableSrcs);
 
-#define DI_INTERLEAVE(id)                                             \
-    {                                                                 \
-        .transform_f = DI_interleave, .name = "!zl.interleave/decode" \
-    }
+#define DI_INTERLEAVE(id) \
+    { .transform_f = DI_interleave, .name = "!zl.interleave/decode" }
 
 ZL_END_C_DECLS
 

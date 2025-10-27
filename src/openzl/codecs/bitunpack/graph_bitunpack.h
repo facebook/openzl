@@ -10,10 +10,11 @@
 
 #include "openzl/zl_data.h" // st_*
 
-#define BITUNPACK_GRAPH(id)                                          \
-    {                                                                \
-        .CTid = id, .inputTypes = ZL_STREAMTYPELIST(ZL_Type_serial), \
-        .soTypes = ZL_STREAMTYPELIST(ZL_Type_numeric),               \
+#define BITUNPACK_GRAPH(id)                               \
+    {                                                     \
+        .CTid       = id,                                 \
+        .inputTypes = ZL_STREAMTYPELIST(ZL_Type_serial),  \
+        .soTypes    = ZL_STREAMTYPELIST(ZL_Type_numeric), \
     }
 
 #endif

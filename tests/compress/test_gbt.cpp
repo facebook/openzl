@@ -45,13 +45,14 @@ GBTPredictor_Tree generateTree(
                 (forceRight || dist(mt) % 2) ? rightChildIdx : leftChildIdx;
         const float value = (float)(i + 1) + valueOffset;
 
-        nodes.push_back({
-                .featureIdx      = featureIdx,
-                .value           = value,
-                .leftChildIdx    = leftChildIdx,
-                .rightChildIdx   = rightChildIdx,
-                .missingChildIdx = missingChildIdx,
-        });
+        nodes.push_back(
+                {
+                        .featureIdx      = featureIdx,
+                        .value           = value,
+                        .leftChildIdx    = leftChildIdx,
+                        .rightChildIdx   = rightChildIdx,
+                        .missingChildIdx = missingChildIdx,
+                });
     }
     GBTPredictor_Tree tree = { .numNodes = nodes.size(),
                                .nodes    = nodes.data() };

@@ -148,9 +148,10 @@ ZL_Edge_runConvertSerialToStringNode(
         ZL_ASSERT_NN(stringLens);
 
     const ZL_LocalParams params = {
-        .refParams = ZL_REFPARAMS({ ZL_SETSTRINGLENS_ARRAY_PID,
-                                    stringLens,
-                                    nbString * sizeof(uint32_t) }),
+        .refParams = ZL_REFPARAMS(
+                { ZL_SETSTRINGLENS_ARRAY_PID,
+                  stringLens,
+                  nbString * sizeof(uint32_t) }),
     };
 
     return ZL_Edge_runNode_withParams(sctx, ZL_NODE_SETSTRINGLENS, &params);

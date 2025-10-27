@@ -1244,10 +1244,12 @@ std::vector<std::string> decompressMulti(
     DCtx dctx;
     // TODO(terrelln): Get rid of this hack by properly registering thrift as a
     // custom transform. We don't currently support custom C++ transforms.
-    dctx.unwrap(thrift::registerCompactTransform(
-            dctx.get(), thrift::kThriftCompactConfigurable));
-    dctx.unwrap(thrift::registerBinaryTransform(
-            dctx.get(), thrift::kThriftBinaryConfigurable));
+    dctx.unwrap(
+            thrift::registerCompactTransform(
+                    dctx.get(), thrift::kThriftCompactConfigurable));
+    dctx.unwrap(
+            thrift::registerBinaryTransform(
+                    dctx.get(), thrift::kThriftBinaryConfigurable));
     dctx.unwrap(
             ZS2_DCtx_registerJsonExtract(dctx.get(), kJsonExtractTransformID));
     dctx.unwrap(

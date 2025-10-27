@@ -30,10 +30,8 @@ ZL_Report DI_splitByStruct(
         const ZL_Input* inVariable[],
         size_t nbInVariable);
 
-#define DI_SPLITBYSTRUCT(id)                                               \
-    {                                                                      \
-        .transform_f = DI_splitByStruct, .name = "structure transposition" \
-    }
+#define DI_SPLITBYSTRUCT(id) \
+    { .transform_f = DI_splitByStruct, .name = "structure transposition" }
 
 ZL_END_C_DECLS
 

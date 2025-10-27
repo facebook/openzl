@@ -17,10 +17,11 @@ ZL_BEGIN_C_DECLS
 ZL_Report
 EI_dispatch_string(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 
-#define EI_DISPATCH_STRING(id)                                              \
-    {                                                                       \
-        .gd = GRAPH_DISPATCH_STRING(id), .transform_f = EI_dispatch_string, \
-        .name = "!zl.dispatch_string",                                      \
+#define EI_DISPATCH_STRING(id)                    \
+    {                                             \
+        .gd          = GRAPH_DISPATCH_STRING(id), \
+        .transform_f = EI_dispatch_string,        \
+        .name        = "!zl.dispatch_string",     \
     }
 
 ZL_END_C_DECLS

@@ -25,9 +25,9 @@ std::shared_ptr<arrow::Table> generate_table()
     auto strarray = to_arrow_array<std::string>(
             { "hello", "world", "my", "name", "is" });
 
-    std::shared_ptr<arrow::Schema> schema =
-            arrow::schema({ arrow::field("int", arrow::int64()),
-                            arrow::field("str", arrow::utf8()) });
+    std::shared_ptr<arrow::Schema> schema = arrow::schema(
+            { arrow::field("int", arrow::int64()),
+              arrow::field("str", arrow::utf8()) });
 
     return arrow::Table::Make(schema, { i64array, strarray });
 }
@@ -43,9 +43,9 @@ std::shared_ptr<arrow::Table> generate_nested_table()
             arrow::struct_({ { "int", arrow::int32() }, { "struct", i128 } });
     auto level1_t =
             arrow::struct_({ { "str", arrow::utf8() }, { "2", level2_t } });
-    std::shared_ptr<arrow::Schema> schema =
-            arrow::schema({ arrow::field("int", arrow::int64()),
-                            arrow::field("1", level1_t) });
+    std::shared_ptr<arrow::Schema> schema = arrow::schema(
+            { arrow::field("int", arrow::int64()),
+              arrow::field("1", level1_t) });
 
     // Fill in level 2
     auto i32array = to_arrow_array<int32_t>({ 1, 2, 3, 4, 5 });

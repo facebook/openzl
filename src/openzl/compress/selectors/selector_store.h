@@ -13,12 +13,12 @@ ZL_BEGIN_C_DECLS
 ZL_Report
 MultiInputGraph_store(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs);
 
-#define MIGRAPH_STORE                                                      \
-    {                                                                      \
-        .name = "!zl.store", .graph_f = MultiInputGraph_store,             \
-        .inputTypeMasks = (const ZL_Type[]){ ZL_Type_any }, .nbInputs = 1, \
-        .lastInputIsVariable = 1                                           \
-    }
+#define MIGRAPH_STORE                                          \
+    { .name                = "!zl.store",                      \
+      .graph_f             = MultiInputGraph_store,            \
+      .inputTypeMasks      = (const ZL_Type[]){ ZL_Type_any }, \
+      .nbInputs            = 1,                                \
+      .lastInputIsVariable = 1 }
 
 // .selector_f = SI_selector_store, .inStreamType = ZL_Type_any,
 ZL_GraphID SI_selector_store(

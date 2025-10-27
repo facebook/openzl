@@ -15,14 +15,10 @@ ZL_Report DI_bitpack_serialized(ZL_Decoder* dictx, const ZL_Input* in[]);
 
 // Following ZL_TypedEncoderDesc declaration,
 // presumed to be used as initializer only
-#define DI_BITPACK_INTEGER(id)                               \
-    {                                                        \
-        .transform_f = DI_bitpack_numeric, .name = "bitpack" \
-    }
-#define DI_BITPACK_SERIALIZED(id)                               \
-    {                                                           \
-        .transform_f = DI_bitpack_serialized, .name = "bitpack" \
-    }
+#define DI_BITPACK_INTEGER(id) \
+    { .transform_f = DI_bitpack_numeric, .name = "bitpack" }
+#define DI_BITPACK_SERIALIZED(id) \
+    { .transform_f = DI_bitpack_serialized, .name = "bitpack" }
 
 ZL_END_C_DECLS
 

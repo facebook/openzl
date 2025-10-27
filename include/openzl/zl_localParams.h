@@ -136,18 +136,9 @@ typedef struct {
  * ZL_LocalIntParams lip =
  *     ZL_INTPARAMS( {id1, value1}, {id2, value2} );
  */
-#define ZL_INTPARAMS(...)                         \
-    {                                             \
-        ZL_GENERIC_LIST(ZL_IntParam, __VA_ARGS__) \
-    }
-#define ZL_COPYPARAMS(...)                         \
-    {                                              \
-        ZL_GENERIC_LIST(ZL_CopyParam, __VA_ARGS__) \
-    }
-#define ZL_REFPARAMS(...)                         \
-    {                                             \
-        ZL_GENERIC_LIST(ZL_RefParam, __VA_ARGS__) \
-    }
+#define ZL_INTPARAMS(...) { ZL_GENERIC_LIST(ZL_IntParam, __VA_ARGS__) }
+#define ZL_COPYPARAMS(...) { ZL_GENERIC_LIST(ZL_CopyParam, __VA_ARGS__) }
+#define ZL_REFPARAMS(...) { ZL_GENERIC_LIST(ZL_RefParam, __VA_ARGS__) }
 
 /* Note(@Cyan): below macros might be replaceable by inline functions */
 

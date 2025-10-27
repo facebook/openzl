@@ -70,116 +70,84 @@ ZL_Report EI_convert_num_to_serial_le(
         const ZL_Input* ins[],
         size_t nbIns);
 
-#define EI_CONVERT_NUM_TO_STRUCT_LE(id)               \
-    {                                                 \
-        .gd          = CONVERT_NUM_TOKEN_GRAPH(id),   \
-        .transform_f = EI_convert_num_to_struct_le,   \
-        .name        = "!zl.convert_num_to_struct_le" \
-    }
+#define EI_CONVERT_NUM_TO_STRUCT_LE(id)           \
+    { .gd          = CONVERT_NUM_TOKEN_GRAPH(id), \
+      .transform_f = EI_convert_num_to_struct_le, \
+      .name        = "!zl.convert_num_to_struct_le" }
 
-#define EI_CONVERT_STRUCT_TO_NUM_LE(id)               \
-    {                                                 \
-        .gd          = CONVERT_TOKEN_NUM_GRAPH(id),   \
-        .transform_f = EI_convert_struct_to_num_le,   \
-        .name        = "!zl.convert_struct_to_num_le" \
-    }
+#define EI_CONVERT_STRUCT_TO_NUM_LE(id)           \
+    { .gd          = CONVERT_TOKEN_NUM_GRAPH(id), \
+      .transform_f = EI_convert_struct_to_num_le, \
+      .name        = "!zl.convert_struct_to_num_le" }
 
-#define EI_CONVERT_STRUCT_TO_NUM_BE(id)               \
-    {                                                 \
-        .gd          = CONVERT_TOKEN_NUM_GRAPH(id),   \
-        .transform_f = EI_convert_struct_to_num_be,   \
-        .name        = "!zl.convert_struct_to_num_be" \
-    }
+#define EI_CONVERT_STRUCT_TO_NUM_BE(id)           \
+    { .gd          = CONVERT_TOKEN_NUM_GRAPH(id), \
+      .transform_f = EI_convert_struct_to_num_be, \
+      .name        = "!zl.convert_struct_to_num_be" }
 
-#define EI_CONVERT_SERIAL_TO_NUM8(id)                \
-    {                                                \
-        .gd          = CONVERT_SERIAL_NUM_GRAPH(id), \
-        .transform_f = EI_convert_serial_to_num8,    \
-        .name        = "!zl.convert_serial_to_num8"  \
-    }
-#define EI_CONVERT_SERIAL_TO_NUM_LE16(id)               \
-    {                                                   \
-        .gd          = CONVERT_SERIAL_NUM_GRAPH(id),    \
-        .transform_f = EI_convert_serial_to_num_le16,   \
-        .name        = "!zl.convert_serial_to_num_le16" \
-    }
-#define EI_CONVERT_SERIAL_TO_NUM_LE32(id)               \
-    {                                                   \
-        .gd          = CONVERT_SERIAL_NUM_GRAPH(id),    \
-        .transform_f = EI_convert_serial_to_num_le32,   \
-        .name        = "!zl.convert_serial_to_num_le32" \
-    }
-#define EI_CONVERT_SERIAL_TO_NUM_LE64(id)               \
-    {                                                   \
-        .gd          = CONVERT_SERIAL_NUM_GRAPH(id),    \
-        .transform_f = EI_convert_serial_to_num_le64,   \
-        .name        = "!zl.convert_serial_to_num_le64" \
-    }
-#define EI_CONVERT_SERIAL_TO_NUM_BE16(id)               \
-    {                                                   \
-        .gd          = CONVERT_SERIAL_NUM_GRAPH(id),    \
-        .transform_f = EI_convert_serial_to_num_be16,   \
-        .name        = "!zl.convert_serial_to_num_be16" \
-    }
-#define EI_CONVERT_SERIAL_TO_NUM_BE32(id)               \
-    {                                                   \
-        .gd          = CONVERT_SERIAL_NUM_GRAPH(id),    \
-        .transform_f = EI_convert_serial_to_num_be32,   \
-        .name        = "!zl.convert_serial_to_num_be32" \
-    }
-#define EI_CONVERT_SERIAL_TO_NUM_BE64(id)               \
-    {                                                   \
-        .gd          = CONVERT_SERIAL_NUM_GRAPH(id),    \
-        .transform_f = EI_convert_serial_to_num_be64,   \
-        .name        = "!zl.convert_serial_to_num_be64" \
-    }
+#define EI_CONVERT_SERIAL_TO_NUM8(id)              \
+    { .gd          = CONVERT_SERIAL_NUM_GRAPH(id), \
+      .transform_f = EI_convert_serial_to_num8,    \
+      .name        = "!zl.convert_serial_to_num8" }
+#define EI_CONVERT_SERIAL_TO_NUM_LE16(id)           \
+    { .gd          = CONVERT_SERIAL_NUM_GRAPH(id),  \
+      .transform_f = EI_convert_serial_to_num_le16, \
+      .name        = "!zl.convert_serial_to_num_le16" }
+#define EI_CONVERT_SERIAL_TO_NUM_LE32(id)           \
+    { .gd          = CONVERT_SERIAL_NUM_GRAPH(id),  \
+      .transform_f = EI_convert_serial_to_num_le32, \
+      .name        = "!zl.convert_serial_to_num_le32" }
+#define EI_CONVERT_SERIAL_TO_NUM_LE64(id)           \
+    { .gd          = CONVERT_SERIAL_NUM_GRAPH(id),  \
+      .transform_f = EI_convert_serial_to_num_le64, \
+      .name        = "!zl.convert_serial_to_num_le64" }
+#define EI_CONVERT_SERIAL_TO_NUM_BE16(id)           \
+    { .gd          = CONVERT_SERIAL_NUM_GRAPH(id),  \
+      .transform_f = EI_convert_serial_to_num_be16, \
+      .name        = "!zl.convert_serial_to_num_be16" }
+#define EI_CONVERT_SERIAL_TO_NUM_BE32(id)           \
+    { .gd          = CONVERT_SERIAL_NUM_GRAPH(id),  \
+      .transform_f = EI_convert_serial_to_num_be32, \
+      .name        = "!zl.convert_serial_to_num_be32" }
+#define EI_CONVERT_SERIAL_TO_NUM_BE64(id)           \
+    { .gd          = CONVERT_SERIAL_NUM_GRAPH(id),  \
+      .transform_f = EI_convert_serial_to_num_be64, \
+      .name        = "!zl.convert_serial_to_num_be64" }
 
-#define EI_CONVERT_NUM_TO_SERIAL_LE(id)               \
-    {                                                 \
-        .gd          = CONVERT_NUM_SERIAL_GRAPH(id),  \
-        .transform_f = EI_convert_num_to_serial_le,   \
-        .name        = "!zl.convert_num_to_serial_le" \
-    }
+#define EI_CONVERT_NUM_TO_SERIAL_LE(id)            \
+    { .gd          = CONVERT_NUM_SERIAL_GRAPH(id), \
+      .transform_f = EI_convert_num_to_serial_le,  \
+      .name        = "!zl.convert_num_to_serial_le" }
 
-#define EI_CONVERT_SERIAL_TO_STRUCT(id)                \
-    {                                                  \
-        .gd          = CONVERT_SERIAL_TOKEN_GRAPH(id), \
-        .transform_f = EI_convert_serial_to_struct,    \
-        .name        = "!zl.convert_serial_to_struct"  \
-    }
+#define EI_CONVERT_SERIAL_TO_STRUCT(id)              \
+    { .gd          = CONVERT_SERIAL_TOKEN_GRAPH(id), \
+      .transform_f = EI_convert_serial_to_struct,    \
+      .name        = "!zl.convert_serial_to_struct" }
 
 #define CONVERT_PARAM_TOKENSIZE(l) ZL_LP_1INTPARAM(ZL_trlip_tokenSize, l)
 
-#define EI_CONVERT_SERIAL_TO_STRUCT2(id)               \
-    {                                                  \
-        .gd          = CONVERT_SERIAL_TOKEN_GRAPH(id), \
-        .transform_f = EI_convert_serial_to_struct,    \
-        .localParams = CONVERT_PARAM_TOKENSIZE(2),     \
-        .name        = "!zl.convert_serial_to_struct2" \
-    }
+#define EI_CONVERT_SERIAL_TO_STRUCT2(id)             \
+    { .gd          = CONVERT_SERIAL_TOKEN_GRAPH(id), \
+      .transform_f = EI_convert_serial_to_struct,    \
+      .localParams = CONVERT_PARAM_TOKENSIZE(2),     \
+      .name        = "!zl.convert_serial_to_struct2" }
 
-#define EI_CONVERT_SERIAL_TO_STRUCT4(id)               \
-    {                                                  \
-        .gd          = CONVERT_SERIAL_TOKEN_GRAPH(id), \
-        .transform_f = EI_convert_serial_to_struct,    \
-        .localParams = CONVERT_PARAM_TOKENSIZE(4),     \
-        .name        = "!zl.convert_serial_to_struct4" \
-    }
+#define EI_CONVERT_SERIAL_TO_STRUCT4(id)             \
+    { .gd          = CONVERT_SERIAL_TOKEN_GRAPH(id), \
+      .transform_f = EI_convert_serial_to_struct,    \
+      .localParams = CONVERT_PARAM_TOKENSIZE(4),     \
+      .name        = "!zl.convert_serial_to_struct4" }
 
-#define EI_CONVERT_SERIAL_TO_STRUCT8(id)               \
-    {                                                  \
-        .gd          = CONVERT_SERIAL_TOKEN_GRAPH(id), \
-        .transform_f = EI_convert_serial_to_struct,    \
-        .localParams = CONVERT_PARAM_TOKENSIZE(8),     \
-        .name        = "!zl.convert_serial_to_struct8" \
-    }
+#define EI_CONVERT_SERIAL_TO_STRUCT8(id)             \
+    { .gd          = CONVERT_SERIAL_TOKEN_GRAPH(id), \
+      .transform_f = EI_convert_serial_to_struct,    \
+      .localParams = CONVERT_PARAM_TOKENSIZE(8),     \
+      .name        = "!zl.convert_serial_to_struct8" }
 
-#define EI_CONVERT_STRUCT_TO_SERIAL(id)                \
-    {                                                  \
-        .gd          = CONVERT_TOKEN_SERIAL_GRAPH(id), \
-        .transform_f = EI_convert_struct_to_serial,    \
-        .name        = "!zl.convert_struct_to_serial"  \
-    }
+#define EI_CONVERT_STRUCT_TO_SERIAL(id)              \
+    { .gd          = CONVERT_TOKEN_SERIAL_GRAPH(id), \
+      .transform_f = EI_convert_struct_to_serial,    \
+      .name        = "!zl.convert_struct_to_serial" }
 
 /* ===== String - Conversion operations ===== */
 
@@ -196,23 +164,20 @@ EI_setStringLens(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 #define ZL_SETSTRINGLENS_PARSINGF_PID 520
 #define ZL_SETSTRINGLENS_ARRAY_PID 521
 
-#define EI_SETSTRINGLENS(id)                                                   \
-    {                                                                          \
-        .gd          = CONVERT_SERIAL_STRING_GRAPH(id),                        \
-        .transform_f = EI_setStringLens, .name = "!zl.private.set_string_lens" \
-    }
+#define EI_SETSTRINGLENS(id)                          \
+    { .gd          = CONVERT_SERIAL_STRING_GRAPH(id), \
+      .transform_f = EI_setStringLens,                \
+      .name        = "!zl.private.set_string_lens" }
 
 ZL_Report EI_separate_VSF_components(
         ZL_Encoder* eictx,
         const ZL_Input* ins[],
         size_t nbIns);
 
-#define EI_SEPARATE_VSF_COMPONENTS(id)                    \
-    {                                                     \
-        .gd          = SEPARATE_VSF_COMPONENTS_GRAPH(id), \
-        .transform_f = EI_separate_VSF_components,        \
-        .name        = "!zl.separate_string_components"   \
-    }
+#define EI_SEPARATE_VSF_COMPONENTS(id)                  \
+    { .gd          = SEPARATE_VSF_COMPONENTS_GRAPH(id), \
+      .transform_f = EI_separate_VSF_components,        \
+      .name        = "!zl.separate_string_components" }
 
 ZL_END_C_DECLS
 

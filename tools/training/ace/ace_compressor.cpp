@@ -556,8 +556,9 @@ ACENodeCompressor deserializeNode(const A1C_Item& item)
 
     std::vector<std::unique_ptr<ACECompressor>> successors;
     for (const auto& successor : asArray(mapGet(item, "successors"))) {
-        successors.push_back(std::make_unique<ACECompressor>(
-                deserializeCompressor(successor)));
+        successors.push_back(
+                std::make_unique<ACECompressor>(
+                        deserializeCompressor(successor)));
     }
 
     return ACENodeCompressor(std::move(node), std::move(successors));

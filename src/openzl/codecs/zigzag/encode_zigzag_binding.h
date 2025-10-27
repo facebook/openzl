@@ -18,11 +18,10 @@ ZL_Report EI_zigzag_num(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
  * to be used as initializer only.
  */
 
-#define EI_ZIGZAG_NUM(id)                                      \
-    {                                                          \
-        .gd = NUMPIPE_GRAPH(id), .transform_f = EI_zigzag_num, \
-        .name = "!zl.zigzag"                                   \
-    }
+#define EI_ZIGZAG_NUM(id)               \
+    { .gd          = NUMPIPE_GRAPH(id), \
+      .transform_f = EI_zigzag_num,     \
+      .name        = "!zl.zigzag" }
 
 ZL_END_C_DECLS
 
