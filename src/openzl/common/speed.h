@@ -19,7 +19,7 @@ ZL_BEGIN_C_DECLS
  */
 
 // slowest -> fastest
-typedef enum {
+typedef enum  {
     ZL_DecodeSpeedBaseline_any     = 0, // No decoding speed constraints
     ZL_DecodeSpeedBaseline_zlib    = 1, // Aim for ZLIB speeds
     ZL_DecodeSpeedBaseline_zstd    = 2, // Aim for ZSTD speeds
