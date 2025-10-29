@@ -87,6 +87,11 @@ static const std::map<Symbol, SymbolType> sym_types{
     { Symbol::DIV, SymbolType::OPERATOR },
     { Symbol::MOD, SymbolType::OPERATOR },
 
+    { Symbol::BIT_AND, SymbolType::OPERATOR },
+    { Symbol::BIT_OR, SymbolType::OPERATOR },
+    { Symbol::BIT_XOR, SymbolType::OPERATOR },
+    { Symbol::BIT_NOT, SymbolType::OPERATOR },
+
     { Symbol::LOG_AND, SymbolType::OPERATOR },
     { Symbol::LOG_OR, SymbolType::OPERATOR },
     { Symbol::LOG_NOT, SymbolType::OPERATOR },
@@ -179,6 +184,11 @@ static const std::map<Symbol, poly::string_view> syms_to_debug_strs{
     { Symbol::DIV, "DIV" },
     { Symbol::MOD, "MOD" },
 
+    { Symbol::BIT_AND, "BIT_AND" },
+    { Symbol::BIT_OR, "BIT_OR" },
+    { Symbol::BIT_XOR, "BIT_XOR" },
+    { Symbol::BIT_NOT, "BIT_NOT" },
+
     { Symbol::LOG_AND, "LOG_AND" },
     { Symbol::LOG_OR, "LOG_OR" },
     { Symbol::LOG_NOT, "LOG_NOT" },
@@ -258,6 +268,10 @@ const std::vector<std::pair<poly::string_view, Symbol>> strs_to_syms{
     { "&&", Symbol::LOG_AND },
     { "||", Symbol::LOG_OR },
     { "!", Symbol::LOG_NOT },
+    { "&", Symbol::BIT_AND },
+    { "|", Symbol::BIT_OR },
+    { "^", Symbol::BIT_XOR },
+    { "~", Symbol::BIT_NOT },
     { ":", Symbol::ASSUME },
     { ".", Symbol::MEMBER },
     { "die", Symbol::DIE },
@@ -336,6 +350,9 @@ static const std::map<Symbol, poly::string_view> syms_to_ser_strs{
     { Symbol::ADD, "add" },         { Symbol::SUB, "sub" },
     { Symbol::MUL, "mul" },         { Symbol::DIV, "div" },
     { Symbol::MOD, "mod" },
+
+    { Symbol::BIT_AND, "bit_and" }, { Symbol::BIT_OR, "bit_or" },
+    { Symbol::BIT_XOR, "bit_xor" }, { Symbol::BIT_NOT, "bit_not" },
 
     { Symbol::LOG_AND, "log_and" }, { Symbol::LOG_OR, "log_or" },
     { Symbol::LOG_NOT, "log_not" },
