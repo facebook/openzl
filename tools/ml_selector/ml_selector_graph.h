@@ -15,12 +15,16 @@ extern "C" {
 
 #define ZL_GENERIC_ML_SELECTOR_CONFIG_ID 555
 
+typedef enum {
+    ZL_GBT,
+} ZL_MLSelectorModelType;
+
 /**
  * A serializable configuration used to select a successor.
- * Note: This is a dummy config that will be updated in the future.
  */
 typedef struct {
-    size_t selectedSuccessor; // The index of the successor to select.
+    ZL_MLSelectorModelType model;
+    void* runtimeConfig;
 } ZL_MLSelectorConfig;
 
 /**

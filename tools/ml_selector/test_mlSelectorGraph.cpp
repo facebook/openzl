@@ -1,11 +1,14 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <gtest/gtest.h>
+#include <random>
 #include "openzl/common/a1cbor_helpers.h"
+#include "openzl/compress/selectors/ml/features.h"
+#include "openzl/compress/selectors/ml/gbt.h"
 #include "openzl/cpp/CCtx.hpp"
 #include "openzl/cpp/Compressor.hpp"
 #include "openzl/cpp/DCtx.hpp"
-#include "tests/utils.h"                         // @manual
+#include "tests/utils.h"                         //@manual
 #include "tools/ml_selector/ml_selector_graph.h" // @manual
 
 namespace openzl::tests {
@@ -15,28 +18,84 @@ class TestMLSelectorGraph : public testing::Test {
    public:
     void SetUp() override
     {
+        deltaData_  = generateDeltaData();
+        randomData_ = generateRandomeData();
         cctx_.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+        nodes_ = { /* If eltWidth > 2 evaluate skewness */
+                   { .featureIdx      = 0,
+                     .value           = 2,
+                     .leftChildIdx    = 1,
+                     .rightChildIdx   = 2,
+                     .missingChildIdx = 2 },
+                   { .featureIdx      = -1,
+                     .value           = 0.1f,
+                     .leftChildIdx    = 0,
+                     .rightChildIdx   = 0,
+                     .missingChildIdx = 0 },
+                   /* If skewness > 0.001 select class 1
+                   otherwise select class 2
+                   Binary classification threshold is 0.5
+                   */
+                   { .featureIdx      = 1,
+                     .value           = 0.001f,
+                     .leftChildIdx    = 3,
+                     .rightChildIdx   = 4,
+                     .missingChildIdx = 4 },
+                   { .featureIdx      = -1,
+                     .value           = 0.75f,
+                     .leftChildIdx    = 0,
+                     .rightChildIdx   = 0,
+                     .missingChildIdx = 0 },
+                   { .featureIdx      = -1,
+                     .value           = 0.25f,
+                     .leftChildIdx    = 0,
+                     .rightChildIdx   = 0,
+                     .missingChildIdx = 0 }
+        };
+
+        tree_   = { .numNodes = nodes_.size(), .nodes = nodes_.data() };
+        forest_ = { .numTrees = 1, .trees = &tree_ };
+        binaryClassPredictor_ = {
+            .numForests = 1,
+            .forests    = &forest_,
+        };
+        // Only take these features from FeatureGen_integer
+        featureLabels_ = {
+            Label("eltWidth"),
+            Label("skewness"),
+        };
+        classLabels_ = { Label("class1"), Label("class2") };
+
+        gbtModel_ = {
+            .predictor        = &binaryClassPredictor_,
+            .featureGenerator = FeatureGen_integer,
+            .featureContext   = NULL, // Ignoring for now
+            .nbLabels         = classLabels_.size(),
+            .classLabels      = classLabels_.data(),
+            .nbFeatures       = featureLabels_.size(),
+            .featureLabels    = featureLabels_.data(),
+        };
+
+        mlSelectorConfig_ = { .model = ZL_GBT, .runtimeConfig = &gbtModel_ };
     }
 
     ZL_GraphID getSelectorGraphWithSelectedSuccessor(
             size_t selectedSuccessor,
-            openzl::Compressor& compressor)
+            openzl::Compressor& compressor,
+            ZL_MLSelectorConfig mlSelectorConfig)
     {
-        ZL_MLSelectorConfig mlSelectorConfig = { .selectedSuccessor =
-                                                         selectedSuccessor };
-
         auto graph = ZL_MLSelector_registerGraph(
                 compressor.get(),
                 &mlSelectorConfig,
                 successors_.data(),
                 successors_.size());
-        EXPECT_FALSE(ZL_RES_isError(graph));
+        EXPECT_ZS_VALID(graph);
 
         return ZL_RES_value(graph);
     }
 
     void testSelection(
-            const std::string& input,
+            const std::vector<uint64_t>& input,
             ZL_GraphID gid,
             ZL_GraphID sgid,
             Compressor& compressor)
@@ -56,7 +115,7 @@ class TestMLSelectorGraph : public testing::Test {
     }
 
     void testRoundTrip(
-            const std::string& input,
+            const std::vector<uint64_t>& input,
             ZL_GraphID sgid,
             Compressor& compressor)
     {
@@ -66,20 +125,101 @@ class TestMLSelectorGraph : public testing::Test {
         cBuffer.resize(compressedSize);
 
         // Decompress and verify that the result is the same as the input
-        std::string decompressedOutput = dctx_.decompressSerial(cBuffer);
-        EXPECT_EQ(decompressedOutput, input);
+        const auto decompressedOutput = dctx_.decompressOne(cBuffer);
+        const uint64_t* output        = (uint64_t*)decompressedOutput.ptr();
+        std::vector<uint64_t> outputVec(
+                output, output + decompressedOutput.numElts());
+
+        EXPECT_EQ(outputVec, input);
     }
 
     size_t compress(
             Compressor& compressor,
             std::string& dst,
-            const std::string& input,
+            const std::vector<uint64_t>& input,
             ZL_GraphID sgid)
     {
         compressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
         compressor.selectStartingGraph(sgid);
         cctx_.refCompressor(compressor);
-        return cctx_.compressSerial(dst, input);
+        auto s_input = Input::refNumeric(input.data(), input.size());
+        return cctx_.compressOne(dst, s_input);
+    }
+
+    std::vector<uint64_t> generateDeltaData(
+            size_t nbElts      = 10000,
+            uint64_t baseValue = 0,
+            uint64_t delta     = 0x12345)
+    {
+        std::vector<uint64_t> data(nbElts);
+        uint64_t value = baseValue;
+        for (size_t i = 0; i < nbElts; ++i) {
+            data[i] = value;
+            value += delta;
+        }
+        return data;
+    }
+
+    std::vector<uint64_t> generateRandomeData(
+            size_t nbElts = 10000,
+            uint64_t max  = 50000,
+            uint64_t seed = 1337)
+    {
+        std::vector<uint64_t> data;
+        data.resize(nbElts);
+        std::mt19937 mersenne_engine(seed);
+        std::uniform_int_distribution<uint64_t> dist(0, max);
+        auto gen = [&dist, &mersenne_engine]() {
+            return dist(mersenne_engine);
+        };
+        std::generate(data.begin(), data.end(), gen);
+        return data;
+    }
+
+    void assert_model_equal(GBTModel m1, GBTModel m2)
+    {
+        ASSERT_EQ(m1.predictor->numForests, m2.predictor->numForests);
+        ASSERT_EQ(m1.nbLabels, m2.nbLabels);
+        ASSERT_EQ(m1.nbFeatures, m2.nbFeatures);
+
+        for (size_t ind = 0; ind < m1.nbLabels; ind++) {
+            ASSERT_STREQ(m1.classLabels[ind], m2.classLabels[ind]);
+        }
+
+        for (size_t ind = 0; ind < m1.nbFeatures; ind++) {
+            ASSERT_STREQ(m1.featureLabels[ind], m2.featureLabels[ind]);
+        }
+        assert_pred_equal(*m1.predictor, *m2.predictor);
+    }
+
+   private:
+    void assert_tree_equal(GBTPredictor_Tree t1, GBTPredictor_Tree t2)
+    {
+        ASSERT_EQ(t1.numNodes, t2.numNodes);
+        for (size_t ind = 0; ind < t1.numNodes; ind++) {
+            ASSERT_FLOAT_EQ(t1.nodes[ind].value, t2.nodes[ind].value);
+            ASSERT_EQ(t1.nodes[ind].leftChildIdx, t2.nodes[ind].leftChildIdx);
+            ASSERT_EQ(t1.nodes[ind].rightChildIdx, t2.nodes[ind].rightChildIdx);
+            ASSERT_EQ(
+                    t1.nodes[ind].missingChildIdx,
+                    t2.nodes[ind].missingChildIdx);
+            ASSERT_EQ(t1.nodes[ind].featureIdx, t2.nodes[ind].featureIdx);
+        }
+    }
+
+    void assert_forest_equal(GBTPredictor_Forest f1, GBTPredictor_Forest f2)
+    {
+        ASSERT_EQ(f1.numTrees, f2.numTrees);
+        for (size_t ind = 0; ind < f1.numTrees; ind++) {
+            assert_tree_equal(f1.trees[ind], f2.trees[ind]);
+        }
+    }
+    void assert_pred_equal(GBTPredictor pred1, GBTPredictor pred2)
+    {
+        ASSERT_EQ(pred1.numForests, pred2.numForests);
+        for (size_t ind = 0; ind < pred1.numForests; ind++) {
+            assert_forest_equal(pred1.forests[ind], pred2.forests[ind]);
+        }
     }
 
    protected:
@@ -87,33 +227,48 @@ class TestMLSelectorGraph : public testing::Test {
     DCtx dctx_;
     CCtx cctx_;
 
-   public:
-    std::string movies                  = zstrong::tests::kMoviesCsvFormatInput;
-    std::vector<ZL_GraphID> successors_ = { ZL_GRAPH_HUFFMAN,
-                                            ZL_GRAPH_ZSTD,
-                                            ZL_GRAPH_STORE };
+    GBTModel gbtModel_{};
+    std::vector<GBTPredictor_Node> nodes_;
+    GBTPredictor_Tree tree_{};
+    GBTPredictor_Forest forest_{};
+    GBTPredictor binaryClassPredictor_{};
+    std::vector<Label> featureLabels_;
+    std::vector<Label> classLabels_;
+    std::vector<uint64_t> deltaData_;
+    std::vector<uint64_t> randomData_;
+    ZL_MLSelectorConfig mlSelectorConfig_ = {};
+    std::vector<ZL_GraphID> successors_   = { ZL_GRAPH_COMPRESS_GENERIC,
+                                              ZL_GRAPH_FIELD_LZ };
 };
 
 TEST_F(TestMLSelectorGraph, TestMLSelectorGraphRoundtrip)
 {
-    auto compressMLSelectorGraph =
-            getSelectorGraphWithSelectedSuccessor(1, compressor_);
+    auto compressMLSelectorGraph = getSelectorGraphWithSelectedSuccessor(
+            1, compressor_, mlSelectorConfig_);
 
-    testRoundTrip(movies, compressMLSelectorGraph, compressor_);
+    testRoundTrip(deltaData_, compressMLSelectorGraph, compressor_);
 }
 
 TEST_F(TestMLSelectorGraph, TestMLSelectorGraphSelection)
 {
-    for (size_t successor = 0; successor < successors_.size(); ++successor) {
-        auto compressMLSelectorGraph =
-                getSelectorGraphWithSelectedSuccessor(successor, compressor_);
+    // ML Selector should select class 2 because skewness < 0.001 (since data
+    // have same delta)
+    auto compressDeltaMLSelectorGraph = getSelectorGraphWithSelectedSuccessor(
+            1, compressor_, mlSelectorConfig_);
 
-        testSelection(
-                movies,
-                compressMLSelectorGraph,
-                successors_[successor],
-                compressor_);
-    }
+    testSelection(
+            deltaData_,
+            compressDeltaMLSelectorGraph,
+            successors_[1],
+            compressor_);
+
+    // ML Selector should select class 1 because skewness > 0.001 (since data is
+    // random and not forced to have same delta)
+    auto compressMLSelectorGraph = getSelectorGraphWithSelectedSuccessor(
+            0, compressor_, mlSelectorConfig_);
+
+    testSelection(
+            randomData_, compressMLSelectorGraph, successors_[0], compressor_);
 }
 
 TEST_F(TestMLSelectorGraph, TestMLSelectorConfigSerializable)
@@ -121,39 +276,47 @@ TEST_F(TestMLSelectorGraph, TestMLSelectorConfigSerializable)
     ZL_RESULT_DECLARE_SCOPE(ZL_GraphID, compressor_.get());
 
     // Serialize config
-    ZL_MLSelectorConfig config = { .selectedSuccessor = 0 };
+    ZL_MLSelectorConfig config = { .model         = ZL_GBT,
+                                   .runtimeConfig = &gbtModel_ };
     Arena* arena               = ALLOC_HeapArena_create();
     A1C_Arena a1cArena         = A1C_Arena_wrap(arena);
 
     ZL_RESULT_OF(ZL_SerializedMLConfig)
     serializedResult = MLSelector_serializeMLSelectorConfig(
             ZL_ERR_CTX_PTR, &config, &a1cArena);
-    EXPECT_FALSE(ZL_RES_isError(serializedResult));
+    EXPECT_ZS_VALID(serializedResult);
 
     auto serializedConfig = ZL_RES_value(serializedResult);
+
     // Deserialize config
     auto result = MLSelector_deserializeMLSelectorConfig(
             ZL_ERR_CTX_PTR,
             serializedConfig.data,
             serializedConfig.size,
             &a1cArena);
-    EXPECT_FALSE(ZL_RES_isError(result));
+    EXPECT_ZS_VALID(result);
 
-    // Check that the deserialized config is the same as the original config
-    EXPECT_EQ(ZL_RES_value(result).selectedSuccessor, config.selectedSuccessor);
+    // Check that the deserialized config contains the same predictor labels
+    const GBTModel* originalModel = (GBTModel*)(config.runtimeConfig);
+    const GBTModel* deserializedModel =
+            (GBTModel*)(ZL_RES_value(result).runtimeConfig);
+
+    EXPECT_TRUE(deserializedModel != NULL);
+
+    assert_model_equal(*originalModel, *deserializedModel);
     ALLOC_Arena_freeArena(arena);
 }
 
 TEST_F(TestMLSelectorGraph, TestMLSelectorGraphSerializable)
 {
     Compressor compressor;
-    size_t selectedSuccessor     = 2;
+    size_t selectedSuccessor     = 1;
     auto compressMLSelectorGraph = getSelectorGraphWithSelectedSuccessor(
-            selectedSuccessor, compressor);
+            selectedSuccessor, compressor, mlSelectorConfig_);
 
     // Make sure selection works before serialization
     testSelection(
-            movies,
+            deltaData_,
             compressMLSelectorGraph,
             successors_[selectedSuccessor],
             compressor);
@@ -168,12 +331,84 @@ TEST_F(TestMLSelectorGraph, TestMLSelectorGraphSerializable)
 
     // Make sure selection works after deserialization
     testSelection(
-            movies,
+            deltaData_,
             compressMLSelectorGraph,
             successors_[selectedSuccessor],
             deserializedCompressor);
     // Make sure round trip works after deserialization
-    testRoundTrip(movies, compressMLSelectorGraph, deserializedCompressor);
+    testRoundTrip(deltaData_, compressMLSelectorGraph, deserializedCompressor);
+}
+
+TEST_F(TestMLSelectorGraph, TestEmptyConfig)
+{
+    // Run with empty config to make sure there is no crash
+    ZL_MLSelectorConfig emptyConfig = {};
+    Compressor compressor;
+    auto graph = ZL_MLSelector_registerGraph(
+            compressor.get(),
+            &emptyConfig,
+            successors_.data(),
+            successors_.size());
+    EXPECT_ZS_ERROR(graph);
+}
+
+TEST_F(TestMLSelectorGraph, TestInvalidGBTModel)
+{
+    // Run with invalid GBT model to make sure validation works
+    std::vector<GBTPredictor_Node> cycle_nodes = {
+        { .featureIdx      = 0,
+          .value           = 2,
+          .leftChildIdx    = 0, // point to self for cycle
+          .rightChildIdx   = 2,
+          .missingChildIdx = 2 }
+    };
+    GBTPredictor_Tree tree     = { .numNodes = cycle_nodes.size(),
+                                   .nodes    = cycle_nodes.data() };
+    GBTPredictor_Forest forest = { .numTrees = 1, .trees = &tree };
+    GBTPredictor predictor     = {
+            .numForests = 1,
+            .forests    = &forest,
+    };
+    GBTModel cyclicModel = {
+        .predictor        = &predictor,
+        .featureGenerator = FeatureGen_integer,
+        .featureContext   = NULL, // Ignoring for now
+        .nbLabels         = classLabels_.size(),
+        .classLabels      = classLabels_.data(),
+        .nbFeatures       = featureLabels_.size(),
+        .featureLabels    = featureLabels_.data(),
+    };
+
+    ZL_MLSelectorConfig invalidConfig = { .model         = ZL_GBT,
+                                          .runtimeConfig = &cyclicModel };
+
+    Compressor compressor;
+    auto graph = ZL_MLSelector_registerGraph(
+            compressor.get(),
+            &invalidConfig,
+            successors_.data(),
+            successors_.size());
+    EXPECT_ZS_ERROR(graph);
+}
+
+TEST_F(TestMLSelectorGraph, TestInvalidFeatureGenerator)
+{
+    gbtModel_.featureGenerator = [](const ZL_Input* inputStream,
+                                    VECTOR(LabeledFeature) * features,
+                                    const void* featureContext) -> ZL_Report {
+        (void)inputStream;
+        (void)features;
+        (void)featureContext;
+        return ZL_returnSuccess();
+    };
+
+    Compressor compressor;
+    auto graph = ZL_MLSelector_registerGraph(
+            compressor.get(),
+            &mlSelectorConfig_,
+            successors_.data(),
+            successors_.size());
+    EXPECT_ZS_ERROR(graph);
 }
 } // namespace
 } // namespace openzl::tests

@@ -53,7 +53,8 @@ static ZL_RESULT_OF(ZL_MLSelectorConfig) MLSel_getConfig(ZL_Graph* graph)
 }
 
 /** @brief Retrieves list of successors and ZL_MLSelectorConfig from graph and
- * selects successor based on what is specified inside the ZL_MLSelectorConfig.
+ * selects successor based on prediction made by model specified inside the
+ * ZL_MLSelectorConfig.
  *
  * @param graph      Graph containing ZL_MLSelectorConfig and list of successors
  * @param inputs     Array of input edges to be routed to selected successor
@@ -70,13 +71,32 @@ MLSel_compress(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
 
     ZL_GraphIDList succList = ZL_Graph_getCustomGraphs(graph);
 
-    ZL_ERR_IF_GE(
-            config.selectedSuccessor, succList.nbGraphIDs, successor_invalid);
-
-    ZL_GraphID succ = succList.graphids[config.selectedSuccessor];
-
-    ZL_ERR_IF_ERR(
-            ZL_Edge_setParameterizedDestination(inputs, nbInputs, succ, NULL));
+    if (config.model == ZL_GBT) {
+        GBTModel* gbt = config.runtimeConfig;
+        ZL_ERR_IF_NE(
+                gbt->nbLabels,
+                succList.nbGraphIDs,
+                successor_invalid,
+                "GBT model has %zu labels, but graph has %zu successors",
+                gbt->nbLabels,
+                succList.nbGraphIDs);
+        for (size_t ind = 0; ind < nbInputs; ind++) {
+            ZL_TRY_LET(
+                    size_t,
+                    selectedSuccessor,
+                    GBTModel_predictInd(
+                            gbt, ZL_Edge_getData(inputs[ind]), graph));
+            ZL_ERR_IF_GE(
+                    selectedSuccessor,
+                    succList.nbGraphIDs,
+                    successor_invalid,
+                    "Selected successor is out of bounds");
+            ZL_GraphID succ = succList.graphids[selectedSuccessor];
+            ZL_ERR_IF_ERR(ZL_Edge_setDestination(inputs[ind], succ));
+        }
+    } else {
+        return ZL_returnError(ZL_ErrorCode_graph_invalid);
+    }
 
     return ZL_returnSuccess();
 }
@@ -529,7 +549,6 @@ static ZL_RESULT_OF(GBTModel) GBTModel_deserialize(
 
     return ZL_WRAP_VALUE(model);
 }
-
 ZL_RESULT_OF(ZL_SerializedMLConfig)
 MLSelector_serializeMLSelectorConfig(
         ZL_ErrorContext* errCtx,
@@ -540,11 +559,28 @@ MLSelector_serializeMLSelectorConfig(
     ZL_RESULT_DECLARE_SCOPE(ZL_SerializedMLConfig, errCtx);
     A1C_Item* root = A1C_Item_root(arena);
     ZL_ERR_IF_NULL(root, allocation);
-    A1C_MapBuilder rootMapBuilder = A1C_Item_map_builder(root, 1, arena);
+    // serialize model type
+    A1C_MapBuilder rootMapBuilder = A1C_Item_map_builder(root, 2, arena);
     {
         A1C_MAP_TRY_ADD_T(ZL_SerializedMLConfig, pair, rootMapBuilder);
-        A1C_Item_string_refCStr(&pair->key, "selectedSuccessor");
-        A1C_Item_int64(&pair->val, (A1C_Int64)config->selectedSuccessor);
+        A1C_Item_string_refCStr(&pair->key, "model");
+        A1C_Item_int64(&pair->val, (A1C_Int64)config->model);
+    }
+    // Serialize predictor
+    {
+        A1C_MAP_TRY_ADD_T(ZL_SerializedMLConfig, pair, rootMapBuilder);
+        A1C_Item_string_refCStr(&pair->key, "runtimeConfig");
+        if (config->model == ZL_GBT) {
+            ZL_RET_T_IF_ERR(
+                    ZL_SerializedMLConfig,
+                    GBTModel_serialize(
+                            errCtx, config->runtimeConfig, &pair->val, arena));
+        } else {
+            ZL_RET_T_ERR(
+                    ZL_SerializedMLConfig,
+                    graph_invalid,
+                    "model type not supported");
+        }
     }
     dst.size = A1C_Item_encodedSize(root);
     dst.data = arena->calloc(arena->opaque, dst.size);
@@ -577,17 +613,34 @@ MLSelector_deserializeMLSelectorConfig(
     A1C_Decoder_init(&decoder, *arena, decoderConfig);
     const A1C_Item* root =
             A1C_Decoder_decode(&decoder, (const uint8_t*)config, size);
-    if (root == NULL) {
-        ZL_MLSelectorConfig hd = { .selectedSuccessor = 0 };
-        return ZL_RESULT_WRAP_VALUE(ZL_MLSelectorConfig, hd);
-    }
+    ZL_RET_T_IF_NULL(ZL_MLSelectorConfig, allocation, root);
+
     A1C_TRY_EXTRACT_T_MAP(ZL_MLSelectorConfig, rootMap, root);
 
     A1C_TRY_EXTRACT_T_INT64(
-            ZL_MLSelectorConfig,
-            selectedSuccessor,
-            A1C_Map_get_cstr(&rootMap, "selectedSuccessor"));
-    dst.selectedSuccessor = (size_t)selectedSuccessor;
+            ZL_MLSelectorConfig, model, A1C_Map_get_cstr(&rootMap, "model"));
+    dst.model           = (ZL_MLSelectorModelType)model;
+    void* runtimeConfig = NULL;
+    if (dst.model == ZL_GBT) {
+        const A1C_Item* runtimeConfigItem =
+                A1C_Map_get_cstr(&rootMap, "runtimeConfig");
+        ZL_RET_T_IF_NULL(ZL_MLSelectorConfig, corruption, runtimeConfigItem);
+        GBTModel* gbtModelCopy =
+                (GBTModel*)arena->calloc(arena->opaque, sizeof(GBTModel));
+
+        ZL_RESULT_OF(GBTModel)
+        gbtModelResult = GBTModel_deserialize(errCtx, runtimeConfigItem, arena);
+
+        if (ZL_RES_isError(gbtModelResult)) {
+            return ZL_RESULT_WRAP_ERROR(
+                    ZL_MLSelectorConfig, ZL_RES_error(gbtModelResult));
+        }
+
+        *gbtModelCopy                = ZL_RES_value(gbtModelResult);
+        gbtModelCopy->featureContext = NULL;
+        runtimeConfig                = gbtModelCopy;
+    }
+    dst.runtimeConfig = runtimeConfig;
 
     return ZL_RESULT_WRAP_VALUE(ZL_MLSelectorConfig, dst);
 }
@@ -622,6 +675,21 @@ ZL_MLSelector_registerGraph(
 {
     ZL_RESULT_DECLARE_SCOPE(ZL_GraphID, compressor);
 
+    // Cannot serialize if config or runtimeConfig is null
+    ZL_ERR_IF_NULL(config, graph_nonserializable);
+    ZL_ERR_IF_NULL(config->runtimeConfig, graph_nonserializable);
+
+    // Make sure config is valid
+    if (config->model == ZL_GBT) {
+        GBTModel* gbtModel = (GBTModel*)config->runtimeConfig;
+        ZL_ERR_IF_ERR(GBTModel_validate(gbtModel));
+        ZL_ERR_IF_LT(
+                FeatureGen_getId(gbtModel->featureGenerator),
+                0,
+                compressionParameter_invalid,
+                "Must use standard feature generator");
+    }
+
     // Need separate heap arena to allocate memory for serialized data
     Arena* arena = ALLOC_HeapArena_create();
 
@@ -645,9 +713,9 @@ ZL_MLSelector_registerGraph(
         .paramSize = serializedConfig.size,
     };
 
-    ZL_LocalParams params = (ZL_LocalParams){
-        .copyParams = { .copyParams = &configParam, .nbCopyParams = 1 },
-    };
+    ZL_LocalParams params =
+            (ZL_LocalParams){ .copyParams = { .copyParams   = &configParam,
+                                              .nbCopyParams = 1 } };
 
     ZL_RESULT_OF(ZL_GraphID)
     baseGraph = ZL_MLSelector_registerBaseGraph(compressor);
@@ -669,9 +737,10 @@ ZL_MLSelector_registerGraph(
             ZL_Compressor_registerParameterizedGraph(compressor, &graphDesc);
 
     /**
-     * By freeing the arena, we are freeing all the memory used by a1c_arena. We
-     * can free arena here because we make a copy param of the serialized
-     * config, so the lifetime of the serialized config is tied to the graph.
+     * By freeing the arena, we are freeing all the memory used by
+     * a1c_arena. We can free arena here because we make a copy param of the
+     * serialized config, so the lifetime of the serialized config is tied
+     * to the graph.
      */
     ALLOC_Arena_freeArena(arena);
     return ZL_RESULT_WRAP_VALUE(ZL_GraphID, graph);
