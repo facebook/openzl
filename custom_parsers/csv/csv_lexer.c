@@ -114,7 +114,7 @@ static ZL_Report createCsvDispatchIndices(
     return ZL_returnSuccess();
 }
 
-static ZL_Report createParsedCsv(
+ZL_Report createParsedCsv(
         uint32_t* stringLens,
         const char* content,
         const size_t length,
@@ -127,7 +127,7 @@ static ZL_Report createParsedCsv(
 
     for (uint32_t i = 0; i < length; ++i) {
         // skip past all quoted strings
-        if (content[i] == '"') {
+        while (content[i] == '"') {
             do {
                 ++i;
             } while (i < length && content[i] != '"');
@@ -203,7 +203,7 @@ ZL_Report createNullAwareLexAndDispatch(
 
     for (uint32_t i = 0; i < length;) {
         // skip past all quoted strings
-        if (content[i] == '"') {
+        while (content[i] == '"') {
             do {
                 ++i;
             } while (i < length && content[i] != '"');

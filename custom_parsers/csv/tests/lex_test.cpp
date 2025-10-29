@@ -90,3 +90,37 @@ TEST(LexTest, singleLine)
         EXPECT_EQ(expectedDispatchIndicess[i], dispatchIndices[i]);
     }
 }
+
+TEST(LexTest, singlePairOfQuotes)
+{
+    std::string input                        = "aaa,\"\",\"\"\n";
+    std::vector<uint32_t> expectedStringLens = { 3, 1, 2, 1, 2, 1 };
+    std::vector<uint32_t> stringLens(100, 0);
+
+    auto e = createParsedCsv(
+            stringLens.data(), input.data(), input.size(), ',', 3);
+    EXPECT_FALSE(ZL_isError(e));
+    size_t nbStrs = ZL_validResult(e);
+    EXPECT_EQ(nbStrs, expectedStringLens.size());
+    for (size_t i = 0; i < nbStrs; ++i) {
+        EXPECT_EQ(expectedStringLens[i], stringLens[i]);
+    }
+}
+
+TEST(LexTest, multiplePairsOfQuotes)
+{
+    std::string input =
+            "aaa,\"\",\"\",\"\",\"\",\"\",\"\"\"\",\"\",\"\"\"\"\",\"\n";
+    std::vector<uint32_t> expectedStringLens = { 3, 1, 2, 1, 2, 1, 2, 1, 2,
+                                                 1, 2, 1, 4, 1, 2, 1, 7, 1 };
+    std::vector<uint32_t> stringLens(100, 0);
+
+    auto e = createParsedCsv(
+            stringLens.data(), input.data(), input.size(), ',', 9);
+    EXPECT_FALSE(ZL_isError(e));
+    size_t nbStrs = ZL_validResult(e);
+    EXPECT_EQ(nbStrs, expectedStringLens.size());
+    for (size_t i = 0; i < nbStrs; ++i) {
+        EXPECT_EQ(expectedStringLens[i], stringLens[i]);
+    }
+}

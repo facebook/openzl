@@ -39,6 +39,13 @@ ZL_Report ZL_CSV_lexNullAware(
         char sep,
         ZL_CSV_lexResult* retLexResult);
 
+ZL_Report createParsedCsv(
+        uint32_t* stringLens,
+        const char* content,
+        const size_t length,
+        char sep,
+        size_t nbColumns);
+
 ZL_Report createNullAwareLexAndDispatch(
         uint32_t* stringLens,
         uint16_t* dispatchIndices,
