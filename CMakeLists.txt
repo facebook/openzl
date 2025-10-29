@@ -229,7 +229,6 @@ endif()
 
 # conditional builds controlled in tools at finer granularity
 add_subdirectory(tools)
-add_subdirectory(contrib)
 
 if (OPENZL_BUILD_CUSTOM_PARSERS)
     add_subdirectory(custom_parsers)
