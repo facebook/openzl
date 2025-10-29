@@ -486,11 +486,12 @@ ZL_Report DT_miTransformWrapper(
 {
     size_t const nbO1s = transform->miGraphDesc.nbSOs;
     ZL_ASSERT(nbIns >= nbO1s);
+    ZL_Input const** inputs = ZL_codemodDatasAsInputs(ins);
     return transform->implDesc.dmi.transform_f(
             dictx,
-            ZL_codemodDatasAsInputs(ins),
+            inputs,
             nbO1s,
-            ZL_codemodDatasAsInputs(ins) + nbO1s,
+            nbO1s == 0 ? inputs : inputs + nbO1s,
             nbIns - nbO1s);
 }
 

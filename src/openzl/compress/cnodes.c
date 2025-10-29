@@ -170,8 +170,6 @@ static ZL_RESULT_OF(CNodeID) CTM_registerCNode(
                     CNodeID,
                     CTM_transferStreamTypes(
                             ctm, &trDesc->gd.inputTypes, trDesc->gd.nbInputs));
-            // A valid transform must have at least one output or outcome
-            ZL_ASSERT_GT(CNODE_getNbOutcomes(cnode), 0);
             ZL_RET_T_IF_ERR(
                     CNodeID,
                     CTM_transferStreamTypes(

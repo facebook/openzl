@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 #include <initializer_list>
 
+#include "openzl/openzl.hpp"
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_ctransform.h"
 #include "openzl/zl_data.h"
@@ -353,5 +354,74 @@ TEST_F(TestCustomTransform, TwoSimpleVOTransforms)
     roundTripTest(kLoremTestInput, graph2);
     roundTripTest(kAudioPCMS32LETestInput, graph2);
 }
+
+TEST_F(TestCustomTransform, ZeroOutputTransform)
+{
+    using namespace openzl;
+    class ZeroEncoder : public CustomEncoder {
+       public:
+        SimpleCodecDescription simpleCodecDescription() const override
+        {
+            return SimpleCodecDescription{
+                .id          = 0,
+                .inputType   = Type::Serial,
+                .outputTypes = {},
+            };
+        }
+
+        void encode(EncoderState& encoder) const override
+        {
+            const auto& input = encoder.inputs()[0];
+            if (input.contentSize() != 1 || *(const uint8_t*)input.ptr() != 0) {
+                throw std::runtime_error("Invalid input");
+            }
+        }
+
+        ~ZeroEncoder() override = default;
+    };
+
+    class ZeroDecoder : public CustomDecoder {
+       public:
+        SimpleCodecDescription simpleCodecDescription() const override
+        {
+            return SimpleCodecDescription{
+                .id          = 0,
+                .inputType   = Type::Serial,
+                .outputTypes = {},
+            };
+        }
+
+        void decode(DecoderState& decoder) const override
+        {
+            auto out   = decoder.createOutput(0, 1, 1);
+            uint8_t* p = (uint8_t*)out.ptr();
+            p[0]       = 0;
+            out.commit(1);
+        }
+
+        ~ZeroDecoder() override = default;
+    };
+
+    Compressor compressor;
+    auto node =
+            compressor.registerCustomEncoder(std::make_unique<ZeroEncoder>());
+    auto graph = compressor.buildStaticGraph(node, {});
+    compressor.selectStartingGraph(graph);
+    compressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+    compressor.setParameter(CParam::MinStreamSize, -1);
+
+    CCtx cctx;
+    cctx.refCompressor(compressor);
+
+    auto compressed = cctx.compressSerial({ "", 1 });
+
+    DCtx dctx;
+    dctx.registerCustomDecoder(std::make_unique<ZeroDecoder>());
+    auto decompressed = dctx.decompressSerial(compressed);
+
+    ASSERT_EQ(decompressed.size(), 1);
+    ASSERT_EQ(decompressed[0], 0);
+}
+
 } // namespace
 } // namespace zstrong::tests
