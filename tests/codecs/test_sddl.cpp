@@ -539,6 +539,35 @@ TEST_F(SimpleDataDescriptionLanguageTest, arithmetic)
     roundtrip(prog, input);
 }
 
+TEST_F(SimpleDataDescriptionLanguageTest, bitwise_ops)
+{
+    const auto prog  = R"(
+        expect (1 & 2) == 0
+        expect (1 & 2) == (2 & 1)
+        expect (1 | 2) == 3
+        expect (1 | 2) == (2 | 1)
+        expect (1 ^ 2) == 3
+        expect (1 ^ 2) == (2 ^ 1)
+        expect ~1 == -2
+
+        expect (1 & 2) == 0 == 1
+        expect (4 & 8) == 0
+        expect (4 | 8) == 12
+        expect (4 ^ 8) == 12
+        expect ~4 == -5
+
+        expect (0xFF & 0x00) == 0x00
+        expect (0xFF | 0x00) == 0xFF
+        expect (0xFF ^ 0x00) == 0xFF
+        expect ~0x00 == -1
+        expect ~0xFF == -256
+
+        : Byte[]
+    )";
+    const auto input = iota(10);
+    roundtrip(prog, input);
+}
+
 TEST_F(SimpleDataDescriptionLanguageTest, logical_ops)
 {
     const auto prog = R"(

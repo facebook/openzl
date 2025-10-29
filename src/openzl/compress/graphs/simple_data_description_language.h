@@ -74,6 +74,10 @@ ZL_BEGIN_C_DECLS
  * | mul     | Op        |
  * | div     | Op        |
  * | mod     | Op        |
+ * | bit_and | Op        |
+ * | bit_or  | Op        |
+ * | bit_xor | Op        |
+ * | bit_not | Op        |
  * | log_and | Op        |
  * | log_or  | Op        |
  * | log_not | Op        |
@@ -120,6 +124,10 @@ ZL_BEGIN_C_DECLS
  * | mul     | 2    | I    | IV  | IV    | eval(lhs) * eval(rhs)
  * | div     | 2    | I    | IV  | IV    | eval(lhs) / eval(rhs)
  * | mod     | 2    | I    | IV  | IV    | eval(lhs) % eval(rhs)
+ * | bit_and | 2    | I    | IV  | IV    | eval(lhs) & eval(rhs)
+ * | bit_or  | 2    | I    | IV  | IV    | eval(lhs) | eval(rhs)
+ * | bit_xor | 2    | I    | IV  | IV    | eval(lhs) ^ eval(rhs)
+ * | bit_not | 1    | I    | IV  |       | ~eval(arg)
  * | log_and | 2    | I    | IV  | IV    | eval(lhs) && eval(rhs)
  * | log_or  | 2    | I    | IV  | IV    | eval(lhs) || eval(rhs)
  * | log_not | 1    | I    | IV  |       | !eval(arg)

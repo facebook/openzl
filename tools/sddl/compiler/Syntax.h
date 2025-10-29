@@ -53,6 +53,11 @@ enum class Symbol {
     DIV,
     MOD,
 
+    BIT_AND,
+    BIT_OR,
+    BIT_XOR,
+    BIT_NOT,
+
     LOG_AND,
     LOG_OR,
     LOG_NOT,

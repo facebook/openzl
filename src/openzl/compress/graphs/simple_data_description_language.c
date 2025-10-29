@@ -201,6 +201,12 @@ typedef enum {
     ZL_SDDL_OpCode_div,
     ZL_SDDL_OpCode_mod,
 
+    // Bitwise operations
+    ZL_SDDL_OpCode_bit_and,
+    ZL_SDDL_OpCode_bit_or,
+    ZL_SDDL_OpCode_bit_xor,
+    ZL_SDDL_OpCode_bit_not,
+
     // Logical operations
     ZL_SDDL_OpCode_log_and,
     ZL_SDDL_OpCode_log_or,
@@ -343,6 +349,14 @@ static const char* ZL_SDDL_OpCode_toString(ZL_SDDL_OpCode opcode)
             return "div";
         case ZL_SDDL_OpCode_mod:
             return "mod";
+        case ZL_SDDL_OpCode_bit_and:
+            return "bit_and";
+        case ZL_SDDL_OpCode_bit_or:
+            return "bit_or";
+        case ZL_SDDL_OpCode_bit_xor:
+            return "bit_xor";
+        case ZL_SDDL_OpCode_bit_not:
+            return "bit_not";
         case ZL_SDDL_OpCode_log_and:
             return "log_and";
         case ZL_SDDL_OpCode_log_or:
@@ -508,6 +522,12 @@ static size_t ZL_SDDL_OpCode_numArgs(const ZL_SDDL_OpCode opcode)
         case ZL_SDDL_OpCode_mul:
         case ZL_SDDL_OpCode_div:
         case ZL_SDDL_OpCode_mod:
+            return 2;
+        case ZL_SDDL_OpCode_bit_not:
+            return 1;
+        case ZL_SDDL_OpCode_bit_and:
+        case ZL_SDDL_OpCode_bit_or:
+        case ZL_SDDL_OpCode_bit_xor:
             return 2;
         case ZL_SDDL_OpCode_log_not:
             return 1;
@@ -1063,6 +1083,18 @@ static ZL_Report ZL_SDDL_Program_decodeExprType(
     } else if (StringView_eqCStr(&type_sv, "mod")) {
         expr->type  = ZL_SDDL_ExprType_op;
         expr->op.op = ZL_SDDL_OpCode_mod;
+    } else if (StringView_eqCStr(&type_sv, "bit_and")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_bit_and;
+    } else if (StringView_eqCStr(&type_sv, "bit_or")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_bit_or;
+    } else if (StringView_eqCStr(&type_sv, "bit_xor")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_bit_xor;
+    } else if (StringView_eqCStr(&type_sv, "bit_not")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_bit_not;
     } else if (StringView_eqCStr(&type_sv, "log_and")) {
         expr->type  = ZL_SDDL_ExprType_op;
         expr->op.op = ZL_SDDL_OpCode_log_and;
@@ -2634,6 +2666,29 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr_op_inner(
             ZL_ERR_IF_EQ(
                     args[1].num.val, 0, corruption, "Modulus can't be zero.");
             result = ZL_SDDL_Expr_makeNum(args[0].num.val % args[1].num.val);
+            break;
+        }
+        case ZL_SDDL_OpCode_bit_and: {
+            ZL_ERR_IF_NE(args[0].type, ZL_SDDL_ExprType_num, corruption);
+            ZL_ERR_IF_NE(args[1].type, ZL_SDDL_ExprType_num, corruption);
+            result = ZL_SDDL_Expr_makeNum(args[0].num.val & args[1].num.val);
+            break;
+        }
+        case ZL_SDDL_OpCode_bit_or: {
+            ZL_ERR_IF_NE(args[0].type, ZL_SDDL_ExprType_num, corruption);
+            ZL_ERR_IF_NE(args[1].type, ZL_SDDL_ExprType_num, corruption);
+            result = ZL_SDDL_Expr_makeNum(args[0].num.val | args[1].num.val);
+            break;
+        }
+        case ZL_SDDL_OpCode_bit_xor: {
+            ZL_ERR_IF_NE(args[0].type, ZL_SDDL_ExprType_num, corruption);
+            ZL_ERR_IF_NE(args[1].type, ZL_SDDL_ExprType_num, corruption);
+            result = ZL_SDDL_Expr_makeNum(args[0].num.val ^ args[1].num.val);
+            break;
+        }
+        case ZL_SDDL_OpCode_bit_not: {
+            ZL_ERR_IF_NE(args[0].type, ZL_SDDL_ExprType_num, corruption);
+            result = ZL_SDDL_Expr_makeNum(~args[0].num.val);
             break;
         }
         case ZL_SDDL_OpCode_log_and: {
