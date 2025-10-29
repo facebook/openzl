@@ -95,22 +95,24 @@ size_t GBTPredictor_getNumClasses(const GBTPredictor* predictor)
     return predictor->numForests;
 }
 
-ZL_RESULT_OF(Label)
-GBTModel_predict(const GBTModel* model, const ZL_Input* in)
+ZL_RESULT_OF(size_t)
+GBTModel_predictInd(const GBTModel* model, const ZL_Input* in, ZL_Graph* graph)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+
     VECTOR(LabeledFeature) featuresMap = VECTOR_EMPTY(kMaxFeaturesCapacity);
     const ZL_Report report =
             model->featureGenerator(in, &featuresMap, model->featureContext);
 
     if (ZL_isError(report)) {
         VECTOR_DESTROY(featuresMap);
-        ZL_RET_T_IF_ERR(Label, report, "Error in generating features");
+        ZL_ERR_IF_ERR(report, "Error in generating features");
     }
 
     float* featuresData = (float*)malloc(model->nbFeatures * sizeof(float));
     if (featuresData == NULL) {
         VECTOR_DESTROY(featuresMap);
-        ZL_RET_T_IF_NULL(Label, allocation, "Error allocating features");
+        ZL_ERR(allocation, "Error allocating features");
     }
 
     for (size_t i = 0; i < model->nbFeatures; i++) {
@@ -127,12 +129,20 @@ GBTModel_predict(const GBTModel* model, const ZL_Input* in)
             model->predictor, featuresData, model->nbFeatures);
     free(featuresData);
     VECTOR_DESTROY(featuresMap);
-    ZL_RET_T_IF_GE(
-            Label,
-            GENERIC,
+    ZL_ERR_IF_GE(
             classInd,
             model->nbLabels,
+            GENERIC,
             "Predicted class index larger than number of classes");
+    return ZL_RESULT_WRAP_VALUE(size_t, classInd);
+}
+
+ZL_RESULT_OF(Label)
+GBTModel_predict(const GBTModel* model, const ZL_Input* in)
+{
+    ZL_RESULT_DECLARE_SCOPE(Label, NULL);
+
+    ZL_TRY_LET_CONST(size_t, classInd, GBTModel_predictInd(model, in, NULL));
     const Label classification = model->classLabels[classInd];
     return ZL_RESULT_WRAP_VALUE(Label, classification);
 }
