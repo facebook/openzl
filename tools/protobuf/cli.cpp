@@ -15,6 +15,9 @@
 #include "tools/io/OutputFile.h"
 #include "tools/protobuf/ProtoDeserializer.h"
 #include "tools/protobuf/ProtoSerializer.h"
+#include "tools/protobuf/DescriptorLoader.h"
+#include "tools/protobuf/DynamicMessageHelper.h"
+#include "tools/protobuf/serialization_utils.h"
 #ifdef OPENZL_BUCK_BUILD
 #    include "data_compression/experimental/zstrong/tools/protobuf/schema.pb.h"
 #else
@@ -152,12 +155,70 @@ class Args {
             compressor.deserialize(file->contents());
             serializer.setCompressor(std::move(compressor));
         }
+
+        // See if user wants to use a dynamic schema
+        bool has_proto      = args.globalHasFlag(kProto);
+        bool has_descriptor = args.globalHasFlag(kDescriptor);
+
+        if (has_proto || has_descriptor) {
+            use_dynamic = true;
+
+            if (has_proto && has_descriptor) {
+                throw std::runtime_error(
+                        "Cannot specify both --proto and --descriptor");
+            }
+
+            if (!args.globalHasFlag(kMessageType)) {
+                throw std::runtime_error(
+                        "--message-type is required when using --proto or --descriptor");
+            }
+
+            message_type = args.globalRequiredFlag(kMessageType);
+
+            auto loader = std::make_unique<DescriptorLoader>();
+            if (args.globalHasFlag(kProtoPath)) {
+                loader->addProtoPath(args.globalRequiredFlag(kProtoPath));
+            }
+
+            if (has_proto) {
+                descriptor_pool =
+                        loader->loadProtoFile(args.globalRequiredFlag(kProto));
+            } else {
+                descriptor_pool = loader->loadDescriptorFile(
+                        args.globalRequiredFlag(kDescriptor));
+            }
+
+            if (!descriptor_pool) {
+                throw std::runtime_error("Failed to load protobuf schema");
+            }
+
+            message_helper = std::make_unique<DynamicMessageHelper>(
+                    descriptor_pool.get());
+        } else {
+            // We will use the schema compiled with CLI source code
+            use_dynamic = false;
+        }
     };
+
+    std::unique_ptr<google::protobuf::Message> newMessage() const
+    {
+        if (use_dynamic) {
+            return message_helper->newMessage(message_type);
+        } else {
+            return std::make_unique<Schema>();
+        }
+    }
 
     std::unique_ptr<tools::io::InputSet> inputs;
     Protocol inputType;
     ProtoSerializer serializer;
     ProtoDeserializer deserializer;
+
+    // Dynamic schema members
+    bool use_dynamic = false;
+    std::string message_type;
+    std::shared_ptr<const google::protobuf::DescriptorPool> descriptor_pool;
+    std::unique_ptr<DynamicMessageHelper> message_helper;
 };
 
 class BenchmarkArgs : public Args {
