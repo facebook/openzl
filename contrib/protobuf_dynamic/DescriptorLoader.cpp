@@ -1,5 +1,5 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
-#include "tools/protobuf_dynamic/DescriptorLoader.h"
+#include "contrib/protobuf_dynamic/DescriptorLoader.h"
 #include <google/protobuf/compiler/importer.h>
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/descriptor.pb.h>

@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 #include <gtest/gtest.h>
 #include <filesystem>
-#include "tools/protobuf_dynamic/DescriptorLoader.h"
+#include "contrib/protobuf_dynamic/DescriptorLoader.h"
 
 using namespace openzl::protobuf;
 
