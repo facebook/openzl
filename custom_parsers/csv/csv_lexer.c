@@ -54,13 +54,17 @@ static ZL_Report parseFirstRow(
             "CSV file not well formed. No newline character found anywhere in the file");
 }
 
-static size_t countNbNewlines(const char* content, const size_t length)
+static ZL_Report countNbNewlines(const char* content, const size_t length)
 {
     size_t nbNewlines = 0;
     for (uint32_t i = 0; i < length; i++) {
         nbNewlines += (content[i] == '\n');
     }
-    return nbNewlines;
+    ZL_RET_R_IF(
+            node_invalid_input,
+            nbNewlines == 0 && length > 0,
+            "No newline character found in a non-empty CSV body");
+    return ZL_returnValue(nbNewlines);
 }
 
 /**
@@ -274,7 +278,9 @@ ZL_Report ZL_CSV_lex(
             rowsByteSize = byteSize;
         }
     }
-    const size_t maxNbRows = countNbNewlines(rowsStart, rowsByteSize);
+    const ZL_Report maxNbRowsReport = countNbNewlines(rowsStart, rowsByteSize);
+    ZL_RET_R_IF_ERR(maxNbRowsReport);
+    const size_t maxNbRows = ZL_validResult(maxNbRowsReport);
 
     // Given 'n' columns, there are 'n' content strings and 'n' separator
     // strings per row. This is because we count the newline separator as well
@@ -335,7 +341,9 @@ ZL_Report ZL_CSV_lexNullAware(
             rowsByteSize = byteSize;
         }
     }
-    const size_t maxNbRows = countNbNewlines(rowsStart, rowsByteSize);
+    const ZL_Report maxNbRowsReport = countNbNewlines(rowsStart, rowsByteSize);
+    ZL_RET_R_IF_ERR(maxNbRowsReport);
+    const size_t maxNbRows = ZL_validResult(maxNbRowsReport);
 
     // Given 'n' columns, there are up to 'n' content strings and 'n' separator
     // strings per row. This is because we count the newline separator as well
