@@ -34,6 +34,7 @@ if (OPENZL_BUILD_PROTOBUF_TOOLS)
     target_link_libraries(protobuf_serializer PUBLIC
         openzl_cpp
         protobuf::libprotobuf
+        protobuf::libprotoc
     )
     apply_openzl_compile_options_to_target(protobuf_serializer)
 
