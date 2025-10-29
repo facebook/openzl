@@ -55,4 +55,25 @@ if (OPENZL_BUILD_PROTOBUF_TOOLS)
     target_include_directories(protobuf_cli PRIVATE ${PROJECT_BINARY_DIR})
 
     apply_openzl_compile_options_to_target(protobuf_cli)
+
+    # Build tests if enabled
+    if(OPENZL_BUILD_TESTS)
+        # Test for DescriptorLoader
+        add_executable(test_protobuf_descriptor_loader
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_descriptor_loader.cpp")
+        target_link_libraries(test_protobuf_descriptor_loader PRIVATE
+            protobuf_serializer
+            GTest::gtest_main
+        )
+        gtest_discover_tests(test_protobuf_descriptor_loader)
+
+        # Test for DynamicMessageHelper
+        add_executable(test_protobuf_dynamic_messages
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_dynamic_messages.cpp")
+        target_link_libraries(test_protobuf_dynamic_messages PRIVATE
+            protobuf_serializer
+            GTest::gtest_main
+        )
+        gtest_discover_tests(test_protobuf_dynamic_messages)
+    endif()
 endif()
