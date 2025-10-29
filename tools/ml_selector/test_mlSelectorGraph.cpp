@@ -1,15 +1,13 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <gtest/gtest.h>
-#include <openzl/cpp/CCtx.hpp>
-#include <openzl/cpp/Compressor.hpp>
-#include <openzl/cpp/DCtx.hpp>
-#include <openzl/openzl.h>
+#include "openzl/common/a1cbor_helpers.h"
+#include "openzl/cpp/CCtx.hpp"
+#include "openzl/cpp/Compressor.hpp"
+#include "openzl/cpp/DCtx.hpp"
+#include "tests/utils.h"                         // @manual
+#include "tools/ml_selector/ml_selector_graph.h" // @manual
 
-#include "ml_selector_graph.h"
-
-#include <data_compression/experimental/zstrong/tests/utils.h>
-#include <openzl/common/a1cbor_helpers.h>
 namespace openzl::tests {
 namespace {
 
