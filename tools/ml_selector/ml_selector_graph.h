@@ -4,6 +4,7 @@
 #ifndef OPENZL_TOOLS_ML_SELECTOR_GRAPH_H
 #define OPENZL_TOOLS_ML_SELECTOR_GRAPH_H
 
+#include "openzl/compress/selectors/ml/gbt.h"
 #include "openzl/shared/a1cbor.h"
 #include "openzl/zl_errors.h"
 #include "openzl/zl_graph_api.h"
