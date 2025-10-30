@@ -12,7 +12,6 @@ if (OPENZL_BUILD_PROTOBUF_TOOLS)
         FIND_PACKAGE_ARGS NAMES protobuf
     )
     FetchContent_MakeAvailable(protobuf)
-    # Only set compile options if libprotobuf target exists and is built by this project
     if(TARGET libprotobuf AND NOT TARGET protobuf::libprotobuf)
         target_compile_options(libprotobuf PUBLIC
             -Wno-deprecated-declarations
