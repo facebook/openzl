@@ -58,19 +58,20 @@ static ZL_Report GM_fillStandardGraphs(GraphsMgr* gm)
 
 GraphsMgr* GM_create(const Nodes_manager* nmgr)
 {
-    GraphsMgr* const gm = ZL_malloc(sizeof(*gm));
+    GraphsMgr* const gm = ZL_calloc(sizeof(*gm));
     if (!gm)
         return NULL;
     ZL_OpaquePtrRegistry_init(&gm->opaquePtrs);
     gm->nmgr      = nmgr;
     gm->allocator = ALLOC_HeapArena_create();
     if (gm->allocator == NULL) {
-        ZL_free(gm);
+        GM_free(gm);
         return NULL;
     }
     VECTOR_INIT(gm->gdv, ZL_ENCODER_GRAPH_LIMIT);
     gm->nameMap = GraphMap_create(ZL_ENCODER_GRAPH_LIMIT);
     if (ZL_isError(GM_fillStandardGraphs(gm))) {
+        GM_free(gm);
         return NULL;
     }
     gm->opCtx = nmgr->opCtx;
