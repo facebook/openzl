@@ -636,6 +636,8 @@ static ZL_Report fillStoredStreams(
         size_t startPos,
         VECTOR(uint8_t) * isRegeneratedStream)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
+
     ZL_DLOG(SEQ,
             "fillStoredStreams (srcSize=%zu, startPos=%zu)",
             srcSize,
@@ -653,7 +655,7 @@ static ZL_Report fillStoredStreams(
         };
         srcPos += thsize;
     }
-    ZL_RET_R_IF_GT(srcSize_tooSmall, srcPos, srcSize);
+    ZL_ERR_IF_GT(srcPos, srcSize, srcSize_tooSmall);
 
     // Next we'll reference each of the stored streams in the frame
     size_t const nbTransforms    = dctx->dfh.nbDTransforms;
@@ -661,20 +663,20 @@ static ZL_Report fillStoredStreams(
     size_t const nbRegenStreams  = dctx->dfh.nbRegens;
     size_t const totalNbStreams  = nbStoredStreams + nbRegenStreams;
     size_t const firstOutputIdx  = totalNbStreams - dctx->nbOutputs;
-    ZL_RET_R_IF_GT(
-            temporaryLibraryLimitation,
+    ZL_ERR_IF_GT(
             totalNbStreams,
             ZL_runtimeStreamLimit(dctx->dfh.formatVersion),
+            temporaryLibraryLimitation,
             "too many Streams defined in this Frame");
 
-    ZL_RET_R_IF_NE(
-            allocation,
+    ZL_ERR_IF_NE(
             totalNbStreams,
-            VECTOR_RESIZE(dctx->dataInfos, totalNbStreams));
-    ZL_RET_R_IF_NE(
-            allocation,
+            VECTOR_RESIZE(dctx->dataInfos, totalNbStreams),
+            allocation);
+    ZL_ERR_IF_NE(
             totalNbStreams,
-            VECTOR_RESIZE(*isRegeneratedStream, totalNbStreams));
+            VECTOR_RESIZE(*isRegeneratedStream, totalNbStreams),
+            allocation);
     /* note: vectors are expected to remain in place after this initialization
      * because they are supposed to be correctly sized upfront */
 
@@ -692,22 +694,23 @@ static ZL_Report fillStoredStreams(
             nbStoredStreams);
     for (size_t transformIdx = 0; transformIdx < nbTransforms; ++transformIdx) {
         const DFH_NodeInfo* node = &VECTOR_AT(dctx->dfh.nodes, transformIdx);
-        ZL_TRY_LET_R(nbTrIns, getNbInputs(dctx, node->trpid, node->nbVOs));
+        ZL_TRY_LET_CONST(
+                size_t, nbTrIns, getNbInputs(dctx, node->trpid, node->nbVOs));
         ZL_DLOG(BLOCK,
                 "node %i : transform %i needs %i processed inputs",
                 (int)transformIdx,
                 node->trpid.trid,
                 nbTrIns);
         size_t const inputEndIdx = streamIdx + nbTrIns;
-        ZL_RET_R_IF_GT(
-                corruption,
+        ZL_ERR_IF_GT(
                 inputEndIdx,
                 firstOutputIdx,
-                "Graph inconsistency: Output stream depends on another output stream");
-        ZL_RET_R_IF_EQ(
                 corruption,
+                "Graph inconsistency: Output stream depends on another output stream");
+        ZL_ERR_IF_EQ(
                 node->nbRegens,
                 0,
+                corruption,
                 "Graph inconsistency: Transform has no regenerated streams");
 
         for (size_t n = 0; n < node->nbRegens; n++) {
@@ -716,14 +719,14 @@ static ZL_Report fillStoredStreams(
             ZL_ASSERT_GE(outputStreamIdx, inputEndIdx);
 
             // Set the output stream as regenerated
-            ZL_RET_R_IF_GE(
-                    corruption,
+            ZL_ERR_IF_GE(
                     outputStreamIdx,
-                    VECTOR_SIZE(*isRegeneratedStream));
-            ZL_RET_R_IF_EQ(
-                    corruption,
+                    VECTOR_SIZE(*isRegeneratedStream),
+                    corruption);
+            ZL_ERR_IF_EQ(
                     VECTOR_AT(*isRegeneratedStream, outputStreamIdx),
                     1,
+                    corruption,
                     "Graph inconsistency: regenerated stream is already assigned. \n");
             VECTOR_AT(*isRegeneratedStream, outputStreamIdx) = 1;
         }
@@ -735,7 +738,8 @@ static ZL_Report fillStoredStreams(
                 // Outputs are listed in reverse order in dataInfos.
                 size_t const outputIdx    = totalNbStreams - (regenIdx + 1);
                 ZL_Data* const outputData = dctx->outputs[outputIdx];
-                ZL_TRY_LET_R(
+                ZL_TRY_LET_CONST(
+                        size_t,
                         hasAppendOpt,
                         ZL_AppendToOutputOptimization_register(
                                 dctx,
@@ -767,10 +771,10 @@ static ZL_Report fillStoredStreams(
             continue;
 
         // Check that we haven't run out ouf stored streams
-        ZL_RET_R_IF_EQ(
-                corruption,
+        ZL_ERR_IF_EQ(
                 storedStreamIdx,
                 nbStoredStreams,
+                corruption,
                 "Inconsistency: frame contains more streams than expected. \n"
                 "This is a corruption event: frame will not be decompressed. \n"
                 "Plausible causes are: \n"
@@ -786,23 +790,23 @@ static ZL_Report fillStoredStreams(
                 storedStreamIdx,
                 storedSize,
                 streamIdx);
-        ZL_RET_R_IF_NULL(
-                allocation,
+        ZL_ERR_IF_NULL(
                 DCTX_newStreamFromConstRef(
                         dctx,
                         (ZL_IDType)streamIdx,
                         ZL_Type_serial,
                         1,
                         storedSize,
-                        (const char*)src + srcPos));
+                        (const char*)src + srcPos),
+                allocation);
         srcPos += storedSize;
         ++storedStreamIdx;
     }
 
-    ZL_RET_R_IF_NE(
-            corruption,
+    ZL_ERR_IF_NE(
             storedStreamIdx,
             nbStoredStreams,
+            corruption,
             "Inconsistency: frame does not contain as many streams as expected. \n"
             "This is a corruption event: frame will not be decompressed. \n"
             "Plausible causes are: \n"
@@ -810,14 +814,14 @@ static ZL_Report fillStoredStreams(
             " - Invalid Graph construction, which presumes a bug at compression time \n"
             " - Incorrect Transform definition, such as registering a different Transform with same ID as expected one \n");
 
-    ZL_RET_R_IF_EQ(
-            corruption,
+    ZL_ERR_IF_EQ(
             VECTOR_SIZE(dctx->dataInfos),
             0,
+            corruption,
             "Frame doesn't contain any stream!");
 
     ZL_LOG(FRAME, "read so far from frame: %zu/%zu", srcPos, srcSize);
-    ZL_RET_R_IF_GT(srcSize_tooSmall, srcPos, srcSize);
+    ZL_ERR_IF_GT(srcPos, srcSize, srcSize_tooSmall);
     dctx->streamEndPos = srcPos;
 
     ZL_ASSERT_GE(srcPos, startPos);
