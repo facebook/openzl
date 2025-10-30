@@ -131,6 +131,16 @@ typedef struct {
  from the input stream.
 
  @returns the error if the model fails to predict a classification, otherwise
+ returns index of prediction.
+ */
+ZL_RESULT_OF(size_t)
+GBTModel_predictInd(const GBTModel* model, const ZL_Input* in, ZL_Graph* graph);
+
+/**
+ * Wrapper around GBTModel_predictInd and returns the class label instead of
+ * index.
+
+ @returns the error if the model fails to predict a classification, otherwise
  returns the classified label.
  */
 ZL_RESULT_OF(Label)
