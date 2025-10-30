@@ -1,12 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 // Note: This file is work in progress and is not ready for use yet.
 
-#ifndef ZSTRONG_ML_SELECTOR_GRAPH_H
-#define ZSTRONG_ML_SELECTOR_GRAPH_H
+#ifndef OPENZL_TOOLS_ML_SELECTOR_GRAPH_H
+#define OPENZL_TOOLS_ML_SELECTOR_GRAPH_H
 
-#include <openzl/shared/a1cbor.h>
-#include <openzl/zl_errors.h>
-#include <openzl/zl_graph_api.h>
+#include "openzl/shared/a1cbor.h"
+#include "openzl/zl_errors.h"
+#include "openzl/zl_graph_api.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -100,4 +100,4 @@ ZL_MLSelector_registerBaseGraph(ZL_Compressor* compressor);
 }
 #endif
 
-#endif // ZSTRONG_ML_SELECTOR_GRAPH_H
+#endif // OPENZL_TOOLS_ML_SELECTOR_GRAPH_H

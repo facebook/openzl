@@ -18,9 +18,9 @@ cpp_unittest(
     name = "test_ml_selector_graph",
     srcs = ["test_mlSelectorGraph.cpp"],
     deps = [
-        ":ml_selector_graph",
         "//data_compression/experimental/zstrong:zstronglib",
         "//data_compression/experimental/zstrong/cpp:openzl_cpp",
-        "//data_compression/experimental/zstrong/tests:utils",
+        "//data_compression/experimental/zstrong/tests:utils",  # @manual
+        "//data_compression/experimental/zstrong/tools/ml_selector:ml_selector_graph",  # @manual
     ],
 )

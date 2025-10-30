@@ -1,11 +1,11 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 // Note: This file is work in progress and is not ready for use yet.
 
-#include "ml_selector_graph.h"
-#include <openzl/common/a1cbor_helpers.h>
-#include <openzl/shared/a1cbor.h>
-#include <openzl/zl_compressor.h>
-#include <openzl/zl_errors.h>
+#include "tools/ml_selector/ml_selector_graph.h"
+#include "openzl/common/a1cbor_helpers.h"
+#include "openzl/shared/a1cbor.h"
+#include "openzl/zl_compressor.h"
+#include "openzl/zl_errors.h"
 
 static void* MLSel_arenaCalloc(void* opaque, size_t size)
 {
