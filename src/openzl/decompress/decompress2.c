@@ -704,6 +704,11 @@ static ZL_Report fillStoredStreams(
                 inputEndIdx,
                 firstOutputIdx,
                 "Graph inconsistency: Output stream depends on another output stream");
+        ZL_RET_R_IF_EQ(
+                corruption,
+                node->nbRegens,
+                0,
+                "Graph inconsistency: Transform has no regenerated streams");
 
         for (size_t n = 0; n < node->nbRegens; n++) {
             size_t const outputStreamIdx =
@@ -1051,7 +1056,6 @@ static ZL_Report processStream(
             streamID + (ZL_IDType)nbInStreams - 1,
             trName,
             nodeInfo->trpid.trid);
-    ZL_ASSERT_GT(dt->miGraphDesc.nbSOs + dt->miGraphDesc.nbVOs, 0);
     if (dctx->dfh.formatVersion < 9) {
         ZL_RET_R_IF_EQ(
                 formatVersion_unsupported,
