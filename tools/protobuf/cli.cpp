@@ -397,6 +397,13 @@ int main(int argc, char** argv)
             'c',
             true,
             "An optional compressor to use for the ZL protocol.");
+
+    // Dynamic schema arguments: Use these flags to work with protobuf schemas
+    // that are not compiled into the binary. You can either provide a .proto
+    // source file (--proto) or a pre-compiled descriptor file (--descriptor).
+    // When using dynamic schemas, you must also specify the message type name
+    // with --message-type. Optionally, use --proto-path to add import search
+    // directories for .proto files.
     parser.addGlobalFlag(
             kProto,
             0,
