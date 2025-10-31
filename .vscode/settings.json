@@ -1,6 +1,6 @@
 {
     "cmake.copyCompileCommands": "${workspaceFolder}/compile_commands.json",
-    "cmake.buildDirectory": "${workspaceFolder}/cmakebuild",
+    "cmake.buildDirectory": "${workspaceFolder}/out/build",
     "cmake.useCMakePresets": "auto",
     "cmake.configureArgs": [
         "-DOPENZL_BUILD_ALL=ON"
