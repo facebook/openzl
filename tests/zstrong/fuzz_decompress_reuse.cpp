@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <memory>
 
-#include "security/lionhead/utils/lib_ftest/ftest.h"
+#include "tests/datagen/DataGen.h"
 #include "tests/fuzz_utils.h"
 
 #include "openzl/common/assertion.h"
@@ -35,12 +35,12 @@ constexpr ZL_TypedDecoderDesc kTransform = {
 
 FUZZ(DecompressTest, ReuseDCtx)
 {
-    ZL_g_logLevel       = ZL_LOG_LVL_ALWAYS;
-    ZL_DCtx* const dctx = ZL_DCtx_create();
+    zstrong::tests::datagen::DataGen dg = zstrong::tests::fromFDP(f);
+    ZL_g_logLevel                       = ZL_LOG_LVL_ALWAYS;
+    ZL_DCtx* const dctx                 = ZL_DCtx_create();
     ZL_REQUIRE_NN(dctx);
-    while (f.has_more_data()) {
-        std::string input =
-                gen_str(f, "input_data", zstrong::tests::InputLengthInBytes(1));
+    while (dg.has_more_data()) {
+        std::string input      = dg.randString("input_data");
         const char* const data = input.c_str();
         size_t const size      = input.length();
         ZL_REQUIRE_SUCCESS(ZL_DCtx_registerTypedDecoder(dctx, &kTransform));

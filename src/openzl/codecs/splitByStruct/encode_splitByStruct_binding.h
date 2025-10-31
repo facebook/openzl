@@ -44,11 +44,10 @@ EI_splitByStruct(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 
 #define ZL_SPLITBYSTRUCT_FIELDSIZES_PID 387
 
-#define EI_SPLITBYSTRUCT(id)                                               \
-    {                                                                      \
-        .gd = GRAPH_SPLITBYSTRUCT_VO(id), .transform_f = EI_splitByStruct, \
-        .name = "!zl.private.split_by_struct"                              \
-    }
+#define EI_SPLITBYSTRUCT(id)                     \
+    { .gd          = GRAPH_SPLITBYSTRUCT_VO(id), \
+      .transform_f = EI_splitByStruct,           \
+      .name        = "!zl.private.split_by_struct" }
 
 /* Exposed for tests */
 ZL_NodeID ZL_createNode_splitByStruct(

@@ -33,10 +33,11 @@ ZL_GraphID SI_fieldLzLiteralsChannelSelector(
         const ZL_GraphID* customGraphs,
         size_t nbCustomGraphs);
 
-#define EI_FIELD_LZ(id)                                      \
-    {                                                        \
-        .gd = FIELD_LZ_GRAPH(id), .transform_f = EI_fieldLz, \
-        .name = "!zl.field_lz",                              \
+#define EI_FIELD_LZ(id)                    \
+    {                                      \
+        .gd          = FIELD_LZ_GRAPH(id), \
+        .transform_f = EI_fieldLz,         \
+        .name        = "!zl.field_lz",     \
     }
 
 ZL_END_C_DECLS

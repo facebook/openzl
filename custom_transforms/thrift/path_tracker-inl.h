@@ -191,13 +191,14 @@ void PathTracker<StreamSetType>::Node::checkType(TType t) const
 {
     t = coerceType(t);
     if (t != type()) {
-        throw std::runtime_error(fmt::format(
-                "Node (id {}) has type {} ({}) but is being accessed with type {} ({})!",
-                id(),
-                thriftTypeToString(type()),
-                type(),
-                thriftTypeToString(t),
-                t));
+        throw std::runtime_error(
+                fmt::format(
+                        "Node (id {}) has type {} ({}) but is being accessed with type {} ({})!",
+                        id(),
+                        thriftTypeToString(type()),
+                        type(),
+                        thriftTypeToString(t),
+                        t));
     }
 }
 

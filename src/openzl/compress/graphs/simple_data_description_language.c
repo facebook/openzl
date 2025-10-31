@@ -175,6 +175,8 @@ typedef struct {
 typedef enum {
     ZL_SDDL_OpCode_die,
     ZL_SDDL_OpCode_expect,
+    ZL_SDDL_OpCode_log,
+
     ZL_SDDL_OpCode_consume,
     ZL_SDDL_OpCode_sizeof,
     ZL_SDDL_OpCode_send,
@@ -198,6 +200,18 @@ typedef enum {
     ZL_SDDL_OpCode_mul,
     ZL_SDDL_OpCode_div,
     ZL_SDDL_OpCode_mod,
+
+    // Bitwise operations
+    ZL_SDDL_OpCode_bit_and,
+    ZL_SDDL_OpCode_bit_or,
+    ZL_SDDL_OpCode_bit_xor,
+    ZL_SDDL_OpCode_bit_not,
+
+    // Logical operations
+    ZL_SDDL_OpCode_log_and,
+    ZL_SDDL_OpCode_log_or,
+    ZL_SDDL_OpCode_log_not,
+
 } ZL_SDDL_OpCode;
 
 #define ZL_SDDL_OP_ARG_COUNT 2
@@ -297,6 +311,8 @@ static const char* ZL_SDDL_OpCode_toString(ZL_SDDL_OpCode opcode)
             return "die";
         case ZL_SDDL_OpCode_expect:
             return "expect";
+        case ZL_SDDL_OpCode_log:
+            return "log";
         case ZL_SDDL_OpCode_consume:
             return "consume";
         case ZL_SDDL_OpCode_sizeof:
@@ -333,6 +349,20 @@ static const char* ZL_SDDL_OpCode_toString(ZL_SDDL_OpCode opcode)
             return "div";
         case ZL_SDDL_OpCode_mod:
             return "mod";
+        case ZL_SDDL_OpCode_bit_and:
+            return "bit_and";
+        case ZL_SDDL_OpCode_bit_or:
+            return "bit_or";
+        case ZL_SDDL_OpCode_bit_xor:
+            return "bit_xor";
+        case ZL_SDDL_OpCode_bit_not:
+            return "bit_not";
+        case ZL_SDDL_OpCode_log_and:
+            return "log_and";
+        case ZL_SDDL_OpCode_log_or:
+            return "log_or";
+        case ZL_SDDL_OpCode_log_not:
+            return "log_not";
         default:
             return "unknown";
     }
@@ -366,28 +396,28 @@ static const char* ZL_SDDL_ExprType_toString(ZL_SDDL_ExprType type)
 
 static void log_expr(const ZL_SDDL_Expr* const expr)
 {
-    ZL_LOG(ALWAYS,
-           "expr %p: type = %s",
-           expr,
-           ZL_SDDL_ExprType_toString(expr->type));
+    ZL_RLOG(ALWAYS,
+            "Logging value of expr %p:\n  type: %s\n",
+            expr,
+            ZL_SDDL_ExprType_toString(expr->type));
     switch (expr->type) {
         case ZL_SDDL_ExprType_null:
             break;
         case ZL_SDDL_ExprType_op:
-            ZL_LOG(ALWAYS, "op = %s", ZL_SDDL_OpCode_toString(expr->op.op));
+            ZL_RLOG(ALWAYS, "  op: %s\n", ZL_SDDL_OpCode_toString(expr->op.op));
             break;
         case ZL_SDDL_ExprType_num:
-            ZL_LOG(ALWAYS, "val = %lld", (long long)expr->num.val);
+            ZL_RLOG(ALWAYS, "  val: %lld\n", (long long)expr->num.val);
             break;
         case ZL_SDDL_ExprType_field:
             break;
         case ZL_SDDL_ExprType_dest:
             break;
         case ZL_SDDL_ExprType_var:
-            ZL_LOG(ALWAYS,
-                   "name = '%.*s'",
-                   expr->var.name.size,
-                   expr->var.name.data);
+            ZL_RLOG(ALWAYS,
+                    "  name: '%.*s'\n",
+                    expr->var.name.size,
+                    expr->var.name.data);
             break;
         case ZL_SDDL_ExprType_scope:
             break;
@@ -470,6 +500,7 @@ static size_t ZL_SDDL_OpCode_numArgs(const ZL_SDDL_OpCode opcode)
         case ZL_SDDL_OpCode_die:
             return 0;
         case ZL_SDDL_OpCode_expect:
+        case ZL_SDDL_OpCode_log:
         case ZL_SDDL_OpCode_consume:
         case ZL_SDDL_OpCode_sizeof:
             return 1;
@@ -491,6 +522,17 @@ static size_t ZL_SDDL_OpCode_numArgs(const ZL_SDDL_OpCode opcode)
         case ZL_SDDL_OpCode_mul:
         case ZL_SDDL_OpCode_div:
         case ZL_SDDL_OpCode_mod:
+            return 2;
+        case ZL_SDDL_OpCode_bit_not:
+            return 1;
+        case ZL_SDDL_OpCode_bit_and:
+        case ZL_SDDL_OpCode_bit_or:
+        case ZL_SDDL_OpCode_bit_xor:
+            return 2;
+        case ZL_SDDL_OpCode_log_not:
+            return 1;
+        case ZL_SDDL_OpCode_log_and:
+        case ZL_SDDL_OpCode_log_or:
             return 2;
         default:
             return 0;
@@ -984,6 +1026,9 @@ static ZL_Report ZL_SDDL_Program_decodeExprType(
     } else if (StringView_eqCStr(&type_sv, "expect")) {
         expr->type  = ZL_SDDL_ExprType_op;
         expr->op.op = ZL_SDDL_OpCode_expect;
+    } else if (StringView_eqCStr(&type_sv, "log")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_log;
     } else if (StringView_eqCStr(&type_sv, "consume")) {
         expr->type  = ZL_SDDL_ExprType_op;
         expr->op.op = ZL_SDDL_OpCode_consume;
@@ -1038,6 +1083,27 @@ static ZL_Report ZL_SDDL_Program_decodeExprType(
     } else if (StringView_eqCStr(&type_sv, "mod")) {
         expr->type  = ZL_SDDL_ExprType_op;
         expr->op.op = ZL_SDDL_OpCode_mod;
+    } else if (StringView_eqCStr(&type_sv, "bit_and")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_bit_and;
+    } else if (StringView_eqCStr(&type_sv, "bit_or")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_bit_or;
+    } else if (StringView_eqCStr(&type_sv, "bit_xor")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_bit_xor;
+    } else if (StringView_eqCStr(&type_sv, "bit_not")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_bit_not;
+    } else if (StringView_eqCStr(&type_sv, "log_and")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_log_and;
+    } else if (StringView_eqCStr(&type_sv, "log_or")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_log_or;
+    } else if (StringView_eqCStr(&type_sv, "log_not")) {
+        expr->type  = ZL_SDDL_ExprType_op;
+        expr->op.op = ZL_SDDL_OpCode_log_not;
     }
     // Num
     else if (StringView_eqCStr(&type_sv, "int")) {
@@ -1789,6 +1855,11 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr(
         const ZL_SDDL_Expr* const expr);
 
 // Forward declaration
+static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_consume(
+        ZL_SDDL_State* const state,
+        const ZL_SDDL_Expr* const expr);
+
+// Forward declaration
 static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_consumeField(
         ZL_SDDL_State* const state,
         const ZL_SDDL_Field* const field);
@@ -2139,44 +2210,51 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_consumeArray(
     ZL_ERR_IF_NULL(dyn, GENERIC);
     const ZL_SDDL_Expr* const inner_expr = &dyn->exprs[0];
     const ZL_SDDL_Expr* const len_expr   = &dyn->exprs[1];
-    ZL_ERR_IF_NE(inner_expr->type, ZL_SDDL_ExprType_field, corruption);
+    ZL_ERR_IF(
+            inner_expr->type != ZL_SDDL_ExprType_field
+                    && inner_expr->type != ZL_SDDL_ExprType_func,
+            corruption);
     ZL_ERR_IF_NE(len_expr->type, ZL_SDDL_ExprType_num, corruption);
     ZL_ERR_IF_LT(len_expr->num.val, 0, corruption);
     const size_t len = (size_t)len_expr->num.val;
 
-    if (inner_expr->field.type == ZL_SDDL_FieldType_atom) {
-        // Optimization
-        return ZL_SDDL_State_consumeArray_ofAtoms(
-                state, &inner_expr->field.atom, len);
-    }
-
-    if (inner_expr->field.type == ZL_SDDL_FieldType_record && len > 1) {
-        // Optimization
-        ZL_ERR_IF_ERR(ZL_SDDL_State_consumeRecord_noScope(
-                state, &inner_expr->field.record, true));
-
-        const size_t instr_count = inner_expr->field.record.dyn->instrs->count;
-
-        // As an optimization, these reserves are allowed to fail.
-        (void)VECTOR_RESERVE(
-                state->segment_sizes,
-                VECTOR_SIZE(state->segment_sizes) + instr_count * (len - 1));
-        (void)VECTOR_RESERVE(
-                state->segment_tags,
-                VECTOR_SIZE(state->segment_tags) + instr_count * (len - 1));
-
-        for (size_t i = 1; i < len; i++) {
-            ZL_ERR_IF_ERR(ZL_SDDL_State_consumeRecord_noScope(
-                    state, &inner_expr->field.record, false));
+    if (inner_expr->type == ZL_SDDL_ExprType_field) {
+        if (inner_expr->field.type == ZL_SDDL_FieldType_atom) {
+            // Optimization
+            return ZL_SDDL_State_consumeArray_ofAtoms(
+                    state, &inner_expr->field.atom, len);
         }
-        return ZL_WRAP_VALUE(ZL_SDDL_Expr_makeNull());
+
+        if (inner_expr->field.type == ZL_SDDL_FieldType_record && len > 1) {
+            // Optimization
+            ZL_ERR_IF_ERR(ZL_SDDL_State_consumeRecord_noScope(
+                    state, &inner_expr->field.record, true));
+
+            const size_t instr_count =
+                    inner_expr->field.record.dyn->instrs->count;
+
+            // As an optimization, these reserves are allowed to fail.
+            (void)VECTOR_RESERVE(
+                    state->segment_sizes,
+                    VECTOR_SIZE(state->segment_sizes)
+                            + instr_count * (len - 1));
+            (void)VECTOR_RESERVE(
+                    state->segment_tags,
+                    VECTOR_SIZE(state->segment_tags) + instr_count * (len - 1));
+
+            for (size_t i = 1; i < len; i++) {
+                ZL_ERR_IF_ERR(ZL_SDDL_State_consumeRecord_noScope(
+                        state, &inner_expr->field.record, false));
+            }
+            return ZL_WRAP_VALUE(ZL_SDDL_Expr_makeNull());
+        }
     }
 
     for (size_t i = 0; i < len; i++) {
         ZL_TRY_LET(
                 ZL_SDDL_Expr,
                 field_result,
-                ZL_SDDL_State_consumeField(state, &inner_expr->field));
+                ZL_SDDL_State_consume(state, inner_expr));
         ZL_SDDL_Expr_decref(state, &field_result);
     }
     return ZL_WRAP_VALUE(ZL_SDDL_Expr_makeNull());
@@ -2430,6 +2508,37 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr_op_inner(
                     "Expect op got 0-valued argument. Failing the parse.");
             break;
         }
+        case ZL_SDDL_OpCode_log: {
+            // #ifndef NDEBUG
+
+            log_expr(&args[0]);
+
+            const ZL_RESULT_OF(ZL_SDDL_SourceLocationPrettyString) pstr_res =
+                    ZL_SDDL_SourceLocationPrettyString_create(
+                            ZL_ERR_CTX_PTR,
+                            state->arena,
+                            &state->prog->source_code,
+                            &state->cur_src_loc,
+                            2);
+
+            ZL_ASSERT(
+                    !ZL_RES_isError(pstr_res),
+                    "Error in ZL_SDDL_SourceLocationPrettyString_create(): %s",
+                    ZL_E_str(ZL_RES_error(pstr_res)));
+
+            if (!ZL_RES_isError(pstr_res)) {
+                const ZL_SDDL_SourceLocationPrettyString pstr =
+                        ZL_RES_value(pstr_res);
+                if (pstr.str.data != NULL) {
+                    ZL_RLOG(ALWAYS, "at %.*s", pstr.str.size, pstr.str.data);
+                }
+
+                ZL_SDDL_SourceLocationPrettyString_destroy(state->arena, &pstr);
+            }
+            // #endif
+            result = args[0];
+            break;
+        }
         case ZL_SDDL_OpCode_consume: {
             ZL_TRY_SET(
                     ZL_SDDL_Expr,
@@ -2559,7 +2668,46 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr_op_inner(
             result = ZL_SDDL_Expr_makeNum(args[0].num.val % args[1].num.val);
             break;
         }
-
+        case ZL_SDDL_OpCode_bit_and: {
+            ZL_ERR_IF_NE(args[0].type, ZL_SDDL_ExprType_num, corruption);
+            ZL_ERR_IF_NE(args[1].type, ZL_SDDL_ExprType_num, corruption);
+            result = ZL_SDDL_Expr_makeNum(args[0].num.val & args[1].num.val);
+            break;
+        }
+        case ZL_SDDL_OpCode_bit_or: {
+            ZL_ERR_IF_NE(args[0].type, ZL_SDDL_ExprType_num, corruption);
+            ZL_ERR_IF_NE(args[1].type, ZL_SDDL_ExprType_num, corruption);
+            result = ZL_SDDL_Expr_makeNum(args[0].num.val | args[1].num.val);
+            break;
+        }
+        case ZL_SDDL_OpCode_bit_xor: {
+            ZL_ERR_IF_NE(args[0].type, ZL_SDDL_ExprType_num, corruption);
+            ZL_ERR_IF_NE(args[1].type, ZL_SDDL_ExprType_num, corruption);
+            result = ZL_SDDL_Expr_makeNum(args[0].num.val ^ args[1].num.val);
+            break;
+        }
+        case ZL_SDDL_OpCode_bit_not: {
+            ZL_ERR_IF_NE(args[0].type, ZL_SDDL_ExprType_num, corruption);
+            result = ZL_SDDL_Expr_makeNum(~args[0].num.val);
+            break;
+        }
+        case ZL_SDDL_OpCode_log_and: {
+            ZL_ERR_IF_NE(args[0].type, ZL_SDDL_ExprType_num, corruption);
+            ZL_ERR_IF_NE(args[1].type, ZL_SDDL_ExprType_num, corruption);
+            result = ZL_SDDL_Expr_makeNum(args[0].num.val && args[1].num.val);
+            break;
+        }
+        case ZL_SDDL_OpCode_log_or: {
+            ZL_ERR_IF_NE(args[0].type, ZL_SDDL_ExprType_num, corruption);
+            ZL_ERR_IF_NE(args[1].type, ZL_SDDL_ExprType_num, corruption);
+            result = ZL_SDDL_Expr_makeNum(args[0].num.val || args[1].num.val);
+            break;
+        }
+        case ZL_SDDL_OpCode_log_not: {
+            ZL_ERR_IF_NE(args[0].type, ZL_SDDL_ExprType_num, corruption);
+            result = ZL_SDDL_Expr_makeNum(!args[0].num.val);
+            break;
+        }
         default:
             ZL_ERR(corruption, "Unknown opcode %d", op->op);
     }
@@ -2748,6 +2896,9 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr_var(
         return ZL_WRAP_VALUE(ZL_SDDL_Expr_makeNum(
                 (ZL_SDDL_IntT)state->size - (ZL_SDDL_IntT)state->pos));
     }
+    if (StringView_eqCStr(&var->name, "_pos")) {
+        return ZL_WRAP_VALUE(ZL_SDDL_Expr_makeNum((ZL_SDDL_IntT)state->pos));
+    }
 
     return ZL_SDDL_Scope_get(state, scope, var);
 }
@@ -2897,7 +3048,10 @@ ZL_SDDL_State_exec(
 
     instructions.dispatch_instructions.nbSegments =
             VECTOR_SIZE(state->segment_sizes);
-    instructions.dispatch_instructions.nbTags = state->num_tags;
+    ZL_ERR_IF_GT(
+            VECTOR_SIZE(state->dests), UINT_MAX, nodeExecution_invalidOutputs);
+    instructions.dispatch_instructions.nbTags =
+            (uint32_t)VECTOR_SIZE(state->dests);
 
     instructions.dispatch_instructions.segmentSizes =
             VECTOR_DATA(state->segment_sizes);

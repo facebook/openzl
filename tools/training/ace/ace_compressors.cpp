@@ -355,8 +355,9 @@ buildRandomNodeCompressor(std::mt19937_64& rng, Type inputType, size_t maxDepth)
     std::vector<std::unique_ptr<ACECompressor>> successors;
     successors.reserve(node.outputTypes.size());
     for (size_t i = 0; i < node.outputTypes.size(); ++i) {
-        successors.push_back(std::make_unique<ACECompressor>(
-                buildRandomCompressor(rng, node.outputTypes[i], maxDepth - 1)));
+        successors.push_back(
+                std::make_unique<ACECompressor>(buildRandomCompressor(
+                        rng, node.outputTypes[i], maxDepth - 1)));
     }
     return ACENodeCompressor(std::move(node), std::move(successors));
 }

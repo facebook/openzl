@@ -11,10 +11,7 @@ ZL_BEGIN_C_DECLS
 
 ZL_Report DI_prefix(ZL_Decoder* dictx, const ZL_Input* ins[]);
 
-#define DI_PREFIX(id)                              \
-    {                                              \
-        .transform_f = DI_prefix, .name = "prefix" \
-    }
+#define DI_PREFIX(id) { .transform_f = DI_prefix, .name = "prefix" }
 
 ZL_END_C_DECLS
 

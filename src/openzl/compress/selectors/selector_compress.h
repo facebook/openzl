@@ -13,11 +13,13 @@ ZL_BEGIN_C_DECLS
 ZL_Report
 MultiInputGraph_compress(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs);
 
-#define MIGRAPH_COMPRESS                                                     \
-    {                                                                        \
-        .name = "!zl.compress_generic", .graph_f = MultiInputGraph_compress, \
-        .inputTypeMasks = (const ZL_Type[]){ ZL_Type_any }, .nbInputs = 1,   \
-        .lastInputIsVariable = 1,                                            \
+#define MIGRAPH_COMPRESS                                         \
+    {                                                            \
+        .name                = "!zl.compress_generic",           \
+        .graph_f             = MultiInputGraph_compress,         \
+        .inputTypeMasks      = (const ZL_Type[]){ ZL_Type_any }, \
+        .nbInputs            = 1,                                \
+        .lastInputIsVariable = 1,                                \
     }
 
 // .selector_f = SI_selector_compress, .inStreamType = ZL_Type_any,

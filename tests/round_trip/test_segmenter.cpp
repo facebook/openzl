@@ -35,23 +35,7 @@ void printHexa(const void* p, size_t size)
 }
 #endif
 
-/* ------   create the compressor   -------- */
-
-// This graph function follows the ZL_GraphFn definition
-// It's in charge of registering custom graphs and nodes
-// and the one passed via unit-wide variable @g_dynGraph_dgdPtr.
-static const ZL_FunctionGraphDesc* g_dynGraph_dgdPtr = nullptr;
-static ZL_GraphID registerDynGraph(ZL_Compressor* cgraph) noexcept
-{
-    ZL_Report const setr = ZL_Compressor_setParameter(
-            cgraph, ZL_CParam_formatVersion, g_testVersion);
-    if (ZL_isError(setr))
-        abort();
-
-    return ZL_Compressor_registerFunctionGraph(cgraph, g_dynGraph_dgdPtr);
-}
-
-/* ------   compress, using provided graph function   -------- */
+/* ------   compress, using provided compressor generator   -------- */
 
 static size_t compress(
         void* dst,
@@ -601,6 +585,27 @@ TEST(Segmenter, graphThenSegmenter)
     g_segmenterDescPtr = &serialSegmenter;
     (void)roundTripGen(
             ZL_Type_serial, registerGraphAndSegmenter, "graph then segmenter");
+}
+
+/* ======   Default segmenter   ======= */
+ZL_GraphID default_numeric_segmenter(ZL_Compressor* compressor) noexcept
+{
+    ZL_Report const setr = ZL_Compressor_setParameter(
+            compressor, ZL_CParam_formatVersion, g_testVersion);
+    if (ZL_isError(setr))
+        abort();
+
+    return ZL_GRAPH_SEGMENT_NUMERIC;
+}
+
+TEST(Segmenter, default_numeric_segmenter)
+{
+    if (g_testVersion < ZL_CHUNK_VERSION_MIN)
+        return;
+    (void)roundTripGen(
+            ZL_Type_numeric,
+            default_numeric_segmenter,
+            "use the default numeric segmenter");
 }
 
 /* *********************************************** */

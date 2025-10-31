@@ -25,6 +25,8 @@ enum class Symbol {
     // Operators
     DIE,
     EXPECT,
+    LOG,
+
     CONSUME,
     SIZEOF,
     SEND,
@@ -50,6 +52,15 @@ enum class Symbol {
     MUL,
     DIV,
     MOD,
+
+    BIT_AND,
+    BIT_OR,
+    BIT_XOR,
+    BIT_NOT,
+
+    LOG_AND,
+    LOG_OR,
+    LOG_NOT,
 
     // Keywords
 

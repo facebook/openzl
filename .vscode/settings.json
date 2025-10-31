@@ -3,7 +3,7 @@
     "cmake.buildDirectory": "${workspaceFolder}/cmakebuild",
     "cmake.useCMakePresets": "auto",
     "cmake.configureArgs": [
-        "-DOPENZL_BUILD_TESTS=ON"
+        "-DOPENZL_BUILD_ALL=ON"
     ],
     "files.associations": {
         "array": "cpp",

@@ -58,13 +58,12 @@ static ZL_Report stringCopy_ct(
     return ZL_returnValue(1); // nb Out Streams
 }
 // Use a #define, to employ as initializer in static const declarations.
-#define STRINGCOPY_GDESC                                          \
-    (ZL_TypedGraphDesc)                                           \
-    {                                                             \
-        .CTid = CT_STRINGCOPY_ID, .inStreamType = ZL_Type_string, \
-        .outStreamTypes = (const ZL_Type[]){ ZL_Type_string },    \
-        .nbOutStreams   = 1                                       \
-    }
+#define STRINGCOPY_GDESC                                              \
+    (ZL_TypedGraphDesc){ .CTid         = CT_STRINGCOPY_ID,            \
+                         .inStreamType = ZL_Type_string,              \
+                         .outStreamTypes =                            \
+                                 (const ZL_Type[]){ ZL_Type_string }, \
+                         .nbOutStreams = 1 }
 static ZL_TypedEncoderDesc const stringCopy_CDesc = {
     .gd          = STRINGCOPY_GDESC,
     .transform_f = stringCopy_ct,

@@ -69,8 +69,10 @@ class TestDCtx : public testing::Test {
                 Input::refNumeric(poly::span<const int>(numericInput_)));
         inputs_.push_back(
                 Input::refStruct(poly::span<const int>(numericInput_)));
-        inputs_.push_back(Input::refString(
-                poly::string_view(serialInput_).substr(0, 2222), lengths_));
+        inputs_.push_back(
+                Input::refString(
+                        poly::string_view(serialInput_).substr(0, 2222),
+                        lengths_));
     }
 
     std::string serialInput_;

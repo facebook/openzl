@@ -1,7 +1,5 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "security/lionhead/utils/lib_ftest/ftest.h"
-
 #include "tests/datagen/DataGen.h"
 #include "tests/datagen/structures/openzl/StringInputProducer.h"
 #include "tests/fuzz_utils.h"

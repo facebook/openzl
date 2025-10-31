@@ -16,11 +16,10 @@ ZL_BEGIN_C_DECLS
 // interleaved in round-robin order
 ZL_Report EI_interleave(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 
-#define EI_INTERLEAVE_STRING(id)                                         \
-    {                                                                    \
-        .gd = INTERLEAVE_STRING_GRAPH(id), .transform_f = EI_interleave, \
-        .name = "!zl.interleave_string"                                  \
-    }
+#define EI_INTERLEAVE_STRING(id)                  \
+    { .gd          = INTERLEAVE_STRING_GRAPH(id), \
+      .transform_f = EI_interleave,               \
+      .name        = "!zl.interleave_string" }
 
 ZL_END_C_DECLS
 

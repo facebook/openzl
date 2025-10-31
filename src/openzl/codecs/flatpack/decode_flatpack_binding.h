@@ -8,9 +8,6 @@
 
 ZL_Report DI_flatpack(ZL_Decoder* dictx, const ZL_Input* ins[]);
 
-#define DI_FLATPACK(id)                                \
-    {                                                  \
-        .transform_f = DI_flatpack, .name = "flatpack" \
-    }
+#define DI_FLATPACK(id) { .transform_f = DI_flatpack, .name = "flatpack" }
 
 #endif

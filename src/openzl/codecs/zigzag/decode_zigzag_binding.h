@@ -24,10 +24,7 @@ ZL_Report DI_zigzag_num(ZL_Decoder* dictx, const ZL_Input* in[]);
 
 // Following ZL_TypedEncoderDesc declaration,
 // presumed to be used as initializer only
-#define DI_ZIGZAG_NUM(id)                              \
-    {                                                  \
-        .transform_f = DI_zigzag_num, .name = "zigzag" \
-    }
+#define DI_ZIGZAG_NUM(id) { .transform_f = DI_zigzag_num, .name = "zigzag" }
 
 ZL_END_C_DECLS
 

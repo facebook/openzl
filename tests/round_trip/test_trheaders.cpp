@@ -67,13 +67,12 @@ static ZL_Report send_param1(ZL_Encoder* eictx, const ZL_Input* in) noexcept
 {
     return send_paramX(eictx, in, 1);
 }
-#define PARAM1_GDESC                                           \
-    (ZL_TypedGraphDesc)                                        \
-    {                                                          \
-        .CTid = CT_param1_ID, .inStreamType = ZL_Type_serial,  \
-        .outStreamTypes = (const ZL_Type[]){ ZL_Type_serial }, \
-        .nbOutStreams   = 1                                    \
-    }
+#define PARAM1_GDESC                                                  \
+    (ZL_TypedGraphDesc){ .CTid         = CT_param1_ID,                \
+                         .inStreamType = ZL_Type_serial,              \
+                         .outStreamTypes =                            \
+                                 (const ZL_Type[]){ ZL_Type_serial }, \
+                         .nbOutStreams = 1 }
 static ZL_TypedEncoderDesc const param1_CDesc = {
     .gd          = PARAM1_GDESC,
     .transform_f = send_param1,
@@ -83,13 +82,12 @@ static ZL_Report send_param2(ZL_Encoder* eictx, const ZL_Input* in) noexcept
 {
     return send_paramX(eictx, in, 2);
 }
-#define PARAM2_GDESC                                           \
-    (ZL_TypedGraphDesc)                                        \
-    {                                                          \
-        .CTid = CT_param2_ID, .inStreamType = ZL_Type_serial,  \
-        .outStreamTypes = (const ZL_Type[]){ ZL_Type_serial }, \
-        .nbOutStreams   = 1                                    \
-    }
+#define PARAM2_GDESC                                                  \
+    (ZL_TypedGraphDesc){ .CTid         = CT_param2_ID,                \
+                         .inStreamType = ZL_Type_serial,              \
+                         .outStreamTypes =                            \
+                                 (const ZL_Type[]){ ZL_Type_serial }, \
+                         .nbOutStreams = 1 }
 static ZL_TypedEncoderDesc const param2_CDesc = {
     .gd          = PARAM2_GDESC,
     .transform_f = send_param2,
@@ -99,13 +97,12 @@ static ZL_Report send_param3(ZL_Encoder* eictx, const ZL_Input* in) noexcept
 {
     return send_paramX(eictx, in, 3);
 }
-#define PARAM3_GDESC                                           \
-    (ZL_TypedGraphDesc)                                        \
-    {                                                          \
-        .CTid = CT_param3_ID, .inStreamType = ZL_Type_serial,  \
-        .outStreamTypes = (const ZL_Type[]){ ZL_Type_serial }, \
-        .nbOutStreams   = 1                                    \
-    }
+#define PARAM3_GDESC                                                  \
+    (ZL_TypedGraphDesc){ .CTid         = CT_param3_ID,                \
+                         .inStreamType = ZL_Type_serial,              \
+                         .outStreamTypes =                            \
+                                 (const ZL_Type[]){ ZL_Type_serial }, \
+                         .nbOutStreams = 1 }
 static ZL_TypedEncoderDesc const param3_CDesc = {
     .gd          = PARAM3_GDESC,
     .transform_f = send_param3,

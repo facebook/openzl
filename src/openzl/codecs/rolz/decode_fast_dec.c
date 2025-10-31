@@ -1394,7 +1394,7 @@ static ZL_Report ZS_fastDecoder_decompress(
     do {                                                               \
         uint32_t off    = ofs[k & 3];                                  \
         len_t const tok = ZL_read16(&tks[k]);                          \
-        ZL_ASSERT_NE(tok&(size_t)~3, 0);                               \
+        ZL_ASSERT_NE(tok & (size_t)~3, 0);                             \
         len_t const llen = (tok >> kTokenOFBits) & kTokenLLMask;       \
         len_t const mlen =                                             \
                 (tok >> (kTokenOFBits + kTokenLLBits)) & kTokenMLMask; \

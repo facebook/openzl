@@ -22,8 +22,9 @@ TEST(TestFrameInfo, basic)
     data[50]                      = 50;
     inputs.push_back(Input::refStruct(poly::span<const int64_t>(data)));
     inputs.push_back(Input::refNumeric(poly::span<const int64_t>(data)));
-    inputs.push_back(Input::refSerial(
-            "hello world this is some test input hello hello hello world hello test input"));
+    inputs.push_back(
+            Input::refSerial(
+                    "hello world this is some test input hello hello hello world hello test input"));
     std::array<uint32_t, 5> lengths = { 1, 3, 2, 1, 2 };
     inputs.push_back(Input::refString("133322122", lengths));
     auto compressed = cctx.compress(inputs);

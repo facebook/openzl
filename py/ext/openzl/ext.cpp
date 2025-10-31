@@ -1123,8 +1123,9 @@ class PyCCtx : public CCtx,
         for (auto& input : inputs) {
             refs.emplace_back(input->get());
         }
-        auto compressed = this->CCtx::compress(poly::span<const Input>(
-                static_cast<Input*>(refs.data()), refs.size()));
+        auto compressed = this->CCtx::compress(
+                poly::span<const Input>(
+                        static_cast<Input*>(refs.data()), refs.size()));
         return nb::bytes(compressed.data(), compressed.size());
     }
 

@@ -130,17 +130,19 @@ TEST_F(TestFunctionGraph, BruteForceFunctionGraph)
     std::iota(rhs.begin(), rhs.end(), 0);
 
     cctx_.refCompressor(compressor_);
-    auto compressed = testRoundTrip(std::initializer_list<Input>{
-            Input::refNumeric(poly::span<const int64_t>(lhs)),
-            Input::refNumeric(poly::span<const int64_t>(rhs)) });
+    auto compressed = testRoundTrip(
+            std::initializer_list<Input>{
+                    Input::refNumeric(poly::span<const int64_t>(lhs)),
+                    Input::refNumeric(poly::span<const int64_t>(rhs)) });
 
     std::iota(lhs.begin(), lhs.end(), 0);
     std::iota(rhs.begin(), rhs.end(), 1);
 
     cctx_.refCompressor(compressor_);
-    auto compressed2 = testRoundTrip(std::initializer_list<Input>{
-            Input::refNumeric(poly::span<const int64_t>(lhs)),
-            Input::refNumeric(poly::span<const int64_t>(rhs)) });
+    auto compressed2 = testRoundTrip(
+            std::initializer_list<Input>{
+                    Input::refNumeric(poly::span<const int64_t>(lhs)),
+                    Input::refNumeric(poly::span<const int64_t>(rhs)) });
 
     // first can dedup, second cannot
     ASSERT_GT(compressed2.size(), 1.75 * compressed.size());

@@ -243,3 +243,25 @@ ZL_Report FeatureGen_integer(
     ZL_RET_R_IF(allocation, badAlloc, "Failed to add features to vector");
     return ZL_returnSuccess();
 }
+
+ZL_RESULT_OF(FeatureGenerator)
+FeatureGen_getFeatureGen(FeatureGenId id)
+{
+    if (id == FeatureGenId_Int) {
+        return ZL_RESULT_WRAP_VALUE(FeatureGenerator, FeatureGen_integer);
+    }
+
+    ZL_RET_T_ERR(
+            FeatureGenerator,
+            compressionParameter_invalid,
+            "Must use standard feature generator");
+}
+
+FeatureGenId FeatureGen_getId(FeatureGenerator featureGenerator)
+{
+    if (featureGenerator == FeatureGen_integer) {
+        return FeatureGenId_Int;
+    }
+
+    return FeatureGenId_Invalid;
+}

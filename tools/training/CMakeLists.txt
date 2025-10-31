@@ -28,11 +28,12 @@ if (OPENZL_BUILD_TRAINING_TOOLS)
   add_library(tools_training
     ${training_sources}
   )
+  set_property(TARGET tools_training PROPERTY POSITION_INDEPENDENT_CODE ON)
 
   target_include_directories(tools_training PUBLIC ${PROJECT_SOURCE_DIR})
   apply_openzl_compile_options_to_target(tools_training)
-target_link_libraries(tools_training PUBLIC openzl openzl_cpp tools_io custom_parsers logger)
-add_dependencies(tools_training openzl openzl_cpp tools_io custom_parsers logger)
+target_link_libraries(tools_training PUBLIC openzl openzl_cpp tools_io logger)
+add_dependencies(tools_training openzl openzl_cpp tools_io logger)
 
   if (OPENZL_BUILD_TESTS AND OPENZL_ALLOW_INTROSPECTION)
     file(
@@ -52,6 +53,7 @@ add_dependencies(tools_training openzl openzl_cpp tools_io custom_parsers logger
             tools_training
             openzl
             openzl_cpp
+            custom_parsers
             GTest::gtest_main
     )
     apply_openzl_compile_options_to_target(test_training)

@@ -24,20 +24,12 @@ ZL_Report DI_splitN(
         const ZL_Input* inVariable[],
         size_t nbInVariable);
 
-#define DI_SPLITN(id)                              \
-    {                                              \
-        .transform_f = DI_splitN, .name = "splitN" \
-    }
+#define DI_SPLITN(id) { .transform_f = DI_splitN, .name = "splitN" }
 
-#define DI_SPLITN_STRUCT(id)                              \
-    {                                                     \
-        .transform_f = DI_splitN, .name = "splitN struct" \
-    }
+#define DI_SPLITN_STRUCT(id) \
+    { .transform_f = DI_splitN, .name = "splitN struct" }
 
-#define DI_SPLITN_NUM(id)                              \
-    {                                                  \
-        .transform_f = DI_splitN, .name = "splitN num" \
-    }
+#define DI_SPLITN_NUM(id) { .transform_f = DI_splitN, .name = "splitN num" }
 
 ZL_END_C_DECLS
 

@@ -539,6 +539,75 @@ TEST_F(SimpleDataDescriptionLanguageTest, arithmetic)
     roundtrip(prog, input);
 }
 
+TEST_F(SimpleDataDescriptionLanguageTest, bitwise_ops)
+{
+    const auto prog  = R"(
+        expect (1 & 2) == 0
+        expect (1 & 2) == (2 & 1)
+        expect (1 | 2) == 3
+        expect (1 | 2) == (2 | 1)
+        expect (1 ^ 2) == 3
+        expect (1 ^ 2) == (2 ^ 1)
+        expect ~1 == -2
+
+        expect (1 & 2) == 0 == 1
+        expect (4 & 8) == 0
+        expect (4 | 8) == 12
+        expect (4 ^ 8) == 12
+        expect ~4 == -5
+
+        expect (0xFF & 0x00) == 0x00
+        expect (0xFF | 0x00) == 0xFF
+        expect (0xFF ^ 0x00) == 0xFF
+        expect ~0x00 == -1
+        expect ~0xFF == -256
+
+        : Byte[]
+    )";
+    const auto input = iota(10);
+    roundtrip(prog, input);
+}
+
+TEST_F(SimpleDataDescriptionLanguageTest, logical_ops)
+{
+    const auto prog = R"(
+        expect 1 && 1
+        expect (1 && 1) == 1
+        expect !(1 && 0)
+        expect (1 && 0) == 0
+        expect !(0 && 1)
+        expect (0 && 1) == 0
+        expect !(0 && 0)
+        expect (0 && 0) == 0
+
+        expect 1 || 1
+        expect (1 || 1) == 1
+        expect 1 || 0
+        expect (1 || 0) == 1
+        expect 0 || 1
+        expect (0 || 1) == 1
+        expect !(0 || 0)
+        expect (0 || 0) == 0
+
+        expect !0
+        expect !0 == 1
+        expect !1 == 0
+        expect !!1
+
+        expect !2 == 0
+        expect 4 && 5
+        expect (4 && 5) == 1
+        expect 4 || 5
+        expect (4 || 5) == 1
+        expect !(4 && 0)
+
+        : Byte[]
+    )";
+
+    const auto input = iota(10);
+    roundtrip(prog, input);
+}
+
 TEST_F(SimpleDataDescriptionLanguageTest, mildlyVexingParses)
 {
     const auto prog  = R"(
@@ -755,6 +824,7 @@ TEST_F(SimpleDataDescriptionLanguageTest, unusedFields)
         C = UInt32LE
         D = UInt64LE
         E = UInt32LE
+        F = UInt64LE
 
         : A[5]
         : C[7]
@@ -767,6 +837,8 @@ TEST_F(SimpleDataDescriptionLanguageTest, unusedFields)
     const auto instrs = exec(prog, input, Expected::SUCCEED);
     ASSERT_TRUE(instrs);
     EXPECT_EQ(instrs->numOutputs, 5);
+
+    roundtrip(prog, input);
 }
 
 TEST_F(SimpleDataDescriptionLanguageTest, multipleDeclsInFunction)

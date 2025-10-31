@@ -65,8 +65,9 @@ TEST(TestProtoSerializer, BasicRoundTrip)
     auto deserialized = deserializer.deserialize<TestSchema>(serialized);
 
     // Check Round Trip
-    EXPECT_TRUE(google::protobuf::util::MessageDifferencer::Equivalent(
-            obj, deserialized));
+    EXPECT_TRUE(
+            google::protobuf::util::MessageDifferencer::Equivalent(
+                    obj, deserialized));
 }
 
 TEST(TestProtoSerializer, CustomCompressor)
@@ -82,8 +83,9 @@ TEST(TestProtoSerializer, CustomCompressor)
     auto serialized   = serializer.serialize(obj);
     auto deserialized = deserializer.deserialize<TestSchema>(serialized);
 
-    EXPECT_TRUE(google::protobuf::util::MessageDifferencer::Equivalent(
-            obj, deserialized));
+    EXPECT_TRUE(
+            google::protobuf::util::MessageDifferencer::Equivalent(
+                    obj, deserialized));
 
     openzl::Compressor store;
     store.selectStartingGraph(ZL_GRAPH_STORE);
@@ -91,7 +93,8 @@ TEST(TestProtoSerializer, CustomCompressor)
     auto stored   = serializer.serialize(obj);
     auto destored = deserializer.deserialize<TestSchema>(serialized);
 
-    EXPECT_TRUE(google::protobuf::util::MessageDifferencer::Equivalent(
-            obj, destored));
+    EXPECT_TRUE(
+            google::protobuf::util::MessageDifferencer::Equivalent(
+                    obj, destored));
     EXPECT_NE(stored.size(), serialized.size());
 }

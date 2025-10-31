@@ -213,13 +213,13 @@ std::vector<CandidateSelection> combineCandidates(
     size_t count = 0;
     std::vector<CandidateSelection> currentFrontier;
     for (auto& candidate : candidates) {
+        count++;
         Logger::logProgress(
                 INFO,
                 (double)count / candidates.size(),
                 "Computing overall Pareto Frontier: %zu / %zu",
                 count,
                 candidates.size());
-        count++;
         if (currentFrontier.empty()) {
             currentFrontier = candidate;
         } else {
@@ -230,6 +230,7 @@ std::vector<CandidateSelection> combineCandidates(
                     kNumIntermediateFrontierCandidates);
         }
     }
+    Logger::finalizeUpdate(INFO);
     return currentFrontier;
 }
 

@@ -23,10 +23,8 @@ ZL_Report DI_dispatchN_byTag(
         const ZL_Input* inVO[],
         size_t nbInVOs);
 
-#define DI_DIPATCHNBYTAG(id)                                                \
-    {                                                                       \
-        .transform_f = DI_dispatchN_byTag, .name = "decode_dispatchN_byTag" \
-    }
+#define DI_DIPATCHNBYTAG(id) \
+    { .transform_f = DI_dispatchN_byTag, .name = "decode_dispatchN_byTag" }
 
 ZL_END_C_DECLS
 

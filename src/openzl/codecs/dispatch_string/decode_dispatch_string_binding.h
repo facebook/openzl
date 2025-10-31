@@ -21,9 +21,10 @@ ZL_Report DI_dispatch_string(
         const ZL_Input* variableSrcs[],
         size_t nbVariableSrcs);
 
-#define DI_DISPATCH_STRING(id)                                               \
-    {                                                                        \
-        .transform_f = DI_dispatch_string, .name = "dispatch_string decode", \
+#define DI_DISPATCH_STRING(id)                   \
+    {                                            \
+        .transform_f = DI_dispatch_string,       \
+        .name        = "dispatch_string decode", \
     }
 
 ZL_END_C_DECLS

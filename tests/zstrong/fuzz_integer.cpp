@@ -1,9 +1,8 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "security/lionhead/utils/lib_ftest/ftest.h"
-
 #include "openzl/compress/private_nodes.h"
 #include "openzl/shared/mem.h"
+#include "tests/datagen/DataGen.h"
 #include "tests/fuzz_utils.h"
 #include "tests/zstrong/test_integer_fixture.h"
 
@@ -15,26 +14,29 @@ namespace {
 
 FUZZ_F(IntegerTest, FuzzConvertIntToTokenRoundTrip)
 {
-    size_t const eltWidth = f.choices("elt_width", { 1, 2, 4, 8 });
+    datagen::DataGen dg = fromFDP(f);
+    auto const eltWidth =
+            dg.choices("elt_width", std::vector<size_t>{ 1, 2, 4, 8 });
     std::string input =
-            gen_str(f, "input_data", ShortInputLengthInBytes(eltWidth));
+            dg.randStringWithQuantizedLength("input_data", eltWidth);
     testNodeOnInput(ZL_NODE_CONVERT_NUM_TO_TOKEN, eltWidth, input);
 }
 
 FUZZ_F(IntegerTest, FuzzConvertIntToSerialRoundTrip)
 {
-    size_t const eltWidth = f.choices("elt_width", { 1, 2, 4, 8 });
+    datagen::DataGen dg = fromFDP(f);
+    auto const eltWidth =
+            dg.choices("elt_width", std::vector<size_t>{ 1, 2, 4, 8 });
     std::string input =
-            gen_str(f, "input_data", ShortInputLengthInBytes(eltWidth));
+            dg.randStringWithQuantizedLength("input_data", eltWidth);
     testNodeOnInput(ZL_NODE_CONVERT_NUM_TO_SERIAL, eltWidth, input);
 }
 
 FUZZ_F(IntegerTest, FuzzQuantizeOffsetsRoundTrip)
 {
-    auto input = f.vec_args(
-            "input_data",
-            d_range_u32(1, (uint32_t)-1),
-            InputLengthInElts(sizeof(uint32_t)));
+    datagen::DataGen dg = fromFDP(f);
+    auto input =
+            dg.randLongVector<uint32_t>("input_data", 1, (uint32_t)-1, 0, 512);
     // TODO(terrelln): This hack is here to avoid null input pointers.
     // But we should fix the engine to accept NULL empty inputs.
     if (input.capacity() == 0)
@@ -46,43 +48,59 @@ FUZZ_F(IntegerTest, FuzzQuantizeOffsetsRoundTrip)
 
 FUZZ_F(IntegerTest, FuzzQuantizeLengthsRoundTrip)
 {
+    datagen::DataGen dg   = fromFDP(f);
     const size_t eltWidth = 4;
-    std::string input = gen_str(f, "input_data", InputLengthInBytes(eltWidth));
+    std::string input =
+            dg.randStringWithQuantizedLength("input_data", eltWidth);
     testNodeOnInput(ZL_NODE_QUANTIZE_LENGTHS, eltWidth, input);
 }
 
 FUZZ_F(IntegerTest, FuzzDeltaRoundTrip)
 {
-    size_t const eltWidth = f.choices("elt_width", { 1, 2, 4, 8 });
-    std::string input = gen_str(f, "input_data", InputLengthInBytes(eltWidth));
+    datagen::DataGen dg = fromFDP(f);
+    auto const eltWidth =
+            dg.choices("elt_width", std::vector<size_t>{ 1, 2, 4, 8 });
+    std::string input =
+            dg.randStringWithQuantizedLength("input_data", eltWidth);
     testNodeOnInput(ZL_NODE_DELTA_INT, eltWidth, input);
 }
 
 FUZZ_F(IntegerTest, FuzzZigzagRoundTrip)
 {
-    size_t const eltWidth = f.choices("elt_width", { 1, 2, 4, 8 });
-    std::string input = gen_str(f, "input_data", InputLengthInBytes(eltWidth));
+    datagen::DataGen dg = fromFDP(f);
+    auto const eltWidth =
+            dg.choices("elt_width", std::vector<size_t>{ 1, 2, 4, 8 });
+    std::string input =
+            dg.randStringWithQuantizedLength("input_data", eltWidth);
     testNodeOnInput(ZL_NODE_ZIGZAG, eltWidth, input);
 }
 
 FUZZ_F(IntegerTest, FuzzBitpackRoundTrip)
 {
-    size_t const eltWidth = f.choices("elt_width", { 1, 2, 4, 8 });
-    std::string input = gen_str(f, "input_data", InputLengthInBytes(eltWidth));
+    datagen::DataGen dg = fromFDP(f);
+    auto const eltWidth =
+            dg.choices("elt_width", std::vector<size_t>{ 1, 2, 4, 8 });
+    std::string input =
+            dg.randStringWithQuantizedLength("input_data", eltWidth);
     testNodeOnInput(ZL_NODE_BITPACK_INT, eltWidth, input);
 }
 
 FUZZ_F(IntegerTest, FuzzRangePackRoundTrip)
 {
-    size_t const eltWidth = f.choices("elt_width", { 1, 2, 4, 8 });
-    std::string input = gen_str(f, "input_data", InputLengthInBytes(eltWidth));
+    datagen::DataGen dg = fromFDP(f);
+    auto const eltWidth =
+            dg.choices("elt_width", std::vector<size_t>{ 1, 2, 4, 8 });
+    std::string input =
+            dg.randStringWithQuantizedLength("input_data", eltWidth);
     testNodeOnInput(ZL_NODE_RANGE_PACK, eltWidth, input);
 }
 
 FUZZ_F(IntegerTest, FuzzMergeSortedRoundTrip)
 {
+    datagen::DataGen dg   = fromFDP(f);
     size_t const eltWidth = 4;
-    std::string input = gen_str(f, "input_data", InputLengthInBytes(eltWidth));
+    std::string input =
+            dg.randStringWithQuantizedLength("input_data", eltWidth);
     reset();
     ZL_GraphID graph = ZL_Compressor_registerMergeSortedGraph(
             cgraph_, ZL_GRAPH_STORE, ZL_GRAPH_STORE, ZL_GRAPH_STORE);
@@ -93,13 +111,15 @@ FUZZ_F(IntegerTest, FuzzMergeSortedRoundTrip)
 
 FUZZ_F(IntegerTest, FuzzSplitNRoundTrip)
 {
-    size_t const eltWidth = f.choices("elt_width", { 1, 2, 4, 8 });
-    std::string input = gen_str(f, "input_str", InputLengthInBytes(eltWidth));
+    datagen::DataGen dg = fromFDP(f);
+    auto const eltWidth =
+            dg.choices("elt_width", std::vector<size_t>{ 1, 2, 4, 8 });
+    std::string input = dg.randStringWithQuantizedLength("input_str", eltWidth);
 
     StructuredFDP<HarnessMode>* fPtr = &f;
 
     reset();
-    if (f.u8("split_by_param") >= 128) {
+    if (dg.u8("split_by_param") >= 128) {
         auto segmentSizes = getSplitNSegments(f, input.size() / eltWidth);
         std::vector<ZL_GraphID> successors(segmentSizes.size(), ZL_GRAPH_STORE);
         auto graph = ZL_Compressor_registerSplitGraph(
@@ -136,9 +156,10 @@ FUZZ_F(IntegerTest, FuzzSplitNRoundTrip)
 
 FUZZ_F(IntegerTest, FuzzFSENCountRoundTrip)
 {
+    datagen::DataGen dg   = fromFDP(f);
     size_t const eltWidth = 2;
     std::string input =
-            gen_str(f, "input_data", ShortInputLengthInBytes(eltWidth));
+            dg.randStringWithQuantizedLength("input_data", eltWidth);
     reset();
     finalizeGraph({ ZL_PrivateStandardGraphID_fse_ncount }, eltWidth);
     testRoundTripCompressionMayFail(input);
@@ -146,9 +167,11 @@ FUZZ_F(IntegerTest, FuzzFSENCountRoundTrip)
 
 FUZZ_F(IntegerTest, FuzzIntegerSelector)
 {
-    size_t const eltWidth = f.choices("elt_width", { 1, 2, 4, 8 });
+    datagen::DataGen dg = fromFDP(f);
+    auto const eltWidth =
+            dg.choices("elt_width", std::vector<size_t>{ 1, 2, 4, 8 });
     std::string input =
-            gen_str(f, "input_data", ShortInputLengthInBytes(eltWidth));
+            dg.randStringWithQuantizedLength("input_data", eltWidth);
     reset();
     finalizeGraph(ZL_GRAPH_NUMERIC, eltWidth);
     testRoundTrip(input);
@@ -156,12 +179,14 @@ FUZZ_F(IntegerTest, FuzzIntegerSelector)
 
 FUZZ_F(IntegerTest, FuzzIntegerDivideBy)
 {
-    size_t const eltWidth = f.choices("elt_width", { 1, 2, 4, 8 });
+    datagen::DataGen dg = fromFDP(f);
+    auto const eltWidth =
+            dg.choices("elt_width", std::vector<size_t>{ 1, 2, 4, 8 });
     std::string input =
-            gen_str(f, "input_data", ShortInputLengthInBytes(eltWidth));
+            dg.randStringWithQuantizedLength("input_data", eltWidth);
     reset();
-    if (f.boolean("set_divisor")) {
-        const auto divisor = f.u64("divisor");
+    if (dg.boolean("set_divisor")) {
+        const auto divisor = dg.u64("divisor");
         ZL_GraphID const graphDivideBy =
                 ZL_Compressor_registerStaticGraph_fromNode1o(
                         cgraph_,

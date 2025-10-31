@@ -46,8 +46,9 @@ std::vector<std::shared_ptr<const std::string_view>> train(
     Logger::log(
             VERBOSE3,
             "Smallest trained graph:",
-            std::string(Compressor::convertSerializedToJson(
-                                *serializedTrainedCompressors[0]))
+            std::string(
+                    Compressor::convertSerializedToJson(
+                            *serializedTrainedCompressors[0]))
                     .c_str());
     return serializedTrainedCompressors;
 }

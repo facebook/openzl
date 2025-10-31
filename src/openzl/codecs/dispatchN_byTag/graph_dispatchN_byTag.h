@@ -11,11 +11,12 @@ typedef enum {
     dnbt_segments = 2
 } DNBT_streamIDs_e;
 
-#define GRAPH_DIPATCHNBYTAG(id)                                         \
-    {                                                                   \
-        .CTid = id, .inputTypes = ZL_STREAMTYPELIST(ZL_Type_serial),    \
-        .soTypes = ZL_STREAMTYPELIST(ZL_Type_numeric, ZL_Type_numeric), \
-        ZL_STREAMTYPELIST(ZL_Type_serial),                              \
+#define GRAPH_DIPATCHNBYTAG(id)                                            \
+    {                                                                      \
+        .CTid       = id,                                                  \
+        .inputTypes = ZL_STREAMTYPELIST(ZL_Type_serial),                   \
+        .soTypes    = ZL_STREAMTYPELIST(ZL_Type_numeric, ZL_Type_numeric), \
+        ZL_STREAMTYPELIST(ZL_Type_serial),                                 \
     }
 
 #endif // ZSTRONG_TRANSFORMS_DISPATCHN_BYTAG_GRAPH_DISPATCHN_BYTAG_H

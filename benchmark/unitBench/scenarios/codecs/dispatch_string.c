@@ -106,7 +106,7 @@ size_t dispatchStringDecode_wrapper(
     (void)customPayload;
 
     // unpack src
-    const uint8_t nbSrcs              = (uint8_t) * (const uint64_t*)src;
+    const uint8_t nbSrcs              = (uint8_t)*(const uint64_t*)src;
     const uint64_t* srcNbStrsUnparsed = (const uint64_t*)src + 1;
     const uint32_t* srcStrLens[DISPATCH_STRING_NB_DSTS];
     const uint8_t* indices;

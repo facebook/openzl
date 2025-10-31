@@ -27,11 +27,10 @@ ZL_NodeID ZL_Compressor_registerDispatchNode(
 ZL_Report
 EI_dispatchN_byTag(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 
-#define EI_DISPATCHNBYTAG(id)                                             \
-    {                                                                     \
-        .gd = GRAPH_DIPATCHNBYTAG(id), .transform_f = EI_dispatchN_byTag, \
-        .name = "!zl.dispatchN_byTag"                                     \
-    }
+#define EI_DISPATCHNBYTAG(id)                 \
+    { .gd          = GRAPH_DIPATCHNBYTAG(id), \
+      .transform_f = EI_dispatchN_byTag,      \
+      .name        = "!zl.dispatchN_byTag" }
 
 ZL_END_C_DECLS
 

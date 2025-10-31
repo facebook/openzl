@@ -1,12 +1,13 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 // Note: This file is work in progress and is not ready for use yet.
 
-#ifndef ZSTRONG_ML_SELECTOR_GRAPH_H
-#define ZSTRONG_ML_SELECTOR_GRAPH_H
+#ifndef OPENZL_TOOLS_ML_SELECTOR_GRAPH_H
+#define OPENZL_TOOLS_ML_SELECTOR_GRAPH_H
 
-#include <openzl/shared/a1cbor.h>
-#include <openzl/zl_errors.h>
-#include <openzl/zl_graph_api.h>
+#include "openzl/compress/selectors/ml/gbt.h"
+#include "openzl/shared/a1cbor.h"
+#include "openzl/zl_errors.h"
+#include "openzl/zl_graph_api.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -14,12 +15,16 @@ extern "C" {
 
 #define ZL_GENERIC_ML_SELECTOR_CONFIG_ID 555
 
+typedef enum {
+    ZL_GBT,
+} ZL_MLSelectorModelType;
+
 /**
  * A serializable configuration used to select a successor.
- * Note: This is a dummy config that will be updated in the future.
  */
 typedef struct {
-    size_t selectedSuccessor; // The index of the successor to select.
+    ZL_MLSelectorModelType model;
+    void* runtimeConfig;
 } ZL_MLSelectorConfig;
 
 /**
@@ -100,4 +105,4 @@ ZL_MLSelector_registerBaseGraph(ZL_Compressor* compressor);
 }
 #endif
 
-#endif // ZSTRONG_ML_SELECTOR_GRAPH_H
+#endif // OPENZL_TOOLS_ML_SELECTOR_GRAPH_H

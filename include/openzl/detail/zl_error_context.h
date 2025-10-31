@@ -49,6 +49,8 @@ ZL_CONST_FN ZL_OperationContext* ZL_CompressorSerializer_getOperationContext(
         ZL_CompressorSerializer* ctx);
 ZL_CONST_FN ZL_OperationContext* ZL_CompressorDeserializer_getOperationContext(
         ZL_CompressorDeserializer* ctx);
+ZL_CONST_FN ZL_OperationContext* ZL_Segmenter_getOperationContext(
+        ZL_Segmenter* ctx);
 ZL_CONST_FN ZL_OperationContext* ZL_ErrorContext_getOperationContext(
         ZL_ErrorContext* ctx);
 ZL_CONST_FN ZL_OperationContext* ZL_NULL_getOperationContext(void* ctx);
@@ -102,6 +104,11 @@ ZL_INLINE ZL_CONST_FN ZL_OperationContext* ZL_getOperationContextImpl(
     return ZL_CompressorDeserializer_getOperationContext(ctx);
 }
 ZL_INLINE ZL_CONST_FN ZL_OperationContext* ZL_getOperationContextImpl(
+        ZL_Segmenter* ctx)
+{
+    return ZL_Segmenter_getOperationContext(ctx);
+}
+ZL_INLINE ZL_CONST_FN ZL_OperationContext* ZL_getOperationContextImpl(
         ZL_ErrorContext* ctx)
 {
     return ZL_ErrorContext_getOperationContext(ctx);
@@ -123,26 +130,25 @@ extern "C" {
 
 #else
 
-#    define ZL_GET_OPERATION_CONTEXT_IMPL(ctx)                                \
-        _Generic(                                                             \
-                (ctx),                                                        \
-                ZL_Compressor                                                 \
-                        *: ZL_Compressor_getOperationContext((void*)(ctx)),   \
-                ZL_CCtx *: ZL_CCtx_getOperationContext((void*)(ctx)),         \
-                ZL_DCtx *: ZL_DCtx_getOperationContext((void*)(ctx)),         \
-                ZL_Encoder *: ZL_Encoder_getOperationContext((void*)(ctx)),   \
-                ZL_Decoder *: ZL_Decoder_getOperationContext((void*)(ctx)),   \
-                ZL_Graph *: ZL_Graph_getOperationContext((void*)(ctx)),       \
-                ZL_Edge *: ZL_Edge_getOperationContext((void*)(ctx)),         \
-                ZL_CompressorSerializer                                       \
-                        *: ZL_CompressorSerializer_getOperationContext(       \
-                                (void*)(ctx)),                                \
-                ZL_CompressorDeserializer                                     \
-                        *: ZL_CompressorDeserializer_getOperationContext(     \
-                                (void*)(ctx)),                                \
-                ZL_ErrorContext                                               \
-                        *: ZL_ErrorContext_getOperationContext((void*)(ctx)), \
-                ZL_OperationContext *: (ctx),                                 \
+#    define ZL_GET_OPERATION_CONTEXT_IMPL(ctx)                                             \
+        _Generic(                                                                          \
+                (ctx),                                                                     \
+                ZL_Compressor*: ZL_Compressor_getOperationContext(                         \
+                        (void*)(ctx)),                                                     \
+                ZL_CCtx*: ZL_CCtx_getOperationContext((void*)(ctx)),                       \
+                ZL_DCtx*: ZL_DCtx_getOperationContext((void*)(ctx)),                       \
+                ZL_Encoder*: ZL_Encoder_getOperationContext((void*)(ctx)),                 \
+                ZL_Decoder*: ZL_Decoder_getOperationContext((void*)(ctx)),                 \
+                ZL_Graph*: ZL_Graph_getOperationContext((void*)(ctx)),                     \
+                ZL_Edge*: ZL_Edge_getOperationContext((void*)(ctx)),                       \
+                ZL_CompressorSerializer*: ZL_CompressorSerializer_getOperationContext(     \
+                        (void*)(ctx)),                                                     \
+                ZL_CompressorDeserializer*: ZL_CompressorDeserializer_getOperationContext( \
+                        (void*)(ctx)),                                                     \
+                ZL_Segmenter*: ZL_Segmenter_getOperationContext((void*)(ctx)),             \
+                ZL_ErrorContext*: ZL_ErrorContext_getOperationContext(                     \
+                        (void*)(ctx)),                                                     \
+                ZL_OperationContext*: (ctx),                                               \
                 void*: ZL_NULL_getOperationContext(ctx))
 
 #endif

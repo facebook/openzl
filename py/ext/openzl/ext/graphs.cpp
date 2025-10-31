@@ -211,8 +211,8 @@ void registerFieldLzGraphs(nb::module_& g)
                                     PyGraph<graphs::FieldLz>(graphs::FieldLz{});
 
                         } else {
-                            new (obj) PyGraph<graphs::FieldLz>(
-                                    graphs::FieldLz(graphs::FieldLz::Parameters{
+                            new (obj) PyGraph<graphs::FieldLz>(graphs::FieldLz(
+                                    graphs::FieldLz::Parameters{
                                             .compressionLevel =
                                                     std::move(compressionLevel),
                                             .literalsGraph =

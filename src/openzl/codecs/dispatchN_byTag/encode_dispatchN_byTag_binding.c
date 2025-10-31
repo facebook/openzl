@@ -115,7 +115,8 @@ EI_dispatchN_byTag(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     ZL_ASSERT_EQ(ZL_Input_type(in), ZL_Type_serial);
     ZL_ASSERT_NN(eictx);
 
-    ZL_TRY_LET_T(ZL_DispatchInstructions, si, getSplitInstructions(eictx, in));
+    ZL_TRY_LET_CONST_T(
+            ZL_DispatchInstructions, si, getSplitInstructions(eictx, in));
 
     ZL_DLOG(BLOCK,
             "EI_dispatchN_byTag: splitting %zu segments into %zu streams",

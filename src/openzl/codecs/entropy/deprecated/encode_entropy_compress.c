@@ -645,7 +645,7 @@ static ZL_Report ZS_Entropy_encodeFseImpl(
     size_t const maxDstSize = ZS_Entropy_entropySizeBound(
             srcSize, elementSize, (uint32_t)maxSymbol, params->allowedTypes);
     if (fseCSize >= maxDstSize || fseCSize <= 1
-        || fseCSize == (size_t) - (int)ZSTD_error_dstSize_tooSmall) {
+        || fseCSize == (size_t)-(int)ZSTD_error_dstSize_tooSmall) {
         *dst = dst2;
         if (maxSymbol < 128
             && (params->allowedTypes & ZS_Entropy_TypeMask_bit)) {

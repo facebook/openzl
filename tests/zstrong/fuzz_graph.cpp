@@ -11,8 +11,8 @@
 #include "openzl/zl_decompress.h"
 #include "openzl/zl_errors.h"
 #include "openzl/zl_reflection.h"
-#include "security/lionhead/utils/lib_ftest/ftest.h"
 #include "tests/constants.h"
+#include "tests/datagen/DataGen.h"
 #include "tests/fuzz_utils.h"
 
 #include <algorithm>
@@ -87,9 +87,8 @@ ZL_GraphID buildStoreGraph(ZL_Compressor* cgraph, ZL_Type inType)
     return ZL_GRAPH_STORE;
 }
 
-template <typename FDP>
 ZL_GraphID buildGraph(
-        FDP& f,
+        datagen::DataGen& dg,
         ZL_Compressor* cgraph,
         size_t* nodesInGraph,
         std::vector<ZL_NodeID> const& nodes,
@@ -106,17 +105,17 @@ ZL_GraphID buildGraph(
     ++*nodesInGraph;
 
     // Give some chance to stop the graph with store immediately
-    bool const stop = f.coin("use_store", 0.1);
+    bool const stop = dg.coin("use_store", 0.1);
     if (stop) {
         return buildStoreGraph(cgraph, inType);
     }
 
     // Choose between a graph or a node
-    bool const useGraph = f.boolean("use_graph");
+    bool const useGraph = dg.boolean("use_graph");
     if (useGraph) {
         // Pick an index, then pick the first graph after that index
         // that has a compatible type
-        size_t graphIdx = f.index("graph_index", graphs.size());
+        size_t graphIdx = dg.usize_range("graph_index", 0, graphs.size() - 1);
         graphIdx = findFirstAfter(graphIdx, graphs.size(), [&](size_t idx) {
             auto const graphType =
                     ZL_Compressor_Graph_getInput0Mask(cgraph, graphs[idx]);
@@ -127,7 +126,7 @@ ZL_GraphID buildGraph(
 
     // Pick an index, then pick the first node after that index
     // that has a compatible type
-    size_t nodeIdx  = f.index("node_index", nodes.size());
+    size_t nodeIdx  = dg.usize_range("node_index", 0, nodes.size() - 1);
     nodeIdx         = findFirstAfter(nodeIdx, nodes.size(), [&](size_t idx) {
         auto const nodeType =
                 ZL_Compressor_Node_getInput0Type(cgraph, nodes[idx]);
@@ -141,7 +140,7 @@ ZL_GraphID buildGraph(
     for (size_t i = 0; i < successors.size(); ++i) {
         auto const outType = ZL_Compressor_Node_getOutputType(cgraph, node, i);
         successors[i]      = buildGraph(
-                f, cgraph, nodesInGraph, nodes, graphs, outType, maxDepth - 1);
+                dg, cgraph, nodesInGraph, nodes, graphs, outType, maxDepth - 1);
     }
 
     return ZL_Compressor_registerStaticGraph_fromNode(
@@ -150,6 +149,7 @@ ZL_GraphID buildGraph(
 
 FUZZ(GraphTest, FuzzGraphRoundTrip)
 {
+    datagen::DataGen dg   = fromFDP(f);
     ZL_Compressor* cgraph = ZL_Compressor_create();
     ASSERT_NE(cgraph, nullptr);
 
@@ -160,7 +160,7 @@ FUZZ(GraphTest, FuzzGraphRoundTrip)
     ZL_REQUIRE_SUCCESS(ZL_Compressor_setParameter(
             cgraph, ZL_CParam_permissiveCompression, ZL_TernaryParam_enable));
     // Set the format version to a random version.
-    uint32_t const formatVersion = f.u32_range(
+    uint32_t const formatVersion = dg.u32_range(
             "format_version", ZL_MIN_FORMAT_VERSION, ZL_MAX_FORMAT_VERSION);
     ZL_REQUIRE_SUCCESS(ZL_Compressor_setParameter(
             cgraph, ZL_CParam_formatVersion, formatVersion));
@@ -168,7 +168,7 @@ FUZZ(GraphTest, FuzzGraphRoundTrip)
     // Build a random graph
     size_t nodesInGraph    = 0;
     ZL_GraphID const graph = buildGraph(
-            f,
+            dg,
             cgraph,
             &nodesInGraph,
             getAllNodes(formatVersion),
@@ -177,7 +177,7 @@ FUZZ(GraphTest, FuzzGraphRoundTrip)
             kMaxGraphDepth);
     ZL_REQUIRE_SUCCESS(ZL_Compressor_selectStartingGraphID(cgraph, graph));
 
-    std::string input = gen_str(f, "input_str", InputLengthInBytes(1));
+    std::string input = dg.randStringWithQuantizedLength("input_str", 1);
 
     // TODO(terrelln): ZL_compressBound() doesn't provide a tight bound
     // on compressed size. And it is impossible to provide in the general case

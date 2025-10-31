@@ -12,15 +12,16 @@
 /// 3. Offsets
 /// 4. Extra literal lengths
 /// 5. Extra match lengths
-#define FIELD_LZ_GRAPH(id)                                           \
-    {                                                                \
-        .CTid = id, .inputTypes = ZL_STREAMTYPELIST(ZL_Type_struct), \
-        .soTypes = ZL_STREAMTYPELIST(                                \
-                ZL_Type_struct,                                      \
-                ZL_Type_struct,                                      \
-                ZL_Type_numeric,                                     \
-                ZL_Type_numeric,                                     \
-                ZL_Type_numeric),                                    \
+#define FIELD_LZ_GRAPH(id)                               \
+    {                                                    \
+        .CTid       = id,                                \
+        .inputTypes = ZL_STREAMTYPELIST(ZL_Type_struct), \
+        .soTypes    = ZL_STREAMTYPELIST(                 \
+                ZL_Type_struct,                       \
+                ZL_Type_struct,                       \
+                ZL_Type_numeric,                      \
+                ZL_Type_numeric,                      \
+                ZL_Type_numeric),                     \
     }
 
 #endif

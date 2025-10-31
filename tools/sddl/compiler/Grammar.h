@@ -29,6 +29,13 @@ enum class Precedence : size_t {
     RELATION,
     EQUALITY,
 
+    BIT_AND,
+    BIT_XOR,
+    BIT_OR,
+
+    LOG_AND,
+    LOG_OR,
+
     ASSIGNMENT,
 };
 

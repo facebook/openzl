@@ -5,11 +5,12 @@
 
 #include "openzl/zl_data.h" // ZS2_Type_*
 
-#define DEDUP_NUM_GRAPH(id)                                           \
-    {                                                                 \
-        .CTid = id, .inputTypes = ZL_STREAMTYPELIST(ZL_Type_numeric), \
-        .lastInputIsVariable = 1,                                     \
-        .soTypes             = ZL_STREAMTYPELIST(ZL_Type_numeric),    \
+#define DEDUP_NUM_GRAPH(id)                                        \
+    {                                                              \
+        .CTid                = id,                                 \
+        .inputTypes          = ZL_STREAMTYPELIST(ZL_Type_numeric), \
+        .lastInputIsVariable = 1,                                  \
+        .soTypes             = ZL_STREAMTYPELIST(ZL_Type_numeric), \
     }
 
 #endif

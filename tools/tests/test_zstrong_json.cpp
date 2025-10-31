@@ -394,15 +394,15 @@ TEST(ZstrongJsonTest, CustomGraphGraph)
             folly::dynamic::object()(kNameKey, "numeric");
     folly::dynamic const fixed  = folly::dynamic::object()(kNameKey, "fixed");
     folly::dynamic const serial = folly::dynamic::object()(kNameKey, "serial");
-    auto graph =
-            bruteForce({ serial,
-                         convertSerialToToken(2, fixed),
-                         interpretAsIntLE(2, numeric),
-                         convertSerialToToken(
-                                 2,
-                                 tokenize(
-                                         bruteForce({ serial, fixed }),
-                                         bruteForce({ serial, numeric }))) });
+    auto graph                  = bruteForce(
+            { serial,
+                               convertSerialToToken(2, fixed),
+                               interpretAsIntLE(2, numeric),
+                               convertSerialToToken(
+                      2,
+                      tokenize(
+                              bruteForce({ serial, fixed }),
+                              bruteForce({ serial, numeric }))) });
     testRoundTrip(
             "0a0a0a0a0a0a0a0b0b0b0b0c0d0c0c0c0f0f0f0e0e0e0e0efffffffffefefefe",
             graph,

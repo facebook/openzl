@@ -473,12 +473,13 @@ class PySelectorState : public nb::intrusive_base {
             poly::optional<std::vector<NodeID>> customNodes,
             poly::optional<LocalParams> localParams)
     {
-        state_->parameterizeDestination(GraphParameters{
-                .name         = std::move(name),
-                .customGraphs = std::move(customGraphs),
-                .customNodes  = std::move(customNodes),
-                .localParams  = std::move(localParams),
-        });
+        state_->parameterizeDestination(
+                GraphParameters{
+                        .name         = std::move(name),
+                        .customGraphs = std::move(customGraphs),
+                        .customNodes  = std::move(customNodes),
+                        .localParams  = std::move(localParams),
+                });
     }
 
    private:

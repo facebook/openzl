@@ -356,8 +356,9 @@ ZL_GraphID ZL_Compressor_registerFieldLZGraph_withLevel(
         int compressionLevel)
 {
     ZL_LocalParams localParams = {
-        .intParams = ZL_INTPARAMS({ ZL_FIELD_LZ_COMPRESSION_LEVEL_OVERRIDE_PID,
-                                    compressionLevel })
+        .intParams = ZL_INTPARAMS(
+                { ZL_FIELD_LZ_COMPRESSION_LEVEL_OVERRIDE_PID,
+                  compressionLevel })
     };
 
     ZL_ParameterizedGraphDesc desc = {

@@ -11,7 +11,7 @@ project(${PACKAGE_NAME} CXX C ASM)
 
 # ---- Build Options ----
 option(OPENZL_BUILD_ALL "Build all optional components" OFF)
-option(OPENZL_BUILD_SHARED_LIBS "Build as shared library" ${OPENZL_BUILD_ALL})
+option(OPENZL_BUILD_SHARED_LIBS "Build as shared library" OFF)
 option(OPENZL_BUILD_TESTS "Build tests" ${OPENZL_BUILD_ALL})
 option(OPENZL_BUILD_BENCHMARKS "Build benchmarks" ${OPENZL_BUILD_ALL})
 # Apache Arrow build is broken due to missing thrift download.
@@ -23,6 +23,7 @@ option(OPENZL_BUILD_PYTHON_EXT_TESTS "Build Python extension tests" ${OPENZL_BUI
 option(OPENZL_ALLOW_INTROSPECTION "Allow introspection" ON)
 option(OPENZL_INSTALL "Install OpenZL" ON)
 option(OPENZL_CPP_INSTALL "Install C++ bindings" ${OPENZL_INSTALL})
+option(OPENZL_BUILD_PYTHON_DEMO "Build openzl_demo Python extension" ${OPENZL_BUILD_ALL})
 
 # Fine-grained control of build directories that can be disabled.
 # NOTE: Disabling some but not all of these may break the build, use with caution.
@@ -250,6 +251,10 @@ endif()
 
 if (OPENZL_BUILD_BENCHMARKS)
     add_subdirectory(benchmark)
+endif()
+
+if (OPENZL_BUILD_PYTHON_DEMO)
+    add_subdirectory(contrib/openzl-demo)
 endif()
 
 if (OPENZL_INSTALL)

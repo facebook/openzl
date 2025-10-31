@@ -11,11 +11,10 @@ ZL_BEGIN_C_DECLS
 
 ZL_Report EI_flatpack(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 
-#define EI_FLATPACK(id)                                       \
-    {                                                         \
-        .gd = FLATPACK_GRAPH(id), .transform_f = EI_flatpack, \
-        .name = "!zl.private.flatpack"                        \
-    }
+#define EI_FLATPACK(id)                  \
+    { .gd          = FLATPACK_GRAPH(id), \
+      .transform_f = EI_flatpack,        \
+      .name        = "!zl.private.flatpack" }
 
 ZL_END_C_DECLS
 

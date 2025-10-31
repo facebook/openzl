@@ -15,15 +15,9 @@ ZL_Report DI_fastlz_typed(ZL_Decoder* dictx, const ZL_Input* in[]);
 
 // Following ZL_TypedEncoderDesc declaration,
 // presumed to be used as initializer only
-#define DI_ROLZ(id)                                  \
-    {                                                \
-        .transform_f = DI_rolz_typed, .name = "rolz" \
-    }
+#define DI_ROLZ(id) { .transform_f = DI_rolz_typed, .name = "rolz" }
 
-#define DI_FASTLZ(id)                                     \
-    {                                                     \
-        .transform_f = DI_fastlz_typed, .name = "fast lz" \
-    }
+#define DI_FASTLZ(id) { .transform_f = DI_fastlz_typed, .name = "fast lz" }
 
 ZL_END_C_DECLS
 

@@ -300,6 +300,7 @@ ZL_Report ZL_reportError(
  * - ZL_Edge
  * - ZL_CompressorSerializer
  * - ZL_CompressorDeserializer
+ * - ZL_Segmenter
  *
  * It will return `NULL` if the provided @p context is `NULL`.
  */
@@ -320,6 +321,7 @@ ZL_Report ZL_reportError(
  * - ZL_Edge
  * - ZL_CompressorSerializer
  * - ZL_CompressorDeserializer
+ * - ZL_Segmenter
  *
  * It will return `NULL` if the provided @p context is `NULL`.
  */

@@ -167,10 +167,11 @@ ZL_GraphID ZL_Compressor_registerZstdGraph_withLevel(
         ZL_Compressor* cgraph,
         int compressionLevel)
 {
-    ZL_LocalParams localParams = { .intParams = ZL_INTPARAMS({
-                                           ZSTD_c_compressionLevel,
-                                           compressionLevel,
-                                   }) };
+    ZL_LocalParams localParams = { .intParams = ZL_INTPARAMS(
+                                           {
+                                                   ZSTD_c_compressionLevel,
+                                                   compressionLevel,
+                                           }) };
     ZL_NodeID node_zstd        = ZL_Compressor_cloneNode(
             cgraph, (ZL_NodeID){ ZL_PrivateStandardNodeID_zstd }, &localParams);
     return ZL_Compressor_registerStaticGraph_fromNode1o(

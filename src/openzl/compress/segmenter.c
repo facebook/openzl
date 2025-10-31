@@ -320,3 +320,12 @@ ZL_Report ZL_Segmenter_processChunk(
     CCTX_cleanChunk(cctx);
     return r;
 }
+
+ZL_CONST_FN
+ZL_OperationContext* ZL_Segmenter_getOperationContext(ZL_Segmenter* sctx)
+{
+    if (sctx == NULL) {
+        return NULL;
+    }
+    return ZL_CCtx_getOperationContext(sctx->cctx);
+}

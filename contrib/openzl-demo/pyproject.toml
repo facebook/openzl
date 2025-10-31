@@ -1,0 +1,77 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+[build-system]
+requires = ["scikit-build-core >=0.11.5", "nanobind >=2.7.0"]
+build-backend = "scikit_build_core.build"
+
+# TODO: Figure out how to get the version from zl_version.h
+[project]
+name = "openzl-demo"
+version = "0.1.0"
+requires-python = ">=3.8"
+dependencies = [
+    "kaleido >=1.0.0",
+    "numpy  >=2.0.0",
+    "openzl >=0.1.0",
+    "pandas >=2.0.0",
+    "plotly >=6.0.0",
+]
+
+[project.urls]
+Homepage = "https://openzl.org/pytorch-demo"
+
+[tool.scikit-build]
+# Protect the configuration against future changes in scikit-build-core
+minimum-version = "0.11.5"
+
+# Setuptools-style build caching in a local directory
+build-dir = "build-py/{wheel_tag}"
+
+# Build stable ABI wheels for CPython 3.12+
+wheel.py-api = "cp312"
+
+# Point it at the project build directory
+cmake.source-dir = "../.."
+
+[tool.scikit-build.cmake.define]
+# Build the Python extension, but don't install OpenZL.
+# We only want to install the Python extension itself.
+OPENZL_BUILD_PYTHON_DEMO = "ON"
+OPENZL_INSTALL = "OFF"
+# Ensure we're building statically
+OPENZL_BUILD_SHARED_LIBS = "OFF"
+# Disable the builds of unneeded components
+OPENZL_BUILD_TESTS = "OFF"
+OPENZL_BUILD_BENCHMARKS = "OFF"
+OPENZL_BUILD_EXAMPLES = "OFF"
+
+
+# Tell Zstd to build statically & hide its symbols.
+ZSTD_BUILD_STATIC = "ON"
+ZSTDLIB_VISIBLE = "hidden"
+ZSTDERRORLIB_VISIBLE = "hidden"
+ZDICTLIB_VISIBLE = "hidden"
+
+# Ensure that all libraries hide their symbols by default.
+# The Python extension packages its own version of OpenZL and Zstd,
+# so we need to ensure that if it is linked with another library that
+# doesn't hide its version of OpenZL and Zstd, we don't get duplicate
+# symbols.
+# The only symbol that should be present is `_PyInit___openzl_demo`.
+CMAKE_C_FLAGS = [
+    "-fvisibility=hidden",
+]
+CMAKE_CXX_FLAGS = [
+    "-fvisibility=hidden"
+]
+
+[tool.cibuildwheel]
+# Necessary to see build output from the actual compilation
+build-verbosity = 1
+
+# Only run 64-bit builds until 32-bit builds are supported
+archs = ["auto64"]
+
+# Needed for full C++17 support on macOS
+[tool.cibuildwheel.macos.environment]
+MACOSX_DEPLOYMENT_TARGET = "10.14"

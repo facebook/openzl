@@ -49,6 +49,7 @@ typedef struct ZL_Decoder_s ZL_Decoder;
 typedef struct ZL_Selector_s ZL_Selector;
 typedef struct ZL_Graph_s ZL_Graph;
 typedef struct ZL_Edge_s ZL_Edge;
+typedef struct ZL_Segmenter_s ZL_Segmenter;
 
 // Generic List construction macro (C99)
 #define ZL_LIST_SIZE(_type, ...) \

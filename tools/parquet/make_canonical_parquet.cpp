@@ -24,12 +24,13 @@ void write_canonical_parquet_file(
                          ->disable_write_page_index()
                          ->encoding(parquet::Encoding::PLAIN)
                          ->build();
-    PARQUET_THROW_NOT_OK(parquet::arrow::WriteTable(
-            *table,
-            arrow::default_memory_pool(),
-            outfile,
-            parquet::DEFAULT_MAX_ROW_GROUP_LENGTH,
-            props));
+    PARQUET_THROW_NOT_OK(
+            parquet::arrow::WriteTable(
+                    *table,
+                    arrow::default_memory_pool(),
+                    outfile,
+                    parquet::DEFAULT_MAX_ROW_GROUP_LENGTH,
+                    props));
 }
 
 std::shared_ptr<arrow::Table> get_arrow_table(
@@ -42,10 +43,11 @@ std::shared_ptr<arrow::Table> get_arrow_table(
     std::unique_ptr<parquet::ParquetFileReader> parquet_reader =
             parquet::ParquetFileReader::Open(reader);
     std::unique_ptr<parquet::arrow::FileReader> arrow_reader;
-    PARQUET_THROW_NOT_OK(parquet::arrow::FileReader::Make(
-            arrow::default_memory_pool(),
-            std::move(parquet_reader),
-            &arrow_reader));
+    PARQUET_THROW_NOT_OK(
+            parquet::arrow::FileReader::Make(
+                    arrow::default_memory_pool(),
+                    std::move(parquet_reader),
+                    &arrow_reader));
     std::shared_ptr<arrow::Table> table;
     PARQUET_THROW_NOT_OK(arrow_reader->ReadTable(&table));
     if (maxNumRows) {

@@ -8,16 +8,18 @@
 
 #include "openzl/zl_data.h" // st_*
 
-#define PIPE_GRAPH(id)                                               \
-    {                                                                \
-        .CTid = id, .inputTypes = ZL_STREAMTYPELIST(ZL_Type_serial), \
-        .soTypes = ZL_STREAMTYPELIST(ZL_Type_serial),                \
+#define PIPE_GRAPH(id)                                   \
+    {                                                    \
+        .CTid       = id,                                \
+        .inputTypes = ZL_STREAMTYPELIST(ZL_Type_serial), \
+        .soTypes    = ZL_STREAMTYPELIST(ZL_Type_serial), \
     }
 
-#define NUMPIPE_GRAPH(id)                                             \
-    {                                                                 \
-        .CTid = id, .inputTypes = ZL_STREAMTYPELIST(ZL_Type_numeric), \
-        .soTypes = ZL_STREAMTYPELIST(ZL_Type_numeric),                \
+#define NUMPIPE_GRAPH(id)                                 \
+    {                                                     \
+        .CTid       = id,                                 \
+        .inputTypes = ZL_STREAMTYPELIST(ZL_Type_numeric), \
+        .soTypes    = ZL_STREAMTYPELIST(ZL_Type_numeric), \
     }
 
 #endif

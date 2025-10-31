@@ -319,11 +319,13 @@ class UniformDistributionData : public BenchmarkData {
         if (cardinality.has_value()) {
             auto alphabet = utils::generateRandomAlphabet<T>(
                     cardinality.value(), seed, minValue, maxValue);
-            data_ = utils::toUint8Vector(utils::generateUniformRandomVector<T>(
-                    size, seed, alphabet));
+            data_ = utils::toUint8Vector(
+                    utils::generateUniformRandomVector<T>(
+                            size, seed, alphabet));
         } else {
-            data_ = utils::toUint8Vector(utils::generateUniformRandomVector<T>(
-                    size, seed, minValue, maxValue));
+            data_ = utils::toUint8Vector(
+                    utils::generateUniformRandomVector<T>(
+                            size, seed, minValue, maxValue));
         }
     }
     std::string_view data() override
@@ -437,11 +439,12 @@ class NormalDistributionData : public BenchmarkData {
               stddev_(stddev),
               size_(size),
               seed_(seed),
-              data_(utils::toUint8Vector(utils::generateNormalRandomVector<T>(
-                      size,
-                      seed,
-                      mean,
-                      stddev)))
+              data_(utils::toUint8Vector(
+                      utils::generateNormalRandomVector<T>(
+                              size,
+                              seed,
+                              mean,
+                              stddev)))
     {
     }
     std::string_view data() override
