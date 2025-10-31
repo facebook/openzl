@@ -151,19 +151,19 @@ TEST(TestDynamicMessages, GetDescriptor)
 
     DynamicMessageHelper helper(pool.get());
 
-    // Test getting descriptors
-    const auto* simple_desc = helper.getDescriptor("test.SimpleMessage");
-    ASSERT_NE(simple_desc, nullptr);
-    EXPECT_EQ(simple_desc->name(), "SimpleMessage");
-    EXPECT_EQ(simple_desc->full_name(), "test.SimpleMessage");
+    // Test creating messages (validates descriptors internally)
+    auto simple_msg = helper.newMessage("test.SimpleMessage");
+    ASSERT_NE(simple_msg, nullptr);
+    EXPECT_EQ(simple_msg->GetDescriptor()->name(), "SimpleMessage");
+    EXPECT_EQ(simple_msg->GetDescriptor()->full_name(), "test.SimpleMessage");
 
-    const auto* repeated_desc = helper.getDescriptor("test.SimpleRepeated");
-    ASSERT_NE(repeated_desc, nullptr);
-    EXPECT_EQ(repeated_desc->name(), "SimpleRepeated");
+    auto repeated_msg = helper.newMessage("test.SimpleRepeated");
+    ASSERT_NE(repeated_msg, nullptr);
+    EXPECT_EQ(repeated_msg->GetDescriptor()->name(), "SimpleRepeated");
 
     // Test non-existent type
-    const auto* missing_desc = helper.getDescriptor("test.NonExistent");
-    EXPECT_EQ(missing_desc, nullptr);
+    auto missing_msg = helper.newMessage("test.NonExistent");
+    EXPECT_EQ(missing_msg, nullptr);
 }
 
 TEST(TestDynamicMessages, ParseInvalidData)

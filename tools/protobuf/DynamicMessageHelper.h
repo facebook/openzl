@@ -67,6 +67,7 @@ class DynamicMessageHelper {
             const void* data,
             size_t size) const;
 
+   private:
     /**
      * Get the descriptor for a message type.
      *
@@ -75,16 +76,6 @@ class DynamicMessageHelper {
      */
     const google::protobuf::Descriptor* getDescriptor(
             const std::string& type_name) const;
-
-    /**
-     * Get the underlying descriptor pool.
-     */
-    const google::protobuf::DescriptorPool* getPool() const
-    {
-        return pool_;
-    }
-
-   private:
     const google::protobuf::DescriptorPool* pool_;
     std::unique_ptr<google::protobuf::DynamicMessageFactory> factory_;
 };
