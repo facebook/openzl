@@ -127,6 +127,15 @@ bool GM_isValidGraphID(const GraphsMgr* gm, ZL_GraphID gid)
         *(_out) = _out_void;                                            \
     } while (0)
 
+// Forward declarations
+static ZL_RESULT_OF(ZL_GraphID) GM_registerSegmenter_internal(
+        GraphsMgr* gm,
+        const ZL_SegmenterDesc* segDesc,
+        ZL_GraphID originalGraphID,
+        ZL_GraphType originalGraphType,
+        const void* privateParam,
+        size_t ppSize);
+
 static ZL_Report GM_transferBuffer(
         GraphsMgr* gm,
         const void* buffer,
@@ -483,6 +492,39 @@ GM_registerParameterizedGraph(
             "GM_registerParameterizedGraph (name=%s)",
             STR_REPLACE_NULL(desc->name));
 
+    // Check if the base graph is a segmenter and handle it separately
+    GM_GraphMetadata baseMeta = GM_getGraphMetadata(gm, desc->graph);
+    if (baseMeta.graphType == ZL_GraphType_segmenter) {
+        const ZL_SegmenterDesc* segDescPtr =
+                GM_getSegmenterDesc(gm, desc->graph);
+        ZL_ERR_IF_NULL(segDescPtr, graph_invalid);
+
+        ZL_SegmenterDesc segDesc = *segDescPtr;
+
+        if (desc->localParams) {
+            segDesc.localParams = *desc->localParams;
+        }
+        if (desc->nbCustomGraphs > 0) {
+            segDesc.customGraphs    = desc->customGraphs;
+            segDesc.numCustomGraphs = desc->nbCustomGraphs;
+        }
+        if (desc->name != NULL) {
+            segDesc.name = desc->name;
+        } else {
+            segDesc.name = ZL_Name_prefix(&baseMeta.name);
+        }
+
+        // Keep originalGraphType as segmenter, use baseGraphID to indicate
+        // parameterization
+        return GM_registerSegmenter_internal(
+                gm,
+                &segDesc,
+                desc->graph,
+                ZL_GraphType_segmenter,
+                GM_getPrivateParam(gm, desc->graph),
+                0 /* No need to transfer private param */);
+    }
+
     const ZL_FunctionGraphDesc* miDescPtr =
             GM_getMultiInputGraphDesc(gm, desc->graph);
     ZL_ERR_IF_NULL(miDescPtr, graph_invalid);
@@ -651,8 +693,14 @@ static GM_GraphMetadata GM_getSegmenterMetadata(
     const ZL_SegmenterDesc* desc = GM_getSegmenterDesc(gm, gid);
     ZL_ASSERT_NN(desc);
 
-    // baseGraphID (no parameterization yet)
-    meta.baseGraphID = ZL_GRAPH_ILLEGAL;
+    // baseGraphID
+    if (!GR_isStandardGraph(gid)) {
+        ZL_IDType const lgid = GM_GraphID_to_lgid(gid);
+        meta.baseGraphID     = VECTOR_AT(gm->gdv, lgid).baseGraphID;
+    } else {
+        // this is not a parameterized graph, it's an original
+        meta.baseGraphID = ZL_GRAPH_ILLEGAL;
+    }
 
     // name
     ZL_ASSERT_NN(desc);
