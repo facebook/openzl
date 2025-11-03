@@ -657,4 +657,68 @@ TEST(Segmenter, codec_before_segmenter)
             registerInvalidGraph, "codec_before_segmenter (should fails)");
 }
 
+/* =======   Parameterized Segmenter with Local Params   ======== */
+
+// Test that we can parameterize a segmenter with local parameters
+// This is the fix for the bug where parameterizing a segmenter returns an
+// illegal graph
+ZL_GraphID registerParameterizedSegmenter(ZL_Compressor* compressor) noexcept
+{
+    ZL_Report const setr = ZL_Compressor_setParameter(
+            compressor, ZL_CParam_formatVersion, g_testVersion);
+    if (ZL_isError(setr))
+        abort();
+
+    // Register a base segmenter
+    ZL_GraphID const baseSegid =
+            ZL_Compressor_registerSegmenter(compressor, &serialSegmenter);
+
+    // Verify the base segmenter is valid
+    EXPECT_TRUE(ZL_GraphID_isValid(baseSegid))
+            << "Base segmenter registration failed";
+
+    // Parameterize it with local parameters
+    ZL_IntParam intParams[1]         = { { .paramId = 1, .paramValue = 42 } };
+    ZL_LocalIntParams localIntParams = {
+        .intParams   = intParams,
+        .nbIntParams = 1,
+    };
+    ZL_LocalParams localParams = {
+        .intParams = localIntParams,
+    };
+
+    ZL_GraphParameters params = {
+        .name        = "Parameterized Serial Segmenter",
+        .localParams = &localParams,
+    };
+
+    ZL_RESULT_OF(ZL_GraphID)
+    paramResult =
+            ZL_Compressor_parameterizeGraph(compressor, baseSegid, &params);
+
+    // The bug was that this would return an invalid graph (graph_invalid error)
+    EXPECT_FALSE(ZL_RES_isError(paramResult))
+            << "Parameterizing segmenter should succeed";
+    if (ZL_RES_isError(paramResult)) {
+        printf("Error code: %s\n", ZL_ErrorCode_toString(paramResult._code));
+        abort();
+    }
+
+    ZL_GraphID paramSegid = ZL_RES_value(paramResult);
+    EXPECT_TRUE(ZL_GraphID_isValid(paramSegid))
+            << "Parameterized segmenter should be valid";
+
+    return paramSegid;
+}
+
+TEST(Segmenter, parameterizedWithLocalParams)
+{
+    if (g_testVersion < ZL_CHUNK_VERSION_MIN)
+        return;
+    (void)roundTripGen(
+            ZL_Type_serial,
+            registerParameterizedSegmenter,
+            "parameterized segmenter with local params");
+}
+
 } // namespace
