@@ -13,10 +13,11 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 ASSEMBLER_PATH = SCRIPT_DIR.parent / 'assembler.py'
 SUCCESS_DIR = SCRIPT_DIR / 'success'
+FAIL_DIR = SCRIPT_DIR / 'fail'
 
 
-def run_test(asm_file: Path, expected_file: Path):
-    """Run a single test case"""
+def run_success_test(asm_file: Path, expected_file: Path):
+    """Run a test that should succeed"""
     test_name = asm_file.stem
     print(f"Testing: {test_name}...", end=" ")
     
@@ -55,39 +56,92 @@ def run_test(asm_file: Path, expected_file: Path):
         return False
 
 
+def run_fail_test(asm_file: Path):
+    """Run a test that should fail"""
+    test_name = asm_file.stem
+    print(f"Testing: {test_name}...", end=" ")
+    
+    # Read source code and look for EXPECT-ERROR comment
+    asm_source = asm_file.read_text()
+    expected_error = None
+    
+    for line in asm_source.split('\n'):
+        stripped = line.strip()
+        if stripped.startswith('# EXPECT-ERROR:'):
+            expected_error = stripped.split(':', 1)[1].strip()
+            break
+    
+    # Assemble using -c mode
+    result = subprocess.run(
+        ['python3', str(ASSEMBLER_PATH), '-c', asm_source],
+        capture_output=True,
+        text=True
+    )
+    
+    # Should fail
+    if result.returncode == 0:
+        print(f"FAIL - Expected assembler to fail but it succeeded")
+        return False
+    
+    # If specific error expected, verify it
+    if expected_error:
+        error_output = result.stdout + result.stderr
+        if expected_error.lower() in error_output.lower():
+            print("PASS")
+            return True
+        else:
+            print(f"FAIL - Expected error containing: '{expected_error}'")
+            print(f"  Got: {error_output.strip()}")
+            return False
+    else:
+        # Just verify it failed
+        print("PASS")
+        return True
+
+
 def main():
     if not ASSEMBLER_PATH.exists():
         print(f"Error: Assembler not found at {ASSEMBLER_PATH}")
         return 1
     
-    if not SUCCESS_DIR.exists():
-        print(f"Error: Success test directory not found at {SUCCESS_DIR}")
-        return 1
-    
-    # Find all .asm files
-    asm_files = sorted(SUCCESS_DIR.glob('*.asm'))
-    
-    if not asm_files:
-        print(f"Error: No .asm files found in {SUCCESS_DIR}")
-        return 1
-    
-    print(f"Running tests from {SUCCESS_DIR}")
-    print(f"Found {len(asm_files)} test files\n")
-    
     passed = 0
     failed = 0
     skipped = 0
     
-    for asm_file in asm_files:
-        expected_file = asm_file.with_suffix('.expected')
-        result = run_test(asm_file, expected_file)
+    # Run success tests
+    if SUCCESS_DIR.exists():
+        success_files = sorted(SUCCESS_DIR.glob('*.asm'))
         
-        if result is True:
-            passed += 1
-        elif result is False:
-            failed += 1
-        else:  # None = skipped
-            skipped += 1
+        if success_files:
+            print(f"=== Success Tests ({SUCCESS_DIR}) ===")
+            print(f"Found {len(success_files)} test files\n")
+            
+            for asm_file in success_files:
+                expected_file = asm_file.with_suffix('.expected')
+                result = run_success_test(asm_file, expected_file)
+                
+                if result is True:
+                    passed += 1
+                elif result is False:
+                    failed += 1
+                else:  # None = skipped
+                    skipped += 1
+    
+    # Run failure tests
+    if FAIL_DIR.exists():
+        fail_files = sorted(FAIL_DIR.glob('*.asm'))
+        
+        if fail_files:
+            print(f"\n=== Failure Tests ({FAIL_DIR}) ===")
+            print(f"Found {len(fail_files)} test files\n")
+            
+            for asm_file in fail_files:
+                result = run_fail_test(asm_file)
+                
+                if result is True:
+                    passed += 1
+                elif result is False:
+                    failed += 1
     
     # Summary
     print(f"\n{'='*50}")

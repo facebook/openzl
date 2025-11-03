@@ -25,12 +25,12 @@ for asm_file in "$SUCCESS_DIR"/*.asm; do
     if [ ! -f "$asm_file" ]; then
         continue
     fi
-    
+
     base_name="${asm_file%.asm}"
     expected_file="${base_name}.expected"
-    
+
     echo "Processing: $(basename "$asm_file")"
-    
+
     # Use -c mode to avoid creating .bin files, read the .asm file content
     if python3 "$ASSEMBLER" -c "$(cat "$asm_file")" > "$expected_file.tmp" 2>&1; then
         mv "$expected_file.tmp" "$expected_file"

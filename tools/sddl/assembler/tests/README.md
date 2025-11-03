@@ -11,6 +11,10 @@ Tests are organized into directories:
     - `*.asm` - Assembly source code
     - `*.expected` - Expected hexadecimal bytecode output
 
+- **`fail/`** - Test cases that should fail to assemble
+  - Each test is a single `*.asm` file
+  - Optional `# EXPECT-ERROR: substring` comment specifies expected error message
+
 ## Running Tests
 
 Run all tests:
@@ -27,7 +31,9 @@ The test runner will:
 
 ## Adding New Tests
 
-To add a new test:
+### Success Tests
+
+To add a new success test:
 
 1. Create a new `.asm` file in `success/`:
    ```bash
@@ -44,6 +50,29 @@ To add a new test:
    ```bash
    python3 test_assembler.py
    ```
+
+### Failure Tests
+
+To add a new failure test:
+
+1. Create a new `.asm` file in `fail/`:
+   ```bash
+   cat > fail/my_error_test.asm << 'EOF'
+   # EXPECT-ERROR: out of range
+   push.u32 -1
+   halt
+   EOF
+   ```
+
+2. Run tests to verify:
+   ```bash
+   python3 test_assembler.py
+   ```
+
+**EXPECT-ERROR format:**
+- Optional: If omitted, test just verifies assembler fails (non-zero exit code)
+- If present: Test verifies error message contains the specified substring (case-insensitive)
+- Flexible: Use short, stable substrings that won't break when error messages improve
 
 ## Regenerating Expected Files
 
@@ -63,21 +92,6 @@ This script:
 - Bytecode encoding changes
 - Instruction format changes
 - After fixing bugs that affect output
-
-## Test Coverage
-
-Current test coverage (23 tests):
-
-**Phase 1:**
-- empty program
-- halt instruction
-- push.zero instruction
-
-**Phase 2:**
-- push.u32 (0, 42, 255, max, hex, binary formats)
-- push.i32 (0, 42, -1, -100, min, max, negative hex)
-- push.i64 (0, 1000000, -1, min, max)
-- Multiple instructions (mixed types, combinations)
 
 ## Legacy Test Files
 
