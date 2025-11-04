@@ -10,9 +10,11 @@
 
 #include "openzl/common/operation_context.h"
 #include "openzl/cpp/CCtx.hpp"
-#include "openzl/zl_input.h"
 #include "openzl/zl_reflection.h"
+#include "tools/logger/Logger.h"
 #include "tools/training/clustering/clustering_config_builder.h"
+
+using namespace openzl::tools::logger;
 
 namespace openzl::training {
 namespace {
@@ -168,8 +170,9 @@ SizeTimePair CompressionUtils::compressSample(
         static std::atomic<bool> errorLogged{ false };
         if (!errorLogged.exchange(true)) {
             // Only log the first occurrence of this error
-            ZL_LOG(ERROR,
-                   "Selected a successor that fails to compress on input, treating this as a candidate with a large compression cost. Suppressing future logs for this error.");
+            Logger::log(
+                    ERRORS,
+                    "Selected a successor that fails to compress on input, treating this as a candidate with a large compression cost. Suppressing future logs for this error.");
         }
         return SizeTimePair{ std::numeric_limits<uint32_t>::max(),
                              std::numeric_limits<uint32_t>::max() };
