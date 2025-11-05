@@ -148,11 +148,11 @@ def main():
     script_dir = Path(__file__).parent
     def_file = script_dir / "openzl_opcodes.def"
     output_file = script_dir / "opcodes_generated.py"
-    
+
     if not def_file.exists():
         print(f"Error: {def_file} not found")
         return 1
-    
+
     print(f"Parsing {def_file}...")
     families, opcodes = parse_def_file(def_file)
 

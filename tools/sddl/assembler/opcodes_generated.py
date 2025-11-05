@@ -2,7 +2,7 @@
 AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 
 Generated from: openzl_opcodes.def
-Generated at: 2025-11-05 08:08:46 UTC
+Generated at: 2025-11-05 08:30:48 UTC
 Generator: generate_opcodes.py
 
 To regenerate: python3 generate_opcodes.py
@@ -41,5 +41,14 @@ INSTRUCTIONS = {
     "stack.swap": ("STACK", 0x0003, []),
     "stack.over": ("STACK", 0x0004, []),
     "stack.rot": ("STACK", 0x0005, []),
+
+    # MATH family (0x0002)
+    "math.add": ("MATH", 0x0001, []),
+    "math.sub": ("MATH", 0x0002, []),
+    "math.mul": ("MATH", 0x0003, []),
+    "math.div": ("MATH", 0x0004, []),
+    "math.mod": ("MATH", 0x0005, []),
+    "math.abs": ("MATH", 0x0006, []),
+    "math.neg": ("MATH", 0x0007, []),
 
 }

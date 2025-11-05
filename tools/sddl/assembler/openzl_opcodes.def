@@ -68,3 +68,12 @@ OPCODE_DEF(stack.drop, STACK, 0x0002)
 OPCODE_DEF(stack.swap, STACK, 0x0003)
 OPCODE_DEF(stack.over, STACK, 0x0004)
 OPCODE_DEF(stack.rot,  STACK, 0x0005)
+
+/* MATH family (0x0002) - Arithmetic operations on I64 values */
+OPCODE_DEF(math.add, MATH, 0x0001)
+OPCODE_DEF(math.sub, MATH, 0x0002)
+OPCODE_DEF(math.mul, MATH, 0x0003)
+OPCODE_DEF(math.div, MATH, 0x0004)
+OPCODE_DEF(math.mod, MATH, 0x0005)
+OPCODE_DEF(math.abs, MATH, 0x0006)
+OPCODE_DEF(math.neg, MATH, 0x0007)
