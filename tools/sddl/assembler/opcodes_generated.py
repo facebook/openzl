@@ -2,7 +2,7 @@
 AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 
 Generated from: openzl_opcodes.def
-Generated at: 2025-11-05 08:30:48 UTC
+Generated at: 2025-11-05 08:55:01 UTC
 Generator: generate_opcodes.py
 
 To regenerate: python3 generate_opcodes.py
@@ -50,5 +50,13 @@ INSTRUCTIONS = {
     "math.mod": ("MATH", 0x0005, []),
     "math.abs": ("MATH", 0x0006, []),
     "math.neg": ("MATH", 0x0007, []),
+
+    # CMP family (0x0003)
+    "cmp.eq": ("CMP", 0x0001, []),
+    "cmp.ne": ("CMP", 0x0002, []),
+    "cmp.lt": ("CMP", 0x0003, []),
+    "cmp.le": ("CMP", 0x0004, []),
+    "cmp.gt": ("CMP", 0x0005, []),
+    "cmp.ge": ("CMP", 0x0006, []),
 
 }

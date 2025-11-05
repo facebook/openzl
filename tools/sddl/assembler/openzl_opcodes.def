@@ -77,3 +77,11 @@ OPCODE_DEF(math.div, MATH, 0x0004)
 OPCODE_DEF(math.mod, MATH, 0x0005)
 OPCODE_DEF(math.abs, MATH, 0x0006)
 OPCODE_DEF(math.neg, MATH, 0x0007)
+
+/* CMP family (0x0003) - Comparison operations on signed I64 values */
+OPCODE_DEF(cmp.eq, CMP, 0x0001)
+OPCODE_DEF(cmp.ne, CMP, 0x0002)
+OPCODE_DEF(cmp.lt, CMP, 0x0003)
+OPCODE_DEF(cmp.le, CMP, 0x0004)
+OPCODE_DEF(cmp.gt, CMP, 0x0005)
+OPCODE_DEF(cmp.ge, CMP, 0x0006)
