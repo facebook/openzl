@@ -8,6 +8,7 @@
 // OpenZL
 #include "openzl/codecs/zl_conversion.h"
 #include "openzl/codecs/zl_generic.h"
+#include "openzl/cpp/Compressor.hpp"
 #include "openzl/zl_compress.h" // ZL_CCtx_compress
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_data.h"
@@ -403,7 +404,7 @@ ZL_Report serialSegmenterFn(ZL_Segmenter* sctx)
 }
 
 static ZL_SegmenterDesc const serialSegmenter = {
-    .name           = "Simple Serial Segmenter",
+    .name           = "!Simple Serial Segmenter",
     .segmenterFn    = serialSegmenterFn,
     .inputTypeMasks = (const ZL_Type[]){ ZL_Type_serial },
     .numInputs      = 1,
@@ -719,6 +720,20 @@ TEST(Segmenter, parameterizedWithLocalParams)
             ZL_Type_serial,
             registerParameterizedSegmenter,
             "parameterized segmenter with local params");
+}
+
+TEST(Segmenter, parameterizedSegmenterIsSerializable)
+{
+    openzl::Compressor compressor;
+    registerParameterizedSegmenter(compressor.get());
+    auto serialized = compressor.serialize();
+    openzl::Compressor deserialized;
+    // Register deps
+    openzl::GraphParameters params = { .name = "test" };
+    // Do registration in different order to ensure serialization works
+    deserialized.parameterizeGraph(ZL_GRAPH_ZSTD, params);
+    registerParameterizedSegmenter(deserialized.get());
+    deserialized.deserialize(serialized);
 }
 
 } // namespace
