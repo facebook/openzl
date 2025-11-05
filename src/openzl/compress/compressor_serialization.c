@@ -587,7 +587,15 @@ static ZL_Report CompressorSerializer_serializeGraph_cb(
     ZL_CompressorSerializer* const state = (ZL_CompressorSerializer*)opaque;
     ZL_RESULT_DECLARE_SCOPE_REPORT(state);
 
-    const ZL_GraphType graph_type = ZL_Compressor_getGraphType(c, gid);
+    ZL_GraphType graph_type = ZL_Compressor_getGraphType(c, gid);
+    if (graph_type == ZL_GraphType_segmenter) {
+        // Check the base graph Id's graph type
+        const ZL_GraphID base_gid = ZL_Compressor_Graph_getBaseGraphID(c, gid);
+        if (base_gid.gid != ZL_GRAPH_ILLEGAL.gid) {
+            // This is actually a parameterized graph, not a segmenter.
+            graph_type = ZL_GraphType_parameterized;
+        }
+    }
     switch (graph_type) {
         case ZL_GraphType_standard:
         case ZL_GraphType_selector:
