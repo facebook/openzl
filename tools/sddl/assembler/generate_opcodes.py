@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Generate Python opcode definitions from openzl_opcodes.h
+Generate Python opcode definitions from openzl_opcodes.def
 
-This script parses the C11 X-macro header file and generates
+This script parses the C11 X-macro definition file and generates
 opcodes_generated.py for use by the assembler.
 
 Usage:
@@ -74,7 +74,7 @@ def generate_python_code(families: Dict[str, int], opcodes: List[tuple]) -> str:
     lines.append('"""')
     lines.append("AUTO-GENERATED FILE - DO NOT EDIT MANUALLY")
     lines.append("")
-    lines.append("Generated from: openzl_opcodes.h")
+    lines.append("Generated from: openzl_opcodes.def")
     lines.append(f'Generated at: {datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")}')
     lines.append("Generator: generate_opcodes.py")
     lines.append("")
@@ -146,13 +146,13 @@ def generate_python_code(families: Dict[str, int], opcodes: List[tuple]) -> str:
 
 def main():
     script_dir = Path(__file__).parent
-    def_file = script_dir / "openzl_opcodes.h"
+    def_file = script_dir / "openzl_opcodes.def"
     output_file = script_dir / "opcodes_generated.py"
-
+    
     if not def_file.exists():
         print(f"Error: {def_file} not found")
         return 1
-
+    
     print(f"Parsing {def_file}...")
     families, opcodes = parse_def_file(def_file)
 

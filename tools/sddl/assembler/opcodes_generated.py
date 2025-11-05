@@ -1,8 +1,8 @@
 """
 AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 
-Generated from: openzl_opcodes.h
-Generated at: 2025-11-05 07:30:48 UTC
+Generated from: openzl_opcodes.def
+Generated at: 2025-11-05 08:08:46 UTC
 Generator: generate_opcodes.py
 
 To regenerate: python3 generate_opcodes.py

@@ -2,7 +2,7 @@
 """
 OpenZL VM Assembler
 
-Instruction definitions are auto-generated from openzl_opcodes.h
+Instruction definitions are auto-generated from openzl_opcodes.def
 To regenerate: python3 generate_opcodes.py
 """
 
