@@ -126,8 +126,33 @@ typedef enum {
     SDDL2_STACK_UNDERFLOW, // Pop from empty stack
     SDDL2_TYPE_MISMATCH,   // Operation received wrong value type
     SDDL2_LOAD_BOUNDS,     // Load address out of bounds
-    // Future: SDDL2_DIV_ZERO, SDDL2_SEGMENT_BOUNDS, etc.
+    SDDL2_SEGMENT_BOUNDS,  // Segment extends beyond input buffer
+    // Future: SDDL2_DIV_ZERO, etc.
 } SDDL2_error;
+
+/* ============================================================================
+ * Segments (Phase 4)
+ * ========================================================================= */
+
+/**
+ * Simple segment structure (untyped byte blob).
+ * Represents a tagged region of input data.
+ */
+typedef struct {
+    uint32_t tag;      // Segment identifier
+    size_t start_pos;  // Start offset in input buffer
+    size_t size_bytes; // Length in bytes
+} SDDL2_segment;
+
+/**
+ * Dynamic list of segments.
+ * Grows as segments are created during VM execution.
+ */
+typedef struct {
+    SDDL2_segment* items; // Dynamic array of segments
+    size_t count;         // Number of segments
+    size_t capacity;      // Allocated capacity
+} SDDL2_segment_list;
 
 /* ============================================================================
  * Input Buffer (Phase 3)
@@ -337,6 +362,34 @@ SDDL2_error SDDL2_op_current_pos(
 SDDL2_error SDDL2_op_load_u8(
         SDDL2_stack* stack,
         const SDDL2_input_buffer* buffer);
+
+/* ============================================================================
+ * Segment Operations (Phase 4)
+ * ========================================================================= */
+
+/**
+ * Initialize a segment list.
+ */
+void SDDL2_segment_list_init(SDDL2_segment_list* list);
+
+/**
+ * Free segment list resources.
+ * Does NOT free the list structure itself (caller owns it).
+ */
+void SDDL2_segment_list_destroy(SDDL2_segment_list* list);
+
+/**
+ * Create an unspecified segment (no tag, no type, just bytes).
+ * Stack: size:I64 -> (nothing)
+ * Side effects:
+ *   - Advances buffer->current_pos by size
+ *   - Appends segment to list with tag=0
+ * Errors: TypeMismatch, StackUnderflow, SegmentBounds
+ */
+SDDL2_error SDDL2_op_segment_create_unspecified(
+        SDDL2_stack* stack,
+        SDDL2_input_buffer* buffer,
+        SDDL2_segment_list* segments);
 
 #if defined(__cplusplus)
 } // extern "C"

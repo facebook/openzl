@@ -373,3 +373,96 @@ SDDL2_error SDDL2_op_load_u8(
     uint8_t byte_val     = bytes[addr];
     return SDDL2_stack_push(stack, SDDL2_value_i64((int64_t)byte_val));
 }
+
+/* ============================================================================
+ * Segment Operations (Phase 4)
+ * ========================================================================= */
+
+#include <stdlib.h>
+
+void SDDL2_segment_list_init(SDDL2_segment_list* list)
+{
+    list->items    = NULL;
+    list->count    = 0;
+    list->capacity = 0;
+}
+
+void SDDL2_segment_list_destroy(SDDL2_segment_list* list)
+{
+    if (list->items) {
+        free(list->items);
+        list->items = NULL;
+    }
+    list->count    = 0;
+    list->capacity = 0;
+}
+
+/**
+ * Helper: Ensure segment list has capacity for at least one more item.
+ * Grows by 2x when needed.
+ */
+static int segment_list_ensure_capacity(SDDL2_segment_list* list)
+{
+    if (list->count >= list->capacity) {
+        size_t new_capacity = (list->capacity == 0) ? 16 : (list->capacity * 2);
+        SDDL2_segment* new_items = (SDDL2_segment*)realloc(
+                list->items, new_capacity * sizeof(SDDL2_segment));
+        if (!new_items) {
+            return 0; // Allocation failed
+        }
+        list->items    = new_items;
+        list->capacity = new_capacity;
+    }
+    return 1; // Success
+}
+
+SDDL2_error SDDL2_op_segment_create_unspecified(
+        SDDL2_stack* stack,
+        SDDL2_input_buffer* buffer,
+        SDDL2_segment_list* segments)
+{
+    // Pop size from stack
+    SDDL2_value size_val;
+    SDDL2_error err;
+
+    if ((err = SDDL2_stack_pop(stack, &size_val)) != SDDL2_OK)
+        return err;
+
+    // Type check
+    if (size_val.kind != SDDL2_VALUE_I64) {
+        return SDDL2_TYPE_MISMATCH;
+    }
+
+    int64_t size_i64 = size_val.value.as_i64;
+
+    // Validate size (must be non-negative)
+    if (size_i64 < 0) {
+        return SDDL2_TYPE_MISMATCH; // Or create SDDL2_INVALID_VALUE error
+    }
+
+    size_t size = (size_t)size_i64;
+
+    // Bounds check: segment must fit in remaining buffer
+    if (buffer->current_pos + size > buffer->size) {
+        return SDDL2_SEGMENT_BOUNDS;
+    }
+
+    // Ensure segment list has capacity
+    if (!segment_list_ensure_capacity(segments)) {
+        return SDDL2_STACK_OVERFLOW; // Reuse for allocation failure (TODO: add
+                                     // SDDL2_ALLOC_ERROR)
+    }
+
+    // Create and append segment (tag=0 for unspecified)
+    SDDL2_segment seg;
+    seg.tag        = 0; // Unspecified segment has no tag
+    seg.start_pos  = buffer->current_pos;
+    seg.size_bytes = size;
+
+    segments->items[segments->count++] = seg;
+
+    // Advance cursor
+    buffer->current_pos += size;
+
+    return SDDL2_OK;
+}
