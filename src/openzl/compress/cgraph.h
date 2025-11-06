@@ -74,6 +74,23 @@ ZL_NodeID CGraph_registerStandardMITransform(
         unsigned minFormatVersion,
         unsigned maxFormatVersion);
 
+/* =====   Private actions on Compressor   ===== */
+
+/**
+ * Warning: This is part of experimental API for compressor mutation.
+ *
+ * Requires that:
+ * @p graph is a parameterized graph registered in @p compressor
+ *
+ * Replaces the parameters of @p graph with @p gp.
+ * @note: This function does not validate there are no dependency cycles within
+ * the compressor.
+ */
+ZL_Report ZL_Compressor_overrideGraphParams(
+        ZL_Compressor* compressor,
+        ZL_GraphID graph,
+        const ZL_GraphParameters* gp);
+
 ZL_END_C_DECLS
 
 #endif // ZSTRONG_COMPRESS_CGRAPH_H

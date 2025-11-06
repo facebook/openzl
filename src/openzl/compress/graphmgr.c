@@ -480,6 +480,62 @@ GM_registerStaticGraph(GraphsMgr* gm, const ZL_StaticGraphDesc* sgDesc)
             sizeof(nsParam));
 }
 
+ZL_Report GM_overrideGraphParams(
+        GraphsMgr* const gm,
+        ZL_GraphID targetGraph,
+        const ZL_GraphParameters* gp)
+{
+    ZL_RESULT_DECLARE_SCOPE(size_t, gm->opCtx);
+    ZL_ASSERT_NN(gm);
+
+    ZL_ERR_IF(
+            GR_isStandardGraph(targetGraph),
+            graph_invalid,
+            "Cannot replace standard graph");
+
+    ZL_IDType const lid = GM_GraphID_to_lgid(targetGraph);
+    ZL_ERR_IF_GE(lid, VECTOR_SIZE(gm->gdv), internalBuffer_tooSmall);
+    // Check that the graphs is a parameterized graph
+    ZL_ERR_IF_NE(
+            VECTOR_AT(gm->gdv, lid).originalGraphType,
+            ZL_GraphType_parameterized,
+            graph_invalid);
+    ZL_FunctionGraphDesc* const migd = &VECTOR_AT(gm->gdv, lid).migd;
+
+    // Validate custom graphs
+    for (size_t i = 0; i < gp->nbCustomGraphs; ++i) {
+        // TODO(T219759022): Should this be allowed?
+        if (gp->customGraphs[i].gid == ZL_GRAPH_ILLEGAL.gid) {
+            continue;
+        }
+        ZL_ERR_IF_NOT(
+                GM_isValidGraphID(gm, gp->customGraphs[i]),
+                graph_invalid,
+                "Custom GraphID at idx=%zu is invalid!",
+                i);
+    }
+
+    // Validate custom nodes
+    // TODO(T219759022): Should ZL_NODE_ILLEGAL be allowed?
+    // It currently is, because NM_getCNode() returns non-null.
+    for (size_t i = 0; i < gp->nbCustomNodes; ++i) {
+        const CNode* cnode = NM_getCNode(gm->nmgr, gp->customNodes[i]);
+        ZL_ERR_IF_NULL(
+                cnode,
+                graph_invalid,
+                "Custom NodeID at idx=%zu is invalid!",
+                i);
+    }
+
+    ZL_ERR_IF_ERR(GM_transferCustomGIDs(
+            gm, gp->customGraphs, gp->nbCustomGraphs, &migd->customGraphs));
+    ZL_ERR_IF_ERR(GM_transferCustomNIDs(
+            gm, gp->customNodes, gp->nbCustomNodes, &migd->customNodes));
+    migd->localParams = *gp->localParams;
+    ZL_ERR_IF_ERR(GM_transferLocalParameters(gm, &migd->localParams));
+    return ZL_returnSuccess();
+}
+
 ZL_RESULT_OF(ZL_GraphID)
 GM_registerParameterizedGraph(
         GraphsMgr* gm,
