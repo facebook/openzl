@@ -44,12 +44,9 @@ void UntrainedGraphHook::on_migraphEncode_start(
             nbInputs,
             graphName.c_str());
 
-    // If this is the first time we're seeing this graph, initialize an empty
-    // vector
-    if (inputs_.find(graphName) == inputs_.end()) {
-        inputs_[graphName] = MultiInput();
-    }
-
+    // Each time a graph is called, we should record a separate set of inputs
+    // for that graph.
+    auto encodeInputs = MultiInput();
     for (size_t i = 0; i < nbInputs; ++i) {
         if (!inputs[i]) {
             errorMessage_ = "Input is null at index " + std::to_string(i);
@@ -63,11 +60,13 @@ void UntrainedGraphHook::on_migraphEncode_start(
             Logger::log(ERRORS, errorMessage_);
             return;
         }
-        inputs_[graphName].add(InputCopy(edgeInputData));
+        encodeInputs.add(InputCopy(edgeInputData));
     }
+    inputs_[graphName].push_back(std::move(encodeInputs));
 }
 
-const std::map<std::string, MultiInput>& UntrainedGraphHook::getInputs() const
+const std::map<std::string, std::vector<MultiInput>>&
+UntrainedGraphHook::getInputs() const
 {
     if (!errorMessage_.empty()) {
         Logger::log(ERRORS, "Error message present: ", errorMessage_);

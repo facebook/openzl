@@ -53,10 +53,10 @@ void captureInputs(
     cctx.compress(*input);
     const auto& captured = hooks.getInputs();
 
-    for (const auto& [graphName, sample] : captured) {
-        if (!captured.empty()) {
-            auto [it, _] = samplesPerGraph.emplace(
-                    graphName, std::vector<MultiInput>());
+    for (const auto& [graphName, samples] : captured) {
+        auto [it, _] =
+                samplesPerGraph.emplace(graphName, std::vector<MultiInput>());
+        for (auto& sample : samples) {
             it->second.push_back(sample);
         }
     }
