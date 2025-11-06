@@ -6,7 +6,7 @@
 #include <map>
 #include <sstream>
 #include <vector>
-#include "custom_parsers/csv/csv_parser.h"
+#include "custom_parsers/csv/csv_segmenter.h"
 #include "custom_parsers/shared_components/numeric_graphs.h"
 #include "custom_parsers/shared_components/string_graphs.h"
 #include "custom_parsers/tests/DebugIntrospectionHooks.h"
@@ -102,8 +102,8 @@ class TPC_H_lineitem : public Config {
                 &clusteringConfig,
                 successors.data(),
                 successors.size());
-        return ZL_CsvParser_registerGraph(
-                compressor, true, '|', false, clusteringGraph);
+        return ZL_RES_value(ZL_CsvSegmenter_registerSegmenterNoChunks(
+                compressor, true, '|', false, clusteringGraph));
     }
 };
 
@@ -390,8 +390,8 @@ class PsamH01 : public Config {
                 &clusteringConfig,
                 successors.data(),
                 successors.size());
-        auto ee = ZL_CsvParser_registerGraph(
-                compressor, true, ',', UseNullAware, clusteringGraph);
+        auto ee = ZL_RES_value(ZL_CsvSegmenter_registerSegmenterNoChunks(
+                compressor, true, ',', UseNullAware, clusteringGraph));
         if (ee.gid == ZL_GRAPH_ILLEGAL.gid) {
             std::cerr << "illegal graph!" << std::endl;
             exit(1);
@@ -530,8 +530,8 @@ class PPMF_Unit : public Config {
                 &clusteringConfig,
                 successors.data(),
                 successors.size());
-        auto ee = ZL_CsvParser_registerGraph(
-                compressor, true, ',', false, clusteringGraph);
+        auto ee = ZL_RES_value(ZL_CsvSegmenter_registerSegmenterNoChunks(
+                compressor, true, ',', false, clusteringGraph));
         if (ee.gid == ZL_GRAPH_ILLEGAL.gid) {
             std::cerr << "illegal graph!" << std::endl;
             exit(1);
@@ -662,8 +662,8 @@ class PPMF_Person : public Config {
                 &clusteringConfig,
                 successors.data(),
                 successors.size());
-        auto ee = ZL_CsvParser_registerGraph(
-                compressor, true, ',', false, clusteringGraph);
+        auto ee = ZL_RES_value(ZL_CsvSegmenter_registerSegmenterNoChunks(
+                compressor, true, ',', false, clusteringGraph));
         if (ee.gid == ZL_GRAPH_ILLEGAL.gid) {
             std::cerr << "illegal graph!" << std::endl;
             exit(1);

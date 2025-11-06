@@ -180,7 +180,11 @@ compressProfiles()
                         }
                         return openzl::custom_parsers::
                                 ZL_createGraph_genericCSVCompressorWithOptions(
-                                        comp, true, str[0], false);
+                                        comp,
+                                        custom_parsers::kDefaultChunkSize,
+                                        true,
+                                        str[0],
+                                        false);
                     }
                     return openzl::custom_parsers::
                             ZL_createGraph_genericCSVCompressor(comp);

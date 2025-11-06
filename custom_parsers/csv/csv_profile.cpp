@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "custom_parsers/csv/csv_profile.h"
-#include "custom_parsers/csv/csv_parser.h"
+#include "custom_parsers/csv/csv_segmenter.h"
 #include "custom_parsers/shared_components/numeric_graphs.h"
 #include "custom_parsers/shared_components/string_graphs.h"
 #include "openzl/codecs/zl_clustering.h"
@@ -25,11 +25,12 @@ ZL_GraphID ZL_createGraph_genericCSVCompressor(
         ZL_Compressor* compressor) noexcept
 {
     return ZL_createGraph_genericCSVCompressorWithOptions(
-            compressor, true, ',', false);
+            compressor, kDefaultChunkSize, true, ',', false);
 }
 
 ZL_GraphID ZL_createGraph_genericCSVCompressorWithOptions(
         ZL_Compressor* compressor,
+        size_t chunkByteSizeMax,
         bool hasHeader,
         char separator,
         bool useNullAware) noexcept
@@ -115,8 +116,13 @@ ZL_GraphID ZL_createGraph_genericCSVCompressorWithOptions(
                     clusteringCodecs.size());
 
     // TODO support non-comma separators
-    return ZL_CsvParser_registerGraph(
-            compressor, hasHeader, separator, useNullAware, clusteringGraph);
+    return ZL_RES_value(ZL_CsvSegmenter_registerSegmenter(
+            compressor,
+            chunkByteSizeMax,
+            hasHeader,
+            separator,
+            useNullAware,
+            clusteringGraph));
 }
 
 } // namespace openzl::custom_parsers

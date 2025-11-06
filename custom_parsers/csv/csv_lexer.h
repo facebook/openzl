@@ -14,14 +14,18 @@ extern "C" {
 #endif
 
 typedef struct {
-    size_t nbStrs;
+    // Inputs
     size_t nbColumns;
     uint32_t* stringLens;
     uint16_t* dispatchIndices;
+    size_t* newlineIndices;
+    // Outputs
+    size_t nbNewlines;
+    size_t nbStrs;
 } ZL_CSV_lexResult;
 
 ZL_Report ZL_CSV_lex(
-        ZL_Graph* gctx,
+        ZL_Segmenter* sctx,
         const char* const content,
         size_t byteSize,
         bool hasHeader,
@@ -32,7 +36,7 @@ ZL_Report ZL_CSV_lex(
 // is empty and coalesce the separators together. So we have a result with
 // uneven columns, depending on how many empty values are in each column.
 ZL_Report ZL_CSV_lexNullAware(
-        ZL_Graph* gctx,
+        ZL_Segmenter* sctx,
         const char* const content,
         size_t byteSize,
         bool hasHeader,
@@ -40,18 +44,15 @@ ZL_Report ZL_CSV_lexNullAware(
         ZL_CSV_lexResult* retLexResult);
 
 ZL_Report createParsedCsv(
-        uint32_t* stringLens,
+        ZL_CSV_lexResult* retLexResult,
         const char* content,
         const size_t length,
-        char sep,
-        size_t nbColumns);
+        char sep);
 
 ZL_Report createNullAwareLexAndDispatch(
-        uint32_t* stringLens,
-        uint16_t* dispatchIndices,
+        ZL_CSV_lexResult* retLexResult,
         const char* content,
         const size_t length,
-        uint8_t nbColumns,
         char sep);
 
 #if defined(__cplusplus)

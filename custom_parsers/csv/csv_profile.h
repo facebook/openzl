@@ -7,6 +7,8 @@
 
 namespace openzl::custom_parsers {
 
+const size_t kDefaultChunkSize = 20 * 1000 * 1000;
+
 /**
  * @brief Registers a generic CSV graph where the clustering of the columns is
  * still unconfigured.
@@ -31,6 +33,7 @@ ZL_GraphID ZL_createGraph_genericCSVCompressor(
  */
 ZL_GraphID ZL_createGraph_genericCSVCompressorWithOptions(
         ZL_Compressor* compressor,
+        size_t chunkByteSizeMax,
         bool hasHeader,
         char separator,
         bool useNullAware) noexcept;

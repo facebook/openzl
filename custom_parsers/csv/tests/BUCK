@@ -6,9 +6,14 @@ oncall("data_compression")
 
 zs_unittest(
     name = "test",
-    srcs = ["lex_test.cpp"],
+    srcs = [
+        "lex_test.cpp",
+        "segmenter_test.cpp",
+    ],
     deps = [
+        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
         "//data_compression/experimental/zstrong/custom_parsers/csv:csv_parser",
+        "//data_compression/experimental/zstrong/tests:utils",
     ],
 )
 
@@ -18,6 +23,21 @@ zs_fuzzers(
     ],
     ftest_names = [
         ("CsvLexerTest", "RandomInputFuzzer"),
+    ],
+    deps = [
+        "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
+        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
+        "//data_compression/experimental/zstrong/custom_parsers/csv:csv_parser",
+        "//data_compression/experimental/zstrong/tests/datagen:datagen",
+    ],
+)
+
+zs_fuzzers(
+    srcs = [
+        "CsvSegmenterFuzzer.cpp",
+    ],
+    ftest_names = [
+        ("CsvSegmenterTest", "RandomInputFuzzer"),
     ],
     deps = [
         "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",

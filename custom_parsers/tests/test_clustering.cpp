@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 
-#include "custom_parsers/csv/csv_parser.h"
+#include "custom_parsers/csv/csv_segmenter.h"
 #include "custom_parsers/tests/DebugIntrospectionHooks.h"
 #include "openzl/common/a1cbor_helpers.h"
 #include "openzl/common/assertion.h"
@@ -53,8 +53,8 @@ class TestClusteringGraph : public testing::Test {
                 successors_.data(),
                 successors_.size());
 
-        return ZL_CsvParser_registerGraph(
-                cgraph, true, ',', false, clusteringGraph);
+        return ZL_RES_value(ZL_CsvSegmenter_registerSegmenterNoChunks(
+                cgraph, true, ',', false, clusteringGraph));
     }
 
     size_t compress(
