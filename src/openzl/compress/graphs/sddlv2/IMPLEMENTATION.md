@@ -1,233 +1,161 @@
 # OpenZL Execution Engine — Implementation Plan
 
-> **Status**: Phase 1 Complete ✅  
-> **Spec Version**: v0.2  
+> **Status**: Phases 1-2 Complete ✅ | **Priority**: Segment Generation
+> **Spec Version**: v0.2
 > **Last Updated**: 2025-11-06
 
 ---
 
 ## Overview
 
-This document outlines the incremental implementation plan for the OpenZL Execution Engine VM, a stack-based runtime for executing compiled SDDL plans. The VM is designed to:
+This document outlines the incremental implementation plan for the OpenZL Execution Engine VM. The VM's **primary purpose** is to:
 
-- Execute a **compiled plan** derived from SDDL
-- Traverse an input buffer **exactly once**
-- Define **tagged segments** over byte ranges
-- Automatically **chunk** segments
-- Convert segments into **typed streams**
-- Send streams to a downstream **Graph** (e.g., compression)
+1. **Traverse input buffer** exactly once
+2. **Generate tagged segments** over byte ranges
+3. **Output segment list** for downstream processing (compression, etc.)
 
-The VM **does not** understand SDDL or data semantics beyond what is encoded into the compiled plan.
+Everything else (arithmetic, comparisons, etc.) is a **support feature** for segment generation.
 
 ---
 
-## Design Principles
+## Revised Implementation Strategy
 
-### 1. **Incremental Development**
-Build the VM in small, testable phases. Each phase adds one layer of functionality while remaining fully tested.
+**Original mistake**: Building arithmetic/comparison operations before having any segments to test with.
 
-### 2. **Performance Where It Matters**
-- Hot-path functions (push/pop) are `static inline` for zero overhead
-- Cold-path functions live in `.c` files for maintainability
-- Type checking and validation happen once, not per-operation
-
-### 3. **OpenZL Naming Conventions**
-- **All non-static functions**: `SDDL2_*` prefix (including `static inline` in headers)
-- **Internal types/enums**: `openzl_*` prefix
-- **File names**: `sddl2_*` prefix
-
-### 4. **Arena Allocation**
-- Stack and metadata allocated via arena (no per-operation frees)
-- Configurable stack depth (default: 4096, max: 512384)
-- Entire arena reclaimed at end of execution
-
-### 5. **Minimal Spec**
-VM is integer-only, no branching, no floats. Keeps implementation simple and predictable.
+**New priority**: **Get to segments ASAP**, then add supporting operations as needed.
 
 ---
 
 ## Implementation Phases
 
-### ✅ Phase 1: Foundation (Stack + Values) — **COMPLETE**
+### ✅ Phase 1: Foundation — **COMPLETE**
 
-**Goal**: Establish the core runtime substrate that all VM operations build upon.
+**Goal**: Stack, values, types.
 
-**Implemented**:
-- Value system (`I64`, `Tag`, `Type` value kinds)
-- Type system (19 primitive types: U8, I16LE, F32BE, BYTES, etc.)
-- Stack operations (push/pop/peek with bounds checking)
-- Value constructors
-- Type size calculations
-
-**Files**:
-- `sddl2_vm.h` - VM interface (230 lines)
-- `sddl2_vm.c` - VM implementation (80 lines)
-- `sddl2_vm_test.c` - Unit tests (180 lines, 7 tests, all passing ✅)
-
-**Key Design**:
-- Stack is arena-allocated (pointer + capacity, not embedded array)
-- Push/pop are `static inline` for performance (hot path)
-- Type `width` field = element count (not byte count)
-- `OPENZL_TYPE_BYTES` has size 1 (unit size, unknown interpretation)
-
-**Deliverable**: Can create values, push/pop from stack, check types and sizes.
+**Delivered**:
+- Value system (`I64`, `Tag`, `Type`)
+- Type system (19 primitive types)
+- Stack operations with bounds checking
+- 7 tests, all passing ✅
 
 ---
 
-### Phase 2: Basic Arithmetic
+### ✅ Phase 2: Arithmetic — **COMPLETE**
 
-**Goal**: Implement integer arithmetic operations on I64 values.
+**Goal**: Address/size computation support.
 
-**Operations** (Spec Section 11):
-- `add` - Addition with overflow detection
-- `sub` - Subtraction with overflow detection
-- `mul` - Multiplication with overflow detection
-- `div` - Division with divide-by-zero check
-- `mod` - Modulo with divide-by-zero check
-- `abs` - Absolute value (fatal on `INT64_MIN`)
-- `neg` - Negation (already in opcodes.def)
+**Delivered**:
+- `add`, `sub`, `mul`, `div`, `mod`, `abs`, `neg`
+- Overflow detection
+- 25 tests, all passing ✅
 
-**Stack Contract** (RPN style):
-```
-a:I64  b:I64
-  ── add ──>  (a+b):I64
-```
-
-**Error Handling**:
-- `fatal(TypeMismatch)` if operands not I64
-- `fatal(Overflow)` on arithmetic overflow
-- `fatal(DivZero)` on division/modulo by zero
-
-**Testing**:
-- Basic operations (5 + 3 = 8)
-- Overflow detection (INT64_MAX + 1)
-- Divide by zero
-- Type checking (reject non-I64 operands)
-
-**Deliverable**: Can execute simple arithmetic programs like `push 5, push 3, add, halt`.
+**Note**: Complete but not critical path. Refocusing on segments.
 
 ---
 
-### Phase 3: Comparisons & Validation
+### Phase 3: Input Buffer (NEXT — HIGHEST PRIORITY)
 
-**Goal**: Enable conditional logic and runtime assertions.
+**Goal**: Read data from input files.
 
-**Comparison Operations** (Spec Section 19):
-- `eq` - Equality (produces I64 0 or 1)
-- `ne` - Inequality
-- `lt` - Less than (signed)
-- `le` - Less than or equal
-- `gt` - Greater than (signed)
-- `ge` - Greater than or equal
+**Minimal Implementation**:
 
-**Stack Contract**:
-```
-a:I64  b:I64
-  ── eq ──>  result:I64   (0 = false, 1 = true)
-```
-
-**Validation** (Spec Section 19.2):
-- `expect_true` - Assert condition is true (fatal if 0)
-
-**Error Handling**:
-- `fatal(TypeMismatch)` if operands not I64
-- `fatal(DataMismatch)` if expectation violated
-
-**Testing**:
-- All comparison operations
-- Truth value semantics (0 = false, non-zero = true)
-- `expect_true` success and failure cases
-
-**Deliverable**: Can validate computed values, enabling data-dependent assertions.
-
----
-
-### Phase 4: Input Buffer State
-
-**Goal**: Enable reading data from input buffer at computed addresses.
-
-**Input Buffer Structure** (Spec Section 2):
 ```c
 typedef struct {
     const uint8_t* data;
     size_t file_size;
-    size_t current_pos;  // Next byte to consume
+    size_t current_pos;  // Cursor for sequential reading
 } openzl_input_buffer;
 ```
 
-**Operations**:
-- `current_pos` - Push current cursor position (does NOT advance cursor) (Spec Section 17)
+**Operations to implement**:
+1. `current_pos` - Push cursor position to stack
+2. `load.u8` - Load single byte (simplest load)
+3. Maybe: `load.i32le`, `load.i64le` for size/offset reading
 
-**Integer Loads** (Spec Sections 16, 18):
-- Unsigned: `load.u8`, `load.u16le`, `load.u16be`, `load.u32le`, `load.u32be`
-- Signed: `load.i8`, `load.i16le`, `load.i16be`, `load.i32le`, `load.i32be`, `load.i64le`, `load.i64be`
+**Testing**:
+- Create buffer from byte array
+- Push `current_pos`
+- Load byte at address
+- Bounds checking
+
+**Deliverable**: Can read from input buffer.
+
+---
+
+### Phase 4: Simple Byte Segments (CORE FUNCTIONALITY)
+
+**Goal**: Generate unspecified byte segments (no type info).
+
+**Segment Structure**:
+```c
+typedef struct {
+    uint32_t tag;           // Segment identifier
+    size_t start_pos;       // Start offset in input
+    size_t size_bytes;      // Length
+} openzl_segment_simple;
+```
+
+**Segment List**:
+```c
+typedef struct {
+    openzl_segment_simple* items;
+    size_t count;
+    size_t capacity;
+} openzl_segment_list;
+```
+
+**Operation**:
+- `segment_create_simple` - Create untyped byte blob
 
 **Stack Contract**:
 ```
-addr:I64
-  ── load.i32le ──>  value:I64
+Tag:I64  size:I64
+  ── segment_create_simple ──>  (nothing, segment recorded)
 ```
 
-**Bounds Checking** (Spec Section 16.2):
-```
-0 ≤ addr AND addr + size ≤ file_size
-else fatal(Bounds)
-```
-
-**Key Design**:
-- Loads **never** modify `current_pos`
-- All loads produce I64 (sign/zero-extended)
-- Address arithmetic uses existing `add/sub` operations
+**Side Effects**:
+- Advances `current_pos += size`
+- Appends segment to list
+- Bounds checking: `current_pos + size ≤ file_size`
 
 **Testing**:
-- Load all integer types (various endianness)
-- Bounds checking (reject out-of-range)
-- Sign/zero extension correctness
-- Address computation with `current_pos`
+- Create single segment
+- Create multiple segments
+- Bounds checking
+- Verify segment list output
 
-**Deliverable**: Can load integers from input buffer at computed addresses.
+**Deliverable**: **END-TO-END SEGMENT GENERATION!** 🎉
 
 ---
 
-### Phase 5: Stack Manipulation
+### Phase 5: Tag Registry
 
-**Goal**: Flexible stack rearrangement for complex operations.
+**Goal**: Enforce type consistency when reusing tags.
 
-**Basic Stack Ops** (already in opcodes.def):
-- `stack.dup` - Duplicate top value
-- `stack.drop` - Remove top value
-- `stack.swap` - Swap top two values
-- `stack.over` - Copy second item to top
-- `stack.rot` - Rotate top three items
-
-**Conditional Drop** (Spec Section 11B.1):
-- `drop_if` - Conditionally remove value beneath boolean predicate
-
-**Stack Contract** for `drop_if`:
-```
-v  cond:I64
-  ── drop_if ──>  (nothing if cond==0, else v remains)
+**Tag Registry**:
+```c
+// Initially: just track tags without types
+typedef struct {
+    uint32_t* tags;
+    size_t count;
+} openzl_tag_registry;
 ```
 
-**Use Case**: Optional fields
-```
-type.const Float32LE
-...compute predicate (0/1)...
-drop_if  # Keep type only if predicate is true
-```
+**Enforcement**:
+- First use of tag: register it
+- Subsequent uses: must match (later: type checking)
 
 **Testing**:
-- All stack manipulation operations
-- Conditional drop with true/false conditions
-- Polymorphic value handling (works with I64, Tag, Type)
+- Tag reuse (valid)
+- Tag conflict detection (later, with types)
 
-**Deliverable**: Can manipulate stack flexibly for complex computations.
+**Deliverable**: Tag consistency enforcement.
 
 ---
 
-### Phase 6: Type System (Type Table)
+### Phase 6: Type Table & Typed Segments
 
-**Goal**: Runtime type registry for segment type descriptors.
+**Goal**: Add type information to segments.
 
 **Type Table**:
 ```c
@@ -238,258 +166,103 @@ typedef struct {
 ```
 
 **Operations**:
-- `type.const <index>` - Push type from table (Spec Section 10A)
+- `type.const <index>` - Push type from table
 
-**Integration**:
-- Type table populated at VM initialization
-- Index bounds checking
-- Type validation
-
-**Testing**:
-- Type table construction
-- Index bounds checking
-- Type retrieval
-
-**Deliverable**: Can reference types from compiled type table.
-
----
-
-### Phase 7: Segments (Simple)
-
-**Goal**: Create tagged segments over input buffer ranges.
-
-**Segment Structure** (Spec Section 3):
+**Enhanced Segment**:
 ```c
 typedef struct {
     uint32_t tag;
+    size_t start_pos;
     size_t size_bytes;
-    openzl_type type;
+    openzl_type type;       // Now has type!
 } openzl_segment;
 ```
 
-**Tag Registry** (Spec Section 12):
-```c
-// registry[tag] → Type
-// Enforces: tag reuse must have matching type
+**Stack Contract**:
+```
+Tag:I64  size:I64  Type
+  ── segment_create ──>  (segment with type)
 ```
 
-**Operations** (Spec Section 13):
-- `segment_create` - Create simple segment
+**Testing**:
+- Type table creation
+- Type retrieval
+- Typed segment creation
+- Tag+type consistency
+
+**Deliverable**: Typed segments.
+
+---
+
+### Phase 7: Array Segments
+
+**Goal**: Arrays with element type validation.
+
+**Operations**:
+- `array_segment_create` - Single element type array
 
 **Stack Contract**:
 ```
-Tag  I64(sizeBytes)  Type
-  ── segment_create ──>  (nothing, segment recorded)
+Tag:I64  size_bytes:I64  Type(elem_type)
+  ── array_segment_create ──>
 ```
 
-**Runtime Checks**:
-- Bounds: `current_pos + size_bytes ≤ file_size`
-- Tag conflict: Reused tag must match registered type
-- Coalescing: Adjacent segments with same tag/type merge
-
-**Side Effects**:
-- Advances `current_pos += size_bytes`
-- Adds segment to pending list
-- Updates tag registry
+**Validation**:
+```
+elem_size = SDDL2_type_size(elem_type.kind) * elem_type.width
+assert(size_bytes % elem_size == 0)
+```
 
 **Testing**:
-- Simple segment creation
-- Bounds checking
-- Tag registry enforcement
-- Segment coalescing
+- Valid array (size is multiple of element size)
+- Invalid array (size mismatch)
+- Various element types
 
-**Deliverable**: Can create simple segments over byte ranges.
+**Deliverable**: Array segments with validation.
 
 ---
 
-### Phase 8: Arrays
+### Phase 8: Array of Structures (AoS)
 
-**Goal**: Support array segments with element type checking.
+**Goal**: Multi-field structure arrays.
 
-**Operations** (Spec Sections 4, 5):
-- `array_segment_create` - Array of single element type
-- `soa_segment_create` - Array of Structures (AoS)
+**Operations**:
+- `soa_segment_create` - Struct with N fields
 
-**Array Validation**:
+**Stack Contract**:
 ```
-size_bytes % elem_size == 0
-else fatal(SizeMismatch)
-```
-
-**AoS Structure**:
-```
-Stack: Tag  I64(sizeBytes)  Type₀  Type₁  ...  Typeₙ₋₁  N
+Tag  size_bytes  Type₀  Type₁  ...  Typeₙ₋₁  N:I64
   ── soa_segment_create ──>
 ```
 
-**Compute**:
+**Validation**:
 ```
-struct_size = Σ field_size(i)
-elem_count  = size_bytes / struct_size (must be integer)
+struct_size = Σ SDDL2_type_size(field_i)
+elem_count = size_bytes / struct_size
+assert(size_bytes % struct_size == 0)
 ```
 
 **Testing**:
-- Array size validation
-- Element type checking
-- Multi-field struct arrays
-- Size mismatch detection
+- Single-field struct (degenerate case)
+- Multi-field structs
+- Size validation
+- Field ordering
 
-**Deliverable**: Can create array and AoS segments.
+**Deliverable**: AoS segments.
 
 ---
 
-### Phase 9: Chunking
+### Phase 9+: Supporting Operations (As Needed)
 
-**Goal**: Automatic segment chunking based on size limits.
+**Add only when needed for real use cases**:
 
-**Chunk State** (Spec Section 6):
-```c
-typedef struct {
-    openzl_segment* pending;
-    size_t pending_count;
-    size_t pending_bytes;
-    size_t max_chunk_size;
-} openzl_chunk_state;
-```
+- **Comparisons** (`eq`, `ne`, `lt`, `le`, `gt`, `ge`) - For conditional segments
+- **Stack ops** (`dup`, `swap`, `drop_if`) - For complex stack manipulation
+- **More loads** (`load.i16le`, `load.f32le`, etc.) - As needed
+- **Chunking** - When segments get large
+- **Output/logging** - For debugging
 
-**Operations**:
-- `set_max_chunk_size` - Configure chunk size limit
-
-**Auto-Flush Logic** (Spec Section 6):
-```
-Before creating segment:
-  if pending_bytes + new_size > max_chunk_size:
-    flush_chunk()
-```
-
-**Flush Strategies** (Spec Section 6.1):
-- **Split**: All tags unique → separate streams
-- **Dispatch**: Any tag repeats → group by tag
-
-**Key Constraint**: Segments are **never split** mid-segment.
-
-**Testing**:
-- Chunk size configuration
-- Auto-flush triggering
-- Split vs. dispatch selection
-- Edge case: segment exactly at limit
-
-**Deliverable**: Automatic chunking of pending segments.
-
----
-
-### Phase 10: Output & Logging
-
-**Goal**: Stream output and diagnostic logging.
-
-**Stream Output** (Spec Section 9):
-```c
-typedef struct {
-    uint32_t tag;
-    openzl_type type;
-    const uint8_t* data;
-    size_t size;
-} openzl_stream;
-```
-
-- Push streams to output list
-- Default graph: `COMPRESS_GENERIC`
-- No interpretation of graph behavior
-
-**EVENT Logging** (Spec Section 14.1):
-```
-EVT seq op src{line,col} pos delta chunk{pending,mcs,flushed} note?
-```
-
-**ERROR Logging** (Spec Section 14.2):
-```
-ERR op kind msg
-src: { line, col, text }
-data: { pos, remaining, total }
-chunk: { pending, mcs, would_add? }
-operands: [ ... ]
-tag_check?: { tag, expected, got }
-expect?: { rule, got }
-stack?: { depth, need? }
-context?: { last_n, events[] }
-```
-
-**Error Semantics**: First error only, then halt.
-
-**Testing**:
-- Stream output collection
-- Event logging (optional)
-- Error logging (comprehensive)
-- First-error-only semantics
-
-**Deliverable**: Streams output to graph, diagnostic logging.
-
----
-
-### Phase 11: SoA Dispatch
-
-**Goal**: Fan-out AoS segments into per-field streams.
-
-**Operation** (Spec Section 8):
-- `dispatch_soa` - Split AoS into separate streams
-
-**Fan-Out**:
-```
-Input:  AoS segment with N fields
-Output: N streams, one per field
-        Each stream has: original tag + element-level type
-```
-
-**Ordering**: Preserved across all streams.
-
-**Testing**:
-- AoS fan-out correctness
-- Field ordering preservation
-- Tag/type propagation
-
-**Deliverable**: AoS segments dispatch to per-field streams.
-
----
-
-### Phase 12: Integration (Execute Loop)
-
-**Goal**: End-to-end VM execution of compiled bytecode.
-
-**VM Structure**:
-```c
-typedef struct {
-    openzl_stack* stack;
-    openzl_input_buffer* input;
-    openzl_chunk_state* chunks;
-    openzl_type_table* types;
-    // ... tag registry, output list, etc.
-} openzl_vm;
-```
-
-**Execute Loop**:
-```c
-while (ip < bytecode_end) {
-    opcode = fetch();
-    switch (opcode) {
-        case OP_ADD: execute_add(); break;
-        case OP_SEGMENT_CREATE: execute_segment_create(); break;
-        // ...
-    }
-    if (halted || error) break;
-}
-```
-
-**Operations**:
-- `halt` - Terminate execution
-- `flush` - Explicit chunk flush
-
-**Testing**:
-- End-to-end programs
-- All opcodes exercised
-- Error propagation
-- Halt semantics
-
-**Deliverable**: Fully functional VM executing compiled SDDL plans.
+**Principle**: Don't implement until there's a concrete need.
 
 ---
 
@@ -497,24 +270,16 @@ while (ip < bytecode_end) {
 
 ```
 src/openzl/compress/graphs/sddlv2/
-├── sddl2_vm.h                   # VM interface
-├── sddl2_vm.c                   # VM implementation
-├── sddl2_execute.h              # Execution loop (Phase 12)
-├── sddl2_execute.c
-├── openzl_opcodes.def           # Opcode definitions (X-macro)
-├── sddlv2.h                     # Graph API integration
-├── sddlv2.c
-└── IMPLEMENTATION.md            # This file
+├── sddl2_vm.h              # VM interface
+├── sddl2_vm.c              # VM implementation
+├── IMPLEMENTATION.md       # This file
 
 tests/compress/graphs/sddlv2/
-├── sddl2_vm_test.c              # Phase 1 tests
-├── sddl2_arithmetic_test.c      # Phase 2 tests
-├── sddl2_compare_test.c         # Phase 3 tests
-├── sddl2_input_test.c           # Phase 4 tests
-├── sddl2_stack_ops_test.c       # Phase 5 tests
-├── sddl2_segments_test.c        # Phases 7-8 tests
-├── sddl2_chunking_test.c        # Phase 9 tests
-└── sddl2_integration_test.c     # Phase 12 tests
+├── sddl2_vm_test.c         # Phase 1 tests ✅
+├── sddl2_arithmetic_test.c # Phase 2 tests ✅
+├── sddl2_input_test.c      # Phase 3 tests (next)
+├── sddl2_segments_test.c   # Phase 4-8 tests (core!)
+└── sddl2_integration_test.c # Full VM tests (later)
 ```
 
 ---
@@ -522,97 +287,68 @@ tests/compress/graphs/sddlv2/
 ## Current Status
 
 ### ✅ Completed
-- **Phase 1**: Foundation (Stack + Values)
-  - Value system with three kinds
-  - Type system with 19 primitives
-  - Stack with arena allocation
-  - All tests passing (7 tests)
+- **Phase 1**: Foundation (Stack + Values) - 7 tests ✅
+- **Phase 2**: Arithmetic - 25 tests ✅
 
-### 🚧 In Progress
-- None (Phase 1 complete, awaiting next phase)
+### 🎯 Next Up (Substance!)
+- **Phase 3**: Input Buffer (read data)
+- **Phase 4**: Simple Byte Segments ← **This is the payoff!**
 
-### 📋 Planned
-- Phase 2: Basic Arithmetic
-- Phase 3: Comparisons & Validation
-- Phase 4: Input Buffer State
-- Phase 5: Stack Manipulation
-- Phase 6: Type System (Type Table)
-- Phase 7: Segments (Simple)
-- Phase 8: Arrays
-- Phase 9: Chunking
-- Phase 10: Output & Logging
-- Phase 11: SoA Dispatch
-- Phase 12: Integration
+### 📋 Future
+- Phase 5: Tag Registry
+- Phase 6: Typed Segments
+- Phase 7: Array Segments
+- Phase 8: AoS Segments
+- Phase 9+: Supporting ops as needed
 
 ---
 
 ## Testing Strategy
 
-### Unit Tests (Per Phase)
-- Each phase has dedicated test file
-- Comprehensive coverage of new functionality
-- Edge cases and error conditions
-- All tests must pass before proceeding
+### Priority: Segment Generation Tests
 
-### Integration Tests (Phase 12)
-- End-to-end execution of sample programs
-- All opcodes exercised in combination
-- Error handling and recovery
-- Performance validation
+**Phase 4 (Simple Segments) test cases**:
+```c
+// Test 1: Single segment
+input = [0x01, 0x02, 0x03, 0x04]
+program:
+  push 100     // tag
+  push 4       // size
+  segment_create_simple
+result:
+  segments[0] = {tag: 100, start: 0, size: 4}
+  current_pos = 4
 
-### Test Execution
-```bash
-# Compile and run phase tests
-cd /path/to/openzl
-cc -std=c11 -Wall -Wextra -Isrc \
-   src/openzl/compress/graphs/sddlv2/sddl2_vm.c \
-   tests/compress/graphs/sddlv2/sddl2_vm_test.c \
-   -o /tmp/sddl2_vm_test && /tmp/sddl2_vm_test
+// Test 2: Multiple segments
+input = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]
+program:
+  push 10, push 2, segment_create_simple  // seg 1: bytes 0-1
+  push 20, push 3, segment_create_simple  // seg 2: bytes 2-4
+  push 30, push 2, segment_create_simple  // seg 3: bytes 5-6
+result:
+  3 segments covering entire input
+
+// Test 3: Bounds checking
+input = [0x01, 0x02, 0x03]
+program:
+  push 100, push 10, segment_create_simple  // Size exceeds file!
+result:
+  ERROR: Bounds violation
 ```
 
 ---
 
-## References
+## Key Insight
 
-- **OpenZL Execution Engine Specification v0.2** - Defines exact VM behavior
-- **openzl_opcodes.def** - X-macro opcode definitions
-- **OpenZL Function Graph API** (`zl_graph_api.h`) - Integration interface
+**The VM's value is in segment generation**. Everything else supports that goal.
 
----
+- Arithmetic? Only matters if computing segment sizes/positions
+- Comparisons? Only matters if conditionally creating segments
+- Stack ops? Only matters if manipulating segment parameters
 
-## Notes
-
-### Memory Management
-- All VM state allocated via arena (Spec Section 15)
-- No per-operation frees
-- Entire arena reclaimed at end of execution
-- Low churn expected; arena expansion is rare
-
-### Error Model
-- First error only, then halt (Spec Section 14.2)
-- Rich diagnostics on error
-- No error recovery; execution terminates
-
-### Performance Considerations
-- Push/pop on hot path → `static inline`
-- Type checking once per instruction, not per operation
-- Bounds checking explicit and minimal
-- No dynamic allocation during execution
-
-### Opcode Families (from openzl_opcodes.def)
-- PUSH (0x0001) - Constants
-- MATH (0x0002) - Arithmetic
-- CMP (0x0003) - Comparisons
-- LOGIC (0x0004) - Logical ops
-- CONTROL (0x0005) - Flow control
-- LOAD (0x0006) - Memory loads
-- STACK (0x0007) - Stack manipulation
-- TYPE (0x0008) - Type operations
-- VAR (0x0009) - Variables
-- EXPECT (0x000A) - Validation
-- CALL (0x000B) - Function calls
+**Focus**: Get a working segment generator, then add operations as real programs need them.
 
 ---
 
-**Last Updated**: 2025-11-06  
-**Next Milestone**: Phase 2 (Basic Arithmetic)
+**Last Updated**: 2025-11-06
+**Next Milestone**: Phase 3 (Input Buffer) → Phase 4 (Simple Segments)
