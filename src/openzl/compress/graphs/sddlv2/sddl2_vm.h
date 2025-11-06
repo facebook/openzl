@@ -234,6 +234,59 @@ static inline openzl_value SDDL2_value_type(openzl_type type)
  */
 size_t SDDL2_type_size(openzl_type_kind kind);
 
+/* ============================================================================
+ * Arithmetic Operations (Phase 2)
+ * ========================================================================= */
+
+/**
+ * Add two I64 values from the stack.
+ * Stack: a:I64 b:I64 -> (a+b):I64
+ * Errors: TypeMismatch, Overflow
+ */
+openzl_stack_error SDDL2_op_add(openzl_stack* stack);
+
+/**
+ * Subtract two I64 values from the stack.
+ * Stack: a:I64 b:I64 -> (a-b):I64
+ * Errors: TypeMismatch, Overflow
+ */
+openzl_stack_error SDDL2_op_sub(openzl_stack* stack);
+
+/**
+ * Multiply two I64 values from the stack.
+ * Stack: a:I64 b:I64 -> (a*b):I64
+ * Errors: TypeMismatch, Overflow
+ */
+openzl_stack_error SDDL2_op_mul(openzl_stack* stack);
+
+/**
+ * Divide two I64 values from the stack.
+ * Stack: a:I64 b:I64 -> (a/b):I64
+ * Errors: TypeMismatch, DivZero
+ */
+openzl_stack_error SDDL2_op_div(openzl_stack* stack);
+
+/**
+ * Modulo of two I64 values from the stack.
+ * Stack: a:I64 b:I64 -> (a%b):I64
+ * Errors: TypeMismatch, DivZero
+ */
+openzl_stack_error SDDL2_op_mod(openzl_stack* stack);
+
+/**
+ * Absolute value of I64 value from the stack.
+ * Stack: a:I64 -> abs(a):I64
+ * Errors: TypeMismatch, Overflow (on INT64_MIN)
+ */
+openzl_stack_error SDDL2_op_abs(openzl_stack* stack);
+
+/**
+ * Negate I64 value from the stack.
+ * Stack: a:I64 -> (-a):I64
+ * Errors: TypeMismatch, Overflow (on INT64_MIN)
+ */
+openzl_stack_error SDDL2_op_neg(openzl_stack* stack);
+
 #if defined(__cplusplus)
 } // extern "C"
 #endif
