@@ -2,10 +2,10 @@
 
 /**
  * OpenZL Execution Engine - VM Internal Structures
- * 
+ *
  * This header defines the internal runtime structures for the OpenZL VM,
  * as specified in the OpenZL Execution Engine Specification v0.2.
- * 
+ *
  * The VM is a stack-based execution engine that:
  * - Traverses input buffers exactly once
  * - Defines tagged segments over byte ranges
@@ -35,59 +35,59 @@ extern "C" {
  * - Type: Type descriptors for segments
  */
 typedef enum {
-    OPENZL_VALUE_I64 = 1,
-    OPENZL_VALUE_TAG = 2,
-    OPENZL_VALUE_TYPE = 3,
-} openzl_value_kind;
+    SDDL2_VALUE_I64  = 1,
+    SDDL2_VALUE_TAG  = 2,
+    SDDL2_VALUE_TYPE = 3,
+} SDDL2_value_kind;
 
 /**
  * Type descriptor structure.
  * Represents the type of a segment, including:
  * - kind: The primitive type (U8, I16LE, Float32BE, etc.)
  * - width: Number of elements (1 for scalar, >1 for arrays/fixed-size types)
- * 
+ *
  * Total byte size = openzl_type_size(kind) * width
  */
 typedef enum {
-    OPENZL_TYPE_U8 = 0,
-    OPENZL_TYPE_I8,
-    OPENZL_TYPE_U16LE,
-    OPENZL_TYPE_U16BE,
-    OPENZL_TYPE_I16LE,
-    OPENZL_TYPE_I16BE,
-    OPENZL_TYPE_U32LE,
-    OPENZL_TYPE_U32BE,
-    OPENZL_TYPE_I32LE,
-    OPENZL_TYPE_I32BE,
-    OPENZL_TYPE_U64LE,
-    OPENZL_TYPE_U64BE,
-    OPENZL_TYPE_I64LE,
-    OPENZL_TYPE_I64BE,
-    OPENZL_TYPE_F32LE,
-    OPENZL_TYPE_F32BE,
-    OPENZL_TYPE_F64LE,
-    OPENZL_TYPE_F64BE,
-    OPENZL_TYPE_BYTES,       // Raw bytes, no interpretation
-    /* OPENZL_TYPE_FIXED_N */  // TODO: Fixed-width byte arrays
-} openzl_type_kind;
+    SDDL2_TYPE_U8 = 0,
+    SDDL2_TYPE_I8,
+    SDDL2_TYPE_U16LE,
+    SDDL2_TYPE_U16BE,
+    SDDL2_TYPE_I16LE,
+    SDDL2_TYPE_I16BE,
+    SDDL2_TYPE_U32LE,
+    SDDL2_TYPE_U32BE,
+    SDDL2_TYPE_I32LE,
+    SDDL2_TYPE_I32BE,
+    SDDL2_TYPE_U64LE,
+    SDDL2_TYPE_U64BE,
+    SDDL2_TYPE_I64LE,
+    SDDL2_TYPE_I64BE,
+    SDDL2_TYPE_F32LE,
+    SDDL2_TYPE_F32BE,
+    SDDL2_TYPE_F64LE,
+    SDDL2_TYPE_F64BE,
+    SDDL2_TYPE_BYTES,        // Raw bytes, no interpretation
+    /* SDDL2_TYPE_FIXED_N */ // TODO: Fixed-width byte arrays
+} SDDL2_type_kind;
 
 typedef struct {
-    openzl_type_kind kind;
-    uint32_t width;  // Size in number of elements
-} openzl_type;
+    SDDL2_type_kind kind;
+    uint32_t width; // Size in number of elements
+} SDDL2_type;
 
 /**
  * Tagged value on the VM stack.
  * This is a discriminated union representing one of three value kinds.
  */
 typedef struct {
-    openzl_value_kind kind;
+    SDDL2_value_kind kind;
     union {
-        int64_t as_i64;      // For OPENZL_VALUE_I64
-        uint32_t as_tag;     // For OPENZL_VALUE_TAG
-        openzl_type as_type; // For OPENZL_VALUE_TYPE
+        int64_t as_i64;     // For SDDL2_VALUE_I64
+        uint32_t as_tag;    // For SDDL2_VALUE_TAG
+        SDDL2_type as_type; // For SDDL2_VALUE_TYPE
     } value;
-} openzl_value;
+} SDDL2_value;
 
 /* ============================================================================
  * Stack Structure (Section 10)
@@ -111,20 +111,41 @@ typedef struct {
  * Stack items are allocated via arena allocation.
  */
 typedef struct {
-    openzl_value* items;  // Pointer to stack items (arena-allocated)
-    size_t top;           // Index of next free slot (0 = empty stack)
-    size_t capacity;      // Maximum stack depth
-} openzl_stack;
+    SDDL2_value* items; // Pointer to stack items (arena-allocated)
+    size_t top;         // Index of next free slot (0 = empty stack)
+    size_t capacity;    // Maximum stack depth
+} SDDL2_stack;
 
 /**
- * Error codes for stack operations.
+ * VM error codes.
+ * Used as return values for all VM operations.
  */
 typedef enum {
-    OPENZL_STACK_OK = 0,
-    OPENZL_STACK_OVERFLOW,
-    OPENZL_STACK_UNDERFLOW,
-    OPENZL_STACK_TYPE_MISMATCH,
-} openzl_stack_error;
+    SDDL2_OK = 0,
+    SDDL2_STACK_OVERFLOW,  // Stack capacity exceeded
+    SDDL2_STACK_UNDERFLOW, // Pop from empty stack
+    SDDL2_TYPE_MISMATCH,   // Operation received wrong value type
+    SDDL2_LOAD_BOUNDS,     // Load address out of bounds
+    // Future: SDDL2_DIV_ZERO, SDDL2_SEGMENT_BOUNDS, etc.
+} SDDL2_error;
+
+/* ============================================================================
+ * Input Buffer (Phase 3)
+ * ========================================================================= */
+
+/**
+ * Input buffer structure for reading data.
+ *
+ * Lifetime: The caller owns `data` and must ensure it outlives this buffer.
+ * The VM never modifies or frees the data pointer.
+ *
+ * The VM traverses the input buffer exactly once, creating segments.
+ */
+typedef struct {
+    const void* data;   // Borrowed pointer to input data (any type)
+    size_t size;        // Total size in bytes
+    size_t current_pos; // Cursor for sequential segment creation
+} SDDL2_input_buffer;
 
 /* ============================================================================
  * Stack Operations
@@ -133,58 +154,57 @@ typedef enum {
 /**
  * Initialize an empty stack.
  */
-void SDDL2_stack_init(openzl_stack* stack);
+void SDDL2_stack_init(SDDL2_stack* stack);
 
 /**
  * Push a value onto the stack.
- * Returns OPENZL_STACK_OVERFLOW if stack is full.
- * 
+ * Returns SDDL2_STACK_OVERFLOW if stack is full.
+ *
  * NOTE: Kept as inline for performance - this is on the hot path,
  * called for every VM instruction that produces a value.
  */
-static inline openzl_stack_error
-SDDL2_stack_push(openzl_stack* stack, openzl_value value)
+static inline SDDL2_error SDDL2_stack_push(
+        SDDL2_stack* stack,
+        SDDL2_value value)
 {
     if (stack->top >= stack->capacity) {
-        return OPENZL_STACK_OVERFLOW;
+        return SDDL2_STACK_OVERFLOW;
     }
     stack->items[stack->top++] = value;
-    return OPENZL_STACK_OK;
+    return SDDL2_OK;
 }
 
 /**
  * Pop a value from the stack.
- * Returns OPENZL_STACK_UNDERFLOW if stack is empty.
- * 
+ * Returns SDDL2_STACK_UNDERFLOW if stack is empty.
+ *
  * NOTE: Kept as inline for performance - this is on the hot path,
  * called for every VM instruction that consumes a value.
  */
-static inline openzl_stack_error
-SDDL2_stack_pop(openzl_stack* stack, openzl_value* out)
+static inline SDDL2_error SDDL2_stack_pop(SDDL2_stack* stack, SDDL2_value* out)
 {
     if (stack->top == 0) {
-        return OPENZL_STACK_UNDERFLOW;
+        return SDDL2_STACK_UNDERFLOW;
     }
     *out = stack->items[--stack->top];
-    return OPENZL_STACK_OK;
+    return SDDL2_OK;
 }
 
 /**
  * Peek at the top value without removing it.
- * Returns OPENZL_STACK_UNDERFLOW if stack is empty.
+ * Returns SDDL2_STACK_UNDERFLOW if stack is empty.
  */
-openzl_stack_error
-SDDL2_stack_peek(const openzl_stack* stack, openzl_value* out);
+SDDL2_error SDDL2_stack_peek(const SDDL2_stack* stack, SDDL2_value* out);
 
 /**
  * Get current stack depth.
  */
-size_t SDDL2_stack_depth(const openzl_stack* stack);
+size_t SDDL2_stack_depth(const SDDL2_stack* stack);
 
 /**
  * Check if stack is empty.
  */
-int SDDL2_stack_is_empty(const openzl_stack* stack);
+int SDDL2_stack_is_empty(const SDDL2_stack* stack);
 
 /* ============================================================================
  * Value Construction Helpers
@@ -193,10 +213,10 @@ int SDDL2_stack_is_empty(const openzl_stack* stack);
 /**
  * Create an I64 value.
  */
-static inline openzl_value SDDL2_value_i64(int64_t val)
+static inline SDDL2_value SDDL2_value_i64(int64_t val)
 {
-    openzl_value v;
-    v.kind = OPENZL_VALUE_I64;
+    SDDL2_value v;
+    v.kind         = SDDL2_VALUE_I64;
     v.value.as_i64 = val;
     return v;
 }
@@ -204,10 +224,10 @@ static inline openzl_value SDDL2_value_i64(int64_t val)
 /**
  * Create a Tag value.
  */
-static inline openzl_value SDDL2_value_tag(uint32_t tag_id)
+static inline SDDL2_value SDDL2_value_tag(uint32_t tag_id)
 {
-    openzl_value v;
-    v.kind = OPENZL_VALUE_TAG;
+    SDDL2_value v;
+    v.kind         = SDDL2_VALUE_TAG;
     v.value.as_tag = tag_id;
     return v;
 }
@@ -215,10 +235,10 @@ static inline openzl_value SDDL2_value_tag(uint32_t tag_id)
 /**
  * Create a Type value.
  */
-static inline openzl_value SDDL2_value_type(openzl_type type)
+static inline SDDL2_value SDDL2_value_type(SDDL2_type type)
 {
-    openzl_value v;
-    v.kind = OPENZL_VALUE_TYPE;
+    SDDL2_value v;
+    v.kind          = SDDL2_VALUE_TYPE;
     v.value.as_type = type;
     return v;
 }
@@ -232,7 +252,7 @@ static inline openzl_value SDDL2_value_type(openzl_type type)
  * Returns 1 for BYTES (raw bytes with no known interpretation).
  * Returns 0 for unknown/invalid types.
  */
-size_t SDDL2_type_size(openzl_type_kind kind);
+size_t SDDL2_type_size(SDDL2_type_kind kind);
 
 /* ============================================================================
  * Arithmetic Operations (Phase 2)
@@ -243,49 +263,80 @@ size_t SDDL2_type_size(openzl_type_kind kind);
  * Stack: a:I64 b:I64 -> (a+b):I64
  * Errors: TypeMismatch, Overflow
  */
-openzl_stack_error SDDL2_op_add(openzl_stack* stack);
+SDDL2_error SDDL2_op_add(SDDL2_stack* stack);
 
 /**
  * Subtract two I64 values from the stack.
  * Stack: a:I64 b:I64 -> (a-b):I64
  * Errors: TypeMismatch, Overflow
  */
-openzl_stack_error SDDL2_op_sub(openzl_stack* stack);
+SDDL2_error SDDL2_op_sub(SDDL2_stack* stack);
 
 /**
  * Multiply two I64 values from the stack.
  * Stack: a:I64 b:I64 -> (a*b):I64
  * Errors: TypeMismatch, Overflow
  */
-openzl_stack_error SDDL2_op_mul(openzl_stack* stack);
+SDDL2_error SDDL2_op_mul(SDDL2_stack* stack);
 
 /**
  * Divide two I64 values from the stack.
  * Stack: a:I64 b:I64 -> (a/b):I64
  * Errors: TypeMismatch, DivZero
  */
-openzl_stack_error SDDL2_op_div(openzl_stack* stack);
+SDDL2_error SDDL2_op_div(SDDL2_stack* stack);
 
 /**
  * Modulo of two I64 values from the stack.
  * Stack: a:I64 b:I64 -> (a%b):I64
  * Errors: TypeMismatch, DivZero
  */
-openzl_stack_error SDDL2_op_mod(openzl_stack* stack);
+SDDL2_error SDDL2_op_mod(SDDL2_stack* stack);
 
 /**
  * Absolute value of I64 value from the stack.
  * Stack: a:I64 -> abs(a):I64
  * Errors: TypeMismatch, Overflow (on INT64_MIN)
  */
-openzl_stack_error SDDL2_op_abs(openzl_stack* stack);
+SDDL2_error SDDL2_op_abs(SDDL2_stack* stack);
 
 /**
  * Negate I64 value from the stack.
  * Stack: a:I64 -> (-a):I64
  * Errors: TypeMismatch, Overflow (on INT64_MIN)
  */
-openzl_stack_error SDDL2_op_neg(openzl_stack* stack);
+SDDL2_error SDDL2_op_neg(SDDL2_stack* stack);
+
+/* ============================================================================
+ * Input Buffer Operations (Phase 3)
+ * ========================================================================= */
+
+/**
+ * Initialize an input buffer.
+ */
+void SDDL2_input_buffer_init(
+        SDDL2_input_buffer* buffer,
+        const void* data,
+        size_t size);
+
+/**
+ * Push current cursor position onto stack.
+ * Stack: (empty) -> current_pos:I64
+ * Does NOT advance cursor.
+ */
+SDDL2_error SDDL2_op_current_pos(
+        SDDL2_stack* stack,
+        const SDDL2_input_buffer* buffer);
+
+/**
+ * Load unsigned byte at address.
+ * Stack: addr:I64 -> value:I64
+ * Errors: TypeMismatch, LoadBounds
+ * Does NOT advance cursor.
+ */
+SDDL2_error SDDL2_op_load_u8(
+        SDDL2_stack* stack,
+        const SDDL2_input_buffer* buffer);
 
 #if defined(__cplusplus)
 } // extern "C"
