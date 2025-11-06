@@ -63,6 +63,9 @@ size_t ZL_transformOutStreamsLimit(unsigned formatVersion);
 /// there's any risk.
 #define ZL_CONTAINER_SIZE_LIMIT (1024 * 1024)
 
+/// Size limit for the variable sized comment field
+#define ZL_MAX_HEADER_COMMENT_SIZE_LIMIT 10000
+
 ////////////////////////////////////////
 // Compressor Serialization Limits
 ////////////////////////////////////////

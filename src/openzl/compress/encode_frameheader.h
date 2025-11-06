@@ -6,6 +6,7 @@
 #include "openzl/common/wire_format.h" // ZL_FrameHeaderInfo
 #include "openzl/shared/portability.h"
 #include "openzl/zl_buffer.h" // ZL_RBuffer
+#include "openzl/zl_common_types.h"
 #include "openzl/zl_data.h"   // ZL_Type
 #include "openzl/zl_errors.h" // ZL_Report
 
@@ -29,6 +30,7 @@ typedef struct {
     const ZL_FrameProperties* fprop;
     const InputDesc* inputDescs; /**< Array of input stream's properties */
     size_t numInputs;
+    ZL_Comment comment;
 } EFH_FrameInfo;
 
 /**

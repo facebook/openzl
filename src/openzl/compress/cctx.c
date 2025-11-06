@@ -133,6 +133,8 @@ struct ZL_CCtx_s {
     GCParams requestedGCParams;     // User selection, at CCtx level
     GCParams appliedGCParams;       // Employed at compression time;
                                     // CCtx > Compressor > default
+    /// Comment to be added to the header. Is not added when size is 0.
+    ZL_Comment comment;
     CCTX_TransformHeaders trHeaders;
     /* These Arenas presume single-thread execution.
      * For parallel execution, it will have to be replaced by Arena Pools */
@@ -197,6 +199,8 @@ void CCTX_clean(ZL_CCtx* cctx)
 {
     CCTX_cleanChunk(cctx);
     ALLOC_Arena_freeAll(cctx->sessionArena);
+    cctx->comment.size = 0;
+    cctx->comment.data = NULL;
     ZL_ASSERT_EQ(ALLOC_Arena_memUsed(cctx->codecArena), 0);
     ZL_ASSERT_EQ(ALLOC_Arena_memUsed(cctx->graphArena), 0);
     ZL_ASSERT_EQ(ALLOC_Arena_memUsed(cctx->chunkArena), 0);
@@ -301,7 +305,9 @@ ZL_Report ZL_CCtx_resetParameters(ZL_CCtx* cctx)
     // something else. In `zstd`, there are different levels of reset
     // (parameters, session, or both). Maybe the same would be needed here ?
     ZL_zeroes(&cctx->requestedGCParams, sizeof(cctx->requestedGCParams));
-    cctx->cgraph = NULL;
+    cctx->cgraph       = NULL;
+    cctx->comment.size = 0;
+    cctx->comment.data = NULL;
     ZL_Compressor_free(cctx->internal_cgraph);
     cctx->internal_cgraph = NULL;
     return ZL_returnSuccess();
@@ -1852,4 +1858,26 @@ CCTX_tryGraph(
     CCTX_free(cctx);
 
     return result;
+}
+
+ZL_Report
+CCTX_setHeaderComment(ZL_CCtx* cctx, const void* comment, size_t commentSize)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
+    ZL_ASSERT_NN(cctx);
+    if (commentSize == 0) {
+        cctx->comment.size = 0;
+        return ZL_returnSuccess();
+    }
+    void* buff = ALLOC_Arena_malloc(cctx->sessionArena, commentSize);
+    ZL_ERR_IF_NULL(buff, allocation);
+    cctx->comment.size = commentSize;
+    memcpy(buff, comment, commentSize);
+    cctx->comment.data = buff;
+    return ZL_returnSuccess();
+}
+
+ZL_Comment CCTX_getHeaderComment(const ZL_CCtx* cctx)
+{
+    return cctx->comment;
 }

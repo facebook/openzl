@@ -4,6 +4,7 @@
 #define ZSTRONG_ZS2_DECOMPRESS_H
 
 // basic definitions
+#include "openzl/zl_common_types.h"
 #include "openzl/zl_errors.h" // ZL_Report, ZL_isError()
 #include "openzl/zl_output.h"
 
@@ -339,6 +340,16 @@ ZL_Report ZL_FrameInfo_getDecompressedSize(
  * @return Number of elements in specified output, or error code
  */
 ZL_Report ZL_FrameInfo_getNumElts(const ZL_FrameInfo* fi, int outputID);
+
+ZL_RESULT_DECLARE_TYPE(ZL_Comment);
+
+/**
+ * @brief Gets the comment stored in the FrameInfo.
+ *
+ * @returns The comment or an error. If no comment is present it
+ * returns a comment with `size == 0`. The buffer returned is owned by @p zfi
+ */
+ZL_RESULT_OF(ZL_Comment) ZL_FrameInfo_getComment(const ZL_FrameInfo* zfi);
 
 // ----------------------------------------------------
 // Decompression of Typed content

@@ -20,6 +20,7 @@
  * - v21+: Frame property flags: 1 byte
  *   + bit0: checksum of decoded data
  *   + bit1: checksum of encoded data (also control frame header checksum)
+ *   + bit2: presence of a comment field
  * - Input Type :
  *   + v13-: 0-byte , 1 Input assumed to be Serial
  *   + v14 : 1-byte, single Input, selectable type
@@ -41,6 +42,9 @@
  *              Organized as a single large BM-bytes Little Endian number
  *              scanned from its lowest bits (shift >> 2 for each Input).
  *              Note: Format 1 stores the first 2 types in 1st byte.
+ *  + v22+: VarInt format: Number of bytes of comment field
+ *          Length x 1-byte: Arbitrary buffer of up to 10000 bytes (defined in
+ *                           limits.h) containing a comment.
  *
  * Size of Inputs
  * v20-: NbInputs x LE_U32: decompressed size of each input, in bytes
@@ -183,9 +187,13 @@ uint32_t ZL_getMagicNumber(uint32_t version);
 #define FRAME_HEADER_SIZE_MIN \
     (4 /*magic*/ + 4 /*dec.Size*/ + 1 /*eof marker*/) // Just core elts
 
+/// Minimum wire format version required to support extra comment field
+#define ZL_COMMENT_VERSION_MIN (22)
+
 typedef struct {
     bool hasContentChecksum;
     bool hasCompressedChecksum;
+    bool hasComment;
 } ZL_FrameProperties;
 
 typedef enum { trt_standard, trt_custom } TransformType_e;

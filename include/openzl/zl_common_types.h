@@ -57,6 +57,14 @@ typedef struct {
     size_t nbNodeIDs;
 } ZL_NodeIDList;
 
+/**
+ * @brief Data layout for comment contained in the frame header.
+ */
+typedef struct {
+    const void* data;
+    size_t size;
+} ZL_Comment;
+
 #if defined(__cplusplus)
 } // extern "C"
 #endif

@@ -34,6 +34,8 @@ struct ZL_FrameInfo {
     uint64_t* decompressedSizes;
     uint64_t* numElts;
     size_t frameHeaderSize;
+    void* comment;
+    size_t commentSize;
 };
 
 static ZL_Type decodeType(uint8_t et)
@@ -273,13 +275,15 @@ static ZL_Report DFH_FrameInfo_decodeFrameHeader(
     ZL_ASSERT_NN(zfi);
     zfi->formatVersion = formatVersion;
     size_t consumed    = 4;
+    const uint8_t* ptr = (const uint8_t*)cSrc;
 
     /* frame properties, such as checksums */
     if (zfi->formatVersion >= ZL_CHUNK_VERSION_MIN) {
         ZL_RET_R_IF_LE(srcSize_tooSmall, cSize, consumed);
-        uint8_t const flags                = ((const uint8_t*)cSrc)[consumed++];
-        zfi->properties.hasContentChecksum = ((flags & (1 << 0)) != 0);
+        uint8_t const flags                   = ptr[consumed++];
+        zfi->properties.hasContentChecksum    = ((flags & (1 << 0)) != 0);
         zfi->properties.hasCompressedChecksum = ((flags & (1 << 1)) != 0);
+        zfi->properties.hasComment            = ((flags & (1 << 2)) != 0);
     }
 
     /* nb of outputs */
@@ -316,7 +320,7 @@ static ZL_Report DFH_FrameInfo_decodeFrameHeader(
             DFH_decodeOutputSizes(
                     dSizes,
                     numElts,
-                    (const char*)cSrc + consumed,
+                    ptr + consumed,
                     cSize - consumed,
                     types,
                     zfi->nbOutputs,
@@ -325,6 +329,30 @@ static ZL_Report DFH_FrameInfo_decodeFrameHeader(
     ZL_DLOG(BLOCK,
             "DFH_FrameInfo_decodeFrameHeader consumed %zu bytes from header",
             consumed);
+
+    // Decode Comment
+    if (formatVersion >= ZL_COMMENT_VERSION_MIN && zfi->properties.hasComment) {
+        const uint8_t* cSrcCur = ptr + consumed;
+        ZL_TRY_LET_CONST_T(
+                uint64_t, commentSize, ZL_varintDecode(&cSrcCur, ptr + cSize));
+        ZL_RET_R_IF_EQ(
+                corruption,
+                commentSize,
+                0,
+                "Invalid frame header: comment size cannot be 0 when flag is set.");
+        ZL_RET_R_IF_GT(
+                corruption,
+                commentSize,
+                ZL_MAX_HEADER_COMMENT_SIZE_LIMIT,
+                "Invalid frame header: frame max comment size exceeded.");
+        zfi->commentSize = commentSize;
+        consumed += (size_t)(cSrcCur - (ptr + consumed));
+        zfi->comment = ZL_malloc(commentSize);
+        ZL_RET_R_IF_NULL(allocation, zfi->comment);
+        ZL_RET_R_IF_GT(corruption, consumed + commentSize, cSize);
+        memcpy(zfi->comment, ptr + consumed, commentSize);
+        consumed += commentSize;
+    }
 
     if ((formatVersion >= ZL_CHUNK_VERSION_MIN)
         && zfi->properties.hasCompressedChecksum) {
@@ -363,6 +391,7 @@ void ZL_FrameInfo_free(ZL_FrameInfo* zfi)
     ZL_free(zfi->types);
     ZL_free(zfi->decompressedSizes);
     ZL_free(zfi->numElts);
+    ZL_free(zfi->comment);
     ZL_free(zfi);
 }
 
@@ -439,6 +468,22 @@ ZL_Report ZL_FrameInfo_getNumElts(const ZL_FrameInfo* zfi, int outputID)
 
     ZL_ASSERT_NN(zfi->numElts);
     return ZL_returnValue(zfi->numElts[outputID]);
+}
+
+ZL_RESULT_OF(ZL_Comment) ZL_FrameInfo_getComment(const ZL_FrameInfo* zfi)
+{
+    ZL_Comment comment;
+    ZL_ASSERT_NN(zfi);
+    ZL_RET_T_IF_LT(
+            ZL_Comment,
+            GENERIC,
+            zfi->formatVersion,
+            ZL_COMMENT_VERSION_MIN,
+            "This method only works on frames with version >= %zu",
+            ZL_COMMENT_VERSION_MIN);
+    comment.data = zfi->comment;
+    comment.size = zfi->commentSize;
+    return ZL_RESULT_WRAP_VALUE(ZL_Comment, comment);
 }
 
 // --------------------------

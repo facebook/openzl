@@ -60,6 +60,7 @@ static ZL_Report writeFrameHeader(
         inputDescs[n].numElts  = ZL_Data_numElts(inputs[n]);
     }
 
+    ZL_Comment comment = CCTX_getHeaderComment(cctx);
     // Requested frame properties (checksum)
     ZL_FrameProperties const fprop = {
         .hasContentChecksum =
@@ -68,12 +69,14 @@ static ZL_Report writeFrameHeader(
         .hasCompressedChecksum =
                 CCTX_getAppliedGParam(cctx, ZL_CParam_compressedChecksum)
                 != ZL_TernaryParam_disable,
+        .hasComment = (comment.size != 0),
     };
 
     EFH_FrameInfo const fi = {
         .inputDescs = inputDescs,
         .numInputs  = numInputs,
         .fprop      = &fprop,
+        .comment    = comment,
     };
 
     ZL_Report const r =
@@ -374,4 +377,16 @@ ZL_Report ZL_CCtx_compress(
     // No graph set => use default
     return ZL_CCtx_compress_usingGraphID(
             cctx, dst, dstCapacity, src, srcSize, ZL_GRAPH_SERIAL_COMPRESS);
+}
+
+ZL_Report
+ZL_CCtx_addHeaderComment(ZL_CCtx* cctx, const void* comment, size_t commentSize)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
+    ZL_ERR_IF_GT(
+            commentSize,
+            ZL_MAX_HEADER_COMMENT_SIZE_LIMIT,
+            parameter_invalid,
+            "Max header comment size limit exceeded");
+    return CCTX_setHeaderComment(cctx, comment, commentSize);
 }
