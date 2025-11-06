@@ -4,14 +4,21 @@
 
 #include <gtest/gtest.h>
 
+#include "openzl/compress/cgraph.h"
+#include "openzl/cpp/CCtx.hpp"
+#include "openzl/cpp/DCtx.hpp"
 #include "openzl/zl_opaque_types.h"
 #include "openzl/zl_public_nodes.h"
 #include "openzl/zl_reflection.h"
 #include "openzl/zl_selector.h" // ZL_SelectorDesc
 
+#include "tests/datagen/random_producer/PRNGWrapper.h"
+#include "tests/datagen/structures/CompressorProducer.h"
 #include "tests/utils.h"
 
 using namespace ::testing;
+using namespace ::zstrong::tests;
+using namespace ::zstrong::tests::datagen;
 
 namespace {
 
@@ -19,8 +26,15 @@ class CGraphTest : public Test {
    protected:
     void SetUp() override
     {
+        // TODO: replace with impl with C++ bindings
         cgraph_ = ZL_Compressor_create();
+
+        // Set up cctx, and input
+        cctx_.setParameter(
+                openzl::CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+        cctx_.setParameter(openzl::CParam::StickyParameters, 1);
     }
+
     void TearDown() override
     {
         ZL_Compressor_free(cgraph_);
@@ -46,6 +60,10 @@ class CGraphTest : public Test {
     }
 
     ZL_Compressor* cgraph_{ nullptr };
+
+    openzl::Compressor compressor_;
+    openzl::CCtx cctx_;
+    openzl::DCtx dctx_;
 };
 
 TEST_F(CGraphTest, referencingUnfinishedCGraphWithoutStartingGraphID)
@@ -386,6 +404,47 @@ TEST_F(CGraphTest, baseGraphDynamic)
     cloneAndCheckGetBaseGraphID(compressor, gid);
 
     ZL_Compressor_free(compressor);
+}
+
+TEST_F(CGraphTest, replaceGraphParams)
+{
+    openzl::LocalParams nullParams;
+    openzl::LocalParams intParams;
+    intParams.addIntParam(1, 1);
+    // Set up cctx, compressor and input
+    auto params        = (openzl::GraphParameters){ .localParams = nullParams };
+    const auto rparams = (ZL_GraphParameters){ .localParams = intParams.get() };
+
+    auto customStore = compressor_.parameterizeGraph(ZL_GRAPH_STORE, params);
+    EXPECT_ZS_VALID(ZL_Compressor_overrideGraphParams(
+            compressor_.get(), customStore, &rparams));
+    auto r = ZL_Compressor_Graph_getLocalParams(compressor_.get(), customStore);
+    EXPECT_EQ(r.intParams.intParams[0].paramId, 1);
+    EXPECT_EQ(r.intParams.intParams[0].paramValue, 1);
+}
+
+TEST_F(CGraphTest, cannotReplaceWhenGraphIsNotParameterized)
+{
+    auto params           = (ZL_GraphParameters){ .name = "zstdalt" };
+    const auto graph_func = [](ZL_Graph*, ZL_Edge*[], size_t) noexcept {
+        ZL_RET_R_ERR(GENERIC, "Unimplemented! Can't actually run.");
+    };
+    ZL_FunctionGraphDesc desc = {
+        .name    = "testBase",
+        .graph_f = graph_func,
+    };
+    auto newBaseGraph =
+            ZL_Compressor_registerFunctionGraph(compressor_.get(), &desc);
+    EXPECT_NE(newBaseGraph.gid, ZL_GRAPH_ILLEGAL.gid);
+
+    EXPECT_ZS_ERROR(ZL_Compressor_overrideGraphParams(
+            compressor_.get(), ZL_GRAPH_ILLEGAL, &params));
+
+    EXPECT_ZS_ERROR(ZL_Compressor_overrideGraphParams(
+            compressor_.get(), ZL_GRAPH_ZSTD, &params));
+
+    EXPECT_ZS_ERROR(ZL_Compressor_overrideGraphParams(
+            compressor_.get(), newBaseGraph, &params));
 }
 
 } // namespace

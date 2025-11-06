@@ -807,6 +807,21 @@ ZL_Compressor_parameterizeGraph(
     return GM_registerParameterizedGraph(compressor->gm, &desc);
 }
 
+ZL_Report ZL_Compressor_overrideGraphParams(
+        ZL_Compressor* compressor,
+        ZL_GraphID graph,
+        const ZL_GraphParameters* gp)
+{
+    ZL_RESULT_DECLARE_SCOPE(size_t, compressor);
+    ZL_ERR_IF_NOT(
+            CGRAPH_checkGraphIDExists(compressor, graph),
+            graph_invalid,
+            "Graph must be registered in compressor");
+
+    ZL_ERR_IF_ERR(GM_overrideGraphParams(compressor->gm, graph, gp));
+    return ZL_returnSuccess();
+}
+
 ZL_GraphID ZL_Compressor_registerParameterizedGraph(
         ZL_Compressor* compressor,
         const ZL_ParameterizedGraphDesc* desc)
