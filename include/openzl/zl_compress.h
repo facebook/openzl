@@ -369,6 +369,22 @@ ZL_TypedRef* ZL_TypedRef_createString(
         size_t nbStrings);
 
 /**
+ * Adds header comment to the compressed frame for the following compression.
+ * The message will be overridden if added a second time. The message is erased
+ * from the cctx at the end of each compression.
+ *
+ * @note A comment of size 0 clears the comment field.
+ *
+ * @param comment The comment to add. The comment is copied and stored in the
+ * cctx.
+ * @param commentSize The size of the comment or 0 to clear the comment.
+ */
+ZL_Report ZL_CCtx_addHeaderComment(
+        ZL_CCtx* cctx,
+        const void* comment,
+        size_t commentSize);
+
+/**
  * Frees the given `ZL_TypedRef`.
  *
  * @param tref the object to free

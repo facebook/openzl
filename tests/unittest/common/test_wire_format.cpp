@@ -3,8 +3,13 @@
 #include <gtest/gtest.h>
 
 #include "openzl/common/errors_internal.h"
+#include "openzl/common/limits.h"
 #include "openzl/common/wire_format.h"
+#include "openzl/compress/encode_frameheader.h"
+#include "openzl/decompress/decode_frameheader.h"
 #include "openzl/shared/mem.h"
+
+#include "tests/utils.h"
 
 namespace {
 uint32_t constexpr kMinVersion = ZL_MIN_FORMAT_VERSION;
@@ -66,4 +71,111 @@ TEST(WireFormatTest, InvalidMagicNumberFrameFormat)
 TEST(WireFormatTest, DefaultEncodingVersion)
 {
     ASSERT_TRUE(ZL_isFormatVersionSupported(ZL_getDefaultEncodingVersion()));
+}
+
+TEST(WireFormatTest, CommentFrameFormat)
+{
+    Arena* arena      = ALLOC_StackArena_create();
+    uint16_t configId = 300;
+    EFH_FrameInfo fi;
+    fi.comment.data          = (uint8_t*)&configId;
+    fi.comment.size          = 2;
+    fi.numInputs             = 1;
+    ZL_FrameProperties fprop = {
+        .hasContentChecksum    = false,
+        .hasCompressedChecksum = false,
+        .hasComment            = true,
+    };
+    InputDesc inputDesc;
+    inputDesc.type     = ZL_Type_serial;
+    inputDesc.numElts  = 100;
+    inputDesc.byteSize = 100;
+    fi.fprop           = &fprop;
+    fi.inputDescs      = &inputDesc;
+
+    size_t dstCapacity = 1000;
+
+    void* dst = ALLOC_Arena_malloc(arena, dstCapacity);
+
+    EXPECT_ZS_VALID(EFH_writeFrameHeader(
+            dst, dstCapacity, &fi, ZL_COMMENT_VERSION_MIN));
+    // Decode
+    DFH_Struct* dfh =
+            (DFH_Struct*)ALLOC_Arena_malloc(arena, sizeof(DFH_Struct));
+    DFH_init(dfh);
+    dfh->formatVersion = ZL_COMMENT_VERSION_MIN;
+    EXPECT_ZS_VALID(DFH_decodeFrameHeader(dfh, dst, dstCapacity));
+    auto comment = ZL_RES_value(ZL_FrameInfo_getComment(dfh->frameinfo));
+    EXPECT_EQ(comment.size, 2);
+    uint16_t result = *(const uint16_t*)(const void*)comment.data;
+    EXPECT_EQ(result, configId);
+    DFH_destroy(dfh);
+    ALLOC_Arena_freeArena(arena);
+}
+
+TEST(WireFormatTest, DecodeOldFrameFormatWithComment)
+{
+    Arena* arena      = ALLOC_StackArena_create();
+    uint16_t configId = 300;
+    EFH_FrameInfo fi;
+    fi.comment.data          = (uint8_t*)&configId;
+    fi.comment.size          = 2;
+    fi.numInputs             = 1;
+    ZL_FrameProperties fprop = {
+        .hasContentChecksum    = false,
+        .hasCompressedChecksum = false,
+        .hasComment            = true,
+    };
+    InputDesc inputDesc;
+    inputDesc.type     = ZL_Type_serial;
+    inputDesc.numElts  = 100;
+    inputDesc.byteSize = 100;
+    fi.fprop           = &fprop;
+    fi.inputDescs      = &inputDesc;
+
+    size_t dstCapacity = 1000;
+
+    void* dst = ALLOC_Arena_malloc(arena, dstCapacity);
+
+    EXPECT_ZS_VALID(EFH_writeFrameHeader(
+            dst, dstCapacity, &fi, ZL_COMMENT_VERSION_MIN - 1));
+
+    DFH_Struct* dfh =
+            (DFH_Struct*)ALLOC_Arena_malloc(arena, sizeof(DFH_Struct));
+    // Decode with newer version
+    DFH_init(dfh);
+    dfh->formatVersion = ZL_COMMENT_VERSION_MIN;
+    EXPECT_ZS_VALID(DFH_decodeFrameHeader(dfh, dst, dstCapacity));
+    EXPECT_ZS_ERROR(ZL_FrameInfo_getComment(dfh->frameinfo));
+    // Decode with old version
+    dfh->formatVersion = ZL_COMMENT_VERSION_MIN - 1;
+    EXPECT_ZS_VALID(DFH_decodeFrameHeader(dfh, dst, dstCapacity));
+    DFH_destroy(dfh);
+    ALLOC_Arena_freeArena(arena);
+}
+
+TEST(WireFormatTest, CommentExceedingSizeLimitCannotBeEncoded)
+{
+    Arena* arena = ALLOC_StackArena_create();
+
+    EFH_FrameInfo fi;
+    fi.comment.size          = ZL_MAX_HEADER_COMMENT_SIZE_LIMIT + 1;
+    fi.numInputs             = 1;
+    ZL_FrameProperties fprop = {
+        .hasContentChecksum    = false,
+        .hasCompressedChecksum = false,
+        .hasComment            = true,
+    };
+    InputDesc inputDesc;
+    inputDesc.type     = ZL_Type_serial;
+    inputDesc.numElts  = 100;
+    inputDesc.byteSize = 100;
+    fi.fprop           = &fprop;
+    fi.inputDescs      = &inputDesc;
+    size_t dstCapacity = 1000;
+    void* dst          = ALLOC_Arena_malloc(arena, dstCapacity);
+
+    EXPECT_ZS_ERROR(EFH_writeFrameHeader(
+            dst, dstCapacity, &fi, ZL_COMMENT_VERSION_MIN - 1));
+    ALLOC_Arena_freeArena(arena);
 }

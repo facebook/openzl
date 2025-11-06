@@ -445,11 +445,13 @@ static ZL_Report writeFrameHeader_internal(
         const EFH_FrameInfo* fip)
 {
     ZL_TRY_LET_R(hsBound, computeFHBound(fip->numInputs, 0, 0, 0));
+    // Add comment bytes relaxing header bound
+    hsBound += fip->comment.size ? 4 + fip->comment.size : 0;
     ZL_DLOG(FRAME,
             "writeFrameHeader_internal (nbInputs=%zu, maxBound=%zu bytes)",
             fip->numInputs,
             hsBound);
-    ZL_RET_R_IF_LT(internalBuffer_tooSmall, dstCapacity, hsBound);
+    ZL_RET_R_IF_LT(dstCapacity_tooSmall, dstCapacity, hsBound);
 
     ZL_WC out = ZL_WC_wrap(dst, dstCapacity);
 
@@ -465,6 +467,9 @@ static ZL_Report writeFrameHeader_internal(
             flags |= 1 << 0;
         if (fip->fprop->hasCompressedChecksum)
             flags |= 1 << 1;
+        if (encoder->formatVersion >= ZL_COMMENT_VERSION_MIN
+            && fip->fprop->hasComment)
+            flags |= 1 << 2;
         ZL_WC_push(&out, flags);
     }
 
@@ -604,6 +609,17 @@ static ZL_Report writeFrameHeader_internal(
     // @note (@cyan): currently, input size is presumed always known
     ZL_RET_R_IF_ERR(EFH_encodeInputSizes(
             &out, fip->inputDescs, fip->numInputs, encoder->formatVersion));
+
+    // Store variable-length comment
+    if (encoder->formatVersion >= ZL_COMMENT_VERSION_MIN
+        && fip->fprop->hasComment) {
+        ZL_RET_R_IF_GT(
+                graph_invalid,
+                fip->comment.size,
+                ZL_MAX_HEADER_COMMENT_SIZE_LIMIT);
+        ZL_WC_pushVarint(&out, fip->comment.size);
+        ZL_WC_shove(&out, (const uint8_t*)fip->comment.data, fip->comment.size);
+    }
 
     if ((encoder->formatVersion >= ZL_CHUNK_VERSION_MIN)
         && fip->fprop->hasCompressedChecksum) {

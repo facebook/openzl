@@ -786,6 +786,17 @@ CCTX_tryGraph(
         ZL_GraphID graph,
         const ZL_RuntimeGraphParameters* params);
 
+/**
+ * @return The comment stored in the cctx.
+ */
+ZL_Comment CCTX_getHeaderComment(const ZL_CCtx* cctx);
+
+/**
+ * Writes @p comment into a field of the cctx.
+ */
+ZL_Report
+CCTX_setHeaderComment(ZL_CCtx* cctx, const void* comment, size_t commentSize);
+
 ZL_END_C_DECLS
 
 #endif // ZSTRONG_COMPRESS_CCTX_H
