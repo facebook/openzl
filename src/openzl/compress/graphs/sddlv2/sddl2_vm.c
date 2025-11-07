@@ -375,7 +375,7 @@ SDDL2_error SDDL2_op_load_u8(
 }
 
 /* ============================================================================
- * Segment Operations (Phase 4)
+ * Segment Operations (Phase 4-5)
  * ========================================================================= */
 
 #include <stdlib.h>
@@ -453,11 +453,150 @@ SDDL2_error SDDL2_op_segment_create_unspecified(
                                      // SDDL2_ALLOC_ERROR)
     }
 
-    // Create and append segment (tag=0 for unspecified)
+    // Create and append segment (tag=0 for unspecified, BYTES type)
     SDDL2_segment seg;
     seg.tag        = 0; // Unspecified segment has no tag
     seg.start_pos  = buffer->current_pos;
     seg.size_bytes = size;
+    seg.type.kind  = SDDL2_TYPE_BYTES; // Unspecified = raw bytes
+    seg.type.width = 1;
+
+    segments->items[segments->count++] = seg;
+
+    // Advance cursor
+    buffer->current_pos += size;
+
+    return SDDL2_OK;
+}
+
+/* ============================================================================
+ * Tag Registry Operations (Phase 5)
+ * ========================================================================= */
+
+void SDDL2_tag_registry_init(SDDL2_tag_registry* registry)
+{
+    registry->tags     = NULL;
+    registry->count    = 0;
+    registry->capacity = 0;
+}
+
+void SDDL2_tag_registry_destroy(SDDL2_tag_registry* registry)
+{
+    if (registry->tags) {
+        free(registry->tags);
+        registry->tags = NULL;
+    }
+    registry->count    = 0;
+    registry->capacity = 0;
+}
+
+/**
+ * Helper: Register a tag if not already registered.
+ * Returns 1 on success, 0 on allocation failure.
+ */
+static int tag_registry_register(SDDL2_tag_registry* registry, uint32_t tag)
+{
+    // Check if tag is already registered
+    for (size_t i = 0; i < registry->count; i++) {
+        if (registry->tags[i] == tag) {
+            return 1; // Already registered
+        }
+    }
+
+    // Ensure capacity
+    if (registry->count >= registry->capacity) {
+        size_t new_capacity =
+                (registry->capacity == 0) ? 16 : (registry->capacity * 2);
+        uint32_t* new_tags = (uint32_t*)realloc(
+                registry->tags, new_capacity * sizeof(uint32_t));
+        if (!new_tags) {
+            return 0; // Allocation failed
+        }
+        registry->tags     = new_tags;
+        registry->capacity = new_capacity;
+    }
+
+    // Register tag
+    registry->tags[registry->count++] = tag;
+    return 1;
+}
+
+SDDL2_error SDDL2_op_segment_create_tagged(
+        SDDL2_stack* stack,
+        SDDL2_input_buffer* buffer,
+        SDDL2_segment_list* segments,
+        SDDL2_tag_registry* registry)
+{
+    // Pop size, type, and tag from stack (size on top, type middle, tag bottom)
+    // Logical order: tag, type, size (pushed in this order)
+    // Pop order: size, type, tag (reverse of push order)
+    SDDL2_value size_val, type_val, tag_val;
+    SDDL2_error err;
+
+    if ((err = SDDL2_stack_pop(stack, &size_val)) != SDDL2_OK)
+        return err;
+    if ((err = SDDL2_stack_pop(stack, &type_val)) != SDDL2_OK)
+        return err;
+    if ((err = SDDL2_stack_pop(stack, &tag_val)) != SDDL2_OK)
+        return err;
+
+    // Type check: tag must be Tag, type must be Type, size must be I64
+    if (tag_val.kind != SDDL2_VALUE_TAG || type_val.kind != SDDL2_VALUE_TYPE
+        || size_val.kind != SDDL2_VALUE_I64) {
+        return SDDL2_TYPE_MISMATCH;
+    }
+
+    uint32_t tag     = tag_val.value.as_tag;
+    SDDL2_type type  = type_val.value.as_type;
+    int64_t size_i64 = size_val.value.as_i64;
+
+    // Validate size (must be non-negative)
+    if (size_i64 < 0) {
+        return SDDL2_TYPE_MISMATCH;
+    }
+
+    size_t size = (size_t)size_i64;
+
+    // Bounds check: segment must fit in remaining buffer
+    if (buffer->current_pos + size > buffer->size) {
+        return SDDL2_SEGMENT_BOUNDS;
+    }
+
+    // Register tag (first use)
+    if (!tag_registry_register(registry, tag)) {
+        return SDDL2_STACK_OVERFLOW; // Reuse for allocation failure
+    }
+
+    // Check if we can merge with the last segment
+    // Merge conditions: same tag AND same type AND consecutive positions
+    if (segments->count > 0) {
+        SDDL2_segment* last = &segments->items[segments->count - 1];
+        size_t expected_pos = last->start_pos + last->size_bytes;
+
+        // Check if types match (both kind and width)
+        bool types_match =
+                (last->type.kind == type.kind
+                 && last->type.width == type.width);
+
+        if (last->tag == tag && types_match
+            && expected_pos == buffer->current_pos) {
+            // MERGE: Just extend the last segment's size
+            last->size_bytes += size;
+            buffer->current_pos += size;
+            return SDDL2_OK;
+        }
+    }
+
+    // Cannot merge - create new segment
+    if (!segment_list_ensure_capacity(segments)) {
+        return SDDL2_STACK_OVERFLOW; // Reuse for allocation failure
+    }
+
+    SDDL2_segment seg;
+    seg.tag        = tag;
+    seg.start_pos  = buffer->current_pos;
+    seg.size_bytes = size;
+    seg.type       = type;
 
     segments->items[segments->count++] = seg;
 

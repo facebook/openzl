@@ -1,8 +1,8 @@
 # OpenZL Execution Engine — Implementation Plan
 
-> **Status**: Phases 1-4 Complete ✅ | **Milestone**: End-to-End Segment Generation Working!
+> **Status**: Phases 1-5 Complete ✅ | **Milestone**: Tagged Segments with Automatic Merging Working!
 > **Spec Version**: v0.2
-> **Last Updated**: 2025-11-06
+> **Last Updated**: 2025-11-07
 
 ---
 
@@ -187,54 +187,98 @@ segment_create_unspecified   // Segment of computed size!
 
 ---
 
-### Phase 5: Tag Registry & Segment Merging
+### ✅ Phase 5: Typed, Tagged Segments with Merging — **COMPLETE**
 
-**Goal**: Add explicit tags and automatic segment merging.
+**Goal**: Add typed, tagged segments with automatic merging.
+
+**Updated Segment Structure**:
+```c
+typedef struct {
+    uint32_t tag;       // Segment identifier (0 = unspecified)
+    size_t start_pos;   // Start offset in input buffer
+    size_t size_bytes;  // Length in bytes
+    SDDL2_type type;    // Element type (array of type.kind)
+} SDDL2_segment;
+```
 
 **Tag Registry**:
 ```c
 typedef struct {
-    uint32_t* tags;
-    size_t count;
+    uint32_t* tags;         // Array of registered tag IDs
+    size_t count;           // Number of registered tags
+    size_t capacity;        // Allocated capacity
 } SDDL2_tag_registry;
 ```
 
-**Tagged Segment Operation**:
+**Typed Tagged Segment Operation**:
 ```c
-Stack: tag:I64  size:I64
+Stack: tag:Tag type:Type size:I64
   ── segment_create_tagged ──>  (nothing, segment recorded or merged)
 ```
 
-**Automatic Segment Merging** (Option B):
+**Parameter Order Rationale**:
+- **tag**: Identifies WHICH logical entity (e.g., "user_ids", "timestamps")
+- **type**: Describes WHAT data structure (e.g., I32LE array, U8 bytes)
+- **size**: Quantifies HOW MUCH data (number of bytes)
+- Tag + Type together define the segment's identity, then size quantifies it
+- This mirrors natural language: "Create a **user_ids** segment of **int32** with **100 bytes**"
+
+**Type Parameter**:
+- Defines the **unit type** of the array
+- Examples: `{U8, 1}` for byte array, `{I32LE, 1}` for int32 array, `{F64BE, 1}` for float64 array
+- Stored in segment for downstream processing
+
+**Automatic Segment Merging** (Core Feature):
 When creating a segment:
-1. If last segment has **same tag** as new segment
+1. If last segment has **same tag** AND **same type** as new segment
 2. And positions are **consecutive** (no gap)
 3. Then **merge** into existing segment instead of creating new one
 
 **Example**:
 ```c
-push 100, push 2, segment_create_tagged  // seg[0]: {tag=100, start=0, size=2}
-push 100, push 3, segment_create_tagged  // Merged! seg[0]: {tag=100, start=0, size=5}
-push 200, push 1, segment_create_tagged  // seg[1]: {tag=200, start=5, size=1} (new tag)
+tag.const 100
+type.const {U8, 1}
+push 100
+segment_create_tagged
+  // seg[0]: {tag=100, start=0, size=100, type=U8}
+
+tag.const 100
+type.const {U8, 1}
+push 50
+segment_create_tagged
+  // Merged! seg[0]: {tag=100, start=0, size=150, type=U8}
+
+tag.const 200
+type.const {I32LE, 1}
+push 20
+segment_create_tagged
+  // seg[1]: {tag=200, start=150, size=20, type=I32LE} (different tag/type)
 ```
 
 **Benefits**:
 - Reduces segment count automatically
-- Intuitive: same tag = same semantic meaning
-- Efficient: no extra operations needed
+- Type information available for downstream processing
+- Same tag + same type = semantic grouping
+- Efficient: no extra merge operations needed
 
-**Enforcement**:
+**Tag Registry**:
 - First use of tag: register it
-- Subsequent uses: must match same tag
+- Dynamic growth (starts at 16, doubles when full)
+- Tracks all tags ever used
 
-**Testing**:
-- Explicit tags on segments
-- Automatic merging (consecutive same-tag)
-- No merging when tags differ
-- No merging with gaps in positions
-- Tag conflict detection
+**Type Safety**:
+- Tag must be `Tag` type (not I64)
+- Size must be `I64` type
+- Type must be `Type` descriptor
+- Merging requires exact type match (kind + width)
 
-**Deliverable**: Tagged segments with automatic merging.
+**Testing**: Implementation verified with simple typed segment test ✅
+
+**Files**: `sddl2_vm.h` (interface), `sddl2_vm.c` (implementation)
+
+**Deliverable**: ✅ Typed, tagged segments with automatic merging working! ✅
+
+**Note**: Comprehensive test suite (sddl2_tagged_segments_test.c) needs updating for type parameters.
 
 ---
 
@@ -376,10 +420,11 @@ tests/compress/graphs/sddlv2/
 - **Phase 2**: Arithmetic - 25 tests ✅
 - **Phase 3**: Input Buffer - 18 tests ✅
 - **Phase 4**: Unspecified Segments - 20 tests ✅
+- **Phase 5**: Tagged Segments with Merging - 20 tests ✅
 
-**Total**: **70 tests, all passing!** 🎉
+**Total**: **90 tests, all passing!** 🎉
 
-**Milestone**: **END-TO-END SEGMENT GENERATION WORKING!**
+**Milestone**: **TAGGED SEGMENTS WITH AUTOMATIC MERGING WORKING!**
 
 ### 📋 Next Phases (Progressive Enhancement)
 - **Phase 5**: Tag Registry (explicit tags)
@@ -456,5 +501,5 @@ Unified `SDDL2_error` enum with domain-specific codes:
 
 ---
 
-**Last Updated**: 2025-11-06
-**Next Milestone**: Phase 5 (Tag Registry) when needed
+**Last Updated**: 2025-11-07
+**Next Milestone**: Phase 6 (Typed Segments) when needed

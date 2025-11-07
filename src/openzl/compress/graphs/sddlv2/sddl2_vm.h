@@ -131,17 +131,19 @@ typedef enum {
 } SDDL2_error;
 
 /* ============================================================================
- * Segments (Phase 4)
+ * Segments (Phase 4-5)
  * ========================================================================= */
 
 /**
- * Simple segment structure (untyped byte blob).
- * Represents a tagged region of input data.
+ * Segment structure with tag and type.
+ * Represents a typed, tagged region of input data.
  */
 typedef struct {
-    uint32_t tag;      // Segment identifier
+    uint32_t tag;      // Segment identifier (0 = unspecified)
     size_t start_pos;  // Start offset in input buffer
     size_t size_bytes; // Length in bytes
+    SDDL2_type type; // Element type (defines array of type.kind with type.width
+                     // elements)
 } SDDL2_segment;
 
 /**
@@ -153,6 +155,16 @@ typedef struct {
     size_t count;         // Number of segments
     size_t capacity;      // Allocated capacity
 } SDDL2_segment_list;
+
+/**
+ * Tag registry for tracking tag usage (Phase 5).
+ * Tags are registered on first use to ensure consistency.
+ */
+typedef struct {
+    uint32_t* tags;  // Array of registered tag IDs
+    size_t count;    // Number of registered tags
+    size_t capacity; // Allocated capacity
+} SDDL2_tag_registry;
 
 /* ============================================================================
  * Input Buffer (Phase 3)
@@ -364,7 +376,7 @@ SDDL2_error SDDL2_op_load_u8(
         const SDDL2_input_buffer* buffer);
 
 /* ============================================================================
- * Segment Operations (Phase 4)
+ * Segment Operations (Phase 4-5)
  * ========================================================================= */
 
 /**
@@ -390,6 +402,72 @@ SDDL2_error SDDL2_op_segment_create_unspecified(
         SDDL2_stack* stack,
         SDDL2_input_buffer* buffer,
         SDDL2_segment_list* segments);
+
+/* ============================================================================
+ * Tag Registry Operations (Phase 5)
+ * ========================================================================= */
+
+/**
+ * Initialize a tag registry.
+ */
+void SDDL2_tag_registry_init(SDDL2_tag_registry* registry);
+
+/**
+ * Free tag registry resources.
+ * Does NOT free the registry structure itself (caller owns it).
+ */
+void SDDL2_tag_registry_destroy(SDDL2_tag_registry* registry);
+
+/**
+ * Create a typed, tagged segment with automatic merging.
+ * Stack: tag:Tag type:Type size:I64 -> (nothing)
+ *
+ * Parameter order rationale:
+ *   - tag: Identifies WHICH logical entity (e.g., "user_ids", "timestamps")
+ *   - type: Describes WHAT data structure (e.g., I32LE array, U8 bytes)
+ *   - size: Quantifies HOW MUCH data (number of bytes)
+ *   Tag + Type together define the segment's identity, then size quantifies it.
+ *
+ * The type defines the unit type of the array. For example:
+ *   - type={U8, width=1}: Array of bytes
+ *   - type={I32LE, width=1}: Array of little-endian 32-bit integers
+ *   - type={F64BE, width=1}: Array of big-endian 64-bit floats
+ *
+ * Automatic Merging Behavior:
+ *   If the last segment has the same tag AND same type AND is consecutive
+ *   (previous.start_pos + previous.size_bytes == new.start_pos),
+ *   the new segment will be merged into the existing one by
+ *   increasing its size_bytes instead of creating a new segment.
+ *
+ * Example:
+ *   tag.const 100
+ *   type.const {U8, 1}
+ *   push 100
+ *   segment_create_tagged  // seg[0]: {tag=100, start=0, size=100, type=U8}
+ *
+ *   tag.const 100
+ *   type.const {U8, 1}
+ *   push 50
+ *   segment_create_tagged  // Merged! seg[0]: {tag=100, start=0, size=150,
+ * type=U8}
+ *
+ *   tag.const 200
+ *   type.const {I32LE, 1}
+ *   push 20
+ *   segment_create_tagged  // seg[1]: {tag=200, start=150, size=20, type=I32LE}
+ *
+ * Side effects:
+ *   - Advances buffer->current_pos by size
+ *   - Either merges with last segment OR appends new segment
+ *   - Registers tag on first use
+ *
+ * Errors: TypeMismatch, StackUnderflow, SegmentBounds
+ */
+SDDL2_error SDDL2_op_segment_create_tagged(
+        SDDL2_stack* stack,
+        SDDL2_input_buffer* buffer,
+        SDDL2_segment_list* segments,
+        SDDL2_tag_registry* registry);
 
 #if defined(__cplusplus)
 } // extern "C"
