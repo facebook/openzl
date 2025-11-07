@@ -1,0 +1,10 @@
+# Compiled test executables
+sddl2_vm_test
+sddl2_arithmetic_test
+sddl2_input_test
+sddl2_segments_test
+sddl2_tagged_segments_test
+sddl2_interpreter_test
+
+# Debug symbols
+*.dSYM/
