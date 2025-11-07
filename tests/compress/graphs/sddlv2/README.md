@@ -108,7 +108,8 @@ The Makefile uses:
 - **Optimization**: `-O1`
 - **Debug Info**: `-g`
 - **Warnings**: `-Wall`
-- **Math Library**: `-lm`
+
+**Note**: The VM does not require `-lm` (math library). All arithmetic operations are implemented without external math functions.
 
 ## Expected Output
 

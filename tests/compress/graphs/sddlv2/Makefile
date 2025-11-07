@@ -2,10 +2,10 @@
 # Tests Phases 1-5 of the OpenZL Execution Engine
 
 # Compiler and flags
-CC = gcc
-CFLAGS = -O1 -std=c11 -g -Wall
+CC ?= gcc
+CFLAGS += -O1 -std=c11 -g -Wall
 INCLUDES = -I../../../.. -I../../../../src
-LDFLAGS = -lm
+CPPFLAGS += $(INCLUDES)
 
 # Source files
 VM_SRC = ../../../../src/openzl/compress/graphs/sddlv2/sddl2_vm.c
@@ -49,19 +49,14 @@ test: $(TESTS)
 
 # Individual test targets
 sddl2_vm_test: sddl2_vm_test.c $(VM_SRC)
-	$(CC) $(CFLAGS) $(INCLUDES) $^ -o $@ $(LDFLAGS)
 
 sddl2_arithmetic_test: sddl2_arithmetic_test.c $(VM_SRC)
-	$(CC) $(CFLAGS) $(INCLUDES) $^ -o $@ $(LDFLAGS)
 
 sddl2_input_test: sddl2_input_test.c $(VM_SRC)
-	$(CC) $(CFLAGS) $(INCLUDES) $^ -o $@ $(LDFLAGS)
 
 sddl2_segments_test: sddl2_segments_test.c $(VM_SRC)
-	$(CC) $(CFLAGS) $(INCLUDES) $^ -o $@ $(LDFLAGS)
 
 sddl2_tagged_segments_test: sddl2_tagged_segments_test.c $(VM_SRC)
-	$(CC) $(CFLAGS) $(INCLUDES) $^ -o $@ $(LDFLAGS)
 
 # Build all tests without running
 .PHONY: build

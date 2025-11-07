@@ -82,11 +82,11 @@ static void test_create_single_tagged_segment(void)
     SDDL2_segment_list_init(&segments);
     SDDL2_tag_registry_init(&registry);
 
-    // Stack: tag=100, size=5
-    SDDL2_stack_push(stack, SDDL2_value_tag(100)); // tag
-    SDDL2_stack_push(stack, SDDL2_value_i64(5));   // size
+    // Stack: tag=100, type=U8, size=5
+    SDDL2_stack_push(stack, SDDL2_value_tag(100));                            // tag
+    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1}));
+    SDDL2_stack_push(stack, SDDL2_value_i64(5));                              // size
 
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
     SDDL2_error err = SDDL2_op_segment_create_tagged(
             stack, &buffer, &segments, &registry);
     assert(err == SDDL2_OK);
@@ -126,9 +126,9 @@ static void test_tagged_segment_zero_size(void)
 
     // Stack: tag=42, size=0
     SDDL2_stack_push(stack, SDDL2_value_tag(42)); // tag
+    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1}));
     SDDL2_stack_push(stack, SDDL2_value_i64(0));  // size
 
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
     SDDL2_error err = SDDL2_op_segment_create_tagged(
             stack, &buffer, &segments, &registry);
     assert(err == SDDL2_OK);
@@ -164,8 +164,8 @@ static void test_merge_consecutive_same_tag(void)
 
     // Create first segment: tag=100, size=2
     SDDL2_stack_push(stack, SDDL2_value_tag(100));
+    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1}));
     SDDL2_stack_push(stack, SDDL2_value_i64(2));
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
     SDDL2_error err = SDDL2_op_segment_create_tagged(
             stack, &buffer, &segments, &registry);
     assert(err == SDDL2_OK);
@@ -179,8 +179,8 @@ static void test_merge_consecutive_same_tag(void)
 
     // Create second segment: tag=100, size=3 (SHOULD MERGE!)
     SDDL2_stack_push(stack, SDDL2_value_tag(100));
+    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1}));
     SDDL2_stack_push(stack, SDDL2_value_i64(3));
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
     err = SDDL2_op_segment_create_tagged(stack, &buffer, &segments, &registry);
     assert(err == SDDL2_OK);
 
@@ -213,16 +213,16 @@ static void test_no_merge_different_tag(void)
 
     // Create first segment: tag=100, size=2
     SDDL2_stack_push(stack, SDDL2_value_tag(100));
+    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1}));
     SDDL2_stack_push(stack, SDDL2_value_i64(2));
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
     SDDL2_error err = SDDL2_op_segment_create_tagged(
             stack, &buffer, &segments, &registry);
     assert(err == SDDL2_OK);
 
     // Create second segment: tag=200, size=3 (different tag, NO MERGE)
     SDDL2_stack_push(stack, SDDL2_value_tag(200));
+    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1}));
     SDDL2_stack_push(stack, SDDL2_value_i64(3));
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
     err = SDDL2_op_segment_create_tagged(stack, &buffer, &segments, &registry);
     assert(err == SDDL2_OK);
 
@@ -267,9 +267,8 @@ static void test_merge_multiple_consecutive(void)
     int sizes[] = { 2, 3, 1, 4, 5 };
     for (int i = 0; i < 5; i++) {
         SDDL2_stack_push(stack, SDDL2_value_tag(100));
+        SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1}));
         SDDL2_stack_push(stack, SDDL2_value_i64(sizes[i]));
-        SDDL2_stack_push(
-                stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
         SDDL2_error err = SDDL2_op_segment_create_tagged(
                 stack, &buffer, &segments, &registry);
         assert(err == SDDL2_OK);
@@ -305,27 +304,23 @@ static void test_merge_pattern_alternating(void)
     // Pattern: tag=100 (size=2), tag=200 (size=3), tag=100 (size=1), tag=200
     // (size=2) Expected: 4 segments (no merging due to alternation)
     SDDL2_stack_push(stack, SDDL2_value_tag(100));
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
+    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1}));
     SDDL2_stack_push(stack, SDDL2_value_i64(2));
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
     SDDL2_op_segment_create_tagged(stack, &buffer, &segments, &registry);
 
     SDDL2_stack_push(stack, SDDL2_value_tag(200));
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
+    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1}));
     SDDL2_stack_push(stack, SDDL2_value_i64(3));
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
     SDDL2_op_segment_create_tagged(stack, &buffer, &segments, &registry);
 
     SDDL2_stack_push(stack, SDDL2_value_tag(100));
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
+    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1}));
     SDDL2_stack_push(stack, SDDL2_value_i64(1));
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
     SDDL2_op_segment_create_tagged(stack, &buffer, &segments, &registry);
 
     SDDL2_stack_push(stack, SDDL2_value_tag(200));
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
+    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1}));
     SDDL2_stack_push(stack, SDDL2_value_i64(2));
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
     SDDL2_op_segment_create_tagged(stack, &buffer, &segments, &registry);
 
     // Check: 4 separate segments
@@ -362,27 +357,23 @@ static void test_merge_same_tag_after_other_tag(void)
     // Pattern: tag=100 (size=2), tag=100 (size=3), tag=200 (size=1), tag=200
     // (size=2) Expected: 2 segments: [tag=100, size=5], [tag=200, size=3]
     SDDL2_stack_push(stack, SDDL2_value_tag(100));
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
+    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1}));
     SDDL2_stack_push(stack, SDDL2_value_i64(2));
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
     SDDL2_op_segment_create_tagged(stack, &buffer, &segments, &registry);
 
     SDDL2_stack_push(stack, SDDL2_value_tag(100));
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
+    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1}));
     SDDL2_stack_push(stack, SDDL2_value_i64(3));
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
     SDDL2_op_segment_create_tagged(stack, &buffer, &segments, &registry);
 
     SDDL2_stack_push(stack, SDDL2_value_tag(200));
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
+    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1}));
     SDDL2_stack_push(stack, SDDL2_value_i64(1));
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
     SDDL2_op_segment_create_tagged(stack, &buffer, &segments, &registry);
 
     SDDL2_stack_push(stack, SDDL2_value_tag(200));
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
+    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1}));
     SDDL2_stack_push(stack, SDDL2_value_i64(2));
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
     SDDL2_op_segment_create_tagged(stack, &buffer, &segments, &registry);
 
     // Check: 2 merged segments
@@ -418,9 +409,9 @@ static void test_tagged_segment_bounds_error(void)
 
     // Try to create segment larger than buffer: tag=100, size=10
     SDDL2_stack_push(stack, SDDL2_value_tag(100));
+    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1}));
     SDDL2_stack_push(stack, SDDL2_value_i64(10));
 
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
     SDDL2_error err = SDDL2_op_segment_create_tagged(
             stack, &buffer, &segments, &registry);
     assert(err == SDDL2_SEGMENT_BOUNDS);
@@ -449,11 +440,11 @@ static void test_tagged_segment_negative_tag(void)
     SDDL2_segment_list_init(&segments);
     SDDL2_tag_registry_init(&registry);
 
-    // Try negative tag: tag=-100, size=2
-    SDDL2_stack_push(stack, SDDL2_value_i64(-100));
+    // Try negative tag (using I64 instead of Tag): tag=-100, type=U8, size=2
+    SDDL2_stack_push(stack, SDDL2_value_i64(-100)); // Wrong: I64 instead of Tag
+    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1}));
     SDDL2_stack_push(stack, SDDL2_value_i64(2));
 
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
     SDDL2_error err = SDDL2_op_segment_create_tagged(
             stack, &buffer, &segments, &registry);
     assert(err == SDDL2_TYPE_MISMATCH);
@@ -480,9 +471,9 @@ static void test_tagged_segment_negative_size(void)
 
     // Try negative size: tag=100, size=-5
     SDDL2_stack_push(stack, SDDL2_value_tag(100));
+    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1}));
     SDDL2_stack_push(stack, SDDL2_value_i64(-5));
 
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
     SDDL2_error err = SDDL2_op_segment_create_tagged(
             stack, &buffer, &segments, &registry);
     assert(err == SDDL2_TYPE_MISMATCH);
@@ -507,12 +498,11 @@ static void test_tagged_segment_wrong_type_tag(void)
     SDDL2_segment_list_init(&segments);
     SDDL2_tag_registry_init(&registry);
 
-    // Push wrong type for tag (TYPE instead of I64)
-    SDDL2_type t = { SDDL2_TYPE_U8, 1 };
-    SDDL2_stack_push(stack, SDDL2_value_type(t));
+    // Push wrong type for tag (I64 instead of Tag)
+    SDDL2_stack_push(stack, SDDL2_value_i64(100)); // Wrong: I64 instead of Tag
+    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1}));
     SDDL2_stack_push(stack, SDDL2_value_i64(2));
 
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
     SDDL2_error err = SDDL2_op_segment_create_tagged(
             stack, &buffer, &segments, &registry);
     assert(err == SDDL2_TYPE_MISMATCH);
@@ -537,11 +527,11 @@ static void test_tagged_segment_wrong_type_size(void)
     SDDL2_segment_list_init(&segments);
     SDDL2_tag_registry_init(&registry);
 
-    // Push correct tag but wrong type for size
-    SDDL2_stack_push(stack, SDDL2_value_tag(100));
-    SDDL2_stack_push(stack, SDDL2_value_tag(42)); // Wrong type!
+    // Push correct tag and type, but wrong type for size (Tag instead of I64)
+    SDDL2_stack_push(stack, SDDL2_value_tag(100)); // tag (correct)
+    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1})); // type (correct)
+    SDDL2_stack_push(stack, SDDL2_value_tag(42)); // Wrong: Tag instead of I64 for size!
 
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
     SDDL2_error err = SDDL2_op_segment_create_tagged(
             stack, &buffer, &segments, &registry);
     assert(err == SDDL2_TYPE_MISMATCH);
@@ -568,8 +558,8 @@ static void test_tagged_segment_stack_underflow(void)
 
     // Push only tag, no size
     SDDL2_stack_push(stack, SDDL2_value_tag(100));
+    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1}));
 
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
     SDDL2_error err = SDDL2_op_segment_create_tagged(
             stack, &buffer, &segments, &registry);
     assert(err == SDDL2_STACK_UNDERFLOW);
@@ -600,11 +590,11 @@ static void test_tagged_with_arithmetic(void)
 
     // Compute size with arithmetic: push 2, push 3, add -> 5
     SDDL2_stack_push(stack, SDDL2_value_tag(100)); // tag
+    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1}));
     SDDL2_stack_push(stack, SDDL2_value_i64(2));
     SDDL2_stack_push(stack, SDDL2_value_i64(3));
     SDDL2_op_add(stack); // -> 5
 
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
     SDDL2_error err = SDDL2_op_segment_create_tagged(
             stack, &buffer, &segments, &registry);
     assert(err == SDDL2_OK);
@@ -639,9 +629,8 @@ static void test_mixed_unspecified_and_tagged(void)
 
     // Create tagged segment (tag=100)
     SDDL2_stack_push(stack, SDDL2_value_tag(100));
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
+    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1}));
     SDDL2_stack_push(stack, SDDL2_value_i64(2));
-    SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
     SDDL2_op_segment_create_tagged(stack, &buffer, &segments, &registry);
 
     // Create another unspecified segment (tag=0)
@@ -679,11 +668,9 @@ static void test_many_tags_registry_growth(void)
 
     // Create 50 segments with different tags (should trigger registry growth)
     for (int i = 0; i < 50; i++) {
-        SDDL2_stack_push(
-                stack, SDDL2_value_tag((uint32_t)(100 + i))); // Different tags
-        SDDL2_stack_push(stack, SDDL2_value_i64(2));
-        SDDL2_stack_push(
-                stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
+        SDDL2_stack_push(stack, SDDL2_value_tag((uint32_t)(100 + i))); // tag
+        SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){SDDL2_TYPE_U8, 1})); // type
+        SDDL2_stack_push(stack, SDDL2_value_i64(2)); // size
         SDDL2_error err = SDDL2_op_segment_create_tagged(
                 stack, &buffer, &segments, &registry);
         assert(err == SDDL2_OK);
