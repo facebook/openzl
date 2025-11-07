@@ -2,7 +2,6 @@
 
 #include "sddl2.h"
 
-#include <assert.h>
 #include <stddef.h>
 
 #include "openzl/codecs/zl_split.h"
@@ -39,12 +38,18 @@ ZL_Report SDDL2_parse(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
             ZL_Graph_getLocalRefParam(graph, SDDL2_BYTECODE_PARAM);
 
     // Validate bytecode parameter was provided
-    ZL_ERR_IF_NE(bytecodeParam.paramId, SDDL2_BYTECODE_PARAM, graph_invalid);
+    ZL_ERR_IF_NE(
+            bytecodeParam.paramId,
+            SDDL2_BYTECODE_PARAM,
+            graphParameter_invalid);
 
     const void* bytecode = bytecodeParam.paramRef;
     size_t bytecode_size = bytecodeParam.paramSize;
-    if (bytecode == NULL)
-        assert(bytecode_size == 0);
+
+    // Sanity check: NULL bytecode must have zero size
+    if (bytecode == NULL) {
+        ZL_ERR_IF_NE(bytecode_size, 0, graphParameter_invalid);
+    }
 
     // Step 4: Extract input data from edge
     const void* input_data = ZL_Input_ptr(input_obj);
