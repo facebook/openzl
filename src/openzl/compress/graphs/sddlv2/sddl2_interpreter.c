@@ -3,6 +3,10 @@
 #include "openzl/compress/graphs/sddlv2/sddl2_interpreter.h"
 #include <stdlib.h>
 #include <string.h>
+#include "openzl/shared/mem.h"
+
+// Note: Opcodes are defined manually below, which is wrong.
+// They should rather be extracted from sddl2_opcodes.def single source of truth
 
 // Opcode families
 #define FAMILY_CONTROL 0x0005
@@ -21,28 +25,15 @@
 // Segment opcodes
 #define OP_SEGMENT_CREATE_UNSPECIFIED 0x0001
 
-// Read little-endian 32-bit value
-static inline uint32_t read_u32_le(const uint8_t* data)
-{
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8)
-            | ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-// Read little-endian 64-bit value
-static inline int64_t read_i64_le(const uint8_t* data)
-{
-    uint64_t low  = read_u32_le(data);
-    uint64_t high = read_u32_le(data + 4);
-    return (int64_t)((high << 32) | low);
-}
-
 SDDL2_error SDDL2_execute_bytecode(
-        const uint8_t* bytecode,
+        const void* bytecode_buffer,
         size_t bytecode_size,
         const void* input_data,
         size_t input_size,
         SDDL2_segment_list* output_segments)
 {
+    const char* bytecode = bytecode_buffer;
+
     // Validate inputs
     if (bytecode == NULL || output_segments == NULL) {
         return SDDL2_STACK_UNDERFLOW; // Reuse error code
@@ -77,7 +68,7 @@ SDDL2_error SDDL2_execute_bytecode(
             return SDDL2_STACK_UNDERFLOW; // Incomplete instruction
         }
 
-        uint32_t instruction = read_u32_le(&bytecode[pc]);
+        uint32_t instruction = ZL_readLE32(&bytecode[pc]);
         pc += 4;
 
         // Decode
@@ -102,7 +93,7 @@ SDDL2_error SDDL2_execute_bytecode(
                     SDDL2_tag_registry_destroy(&registry);
                     return SDDL2_STACK_UNDERFLOW; // Missing immediate
                 }
-                uint32_t value = read_u32_le(&bytecode[pc]);
+                uint32_t value = ZL_readLE32(&bytecode[pc]);
                 pc += 4;
                 err = SDDL2_stack_push(&stack, SDDL2_value_i64((int64_t)value));
             } else if (opcode == OP_PUSH_I32) {
@@ -110,7 +101,7 @@ SDDL2_error SDDL2_execute_bytecode(
                     SDDL2_tag_registry_destroy(&registry);
                     return SDDL2_STACK_UNDERFLOW; // Missing immediate
                 }
-                int32_t value = (int32_t)read_u32_le(&bytecode[pc]);
+                int32_t value = (int32_t)ZL_readLE32(&bytecode[pc]);
                 pc += 4;
                 err = SDDL2_stack_push(&stack, SDDL2_value_i64((int64_t)value));
             } else if (opcode == OP_PUSH_I64) {
@@ -118,7 +109,7 @@ SDDL2_error SDDL2_execute_bytecode(
                     SDDL2_tag_registry_destroy(&registry);
                     return SDDL2_STACK_UNDERFLOW; // Missing immediate
                 }
-                int64_t value = read_i64_le(&bytecode[pc]);
+                int64_t value = (int64_t)ZL_readLE64(&bytecode[pc]);
                 pc += 8;
                 err = SDDL2_stack_push(&stack, SDDL2_value_i64(value));
             } else {

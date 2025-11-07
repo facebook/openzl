@@ -4,7 +4,7 @@
 # Compiler and flags
 CC ?= gcc
 CFLAGS += -O1 -std=c11 -g -Wall
-INCLUDES = -I../../../.. -I../../../../src
+INCLUDES = -I../../../.. -I../../../../src -I../../../../include
 CPPFLAGS += $(INCLUDES)
 
 # Source files

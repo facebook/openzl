@@ -380,6 +380,9 @@ SDDL2_error SDDL2_op_load_u8(
 
 #include <stdlib.h>
 
+// Note: It would likely be better to pre-allocate some default buffer for
+// segment_list using an Arena, to guarantee free() at end of life of sddl2
+// graph
 void SDDL2_segment_list_init(SDDL2_segment_list* list)
 {
     list->items    = NULL;
@@ -400,6 +403,11 @@ void SDDL2_segment_list_destroy(SDDL2_segment_list* list)
 /**
  * Helper: Ensure segment list has capacity for at least one more item.
  * Grows by 2x when needed.
+ *
+ * Note: This uses realloc, which is not preferred.
+ * We should rather use an Arena.
+ * Also, we should allocate a "good enough" amount at init, to avoid resizing
+ * Finally, there should be an explicit limit to size increase.
  */
 static int segment_list_ensure_capacity(SDDL2_segment_list* list)
 {

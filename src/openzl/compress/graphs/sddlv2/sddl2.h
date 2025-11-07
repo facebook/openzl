@@ -5,7 +5,9 @@
 
 #include "openzl/zl_graph_api.h"
 
-ZL_Report ZL_SDDLv2_compress(ZL_Graph* graph, 
+#define SDDL2_BYTECODE_PARAM 7685
+
+ZL_Report SDDL2_parse(ZL_Graph* graph, 
       ZL_Edge* inputs[],
       size_t nbInputs) ZL_NOEXCEPT_FUNC_PTR;
 

@@ -31,7 +31,7 @@
  * @return SDDL2_OK on success, error code on failure
  */
 SDDL2_error SDDL2_execute_bytecode(
-        const uint8_t* bytecode,
+        const void* bytecode,
         size_t bytecode_size,
         const void* input_data,
         size_t input_size,

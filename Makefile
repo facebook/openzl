@@ -119,13 +119,17 @@ $(eval $(call cxx_program,zli, \
 examples: zs2_pipeline zs2_trygraph zs2_selector zs2_struct zs2_round_trip
 
 .PHONY: test
-test : gtests zs2_test
+test : gtests zs2_test sddl2_test
 	$(EXEC_PREFIX) ./gtests
 
 .PHONY: zs2_test
 zs2_test : examples
 	$(EXEC_PREFIX) ./zs2_pipeline
 	$(EXEC_PREFIX) ./zs2_trygraph
+
+.PHONY: sddl2_test
+sddl2_test:
+	$(MAKE) -C tests/compress/graphs/sddlv2 test
 
 # ********     Tools     ********
 
