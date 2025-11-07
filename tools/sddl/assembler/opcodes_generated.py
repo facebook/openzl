@@ -1,8 +1,8 @@
 """
 AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 
-Generated from: openzl_opcodes.def
-Generated at: 2025-11-05 08:55:01 UTC
+Generated from: src/openzl/compress/graphs/sddlv2/sddl2_opcodes.def
+Generated at: 2025-11-07 07:26:07 UTC
 Generator: generate_opcodes.py
 
 To regenerate: python3 generate_opcodes.py
@@ -21,6 +21,7 @@ FAMILIES = {
     "VAR": 0x0009,
     "EXPECT": 0x000A,
     "CALL": 0x000B,
+    "SEGMENT": 0x000C,
 }
 
 # Instruction definitions
@@ -58,5 +59,8 @@ INSTRUCTIONS = {
     "cmp.le": ("CMP", 0x0004, []),
     "cmp.gt": ("CMP", 0x0005, []),
     "cmp.ge": ("CMP", 0x0006, []),
+
+    # SEGMENT family (0x000C)
+    "segment.create_unspecified": ("SEGMENT", 0x0001, []),
 
 }

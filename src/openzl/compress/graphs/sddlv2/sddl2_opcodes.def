@@ -47,6 +47,7 @@ FAMILY_DEF(TYPE,    0x0008)
 FAMILY_DEF(VAR,     0x0009)
 FAMILY_DEF(EXPECT,  0x000A)
 FAMILY_DEF(CALL,    0x000B)
+FAMILY_DEF(SEGMENT, 0x000C)
 
 
 /* ============================================================================
@@ -85,3 +86,6 @@ OPCODE_DEF(cmp.lt, CMP, 0x0003)
 OPCODE_DEF(cmp.le, CMP, 0x0004)
 OPCODE_DEF(cmp.gt, CMP, 0x0005)
 OPCODE_DEF(cmp.ge, CMP, 0x0006)
+
+/* SEGMENT family (0x000C) - Segment creation operations */
+OPCODE_DEF(segment.create_unspecified, SEGMENT, 0x0001)

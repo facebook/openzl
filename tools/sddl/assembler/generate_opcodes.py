@@ -74,7 +74,7 @@ def generate_python_code(families: Dict[str, int], opcodes: List[tuple]) -> str:
     lines.append('"""')
     lines.append("AUTO-GENERATED FILE - DO NOT EDIT MANUALLY")
     lines.append("")
-    lines.append("Generated from: openzl_opcodes.def")
+    lines.append("Generated from: src/openzl/compress/graphs/sddlv2/sddl2_opcodes.def")
     lines.append(f'Generated at: {datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")}')
     lines.append("Generator: generate_opcodes.py")
     lines.append("")
@@ -115,6 +115,7 @@ def generate_python_code(families: Dict[str, int], opcodes: List[tuple]) -> str:
         "VAR",
         "EXPECT",
         "CALL",
+        "SEGMENT",
     ]
 
     for family_name in family_order:
@@ -146,7 +147,9 @@ def generate_python_code(families: Dict[str, int], opcodes: List[tuple]) -> str:
 
 def main():
     script_dir = Path(__file__).parent
-    def_file = script_dir / "openzl_opcodes.def"
+    # Point to the source of truth in src/openzl/
+    repo_root = script_dir.parent.parent.parent
+    def_file = repo_root / "src" / "openzl" / "compress" / "graphs" / "sddlv2" / "sddl2_opcodes.def"
     output_file = script_dir / "opcodes_generated.py"
 
     if not def_file.exists():
