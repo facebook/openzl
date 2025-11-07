@@ -1,0 +1,7 @@
+# Simple test program: Create one 5-byte unspecified segment
+# Input: "Hello" (5 bytes)
+# Expected: 1 segment (tag=0, size=5)
+
+push.i32 5
+segment.create_unspecified
+halt

@@ -17,7 +17,8 @@ TESTS = sddl2_vm_test \
         sddl2_input_test \
         sddl2_segments_test \
         sddl2_tagged_segments_test \
-        sddl2_interpreter_test
+        sddl2_interpreter_test \
+        sddl2_assembly_test
 
 # Default target: run all tests
 .PHONY: all
@@ -51,6 +52,8 @@ sddl2_segments_test: sddl2_segments_test.c $(VM_SRC)
 sddl2_tagged_segments_test: sddl2_tagged_segments_test.c $(VM_SRC)
 
 sddl2_interpreter_test: sddl2_interpreter_test.c $(VM_SRC) $(INTERPRETER_SRC)
+
+sddl2_assembly_test: sddl2_assembly_test.c $(VM_SRC) $(INTERPRETER_SRC)
 
 # Build all tests without running
 .PHONY: build

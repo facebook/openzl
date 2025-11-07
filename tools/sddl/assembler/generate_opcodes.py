@@ -149,7 +149,15 @@ def main():
     script_dir = Path(__file__).parent
     # Point to the source of truth in src/openzl/
     repo_root = script_dir.parent.parent.parent
-    def_file = repo_root / "src" / "openzl" / "compress" / "graphs" / "sddlv2" / "sddl2_opcodes.def"
+    def_file = (
+        repo_root
+        / "src"
+        / "openzl"
+        / "compress"
+        / "graphs"
+        / "sddlv2"
+        / "sddl2_opcodes.def"
+    )
     output_file = script_dir / "opcodes_generated.py"
 
     if not def_file.exists():
