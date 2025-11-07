@@ -8,7 +8,6 @@
 #include "openzl/codecs/zl_split.h"
 #include "openzl/codecs/zl_zstd.h"
 #include "openzl/compress/graphs/sddlv2/sddl2_interpreter.h"
-#include "openzl/zl_selector.h" // ZL_LP_INVALID_PARAMID
 
 /**
  * SDDL2 Function Graph - OpenZL Integration

@@ -173,6 +173,10 @@ typedef struct {
 /**
  * Input buffer structure for reading data.
  *
+ * Note: Naming: this feels awkward,
+ * I think the object manages a cursor into a read-only buffer,
+ * which is different and should be reflected in the name.
+ *
  * Lifetime: The caller owns `data` and must ensure it outlives this buffer.
  * The VM never modifies or frees the data pointer.
  *
@@ -425,7 +429,7 @@ void SDDL2_tag_registry_destroy(SDDL2_tag_registry* registry);
  * Parameter order rationale:
  *   - tag: Identifies WHICH logical entity (e.g., "user_ids", "timestamps")
  *   - type: Describes WHAT data structure (e.g., I32LE array, U8 bytes)
- *   - size: Quantifies HOW MUCH data (number of bytes)
+ *   - size: Quantifies HOW MUCH data (number of bytes) <== Should be Number of Elements !!!
  *   Tag + Type together define the segment's identity, then size quantifies it.
  *
  * The type defines the unit type of the array. For example:

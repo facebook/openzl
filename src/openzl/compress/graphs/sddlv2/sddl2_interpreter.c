@@ -1,12 +1,10 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "openzl/compress/graphs/sddlv2/sddl2_interpreter.h"
-#include <stdlib.h>
-#include <string.h>
 #include "openzl/shared/mem.h"
 
 // Note: Opcodes are defined manually below, which is wrong.
-// They should rather be extracted from sddl2_opcodes.def single source of truth
+// They should be extracted from sddl2_opcodes.def source of truth
 
 // Opcode families
 #define FAMILY_CONTROL 0x0005
@@ -34,13 +32,14 @@ SDDL2_error SDDL2_execute_bytecode(
 {
     const char* bytecode = bytecode_buffer;
 
-    // Validate inputs
-    if (bytecode == NULL || output_segments == NULL) {
-        return SDDL2_STACK_UNDERFLOW; // Reuse error code
-    }
+    // Validate input conditions
+    ZL_ASSERT_NN(output_segments);
+    if (bytecode == NULL)
+        ZL_ASSERT_EQ(bytecode_size, 0);
 
     if (bytecode_size % 4 != 0) {
-        return SDDL2_STACK_UNDERFLOW; // Bytecode must be multiple of 4
+        // Bytecode must be multiple of 4
+        return SDDL2_STACK_UNDERFLOW; // note: unspecific error code
     }
 
     // Initialize VM state
@@ -72,12 +71,16 @@ SDDL2_error SDDL2_execute_bytecode(
         pc += 4;
 
         // Decode
+        // Note: I thought it was the reverse high/low ??
         uint16_t family = instruction & 0xFFFF;
         uint16_t opcode = (instruction >> 16) & 0xFFFF;
 
         // Dispatch
         SDDL2_error err = SDDL2_OK;
 
+        // Note:
+        // To be changed into a switch(family),
+        // and even feature dedicated functions for larger families
         if (family == FAMILY_CONTROL) {
             if (opcode == OP_HALT) {
                 halted = 1;

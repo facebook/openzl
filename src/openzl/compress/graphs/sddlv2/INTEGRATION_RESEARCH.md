@@ -48,7 +48,7 @@ for (size_t i = 0; i < outputs.nbEdges; i++) {
 
 ```c
 // Run a transform node on an edge
-ZL_TRY_LET_T(ZL_EdgeList, outputs, 
+ZL_TRY_LET_T(ZL_EdgeList, outputs,
              ZL_Edge_runNode(input, ZL_NODE_SOME_TRANSFORM));
 
 // outputs.nbEdges = number of output edges
@@ -59,7 +59,7 @@ ZL_TRY_LET_T(ZL_EdgeList, outputs,
 
 ```c
 // Return on error
-ZL_RET_R_IF_ERR(expression);
+ZL_ERR_IF_ERR(expression);
 
 // Try and bind result (like Rust's let)
 ZL_TRY_LET_T(Type, variable, expression);
@@ -271,21 +271,21 @@ static ZL_Report dynGraphTree(
 {
     assert(nbIns == 1);
     ZL_Edge* input = inputs[0];
-    
+
     // Convert serial to token4
     ZL_TRY_LET_T(ZL_EdgeList, sl1,
         ZL_Edge_runNode(input, ZL_NODE_CONVERT_SERIAL_TO_TOKEN4));
-    
+
     // Transpose and split into 4 edges
     ZL_TRY_LET_T(ZL_EdgeList, sl2,
         ZL_Edge_runNode(sl1.edges[0], ZL_NODE_TRANSPOSE_SPLIT));
-    
+
     // Set destination for each edge
     for (size_t i = 0; i < sl2.nbEdges; i++) {
         ZL_RET_R_IF_ERR(
             ZL_Edge_setDestination(sl2.edges[i], ZL_GRAPH_ZSTD));
     }
-    
+
     return ZL_returnSuccess();
 }
 ```
@@ -298,4 +298,3 @@ static ZL_Report dynGraphTree(
 2. ⏭️ Search for `ZL_Input` creation APIs
 3. ⏭️ Implement minimal skeleton
 4. ⏭️ Test with simple bytecode
-

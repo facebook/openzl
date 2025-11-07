@@ -501,6 +501,11 @@ void SDDL2_tag_registry_destroy(SDDL2_tag_registry* registry)
 /**
  * Helper: Register a tag if not already registered.
  * Returns 1 on success, 0 on allocation failure.
+ *
+ * Note: This uses realloc, which is not preferred.
+ * We should rather use an Arena.
+ * Also, we should allocate a "good enough" amount at init, to avoid resizing
+ * Finally, there should be an explicit limit to size increase.
  */
 static int tag_registry_register(SDDL2_tag_registry* registry, uint32_t tag)
 {
@@ -563,6 +568,7 @@ SDDL2_error SDDL2_op_segment_create_tagged(
         return SDDL2_TYPE_MISMATCH;
     }
 
+    // Note: incorrect: should rather be number of elements
     size_t size = (size_t)size_i64;
 
     // Bounds check: segment must fit in remaining buffer
