@@ -183,7 +183,7 @@ segment_create_unspecified   // Segment of computed size!
 
 **Deliverable**: ✅ **END-TO-END SEGMENT GENERATION WORKING!** 🎉
 
-**Total Tests**: 70 tests across all phases, all passing ✅
+**Total Tests**: 70 tests across Phases 1-4, all passing ✅
 
 ---
 
@@ -272,13 +272,18 @@ segment_create_tagged
 - Type must be `Type` descriptor
 - Merging requires exact type match (kind + width)
 
-**Testing**: Implementation verified with simple typed segment test ✅
+**Testing**: 20 comprehensive tests covering:
+- Tag registry initialization and destruction
+- Single tagged segment creation with types
+- Automatic merging (same tag + same type + consecutive positions)
+- No merging when tags/types differ or positions non-consecutive
+- Error handling (bounds, negative values, type mismatches, stack underflow)
+- Integration with arithmetic and unspecified segments
+- Registry growth with 50+ different tags
 
-**Files**: `sddl2_vm.h` (interface), `sddl2_vm.c` (implementation)
+**Files**: `sddl2_vm.h` (interface), `sddl2_vm.c` (implementation), `sddl2_tagged_segments_test.c` (tests)
 
-**Deliverable**: ✅ Typed, tagged segments with automatic merging working! ✅
-
-**Note**: Comprehensive test suite (sddl2_tagged_segments_test.c) needs updating for type parameters.
+**Deliverable**: ✅ Typed, tagged segments with automatic merging working! All 20 tests passing! ✅
 
 ---
 
@@ -427,11 +432,9 @@ tests/compress/graphs/sddlv2/
 **Milestone**: **TAGGED SEGMENTS WITH AUTOMATIC MERGING WORKING!**
 
 ### 📋 Next Phases (Progressive Enhancement)
-- **Phase 5**: Tag Registry (explicit tags)
-- **Phase 6**: Typed Segments (add type info)
-- **Phase 7**: Array Segments (element validation)
-- **Phase 8**: AoS Segments (multi-field structs)
-- **Phase 9+**: Supporting ops as needed (comparisons, chunking, etc.)
+- **Phase 6**: Array Segments (element validation)
+- **Phase 7**: AoS Segments (multi-field structs)
+- **Phase 8+**: Supporting ops as needed (comparisons, chunking, etc.)
 
 ---
 
@@ -480,11 +483,18 @@ Unified `SDDL2_error` enum with domain-specific codes:
 - Implementation: `sddl2_vm.c` (~450 lines)
 - Tests: ~1,150 lines across 4 test files
 
-**Test Coverage**: 70 tests
+**Test Coverage**: 90 tests
 - Phase 1 (Foundation): 7 tests
 - Phase 2 (Arithmetic): 25 tests
 - Phase 3 (Input Buffer): 18 tests
 - Phase 4 (Segments): 20 tests
+- Phase 5 (Tagged Segments): 20 tests
+
+**Testing Infrastructure**:
+- Makefile in `tests/compress/graphs/sddlv2/` for easy test execution
+- Run all tests: `make test`
+- Run individual phases: `make test-phase1`, `make test-phase2`, etc.
+- No external dependencies (no `-lm` required)
 
 ---
 
