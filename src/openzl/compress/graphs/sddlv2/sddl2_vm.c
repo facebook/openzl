@@ -386,6 +386,13 @@ SDDL2_error SDDL2_op_load_u8(
  * ========================================================================= */
 
 /**
+ * Initial capacity for dynamic arrays when growing from zero.
+ * This is primarily a fail-safe since init functions now pre-allocate capacity.
+ * Set to 32 to reduce early reallocations if pre-allocation fails.
+ */
+#define SDDL2_DYNAMIC_ARRAY_INITIAL_CAPACITY 32
+
+/**
  * Unified realloc-like abstraction supporting both arena and heap allocation.
  *
  * @param old_ptr Existing allocation (NULL for initial allocation)
@@ -491,7 +498,9 @@ static int segment_list_ensure_capacity(SDDL2_segment_list* list)
             return 0; // Maximum capacity reached
         }
 
-        size_t new_capacity = (list->capacity == 0) ? 16 : (list->capacity * 2);
+        size_t new_capacity = (list->capacity == 0)
+                ? SDDL2_DYNAMIC_ARRAY_INITIAL_CAPACITY
+                : (list->capacity * 2);
 
         // Cap at maximum capacity
         if (new_capacity > SDDL2_SEGMENT_MAX_CAPACITY) {
@@ -631,8 +640,9 @@ static int tag_registry_register(SDDL2_tag_registry* registry, uint32_t tag)
             return 0; // Maximum capacity reached
         }
 
-        size_t new_capacity =
-                (registry->capacity == 0) ? 16 : (registry->capacity * 2);
+        size_t new_capacity = (registry->capacity == 0)
+                ? SDDL2_DYNAMIC_ARRAY_INITIAL_CAPACITY
+                : (registry->capacity * 2);
 
         // Cap at maximum capacity
         if (new_capacity > SDDL2_TAG_MAX_CAPACITY) {
