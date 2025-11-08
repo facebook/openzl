@@ -601,13 +601,15 @@ static void test_tagged_segment_stack_underflow(void)
     SDDL2_segment_list_init(&segments, NULL, NULL);
     SDDL2_tag_registry_init(&registry, NULL, NULL);
 
-    // Push only tag, no size
+    // Push only tag and type, no size (size should be I64)
     SDDL2_stack_push(stack, SDDL2_value_tag(100));
     SDDL2_stack_push(stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 }));
 
     SDDL2_error err = SDDL2_op_segment_create_tagged(
             stack, &buffer, &segments, &registry);
-    assert(err == SDDL2_STACK_UNDERFLOW);
+    // After refactoring: we type-check as we pop, so TYPE_MISMATCH
+    // is detected before STACK_UNDERFLOW (fail-fast behavior)
+    assert(err == SDDL2_TYPE_MISMATCH);
 
     // Cleanup
     SDDL2_segment_list_destroy(&segments);

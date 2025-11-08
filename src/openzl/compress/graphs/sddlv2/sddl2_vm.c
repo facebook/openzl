@@ -77,6 +77,96 @@ size_t SDDL2_type_size(SDDL2_type_kind kind)
 }
 
 /* ============================================================================
+ * Generic Stack Operation Helpers
+ * ========================================================================= */
+
+/**
+ * Pop a single I64 value from stack with type checking.
+ * Common pattern for unary operations and address calculations.
+ */
+static inline SDDL2_error pop_i64(SDDL2_stack* stack, int64_t* out)
+{
+    SDDL2_value val;
+    SDDL2_error err = SDDL2_stack_pop(stack, &val);
+    if (err != SDDL2_OK)
+        return err;
+
+    if (val.kind != SDDL2_VALUE_I64) {
+        return SDDL2_TYPE_MISMATCH;
+    }
+
+    *out = val.value.as_i64;
+    return SDDL2_OK;
+}
+
+/**
+ * Pop two I64 values from stack with type checking (b first, then a).
+ * Common pattern for binary arithmetic operations.
+ * Stack order: ... a b [top] → pops b, then a
+ */
+static inline SDDL2_error
+pop_binary_i64(SDDL2_stack* stack, int64_t* a_out, int64_t* b_out)
+{
+    int64_t b, a;
+    SDDL2_error err;
+
+    // Pop in reverse order: b (top), then a
+    if ((err = pop_i64(stack, &b)) != SDDL2_OK)
+        return err;
+    if ((err = pop_i64(stack, &a)) != SDDL2_OK)
+        return err;
+
+    *a_out = a;
+    *b_out = b;
+    return SDDL2_OK;
+}
+
+/**
+ * Pop a Tag value from stack with type checking.
+ */
+static inline SDDL2_error pop_tag(SDDL2_stack* stack, uint32_t* out)
+{
+    SDDL2_value val;
+    SDDL2_error err = SDDL2_stack_pop(stack, &val);
+    if (err != SDDL2_OK)
+        return err;
+
+    if (val.kind != SDDL2_VALUE_TAG) {
+        return SDDL2_TYPE_MISMATCH;
+    }
+
+    *out = val.value.as_tag;
+    return SDDL2_OK;
+}
+
+/**
+ * Pop a Type value from stack with type checking.
+ */
+static inline SDDL2_error pop_type(SDDL2_stack* stack, SDDL2_type* out)
+{
+    SDDL2_value val;
+    SDDL2_error err = SDDL2_stack_pop(stack, &val);
+    if (err != SDDL2_OK)
+        return err;
+
+    if (val.kind != SDDL2_VALUE_TYPE) {
+        return SDDL2_TYPE_MISMATCH;
+    }
+
+    *out = val.value.as_type;
+    return SDDL2_OK;
+}
+
+/**
+ * Push an I64 result to stack.
+ * Common pattern for operations that produce integer results.
+ */
+static inline SDDL2_error push_i64(SDDL2_stack* stack, int64_t value)
+{
+    return SDDL2_stack_push(stack, SDDL2_value_i64(value));
+}
+
+/* ============================================================================
  * Arithmetic Operations (Phase 2)
  * ========================================================================= */
 
@@ -140,185 +230,109 @@ static inline bool mul_would_overflow(int64_t a, int64_t b)
 
 SDDL2_error SDDL2_op_add(SDDL2_stack* stack)
 {
-    // Pop two operands
-    SDDL2_value b, a;
-    SDDL2_error err;
-
-    if ((err = SDDL2_stack_pop(stack, &b)) != SDDL2_OK)
-        return err;
-    if ((err = SDDL2_stack_pop(stack, &a)) != SDDL2_OK)
+    int64_t a, b;
+    SDDL2_error err = pop_binary_i64(stack, &a, &b);
+    if (err != SDDL2_OK)
         return err;
 
-    // Type check
-    if (a.kind != SDDL2_VALUE_I64 || b.kind != SDDL2_VALUE_I64) {
-        return SDDL2_TYPE_MISMATCH;
-    }
-
-    // Overflow check
-    if (add_would_overflow(a.value.as_i64, b.value.as_i64)) {
+    if (add_would_overflow(a, b)) {
         return SDDL2_STACK_OVERFLOW;
     }
 
-    // Perform addition and push result
-    int64_t result = a.value.as_i64 + b.value.as_i64;
-    return SDDL2_stack_push(stack, SDDL2_value_i64(result));
+    return push_i64(stack, a + b);
 }
 
 SDDL2_error SDDL2_op_sub(SDDL2_stack* stack)
 {
-    // Pop two operands
-    SDDL2_value b, a;
-    SDDL2_error err;
-
-    if ((err = SDDL2_stack_pop(stack, &b)) != SDDL2_OK)
-        return err;
-    if ((err = SDDL2_stack_pop(stack, &a)) != SDDL2_OK)
+    int64_t a, b;
+    SDDL2_error err = pop_binary_i64(stack, &a, &b);
+    if (err != SDDL2_OK)
         return err;
 
-    // Type check
-    if (a.kind != SDDL2_VALUE_I64 || b.kind != SDDL2_VALUE_I64) {
-        return SDDL2_TYPE_MISMATCH;
-    }
-
-    // Overflow check
-    if (sub_would_overflow(a.value.as_i64, b.value.as_i64)) {
+    if (sub_would_overflow(a, b)) {
         return SDDL2_STACK_OVERFLOW;
     }
 
-    // Perform subtraction and push result
-    int64_t result = a.value.as_i64 - b.value.as_i64;
-    return SDDL2_stack_push(stack, SDDL2_value_i64(result));
+    return push_i64(stack, a - b);
 }
 
 SDDL2_error SDDL2_op_mul(SDDL2_stack* stack)
 {
-    // Pop two operands
-    SDDL2_value b, a;
-    SDDL2_error err;
-
-    if ((err = SDDL2_stack_pop(stack, &b)) != SDDL2_OK)
-        return err;
-    if ((err = SDDL2_stack_pop(stack, &a)) != SDDL2_OK)
+    int64_t a, b;
+    SDDL2_error err = pop_binary_i64(stack, &a, &b);
+    if (err != SDDL2_OK)
         return err;
 
-    // Type check
-    if (a.kind != SDDL2_VALUE_I64 || b.kind != SDDL2_VALUE_I64) {
-        return SDDL2_TYPE_MISMATCH;
-    }
-
-    // Overflow check
-    if (mul_would_overflow(a.value.as_i64, b.value.as_i64)) {
+    if (mul_would_overflow(a, b)) {
         return SDDL2_STACK_OVERFLOW;
     }
 
-    // Perform multiplication and push result
-    int64_t result = a.value.as_i64 * b.value.as_i64;
-    return SDDL2_stack_push(stack, SDDL2_value_i64(result));
+    return push_i64(stack, a * b);
 }
 
 SDDL2_error SDDL2_op_div(SDDL2_stack* stack)
 {
-    // Pop two operands
-    SDDL2_value b, a;
-    SDDL2_error err;
-
-    if ((err = SDDL2_stack_pop(stack, &b)) != SDDL2_OK)
+    int64_t a, b;
+    SDDL2_error err = pop_binary_i64(stack, &a, &b);
+    if (err != SDDL2_OK)
         return err;
-    if ((err = SDDL2_stack_pop(stack, &a)) != SDDL2_OK)
-        return err;
-
-    // Type check
-    if (a.kind != SDDL2_VALUE_I64 || b.kind != SDDL2_VALUE_I64) {
-        return SDDL2_TYPE_MISMATCH;
-    }
 
     // Divide by zero check
-    if (b.value.as_i64 == 0) {
+    if (b == 0) {
         return SDDL2_DIV_ZERO;
     }
 
     // Overflow check: INT64_MIN / -1 = overflow
-    if (a.value.as_i64 == INT64_MIN && b.value.as_i64 == -1) {
+    if (a == INT64_MIN && b == -1) {
         return SDDL2_STACK_OVERFLOW;
     }
 
-    // Perform division and push result
-    int64_t result = a.value.as_i64 / b.value.as_i64;
-    return SDDL2_stack_push(stack, SDDL2_value_i64(result));
+    return push_i64(stack, a / b);
 }
 
 SDDL2_error SDDL2_op_mod(SDDL2_stack* stack)
 {
-    // Pop two operands
-    SDDL2_value b, a;
-    SDDL2_error err;
-
-    if ((err = SDDL2_stack_pop(stack, &b)) != SDDL2_OK)
+    int64_t a, b;
+    SDDL2_error err = pop_binary_i64(stack, &a, &b);
+    if (err != SDDL2_OK)
         return err;
-    if ((err = SDDL2_stack_pop(stack, &a)) != SDDL2_OK)
-        return err;
-
-    // Type check
-    if (a.kind != SDDL2_VALUE_I64 || b.kind != SDDL2_VALUE_I64) {
-        return SDDL2_TYPE_MISMATCH;
-    }
 
     // Divide by zero check
-    if (b.value.as_i64 == 0) {
+    if (b == 0) {
         return SDDL2_DIV_ZERO;
     }
 
-    // Perform modulo and push result
-    int64_t result = a.value.as_i64 % b.value.as_i64;
-    return SDDL2_stack_push(stack, SDDL2_value_i64(result));
+    return push_i64(stack, a % b);
 }
 
 SDDL2_error SDDL2_op_abs(SDDL2_stack* stack)
 {
-    // Pop operand
-    SDDL2_value a;
-    SDDL2_error err;
-
-    if ((err = SDDL2_stack_pop(stack, &a)) != SDDL2_OK)
+    int64_t a;
+    SDDL2_error err = pop_i64(stack, &a);
+    if (err != SDDL2_OK)
         return err;
 
-    // Type check
-    if (a.kind != SDDL2_VALUE_I64) {
-        return SDDL2_TYPE_MISMATCH;
-    }
-
     // Check for INT64_MIN (abs(INT64_MIN) overflows)
-    if (a.value.as_i64 == INT64_MIN) {
+    if (a == INT64_MIN) {
         return SDDL2_STACK_OVERFLOW;
     }
 
-    // Perform absolute value and push result
-    int64_t result = (a.value.as_i64 < 0) ? -a.value.as_i64 : a.value.as_i64;
-    return SDDL2_stack_push(stack, SDDL2_value_i64(result));
+    return push_i64(stack, (a < 0) ? -a : a);
 }
 
 SDDL2_error SDDL2_op_neg(SDDL2_stack* stack)
 {
-    // Pop operand
-    SDDL2_value a;
-    SDDL2_error err;
-
-    if ((err = SDDL2_stack_pop(stack, &a)) != SDDL2_OK)
+    int64_t a;
+    SDDL2_error err = pop_i64(stack, &a);
+    if (err != SDDL2_OK)
         return err;
 
-    // Type check
-    if (a.kind != SDDL2_VALUE_I64) {
-        return SDDL2_TYPE_MISMATCH;
-    }
-
     // Check for INT64_MIN (negation overflows)
-    if (a.value.as_i64 == INT64_MIN) {
+    if (a == INT64_MIN) {
         return SDDL2_STACK_OVERFLOW;
     }
 
-    // Perform negation and push result
-    int64_t result = -a.value.as_i64;
-    return SDDL2_stack_push(stack, SDDL2_value_i64(result));
+    return push_i64(stack, -a);
 }
 
 /* ============================================================================
@@ -348,19 +362,10 @@ SDDL2_error SDDL2_op_load_u8(
         SDDL2_stack* stack,
         const SDDL2_input_buffer* buffer)
 {
-    // Pop address from stack
-    SDDL2_value addr_val;
-    SDDL2_error err;
-
-    if ((err = SDDL2_stack_pop(stack, &addr_val)) != SDDL2_OK)
+    int64_t addr;
+    SDDL2_error err = pop_i64(stack, &addr);
+    if (err != SDDL2_OK)
         return err;
-
-    // Type check
-    if (addr_val.kind != SDDL2_VALUE_I64) {
-        return SDDL2_TYPE_MISMATCH;
-    }
-
-    int64_t addr = addr_val.value.as_i64;
 
     // Bounds check: 0 <= addr < size
     if (addr < 0 || (size_t)addr >= buffer->size) {
@@ -369,8 +374,7 @@ SDDL2_error SDDL2_op_load_u8(
 
     // Load byte and push as I64 (zero-extended)
     const uint8_t* bytes = (const uint8_t*)buffer->data;
-    uint8_t byte_val     = bytes[addr];
-    return SDDL2_stack_push(stack, SDDL2_value_i64((int64_t)byte_val));
+    return push_i64(stack, (int64_t)bytes[addr]);
 }
 
 /* ============================================================================
@@ -665,27 +669,18 @@ SDDL2_error SDDL2_op_segment_create_tagged(
         SDDL2_tag_registry* registry)
 {
     // Pop size, type, and tag from stack (size on top, type middle, tag bottom)
-    // Logical order: tag, type, size (pushed in this order)
-    // Pop order: size, type, tag (reverse of push order)
-    SDDL2_value size_val, type_val, tag_val;
+    int64_t size_i64;
+    SDDL2_type type;
+    uint32_t tag;
     SDDL2_error err;
 
-    if ((err = SDDL2_stack_pop(stack, &size_val)) != SDDL2_OK)
+    // Pop in reverse order: size (top), type, tag (bottom)
+    if ((err = pop_i64(stack, &size_i64)) != SDDL2_OK)
         return err;
-    if ((err = SDDL2_stack_pop(stack, &type_val)) != SDDL2_OK)
+    if ((err = pop_type(stack, &type)) != SDDL2_OK)
         return err;
-    if ((err = SDDL2_stack_pop(stack, &tag_val)) != SDDL2_OK)
+    if ((err = pop_tag(stack, &tag)) != SDDL2_OK)
         return err;
-
-    // Type check: tag must be Tag, type must be Type, size must be I64
-    if (tag_val.kind != SDDL2_VALUE_TAG || type_val.kind != SDDL2_VALUE_TYPE
-        || size_val.kind != SDDL2_VALUE_I64) {
-        return SDDL2_TYPE_MISMATCH;
-    }
-
-    uint32_t tag     = tag_val.value.as_tag;
-    SDDL2_type type  = type_val.value.as_type;
-    int64_t size_i64 = size_val.value.as_i64;
 
     // Validate size (must be non-negative)
     if (size_i64 < 0) {
