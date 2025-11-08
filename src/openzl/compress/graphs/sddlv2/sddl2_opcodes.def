@@ -5,9 +5,18 @@
 # - Python assembler (via generated opcodes_generated.py)
 # - C++ compiler (via generated sddl2_opcodes.h)
 #
-# Format:
+# Instruction Format (32-bit word, little-endian):
+#   - Bits 31-16 (high): Family ID (16 bits)
+#   - Bits 15-0  (low):  Opcode within family (16 bits)
+#   - Encoding: instruction = (family_id << 16) | opcode_id
+#
+# Definition Format:
 #   @family NAME ID "Description"
-#     mnemonic  opcode  [params]  "Description"
+#     full.mnemonic  opcode  [params]  "Description"
+#
+# Note: Mnemonics should include the full name as used in assembly code.
+#       Most use family.opcode format (e.g., "push.zero"), but some
+#       exceptions exist (e.g., "halt" instead of "control.halt").
 #
 # Parameter types: u32, i32, i64
 #
@@ -18,27 +27,27 @@
 # ============================================================================
 
 @family PUSH 0x0001 "Push constants and values onto stack"
-  zero      0x0001          "Push constant value 0 onto stack"
-  u32       0x0002  u32     "Push unsigned 32-bit immediate value onto stack"
-  i32       0x0003  i32     "Push signed 32-bit immediate value onto stack"
-  i64       0x0004  i64     "Push signed 64-bit immediate value onto stack"
+  push.zero 0x0001          "Push constant value 0 onto stack"
+  push.u32  0x0002  u32     "Push unsigned 32-bit immediate value onto stack"
+  push.i32  0x0003  i32     "Push signed 32-bit immediate value onto stack"
+  push.i64  0x0004  i64     "Push signed 64-bit immediate value onto stack"
 
 @family MATH 0x0002 "Arithmetic operations on I64 values"
-  add       0x0001          "Pop two I64 values, push their sum"
-  sub       0x0002          "Pop two I64 values, push their difference (second - first)"
-  mul       0x0003          "Pop two I64 values, push their product"
-  div       0x0004          "Pop two I64 values, push their quotient (second / first)"
-  mod       0x0005          "Pop two I64 values, push their remainder (second % first)"
-  abs       0x0006          "Pop I64 value, push its absolute value"
-  neg       0x0007          "Pop I64 value, push its negation"
+  math.add  0x0001          "Pop two I64 values, push their sum"
+  math.sub  0x0002          "Pop two I64 values, push their difference (second - first)"
+  math.mul  0x0003          "Pop two I64 values, push their product"
+  math.div  0x0004          "Pop two I64 values, push their quotient (second / first)"
+  math.mod  0x0005          "Pop two I64 values, push their remainder (second % first)"
+  math.abs  0x0006          "Pop I64 value, push its absolute value"
+  math.neg  0x0007          "Pop I64 value, push its negation"
 
 @family CMP 0x0003 "Comparison operations on signed I64 values"
-  eq        0x0001          "Pop two I64 values, push 1 if equal, 0 otherwise"
-  ne        0x0002          "Pop two I64 values, push 1 if not equal, 0 otherwise"
-  lt        0x0003          "Pop two I64 values, push 1 if second < first, 0 otherwise"
-  le        0x0004          "Pop two I64 values, push 1 if second <= first, 0 otherwise"
-  gt        0x0005          "Pop two I64 values, push 1 if second > first, 0 otherwise"
-  ge        0x0006          "Pop two I64 values, push 1 if second >= first, 0 otherwise"
+  cmp.eq    0x0001          "Pop two I64 values, push 1 if equal, 0 otherwise"
+  cmp.ne    0x0002          "Pop two I64 values, push 1 if not equal, 0 otherwise"
+  cmp.lt    0x0003          "Pop two I64 values, push 1 if second < first, 0 otherwise"
+  cmp.le    0x0004          "Pop two I64 values, push 1 if second <= first, 0 otherwise"
+  cmp.gt    0x0005          "Pop two I64 values, push 1 if second > first, 0 otherwise"
+  cmp.ge    0x0006          "Pop two I64 values, push 1 if second >= first, 0 otherwise"
 
 @family LOGIC 0x0004 "Logical operations"
 
@@ -48,11 +57,11 @@
 @family LOAD 0x0006 "Load operations"
 
 @family STACK 0x0007 "Stack manipulation operations"
-  dup       0x0001          "Duplicate top stack value"
-  drop      0x0002          "Remove top stack value"
-  swap      0x0003          "Swap top two stack values"
-  over      0x0004          "Copy second stack value to top"
-  rot       0x0005          "Rotate top three stack values"
+  stack.dup  0x0001         "Duplicate top stack value"
+  stack.drop 0x0002         "Remove top stack value"
+  stack.swap 0x0003         "Swap top two stack values"
+  stack.over 0x0004         "Copy second stack value to top"
+  stack.rot  0x0005         "Rotate top three stack values"
 
 @family TYPE 0x0008 "Type operations"
 
@@ -63,4 +72,4 @@
 @family CALL 0x000B "Function call operations"
 
 @family SEGMENT 0x000C "Segment creation operations"
-  create_unspecified  0x0001  "Create an unspecified segment type"
+  segment.create_unspecified  0x0001  "Create an unspecified segment type"

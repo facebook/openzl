@@ -159,9 +159,12 @@ def assemble_instruction(mnemonic: str, params: List[str]) -> bytes:
                 f"Instruction '{mnemonic}' requires {len(param_types)} parameter(s), got {len(params)}"
             )
 
-    # Encode instruction word (family + opcode)
+    # Encode instruction word
+    # Bits 31-16: Family ID
+    # Bits 15-0:  Opcode within family
+    # Pack as: (family_id << 16) | opcode
     bytecode = bytearray()
-    bytecode.extend(struct.pack("<HH", family_id, opcode))
+    bytecode.extend(struct.pack("<HH", opcode, family_id))
 
     # Encode parameters (if any)
     for param_str, param_type in zip(params, param_types):

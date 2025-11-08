@@ -66,10 +66,9 @@ def parse_def_file(def_file_path: Path) -> Tuple[Dict[str, tuple], List[tuple]]:
         # Parse indented opcode lines
         elif line.startswith('  ') and current_family:
             # Format: mnemonic  opcode  [params]  "Description"
-            # Use regex to handle variable whitespace and optional params
-            # Match: word, hex, optional params (words between hex and quote), quoted string
+            # Mnemonic is used exactly as written (e.g., "halt", "push.zero")
             match = re.match(
-                r'\s+(\w+)\s+(0x[0-9A-Fa-f]+)(?:\s+([^"]+))?\s+"([^"]*)"',
+                r'\s+([\w.]+)\s+(0x[0-9A-Fa-f]+)(?:\s+([^"]+))?\s+"([^"]*)"',
                 line
             )
             if match:
@@ -81,14 +80,10 @@ def parse_def_file(def_file_path: Path) -> Tuple[Dict[str, tuple], List[tuple]]:
                 # Parse parameters if present
                 params = []
                 if params_str:
-                    # Split by whitespace and filter out empty strings
                     params = [p.strip() for p in params_str.split() if p.strip()]
                 
-                # Build full mnemonic with family prefix (e.g., "push.zero")
-                full_mnemonic = f"{current_family.lower()}.{mnemonic}"
-                
                 opcodes.append((
-                    full_mnemonic,
+                    mnemonic,
                     current_family,
                     int(opcode, 16),
                     params,

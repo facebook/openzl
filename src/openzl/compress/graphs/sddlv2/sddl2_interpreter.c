@@ -51,10 +51,11 @@ SDDL2_error SDDL2_execute_bytecode(
         uint32_t instruction = ZL_readLE32(&bytecode[pc]);
         pc += 4;
 
-        // Decode
-        // Note: I thought it was the reverse high/low ??
-        uint16_t family = instruction & 0xFFFF;
-        uint16_t opcode = (instruction >> 16) & 0xFFFF;
+        // Decode instruction word
+        // Bits 31-16: Family ID
+        // Bits 15-0:  Opcode within family
+        uint16_t family = (instruction >> 16) & 0xFFFF;
+        uint16_t opcode = instruction & 0xFFFF;
 
         // Dispatch
         SDDL2_error err = SDDL2_OK;

@@ -19,10 +19,10 @@
  *   halt
  *
  * Bytecode (little-endian):
- *   01 00 03 00   # push.i32 (family=0x0001, opcode=0x0003)
+ *   03 00 01 00   # push.i32 (opcode=0x0003, family=0x0001)
  *   05 00 00 00   # value = 5
- *   0C 00 01 00   # segment.create_unspecified (family=0x000C, opcode=0x0001)
- *   05 00 01 00   # halt (family=0x0005, opcode=0x0001)
+ *   01 00 0C 00   # segment.create_unspecified (opcode=0x0001, family=0x000C)
+ *   01 00 05 00   # halt (opcode=0x0001, family=0x0005)
  */
 static void test_simple_segment_creation(void)
 {
@@ -31,10 +31,10 @@ static void test_simple_segment_creation(void)
 
     // Bytecode: push.i32 5, segment.create_unspecified, halt
     uint8_t bytecode[] = {
-        0x01, 0x00, 0x03, 0x00, // push.i32
+        0x03, 0x00, 0x01, 0x00, // push.i32
         0x05, 0x00, 0x00, 0x00, // value = 5
-        0x0C, 0x00, 0x01, 0x00, // segment.create_unspecified
-        0x05, 0x00, 0x01, 0x00  // halt
+        0x01, 0x00, 0x0C, 0x00, // segment.create_unspecified
+        0x01, 0x00, 0x05, 0x00  // halt
     };
 
     // Execute
@@ -71,8 +71,8 @@ static void test_zero_size_segment(void)
     // Bytecode: push.zero, segment.create_unspecified, halt
     uint8_t bytecode[] = {
         0x01, 0x00, 0x01, 0x00, // push.zero
-        0x0C, 0x00, 0x01, 0x00, // segment.create_unspecified
-        0x05, 0x00, 0x01, 0x00  // halt
+        0x01, 0x00, 0x0C, 0x00, // segment.create_unspecified
+        0x01, 0x00, 0x05, 0x00  // halt
     };
 
     SDDL2_segment_list segments;
@@ -102,15 +102,15 @@ static void test_multiple_segments(void)
     //   push.i32 5, segment.create_unspecified,  # "World"
     //   halt
     uint8_t bytecode[] = {
-        0x01, 0x00, 0x03, 0x00, // push.i32
+        0x03, 0x00, 0x01, 0x00, // push.i32
         0x05, 0x00, 0x00, 0x00, // 5
-        0x0C, 0x00, 0x01, 0x00, // segment.create_unspecified
+        0x01, 0x00, 0x0C, 0x00, // segment.create_unspecified
 
-        0x01, 0x00, 0x03, 0x00, // push.i32
+        0x03, 0x00, 0x01, 0x00, // push.i32
         0x05, 0x00, 0x00, 0x00, // 5
-        0x0C, 0x00, 0x01, 0x00, // segment.create_unspecified
+        0x01, 0x00, 0x0C, 0x00, // segment.create_unspecified
 
-        0x05, 0x00, 0x01, 0x00 // halt
+        0x01, 0x00, 0x05, 0x00 // halt
     };
 
     SDDL2_segment_list segments;
@@ -161,9 +161,9 @@ static void test_missing_halt(void)
 
     // Bytecode: push.i32 5, segment.create_unspecified (no halt!)
     uint8_t bytecode[] = {
-        0x01, 0x00, 0x03, 0x00, // push.i32
+        0x03, 0x00, 0x01, 0x00, // push.i32
         0x05, 0x00, 0x00, 0x00, // 5
-        0x0C, 0x00, 0x01, 0x00  // segment.create_unspecified
+        0x01, 0x00, 0x0C, 0x00  // segment.create_unspecified
     };
 
     SDDL2_segment_list segments;
