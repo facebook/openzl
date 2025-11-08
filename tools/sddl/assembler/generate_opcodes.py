@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Generate Python opcode definitions from openzl_opcodes.def
+Generate Python and C opcode definitions from sddl2_opcodes.def
 
-This script parses the C11 X-macro definition file and generates
-opcodes_generated.py for use by the assembler.
+This script parses the structured opcode definition file and generates:
+- sddl2_opcodes.h (C11 header)
+- opcodes_generated.py (Python assembler)
 
 Usage:
     python3 generate_opcodes.py
@@ -12,61 +13,98 @@ Usage:
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 
-def parse_def_file(def_file_path: Path) -> Tuple[Dict[str, int], List[tuple]]:
+def parse_def_file(def_file_path: Path) -> Tuple[Dict[str, tuple], List[tuple]]:
     """
     Parse the .def file and extract family and opcode definitions.
+    
+    Format:
+        @family NAME ID "Description"
+          mnemonic  opcode  [params]  "Description"
 
     Returns:
         (families_dict, opcodes_list)
-        families_dict: {name: id}
-        opcodes_list: [(mnemonic, family, opcode, [param_types])]
+        families_dict: {name: (id, description)}
+        opcodes_list: [(mnemonic, family, opcode, [param_types], description)]
     """
     families = {}
     opcodes = []
 
     content = def_file_path.read_text()
-
-    # Parse FAMILY_DEF(name, id)
-    family_pattern = r"FAMILY_DEF\s*\(\s*(\w+)\s*,\s*(0x[0-9A-Fa-f]+)\s*\)"
-    for match in re.finditer(family_pattern, content):
-        name = match.group(1)
-        id_hex = match.group(2)
-        families[name] = int(id_hex, 16)
-
-    # Parse OPCODE_DEF(mnemonic, family, opcode [, params...])
-    # Handle variadic parameters - everything after first 3 args
-    opcode_pattern = (
-        r"OPCODE_DEF\s*\(\s*([^,\)]+)\s*,\s*(\w+)\s*,\s*(0x[0-9A-Fa-f]+)\s*([^\)]*)\)"
-    )
-
-    for match in re.finditer(opcode_pattern, content):
-        mnemonic_raw = match.group(1).strip()
-        family = match.group(2).strip()
-        opcode_hex = match.group(3).strip()
-        params_raw = match.group(4).strip()
-
-        # Clean mnemonic (remove quotes if present)
-        mnemonic = mnemonic_raw.strip('"').strip("'")
-
-        # Parse parameters (variadic part)
-        param_types = []
-        if params_raw:
-            # Split by comma and clean each param
-            params = [p.strip() for p in params_raw.split(",") if p.strip()]
-            param_types = params
-
-        opcode_value = int(opcode_hex, 16)
-        opcodes.append((mnemonic, family, opcode_value, param_types))
+    lines = content.split('\n')
+    
+    current_family = None
+    
+    for line in lines:
+        stripped = line.strip()
+        
+        # Skip comments and empty lines
+        if not stripped or stripped.startswith('#'):
+            continue
+        
+        # Parse @family directive: @family NAME ID "Description"
+        if stripped.startswith('@family'):
+            # Extract family name, ID, and description (in quotes)
+            match = re.match(r'@family\s+(\w+)\s+(0x[0-9A-Fa-f]+)\s+"([^"]*)"', stripped)
+            if match:
+                family_name = match.group(1)
+                family_id = match.group(2)
+                description = match.group(3)
+                families[family_name] = (int(family_id, 16), description)
+                current_family = family_name
+            else:
+                # Family without description
+                match = re.match(r'@family\s+(\w+)\s+(0x[0-9A-Fa-f]+)', stripped)
+                if match:
+                    family_name = match.group(1)
+                    family_id = match.group(2)
+                    families[family_name] = (int(family_id, 16), "")
+                    current_family = family_name
+        
+        # Parse indented opcode lines
+        elif line.startswith('  ') and current_family:
+            # Format: mnemonic  opcode  [params]  "Description"
+            # Use regex to handle variable whitespace and optional params
+            # Match: word, hex, optional params (words between hex and quote), quoted string
+            match = re.match(
+                r'\s+(\w+)\s+(0x[0-9A-Fa-f]+)(?:\s+([^"]+))?\s+"([^"]*)"',
+                line
+            )
+            if match:
+                mnemonic = match.group(1)
+                opcode = match.group(2)
+                params_str = match.group(3)
+                description = match.group(4)
+                
+                # Parse parameters if present
+                params = []
+                if params_str:
+                    # Split by whitespace and filter out empty strings
+                    params = [p.strip() for p in params_str.split() if p.strip()]
+                
+                # Build full mnemonic with family prefix (e.g., "push.zero")
+                full_mnemonic = f"{current_family.lower()}.{mnemonic}"
+                
+                opcodes.append((
+                    full_mnemonic,
+                    current_family,
+                    int(opcode, 16),
+                    params,
+                    description
+                ))
 
     return families, opcodes
 
 
-def generate_c_header(families: Dict[str, int], opcodes: List[tuple]) -> str:
+def generate_c_header(families: Dict[str, tuple], opcodes: List[tuple]) -> str:
     """
     Generate C11 header code for sddl2_opcodes.h
+    
+    Args:
+        families: {name: (id, description)}
+        opcodes: [(mnemonic, family, opcode, [param_types], description)]
     """
     lines = []
 
@@ -108,9 +146,8 @@ def generate_c_header(families: Dict[str, int], opcodes: List[tuple]) -> str:
     
     for family_name in family_order:
         if family_name in families:
-            id_val = families[family_name]
-            comment = get_family_comment(family_name)
-            lines.append(f"    SDDL2_FAMILY_{family_name:8s} = 0x{id_val:04X},  {comment}")
+            id_val, description = families[family_name]
+            lines.append(f"    SDDL2_FAMILY_{family_name:8s} = 0x{id_val:04X},  /* {description} */")
     
     lines.append("};")
     lines.append("")
@@ -123,21 +160,20 @@ def generate_c_header(families: Dict[str, int], opcodes: List[tuple]) -> str:
 
     # Group by family
     by_family = {}
-    for mnemonic, family, opcode, params in opcodes:
+    for mnemonic, family, opcode, params, description in opcodes:
         if family not in by_family:
             by_family[family] = []
-        by_family[family].append((mnemonic, opcode, params))
+        by_family[family].append((mnemonic, opcode, params, description))
 
     for family_name in family_order:
         if family_name not in by_family:
             continue
         
-        id_val = families[family_name]
-        comment = get_family_comment(family_name)
-        lines.append(f"/* {family_name} family (0x{id_val:04X}) - {comment.strip('/* ')} */")
+        id_val, description = families[family_name]
+        lines.append(f"/* {family_name} family (0x{id_val:04X}) - {description} */")
         lines.append(f"enum sddl2_opcode_{family_name.lower()} {{")
         
-        for mnemonic, opcode, params in sorted(by_family[family_name], key=lambda x: x[1]):
+        for mnemonic, opcode, params, desc in sorted(by_family[family_name], key=lambda x: x[1]):
             # Convert mnemonic to C identifier (replace dots with underscores)
             # Strip family prefix if present (e.g., "push.zero" -> "zero")
             mnemonic_lower = mnemonic.lower()
@@ -164,28 +200,13 @@ def generate_c_header(families: Dict[str, int], opcodes: List[tuple]) -> str:
     return "\n".join(lines)
 
 
-def get_family_comment(family_name: str) -> str:
-    """Get descriptive comment for a family"""
-    comments = {
-        "PUSH": "/* Push constants and values onto stack */",
-        "MATH": "/* Arithmetic operations on I64 values */",
-        "CMP": "/* Comparison operations on signed I64 values */",
-        "LOGIC": "/* Logical operations */",
-        "CONTROL": "/* Control flow operations */",
-        "LOAD": "/* Load operations */",
-        "STACK": "/* Stack manipulation operations */",
-        "TYPE": "/* Type operations */",
-        "VAR": "/* Variable operations */",
-        "EXPECT": "/* Expect/validation operations */",
-        "CALL": "/* Function call operations */",
-        "SEGMENT": "/* Segment creation operations */",
-    }
-    return comments.get(family_name, "")
-
-
-def generate_python_code(families: Dict[str, int], opcodes: List[tuple]) -> str:
+def generate_python_code(families: Dict[str, tuple], opcodes: List[tuple]) -> str:
     """
     Generate Python code for opcodes_generated.py
+    
+    Args:
+        families: {name: (id, description)}
+        opcodes: [(mnemonic, family, opcode, [param_types], description)]
     """
     lines = []
 
@@ -204,7 +225,7 @@ def generate_python_code(families: Dict[str, int], opcodes: List[tuple]) -> str:
     # Family definitions
     lines.append("# Family identifiers")
     lines.append("FAMILIES = {")
-    for name, id_val in sorted(families.items(), key=lambda x: x[1]):
+    for name, (id_val, description) in sorted(families.items(), key=lambda x: x[1][0]):
         lines.append(f'    "{name}": 0x{id_val:04X},')
     lines.append("}")
     lines.append("")
@@ -216,10 +237,10 @@ def generate_python_code(families: Dict[str, int], opcodes: List[tuple]) -> str:
 
     # Group by family for readability
     by_family = {}
-    for mnemonic, family, opcode, params in opcodes:
+    for mnemonic, family, opcode, params, description in opcodes:
         if family not in by_family:
             by_family[family] = []
-        by_family[family].append((mnemonic, opcode, params))
+        by_family[family].append((mnemonic, opcode, params, description))
 
     # Output in family order
     family_order = [
@@ -241,9 +262,10 @@ def generate_python_code(families: Dict[str, int], opcodes: List[tuple]) -> str:
         if family_name not in by_family:
             continue
 
-        lines.append(f"    # {family_name} family (0x{families[family_name]:04X})")
+        id_val, description = families[family_name]
+        lines.append(f"    # {family_name} family (0x{id_val:04X})")
 
-        for mnemonic, opcode, params in sorted(
+        for mnemonic, opcode, params, desc in sorted(
             by_family[family_name], key=lambda x: x[1]
         ):
             # Convert params to Python list

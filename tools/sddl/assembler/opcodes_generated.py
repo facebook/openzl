@@ -2,7 +2,7 @@
 AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 
 Generated from: src/openzl/compress/graphs/sddlv2/sddl2_opcodes.def
-Generated at: 2025-11-08 05:45:49 UTC
+Generated at: 2025-11-08 06:34:02 UTC
 Generator: generate_opcodes.py
 
 To regenerate: python3 generate_opcodes.py
@@ -28,7 +28,7 @@ FAMILIES = {
 # Format: "mnemonic": (family_name, opcode, [param_types])
 INSTRUCTIONS = {
     # CONTROL family (0x0005)
-    "halt": ("CONTROL", 0x0001, []),
+    "control.halt": ("CONTROL", 0x0001, []),
 
     # PUSH family (0x0001)
     "push.zero": ("PUSH", 0x0001, []),
