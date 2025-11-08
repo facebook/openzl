@@ -81,15 +81,24 @@ size_t SDDL2_type_size(SDDL2_type_kind kind)
  * ========================================================================= */
 
 /**
+ * Error handling macro: Try an operation, return on failure.
+ * Usage: TRY(pop_i64(stack, &value));
+ */
+#define TRY(operation)                  \
+    do {                                \
+        SDDL2_error _err = (operation); \
+        if (_err != SDDL2_OK)           \
+            return _err;                \
+    } while (0)
+
+/**
  * Pop a single I64 value from stack with type checking.
  * Common pattern for unary operations and address calculations.
  */
 static inline SDDL2_error pop_i64(SDDL2_stack* stack, int64_t* out)
 {
     SDDL2_value val;
-    SDDL2_error err = SDDL2_stack_pop(stack, &val);
-    if (err != SDDL2_OK)
-        return err;
+    TRY(SDDL2_stack_pop(stack, &val));
 
     if (val.kind != SDDL2_VALUE_I64) {
         return SDDL2_TYPE_MISMATCH;
@@ -108,13 +117,10 @@ static inline SDDL2_error
 pop_binary_i64(SDDL2_stack* stack, int64_t* a_out, int64_t* b_out)
 {
     int64_t b, a;
-    SDDL2_error err;
 
     // Pop in reverse order: b (top), then a
-    if ((err = pop_i64(stack, &b)) != SDDL2_OK)
-        return err;
-    if ((err = pop_i64(stack, &a)) != SDDL2_OK)
-        return err;
+    TRY(pop_i64(stack, &b));
+    TRY(pop_i64(stack, &a));
 
     *a_out = a;
     *b_out = b;
@@ -127,9 +133,7 @@ pop_binary_i64(SDDL2_stack* stack, int64_t* a_out, int64_t* b_out)
 static inline SDDL2_error pop_tag(SDDL2_stack* stack, uint32_t* out)
 {
     SDDL2_value val;
-    SDDL2_error err = SDDL2_stack_pop(stack, &val);
-    if (err != SDDL2_OK)
-        return err;
+    TRY(SDDL2_stack_pop(stack, &val));
 
     if (val.kind != SDDL2_VALUE_TAG) {
         return SDDL2_TYPE_MISMATCH;
@@ -145,9 +149,7 @@ static inline SDDL2_error pop_tag(SDDL2_stack* stack, uint32_t* out)
 static inline SDDL2_error pop_type(SDDL2_stack* stack, SDDL2_type* out)
 {
     SDDL2_value val;
-    SDDL2_error err = SDDL2_stack_pop(stack, &val);
-    if (err != SDDL2_OK)
-        return err;
+    TRY(SDDL2_stack_pop(stack, &val));
 
     if (val.kind != SDDL2_VALUE_TYPE) {
         return SDDL2_TYPE_MISMATCH;
@@ -231,9 +233,7 @@ static inline bool mul_would_overflow(int64_t a, int64_t b)
 SDDL2_error SDDL2_op_add(SDDL2_stack* stack)
 {
     int64_t a, b;
-    SDDL2_error err = pop_binary_i64(stack, &a, &b);
-    if (err != SDDL2_OK)
-        return err;
+    TRY(pop_binary_i64(stack, &a, &b));
 
     if (add_would_overflow(a, b)) {
         return SDDL2_STACK_OVERFLOW;
@@ -245,9 +245,7 @@ SDDL2_error SDDL2_op_add(SDDL2_stack* stack)
 SDDL2_error SDDL2_op_sub(SDDL2_stack* stack)
 {
     int64_t a, b;
-    SDDL2_error err = pop_binary_i64(stack, &a, &b);
-    if (err != SDDL2_OK)
-        return err;
+    TRY(pop_binary_i64(stack, &a, &b));
 
     if (sub_would_overflow(a, b)) {
         return SDDL2_STACK_OVERFLOW;
@@ -259,9 +257,7 @@ SDDL2_error SDDL2_op_sub(SDDL2_stack* stack)
 SDDL2_error SDDL2_op_mul(SDDL2_stack* stack)
 {
     int64_t a, b;
-    SDDL2_error err = pop_binary_i64(stack, &a, &b);
-    if (err != SDDL2_OK)
-        return err;
+    TRY(pop_binary_i64(stack, &a, &b));
 
     if (mul_would_overflow(a, b)) {
         return SDDL2_STACK_OVERFLOW;
@@ -273,9 +269,7 @@ SDDL2_error SDDL2_op_mul(SDDL2_stack* stack)
 SDDL2_error SDDL2_op_div(SDDL2_stack* stack)
 {
     int64_t a, b;
-    SDDL2_error err = pop_binary_i64(stack, &a, &b);
-    if (err != SDDL2_OK)
-        return err;
+    TRY(pop_binary_i64(stack, &a, &b));
 
     // Divide by zero check
     if (b == 0) {
@@ -293,9 +287,7 @@ SDDL2_error SDDL2_op_div(SDDL2_stack* stack)
 SDDL2_error SDDL2_op_mod(SDDL2_stack* stack)
 {
     int64_t a, b;
-    SDDL2_error err = pop_binary_i64(stack, &a, &b);
-    if (err != SDDL2_OK)
-        return err;
+    TRY(pop_binary_i64(stack, &a, &b));
 
     // Divide by zero check
     if (b == 0) {
@@ -308,9 +300,7 @@ SDDL2_error SDDL2_op_mod(SDDL2_stack* stack)
 SDDL2_error SDDL2_op_abs(SDDL2_stack* stack)
 {
     int64_t a;
-    SDDL2_error err = pop_i64(stack, &a);
-    if (err != SDDL2_OK)
-        return err;
+    TRY(pop_i64(stack, &a));
 
     // Check for INT64_MIN (abs(INT64_MIN) overflows)
     if (a == INT64_MIN) {
@@ -323,9 +313,7 @@ SDDL2_error SDDL2_op_abs(SDDL2_stack* stack)
 SDDL2_error SDDL2_op_neg(SDDL2_stack* stack)
 {
     int64_t a;
-    SDDL2_error err = pop_i64(stack, &a);
-    if (err != SDDL2_OK)
-        return err;
+    TRY(pop_i64(stack, &a));
 
     // Check for INT64_MIN (negation overflows)
     if (a == INT64_MIN) {
@@ -363,9 +351,7 @@ SDDL2_error SDDL2_op_load_u8(
         const SDDL2_input_buffer* buffer)
 {
     int64_t addr;
-    SDDL2_error err = pop_i64(stack, &addr);
-    if (err != SDDL2_OK)
-        return err;
+    TRY(pop_i64(stack, &addr));
 
     // Bounds check: 0 <= addr < size
     if (addr < 0 || (size_t)addr >= buffer->size) {
@@ -576,18 +562,8 @@ SDDL2_error SDDL2_op_segment_create_unspecified(
         SDDL2_segment_list* segments)
 {
     // Pop size from stack
-    SDDL2_value size_val;
-    SDDL2_error err;
-
-    if ((err = SDDL2_stack_pop(stack, &size_val)) != SDDL2_OK)
-        return err;
-
-    // Type check
-    if (size_val.kind != SDDL2_VALUE_I64) {
-        return SDDL2_TYPE_MISMATCH;
-    }
-
-    int64_t size_i64 = size_val.value.as_i64;
+    int64_t size_i64;
+    TRY(pop_i64(stack, &size_i64));
 
     // Validate size (must be non-negative)
     if (size_i64 < 0) {
@@ -703,15 +679,11 @@ SDDL2_error SDDL2_op_segment_create_tagged(
     int64_t size_i64;
     SDDL2_type type;
     uint32_t tag;
-    SDDL2_error err;
 
     // Pop in reverse order: size (top), type, tag (bottom)
-    if ((err = pop_i64(stack, &size_i64)) != SDDL2_OK)
-        return err;
-    if ((err = pop_type(stack, &type)) != SDDL2_OK)
-        return err;
-    if ((err = pop_tag(stack, &tag)) != SDDL2_OK)
-        return err;
+    TRY(pop_i64(stack, &size_i64));
+    TRY(pop_type(stack, &type));
+    TRY(pop_tag(stack, &tag));
 
     // Validate size (must be non-negative)
     if (size_i64 < 0) {
