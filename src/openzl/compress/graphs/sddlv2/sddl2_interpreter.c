@@ -1,27 +1,8 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "openzl/compress/graphs/sddlv2/sddl2_interpreter.h"
+#include "openzl/compress/graphs/sddlv2/sddl2_opcodes.h"
 #include "openzl/shared/mem.h"
-
-// Note: Opcodes are defined manually below, which is wrong.
-// They should be extracted from sddl2_opcodes.def source of truth
-
-// Opcode families
-#define FAMILY_CONTROL 0x0005
-#define FAMILY_PUSH 0x0001
-#define FAMILY_SEGMENT 0x000C
-
-// Control opcodes
-#define OP_HALT 0x0001
-
-// Push opcodes
-#define OP_PUSH_ZERO 0x0001
-#define OP_PUSH_U32 0x0002
-#define OP_PUSH_I32 0x0003
-#define OP_PUSH_I64 0x0004
-
-// Segment opcodes
-#define OP_SEGMENT_CREATE_UNSPECIFIED 0x0001
 
 SDDL2_error SDDL2_execute_bytecode(
         const void* bytecode_buffer,
@@ -81,17 +62,17 @@ SDDL2_error SDDL2_execute_bytecode(
         // Note:
         // To be changed into a switch(family),
         // and even feature dedicated functions for larger families
-        if (family == FAMILY_CONTROL) {
-            if (opcode == OP_HALT) {
+        if (family == SDDL2_FAMILY_CONTROL) {
+            if (opcode == SDDL2_OP_CONTROL_HALT) {
                 halted = 1;
             } else {
                 SDDL2_tag_registry_destroy(&registry);
                 return SDDL2_STACK_UNDERFLOW; // Unknown opcode
             }
-        } else if (family == FAMILY_PUSH) {
-            if (opcode == OP_PUSH_ZERO) {
+        } else if (family == SDDL2_FAMILY_PUSH) {
+            if (opcode == SDDL2_OP_PUSH_ZERO) {
                 err = SDDL2_stack_push(&stack, SDDL2_value_i64(0));
-            } else if (opcode == OP_PUSH_U32) {
+            } else if (opcode == SDDL2_OP_PUSH_U32) {
                 if (pc + 4 > bytecode_size) {
                     SDDL2_tag_registry_destroy(&registry);
                     return SDDL2_STACK_UNDERFLOW; // Missing immediate
@@ -99,7 +80,7 @@ SDDL2_error SDDL2_execute_bytecode(
                 uint32_t value = ZL_readLE32(&bytecode[pc]);
                 pc += 4;
                 err = SDDL2_stack_push(&stack, SDDL2_value_i64((int64_t)value));
-            } else if (opcode == OP_PUSH_I32) {
+            } else if (opcode == SDDL2_OP_PUSH_I32) {
                 if (pc + 4 > bytecode_size) {
                     SDDL2_tag_registry_destroy(&registry);
                     return SDDL2_STACK_UNDERFLOW; // Missing immediate
@@ -107,7 +88,7 @@ SDDL2_error SDDL2_execute_bytecode(
                 int32_t value = (int32_t)ZL_readLE32(&bytecode[pc]);
                 pc += 4;
                 err = SDDL2_stack_push(&stack, SDDL2_value_i64((int64_t)value));
-            } else if (opcode == OP_PUSH_I64) {
+            } else if (opcode == SDDL2_OP_PUSH_I64) {
                 if (pc + 8 > bytecode_size) {
                     SDDL2_tag_registry_destroy(&registry);
                     return SDDL2_STACK_UNDERFLOW; // Missing immediate
@@ -119,8 +100,8 @@ SDDL2_error SDDL2_execute_bytecode(
                 SDDL2_tag_registry_destroy(&registry);
                 return SDDL2_STACK_UNDERFLOW; // Unknown opcode
             }
-        } else if (family == FAMILY_SEGMENT) {
-            if (opcode == OP_SEGMENT_CREATE_UNSPECIFIED) {
+        } else if (family == SDDL2_FAMILY_SEGMENT) {
+            if (opcode == SDDL2_OP_SEGMENT_CREATE_UNSPECIFIED) {
                 err = SDDL2_op_segment_create_unspecified(
                         &stack, &buffer, output_segments);
             } else {

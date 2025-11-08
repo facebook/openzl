@@ -64,6 +64,125 @@ def parse_def_file(def_file_path: Path) -> Tuple[Dict[str, int], List[tuple]]:
     return families, opcodes
 
 
+def generate_c_header(families: Dict[str, int], opcodes: List[tuple]) -> str:
+    """
+    Generate C11 header code for sddl2_opcodes.h
+    """
+    lines = []
+
+    # Header
+    lines.append("// Copyright (c) Meta Platforms, Inc. and affiliates.")
+    lines.append("")
+    lines.append("// AUTO-GENERATED FILE - DO NOT EDIT MANUALLY")
+    lines.append("//")
+    lines.append("// Generated from: src/openzl/compress/graphs/sddlv2/sddl2_opcodes.def")
+    lines.append(f'// Generated at: {datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")}')
+    lines.append("// Generator: generate_opcodes.py")
+    lines.append("//")
+    lines.append("// To regenerate: python3 tools/sddl/assembler/generate_opcodes.py")
+    lines.append("")
+    lines.append("#ifndef OPENZL_SDDL2_OPCODES_H")
+    lines.append("#define OPENZL_SDDL2_OPCODES_H")
+    lines.append("")
+    lines.append("/**")
+    lines.append(" * SDDL2 VM Opcode Definitions")
+    lines.append(" *")
+    lines.append(" * This file defines the opcode families and instruction opcodes for the SDDL2 VM.")
+    lines.append(" * ")
+    lines.append(" * Instruction Format:")
+    lines.append(" * - 32-bit instruction word (little-endian)")
+    lines.append(" * - Low 16 bits: Family ID")
+    lines.append(" * - High 16 bits: Opcode within family")
+    lines.append(" */")
+    lines.append("")
+
+    # Family enum
+    lines.append("/* ============================================================================")
+    lines.append(" * OPCODE FAMILIES")
+    lines.append(" * ========================================================================= */")
+    lines.append("")
+    lines.append("enum sddl2_family {")
+    
+    family_order = ["PUSH", "MATH", "CMP", "LOGIC", "CONTROL", "LOAD", 
+                    "STACK", "TYPE", "VAR", "EXPECT", "CALL", "SEGMENT"]
+    
+    for family_name in family_order:
+        if family_name in families:
+            id_val = families[family_name]
+            comment = get_family_comment(family_name)
+            lines.append(f"    SDDL2_FAMILY_{family_name:8s} = 0x{id_val:04X},  {comment}")
+    
+    lines.append("};")
+    lines.append("")
+
+    # Opcode enums per family
+    lines.append("/* ============================================================================")
+    lines.append(" * OPCODES")
+    lines.append(" * ========================================================================= */")
+    lines.append("")
+
+    # Group by family
+    by_family = {}
+    for mnemonic, family, opcode, params in opcodes:
+        if family not in by_family:
+            by_family[family] = []
+        by_family[family].append((mnemonic, opcode, params))
+
+    for family_name in family_order:
+        if family_name not in by_family:
+            continue
+        
+        id_val = families[family_name]
+        comment = get_family_comment(family_name)
+        lines.append(f"/* {family_name} family (0x{id_val:04X}) - {comment.strip('/* ')} */")
+        lines.append(f"enum sddl2_opcode_{family_name.lower()} {{")
+        
+        for mnemonic, opcode, params in sorted(by_family[family_name], key=lambda x: x[1]):
+            # Convert mnemonic to C identifier (replace dots with underscores)
+            # Strip family prefix if present (e.g., "push.zero" -> "zero")
+            mnemonic_lower = mnemonic.lower()
+            family_prefix = family_name.lower() + "."
+            if mnemonic_lower.startswith(family_prefix):
+                c_name = mnemonic[len(family_prefix):].replace(".", "_").upper()
+            else:
+                c_name = mnemonic.replace(".", "_").upper()
+            
+            # Add parameter comment if present
+            param_comment = ""
+            if params:
+                param_str = ", ".join(params)
+                param_comment = f"  /* param: {param_str} */"
+            
+            lines.append(f"    SDDL2_OP_{family_name}_{c_name} = 0x{opcode:04X},{param_comment}")
+        
+        lines.append("};")
+        lines.append("")
+
+    lines.append("#endif // OPENZL_SDDL2_OPCODES_H")
+    lines.append("")
+    
+    return "\n".join(lines)
+
+
+def get_family_comment(family_name: str) -> str:
+    """Get descriptive comment for a family"""
+    comments = {
+        "PUSH": "/* Push constants and values onto stack */",
+        "MATH": "/* Arithmetic operations on I64 values */",
+        "CMP": "/* Comparison operations on signed I64 values */",
+        "LOGIC": "/* Logical operations */",
+        "CONTROL": "/* Control flow operations */",
+        "LOAD": "/* Load operations */",
+        "STACK": "/* Stack manipulation operations */",
+        "TYPE": "/* Type operations */",
+        "VAR": "/* Variable operations */",
+        "EXPECT": "/* Expect/validation operations */",
+        "CALL": "/* Function call operations */",
+        "SEGMENT": "/* Segment creation operations */",
+    }
+    return comments.get(family_name, "")
+
+
 def generate_python_code(families: Dict[str, int], opcodes: List[tuple]) -> str:
     """
     Generate Python code for opcodes_generated.py
@@ -158,7 +277,16 @@ def main():
         / "sddlv2"
         / "sddl2_opcodes.def"
     )
-    output_file = script_dir / "opcodes_generated.py"
+    python_output = script_dir / "opcodes_generated.py"
+    c_output = (
+        repo_root
+        / "src"
+        / "openzl"
+        / "compress"
+        / "graphs"
+        / "sddlv2"
+        / "sddl2_opcodes.h"
+    )
 
     if not def_file.exists():
         print(f"Error: {def_file} not found")
@@ -169,13 +297,22 @@ def main():
 
     print(f"Found {len(families)} families, {len(opcodes)} opcodes")
 
-    print(f"Generating {output_file}...")
+    # Generate Python code
+    print(f"Generating {python_output}...")
     python_code = generate_python_code(families, opcodes)
-    output_file.write_text(python_code)
+    python_output.write_text(python_code)
+    print(f"  ✓ {python_output}")
 
-    print(f"Successfully generated {output_file}")
+    # Generate C header
+    print(f"Generating {c_output}...")
+    c_code = generate_c_header(families, opcodes)
+    c_output.write_text(c_code)
+    print(f"  ✓ {c_output}")
+
+    print(f"\nSuccessfully generated opcode files:")
     print(f"  - {len(families)} families")
     print(f"  - {len(opcodes)} instructions")
+    print(f"\nSingle source of truth: {def_file}")
 
     return 0
 

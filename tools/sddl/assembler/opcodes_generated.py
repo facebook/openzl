@@ -2,7 +2,7 @@
 AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 
 Generated from: src/openzl/compress/graphs/sddlv2/sddl2_opcodes.def
-Generated at: 2025-11-07 07:26:07 UTC
+Generated at: 2025-11-08 05:45:49 UTC
 Generator: generate_opcodes.py
 
 To regenerate: python3 generate_opcodes.py

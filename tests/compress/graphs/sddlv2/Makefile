@@ -10,6 +10,7 @@ CPPFLAGS += $(INCLUDES)
 # Source files
 VM_SRC = ../../../../src/openzl/compress/graphs/sddlv2/sddl2_vm.c
 INTERPRETER_SRC = ../../../../src/openzl/compress/graphs/sddlv2/sddl2_interpreter.c
+LOGGING_SRC = ../../../../src/openzl/common/logging.c
 
 # Test executables
 TESTS = sddl2_vm_test \
@@ -51,9 +52,9 @@ sddl2_segments_test: sddl2_segments_test.c $(VM_SRC)
 
 sddl2_tagged_segments_test: sddl2_tagged_segments_test.c $(VM_SRC)
 
-sddl2_interpreter_test: sddl2_interpreter_test.c $(VM_SRC) $(INTERPRETER_SRC)
+sddl2_interpreter_test: sddl2_interpreter_test.c $(VM_SRC) $(INTERPRETER_SRC) $(LOGGING_SRC)
 
-sddl2_assembly_test: sddl2_assembly_test.c $(VM_SRC) $(INTERPRETER_SRC)
+sddl2_assembly_test: sddl2_assembly_test.c $(VM_SRC) $(INTERPRETER_SRC) $(LOGGING_SRC)
 
 # Build all tests without running
 .PHONY: build
