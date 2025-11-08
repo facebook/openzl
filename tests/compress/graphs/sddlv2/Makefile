@@ -3,7 +3,7 @@
 
 # Compiler and flags
 CC ?= gcc
-CFLAGS += -O1 -std=c11 -g -Wall
+CFLAGS += -O1 -std=c11 -g -Wall -Wswitch-enum -Werror -Wextra
 INCLUDES = -I../../../.. -I../../../../src -I../../../../include
 CPPFLAGS += $(INCLUDES)
 

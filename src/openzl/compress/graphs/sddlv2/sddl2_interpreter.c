@@ -60,58 +60,73 @@ SDDL2_error SDDL2_execute_bytecode(
         // Dispatch
         SDDL2_error err = SDDL2_OK;
 
-        // Note:
-        // To be changed into a switch(family),
-        // and even feature dedicated functions for larger families
-        if (family == SDDL2_FAMILY_CONTROL) {
-            if (opcode == SDDL2_OP_CONTROL_HALT) {
-                halted = 1;
-            } else {
-                SDDL2_tag_registry_destroy(&registry);
-                return SDDL2_STACK_UNDERFLOW; // Unknown opcode
-            }
-        } else if (family == SDDL2_FAMILY_PUSH) {
-            if (opcode == SDDL2_OP_PUSH_ZERO) {
-                err = SDDL2_stack_push(&stack, SDDL2_value_i64(0));
-            } else if (opcode == SDDL2_OP_PUSH_U32) {
-                if (pc + 4 > bytecode_size) {
+        switch (family) {
+            case SDDL2_FAMILY_CONTROL:
+                if (opcode == SDDL2_OP_CONTROL_HALT) {
+                    halted = 1;
+                } else {
                     SDDL2_tag_registry_destroy(&registry);
-                    return SDDL2_STACK_UNDERFLOW; // Missing immediate
+                    return SDDL2_STACK_UNDERFLOW; // Unknown opcode
                 }
-                uint32_t value = ZL_readLE32(&bytecode[pc]);
-                pc += 4;
-                err = SDDL2_stack_push(&stack, SDDL2_value_i64((int64_t)value));
-            } else if (opcode == SDDL2_OP_PUSH_I32) {
-                if (pc + 4 > bytecode_size) {
+                break;
+
+            case SDDL2_FAMILY_PUSH:
+                if (opcode == SDDL2_OP_PUSH_ZERO) {
+                    err = SDDL2_stack_push(&stack, SDDL2_value_i64(0));
+                } else if (opcode == SDDL2_OP_PUSH_U32) {
+                    if (pc + 4 > bytecode_size) {
+                        SDDL2_tag_registry_destroy(&registry);
+                        return SDDL2_STACK_UNDERFLOW; // Missing immediate
+                    }
+                    uint32_t value = ZL_readLE32(&bytecode[pc]);
+                    pc += 4;
+                    err = SDDL2_stack_push(
+                            &stack, SDDL2_value_i64((int64_t)value));
+                } else if (opcode == SDDL2_OP_PUSH_I32) {
+                    if (pc + 4 > bytecode_size) {
+                        SDDL2_tag_registry_destroy(&registry);
+                        return SDDL2_STACK_UNDERFLOW; // Missing immediate
+                    }
+                    int32_t value = (int32_t)ZL_readLE32(&bytecode[pc]);
+                    pc += 4;
+                    err = SDDL2_stack_push(
+                            &stack, SDDL2_value_i64((int64_t)value));
+                } else if (opcode == SDDL2_OP_PUSH_I64) {
+                    if (pc + 8 > bytecode_size) {
+                        SDDL2_tag_registry_destroy(&registry);
+                        return SDDL2_STACK_UNDERFLOW; // Missing immediate
+                    }
+                    int64_t value = (int64_t)ZL_readLE64(&bytecode[pc]);
+                    pc += 8;
+                    err = SDDL2_stack_push(&stack, SDDL2_value_i64(value));
+                } else {
                     SDDL2_tag_registry_destroy(&registry);
-                    return SDDL2_STACK_UNDERFLOW; // Missing immediate
+                    return SDDL2_STACK_UNDERFLOW; // Unknown opcode
                 }
-                int32_t value = (int32_t)ZL_readLE32(&bytecode[pc]);
-                pc += 4;
-                err = SDDL2_stack_push(&stack, SDDL2_value_i64((int64_t)value));
-            } else if (opcode == SDDL2_OP_PUSH_I64) {
-                if (pc + 8 > bytecode_size) {
+                break;
+
+            case SDDL2_FAMILY_SEGMENT:
+                if (opcode == SDDL2_OP_SEGMENT_CREATE_UNSPECIFIED) {
+                    err = SDDL2_op_segment_create_unspecified(
+                            &stack, &buffer, output_segments);
+                } else {
                     SDDL2_tag_registry_destroy(&registry);
-                    return SDDL2_STACK_UNDERFLOW; // Missing immediate
+                    return SDDL2_STACK_UNDERFLOW; // Unknown opcode
                 }
-                int64_t value = (int64_t)ZL_readLE64(&bytecode[pc]);
-                pc += 8;
-                err = SDDL2_stack_push(&stack, SDDL2_value_i64(value));
-            } else {
+                break;
+
+            // Unimplemented families
+            case SDDL2_FAMILY_MATH:
+            case SDDL2_FAMILY_CMP:
+            case SDDL2_FAMILY_LOGIC:
+            case SDDL2_FAMILY_LOAD:
+            case SDDL2_FAMILY_STACK:
+            case SDDL2_FAMILY_TYPE:
+            case SDDL2_FAMILY_VAR:
+            case SDDL2_FAMILY_EXPECT:
+            case SDDL2_FAMILY_CALL:
                 SDDL2_tag_registry_destroy(&registry);
-                return SDDL2_STACK_UNDERFLOW; // Unknown opcode
-            }
-        } else if (family == SDDL2_FAMILY_SEGMENT) {
-            if (opcode == SDDL2_OP_SEGMENT_CREATE_UNSPECIFIED) {
-                err = SDDL2_op_segment_create_unspecified(
-                        &stack, &buffer, output_segments);
-            } else {
-                SDDL2_tag_registry_destroy(&registry);
-                return SDDL2_STACK_UNDERFLOW; // Unknown opcode
-            }
-        } else {
-            SDDL2_tag_registry_destroy(&registry);
-            return SDDL2_STACK_UNDERFLOW; // Unknown family
+                return SDDL2_STACK_UNDERFLOW; // Unimplemented family
         }
 
         // Check for errors
