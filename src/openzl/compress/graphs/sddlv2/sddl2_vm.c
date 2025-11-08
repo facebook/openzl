@@ -378,8 +378,7 @@ SDDL2_error SDDL2_op_load_u8(
  * Segment Operations (Phase 4-5)
  * ========================================================================= */
 
-#include <stdlib.h>
-#include <string.h>
+#include <string.h> // memcpy() for arena allocation
 
 /* ============================================================================
  * Memory Management Abstraction Layer
@@ -388,21 +387,12 @@ SDDL2_error SDDL2_op_load_u8(
 /**
  * Unified realloc-like abstraction supporting both arena and heap allocation.
  *
- * This function provides realloc() semantics for both allocation strategies,
- * abstracting away the differences between arena and heap allocation.
- *
  * @param old_ptr Existing allocation (NULL for initial allocation)
- * @param old_size Size of old allocation in bytes (used for copying when
- *                 using arena allocator)
+ * @param old_size Size of old allocation in bytes (used for copying)
  * @param new_size Desired new size in bytes
- * @param alloc_fn Allocator function (NULL = use standard realloc)
+ * @param alloc_fn Allocator function (NULL = use fallback)
  * @param alloc_ctx Allocator context (e.g., ZL_Graph* for arena allocation)
  * @return New allocation, or NULL on failure
- *
- * Behavior:
- * - When alloc_fn is NULL: Uses standard realloc() from libc
- * - When alloc_fn is provided: Allocates new memory via callback and copies
- *   old data (arena allocators cannot reuse/grow existing allocations)
  */
 static void* sddl2_realloc(
         void* old_ptr,
@@ -425,28 +415,21 @@ static void* sddl2_realloc(
 
         return new_ptr;
     } else {
-        // Heap path: standard realloc
-        return realloc(old_ptr, new_size);
+        // Fallback: real realloc (test mode) or NULL (production mode)
+        return sddl2_fallback_realloc(old_ptr, new_size);
     }
 }
 
 /**
  * Unified free abstraction supporting both arena and heap allocation.
  *
- * This function provides free() semantics for both allocation strategies.
- *
  * @param ptr Pointer to free (can be NULL)
- * @param alloc_fn Allocator function (NULL = heap allocation, use free())
- *
- * Behavior:
- * - When alloc_fn is NULL: Uses standard free() from libc
- * - When alloc_fn is provided: No-op (arena manages memory lifecycle)
+ * @param alloc_fn Allocator function (NULL = use fallback)
  */
 static void sddl2_free(void* ptr, SDDL2_allocator_fn alloc_fn)
 {
-    // Only free if using heap allocation (alloc_fn == NULL)
-    if (alloc_fn == NULL && ptr != NULL) {
-        free(ptr);
+    if (alloc_fn == NULL) {
+        sddl2_fallback_free(ptr);
     }
     // Arena-allocated memory: no-op (arena handles cleanup)
 }

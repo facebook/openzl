@@ -140,22 +140,68 @@ typedef enum {
  * ========================================================================= */
 
 /**
- * Allocator function pointer type.
+ * Allocator callback function pointer type.
  *
- * The VM uses a callback-based allocation strategy to remain independent
- * of OpenZL's graph infrastructure while still allowing arena allocation
- * in production.
+ * Custom allocator for segment lists and tag registries. This allows the VM
+ * to use arena allocation (via ZL_Graph_getScratchSpace) in production while
+ * supporting test-friendly malloc/realloc in test environments.
  *
- * @param allocator_ctx Opaque context pointer (e.g., ZL_Graph* in production)
+ * @param allocator_ctx Context pointer (e.g., ZL_Graph* for arena allocation)
  * @param size Number of bytes to allocate
  * @return Pointer to allocated memory, or NULL on allocation failure
  *
  * Memory allocated through this callback is never freed individually.
  * In production (OpenZL integration), this uses ZL_Graph_getScratchSpace()
  * which provides arena allocation with automatic cleanup at graph exit.
- * In tests, this can use malloc() or stack-based bump allocation.
+ *
+ * DEPENDENCY ISOLATION:
+ * Test environments can define SDDL2_ENABLE_TEST_ALLOCATOR to enable stdlib
+ * fallback when alloc_fn is NULL (for tests using NULL, NULL initialization).
+ * Production builds should NOT define this flag, eliminating <stdlib.h>
+ * dependency.
+ *
+ * Build Configuration:
+ * - Production: Do NOT define SDDL2_ENABLE_TEST_ALLOCATOR (no <stdlib.h>)
+ * - Tests: Add -DSDDL2_ENABLE_TEST_ALLOCATOR to CFLAGS
  */
 typedef void* (*SDDL2_allocator_fn)(void* allocator_ctx, size_t size);
+
+/* ============================================================================
+ * Memory Allocation Fallback Implementations
+ * ========================================================================= */
+
+#ifdef SDDL2_ENABLE_TEST_ALLOCATOR
+
+/* Test mode: Real stdlib allocator fallbacks for when alloc_fn is NULL */
+#    include <stdlib.h>
+
+static inline void* sddl2_fallback_realloc(void* ptr, size_t size)
+{
+    return realloc(ptr, size);
+}
+
+static inline void sddl2_fallback_free(void* ptr)
+{
+    free(ptr);
+}
+
+#else
+
+/* Production mode: No-op/failing stubs (no stdlib dependency) */
+static inline void* sddl2_fallback_realloc(void* ptr, size_t size)
+{
+    (void)ptr;
+    (void)size;
+    return NULL; // Always fail - production must provide allocator
+}
+
+static inline void sddl2_fallback_free(void* ptr)
+{
+    (void)ptr;
+    // No-op - production never uses heap allocation
+}
+
+#endif // SDDL2_ENABLE_TEST_ALLOCATOR
 
 /**
  * Initial capacity for segment list when using arena allocation.
