@@ -10,6 +10,7 @@
 #include "sddl2_vm.h"
 #include <limits.h>
 #include <stdbool.h>
+#include "openzl/shared/mem.h" // ZL_memcpy() for memory operations
 
 /* ============================================================================
  * Stack Operations - Non-Critical Path
@@ -378,8 +379,6 @@ SDDL2_error SDDL2_op_load_u8(
  * Segment Operations (Phase 4-5)
  * ========================================================================= */
 
-#include <string.h> // memcpy() for arena allocation
-
 /* ============================================================================
  * Memory Management Abstraction Layer
  * ========================================================================= */
@@ -410,7 +409,7 @@ static void* sddl2_realloc(
 
         // Copy old data if it exists
         if (old_ptr != NULL && old_size > 0) {
-            memcpy(new_ptr, old_ptr, old_size);
+            ZL_memcpy(new_ptr, old_ptr, old_size);
         }
 
         return new_ptr;
@@ -433,6 +432,10 @@ static void sddl2_free(void* ptr, SDDL2_allocator_fn alloc_fn)
     }
     // Arena-allocated memory: no-op (arena handles cleanup)
 }
+
+/* ============================================================================
+ * Segment Registry Operations
+ * ========================================================================= */
 
 void SDDL2_segment_list_init(
         SDDL2_segment_list* list,
