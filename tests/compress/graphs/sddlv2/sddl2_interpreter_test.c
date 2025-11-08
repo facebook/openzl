@@ -39,7 +39,7 @@ static void test_simple_segment_creation(void)
 
     // Execute
     SDDL2_segment_list segments;
-    SDDL2_segment_list_init(&segments);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
 
     SDDL2_error err = SDDL2_execute_bytecode(
             bytecode,
@@ -76,7 +76,7 @@ static void test_zero_size_segment(void)
     };
 
     SDDL2_segment_list segments;
-    SDDL2_segment_list_init(&segments);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
 
     SDDL2_error err = SDDL2_execute_bytecode(
             bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
@@ -114,7 +114,7 @@ static void test_multiple_segments(void)
     };
 
     SDDL2_segment_list segments;
-    SDDL2_segment_list_init(&segments);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
 
     SDDL2_error err = SDDL2_execute_bytecode(
             bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
@@ -140,7 +140,7 @@ static void test_invalid_bytecode_size(void)
     uint8_t bytecode[] = { 0x01, 0x00, 0x03 }; // Only 3 bytes
 
     SDDL2_segment_list segments;
-    SDDL2_segment_list_init(&segments);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
 
     SDDL2_error err = SDDL2_execute_bytecode(
             bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
@@ -167,7 +167,7 @@ static void test_missing_halt(void)
     };
 
     SDDL2_segment_list segments;
-    SDDL2_segment_list_init(&segments);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
 
     SDDL2_error err = SDDL2_execute_bytecode(
             bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);

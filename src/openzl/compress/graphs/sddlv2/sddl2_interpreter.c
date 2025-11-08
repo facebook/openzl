@@ -34,7 +34,10 @@ SDDL2_error SDDL2_execute_bytecode(
     SDDL2_input_buffer_init(&buffer, input_data, input_size);
 
     SDDL2_tag_registry registry;
-    SDDL2_tag_registry_init(&registry);
+    // Use same allocator as output_segments (arena in production, NULL in
+    // tests)
+    SDDL2_tag_registry_init(
+            &registry, output_segments->alloc_fn, output_segments->alloc_ctx);
 
     // Program counter (byte offset)
     size_t pc = 0;

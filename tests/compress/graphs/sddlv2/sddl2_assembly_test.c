@@ -90,7 +90,7 @@ static void test_assembled_hello(void)
 
     // Execute bytecode
     SDDL2_segment_list segments;
-    SDDL2_segment_list_init(&segments);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
 
     SDDL2_error err = SDDL2_execute_bytecode(
             bytecode, bytecode_size, input, sizeof(input) - 1, &segments);

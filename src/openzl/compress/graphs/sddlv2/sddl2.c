@@ -20,6 +20,16 @@
  * 4. Split input edge by segment sizes
  * 5. Route each segment to ZSTD compression
  */
+
+/**
+ * Arena allocator wrapper for ZL_Graph_getScratchSpace.
+ * Used by SDDL2 VM to allocate memory via OpenZL's arena.
+ */
+static void* sddl2_arena_allocator(void* allocator_ctx, size_t size)
+{
+    return ZL_Graph_getScratchSpace((ZL_Graph*)allocator_ctx, size);
+}
+
 ZL_Report SDDL2_parse(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
         ZL_NOEXCEPT_FUNC_PTR
 {
@@ -57,7 +67,8 @@ ZL_Report SDDL2_parse(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
 
     // Step 5: Run interpreter to generate segments
     SDDL2_segment_list segments;
-    SDDL2_segment_list_init(&segments);
+    // Use arena allocator for production (via ZL_Graph_getScratchSpace)
+    SDDL2_segment_list_init(&segments, sddl2_arena_allocator, graph);
 
     SDDL2_error err = SDDL2_execute_bytecode(
             bytecode, bytecode_size, input_data, input_size, &segments);

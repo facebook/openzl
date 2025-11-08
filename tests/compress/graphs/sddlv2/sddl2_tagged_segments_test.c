@@ -43,7 +43,7 @@ static void test_tag_registry_init(void)
 {
     SDDL2_tag_registry registry;
 
-    SDDL2_tag_registry_init(&registry);
+    SDDL2_tag_registry_init(&registry, NULL, NULL);
 
     assert(registry.tags == NULL);
     assert(registry.count == 0);
@@ -56,7 +56,7 @@ static void test_tag_registry_destroy(void)
 {
     SDDL2_tag_registry registry;
 
-    SDDL2_tag_registry_init(&registry);
+    SDDL2_tag_registry_init(&registry, NULL, NULL);
     SDDL2_tag_registry_destroy(&registry);
 
     assert(registry.tags == NULL);
@@ -79,8 +79,8 @@ static void test_create_single_tagged_segment(void)
     SDDL2_tag_registry registry;
 
     SDDL2_input_buffer_init(&buffer, data, 5);
-    SDDL2_segment_list_init(&segments);
-    SDDL2_tag_registry_init(&registry);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_tag_registry_init(&registry, NULL, NULL);
 
     // Stack: tag=100, type=U8, size=5
     SDDL2_stack_push(stack, SDDL2_value_tag(100)); // tag
@@ -121,8 +121,8 @@ static void test_tagged_segment_zero_size(void)
     SDDL2_tag_registry registry;
 
     SDDL2_input_buffer_init(&buffer, data, 3);
-    SDDL2_segment_list_init(&segments);
-    SDDL2_tag_registry_init(&registry);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_tag_registry_init(&registry, NULL, NULL);
 
     // Stack: tag=42, size=0
     SDDL2_stack_push(stack, SDDL2_value_tag(42)); // tag
@@ -159,8 +159,8 @@ static void test_merge_consecutive_same_tag(void)
     SDDL2_tag_registry registry;
 
     SDDL2_input_buffer_init(&buffer, data, 8);
-    SDDL2_segment_list_init(&segments);
-    SDDL2_tag_registry_init(&registry);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_tag_registry_init(&registry, NULL, NULL);
 
     // Create first segment: tag=100, size=2
     SDDL2_stack_push(stack, SDDL2_value_tag(100));
@@ -208,8 +208,8 @@ static void test_no_merge_different_tag(void)
     SDDL2_tag_registry registry;
 
     SDDL2_input_buffer_init(&buffer, data, 6);
-    SDDL2_segment_list_init(&segments);
-    SDDL2_tag_registry_init(&registry);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_tag_registry_init(&registry, NULL, NULL);
 
     // Create first segment: tag=100, size=2
     SDDL2_stack_push(stack, SDDL2_value_tag(100));
@@ -259,8 +259,8 @@ static void test_merge_multiple_consecutive(void)
     SDDL2_tag_registry registry;
 
     SDDL2_input_buffer_init(&buffer, data, 20);
-    SDDL2_segment_list_init(&segments);
-    SDDL2_tag_registry_init(&registry);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_tag_registry_init(&registry, NULL, NULL);
 
     // Create 5 consecutive segments with tag=100, sizes: 2, 3, 1, 4, 5
     // Expected: All merge into 1 segment of size 15
@@ -299,8 +299,8 @@ static void test_merge_pattern_alternating(void)
     SDDL2_tag_registry registry;
 
     SDDL2_input_buffer_init(&buffer, data, 20);
-    SDDL2_segment_list_init(&segments);
-    SDDL2_tag_registry_init(&registry);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_tag_registry_init(&registry, NULL, NULL);
 
     // Pattern: tag=100 (size=2), tag=200 (size=3), tag=100 (size=1), tag=200
     // (size=2) Expected: 4 segments (no merging due to alternation)
@@ -352,8 +352,8 @@ static void test_merge_same_tag_after_other_tag(void)
     SDDL2_tag_registry registry;
 
     SDDL2_input_buffer_init(&buffer, data, 20);
-    SDDL2_segment_list_init(&segments);
-    SDDL2_tag_registry_init(&registry);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_tag_registry_init(&registry, NULL, NULL);
 
     // Pattern: tag=100 (size=2), tag=100 (size=3), tag=200 (size=1), tag=200
     // (size=2) Expected: 2 segments: [tag=100, size=5], [tag=200, size=3]
@@ -405,8 +405,8 @@ static void test_tagged_segment_bounds_error(void)
     SDDL2_tag_registry registry;
 
     SDDL2_input_buffer_init(&buffer, data, 2);
-    SDDL2_segment_list_init(&segments);
-    SDDL2_tag_registry_init(&registry);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_tag_registry_init(&registry, NULL, NULL);
 
     // Try to create segment larger than buffer: tag=100, size=10
     SDDL2_stack_push(stack, SDDL2_value_tag(100));
@@ -438,8 +438,8 @@ static void test_tagged_segment_negative_tag(void)
     SDDL2_tag_registry registry;
 
     SDDL2_input_buffer_init(&buffer, data, 3);
-    SDDL2_segment_list_init(&segments);
-    SDDL2_tag_registry_init(&registry);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_tag_registry_init(&registry, NULL, NULL);
 
     // Try negative tag (using I64 instead of Tag): tag=-100, type=U8, size=2
     SDDL2_stack_push(stack, SDDL2_value_i64(-100)); // Wrong: I64 instead of Tag
@@ -467,8 +467,8 @@ static void test_tagged_segment_negative_size(void)
     SDDL2_tag_registry registry;
 
     SDDL2_input_buffer_init(&buffer, data, 3);
-    SDDL2_segment_list_init(&segments);
-    SDDL2_tag_registry_init(&registry);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_tag_registry_init(&registry, NULL, NULL);
 
     // Try negative size: tag=100, size=-5
     SDDL2_stack_push(stack, SDDL2_value_tag(100));
@@ -496,8 +496,8 @@ static void test_tagged_segment_size_overflow(void)
     SDDL2_tag_registry registry;
 
     SDDL2_input_buffer_init(&buffer, data, sizeof(data));
-    SDDL2_segment_list_init(&segments);
-    SDDL2_tag_registry_init(&registry);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_tag_registry_init(&registry, NULL, NULL);
 
     // Try to create segment where element_count * type_size would overflow
     // SIZE_MAX Use I64LE type (8 bytes per element) SIZE_MAX / 8 + 1 elements
@@ -536,8 +536,8 @@ static void test_tagged_segment_wrong_type_tag(void)
     SDDL2_tag_registry registry;
 
     SDDL2_input_buffer_init(&buffer, data, 2);
-    SDDL2_segment_list_init(&segments);
-    SDDL2_tag_registry_init(&registry);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_tag_registry_init(&registry, NULL, NULL);
 
     // Push wrong type for tag (I64 instead of Tag)
     SDDL2_stack_push(stack, SDDL2_value_i64(100)); // Wrong: I64 instead of Tag
@@ -565,8 +565,8 @@ static void test_tagged_segment_wrong_type_size(void)
     SDDL2_tag_registry registry;
 
     SDDL2_input_buffer_init(&buffer, data, 2);
-    SDDL2_segment_list_init(&segments);
-    SDDL2_tag_registry_init(&registry);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_tag_registry_init(&registry, NULL, NULL);
 
     // Push correct tag and type, but wrong type for size (Tag instead of I64)
     SDDL2_stack_push(stack, SDDL2_value_tag(100)); // tag (correct)
@@ -598,8 +598,8 @@ static void test_tagged_segment_stack_underflow(void)
     SDDL2_tag_registry registry;
 
     SDDL2_input_buffer_init(&buffer, data, 2);
-    SDDL2_segment_list_init(&segments);
-    SDDL2_tag_registry_init(&registry);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_tag_registry_init(&registry, NULL, NULL);
 
     // Push only tag, no size
     SDDL2_stack_push(stack, SDDL2_value_tag(100));
@@ -630,8 +630,8 @@ static void test_tagged_with_arithmetic(void)
     SDDL2_tag_registry registry;
 
     SDDL2_input_buffer_init(&buffer, data, 20);
-    SDDL2_segment_list_init(&segments);
-    SDDL2_tag_registry_init(&registry);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_tag_registry_init(&registry, NULL, NULL);
 
     // Compute size with arithmetic: push 2, push 3, add -> 5
     SDDL2_stack_push(stack, SDDL2_value_tag(100)); // tag
@@ -665,8 +665,8 @@ static void test_mixed_unspecified_and_tagged(void)
     SDDL2_tag_registry registry;
 
     SDDL2_input_buffer_init(&buffer, data, 20);
-    SDDL2_segment_list_init(&segments);
-    SDDL2_tag_registry_init(&registry);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_tag_registry_init(&registry, NULL, NULL);
 
     // Create unspecified segment (tag=0)
     SDDL2_stack_push(stack, SDDL2_value_i64(3));
@@ -708,8 +708,8 @@ static void test_many_tags_registry_growth(void)
     SDDL2_tag_registry registry;
 
     SDDL2_input_buffer_init(&buffer, data, 200);
-    SDDL2_segment_list_init(&segments);
-    SDDL2_tag_registry_init(&registry);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_tag_registry_init(&registry, NULL, NULL);
 
     // Create 50 segments with different tags (should trigger registry growth)
     for (int i = 0; i < 50; i++) {

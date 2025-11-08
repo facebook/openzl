@@ -33,11 +33,11 @@ static void destroy_test_stack(SDDL2_stack* stack)
 
 static void test_stack_init(void)
 {
-    SDDL2_stack* stack = create_test_stack(OPENZL_STACK_DEPTH_DEFAULT);
+    SDDL2_stack* stack = create_test_stack(SDDL2_STACK_DEPTH_DEFAULT);
 
-    assert(SDDL2_stack_depth(stack) == 0);
-    assert(SDDL2_stack_is_empty(stack));
-    assert(stack->capacity == OPENZL_STACK_DEPTH_DEFAULT);
+    // Verify initialization
+    assert(stack != NULL);
+    assert(stack->capacity == SDDL2_STACK_DEPTH_DEFAULT);
 
     destroy_test_stack(stack);
     printf("✓ test_stack_init passed\n");

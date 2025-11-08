@@ -379,23 +379,109 @@ SDDL2_error SDDL2_op_load_u8(
  * ========================================================================= */
 
 #include <stdlib.h>
+#include <string.h>
 
-// Note: It would likely be better to pre-allocate some default buffer for
-// segment_list using an Arena, to guarantee free() at end of life of sddl2
-// graph
-void SDDL2_segment_list_init(SDDL2_segment_list* list)
+/* ============================================================================
+ * Memory Management Abstraction Layer
+ * ========================================================================= */
+
+/**
+ * Unified realloc-like abstraction supporting both arena and heap allocation.
+ *
+ * This function provides realloc() semantics for both allocation strategies,
+ * abstracting away the differences between arena and heap allocation.
+ *
+ * @param old_ptr Existing allocation (NULL for initial allocation)
+ * @param old_size Size of old allocation in bytes (used for copying when
+ *                 using arena allocator)
+ * @param new_size Desired new size in bytes
+ * @param alloc_fn Allocator function (NULL = use standard realloc)
+ * @param alloc_ctx Allocator context (e.g., ZL_Graph* for arena allocation)
+ * @return New allocation, or NULL on failure
+ *
+ * Behavior:
+ * - When alloc_fn is NULL: Uses standard realloc() from libc
+ * - When alloc_fn is provided: Allocates new memory via callback and copies
+ *   old data (arena allocators cannot reuse/grow existing allocations)
+ */
+static void* sddl2_realloc(
+        void* old_ptr,
+        size_t old_size,
+        size_t new_size,
+        SDDL2_allocator_fn alloc_fn,
+        void* alloc_ctx)
 {
-    list->items    = NULL;
-    list->count    = 0;
-    list->capacity = 0;
+    if (alloc_fn != NULL) {
+        // Arena path: allocate new + copy old data
+        void* new_ptr = alloc_fn(alloc_ctx, new_size);
+        if (new_ptr == NULL) {
+            return NULL; // Allocation failed
+        }
+
+        // Copy old data if it exists
+        if (old_ptr != NULL && old_size > 0) {
+            memcpy(new_ptr, old_ptr, old_size);
+        }
+
+        return new_ptr;
+    } else {
+        // Heap path: standard realloc
+        return realloc(old_ptr, new_size);
+    }
+}
+
+/**
+ * Unified free abstraction supporting both arena and heap allocation.
+ *
+ * This function provides free() semantics for both allocation strategies.
+ *
+ * @param ptr Pointer to free (can be NULL)
+ * @param alloc_fn Allocator function (NULL = heap allocation, use free())
+ *
+ * Behavior:
+ * - When alloc_fn is NULL: Uses standard free() from libc
+ * - When alloc_fn is provided: No-op (arena manages memory lifecycle)
+ */
+static void sddl2_free(void* ptr, SDDL2_allocator_fn alloc_fn)
+{
+    // Only free if using heap allocation (alloc_fn == NULL)
+    if (alloc_fn == NULL && ptr != NULL) {
+        free(ptr);
+    }
+    // Arena-allocated memory: no-op (arena handles cleanup)
+}
+
+void SDDL2_segment_list_init(
+        SDDL2_segment_list* list,
+        SDDL2_allocator_fn alloc_fn,
+        void* alloc_ctx)
+{
+    list->items     = NULL;
+    list->count     = 0;
+    list->capacity  = 0;
+    list->alloc_fn  = alloc_fn;
+    list->alloc_ctx = alloc_ctx;
+
+    // Pre-allocate capacity when using arena allocator
+    // This reduces reallocation overhead since arena allocation
+    // requires allocate+copy (unlike realloc which may grow in place)
+    if (alloc_fn != NULL) {
+        size_t initial_size =
+
+                SDDL2_SEGMENT_INITIAL_CAPACITY * sizeof(SDDL2_segment);
+        list->items = (SDDL2_segment*)alloc_fn(alloc_ctx, initial_size);
+        if (list->items != NULL) {
+            list->capacity = SDDL2_SEGMENT_INITIAL_CAPACITY;
+        }
+        // If allocation fails, capacity remains 0 and will be handled
+        // by segment_list_ensure_capacity() when first segment is added
+    }
 }
 
 void SDDL2_segment_list_destroy(SDDL2_segment_list* list)
 {
-    if (list->items) {
-        free(list->items);
-        list->items = NULL;
-    }
+    sddl2_free(list->items, list->alloc_fn);
+    list->items    = NULL;
     list->count    = 0;
     list->capacity = 0;
 }
@@ -404,20 +490,40 @@ void SDDL2_segment_list_destroy(SDDL2_segment_list* list)
  * Helper: Ensure segment list has capacity for at least one more item.
  * Grows by 2x when needed.
  *
- * Note: This uses realloc, which is not preferred.
- * We should rather use an Arena.
- * Also, we should allocate a "good enough" amount at init, to avoid resizing
- * Finally, there should be an explicit limit to size increase.
+ * Uses the unified sddl2_realloc() abstraction which handles both
+ * arena allocation and heap allocation transparently.
+ *
+ * Returns 0 if capacity limit is exceeded or allocation fails.
  */
 static int segment_list_ensure_capacity(SDDL2_segment_list* list)
 {
     if (list->count >= list->capacity) {
+        // Check against maximum capacity limit
+        if (list->capacity >= SDDL2_SEGMENT_MAX_CAPACITY) {
+            return 0; // Maximum capacity reached
+        }
+
         size_t new_capacity = (list->capacity == 0) ? 16 : (list->capacity * 2);
-        SDDL2_segment* new_items = (SDDL2_segment*)realloc(
-                list->items, new_capacity * sizeof(SDDL2_segment));
+
+        // Cap at maximum capacity
+        if (new_capacity > SDDL2_SEGMENT_MAX_CAPACITY) {
+            new_capacity = SDDL2_SEGMENT_MAX_CAPACITY;
+        }
+
+        size_t old_size = list->count * sizeof(SDDL2_segment);
+        size_t new_size = new_capacity * sizeof(SDDL2_segment);
+
+        SDDL2_segment* new_items = (SDDL2_segment*)sddl2_realloc(
+                list->items,
+                old_size,
+                new_size,
+                list->alloc_fn,
+                list->alloc_ctx);
+
         if (!new_items) {
             return 0; // Allocation failed
         }
+
         list->items    = new_items;
         list->capacity = new_capacity;
     }
@@ -457,8 +563,8 @@ SDDL2_error SDDL2_op_segment_create_unspecified(
 
     // Ensure segment list has capacity
     if (!segment_list_ensure_capacity(segments)) {
-        return SDDL2_STACK_OVERFLOW; // Reuse for allocation failure (TODO: add
-                                     // SDDL2_ALLOC_ERROR)
+        return SDDL2_LIMIT_EXCEEDED; // Capacity limit exceeded or allocation
+                                     // failed
     }
 
     // Create and append segment (tag=0 for unspecified, BYTES type)
@@ -481,31 +587,45 @@ SDDL2_error SDDL2_op_segment_create_unspecified(
  * Tag Registry Operations (Phase 5)
  * ========================================================================= */
 
-void SDDL2_tag_registry_init(SDDL2_tag_registry* registry)
+void SDDL2_tag_registry_init(
+        SDDL2_tag_registry* registry,
+        SDDL2_allocator_fn alloc_fn,
+        void* alloc_ctx)
 {
-    registry->tags     = NULL;
-    registry->count    = 0;
-    registry->capacity = 0;
+    registry->tags      = NULL;
+    registry->count     = 0;
+    registry->capacity  = 0;
+    registry->alloc_fn  = alloc_fn;
+    registry->alloc_ctx = alloc_ctx;
+
+    // Pre-allocate capacity when using arena allocator
+    // This reduces reallocation overhead since arena allocation
+    // requires allocate+copy (unlike realloc which may grow in place)
+    if (alloc_fn != NULL) {
+        size_t initial_size = SDDL2_TAG_INITIAL_CAPACITY * sizeof(uint32_t);
+        registry->tags      = (uint32_t*)alloc_fn(alloc_ctx, initial_size);
+        if (registry->tags != NULL) {
+            registry->capacity = SDDL2_TAG_INITIAL_CAPACITY;
+        }
+        // If allocation fails, capacity remains 0 and will be handled
+        // by tag_registry_register() when first tag is registered
+    }
 }
 
 void SDDL2_tag_registry_destroy(SDDL2_tag_registry* registry)
 {
-    if (registry->tags) {
-        free(registry->tags);
-        registry->tags = NULL;
-    }
+    sddl2_free(registry->tags, registry->alloc_fn);
+    registry->tags     = NULL;
     registry->count    = 0;
     registry->capacity = 0;
 }
 
 /**
  * Helper: Register a tag if not already registered.
- * Returns 1 on success, 0 on allocation failure.
+ * Returns 1 on success, 0 on allocation failure or capacity limit exceeded.
  *
- * Note: This uses realloc, which is not preferred.
- * We should rather use an Arena.
- * Also, we should allocate a "good enough" amount at init, to avoid resizing
- * Finally, there should be an explicit limit to size increase.
+ * Uses the unified sddl2_realloc() abstraction which handles both
+ * arena allocation and heap allocation transparently.
  */
 static int tag_registry_register(SDDL2_tag_registry* registry, uint32_t tag)
 {
@@ -518,13 +638,33 @@ static int tag_registry_register(SDDL2_tag_registry* registry, uint32_t tag)
 
     // Ensure capacity
     if (registry->count >= registry->capacity) {
+        // Check against maximum capacity limit
+        if (registry->capacity >= SDDL2_TAG_MAX_CAPACITY) {
+            return 0; // Maximum capacity reached
+        }
+
         size_t new_capacity =
                 (registry->capacity == 0) ? 16 : (registry->capacity * 2);
-        uint32_t* new_tags = (uint32_t*)realloc(
-                registry->tags, new_capacity * sizeof(uint32_t));
+
+        // Cap at maximum capacity
+        if (new_capacity > SDDL2_TAG_MAX_CAPACITY) {
+            new_capacity = SDDL2_TAG_MAX_CAPACITY;
+        }
+
+        size_t old_size = registry->count * sizeof(uint32_t);
+        size_t new_size = new_capacity * sizeof(uint32_t);
+
+        uint32_t* new_tags = (uint32_t*)sddl2_realloc(
+                registry->tags,
+                old_size,
+                new_size,
+                registry->alloc_fn,
+                registry->alloc_ctx);
+
         if (!new_tags) {
             return 0; // Allocation failed
         }
+
         registry->tags     = new_tags;
         registry->capacity = new_capacity;
     }
@@ -590,7 +730,8 @@ SDDL2_error SDDL2_op_segment_create_tagged(
 
     // Register tag (first use)
     if (!tag_registry_register(registry, tag)) {
-        return SDDL2_STACK_OVERFLOW; // Reuse for allocation failure
+        return SDDL2_LIMIT_EXCEEDED; // Capacity limit exceeded or allocation
+                                     // failed
     }
 
     // Check if we can merge with the last segment
@@ -615,7 +756,8 @@ SDDL2_error SDDL2_op_segment_create_tagged(
 
     // Cannot merge - create new segment
     if (!segment_list_ensure_capacity(segments)) {
-        return SDDL2_STACK_OVERFLOW; // Reuse for allocation failure
+        return SDDL2_LIMIT_EXCEEDED; // Capacity limit exceeded or allocation
+                                     // failed
     }
 
     SDDL2_segment seg;

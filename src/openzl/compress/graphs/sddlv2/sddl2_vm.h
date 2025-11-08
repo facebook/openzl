@@ -95,15 +95,19 @@ typedef struct {
 
 /**
  * Maximum configurable stack depth.
- * Cannot be overridden.
+ * This is a hard limit and cannot be overridden.
  */
-#define OPENZL_STACK_DEPTH_MAX 512384
+#define SDDL2_STACK_DEPTH_MAX 512384
 
 /**
  * Default maximum stack depth.
- * This can be overridden when creating a stack via openzl_stack_create().
+ * Currently not used since tests provide their own stack storage.
+ * Reserved for future dynamic stack allocation if needed.
+ * Can be overridden at compile time with -DSDDL2_STACK_DEPTH_DEFAULT=value
  */
-#define OPENZL_STACK_DEPTH_DEFAULT 4096
+#ifndef SDDL2_STACK_DEPTH_DEFAULT
+#    define SDDL2_STACK_DEPTH_DEFAULT 4096
+#endif
 
 /**
  * VM stack structure.
@@ -127,8 +131,72 @@ typedef enum {
     SDDL2_TYPE_MISMATCH,   // Operation received wrong value type
     SDDL2_LOAD_BOUNDS,     // Load address out of bounds
     SDDL2_SEGMENT_BOUNDS,  // Segment extends beyond input buffer
+    SDDL2_LIMIT_EXCEEDED,  // Maximum capacity limit exceeded
     // Future: SDDL2_DIV_ZERO, etc.
 } SDDL2_error;
+
+/* ============================================================================
+ * Memory Allocation Strategy
+ * ========================================================================= */
+
+/**
+ * Allocator function pointer type.
+ *
+ * The VM uses a callback-based allocation strategy to remain independent
+ * of OpenZL's graph infrastructure while still allowing arena allocation
+ * in production.
+ *
+ * @param allocator_ctx Opaque context pointer (e.g., ZL_Graph* in production)
+ * @param size Number of bytes to allocate
+ * @return Pointer to allocated memory, or NULL on allocation failure
+ *
+ * Memory allocated through this callback is never freed individually.
+ * In production (OpenZL integration), this uses ZL_Graph_getScratchSpace()
+ * which provides arena allocation with automatic cleanup at graph exit.
+ * In tests, this can use malloc() or stack-based bump allocation.
+ */
+typedef void* (*SDDL2_allocator_fn)(void* allocator_ctx, size_t size);
+
+/**
+ * Initial capacity for segment list when using arena allocation.
+ * Pre-allocating capacity reduces the need for reallocation, which is
+ * expensive with arena allocators (requires new allocation + copy).
+ * This value should be large enough to handle most typical use cases.
+ * Can be overridden at compile time with -DSDDL2_SEGMENT_INITIAL_CAPACITY=value
+ */
+#ifndef SDDL2_SEGMENT_INITIAL_CAPACITY
+#    define SDDL2_SEGMENT_INITIAL_CAPACITY 4096
+#endif
+
+/**
+ * Maximum capacity for segment list.
+ * This is a hard limit to prevent unbounded memory growth.
+ * If exceeded, segment creation will fail with SDDL2_LIMIT_EXCEEDED.
+ * Can be overridden at compile time with -DSDDL2_SEGMENT_MAX_CAPACITY=value
+ */
+#ifndef SDDL2_SEGMENT_MAX_CAPACITY
+#    define SDDL2_SEGMENT_MAX_CAPACITY 524288 // 512K segments
+#endif
+
+/**
+ * Initial capacity for tag registry when using arena allocation.
+ * Pre-allocating capacity reduces the need for reallocation.
+ * Tags are typically much less numerous than segments.
+ * Can be overridden at compile time with -DSDDL2_TAG_INITIAL_CAPACITY=value
+ */
+#ifndef SDDL2_TAG_INITIAL_CAPACITY
+#    define SDDL2_TAG_INITIAL_CAPACITY 4096
+#endif
+
+/**
+ * Maximum capacity for tag registry.
+ * This is a hard limit to prevent unbounded memory growth.
+ * If exceeded, tag registration will fail with SDDL2_LIMIT_EXCEEDED.
+ * Can be overridden at compile time with -DSDDL2_TAG_MAX_CAPACITY=value
+ */
+#ifndef SDDL2_TAG_MAX_CAPACITY
+#    define SDDL2_TAG_MAX_CAPACITY 32768 // 32K tags
+#endif
 
 /* ============================================================================
  * Segments (Phase 4-5)
@@ -149,21 +217,31 @@ typedef struct {
 /**
  * Dynamic list of segments.
  * Grows as segments are created during VM execution.
+ *
+ * Uses allocator callback for memory management to remain independent
+ * of OpenZL infrastructure while supporting arena allocation.
  */
 typedef struct {
-    SDDL2_segment* items; // Dynamic array of segments
-    size_t count;         // Number of segments
-    size_t capacity;      // Allocated capacity
+    SDDL2_segment* items;        // Dynamic array of segments
+    size_t count;                // Number of segments
+    size_t capacity;             // Allocated capacity
+    SDDL2_allocator_fn alloc_fn; // Allocator function (NULL = use realloc)
+    void* alloc_ctx;             // Opaque allocator context
 } SDDL2_segment_list;
 
 /**
  * Tag registry for tracking tag usage (Phase 5).
  * Tags are registered on first use to ensure consistency.
+ *
+ * Uses allocator callback for memory management to remain independent
+ * of OpenZL infrastructure while supporting arena allocation.
  */
 typedef struct {
-    uint32_t* tags;  // Array of registered tag IDs
-    size_t count;    // Number of registered tags
-    size_t capacity; // Allocated capacity
+    uint32_t* tags;              // Array of registered tag IDs
+    size_t count;                // Number of registered tags
+    size_t capacity;             // Allocated capacity
+    SDDL2_allocator_fn alloc_fn; // Allocator function (NULL = use realloc)
+    void* alloc_ctx;             // Opaque allocator context
 } SDDL2_tag_registry;
 
 /* ============================================================================
@@ -384,13 +462,28 @@ SDDL2_error SDDL2_op_load_u8(
  * ========================================================================= */
 
 /**
- * Initialize a segment list.
+ * Initialize a segment list with optional custom allocator.
+ *
+ * @param list The segment list to initialize
+ * @param alloc_fn Allocator function (NULL = use realloc for fallback)
+ * @param alloc_ctx Opaque context for allocator (e.g., ZL_Graph* in production)
+ *
+ * When alloc_fn is NULL, the list falls back to using realloc/free.
+ * When alloc_fn is provided, allocated memory is never freed individually
+ * (assumed to be arena-managed).
  */
-void SDDL2_segment_list_init(SDDL2_segment_list* list);
+void SDDL2_segment_list_init(
+        SDDL2_segment_list* list,
+        SDDL2_allocator_fn alloc_fn,
+        void* alloc_ctx);
 
 /**
- * Free segment list resources.
+ * Free segment list resources (no-op when using arena allocator).
  * Does NOT free the list structure itself (caller owns it).
+ *
+ * When using custom allocator (alloc_fn != NULL), this is a no-op since
+ * arena-allocated memory is managed by the arena itself.
+ * When using fallback realloc mode, this frees the allocated items array.
  */
 void SDDL2_segment_list_destroy(SDDL2_segment_list* list);
 
@@ -412,13 +505,28 @@ SDDL2_error SDDL2_op_segment_create_unspecified(
  * ========================================================================= */
 
 /**
- * Initialize a tag registry.
+ * Initialize a tag registry with optional custom allocator.
+ *
+ * @param registry The tag registry to initialize
+ * @param alloc_fn Allocator function (NULL = use realloc for fallback)
+ * @param alloc_ctx Opaque context for allocator (e.g., ZL_Graph* in production)
+ *
+ * When alloc_fn is NULL, the registry falls back to using realloc/free.
+ * When alloc_fn is provided, allocated memory is never freed individually
+ * (assumed to be arena-managed).
  */
-void SDDL2_tag_registry_init(SDDL2_tag_registry* registry);
+void SDDL2_tag_registry_init(
+        SDDL2_tag_registry* registry,
+        SDDL2_allocator_fn alloc_fn,
+        void* alloc_ctx);
 
 /**
- * Free tag registry resources.
+ * Free tag registry resources (no-op when using arena allocator).
  * Does NOT free the registry structure itself (caller owns it).
+ *
+ * When using custom allocator (alloc_fn != NULL), this is a no-op since
+ * arena-allocated memory is managed by the arena itself.
+ * When using fallback realloc mode, this frees the allocated tags array.
  */
 void SDDL2_tag_registry_destroy(SDDL2_tag_registry* registry);
 
