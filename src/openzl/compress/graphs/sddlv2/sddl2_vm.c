@@ -385,12 +385,80 @@ SDDL2_error SDDL2_op_load_u8(
  * Memory Management Abstraction Layer
  * ========================================================================= */
 
+// Forward declaration for use in ensure_capacity()
+static void* sddl2_realloc(
+        void* old_ptr,
+        size_t old_size,
+        size_t new_size,
+        SDDL2_allocator_fn alloc_fn,
+        void* alloc_ctx);
+
 /**
  * Initial capacity for dynamic arrays when growing from zero.
  * This is primarily a fail-safe since init functions now pre-allocate capacity.
  * Set to 32 to reduce early reallocations if pre-allocation fails.
  */
 #define SDDL2_DYNAMIC_ARRAY_INITIAL_CAPACITY 32
+
+/**
+ * Generic dynamic array capacity growth helper.
+ * Implements 2x growth strategy with configurable limits.
+ *
+ * @param items_ptr Pointer to items array pointer (will be updated on success)
+ * @param count Current item count
+ * @param capacity_ptr Pointer to current capacity (will be updated on success)
+ * @param element_size Size of each element in bytes
+ * @param max_capacity Maximum allowed capacity
+ * @param alloc_fn Allocator function
+ * @param alloc_ctx Allocator context
+ * @return 1 on success, 0 on failure (max capacity reached or allocation
+ * failed)
+ */
+static int ensure_capacity(
+        void** items_ptr,
+        size_t count,
+        size_t* capacity_ptr,
+        size_t element_size,
+        size_t max_capacity,
+        SDDL2_allocator_fn alloc_fn,
+        void* alloc_ctx)
+{
+    // Already have capacity
+    if (count < *capacity_ptr) {
+        return 1;
+    }
+
+    // Check against maximum capacity limit
+    if (*capacity_ptr >= max_capacity) {
+        return 0; // Maximum capacity reached
+    }
+
+    // Calculate new capacity: 2x growth
+    size_t new_capacity = (*capacity_ptr == 0)
+            ? SDDL2_DYNAMIC_ARRAY_INITIAL_CAPACITY
+            : (*capacity_ptr * 2);
+
+    // Cap at maximum capacity
+    if (new_capacity > max_capacity) {
+        new_capacity = max_capacity;
+    }
+
+    // Reallocate
+    size_t old_size = count * element_size;
+    size_t new_size = new_capacity * element_size;
+
+    void* new_items =
+            sddl2_realloc(*items_ptr, old_size, new_size, alloc_fn, alloc_ctx);
+
+    if (!new_items) {
+        return 0; // Allocation failed
+    }
+
+    // Update pointers
+    *items_ptr    = new_items;
+    *capacity_ptr = new_capacity;
+    return 1;
+}
 
 /**
  * Unified realloc-like abstraction supporting both arena and heap allocation.
@@ -492,39 +560,14 @@ void SDDL2_segment_list_destroy(SDDL2_segment_list* list)
  */
 static int segment_list_ensure_capacity(SDDL2_segment_list* list)
 {
-    if (list->count >= list->capacity) {
-        // Check against maximum capacity limit
-        if (list->capacity >= SDDL2_SEGMENT_MAX_CAPACITY) {
-            return 0; // Maximum capacity reached
-        }
-
-        size_t new_capacity = (list->capacity == 0)
-                ? SDDL2_DYNAMIC_ARRAY_INITIAL_CAPACITY
-                : (list->capacity * 2);
-
-        // Cap at maximum capacity
-        if (new_capacity > SDDL2_SEGMENT_MAX_CAPACITY) {
-            new_capacity = SDDL2_SEGMENT_MAX_CAPACITY;
-        }
-
-        size_t old_size = list->count * sizeof(SDDL2_segment);
-        size_t new_size = new_capacity * sizeof(SDDL2_segment);
-
-        SDDL2_segment* new_items = (SDDL2_segment*)sddl2_realloc(
-                list->items,
-                old_size,
-                new_size,
-                list->alloc_fn,
-                list->alloc_ctx);
-
-        if (!new_items) {
-            return 0; // Allocation failed
-        }
-
-        list->items    = new_items;
-        list->capacity = new_capacity;
-    }
-    return 1; // Success
+    return ensure_capacity(
+            (void**)&list->items,
+            list->count,
+            &list->capacity,
+            sizeof(SDDL2_segment),
+            SDDL2_SEGMENT_MAX_CAPACITY,
+            list->alloc_fn,
+            list->alloc_ctx);
 }
 
 SDDL2_error SDDL2_op_segment_create_unspecified(
@@ -633,38 +676,16 @@ static int tag_registry_register(SDDL2_tag_registry* registry, uint32_t tag)
         }
     }
 
-    // Ensure capacity
-    if (registry->count >= registry->capacity) {
-        // Check against maximum capacity limit
-        if (registry->capacity >= SDDL2_TAG_MAX_CAPACITY) {
-            return 0; // Maximum capacity reached
-        }
-
-        size_t new_capacity = (registry->capacity == 0)
-                ? SDDL2_DYNAMIC_ARRAY_INITIAL_CAPACITY
-                : (registry->capacity * 2);
-
-        // Cap at maximum capacity
-        if (new_capacity > SDDL2_TAG_MAX_CAPACITY) {
-            new_capacity = SDDL2_TAG_MAX_CAPACITY;
-        }
-
-        size_t old_size = registry->count * sizeof(uint32_t);
-        size_t new_size = new_capacity * sizeof(uint32_t);
-
-        uint32_t* new_tags = (uint32_t*)sddl2_realloc(
-                registry->tags,
-                old_size,
-                new_size,
+    // Ensure capacity for new tag
+    if (!ensure_capacity(
+                (void**)&registry->tags,
+                registry->count,
+                &registry->capacity,
+                sizeof(uint32_t),
+                SDDL2_TAG_MAX_CAPACITY,
                 registry->alloc_fn,
-                registry->alloc_ctx);
-
-        if (!new_tags) {
-            return 0; // Allocation failed
-        }
-
-        registry->tags     = new_tags;
-        registry->capacity = new_capacity;
+                registry->alloc_ctx)) {
+        return 0; // Allocation failed or capacity limit reached
     }
 
     // Register tag
