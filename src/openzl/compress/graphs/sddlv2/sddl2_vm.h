@@ -429,13 +429,16 @@ void SDDL2_tag_registry_destroy(SDDL2_tag_registry* registry);
  * Parameter order rationale:
  *   - tag: Identifies WHICH logical entity (e.g., "user_ids", "timestamps")
  *   - type: Describes WHAT data structure (e.g., I32LE array, U8 bytes)
- *   - size: Quantifies HOW MUCH data (number of bytes) <== Should be Number of Elements !!!
+ *   - size: Quantifies HOW MUCH data (number of elements in the array)
  *   Tag + Type together define the segment's identity, then size quantifies it.
  *
  * The type defines the unit type of the array. For example:
  *   - type={U8, width=1}: Array of bytes
  *   - type={I32LE, width=1}: Array of little-endian 32-bit integers
  *   - type={F64BE, width=1}: Array of big-endian 64-bit floats
+ *
+ * The actual byte size of the segment is calculated as:
+ *   size_bytes = element_count * SDDL2_type_size(type.kind)
  *
  * Automatic Merging Behavior:
  *   If the last segment has the same tag AND same type AND is consecutive
@@ -446,7 +449,7 @@ void SDDL2_tag_registry_destroy(SDDL2_tag_registry* registry);
  * Example:
  *   tag.const 100
  *   type.const {U8, 1}
- *   push 100
+ *   push 100              // 100 elements of U8 = 100 bytes
  *   segment_create_tagged  // seg[0]: {tag=100, start=0, size=100, type=U8}
  *
  *   tag.const 100

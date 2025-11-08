@@ -568,11 +568,23 @@ SDDL2_error SDDL2_op_segment_create_tagged(
         return SDDL2_TYPE_MISMATCH;
     }
 
-    // Note: incorrect: should rather be number of elements
-    size_t size = (size_t)size_i64;
+    size_t element_count = (size_t)size_i64;
+
+    // Calculate actual size in bytes: element_count * type_size
+    size_t type_size_bytes = SDDL2_type_size(type.kind);
+    if (type_size_bytes == 0) {
+        return SDDL2_TYPE_MISMATCH; // Unknown or invalid type
+    }
+
+    // Check for overflow in multiplication
+    if (element_count > SIZE_MAX / type_size_bytes) {
+        return SDDL2_STACK_OVERFLOW; // Size overflow
+    }
+
+    size_t size_bytes = element_count * type_size_bytes;
 
     // Bounds check: segment must fit in remaining buffer
-    if (buffer->current_pos + size > buffer->size) {
+    if (buffer->current_pos + size_bytes > buffer->size) {
         return SDDL2_SEGMENT_BOUNDS;
     }
 
@@ -595,8 +607,8 @@ SDDL2_error SDDL2_op_segment_create_tagged(
         if (last->tag == tag && types_match
             && expected_pos == buffer->current_pos) {
             // MERGE: Just extend the last segment's size
-            last->size_bytes += size;
-            buffer->current_pos += size;
+            last->size_bytes += size_bytes;
+            buffer->current_pos += size_bytes;
             return SDDL2_OK;
         }
     }
@@ -609,13 +621,13 @@ SDDL2_error SDDL2_op_segment_create_tagged(
     SDDL2_segment seg;
     seg.tag        = tag;
     seg.start_pos  = buffer->current_pos;
-    seg.size_bytes = size;
+    seg.size_bytes = size_bytes;
     seg.type       = type;
 
     segments->items[segments->count++] = seg;
 
     // Advance cursor
-    buffer->current_pos += size;
+    buffer->current_pos += size_bytes;
 
     return SDDL2_OK;
 }
