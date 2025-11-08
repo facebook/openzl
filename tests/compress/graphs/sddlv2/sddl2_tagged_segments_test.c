@@ -487,6 +487,46 @@ static void test_tagged_segment_negative_size(void)
     printf("✓ test_tagged_segment_negative_size passed\n");
 }
 
+static void test_tagged_segment_size_overflow(void)
+{
+    SDDL2_stack* stack = create_test_stack(100);
+    uint8_t data[1024]; // Large buffer
+    SDDL2_input_buffer buffer;
+    SDDL2_segment_list segments;
+    SDDL2_tag_registry registry;
+
+    SDDL2_input_buffer_init(&buffer, data, sizeof(data));
+    SDDL2_segment_list_init(&segments);
+    SDDL2_tag_registry_init(&registry);
+
+    // Try to create segment where element_count * type_size would overflow
+    // SIZE_MAX Use I64LE type (8 bytes per element) SIZE_MAX / 8 + 1 elements
+    // would cause overflow
+    int64_t overflow_count = (int64_t)(SIZE_MAX / 8) + 1;
+
+    SDDL2_stack_push(stack, SDDL2_value_tag(100));
+    SDDL2_stack_push(
+            stack, SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_I64LE, 1 }));
+    SDDL2_stack_push(stack, SDDL2_value_i64(overflow_count));
+
+    SDDL2_error err = SDDL2_op_segment_create_tagged(
+            stack, &buffer, &segments, &registry);
+
+    // Should return overflow error, not bounds error
+    assert(err == SDDL2_STACK_OVERFLOW);
+
+    // Nothing should be created
+    assert(segments.count == 0);
+    assert(buffer.current_pos == 0);
+
+    // Cleanup
+    SDDL2_segment_list_destroy(&segments);
+    SDDL2_tag_registry_destroy(&registry);
+    destroy_test_stack(stack);
+
+    printf("✓ test_tagged_segment_size_overflow passed\n");
+}
+
 static void test_tagged_segment_wrong_type_tag(void)
 {
     SDDL2_stack* stack = create_test_stack(100);
@@ -735,6 +775,7 @@ int main(void)
     test_tagged_segment_bounds_error();
     test_tagged_segment_negative_tag();
     test_tagged_segment_negative_size();
+    test_tagged_segment_size_overflow();
     test_tagged_segment_wrong_type_tag();
     test_tagged_segment_wrong_type_size();
     test_tagged_segment_stack_underflow();
@@ -747,6 +788,6 @@ int main(void)
     test_many_tags_registry_growth();
     printf("\n");
 
-    printf("✅ All Phase 5 tests passed! (20 tests)\n");
+    printf("✅ All Phase 5 tests passed! (21 tests)\n");
     return 0;
 }
