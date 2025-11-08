@@ -234,8 +234,7 @@ SDDL2_error SDDL2_op_div(SDDL2_stack* stack)
 
     // Divide by zero check
     if (b.value.as_i64 == 0) {
-        return SDDL2_STACK_OVERFLOW; // Using OVERFLOW for div-by-zero (TODO:
-                                     // add DIVZERO error)
+        return SDDL2_DIV_ZERO;
     }
 
     // Overflow check: INT64_MIN / -1 = overflow
@@ -266,8 +265,7 @@ SDDL2_error SDDL2_op_mod(SDDL2_stack* stack)
 
     // Divide by zero check
     if (b.value.as_i64 == 0) {
-        return SDDL2_STACK_OVERFLOW; // Using OVERFLOW for div-by-zero (TODO:
-                                     // add DIVZERO error)
+        return SDDL2_DIV_ZERO;
     }
 
     // Perform modulo and push result

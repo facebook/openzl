@@ -268,8 +268,7 @@ static void test_div_by_zero(void)
     // 10 / 0 = error
     assert(SDDL2_stack_push(stack, SDDL2_value_i64(10)) == SDDL2_OK);
     assert(SDDL2_stack_push(stack, SDDL2_value_i64(0)) == SDDL2_OK);
-    assert(SDDL2_op_div(stack)
-           == SDDL2_STACK_OVERFLOW); // Using OVERFLOW for div-by-zero
+    assert(SDDL2_op_div(stack) == SDDL2_DIV_ZERO);
 
     destroy_test_stack(stack);
     printf("✓ test_div_by_zero passed\n");
@@ -282,8 +281,7 @@ static void test_mod_by_zero(void)
     // 10 % 0 = error
     assert(SDDL2_stack_push(stack, SDDL2_value_i64(10)) == SDDL2_OK);
     assert(SDDL2_stack_push(stack, SDDL2_value_i64(0)) == SDDL2_OK);
-    assert(SDDL2_op_mod(stack)
-           == SDDL2_STACK_OVERFLOW); // Using OVERFLOW for div-by-zero
+    assert(SDDL2_op_mod(stack) == SDDL2_DIV_ZERO);
 
     destroy_test_stack(stack);
     printf("✓ test_mod_by_zero passed\n");

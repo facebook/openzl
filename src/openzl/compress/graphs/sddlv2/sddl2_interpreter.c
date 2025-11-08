@@ -20,7 +20,7 @@ SDDL2_error SDDL2_execute_bytecode(
 
     if (bytecode_size % 4 != 0) {
         // Bytecode must be multiple of 4
-        return SDDL2_STACK_UNDERFLOW; // note: unspecific error code
+        return SDDL2_INVALID_BYTECODE;
     }
 
     // Initialize VM state
@@ -48,7 +48,7 @@ SDDL2_error SDDL2_execute_bytecode(
         // Fetch instruction (32-bit word)
         if (pc + 4 > bytecode_size) {
             SDDL2_tag_registry_destroy(&registry);
-            return SDDL2_STACK_UNDERFLOW; // Incomplete instruction
+            return SDDL2_INVALID_BYTECODE; // Incomplete instruction
         }
 
         uint32_t instruction = ZL_readLE32(&bytecode[pc]);
@@ -69,7 +69,7 @@ SDDL2_error SDDL2_execute_bytecode(
                     halted = 1;
                 } else {
                     SDDL2_tag_registry_destroy(&registry);
-                    return SDDL2_STACK_UNDERFLOW; // Unknown opcode
+                    return SDDL2_INVALID_BYTECODE; // Unknown opcode
                 }
                 break;
 
@@ -79,7 +79,7 @@ SDDL2_error SDDL2_execute_bytecode(
                 } else if (opcode == SDDL2_OP_PUSH_U32) {
                     if (pc + 4 > bytecode_size) {
                         SDDL2_tag_registry_destroy(&registry);
-                        return SDDL2_STACK_UNDERFLOW; // Missing immediate
+                        return SDDL2_INVALID_BYTECODE; // Missing immediate
                     }
                     uint32_t value = ZL_readLE32(&bytecode[pc]);
                     pc += 4;
@@ -88,7 +88,7 @@ SDDL2_error SDDL2_execute_bytecode(
                 } else if (opcode == SDDL2_OP_PUSH_I32) {
                     if (pc + 4 > bytecode_size) {
                         SDDL2_tag_registry_destroy(&registry);
-                        return SDDL2_STACK_UNDERFLOW; // Missing immediate
+                        return SDDL2_INVALID_BYTECODE; // Missing immediate
                     }
                     int32_t value = (int32_t)ZL_readLE32(&bytecode[pc]);
                     pc += 4;
@@ -97,14 +97,14 @@ SDDL2_error SDDL2_execute_bytecode(
                 } else if (opcode == SDDL2_OP_PUSH_I64) {
                     if (pc + 8 > bytecode_size) {
                         SDDL2_tag_registry_destroy(&registry);
-                        return SDDL2_STACK_UNDERFLOW; // Missing immediate
+                        return SDDL2_INVALID_BYTECODE; // Missing immediate
                     }
                     int64_t value = (int64_t)ZL_readLE64(&bytecode[pc]);
                     pc += 8;
                     err = SDDL2_stack_push(&stack, SDDL2_value_i64(value));
                 } else {
                     SDDL2_tag_registry_destroy(&registry);
-                    return SDDL2_STACK_UNDERFLOW; // Unknown opcode
+                    return SDDL2_INVALID_BYTECODE; // Unknown opcode
                 }
                 break;
 
@@ -114,7 +114,7 @@ SDDL2_error SDDL2_execute_bytecode(
                             &stack, &buffer, output_segments);
                 } else {
                     SDDL2_tag_registry_destroy(&registry);
-                    return SDDL2_STACK_UNDERFLOW; // Unknown opcode
+                    return SDDL2_INVALID_BYTECODE; // Unknown opcode
                 }
                 break;
 
@@ -129,7 +129,7 @@ SDDL2_error SDDL2_execute_bytecode(
             case SDDL2_FAMILY_EXPECT:
             case SDDL2_FAMILY_CALL:
                 SDDL2_tag_registry_destroy(&registry);
-                return SDDL2_STACK_UNDERFLOW; // Unimplemented family
+                return SDDL2_INVALID_BYTECODE; // Unimplemented family
         }
 
         // Check for errors
@@ -143,7 +143,7 @@ SDDL2_error SDDL2_execute_bytecode(
     SDDL2_tag_registry_destroy(&registry);
 
     if (!halted) {
-        return SDDL2_STACK_UNDERFLOW; // Program didn't halt properly
+        return SDDL2_INVALID_BYTECODE; // Program didn't halt properly
     }
 
     return SDDL2_OK;

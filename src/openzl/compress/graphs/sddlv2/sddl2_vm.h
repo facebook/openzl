@@ -132,7 +132,8 @@ typedef enum {
     SDDL2_LOAD_BOUNDS,     // Load address out of bounds
     SDDL2_SEGMENT_BOUNDS,  // Segment extends beyond input buffer
     SDDL2_LIMIT_EXCEEDED,  // Maximum capacity limit exceeded
-    // Future: SDDL2_DIV_ZERO, etc.
+    SDDL2_DIV_ZERO,        // Division by zero
+    SDDL2_INVALID_BYTECODE // Malformed or invalid bytecode
 } SDDL2_error;
 
 /* ============================================================================
