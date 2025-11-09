@@ -569,6 +569,435 @@ static void test_math_overflow(void)
 }
 
 /**
+ * Test: All 6 CMP operations
+ *
+ * Tests each CMP operation to verify dispatch works.
+ * Stack comparison results (1=true, 0=false) accumulate for testing.
+ */
+static void test_cmp_all_operations(void)
+{
+    uint8_t input[] = "Test";
+
+    uint8_t bytecode[] = {
+        // eq: 10 == 10 -> 1
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x0A,
+        0x00,
+        0x00,
+        0x00, // 10
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x0A,
+        0x00,
+        0x00,
+        0x00, // 10
+        0x01,
+        0x00,
+        0x03,
+        0x00, // cmp.eq (result: 1)
+
+        // ne: 10 != 5 -> 1
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x0A,
+        0x00,
+        0x00,
+        0x00, // 10
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x05,
+        0x00,
+        0x00,
+        0x00, // 5
+        0x02,
+        0x00,
+        0x03,
+        0x00, // cmp.ne (result: 1)
+
+        // lt: 5 < 10 -> 1
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x05,
+        0x00,
+        0x00,
+        0x00, // 5
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x0A,
+        0x00,
+        0x00,
+        0x00, // 10
+        0x03,
+        0x00,
+        0x03,
+        0x00, // cmp.lt (result: 1)
+
+        // le: 10 <= 10 -> 1
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x0A,
+        0x00,
+        0x00,
+        0x00, // 10
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x0A,
+        0x00,
+        0x00,
+        0x00, // 10
+        0x04,
+        0x00,
+        0x03,
+        0x00, // cmp.le (result: 1)
+
+        // gt: 10 > 5 -> 1
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x0A,
+        0x00,
+        0x00,
+        0x00, // 10
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x05,
+        0x00,
+        0x00,
+        0x00, // 5
+        0x05,
+        0x00,
+        0x03,
+        0x00, // cmp.gt (result: 1)
+
+        // ge: 10 >= 10 -> 1
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x0A,
+        0x00,
+        0x00,
+        0x00, // 10
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x0A,
+        0x00,
+        0x00,
+        0x00, // 10
+        0x06,
+        0x00,
+        0x03,
+        0x00, // cmp.ge (result: 1)
+
+        0x01,
+        0x00,
+        0x05,
+        0x00 // halt
+    };
+
+    SDDL2_segment_list segments;
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_error err = SDDL2_execute_bytecode(
+            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+
+    assert(err == SDDL2_OK);
+    assert(segments.count == 0);
+
+    SDDL2_segment_list_destroy(&segments);
+
+    printf("✓ test_cmp_all_operations passed\n");
+}
+
+/**
+ * Test: CMP operations with false results
+ *
+ * Tests that comparisons correctly return 0 for false conditions
+ */
+static void test_cmp_false_results(void)
+{
+    uint8_t input[] = "Test";
+
+    uint8_t bytecode[] = {
+        // eq: 10 == 5 -> 0
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x0A,
+        0x00,
+        0x00,
+        0x00, // 10
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x05,
+        0x00,
+        0x00,
+        0x00, // 5
+        0x01,
+        0x00,
+        0x03,
+        0x00, // cmp.eq (result: 0)
+
+        // lt: 10 < 5 -> 0
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x0A,
+        0x00,
+        0x00,
+        0x00, // 10
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x05,
+        0x00,
+        0x00,
+        0x00, // 5
+        0x03,
+        0x00,
+        0x03,
+        0x00, // cmp.lt (result: 0)
+
+        0x01,
+        0x00,
+        0x05,
+        0x00 // halt
+    };
+
+    SDDL2_segment_list segments;
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_error err = SDDL2_execute_bytecode(
+            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+
+    assert(err == SDDL2_OK);
+    assert(segments.count == 0);
+
+    SDDL2_segment_list_destroy(&segments);
+
+    printf("✓ test_cmp_false_results passed\n");
+}
+
+/**
+ * Test: CMP operations with negative numbers
+ *
+ * Tests signed comparison behavior with negative values
+ */
+static void test_cmp_negative_numbers(void)
+{
+    uint8_t input[] = "Test";
+
+    uint8_t bytecode[] = {
+        // lt: -10 < 5 -> 1
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0xF6,
+        0xFF,
+        0xFF,
+        0xFF, // -10 (two's complement)
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x05,
+        0x00,
+        0x00,
+        0x00, // 5
+        0x03,
+        0x00,
+        0x03,
+        0x00, // cmp.lt (result: 1)
+
+        // gt: 5 > -10 -> 1
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x05,
+        0x00,
+        0x00,
+        0x00, // 5
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0xF6,
+        0xFF,
+        0xFF,
+        0xFF, // -10
+        0x05,
+        0x00,
+        0x03,
+        0x00, // cmp.gt (result: 1)
+
+        0x01,
+        0x00,
+        0x05,
+        0x00 // halt
+    };
+
+    SDDL2_segment_list segments;
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_error err = SDDL2_execute_bytecode(
+            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+
+    assert(err == SDDL2_OK);
+    assert(segments.count == 0);
+
+    SDDL2_segment_list_destroy(&segments);
+
+    printf("✓ test_cmp_negative_numbers passed\n");
+}
+
+/**
+ * Test: CMP with stack underflow (only 1 element)
+ *
+ * Tests that cmp.eq with only 1 element on stack returns underflow error
+ */
+static void test_cmp_stack_underflow(void)
+{
+    uint8_t input[] = "Test";
+
+    uint8_t bytecode[] = {
+        0x03, 0x00, 0x01, 0x00, // push.i32
+        0x0A, 0x00, 0x00, 0x00, // 10
+        0x01, 0x00, 0x03, 0x00, // cmp.eq (needs 2 elements, only 1!)
+        0x01, 0x00, 0x05, 0x00  // halt
+    };
+
+    SDDL2_segment_list segments;
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_error err = SDDL2_execute_bytecode(
+            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+
+    assert(err == SDDL2_STACK_UNDERFLOW);
+
+    SDDL2_segment_list_destroy(&segments);
+
+    printf("✓ test_cmp_stack_underflow passed\n");
+}
+
+/**
+ * Test: CMP with type mismatch (non-I64 values)
+ *
+ * Tests that cmp.eq with Tag values returns type mismatch error
+ */
+static void test_cmp_type_mismatch(void)
+{
+    uint8_t input[] = "Test";
+
+    uint8_t bytecode[] = {
+        0x05, 0x00, 0x01, 0x00, // push.tag
+        0x64, 0x00, 0x00, 0x00, // tag = 100
+        0x05, 0x00, 0x01, 0x00, // push.tag
+        0xC8, 0x00, 0x00, 0x00, // tag = 200
+        0x01, 0x00, 0x03, 0x00, // cmp.eq (expects I64, got Tag!)
+        0x01, 0x00, 0x05, 0x00  // halt
+    };
+
+    SDDL2_segment_list segments;
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_error err = SDDL2_execute_bytecode(
+            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+
+    assert(err == SDDL2_TYPE_MISMATCH);
+
+    SDDL2_segment_list_destroy(&segments);
+
+    printf("✓ test_cmp_type_mismatch passed\n");
+}
+
+/**
+ * Test: MATH with stack underflow (only 1 element)
+ *
+ * Tests that math.add with only 1 element on stack returns underflow error
+ */
+static void test_math_stack_underflow(void)
+{
+    uint8_t input[] = "Test";
+
+    uint8_t bytecode[] = {
+        0x03, 0x00, 0x01, 0x00, // push.i32
+        0x0A, 0x00, 0x00, 0x00, // 10
+        0x01, 0x00, 0x02, 0x00, // math.add (needs 2 elements, only 1!)
+        0x01, 0x00, 0x05, 0x00  // halt
+    };
+
+    SDDL2_segment_list segments;
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_error err = SDDL2_execute_bytecode(
+            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+
+    assert(err == SDDL2_STACK_UNDERFLOW);
+
+    SDDL2_segment_list_destroy(&segments);
+
+    printf("✓ test_math_stack_underflow passed\n");
+}
+
+/**
+ * Test: MATH with type mismatch (non-I64 values)
+ *
+ * Tests that math.add with Type values returns type mismatch error
+ */
+static void test_math_type_mismatch(void)
+{
+    uint8_t input[] = "Test";
+
+    uint8_t bytecode[] = {
+        0x10, 0x01, 0x01, 0x00, // push.type.u8
+        0x18, 0x01, 0x01, 0x00, // push.type.i32le
+        0x01, 0x00, 0x02, 0x00, // math.add (expects I64, got Type!)
+        0x01, 0x00, 0x05, 0x00  // halt
+    };
+
+    SDDL2_segment_list segments;
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_error err = SDDL2_execute_bytecode(
+            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+
+    assert(err == SDDL2_TYPE_MISMATCH);
+
+    SDDL2_segment_list_destroy(&segments);
+
+    printf("✓ test_math_type_mismatch passed\n");
+}
+
+/**
  * Test: Invalid bytecode size
  */
 static void test_invalid_bytecode_size(void)
@@ -630,9 +1059,16 @@ int main(void)
     test_math_all_operations();
     test_math_div_by_zero();
     test_math_overflow();
+    test_cmp_all_operations();
+    test_cmp_false_results();
+    test_cmp_negative_numbers();
+    test_cmp_stack_underflow();
+    test_cmp_type_mismatch();
+    test_math_stack_underflow();
+    test_math_type_mismatch();
     test_invalid_bytecode_size();
     test_missing_halt();
 
-    printf("\n✅ All interpreter tests passed! (13 tests)\n");
+    printf("\n✅ All interpreter tests passed! (20 tests)\n");
     return 0;
 }

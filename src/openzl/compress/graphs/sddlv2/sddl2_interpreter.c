@@ -206,8 +206,26 @@ SDDL2_error SDDL2_execute_bytecode(
                 }
                 break;
 
-            // Unimplemented families
             case SDDL2_FAMILY_CMP:
+                if (opcode == SDDL2_OP_CMP_EQ) {
+                    err = SDDL2_op_eq(&stack);
+                } else if (opcode == SDDL2_OP_CMP_NE) {
+                    err = SDDL2_op_ne(&stack);
+                } else if (opcode == SDDL2_OP_CMP_LT) {
+                    err = SDDL2_op_lt(&stack);
+                } else if (opcode == SDDL2_OP_CMP_LE) {
+                    err = SDDL2_op_le(&stack);
+                } else if (opcode == SDDL2_OP_CMP_GT) {
+                    err = SDDL2_op_gt(&stack);
+                } else if (opcode == SDDL2_OP_CMP_GE) {
+                    err = SDDL2_op_ge(&stack);
+                } else {
+                    SDDL2_tag_registry_destroy(&registry);
+                    return SDDL2_INVALID_BYTECODE; // Unknown opcode
+                }
+                break;
+
+            // Unimplemented families
             case SDDL2_FAMILY_LOGIC:
             case SDDL2_FAMILY_LOAD:
             case SDDL2_FAMILY_STACK:

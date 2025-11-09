@@ -472,14 +472,60 @@ SDDL2_error SDDL2_op_mod(SDDL2_stack* stack);
 SDDL2_error SDDL2_op_abs(SDDL2_stack* stack);
 
 /**
- * Negate I64 value from the stack.
+ * Negate an I64 value from the stack.
  * Stack: a:I64 -> (-a):I64
  * Errors: TypeMismatch, Overflow (on INT64_MIN)
  */
 SDDL2_error SDDL2_op_neg(SDDL2_stack* stack);
 
 /* ============================================================================
- * Input Buffer Operations (Phase 3)
+ * Comparison Operations (CMP Family)
+ * ========================================================================= */
+
+/**
+ * Compare two I64 values for equality.
+ * Stack: a:I64 b:I64 -> (a==b?1:0):I64
+ * Errors: TypeMismatch
+ */
+SDDL2_error SDDL2_op_eq(SDDL2_stack* stack);
+
+/**
+ * Compare two I64 values for inequality.
+ * Stack: a:I64 b:I64 -> (a!=b?1:0):I64
+ * Errors: TypeMismatch
+ */
+SDDL2_error SDDL2_op_ne(SDDL2_stack* stack);
+
+/**
+ * Compare two I64 values (less than).
+ * Stack: a:I64 b:I64 -> (a<b?1:0):I64
+ * Errors: TypeMismatch
+ */
+SDDL2_error SDDL2_op_lt(SDDL2_stack* stack);
+
+/**
+ * Compare two I64 values (less than or equal).
+ * Stack: a:I64 b:I64 -> (a<=b?1:0):I64
+ * Errors: TypeMismatch
+ */
+SDDL2_error SDDL2_op_le(SDDL2_stack* stack);
+
+/**
+ * Compare two I64 values (greater than).
+ * Stack: a:I64 b:I64 -> (a>b?1:0):I64
+ * Errors: TypeMismatch
+ */
+SDDL2_error SDDL2_op_gt(SDDL2_stack* stack);
+
+/**
+ * Compare two I64 values (greater than or equal).
+ * Stack: a:I64 b:I64 -> (a>=b?1:0):I64
+ * Errors: TypeMismatch
+ */
+SDDL2_error SDDL2_op_ge(SDDL2_stack* stack);
+
+/* ============================================================================
+ * Input Buffer Operations
  * ========================================================================= */
 
 /**

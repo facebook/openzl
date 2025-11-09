@@ -329,6 +329,52 @@ SDDL2_error SDDL2_op_neg(SDDL2_stack* stack)
 }
 
 /* ============================================================================
+ * Comparison Operations (CMP Family)
+ * ========================================================================= */
+
+SDDL2_error SDDL2_op_eq(SDDL2_stack* stack)
+{
+    int64_t a, b;
+    TRY(pop_binary_i64(stack, &a, &b));
+    return push_i64(stack, (a == b) ? 1 : 0);
+}
+
+SDDL2_error SDDL2_op_ne(SDDL2_stack* stack)
+{
+    int64_t a, b;
+    TRY(pop_binary_i64(stack, &a, &b));
+    return push_i64(stack, (a != b) ? 1 : 0);
+}
+
+SDDL2_error SDDL2_op_lt(SDDL2_stack* stack)
+{
+    int64_t a, b;
+    TRY(pop_binary_i64(stack, &a, &b));
+    return push_i64(stack, (a < b) ? 1 : 0);
+}
+
+SDDL2_error SDDL2_op_le(SDDL2_stack* stack)
+{
+    int64_t a, b;
+    TRY(pop_binary_i64(stack, &a, &b));
+    return push_i64(stack, (a <= b) ? 1 : 0);
+}
+
+SDDL2_error SDDL2_op_gt(SDDL2_stack* stack)
+{
+    int64_t a, b;
+    TRY(pop_binary_i64(stack, &a, &b));
+    return push_i64(stack, (a > b) ? 1 : 0);
+}
+
+SDDL2_error SDDL2_op_ge(SDDL2_stack* stack)
+{
+    int64_t a, b;
+    TRY(pop_binary_i64(stack, &a, &b));
+    return push_i64(stack, (a >= b) ? 1 : 0);
+}
+
+/* ============================================================================
  * Input Buffer Operations (Phase 3)
  * ========================================================================= */
 
