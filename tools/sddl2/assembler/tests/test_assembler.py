@@ -11,7 +11,7 @@ from pathlib import Path
 
 # Configuration
 SCRIPT_DIR = Path(__file__).resolve().parent
-ASSEMBLER_PATH = SCRIPT_DIR.parent / 'assembler.py'
+ASSEMBLER_PATH = SCRIPT_DIR.parent / 'sddl2_assembler.py'
 SUCCESS_DIR = SCRIPT_DIR / 'success'
 FAIL_DIR = SCRIPT_DIR / 'fail'
 

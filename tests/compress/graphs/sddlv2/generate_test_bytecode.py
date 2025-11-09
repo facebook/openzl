@@ -8,13 +8,13 @@ Simple usage (from anywhere):
 This uses default paths:
     - Input:     tests/compress/graphs/sddlv2/asm/
     - Output:    tests/compress/graphs/sddlv2/generated_test_bytecode.h
-    - Assembler: tools/sddl/assembler/
+    - Assembler: tools/sddl2/assembler/
 
 Custom paths (optional):
     python3 tests/compress/graphs/sddlv2/generate_test_bytecode.py \
         -i custom/asm/dir \
         -o custom/output.h \
-        -a path/to/custom/assembler.py
+        -a path/to/custom/sddl2_assembler.py
 
 What this script does:
 1. Finds all .asm files in the input directory
@@ -33,16 +33,16 @@ def load_assembler(assembler_path):
     """Load the assembler module from the specified path.
     
     Args:
-        assembler_path: Path to assembler.py or directory containing it
+        assembler_path: Path to sddl2_assembler.py or directory containing it
     
     Returns:
         The assemble function from the assembler module
     """
     assembler_path = Path(assembler_path)
     
-    # If it's a directory, look for assembler.py inside
+    # If it's a directory, look for sddl2_assembler.py inside
     if assembler_path.is_dir():
-        assembler_file = assembler_path / 'assembler.py'
+        assembler_file = assembler_path / 'sddl2_assembler.py'
     else:
         assembler_file = assembler_path
     
@@ -54,7 +54,7 @@ def load_assembler(assembler_path):
     sys.path.insert(0, str(assembler_dir))
     
     # Import the assemble function
-    from assembler import assemble
+    from sddl2_assembler import assemble
     return assemble
 
 
@@ -181,7 +181,7 @@ def main():
     project_root = script_dir.parent.parent.parent.parent
     default_input = script_dir / 'asm'
     default_output = script_dir / 'generated_test_bytecode.h'
-    default_assembler = project_root / 'tools' / 'sddl' / 'assembler'
+    default_assembler = project_root / 'tools' / 'sddl2' / 'assembler'
     
     parser = argparse.ArgumentParser(
         description='Generate C header with bytecode from interpreter test assembly files',

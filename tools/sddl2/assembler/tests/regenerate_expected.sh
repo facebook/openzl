@@ -4,11 +4,11 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ASSEMBLER="$SCRIPT_DIR/../assembler.py"
-SUCCESS_DIR="$SCRIPT_DIR/success"
+ASSEMBLER="$SCRIPT_DIR/../sddl2_assembler.py"
 
+# Check if assembler exists
 if [ ! -f "$ASSEMBLER" ]; then
-    echo "Error: assembler.py not found at $ASSEMBLER"
+    echo "Error: sddl2_assembler.py not found at $ASSEMBLER"
     exit 1
 fi
 

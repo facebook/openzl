@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
-OpenZL VM Assembler
+SDDL2 Assembler
 
-Instruction definitions are auto-generated from openzl_opcodes.def
+Assembles SDDL2 assembly language to SDDL2 VM bytecode.
+
+Instruction definitions are auto-generated from sddl2_opcodes.def
 To regenerate: python3 generate_opcodes.py
 """
 
@@ -219,11 +221,11 @@ def assemble(source: str) -> bytes:
 def main():
     # Help flag
     if len(sys.argv) > 1 and sys.argv[1] in ["-h", "--help", "help"]:
-        print("OpenZL VM Assembler")
+        print("SDDL2 Assembler")
         print()
         print("Usage:")
-        print("  assembler.py <input.sddl> [output.bin]")
-        print("  assembler.py -c '<assembly code>' [output.bin]")
+        print("  sddl2_assembler.py <input.sddl> [output.bin]")
+        print("  sddl2_assembler.py -c '<assembly code>' [output.bin]")
         print()
         print("Arguments:")
         print("  <input.sddl>    Input assembly file (.sddl)")
@@ -235,15 +237,15 @@ def main():
         print("  -h, --help      Show this help message")
         print()
         print("Examples:")
-        print("  assembler.py program.sddl")
-        print("  assembler.py program.sddl output.bin")
-        print("  assembler.py -c 'push.i32 5\\nhalt'")
+        print("  sddl2_assembler.py program.sddl")
+        print("  sddl2_assembler.py program.sddl output.bin")
+        print("  sddl2_assembler.py -c 'push.i32 5\\nhalt'")
         sys.exit(0)
 
     if len(sys.argv) < 2:
-        print("Usage: assembler.py <input.sddl> [output.bin]")
-        print("   or: assembler.py -c '<assembly code>'")
-        print("Try 'assembler.py --help' for more information.")
+        print("Usage: sddl2_assembler.py <input.sddl> [output.bin]")
+        print("   or: sddl2_assembler.py -c '<assembly code>'")
+        print("Try 'sddl2_assembler.py --help' for more information.")
         sys.exit(1)
 
     # Command-line mode: -c "code"
