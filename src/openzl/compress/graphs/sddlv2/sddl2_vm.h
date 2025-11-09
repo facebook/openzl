@@ -49,7 +49,8 @@ typedef enum {
  * Total byte size = openzl_type_size(kind) * width
  */
 typedef enum {
-    SDDL2_TYPE_U8 = 0,
+    SDDL2_TYPE_BYTES = 0,        // Raw bytes, no interpretation
+    SDDL2_TYPE_U8,
     SDDL2_TYPE_I8,
     SDDL2_TYPE_U16LE,
     SDDL2_TYPE_U16BE,
@@ -63,11 +64,15 @@ typedef enum {
     SDDL2_TYPE_U64BE,
     SDDL2_TYPE_I64LE,
     SDDL2_TYPE_I64BE,
+    SDDL2_TYPE_F8,
+    SDDL2_TYPE_F16LE,
+    SDDL2_TYPE_F16BE,
+    SDDL2_TYPE_BF16LE,
+    SDDL2_TYPE_BF16BE,
     SDDL2_TYPE_F32LE,
     SDDL2_TYPE_F32BE,
     SDDL2_TYPE_F64LE,
     SDDL2_TYPE_F64BE,
-    SDDL2_TYPE_BYTES,        // Raw bytes, no interpretation
     /* SDDL2_TYPE_FIXED_N */ // TODO: Fixed-width byte arrays
 } SDDL2_type_kind;
 

@@ -2,7 +2,7 @@
 AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 
 Generated from: src/openzl/compress/graphs/sddlv2/sddl2_opcodes.def
-Generated at: 2025-11-09 04:24:28 UTC
+Generated at: 2025-11-09 05:28:34 UTC
 Generator: generate_opcodes.py
 
 To regenerate: python3 generate_opcodes.py
@@ -36,6 +36,30 @@ INSTRUCTIONS = {
     "push.i32": ("PUSH", 0x0003, ["i32"]),
     "push.i64": ("PUSH", 0x0004, ["i64"]),
     "push.tag": ("PUSH", 0x0005, ["u32"]),
+    "push.type.bytes": ("PUSH", 0x0100, []),
+    "push.type.u8": ("PUSH", 0x0110, []),
+    "push.type.i8": ("PUSH", 0x0111, []),
+    "push.type.u16le": ("PUSH", 0x0112, []),
+    "push.type.u16be": ("PUSH", 0x0113, []),
+    "push.type.i16le": ("PUSH", 0x0114, []),
+    "push.type.i16be": ("PUSH", 0x0115, []),
+    "push.type.u32le": ("PUSH", 0x0116, []),
+    "push.type.u32be": ("PUSH", 0x0117, []),
+    "push.type.i32le": ("PUSH", 0x0118, []),
+    "push.type.i32be": ("PUSH", 0x0119, []),
+    "push.type.u64le": ("PUSH", 0x011A, []),
+    "push.type.u64be": ("PUSH", 0x011B, []),
+    "push.type.i64le": ("PUSH", 0x011C, []),
+    "push.type.i64be": ("PUSH", 0x011D, []),
+    "push.type.f8": ("PUSH", 0x0130, []),
+    "push.type.f16le": ("PUSH", 0x0131, []),
+    "push.type.f16be": ("PUSH", 0x0132, []),
+    "push.type.bf16le": ("PUSH", 0x0133, []),
+    "push.type.bf16be": ("PUSH", 0x0134, []),
+    "push.type.f32le": ("PUSH", 0x0135, []),
+    "push.type.f32be": ("PUSH", 0x0136, []),
+    "push.type.f64le": ("PUSH", 0x0137, []),
+    "push.type.f64be": ("PUSH", 0x0138, []),
 
     # STACK family (0x0007)
     "stack.dup": ("STACK", 0x0001, []),

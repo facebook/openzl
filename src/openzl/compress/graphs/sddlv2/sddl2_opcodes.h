@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
 // Generated from: src/openzl/compress/graphs/sddlv2/sddl2_opcodes.def
-// Generated at: 2025-11-09 04:24:28 UTC
+// Generated at: 2025-11-09 05:28:34 UTC
 // Generator: generate_opcodes.py
 //
 // To regenerate: python3 tools/sddl/assembler/generate_opcodes.py
@@ -52,6 +52,30 @@ enum sddl2_opcode_push {
     SDDL2_OP_PUSH_I32 = 0x0003,  /* param: i32 */
     SDDL2_OP_PUSH_I64 = 0x0004,  /* param: i64 */
     SDDL2_OP_PUSH_TAG = 0x0005,  /* param: u32 */
+    SDDL2_OP_PUSH_TYPE_BYTES = 0x0100,
+    SDDL2_OP_PUSH_TYPE_U8 = 0x0110,
+    SDDL2_OP_PUSH_TYPE_I8 = 0x0111,
+    SDDL2_OP_PUSH_TYPE_U16LE = 0x0112,
+    SDDL2_OP_PUSH_TYPE_U16BE = 0x0113,
+    SDDL2_OP_PUSH_TYPE_I16LE = 0x0114,
+    SDDL2_OP_PUSH_TYPE_I16BE = 0x0115,
+    SDDL2_OP_PUSH_TYPE_U32LE = 0x0116,
+    SDDL2_OP_PUSH_TYPE_U32BE = 0x0117,
+    SDDL2_OP_PUSH_TYPE_I32LE = 0x0118,
+    SDDL2_OP_PUSH_TYPE_I32BE = 0x0119,
+    SDDL2_OP_PUSH_TYPE_U64LE = 0x011A,
+    SDDL2_OP_PUSH_TYPE_U64BE = 0x011B,
+    SDDL2_OP_PUSH_TYPE_I64LE = 0x011C,
+    SDDL2_OP_PUSH_TYPE_I64BE = 0x011D,
+    SDDL2_OP_PUSH_TYPE_F8 = 0x0130,
+    SDDL2_OP_PUSH_TYPE_F16LE = 0x0131,
+    SDDL2_OP_PUSH_TYPE_F16BE = 0x0132,
+    SDDL2_OP_PUSH_TYPE_BF16LE = 0x0133,
+    SDDL2_OP_PUSH_TYPE_BF16BE = 0x0134,
+    SDDL2_OP_PUSH_TYPE_F32LE = 0x0135,
+    SDDL2_OP_PUSH_TYPE_F32BE = 0x0136,
+    SDDL2_OP_PUSH_TYPE_F64LE = 0x0137,
+    SDDL2_OP_PUSH_TYPE_F64BE = 0x0138,
 };
 
 /* MATH family (0x0002) - Arithmetic operations on I64 values */

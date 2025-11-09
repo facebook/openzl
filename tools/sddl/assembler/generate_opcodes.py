@@ -67,11 +67,40 @@ def parse_def_file(def_file_path: Path) -> Tuple[Dict[str, tuple], List[tuple]]:
         elif line.startswith('  ') and current_family:
             # Format: mnemonic  opcode  [params]  "Description"
             # Mnemonic is used exactly as written (e.g., "halt", "push.zero")
+            # Special case: "push.type <typename>" is treated as a single mnemonic
+            
+            # First, try the standard pattern
             match = re.match(
                 r'\s+([\w.]+)\s+(0x[0-9A-Fa-f]+)(?:\s+([^"]+))?\s+"([^"]*)"',
                 line
             )
-            if match:
+            
+            if not match:
+                # Try multi-word mnemonic pattern (for "push.type <typename>")
+                match = re.match(
+                    r'\s+([\w.]+)\s+([\w.]+)\s+(0x[0-9A-Fa-f]+)(?:\s+([^"]+))?\s+"([^"]*)"',
+                    line
+                )
+                if match and match.group(1) == "push.type":
+                    # Merge "push.type" and the typename
+                    mnemonic = f"{match.group(1)} {match.group(2)}"
+                    opcode = match.group(3)
+                    params_str = match.group(4)
+                    description = match.group(5)
+                    
+                    # Parse parameters if present
+                    params = []
+                    if params_str:
+                        params = [p.strip() for p in params_str.split() if p.strip()]
+                    
+                    opcodes.append((
+                        mnemonic,
+                        current_family,
+                        int(opcode, 16),
+                        params,
+                        description
+                    ))
+            elif match:
                 mnemonic = match.group(1)
                 opcode = match.group(2)
                 params_str = match.group(3)

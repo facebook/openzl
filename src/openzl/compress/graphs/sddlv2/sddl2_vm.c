@@ -49,11 +49,16 @@ size_t SDDL2_type_size(SDDL2_type_kind kind)
     switch (kind) {
         case SDDL2_TYPE_U8:
         case SDDL2_TYPE_I8:
+        case SDDL2_TYPE_F8:
             return 1;
         case SDDL2_TYPE_U16LE:
         case SDDL2_TYPE_U16BE:
         case SDDL2_TYPE_I16LE:
         case SDDL2_TYPE_I16BE:
+        case SDDL2_TYPE_F16LE:
+        case SDDL2_TYPE_F16BE:
+        case SDDL2_TYPE_BF16LE:
+        case SDDL2_TYPE_BF16BE:
             return 2;
         case SDDL2_TYPE_U32LE:
         case SDDL2_TYPE_U32BE:

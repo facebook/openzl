@@ -91,6 +91,50 @@ static void test_zero_size_segment(void)
 }
 
 /**
+ * Test: push.type opcode execution
+ *
+ * This tests that the interpreter correctly executes push.type bytecode.
+ * We test a few representative types (u8, i32le, f64be) to verify:
+ * 1. The opcodes execute without errors
+ * 2. Values are pushed onto the stack (test passes if no stack errors occur)
+ *
+ * Bytecode: push.type u8, push.type i32le, push.type f64be, halt
+ */
+static void test_push_type_execution(void)
+{
+    uint8_t input[] = "Test";
+
+    // Bytecode: push.type.u8, push.type.i32le, push.type.f64be, halt
+    uint8_t bytecode[] = {
+        0x10, 0x01,
+        0x01, 0x00, // push.type.u8 (opcode=0x0110, family=0x0001)
+        0x18, 0x01,
+        0x01, 0x00, // push.type.i32le (opcode=0x0118, family=0x0001)
+        0x38, 0x01,
+        0x01, 0x00, // push.type.f64be (opcode=0x0138, family=0x0001)
+        0x01, 0x00,
+        0x05, 0x00 // halt
+    };
+
+    SDDL2_segment_list segments;
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+
+    // Execute - should succeed (just pushes values and halts)
+    SDDL2_error err = SDDL2_execute_bytecode(
+            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+
+    // Should execute successfully
+    assert(err == SDDL2_OK);
+
+    // No segments should be created (we just push and halt)
+    assert(segments.count == 0);
+
+    SDDL2_segment_list_destroy(&segments);
+
+    printf("✓ test_push_type_execution passed\n");
+}
+
+/**
  * Test: push.tag opcode execution
  *
  * This tests that the interpreter correctly executes push.tag bytecode.
@@ -184,10 +228,11 @@ int main(void)
 
     test_simple_segment_creation();
     test_zero_size_segment();
+    test_push_type_execution();
     test_push_tag_execution();
     test_invalid_bytecode_size();
     test_missing_halt();
 
-    printf("\n✅ All interpreter tests passed! (5 tests)\n");
+    printf("\n✅ All interpreter tests passed! (6 tests)\n");
     return 0;
 }

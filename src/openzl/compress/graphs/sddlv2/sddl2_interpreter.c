@@ -111,6 +111,78 @@ SDDL2_error SDDL2_execute_bytecode(
                     uint32_t tag = ZL_readLE32(&bytecode[pc]);
                     pc += 4;
                     err = SDDL2_stack_push(&stack, SDDL2_value_tag(tag));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_BYTES) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_BYTES, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_U8) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_U8, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_I8) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_I8, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_U16LE) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_U16LE, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_U16BE) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_U16BE, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_I16LE) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_I16LE, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_I16BE) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_I16BE, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_U32LE) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_U32LE, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_U32BE) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_U32BE, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_I32LE) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_I32LE, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_I32BE) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_I32BE, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_U64LE) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_U64LE, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_U64BE) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_U64BE, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_I64LE) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_I64LE, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_I64BE) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_I64BE, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_F8) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_F8, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_F16LE) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_F16LE, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_F16BE) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_F16BE, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_BF16LE) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_BF16LE, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_BF16BE) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_BF16BE, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_F32LE) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_F32LE, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_F32BE) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_F32BE, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_F64LE) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_F64LE, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
+                } else if (opcode == SDDL2_OP_PUSH_TYPE_F64BE) {
+                    SDDL2_type type = { .kind = SDDL2_TYPE_F64BE, .width = 1 };
+                    err = SDDL2_stack_push(&stack, SDDL2_value_type(type));
                 } else {
                     SDDL2_tag_registry_destroy(&registry);
                     return SDDL2_INVALID_BYTECODE; // Unknown opcode

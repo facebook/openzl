@@ -127,9 +127,10 @@ zs2_test : examples
 	$(EXEC_PREFIX) ./zs2_pipeline
 	$(EXEC_PREFIX) ./zs2_trygraph
 
+SDDL2_DIR = tests/compress/graphs/sddlv2
 .PHONY: sddl2_test
 sddl2_test:
-	$(MAKE) -C tests/compress/graphs/sddlv2 test
+	$(MAKE) -C $(SDDL2_DIR) test
 
 # ********     Tools     ********
 
@@ -228,7 +229,8 @@ $(eval $(call cxx_program_shared_o,zs2_round_trip,tests/round_trip.o tools/filei
 
 .PHONY: clean
 clean:
-	# note: done by multiconf.make
+	# note: a lot is done within multiconf.make
+	$(MAKE) -C $(SDDL2_DIR) clean
 	@echo Cleaning completed
 
 
