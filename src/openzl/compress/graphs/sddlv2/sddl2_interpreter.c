@@ -322,10 +322,10 @@ SDDL2_error SDDL2_execute_bytecode(
     // Cleanup
     SDDL2_tag_registry_destroy(&registry);
 
-    if (!halted) {
-        return SDDL2_INVALID_BYTECODE; // Program didn't halt properly
-    }
-
+    // Implicit halt: reaching the end of bytecode is treated as a successful
+    // halt, even if no explicit halt instruction was encountered.
+    // This makes simple programs more concise and follows the behavior of
+    // high-level languages where functions can end without explicit return.
     return SDDL2_OK;
 }
 

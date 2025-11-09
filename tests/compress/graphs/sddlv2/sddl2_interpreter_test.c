@@ -569,17 +569,27 @@ TEST(test_invalid_bytecode_size)
 }
 
 /**
- * Test: Program without halt
+ * Test: Program without halt (implicit halt)
+ *
+ * Tests that programs ending without an explicit halt instruction
+ * are treated as successful (implicit halt behavior).
+ *
+ * This program performs valid operations but doesn't include a halt.
+ * The interpreter should treat reaching the end as an implicit halt.
+ *
+ * Assembly (no explicit halt):
+ *   push.i32 5
+ *   segment.create_unspecified
  *
  * NOTE: Uses hard-coded bytecode instead of assembler-generated
- * Reason: This test uses a program WITHOUT the required halt instruction,
- * which represents INVALID ASSEMBLY. The assembler may reject such programs
- * or automatically add the halt instruction. Hand-crafted bytecode ensures
- * we test the interpreter's handling of programs that end unexpectedly.
+ * Reason: This tests the implicit halt feature. If we used the assembler,
+ * we couldn't be certain it doesn't automatically add a halt instruction.
+ * Hand-crafted bytecode ensures we're testing the interpreter's implicit
+ * halt behavior, not the assembler's behavior.
  */
 TEST(test_missing_halt)
 {
-    uint8_t input[] = "Test";
+    uint8_t input[] = "Test5";  // 5 bytes to match segment size
 
     uint8_t bytecode[] = {
         0x03, 0x00, 0x01, 0x00, // push.i32
@@ -593,7 +603,12 @@ TEST(test_missing_halt)
     SDDL2_error err = SDDL2_execute_bytecode(
             bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
 
-    assert(err != SDDL2_OK);
+    // Should succeed with implicit halt
+    assert(err == SDDL2_OK);
+    
+    // Verify the segment was created correctly
+    assert(segments.count == 1);
+    assert(segments.items[0].size_bytes == 5);
 
     SDDL2_segment_list_destroy(&segments);
 }
