@@ -5,6 +5,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ASSEMBLER="$SCRIPT_DIR/../sddl2_assembler.py"
+SUCCESS_DIR="$SCRIPT_DIR/success"
 
 # Check if assembler exists
 if [ ! -f "$ASSEMBLER" ]; then

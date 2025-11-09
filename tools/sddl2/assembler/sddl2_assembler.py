@@ -85,7 +85,7 @@ def encode_parameter(value: int, param_type: str) -> bytes:
 def tokenize(source: str) -> List[Tuple[str, List[str]]]:
     """
     Tokenize assembly source into (mnemonic, parameters) tuples.
-    - Strip comments (# to end of line)
+    - Strip comments (# or ; to end of line)
     - Parse instructions and their parameters
     - Handle multiple instructions per line
     - Return list of (mnemonic, [param1, param2, ...])
@@ -95,9 +95,11 @@ def tokenize(source: str) -> List[Tuple[str, List[str]]]:
 
     # First pass: extract all tokens, removing comments
     for line in lines:
-        # Remove comments
-        if "#" in line:
-            line = line[: line.index("#")]
+        # Remove comments (support both # and ; for compatibility)
+        for comment_char in ['#', ';']:
+            if comment_char in line:
+                line = line[: line.index(comment_char)]
+                break  # Only need to remove first comment marker
 
         # Split on whitespace and collect non-empty tokens
         all_tokens.extend(line.split())

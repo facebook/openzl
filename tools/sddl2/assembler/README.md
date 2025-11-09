@@ -28,7 +28,7 @@ python3 sddl2_assembler.py -c "push.zero halt" output.bin
 ## Assembly Syntax
 
 - One instruction per line (or separated by whitespace)
-- Comments start with `#` and continue to end of line
+- Comments start with `#` or `;` and continue to end of line
 - Instruction names are case-sensitive
 - Extra whitespace is ignored
 
