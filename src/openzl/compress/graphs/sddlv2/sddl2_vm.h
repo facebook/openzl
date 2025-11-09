@@ -49,7 +49,7 @@ typedef enum {
  * Total byte size = openzl_type_size(kind) * width
  */
 typedef enum {
-    SDDL2_TYPE_BYTES = 0,        // Raw bytes, no interpretation
+    SDDL2_TYPE_BYTES = 0, // Raw bytes, no interpretation
     SDDL2_TYPE_U8,
     SDDL2_TYPE_I8,
     SDDL2_TYPE_U16LE,

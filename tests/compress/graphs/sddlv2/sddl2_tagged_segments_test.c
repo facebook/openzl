@@ -811,6 +811,103 @@ static void test_segment_list_dynamic_growth(void)
     printf("✓ test_segment_list_dynamic_growth passed\n");
 }
 
+/**
+ * Test: Segment list dynamic growth with different types
+ *
+ * This test verifies segment list growth when creating many segments with
+ * DIFFERENT TYPES. Even with the same tag, different types prevent merging,
+ * ensuring each segment creation adds a new segment to the list.
+ *
+ * This is more realistic than test_segment_list_dynamic_growth (which uses
+ * different tags) because in real usage, typed segments with different types
+ * cannot merge even if they share the same tag.
+ *
+ * Strategy: Create 50 segments with the SAME tag but DIFFERENT types.
+ * Types cycle through: U8, I16LE, F32LE, I64BE (4 types).
+ * No merging occurs because types differ between consecutive segments.
+ */
+static void test_segment_list_growth_different_types(void)
+{
+    SDDL2_stack* stack = create_test_stack(1000);
+    uint8_t data[500]  = { 0 };
+    SDDL2_input_buffer buffer;
+    SDDL2_segment_list segments;
+    SDDL2_tag_registry registry;
+
+    SDDL2_input_buffer_init(&buffer, data, 500);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_tag_registry_init(&registry, NULL, NULL);
+
+    size_t initial_capacity = segments.capacity;
+
+    // Types to cycle through (different sizes to make it more interesting)
+    SDDL2_type_kind types[] = {
+        SDDL2_TYPE_U8,    // 1 byte
+        SDDL2_TYPE_I16LE, // 2 bytes
+        SDDL2_TYPE_F32LE, // 4 bytes
+        SDDL2_TYPE_I64BE  // 8 bytes
+    };
+    size_t element_counts[] = { 2, 1, 1, 1 }; // Total per segment: 2, 2, 4, 8
+
+    // Create 50 segments with SAME tag (100) but DIFFERENT types
+    const int NUM_SEGMENTS = 50;
+    size_t expected_pos    = 0;
+
+    for (int i = 0; i < NUM_SEGMENTS; i++) {
+        int type_idx = i % 4;
+
+        // Same tag for all segments!
+        SDDL2_stack_push(stack, SDDL2_value_tag(100));
+
+        // Different type each time (cycles through 4 types)
+        SDDL2_stack_push(
+                stack, SDDL2_value_type((SDDL2_type){ types[type_idx], 1 }));
+
+        // Element count depends on type
+        SDDL2_stack_push(
+                stack, SDDL2_value_i64((int64_t)element_counts[type_idx]));
+
+        SDDL2_error err = SDDL2_op_segment_create_tagged(
+                stack, &buffer, &segments, &registry);
+        assert(err == SDDL2_OK);
+    }
+
+    // Verify all 50 segments were created (no merging despite same tag!)
+    assert(segments.count == NUM_SEGMENTS);
+
+    // Verify capacity grew beyond initial
+    assert(segments.capacity > initial_capacity);
+    assert(segments.capacity >= NUM_SEGMENTS);
+
+    // Verify each segment has correct type and doesn't merge with neighbors
+    expected_pos = 0;
+    for (int i = 0; i < NUM_SEGMENTS; i++) {
+        int type_idx = i % 4;
+        size_t expected_bytes =
+                element_counts[type_idx] * SDDL2_type_size(types[type_idx]);
+
+        assert(segments.items[i].tag == 100); // Same tag!
+        assert(segments.items[i].type.kind
+               == types[type_idx]); // Different types
+        assert(segments.items[i].type.width == 1);
+        assert(segments.items[i].start_pos == expected_pos);
+        assert(segments.items[i].size_bytes == expected_bytes);
+
+        expected_pos += expected_bytes;
+    }
+
+    // Only 1 tag should be registered (all segments use tag 100)
+    assert(registry.count == 1);
+    assert(registry.tags[0] == 100);
+
+    // Cleanup
+    SDDL2_segment_list_destroy(&segments);
+    SDDL2_tag_registry_destroy(&registry);
+    destroy_test_stack(stack);
+
+    printf("✓ test_segment_list_growth_different_types passed\n");
+}
+
 /* ============================================================================
  * Test Runner
  * ========================================================================= */
@@ -857,8 +954,9 @@ int main(void)
     test_mixed_unspecified_and_tagged();
     test_many_tags_registry_growth();
     test_segment_list_dynamic_growth();
+    test_segment_list_growth_different_types();
     printf("\n");
 
-    printf("✅ All Phase 5 tests passed! (22 tests)\n");
+    printf("✅ All Phase 5 tests passed! (23 tests)\n");
     return 0;
 }

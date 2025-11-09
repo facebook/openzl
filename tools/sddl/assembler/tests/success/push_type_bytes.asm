@@ -1,3 +1,2 @@
 push.type bytes
 halt
-
