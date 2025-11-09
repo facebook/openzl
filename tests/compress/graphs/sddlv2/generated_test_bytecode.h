@@ -36,6 +36,18 @@ static const uint8_t BYTECODE_TEST_CMP_NEGATIVE_NUMBERS[] = {
 };
 static const size_t BYTECODE_TEST_CMP_NEGATIVE_NUMBERS_SIZE = 44;
 
+/* Source: test_cmp_stack_underflow.asm */
+static const uint8_t BYTECODE_TEST_CMP_STACK_UNDERFLOW[] = {
+    0x03, 0x00, 0x01, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x01, 0x00, 0x03, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_CMP_STACK_UNDERFLOW_SIZE = 16;
+
+/* Source: test_cmp_type_mismatch.asm */
+static const uint8_t BYTECODE_TEST_CMP_TYPE_MISMATCH[] = {
+    0x05, 0x00, 0x01, 0x00, 0x64, 0x00, 0x00, 0x00, 0x05, 0x00, 0x01, 0x00, 0xC8, 0x00, 0x00, 0x00, 0x01, 0x00, 0x03, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_CMP_TYPE_MISMATCH_SIZE = 24;
+
 /* Source: test_math_add.asm */
 static const uint8_t BYTECODE_TEST_MATH_ADD[] = {
     0x03, 0x00, 0x01, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x05, 0x00, 0x00, 0x00, 0x01, 0x00, 0x02, 0x00, 0x01, 0x00, 0x05, 0x00
@@ -53,6 +65,24 @@ static const uint8_t BYTECODE_TEST_MATH_COMBINED[] = {
     0x03, 0x00, 0x01, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x02, 0x00, 0x03, 0x00, 0x01, 0x00, 0x04, 0x00, 0x00, 0x00, 0x03, 0x00, 0x02, 0x00, 0x01, 0x00, 0x05, 0x00
 };
 static const size_t BYTECODE_TEST_MATH_COMBINED_SIZE = 36;
+
+/* Source: test_math_div_by_zero.asm */
+static const uint8_t BYTECODE_TEST_MATH_DIV_BY_ZERO[] = {
+    0x03, 0x00, 0x01, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x02, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_MATH_DIV_BY_ZERO_SIZE = 24;
+
+/* Source: test_math_stack_underflow.asm */
+static const uint8_t BYTECODE_TEST_MATH_STACK_UNDERFLOW[] = {
+    0x03, 0x00, 0x01, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x01, 0x00, 0x02, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_MATH_STACK_UNDERFLOW_SIZE = 16;
+
+/* Source: test_math_type_mismatch.asm */
+static const uint8_t BYTECODE_TEST_MATH_TYPE_MISMATCH[] = {
+    0x10, 0x01, 0x01, 0x00, 0x18, 0x01, 0x01, 0x00, 0x01, 0x00, 0x02, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_MATH_TYPE_MISMATCH_SIZE = 16;
 
 /* Source: test_multiple_typed_segments.asm */
 static const uint8_t BYTECODE_TEST_MULTIPLE_TYPED_SEGMENTS[] = {
@@ -96,11 +126,23 @@ static const uint8_t BYTECODE_TEST_STACK_DROP[] = {
 };
 static const size_t BYTECODE_TEST_STACK_DROP_SIZE = 24;
 
+/* Source: test_stack_drop_underflow.asm */
+static const uint8_t BYTECODE_TEST_STACK_DROP_UNDERFLOW[] = {
+    0x03, 0x00, 0x07, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_STACK_DROP_UNDERFLOW_SIZE = 8;
+
 /* Source: test_stack_dup.asm */
 static const uint8_t BYTECODE_TEST_STACK_DUP[] = {
     0x03, 0x00, 0x01, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x01, 0x00, 0x07, 0x00, 0x03, 0x00, 0x07, 0x00, 0x03, 0x00, 0x07, 0x00, 0x01, 0x00, 0x05, 0x00
 };
 static const size_t BYTECODE_TEST_STACK_DUP_SIZE = 24;
+
+/* Source: test_stack_dup_underflow.asm */
+static const uint8_t BYTECODE_TEST_STACK_DUP_UNDERFLOW[] = {
+    0x01, 0x00, 0x07, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_STACK_DUP_UNDERFLOW_SIZE = 8;
 
 /* Source: test_stack_operations_mixed_types.asm */
 static const uint8_t BYTECODE_TEST_STACK_OPERATIONS_MIXED_TYPES[] = {
@@ -114,6 +156,12 @@ static const uint8_t BYTECODE_TEST_STACK_SWAP[] = {
 };
 static const size_t BYTECODE_TEST_STACK_SWAP_SIZE = 32;
 
+/* Source: test_stack_swap_underflow.asm */
+static const uint8_t BYTECODE_TEST_STACK_SWAP_UNDERFLOW[] = {
+    0x03, 0x00, 0x01, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x04, 0x00, 0x07, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_STACK_SWAP_UNDERFLOW_SIZE = 16;
+
 /* Bytecode lookup by test name */
 typedef struct {
     const char* name;
@@ -125,9 +173,14 @@ static const TestBytecode TEST_BYTECODE_LOOKUP[] = {
     { "test_cmp_all", BYTECODE_TEST_CMP_ALL, BYTECODE_TEST_CMP_ALL_SIZE },
     { "test_cmp_false_results", BYTECODE_TEST_CMP_FALSE_RESULTS, BYTECODE_TEST_CMP_FALSE_RESULTS_SIZE },
     { "test_cmp_negative_numbers", BYTECODE_TEST_CMP_NEGATIVE_NUMBERS, BYTECODE_TEST_CMP_NEGATIVE_NUMBERS_SIZE },
+    { "test_cmp_stack_underflow", BYTECODE_TEST_CMP_STACK_UNDERFLOW, BYTECODE_TEST_CMP_STACK_UNDERFLOW_SIZE },
+    { "test_cmp_type_mismatch", BYTECODE_TEST_CMP_TYPE_MISMATCH, BYTECODE_TEST_CMP_TYPE_MISMATCH_SIZE },
     { "test_math_add", BYTECODE_TEST_MATH_ADD, BYTECODE_TEST_MATH_ADD_SIZE },
     { "test_math_all_operations", BYTECODE_TEST_MATH_ALL_OPERATIONS, BYTECODE_TEST_MATH_ALL_OPERATIONS_SIZE },
     { "test_math_combined", BYTECODE_TEST_MATH_COMBINED, BYTECODE_TEST_MATH_COMBINED_SIZE },
+    { "test_math_div_by_zero", BYTECODE_TEST_MATH_DIV_BY_ZERO, BYTECODE_TEST_MATH_DIV_BY_ZERO_SIZE },
+    { "test_math_stack_underflow", BYTECODE_TEST_MATH_STACK_UNDERFLOW, BYTECODE_TEST_MATH_STACK_UNDERFLOW_SIZE },
+    { "test_math_type_mismatch", BYTECODE_TEST_MATH_TYPE_MISMATCH, BYTECODE_TEST_MATH_TYPE_MISMATCH_SIZE },
     { "test_multiple_typed_segments", BYTECODE_TEST_MULTIPLE_TYPED_SEGMENTS, BYTECODE_TEST_MULTIPLE_TYPED_SEGMENTS_SIZE },
     { "test_push_tag_execution", BYTECODE_TEST_PUSH_TAG_EXECUTION, BYTECODE_TEST_PUSH_TAG_EXECUTION_SIZE },
     { "test_push_type_execution", BYTECODE_TEST_PUSH_TYPE_EXECUTION, BYTECODE_TEST_PUSH_TYPE_EXECUTION_SIZE },
@@ -135,11 +188,14 @@ static const TestBytecode TEST_BYTECODE_LOOKUP[] = {
     { "test_segment_unspecified", BYTECODE_TEST_SEGMENT_UNSPECIFIED, BYTECODE_TEST_SEGMENT_UNSPECIFIED_SIZE },
     { "test_segment_zero", BYTECODE_TEST_SEGMENT_ZERO, BYTECODE_TEST_SEGMENT_ZERO_SIZE },
     { "test_stack_drop", BYTECODE_TEST_STACK_DROP, BYTECODE_TEST_STACK_DROP_SIZE },
+    { "test_stack_drop_underflow", BYTECODE_TEST_STACK_DROP_UNDERFLOW, BYTECODE_TEST_STACK_DROP_UNDERFLOW_SIZE },
     { "test_stack_dup", BYTECODE_TEST_STACK_DUP, BYTECODE_TEST_STACK_DUP_SIZE },
+    { "test_stack_dup_underflow", BYTECODE_TEST_STACK_DUP_UNDERFLOW, BYTECODE_TEST_STACK_DUP_UNDERFLOW_SIZE },
     { "test_stack_operations_mixed_types", BYTECODE_TEST_STACK_OPERATIONS_MIXED_TYPES, BYTECODE_TEST_STACK_OPERATIONS_MIXED_TYPES_SIZE },
     { "test_stack_swap", BYTECODE_TEST_STACK_SWAP, BYTECODE_TEST_STACK_SWAP_SIZE },
+    { "test_stack_swap_underflow", BYTECODE_TEST_STACK_SWAP_UNDERFLOW, BYTECODE_TEST_STACK_SWAP_UNDERFLOW_SIZE },
 };
 
-static const size_t TEST_BYTECODE_COUNT = 16;
+static const size_t TEST_BYTECODE_COUNT = 24;
 
 #endif // GENERATED_TEST_BYTECODE_H

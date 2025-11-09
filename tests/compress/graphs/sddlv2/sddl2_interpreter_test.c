@@ -216,19 +216,10 @@ TEST(test_math_div_by_zero)
 {
     uint8_t input[] = "Test";
 
-    uint8_t bytecode[] = {
-        0x03, 0x00, 0x01, 0x00, // push.i32
-        0x0A, 0x00, 0x00, 0x00, // 10
-        0x03, 0x00, 0x01, 0x00, // push.i32
-        0x00, 0x00, 0x00, 0x00, // 0
-        0x04, 0x00, 0x02, 0x00, // math.div
-        0x01, 0x00, 0x05, 0x00  // halt
-    };
-
     EXPECT_ERROR(
             SDDL2_DIV_ZERO,
-            bytecode,
-            sizeof(bytecode),
+            BYTECODE_TEST_MATH_DIV_BY_ZERO,
+            BYTECODE_TEST_MATH_DIV_BY_ZERO_SIZE,
             input,
             sizeof(input) - 1);
 }
@@ -243,6 +234,10 @@ TEST(test_math_div_by_zero)
  *   push.i64 1
  *   math.add
  *   halt
+ *
+ * NOTE: Uses hard-coded bytecode instead of assembler-generated
+ * Reason: Requires INT64_MAX (0x7FFFFFFFFFFFFFFF) literal which may not be
+ * supported by assembler. Hand-crafting ensures precise overflow test.
  */
 TEST(test_math_overflow)
 {
@@ -332,22 +327,20 @@ TEST(test_cmp_negative_numbers)
  * Test: CMP with stack underflow (only 1 element)
  *
  * Tests that cmp.eq with only 1 element on stack returns underflow error
+ *
+ * Assembly:
+ *   push.i32 10
+ *   cmp.eq
+ *   halt
  */
 TEST(test_cmp_stack_underflow)
 {
     uint8_t input[] = "Test";
 
-    uint8_t bytecode[] = {
-        0x03, 0x00, 0x01, 0x00, // push.i32
-        0x0A, 0x00, 0x00, 0x00, // 10
-        0x01, 0x00, 0x03, 0x00, // cmp.eq (needs 2 elements, only 1!)
-        0x01, 0x00, 0x05, 0x00  // halt
-    };
-
     EXPECT_ERROR(
             SDDL2_STACK_UNDERFLOW,
-            bytecode,
-            sizeof(bytecode),
+            BYTECODE_TEST_CMP_STACK_UNDERFLOW,
+            BYTECODE_TEST_CMP_STACK_UNDERFLOW_SIZE,
             input,
             sizeof(input) - 1);
 }
@@ -356,24 +349,21 @@ TEST(test_cmp_stack_underflow)
  * Test: CMP with type mismatch (non-I64 values)
  *
  * Tests that cmp.eq with Tag values returns type mismatch error
+ *
+ * Assembly:
+ *   push.tag 100
+ *   push.tag 200
+ *   cmp.eq
+ *   halt
  */
 TEST(test_cmp_type_mismatch)
 {
     uint8_t input[] = "Test";
 
-    uint8_t bytecode[] = {
-        0x05, 0x00, 0x01, 0x00, // push.tag
-        0x64, 0x00, 0x00, 0x00, // tag = 100
-        0x05, 0x00, 0x01, 0x00, // push.tag
-        0xC8, 0x00, 0x00, 0x00, // tag = 200
-        0x01, 0x00, 0x03, 0x00, // cmp.eq (expects I64, got Tag!)
-        0x01, 0x00, 0x05, 0x00  // halt
-    };
-
     EXPECT_ERROR(
             SDDL2_TYPE_MISMATCH,
-            bytecode,
-            sizeof(bytecode),
+            BYTECODE_TEST_CMP_TYPE_MISMATCH,
+            BYTECODE_TEST_CMP_TYPE_MISMATCH_SIZE,
             input,
             sizeof(input) - 1);
 }
@@ -382,22 +372,20 @@ TEST(test_cmp_type_mismatch)
  * Test: MATH with stack underflow (only 1 element)
  *
  * Tests that math.add with only 1 element on stack returns underflow error
+ *
+ * Assembly:
+ *   push.i32 10
+ *   math.add
+ *   halt
  */
 TEST(test_math_stack_underflow)
 {
     uint8_t input[] = "Test";
 
-    uint8_t bytecode[] = {
-        0x03, 0x00, 0x01, 0x00, // push.i32
-        0x0A, 0x00, 0x00, 0x00, // 10
-        0x01, 0x00, 0x02, 0x00, // math.add (needs 2 elements, only 1!)
-        0x01, 0x00, 0x05, 0x00  // halt
-    };
-
     EXPECT_ERROR(
             SDDL2_STACK_UNDERFLOW,
-            bytecode,
-            sizeof(bytecode),
+            BYTECODE_TEST_MATH_STACK_UNDERFLOW,
+            BYTECODE_TEST_MATH_STACK_UNDERFLOW_SIZE,
             input,
             sizeof(input) - 1);
 }
@@ -406,22 +394,21 @@ TEST(test_math_stack_underflow)
  * Test: MATH with type mismatch (non-I64 values)
  *
  * Tests that math.add with Type values returns type mismatch error
+ *
+ * Assembly:
+ *   push.type.u8
+ *   push.type.i32le
+ *   math.add
+ *   halt
  */
 TEST(test_math_type_mismatch)
 {
     uint8_t input[] = "Test";
 
-    uint8_t bytecode[] = {
-        0x10, 0x01, 0x01, 0x00, // push.type.u8
-        0x18, 0x01, 0x01, 0x00, // push.type.i32le
-        0x01, 0x00, 0x02, 0x00, // math.add (expects I64, got Type!)
-        0x01, 0x00, 0x05, 0x00  // halt
-    };
-
     EXPECT_ERROR(
             SDDL2_TYPE_MISMATCH,
-            bytecode,
-            sizeof(bytecode),
+            BYTECODE_TEST_MATH_TYPE_MISMATCH,
+            BYTECODE_TEST_MATH_TYPE_MISMATCH_SIZE,
             input,
             sizeof(input) - 1);
 }
@@ -511,20 +498,19 @@ TEST(test_stack_operations_mixed_types)
  * Test: STACK drop with underflow
  *
  * Tests that stack.drop on empty stack returns underflow error
+ *
+ * Assembly:
+ *   stack.drop
+ *   halt
  */
 TEST(test_stack_drop_underflow)
 {
     uint8_t input[] = "Test";
 
-    uint8_t bytecode[] = {
-        0x03, 0x00, 0x07, 0x00, // stack.drop (empty stack!) - opcode 0x0003
-        0x01, 0x00, 0x05, 0x00  // halt
-    };
-
     EXPECT_ERROR(
             SDDL2_STACK_UNDERFLOW,
-            bytecode,
-            sizeof(bytecode),
+            BYTECODE_TEST_STACK_DROP_UNDERFLOW,
+            BYTECODE_TEST_STACK_DROP_UNDERFLOW_SIZE,
             input,
             sizeof(input) - 1);
 }
@@ -533,20 +519,19 @@ TEST(test_stack_drop_underflow)
  * Test: STACK dup with underflow
  *
  * Tests that stack.dup on empty stack returns underflow error
+ *
+ * Assembly:
+ *   stack.dup
+ *   halt
  */
 TEST(test_stack_dup_underflow)
 {
     uint8_t input[] = "Test";
 
-    uint8_t bytecode[] = {
-        0x01, 0x00, 0x07, 0x00, // stack.dup (empty stack!)
-        0x01, 0x00, 0x05, 0x00  // halt
-    };
-
     EXPECT_ERROR(
             SDDL2_STACK_UNDERFLOW,
-            bytecode,
-            sizeof(bytecode),
+            BYTECODE_TEST_STACK_DUP_UNDERFLOW,
+            BYTECODE_TEST_STACK_DUP_UNDERFLOW_SIZE,
             input,
             sizeof(input) - 1);
 }
@@ -555,32 +540,32 @@ TEST(test_stack_dup_underflow)
  * Test: STACK swap with underflow (only 1 element)
  *
  * Tests that stack.swap with only 1 element returns underflow error
+ *
+ * Assembly:
+ *   push.i32 10
+ *   stack.swap
+ *   halt
  */
 TEST(test_stack_swap_underflow)
 {
     uint8_t input[] = "Test";
 
-    uint8_t bytecode[] = {
-        0x03, 0x00,
-        0x01, 0x00, // push.i32
-        0x0A, 0x00,
-        0x00, 0x00, // 10
-        0x04, 0x00,
-        0x07, 0x00, // stack.swap (needs 2 elements, only 1!) - opcode 0x0004
-        0x01, 0x00,
-        0x05, 0x00 // halt
-    };
-
     EXPECT_ERROR(
             SDDL2_STACK_UNDERFLOW,
-            bytecode,
-            sizeof(bytecode),
+            BYTECODE_TEST_STACK_SWAP_UNDERFLOW,
+            BYTECODE_TEST_STACK_SWAP_UNDERFLOW_SIZE,
             input,
             sizeof(input) - 1);
 }
 
 /**
  * Test: Invalid bytecode size
+ *
+ * NOTE: Uses hard-coded bytecode instead of assembler-generated
+ * Reason: This test uses INTENTIONALLY MALFORMED/TRUNCATED bytecode to test
+ * the interpreter's error handling of invalid bytecode structure. The byte
+ * sequence { 0x01, 0x00, 0x03 } is incomplete and cannot be represented in
+ * valid assembly syntax. This tests parser robustness, not valid programs.
  */
 TEST(test_invalid_bytecode_size)
 {
@@ -600,6 +585,12 @@ TEST(test_invalid_bytecode_size)
 
 /**
  * Test: Program without halt
+ *
+ * NOTE: Uses hard-coded bytecode instead of assembler-generated
+ * Reason: This test uses a program WITHOUT the required halt instruction,
+ * which represents INVALID ASSEMBLY. The assembler may reject such programs
+ * or automatically add the halt instruction. Hand-crafted bytecode ensures
+ * we test the interpreter's handling of programs that end unexpectedly.
  */
 TEST(test_missing_halt)
 {
