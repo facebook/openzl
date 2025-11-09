@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "openzl/compress/graphs/sddlv2/sddl2_interpreter.h"
+#include "generated_test_bytecode.h"
 
 /**
  * Test: Execute simple program that creates one unspecified segment
@@ -17,18 +18,14 @@ static void test_simple_segment_creation(void)
 {
     uint8_t input[] = "Hello";
 
-    uint8_t bytecode[] = {
-        0x03, 0x00, 0x01, 0x00, // push.i32
-        0x05, 0x00, 0x00, 0x00, // value = 5
-        0x01, 0x00, 0x0C, 0x00, // segment.create_unspecified
-        0x01, 0x00, 0x05, 0x00  // halt
-    };
+    const uint8_t* bytecode = BYTECODE_TEST_SEGMENT_UNSPECIFIED;
+    size_t bytecode_size = BYTECODE_TEST_SEGMENT_UNSPECIFIED_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
 
     SDDL2_error err = SDDL2_execute_bytecode(
-            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+            bytecode, bytecode_size, input, sizeof(input) - 1, &segments);
 
     assert(err == SDDL2_OK);
     assert(segments.count == 1);
@@ -48,17 +45,14 @@ static void test_zero_size_segment(void)
 {
     uint8_t input[] = "Test";
 
-    uint8_t bytecode[] = {
-        0x01, 0x00, 0x01, 0x00, // push.zero
-        0x01, 0x00, 0x0C, 0x00, // segment.create_unspecified
-        0x01, 0x00, 0x05, 0x00  // halt
-    };
+    const uint8_t* bytecode = BYTECODE_TEST_SEGMENT_ZERO;
+    size_t bytecode_size = BYTECODE_TEST_SEGMENT_ZERO_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
 
     SDDL2_error err = SDDL2_execute_bytecode(
-            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+            bytecode, bytecode_size, input, sizeof(input) - 1, &segments);
 
     assert(err == SDDL2_OK);
     assert(segments.count == 1);
@@ -76,18 +70,14 @@ static void test_push_type_execution(void)
 {
     uint8_t input[] = "Test";
 
-    uint8_t bytecode[] = {
-        0x10, 0x01, 0x01, 0x00, // push.type.u8
-        0x18, 0x01, 0x01, 0x00, // push.type.i32le
-        0x38, 0x01, 0x01, 0x00, // push.type.f64be
-        0x01, 0x00, 0x05, 0x00  // halt
-    };
+    const uint8_t* bytecode = BYTECODE_TEST_PUSH_TYPE_EXECUTION;
+    size_t bytecode_size = BYTECODE_TEST_PUSH_TYPE_EXECUTION_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
 
     SDDL2_error err = SDDL2_execute_bytecode(
-            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+            bytecode, bytecode_size, input, sizeof(input) - 1, &segments);
 
     assert(err == SDDL2_OK);
     assert(segments.count == 0);
@@ -105,21 +95,14 @@ static void test_push_type_with_segment_create_tagged(void)
     uint8_t input[12] = { 0x01, 0x00, 0x00, 0x00, 0x02, 0x00,
                           0x00, 0x00, 0x03, 0x00, 0x00, 0x00 };
 
-    uint8_t bytecode[] = {
-        0x05, 0x00, 0x01, 0x00, // push.tag
-        0x64, 0x00, 0x00, 0x00, // tag = 100
-        0x18, 0x01, 0x01, 0x00, // push.type.i32le
-        0x02, 0x00, 0x01, 0x00, // push.u32
-        0x03, 0x00, 0x00, 0x00, // value = 3
-        0x02, 0x00, 0x0C, 0x00, // segment.create_tagged
-        0x01, 0x00, 0x05, 0x00  // halt
-    };
+    const uint8_t* bytecode = BYTECODE_TEST_PUSH_TYPE_WITH_SEGMENT_CREATE_TAGGED;
+    size_t bytecode_size = BYTECODE_TEST_PUSH_TYPE_WITH_SEGMENT_CREATE_TAGGED_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
 
     SDDL2_error err = SDDL2_execute_bytecode(
-            bytecode, sizeof(bytecode), input, sizeof(input), &segments);
+            bytecode, bytecode_size, input, sizeof(input), &segments);
 
     assert(err == SDDL2_OK);
     assert(segments.count == 1);
@@ -141,70 +124,14 @@ static void test_multiple_typed_segments(void)
 {
     uint8_t input[5] = { 0x42, 0x00, 0x00, 0x80, 0x3F };
 
-    uint8_t bytecode[] = {
-        // Segment 1: tag=100, type=U8, size=1
-        0x05,
-        0x00,
-        0x01,
-        0x00, // push.tag
-        0x64,
-        0x00,
-        0x00,
-        0x00, // tag = 100
-        0x10,
-        0x01,
-        0x01,
-        0x00, // push.type.u8
-        0x02,
-        0x00,
-        0x01,
-        0x00, // push.u32
-        0x01,
-        0x00,
-        0x00,
-        0x00, // value = 1
-        0x02,
-        0x00,
-        0x0C,
-        0x00, // segment.create_tagged
-
-        // Segment 2: tag=100, type=F32LE, size=1
-        0x05,
-        0x00,
-        0x01,
-        0x00, // push.tag
-        0x64,
-        0x00,
-        0x00,
-        0x00, // tag = 100
-        0x35,
-        0x01,
-        0x01,
-        0x00, // push.type.f32le
-        0x02,
-        0x00,
-        0x01,
-        0x00, // push.u32
-        0x01,
-        0x00,
-        0x00,
-        0x00, // value = 1
-        0x02,
-        0x00,
-        0x0C,
-        0x00, // segment.create_tagged
-
-        0x01,
-        0x00,
-        0x05,
-        0x00 // halt
-    };
+    const uint8_t* bytecode = BYTECODE_TEST_MULTIPLE_TYPED_SEGMENTS;
+    size_t bytecode_size = BYTECODE_TEST_MULTIPLE_TYPED_SEGMENTS_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
 
     SDDL2_error err = SDDL2_execute_bytecode(
-            bytecode, sizeof(bytecode), input, sizeof(input), &segments);
+            bytecode, bytecode_size, input, sizeof(input), &segments);
 
     assert(err == SDDL2_OK);
     assert(segments.count == 2);
@@ -233,17 +160,14 @@ static void test_push_tag_execution(void)
 {
     uint8_t input[] = "Test";
 
-    uint8_t bytecode[] = {
-        0x05, 0x00, 0x01, 0x00, // push.tag
-        0x64, 0x00, 0x00, 0x00, // value = 100
-        0x01, 0x00, 0x05, 0x00  // halt
-    };
+    const uint8_t* bytecode = BYTECODE_TEST_PUSH_TAG_EXECUTION;
+    size_t bytecode_size = BYTECODE_TEST_PUSH_TAG_EXECUTION_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
 
     SDDL2_error err = SDDL2_execute_bytecode(
-            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+            bytecode, bytecode_size, input, sizeof(input) - 1, &segments);
 
     assert(err == SDDL2_OK);
     assert(segments.count == 0);
@@ -262,20 +186,14 @@ static void test_math_add_execution(void)
 {
     uint8_t input[] = "Test";
 
-    uint8_t bytecode[] = {
-        0x03, 0x00, 0x01, 0x00, // push.i32
-        0x0A, 0x00, 0x00, 0x00, // value = 10
-        0x03, 0x00, 0x01, 0x00, // push.i32
-        0x05, 0x00, 0x00, 0x00, // value = 5
-        0x01, 0x00, 0x02, 0x00, // math.add
-        0x01, 0x00, 0x05, 0x00  // halt
-    };
+    const uint8_t* bytecode = BYTECODE_TEST_MATH_ADD;
+    size_t bytecode_size = BYTECODE_TEST_MATH_ADD_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
 
     SDDL2_error err = SDDL2_execute_bytecode(
-            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+            bytecode, bytecode_size, input, sizeof(input) - 1, &segments);
 
     assert(err == SDDL2_OK);
     assert(segments.count == 0);
@@ -294,23 +212,14 @@ static void test_math_combined_execution(void)
 {
     uint8_t input[] = "Test";
 
-    uint8_t bytecode[] = {
-        0x03, 0x00, 0x01, 0x00, // push.i32
-        0x02, 0x00, 0x00, 0x00, // 2
-        0x03, 0x00, 0x01, 0x00, // push.i32
-        0x03, 0x00, 0x00, 0x00, // 3
-        0x01, 0x00, 0x02, 0x00, // math.add
-        0x03, 0x00, 0x01, 0x00, // push.i32
-        0x04, 0x00, 0x00, 0x00, // 4
-        0x03, 0x00, 0x02, 0x00, // math.mul
-        0x01, 0x00, 0x05, 0x00  // halt
-    };
+    const uint8_t* bytecode = BYTECODE_TEST_MATH_COMBINED;
+    size_t bytecode_size = BYTECODE_TEST_MATH_COMBINED_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
 
     SDDL2_error err = SDDL2_execute_bytecode(
-            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+            bytecode, bytecode_size, input, sizeof(input) - 1, &segments);
 
     assert(err == SDDL2_OK);
     assert(segments.count == 0);
@@ -331,156 +240,14 @@ static void test_math_all_operations(void)
 {
     uint8_t input[] = "Test";
 
-    uint8_t bytecode[] = {
-        // add: 10 + 5 = 15
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x0A,
-        0x00,
-        0x00,
-        0x00, // 10
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x05,
-        0x00,
-        0x00,
-        0x00, // 5
-        0x01,
-        0x00,
-        0x02,
-        0x00, // math.add (result: 15)
-
-        // sub: 20 - 8 = 12
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x14,
-        0x00,
-        0x00,
-        0x00, // 20
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x08,
-        0x00,
-        0x00,
-        0x00, // 8
-        0x02,
-        0x00,
-        0x02,
-        0x00, // math.sub (result: 12)
-
-        // mul: 3 * 4 = 12
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x03,
-        0x00,
-        0x00,
-        0x00, // 3
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x04,
-        0x00,
-        0x00,
-        0x00, // 4
-        0x03,
-        0x00,
-        0x02,
-        0x00, // math.mul (result: 12)
-
-        // div: 20 / 4 = 5
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x14,
-        0x00,
-        0x00,
-        0x00, // 20
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x04,
-        0x00,
-        0x00,
-        0x00, // 4
-        0x04,
-        0x00,
-        0x02,
-        0x00, // math.div (result: 5)
-
-        // mod: 17 % 5 = 2
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x11,
-        0x00,
-        0x00,
-        0x00, // 17
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x05,
-        0x00,
-        0x00,
-        0x00, // 5
-        0x05,
-        0x00,
-        0x02,
-        0x00, // math.mod (result: 2)
-
-        // abs: abs(-42) = 42
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0xD6,
-        0xFF,
-        0xFF,
-        0xFF, // -42 (two's complement)
-        0x06,
-        0x00,
-        0x02,
-        0x00, // math.abs (result: 42)
-
-        // neg: neg(10) = -10
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x0A,
-        0x00,
-        0x00,
-        0x00, // 10
-        0x07,
-        0x00,
-        0x02,
-        0x00, // math.neg (result: -10)
-
-        0x01,
-        0x00,
-        0x05,
-        0x00 // halt
-    };
+    const uint8_t* bytecode = BYTECODE_TEST_MATH_ALL_OPERATIONS;
+    size_t bytecode_size = BYTECODE_TEST_MATH_ALL_OPERATIONS_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
 
     SDDL2_error err = SDDL2_execute_bytecode(
-            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+            bytecode, bytecode_size, input, sizeof(input) - 1, &segments);
 
     assert(err == SDDL2_OK);
     assert(segments.count == 0);
@@ -578,150 +345,14 @@ static void test_cmp_all_operations(void)
 {
     uint8_t input[] = "Test";
 
-    uint8_t bytecode[] = {
-        // eq: 10 == 10 -> 1
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x0A,
-        0x00,
-        0x00,
-        0x00, // 10
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x0A,
-        0x00,
-        0x00,
-        0x00, // 10
-        0x01,
-        0x00,
-        0x03,
-        0x00, // cmp.eq (result: 1)
-
-        // ne: 10 != 5 -> 1
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x0A,
-        0x00,
-        0x00,
-        0x00, // 10
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x05,
-        0x00,
-        0x00,
-        0x00, // 5
-        0x02,
-        0x00,
-        0x03,
-        0x00, // cmp.ne (result: 1)
-
-        // lt: 5 < 10 -> 1
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x05,
-        0x00,
-        0x00,
-        0x00, // 5
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x0A,
-        0x00,
-        0x00,
-        0x00, // 10
-        0x03,
-        0x00,
-        0x03,
-        0x00, // cmp.lt (result: 1)
-
-        // le: 10 <= 10 -> 1
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x0A,
-        0x00,
-        0x00,
-        0x00, // 10
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x0A,
-        0x00,
-        0x00,
-        0x00, // 10
-        0x04,
-        0x00,
-        0x03,
-        0x00, // cmp.le (result: 1)
-
-        // gt: 10 > 5 -> 1
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x0A,
-        0x00,
-        0x00,
-        0x00, // 10
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x05,
-        0x00,
-        0x00,
-        0x00, // 5
-        0x05,
-        0x00,
-        0x03,
-        0x00, // cmp.gt (result: 1)
-
-        // ge: 10 >= 10 -> 1
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x0A,
-        0x00,
-        0x00,
-        0x00, // 10
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x0A,
-        0x00,
-        0x00,
-        0x00, // 10
-        0x06,
-        0x00,
-        0x03,
-        0x00, // cmp.ge (result: 1)
-
-        0x01,
-        0x00,
-        0x05,
-        0x00 // halt
-    };
+    const uint8_t* bytecode = BYTECODE_TEST_CMP_ALL;
+    size_t bytecode_size = BYTECODE_TEST_CMP_ALL_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
 
     SDDL2_error err = SDDL2_execute_bytecode(
-            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+            bytecode, bytecode_size, input, sizeof(input) - 1, &segments);
 
     assert(err == SDDL2_OK);
     assert(segments.count == 0);
@@ -740,62 +371,14 @@ static void test_cmp_false_results(void)
 {
     uint8_t input[] = "Test";
 
-    uint8_t bytecode[] = {
-        // eq: 10 == 5 -> 0
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x0A,
-        0x00,
-        0x00,
-        0x00, // 10
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x05,
-        0x00,
-        0x00,
-        0x00, // 5
-        0x01,
-        0x00,
-        0x03,
-        0x00, // cmp.eq (result: 0)
-
-        // lt: 10 < 5 -> 0
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x0A,
-        0x00,
-        0x00,
-        0x00, // 10
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x05,
-        0x00,
-        0x00,
-        0x00, // 5
-        0x03,
-        0x00,
-        0x03,
-        0x00, // cmp.lt (result: 0)
-
-        0x01,
-        0x00,
-        0x05,
-        0x00 // halt
-    };
+    const uint8_t* bytecode = BYTECODE_TEST_CMP_FALSE_RESULTS;
+    size_t bytecode_size = BYTECODE_TEST_CMP_FALSE_RESULTS_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
 
     SDDL2_error err = SDDL2_execute_bytecode(
-            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+            bytecode, bytecode_size, input, sizeof(input) - 1, &segments);
 
     assert(err == SDDL2_OK);
     assert(segments.count == 0);
@@ -814,62 +397,14 @@ static void test_cmp_negative_numbers(void)
 {
     uint8_t input[] = "Test";
 
-    uint8_t bytecode[] = {
-        // lt: -10 < 5 -> 1
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0xF6,
-        0xFF,
-        0xFF,
-        0xFF, // -10 (two's complement)
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x05,
-        0x00,
-        0x00,
-        0x00, // 5
-        0x03,
-        0x00,
-        0x03,
-        0x00, // cmp.lt (result: 1)
-
-        // gt: 5 > -10 -> 1
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0x05,
-        0x00,
-        0x00,
-        0x00, // 5
-        0x03,
-        0x00,
-        0x01,
-        0x00, // push.i32
-        0xF6,
-        0xFF,
-        0xFF,
-        0xFF, // -10
-        0x05,
-        0x00,
-        0x03,
-        0x00, // cmp.gt (result: 1)
-
-        0x01,
-        0x00,
-        0x05,
-        0x00 // halt
-    };
+    const uint8_t* bytecode = BYTECODE_TEST_CMP_NEGATIVE_NUMBERS;
+    size_t bytecode_size = BYTECODE_TEST_CMP_NEGATIVE_NUMBERS_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
 
     SDDL2_error err = SDDL2_execute_bytecode(
-            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+            bytecode, bytecode_size, input, sizeof(input) - 1, &segments);
 
     assert(err == SDDL2_OK);
     assert(segments.count == 0);
@@ -1006,20 +541,14 @@ static void test_stack_drop(void)
 {
     uint8_t input[] = "Test";
 
-    uint8_t bytecode[] = {
-        0x03, 0x00, 0x01, 0x00, // push.i32
-        0x0A, 0x00, 0x00, 0x00, // 10
-        0x03, 0x00, 0x01, 0x00, // push.i32
-        0x14, 0x00, 0x00, 0x00, // 20
-        0x03, 0x00, 0x07, 0x00, // stack.drop (remove 20) - opcode 0x0003
-        0x01, 0x00, 0x05, 0x00  // halt
-    };
+    const uint8_t* bytecode = BYTECODE_TEST_STACK_DROP;
+    size_t bytecode_size = BYTECODE_TEST_STACK_DROP_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
 
     SDDL2_error err = SDDL2_execute_bytecode(
-            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+            bytecode, bytecode_size, input, sizeof(input) - 1, &segments);
 
     assert(err == SDDL2_OK);
     assert(segments.count == 0);
@@ -1038,20 +567,14 @@ static void test_stack_dup(void)
 {
     uint8_t input[] = "Test";
 
-    uint8_t bytecode[] = {
-        0x03, 0x00, 0x01, 0x00, // push.i32
-        0x0A, 0x00, 0x00, 0x00, // 10
-        0x01, 0x00, 0x07, 0x00, // stack.dup (now: 10, 10) - opcode 0x0001
-        0x03, 0x00, 0x07, 0x00, // stack.drop (remove one) - opcode 0x0003
-        0x03, 0x00, 0x07, 0x00, // stack.drop (remove other) - opcode 0x0003
-        0x01, 0x00, 0x05, 0x00  // halt
-    };
+    const uint8_t* bytecode = BYTECODE_TEST_STACK_DUP;
+    size_t bytecode_size = BYTECODE_TEST_STACK_DUP_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
 
     SDDL2_error err = SDDL2_execute_bytecode(
-            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+            bytecode, bytecode_size, input, sizeof(input) - 1, &segments);
 
     assert(err == SDDL2_OK);
     assert(segments.count == 0);
@@ -1071,22 +594,14 @@ static void test_stack_swap(void)
 {
     uint8_t input[] = "Test";
 
-    uint8_t bytecode[] = {
-        0x03, 0x00, 0x01, 0x00, // push.i32
-        0x0A, 0x00, 0x00, 0x00, // 10
-        0x03, 0x00, 0x01, 0x00, // push.i32
-        0x14, 0x00, 0x00, 0x00, // 20
-        0x04, 0x00, 0x07, 0x00, // stack.swap (now: 20, 10) - opcode 0x0004
-        0x03, 0x00, 0x07, 0x00, // stack.drop (remove 10) - opcode 0x0003
-        0x03, 0x00, 0x07, 0x00, // stack.drop (remove 20) - opcode 0x0003
-        0x01, 0x00, 0x05, 0x00  // halt
-    };
+    const uint8_t* bytecode = BYTECODE_TEST_STACK_SWAP;
+    size_t bytecode_size = BYTECODE_TEST_STACK_SWAP_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
 
     SDDL2_error err = SDDL2_execute_bytecode(
-            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+            bytecode, bytecode_size, input, sizeof(input) - 1, &segments);
 
     assert(err == SDDL2_OK);
     assert(segments.count == 0);
@@ -1105,26 +620,14 @@ static void test_stack_operations_mixed_types(void)
 {
     uint8_t input[] = "Test";
 
-    uint8_t bytecode[] = {
-        0x03, 0x00, 0x01, 0x00, // push.i32
-        0x0A, 0x00, 0x00, 0x00, // 10
-        0x05, 0x00, 0x01, 0x00, // push.tag
-        0x64, 0x00, 0x00, 0x00, // 100
-        0x10, 0x01, 0x01, 0x00, // push.type.u8
-        0x01, 0x00, 0x07, 0x00, // stack.dup (dup Type) - opcode 0x0001
-        0x04, 0x00, 0x07, 0x00, // stack.swap (swap two Types) - opcode 0x0004
-        0x03, 0x00, 0x07, 0x00, // stack.drop (drop one Type) - opcode 0x0003
-        0x03, 0x00, 0x07, 0x00, // stack.drop (drop other Type) - opcode 0x0003
-        0x03, 0x00, 0x07, 0x00, // stack.drop (drop Tag) - opcode 0x0003
-        0x03, 0x00, 0x07, 0x00, // stack.drop (drop I64) - opcode 0x0003
-        0x01, 0x00, 0x05, 0x00  // halt
-    };
+    const uint8_t* bytecode = BYTECODE_TEST_STACK_OPERATIONS_MIXED_TYPES;
+    size_t bytecode_size = BYTECODE_TEST_STACK_OPERATIONS_MIXED_TYPES_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
 
     SDDL2_error err = SDDL2_execute_bytecode(
-            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+            bytecode, bytecode_size, input, sizeof(input) - 1, &segments);
 
     assert(err == SDDL2_OK);
     assert(segments.count == 0);
