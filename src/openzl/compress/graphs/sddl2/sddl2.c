@@ -6,7 +6,7 @@
 
 #include "openzl/codecs/zl_split.h"
 #include "openzl/codecs/zl_zstd.h"
-#include "openzl/compress/graphs/sddlv2/sddl2_interpreter.h"
+#include "openzl/compress/graphs/sddl2/sddl2_interpreter.h"
 
 /**
  * SDDL2 Function Graph - OpenZL Integration

@@ -7,7 +7,7 @@
 
 #include <assert.h>
 #include <stdio.h>
-#include "openzl/compress/graphs/sddlv2/sddl2_vm.h"
+#include "openzl/compress/graphs/sddl2/sddl2_vm.h"
 
 /**
  * Test: All 1-byte types

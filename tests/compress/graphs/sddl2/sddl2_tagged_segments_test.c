@@ -12,7 +12,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "openzl/compress/graphs/sddlv2/sddl2_vm.h"
+#include "openzl/compress/graphs/sddl2/sddl2_vm.h"
 
 /* Test helpers */
 static SDDL2_stack* create_test_stack(size_t capacity)

@@ -9,7 +9,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "openzl/compress/graphs/sddlv2/sddl2_vm.h"
+#include "openzl/compress/graphs/sddl2/sddl2_vm.h"
 #include "sddl2_test_framework.h"
 
 /* Test helper: Create a stack for testing */

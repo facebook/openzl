@@ -137,7 +137,7 @@ def generate_c_header(families: Dict[str, tuple], opcodes: List[tuple]) -> str:
     lines.append("")
     lines.append("// AUTO-GENERATED FILE - DO NOT EDIT MANUALLY")
     lines.append("//")
-    lines.append("// Generated from: src/openzl/compress/graphs/sddlv2/sddl2_opcodes.def")
+    lines.append("// Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def")
     lines.append(f'// Generated at: {datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")}')
     lines.append("// Generator: generate_opcodes.py")
     lines.append("//")
@@ -238,7 +238,7 @@ def generate_python_code(families: Dict[str, tuple], opcodes: List[tuple]) -> st
     lines.append('"""')
     lines.append("AUTO-GENERATED FILE - DO NOT EDIT MANUALLY")
     lines.append("")
-    lines.append("Generated from: src/openzl/compress/graphs/sddlv2/sddl2_opcodes.def")
+    lines.append("Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def")
     lines.append(f'Generated at: {datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")}')
     lines.append("Generator: generate_opcodes.py")
     lines.append("")
@@ -320,7 +320,7 @@ def main():
         / "openzl"
         / "compress"
         / "graphs"
-        / "sddlv2"
+        / "sddl2"
         / "sddl2_opcodes.def"
     )
     python_output = script_dir / "opcodes_generated.py"
@@ -330,7 +330,7 @@ def main():
         / "openzl"
         / "compress"
         / "graphs"
-        / "sddlv2"
+        / "sddl2"
         / "sddl2_opcodes.h"
     )
 

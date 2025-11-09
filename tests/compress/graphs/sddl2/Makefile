@@ -8,8 +8,8 @@ INCLUDES = -I../../../.. -I../../../../src -I../../../../include
 CPPFLAGS += $(INCLUDES)
 
 # Source files
-VM_SRC = ../../../../src/openzl/compress/graphs/sddlv2/sddl2_vm.c
-INTERPRETER_SRC = ../../../../src/openzl/compress/graphs/sddlv2/sddl2_interpreter.c
+VM_SRC = ../../../../src/openzl/compress/graphs/sddl2/sddl2_vm.c
+INTERPRETER_SRC = ../../../../src/openzl/compress/graphs/sddl2/sddl2_interpreter.c
 LOGGING_SRC = ../../../../src/openzl/common/logging.c
 
 # Test executables

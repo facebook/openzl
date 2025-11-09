@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include "generated_test_bytecode.h"
-#include "openzl/compress/graphs/sddlv2/sddl2_interpreter.h"
+#include "openzl/compress/graphs/sddl2/sddl2_interpreter.h"
 #include "sddl2_test_framework.h"
 
 /* ============================================================================

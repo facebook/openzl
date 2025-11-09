@@ -3,15 +3,15 @@
 Generate C header file with bytecode constants from interpreter test assembly files.
 
 Simple usage (from anywhere):
-    python3 tests/compress/graphs/sddlv2/generate_test_bytecode.py
+    python3 tests/compress/graphs/sddl2/generate_test_bytecode.py
 
 This uses default paths:
-    - Input:     tests/compress/graphs/sddlv2/asm/
-    - Output:    tests/compress/graphs/sddlv2/generated_test_bytecode.h
+    - Input:     tests/compress/graphs/sddl2/asm/
+    - Output:    tests/compress/graphs/sddl2/generated_test_bytecode.h
     - Assembler: tools/sddl2/assembler/
 
 Custom paths (optional):
-    python3 tests/compress/graphs/sddlv2/generate_test_bytecode.py \
+    python3 tests/compress/graphs/sddl2/generate_test_bytecode.py \
         -i custom/asm/dir \
         -o custom/output.h \
         -a path/to/custom/sddl2_assembler.py

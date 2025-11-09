@@ -6,7 +6,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include "openzl/compress/graphs/sddlv2/sddl2_vm.h"
+#include "openzl/compress/graphs/sddl2/sddl2_vm.h"
 
 /**
  * Simple test framework for SDDL2 tests

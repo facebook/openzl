@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "openzl/compress/graphs/sddlv2/sddl2_interpreter.h"
+#include "openzl/compress/graphs/sddl2/sddl2_interpreter.h"
 
 /**
  * Load bytecode from file

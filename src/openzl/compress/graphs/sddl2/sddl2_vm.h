@@ -18,7 +18,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include "openzl/compress/graphs/sddlv2/sddl2_error.h"
+#include "openzl/compress/graphs/sddl2/sddl2_error.h"
 
 #if defined(__cplusplus)
 extern "C" {
