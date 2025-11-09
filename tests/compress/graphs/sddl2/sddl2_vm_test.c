@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "openzl/compress/graphs/sddl2/sddl2_vm.h"
+#include "sddl2_test_framework.h"
 
 /* Test helper: Create a stack for testing */
 static SDDL2_stack* create_test_stack(size_t capacity)
@@ -31,7 +32,7 @@ static void destroy_test_stack(SDDL2_stack* stack)
     free(stack);
 }
 
-static void test_stack_init(void)
+TEST(test_stack_init)
 {
     SDDL2_stack* stack = create_test_stack(SDDL2_STACK_DEPTH_DEFAULT);
 
@@ -40,10 +41,9 @@ static void test_stack_init(void)
     assert(stack->capacity == SDDL2_STACK_DEPTH_DEFAULT);
 
     destroy_test_stack(stack);
-    printf("✓ test_stack_init passed\n");
 }
 
-static void test_stack_push_pop(void)
+TEST(test_stack_push_pop)
 {
     SDDL2_stack* stack = create_test_stack(100);
 
@@ -72,10 +72,9 @@ static void test_stack_push_pop(void)
     assert(SDDL2_stack_depth(stack) == 0);
 
     destroy_test_stack(stack);
-    printf("✓ test_stack_push_pop passed\n");
 }
 
-static void test_stack_underflow(void)
+TEST(test_stack_underflow)
 {
     SDDL2_stack* stack = create_test_stack(100);
 
@@ -84,10 +83,9 @@ static void test_stack_underflow(void)
     assert(SDDL2_stack_peek(stack, &v) == SDDL2_STACK_UNDERFLOW);
 
     destroy_test_stack(stack);
-    printf("✓ test_stack_underflow passed\n");
 }
 
-static void test_stack_overflow(void)
+TEST(test_stack_overflow)
 {
     // Create a small stack to test overflow
     size_t small_capacity = 10;
@@ -104,10 +102,9 @@ static void test_stack_overflow(void)
     assert(SDDL2_stack_depth(stack) == small_capacity);
 
     destroy_test_stack(stack);
-    printf("✓ test_stack_overflow passed\n");
 }
 
-static void test_stack_peek(void)
+TEST(test_stack_peek)
 {
     SDDL2_stack* stack = create_test_stack(100);
 
@@ -126,10 +123,9 @@ static void test_stack_peek(void)
     assert(peeked.value.as_i64 == 123);
 
     destroy_test_stack(stack);
-    printf("✓ test_stack_peek passed\n");
 }
 
-static void test_value_kinds(void)
+TEST(test_value_kinds)
 {
     // Test I64 value
     SDDL2_value v_i64 = SDDL2_value_i64(-9223372036854775807LL);
@@ -147,11 +143,9 @@ static void test_value_kinds(void)
     assert(v_type.kind == SDDL2_VALUE_TYPE);
     assert(v_type.value.as_type.kind == SDDL2_TYPE_I32LE);
     assert(v_type.value.as_type.width == 4);
-
-    printf("✓ test_value_kinds passed\n");
 }
 
-static void test_type_sizes(void)
+TEST(test_type_sizes)
 {
     assert(SDDL2_type_size(SDDL2_TYPE_U8) == 1);
     assert(SDDL2_type_size(SDDL2_TYPE_I8) == 1);
@@ -162,22 +156,9 @@ static void test_type_sizes(void)
     assert(SDDL2_type_size(SDDL2_TYPE_I64LE) == 8);
     assert(SDDL2_type_size(SDDL2_TYPE_F64BE) == 8);
     assert(SDDL2_type_size(SDDL2_TYPE_BYTES) == 1); // Raw bytes, unit size is 1
-
-    printf("✓ test_type_sizes passed\n");
 }
 
 int main(void)
 {
-    printf("Running OpenZL VM Phase 1 Tests...\n\n");
-
-    test_stack_init();
-    test_stack_push_pop();
-    test_stack_underflow();
-    test_stack_overflow();
-    test_stack_peek();
-    test_value_kinds();
-    test_type_sizes();
-
-    printf("\n✓✓✓ All Phase 1 tests passed! ✓✓✓\n");
-    return 0;
+    return sddl2_run_all_tests();
 }
