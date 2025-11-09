@@ -3,9 +3,10 @@
 #ifndef SDDL2_TEST_FRAMEWORK_H
 #define SDDL2_TEST_FRAMEWORK_H
 
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include "openzl/compress/graphs/sddlv2/sddl2_interpreter.h"
+#include "openzl/compress/graphs/sddlv2/sddl2_vm.h"
 
 /**
  * Simple test framework for SDDL2 tests
@@ -70,55 +71,6 @@ static int g_sddl2_test_count = 0;
     static void name(void)
 
 /**
- * Helper macro for tests that expect success (SDDL2_OK)
- *
- * Sets up segments, executes bytecode, asserts OK, provides cleanup.
- *
- * Example:
- *   EXPECT_SUCCESS(bytecode, size, input, input_size) {
- *       assert(segments.count == 1);
- *       assert(segments.items[0].tag == 100);
- *   }
- */
-#define EXPECT_SUCCESS(bytecode_ptr, bytecode_len, input_ptr, input_len)  \
-    SDDL2_segment_list segments;                                          \
-    SDDL2_segment_list_init(&segments, NULL, NULL);                       \
-    SDDL2_error err = SDDL2_execute_bytecode(                             \
-            bytecode_ptr, bytecode_len, input_ptr, input_len, &segments); \
-    assert(err == SDDL2_OK);                                              \
-    do
-
-/**
- * Helper macro for cleanup after EXPECT_SUCCESS
- *
- * Must be called after EXPECT_SUCCESS block to clean up resources.
- */
-#define END_EXPECT_SUCCESS() \
-    while (0)                \
-        ;                    \
-    SDDL2_segment_list_destroy(&segments)
-
-/**
- * Helper macro for tests that expect a specific error
- *
- * Sets up segments, executes bytecode, asserts expected error, provides
- * cleanup.
- *
- * Example:
- *   EXPECT_ERROR(SDDL2_DIV_ZERO, bytecode, size, input, input_size);
- */
-#define EXPECT_ERROR(                                                         \
-        expected_err, bytecode_ptr, bytecode_len, input_ptr, input_len)       \
-    do {                                                                      \
-        SDDL2_segment_list segments;                                          \
-        SDDL2_segment_list_init(&segments, NULL, NULL);                       \
-        SDDL2_error err = SDDL2_execute_bytecode(                             \
-                bytecode_ptr, bytecode_len, input_ptr, input_len, &segments); \
-        assert(err == expected_err);                                          \
-        SDDL2_segment_list_destroy(&segments);                                \
-    } while (0)
-
-/**
  * Run all registered tests
  *
  * Returns 0 if all tests pass, 1 if any test fails.
@@ -143,5 +95,47 @@ static inline int sddl2_run_all_tests(void)
 
     return failed;
 }
+
+/* ============================================================================
+ * Common Test Setup Helpers
+ * ========================================================================= */
+
+/* Helper: Assert value is I64 with expected result */
+#define ASSERT_I64_VALUE(val, expected)           \
+    do {                                          \
+        assert((val).kind == SDDL2_VALUE_I64);    \
+        assert((val).value.as_i64 == (expected)); \
+    } while (0)
+
+/* Helper: Pop and verify I64 result */
+#define POP_AND_VERIFY_I64(stack, expected_value)             \
+    do {                                                      \
+        SDDL2_value _result;                                  \
+        assert(SDDL2_stack_pop(stack, &_result) == SDDL2_OK); \
+        ASSERT_I64_VALUE(_result, expected_value);            \
+    } while (0)
+
+/* Helper: Setup input buffer for tests */
+#define SETUP_INPUT_BUFFER(buffer_var, data_array) \
+    SDDL2_input_buffer buffer_var;                 \
+    SDDL2_input_buffer_init(&buffer_var, data_array, sizeof(data_array))
+
+/* Helper: Setup segment list for tests */
+#define SETUP_SEGMENT_LIST(segments_var) \
+    SDDL2_segment_list segments_var;     \
+    SDDL2_segment_list_init(&segments_var, NULL, NULL)
+
+/* Helper: Setup tag registry for tests */
+#define SETUP_TAG_REGISTRY(registry_var) \
+    SDDL2_tag_registry registry_var;     \
+    SDDL2_tag_registry_init(&registry_var, NULL, NULL)
+
+/* Helper: Cleanup segment list */
+#define CLEANUP_SEGMENT_LIST(segments_var) \
+    SDDL2_segment_list_destroy(&segments_var)
+
+/* Helper: Cleanup tag registry */
+#define CLEANUP_TAG_REGISTRY(registry_var) \
+    SDDL2_tag_registry_destroy(&registry_var)
 
 #endif // SDDL2_TEST_FRAMEWORK_H

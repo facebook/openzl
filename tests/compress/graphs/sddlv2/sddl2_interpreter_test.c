@@ -1,8 +1,68 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <assert.h>
+#include <stdint.h>
+#include <stdio.h>
 #include "generated_test_bytecode.h"
+#include "openzl/compress/graphs/sddlv2/sddl2_interpreter.h"
 #include "sddl2_test_framework.h"
+
+/* ============================================================================
+ * Interpreter-Specific Test Macros
+ * ========================================================================= */
+
+/**
+ * Helper macro for tests that expect success (SDDL2_OK)
+ *
+ * Sets up segments, executes bytecode, asserts OK, provides cleanup.
+ *
+ * Example:
+ *   EXPECT_SUCCESS(bytecode, size, input, input_size) {
+ *       assert(segments.count == 1);
+ *       assert(segments.items[0].tag == 100);
+ *   }
+ */
+#define EXPECT_SUCCESS(bytecode_ptr, bytecode_len, input_ptr, input_len)  \
+    SDDL2_segment_list segments;                                          \
+    SDDL2_segment_list_init(&segments, NULL, NULL);                       \
+    SDDL2_error err = SDDL2_execute_bytecode(                             \
+            bytecode_ptr, bytecode_len, input_ptr, input_len, &segments); \
+    assert(err == SDDL2_OK);                                              \
+    do
+
+/**
+ * Helper macro for cleanup after EXPECT_SUCCESS
+ *
+ * Must be called after EXPECT_SUCCESS block to clean up resources.
+ */
+#define END_EXPECT_SUCCESS() \
+    while (0)                \
+        ;                    \
+    SDDL2_segment_list_destroy(&segments)
+
+/**
+ * Helper macro for tests that expect a specific error
+ *
+ * Sets up segments, executes bytecode, asserts expected error, provides
+ * cleanup.
+ *
+ * Example:
+ *   EXPECT_ERROR(SDDL2_DIV_ZERO, bytecode, size, input, input_size);
+ */
+#define EXPECT_ERROR(                                                         \
+        expected_err, bytecode_ptr, bytecode_len, input_ptr, input_len)       \
+    do {                                                                      \
+        SDDL2_segment_list segments;                                          \
+        SDDL2_segment_list_init(&segments, NULL, NULL);                       \
+        SDDL2_error err = SDDL2_execute_bytecode(                             \
+                bytecode_ptr, bytecode_len, input_ptr, input_len, &segments); \
+        assert(err == expected_err);                                          \
+        SDDL2_segment_list_destroy(&segments);                                \
+    } while (0)
+
+/* ============================================================================
+ * Test Definitions
+ * ========================================================================= */
 
 /**
  * Test: Execute simple program that creates one unspecified segment
@@ -589,7 +649,7 @@ TEST(test_invalid_bytecode_size)
  */
 TEST(test_missing_halt)
 {
-    uint8_t input[] = "Test5";  // 5 bytes to match segment size
+    uint8_t input[] = "Test5"; // 5 bytes to match segment size
 
     uint8_t bytecode[] = {
         0x03, 0x00, 0x01, 0x00, // push.i32
@@ -605,7 +665,7 @@ TEST(test_missing_halt)
 
     // Should succeed with implicit halt
     assert(err == SDDL2_OK);
-    
+
     // Verify the segment was created correctly
     assert(segments.count == 1);
     assert(segments.items[0].size_bytes == 5);
