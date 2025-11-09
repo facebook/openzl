@@ -127,7 +127,7 @@ zs2_test : examples
 	$(EXEC_PREFIX) ./zs2_pipeline
 	$(EXEC_PREFIX) ./zs2_trygraph
 
-SDDL2_DIR = tests/compress/graphs/sddlv2
+SDDL2_DIR = tests/compress/graphs/sddl2
 .PHONY: sddl2_test
 sddl2_test:
 	$(MAKE) -C $(SDDL2_DIR) test

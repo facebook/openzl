@@ -1,13 +1,16 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 /**
- * End-to-end assembly test: Assembly → Bytecode → Execution
+ * Bytecode Execution Test
  *
- * This test verifies the complete pipeline:
- * 1. Write SDDL assembly (.sddl file)
- * 2. Assemble to bytecode (.bin file)
- * 3. Load and execute bytecode
- * 4. Verify segment output
+ * This test verifies loading and executing pre-assembled bytecode:
+ * 1. Load bytecode from .bin file (assembled externally)
+ * 2. Execute bytecode through the interpreter
+ * 3. Verify segment output
+ *
+ * Note: This is NOT a true end-to-end test - the assembly step is manual.
+ * The bytecode must be pre-generated using the assembler:
+ *   python3 tools/sddl/assembler/sddl2_assembler.py test_hello.sddl test_hello.bin
  */
 
 #include <assert.h>
@@ -81,7 +84,7 @@ static void test_assembled_hello(void)
         fprintf(stderr, "Failed to load test_hello.bin\n");
         fprintf(stderr,
                 "Make sure to run: python3 "
-                "../../../tools/sddl/assembler/assembler.py test_hello.sddl "
+                "../../../tools/sddl/assembler/sddl2_assembler.py test_hello.sddl "
                 "test_hello.bin\n");
         exit(1);
     }
@@ -111,11 +114,11 @@ static void test_assembled_hello(void)
 
 int main(void)
 {
-    printf("Running SDDL2 Assembly End-to-End Test...\n\n");
+    printf("Running SDDL2 Bytecode Execution Test...\n\n");
 
     test_assembled_hello();
 
-    printf("\n✅ Assembly end-to-end test passed!\n");
-    printf("Pipeline verified: Assembly → Bytecode → Execution → Segments\n");
+    printf("\n✅ Bytecode execution test passed!\n");
+    printf("Verified: Load bytecode → Execute → Verify segments\n");
     return 0;
 }

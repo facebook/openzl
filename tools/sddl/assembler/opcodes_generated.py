@@ -1,8 +1,8 @@
 """
 AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 
-Generated from: src/openzl/compress/graphs/sddlv2/sddl2_opcodes.def
-Generated at: 2025-11-09 15:02:08 UTC
+Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
+Generated at: 2025-11-09 22:02:26 UTC
 Generator: generate_opcodes.py
 
 To regenerate: python3 generate_opcodes.py
