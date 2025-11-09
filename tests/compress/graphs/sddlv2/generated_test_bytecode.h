@@ -72,6 +72,12 @@ static const uint8_t BYTECODE_TEST_MATH_DIV_BY_ZERO[] = {
 };
 static const size_t BYTECODE_TEST_MATH_DIV_BY_ZERO_SIZE = 24;
 
+/* Source: test_math_overflow.asm */
+static const uint8_t BYTECODE_TEST_MATH_OVERFLOW[] = {
+    0x04, 0x00, 0x01, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F, 0x04, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x02, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_MATH_OVERFLOW_SIZE = 32;
+
 /* Source: test_math_stack_underflow.asm */
 static const uint8_t BYTECODE_TEST_MATH_STACK_UNDERFLOW[] = {
     0x03, 0x00, 0x01, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x01, 0x00, 0x02, 0x00, 0x01, 0x00, 0x05, 0x00
@@ -179,6 +185,7 @@ static const TestBytecode TEST_BYTECODE_LOOKUP[] = {
     { "test_math_all_operations", BYTECODE_TEST_MATH_ALL_OPERATIONS, BYTECODE_TEST_MATH_ALL_OPERATIONS_SIZE },
     { "test_math_combined", BYTECODE_TEST_MATH_COMBINED, BYTECODE_TEST_MATH_COMBINED_SIZE },
     { "test_math_div_by_zero", BYTECODE_TEST_MATH_DIV_BY_ZERO, BYTECODE_TEST_MATH_DIV_BY_ZERO_SIZE },
+    { "test_math_overflow", BYTECODE_TEST_MATH_OVERFLOW, BYTECODE_TEST_MATH_OVERFLOW_SIZE },
     { "test_math_stack_underflow", BYTECODE_TEST_MATH_STACK_UNDERFLOW, BYTECODE_TEST_MATH_STACK_UNDERFLOW_SIZE },
     { "test_math_type_mismatch", BYTECODE_TEST_MATH_TYPE_MISMATCH, BYTECODE_TEST_MATH_TYPE_MISMATCH_SIZE },
     { "test_multiple_typed_segments", BYTECODE_TEST_MULTIPLE_TYPED_SEGMENTS, BYTECODE_TEST_MULTIPLE_TYPED_SEGMENTS_SIZE },
@@ -196,6 +203,6 @@ static const TestBytecode TEST_BYTECODE_LOOKUP[] = {
     { "test_stack_swap_underflow", BYTECODE_TEST_STACK_SWAP_UNDERFLOW, BYTECODE_TEST_STACK_SWAP_UNDERFLOW_SIZE },
 };
 
-static const size_t TEST_BYTECODE_COUNT = 24;
+static const size_t TEST_BYTECODE_COUNT = 25;
 
 #endif // GENERATED_TEST_BYTECODE_H

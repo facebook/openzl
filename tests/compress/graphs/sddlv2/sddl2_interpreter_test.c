@@ -230,34 +230,19 @@ TEST(test_math_div_by_zero)
  * Tests that overflow is properly detected and propagated
  *
  * Assembly:
- *   push.i64 INT64_MAX
+ *   push.i64 0x7FFFFFFFFFFFFFFF
  *   push.i64 1
  *   math.add
  *   halt
- *
- * NOTE: Uses hard-coded bytecode instead of assembler-generated
- * Reason: Requires INT64_MAX (0x7FFFFFFFFFFFFFFF) literal which may not be
- * supported by assembler. Hand-crafting ensures precise overflow test.
  */
 TEST(test_math_overflow)
 {
     uint8_t input[] = "Test";
 
-    uint8_t bytecode[] = {
-        0x04, 0x00, 0x01, 0x00, // push.i64
-        0xFF, 0xFF, 0xFF, 0xFF, // INT64_MAX = 0x7FFFFFFFFFFFFFFF
-        0xFF, 0xFF, 0xFF, 0x7F,
-        0x04, 0x00, 0x01, 0x00, // push.i64
-        0x01, 0x00, 0x00, 0x00, // 1
-        0x00, 0x00, 0x00, 0x00,
-        0x01, 0x00, 0x02, 0x00, // math.add (will overflow)
-        0x01, 0x00, 0x05, 0x00  // halt
-    };
-
     EXPECT_ERROR(
             SDDL2_STACK_OVERFLOW,
-            bytecode,
-            sizeof(bytecode),
+            BYTECODE_TEST_MATH_OVERFLOW,
+            BYTECODE_TEST_MATH_OVERFLOW_SIZE,
             input,
             sizeof(input) - 1);
 }
