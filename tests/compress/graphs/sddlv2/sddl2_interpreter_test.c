@@ -1,10 +1,5 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-/**
- * Unit tests for SDDL2 bytecode interpreter.
- * Tests the minimal end-to-end execution: bytecode -> segments
- */
-
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -17,19 +12,11 @@
  *   push.i32 5
  *   segment.create_unspecified
  *   halt
- *
- * Bytecode (little-endian):
- *   03 00 01 00   # push.i32 (opcode=0x0003, family=0x0001)
- *   05 00 00 00   # value = 5
- *   01 00 0C 00   # segment.create_unspecified (opcode=0x0001, family=0x000C)
- *   01 00 05 00   # halt (opcode=0x0001, family=0x0005)
  */
 static void test_simple_segment_creation(void)
 {
-    // Input data: "Hello"
     uint8_t input[] = "Hello";
 
-    // Bytecode: push.i32 5, segment.create_unspecified, halt
     uint8_t bytecode[] = {
         0x03, 0x00, 0x01, 0x00, // push.i32
         0x05, 0x00, 0x00, 0x00, // value = 5
@@ -37,25 +24,18 @@ static void test_simple_segment_creation(void)
         0x01, 0x00, 0x05, 0x00  // halt
     };
 
-    // Execute
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
 
     SDDL2_error err = SDDL2_execute_bytecode(
-            bytecode,
-            sizeof(bytecode),
-            input,
-            sizeof(input) - 1, // Exclude null terminator
-            &segments);
+            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
 
-    // Verify
     assert(err == SDDL2_OK);
     assert(segments.count == 1);
-    assert(segments.items[0].tag == 0); // Unspecified segment
+    assert(segments.items[0].tag == 0);
     assert(segments.items[0].start_pos == 0);
     assert(segments.items[0].size_bytes == 5);
 
-    // Cleanup
     SDDL2_segment_list_destroy(&segments);
 
     printf("✓ test_simple_segment_creation passed\n");
@@ -68,7 +48,6 @@ static void test_zero_size_segment(void)
 {
     uint8_t input[] = "Test";
 
-    // Bytecode: push.zero, segment.create_unspecified, halt
     uint8_t bytecode[] = {
         0x01, 0x00, 0x01, 0x00, // push.zero
         0x01, 0x00, 0x0C, 0x00, // segment.create_unspecified
@@ -92,41 +71,25 @@ static void test_zero_size_segment(void)
 
 /**
  * Test: push.type opcode execution
- *
- * This tests that the interpreter correctly executes push.type bytecode.
- * We test a few representative types (u8, i32le, f64be) to verify:
- * 1. The opcodes execute without errors
- * 2. Values are pushed onto the stack (test passes if no stack errors occur)
- *
- * Bytecode: push.type u8, push.type i32le, push.type f64be, halt
  */
 static void test_push_type_execution(void)
 {
     uint8_t input[] = "Test";
 
-    // Bytecode: push.type.u8, push.type.i32le, push.type.f64be, halt
     uint8_t bytecode[] = {
-        0x10, 0x01,
-        0x01, 0x00, // push.type.u8 (opcode=0x0110, family=0x0001)
-        0x18, 0x01,
-        0x01, 0x00, // push.type.i32le (opcode=0x0118, family=0x0001)
-        0x38, 0x01,
-        0x01, 0x00, // push.type.f64be (opcode=0x0138, family=0x0001)
-        0x01, 0x00,
-        0x05, 0x00 // halt
+        0x10, 0x01, 0x01, 0x00, // push.type.u8
+        0x18, 0x01, 0x01, 0x00, // push.type.i32le
+        0x38, 0x01, 0x01, 0x00, // push.type.f64be
+        0x01, 0x00, 0x05, 0x00  // halt
     };
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
 
-    // Execute - should succeed (just pushes values and halts)
     SDDL2_error err = SDDL2_execute_bytecode(
             bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
 
-    // Should execute successfully
     assert(err == SDDL2_OK);
-
-    // No segments should be created (we just push and halt)
     assert(segments.count == 0);
 
     SDDL2_segment_list_destroy(&segments);
@@ -136,51 +99,20 @@ static void test_push_type_execution(void)
 
 /**
  * Test: End-to-end test of push.type + segment.create_tagged
- *
- * This tests the complete pipeline:
- * 1. push.tag pushes a Tag value
- * 2. push.type pushes a Type value
- * 3. push.i32 pushes element count
- * 4. segment.create_tagged creates a typed segment
- *
- * We test with multiple types to verify type metadata is correctly set.
- *
- * Assembly:
- *   push.tag 100
- *   push.type.i32le
- *   push.i32 3
- *   segment.create_tagged
- *   halt
- *
- * Expected: 1 segment with tag=100, type=I32LE, width=1, size=12 bytes (3
- * elements * 4 bytes)
  */
 static void test_push_type_with_segment_create_tagged(void)
 {
-    // Input: 12 bytes for 3 i32le elements
-    uint8_t input[12] = {
-        0x01, 0x00, 0x00, 0x00, // element 1
-        0x02, 0x00, 0x00, 0x00, // element 2
-        0x03, 0x00, 0x00, 0x00  // element 3
-    };
+    uint8_t input[12] = { 0x01, 0x00, 0x00, 0x00, 0x02, 0x00,
+                          0x00, 0x00, 0x03, 0x00, 0x00, 0x00 };
 
-    // Bytecode: push.tag 100, push.type.i32le, push.i32 3,
-    // segment.create_tagged, halt
     uint8_t bytecode[] = {
-        0x05, 0x00,
-        0x01, 0x00, // push.tag (opcode=0x0005, family=0x0001)
-        0x64, 0x00,
-        0x00, 0x00, // tag = 100
-        0x18, 0x01,
-        0x01, 0x00, // push.type.i32le (opcode=0x0118, family=0x0001)
-        0x02, 0x00,
-        0x01, 0x00, // push.u32 (opcode=0x0002, family=0x0001)
-        0x03, 0x00,
-        0x00, 0x00, // value = 3 (element count)
-        0x02, 0x00,
-        0x0C, 0x00, // segment.create_tagged (opcode=0x0002, family=0x000C)
-        0x01, 0x00,
-        0x05, 0x00 // halt
+        0x05, 0x00, 0x01, 0x00, // push.tag
+        0x64, 0x00, 0x00, 0x00, // tag = 100
+        0x18, 0x01, 0x01, 0x00, // push.type.i32le
+        0x02, 0x00, 0x01, 0x00, // push.u32
+        0x03, 0x00, 0x00, 0x00, // value = 3
+        0x02, 0x00, 0x0C, 0x00, // segment.create_tagged
+        0x01, 0x00, 0x05, 0x00  // halt
     };
 
     SDDL2_segment_list segments;
@@ -189,14 +121,11 @@ static void test_push_type_with_segment_create_tagged(void)
     SDDL2_error err = SDDL2_execute_bytecode(
             bytecode, sizeof(bytecode), input, sizeof(input), &segments);
 
-    // Should execute successfully
     assert(err == SDDL2_OK);
-
-    // Check segment was created
     assert(segments.count == 1);
     assert(segments.items[0].tag == 100);
     assert(segments.items[0].start_pos == 0);
-    assert(segments.items[0].size_bytes == 12); // 3 elements * 4 bytes
+    assert(segments.items[0].size_bytes == 12);
     assert(segments.items[0].type.kind == SDDL2_TYPE_I32LE);
     assert(segments.items[0].type.width == 1);
 
@@ -207,21 +136,11 @@ static void test_push_type_with_segment_create_tagged(void)
 
 /**
  * Test: Multiple typed segments with different types
- *
- * Tests creating multiple segments with different types to verify:
- * 1. Each segment has correct type metadata
- * 2. Size calculation works for all types
- * 3. Different types prevent merging even with same tag
  */
 static void test_multiple_typed_segments(void)
 {
-    // Input: 1 byte (u8) + 4 bytes (f32le) = 5 bytes total
     uint8_t input[5] = { 0x42, 0x00, 0x00, 0x80, 0x3F };
 
-    // Bytecode:
-    // 1. Create segment: tag=100, type=U8, size=1 (1 byte)
-    // 2. Create segment: tag=100, type=F32LE, size=1 (4 bytes)
-    // Note: Same tag but different types = NO MERGE
     uint8_t bytecode[] = {
         // Segment 1: tag=100, type=U8, size=1
         0x05,
@@ -235,7 +154,7 @@ static void test_multiple_typed_segments(void)
         0x10,
         0x01,
         0x01,
-        0x00, // push.type.u8 (opcode=0x0110)
+        0x00, // push.type.u8
         0x02,
         0x00,
         0x01,
@@ -261,7 +180,7 @@ static void test_multiple_typed_segments(void)
         0x35,
         0x01,
         0x01,
-        0x00, // push.type.f32le (opcode=0x0135)
+        0x00, // push.type.f32le
         0x02,
         0x00,
         0x01,
@@ -288,18 +207,14 @@ static void test_multiple_typed_segments(void)
             bytecode, sizeof(bytecode), input, sizeof(input), &segments);
 
     assert(err == SDDL2_OK);
-
-    // Should have 2 segments (no merge due to different types)
     assert(segments.count == 2);
 
-    // Segment 1: tag=100, type=U8, 1 byte
     assert(segments.items[0].tag == 100);
     assert(segments.items[0].start_pos == 0);
     assert(segments.items[0].size_bytes == 1);
     assert(segments.items[0].type.kind == SDDL2_TYPE_U8);
     assert(segments.items[0].type.width == 1);
 
-    // Segment 2: tag=100, type=F32LE, 4 bytes
     assert(segments.items[1].tag == 100);
     assert(segments.items[1].start_pos == 1);
     assert(segments.items[1].size_bytes == 4);
@@ -313,22 +228,13 @@ static void test_multiple_typed_segments(void)
 
 /**
  * Test: push.tag opcode execution
- *
- * This tests that the interpreter correctly executes push.tag bytecode.
- * Since we can't directly inspect the stack, we test indirectly by:
- * 1. Using push.tag to push a value that would be wrong if interpreted as I64
- * 2. The test will fail at the segment creation step if push.tag isn't working
- *
- * Bytecode: push.tag 100, halt
  */
 static void test_push_tag_execution(void)
 {
     uint8_t input[] = "Test";
 
-    // Bytecode: push.tag 100, halt
-    // This is the bytecode generated by assembler test push_tag_100.asm
     uint8_t bytecode[] = {
-        0x05, 0x00, 0x01, 0x00, // push.tag (opcode=0x0005, family=0x0001)
+        0x05, 0x00, 0x01, 0x00, // push.tag
         0x64, 0x00, 0x00, 0x00, // value = 100
         0x01, 0x00, 0x05, 0x00  // halt
     };
@@ -336,14 +242,10 @@ static void test_push_tag_execution(void)
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
 
-    // Execute - should succeed (just pushes a value and halts)
     SDDL2_error err = SDDL2_execute_bytecode(
             bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
 
-    // Should execute successfully even though we don't use the pushed value
     assert(err == SDDL2_OK);
-
-    // No segments should be created (we just push and halt)
     assert(segments.count == 0);
 
     SDDL2_segment_list_destroy(&segments);
@@ -352,12 +254,22 @@ static void test_push_tag_execution(void)
 }
 
 /**
- * Test: Invalid bytecode (not multiple of 4)
+ * Test: MATH operations through interpreter
+ *
+ * Tests: 10 + 5 = 15
  */
-static void test_invalid_bytecode_size(void)
+static void test_math_add_execution(void)
 {
-    uint8_t input[]    = "Test";
-    uint8_t bytecode[] = { 0x01, 0x00, 0x03 }; // Only 3 bytes
+    uint8_t input[] = "Test";
+
+    uint8_t bytecode[] = {
+        0x03, 0x00, 0x01, 0x00, // push.i32
+        0x0A, 0x00, 0x00, 0x00, // value = 10
+        0x03, 0x00, 0x01, 0x00, // push.i32
+        0x05, 0x00, 0x00, 0x00, // value = 5
+        0x01, 0x00, 0x02, 0x00, // math.add
+        0x01, 0x00, 0x05, 0x00  // halt
+    };
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
@@ -365,7 +277,312 @@ static void test_invalid_bytecode_size(void)
     SDDL2_error err = SDDL2_execute_bytecode(
             bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
 
-    assert(err != SDDL2_OK); // Should fail
+    assert(err == SDDL2_OK);
+    assert(segments.count == 0);
+
+    SDDL2_segment_list_destroy(&segments);
+
+    printf("✓ test_math_add_execution passed\n");
+}
+
+/**
+ * Test: Multiple MATH operations
+ *
+ * Tests: (2 + 3) * 4 = 20
+ */
+static void test_math_combined_execution(void)
+{
+    uint8_t input[] = "Test";
+
+    uint8_t bytecode[] = {
+        0x03, 0x00, 0x01, 0x00, // push.i32
+        0x02, 0x00, 0x00, 0x00, // 2
+        0x03, 0x00, 0x01, 0x00, // push.i32
+        0x03, 0x00, 0x00, 0x00, // 3
+        0x01, 0x00, 0x02, 0x00, // math.add
+        0x03, 0x00, 0x01, 0x00, // push.i32
+        0x04, 0x00, 0x00, 0x00, // 4
+        0x03, 0x00, 0x02, 0x00, // math.mul
+        0x01, 0x00, 0x05, 0x00  // halt
+    };
+
+    SDDL2_segment_list segments;
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_error err = SDDL2_execute_bytecode(
+            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+
+    assert(err == SDDL2_OK);
+    assert(segments.count == 0);
+
+    SDDL2_segment_list_destroy(&segments);
+
+    printf("✓ test_math_combined_execution passed\n");
+}
+
+/**
+ * Test: All 7 MATH operations
+ *
+ * Tests each MATH operation to verify dispatch works.
+ * Note: We don't clean up intermediate results (would need stack.drop),
+ * so the stack accumulates values, but this is fine for testing dispatch.
+ */
+static void test_math_all_operations(void)
+{
+    uint8_t input[] = "Test";
+
+    uint8_t bytecode[] = {
+        // add: 10 + 5 = 15
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x0A,
+        0x00,
+        0x00,
+        0x00, // 10
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x05,
+        0x00,
+        0x00,
+        0x00, // 5
+        0x01,
+        0x00,
+        0x02,
+        0x00, // math.add (result: 15)
+
+        // sub: 20 - 8 = 12
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x14,
+        0x00,
+        0x00,
+        0x00, // 20
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x08,
+        0x00,
+        0x00,
+        0x00, // 8
+        0x02,
+        0x00,
+        0x02,
+        0x00, // math.sub (result: 12)
+
+        // mul: 3 * 4 = 12
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x03,
+        0x00,
+        0x00,
+        0x00, // 3
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x04,
+        0x00,
+        0x00,
+        0x00, // 4
+        0x03,
+        0x00,
+        0x02,
+        0x00, // math.mul (result: 12)
+
+        // div: 20 / 4 = 5
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x14,
+        0x00,
+        0x00,
+        0x00, // 20
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x04,
+        0x00,
+        0x00,
+        0x00, // 4
+        0x04,
+        0x00,
+        0x02,
+        0x00, // math.div (result: 5)
+
+        // mod: 17 % 5 = 2
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x11,
+        0x00,
+        0x00,
+        0x00, // 17
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x05,
+        0x00,
+        0x00,
+        0x00, // 5
+        0x05,
+        0x00,
+        0x02,
+        0x00, // math.mod (result: 2)
+
+        // abs: abs(-42) = 42
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0xD6,
+        0xFF,
+        0xFF,
+        0xFF, // -42 (two's complement)
+        0x06,
+        0x00,
+        0x02,
+        0x00, // math.abs (result: 42)
+
+        // neg: neg(10) = -10
+        0x03,
+        0x00,
+        0x01,
+        0x00, // push.i32
+        0x0A,
+        0x00,
+        0x00,
+        0x00, // 10
+        0x07,
+        0x00,
+        0x02,
+        0x00, // math.neg (result: -10)
+
+        0x01,
+        0x00,
+        0x05,
+        0x00 // halt
+    };
+
+    SDDL2_segment_list segments;
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_error err = SDDL2_execute_bytecode(
+            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+
+    assert(err == SDDL2_OK);
+    assert(segments.count == 0);
+
+    SDDL2_segment_list_destroy(&segments);
+
+    printf("✓ test_math_all_operations passed\n");
+}
+
+/**
+ * Test: MATH divide by zero error
+ *
+ * Tests that math.div with zero divisor returns SDDL2_DIV_ZERO error
+ *
+ * Assembly:
+ *   push.i32 10
+ *   push.i32 0
+ *   math.div
+ *   halt
+ */
+static void test_math_div_by_zero(void)
+{
+    uint8_t input[] = "Test";
+
+    uint8_t bytecode[] = {
+        0x03, 0x00, 0x01, 0x00, // push.i32
+        0x0A, 0x00, 0x00, 0x00, // 10
+        0x03, 0x00, 0x01, 0x00, // push.i32
+        0x00, 0x00, 0x00, 0x00, // 0
+        0x04, 0x00, 0x02, 0x00, // math.div
+        0x01, 0x00, 0x05, 0x00  // halt
+    };
+
+    SDDL2_segment_list segments;
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_error err = SDDL2_execute_bytecode(
+            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+
+    // Should return divide by zero error
+    assert(err == SDDL2_DIV_ZERO);
+
+    SDDL2_segment_list_destroy(&segments);
+
+    printf("✓ test_math_div_by_zero passed\n");
+}
+
+/**
+ * Test: MATH overflow error
+ *
+ * Tests that overflow is properly detected and propagated
+ *
+ * Assembly:
+ *   push.i64 INT64_MAX
+ *   push.i64 1
+ *   math.add
+ *   halt
+ */
+static void test_math_overflow(void)
+{
+    uint8_t input[] = "Test";
+
+    uint8_t bytecode[] = {
+        0x04, 0x00, 0x01, 0x00, // push.i64
+        0xFF, 0xFF, 0xFF, 0xFF, // INT64_MAX = 0x7FFFFFFFFFFFFFFF
+        0xFF, 0xFF, 0xFF, 0x7F,
+        0x04, 0x00, 0x01, 0x00, // push.i64
+        0x01, 0x00, 0x00, 0x00, // 1
+        0x00, 0x00, 0x00, 0x00,
+        0x01, 0x00, 0x02, 0x00, // math.add (will overflow)
+        0x01, 0x00, 0x05, 0x00  // halt
+    };
+
+    SDDL2_segment_list segments;
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_error err = SDDL2_execute_bytecode(
+            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+
+    // Should return overflow error
+    assert(err == SDDL2_STACK_OVERFLOW);
+
+    SDDL2_segment_list_destroy(&segments);
+
+    printf("✓ test_math_overflow passed\n");
+}
+
+/**
+ * Test: Invalid bytecode size
+ */
+static void test_invalid_bytecode_size(void)
+{
+    uint8_t input[]    = "Test";
+    uint8_t bytecode[] = { 0x01, 0x00, 0x03 };
+
+    SDDL2_segment_list segments;
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_error err = SDDL2_execute_bytecode(
+            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+
+    assert(err != SDDL2_OK);
 
     SDDL2_segment_list_destroy(&segments);
 
@@ -379,7 +596,6 @@ static void test_missing_halt(void)
 {
     uint8_t input[] = "Test";
 
-    // Bytecode: push.i32 5, segment.create_unspecified (no halt!)
     uint8_t bytecode[] = {
         0x03, 0x00, 0x01, 0x00, // push.i32
         0x05, 0x00, 0x00, 0x00, // 5
@@ -392,7 +608,7 @@ static void test_missing_halt(void)
     SDDL2_error err = SDDL2_execute_bytecode(
             bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
 
-    assert(err != SDDL2_OK); // Should fail - no halt
+    assert(err != SDDL2_OK);
 
     SDDL2_segment_list_destroy(&segments);
 
@@ -409,9 +625,14 @@ int main(void)
     test_push_type_with_segment_create_tagged();
     test_multiple_typed_segments();
     test_push_tag_execution();
+    test_math_add_execution();
+    test_math_combined_execution();
+    test_math_all_operations();
+    test_math_div_by_zero();
+    test_math_overflow();
     test_invalid_bytecode_size();
     test_missing_halt();
 
-    printf("\n✅ All interpreter tests passed! (8 tests)\n");
+    printf("\n✅ All interpreter tests passed! (13 tests)\n");
     return 0;
 }

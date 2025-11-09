@@ -185,8 +185,28 @@ SDDL2_error SDDL2_execute_bytecode(
                 }
                 break;
 
-            // Unimplemented families
             case SDDL2_FAMILY_MATH:
+                if (opcode == SDDL2_OP_MATH_ADD) {
+                    err = SDDL2_op_add(&stack);
+                } else if (opcode == SDDL2_OP_MATH_SUB) {
+                    err = SDDL2_op_sub(&stack);
+                } else if (opcode == SDDL2_OP_MATH_MUL) {
+                    err = SDDL2_op_mul(&stack);
+                } else if (opcode == SDDL2_OP_MATH_DIV) {
+                    err = SDDL2_op_div(&stack);
+                } else if (opcode == SDDL2_OP_MATH_MOD) {
+                    err = SDDL2_op_mod(&stack);
+                } else if (opcode == SDDL2_OP_MATH_ABS) {
+                    err = SDDL2_op_abs(&stack);
+                } else if (opcode == SDDL2_OP_MATH_NEG) {
+                    err = SDDL2_op_neg(&stack);
+                } else {
+                    SDDL2_tag_registry_destroy(&registry);
+                    return SDDL2_INVALID_BYTECODE; // Unknown opcode
+                }
+                break;
+
+            // Unimplemented families
             case SDDL2_FAMILY_CMP:
             case SDDL2_FAMILY_LOGIC:
             case SDDL2_FAMILY_LOAD:
