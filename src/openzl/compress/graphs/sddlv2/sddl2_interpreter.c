@@ -45,6 +45,59 @@ static const struct {
 
 #define PUSH_TYPE_MAP_SIZE (sizeof(PUSH_TYPE_MAP) / sizeof(PUSH_TYPE_MAP[0]))
 
+/* ============================================================================
+ * Operation Dispatch Tables
+ * ========================================================================= */
+
+/**
+ * Function pointer type for stack operations.
+ * All MATH, CMP, and STACK operations share this signature.
+ */
+typedef SDDL2_error (*SDDL2_stack_op_fn)(SDDL2_stack*);
+
+/**
+ * Lookup table for MATH family operations.
+ */
+static const struct {
+    uint16_t opcode;
+    SDDL2_stack_op_fn handler;
+} MATH_OP_MAP[] = {
+    { SDDL2_OP_MATH_ADD, SDDL2_op_add }, { SDDL2_OP_MATH_SUB, SDDL2_op_sub },
+    { SDDL2_OP_MATH_MUL, SDDL2_op_mul }, { SDDL2_OP_MATH_DIV, SDDL2_op_div },
+    { SDDL2_OP_MATH_MOD, SDDL2_op_mod }, { SDDL2_OP_MATH_ABS, SDDL2_op_abs },
+    { SDDL2_OP_MATH_NEG, SDDL2_op_neg },
+};
+
+#define MATH_OP_MAP_SIZE (sizeof(MATH_OP_MAP) / sizeof(MATH_OP_MAP[0]))
+
+/**
+ * Lookup table for CMP family operations.
+ */
+static const struct {
+    uint16_t opcode;
+    SDDL2_stack_op_fn handler;
+} CMP_OP_MAP[] = {
+    { SDDL2_OP_CMP_EQ, SDDL2_op_eq }, { SDDL2_OP_CMP_NE, SDDL2_op_ne },
+    { SDDL2_OP_CMP_LT, SDDL2_op_lt }, { SDDL2_OP_CMP_LE, SDDL2_op_le },
+    { SDDL2_OP_CMP_GT, SDDL2_op_gt }, { SDDL2_OP_CMP_GE, SDDL2_op_ge },
+};
+
+#define CMP_OP_MAP_SIZE (sizeof(CMP_OP_MAP) / sizeof(CMP_OP_MAP[0]))
+
+/**
+ * Lookup table for STACK family operations.
+ */
+static const struct {
+    uint16_t opcode;
+    SDDL2_stack_op_fn handler;
+} STACK_OP_MAP[] = {
+    { SDDL2_OP_STACK_DROP, SDDL2_op_drop },
+    { SDDL2_OP_STACK_DUP, SDDL2_op_dup },
+    { SDDL2_OP_STACK_SWAP, SDDL2_op_swap },
+};
+
+#define STACK_OP_MAP_SIZE (sizeof(STACK_OP_MAP) / sizeof(STACK_OP_MAP[0]))
+
 /**
  * Cleanup helper for SDDL2_execute_bytecode.
  * Destroys the tag registry and returns the specified error code.
@@ -197,58 +250,59 @@ SDDL2_error SDDL2_execute_bytecode(
                 }
                 break;
 
-            case SDDL2_FAMILY_MATH:
-                if (opcode == SDDL2_OP_MATH_ADD) {
-                    err = SDDL2_op_add(&stack);
-                } else if (opcode == SDDL2_OP_MATH_SUB) {
-                    err = SDDL2_op_sub(&stack);
-                } else if (opcode == SDDL2_OP_MATH_MUL) {
-                    err = SDDL2_op_mul(&stack);
-                } else if (opcode == SDDL2_OP_MATH_DIV) {
-                    err = SDDL2_op_div(&stack);
-                } else if (opcode == SDDL2_OP_MATH_MOD) {
-                    err = SDDL2_op_mod(&stack);
-                } else if (opcode == SDDL2_OP_MATH_ABS) {
-                    err = SDDL2_op_abs(&stack);
-                } else if (opcode == SDDL2_OP_MATH_NEG) {
-                    err = SDDL2_op_neg(&stack);
+            case SDDL2_FAMILY_MATH: {
+                // Dispatch via lookup table
+                SDDL2_stack_op_fn handler = NULL;
+                for (size_t i = 0; i < MATH_OP_MAP_SIZE; i++) {
+                    if (opcode == MATH_OP_MAP[i].opcode) {
+                        handler = MATH_OP_MAP[i].handler;
+                        break;
+                    }
+                }
+                if (handler) {
+                    err = handler(&stack);
                 } else {
                     CLEANUP_AND_RETURN(
                             SDDL2_INVALID_BYTECODE); // Unknown opcode
                 }
                 break;
+            }
 
-            case SDDL2_FAMILY_CMP:
-                if (opcode == SDDL2_OP_CMP_EQ) {
-                    err = SDDL2_op_eq(&stack);
-                } else if (opcode == SDDL2_OP_CMP_NE) {
-                    err = SDDL2_op_ne(&stack);
-                } else if (opcode == SDDL2_OP_CMP_LT) {
-                    err = SDDL2_op_lt(&stack);
-                } else if (opcode == SDDL2_OP_CMP_LE) {
-                    err = SDDL2_op_le(&stack);
-                } else if (opcode == SDDL2_OP_CMP_GT) {
-                    err = SDDL2_op_gt(&stack);
-                } else if (opcode == SDDL2_OP_CMP_GE) {
-                    err = SDDL2_op_ge(&stack);
+            case SDDL2_FAMILY_CMP: {
+                // Dispatch via lookup table
+                SDDL2_stack_op_fn handler = NULL;
+                for (size_t i = 0; i < CMP_OP_MAP_SIZE; i++) {
+                    if (opcode == CMP_OP_MAP[i].opcode) {
+                        handler = CMP_OP_MAP[i].handler;
+                        break;
+                    }
+                }
+                if (handler) {
+                    err = handler(&stack);
                 } else {
                     CLEANUP_AND_RETURN(
                             SDDL2_INVALID_BYTECODE); // Unknown opcode
                 }
                 break;
+            }
 
-            case SDDL2_FAMILY_STACK:
-                if (opcode == SDDL2_OP_STACK_DROP) {
-                    err = SDDL2_op_drop(&stack);
-                } else if (opcode == SDDL2_OP_STACK_DUP) {
-                    err = SDDL2_op_dup(&stack);
-                } else if (opcode == SDDL2_OP_STACK_SWAP) {
-                    err = SDDL2_op_swap(&stack);
+            case SDDL2_FAMILY_STACK: {
+                // Dispatch via lookup table
+                SDDL2_stack_op_fn handler = NULL;
+                for (size_t i = 0; i < STACK_OP_MAP_SIZE; i++) {
+                    if (opcode == STACK_OP_MAP[i].opcode) {
+                        handler = STACK_OP_MAP[i].handler;
+                        break;
+                    }
+                }
+                if (handler) {
+                    err = handler(&stack);
                 } else {
                     CLEANUP_AND_RETURN(
                             SDDL2_INVALID_BYTECODE); // Unknown opcode
                 }
                 break;
+            }
 
             // Unimplemented families
             case SDDL2_FAMILY_TYPE:
