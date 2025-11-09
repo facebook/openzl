@@ -743,6 +743,74 @@ static void test_many_tags_registry_growth(void)
     printf("✓ test_many_tags_registry_growth passed\n");
 }
 
+/**
+ * Test: Segment list dynamic growth
+ *
+ * This test verifies that the segment list can grow beyond its initial
+ * capacity when many segments are created. Unlike
+ * test_many_tags_registry_growth which tests tag registry growth, this
+ * specifically tests segment list growth.
+ *
+ * Strategy: Create 100 segments with different tags to prevent merging,
+ * forcing the segment list to grow from initial capacity to accommodate all.
+ */
+static void test_segment_list_dynamic_growth(void)
+{
+    SDDL2_stack* stack = create_test_stack(1000);
+    uint8_t data[500]  = { 0 };
+    SDDL2_input_buffer buffer;
+    SDDL2_segment_list segments;
+    SDDL2_tag_registry registry;
+
+    SDDL2_input_buffer_init(&buffer, data, 500);
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_tag_registry_init(&registry, NULL, NULL);
+
+    // Initial capacity is 0 when using heap allocation (NULL allocator)
+    // It will grow as needed: 0 -> 32 -> 64 -> 128
+    size_t initial_capacity = segments.capacity;
+
+    // Create 100 segments with DIFFERENT tags (prevents merging)
+    // Each segment is 5 bytes, different tag ensures no merging
+    const int NUM_SEGMENTS = 100;
+    for (int i = 0; i < NUM_SEGMENTS; i++) {
+        SDDL2_stack_push(stack, SDDL2_value_tag((uint32_t)(1000 + i))); // tag
+        SDDL2_stack_push(
+                stack,
+                SDDL2_value_type((SDDL2_type){ SDDL2_TYPE_U8, 1 })); // type
+        SDDL2_stack_push(stack, SDDL2_value_i64(5));                 // size
+        SDDL2_error err = SDDL2_op_segment_create_tagged(
+                stack, &buffer, &segments, &registry);
+        assert(err == SDDL2_OK);
+    }
+
+    // Verify all 100 segments were created (no merging)
+    assert(segments.count == NUM_SEGMENTS);
+
+    // Verify capacity grew beyond initial (proves dynamic growth works)
+    assert(segments.capacity > initial_capacity);
+    assert(segments.capacity >= NUM_SEGMENTS);
+
+    // Verify each segment is correct and in order
+    for (int i = 0; i < NUM_SEGMENTS; i++) {
+        assert(segments.items[i].tag == (uint32_t)(1000 + i));
+        assert(segments.items[i].start_pos == (size_t)(i * 5));
+        assert(segments.items[i].size_bytes == 5);
+        assert(segments.items[i].type.kind == SDDL2_TYPE_U8);
+        assert(segments.items[i].type.width == 1);
+    }
+
+    // Verify buffer cursor advanced correctly
+    assert(buffer.current_pos == NUM_SEGMENTS * 5);
+
+    // Cleanup
+    SDDL2_segment_list_destroy(&segments);
+    SDDL2_tag_registry_destroy(&registry);
+    destroy_test_stack(stack);
+
+    printf("✓ test_segment_list_dynamic_growth passed\n");
+}
+
 /* ============================================================================
  * Test Runner
  * ========================================================================= */
@@ -788,8 +856,9 @@ int main(void)
     test_tagged_with_arithmetic();
     test_mixed_unspecified_and_tagged();
     test_many_tags_registry_growth();
+    test_segment_list_dynamic_growth();
     printf("\n");
 
-    printf("✅ All Phase 5 tests passed! (21 tests)\n");
+    printf("✅ All Phase 5 tests passed! (22 tests)\n");
     return 0;
 }

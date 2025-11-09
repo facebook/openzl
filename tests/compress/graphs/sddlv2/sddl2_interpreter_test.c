@@ -91,47 +91,6 @@ static void test_zero_size_segment(void)
 }
 
 /**
- * Test: Multiple segments
- */
-static void test_multiple_segments(void)
-{
-    uint8_t input[] = "HelloWorld";
-
-    // Bytecode:
-    //   push.i32 5, segment.create_unspecified,  # "Hello"
-    //   push.i32 5, segment.create_unspecified,  # "World"
-    //   halt
-    uint8_t bytecode[] = {
-        0x03, 0x00, 0x01, 0x00, // push.i32
-        0x05, 0x00, 0x00, 0x00, // 5
-        0x01, 0x00, 0x0C, 0x00, // segment.create_unspecified
-
-        0x03, 0x00, 0x01, 0x00, // push.i32
-        0x05, 0x00, 0x00, 0x00, // 5
-        0x01, 0x00, 0x0C, 0x00, // segment.create_unspecified
-
-        0x01, 0x00, 0x05, 0x00 // halt
-    };
-
-    SDDL2_segment_list segments;
-    SDDL2_segment_list_init(&segments, NULL, NULL);
-
-    SDDL2_error err = SDDL2_execute_bytecode(
-            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
-
-    assert(err == SDDL2_OK);
-    assert(segments.count == 2);
-    assert(segments.items[0].start_pos == 0);
-    assert(segments.items[0].size_bytes == 5);
-    assert(segments.items[1].start_pos == 5);
-    assert(segments.items[1].size_bytes == 5);
-
-    SDDL2_segment_list_destroy(&segments);
-
-    printf("✓ test_multiple_segments passed\n");
-}
-
-/**
  * Test: Invalid bytecode (not multiple of 4)
  */
 static void test_invalid_bytecode_size(void)
@@ -185,10 +144,9 @@ int main(void)
 
     test_simple_segment_creation();
     test_zero_size_segment();
-    test_multiple_segments();
     test_invalid_bytecode_size();
     test_missing_halt();
 
-    printf("\n✅ All interpreter tests passed! (5 tests)\n");
+    printf("\n✅ All interpreter tests passed! (4 tests)\n");
     return 0;
 }

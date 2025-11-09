@@ -132,99 +132,6 @@ static void test_create_zero_size_segment(void)
 }
 
 /* ============================================================================
- * Multiple Segments Tests
- * ========================================================================= */
-
-static void test_create_multiple_segments(void)
-{
-    SDDL2_stack* stack = create_test_stack(100);
-    uint8_t data[]     = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF };
-    SDDL2_input_buffer buffer;
-    SDDL2_segment_list segments;
-
-    SDDL2_input_buffer_init(&buffer, data, 6);
-    SDDL2_segment_list_init(&segments, NULL, NULL);
-
-    // Segment 1: size=2 (bytes 0-1, unspecified tag=0)
-    assert(SDDL2_stack_push(stack, SDDL2_value_i64(2)) == SDDL2_OK);
-    assert(SDDL2_op_segment_create_unspecified(stack, &buffer, &segments)
-           == SDDL2_OK);
-
-    // Segment 2: size=3 (bytes 2-4, unspecified tag=0)
-    assert(SDDL2_stack_push(stack, SDDL2_value_i64(3)) == SDDL2_OK);
-    assert(SDDL2_op_segment_create_unspecified(stack, &buffer, &segments)
-           == SDDL2_OK);
-
-    // Segment 3: size=1 (byte 5, unspecified tag=0)
-    assert(SDDL2_stack_push(stack, SDDL2_value_i64(1)) == SDDL2_OK);
-    assert(SDDL2_op_segment_create_unspecified(stack, &buffer, &segments)
-           == SDDL2_OK);
-
-    // Verify all segments
-    assert(segments.count == 3);
-
-    assert(segments.items[0].tag == 0); // Unspecified
-    assert(segments.items[0].start_pos == 0);
-    assert(segments.items[0].size_bytes == 2);
-
-    assert(segments.items[1].tag == 0); // Unspecified
-    assert(segments.items[1].start_pos == 2);
-    assert(segments.items[1].size_bytes == 3);
-
-    assert(segments.items[2].tag == 0); // Unspecified
-    assert(segments.items[2].start_pos == 5);
-    assert(segments.items[2].size_bytes == 1);
-
-    // Verify cursor at end
-    assert(buffer.current_pos == 6);
-
-    SDDL2_segment_list_destroy(&segments);
-    destroy_test_stack(stack);
-    printf("✓ test_create_multiple_segments passed\n");
-}
-
-static void test_many_segments_growth(void)
-{
-    SDDL2_stack* stack = create_test_stack(100);
-    uint8_t data[100];
-    SDDL2_input_buffer buffer;
-    SDDL2_segment_list segments;
-
-    for (size_t i = 0; i < 100; i++) {
-        data[i] = (uint8_t)i;
-    }
-
-    SDDL2_input_buffer_init(&buffer, data, 100);
-    SDDL2_segment_list_init(&segments, NULL, NULL);
-
-    // Create 50 unspecified segments of size 2 each
-    for (int i = 0; i < 50; i++) {
-        assert(SDDL2_stack_push(stack, SDDL2_value_i64(2)) == SDDL2_OK);
-        assert(SDDL2_op_segment_create_unspecified(stack, &buffer, &segments)
-               == SDDL2_OK);
-    }
-
-    // Verify all 50 segments
-    assert(segments.count == 50);
-
-    for (size_t i = 0; i < 50; i++) {
-        assert(segments.items[i].tag == 0); // All unspecified
-        assert(segments.items[i].start_pos == i * 2);
-        assert(segments.items[i].size_bytes == 2);
-    }
-
-    // Verify cursor at end
-    assert(buffer.current_pos == 100);
-
-    // Verify capacity grew (started at 0, should be >= 50)
-    assert(segments.capacity >= 50);
-
-    SDDL2_segment_list_destroy(&segments);
-    destroy_test_stack(stack);
-    printf("✓ test_many_segments_growth passed\n");
-}
-
-/* ============================================================================
  * Bounds Checking Tests
  * ========================================================================= */
 
@@ -540,10 +447,6 @@ int main(void)
     // Single segment
     test_create_single_segment();
     test_create_zero_size_segment();
-
-    // Multiple segments
-    test_create_multiple_segments();
-    test_many_segments_growth();
 
     // Bounds checking
     test_segment_exceeds_buffer();

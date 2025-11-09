@@ -371,13 +371,15 @@ SDDL2_error SDDL2_op_load_u8(
  * Memory Management Abstraction Layer
  * ========================================================================= */
 
-// Forward declaration for use in ensure_capacity()
+// Forward declarations
 static void* sddl2_realloc(
         void* old_ptr,
         size_t old_size,
         size_t new_size,
         SDDL2_allocator_fn alloc_fn,
         void* alloc_ctx);
+
+static int tag_registry_register(SDDL2_tag_registry* registry, uint32_t tag);
 
 /**
  * Initial capacity for dynamic arrays when growing from zero.
@@ -556,6 +558,97 @@ static int segment_list_ensure_capacity(SDDL2_segment_list* list)
             list->alloc_ctx);
 }
 
+/**
+ * Internal helper: Create a segment with tag, type, and element count.
+ * Handles validation, merging, and cursor advancement.
+ *
+ * This is the unified implementation for both tagged and unspecified segments.
+ * An unspecified segment is just a tagged segment with tag=0 and type=BYTES.
+ *
+ * @param tag Segment tag (0 for unspecified)
+ * @param type Segment type descriptor
+ * @param element_count Number of elements (size is element_count * type_size)
+ * @param buffer Input buffer (cursor will be advanced)
+ * @param segments Segment list (segment will be appended or merged)
+ * @param registry Tag registry (tag will be registered if non-zero)
+ * @return SDDL2_OK on success, error code on failure
+ */
+static SDDL2_error segment_create_internal(
+        uint32_t tag,
+        SDDL2_type type,
+        size_t element_count,
+        SDDL2_input_buffer* buffer,
+        SDDL2_segment_list* segments,
+        SDDL2_tag_registry* registry)
+{
+    // Calculate actual size in bytes: element_count * type_size
+    size_t type_size_bytes = SDDL2_type_size(type.kind);
+    if (type_size_bytes == 0) {
+        return SDDL2_TYPE_MISMATCH; // Unknown or invalid type
+    }
+
+    // Check for overflow in multiplication
+    if (element_count > SIZE_MAX / type_size_bytes) {
+        return SDDL2_STACK_OVERFLOW; // Size overflow
+    }
+
+    size_t size_bytes = element_count * type_size_bytes;
+
+    // Bounds check: segment must fit in remaining buffer
+    if (buffer->current_pos + size_bytes > buffer->size) {
+        return SDDL2_SEGMENT_BOUNDS;
+    }
+
+    // Register tag if non-zero (tagged segments only)
+    if (tag != 0) {
+        if (!tag_registry_register(registry, tag)) {
+            return SDDL2_LIMIT_EXCEEDED; // Capacity limit exceeded or
+                                         // allocation allocation failed
+        }
+    }
+
+    // Check if we can merge with the last segment
+    // Merge conditions: same tag AND same type AND consecutive positions
+    // This applies to ALL segments, including unspecified ones (tag=0)
+    // Unspecified segments merge to reduce overhead for "leftover" data
+    if (segments->count > 0) {
+        SDDL2_segment* last = &segments->items[segments->count - 1];
+        size_t expected_pos = last->start_pos + last->size_bytes;
+
+        // Check if types match (both kind and width)
+        bool types_match =
+                (last->type.kind == type.kind
+                 && last->type.width == type.width);
+
+        if (last->tag == tag && types_match
+            && expected_pos == buffer->current_pos) {
+            // MERGE: Just extend the last segment's size
+            last->size_bytes += size_bytes;
+            buffer->current_pos += size_bytes;
+            return SDDL2_OK;
+        }
+    }
+
+    // Cannot merge - create new segment
+    if (!segment_list_ensure_capacity(segments)) {
+        return SDDL2_LIMIT_EXCEEDED; // Capacity limit exceeded or allocation
+                                     // failed
+    }
+
+    SDDL2_segment seg;
+    seg.tag        = tag;
+    seg.start_pos  = buffer->current_pos;
+    seg.size_bytes = size_bytes;
+    seg.type       = type;
+
+    segments->items[segments->count++] = seg;
+
+    // Advance cursor
+    buffer->current_pos += size_bytes;
+
+    return SDDL2_OK;
+}
+
 SDDL2_error SDDL2_op_segment_create_unspecified(
         SDDL2_stack* stack,
         SDDL2_input_buffer* buffer,
@@ -567,36 +660,15 @@ SDDL2_error SDDL2_op_segment_create_unspecified(
 
     // Validate size (must be non-negative)
     if (size_i64 < 0) {
-        return SDDL2_TYPE_MISMATCH; // Or create SDDL2_INVALID_VALUE error
+        return SDDL2_TYPE_MISMATCH;
     }
 
-    size_t size = (size_t)size_i64;
+    // Unspecified segment = tag 0, type BYTES
+    SDDL2_type bytes_type = { .kind = SDDL2_TYPE_BYTES, .width = 1 };
 
-    // Bounds check: segment must fit in remaining buffer
-    if (buffer->current_pos + size > buffer->size) {
-        return SDDL2_SEGMENT_BOUNDS;
-    }
-
-    // Ensure segment list has capacity
-    if (!segment_list_ensure_capacity(segments)) {
-        return SDDL2_LIMIT_EXCEEDED; // Capacity limit exceeded or allocation
-                                     // failed
-    }
-
-    // Create and append segment (tag=0 for unspecified, BYTES type)
-    SDDL2_segment seg;
-    seg.tag        = 0; // Unspecified segment has no tag
-    seg.start_pos  = buffer->current_pos;
-    seg.size_bytes = size;
-    seg.type.kind  = SDDL2_TYPE_BYTES; // Unspecified = raw bytes
-    seg.type.width = 1;
-
-    segments->items[segments->count++] = seg;
-
-    // Advance cursor
-    buffer->current_pos += size;
-
-    return SDDL2_OK;
+    // Delegate to internal helper (registry can be NULL since tag=0)
+    return segment_create_internal(
+            0, bytes_type, (size_t)size_i64, buffer, segments, NULL);
 }
 
 /* ============================================================================
@@ -690,68 +762,7 @@ SDDL2_error SDDL2_op_segment_create_tagged(
         return SDDL2_TYPE_MISMATCH;
     }
 
-    size_t element_count = (size_t)size_i64;
-
-    // Calculate actual size in bytes: element_count * type_size
-    size_t type_size_bytes = SDDL2_type_size(type.kind);
-    if (type_size_bytes == 0) {
-        return SDDL2_TYPE_MISMATCH; // Unknown or invalid type
-    }
-
-    // Check for overflow in multiplication
-    if (element_count > SIZE_MAX / type_size_bytes) {
-        return SDDL2_STACK_OVERFLOW; // Size overflow
-    }
-
-    size_t size_bytes = element_count * type_size_bytes;
-
-    // Bounds check: segment must fit in remaining buffer
-    if (buffer->current_pos + size_bytes > buffer->size) {
-        return SDDL2_SEGMENT_BOUNDS;
-    }
-
-    // Register tag (first use)
-    if (!tag_registry_register(registry, tag)) {
-        return SDDL2_LIMIT_EXCEEDED; // Capacity limit exceeded or allocation
-                                     // failed
-    }
-
-    // Check if we can merge with the last segment
-    // Merge conditions: same tag AND same type AND consecutive positions
-    if (segments->count > 0) {
-        SDDL2_segment* last = &segments->items[segments->count - 1];
-        size_t expected_pos = last->start_pos + last->size_bytes;
-
-        // Check if types match (both kind and width)
-        bool types_match =
-                (last->type.kind == type.kind
-                 && last->type.width == type.width);
-
-        if (last->tag == tag && types_match
-            && expected_pos == buffer->current_pos) {
-            // MERGE: Just extend the last segment's size
-            last->size_bytes += size_bytes;
-            buffer->current_pos += size_bytes;
-            return SDDL2_OK;
-        }
-    }
-
-    // Cannot merge - create new segment
-    if (!segment_list_ensure_capacity(segments)) {
-        return SDDL2_LIMIT_EXCEEDED; // Capacity limit exceeded or allocation
-                                     // failed
-    }
-
-    SDDL2_segment seg;
-    seg.tag        = tag;
-    seg.start_pos  = buffer->current_pos;
-    seg.size_bytes = size_bytes;
-    seg.type       = type;
-
-    segments->items[segments->count++] = seg;
-
-    // Advance cursor
-    buffer->current_pos += size_bytes;
-
-    return SDDL2_OK;
+    // Delegate to internal helper
+    return segment_create_internal(
+            tag, type, (size_t)size_i64, buffer, segments, registry);
 }
