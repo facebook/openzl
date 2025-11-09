@@ -102,6 +102,15 @@ SDDL2_error SDDL2_execute_bytecode(
                     int64_t value = (int64_t)ZL_readLE64(&bytecode[pc]);
                     pc += 8;
                     err = SDDL2_stack_push(&stack, SDDL2_value_i64(value));
+                } else if (opcode == SDDL2_OP_PUSH_TAG) {
+                    // Read tag immediate (u32)
+                    if (pc + 4 > bytecode_size) {
+                        SDDL2_tag_registry_destroy(&registry);
+                        return SDDL2_INVALID_BYTECODE; // Missing immediate
+                    }
+                    uint32_t tag = ZL_readLE32(&bytecode[pc]);
+                    pc += 4;
+                    err = SDDL2_stack_push(&stack, SDDL2_value_tag(tag));
                 } else {
                     SDDL2_tag_registry_destroy(&registry);
                     return SDDL2_INVALID_BYTECODE; // Unknown opcode
@@ -112,6 +121,9 @@ SDDL2_error SDDL2_execute_bytecode(
                 if (opcode == SDDL2_OP_SEGMENT_CREATE_UNSPECIFIED) {
                     err = SDDL2_op_segment_create_unspecified(
                             &stack, &buffer, output_segments);
+                } else if (opcode == SDDL2_OP_SEGMENT_CREATE_TAGGED) {
+                    err = SDDL2_op_segment_create_tagged(
+                            &stack, &buffer, output_segments, &registry);
                 } else {
                     SDDL2_tag_registry_destroy(&registry);
                     return SDDL2_INVALID_BYTECODE; // Unknown opcode

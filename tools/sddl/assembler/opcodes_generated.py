@@ -2,7 +2,7 @@
 AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 
 Generated from: src/openzl/compress/graphs/sddlv2/sddl2_opcodes.def
-Generated at: 2025-11-08 13:30:05 UTC
+Generated at: 2025-11-09 04:24:28 UTC
 Generator: generate_opcodes.py
 
 To regenerate: python3 generate_opcodes.py
@@ -35,6 +35,7 @@ INSTRUCTIONS = {
     "push.u32": ("PUSH", 0x0002, ["u32"]),
     "push.i32": ("PUSH", 0x0003, ["i32"]),
     "push.i64": ("PUSH", 0x0004, ["i64"]),
+    "push.tag": ("PUSH", 0x0005, ["u32"]),
 
     # STACK family (0x0007)
     "stack.dup": ("STACK", 0x0001, []),
@@ -60,7 +61,11 @@ INSTRUCTIONS = {
     "cmp.gt": ("CMP", 0x0005, []),
     "cmp.ge": ("CMP", 0x0006, []),
 
+    # TYPE family (0x0008)
+    "type.const": ("TYPE", 0x0001, ["u32", "u32"]),
+
     # SEGMENT family (0x000C)
     "segment.create_unspecified": ("SEGMENT", 0x0001, []),
+    "segment.create_tagged": ("SEGMENT", 0x0002, []),
 
 }

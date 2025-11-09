@@ -31,6 +31,7 @@
   push.u32  0x0002  u32     "Push unsigned 32-bit immediate value onto stack"
   push.i32  0x0003  i32     "Push signed 32-bit immediate value onto stack"
   push.i64  0x0004  i64     "Push signed 64-bit immediate value onto stack"
+  push.tag  0x0005  u32     "Push Tag value onto stack"
 
 @family MATH 0x0002 "Arithmetic operations on I64 values"
   math.add  0x0001          "Pop two I64 values, push their sum"
@@ -64,6 +65,7 @@
   stack.rot  0x0005         "Rotate top three stack values"
 
 @family TYPE 0x0008 "Type operations"
+  type.const  0x0001  u32 u32  "Push Type value with kind and width onto stack"
 
 @family VAR 0x0009 "Variable operations"
 
@@ -72,4 +74,5 @@
 @family CALL 0x000B "Function call operations"
 
 @family SEGMENT 0x000C "Segment creation operations"
-  segment.create_unspecified  0x0001  "Create an unspecified segment type"
+  segment.create_unspecified  0x0001  "Create an unspecified segment (tag=0, type=BYTES)"
+  segment.create_tagged       0x0002  "Create a tagged segment with explicit tag and type"

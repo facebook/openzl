@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
 // Generated from: src/openzl/compress/graphs/sddlv2/sddl2_opcodes.def
-// Generated at: 2025-11-08 13:30:05 UTC
+// Generated at: 2025-11-09 04:24:28 UTC
 // Generator: generate_opcodes.py
 //
 // To regenerate: python3 tools/sddl/assembler/generate_opcodes.py
@@ -51,6 +51,7 @@ enum sddl2_opcode_push {
     SDDL2_OP_PUSH_U32 = 0x0002,  /* param: u32 */
     SDDL2_OP_PUSH_I32 = 0x0003,  /* param: i32 */
     SDDL2_OP_PUSH_I64 = 0x0004,  /* param: i64 */
+    SDDL2_OP_PUSH_TAG = 0x0005,  /* param: u32 */
 };
 
 /* MATH family (0x0002) - Arithmetic operations on I64 values */
@@ -88,9 +89,15 @@ enum sddl2_opcode_stack {
     SDDL2_OP_STACK_ROT = 0x0005,
 };
 
+/* TYPE family (0x0008) - Type operations */
+enum sddl2_opcode_type {
+    SDDL2_OP_TYPE_CONST = 0x0001,  /* param: u32, u32 */
+};
+
 /* SEGMENT family (0x000C) - Segment creation operations */
 enum sddl2_opcode_segment {
     SDDL2_OP_SEGMENT_CREATE_UNSPECIFIED = 0x0001,
+    SDDL2_OP_SEGMENT_CREATE_TAGGED = 0x0002,
 };
 
 #endif // OPENZL_SDDL2_OPCODES_H
