@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
 // Generated from: src/openzl/compress/graphs/sddlv2/sddl2_opcodes.def
-// Generated at: 2025-11-09 05:28:34 UTC
+// Generated at: 2025-11-09 15:02:08 UTC
 // Generator: generate_opcodes.py
 //
 // To regenerate: python3 tools/sddl/assembler/generate_opcodes.py
@@ -107,9 +107,9 @@ enum sddl2_opcode_control {
 /* STACK family (0x0007) - Stack manipulation operations */
 enum sddl2_opcode_stack {
     SDDL2_OP_STACK_DUP = 0x0001,
-    SDDL2_OP_STACK_DROP = 0x0002,
-    SDDL2_OP_STACK_SWAP = 0x0003,
-    SDDL2_OP_STACK_OVER = 0x0004,
+    SDDL2_OP_STACK_OVER = 0x0002,
+    SDDL2_OP_STACK_DROP = 0x0003,
+    SDDL2_OP_STACK_SWAP = 0x0004,
     SDDL2_OP_STACK_ROT = 0x0005,
 };
 

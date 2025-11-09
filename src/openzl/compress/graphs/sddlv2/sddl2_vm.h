@@ -525,6 +525,31 @@ SDDL2_error SDDL2_op_gt(SDDL2_stack* stack);
 SDDL2_error SDDL2_op_ge(SDDL2_stack* stack);
 
 /* ============================================================================
+ * Stack Manipulation Operations (STACK Family)
+ * ========================================================================= */
+
+/**
+ * Drop (remove) the top value from the stack.
+ * Stack: value -> (empty)
+ * Errors: StackUnderflow
+ */
+SDDL2_error SDDL2_op_drop(SDDL2_stack* stack);
+
+/**
+ * Duplicate the top value on the stack.
+ * Stack: value -> value value
+ * Errors: StackUnderflow, StackOverflow
+ */
+SDDL2_error SDDL2_op_dup(SDDL2_stack* stack);
+
+/**
+ * Swap the top two values on the stack.
+ * Stack: a b -> b a
+ * Errors: StackUnderflow
+ */
+SDDL2_error SDDL2_op_swap(SDDL2_stack* stack);
+
+/* ============================================================================
  * Input Buffer Operations
  * ========================================================================= */
 

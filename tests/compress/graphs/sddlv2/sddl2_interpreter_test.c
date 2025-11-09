@@ -998,6 +998,230 @@ static void test_math_type_mismatch(void)
 }
 
 /**
+ * Test: STACK drop operation
+ *
+ * Tests that stack.drop removes the top element
+ */
+static void test_stack_drop(void)
+{
+    uint8_t input[] = "Test";
+
+    uint8_t bytecode[] = {
+        0x03, 0x00, 0x01, 0x00, // push.i32
+        0x0A, 0x00, 0x00, 0x00, // 10
+        0x03, 0x00, 0x01, 0x00, // push.i32
+        0x14, 0x00, 0x00, 0x00, // 20
+        0x03, 0x00, 0x07, 0x00, // stack.drop (remove 20) - opcode 0x0003
+        0x01, 0x00, 0x05, 0x00  // halt
+    };
+
+    SDDL2_segment_list segments;
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_error err = SDDL2_execute_bytecode(
+            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+
+    assert(err == SDDL2_OK);
+    assert(segments.count == 0);
+
+    SDDL2_segment_list_destroy(&segments);
+
+    printf("✓ test_stack_drop passed\n");
+}
+
+/**
+ * Test: STACK dup operation
+ *
+ * Tests that stack.dup duplicates the top element
+ */
+static void test_stack_dup(void)
+{
+    uint8_t input[] = "Test";
+
+    uint8_t bytecode[] = {
+        0x03, 0x00, 0x01, 0x00, // push.i32
+        0x0A, 0x00, 0x00, 0x00, // 10
+        0x01, 0x00, 0x07, 0x00, // stack.dup (now: 10, 10) - opcode 0x0001
+        0x03, 0x00, 0x07, 0x00, // stack.drop (remove one) - opcode 0x0003
+        0x03, 0x00, 0x07, 0x00, // stack.drop (remove other) - opcode 0x0003
+        0x01, 0x00, 0x05, 0x00  // halt
+    };
+
+    SDDL2_segment_list segments;
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_error err = SDDL2_execute_bytecode(
+            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+
+    assert(err == SDDL2_OK);
+    assert(segments.count == 0);
+
+    SDDL2_segment_list_destroy(&segments);
+
+    printf("✓ test_stack_dup passed\n");
+}
+
+/**
+ * Test: STACK swap operation
+ *
+ * Tests that stack.swap swaps the top two elements
+ * Stack: a b -> b a
+ */
+static void test_stack_swap(void)
+{
+    uint8_t input[] = "Test";
+
+    uint8_t bytecode[] = {
+        0x03, 0x00, 0x01, 0x00, // push.i32
+        0x0A, 0x00, 0x00, 0x00, // 10
+        0x03, 0x00, 0x01, 0x00, // push.i32
+        0x14, 0x00, 0x00, 0x00, // 20
+        0x04, 0x00, 0x07, 0x00, // stack.swap (now: 20, 10) - opcode 0x0004
+        0x03, 0x00, 0x07, 0x00, // stack.drop (remove 10) - opcode 0x0003
+        0x03, 0x00, 0x07, 0x00, // stack.drop (remove 20) - opcode 0x0003
+        0x01, 0x00, 0x05, 0x00  // halt
+    };
+
+    SDDL2_segment_list segments;
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_error err = SDDL2_execute_bytecode(
+            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+
+    assert(err == SDDL2_OK);
+    assert(segments.count == 0);
+
+    SDDL2_segment_list_destroy(&segments);
+
+    printf("✓ test_stack_swap passed\n");
+}
+
+/**
+ * Test: STACK operations with mixed types
+ *
+ * Tests that stack operations work with different value types (I64, Tag, Type)
+ */
+static void test_stack_operations_mixed_types(void)
+{
+    uint8_t input[] = "Test";
+
+    uint8_t bytecode[] = {
+        0x03, 0x00, 0x01, 0x00, // push.i32
+        0x0A, 0x00, 0x00, 0x00, // 10
+        0x05, 0x00, 0x01, 0x00, // push.tag
+        0x64, 0x00, 0x00, 0x00, // 100
+        0x10, 0x01, 0x01, 0x00, // push.type.u8
+        0x01, 0x00, 0x07, 0x00, // stack.dup (dup Type) - opcode 0x0001
+        0x04, 0x00, 0x07, 0x00, // stack.swap (swap two Types) - opcode 0x0004
+        0x03, 0x00, 0x07, 0x00, // stack.drop (drop one Type) - opcode 0x0003
+        0x03, 0x00, 0x07, 0x00, // stack.drop (drop other Type) - opcode 0x0003
+        0x03, 0x00, 0x07, 0x00, // stack.drop (drop Tag) - opcode 0x0003
+        0x03, 0x00, 0x07, 0x00, // stack.drop (drop I64) - opcode 0x0003
+        0x01, 0x00, 0x05, 0x00  // halt
+    };
+
+    SDDL2_segment_list segments;
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_error err = SDDL2_execute_bytecode(
+            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+
+    assert(err == SDDL2_OK);
+    assert(segments.count == 0);
+
+    SDDL2_segment_list_destroy(&segments);
+
+    printf("✓ test_stack_operations_mixed_types passed\n");
+}
+
+/**
+ * Test: STACK drop with underflow
+ *
+ * Tests that stack.drop on empty stack returns underflow error
+ */
+static void test_stack_drop_underflow(void)
+{
+    uint8_t input[] = "Test";
+
+    uint8_t bytecode[] = {
+        0x03, 0x00, 0x07, 0x00, // stack.drop (empty stack!) - opcode 0x0003
+        0x01, 0x00, 0x05, 0x00  // halt
+    };
+
+    SDDL2_segment_list segments;
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_error err = SDDL2_execute_bytecode(
+            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+
+    assert(err == SDDL2_STACK_UNDERFLOW);
+
+    SDDL2_segment_list_destroy(&segments);
+
+    printf("✓ test_stack_drop_underflow passed\n");
+}
+
+/**
+ * Test: STACK dup with underflow
+ *
+ * Tests that stack.dup on empty stack returns underflow error
+ */
+static void test_stack_dup_underflow(void)
+{
+    uint8_t input[] = "Test";
+
+    uint8_t bytecode[] = {
+        0x01, 0x00, 0x07, 0x00, // stack.dup (empty stack!)
+        0x01, 0x00, 0x05, 0x00  // halt
+    };
+
+    SDDL2_segment_list segments;
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_error err = SDDL2_execute_bytecode(
+            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+
+    assert(err == SDDL2_STACK_UNDERFLOW);
+
+    SDDL2_segment_list_destroy(&segments);
+
+    printf("✓ test_stack_dup_underflow passed\n");
+}
+
+/**
+ * Test: STACK swap with underflow (only 1 element)
+ *
+ * Tests that stack.swap with only 1 element returns underflow error
+ */
+static void test_stack_swap_underflow(void)
+{
+    uint8_t input[] = "Test";
+
+    uint8_t bytecode[] = {
+        0x03, 0x00,
+        0x01, 0x00, // push.i32
+        0x0A, 0x00,
+        0x00, 0x00, // 10
+        0x04, 0x00,
+        0x07, 0x00, // stack.swap (needs 2 elements, only 1!) - opcode 0x0004
+        0x01, 0x00,
+        0x05, 0x00 // halt
+    };
+
+    SDDL2_segment_list segments;
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_error err = SDDL2_execute_bytecode(
+            bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
+
+    assert(err == SDDL2_STACK_UNDERFLOW);
+
+    SDDL2_segment_list_destroy(&segments);
+
+    printf("✓ test_stack_swap_underflow passed\n");
+}
+
+/**
  * Test: Invalid bytecode size
  */
 static void test_invalid_bytecode_size(void)
@@ -1066,9 +1290,16 @@ int main(void)
     test_cmp_type_mismatch();
     test_math_stack_underflow();
     test_math_type_mismatch();
+    test_stack_drop();
+    test_stack_dup();
+    test_stack_swap();
+    test_stack_operations_mixed_types();
+    test_stack_drop_underflow();
+    test_stack_dup_underflow();
+    test_stack_swap_underflow();
     test_invalid_bytecode_size();
     test_missing_halt();
 
-    printf("\n✅ All interpreter tests passed! (20 tests)\n");
+    printf("\n✅ All interpreter tests passed! (27 tests)\n");
     return 0;
 }

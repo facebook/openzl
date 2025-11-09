@@ -88,9 +88,9 @@
 
 @family STACK 0x0007 "Stack manipulation operations"
   stack.dup  0x0001         "Duplicate top stack value"
-  stack.drop 0x0002         "Remove top stack value"
-  stack.swap 0x0003         "Swap top two stack values"
-  stack.over 0x0004         "Copy second stack value to top"
+  stack.over 0x0002         "Copy second stack value to top"
+  stack.drop 0x0003         "Remove top stack value"
+  stack.swap 0x0004         "Swap top two stack values"
   stack.rot  0x0005         "Rotate top three stack values"
 
 @family TYPE 0x0008 "Type operations"

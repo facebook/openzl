@@ -375,6 +375,32 @@ SDDL2_error SDDL2_op_ge(SDDL2_stack* stack)
 }
 
 /* ============================================================================
+ * Stack Manipulation Operations (STACK Family)
+ * ========================================================================= */
+
+SDDL2_error SDDL2_op_drop(SDDL2_stack* stack)
+{
+    SDDL2_value val;
+    return SDDL2_stack_pop(stack, &val);
+}
+
+SDDL2_error SDDL2_op_dup(SDDL2_stack* stack)
+{
+    SDDL2_value val;
+    TRY(SDDL2_stack_peek(stack, &val));
+    return SDDL2_stack_push(stack, val);
+}
+
+SDDL2_error SDDL2_op_swap(SDDL2_stack* stack)
+{
+    SDDL2_value a, b;
+    TRY(SDDL2_stack_pop(stack, &a));
+    TRY(SDDL2_stack_pop(stack, &b));
+    TRY(SDDL2_stack_push(stack, a));
+    return SDDL2_stack_push(stack, b);
+}
+
+/* ============================================================================
  * Input Buffer Operations (Phase 3)
  * ========================================================================= */
 

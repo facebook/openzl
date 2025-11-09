@@ -225,10 +225,20 @@ SDDL2_error SDDL2_execute_bytecode(
                 }
                 break;
 
-            // Unimplemented families
-            case SDDL2_FAMILY_LOGIC:
-            case SDDL2_FAMILY_LOAD:
             case SDDL2_FAMILY_STACK:
+                if (opcode == SDDL2_OP_STACK_DROP) {
+                    err = SDDL2_op_drop(&stack);
+                } else if (opcode == SDDL2_OP_STACK_DUP) {
+                    err = SDDL2_op_dup(&stack);
+                } else if (opcode == SDDL2_OP_STACK_SWAP) {
+                    err = SDDL2_op_swap(&stack);
+                } else {
+                    SDDL2_tag_registry_destroy(&registry);
+                    return SDDL2_INVALID_BYTECODE; // Unknown opcode
+                }
+                break;
+
+            // Unimplemented families
             case SDDL2_FAMILY_TYPE:
             case SDDL2_FAMILY_VAR:
             case SDDL2_FAMILY_EXPECT:
