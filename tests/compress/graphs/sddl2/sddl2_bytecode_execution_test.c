@@ -142,15 +142,13 @@ static void test_assembled_hello(void)
 static void test_multi_segments(void)
 {
     // Input data: 12 bytes [01 02 03 04][05 06 07 08][09 0A 0B 0C]
-    uint8_t input[] = {
-        0x01, 0x02, 0x03, 0x04,
-        0x05, 0x06, 0x07, 0x08,
-        0x09, 0x0A, 0x0B, 0x0C
-    };
+    uint8_t input[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+                        0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C };
 
     // Load assembled bytecode
     size_t bytecode_size;
-    uint8_t* bytecode = load_bytecode("test_multi_segments.bin", &bytecode_size);
+    uint8_t* bytecode =
+            load_bytecode("test_multi_segments.bin", &bytecode_size);
 
     if (!bytecode) {
         fprintf(stderr, "Failed to load test_multi_segments.bin\n");
@@ -161,7 +159,7 @@ static void test_multi_segments(void)
         exit(1);
     }
 
-    printf("Loaded %zu bytes of bytecode from test_multi_segments.bin\n", 
+    printf("Loaded %zu bytes of bytecode from test_multi_segments.bin\n",
            bytecode_size);
 
     // Execute bytecode

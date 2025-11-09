@@ -4,9 +4,9 @@
 
 #include <stddef.h>
 
-#include "openzl/codecs/zl_split.h"
-#include "openzl/codecs/zl_zstd.h"
+#include "openzl/codecs/zl_conversion.h"
 #include "openzl/compress/graphs/sddl2/sddl2_interpreter.h"
+#include "openzl/zl_public_nodes.h"
 
 /**
  * SDDL2 Function Graph - OpenZL Integration
@@ -140,7 +140,7 @@ ZL_Report SDDL2_parse(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
         return sddl2_error_to_report(err, graph);
     }
 
-    // Step 5: Split input by segment sizes
+    // Step 6: Split input by segment sizes
     // Allocate scratch space for segment sizes array
     size_t* segmentSizes = (size_t*)ZL_Graph_getScratchSpace(
             graph, segments.count * sizeof(size_t));
@@ -150,15 +150,121 @@ ZL_Report SDDL2_parse(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
         segmentSizes[i] = segments.items[i].size_bytes;
     }
 
-    // Split the input edge by segment sizes
     ZL_TRY_LET(
             ZL_EdgeList,
             outputs,
             ZL_Edge_runSplitNode(inputs[0], segmentSizes, segments.count));
 
-    // Step 6: Set destinations for each output edge
+    // Step 7: Apply type conversion for numeric segments
+    // For each segment, if it has a numeric type (not BYTES), convert the edge
+    // to that type (1, 2, 4, or 8 bytes, little or big endian)
     for (size_t i = 0; i < outputs.nbEdges; i++) {
-        ZL_ERR_IF_ERR(ZL_Edge_setDestination(outputs.edges[i], ZL_GRAPH_ZSTD));
+        const SDDL2_segment* seg = &segments.items[i];
+
+        // Skip BYTES type (raw unspecified data)
+        if (seg->type.kind == SDDL2_TYPE_BYTES) {
+            continue;
+        }
+
+        // Determine element size in bytes
+        size_t element_size = SDDL2_type_size(seg->type.kind);
+        ZL_ERR_IF_EQ(
+                element_size,
+                0,
+                GENERIC,
+                "Invalid type kind: %d",
+                (int)seg->type.kind);
+
+        // Determine endianness
+        // Types ending in LE are little endian, BE are big endian
+        // 1-byte types have no endianness (arbitrary choice: little-endian)
+        bool is_little_endian;
+        switch (seg->type.kind) {
+            // 1-byte types (no endianness)
+            case SDDL2_TYPE_U8:
+            case SDDL2_TYPE_I8:
+            case SDDL2_TYPE_F8:
+                is_little_endian = true; // Arbitrary
+                break;
+
+            // Little-endian types
+            case SDDL2_TYPE_U16LE:
+            case SDDL2_TYPE_I16LE:
+            case SDDL2_TYPE_U32LE:
+            case SDDL2_TYPE_I32LE:
+            case SDDL2_TYPE_U64LE:
+            case SDDL2_TYPE_I64LE:
+            case SDDL2_TYPE_F16LE:
+            case SDDL2_TYPE_BF16LE:
+            case SDDL2_TYPE_F32LE:
+            case SDDL2_TYPE_F64LE:
+                is_little_endian = true;
+                break;
+
+            // Big-endian types
+            case SDDL2_TYPE_U16BE:
+            case SDDL2_TYPE_I16BE:
+            case SDDL2_TYPE_U32BE:
+            case SDDL2_TYPE_I32BE:
+            case SDDL2_TYPE_U64BE:
+            case SDDL2_TYPE_I64BE:
+            case SDDL2_TYPE_F16BE:
+            case SDDL2_TYPE_BF16BE:
+            case SDDL2_TYPE_F32BE:
+            case SDDL2_TYPE_F64BE:
+                is_little_endian = false;
+                break;
+
+            // BYTES is handled earlier, should never reach here
+            case SDDL2_TYPE_BYTES:
+                ZL_ERR(GENERIC, "BYTES type should have been skipped earlier");
+
+            default:
+                ZL_ERR(GENERIC,
+                       "Unknown type for endianness: %d",
+                       (int)seg->type.kind);
+        }
+
+        // Get the appropriate conversion node based on endianness and size
+        size_t bit_width = element_size * 8;
+        ZL_NodeID convert_node;
+        if (is_little_endian) {
+            convert_node = ZL_Node_convertSerialToNumLE(bit_width);
+        } else {
+            convert_node = ZL_Node_convertSerialToNumBE(bit_width);
+        }
+
+        // Apply type conversion to the edge
+        ZL_TRY_LET_T(
+                ZL_EdgeList,
+                converted,
+                ZL_Edge_runNode(outputs.edges[i], convert_node));
+
+        // Replace the output edge with the typed version
+        ZL_ERR_IF_NE(
+                converted.nbEdges,
+                1,
+                GENERIC,
+                "Type conversion should produce exactly 1 edge");
+        outputs.edges[i] = converted.edges[0];
+    }
+
+    // Step 8: Determine selected destination (via Custom Graphs parameter)
+    ZL_GraphID dest        = ZL_GRAPH_COMPRESS_GENERIC;
+    ZL_GraphIDList gidlist = ZL_Graph_getCustomGraphs(graph);
+    ZL_ERR_IF_GT(
+            gidlist.nbGraphIDs,
+            1,
+            GENERIC,
+            "can only support <= 1 custom graph");
+    if (gidlist.nbGraphIDs) {
+        assert(gidlist.graphids != NULL);
+        dest = gidlist.graphids[0];
+    }
+
+    // Step 8: Set destinations for each output edge
+    for (size_t i = 0; i < outputs.nbEdges; i++) {
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(outputs.edges[i], dest));
     }
 
     // Cleanup
