@@ -8,7 +8,7 @@ Simple usage (from anywhere):
 This uses default paths:
     - Input:     tests/compress/graphs/sddl2/asm/
     - Output:    tests/compress/graphs/sddl2/generated_test_bytecode.h
-    - Assembler: tools/sddl2/assembler/
+    - Assembler: tools/sddl/assembler/
 
 Custom paths (optional):
     python3 tests/compress/graphs/sddl2/generate_test_bytecode.py \
@@ -181,7 +181,7 @@ def main():
     project_root = script_dir.parent.parent.parent.parent
     default_input = script_dir / 'asm'
     default_output = script_dir / 'generated_test_bytecode.h'
-    default_assembler = project_root / 'tools' / 'sddl2' / 'assembler'
+    default_assembler = project_root / 'tools' / 'sddl' / 'assembler'
     
     parser = argparse.ArgumentParser(
         description='Generate C header with bytecode from interpreter test assembly files',

@@ -1,7 +1,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
 // Generated from interpreter test assembly files (.asm)
-// Source: /Users/cyan/dev/openzl/cyan_openzl/tests/compress/graphs/sddlv2/asm
+// Source: /Users/cyan/dev/openzl/cyan_openzl/tests/compress/graphs/sddl2/asm
 // Generator: tests/compress/graphs/sddlv2/generate_test_bytecode.py
 //
 // To regenerate:
