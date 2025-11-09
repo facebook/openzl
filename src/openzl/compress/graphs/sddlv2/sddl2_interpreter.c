@@ -45,6 +45,18 @@ static const struct {
 
 #define PUSH_TYPE_MAP_SIZE (sizeof(PUSH_TYPE_MAP) / sizeof(PUSH_TYPE_MAP[0]))
 
+/**
+ * Cleanup helper for SDDL2_execute_bytecode.
+ * Destroys the tag registry and returns the specified error code.
+ *
+ * This macro is function-scoped and undefined after SDDL2_execute_bytecode.
+ */
+#define CLEANUP_AND_RETURN(error_code)         \
+    do {                                       \
+        SDDL2_tag_registry_destroy(&registry); \
+        return (error_code);                   \
+    } while (0)
+
 SDDL2_error SDDL2_execute_bytecode(
         const void* bytecode_buffer,
         size_t bytecode_size,
@@ -88,8 +100,8 @@ SDDL2_error SDDL2_execute_bytecode(
     while (pc < bytecode_size && !halted) {
         // Fetch instruction (32-bit word)
         if (pc + 4 > bytecode_size) {
-            SDDL2_tag_registry_destroy(&registry);
-            return SDDL2_INVALID_BYTECODE; // Incomplete instruction
+            CLEANUP_AND_RETURN(
+                    SDDL2_INVALID_BYTECODE); // Incomplete instruction
         }
 
         uint32_t instruction = ZL_readLE32(&bytecode[pc]);
@@ -109,8 +121,8 @@ SDDL2_error SDDL2_execute_bytecode(
                 if (opcode == SDDL2_OP_CONTROL_HALT) {
                     halted = 1;
                 } else {
-                    SDDL2_tag_registry_destroy(&registry);
-                    return SDDL2_INVALID_BYTECODE; // Unknown opcode
+                    CLEANUP_AND_RETURN(
+                            SDDL2_INVALID_BYTECODE); // Unknown opcode
                 }
                 break;
 
@@ -119,8 +131,8 @@ SDDL2_error SDDL2_execute_bytecode(
                     err = SDDL2_stack_push(&stack, SDDL2_value_i64(0));
                 } else if (opcode == SDDL2_OP_PUSH_U32) {
                     if (pc + 4 > bytecode_size) {
-                        SDDL2_tag_registry_destroy(&registry);
-                        return SDDL2_INVALID_BYTECODE; // Missing immediate
+                        CLEANUP_AND_RETURN(
+                                SDDL2_INVALID_BYTECODE); // Missing immediate
                     }
                     uint32_t value = ZL_readLE32(&bytecode[pc]);
                     pc += 4;
@@ -128,8 +140,8 @@ SDDL2_error SDDL2_execute_bytecode(
                             &stack, SDDL2_value_i64((int64_t)value));
                 } else if (opcode == SDDL2_OP_PUSH_I32) {
                     if (pc + 4 > bytecode_size) {
-                        SDDL2_tag_registry_destroy(&registry);
-                        return SDDL2_INVALID_BYTECODE; // Missing immediate
+                        CLEANUP_AND_RETURN(
+                                SDDL2_INVALID_BYTECODE); // Missing immediate
                     }
                     int32_t value = (int32_t)ZL_readLE32(&bytecode[pc]);
                     pc += 4;
@@ -137,8 +149,8 @@ SDDL2_error SDDL2_execute_bytecode(
                             &stack, SDDL2_value_i64((int64_t)value));
                 } else if (opcode == SDDL2_OP_PUSH_I64) {
                     if (pc + 8 > bytecode_size) {
-                        SDDL2_tag_registry_destroy(&registry);
-                        return SDDL2_INVALID_BYTECODE; // Missing immediate
+                        CLEANUP_AND_RETURN(
+                                SDDL2_INVALID_BYTECODE); // Missing immediate
                     }
                     int64_t value = (int64_t)ZL_readLE64(&bytecode[pc]);
                     pc += 8;
@@ -146,8 +158,8 @@ SDDL2_error SDDL2_execute_bytecode(
                 } else if (opcode == SDDL2_OP_PUSH_TAG) {
                     // Read tag immediate (u32)
                     if (pc + 4 > bytecode_size) {
-                        SDDL2_tag_registry_destroy(&registry);
-                        return SDDL2_INVALID_BYTECODE; // Missing immediate
+                        CLEANUP_AND_RETURN(
+                                SDDL2_INVALID_BYTECODE); // Missing immediate
                     }
                     uint32_t tag = ZL_readLE32(&bytecode[pc]);
                     pc += 4;
@@ -166,8 +178,8 @@ SDDL2_error SDDL2_execute_bytecode(
                         }
                     }
                     if (!found) {
-                        SDDL2_tag_registry_destroy(&registry);
-                        return SDDL2_INVALID_BYTECODE; // Unknown opcode
+                        CLEANUP_AND_RETURN(
+                                SDDL2_INVALID_BYTECODE); // Unknown opcode
                     }
                 }
                 break;
@@ -180,8 +192,8 @@ SDDL2_error SDDL2_execute_bytecode(
                     err = SDDL2_op_segment_create_tagged(
                             &stack, &buffer, output_segments, &registry);
                 } else {
-                    SDDL2_tag_registry_destroy(&registry);
-                    return SDDL2_INVALID_BYTECODE; // Unknown opcode
+                    CLEANUP_AND_RETURN(
+                            SDDL2_INVALID_BYTECODE); // Unknown opcode
                 }
                 break;
 
@@ -201,8 +213,8 @@ SDDL2_error SDDL2_execute_bytecode(
                 } else if (opcode == SDDL2_OP_MATH_NEG) {
                     err = SDDL2_op_neg(&stack);
                 } else {
-                    SDDL2_tag_registry_destroy(&registry);
-                    return SDDL2_INVALID_BYTECODE; // Unknown opcode
+                    CLEANUP_AND_RETURN(
+                            SDDL2_INVALID_BYTECODE); // Unknown opcode
                 }
                 break;
 
@@ -220,8 +232,8 @@ SDDL2_error SDDL2_execute_bytecode(
                 } else if (opcode == SDDL2_OP_CMP_GE) {
                     err = SDDL2_op_ge(&stack);
                 } else {
-                    SDDL2_tag_registry_destroy(&registry);
-                    return SDDL2_INVALID_BYTECODE; // Unknown opcode
+                    CLEANUP_AND_RETURN(
+                            SDDL2_INVALID_BYTECODE); // Unknown opcode
                 }
                 break;
 
@@ -233,8 +245,8 @@ SDDL2_error SDDL2_execute_bytecode(
                 } else if (opcode == SDDL2_OP_STACK_SWAP) {
                     err = SDDL2_op_swap(&stack);
                 } else {
-                    SDDL2_tag_registry_destroy(&registry);
-                    return SDDL2_INVALID_BYTECODE; // Unknown opcode
+                    CLEANUP_AND_RETURN(
+                            SDDL2_INVALID_BYTECODE); // Unknown opcode
                 }
                 break;
 
@@ -243,14 +255,13 @@ SDDL2_error SDDL2_execute_bytecode(
             case SDDL2_FAMILY_VAR:
             case SDDL2_FAMILY_EXPECT:
             case SDDL2_FAMILY_CALL:
-                SDDL2_tag_registry_destroy(&registry);
-                return SDDL2_INVALID_BYTECODE; // Unimplemented family
+                CLEANUP_AND_RETURN(
+                        SDDL2_INVALID_BYTECODE); // Unimplemented family
         }
 
         // Check for errors
         if (err != SDDL2_OK) {
-            SDDL2_tag_registry_destroy(&registry);
-            return err;
+            CLEANUP_AND_RETURN(err);
         }
     }
 
@@ -263,3 +274,5 @@ SDDL2_error SDDL2_execute_bytecode(
 
     return SDDL2_OK;
 }
+
+#undef CLEANUP_AND_RETURN
