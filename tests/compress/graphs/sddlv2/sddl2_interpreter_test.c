@@ -3,8 +3,8 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include "openzl/compress/graphs/sddlv2/sddl2_interpreter.h"
 #include "generated_test_bytecode.h"
+#include "openzl/compress/graphs/sddlv2/sddl2_interpreter.h"
 
 /**
  * Test: Execute simple program that creates one unspecified segment
@@ -19,7 +19,7 @@ static void test_simple_segment_creation(void)
     uint8_t input[] = "Hello";
 
     const uint8_t* bytecode = BYTECODE_TEST_SEGMENT_UNSPECIFIED;
-    size_t bytecode_size = BYTECODE_TEST_SEGMENT_UNSPECIFIED_SIZE;
+    size_t bytecode_size    = BYTECODE_TEST_SEGMENT_UNSPECIFIED_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
@@ -46,7 +46,7 @@ static void test_zero_size_segment(void)
     uint8_t input[] = "Test";
 
     const uint8_t* bytecode = BYTECODE_TEST_SEGMENT_ZERO;
-    size_t bytecode_size = BYTECODE_TEST_SEGMENT_ZERO_SIZE;
+    size_t bytecode_size    = BYTECODE_TEST_SEGMENT_ZERO_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
@@ -71,7 +71,7 @@ static void test_push_type_execution(void)
     uint8_t input[] = "Test";
 
     const uint8_t* bytecode = BYTECODE_TEST_PUSH_TYPE_EXECUTION;
-    size_t bytecode_size = BYTECODE_TEST_PUSH_TYPE_EXECUTION_SIZE;
+    size_t bytecode_size    = BYTECODE_TEST_PUSH_TYPE_EXECUTION_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
@@ -95,8 +95,10 @@ static void test_push_type_with_segment_create_tagged(void)
     uint8_t input[12] = { 0x01, 0x00, 0x00, 0x00, 0x02, 0x00,
                           0x00, 0x00, 0x03, 0x00, 0x00, 0x00 };
 
-    const uint8_t* bytecode = BYTECODE_TEST_PUSH_TYPE_WITH_SEGMENT_CREATE_TAGGED;
-    size_t bytecode_size = BYTECODE_TEST_PUSH_TYPE_WITH_SEGMENT_CREATE_TAGGED_SIZE;
+    const uint8_t* bytecode =
+            BYTECODE_TEST_PUSH_TYPE_WITH_SEGMENT_CREATE_TAGGED;
+    size_t bytecode_size =
+            BYTECODE_TEST_PUSH_TYPE_WITH_SEGMENT_CREATE_TAGGED_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
@@ -125,7 +127,7 @@ static void test_multiple_typed_segments(void)
     uint8_t input[5] = { 0x42, 0x00, 0x00, 0x80, 0x3F };
 
     const uint8_t* bytecode = BYTECODE_TEST_MULTIPLE_TYPED_SEGMENTS;
-    size_t bytecode_size = BYTECODE_TEST_MULTIPLE_TYPED_SEGMENTS_SIZE;
+    size_t bytecode_size    = BYTECODE_TEST_MULTIPLE_TYPED_SEGMENTS_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
@@ -161,7 +163,7 @@ static void test_push_tag_execution(void)
     uint8_t input[] = "Test";
 
     const uint8_t* bytecode = BYTECODE_TEST_PUSH_TAG_EXECUTION;
-    size_t bytecode_size = BYTECODE_TEST_PUSH_TAG_EXECUTION_SIZE;
+    size_t bytecode_size    = BYTECODE_TEST_PUSH_TAG_EXECUTION_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
@@ -187,7 +189,7 @@ static void test_math_add_execution(void)
     uint8_t input[] = "Test";
 
     const uint8_t* bytecode = BYTECODE_TEST_MATH_ADD;
-    size_t bytecode_size = BYTECODE_TEST_MATH_ADD_SIZE;
+    size_t bytecode_size    = BYTECODE_TEST_MATH_ADD_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
@@ -213,7 +215,7 @@ static void test_math_combined_execution(void)
     uint8_t input[] = "Test";
 
     const uint8_t* bytecode = BYTECODE_TEST_MATH_COMBINED;
-    size_t bytecode_size = BYTECODE_TEST_MATH_COMBINED_SIZE;
+    size_t bytecode_size    = BYTECODE_TEST_MATH_COMBINED_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
@@ -241,7 +243,7 @@ static void test_math_all_operations(void)
     uint8_t input[] = "Test";
 
     const uint8_t* bytecode = BYTECODE_TEST_MATH_ALL_OPERATIONS;
-    size_t bytecode_size = BYTECODE_TEST_MATH_ALL_OPERATIONS_SIZE;
+    size_t bytecode_size    = BYTECODE_TEST_MATH_ALL_OPERATIONS_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
@@ -346,7 +348,7 @@ static void test_cmp_all_operations(void)
     uint8_t input[] = "Test";
 
     const uint8_t* bytecode = BYTECODE_TEST_CMP_ALL;
-    size_t bytecode_size = BYTECODE_TEST_CMP_ALL_SIZE;
+    size_t bytecode_size    = BYTECODE_TEST_CMP_ALL_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
@@ -372,7 +374,7 @@ static void test_cmp_false_results(void)
     uint8_t input[] = "Test";
 
     const uint8_t* bytecode = BYTECODE_TEST_CMP_FALSE_RESULTS;
-    size_t bytecode_size = BYTECODE_TEST_CMP_FALSE_RESULTS_SIZE;
+    size_t bytecode_size    = BYTECODE_TEST_CMP_FALSE_RESULTS_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
@@ -398,7 +400,7 @@ static void test_cmp_negative_numbers(void)
     uint8_t input[] = "Test";
 
     const uint8_t* bytecode = BYTECODE_TEST_CMP_NEGATIVE_NUMBERS;
-    size_t bytecode_size = BYTECODE_TEST_CMP_NEGATIVE_NUMBERS_SIZE;
+    size_t bytecode_size    = BYTECODE_TEST_CMP_NEGATIVE_NUMBERS_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
@@ -542,7 +544,7 @@ static void test_stack_drop(void)
     uint8_t input[] = "Test";
 
     const uint8_t* bytecode = BYTECODE_TEST_STACK_DROP;
-    size_t bytecode_size = BYTECODE_TEST_STACK_DROP_SIZE;
+    size_t bytecode_size    = BYTECODE_TEST_STACK_DROP_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
@@ -568,7 +570,7 @@ static void test_stack_dup(void)
     uint8_t input[] = "Test";
 
     const uint8_t* bytecode = BYTECODE_TEST_STACK_DUP;
-    size_t bytecode_size = BYTECODE_TEST_STACK_DUP_SIZE;
+    size_t bytecode_size    = BYTECODE_TEST_STACK_DUP_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
@@ -595,7 +597,7 @@ static void test_stack_swap(void)
     uint8_t input[] = "Test";
 
     const uint8_t* bytecode = BYTECODE_TEST_STACK_SWAP;
-    size_t bytecode_size = BYTECODE_TEST_STACK_SWAP_SIZE;
+    size_t bytecode_size    = BYTECODE_TEST_STACK_SWAP_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);
@@ -621,7 +623,7 @@ static void test_stack_operations_mixed_types(void)
     uint8_t input[] = "Test";
 
     const uint8_t* bytecode = BYTECODE_TEST_STACK_OPERATIONS_MIXED_TYPES;
-    size_t bytecode_size = BYTECODE_TEST_STACK_OPERATIONS_MIXED_TYPES_SIZE;
+    size_t bytecode_size    = BYTECODE_TEST_STACK_OPERATIONS_MIXED_TYPES_SIZE;
 
     SDDL2_segment_list segments;
     SDDL2_segment_list_init(&segments, NULL, NULL);

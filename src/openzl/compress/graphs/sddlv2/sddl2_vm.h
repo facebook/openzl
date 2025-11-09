@@ -18,6 +18,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include "openzl/compress/graphs/sddlv2/sddl2_error.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -124,22 +125,6 @@ typedef struct {
     size_t top;         // Index of next free slot (0 = empty stack)
     size_t capacity;    // Maximum stack depth
 } SDDL2_stack;
-
-/**
- * VM error codes.
- * Used as return values for all VM operations.
- */
-typedef enum {
-    SDDL2_OK = 0,
-    SDDL2_STACK_OVERFLOW,  // Stack capacity exceeded
-    SDDL2_STACK_UNDERFLOW, // Pop from empty stack
-    SDDL2_TYPE_MISMATCH,   // Operation received wrong value type
-    SDDL2_LOAD_BOUNDS,     // Load address out of bounds
-    SDDL2_SEGMENT_BOUNDS,  // Segment extends beyond input buffer
-    SDDL2_LIMIT_EXCEEDED,  // Maximum capacity limit exceeded
-    SDDL2_DIV_ZERO,        // Division by zero
-    SDDL2_INVALID_BYTECODE // Malformed or invalid bytecode
-} SDDL2_error;
 
 /* ============================================================================
  * Memory Allocation Strategy
