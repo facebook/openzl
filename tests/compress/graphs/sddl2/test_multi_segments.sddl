@@ -1,0 +1,21 @@
+# Complex test: Create multiple segments with different types
+# Input: 12 bytes total: [01 02 03 04][05 06 07 08][09 0A 0B 0C]
+# Expected: 3 segments with different types
+
+# Segment 1: U8 array (tag=100), 4 bytes at offset 0
+push.tag 100
+push.type.u8
+push.i32 4
+segment.create_tagged
+
+# Segment 2: I32LE scalar (tag=200), 4 bytes at offset 4
+push.tag 200
+push.type.i32le
+push.i32 1
+segment.create_tagged
+
+# Segment 3: Unspecified (tag=0), 4 bytes at offset 8
+push.i32 4
+segment.create_unspecified
+
+halt
