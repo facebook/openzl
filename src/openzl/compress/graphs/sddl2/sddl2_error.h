@@ -24,15 +24,16 @@ extern "C" {
  * Used as return values for all VM operations.
  */
 typedef enum {
-    SDDL2_OK = 0,          // Success
-    SDDL2_STACK_OVERFLOW,  // Stack capacity exceeded
-    SDDL2_STACK_UNDERFLOW, // Pop from empty stack
-    SDDL2_TYPE_MISMATCH,   // Operation received wrong value type
-    SDDL2_LOAD_BOUNDS,     // Load address out of bounds
-    SDDL2_SEGMENT_BOUNDS,  // Segment extends beyond input buffer
-    SDDL2_LIMIT_EXCEEDED,  // Maximum capacity limit exceeded
-    SDDL2_DIV_ZERO,        // Division by zero
-    SDDL2_INVALID_BYTECODE // Malformed or invalid bytecode
+    SDDL2_OK = 0,             // Success
+    SDDL2_STACK_OVERFLOW,     // Stack capacity exceeded
+    SDDL2_STACK_UNDERFLOW,    // Pop from empty stack
+    SDDL2_TYPE_MISMATCH,      // Operation received wrong value type
+    SDDL2_LOAD_BOUNDS,        // Load address out of bounds
+    SDDL2_SEGMENT_BOUNDS,     // Segment extends beyond input buffer
+    SDDL2_LIMIT_EXCEEDED,     // Maximum capacity limit exceeded
+    SDDL2_DIV_ZERO,           // Division by zero
+    SDDL2_ALLOCATION_FAILED,  // Memory allocation failed
+    SDDL2_INVALID_BYTECODE    // Malformed or invalid bytecode
 } SDDL2_Error;
 
 /* ============================================================================

@@ -88,6 +88,11 @@ static ZL_Report sddl2_determine_endianness(
             ZL_ERR(GENERIC,
                    "BYTES type should be filtered before endianness check");
 
+        // STRUCTURE type should be handled by caller
+        case SDDL2_TYPE_STRUCTURE:
+            ZL_ERR(GENERIC,
+                   "STRUCTURE type should be filtered before endianness check");
+
         default:
             ZL_ERR(GENERIC, "Unknown SDDL2 type kind: %d", (int)type_kind);
     }
@@ -213,6 +218,10 @@ static ZL_Report sddl2_error_to_report(SDDL2_Error err, ZL_Graph* graph)
         case SDDL2_DIV_ZERO:
             ZL_ERR(parameter_invalid,
                    "SDDL2 VM division by zero in bytecode execution");
+
+        case SDDL2_ALLOCATION_FAILED:
+            ZL_ERR(allocation,
+                   "SDDL2 VM memory allocation failed");
     }
 
     // Fallback for unexpected error codes

@@ -44,12 +44,19 @@ typedef enum {
 /**
  * Type descriptor structure.
  * Represents the type of a segment, including:
- * - kind: The primitive type (U8, I16LE, Float32BE, etc.)
- * - width: Number of elements (1 for scalar, >1 for arrays/fixed-size types)
+ * - kind: The type category (primitive or STRUCTURE)
+ * - width: Number of elements (1 for scalar, >1 for arrays)
+ * - complex_data: NULL for primitives, pointer to structure data for structures
  *
- * Total byte size = openzl_type_size(kind) * width
+ * For primitives:
+ *   Total byte size = primitive_type_size(kind) * width
+ *
+ * For structures:
+ *   Total byte size = structure_size * width
+ *   (structure_size stored in complex_data)
  */
 typedef enum {
+    // Primitive types (0-23)
     SDDL2_TYPE_BYTES = 0, // Raw bytes, no interpretation
     SDDL2_TYPE_U8,
     SDDL2_TYPE_I8,
@@ -74,13 +81,38 @@ typedef enum {
     SDDL2_TYPE_F32BE,
     SDDL2_TYPE_F64LE,
     SDDL2_TYPE_F64BE,
-    /* SDDL2_TYPE_FIXED_N */ // TODO: Fixed-width byte arrays
+    
+    // Complex types (100+)
+    SDDL2_TYPE_STRUCTURE = 100, // Composite structure type
 } SDDL2_Type_kind;
 
+// Forward declaration for recursive type composition
+typedef struct SDDL2_Type_structure_data SDDL2_Type_structure_data;
+
 typedef struct {
-    SDDL2_Type_kind kind;
-    uint32_t width; // Size in number of elements
+    SDDL2_Type_kind kind;  // Type category (primitive or STRUCTURE)
+    uint32_t width;         // Number of elements (consistent meaning across all types)
+    void* complex_data;     // NULL for primitives, SDDL2_Type_structure_data* for structures
 } SDDL2_Type;
+
+/**
+ * Structure type metadata (heap-allocated).
+ *
+ * Contains the member types of a structure.
+ * Each member is itself a full SDDL2_Type, allowing:
+ * - Primitives: {U8, 1, NULL}
+ * - Arrays: {I32LE, 10, NULL}
+ * - Nested structures: {SDDL2_TYPE_STRUCTURE, 1, ptr_to_other_struct}
+ *
+ * Memory layout:
+ *   Fixed header (member_count, total_size_bytes)
+ *   Flexible array of member types
+ */
+struct SDDL2_Type_structure_data {
+    size_t member_count;      // Number of members in the structure
+    size_t total_size_bytes;  // Cached: sum of all member sizes (for performance)
+    SDDL2_Type members[];     // Flexible array member: the actual member types
+};
 
 /**
  * Tagged value on the VM stack.
@@ -445,6 +477,42 @@ size_t SDDL2_Type_size(SDDL2_Type type);
  * overflow the stack
  */
 SDDL2_Error SDDL2_op_type_fixed_array(SDDL2_Stack* stack);
+
+/**
+ * Create a structure type from member types.
+ * Stack: Type₀ Type₁ Type₂ ... Typeₙ₋₁ N:I64 -> Type_struct
+ *
+ * Pops an I64 count N and N types from the stack, then creates a structure
+ * type containing those members in order. The structure's total size is the
+ * sum of all member sizes.
+ *
+ * Example:
+ *   push.type U8           // Member 0: U8
+ *   push.type I16LE        // Member 1: I16LE  
+ *   push.type I32LE        // Member 2: I32LE
+ *   push.i64 3             // 3 members
+ *   type.structure         // Type{STRUCTURE} with 7 bytes total
+ *
+ * Structures can contain:
+ * - Primitives: {U8, 1, NULL}
+ * - Arrays: {I32LE, 10, NULL}
+ * - Nested structures: {SDDL2_TYPE_STRUCTURE, 1, ptr}
+ *
+ * @param stack The VM stack
+ * @param alloc_fn Allocator function for structure data (NULL = use malloc)
+ * @param alloc_ctx Allocator context (e.g., ZL_Graph* for arena allocation)
+ * @return SDDL2_OK or error code
+ *
+ * Errors:
+ *   - SDDL2_STACK_UNDERFLOW: stack has fewer than N+1 values
+ *   - SDDL2_TYPE_MISMATCH: top value not I64, or any of N values not Type, or N <= 0
+ *   - SDDL2_ALLOCATION_FAILED: failed to allocate structure data
+ *   - SDDL2_STACK_OVERFLOW: push would overflow the stack
+ */
+SDDL2_Error SDDL2_op_type_structure(
+    SDDL2_Stack* stack,
+    SDDL2_allocator_fn alloc_fn,
+    void* alloc_ctx);
 
 /* ============================================================================
  * Arithmetic Operations (Phase 2)
