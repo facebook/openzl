@@ -31,6 +31,128 @@ static void* sddl2_arena_allocator(void* allocator_ctx, size_t size)
 }
 
 /**
+ * Determine endianness for a given SDDL2 type.
+ *
+ * @param type_kind The SDDL2 type kind
+ * @param out_is_little_endian Output parameter for endianness result
+ * @return ZL_Report indicating success or error
+ *
+ * Note: 1-byte types have no inherent endianness; we arbitrarily choose
+ * little-endian for consistency.
+ */
+static ZL_Report sddl2_determine_endianness(
+        SDDL2_type_kind type_kind,
+        bool* out_is_little_endian,
+        ZL_Graph* graph)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+
+    switch (type_kind) {
+        // 1-byte types (no endianness - arbitrary choice: little-endian)
+        case SDDL2_TYPE_U8:
+        case SDDL2_TYPE_I8:
+        case SDDL2_TYPE_F8:
+            *out_is_little_endian = true;
+            break;
+
+        // Little-endian types
+        case SDDL2_TYPE_U16LE:
+        case SDDL2_TYPE_I16LE:
+        case SDDL2_TYPE_U32LE:
+        case SDDL2_TYPE_I32LE:
+        case SDDL2_TYPE_U64LE:
+        case SDDL2_TYPE_I64LE:
+        case SDDL2_TYPE_F16LE:
+        case SDDL2_TYPE_BF16LE:
+        case SDDL2_TYPE_F32LE:
+        case SDDL2_TYPE_F64LE:
+            *out_is_little_endian = true;
+            break;
+
+        // Big-endian types
+        case SDDL2_TYPE_U16BE:
+        case SDDL2_TYPE_I16BE:
+        case SDDL2_TYPE_U32BE:
+        case SDDL2_TYPE_I32BE:
+        case SDDL2_TYPE_U64BE:
+        case SDDL2_TYPE_I64BE:
+        case SDDL2_TYPE_F16BE:
+        case SDDL2_TYPE_BF16BE:
+        case SDDL2_TYPE_F32BE:
+        case SDDL2_TYPE_F64BE:
+            *out_is_little_endian = false;
+            break;
+
+        // BYTES type should be handled by caller
+        case SDDL2_TYPE_BYTES:
+            ZL_ERR(GENERIC,
+                   "BYTES type should be filtered before endianness check");
+
+        default:
+            ZL_ERR(GENERIC, "Unknown SDDL2 type kind: %d", (int)type_kind);
+    }
+
+    return ZL_returnSuccess();
+}
+
+/**
+ * Apply type conversion to a segment edge.
+ *
+ * Converts a Serial edge to a Numeric edge with the appropriate bit width
+ * and endianness based on the segment's type information.
+ *
+ * @param edge The edge to convert
+ * @param seg The segment containing type information
+ * @param graph Graph context for error reporting
+ * @return Converted edge on success, or error report
+ */
+static ZL_Report sddl2_apply_type_conversion(
+        ZL_Edge* edge,
+        const SDDL2_segment* seg,
+        ZL_Edge** out_converted_edge,
+        ZL_Graph* graph)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+
+    // Determine element size in bytes
+    size_t element_size = SDDL2_type_size(seg->type.kind);
+    ZL_ERR_IF_EQ(
+            element_size,
+            0,
+            GENERIC,
+            "Invalid SDDL2 type kind %d for segment (unsupported or zero-sized type)",
+            (int)seg->type.kind);
+
+    // Determine endianness
+    bool is_little_endian;
+    ZL_ERR_IF_ERR(sddl2_determine_endianness(
+            seg->type.kind, &is_little_endian, graph));
+
+    // Get the appropriate conversion node based on endianness and size
+    size_t bit_width = element_size * 8;
+    ZL_NodeID convert_node;
+    if (is_little_endian) {
+        convert_node = ZL_Node_convertSerialToNumLE(bit_width);
+    } else {
+        convert_node = ZL_Node_convertSerialToNumBE(bit_width);
+    }
+
+    // Apply type conversion to the edge
+    ZL_TRY_LET_T(ZL_EdgeList, converted, ZL_Edge_runNode(edge, convert_node));
+
+    // Validate that conversion produced exactly one edge
+    ZL_ERR_IF_NE(
+            converted.nbEdges,
+            1,
+            GENERIC,
+            "Type conversion should produce exactly 1 edge, got %zu",
+            converted.nbEdges);
+
+    *out_converted_edge = converted.edges[0];
+    return ZL_returnSuccess();
+}
+
+/**
  * Convert SDDL2 VM error codes to OpenZL ZL_Report with descriptive messages.
  *
  * This function maps internal VM errors to appropriate OpenZL error codes,
@@ -166,87 +288,9 @@ ZL_Report SDDL2_parse(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
             continue;
         }
 
-        // Determine element size in bytes
-        size_t element_size = SDDL2_type_size(seg->type.kind);
-        ZL_ERR_IF_EQ(
-                element_size,
-                0,
-                GENERIC,
-                "Invalid type kind: %d",
-                (int)seg->type.kind);
-
-        // Determine endianness
-        // Types ending in LE are little endian, BE are big endian
-        // 1-byte types have no endianness (arbitrary choice: little-endian)
-        bool is_little_endian;
-        switch (seg->type.kind) {
-            // 1-byte types (no endianness)
-            case SDDL2_TYPE_U8:
-            case SDDL2_TYPE_I8:
-            case SDDL2_TYPE_F8:
-                is_little_endian = true; // Arbitrary
-                break;
-
-            // Little-endian types
-            case SDDL2_TYPE_U16LE:
-            case SDDL2_TYPE_I16LE:
-            case SDDL2_TYPE_U32LE:
-            case SDDL2_TYPE_I32LE:
-            case SDDL2_TYPE_U64LE:
-            case SDDL2_TYPE_I64LE:
-            case SDDL2_TYPE_F16LE:
-            case SDDL2_TYPE_BF16LE:
-            case SDDL2_TYPE_F32LE:
-            case SDDL2_TYPE_F64LE:
-                is_little_endian = true;
-                break;
-
-            // Big-endian types
-            case SDDL2_TYPE_U16BE:
-            case SDDL2_TYPE_I16BE:
-            case SDDL2_TYPE_U32BE:
-            case SDDL2_TYPE_I32BE:
-            case SDDL2_TYPE_U64BE:
-            case SDDL2_TYPE_I64BE:
-            case SDDL2_TYPE_F16BE:
-            case SDDL2_TYPE_BF16BE:
-            case SDDL2_TYPE_F32BE:
-            case SDDL2_TYPE_F64BE:
-                is_little_endian = false;
-                break;
-
-            // BYTES is handled earlier, should never reach here
-            case SDDL2_TYPE_BYTES:
-                ZL_ERR(GENERIC, "BYTES type should have been skipped earlier");
-
-            default:
-                ZL_ERR(GENERIC,
-                       "Unknown type for endianness: %d",
-                       (int)seg->type.kind);
-        }
-
-        // Get the appropriate conversion node based on endianness and size
-        size_t bit_width = element_size * 8;
-        ZL_NodeID convert_node;
-        if (is_little_endian) {
-            convert_node = ZL_Node_convertSerialToNumLE(bit_width);
-        } else {
-            convert_node = ZL_Node_convertSerialToNumBE(bit_width);
-        }
-
-        // Apply type conversion to the edge
-        ZL_TRY_LET_T(
-                ZL_EdgeList,
-                converted,
-                ZL_Edge_runNode(outputs.edges[i], convert_node));
-
-        // Replace the output edge with the typed version
-        ZL_ERR_IF_NE(
-                converted.nbEdges,
-                1,
-                GENERIC,
-                "Type conversion should produce exactly 1 edge");
-        outputs.edges[i] = converted.edges[0];
+        // Apply type conversion and replace edge with converted version
+        ZL_ERR_IF_ERR(sddl2_apply_type_conversion(
+                outputs.edges[i], seg, &outputs.edges[i], graph));
     }
 
     // Step 8: Determine selected destination (via Custom Graphs parameter)
@@ -256,13 +300,14 @@ ZL_Report SDDL2_parse(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
             gidlist.nbGraphIDs,
             1,
             GENERIC,
-            "can only support <= 1 custom graph");
+            "SDDL2_parse supports at most 1 custom graph, got %zu",
+            gidlist.nbGraphIDs);
     if (gidlist.nbGraphIDs) {
         assert(gidlist.graphids != NULL);
         dest = gidlist.graphids[0];
     }
 
-    // Step 8: Set destinations for each output edge
+    // Step 9: Set destinations for each output edge
     for (size_t i = 0; i < outputs.nbEdges; i++) {
         ZL_ERR_IF_ERR(ZL_Edge_setDestination(outputs.edges[i], dest));
     }
