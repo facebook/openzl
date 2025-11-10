@@ -304,11 +304,18 @@ SDDL2_Error SDDL2_execute_bytecode(
                 break;
             }
 
-            // Unimplemented families
+            // Type operations
             case SDDL2_FAMILY_TYPE:
                 if (opcode == SDDL2_OP_TYPE_FIXED_ARRAY) {
                     // Stack-based: pops I64 and Type from stack
                     err = SDDL2_op_type_fixed_array(&stack);
+                } else if (opcode == SDDL2_OP_TYPE_STRUCTURE) {
+                    // Stack-based: pops I64 (member_count) and N types from stack
+                    // Use same allocator as output_segments (arena in production, NULL in tests)
+                    err = SDDL2_op_type_structure(
+                            &stack,
+                            output_segments->alloc_fn,
+                            output_segments->alloc_ctx);
                 } else {
                     CLEANUP_AND_RETURN(
                             SDDL2_INVALID_BYTECODE); // Unknown opcode

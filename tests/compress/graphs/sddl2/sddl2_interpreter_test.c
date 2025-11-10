@@ -747,6 +747,47 @@ TEST(test_type_fixed_array_with_segment)
     SDDL2_Segment_list_destroy(&segments);
 }
 
+/* ============================================================================
+ * Test: type.structure execution
+ * ========================================================================= */
+
+TEST(test_type_structure_execution)
+{
+    // This test verifies that type.structure works through the complete pipeline:
+    // Assembly -> Bytecode -> Interpreter -> Type on stack
+    //
+    // The test program (test_type_structure.asm):
+    //   push.type.u8
+    //   push.type.i16le
+    //   push.type.i32le
+    //   push.i64 3
+    //   type.structure
+    //   halt
+    //
+    // Expected: Creates structure type {U8, I16LE, I32LE} with total size 7 bytes
+    
+    uint8_t input[1] = { 0 }; // Dummy input (not used in this test)
+    
+    SDDL2_Segment_list segments;
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
+    SDDL2_Error err = SDDL2_execute_bytecode(
+            BYTECODE_TEST_TYPE_STRUCTURE,
+            BYTECODE_TEST_TYPE_STRUCTURE_SIZE,
+            input,
+            sizeof(input),
+            &segments);
+    
+    if (err != SDDL2_OK) {
+        printf("ERROR: type.structure bytecode execution failed with error: %d\n", err);
+    }
+    assert(err == SDDL2_OK);
+    
+    // No segments should be created (test just creates a type on stack)
+    assert(segments.count == 0);
+    
+    SDDL2_Segment_list_destroy(&segments);
+}
+
 int main(void)
 {
     return sddl2_run_all_tests();

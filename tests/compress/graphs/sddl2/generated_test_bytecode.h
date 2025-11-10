@@ -1,7 +1,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
 // Generated from interpreter test assembly files (.asm)
-// Source: asm
+// Source: /Users/cyan/dev/openzl/cyan_openzl/tests/compress/graphs/sddl2/asm
 // Generator: tests/compress/graphs/sddlv2/generate_test_bytecode.py
 //
 // To regenerate:
@@ -180,6 +180,12 @@ static const uint8_t BYTECODE_TEST_TYPE_FIXED_ARRAY_WITH_SEGMENT[] = {
 };
 static const size_t BYTECODE_TEST_TYPE_FIXED_ARRAY_WITH_SEGMENT_SIZE = 40;
 
+/* Source: test_type_structure.asm */
+static const uint8_t BYTECODE_TEST_TYPE_STRUCTURE[] = {
+    0x10, 0x01, 0x01, 0x00, 0x14, 0x01, 0x01, 0x00, 0x18, 0x01, 0x01, 0x00, 0x04, 0x00, 0x01, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x08, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_TYPE_STRUCTURE_SIZE = 32;
+
 /* Bytecode lookup by test name */
 typedef struct {
     const char* name;
@@ -215,8 +221,9 @@ static const TestBytecode TEST_BYTECODE_LOOKUP[] = {
     { "test_stack_swap_underflow", BYTECODE_TEST_STACK_SWAP_UNDERFLOW, BYTECODE_TEST_STACK_SWAP_UNDERFLOW_SIZE },
     { "test_type_fixed_array_execution", BYTECODE_TEST_TYPE_FIXED_ARRAY_EXECUTION, BYTECODE_TEST_TYPE_FIXED_ARRAY_EXECUTION_SIZE },
     { "test_type_fixed_array_with_segment", BYTECODE_TEST_TYPE_FIXED_ARRAY_WITH_SEGMENT, BYTECODE_TEST_TYPE_FIXED_ARRAY_WITH_SEGMENT_SIZE },
+    { "test_type_structure", BYTECODE_TEST_TYPE_STRUCTURE, BYTECODE_TEST_TYPE_STRUCTURE_SIZE },
 };
 
-static const size_t TEST_BYTECODE_COUNT = 27;
+static const size_t TEST_BYTECODE_COUNT = 28;
 
 #endif // GENERATED_TEST_BYTECODE_H
