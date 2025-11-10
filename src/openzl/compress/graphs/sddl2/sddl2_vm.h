@@ -404,11 +404,18 @@ static inline SDDL2_value SDDL2_value_type(SDDL2_type type)
  * ========================================================================= */
 
 /**
- * Get the size in bytes of a single element of the given type.
+ * Get the size in bytes of a single element of the given type kind (primitive size).
  * Returns 1 for BYTES (raw bytes with no known interpretation).
  * Returns 0 for unknown/invalid types.
  */
-size_t SDDL2_type_size(SDDL2_type_kind kind);
+size_t SDDL2_kind_size(SDDL2_type_kind kind);
+
+/**
+ * Get the total size in bytes of a type (including width).
+ * Calculates: SDDL2_kind_size(type.kind) × type.width
+ * Returns 0 if type.kind is unknown.
+ */
+size_t SDDL2_type_size(SDDL2_type type);
 
 /* ============================================================================
  * Type Operations

@@ -884,7 +884,7 @@ static void test_segment_list_growth_different_types(void)
     for (int i = 0; i < NUM_SEGMENTS; i++) {
         int type_idx = i % 4;
         size_t expected_bytes =
-                element_counts[type_idx] * SDDL2_type_size(types[type_idx]);
+                element_counts[type_idx] * SDDL2_kind_size(types[type_idx]);
 
         assert(segments.items[i].tag == 100); // Same tag!
         assert(segments.items[i].type.kind

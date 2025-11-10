@@ -721,20 +721,30 @@ TEST(test_type_fixed_array_with_segment)
                           0x06, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00,
                           0x08, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00 };
 
-    EXPECT_SUCCESS(
+    // Execute bytecode and print error if it fails
+    SDDL2_segment_list segments;
+    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_error err = SDDL2_execute_bytecode(
             BYTECODE_TEST_TYPE_FIXED_ARRAY_WITH_SEGMENT,
             BYTECODE_TEST_TYPE_FIXED_ARRAY_WITH_SEGMENT_SIZE,
             input,
-            sizeof(input))
-    {
-        assert(segments.count == 1);
-        assert(segments.items[0].tag == 100);
-        assert(segments.items[0].start_pos == 0);
-        assert(segments.items[0].size_bytes == 40); // 10 elements * 4 bytes
-        assert(segments.items[0].type.kind == SDDL2_TYPE_U32LE);
-        assert(segments.items[0].type.width == 10); // Array of 10 elements
+            sizeof(input),
+            &segments);
+
+    if (err != SDDL2_OK) {
+        printf("ERROR: SDDL2_execute_bytecode returned error code: %d\n", err);
+        printf("Input size: %zu, expected segment size: 40\n", sizeof(input));
     }
-    END_EXPECT_SUCCESS();
+    assert(err == SDDL2_OK);
+
+    assert(segments.count == 1);
+    assert(segments.items[0].tag == 100);
+    assert(segments.items[0].start_pos == 0);
+    assert(segments.items[0].size_bytes == 40); // 1 element × 10 × 4 bytes
+    assert(segments.items[0].type.kind == SDDL2_TYPE_U32LE);
+    assert(segments.items[0].type.width == 10); // Array of 10 elements
+
+    SDDL2_segment_list_destroy(&segments);
 }
 
 int main(void)

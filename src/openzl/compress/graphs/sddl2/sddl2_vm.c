@@ -44,7 +44,7 @@ int SDDL2_stack_is_empty(const SDDL2_stack* stack)
  * Type Utilities
  * ========================================================================= */
 
-size_t SDDL2_type_size(SDDL2_type_kind kind)
+size_t SDDL2_kind_size(SDDL2_type_kind kind)
 {
     switch (kind) {
         case SDDL2_TYPE_U8:
@@ -79,6 +79,15 @@ size_t SDDL2_type_size(SDDL2_type_kind kind)
         default:
             return 0; // Unknown type
     }
+}
+
+size_t SDDL2_type_size(SDDL2_type type)
+{
+    size_t kind_size = SDDL2_kind_size(type.kind);
+    if (kind_size == 0) {
+        return 0; // Unknown type kind
+    }
+    return kind_size * type.width;
 }
 
 /* ============================================================================
@@ -698,18 +707,20 @@ static SDDL2_error segment_create_internal(
         SDDL2_segment_list* segments,
         SDDL2_tag_registry* registry)
 {
-    // Calculate actual size in bytes: element_count * type_size
-    size_t type_size_bytes = SDDL2_type_size(type.kind);
-    if (type_size_bytes == 0) {
+    // Calculate actual size in bytes
+    // total_type_size = size of one instance of the type (including width)
+    // segment_size = element_count × total_type_size
+    size_t total_type_size = SDDL2_type_size(type);
+    if (total_type_size == 0) {
         return SDDL2_TYPE_MISMATCH; // Unknown or invalid type
     }
 
-    // Check for overflow in multiplication
-    if (element_count > SIZE_MAX / type_size_bytes) {
+    // Check for overflow in element_count * total_type_size multiplication
+    if (element_count > SIZE_MAX / total_type_size) {
         return SDDL2_STACK_OVERFLOW; // Size overflow
     }
 
-    size_t size_bytes = element_count * type_size_bytes;
+    size_t size_bytes = element_count * total_type_size;
 
     // Bounds check: segment must fit in remaining buffer
     if (buffer->current_pos + size_bytes > buffer->size) {

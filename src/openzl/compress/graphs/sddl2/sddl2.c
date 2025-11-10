@@ -101,6 +101,10 @@ static ZL_Report sddl2_determine_endianness(
  * Converts a Serial edge to a Numeric edge with the appropriate bit width
  * and endianness based on the segment's type information.
  *
+ * For array types (width > 1), this converts the primitive element type,
+ * not the entire array. For example, Type{U32LE, 10} converts each U32LE
+ * element (32 bits), not the whole 320-bit array.
+ *
  * @param edge The edge to convert
  * @param seg The segment containing type information
  * @param graph Graph context for error reporting
@@ -114,8 +118,9 @@ static ZL_Report sddl2_apply_type_conversion(
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
 
-    // Determine element size in bytes
-    size_t element_size = SDDL2_type_size(seg->type.kind);
+    // Determine primitive element size in bytes (not including width)
+    // For array types, we convert the base element, not the full array
+    size_t element_size = SDDL2_kind_size(seg->type.kind);
     ZL_ERR_IF_EQ(
             element_size,
             0,

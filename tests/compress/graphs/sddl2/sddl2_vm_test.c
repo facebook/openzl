@@ -147,15 +147,15 @@ TEST(test_value_kinds)
 
 TEST(test_type_sizes)
 {
-    assert(SDDL2_type_size(SDDL2_TYPE_U8) == 1);
-    assert(SDDL2_type_size(SDDL2_TYPE_I8) == 1);
-    assert(SDDL2_type_size(SDDL2_TYPE_U16LE) == 2);
-    assert(SDDL2_type_size(SDDL2_TYPE_I16BE) == 2);
-    assert(SDDL2_type_size(SDDL2_TYPE_U32LE) == 4);
-    assert(SDDL2_type_size(SDDL2_TYPE_F32BE) == 4);
-    assert(SDDL2_type_size(SDDL2_TYPE_I64LE) == 8);
-    assert(SDDL2_type_size(SDDL2_TYPE_F64BE) == 8);
-    assert(SDDL2_type_size(SDDL2_TYPE_BYTES) == 1); // Raw bytes, unit size is 1
+    assert(SDDL2_kind_size(SDDL2_TYPE_U8) == 1);
+    assert(SDDL2_kind_size(SDDL2_TYPE_I8) == 1);
+    assert(SDDL2_kind_size(SDDL2_TYPE_U16LE) == 2);
+    assert(SDDL2_kind_size(SDDL2_TYPE_I16BE) == 2);
+    assert(SDDL2_kind_size(SDDL2_TYPE_U32LE) == 4);
+    assert(SDDL2_kind_size(SDDL2_TYPE_F32BE) == 4);
+    assert(SDDL2_kind_size(SDDL2_TYPE_I64LE) == 8);
+    assert(SDDL2_kind_size(SDDL2_TYPE_F64BE) == 8);
+    assert(SDDL2_kind_size(SDDL2_TYPE_BYTES) == 1); // Raw bytes, unit size is 1
 }
 
 int main(void)
