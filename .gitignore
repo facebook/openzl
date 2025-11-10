@@ -41,6 +41,7 @@ sddl2_arithmetic_test
 sddl2_input_test
 sddl2_segments_test
 sddl2_tagged_segments_test
+sddl2_type_size_test
 sddl2_vm_test
 
 # dependencies

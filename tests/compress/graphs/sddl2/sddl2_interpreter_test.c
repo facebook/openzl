@@ -673,6 +673,72 @@ TEST(test_missing_halt)
     SDDL2_segment_list_destroy(&segments);
 }
 
+/**
+ * Test: type.fixed_array execution
+ *
+ * Tests that type.fixed_array opcode works through the interpreter
+ *
+ * Assembly:
+ *   push.type.u32le
+ *   type.fixed_array 10
+ *   halt
+ */
+TEST(test_type_fixed_array_execution)
+{
+    uint8_t input[] = "Test";
+
+    EXPECT_SUCCESS(
+            BYTECODE_TEST_TYPE_FIXED_ARRAY_EXECUTION,
+            BYTECODE_TEST_TYPE_FIXED_ARRAY_EXECUTION_SIZE,
+            input,
+            sizeof(input) - 1)
+    {
+        assert(segments.count == 0); // No segments created, just type on stack
+    }
+    END_EXPECT_SUCCESS();
+}
+
+/**
+ * Test: End-to-end test of type.fixed_array + segment.create_tagged
+ *
+ * Tests that array types work correctly with segment creation.
+ * Creates a segment with U32LE[10] type, which should be 40 bytes total.
+ *
+ * Assembly:
+ *   push.tag 100
+ *   push.type.u32le
+ *   type.fixed_array 10
+ *   push.i32 10
+ *   segment.create_tagged
+ *   halt
+ */
+TEST(test_type_fixed_array_with_segment)
+{
+    // 40 bytes of input data (10 * 4 bytes per U32LE)
+    uint8_t input[40] = {
+        0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+        0x02, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00,
+        0x04, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00,
+        0x06, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00,
+        0x08, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00
+    };
+
+    EXPECT_SUCCESS(
+            BYTECODE_TEST_TYPE_FIXED_ARRAY_WITH_SEGMENT,
+            BYTECODE_TEST_TYPE_FIXED_ARRAY_WITH_SEGMENT_SIZE,
+            input,
+            sizeof(input))
+    {
+        assert(segments.count == 1);
+        assert(segments.items[0].tag == 100);
+        assert(segments.items[0].start_pos == 0);
+        assert(segments.items[0].size_bytes == 40); // 10 elements * 4 bytes
+        assert(segments.items[0].type.kind == SDDL2_TYPE_U32LE);
+        assert(segments.items[0].type.width == 10); // Array of 10 elements
+    }
+    END_EXPECT_SUCCESS();
+}
+
 int main(void)
 {
     return sddl2_run_all_tests();

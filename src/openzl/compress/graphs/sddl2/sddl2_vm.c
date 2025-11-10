@@ -82,6 +82,43 @@ size_t SDDL2_type_size(SDDL2_type_kind kind)
 }
 
 /* ============================================================================
+ * Type Operations
+ * ========================================================================= */
+
+SDDL2_error SDDL2_op_type_fixed_array(SDDL2_stack* stack, uint32_t array_count)
+{
+    // Validate array_count (must be > 0)
+    // Zero-size arrays are not supported - they have no current use case
+    // and would fail when creating segments anyway
+    if (array_count == 0) {
+        return SDDL2_TYPE_MISMATCH;
+    }
+
+    // Pop the base type from stack
+    SDDL2_value base_type_val;
+    SDDL2_TRY(SDDL2_stack_pop(stack, &base_type_val));
+
+    // Verify it's a Type value
+    if (base_type_val.kind != SDDL2_VALUE_TYPE) {
+        return SDDL2_TYPE_MISMATCH;
+    }
+
+    // Check for multiplication overflow: width * array_count
+    // For unsigned multiplication overflow check: if (a > 0 && b > UINT32_MAX / a)
+    uint32_t base_width = base_type_val.value.as_type.width;
+    if (base_width > UINT32_MAX / array_count) {
+        return SDDL2_STACK_OVERFLOW; // Width multiplication would overflow
+    }
+
+    // Create new type with multiplied width
+    SDDL2_type array_type = base_type_val.value.as_type;
+    array_type.width = base_width * array_count;
+
+    // Push the array type back onto stack
+    return SDDL2_stack_push(stack, SDDL2_value_type(array_type));
+}
+
+/* ============================================================================
  * Generic Stack Operation Helpers
  * ========================================================================= */
 

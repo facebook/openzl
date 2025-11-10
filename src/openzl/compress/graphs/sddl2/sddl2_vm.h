@@ -411,6 +411,32 @@ static inline SDDL2_value SDDL2_value_type(SDDL2_type type)
 size_t SDDL2_type_size(SDDL2_type_kind kind);
 
 /* ============================================================================
+ * Type Operations
+ * ========================================================================= */
+
+/**
+ * Create a fixed array type from base type.
+ * Stack: base_type:Type -> array_type:Type
+ * 
+ * Multiplies the width of the popped type by the array_count parameter.
+ * This creates a fixed-size array type.
+ *
+ * Example:
+ *   push.type.u32le        // Type{U32LE, 1}
+ *   type.fixed_array 10    // Type{U32LE, 10} - array of 10 U32LE elements
+ *
+ * @param stack The VM stack
+ * @param array_count Number of elements in the array (must be > 0)
+ * @return SDDL2_OK or error code
+ * 
+ * Errors:
+ *   - SDDL2_TYPE_MISMATCH: array_count is 0, or top of stack is not a Type
+ *   - SDDL2_STACK_UNDERFLOW: stack is empty
+ *   - SDDL2_STACK_OVERFLOW: width multiplication would overflow, or push would overflow the stack
+ */
+SDDL2_error SDDL2_op_type_fixed_array(SDDL2_stack* stack, uint32_t array_count);
+
+/* ============================================================================
  * Arithmetic Operations (Phase 2)
  * ========================================================================= */
 

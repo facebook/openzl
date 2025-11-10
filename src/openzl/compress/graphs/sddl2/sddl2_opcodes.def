@@ -94,7 +94,7 @@
   stack.rot  0x0005         "Rotate top three stack values"
 
 @family TYPE 0x0008 "Type operations"
-  type.const  0x0001  u32 u32  "Push Type value with kind and width onto stack"
+  type.fixed_array  0x0001  u32  "Pop Type from stack, push Type with width multiplied by u32 parameter"
 
 @family VAR 0x0009 "Variable operations"
 
