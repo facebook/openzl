@@ -35,9 +35,6 @@ csvParserGraphFn(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
      * multiple types of line end characters. */
     const ZL_Input* input = ZL_Edge_getData(inputs[0]);
     ZL_RET_R_IF_NE(node_invalid_input, ZL_Input_type(input), ZL_Type_serial);
-    const size_t byteSize     = ZL_Input_contentSize(input);
-    const char* const content = (const char* const)ZL_Input_ptr(input);
-
     // Clustering graph is registered inside as a custom graph
     // Expecting 3 custom graphs right now: clustering, delimiters, header
     // Clustering - (self explanatory)
@@ -46,38 +43,18 @@ csvParserGraphFn(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
     ZL_GraphIDList customGraphs = ZL_Graph_getCustomGraphs(gctx);
     ZL_RET_R_IF_NE(node_invalid_input, customGraphs.nbGraphIDs, 3);
 
-    int hasHeader = ZL_Graph_getLocalIntParam(gctx, ZL_PARSER_HAS_HEADER_PID)
-                            .paramValue;
-    int intSep =
-            ZL_Graph_getLocalIntParam(gctx, ZL_PARSER_SEPARATOR_PID).paramValue;
-    ZL_RET_R_IF(
-            node_invalid_input,
-            (intSep > 255) || (intSep < 0),
-            "Separator must be a char value");
-    char sep = (char)intSep;
-    int useNullAwareParse =
-            ZL_Graph_getLocalIntParam(gctx, ZL_PARSER_USE_NULL_AWARE_PID)
-                    .paramValue;
-    ZL_RET_R_IF(
-            node_invalid_input,
-            (useNullAwareParse != 0) && (useNullAwareParse != 1),
-            "UseNullAware must be 0 or 1");
-
-    ZL_CSV_lexResult lexed = {};
-    ZL_Report lexRes       = (useNullAwareParse)
-                  ? ZL_CSV_lexNullAware(
-                      gctx, content, byteSize, hasHeader, sep, &lexed)
-                  : ZL_CSV_lex(gctx, content, byteSize, hasHeader, sep, &lexed);
-    ZL_RET_R_IF_ERR(lexRes);
+    ZL_RefParam refParam =
+            ZL_Graph_getLocalRefParam(gctx, ZL_CSV_CHUNKED_LEXED_RESULT_ID);
+    const ZL_CSV_lexResult* lexed = (const ZL_CSV_lexResult*)refParam.paramRef;
     // +1 for delimiters and newlines; +1 for header
-    size_t nbOutputs = lexed.nbColumns + 2;
+    size_t nbOutputs = lexed->nbColumns + 2;
 
     // Run newly created Node, collect outputs at intermediate output
     ZL_TRY_LET_T(
             ZL_EdgeList,
             io,
             ZL_Edge_runConvertSerialToStringNode(
-                    inputs[0], lexed.stringLens, lexed.nbStrs));
+                    inputs[0], lexed->stringLens, lexed->nbStrs));
 
     if (0) { // dump these streams for debugging
         const ZL_Input* data = ZL_Edge_getData(io.edges[0]);
@@ -87,18 +64,18 @@ csvParserGraphFn(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
         print(ZL_Input_stringLens(data),
               ZL_Input_numElts(data),
               "/tmp/sdd/psam.streams.strLens");
-        print(lexed.dispatchIndices,
-              lexed.nbStrs,
+        print(lexed->dispatchIndices,
+              lexed->nbStrs,
               "/tmp/sdd/psam.streams.dispatchIndices");
     }
     ZL_TRY_LET_T(
             ZL_EdgeList,
             so,
             ZL_Edge_runDispatchStringNode(
-                    io.edges[0], (int)nbOutputs, lexed.dispatchIndices));
+                    io.edges[0], (int)nbOutputs, lexed->dispatchIndices));
 
     // Set edge tag metadata for identification for clustering to the column
-    for (size_t n = 0; n < lexed.nbColumns; n++) {
+    for (size_t n = 0; n < lexed->nbColumns; n++) {
         ZL_RET_R_IF_ERR(ZL_Edge_setIntMetadata(
                 so.edges[n + 1], ZL_CLUSTERING_TAG_METADATA_ID, (int)n));
     }
@@ -107,42 +84,23 @@ csvParserGraphFn(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
             ZL_Edge_setDestination(so.edges[0], ZL_GRAPH_COMPRESS_GENERIC));
     // columns go to clustering
     ZL_RET_R_IF_ERR(ZL_Edge_setParameterizedDestination(
-            so.edges + 1, lexed.nbColumns, customGraphs.graphids[0], NULL));
+            so.edges + 1, lexed->nbColumns, customGraphs.graphids[0], NULL));
     // Successor for delimiters, whitespace, and newlines
     ZL_RET_R_IF_ERR(ZL_Edge_setDestination(
-            so.edges[lexed.nbColumns + 1], customGraphs.graphids[1]));
+            so.edges[lexed->nbColumns + 1], customGraphs.graphids[1]));
     // Successor for header
     ZL_RET_R_IF_ERR(ZL_Edge_setDestination(
-            so.edges[lexed.nbColumns + 2], customGraphs.graphids[2]));
+            so.edges[lexed->nbColumns + 2], customGraphs.graphids[2]));
     return ZL_returnSuccess();
 }
 
 ZL_GraphID ZL_CsvParser_registerGraph(
         ZL_Compressor* compressor,
-        bool hasHeader,
-        char sep,
-        bool useNullAware,
         const ZL_GraphID clusteringGraph)
 {
     ZL_GraphID* successors = (ZL_GraphID[]){ clusteringGraph,
                                              ZL_GRAPH_COMPRESS_GENERIC,
                                              ZL_GRAPH_COMPRESS_GENERIC };
-    ZL_IntParam* intParams =
-            (ZL_IntParam[]){ {
-                                     .paramId    = ZL_PARSER_HAS_HEADER_PID,
-                                     .paramValue = hasHeader,
-                             },
-                             {
-                                     .paramId    = ZL_PARSER_SEPARATOR_PID,
-                                     .paramValue = sep,
-                             },
-                             {
-                                     .paramId    = ZL_PARSER_USE_NULL_AWARE_PID,
-                                     .paramValue = useNullAware,
-                             } };
-    ZL_LocalParams csvParams = (ZL_LocalParams){
-        .intParams = { .intParams = intParams, .nbIntParams = 3 },
-    };
 
     ZL_GraphID csvParserGraph =
             ZL_Compressor_getGraph(compressor, "CSV Parser");
@@ -164,7 +122,6 @@ ZL_GraphID ZL_CsvParser_registerGraph(
         .graph          = csvParserGraph,
         .customGraphs   = successors,
         .nbCustomGraphs = 3,
-        .localParams    = &csvParams,
     };
     return ZL_Compressor_registerParameterizedGraph(
             compressor, &csvParserGraphDesc);

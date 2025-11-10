@@ -10,13 +10,8 @@
 extern "C" {
 #endif
 
-// Parameters for ZL_CsvParser_registerGraph:
-// Set to 1 if the first line is a header line, 0 otherwise
-#define ZL_PARSER_HAS_HEADER_PID 225
-// The character separator between columns. e.g. `,` for comma `|` for pipe
-#define ZL_PARSER_SEPARATOR_PID 226
-// Whether to use the null-aware parser (1) or not (0)
-#define ZL_PARSER_USE_NULL_AWARE_PID 227
+// The parameter for the lexed result to be used
+#define ZL_CSV_CHUNKED_LEXED_RESULT_ID 101
 
 /**
  * @brief Registers the csv parser graph. This graph takes a serialized input
@@ -41,9 +36,6 @@ extern "C" {
  */
 ZL_GraphID ZL_CsvParser_registerGraph(
         ZL_Compressor* compressor,
-        bool hasHeader,
-        char sep,
-        bool useNullAware,
         const ZL_GraphID clusteringGraph);
 
 #if defined(__cplusplus)

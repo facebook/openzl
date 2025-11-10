@@ -6,7 +6,7 @@
 
 #include "openzl/codecs/zl_dispatch.h"
 #include "openzl/common/logging.h"
-#include "openzl/zl_graph_api.h"
+#include "openzl/zl_segmenter.h"
 
 // Parses the CSV file to get the number of columns, separated by @p sep, and
 // the length of the first row, including the ending `\n`.
@@ -115,14 +115,15 @@ static ZL_Report createCsvDispatchIndices(
 }
 
 ZL_Report createParsedCsv(
-        uint32_t* stringLens,
+        ZL_CSV_lexResult* retLexResult,
         const char* content,
         const size_t length,
-        char sep,
-        size_t nbColumns)
+        char sep)
 {
+    size_t nbColumns    = retLexResult->nbColumns;
     uint32_t fieldStart = 0;
-    size_t nbStrs       = 0;
+    size_t nbStrs       = 1; // Header has been added
+    size_t nbRows       = 0;
     size_t col          = 1;
 
     for (uint32_t i = 0; i < length; ++i) {
@@ -162,12 +163,13 @@ ZL_Report createParsedCsv(
                             nbColumns,
                             col);
                 }
-                col = 1;
+                col                                    = 1;
+                retLexResult->newlineIndices[nbRows++] = nbStrs + 1;
             }
 
-            stringLens[nbStrs] = i - fieldStart;
+            retLexResult->stringLens[nbStrs] = i - fieldStart;
             ++nbStrs;
-            stringLens[nbStrs] = 1;
+            retLexResult->stringLens[nbStrs] = 1;
             ++nbStrs;
             fieldStart = i + 1;
         }
@@ -184,22 +186,23 @@ ZL_Report createParsedCsv(
             fieldStart,
             length,
             "CSV file not well formed. No newline character at the end of the last line");
+    retLexResult->nbStrs     = nbStrs;
+    retLexResult->nbNewlines = nbRows;
     ZL_LOG(V, "createParsedCsv nbStrs: %zu", nbStrs);
     return ZL_returnValue(nbStrs);
 }
 
 // returns number of strings processed
 ZL_Report createNullAwareLexAndDispatch(
-        uint32_t* stringLens,
-        uint16_t* dispatchIndices,
+        ZL_CSV_lexResult* retLexResult,
         const char* content,
         const size_t length,
-        uint8_t nbColumns,
         char sep)
 {
     uint32_t fieldStart = 0;
     uint8_t colIdx      = 0;
-    size_t nbStrs       = 0;
+    size_t nbStrs       = 1; // Header has been added
+    size_t nbRows       = 0;
 
     for (uint32_t i = 0; i < length;) {
         // skip past all quoted strings
@@ -215,8 +218,8 @@ ZL_Report createNullAwareLexAndDispatch(
             ++i;
         }
         if (content[i] == sep) {
-            stringLens[nbStrs]      = i - fieldStart;
-            dispatchIndices[nbStrs] = colIdx;
+            retLexResult->stringLens[nbStrs]      = i - fieldStart;
+            retLexResult->dispatchIndices[nbStrs] = colIdx;
             ++nbStrs;
             fieldStart = i;
             // coalesce all contiguous separators, e.g. ',,,,,,'
@@ -224,24 +227,29 @@ ZL_Report createNullAwareLexAndDispatch(
                 ++colIdx;
                 ++i;
             }
-            stringLens[nbStrs]      = i - fieldStart;
-            dispatchIndices[nbStrs] = nbColumns;
+            retLexResult->stringLens[nbStrs] = i - fieldStart;
+            retLexResult->dispatchIndices[nbStrs] =
+                    (uint16_t)retLexResult->nbColumns;
             ++nbStrs;
             fieldStart = i;
             continue;
         }
         if (content[i] == '\n') {
-            stringLens[nbStrs]      = i - fieldStart;
-            dispatchIndices[nbStrs] = colIdx;
+            retLexResult->stringLens[nbStrs]      = i - fieldStart;
+            retLexResult->dispatchIndices[nbStrs] = colIdx;
             ++nbStrs;
-            stringLens[nbStrs]      = 1;
-            dispatchIndices[nbStrs] = nbColumns;
+            retLexResult->stringLens[nbStrs] = 1;
+            retLexResult->dispatchIndices[nbStrs] =
+                    (uint16_t)retLexResult->nbColumns;
+            retLexResult->newlineIndices[nbRows++] = nbStrs;
             ++nbStrs;
             fieldStart = i + 1;
             colIdx     = 0;
         }
         ++i;
     }
+    retLexResult->nbStrs     = nbStrs;
+    retLexResult->nbNewlines = nbRows;
     ZL_RET_R_IF_NE(
             node_invalid_input,
             fieldStart,
@@ -252,7 +260,7 @@ ZL_Report createNullAwareLexAndDispatch(
 }
 
 ZL_Report ZL_CSV_lex(
-        ZL_Graph* gctx,
+        ZL_Segmenter* sctx,
         const char* const content,
         size_t byteSize,
         bool hasHeader,
@@ -289,33 +297,31 @@ ZL_Report ZL_CSV_lex(
     const size_t maxNbStrings = 2 * nbColumns * maxNbRows + 1;
 
     uint32_t* stringLens =
-            ZL_Graph_getScratchSpace(gctx, maxNbStrings * sizeof(uint32_t));
+            ZL_Segmenter_getScratchSpace(sctx, maxNbStrings * sizeof(uint32_t));
+    size_t* newlineIndices =
+            ZL_Segmenter_getScratchSpace(sctx, maxNbRows * sizeof(size_t));
     ZL_RET_R_IF_NULL(allocation, stringLens);
     stringLens[0] = (uint32_t)(rowsStart - content); // 0 if there is no header
-    ZL_Report rep = createParsedCsv(
-            stringLens + 1, rowsStart, rowsByteSize, sep, nbColumns);
-    ZL_RET_R_IF_ERR(rep);
-    size_t actualNbStrs = ZL_validResult(rep);
-    size_t actualNbRows = actualNbStrs / (2 * nbColumns);
-    actualNbStrs += 1; // +1 for header
+    retLexResult->stringLens     = stringLens;
+    retLexResult->nbColumns      = nbColumns;
+    retLexResult->newlineIndices = newlineIndices;
 
-    uint16_t* dispatchIndices =
-            ZL_Graph_getScratchSpace(gctx, actualNbStrs * sizeof(uint16_t));
+    ZL_RET_R_IF_ERR(
+            createParsedCsv(retLexResult, rowsStart, rowsByteSize, sep));
+    size_t actualNbRows = retLexResult->nbStrs / (2 * nbColumns);
+
+    uint16_t* dispatchIndices = ZL_Segmenter_getScratchSpace(
+            sctx, retLexResult->nbStrs * sizeof(uint16_t));
     ZL_RET_R_IF_NULL(allocation, dispatchIndices);
     ZL_RET_R_IF_ERR(createCsvDispatchIndices(
             dispatchIndices, actualNbRows, nbColumns, stringLens));
 
-    // return
-    retLexResult->stringLens      = stringLens;
     retLexResult->dispatchIndices = dispatchIndices;
-    retLexResult->nbStrs          = actualNbStrs;
-    retLexResult->nbColumns       = nbColumns;
-
     return ZL_returnSuccess();
 }
 
 ZL_Report ZL_CSV_lexNullAware(
-        ZL_Graph* gctx,
+        ZL_Segmenter* sctx,
         const char* const content,
         size_t byteSize,
         bool hasHeader,
@@ -351,31 +357,21 @@ ZL_Report ZL_CSV_lexNullAware(
     // extraneous quoted newlines is possible.
     const size_t maxNbStrings = 2 * nbColumns * maxNbRows + 1;
 
+    size_t* newlineIndices =
+            ZL_Segmenter_getScratchSpace(sctx, maxNbRows * sizeof(size_t));
     uint32_t* stringLens =
-            ZL_Graph_getScratchSpace(gctx, maxNbStrings * sizeof(uint32_t));
+            ZL_Segmenter_getScratchSpace(sctx, maxNbStrings * sizeof(uint32_t));
     ZL_RET_R_IF_NULL(allocation, stringLens);
     uint16_t* dispatchIndices =
-            ZL_Graph_getScratchSpace(gctx, maxNbStrings * sizeof(uint16_t));
+            ZL_Segmenter_getScratchSpace(sctx, maxNbStrings * sizeof(uint16_t));
     ZL_RET_R_IF_NULL(allocation, dispatchIndices);
     stringLens[0] = (uint32_t)(rowsStart - content); // 0 if there is no header
-
-    ZL_Report rep = createNullAwareLexAndDispatch(
-            stringLens + 1,
-            dispatchIndices + 1,
-            rowsStart,
-            rowsByteSize,
-            (uint8_t)nbColumns,
-            sep);
-    ZL_RET_R_IF_ERR(rep);
-    size_t actualNbStrs = ZL_validResult(rep);
-    actualNbStrs += 1;                            // +1 for header
-    dispatchIndices[0] = (uint16_t)nbColumns + 1; // header
-
-    // return
+    dispatchIndices[0]            = (uint16_t)nbColumns + 1; // header
     retLexResult->stringLens      = stringLens;
     retLexResult->dispatchIndices = dispatchIndices;
-    retLexResult->nbStrs          = actualNbStrs;
     retLexResult->nbColumns       = nbColumns;
-
+    retLexResult->newlineIndices  = newlineIndices;
+    ZL_RET_R_IF_ERR(createNullAwareLexAndDispatch(
+            retLexResult, rowsStart, rowsByteSize, sep));
     return ZL_returnSuccess();
 }
