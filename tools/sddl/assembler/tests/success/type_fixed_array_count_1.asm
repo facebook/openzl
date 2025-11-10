@@ -1,4 +1,5 @@
 ; Test: Array count of 1 (identity operation)
 push.type.f64be
-type.fixed_array 1
+push.i32 1
+type.fixed_array
 halt

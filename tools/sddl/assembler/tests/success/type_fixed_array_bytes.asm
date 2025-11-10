@@ -1,4 +1,5 @@
 ; Test: Array of bytes type
 push.type.bytes
-type.fixed_array 512
+push.i32 512
+type.fixed_array
 halt

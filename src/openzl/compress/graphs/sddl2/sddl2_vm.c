@@ -85,12 +85,22 @@ size_t SDDL2_type_size(SDDL2_type_kind kind)
  * Type Operations
  * ========================================================================= */
 
-SDDL2_error SDDL2_op_type_fixed_array(SDDL2_stack* stack, uint32_t array_count)
+SDDL2_error SDDL2_op_type_fixed_array(SDDL2_stack* stack)
 {
-    // Validate array_count (must be > 0)
-    // Zero-size arrays are not supported - they have no current use case
-    // and would fail when creating segments anyway
-    if (array_count == 0) {
+    // Pop array count (I64) from stack
+    SDDL2_value array_count_val;
+    SDDL2_TRY(SDDL2_stack_pop(stack, &array_count_val));
+
+    // Verify it's an I64 value
+    if (array_count_val.kind != SDDL2_VALUE_I64) {
+        return SDDL2_TYPE_MISMATCH;
+    }
+
+    int64_t array_count_i64 = array_count_val.value.as_i64;
+
+    // Validate array_count is positive
+    // Zero or negative array sizes are not supported
+    if (array_count_i64 <= 0) {
         return SDDL2_TYPE_MISMATCH;
     }
 
@@ -103,8 +113,12 @@ SDDL2_error SDDL2_op_type_fixed_array(SDDL2_stack* stack, uint32_t array_count)
         return SDDL2_TYPE_MISMATCH;
     }
 
+    // Cast to uint32_t (safe since we verified > 0)
+    uint32_t array_count = (uint32_t)array_count_i64;
+
     // Check for multiplication overflow: width * array_count
-    // For unsigned multiplication overflow check: if (a > 0 && b > UINT32_MAX / a)
+    // For unsigned multiplication overflow check: if (a > 0 && b > UINT32_MAX /
+    // a)
     uint32_t base_width = base_type_val.value.as_type.width;
     if (base_width > UINT32_MAX / array_count) {
         return SDDL2_STACK_OVERFLOW; // Width multiplication would overflow
@@ -112,7 +126,7 @@ SDDL2_error SDDL2_op_type_fixed_array(SDDL2_stack* stack, uint32_t array_count)
 
     // Create new type with multiplied width
     SDDL2_type array_type = base_type_val.value.as_type;
-    array_type.width = base_width * array_count;
+    array_type.width      = base_width * array_count;
 
     // Push the array type back onto stack
     return SDDL2_stack_push(stack, SDDL2_value_type(array_type));

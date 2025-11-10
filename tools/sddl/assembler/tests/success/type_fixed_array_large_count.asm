@@ -1,4 +1,5 @@
 ; Test: Large array count
 push.type.u8
-type.fixed_array 1000000
+push.i32 1000000
+type.fixed_array
 halt

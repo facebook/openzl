@@ -347,4 +347,90 @@ TEST(SDDL2ParseTest, U16BESegmentBigEndian)
             "U16BESegmentBigEndian");
 }
 
+/**
+ * Test: Array type segment (U32LE[10])
+ *
+ * Tests the type.fixed_array opcode in end-to-end compression/decompression.
+ * This validates that array types correctly integrate with SDDL2_parse and
+ * that segment size calculation accounts for the array width field.
+ *
+ * Assembly source (test_data/array_type_u32le_10.asm):
+ *   push.tag 100
+ *   push.type.u32le
+ *   type.fixed_array 10
+ *   push.i32 10
+ *   segment.create_tagged
+ *   halt
+ *
+ * This creates a segment with type U32LE[10]:
+ *   - kind: SDDL2_TYPE_U32LE
+ *   - width: 10
+ *   - Total size: 10 elements × 4 bytes/element = 40 bytes
+ */
+TEST(SDDL2ParseTest, ArrayTypeU32LE10)
+{
+    auto bytecode =
+            load_bytecode("tests/round_trip/test_data/array_type_u32le_10.bin");
+
+    // 10 U32LE values in little-endian format
+    std::array<uint8_t, 40> input = { // Value 0
+                                      0x00,
+                                      0x00,
+                                      0x00,
+                                      0x00,
+                                      // Value 1
+                                      0x01,
+                                      0x00,
+                                      0x00,
+                                      0x00,
+                                      // Value 2
+                                      0x02,
+                                      0x00,
+                                      0x00,
+                                      0x00,
+                                      // Value 3
+                                      0x03,
+                                      0x00,
+                                      0x00,
+                                      0x00,
+                                      // Value 4
+                                      0x04,
+                                      0x00,
+                                      0x00,
+                                      0x00,
+                                      // Value 5
+                                      0x05,
+                                      0x00,
+                                      0x00,
+                                      0x00,
+                                      // Value 6
+                                      0x06,
+                                      0x00,
+                                      0x00,
+                                      0x00,
+                                      // Value 7
+                                      0x07,
+                                      0x00,
+                                      0x00,
+                                      0x00,
+                                      // Value 8
+                                      0x08,
+                                      0x00,
+                                      0x00,
+                                      0x00,
+                                      // Value 9
+                                      0x09,
+                                      0x00,
+                                      0x00,
+                                      0x00
+    };
+
+    roundtrip_test(
+            input.data(),
+            input.size(),
+            bytecode.data(),
+            bytecode.size(),
+            "ArrayTypeU32LE10");
+}
+
 } // namespace

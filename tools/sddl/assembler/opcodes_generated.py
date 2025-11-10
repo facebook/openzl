@@ -2,7 +2,7 @@
 AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 
 Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-Generated at: 2025-11-10 02:14:14 UTC
+Generated at: 2025-11-10 03:38:00 UTC
 Generator: generate_opcodes.py
 
 To regenerate: python3 generate_opcodes.py
@@ -86,7 +86,7 @@ INSTRUCTIONS = {
     "cmp.ge": ("CMP", 0x0006, []),
 
     # TYPE family (0x0008)
-    "type.fixed_array": ("TYPE", 0x0001, ["u32"]),
+    "type.fixed_array": ("TYPE", 0x0001, []),
 
     # SEGMENT family (0x000C)
     "segment.create_unspecified": ("SEGMENT", 0x0001, []),

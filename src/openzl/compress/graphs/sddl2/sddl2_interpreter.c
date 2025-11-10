@@ -307,14 +307,8 @@ SDDL2_error SDDL2_execute_bytecode(
             // Unimplemented families
             case SDDL2_FAMILY_TYPE:
                 if (opcode == SDDL2_OP_TYPE_FIXED_ARRAY) {
-                    // Read array_count immediate (u32)
-                    if (pc + 4 > bytecode_size) {
-                        CLEANUP_AND_RETURN(
-                                SDDL2_INVALID_BYTECODE); // Missing immediate
-                    }
-                    uint32_t array_count = ZL_readLE32(&bytecode[pc]);
-                    pc += 4;
-                    err = SDDL2_op_type_fixed_array(&stack, array_count);
+                    // Stack-based: pops I64 and Type from stack
+                    err = SDDL2_op_type_fixed_array(&stack);
                 } else {
                     CLEANUP_AND_RETURN(
                             SDDL2_INVALID_BYTECODE); // Unknown opcode

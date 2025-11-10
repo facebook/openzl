@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
 // Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-// Generated at: 2025-11-10 02:14:14 UTC
+// Generated at: 2025-11-10 03:38:00 UTC
 // Generator: generate_opcodes.py
 //
 // To regenerate: python3 tools/sddl/assembler/generate_opcodes.py
@@ -115,7 +115,7 @@ enum sddl2_opcode_stack {
 
 /* TYPE family (0x0008) - Type operations */
 enum sddl2_opcode_type {
-    SDDL2_OP_TYPE_FIXED_ARRAY = 0x0001,  /* param: u32 */
+    SDDL2_OP_TYPE_FIXED_ARRAY = 0x0001,
 };
 
 /* SEGMENT family (0x000C) - Segment creation operations */
