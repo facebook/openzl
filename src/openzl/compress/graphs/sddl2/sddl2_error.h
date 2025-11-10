@@ -4,7 +4,7 @@
  * SDDL2 Error Handling
  *
  * Provides:
- * - SDDL2_error enum - Unified error codes for all VM operations
+ * - SDDL2_Error enum - Unified error codes for all VM operations
  * - SDDL2_TRY() macro - Propagate errors up the call stack
  */
 
@@ -33,7 +33,7 @@ typedef enum {
     SDDL2_LIMIT_EXCEEDED,  // Maximum capacity limit exceeded
     SDDL2_DIV_ZERO,        // Division by zero
     SDDL2_INVALID_BYTECODE // Malformed or invalid bytecode
-} SDDL2_error;
+} SDDL2_Error;
 
 /* ============================================================================
  * Error Handling Macros
@@ -44,18 +44,18 @@ typedef enum {
  *
  * Usage:
  *   SDDL2_TRY(pop_i64(stack, &value));
- *   SDDL2_TRY(SDDL2_stack_push(&stack, result));
+ *   SDDL2_TRY(SDDL2_Stack_push(&stack, result));
  *
  * Expands to:
  *   do {
- *       SDDL2_error _err = (operation);
+ *       SDDL2_Error _err = (operation);
  *       if (_err != SDDL2_OK)
  *           return _err;
  *   } while (0)
  */
 #define SDDL2_TRY(operation)            \
     do {                                \
-        SDDL2_error _err = (operation); \
+        SDDL2_Error _err = (operation); \
         if (_err != SDDL2_OK)           \
             return _err;                \
     } while (0)

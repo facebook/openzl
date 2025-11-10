@@ -16,19 +16,19 @@
  */
 TEST(test_basic_array_type)
 {
-    SDDL2_stack stack;
-    SDDL2_value stack_storage[256];
+    SDDL2_Stack stack;
+    SDDL2_Value stack_storage[256];
     stack.items    = stack_storage;
     stack.capacity = 256;
-    SDDL2_stack_init(&stack);
+    SDDL2_Stack_init(&stack);
 
     // Push base type: U32LE with width=1
-    SDDL2_type base_type = { .kind = SDDL2_TYPE_U32LE, .width = 1 };
-    SDDL2_error err = SDDL2_stack_push(&stack, SDDL2_value_type(base_type));
+    SDDL2_Type base_type = { .kind = SDDL2_TYPE_U32LE, .width = 1 };
+    SDDL2_Error err = SDDL2_Stack_push(&stack, SDDL2_Value_type(base_type));
     assert(err == SDDL2_OK);
 
     // Push array count (10) as I64
-    err = SDDL2_stack_push(&stack, SDDL2_value_i64(10));
+    err = SDDL2_Stack_push(&stack, SDDL2_Value_i64(10));
     assert(err == SDDL2_OK);
 
     // Create array of 10 elements
@@ -36,10 +36,10 @@ TEST(test_basic_array_type)
     assert(err == SDDL2_OK);
 
     // Verify result
-    assert(SDDL2_stack_depth(&stack) == 1);
+    assert(SDDL2_Stack_depth(&stack) == 1);
 
-    SDDL2_value result;
-    err = SDDL2_stack_pop(&stack, &result);
+    SDDL2_Value result;
+    err = SDDL2_Stack_pop(&stack, &result);
     assert(err == SDDL2_OK);
     assert(result.kind == SDDL2_VALUE_TYPE);
     assert(result.value.as_type.kind == SDDL2_TYPE_U32LE);
@@ -51,19 +51,19 @@ TEST(test_basic_array_type)
  */
 TEST(test_nested_arrays)
 {
-    SDDL2_stack stack;
-    SDDL2_value stack_storage[256];
+    SDDL2_Stack stack;
+    SDDL2_Value stack_storage[256];
     stack.items    = stack_storage;
     stack.capacity = 256;
-    SDDL2_stack_init(&stack);
+    SDDL2_Stack_init(&stack);
 
     // Push base type: I16LE with width=1
-    SDDL2_type base_type = { .kind = SDDL2_TYPE_I16LE, .width = 1 };
-    SDDL2_error err = SDDL2_stack_push(&stack, SDDL2_value_type(base_type));
+    SDDL2_Type base_type = { .kind = SDDL2_TYPE_I16LE, .width = 1 };
+    SDDL2_Error err = SDDL2_Stack_push(&stack, SDDL2_Value_type(base_type));
     assert(err == SDDL2_OK);
 
     // Push array count (5) as I64
-    err = SDDL2_stack_push(&stack, SDDL2_value_i64(5));
+    err = SDDL2_Stack_push(&stack, SDDL2_Value_i64(5));
     assert(err == SDDL2_OK);
 
     // Create array of 5 elements: I16LE[5]
@@ -71,7 +71,7 @@ TEST(test_nested_arrays)
     assert(err == SDDL2_OK);
 
     // Push array count (3) as I64
-    err = SDDL2_stack_push(&stack, SDDL2_value_i64(3));
+    err = SDDL2_Stack_push(&stack, SDDL2_Value_i64(3));
     assert(err == SDDL2_OK);
 
     // Create array of 3 of those: I16LE[15]
@@ -79,8 +79,8 @@ TEST(test_nested_arrays)
     assert(err == SDDL2_OK);
 
     // Verify result
-    SDDL2_value result;
-    err = SDDL2_stack_pop(&stack, &result);
+    SDDL2_Value result;
+    err = SDDL2_Stack_pop(&stack, &result);
     assert(err == SDDL2_OK);
     assert(result.kind == SDDL2_VALUE_TYPE);
     assert(result.value.as_type.kind == SDDL2_TYPE_I16LE);
@@ -92,19 +92,19 @@ TEST(test_nested_arrays)
  */
 TEST(test_array_count_one)
 {
-    SDDL2_stack stack;
-    SDDL2_value stack_storage[256];
+    SDDL2_Stack stack;
+    SDDL2_Value stack_storage[256];
     stack.items    = stack_storage;
     stack.capacity = 256;
-    SDDL2_stack_init(&stack);
+    SDDL2_Stack_init(&stack);
 
     // Push base type: F32BE with width=7
-    SDDL2_type base_type = { .kind = SDDL2_TYPE_F32BE, .width = 7 };
-    SDDL2_error err = SDDL2_stack_push(&stack, SDDL2_value_type(base_type));
+    SDDL2_Type base_type = { .kind = SDDL2_TYPE_F32BE, .width = 7 };
+    SDDL2_Error err = SDDL2_Stack_push(&stack, SDDL2_Value_type(base_type));
     assert(err == SDDL2_OK);
 
     // Push array count (1) as I64
-    err = SDDL2_stack_push(&stack, SDDL2_value_i64(1));
+    err = SDDL2_Stack_push(&stack, SDDL2_Value_i64(1));
     assert(err == SDDL2_OK);
 
     // Create array of 1 element (should preserve width)
@@ -112,8 +112,8 @@ TEST(test_array_count_one)
     assert(err == SDDL2_OK);
 
     // Verify result
-    SDDL2_value result;
-    err = SDDL2_stack_pop(&stack, &result);
+    SDDL2_Value result;
+    err = SDDL2_Stack_pop(&stack, &result);
     assert(err == SDDL2_OK);
     assert(result.kind == SDDL2_VALUE_TYPE);
     assert(result.value.as_type.kind == SDDL2_TYPE_F32BE);
@@ -125,19 +125,19 @@ TEST(test_array_count_one)
  */
 TEST(test_error_zero_count)
 {
-    SDDL2_stack stack;
-    SDDL2_value stack_storage[256];
+    SDDL2_Stack stack;
+    SDDL2_Value stack_storage[256];
     stack.items    = stack_storage;
     stack.capacity = 256;
-    SDDL2_stack_init(&stack);
+    SDDL2_Stack_init(&stack);
 
     // Push base type
-    SDDL2_type base_type = { .kind = SDDL2_TYPE_U8, .width = 1 };
-    SDDL2_error err = SDDL2_stack_push(&stack, SDDL2_value_type(base_type));
+    SDDL2_Type base_type = { .kind = SDDL2_TYPE_U8, .width = 1 };
+    SDDL2_Error err = SDDL2_Stack_push(&stack, SDDL2_Value_type(base_type));
     assert(err == SDDL2_OK);
 
     // Push array count (0) as I64
-    err = SDDL2_stack_push(&stack, SDDL2_value_i64(0));
+    err = SDDL2_Stack_push(&stack, SDDL2_Value_i64(0));
     assert(err == SDDL2_OK);
 
     // Try to create array of 0 elements (should fail)
@@ -146,7 +146,7 @@ TEST(test_error_zero_count)
 
     // Stack should have base_type left (array_count was popped, validated,
     // failed)
-    assert(SDDL2_stack_depth(&stack) == 1);
+    assert(SDDL2_Stack_depth(&stack) == 1);
 }
 
 /**
@@ -154,20 +154,20 @@ TEST(test_error_zero_count)
  */
 TEST(test_error_width_overflow)
 {
-    SDDL2_stack stack;
-    SDDL2_value stack_storage[256];
+    SDDL2_Stack stack;
+    SDDL2_Value stack_storage[256];
     stack.items    = stack_storage;
     stack.capacity = 256;
-    SDDL2_stack_init(&stack);
+    SDDL2_Stack_init(&stack);
 
     // Push base type with large width
-    SDDL2_type base_type = { .kind  = SDDL2_TYPE_U32LE,
+    SDDL2_Type base_type = { .kind  = SDDL2_TYPE_U32LE,
                              .width = UINT32_MAX / 2 };
-    SDDL2_error err = SDDL2_stack_push(&stack, SDDL2_value_type(base_type));
+    SDDL2_Error err = SDDL2_Stack_push(&stack, SDDL2_Value_type(base_type));
     assert(err == SDDL2_OK);
 
     // Push array count (3) as I64
-    err = SDDL2_stack_push(&stack, SDDL2_value_i64(3));
+    err = SDDL2_Stack_push(&stack, SDDL2_Value_i64(3));
     assert(err == SDDL2_OK);
 
     // Try to multiply by 3 (would overflow: (UINT32_MAX/2) * 3 > UINT32_MAX)
@@ -175,7 +175,7 @@ TEST(test_error_width_overflow)
     assert(err == SDDL2_STACK_OVERFLOW);
 
     // Stack should be empty (both values were popped before overflow detected)
-    assert(SDDL2_stack_depth(&stack) == 0);
+    assert(SDDL2_Stack_depth(&stack) == 0);
 }
 
 /**
@@ -183,21 +183,21 @@ TEST(test_error_width_overflow)
  */
 TEST(test_error_width_overflow_boundary)
 {
-    SDDL2_stack stack;
-    SDDL2_value stack_storage[256];
+    SDDL2_Stack stack;
+    SDDL2_Value stack_storage[256];
     stack.items    = stack_storage;
     stack.capacity = 256;
-    SDDL2_stack_init(&stack);
+    SDDL2_Stack_init(&stack);
 
     // Push base type: width that would exactly overflow
     // UINT32_MAX = 4294967295
     // If we multiply UINT32_MAX by 2, that would overflow
-    SDDL2_type base_type = { .kind = SDDL2_TYPE_U8, .width = UINT32_MAX };
-    SDDL2_error err = SDDL2_stack_push(&stack, SDDL2_value_type(base_type));
+    SDDL2_Type base_type = { .kind = SDDL2_TYPE_U8, .width = UINT32_MAX };
+    SDDL2_Error err = SDDL2_Stack_push(&stack, SDDL2_Value_type(base_type));
     assert(err == SDDL2_OK);
 
     // Push array count (2) as I64
-    err = SDDL2_stack_push(&stack, SDDL2_value_i64(2));
+    err = SDDL2_Stack_push(&stack, SDDL2_Value_i64(2));
     assert(err == SDDL2_OK);
 
     // Try to multiply by 2 (would overflow)
@@ -210,19 +210,19 @@ TEST(test_error_width_overflow_boundary)
  */
 TEST(test_max_safe_value)
 {
-    SDDL2_stack stack;
-    SDDL2_value stack_storage[256];
+    SDDL2_Stack stack;
+    SDDL2_Value stack_storage[256];
     stack.items    = stack_storage;
     stack.capacity = 256;
-    SDDL2_stack_init(&stack);
+    SDDL2_Stack_init(&stack);
 
     // Push base type with width=1
-    SDDL2_type base_type = { .kind = SDDL2_TYPE_I8, .width = 1 };
-    SDDL2_error err = SDDL2_stack_push(&stack, SDDL2_value_type(base_type));
+    SDDL2_Type base_type = { .kind = SDDL2_TYPE_I8, .width = 1 };
+    SDDL2_Error err = SDDL2_Stack_push(&stack, SDDL2_Value_type(base_type));
     assert(err == SDDL2_OK);
 
     // Push array count (UINT32_MAX) as I64
-    err = SDDL2_stack_push(&stack, SDDL2_value_i64((int64_t)UINT32_MAX));
+    err = SDDL2_Stack_push(&stack, SDDL2_Value_i64((int64_t)UINT32_MAX));
     assert(err == SDDL2_OK);
 
     // Create array with UINT32_MAX elements (should succeed)
@@ -230,8 +230,8 @@ TEST(test_max_safe_value)
     assert(err == SDDL2_OK);
 
     // Verify result
-    SDDL2_value result;
-    err = SDDL2_stack_pop(&stack, &result);
+    SDDL2_Value result;
+    err = SDDL2_Stack_pop(&stack, &result);
     assert(err == SDDL2_OK);
     assert(result.value.as_type.width == UINT32_MAX);
 }
@@ -241,18 +241,18 @@ TEST(test_max_safe_value)
  */
 TEST(test_error_wrong_type)
 {
-    SDDL2_stack stack;
-    SDDL2_value stack_storage[256];
+    SDDL2_Stack stack;
+    SDDL2_Value stack_storage[256];
     stack.items    = stack_storage;
     stack.capacity = 256;
-    SDDL2_stack_init(&stack);
+    SDDL2_Stack_init(&stack);
 
     // Push I64 value instead of Type
-    SDDL2_error err = SDDL2_stack_push(&stack, SDDL2_value_i64(42));
+    SDDL2_Error err = SDDL2_Stack_push(&stack, SDDL2_Value_i64(42));
     assert(err == SDDL2_OK);
 
     // Push array count (10) as I64
-    err = SDDL2_stack_push(&stack, SDDL2_value_i64(10));
+    err = SDDL2_Stack_push(&stack, SDDL2_Value_i64(10));
     assert(err == SDDL2_OK);
 
     // Try to create array (should fail due to type mismatch)
@@ -260,7 +260,7 @@ TEST(test_error_wrong_type)
     assert(err == SDDL2_TYPE_MISMATCH);
 
     // Stack should be empty (both values were popped)
-    assert(SDDL2_stack_depth(&stack) == 0);
+    assert(SDDL2_Stack_depth(&stack) == 0);
 }
 
 /**
@@ -268,17 +268,17 @@ TEST(test_error_wrong_type)
  */
 TEST(test_error_stack_underflow)
 {
-    SDDL2_stack stack;
-    SDDL2_value stack_storage[256];
+    SDDL2_Stack stack;
+    SDDL2_Value stack_storage[256];
     stack.items    = stack_storage;
     stack.capacity = 256;
-    SDDL2_stack_init(&stack);
+    SDDL2_Stack_init(&stack);
 
     // Empty stack
-    assert(SDDL2_stack_depth(&stack) == 0);
+    assert(SDDL2_Stack_depth(&stack) == 0);
 
     // Try to create array (should fail due to underflow)
-    SDDL2_error err = SDDL2_op_type_fixed_array(&stack);
+    SDDL2_Error err = SDDL2_op_type_fixed_array(&stack);
     assert(err == SDDL2_STACK_UNDERFLOW);
 }
 
@@ -287,33 +287,33 @@ TEST(test_error_stack_underflow)
  */
 TEST(test_all_type_kinds)
 {
-    SDDL2_stack stack;
-    SDDL2_value stack_storage[256];
+    SDDL2_Stack stack;
+    SDDL2_Value stack_storage[256];
     stack.items    = stack_storage;
     stack.capacity = 256;
 
     // Test a representative sample of type kinds
-    SDDL2_type_kind types[] = {
+    SDDL2_Type_kind types[] = {
         SDDL2_TYPE_BYTES, SDDL2_TYPE_U8,    SDDL2_TYPE_I16LE,  SDDL2_TYPE_U32BE,
         SDDL2_TYPE_I64LE, SDDL2_TYPE_F32LE, SDDL2_TYPE_BF16BE,
     };
 
     for (size_t i = 0; i < sizeof(types) / sizeof(types[0]); i++) {
-        SDDL2_stack_init(&stack);
+        SDDL2_Stack_init(&stack);
 
-        SDDL2_type base_type = { .kind = types[i], .width = 2 };
-        SDDL2_error err = SDDL2_stack_push(&stack, SDDL2_value_type(base_type));
+        SDDL2_Type base_type = { .kind = types[i], .width = 2 };
+        SDDL2_Error err = SDDL2_Stack_push(&stack, SDDL2_Value_type(base_type));
         assert(err == SDDL2_OK);
 
         // Push array count (5) as I64
-        err = SDDL2_stack_push(&stack, SDDL2_value_i64(5));
+        err = SDDL2_Stack_push(&stack, SDDL2_Value_i64(5));
         assert(err == SDDL2_OK);
 
         err = SDDL2_op_type_fixed_array(&stack);
         assert(err == SDDL2_OK);
 
-        SDDL2_value result;
-        err = SDDL2_stack_pop(&stack, &result);
+        SDDL2_Value result;
+        err = SDDL2_Stack_pop(&stack, &result);
         assert(err == SDDL2_OK);
         assert(result.value.as_type.kind == types[i]);
         assert(result.value.as_type.width == 10); // 2 * 5

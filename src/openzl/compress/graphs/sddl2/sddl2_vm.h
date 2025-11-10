@@ -39,7 +39,7 @@ typedef enum {
     SDDL2_VALUE_I64  = 1,
     SDDL2_VALUE_TAG  = 2,
     SDDL2_VALUE_TYPE = 3,
-} SDDL2_value_kind;
+} SDDL2_Value_kind;
 
 /**
  * Type descriptor structure.
@@ -75,25 +75,25 @@ typedef enum {
     SDDL2_TYPE_F64LE,
     SDDL2_TYPE_F64BE,
     /* SDDL2_TYPE_FIXED_N */ // TODO: Fixed-width byte arrays
-} SDDL2_type_kind;
+} SDDL2_Type_kind;
 
 typedef struct {
-    SDDL2_type_kind kind;
+    SDDL2_Type_kind kind;
     uint32_t width; // Size in number of elements
-} SDDL2_type;
+} SDDL2_Type;
 
 /**
  * Tagged value on the VM stack.
  * This is a discriminated union representing one of three value kinds.
  */
 typedef struct {
-    SDDL2_value_kind kind;
+    SDDL2_Value_kind kind;
     union {
         int64_t as_i64;     // For SDDL2_VALUE_I64
         uint32_t as_tag;    // For SDDL2_VALUE_TAG
-        SDDL2_type as_type; // For SDDL2_VALUE_TYPE
+        SDDL2_Type as_type; // For SDDL2_VALUE_TYPE
     } value;
-} SDDL2_value;
+} SDDL2_Value;
 
 /* ============================================================================
  * Stack Structure (Section 10)
@@ -121,10 +121,10 @@ typedef struct {
  * Stack items are allocated via arena allocation.
  */
 typedef struct {
-    SDDL2_value* items; // Pointer to stack items (arena-allocated)
+    SDDL2_Value* items; // Pointer to stack items (arena-allocated)
     size_t top;         // Index of next free slot (0 = empty stack)
     size_t capacity;    // Maximum stack depth
-} SDDL2_stack;
+} SDDL2_Stack;
 
 /* ============================================================================
  * Memory Allocation Strategy
@@ -247,9 +247,9 @@ typedef struct {
     uint32_t tag;      // Segment identifier (0 = unspecified)
     size_t start_pos;  // Start offset in input buffer
     size_t size_bytes; // Length in bytes
-    SDDL2_type type; // Element type (defines array of type.kind with type.width
+    SDDL2_Type type; // Element type (defines array of type.kind with type.width
                      // elements)
-} SDDL2_segment;
+} SDDL2_Segment;
 
 /**
  * Dynamic list of segments.
@@ -259,12 +259,12 @@ typedef struct {
  * of OpenZL infrastructure while supporting arena allocation.
  */
 typedef struct {
-    SDDL2_segment* items;        // Dynamic array of segments
+    SDDL2_Segment* items;        // Dynamic array of segments
     size_t count;                // Number of segments
     size_t capacity;             // Allocated capacity
     SDDL2_allocator_fn alloc_fn; // Allocator function (NULL = use realloc)
     void* alloc_ctx;             // Opaque allocator context
-} SDDL2_segment_list;
+} SDDL2_Segment_list;
 
 /**
  * Tag registry for tracking tag usage (Phase 5).
@@ -279,7 +279,7 @@ typedef struct {
     size_t capacity;             // Allocated capacity
     SDDL2_allocator_fn alloc_fn; // Allocator function (NULL = use realloc)
     void* alloc_ctx;             // Opaque allocator context
-} SDDL2_tag_registry;
+} SDDL2_Tag_registry;
 
 /* ============================================================================
  * Input Buffer (Phase 3)
@@ -301,7 +301,7 @@ typedef struct {
     const void* data;   // Borrowed pointer to input data (any type)
     size_t size;        // Total size in bytes
     size_t current_pos; // Cursor for sequential segment creation
-} SDDL2_input_buffer;
+} SDDL2_Input_buffer;
 
 /* ============================================================================
  * Stack Operations
@@ -310,7 +310,7 @@ typedef struct {
 /**
  * Initialize an empty stack.
  */
-void SDDL2_stack_init(SDDL2_stack* stack);
+void SDDL2_Stack_init(SDDL2_Stack* stack);
 
 /**
  * Push a value onto the stack.
@@ -319,9 +319,9 @@ void SDDL2_stack_init(SDDL2_stack* stack);
  * NOTE: Kept as inline for performance - this is on the hot path,
  * called for every VM instruction that produces a value.
  */
-static inline SDDL2_error SDDL2_stack_push(
-        SDDL2_stack* stack,
-        SDDL2_value value)
+static inline SDDL2_Error SDDL2_Stack_push(
+        SDDL2_Stack* stack,
+        SDDL2_Value value)
 {
     if (stack->top >= stack->capacity) {
         return SDDL2_STACK_OVERFLOW;
@@ -337,7 +337,7 @@ static inline SDDL2_error SDDL2_stack_push(
  * NOTE: Kept as inline for performance - this is on the hot path,
  * called for every VM instruction that consumes a value.
  */
-static inline SDDL2_error SDDL2_stack_pop(SDDL2_stack* stack, SDDL2_value* out)
+static inline SDDL2_Error SDDL2_Stack_pop(SDDL2_Stack* stack, SDDL2_Value* out)
 {
     if (stack->top == 0) {
         return SDDL2_STACK_UNDERFLOW;
@@ -350,17 +350,17 @@ static inline SDDL2_error SDDL2_stack_pop(SDDL2_stack* stack, SDDL2_value* out)
  * Peek at the top value without removing it.
  * Returns SDDL2_STACK_UNDERFLOW if stack is empty.
  */
-SDDL2_error SDDL2_stack_peek(const SDDL2_stack* stack, SDDL2_value* out);
+SDDL2_Error SDDL2_Stack_peek(const SDDL2_Stack* stack, SDDL2_Value* out);
 
 /**
  * Get current stack depth.
  */
-size_t SDDL2_stack_depth(const SDDL2_stack* stack);
+size_t SDDL2_Stack_depth(const SDDL2_Stack* stack);
 
 /**
  * Check if stack is empty.
  */
-int SDDL2_stack_is_empty(const SDDL2_stack* stack);
+int SDDL2_Stack_is_empty(const SDDL2_Stack* stack);
 
 /* ============================================================================
  * Value Construction Helpers
@@ -369,9 +369,9 @@ int SDDL2_stack_is_empty(const SDDL2_stack* stack);
 /**
  * Create an I64 value.
  */
-static inline SDDL2_value SDDL2_value_i64(int64_t val)
+static inline SDDL2_Value SDDL2_Value_i64(int64_t val)
 {
-    SDDL2_value v;
+    SDDL2_Value v;
     v.kind         = SDDL2_VALUE_I64;
     v.value.as_i64 = val;
     return v;
@@ -380,9 +380,9 @@ static inline SDDL2_value SDDL2_value_i64(int64_t val)
 /**
  * Create a Tag value.
  */
-static inline SDDL2_value SDDL2_value_tag(uint32_t tag_id)
+static inline SDDL2_Value SDDL2_Value_tag(uint32_t tag_id)
 {
-    SDDL2_value v;
+    SDDL2_Value v;
     v.kind         = SDDL2_VALUE_TAG;
     v.value.as_tag = tag_id;
     return v;
@@ -391,9 +391,9 @@ static inline SDDL2_value SDDL2_value_tag(uint32_t tag_id)
 /**
  * Create a Type value.
  */
-static inline SDDL2_value SDDL2_value_type(SDDL2_type type)
+static inline SDDL2_Value SDDL2_Value_type(SDDL2_Type type)
 {
-    SDDL2_value v;
+    SDDL2_Value v;
     v.kind          = SDDL2_VALUE_TYPE;
     v.value.as_type = type;
     return v;
@@ -404,18 +404,18 @@ static inline SDDL2_value SDDL2_value_type(SDDL2_type type)
  * ========================================================================= */
 
 /**
- * Get the size in bytes of a single element of the given type kind (primitive size).
- * Returns 1 for BYTES (raw bytes with no known interpretation).
- * Returns 0 for unknown/invalid types.
+ * Get the size in bytes of a single element of the given type kind (primitive
+ * size). Returns 1 for BYTES (raw bytes with no known interpretation). Returns
+ * 0 for unknown/invalid types.
  */
-size_t SDDL2_kind_size(SDDL2_type_kind kind);
+size_t SDDL2_kind_size(SDDL2_Type_kind kind);
 
 /**
  * Get the total size in bytes of a type (including width).
  * Calculates: SDDL2_kind_size(type.kind) × type.width
  * Returns 0 if type.kind is unknown.
  */
-size_t SDDL2_type_size(SDDL2_type type);
+size_t SDDL2_Type_size(SDDL2_Type type);
 
 /* ============================================================================
  * Type Operations
@@ -444,7 +444,7 @@ size_t SDDL2_type_size(SDDL2_type type);
  *   - SDDL2_STACK_OVERFLOW: width multiplication would overflow, or push would
  * overflow the stack
  */
-SDDL2_error SDDL2_op_type_fixed_array(SDDL2_stack* stack);
+SDDL2_Error SDDL2_op_type_fixed_array(SDDL2_Stack* stack);
 
 /* ============================================================================
  * Arithmetic Operations (Phase 2)
@@ -455,49 +455,49 @@ SDDL2_error SDDL2_op_type_fixed_array(SDDL2_stack* stack);
  * Stack: a:I64 b:I64 -> (a+b):I64
  * Errors: TypeMismatch, Overflow
  */
-SDDL2_error SDDL2_op_add(SDDL2_stack* stack);
+SDDL2_Error SDDL2_op_add(SDDL2_Stack* stack);
 
 /**
  * Subtract two I64 values from the stack.
  * Stack: a:I64 b:I64 -> (a-b):I64
  * Errors: TypeMismatch, Overflow
  */
-SDDL2_error SDDL2_op_sub(SDDL2_stack* stack);
+SDDL2_Error SDDL2_op_sub(SDDL2_Stack* stack);
 
 /**
  * Multiply two I64 values from the stack.
  * Stack: a:I64 b:I64 -> (a*b):I64
  * Errors: TypeMismatch, Overflow
  */
-SDDL2_error SDDL2_op_mul(SDDL2_stack* stack);
+SDDL2_Error SDDL2_op_mul(SDDL2_Stack* stack);
 
 /**
  * Divide two I64 values from the stack.
  * Stack: a:I64 b:I64 -> (a/b):I64
  * Errors: TypeMismatch, DivZero
  */
-SDDL2_error SDDL2_op_div(SDDL2_stack* stack);
+SDDL2_Error SDDL2_op_div(SDDL2_Stack* stack);
 
 /**
  * Modulo of two I64 values from the stack.
  * Stack: a:I64 b:I64 -> (a%b):I64
  * Errors: TypeMismatch, DivZero
  */
-SDDL2_error SDDL2_op_mod(SDDL2_stack* stack);
+SDDL2_Error SDDL2_op_mod(SDDL2_Stack* stack);
 
 /**
  * Absolute value of I64 value from the stack.
  * Stack: a:I64 -> abs(a):I64
  * Errors: TypeMismatch, Overflow (on INT64_MIN)
  */
-SDDL2_error SDDL2_op_abs(SDDL2_stack* stack);
+SDDL2_Error SDDL2_op_abs(SDDL2_Stack* stack);
 
 /**
  * Negate an I64 value from the stack.
  * Stack: a:I64 -> (-a):I64
  * Errors: TypeMismatch, Overflow (on INT64_MIN)
  */
-SDDL2_error SDDL2_op_neg(SDDL2_stack* stack);
+SDDL2_Error SDDL2_op_neg(SDDL2_Stack* stack);
 
 /* ============================================================================
  * Comparison Operations (CMP Family)
@@ -508,42 +508,42 @@ SDDL2_error SDDL2_op_neg(SDDL2_stack* stack);
  * Stack: a:I64 b:I64 -> (a==b?1:0):I64
  * Errors: TypeMismatch
  */
-SDDL2_error SDDL2_op_eq(SDDL2_stack* stack);
+SDDL2_Error SDDL2_op_eq(SDDL2_Stack* stack);
 
 /**
  * Compare two I64 values for inequality.
  * Stack: a:I64 b:I64 -> (a!=b?1:0):I64
  * Errors: TypeMismatch
  */
-SDDL2_error SDDL2_op_ne(SDDL2_stack* stack);
+SDDL2_Error SDDL2_op_ne(SDDL2_Stack* stack);
 
 /**
  * Compare two I64 values (less than).
  * Stack: a:I64 b:I64 -> (a<b?1:0):I64
  * Errors: TypeMismatch
  */
-SDDL2_error SDDL2_op_lt(SDDL2_stack* stack);
+SDDL2_Error SDDL2_op_lt(SDDL2_Stack* stack);
 
 /**
  * Compare two I64 values (less than or equal).
  * Stack: a:I64 b:I64 -> (a<=b?1:0):I64
  * Errors: TypeMismatch
  */
-SDDL2_error SDDL2_op_le(SDDL2_stack* stack);
+SDDL2_Error SDDL2_op_le(SDDL2_Stack* stack);
 
 /**
  * Compare two I64 values (greater than).
  * Stack: a:I64 b:I64 -> (a>b?1:0):I64
  * Errors: TypeMismatch
  */
-SDDL2_error SDDL2_op_gt(SDDL2_stack* stack);
+SDDL2_Error SDDL2_op_gt(SDDL2_Stack* stack);
 
 /**
  * Compare two I64 values (greater than or equal).
  * Stack: a:I64 b:I64 -> (a>=b?1:0):I64
  * Errors: TypeMismatch
  */
-SDDL2_error SDDL2_op_ge(SDDL2_stack* stack);
+SDDL2_Error SDDL2_op_ge(SDDL2_Stack* stack);
 
 /* ============================================================================
  * Stack Manipulation Operations (STACK Family)
@@ -554,21 +554,21 @@ SDDL2_error SDDL2_op_ge(SDDL2_stack* stack);
  * Stack: value -> (empty)
  * Errors: StackUnderflow
  */
-SDDL2_error SDDL2_op_drop(SDDL2_stack* stack);
+SDDL2_Error SDDL2_op_drop(SDDL2_Stack* stack);
 
 /**
  * Duplicate the top value on the stack.
  * Stack: value -> value value
  * Errors: StackUnderflow, StackOverflow
  */
-SDDL2_error SDDL2_op_dup(SDDL2_stack* stack);
+SDDL2_Error SDDL2_op_dup(SDDL2_Stack* stack);
 
 /**
  * Swap the top two values on the stack.
  * Stack: a b -> b a
  * Errors: StackUnderflow
  */
-SDDL2_error SDDL2_op_swap(SDDL2_stack* stack);
+SDDL2_Error SDDL2_op_swap(SDDL2_Stack* stack);
 
 /* ============================================================================
  * Input Buffer Operations
@@ -577,8 +577,8 @@ SDDL2_error SDDL2_op_swap(SDDL2_stack* stack);
 /**
  * Initialize an input buffer.
  */
-void SDDL2_input_buffer_init(
-        SDDL2_input_buffer* buffer,
+void SDDL2_Input_buffer_init(
+        SDDL2_Input_buffer* buffer,
         const void* data,
         size_t size);
 
@@ -587,9 +587,9 @@ void SDDL2_input_buffer_init(
  * Stack: (empty) -> current_pos:I64
  * Does NOT advance cursor.
  */
-SDDL2_error SDDL2_op_current_pos(
-        SDDL2_stack* stack,
-        const SDDL2_input_buffer* buffer);
+SDDL2_Error SDDL2_op_current_pos(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer);
 
 /**
  * Load unsigned byte at address.
@@ -597,9 +597,9 @@ SDDL2_error SDDL2_op_current_pos(
  * Errors: TypeMismatch, LoadBounds
  * Does NOT advance cursor.
  */
-SDDL2_error SDDL2_op_load_u8(
-        SDDL2_stack* stack,
-        const SDDL2_input_buffer* buffer);
+SDDL2_Error SDDL2_op_load_u8(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer);
 
 /* ============================================================================
  * Segment Operations (Phase 4-5)
@@ -616,8 +616,8 @@ SDDL2_error SDDL2_op_load_u8(
  * When alloc_fn is provided, allocated memory is never freed individually
  * (assumed to be arena-managed).
  */
-void SDDL2_segment_list_init(
-        SDDL2_segment_list* list,
+void SDDL2_Segment_list_init(
+        SDDL2_Segment_list* list,
         SDDL2_allocator_fn alloc_fn,
         void* alloc_ctx);
 
@@ -629,7 +629,7 @@ void SDDL2_segment_list_init(
  * arena-allocated memory is managed by the arena itself.
  * When using fallback realloc mode, this frees the allocated items array.
  */
-void SDDL2_segment_list_destroy(SDDL2_segment_list* list);
+void SDDL2_Segment_list_destroy(SDDL2_Segment_list* list);
 
 /**
  * Create an unspecified segment (no tag, no type, just bytes).
@@ -639,10 +639,10 @@ void SDDL2_segment_list_destroy(SDDL2_segment_list* list);
  *   - Appends segment to list with tag=0
  * Errors: TypeMismatch, StackUnderflow, SegmentBounds
  */
-SDDL2_error SDDL2_op_segment_create_unspecified(
-        SDDL2_stack* stack,
-        SDDL2_input_buffer* buffer,
-        SDDL2_segment_list* segments);
+SDDL2_Error SDDL2_op_segment_create_unspecified(
+        SDDL2_Stack* stack,
+        SDDL2_Input_buffer* buffer,
+        SDDL2_Segment_list* segments);
 
 /* ============================================================================
  * Tag Registry Operations (Phase 5)
@@ -659,8 +659,8 @@ SDDL2_error SDDL2_op_segment_create_unspecified(
  * When alloc_fn is provided, allocated memory is never freed individually
  * (assumed to be arena-managed).
  */
-void SDDL2_tag_registry_init(
-        SDDL2_tag_registry* registry,
+void SDDL2_Tag_registry_init(
+        SDDL2_Tag_registry* registry,
         SDDL2_allocator_fn alloc_fn,
         void* alloc_ctx);
 
@@ -672,7 +672,7 @@ void SDDL2_tag_registry_init(
  * arena-allocated memory is managed by the arena itself.
  * When using fallback realloc mode, this frees the allocated tags array.
  */
-void SDDL2_tag_registry_destroy(SDDL2_tag_registry* registry);
+void SDDL2_Tag_registry_destroy(SDDL2_Tag_registry* registry);
 
 /**
  * Create a typed, tagged segment with automatic merging.
@@ -690,7 +690,7 @@ void SDDL2_tag_registry_destroy(SDDL2_tag_registry* registry);
  *   - type={F64BE, width=1}: Array of big-endian 64-bit floats
  *
  * The actual byte size of the segment is calculated as:
- *   size_bytes = element_count * SDDL2_type_size(type.kind)
+ *   size_bytes = element_count * SDDL2_Type_size(type.kind)
  *
  * Automatic Merging Behavior:
  *   If the last segment has the same tag AND same type AND is consecutive
@@ -722,11 +722,11 @@ void SDDL2_tag_registry_destroy(SDDL2_tag_registry* registry);
  *
  * Errors: TypeMismatch, StackUnderflow, SegmentBounds
  */
-SDDL2_error SDDL2_op_segment_create_tagged(
-        SDDL2_stack* stack,
-        SDDL2_input_buffer* buffer,
-        SDDL2_segment_list* segments,
-        SDDL2_tag_registry* registry);
+SDDL2_Error SDDL2_op_segment_create_tagged(
+        SDDL2_Stack* stack,
+        SDDL2_Input_buffer* buffer,
+        SDDL2_Segment_list* segments,
+        SDDL2_Tag_registry* registry);
 
 #if defined(__cplusplus)
 } // extern "C"

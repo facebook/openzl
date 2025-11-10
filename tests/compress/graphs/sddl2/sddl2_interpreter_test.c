@@ -23,9 +23,9 @@
  *   }
  */
 #define EXPECT_SUCCESS(bytecode_ptr, bytecode_len, input_ptr, input_len)  \
-    SDDL2_segment_list segments;                                          \
-    SDDL2_segment_list_init(&segments, NULL, NULL);                       \
-    SDDL2_error err = SDDL2_execute_bytecode(                             \
+    SDDL2_Segment_list segments;                                          \
+    SDDL2_Segment_list_init(&segments, NULL, NULL);                       \
+    SDDL2_Error err = SDDL2_execute_bytecode(                             \
             bytecode_ptr, bytecode_len, input_ptr, input_len, &segments); \
     assert(err == SDDL2_OK);                                              \
     do
@@ -38,7 +38,7 @@
 #define END_EXPECT_SUCCESS() \
     while (0)                \
         ;                    \
-    SDDL2_segment_list_destroy(&segments)
+    SDDL2_Segment_list_destroy(&segments)
 
 /**
  * Helper macro for tests that expect a specific error
@@ -52,12 +52,12 @@
 #define EXPECT_ERROR(                                                         \
         expected_err, bytecode_ptr, bytecode_len, input_ptr, input_len)       \
     do {                                                                      \
-        SDDL2_segment_list segments;                                          \
-        SDDL2_segment_list_init(&segments, NULL, NULL);                       \
-        SDDL2_error err = SDDL2_execute_bytecode(                             \
+        SDDL2_Segment_list segments;                                          \
+        SDDL2_Segment_list_init(&segments, NULL, NULL);                       \
+        SDDL2_Error err = SDDL2_execute_bytecode(                             \
                 bytecode_ptr, bytecode_len, input_ptr, input_len, &segments); \
         assert(err == expected_err);                                          \
-        SDDL2_segment_list_destroy(&segments);                                \
+        SDDL2_Segment_list_destroy(&segments);                                \
     } while (0)
 
 /* ============================================================================
@@ -617,15 +617,15 @@ TEST(test_invalid_bytecode_size)
     uint8_t input[]    = "Test";
     uint8_t bytecode[] = { 0x01, 0x00, 0x03 };
 
-    SDDL2_segment_list segments;
-    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_Segment_list segments;
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
 
-    SDDL2_error err = SDDL2_execute_bytecode(
+    SDDL2_Error err = SDDL2_execute_bytecode(
             bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
 
     assert(err != SDDL2_OK);
 
-    SDDL2_segment_list_destroy(&segments);
+    SDDL2_Segment_list_destroy(&segments);
 }
 
 /**
@@ -657,10 +657,10 @@ TEST(test_missing_halt)
         0x01, 0x00, 0x0C, 0x00  // segment.create_unspecified
     };
 
-    SDDL2_segment_list segments;
-    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_Segment_list segments;
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
 
-    SDDL2_error err = SDDL2_execute_bytecode(
+    SDDL2_Error err = SDDL2_execute_bytecode(
             bytecode, sizeof(bytecode), input, sizeof(input) - 1, &segments);
 
     // Should succeed with implicit halt
@@ -670,7 +670,7 @@ TEST(test_missing_halt)
     assert(segments.count == 1);
     assert(segments.items[0].size_bytes == 5);
 
-    SDDL2_segment_list_destroy(&segments);
+    SDDL2_Segment_list_destroy(&segments);
 }
 
 /**
@@ -722,9 +722,9 @@ TEST(test_type_fixed_array_with_segment)
                           0x08, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00 };
 
     // Execute bytecode and print error if it fails
-    SDDL2_segment_list segments;
-    SDDL2_segment_list_init(&segments, NULL, NULL);
-    SDDL2_error err = SDDL2_execute_bytecode(
+    SDDL2_Segment_list segments;
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
+    SDDL2_Error err = SDDL2_execute_bytecode(
             BYTECODE_TEST_TYPE_FIXED_ARRAY_WITH_SEGMENT,
             BYTECODE_TEST_TYPE_FIXED_ARRAY_WITH_SEGMENT_SIZE,
             input,
@@ -744,7 +744,7 @@ TEST(test_type_fixed_array_with_segment)
     assert(segments.items[0].type.kind == SDDL2_TYPE_U32LE);
     assert(segments.items[0].type.width == 10); // Array of 10 elements
 
-    SDDL2_segment_list_destroy(&segments);
+    SDDL2_Segment_list_destroy(&segments);
 }
 
 int main(void)

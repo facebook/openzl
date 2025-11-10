@@ -41,7 +41,7 @@ static void* sddl2_arena_allocator(void* allocator_ctx, size_t size)
  * little-endian for consistency.
  */
 static ZL_Report sddl2_determine_endianness(
-        SDDL2_type_kind type_kind,
+        SDDL2_Type_kind type_kind,
         bool* out_is_little_endian,
         ZL_Graph* graph)
 {
@@ -112,7 +112,7 @@ static ZL_Report sddl2_determine_endianness(
  */
 static ZL_Report sddl2_apply_type_conversion(
         ZL_Edge* edge,
-        const SDDL2_segment* seg,
+        const SDDL2_Segment* seg,
         ZL_Edge** out_converted_edge,
         ZL_Graph* graph)
 {
@@ -167,7 +167,7 @@ static ZL_Report sddl2_apply_type_conversion(
  * @param graph Graph context for error reporting
  * @return ZL_Report with mapped error code and descriptive message
  */
-static ZL_Report sddl2_error_to_report(SDDL2_error err, ZL_Graph* graph)
+static ZL_Report sddl2_error_to_report(SDDL2_Error err, ZL_Graph* graph)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
 
@@ -255,15 +255,15 @@ ZL_Report SDDL2_parse(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
     size_t input_size      = ZL_Input_contentSize(input_obj);
 
     // Step 5: Run interpreter to generate segments
-    SDDL2_segment_list segments;
-    // Use arena allocator for production (via ZL_Graph_getScratchSpace)
-    SDDL2_segment_list_init(&segments, sddl2_arena_allocator, graph);
+    SDDL2_Segment_list segments;
 
-    SDDL2_error err = SDDL2_execute_bytecode(
+    SDDL2_Segment_list_init(&segments, sddl2_arena_allocator, graph);
+
+    SDDL2_Error err = SDDL2_execute_bytecode(
             bytecode, bytecode_size, input_data, input_size, &segments);
 
     if (err != SDDL2_OK) {
-        SDDL2_segment_list_destroy(&segments);
+        SDDL2_Segment_list_destroy(&segments);
         return sddl2_error_to_report(err, graph);
     }
 
@@ -286,7 +286,7 @@ ZL_Report SDDL2_parse(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
     // For each segment, if it has a numeric type (not BYTES), convert the edge
     // to that type (1, 2, 4, or 8 bytes, little or big endian)
     for (size_t i = 0; i < outputs.nbEdges; i++) {
-        const SDDL2_segment* seg = &segments.items[i];
+        const SDDL2_Segment* seg = &segments.items[i];
 
         // Skip BYTES type (raw unspecified data)
         if (seg->type.kind == SDDL2_TYPE_BYTES) {
@@ -318,7 +318,7 @@ ZL_Report SDDL2_parse(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
     }
 
     // Cleanup
-    SDDL2_segment_list_destroy(&segments);
+    SDDL2_Segment_list_destroy(&segments);
 
     return ZL_returnSuccess();
 }

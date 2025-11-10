@@ -156,7 +156,7 @@ ZL_Edge_runSplitNode(
 
 **Example:**
 ```c
-// Extract segment sizes from SDDL2_segment_list
+// Extract segment sizes from SDDL2_Segment_list
 size_t* segmentSizes = malloc(segments.count * sizeof(size_t));
 for (size_t i = 0; i < segments.count; i++) {
     segmentSizes[i] = segments.items[i].size_bytes;
@@ -210,10 +210,10 @@ size_t input_size = ZL_Input_getSize(input_obj);
 
 ### Step 4: Run Interpreter
 ```c
-SDDL2_segment_list segments;
-SDDL2_segment_list_init(&segments);
+SDDL2_Segment_list segments;
+SDDL2_Segment_list_init(&segments);
 
-SDDL2_error err = SDDL2_execute_bytecode(
+SDDL2_Error err = SDDL2_execute_bytecode(
     bytecode, bytecode_size,
     input_data, input_size,
     &segments);
@@ -243,7 +243,7 @@ assert(outputs.nbEdges == segments.count);
 
 ### Step 6: Set Destinations & Cleanup
 ```c
-SDDL2_segment_list_destroy(&segments);
+SDDL2_Segment_list_destroy(&segments);
 return ZL_returnSuccess();
 ```
 

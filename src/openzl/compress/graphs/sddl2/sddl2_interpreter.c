@@ -15,7 +15,7 @@
  */
 static const struct {
     uint16_t opcode;
-    SDDL2_type_kind kind;
+    SDDL2_Type_kind kind;
 } PUSH_TYPE_MAP[] = {
     { SDDL2_OP_PUSH_TYPE_BYTES, SDDL2_TYPE_BYTES },
     { SDDL2_OP_PUSH_TYPE_U8, SDDL2_TYPE_U8 },
@@ -53,14 +53,14 @@ static const struct {
  * Function pointer type for stack operations.
  * All MATH, CMP, and STACK operations share this signature.
  */
-typedef SDDL2_error (*SDDL2_stack_op_fn)(SDDL2_stack*);
+typedef SDDL2_Error (*SDDL2_Stack_op_fn)(SDDL2_Stack*);
 
 /**
  * Lookup table for MATH family operations.
  */
 static const struct {
     uint16_t opcode;
-    SDDL2_stack_op_fn handler;
+    SDDL2_Stack_op_fn handler;
 } MATH_OP_MAP[] = {
     { SDDL2_OP_MATH_ADD, SDDL2_op_add }, { SDDL2_OP_MATH_SUB, SDDL2_op_sub },
     { SDDL2_OP_MATH_MUL, SDDL2_op_mul }, { SDDL2_OP_MATH_DIV, SDDL2_op_div },
@@ -75,7 +75,7 @@ static const struct {
  */
 static const struct {
     uint16_t opcode;
-    SDDL2_stack_op_fn handler;
+    SDDL2_Stack_op_fn handler;
 } CMP_OP_MAP[] = {
     { SDDL2_OP_CMP_EQ, SDDL2_op_eq }, { SDDL2_OP_CMP_NE, SDDL2_op_ne },
     { SDDL2_OP_CMP_LT, SDDL2_op_lt }, { SDDL2_OP_CMP_LE, SDDL2_op_le },
@@ -89,7 +89,7 @@ static const struct {
  */
 static const struct {
     uint16_t opcode;
-    SDDL2_stack_op_fn handler;
+    SDDL2_Stack_op_fn handler;
 } STACK_OP_MAP[] = {
     { SDDL2_OP_STACK_DROP, SDDL2_op_drop },
     { SDDL2_OP_STACK_DUP, SDDL2_op_dup },
@@ -106,16 +106,16 @@ static const struct {
  */
 #define CLEANUP_AND_RETURN(error_code)         \
     do {                                       \
-        SDDL2_tag_registry_destroy(&registry); \
+        SDDL2_Tag_registry_destroy(&registry); \
         return (error_code);                   \
     } while (0)
 
-SDDL2_error SDDL2_execute_bytecode(
+SDDL2_Error SDDL2_execute_bytecode(
         const void* bytecode_buffer,
         size_t bytecode_size,
         const void* input_data,
         size_t input_size,
-        SDDL2_segment_list* output_segments)
+        SDDL2_Segment_list* output_segments)
 {
     const char* bytecode = bytecode_buffer;
 
@@ -130,19 +130,19 @@ SDDL2_error SDDL2_execute_bytecode(
     }
 
     // Initialize VM state
-    SDDL2_stack stack;
-    SDDL2_value stack_storage[256];
+    SDDL2_Stack stack;
+    SDDL2_Value stack_storage[256];
     stack.items    = stack_storage;
     stack.capacity = 256;
-    SDDL2_stack_init(&stack);
+    SDDL2_Stack_init(&stack);
 
-    SDDL2_input_buffer buffer;
-    SDDL2_input_buffer_init(&buffer, input_data, input_size);
+    SDDL2_Input_buffer buffer;
+    SDDL2_Input_buffer_init(&buffer, input_data, input_size);
 
-    SDDL2_tag_registry registry;
+    SDDL2_Tag_registry registry;
     // Use same allocator as output_segments (arena in production, NULL in
     // tests)
-    SDDL2_tag_registry_init(
+    SDDL2_Tag_registry_init(
             &registry, output_segments->alloc_fn, output_segments->alloc_ctx);
 
     // Program counter (byte offset)
@@ -167,7 +167,7 @@ SDDL2_error SDDL2_execute_bytecode(
         uint16_t opcode = instruction & 0xFFFF;
 
         // Dispatch
-        SDDL2_error err = SDDL2_OK;
+        SDDL2_Error err = SDDL2_OK;
 
         switch (family) {
             case SDDL2_FAMILY_CONTROL:
@@ -181,7 +181,7 @@ SDDL2_error SDDL2_execute_bytecode(
 
             case SDDL2_FAMILY_PUSH:
                 if (opcode == SDDL2_OP_PUSH_ZERO) {
-                    err = SDDL2_stack_push(&stack, SDDL2_value_i64(0));
+                    err = SDDL2_Stack_push(&stack, SDDL2_Value_i64(0));
                 } else if (opcode == SDDL2_OP_PUSH_U32) {
                     if (pc + 4 > bytecode_size) {
                         CLEANUP_AND_RETURN(
@@ -189,8 +189,8 @@ SDDL2_error SDDL2_execute_bytecode(
                     }
                     uint32_t value = ZL_readLE32(&bytecode[pc]);
                     pc += 4;
-                    err = SDDL2_stack_push(
-                            &stack, SDDL2_value_i64((int64_t)value));
+                    err = SDDL2_Stack_push(
+                            &stack, SDDL2_Value_i64((int64_t)value));
                 } else if (opcode == SDDL2_OP_PUSH_I32) {
                     if (pc + 4 > bytecode_size) {
                         CLEANUP_AND_RETURN(
@@ -198,8 +198,8 @@ SDDL2_error SDDL2_execute_bytecode(
                     }
                     int32_t value = (int32_t)ZL_readLE32(&bytecode[pc]);
                     pc += 4;
-                    err = SDDL2_stack_push(
-                            &stack, SDDL2_value_i64((int64_t)value));
+                    err = SDDL2_Stack_push(
+                            &stack, SDDL2_Value_i64((int64_t)value));
                 } else if (opcode == SDDL2_OP_PUSH_I64) {
                     if (pc + 8 > bytecode_size) {
                         CLEANUP_AND_RETURN(
@@ -207,7 +207,7 @@ SDDL2_error SDDL2_execute_bytecode(
                     }
                     int64_t value = (int64_t)ZL_readLE64(&bytecode[pc]);
                     pc += 8;
-                    err = SDDL2_stack_push(&stack, SDDL2_value_i64(value));
+                    err = SDDL2_Stack_push(&stack, SDDL2_Value_i64(value));
                 } else if (opcode == SDDL2_OP_PUSH_TAG) {
                     // Read tag immediate (u32)
                     if (pc + 4 > bytecode_size) {
@@ -216,16 +216,16 @@ SDDL2_error SDDL2_execute_bytecode(
                     }
                     uint32_t tag = ZL_readLE32(&bytecode[pc]);
                     pc += 4;
-                    err = SDDL2_stack_push(&stack, SDDL2_value_tag(tag));
+                    err = SDDL2_Stack_push(&stack, SDDL2_Value_tag(tag));
                 } else {
                     // Handle all push.type opcodes via lookup table
                     int found = 0;
                     for (size_t i = 0; i < PUSH_TYPE_MAP_SIZE; i++) {
                         if (opcode == PUSH_TYPE_MAP[i].opcode) {
-                            SDDL2_type type = { .kind  = PUSH_TYPE_MAP[i].kind,
+                            SDDL2_Type type = { .kind  = PUSH_TYPE_MAP[i].kind,
                                                 .width = 1 };
-                            err             = SDDL2_stack_push(
-                                    &stack, SDDL2_value_type(type));
+                            err             = SDDL2_Stack_push(
+                                    &stack, SDDL2_Value_type(type));
                             found = 1;
                             break;
                         }
@@ -252,7 +252,7 @@ SDDL2_error SDDL2_execute_bytecode(
 
             case SDDL2_FAMILY_MATH: {
                 // Dispatch via lookup table
-                SDDL2_stack_op_fn handler = NULL;
+                SDDL2_Stack_op_fn handler = NULL;
                 for (size_t i = 0; i < MATH_OP_MAP_SIZE; i++) {
                     if (opcode == MATH_OP_MAP[i].opcode) {
                         handler = MATH_OP_MAP[i].handler;
@@ -270,7 +270,7 @@ SDDL2_error SDDL2_execute_bytecode(
 
             case SDDL2_FAMILY_CMP: {
                 // Dispatch via lookup table
-                SDDL2_stack_op_fn handler = NULL;
+                SDDL2_Stack_op_fn handler = NULL;
                 for (size_t i = 0; i < CMP_OP_MAP_SIZE; i++) {
                     if (opcode == CMP_OP_MAP[i].opcode) {
                         handler = CMP_OP_MAP[i].handler;
@@ -288,7 +288,7 @@ SDDL2_error SDDL2_execute_bytecode(
 
             case SDDL2_FAMILY_STACK: {
                 // Dispatch via lookup table
-                SDDL2_stack_op_fn handler = NULL;
+                SDDL2_Stack_op_fn handler = NULL;
                 for (size_t i = 0; i < STACK_OP_MAP_SIZE; i++) {
                     if (opcode == STACK_OP_MAP[i].opcode) {
                         handler = STACK_OP_MAP[i].handler;
@@ -329,7 +329,7 @@ SDDL2_error SDDL2_execute_bytecode(
     }
 
     // Cleanup
-    SDDL2_tag_registry_destroy(&registry);
+    SDDL2_Tag_registry_destroy(&registry);
 
     // Implicit halt: reaching the end of bytecode is treated as a successful
     // halt, even if no explicit halt instruction was encountered.

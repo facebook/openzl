@@ -93,10 +93,10 @@ static void test_assembled_hello(void)
     printf("Loaded %zu bytes of bytecode from test_hello.bin\n", bytecode_size);
 
     // Execute bytecode
-    SDDL2_segment_list segments;
-    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_Segment_list segments;
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
 
-    SDDL2_error err = SDDL2_execute_bytecode(
+    SDDL2_Error err = SDDL2_execute_bytecode(
             bytecode, bytecode_size, input, sizeof(input) - 1, &segments);
 
     // Verify execution
@@ -108,7 +108,7 @@ static void test_assembled_hello(void)
 
     // Cleanup
     free(bytecode);
-    SDDL2_segment_list_destroy(&segments);
+    SDDL2_Segment_list_destroy(&segments);
 
     printf("✓ test_assembled_hello passed\n");
 }
@@ -163,17 +163,17 @@ static void test_multi_segments(void)
            bytecode_size);
 
     // Execute bytecode
-    SDDL2_segment_list segments;
-    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_Segment_list segments;
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
 
-    SDDL2_error err = SDDL2_execute_bytecode(
+    SDDL2_Error err = SDDL2_execute_bytecode(
             bytecode, bytecode_size, input, sizeof(input), &segments);
 
     // Verify execution
     if (err != SDDL2_OK) {
         fprintf(stderr, "Execution failed with error code: %d\n", err);
         free(bytecode);
-        SDDL2_segment_list_destroy(&segments);
+        SDDL2_Segment_list_destroy(&segments);
         exit(1);
     }
     assert(err == SDDL2_OK);
@@ -202,7 +202,7 @@ static void test_multi_segments(void)
 
     // Cleanup
     free(bytecode);
-    SDDL2_segment_list_destroy(&segments);
+    SDDL2_Segment_list_destroy(&segments);
 
     printf("✓ test_multi_segments passed\n");
 }

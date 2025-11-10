@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 /**
- * Unit tests for SDDL2_type_size() function.
+ * Unit tests for SDDL2_Type_size() function.
  * Verifies that all 24 type kinds return the correct size in bytes.
  */
 
@@ -84,7 +84,7 @@ static void test_8byte_types(void)
 static void test_invalid_type(void)
 {
     // Cast invalid enum value
-    SDDL2_type_kind invalid = (SDDL2_type_kind)9999;
+    SDDL2_Type_kind invalid = (SDDL2_Type_kind)9999;
     assert(SDDL2_kind_size(invalid) == 0);
 
     printf("✓ test_invalid_type passed\n");
@@ -92,7 +92,7 @@ static void test_invalid_type(void)
 
 int main(void)
 {
-    printf("Running SDDL2_type_size() Tests...\n\n");
+    printf("Running SDDL2_Type_size() Tests...\n\n");
 
     test_1byte_types();
     test_2byte_types();

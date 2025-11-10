@@ -37,6 +37,7 @@ libzl.a
 libzl.so
 libopenzl.a
 libopenzl.so
+sddl_compiler
 sddl2_arithmetic_test
 sddl2_input_test
 sddl2_segments_test

@@ -110,32 +110,32 @@ static inline int sddl2_run_all_tests(void)
 /* Helper: Pop and verify I64 result */
 #define POP_AND_VERIFY_I64(stack, expected_value)             \
     do {                                                      \
-        SDDL2_value _result;                                  \
-        assert(SDDL2_stack_pop(stack, &_result) == SDDL2_OK); \
+        SDDL2_Value _result;                                  \
+        assert(SDDL2_Stack_pop(stack, &_result) == SDDL2_OK); \
         ASSERT_I64_VALUE(_result, expected_value);            \
     } while (0)
 
 /* Helper: Setup input buffer for tests */
 #define SETUP_INPUT_BUFFER(buffer_var, data_array) \
-    SDDL2_input_buffer buffer_var;                 \
-    SDDL2_input_buffer_init(&buffer_var, data_array, sizeof(data_array))
+    SDDL2_Input_buffer buffer_var;                 \
+    SDDL2_Input_buffer_init(&buffer_var, data_array, sizeof(data_array))
 
 /* Helper: Setup segment list for tests */
 #define SETUP_SEGMENT_LIST(segments_var) \
-    SDDL2_segment_list segments_var;     \
-    SDDL2_segment_list_init(&segments_var, NULL, NULL)
+    SDDL2_Segment_list segments_var;     \
+    SDDL2_Segment_list_init(&segments_var, NULL, NULL)
 
 /* Helper: Setup tag registry for tests */
 #define SETUP_TAG_REGISTRY(registry_var) \
-    SDDL2_tag_registry registry_var;     \
-    SDDL2_tag_registry_init(&registry_var, NULL, NULL)
+    SDDL2_Tag_registry registry_var;     \
+    SDDL2_Tag_registry_init(&registry_var, NULL, NULL)
 
 /* Helper: Cleanup segment list */
 #define CLEANUP_SEGMENT_LIST(segments_var) \
-    SDDL2_segment_list_destroy(&segments_var)
+    SDDL2_Segment_list_destroy(&segments_var)
 
 /* Helper: Cleanup tag registry */
 #define CLEANUP_TAG_REGISTRY(registry_var) \
-    SDDL2_tag_registry_destroy(&registry_var)
+    SDDL2_Tag_registry_destroy(&registry_var)
 
 #endif // SDDL2_TEST_FRAMEWORK_H

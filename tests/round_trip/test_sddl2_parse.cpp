@@ -361,8 +361,8 @@ TEST(SDDL2ParseTest, U16BESegmentBigEndian)
  *   push.tag 100
  *   push.type.u32le       ; Base type: Type{U32LE, 1}
  *   push.i32 10           ; Push array count onto stack
- *   type.fixed_array      ; Stack-based: pops count and type, creates Type{U32LE, 10}
- *   push.i32 25           ; Element count: 25 arrays
+ *   type.fixed_array      ; Stack-based: pops count and type, creates
+ * Type{U32LE, 10} push.i32 25           ; Element count: 25 arrays
  *   segment.create_tagged ; Creates 1000-byte segment (25 × 10 × 4 bytes)
  *   halt
  *
@@ -377,16 +377,17 @@ TEST(SDDL2ParseTest, ArrayTypeU32LE10)
             load_bytecode("tests/round_trip/test_data/array_type_u32le_10.bin");
 
     // Generate 25 arrays of 10 U32LE values each
-    // Each array contains values [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] in little-endian
+    // Each array contains values [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] in
+    // little-endian
     const size_t ARRAY_SIZE = 10;
     const size_t NUM_ARRAYS = 25;
-    
+
     uint32_t input[NUM_ARRAYS][ARRAY_SIZE];
-    
+
     // Fill with repeating pattern: each array contains [0..9]
     for (size_t array_idx = 0; array_idx < NUM_ARRAYS; array_idx++) {
         for (size_t i = 0; i < ARRAY_SIZE; i++) {
-            uint32_t value = static_cast<uint32_t>(i);
+            uint32_t value      = static_cast<uint32_t>(i);
             input[array_idx][i] = value;
         }
     }

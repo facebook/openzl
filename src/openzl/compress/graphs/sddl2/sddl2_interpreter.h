@@ -30,11 +30,11 @@
  *
  * @return SDDL2_OK on success, error code on failure
  */
-SDDL2_error SDDL2_execute_bytecode(
+SDDL2_Error SDDL2_execute_bytecode(
         const void* bytecode,
         size_t bytecode_size,
         const void* input_data,
         size_t input_size,
-        SDDL2_segment_list* output_segments);
+        SDDL2_Segment_list* output_segments);
 
 #endif // OPENZL_SDDL2_INTERPRETER_H

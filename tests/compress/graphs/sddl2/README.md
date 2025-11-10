@@ -69,7 +69,7 @@ python3 generate_test_bytecode.py
 1. Write test function in appropriate file:
    ```c
    static void test_my_feature(void) {
-       SDDL2_stack* stack = create_test_stack(100);
+       SDDL2_Stack* stack = create_test_stack(100);
 
        assert(SDDL2_op_my_feature(stack) == SDDL2_OK);
        assert(/* verify result */);

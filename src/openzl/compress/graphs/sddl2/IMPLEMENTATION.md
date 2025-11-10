@@ -36,13 +36,13 @@ Everything else (arithmetic, comparisons, etc.) is a **support feature** for seg
 - Value system with consistent `SDDL2_*` naming
 - Type system (19 primitive types: U8, I16LE, F32BE, BYTES, etc.)
 - Stack operations with bounds checking
-- Unified error system: `SDDL2_error` enum
+- Unified error system: `SDDL2_Error` enum
 - 7 tests, all passing ✅
 
 **Key Types**:
-- `SDDL2_value` - Stack values (I64, Tag, Type)
-- `SDDL2_stack` - VM stack structure
-- `SDDL2_error` - Unified error codes
+- `SDDL2_Value` - Stack values (I64, Tag, Type)
+- `SDDL2_Stack` - VM stack structure
+- `SDDL2_Error` - Unified error codes
 
 **Files**: `sddl2_vm.h`, `sddl2_vm.c`, `sddl2_vm_test.c`
 
@@ -75,7 +75,7 @@ typedef struct {
     const void* data;       // Borrowed pointer (any type)
     size_t size;            // Total size in bytes
     size_t current_pos;     // Cursor for sequential reading
-} SDDL2_input_buffer;
+} SDDL2_Input_buffer;
 ```
 
 **Design Decisions**:
@@ -86,7 +86,7 @@ typedef struct {
 **Operations Implemented**:
 1. `SDDL2_op_current_pos` - Push cursor position to stack (doesn't advance)
 2. `SDDL2_op_load_u8` - Load single byte at address (random access, doesn't advance cursor)
-3. `SDDL2_input_buffer_init` - Initialize buffer
+3. `SDDL2_Input_buffer_init` - Initialize buffer
 
 **Error Handling**:
 - `SDDL2_LOAD_BOUNDS` for out-of-bounds loads
@@ -117,16 +117,16 @@ typedef struct {
     uint32_t tag;           // Tag (0 for unspecified)
     size_t start_pos;       // Start offset in input
     size_t size_bytes;      // Length in bytes
-} SDDL2_segment;
+} SDDL2_Segment;
 ```
 
 **Segment List** (dynamic growth):
 ```c
 typedef struct {
-    SDDL2_segment* items;   // Dynamic array (grows 2x)
+    SDDL2_Segment* items;   // Dynamic array (grows 2x)
     size_t count;           // Number of segments
     size_t capacity;        // Allocated capacity
-} SDDL2_segment_list;
+} SDDL2_Segment_list;
 ```
 
 **Operation Implemented**:
@@ -197,8 +197,8 @@ typedef struct {
     uint32_t tag;       // Segment identifier (0 = unspecified)
     size_t start_pos;   // Start offset in input buffer
     size_t size_bytes;  // Length in bytes
-    SDDL2_type type;    // Element type (array of type.kind)
-} SDDL2_segment;
+    SDDL2_Type type;    // Element type (array of type.kind)
+} SDDL2_Segment;
 ```
 
 **Tag Registry**:
@@ -207,7 +207,7 @@ typedef struct {
     uint32_t* tags;         // Array of registered tag IDs
     size_t count;           // Number of registered tags
     size_t capacity;        // Allocated capacity
-} SDDL2_tag_registry;
+} SDDL2_Tag_registry;
 ```
 
 **Typed Tagged Segment Operation**:
@@ -343,7 +343,7 @@ Tag:I64  size_bytes:I64  Type(elem_type)
 
 **Validation**:
 ```
-elem_size = SDDL2_type_size(elem_type.kind) * elem_type.width
+elem_size = SDDL2_Type_size(elem_type.kind) * elem_type.width
 assert(size_bytes % elem_size == 0)
 ```
 
@@ -371,7 +371,7 @@ Tag  size_bytes  Type₀  Type₁  ...  Typeₙ₋₁  N:I64
 
 **Validation**:
 ```
-struct_size = Σ SDDL2_type_size(field_i)
+struct_size = Σ SDDL2_Type_size(field_i)
 elem_count = size_bytes / struct_size
 assert(size_bytes % struct_size == 0)
 ```
@@ -442,12 +442,12 @@ tests/compress/graphs/sddlv2/
 
 ### Naming Consistency
 All public VM types use `SDDL2_*` prefix:
-- `SDDL2_stack`, `SDDL2_error`, `SDDL2_value`, `SDDL2_type`
-- `SDDL2_input_buffer`, `SDDL2_segment`, `SDDL2_segment_list`
+- `SDDL2_Stack`, `SDDL2_Error`, `SDDL2_Value`, `SDDL2_Type`
+- `SDDL2_Input_buffer`, `SDDL2_Segment`, `SDDL2_Segment_list`
 - Functions: `SDDL2_op_add()`, `SDDL2_op_segment_create_unspecified()`
 
 ### Error System
-Unified `SDDL2_error` enum with domain-specific codes:
+Unified `SDDL2_Error` enum with domain-specific codes:
 - Stack: `SDDL2_STACK_OVERFLOW`, `SDDL2_STACK_UNDERFLOW`
 - Operations: `SDDL2_TYPE_MISMATCH`
 - Input: `SDDL2_LOAD_BOUNDS`

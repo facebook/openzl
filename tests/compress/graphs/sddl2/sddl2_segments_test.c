@@ -13,21 +13,21 @@
 #include "openzl/compress/graphs/sddl2/sddl2_vm.h"
 
 /* Test helpers */
-static SDDL2_stack* create_test_stack(size_t capacity)
+static SDDL2_Stack* create_test_stack(size_t capacity)
 {
-    SDDL2_stack* stack = malloc(sizeof(SDDL2_stack));
+    SDDL2_Stack* stack = malloc(sizeof(SDDL2_Stack));
     assert(stack != NULL);
 
-    stack->items = malloc(sizeof(SDDL2_value) * capacity);
+    stack->items = malloc(sizeof(SDDL2_Value) * capacity);
     assert(stack->items != NULL);
 
     stack->capacity = capacity;
-    SDDL2_stack_init(stack);
+    SDDL2_Stack_init(stack);
 
     return stack;
 }
 
-static void destroy_test_stack(SDDL2_stack* stack)
+static void destroy_test_stack(SDDL2_Stack* stack)
 {
     free(stack->items);
     free(stack);
@@ -39,9 +39,9 @@ static void destroy_test_stack(SDDL2_stack* stack)
 
 static void test_segment_list_init(void)
 {
-    SDDL2_segment_list list;
+    SDDL2_Segment_list list;
 
-    SDDL2_segment_list_init(&list, NULL, NULL);
+    SDDL2_Segment_list_init(&list, NULL, NULL);
 
     assert(list.items == NULL);
     assert(list.count == 0);
@@ -52,10 +52,10 @@ static void test_segment_list_init(void)
 
 static void test_segment_list_destroy(void)
 {
-    SDDL2_segment_list list;
+    SDDL2_Segment_list list;
 
-    SDDL2_segment_list_init(&list, NULL, NULL);
-    SDDL2_segment_list_destroy(&list);
+    SDDL2_Segment_list_init(&list, NULL, NULL);
+    SDDL2_Segment_list_destroy(&list);
 
     assert(list.items == NULL);
     assert(list.count == 0);
@@ -70,16 +70,16 @@ static void test_segment_list_destroy(void)
 
 static void test_create_single_segment(void)
 {
-    SDDL2_stack* stack = create_test_stack(100);
+    SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04 };
-    SDDL2_input_buffer buffer;
-    SDDL2_segment_list segments;
+    SDDL2_Input_buffer buffer;
+    SDDL2_Segment_list segments;
 
-    SDDL2_input_buffer_init(&buffer, data, 4);
-    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_Input_buffer_init(&buffer, data, 4);
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Create unspecified segment: size=4 (no tag)
-    assert(SDDL2_stack_push(stack, SDDL2_value_i64(4)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(4)) == SDDL2_OK);
 
     assert(SDDL2_op_segment_create_unspecified(stack, &buffer, &segments)
            == SDDL2_OK);
@@ -94,25 +94,25 @@ static void test_create_single_segment(void)
     assert(buffer.current_pos == 4);
 
     // Verify stack is empty
-    assert(SDDL2_stack_depth(stack) == 0);
+    assert(SDDL2_Stack_depth(stack) == 0);
 
-    SDDL2_segment_list_destroy(&segments);
+    SDDL2_Segment_list_destroy(&segments);
     destroy_test_stack(stack);
     printf("✓ test_create_single_segment passed\n");
 }
 
 static void test_create_zero_size_segment(void)
 {
-    SDDL2_stack* stack = create_test_stack(100);
+    SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0xAA, 0xBB };
-    SDDL2_input_buffer buffer;
-    SDDL2_segment_list segments;
+    SDDL2_Input_buffer buffer;
+    SDDL2_Segment_list segments;
 
-    SDDL2_input_buffer_init(&buffer, data, 2);
-    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_Input_buffer_init(&buffer, data, 2);
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Create zero-size unspecified segment: size=0 (no tag)
-    assert(SDDL2_stack_push(stack, SDDL2_value_i64(0)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
 
     assert(SDDL2_op_segment_create_unspecified(stack, &buffer, &segments)
            == SDDL2_OK);
@@ -126,7 +126,7 @@ static void test_create_zero_size_segment(void)
     // Cursor should not advance
     assert(buffer.current_pos == 0);
 
-    SDDL2_segment_list_destroy(&segments);
+    SDDL2_Segment_list_destroy(&segments);
     destroy_test_stack(stack);
     printf("✓ test_create_zero_size_segment passed\n");
 }
@@ -137,16 +137,16 @@ static void test_create_zero_size_segment(void)
 
 static void test_segment_exceeds_buffer(void)
 {
-    SDDL2_stack* stack = create_test_stack(100);
+    SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02, 0x03 };
-    SDDL2_input_buffer buffer;
-    SDDL2_segment_list segments;
+    SDDL2_Input_buffer buffer;
+    SDDL2_Segment_list segments;
 
-    SDDL2_input_buffer_init(&buffer, data, 3);
-    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_Input_buffer_init(&buffer, data, 3);
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Try to create segment larger than buffer: size=10
-    assert(SDDL2_stack_push(stack, SDDL2_value_i64(10)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(10)) == SDDL2_OK);
 
     assert(SDDL2_op_segment_create_unspecified(stack, &buffer, &segments)
            == SDDL2_SEGMENT_BOUNDS);
@@ -157,23 +157,23 @@ static void test_segment_exceeds_buffer(void)
     // Cursor should not advance
     assert(buffer.current_pos == 0);
 
-    SDDL2_segment_list_destroy(&segments);
+    SDDL2_Segment_list_destroy(&segments);
     destroy_test_stack(stack);
     printf("✓ test_segment_exceeds_buffer passed\n");
 }
 
 static void test_segment_at_exact_boundary(void)
 {
-    SDDL2_stack* stack = create_test_stack(100);
+    SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x10, 0x20, 0x30, 0x40, 0x50 };
-    SDDL2_input_buffer buffer;
-    SDDL2_segment_list segments;
+    SDDL2_Input_buffer buffer;
+    SDDL2_Segment_list segments;
 
-    SDDL2_input_buffer_init(&buffer, data, 5);
-    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_Input_buffer_init(&buffer, data, 5);
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Create segment exactly at buffer size: size=5
-    assert(SDDL2_stack_push(stack, SDDL2_value_i64(5)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(5)) == SDDL2_OK);
 
     assert(SDDL2_op_segment_create_unspecified(stack, &buffer, &segments)
            == SDDL2_OK);
@@ -184,33 +184,33 @@ static void test_segment_at_exact_boundary(void)
     assert(buffer.current_pos == 5);
 
     // Try to create one more byte - should fail
-    assert(SDDL2_stack_push(stack, SDDL2_value_i64(1)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
     assert(SDDL2_op_segment_create_unspecified(stack, &buffer, &segments)
            == SDDL2_SEGMENT_BOUNDS);
 
-    SDDL2_segment_list_destroy(&segments);
+    SDDL2_Segment_list_destroy(&segments);
     destroy_test_stack(stack);
     printf("✓ test_segment_at_exact_boundary passed\n");
 }
 
 static void test_segment_after_partial_consumption(void)
 {
-    SDDL2_stack* stack = create_test_stack(100);
+    SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0xAA, 0xBB, 0xCC, 0xDD };
-    SDDL2_input_buffer buffer;
-    SDDL2_segment_list segments;
+    SDDL2_Input_buffer buffer;
+    SDDL2_Segment_list segments;
 
-    SDDL2_input_buffer_init(&buffer, data, 4);
-    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_Input_buffer_init(&buffer, data, 4);
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Create first segment: size=2
-    assert(SDDL2_stack_push(stack, SDDL2_value_i64(2)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(2)) == SDDL2_OK);
     assert(SDDL2_op_segment_create_unspecified(stack, &buffer, &segments)
            == SDDL2_OK);
 
     // Try to create segment that's too large for remaining: size=3 (only 2
     // left)
-    assert(SDDL2_stack_push(stack, SDDL2_value_i64(3)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(3)) == SDDL2_OK);
     assert(SDDL2_op_segment_create_unspecified(stack, &buffer, &segments)
            == SDDL2_SEGMENT_BOUNDS);
 
@@ -218,7 +218,7 @@ static void test_segment_after_partial_consumption(void)
     assert(segments.count == 1);
     assert(buffer.current_pos == 2);
 
-    SDDL2_segment_list_destroy(&segments);
+    SDDL2_Segment_list_destroy(&segments);
     destroy_test_stack(stack);
     printf("✓ test_segment_after_partial_consumption passed\n");
 }
@@ -229,93 +229,93 @@ static void test_segment_after_partial_consumption(void)
 
 static void test_segment_wrong_tag_type(void)
 {
-    SDDL2_stack* stack = create_test_stack(100);
+    SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02 };
-    SDDL2_input_buffer buffer;
-    SDDL2_segment_list segments;
+    SDDL2_Input_buffer buffer;
+    SDDL2_Segment_list segments;
 
-    SDDL2_input_buffer_init(&buffer, data, 2);
-    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_Input_buffer_init(&buffer, data, 2);
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Push Tag instead of I64 for size
-    assert(SDDL2_stack_push(stack, SDDL2_value_tag(100)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(100)) == SDDL2_OK);
 
     assert(SDDL2_op_segment_create_unspecified(stack, &buffer, &segments)
            == SDDL2_TYPE_MISMATCH);
 
     assert(segments.count == 0);
 
-    SDDL2_segment_list_destroy(&segments);
+    SDDL2_Segment_list_destroy(&segments);
     destroy_test_stack(stack);
     printf("✓ test_segment_wrong_tag_type passed\n");
 }
 
 static void test_segment_wrong_size_type(void)
 {
-    SDDL2_stack* stack = create_test_stack(100);
+    SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02 };
-    SDDL2_input_buffer buffer;
-    SDDL2_segment_list segments;
+    SDDL2_Input_buffer buffer;
+    SDDL2_Segment_list segments;
 
-    SDDL2_input_buffer_init(&buffer, data, 2);
-    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_Input_buffer_init(&buffer, data, 2);
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Push Type instead of I64 for size
-    SDDL2_type t = { .kind = SDDL2_TYPE_U8, .width = 1 };
-    assert(SDDL2_stack_push(stack, SDDL2_value_type(t)) == SDDL2_OK);
+    SDDL2_Type t = { .kind = SDDL2_TYPE_U8, .width = 1 };
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(t)) == SDDL2_OK);
 
     assert(SDDL2_op_segment_create_unspecified(stack, &buffer, &segments)
            == SDDL2_TYPE_MISMATCH);
 
     assert(segments.count == 0);
 
-    SDDL2_segment_list_destroy(&segments);
+    SDDL2_Segment_list_destroy(&segments);
     destroy_test_stack(stack);
     printf("✓ test_segment_wrong_size_type passed\n");
 }
 
 static void test_segment_negative_tag(void)
 {
-    SDDL2_stack* stack = create_test_stack(100);
+    SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02 };
-    SDDL2_input_buffer buffer;
-    SDDL2_segment_list segments;
+    SDDL2_Input_buffer buffer;
+    SDDL2_Segment_list segments;
 
-    SDDL2_input_buffer_init(&buffer, data, 2);
-    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_Input_buffer_init(&buffer, data, 2);
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Negative size should fail
-    assert(SDDL2_stack_push(stack, SDDL2_value_i64(-100)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(-100)) == SDDL2_OK);
 
     assert(SDDL2_op_segment_create_unspecified(stack, &buffer, &segments)
            == SDDL2_TYPE_MISMATCH);
 
     assert(segments.count == 0);
 
-    SDDL2_segment_list_destroy(&segments);
+    SDDL2_Segment_list_destroy(&segments);
     destroy_test_stack(stack);
     printf("✓ test_segment_negative_tag passed\n"); // Test name kept for now
 }
 
 static void test_segment_negative_size(void)
 {
-    SDDL2_stack* stack = create_test_stack(100);
+    SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02 };
-    SDDL2_input_buffer buffer;
-    SDDL2_segment_list segments;
+    SDDL2_Input_buffer buffer;
+    SDDL2_Segment_list segments;
 
-    SDDL2_input_buffer_init(&buffer, data, 2);
-    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_Input_buffer_init(&buffer, data, 2);
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Another negative size test
-    assert(SDDL2_stack_push(stack, SDDL2_value_i64(-5)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(-5)) == SDDL2_OK);
 
     assert(SDDL2_op_segment_create_unspecified(stack, &buffer, &segments)
            == SDDL2_TYPE_MISMATCH);
 
     assert(segments.count == 0);
 
-    SDDL2_segment_list_destroy(&segments);
+    SDDL2_Segment_list_destroy(&segments);
     destroy_test_stack(stack);
     printf("✓ test_segment_negative_size passed\n");
 }
@@ -326,13 +326,13 @@ static void test_segment_negative_size(void)
 
 static void test_segment_empty_stack(void)
 {
-    SDDL2_stack* stack = create_test_stack(100);
+    SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02 };
-    SDDL2_input_buffer buffer;
-    SDDL2_segment_list segments;
+    SDDL2_Input_buffer buffer;
+    SDDL2_Segment_list segments;
 
-    SDDL2_input_buffer_init(&buffer, data, 2);
-    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_Input_buffer_init(&buffer, data, 2);
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Empty stack - should underflow
     assert(SDDL2_op_segment_create_unspecified(stack, &buffer, &segments)
@@ -340,20 +340,20 @@ static void test_segment_empty_stack(void)
 
     assert(segments.count == 0);
 
-    SDDL2_segment_list_destroy(&segments);
+    SDDL2_Segment_list_destroy(&segments);
     destroy_test_stack(stack);
     printf("✓ test_segment_empty_stack passed\n");
 }
 
 static void test_segment_missing_size(void)
 {
-    SDDL2_stack* stack = create_test_stack(100);
+    SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02 };
-    SDDL2_input_buffer buffer;
-    SDDL2_segment_list segments;
+    SDDL2_Input_buffer buffer;
+    SDDL2_Segment_list segments;
 
-    SDDL2_input_buffer_init(&buffer, data, 2);
-    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_Input_buffer_init(&buffer, data, 2);
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Don't push anything - test empty stack
 
@@ -362,7 +362,7 @@ static void test_segment_missing_size(void)
 
     assert(segments.count == 0);
 
-    SDDL2_segment_list_destroy(&segments);
+    SDDL2_Segment_list_destroy(&segments);
     destroy_test_stack(stack);
     printf("✓ test_segment_missing_size passed\n"); // Now tests empty stack
 }
@@ -373,19 +373,19 @@ static void test_segment_missing_size(void)
 
 static void test_end_to_end_simple_program(void)
 {
-    SDDL2_stack* stack = create_test_stack(100);
+    SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x48, 0x65, 0x6C, 0x6C, 0x6F }; // "Hello"
-    SDDL2_input_buffer buffer;
-    SDDL2_segment_list segments;
+    SDDL2_Input_buffer buffer;
+    SDDL2_Segment_list segments;
 
-    SDDL2_input_buffer_init(&buffer, data, 5);
-    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_Input_buffer_init(&buffer, data, 5);
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Simulate VM program:
     // push 5            # size
     // segment_create_unspecified
 
-    assert(SDDL2_stack_push(stack, SDDL2_value_i64(5)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(5)) == SDDL2_OK);
     assert(SDDL2_op_segment_create_unspecified(stack, &buffer, &segments)
            == SDDL2_OK);
 
@@ -396,20 +396,20 @@ static void test_end_to_end_simple_program(void)
     assert(segments.items[0].size_bytes == 5);
     assert(buffer.current_pos == 5);
 
-    SDDL2_segment_list_destroy(&segments);
+    SDDL2_Segment_list_destroy(&segments);
     destroy_test_stack(stack);
     printf("✓ test_end_to_end_simple_program passed\n");
 }
 
 static void test_segments_with_arithmetic(void)
 {
-    SDDL2_stack* stack = create_test_stack(100);
+    SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[10]   = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-    SDDL2_input_buffer buffer;
-    SDDL2_segment_list segments;
+    SDDL2_Input_buffer buffer;
+    SDDL2_Segment_list segments;
 
-    SDDL2_input_buffer_init(&buffer, data, 10);
-    SDDL2_segment_list_init(&segments, NULL, NULL);
+    SDDL2_Input_buffer_init(&buffer, data, 10);
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Simulate VM program with arithmetic:
     // push 2            # a
@@ -417,8 +417,8 @@ static void test_segments_with_arithmetic(void)
     // add               # a + b = 5
     // segment_create_unspecified
 
-    assert(SDDL2_stack_push(stack, SDDL2_value_i64(2)) == SDDL2_OK);
-    assert(SDDL2_stack_push(stack, SDDL2_value_i64(3)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(2)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(3)) == SDDL2_OK);
     assert(SDDL2_op_add(stack) == SDDL2_OK);
     assert(SDDL2_op_segment_create_unspecified(stack, &buffer, &segments)
            == SDDL2_OK);
@@ -427,7 +427,7 @@ static void test_segments_with_arithmetic(void)
     assert(segments.count == 1);
     assert(segments.items[0].size_bytes == 5);
 
-    SDDL2_segment_list_destroy(&segments);
+    SDDL2_Segment_list_destroy(&segments);
     destroy_test_stack(stack);
     printf("✓ test_segments_with_arithmetic passed\n");
 }
