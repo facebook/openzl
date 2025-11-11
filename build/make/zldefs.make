@@ -73,7 +73,7 @@ else ifeq ($(BUILD_TYPE),OPT)
     CFLAGS += -g0 -O3
     CXXFLAGS += -g0 -O3
     CPPFLAGS += -DNDEBUG
-    MCM_STRIP = 1
+    MCM_STRIP ?= 1
 else ifeq ($(BUILD_TYPE),OPT_ASAN)
     CFLAGS += -O3 -DNDEBUG
     CXXFLAGS += -O3 -DNDEBUG
@@ -94,7 +94,7 @@ else ifeq ($(BUILD_TYPE),DBGO_ASAN)
     LDFLAGS += $(SANITIZER_FLAGS)
 else ifeq ($(BUILD_TYPE),DEFAULT)
 # no modification, just use baseline flags
-    MCM_STRIP = 1
+    MCM_STRIP ?= 1
 else
     $(error Invalid BUILD_TYPE: $(BUILD_TYPE). Valid options: DEFAULT, DEV, DEV_NOSAN, OPT, OPT_ASAN, DBGO, DBGO_ASAN, TRACES, TRACES_NOSAN)
 endif

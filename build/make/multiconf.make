@@ -184,7 +184,7 @@ $$(CACHE_ROOT)/%/$(1) : $$(addprefix $$(CACHE_ROOT)/%/,$(2)) $(3)
 
 .PHONY: $(1)
 $(1) : ARFLAGS = rcs
-$(1) : $$(CACHE_ROOT)/$$(call HASH_FUNC,$(1),$(2) $$(CPPFLAGS) $$(CC) $$(CFLAGS) $$(CXX) $$(CXXFLAGS) $$(AR) $$(ARFLAGS) $(5))/$(1)
+$(1) : $$(CACHE_ROOT)/$$(call HASH_FUNC,$(1),$(2) $$(CPPFLAGS) $$(CC) $$(CFLAGS) $$(CXX) $$(CXXFLAGS) $$(AR) $$(ARFLAGS) $(MCM_STRIP) $(5))/$(1)
 	$$(LN) -sf $$< $$@
 
 endef # static_library
@@ -215,7 +215,7 @@ endif
 
 .PHONY: $(1)
 $(1) : CFLAGS += -fPIC
-$(1) : $$(CACHE_ROOT)/$$(call HASH_FUNC,$(1),$(2) $$(CPPFLAGS) $$(CC) $$(CFLAGS) $$(LDFLAGS) $$(LDLIBS) $(5))/$(1)
+$(1) : $$(CACHE_ROOT)/$$(call HASH_FUNC,$(1),$(2) $$(CPPFLAGS) $$(CC) $$(CFLAGS) $$(LDFLAGS) $$(LDLIBS) $(MCM_STRIP) $(5))/$(1)
 	$$(LN) -sf $$< $$@
 
 endef # c_dynamic_library
@@ -267,7 +267,7 @@ endif
 
 endif
 
-MCM_HASH_$(1) = $$(call HASH_FUNC,$(1),$($(6)) $$(CPPFLAGS) $($(7)) $$(LDFLAGS) $$(LDLIBS) $(5))
+MCM_HASH_$(1) = $$(call HASH_FUNC,$(1),$($(6)) $$(CPPFLAGS) $($(7)) $$(LDFLAGS) $$(LDLIBS) $$(MCM_STRIP) $(5))
 
 .PHONY: $(1)
 $(1) : $$(CACHE_ROOT)/$$(MCM_HASH_$(1))/$(1)
