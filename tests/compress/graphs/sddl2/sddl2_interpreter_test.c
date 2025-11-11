@@ -790,6 +790,223 @@ TEST(test_type_structure_execution)
     SDDL2_Segment_list_destroy(&segments);
 }
 
+/* ============================================================================
+ * push.current_pos Tests
+ * ========================================================================= */
+
+/**
+ * Test: push.current_pos at buffer start
+ *
+ * Verifies that push.current_pos returns 0 when called at the beginning
+ * of buffer before any segments are created.
+ *
+ * Assembly:
+ *   push.current_pos
+ *   segment.create_unspecified
+ *   halt
+ */
+TEST(test_push_current_pos_initial)
+{
+    uint8_t input[] = "Hello";
+
+    EXPECT_SUCCESS(
+            BYTECODE_TEST_PUSH_CURRENT_POS_INITIAL,
+            BYTECODE_TEST_PUSH_CURRENT_POS_INITIAL_SIZE,
+            input,
+            sizeof(input) - 1)
+    {
+        // Should create one segment from position 0
+        assert(segments.count == 1);
+        assert(segments.items[0].start_pos == 0);
+        assert(segments.items[0].size_bytes
+               == 0); // Current pos (0) was used as size
+    }
+    END_EXPECT_SUCCESS();
+}
+
+/**
+ * Test: push.current_pos after creating segment
+ *
+ * Verifies that push.current_pos correctly returns the updated cursor
+ * position after a segment advances it. Uses tagged segments to prevent
+ * automatic merging.
+ *
+ * Assembly:
+ *   push.tag 100
+ *   push.type.bytes
+ *   push.i32 5
+ *   segment.create_tagged
+ *   push.tag 200
+ *   push.type.bytes
+ *   push.current_pos
+ *   segment.create_tagged
+ *   halt
+ */
+TEST(test_push_current_pos_after_segment)
+{
+    uint8_t input[] = "HelloWorld";
+
+    EXPECT_SUCCESS(
+            BYTECODE_TEST_PUSH_CURRENT_POS_AFTER_SEGMENT,
+            BYTECODE_TEST_PUSH_CURRENT_POS_AFTER_SEGMENT_SIZE,
+            input,
+            sizeof(input) - 1)
+    {
+        // Should create two segments with different tags
+        assert(segments.count == 2);
+
+        // First segment: tag=100, 5 bytes from position 0
+        assert(segments.items[0].tag == 100);
+        assert(segments.items[0].start_pos == 0);
+        assert(segments.items[0].size_bytes == 5);
+
+        // Second segment: tag=200, 5 bytes from position 5 (current_pos was 5)
+        assert(segments.items[1].tag == 200);
+        assert(segments.items[1].start_pos == 5);
+        assert(segments.items[1].size_bytes == 5);
+    }
+    END_EXPECT_SUCCESS();
+}
+
+/**
+ * Test: push.current_pos with multiple segments
+ *
+ * Verifies cursor position tracking across multiple segment creations
+ * and arithmetic operations. Uses tagged segments to prevent merging.
+ *
+ * Assembly:
+ *   push.tag 100
+ *   push.type.bytes
+ *   push.i32 3
+ *   segment.create_tagged
+ *   push.tag 200
+ *   push.type.bytes
+ *   push.current_pos
+ *   push.i32 2
+ *   math.add
+ *   segment.create_tagged
+ *   push.tag 300
+ *   push.type.bytes
+ *   push.current_pos
+ *   segment.create_tagged
+ *   halt
+ */
+TEST(test_push_current_pos_multiple)
+{
+    uint8_t input[] = "0123456789ABCDEF";
+
+    EXPECT_SUCCESS(
+            BYTECODE_TEST_PUSH_CURRENT_POS_MULTIPLE,
+            BYTECODE_TEST_PUSH_CURRENT_POS_MULTIPLE_SIZE,
+            input,
+            sizeof(input) - 1)
+    {
+        // Should create three segments with different tags
+        assert(segments.count == 3);
+
+        // First segment: tag=100, 3 bytes from position 0
+        assert(segments.items[0].tag == 100);
+        assert(segments.items[0].start_pos == 0);
+        assert(segments.items[0].size_bytes == 3);
+
+        // Second segment: tag=200, 5 bytes from position 3 (current_pos=3,
+        // added 2)
+        assert(segments.items[1].tag == 200);
+        assert(segments.items[1].start_pos == 3);
+        assert(segments.items[1].size_bytes == 5);
+
+        // Third segment: tag=300, 8 bytes from position 8 (size = current_pos
+        // value)
+        assert(segments.items[2].tag == 300);
+        assert(segments.items[2].start_pos == 8);
+        assert(segments.items[2].size_bytes == 8);
+    }
+    END_EXPECT_SUCCESS();
+}
+
+/**
+ * Test: push.current_pos for arithmetic operations
+ *
+ * Demonstrates using cursor position for calculating bytes consumed.
+ * Tests the pattern of: end_pos - start_pos = bytes_consumed
+ * Uses tagged segments to prevent merging.
+ *
+ * Assembly:
+ *   push.tag 100
+ *   push.type.bytes
+ *   push.i32 10
+ *   segment.create_tagged
+ *   push.current_pos
+ *   push.i32 0
+ *   math.sub
+ *   push.tag 200
+ *   push.type.bytes
+ *   stack.swap
+ *   segment.create_tagged
+ *   halt
+ */
+TEST(test_push_current_pos_arithmetic)
+{
+    uint8_t input[] = "0123456789ABCDEFGHIJ";
+
+    EXPECT_SUCCESS(
+            BYTECODE_TEST_PUSH_CURRENT_POS_ARITHMETIC,
+            BYTECODE_TEST_PUSH_CURRENT_POS_ARITHMETIC_SIZE,
+            input,
+            sizeof(input) - 1)
+    {
+        // Should create two segments with different tags
+        assert(segments.count == 2);
+
+        // First segment: tag=100, 10 bytes from position 0
+        assert(segments.items[0].tag == 100);
+        assert(segments.items[0].start_pos == 0);
+        assert(segments.items[0].size_bytes == 10);
+
+        // Second segment: tag=200, 10 bytes from position 10 (10 - 0 = 10)
+        assert(segments.items[1].tag == 200);
+        assert(segments.items[1].start_pos == 10);
+        assert(segments.items[1].size_bytes == 10);
+    }
+    END_EXPECT_SUCCESS();
+}
+
+/**
+ * Test: push.current_pos doesn't advance cursor
+ *
+ * Verifies that push.current_pos is a read-only operation that doesn't
+ * modify the cursor position. Calls push.current_pos twice and verifies
+ * they return the same value (difference = 0).
+ *
+ * Assembly:
+ *   push.i32 2
+ *   segment.create_unspecified
+ *   push.current_pos
+ *   push.current_pos
+ *   math.sub
+ *   segment.create_unspecified
+ *   halt
+ */
+TEST(test_push_current_pos_no_side_effects)
+{
+    uint8_t input[] = "Test";
+
+    EXPECT_SUCCESS(
+            BYTECODE_TEST_PUSH_CURRENT_POS_NO_SIDE_EFFECTS,
+            BYTECODE_TEST_PUSH_CURRENT_POS_NO_SIDE_EFFECTS_SIZE,
+            input,
+            sizeof(input) - 1)
+    {
+        // Two consecutive unspecified segments get merged into one
+        assert(segments.count == 1);
+
+        // Merged segment: 2 bytes from position 0 (2 + 0 = 2)
+        assert(segments.items[0].start_pos == 0);
+        assert(segments.items[0].size_bytes == 2);
+    }
+    END_EXPECT_SUCCESS();
+}
+
 int main(void)
 {
     return sddl2_run_all_tests();

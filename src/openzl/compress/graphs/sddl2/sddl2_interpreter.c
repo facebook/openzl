@@ -217,6 +217,8 @@ SDDL2_Error SDDL2_execute_bytecode(
                     uint32_t tag = ZL_readLE32(&bytecode[pc]);
                     pc += 4;
                     err = SDDL2_Stack_push(&stack, SDDL2_Value_tag(tag));
+                } else if (opcode == SDDL2_OP_PUSH_CURRENT_POS) {
+                    err = SDDL2_op_current_pos(&stack, &buffer);
                 } else {
                     // Handle all push.type opcodes via lookup table
                     int found = 0;
