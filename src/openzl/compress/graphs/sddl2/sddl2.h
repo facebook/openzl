@@ -38,23 +38,29 @@ ZL_Report SDDL2_parse(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
         ZL_NOEXCEPT_FUNC_PTR;
 
 /**
- * Register SDDL2 parser as a function graph with the specified bytecode.
+ * Register SDDL2 parser as a parameterized graph with bytecode and destination.
  *
- * This is a convenience function that handles the boilerplate of registering
- * SDDL2_parse with bytecode parameters.
+ * This creates a variant of the standard SDDL2 graph with specific bytecode
+ * and a destination graph for non-structure segments. Structure segments are
+ * always routed to COMPRESS_GENERIC internally.
  *
  * Example usage:
  *   ZL_GraphID sddl2_gid = ZL_Compressor_registerSDDL2Graph(
- *       cgraph, bytecode_array, bytecode_size);
+ *       cgraph, bytecode_array, bytecode_size, ZL_GRAPH_STORE);
+ *   if (!ZL_GraphID_isValid(sddl2_gid)) {
+ *       // handle error
+ *   }
  *
- * @param cgraph The compressor to register with
- * @param bytecode Pointer to SDDL2 bytecode (must be 4-byte aligned)
- * @param bytecode_size Size of bytecode in bytes (must be multiple of 4)
+ * @param compressor The compressor to register with
+ * @param bytecode Pointer to SDDL2 bytecode
+ * @param bytecode_size Size of bytecode in bytes
+ * @param destination Destination graph for non-structure segments (required)
  * @return ZL_GraphID for the registered graph, or ZL_GRAPH_ILLEGAL on error
  */
 ZL_GraphID ZL_Compressor_registerSDDL2Graph(
-        ZL_Compressor* cgraph,
+        ZL_Compressor* compressor,
         const void* bytecode,
-        size_t bytecode_size);
+        size_t bytecode_size,
+        ZL_GraphID destination);
 
 #endif // OPENZL_GRAPHS_SDDL_V2_H

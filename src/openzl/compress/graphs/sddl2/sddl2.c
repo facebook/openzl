@@ -10,6 +10,8 @@
 #include "openzl/common/logging.h"
 #include "openzl/compress/graphs/sddl2/sddl2_interpreter.h"
 #include "openzl/compress/private_nodes.h"
+#include "openzl/zl_compressor.h"  // ZL_Compressor_registerParameterizedGraph
+#include "openzl/zl_localParams.h" // ZL_CopyParam, ZL_LocalParams
 #include "openzl/zl_public_nodes.h"
 
 /**
@@ -104,46 +106,41 @@ static ZL_Report sddl2_determine_endianness(
     return ZL_returnSuccess();
 }
 
-/**
- * Convenience function to register SDDL2_parse with bytecode parameters.
- *
- * This wraps the boilerplate of setting up ZL_LocalParams with bytecode.
- *
- * @param cgraph The compressor to register with
- * @param bytecode Pointer to SDDL2 bytecode
- * @param bytecode_size Size of bytecode in bytes
- * @return ZL_GraphID for the registered graph, or ZL_GRAPH_ILLEGAL on error
- */
 ZL_GraphID ZL_Compressor_registerSDDL2Graph(
-        ZL_Compressor* cgraph,
-        const void* bytecode,
-        size_t bytecode_size)
+        ZL_Compressor* const compressor,
+        const void* const bytecode,
+        const size_t bytecode_size,
+        const ZL_GraphID destination)
 {
-    if (cgraph == NULL || (bytecode == NULL && bytecode_size != 0)) {
-        return ZL_GRAPH_ILLEGAL;
-    }
+    // Setup bytecode parameter (using CopyParam like SDDL1)
+    const ZL_CopyParam cp = {
+        .paramId   = SDDL2_BYTECODE_PARAM,
+        .paramPtr  = bytecode,
+        .paramSize = bytecode_size,
+    };
 
-    // Setup bytecode parameter
-    ZL_RefParam bytecodeParam = { .paramId   = SDDL2_BYTECODE_PARAM,
-                                  .paramRef  = bytecode,
-                                  .paramSize = bytecode_size };
+    const ZL_LocalParams lp = {
+        .intParams  = {},
+        .copyParams = {
+            .copyParams   = &cp,
+            .nbCopyParams = 1,
+        },
+        .refParams = {},
+    };
 
-    ZL_LocalRefParams refParams = { .refParams   = &bytecodeParam,
-                                    .nbRefParams = 1 };
+    // Create parameterized graph descriptor with bytecode and destination
+    const ZL_ParameterizedGraphDesc desc = {
+        .name           = NULL, // Name derived from base graph
+        .graph          = ZL_GRAPH_SDDL2,
+        .customGraphs   = &destination,
+        .nbCustomGraphs = 1,
+        .customNodes    = NULL,
+        .nbCustomNodes  = 0,
+        .localParams    = &lp,
+    };
 
-    ZL_LocalParams params = { .refParams = refParams };
-
-    // Setup function graph descriptor
-    ZL_Type inputType                     = ZL_Type_serial;
-    ZL_FunctionGraphDesc const sddl2_desc = { .name           = "sddl2_parse",
-                                              .graph_f        = SDDL2_parse,
-                                              .inputTypeMasks = &inputType,
-                                              .nbInputs       = 1,
-                                              .lastInputIsVariable = false,
-                                              .localParams         = params };
-
-    // Register the function graph
-    return ZL_Compressor_registerFunctionGraph(cgraph, &sddl2_desc);
+    // Register using standard parameterization mechanism
+    return ZL_Compressor_registerParameterizedGraph(compressor, &desc);
 }
 
 /**
@@ -506,7 +503,8 @@ static ZL_Report sddl2_apply_struct_field_conversion(
 static ZL_Report sddl2_apply_structure_split(
         ZL_Graph* graph,
         ZL_Edge* edge,
-        const SDDL2_Segment* seg)
+        const SDDL2_Segment* seg,
+        ZL_GraphID dest)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
 
@@ -590,14 +588,13 @@ static ZL_Report sddl2_apply_structure_split(
                 (int)field_type_kind);
     }
 
-    // Step 6: Route all field edges to COMPRESS_GENERIC
+    // Step 6: Route all field edges to destination
     for (size_t i = 0; i < split_outputs.nbEdges; i++) {
-        ZL_ERR_IF_ERR(ZL_Edge_setDestination(
-                split_outputs.edges[i], ZL_GRAPH_COMPRESS_GENERIC));
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(split_outputs.edges[i], dest));
     }
 
     ZL_DLOG(BLOCK,
-            "Structure split complete: %zu fields routed to compression",
+            "Structure split complete: %zu fields routed to destination",
             nb_fields);
 
     return ZL_returnSuccess();
@@ -695,10 +692,10 @@ static ZL_Report sddl2_process_segment(
             return ZL_Edge_setDestination(edge, dest);
 
         case SDDL2_TYPE_STRUCTURE:
-            // STRUCTURE segments: split, convert fields, and route internally
-            // Note: structure split handles field conversion and routing to
-            // COMPRESS_GENERIC internally
-            return sddl2_apply_structure_split(graph, edge, seg);
+            // STRUCTURE segments: split, convert fields, and route to
+            // destination
+            //
+            return sddl2_apply_structure_split(graph, edge, seg, dest);
 
         // Primitive numeric types: convert Serial→Numeric and route to
         // destination
@@ -731,10 +728,12 @@ static ZL_Report sddl2_process_segment(
 }
 
 /**
- * Convert SDDL2 VM error codes to OpenZL ZL_Report with descriptive messages.
+ * Convert SDDL2 VM error codes to OpenZL ZL_Report with descriptive
+ * messages.
  *
  * This function maps internal VM errors to appropriate OpenZL error codes,
- * preserving semantic meaning while providing rich error context for callers.
+ * preserving semantic meaning while providing rich error context for
+ * callers.
  *
  * @param graph Graph context for error reporting
  * @param err The SDDL2 error code to convert

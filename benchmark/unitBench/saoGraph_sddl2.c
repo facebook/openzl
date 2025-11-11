@@ -52,9 +52,12 @@ ZL_GraphID sao_graph_sddl2(ZL_Compressor* cgraph)
         abort();
     }
 
-    // Register SDDL2_parse using convenience function
+    // Register SDDL2_parse with STORE destination for benchmarking
     ZL_GraphID sddl2_graph = ZL_Compressor_registerSDDL2Graph(
-            cgraph, sao_sddl2_bytecode, sao_sddl2_bytecode_size);
+            cgraph,
+            sao_sddl2_bytecode,
+            sao_sddl2_bytecode_size,
+            ZL_GRAPH_STORE);
 
     if (!ZL_GraphID_isValid(sddl2_graph)) {
         abort();
