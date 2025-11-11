@@ -6,6 +6,7 @@
 
 #include "openzl/codecs/splitByStruct/encode_splitByStruct_binding.h"
 #include "openzl/codecs/zl_conversion.h"
+#include "openzl/common/assertion.h"
 #include "openzl/common/logging.h"
 #include "openzl/compress/graphs/sddl2/sddl2_interpreter.h"
 #include "openzl/compress/private_nodes.h"
@@ -111,15 +112,11 @@ static ZL_Report sddl2_determine_endianness(
  *
  * Rejects arrays of structures (width > 1 on STRUCTURE type).
  *
- * @param type The type to analyze
  * @param graph Graph context for error reporting
- * @param out_count Output pointer to field count
- * @return ZL_Report indicating success or error
+ * @param type The type to analyze
+ * @return ZL_Report containing the field count on success, or error
  */
-static ZL_Report sddl2_count_primitive_fields(
-        SDDL2_Type type,
-        ZL_Graph* graph,
-        size_t* out_count)
+static ZL_Report sddl2_count_primitive_fields(ZL_Graph* graph, SDDL2_Type type)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
 
@@ -139,19 +136,18 @@ static ZL_Report sddl2_count_primitive_fields(
 
         size_t total = 0;
         for (size_t i = 0; i < struct_data->member_count; i++) {
-            size_t member_count = 0;
-            ZL_ERR_IF_ERR(sddl2_count_primitive_fields(
-                    struct_data->members[i], graph, &member_count));
+            ZL_TRY_LET_R(
+                    member_count,
+                    sddl2_count_primitive_fields(
+                            graph, struct_data->members[i]));
             total += member_count;
         }
 
-        *out_count = total;
+        return ZL_returnValue(total);
     } else {
         // Primitive type: count is the width (handles arrays)
-        *out_count = type.width;
+        return ZL_returnValue(type.width);
     }
-
-    return ZL_returnSuccess();
 }
 
 /**
@@ -160,18 +156,18 @@ static ZL_Report sddl2_count_primitive_fields(
  * For structures, recursively flattens all nested fields.
  * For primitives, appends the field size.
  *
+ * @param graph Graph context for error reporting
  * @param type The type to flatten
  * @param field_sizes Output array (must be pre-allocated)
  * @param index Pointer to current index in output array (updated during
  * recursion)
- * @param graph Graph context for error reporting
  * @return ZL_Report indicating success or error
  */
 static ZL_Report sddl2_flatten_field_sizes(
+        ZL_Graph* graph,
         SDDL2_Type type,
         size_t* field_sizes,
-        size_t* index,
-        ZL_Graph* graph)
+        size_t* index)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
 
@@ -191,7 +187,7 @@ static ZL_Report sddl2_flatten_field_sizes(
 
         for (size_t i = 0; i < struct_data->member_count; i++) {
             ZL_ERR_IF_ERR(sddl2_flatten_field_sizes(
-                    struct_data->members[i], field_sizes, index, graph));
+                    graph, struct_data->members[i], field_sizes, index));
         }
     } else {
         // Primitive type: calculate size and append
@@ -218,10 +214,10 @@ static ZL_Report sddl2_flatten_field_sizes(
  * sizes. Supports arbitrary nesting depth as long as all structures have
  * width=1.
  *
+ * @param graph Graph context for memory allocation and error reporting
  * @param struct_type The structure type to analyze
  * @param out_field_sizes Output pointer to array of field sizes
  * @param out_nb_fields Output pointer to number of fields
- * @param graph Graph context for memory allocation and error reporting
  * @return ZL_Report indicating success or error
  *
  * Supported:
@@ -233,10 +229,10 @@ static ZL_Report sddl2_flatten_field_sizes(
  * - Arrays of structures: [{U8, I32LE} × 10]
  */
 static ZL_Report sddl2_extract_flat_field_sizes(
+        ZL_Graph* graph,
         SDDL2_Type struct_type,
         size_t** out_field_sizes,
-        size_t* out_nb_fields,
-        ZL_Graph* graph)
+        size_t* out_nb_fields)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
 
@@ -249,9 +245,8 @@ static ZL_Report sddl2_extract_flat_field_sizes(
             (int)struct_type.kind);
 
     // Count total primitive fields (recursive)
-    size_t total_fields = 0;
-    ZL_ERR_IF_ERR(
-            sddl2_count_primitive_fields(struct_type, graph, &total_fields));
+    ZL_TRY_LET_R(
+            total_fields, sddl2_count_primitive_fields(graph, struct_type));
 
     ZL_ERR_IF_EQ(
             total_fields,
@@ -267,7 +262,7 @@ static ZL_Report sddl2_extract_flat_field_sizes(
     // Recursively flatten field sizes
     size_t index = 0;
     ZL_ERR_IF_ERR(
-            sddl2_flatten_field_sizes(struct_type, field_sizes, &index, graph));
+            sddl2_flatten_field_sizes(graph, struct_type, field_sizes, &index));
 
     // Verify we filled the expected number of fields
     ZL_ERR_IF_NE(
@@ -290,18 +285,18 @@ static ZL_Report sddl2_extract_flat_field_sizes(
  * Similar to sddl2_flatten_field_sizes, but extracts the actual SDDL2_Type_kind
  * for each primitive field. This is needed to apply proper type conversions.
  *
+ * @param graph Graph context for error reporting
  * @param type The type to flatten
  * @param field_types Output array of SDDL2_Type_kind (must be pre-allocated)
  * @param index Pointer to current index in output array (updated during
  * recursion)
- * @param graph Graph context for error reporting
  * @return ZL_Report indicating success or error
  */
 static ZL_Report sddl2_flatten_field_types(
+        ZL_Graph* graph,
         SDDL2_Type type,
         SDDL2_Type_kind* field_types,
-        size_t* index,
-        ZL_Graph* graph)
+        size_t* index)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
 
@@ -321,7 +316,7 @@ static ZL_Report sddl2_flatten_field_types(
 
         for (size_t i = 0; i < struct_data->member_count; i++) {
             ZL_ERR_IF_ERR(sddl2_flatten_field_types(
-                    struct_data->members[i], field_types, index, graph));
+                    graph, struct_data->members[i], field_types, index));
         }
     } else {
         // Primitive type: append its kind
@@ -339,24 +334,21 @@ static ZL_Report sddl2_flatten_field_types(
  * Recursively flattens nested structures into a flat array of primitive field
  * types. Works in tandem with sddl2_extract_flat_field_sizes().
  *
+ * @param graph Graph context for memory allocation and error reporting
  * @param struct_type The structure type to analyze
  * @param out_field_types Output pointer to array of SDDL2_Type_kind
- * @param out_nb_fields Output pointer to number of fields
- * @param graph Graph context for memory allocation and error reporting
- * @return ZL_Report indicating success or error
+ * @return ZL_Report containing the number of fields on success, or error
  */
 static ZL_Report sddl2_extract_flat_field_types(
+        ZL_Graph* graph,
         SDDL2_Type struct_type,
-        SDDL2_Type_kind** out_field_types,
-        size_t* out_nb_fields,
-        ZL_Graph* graph)
+        SDDL2_Type_kind** out_field_types)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
 
     // Count total primitive fields (reuse existing function)
-    size_t total_fields = 0;
-    ZL_ERR_IF_ERR(
-            sddl2_count_primitive_fields(struct_type, graph, &total_fields));
+    ZL_TRY_LET_R(
+            total_fields, sddl2_count_primitive_fields(graph, struct_type));
 
     ZL_ERR_IF_EQ(
             total_fields,
@@ -372,7 +364,7 @@ static ZL_Report sddl2_extract_flat_field_types(
     // Recursively flatten field types
     size_t index = 0;
     ZL_ERR_IF_ERR(
-            sddl2_flatten_field_types(struct_type, field_types, &index, graph));
+            sddl2_flatten_field_types(graph, struct_type, field_types, &index));
 
     // Verify we filled the expected number of fields
     ZL_ERR_IF_NE(
@@ -384,23 +376,9 @@ static ZL_Report sddl2_extract_flat_field_types(
             index);
 
     *out_field_types = field_types;
-    *out_nb_fields   = total_fields;
 
-    return ZL_returnSuccess();
+    return ZL_returnValue(total_fields);
 }
-
-// Forward declarations for conversion functions
-static ZL_Report sddl2_apply_type_conversion(
-        ZL_Edge* edge,
-        const SDDL2_Segment* seg,
-        ZL_Edge** out_converted_edge,
-        ZL_Graph* graph);
-
-static ZL_Report sddl2_apply_struct_field_conversion(
-        ZL_Edge* struct_edge,
-        SDDL2_Type_kind field_type_kind,
-        ZL_Edge** out_converted_edge,
-        ZL_Graph* graph);
 
 /**
  * Convert a Struct edge (from split-by-struct) to a Numeric edge.
@@ -410,18 +388,18 @@ static ZL_Report sddl2_apply_struct_field_conversion(
  * with embedded size information, which need to be converted to Numeric
  * edges with appropriate endianness.
  *
+ * @param graph Graph context for error reporting
  * @param struct_edge The Struct edge to convert (output from split-by-struct)
  * @param field_type_kind The SDDL2 type kind for this field (determines
  * endianness)
  * @param out_converted_edge Output pointer to the converted Numeric edge
- * @param graph Graph context for error reporting
  * @return ZL_Report indicating success or error
  */
 static ZL_Report sddl2_apply_struct_field_conversion(
+        ZL_Graph* graph,
         ZL_Edge* struct_edge,
         SDDL2_Type_kind field_type_kind,
-        ZL_Edge** out_converted_edge,
-        ZL_Graph* graph)
+        ZL_Edge** out_converted_edge)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
 
@@ -472,9 +450,9 @@ static ZL_Report sddl2_apply_struct_field_conversion(
  * 4. Apply type conversion to each output edge based on field type
  * 5. Route each field edge to COMPRESS_GENERIC
  *
+ * @param graph Graph context for operations and error reporting
  * @param edge The edge containing the structure array
  * @param seg The segment containing the structure type information
- * @param graph Graph context for operations and error reporting
  * @return ZL_Report indicating success or error
  *
  * Example:
@@ -482,9 +460,9 @@ static ZL_Report sddl2_apply_struct_field_conversion(
  * Output: 3 edges - [all U8], [all I16LE], [all I32LE]
  */
 static ZL_Report sddl2_apply_structure_split(
+        ZL_Graph* graph,
         ZL_Edge* edge,
-        const SDDL2_Segment* seg,
-        ZL_Graph* graph)
+        const SDDL2_Segment* seg)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
 
@@ -496,15 +474,15 @@ static ZL_Report sddl2_apply_structure_split(
     size_t* field_sizes = NULL;
     size_t nb_fields    = 0;
     ZL_ERR_IF_ERR(sddl2_extract_flat_field_sizes(
-            seg->type, &field_sizes, &nb_fields, graph));
+            graph, seg->type, &field_sizes, &nb_fields));
 
     ZL_DLOG(BLOCK, "Structure has %zu flattened primitive fields", nb_fields);
 
     // Step 2: Extract flattened field types (for later conversion)
     SDDL2_Type_kind* field_types = NULL;
-    size_t nb_field_types        = 0;
-    ZL_ERR_IF_ERR(sddl2_extract_flat_field_types(
-            seg->type, &field_types, &nb_field_types, graph));
+    ZL_TRY_LET_R(
+            nb_field_types,
+            sddl2_extract_flat_field_types(graph, seg->type, &field_types));
 
     // Sanity check: field counts must match
     ZL_ERR_IF_NE(
@@ -557,10 +535,10 @@ static ZL_Report sddl2_apply_structure_split(
         // Apply Struct→Numeric conversion (split-by-struct outputs Struct
         // edges)
         ZL_ERR_IF_ERR(sddl2_apply_struct_field_conversion(
+                graph,
                 split_outputs.edges[i],
                 field_type_kind,
-                &split_outputs.edges[i],
-                graph));
+                &split_outputs.edges[i]));
 
         ZL_DLOG(BLOCK,
                 "Field %zu: converted Struct→Numeric (type kind %d)",
@@ -591,16 +569,17 @@ static ZL_Report sddl2_apply_structure_split(
  * not the entire array. For example, Type{U32LE, 10} converts each U32LE
  * element (32 bits), not the whole 320-bit array.
  *
+ * @param graph Graph context for error reporting
  * @param edge The edge to convert
  * @param seg The segment containing type information
- * @param graph Graph context for error reporting
- * @return Converted edge on success, or error report
+ * @param out_converted_edge Output pointer to the converted edge
+ * @return ZL_Report indicating success or error
  */
 static ZL_Report sddl2_apply_type_conversion(
+        ZL_Graph* graph,
         ZL_Edge* edge,
         const SDDL2_Segment* seg,
-        ZL_Edge** out_converted_edge,
-        ZL_Graph* graph)
+        ZL_Edge** out_converted_edge)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
 
@@ -644,16 +623,80 @@ static ZL_Report sddl2_apply_type_conversion(
 }
 
 /**
+ * Process a single segment: apply type conversion and route to destination.
+ *
+ * Handles three types of segments:
+ * - BYTES: Route directly to destination without conversion
+ * - STRUCTURE: Split into field arrays, convert each field, route to
+ * COMPRESS_GENERIC
+ * - Primitive: Convert Serial→Numeric and route to destination
+ *
+ * @param graph Graph context for operations and error reporting
+ * @param edge The edge to process
+ * @param seg The segment metadata containing type information
+ * @param dest The destination graph for non-structure segments
+ * @return ZL_Report indicating success or error
+ */
+static ZL_Report sddl2_process_segment(
+        ZL_Graph* graph,
+        ZL_Edge* edge,
+        const SDDL2_Segment* seg,
+        ZL_GraphID dest)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+
+    switch (seg->type.kind) {
+        case SDDL2_TYPE_BYTES:
+            // BYTES segments: route directly without conversion
+            return ZL_Edge_setDestination(edge, dest);
+
+        case SDDL2_TYPE_STRUCTURE:
+            // STRUCTURE segments: split, convert fields, and route internally
+            // Note: structure split handles field conversion and routing to
+            // COMPRESS_GENERIC internally
+            return sddl2_apply_structure_split(graph, edge, seg);
+
+        // Primitive numeric types: convert Serial→Numeric and route to
+        // destination
+        case SDDL2_TYPE_U8:
+        case SDDL2_TYPE_I8:
+        case SDDL2_TYPE_U16LE:
+        case SDDL2_TYPE_U16BE:
+        case SDDL2_TYPE_I16LE:
+        case SDDL2_TYPE_I16BE:
+        case SDDL2_TYPE_U32LE:
+        case SDDL2_TYPE_U32BE:
+        case SDDL2_TYPE_I32LE:
+        case SDDL2_TYPE_I32BE:
+        case SDDL2_TYPE_U64LE:
+        case SDDL2_TYPE_U64BE:
+        case SDDL2_TYPE_I64LE:
+        case SDDL2_TYPE_I64BE:
+        case SDDL2_TYPE_F8:
+        case SDDL2_TYPE_F16LE:
+        case SDDL2_TYPE_F16BE:
+        case SDDL2_TYPE_BF16LE:
+        case SDDL2_TYPE_BF16BE:
+        case SDDL2_TYPE_F32LE:
+        case SDDL2_TYPE_F32BE:
+        case SDDL2_TYPE_F64LE:
+        case SDDL2_TYPE_F64BE:
+            ZL_ERR_IF_ERR(sddl2_apply_type_conversion(graph, edge, seg, &edge));
+            return ZL_Edge_setDestination(edge, dest);
+    }
+}
+
+/**
  * Convert SDDL2 VM error codes to OpenZL ZL_Report with descriptive messages.
  *
  * This function maps internal VM errors to appropriate OpenZL error codes,
  * preserving semantic meaning while providing rich error context for callers.
  *
- * @param err The SDDL2 error code to convert
  * @param graph Graph context for error reporting
+ * @param err The SDDL2 error code to convert
  * @return ZL_Report with mapped error code and descriptive message
  */
-static ZL_Report sddl2_error_to_report(SDDL2_Error err, ZL_Graph* graph)
+static ZL_Report sddl2_error_to_report(ZL_Graph* graph, SDDL2_Error err)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
 
@@ -711,13 +754,18 @@ static ZL_Report sddl2_error_to_report(SDDL2_Error err, ZL_Graph* graph)
 ZL_Report SDDL2_parse(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
         ZL_NOEXCEPT_FUNC_PTR
 {
+    // Assertions: Validate OpenZL framework contract (development checks)
+    ZL_ASSERT_NN(graph);
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
 
     // Step 1: Validate input count - SDDL2 expects exactly one input
     ZL_ERR_IF_NE(nbInputs, 1, graph_invalidNumInputs);
+    ZL_ASSERT_NN(inputs);
 
     // Step 2: Validate input type - must be Serial
     const ZL_Input* input_obj = ZL_Edge_getData(inputs[0]);
+    ZL_ASSERT_NN(input_obj); // Edge_getData contract: never returns NULL
+
     ZL_ERR_IF_NE(
             ZL_Input_type(input_obj), ZL_Type_serial, inputType_unsupported);
 
@@ -753,7 +801,7 @@ ZL_Report SDDL2_parse(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
 
     if (err != SDDL2_OK) {
         SDDL2_Segment_list_destroy(&segments);
-        return sddl2_error_to_report(err, graph);
+        return sddl2_error_to_report(graph, err);
     }
 
     // Step 6: Split input by segment sizes
@@ -781,37 +829,14 @@ ZL_Report SDDL2_parse(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
             "SDDL2_parse supports at most 1 custom graph, got %zu",
             gidlist.nbGraphIDs);
     if (gidlist.nbGraphIDs) {
-        assert(gidlist.graphids != NULL);
+        ZL_ASSERT_NN(gidlist.graphids);
         dest = gidlist.graphids[0];
     }
 
-    // Step 8: Apply type conversion and set destinations for each segment
-    // For each segment:
-    // - BYTES: route to dest without conversion (raw unspecified data)
-    // - STRUCTURE: split into field arrays, convert, and route internally
-    // - Primitive: convert to numeric and route to dest
+    // Step 8: Process each segment (type conversion and routing)
     for (size_t i = 0; i < outputs.nbEdges; i++) {
-        const SDDL2_Segment* seg = &segments.items[i];
-
-        // Handle BYTES type: route directly without conversion
-        if (seg->type.kind == SDDL2_TYPE_BYTES) {
-            ZL_ERR_IF_ERR(ZL_Edge_setDestination(outputs.edges[i], dest));
-            continue;
-        }
-
-        // Handle STRUCTURE type: split, convert, and route fields
-        if (seg->type.kind == SDDL2_TYPE_STRUCTURE) {
-            ZL_ERR_IF_ERR(
-                    sddl2_apply_structure_split(outputs.edges[i], seg, graph));
-            // Note: structure split handles field conversion and routing
-            // internally, so we don't call setDestination here
-            continue;
-        }
-
-        // Handle primitive types: convert and route
-        ZL_ERR_IF_ERR(sddl2_apply_type_conversion(
-                outputs.edges[i], seg, &outputs.edges[i], graph));
-        ZL_ERR_IF_ERR(ZL_Edge_setDestination(outputs.edges[i], dest));
+        ZL_ERR_IF_ERR(sddl2_process_segment(
+                graph, outputs.edges[i], &segments.items[i], dest));
     }
 
     // Cleanup
