@@ -14,4 +14,5 @@ zs_cxxlibrary(
         "//data_compression/experimental/zstrong:zstronglib",
         "//folly:dynamic",
     ],
+    exported_deps = ["//folly:dynamic"],
 )

@@ -65,6 +65,7 @@ zs_unittest(
     srcs = glob(["round_trip/**/*.cpp"]),
     headers = glob(["round_trip/**/*.h"]),
     deps = [
+        "fbsource//third-party/zstd:zstd",
         ":test_zstrong_fixtures",
         ":utils",
         "//data_compression/experimental/zstrong:compress",
@@ -94,6 +95,7 @@ zs_cxxlibrary(
         ":utils",
         "//data_compression/experimental/zstrong:zstronglib",
     ],
+    exported_deps = ["fbsource//third-party/googletest:gtest"],
 )
 
 zs_unittest(
@@ -101,6 +103,7 @@ zs_unittest(
     srcs = glob(["codecs/**/test_*.cpp"]),
     headers = glob(["codecs/**/test_*.h"]),
     deps = [
+        "fbsource//third-party/zstd:zstd",
         ":utils",
         "//data_compression/experimental/zstrong:zstronglib",
         "//data_compression/experimental/zstrong/tests/datagen:datagen",

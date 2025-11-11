@@ -16,6 +16,7 @@ zs_library(
     srcs = ["saoGraph.c"],
     headers = ["saoGraph.h"],
     deps = [
+        "fbsource//third-party/benchmark:benchmark",
         "//data_compression/experimental/zstrong:zstronglib",
     ],
 )
@@ -29,6 +30,8 @@ zs_binary(
         "**/*.h",
     ]),
     deps = [
+        "fbsource//third-party/benchmark:benchmark",
+        "fbsource//third-party/zstd:zstd",
         ":sao_graph",
         "//data_compression/experimental/zstrong:zstronglib",
         "//data_compression/experimental/zstrong/tools:fileio",

@@ -17,6 +17,7 @@ zs_unittest(
         "//data_compression/experimental/zstrong:zstronglib",
         "//data_compression/experimental/zstrong/tools/protobuf:serializer",
     ],
+    external_deps = ["protobuf"],
 )
 
 zs_unittest(
