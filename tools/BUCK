@@ -43,6 +43,7 @@ zs_cxxlibrary(
     headers = ["zstrong_ml.h"],
     compiler_flags = ["-Wno-float-equal"],
     strict_conversions = False,
+    deps = ["//folly:base64"],
     exported_deps = [
         ":zstrong_cpp",
         "//data_compression/experimental/zstrong/tools/gbt_predictor:zstrong_gbt_predictor",
@@ -58,6 +59,12 @@ zs_cxxlibrary(
     headers = ["zstrong_json.h"],
     compiler_flags = ["-Wno-float-equal"],
     strict_conversions = False,
+    deps = [
+        "//folly:base64",
+        "//folly:file_util",
+        "//folly:memory",
+        "//folly/lang:bits",
+    ],
     exported_deps = [
         ":zstrong_cpp",
         "//data_compression/experimental/zstrong:zstronglib",
@@ -72,9 +79,7 @@ zs_cxxlibrary(
 cpp_library(
     name = "json",
     headers = ["json.hpp"],
-    exported_deps = [
-        "fbsource//third-party/libgcc:stdc++fs",
-    ],
+    exported_deps = [],
 )
 
 zs_cxxbinary(

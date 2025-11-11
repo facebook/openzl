@@ -45,6 +45,7 @@ zs_cxxbinary(
         "//data_compression/experimental/zstrong/tools:io",
         "//data_compression/experimental/zstrong/tools/training:train",
     ],
+    external_deps = ["protobuf"],
 )
 
 zs_cxxlibrary(
@@ -71,6 +72,7 @@ zs_cxxlibrary(
         ":utils",
         "//data_compression/experimental/zstrong/cpp:openzl_cpp",
     ],
+    exported_external_deps = ["protobuf"],
 )
 
 zs_cxxlibrary(
