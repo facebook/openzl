@@ -400,4 +400,76 @@ TEST(SDDL2ParseTest, ArrayTypeU32LE10)
             "ArrayTypeU32LE10");
 }
 
+/**
+ * Test: Structure array segment
+ *
+ * Tests the type.structure opcode in end-to-end compression/decompression.
+ * This validates that structure types correctly integrate with SDDL2_parse and
+ * that structure splitting, field type conversion, and independent compression
+ * work correctly in a full round-trip scenario.
+ *
+ * Creates a segment containing 10 structures, where each structure is:
+ *   {U8, I16LE, I32LE}
+ * Total size: 10 × (1 + 2 + 4) bytes = 70 bytes
+ *
+ * Assembly source (test_data/struct_array_segment.asm):
+ *   push.tag 200
+ *   push.type.u8          ; Field 0: U8
+ *   push.type.i16le       ; Field 1: I16LE
+ *   push.type.i32le       ; Field 2: I32LE
+ *   push.i32 3            ; 3 members
+ *   type.structure        ; Creates Type{STRUCTURE{U8, I16LE, I32LE}, width=7}
+ *   push.i32 10           ; Element count: 10 structures
+ *   segment.create_tagged ; Creates 70-byte segment
+ *   halt
+ *
+ * This tests the full structure split pipeline:
+ *   1. SDDL2_parse() recognizes STRUCTURE type segment
+ *   2. sddl2_apply_structure_split() decomposes into 3 field arrays:
+ *      - Field 0: [10 × U8]   → Convert to U8   → COMPRESS_GENERIC
+ *      - Field 1: [10 × I16LE] → Convert to I16LE → COMPRESS_GENERIC
+ *      - Field 2: [10 × I32LE] → Convert to I32LE → COMPRESS_GENERIC
+ *   3. Each field is independently compressed
+ *   4. Decompression reconstructs the original structure layout
+ */
+TEST(SDDL2ParseTest, StructureArraySegment)
+{
+    auto bytecode = load_bytecode(
+            "tests/round_trip/test_data/struct_array_segment.bin");
+
+    // Generate 10 structures of {U8, I16LE, I32LE}
+    const size_t NUM_STRUCTS = 10;
+
+    // Pack structures as byte array (no padding)
+    // Structure layout: [U8:1][I16LE:2][I32LE:4] = 7 bytes per struct
+    std::vector<uint8_t> input(NUM_STRUCTS * 7);
+
+    for (size_t i = 0; i < NUM_STRUCTS; i++) {
+        size_t offset = i * 7;
+
+        // Field 0: U8 (1 byte)
+        uint8_t field0    = static_cast<uint8_t>(i * 10 + 1);
+        input[offset + 0] = field0;
+
+        // Field 1: I16LE (2 bytes, little-endian)
+        int16_t field1    = static_cast<int16_t>(i * 100 + 42);
+        input[offset + 1] = static_cast<uint8_t>(field1 & 0xFF);
+        input[offset + 2] = static_cast<uint8_t>((field1 >> 8) & 0xFF);
+
+        // Field 2: I32LE (4 bytes, little-endian)
+        int32_t field2    = static_cast<int32_t>(i * 1000 + 12345);
+        input[offset + 3] = static_cast<uint8_t>(field2 & 0xFF);
+        input[offset + 4] = static_cast<uint8_t>((field2 >> 8) & 0xFF);
+        input[offset + 5] = static_cast<uint8_t>((field2 >> 16) & 0xFF);
+        input[offset + 6] = static_cast<uint8_t>((field2 >> 24) & 0xFF);
+    }
+
+    roundtrip_test(
+            input.data(),
+            input.size(),
+            bytecode.data(),
+            bytecode.size(),
+            "StructureArraySegment");
+}
+
 } // namespace

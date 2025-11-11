@@ -389,12 +389,75 @@ static ZL_Report sddl2_extract_flat_field_types(
     return ZL_returnSuccess();
 }
 
-// Forward declaration for sddl2_apply_type_conversion (used by sddl2_apply_structure_split)
+// Forward declarations for conversion functions
 static ZL_Report sddl2_apply_type_conversion(
         ZL_Edge* edge,
         const SDDL2_Segment* seg,
         ZL_Edge** out_converted_edge,
         ZL_Graph* graph);
+
+static ZL_Report sddl2_apply_struct_field_conversion(
+        ZL_Edge* struct_edge,
+        SDDL2_Type_kind field_type_kind,
+        ZL_Edge** out_converted_edge,
+        ZL_Graph* graph);
+
+/**
+ * Convert a Struct edge (from split-by-struct) to a Numeric edge.
+ *
+ * This function handles the specific conversion needed for structure fields
+ * after split-by-struct operation. Split-by-struct outputs Struct edges
+ * with embedded size information, which need to be converted to Numeric
+ * edges with appropriate endianness.
+ *
+ * @param struct_edge The Struct edge to convert (output from split-by-struct)
+ * @param field_type_kind The SDDL2 type kind for this field (determines
+ * endianness)
+ * @param out_converted_edge Output pointer to the converted Numeric edge
+ * @param graph Graph context for error reporting
+ * @return ZL_Report indicating success or error
+ */
+static ZL_Report sddl2_apply_struct_field_conversion(
+        ZL_Edge* struct_edge,
+        SDDL2_Type_kind field_type_kind,
+        ZL_Edge** out_converted_edge,
+        ZL_Graph* graph)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+
+    // Skip BYTES type (shouldn't happen with structures, but be defensive)
+    if (field_type_kind == SDDL2_TYPE_BYTES) {
+        ZL_ERR(GENERIC, "BYTES type not supported in structure fields");
+    }
+
+    // Determine endianness for this field
+    bool is_little_endian;
+    ZL_ERR_IF_ERR(sddl2_determine_endianness(
+            field_type_kind, &is_little_endian, graph));
+
+    // Get the appropriate Struct→Numeric conversion node
+    ZL_NodeID convert_node;
+    if (is_little_endian) {
+        convert_node = ZL_NODE_CONVERT_STRUCT_TO_NUM_LE;
+    } else {
+        convert_node = ZL_NODE_CONVERT_STRUCT_TO_NUM_BE;
+    }
+
+    // Apply Struct→Numeric conversion
+    ZL_TRY_LET_T(
+            ZL_EdgeList, converted, ZL_Edge_runNode(struct_edge, convert_node));
+
+    // Validate that conversion produced exactly one edge
+    ZL_ERR_IF_NE(
+            converted.nbEdges,
+            1,
+            GENERIC,
+            "Struct-to-numeric conversion should produce exactly 1 edge, got %zu",
+            converted.nbEdges);
+
+    *out_converted_edge = converted.edges[0];
+    return ZL_returnSuccess();
+}
 
 /**
  * Apply split-by-struct transform to a structure segment.
@@ -467,7 +530,8 @@ static ZL_Report sddl2_apply_structure_split(
     ZL_TRY_LET_T(
             ZL_EdgeList,
             split_outputs,
-            ZL_Edge_runNode_withParams(edge, ZL_NODE_SPLIT_BY_STRUCT, &lParams));
+            ZL_Edge_runNode_withParams(
+                    edge, ZL_NODE_SPLIT_BY_STRUCT, &lParams));
 
     // Validate we got the expected number of output edges
     ZL_ERR_IF_NE(
@@ -480,7 +544,7 @@ static ZL_Report sddl2_apply_structure_split(
 
     ZL_DLOG(BLOCK, "Split-by-struct produced %zu field edges", nb_fields);
 
-    // Step 5: Apply type conversion to each field edge
+    // Step 5: Apply Struct→Numeric conversion to each field edge
     for (size_t i = 0; i < split_outputs.nbEdges; i++) {
         SDDL2_Type_kind field_type_kind = field_types[i];
 
@@ -490,21 +554,16 @@ static ZL_Report sddl2_apply_structure_split(
             continue;
         }
 
-        // Create a temporary segment descriptor for this field
-        // (only type.kind is used by sddl2_apply_type_conversion)
-        SDDL2_Segment field_seg = {
-            .tag        = seg->tag,
-            .start_pos  = 0,
-            .size_bytes = field_sizes[i],
-            .type       = { .kind = field_type_kind, .width = 1, .complex_data = NULL }
-        };
-
-        // Apply type conversion
-        ZL_ERR_IF_ERR(sddl2_apply_type_conversion(
-                split_outputs.edges[i], &field_seg, &split_outputs.edges[i], graph));
+        // Apply Struct→Numeric conversion (split-by-struct outputs Struct
+        // edges)
+        ZL_ERR_IF_ERR(sddl2_apply_struct_field_conversion(
+                split_outputs.edges[i],
+                field_type_kind,
+                &split_outputs.edges[i],
+                graph));
 
         ZL_DLOG(BLOCK,
-                "Field %zu: converted to numeric (type kind %d)",
+                "Field %zu: converted Struct→Numeric (type kind %d)",
                 i,
                 (int)field_type_kind);
     }
@@ -515,7 +574,9 @@ static ZL_Report sddl2_apply_structure_split(
                 split_outputs.edges[i], ZL_GRAPH_COMPRESS_GENERIC));
     }
 
-    ZL_DLOG(BLOCK, "Structure split complete: %zu fields routed to compression", nb_fields);
+    ZL_DLOG(BLOCK,
+            "Structure split complete: %zu fields routed to compression",
+            nb_fields);
 
     return ZL_returnSuccess();
 }
@@ -710,23 +771,7 @@ ZL_Report SDDL2_parse(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
             outputs,
             ZL_Edge_runSplitNode(inputs[0], segmentSizes, segments.count));
 
-    // Step 7: Apply type conversion for numeric segments
-    // For each segment, if it has a numeric type (not BYTES), convert the edge
-    // to that type (1, 2, 4, or 8 bytes, little or big endian)
-    for (size_t i = 0; i < outputs.nbEdges; i++) {
-        const SDDL2_Segment* seg = &segments.items[i];
-
-        // Skip BYTES type (raw unspecified data)
-        if (seg->type.kind == SDDL2_TYPE_BYTES) {
-            continue;
-        }
-
-        // Apply type conversion and replace edge with converted version
-        ZL_ERR_IF_ERR(sddl2_apply_type_conversion(
-                outputs.edges[i], seg, &outputs.edges[i], graph));
-    }
-
-    // Step 8: Determine selected destination (via Custom Graphs parameter)
+    // Step 7: Determine selected destination (via Custom Graphs parameter)
     ZL_GraphID dest        = ZL_GRAPH_COMPRESS_GENERIC;
     ZL_GraphIDList gidlist = ZL_Graph_getCustomGraphs(graph);
     ZL_ERR_IF_GT(
@@ -740,8 +785,32 @@ ZL_Report SDDL2_parse(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
         dest = gidlist.graphids[0];
     }
 
-    // Step 9: Set destinations for each output edge
+    // Step 8: Apply type conversion and set destinations for each segment
+    // For each segment:
+    // - BYTES: route to dest without conversion (raw unspecified data)
+    // - STRUCTURE: split into field arrays, convert, and route internally
+    // - Primitive: convert to numeric and route to dest
     for (size_t i = 0; i < outputs.nbEdges; i++) {
+        const SDDL2_Segment* seg = &segments.items[i];
+
+        // Handle BYTES type: route directly without conversion
+        if (seg->type.kind == SDDL2_TYPE_BYTES) {
+            ZL_ERR_IF_ERR(ZL_Edge_setDestination(outputs.edges[i], dest));
+            continue;
+        }
+
+        // Handle STRUCTURE type: split, convert, and route fields
+        if (seg->type.kind == SDDL2_TYPE_STRUCTURE) {
+            ZL_ERR_IF_ERR(
+                    sddl2_apply_structure_split(outputs.edges[i], seg, graph));
+            // Note: structure split handles field conversion and routing
+            // internally, so we don't call setDestination here
+            continue;
+        }
+
+        // Handle primitive types: convert and route
+        ZL_ERR_IF_ERR(sddl2_apply_type_conversion(
+                outputs.edges[i], seg, &outputs.edges[i], graph));
         ZL_ERR_IF_ERR(ZL_Edge_setDestination(outputs.edges[i], dest));
     }
 
