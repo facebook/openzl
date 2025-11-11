@@ -4,8 +4,11 @@
 
 #include <stddef.h>
 
+#include "openzl/codecs/splitByStruct/encode_splitByStruct_binding.h"
 #include "openzl/codecs/zl_conversion.h"
+#include "openzl/common/logging.h"
 #include "openzl/compress/graphs/sddl2/sddl2_interpreter.h"
+#include "openzl/compress/private_nodes.h"
 #include "openzl/zl_public_nodes.h"
 
 /**
@@ -96,6 +99,423 @@ static ZL_Report sddl2_determine_endianness(
         default:
             ZL_ERR(GENERIC, "Unknown SDDL2 type kind: %d", (int)type_kind);
     }
+
+    return ZL_returnSuccess();
+}
+
+/**
+ * Count the total number of primitive fields in a type (recursive).
+ *
+ * For structures, recursively counts all primitive fields within.
+ * For primitives, returns the width (number of elements).
+ *
+ * Rejects arrays of structures (width > 1 on STRUCTURE type).
+ *
+ * @param type The type to analyze
+ * @param graph Graph context for error reporting
+ * @param out_count Output pointer to field count
+ * @return ZL_Report indicating success or error
+ */
+static ZL_Report sddl2_count_primitive_fields(
+        SDDL2_Type type,
+        ZL_Graph* graph,
+        size_t* out_count)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+
+    if (type.kind == SDDL2_TYPE_STRUCTURE) {
+        // Reject arrays of structures (complex edge case)
+        if (type.width > 1) {
+            ZL_ERR(GENERIC,
+                   "Arrays of structures not yet supported (width=%u)",
+                   type.width);
+        }
+
+        // For single structure instance, recursively count fields
+        SDDL2_Type_structure_data* struct_data =
+                (SDDL2_Type_structure_data*)type.complex_data;
+        ZL_ERR_IF_NULL(
+                struct_data, GENERIC, "Structure type has NULL complex_data");
+
+        size_t total = 0;
+        for (size_t i = 0; i < struct_data->member_count; i++) {
+            size_t member_count = 0;
+            ZL_ERR_IF_ERR(sddl2_count_primitive_fields(
+                    struct_data->members[i], graph, &member_count));
+            total += member_count;
+        }
+
+        *out_count = total;
+    } else {
+        // Primitive type: count is the width (handles arrays)
+        *out_count = type.width;
+    }
+
+    return ZL_returnSuccess();
+}
+
+/**
+ * Recursively flatten a type's field sizes into an array.
+ *
+ * For structures, recursively flattens all nested fields.
+ * For primitives, appends the field size.
+ *
+ * @param type The type to flatten
+ * @param field_sizes Output array (must be pre-allocated)
+ * @param index Pointer to current index in output array (updated during
+ * recursion)
+ * @param graph Graph context for error reporting
+ * @return ZL_Report indicating success or error
+ */
+static ZL_Report sddl2_flatten_field_sizes(
+        SDDL2_Type type,
+        size_t* field_sizes,
+        size_t* index,
+        ZL_Graph* graph)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+
+    if (type.kind == SDDL2_TYPE_STRUCTURE) {
+        // Reject arrays of structures
+        if (type.width > 1) {
+            ZL_ERR(GENERIC,
+                   "Arrays of structures not yet supported (width=%u)",
+                   type.width);
+        }
+
+        // Recursively flatten all members
+        SDDL2_Type_structure_data* struct_data =
+                (SDDL2_Type_structure_data*)type.complex_data;
+        ZL_ERR_IF_NULL(
+                struct_data, GENERIC, "Structure type has NULL complex_data");
+
+        for (size_t i = 0; i < struct_data->member_count; i++) {
+            ZL_ERR_IF_ERR(sddl2_flatten_field_sizes(
+                    struct_data->members[i], field_sizes, index, graph));
+        }
+    } else {
+        // Primitive type: calculate size and append
+        size_t field_size = SDDL2_Type_size(type);
+
+        // Skip zero-sized fields (invalid types)
+        if (field_size == 0) {
+            ZL_DLOG(BLOCK,
+                    "Skipping field with zero size (type kind %d)",
+                    (int)type.kind);
+            return ZL_returnSuccess();
+        }
+
+        field_sizes[(*index)++] = field_size;
+    }
+
+    return ZL_returnSuccess();
+}
+
+/**
+ * Extract field sizes from a structure type (supports nested structures).
+ *
+ * Recursively flattens nested structures into a flat array of primitive field
+ * sizes. Supports arbitrary nesting depth as long as all structures have
+ * width=1.
+ *
+ * @param struct_type The structure type to analyze
+ * @param out_field_sizes Output pointer to array of field sizes
+ * @param out_nb_fields Output pointer to number of fields
+ * @param graph Graph context for memory allocation and error reporting
+ * @return ZL_Report indicating success or error
+ *
+ * Supported:
+ * - Nested structures with width=1: {U8, {I16LE, I32LE}, F64BE}
+ * - Arrays of primitives: {U8, [I32LE × 10], F64BE}
+ * - Arbitrary nesting depth
+ *
+ * Not supported (rejected with error):
+ * - Arrays of structures: [{U8, I32LE} × 10]
+ */
+static ZL_Report sddl2_extract_flat_field_sizes(
+        SDDL2_Type struct_type,
+        size_t** out_field_sizes,
+        size_t* out_nb_fields,
+        ZL_Graph* graph)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+
+    // Validate this is a structure type
+    ZL_ERR_IF_NE(
+            struct_type.kind,
+            SDDL2_TYPE_STRUCTURE,
+            GENERIC,
+            "Expected structure type, got type kind %d",
+            (int)struct_type.kind);
+
+    // Count total primitive fields (recursive)
+    size_t total_fields = 0;
+    ZL_ERR_IF_ERR(
+            sddl2_count_primitive_fields(struct_type, graph, &total_fields));
+
+    ZL_ERR_IF_EQ(
+            total_fields,
+            0,
+            GENERIC,
+            "Structure has no valid primitive fields");
+
+    // Allocate field sizes array using arena
+    size_t* field_sizes = (size_t*)ZL_Graph_getScratchSpace(
+            graph, total_fields * sizeof(size_t));
+    ZL_ERR_IF_NULL(field_sizes, allocation);
+
+    // Recursively flatten field sizes
+    size_t index = 0;
+    ZL_ERR_IF_ERR(
+            sddl2_flatten_field_sizes(struct_type, field_sizes, &index, graph));
+
+    // Verify we filled the expected number of fields
+    ZL_ERR_IF_NE(
+            index,
+            total_fields,
+            GENERIC,
+            "Field count mismatch: expected %zu, got %zu",
+            total_fields,
+            index);
+
+    *out_field_sizes = field_sizes;
+    *out_nb_fields   = total_fields;
+
+    return ZL_returnSuccess();
+}
+
+/**
+ * Recursively extract primitive field types from a structure (flattened).
+ *
+ * Similar to sddl2_flatten_field_sizes, but extracts the actual SDDL2_Type_kind
+ * for each primitive field. This is needed to apply proper type conversions.
+ *
+ * @param type The type to flatten
+ * @param field_types Output array of SDDL2_Type_kind (must be pre-allocated)
+ * @param index Pointer to current index in output array (updated during
+ * recursion)
+ * @param graph Graph context for error reporting
+ * @return ZL_Report indicating success or error
+ */
+static ZL_Report sddl2_flatten_field_types(
+        SDDL2_Type type,
+        SDDL2_Type_kind* field_types,
+        size_t* index,
+        ZL_Graph* graph)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+
+    if (type.kind == SDDL2_TYPE_STRUCTURE) {
+        // Reject arrays of structures
+        if (type.width > 1) {
+            ZL_ERR(GENERIC,
+                   "Arrays of structures not yet supported (width=%u)",
+                   type.width);
+        }
+
+        // Recursively flatten all members
+        SDDL2_Type_structure_data* struct_data =
+                (SDDL2_Type_structure_data*)type.complex_data;
+        ZL_ERR_IF_NULL(
+                struct_data, GENERIC, "Structure type has NULL complex_data");
+
+        for (size_t i = 0; i < struct_data->member_count; i++) {
+            ZL_ERR_IF_ERR(sddl2_flatten_field_types(
+                    struct_data->members[i], field_types, index, graph));
+        }
+    } else {
+        // Primitive type: append its kind
+        // For array types (width > 1), we still just record the element type
+        // The width is handled by field_sizes array
+        field_types[(*index)++] = type.kind;
+    }
+
+    return ZL_returnSuccess();
+}
+
+/**
+ * Extract field types from a structure type (supports nested structures).
+ *
+ * Recursively flattens nested structures into a flat array of primitive field
+ * types. Works in tandem with sddl2_extract_flat_field_sizes().
+ *
+ * @param struct_type The structure type to analyze
+ * @param out_field_types Output pointer to array of SDDL2_Type_kind
+ * @param out_nb_fields Output pointer to number of fields
+ * @param graph Graph context for memory allocation and error reporting
+ * @return ZL_Report indicating success or error
+ */
+static ZL_Report sddl2_extract_flat_field_types(
+        SDDL2_Type struct_type,
+        SDDL2_Type_kind** out_field_types,
+        size_t* out_nb_fields,
+        ZL_Graph* graph)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+
+    // Count total primitive fields (reuse existing function)
+    size_t total_fields = 0;
+    ZL_ERR_IF_ERR(
+            sddl2_count_primitive_fields(struct_type, graph, &total_fields));
+
+    ZL_ERR_IF_EQ(
+            total_fields,
+            0,
+            GENERIC,
+            "Structure has no valid primitive fields");
+
+    // Allocate field types array using arena
+    SDDL2_Type_kind* field_types = (SDDL2_Type_kind*)ZL_Graph_getScratchSpace(
+            graph, total_fields * sizeof(SDDL2_Type_kind));
+    ZL_ERR_IF_NULL(field_types, allocation);
+
+    // Recursively flatten field types
+    size_t index = 0;
+    ZL_ERR_IF_ERR(
+            sddl2_flatten_field_types(struct_type, field_types, &index, graph));
+
+    // Verify we filled the expected number of fields
+    ZL_ERR_IF_NE(
+            index,
+            total_fields,
+            GENERIC,
+            "Field type count mismatch: expected %zu, got %zu",
+            total_fields,
+            index);
+
+    *out_field_types = field_types;
+    *out_nb_fields   = total_fields;
+
+    return ZL_returnSuccess();
+}
+
+// Forward declaration for sddl2_apply_type_conversion (used by sddl2_apply_structure_split)
+static ZL_Report sddl2_apply_type_conversion(
+        ZL_Edge* edge,
+        const SDDL2_Segment* seg,
+        ZL_Edge** out_converted_edge,
+        ZL_Graph* graph);
+
+/**
+ * Apply split-by-struct transform to a structure segment.
+ *
+ * Splits an edge containing an array of structures into N separate edges,
+ * one for each primitive field. Handles nested structures by flattening them.
+ *
+ * Process:
+ * 1. Extract flattened field sizes from structure type
+ * 2. Extract flattened field types from structure type
+ * 3. Run split-by-struct node with field sizes as runtime parameters
+ * 4. Apply type conversion to each output edge based on field type
+ * 5. Route each field edge to COMPRESS_GENERIC
+ *
+ * @param edge The edge containing the structure array
+ * @param seg The segment containing the structure type information
+ * @param graph Graph context for operations and error reporting
+ * @return ZL_Report indicating success or error
+ *
+ * Example:
+ * Input: Array of {U8, I16LE, I32LE} structures
+ * Output: 3 edges - [all U8], [all I16LE], [all I32LE]
+ */
+static ZL_Report sddl2_apply_structure_split(
+        ZL_Edge* edge,
+        const SDDL2_Segment* seg,
+        ZL_Graph* graph)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+
+    ZL_DLOG(BLOCK,
+            "Applying split-by-struct to segment with structure type (width=%u)",
+            seg->type.width);
+
+    // Step 1: Extract flattened field sizes
+    size_t* field_sizes = NULL;
+    size_t nb_fields    = 0;
+    ZL_ERR_IF_ERR(sddl2_extract_flat_field_sizes(
+            seg->type, &field_sizes, &nb_fields, graph));
+
+    ZL_DLOG(BLOCK, "Structure has %zu flattened primitive fields", nb_fields);
+
+    // Step 2: Extract flattened field types (for later conversion)
+    SDDL2_Type_kind* field_types = NULL;
+    size_t nb_field_types        = 0;
+    ZL_ERR_IF_ERR(sddl2_extract_flat_field_types(
+            seg->type, &field_types, &nb_field_types, graph));
+
+    // Sanity check: field counts must match
+    ZL_ERR_IF_NE(
+            nb_fields,
+            nb_field_types,
+            GENERIC,
+            "Field count mismatch: sizes=%zu, types=%zu",
+            nb_fields,
+            nb_field_types);
+
+    // Step 3: Create copy parameter for field sizes
+    ZL_CopyParam const fieldSizesParam = {
+        .paramId   = ZL_SPLITBYSTRUCT_FIELDSIZES_PID,
+        .paramPtr  = field_sizes,
+        .paramSize = nb_fields * sizeof(size_t)
+    };
+
+    // Package into LocalParams structure
+    ZL_LocalCopyParams const lcp = { &fieldSizesParam, 1 };
+    ZL_LocalParams const lParams = { .copyParams = lcp };
+
+    // Step 4: Run split-by-struct node with runtime parameters
+    ZL_TRY_LET_T(
+            ZL_EdgeList,
+            split_outputs,
+            ZL_Edge_runNode_withParams(edge, ZL_NODE_SPLIT_BY_STRUCT, &lParams));
+
+    // Validate we got the expected number of output edges
+    ZL_ERR_IF_NE(
+            split_outputs.nbEdges,
+            nb_fields,
+            GENERIC,
+            "Split-by-struct produced %zu edges, expected %zu",
+            split_outputs.nbEdges,
+            nb_fields);
+
+    ZL_DLOG(BLOCK, "Split-by-struct produced %zu field edges", nb_fields);
+
+    // Step 5: Apply type conversion to each field edge
+    for (size_t i = 0; i < split_outputs.nbEdges; i++) {
+        SDDL2_Type_kind field_type_kind = field_types[i];
+
+        // Skip BYTES type (shouldn't happen with structures, but check anyway)
+        if (field_type_kind == SDDL2_TYPE_BYTES) {
+            ZL_DLOG(BLOCK, "Field %zu: skipping BYTES type", i);
+            continue;
+        }
+
+        // Create a temporary segment descriptor for this field
+        // (only type.kind is used by sddl2_apply_type_conversion)
+        SDDL2_Segment field_seg = {
+            .tag        = seg->tag,
+            .start_pos  = 0,
+            .size_bytes = field_sizes[i],
+            .type       = { .kind = field_type_kind, .width = 1, .complex_data = NULL }
+        };
+
+        // Apply type conversion
+        ZL_ERR_IF_ERR(sddl2_apply_type_conversion(
+                split_outputs.edges[i], &field_seg, &split_outputs.edges[i], graph));
+
+        ZL_DLOG(BLOCK,
+                "Field %zu: converted to numeric (type kind %d)",
+                i,
+                (int)field_type_kind);
+    }
+
+    // Step 6: Route all field edges to COMPRESS_GENERIC
+    for (size_t i = 0; i < split_outputs.nbEdges; i++) {
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(
+                split_outputs.edges[i], ZL_GRAPH_COMPRESS_GENERIC));
+    }
+
+    ZL_DLOG(BLOCK, "Structure split complete: %zu fields routed to compression", nb_fields);
 
     return ZL_returnSuccess();
 }

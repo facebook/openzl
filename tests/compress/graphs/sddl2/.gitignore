@@ -1,6 +1,8 @@
 # Compiled test executables
 sddl2_arithmetic_test
 sddl2_bytecode_execution_test
+sddl2_extract_field_sizes_test
+sddl2_field_extraction_test
 sddl2_input_test
 sddl2_interpreter_test
 sddl2_segments_test
