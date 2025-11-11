@@ -725,6 +725,9 @@ static ZL_Report sddl2_process_segment(
             ZL_ERR_IF_ERR(sddl2_apply_type_conversion(graph, edge, seg, &edge));
             return ZL_Edge_setDestination(edge, dest);
     }
+
+    // Unreachable: all SDDL2_Type_kind values are handled above
+    ZL_ERR(GENERIC, "Unknown SDDL2 type kind: %d", (int)seg->type.kind);
 }
 
 /**

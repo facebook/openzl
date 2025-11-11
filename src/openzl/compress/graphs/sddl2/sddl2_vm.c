@@ -624,13 +624,6 @@ SDDL2_Error SDDL2_op_load_u8(
  * ========================================================================= */
 
 // Forward declarations
-static void* sddl2_realloc(
-        void* old_ptr,
-        size_t old_size,
-        size_t new_size,
-        SDDL2_allocator_fn alloc_fn,
-        void* alloc_ctx);
-
 static int tag_registry_register(SDDL2_Tag_registry* registry, uint32_t tag);
 
 /**
@@ -644,7 +637,8 @@ static int tag_registry_register(SDDL2_Tag_registry* registry, uint32_t tag);
  * Generic dynamic array capacity growth helper.
  * Implements 2x growth strategy with configurable limits.
  *
- * @param items_ptr Pointer to items array pointer (will be updated on success)
+ * @param items_ptr_addr Address of items array pointer (as void*) - will be
+ * updated on success
  * @param count Current item count
  * @param capacity_ptr Pointer to current capacity (will be updated on success)
  * @param element_size Size of each element in bytes
@@ -655,7 +649,7 @@ static int tag_registry_register(SDDL2_Tag_registry* registry, uint32_t tag);
  * failed)
  */
 static int ensure_capacity(
-        void** items_ptr,
+        void* items_ptr_addr,
         size_t count,
         size_t* capacity_ptr,
         size_t element_size,
@@ -663,6 +657,8 @@ static int ensure_capacity(
         SDDL2_allocator_fn alloc_fn,
         void* alloc_ctx)
 {
+    void** items_ptr = (void**)items_ptr_addr;
+
     // Already have capacity
     if (count < *capacity_ptr) {
         return 1;
@@ -801,7 +797,7 @@ void SDDL2_Segment_list_destroy(SDDL2_Segment_list* list)
 static int segment_list_ensure_capacity(SDDL2_Segment_list* list)
 {
     return ensure_capacity(
-            (void**)&list->items,
+            (void*)&list->items,
             list->count,
             &list->capacity,
             sizeof(SDDL2_Segment),
@@ -980,7 +976,7 @@ static int tag_registry_register(SDDL2_Tag_registry* registry, uint32_t tag)
 
     // Ensure capacity for new tag
     if (!ensure_capacity(
-                (void**)&registry->tags,
+                (void*)&registry->tags,
                 registry->count,
                 &registry->capacity,
                 sizeof(uint32_t),
