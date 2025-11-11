@@ -1,0 +1,23 @@
+# ==========================================
+# Star Catalog
+# File `sao` part of the silesia compression corpus
+# Using SDDL v0.5
+# ==========================================
+
+# ------------------------------------------
+# Star entry definition
+# ------------------------------------------
+Record StarEntry() = {
+  SRA0:  Float64LE,         # Right Ascension (radians)
+  SDEC0: Float64LE,         # Declination (radians)
+  ISP:   Bytes(2) @ascii,   # Spectral type
+  MAG:   Int16LE,           # Magnitudes (0–10)
+  XRPM:  Float32LE,         # R.A. proper motion
+  XDPM:  Float32LE          # Dec. proper motion
+}
+
+# ------------------------------------------
+# File structure
+# ------------------------------------------
+header: Byte[28]
+stars: StarEntry[]

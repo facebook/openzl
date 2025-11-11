@@ -1018,12 +1018,12 @@ TEST(test_push_current_pos_no_side_effects)
  * at the beginning of input traversal.
  *
  * Assembly:
- * push.remaining              ; Should push 10 (full buffer available)
- * segment.create_unspecified  ; Create segment with size 10
- * halt
+ *   push.remaining
+ *   segment.create_unspecified
+ *   halt
  *
  * Expected:
- *   - 1 segment created with size 10
+ *   - 1 segment with size 10 (full buffer size)
  */
 TEST(test_push_remaining_initial)
 {
@@ -1083,8 +1083,8 @@ TEST(test_push_remaining_after_segment)
 /**
  * Test: push.remaining with multiple segments
  *
- * Verifies that push.remaining tracks remaining bytes correctly as
- * multiple segments are created.
+ * Tests that attempting to create a segment larger than remaining bytes
+ * fails with SEGMENT_BOUNDS error, even when the size comes from arithmetic.
  *
  * Assembly:
  *   push.i32 3
@@ -1098,10 +1098,8 @@ TEST(test_push_remaining_after_segment)
  *   halt
  *
  * Expected:
- *   - All 3 unspecified segments merge into 1 segment
- *   - Merged segment: 10 bytes (3 + 5 + (7-2)=5) but wait, that's 13!
- *   - Actually: 3 + 5 + 5 = 13, but we only have 10 bytes
- *   - This will fail with SEGMENT_BOUNDS error!
+ *   - After first two segments (3 + 5 = 8 bytes), 2 bytes remain
+ *   - Attempting to create 5-byte segment fails: SEGMENT_BOUNDS
  */
 TEST(test_push_remaining_multiple)
 {
@@ -1159,49 +1157,26 @@ TEST(test_push_remaining_no_side_effects)
 /**
  * Test: push.remaining combined with push.current_pos
  *
- * Verifies that current_pos + remaining = buffer_size at any point.
+ * Tests that attempting to create a segment larger than remaining bytes
+ * fails with SEGMENT_BOUNDS error.
  *
  * Assembly:
  *   push.i32 3
  *   segment.create_unspecified
  *   push.current_pos      ; 3
  *   push.remaining        ; 7
- *   math.add              ; 3 + 7 = 10
+ *   math.add              ; 10 (buffer size)
  *   segment.create_unspecified
  *   halt
  *
  * Expected:
- *   - Segment at position 0, size 3 initially
- *   - Then segment at position 3, size 10
- *   - But wait! The problem is we can't create a 10-byte segment at position 3
- *   - There are only 7 bytes remaining!
- *   - This test actually fails because we're trying to create 10 bytes when only 7 remain
- *   - ACTUALLY: Let me reconsider - two consecutive unspecified segments merge
- *   - So we'll have: 3-byte segment, then 10-byte attempt will fail bounds check
- *
- * Wait, this is wrong. If we have 10 bytes total, consume 3, we have 7 left.
- * We can't create a 10-byte segment! This will hit SEGMENT_BOUNDS error.
- *
- * But the assembly creates segments with those values. So actually the segments
- * will merge: first 3 bytes, then attempting 10 bytes (which fails).
- *
- * Actually, looking at the assembly again: it does math.add which gives 10,
- * then tries to create a 10-byte segment. This should fail SEGMENT_BOUNDS.
- *
- * Unless... wait. Let me re-think. After 3-byte segment, we're at position 3.
- * Remaining is 7. We add 3 + 7 = 10. Then we try segment.create_unspecified(10).
- * But we only have 7 bytes left! This WILL fail.
- *
- * I think this test is fundamentally broken. Let me just check what remains.
+ *   - After 3-byte segment, only 7 bytes remain
+ *   - Attempting to create 10-byte segment fails: SEGMENT_BOUNDS
  */
 TEST(test_push_remaining_with_current_pos)
 {
     uint8_t input[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
 
-    // This test will actually FAIL because after consuming 3 bytes,
-    // we only have 7 bytes remaining, but we try to create a 10-byte segment.
-    // Expected error: SDDL2_SEGMENT_BOUNDS
-    
     EXPECT_ERROR(
             SDDL2_SEGMENT_BOUNDS,
             BYTECODE_TEST_PUSH_REMAINING_WITH_CURRENT_POS,
