@@ -34,6 +34,7 @@
   push.tag          0x0005  u32     "Push Tag value onto stack"
   # VM variables
   push.current_pos  0x0080          "Push current input cursor position onto stack as I64"
+  push.remaining    0x0081          "Push remaining bytes in input buffer onto stack as I64"
   # Type opcodes: organized by category with gaps for future expansion
   # 0x0100: Base type (raw bytes)
   push.type.bytes  0x0100          "Push Type{BYTES, 1} onto stack"

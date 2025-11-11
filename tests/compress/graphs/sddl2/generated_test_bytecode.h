@@ -126,6 +126,36 @@ static const uint8_t BYTECODE_TEST_PUSH_CURRENT_POS_NO_SIDE_EFFECTS[] = {
 };
 static const size_t BYTECODE_TEST_PUSH_CURRENT_POS_NO_SIDE_EFFECTS_SIZE = 32;
 
+/* Source: test_push_remaining_after_segment.asm */
+static const uint8_t BYTECODE_TEST_PUSH_REMAINING_AFTER_SEGMENT[] = {
+    0x03, 0x00, 0x01, 0x00, 0x05, 0x00, 0x00, 0x00, 0x01, 0x00, 0x0C, 0x00, 0x81, 0x00, 0x01, 0x00, 0x01, 0x00, 0x0C, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_PUSH_REMAINING_AFTER_SEGMENT_SIZE = 24;
+
+/* Source: test_push_remaining_initial.asm */
+static const uint8_t BYTECODE_TEST_PUSH_REMAINING_INITIAL[] = {
+    0x81, 0x00, 0x01, 0x00, 0x01, 0x00, 0x0C, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_PUSH_REMAINING_INITIAL_SIZE = 12;
+
+/* Source: test_push_remaining_multiple.asm */
+static const uint8_t BYTECODE_TEST_PUSH_REMAINING_MULTIPLE[] = {
+    0x03, 0x00, 0x01, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x0C, 0x00, 0x81, 0x00, 0x01, 0x00, 0x03, 0x00, 0x01, 0x00, 0x05, 0x00, 0x00, 0x00, 0x01, 0x00, 0x0C, 0x00, 0x81, 0x00, 0x01, 0x00, 0x02, 0x00, 0x02, 0x00, 0x01, 0x00, 0x0C, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_PUSH_REMAINING_MULTIPLE_SIZE = 44;
+
+/* Source: test_push_remaining_no_side_effects.asm */
+static const uint8_t BYTECODE_TEST_PUSH_REMAINING_NO_SIDE_EFFECTS[] = {
+    0x03, 0x00, 0x01, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x0C, 0x00, 0x81, 0x00, 0x01, 0x00, 0x81, 0x00, 0x01, 0x00, 0x01, 0x00, 0x03, 0x00, 0x01, 0x00, 0x0C, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_PUSH_REMAINING_NO_SIDE_EFFECTS_SIZE = 32;
+
+/* Source: test_push_remaining_with_current_pos.asm */
+static const uint8_t BYTECODE_TEST_PUSH_REMAINING_WITH_CURRENT_POS[] = {
+    0x03, 0x00, 0x01, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x0C, 0x00, 0x80, 0x00, 0x01, 0x00, 0x81, 0x00, 0x01, 0x00, 0x01, 0x00, 0x02, 0x00, 0x01, 0x00, 0x0C, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_PUSH_REMAINING_WITH_CURRENT_POS_SIZE = 32;
+
 /* Source: test_push_tag_execution.asm */
 static const uint8_t BYTECODE_TEST_PUSH_TAG_EXECUTION[] = {
     0x05, 0x00, 0x01, 0x00, 0x64, 0x00, 0x00, 0x00, 0x01, 0x00, 0x05, 0x00
@@ -216,6 +246,12 @@ static const uint8_t BYTECODE_TEST_TYPE_STRUCTURE[] = {
 };
 static const size_t BYTECODE_TEST_TYPE_STRUCTURE_SIZE = 32;
 
+/* Source: test_zero_size_segment.asm */
+static const uint8_t BYTECODE_TEST_ZERO_SIZE_SEGMENT[] = {
+    0x03, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x0C, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_ZERO_SIZE_SEGMENT_SIZE = 16;
+
 /* Bytecode lookup by test name */
 typedef struct {
     const char* name;
@@ -242,6 +278,11 @@ static const TestBytecode TEST_BYTECODE_LOOKUP[] = {
     { "test_push_current_pos_initial", BYTECODE_TEST_PUSH_CURRENT_POS_INITIAL, BYTECODE_TEST_PUSH_CURRENT_POS_INITIAL_SIZE },
     { "test_push_current_pos_multiple", BYTECODE_TEST_PUSH_CURRENT_POS_MULTIPLE, BYTECODE_TEST_PUSH_CURRENT_POS_MULTIPLE_SIZE },
     { "test_push_current_pos_no_side_effects", BYTECODE_TEST_PUSH_CURRENT_POS_NO_SIDE_EFFECTS, BYTECODE_TEST_PUSH_CURRENT_POS_NO_SIDE_EFFECTS_SIZE },
+    { "test_push_remaining_after_segment", BYTECODE_TEST_PUSH_REMAINING_AFTER_SEGMENT, BYTECODE_TEST_PUSH_REMAINING_AFTER_SEGMENT_SIZE },
+    { "test_push_remaining_initial", BYTECODE_TEST_PUSH_REMAINING_INITIAL, BYTECODE_TEST_PUSH_REMAINING_INITIAL_SIZE },
+    { "test_push_remaining_multiple", BYTECODE_TEST_PUSH_REMAINING_MULTIPLE, BYTECODE_TEST_PUSH_REMAINING_MULTIPLE_SIZE },
+    { "test_push_remaining_no_side_effects", BYTECODE_TEST_PUSH_REMAINING_NO_SIDE_EFFECTS, BYTECODE_TEST_PUSH_REMAINING_NO_SIDE_EFFECTS_SIZE },
+    { "test_push_remaining_with_current_pos", BYTECODE_TEST_PUSH_REMAINING_WITH_CURRENT_POS, BYTECODE_TEST_PUSH_REMAINING_WITH_CURRENT_POS_SIZE },
     { "test_push_tag_execution", BYTECODE_TEST_PUSH_TAG_EXECUTION, BYTECODE_TEST_PUSH_TAG_EXECUTION_SIZE },
     { "test_push_type_execution", BYTECODE_TEST_PUSH_TYPE_EXECUTION, BYTECODE_TEST_PUSH_TYPE_EXECUTION_SIZE },
     { "test_push_type_with_segment_create_tagged", BYTECODE_TEST_PUSH_TYPE_WITH_SEGMENT_CREATE_TAGGED, BYTECODE_TEST_PUSH_TYPE_WITH_SEGMENT_CREATE_TAGGED_SIZE },
@@ -257,8 +298,9 @@ static const TestBytecode TEST_BYTECODE_LOOKUP[] = {
     { "test_type_fixed_array_execution", BYTECODE_TEST_TYPE_FIXED_ARRAY_EXECUTION, BYTECODE_TEST_TYPE_FIXED_ARRAY_EXECUTION_SIZE },
     { "test_type_fixed_array_with_segment", BYTECODE_TEST_TYPE_FIXED_ARRAY_WITH_SEGMENT, BYTECODE_TEST_TYPE_FIXED_ARRAY_WITH_SEGMENT_SIZE },
     { "test_type_structure", BYTECODE_TEST_TYPE_STRUCTURE, BYTECODE_TEST_TYPE_STRUCTURE_SIZE },
+    { "test_zero_size_segment", BYTECODE_TEST_ZERO_SIZE_SEGMENT, BYTECODE_TEST_ZERO_SIZE_SEGMENT_SIZE },
 };
 
-static const size_t TEST_BYTECODE_COUNT = 33;
+static const size_t TEST_BYTECODE_COUNT = 39;
 
 #endif // GENERATED_TEST_BYTECODE_H

@@ -651,11 +651,20 @@ void SDDL2_Input_buffer_init(
         size_t size);
 
 /**
- * Push current cursor position onto stack.
+ * Push current input cursor position.
  * Stack: (empty) -> current_pos:I64
  * Does NOT advance cursor.
  */
 SDDL2_Error SDDL2_op_current_pos(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer);
+
+/**
+ * Push remaining bytes in input buffer.
+ * Stack: (empty) -> remaining:I64
+ * Does NOT advance cursor.
+ */
+SDDL2_Error SDDL2_op_remaining(
         SDDL2_Stack* stack,
         const SDDL2_Input_buffer* buffer);
 

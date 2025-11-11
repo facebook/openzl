@@ -589,6 +589,15 @@ SDDL2_Error SDDL2_op_current_pos(
             stack, SDDL2_Value_i64((int64_t)buffer->current_pos));
 }
 
+SDDL2_Error SDDL2_op_remaining(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer)
+{
+    // Push remaining bytes in input buffer as I64
+    size_t remaining = buffer->size - buffer->current_pos;
+    return SDDL2_Stack_push(stack, SDDL2_Value_i64((int64_t)remaining));
+}
+
 SDDL2_Error SDDL2_op_load_u8(
         SDDL2_Stack* stack,
         const SDDL2_Input_buffer* buffer)

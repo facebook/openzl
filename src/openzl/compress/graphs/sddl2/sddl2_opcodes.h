@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
 // Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-// Generated at: 2025-11-11 04:21:02 UTC
+// Generated at: 2025-11-11 05:40:06 UTC
 // Generator: generate_opcodes.py
 //
 // To regenerate: python3 tools/sddl/assembler/generate_opcodes.py
@@ -53,6 +53,7 @@ enum sddl2_opcode_push {
     SDDL2_OP_PUSH_I64 = 0x0004,  /* param: i64 */
     SDDL2_OP_PUSH_TAG = 0x0005,  /* param: u32 */
     SDDL2_OP_PUSH_CURRENT_POS = 0x0080,
+    SDDL2_OP_PUSH_REMAINING = 0x0081,
     SDDL2_OP_PUSH_TYPE_BYTES = 0x0100,
     SDDL2_OP_PUSH_TYPE_U8 = 0x0110,
     SDDL2_OP_PUSH_TYPE_I8 = 0x0111,

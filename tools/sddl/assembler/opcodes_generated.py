@@ -2,7 +2,7 @@
 AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 
 Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-Generated at: 2025-11-11 04:21:02 UTC
+Generated at: 2025-11-11 05:40:06 UTC
 Generator: generate_opcodes.py
 
 To regenerate: python3 generate_opcodes.py
@@ -37,6 +37,7 @@ INSTRUCTIONS = {
     "push.i64": ("PUSH", 0x0004, ["i64"]),
     "push.tag": ("PUSH", 0x0005, ["u32"]),
     "push.current_pos": ("PUSH", 0x0080, []),
+    "push.remaining": ("PUSH", 0x0081, []),
     "push.type.bytes": ("PUSH", 0x0100, []),
     "push.type.u8": ("PUSH", 0x0110, []),
     "push.type.i8": ("PUSH", 0x0111, []),
