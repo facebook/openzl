@@ -167,7 +167,8 @@ static size_t genericGraphCompression(
     return ZL_validResult(r);
 }
 
-#include "benchmark/unitBench/saoGraph.h" // sao_graph_v1
+#include "benchmark/unitBench/saoGraph.h"       // sao_graph_v1
+#include "benchmark/unitBench/saoGraph_sddl2.h" // sao_graph_sddl2
 
 static ZL_GraphID zstdGraph(ZL_Compressor* cgraph)
 {
@@ -453,6 +454,7 @@ Bench_Entry const scenarioList[] = {
     { "rangePack64zstd", .graphF = rangepack64_zstdGraph },
     { "rolz_c", rolzc_wrapper },
     { "sao_v1", .graphF=sao_graph_v1 },
+    { "sao_sddl2", .graphF=sao_graph_sddl2 },
     { "saoIngest", saoIngest_wrapper },
     { "saoIngestCompiled", saoIngestCompiled_wrapper },
     { "splitBy4", splitBy4_wrapper, .prep = splitBy4_preparation },

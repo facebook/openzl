@@ -105,6 +105,48 @@ static ZL_Report sddl2_determine_endianness(
 }
 
 /**
+ * Convenience function to register SDDL2_parse with bytecode parameters.
+ *
+ * This wraps the boilerplate of setting up ZL_LocalParams with bytecode.
+ *
+ * @param cgraph The compressor to register with
+ * @param bytecode Pointer to SDDL2 bytecode
+ * @param bytecode_size Size of bytecode in bytes
+ * @return ZL_GraphID for the registered graph, or ZL_GRAPH_ILLEGAL on error
+ */
+ZL_GraphID ZL_Compressor_registerSDDL2Graph(
+        ZL_Compressor* cgraph,
+        const void* bytecode,
+        size_t bytecode_size)
+{
+    if (cgraph == NULL || (bytecode == NULL && bytecode_size != 0)) {
+        return ZL_GRAPH_ILLEGAL;
+    }
+
+    // Setup bytecode parameter
+    ZL_RefParam bytecodeParam = { .paramId   = SDDL2_BYTECODE_PARAM,
+                                  .paramRef  = bytecode,
+                                  .paramSize = bytecode_size };
+
+    ZL_LocalRefParams refParams = { .refParams   = &bytecodeParam,
+                                    .nbRefParams = 1 };
+
+    ZL_LocalParams params = { .refParams = refParams };
+
+    // Setup function graph descriptor
+    ZL_Type inputType                     = ZL_Type_serial;
+    ZL_FunctionGraphDesc const sddl2_desc = { .name           = "sddl2_parse",
+                                              .graph_f        = SDDL2_parse,
+                                              .inputTypeMasks = &inputType,
+                                              .nbInputs       = 1,
+                                              .lastInputIsVariable = false,
+                                              .localParams         = params };
+
+    // Register the function graph
+    return ZL_Compressor_registerFunctionGraph(cgraph, &sddl2_desc);
+}
+
+/**
  * Count the total number of primitive fields in a type (recursive).
  *
  * For structures, recursively counts all primitive fields within.
@@ -145,8 +187,10 @@ static ZL_Report sddl2_count_primitive_fields(ZL_Graph* graph, SDDL2_Type type)
 
         return ZL_returnValue(total);
     } else {
-        // Primitive type: count is the width (handles arrays)
-        return ZL_returnValue(type.width);
+        // Primitive type (including arrays): counts as 1 field
+        // The width is handled by field SIZE calculation, not field COUNT
+        // Example: Bytes[2] is 1 field of size 2, not 2 fields of size 1
+        return ZL_returnValue(1);
     }
 }
 

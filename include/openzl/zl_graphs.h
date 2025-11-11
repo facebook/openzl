@@ -31,6 +31,7 @@ typedef enum {
     ZL_StandardGraphID_try_parse_int,
 
     ZL_StandardGraphID_simple_data_description_language,
+    ZL_StandardGraphID_simple_data_description_language_v2,
 
     ZL_StandardGraphID_public_end // last id, used to detect end of public
                                   // range
