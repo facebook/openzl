@@ -220,8 +220,7 @@ static ZL_Report sddl2_error_to_report(SDDL2_Error err, ZL_Graph* graph)
                    "SDDL2 VM division by zero in bytecode execution");
 
         case SDDL2_ALLOCATION_FAILED:
-            ZL_ERR(allocation,
-                   "SDDL2 VM memory allocation failed");
+            ZL_ERR(allocation, "SDDL2 VM memory allocation failed");
     }
 
     // Fallback for unexpected error codes

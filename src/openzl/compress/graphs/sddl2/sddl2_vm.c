@@ -77,7 +77,8 @@ size_t SDDL2_kind_size(SDDL2_Type_kind kind)
         case SDDL2_TYPE_BYTES:
             return 1; // Raw bytes, unit size is 1 byte
         case SDDL2_TYPE_STRUCTURE:
-            return 0; // Structures don't have a fixed kind size (use complex_data)
+            return 0; // Structures don't have a fixed kind size (use
+                      // complex_data)
         default:
             return 0; // Unknown type
     }
@@ -90,11 +91,11 @@ size_t SDDL2_Type_size(SDDL2_Type type)
         if (type.complex_data == NULL) {
             return 0; // Invalid structure
         }
-        SDDL2_Type_structure_data* struct_data = 
-            (SDDL2_Type_structure_data*)type.complex_data;
+        SDDL2_Type_structure_data* struct_data =
+                (SDDL2_Type_structure_data*)type.complex_data;
         return struct_data->total_size_bytes * type.width;
     }
-    
+
     // For primitives, use kind size
     size_t kind_size = SDDL2_kind_size(type.kind);
     if (kind_size == 0) {
@@ -168,9 +169,9 @@ SDDL2_Error SDDL2_op_type_fixed_array(SDDL2_Stack* stack)
 }
 
 SDDL2_Error SDDL2_op_type_structure(
-    SDDL2_Stack* stack,
-    SDDL2_allocator_fn alloc_fn,
-    void* alloc_ctx)
+        SDDL2_Stack* stack,
+        SDDL2_allocator_fn alloc_fn,
+        void* alloc_ctx)
 {
     // Pop member count (I64) from stack
     SDDL2_Value count_val;
@@ -192,15 +193,17 @@ SDDL2_Error SDDL2_op_type_structure(
 
     // Calculate allocation size for structure data
     // size = sizeof(header) + member_count * sizeof(SDDL2_Type)
-    size_t allocation_size = sizeof(SDDL2_Type_structure_data) + 
-                             member_count * sizeof(SDDL2_Type);
+    size_t allocation_size = sizeof(SDDL2_Type_structure_data)
+            + member_count * sizeof(SDDL2_Type);
 
     // Allocate structure data
     SDDL2_Type_structure_data* struct_data;
     if (alloc_fn != NULL) {
-        struct_data = (SDDL2_Type_structure_data*)alloc_fn(alloc_ctx, allocation_size);
+        struct_data = (SDDL2_Type_structure_data*)alloc_fn(
+                alloc_ctx, allocation_size);
     } else {
-        struct_data = (SDDL2_Type_structure_data*)sddl2_fallback_realloc(NULL, allocation_size);
+        struct_data = (SDDL2_Type_structure_data*)sddl2_fallback_realloc(
+                NULL, allocation_size);
     }
 
     if (struct_data == NULL) {
@@ -208,7 +211,7 @@ SDDL2_Error SDDL2_op_type_structure(
     }
 
     // Initialize structure metadata
-    struct_data->member_count = member_count;
+    struct_data->member_count     = member_count;
     struct_data->total_size_bytes = 0; // Will compute below
 
     // Pop member types from stack (in reverse order since stack is LIFO)
@@ -217,7 +220,7 @@ SDDL2_Error SDDL2_op_type_structure(
     // To get them in order, we pop into array in reverse
     for (size_t i = 0; i < member_count; i++) {
         size_t index = member_count - 1 - i; // Reverse index
-        
+
         SDDL2_Value type_val;
         SDDL2_TRY(SDDL2_Stack_pop(stack, &type_val));
 
@@ -235,22 +238,21 @@ SDDL2_Error SDDL2_op_type_structure(
     // Compute total size by summing all member sizes
     for (size_t i = 0; i < member_count; i++) {
         size_t member_size = SDDL2_Type_size(struct_data->members[i]);
-        
+
         // Check for size overflow
         if (struct_data->total_size_bytes > SIZE_MAX - member_size) {
             sddl2_free(struct_data, alloc_fn);
             return SDDL2_STACK_OVERFLOW; // Size overflow
         }
-        
+
         struct_data->total_size_bytes += member_size;
     }
 
     // Create structure type
-    SDDL2_Type struct_type = {
-        .kind = SDDL2_TYPE_STRUCTURE,
-        .width = 1, // Single instance (can be multiplied later with type.fixed_array)
-        .complex_data = struct_data
-    };
+    SDDL2_Type struct_type = { .kind  = SDDL2_TYPE_STRUCTURE,
+                               .width = 1, // Single instance (can be multiplied
+                                           // later with type.fixed_array)
+                               .complex_data = struct_data };
 
     // Push structure type onto stack
     return SDDL2_Stack_push(stack, SDDL2_Value_type(struct_type));
