@@ -1185,6 +1185,193 @@ TEST(test_push_remaining_with_current_pos)
             sizeof(input));
 }
 
+/* ============================================================================
+ * Logical Operations Error Tests (Interpreter Level)
+ * ========================================================================= */
+
+/**
+ * Test: logic.and with insufficient stack values
+ *
+ * Assembly:
+ *   push.i32 42
+ *   logic.and
+ *   halt
+ *
+ * Expected: SDDL2_STACK_UNDERFLOW (needs 2 values, only 1 provided)
+ */
+TEST(test_logic_and_interpreter_stack_underflow)
+{
+    // Bytecode: push.i32 42, logic.and, halt
+    uint32_t bytecode[] = {
+        0x00010003, // push.i32
+        42,         // value
+        0x00040001, // logic.and
+        0x00050001, // halt
+    };
+    uint8_t input[] = { 0 };
+
+    EXPECT_ERROR(
+            SDDL2_STACK_UNDERFLOW,
+            bytecode,
+            sizeof(bytecode),
+            input,
+            sizeof(input));
+}
+
+/**
+ * Test: logic.or with empty stack
+ *
+ * Assembly:
+ *   logic.or
+ *   halt
+ *
+ * Expected: SDDL2_STACK_UNDERFLOW
+ */
+TEST(test_logic_or_interpreter_empty_stack)
+{
+    // Bytecode: logic.or, halt
+    uint32_t bytecode[] = {
+        0x00040002, // logic.or
+        0x00050001, // halt
+    };
+    uint8_t input[] = { 0 };
+
+    EXPECT_ERROR(
+            SDDL2_STACK_UNDERFLOW,
+            bytecode,
+            sizeof(bytecode),
+            input,
+            sizeof(input));
+}
+
+/**
+ * Test: logic.xor with type mismatch
+ *
+ * Assembly:
+ *   push.tag 100
+ *   push.i32 42
+ *   logic.xor
+ *   halt
+ *
+ * Expected: SDDL2_TYPE_MISMATCH (tag is not I64)
+ */
+TEST(test_logic_xor_interpreter_type_mismatch)
+{
+    // Bytecode: push.tag 100, push.i32 42, logic.xor, halt
+    uint32_t bytecode[] = {
+        0x00010005, // push.tag
+        100,        // tag value
+        0x00010003, // push.i32
+        42,         // i32 value
+        0x00040003, // logic.xor
+        0x00050001, // halt
+    };
+    uint8_t input[] = { 0 };
+
+    EXPECT_ERROR(
+            SDDL2_TYPE_MISMATCH,
+            bytecode,
+            sizeof(bytecode),
+            input,
+            sizeof(input));
+}
+
+/**
+ * Test: logic.not with empty stack
+ *
+ * Assembly:
+ *   logic.not
+ *   halt
+ *
+ * Expected: SDDL2_STACK_UNDERFLOW
+ */
+TEST(test_logic_not_interpreter_empty_stack)
+{
+    // Bytecode: logic.not, halt
+    uint32_t bytecode[] = {
+        0x00040004, // logic.not
+        0x00050001, // halt
+    };
+    uint8_t input[] = { 0 };
+
+    EXPECT_ERROR(
+            SDDL2_STACK_UNDERFLOW,
+            bytecode,
+            sizeof(bytecode),
+            input,
+            sizeof(input));
+}
+
+/**
+ * Test: logic.not with type mismatch
+ *
+ * Assembly:
+ *   push.type.u8
+ *   logic.not
+ *   halt
+ *
+ * Expected: SDDL2_TYPE_MISMATCH (Type is not I64)
+ */
+TEST(test_logic_not_interpreter_type_mismatch)
+{
+    // Bytecode: push.type.u8, logic.not, halt
+    uint32_t bytecode[] = {
+        0x00010110, // push.type.u8
+        0x00040004, // logic.not
+        0x00050001, // halt
+    };
+    uint8_t input[] = { 0 };
+
+    EXPECT_ERROR(
+            SDDL2_TYPE_MISMATCH,
+            bytecode,
+            sizeof(bytecode),
+            input,
+            sizeof(input));
+}
+
+/**
+ * Test: Successful logic operations at interpreter level
+ *
+ * Assembly:
+ *   push.i32 0xFF00
+ *   push.i32 0x0FF0
+ *   logic.and        ; Result: 0x0F00
+ *   push.i32 0x000F
+ *   logic.or         ; Result: 0x0F0F
+ *   push.i32 0xFFFF
+ *   logic.xor        ; Result: 0xF0F0
+ *   logic.not        ; Result: ~0xF0F0
+ *   stack.drop       ; Clean up
+ *   halt
+ *
+ * Expected: SDDL2_OK
+ */
+TEST(test_logic_all_operations_interpreter)
+{
+    // Bytecode: full logical operations sequence
+    uint32_t bytecode[] = {
+        0x00010003, 0x0000FF00, // push.i32 0xFF00
+        0x00010003, 0x00000FF0, // push.i32 0x0FF0
+        0x00040001,             // logic.and
+        0x00010003, 0x0000000F, // push.i32 0x000F
+        0x00040002,             // logic.or
+        0x00010003, 0x0000FFFF, // push.i32 0xFFFF
+        0x00040003,             // logic.xor
+        0x00040004,             // logic.not
+        0x00070003,             // stack.drop
+        0x00050001,             // halt
+    };
+    uint8_t input[] = { 0 };
+
+    EXPECT_SUCCESS(bytecode, sizeof(bytecode), input, sizeof(input))
+    {
+        // Should execute without error, stack should be empty after drop
+        assert(segments.count == 0);
+    }
+    END_EXPECT_SUCCESS();
+}
+
 int main(void)
 {
     return sddl2_run_all_tests();

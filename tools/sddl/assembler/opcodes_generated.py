@@ -2,7 +2,7 @@
 AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 
 Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-Generated at: 2025-11-12 03:21:05 UTC
+Generated at: 2025-11-12 03:43:23 UTC
 Generator: generate_opcodes.py
 
 To regenerate: python3 generate_opcodes.py
@@ -86,6 +86,12 @@ INSTRUCTIONS = {
     "cmp.le": ("CMP", 0x0004, []),
     "cmp.gt": ("CMP", 0x0005, []),
     "cmp.ge": ("CMP", 0x0006, []),
+
+    # LOGIC family (0x0004)
+    "logic.and": ("LOGIC", 0x0001, []),
+    "logic.or": ("LOGIC", 0x0002, []),
+    "logic.xor": ("LOGIC", 0x0003, []),
+    "logic.not": ("LOGIC", 0x0004, []),
 
     # LOAD family (0x0006)
     "load.u8": ("LOAD", 0x0001, []),

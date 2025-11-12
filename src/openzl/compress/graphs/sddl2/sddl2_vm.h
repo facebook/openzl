@@ -617,6 +617,38 @@ SDDL2_Error SDDL2_op_gt(SDDL2_Stack* stack);
 SDDL2_Error SDDL2_op_ge(SDDL2_Stack* stack);
 
 /* ============================================================================
+ * Logical Operations (LOGIC Family)
+ * ========================================================================= */
+
+/**
+ * Bitwise AND of two I64 values from the stack.
+ * Stack: a:I64 b:I64 -> (a&b):I64
+ * Errors: TypeMismatch
+ */
+SDDL2_Error SDDL2_op_and(SDDL2_Stack* stack);
+
+/**
+ * Bitwise OR of two I64 values from the stack.
+ * Stack: a:I64 b:I64 -> (a|b):I64
+ * Errors: TypeMismatch
+ */
+SDDL2_Error SDDL2_op_or(SDDL2_Stack* stack);
+
+/**
+ * Bitwise XOR of two I64 values from the stack.
+ * Stack: a:I64 b:I64 -> (a^b):I64
+ * Errors: TypeMismatch
+ */
+SDDL2_Error SDDL2_op_xor(SDDL2_Stack* stack);
+
+/**
+ * Bitwise NOT of an I64 value from the stack.
+ * Stack: a:I64 -> (~a):I64
+ * Errors: TypeMismatch
+ */
+SDDL2_Error SDDL2_op_not(SDDL2_Stack* stack);
+
+/* ============================================================================
  * Stack Manipulation Operations (STACK Family)
  * ========================================================================= */
 

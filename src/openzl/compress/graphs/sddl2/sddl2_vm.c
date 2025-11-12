@@ -541,6 +541,38 @@ SDDL2_Error SDDL2_op_ge(SDDL2_Stack* stack)
 }
 
 /* ============================================================================
+ * Logical Operations (LOGIC Family)
+ * ========================================================================= */
+
+SDDL2_Error SDDL2_op_and(SDDL2_Stack* stack)
+{
+    int64_t a, b;
+    SDDL2_TRY(pop_binary_i64(stack, &a, &b));
+    return push_i64(stack, a & b);
+}
+
+SDDL2_Error SDDL2_op_or(SDDL2_Stack* stack)
+{
+    int64_t a, b;
+    SDDL2_TRY(pop_binary_i64(stack, &a, &b));
+    return push_i64(stack, a | b);
+}
+
+SDDL2_Error SDDL2_op_xor(SDDL2_Stack* stack)
+{
+    int64_t a, b;
+    SDDL2_TRY(pop_binary_i64(stack, &a, &b));
+    return push_i64(stack, a ^ b);
+}
+
+SDDL2_Error SDDL2_op_not(SDDL2_Stack* stack)
+{
+    int64_t a;
+    SDDL2_TRY(pop_i64(stack, &a));
+    return push_i64(stack, ~a);
+}
+
+/* ============================================================================
  * Stack Manipulation Operations (STACK Family)
  * ========================================================================= */
 

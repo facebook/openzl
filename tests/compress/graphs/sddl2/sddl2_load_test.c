@@ -257,80 +257,604 @@ TEST(test_load_i64be_basic)
 }
 
 /* ============================================================================
- * Error Condition Tests
+ * Error Condition Tests - Stack Underflow
  * ========================================================================= */
 
-TEST(test_load_bounds_check_negative_address)
+TEST(test_load_u8_stack_underflow)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x42 };
     SETUP_INPUT_BUFFER(buffer, data);
 
-    // Try to load from negative address
+    assert(SDDL2_op_load_u8(stack, &buffer) == SDDL2_STACK_UNDERFLOW);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i8_stack_underflow)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x42 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_op_load_i8(stack, &buffer) == SDDL2_STACK_UNDERFLOW);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_u16le_stack_underflow)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x42, 0x43 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_op_load_u16le(stack, &buffer) == SDDL2_STACK_UNDERFLOW);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_u16be_stack_underflow)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x42, 0x43 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_op_load_u16be(stack, &buffer) == SDDL2_STACK_UNDERFLOW);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i16le_stack_underflow)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x42, 0x43 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_op_load_i16le(stack, &buffer) == SDDL2_STACK_UNDERFLOW);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i16be_stack_underflow)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x42, 0x43 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_op_load_i16be(stack, &buffer) == SDDL2_STACK_UNDERFLOW);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_u32le_stack_underflow)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_op_load_u32le(stack, &buffer) == SDDL2_STACK_UNDERFLOW);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_u32be_stack_underflow)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_op_load_u32be(stack, &buffer) == SDDL2_STACK_UNDERFLOW);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i32le_stack_underflow)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_op_load_i32le(stack, &buffer) == SDDL2_STACK_UNDERFLOW);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i32be_stack_underflow)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_op_load_i32be(stack, &buffer) == SDDL2_STACK_UNDERFLOW);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i64le_stack_underflow)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_op_load_i64le(stack, &buffer) == SDDL2_STACK_UNDERFLOW);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i64be_stack_underflow)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_op_load_i64be(stack, &buffer) == SDDL2_STACK_UNDERFLOW);
+
+    destroy_test_stack(stack);
+}
+
+/* ============================================================================
+ * Error Condition Tests - Type Mismatch
+ * ========================================================================= */
+
+TEST(test_load_u8_type_mismatch_tag)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x42 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(100)) == SDDL2_OK);
+    assert(SDDL2_op_load_u8(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_u8_type_mismatch_type)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x42 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    SDDL2_Type type = { .kind = SDDL2_TYPE_U8, .width = 1 };
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type)) == SDDL2_OK);
+    assert(SDDL2_op_load_u8(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i8_type_mismatch_tag)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x42 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(200)) == SDDL2_OK);
+    assert(SDDL2_op_load_i8(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i8_type_mismatch_type)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x42 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    SDDL2_Type type = { .kind = SDDL2_TYPE_I8, .width = 1 };
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type)) == SDDL2_OK);
+    assert(SDDL2_op_load_i8(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_u16le_type_mismatch_tag)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x42, 0x43 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(300)) == SDDL2_OK);
+    assert(SDDL2_op_load_u16le(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_u16le_type_mismatch_type)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x42, 0x43 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    SDDL2_Type type = { .kind = SDDL2_TYPE_U16LE, .width = 2 };
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type)) == SDDL2_OK);
+    assert(SDDL2_op_load_u16le(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_u16be_type_mismatch_tag)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x42, 0x43 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(400)) == SDDL2_OK);
+    assert(SDDL2_op_load_u16be(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_u16be_type_mismatch_type)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x42, 0x43 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    SDDL2_Type type = { .kind = SDDL2_TYPE_U16BE, .width = 2 };
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type)) == SDDL2_OK);
+    assert(SDDL2_op_load_u16be(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i16le_type_mismatch_tag)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x42, 0x43 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(500)) == SDDL2_OK);
+    assert(SDDL2_op_load_i16le(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i16le_type_mismatch_type)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x42, 0x43 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    SDDL2_Type type = { .kind = SDDL2_TYPE_I16LE, .width = 2 };
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type)) == SDDL2_OK);
+    assert(SDDL2_op_load_i16le(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i16be_type_mismatch_tag)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x42, 0x43 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(600)) == SDDL2_OK);
+    assert(SDDL2_op_load_i16be(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i16be_type_mismatch_type)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x42, 0x43 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    SDDL2_Type type = { .kind = SDDL2_TYPE_I16BE, .width = 2 };
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type)) == SDDL2_OK);
+    assert(SDDL2_op_load_i16be(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_u32le_type_mismatch_tag)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(700)) == SDDL2_OK);
+    assert(SDDL2_op_load_u32le(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_u32le_type_mismatch_type)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    SDDL2_Type type = { .kind = SDDL2_TYPE_U32LE, .width = 4 };
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type)) == SDDL2_OK);
+    assert(SDDL2_op_load_u32le(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_u32be_type_mismatch_tag)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(800)) == SDDL2_OK);
+    assert(SDDL2_op_load_u32be(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_u32be_type_mismatch_type)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    SDDL2_Type type = { .kind = SDDL2_TYPE_U32BE, .width = 4 };
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type)) == SDDL2_OK);
+    assert(SDDL2_op_load_u32be(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i32le_type_mismatch_tag)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(900)) == SDDL2_OK);
+    assert(SDDL2_op_load_i32le(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i32le_type_mismatch_type)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    SDDL2_Type type = { .kind = SDDL2_TYPE_I32LE, .width = 4 };
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type)) == SDDL2_OK);
+    assert(SDDL2_op_load_i32le(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i32be_type_mismatch_tag)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(1000)) == SDDL2_OK);
+    assert(SDDL2_op_load_i32be(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i32be_type_mismatch_type)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    SDDL2_Type type = { .kind = SDDL2_TYPE_I32BE, .width = 4 };
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type)) == SDDL2_OK);
+    assert(SDDL2_op_load_i32be(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i64le_type_mismatch_tag)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(1100)) == SDDL2_OK);
+    assert(SDDL2_op_load_i64le(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i64le_type_mismatch_type)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    SDDL2_Type type = { .kind = SDDL2_TYPE_I64LE, .width = 8 };
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type)) == SDDL2_OK);
+    assert(SDDL2_op_load_i64le(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i64be_type_mismatch_tag)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(1200)) == SDDL2_OK);
+    assert(SDDL2_op_load_i64be(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i64be_type_mismatch_type)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    SDDL2_Type type = { .kind = SDDL2_TYPE_I64BE, .width = 8 };
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type)) == SDDL2_OK);
+    assert(SDDL2_op_load_i64be(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+
+    destroy_test_stack(stack);
+}
+
+/* ============================================================================
+ * Error Condition Tests - Bounds Checking
+ * ========================================================================= */
+
+TEST(test_load_u8_bounds_negative_address)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x42 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(-1)) == SDDL2_OK);
     assert(SDDL2_op_load_u8(stack, &buffer) == SDDL2_LOAD_BOUNDS);
 
     destroy_test_stack(stack);
 }
 
-TEST(test_load_bounds_check_beyond_buffer)
+TEST(test_load_u8_bounds_beyond_buffer)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x42 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
+    assert(SDDL2_op_load_u8(stack, &buffer) == SDDL2_LOAD_BOUNDS);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i8_bounds_beyond_buffer)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x42 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
+    assert(SDDL2_op_load_i8(stack, &buffer) == SDDL2_LOAD_BOUNDS);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_u16le_bounds_beyond_buffer)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x42, 0x43 };
     SETUP_INPUT_BUFFER(buffer, data);
 
-    // Try to load u8 beyond buffer (address 2, but buffer size is 2)
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(2)) == SDDL2_OK);
-    assert(SDDL2_op_load_u8(stack, &buffer) == SDDL2_LOAD_BOUNDS);
-
-    // Try to load u16le at address 1 (would need 2 bytes starting at 1, but
-    //
-    // only have 1 byte left)
+    // Try to load at address 1 (needs 2 bytes, but only 1 byte left)
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
     assert(SDDL2_op_load_u16le(stack, &buffer) == SDDL2_LOAD_BOUNDS);
 
     destroy_test_stack(stack);
 }
 
-TEST(test_load_bounds_check_i32_partial)
+TEST(test_load_u16be_bounds_beyond_buffer)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x42, 0x43 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
+    assert(SDDL2_op_load_u16be(stack, &buffer) == SDDL2_LOAD_BOUNDS);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i16le_bounds_beyond_buffer)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x42, 0x43 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
+    assert(SDDL2_op_load_i16le(stack, &buffer) == SDDL2_LOAD_BOUNDS);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i16be_bounds_beyond_buffer)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x42, 0x43 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
+    assert(SDDL2_op_load_i16be(stack, &buffer) == SDDL2_LOAD_BOUNDS);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_u32le_bounds_beyond_buffer)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02, 0x03 }; // Only 3 bytes
     SETUP_INPUT_BUFFER(buffer, data);
 
-    // Try to load i32le at address 0 (needs 4 bytes, but only have 3)
+    // Try to load u32le at address 0 (needs 4 bytes, but only have 3)
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
+    assert(SDDL2_op_load_u32le(stack, &buffer) == SDDL2_LOAD_BOUNDS);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_u32be_bounds_beyond_buffer)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x01, 0x02, 0x03 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
+    assert(SDDL2_op_load_u32be(stack, &buffer) == SDDL2_LOAD_BOUNDS);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i32le_bounds_beyond_buffer)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x01, 0x02, 0x03 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
     assert(SDDL2_op_load_i32le(stack, &buffer) == SDDL2_LOAD_BOUNDS);
 
     destroy_test_stack(stack);
 }
 
-TEST(test_load_stack_underflow)
+TEST(test_load_i32be_bounds_beyond_buffer)
 {
     SDDL2_Stack* stack = create_test_stack(100);
-    uint8_t data[]     = { 0x42 };
+    uint8_t data[]     = { 0x01, 0x02, 0x03 };
     SETUP_INPUT_BUFFER(buffer, data);
 
-    // Try to load with empty stack (no address)
-    assert(SDDL2_op_load_u8(stack, &buffer) == SDDL2_STACK_UNDERFLOW);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
+    assert(SDDL2_op_load_i32be(stack, &buffer) == SDDL2_LOAD_BOUNDS);
 
     destroy_test_stack(stack);
 }
 
-TEST(test_load_type_mismatch)
+TEST(test_load_i64le_bounds_beyond_buffer)
 {
     SDDL2_Stack* stack = create_test_stack(100);
-    uint8_t data[]     = { 0x42 };
+    uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 }; // Only 7 bytes
     SETUP_INPUT_BUFFER(buffer, data);
 
-    // Push a Tag instead of I64
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(100)) == SDDL2_OK);
-    assert(SDDL2_op_load_u8(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+    // Try to load i64le at address 0 (needs 8 bytes, but only have 7)
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
+    assert(SDDL2_op_load_i64le(stack, &buffer) == SDDL2_LOAD_BOUNDS);
 
-    // Push a Type instead of I64
-    SDDL2_Type type = { .kind = SDDL2_TYPE_U8, .width = 1 };
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type)) == SDDL2_OK);
-    assert(SDDL2_op_load_u8(stack, &buffer) == SDDL2_TYPE_MISMATCH);
+    destroy_test_stack(stack);
+}
+
+TEST(test_load_i64be_bounds_beyond_buffer)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 };
+    SETUP_INPUT_BUFFER(buffer, data);
+
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
+    assert(SDDL2_op_load_i64be(stack, &buffer) == SDDL2_LOAD_BOUNDS);
 
     destroy_test_stack(stack);
 }

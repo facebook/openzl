@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
 // Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-// Generated at: 2025-11-12 03:21:05 UTC
+// Generated at: 2025-11-12 03:43:23 UTC
 // Generator: generate_opcodes.py
 //
 // To regenerate: python3 tools/sddl/assembler/generate_opcodes.py
@@ -99,6 +99,14 @@ enum sddl2_opcode_cmp {
     SDDL2_OP_CMP_LE = 0x0004,
     SDDL2_OP_CMP_GT = 0x0005,
     SDDL2_OP_CMP_GE = 0x0006,
+};
+
+/* LOGIC family (0x0004) - Logical operations */
+enum sddl2_opcode_logic {
+    SDDL2_OP_LOGIC_AND = 0x0001,
+    SDDL2_OP_LOGIC_OR = 0x0002,
+    SDDL2_OP_LOGIC_XOR = 0x0003,
+    SDDL2_OP_LOGIC_NOT = 0x0004,
 };
 
 /* CONTROL family (0x0005) - Control flow operations */

@@ -10,7 +10,7 @@ push.i32 0
 load.u16le
 push.i32 2
 load.i16le
-# 32-bit LE loads  
+# 32-bit LE loads
 push.i32 0
 load.u32le
 push.i32 4

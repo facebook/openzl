@@ -83,6 +83,10 @@
   cmp.ge    0x0006          "Pop two I64 values, push 1 if second >= first, 0 otherwise"
 
 @family LOGIC 0x0004 "Logical operations"
+  logic.and  0x0001          "Pop two I64 values, push their bitwise AND"
+  logic.or   0x0002          "Pop two I64 values, push their bitwise OR"
+  logic.xor  0x0003          "Pop two I64 values, push their bitwise XOR"
+  logic.not  0x0004          "Pop I64 value, push its bitwise NOT"
 
 @family CONTROL 0x0005 "Control flow operations"
   halt      0x0001          "Stop VM execution"

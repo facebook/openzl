@@ -88,6 +88,18 @@ static const SDDL2_Stack_op_entry CMP_OP_MAP[] = {
 #define CMP_OP_MAP_SIZE (sizeof(CMP_OP_MAP) / sizeof(CMP_OP_MAP[0]))
 
 /**
+ * Lookup table for LOGIC family operations.
+ */
+static const SDDL2_Stack_op_entry LOGIC_OP_MAP[] = {
+    { SDDL2_OP_LOGIC_AND, SDDL2_op_and },
+    { SDDL2_OP_LOGIC_OR, SDDL2_op_or },
+    { SDDL2_OP_LOGIC_XOR, SDDL2_op_xor },
+    { SDDL2_OP_LOGIC_NOT, SDDL2_op_not },
+};
+
+#define LOGIC_OP_MAP_SIZE (sizeof(LOGIC_OP_MAP) / sizeof(LOGIC_OP_MAP[0]))
+
+/**
  * Lookup table for STACK family operations.
  */
 static const SDDL2_Stack_op_entry STACK_OP_MAP[] = {
@@ -379,6 +391,10 @@ SDDL2_Error SDDL2_execute_bytecode(
 
             case SDDL2_FAMILY_CMP:
                 DISPATCH_STACK_OP(CMP_OP_MAP, CMP_OP_MAP_SIZE);
+                break;
+
+            case SDDL2_FAMILY_LOGIC:
+                DISPATCH_STACK_OP(LOGIC_OP_MAP, LOGIC_OP_MAP_SIZE);
                 break;
 
             case SDDL2_FAMILY_STACK:
