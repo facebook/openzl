@@ -168,8 +168,8 @@ static ZL_Report sddl2_count_primitive_fields(ZL_Graph* graph, SDDL2_Type type)
         }
 
         // For single structure instance, recursively count fields
-        SDDL2_Type_structure_data* struct_data =
-                (SDDL2_Type_structure_data*)type.complex_data;
+        SDDL2_Struct_data* struct_data =
+                (SDDL2_Struct_data*)type.complex_data;
         ZL_ERR_IF_NULL(
                 struct_data, GENERIC, "Structure type has NULL complex_data");
 
@@ -221,8 +221,8 @@ static ZL_Report sddl2_flatten_field_sizes(
         }
 
         // Recursively flatten all members
-        SDDL2_Type_structure_data* struct_data =
-                (SDDL2_Type_structure_data*)type.complex_data;
+        SDDL2_Struct_data* struct_data =
+                (SDDL2_Struct_data*)type.complex_data;
         ZL_ERR_IF_NULL(
                 struct_data, GENERIC, "Structure type has NULL complex_data");
 
@@ -350,8 +350,8 @@ static ZL_Report sddl2_flatten_field_types(
         }
 
         // Recursively flatten all members
-        SDDL2_Type_structure_data* struct_data =
-                (SDDL2_Type_structure_data*)type.complex_data;
+        SDDL2_Struct_data* struct_data =
+                (SDDL2_Struct_data*)type.complex_data;
         ZL_ERR_IF_NULL(
                 struct_data, GENERIC, "Structure type has NULL complex_data");
 

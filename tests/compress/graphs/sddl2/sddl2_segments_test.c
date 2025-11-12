@@ -72,10 +72,10 @@ static void test_create_single_segment(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
 
-    SDDL2_Input_buffer_init(&buffer, data, 4);
+    SDDL2_Input_cursor_init(&buffer, data, 4);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Create unspecified segment: size=4 (no tag)
@@ -105,10 +105,10 @@ static void test_create_zero_size_segment(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0xAA, 0xBB };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
 
-    SDDL2_Input_buffer_init(&buffer, data, 2);
+    SDDL2_Input_cursor_init(&buffer, data, 2);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Create zero-size unspecified segment: size=0 (no tag)
@@ -139,10 +139,10 @@ static void test_segment_exceeds_buffer(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02, 0x03 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
 
-    SDDL2_Input_buffer_init(&buffer, data, 3);
+    SDDL2_Input_cursor_init(&buffer, data, 3);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Try to create segment larger than buffer: size=10
@@ -166,10 +166,10 @@ static void test_segment_at_exact_boundary(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x10, 0x20, 0x30, 0x40, 0x50 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
 
-    SDDL2_Input_buffer_init(&buffer, data, 5);
+    SDDL2_Input_cursor_init(&buffer, data, 5);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Create segment exactly at buffer size: size=5
@@ -197,10 +197,10 @@ static void test_segment_after_partial_consumption(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0xAA, 0xBB, 0xCC, 0xDD };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
 
-    SDDL2_Input_buffer_init(&buffer, data, 4);
+    SDDL2_Input_cursor_init(&buffer, data, 4);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Create first segment: size=2
@@ -231,10 +231,10 @@ static void test_segment_wrong_tag_type(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
 
-    SDDL2_Input_buffer_init(&buffer, data, 2);
+    SDDL2_Input_cursor_init(&buffer, data, 2);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Push Tag instead of I64 for size
@@ -254,10 +254,10 @@ static void test_segment_wrong_size_type(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
 
-    SDDL2_Input_buffer_init(&buffer, data, 2);
+    SDDL2_Input_cursor_init(&buffer, data, 2);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Push Type instead of I64 for size
@@ -278,10 +278,10 @@ static void test_segment_negative_tag(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
 
-    SDDL2_Input_buffer_init(&buffer, data, 2);
+    SDDL2_Input_cursor_init(&buffer, data, 2);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Negative size should fail
@@ -301,10 +301,10 @@ static void test_segment_negative_size(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
 
-    SDDL2_Input_buffer_init(&buffer, data, 2);
+    SDDL2_Input_cursor_init(&buffer, data, 2);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Another negative size test
@@ -328,10 +328,10 @@ static void test_segment_empty_stack(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
 
-    SDDL2_Input_buffer_init(&buffer, data, 2);
+    SDDL2_Input_cursor_init(&buffer, data, 2);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Empty stack - should underflow
@@ -349,10 +349,10 @@ static void test_segment_missing_size(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
 
-    SDDL2_Input_buffer_init(&buffer, data, 2);
+    SDDL2_Input_cursor_init(&buffer, data, 2);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Don't push anything - test empty stack
@@ -375,10 +375,10 @@ static void test_end_to_end_simple_program(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x48, 0x65, 0x6C, 0x6C, 0x6F }; // "Hello"
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
 
-    SDDL2_Input_buffer_init(&buffer, data, 5);
+    SDDL2_Input_cursor_init(&buffer, data, 5);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Simulate VM program:
@@ -405,10 +405,10 @@ static void test_segments_with_arithmetic(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[10]   = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
 
-    SDDL2_Input_buffer_init(&buffer, data, 10);
+    SDDL2_Input_cursor_init(&buffer, data, 10);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
 
     // Simulate VM program with arithmetic:

@@ -55,8 +55,8 @@ TEST(test_vm_op_simple_structure)
     assert(result.value.as_type.complex_data != NULL);
 
     // Verify structure data
-    SDDL2_Type_structure_data* struct_data =
-            (SDDL2_Type_structure_data*)result.value.as_type.complex_data;
+    SDDL2_Struct_data* struct_data =
+            (SDDL2_Struct_data*)result.value.as_type.complex_data;
     assert(struct_data->member_count == 3);
     assert(struct_data->total_size_bytes == 7); // 1 + 2 + 4
 
@@ -99,8 +99,8 @@ TEST(test_vm_op_structure_with_arrays)
     SDDL2_Value result;
     assert(SDDL2_Stack_pop(&stack, &result) == SDDL2_OK);
 
-    SDDL2_Type_structure_data* struct_data =
-            (SDDL2_Type_structure_data*)result.value.as_type.complex_data;
+    SDDL2_Struct_data* struct_data =
+            (SDDL2_Struct_data*)result.value.as_type.complex_data;
 
     // Size: 1 + 40 + 2 = 43 bytes
     assert(struct_data->total_size_bytes == 43);
@@ -141,8 +141,8 @@ TEST(test_vm_op_array_of_structures)
     assert(result.value.as_type.kind == SDDL2_TYPE_STRUCTURE);
     assert(result.value.as_type.width == 10); // 10 instances!
 
-    SDDL2_Type_structure_data* struct_data =
-            (SDDL2_Type_structure_data*)result.value.as_type.complex_data;
+    SDDL2_Struct_data* struct_data =
+            (SDDL2_Struct_data*)result.value.as_type.complex_data;
     assert(struct_data->total_size_bytes == 5); // Size of one instance
 
     // Total size = 5 bytes × 10 = 50 bytes

@@ -115,7 +115,7 @@ static const SDDL2_Stack_op_entry STACK_OP_MAP[] = {
  * LOAD operations require both stack and input buffer access.
  */
 typedef SDDL2_Error (
-        *SDDL2_Load_op_fn)(SDDL2_Stack*, const SDDL2_Input_buffer*);
+        *SDDL2_Load_op_fn)(SDDL2_Stack*, const SDDL2_Input_cursor*);
 
 /**
  * Dispatch table entry type for LOAD operations.
@@ -292,7 +292,7 @@ static SDDL2_Error handle_push_family(
         size_t bytecode_size,
         size_t* pc,
         SDDL2_Stack* stack,
-        const SDDL2_Input_buffer* buffer)
+        const SDDL2_Input_cursor* buffer)
 {
     SDDL2_Error err = SDDL2_OK;
 
@@ -423,8 +423,8 @@ SDDL2_Error SDDL2_execute_bytecode(
     stack.capacity = 256;
     SDDL2_Stack_init(&stack);
 
-    SDDL2_Input_buffer buffer;
-    SDDL2_Input_buffer_init(&buffer, input_data, input_size);
+    SDDL2_Input_cursor buffer;
+    SDDL2_Input_cursor_init(&buffer, input_data, input_size);
 
     SDDL2_Tag_registry registry;
     // Use same allocator as output_segments (arena in production, NULL in

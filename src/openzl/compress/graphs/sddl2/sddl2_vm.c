@@ -13,7 +13,12 @@
 #include "openzl/shared/mem.h" // ZL_memcpy() for memory operations
 
 /* ============================================================================
- * Stack Operations - Non-Critical Path
+ * Stack Operations
+ *
+ * Provides basic stack management functions for the SDDL2 VM.
+ * Performance-critical push/pop operations are inlined in the header.
+ * These functions handle: initialization, peek, depth queries, and emptiness
+ * checks.
  * ========================================================================= */
 
 void SDDL2_Stack_init(SDDL2_Stack* stack)
@@ -42,6 +47,12 @@ int SDDL2_Stack_is_empty(const SDDL2_Stack* stack)
 
 /* ============================================================================
  * Type Utilities
+ *
+ * Helper functions for calculating sizes of SDDL2 types.
+ * - SDDL2_kind_size(): Returns byte size for a given type kind (U8, I16LE,
+ * etc.)
+ * - SDDL2_Type_size(): Returns total size accounting for width multiplier
+ * Handles both primitive types and complex structures.
  * ========================================================================= */
 
 size_t SDDL2_kind_size(SDDL2_Type_kind kind)
@@ -91,8 +102,7 @@ size_t SDDL2_Type_size(SDDL2_Type type)
         if (type.complex_data == NULL) {
             return 0; // Invalid structure
         }
-        SDDL2_Type_structure_data* struct_data =
-                (SDDL2_Type_structure_data*)type.complex_data;
+        SDDL2_Struct_data* struct_data = (SDDL2_Struct_data*)type.complex_data;
         return struct_data->total_size_bytes * type.width;
     }
 
@@ -118,148 +128,15 @@ static void* sddl2_realloc(
 static void sddl2_free(void* ptr, SDDL2_allocator_fn alloc_fn);
 
 /* ============================================================================
- * Type Operations
- * ========================================================================= */
-
-SDDL2_Error SDDL2_op_type_fixed_array(SDDL2_Stack* stack)
-{
-    // Pop array count (I64) from stack
-    SDDL2_Value array_count_val;
-    SDDL2_TRY(SDDL2_Stack_pop(stack, &array_count_val));
-
-    // Verify it's an I64 value
-    if (array_count_val.kind != SDDL2_VALUE_I64) {
-        return SDDL2_TYPE_MISMATCH;
-    }
-
-    int64_t array_count_i64 = array_count_val.value.as_i64;
-
-    // Validate array_count is positive
-    // Zero or negative array sizes are not supported
-    if (array_count_i64 <= 0) {
-        return SDDL2_TYPE_MISMATCH;
-    }
-
-    // Pop the base type from stack
-    SDDL2_Value base_type_val;
-    SDDL2_TRY(SDDL2_Stack_pop(stack, &base_type_val));
-
-    // Verify it's a Type value
-    if (base_type_val.kind != SDDL2_VALUE_TYPE) {
-        return SDDL2_TYPE_MISMATCH;
-    }
-
-    // Cast to uint32_t (safe since we verified > 0)
-    uint32_t array_count = (uint32_t)array_count_i64;
-
-    // Check for multiplication overflow: width * array_count
-    // For unsigned multiplication overflow check: if (a > 0 && b > UINT32_MAX /
-    // a)
-    uint32_t base_width = base_type_val.value.as_type.width;
-    if (base_width > UINT32_MAX / array_count) {
-        return SDDL2_STACK_OVERFLOW; // Width multiplication would overflow
-    }
-
-    // Create new type with multiplied width
-    SDDL2_Type array_type = base_type_val.value.as_type;
-    array_type.width      = base_width * array_count;
-
-    // Push the array type back onto stack
-    return SDDL2_Stack_push(stack, SDDL2_Value_type(array_type));
-}
-
-SDDL2_Error SDDL2_op_type_structure(
-        SDDL2_Stack* stack,
-        SDDL2_allocator_fn alloc_fn,
-        void* alloc_ctx)
-{
-    // Pop member count (I64) from stack
-    SDDL2_Value count_val;
-    SDDL2_TRY(SDDL2_Stack_pop(stack, &count_val));
-
-    // Verify it's an I64 value
-    if (count_val.kind != SDDL2_VALUE_I64) {
-        return SDDL2_TYPE_MISMATCH;
-    }
-
-    int64_t count_i64 = count_val.value.as_i64;
-
-    // Validate count is positive
-    if (count_i64 <= 0) {
-        return SDDL2_TYPE_MISMATCH;
-    }
-
-    size_t member_count = (size_t)count_i64;
-
-    // Calculate allocation size for structure data
-    // size = sizeof(header) + member_count * sizeof(SDDL2_Type)
-    size_t allocation_size = sizeof(SDDL2_Type_structure_data)
-            + member_count * sizeof(SDDL2_Type);
-
-    // Allocate structure data
-    SDDL2_Type_structure_data* struct_data;
-    if (alloc_fn != NULL) {
-        struct_data = (SDDL2_Type_structure_data*)alloc_fn(
-                alloc_ctx, allocation_size);
-    } else {
-        struct_data = (SDDL2_Type_structure_data*)sddl2_fallback_realloc(
-                NULL, allocation_size);
-    }
-
-    if (struct_data == NULL) {
-        return SDDL2_ALLOCATION_FAILED;
-    }
-
-    // Initialize structure metadata
-    struct_data->member_count     = member_count;
-    struct_data->total_size_bytes = 0; // Will compute below
-
-    // Pop member types from stack (in reverse order since stack is LIFO)
-    // Stack has: Type₀ Type₁ Type₂ ... Typeₙ₋₁ [top was count]
-    // We need to pop Typeₙ₋₁ first, then Typeₙ₋₂, etc.
-    // To get them in order, we pop into array in reverse
-    for (size_t i = 0; i < member_count; i++) {
-        size_t index = member_count - 1 - i; // Reverse index
-
-        SDDL2_Value type_val;
-        SDDL2_TRY(SDDL2_Stack_pop(stack, &type_val));
-
-        // Verify it's a Type value
-        if (type_val.kind != SDDL2_VALUE_TYPE) {
-            // Allocation leak here, but in arena mode it's OK
-            // In test mode with malloc, this would leak
-            sddl2_free(struct_data, alloc_fn);
-            return SDDL2_TYPE_MISMATCH;
-        }
-
-        struct_data->members[index] = type_val.value.as_type;
-    }
-
-    // Compute total size by summing all member sizes
-    for (size_t i = 0; i < member_count; i++) {
-        size_t member_size = SDDL2_Type_size(struct_data->members[i]);
-
-        // Check for size overflow
-        if (struct_data->total_size_bytes > SIZE_MAX - member_size) {
-            sddl2_free(struct_data, alloc_fn);
-            return SDDL2_STACK_OVERFLOW; // Size overflow
-        }
-
-        struct_data->total_size_bytes += member_size;
-    }
-
-    // Create structure type
-    SDDL2_Type struct_type = { .kind  = SDDL2_TYPE_STRUCTURE,
-                               .width = 1, // Single instance (can be multiplied
-                                           // later with type.fixed_array)
-                               .complex_data = struct_data };
-
-    // Push structure type onto stack
-    return SDDL2_Stack_push(stack, SDDL2_Value_type(struct_type));
-}
-
-/* ============================================================================
  * Generic Stack Operation Helpers
+ *
+ * Internal helper functions that encapsulate common stack operation patterns:
+ * - pop_i64(): Pop and validate I64 value
+ * - pop_positive_i64(): Pop and validate positive I64, convert to size_t
+ * - pop_binary_i64(): Pop two I64 values for binary operations
+ * - pop_tag(), pop_type(): Type-specific pop operations
+ * - push_i64(): Push I64 result
+ * These reduce boilerplate and ensure consistent type checking.
  * ========================================================================= */
 
 /**
@@ -276,6 +153,28 @@ static inline SDDL2_Error pop_i64(SDDL2_Stack* stack, int64_t* out)
     }
 
     *out = val.value.as_i64;
+    return SDDL2_OK;
+}
+
+/**
+ * Pop a positive I64 value from stack and convert to size_t.
+ * Common pattern for count/size operations that must be positive.
+ * Used by type.fixed_array and type.structure for element/member counts.
+ */
+static inline SDDL2_Error pop_positive_i64(SDDL2_Stack* stack, size_t* out)
+{
+    SDDL2_Value val;
+    SDDL2_TRY(SDDL2_Stack_pop(stack, &val));
+
+    if (val.kind != SDDL2_VALUE_I64) {
+        return SDDL2_TYPE_MISMATCH;
+    }
+
+    if (val.value.as_i64 <= 0) {
+        return SDDL2_TYPE_MISMATCH;
+    }
+
+    *out = (size_t)val.value.as_i64;
     return SDDL2_OK;
 }
 
@@ -340,13 +239,129 @@ static inline SDDL2_Error push_i64(SDDL2_Stack* stack, int64_t value)
 }
 
 /* ============================================================================
- * Arithmetic Operations (Phase 2)
+ * Type Operations
+ *
+ * Implements type construction operations for creating complex types:
+ * - type.fixed_array: Creates array type by multiplying base type width
+ * - type.structure: Creates structure type from member types
+ * Both operations include overflow detection and proper memory management.
+ * ========================================================================= */
+
+SDDL2_Error SDDL2_op_type_fixed_array(SDDL2_Stack* stack)
+{
+    // Pop array count (must be positive)
+    size_t array_count;
+    SDDL2_TRY(pop_positive_i64(stack, &array_count));
+
+    // Pop the base type from stack
+    SDDL2_Value base_type_val;
+    SDDL2_TRY(SDDL2_Stack_pop(stack, &base_type_val));
+
+    // Verify it's a Type value
+    if (base_type_val.kind != SDDL2_VALUE_TYPE) {
+        return SDDL2_TYPE_MISMATCH;
+    }
+
+    // Check for multiplication overflow: width * array_count
+    // For unsigned multiplication overflow check: if (a > 0 && b > UINT32_MAX /
+    // a)
+    uint32_t base_width = base_type_val.value.as_type.width;
+    if (base_width > UINT32_MAX / array_count) {
+        return SDDL2_STACK_OVERFLOW; // Width multiplication would overflow
+    }
+
+    // Create new type with multiplied width
+    SDDL2_Type array_type = base_type_val.value.as_type;
+    array_type.width      = base_width * (uint32_t)array_count;
+
+    // Push the array type back onto stack
+    return SDDL2_Stack_push(stack, SDDL2_Value_type(array_type));
+}
+
+SDDL2_Error SDDL2_op_type_structure(
+        SDDL2_Stack* stack,
+        SDDL2_allocator_fn alloc_fn,
+        void* alloc_ctx)
+{
+    // Pop member count (must be positive)
+    size_t member_count;
+    SDDL2_TRY(pop_positive_i64(stack, &member_count));
+
+    // Calculate allocation size for structure data
+    // size = sizeof(header) + member_count * sizeof(SDDL2_Type)
+    size_t allocation_size =
+            sizeof(SDDL2_Struct_data) + member_count * sizeof(SDDL2_Type);
+
+    // Allocate structure data
+    SDDL2_Struct_data* const struct_data =
+            (SDDL2_Struct_data*)(alloc_fn ? alloc_fn(alloc_ctx, allocation_size)
+                                          : sddl2_fallback_realloc(
+                                                    NULL, allocation_size));
+
+    if (struct_data == NULL) {
+        return SDDL2_ALLOCATION_FAILED;
+    }
+
+    // Initialize structure metadata
+    struct_data->member_count     = member_count;
+    struct_data->total_size_bytes = 0; // Will compute below
+
+    // Pop member types from stack (in reverse order since stack is LIFO)
+    // Stack has: Type₀ Type₁ Type₂ ... Typeₙ₋₁ [top was count]
+    // We need to pop Typeₙ₋₁ first, then Typeₙ₋₂, etc.
+    // To get them in order, we pop into array in reverse
+    for (size_t i = 0; i < member_count; i++) {
+        size_t index = member_count - 1 - i; // Reverse index
+
+        SDDL2_Value type_val;
+        SDDL2_TRY(SDDL2_Stack_pop(stack, &type_val));
+
+        // Verify it's a Type value
+        if (type_val.kind != SDDL2_VALUE_TYPE) {
+            // Allocation leak here, but in arena mode it's OK
+            // In test mode with malloc, this would leak
+            sddl2_free(struct_data, alloc_fn);
+            return SDDL2_TYPE_MISMATCH;
+        }
+
+        struct_data->members[index] = type_val.value.as_type;
+    }
+
+    // Compute total size by summing all member sizes
+    for (size_t i = 0; i < member_count; i++) {
+        size_t member_size = SDDL2_Type_size(struct_data->members[i]);
+
+        // Check for size overflow
+        if (struct_data->total_size_bytes > SIZE_MAX - member_size) {
+            sddl2_free(struct_data, alloc_fn);
+            return SDDL2_STACK_OVERFLOW; // Size overflow
+        }
+
+        struct_data->total_size_bytes += member_size;
+    }
+
+    // Create structure type
+    SDDL2_Type struct_type = { .kind  = SDDL2_TYPE_STRUCTURE,
+                               .width = 1, // Single instance (can be multiplied
+                                           // later with type.fixed_array)
+                               .complex_data = struct_data };
+
+    // Push structure type onto stack
+    return SDDL2_Stack_push(stack, SDDL2_Value_type(struct_type));
+}
+
+/* ============================================================================
+ * Arithmetic Operations
+ *
+ * Implements basic arithmetic operations (add, sub, mul, div, mod, abs, neg).
+ * All operations include overflow detection and return SDDL2_STACK_OVERFLOW
+ * on overflow. Division operations check for divide-by-zero.
  * ========================================================================= */
 
 /**
  * Helper: Check if addition would overflow.
- * Uses: (a > 0 && b > 0 && a > INT64_MAX - b) || (a < 0 && b < 0 && a <
- * INT64_MIN - b)
+ * Example: add_would_overflow(INT64_MAX, 1) → true
+ *          add_would_overflow(100, 200) → false
  */
 static inline bool add_would_overflow(int64_t a, int64_t b)
 {
@@ -496,6 +511,11 @@ SDDL2_Error SDDL2_op_neg(SDDL2_Stack* stack)
 
 /* ============================================================================
  * Comparison Operations (CMP Family)
+ *
+ * Implements comparison operations that return 0 (false) or 1 (true):
+ * - eq, ne: Equality/inequality checks
+ * - lt, le, gt, ge: Relational comparisons
+ * All operations work on signed I64 values.
  * ========================================================================= */
 
 SDDL2_Error SDDL2_op_eq(SDDL2_Stack* stack)
@@ -542,6 +562,11 @@ SDDL2_Error SDDL2_op_ge(SDDL2_Stack* stack)
 
 /* ============================================================================
  * Logical Operations (LOGIC Family)
+ *
+ * Implements bitwise logical operations on I64 values:
+ * - and, or, xor: Binary bitwise operations
+ * - not: Unary bitwise complement
+ * These operate on the full 64-bit representation.
  * ========================================================================= */
 
 SDDL2_Error SDDL2_op_and(SDDL2_Stack* stack)
@@ -574,6 +599,12 @@ SDDL2_Error SDDL2_op_not(SDDL2_Stack* stack)
 
 /* ============================================================================
  * Stack Manipulation Operations (STACK Family)
+ *
+ * Provides basic stack manipulation primitives:
+ * - drop: Remove top value from stack
+ * - dup: Duplicate top value
+ * - swap: Exchange top two values
+ * These are type-agnostic and work with any stack value.
  * ========================================================================= */
 
 SDDL2_Error SDDL2_op_drop(SDDL2_Stack* stack)
@@ -599,11 +630,17 @@ SDDL2_Error SDDL2_op_swap(SDDL2_Stack* stack)
 }
 
 /* ============================================================================
- * Input Buffer Operations (Phase 3)
+ * Input Cursor Operations
+ *
+ * Provides operations for reading data from the input:
+ * - Cursor initialization and query operations (current_pos, remaining)
+ * - Load operations for various integer types (u8, i8, u16le/be, etc.)
+ * All load operations include bounds checking and return SDDL2_LOAD_BOUNDS on
+ * error. Supports both little-endian (le) and big-endian (be) byte orders.
  * ========================================================================= */
 
-void SDDL2_Input_buffer_init(
-        SDDL2_Input_buffer* buffer,
+void SDDL2_Input_cursor_init(
+        SDDL2_Input_cursor* buffer,
         const void* data,
         size_t size)
 {
@@ -612,9 +649,22 @@ void SDDL2_Input_buffer_init(
     buffer->current_pos = 0;
 }
 
+/**
+ * Helper: Check bounds for load operations.
+ * Validates that an address and size fit within the buffer.
+ */
+static inline SDDL2_Error
+check_load_bounds(const SDDL2_Input_cursor* buffer, int64_t addr, size_t size)
+{
+    if (addr < 0 || (size_t)addr + size > buffer->size) {
+        return SDDL2_LOAD_BOUNDS;
+    }
+    return SDDL2_OK;
+}
+
 SDDL2_Error SDDL2_op_current_pos(
         SDDL2_Stack* stack,
-        const SDDL2_Input_buffer* buffer)
+        const SDDL2_Input_cursor* buffer)
 {
     // Push current cursor position as I64
     return SDDL2_Stack_push(
@@ -623,233 +673,74 @@ SDDL2_Error SDDL2_op_current_pos(
 
 SDDL2_Error SDDL2_op_remaining(
         SDDL2_Stack* stack,
-        const SDDL2_Input_buffer* buffer)
+        const SDDL2_Input_cursor* buffer)
 {
-    // Push remaining bytes in input buffer as I64
     size_t remaining = buffer->size - buffer->current_pos;
     return SDDL2_Stack_push(stack, SDDL2_Value_i64((int64_t)remaining));
 }
 
-SDDL2_Error SDDL2_op_load_u8(
-        SDDL2_Stack* stack,
-        const SDDL2_Input_buffer* buffer)
-{
-    int64_t addr;
-    SDDL2_TRY(pop_i64(stack, &addr));
-
-    // Bounds check: 0 <= addr < size
-    if (addr < 0 || (size_t)addr >= buffer->size) {
-        return SDDL2_LOAD_BOUNDS;
+/**
+ * Macro-generated load operations.
+ * All 12 load operations follow identical control flow with only size and
+ * read expressions differing. Using a macro ensures consistency and reduces
+ * boilerplate from ~150 lines to ~40 lines.
+ */
+#define DEFINE_LOAD_OP(name, size, read_expr)                     \
+    SDDL2_Error SDDL2_op_load_##name(                             \
+            SDDL2_Stack* stack, const SDDL2_Input_cursor* buffer) \
+    {                                                             \
+        int64_t addr;                                             \
+        SDDL2_TRY(pop_i64(stack, &addr));                         \
+        SDDL2_TRY(check_load_bounds(buffer, addr, size));         \
+        const uint8_t* bytes = (const uint8_t*)buffer->data;      \
+        return push_i64(stack, (int64_t)(read_expr));             \
     }
 
-    // Load byte and push as I64 (zero-extended)
-    const uint8_t* bytes = (const uint8_t*)buffer->data;
-    return push_i64(stack, (int64_t)bytes[addr]);
-}
+// 8-bit loads
+DEFINE_LOAD_OP(u8, 1, bytes[addr])
+DEFINE_LOAD_OP(i8, 1, (int8_t)bytes[addr])
 
-SDDL2_Error SDDL2_op_load_i8(
-        SDDL2_Stack* stack,
-        const SDDL2_Input_buffer* buffer)
-{
-    int64_t addr;
-    SDDL2_TRY(pop_i64(stack, &addr));
+// 16-bit loads (little-endian)
+DEFINE_LOAD_OP(u16le, 2, ZL_readLE16(&bytes[addr]))
+DEFINE_LOAD_OP(i16le, 2, (int16_t)ZL_readLE16(&bytes[addr]))
 
-    // Bounds check: 0 <= addr < size
-    if (addr < 0 || (size_t)addr >= buffer->size) {
-        return SDDL2_LOAD_BOUNDS;
-    }
+// 16-bit loads (big-endian)
+DEFINE_LOAD_OP(u16be, 2, ZL_readBE16(&bytes[addr]))
+DEFINE_LOAD_OP(i16be, 2, (int16_t)ZL_readBE16(&bytes[addr]))
 
-    // Load byte and push as I64 (sign-extended)
-    const int8_t* bytes = (const int8_t*)buffer->data;
-    return push_i64(stack, (int64_t)bytes[addr]);
-}
+// 32-bit loads (little-endian)
+DEFINE_LOAD_OP(u32le, 4, ZL_readLE32(&bytes[addr]))
+DEFINE_LOAD_OP(i32le, 4, (int32_t)ZL_readLE32(&bytes[addr]))
 
-SDDL2_Error SDDL2_op_load_u16le(
-        SDDL2_Stack* stack,
-        const SDDL2_Input_buffer* buffer)
-{
-    int64_t addr;
-    SDDL2_TRY(pop_i64(stack, &addr));
+// 32-bit loads (big-endian)
+DEFINE_LOAD_OP(u32be, 4, ZL_readBE32(&bytes[addr]))
+DEFINE_LOAD_OP(i32be, 4, (int32_t)ZL_readBE32(&bytes[addr]))
 
-    // Bounds check: 0 <= addr <= size-2
-    if (addr < 0 || (size_t)addr + 2 > buffer->size) {
-        return SDDL2_LOAD_BOUNDS;
-    }
+// 64-bit loads
+DEFINE_LOAD_OP(i64le, 8, (int64_t)ZL_readLE64(&bytes[addr]))
+DEFINE_LOAD_OP(i64be, 8, (int64_t)ZL_readBE64(&bytes[addr]))
 
-    // Load 16-bit LE value and push as I64 (zero-extended)
-    const uint8_t* bytes = (const uint8_t*)buffer->data;
-    uint16_t value       = ZL_readLE16(&bytes[addr]);
-    return push_i64(stack, (int64_t)value);
-}
-
-SDDL2_Error SDDL2_op_load_u16be(
-        SDDL2_Stack* stack,
-        const SDDL2_Input_buffer* buffer)
-{
-    int64_t addr;
-    SDDL2_TRY(pop_i64(stack, &addr));
-
-    // Bounds check: 0 <= addr <= size-2
-    if (addr < 0 || (size_t)addr + 2 > buffer->size) {
-        return SDDL2_LOAD_BOUNDS;
-    }
-
-    // Load 16-bit BE value and push as I64 (zero-extended)
-    const uint8_t* bytes = (const uint8_t*)buffer->data;
-    uint16_t value       = ZL_readBE16(&bytes[addr]);
-    return push_i64(stack, (int64_t)value);
-}
-
-SDDL2_Error SDDL2_op_load_i16le(
-        SDDL2_Stack* stack,
-        const SDDL2_Input_buffer* buffer)
-{
-    int64_t addr;
-    SDDL2_TRY(pop_i64(stack, &addr));
-
-    // Bounds check: 0 <= addr <= size-2
-    if (addr < 0 || (size_t)addr + 2 > buffer->size) {
-        return SDDL2_LOAD_BOUNDS;
-    }
-
-    // Load 16-bit LE value and push as I64 (sign-extended)
-    const uint8_t* bytes = (const uint8_t*)buffer->data;
-    int16_t value        = (int16_t)ZL_readLE16(&bytes[addr]);
-    return push_i64(stack, (int64_t)value);
-}
-
-SDDL2_Error SDDL2_op_load_i16be(
-        SDDL2_Stack* stack,
-        const SDDL2_Input_buffer* buffer)
-{
-    int64_t addr;
-    SDDL2_TRY(pop_i64(stack, &addr));
-
-    // Bounds check: 0 <= addr <= size-2
-    if (addr < 0 || (size_t)addr + 2 > buffer->size) {
-        return SDDL2_LOAD_BOUNDS;
-    }
-
-    // Load 16-bit BE value and push as I64 (sign-extended)
-    const uint8_t* bytes = (const uint8_t*)buffer->data;
-    int16_t value        = (int16_t)ZL_readBE16(&bytes[addr]);
-    return push_i64(stack, (int64_t)value);
-}
-
-SDDL2_Error SDDL2_op_load_u32le(
-        SDDL2_Stack* stack,
-        const SDDL2_Input_buffer* buffer)
-{
-    int64_t addr;
-    SDDL2_TRY(pop_i64(stack, &addr));
-
-    // Bounds check: 0 <= addr <= size-4
-    if (addr < 0 || (size_t)addr + 4 > buffer->size) {
-        return SDDL2_LOAD_BOUNDS;
-    }
-
-    // Load 32-bit LE value and push as I64 (zero-extended)
-    const uint8_t* bytes = (const uint8_t*)buffer->data;
-    uint32_t value       = ZL_readLE32(&bytes[addr]);
-    return push_i64(stack, (int64_t)value);
-}
-
-SDDL2_Error SDDL2_op_load_u32be(
-        SDDL2_Stack* stack,
-        const SDDL2_Input_buffer* buffer)
-{
-    int64_t addr;
-    SDDL2_TRY(pop_i64(stack, &addr));
-
-    // Bounds check: 0 <= addr <= size-4
-    if (addr < 0 || (size_t)addr + 4 > buffer->size) {
-        return SDDL2_LOAD_BOUNDS;
-    }
-
-    // Load 32-bit BE value and push as I64 (zero-extended)
-    const uint8_t* bytes = (const uint8_t*)buffer->data;
-    uint32_t value       = ZL_readBE32(&bytes[addr]);
-    return push_i64(stack, (int64_t)value);
-}
-
-SDDL2_Error SDDL2_op_load_i32le(
-        SDDL2_Stack* stack,
-        const SDDL2_Input_buffer* buffer)
-{
-    int64_t addr;
-    SDDL2_TRY(pop_i64(stack, &addr));
-
-    // Bounds check: 0 <= addr <= size-4
-    if (addr < 0 || (size_t)addr + 4 > buffer->size) {
-        return SDDL2_LOAD_BOUNDS;
-    }
-
-    // Load 32-bit LE value and push as I64 (sign-extended)
-    const uint8_t* bytes = (const uint8_t*)buffer->data;
-    int32_t value        = (int32_t)ZL_readLE32(&bytes[addr]);
-    return push_i64(stack, (int64_t)value);
-}
-
-SDDL2_Error SDDL2_op_load_i32be(
-        SDDL2_Stack* stack,
-        const SDDL2_Input_buffer* buffer)
-{
-    int64_t addr;
-    SDDL2_TRY(pop_i64(stack, &addr));
-
-    // Bounds check: 0 <= addr <= size-4
-    if (addr < 0 || (size_t)addr + 4 > buffer->size) {
-        return SDDL2_LOAD_BOUNDS;
-    }
-
-    // Load 32-bit BE value and push as I64 (sign-extended)
-    const uint8_t* bytes = (const uint8_t*)buffer->data;
-    int32_t value        = (int32_t)ZL_readBE32(&bytes[addr]);
-    return push_i64(stack, (int64_t)value);
-}
-
-SDDL2_Error SDDL2_op_load_i64le(
-        SDDL2_Stack* stack,
-        const SDDL2_Input_buffer* buffer)
-{
-    int64_t addr;
-    SDDL2_TRY(pop_i64(stack, &addr));
-
-    // Bounds check: 0 <= addr <= size-8
-    if (addr < 0 || (size_t)addr + 8 > buffer->size) {
-        return SDDL2_LOAD_BOUNDS;
-    }
-
-    // Load 64-bit LE value and push as I64
-    const uint8_t* bytes = (const uint8_t*)buffer->data;
-    int64_t value        = (int64_t)ZL_readLE64(&bytes[addr]);
-    return push_i64(stack, value);
-}
-
-SDDL2_Error SDDL2_op_load_i64be(
-        SDDL2_Stack* stack,
-        const SDDL2_Input_buffer* buffer)
-{
-    int64_t addr;
-    SDDL2_TRY(pop_i64(stack, &addr));
-
-    // Bounds check: 0 <= addr <= size-8
-    if (addr < 0 || (size_t)addr + 8 > buffer->size) {
-        return SDDL2_LOAD_BOUNDS;
-    }
-
-    // Load 64-bit BE value and push as I64
-    const uint8_t* bytes = (const uint8_t*)buffer->data;
-    int64_t value        = (int64_t)ZL_readBE64(&bytes[addr]);
-    return push_i64(stack, value);
-}
+#undef DEFINE_LOAD_OP
 
 /* ============================================================================
- * Segment Operations (Phase 4-5)
+ * Segment Operations
+ *
+ * Implements operations for creating data segments in the output:
+ * - segment.create.unspecified: Create byte segment without tag
+ * - segment.create.tagged: Create typed segment with tag identifier
+ * Segments are automatically merged when consecutive with same tag/type.
+ * Uses segment_create_internal() as unified implementation.
  * ========================================================================= */
 
 /* ============================================================================
  * Memory Management Abstraction Layer
+ *
+ * Provides unified memory management supporting both arena and heap allocation:
+ * - ensure_capacity(): Generic dynamic array growth with 2x strategy
+ * - sddl2_realloc(): Arena/heap-aware realloc abstraction
+ * - sddl2_free(): Arena/heap-aware free abstraction
+ * Arena mode: Allocates new memory and copies (no-op on free)
+ * Heap mode: Uses standard realloc/free for testing
  * ========================================================================= */
 
 // Forward declarations
@@ -950,6 +841,7 @@ static void* sddl2_realloc(
         }
 
         // Copy old data if it exists
+        assert(new_size >= old_size);
         if (old_ptr != NULL && old_size > 0) {
             ZL_memcpy(new_ptr, old_ptr, old_size);
         }
@@ -977,6 +869,13 @@ static void sddl2_free(void* ptr, SDDL2_allocator_fn alloc_fn)
 
 /* ============================================================================
  * Segment Registry Operations
+ *
+ * Manages the list of all created segments:
+ * - Stores segments in creation order
+ * - Supports dynamic growth with pre-allocation for arena allocators
+ * - Automatically merges consecutive segments with same tag/type
+ * - Each segment tracks: tag, start position, size, and type information
+ * Used during SDDL2 execution to build the segment table.
  * ========================================================================= */
 
 void SDDL2_Segment_list_init(
@@ -990,9 +889,7 @@ void SDDL2_Segment_list_init(
     list->alloc_fn  = alloc_fn;
     list->alloc_ctx = alloc_ctx;
 
-    // Pre-allocate capacity when using arena allocator
-    // This reduces reallocation overhead since arena allocation
-    // requires allocate+copy (unlike realloc which may grow in place)
+    // Pre-allocate initial capacity for arena allocators
     if (alloc_fn != NULL) {
         size_t initial_size =
 
@@ -1054,7 +951,7 @@ static SDDL2_Error segment_create_internal(
         uint32_t tag,
         SDDL2_Type type,
         size_t element_count,
-        SDDL2_Input_buffer* buffer,
+        SDDL2_Input_cursor* buffer,
         SDDL2_Segment_list* segments,
         SDDL2_Tag_registry* registry)
 {
@@ -1073,7 +970,7 @@ static SDDL2_Error segment_create_internal(
 
     size_t size_bytes = element_count * total_type_size;
 
-    // Bounds check: segment must fit in remaining buffer
+    // Bounds check: segment must fit in remaining input
     if (buffer->current_pos + size_bytes > buffer->size) {
         return SDDL2_SEGMENT_BOUNDS;
     }
@@ -1130,7 +1027,7 @@ static SDDL2_Error segment_create_internal(
 
 SDDL2_Error SDDL2_op_segment_create_unspecified(
         SDDL2_Stack* stack,
-        SDDL2_Input_buffer* buffer,
+        SDDL2_Input_cursor* buffer,
         SDDL2_Segment_list* segments)
 {
     // Pop size from stack
@@ -1151,7 +1048,14 @@ SDDL2_Error SDDL2_op_segment_create_unspecified(
 }
 
 /* ============================================================================
- * Tag Registry Operations (Phase 5)
+ * Tag Registry Operations
+ *
+ * Manages the set of unique non-zero tags used in segments:
+ * - Tracks all unique tags in creation order
+ * - Prevents duplicate tag registration
+ * - Supports dynamic growth with pre-allocation for arena allocators
+ * - Used by tagged segment creation to ensure tag uniqueness
+ * Tags serve as identifiers to reference specific data regions.
  * ========================================================================= */
 
 void SDDL2_Tag_registry_init(
@@ -1165,9 +1069,7 @@ void SDDL2_Tag_registry_init(
     registry->alloc_fn  = alloc_fn;
     registry->alloc_ctx = alloc_ctx;
 
-    // Pre-allocate capacity when using arena allocator
-    // This reduces reallocation overhead since arena allocation
-    // requires allocate+copy (unlike realloc which may grow in place)
+    // Pre-allocate initial capacity for arena allocators
     if (alloc_fn != NULL) {
         size_t initial_size = SDDL2_TAG_INITIAL_CAPACITY * sizeof(uint32_t);
         registry->tags      = (uint32_t*)alloc_fn(alloc_ctx, initial_size);
@@ -1222,7 +1124,7 @@ static int tag_registry_register(SDDL2_Tag_registry* registry, uint32_t tag)
 
 SDDL2_Error SDDL2_op_segment_create_tagged(
         SDDL2_Stack* stack,
-        SDDL2_Input_buffer* buffer,
+        SDDL2_Input_cursor* buffer,
         SDDL2_Segment_list* segments,
         SDDL2_Tag_registry* registry)
 {

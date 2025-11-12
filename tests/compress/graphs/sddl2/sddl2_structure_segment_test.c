@@ -35,8 +35,8 @@ TEST(test_segment_single_structure)
 
     // Create test input buffer (7 bytes for the structure)
     uint8_t data[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 };
-    SDDL2_Input_buffer buffer;
-    SDDL2_Input_buffer_init(&buffer, data, sizeof(data));
+    SDDL2_Input_cursor buffer;
+    SDDL2_Input_cursor_init(&buffer, data, sizeof(data));
 
     // Initialize segment list and tag registry
     SDDL2_Segment_list segments;
@@ -80,8 +80,8 @@ TEST(test_segment_single_structure)
     assert(segments.items[0].type.width == 1);
 
     // Cleanup
-    SDDL2_Type_structure_data* struct_data =
-            (SDDL2_Type_structure_data*)struct_val.value.as_type.complex_data;
+    SDDL2_Struct_data* struct_data =
+            (SDDL2_Struct_data*)struct_val.value.as_type.complex_data;
     free(struct_data);
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
@@ -105,8 +105,8 @@ TEST(test_segment_array_of_structures)
     // Create test input buffer (50 bytes for 10 structures)
     uint8_t data[50];
     memset(data, 0x42, sizeof(data));
-    SDDL2_Input_buffer buffer;
-    SDDL2_Input_buffer_init(&buffer, data, sizeof(data));
+    SDDL2_Input_cursor buffer;
+    SDDL2_Input_cursor_init(&buffer, data, sizeof(data));
 
     // Initialize segment list and tag registry
     SDDL2_Segment_list segments;
@@ -152,8 +152,8 @@ TEST(test_segment_array_of_structures)
     assert(segments.items[0].type.width == 10);
 
     // Cleanup
-    SDDL2_Type_structure_data* struct_data =
-            (SDDL2_Type_structure_data*)array_val.value.as_type.complex_data;
+    SDDL2_Struct_data* struct_data =
+            (SDDL2_Struct_data*)array_val.value.as_type.complex_data;
     free(struct_data);
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
@@ -175,8 +175,8 @@ TEST(test_multiple_structure_segments)
     // Create test input buffer
     uint8_t data[100];
     memset(data, 0, sizeof(data));
-    SDDL2_Input_buffer buffer;
-    SDDL2_Input_buffer_init(&buffer, data, sizeof(data));
+    SDDL2_Input_cursor buffer;
+    SDDL2_Input_cursor_init(&buffer, data, sizeof(data));
 
     // Initialize segment list and tag registry
     SDDL2_Segment_list segments;
@@ -237,8 +237,8 @@ TEST(test_multiple_structure_segments)
     assert(segments.items[1].type.kind == SDDL2_TYPE_STRUCTURE);
 
     // Cleanup
-    free((SDDL2_Type_structure_data*)struct1_val.value.as_type.complex_data);
-    free((SDDL2_Type_structure_data*)struct2_val.value.as_type.complex_data);
+    free((SDDL2_Struct_data*)struct1_val.value.as_type.complex_data);
+    free((SDDL2_Struct_data*)struct2_val.value.as_type.complex_data);
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
 }
@@ -260,8 +260,8 @@ TEST(test_structure_segment_merging)
     // Create test input buffer
     uint8_t data[100];
     memset(data, 0, sizeof(data));
-    SDDL2_Input_buffer buffer;
-    SDDL2_Input_buffer_init(&buffer, data, sizeof(data));
+    SDDL2_Input_cursor buffer;
+    SDDL2_Input_cursor_init(&buffer, data, sizeof(data));
 
     // Initialize segment list and tag registry
     SDDL2_Segment_list segments;
@@ -308,7 +308,7 @@ TEST(test_structure_segment_merging)
     assert(segments.items[0].type.kind == SDDL2_TYPE_STRUCTURE);
 
     // Cleanup
-    free((SDDL2_Type_structure_data*)struct_val.value.as_type.complex_data);
+    free((SDDL2_Struct_data*)struct_val.value.as_type.complex_data);
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
 }

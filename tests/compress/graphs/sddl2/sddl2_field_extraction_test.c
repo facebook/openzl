@@ -39,10 +39,10 @@ static SDDL2_Type create_test_structure_type(
     }
 
     // Allocate structure data
-    size_t alloc_size = sizeof(SDDL2_Type_structure_data)
+    size_t alloc_size = sizeof(SDDL2_Struct_data)
             + member_count * sizeof(SDDL2_Type);
-    SDDL2_Type_structure_data* struct_data =
-            (SDDL2_Type_structure_data*)malloc(alloc_size);
+    SDDL2_Struct_data* struct_data =
+            (SDDL2_Struct_data*)malloc(alloc_size);
     assert(struct_data != NULL);
 
     struct_data->member_count     = member_count;
@@ -75,8 +75,8 @@ static void test_simple_flat_structure(void)
     SDDL2_Type struct_type = create_test_structure_type(members, 3);
 
     // Verify structure metadata
-    SDDL2_Type_structure_data* struct_data =
-            (SDDL2_Type_structure_data*)struct_type.complex_data;
+    SDDL2_Struct_data* struct_data =
+            (SDDL2_Struct_data*)struct_type.complex_data;
     assert(struct_data != NULL);
     assert(struct_data->member_count == 3);
     assert(struct_data->total_size_bytes == 7); // 1 + 2 + 4
@@ -109,8 +109,8 @@ static void test_structure_with_array_field(void)
     SDDL2_Type struct_type = create_test_structure_type(members, 3);
 
     // Verify structure metadata
-    SDDL2_Type_structure_data* struct_data =
-            (SDDL2_Type_structure_data*)struct_type.complex_data;
+    SDDL2_Struct_data* struct_data =
+            (SDDL2_Struct_data*)struct_type.complex_data;
     assert(struct_data != NULL);
     assert(struct_data->member_count == 3);
     assert(struct_data->total_size_bytes == 43); // 1 + 40 + 2
@@ -144,8 +144,8 @@ static void test_all_primitive_types(void)
     SDDL2_Type struct_type = create_test_structure_type(members, 4);
 
     // Verify
-    SDDL2_Type_structure_data* struct_data =
-            (SDDL2_Type_structure_data*)struct_type.complex_data;
+    SDDL2_Struct_data* struct_data =
+            (SDDL2_Struct_data*)struct_type.complex_data;
     assert(struct_data->total_size_bytes == 15); // 1 + 2 + 4 + 8
 
     size_t expected_sizes[4] = { 1, 2, 4, 8 };
@@ -174,8 +174,8 @@ static void test_mixed_endianness(void)
     SDDL2_Type struct_type = create_test_structure_type(members, 4);
 
     // Verify
-    SDDL2_Type_structure_data* struct_data =
-            (SDDL2_Type_structure_data*)struct_type.complex_data;
+    SDDL2_Struct_data* struct_data =
+            (SDDL2_Struct_data*)struct_type.complex_data;
     assert(struct_data->total_size_bytes == 18); // 2 + 4 + 8 + 4
 
     free(struct_data);
@@ -197,8 +197,8 @@ static void test_large_structure(void)
     SDDL2_Type struct_type = create_test_structure_type(members, 10);
 
     // Verify
-    SDDL2_Type_structure_data* struct_data =
-            (SDDL2_Type_structure_data*)struct_type.complex_data;
+    SDDL2_Struct_data* struct_data =
+            (SDDL2_Struct_data*)struct_type.complex_data;
     assert(struct_data->member_count == 10);
     assert(struct_data->total_size_bytes == 40); // 10 × 4
 
@@ -225,8 +225,8 @@ static void test_type_size_function(void)
     struct_type.width = 10;
     assert(SDDL2_Type_size(struct_type) == 50); // 5 × 10
 
-    SDDL2_Type_structure_data* struct_data =
-            (SDDL2_Type_structure_data*)struct_type.complex_data;
+    SDDL2_Struct_data* struct_data =
+            (SDDL2_Struct_data*)struct_type.complex_data;
     free(struct_data);
 
     printf("✓ test_type_size_function passed\n\n");
@@ -253,8 +253,8 @@ static void test_nested_structure_2_levels(void)
     SDDL2_Type outer_struct = create_test_structure_type(outer_members, 3);
 
     // Verify outer structure size
-    SDDL2_Type_structure_data* outer_data =
-            (SDDL2_Type_structure_data*)outer_struct.complex_data;
+    SDDL2_Struct_data* outer_data =
+            (SDDL2_Struct_data*)outer_struct.complex_data;
     assert(outer_data->member_count == 3);
     assert(outer_data->total_size_bytes == 15); // 1 + (2 + 4) + 8
 
@@ -265,8 +265,8 @@ static void test_nested_structure_2_levels(void)
     // Field 3: F64BE = 8 bytes
 
     // Cleanup
-    SDDL2_Type_structure_data* inner_data =
-            (SDDL2_Type_structure_data*)inner_struct.complex_data;
+    SDDL2_Struct_data* inner_data =
+            (SDDL2_Struct_data*)inner_struct.complex_data;
     free(inner_data);
     free(outer_data);
 
@@ -304,9 +304,9 @@ static void test_nested_structure_3_levels(void)
     // When flattened, should give 4 fields: [1, 2, 4, 8]
 
     // Cleanup
-    free((SDDL2_Type_structure_data*)level1_struct.complex_data);
-    free((SDDL2_Type_structure_data*)level2_struct.complex_data);
-    free((SDDL2_Type_structure_data*)level3_struct.complex_data);
+    free((SDDL2_Struct_data*)level1_struct.complex_data);
+    free((SDDL2_Struct_data*)level2_struct.complex_data);
+    free((SDDL2_Struct_data*)level3_struct.complex_data);
 
     printf("✓ test_nested_structure_3_levels passed\n\n");
 }
@@ -337,8 +337,8 @@ static void test_nested_structure_with_arrays(void)
     // When flattened, should give 4 fields: [2, 1, 20, 8]
 
     // Cleanup
-    free((SDDL2_Type_structure_data*)inner_struct.complex_data);
-    free((SDDL2_Type_structure_data*)outer_struct.complex_data);
+    free((SDDL2_Struct_data*)inner_struct.complex_data);
+    free((SDDL2_Struct_data*)outer_struct.complex_data);
 
     printf("✓ test_nested_structure_with_arrays passed\n\n");
 }
@@ -375,9 +375,9 @@ static void test_multiple_nested_structures(void)
     // When flattened, should give 5 fields: [1, 2, 4, 4, 8]
 
     // Cleanup
-    free((SDDL2_Type_structure_data*)structA.complex_data);
-    free((SDDL2_Type_structure_data*)structB.complex_data);
-    free((SDDL2_Type_structure_data*)outer_struct.complex_data);
+    free((SDDL2_Struct_data*)structA.complex_data);
+    free((SDDL2_Struct_data*)structB.complex_data);
+    free((SDDL2_Struct_data*)outer_struct.complex_data);
 
     printf("✓ test_multiple_nested_structures passed\n\n");
 }
@@ -392,8 +392,8 @@ static void manually_flatten_field_types_recursive(
 {
     if (type.kind == SDDL2_TYPE_STRUCTURE) {
         assert(type.width == 1); // We don't support arrays of structures
-        SDDL2_Type_structure_data* struct_data =
-                (SDDL2_Type_structure_data*)type.complex_data;
+        SDDL2_Struct_data* struct_data =
+                (SDDL2_Struct_data*)type.complex_data;
         for (size_t i = 0; i < struct_data->member_count; i++) {
             manually_flatten_field_types_recursive(
                     struct_data->members[i], output, index);
@@ -433,7 +433,7 @@ static void test_field_types_flat_structure(void)
     printf("  Field 1: I16LE ✓\n");
     printf("  Field 2: I32LE ✓\n");
 
-    free((SDDL2_Type_structure_data*)struct_type.complex_data);
+    free((SDDL2_Struct_data*)struct_type.complex_data);
     printf("✓ test_field_types_flat_structure passed\n\n");
 }
 
@@ -474,8 +474,8 @@ static void test_field_types_nested_structure(void)
     printf("  Field 2: I32LE (from inner) ✓\n");
     printf("  Field 3: F64BE ✓\n");
 
-    free((SDDL2_Type_structure_data*)inner_struct.complex_data);
-    free((SDDL2_Type_structure_data*)outer_struct.complex_data);
+    free((SDDL2_Struct_data*)inner_struct.complex_data);
+    free((SDDL2_Struct_data*)outer_struct.complex_data);
     printf("✓ test_field_types_nested_structure passed\n\n");
 }
 
@@ -509,7 +509,7 @@ static void test_field_types_with_arrays(void)
     printf("  Field 1: I32LE (element type of array, size=40) ✓\n");
     printf("  Field 2: I16LE (size=2) ✓\n");
 
-    free((SDDL2_Type_structure_data*)struct_type.complex_data);
+    free((SDDL2_Struct_data*)struct_type.complex_data);
     printf("✓ test_field_types_with_arrays passed\n\n");
 }
 
@@ -558,8 +558,8 @@ static void test_field_types_sizes_alignment(void)
                i, (int)field_types[i], actual_size);
     }
 
-    free((SDDL2_Type_structure_data*)inner_struct.complex_data);
-    free((SDDL2_Type_structure_data*)outer_struct.complex_data);
+    free((SDDL2_Struct_data*)inner_struct.complex_data);
+    free((SDDL2_Struct_data*)outer_struct.complex_data);
     printf("✓ test_field_types_sizes_alignment passed\n\n");
 }
 
@@ -595,7 +595,7 @@ static void test_field_types_mixed_endianness(void)
     printf("  Field 2: F64LE ✓\n");
     printf("  Field 3: U32BE ✓\n");
 
-    free((SDDL2_Type_structure_data*)struct_type.complex_data);
+    free((SDDL2_Struct_data*)struct_type.complex_data);
     printf("✓ test_field_types_mixed_endianness passed\n\n");
 }
 

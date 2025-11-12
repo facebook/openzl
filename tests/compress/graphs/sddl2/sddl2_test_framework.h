@@ -117,8 +117,8 @@ static inline int sddl2_run_all_tests(void)
 
 /* Helper: Setup input buffer for tests */
 #define SETUP_INPUT_BUFFER(buffer_var, data_array) \
-    SDDL2_Input_buffer buffer_var;                 \
-    SDDL2_Input_buffer_init(&buffer_var, data_array, sizeof(data_array))
+    SDDL2_Input_cursor buffer_var;                 \
+    SDDL2_Input_cursor_init(&buffer_var, data_array, sizeof(data_array))
 
 /* Helper: Setup segment list for tests */
 #define SETUP_SEGMENT_LIST(segments_var) \

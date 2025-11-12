@@ -38,9 +38,9 @@ static void destroy_test_stack(SDDL2_Stack* stack)
 static void test_buffer_init(void)
 {
     uint8_t data[] = { 0x01, 0x02, 0x03, 0x04, 0x05 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
 
-    SDDL2_Input_buffer_init(&buffer, data, 5);
+    SDDL2_Input_cursor_init(&buffer, data, 5);
 
     assert(buffer.data == data);
     assert(buffer.size == 5);
@@ -57,9 +57,9 @@ static void test_current_pos_at_start(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0xAA, 0xBB, 0xCC };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
 
-    SDDL2_Input_buffer_init(&buffer, data, 3);
+    SDDL2_Input_cursor_init(&buffer, data, 3);
 
     // Get current_pos (should be 0)
     assert(SDDL2_op_current_pos(stack, &buffer) == SDDL2_OK);
@@ -77,9 +77,9 @@ static void test_current_pos_after_advance(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
 
-    SDDL2_Input_buffer_init(&buffer, data, 5);
+    SDDL2_Input_cursor_init(&buffer, data, 5);
 
     // Manually advance cursor (simulating segment creation)
     buffer.current_pos = 3;
@@ -100,9 +100,9 @@ static void test_current_pos_no_advance(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
 
-    SDDL2_Input_buffer_init(&buffer, data, 2);
+    SDDL2_Input_cursor_init(&buffer, data, 2);
     buffer.current_pos = 1;
 
     // Call current_pos multiple times - should not change cursor
@@ -131,9 +131,9 @@ static void test_load_u8_basic(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0xAA, 0xBB, 0xCC, 0xDD };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
 
-    SDDL2_Input_buffer_init(&buffer, data, 4);
+    SDDL2_Input_cursor_init(&buffer, data, 4);
 
     // Load byte at address 0 (should be 0xAA)
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
@@ -158,9 +158,9 @@ static void test_load_u8_all_bytes(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x00, 0xFF, 0x42, 0x7F, 0x80 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
 
-    SDDL2_Input_buffer_init(&buffer, data, 5);
+    SDDL2_Input_cursor_init(&buffer, data, 5);
 
     // Load all bytes
     for (size_t i = 0; i < 5; i++) {
@@ -181,9 +181,9 @@ static void test_load_u8_no_cursor_advance(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x11, 0x22, 0x33 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
 
-    SDDL2_Input_buffer_init(&buffer, data, 3);
+    SDDL2_Input_cursor_init(&buffer, data, 3);
     size_t original_pos = buffer.current_pos;
 
     // Load byte - should NOT advance cursor
@@ -208,9 +208,9 @@ static void test_load_u8_out_of_bounds_positive(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02, 0x03 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
 
-    SDDL2_Input_buffer_init(&buffer, data, 3);
+    SDDL2_Input_cursor_init(&buffer, data, 3);
 
     // Try to load at address 3 (out of bounds, valid range is 0-2)
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(3)) == SDDL2_OK);
@@ -228,9 +228,9 @@ static void test_load_u8_out_of_bounds_negative(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0xAA, 0xBB };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
 
-    SDDL2_Input_buffer_init(&buffer, data, 2);
+    SDDL2_Input_cursor_init(&buffer, data, 2);
 
     // Try to load at negative address
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(-1)) == SDDL2_OK);
@@ -247,9 +247,9 @@ static void test_load_u8_at_last_valid_address(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x10, 0x20, 0x30, 0x40, 0x50 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
 
-    SDDL2_Input_buffer_init(&buffer, data, 5);
+    SDDL2_Input_cursor_init(&buffer, data, 5);
 
     // Load at last valid address (4)
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(4)) == SDDL2_OK);
@@ -271,9 +271,9 @@ static void test_load_u8_empty_buffer(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = {}; // Empty buffer
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
 
-    SDDL2_Input_buffer_init(&buffer, data, 0);
+    SDDL2_Input_cursor_init(&buffer, data, 0);
 
     // Any address should fail on empty buffer
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
@@ -291,9 +291,9 @@ static void test_load_u8_type_mismatch(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0xAA, 0xBB };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
 
-    SDDL2_Input_buffer_init(&buffer, data, 2);
+    SDDL2_Input_cursor_init(&buffer, data, 2);
 
     // Try to load with Tag instead of I64
     assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(42)) == SDDL2_OK);
@@ -316,9 +316,9 @@ static void test_load_u8_underflow(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0xAA };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
 
-    SDDL2_Input_buffer_init(&buffer, data, 1);
+    SDDL2_Input_cursor_init(&buffer, data, 1);
 
     // Try to load with empty stack
     assert(SDDL2_op_load_u8(stack, &buffer) == SDDL2_STACK_UNDERFLOW);
@@ -335,9 +335,9 @@ static void test_current_pos_and_load(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x10, 0x20, 0x30, 0x40 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
 
-    SDDL2_Input_buffer_init(&buffer, data, 4);
+    SDDL2_Input_cursor_init(&buffer, data, 4);
     buffer.current_pos = 2; // Simulate being midway through
 
     // Get current position
@@ -361,9 +361,9 @@ static void test_arithmetic_with_load(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x05, 0x03, 0x08 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
 
-    SDDL2_Input_buffer_init(&buffer, data, 3);
+    SDDL2_Input_cursor_init(&buffer, data, 3);
 
     // Load data[0] = 5
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);

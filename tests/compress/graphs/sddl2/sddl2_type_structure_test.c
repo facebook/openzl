@@ -23,8 +23,8 @@ TEST(test_simple_structure_creation)
     // Expected size: 1 + 2 + 4 = 7 bytes
 
     // Allocate structure data
-    SDDL2_Type_structure_data* struct_data =
-            malloc(sizeof(SDDL2_Type_structure_data) + 3 * sizeof(SDDL2_Type));
+    SDDL2_Struct_data* struct_data =
+            malloc(sizeof(SDDL2_Struct_data) + 3 * sizeof(SDDL2_Type));
     assert(struct_data != NULL);
 
     // Initialize structure metadata
@@ -55,8 +55,8 @@ TEST(test_simple_structure_creation)
     assert(my_struct.complex_data != NULL);
 
     // Verify member count
-    SDDL2_Type_structure_data* data =
-            (SDDL2_Type_structure_data*)my_struct.complex_data;
+    SDDL2_Struct_data* data =
+            (SDDL2_Struct_data*)my_struct.complex_data;
     assert(data->member_count == 3);
     assert(data->total_size_bytes == 7);
 
@@ -75,8 +75,8 @@ TEST(test_array_of_structures)
     // Then create array of 10 such structures
     // Total: 5 * 10 = 50 bytes
 
-    SDDL2_Type_structure_data* struct_data =
-            malloc(sizeof(SDDL2_Type_structure_data) + 2 * sizeof(SDDL2_Type));
+    SDDL2_Struct_data* struct_data =
+            malloc(sizeof(SDDL2_Struct_data) + 2 * sizeof(SDDL2_Type));
     assert(struct_data != NULL);
 
     struct_data->member_count     = 2;
@@ -91,8 +91,8 @@ TEST(test_array_of_structures)
 
     // Verify
     assert(array_of_structs.width == 10);
-    SDDL2_Type_structure_data* data =
-            (SDDL2_Type_structure_data*)array_of_structs.complex_data;
+    SDDL2_Struct_data* data =
+            (SDDL2_Struct_data*)array_of_structs.complex_data;
     assert(data->total_size_bytes == 5);
 
     // Total size should be: element_size * width = 5 * 10 = 50
@@ -110,8 +110,8 @@ TEST(test_structure_with_array_members)
     // Create structure: {U8, [I32LE × 10], I16LE}
     // Size: 1 + (4*10) + 2 = 43 bytes
 
-    SDDL2_Type_structure_data* struct_data =
-            malloc(sizeof(SDDL2_Type_structure_data) + 3 * sizeof(SDDL2_Type));
+    SDDL2_Struct_data* struct_data =
+            malloc(sizeof(SDDL2_Struct_data) + 3 * sizeof(SDDL2_Type));
     assert(struct_data != NULL);
 
     struct_data->member_count = 3;
@@ -133,8 +133,8 @@ TEST(test_structure_with_array_members)
                              .complex_data = struct_data };
 
     // Verify member types
-    SDDL2_Type_structure_data* data =
-            (SDDL2_Type_structure_data*)my_struct.complex_data;
+    SDDL2_Struct_data* data =
+            (SDDL2_Struct_data*)my_struct.complex_data;
     assert(data->members[1].width == 10); // Array member has width 10
 
     free(struct_data);
@@ -148,8 +148,8 @@ TEST(test_nested_structures)
 {
     // Create inner structure: {U8, I16LE}
     // Size: 1 + 2 = 3 bytes
-    SDDL2_Type_structure_data* inner_data =
-            malloc(sizeof(SDDL2_Type_structure_data) + 2 * sizeof(SDDL2_Type));
+    SDDL2_Struct_data* inner_data =
+            malloc(sizeof(SDDL2_Struct_data) + 2 * sizeof(SDDL2_Type));
     assert(inner_data != NULL);
 
     inner_data->member_count     = 2;
@@ -163,8 +163,8 @@ TEST(test_nested_structures)
 
     // Create outer structure: {U8, inner_struct, I32LE}
     // Size: 1 + 3 + 4 = 8 bytes
-    SDDL2_Type_structure_data* outer_data =
-            malloc(sizeof(SDDL2_Type_structure_data) + 3 * sizeof(SDDL2_Type));
+    SDDL2_Struct_data* outer_data =
+            malloc(sizeof(SDDL2_Struct_data) + 3 * sizeof(SDDL2_Type));
     assert(outer_data != NULL);
 
     outer_data->member_count = 3;
@@ -181,8 +181,8 @@ TEST(test_nested_structures)
                                 .complex_data = outer_data };
 
     // Verify nested structure
-    SDDL2_Type_structure_data* outer_sd =
-            (SDDL2_Type_structure_data*)outer_struct.complex_data;
+    SDDL2_Struct_data* outer_sd =
+            (SDDL2_Struct_data*)outer_struct.complex_data;
     assert(outer_sd->member_count == 3);
     assert(outer_sd->members[1].kind == SDDL2_TYPE_STRUCTURE);
     assert(outer_sd->members[1].complex_data != NULL);

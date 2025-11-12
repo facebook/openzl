@@ -74,11 +74,11 @@ static void test_create_single_tagged_segment(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04, 0x05 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
     SDDL2_Tag_registry registry;
 
-    SDDL2_Input_buffer_init(&buffer, data, 5);
+    SDDL2_Input_cursor_init(&buffer, data, 5);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
     SDDL2_Tag_registry_init(&registry, NULL, NULL);
 
@@ -117,11 +117,11 @@ static void test_tagged_segment_zero_size(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02, 0x03 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
     SDDL2_Tag_registry registry;
 
-    SDDL2_Input_buffer_init(&buffer, data, 3);
+    SDDL2_Input_cursor_init(&buffer, data, 3);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
     SDDL2_Tag_registry_init(&registry, NULL, NULL);
 
@@ -156,11 +156,11 @@ static void test_merge_consecutive_same_tag(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 1, 2, 3, 4, 5, 6, 7, 8 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
     SDDL2_Tag_registry registry;
 
-    SDDL2_Input_buffer_init(&buffer, data, 8);
+    SDDL2_Input_cursor_init(&buffer, data, 8);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
     SDDL2_Tag_registry_init(&registry, NULL, NULL);
 
@@ -207,11 +207,11 @@ static void test_no_merge_different_tag(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 1, 2, 3, 4, 5, 6 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
     SDDL2_Tag_registry registry;
 
-    SDDL2_Input_buffer_init(&buffer, data, 6);
+    SDDL2_Input_cursor_init(&buffer, data, 6);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
     SDDL2_Tag_registry_init(&registry, NULL, NULL);
 
@@ -260,11 +260,11 @@ static void test_merge_multiple_consecutive(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[20]   = { 0 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
     SDDL2_Tag_registry registry;
 
-    SDDL2_Input_buffer_init(&buffer, data, 20);
+    SDDL2_Input_cursor_init(&buffer, data, 20);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
     SDDL2_Tag_registry_init(&registry, NULL, NULL);
 
@@ -301,11 +301,11 @@ static void test_merge_pattern_alternating(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[20]   = { 0 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
     SDDL2_Tag_registry registry;
 
-    SDDL2_Input_buffer_init(&buffer, data, 20);
+    SDDL2_Input_cursor_init(&buffer, data, 20);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
     SDDL2_Tag_registry_init(&registry, NULL, NULL);
 
@@ -358,11 +358,11 @@ static void test_merge_same_tag_after_other_tag(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[20]   = { 0 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
     SDDL2_Tag_registry registry;
 
-    SDDL2_Input_buffer_init(&buffer, data, 20);
+    SDDL2_Input_cursor_init(&buffer, data, 20);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
     SDDL2_Tag_registry_init(&registry, NULL, NULL);
 
@@ -415,11 +415,11 @@ static void test_tagged_segment_bounds_error(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
     SDDL2_Tag_registry registry;
 
-    SDDL2_Input_buffer_init(&buffer, data, 2);
+    SDDL2_Input_cursor_init(&buffer, data, 2);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
     SDDL2_Tag_registry_init(&registry, NULL, NULL);
 
@@ -449,11 +449,11 @@ static void test_tagged_segment_negative_tag(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02, 0x03 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
     SDDL2_Tag_registry registry;
 
-    SDDL2_Input_buffer_init(&buffer, data, 3);
+    SDDL2_Input_cursor_init(&buffer, data, 3);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
     SDDL2_Tag_registry_init(&registry, NULL, NULL);
 
@@ -479,11 +479,11 @@ static void test_tagged_segment_negative_size(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02, 0x03 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
     SDDL2_Tag_registry registry;
 
-    SDDL2_Input_buffer_init(&buffer, data, 3);
+    SDDL2_Input_cursor_init(&buffer, data, 3);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
     SDDL2_Tag_registry_init(&registry, NULL, NULL);
 
@@ -509,11 +509,11 @@ static void test_tagged_segment_size_overflow(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[1024]; // Large buffer
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
     SDDL2_Tag_registry registry;
 
-    SDDL2_Input_buffer_init(&buffer, data, sizeof(data));
+    SDDL2_Input_cursor_init(&buffer, data, sizeof(data));
     SDDL2_Segment_list_init(&segments, NULL, NULL);
     SDDL2_Tag_registry_init(&registry, NULL, NULL);
 
@@ -549,11 +549,11 @@ static void test_tagged_segment_wrong_type_tag(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
     SDDL2_Tag_registry registry;
 
-    SDDL2_Input_buffer_init(&buffer, data, 2);
+    SDDL2_Input_cursor_init(&buffer, data, 2);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
     SDDL2_Tag_registry_init(&registry, NULL, NULL);
 
@@ -579,11 +579,11 @@ static void test_tagged_segment_wrong_type_size(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
     SDDL2_Tag_registry registry;
 
-    SDDL2_Input_buffer_init(&buffer, data, 2);
+    SDDL2_Input_cursor_init(&buffer, data, 2);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
     SDDL2_Tag_registry_init(&registry, NULL, NULL);
 
@@ -612,11 +612,11 @@ static void test_tagged_segment_stack_underflow(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
     SDDL2_Tag_registry registry;
 
-    SDDL2_Input_buffer_init(&buffer, data, 2);
+    SDDL2_Input_cursor_init(&buffer, data, 2);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
     SDDL2_Tag_registry_init(&registry, NULL, NULL);
 
@@ -647,11 +647,11 @@ static void test_tagged_with_arithmetic(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[20]   = { 0 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
     SDDL2_Tag_registry registry;
 
-    SDDL2_Input_buffer_init(&buffer, data, 20);
+    SDDL2_Input_cursor_init(&buffer, data, 20);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
     SDDL2_Tag_registry_init(&registry, NULL, NULL);
 
@@ -683,11 +683,11 @@ static void test_mixed_unspecified_and_tagged(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[20]   = { 0 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
     SDDL2_Tag_registry registry;
 
-    SDDL2_Input_buffer_init(&buffer, data, 20);
+    SDDL2_Input_cursor_init(&buffer, data, 20);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
     SDDL2_Tag_registry_init(&registry, NULL, NULL);
 
@@ -727,11 +727,11 @@ static void test_many_tags_registry_growth(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[200]  = { 0 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
     SDDL2_Tag_registry registry;
 
-    SDDL2_Input_buffer_init(&buffer, data, 200);
+    SDDL2_Input_cursor_init(&buffer, data, 200);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
     SDDL2_Tag_registry_init(&registry, NULL, NULL);
 
@@ -781,11 +781,11 @@ static void test_segment_list_dynamic_growth(void)
 {
     SDDL2_Stack* stack = create_test_stack(1000);
     uint8_t data[500]  = { 0 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
     SDDL2_Tag_registry registry;
 
-    SDDL2_Input_buffer_init(&buffer, data, 500);
+    SDDL2_Input_cursor_init(&buffer, data, 500);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
     SDDL2_Tag_registry_init(&registry, NULL, NULL);
 
@@ -854,11 +854,11 @@ static void test_segment_list_growth_different_types(void)
 {
     SDDL2_Stack* stack = create_test_stack(1000);
     uint8_t data[500]  = { 0 };
-    SDDL2_Input_buffer buffer;
+    SDDL2_Input_cursor buffer;
     SDDL2_Segment_list segments;
     SDDL2_Tag_registry registry;
 
-    SDDL2_Input_buffer_init(&buffer, data, 500);
+    SDDL2_Input_cursor_init(&buffer, data, 500);
     SDDL2_Segment_list_init(&segments, NULL, NULL);
     SDDL2_Tag_registry_init(&registry, NULL, NULL);
 

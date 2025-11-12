@@ -62,9 +62,9 @@ static void test_flat_structure_split(void)
 
     // Allocate structure data
     size_t alloc_size =
-            sizeof(SDDL2_Type_structure_data) + 3 * sizeof(SDDL2_Type);
-    SDDL2_Type_structure_data* struct_data =
-            (SDDL2_Type_structure_data*)malloc(alloc_size);
+            sizeof(SDDL2_Struct_data) + 3 * sizeof(SDDL2_Type);
+    SDDL2_Struct_data* struct_data =
+            (SDDL2_Struct_data*)malloc(alloc_size);
     assert(struct_data != NULL);
 
     struct_data->member_count     = 3;
@@ -118,9 +118,9 @@ static void test_nested_structure_split(void)
 
     // Create inner structure {I16LE, I32LE}
     size_t inner_alloc_size =
-            sizeof(SDDL2_Type_structure_data) + 2 * sizeof(SDDL2_Type);
-    SDDL2_Type_structure_data* inner_struct_data =
-            (SDDL2_Type_structure_data*)malloc(inner_alloc_size);
+            sizeof(SDDL2_Struct_data) + 2 * sizeof(SDDL2_Type);
+    SDDL2_Struct_data* inner_struct_data =
+            (SDDL2_Struct_data*)malloc(inner_alloc_size);
     assert(inner_struct_data != NULL);
 
     inner_struct_data->member_count     = 2;
@@ -134,9 +134,9 @@ static void test_nested_structure_split(void)
 
     // Create outer structure {U8, inner_struct, F64BE}
     size_t outer_alloc_size =
-            sizeof(SDDL2_Type_structure_data) + 3 * sizeof(SDDL2_Type);
-    SDDL2_Type_structure_data* outer_struct_data =
-            (SDDL2_Type_structure_data*)malloc(outer_alloc_size);
+            sizeof(SDDL2_Struct_data) + 3 * sizeof(SDDL2_Type);
+    SDDL2_Struct_data* outer_struct_data =
+            (SDDL2_Struct_data*)malloc(outer_alloc_size);
     assert(outer_struct_data != NULL);
 
     outer_struct_data->member_count     = 3;
@@ -190,9 +190,9 @@ static void test_structure_with_array_field(void)
 
     // Create structure with array field
     size_t alloc_size =
-            sizeof(SDDL2_Type_structure_data) + 3 * sizeof(SDDL2_Type);
-    SDDL2_Type_structure_data* struct_data =
-            (SDDL2_Type_structure_data*)malloc(alloc_size);
+            sizeof(SDDL2_Struct_data) + 3 * sizeof(SDDL2_Type);
+    SDDL2_Struct_data* struct_data =
+            (SDDL2_Struct_data*)malloc(alloc_size);
     assert(struct_data != NULL);
 
     struct_data->member_count     = 3;
@@ -241,9 +241,9 @@ static void test_mixed_endianness_structure(void)
 
     // Create structure with mixed endianness
     size_t alloc_size =
-            sizeof(SDDL2_Type_structure_data) + 3 * sizeof(SDDL2_Type);
-    SDDL2_Type_structure_data* struct_data =
-            (SDDL2_Type_structure_data*)malloc(alloc_size);
+            sizeof(SDDL2_Struct_data) + 3 * sizeof(SDDL2_Type);
+    SDDL2_Struct_data* struct_data =
+            (SDDL2_Struct_data*)malloc(alloc_size);
     assert(struct_data != NULL);
 
     struct_data->member_count     = 3;
@@ -289,9 +289,9 @@ static void test_field_size_extraction(void)
 
     // Test case 1: Flat structure {U8, I32LE, F64BE}
     size_t alloc_size =
-            sizeof(SDDL2_Type_structure_data) + 3 * sizeof(SDDL2_Type);
-    SDDL2_Type_structure_data* struct_data =
-            (SDDL2_Type_structure_data*)malloc(alloc_size);
+            sizeof(SDDL2_Struct_data) + 3 * sizeof(SDDL2_Type);
+    SDDL2_Struct_data* struct_data =
+            (SDDL2_Struct_data*)malloc(alloc_size);
 
     struct_data->member_count     = 3;
     struct_data->total_size_bytes = 13; // 1 + 4 + 8
