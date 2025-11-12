@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
 // Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-// Generated at: 2025-11-11 05:40:06 UTC
+// Generated at: 2025-11-12 03:21:05 UTC
 // Generator: generate_opcodes.py
 //
 // To regenerate: python3 tools/sddl/assembler/generate_opcodes.py
@@ -104,6 +104,22 @@ enum sddl2_opcode_cmp {
 /* CONTROL family (0x0005) - Control flow operations */
 enum sddl2_opcode_control {
     SDDL2_OP_CONTROL_HALT = 0x0001,
+};
+
+/* LOAD family (0x0006) - Load operations */
+enum sddl2_opcode_load {
+    SDDL2_OP_LOAD_U8 = 0x0001,
+    SDDL2_OP_LOAD_I8 = 0x0002,
+    SDDL2_OP_LOAD_U16LE = 0x0010,
+    SDDL2_OP_LOAD_I16LE = 0x0011,
+    SDDL2_OP_LOAD_U32LE = 0x0020,
+    SDDL2_OP_LOAD_I32LE = 0x0021,
+    SDDL2_OP_LOAD_I64LE = 0x0030,
+    SDDL2_OP_LOAD_U16BE = 0x0110,
+    SDDL2_OP_LOAD_I16BE = 0x0111,
+    SDDL2_OP_LOAD_U32BE = 0x0120,
+    SDDL2_OP_LOAD_I32BE = 0x0121,
+    SDDL2_OP_LOAD_I64BE = 0x0130,
 };
 
 /* STACK family (0x0007) - Stack manipulation operations */

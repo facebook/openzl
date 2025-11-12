@@ -81,7 +81,7 @@ typedef enum {
     SDDL2_TYPE_F32BE,
     SDDL2_TYPE_F64LE,
     SDDL2_TYPE_F64BE,
-    
+
     // Complex types (100+)
     SDDL2_TYPE_STRUCTURE = 100, // Composite structure type
 } SDDL2_Type_kind;
@@ -90,9 +90,10 @@ typedef enum {
 typedef struct SDDL2_Type_structure_data SDDL2_Type_structure_data;
 
 typedef struct {
-    SDDL2_Type_kind kind;  // Type category (primitive or STRUCTURE)
-    uint32_t width;         // Number of elements (consistent meaning across all types)
-    void* complex_data;     // NULL for primitives, SDDL2_Type_structure_data* for structures
+    SDDL2_Type_kind kind; // Type category (primitive or STRUCTURE)
+    uint32_t width; // Number of elements (consistent meaning across all types)
+    void* complex_data; // NULL for primitives, SDDL2_Type_structure_data* for
+                        // structures
 } SDDL2_Type;
 
 /**
@@ -109,9 +110,10 @@ typedef struct {
  *   Flexible array of member types
  */
 struct SDDL2_Type_structure_data {
-    size_t member_count;      // Number of members in the structure
-    size_t total_size_bytes;  // Cached: sum of all member sizes (for performance)
-    SDDL2_Type members[];     // Flexible array member: the actual member types
+    size_t member_count;     // Number of members in the structure
+    size_t total_size_bytes; // Cached: sum of all member sizes (for
+                             // performance)
+    SDDL2_Type members[];    // Flexible array member: the actual member types
 };
 
 /**
@@ -488,7 +490,7 @@ SDDL2_Error SDDL2_op_type_fixed_array(SDDL2_Stack* stack);
  *
  * Example:
  *   push.type U8           // Member 0: U8
- *   push.type I16LE        // Member 1: I16LE  
+ *   push.type I16LE        // Member 1: I16LE
  *   push.type I32LE        // Member 2: I32LE
  *   push.i64 3             // 3 members
  *   type.structure         // Type{STRUCTURE} with 7 bytes total
@@ -505,14 +507,15 @@ SDDL2_Error SDDL2_op_type_fixed_array(SDDL2_Stack* stack);
  *
  * Errors:
  *   - SDDL2_STACK_UNDERFLOW: stack has fewer than N+1 values
- *   - SDDL2_TYPE_MISMATCH: top value not I64, or any of N values not Type, or N <= 0
+ *   - SDDL2_TYPE_MISMATCH: top value not I64, or any of N values not Type, or N
+ * <= 0
  *   - SDDL2_ALLOCATION_FAILED: failed to allocate structure data
  *   - SDDL2_STACK_OVERFLOW: push would overflow the stack
  */
 SDDL2_Error SDDL2_op_type_structure(
-    SDDL2_Stack* stack,
-    SDDL2_allocator_fn alloc_fn,
-    void* alloc_ctx);
+        SDDL2_Stack* stack,
+        SDDL2_allocator_fn alloc_fn,
+        void* alloc_ctx);
 
 /* ============================================================================
  * Arithmetic Operations (Phase 2)
@@ -675,6 +678,116 @@ SDDL2_Error SDDL2_op_remaining(
  * Does NOT advance cursor.
  */
 SDDL2_Error SDDL2_op_load_u8(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer);
+
+/**
+ * Load signed byte at address.
+ * Stack: addr:I64 -> value:I64
+ * Errors: TypeMismatch, LoadBounds
+ * Does NOT advance cursor.
+ */
+SDDL2_Error SDDL2_op_load_i8(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer);
+
+/**
+ * Load unsigned 16-bit LE value at address.
+ * Stack: addr:I64 -> value:I64
+ * Errors: TypeMismatch, LoadBounds
+ * Does NOT advance cursor.
+ */
+SDDL2_Error SDDL2_op_load_u16le(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer);
+
+/**
+ * Load unsigned 16-bit BE value at address.
+ * Stack: addr:I64 -> value:I64
+ * Errors: TypeMismatch, LoadBounds
+ * Does NOT advance cursor.
+ */
+SDDL2_Error SDDL2_op_load_u16be(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer);
+
+/**
+ * Load signed 16-bit LE value at address.
+ * Stack: addr:I64 -> value:I64
+ * Errors: TypeMismatch, LoadBounds
+ * Does NOT advance cursor.
+ */
+SDDL2_Error SDDL2_op_load_i16le(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer);
+
+/**
+ * Load signed 16-bit BE value at address.
+ * Stack: addr:I64 -> value:I64
+ * Errors: TypeMismatch, LoadBounds
+ * Does NOT advance cursor.
+ */
+SDDL2_Error SDDL2_op_load_i16be(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer);
+
+/**
+ * Load unsigned 32-bit LE value at address.
+ * Stack: addr:I64 -> value:I64
+ * Errors: TypeMismatch, LoadBounds
+ * Does NOT advance cursor.
+ */
+SDDL2_Error SDDL2_op_load_u32le(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer);
+
+/**
+ * Load unsigned 32-bit BE value at address.
+ * Stack: addr:I64 -> value:I64
+ * Errors: TypeMismatch, LoadBounds
+ * Does NOT advance cursor.
+ */
+SDDL2_Error SDDL2_op_load_u32be(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer);
+
+/**
+ * Load signed 32-bit LE value at address.
+ * Stack: addr:I64 -> value:I64
+ * Errors: TypeMismatch, LoadBounds
+ * Does NOT advance cursor.
+ */
+SDDL2_Error SDDL2_op_load_i32le(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer);
+
+/**
+ * Load signed 32-bit BE value at address.
+ * Stack: addr:I64 -> value:I64
+ * Errors: TypeMismatch, LoadBounds
+ * Does NOT advance cursor.
+ */
+SDDL2_Error SDDL2_op_load_i32be(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer);
+
+/**
+ * Load signed 64-bit LE value at address.
+ * Stack: addr:I64 -> value:I64
+ * Errors: TypeMismatch, LoadBounds
+ * Does NOT advance cursor.
+ */
+SDDL2_Error SDDL2_op_load_i64le(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer);
+
+/**
+ * Load signed 64-bit BE value at address.
+ * Stack: addr:I64 -> value:I64
+ * Errors: TypeMismatch, LoadBounds
+ * Does NOT advance cursor.
+ */
+SDDL2_Error SDDL2_op_load_i64be(
         SDDL2_Stack* stack,
         const SDDL2_Input_buffer* buffer);
 

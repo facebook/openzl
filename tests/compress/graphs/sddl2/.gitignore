@@ -5,6 +5,7 @@ sddl2_extract_field_sizes_test
 sddl2_field_extraction_test
 sddl2_input_test
 sddl2_interpreter_test
+sddl2_load_test
 sddl2_segments_test
 sddl2_structure_segment_test
 sddl2_structure_split_integration_test

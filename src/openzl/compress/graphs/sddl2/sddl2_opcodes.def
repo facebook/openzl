@@ -88,6 +88,21 @@
   halt      0x0001          "Stop VM execution"
 
 @family LOAD 0x0006 "Load operations"
+  # 8-bit loads (endianness-independent)
+  load.u8       0x0001          "Load unsigned 8-bit value from buffer[TOS] and push as I64"
+  load.i8       0x0002          "Load signed 8-bit value from buffer[TOS] and push as I64"
+  # Little-endian loads: 0x00__
+  load.u16le    0x0010          "Load unsigned 16-bit LE value from buffer[TOS] and push as I64"
+  load.i16le    0x0011          "Load signed 16-bit LE value from buffer[TOS] and push as I64"
+  load.u32le    0x0020          "Load unsigned 32-bit LE value from buffer[TOS] and push as I64"
+  load.i32le    0x0021          "Load signed 32-bit LE value from buffer[TOS] and push as I64"
+  load.i64le    0x0030          "Load signed 64-bit LE value from buffer[TOS] and push as I64"
+  # Big-endian loads: 0x01__
+  load.u16be    0x0110          "Load unsigned 16-bit BE value from buffer[TOS] and push as I64"
+  load.i16be    0x0111          "Load signed 16-bit BE value from buffer[TOS] and push as I64"
+  load.u32be    0x0120          "Load unsigned 32-bit BE value from buffer[TOS] and push as I64"
+  load.i32be    0x0121          "Load signed 32-bit BE value from buffer[TOS] and push as I64"
+  load.i64be    0x0130          "Load signed 64-bit BE value from buffer[TOS] and push as I64"
 
 @family STACK 0x0007 "Stack manipulation operations"
   stack.dup  0x0001         "Duplicate top stack value"

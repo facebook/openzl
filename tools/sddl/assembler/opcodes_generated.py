@@ -2,7 +2,7 @@
 AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 
 Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-Generated at: 2025-11-11 05:40:06 UTC
+Generated at: 2025-11-12 03:21:05 UTC
 Generator: generate_opcodes.py
 
 To regenerate: python3 generate_opcodes.py
@@ -86,6 +86,20 @@ INSTRUCTIONS = {
     "cmp.le": ("CMP", 0x0004, []),
     "cmp.gt": ("CMP", 0x0005, []),
     "cmp.ge": ("CMP", 0x0006, []),
+
+    # LOAD family (0x0006)
+    "load.u8": ("LOAD", 0x0001, []),
+    "load.i8": ("LOAD", 0x0002, []),
+    "load.u16le": ("LOAD", 0x0010, []),
+    "load.i16le": ("LOAD", 0x0011, []),
+    "load.u32le": ("LOAD", 0x0020, []),
+    "load.i32le": ("LOAD", 0x0021, []),
+    "load.i64le": ("LOAD", 0x0030, []),
+    "load.u16be": ("LOAD", 0x0110, []),
+    "load.i16be": ("LOAD", 0x0111, []),
+    "load.u32be": ("LOAD", 0x0120, []),
+    "load.i32be": ("LOAD", 0x0121, []),
+    "load.i64be": ("LOAD", 0x0130, []),
 
     # TYPE family (0x0008)
     "type.fixed_array": ("TYPE", 0x0001, []),

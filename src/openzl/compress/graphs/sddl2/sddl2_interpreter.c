@@ -404,6 +404,37 @@ SDDL2_Error SDDL2_execute_bytecode(
                 }
                 break;
 
+            case SDDL2_FAMILY_LOAD:
+                if (opcode == SDDL2_OP_LOAD_U8) {
+                    err = SDDL2_op_load_u8(&stack, &buffer);
+                } else if (opcode == SDDL2_OP_LOAD_I8) {
+                    err = SDDL2_op_load_i8(&stack, &buffer);
+                } else if (opcode == SDDL2_OP_LOAD_U16LE) {
+                    err = SDDL2_op_load_u16le(&stack, &buffer);
+                } else if (opcode == SDDL2_OP_LOAD_U16BE) {
+                    err = SDDL2_op_load_u16be(&stack, &buffer);
+                } else if (opcode == SDDL2_OP_LOAD_I16LE) {
+                    err = SDDL2_op_load_i16le(&stack, &buffer);
+                } else if (opcode == SDDL2_OP_LOAD_I16BE) {
+                    err = SDDL2_op_load_i16be(&stack, &buffer);
+                } else if (opcode == SDDL2_OP_LOAD_U32LE) {
+                    err = SDDL2_op_load_u32le(&stack, &buffer);
+                } else if (opcode == SDDL2_OP_LOAD_U32BE) {
+                    err = SDDL2_op_load_u32be(&stack, &buffer);
+                } else if (opcode == SDDL2_OP_LOAD_I32LE) {
+                    err = SDDL2_op_load_i32le(&stack, &buffer);
+                } else if (opcode == SDDL2_OP_LOAD_I32BE) {
+                    err = SDDL2_op_load_i32be(&stack, &buffer);
+                } else if (opcode == SDDL2_OP_LOAD_I64LE) {
+                    err = SDDL2_op_load_i64le(&stack, &buffer);
+                } else if (opcode == SDDL2_OP_LOAD_I64BE) {
+                    err = SDDL2_op_load_i64be(&stack, &buffer);
+                } else {
+                    CLEANUP_AND_RETURN(
+                            SDDL2_INVALID_BYTECODE); // Unknown opcode
+                }
+                break;
+
             case SDDL2_FAMILY_VAR:
             case SDDL2_FAMILY_EXPECT:
             case SDDL2_FAMILY_CALL:

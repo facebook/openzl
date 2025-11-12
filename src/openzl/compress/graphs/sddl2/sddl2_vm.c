@@ -615,6 +615,203 @@ SDDL2_Error SDDL2_op_load_u8(
     return push_i64(stack, (int64_t)bytes[addr]);
 }
 
+SDDL2_Error SDDL2_op_load_i8(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer)
+{
+    int64_t addr;
+    SDDL2_TRY(pop_i64(stack, &addr));
+
+    // Bounds check: 0 <= addr < size
+    if (addr < 0 || (size_t)addr >= buffer->size) {
+        return SDDL2_LOAD_BOUNDS;
+    }
+
+    // Load byte and push as I64 (sign-extended)
+    const int8_t* bytes = (const int8_t*)buffer->data;
+    return push_i64(stack, (int64_t)bytes[addr]);
+}
+
+SDDL2_Error SDDL2_op_load_u16le(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer)
+{
+    int64_t addr;
+    SDDL2_TRY(pop_i64(stack, &addr));
+
+    // Bounds check: 0 <= addr <= size-2
+    if (addr < 0 || (size_t)addr + 2 > buffer->size) {
+        return SDDL2_LOAD_BOUNDS;
+    }
+
+    // Load 16-bit LE value and push as I64 (zero-extended)
+    const uint8_t* bytes = (const uint8_t*)buffer->data;
+    uint16_t value       = ZL_readLE16(&bytes[addr]);
+    return push_i64(stack, (int64_t)value);
+}
+
+SDDL2_Error SDDL2_op_load_u16be(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer)
+{
+    int64_t addr;
+    SDDL2_TRY(pop_i64(stack, &addr));
+
+    // Bounds check: 0 <= addr <= size-2
+    if (addr < 0 || (size_t)addr + 2 > buffer->size) {
+        return SDDL2_LOAD_BOUNDS;
+    }
+
+    // Load 16-bit BE value and push as I64 (zero-extended)
+    const uint8_t* bytes = (const uint8_t*)buffer->data;
+    uint16_t value       = ZL_readBE16(&bytes[addr]);
+    return push_i64(stack, (int64_t)value);
+}
+
+SDDL2_Error SDDL2_op_load_i16le(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer)
+{
+    int64_t addr;
+    SDDL2_TRY(pop_i64(stack, &addr));
+
+    // Bounds check: 0 <= addr <= size-2
+    if (addr < 0 || (size_t)addr + 2 > buffer->size) {
+        return SDDL2_LOAD_BOUNDS;
+    }
+
+    // Load 16-bit LE value and push as I64 (sign-extended)
+    const uint8_t* bytes = (const uint8_t*)buffer->data;
+    int16_t value        = (int16_t)ZL_readLE16(&bytes[addr]);
+    return push_i64(stack, (int64_t)value);
+}
+
+SDDL2_Error SDDL2_op_load_i16be(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer)
+{
+    int64_t addr;
+    SDDL2_TRY(pop_i64(stack, &addr));
+
+    // Bounds check: 0 <= addr <= size-2
+    if (addr < 0 || (size_t)addr + 2 > buffer->size) {
+        return SDDL2_LOAD_BOUNDS;
+    }
+
+    // Load 16-bit BE value and push as I64 (sign-extended)
+    const uint8_t* bytes = (const uint8_t*)buffer->data;
+    int16_t value        = (int16_t)ZL_readBE16(&bytes[addr]);
+    return push_i64(stack, (int64_t)value);
+}
+
+SDDL2_Error SDDL2_op_load_u32le(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer)
+{
+    int64_t addr;
+    SDDL2_TRY(pop_i64(stack, &addr));
+
+    // Bounds check: 0 <= addr <= size-4
+    if (addr < 0 || (size_t)addr + 4 > buffer->size) {
+        return SDDL2_LOAD_BOUNDS;
+    }
+
+    // Load 32-bit LE value and push as I64 (zero-extended)
+    const uint8_t* bytes = (const uint8_t*)buffer->data;
+    uint32_t value       = ZL_readLE32(&bytes[addr]);
+    return push_i64(stack, (int64_t)value);
+}
+
+SDDL2_Error SDDL2_op_load_u32be(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer)
+{
+    int64_t addr;
+    SDDL2_TRY(pop_i64(stack, &addr));
+
+    // Bounds check: 0 <= addr <= size-4
+    if (addr < 0 || (size_t)addr + 4 > buffer->size) {
+        return SDDL2_LOAD_BOUNDS;
+    }
+
+    // Load 32-bit BE value and push as I64 (zero-extended)
+    const uint8_t* bytes = (const uint8_t*)buffer->data;
+    uint32_t value       = ZL_readBE32(&bytes[addr]);
+    return push_i64(stack, (int64_t)value);
+}
+
+SDDL2_Error SDDL2_op_load_i32le(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer)
+{
+    int64_t addr;
+    SDDL2_TRY(pop_i64(stack, &addr));
+
+    // Bounds check: 0 <= addr <= size-4
+    if (addr < 0 || (size_t)addr + 4 > buffer->size) {
+        return SDDL2_LOAD_BOUNDS;
+    }
+
+    // Load 32-bit LE value and push as I64 (sign-extended)
+    const uint8_t* bytes = (const uint8_t*)buffer->data;
+    int32_t value        = (int32_t)ZL_readLE32(&bytes[addr]);
+    return push_i64(stack, (int64_t)value);
+}
+
+SDDL2_Error SDDL2_op_load_i32be(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer)
+{
+    int64_t addr;
+    SDDL2_TRY(pop_i64(stack, &addr));
+
+    // Bounds check: 0 <= addr <= size-4
+    if (addr < 0 || (size_t)addr + 4 > buffer->size) {
+        return SDDL2_LOAD_BOUNDS;
+    }
+
+    // Load 32-bit BE value and push as I64 (sign-extended)
+    const uint8_t* bytes = (const uint8_t*)buffer->data;
+    int32_t value        = (int32_t)ZL_readBE32(&bytes[addr]);
+    return push_i64(stack, (int64_t)value);
+}
+
+SDDL2_Error SDDL2_op_load_i64le(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer)
+{
+    int64_t addr;
+    SDDL2_TRY(pop_i64(stack, &addr));
+
+    // Bounds check: 0 <= addr <= size-8
+    if (addr < 0 || (size_t)addr + 8 > buffer->size) {
+        return SDDL2_LOAD_BOUNDS;
+    }
+
+    // Load 64-bit LE value and push as I64
+    const uint8_t* bytes = (const uint8_t*)buffer->data;
+    int64_t value        = (int64_t)ZL_readLE64(&bytes[addr]);
+    return push_i64(stack, value);
+}
+
+SDDL2_Error SDDL2_op_load_i64be(
+        SDDL2_Stack* stack,
+        const SDDL2_Input_buffer* buffer)
+{
+    int64_t addr;
+    SDDL2_TRY(pop_i64(stack, &addr));
+
+    // Bounds check: 0 <= addr <= size-8
+    if (addr < 0 || (size_t)addr + 8 > buffer->size) {
+        return SDDL2_LOAD_BOUNDS;
+    }
+
+    // Load 64-bit BE value and push as I64
+    const uint8_t* bytes = (const uint8_t*)buffer->data;
+    int64_t value        = (int64_t)ZL_readBE64(&bytes[addr]);
+    return push_i64(stack, value);
+}
+
 /* ============================================================================
  * Segment Operations (Phase 4-5)
  * ========================================================================= */
