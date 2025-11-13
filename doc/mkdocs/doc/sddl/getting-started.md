@@ -617,6 +617,8 @@ The next chapters will deepen your understanding:
 - **[Understanding Instant-Parse](instant-parse.md)** - Performance implications
 - **[Variables and Expressions](variables-expressions.md)** - Computing derived values
 
+**💡 Need Help?** Consider using **[SDDL for LLM](sddl-for-llm.md)** with your AI assistant (ChatGPT, Claude, etc.) to get help writing SDDL specifications, validating syntax, or learning through examples.
+
 ---
 
 ## A Note on Tooling

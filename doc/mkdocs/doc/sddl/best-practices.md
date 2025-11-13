@@ -1,6 +1,6 @@
 # Best Practices
 
-*Chapter 9 - Guidelines for effective SDDL*
+*Chapter 10 - Guidelines for effective SDDL*
 
 This chapter provides practical guidance for writing clear, maintainable SDDL format descriptions based on real-world experience.
 

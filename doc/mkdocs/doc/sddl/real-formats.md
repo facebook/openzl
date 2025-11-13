@@ -1,6 +1,6 @@
 # Real-World Formats
 
-*Chapter 10 - Complete examples*
+*Chapter 9 - Complete examples*
 
 This chapter presents complete SDDL descriptions for real-world formats, demonstrating how the language features work together in practice.
 
