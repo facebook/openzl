@@ -164,6 +164,8 @@ Rules:
 
 ### **4.5 Conditional Fields**
 
+**Single field form:**
+
 ```sddl
 Record Data(has_id, include_meta) = {
   base: Int32LE,
@@ -171,6 +173,21 @@ Record Data(has_id, include_meta) = {
   when include_meta then meta: Bytes(256)
 }
 ```
+
+**Block form (multiple statements):**
+
+```sddl
+Record Data(has_extended) = {
+  base: Int32LE,
+  when has_extended {
+    ext_field1: Int32LE,
+    ext_field2: Int64LE,
+    expect ext_field1 > 0
+  }
+}
+```
+
+When using braces `{ }`, there is no `then` keyword. The block can contain multiple fields and statements.
 
 Conditions referencing parameters are instant-parse-safe.
 Conditions referencing local fields make the record non-instant-parse.
@@ -282,7 +299,8 @@ var block_size = switch version {
 }
 ```
 
-All cases must return the same type; overlapping ranges ⇒ **format error**.
+* Overlapping ranges ⇒ **format error**
+* If no case match and no `default` ⇒ **data error**
 
 ---
 
@@ -300,6 +318,18 @@ expect format == 1 or format == 2
 Failure ⇒ data mismatch.
 If the expression references only parameters or constants, it is instant-parse-safe.
 Otherwise it marks the construct as non-instant-parse.
+
+### **8.3 Enum Membership (`in`)**
+
+Test if a value is in an enum set:
+
+```sddl
+enum WaveFormat { PCM = 1, IEEE_FLOAT = 3, EXTENSIBLE = 0xFFFE }
+
+expect audio_format in WaveFormat  # True if audio_format is 1, 3, or 0xFFFE
+```
+
+The `in` operator works only with enum types and is typically used within `expect` statements.
 
 ### **8.2 `where`**
 

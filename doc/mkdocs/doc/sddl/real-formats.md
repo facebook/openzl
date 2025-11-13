@@ -6,429 +6,474 @@ This chapter presents complete SDDL descriptions for real-world formats, demonst
 
 ---
 
-## Example 1: BMP Image Format
+## Example 1: WAVE PCM Audio (16-bit, Mono/Stereo)
 
-BMP is a simple raster image format with a fixed header followed by pixel data.
+**Format Restrictions:**
+
+This example describes a subset of the WAVE format with these constraints:
+
+**Supported:**
+- PCM (uncompressed) audio only
+- 16-bit samples only
+- Mono (1 channel) or Stereo (2 channels) only
+- Standard 16-byte fmt chunk
+- Immediate data chunk after fmt (no other chunks in between)
+
+**Not Supported (will be rejected):**
+- Compressed formats (MP3, ADPCM, μ-law, A-law, etc.)
+- Other bit depths (8-bit, 24-bit, 32-bit float)
+- Multi-channel/surround (3+ channels)
+- Extended fmt chunks (size > 16 bytes)
+- Additional chunks between fmt and data (LIST, INFO, etc.)
+- Extra chunks after data chunk
+
+**What This Example Teaches:**
+
+- Using `expect` statements to validate field values
+- Computing array sizes from header fields (`data_size / 2`)
+- Validating derived values (`byte_rate`, `block_align`)
+- Sequential chunk parsing (RIFF container structure)
+- Rejecting non-conforming files explicitly
 
 ```sddl
-# BMP File Format
-Record BMPFileHeader() = {
-  magic: Bytes(2),
-  expect magic == "BM",
+# WAVE PCM 16-bit Mono/Stereo Format
 
-  file_size: UInt32LE,
-  reserved1: UInt16LE,
-  reserved2: UInt16LE,
-  pixel_data_offset: UInt32LE
-}
+# RIFF Chunk
+magic: Bytes(4)
+expect magic == "RIFF"
 
-Record BMPInfoHeader() = {
-  header_size: UInt32LE,
-  expect header_size == 40,  # Standard BITMAPINFOHEADER
+file_size: UInt32LE  # Size of rest of file
 
-  width: Int32LE,
-  height: Int32LE,
-  planes: UInt16LE,
-  expect planes == 1,
+wave_id: Bytes(4)
+expect wave_id == "WAVE"
 
-  bits_per_pixel: UInt16LE,
-  expect bits_per_pixel == 24 or bits_per_pixel == 32,
+# Format Chunk
+fmt_id: Bytes(4)
+expect fmt_id == "fmt "
 
-  compression: UInt32LE,
-  expect compression == 0,  # Uncompressed only
+fmt_size: UInt32LE
+expect fmt_size == 16  # PCM format chunk is 16 bytes (rejects extended)
 
-  image_size: UInt32LE,
-  x_pixels_per_meter: Int32LE,
-  y_pixels_per_meter: Int32LE,
-  colors_used: UInt32LE,
-  colors_important: UInt32LE
-}
+audio_format: UInt16LE
+expect audio_format == 1  # 1 = PCM (rejects compressed formats)
 
-Record BMPFile() = {
-  file_header: BMPFileHeader,
-  info_header: BMPInfoHeader,
+num_channels: UInt16LE
+expect num_channels == 1 or num_channels == 2  # Mono or stereo only
 
-  var bytes_per_pixel = info_header.bits_per_pixel / 8,
-  var row_size_unpadded = info_header.width * bytes_per_pixel,
-  var row_size_padded = align_up(row_size_unpadded, 4),
-  var total_pixel_data = row_size_padded * abs(info_header.height),
+sample_rate: UInt32LE  # Any sample rate accepted
 
-  pixel_data: Bytes(total_pixel_data)
-}
+byte_rate: UInt32LE
+expect byte_rate == sample_rate * num_channels * 2  # Bytes per second
 
-bmp: BMPFile
+block_align: UInt16LE
+expect block_align == num_channels * 2  # Bytes per sample frame
+
+bits_per_sample: UInt16LE
+expect bits_per_sample == 16  # 16-bit only
+
+# Data Chunk
+data_id: Bytes(4)
+expect data_id == "data"
+
+data_size: UInt32LE
+
+samples: Int16LE[data_size / 2]  # 16-bit = 2 bytes per sample
 ```
 
-**Key points:**
-- Fixed-size headers are instant-parse
-- Pixel data size computed from dimensions
-- Row alignment to 4-byte boundaries
+**What gets rejected (data errors):**
+- Files with bit depths other than 16-bit: `expect bits_per_sample == 16`
+- Compressed audio (MP3, ADPCM, etc.): `expect audio_format == 1`
+- Multi-channel audio (3+ channels): `expect num_channels == 1 or num_channels == 2`
+- Incorrect byte_rate: `expect byte_rate == sample_rate * num_channels * 2`
+- Incorrect block_align: `expect block_align == num_channels * 2`
+- Wrong chunk ordering (e.g., metadata between fmt and data): `expect data_id == "data"`
+- Extra chunks after the data chunk (unconsumed data causes error)
 
 ---
 
-## Example 2: WAVE Audio Format
+## Example 2: BMP Image (24-bit RGB, Uncompressed)
 
-WAVE uses a chunk-based structure (RIFF container).
+**Format Restrictions:**
+
+This example describes a subset of the BMP format with these constraints:
+
+**Supported:**
+- 24-bit RGB uncompressed only
+- Standard 40-byte BITMAPINFOHEADER
+- Bottom-up pixel ordering only (positive height)
+- Single image plane
+
+**Not Supported (will be rejected):**
+- Other bit depths (1-bit, 4-bit, 8-bit indexed, 16-bit, 32-bit)
+- Compressed formats (RLE4, RLE8, etc.)
+- Other header types (OS/2 BMP, BITMAPV4HEADER, BITMAPV5HEADER)
+- Top-down images (negative height)
+- Color palettes
+- Multiple planes
+
+**What This Example Teaches:**
+
+- Computing array sizes with alignment (`align_up` for 4-byte row padding)
+- Using `var` statements for derived calculations
+- Validating multiple header fields
+- Handling row padding in image formats
 
 ```sddl
-# WAVE Audio Format
-Record RIFFChunkHeader() = {
-  chunk_id: Bytes(4),
-  chunk_size: UInt32LE
-}
+# BMP 24-bit RGB Uncompressed Format
 
-Record WAVEFormatChunk() = {
-  audio_format: UInt16LE,
-  expect audio_format == 1,  # PCM
+# File Header (14 bytes)
+magic: Bytes(2)
+expect magic == "BM"
 
-  num_channels: UInt16LE,
-  expect num_channels >= 1 and num_channels <= 2,
+file_size: UInt32LE
 
-  sample_rate: UInt32LE,
-  byte_rate: UInt32LE,
-  block_align: UInt16LE,
-  bits_per_sample: UInt16LE,
-  expect bits_per_sample == 8 or bits_per_sample == 16
-}
+reserved1: UInt16LE
+reserved2: UInt16LE
 
-Record WAVEChunk() = {
-  header: RIFFChunkHeader,
+pixel_data_offset: UInt32LE
 
-  data: Union(header.chunk_id) {
-    case "fmt ": WAVEFormatChunk,
-    case "data": Bytes(header.chunk_size),
-    default: Bytes(header.chunk_size)  # Skip unknown chunks
-  }
-}
+# Info Header (40 bytes - BITMAPINFOHEADER)
+header_size: UInt32LE
+expect header_size == 40  # Standard BITMAPINFOHEADER only
 
-Record WAVEFile() = {
-  riff_header: RIFFChunkHeader,
-  expect riff_header.chunk_id == "RIFF",
+width: Int32LE
+expect width > 0
 
-  wave_id: Bytes(4),
-  expect wave_id == "WAVE",
+height: Int32LE
+expect height > 0  # Bottom-up only (top-down uses negative height)
 
-  chunks: scan WAVEChunk[]
-}
+planes: UInt16LE
+expect planes == 1
 
-wave: WAVEFile
+bits_per_pixel: UInt16LE
+expect bits_per_pixel == 24  # 24-bit RGB only
+
+compression: UInt32LE
+expect compression == 0  # BI_RGB (uncompressed) only
+
+image_size: UInt32LE  # Can be 0 for uncompressed
+
+x_pixels_per_meter: Int32LE
+y_pixels_per_meter: Int32LE
+
+colors_used: UInt32LE
+colors_important: UInt32LE
+
+# Pixel Data
+var bytes_per_pixel = 3  # 24-bit = 3 bytes
+var row_size_unpadded = width * bytes_per_pixel
+var row_size_padded = align_up(row_size_unpadded, 4)  # Rows aligned to 4 bytes
+var total_pixel_data = row_size_padded * height
+
+pixel_data: Bytes(total_pixel_data)
 ```
 
-**Key points:**
-- Chunk-based structure with union for variant chunks
-- `scan` keyword for sequential chunk parsing
-- `default` case handles unknown chunk types
+**What gets rejected (data errors):**
+- Non-BMP files: `expect magic == "BM"`
+- Extended or non-standard headers: `expect header_size == 40`
+- Non-positive dimensions: `expect width > 0`, `expect height > 0`
+- Top-down images (negative height): `expect height > 0`
+- Non-RGB formats (8-bit indexed, 16-bit, 32-bit): `expect bits_per_pixel == 24`
+- Compressed formats (RLE, etc.): `expect compression == 0`
+- Invalid planes: `expect planes == 1`
+- Extra data after pixel data (unconsumed data causes error)
 
 ---
 
-## Example 3: TAR Archive
+## Example 3: WAVE Audio (Extended Format Support)
 
-TAR files consist of 512-byte blocks containing headers and file data.
+**Format Restrictions:**
 
-```sddl
-# TAR Archive Format (POSIX ustar)
-Record TARHeader() = {
-  name: Bytes(100),
-  mode: Bytes(8),
-  uid: Bytes(8),
-  gid: Bytes(8),
-  size: Bytes(12),          # Octal ASCII string
-  mtime: Bytes(12),         # Octal ASCII string
-  checksum: Bytes(8),
-  typeflag: Bytes(1),
-  linkname: Bytes(100),
-  magic: Bytes(6),
-  version: Bytes(2),
-  uname: Bytes(32),
-  gname: Bytes(32),
-  devmajor: Bytes(8),
-  devminor: Bytes(8),
-  prefix: Bytes(155),
-  _: Bytes(12)              # Padding to 512 bytes
-} pad_to 512
+This example describes a much broader subset of WAVE than Example 1, covering ~90% of common WAVE files:
 
-Record TAREntry() = {
-  header: TARHeader,
+**Supported:**
+- **PCM (format 1)**: 8-bit, 16-bit, 24-bit, 32-bit
+- **IEEE_FLOAT (format 3)**: 32-bit, 64-bit
+- **EXTENSIBLE (format 0xFFFE)**: PCM and IEEE_FLOAT subtypes only (via GUID)
+- **Channels**: 1 to 8 channels
+- **Sample rates**: 8 kHz to 384 kHz
+- **Extended fmt chunks** (for IEEE_FLOAT and EXTENSIBLE formats)
+- **Even-byte chunk padding** (per RIFF specification)
 
-  # Parse size from octal ASCII
-  var file_size = 0,  # Would need octal parsing function
+**Not Supported (will be rejected):**
+- RF64 or RIFX (big-endian) containers
+- Compressed formats (ADPCM, MP3, μ-law, A-law, etc.)
+- EXTENSIBLE with non-PCM/non-FLOAT subtypes
+- More than 8 channels
+- Sample rates outside 8-384 kHz range
+- Additional chunks (fact, LIST, INFO, cue, etc.)
+- Multiple fmt or data chunks
+- Chunks in wrong order (data must immediately follow fmt)
+- ValidBitsPerSample ≠ BitsPerSample in EXTENSIBLE format
 
-  var num_blocks = ceil_div(file_size, 512),
-  var padded_size = num_blocks * 512,
+**What This Example Teaches (beyond Examples 1 & 2):**
 
-  data: Bytes(padded_size)
-}
-
-# TAR files are sequences of entries until two zero blocks
-entries: scan TAREntry[]
-```
-
-**Key points:**
-- Fixed 512-byte blocks with `pad_to`
-- ASCII-encoded numbers (would need parsing in real implementation)
-- Variable-length entries with block alignment
-
----
-
-## Example 4: PNG Chunk Structure
-
-PNG uses a clean chunk-based design with CRC validation.
+- **`enum` definitions** for named constants (`WaveFormat`)
+- **`in` operator** for enum membership testing (`expect core.AudioFormat in WaveFormat`)
+- **`when` with braces** for grouping multiple statements in conditionals
+- **`pad_to`** for size-bounded records (enforcing chunk sizes)
+- **`pad_align`** for chunk alignment (even-byte RIFF boundaries)
+- **Nested unions** (unions within unions for sample types)
+- **Nested switch expressions** (EXTENSIBLE format resolution)
+- **GUID validation** (comparing 16-byte arrays)
+- **`size()` function** for validating container sizes
+- **Complex multi-level validation** with interdependent fields
+- **Record decomposition** for managing complexity
 
 ```sddl
-# PNG File Format
-enum PNGChunkType {
-  IHDR = 0x49484452,
-  PLTE = 0x504C5445,
-  IDAT = 0x49444154,
-  IEND = 0x49454E44
+# WAVE Extended Format - PCM/FLOAT (1-8 channels, 8-384kHz)
+# Accepts: PCM (8/16/24/32-bit), IEEE_FLOAT (32/64-bit), EXTENSIBLE (PCM/FLOAT subtypes)
+# Rejects: Compressed formats, extra chunks, invalid invariants
+
+# ---------- Enums ----------
+enum WaveFormat { PCM = 1, IEEE_FLOAT = 3, EXTENSIBLE = 0xFFFE }
+
+# ---------- Fixed headers ----------
+Record RIFF_Header() = {
+  ChunkID:   Bytes(4),
+  ChunkSize: UInt32LE,                 # bytes after this field (file_size - 8)
+  Format:    Bytes(4)
 }
 
-Record PNGIHDRData() = {
-  width: UInt32BE,
-  height: UInt32BE,
-  bit_depth: UInt8,
-  color_type: UInt8,
-  compression: UInt8,
-  filter: UInt8,
-  interlace: UInt8
+Record ChunkHeader() = {
+  ID:   Bytes(4),                      # "fmt ", "data"
+  Size: UInt32LE                       # payload byte count (excludes pad)
 }
 
-Record PNGChunk() = {
-  length: UInt32BE,
-  type: UInt32BE,
+# ---------- 'fmt ' payload ----------
+Record FmtCore() = {
+  AudioFormat:   UInt16LE,             # 1, 3, or 0xFFFE
+  NumChannels:   UInt16LE,
+  SampleRate:    UInt32LE,
+  ByteRate:      UInt32LE,
+  BlockAlign:    UInt16LE,
+  BitsPerSample: UInt16LE
+}
 
-  data: Union(type) {
-    case PNGChunkType.IHDR: PNGIHDRData,
-    case PNGChunkType.IDAT: Bytes(length),
-    case PNGChunkType.IEND: Bytes(0),
-    default: Bytes(length)
+# Extra depends on cbSize → requires scanning
+Record FmtExtra(total_size) = {
+  cbSize:    UInt16LE,
+  expect cbSize == total_size - 16,
+  ExtraData: Bytes(cbSize)
+}
+
+Record FmtExtensibleTail() = {
+  ValidBitsPerSample: UInt16LE,
+  ChannelMask:        UInt32LE,
+  SubFormat:          Bytes(16)         # GUID
+}
+
+# Size-bounded scope via pad_to
+Record FmtPayload(total_size) = {
+  core: FmtCore,
+
+  # Profile guards
+  expect core.AudioFormat in WaveFormat,                                # {1,3,0xFFFE}
+  expect between(1, core.NumChannels, 8),
+  expect between(8000, core.SampleRate, 384000),
+  expect (
+      (core.AudioFormat == WaveFormat.PCM        and (core.BitsPerSample == 8 or core.BitsPerSample == 16 or core.BitsPerSample == 24 or core.BitsPerSample == 32))
+   or (core.AudioFormat == WaveFormat.IEEE_FLOAT and (core.BitsPerSample == 32 or core.BitsPerSample == 64))
+   or (core.AudioFormat == WaveFormat.EXTENSIBLE)
+  ),
+
+  # Typical size discipline (fail-fast)
+  when core.AudioFormat == WaveFormat.PCM        then expect (total_size == 16),
+  when core.AudioFormat == WaveFormat.IEEE_FLOAT then expect (total_size >= 18),
+  when core.AudioFormat == WaveFormat.EXTENSIBLE then expect (total_size >= 40),
+
+  when total_size > 16 then extra: FmtExtra(total_size),
+
+  # Extensible constraints (grouped)
+  when core.AudioFormat == WaveFormat.EXTENSIBLE {
+    ext: FmtExtensibleTail,
+    expect ext.ValidBitsPerSample == core.BitsPerSample,
+    expect (
+      # PCM  GUID {00000001-0000-0010-8000-00AA00389B71}
+      ext.SubFormat == [0x01,0x00,0x00,0x00, 0x00,0x00, 0x10,0x00, 0x80,0x00, 0x00,0xAA,0x00,0x38,0x9B,0x71]
+      or
+      # FLOAT GUID {00000003-0000-0010-8000-00AA00389B71}
+      ext.SubFormat == [0x03,0x00,0x00,0x00, 0x00,0x00, 0x10,0x00, 0x80,0x00, 0x00,0xAA,0x00,0x38,0x9B,0x71]
+    )
   },
 
-  crc: UInt32BE
+  # Algebraic invariants
+  var bytes_per_sample = ceil_div(core.BitsPerSample, 8),
+  expect core.BlockAlign == core.NumChannels * bytes_per_sample,
+  expect core.ByteRate   == core.SampleRate  * core.BlockAlign
+} pad_to total_size
+
+# ---------- Bit-depth sample unions ----------
+Union PCM_Sample(bits) = {
+  case 8:  UInt8,                       # PCM8 is unsigned in RIFF
+  case 16: Int16LE,
+  case 24: Bytes(3),                    # 24-bit stored as 3 bytes
+  case 32: Int32LE
 }
 
-Record PNGFile() = {
-  signature: Bytes(8),
-  expect signature == "\x89PNG\r\n\x1a\n",
-
-  chunks: scan PNGChunk[]
+Union Float_Sample(bits) = {
+  case 32: Float32LE,
+  case 64: Float64LE
 }
 
-png: PNGFile
-```
-
-**Key points:**
-- Big-endian integers (network byte order)
-- Enum for chunk types
-- Union dispatches on chunk type
-- CRC field present but not validated in description
-
----
-
-## Example 5: Simple Custom Protocol
-
-A hypothetical network protocol demonstrating common patterns.
-
-```sddl
-# Custom Binary Protocol
-enum MessageType {
-  HEARTBEAT = 0x01,
-  REQUEST   = 0x02,
-  RESPONSE  = 0x03,
-  ERROR     = 0x04
+# ---------- Sample atom (normalized format → bits) ----------
+Union SampleAtom(fmt_eff, bits) = {
+  case WaveFormat.PCM:        PCM_Sample(bits),
+  case WaveFormat.IEEE_FLOAT: Float_Sample(bits)
 }
 
-Record MessageHeader() = {
-  magic: UInt16BE,
-  expect magic == 0x4D53,  # "MS"
-
-  version: UInt8,
-  message_type: UInt8,
-  sequence_id: UInt32BE,
-  payload_length: UInt32BE,
-  flags: UInt16BE
+# ---------- Interleaved frame ----------
+Record InterleavedFrame(fmt_eff, bits, channels) = {
+  ch: SampleAtom(fmt_eff, bits)[channels]
 }
 
-Record RequestPayload(length) = {
-  method: UInt8,
-  param_count: UInt8,
-  params: Bytes(length - 2)
+# ---------- 'data' payload ----------
+Record DataPayload(fmt_eff, bits, channels, block_align, total_bytes) = {
+  var bps = ceil_div(bits, 8),
+  expect block_align == channels * bps,
+  expect total_bytes % block_align == 0,
+  var frames = total_bytes / block_align,
+  frames_data: InterleavedFrame(fmt_eff, bits, channels)[frames]
 }
 
-Record ResponsePayload(length) = {
-  status_code: UInt16BE,
-  data: Bytes(length - 2)
-}
+# ---------- Chunk wrappers (size-bounded + even padding) ----------
+Record FmtChunk() = {
+  h: ChunkHeader,
+  expect h.ID == "fmt ",
+  body: FmtPayload(h.Size)
+} pad_align 2
 
-Record ErrorPayload(length) = {
-  error_code: UInt16BE,
-  message_length: UInt16BE,
-  message: Bytes(message_length)
-}
+Record DataChunk(fmt_eff, bits, channels, block_align) = {
+  h: ChunkHeader,
+  expect h.ID == "data",
+  body: DataPayload(fmt_eff, bits, channels, block_align, h.Size)
+} pad_align 2
 
-Record Message() = {
-  header: MessageHeader,
+# ==========================================
+# ROOT LAYOUT
+# ==========================================
+riff: RIFF_Header
+expect riff.ChunkID == "RIFF"
+expect riff.Format  == "WAVE"
 
-  payload: Union(header.message_type) {
-    case MessageType.HEARTBEAT: Bytes(0),
-    case MessageType.REQUEST: RequestPayload(header.payload_length),
-    case MessageType.RESPONSE: ResponsePayload(header.payload_length),
-    case MessageType.ERROR: ErrorPayload(header.payload_length),
-    default: Bytes(header.payload_length)
-  },
+fmt:  FmtChunk
 
-  var has_checksum = (header.flags & 0x0001) != 0,
-  when has_checksum then checksum: UInt32BE
-}
+# Map EXTENSIBLE GUID to format tag (for PCM or FLOAT subtypes)
+# Uses boolean-to-integer trick: (condition) evaluates to 0 or 1, multiply by desired tag
+# If PCM GUID matches: 1*1=1; if FLOAT GUID matches: 1*3=3; if neither: 0+0=0
+var subfmt_tag =
+  (fmt.body.ext.SubFormat == [0x01,0x00,0x00,0x00,0x00,0x00,0x10,0x00,0x80,0x00,0x00,0xAA,0x00,0x38,0x9B,0x71]) * 1 +
+  (fmt.body.ext.SubFormat == [0x03,0x00,0x00,0x00,0x00,0x00,0x10,0x00,0x80,0x00,0x00,0xAA,0x00,0x38,0x9B,0x71]) * 3
 
-message: Message
-```
-
-**Key points:**
-- Version and type fields for extensibility
-- Union for different message types
-- Conditional checksum based on flags
-- Big-endian for network protocol
-
----
-
-## Example 6: Configuration File Format
-
-A structured configuration format with versioning.
-
-```sddl
-# Configuration File Format
-enum ConfigVersion { V1 = 1, V2 = 2, V3 = 3 }
-
-Record StringField() = {
-  length: UInt16LE,
-  text: Bytes(length)
-}
-
-Record ConfigV1() = {
-  app_name: StringField,
-  port: UInt16LE,
-  timeout_seconds: UInt32LE
-}
-
-Record ConfigV2() = {
-  # V1 fields
-  app_name: StringField,
-  port: UInt16LE,
-  timeout_seconds: UInt32LE,
-
-  # V2 additions
-  max_connections: UInt16LE,
-  log_level: UInt8
-}
-
-Record ConfigV3() = {
-  # V1 fields
-  app_name: StringField,
-  port: UInt16LE,
-  timeout_seconds: UInt32LE,
-
-  # V2 fields
-  max_connections: UInt16LE,
-  log_level: UInt8,
-
-  # V3 additions
-  enable_tls: UInt8,
-  cert_path: StringField,
-  key_path: StringField
-}
-
-Record ConfigFile() = {
-  magic: Bytes(4),
-  expect magic == "CONF",
-
-  version: UInt16LE,
-
-  config: Union(version) {
-    case ConfigVersion.V1: ConfigV1,
-    case ConfigVersion.V2: ConfigV2,
-    case ConfigVersion.V3: ConfigV3,
-    default: Record {
-      expect false @err_msg "Unsupported config version"
-    }
+var fmt_eff =
+  switch fmt.body.core.AudioFormat {
+    case WaveFormat.PCM:        WaveFormat.PCM,
+    case WaveFormat.IEEE_FLOAT: WaveFormat.IEEE_FLOAT,
+    case WaveFormat.EXTENSIBLE:
+      switch subfmt_tag {
+        case 1: WaveFormat.PCM,
+        case 3: WaveFormat.IEEE_FLOAT,
+      },
   }
-}
 
-config: ConfigFile
+data: DataChunk(fmt_eff,
+                fmt.body.core.BitsPerSample,
+                fmt.body.core.NumChannels,
+                fmt.body.core.BlockAlign)
+
+# RIFF size must account for the 4-byte "WAVE" + both chunks (incl. padding)
+expect riff.ChunkSize == 4 + size(fmt) + size(data)
+
 ```
-
-**Key points:**
-- Explicit version handling
-- Union for version-specific structures
-- Progressive field addition across versions
-- Helper record for length-prefixed strings
 
 ---
 
-## Common Patterns Observed
+## Common Patterns From These Examples
 
-### Magic Numbers
+### Magic Number Validation
 
-Most formats start with a signature:
+All three examples validate format signatures (Examples 1, 2, 3):
 
 ```sddl
-magic: Bytes(4),
+magic: Bytes(4)
 expect magic == "RIFF"
 ```
 
-### Length-Prefixed Data
+### Derived Size Calculations
 
-Common pattern for variable-length fields:
+Computing array sizes from header fields (Examples 1, 2, 3):
 
 ```sddl
-length: UInt32LE,
-data: Bytes(length)
+data_size: UInt32LE
+samples: Int16LE[data_size / 2]
 ```
 
-### Chunk/Block Structure
+### Field Validation
 
-Many formats use repeated chunks:
+Using `expect` to validate invariants (Examples 1, 2, 3):
 
 ```sddl
-Record Chunk() = {
-  header: ChunkHeader,
-  data: Bytes(header.size)
+block_align: UInt16LE
+expect block_align == num_channels * 2
+```
+
+### Alignment with `align_up`
+
+Row or block padding to boundaries (Example 2):
+
+```sddl
+var row_size_padded = align_up(row_size_unpadded, 4)
+```
+
+### Unions for Variants
+
+Dispatching on format types (Example 3):
+
+```sddl
+Union PCM_Sample(bits) = {
+  case 8:  UInt8,
+  case 16: Int16LE,
+  case 24: Bytes(3),
+  case 32: Int32LE
 }
-
-chunks: scan Chunk[]
 ```
 
-### Version-Based Evolution
+### Size-Bounded Records with `pad_to`
 
-Handle multiple format versions:
+Enforcing exact chunk sizes (Example 3):
 
 ```sddl
-version: UInt16LE,
-when version >= 2 then extended_data: ExtendedData
+Record FmtPayload(total_size) = {
+  # ... fields ...
+} pad_to total_size
 ```
 
-### Flags for Optional Features
+### Chunk Padding with `pad_align`
 
-Use bitfields for optional components:
+Even-byte boundaries for RIFF chunks (Example 3):
 
 ```sddl
-flags: UInt8,
-when (flags & 0x01) != 0 then optional_field: Data
+Record FmtChunk() = {
+  # ... fields ...
+} pad_align 2
 ```
 
 ---
 
 ## Summary
 
-These examples demonstrate:
+These three examples show SDDL's core features in action:
 
-- **Structure composition** - Building complex formats from simple records
-- **Chunk-based designs** - Using `scan` for sequential structures
-- **Versioning** - Unions and conditionals for format evolution
-- **Validation** - `expect` for format correctness
-- **Endianness** - Explicit LE/BE for portability
+- **Example 1** demonstrates basic validation and size calculations
+- **Example 2** adds alignment and padding for image rows
+- **Example 3** shows advanced features: enums, unions, GUIDs, and complex validation
 
-Real formats often mix these patterns. Start with the simplest valid case, then add complexity as needed.
+**Key Principles:**
+- Always validate magic numbers and critical fields
+- Use `var` for derived calculations
+- Explicitly specify endianness (LE/BE)
+- Start simple and add complexity incrementally
+- Test with real files to validate your description
 
 ---
 

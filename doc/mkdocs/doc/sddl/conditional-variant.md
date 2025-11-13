@@ -76,6 +76,24 @@ Record Config(mode, flags) = {
 }
 ```
 
+### Block Form with Braces
+
+When you need multiple fields or statements under a condition, use braces instead of `then`:
+
+```sddl
+Record ExtendedData(has_extension) = {
+  base: BaseData,
+  when has_extension {
+    ext_field1: Int32LE,
+    ext_field2: Int64LE,
+    var ext_size = ext_field1 + ext_field2,
+    expect ext_field1 > 0
+  }
+}
+```
+
+The block can contain fields, variables, and `expect` statements. When using braces, omit the `then` keyword.
+
 ---
 
 ## Unions for Variant Data
@@ -269,6 +287,27 @@ Record File() = {
   when (flags & FileFlags.HAS_CHECKSUM) != 0 then checksum: UInt32LE
 }
 ```
+
+### Enum Membership Testing with `in`
+
+Test if a value belongs to an enum set:
+
+```sddl
+enum WaveFormat {
+  PCM = 1,
+  IEEE_FLOAT = 3,
+  EXTENSIBLE = 0xFFFE
+}
+
+Record Audio() = {
+  format: UInt16LE,
+  expect format in WaveFormat,  # Requires format to be 1, 3, or 0xFFFE
+
+  data: Bytes(1024)
+}
+```
+
+The `in` operator checks if a value matches any of the enum's defined constants. It's typically used within `expect` statements for validation and causes a data error if the value doesn't match.
 
 ---
 
