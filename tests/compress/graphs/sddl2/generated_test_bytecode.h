@@ -1,13 +1,14 @@
-// AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
-//
-// Generated from interpreter test assembly files (.asm)
-// Source: /Users/cyan/dev/openzl/cyan_openzl/tests/compress/graphs/sddl2/asm
-// Generator: tests/compress/graphs/sddlv2/generate_test_bytecode.py
-//
-// To regenerate:
-//   python3 tests/compress/graphs/sddlv2/generate_test_bytecode.py \
-//       -i tests/compress/graphs/sddlv2/asm \
-//       -o tests/compress/graphs/sddlv2/generated_test_bytecode.h
+/* AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
+ *
+ * Generated from interpreter test assembly files (.asm)
+ * Source: /Users/cyan/dev/openzl/cyan_openzl/tests/compress/graphs/sddl2/asm
+ * Generator: tests/compress/graphs/sddlv2/generate_test_bytecode.py
+ *
+ * To regenerate:
+ *   python3 tests/compress/graphs/sddlv2/generate_test_bytecode.py \
+         -i tests/compress/graphs/sddlv2/asm \
+         -o tests/compress/graphs/sddlv2/generated_test_bytecode.h
+ */
 
 #ifndef GENERATED_TEST_BYTECODE_H
 #define GENERATED_TEST_BYTECODE_H
