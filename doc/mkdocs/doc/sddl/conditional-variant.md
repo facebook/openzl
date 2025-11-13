@@ -1,16 +1,16 @@
 # Conditional & Variant Data
 
-*Chapter 7 - Handling optional fields, variants, and dynamic structures*
+*Chapter 7 - Unions and conditional fields*
 
-Real-world binary formats often need to represent optional data, variants, or structures that change based on version, flags, or type codes. SDDL provides powerful constructs for describing these scenarios clearly and efficiently.
+Binary formats often contain optional fields, variant data, or structures that vary by version or type. This chapter covers SDDL's constructs for describing these patterns: conditional fields with `when` and variant data with `Union`.
 
 ---
 
 ## Conditional Fields with `when`
 
-### Basic Syntax
+The `when` keyword makes fields appear only when a condition is true.
 
-The `when` keyword allows fields to appear conditionally:
+### Basic Syntax
 
 ```sddl
 Record Message(include_timestamp) = {
@@ -18,136 +18,212 @@ Record Message(include_timestamp) = {
   body: Bytes(256),
   when include_timestamp then timestamp: Int64LE
 }
-Parameter-Based Conditions (Instant-Parse Safe)
+```
+
+If `include_timestamp` is true, the record includes a timestamp. If false, it doesn't.
+
+### Parameter-Based Conditions
+
 Conditions based on parameters maintain instant-parse status:
 
+```sddl
 Record Packet(version, has_checksum) = {
-  header: Header,
+  header: Bytes(12),
   data: Bytes(100),
-  when has_checksum then crc: Int32LE,
-  when version >= 2 then metadata: Metadata
+  when has_checksum then crc: UInt32LE,
+  when version >= 2 then metadata: Bytes(64)
 }
-Why it's instant-parse: The layout can be determined from parameters alone, without examining the data.
+```
 
-Field-Based Conditions (Requires Scanning)
-Conditions referencing parsed fields break instant-parse:
+The layout is fully determined by the parameters. This is instant-parse.
 
+### Field-Based Conditions
+
+Conditions referencing parsed fields require scanning:
+
+```sddl
 Record DynamicPacket() = {
-  flags: Int16LE,
+  flags: UInt8,
   data: Bytes(100),
-  when (flags & 0x01) then checksum: Int32LE  # Depends on parsed field
+  when (flags & 0x01) != 0 then checksum: UInt32LE  # Requires scan
 }
-Why it requires scanning: The parser must read flags before it can determine if checksum exists.
+```
 
-Multiple Conditions
-You can have multiple conditional fields:
+The parser must read `flags` before knowing whether `checksum` exists.
 
+### Multiple Conditions
+
+```sddl
 Record Feature(version) = {
   base: BaseData,
   when version >= 1 then feature_v1: Int32LE,
   when version >= 2 then feature_v2: Int64LE,
   when version >= 3 then feature_v3: ExtendedData
 }
-Complex Conditions
-Use logical operators for sophisticated conditions:
+```
 
+Each condition is evaluated independently. Multiple can be true simultaneously.
+
+### Complex Conditions
+
+Use logical operators for more sophisticated conditions:
+
+```sddl
 Record Config(mode, flags) = {
   basic: BasicConfig,
   when mode == 1 or mode == 3 then option_a: Int32LE,
-  when (flags & 0x80) and mode >= 2 then option_b: Int64LE,
-  when mode == 0 then minimal: Bytes(8)
+  when (flags & 0x80) != 0 and mode >= 2 then option_b: Int64LE
 }
-Unions for Variant Data
-Basic Union Structure
-Unions represent "one-of-many" choices, selected by a discriminator:
+```
 
+---
+
+## Unions for Variant Data
+
+Unions represent "exactly one of several options" based on a selector value.
+
+### Basic Union Structure
+
+```sddl
 Union Payload(type_code) = {
   case 1: ImageData,
   case 2: AudioData,
   case 3: VideoData,
   default: RawBytes
 }
-Key Points:
+```
 
-First parameter is the dispatch selector
-Only one case is parsed based on the selector value
-default handles unmatched cases
-Using the Union
+**Key points:**
+- First parameter is the dispatch selector
+- Only one case is active based on the selector value
+- `default` handles unmatched values
+
+### Using Unions
+
+```sddl
 Record Frame() = {
-  type: Int8,
-  size: Int32LE,
+  type: UInt8,
+  size: UInt32LE,
   payload: Union(type) {
     case 1: Image(size),
     case 2: Audio(size),
-    case 3: Video(size)
+    case 3: Video(size),
+    default: Bytes(size)
   }
 }
-Multiple Cases for Same Type
+```
+
+The `type` field determines which case is parsed.
+
+### Multiple Cases for Same Type
+
+```sddl
 Union Protocol(version) = {
-  case 1, 2, 3: LegacyFormat,    # Versions 1-3 use legacy
-  case 4: ModernFormat,           # Version 4 introduced new format
-  case 5, 6: EnhancedFormat,      # Versions 5-6 enhanced
+  case 1, 2, 3: LegacyFormat,    # Versions 1-3
+  case 4: ModernFormat,           # Version 4
+  case 5, 6: EnhancedFormat,      # Versions 5-6
   default: UnknownFormat
 }
-Range-Based Cases
-Use ranges for continuous value sets:
+```
 
+Multiple values can map to the same type.
+
+### Range-Based Cases
+
+Use ranges for contiguous value sets:
+
+```sddl
 Union DataBlock(block_type) = {
   case 0x00..0x0F: SmallBlock,     # Types 0-15
   case 0x10..0x1F: MediumBlock,    # Types 16-31
   case 0x20..0x7F: LargeBlock,     # Types 32-127
-  case 0x80..0xFF: CustomBlock,    # Types 128-255
+  default: CustomBlock
 }
-The default Case
-Always use default unless you're certain all values are covered:
+```
 
+Ranges are inclusive on both ends.
+
+### The `default` Case
+
+The `default` case handles selector values that don't match any explicit case:
+
+```sddl
 Union Message(msg_type) = {
   case 1: TextMessage,
   case 2: ImageMessage,
   case 3: AudioMessage,
-  default: UnknownMessage  # Gracefully handle unknown types
+  default: UnknownMessage  # Handles any other value
 }
-Without default: Encountering an unmatched value results in a data error.
+```
 
-Error: Overlapping Ranges
-This will produce a format error:
+**Without `default`:** If the selector value doesn't match any case, parsing fails with a data error. Always include `default` unless you're certain all possible values are covered by explicit cases.
 
+```sddl
+Union StrictMessage(msg_type) = {
+  case 1: TextMessage,
+  case 2: ImageMessage,
+  case 3: AudioMessage
+  # No default: msg_type=4 causes data error!
+}
+```
+
+### Overlapping Ranges
+
+Overlapping ranges are a format error:
+
+```sddl
 Union Bad(type) = {
   case 1..10: TypeA,
-  case 5..15: TypeB,   # ERROR: 5-10 overlap!
+  case 5..15: TypeB,   # ERROR: 5-10 overlap with first case!
 }
-Instant-Parse Considerations for Unions
-Instant-Parse Union Requirements
+```
+
+The compiler rejects this at compile time.
+
+---
+
+## Unions and Instant-Parse
+
 A union is instant-parse only if:
+1. The selector is a parameter or constant (not a parsed field)
+2. All case arms are themselves instant-parse
 
-The selector is a parameter or constant (not a parsed field)
-All case arms are themselves instant-parse
-Instant-Parse Example:
+### Instant-Parse Union
 
+```sddl
 @instant_parse
 Record Packet(type, size) = {
-  payload: Union(type) {    # type is parameter
-    case 1: Image(size),    # size is parameter
+  payload: Union(type) {    # type is parameter: instant-parse
+    case 1: Image(size),    # size is parameter: instant-parse
     case 2: Audio(size),
     default: Raw(size)
   }
 }
-Non-Instant-Parse Union
-If the selector is a parsed field:
+```
 
+### Non-Instant-Parse Union
+
+```sddl
 Record Packet() = {
-  type: Int8,              # Parsed field
-  size: Int32LE,
-  payload: Union(type) {   # Depends on parsed 'type'
+  type: UInt8,            # Parsed field
+  size: UInt32LE,
+  payload: Union(type) {  # Depends on parsed 'type': requires scan
     case 1: Image(size),
     case 2: Audio(size),
     default: Raw(size)
   }
-}  # This record requires scanning
-Enumerations
-Defining Enums
-Enums provide named constants for discriminators:
+}
+```
 
+---
+
+## Enumerations
+
+Enums provide named constants for discriminators and flags.
+
+### Defining Enums
+
+```sddl
 enum MessageType {
   TEXT = 1,
   IMAGE = 2,
@@ -160,9 +236,13 @@ enum Flags {
   WRITE  = 1 << 1,   # 0x02
   EXEC   = 1 << 2    # 0x04
 }
-Using Enums in Unions
+```
+
+### Using Enums in Unions
+
+```sddl
 Record Message() = {
-  type: Int8,
+  type: UInt8,
   payload: Union(type) {
     case MessageType.TEXT: TextPayload,
     case MessageType.IMAGE: ImagePayload,
@@ -171,7 +251,11 @@ Record Message() = {
     default: UnknownPayload
   }
 }
-Using Enums in Conditions
+```
+
+### Using Enums in Conditions
+
+```sddl
 enum FileFlags {
   HAS_METADATA = 0x01,
   HAS_CHECKSUM = 0x02,
@@ -179,81 +263,97 @@ enum FileFlags {
 }
 
 Record File() = {
-  flags: Int16LE,
+  flags: UInt8,
   data: Bytes(1024),
-  when (flags & FileFlags.HAS_METADATA) then metadata: Metadata,
-  when (flags & FileFlags.HAS_CHECKSUM) then checksum: Int32LE
+  when (flags & FileFlags.HAS_METADATA) != 0 then metadata: Metadata,
+  when (flags & FileFlags.HAS_CHECKSUM) != 0 then checksum: UInt32LE
 }
-Inline Declarations
-Inline Records
+```
+
+---
+
+## Inline Declarations
+
+### Inline Records
+
 Define anonymous record types directly where used:
 
+```sddl
 Record Packet() = {
   header: Record {
     magic: Bytes(4),
-    version: Int16LE,
-    flags: Int16LE
+    version: UInt16LE,
+    flags: UInt16LE
   },
   data: Bytes(256)
 }
-When to use inline:
+```
 
-Type is used only once
-Type is simple and self-explanatory
-Improves locality of definition
-Inline Unions
+Use inline records when the type is used only once and is simple.
+
+### Inline Unions
+
+```sddl
 Record Frame(type, size) = {
-  id: Int32LE,
+  id: UInt32LE,
   payload: Union(type, size) {
     case 1: Image(size),
     case 2: Audio(size),
     case 3: Video(size)
   }
 }
-Named vs Inline Trade-offs
-Named Types:
+```
 
-Record Header() = { magic: Bytes(4), version: Int16LE }
+### Named vs Inline
+
+**Named Types:**
+```sddl
+Record Header() = { magic: Bytes(4), version: UInt16LE }
 Record Packet() = { header: Header, data: Bytes(256) }
-✅ Reusable
-✅ Self-documenting (type has a name)
-✅ Can be tested independently
+```
+- Reusable across multiple records
+- Self-documenting (type has a name)
+- Can be tested independently
 
-Inline Types:
-
+**Inline Types:**
+```sddl
 Record Packet() = {
-  header: Record { magic: Bytes(4), version: Int16LE },
+  header: Record { magic: Bytes(4), version: UInt16LE },
   data: Bytes(256)
 }
-✅ Locality of reference
-✅ Less namespace pollution
-❌ Not reusable
+```
+- Keeps definition close to usage
+- Less namespace pollution
+- Not reusable
 
-Design Patterns
-Pattern: Tagged Union
-A classic variant pattern with explicit type tag:
+---
 
+## Common Patterns
+
+### Pattern: Tagged Union
+
+```sddl
 enum VariantType { INT = 1, FLOAT = 2, STRING = 3 }
 
 Record Variant() = {
-  tag: Int8,
+  tag: UInt8,
   value: Union(tag) {
     case VariantType.INT: Int64LE,
     case VariantType.FLOAT: Float64LE,
     case VariantType.STRING: Record {
-      length: Int32LE,
+      length: UInt32LE,
       text: Bytes(length)
     }
   }
 }
-Pattern: Version-Specific Fields
-Evolve formats over time:
+```
 
+### Pattern: Version-Specific Fields
+
+```sddl
 Record FileFormat() = {
   magic: Bytes(4),
-  version: Int16LE,
-
-  # Core fields (all versions)
+  version: UInt16LE,
   data: Bytes(100),
 
   # Version 2 additions
@@ -261,11 +361,13 @@ Record FileFormat() = {
 
   # Version 3 additions
   when version >= 3 then metadata: Metadata,
-  when version >= 3 then checksum: Int32LE
+  when version >= 3 then checksum: UInt32LE
 }
-Pattern: Optional Extensions
-Use flags to enable optional features:
+```
 
+### Pattern: Optional Extensions
+
+```sddl
 enum Extensions {
   COMPRESSION = 0x01,
   ENCRYPTION  = 0x02,
@@ -273,21 +375,23 @@ enum Extensions {
 }
 
 Record Document() = {
-  flags: Int16LE,
+  flags: UInt8,
   core_data: Bytes(512),
 
-  when (flags & Extensions.COMPRESSION)
+  when (flags & Extensions.COMPRESSION) != 0
     then compression_info: CompressionHeader,
 
-  when (flags & Extensions.ENCRYPTION)
+  when (flags & Extensions.ENCRYPTION) != 0
     then encryption_info: EncryptionHeader,
 
-  when (flags & Extensions.METADATA)
+  when (flags & Extensions.METADATA) != 0
     then metadata: Metadata
 }
-Pattern: Discriminated Payload
-Common in network protocols:
+```
 
+### Pattern: Discriminated Payload
+
+```sddl
 enum CommandType {
   REQUEST  = 1,
   RESPONSE = 2,
@@ -295,9 +399,9 @@ enum CommandType {
 }
 
 Record NetworkMessage() = {
-  message_id: Int32LE,
-  command_type: Int8,
-  payload_length: Int32LE,
+  message_id: UInt32LE,
+  command_type: UInt8,
+  payload_length: UInt32LE,
 
   payload: Union(command_type) {
     case CommandType.REQUEST: Request(payload_length),
@@ -305,31 +409,67 @@ Record NetworkMessage() = {
     case CommandType.ERROR: Error(payload_length)
   }
 }
-Pattern: Polymorphic Containers
-Arrays of variant data:
+```
 
-Record Item(type, size) = {
+---
+
+## Practical Examples
+
+### Example 1: PNG-Like Chunk Structure
+
+```sddl
+enum ChunkType {
+  HEADER  = 0x49484452,  # "IHDR"
+  PALETTE = 0x504C5445,  # "PLTE"
+  DATA    = 0x49444154,  # "IDAT"
+  END     = 0x49454E44   # "IEND"
+}
+
+Record Chunk() = {
+  length: UInt32BE,
+  type: UInt32BE,
+
   data: Union(type) {
-    case 1: TypeA(size),
-    case 2: TypeB(size),
-    case 3: TypeC(size)
-  }
-}
+    case ChunkType.HEADER: ImageHeader,
+    case ChunkType.PALETTE: Palette,
+    case ChunkType.DATA: ImageData(length),
+    case ChunkType.END: Bytes(0),
+    default: Bytes(length)  # Unknown chunk types preserved
+  },
 
-Record Container() = {
-  count: Int32LE,
-  items: scan Record {
-    type: Int8,
-    size: Int32LE,
-    item: Item(type, size)
-  }[count]
+  crc: UInt32BE
 }
-Pattern: Format Migration
-Handle multiple format versions in one description:
+```
 
+### Example 2: Extensible Configuration Format
+
+```sddl
+enum ConfigVersion { V1 = 1, V2 = 2, V3 = 3 }
+
+Record Config() = {
+  version: UInt16LE,
+
+  # V1 fields
+  name_length: UInt16LE,
+  name: Bytes(name_length),
+  port: UInt16LE,
+
+  # V2 additions
+  when version >= ConfigVersion.V2 then timeout: UInt32LE,
+  when version >= ConfigVersion.V2 then max_connections: UInt16LE,
+
+  # V3 additions
+  when version >= ConfigVersion.V3 then tls_config: TLSConfig,
+  when version >= ConfigVersion.V3 then flags: UInt32LE
+}
+```
+
+### Example 3: Format Migration
+
+```sddl
 Record MultiVersionFile() = {
   magic: Bytes(4),
-  version: Int16LE,
+  version: UInt16LE,
 
   body: Union(version) {
     case 1: V1Format,
@@ -340,102 +480,19 @@ Record MultiVersionFile() = {
     }
   }
 }
-Practical Examples
-Example 1: PNG-Like Chunk Structure
-enum ChunkType {
-  HEADER = 0x49484452,  # "IHDR"
-  PALETTE = 0x504C5445, # "PLTE"
-  DATA = 0x49444154,    # "IDAT"
-  END = 0x49454E44      # "IEND"
-}
+```
 
-Record Chunk() = {
-  length: Int32BE,
-  type: Int32BE,
+---
 
-  data: Union(type) {
-    case ChunkType.HEADER: ImageHeader,
-    case ChunkType.PALETTE: Palette,
-    case ChunkType.DATA: ImageData(length),
-    case ChunkType.END: Bytes(0),
-    default: Bytes(length)  # Unknown chunk types preserved
-  },
+## Common Pitfalls
 
-  crc: Int32BE
-}
-Example 2: Protocol Buffer Style Message
-enum FieldType {
-  VARINT = 0,
-  FIXED64 = 1,
-  LENGTH_DELIMITED = 2,
-  FIXED32 = 5
-}
+### Pitfall: Assuming Instant-Parse with Field Selectors
 
-Record Field() = {
-  tag_and_type: Int8,
-  var tag = tag_and_type >> 3,
-  var type = tag_and_type & 0x07,
-
-  value: Union(type) {
-    case FieldType.VARINT: VarInt,
-    case FieldType.FIXED64: Int64LE,
-    case FieldType.LENGTH_DELIMITED: Record {
-      length: VarInt,
-      data: Bytes(length)
-    },
-    case FieldType.FIXED32: Int32LE
-  }
-}
-Example 3: Extensible Configuration Format
-enum ConfigVersion { V1 = 1, V2 = 2, V3 = 3 }
-
-Record Config() = {
-  version: Int16LE,
-
-  # V1 fields
-  name_length: Int16LE,
-  name: Bytes(name_length),
-  port: Int16LE,
-
-  # V2 additions
-  when version >= ConfigVersion.V2 then timeout: Int32LE,
-  when version >= ConfigVersion.V2 then max_connections: Int16LE,
-
-  # V3 additions
-  when version >= ConfigVersion.V3 then tls_config: TLSConfig,
-  when version >= ConfigVersion.V3 then flags: Int32LE
-}
-Common Pitfalls
-Pitfall 1: Forgetting default
-# BAD: No default case
-Union Message(type) = {
-  case 1: TextMessage,
-  case 2: ImageMessage
-}  # Data error if type == 3!
-
-# GOOD: Always provide default
-Union Message(type) = {
-  case 1: TextMessage,
-  case 2: ImageMessage,
-  default: UnknownMessage
-}
-Pitfall 2: Overlapping Conditions
-# CONFUSING: Both conditions can be true
-Record Ambiguous(flags) = {
-  when (flags & 0x01) then field_a: Int32LE,
-  when (flags & 0x03) then field_b: Int32LE  # Also true when 0x01!
-}
-
-# BETTER: Use mutually exclusive conditions
-Record Clear(flags) = {
-  when (flags & 0x01) and not (flags & 0x02) then field_a: Int32LE,
-  when (flags & 0x03) == 0x03 then field_b: Int32LE
-}
-Pitfall 3: Assuming Instant-Parse with Field Selectors
+```sddl
 # This is NOT instant-parse!
 @instant_parse  # Compilation error
 Record Bad() = {
-  type: Int8,
+  type: UInt8,
   payload: Union(type) {  # 'type' is parsed field
     case 1: Data1,
     case 2: Data2
@@ -450,59 +507,41 @@ Record Good(type) = {
     case 2: Data2
   }
 }
-Performance Considerations
-Instant-Parse Unions Are Free
-When a union is instant-parse, the compiler can generate optimal code:
+```
 
-@instant_parse
-Record Fast(type, size) = {
-  payload: Union(type) {
-    case 1: Image(size),   # All layout known upfront
-    case 2: Audio(size),
-    default: Raw(size)
-  }
-}
-Field-Based Selection Requires Branching
-Record Slower() = {
-  type: Int8,            # Must read first
-  payload: Union(type) { # Then branch
-    case 1: Image(100),
-    case 2: Audio(100)
-  }
-}
-Impact: Minimal for single unions, but consider batching if processing millions of records.
+---
 
-SoA Limitations with Conditionals
-Structure-of-Arrays cannot be used with conditional fields:
+## Summary
 
-# NOT ALLOWED
-Record Bad(has_field) = {
-  when has_field then optional: Int32LE
-}
+SDDL provides two mechanisms for describing variant and optional data:
 
-items: soa Bad(true)[1000]  # Error!
-Testing Conditional Logic
-Test Matrix
-For conditional fields, test:
+**Conditional Fields (`when`):**
+- Makes fields optional based on conditions
+- Parameter-based conditions are instant-parse
+- Field-based conditions require scanning
+- Multiple conditions can be true simultaneously
 
-✅ Condition true
-✅ Condition false
-✅ Boundary values
-✅ Multiple conditions combinations
-Test Cases for Unions
-✅ Each case arm
-✅ Default case
-✅ Boundary values (min/max of ranges)
-✅ Invalid values (if no default)
-Summary
-Feature	Use When	Instant-Parse Safe?
-when with parameters	Optional fields, version checks	✅ Yes
-when with parsed fields	Dynamic conditionals	❌ No
-Union with parameter selector	Type-based variants	✅ Yes
-Union with field selector	Dynamic type selection	❌ No
-Enums	Named constants	✅ Yes (values only)
-Inline records/unions	One-off types	Depends on contents
-Next Steps
-Variables and Expressions - Computing values for conditions
-Best Practices - Patterns for format evolution
-Language Reference - Complete syntax details
+**Unions:**
+- Represents "exactly one of many" choices
+- Selector determines which case is active
+- Always include `default` for robustness
+- Instant-parse when selector is a parameter
+
+**Enums:**
+- Named constants for discriminators and flags
+- Improve readability
+- Work with unions and conditions
+
+**Key Points:**
+- Instant-parse requires parameter-based selectors/conditions
+- Field-based selectors/conditions require scanning
+- Overlapping union cases are format errors
+- Use `default` to handle unknown values gracefully
+
+---
+
+## Next Steps
+
+- **[Variables and Expressions](variables-expressions.md)** - Computing derived values
+- **[Best Practices](best-practices.md)** - Guidelines for format evolution
+- **[Real-World Formats](real-formats.md)** - Complete format examples

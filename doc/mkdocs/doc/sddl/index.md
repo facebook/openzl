@@ -39,10 +39,10 @@ New to SDDL? Start with the [Introduction & Motivation](introduction.md) to unde
 3. **[Core Concepts](core-concepts.md)** - Types, records, and validation
 4. **[Arrays and Collections](arrays-collections.md)** - Working with repeated data
 5. **[Understanding Instant-Parse](instant-parse.md)** - Performance and layout determinism
-6. **[Advanced Layout Control](layout-control.md)** - Alignment, padding, and memory optimization
+6. **[Advanced Layout Control](alignment-padding.md)** - Alignment, padding, and memory optimization
 7. **[Conditional & Variant Data](conditional-variant.md)** - Handling dynamic structures
-8. **[Working with Real Formats](real-formats.md)** - Text protocols and mixed formats
-9. **[Variables and Expressions](variables-expressions.md)** - Computing derived values
+8. **[Variables and Expressions](variables-expressions.md)** - Computing derived values
+9. **[Working with Real Formats](real-formats.md)** - Text protocols and mixed formats
 10. **[Best Practices](best-practices.md)** - Guidelines for effective SDDL
 11. **[Language Reference](reference.md)** - Complete language specification
 

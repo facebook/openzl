@@ -1,361 +1,347 @@
 # Variables and Expressions
 
-*Chapter 9 - Computing derived values during parsing*
+*Chapter 8 - Computing derived values*
 
----
-
-## Introduction
-
-### Why Variables and Expressions?
-
-### Use Cases
-
-### Relationship to Instant-Parse
+SDDL allows computing derived values during parsing using variables and expressions. This chapter covers the `var` statement, expression syntax, standard functions, and how these features interact with instant-parse.
 
 ---
 
 ## The `var` Statement
 
+Variables store computed values for later use.
+
 ### Basic Syntax
 
-### Creating Variables
+```sddl
+header: Header
+var data_size = header.size - 16
+payload: Bytes(data_size)
+```
+
+Variables are declared with `var`, followed by a name, `=`, and an expression.
 
 ### Immutability
 
-### Variable Naming
+Variables are immutable once created:
 
-### Scope and Lifetime
+```sddl
+var count = header.count
+# count = count + 1  # ERROR: Cannot modify variable
+```
 
-#### Record Scope
+This ensures predictable behavior and simplifies analysis.
 
-#### Local Scope
+### Scope
 
-#### Parameter Scope
+Variables are scoped to the record or top-level context where they're defined:
 
----
+```sddl
+Record Container() = {
+  size: UInt32LE,
+  var payload_size = size - 8,  # Scoped to Container
+  payload: Bytes(payload_size)
+}
 
-## Referencing Parsed Fields
+# payload_size not accessible here
+```
 
-### Field References in Variables
+### Variables and Instant-Parse
 
-### Nested Field Access
+Variables referencing parameters or constants are instant-parse safe:
 
-### When Field References Break Instant-Parse
+```sddl
+@instant_parse
+Record Data(total_size) = {
+  var payload_size = total_size - 16,  # OK: depends on parameter
+  header: Bytes(16),
+  payload: Bytes(payload_size)
+}
+```
 
-### Safe Pattern: Using Parameters
+Variables referencing parsed fields require scanning:
+
+```sddl
+Record Data() = {
+  size: UInt32LE,
+  var payload_size = size - 16,  # Requires scan: depends on parsed field
+  payload: Bytes(payload_size)
+}
+```
 
 ---
 
 ## Expressions
 
-### Expression Basics
+Expressions compute values from fields, parameters, variables, and constants.
 
-### Expression Types
+### Integer Arithmetic
 
-### Integer Arithmetic (64-bit Signed)
+All integers are 64-bit signed. Standard operators:
 
----
+```sddl
+var total = width * height
+var aligned = (size + 15) / 16 * 16
+var offset = base + index * element_size
+```
 
-## Arithmetic Operators
+Operators: `+`, `-`, `*`, `/`, `%` (modulo)
 
-### Addition (`+`)
+### Bitwise Operations
 
-### Subtraction (`-`)
+Extract and manipulate bits:
 
-### Multiplication (`*`)
+```sddl
+var has_flag = (flags & 0x01) != 0
+var masked = value & 0xFF
+var shifted = (data >> 8) & 0xFF
+```
 
-### Division (`/`)
+Operators: `&` (AND), `|` (OR), `^` (XOR), `<<` (left shift), `>>` (right shift)
 
-### Modulo (`%`)
+### Comparisons
 
-### Unary Plus and Minus
+Produce boolean values for conditions:
 
----
+```sddl
+var is_valid = version >= 2
+var in_range = size > 0 and size <= 1024
+```
 
-## Bitwise Operators
+Operators: `==`, `!=`, `<`, `<=`, `>`, `>=`
 
-### Bitwise AND (`&`)
+### Logical Operations
 
-### Bitwise OR (`|`)
+Combine boolean values:
 
-### Bitwise XOR (`^`)
+```sddl
+var has_both = (flags & 0x01) != 0 and (flags & 0x02) != 0
+var has_either = mode == 1 or mode == 2
+var is_disabled = not enabled
+```
 
-### Left Shift (`<<`)
+Operators: `and`, `or`, `not`
 
-### Right Shift (`>>`)
+### Operator Precedence
 
-### Bitwise NOT (if supported)
+SDDL follows C11 operator precedence. Use parentheses for clarity:
 
----
-
-## Comparison Operators
-
-### Equality (`==`)
-
-### Inequality (`!=`)
-
-### Less Than (`<`)
-
-### Less Than or Equal (`<=`)
-
-### Greater Than (`>`)
-
-### Greater Than or Equal (`>=`)
-
----
-
-## Logical Operators
-
-### Logical AND (`and`)
-
-### Logical OR (`or`)
-
-### Logical NOT (`not`)
-
----
-
-## Operator Precedence
-
-### Complete Precedence Table (C11)
-
-### Precedence Examples
-
-### Using Parentheses
+```sddl
+var result = (a + b) * c  # Clear: add first, then multiply
+var flags = (value & 0xFF) | (type << 8)  # Clear grouping
+```
 
 ---
 
 ## Switch Expressions
 
-### Syntax and Structure
+Compute values based on multi-way selection:
 
-### Case Matching
+```sddl
+var block_size = switch version {
+  case 1: 512,
+  case 2, 3: 1024,
+  case 4..10: 2048,
+  default: 4096
+}
+```
 
-#### Literal Values
+Rules:
+- All cases must return the same type
+- Overlapping ranges cause a format error
+- Without `default`, unmatched values cause a data error
 
-#### Multiple Values
+Using with variables:
 
-#### Ranges
+```sddl
+Record File() = {
+  version: UInt16LE,
 
-#### Default Case
+  var chunk_size = switch version {
+    case 1: 512,
+    case 2: 1024,
+    default: 2048
+  },
 
-### Type Consistency
-
-### Overlapping Cases (Error)
-
-### Nested Switch Expressions
-
-### Examples
+  chunks: Chunk(chunk_size)[]
+}
+```
 
 ---
 
 ## Standard Functions
 
-### Function Overview
+SDDL provides built-in functions for common operations. All functions are pure (no side effects) and return 64-bit signed integers.
 
-### Pure Functions
+### Mathematical Functions
 
-### Return Types
+```sddl
+abs(x)              # Absolute value
+min(a, b)           # Minimum of two values
+max(a, b)           # Maximum of two values
+clamp(l, x, h)      # Clamp x to range [l, h]
+sgn(x)              # Sign: -1, 0, or 1
+between(l, x, h)    # True if l <= x <= h
+```
 
----
+### Alignment and Division
 
-## Mathematical Functions
+```sddl
+ceil_div(x, d)      # Ceiling division: ⌈x / d⌉
+align_up(x, a)      # Round x up to next multiple of a
+```
 
-### `abs(x)` - Absolute Value
+### Size and Position Functions
 
-### `min(a, b)` - Minimum
+```sddl
+sizeof(T())               # Static size of type T (instant-parse)
+size(field)               # Parsed byte size of field (requires scan)
+current_position()        # Current parser position (requires scan)
+scope_remaining()         # Bytes remaining in scope (requires scan)
+```
 
-### `max(a, b)` - Maximum
+### Notes
 
-### `clamp(l, x, h)` - Bounded Value
-
-### `sgn(x)` - Sign Function
-
----
-
-## Range Functions
-
-### `between(l, x, h)` - Range Check
-
----
-
-## Arithmetic Helper Functions
-
-### `ceil_div(x, d)` - Ceiling Division
-
-### `align_up(x, a)` - Alignment Helper
-
----
-
-## Size and Position Functions
-
-### `sizeof(T())` - Static Size of Type
-
-#### Syntax
-
-#### Instant-Parse Implications
-
-#### Examples
-
-### `size(f)` - Parsed Byte Size of Field
-
-#### Syntax
-
-#### When Available
-
-#### Instant-Parse Implications
-
-### `current_position()` - Parser Position
-
-#### Syntax
-
-#### Breaks Instant-Parse
-
-#### Use Cases
-
-### `scope_remaining()` - Bytes to End of Scope
-
-#### Syntax
-
-#### Breaks Instant-Parse
-
-#### Use Cases
-
----
-
-## Error Handling in Expressions
-
-### Overflow Behavior
-
-### Division by Zero
-
-### Format Error vs Data Error
-
-### Detecting and Preventing Errors
-
----
-
-## Variables and Instant-Parse
-
-### When Variables Are Instant-Parse Safe
-
-### When Variables Break Instant-Parse
-
-### Patterns for Maintaining Instant-Parse
+- All arithmetic is checked for overflow and division by zero (both cause format errors)
+- Functions referencing parsed data (`size`, `current_position`, `scope_remaining`) require scanning
+- `sizeof` is instant-parse because it computes static type sizes
 
 ---
 
 ## Practical Examples
 
-### Example 1: Computing Derived Sizes
+### Example 1: Computing Array Sizes
 
-### Example 2: Extracting Bit Fields
+```sddl
+Record Image() = {
+  width: UInt32LE,
+  height: UInt32LE,
+  channels: UInt8,
 
-### Example 3: Conditional Logic with Variables
+  var num_pixels = width * height,
+  var pixel_size = channels,
+  var total_bytes = num_pixels * pixel_size,
 
-### Example 4: Using Switch Expressions
+  pixels: UInt8[total_bytes]
+}
+```
 
-### Example 5: Size Calculations
+### Example 2: Flag Extraction
 
-### Example 6: Alignment Computations
+```sddl
+Record Header() = {
+  flags: UInt16LE,
 
----
+  var has_checksum = (flags & 0x01) != 0,
+  var is_compressed = (flags & 0x02) != 0,
+  var version = (flags >> 8) & 0xFF
+}
 
-## Common Patterns
+header: Header
 
-### Pattern: Size Field Extraction
+when header.has_checksum then checksum: UInt32LE
+when header.is_compressed then compression_info: CompressionHeader
+```
 
-### Pattern: Flag Decomposition
+### Example 3: Version-Based Sizes
 
-### Pattern: Version-Based Calculation
+```sddl
+Record Config() = {
+  version: UInt16LE,
 
-### Pattern: Checksum Preparation
+  var header_size = switch version {
+    case 1: 32,
+    case 2: 64,
+    case 3: 128,
+    default: 256
+  },
 
-### Pattern: Offset Computation
+  var has_extended = version >= 3,
 
----
+  header: Bytes(header_size),
+  when has_extended then extended: ExtendedData
+}
+```
 
-## Variables in Validation
+### Example 4: Alignment Calculations
 
-### Using Variables in `expect`
+```sddl
+Record Block() = {
+  size: UInt32LE,
 
-### Using Variables in `where`
+  var aligned_size = align_up(size, 16),
+  var padding_needed = aligned_size - size,
 
-### Computing Validation Thresholds
+  data: Bytes(size),
+  padding: Bytes(padding_needed)
+}
+```
 
----
+### Example 5: Conditional Payload Size
 
-## Performance Considerations
+```sddl
+Record Packet() = {
+  header: PacketHeader,
 
-### Compile-Time vs Runtime Evaluation
+  var payload_size = header.total_size - sizeof(PacketHeader()),
+  var has_payload = payload_size > 0,
 
-### Expression Complexity
+  when has_payload then payload: Bytes(payload_size)
+}
+```
 
-### Function Call Overhead
+### Example 6: Bit Field Extraction
 
-### When Variables Matter for Performance
+```sddl
+Record Descriptor() = {
+  packed: UInt32LE,
 
----
+  var type = packed & 0xFF,
+  var flags = (packed >> 8) & 0xFF,
+  var count = (packed >> 16) & 0xFFFF,
 
-## Debugging Expressions
+  items: Item[count]
+}
+```
 
-### Common Expression Errors
-
-#### Type Mismatches
-
-#### Undefined References
-
-#### Scope Issues
-
-#### Overflow
-
-### Debugging Techniques
-
-### Testing Expressions
-
----
-
-## Advanced Topics
-
-### Expression Evaluation Order
-
-### Short-Circuit Evaluation (if applicable)
-
-### Constant Folding
-
-### Expression Optimization
-
----
-
-## Limitations
-
-### No User-Defined Functions
-
-### No Floating-Point Expressions
-
-### No String Operations
-
-### Integer-Only Arithmetic
-
----
-
-## Comparison with Other Languages
-
-### C Expression Syntax
-
-### Differences from C
-
-### Intentional Limitations
 
 ---
 
 ## Summary
 
-### Key Takeaways
+**Variables:**
+- Declared with `var name = expression`
+- Immutable once created
+- Scoped to containing record or top-level
+- Instant-parse when depending on parameters/constants only
 
-### Expression Quick Reference
+**Expressions:**
+- 64-bit signed integer arithmetic
+- Bitwise operations for flag manipulation
+- Comparison and logical operators
+- C11 operator precedence
 
-### Function Quick Reference
+**Switch Expressions:**
+- Multi-way value selection
+- Support literals, multiple values, ranges
+- Require `default` to avoid data errors
+
+**Standard Functions:**
+- Mathematical: `abs`, `min`, `max`, `clamp`, `sgn`
+- Range checking: `between`
+- Alignment: `ceil_div`, `align_up`
+- Size/position: `sizeof` (instant-parse), `size`, `current_position`, `scope_remaining` (require scan)
+
+**Error Handling:**
+- Overflow causes format error
+- Division by zero causes format error
+
+**Key Insight:**
+Variables and expressions referencing parameters or constants maintain instant-parse status. References to parsed fields require scanning.
 
 ---
 
-## Further Reading
+## Next Steps
+
+- **[Best Practices](best-practices.md)** - Guidelines for effective SDDL
+- **[Real-World Formats](real-formats.md)** - Complete format examples
+- **[Reference](reference.md)** - Complete language reference
