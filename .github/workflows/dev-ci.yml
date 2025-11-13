@@ -131,6 +131,10 @@ jobs:
             flags: "-Werror -Wgnu-anonymous-struct -DZS_ENABLE_CLANG_PRAGMA -Wno-implicit-fallthrough"
     steps:
       - uses: actions/checkout@v4
+      - name: Install GCC-9
+        if: ${{ matrix.cc == 'gcc-9' }}
+        run: |
+          sudo apt install gcc-9 g++-9
       - name: Build
         env:
           CC: ${{ matrix.cc }}
