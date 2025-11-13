@@ -25,6 +25,8 @@ add_library(openzl_test_support
     ${CMAKE_CURRENT_LIST_DIR}/utils.h
     ${CMAKE_CURRENT_LIST_DIR}/local_params_utils.cpp
     ${CMAKE_CURRENT_LIST_DIR}/local_params_utils.h
+    ${CMAKE_CURRENT_LIST_DIR}/ml_selector_utils.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/ml_selector_utils.h
     ${test_fixtures}
 )
 target_include_directories(openzl_test_support
@@ -93,4 +95,3 @@ target_link_libraries(test_codecs
         sddl_compiler_lib
 )
 add_dependencies(test_codecs sddl_compiler_lib)
-

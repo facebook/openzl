@@ -62,10 +62,28 @@ zs_unittest(
 
 zs_unittest(
     name = "test_round_trip",
-    srcs = glob(["round_trip/**/*.cpp"]),
+    srcs = glob(
+        ["round_trip/**/*.cpp"],
+        exclude = ["round_trip/test_mlselector.cpp"],
+    ),
     headers = glob(["round_trip/**/*.h"]),
     deps = [
         "fbsource//third-party/zstd:zstd",
+        ":test_zstrong_fixtures",
+        ":utils",
+        "//data_compression/experimental/zstrong:compress",
+        "//data_compression/experimental/zstrong:decompress",
+        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
+        "//data_compression/experimental/zstrong/tests/datagen:datagen",
+    ],
+)
+
+zs_unittest(
+    name = "test_ml_selector",
+    srcs = ["round_trip/test_mlselector.cpp"],
+    deps = [
+        "fbsource//third-party/zstd:zstd",
+        ":ml_selector_utils",
         ":test_zstrong_fixtures",
         ":utils",
         "//data_compression/experimental/zstrong:compress",
@@ -114,6 +132,19 @@ zs_unittest(
 zs_cxxlibrary(
     name = "constants",
     headers = ["constants.h"],
+)
+
+zs_cxxlibrary(
+    name = "ml_selector_utils",
+    srcs = [
+        "ml_selector_utils.cpp",
+    ],
+    headers = [
+        "ml_selector_utils.h",
+    ],
+    exported_deps = [
+        "//data_compression/experimental/zstrong:compress",
+    ],
 )
 
 zs_cxxlibrary(
@@ -300,8 +331,12 @@ zs_fuzzers(
     ftest_names = [
         ("MultiInputTest", "FuzzConcatRoundTrip"),
         ("MultiInputTest", "FuzzClusterRoundTrip"),
+        ("MLSelectorMultiInputTest", "FuzzMLSelectorRoundTrip"),
     ],
-    deps = FUZZER_DEPS,
+    deps = FUZZER_DEPS + [
+        "//data_compression/experimental/zstrong/tests:ml_selector_utils",
+        "//data_compression/experimental/zstrong/tools/ml_selector:ml_selector_graph",
+    ],
 )
 
 zs_fuzzers(

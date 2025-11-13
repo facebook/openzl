@@ -1,9 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
-
+#include "include/openzl/codecs/zl_field_lz.h"
 #include "openzl/codecs/zl_concat.h"
 #include "openzl/compress/graphs/generic_clustering_graph.h"
+#include "openzl/compress/selectors/ml/gbt.h"
 #include "tests/fuzz_utils.h"
+#include "tests/ml_selector_utils.h"
 #include "tests/zstrong/test_multi_input_fixture.h"
+#include "tools/ml_selector/ml_selector_graph.h"
 
 namespace zstrong {
 namespace tests {
@@ -310,6 +313,86 @@ FUZZ_F(MultiInputTest, FuzzClusterRoundTrip)
         free(config.clusters[i].memberTags);
     }
     free(config.clusters);
+}
+
+class MLSelectorMultiInputTest : public MultiInputTest {
+   public:
+    void SetUp() override
+    {
+        mlSelectorConfig_ = { .model = ZL_GBT, .runtimeConfig = &gbtModel };
+    }
+
+    openzl::tests::SampleBinaryGBTModel sampleModel;
+    GBTModel gbtModel = sampleModel.getModel();
+    ZL_MLSelectorConfig mlSelectorConfig_{};
+};
+static ZL_GraphID declareGraphFromNode(
+        ZL_Compressor* cgraph,
+        ZL_NodeID node,
+        std::initializer_list<ZL_GraphID> successors)
+{
+    return ZL_Compressor_registerStaticGraph_fromNode(
+            cgraph, node, successors.begin(), successors.size());
+}
+
+FUZZ_F(MLSelectorMultiInputTest, FuzzMLSelectorRoundTrip)
+{
+    reset();
+    setLargeCompressBound(2);
+
+    const size_t numSucc = 2;
+    auto fieldlz         = ZL_Compressor_registerFieldLZGraph(cgraph_);
+
+    auto range_pack =
+            declareGraphFromNode(cgraph_, ZL_NODE_RANGE_PACK, { fieldlz });
+    auto range_pack_zstd = declareGraphFromNode(
+            cgraph_, ZL_NODE_RANGE_PACK, { ZL_GRAPH_ZSTD });
+    auto zig_zag =
+            declareGraphFromNode(cgraph_, ZL_NODE_ZIGZAG, { ZL_GRAPH_ZSTD });
+    auto delta_fieldlz =
+            declareGraphFromNode(cgraph_, ZL_NODE_DELTA_INT, { fieldlz });
+    auto tokenize_delta_fieldlz = ZL_Compressor_registerTokenizeGraph(
+            cgraph_, ZL_Type_numeric, /* sort */ true, delta_fieldlz, fieldlz);
+
+    std::vector<ZL_GraphID> possibleSuccessors{
+        ZL_GRAPH_STORE, fieldlz,          range_pack,
+        delta_fieldlz,  range_pack_zstd,  tokenize_delta_fieldlz,
+        zig_zag,        ZL_GRAPH_NUMERIC, ZL_GRAPH_COMPRESS_GENERIC,
+    };
+
+    size_t firstIdx =
+            f.usize_range("first_successor", 0, possibleSuccessors.size() - 1);
+    size_t secondIdx =
+            f.usize_range("second_successor", 0, possibleSuccessors.size() - 1);
+
+    if (firstIdx == secondIdx) {
+        secondIdx = (firstIdx + 1) % possibleSuccessors.size();
+    }
+
+    const ZL_GraphID successors[numSucc] = { possibleSuccessors[firstIdx],
+                                             possibleSuccessors[secondIdx] };
+
+    size_t eltWidth   = f.choices("elt_width", { 1, 2, 4, 8 });
+    std::string input = gen_str(f, "input_str", InputLengthInBytes(eltWidth));
+    std::vector<uint32_t> strLens;
+
+    // Only have featureGen_integer right now, so only use ZL_Type_numeric
+    // No multi input for ML Selector so only using vector of size one
+    std::vector<TypedInputDesc> inputDescs = { TypedInputDesc(
+            input, ZL_Type_numeric, eltWidth, {}) };
+    std::vector<std::unique_ptr<ZL_TypedRef, ZS2_TypedRef_Deleter>> inputs;
+    inputs.push_back(getTypedInput(inputDescs.back()));
+
+    int metadata = f.usize_range("metadata_value", 1, 1024);
+    if (ZL_isError(ZL_Input_setIntMetadata(inputs.back().get(), 0, metadata))) {
+        throw std::runtime_error("Failed to set metadata");
+    }
+
+    auto graph = ZL_MLSelector_registerGraph(
+            cgraph_, &mlSelectorConfig_, successors, numSucc);
+    EXPECT_FALSE(ZL_RES_isError(graph));
+
+    testRoundTripMI(inputs, inputDescs);
 }
 
 } // namespace
