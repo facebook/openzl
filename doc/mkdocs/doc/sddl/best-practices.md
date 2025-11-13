@@ -1,99 +1,176 @@
 # Best Practices
 
-*Chapter 10 - Practical guidelines for writing effective SDDL format descriptions*
+*Chapter 9 - Guidelines for effective SDDL*
 
-This chapter consolidates lessons learned from real-world SDDL usage and provides actionable advice for creating maintainable, performant format descriptions.
+This chapter provides practical guidance for writing clear, maintainable SDDL format descriptions based on real-world experience.
 
 ---
 
-## Format Design Guidelines
+## Always Specify Endianness
 
-### Start with Instant-Parse When Possible
+Multi-byte types require explicit endianness:
 
-**DO:**
 ```sddl
-@instant_parse
-Record Header(size) = {
-  magic: Bytes(4),
-  version: Int16LE,
-  data: Bytes(size)  # size is a parameter
-}
-AVOID:
+# WRONG: No such type
+value: Int32
 
+# CORRECT
+value: Int32LE
+```
+
+Single-byte types (`UInt8`, `Int8`) don't need endianness.
+
+---
+
+## Use Parameters for Reusability
+
+Parameters make records reusable and maintain instant-parse status:
+
+```sddl
+Record Packet(max_payload) = {
+  header: Bytes(12),
+  payload: Bytes(max_payload)
+}
+
+# Instant-parse with different sizes
+small_packet: Packet(64)
+large_packet: Packet(1024)
+```
+
+---
+
+## Validate Early
+
+Use `where` for immediate field validation:
+
+```sddl
 Record Header() = {
+  magic: Bytes(4) where (magic == "IMGF"),
+  version: UInt16LE where (version >= 1 and version <= 5)
+}
+```
+
+For more complex validation logic, use `expect` statements:
+
+```sddl
+Record Header() = {
+  width: UInt32LE,
+  height: UInt32LE,
+
+  var total_pixels = width * height,
+  expect total_pixels <= 100000000  # Derived constraint
+}
+```
+
+**Important:** Validation using `where` or `expect` on local fields requires scanning. Removing these checks would make the record instant-parse:
+
+```sddl
+# With validation: requires scan
+Record Validated() = {
+  magic: Bytes(4) where (magic == "IMGF")
+}
+
+# Without validation: instant-parse
+@instant_parse
+Record Unvalidated() = {
+  magic: Bytes(4)
+}
+```
+
+The trade-off is between safety and instant-parse status.
+
+---
+
+## Provide Helpful Error Messages
+
+Use `@err_msg` for validation errors:
+
+```sddl
+expect version <= MAX_VERSION
+  @err_msg "Unsupported version. Please upgrade the parser."
+
+expect size <= 2_000_000_000
+  @err_msg "File too large. Maximum size is 2GB."
+```
+
+---
+
+## Design for Format Evolution
+
+Include version information from the start:
+
+```sddl
+Record MyFormat() = {
   magic: Bytes(4),
-  version: Int16LE,
-  size: Int32LE,
-  data: Bytes(size)  # depends on parsed field - requires scan
+  version: UInt16LE,
+
+  # V1 fields
+  base_data: Bytes(100),
+
+  # V2 additions
+  when version >= 2 then extended_data: ExtendedData,
+
+  # V3 additions
+  when version >= 3 then metadata: Metadata
 }
-Why: Instant-parse formats enable parallel processing, memory mapping, and better compression performance.
+```
 
-Use Parameters to Maintain Instant-Parse
-Pass dynamic values as parameters rather than parsing them from data when possible.
+This allows backward compatibility as the format evolves.
 
-Good:
+---
 
-Record Block(expected_size) = {
-  header: Header,
-  expect header.size == expected_size,
-  data: Bytes(expected_size)
+## Name Things Clearly
+
+Use descriptive names:
+
+```sddl
+# GOOD
+Record ImageHeader() = {
+  width: UInt32LE,
+  height: UInt32LE,
+  bits_per_pixel: UInt8
 }
-Design for Alignment
-Consider hardware alignment requirements early:
 
-Record Particle = {
-  id: Int64LE,        # 8-byte aligned
-  position: Float32LE[3],  # Consider padding
-  _: Bytes(4)         # Explicit padding for next particle
+# AVOID
+Record ImageHeader() = {
+  w: UInt32LE,  # Unclear
+  h: UInt32LE,
+  bpp: UInt8    # Non-obvious acronym
 }
-Version Your Formats
-Build version handling into your format from the start:
+```
 
-Record MyFormat(version) = {
-  when version >= 1 then field_v1: Data,
-  when version >= 2 then field_v2: EnhancedData,
-  when version >= 3 then field_v3: NewFeature
+Naming conventions:
+- **Types:** PascalCase (e.g., `Record BlockHeader`)
+- **Fields:** snake_case (e.g., `block_size`)
+- **Enums:** UPPER_CASE (e.g., `enum Status { ACTIVE = 1 }`)
+
+---
+
+## Document Non-Obvious Decisions
+
+Add comments explaining format choices:
+
+```sddl
+# PNG chunk structure as per RFC 2083
+Record PNGChunk() = {
+  length: UInt32BE,      # Byte count of data field only
+  type: Bytes(4),        # ASCII chunk type code
+  data: Bytes(length),
+  crc: UInt32BE          # CRC-32 of type + data fields
 }
-Performance Optimization
-Choose the Right Layout
-Array-of-Structures (AoS) - Default
-Best for: Sequential access, small element counts
+```
 
-particles: Particle[count]  # Each particle stored contiguously
-Structure-of-Arrays (SoA)
-Best for: Columnar access, SIMD operations, compression
+---
 
-particles: soa Particle[count]  # Each field stored as array
-Minimize Scanning Overhead
-Pattern: Group variable-length data at the end
+## Organize Complex Formats
 
-Record Message() = {
-  # Fixed-size fields first (instant-parse)
-  id: Int32LE,
-  timestamp: Int64LE,
-  length: Int32LE,
+Break large formats into reusable components:
 
-  # Variable-length data last (requires scan)
-  body: Bytes(length)
-}
-Align for Cache Efficiency
-Record CacheLineFriendly() = {
-  hot_data: Bytes(64)  # Frequently accessed
-} pad_align 64  # Align to cache line boundary
-Use Appropriate Types
-# DON'T over-specify precision
-count: Int64LE  # If count never exceeds 65535
-
-# DO use the right size
-count: Int16LE  # Smaller type = better compression
-Code Organization
-Modular Type Definitions
-Break complex formats into reusable components:
-
-# Common types
+```sddl
+# Common components
 Record Timestamp() = {
   seconds: Int64LE,
-  nanos: Int32LE
+  nanos: UInt32LE
 }
 
 Record UUID() = {
@@ -106,211 +183,113 @@ Record Event() = {
   occurred_at: Timestamp,
   data: EventData
 }
-Naming Conventions
-Types: PascalCase - Record BlockHeader()
-Fields: snake_case - block_size: Int32LE
-Enums: UPPER_CASE - enum Status { PENDING = 0, ACTIVE = 1 }
-Parameters: snake_case - Record Data(max_size)
-Use Meaningful Field Names
-GOOD:
+```
 
-Record ImageHeader() = {
-  width: Int32LE,
-  height: Int32LE,
-  bits_per_pixel: Int8
-}
-BAD:
+---
 
-Record ImageHeader() = {
-  w: Int32LE,  # Unclear abbreviation
-  h: Int32LE,
-  bpp: Int8    # Non-obvious acronym
-}
-Document Your Intentions
-# PNG chunk structure as per RFC 2083
-Record PNGChunk() = {
-  length: Int32BE,           # Byte count of data field
-  type: Bytes(4),            # ASCII chunk type code
-  data: Bytes(length),       # Chunk-specific data
-  crc: Int32BE               # CRC-32 of type + data
-}
-Validation Strategy
-Validate Early
-Place critical expect statements immediately after parsing the relevant fields:
+## Understand `pad_to` vs `pad_align`
 
-Record Header() = {
-  magic: Bytes(4),
-  expect magic == [0x89, 0x50, 0x4E, 0x47],  # Check immediately
+**`pad_to n`:** Record must be exactly n bytes. Format error if naturally larger.
 
-  version: Int16LE,
-  expect version >= 1 and version <= 10
-}
-Provide Helpful Error Messages
-expect header.version <= MAX_VERSION
-  @err_msg "Unsupported version. Please upgrade the parser."
-
-expect size <= MAX_SIZE
-  @err_msg "File too large. Maximum size is 2GB."
-Use where for Field-Level Constraints
-Record Config() = {
-  port: Int16LE where (port >= 1024 and port <= 65535),
-  timeout_ms: Int32LE where (timeout_ms > 0)
-}
-Common Pitfalls
-1. Forgetting Endianness
-❌ WRONG:
-
-value: Int32  # This doesn't exist!
-✅ CORRECT:
-
-value: Int32LE  # Explicit endianness
-2. Inadvertent Scan Dependencies
-❌ WRONG:
-
-@instant_parse  # Will fail to compile!
-Record Data() = {
-  size: Int32LE,
-  buffer: Bytes(size)  # Depends on parsed field
-}
-✅ CORRECT:
-
-@instant_parse
-Record Data(size) = {
-  buffer: Bytes(size)  # Parameter-based
-}
-3. Misunderstanding pad_to vs pad_align
+```sddl
 Record Fixed() = {
   data: Bytes(10)
-} pad_to 16       # Error if data > 16 bytes
+} pad_to 16  # Always 16 bytes (or error if data > 16)
+```
 
+**`pad_align n`:** Round size up to multiple of n bytes.
+
+```sddl
 Record Aligned() = {
   data: Bytes(10)
-} pad_align 8     # Always rounds up to multiple of 8
-4. Overlapping Union Cases
-❌ WRONG:
+} pad_align 8  # Rounds 10 up to 16 (next multiple of 8)
+```
 
-Union Data(type) = {
+---
+
+## Avoid Union Case Overlaps
+
+Overlapping union cases cause format errors:
+
+```sddl
+# WRONG
+Union Bad(type) = {
   case 1..10: TypeA,
-  case 5..15: TypeB,  # Overlap with 5-10!
+  case 5..15: TypeB,  # ERROR: 5-10 overlap!
+}
+
+# CORRECT
+Union Good(type) = {
+  case 1..10: TypeA,
+  case 11..20: TypeB,
   default: TypeC
 }
-5. Reusing Field Names
-❌ WRONG:
+```
 
-Record Bad() = {
-  temp: Int32LE,
-  temp: Int32LE,  # Error: duplicate field name
+---
+
+## Use `_` for Unused Fields
+
+You can reuse `_` for throwaway fields:
+
+```sddl
+Record Data() = {
+  _: Bytes(4),     # Skip padding
+  value: Int64LE,
+  _: Bytes(4),     # Skip more padding (OK to reuse _)
 }
-✅ CORRECT:
+```
 
-Record Good() = {
-  _: Int32LE,  # Throwaway field
-  _: Int32LE,  # _ can be repeated
+Regular field names must be unique.
+
+---
+
+## Consider Alignment Requirements
+
+If your format has alignment requirements, describe them explicitly:
+
+```sddl
+Record Aligned() = {
+  id: UInt8,
+  _: Bytes(7),                    # Explicit padding
+  timestamp: align(8) Int64LE,    # Must be 8-byte aligned
+  value: Float64LE
 }
-Testing and Validation
-Create Representative Test Data
-Minimum valid case: Smallest possible valid file
-Maximum valid case: Largest/most complex valid file
-Boundary conditions: Values at limits
-Invalid cases: Files that should be rejected
-Validate Against Real Files
-# Pseudo-command
-sddl-validate my-format.sddl sample-files/*.bin
-Test Both Parsing Directions
-If your format is bidirectional, test both:
+```
 
-Parse binary → structure
-Generate structure → binary → structure (round-trip)
-Use Fuzzing
-# Pseudo-command
-sddl-fuzz my-format.sddl --iterations 10000
-Migration Strategies
-Adding New Fields
-Use when for backward compatibility:
+---
 
-Record Config(version) = {
-  # v1 fields
-  setting_a: Int32LE,
+## Test with Real Data
 
-  # v2 fields (optional for v1 files)
-  when version >= 2 then setting_b: Int64LE,
+Create test cases covering:
 
-  # v3 fields
-  when version >= 3 then setting_c: Float32LE
-}
-Deprecating Fields
-Mark deprecated fields clearly:
+- **Minimum valid case:** Smallest possible valid input
+- **Maximum valid case:** Largest/most complex valid input
+- **Boundary conditions:** Values at limits
+- **Invalid cases:** Inputs that should be rejected
 
-Record OldFormat(version) = {
-  # DEPRECATED in v3: use new_field instead
-  when version < 3 then old_field: Int32LE,
+Test your SDDL description against actual files in the wild to ensure accuracy.
 
-  when version >= 3 then new_field: Int64LE
-}
-Format Evolution Checklist
- Increment version number
- Add version check for new features
- Maintain backward compatibility
- Update documentation
- Test with old and new files
- Consider migration tools for existing data
-Debugging Strategies
-Start Simple
-Create minimal test cases:
+---
 
-# Minimal reproducer
-Record Minimal() = {
-  field_causing_issue: Int32LE
-}
-Add Temporary Diagnostics
-var pos = current_position()
-# ... parse some data ...
-var size = current_position() - pos
-expect size <= 1024 @err_msg "Unexpected size"
-Validate Incrementally
-Add expect statements to narrow down issues:
+## Summary
 
-Record Debug() = {
-  header: Header,
-  expect current_position() == 16,  # Should be here
+**Key Guidelines:**
 
-  data: Data,
-  expect size(data) > 0,  # Data shouldn't be empty
-}
-Use Hex Dumps
-Compare expected vs actual byte layout:
+- Always specify endianness for multi-byte types
+- Validate fields immediately after parsing them
+- Use parameters to maintain instant-parse when possible
+- Design for format evolution from the start
+- Name things clearly and document non-obvious decisions
+- Understand `pad_to` vs `pad_align`
+- Avoid overlapping union cases
+- Test with real data
 
-# Pseudo-command
-sddl-dump my-format.sddl problematic-file.bin
-Performance Checklist
-Before finalizing your format:
+**Remember:** SDDL describes existing binary formats. Focus on accurately describing the format as it exists, not on optimizing or transforming it.
 
- Use @instant_parse wherever possible
- Align data structures appropriately
- Consider SoA layout for arrays
- Group fixed-size fields before variable-size
- Use smallest appropriate type sizes
- Minimize delimiter-based parsing
- Test with compression pipeline
- Profile with real-world data sizes
-Quick Reference: Dos and Don'ts
-✅ DO
-Always specify endianness explicitly
-Use parameters to avoid scan dependencies
-Validate critical fields immediately
-Document format decisions
-Test with diverse data sets
-Version your formats from the start
-Use @instant_parse to enforce performance
-❌ DON'T
-Assume a default endianness
-Mix reading and validation arbitrarily
-Use ambiguous field names
-Ignore alignment considerations
-Forget to handle format evolution
-Create circular dependencies
-Overlook the instant-parse vs scan distinction
-Further Reading
-Understanding Instant-Parse - Deep dive into performance
-Advanced Layout Control - Alignment and SoA
-Language Reference - Complete syntax reference
+---
+
+## Next Steps
+
+- **[Real-World Formats](real-formats.md)** - Complete format examples
+- **[Reference](reference.md)** - Complete language reference

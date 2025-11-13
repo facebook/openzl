@@ -1,415 +1,440 @@
-# Working with Real Formats
+# Real-World Formats
 
-*Chapter 8 - Practical examples of describing real-world file formats*
+*Chapter 10 - Complete examples*
 
----
-
-## Introduction
-
-### The Gap Between Specification and Implementation
-
-### Common Format Categories
-
-### Goals of This Chapter
+This chapter presents complete SDDL descriptions for real-world formats, demonstrating how the language features work together in practice.
 
 ---
 
-## Delimiter-Based Parsing
+## Example 1: BMP Image Format
 
-### Basic Delimiter Syntax
+BMP is a simple raster image format with a fixed header followed by pixel data.
 
-#### String Delimiters
+```sddl
+# BMP File Format
+Record BMPFileHeader() = {
+  magic: Bytes(2),
+  expect magic == "BM",
 
-#### Binary Byte Sequence Delimiters
+  file_size: UInt32LE,
+  reserved1: UInt16LE,
+  reserved2: UInt16LE,
+  pixel_data_offset: UInt32LE
+}
 
-#### Multiple-Byte Delimiters
+Record BMPInfoHeader() = {
+  header_size: UInt32LE,
+  expect header_size == 40,  # Standard BITMAPINFOHEADER
 
-### The `include_delim` Option
+  width: Int32LE,
+  height: Int32LE,
+  planes: UInt16LE,
+  expect planes == 1,
 
-### Error Handling for Missing Delimiters
+  bits_per_pixel: UInt16LE,
+  expect bits_per_pixel == 24 or bits_per_pixel == 32,
 
-### Performance Implications
+  compression: UInt32LE,
+  expect compression == 0,  # Uncompressed only
 
-### When to Use Delimiter-Based Parsing
+  image_size: UInt32LE,
+  x_pixels_per_meter: Int32LE,
+  y_pixels_per_meter: Int32LE,
+  colors_used: UInt32LE,
+  colors_important: UInt32LE
+}
 
----
+Record BMPFile() = {
+  file_header: BMPFileHeader,
+  info_header: BMPInfoHeader,
 
-## Text-Based Protocols
+  var bytes_per_pixel = info_header.bits_per_pixel / 8,
+  var row_size_unpadded = info_header.width * bytes_per_pixel,
+  var row_size_padded = align_up(row_size_unpadded, 4),
+  var total_pixel_data = row_size_padded * abs(info_header.height),
 
-### Line-Based Formats
+  pixel_data: Bytes(total_pixel_data)
+}
 
-#### Unix Text Files (LF)
+bmp: BMPFile
+```
 
-#### Windows Text Files (CRLF)
-
-#### Mixed Line Endings
-
-### HTTP Headers Example
-
-#### Request Line
-
-#### Header Fields
-
-#### Body Separation
-
-#### Complete HTTP Request
-
-### SMTP Protocol Example
-
-### CSV and TSV Formats
-
-#### Basic CSV Structure
-
-#### Quoted Fields
-
-#### Escape Sequences
-
-#### Header Rows
-
-### INI Configuration Files
-
-### JSON-like Text Formats
-
----
-
-## Mixed Binary and Text Formats
-
-### Common Patterns
-
-#### Binary Header + Text Body
-
-#### Text Header + Binary Body
-
-#### Interleaved Text and Binary
-
-### Email Messages (MIME)
-
-#### Headers (Text)
-
-#### Body (Binary or Text)
-
-#### Multipart Messages
-
-#### Attachments
-
-### Network Protocols
-
-#### Text Commands + Binary Payloads
-
-#### Length-Prefixed Binary Data
+**Key points:**
+- Fixed-size headers are instant-parse
+- Pixel data size computed from dimensions
+- Row alignment to 4-byte boundaries
 
 ---
 
-## Image Formats
+## Example 2: WAVE Audio Format
 
-### BMP (Bitmap) Format
+WAVE uses a chunk-based structure (RIFF container).
 
-#### File Header
+```sddl
+# WAVE Audio Format
+Record RIFFChunkHeader() = {
+  chunk_id: Bytes(4),
+  chunk_size: UInt32LE
+}
 
-#### DIB Header
+Record WAVEFormatChunk() = {
+  audio_format: UInt16LE,
+  expect audio_format == 1,  # PCM
 
-#### Pixel Data
+  num_channels: UInt16LE,
+  expect num_channels >= 1 and num_channels <= 2,
 
-#### Padding Considerations
+  sample_rate: UInt32LE,
+  byte_rate: UInt32LE,
+  block_align: UInt16LE,
+  bits_per_sample: UInt16LE,
+  expect bits_per_sample == 8 or bits_per_sample == 16
+}
 
-### PNG Format
+Record WAVEChunk() = {
+  header: RIFFChunkHeader,
 
-#### File Signature
+  data: Union(header.chunk_id) {
+    case "fmt ": WAVEFormatChunk,
+    case "data": Bytes(header.chunk_size),
+    default: Bytes(header.chunk_size)  # Skip unknown chunks
+  }
+}
 
-#### Chunk Structure
+Record WAVEFile() = {
+  riff_header: RIFFChunkHeader,
+  expect riff_header.chunk_id == "RIFF",
 
-#### IHDR Chunk
+  wave_id: Bytes(4),
+  expect wave_id == "WAVE",
 
-#### IDAT Chunks
+  chunks: scan WAVEChunk[]
+}
 
-#### IEND Chunk
+wave: WAVEFile
+```
 
-#### CRC Validation
-
-### TIFF Format Basics
-
----
-
-## Archive and Container Formats
-
-### ZIP File Format
-
-#### Local File Headers
-
-#### File Data
-
-#### Central Directory
-
-#### End of Central Directory
-
-### TAR Archives
-
-#### Header Block (512 bytes)
-
-#### File Content
-
-#### Padding to 512-byte Boundaries
-
-### Custom Container Formats
-
----
-
-## Executable and Object Files
-
-### ELF (Executable and Linkable Format)
-
-#### ELF Header
-
-#### Program Headers
-
-#### Section Headers
-
-#### String Tables
-
-### Mach-O Format (macOS)
-
-### PE Format (Windows) Basics
+**Key points:**
+- Chunk-based structure with union for variant chunks
+- `scan` keyword for sequential chunk parsing
+- `default` case handles unknown chunk types
 
 ---
 
-## Database and Storage Formats
+## Example 3: TAR Archive
 
-### SQLite Database File
+TAR files consist of 512-byte blocks containing headers and file data.
 
-#### Header
+```sddl
+# TAR Archive Format (POSIX ustar)
+Record TARHeader() = {
+  name: Bytes(100),
+  mode: Bytes(8),
+  uid: Bytes(8),
+  gid: Bytes(8),
+  size: Bytes(12),          # Octal ASCII string
+  mtime: Bytes(12),         # Octal ASCII string
+  checksum: Bytes(8),
+  typeflag: Bytes(1),
+  linkname: Bytes(100),
+  magic: Bytes(6),
+  version: Bytes(2),
+  uname: Bytes(32),
+  gname: Bytes(32),
+  devmajor: Bytes(8),
+  devminor: Bytes(8),
+  prefix: Bytes(155),
+  _: Bytes(12)              # Padding to 512 bytes
+} pad_to 512
 
-#### Page Structure
+Record TAREntry() = {
+  header: TARHeader,
 
-#### B-tree Pages
+  # Parse size from octal ASCII
+  var file_size = 0,  # Would need octal parsing function
 
-### HDF5 Format
+  var num_blocks = ceil_div(file_size, 512),
+  var padded_size = num_blocks * 512,
 
-#### Superblock
+  data: Bytes(padded_size)
+}
 
-#### B-tree Nodes
+# TAR files are sequences of entries until two zero blocks
+entries: scan TAREntry[]
+```
 
-#### Data Objects
-
----
-
-## Media Formats
-
-### WAVE Audio Format
-
-#### RIFF Header
-
-#### Format Chunk
-
-#### Data Chunk
-
-#### Additional Chunks
-
-### MP3 ID3 Tags
-
-#### ID3v1
-
-#### ID3v2
-
-### MP4/MOV Container
-
-#### Atoms/Boxes Structure
-
-#### ftyp Box
-
-#### moov Box
-
-#### mdat Box
-
----
-
-## Network Packet Formats
-
-### Ethernet Frame
-
-### IP Packet Header
-
-### TCP Segment
-
-### UDP Datagram
-
-### Custom Protocol Example
+**Key points:**
+- Fixed 512-byte blocks with `pad_to`
+- ASCII-encoded numbers (would need parsing in real implementation)
+- Variable-length entries with block alignment
 
 ---
 
-## Document Formats
+## Example 4: PNG Chunk Structure
 
-### PDF Structure Basics
+PNG uses a clean chunk-based design with CRC validation.
 
-#### Header
+```sddl
+# PNG File Format
+enum PNGChunkType {
+  IHDR = 0x49484452,
+  PLTE = 0x504C5445,
+  IDAT = 0x49444154,
+  IEND = 0x49454E44
+}
 
-#### Body (Objects)
+Record PNGIHDRData() = {
+  width: UInt32BE,
+  height: UInt32BE,
+  bit_depth: UInt8,
+  color_type: UInt8,
+  compression: UInt8,
+  filter: UInt8,
+  interlace: UInt8
+}
 
-#### Cross-Reference Table
+Record PNGChunk() = {
+  length: UInt32BE,
+  type: UInt32BE,
 
-#### Trailer
+  data: Union(type) {
+    case PNGChunkType.IHDR: PNGIHDRData,
+    case PNGChunkType.IDAT: Bytes(length),
+    case PNGChunkType.IEND: Bytes(0),
+    default: Bytes(length)
+  },
 
-### Office Open XML (DOCX) Structure
+  crc: UInt32BE
+}
 
----
+Record PNGFile() = {
+  signature: Bytes(8),
+  expect signature == "\x89PNG\r\n\x1a\n",
 
-## Dealing with Complexity
+  chunks: scan PNGChunk[]
+}
 
-### Modular Decomposition
+png: PNGFile
+```
 
-### Separating Header from Payload
-
-### Handling Multiple Versions
-
-### Optional and Extension Fields
-
-### Validation Strategies
-
----
-
-## Character Encoding Considerations
-
-### ASCII vs UTF-8
-
-### Encoding Detection
-
-### Null-Terminated Strings
-
-### Length-Prefixed Strings
-
-### Fixed-Length Strings
-
----
-
-## Endianness in Practice
-
-### Network Byte Order (Big-Endian)
-
-### Little-Endian Dominance
-
-### Mixed-Endian Formats
-
-### Byte Order Marks (BOM)
-
----
-
-## Debugging Format Descriptions
-
-### Common Errors and Solutions
-
-#### Incorrect Size Calculations
-
-#### Misaligned Fields
-
-#### Wrong Endianness
-
-#### Missing Delimiters
-
-#### Validation Failures
-
-### Testing Strategies
-
-#### Minimal Valid File
-
-#### Maximal Valid File
-
-#### Boundary Conditions
-
-#### Invalid Files
-
-#### Corrupted Files
-
-### Hex Dump Analysis
-
-### Comparing Against Reference Implementations
+**Key points:**
+- Big-endian integers (network byte order)
+- Enum for chunk types
+- Union dispatches on chunk type
+- CRC field present but not validated in description
 
 ---
 
-## Step-by-Step Walkthrough
+## Example 5: Simple Custom Protocol
 
-### Example: Describing a Simple Custom Format
+A hypothetical network protocol demonstrating common patterns.
 
-#### Requirements
+```sddl
+# Custom Binary Protocol
+enum MessageType {
+  HEARTBEAT = 0x01,
+  REQUEST   = 0x02,
+  RESPONSE  = 0x03,
+  ERROR     = 0x04
+}
 
-#### Iterative Development
+Record MessageHeader() = {
+  magic: UInt16BE,
+  expect magic == 0x4D53,  # "MS"
 
-#### Testing Each Stage
+  version: UInt8,
+  message_type: UInt8,
+  sequence_id: UInt32BE,
+  payload_length: UInt32BE,
+  flags: UInt16BE
+}
 
-#### Final Implementation
+Record RequestPayload(length) = {
+  method: UInt8,
+  param_count: UInt8,
+  params: Bytes(length - 2)
+}
+
+Record ResponsePayload(length) = {
+  status_code: UInt16BE,
+  data: Bytes(length - 2)
+}
+
+Record ErrorPayload(length) = {
+  error_code: UInt16BE,
+  message_length: UInt16BE,
+  message: Bytes(message_length)
+}
+
+Record Message() = {
+  header: MessageHeader,
+
+  payload: Union(header.message_type) {
+    case MessageType.HEARTBEAT: Bytes(0),
+    case MessageType.REQUEST: RequestPayload(header.payload_length),
+    case MessageType.RESPONSE: ResponsePayload(header.payload_length),
+    case MessageType.ERROR: ErrorPayload(header.payload_length),
+    default: Bytes(header.payload_length)
+  },
+
+  var has_checksum = (header.flags & 0x0001) != 0,
+  when has_checksum then checksum: UInt32BE
+}
+
+message: Message
+```
+
+**Key points:**
+- Version and type fields for extensibility
+- Union for different message types
+- Conditional checksum based on flags
+- Big-endian for network protocol
 
 ---
 
-## Performance Considerations
+## Example 6: Configuration File Format
 
-### When Delimiter Parsing Is Acceptable
+A structured configuration format with versioning.
 
-### Optimizing for Common Cases
+```sddl
+# Configuration File Format
+enum ConfigVersion { V1 = 1, V2 = 2, V3 = 3 }
 
-### Instant-Parse Opportunities
+Record StringField() = {
+  length: UInt16LE,
+  text: Bytes(length)
+}
 
-### Hybrid Approaches
+Record ConfigV1() = {
+  app_name: StringField,
+  port: UInt16LE,
+  timeout_seconds: UInt32LE
+}
+
+Record ConfigV2() = {
+  # V1 fields
+  app_name: StringField,
+  port: UInt16LE,
+  timeout_seconds: UInt32LE,
+
+  # V2 additions
+  max_connections: UInt16LE,
+  log_level: UInt8
+}
+
+Record ConfigV3() = {
+  # V1 fields
+  app_name: StringField,
+  port: UInt16LE,
+  timeout_seconds: UInt32LE,
+
+  # V2 fields
+  max_connections: UInt16LE,
+  log_level: UInt8,
+
+  # V3 additions
+  enable_tls: UInt8,
+  cert_path: StringField,
+  key_path: StringField
+}
+
+Record ConfigFile() = {
+  magic: Bytes(4),
+  expect magic == "CONF",
+
+  version: UInt16LE,
+
+  config: Union(version) {
+    case ConfigVersion.V1: ConfigV1,
+    case ConfigVersion.V2: ConfigV2,
+    case ConfigVersion.V3: ConfigV3,
+    default: Record {
+      expect false @err_msg "Unsupported config version"
+    }
+  }
+}
+
+config: ConfigFile
+```
+
+**Key points:**
+- Explicit version handling
+- Union for version-specific structures
+- Progressive field addition across versions
+- Helper record for length-prefixed strings
 
 ---
 
-## Format Evolution in the Wild
+## Common Patterns Observed
 
-### Versioning Strategies
+### Magic Numbers
 
-### Backward Compatibility
+Most formats start with a signature:
 
-### Forward Compatibility
-
-### Migration Paths
-
----
-
-## Common Patterns and Idioms
-
-### Magic Numbers and Signatures
+```sddl
+magic: Bytes(4),
+expect magic == "RIFF"
+```
 
 ### Length-Prefixed Data
 
-### Chunk-Based Structures
+Common pattern for variable-length fields:
 
-### Tagged Data
+```sddl
+length: UInt32LE,
+data: Bytes(length)
+```
 
-### Null Termination
+### Chunk/Block Structure
 
-### Padding and Alignment
+Many formats use repeated chunks:
 
----
+```sddl
+Record Chunk() = {
+  header: ChunkHeader,
+  data: Bytes(header.size)
+}
 
-## Tools and Techniques
+chunks: scan Chunk[]
+```
 
-### Hex Editors
+### Version-Based Evolution
 
-### Binary Diff Tools
+Handle multiple format versions:
 
-### Protocol Analyzers
+```sddl
+version: UInt16LE,
+when version >= 2 then extended_data: ExtendedData
+```
 
-### Format Validators
+### Flags for Optional Features
 
-### Reference Implementations
+Use bitfields for optional components:
 
----
-
-## Case Studies
-
-### Case Study 1: Adding SDDL to an Existing Format
-
-### Case Study 2: Modernizing a Legacy Format
-
-### Case Study 3: Creating a New Format from Scratch
+```sddl
+flags: UInt8,
+when (flags & 0x01) != 0 then optional_field: Data
+```
 
 ---
 
 ## Summary
 
-### Key Lessons
+These examples demonstrate:
 
-### Format Description Checklist
+- **Structure composition** - Building complex formats from simple records
+- **Chunk-based designs** - Using `scan` for sequential structures
+- **Versioning** - Unions and conditionals for format evolution
+- **Validation** - `expect` for format correctness
+- **Endianness** - Explicit LE/BE for portability
 
-### Resources for Format Specifications
+Real formats often mix these patterns. Start with the simplest valid case, then add complexity as needed.
 
 ---
 
-## Further Reading
+## Next Steps
+
+- **[Reference](reference.md)** - Complete language reference
+- Review actual format specifications for formats you need to describe
+- Test descriptions against real files
+- Iterate based on what works
