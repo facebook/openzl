@@ -1,0 +1,10 @@
+
+�
+test_simple.prototest"9
+
+SimpleMessage
+name (	Rname
+value (Rvalue">
+SimpleRepeated
+values (Rvalues
+names (	Rnamesbproto3

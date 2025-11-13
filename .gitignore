@@ -78,3 +78,6 @@ vrs_index_*
 *.zs.streams.*
 benchresult.bin*
 tmp*
+
+# CTest artifacts
+Testing/

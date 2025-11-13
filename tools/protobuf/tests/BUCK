@@ -1,9 +1,19 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 load("@fbcode_macros//build_defs:protobuf_library.bzl", "protobuf_library")
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_fuzzers", "zs_unittest")
+load("//data_compression/experimental/zstrong:defs.bzl", "zs_cxxlibrary", "zs_fuzzers", "zs_unittest")
 
 oncall("data_compression")
+
+zs_cxxlibrary(
+    name = "utils",
+    srcs = ["utils.cpp"],
+    headers = ["utils.h"],
+    preprocessor_flags = [
+        "-DOPENZL_BUCK_BUILD",
+    ],
+    exported_deps = ["fbsource//xplat/tools/cxx:resources"],
+)
 
 zs_unittest(
     name = "test_proto_serializer",
@@ -24,6 +34,32 @@ zs_unittest(
     name = "test_proto_utils",
     srcs = ["test_proto_utils.cpp"],
     deps = [
+        "//data_compression/experimental/zstrong/tools/protobuf:utils",
+    ],
+)
+
+zs_unittest(
+    name = "test_descriptor_loader",
+    srcs = ["test_descriptor_loader.cpp"],
+    preprocessor_flags = [
+        "-DOPENZL_BUCK_BUILD",
+    ],
+    resources = glob(["resources/*"]),
+    deps = [
+        ":utils",
+        "//data_compression/experimental/zstrong/tools/protobuf:utils",
+    ],
+)
+
+zs_unittest(
+    name = "test_dynamic_messages",
+    srcs = ["test_dynamic_messages.cpp"],
+    preprocessor_flags = [
+        "-DOPENZL_BUCK_BUILD",
+    ],
+    resources = glob(["resources/*"]),
+    deps = [
+        ":utils",
         "//data_compression/experimental/zstrong/tools/protobuf:utils",
     ],
 )

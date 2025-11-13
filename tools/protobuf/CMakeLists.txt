@@ -12,12 +12,14 @@ if (OPENZL_BUILD_PROTOBUF_TOOLS)
         FIND_PACKAGE_ARGS NAMES protobuf
     )
     FetchContent_MakeAvailable(protobuf)
-    target_compile_options(libprotobuf PUBLIC
-        -Wno-deprecated-declarations
-        -Wno-stringop-overread
-        -Wno-strict-aliasing
-        -Wno-attributes
-    )
+    if(TARGET libprotobuf AND NOT TARGET protobuf::libprotobuf)
+        target_compile_options(libprotobuf PUBLIC
+            -Wno-deprecated-declarations
+            -Wno-stringop-overread
+            -Wno-strict-aliasing
+            -Wno-attributes
+        )
+    endif()
     find_package(protobuf CONFIG REQUIRED)
 
     # Make the protobuf_serializer library
@@ -31,6 +33,7 @@ if (OPENZL_BUILD_PROTOBUF_TOOLS)
     target_link_libraries(protobuf_serializer PUBLIC
         openzl_cpp
         protobuf::libprotobuf
+        protobuf::libprotoc
     )
     apply_openzl_compile_options_to_target(protobuf_serializer)
 
@@ -48,8 +51,36 @@ if (OPENZL_BUILD_PROTOBUF_TOOLS)
         arg
         tools_io
         tools_training
+        custom_parsers
     )
     target_include_directories(protobuf_cli PRIVATE ${PROJECT_BINARY_DIR})
 
     apply_openzl_compile_options_to_target(protobuf_cli)
+
+    # Build tests if enabled
+    if(OPENZL_BUILD_TESTS)
+        add_library(protobuf_test_utils "${CMAKE_CURRENT_SOURCE_DIR}/tests/utils.cpp")
+        target_include_directories(protobuf_test_utils PRIVATE
+            ${PROJECT_SOURCE_DIR})
+
+        # Test for DescriptorLoader
+        add_executable(test_protobuf_descriptor_loader
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_descriptor_loader.cpp")
+        target_link_libraries(test_protobuf_descriptor_loader PRIVATE
+            protobuf_serializer
+            GTest::gtest_main
+            protobuf_test_utils
+        )
+        gtest_discover_tests(test_protobuf_descriptor_loader)
+
+        # Test for DynamicMessageHelper
+        add_executable(test_protobuf_dynamic_messages
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_dynamic_messages.cpp")
+        target_link_libraries(test_protobuf_dynamic_messages PRIVATE
+            protobuf_serializer
+            GTest::gtest_main
+            protobuf_test_utils
+        )
+        gtest_discover_tests(test_protobuf_dynamic_messages)
+    endif()
 endif()
