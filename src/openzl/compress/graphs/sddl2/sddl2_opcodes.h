@@ -3,10 +3,10 @@
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
 // Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-// Generated at: 2025-11-14 05:07:12 UTC
-// Generator: generate_opcodes.py
+// Generated at: 2025-11-14 20:28:47 UTC
+// Generator: generate_c_headers.py
 //
-// To regenerate: python3 tools/sddl/assembler/generate_opcodes.py
+// To regenerate: python3 src/openzl/compress/graphs/sddl2/generate_c_headers.py
 
 #ifndef OPENZL_SDDL2_OPCODES_H
 #define OPENZL_SDDL2_OPCODES_H

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-Generate Python and C opcode definitions from sddl2_opcodes.def
+Generate Python opcode definitions from sddl2_opcodes.def
 
 This script parses the structured opcode definition file and generates:
-- sddl2_opcodes.h (C11 header)
 - opcodes_generated.py (Python assembler)
+
+For C header generation, see: src/openzl/compress/graphs/sddl2/generate_c_headers.py
 
 Usage:
     python3 generate_opcodes.py
@@ -122,108 +123,6 @@ def parse_def_file(def_file_path: Path) -> Tuple[Dict[str, tuple], List[tuple]]:
     return families, opcodes
 
 
-def generate_c_header(families: Dict[str, tuple], opcodes: List[tuple]) -> str:
-    """
-    Generate C11 header code for sddl2_opcodes.h
-    
-    Args:
-        families: {name: (id, description)}
-        opcodes: [(mnemonic, family, opcode, [param_types], description)]
-    """
-    lines = []
-
-    # Header
-    lines.append("// Copyright (c) Meta Platforms, Inc. and affiliates.")
-    lines.append("")
-    lines.append("// AUTO-GENERATED FILE - DO NOT EDIT MANUALLY")
-    lines.append("//")
-    lines.append("// Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def")
-    lines.append(f'// Generated at: {datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")}')
-    lines.append("// Generator: generate_opcodes.py")
-    lines.append("//")
-    lines.append("// To regenerate: python3 tools/sddl/assembler/generate_opcodes.py")
-    lines.append("")
-    lines.append("#ifndef OPENZL_SDDL2_OPCODES_H")
-    lines.append("#define OPENZL_SDDL2_OPCODES_H")
-    lines.append("")
-    lines.append("/**")
-    lines.append(" * SDDL2 VM Opcode Definitions")
-    lines.append(" *")
-    lines.append(" * This file defines the opcode families and instruction opcodes for the SDDL2 VM.")
-    lines.append(" * ")
-    lines.append(" * Instruction Format:")
-    lines.append(" * - 32-bit instruction word (little-endian)")
-    lines.append(" * - Low 16 bits: Family ID")
-    lines.append(" * - High 16 bits: Opcode within family")
-    lines.append(" */")
-    lines.append("")
-
-    # Family enum
-    lines.append("/* ============================================================================")
-    lines.append(" * OPCODE FAMILIES")
-    lines.append(" * ========================================================================= */")
-    lines.append("")
-    lines.append("enum sddl2_family {")
-    
-    family_order = ["PUSH", "MATH", "CMP", "LOGIC", "CONTROL", "LOAD", 
-                    "STACK", "TYPE", "VAR", "EXPECT", "CALL", "SEGMENT"]
-    
-    for family_name in family_order:
-        if family_name in families:
-            id_val, description = families[family_name]
-            lines.append(f"    SDDL2_FAMILY_{family_name:8s} = 0x{id_val:04X},  /* {description} */")
-    
-    lines.append("};")
-    lines.append("")
-
-    # Opcode enums per family
-    lines.append("/* ============================================================================")
-    lines.append(" * OPCODES")
-    lines.append(" * ========================================================================= */")
-    lines.append("")
-
-    # Group by family
-    by_family = {}
-    for mnemonic, family, opcode, params, description in opcodes:
-        if family not in by_family:
-            by_family[family] = []
-        by_family[family].append((mnemonic, opcode, params, description))
-
-    for family_name in family_order:
-        if family_name not in by_family:
-            continue
-        
-        id_val, description = families[family_name]
-        lines.append(f"/* {family_name} family (0x{id_val:04X}) - {description} */")
-        lines.append(f"enum sddl2_opcode_{family_name.lower()} {{")
-        
-        for mnemonic, opcode, params, desc in sorted(by_family[family_name], key=lambda x: x[1]):
-            # Convert mnemonic to C identifier (replace dots with underscores)
-            # Strip family prefix if present (e.g., "push.zero" -> "zero")
-            mnemonic_lower = mnemonic.lower()
-            family_prefix = family_name.lower() + "."
-            if mnemonic_lower.startswith(family_prefix):
-                c_name = mnemonic[len(family_prefix):].replace(".", "_").upper()
-            else:
-                c_name = mnemonic.replace(".", "_").upper()
-            
-            # Add parameter comment if present
-            param_comment = ""
-            if params:
-                param_str = ", ".join(params)
-                param_comment = f"  /* param: {param_str} */"
-            
-            lines.append(f"    SDDL2_OP_{family_name}_{c_name} = 0x{opcode:04X},{param_comment}")
-        
-        lines.append("};")
-        lines.append("")
-
-    lines.append("#endif // OPENZL_SDDL2_OPCODES_H")
-    lines.append("")
-    
-    return "\n".join(lines)
-
-
 def generate_python_code(families: Dict[str, tuple], opcodes: List[tuple]) -> str:
     """
     Generate Python code for opcodes_generated.py
@@ -324,15 +223,6 @@ def main():
         / "sddl2_opcodes.def"
     )
     python_output = script_dir / "opcodes_generated.py"
-    c_output = (
-        repo_root
-        / "src"
-        / "openzl"
-        / "compress"
-        / "graphs"
-        / "sddl2"
-        / "sddl2_opcodes.h"
-    )
 
     if not def_file.exists():
         print(f"Error: {def_file} not found")
@@ -349,16 +239,12 @@ def main():
     python_output.write_text(python_code)
     print(f"  ✓ {python_output}")
 
-    # Generate C header
-    print(f"Generating {c_output}...")
-    c_code = generate_c_header(families, opcodes)
-    c_output.write_text(c_code)
-    print(f"  ✓ {c_output}")
-
-    print(f"\nSuccessfully generated opcode files:")
+    print(f"\nSuccessfully generated Python opcode file:")
     print(f"  - {len(families)} families")
     print(f"  - {len(opcodes)} instructions")
     print(f"\nSingle source of truth: {def_file}")
+    print(f"\nFor C header generation, run:")
+    print(f"  python3 src/openzl/compress/graphs/sddl2/generate_c_headers.py")
 
     return 0
 
