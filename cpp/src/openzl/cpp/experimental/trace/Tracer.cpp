@@ -6,6 +6,7 @@
 #include "openzl/common/logging.h"
 #include "openzl/compress/dyngraph_interface.h"
 #include "openzl/cpp/Exception.hpp"
+#include "openzl/cpp/experimental/trace/CborHelpers.hpp"
 #include "openzl/cpp/experimental/trace/Codec.hpp"
 #include "openzl/cpp/experimental/trace/StreamVisualizer.hpp"
 #include "openzl/zl_data.h"
@@ -272,6 +273,7 @@ void Tracer::on_ZL_CCtx_compressMultiTypedRef_start(
         ZL_TypedRef const* const inputs[],
         size_t const nbInputs)
 {
+    frameVersion = ZL_CCtx_getParameter(cctx, ZL_CParam_formatVersion);
     // Create a "placeholder" node representing compression start, so the first
     // streams are not orphaned
     Codec compressionStart = {
@@ -566,8 +568,13 @@ ZL_Report Tracer::serializeStreamdumpToCbor(
      * 3. graph info, specifically, which codecs and edges are within a
      * graph
      */
-    A1C_MapBuilder rootBuilder = A1C_Item_map_builder(root, 3, a1c_arena);
+    A1C_MapBuilder rootBuilder = A1C_Item_map_builder(root, 6, a1c_arena);
+
     ZL_RET_R_IF_NULL(allocation, rootBuilder.map);
+
+    ZL_RET_R_IF_ERR(addIntValue(rootBuilder, "libraryVersion", libraryVersion));
+    ZL_RET_R_IF_ERR(addIntValue(rootBuilder, "frameVersion", frameVersion));
+    ZL_RET_R_IF_ERR(addIntValue(rootBuilder, "traceVersion", traceVersion));
 
     // 1. Make the streams map
     A1C_MAP_TRY_ADD_R(streamsPair, rootBuilder);
