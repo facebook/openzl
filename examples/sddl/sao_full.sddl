@@ -2,7 +2,7 @@
 # Star Catalog Format (B1950 / J2000)
 # Supports complete specification
 # at http://tdc-www.harvard.edu/software/catalogs/catalogsb.html
-# Using SDDL v0.5
+# Using SDDL v0.6
 # ==========================================
 
 Record CatalogHeader() = {

@@ -4,7 +4,6 @@
 #define OPENZL_GRAPHS_SDDL_V2_H
 
 #include "openzl/zl_graph_api.h"
-#include "openzl/zl_graphs.h"
 
 #define SDDL2_BYTECODE_PARAM 7685
 
