@@ -33,9 +33,14 @@ push.type.f64le         # SRA0: Right Ascension (8 bytes) - FIRST
 push.type.f64le         # SDEC0: Declination (8 bytes)
 
 # ISP: Spectral type - 2 bytes as Bytes[2]
-push.type.bytes         # Base type: Bytes
-push.i32 2              # Array size: 2
-type.fixed_array        # Creates Bytes[2] type
+
+#push.type.bytes         # Base type: Bytes
+#push.i32 2              # Array size: 2
+#type.fixed_array        # Creates Bytes[2] type
+
+push.type.u16le         # Treat 2 bytes as a 16-bit unsigned integer
+                        # This is not completely accurate,
+                        # but the trainer works better this way
 
 push.type.i16le         # MAG: Magnitude (2 bytes)
 push.type.f32le         # XRPM: RA proper motion (4 bytes)
