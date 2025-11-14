@@ -519,46 +519,65 @@ SDDL2_Error SDDL2_op_neg(SDDL2_Stack* stack)
  * All operations work on signed I64 values.
  * ========================================================================= */
 
+static void SDDL2_log_comparison(
+        const char* op_name,
+        const char* op_symbol,
+        int64_t a,
+        int64_t b,
+        int64_t result);
+
 SDDL2_Error SDDL2_op_eq(SDDL2_Stack* stack)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
-    return push_i64(stack, (a == b) ? 1 : 0);
+    int64_t result = (a == b) ? 1 : 0;
+    SDDL2_log_comparison("eq", "==", a, b, result);
+    return push_i64(stack, result);
 }
 
 SDDL2_Error SDDL2_op_ne(SDDL2_Stack* stack)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
-    return push_i64(stack, (a != b) ? 1 : 0);
+    int64_t result = (a != b) ? 1 : 0;
+    SDDL2_log_comparison("ne", "!=", a, b, result);
+    return push_i64(stack, result);
 }
 
 SDDL2_Error SDDL2_op_lt(SDDL2_Stack* stack)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
-    return push_i64(stack, (a < b) ? 1 : 0);
+    int64_t result = (a < b) ? 1 : 0;
+    SDDL2_log_comparison("lt", "<", a, b, result);
+    return push_i64(stack, result);
 }
 
 SDDL2_Error SDDL2_op_le(SDDL2_Stack* stack)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
-    return push_i64(stack, (a <= b) ? 1 : 0);
+    int64_t result = (a <= b) ? 1 : 0;
+    SDDL2_log_comparison("le", "<=", a, b, result);
+    return push_i64(stack, result);
 }
 
 SDDL2_Error SDDL2_op_gt(SDDL2_Stack* stack)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
-    return push_i64(stack, (a > b) ? 1 : 0);
+    int64_t result = (a > b) ? 1 : 0;
+    SDDL2_log_comparison("gt", ">", a, b, result);
+    return push_i64(stack, result);
 }
 
 SDDL2_Error SDDL2_op_ge(SDDL2_Stack* stack)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
-    return push_i64(stack, (a >= b) ? 1 : 0);
+    int64_t result = (a >= b) ? 1 : 0;
+    SDDL2_log_comparison("ge", ">=", a, b, result);
+    return push_i64(stack, result);
 }
 
 /* ============================================================================
@@ -729,6 +748,8 @@ SDDL2_Error SDDL2_op_push_stack_depth(SDDL2_Stack* stack)
  * read expressions differing. Using a macro ensures consistency and reduces
  * boilerplate from ~150 lines to ~40 lines.
  */
+static void SDDL2_log_load(const char* op_name, int64_t addr, int64_t value);
+
 #define DEFINE_LOAD_OP(name, size, read_expr)                     \
     SDDL2_Error SDDL2_op_load_##name(                             \
             SDDL2_Stack* stack, const SDDL2_Input_cursor* buffer) \
@@ -737,7 +758,9 @@ SDDL2_Error SDDL2_op_push_stack_depth(SDDL2_Stack* stack)
         SDDL2_TRY(pop_i64(stack, &addr));                         \
         SDDL2_TRY(check_load_bounds(buffer, addr, size));         \
         const uint8_t* bytes = (const uint8_t*)buffer->data;      \
-        return push_i64(stack, (int64_t)(read_expr));             \
+        int64_t value = (int64_t)(read_expr);                     \
+        SDDL2_log_load(#name, addr, value);                       \
+        return push_i64(stack, value);                            \
     }
 
 // 8-bit loads
@@ -1198,6 +1221,52 @@ SDDL2_Error SDDL2_op_segment_create_tagged(
  * Helper functions for debugging and diagnostic output.
  * Placed at end of file to minimize visual clutter in main operation code.
  * ========================================================================= */
+
+/**
+ * Log comparison operation details for debugging.
+ *
+ * Outputs operands, operator, and result at POS log level for fine-grained
+ * tracing of comparison operations during bytecode execution.
+ *
+ * @param op_name Operation name (e.g., "eq", "lt", "ge")
+ * @param op_symbol Comparison symbol (e.g., "==", "<", ">=")
+ * @param a First operand
+ * @param b Second operand
+ * @param result Comparison result (0 or 1)
+ */
+static void SDDL2_log_comparison(
+        const char* op_name,
+        const char* op_symbol,
+        int64_t a,
+        int64_t b,
+        int64_t result)
+{
+    ZL_DLOG(POS, "[SDDL2] cmp.%s: %lld %s %lld → %lld",
+            op_name,
+            (long long)a,
+            op_symbol,
+            (long long)b,
+            (long long)result);
+}
+
+/**
+ * Log load operation details for debugging.
+ *
+ * Outputs address and loaded value at POS log level for fine-grained
+ * tracing of memory load operations during bytecode execution.
+ *
+ * @param op_name Operation name (e.g., "u8", "i16le", "u32be")
+ * @param addr Memory address being loaded from
+ * @param value Value that was loaded
+ */
+static void SDDL2_log_load(const char* op_name, int64_t addr, int64_t value)
+{
+    ZL_DLOG(POS, "[SDDL2] load.%s: addr=0x%llx → %lld (0x%llx)",
+            op_name,
+            (unsigned long long)addr,
+            (long long)value,
+            (unsigned long long)value);
+}
 
 /**
  * Log detailed diagnostics for expect_true validation failure.
