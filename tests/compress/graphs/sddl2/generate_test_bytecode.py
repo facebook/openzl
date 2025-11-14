@@ -18,14 +18,16 @@ Custom paths (optional):
 
 What this script does:
 1. Finds all .asm files in the input directory
-2. Uses the assembler to convert each .asm to bytecode
-3. Generates a C header with bytecode as const uint8_t arrays
-4. Creates a lookup function for easy access by test name
+2. Parses test metadata from assembly comments (expected error codes, descriptions)
+3. Uses the assembler to convert each .asm to bytecode
+4. Generates a C header with bytecode as const uint8_t arrays
+5. Creates a lookup table with test metadata for auto-generation
 """
 
 import argparse
 import sys
 import os
+import re
 from pathlib import Path
 
 
@@ -67,6 +69,90 @@ def sanitize_name(filename):
     return name.upper().replace('-', '_')
 
 
+def parse_test_metadata(source):
+    """Parse test metadata from assembly source comments.
+    
+    Metadata format:
+        # Test: <description>
+        # Expected: <SDDL2_ERROR_CODE>
+        # Input: <size_in_bytes>
+        # Custom: <custom_validator_function>
+        # Skip: <true|false>
+    
+    Args:
+        source: Assembly source code string
+        
+    Returns:
+        dict with keys: 'description', 'expected_error', 'input_size', 'custom_validator', 'skip'
+    """
+    metadata = {
+        'description': '',
+        'expected_error': 'SDDL2_OK',  # Default: expect success
+        'input_size': 0,  # Default: no input needed
+        'custom_validator': None,
+        'skip': False  # Default: don't skip
+    }
+    
+    # Valid error codes we recognize
+    valid_errors = {
+        'SDDL2_OK', 'SDDL2_STACK_UNDERFLOW', 'SDDL2_TYPE_MISMATCH',
+        'SDDL2_VALIDATION_FAILED', 'SDDL2_DIV_ZERO',
+        'SDDL2_INVALID_BYTECODE', 'SDDL2_UNKNOWN_OPCODE',
+        'SDDL2_INVALID_TYPE', 'SDDL2_OUT_OF_MEMORY',
+        'SDDL2_STACK_OVERFLOW', 'SDDL2_LOAD_BOUNDS',
+        'SDDL2_SEGMENT_BOUNDS', 'SDDL2_LIMIT_EXCEEDED',
+        'SDDL2_ALLOCATION_FAILED'
+    }
+    
+    lines = source.split('\n')
+    for line in lines:
+        line = line.strip()
+        
+        # Parse description
+        if line.startswith('# Test:'):
+            metadata['description'] = line[7:].strip()
+        
+        # Parse expected error
+        elif line.startswith('# Expected:'):
+            expected = line[11:].strip()
+            # Only accept if it looks like a valid error code
+            if expected and not expected.startswith('#'):
+                # Try to extract error code
+                error_match = re.match(r'(SDDL2_[A-Z_]+)', expected)
+                if error_match:
+                    error_code = error_match.group(1)
+                    if error_code in valid_errors:
+                        metadata['expected_error'] = error_code
+                elif expected.upper() in [e.replace('SDDL2_', '') for e in valid_errors]:
+                    # Handle "STACK_UNDERFLOW" without "SDDL2_" prefix
+                    metadata['expected_error'] = 'SDDL2_' + expected.upper()
+        
+        # Parse custom validator
+        elif line.startswith('# Custom:'):
+            metadata['custom_validator'] = line[9:].strip()
+        
+        # Parse input size requirement
+        elif line.startswith('# Input:'):
+            input_spec = line[8:].strip()
+            # Try to parse as integer
+            try:
+                metadata['input_size'] = int(input_spec)
+            except ValueError:
+                # Could also support expressions like ">=5" later
+                pass
+        
+        # Parse skip flag
+        elif line.startswith('# Skip:'):
+            skip_spec = line[7:].strip().lower()
+            metadata['skip'] = skip_spec in ('true', 'yes', '1')
+        
+        # Stop parsing at first non-comment line
+        elif line and not line.startswith('#'):
+            break
+    
+    return metadata
+
+
 def bytes_to_c_array(bytecode):
     """Convert bytecode bytes to C array format.
     
@@ -76,7 +162,7 @@ def bytes_to_c_array(bytecode):
 
 
 def generate_header(asm_files, output_path, assemble):
-    """Generate C header file with bytecode constants.
+    """Generate C header file with bytecode constants and test metadata.
     
     Args:
         asm_files: List of .asm file paths
@@ -92,12 +178,12 @@ def generate_header(asm_files, output_path, assemble):
         "//",
         "// Generated from interpreter test assembly files (.asm)",
         f"// Source: {Path(asm_files[0]).parent if asm_files else 'N/A'}",
-        "// Generator: tests/compress/graphs/sddlv2/generate_test_bytecode.py",
+        "// Generator: tests/compress/graphs/sddl2/generate_test_bytecode.py",
         "//",
         "// To regenerate:",
-        "//   python3 tests/compress/graphs/sddlv2/generate_test_bytecode.py \\",
-        "//       -i tests/compress/graphs/sddlv2/asm \\",
-        "//       -o tests/compress/graphs/sddlv2/generated_test_bytecode.h",
+        "//   python3 tests/compress/graphs/sddl2/generate_test_bytecode.py \\",
+        "//       -i tests/compress/graphs/sddl2/asm \\",
+        "//       -o tests/compress/graphs/sddl2/generated_test_bytecode.h",
         "",
         "#ifndef GENERATED_TEST_BYTECODE_H",
         "#define GENERATED_TEST_BYTECODE_H",
@@ -105,18 +191,18 @@ def generate_header(asm_files, output_path, assemble):
         "#include <stdint.h>",
         "#include <stddef.h>",
         "#include <string.h>",
+        '#include "openzl/compress/graphs/sddl2/sddl2_interpreter.h"',
         "",
         "/* Bytecode constants from interpreter test assembly files */",
         ""
     ]
     
     # Generate constants for each .asm file
-    test_names = []
+    test_metadata = []  # List of (name, original_name, metadata)
     
     for asm_file in sorted(asm_files):
         asm_path = Path(asm_file)
         name = sanitize_name(asm_path.name)
-        test_names.append((name, asm_path.stem))
         
         print(f"  Processing: {asm_path.name} -> {name}")
         
@@ -124,10 +210,20 @@ def generate_header(asm_files, output_path, assemble):
             # Read and assemble the file
             with open(asm_path, 'r') as f:
                 source = f.read()
+            
+            # Parse metadata from comments
+            metadata = parse_test_metadata(source)
+            test_metadata.append((name, asm_path.stem, metadata))
+            
+            # Assemble to bytecode
             bytecode = assemble(source)
             
-            # Generate C array
+            # Generate C array with metadata in comments
             lines.append(f"/* Source: {asm_path.name} */")
+            if metadata['description']:
+                lines.append(f"/* {metadata['description']} */")
+            if metadata['expected_error'] != 'SDDL2_OK':
+                lines.append(f"/* Expected error: {metadata['expected_error']} */")
             lines.append(f"static const uint8_t BYTECODE_{name}[] = {{")
             lines.append(f"    {bytes_to_c_array(bytecode)}")
             lines.append("};")
@@ -140,25 +236,44 @@ def generate_header(asm_files, output_path, assemble):
             traceback.print_exc()
             continue
     
-    # Generate lookup struct
+    # Generate test metadata table
     lines.extend([
-        "/* Bytecode lookup by test name */",
+        "/* Test metadata for auto-generated tests */",
         "typedef struct {",
         "    const char* name;",
         "    const uint8_t* bytecode;",
         "    size_t size;",
-        "} TestBytecode;",
+        "    const char* description;",
+        "    SDDL2_Error expected_error;",
+        "    size_t input_size;                /* Minimum input size required (0 = none) */",
+        "    int skip;                         /* Skip in auto-test (1 = skip, 0 = run) */",
+        "    const char* custom_validator;     /* NULL = use default validator */",
+        "} SDDL2_TestCase;",
         "",
-        "static const TestBytecode TEST_BYTECODE_LOOKUP[] = {"
+        "static const SDDL2_TestCase SDDL2_BYTECODE_TESTS[] = {"
     ])
     
-    for name, original_name in test_names:
-        lines.append(f'    {{ "{original_name}", BYTECODE_{name}, BYTECODE_{name}_SIZE }},')
+    for name, original_name, metadata in test_metadata:
+        desc = metadata['description'].replace('"', '\\"')  # Escape quotes
+        custom = metadata['custom_validator']
+        custom_str = f'"{custom}"' if custom else 'NULL'
+        skip_val = '1' if metadata['skip'] else '0'
+        
+        lines.append(f'    {{')
+        lines.append(f'        .name = "{original_name}",')
+        lines.append(f'        .bytecode = BYTECODE_{name},')
+        lines.append(f'        .size = BYTECODE_{name}_SIZE,')
+        lines.append(f'        .description = "{desc}",')
+        lines.append(f'        .expected_error = {metadata["expected_error"]},')
+        lines.append(f'        .input_size = {metadata["input_size"]},')
+        lines.append(f'        .skip = {skip_val},')
+        lines.append(f'        .custom_validator = {custom_str}')
+        lines.append(f'    }},')
     
     lines.extend([
         "};",
         "",
-        f"static const size_t TEST_BYTECODE_COUNT = {len(test_names)};",
+        f"static const size_t SDDL2_BYTECODE_TEST_COUNT = {len(test_metadata)};",
         "",
         "#endif // GENERATED_TEST_BYTECODE_H",
         ""
@@ -172,7 +287,7 @@ def generate_header(asm_files, output_path, assemble):
         f.write('\n'.join(lines))
     
     print(f"\n✅ Generated: {output_path}")
-    print(f"   Contains {len(test_names)} bytecode constants")
+    print(f"   Contains {len(test_metadata)} bytecode constants with metadata")
 
 
 def main():

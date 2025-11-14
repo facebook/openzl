@@ -1,4 +1,5 @@
 # Test push.remaining with multiple segments
+# Input: 15
 # Input buffer size: 10 bytes
 # Track remaining bytes after each segment creation
 

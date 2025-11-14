@@ -31,7 +31,8 @@ TESTS = sddl2_vm_test \
         sddl2_stack_depth_test \
         sddl2_stack_drop_if_test \
         sddl2_interpreter_test \
-        sddl2_bytecode_execution_test
+        sddl2_bytecode_execution_test \
+        sddl2_bytecode_auto_test
 
 # Default target: run all tests
 .PHONY: all
@@ -91,6 +92,8 @@ sddl2_stack_drop_if_test: sddl2_stack_drop_if_test.c $(VM_SRC)
 sddl2_interpreter_test: sddl2_interpreter_test.c $(VM_SRC) $(INTERPRETER_SRC) $(LOGGING_SRC)
 
 sddl2_bytecode_execution_test: sddl2_bytecode_execution_test.c $(VM_SRC) $(INTERPRETER_SRC) $(LOGGING_SRC)
+
+sddl2_bytecode_auto_test: sddl2_bytecode_auto_test.c $(VM_SRC) $(INTERPRETER_SRC) $(LOGGING_SRC)
 
 # Build all tests without running
 .PHONY: build

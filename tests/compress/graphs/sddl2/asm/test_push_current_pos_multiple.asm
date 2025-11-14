@@ -1,4 +1,5 @@
 # Test push.current_pos with multiple segments
+# Input: 16
 # Verifies cursor position advances correctly through multiple operations
 # Uses tagged segments to prevent merging
 push.tag 100

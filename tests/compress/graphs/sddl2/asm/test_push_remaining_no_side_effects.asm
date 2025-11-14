@@ -1,4 +1,5 @@
 # Test that push.remaining doesn't advance the cursor (read-only operation)
+# Input: 10
 # Verifies that calling push.remaining twice returns the same value
 # Input buffer size: 10 bytes
 

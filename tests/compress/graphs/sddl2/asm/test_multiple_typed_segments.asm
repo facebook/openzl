@@ -1,4 +1,5 @@
 # Test: Create multiple typed segments with different types
+# Input: 5
 # Tests creating two consecutive segments with different types
 # Segment 1: tag=100, type=U8, element_count=1 (1 byte)
 # Segment 2: tag=100, type=F32LE, element_count=1 (4 bytes)

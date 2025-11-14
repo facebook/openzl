@@ -1,4 +1,5 @@
 # Test using push.current_pos for arithmetic operations
+# Input: 20
 # Demonstrates using cursor position for dynamic segment sizing
 # Uses tagged segments to prevent merging
 push.tag 100

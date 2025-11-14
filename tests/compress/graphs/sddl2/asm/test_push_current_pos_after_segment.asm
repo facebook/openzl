@@ -1,4 +1,5 @@
 # Test push.current_pos after creating a segment
+# Input: 10
 # Creates a 5-byte segment, then checks cursor position
 # Uses tagged segments to prevent merging
 push.tag 100

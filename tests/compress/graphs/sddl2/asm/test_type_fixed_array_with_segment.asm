@@ -1,5 +1,6 @@
-; Test: segment creation with array type
-; Creates a segment with array type U32LE[10]
+# Test: segment creation with array type
+# Input: 40
+# Creates a segment with array type U32LE[10]
 ; Total byte size: 1 element of Type{U32LE,10} = 1 × (10 × 4 bytes) = 40 bytes
 push.tag 100
 push.type.u32le

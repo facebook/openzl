@@ -1,4 +1,5 @@
 # Test push.remaining after creating a segment
+# Input: 10
 # Input buffer size: 10 bytes
 # After creating a 5-byte segment, 5 bytes should remain
 
