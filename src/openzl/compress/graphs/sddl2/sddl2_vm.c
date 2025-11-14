@@ -701,6 +701,11 @@ SDDL2_Error SDDL2_op_remaining(
     return SDDL2_Stack_push(stack, SDDL2_Value_i64((int64_t)remaining));
 }
 
+SDDL2_Error SDDL2_op_push_stack_depth(SDDL2_Stack* stack)
+{
+    return SDDL2_Stack_push(stack, SDDL2_Value_i64((int64_t)stack->top));
+}
+
 /**
  * Macro-generated load operations.
  * All 12 load operations follow identical control flow with only size and

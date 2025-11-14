@@ -600,6 +600,12 @@ SDDL2_Error SDDL2_op_remaining(
         SDDL2_Stack* stack,
         const SDDL2_Input_cursor* buffer);
 
+/**
+ * Push current stack depth (number of elements on stack).
+ * Stack: (empty) -> depth:I64
+ */
+SDDL2_Error SDDL2_op_push_stack_depth(SDDL2_Stack* stack);
+
 /* ============================================================================
  * Load Operations
  *

@@ -174,6 +174,24 @@ static const uint8_t BYTECODE_TEST_PUSH_REMAINING_WITH_CURRENT_POS[] = {
 };
 static const size_t BYTECODE_TEST_PUSH_REMAINING_WITH_CURRENT_POS_SIZE = 32;
 
+/* Source: test_push_stack_depth_arithmetic.asm */
+static const uint8_t BYTECODE_TEST_PUSH_STACK_DEPTH_ARITHMETIC[] = {
+    0x03, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x02, 0x00, 0x00, 0x00, 0x82, 0x00, 0x01, 0x00, 0x03, 0x00, 0x01, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x03, 0x00, 0x02, 0x00, 0x03, 0x00, 0x01, 0x00, 0x14, 0x00, 0x00, 0x00, 0x01, 0x00, 0x03, 0x00, 0x02, 0x00, 0x05, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_PUSH_STACK_DEPTH_ARITHMETIC_SIZE = 52;
+
+/* Source: test_push_stack_depth_empty.asm */
+static const uint8_t BYTECODE_TEST_PUSH_STACK_DEPTH_EMPTY[] = {
+    0x82, 0x00, 0x01, 0x00, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x03, 0x00, 0x02, 0x00, 0x05, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_PUSH_STACK_DEPTH_EMPTY_SIZE = 24;
+
+/* Source: test_push_stack_depth_tracking.asm */
+static const uint8_t BYTECODE_TEST_PUSH_STACK_DEPTH_TRACKING[] = {
+    0x03, 0x00, 0x01, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x14, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x1E, 0x00, 0x00, 0x00, 0x82, 0x00, 0x01, 0x00, 0x03, 0x00, 0x01, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x03, 0x00, 0x02, 0x00, 0x05, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_PUSH_STACK_DEPTH_TRACKING_SIZE = 48;
+
 /* Source: test_push_tag_execution.asm */
 static const uint8_t BYTECODE_TEST_PUSH_TAG_EXECUTION[] = {
     0x05, 0x00, 0x01, 0x00, 0x64, 0x00, 0x00, 0x00, 0x01, 0x00, 0x05, 0x00
@@ -304,6 +322,9 @@ static const TestBytecode TEST_BYTECODE_LOOKUP[] = {
     { "test_push_remaining_multiple", BYTECODE_TEST_PUSH_REMAINING_MULTIPLE, BYTECODE_TEST_PUSH_REMAINING_MULTIPLE_SIZE },
     { "test_push_remaining_no_side_effects", BYTECODE_TEST_PUSH_REMAINING_NO_SIDE_EFFECTS, BYTECODE_TEST_PUSH_REMAINING_NO_SIDE_EFFECTS_SIZE },
     { "test_push_remaining_with_current_pos", BYTECODE_TEST_PUSH_REMAINING_WITH_CURRENT_POS, BYTECODE_TEST_PUSH_REMAINING_WITH_CURRENT_POS_SIZE },
+    { "test_push_stack_depth_arithmetic", BYTECODE_TEST_PUSH_STACK_DEPTH_ARITHMETIC, BYTECODE_TEST_PUSH_STACK_DEPTH_ARITHMETIC_SIZE },
+    { "test_push_stack_depth_empty", BYTECODE_TEST_PUSH_STACK_DEPTH_EMPTY, BYTECODE_TEST_PUSH_STACK_DEPTH_EMPTY_SIZE },
+    { "test_push_stack_depth_tracking", BYTECODE_TEST_PUSH_STACK_DEPTH_TRACKING, BYTECODE_TEST_PUSH_STACK_DEPTH_TRACKING_SIZE },
     { "test_push_tag_execution", BYTECODE_TEST_PUSH_TAG_EXECUTION, BYTECODE_TEST_PUSH_TAG_EXECUTION_SIZE },
     { "test_push_type_execution", BYTECODE_TEST_PUSH_TYPE_EXECUTION, BYTECODE_TEST_PUSH_TYPE_EXECUTION_SIZE },
     { "test_push_type_with_segment_create_tagged", BYTECODE_TEST_PUSH_TYPE_WITH_SEGMENT_CREATE_TAGGED, BYTECODE_TEST_PUSH_TYPE_WITH_SEGMENT_CREATE_TAGGED_SIZE },
@@ -322,6 +343,6 @@ static const TestBytecode TEST_BYTECODE_LOOKUP[] = {
     { "test_zero_size_segment", BYTECODE_TEST_ZERO_SIZE_SEGMENT, BYTECODE_TEST_ZERO_SIZE_SEGMENT_SIZE },
 };
 
-static const size_t TEST_BYTECODE_COUNT = 42;
+static const size_t TEST_BYTECODE_COUNT = 45;
 
 #endif // GENERATED_TEST_BYTECODE_H

@@ -330,6 +330,8 @@ static SDDL2_Error handle_push_family(
         err = SDDL2_op_current_pos(stack, buffer);
     } else if (opcode == SDDL2_OP_PUSH_REMAINING) {
         err = SDDL2_op_remaining(stack, buffer);
+    } else if (opcode == SDDL2_OP_PUSH_STACK_DEPTH) {
+        err = SDDL2_op_push_stack_depth(stack);
     } else {
         // Handle all push.type opcodes via lookup table
         int found = 0;
