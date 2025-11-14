@@ -38,17 +38,6 @@ extern "C" {
  */
 const char* SDDL2_instruction_name(uint16_t family, uint16_t opcode);
 
-/**
- * Log detailed diagnostics for expect_true validation failure.
- *
- * Outputs comprehensive error information including the failed value
- * and current stack state to aid in debugging validation failures.
- *
- * @param value The value that failed validation (expected non-zero, got 0)
- * @param stack The stack after the value was popped (for context)
- */
-void SDDL2_log_expect_true_failure(int64_t value, const SDDL2_Stack* stack);
-
 #if defined(__cplusplus)
 }
 #endif

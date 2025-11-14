@@ -8,7 +8,6 @@
  */
 
 #include "sddl2_vm.h"
-#include "sddl2_disasm.h"
 #include <limits.h>
 #include <stdbool.h>
 #include "openzl/shared/mem.h" // ZL_memcpy() for memory operations
@@ -654,6 +653,8 @@ SDDL2_Error SDDL2_op_swap(SDDL2_Stack* stack)
  * validation rules (e.g., cmp.eq + expect_true validates equality).
  * ========================================================================= */
 
+static void SDDL2_log_expect_true_failure(int64_t value, const SDDL2_Stack* stack);
+
 SDDL2_Error SDDL2_op_expect_true(SDDL2_Stack* stack)
 {
     int64_t value;
@@ -1189,4 +1190,67 @@ SDDL2_Error SDDL2_op_segment_create_tagged(
     // Delegate to internal helper
     return segment_create_internal(
             tag, type, (size_t)size_i64, buffer, segments, registry);
+}
+
+/* ============================================================================
+ * Trace/Diagnostic Functions
+ *
+ * Helper functions for debugging and diagnostic output.
+ * Placed at end of file to minimize visual clutter in main operation code.
+ * ========================================================================= */
+
+/**
+ * Log detailed diagnostics for expect_true validation failure.
+ *
+ * Outputs comprehensive error information including the failed value
+ * and current stack state to aid in debugging validation failures.
+ *
+ * @param value The value that failed validation (expected non-zero, got 0)
+ * @param stack The stack after the value was popped (for context)
+ */
+static void SDDL2_log_expect_true_failure(int64_t value, const SDDL2_Stack* stack)
+{
+    ZL_DLOG(ERROR, "========================================");
+    ZL_DLOG(ERROR, "[SDDL2] expect_true VALIDATION FAILURE");
+    ZL_DLOG(ERROR, "========================================");
+    ZL_DLOG(ERROR, "Checked value: %lld (0x%llx)", 
+            (long long)value, (unsigned long long)value);
+    ZL_DLOG(ERROR, "Expected: non-zero value (true)");
+    ZL_DLOG(ERROR, "Actual: 0 (false)");
+    ZL_DLOG(ERROR, "");
+    ZL_DLOG(ERROR, "Remaining stack after pop:");
+    ZL_DLOG(ERROR, "  Stack depth: %zu", stack->top);
+    
+    if (stack->top > 0) {
+        size_t show_count = stack->top < 5 ? stack->top : 5;
+        for (size_t i = 0; i < show_count; i++) {
+            size_t idx = stack->top - 1 - i;
+            const SDDL2_Value* val = &stack->items[idx];
+            
+            switch (val->kind) {
+                case SDDL2_VALUE_I64:
+                    ZL_DLOG(ERROR, "  [%zu] I64: %lld (0x%llx)", 
+                            idx, 
+                            (long long)val->value.as_i64,
+                            (unsigned long long)val->value.as_i64);
+                    break;
+                case SDDL2_VALUE_TAG:
+                    ZL_DLOG(ERROR, "  [%zu] TAG: %u", idx, val->value.as_tag);
+                    break;
+                case SDDL2_VALUE_TYPE:
+                    ZL_DLOG(ERROR, "  [%zu] TYPE: kind=%d width=%u", 
+                            idx, 
+                            val->value.as_type.kind, 
+                            val->value.as_type.width);
+                    break;
+            }
+        }
+        if (stack->top > 5) {
+            ZL_DLOG(ERROR, "  ... and %zu more values", stack->top - 5);
+        }
+    } else {
+        ZL_DLOG(ERROR, "  (empty)");
+    }
+    
+    ZL_DLOG(ERROR, "========================================");
 }

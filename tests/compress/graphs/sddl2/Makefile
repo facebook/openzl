@@ -10,6 +10,7 @@ CPPFLAGS += $(INCLUDES)
 # Source files
 VM_SRC = ../../../../src/openzl/compress/graphs/sddl2/sddl2_vm.c
 INTERPRETER_SRC = ../../../../src/openzl/compress/graphs/sddl2/sddl2_interpreter.c
+DISASM_SRC = ../../../../src/openzl/compress/graphs/sddl2/sddl2_disasm.c
 LOGGING_SRC = ../../../../src/openzl/common/logging.c
 
 # Test executables
@@ -55,45 +56,45 @@ test: $(TESTS)
 	@echo "=========================================="
 
 # Individual test targets
-sddl2_vm_test: sddl2_vm_test.c $(VM_SRC)
+sddl2_vm_test: sddl2_vm_test.c $(VM_SRC) $(LOGGING_SRC)
 
-sddl2_arithmetic_test: sddl2_arithmetic_test.c $(VM_SRC)
+sddl2_arithmetic_test: sddl2_arithmetic_test.c $(VM_SRC) $(LOGGING_SRC)
 
-sddl2_input_test: sddl2_input_test.c $(VM_SRC)
+sddl2_input_test: sddl2_input_test.c $(VM_SRC) $(LOGGING_SRC)
 
-sddl2_segments_test: sddl2_segments_test.c $(VM_SRC)
+sddl2_segments_test: sddl2_segments_test.c $(VM_SRC) $(LOGGING_SRC)
 
-sddl2_tagged_segments_test: sddl2_tagged_segments_test.c $(VM_SRC)
+sddl2_tagged_segments_test: sddl2_tagged_segments_test.c $(VM_SRC) $(LOGGING_SRC)
 
-sddl2_type_size_test: sddl2_type_size_test.c $(VM_SRC)
+sddl2_type_size_test: sddl2_type_size_test.c $(VM_SRC) $(LOGGING_SRC)
 
-sddl2_type_fixed_array_test: sddl2_type_fixed_array_test.c $(VM_SRC)
+sddl2_type_fixed_array_test: sddl2_type_fixed_array_test.c $(VM_SRC) $(LOGGING_SRC)
 
-sddl2_type_structure_test: sddl2_type_structure_test.c $(VM_SRC)
+sddl2_type_structure_test: sddl2_type_structure_test.c $(VM_SRC) $(LOGGING_SRC)
 
-sddl2_vm_type_structure_test: sddl2_vm_type_structure_test.c $(VM_SRC)
+sddl2_vm_type_structure_test: sddl2_vm_type_structure_test.c $(VM_SRC) $(LOGGING_SRC)
 
-sddl2_structure_segment_test: sddl2_structure_segment_test.c $(VM_SRC)
+sddl2_structure_segment_test: sddl2_structure_segment_test.c $(VM_SRC) $(LOGGING_SRC)
 
-sddl2_field_extraction_test: sddl2_field_extraction_test.c $(VM_SRC)
+sddl2_field_extraction_test: sddl2_field_extraction_test.c $(VM_SRC) $(LOGGING_SRC)
 
-sddl2_structure_split_integration_test: sddl2_structure_split_integration_test.c $(VM_SRC)
+sddl2_structure_split_integration_test: sddl2_structure_split_integration_test.c $(VM_SRC) $(LOGGING_SRC)
 
-sddl2_load_test: sddl2_load_test.c $(VM_SRC)
+sddl2_load_test: sddl2_load_test.c $(VM_SRC) $(LOGGING_SRC)
 
-sddl2_logic_test: sddl2_logic_test.c $(VM_SRC)
+sddl2_logic_test: sddl2_logic_test.c $(VM_SRC) $(LOGGING_SRC)
 
-sddl2_expect_test: sddl2_expect_test.c $(VM_SRC)
+sddl2_expect_test: sddl2_expect_test.c $(VM_SRC) $(LOGGING_SRC)
 
-sddl2_stack_depth_test: sddl2_stack_depth_test.c $(VM_SRC)
+sddl2_stack_depth_test: sddl2_stack_depth_test.c $(VM_SRC) $(LOGGING_SRC)
 
-sddl2_stack_drop_if_test: sddl2_stack_drop_if_test.c $(VM_SRC)
+sddl2_stack_drop_if_test: sddl2_stack_drop_if_test.c $(VM_SRC) $(LOGGING_SRC)
 
-sddl2_interpreter_test: sddl2_interpreter_test.c $(VM_SRC) $(INTERPRETER_SRC) $(LOGGING_SRC)
+sddl2_interpreter_test: sddl2_interpreter_test.c $(VM_SRC) $(INTERPRETER_SRC) $(DISASM_SRC) $(LOGGING_SRC)
 
-sddl2_bytecode_execution_test: sddl2_bytecode_execution_test.c $(VM_SRC) $(INTERPRETER_SRC) $(LOGGING_SRC)
+sddl2_bytecode_execution_test: sddl2_bytecode_execution_test.c $(VM_SRC) $(INTERPRETER_SRC) $(DISASM_SRC) $(LOGGING_SRC)
 
-sddl2_bytecode_auto_test: sddl2_bytecode_auto_test.c $(VM_SRC) $(INTERPRETER_SRC) $(LOGGING_SRC)
+sddl2_bytecode_auto_test: sddl2_bytecode_auto_test.c $(VM_SRC) $(INTERPRETER_SRC) $(DISASM_SRC) $(LOGGING_SRC)
 
 # Build all tests without running
 .PHONY: build
