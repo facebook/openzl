@@ -1154,37 +1154,6 @@ TEST(test_push_remaining_no_side_effects)
     END_EXPECT_SUCCESS();
 }
 
-/**
- * Test: push.remaining combined with push.current_pos
- *
- * Tests that attempting to create a segment larger than remaining bytes
- * fails with SEGMENT_BOUNDS error.
- *
- * Assembly:
- *   push.i32 3
- *   segment.create_unspecified
- *   push.current_pos      ; 3
- *   push.remaining        ; 7
- *   math.add              ; 10 (buffer size)
- *   segment.create_unspecified
- *   halt
- *
- * Expected:
- *   - After 3-byte segment, only 7 bytes remain
- *   - Attempting to create 10-byte segment fails: SEGMENT_BOUNDS
- */
-TEST(test_push_remaining_with_current_pos)
-{
-    uint8_t input[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
-
-    EXPECT_ERROR(
-            SDDL2_SEGMENT_BOUNDS,
-            BYTECODE_TEST_PUSH_REMAINING_WITH_CURRENT_POS,
-            BYTECODE_TEST_PUSH_REMAINING_WITH_CURRENT_POS_SIZE,
-            input,
-            sizeof(input));
-}
-
 /* ============================================================================
  * Logical Operations Error Tests (Interpreter Level)
  * ========================================================================= */

@@ -2,7 +2,9 @@
 
 #include "openzl/compress/graphs/sddl2/sddl2_interpreter.h"
 #include "openzl/compress/graphs/sddl2/sddl2_opcodes.h"
+#include "openzl/compress/graphs/sddl2/sddl2_disasm.h"
 #include "openzl/shared/mem.h"
+#include "openzl/common/logging.h"
 
 /* ============================================================================
  * Push Type Opcode Lookup Table
@@ -448,6 +450,7 @@ SDDL2_Error SDDL2_execute_bytecode(
         }
 
         uint32_t instruction = ZL_readLE32(&bytecode[pc]);
+        size_t pc_before = pc;
         pc += 4;
 
         // Decode instruction word
@@ -455,6 +458,9 @@ SDDL2_Error SDDL2_execute_bytecode(
         // Bits 15-0:  Opcode within family
         uint16_t family = (instruction >> 16) & 0xFFFF;
         uint16_t opcode = instruction & 0xFFFF;
+
+        ZL_DLOG(POS, "[SDDL2] PC=%zu: %s (0x%08x) stack_depth=%zu",
+                pc_before, SDDL2_instruction_name(family, opcode), instruction, SDDL2_Stack_depth(&stack));
 
         // Dispatch
         SDDL2_Error err = SDDL2_OK;

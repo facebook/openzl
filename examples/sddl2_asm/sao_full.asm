@@ -27,7 +27,7 @@ push.u32 18
 push.u32 12
 load.i32le              # STNUM
 push.zero
-cmp.ge
+cmp.gt
 push.u32 4
 math.mul
 math.add
@@ -79,12 +79,12 @@ expect_true
 # SECTION 3: Build Conditional Type Structure
 # ------------------------------------------
 
-# Optional XNO (Float32LE if STNUM >= 0)
+# Optional XNO (Float32LE if STNUM > 0)
 push.type.f32le
 push.u32 12
 load.i32le              # STNUM
 push.zero
-cmp.lt
+cmp.le                  # STNUM <= 0 → drops when STNUM <= 0 → keeps when STNUM > 0
 stack.drop_if
 
 # Always: SRA0 (Float64LE)

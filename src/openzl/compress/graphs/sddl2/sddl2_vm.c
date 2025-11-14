@@ -8,9 +8,11 @@
  */
 
 #include "sddl2_vm.h"
+#include "sddl2_disasm.h"
 #include <limits.h>
 #include <stdbool.h>
 #include "openzl/shared/mem.h" // ZL_memcpy() for memory operations
+#include "openzl/common/logging.h"
 
 /* ============================================================================
  * Stack Operations
@@ -658,6 +660,7 @@ SDDL2_Error SDDL2_op_expect_true(SDDL2_Stack* stack)
     SDDL2_TRY(pop_i64(stack, &value));
     
     if (value == 0) {
+        SDDL2_log_expect_true_failure(value, stack);
         return SDDL2_VALIDATION_FAILED;
     }
     

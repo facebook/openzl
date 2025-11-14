@@ -37,12 +37,16 @@ LDLIBS   += -lm # note: to be removed from library once dependency fixed
 CPPFLAGS += -Ideps/zstd/lib/ # "zstd.h"
 ARFLAGS  += -c # do not print warning message when creating the archive (expected)
 
-# build modes
 # Default build mode
-BUILD_TYPE ?= DEFAULT
+# support both BUILD_TYPE and BUILD_MODE, priority to BUILD_TYPE
+BUILD_MODE ?= DEFAULT
+BUILD_TYPE ?= $(BUILD_MODE)
 
 # Sanitizer flags
 SANITIZER_FLAGS = -fsanitize=address -fsanitize-address-use-after-scope -fsanitize=undefined -fno-omit-frame-pointer
+
+# Log level
+LOG_LEVEL ?= SEQ
 
 # Build mode configuration
 ifeq ($(BUILD_TYPE),DEV)
@@ -59,14 +63,14 @@ else ifeq ($(BUILD_TYPE),DEV_NOSAN)
 else ifeq ($(BUILD_TYPE),TRACES)
     CFLAGS += -g -O0
     CXXFLAGS += -g -O0
-    CPPFLAGS += -DZL_ENABLE_ASSERT -DZL_LOG_LVL=ZL_LOG_LVL_SEQ
+    CPPFLAGS += -DZL_ENABLE_ASSERT -DZL_LOG_LVL=ZL_LOG_LVL_$(LOG_LEVEL)
     CFLAGS += $(SANITIZER_FLAGS)
     CXXFLAGS += $(SANITIZER_FLAGS)
     LDFLAGS += $(SANITIZER_FLAGS)
 else ifeq ($(BUILD_TYPE),TRACES_NOSAN)
     CFLAGS += -g -O0
     CXXFLAGS += -g -O0
-    CPPFLAGS += -DZL_ENABLE_ASSERT -DZL_LOG_LVL=ZL_LOG_LVL_SEQ
+    CPPFLAGS += -DZL_ENABLE_ASSERT -DZL_LOG_LVL=ZL_LOG_LVL_$(LOG_LEVEL)
 else ifeq ($(BUILD_TYPE),OPT)
     CDEBUGFLAGS =
     DEBUGFLAGS =
