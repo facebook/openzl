@@ -274,6 +274,23 @@ void registerSDDLGraph(nb::module_& g)
             nb::arg("successor"));
 }
 
+void registerSDDL2Graph(nb::module_& g)
+{
+    registerGraph<graphs::SDDL2>(g, "SDDL2").def(
+            "__init__",
+            [](PyGraph<graphs::SDDL2>* obj,
+               std::string bytecode,
+               GraphID successor) {
+                // SDDL2 receives pre-compiled bytecode directly (no compilation)
+                auto bytecode_copy = std::make_shared<std::string>(std::move(bytecode));
+                new (obj) PyGraph<graphs::SDDL2>(*bytecode_copy, successor);
+                obj->stash(std::move(bytecode_copy));
+            },
+            nb::kw_only(),
+            nb::arg("bytecode"),
+            nb::arg("successor"));
+}
+
 void registerStoreGraph(nb::module_& g)
 {
     registerSimpleGraph<graphs::Store>(g, "Store");
@@ -319,6 +336,7 @@ void registerGraphsModule(nb::module_& m)
     registerFlatpackGraph(g);
     registerMergeSortedGraph(g);
     registerSDDLGraph(g);
+    registerSDDL2Graph(g);
     registerStoreGraph(g);
     registerZstdGraph(g);
 }

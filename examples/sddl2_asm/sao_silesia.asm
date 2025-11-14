@@ -29,19 +29,17 @@ segment.create_unspecified
 # ------------------------------------------
 # Step 2: Build StarEntry structure type
 # ------------------------------------------
-# Build the structure from bottom to top (last field first)
-
-push.type.f32le         # XDPM: Dec proper motion (4 bytes)
-push.type.f32le         # XRPM: RA proper motion (4 bytes)
-push.type.i16le         # MAG: Magnitude (2 bytes)
+push.type.f64le         # SRA0: Right Ascension (8 bytes) - FIRST
+push.type.f64le         # SDEC0: Declination (8 bytes)
 
 # ISP: Spectral type - 2 bytes as Bytes[2]
 push.type.bytes         # Base type: Bytes
 push.i32 2              # Array size: 2
 type.fixed_array        # Creates Bytes[2] type
 
-push.type.f64le         # SDEC0: Declination (8 bytes)
-push.type.f64le         # SRA0: Right Ascension (8 bytes)
+push.type.i16le         # MAG: Magnitude (2 bytes)
+push.type.f32le         # XRPM: RA proper motion (4 bytes)
+push.type.f32le         # XDPM: Dec proper motion (4 bytes) - LAST
 
 # Now create the structure with all 6 members
 push.i32 6              # Member count

@@ -13,6 +13,7 @@
 #include "openzl/zl_compressor.h"  // ZL_Compressor_registerParameterizedGraph
 #include "openzl/zl_localParams.h" // ZL_CopyParam, ZL_LocalParams
 #include "openzl/zl_public_nodes.h"
+#include "openzl/codecs/zl_clustering.h" // ZL_CLUSTERING_TAG_METADATA_ID
 
 /**
  * SDDL2 Function Graph - OpenZL Integration
@@ -504,7 +505,8 @@ static ZL_Report sddl2_apply_structure_split(
         ZL_Graph* graph,
         ZL_Edge* edge,
         const SDDL2_Segment* seg,
-        ZL_GraphID dest)
+        ZL_GraphID dest,
+        int baselineTagID)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
 
@@ -590,6 +592,9 @@ static ZL_Report sddl2_apply_structure_split(
 
     // Step 6: Route all field edges to destination
     for (size_t i = 0; i < split_outputs.nbEdges; i++) {
+        // horrible hack: set a tag arbitrarily, which just the hope that it's unique
+        ZL_ERR_IF_ERR(ZL_Edge_setIntMetadata(
+            split_outputs.edges[i], ZL_CLUSTERING_TAG_METADATA_ID, baselineTagID * 1000 + (int)i));
         ZL_ERR_IF_ERR(ZL_Edge_setDestination(split_outputs.edges[i], dest));
     }
 
@@ -682,9 +687,13 @@ static ZL_Report sddl2_process_segment(
         ZL_Graph* graph,
         ZL_Edge* edge,
         const SDDL2_Segment* seg,
-        ZL_GraphID dest)
+        ZL_GraphID dest,
+        int tag_id)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+
+    ZL_ERR_IF_ERR(ZL_Edge_setIntMetadata(
+        edge, ZL_CLUSTERING_TAG_METADATA_ID, tag_id));
 
     switch (seg->type.kind) {
         case SDDL2_TYPE_BYTES:
@@ -695,7 +704,7 @@ static ZL_Report sddl2_process_segment(
             // STRUCTURE segments: split, convert fields, and route to
             // destination
             //
-            return sddl2_apply_structure_split(graph, edge, seg, dest);
+            return sddl2_apply_structure_split(graph, edge, seg, dest, tag_id);
 
         // Primitive numeric types: convert Serial→Numeric and route to
         // destination
@@ -882,7 +891,7 @@ ZL_Report SDDL2_parse(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
     // Step 8: Process each segment (type conversion and routing)
     for (size_t i = 0; i < outputs.nbEdges; i++) {
         ZL_ERR_IF_ERR(sddl2_process_segment(
-                graph, outputs.edges[i], &segments.items[i], dest));
+                graph, outputs.edges[i], &segments.items[i], dest, (int)i));
     }
 
     // Cleanup

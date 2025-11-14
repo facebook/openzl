@@ -6,7 +6,6 @@
 #include <string.h>
 
 #include "openzl/codecs/zl_conversion.h"
-#include "openzl/codecs/zl_sddl.h"
 #include "openzl/cpp/Exception.hpp"
 #include "openzl/openzl.hpp"
 #include "openzl/zl_compressor.h"
@@ -15,6 +14,7 @@
 #include "custom_parsers/parquet/parquet_graph.h"
 #include "custom_parsers/pytorch_model_parser.h"
 #include "custom_parsers/sddl/sddl_profile.h"
+#include "custom_parsers/sddl/sddl2_profile.h"
 #include "custom_parsers/shared_components/clustering.h"
 
 #include "tools/io/InputFile.h"
@@ -226,6 +226,25 @@ compressProfiles()
                             ZL_SDDL_setupProfile(
                                     comp, compiled.data(), compiled.size()),
                             "Failed to set up SDDL profile",
+                            comp);
+                });
+
+        std::string kSDDL2Name = "sddl2";
+        mp[kSDDL2Name]         = std::make_shared<CompressProfile>(
+                kSDDL2Name,
+                "Data that can be parsed using Simple Data Description Language v2. Pass a path to the pre-compiled bytecode file with --profile-arg.",
+                [](ZL_Compressor* comp, void*, const ProfileArgs& args) {
+                    auto it = args.argmap.find("TBD");
+                    if (it == args.argmap.end()) {
+                        throw InvalidArgsException(
+                                "The Simple Data Description Language v2 profile requires pre-compiled bytecode. Pass a path to the bytecode file with --profile-arg.");
+                    }
+                    auto bytecodeInput = tools::io::InputFile(it->second);
+                    auto bytecode = bytecodeInput.contents();
+                    return unwrap(
+                            ZL_SDDL2_setupProfile(
+                                    comp, bytecode.data(), bytecode.size()),
+                            "Failed to set up SDDL2 profile",
                             comp);
                 });
 
