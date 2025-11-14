@@ -1,14 +1,15 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <gtest/gtest.h>
-#include <random>
 #include "openzl/common/a1cbor_helpers.h"
-#include "openzl/compress/selectors/ml/features.h"
+
 #include "openzl/compress/selectors/ml/gbt.h"
 #include "openzl/cpp/CCtx.hpp"
 #include "openzl/cpp/Compressor.hpp"
 #include "openzl/cpp/DCtx.hpp"
-#include "tests/utils.h"                         //@manual
+#include "tests/datagen/DataGen.h"               // @manual
+#include "tests/ml_selector_utils.h"             // @manual
+#include "tests/utils.h"                         // @manual
 #include "tools/ml_selector/ml_selector_graph.h" // @manual
 
 namespace openzl::tests {
@@ -18,64 +19,13 @@ class TestMLSelectorGraph : public testing::Test {
    public:
     void SetUp() override
     {
-        deltaData_  = generateDeltaData();
-        randomData_ = generateRandomeData();
+        deltaData_ = generateDeltaData();
+        auto dg    = zstrong::tests::datagen::DataGen();
+        randomData_ =
+                dg.template randVector<uint64_t>("randVec", 0, 10000, 10000);
+
         cctx_.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
-        nodes_ = { /* If eltWidth > 2 evaluate skewness */
-                   { .featureIdx      = 0,
-                     .value           = 2,
-                     .leftChildIdx    = 1,
-                     .rightChildIdx   = 2,
-                     .missingChildIdx = 2 },
-                   { .featureIdx      = -1,
-                     .value           = 0.1f,
-                     .leftChildIdx    = 0,
-                     .rightChildIdx   = 0,
-                     .missingChildIdx = 0 },
-                   /* If skewness > 0.001 select class 1
-                   otherwise select class 2
-                   Binary classification threshold is 0.5
-                   */
-                   { .featureIdx      = 1,
-                     .value           = 0.001f,
-                     .leftChildIdx    = 3,
-                     .rightChildIdx   = 4,
-                     .missingChildIdx = 4 },
-                   { .featureIdx      = -1,
-                     .value           = 0.75f,
-                     .leftChildIdx    = 0,
-                     .rightChildIdx   = 0,
-                     .missingChildIdx = 0 },
-                   { .featureIdx      = -1,
-                     .value           = 0.25f,
-                     .leftChildIdx    = 0,
-                     .rightChildIdx   = 0,
-                     .missingChildIdx = 0 }
-        };
-
-        tree_   = { .numNodes = nodes_.size(), .nodes = nodes_.data() };
-        forest_ = { .numTrees = 1, .trees = &tree_ };
-        binaryClassPredictor_ = {
-            .numForests = 1,
-            .forests    = &forest_,
-        };
-        // Only take these features from FeatureGen_integer
-        featureLabels_ = {
-            Label("eltWidth"),
-            Label("skewness"),
-        };
-        classLabels_ = { Label("class1"), Label("class2") };
-
-        gbtModel_ = {
-            .predictor        = &binaryClassPredictor_,
-            .featureGenerator = FeatureGen_integer,
-            .featureContext   = NULL, // Ignoring for now
-            .nbLabels         = classLabels_.size(),
-            .classLabels      = classLabels_.data(),
-            .nbFeatures       = featureLabels_.size(),
-            .featureLabels    = featureLabels_.data(),
-        };
-
+        gbtModel_         = sampleModel_.getModel();
         mlSelectorConfig_ = { .model = ZL_GBT, .runtimeConfig = &gbtModel_ };
     }
 
@@ -146,36 +96,6 @@ class TestMLSelectorGraph : public testing::Test {
         return cctx_.compressOne(dst, s_input);
     }
 
-    std::vector<uint64_t> generateDeltaData(
-            size_t nbElts      = 10000,
-            uint64_t baseValue = 0,
-            uint64_t delta     = 0x12345)
-    {
-        std::vector<uint64_t> data(nbElts);
-        uint64_t value = baseValue;
-        for (size_t i = 0; i < nbElts; ++i) {
-            data[i] = value;
-            value += delta;
-        }
-        return data;
-    }
-
-    std::vector<uint64_t> generateRandomeData(
-            size_t nbElts = 10000,
-            uint64_t max  = 50000,
-            uint64_t seed = 1337)
-    {
-        std::vector<uint64_t> data;
-        data.resize(nbElts);
-        std::mt19937 mersenne_engine(seed);
-        std::uniform_int_distribution<uint64_t> dist(0, max);
-        auto gen = [&dist, &mersenne_engine]() {
-            return dist(mersenne_engine);
-        };
-        std::generate(data.begin(), data.end(), gen);
-        return data;
-    }
-
     void assert_model_equal(GBTModel m1, GBTModel m2)
     {
         ASSERT_EQ(m1.predictor->numForests, m2.predictor->numForests);
@@ -227,15 +147,10 @@ class TestMLSelectorGraph : public testing::Test {
     DCtx dctx_;
     CCtx cctx_;
 
-    GBTModel gbtModel_{};
-    std::vector<GBTPredictor_Node> nodes_;
-    GBTPredictor_Tree tree_{};
-    GBTPredictor_Forest forest_{};
-    GBTPredictor binaryClassPredictor_{};
-    std::vector<Label> featureLabels_;
-    std::vector<Label> classLabels_;
     std::vector<uint64_t> deltaData_;
     std::vector<uint64_t> randomData_;
+    SampleBinaryGBTModel sampleModel_;
+    GBTModel gbtModel_{};
     ZL_MLSelectorConfig mlSelectorConfig_ = {};
     std::vector<ZL_GraphID> successors_   = { ZL_GRAPH_COMPRESS_GENERIC,
                                               ZL_GRAPH_FIELD_LZ };
@@ -354,33 +269,12 @@ TEST_F(TestMLSelectorGraph, TestEmptyConfig)
 
 TEST_F(TestMLSelectorGraph, TestInvalidGBTModel)
 {
-    // Run with invalid GBT model to make sure validation works
-    std::vector<GBTPredictor_Node> cycle_nodes = {
-        { .featureIdx      = 0,
-          .value           = 2,
-          .leftChildIdx    = 0, // point to self for cycle
-          .rightChildIdx   = 2,
-          .missingChildIdx = 2 }
+    SampleCyclicGBTModel sampleCyclicModel;
+    GBTModel cyclicGTModel_           = sampleCyclicModel.getModel();
+    ZL_MLSelectorConfig invalidConfig = {
+        .model         = ZL_GBT,
+        .runtimeConfig = &cyclicGTModel_,
     };
-    GBTPredictor_Tree tree     = { .numNodes = cycle_nodes.size(),
-                                   .nodes    = cycle_nodes.data() };
-    GBTPredictor_Forest forest = { .numTrees = 1, .trees = &tree };
-    GBTPredictor predictor     = {
-            .numForests = 1,
-            .forests    = &forest,
-    };
-    GBTModel cyclicModel = {
-        .predictor        = &predictor,
-        .featureGenerator = FeatureGen_integer,
-        .featureContext   = NULL, // Ignoring for now
-        .nbLabels         = classLabels_.size(),
-        .classLabels      = classLabels_.data(),
-        .nbFeatures       = featureLabels_.size(),
-        .featureLabels    = featureLabels_.data(),
-    };
-
-    ZL_MLSelectorConfig invalidConfig = { .model         = ZL_GBT,
-                                          .runtimeConfig = &cyclicModel };
 
     Compressor compressor;
     auto graph = ZL_MLSelector_registerGraph(

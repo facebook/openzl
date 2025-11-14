@@ -1,18 +1,16 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include <algorithm>
-#include <random>
-
 #include <gtest/gtest.h>
 
 #include "openzl/common/debug.h" // ZL_REQUIRE
-#include "openzl/compress/selectors/ml/mlselector.h"
-#include "openzl/zl_compress.h"
-
 #include "openzl/compress/selectors/ml/gbt.h"
+#include "openzl/compress/selectors/ml/mlselector.h"
 #include "openzl/shared/mem.h" // For ZS2_read64
+#include "openzl/zl_compress.h"
 #include "openzl/zl_graph_api.h"
 #include "openzl/zl_selector.h" // ZL_SelectorDesc
+#include "tests/datagen/DataGen.h"
+#include "tests/ml_selector_utils.h"
 
 #define EXPECT_SUCCESS(r)                                          \
     EXPECT_FALSE(ZL_isError(r)) << "Zstrong failed with message: " \
@@ -137,33 +135,6 @@ ZL_GraphID selectGBTModel(
 
 namespace zstrong::tests {
 namespace {
-std::vector<uint64_t> generateDeltaData(
-        size_t nbElts      = 10000,
-        uint64_t baseValue = 0,
-        uint64_t delta     = 0x12345)
-{
-    std::vector<uint64_t> data(nbElts);
-    uint64_t value = baseValue;
-    for (size_t i = 0; i < nbElts; ++i) {
-        data[i] = value;
-        value += delta;
-    }
-    return data;
-}
-
-std::vector<uint64_t> generateTokenizeData(
-        size_t nbElts = 10000,
-        uint64_t seed = 1337)
-{
-    std::vector<uint64_t> data;
-    data.resize(nbElts);
-    std::mt19937 mersenne_engine(seed);
-    std::uniform_int_distribution<uint64_t> dist(0, nbElts / 20);
-    auto gen = [&dist, &mersenne_engine]() { return dist(mersenne_engine); };
-
-    std::generate(data.begin(), data.end(), gen);
-    return data;
-}
 
 class MLSelectorTest : public ::testing::Test {
    protected:
@@ -218,8 +189,11 @@ class MLSelectorTest : public ::testing::Test {
                 cgraph_, ZL_Type_numeric, true, deltaGid_, ZL_GRAPH_ZSTD);
         // EXPECT_TRUE(ZL_GraphID_isValid(tokenizeGid_));
 
-        deltaData    = generateDeltaData();
-        tokenizeData = generateTokenizeData();
+        deltaData = openzl::tests::generateDeltaData();
+        auto dg   = datagen::DataGen();
+        // Generate data with repeated values
+        tokenizeData = dg.template randLongVector<uint64_t>(
+                "randLongVec", 0, 500, 10000, 10000);
 
         labeledGraphs.push_back({ .label = "class1", .graph = deltaGid_ });
         labeledGraphs.push_back({ .label = "class2", .graph = tokenizeGid_ });
