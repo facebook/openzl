@@ -495,6 +495,8 @@ static ZL_Report sddl2_apply_struct_field_conversion(
  * @param graph Graph context for operations and error reporting
  * @param edge The edge containing the structure array
  * @param seg The segment containing the structure type information
+ * @param dest Destination graph for field edges
+ * @param next_stream_id Pointer to counter for generating unique stream tags
  * @return ZL_Report indicating success or error
  *
  * Example:
@@ -506,7 +508,7 @@ static ZL_Report sddl2_apply_structure_split(
         ZL_Edge* edge,
         const SDDL2_Segment* seg,
         ZL_GraphID dest,
-        int baselineTagID)
+        int* next_stream_id)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
 
@@ -590,11 +592,11 @@ static ZL_Report sddl2_apply_structure_split(
                 (int)field_type_kind);
     }
 
-    // Step 6: Route all field edges to destination
+    // Step 6: Attach clustering tags and route all field edges to destination
     for (size_t i = 0; i < split_outputs.nbEdges; i++) {
-        // horrible hack: set a tag arbitrarily, which just the hope that it's unique
+        int stream_tag = (*next_stream_id)++;  // Assign and increment counter
         ZL_ERR_IF_ERR(ZL_Edge_setIntMetadata(
-            split_outputs.edges[i], ZL_CLUSTERING_TAG_METADATA_ID, baselineTagID * 1000 + (int)i));
+            split_outputs.edges[i], ZL_CLUSTERING_TAG_METADATA_ID, stream_tag));
         ZL_ERR_IF_ERR(ZL_Edge_setDestination(split_outputs.edges[i], dest));
     }
 
@@ -673,14 +675,14 @@ static ZL_Report sddl2_apply_type_conversion(
  *
  * Handles three types of segments:
  * - BYTES: Route directly to destination without conversion
- * - STRUCTURE: Split into field arrays, convert each field, route to
- * COMPRESS_GENERIC
+ * - STRUCTURE: Split into field arrays, convert each field, route to destination
  * - Primitive: Convert Serial→Numeric and route to destination
  *
  * @param graph Graph context for operations and error reporting
  * @param edge The edge to process
  * @param seg The segment metadata containing type information
  * @param dest The destination graph for non-structure segments
+ * @param next_stream_id Pointer to counter for generating unique stream tags
  * @return ZL_Report indicating success or error
  */
 static ZL_Report sddl2_process_segment(
@@ -688,26 +690,25 @@ static ZL_Report sddl2_process_segment(
         ZL_Edge* edge,
         const SDDL2_Segment* seg,
         ZL_GraphID dest,
-        int tag_id)
+        int* next_stream_id)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
 
-    ZL_ERR_IF_ERR(ZL_Edge_setIntMetadata(
-        edge, ZL_CLUSTERING_TAG_METADATA_ID, tag_id));
-
     switch (seg->type.kind) {
         case SDDL2_TYPE_BYTES:
-            // BYTES segments: route directly without conversion
-            return ZL_Edge_setDestination(edge, dest);
+            // BYTES segments: attach clustering tag and route
+            {
+                int stream_tag = (*next_stream_id)++;
+                ZL_ERR_IF_ERR(ZL_Edge_setIntMetadata(
+                    edge, ZL_CLUSTERING_TAG_METADATA_ID, stream_tag));
+                return ZL_Edge_setDestination(edge, dest);
+            }
 
         case SDDL2_TYPE_STRUCTURE:
-            // STRUCTURE segments: split, convert fields, and route to
-            // destination
-            //
-            return sddl2_apply_structure_split(graph, edge, seg, dest, tag_id);
+            // STRUCTURE segments: split, convert fields, attach tags, and route
+            return sddl2_apply_structure_split(graph, edge, seg, dest, next_stream_id);
 
-        // Primitive numeric types: convert Serial→Numeric and route to
-        // destination
+        // Primitive numeric types: convert Serial→Numeric, attach tag, and route
         case SDDL2_TYPE_U8:
         case SDDL2_TYPE_I8:
         case SDDL2_TYPE_U16LE:
@@ -731,8 +732,13 @@ static ZL_Report sddl2_process_segment(
         case SDDL2_TYPE_F32BE:
         case SDDL2_TYPE_F64LE:
         case SDDL2_TYPE_F64BE:
-            ZL_ERR_IF_ERR(sddl2_apply_type_conversion(graph, edge, seg, &edge));
-            return ZL_Edge_setDestination(edge, dest);
+            {
+                ZL_ERR_IF_ERR(sddl2_apply_type_conversion(graph, edge, seg, &edge));
+                int stream_tag = (*next_stream_id)++;
+                ZL_ERR_IF_ERR(ZL_Edge_setIntMetadata(
+                    edge, ZL_CLUSTERING_TAG_METADATA_ID, stream_tag));
+                return ZL_Edge_setDestination(edge, dest);
+            }
     }
 
     // Unreachable: all SDDL2_Type_kind values are handled above
@@ -888,10 +894,11 @@ ZL_Report SDDL2_parse(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
         dest = gidlist.graphids[0];
     }
 
-    // Step 8: Process each segment (type conversion and routing)
+    // Step 8: Initialize stream counter and process each segment
+    int next_stream_id = 0;
     for (size_t i = 0; i < outputs.nbEdges; i++) {
         ZL_ERR_IF_ERR(sddl2_process_segment(
-                graph, outputs.edges[i], &segments.items[i], dest, (int)i));
+                graph, outputs.edges[i], &segments.items[i], dest, &next_stream_id));
     }
 
     // Cleanup
