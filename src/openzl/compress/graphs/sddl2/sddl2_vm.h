@@ -552,6 +552,25 @@ SDDL2_Error SDDL2_op_dup(SDDL2_Stack* stack);
 SDDL2_Error SDDL2_op_swap(SDDL2_Stack* stack);
 
 /* ============================================================================
+ * Validation Operations (EXPECT Family)
+ * ========================================================================= */
+
+/**
+ * Validate that the top stack value is true (non-zero).
+ * Stack: value:I64 -> (empty)
+ *
+ * Pops an I64 value from the stack and verifies it is non-zero.
+ * If the value is 0 (false), returns SDDL2_VALIDATION_FAILED.
+ * This enables runtime assertions and data validation in SDDL2 programs.
+ *
+ * Errors:
+ *   - SDDL2_STACK_UNDERFLOW: stack is empty
+ *   - SDDL2_TYPE_MISMATCH: top value is not I64
+ *   - SDDL2_VALIDATION_FAILED: value is 0 (false)
+ */
+SDDL2_Error SDDL2_op_expect_true(SDDL2_Stack* stack);
+
+/* ============================================================================
  * Input Cursor Operations
  * ========================================================================= */
 

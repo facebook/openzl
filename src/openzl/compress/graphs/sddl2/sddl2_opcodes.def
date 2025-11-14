@@ -89,7 +89,8 @@
   logic.not  0x0004          "Pop I64 value, push its bitwise NOT"
 
 @family CONTROL 0x0005 "Control flow operations"
-  halt      0x0001          "Stop VM execution"
+  halt         0x0001          "Stop VM execution"
+  expect_true  0x0002          "Pop I64 value, error if value is 0 (false)"
 
 @family LOAD 0x0006 "Load operations"
   # 8-bit loads (endianness-independent)
@@ -120,8 +121,6 @@
   type.structure    0x0002  "Pop I64 (member_count), pop member_count Types, push composite structure Type"
 
 @family VAR 0x0009 "Variable operations"
-
-@family EXPECT 0x000A "Expect/validation operations"
 
 @family CALL 0x000B "Function call operations"
 

@@ -630,6 +630,28 @@ SDDL2_Error SDDL2_op_swap(SDDL2_Stack* stack)
 }
 
 /* ============================================================================
+ * Validation Operations (EXPECT Family)
+ *
+ * Provides runtime validation and assertion operations:
+ * - expect_true: Verify that a condition (I64 value) is non-zero
+ * These enable data validation and contract checking in SDDL2 programs.
+ * Combined with comparison and logic operations, they can express complex
+ * validation rules (e.g., cmp.eq + expect_true validates equality).
+ * ========================================================================= */
+
+SDDL2_Error SDDL2_op_expect_true(SDDL2_Stack* stack)
+{
+    int64_t value;
+    SDDL2_TRY(pop_i64(stack, &value));
+    
+    if (value == 0) {
+        return SDDL2_VALIDATION_FAILED;
+    }
+    
+    return SDDL2_OK;
+}
+
+/* ============================================================================
  * Input Cursor Operations
  *
  * Provides operations for reading data from the input:

@@ -1,14 +1,13 @@
-/* AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
- *
- * Generated from interpreter test assembly files (.asm)
- * Source: /Users/cyan/dev/openzl/cyan_openzl/tests/compress/graphs/sddl2/asm
- * Generator: tests/compress/graphs/sddlv2/generate_test_bytecode.py
- *
- * To regenerate:
- *   python3 tests/compress/graphs/sddlv2/generate_test_bytecode.py \
-         -i tests/compress/graphs/sddlv2/asm \
-         -o tests/compress/graphs/sddlv2/generated_test_bytecode.h
- */
+// AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
+//
+// Generated from interpreter test assembly files (.asm)
+// Source: /Users/cyan/dev/openzl/cyan_openzl/tests/compress/graphs/sddl2/asm
+// Generator: tests/compress/graphs/sddlv2/generate_test_bytecode.py
+//
+// To regenerate:
+//   python3 tests/compress/graphs/sddlv2/generate_test_bytecode.py \
+//       -i tests/compress/graphs/sddlv2/asm \
+//       -o tests/compress/graphs/sddlv2/generated_test_bytecode.h
 
 #ifndef GENERATED_TEST_BYTECODE_H
 #define GENERATED_TEST_BYTECODE_H
@@ -48,6 +47,24 @@ static const uint8_t BYTECODE_TEST_CMP_TYPE_MISMATCH[] = {
     0x05, 0x00, 0x01, 0x00, 0x64, 0x00, 0x00, 0x00, 0x05, 0x00, 0x01, 0x00, 0xC8, 0x00, 0x00, 0x00, 0x01, 0x00, 0x03, 0x00, 0x01, 0x00, 0x05, 0x00
 };
 static const size_t BYTECODE_TEST_CMP_TYPE_MISMATCH_SIZE = 24;
+
+/* Source: test_expect_true_failure.asm */
+static const uint8_t BYTECODE_TEST_EXPECT_TRUE_FAILURE[] = {
+    0x03, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x05, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_EXPECT_TRUE_FAILURE_SIZE = 16;
+
+/* Source: test_expect_true_success.asm */
+static const uint8_t BYTECODE_TEST_EXPECT_TRUE_SUCCESS[] = {
+    0x03, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x05, 0x00, 0x03, 0x00, 0x01, 0x00, 0x2A, 0x00, 0x00, 0x00, 0x02, 0x00, 0x05, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_EXPECT_TRUE_SUCCESS_SIZE = 28;
+
+/* Source: test_expect_true_with_cmp.asm */
+static const uint8_t BYTECODE_TEST_EXPECT_TRUE_WITH_CMP[] = {
+    0x03, 0x00, 0x01, 0x00, 0x2A, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x2A, 0x00, 0x00, 0x00, 0x01, 0x00, 0x03, 0x00, 0x02, 0x00, 0x05, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_EXPECT_TRUE_WITH_CMP_SIZE = 28;
 
 /* Source: test_math_add.asm */
 static const uint8_t BYTECODE_TEST_MATH_ADD[] = {
@@ -266,6 +283,9 @@ static const TestBytecode TEST_BYTECODE_LOOKUP[] = {
     { "test_cmp_negative_numbers", BYTECODE_TEST_CMP_NEGATIVE_NUMBERS, BYTECODE_TEST_CMP_NEGATIVE_NUMBERS_SIZE },
     { "test_cmp_stack_underflow", BYTECODE_TEST_CMP_STACK_UNDERFLOW, BYTECODE_TEST_CMP_STACK_UNDERFLOW_SIZE },
     { "test_cmp_type_mismatch", BYTECODE_TEST_CMP_TYPE_MISMATCH, BYTECODE_TEST_CMP_TYPE_MISMATCH_SIZE },
+    { "test_expect_true_failure", BYTECODE_TEST_EXPECT_TRUE_FAILURE, BYTECODE_TEST_EXPECT_TRUE_FAILURE_SIZE },
+    { "test_expect_true_success", BYTECODE_TEST_EXPECT_TRUE_SUCCESS, BYTECODE_TEST_EXPECT_TRUE_SUCCESS_SIZE },
+    { "test_expect_true_with_cmp", BYTECODE_TEST_EXPECT_TRUE_WITH_CMP, BYTECODE_TEST_EXPECT_TRUE_WITH_CMP_SIZE },
     { "test_math_add", BYTECODE_TEST_MATH_ADD, BYTECODE_TEST_MATH_ADD_SIZE },
     { "test_math_all_operations", BYTECODE_TEST_MATH_ALL_OPERATIONS, BYTECODE_TEST_MATH_ALL_OPERATIONS_SIZE },
     { "test_math_combined", BYTECODE_TEST_MATH_COMBINED, BYTECODE_TEST_MATH_COMBINED_SIZE },
@@ -302,6 +322,6 @@ static const TestBytecode TEST_BYTECODE_LOOKUP[] = {
     { "test_zero_size_segment", BYTECODE_TEST_ZERO_SIZE_SEGMENT, BYTECODE_TEST_ZERO_SIZE_SEGMENT_SIZE },
 };
 
-static const size_t TEST_BYTECODE_COUNT = 39;
+static const size_t TEST_BYTECODE_COUNT = 42;
 
 #endif // GENERATED_TEST_BYTECODE_H

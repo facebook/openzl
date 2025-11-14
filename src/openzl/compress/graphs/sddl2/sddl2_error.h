@@ -33,7 +33,8 @@ typedef enum {
     SDDL2_LIMIT_EXCEEDED,     // Maximum capacity limit exceeded
     SDDL2_DIV_ZERO,           // Division by zero
     SDDL2_ALLOCATION_FAILED,  // Memory allocation failed
-    SDDL2_INVALID_BYTECODE    // Malformed or invalid bytecode
+    SDDL2_INVALID_BYTECODE,   // Malformed or invalid bytecode
+    SDDL2_VALIDATION_FAILED   // Runtime validation/assertion failed
 } SDDL2_Error;
 
 /* ============================================================================

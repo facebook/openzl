@@ -806,6 +806,10 @@ static ZL_Report sddl2_error_to_report(ZL_Graph* graph, SDDL2_Error err)
 
         case SDDL2_ALLOCATION_FAILED:
             ZL_ERR(allocation, "SDDL2 VM memory allocation failed");
+
+        case SDDL2_VALIDATION_FAILED:
+            ZL_ERR(parameter_invalid,
+                   "SDDL2 VM validation failed: expect_true condition not met");
     }
 
     // Fallback for unexpected error codes

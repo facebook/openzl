@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
 // Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-// Generated at: 2025-11-12 03:43:23 UTC
+// Generated at: 2025-11-14 02:56:19 UTC
 // Generator: generate_opcodes.py
 //
 // To regenerate: python3 tools/sddl/assembler/generate_opcodes.py
@@ -36,7 +36,6 @@ enum sddl2_family {
     SDDL2_FAMILY_STACK    = 0x0007,  /* Stack manipulation operations */
     SDDL2_FAMILY_TYPE     = 0x0008,  /* Type operations */
     SDDL2_FAMILY_VAR      = 0x0009,  /* Variable operations */
-    SDDL2_FAMILY_EXPECT   = 0x000A,  /* Expect/validation operations */
     SDDL2_FAMILY_CALL     = 0x000B,  /* Function call operations */
     SDDL2_FAMILY_SEGMENT  = 0x000C,  /* Segment creation operations */
 };
@@ -112,6 +111,7 @@ enum sddl2_opcode_logic {
 /* CONTROL family (0x0005) - Control flow operations */
 enum sddl2_opcode_control {
     SDDL2_OP_CONTROL_HALT = 0x0001,
+    SDDL2_OP_CONTROL_EXPECT_TRUE = 0x0002,
 };
 
 /* LOAD family (0x0006) - Load operations */

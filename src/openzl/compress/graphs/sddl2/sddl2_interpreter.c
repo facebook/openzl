@@ -460,6 +460,8 @@ SDDL2_Error SDDL2_execute_bytecode(
             case SDDL2_FAMILY_CONTROL:
                 if (opcode == SDDL2_OP_CONTROL_HALT) {
                     halted = 1;
+                } else if (opcode == SDDL2_OP_CONTROL_EXPECT_TRUE) {
+                    err = SDDL2_op_expect_true(&stack);
                 } else {
                     CLEANUP_AND_RETURN(
                             SDDL2_INVALID_BYTECODE); // Unknown opcode
@@ -522,9 +524,10 @@ SDDL2_Error SDDL2_execute_bytecode(
                 DISPATCH_LOAD_OP(LOAD_OP_MAP, LOAD_OP_MAP_SIZE);
                 break;
 
+            // Note: expect_true is part of CONTROL family (ID 0x000A not generated for empty EXPECT family)
+
             // Unimplemented families
             case SDDL2_FAMILY_VAR:
-            case SDDL2_FAMILY_EXPECT:
             case SDDL2_FAMILY_CALL:
                 CLEANUP_AND_RETURN(SDDL2_INVALID_BYTECODE);
         }

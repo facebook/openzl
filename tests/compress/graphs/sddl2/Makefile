@@ -27,6 +27,7 @@ TESTS = sddl2_vm_test \
         sddl2_structure_split_integration_test \
         sddl2_load_test \
         sddl2_logic_test \
+        sddl2_expect_test \
         sddl2_interpreter_test \
         sddl2_bytecode_execution_test
 
@@ -78,6 +79,8 @@ sddl2_structure_split_integration_test: sddl2_structure_split_integration_test.c
 sddl2_load_test: sddl2_load_test.c $(VM_SRC)
 
 sddl2_logic_test: sddl2_logic_test.c $(VM_SRC)
+
+sddl2_expect_test: sddl2_expect_test.c $(VM_SRC)
 
 sddl2_interpreter_test: sddl2_interpreter_test.c $(VM_SRC) $(INTERPRETER_SRC) $(LOGGING_SRC)
 

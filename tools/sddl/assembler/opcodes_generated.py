@@ -2,7 +2,7 @@
 AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 
 Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-Generated at: 2025-11-12 03:43:23 UTC
+Generated at: 2025-11-14 02:56:19 UTC
 Generator: generate_opcodes.py
 
 To regenerate: python3 generate_opcodes.py
@@ -19,7 +19,6 @@ FAMILIES = {
     "STACK": 0x0007,
     "TYPE": 0x0008,
     "VAR": 0x0009,
-    "EXPECT": 0x000A,
     "CALL": 0x000B,
     "SEGMENT": 0x000C,
 }
@@ -29,6 +28,7 @@ FAMILIES = {
 INSTRUCTIONS = {
     # CONTROL family (0x0005)
     "halt": ("CONTROL", 0x0001, []),
+    "expect_true": ("CONTROL", 0x0002, []),
 
     # PUSH family (0x0001)
     "push.zero": ("PUSH", 0x0001, []),
