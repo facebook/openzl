@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
 // Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-// Generated at: 2025-11-14 04:51:22 UTC
+// Generated at: 2025-11-14 05:07:12 UTC
 // Generator: generate_opcodes.py
 //
 // To regenerate: python3 tools/sddl/assembler/generate_opcodes.py
@@ -138,6 +138,7 @@ enum sddl2_opcode_stack {
     SDDL2_OP_STACK_DROP = 0x0003,
     SDDL2_OP_STACK_SWAP = 0x0004,
     SDDL2_OP_STACK_ROT = 0x0005,
+    SDDL2_OP_STACK_DROP_IF = 0x0010,
 };
 
 /* TYPE family (0x0008) - Type operations */

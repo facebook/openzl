@@ -29,6 +29,7 @@ TESTS = sddl2_vm_test \
         sddl2_logic_test \
         sddl2_expect_test \
         sddl2_stack_depth_test \
+        sddl2_stack_drop_if_test \
         sddl2_interpreter_test \
         sddl2_bytecode_execution_test
 
@@ -84,6 +85,8 @@ sddl2_logic_test: sddl2_logic_test.c $(VM_SRC)
 sddl2_expect_test: sddl2_expect_test.c $(VM_SRC)
 
 sddl2_stack_depth_test: sddl2_stack_depth_test.c $(VM_SRC)
+
+sddl2_stack_drop_if_test: sddl2_stack_drop_if_test.c $(VM_SRC)
 
 sddl2_interpreter_test: sddl2_interpreter_test.c $(VM_SRC) $(INTERPRETER_SRC) $(LOGGING_SRC)
 

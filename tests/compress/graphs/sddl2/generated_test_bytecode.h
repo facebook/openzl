@@ -228,6 +228,42 @@ static const uint8_t BYTECODE_TEST_STACK_DROP[] = {
 };
 static const size_t BYTECODE_TEST_STACK_DROP_SIZE = 24;
 
+/* Source: test_stack_drop_if_false.asm */
+static const uint8_t BYTECODE_TEST_STACK_DROP_IF_FALSE[] = {
+    0x03, 0x00, 0x01, 0x00, 0x2A, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x07, 0x00, 0x03, 0x00, 0x07, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_STACK_DROP_IF_FALSE_SIZE = 28;
+
+/* Source: test_stack_drop_if_negative.asm */
+static const uint8_t BYTECODE_TEST_STACK_DROP_IF_NEGATIVE[] = {
+    0x03, 0x00, 0x01, 0x00, 0x32, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x10, 0x00, 0x07, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_STACK_DROP_IF_NEGATIVE_SIZE = 24;
+
+/* Source: test_stack_drop_if_nonzero.asm */
+static const uint8_t BYTECODE_TEST_STACK_DROP_IF_NONZERO[] = {
+    0x03, 0x00, 0x01, 0x00, 0x64, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x2A, 0x00, 0x00, 0x00, 0x10, 0x00, 0x07, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_STACK_DROP_IF_NONZERO_SIZE = 24;
+
+/* Source: test_stack_drop_if_true.asm */
+static const uint8_t BYTECODE_TEST_STACK_DROP_IF_TRUE[] = {
+    0x03, 0x00, 0x01, 0x00, 0x2A, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x10, 0x00, 0x07, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_STACK_DROP_IF_TRUE_SIZE = 24;
+
+/* Source: test_stack_drop_if_underflow.asm */
+static const uint8_t BYTECODE_TEST_STACK_DROP_IF_UNDERFLOW[] = {
+    0x03, 0x00, 0x01, 0x00, 0x2A, 0x00, 0x00, 0x00, 0x10, 0x00, 0x07, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_STACK_DROP_IF_UNDERFLOW_SIZE = 16;
+
+/* Source: test_stack_drop_if_with_cmp.asm */
+static const uint8_t BYTECODE_TEST_STACK_DROP_IF_WITH_CMP[] = {
+    0x03, 0x00, 0x01, 0x00, 0x63, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x05, 0x00, 0x00, 0x00, 0x05, 0x00, 0x03, 0x00, 0x10, 0x00, 0x07, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_STACK_DROP_IF_WITH_CMP_SIZE = 36;
+
 /* Source: test_stack_drop_underflow.asm */
 static const uint8_t BYTECODE_TEST_STACK_DROP_UNDERFLOW[] = {
     0x03, 0x00, 0x07, 0x00, 0x01, 0x00, 0x05, 0x00
@@ -331,6 +367,12 @@ static const TestBytecode TEST_BYTECODE_LOOKUP[] = {
     { "test_segment_unspecified", BYTECODE_TEST_SEGMENT_UNSPECIFIED, BYTECODE_TEST_SEGMENT_UNSPECIFIED_SIZE },
     { "test_segment_zero", BYTECODE_TEST_SEGMENT_ZERO, BYTECODE_TEST_SEGMENT_ZERO_SIZE },
     { "test_stack_drop", BYTECODE_TEST_STACK_DROP, BYTECODE_TEST_STACK_DROP_SIZE },
+    { "test_stack_drop_if_false", BYTECODE_TEST_STACK_DROP_IF_FALSE, BYTECODE_TEST_STACK_DROP_IF_FALSE_SIZE },
+    { "test_stack_drop_if_negative", BYTECODE_TEST_STACK_DROP_IF_NEGATIVE, BYTECODE_TEST_STACK_DROP_IF_NEGATIVE_SIZE },
+    { "test_stack_drop_if_nonzero", BYTECODE_TEST_STACK_DROP_IF_NONZERO, BYTECODE_TEST_STACK_DROP_IF_NONZERO_SIZE },
+    { "test_stack_drop_if_true", BYTECODE_TEST_STACK_DROP_IF_TRUE, BYTECODE_TEST_STACK_DROP_IF_TRUE_SIZE },
+    { "test_stack_drop_if_underflow", BYTECODE_TEST_STACK_DROP_IF_UNDERFLOW, BYTECODE_TEST_STACK_DROP_IF_UNDERFLOW_SIZE },
+    { "test_stack_drop_if_with_cmp", BYTECODE_TEST_STACK_DROP_IF_WITH_CMP, BYTECODE_TEST_STACK_DROP_IF_WITH_CMP_SIZE },
     { "test_stack_drop_underflow", BYTECODE_TEST_STACK_DROP_UNDERFLOW, BYTECODE_TEST_STACK_DROP_UNDERFLOW_SIZE },
     { "test_stack_dup", BYTECODE_TEST_STACK_DUP, BYTECODE_TEST_STACK_DUP_SIZE },
     { "test_stack_dup_underflow", BYTECODE_TEST_STACK_DUP_UNDERFLOW, BYTECODE_TEST_STACK_DUP_UNDERFLOW_SIZE },
@@ -343,6 +385,6 @@ static const TestBytecode TEST_BYTECODE_LOOKUP[] = {
     { "test_zero_size_segment", BYTECODE_TEST_ZERO_SIZE_SEGMENT, BYTECODE_TEST_ZERO_SIZE_SEGMENT_SIZE },
 };
 
-static const size_t TEST_BYTECODE_COUNT = 45;
+static const size_t TEST_BYTECODE_COUNT = 51;
 
 #endif // GENERATED_TEST_BYTECODE_H

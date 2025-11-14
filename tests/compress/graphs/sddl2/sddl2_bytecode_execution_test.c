@@ -429,6 +429,198 @@ static void test_push_stack_depth_arithmetic(void)
     printf("✓ test_push_stack_depth_arithmetic passed\n");
 }
 
+/**
+ * Test: stack.drop_if with true condition
+ *
+ * Assembly source (test_stack_drop_if_true.asm):
+ *   push.i32 42
+ *   push.i32 1
+ *   stack.drop_if
+ *   halt
+ *
+ * Expected behavior:
+ *   - Condition is 1 (true), so 42 is dropped
+ *   - Stack is empty after execution
+ */
+static void test_stack_drop_if_true(void)
+{
+    const uint8_t* bytecode = BYTECODE_TEST_STACK_DROP_IF_TRUE;
+    size_t bytecode_size = BYTECODE_TEST_STACK_DROP_IF_TRUE_SIZE;
+
+    uint8_t input[] = "";
+
+    SDDL2_Segment_list segments;
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_Error err = SDDL2_execute_bytecode(
+            bytecode, bytecode_size, input, 0, &segments);
+
+    assert(err == SDDL2_OK);
+
+    SDDL2_Segment_list_destroy(&segments);
+    printf("✓ test_stack_drop_if_true passed\n");
+}
+
+/**
+ * Test: stack.drop_if with false condition
+ *
+ * Assembly source (test_stack_drop_if_false.asm):
+ *   push.i32 42
+ *   push.i32 0
+ *   stack.drop_if
+ *   stack.drop
+ *   halt
+ *
+ * Expected behavior:
+ *   - Condition is 0 (false), so 42 is NOT dropped
+ *   - Manual stack.drop cleans up the 42
+ */
+static void test_stack_drop_if_false(void)
+{
+    const uint8_t* bytecode = BYTECODE_TEST_STACK_DROP_IF_FALSE;
+    size_t bytecode_size = BYTECODE_TEST_STACK_DROP_IF_FALSE_SIZE;
+
+    uint8_t input[] = "";
+
+    SDDL2_Segment_list segments;
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_Error err = SDDL2_execute_bytecode(
+            bytecode, bytecode_size, input, 0, &segments);
+
+    assert(err == SDDL2_OK);
+
+    SDDL2_Segment_list_destroy(&segments);
+    printf("✓ test_stack_drop_if_false passed\n");
+}
+
+/**
+ * Test: stack.drop_if with non-zero value as true
+ *
+ * Assembly source (test_stack_drop_if_nonzero.asm):
+ *   push.i32 100
+ *   push.i32 42
+ *   stack.drop_if
+ *   halt
+ *
+ * Expected behavior:
+ *   - Condition is 42 (non-zero = true), so 100 is dropped
+ */
+static void test_stack_drop_if_nonzero(void)
+{
+    const uint8_t* bytecode = BYTECODE_TEST_STACK_DROP_IF_NONZERO;
+    size_t bytecode_size = BYTECODE_TEST_STACK_DROP_IF_NONZERO_SIZE;
+
+    uint8_t input[] = "";
+
+    SDDL2_Segment_list segments;
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_Error err = SDDL2_execute_bytecode(
+            bytecode, bytecode_size, input, 0, &segments);
+
+    assert(err == SDDL2_OK);
+
+    SDDL2_Segment_list_destroy(&segments);
+    printf("✓ test_stack_drop_if_nonzero passed\n");
+}
+
+/**
+ * Test: stack.drop_if with negative value as true
+ *
+ * Assembly source (test_stack_drop_if_negative.asm):
+ *   push.i32 50
+ *   push.i32 -1
+ *   stack.drop_if
+ *   halt
+ *
+ * Expected behavior:
+ *   - Condition is -1 (non-zero = true), so 50 is dropped
+ */
+static void test_stack_drop_if_negative(void)
+{
+    const uint8_t* bytecode = BYTECODE_TEST_STACK_DROP_IF_NEGATIVE;
+    size_t bytecode_size = BYTECODE_TEST_STACK_DROP_IF_NEGATIVE_SIZE;
+
+    uint8_t input[] = "";
+
+    SDDL2_Segment_list segments;
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_Error err = SDDL2_execute_bytecode(
+            bytecode, bytecode_size, input, 0, &segments);
+
+    assert(err == SDDL2_OK);
+
+    SDDL2_Segment_list_destroy(&segments);
+    printf("✓ test_stack_drop_if_negative passed\n");
+}
+
+/**
+ * Test: stack.drop_if combined with comparison
+ *
+ * Assembly source (test_stack_drop_if_with_cmp.asm):
+ *   push.i32 99
+ *   push.i32 10
+ *   push.i32 5
+ *   cmp.gt
+ *   stack.drop_if
+ *   halt
+ *
+ * Expected behavior:
+ *   - 10 > 5 = true, so 99 is dropped
+ */
+static void test_stack_drop_if_with_cmp(void)
+{
+    const uint8_t* bytecode = BYTECODE_TEST_STACK_DROP_IF_WITH_CMP;
+    size_t bytecode_size = BYTECODE_TEST_STACK_DROP_IF_WITH_CMP_SIZE;
+
+    uint8_t input[] = "";
+
+    SDDL2_Segment_list segments;
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_Error err = SDDL2_execute_bytecode(
+            bytecode, bytecode_size, input, 0, &segments);
+
+    assert(err == SDDL2_OK);
+
+    SDDL2_Segment_list_destroy(&segments);
+    printf("✓ test_stack_drop_if_with_cmp passed\n");
+}
+
+/**
+ * Test: stack.drop_if with stack underflow
+ *
+ * Assembly source (test_stack_drop_if_underflow.asm):
+ *   push.i32 42
+ *   stack.drop_if
+ *   halt
+ *
+ * Expected behavior:
+ *   - Only one value on stack, but drop_if needs 2
+ *   - Should fail with SDDL2_STACK_UNDERFLOW
+ */
+static void test_stack_drop_if_underflow(void)
+{
+    const uint8_t* bytecode = BYTECODE_TEST_STACK_DROP_IF_UNDERFLOW;
+    size_t bytecode_size = BYTECODE_TEST_STACK_DROP_IF_UNDERFLOW_SIZE;
+
+    uint8_t input[] = "";
+
+    SDDL2_Segment_list segments;
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
+
+    SDDL2_Error err = SDDL2_execute_bytecode(
+            bytecode, bytecode_size, input, 0, &segments);
+
+    // Verify: should fail with underflow
+    assert(err == SDDL2_STACK_UNDERFLOW);
+
+    SDDL2_Segment_list_destroy(&segments);
+    printf("✓ test_stack_drop_if_underflow passed\n");
+}
+
 int main(void)
 {
     printf("Running SDDL2 Bytecode Execution Test...\n\n");
@@ -441,10 +633,17 @@ int main(void)
     test_push_stack_depth_empty();
     test_push_stack_depth_tracking();
     test_push_stack_depth_arithmetic();
+    test_stack_drop_if_true();
+    test_stack_drop_if_false();
+    test_stack_drop_if_nonzero();
+    test_stack_drop_if_negative();
+    test_stack_drop_if_with_cmp();
+    test_stack_drop_if_underflow();
 
     printf("\n✅ All bytecode execution tests passed!\n");
     printf("Verified: Load bytecode → Execute → Verify segments\n");
     printf("Verified: expect_true runtime behavior\n");
     printf("Verified: push.stack_depth runtime behavior\n");
+    printf("Verified: stack.drop_if runtime behavior\n");
     return 0;
 }

@@ -538,6 +538,15 @@ SDDL2_Error SDDL2_op_not(SDDL2_Stack* stack); // ~a
 SDDL2_Error SDDL2_op_drop(SDDL2_Stack* stack);
 
 /**
+ * Conditionally drop the top value from the stack based on a condition.
+ * Pops condition (I64), then pops and discards top value if condition is non-zero.
+ * Stack (condition true):  value condition -> (empty)
+ * Stack (condition false): value condition -> value
+ * Errors: StackUnderflow, TypeMismatch
+ */
+SDDL2_Error SDDL2_op_stack_drop_if(SDDL2_Stack* stack);
+
+/**
  * Duplicate the top value on the stack.
  * Stack: value -> value value
  * Errors: StackUnderflow, StackOverflow

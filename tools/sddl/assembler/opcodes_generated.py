@@ -2,7 +2,7 @@
 AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 
 Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-Generated at: 2025-11-14 04:51:22 UTC
+Generated at: 2025-11-14 05:07:12 UTC
 Generator: generate_opcodes.py
 
 To regenerate: python3 generate_opcodes.py
@@ -70,6 +70,7 @@ INSTRUCTIONS = {
     "stack.drop": ("STACK", 0x0003, []),
     "stack.swap": ("STACK", 0x0004, []),
     "stack.rot": ("STACK", 0x0005, []),
+    "stack.drop_if": ("STACK", 0x0010, []),
 
     # MATH family (0x0002)
     "math.add": ("MATH", 0x0001, []),

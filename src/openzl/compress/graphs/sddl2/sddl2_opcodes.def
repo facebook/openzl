@@ -116,6 +116,8 @@
   stack.drop 0x0003         "Remove top stack value"
   stack.swap 0x0004         "Swap top two stack values"
   stack.rot  0x0005         "Rotate top three stack values"
+  # Conditional operations: 0x0010+
+  stack.drop_if  0x0010     "Pop I64 condition, then pop and discard top value if condition is non-zero (true)"
 
 @family TYPE 0x0008 "Type operations"
   type.fixed_array  0x0001  "Pop I64 (count), pop Type, push Type with width multiplied by count"

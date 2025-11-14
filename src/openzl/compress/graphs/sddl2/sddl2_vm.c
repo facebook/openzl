@@ -613,6 +613,19 @@ SDDL2_Error SDDL2_op_drop(SDDL2_Stack* stack)
     return SDDL2_Stack_pop(stack, &val);
 }
 
+SDDL2_Error SDDL2_op_stack_drop_if(SDDL2_Stack* stack)
+{
+    int64_t condition;
+    SDDL2_TRY(pop_i64(stack, &condition));
+    
+    if (condition != 0) {
+        SDDL2_Value val;
+        return SDDL2_Stack_pop(stack, &val);
+    }
+    
+    return SDDL2_OK;
+}
+
 SDDL2_Error SDDL2_op_dup(SDDL2_Stack* stack)
 {
     SDDL2_Value val;

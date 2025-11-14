@@ -104,6 +104,7 @@ static const SDDL2_Stack_op_entry LOGIC_OP_MAP[] = {
  */
 static const SDDL2_Stack_op_entry STACK_OP_MAP[] = {
     { SDDL2_OP_STACK_DROP, SDDL2_op_drop },
+    { SDDL2_OP_STACK_DROP_IF, SDDL2_op_stack_drop_if },
     { SDDL2_OP_STACK_DUP, SDDL2_op_dup },
     { SDDL2_OP_STACK_SWAP, SDDL2_op_swap },
 };

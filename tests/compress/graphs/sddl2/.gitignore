@@ -10,6 +10,7 @@ sddl2_load_test
 sddl2_logic_test
 sddl2_segments_test
 sddl2_stack_depth_test
+sddl2_stack_drop_if_test
 sddl2_structure_segment_test
 sddl2_structure_split_integration_test
 sddl2_tagged_segments_test
