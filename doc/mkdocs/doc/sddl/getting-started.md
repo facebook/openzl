@@ -236,6 +236,7 @@ items: Item[num_items]  # Use the extracted value
 ```
 
 Variables are:
+
 - **Immutable** - Once set, they can't be changed
 - **Immediate** - They're evaluated as soon as their dependencies are available
 - **Local to their scope** - Variables at the top level are available to all subsequent fields

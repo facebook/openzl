@@ -128,6 +128,7 @@ Record Block(size) = {
 ```
 
 This ensures the record is at least 100 bytes, then rounds up to the next multiple of 16. If `size` is 50:
+
 1. `pad_to 100` makes it 100 bytes
 2. `pad_align 16` rounds 100 up to 112 bytes (next multiple of 16)
 
@@ -328,25 +329,30 @@ The first is instant-parse because alignment is known from the parameter. The se
 SDDL provides three mechanisms for controlling layout:
 
 **`align(n)`:**
+
 - Aligns a field to an n-byte boundary
 - Adds padding before the field if needed
 - Common values: 4, 8, 16, 64
 
 **`pad_to n`:**
+
 - Ensures a record is exactly n bytes
 - Adds padding at the end
 - Format error if record is naturally larger than n
 
 **`pad_align n`:**
+
 - Rounds record size up to next multiple of n
 - Adds padding at the end
 - Always succeeds (never a format error)
 
 **Combining:**
+
 - `pad_to` is applied first, then `pad_align`
 - Both can use parameters for instant-parse
 
 **Key Points:**
+
 - Padding bytes are "don't care" values
 - Alignment propagates through nested structures
 - Parameters keep alignment instant-parse

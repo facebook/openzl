@@ -22,6 +22,7 @@ Record Header(payload_size) = {
 ```
 
 The layout of this record is fully determined by the `payload_size` parameter. Given that parameter, you can compute:
+
 - Magic starts at offset 0
 - Version starts at offset 4
 - Payload starts at offset 6
@@ -440,16 +441,19 @@ packet: Packet(has_crc)
 Instant-parse is a fundamental concept in SDDL:
 
 **Definition:**
+
 - Instant-parse types have layout computable from parameters alone
 - Requires-scan types need sequential parsing to determine layout
 
 **When Scanning Is Required:**
+
 - Dependencies on parsed fields
 - Delimiter-based constructs
 - State-dependent functions
 - Transitivity: any component requiring scan makes the whole require scan
 
 **The `@instant_parse` Annotation:**
+
 - Documents instant-parse requirements
 - Enforces compile-time verification
 - Provides clear diagnostics when violated

@@ -137,6 +137,7 @@ var value = switch selector {
 ```
 
 **Rules:**
+
 - All cases must return the same type
 - Overlapping ranges cause a format error
 - No match without `default` causes a data error

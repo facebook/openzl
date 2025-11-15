@@ -1,6 +1,7 @@
 # SDDL (Simple Data Description Language) — Specification v0.6
 
 SDDL describes binary file formats that can then be exploited by a downstream process, such as compression or transformation.
+This document is meant to be read by a LLM, to teach it how to write an SDDL specification.
 
 ---
 

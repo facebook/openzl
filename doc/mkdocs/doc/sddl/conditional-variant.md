@@ -350,6 +350,7 @@ Record Frame(type, size) = {
 Record Header() = { magic: Bytes(4), version: UInt16LE }
 Record Packet() = { header: Header, data: Bytes(256) }
 ```
+
 - Reusable across multiple records
 - Self-documenting (type has a name)
 - Can be tested independently
@@ -361,6 +362,7 @@ Record Packet() = {
   data: Bytes(256)
 }
 ```
+
 - Keeps definition close to usage
 - Less namespace pollution
 - Not reusable
@@ -555,23 +557,27 @@ Record Good(type) = {
 SDDL provides two mechanisms for describing variant and optional data:
 
 **Conditional Fields (`when`):**
+
 - Makes fields optional based on conditions
 - Parameter-based conditions are instant-parse
 - Field-based conditions require scanning
 - Multiple conditions can be true simultaneously
 
 **Unions:**
+
 - Represents "exactly one of many" choices
 - Selector determines which case is active
 - Always include `default` for robustness
 - Instant-parse when selector is a parameter
 
 **Enums:**
+
 - Named constants for discriminators and flags
 - Improve readability
 - Work with unions and conditions
 
 **Key Points:**
+
 - Instant-parse requires parameter-based selectors/conditions
 - Field-based selectors/conditions require scanning
 - Overlapping union cases are format errors

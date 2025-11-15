@@ -15,12 +15,14 @@ SDDL provides a small set of primitive types for describing binary data. Every t
 SDDL supports signed and unsigned integers in multiple sizes:
 
 **Signed Integers:**
+
 - `Int8` - 8-bit signed integer (-128 to 127)
 - `Int16LE` / `Int16BE` - 16-bit signed integer, little/big-endian
 - `Int32LE` / `Int32BE` - 32-bit signed integer, little/big-endian
 - `Int64LE` / `Int64BE` - 64-bit signed integer, little/big-endian
 
 **Unsigned Integers:**
+
 - `UInt8` - 8-bit unsigned integer (0 to 255)
 - `UInt16LE` / `UInt16BE` - 16-bit unsigned integer, little/big-endian
 - `UInt32LE` / `UInt32BE` - 32-bit unsigned integer, little/big-endian
@@ -163,6 +165,7 @@ data: FixedArray(size)
 ```
 
 The `count` parameter is passed when instantiating the record. Parameters can be:
+
 - Used in array sizes: `values: Int32LE[count]`
 - Used in `Bytes` sizes: `data: Bytes(count)`
 - Used in expressions: `data: Bytes(count * 2)`
@@ -208,6 +211,7 @@ Record Data() = {
 Use `_` when a field exists in the binary format but you don't need to reference it later.
 
 **Field name rules:**
+
 - Must start with a letter or underscore
 - Can contain letters, numbers, and underscores
 - Are case-sensitive (`count` and `Count` are different)
@@ -497,6 +501,7 @@ Understanding SDDL's lexical structure helps you write correct specifications.
 Identifiers name fields, records, variables, and parameters.
 
 **Rules:**
+
 - Start with a letter (`a-z`, `A-Z`) or underscore (`_`)
 - Contain letters, digits, and underscores
 - Are case-sensitive
@@ -670,22 +675,26 @@ This example demonstrates:
 This chapter covered SDDL's core concepts in detail:
 
 **Types:**
+
 - All integers and floats require explicit endianness (except single-byte types)
 - `Bytes(n)` for raw data
 - Type system is deliberately small and focused
 
 **Records:**
+
 - Organize structure and enable reuse
 - Parameters make records flexible
 - Can be nested or defined inline
 - Create scopes for fields and variables
 
 **Validation:**
+
 - `expect` statements assert conditions
 - `where` clauses validate individual fields
 - Validation affects instant-parse status
 
 **Lexical Structure:**
+
 - Identifiers follow standard rules
 - Newline-terminated statements at top level
 - Comma-separated items in blocks

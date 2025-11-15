@@ -309,29 +309,34 @@ Record Descriptor() = {
 ## Summary
 
 **Variables:**
+
 - Declared with `var name = expression`
 - Immutable once created
 - Scoped to containing record or top-level
 - Instant-parse when depending on parameters/constants only
 
 **Expressions:**
+
 - 64-bit signed integer arithmetic
 - Bitwise operations for flag manipulation
 - Comparison and logical operators
 - C11 operator precedence
 
 **Switch Expressions:**
+
 - Multi-way value selection
 - Support literals, multiple values, ranges
 - Require `default` to avoid data errors
 
 **Standard Functions:**
+
 - Mathematical: `abs`, `min`, `max`, `clamp`, `sgn`
 - Range checking: `between`
 - Alignment: `ceil_div`, `align_up`
 - Size/position: `sizeof` (instant-parse), `size`, `current_position`, `scope_remaining` (require scan)
 
 **Error Handling:**
+
 - Overflow causes format error
 - Division by zero causes format error
 

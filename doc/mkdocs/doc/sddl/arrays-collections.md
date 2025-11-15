@@ -19,6 +19,7 @@ colors: RGB[256]               # 256 RGB color entries
 ```
 
 The number in brackets specifies how many elements to parse. This can be:
+
 - **A literal constant:** `Int32LE[100]`
 - **A parameter:** `Int32LE[count]` where `count` is a record parameter
 - **A variable:** `Int32LE[num_items]` where `num_items` was defined with `var`
@@ -539,21 +540,25 @@ expect count <= 10000  # Sanity check on array size
 Arrays in SDDL handle repeated data efficiently:
 
 **Fixed-Size Arrays:**
+
 - Specify exact element count with `Type[count]`
 - Can use constants, parameters, variables, or expressions
 - Support multi-dimensional arrays
 - Are instant-parse when size depends only on parameters
 
 **Auto-Sized Arrays:**
+
 - Use `Type[]` to read until end of scope
 - Require `scan` keyword when elements need scanning
 - Useful for formats without explicit counts
 
 **Structure-of-Arrays:**
+
 - Use `soa Type[count]` to indicate that same-type fields are together
 - Requires instant-parse element types
 
 **Performance:**
+
 - Instant-parse arrays enable parallelism and zero-copy
 - Choose layout based on access patterns and compression needs
 
