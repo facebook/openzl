@@ -2,7 +2,7 @@
 
 *Chapter 8 - Computing derived values*
 
-SDDL allows computing derived values during parsing using variables and expressions. This chapter covers the `var` statement, expression syntax, standard functions, and how these features interact with instant-parse.
+SDDL allows computing derived values during parsing using variables and expressions. This chapter covers the `var` statement, expression syntax, standard functions, and how these features interact with instant-parse. Need a concrete spec that leans on these tools? Jump to the [coverage map entry for derived values](real-formats.md#coverage-var).
 
 ---
 
@@ -308,45 +308,12 @@ Record Descriptor() = {
 
 ## Summary
 
-**Variables:**
-
-- Declared with `var name = expression`
-- Immutable once created
-- Scoped to containing record or top-level
-- Instant-parse when depending on parameters/constants only
-
-**Expressions:**
-
-- 64-bit signed integer arithmetic
-- Bitwise operations for flag manipulation
-- Comparison and logical operators
-- C11 operator precedence
-
-**Switch Expressions:**
-
-- Multi-way value selection
-- Support literals, multiple values, ranges
-- Require `default` to avoid data errors
-
-**Standard Functions:**
-
-- Mathematical: `abs`, `min`, `max`, `clamp`, `sgn`
-- Range checking: `between`
-- Alignment: `ceil_div`, `align_up`
-- Size/position: `sizeof` (instant-parse), `size`, `current_position`, `scope_remaining` (require scan)
-
-**Error Handling:**
-
-- Overflow causes format error
-- Division by zero causes format error
-
-**Key Insight:**
-Variables and expressions referencing parameters or constants maintain instant-parse status. References to parsed fields require scanning.
+Variables let you capture derived values or parameters for later use; they are immutable and stay instant-parse as long as they depend only on parameters or constants. Expressions follow 64-bit signed arithmetic rules, include bitwise/logical operators with C11 precedence, and can be organized via switch expressions when multi-way selection is needed. Standard functions cover math, range checks, and alignment helpers; `sizeof` works only for instant-parse constructs, while `size(field)` and position helpers require scanning. Overflow and division-by-zero remain format errors, so guard derived values accordingly.
 
 ---
 
-## Next Steps
+## Where to Go Next
 
-- **[Best Practices](best-practices.md)** - Guidelines for effective SDDL
-- **[Real-World Formats](real-formats.md)** - Complete format examples
-- **[Reference](reference.md)** - Complete language reference
+- **[Best Practices](best-practices.md)** to see how validation and expressions interact in full specs.
+- **[Real-World Formats](real-formats.md)** for examples that combine variables with complex layouts.
+- **[Reference](reference.md)** when you need a concise lookup for syntax and functions.

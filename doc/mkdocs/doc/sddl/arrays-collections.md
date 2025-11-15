@@ -1,8 +1,10 @@
 # Arrays and Collections
 
-*Chapter 4 - Working with repeated data*
+*Chapter 5 - Working with repeated data*
 
 Arrays are fundamental to binary format descriptions. Most real-world formats contain sequences of repeated structures—pixels in images, samples in audio, records in databases. This chapter explores how SDDL handles arrays, from simple fixed-size collections to complex structure-of-arrays layouts.
+
+Because arrays repeat the same type many times, they amplify whatever instant-parse behavior that type has. An element that takes a small scan penalty once will take it thousands of times inside an array. The previous chapter's instant-parse rules are the lens through which we evaluate array performance. For concrete specs that use these layouts, see the coverage map entries for [fixed arrays](real-formats.md#coverage-arrays-fixed), [parameterized arrays](real-formats.md#coverage-arrays-parameter), and [auto-sized arrays](real-formats.md#coverage-arrays-auto); a future row tracks the pending example for [`scan`-based arrays](real-formats.md#coverage-scan).
 
 ---
 
@@ -521,6 +523,8 @@ variable: scan Variable[count]
 
 The first example allows parallel processing and zero-copy optimizations. The second requires sequential scanning.
 
+This difference compounds with scale. If `Variable` appears once, the scan cost is small. If it appears 50,000 times in an array, the runtime must evaluate `size` 50,000 times and cannot jump directly to record `i` without walking through the previous `i - 1` records. For compressors and other downstream tools, that means lower throughput and weaker opportunities for parallelism.
+
 ## Array Validation
 
 You can validate array properties:
@@ -537,38 +541,12 @@ expect count <= 10000  # Sanity check on array size
 
 ## Summary
 
-Arrays in SDDL handle repeated data efficiently:
-
-**Fixed-Size Arrays:**
-
-- Specify exact element count with `Type[count]`
-- Can use constants, parameters, variables, or expressions
-- Support multi-dimensional arrays
-- Are instant-parse when size depends only on parameters
-
-**Auto-Sized Arrays:**
-
-- Use `Type[]` to read until end of scope
-- Require `scan` keyword when elements need scanning
-- Useful for formats without explicit counts
-
-**Structure-of-Arrays:**
-
-- Use `soa Type[count]` to indicate that same-type fields are together
-- Requires instant-parse element types
-
-**Performance:**
-
-- Instant-parse arrays enable parallelism and zero-copy
-- Choose layout based on access patterns and compression needs
-
-Arrays are fundamental to binary formats, and SDDL provides flexible, performant mechanisms for handling them.
+Arrays cover a few different patterns: fixed counts (`Type[count]`), parameterized counts that remain instant-parse, auto-sized arrays (`Type[]`) that read to the end of scope, and structure-of-arrays layouts (`soa Type[count]`). Auto-sized arrays require `scan` when element sizes depend on parsed data, while instant-parse arrays can be processed randomly or in parallel. Choose the form that matches the source format: constants or parameters when you know the length up front, auto-sized arrays when the file omits counts, and `soa` when downstream tooling benefits from field-wise storage.
 
 ---
 
-## Next Steps
+## Where to Go Next
 
-- **[Understanding Instant-Parse](instant-parse.md)** - Deep dive into performance characteristics
-- **[Advanced Layout Control](layout-control.md)** - Alignment, padding, and memory layout details
-- **[Conditional & Variant Data](conditional-variant.md)** - Unions and conditional fields
-- **[Variables and Expressions](variables-expressions.md)** - Computing derived values
+- **[Alignment and Padding](alignment-padding.md)** for padding directives that interact with arrays.
+- **[Conditional & Variant Data](conditional-variant.md)** if array elements are optional or variant.
+- **[Variables and Expressions](variables-expressions.md)** to compute sizes and indices.

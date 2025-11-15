@@ -6,91 +6,84 @@ This chapter presents complete SDDL descriptions for real-world formats, demonst
 
 ---
 
+<a id="coverage-map"></a>
+## Coverage Map
+
+Use this table to jump from a language concept to the simplest full example that demonstrates it in context.
+
+| Concept | Example |
+| --- | --- |
+| <a id="coverage-expect"></a>`expect` validation | [SAO Catalog (Introduction)](introduction.md#a-more-complex-example) |
+| <a id="coverage-where"></a>`where` inline validation | [Example 1: WAVE PCM](#example-1-wave-pcm-audio-16-bit-mono-stereo) |
+| <a id="coverage-arrays-fixed"></a>Fixed-size arrays | [Example 1: WAVE PCM](#example-1-wave-pcm-audio-16-bit-mono-stereo) |
+| <a id="coverage-arrays-parameter"></a>Parameterized record arrays | [SAO Catalog (Introduction)](introduction.md#a-more-complex-example) |
+| <a id="coverage-arrays-auto"></a>Auto-sized arrays | [SAO simple example (Introduction)](introduction.md#a-short-example) |
+| <a id="coverage-var"></a>`var` derived values | [SAO Catalog (Introduction)](introduction.md#a-more-complex-example) |
+| <a id="coverage-align-up"></a>`align_up` row padding | [Example 2: BMP 24-bit](#example-2-bmp-image-24-bit-rgb-uncompressed) |
+| <a id="coverage-align-directive"></a>`align(n)` directive | Not yet covered – see [Alignment chapter](alignment-padding.md#field-alignment-with-alignn) |
+| <a id="coverage-pad-to"></a>`pad_to` sized scopes | [Example 3: WAVE Extended](#example-3-wave-audio-extended-format-support) |
+| <a id="coverage-pad-align"></a>`pad_align` record padding | [Example 2: BMP 24-bit](#example-2-bmp-image-24-bit-rgb-uncompressed) |
+| <a id="coverage-when-then"></a>`when ... then` conditionals | [SAO Catalog (Introduction)](introduction.md#a-more-complex-example) |
+| <a id="coverage-when-block"></a>`when { ... }` conditionals | [SAO Catalog (Introduction)](introduction.md#a-more-complex-example) |
+| <a id="coverage-unions"></a>Variant unions & dispatch | [Example 3: WAVE Extended](#example-3-wave-audio-extended-format-support) |
+| <a id="coverage-enums"></a>Enums, `in`, switch expressions | [Example 3: WAVE Extended](#example-3-wave-audio-extended-format-support) |
+| <a id="coverage-size-checks"></a>`size(field)` function | [Example 2: BMP 24-bit](#example-2-bmp-image-24-bit-rgb-uncompressed) |
+| <a id="coverage-sizeof"></a>`sizeof()` static size checks | [SAO Catalog (Introduction)](introduction.md#a-more-complex-example) |
+| <a id="coverage-soa"></a>`soa` structure-of-arrays layout | Not yet covered – see [Arrays chapter](arrays-collections.md#structure-of-arrays-layout) |
+| <a id="coverage-delimiter"></a>Delimiter-based fields (`Bytes until ...`) | Not yet covered – see [Core Concepts](core-concepts.md#delimiter-based-parsing) |
+| <a id="coverage-scan"></a>`scan` keyword for arrays | Not yet covered – see [Arrays chapter](arrays-collections.md#auto-sized-arrays) |
+| <a id="coverage-annotations"></a>Annotations (`@instant_parse`, `@err_msg`, etc.) | Not yet covered – see [Annotations section](sddl-for-llm.md#10-annotations) |
+
+---
+
 ## Example 1: WAVE PCM Audio (16-bit, Mono/Stereo)
 
 **Format Restrictions:**
 
-This example describes a subset of the WAVE format with these constraints:
-
-**Supported:**
-
-- PCM (uncompressed) audio only
-- 16-bit samples only
-- Mono (1 channel) or Stereo (2 channels) only
-- Standard 16-byte fmt chunk
-- Immediate data chunk after fmt (no other chunks in between)
-
-**Not Supported (will be rejected):**
-
-- Compressed formats (MP3, ADPCM, μ-law, A-law, etc.)
-- Other bit depths (8-bit, 24-bit, 32-bit float)
-- Multi-channel/surround (3+ channels)
-- Extended fmt chunks (size > 16 bytes)
-- Additional chunks between fmt and data (LIST, INFO, etc.)
-- Extra chunks after data chunk
+This example covers the WAVE subset used most often in practice. Only PCM audio is accepted, with 16-bit samples and either mono or stereo layouts. The format expects the standard 16-byte `fmt` chunk immediately followed by `data`, so files with extended `fmt` payloads, intermediate metadata chunks, or extra data after `data` are rejected. Non-PCM encodings (MP3, μ-law, etc.), alternative bit depths, and layouts with more than two channels are likewise treated as invalid.
 
 **What This Example Teaches:**
 
-- Using `expect` statements to validate field values
-- Computing array sizes from header fields (`data_size / 2`)
-- Validating derived values (`byte_rate`, `block_align`)
-- Sequential chunk parsing (RIFF container structure)
-- Rejecting non-conforming files explicitly
+The spec shows how to use `where` clauses on each chunk field, compute array lengths from header values, and validate derived quantities such as `byte_rate` and `block_align`. It demonstrates straightforward RIFF parsing: verify the chunk IDs in order, enforce the size expectations, and then read the sample array according to the recorded length.
 
 ```sddl
 # WAVE PCM 16-bit Mono/Stereo Format
 
 # RIFF Chunk
-magic: Bytes(4)
-expect magic == "RIFF"
+magic: Bytes(4) where magic == "RIFF"
 
 file_size: UInt32LE  # Size of rest of file
 
-wave_id: Bytes(4)
-expect wave_id == "WAVE"
+wave_id: Bytes(4) where wave_id == "WAVE"
 
 # Format Chunk
-fmt_id: Bytes(4)
-expect fmt_id == "fmt "
+fmt_id: Bytes(4) where fmt_id == "fmt "
 
-fmt_size: UInt32LE
-expect fmt_size == 16  # PCM format chunk is 16 bytes (rejects extended)
+fmt_size: UInt32LE where fmt_size == 16  # PCM format chunk is 16 bytes (rejects extended)
 
-audio_format: UInt16LE
-expect audio_format == 1  # 1 = PCM (rejects compressed formats)
+audio_format: UInt16LE where audio_format == 1  # 1 = PCM (rejects compressed formats)
 
-num_channels: UInt16LE
-expect num_channels == 1 or num_channels == 2  # Mono or stereo only
+num_channels: UInt16LE where num_channels == 1 or num_channels == 2  # Mono or stereo only
 
 sample_rate: UInt32LE  # Any sample rate accepted
 
-byte_rate: UInt32LE
-expect byte_rate == sample_rate * num_channels * 2  # Bytes per second
+byte_rate: UInt32LE where byte_rate == sample_rate * num_channels * 2  # Bytes per second
 
-block_align: UInt16LE
-expect block_align == num_channels * 2  # Bytes per sample frame
+block_align: UInt16LE where block_align == num_channels * 2  # Bytes per sample frame
 
-bits_per_sample: UInt16LE
-expect bits_per_sample == 16  # 16-bit only
+bits_per_sample: UInt16LE where bits_per_sample == 16  # 16-bit only
 
 # Data Chunk
-data_id: Bytes(4)
-expect data_id == "data"
+data_id: Bytes(4) where data_id == "data"
 
 data_size: UInt32LE
 
 samples: Int16LE[data_size / 2]  # 16-bit = 2 bytes per sample
 ```
 
-**What gets rejected (data errors):**
+**Validation and Rejection:**
 
-- Files with bit depths other than 16-bit: `expect bits_per_sample == 16`
-- Compressed audio (MP3, ADPCM, etc.): `expect audio_format == 1`
-- Multi-channel audio (3+ channels): `expect num_channels == 1 or num_channels == 2`
-- Incorrect byte_rate: `expect byte_rate == sample_rate * num_channels * 2`
-- Incorrect block_align: `expect block_align == num_channels * 2`
-- Wrong chunk ordering (e.g., metadata between fmt and data): `expect data_id == "data"`
-- Extra chunks after the data chunk (unconsumed data causes error)
+Any violation of the `where` predicates produces a data error: mismatched magic numbers, compressed formats (`audio_format != 1`), unsupported bit depths, channel counts outside {1,2}, or inconsistent `byte_rate`/`block_align`. The parser also fails if the chunk order differs from `RIFF → fmt → data` or if extra data remains after the samples.
 
 ---
 
@@ -98,37 +91,17 @@ samples: Int16LE[data_size / 2]  # 16-bit = 2 bytes per sample
 
 **Format Restrictions:**
 
-This example describes a subset of the BMP format with these constraints:
-
-**Supported:**
-
-- 24-bit RGB uncompressed only
-- Standard 40-byte BITMAPINFOHEADER
-- Bottom-up pixel ordering only (positive height)
-- Single image plane
-
-**Not Supported (will be rejected):**
-
-- Other bit depths (1-bit, 4-bit, 8-bit indexed, 16-bit, 32-bit)
-- Compressed formats (RLE4, RLE8, etc.)
-- Other header types (OS/2 BMP, BITMAPV4HEADER, BITMAPV5HEADER)
-- Top-down images (negative height)
-- Color palettes
-- Multiple planes
+This BMP description focuses on standard 24-bit RGB images with a BITMAPINFOHEADER. The parser accepts only bottom-up images (positive height), single-plane data, and the canonical 40-byte header. Indexed color depths, compressed variants (RLE4/8), OS/2 headers, and top-down layouts are rejected. Because the spec models scanlines explicitly, it enforces the 4-byte row alignment required by the format and ignores palette metadata.
 
 **What This Example Teaches:**
 
-- Computing array sizes with alignment (`align_up` for 4-byte row padding)
-- Using `var` statements for derived calculations
-- Validating multiple header fields
-- Handling row padding in image formats
+The example shows how to validate each header field with `where`, describe RGB pixels as their own record, and wrap them in a `Scanline` that uses `pad_align 4` to satisfy row alignment. It also demonstrates shape checks by comparing `image_size` against `size(pixel_rows)` instead of re-deriving padding math.
 
 ```sddl
 # BMP 24-bit RGB Uncompressed Format
 
 # File Header (14 bytes)
-magic: Bytes(2)
-expect magic == "BM"
+magic: Bytes(2) where magic == "BM"
 
 file_size: UInt32LE
 
@@ -138,23 +111,17 @@ reserved2: UInt16LE
 pixel_data_offset: UInt32LE
 
 # Info Header (40 bytes - BITMAPINFOHEADER)
-header_size: UInt32LE
-expect header_size == 40  # Standard BITMAPINFOHEADER only
+header_size: UInt32LE where header_size == 40  # Standard BITMAPINFOHEADER only
 
-width: Int32LE
-expect width > 0
+width: Int32LE where width > 0
 
-height: Int32LE
-expect height > 0  # Bottom-up only (top-down uses negative height)
+height: Int32LE where height > 0  # Bottom-up only (top-down uses negative height)
 
-planes: UInt16LE
-expect planes == 1
+planes: UInt16LE where planes == 1
 
-bits_per_pixel: UInt16LE
-expect bits_per_pixel == 24  # 24-bit RGB only
+bits_per_pixel: UInt16LE where bits_per_pixel == 24  # 24-bit RGB only
 
-compression: UInt32LE
-expect compression == 0  # BI_RGB (uncompressed) only
+compression: UInt32LE where compression == 0  # BI_RGB (uncompressed) only
 
 image_size: UInt32LE  # Can be 0 for uncompressed
 
@@ -164,69 +131,39 @@ y_pixels_per_meter: Int32LE
 colors_used: UInt32LE
 colors_important: UInt32LE
 
-# Pixel Data
-var bytes_per_pixel = 3  # 24-bit = 3 bytes
-var row_size_unpadded = width * bytes_per_pixel
-var row_size_padded = align_up(row_size_unpadded, 4)  # Rows aligned to 4 bytes
-var total_pixel_data = row_size_padded * height
+# Pixel Data Structures
+Record RGB() = {
+  blue:  UInt8,
+  green: UInt8,
+  red:   UInt8
+}
 
-pixel_data: Bytes(total_pixel_data)
+Record Scanline(width) = {
+  pixels: RGB[width]
+} pad_align 4  # Rows padded to 4-byte boundaries
+
+# Pixel Data
+pixel_rows: Scanline(width)[height]
+expect image_size == 0 or image_size == size(pixel_rows)
 ```
 
-**What gets rejected (data errors):**
+**Validation and Rejection:**
 
-- Non-BMP files: `expect magic == "BM"`
-- Extended or non-standard headers: `expect header_size == 40`
-- Non-positive dimensions: `expect width > 0`, `expect height > 0`
-- Top-down images (negative height): `expect height > 0`
-- Non-RGB formats (8-bit indexed, 16-bit, 32-bit): `expect bits_per_pixel == 24`
-- Compressed formats (RLE, etc.): `expect compression == 0`
-- Invalid planes: `expect planes == 1`
-- Extra data after pixel data (unconsumed data causes error)
+Files fail parsing when any header predicate is violated (wrong magic, alternative header size, negative dimensions, plane count not equal to 1, wrong bit depth, compression enabled). The spec also raises a data error if the pixel payload length does not match `size(pixel_rows)` or if trailing bytes remain after the rows are parsed.
 
 ---
 
 ## Example 3: WAVE Audio (Extended Format Support)
 
-**Format Restrictions:**
+**Format Scope:**
 
-This example describes a much broader subset of WAVE than Example 1, covering ~90% of common WAVE files:
+This specification targets the broad range of uncompressed WAVE files used in practice: PCM data from 8 to 32 bits, IEEE_FLOAT recordings at 32 or 64 bits, and EXTENSIBLE files whose subformat GUID resolves to PCM or FLOAT. It accepts one to eight channels and sample rates between 8 kHz and 384 kHz. Extended `fmt` payloads are parsed when present, and every `fmt`/`data` chunk is padded to even-byte boundaries.
 
-**Supported:**
+The parser rejects RF64/RIFX containers, compressed formats, EXTENSIBLE files with unsupported GUIDs, more than eight channels, atypical sample rates, and any file that inserts extra chunks between `fmt` and `data` or repeats either chunk. It also ensures `ValidBitsPerSample` matches `BitsPerSample` in EXTENSIBLE headers.
 
-- **PCM (format 1)**: 8-bit, 16-bit, 24-bit, 32-bit
-- **IEEE_FLOAT (format 3)**: 32-bit, 64-bit
-- **EXTENSIBLE (format 0xFFFE)**: PCM and IEEE_FLOAT subtypes only (via GUID)
-- **Channels**: 1 to 8 channels
-- **Sample rates**: 8 kHz to 384 kHz
-- **Extended fmt chunks** (for IEEE_FLOAT and EXTENSIBLE formats)
-- **Even-byte chunk padding** (per RIFF specification)
+**Concepts Illustrated:**
 
-**Not Supported (will be rejected):**
-
-- RF64 or RIFX (big-endian) containers
-- Compressed formats (ADPCM, MP3, μ-law, A-law, etc.)
-- EXTENSIBLE with non-PCM/non-FLOAT subtypes
-- More than 8 channels
-- Sample rates outside 8-384 kHz range
-- Additional chunks (fact, LIST, INFO, cue, etc.)
-- Multiple fmt or data chunks
-- Chunks in wrong order (data must immediately follow fmt)
-- ValidBitsPerSample ≠ BitsPerSample in EXTENSIBLE format
-
-**What This Example Teaches (beyond Examples 1 & 2):**
-
-- **`enum` definitions** for named constants (`WaveFormat`)
-- **`in` operator** for enum membership testing (`expect core.AudioFormat in WaveFormat`)
-- **`when` with braces** for grouping multiple statements in conditionals
-- **`pad_to`** for size-bounded records (enforcing chunk sizes)
-- **`pad_align`** for chunk alignment (even-byte RIFF boundaries)
-- **Nested unions** (unions within unions for sample types)
-- **Nested switch expressions** (EXTENSIBLE format resolution)
-- **GUID validation** (comparing 16-byte arrays)
-- **`size()` function** for validating container sizes
-- **Complex multi-level validation** with interdependent fields
-- **Record decomposition** for managing complexity
+This example combines enums and the `in` operator for dispatch, grouped `when { ... }` checks, `pad_to`/`pad_align` for chunk sizing, nested unions for sample data, and switch expressions to resolve EXTENSIBLE GUIDs. It also demonstrates GUID validation, use of `size()` to confirm RIFF container sizes, and layered validation to keep `fmt`, `data`, and derived fields consistent.
 
 ```sddl
 # WAVE Extended Format - PCM/FLOAT (1-8 channels, 8-384kHz)
@@ -486,9 +423,8 @@ These three examples show SDDL's core features in action:
 
 ---
 
-## Next Steps
+## Where to Go Next
 
-- **[Reference](reference.md)** - Complete language reference
-- Review actual format specifications for formats you need to describe
-- Test descriptions against real files
-- Iterate based on what works
+- **[Reference](reference.md)** for a concise syntax summary while writing specs.
+- Revisit the chapter that matches the feature you need (arrays, conditionals, etc.) and compare with these examples.
+- Validate your own SDDL files against real data to confirm the structure.

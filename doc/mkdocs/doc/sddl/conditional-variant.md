@@ -2,7 +2,7 @@
 
 *Chapter 7 - Unions and conditional fields*
 
-Binary formats often contain optional fields, variant data, or structures that vary by version or type. This chapter covers SDDL's constructs for describing these patterns: conditional fields with `when` and variant data with `Union`.
+Binary formats often contain optional fields, variant data, or structures that vary by version or type. This chapter covers SDDL's constructs for describing these patterns: conditional fields with `when` and variant data with `Union`. Refer to the [coverage map entries for conditional fields](real-formats.md#coverage-when-then) and [variant unions](real-formats.md#coverage-unions) whenever you need a full specification that uses these features.
 
 ---
 
@@ -189,12 +189,13 @@ Union StrictMessage(msg_type) = {
 
 Overlapping ranges are a format error:
 
-```sddl
-Union Bad(type) = {
-  case 1..10: TypeA,
-  case 5..15: TypeB,   # ERROR: 5-10 overlap with first case!
-}
-```
+!!! danger "Format error example"
+    ```sddl
+    Union Bad(type) = {
+      case 1..10: TypeA,
+      case 5..15: TypeB,   # ERROR: 5-10 overlap with first case!
+    }
+    ```
 
 The compiler rejects this at compile time.
 
@@ -554,39 +555,12 @@ Record Good(type) = {
 
 ## Summary
 
-SDDL provides two mechanisms for describing variant and optional data:
-
-**Conditional Fields (`when`):**
-
-- Makes fields optional based on conditions
-- Parameter-based conditions are instant-parse
-- Field-based conditions require scanning
-- Multiple conditions can be true simultaneously
-
-**Unions:**
-
-- Represents "exactly one of many" choices
-- Selector determines which case is active
-- Always include `default` for robustness
-- Instant-parse when selector is a parameter
-
-**Enums:**
-
-- Named constants for discriminators and flags
-- Improve readability
-- Work with unions and conditions
-
-**Key Points:**
-
-- Instant-parse requires parameter-based selectors/conditions
-- Field-based selectors/conditions require scanning
-- Overlapping union cases are format errors
-- Use `default` to handle unknown values gracefully
+Use `when` to gate fields or blocks on conditions: parameter-based tests keep the construct instant-parse, while tests against local fields introduce scan requirements. Use `Union(selector)` when exactly one of several layouts is valid, supplying parameter-driven selectors whenever possible and a `default` case for robustness. Enums keep selectors and conditions readable and pair naturally with unions or `when`. Overlapping union ranges are format errors, so plan selector ranges carefully.
 
 ---
 
-## Next Steps
+## Where to Go Next
 
-- **[Variables and Expressions](variables-expressions.md)** - Computing derived values
-- **[Best Practices](best-practices.md)** - Guidelines for format evolution
-- **[Real-World Formats](real-formats.md)** - Complete format examples
+- **[Variables and Expressions](variables-expressions.md)** to compute selectors and condition flags.
+- **[Best Practices](best-practices.md)** for guidance on evolving formats that use conditionals.
+- **[Real-World Formats](real-formats.md)** to see unions and `when` blocks in context.

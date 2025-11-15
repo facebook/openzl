@@ -37,8 +37,8 @@ nav:
       - Introduction & Motivation: sddl/introduction.md
       - Getting Started: sddl/getting-started.md
       - Core Concepts: sddl/core-concepts.md
-      - Arrays and Collections: sddl/arrays-collections.md
       - Understanding Instant-Parse: sddl/instant-parse.md
+      - Arrays and Collections: sddl/arrays-collections.md
       - Advanced Layout Control: sddl/alignment-padding.md
       - Conditional & Variant Data: sddl/conditional-variant.md
       - Variables and Expressions: sddl/variables-expressions.md

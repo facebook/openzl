@@ -60,8 +60,8 @@ New to SDDL? Start with the [Introduction & Motivation](introduction.md) to unde
 1. **[Introduction & Motivation](introduction.md)** - Understanding SDDL's purpose and benefits
 2. **[Getting Started](getting-started.md)** - Your first SDDL file
 3. **[Core Concepts](core-concepts.md)** - Types, records, and validation
-4. **[Arrays and Collections](arrays-collections.md)** - Working with repeated data
-5. **[Understanding Instant-Parse](instant-parse.md)** - Performance and layout determinism
+4. **[Understanding Instant-Parse](instant-parse.md)** - Performance and layout determinism
+5. **[Arrays and Collections](arrays-collections.md)** - Working with repeated data
 6. **[Advanced Layout Control](alignment-padding.md)** - Alignment, padding, and memory optimization
 7. **[Conditional & Variant Data](conditional-variant.md)** - Handling dynamic structures
 8. **[Variables and Expressions](variables-expressions.md)** - Computing derived values

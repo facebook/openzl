@@ -672,41 +672,12 @@ This example demonstrates:
 
 ## Summary
 
-This chapter covered SDDL's core concepts in detail:
-
-**Types:**
-
-- All integers and floats require explicit endianness (except single-byte types)
-- `Bytes(n)` for raw data
-- Type system is deliberately small and focused
-
-**Records:**
-
-- Organize structure and enable reuse
-- Parameters make records flexible
-- Can be nested or defined inline
-- Create scopes for fields and variables
-
-**Validation:**
-
-- `expect` statements assert conditions
-- `where` clauses validate individual fields
-- Validation affects instant-parse status
-
-**Lexical Structure:**
-
-- Identifiers follow standard rules
-- Newline-terminated statements at top level
-- Comma-separated items in blocks
-- Comments with `#`
-
-These fundamentals form the foundation for all SDDL specifications. The following chapters build on these concepts to handle more complex scenarios.
+This chapter defined SDDL's building blocks: primitive and byte types with explicit endianness, records (with parameters and nesting), validation constructs (`expect`/`where`), and the lexical rules that make SDDL readable. With these pieces you can describe fixed structures and enforce invariants before moving on to layout determinism and advanced constructs.
 
 ---
 
-## Next Steps
+## Where to Go Next
 
-- **[Arrays and Collections](arrays-collections.md)** - Advanced array techniques and structure-of-arrays layout
-- **[Understanding Instant-Parse](instant-parse.md)** - Deep dive into performance characteristics
-- **[Advanced Layout Control](layout-control.md)** - Alignment, padding, and memory layout
-- **[Variables and Expressions](variables-expressions.md)** - Computing derived values and complex expressions
+- **[Understanding Instant-Parse](instant-parse.md)** to see how layout determinism affects parsing.
+- **[Arrays and Collections](arrays-collections.md)** for handling repeated data once you know the basics.
+- **[Alignment and Padding](alignment-padding.md)** when you need explicit layout control.

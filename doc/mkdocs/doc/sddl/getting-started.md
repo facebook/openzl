@@ -429,7 +429,7 @@ This **requires-scan** because the size of `payload` depends on the `size` field
 
 ### Why Does This Matter?
 
-Instant-parse formats can be parsed much faster. We'll explore this in detail in Chapter 5. For now, just be aware that:
+Instant-parse formats can be parsed much faster. We'll explore this in detail in Chapter 4. For now, just be aware that:
 
 - Parameters are instant-parse safe
 - References to local fields require scanning
@@ -441,10 +441,10 @@ Instant-parse formats can be parsed much faster. We'll explore this in detail in
 
 ### Mistake 1: Forgetting Endianness
 
-**Wrong:**
-```sddl
-value: Int32  # ERROR: No endianness specified
-```
+!!! danger "Wrong"
+    ```sddl
+    value: Int32  # ERROR: No endianness specified
+    ```
 
 **Right:**
 ```sddl
@@ -455,13 +455,13 @@ SDDL will reject any multi-byte type without explicit endianness.
 
 ### Mistake 2: Field Name Conflicts
 
-**Wrong:**
-```sddl
-Record Data() = {
-  value: Int32LE,
-  value: Float32LE  # ERROR: Duplicate field name
-}
-```
+!!! danger "Wrong"
+    ```sddl
+    Record Data() = {
+      value: Int32LE,
+      value: Float32LE  # ERROR: Duplicate field name
+    }
+    ```
 
 **Right:**
 ```sddl
@@ -475,16 +475,16 @@ Each field name must be unique within a record (except `_`, which can repeat for
 
 ### Mistake 3: Using Out-of-Scope Fields as Parameters
 
-**Wrong:**
-```sddl
-size: Int32LE
+!!! danger "Wrong"
+    ```sddl
+    size: Int32LE
 
-Record Container() = {
-  data: SubRecord(size)  # ERROR: Can't use out-of-scope field as parameter
-}
+    Record Container() = {
+      data: SubRecord(size)  # ERROR: Can't use out-of-scope field as parameter
+    }
 
-container: Container
-```
+    container: Container
+    ```
 
 **Right - Pass as parameter:**
 ```sddl
@@ -510,14 +510,14 @@ This makes the record require scanning, but it's perfectly valid.
 
 ### Mistake 4: Missing Comma in Records
 
-**Wrong:**
-```sddl
-Record Point() = {
-  x: Float32LE
-  y: Float32LE  # ERROR: Missing comma after x
-  z: Float32LE
-}
-```
+!!! danger "Wrong"
+    ```sddl
+    Record Point() = {
+      x: Float32LE
+      y: Float32LE  # ERROR: Missing comma after x
+      z: Float32LE
+    }
+    ```
 
 **Right:**
 ```sddl

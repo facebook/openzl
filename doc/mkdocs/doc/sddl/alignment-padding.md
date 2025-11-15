@@ -2,13 +2,14 @@
 
 *Chapter 6 - Layout constraints*
 
-Binary formats often have specific alignment and padding requirements. Hardware may require certain data types to start at aligned addresses, or formats may enforce fixed record sizes. This chapter explains how SDDL describes these layout constraints.
+Binary formats often have specific alignment and padding requirements. Hardware may require certain data types to start at aligned addresses, or formats may enforce fixed record sizes. This chapter explains how SDDL describes these layout constraints. For end-to-end examples, reference the [coverage map entry for `align_up`](real-formats.md#coverage-align-up) and the rows covering [`pad_to`](real-formats.md#coverage-pad-to) and [`pad_align`](real-formats.md#coverage-pad-align).
 
 ---
 
 ## Field Alignment with `align(n)`
 
 The `align(n)` modifier specifies that a field must start at an address that is a multiple of `n` bytes.
+Only power of 2 values are allowed for `n` (1, 2, 4, 8, 16, etc).
 
 ### Basic Syntax
 
@@ -98,12 +99,12 @@ Record Header() = {
 
 This `Header` is exactly 16 bytes. The natural size is 8 bytes, so 8 bytes of padding are added.
 
-**Format error example:**
-```sddl
-Record TooBig() = {
-  data: Bytes(20)
-} pad_to 16  # ERROR: Record is 20 bytes, cannot pad to 16
-```
+!!! danger "Format error example"
+    ```sddl
+    Record TooBig() = {
+      data: Bytes(20)
+    } pad_to 16  # ERROR: Record is 20 bytes, cannot pad to 16
+    ```
 
 ### `pad_align n` - Round to Multiple
 
@@ -326,45 +327,14 @@ The first is instant-parse because alignment is known from the parameter. The se
 
 ## Summary
 
-SDDL provides three mechanisms for controlling layout:
-
-**`align(n)`:**
-
-- Aligns a field to an n-byte boundary
-- Adds padding before the field if needed
-- Common values: 4, 8, 16, 64
-
-**`pad_to n`:**
-
-- Ensures a record is exactly n bytes
-- Adds padding at the end
-- Format error if record is naturally larger than n
-
-**`pad_align n`:**
-
-- Rounds record size up to next multiple of n
-- Adds padding at the end
-- Always succeeds (never a format error)
-
-**Combining:**
-
-- `pad_to` is applied first, then `pad_align`
-- Both can use parameters for instant-parse
-
-**Key Points:**
-
-- Padding bytes are "don't care" values
-- Alignment propagates through nested structures
-- Parameters keep alignment instant-parse
-- Local fields break instant-parse
+Use `align(n)` when individual fields must start on a boundary, `pad_to n` when an entire record must have an exact size, and `pad_align n` when you need to round record sizes up to a multiple. `pad_to` executes before `pad_align`, and both accept parameters so layouts remain instant-parse. Padding bytes are always “don’t care” values; alignment and padding propagate into nested records, and any dependency on local fields makes the construct require scanning.
 
 These features describe existing binary layouts with specific alignment and padding requirements.
 
 ---
 
-## Next Steps
+## Where to Go Next
 
-- **[Conditional & Variant Data](conditional-variant.md)** - Unions and conditional fields
-- **[Variables and Expressions](variables-expressions.md)** - Computing derived values
-- **[Best Practices](best-practices.md)** - Guidelines for effective SDDL
-- **[Real-World Formats](real-formats.md)** - Complete format descriptions
+- **[Conditional & Variant Data](conditional-variant.md)** if alignment depends on optional fields.
+- **[Variables and Expressions](variables-expressions.md)** to compute padding lengths with expressions.
+- **[Real-World Formats](real-formats.md)** for alignment and padding in context.

@@ -78,34 +78,12 @@ SDDL was designed with OpenZL compression in mind, though it's a standalone spec
 
 ### The Compression Workflow
 
-```
-┌─────────────┐
-│  User       │
-│  writes     │──────┐
-│  SDDL spec  │      │
-└─────────────┘      ▼
-                ┌──────────────┐
-                │   Compile    │
-                │   to         │──────┐
-                │   Bytecode   │      │
-                └──────────────┘      ▼
-                            ┌──────────────────┐
-                            │  Training Phase  │
-                            │  (Find optimal   │──┐
-                            │   compressor)    │  │
-                            └──────────────────┘  │
-                                                  ▼
-                        ┌──────────────────────────────┐
-                        │   Compression Phase          │
-                        │   • SDDL interpreter parses  │
-                        │   • Routes data to streams   │
-                        │   • Compressor processes     │
-                        └──────────────────────────────┘
-                                    │
-                                    ▼
-                        ┌──────────────────────┐
-                        │  Compressed Output   │
-                        └──────────────────────┘
+```mermaid
+flowchart TD
+    A[User writes<br/>SDDL spec] --> B[Compile to<br/>Bytecode]
+    B --> C[Training Phase<br/>Find optimal compressor]
+    C --> D[Compression Phase<br/>• SDDL interpreter parses<br/>• Routes data to streams<br/>• Compressor processes]
+    D --> E[Compressed Output]
 ```
 
 ### How SDDL Helps OpenZL

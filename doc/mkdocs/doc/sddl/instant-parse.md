@@ -1,6 +1,6 @@
 # Understanding Instant-Parse
 
-*Chapter 5 - Layout determinism and performance*
+*Chapter 4 - Layout determinism and performance*
 
 The instant-parse model is SDDL's most distinctive feature. It distinguishes between formats whose layout can be computed from parameters alone and those that require sequential scanning. This chapter explains what instant-parse means, when it matters, and how to work with it.
 
@@ -48,6 +48,8 @@ Instant-parse status affects what you can do with the format:
 1. **Parallel processing:** Instant-parse arrays can be processed in parallel because element positions are computable independently
 2. **Zero-copy access:** Fields in instant-parse records can be accessed directly without parsing
 3. **Predictability:** Layout behavior is explicit and enforceable at compile time
+
+The payoff is especially dramatic for arrays. A single record that requires a scan only delays parsing by a few bytes. The same record, when repeated thousands of times, forces the parser to walk the file sequentially element by element. Instant-parse arrays, by contrast, let the runtime jump to element `i` immediately, fan out work across CPU cores, and keep compression streams fed without waiting. As you read through the next chapter, keep in mind that the instant-parse property effectively determines whether your arrays behave like random-access tables or sequential streams.
 
 These capabilities make instant-parse formats faster to work with, but the key insight is that instant-parse is a **property of the format description**, not a performance optimization directive.
 
@@ -131,21 +133,22 @@ Record Header(max_size) = {
 
 If this record were modified to break instant-parse guarantees, the compiler would reject it:
 
-```sddl
-@instant_parse
-Record Header() = {
-  magic: Bytes(4),
-  version: Int16LE,
-  size: Int16LE,
-  data: Bytes(size)  # ERROR: depends on local field
-}
-```
+!!! danger "Compiler error"
+    ```sddl
+    @instant_parse
+    Record Header() = {
+      magic: Bytes(4),
+      version: Int16LE,
+      size: Int16LE,
+      data: Bytes(size)  # ERROR: depends on local field
+    }
+    ```
 
-**Compiler error:**
-```
-ERROR: Record `Header` is not instant-parse
-  Field `data` depends on local field `size` (line 5)
-```
+    **Compiler output:**
+    ```
+    ERROR: Record `Header` is not instant-parse
+      Field `data` depends on local field `size` (line 5)
+    ```
 
 ### Why Use `@instant_parse`?
 
@@ -317,16 +320,17 @@ Record Container() = {
 }
 ```
 
-**Compiler output:**
-```
-ERROR: Record `Container` is not instant-parse
-  Field `items` has size dependent on local field `count` (line 3)
+!!! danger "Compiler error"
+    **Compiler output:**
+    ```
+    ERROR: Record `Container` is not instant-parse
+      Field `items` has size dependent on local field `count` (line 3)
 
-  Dependency chain:
-    items[size] → count → local field
+      Dependency chain:
+        items[size] → count → local field
 
-  Suggestion: Pass `count` as a parameter instead
-```
+      Suggestion: Pass `count` as a parameter instead
+    ```
 
 The diagnostic shows:
 - What field violates instant-parse
@@ -354,17 +358,18 @@ Record C() = {
 }
 ```
 
-**Compiler output:**
-```
-ERROR: Record `A` is not instant-parse
-  Field `b` depends on local field `size` (line 3)
+!!! danger "Compiler error"
+    **Compiler output:**
+    ```
+    ERROR: Record `A` is not instant-parse
+      Field `b` depends on local field `size` (line 3)
 
-  Dependency chain:
-    b → B(size) → size → local field
+      Dependency chain:
+        b → B(size) → size → local field
 
-  Even though B and C are instant-parse, passing a local field
-  to B makes the result non-instant-parse.
-```
+      Even though B and C are instant-parse, passing a local field
+      to B makes the result non-instant-parse.
+    ```
 
 The compiler traces through the entire chain to explain the violation.
 
@@ -463,9 +468,8 @@ Instant-parse is a property of the format description, not a performance directi
 
 ---
 
-## Next Steps
+## Where to Go Next
 
-- **[Advanced Layout Control](layout-control.md)** - Alignment, padding, and memory layout
-- **[Conditional & Variant Data](conditional-variant.md)** - Unions and conditional fields in depth
-- **[Variables and Expressions](variables-expressions.md)** - Computing derived values
-- **[Best Practices](best-practices.md)** - Guidelines for writing effective SDDL
+- **[Arrays and Collections](arrays-collections.md)** to see how instant-parse affects repeated data.
+- **[Alignment and Padding](alignment-padding.md)** if you need precise control over layout.
+- **[Conditional & Variant Data](conditional-variant.md)** for optional fields and unions.

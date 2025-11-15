@@ -211,14 +211,16 @@ Record Aligned() = {
 
 Overlapping union cases cause format errors:
 
-```sddl
-# WRONG
-Union Bad(type) = {
-  case 1..10: TypeA,
-  case 5..15: TypeB,  # ERROR: 5-10 overlap!
-}
+!!! danger "Wrong"
+    ```sddl
+    Union Bad(type) = {
+      case 1..10: TypeA,
+      case 5..15: TypeB,  # ERROR: 5-10 overlap!
+    }
+    ```
 
-# CORRECT
+**Correct:**
+```sddl
 Union Good(type) = {
   case 1..10: TypeA,
   case 11..20: TypeB,
@@ -289,7 +291,7 @@ Test your SDDL description against actual files in the wild to ensure accuracy.
 
 ---
 
-## Next Steps
+## Where to Go Next
 
-- **[Real-World Formats](real-formats.md)** - Complete format examples
-- **[Reference](reference.md)** - Complete language reference
+- **[Real-World Formats](real-formats.md)** to see these practices applied in complete specs.
+- **[Reference](reference.md)** when you need exact syntax and function signatures.
