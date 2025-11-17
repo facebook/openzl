@@ -15,6 +15,7 @@
 #include "openzl/zl_opaque_types.h"
 #include "openzl/zl_output.h"
 #include "openzl/zl_reflection.h"
+#include "openzl/zl_segmenter.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -72,12 +73,61 @@ Tracer::TraceResult Tracer::extractTrace()
     return std::move(trace);
 }
 
-void Tracer::on_segmenterEncode_start(ZL_Segmenter* segCtx) {
-    std::cout << "[SEG] segmetner start" << std::endl;
+void Tracer::on_segmenterEncode_start(ZL_Segmenter* segCtx)
+{
+    if (graphRuns.size() != 0) {
+        throw std::runtime_error(
+                "Compression tracing does not support multiple segmenters within the same compression");
+    }
+    segmented              = true;
+    const auto nbInStreams = ZL_Segmenter_numInputs(segCtx);
+
+    std::cout << "[SEGM] encode_start";
+    // TODO(segm): this may not be necessary if the cctx multiinput start
+    // already can do this
+    for (size_t i = 0; i < nbInStreams; ++i) {
+        const auto* inStream = ZL_Segmenter_getInput(segCtx, i);
+        ZL_DataID streamID   = ZL_Input_id(inStream);
+        std::cout << " (" << streamID.sid << ", "
+                  << ZL_Input_contentSize(inStream) << ")";
+        if (nonChunkedRun.streamInfo_.find(streamID)
+            == nonChunkedRun.streamInfo_.end()) {
+            const ZL_Type stype                      = ZL_Input_type(inStream);
+            nonChunkedRun.streamInfo_[streamID].type = stype;
+            nonChunkedRun.codecOutEdges_[0].push_back(streamID);
+        }
+    }
+    std::cout << std::endl;
+
+    // A segmenter is technically a graph.
+    // However, they behave more like a dispatch codec in the trace because they
+    // ingest the in streams and send them to a successor graph.
+    Codec newCodec{ .name  = "segmenter", // TODO(segm): expose segmenter name
+                    .cType = false,
+                    .cID   = 0, // eh?
+                    .cHeaderSize = 0,
+                    .cLocalParams =
+                            LocalParams(*ZL_Segmenter_getLocalParams(segCtx)) };
+    nonChunkedRun.codecInfo_.push_back(newCodec);
+    for (size_t i = 0; i < nbInStreams; ++i) {
+        ZL_DataID streamID = ZL_Input_id(ZL_Segmenter_getInput(segCtx, i));
+        nonChunkedRun.codecInEdges_[nonChunkedRun.currCodecNum_].push_back(
+                streamID); // set input streams of this codec
+        nonChunkedRun.streamConsumerCodec_[streamID] =
+                nonChunkedRun.currCodecNum_; // set consumer codec number of
+                                             // this streams to retrieve header
+                                             // number in cSize calculation
+    }
 }
-void Tracer::on_segmenterEncode_end(ZL_Segmenter* segCtx, ZL_Report r) {
-    std::cout << "[SEG] segmetner end" << std::endl;
+
+void Tracer::on_segmenterEncode_end(ZL_Segmenter* segCtx, ZL_Report r)
+{
+    if (ZL_isError(r)) {
+        nonChunkedRun.codecInfo_[nonChunkedRun.currCodecNum_].cFailure = r;
+    }
+    ++nonChunkedRun.currCodecNum_;
 }
+
 void Tracer::on_ZL_Segmenter_processChunk_start(
         ZL_Segmenter* segCtx,
         const size_t[],
@@ -85,13 +135,26 @@ void Tracer::on_ZL_Segmenter_processChunk_start(
         ZL_GraphID,
         const ZL_RuntimeGraphParameters*)
 {
+    graphRuns.emplace_back();
+    currChunk = &(graphRuns[graphRuns.size() - 1]);
 
-    std::cout << "[SEG] chunk start" << std::endl;
+    // Create a "placeholder" node representing compression start, so the first
+    // streams are not orphaned
+    Codec compressionStart = {
+        .name         = "zl.#start",
+        .cType        = true, // standard
+        .cID          = 0,
+        .cHeaderSize  = 0,
+        .cLocalParams = {},
+    };
+    currChunk->codecInfo_.push_back(std::move(compressionStart));
+    currChunk->codecInEdges_[currChunk->currCodecNum_] = {};
+    ++currChunk->currCodecNum_;
 }
 
 void Tracer::on_ZL_Segmenter_processChunk_end(ZL_Segmenter*, ZL_Report)
 {
-    std::cout << "[SEG] chunk end" << std::endl;
+    currChunk = &nonChunkedRun;
 }
 
 void Tracer::on_codecEncode_start(
@@ -101,14 +164,21 @@ void Tracer::on_codecEncode_start(
         const ZL_Input* inStreams[],
         size_t nbInStreams)
 {
-    // for root streams to a compression tree that are not called as output to
-    // any codec
+    // TODO(segm): this may not be necessary if the cctx multiinput start
+    // already can do this for root streams to a compression tree that are not
+    // called as output to any codec
+    std::cout << "CODEC_ENCODE";
+    for (size_t i = 0; i < nbInStreams; ++i) {
+        std::cout << " " << ZL_Input_id(inStreams[i]).sid;
+    }
+    std::cout << std::endl;
     for (size_t i = 0; i < nbInStreams; ++i) {
         ZL_DataID streamID = ZL_Input_id(inStreams[i]);
-        if (streamInfo_.find(streamID) == streamInfo_.end()) {
-            const ZL_Type stype        = ZL_Input_type(inStreams[i]);
-            streamInfo_[streamID].type = stype;
-            codecOutEdges_[0].push_back(streamID);
+        if (currChunk->streamInfo_.find(streamID)
+            == currChunk->streamInfo_.end()) {
+            const ZL_Type stype                   = ZL_Input_type(inStreams[i]);
+            currChunk->streamInfo_[streamID].type = stype;
+            currChunk->codecOutEdges_[0].push_back(streamID);
         }
     }
     // set codec metadata
@@ -118,18 +188,19 @@ void Tracer::on_codecEncode_start(
                     .cHeaderSize = 0,
                     .cLocalParams =
                             LocalParams(*ZL_Encoder_getLocalParams(encoder)) };
-    codecInfo_.push_back(newCodec);
+    currChunk->codecInfo_.push_back(newCodec);
     for (size_t i = 0; i < nbInStreams; ++i) {
         ZL_DataID streamID = ZL_Input_id(inStreams[i]);
-        codecInEdges_[currCodecNum_].push_back(
+        currChunk->codecInEdges_[currChunk->currCodecNum_].push_back(
                 streamID); // set input streams of this codec
-        streamConsumerCodec_[streamID] =
-                currCodecNum_; // set consumer codec number of this streams to
-                               // retrieve header number in cSize calculation
+        currChunk->streamConsumerCodec_[streamID] =
+                currChunk->currCodecNum_; // set consumer codec number of this
+                                          // streams to retrieve header number
+                                          // in cSize calculation
     }
     // add codec to associated graph if applicable
-    if (currEncompassingGraph_) {
-        graphInfo_.back().second.push_back(currCodecNum_);
+    if (currChunk->currEncompassingGraph_) {
+        currChunk->graphInfo_.back().second.push_back(currChunk->currCodecNum_);
     }
 }
 
@@ -298,9 +369,17 @@ void Tracer::on_ZL_CCtx_compressMultiTypedRef_start(
         ZL_TypedRef const* const inputs[],
         size_t const nbInputs)
 {
+    std::cout << "CCTX_START";
+    for (size_t i = 0; i < nbInputs; ++i) {
+        std::cout << " (" << ZL_Input_id(inputs[i]).sid << ", "
+                  << ZL_Input_contentSize(inputs[i]) << ")";
+    }
+    std::cout << std::endl;
+
     frameVersion = ZL_CCtx_getParameter(cctx, ZL_CParam_formatVersion);
-    // Create a "placeholder" node representing compression start, so the first
-    // streams are not orphaned
+    // TODO(segm): move this after the segmenter is done, so it can connect
+    // properly Create a "placeholder" node representing compression start, so
+    // the first streams are not orphaned
     Codec compressionStart = {
         .name         = "zl.#start",
         .cType        = true, // standard
@@ -308,6 +387,7 @@ void Tracer::on_ZL_CCtx_compressMultiTypedRef_start(
         .cHeaderSize  = 0,
         .cLocalParams = {},
     };
+    currChunk = &nonChunkedRun;
     codecInfo_.push_back(std::move(compressionStart));
     codecInEdges_[currCodecNum_] = {};
     ++currCodecNum_;
@@ -317,6 +397,9 @@ void Tracer::on_ZL_CCtx_compressMultiTypedRef_end(
         ZL_CCtx const* const,
         ZL_Report const result)
 {
+    // TODO(segm): check if there was a segmenter run. If so, this processing
+    // needs to happen only on the last chunk
+
     // If the compression is successful, we can assume all the streams
     // without targets go to STORE
     if (ZL_isError(result)) {
