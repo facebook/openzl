@@ -133,7 +133,7 @@ ZL_GraphID selectGBTModel(
 }
 } // namespace
 
-namespace zstrong::tests {
+namespace openzl::tests {
 namespace {
 
 class MLSelectorTest : public ::testing::Test {
@@ -189,8 +189,8 @@ class MLSelectorTest : public ::testing::Test {
                 cgraph_, ZL_Type_numeric, true, deltaGid_, ZL_GRAPH_ZSTD);
         // EXPECT_TRUE(ZL_GraphID_isValid(tokenizeGid_));
 
-        deltaData = openzl::tests::generateDeltaData();
-        auto dg   = datagen::DataGen();
+        deltaData = generateDeltaData();
+        auto dg   = zstrong::tests::datagen::DataGen();
         // Generate data with repeated values
         tokenizeData = dg.template randLongVector<uint64_t>(
                 "randLongVec", 0, 500, 10000, 10000);
@@ -330,4 +330,4 @@ TEST_F(MLSelectorTest, SimpleMLSelectorTokenize)
             compress(tokenizeData).size(),
             compress(tokenizeData, selectTokenize).size());
 }
-} // namespace zstrong::tests
+} // namespace openzl::tests
