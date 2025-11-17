@@ -22,6 +22,16 @@ class Tracer {
 
     TraceResult extractTrace();
 
+    void on_segmenterEncode_start(ZL_Segmenter* segCtx);
+    void on_segmenterEncode_end(ZL_Segmenter* segCtx, ZL_Report r);
+    void on_ZL_Segmenter_processChunk_start(
+            ZL_Segmenter* segCtx,
+            const size_t numElts[],
+            size_t numInputs,
+            ZL_GraphID startingGraphID,
+            const ZL_RuntimeGraphParameters* rGraphParams);
+    void on_ZL_Segmenter_processChunk_end(ZL_Segmenter* segCtx, ZL_Report r);
+
     // Trampolined functions from CompressionTraceHooks
     void on_codecEncode_start(
             ZL_Encoder* encoder,

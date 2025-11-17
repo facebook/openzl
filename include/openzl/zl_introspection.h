@@ -8,10 +8,34 @@
 #include "openzl/zl_localParams.h"
 #include "openzl/zl_opaque_types.h"
 
+// Forward declaration to avoid circular dependency with zl_graph_api.h
+typedef struct ZL_GraphParameters_s ZL_RuntimeGraphParameters;
+
 // Introspection hooks for compress
 typedef struct ZL_CompressIntrospectionHooks_s {
     void* opaque; // an opaque pointer, passed as-is to all the hooks as the
     // first argument
+
+    /* ******** Segmenter API methods ******** */
+    void (*on_segmenterEncode_start)(
+            void* opaque,
+            ZL_Segmenter* segCtx,
+            void* placeholder) ZL_NOEXCEPT_FUNC_PTR;
+    void (*on_segmenterEncode_end)(
+            void* opaque,
+            ZL_Segmenter* segCtx,
+            ZL_Report r) ZL_NOEXCEPT_FUNC_PTR;
+    void (*on_ZL_Segmenter_processChunk_start)(
+            void* opaque,
+            ZL_Segmenter* segCtx,
+            const size_t numElts[],
+            size_t numInputs,
+            ZL_GraphID startingGraphID,
+            const ZL_RuntimeGraphParameters* rGraphParams) ZL_NOEXCEPT_FUNC_PTR;
+    void (*on_ZL_Segmenter_processChunk_end)(
+            void* opaque,
+            ZL_Segmenter* segCtx,
+            ZL_Report r) ZL_NOEXCEPT_FUNC_PTR;
 
     /* ******** Encoder API methods ******** */
     void (*on_ZL_Encoder_getScratchSpace)(
@@ -90,7 +114,7 @@ typedef struct ZL_CompressIntrospectionHooks_s {
     void (*on_ZL_CCtx_compressMultiTypedRef_end)(
             void* opaque,
             ZL_CCtx const* const cctx,
-            ZL_Report const result);
+            ZL_Report const result) ZL_NOEXCEPT_FUNC_PTR;
 } ZL_CompressIntrospectionHooks;
 
 #endif // OPENZL_ZL_INTROSPECTION_H

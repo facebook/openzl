@@ -71,6 +71,29 @@ Tracer::TraceResult Tracer::extractTrace()
 {
     return std::move(trace);
 }
+
+void Tracer::on_segmenterEncode_start(ZL_Segmenter* segCtx) {
+    std::cout << "[SEG] segmetner start" << std::endl;
+}
+void Tracer::on_segmenterEncode_end(ZL_Segmenter* segCtx, ZL_Report r) {
+    std::cout << "[SEG] segmetner end" << std::endl;
+}
+void Tracer::on_ZL_Segmenter_processChunk_start(
+        ZL_Segmenter* segCtx,
+        const size_t[],
+        size_t,
+        ZL_GraphID,
+        const ZL_RuntimeGraphParameters*)
+{
+
+    std::cout << "[SEG] chunk start" << std::endl;
+}
+
+void Tracer::on_ZL_Segmenter_processChunk_end(ZL_Segmenter*, ZL_Report)
+{
+    std::cout << "[SEG] chunk end" << std::endl;
+}
+
 void Tracer::on_codecEncode_start(
         ZL_Encoder* encoder,
         const ZL_Compressor* compressor,
@@ -176,6 +199,8 @@ void Tracer::on_migraphEncode_start(
         ZL_Edge* edges[],
         size_t nbEdges)
 {
+    std::cout << "migraph start "
+              << ZL_Compressor_Graph_getName(compressor, gid) << std::endl;
     currEncompassingGraph_ = true;
     std::vector<ZL_Edge*> inEdges;
     inEdges.reserve(nbEdges);

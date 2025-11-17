@@ -66,6 +66,34 @@ inline std::string graphTypeToStr(ZL_GraphType gtype)
     }
 }
 
+void CompressionTraceHooks::on_segmenterEncode_start(ZL_Segmenter* segCtx) {
+    // Trampoline to Tracer
+    tracer_->on_segmenterEncode_start(segCtx);
+}
+void CompressionTraceHooks::on_segmenterEncode_end(ZL_Segmenter* segCtx, ZL_Report r) {
+    // Trampoline to Tracer
+    tracer_->on_segmenterEncode_end(segCtx, r);
+}
+void CompressionTraceHooks::on_ZL_Segmenter_processChunk_start(
+        ZL_Segmenter* segCtx,
+        const size_t numElts[],
+        size_t numInputs,
+        ZL_GraphID startingGraphID,
+        const ZL_RuntimeGraphParameters* rGraphParams)
+{
+    // Trampoline to Tracer
+    tracer_->on_ZL_Segmenter_processChunk_start(
+            segCtx, numElts, numInputs, startingGraphID, rGraphParams);
+}
+
+void CompressionTraceHooks::on_ZL_Segmenter_processChunk_end(
+        ZL_Segmenter* segCtx,
+        ZL_Report r)
+{
+    // Trampoline to Tracer
+    tracer_->on_ZL_Segmenter_processChunk_end(segCtx, r);
+}
+
 void CompressionTraceHooks::on_codecEncode_start(
         ZL_Encoder* encoder,
         const ZL_Compressor* compressor,
