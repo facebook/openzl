@@ -459,7 +459,7 @@ SDDL2_Error SDDL2_execute_bytecode(
         uint16_t family = (instruction >> 16) & 0xFFFF;
         uint16_t opcode = instruction & 0xFFFF;
 
-        ZL_DLOG(POS, "[SDDL2] PC=%zu: %s (0x%08x) stack_depth=%zu",
+        ZL_DLOG(SEQ, "[SDDL2] PC=%zu: %s (0x%08x) stack_depth=%zu",
                 pc_before, SDDL2_instruction_name(family, opcode), instruction, SDDL2_Stack_depth(&stack));
 
         // Dispatch
@@ -523,6 +523,8 @@ SDDL2_Error SDDL2_execute_bytecode(
                             &stack,
                             output_segments->alloc_fn,
                             output_segments->alloc_ctx);
+                } else if (opcode == SDDL2_OP_TYPE_SIZEOF) {
+                    err = SDDL2_op_type_sizeof(&stack);
                 } else {
                     CLEANUP_AND_RETURN(
                             SDDL2_INVALID_BYTECODE); // Unknown opcode

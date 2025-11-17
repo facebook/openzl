@@ -19,8 +19,9 @@ TESTS = sddl2_vm_test \
         sddl2_input_test \
         sddl2_segments_test \
         sddl2_tagged_segments_test \
-        sddl2_type_size_test \
+        sddl2_vm_kind_size_test \
         sddl2_type_fixed_array_test \
+        sddl2_type_sizeof_test \
         sddl2_type_structure_test \
         sddl2_vm_type_structure_test \
         sddl2_structure_segment_test \
@@ -66,9 +67,11 @@ sddl2_segments_test: sddl2_segments_test.c $(VM_SRC) $(LOGGING_SRC)
 
 sddl2_tagged_segments_test: sddl2_tagged_segments_test.c $(VM_SRC) $(LOGGING_SRC)
 
-sddl2_type_size_test: sddl2_type_size_test.c $(VM_SRC) $(LOGGING_SRC)
+sddl2_vm_kind_size_test: sddl2_vm_kind_size_test.c $(VM_SRC) $(LOGGING_SRC)
 
 sddl2_type_fixed_array_test: sddl2_type_fixed_array_test.c $(VM_SRC) $(LOGGING_SRC)
+
+sddl2_type_sizeof_test: sddl2_type_sizeof_test.c $(VM_SRC) $(LOGGING_SRC)
 
 sddl2_type_structure_test: sddl2_type_structure_test.c $(VM_SRC) $(LOGGING_SRC)
 

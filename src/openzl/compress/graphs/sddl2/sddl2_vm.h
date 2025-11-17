@@ -479,6 +479,34 @@ SDDL2_Error SDDL2_op_type_structure(
         SDDL2_allocator_fn alloc_fn,
         void* alloc_ctx);
 
+/**
+ * Get the size in bytes of a type.
+ * Stack: Type -> I64
+ *
+ * Pops a Type from the stack and pushes its total size in bytes as an I64.
+ * This is useful for validating structure sizes or computing memory requirements.
+ *
+ * Example:
+ *   push.type.i32le        // Type{I32LE, width=1}
+ *   type.sizeof            // Pushes 4
+ *
+ *   push.type.i16le
+ *   push.u32 10
+ *   type.fixed_array       // Type{I16LE, width=10}
+ *   type.sizeof            // Pushes 20
+ *
+ * For structure types, returns the total size accounting for all members.
+ *
+ * @param stack The VM stack
+ * @return SDDL2_OK or error code
+ *
+ * Errors:
+ *   - SDDL2_STACK_UNDERFLOW: stack is empty
+ *   - SDDL2_TYPE_MISMATCH: top value is not a Type
+ *   - SDDL2_STACK_OVERFLOW: push would overflow the stack
+ */
+SDDL2_Error SDDL2_op_type_sizeof(SDDL2_Stack* stack);
+
 /* ============================================================================
  * Arithmetic Operations
  *

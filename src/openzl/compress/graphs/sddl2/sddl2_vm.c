@@ -351,6 +351,27 @@ SDDL2_Error SDDL2_op_type_structure(
     return SDDL2_Stack_push(stack, SDDL2_Value_type(struct_type));
 }
 
+SDDL2_Error SDDL2_op_type_sizeof(SDDL2_Stack* stack)
+{
+    // Pop the type
+    SDDL2_Value type_val;
+    SDDL2_Error err = SDDL2_Stack_pop(stack, &type_val);
+    if (err != SDDL2_OK) {
+        return err;
+    }
+
+    // Verify it's a type
+    if (type_val.kind != SDDL2_VALUE_TYPE) {
+        return SDDL2_TYPE_MISMATCH;
+    }
+
+    // Get the size of the type
+    size_t size = SDDL2_Type_size(type_val.value.as_type);
+
+    // Push the size as I64
+    return SDDL2_Stack_push(stack, SDDL2_Value_i64((int64_t)size));
+}
+
 /* ============================================================================
  * Arithmetic Operations
  *

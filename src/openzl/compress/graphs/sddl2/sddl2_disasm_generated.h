@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
 // Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-// Generated at: 2025-11-14 20:28:47 UTC
+// Generated at: 2025-11-16 22:46:06 UTC
 // Generator: generate_c_headers.py
 //
 // To regenerate: python3 src/openzl/compress/graphs/sddl2/generate_c_headers.py
@@ -136,6 +136,7 @@ static inline const char* SDDL2_instruction_name_impl(uint16_t family, uint16_t 
             switch (opcode) {
                 case SDDL2_OP_TYPE_FIXED_ARRAY: return "type.fixed_array";
                 case SDDL2_OP_TYPE_STRUCTURE: return "type.structure";
+                case SDDL2_OP_TYPE_SIZEOF: return "type.sizeof";
                 default: return "type.?";
             }
 

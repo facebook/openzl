@@ -16,67 +16,7 @@ push.i32 28
 segment.create_unspecified
 
 # ------------------------------------------
-# SECTION 2: Compute and Validate entry_size
-# ------------------------------------------
-# entry_size = 18 (base) + conditional fields
-# Base: SRA0(8) + SDEC0(8) + ISP(2) = 18
-
-push.u32 18
-
-# Add 4 if STNUM >= 0 (XNO field)
-push.u32 12
-load.i32le              # STNUM
-push.zero
-cmp.gt
-push.u32 4
-math.mul
-math.add
-
-# Add 2 * abs(NMAG) for MAG array
-push.u32 20
-load.i32le              # NMAG
-math.abs
-push.u32 2
-math.mul
-math.add
-
-# Add 8 if MPROP >= 1 (XRPM + XDPM)
-push.u32 16
-load.i32le              # MPROP
-push.u32 1
-cmp.ge
-push.u32 8
-math.mul
-math.add
-
-# Add 8 if MPROP == 2 (SVEL)
-push.u32 16
-load.i32le              # MPROP
-push.u32 2
-cmp.eq
-push.u32 8
-math.mul
-math.add
-
-# Add abs(STNUM) if STNUM < 0 (NAME)
-push.u32 12
-load.i32le              # STNUM
-stack.dup
-push.zero
-cmp.lt
-stack.swap
-math.abs
-math.mul
-math.add
-
-# Validate entry_size == NBENT
-push.u32 24
-load.i32le              # NBENT
-cmp.eq
-expect_true
-
-# ------------------------------------------
-# SECTION 3: Build Conditional Type Structure
+# SECTION 2: Build Conditional Type Structure
 # ------------------------------------------
 
 # Optional XNO (Float32LE if STNUM > 0)
@@ -155,12 +95,24 @@ stack.swap
 stack.drop_if
 
 # ------------------------------------------
-# SECTION 4: Count Types and Create Structure
+# SECTION 3: Count Types and Create Structure
 # Stack: Type0, Type1, ..., TypeN
 # ------------------------------------------
 
 push.stack_depth
 type.structure
+
+# ------------------------------------------
+# SECTION 4: Validate entry_size using type.sizeof
+# Stack: StarEntry_type
+# ------------------------------------------
+
+stack.dup               # Duplicate the type for validation
+type.sizeof             # Get size of the structure type
+push.u32 24
+load.i32le              # NBENT (expected entry size)
+cmp.eq
+expect_true
 
 # ------------------------------------------
 # SECTION 5: Create Stars Segment

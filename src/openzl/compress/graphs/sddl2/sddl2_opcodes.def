@@ -123,6 +123,7 @@
 @family TYPE 0x0008 "Type operations"
   type.fixed_array  0x0001  "Pop I64 (count), pop Type, push Type with width multiplied by count"
   type.structure    0x0002  "Pop I64 (member_count), pop member_count Types, push composite structure Type"
+  type.sizeof       0x0010  "Pop Type, push its total size in bytes as I64"
 
 @family VAR 0x0009 "Variable operations"
 
