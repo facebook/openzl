@@ -145,6 +145,12 @@ function StreamdumpGraphContent({data}: NullableStreamdump) {
     return <NoDataHelper />;
   }
 
+  const versionInfo = {
+    libraryVersion: data.libraryVersion,
+    frameVersion: data.frameVersion,
+    traceVersion: data.traceVersion,
+  };
+
   return (
     <StreamdumpGraphView
       nodes={nodes}
@@ -153,6 +159,7 @@ function StreamdumpGraphContent({data}: NullableStreamdump) {
       onEdgesChange={onEdgesChange}
       handleAllStandardGraphsCollapse={handleAllStandardGraphsCollapse}
       areStandardGraphsCollapsed={areStandardGraphsCollapsed}
+      versionInfo={versionInfo}
     />
   );
 }

@@ -17,6 +17,12 @@
   color: var(--text-primary);
 }
 
+.header-text {
+  color: var(--text-primary);
+  padding-right: 15px;
+  font-size: 12px;
+}
+
 /* For codec nodes - pill shaped (rounded rectangle) */
 .codec-node {
   padding: 10px;
