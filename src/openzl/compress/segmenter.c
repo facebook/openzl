@@ -147,6 +147,12 @@ ZL_RefParam ZL_Segmenter_getLocalRefParam(
     return LP_getLocalRefParam(&segCtx->segDesc->localParams, refParamId);
 }
 
+const ZL_LocalParams* ZL_Segmenter_getLocalParams(const ZL_Segmenter* segCtx)
+{
+    ZL_ASSERT_NN(segCtx);
+    return &segCtx->segDesc->localParams;
+}
+
 /* Consultation request for Custom Successor Graphs */
 ZL_GraphIDList ZL_Segmenter_getCustomGraphs(const ZL_Segmenter* segCtx)
 {
