@@ -186,7 +186,7 @@ def write_core_files(path: str, model_strings: t.Dict[str, zstrong_ml.CoreModel]
 #ifndef {path.replace("/", "_").replace(".", "_").upper()}
 #define {path.replace("/", "_").replace(".", "_").upper()}
 
-#include "zstrong/compress/selectors/ml/gbt.h"
+#include "openzl/compress/selectors/ml/gbt.h"
 
 #ifdef __cplusplus
 extern "C" {{
