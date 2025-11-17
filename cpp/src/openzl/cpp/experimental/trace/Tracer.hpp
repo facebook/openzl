@@ -5,6 +5,7 @@
 #include <map>
 #include <optional>
 
+#include "cpp/src/openzl/cpp/experimental/trace/ChunkTrace.hpp"
 #include "openzl/cpp/experimental/trace/Codec.hpp"
 #include "openzl/cpp/experimental/trace/Graph.hpp"
 #include "openzl/cpp/experimental/trace/StreamVisualizer.hpp"
@@ -124,28 +125,6 @@ class Tracer {
     static constexpr uint32_t traceVersion = 1;
     size_t compressedSize_{};
 
-    // The structures to take one trace of one top-level graph run (aka one that
-    // ingests stream 0). A chunked compression will have multiple such
-    // top-level invocations.
-    struct ChunkTrace {
-        size_t currCodecNum_ = 0;
-        std::map<ZL_DataID, Stream, ZL_DataIDCustomComparator> streamInfo_;
-        std::vector<Codec> codecInfo_;
-        std::unordered_map<size_t, std::vector<ZL_DataID>> codecInEdges_;
-        std::unordered_map<size_t, std::vector<ZL_DataID>> codecOutEdges_;
-        std::unordered_map<
-                ZL_DataID,
-                std::vector<ZL_DataID>,
-                ZL_DataIDHash,
-                ZL_DataIDEquality>
-                streamSuccessors_;
-        std::unordered_map<ZL_DataID, size_t, ZL_DataIDHash, ZL_DataIDEquality>
-                streamConsumerCodec_;
-        std::vector<std::pair<Graph, std::vector<size_t>>> graphInfo_;
-        bool currEncompassingGraph_ =
-                false; // if codecs are running within a graph
-        std::optional<ConversionError> maybeConversionError_ = std::nullopt;
-    };
     std::vector<ChunkTrace> graphRuns;
     ChunkTrace* currChunk =
             nullptr; // convenience pointer to the current chunk trace
