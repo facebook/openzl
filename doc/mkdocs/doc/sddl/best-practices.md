@@ -62,7 +62,7 @@ Record Header() = {
 }
 ```
 
-**Important:** Validation using `where` or `expect` on local fields requires scanning. Removing these checks would make the record instant-parse:
+**Important:** Validation using `where` or `expect` on local fields requires scanning. Removing these checks could make the record instant-parse:
 
 ```sddl
 # With validation: requires scan
@@ -71,10 +71,9 @@ Record Validated() = {
 }
 
 # Without validation: instant-parse
-@instant_parse
 Record Unvalidated() = {
   magic: Bytes(4)
-}
+} @instant_parse
 ```
 
 The trade-off is between safety and instant-parse status.
@@ -97,7 +96,7 @@ expect size <= 2_000_000_000
 
 ## Design for Format Evolution
 
-Include version information from the start:
+Include and track version information when available:
 
 ```sddl
 Record MyFormat() = {
@@ -115,7 +114,7 @@ Record MyFormat() = {
 }
 ```
 
-This allows backward compatibility as the format evolves.
+This makes it easier to follow format evolutions.
 
 ---
 
