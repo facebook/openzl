@@ -201,7 +201,7 @@ Inline `Record` or `Union` constructs follow the same rules:
 
 ```sddl
 Record Packet(kind, size, crcWidth) = {
-  header: Record { version: UInt8, flags: UInt16LE },
+  header: Record() { version: UInt8, flags: UInt16LE },
   payload: Union(kind, size) {
     case 1: Image(size),
     case 2: Audio(size)

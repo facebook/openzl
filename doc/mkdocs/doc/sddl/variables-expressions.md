@@ -1,8 +1,12 @@
 # Variables and Expressions
 
-*Chapter 8 - Computing derived values*
+*Chapter 6 - Computing derived values during parsing*
 
-SDDL allows computing derived values during parsing using variables and expressions. This chapter covers the `var` statement, expression syntax, standard functions, and how these features interact with instant-parse. Need a concrete spec that leans on these tools? Jump to the [coverage map entry for derived values](real-formats.md#coverage-var).
+SDDL allows computing derived values during parsing using variables and expressions. This chapter covers the `var` statement, expression syntax, standard functions, and how these features interact with instant-parse.
+
+For an overview of how variables and expressions fit into SDDL's type system, see the [Language Elements Overview](core-concepts.md#language-elements-overview).
+
+Need a concrete spec that leans on these tools? Jump to the [coverage map entry for derived values](real-formats.md#coverage-var).
 
 ---
 

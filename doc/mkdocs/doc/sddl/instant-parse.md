@@ -1,8 +1,10 @@
 # Understanding Instant-Parse
 
-*Chapter 4 - Layout determinism and performance*
+*Chapter 4 - Understanding layout determinism*
 
 The instant-parse model is SDDL's most distinctive feature. It distinguishes between formats whose layout can be computed from parameters alone and those that require sequential scanning. This chapter explains what instant-parse means, when it matters, and how to work with it.
+
+For an overview of SDDL's language elements and how instant-parse applies across them, see the [Language Elements Overview](core-concepts.md#language-elements-overview).
 
 ---
 

@@ -6,6 +6,146 @@ This chapter provides a comprehensive look at SDDL's core features: types, recor
 
 ---
 
+## Language Elements Overview
+
+Before diving into specifics, it's helpful to understand the taxonomy of elements you can work with in SDDL. The language provides several categories of types and constructs for describing binary data:
+
+### 1. Primitive Types
+
+Atomic numeric types with fixed sizes and explicit byte order:
+
+```sddl
+count: UInt32LE        # 32-bit unsigned integer, little-endian
+temperature: Float64BE # 64-bit float, big-endian
+flag: UInt8            # Single byte (no endianness)
+```
+
+These include signed/unsigned integers (8, 16, 32, 64-bit) and IEEE 754 floating-point types, all with explicit endianness for multi-byte values.
+
+### 2. Byte Sequences
+
+Raw binary data with no imposed structure:
+
+```sddl
+magic: Bytes(4)        # 4 bytes of data
+header: Bytes(128)     # 128-byte header
+data: Bytes(size)      # Variable size determined by 'size'
+```
+
+Use `Bytes(n)` when the data has unknown structure or when you need padding.
+
+### 3. Records
+
+Structured composite types that group fields together:
+
+```sddl
+Record Point() = {
+  x: Float32LE,
+  y: Float32LE,
+  z: Float32LE
+}
+
+origin: Point          # Instance of the Point record
+```
+
+Records can be named (for reuse) or inline (for one-off structures), and can accept parameters for flexible definitions.
+
+### 4. Arrays
+
+Sequences of repeated elements:
+
+```sddl
+values: Int32LE[100]        # Fixed-size array
+points: Point[count]        # Dynamic size from field/parameter
+matrix: Float32LE[rows][cols]  # Multi-dimensional
+```
+
+Arrays can contain primitive types, records, or other complex structures.
+
+### 5. Unions
+
+Variant types representing "exactly one of several alternatives" based on a selector:
+
+```sddl
+Union Payload(type_code) = {
+  case 1: ImageData,
+  case 2: AudioData,
+  case 3: VideoData,
+  default: RawBytes
+}
+```
+
+Only one case is active, determined by the selector value.
+
+### 6. Enumerations
+
+Named integer constants for improved readability:
+
+```sddl
+enum MessageType {
+  TEXT = 1,
+  IMAGE = 2,
+  AUDIO = 3
+}
+
+type: UInt8
+expect type == MessageType.TEXT
+```
+
+Enums make discriminators and bit flags more self-documenting.
+
+### 7. Variables and Expressions
+
+Local computed values that can be used in sizes, conditions, and validations:
+
+```sddl
+Record Container() = {
+  total_size: UInt32LE,
+  header_size: UInt32LE,
+  var data_size = total_size - header_size,  # Computed value
+  data: Bytes(data_size)
+}
+```
+
+Variables hold intermediate calculations and improve readability.
+
+### 8. Conditional Constructs
+
+Fields or blocks that appear only when conditions are met:
+
+```sddl
+Record Message(version) = {
+  id: UInt32LE,
+  body: Bytes(256),
+  when version >= 2 then timestamp: Int64LE  # Optional field
+}
+```
+
+The `when` keyword enables format versioning and optional sections.
+
+### 9. Validation
+
+Assertions that ensure data meets expectations:
+
+```sddl
+header: Record() {
+  magic: Bytes(4),
+  version: UInt16LE where (version >= 1 and version <= 3)
+}
+
+expect header.magic == "MYFT"
+```
+
+Use `expect` statements and `where` clauses to validate data integrity.
+
+### How These Fit Together
+
+SDDL specifications compose these elements hierarchically. Primitive types and byte sequences form the leaves. Records, arrays, and unions combine these into more complex structures. Variables compute intermediate values. Conditionals and validation ensure correctness. Together, they describe binary formats precisely and unambiguously.
+
+The rest of this chapter explores each category in detail, starting with the primitive type system.
+
+---
+
 ## Types and Endianness
 
 SDDL provides a small set of primitive types for describing binary data. Every type is designed to have clear, unambiguous semantics.
@@ -96,21 +236,21 @@ signed_byte: Int8     # No LE/BE needed
 
 ### Type Summary Table
 
-| Type | Size | Endian | Range |
-|------|------|--------|-------|
-| `Int8` | 1 byte | N/A | -128 to 127 |
-| `UInt8` | 1 byte | N/A | 0 to 255 |
-| `Int16LE/BE` | 2 bytes | Yes | -32,768 to 32,767 |
-| `UInt16LE/BE` | 2 bytes | Yes | 0 to 65,535 |
-| `Int32LE/BE` | 4 bytes | Yes | -2³¹ to 2³¹-1 |
-| `UInt32LE/BE` | 4 bytes | Yes | 0 to 2³²-1 |
-| `Int64LE/BE` | 8 bytes | Yes | -2⁶³ to 2⁶³-1 |
-| `UInt64LE/BE` | 8 bytes | Yes | 0 to 2⁶⁴-1 |
-| `Float16LE/BE` | 2 bytes | Yes | IEEE 754 half |
-| `Float32LE/BE` | 4 bytes | Yes | IEEE 754 single |
-| `Float64LE/BE` | 8 bytes | Yes | IEEE 754 double |
-| `BFloat16LE/BE` | 2 bytes | Yes | Google bfloat16 |
-| `Bytes(n)` | n bytes | N/A | Raw data |
+| Type | Size | Endian |
+|------|------|--------|
+| `Int8` | 1 byte | N/A |
+| `UInt8` | 1 byte | N/A |
+| `Int16LE/BE` | 2 bytes | Yes |
+| `UInt16LE/BE` | 2 bytes | Yes |
+| `Int32LE/BE` | 4 bytes | Yes |
+| `UInt32LE/BE` | 4 bytes | Yes |
+| `Int64LE/BE` | 8 bytes | Yes |
+| `UInt64LE/BE` | 8 bytes | Yes |
+| `Float16LE/BE` | 2 bytes | Yes |
+| `Float32LE/BE` | 4 bytes | Yes |
+| `Float64LE/BE` | 8 bytes | Yes |
+| `BFloat16LE/BE` | 2 bytes | Yes |
+| `Bytes(n)` | n bytes | N/A |
 
 ---
 
@@ -201,14 +341,15 @@ Field names must be unique within a record, with one exception: the underscore `
 ```sddl
 Record Data() = {
   important: Int32LE,
-  _: Bytes(4),          # Padding, ignored
-  value: Float32LE,
-  _: Bytes(4),          # More padding, also ignored
-  count: Int32LE
+  _        : Bytes(4),     # Some padding, ignored
+  value    : Float32LE,
+  _        : Bytes(4),     # More padding, also ignored
+  count    : Int32LE
 }
 ```
 
-Use `_` when a field exists in the binary format but you don't need to reference it later.
+Use `_` when a field exists in the binary format but there is no need to reference it later.
+The field still exists in the record, it's just considered "unimportant", and no handle to access its content is provided.
 
 **Field name rules:**
 
@@ -247,48 +388,26 @@ This creates a hierarchy: `Shape` contains a `Line` and a `Point`, and `Line` co
 You can define records inline without giving them a name:
 
 ```sddl
-header: Record {
+header: Record() {
   magic: Bytes(4),
   version: Int16LE
 }
 
-data: Record {
+data: Record() {
   count: Int32LE,
   values: Float32LE[10]
 }
 ```
 
+Note that inline records require `()` just like named records, even when they take no parameters. This keeps the syntax consistent across all record definitions.
+
 Inline records are useful for one-off structures that won't be reused.
 
-### Record Scope and Variables
+### Record Scope
 
-Records create a scope. Variables defined inside a record are local to that record:
+Records create a scope for their fields and any `var` declarations. Field names and variables defined within a record are local to that record and cannot be referenced from outside.
 
-```sddl
-Record Container() = {
-  size: Int32LE,
-  var actual_size = size - 4,  # Local variable
-  data: Bytes(actual_size)
-}
-```
-
-The variable `actual_size` exists only within the `Container` record. It cannot be referenced outside.
-
-### The `sizeof` Function
-
-You can query the size of a record at compile time:
-
-```sddl
-Record Header() = {
-  magic: Bytes(4),
-  version: Int16LE,
-  flags: Int16LE
-}
-
-expect sizeof(Header) == 8
-```
-
-This is useful for validation, especially when the format specification includes size fields that must match the actual structure size.
+For complete coverage of variables, expressions, and scoping rules, see [Variables and Expressions](variables-expressions.md).
 
 ---
 
@@ -301,7 +420,7 @@ SDDL provides two mechanisms for validating that binary data matches expectation
 `expect` statements assert that a condition must be true:
 
 ```sddl
-header: Record {
+header: Record() {
   magic: Bytes(4),
   version: Int16LE
 }
@@ -312,8 +431,6 @@ expect header.version <= 3
 ```
 
 When the SDDL interpreter encounters an `expect` statement, it evaluates the condition. If the condition is false, parsing fails with a data error.
-
-**Evaluation timing:** `expect` statements are evaluated as soon as all their dependencies are available. In the example above, both `expect` statements are evaluated immediately after parsing the `header`.
 
 ### Compound Conditions
 
@@ -389,6 +506,22 @@ Record Data() = {
 ```
 
 The distinction: parameters are known before parsing, local fields are discovered during parsing.
+
+### Validating Structure Sizes
+
+You can validate that a record's size matches an expected value using the `sizeof` function:
+
+```sddl
+Record Header() = {
+  magic: Bytes(4),
+  version: Int16LE,
+  flags: Int16LE
+}
+
+expect sizeof(Header()) == 8
+```
+
+This is useful when format specifications include size fields that must match the actual structure size. For details on `sizeof` and other functions, see [Variables and Expressions](variables-expressions.md#size-and-position-functions).
 
 ### Error Messages
 
@@ -494,68 +627,21 @@ stars: StarEntry[]
 
 ## Lexical Rules
 
-Understanding SDDL's lexical structure helps you write correct specifications.
+### Comments
 
-### Identifiers
+Comments start with `#` and continue to the end of the line. For comment style guidelines and documentation best practices, see [Comments and Documentation](#comments-and-documentation).
 
-Identifiers name fields, records, variables, and parameters.
-
-**Rules:**
-
-- Start with a letter (`a-z`, `A-Z`) or underscore (`_`)
-- Contain letters, digits, and underscores
-- Are case-sensitive
-
-**Valid identifiers:**
-```sddl
-count
-Count
-data_size
-_temp
-value123
-RGB_Color
-```
-
-**Invalid identifiers:**
-```sddl
-123count      # Can't start with digit
-data-size     # Can't contain hyphen
-my.field      # Can't contain dot
-```
-
-**Reserved words:** SDDL has reserved keywords that cannot be used as identifiers:
-- `Record`, `Union`, `enum`
-- `when`, `then`, `case`, `default`
-- `var`, `expect`
-- `align`, `pad_to`, `pad_align`
-- `scan`, `soa`
-- Type names: `Int32LE`, `Float64BE`, etc.
-
-### Statement Termination
+### Statement Structure
 
 At the top level, statements are newline-terminated:
 
 ```sddl
-header: Header      # Newline terminates this statement
-count: Int32LE      # Newline terminates this statement
-data: Int32LE[count]  # Newline terminates this statement
+header: Header
+count: Int32LE
+data: Int32LE[count]
 ```
 
-You cannot put multiple statements on one line at the top level.
-
-### Block Structure
-
-Inside blocks (`{}`, `()`, `[]`), items are comma-separated:
-
-```sddl
-Record Point() = {
-  x: Float32LE,    # Comma separates from next field
-  y: Float32LE,    # Comma separates from next field
-  z: Float32LE     # Last field, comma optional
-}
-```
-
-Trailing commas are allowed:
+Inside blocks (`{}`, `()`, `[]`), items are comma-separated with optional trailing commas:
 
 ```sddl
 Record Point() = {
@@ -565,50 +651,18 @@ Record Point() = {
 }
 ```
 
-This makes it easier to add fields without modifying the previous line.
-
-### Arrays
-
-Array subscripts use `[]`:
-
-```sddl
-values: Int32LE[100]           # Fixed size
-values: Int32LE[count]         # Parameter size
-matrix: Float32LE[rows][cols]  # Multi-dimensional
-```
-
 ### Whitespace
 
 Whitespace (spaces, tabs, newlines) is generally insignificant except:
 - Newlines terminate top-level statements
-- Indentation is ignored (not significant like Python)
+- Indentation is not significant (unlike Python)
 
-These are equivalent:
+Use whitespace for clarity and readability.
 
-```sddl
-Record Point() = {
-  x: Float32LE,
-  y: Float32LE
-}
-```
+### Additional References
 
-```sddl
-Record Point()={x:Float32LE,y:Float32LE}
-```
-
-But the first is much more readable. Use whitespace for clarity.
-
-### Comments
-
-Comments are not syntactically significant—they're ignored by the parser. You can place them anywhere:
-
-```sddl
-# Header comment
-Record Data() = {  # Inline comment
-  # Field comment
-  value: Int32LE  # Another inline comment
-}  # End comment
-```
+- For identifier naming rules, see [Fields and Field Names](#fields-and-field-names)
+- For the complete list of reserved keywords, see [Quick Reference](reference.md#keywords)
 
 ---
 

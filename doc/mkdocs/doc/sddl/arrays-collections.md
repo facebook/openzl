@@ -4,6 +4,8 @@
 
 Arrays are fundamental to binary format descriptions. Most real-world formats contain sequences of repeated structures—pixels in images, samples in audio, records in databases. This chapter explores how SDDL handles arrays, from simple fixed-size collections to complex structure-of-arrays layouts.
 
+For a high-level overview of how arrays fit into SDDL's overall syntax, see the [Language Elements Overview](core-concepts.md#language-elements-overview).
+
 Because arrays repeat the same type many times, they amplify whatever instant-parse behavior that type has. An element that takes a small scan penalty once will take it thousands of times inside an array. The previous chapter's instant-parse rules are the lens through which we evaluate array performance. For concrete specs that use these layouts, see the coverage map entries for [fixed arrays](real-formats.md#coverage-arrays-fixed), [parameterized arrays](real-formats.md#coverage-arrays-parameter), and [auto-sized arrays](real-formats.md#coverage-arrays-auto); a future row tracks the pending example for [`scan`-based arrays](real-formats.md#coverage-scan).
 
 ---
@@ -508,12 +510,12 @@ Record ImageHeader() = {
 
 Union Pixel(channels) = {
   case 1: gray: UInt8,
-  case 3: Record {
+  case 3: Record() {
     r: UInt8,
     g: UInt8,
     b: UInt8
   },
-  case 4: Record {
+  case 4: Record() {
     r: UInt8,
     g: UInt8,
     b: UInt8,
@@ -529,7 +531,7 @@ var num_pixels = header.width * header.height
 pixels: soa Pixel(header.channels)[num_pixels]
 ```
 
-**Note:** The anonymous `Record { ... }` syntax means the fields (`r`, `g`, `b`, `a`) become direct members of `Pixel`, not nested under a named field. When `channels == 3`, a `Pixel` has three direct fields: `r`, `g`, and `b`. This is essential for SOA to work— `soa Pixel[n]` creates three separate arrays (one for each color channel), not a single nested structure array.
+**Note:** The anonymous `Record() { ... }` syntax means the fields (`r`, `g`, `b`, `a`) become direct members of `Pixel`, not nested under a named field. When `channels == 3`, a `Pixel` has three direct fields: `r`, `g`, and `b`. This is essential for SOA to work— `soa Pixel[n]` creates three separate arrays (one for each color channel), not a single nested structure array.
 
 Then, `soa` layout specifies that all red channel values are together, all green together, etc.
 

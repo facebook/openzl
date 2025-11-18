@@ -34,6 +34,8 @@ stars: StarEntry[]
 
 That's it. A few fields, clean and readable. Compare this to writing a parser with proper error handling, endianness management, and structure alignment—easily 200+ lines of code, with associated maintenance and security concerns.
 
+> **💡 Language Reference:** For a complete overview of SDDL's primitive types, records, and language constructs, see [Language Elements Overview](core-concepts.md#language-elements-overview).
+
 ---
 
 ## The Problem: Manual Parser Development
@@ -117,6 +119,8 @@ Record Header() = {
 
 When a format is instant-parse, parsing becomes much faster (often 10x or more), zero-copy techniques become possible, and multiple threads can work independently. The `@instant_parse` annotation makes this explicit and enforceable—the compiler will report an error if you accidentally add a scan dependency. For the SAO example, instant-parse enables negligible parsing overhead and multi-GB/s compression speeds.
 
+*For detailed information about all primitive types and their instant-parse characteristics, see the [Language Elements Overview](core-concepts.md#language-elements-overview).*
+
 ---
 
 ## A More Complex Example
@@ -167,6 +171,8 @@ stars: StarEntry(STNUM, MPROP, NMAG)[record_count]
 ```
 
 This describes the **entire SAO catalog format family**—handling different versions, optional fields, and validation—in under 40 lines.
+
+> **Understanding the Building Blocks:** This example uses records, parameters, variables, conditional fields, and arrays. For a systematic overview of these language elements, see [Language Elements Overview](core-concepts.md#language-elements-overview).
 
 ---
 
@@ -317,7 +323,7 @@ As the feature set matures, we expect rapid growth in adoption—particularly as
 Ready to get started?
 
 - **[Getting Started](getting-started.md):** Install SDDL and write your first spec
-- **[Core Concepts](core-concepts.md):** Learn the fundamental building blocks
+- **[Core Concepts](core-concepts.md):** Learn the fundamental building blocks, including the comprehensive [Language Elements Overview](core-concepts.md#language-elements-overview)
 - **[Understanding Instant-Parse](instant-parse.md):** Deep dive into SDDL's key feature
 
 Or jump to the **[Language Reference](reference.md)** if you want the complete specification.

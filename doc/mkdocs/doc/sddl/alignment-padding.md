@@ -1,8 +1,10 @@
 # Alignment and Padding
 
-*Chapter 6 - Layout constraints*
+*Chapter 8 - Explicit control of memory layout*
 
-Binary formats often have specific alignment and padding requirements. This can mirror hardware requirements, that prefer to start at aligned addresses, or formats that enforce fixed record sizes. This chapter explains how SDDL describes these layout constraints. For end-to-end examples, reference the [coverage map entry for `align_up`](real-formats.md#coverage-align-up) and the rows covering [`pad_to`](real-formats.md#coverage-pad-to) and [`pad_align`](real-formats.md#coverage-pad-align).
+Binary formats often require precise alignment rules and padding. This chapter covers SDDL's constructs for controlling layout at the field and record level: field alignment with `align(n)`, record padding with `pad_to` and `pad_align`, and alignment verification with `expect_aligned`.
+
+For a foundational overview of SDDL language elements like records, types, and modifiers, see the [Language Elements Overview](core-concepts.md#language-elements-overview).
 
 ---
 

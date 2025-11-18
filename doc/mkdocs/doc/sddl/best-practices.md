@@ -1,8 +1,10 @@
 # Best Practices
 
-*Chapter 10 - Guidelines for effective SDDL*
+*Chapter 9 - Effective SDDL specification design*
 
-This chapter provides practical guidance for writing clear, maintainable SDDL format descriptions based on real-world experience.
+This chapter collects practical advice for writing clear, maintainable, and effective SDDL specifications. These guidelines come from experience writing specifications for real-world formats and reflect common pitfalls to avoid.
+
+This chapter assumes familiarity with SDDL syntax and constructs. If you need a refresher on records, types, fields, or other language elements, consult the [Language Elements Overview](core-concepts.md#language-elements-overview) first.
 
 ---
 

@@ -38,6 +38,8 @@ Notice we wrote `Int32LE`, not just `Int32`. SDDL requires explicit endianness f
 
 There is no global endianness setting. Every field's byte order is explicit and visible.
 
+**See also:** The complete list of primitive types and their endianness requirements is available in the [Language Elements Overview](core-concepts.md#language-elements-overview).
+
 ---
 
 ## Adding More Fields
@@ -118,6 +120,8 @@ Record Name() = {
 - Fields inside records are comma-separated
 - Trailing commas are allowed
 
+For a complete reference on Records and all other language constructs, see the [Language Elements Overview](core-concepts.md#language-elements-overview).
+
 ---
 
 ## Arrays
@@ -142,25 +146,19 @@ The `[100]` syntax creates an array of exactly 100 `Point` structures.
 
 ### Dynamic-Size Arrays Using Parameters
 
-Parameters let you specify array sizes that depend on values from the file:
+Parameters let you specify array sizes that depend on values read from the file:
 
-**File: `dynamic_array.sddl`**
 ```sddl
-Record Point() = {
-  x: Float32LE,
-  y: Float32LE,
-  z: Float32LE
+Record Point(dimensions) = {
+  coords: Float32LE[dimensions],
+}
+Record Polygon(dimensions, vertex_count) = {
+  points: Point(dimensions)[vertex_count],
 }
 
-Record PointCloud(num_points) = {
-  points: Point[num_points]
-}
-
-header_count: Int32LE
-cloud: PointCloud(header_count)
+triangle_count: UInt32LE
+triangles : Polygon(3, 3)[triangle_count]
 ```
-
-Here, the number of points comes from the `header_count` field, which is passed as a parameter to the `PointCloud` record.
 
 ### Auto-Sized Arrays
 
@@ -177,6 +175,8 @@ points: Point[]  # Read points until end of file
 ```
 
 This repeats the `Point` structure until there's no more data.
+
+> **Learn more:** Arrays are one of SDDL's core language elements. For complete array syntax and capabilities, see [Language Elements Overview](core-concepts.md#language-elements-overview) and [Arrays and Collections](arrays-collections.md).
 
 ---
 
@@ -241,6 +241,8 @@ Variables are:
 - **Immediate** - They're evaluated as soon as their dependencies are available
 - **Local to their scope** - Variables at the top level are available to all subsequent fields
 
+Variables are covered in depth in [Language Elements Overview](core-concepts.md#language-elements-overview) and [Variables and Expressions](variables-expressions.md).
+
 ---
 
 ## Conditional Fields
@@ -269,6 +271,8 @@ packet: Packet(include_time, include_crc)
 The `when` clause makes a field conditional:
 - If the condition is true, the field is parsed
 - If the condition is false, the field is skipped
+
+For more on conditional fields and other control flow elements, see the [Language Elements Overview](core-concepts.md#language-elements-overview).
 
 ---
 
@@ -337,6 +341,8 @@ Record Data(flags) = {
 flags_field: Int16LE
 data: Data(flags_field)
 ```
+
+These patterns demonstrate SDDL's core language elements in action. For a systematic reference to all available constructs, see the [Language Elements Overview](core-concepts.md#language-elements-overview).
 
 ---
 
@@ -613,7 +619,7 @@ You now understand the basics of SDDL:
 
 The next chapters will deepen your understanding:
 
-- **[Core Concepts](core-concepts.md)** - The fundamental building blocks in detail
+- **[Core Concepts](core-concepts.md)** - The fundamental building blocks in detail, including the comprehensive [Language Elements Overview](core-concepts.md#language-elements-overview)
 - **[Arrays and Collections](arrays-collections.md)** - Advanced array techniques
 - **[Understanding Instant-Parse](instant-parse.md)** - Performance implications
 - **[Variables and Expressions](variables-expressions.md)** - Computing derived values

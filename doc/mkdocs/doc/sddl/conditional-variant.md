@@ -2,7 +2,11 @@
 
 *Chapter 7 - Unions and conditional fields*
 
-Binary formats often contain optional fields, variant data, or structures that vary by version or type. This chapter covers SDDL's constructs for describing these patterns: conditional fields with `when` and variant data with `Union`. Refer to the [coverage map entries for conditional fields](real-formats.md#coverage-when-then) and [variant unions](real-formats.md#coverage-unions) whenever you need a full specification that uses these features.
+Binary formats often contain optional fields, variant data, or structures that vary by version or type. This chapter covers SDDL's constructs for describing these patterns: conditional fields with `when` and variant data with `Union`.
+
+For a comprehensive overview of SDDL's core language elements including conditional constructs and unions, see [Language Elements Overview](core-concepts.md#language-elements-overview).
+
+Refer to the [coverage map entries for conditional fields](real-formats.md#coverage-when-then) and [variant unions](real-formats.md#coverage-unions) whenever you need a full specification that uses these features.
 
 ---
 
@@ -135,16 +139,16 @@ The `type` field determines which case is parsed.
 
 ### Multiple Cases for Same Type
 
+Multiple predicate values can map to the same type.
+
 ```sddl
 Union Protocol(version) = {
-  case 1, 2, 3: LegacyFormat,    # Versions 1-3
-  case 4: ModernFormat,           # Version 4
-  case 5, 6: EnhancedFormat,      # Versions 5-6
-  default: UnknownFormat
+  case 1, 2, 3: LegacyFormat(version),    # Versions 1-3
+  case 4:       ModernFormat(version),    # Version  4
+  case 5, 6:    EnhancedFormat(version),  # Versions 5-6
+  default:      UnknownFormat
 }
 ```
-
-Multiple values can map to the same type.
 
 ### Range-Based Cases
 
@@ -238,7 +242,13 @@ Record Packet() = {
 
 ## Enumerations
 
-Enums provide named constants for discriminators and flags.
+Enums provide named constants for discriminators and flags, to improve readability.
+For all intents and purposes, they are treated as constants.
+
+Enum values must always be set explicitly.
+
+Enums currently only support integer values.
+Plans to also support string constants in the future are being considered.
 
 ### Defining Enums
 
@@ -320,7 +330,7 @@ Define anonymous record types directly where used:
 
 ```sddl
 Record Packet() = {
-  header: Record {
+  header: Record() {
     magic: Bytes(4),
     version: UInt16LE,
     flags: UInt16LE
@@ -359,7 +369,7 @@ Record Packet() = { header: Header, data: Bytes(256) }
 **Inline Types:**
 ```sddl
 Record Packet() = {
-  header: Record { magic: Bytes(4), version: UInt16LE },
+  header: Record() { magic: Bytes(4), version: UInt16LE },
   data: Bytes(256)
 }
 ```
@@ -382,7 +392,7 @@ Record Variant() = {
   value: Union(tag) {
     case VariantType.INT: Int64LE,
     case VariantType.FLOAT: Float64LE,
-    case VariantType.STRING: Record {
+    case VariantType.STRING: Record() {
       length: UInt32LE,
       text: Bytes(length)
     }
@@ -390,7 +400,7 @@ Record Variant() = {
 }
 ```
 
-Note that when you using **anonymous `Record { ... }`** in a Union case (without a field name), the fields of that Record become **direct members** of the Union result.
+Note that when you using **anonymous `Record() { ... }`** in a Union case (without a field name), the fields of that Record become **direct members** of the Union result.
 
 ### Pattern: Version-Specific Fields
 
@@ -519,9 +529,7 @@ Record MultiVersionFile() = {
     case 1: V1Format,
     case 2: V2Format,
     case 3: V3Format,
-    default: Record {
-      expect false @err_msg "Unsupported version"
-    }
+    # if version is any other value, it's an error
   }
 }
 ```
@@ -532,26 +540,16 @@ Record MultiVersionFile() = {
 
 ### Pitfall: Assuming Instant-Parse with Field Selectors
 
-```sddl
-# This is NOT instant-parse!
-@instant_parse  # Compilation error
-Record Bad() = {
-  type: UInt8,
-  payload: Union(type) {  # 'type' is parsed field
-    case 1: Data1,
-    case 2: Data2
-  }
-}
-
-# Fix: Pass as parameter
-@instant_parse  # OK
-Record Good(type) = {
-  payload: Union(type) {  # 'type' is parameter
-    case 1: Data1,
-    case 2: Data2
-  }
-}
-```
+!!! error "Instant-parse error example"
+    ```sddl
+    Record Bad() = {
+      type: UInt8,
+      payload: Union(type) {  # 'type' is parsed field
+        case 1: Data1,
+        case 2: Data2
+      } @instant_parse  # This one is okay, assuming Data1 and Data2 are instant-parse
+    } @instant_parse  # Compilation error: this Record is not instant-parse
+    ```
 
 ---
 
