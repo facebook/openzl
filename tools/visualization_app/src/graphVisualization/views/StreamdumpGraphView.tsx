@@ -7,9 +7,15 @@ import '@xyflow/react/dist/style.css';
 import {nodeTypes} from './NodeView';
 import {Box} from '@chakra-ui/react/box';
 import {Button} from '@chakra-ui/react/button';
-import {HStack} from '@chakra-ui/react/stack';
+import {Flex} from '@chakra-ui/react/flex';
 
 const showExpansionButton = false;
+
+interface VersionInfo {
+  libraryVersion: number;
+  frameVersion: number;
+  traceVersion: number;
+}
 
 interface StreamdumpGraphViewProps {
   nodes: Node[];
@@ -18,6 +24,7 @@ interface StreamdumpGraphViewProps {
   onEdgesChange: (changes: EdgeChange[]) => void;
   handleAllStandardGraphsCollapse: () => void;
   areStandardGraphsCollapsed: boolean;
+  versionInfo: VersionInfo;
 }
 
 export function StreamdumpGraphView({
@@ -27,6 +34,7 @@ export function StreamdumpGraphView({
   onEdgesChange,
   handleAllStandardGraphsCollapse,
   areStandardGraphsCollapsed,
+  versionInfo,
 }: StreamdumpGraphViewProps) {
   const [isTrackpadMode, setIsTrackpadMode] = useState<boolean>(false);
   const reactFlowInstance = useReactFlow();
@@ -50,8 +58,8 @@ export function StreamdumpGraphView({
         panOnScroll={isTrackpadMode}>
         <Background />
         <Controls />
-        <Panel>
-          <HStack gap={4}>
+        <Panel style={{width: '100%'}}>
+          <Flex justify="space-between">
             <Button
               variant="surface"
               onClick={() => setIsTrackpadMode(!isTrackpadMode)}
@@ -62,13 +70,18 @@ export function StreamdumpGraphView({
               }>
               {isTrackpadMode ? 'Switch to Mouse Controls' : 'Switch to Trackpad Controls'}
             </Button>
+            <div className="header-text">
+              <p>Library Version: {versionInfo.libraryVersion}</p>
+              <p>Frame Version: {versionInfo.frameVersion}</p>
+              <p>Trace Version: {versionInfo.traceVersion}</p>
+            </div>
             {/* TODO: re-enable once expansion is fixed */}
             {showExpansionButton && (
               <Button onClick={handleAllStandardGraphsCollapse}>
                 {areStandardGraphsCollapsed ? 'Expand all standard graphs' : 'Collapse all standard graphs'}
               </Button>
             )}
-          </HStack>
+          </Flex>
         </Panel>
       </ReactFlow>
     </Box>
