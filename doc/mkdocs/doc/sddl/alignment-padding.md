@@ -2,82 +2,7 @@
 
 *Chapter 6 - Layout constraints*
 
-Binary formats often have specific alignment and padding requirements. Hardware may require certain data types to start at aligned addresses, or formats may enforce fixed record sizes. This chapter explains how SDDL describes these layout constraints. For end-to-end examples, reference the [coverage map entry for `align_up`](real-formats.md#coverage-align-up) and the rows covering [`pad_to`](real-formats.md#coverage-pad-to) and [`pad_align`](real-formats.md#coverage-pad-align).
-
----
-
-## Field Alignment with `align(n)`
-
-The `align(n)` modifier specifies that a field must start at an address that is a multiple of `n` bytes.
-Only power of 2 values are allowed for `n` (1, 2, 4, 8, 16, etc).
-
-### Basic Syntax
-
-```sddl
-Record Data() = {
-  flags: UInt8,
-  value: align(8) Int64LE  # Must start at 8-byte boundary
-}
-```
-
-If `flags` ends at byte 1, the `value` field will start at byte 8 (the next 8-byte boundary), leaving 7 bytes of padding between them.
-
-### Common Alignment Values
-
-- `align(4)` - 4-byte alignment (common for 32-bit integers)
-- `align(8)` - 8-byte alignment (common for 64-bit integers and doubles)
-- `align(16)` - 16-byte alignment (SIMD register size)
-- `align(64)` - 64-byte alignment (cache line size on many systems)
-
-### Alignment in Records
-
-```sddl
-Record Header() = {
-  magic: Bytes(4),
-  version: UInt16LE,
-  _: Bytes(2),                    # Explicit padding to 8 bytes
-  timestamp: align(8) Int64LE,    # Aligned 64-bit value
-  checksum: UInt32LE
-}
-```
-
-The `align(8)` ensures `timestamp` starts at an 8-byte boundary, regardless of what precedes it.
-
-### Alignment in Arrays
-
-When a type has alignment requirements, arrays of that type include inter-element padding:
-
-```sddl
-Record Entry() = {
-  id: UInt8,
-  value: align(8) Float64LE
-}
-
-entries: Entry[100]
-```
-
-Each `Entry` in the array will have padding after `id` to ensure `value` is 8-byte aligned. This padding is repeated for every element.
-
-### Alignment and Instant-Parse
-
-Alignment arguments must be constant or parameter-based for instant-parse:
-
-```sddl
-@instant_parse
-Record Data(align_size) = {
-  header: Bytes(10),
-  payload: align(align_size) Bytes(100)  # OK: depends on parameter
-}
-```
-
-Using a local field for alignment breaks instant-parse:
-
-```sddl
-Record Data() = {
-  align_req: UInt8,
-  payload: align(align_req) Bytes(100)  # Not instant-parse
-}
-```
+Binary formats often have specific alignment and padding requirements. This can mirror hardware requirements, that prefer to start at aligned addresses, or formats that enforce fixed record sizes. This chapter explains how SDDL describes these layout constraints. For end-to-end examples, reference the [coverage map entry for `align_up`](real-formats.md#coverage-align-up) and the rows covering [`pad_to`](real-formats.md#coverage-pad-to) and [`pad_align`](real-formats.md#coverage-pad-align).
 
 ---
 
@@ -145,6 +70,18 @@ Record Container(min_size, align_to) = {
 ```
 
 The padding depends on parameters passed when the record is instantiated. This maintains instant-parse status.
+
+### Understanding Padding Bytes
+
+Padding bytes are "don't care" values. SDDL doesn't specify what they contain, just that they exist:
+
+```sddl
+Record Padded() = {
+  value: UInt32LE
+} pad_to 16
+```
+
+The defined record Padded is 16 bytes: the padding bytes are included in the record size.
 
 ---
 
@@ -219,117 +156,118 @@ Each entry is 12 bytes naturally (8+4), but `pad_align 16` makes each 16 bytes. 
 
 ---
 
-## Understanding Padding Bytes
+## Field Alignment with `align(n)`
 
-Padding bytes are "don't care" values. SDDL doesn't specify what they contain:
+The `align(n)` modifier specifies that a field must start at an address that is
+a multiple of `n` bytes relative to the beginning of its enclosing scope (file or record).
+Only power of 2 values are allowed for `n` (1, 2, 4, 8, 16, etc).
+
+Unlike `pad_to` and `pad_align` which add padding bytes to a record's total size,
+the `align(n)` modifier inserts padding *between* fields without affecting the
+aligned field's own size. A field declared as `value: align(8) Int64LE` is still
+8 bytes; any alignment padding comes before it but is not part of the field itself
+(padding becomes part of the enclosing context).
+
+Note that, consequently, the first field in a record is always aligned, since it
+stands at position 0 relative to its enclosing scope. If you want to enforce an
+alignment requirement for an entire record when it's embedded in other structures,
+see "Record Alignment" below.
+
+### Basic Syntax
 
 ```sddl
-Record Padded() = {
-  value: UInt32LE
-} pad_to 16
+Record Data() = {
+  flags: UInt8,
+  value: align(8) Int64LE  # Starts at 8-byte boundary, relative to beginning of Data
+}
 ```
 
-The 12 padding bytes after `value` can contain any data. SDDL just skips over them. Some formats zero padding bytes, others leave them uninitialized—SDDL describes the layout, not the content of padding.
+If `flags` ends at byte 1, the `value` field will start at byte 8 (the next 8-byte boundary), leaving 7 bytes of padding between them. The padding bytes are part of `Data`, not `value` nor `flags`.
 
----
+### Common Alignment Values
 
-## Alignment Propagation
+- `align(4)` - 4-byte alignment (common for 32-bit integers)
+- `align(8)` - 8-byte alignment (common for 64-bit integers and doubles)
+- `align(16)` - 16-byte alignment (SIMD register size)
+- `align(64)` - 64-byte alignment (cache line size on many systems)
 
-Alignment requirements propagate through nested structures:
+### Field Alignment in Records
 
 ```sddl
-Record Inner() = {
+Record Header() = {
+  magic: Bytes(4),
+  version: UInt16LE,
+  _: Bytes(2),                    # Explicit padding to 8 bytes
+  timestamp: align(8) Int64LE,    # Aligned 64-bit value
+  checksum: UInt32LE
+}
+```
+
+The `align(8)` ensures `timestamp` starts at an 8-byte boundary, relative to the beginning of its enclosing scope, regardless of what precedes it.
+
+### Field Alignment in Arrays
+
+When a type has alignment requirements, arrays of that type include inter-element padding:
+
+```sddl
+Record Entry() = {
+  id: UInt8,
   value: align(8) Float64LE
 }
 
-Record Outer() = {
-  header: Bytes(4),
-  inner: Inner  # inner.value requires 8-byte alignment
-}
+entries: Entry[100]
 ```
 
-The `Inner` record's alignment requirement affects the `Outer` record's layout. The compiler tracks this automatically.
+Each `Entry` in the array will have padding after `id` to ensure `value` is 8-byte aligned. This padding is repeated for every element.
+
+### Field Alignment and Instant-Parse
+
+Alignment arguments must be constant or parameter-based for instant-parse:
+
+```sddl
+Record Data(align_width) = {
+  header: Bytes(10),
+  payload: align(align_width) Bytes(100)  # OK: depends on parameter
+} @instant_parse
+```
+
+If a local field must be read to determine alignment, it breaks instant-parse property of its enclosing scope:
+
+!!! warning "Breaks instant-parse"
+    ```sddl
+    Record Data() = {
+      align_req: UInt8,
+      payload: align(align_req) Bytes(100)
+    }
+    ```
+    This would error if `@instant_parse` was specified because alignment depends on a parsed field.
 
 ---
 
-## Common Patterns
+## Record Alignment
 
-### Pattern: Fixed-Size Message
-
-```sddl
-# Network protocol with fixed 128-byte messages
-Record Message() = {
-  type: UInt8,
-  length: UInt16LE,
-  payload: Bytes(100)
-} pad_to 128
-```
-
-### Pattern: Sector-Aligned Data
+Alignment can be specified at Record level:
 
 ```sddl
-# Disk sector alignment (512 bytes)
-Record Sector(data_size) = {
-  data: Bytes(data_size)
-} pad_align 512
-```
-
-### Pattern: SIMD-Friendly Layout
-
-```sddl
-# 16-byte aligned for SIMD operations
-Record Vector4() = {
-  x: Float32LE,
-  y: Float32LE,
-  z: Float32LE,
-  w: Float32LE
-} pad_align 16
-```
-
-### Pattern: Explicit Padding for Clarity
-
-```sddl
-# Sometimes explicit is clearer than implicit
-Record Clear() = {
-  id: UInt32LE,
-  _: Bytes(4),              # Explicit 4-byte padding
-  timestamp: Int64LE
+Record FAligned8() = align(8) {
+  value: Float64LE
 }
 ```
 
-This makes padding visible rather than relying on `align()`.
+Any field later defined using this Record definition will automatically be aligned to 8 bytes (relative to the beginning of its enclosing scope).
 
----
-
-## Alignment and Instant-Parse
-
-Alignment and padding interact with instant-parse:
-
-**Instant-Parse (constant/parameter alignment):**
 ```sddl
-@instant_parse
-Record Data(align_val) = {
-  value: align(align_val) Int64LE
+Record someRecord() = {
+  flag: UInt8,
+  value: FAligned8,  # Automatically aligned to 8 bytes, relative to beginning of someRecord
 }
 ```
-
-**Not Instant-Parse (local field alignment):**
-```sddl
-Record Data() = {
-  align_req: UInt8,
-  value: align(align_req) Int64LE  # Alignment depends on data
-}
-```
-
-The first is instant-parse because alignment is known from the parameter. The second requires scanning because alignment depends on a parsed field.
 
 ---
 
 ## Summary
 
 Use `align(n)` when individual fields must start on a boundary, `pad_to n` when an entire record must have an exact size, and `pad_align n` when you need to round record sizes up to a multiple. `pad_to` executes before `pad_align`, and both accept parameters so layouts remain instant-parse. Padding bytes are always “don’t care” values; alignment and padding propagate into nested records, and any dependency on local fields makes the construct require scanning.
-
-These features describe existing binary layouts with specific alignment and padding requirements.
 
 ---
 
