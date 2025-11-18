@@ -22,7 +22,6 @@ using namespace openzl::tools::logger;
 
 namespace {
 constexpr size_t BYTES_TO_MB = 1000 * 1000;
-constexpr size_t BYTES_TO_GB = BYTES_TO_MB * 1000;
 
 /// Updates the printed line of benchmarks based on the new parameters provided.
 /// @return The BenchmarkResult structure containing ratio and speeds
@@ -123,11 +122,6 @@ BenchmarkResult runCompressionBenchmarks(const BenchmarkArgs& args)
         size_t uncompressed_size = 0;
         for (const auto& input : *inputs) {
             uncompressed_size += input.contentSize();
-        }
-        // TODO: Size limitations should be a library feature
-        if (uncompressed_size > BYTES_TO_GB / 2) {
-            throw std::runtime_error(
-                    "Chunking support is required for compressing inputs larger than 500 MB. ");
         }
         // get the compressed size
         const auto compressed = cctx.compress(inputVec);

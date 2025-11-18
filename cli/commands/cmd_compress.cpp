@@ -24,7 +24,6 @@ using namespace logger;
 
 namespace openzl::cli {
 constexpr size_t BYTES_TO_MB = 1000 * 1000;
-constexpr size_t BYTES_TO_GB = BYTES_TO_MB * 1000;
 
 namespace {
 
@@ -147,11 +146,6 @@ int performCompression(const CompressArgs& args)
 
     // ahead of time.
     const auto inputSize = input.size().value();
-    // TODO: Size limitations should be a library feature
-    if (inputSize > BYTES_TO_GB / 2) {
-        throw std::runtime_error(
-                "Chunking support is required for compressing inputs larger than 500 MB. ");
-    }
     Logger::log(VERBOSE1, "Input size: ", inputSize);
 
     std::string dstBuffer = std::string(ZL_compressBound(inputSize), '\0');

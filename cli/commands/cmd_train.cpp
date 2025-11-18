@@ -17,7 +17,6 @@ using namespace tools::logger;
 
 const uint64_t kDefaultMaxSingleSampleSize = 150 * 1024 * 1024; /* 150MiB */
 const uint64_t kDefaultMaxTotalSize        = 300 * 1024 * 1024; /* 300MiB */
-constexpr size_t BYTES_TO_GB               = 1000 * 1000 * 1000;
 
 int cmdTrain(const TrainArgs& args)
 {
@@ -75,11 +74,6 @@ int cmdTrain(const TrainArgs& args)
     auto maxTotalSize = args.trainParams.maxTotalSizeMb.has_value()
             ? args.trainParams.maxTotalSizeMb.value() * 1024 * 1024
             : kDefaultMaxTotalSize;
-
-    if (maxFileSize > BYTES_TO_GB / 2) {
-        throw InvalidArgsException(
-                "Max file size must be less than 500MB. Chunking support is required for compressing inputs larger than 2 GB.");
-    }
 
     // Get samples for training
     auto limiter =
