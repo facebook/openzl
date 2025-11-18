@@ -81,7 +81,7 @@ Each `Block` in the array uses the same `block_size` parameter.
 
 ## Auto-Sized Arrays
 
-When you don't know the array size in advance, use auto-sized arrays.
+When the array size is not known nor declared in advance, one can use auto-sized arrays.
 
 ### Reading Until End of Scope
 
@@ -114,6 +114,8 @@ Record Container(payload_size) = {
   entries: Entry[]                # Reads until payload_size is exhausted
 } pad_to payload_size
 ```
+
+If the auto-sized array is not the last member of the scope, all following members in the same scope must be instant-parse, and all elements required to determine their size must be known before the array.
 
 ### Combining Fixed and Auto-Sized Dimensions
 
@@ -157,81 +159,6 @@ Auto-sized arrays are useful when:
 
 ---
 
-## Structure-of-Arrays Layout
-
-By default, arrays store elements sequentially: all fields of element 0, then all fields of element 1, and so on. This is called array-of-structures (AOS).
-
-### Array-of-Structures (Default)
-
-```sddl
-Record Particle() = {
-  x: Float32LE,
-  y: Float32LE,
-  z: Float32LE,
-  vx: Float32LE,
-  vy: Float32LE,
-  vz: Float32LE
-}
-
-particles: Particle[1000]
-```
-
-**Memory layout:**
-```
-x0 y0 z0 vx0 vy0 vz0 | x1 y1 z1 vx1 vy1 vz1 | x2 y2 z2 vx2 vy2 vz2 | ...
-```
-
-Each particle's data is contiguous.
-
-### Structure-of-Arrays with `soa`
-
-Sometimes, data can be laid out as structure-of-arrays (SOA).
-
-```sddl
-Record Particle() = {
-  x: Float32LE,
-  y: Float32LE,
-  z: Float32LE,
-  vx: Float32LE,
-  vy: Float32LE,
-  vz: Float32LE
-}
-
-particles: soa Particle[1000]
-```
-
-**Memory layout:**
-```
-x0 x1 x2 ... x999 | y0 y1 y2 ... y999 | z0 z1 z2 ... z999 | vx0 vx1 ... | vy0 vy1 ... | vz0 vz1 ...
-```
-
-All `x` values are contiguous, then all `y` values, and so on.
-
-This is equivalent to 6 arrays of same size.
-Describing them as a single SOA array is useful: it tells clearly that all arrays have the same size,
-which can be further exploited for compression opportunities.
-It's also compatible with auto-size.
-
-### `soa` Requirements
-
-The element type should be instant-parse and cannot contain `var` declarations or `expect` statements inside the record. These restrictions ensure deterministic layout.
-
-```sddl
-Record Point(dimension) = {
-  coords: Float32LE[dimension]
-}
-
-points: soa Point(3)[1000]  # OK: instant-parse, simple structure
-```
-
-You can combine `soa` with auto-sizing:
-
-```sddl
-measurements: soa Measurement[]  # Read until end of scope
-```
-
----
-
 ## Arrays and Instant-Parse
 
 Whether an array is instant-parse depends on its element type and size specification.
@@ -265,21 +192,7 @@ Record Data() = {
 ```
 
 This `Data` record is not instant-parse because `count` is a local field, not a parameter.
-
-### Promoting to Instant-Parse
-
-You can sometimes make an array instant-parse by moving the size to a parameter:
-
-```sddl
-Record Data(item_count) = {
-  values: Int32LE[item_count]  # Now instant-parse
-}
-
-count: UInt32LE
-data: Data(count)
-```
-
-Now `Data` is instant-parse because `item_count` is known before parsing the record.
+Note that `Data.values` itself is an instant-parse array, since `Int32LE` is instant-parse.
 
 ---
 
@@ -340,24 +253,7 @@ count: UInt32LE
 items: Item[count]
 ```
 
-### Pattern 2: Size-Prefixed Blob Array
-
-Store the total byte size, then read elements until that size is consumed.
-
-```sddl
-Record Entry() = {
-  id: UInt16LE,
-  data: Bytes(10)
-}
-
-blob_size: UInt32LE
-blob: Bytes(blob_size)
-entries: Entry[]  # Within the blob scope
-```
-
-This limits the array to exactly `blob_size` bytes.
-
-### Pattern 3: Type-Specific Arrays
+### Pattern 2: Type-Specific Arrays
 
 Different array types based on a flag or version:
 
@@ -373,7 +269,7 @@ when header.version == 1 then data_v1: DataV1[header.count]
 when header.version == 2 then data_v2: DataV2[header.count]
 ```
 
-### Pattern 4: Nested Arrays
+### Pattern 3: Nested Arrays
 
 Arrays of arrays for grid or matrix data:
 
@@ -387,7 +283,7 @@ Record Grid(width, height) = {
 }
 ```
 
-### Pattern 5: Chunked Data
+### Pattern 4: Chunked Data
 
 Split data into fixed-size chunks:
 
@@ -402,7 +298,7 @@ chunks: Chunk[num_chunks]
 
 Each chunk is exactly 4096 bytes, making the data easy to process in blocks.
 
-### Pattern 6: Mixed Fixed and Variable
+### Pattern 5: Mixed Fixed and Variable
 
 Combine fixed-size headers with variable-size payloads:
 
@@ -423,36 +319,166 @@ packets: scan Packet[]  # Variable-size packets until end of file
 
 ---
 
-## Practical Examples
+## Structure-of-Arrays Layout
 
-### Example 1: Image Format
+By default, arrays store elements sequentially: all fields of element 0, then all fields of element 1, and so on. This is called array-of-structures (AOS).
+
+### Array-of-Structures (Default)
 
 ```sddl
-Record ImageHeader() = {
-  magic: Bytes(4),
-  width: UInt32LE,
-  height: UInt32LE,
-  channels: UInt8,
-  _: Bytes(3)  # Padding for alignment
+Record Particle() = {
+  x: Float32LE,
+  y: Float32LE,
+  z: Float32LE,
+  vx: Float32LE,
+  vy: Float32LE,
+  vz: Float32LE
 }
 
-Record Pixel(channels) = {
-  data: UInt8[channels]
-}
-
-header: ImageHeader
-expect header.magic == "IMGF"
-
-var num_pixels = header.width * header.height
-var channels = header.channels
-
-# Structure-of-arrays for better compression
-pixels: soa Pixel(channels)[num_pixels]
+particles: Particle[1000]
 ```
 
-SOA layout specifies that all red channel values are together, all green together, etc.
+**Memory layout:**
+```
+x0 y0 z0 vx0 vy0 vz0 | x1 y1 z1 vx1 vy1 vz1 | x2 y2 z2 vx2 vy2 vz2 | ...
+```
 
-### Example 2: Time Series Data
+Each particle's data is contiguous.
+
+### Structure-of-Arrays with `soa`
+
+Some binary formats store data in structure-of-arrays (SOA) layout.
+
+```sddl
+Record Particle() = {
+  x: Float32LE,
+  y: Float32LE,
+  z: Float32LE,
+  vx: Float32LE,
+  vy: Float32LE,
+  vz: Float32LE
+}
+
+particles: soa Particle[1000]
+```
+
+**Memory layout:**
+```
+x0 x1 x2 ... x999 | y0 y1 y2 ... y999 | z0 z1 z2 ... z999 | vx0 vx1 ... | vy0 vy1 ... | vz0 vz1 ...
+```
+
+All `x` values are contiguous, then all `y` values, and so on.
+
+**Alternative description:** You could describe this same layout as six separate arrays:
+
+```sddl
+x_values: Float32LE[1000],
+y_values: Float32LE[1000],
+z_values: Float32LE[1000],
+vx_values: Float32LE[1000],
+vy_values: Float32LE[1000],
+vz_values: Float32LE[1000]
+```
+
+**Why use `soa` instead:** Using `soa Particle[1000]` is clearer because:
+
+*   It makes explicit that these six arrays represent 1000 particles (semantic relationship)
+*   It ensures all arrays have the same count (enforced by the format)
+*   It's compatible with auto-sizing: `soa Particle[]` reads until end of scope
+
+### SOA and Nested Records
+
+SOA layout only unwraps the first level of fields. If a field is itself a record,
+it remains in array-of-structures (AOS) layout:
+
+```sddl
+Record Color() = {
+  r: UInt8,
+  g: UInt8,
+  b: UInt8
+}
+
+Record Pixel() = {
+  position: Int16LE,
+  color: Color       # Nested record
+}
+
+pixels: soa Pixel[100]
+```
+
+**Layout**:
+
+```
+pos0 pos1 ... pos99 | (r0 g0 b0) (r1 g1 b1) ... (r99 g99 b99)
+                      └────── Color stays AOS ──────┘
+```
+
+This creates 2 arrays: one for `position` fields, one for `color` structures (each color structure contains r, g, b in sequence).
+
+### SOA and Array Members
+
+If a record field is itself a fixed-size array, it remains as a contiguous block:
+
+```sddl
+Record Item() = {
+  id: UInt32LE,
+  values: Float32LE[3]  # Fixed-size array member
+}
+
+items: soa Item[100]
+```
+
+**Layout:**
+
+```
+id0 id1 ... id99 | (v0 v1 v2)₀ (v0 v1 v2)₁ ... (v0 v1 v2)₉₉
+```
+
+This creates 2 arrays: one for `id` fields, one for `values` triplets.
+
+
+### `soa` Requirements
+
+The element type must be structured so that each field's size and layout can be
+determined from fields that appear earlier in the record definition. This ensures
+the SOA layout can be parsed field-array by field-array.
+
+Simple instant-parse records (all fixed-size fields) always satisfy this requirement:
+
+```sddl
+Record Point(dimension) = {
+  coords: Float32LE[dimension]
+}
+
+points: soa Point(3)[1000]  # OK: instant-parse, simple structure
+```
+
+Records with variable-size fields work if dependencies follow field order:
+
+```sddl
+Record VariableItem() = {
+  size: UInt16LE,        # Array 0
+  data: Bytes(size)      # Array 1: depends on earlier field
+}
+
+items: soa VariableItem[100]  # OK: size array determines data array layout
+```
+
+### `soa` Limitations
+
+You can combine `soa` with auto-sizing **only if** the array is instant-parse:
+
+```sddl
+measurements: soa Measurement[]  # Read until end of scope
+```
+
+Auto-sized SOA requires the element type to be instant-parse (all fields must have statically-known sizes). This is because the parser needs to calculate the element count from the remaining bytes, which is only possible when each element has a fixed, known size.
+
+---
+
+## Practical Examples
+
+### Example 1: Time Series Data
 
 ```sddl
 Record TimePoint() = {
@@ -468,6 +494,45 @@ count: UInt32LE
 measurements: soa TimePoint[count]
 ```
 
+### Example 2: Custom Image Format
+
+In this custom example, we'll imagine a format where each color plane, named a channel, is stored separately and contiguously, in SOA layout.
+
+```sddl
+Record ImageHeader() = {
+  magic: Bytes(4),
+  width: UInt32LE,
+  height: UInt32LE,
+  channels: UInt8,
+} pad_align 4
+
+Union Pixel(channels) = {
+  case 1: gray: UInt8,
+  case 3: Record {
+    r: UInt8,
+    g: UInt8,
+    b: UInt8
+  },
+  case 4: Record {
+    r: UInt8,
+    g: UInt8,
+    b: UInt8,
+    a: UInt8
+  }
+}
+
+header: ImageHeader where header.magic == "IMGF"
+
+var num_pixels = header.width * header.height
+
+# This format uses structure-of-arrays layout
+pixels: soa Pixel(header.channels)[num_pixels]
+```
+
+**Note:** The anonymous `Record { ... }` syntax means the fields (`r`, `g`, `b`, `a`) become direct members of `Pixel`, not nested under a named field. When `channels == 3`, a `Pixel` has three direct fields: `r`, `g`, and `b`. This is essential for SOA to work— `soa Pixel[n]` creates three separate arrays (one for each color channel), not a single nested structure array.
+
+Then, `soa` layout specifies that all red channel values are together, all green together, etc.
+
 ### Example 3: Mixed-Format Records
 
 ```sddl
@@ -480,7 +545,8 @@ Record TextRecord(size) = {
   text: Bytes(size)
 }
 
-Record BinaryRecord(size) = {
+Record BinaryRecord(size) = align(4) {
+  expect size % 4 == 0
   data: Bytes(size)
 }
 
@@ -524,18 +590,6 @@ variable: scan Variable[count]
 The first example allows parallel processing and zero-copy optimizations. The second requires sequential scanning.
 
 This difference compounds with scale. If `Variable` appears once, the scan cost is small. If it appears 50,000 times in an array, the runtime must evaluate `size` 50,000 times and cannot jump directly to record `i` without walking through the previous `i - 1` records. For compressors and other downstream tools, that means lower throughput and weaker opportunities for parallelism.
-
-## Array Validation
-
-You can validate array properties:
-
-```sddl
-count: UInt32LE
-items: Item[count]
-
-expect count > 0
-expect count <= 10000  # Sanity check on array size
-```
 
 ---
 

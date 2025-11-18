@@ -390,6 +390,8 @@ Record Variant() = {
 }
 ```
 
+Note that when you using **anonymous `Record { ... }`** in a Union case (without a field name), the fields of that Record become **direct members** of the Union result.
+
 ### Pattern: Version-Specific Fields
 
 ```sddl
