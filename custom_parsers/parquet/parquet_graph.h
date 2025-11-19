@@ -22,6 +22,19 @@ ZL_GraphID ZL_Parquet_registerGraph(
         ZL_Compressor* compressor,
         ZL_GraphID clusteringGraph);
 
+/**
+ * Registration function for the Parquet graph.
+ *
+ * @param compressor The compressor to register the graph with.
+ * @param clusteringGraph The clustering graph to use as a successor.
+ * @param chunkSize The size of the chunks to split the input into. The
+ * default is no chunking (set to 0).
+ */
+ZL_GraphID ZL_Parquet_registerGraph_withChunkSize(
+        ZL_Compressor* compressor,
+        ZL_GraphID clusteringGraph,
+        int chunkSize);
+
 ZL_END_C_DECLS
 
 #endif

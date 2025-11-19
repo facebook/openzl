@@ -203,7 +203,10 @@ compressProfiles()
                 "Parquet in the canonical format (no compression, plain encoding)",
                 [](ZL_Compressor* comp, void*, const ProfileArgs&) {
                     auto clustering = ZS2_createGraph_genericClustering(comp);
-                    return ZL_Parquet_registerGraph(comp, clustering);
+                    return ZL_Parquet_registerGraph_withChunkSize(
+                            comp,
+                            clustering,
+                            custom_parsers::kDefaultChunkSize);
                 });
 
         std::string kSDDLName = "sddl";
