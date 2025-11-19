@@ -14,19 +14,19 @@ Use this table to jump from a language concept to the simplest full example that
 | Concept | Example |
 | --- | --- |
 | <a id="coverage-expect"></a>`expect` validation | [SAO Catalog (Introduction)](introduction.md#a-more-complex-example) |
-| <a id="coverage-where"></a>`where` inline validation | [Example 1: WAVE PCM](#example-1-wave-pcm-audio-16-bit-mono-stereo) |
-| <a id="coverage-arrays-fixed"></a>Fixed-size arrays | [Example 1: WAVE PCM](#example-1-wave-pcm-audio-16-bit-mono-stereo) |
+| <a id="coverage-where"></a>`where` inline validation | [Example 1: PCM-16bit](#example-1-wave-pcm-audio-16-bit-mono-stereo) |
+| <a id="coverage-arrays-fixed"></a>Fixed-size arrays | [Example 1: PCM-16bit](#example-1-wave-pcm-audio-16-bit-mono-stereo) |
 | <a id="coverage-arrays-parameter"></a>Parameterized record arrays | [SAO Catalog (Introduction)](introduction.md#a-more-complex-example) |
 | <a id="coverage-arrays-auto"></a>Auto-sized arrays | [SAO simple example (Introduction)](introduction.md#a-short-example) |
 | <a id="coverage-var"></a>`var` derived values | [SAO Catalog (Introduction)](introduction.md#a-more-complex-example) |
 | <a id="coverage-align-up"></a>`align_up` row padding | [Example 2: BMP 24-bit](#example-2-bmp-image-24-bit-rgb-uncompressed) |
 | <a id="coverage-align-directive"></a>`align(n)` directive | Not yet covered – see [Alignment chapter](alignment-padding.md#field-alignment-with-alignn) |
-| <a id="coverage-pad-to"></a>`pad_to` sized scopes | [Example 3: WAVE Extended](#example-3-wave-audio-extended-format-support) |
+| <a id="coverage-pad-to"></a>`pad_to` sized scopes | [Example 3: WAV Extended](#example-3-wave-audio-extended-format-support) |
 | <a id="coverage-pad-align"></a>`pad_align` record padding | [Example 2: BMP 24-bit](#example-2-bmp-image-24-bit-rgb-uncompressed) |
 | <a id="coverage-when-then"></a>`when ... then` conditionals | [SAO Catalog (Introduction)](introduction.md#a-more-complex-example) |
 | <a id="coverage-when-block"></a>`when { ... }` conditionals | [SAO Catalog (Introduction)](introduction.md#a-more-complex-example) |
-| <a id="coverage-unions"></a>Variant unions & dispatch | [Example 3: WAVE Extended](#example-3-wave-audio-extended-format-support) |
-| <a id="coverage-enums"></a>Enums, `in`, switch expressions | [Example 3: WAVE Extended](#example-3-wave-audio-extended-format-support) |
+| <a id="coverage-unions"></a>Variant unions & dispatch | [Example 3: WAV Extended](#example-3-wave-audio-extended-format-support) |
+| <a id="coverage-enums"></a>Enums, `in`, switch expressions | [Example 3: WAV Extended](#example-3-wave-audio-extended-format-support) |
 | <a id="coverage-size-checks"></a>`size(field)` function | [Example 2: BMP 24-bit](#example-2-bmp-image-24-bit-rgb-uncompressed) |
 | <a id="coverage-sizeof"></a>`sizeof()` static size checks | [SAO Catalog (Introduction)](introduction.md#a-more-complex-example) |
 | <a id="coverage-soa"></a>`soa` structure-of-arrays layout | Not yet covered – see [Arrays chapter](arrays-collections.md#structure-of-arrays-layout) |
@@ -36,18 +36,21 @@ Use this table to jump from a language concept to the simplest full example that
 
 ---
 
-## Example 1: WAVE PCM Audio (16-bit, Mono/Stereo)
+## Example 1: PCM 16-bit Audio (Mono/Stereo)
 
 **Format Restrictions:**
 
-This example covers the WAVE subset used most often in practice. Only PCM audio is accepted, with 16-bit samples and either mono or stereo layouts. The format expects the standard 16-byte `fmt` chunk immediately followed by `data`, so files with extended `fmt` payloads, intermediate metadata chunks, or extra data after `data` are rejected. Non-PCM encodings (MP3, μ-law, etc.), alternative bit depths, and layouts with more than two channels are likewise treated as invalid.
+This example focuses on the simplest PCM 16-bit WAV structure to teach basic SDDL concepts without additional complexity. It accepts mono or stereo audio with the standard 16-byte `fmt` chunk immediately followed by the `data` chunk.
+
+Note: most real WAV files include metadata chunks (LIST, JUNK, etc.) between these sections, which this simplified parser doesn't handle. For a more complete WAV parser that handles metadata chunks, extended formats, and other real-world variations, see [Example 3: WAVE Audio (Extended Format Support)](#example-3-wave-audio-extended-format-support).
+
 
 **What This Example Teaches:**
 
 The spec shows how to use `where` clauses on each chunk field, compute array lengths from header values, and validate derived quantities such as `byte_rate` and `block_align`. It demonstrates straightforward RIFF parsing: verify the chunk IDs in order, enforce the size expectations, and then read the sample array according to the recorded length.
 
 ```sddl
-# WAVE PCM 16-bit Mono/Stereo Format
+# WAV PCM 16-bit Mono/Stereo Format
 
 # RIFF Chunk
 magic: Bytes(4) where magic == "RIFF"
@@ -153,11 +156,11 @@ Files fail parsing when any header predicate is violated (wrong magic, alternati
 
 ---
 
-## Example 3: WAVE Audio (Extended Format Support)
+## Example 3: WAV Audio (Extended Format Support)
 
 **Format Scope:**
 
-This specification targets the broad range of uncompressed WAVE files used in practice: PCM data from 8 to 32 bits, IEEE_FLOAT recordings at 32 or 64 bits, and EXTENSIBLE files whose subformat GUID resolves to PCM or FLOAT. It accepts one to eight channels and sample rates between 8 kHz and 384 kHz. Extended `fmt` payloads are parsed when present, and every `fmt`/`data` chunk is padded to even-byte boundaries.
+This specification targets the broad range of uncompressed WAV files used in practice: PCM data from 8 to 32 bits, IEEE_FLOAT recordings at 32 or 64 bits, and EXTENSIBLE files whose subformat GUID resolves to PCM or FLOAT. It accepts one to eight channels and sample rates between 8 kHz and 384 kHz. Extended `fmt` payloads are parsed when present, and every `fmt`/`data` chunk is padded to even-byte boundaries.
 
 The parser rejects RF64/RIFX containers, compressed formats, EXTENSIBLE files with unsupported GUIDs, more than eight channels, atypical sample rates, and any file that inserts extra chunks between `fmt` and `data` or repeats either chunk. It also ensures `ValidBitsPerSample` matches `BitsPerSample` in EXTENSIBLE headers.
 
@@ -166,7 +169,7 @@ The parser rejects RF64/RIFX containers, compressed formats, EXTENSIBLE files wi
 This example combines enums and the `in` operator for dispatch, grouped `when { ... }` checks, `pad_to`/`pad_align` for chunk sizing, nested unions for sample data, and switch expressions to resolve EXTENSIBLE GUIDs. It also demonstrates GUID validation, use of `size()` to confirm RIFF container sizes, and layered validation to keep `fmt`, `data`, and derived fields consistent.
 
 ```sddl
-# WAVE Extended Format - PCM/FLOAT (1-8 channels, 8-384kHz)
+# WAV Extended Format - PCM/FLOAT (1-8 channels, 8-384kHz)
 # Accepts: PCM (8/16/24/32-bit), IEEE_FLOAT (32/64-bit), EXTENSIBLE (PCM/FLOAT subtypes)
 # Rejects: Compressed formats, extra chunks, invalid invariants
 
@@ -283,23 +286,19 @@ Record DataPayload(fmt_eff, bits, channels, block_align, total_bytes) = {
 
 # ---------- Chunk wrappers (size-bounded + even padding) ----------
 Record FmtChunk() = {
-  h: ChunkHeader,
-  expect h.ID == "fmt ",
+  h: ChunkHeader where h.ID == "fmt ",
   body: FmtPayload(h.Size)
 } pad_align 2
 
 Record DataChunk(fmt_eff, bits, channels, block_align) = {
-  h: ChunkHeader,
-  expect h.ID == "data",
+  h: ChunkHeader where h.ID == "data",
   body: DataPayload(fmt_eff, bits, channels, block_align, h.Size)
 } pad_align 2
 
 # ==========================================
 # ROOT LAYOUT
 # ==========================================
-riff: RIFF_Header
-expect riff.ChunkID == "RIFF"
-expect riff.Format  == "WAVE"
+riff: RIFF_Header where riff.ChunkID == "RIFF" and riff.Format == "WAVE"
 
 fmt:  FmtChunk
 
@@ -340,8 +339,7 @@ expect riff.ChunkSize == 4 + size(fmt) + size(data)
 All three examples validate format signatures (Examples 1, 2, 3):
 
 ```sddl
-magic: Bytes(4)
-expect magic == "RIFF"
+magic: Bytes(4) where magic == "RIFF"
 ```
 
 ### Derived Size Calculations
