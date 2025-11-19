@@ -913,7 +913,10 @@ static ZL_Report CCTX_runSegmenter(
             &cctx->rtgraph,
             cctx->sessionArena,
             cctx->chunkArena);
-    return SEGM_runSegmenter(segmenterCtx);
+    WAYPOINT(on_segmenterEncode_start, segmenterCtx, /* placeholder */ NULL);
+    const ZL_Report r = SEGM_runSegmenter(segmenterCtx);
+    WAYPOINT(on_segmenterEncode_end, segmenterCtx, r);
+    return r;
 }
 
 /* Invoked from: CCTX_runSupervisedGraph, CCTX_implicitConvert
