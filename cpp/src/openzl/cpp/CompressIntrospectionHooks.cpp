@@ -6,7 +6,40 @@ namespace openzl {
 
 CompressIntrospectionHooks::CompressIntrospectionHooks()
 {
-    rawHooks_.opaque               = this;
+    rawHooks_.opaque = this;
+
+    rawHooks_.on_segmenterEncode_start =
+            [](void* this_ptr, ZL_Segmenter* segCtx, void*) noexcept {
+                ((CompressIntrospectionHooks*)this_ptr)
+                        ->on_segmenterEncode_start(segCtx);
+            };
+    rawHooks_.on_segmenterEncode_end =
+            [](void* this_ptr, ZL_Segmenter* segCtx, ZL_Report r) noexcept {
+                ((CompressIntrospectionHooks*)this_ptr)
+                        ->on_segmenterEncode_end(segCtx, r);
+            };
+    rawHooks_.on_ZL_Segmenter_processChunk_start =
+            [](void* this_ptr,
+               ZL_Segmenter* segCtx,
+               const size_t numElts[],
+               size_t numInputs,
+               ZL_GraphID startingGraphID,
+               const ZL_RuntimeGraphParameters* rGraphParams) noexcept {
+                ((CompressIntrospectionHooks*)this_ptr)
+                        ->on_ZL_Segmenter_processChunk_start(
+                                segCtx,
+                                numElts,
+                                numInputs,
+                                startingGraphID,
+                                rGraphParams);
+            };
+
+    rawHooks_.on_ZL_Segmenter_processChunk_end =
+            [](void* this_ptr, ZL_Segmenter* segCtx, ZL_Report r) noexcept {
+                ((CompressIntrospectionHooks*)this_ptr)
+                        ->on_ZL_Segmenter_processChunk_end(segCtx, r);
+            };
+
     rawHooks_.on_codecEncode_start = [](void* this_ptr,
                                         ZL_Encoder* eictx,
                                         const ZL_Compressor* compressor,

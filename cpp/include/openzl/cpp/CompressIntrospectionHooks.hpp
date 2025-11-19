@@ -16,6 +16,22 @@ class CompressIntrospectionHooks {
         return &rawHooks_;
     }
 
+    virtual void on_segmenterEncode_start(ZL_Segmenter* segCtx) {}
+    virtual void on_segmenterEncode_end(ZL_Segmenter* segCtx, ZL_Report r) {}
+    virtual void on_ZL_Segmenter_processChunk_start(
+            ZL_Segmenter* segCtx,
+            const size_t numElts[],
+            size_t numInputs,
+            ZL_GraphID startingGraphID,
+            const ZL_RuntimeGraphParameters* rGraphParams)
+    {
+    }
+    virtual void on_ZL_Segmenter_processChunk_end(
+            ZL_Segmenter* segCtx,
+            ZL_Report r)
+    {
+    }
+
     virtual void on_ZL_Encoder_getScratchSpace(ZL_Encoder* ei, size_t size) {}
     virtual void on_ZL_Encoder_sendCodecHeader(
             ZL_Encoder* eictx,

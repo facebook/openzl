@@ -1,30 +1,14 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 #include "openzl/cpp/experimental/trace/CompressionTraceHooks.hpp"
 
-#include "openzl/common/a1cbor_helpers.h"
-#include "openzl/common/logging.h"
-#include "openzl/compress/dyngraph_interface.h"
-#include "openzl/cpp/Exception.hpp"
-#include "openzl/cpp/experimental/trace/Codec.hpp"
-#include "openzl/cpp/experimental/trace/StreamVisualizer.hpp"
 #include "openzl/zl_data.h"
 #include "openzl/zl_errors.h"
-#include "openzl/zl_input.h"
 #include "openzl/zl_opaque_types.h"
-#include "openzl/zl_output.h"
 #include "openzl/zl_reflection.h"
 
-#include <algorithm>
 #include <cstdlib>
-#include <filesystem>
-#include <fstream>
-#include <iomanip>
-#include <iostream>
 #include <map>
-#include <numeric>
-#include <unordered_map>
 #include <utility>
-#include <vector>
 
 namespace openzl::visualizer {
 
@@ -64,6 +48,38 @@ inline std::string graphTypeToStr(ZL_GraphType gtype)
         default:
             throw std::runtime_error("Unsupported ZL_GraphType value!");
     }
+}
+
+void CompressionTraceHooks::on_segmenterEncode_start(ZL_Segmenter* segCtx)
+{
+    // Trampoline to Tracer
+    tracer_->on_segmenterEncode_start(segCtx);
+}
+void CompressionTraceHooks::on_segmenterEncode_end(
+        ZL_Segmenter* segCtx,
+        ZL_Report r)
+{
+    // Trampoline to Tracer
+    tracer_->on_segmenterEncode_end(segCtx, r);
+}
+void CompressionTraceHooks::on_ZL_Segmenter_processChunk_start(
+        ZL_Segmenter* segCtx,
+        const size_t numElts[],
+        size_t numInputs,
+        ZL_GraphID startingGraphID,
+        const ZL_RuntimeGraphParameters* rGraphParams)
+{
+    // Trampoline to Tracer
+    tracer_->on_ZL_Segmenter_processChunk_start(
+            segCtx, numElts, numInputs, startingGraphID, rGraphParams);
+}
+
+void CompressionTraceHooks::on_ZL_Segmenter_processChunk_end(
+        ZL_Segmenter* segCtx,
+        ZL_Report r)
+{
+    // Trampoline to Tracer
+    tracer_->on_ZL_Segmenter_processChunk_end(segCtx, r);
 }
 
 void CompressionTraceHooks::on_codecEncode_start(
