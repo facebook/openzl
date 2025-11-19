@@ -4,7 +4,7 @@
 
 load("@fbcode_macros//build_defs:cpp_python_extension.bzl", "cpp_python_extension")
 load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_cxxlibrary")
+load("../../defs.bzl", "zs_cxxlibrary")
 
 oncall("data_compression")
 
@@ -13,12 +13,12 @@ zs_cxxlibrary(
     srcs = ["pybind_helpers.cpp"],
     headers = ["pybind_helpers.h"],
     deps = [
+        "..:zstrong_cpp",
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/pybind11:pybind11",
-        "//data_compression/experimental/zstrong/tools:zstrong_cpp",
     ],
     exported_deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
+        "../..:zstronglib",
     ],
 )
 
@@ -29,10 +29,10 @@ zs_cxxlibrary(
     compiler_flags = ["-Wno-float-equal"],
     strict_conversions = False,
     deps = [
+        "..:zstrong_ml",
         "fbsource//third-party/pybind11:pybind11",
         "fbsource//third-party/pypi/numpy:numpy",
         ":pybind_helpers",
-        "//data_compression/experimental/zstrong/tools:zstrong_ml",
     ],
 )
 
@@ -45,12 +45,12 @@ cpp_python_extension(
         "zstrong_json.ml.pyi",
     ],
     deps = [
+        "..:zstrong_json",
+        "..:zstrong_ml",
         "fbsource//third-party/pybind11:pybind11",
         "fbsource//third-party/pypi/numpy:numpy",
         ":pybind_helpers",
         ":zstrong_ml_native",
-        "//data_compression/experimental/zstrong/tools:zstrong_json",
-        "//data_compression/experimental/zstrong/tools:zstrong_ml",
         "//folly:json",
     ],
 )

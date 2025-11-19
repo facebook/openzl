@@ -10,8 +10,8 @@ python_binary(
     labels = ["autodeps2_generated"],
     main_module = "data_compression.experimental.zstrong.examples.py.quick_start",
     deps = [
+        "../../py:openzl",
         "fbsource//third-party/pypi/numpy:numpy",
-        "//data_compression/experimental/zstrong/py:openzl",
     ],
 )
 
@@ -21,7 +21,7 @@ python_binary(
     labels = ["autodeps2_generated"],
     main_module = "data_compression.experimental.zstrong.examples.py.parsing",
     deps = [
+        "../../py:openzl",
         "fbsource//third-party/pypi/numpy:numpy",
-        "//data_compression/experimental/zstrong/py:openzl",
     ],
 )

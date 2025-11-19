@@ -20,6 +20,6 @@ cpp_library(
         "//folly:conv",
     ],
     exported_deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
+        "../..:zstronglib",
     ],
 )

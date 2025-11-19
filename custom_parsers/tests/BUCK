@@ -5,7 +5,7 @@ load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
 load("@fbcode_macros//build_defs:fbcode_configured_alias.bzl", "fbcode_configured_alias")
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 load("@fbsource//tools/build_defs:default_platform_defs.bzl", "get_host_target_platform")
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_cxxbinary", "zs_fuzzers", "zs_unittest")
+load("../../defs.bzl", "zs_cxxbinary", "zs_fuzzers", "zs_unittest")
 
 oncall("data_compression")
 
@@ -31,11 +31,11 @@ zs_cxxbinary(
         "DebugIntrospectionHooks.h",
     ],
     deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
-        "//data_compression/experimental/zstrong/custom_parsers/csv:csv_parser",
-        "//data_compression/experimental/zstrong/custom_parsers/shared_components:numeric_graphs",
-        "//data_compression/experimental/zstrong/custom_parsers/shared_components:string_graphs",
+        "../..:zstronglib",
+        "../../cpp:openzl_cpp",
+        "../csv:csv_parser",
+        "../shared_components:numeric_graphs",
+        "../shared_components:string_graphs",
     ],
 )
 
@@ -46,8 +46,8 @@ cpp_unittest(
         "test_zip_lexer.cpp",
     ],
     deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/custom_parsers:zip_lexer",
+        "..:zip_lexer",
+        "../..:zstronglib",
     ],
 )
 
@@ -64,12 +64,12 @@ zs_unittest(
     srcs = ["test_clustering.cpp"],
     headers = ["DebugIntrospectionHooks.h"],
     deps = [
-        "//data_compression/experimental/zstrong:compress",
-        "//data_compression/experimental/zstrong:decompress",
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
-        "//data_compression/experimental/zstrong/custom_parsers/csv:csv_parser",
-        "//data_compression/experimental/zstrong/tests:utils",
-        "//data_compression/experimental/zstrong/tests/datagen:datagen",
+        "../..:compress",
+        "../..:decompress",
+        "../../cpp:openzl_cpp",
+        "../../tests:utils",
+        "../../tests/datagen:datagen",
+        "../csv:csv_parser",
     ],
 )
 
@@ -78,13 +78,13 @@ custom_unittest(
     command = [
         "$(location :test_pytorch_model_compressor_bin)",
         "$(location :pytorch_model_generator)",
-        "$(location //data_compression/experimental/zstrong/custom_parsers:pytorch_model_compressor)",
+        "$(location ..:pytorch_model_compressor)",
     ],
     type = "simple",
     deps = [
+        "..:pytorch_model_compressor",
         ":pytorch_model_generator",
         ":test_pytorch_model_compressor_bin",
-        "//data_compression/experimental/zstrong/custom_parsers:pytorch_model_compressor",
     ],
 )
 
@@ -99,9 +99,9 @@ zs_fuzzers(
     ],
     generator = ":pytorch_model_generator_host",
     deps = [
+        "..:pytorch_model_parser",
+        "..:zip_lexer",
+        "../..:zstronglib",
         "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/custom_parsers:pytorch_model_parser",
-        "//data_compression/experimental/zstrong/custom_parsers:zip_lexer",
     ],
 )

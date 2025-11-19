@@ -1,7 +1,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 load("@fbcode_macros//build_defs:protobuf_library.bzl", "protobuf_library")
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_cxxlibrary", "zs_fuzzers", "zs_unittest")
+load("../../../defs.bzl", "zs_cxxlibrary", "zs_fuzzers", "zs_unittest")
 
 oncall("data_compression")
 
@@ -23,9 +23,9 @@ zs_unittest(
         "-Wno-cast-qual",
     ],
     deps = [
+        "..:serializer",
+        "../../..:zstronglib",
         ":test_schema-cpp",
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/tools/protobuf:serializer",
     ],
     external_deps = ["protobuf"],
 )
@@ -34,7 +34,7 @@ zs_unittest(
     name = "test_proto_utils",
     srcs = ["test_proto_utils.cpp"],
     deps = [
-        "//data_compression/experimental/zstrong/tools/protobuf:utils",
+        "..:utils",
     ],
 )
 
@@ -46,8 +46,8 @@ zs_unittest(
     ],
     resources = glob(["resources/*"]),
     deps = [
+        "..:utils",
         ":utils",
-        "//data_compression/experimental/zstrong/tools/protobuf:utils",
     ],
 )
 
@@ -59,8 +59,8 @@ zs_unittest(
     ],
     resources = glob(["resources/*"]),
     deps = [
+        "..:utils",
         ":utils",
-        "//data_compression/experimental/zstrong/tools/protobuf:utils",
     ],
 )
 
@@ -81,10 +81,10 @@ zs_fuzzers(
         ("ProtobufSerializerTest", "FuzzRandomInput"),
     ],
     deps = [
+        "..:serializer",
+        "../../..:zstronglib",
         "fbsource//third-party/protobuf:libprotobuf",
         "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
         ":test_schema-cpp",
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/tools/protobuf:serializer",
     ],
 )

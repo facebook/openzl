@@ -17,6 +17,6 @@ cpp_library(
     ],
     private_headers = ["common_json_extract.h"],
     exported_deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
+        "../..:zstronglib",
     ],
 )

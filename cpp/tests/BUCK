@@ -14,6 +14,6 @@ cpp_unittest(
         "**/*.hpp",
     ]),
     deps = [
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
+        "..:openzl_cpp",
     ],
 )

@@ -1,7 +1,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_cxxbinary", "zs_cxxlibrary", "zs_library", "zs_unittest")
+load("../defs.bzl", "zs_cxxbinary", "zs_cxxlibrary", "zs_library", "zs_unittest")
 
 oncall("data_compression")
 
@@ -20,7 +20,7 @@ zs_library(
         "fileio/fileio.h",
     ],
     exported_deps = [
-        "//data_compression/experimental/zstrong:common",
+        "..:common",
     ],
 )
 
@@ -29,11 +29,11 @@ zs_cxxlibrary(
     srcs = ["zstrong_cpp.cpp"],
     headers = ["zstrong_cpp.h"],
     exported_deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
-        "//data_compression/experimental/zstrong/custom_transforms/json_extract:json_extract",
-        "//data_compression/experimental/zstrong/custom_transforms/parse:parse",
-        "//data_compression/experimental/zstrong/custom_transforms/thrift:thrift_lib",
+        "..:zstronglib",
+        "../cpp:openzl_cpp",
+        "../custom_transforms/json_extract:json_extract",
+        "../custom_transforms/parse:parse",
+        "../custom_transforms/thrift:thrift_lib",
     ],
 )
 
@@ -45,8 +45,8 @@ zs_cxxlibrary(
     strict_conversions = False,
     deps = ["//folly:base64"],
     exported_deps = [
+        "gbt_predictor:zstrong_gbt_predictor",
         ":zstrong_cpp",
-        "//data_compression/experimental/zstrong/tools/gbt_predictor:zstrong_gbt_predictor",
         "//folly:base64",
         "//folly:dynamic",
         "//folly:synchronized",
@@ -66,8 +66,8 @@ zs_cxxlibrary(
         "//folly/lang:bits",
     ],
     exported_deps = [
+        "..:zstronglib",
         ":zstrong_cpp",
-        "//data_compression/experimental/zstrong:zstronglib",
         "//folly:base64",
         "//folly:dynamic",
         "//folly:file_util",
@@ -92,7 +92,7 @@ zs_cxxbinary(
     deps = [
         "fbsource//third-party/apache-arrow:arrow",
         ":arg",
-        "//data_compression/experimental/zstrong/tools:io",
+        ":io",
     ],
 )
 
@@ -105,7 +105,7 @@ zs_library(
         "time/timefn.h",
     ],
     exported_deps = [
-        "//data_compression/experimental/zstrong:common",
+        "..:common",
     ],
 )
 
@@ -135,7 +135,7 @@ zs_cxxlibrary(
     srcs = glob(["io/**/*.cpp"]),
     headers = glob(["io/**/*.h"]),
     exported_deps = [
+        "../cpp:openzl_cpp",
         ":logger",
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
     ],
 )

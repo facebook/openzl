@@ -45,8 +45,8 @@ buck_sh_test(
         # Depend on all files under doc/ to ensure the test triggers on changes to the docs
         ":doc_srcs",
         # Inject fake dependencies to ensure the test triggers on changes to the library and visualization app
-        "//data_compression/experimental/zstrong:zstronglib",  # @manual
-        "//data_compression/experimental/zstrong/tools/visualization_app:app_srcs",  # @manual
+        "../..:zstronglib",  # @manual
+        "../../tools/visualization_app:app_srcs",  # @manual
     ],
 )
 
@@ -56,13 +56,13 @@ python_binary(
     par_style = "xar",
     py_version = "3.12",
     deps = [
+        "../../py:openzl",  # @manual
         "fbsource//third-party/pypi/mkdocs:mkdocs",
         "fbsource//third-party/pypi/mkdocs-material:mkdocs-material",  # @manual
         "fbsource//third-party/pypi/mkdocstrings:mkdocstrings",  # @manual
         "fbsource//third-party/pypi/mkdocstrings-python:mkdocstrings-python",  # @manual
-        "//data_compression/experimental/zstrong/doc/mkdocs/mkdocs-openzl/src:mkdocs_openzl",  # @manual
-        "//data_compression/experimental/zstrong/doc/mkdocs/mkdocstrings-zstd/src:mkdocstrings-zstd",  # @manual
-        "//data_compression/experimental/zstrong/py:openzl",  # @manual
+        "mkdocs-openzl/src:mkdocs_openzl",  # @manual
+        "mkdocstrings-zstd/src:mkdocstrings-zstd",  # @manual
     ],
 )
 

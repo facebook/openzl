@@ -1,6 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_cxxbinary", "zs_cxxlibrary", "zs_fuzzers", "zs_library", "zs_raw_fuzzer", "zs_unittest")
+load("../defs.bzl", "zs_cxxbinary", "zs_cxxlibrary", "zs_fuzzers", "zs_library", "zs_raw_fuzzer", "zs_unittest")
 
 oncall("data_compression")
 
@@ -14,10 +14,10 @@ zs_unittest(
     headers = glob(["unittest/**/*.h"]),
     supports_static_listing = False,
     deps = [
+        "..:common",
+        "../tools:json",
+        "datagen:datagen",
         ":utils",
-        "//data_compression/experimental/zstrong:common",
-        "//data_compression/experimental/zstrong/tests/datagen:datagen",
-        "//data_compression/experimental/zstrong/tools:json",
     ],
 )
 
@@ -29,10 +29,10 @@ zs_unittest(
     ]),
     headers = glob(["compress/**/*.h"]),
     deps = [
+        "..:compress",
+        "datagen:datagen",
         ":test_zstrong_fixtures",
         ":utils",
-        "//data_compression/experimental/zstrong:compress",
-        "//data_compression/experimental/zstrong/tests/datagen:datagen",
     ],
 )
 
@@ -41,8 +41,8 @@ zs_unittest(
     srcs = glob(["decompress/**/*.cpp"]),
     headers = glob(["decompress/**/*.h"]),
     deps = [
+        "..:decompress",
         ":utils",
-        "//data_compression/experimental/zstrong:decompress",
     ],
 )
 
@@ -54,9 +54,9 @@ zs_unittest(
     ),
     headers = glob(["integrationtest/**/*.h"]),
     deps = [
-        "//data_compression/experimental/zstrong:compress",
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
-        "//data_compression/experimental/zstrong/tests/datagen:datagen",
+        "..:compress",
+        "../cpp:openzl_cpp",
+        "datagen:datagen",
     ],
 )
 
@@ -68,13 +68,13 @@ zs_unittest(
     ),
     headers = glob(["round_trip/**/*.h"]),
     deps = [
+        "..:compress",
+        "..:decompress",
+        "../cpp:openzl_cpp",
+        "datagen:datagen",
         "fbsource//third-party/zstd:zstd",
         ":test_zstrong_fixtures",
         ":utils",
-        "//data_compression/experimental/zstrong:compress",
-        "//data_compression/experimental/zstrong:decompress",
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
-        "//data_compression/experimental/zstrong/tests/datagen:datagen",
     ],
 )
 
@@ -82,14 +82,14 @@ zs_unittest(
     name = "test_ml_selector",
     srcs = ["round_trip/test_mlselector.cpp"],
     deps = [
+        "..:compress",
+        "..:decompress",
+        "../cpp:openzl_cpp",
+        "datagen:datagen",
         "fbsource//third-party/zstd:zstd",
         ":ml_selector_utils",
         ":test_zstrong_fixtures",
         ":utils",
-        "//data_compression/experimental/zstrong:compress",
-        "//data_compression/experimental/zstrong:decompress",
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
-        "//data_compression/experimental/zstrong/tests/datagen:datagen",
     ],
 )
 
@@ -98,9 +98,9 @@ zs_unittest(
     srcs = glob(["zstrong/**/test_*.cpp"]),
     headers = glob(["zstrong/**/test_*.h"]),
     deps = [
+        "..:zstronglib",
+        "datagen:datagen",
         ":utils",
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/tests/datagen:datagen",
     ],
 )
 
@@ -109,9 +109,9 @@ zs_cxxlibrary(
     srcs = glob(["zstrong/**/*ixture.cpp"]),
     headers = glob(["zstrong/**/*ixture.h"]),
     deps = [
+        "..:zstronglib",
         "fbsource//third-party/googletest:gtest",
         ":utils",
-        "//data_compression/experimental/zstrong:zstronglib",
     ],
     exported_deps = ["fbsource//third-party/googletest:gtest"],
 )
@@ -121,11 +121,11 @@ zs_unittest(
     srcs = glob(["codecs/**/test_*.cpp"]),
     headers = glob(["codecs/**/test_*.h"]),
     deps = [
+        "..:zstronglib",
+        "../tools/sddl/compiler:lib",
+        "datagen:datagen",
         "fbsource//third-party/zstd:zstd",
         ":utils",
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/tests/datagen:datagen",
-        "//data_compression/experimental/zstrong/tools/sddl/compiler:lib",
     ],
 )
 
@@ -143,7 +143,7 @@ zs_cxxlibrary(
         "ml_selector_utils.h",
     ],
     exported_deps = [
-        "//data_compression/experimental/zstrong:compress",
+        "..:compress",
     ],
 )
 
@@ -158,9 +158,9 @@ zs_cxxlibrary(
         "utils.h",
     ],
     exported_deps = [
+        "..:zstronglib",
+        "../cpp:openzl_cpp",
         "fbsource//third-party/googletest:gtest",
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
     ],
 )
 
@@ -168,8 +168,8 @@ zs_cxxbinary(
     name = "round_trip",
     srcs = ["round_trip.cpp"],
     deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/tools:fileio",
+        "..:zstronglib",
+        "../tools:fileio",
         "//folly/init:init",
     ],
 )
@@ -182,9 +182,9 @@ zs_cxxbinary(
         "-DBENCHMARK_BITSTREAM",
     ],
     deps = [
+        "..:common",
         "fbsource//third-party/googletest:gtest",
         ":utils",
-        "//data_compression/experimental/zstrong:common",
     ],
 )
 
@@ -197,8 +197,8 @@ zs_library(
         "zs2_selector_optimization.h",
     ],
     exported_deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/tools:timefn",
+        "..:zstronglib",
+        "../tools:timefn",
     ],
 )
 
@@ -206,9 +206,9 @@ zs_cxxlibrary(
     name = "fuzz_utils",
     headers = ["fuzz_utils.h"],
     exported_deps = [
+        "datagen:datagen",
         "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
         "fbsource//xplat/security/lionhead/utils/lib_ftest/fdp:lib",
-        "//data_compression/experimental/zstrong/tests/datagen:datagen",
     ],
 )
 
@@ -216,8 +216,8 @@ FUZZER_DEPS = [
     ":constants",
     ":fuzz_utils",
     ":test_zstrong_fixtures",
-    "//data_compression/experimental/zstrong:zstronglib",
-    "//data_compression/experimental/zstrong/tests/datagen:datagen",
+    "..:zstronglib",
+    "datagen:datagen",
 ]
 
 zs_fuzzers(
@@ -273,7 +273,7 @@ zs_fuzzers(
         ("LargeInputTest", "FuzzSerialGraph"),
     ],
     deps = FUZZER_DEPS + [
-        "//data_compression/experimental/zstrong/tests/datagen:custom_nodes",
+        "datagen:custom_nodes",
     ],
 )
 
@@ -334,8 +334,8 @@ zs_fuzzers(
         ("MLSelectorMultiInputTest", "FuzzMLSelectorRoundTrip"),
     ],
     deps = FUZZER_DEPS + [
-        "//data_compression/experimental/zstrong/tests:ml_selector_utils",
-        "//data_compression/experimental/zstrong/tools/ml_selector:ml_selector_graph",
+        "../tools/ml_selector:ml_selector_graph",
+        ":ml_selector_utils",
     ],
 )
 

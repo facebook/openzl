@@ -1,6 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_binary", "zs_library", "zs_release_binary")
+load("../../defs.bzl", "zs_binary", "zs_library", "zs_release_binary")
 
 oncall("data_compression")
 
@@ -16,8 +16,8 @@ zs_library(
     srcs = ["saoGraph.c"],
     headers = ["saoGraph.h"],
     deps = [
+        "../..:zstronglib",
         "fbsource//third-party/benchmark:benchmark",
-        "//data_compression/experimental/zstrong:zstronglib",
     ],
 )
 
@@ -30,13 +30,13 @@ zs_binary(
         "**/*.h",
     ]),
     deps = [
+        "../..:zstronglib",
+        "../../tools:fileio",
+        "../../tools:timefn",
+        "../../tools/streamdump:stream_dump2_headers",
         "fbsource//third-party/benchmark:benchmark",
         "fbsource//third-party/zstd:zstd",
         ":sao_graph",
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/tools:fileio",
-        "//data_compression/experimental/zstrong/tools:timefn",
-        "//data_compression/experimental/zstrong/tools/streamdump:stream_dump2_headers",
     ],
 )
 
@@ -49,11 +49,11 @@ zs_release_binary(
         "**/*.h",
     ]),
     deps = [
+        "../..:zstronglib",
+        "../../tools:fileio",
+        "../../tools:timefn",
+        "../../tools/streamdump:stream_dump2_headers",
         ":sao_graph",
         "//common/managed_compression/zstrong:stream_dump_shim",
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/tools:fileio",
-        "//data_compression/experimental/zstrong/tools:timefn",
-        "//data_compression/experimental/zstrong/tools/streamdump:stream_dump2_headers",
     ],
 )

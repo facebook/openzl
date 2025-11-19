@@ -11,7 +11,7 @@ python_unittest(
         "test_openzl_sys.py",
     ],
     deps = [
+        "..:openzl",
         "fbsource//third-party/pypi/numpy:numpy",
-        "//data_compression/experimental/zstrong/py:openzl",
     ],
 )
