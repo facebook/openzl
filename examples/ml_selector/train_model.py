@@ -10,7 +10,7 @@ import click
 import numpy as np
 import pandas as pd
 import xgboost as xgb
-import zstrong_ml  # @manual=//data_compression/experimental/zstrong/tools/py:zstrong_ml
+import zstrong_ml  # @manual
 from sklearn.model_selection import train_test_split
 
 # Ugly fix for old XGBoost version using deprecated Pandas features

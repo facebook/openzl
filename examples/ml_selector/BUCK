@@ -41,7 +41,7 @@ python_binary(
     main_function = ".train_model.main",
     main_src = "train_model.py",
     deps = [
-        "../../tools/py:zstrong_ml",
+        "../../tools/py:zstrong_ml",  # @manual
         "fbsource//third-party/pypi/click:click",
         "fbsource//third-party/pypi/numpy:numpy",
         "fbsource//third-party/pypi/pandas:pandas",
