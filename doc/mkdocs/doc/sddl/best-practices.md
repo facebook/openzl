@@ -8,7 +8,7 @@ This chapter assumes familiarity with SDDL syntax and constructs. If you need a 
 
 ---
 
-## Always Specify Endianness
+## Endianness is Required
 
 Multi-byte types require explicit endianness:
 
@@ -79,20 +79,6 @@ Record Unvalidated() = {
 ```
 
 The trade-off is between safety and instant-parse status.
-
----
-
-## Provide Helpful Error Messages
-
-Use `@err_msg` for validation errors:
-
-```sddl
-expect version <= MAX_VERSION
-  @err_msg "Unsupported version. Please upgrade the parser."
-
-expect size <= 2_000_000_000
-  @err_msg "File too large. Maximum size is 2GB."
-```
 
 ---
 
