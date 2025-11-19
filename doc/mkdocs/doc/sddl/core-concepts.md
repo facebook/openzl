@@ -489,12 +489,12 @@ Use `where` when validation is tightly coupled to a single field. Use `expect` w
 When `expect` or `where` references only parameters or constants, it doesn't affect instant-parse status:
 
 ```sddl
-@instant_parse
-Record Data(max_size) = {
-  expect max_size <= 1024,  # OK: depends on parameter
-  data: Bytes(max_size)
-}
-```
+Record Block(size) = {
+  data: Bytes(size)  # ✓ OK: 'size' is a parameter
+} @instant_parse
+
+length: Int32LE
+block: Block(length)
 
 When validation references local fields, the record requires scanning:
 

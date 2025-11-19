@@ -136,12 +136,11 @@ Record Container() = {
 Variables referencing parameters or constants are instant-parse safe:
 
 ```sddl
-@instant_parse
 Record Data(total_size) = {
   var payload_size = total_size - 16,  # OK: depends on parameter
   header: Bytes(16),
   payload: Bytes(payload_size)
-}
+} @instant_parse
 ```
 
 Variables referencing parsed fields require scanning:

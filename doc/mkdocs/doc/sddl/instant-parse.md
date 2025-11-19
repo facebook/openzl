@@ -47,7 +47,7 @@ Here, you cannot know the payload offset or total record size until you read and
 
 Instant-parse status affects what you can do with the format:
 
-1. **Parallel processing:** Instant-parse arrays can be processed in parallel because element positions are computable independently
+1. **Parallel processing:** Instant-parse arrays can be dispatched instantly, allowing parallel processing
 2. **Zero-copy access:** Fields in instant-parse records can be accessed directly without parsing
 3. **Predictability:** Layout behavior is explicit and enforceable at compile time
 
@@ -63,7 +63,7 @@ A construct requires scanning when any of these conditions hold:
 
 ### 1. Dependencies on Parsed Fields
 
-The most common case: a field's size or offset depends on a previously parsed value.
+The most common case: a field or array size depends on another field referenced within the same scope.
 
 ```sddl
 Record Container() = {
@@ -125,25 +125,23 @@ You can enforce instant-parse status with the `@instant_parse` annotation.
 ### Basic Usage
 
 ```sddl
-@instant_parse
 Record Header(has_checksum) = {
   magic: Bytes(4),
   version: UInt16LE,
   when (flags & 0x01) != 0 { checksum: UInt32LE }  # Requires scan
-}
+} @instant_parse
 ```
 
 If this record were modified to break instant-parse guarantees, the compiler would reject it:
 
 !!! danger "Compiler error"
     ```sddl
-    @instant_parse
     Record Header() = {
       magic: Bytes(4),
       version: Int16LE,
       size: Int16LE,
       data: Bytes(size)  # ERROR: depends on local field
-    }
+    } @instant_parse
     ```
 
     **Compiler output:**
@@ -183,11 +181,10 @@ This verifies that `Item` is instant-parse and `count` is a parameter.
 A record is instant-parse when all its fields and their sizes depend only on parameters:
 
 ```sddl
-@instant_parse
 Record Packet(payload_size) = {
   header: Bytes(12),
   payload: Bytes(payload_size)
-}
+} @instant_parse
 ```
 
 ### Arrays
@@ -197,10 +194,9 @@ An array is instant-parse when:
 - Its size depends only on parameters or constants
 
 ```sddl
-@instant_parse
 Record Grid(width, height) = {
   cells: Cell[height][width]  # Instant-parse if Cell is instant-parse
-}
+} @instant_parse
 ```
 
 ### Conditional Fields
@@ -208,13 +204,12 @@ Record Grid(width, height) = {
 Conditional fields using parameters are instant-parse:
 
 ```sddl
-@instant_parse
 Record Packet(has_timestamp, has_checksum) = {
   id: Int32LE,
   payload: Bytes(100),
   when has_timestamp { timestamp: Int64LE },
   when has_checksum { checksum: UInt32LE }
-}
+} @instant_parse
 ```
 
 Conditions referencing local fields require scanning:
@@ -250,7 +245,6 @@ payload: Payload(type, size) @instant_parse
 ### Example 1: Image Header (Instant-Parse)
 
 ```sddl
-@instant_parse
 Record ImageHeader() = {
   magic: Bytes(4),      # "IMGF"
   width: UInt32LE,
@@ -258,7 +252,7 @@ Record ImageHeader() = {
   channels: UInt8,
   bits_per_channel: UInt8,
   _: Bytes(2)           # Padding
-}
+} @instant_parse
 
 expect header.magic == "IMGF"
 expect header.channels <= 4
@@ -282,31 +276,6 @@ entries: scan TLV[]
 
 This is the standard TLV pattern. It requires scanning because each value's size depends on its length field.
 
-### Example 3: Hybrid Approach
-
-```sddl
-# Fixed-size instant-parse header
-@instant_parse
-Record Header() = {
-  magic: Bytes(4),
-  version: UInt16LE,
-  num_entries: UInt32LE,
-  flags: UInt16LE
-}
-
-# Variable-size entries that require scanning
-Record Entry() = {
-  name_length: UInt8,
-  name: Bytes(name_length),
-  value: Float64LE
-}
-
-header: Header
-entries: scan Entry[header.num_entries]
-```
-
-The header is instant-parse for quick access. The entries require scanning, but that's acceptable for the flexibility gained.
-
 ---
 
 ## Understanding Compiler Diagnostics
@@ -316,11 +285,10 @@ When the compiler reports an instant-parse violation, it explains the dependency
 ### Example Diagnostic
 
 ```sddl
-@instant_parse
 Record Container() = {
   count: UInt32LE,
   items: Item[count]
-}
+} @instant_parse
 ```
 
 !!! danger "Compiler error"
@@ -346,11 +314,10 @@ The diagnostic shows:
 Complex violations may have long dependency chains:
 
 ```sddl
-@instant_parse
 Record A() = {
   size: UInt16LE,
   b: B(size)
-}
+} @instant_parse
 
 Record B(n) = {
   c: C[n]
@@ -432,11 +399,10 @@ Record Packet() = {
 ### Conditional on Parameter (Instant-Parse)
 
 ```sddl
-@instant_parse
 Record Packet(has_checksum) = {
   id: Int32LE,
   when has_checksum { checksum: UInt32LE }  # Instant-parse
-}
+} @instant_parse
 
 flags: UInt8
 var has_crc = (flags & 0x01) != 0

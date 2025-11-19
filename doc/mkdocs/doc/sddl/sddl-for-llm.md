@@ -64,11 +64,10 @@ Use `@instant_parse` to *require* that a record, union, or field be instantly pa
 If the compiler cannot prove this, it emits a **compile-time error** with a diagnostic explanation.
 
 ```sddl
-@instant_parse
 Record Header(limit) = {
   expect limit <= 4096,
   version: Int16LE
-}
+} @instant_parse
 ```
 
 If a non-instant-parse construct (for example, `Bytes(length)` depending on a local field) is added later, compilation fails:
@@ -392,13 +391,12 @@ Annotations may appear on types, fields, or statements.
 ## **12. Progressive Example**
 
 ```sddl
-@instant_parse
 Record Header() = {
   magic: Bytes(4),
   version: Int16LE,
   packet_count: Int32LE,
   flags: Int16LE
-}
+} @instant_parse
 
 header: Header
 expect header.magic == "DPKT"

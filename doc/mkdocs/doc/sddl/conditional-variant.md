@@ -212,14 +212,13 @@ A union is instant-parse only if:
 ### Instant-Parse Union
 
 ```sddl
-@instant_parse
 Record Packet(type, size) = {
   payload: Union(type) {    # type is parameter: instant-parse
     case 1: Image(size),    # size is parameter: instant-parse
     case 2: Audio(size),
     default: Raw(size)
   }
-}
+} @instant_parse
 ```
 
 ### Non-Instant-Parse Union

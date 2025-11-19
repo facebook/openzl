@@ -222,10 +222,9 @@ An array is instant-parse when:
 - Its size depends only on parameters or constants
 
 ```sddl
-@instant_parse
 Record Grid(width, height) = {
   cells: Cell[height][width]
-}
+} @instant_parse
 ```
 
 If `Cell` is instant-parse and `width`/`height` are parameters, the entire `Grid` is instant-parse.
