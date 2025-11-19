@@ -83,7 +83,7 @@ enum EnumName {
 
 **Single field:**
 ```sddl
-when condition then field: Type
+when condition { field: Type }
 ```
 
 **Block form:**
@@ -311,7 +311,7 @@ data: Bytes(length)
 ```sddl
 flags: UInt8
 var has_feature = (flags & 0x01) != 0
-when has_feature then feature_data: FeatureData
+when has_feature { feature_data: FeatureData }
 ```
 
 **See:** [Variables & Expressions - Flag Extraction](variables-expressions.md#example-2-flag-extraction)
@@ -320,7 +320,7 @@ when has_feature then feature_data: FeatureData
 
 ```sddl
 version: UInt16LE
-when version >= 2 then extended_fields: ExtendedData
+when version >= 2 { extended_fields: ExtendedData }
 ```
 
 **See:** [Conditional & Variant Data - Version-Specific Fields](conditional-variant.md#pattern-version-specific-fields)

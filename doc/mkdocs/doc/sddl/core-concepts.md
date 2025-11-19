@@ -114,10 +114,11 @@ Variables hold intermediate calculations and improve readability.
 Fields or blocks that appear only when conditions are met:
 
 ```sddl
-Record Message(version) = {
-  id: UInt32LE,
-  body: Bytes(256),
-  when version >= 2 then timestamp: Int64LE  # Optional field
+Record Packet(version) = {
+  id: Int32LE,
+  size: Int16LE,
+  payload: Bytes(size),
+  when version >= 2 { timestamp: Int64LE }  # Optional field
 }
 ```
 
@@ -310,7 +311,7 @@ The `count` parameter is passed when instantiating the record. Parameters can be
 - Used in `Bytes` sizes: `data: Bytes(count)`
 - Used in expressions: `data: Bytes(count * 2)`
 - Passed to nested records: `nested: SubRecord(count)`
-- Used in conditions: `when count > 0 then ...`
+- Used in conditions: `when count > 0 { ... }`
 
 ### Multiple Parameters
 
@@ -584,6 +585,7 @@ data: Int32LE[count]
 **Explaining complex logic:**
 ```sddl
 var has_metadata = (header.flags & 0x01) != 0
+when has_metadata { metadata: Metadata }
 var is_compressed = (header.flags & 0x02) != 0
 
 # Metadata is optional based on flag bit 0
@@ -710,8 +712,8 @@ var bits_per_channel = header.bits_per_channel
 
 # ----- Data -----
 
-when bits_per_channel == 8 then pixels_8: Pixel8(num_channels)[num_pixels]
-when bits_per_channel == 16 then pixels_16: Pixel16(num_channels)[num_pixels]
+when bits_per_channel == 8 { pixels_8: Pixel8(num_channels)[num_pixels] }
+when bits_per_channel == 16 { pixels_16: Pixel16(num_channels)[num_pixels] }
 ```
 
 This example demonstrates:

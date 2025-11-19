@@ -223,11 +223,11 @@ Record FmtPayload(total_size) = {
   ),
 
   # Typical size discipline (fail-fast)
-  when core.AudioFormat == WaveFormat.PCM        then expect (total_size == 16),
-  when core.AudioFormat == WaveFormat.IEEE_FLOAT then expect (total_size >= 18),
-  when core.AudioFormat == WaveFormat.EXTENSIBLE then expect (total_size >= 40),
+  when core.AudioFormat == WaveFormat.PCM { expect (total_size == 16) },
+  when core.AudioFormat == WaveFormat.IEEE_FLOAT { expect (total_size >= 18) },
+  when core.AudioFormat == WaveFormat.EXTENSIBLE { expect (total_size >= 40) },
 
-  when total_size > 16 then extra: FmtExtra(total_size),
+  when total_size > 16 { extra: FmtExtra(total_size) },
 
   # Extensible constraints (grouped)
   when core.AudioFormat == WaveFormat.EXTENSIBLE {

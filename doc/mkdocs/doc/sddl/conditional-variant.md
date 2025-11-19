@@ -17,10 +17,10 @@ The `when` keyword makes fields appear only when a condition is true.
 ### Basic Syntax
 
 ```sddl
-Record Message(include_timestamp) = {
+Record Packet(include_timestamp) = {
   id: Int32LE,
-  body: Bytes(256),
-  when include_timestamp then timestamp: Int64LE
+  size: Int16LE,
+  when include_timestamp { timestamp: Int64LE }
 }
 ```
 
@@ -31,11 +31,10 @@ If `include_timestamp` is true, the record includes a timestamp. If false, it do
 Conditions based on parameters maintain instant-parse status:
 
 ```sddl
-Record Packet(version, has_checksum) = {
-  header: Bytes(12),
-  data: Bytes(100),
-  when has_checksum then crc: UInt32LE,
-  when version >= 2 then metadata: Bytes(64)
+Record Data(has_checksum, version) = {
+  payload: Bytes(100),
+  when has_checksum { crc: UInt32LE },
+  when version >= 2 { metadata: Bytes(64) }
 }
 ```
 
@@ -46,10 +45,9 @@ The layout is fully determined by the parameters. This is instant-parse.
 Conditions referencing parsed fields require scanning:
 
 ```sddl
-Record DynamicPacket() = {
+Record Header() = {
   flags: UInt8,
-  data: Bytes(100),
-  when (flags & 0x01) != 0 then checksum: UInt32LE  # Requires scan
+  when (flags & 0x01) != 0 { checksum: UInt32LE }  # Requires scan
 }
 ```
 
@@ -58,11 +56,11 @@ The parser must read `flags` before knowing whether `checksum` exists.
 ### Multiple Conditions
 
 ```sddl
-Record Feature(version) = {
-  base: BaseData,
-  when version >= 1 then feature_v1: Int32LE,
-  when version >= 2 then feature_v2: Int64LE,
-  when version >= 3 then feature_v3: ExtendedData
+Record VersionedData(version) = {
+  base: Int32LE,
+  when version >= 1 { feature_v1: Int32LE },
+  when version >= 2 { feature_v2: Int64LE },
+  when version >= 3 { feature_v3: ExtendedData }
 }
 ```
 
@@ -73,10 +71,10 @@ Each condition is evaluated independently. Multiple can be true simultaneously.
 Use logical operators for more sophisticated conditions:
 
 ```sddl
-Record Config(mode, flags) = {
-  basic: BasicConfig,
-  when mode == 1 or mode == 3 then option_a: Int32LE,
-  when (flags & 0x80) != 0 and mode >= 2 then option_b: Int64LE
+Record Data(mode, flags) = {
+  base: Int32LE,
+  when mode == 1 or mode == 3 { option_a: Int32LE },
+  when (flags & 0x80) != 0 and mode >= 2 { option_b: Int64LE }
 }
 ```
 
@@ -291,11 +289,10 @@ enum FileFlags {
   COMPRESSED   = 0x04
 }
 
-Record File() = {
-  flags: UInt8,
-  data: Bytes(1024),
-  when (flags & FileFlags.HAS_METADATA) != 0 then metadata: Metadata,
-  when (flags & FileFlags.HAS_CHECKSUM) != 0 then checksum: UInt32LE
+Record FileData(flags) = {
+  data: Bytes(100),
+  when (flags & FileFlags.HAS_METADATA) != 0 { metadata: Metadata },
+  when (flags & FileFlags.HAS_CHECKSUM) != 0 { checksum: UInt32LE }
 }
 ```
 
@@ -410,12 +407,13 @@ Record FileFormat() = {
   version: UInt16LE,
   data: Bytes(100),
 
-  # Version 2 additions
-  when version >= 2 then extended_header: ExtendedHeader,
+Record FileWithMetadata(version) = {
+  header: FileHeader,
+  when version >= 2 { extended_header: ExtendedHeader },
 
-  # Version 3 additions
-  when version >= 3 then metadata: Metadata,
-  when version >= 3 then checksum: UInt32LE
+  data: Bytes(1024),
+  when version >= 3 { metadata: Metadata },
+  when version >= 3 { checksum: UInt32LE }
 }
 ```
 
@@ -506,15 +504,15 @@ Record Config() = {
   # V1 fields
   name_length: UInt16LE,
   name: Bytes(name_length),
+Record Config(version) = {
+  host: Bytes(256),
   port: UInt16LE,
-
-  # V2 additions
-  when version >= ConfigVersion.V2 then timeout: UInt32LE,
-  when version >= ConfigVersion.V2 then max_connections: UInt16LE,
+  when version >= ConfigVersion.V2 { timeout: UInt32LE },
+  when version >= ConfigVersion.V2 { max_connections: UInt16LE },
 
   # V3 additions
-  when version >= ConfigVersion.V3 then tls_config: TLSConfig,
-  when version >= ConfigVersion.V3 then flags: UInt32LE
+  when version >= ConfigVersion.V3 { tls_config: TLSConfig },
+  when version >= ConfigVersion.V3 { flags: UInt32LE }
 }
 ```
 

@@ -119,6 +119,56 @@ Record Container(payload_size) = {
 
 If the auto-sized array is not the last member of the scope, all following members in the same scope must be instant-parse, and all elements required to determine their size must be known before the array.
 
+### Partial Elements and Leftover Data
+
+What happens when the remaining data in scope isn't evenly divisible by the element size? The behavior depends on the enclosing scope.
+
+**File Scope (or Non-Padded Record Scope)**
+
+When an auto-sized array appears at file level, **all remaining data must form complete elements**. Leftover bytes that don't constitute a full element cause a parse error.
+
+```sddl
+Record Point() = {
+  x: Float32LE,  # 4 bytes
+  y: Float32LE,  # 4 bytes
+  z: Float32LE   # 4 bytes
+}
+
+points: Point[]  # Each Point is 12 bytes
+```
+
+If the file contains 100 bytes:
+- **96 bytes = 8 complete points**: ✓ Valid
+- **100 bytes = 8 complete points + 4 leftover bytes**: ✗ Parse error
+
+The 4 leftover bytes are insufficient to form a complete `Point` structure.
+
+**Padded Record Scope**
+
+When an auto-sized array appears within a record that uses `pad_to` or `pad_align`, leftover bytes are **allowed and treated as padding**.
+
+```sddl
+Record Container(payload_size) = {
+  header: Bytes(16),
+  entries: Entry[]  # Auto-sized array
+} pad_to payload_size
+```
+
+If `payload_size` is 100 and `Entry` is 12 bytes:
+- The `header` consumes 16 bytes
+- Remaining space: 84 bytes
+- 84 ÷ 12 = 7 complete entries (84 bytes used)
+- **Leftover: 0 bytes** (padding not needed in this case)
+
+If `payload_size` is 104:
+- The `header` consumes 16 bytes
+- Remaining space: 88 bytes
+- 88 ÷ 12 = 7 complete entries (84 bytes used)
+- **Leftover: 4 bytes** ✓ Valid (treated as padding)
+
+This allows the `Container` to meet its `pad_to` size requirement while the array consumes only complete elements.
+
+
 ### Combining Fixed and Auto-Sized Dimensions
 
 You can mix fixed and auto-sized dimensions:
@@ -267,8 +317,8 @@ Record Header() = {
 
 header: Header
 
-when header.version == 1 then data_v1: DataV1[header.count]
-when header.version == 2 then data_v2: DataV2[header.count]
+when header.version == 1 { data_v1: DataV1[header.count] }
+when header.version == 2 { data_v2: DataV2[header.count] }
 ```
 
 ### Pattern 3: Nested Arrays
@@ -553,10 +603,10 @@ Record BinaryRecord(size) = align(4) {
 }
 
 # Variable-size, type-dispatched records
-Record GenericRecord() = {
-  header: RecordHeader,
-  when header.type == 1 then text: TextRecord(header.size),
-  when header.type == 2 then binary: BinaryRecord(header.size)
+Record Block(type, size) = {
+  header: BlockHeader,
+  when header.type == 1 { text: TextRecord(header.size) },
+  when header.type == 2 { binary: BinaryRecord(header.size) }
 }
 
 records: scan GenericRecord[]

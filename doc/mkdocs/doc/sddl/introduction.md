@@ -139,21 +139,21 @@ Record CatalogHeader() = {
 }
 
 Record StarEntry(STNUM, MPROP, NMAG) = {
-  when STNUM >= 0 then XNO: Float32LE,     # Catalog number
+  when STNUM >= 0 { XNO: Float32LE },     # Catalog number
 
   SRA0:  Float64LE,                        # Right Ascension
   SDEC0: Float64LE,                        # Declination
   ISP:   Bytes(2),                         # Spectral type
 
-  when abs(NMAG) > 0 then MAG: Int16LE[abs(NMAG)],  # Magnitudes
+  when abs(NMAG) > 0 { MAG: Int16LE[abs(NMAG)] },  # Magnitudes
 
   when MPROP >= 1 {
     XRPM: Float32LE,                       # R.A. proper motion
     XDPM: Float32LE                        # Dec. proper motion
   }
-  when MPROP == 2 then SVEL: Float64LE,    # Radial velocity
+  when MPROP == 2 { SVEL: Float64LE },    # Radial velocity
 
-  when STNUM < 0 then NAME: Bytes(-STNUM)  # Object name
+  when STNUM < 0 { NAME: Bytes(-STNUM) }  # Object name
 }
 
 # File structure

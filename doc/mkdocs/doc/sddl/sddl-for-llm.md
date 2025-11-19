@@ -170,8 +170,8 @@ Rules:
 ```sddl
 Record Data(has_id, include_meta) = {
   base: Int32LE,
-  when has_id > 0 then id: Int64LE,
-  when include_meta then meta: Bytes(256)
+  when has_id > 0 { id: Int64LE },
+  when include_meta { meta: Bytes(256) }
 }
 ```
 
@@ -410,7 +410,7 @@ var has_crc   = header.flags & 0x01
 Record Packet(include_crc) = {
   id: Int32LE,
   size: Int16LE,
-  when include_crc then checksum: Int32LE
+  when include_crc { checksum: Int32LE }
 }
 
 packets: Packet(has_crc)[pkt_count] @instant_parse

@@ -126,10 +126,10 @@ You can enforce instant-parse status with the `@instant_parse` annotation.
 
 ```sddl
 @instant_parse
-Record Header(max_size) = {
+Record Header(has_checksum) = {
   magic: Bytes(4),
-  version: Int16LE,
-  data: Bytes(max_size)
+  version: UInt16LE,
+  when (flags & 0x01) != 0 { checksum: UInt32LE }  # Requires scan
 }
 ```
 
@@ -209,20 +209,21 @@ Conditional fields using parameters are instant-parse:
 
 ```sddl
 @instant_parse
-Record Data(has_timestamp, has_checksum) = {
-  value: Float64LE,
-  when has_timestamp then timestamp: Int64LE,
-  when has_checksum then checksum: UInt32LE
+Record Packet(has_timestamp, has_checksum) = {
+  id: Int32LE,
+  payload: Bytes(100),
+  when has_timestamp { timestamp: Int64LE },
+  when has_checksum { checksum: UInt32LE }
 }
 ```
 
 Conditions referencing local fields require scanning:
 
 ```sddl
-Record Data() = {
+Record Packet() = {
+  id: Int32LE,
   flags: UInt8,
-  value: Float64LE,
-  when (flags & 0x01) != 0 then extra: Int32LE  # Requires scan
+  when (flags & 0x01) != 0 { extra: Int32LE }  # Requires scan
 }
 ```
 
@@ -431,9 +432,10 @@ Record Packet() = {
 ### Conditional on Parameter (Instant-Parse)
 
 ```sddl
+@instant_parse
 Record Packet(has_checksum) = {
-  data: Bytes(100),
-  when has_checksum then checksum: UInt32LE  # Instant-parse
+  id: Int32LE,
+  when has_checksum { checksum: UInt32LE }  # Instant-parse
 }
 
 flags: UInt8

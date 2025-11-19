@@ -10,6 +10,88 @@ Need a concrete spec that leans on these tools? Jump to the [coverage map entry 
 
 ---
 
+## Referencing Fields
+
+When SDDL parses a field from the binary data, it creates a binding between the field name and the parsed value. You can reference these field values in subsequent expressions, enabling dynamic behavior based on the data itself.
+
+### Basic Field References
+
+Every field you parse creates a name that can be referenced later:
+
+```sddl
+Record Header() = {
+  magic: Bytes(4),
+  version: Int16LE,
+  count: Int32LE
+}
+
+header: Header
+
+# After parsing 'header', you can reference its fields
+items: Item[header.count]        # Use count for array size
+expect header.version >= 2       # Use version in validation
+```
+
+The binding happens immediately after the field is parsed, making its value available to all subsequent statements in the same scope. Use dot notation to access fields within nested records—each dot traverses one level deeper into the structure.
+
+### Type Restrictions for Expressions
+
+**IMPORTANT:** Not all field types can be used in expressions. SDDL's expression engine operates on 64-bit signed integers, which covers the vast majority of use cases (array sizes, offsets, counts, flags) while keeping the type system simple and predictable.
+
+**Supported in expressions:** All integer types (Int8, Int16LE, Int32BE, UInt32LE, etc.) up to signed 64-bit integers (Int64LE, Int64BE).
+
+**Not supported in expressions:** Unsigned 64-bit integers (UInt64LE, UInt64BE), all floating-point types (Float16LE/BE, Float32LE/BE, Float64LE/BE, BFloat16LE/BE), and byte sequences (Bytes).
+
+You can still **parse** any type—these restrictions only apply to using field values in expressions:
+
+```sddl
+Record Data() = {
+  timestamp: UInt64LE,      # ✓ Can parse
+  temperature: Float32LE,   # ✓ Can parse
+
+  # But cannot use in expressions:
+  # var x = timestamp + 100        # ✗ ERROR: UInt64LE not supported
+  # when temperature > 20.0 ...    # ✗ ERROR: Float not supported
+
+  count: Int32LE,
+  items: Item[count]        # ✓ OK: Int32LE works in expressions
+}
+```
+
+Workarounds: For validation, use `expect` statements on fields directly without arithmetic. For conditionals, pre-determine behavior based on format version or flags. For sizes, prefer Int32LE or Int64LE over UInt64LE.
+
+### Common Uses for Field References
+
+Field references appear throughout SDDL specifications in array sizes (`items: Item[count]`), record parameters (`Block(header.size)`), byte counts (`Bytes(length)`), conditional fields (`when (flags & 0x01) != 0 { ... }`), validation statements (`expect magic == "RIFF"`), variable expressions (`var total = width * height`), and switch expressions.
+
+### Scope Rules
+
+You can reference fields that are in the same scope (same record or top-level), from a previously parsed field using dot notation, or passed as parameters to a record. You cannot reference fields from outer scopes unless they're passed as parameters:
+
+```sddl
+header_count: Int32LE
+
+Record Erroneous_Data() = {
+  # ERROR: Cannot reference top-level 'header_count' directly
+  # items: Item[header_count]
+}
+
+# CORRECT: Pass it as a parameter
+Record Data(count) = {
+  items: Item[count]
+}
+
+data: Data(header_count)
+```
+
+Fields within the same record can reference each other directly (`data: Bytes(size)` where `size` is a field in the same record), though this requires scanning rather than instant-parse.
+
+### Performance Impact
+
+Field references affect instant-parse status based on what you reference. Parameters are instant-parse safe, while references to local parsed fields require sequential scanning. See [Understanding Instant-Parse](instant-parse.md) for performance implications.
+
+---
+
 ## The `var` Statement
 
 Variables store computed values for later use.
@@ -242,8 +324,8 @@ Record Header() = {
 
 header: Header
 
-when header.has_checksum then checksum: UInt32LE
-when header.is_compressed then compression_info: CompressionHeader
+when header.has_checksum { checksum: UInt32LE }
+when header.is_compressed { compression_info: CompressionHeader }
 ```
 
 ### Example 3: Version-Based Sizes
@@ -262,7 +344,7 @@ Record Config() = {
   var has_extended = version >= 3,
 
   header: Bytes(header_size),
-  when has_extended then extended: ExtendedData
+  when has_extended { extended: ExtendedData }
 }
 ```
 
@@ -289,7 +371,7 @@ Record Packet() = {
   var payload_size = header.total_size - sizeof(PacketHeader()),
   var has_payload = payload_size > 0,
 
-  when has_payload then payload: Bytes(payload_size)
+  when has_payload { payload: Bytes(payload_size) }
 }
 ```
 

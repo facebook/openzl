@@ -217,6 +217,28 @@ This is a complete, working SDDL specification for the Silesia SAO format.
 
 ---
 
+## Referencing Fields
+
+When you parse a field, SDDL creates a binding between the field name and its value. You can reference that field in later expressions using dot notation:
+
+```sddl
+Record Header() = {
+  magic: Bytes(4),
+  count: Int32LE
+}
+
+header: Header
+items: Item[header.count]  # Reference the count field
+```
+
+After parsing `header`, you can use `header.count`, `header.magic`, etc. in array sizes, parameters, conditionals, and validation statements. For nested records, use multiple dots: `header.meta.timestamp`.
+
+> **Note:** Only integer field types (up to signed 64-bit) can be used in expressions. Floating-point types and UInt64LE/UInt64BE are not supported in expressions, though you can still parse them as fields.
+
+> **Learn more:** For complete details on field references, type restrictions, scope rules, and performance implications, see [Variables and Expressions - Referencing Fields](variables-expressions.md#referencing-fields).
+
+---
+
 ## Variables
 
 Sometimes you need to extract a value from the data and use it later. That's what `var` statements do:
@@ -253,11 +275,11 @@ Sometimes fields are optional or depend on flags. Use `when` conditions:
 Record Packet(has_timestamp, has_checksum) = {
   id: Int32LE,
 
-  when has_timestamp then timestamp: Int64LE,
+  when has_timestamp { timestamp: Int64LE },
 
   payload: Bytes(100),
 
-  when has_checksum then checksum: Int32LE
+  when has_checksum { checksum: Int32LE }
 }
 
 flags: Int16LE
@@ -333,9 +355,9 @@ Bit flags controlling optional features:
 ```sddl
 Record Data(flags) = {
   base: Int32LE,
-  when (flags & 0x01) != 0 then extra1: Int32LE,
-  when (flags & 0x02) != 0 then extra2: Int32LE,
-  when (flags & 0x04) != 0 then extra3: Int32LE
+  when (flags & 0x01) != 0 { extra1: Int32LE },
+  when (flags & 0x02) != 0 { extra2: Int32LE },
+  when (flags & 0x04) != 0 { extra3: Int32LE }
 }
 
 flags_field: Int16LE
@@ -598,7 +620,7 @@ Record Metadata() = {
 header: Header
 
 var has_metadata = (header.flags & 0x01) != 0
-when has_metadata then metadata: Metadata
+when has_metadata { metadata: Metadata }
 
 records: DataRecord[header.num_records]
 ```

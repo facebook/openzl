@@ -108,11 +108,12 @@ Record MyFormat() = {
   # V1 fields
   base_data: Bytes(100),
 
-  # V2 additions
-  when version >= 2 then extended_data: ExtendedData,
+Record Data(version) = {
+  base: Int32LE,
+  when version >= 2 { extended_data: ExtendedData },
 
-  # V3 additions
-  when version >= 3 then metadata: Metadata
+  # Additional fields
+  when version >= 3 { metadata: Metadata }
 }
 ```
 
