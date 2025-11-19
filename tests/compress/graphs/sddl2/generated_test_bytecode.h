@@ -77,6 +77,14 @@ static const uint8_t BYTECODE_TEST_EXPECT_TRUE_WITH_CMP[] = {
 };
 static const size_t BYTECODE_TEST_EXPECT_TRUE_WITH_CMP_SIZE = 28;
 
+/* Source: test_expect_true_with_trace.asm */
+/* expect_true with rich trace output */
+/* Expected error: SDDL2_VALIDATION_FAILED */
+static const uint8_t BYTECODE_TEST_EXPECT_TRUE_WITH_TRACE[] = {
+    0x04, 0x00, 0x05, 0x00, 0x03, 0x00, 0x01, 0x00, 0x96, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0xC8, 0x00, 0x00, 0x00, 0x01, 0x00, 0x03, 0x00, 0x03, 0x00, 0x01, 0x00, 0x05, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x03, 0x00, 0x03, 0x00, 0x02, 0x00, 0x04, 0x00, 0x04, 0x00, 0x04, 0x00, 0x02, 0x00, 0x05, 0x00, 0x01, 0x00, 0x05, 0x00
+};
+static const size_t BYTECODE_TEST_EXPECT_TRUE_WITH_TRACE_SIZE = 60;
+
 /* Source: test_math_add.asm */
 static const uint8_t BYTECODE_TEST_MATH_ADD[] = {
     0x03, 0x00, 0x01, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x05, 0x00, 0x00, 0x00, 0x01, 0x00, 0x02, 0x00, 0x01, 0x00, 0x05, 0x00
@@ -453,6 +461,16 @@ static const SDDL2_TestCase SDDL2_BYTECODE_TESTS[] = {
         .size = BYTECODE_TEST_EXPECT_TRUE_WITH_CMP_SIZE,
         .description = "expect_true with comparison (composability)",
         .expected_error = SDDL2_OK,
+        .input_size = 0,
+        .skip = 0,
+        .custom_validator = NULL
+    },
+    {
+        .name = "test_expect_true_with_trace",
+        .bytecode = BYTECODE_TEST_EXPECT_TRUE_WITH_TRACE,
+        .size = BYTECODE_TEST_EXPECT_TRUE_WITH_TRACE_SIZE,
+        .description = "expect_true with rich trace output",
+        .expected_error = SDDL2_VALIDATION_FAILED,
         .input_size = 0,
         .skip = 0,
         .custom_validator = NULL
@@ -879,6 +897,6 @@ static const SDDL2_TestCase SDDL2_BYTECODE_TESTS[] = {
     },
 };
 
-static const size_t SDDL2_BYTECODE_TEST_COUNT = 50;
+static const size_t SDDL2_BYTECODE_TEST_COUNT = 51;
 
 #endif // GENERATED_TEST_BYTECODE_H

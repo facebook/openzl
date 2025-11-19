@@ -438,8 +438,11 @@ static inline bool mul_would_overflow(int64_t a, int64_t b)
     }
 }
 
-SDDL2_Error SDDL2_op_add(SDDL2_Stack* stack)
+SDDL2_Error SDDL2_op_add(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
+    (void)trace;
+    (void)pc;
+    
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
 
@@ -450,8 +453,11 @@ SDDL2_Error SDDL2_op_add(SDDL2_Stack* stack)
     return push_i64(stack, a + b);
 }
 
-SDDL2_Error SDDL2_op_sub(SDDL2_Stack* stack)
+SDDL2_Error SDDL2_op_sub(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
+    (void)trace;
+    (void)pc;
+    
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
 
@@ -462,8 +468,11 @@ SDDL2_Error SDDL2_op_sub(SDDL2_Stack* stack)
     return push_i64(stack, a - b);
 }
 
-SDDL2_Error SDDL2_op_mul(SDDL2_Stack* stack)
+SDDL2_Error SDDL2_op_mul(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
+    (void)trace;
+    (void)pc;
+    
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
 
@@ -474,8 +483,11 @@ SDDL2_Error SDDL2_op_mul(SDDL2_Stack* stack)
     return push_i64(stack, a * b);
 }
 
-SDDL2_Error SDDL2_op_div(SDDL2_Stack* stack)
+SDDL2_Error SDDL2_op_div(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
+    (void)trace;
+    (void)pc;
+    
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
 
@@ -492,8 +504,11 @@ SDDL2_Error SDDL2_op_div(SDDL2_Stack* stack)
     return push_i64(stack, a / b);
 }
 
-SDDL2_Error SDDL2_op_mod(SDDL2_Stack* stack)
+SDDL2_Error SDDL2_op_mod(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
+    (void)trace;
+    (void)pc;
+    
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
 
@@ -505,8 +520,11 @@ SDDL2_Error SDDL2_op_mod(SDDL2_Stack* stack)
     return push_i64(stack, a % b);
 }
 
-SDDL2_Error SDDL2_op_abs(SDDL2_Stack* stack)
+SDDL2_Error SDDL2_op_abs(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
+    (void)trace;
+    (void)pc;
+    
     int64_t a;
     SDDL2_TRY(pop_i64(stack, &a));
 
@@ -518,8 +536,11 @@ SDDL2_Error SDDL2_op_abs(SDDL2_Stack* stack)
     return push_i64(stack, (a < 0) ? -a : a);
 }
 
-SDDL2_Error SDDL2_op_neg(SDDL2_Stack* stack)
+SDDL2_Error SDDL2_op_neg(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
+    (void)trace;
+    (void)pc;
+    
     int64_t a;
     SDDL2_TRY(pop_i64(stack, &a));
 
@@ -540,102 +561,122 @@ SDDL2_Error SDDL2_op_neg(SDDL2_Stack* stack)
  * All operations work on signed I64 values.
  * ========================================================================= */
 
-static void SDDL2_log_comparison(
+static void SDDL2_log_binary_op(
         const char* op_name,
         const char* op_symbol,
         int64_t a,
         int64_t b,
-        int64_t result);
+        int64_t result,
+        SDDL2_Trace_buffer* trace,
+        size_t pc);
 
-SDDL2_Error SDDL2_op_eq(SDDL2_Stack* stack)
+static void SDDL2_log_unary_op(
+        const char* op_name,
+        const char* op_symbol,
+        int64_t a,
+        int64_t result,
+        SDDL2_Trace_buffer* trace,
+        size_t pc);
+
+SDDL2_Error SDDL2_op_eq(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
     int64_t result = (a == b) ? 1 : 0;
-    SDDL2_log_comparison("eq", "==", a, b, result);
+    SDDL2_log_binary_op("cmp.eq", "==", a, b, result, trace, pc);
     return push_i64(stack, result);
 }
 
-SDDL2_Error SDDL2_op_ne(SDDL2_Stack* stack)
+SDDL2_Error SDDL2_op_ne(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
     int64_t result = (a != b) ? 1 : 0;
-    SDDL2_log_comparison("ne", "!=", a, b, result);
+    SDDL2_log_binary_op("cmp.ne", "!=", a, b, result, trace, pc);
     return push_i64(stack, result);
 }
 
-SDDL2_Error SDDL2_op_lt(SDDL2_Stack* stack)
+SDDL2_Error SDDL2_op_lt(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
     int64_t result = (a < b) ? 1 : 0;
-    SDDL2_log_comparison("lt", "<", a, b, result);
+    SDDL2_log_binary_op("cmp.lt", "<", a, b, result, trace, pc);
     return push_i64(stack, result);
 }
 
-SDDL2_Error SDDL2_op_le(SDDL2_Stack* stack)
+SDDL2_Error SDDL2_op_le(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
     int64_t result = (a <= b) ? 1 : 0;
-    SDDL2_log_comparison("le", "<=", a, b, result);
+    SDDL2_log_binary_op("cmp.le", "<=", a, b, result, trace, pc);
     return push_i64(stack, result);
 }
 
-SDDL2_Error SDDL2_op_gt(SDDL2_Stack* stack)
+SDDL2_Error SDDL2_op_gt(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
     int64_t result = (a > b) ? 1 : 0;
-    SDDL2_log_comparison("gt", ">", a, b, result);
+    SDDL2_log_binary_op("cmp.gt", ">", a, b, result, trace, pc);
     return push_i64(stack, result);
 }
 
-SDDL2_Error SDDL2_op_ge(SDDL2_Stack* stack)
+SDDL2_Error SDDL2_op_ge(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
     int64_t result = (a >= b) ? 1 : 0;
-    SDDL2_log_comparison("ge", ">=", a, b, result);
+    SDDL2_log_binary_op("cmp.ge", ">=", a, b, result, trace, pc);
     return push_i64(stack, result);
 }
 
 /* ============================================================================
  * Logical Operations (LOGIC Family)
  *
- * Implements bitwise logical operations on I64 values:
- * - and, or, xor: Binary bitwise operations
- * - not: Unary bitwise complement
- * These operate on the full 64-bit representation.
+ * Implements boolean/logical operations on I64 values:
+ * - and: Logical AND (returns 0 or 1)
+ * - or: Logical OR (returns 0 or 1)
+ * - xor: Logical XOR (returns 0 or 1)
+ * - not: Logical NOT (returns 0 or 1)
+ * All operations treat 0 as false and non-zero as true.
  * ========================================================================= */
 
-SDDL2_Error SDDL2_op_and(SDDL2_Stack* stack)
+SDDL2_Error SDDL2_op_and(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
-    return push_i64(stack, a & b);
+    int64_t result = (a && b) ? 1 : 0;
+    SDDL2_log_binary_op("logic.and", "&&", a, b, result, trace, pc);
+    return push_i64(stack, result);
 }
 
-SDDL2_Error SDDL2_op_or(SDDL2_Stack* stack)
+SDDL2_Error SDDL2_op_or(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
-    return push_i64(stack, a | b);
+    int64_t result = (a || b) ? 1 : 0;
+    SDDL2_log_binary_op("logic.or", "||", a, b, result, trace, pc);
+    return push_i64(stack, result);
 }
 
-SDDL2_Error SDDL2_op_xor(SDDL2_Stack* stack)
+SDDL2_Error SDDL2_op_xor(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
-    return push_i64(stack, a ^ b);
+    int64_t result = ((a && !b) || (!a && b)) ? 1 : 0;
+    SDDL2_log_binary_op("logic.xor", "^^", a, b, result, trace, pc);
+    return push_i64(stack, result);
 }
 
-SDDL2_Error SDDL2_op_not(SDDL2_Stack* stack)
+SDDL2_Error SDDL2_op_not(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a;
     SDDL2_TRY(pop_i64(stack, &a));
-    return push_i64(stack, ~a);
+    int64_t result = (!a) ? 1 : 0;
+    SDDL2_log_unary_op("logic.not", "!", a, result, trace, pc);
+    return push_i64(stack, result);
 }
 
 /* ============================================================================
@@ -648,14 +689,20 @@ SDDL2_Error SDDL2_op_not(SDDL2_Stack* stack)
  * These are type-agnostic and work with any stack value.
  * ========================================================================= */
 
-SDDL2_Error SDDL2_op_drop(SDDL2_Stack* stack)
+SDDL2_Error SDDL2_op_drop(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
+    (void)trace;
+    (void)pc;
+    
     SDDL2_Value val;
     return SDDL2_Stack_pop(stack, &val);
 }
 
-SDDL2_Error SDDL2_op_stack_drop_if(SDDL2_Stack* stack)
+SDDL2_Error SDDL2_op_stack_drop_if(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
+    (void)trace;
+    (void)pc;
+    
     int64_t condition;
     SDDL2_TRY(pop_i64(stack, &condition));
     
@@ -667,15 +714,21 @@ SDDL2_Error SDDL2_op_stack_drop_if(SDDL2_Stack* stack)
     return SDDL2_OK;
 }
 
-SDDL2_Error SDDL2_op_dup(SDDL2_Stack* stack)
+SDDL2_Error SDDL2_op_dup(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
+    (void)trace;
+    (void)pc;
+    
     SDDL2_Value val;
     SDDL2_TRY(SDDL2_Stack_peek(stack, &val));
     return SDDL2_Stack_push(stack, val);
 }
 
-SDDL2_Error SDDL2_op_swap(SDDL2_Stack* stack)
+SDDL2_Error SDDL2_op_swap(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
+    (void)trace;
+    (void)pc;
+    
     SDDL2_Value a, b;
     SDDL2_TRY(SDDL2_Stack_pop(stack, &a));
     SDDL2_TRY(SDDL2_Stack_pop(stack, &b));
@@ -695,15 +748,27 @@ SDDL2_Error SDDL2_op_swap(SDDL2_Stack* stack)
 
 static void SDDL2_log_expect_true_failure(int64_t value, const SDDL2_Stack* stack);
 
-SDDL2_Error SDDL2_op_expect_true(SDDL2_Stack* stack)
+SDDL2_Error SDDL2_op_expect_true(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace)
 {
     int64_t value;
     SDDL2_TRY(pop_i64(stack, &value));
     
     if (value == 0) {
+        // Dump trace buffer if available
+        if (trace && trace->active) {
+            SDDL2_Trace_buffer_dump(trace);
+        }
+        
         SDDL2_log_expect_true_failure(value, stack);
+        
+        // Reset trace buffer (stop and clear) - NULL-safe
+        SDDL2_Trace_buffer_reset(trace);
+        
         return SDDL2_VALIDATION_FAILED;
     }
+    
+    // Success - reset trace buffer (stop and clear) - NULL-safe
+    SDDL2_Trace_buffer_reset(trace);
     
     return SDDL2_OK;
 }
@@ -1177,6 +1242,139 @@ void SDDL2_Tag_registry_destroy(SDDL2_Tag_registry* registry)
     registry->capacity = 0;
 }
 
+/* ============================================================================
+ * Trace Buffer Operations
+ *
+ * Trace buffer lifecycle and manipulation functions for validation debugging.
+ * Used to collect operation traces during execution and dump them on
+ * expect_true failure.
+ * ========================================================================= */
+
+void SDDL2_Trace_buffer_init(
+        SDDL2_Trace_buffer* trace,
+        SDDL2_allocator_fn alloc_fn,
+        void* alloc_ctx)
+{
+    trace->entries  = NULL;
+    trace->count    = 0;
+    trace->capacity = 0;
+    trace->active   = 0;
+    trace->alloc_fn = alloc_fn;
+    trace->alloc_ctx = alloc_ctx;
+}
+
+void SDDL2_Trace_buffer_destroy(SDDL2_Trace_buffer* trace)
+{
+    sddl2_free(trace->entries, trace->alloc_fn);
+    trace->entries  = NULL;
+    trace->count    = 0;
+    trace->capacity = 0;
+    trace->active   = 0;
+}
+
+/**
+ * Start trace collection.
+ * Activates the trace buffer to begin recording operations.
+ * NULL-safe: Does nothing if trace is NULL.
+ */
+void SDDL2_Trace_buffer_start(SDDL2_Trace_buffer* trace)
+{
+    if (!trace) return;
+    trace->active = 1;
+}
+
+/**
+ * Stop trace collection without clearing the buffer.
+ * Deactivates trace collection but preserves recorded entries.
+ * NULL-safe: Does nothing if trace is NULL.
+ */
+void SDDL2_Trace_buffer_stop(SDDL2_Trace_buffer* trace)
+{
+    if (!trace) return;
+    trace->active = 0;
+}
+
+/**
+ * Reset the trace buffer (stop and clear).
+ * Stops trace collection and clears all recorded entries.
+ * NULL-safe: Does nothing if trace is NULL.
+ */
+void SDDL2_Trace_buffer_reset(SDDL2_Trace_buffer* trace)
+{
+    if (!trace) return;
+    trace->active = 0;
+    trace->count = 0;
+}
+
+/**
+ * Append a trace entry to the buffer.
+ * Only records if tracing is active.
+ * Returns 1 on success, 0 on allocation failure.
+ */
+int SDDL2_Trace_buffer_append(
+        SDDL2_Trace_buffer* trace,
+        size_t pc,
+        const char* op_name,
+        const char* details)
+{
+    // Only append if tracing is active
+    if (!trace->active) {
+        return 1; // Success (no-op when inactive)
+    }
+
+    // Ensure capacity for new entry
+    if (!ensure_capacity(
+                (void*)&trace->entries,
+                trace->count,
+                &trace->capacity,
+                sizeof(SDDL2_Trace_entry),
+                SDDL2_TRACE_MAX_CAPACITY,
+                trace->alloc_fn,
+                trace->alloc_ctx)) {
+        return 0; // Allocation failed or capacity exceeded
+    }
+
+    // Create and append the trace entry
+    SDDL2_Trace_entry* entry = &trace->entries[trace->count++];
+    entry->pc                = pc;
+    entry->op_name           = op_name;
+
+    // Copy details string (safely truncate if needed)
+    size_t details_len = 0;
+    if (details) {
+        while (details[details_len] && details_len < SDDL2_TRACE_DETAILS_SIZE - 1) {
+            entry->details[details_len] = details[details_len];
+            details_len++;
+        }
+    }
+    entry->details[details_len] = '\0';
+
+    return 1;
+}
+
+/**
+ * Dump the trace buffer to ERROR log.
+ * Used when expect_true fails to show the execution context.
+ */
+void SDDL2_Trace_buffer_dump(const SDDL2_Trace_buffer* trace)
+{
+    if (trace->count == 0) {
+        ZL_DLOG(ERROR, "[ERROR] No trace entries recorded");
+        return;
+    }
+
+    ZL_DLOG(ERROR, "[ERROR] Execution trace (%zu entries):", trace->count);
+    for (size_t i = 0; i < trace->count; i++) {
+        const SDDL2_Trace_entry* entry = &trace->entries[i];
+        if (entry->details[0] != '\0') {
+            ZL_DLOG(ERROR, "[ERROR]   PC=%zu: %s - %s",
+                    entry->pc, entry->op_name, entry->details);
+        } else {
+            ZL_DLOG(ERROR, "[ERROR]   PC=%zu: %s", entry->pc, entry->op_name);
+        }
+    }
+}
+
 /**
  * Helper: Register a tag if not already registered.
  * Returns 1 on success, 0 on allocation failure or capacity limit exceeded.
@@ -1244,30 +1442,87 @@ SDDL2_Error SDDL2_op_segment_create_tagged(
  * ========================================================================= */
 
 /**
- * Log comparison operation details for debugging.
+ * Log binary operation details for debugging and trace recording.
  *
+ * Unified logging function for CMP and LOGIC binary operations.
  * Outputs operands, operator, and result at POS log level for fine-grained
- * tracing of comparison operations during bytecode execution.
+ * tracing during bytecode execution. Also records in trace buffer if active.
  *
- * @param op_name Operation name (e.g., "eq", "lt", "ge")
- * @param op_symbol Comparison symbol (e.g., "==", "<", ">=")
+ * @param op_name Full operation name including family (e.g., "cmp.eq", "logic.and")
+ * @param op_symbol Symbolic operator (e.g., "==", "&")
  * @param a First operand
  * @param b Second operand
- * @param result Comparison result (0 or 1)
+ * @param result Operation result
+ * @param trace Trace buffer for recording (NULL-safe)
+ * @param pc Program counter for trace entry
  */
-static void SDDL2_log_comparison(
+static void SDDL2_log_binary_op(
         const char* op_name,
         const char* op_symbol,
         int64_t a,
         int64_t b,
-        int64_t result)
+        int64_t result,
+        SDDL2_Trace_buffer* trace,
+        size_t pc)
 {
-    ZL_DLOG(POS, "[SDDL2] cmp.%s: %lld %s %lld → %lld",
+    ZL_DLOG(POS, "[SDDL2] %s: %lld %s %lld → %lld",
             op_name,
             (long long)a,
             op_symbol,
             (long long)b,
             (long long)result);
+    
+    if (trace && trace->active) {
+        char details[SDDL2_TRACE_DETAILS_SIZE];
+        snprintf(details, sizeof(details), 
+                 "%s: %lld %s %lld → %lld",
+                 op_name,
+                 (long long)a,
+                 op_symbol,
+                 (long long)b,
+                 (long long)result);
+        SDDL2_Trace_buffer_append(trace, pc, op_name, details);
+    }
+}
+
+/**
+ * Log unary operation details for debugging and trace recording.
+ *
+ * Unified logging function for unary operations.
+ * Outputs operand, operator, and result at POS log level for fine-grained
+ * tracing during bytecode execution. Also records in trace buffer if active.
+ *
+ * @param op_name Full operation name including family (e.g., "logic.not")
+ * @param op_symbol Symbolic operator (e.g., "~")
+ * @param a Operand
+ * @param result Operation result
+ * @param trace Trace buffer for recording (NULL-safe)
+ * @param pc Program counter for trace entry
+ */
+static void SDDL2_log_unary_op(
+        const char* op_name,
+        const char* op_symbol,
+        int64_t a,
+        int64_t result,
+        SDDL2_Trace_buffer* trace,
+        size_t pc)
+{
+    ZL_DLOG(POS, "[SDDL2] %s: %s%lld → %lld",
+            op_name,
+            op_symbol,
+            (long long)a,
+            (long long)result);
+    
+    if (trace && trace->active) {
+        char details[SDDL2_TRACE_DETAILS_SIZE];
+        snprintf(details, sizeof(details), 
+                 "%s: %s%lld → %lld",
+                 op_name,
+                 op_symbol,
+                 (long long)a,
+                 (long long)result);
+        SDDL2_Trace_buffer_append(trace, pc, op_name, details);
+    }
 }
 
 /**

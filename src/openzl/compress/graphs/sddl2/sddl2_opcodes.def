@@ -93,6 +93,7 @@
 @family CONTROL 0x0005 "Control flow operations"
   halt         0x0001          "Stop VM execution"
   expect_true  0x0002          "Pop I64 value, error if value is 0 (false)"
+  trace.start  0x0004          "Begin collecting execution traces for validation debugging"
 
 @family LOAD 0x0006 "Load operations"
   # 8-bit loads (endianness-independent)

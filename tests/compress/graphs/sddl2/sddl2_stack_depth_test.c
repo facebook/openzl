@@ -214,7 +214,7 @@ TEST(test_push_stack_depth_with_arithmetic)
     // Get depth (3) and multiply by 10
     assert(SDDL2_op_push_stack_depth(stack) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(10)) == SDDL2_OK);
-    assert(SDDL2_op_mul(stack) == SDDL2_OK);
+    assert(SDDL2_op_mul(stack, NULL, 0) == SDDL2_OK);
     assert(pop_i64(stack) == 30);  // 3 * 10
 
     destroy_test_stack(stack);
@@ -231,7 +231,7 @@ TEST(test_push_stack_depth_with_comparison)
     // Check if depth equals 2
     assert(SDDL2_op_push_stack_depth(stack) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(2)) == SDDL2_OK);
-    assert(SDDL2_op_eq(stack) == SDDL2_OK);
+    assert(SDDL2_op_eq(stack, NULL, 0) == SDDL2_OK);
     assert(pop_i64(stack) == 1);  // True
 
     destroy_test_stack(stack);
@@ -249,8 +249,8 @@ TEST(test_push_stack_depth_validation_pattern)
     // Validate depth == 3
     assert(SDDL2_op_push_stack_depth(stack) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(3)) == SDDL2_OK);
-    assert(SDDL2_op_eq(stack) == SDDL2_OK);
-    assert(SDDL2_op_expect_true(stack) == SDDL2_OK);
+    assert(SDDL2_op_eq(stack, NULL, 0) == SDDL2_OK);
+    assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_OK);
 
     destroy_test_stack(stack);
 }
@@ -284,7 +284,7 @@ TEST(test_push_stack_depth_after_dup)
 
     // Test: Depth after dup operation
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(42)) == SDDL2_OK);
-    assert(SDDL2_op_dup(stack) == SDDL2_OK);
+    assert(SDDL2_op_dup(stack, NULL, 0) == SDDL2_OK);
     assert(SDDL2_op_push_stack_depth(stack) == SDDL2_OK);
     assert(pop_i64(stack) == 2);
 
@@ -298,7 +298,7 @@ TEST(test_push_stack_depth_after_swap)
     // Test: Depth unchanged after swap
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(2)) == SDDL2_OK);
-    assert(SDDL2_op_swap(stack) == SDDL2_OK);
+    assert(SDDL2_op_swap(stack, NULL, 0) == SDDL2_OK);
     assert(SDDL2_op_push_stack_depth(stack) == SDDL2_OK);
     assert(pop_i64(stack) == 2);
 
@@ -313,7 +313,7 @@ TEST(test_push_stack_depth_after_drop)
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(2)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(3)) == SDDL2_OK);
-    assert(SDDL2_op_drop(stack) == SDDL2_OK);
+    assert(SDDL2_op_drop(stack, NULL, 0) == SDDL2_OK);
     assert(SDDL2_op_push_stack_depth(stack) == SDDL2_OK);
     assert(pop_i64(stack) == 2);
 

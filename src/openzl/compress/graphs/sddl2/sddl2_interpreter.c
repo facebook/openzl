@@ -53,9 +53,13 @@ static const struct {
 
 /**
  * Function pointer type for stack operations.
- * All MATH, CMP, and STACK operations share this signature.
+ * All MATH, CMP, LOGIC, and STACK operations share this signature.
+ * Operations that don't use tracing simply ignore the trace and pc parameters.
  */
-typedef SDDL2_Error (*SDDL2_Stack_op_fn)(SDDL2_Stack*);
+typedef SDDL2_Error (*SDDL2_Stack_op_fn)(
+        SDDL2_Stack*,
+        SDDL2_Trace_buffer*,
+        size_t pc);
 
 /**
  * Common dispatch table entry type for stack operations.
@@ -356,20 +360,22 @@ static SDDL2_Error handle_push_family(
 
 /**
  * Cleanup helper for SDDL2_execute_bytecode.
- * Destroys the tag registry and returns the specified error code.
+ * Destroys the tag registry, trace buffer, and returns the specified error code.
  *
  * This macro is function-scoped and undefined after SDDL2_execute_bytecode.
  */
 #define CLEANUP_AND_RETURN(error_code)         \
     do {                                       \
         SDDL2_Tag_registry_destroy(&registry); \
+        SDDL2_Trace_buffer_destroy(&trace);    \
         return (error_code);                   \
     } while (0)
 
 /**
- * Dispatch helper macro for stack operation families (MATH, CMP, STACK).
+ * Dispatch helper macro for stack operation families (MATH, CMP, LOGIC, STACK).
  * Looks up the handler in the specified dispatch table and executes it,
- * or returns SDDL2_INVALID_BYTECODE if no handler is found.
+ * passing the trace buffer and program counter for trace recording.
+ * Returns SDDL2_INVALID_BYTECODE if no handler is found.
  *
  * This macro is function-scoped and undefined after SDDL2_execute_bytecode.
  */
@@ -378,7 +384,7 @@ static SDDL2_Error handle_push_family(
         SDDL2_Stack_op_fn handler =                                   \
                 find_stack_op_handler(opcode, map, map_size);         \
         if (handler) {                                                \
-            err = handler(&stack);                                    \
+            err = handler(&stack, &trace, pc_before);                 \
         } else {                                                      \
             CLEANUP_AND_RETURN(SDDL2_INVALID_BYTECODE); /* Unknown */ \
         }                                                             \
@@ -437,6 +443,11 @@ SDDL2_Error SDDL2_execute_bytecode(
     SDDL2_Tag_registry_init(
             &registry, output_segments->alloc_fn, output_segments->alloc_ctx);
 
+    SDDL2_Trace_buffer trace;
+    // Use same allocator as output_segments
+    SDDL2_Trace_buffer_init(
+            &trace, output_segments->alloc_fn, output_segments->alloc_ctx);
+
     // Program counter (byte offset)
     size_t pc = 0;
 
@@ -470,7 +481,9 @@ SDDL2_Error SDDL2_execute_bytecode(
                 if (opcode == SDDL2_OP_CONTROL_HALT) {
                     halted = 1;
                 } else if (opcode == SDDL2_OP_CONTROL_EXPECT_TRUE) {
-                    err = SDDL2_op_expect_true(&stack);
+                    err = SDDL2_op_expect_true(&stack, &trace);
+                } else if (opcode == SDDL2_OP_CONTROL_TRACE_START) {
+                    SDDL2_Trace_buffer_start(&trace);
                 } else {
                     CLEANUP_AND_RETURN(
                             SDDL2_INVALID_BYTECODE); // Unknown opcode
@@ -551,6 +564,7 @@ SDDL2_Error SDDL2_execute_bytecode(
 
     // Cleanup
     SDDL2_Tag_registry_destroy(&registry);
+    SDDL2_Trace_buffer_destroy(&trace);
 
     // Implicit halt: reaching the end of bytecode is treated as a successful
     // halt, even if no explicit halt instruction was encountered.

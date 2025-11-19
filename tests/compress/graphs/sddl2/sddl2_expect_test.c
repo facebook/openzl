@@ -46,7 +46,7 @@ TEST(test_expect_true_positive_value)
 
     // Test: expect_true with positive non-zero value should succeed
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
-    assert(SDDL2_op_expect_true(stack) == SDDL2_OK);
+    assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_OK);
     assert(SDDL2_Stack_depth(stack) == 0); // Value consumed
 
     destroy_test_stack(stack);
@@ -58,7 +58,7 @@ TEST(test_expect_true_large_positive)
 
     // Test: expect_true with large positive value should succeed
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(123456789)) == SDDL2_OK);
-    assert(SDDL2_op_expect_true(stack) == SDDL2_OK);
+    assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_OK);
     assert(SDDL2_Stack_depth(stack) == 0);
 
     destroy_test_stack(stack);
@@ -70,7 +70,7 @@ TEST(test_expect_true_negative_value)
 
     // Test: expect_true with negative value (non-zero) should succeed
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(-1)) == SDDL2_OK);
-    assert(SDDL2_op_expect_true(stack) == SDDL2_OK);
+    assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_OK);
     assert(SDDL2_Stack_depth(stack) == 0);
 
     destroy_test_stack(stack);
@@ -82,7 +82,7 @@ TEST(test_expect_true_large_negative)
 
     // Test: expect_true with large negative value should succeed
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(-999999)) == SDDL2_OK);
-    assert(SDDL2_op_expect_true(stack) == SDDL2_OK);
+    assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_OK);
     assert(SDDL2_Stack_depth(stack) == 0);
 
     destroy_test_stack(stack);
@@ -94,7 +94,7 @@ TEST(test_expect_true_int64_max)
 
     // Test: expect_true with INT64_MAX should succeed
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(INT64_MAX)) == SDDL2_OK);
-    assert(SDDL2_op_expect_true(stack) == SDDL2_OK);
+    assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_OK);
     assert(SDDL2_Stack_depth(stack) == 0);
 
     destroy_test_stack(stack);
@@ -106,7 +106,7 @@ TEST(test_expect_true_int64_min)
 
     // Test: expect_true with INT64_MIN (most negative) should succeed
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(INT64_MIN)) == SDDL2_OK);
-    assert(SDDL2_op_expect_true(stack) == SDDL2_OK);
+    assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_OK);
     assert(SDDL2_Stack_depth(stack) == 0);
 
     destroy_test_stack(stack);
@@ -122,7 +122,7 @@ TEST(test_expect_true_zero_fails)
 
     // Test: expect_true with zero should fail with VALIDATION_FAILED
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
-    assert(SDDL2_op_expect_true(stack) == SDDL2_VALIDATION_FAILED);
+    assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_VALIDATION_FAILED);
     // Stack state after error is implementation-defined, but value should be consumed
     assert(SDDL2_Stack_depth(stack) == 0);
 
@@ -138,7 +138,7 @@ TEST(test_expect_true_stack_underflow)
     SDDL2_Stack* stack = create_test_stack(100);
 
     // Test: expect_true on empty stack should fail with STACK_UNDERFLOW
-    assert(SDDL2_op_expect_true(stack) == SDDL2_STACK_UNDERFLOW);
+    assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_STACK_UNDERFLOW);
 
     destroy_test_stack(stack);
 }
@@ -149,7 +149,7 @@ TEST(test_expect_true_type_mismatch_tag)
 
     // Test: expect_true with Tag instead of I64 should fail with TYPE_MISMATCH
     assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(100)) == SDDL2_OK);
-    assert(SDDL2_op_expect_true(stack) == SDDL2_TYPE_MISMATCH);
+    assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_TYPE_MISMATCH);
 
     destroy_test_stack(stack);
 }
@@ -161,7 +161,7 @@ TEST(test_expect_true_type_mismatch_type)
     // Test: expect_true with Type instead of I64 should fail with TYPE_MISMATCH
     SDDL2_Type type = { .kind = SDDL2_TYPE_U8, .width = 1 };
     assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type)) == SDDL2_OK);
-    assert(SDDL2_op_expect_true(stack) == SDDL2_TYPE_MISMATCH);
+    assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_TYPE_MISMATCH);
 
     destroy_test_stack(stack);
 }
@@ -178,8 +178,8 @@ TEST(test_expect_true_with_cmp_eq_success)
     // 42 == 42 -> 1 -> expect_true succeeds
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(42)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(42)) == SDDL2_OK);
-    assert(SDDL2_op_eq(stack) == SDDL2_OK);
-    assert(SDDL2_op_expect_true(stack) == SDDL2_OK);
+    assert(SDDL2_op_eq(stack, NULL, 0) == SDDL2_OK);
+    assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_OK);
     assert(SDDL2_Stack_depth(stack) == 0);
 
     destroy_test_stack(stack);
@@ -193,8 +193,8 @@ TEST(test_expect_true_with_cmp_eq_failure)
     // 42 == 99 -> 0 -> expect_true fails
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(42)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(99)) == SDDL2_OK);
-    assert(SDDL2_op_eq(stack) == SDDL2_OK);
-    assert(SDDL2_op_expect_true(stack) == SDDL2_VALIDATION_FAILED);
+    assert(SDDL2_op_eq(stack, NULL, 0) == SDDL2_OK);
+    assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_VALIDATION_FAILED);
 
     destroy_test_stack(stack);
 }
@@ -207,8 +207,8 @@ TEST(test_expect_true_with_cmp_ne_success)
     // 42 != 99 -> 1 -> expect_true succeeds
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(42)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(99)) == SDDL2_OK);
-    assert(SDDL2_op_ne(stack) == SDDL2_OK);
-    assert(SDDL2_op_expect_true(stack) == SDDL2_OK);
+    assert(SDDL2_op_ne(stack, NULL, 0) == SDDL2_OK);
+    assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_OK);
     assert(SDDL2_Stack_depth(stack) == 0);
 
     destroy_test_stack(stack);
@@ -222,8 +222,8 @@ TEST(test_expect_true_with_cmp_lt_success)
     // 10 < 20 -> 1 -> expect_true succeeds
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(10)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(20)) == SDDL2_OK);
-    assert(SDDL2_op_lt(stack) == SDDL2_OK);
-    assert(SDDL2_op_expect_true(stack) == SDDL2_OK);
+    assert(SDDL2_op_lt(stack, NULL, 0) == SDDL2_OK);
+    assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_OK);
 
     destroy_test_stack(stack);
 }
@@ -236,8 +236,8 @@ TEST(test_expect_true_with_cmp_gt_failure)
     // 10 > 20 -> 0 -> expect_true fails
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(10)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(20)) == SDDL2_OK);
-    assert(SDDL2_op_gt(stack) == SDDL2_OK);
-    assert(SDDL2_op_expect_true(stack) == SDDL2_VALIDATION_FAILED);
+    assert(SDDL2_op_gt(stack, NULL, 0) == SDDL2_OK);
+    assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_VALIDATION_FAILED);
 
     destroy_test_stack(stack);
 }
@@ -253,8 +253,8 @@ TEST(test_expect_true_with_logic_not)
     // Test: logic.not followed by expect_true (expect_false pattern)
     // push 0 -> not -> -1 -> expect_true succeeds
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
-    assert(SDDL2_op_not(stack) == SDDL2_OK);
-    assert(SDDL2_op_expect_true(stack) == SDDL2_OK);
+    assert(SDDL2_op_not(stack, NULL, 0) == SDDL2_OK);
+    assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_OK);
 
     destroy_test_stack(stack);
 }
@@ -267,8 +267,8 @@ TEST(test_expect_true_with_logic_and)
     // 0xFF & 0x0F = 0x0F (non-zero) -> expect_true succeeds
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0xFF)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0x0F)) == SDDL2_OK);
-    assert(SDDL2_op_and(stack) == SDDL2_OK);
-    assert(SDDL2_op_expect_true(stack) == SDDL2_OK);
+    assert(SDDL2_op_and(stack, NULL, 0) == SDDL2_OK);
+    assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_OK);
 
     destroy_test_stack(stack);
 }
@@ -281,8 +281,8 @@ TEST(test_expect_true_with_logic_and_zero_result)
     // 0xFF & 0x00 = 0 -> expect_true fails
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0xFF)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0x00)) == SDDL2_OK);
-    assert(SDDL2_op_and(stack) == SDDL2_OK);
-    assert(SDDL2_op_expect_true(stack) == SDDL2_VALIDATION_FAILED);
+    assert(SDDL2_op_and(stack, NULL, 0) == SDDL2_OK);
+    assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_VALIDATION_FAILED);
 
     destroy_test_stack(stack);
 }
@@ -297,13 +297,13 @@ TEST(test_multiple_expect_true_all_pass)
 
     // Test: Multiple expect_true operations, all should succeed
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
-    assert(SDDL2_op_expect_true(stack) == SDDL2_OK);
+    assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_OK);
     
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(42)) == SDDL2_OK);
-    assert(SDDL2_op_expect_true(stack) == SDDL2_OK);
+    assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_OK);
     
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(-1)) == SDDL2_OK);
-    assert(SDDL2_op_expect_true(stack) == SDDL2_OK);
+    assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_OK);
     
     assert(SDDL2_Stack_depth(stack) == 0);
 
@@ -316,7 +316,7 @@ TEST(test_multiple_expect_true_first_fails)
 
     // Test: First expect_true fails, subsequent ops not reached
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
-    assert(SDDL2_op_expect_true(stack) == SDDL2_VALIDATION_FAILED);
+    assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_VALIDATION_FAILED);
 
     destroy_test_stack(stack);
 }

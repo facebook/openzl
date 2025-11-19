@@ -2,7 +2,7 @@
 AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 
 Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-Generated at: 2025-11-16 22:46:06 UTC
+Generated at: 2025-11-19 23:10:31 UTC
 Generator: generate_opcodes.py
 
 To regenerate: python3 generate_opcodes.py
@@ -29,6 +29,7 @@ INSTRUCTIONS = {
     # CONTROL family (0x0005)
     "halt": ("CONTROL", 0x0001, []),
     "expect_true": ("CONTROL", 0x0002, []),
+    "trace.start": ("CONTROL", 0x0004, []),
 
     # PUSH family (0x0001)
     "push.zero": ("PUSH", 0x0001, []),

@@ -661,7 +661,7 @@ static void test_tagged_with_arithmetic(void)
             stack, SDDL2_Value_type((SDDL2_Type){ SDDL2_TYPE_U8, 1, NULL }));
     SDDL2_Stack_push(stack, SDDL2_Value_i64(2));
     SDDL2_Stack_push(stack, SDDL2_Value_i64(3));
-    SDDL2_op_add(stack); // -> 5
+    SDDL2_op_add(stack, NULL, 0); // -> 5
 
     SDDL2_Error err = SDDL2_op_segment_create_tagged(
             stack, &buffer, &segments, &registry);

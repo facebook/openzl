@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
 // Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-// Generated at: 2025-11-16 22:46:06 UTC
+// Generated at: 2025-11-17 22:43:34 UTC
 // Generator: generate_c_headers.py
 //
 // To regenerate: python3 src/openzl/compress/graphs/sddl2/generate_c_headers.py
@@ -101,6 +101,7 @@ static inline const char* SDDL2_instruction_name_impl(uint16_t family, uint16_t 
             switch (opcode) {
                 case SDDL2_OP_CONTROL_HALT: return "halt";
                 case SDDL2_OP_CONTROL_EXPECT_TRUE: return "expect_true";
+                case SDDL2_OP_CONTROL_TRACE_START: return "trace.start";
                 default: return "control.?";
             }
 

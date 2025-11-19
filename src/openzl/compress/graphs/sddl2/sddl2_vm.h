@@ -289,6 +289,60 @@ typedef struct {
 } SDDL2_Tag_registry;
 
 /* ============================================================================
+ * Trace Buffer for Validation Debugging
+ * ========================================================================= */
+
+/**
+ * Trace buffer configuration.
+ * Initial/max capacities for trace entries.
+ */
+#ifndef SDDL2_TRACE_INITIAL_CAPACITY
+#    define SDDL2_TRACE_INITIAL_CAPACITY 64
+#endif
+#ifndef SDDL2_TRACE_MAX_CAPACITY
+#    define SDDL2_TRACE_MAX_CAPACITY 1024
+#endif
+#ifndef SDDL2_TRACE_DETAILS_SIZE
+#    define SDDL2_TRACE_DETAILS_SIZE 128
+#endif
+
+/**
+ * Single trace entry capturing an operation during execution.
+ * Records PC, opcode name, and detailed information about operands/results.
+ */
+typedef struct {
+    size_t pc;                              // Program counter at this operation
+    const char* op_name;                    // Operation name (static string)
+    char details[SDDL2_TRACE_DETAILS_SIZE]; // Details like "cmp.eq: 5 == 10 → 0"
+} SDDL2_Trace_entry;
+
+/**
+ * Trace buffer for collecting execution traces during validation.
+ * Used to provide detailed error messages when expect_true fails.
+ *
+ * Usage pattern:
+ *   1. trace.start opcode sets active=1
+ *   2. Operations append trace entries when active
+ *   3. expect_true:
+ *      - On failure: dump trace buffer to ERROR log
+ *      - On success: discard trace buffer
+ *      - Always sets active=0
+ *
+ * Memory management:
+ *   - Uses allocator callback (arena or realloc)
+ *   - Only allocated when trace.start is executed
+ *   - Grows dynamically up to max capacity
+ */
+typedef struct {
+    SDDL2_Trace_entry* entries;  // Dynamic array of trace entries
+    size_t count;                // Number of entries
+    size_t capacity;             // Allocated capacity
+    int active;                  // 0=disabled, 1=collecting traces
+    SDDL2_allocator_fn alloc_fn; // Allocator function (NULL = use realloc)
+    void* alloc_ctx;             // Opaque allocator context
+} SDDL2_Trace_buffer;
+
+/* ============================================================================
  * Input Cursor
  * ========================================================================= */
 
@@ -516,13 +570,13 @@ SDDL2_Error SDDL2_op_type_sizeof(SDDL2_Stack* stack);
  * Errors: TypeMismatch, Overflow (all), DivZero (div, mod only)
  * ========================================================================= */
 
-SDDL2_Error SDDL2_op_add(SDDL2_Stack* stack); // a + b
-SDDL2_Error SDDL2_op_sub(SDDL2_Stack* stack); // a - b
-SDDL2_Error SDDL2_op_mul(SDDL2_Stack* stack); // a * b
-SDDL2_Error SDDL2_op_div(SDDL2_Stack* stack); // a / b
-SDDL2_Error SDDL2_op_mod(SDDL2_Stack* stack); // a % b
-SDDL2_Error SDDL2_op_abs(SDDL2_Stack* stack); // |a|
-SDDL2_Error SDDL2_op_neg(SDDL2_Stack* stack); // -a
+SDDL2_Error SDDL2_op_add(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a + b
+SDDL2_Error SDDL2_op_sub(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a - b
+SDDL2_Error SDDL2_op_mul(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a * b
+SDDL2_Error SDDL2_op_div(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a / b
+SDDL2_Error SDDL2_op_mod(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a % b
+SDDL2_Error SDDL2_op_abs(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // |a|
+SDDL2_Error SDDL2_op_neg(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // -a
 
 /* ============================================================================
  * Comparison Operations (CMP Family)
@@ -533,12 +587,12 @@ SDDL2_Error SDDL2_op_neg(SDDL2_Stack* stack); // -a
  * Returns 1 if comparison is true, 0 if false.
  * ========================================================================= */
 
-SDDL2_Error SDDL2_op_eq(SDDL2_Stack* stack); // a == b
-SDDL2_Error SDDL2_op_ne(SDDL2_Stack* stack); // a != b
-SDDL2_Error SDDL2_op_lt(SDDL2_Stack* stack); // a < b
-SDDL2_Error SDDL2_op_le(SDDL2_Stack* stack); // a <= b
-SDDL2_Error SDDL2_op_gt(SDDL2_Stack* stack); // a > b
-SDDL2_Error SDDL2_op_ge(SDDL2_Stack* stack); // a >= b
+SDDL2_Error SDDL2_op_eq(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a == b
+SDDL2_Error SDDL2_op_ne(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a != b
+SDDL2_Error SDDL2_op_lt(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a < b
+SDDL2_Error SDDL2_op_le(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a <= b
+SDDL2_Error SDDL2_op_gt(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a > b
+SDDL2_Error SDDL2_op_ge(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a >= b
 
 /* ============================================================================
  * Logical Operations (LOGIC Family)
@@ -549,10 +603,10 @@ SDDL2_Error SDDL2_op_ge(SDDL2_Stack* stack); // a >= b
  * Errors: TypeMismatch
  * ========================================================================= */
 
-SDDL2_Error SDDL2_op_and(SDDL2_Stack* stack); // a & b
-SDDL2_Error SDDL2_op_or(SDDL2_Stack* stack);  // a | b
-SDDL2_Error SDDL2_op_xor(SDDL2_Stack* stack); // a ^ b
-SDDL2_Error SDDL2_op_not(SDDL2_Stack* stack); // ~a
+SDDL2_Error SDDL2_op_and(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a & b
+SDDL2_Error SDDL2_op_or(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc);  // a | b
+SDDL2_Error SDDL2_op_xor(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a ^ b
+SDDL2_Error SDDL2_op_not(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // ~a
 
 /* ============================================================================
  * Stack Manipulation Operations (STACK Family)
@@ -563,7 +617,7 @@ SDDL2_Error SDDL2_op_not(SDDL2_Stack* stack); // ~a
  * Stack: value -> (empty)
  * Errors: StackUnderflow
  */
-SDDL2_Error SDDL2_op_drop(SDDL2_Stack* stack);
+SDDL2_Error SDDL2_op_drop(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc);
 
 /**
  * Conditionally drop the top value from the stack based on a condition.
@@ -572,21 +626,21 @@ SDDL2_Error SDDL2_op_drop(SDDL2_Stack* stack);
  * Stack (condition false): value condition -> value
  * Errors: StackUnderflow, TypeMismatch
  */
-SDDL2_Error SDDL2_op_stack_drop_if(SDDL2_Stack* stack);
+SDDL2_Error SDDL2_op_stack_drop_if(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc);
 
 /**
  * Duplicate the top value on the stack.
  * Stack: value -> value value
  * Errors: StackUnderflow, StackOverflow
  */
-SDDL2_Error SDDL2_op_dup(SDDL2_Stack* stack);
+SDDL2_Error SDDL2_op_dup(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc);
 
 /**
  * Swap the top two values on the stack.
  * Stack: a b -> b a
  * Errors: StackUnderflow
  */
-SDDL2_Error SDDL2_op_swap(SDDL2_Stack* stack);
+SDDL2_Error SDDL2_op_swap(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc);
 
 /* ============================================================================
  * Validation Operations (EXPECT Family)
@@ -597,7 +651,8 @@ SDDL2_Error SDDL2_op_swap(SDDL2_Stack* stack);
  * Stack: value:I64 -> (empty)
  *
  * Pops an I64 value from the stack and verifies it is non-zero.
- * If the value is 0 (false), returns SDDL2_VALIDATION_FAILED.
+ * If the value is 0 (false), dumps the trace buffer (if active) and
+ * returns SDDL2_VALIDATION_FAILED.
  * This enables runtime assertions and data validation in SDDL2 programs.
  *
  * Errors:
@@ -605,7 +660,7 @@ SDDL2_Error SDDL2_op_swap(SDDL2_Stack* stack);
  *   - SDDL2_TYPE_MISMATCH: top value is not I64
  *   - SDDL2_VALIDATION_FAILED: value is 0 (false)
  */
-SDDL2_Error SDDL2_op_expect_true(SDDL2_Stack* stack);
+SDDL2_Error SDDL2_op_expect_true(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace);
 
 /* ============================================================================
  * Input Cursor Operations
@@ -713,6 +768,72 @@ void SDDL2_Segment_list_init(
         void* alloc_ctx);
 
 void SDDL2_Segment_list_destroy(SDDL2_Segment_list* list);
+
+void SDDL2_Tag_registry_destroy(SDDL2_Tag_registry* registry);
+
+/* ============================================================================
+ * Trace Buffer Operations
+ * ========================================================================= */
+
+/**
+ * Initialize a trace buffer with optional arena allocator.
+ * @param trace Trace buffer to initialize
+ * @param alloc_fn Allocator function (NULL = use realloc)
+ * @param alloc_ctx Allocator context
+ */
+void SDDL2_Trace_buffer_init(
+        SDDL2_Trace_buffer* trace,
+        SDDL2_allocator_fn alloc_fn,
+        void* alloc_ctx);
+
+/**
+ * Destroy a trace buffer and free resources.
+ * @param trace Trace buffer to destroy
+ */
+void SDDL2_Trace_buffer_destroy(SDDL2_Trace_buffer* trace);
+
+/**
+ * Start collecting traces.
+ * NULL-safe: Does nothing if trace is NULL.
+ * @param trace Trace buffer to activate (may be NULL)
+ */
+void SDDL2_Trace_buffer_start(SDDL2_Trace_buffer* trace);
+
+/**
+ * Stop collecting traces without clearing the buffer.
+ * NULL-safe: Does nothing if trace is NULL.
+ * @param trace Trace buffer to deactivate (may be NULL)
+ */
+void SDDL2_Trace_buffer_stop(SDDL2_Trace_buffer* trace);
+
+/**
+ * Reset the trace buffer (stop tracing and clear all entries).
+ * NULL-safe: Does nothing if trace is NULL.
+ * @param trace Trace buffer to reset (may be NULL)
+ */
+void SDDL2_Trace_buffer_reset(SDDL2_Trace_buffer* trace);
+
+/**
+ * Append a trace entry to the buffer.
+ * Only records if tracing is active.
+ * @param trace Trace buffer
+ * @param pc Program counter
+ * @param op_name Operation name (static string)
+ * @param details Detailed information (may be NULL)
+ * @return 1 on success, 0 on allocation failure
+ */
+int SDDL2_Trace_buffer_append(
+        SDDL2_Trace_buffer* trace,
+        size_t pc,
+        const char* op_name,
+        const char* details);
+
+/**
+ * Dump trace buffer to ERROR log.
+ * Used when expect_true fails to show execution context.
+ * @param trace Trace buffer to dump
+ */
+void SDDL2_Trace_buffer_dump(const SDDL2_Trace_buffer* trace);
 
 /**
  * Create an unspecified segment (no tag, no type, just bytes).

@@ -374,7 +374,7 @@ static void test_arithmetic_with_load(void)
     assert(SDDL2_op_load_u8(stack, &buffer) == SDDL2_OK);
 
     // Add them
-    assert(SDDL2_op_add(stack) == SDDL2_OK);
+    assert(SDDL2_op_add(stack, NULL, 0) == SDDL2_OK);
 
     // Result should be 8
     SDDL2_Value result;

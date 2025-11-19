@@ -424,7 +424,7 @@ TEST(test_sizeof_for_validation)
     assert(err == SDDL2_OK);
 
     // Duplicate the type for validation
-    err = SDDL2_op_dup(&stack);
+    err = SDDL2_op_dup(&stack, NULL, 0);
     assert(err == SDDL2_OK);
 
     // Get sizeof
@@ -506,7 +506,7 @@ TEST(test_sizeof_multiple_times)
     assert(err == SDDL2_OK);
 
     // Duplicate it
-    err = SDDL2_op_dup(&stack);
+    err = SDDL2_op_dup(&stack, NULL, 0);
     assert(err == SDDL2_OK);
 
     // Get sizeof first copy

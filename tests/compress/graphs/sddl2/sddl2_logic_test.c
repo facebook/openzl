@@ -2,7 +2,8 @@
 
 /**
  * Comprehensive tests for SDDL2 LOGIC operations
- * Tests all bitwise logical operations (AND, OR, XOR, NOT)
+ * Tests all boolean/logical operations (AND, OR, XOR, NOT)
+ * All operations treat 0 as false and non-zero as true, returning 0 or 1.
  */
 
 #include <assert.h>
@@ -37,44 +38,71 @@ static void destroy_test_stack(SDDL2_Stack* stack)
 }
 
 /* ============================================================================
- * AND Operation Tests
+ * AND Operation Tests - Logical AND (returns 0 or 1)
  * ========================================================================= */
 
-TEST(test_logic_and_basic)
+TEST(test_logic_and_true_true)
 {
     SDDL2_Stack* stack = create_test_stack(100);
 
-    // Test: 0xFF00 & 0x0FF0 = 0x0F00
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0xFF00)) == SDDL2_OK);
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0x0FF0)) == SDDL2_OK);
-    assert(SDDL2_op_and(stack) == SDDL2_OK);
-    POP_AND_VERIFY_I64(stack, 0x0F00);
+    // Test: true && true = 1
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
+    assert(SDDL2_op_and(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 1);
 
     destroy_test_stack(stack);
 }
 
-TEST(test_logic_and_all_ones)
+TEST(test_logic_and_true_false)
 {
     SDDL2_Stack* stack = create_test_stack(100);
 
-    // Test: -1 & -1 = -1 (all bits set)
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(-1)) == SDDL2_OK);
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(-1)) == SDDL2_OK);
-    assert(SDDL2_op_and(stack) == SDDL2_OK);
-    POP_AND_VERIFY_I64(stack, -1);
-
-    destroy_test_stack(stack);
-}
-
-TEST(test_logic_and_with_zero)
-{
-    SDDL2_Stack* stack = create_test_stack(100);
-
-    // Test: 0xFFFFFFFF & 0 = 0
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0xFFFFFFFF)) == SDDL2_OK);
+    // Test: true && false = 0
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
-    assert(SDDL2_op_and(stack) == SDDL2_OK);
+    assert(SDDL2_op_and(stack, NULL, 0) == SDDL2_OK);
     POP_AND_VERIFY_I64(stack, 0);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_logic_and_false_true)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+
+    // Test: false && true = 0
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
+    assert(SDDL2_op_and(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 0);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_logic_and_false_false)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+
+    // Test: false && false = 0
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
+    assert(SDDL2_op_and(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 0);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_logic_and_nonzero_values)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+
+    // Test: Any non-zero values are treated as true
+    // 100 && 200 = 1
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(100)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(200)) == SDDL2_OK);
+    assert(SDDL2_op_and(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 1);
 
     destroy_test_stack(stack);
 }
@@ -83,54 +111,108 @@ TEST(test_logic_and_negative_values)
 {
     SDDL2_Stack* stack = create_test_stack(100);
 
-    // Test: -1 & 0x7FFFFFFF = 0x7FFFFFFF (mask off sign bit)
+    // Test: Negative values are treated as true
+    // -1 && -2 = 1
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(-1)) == SDDL2_OK);
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0x7FFFFFFF)) == SDDL2_OK);
-    assert(SDDL2_op_and(stack) == SDDL2_OK);
-    POP_AND_VERIFY_I64(stack, 0x7FFFFFFF);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(-2)) == SDDL2_OK);
+    assert(SDDL2_op_and(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 1);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_logic_and_zero_with_nonzero)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+
+    // Test: 0xFFFFFFFF && 0 = 0
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0xFFFFFFFF)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
+    assert(SDDL2_op_and(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 0);
 
     destroy_test_stack(stack);
 }
 
 /* ============================================================================
- * OR Operation Tests
+ * OR Operation Tests - Logical OR (returns 0 or 1)
  * ========================================================================= */
 
-TEST(test_logic_or_basic)
+TEST(test_logic_or_true_true)
 {
     SDDL2_Stack* stack = create_test_stack(100);
 
-    // Test: 0x00F0 | 0x0F00 = 0x0FF0
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0x00F0)) == SDDL2_OK);
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0x0F00)) == SDDL2_OK);
-    assert(SDDL2_op_or(stack) == SDDL2_OK);
-    POP_AND_VERIFY_I64(stack, 0x0FF0);
+    // Test: true || true = 1
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
+    assert(SDDL2_op_or(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 1);
 
     destroy_test_stack(stack);
 }
 
-TEST(test_logic_or_with_zero)
+TEST(test_logic_or_true_false)
 {
     SDDL2_Stack* stack = create_test_stack(100);
 
-    // Test: 0x1234 | 0 = 0x1234
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0x1234)) == SDDL2_OK);
+    // Test: true || false = 1
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
-    assert(SDDL2_op_or(stack) == SDDL2_OK);
-    POP_AND_VERIFY_I64(stack, 0x1234);
+    assert(SDDL2_op_or(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 1);
 
     destroy_test_stack(stack);
 }
 
-TEST(test_logic_or_all_ones)
+TEST(test_logic_or_false_true)
 {
     SDDL2_Stack* stack = create_test_stack(100);
 
-    // Test: 0x1234 | -1 = -1
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0x1234)) == SDDL2_OK);
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(-1)) == SDDL2_OK);
-    assert(SDDL2_op_or(stack) == SDDL2_OK);
-    POP_AND_VERIFY_I64(stack, -1);
+    // Test: false || true = 1
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
+    assert(SDDL2_op_or(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 1);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_logic_or_false_false)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+
+    // Test: false || false = 0
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
+    assert(SDDL2_op_or(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 0);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_logic_or_nonzero_values)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+
+    // Test: Any non-zero values are treated as true
+    // 100 || 200 = 1
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(100)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(200)) == SDDL2_OK);
+    assert(SDDL2_op_or(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 1);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_logic_or_zero_with_nonzero)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+
+    // Test: 0 || 42 = 1
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(42)) == SDDL2_OK);
+    assert(SDDL2_op_or(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 1);
 
     destroy_test_stack(stack);
 }
@@ -139,67 +221,96 @@ TEST(test_logic_or_negative_values)
 {
     SDDL2_Stack* stack = create_test_stack(100);
 
-    // Test: -2 | 1 = -1 (set lowest bit)
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(-2)) == SDDL2_OK);
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
-    assert(SDDL2_op_or(stack) == SDDL2_OK);
-    POP_AND_VERIFY_I64(stack, -1);
+    // Test: Negative values are treated as true
+    // -1 || 0 = 1
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(-1)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
+    assert(SDDL2_op_or(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 1);
 
     destroy_test_stack(stack);
 }
 
 /* ============================================================================
- * XOR Operation Tests
+ * XOR Operation Tests - Logical XOR (returns 0 or 1)
  * ========================================================================= */
 
-TEST(test_logic_xor_basic)
+TEST(test_logic_xor_true_true)
 {
     SDDL2_Stack* stack = create_test_stack(100);
 
-    // Test: 0xAAAA ^ 0x5555 = 0xFFFF
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0xAAAA)) == SDDL2_OK);
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0x5555)) == SDDL2_OK);
-    assert(SDDL2_op_xor(stack) == SDDL2_OK);
-    POP_AND_VERIFY_I64(stack, 0xFFFF);
-
-    destroy_test_stack(stack);
-}
-
-TEST(test_logic_xor_with_self)
-{
-    SDDL2_Stack* stack = create_test_stack(100);
-
-    // Test: value ^ value = 0
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0x12345678)) == SDDL2_OK);
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0x12345678)) == SDDL2_OK);
-    assert(SDDL2_op_xor(stack) == SDDL2_OK);
+    // Test: true ^^ true = 0
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
+    assert(SDDL2_op_xor(stack, NULL, 0) == SDDL2_OK);
     POP_AND_VERIFY_I64(stack, 0);
 
     destroy_test_stack(stack);
 }
 
-TEST(test_logic_xor_with_zero)
+TEST(test_logic_xor_true_false)
 {
     SDDL2_Stack* stack = create_test_stack(100);
 
-    // Test: value ^ 0 = value
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0x1234)) == SDDL2_OK);
+    // Test: true ^^ false = 1
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
-    assert(SDDL2_op_xor(stack) == SDDL2_OK);
-    POP_AND_VERIFY_I64(stack, 0x1234);
+    assert(SDDL2_op_xor(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 1);
 
     destroy_test_stack(stack);
 }
 
-TEST(test_logic_xor_bit_flip)
+TEST(test_logic_xor_false_true)
 {
     SDDL2_Stack* stack = create_test_stack(100);
 
-    // Test: 0xFF00 ^ 0xFFFF = 0x00FF (flip lower byte)
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0xFF00)) == SDDL2_OK);
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0xFFFF)) == SDDL2_OK);
-    assert(SDDL2_op_xor(stack) == SDDL2_OK);
-    POP_AND_VERIFY_I64(stack, 0x00FF);
+    // Test: false ^^ true = 1
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
+    assert(SDDL2_op_xor(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 1);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_logic_xor_false_false)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+
+    // Test: false ^^ false = 0
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
+    assert(SDDL2_op_xor(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 0);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_logic_xor_nonzero_values)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+
+    // Test: Both non-zero = false
+    // 100 ^^ 200 = 0
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(100)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(200)) == SDDL2_OK);
+    assert(SDDL2_op_xor(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 0);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_logic_xor_zero_with_nonzero)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+
+    // Test: One true, one false = true
+    // 0 ^^ 42 = 1
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(42)) == SDDL2_OK);
+    assert(SDDL2_op_xor(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 1);
 
     destroy_test_stack(stack);
 }
@@ -208,50 +319,75 @@ TEST(test_logic_xor_negative_values)
 {
     SDDL2_Stack* stack = create_test_stack(100);
 
-    // Test: -1 ^ -1 = 0
+    // Test: Both negative (both true) = false
+    // -1 ^^ -2 = 0
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(-1)) == SDDL2_OK);
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(-1)) == SDDL2_OK);
-    assert(SDDL2_op_xor(stack) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(-2)) == SDDL2_OK);
+    assert(SDDL2_op_xor(stack, NULL, 0) == SDDL2_OK);
     POP_AND_VERIFY_I64(stack, 0);
 
     destroy_test_stack(stack);
 }
 
 /* ============================================================================
- * NOT Operation Tests
+ * NOT Operation Tests - Logical NOT (returns 0 or 1)
  * ========================================================================= */
-
-TEST(test_logic_not_basic)
-{
-    SDDL2_Stack* stack = create_test_stack(100);
-
-    // Test: ~0x0F0F = 0xFFFFFFFFFFFFF0F0 (all bits flipped)
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0x0F0F)) == SDDL2_OK);
-    assert(SDDL2_op_not(stack) == SDDL2_OK);
-    POP_AND_VERIFY_I64(stack, (int64_t)0xFFFFFFFFFFFFF0F0);
-
-    destroy_test_stack(stack);
-}
 
 TEST(test_logic_not_zero)
 {
     SDDL2_Stack* stack = create_test_stack(100);
 
-    // Test: ~0 = -1 (all bits set)
+    // Test: !0 = 1
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
-    assert(SDDL2_op_not(stack) == SDDL2_OK);
-    POP_AND_VERIFY_I64(stack, -1);
+    assert(SDDL2_op_not(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 1);
 
     destroy_test_stack(stack);
 }
 
-TEST(test_logic_not_all_ones)
+TEST(test_logic_not_one)
 {
     SDDL2_Stack* stack = create_test_stack(100);
 
-    // Test: ~(-1) = 0
+    // Test: !1 = 0
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
+    assert(SDDL2_op_not(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 0);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_logic_not_positive)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+
+    // Test: !42 = 0
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(42)) == SDDL2_OK);
+    assert(SDDL2_op_not(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 0);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_logic_not_negative)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+
+    // Test: !(-1) = 0
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(-1)) == SDDL2_OK);
-    assert(SDDL2_op_not(stack) == SDDL2_OK);
+    assert(SDDL2_op_not(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 0);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_logic_not_large_value)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+
+    // Test: !(large value) = 0
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0x123456789ABCDEF0)) == SDDL2_OK);
+    assert(SDDL2_op_not(stack, NULL, 0) == SDDL2_OK);
     POP_AND_VERIFY_I64(stack, 0);
 
     destroy_test_stack(stack);
@@ -261,12 +397,24 @@ TEST(test_logic_not_double_negation)
 {
     SDDL2_Stack* stack = create_test_stack(100);
 
-    // Test: ~~value = value
-    int64_t value = 0x123456789ABCDEF0;
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(value)) == SDDL2_OK);
-    assert(SDDL2_op_not(stack) == SDDL2_OK);
-    assert(SDDL2_op_not(stack) == SDDL2_OK);
-    POP_AND_VERIFY_I64(stack, value);
+    // Test: !!0 = 0
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
+    assert(SDDL2_op_not(stack, NULL, 0) == SDDL2_OK);
+    assert(SDDL2_op_not(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 0);
+
+    destroy_test_stack(stack);
+}
+
+TEST(test_logic_not_double_negation_nonzero)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+
+    // Test: !!42 = 1 (normalizes to boolean)
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(42)) == SDDL2_OK);
+    assert(SDDL2_op_not(stack, NULL, 0) == SDDL2_OK);
+    assert(SDDL2_op_not(stack, NULL, 0) == SDDL2_OK);
+    POP_AND_VERIFY_I64(stack, 1);
 
     destroy_test_stack(stack);
 }
@@ -280,11 +428,11 @@ TEST(test_logic_and_stack_underflow)
     SDDL2_Stack* stack = create_test_stack(100);
 
     // Empty stack
-    assert(SDDL2_op_and(stack) == SDDL2_STACK_UNDERFLOW);
+    assert(SDDL2_op_and(stack, NULL, 0) == SDDL2_STACK_UNDERFLOW);
 
     // Only one value
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(42)) == SDDL2_OK);
-    assert(SDDL2_op_and(stack) == SDDL2_STACK_UNDERFLOW);
+    assert(SDDL2_op_and(stack, NULL, 0) == SDDL2_STACK_UNDERFLOW);
 
     destroy_test_stack(stack);
 }
@@ -294,11 +442,11 @@ TEST(test_logic_or_stack_underflow)
     SDDL2_Stack* stack = create_test_stack(100);
 
     // Empty stack
-    assert(SDDL2_op_or(stack) == SDDL2_STACK_UNDERFLOW);
+    assert(SDDL2_op_or(stack, NULL, 0) == SDDL2_STACK_UNDERFLOW);
 
     // Only one value
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(42)) == SDDL2_OK);
-    assert(SDDL2_op_or(stack) == SDDL2_STACK_UNDERFLOW);
+    assert(SDDL2_op_or(stack, NULL, 0) == SDDL2_STACK_UNDERFLOW);
 
     destroy_test_stack(stack);
 }
@@ -308,11 +456,11 @@ TEST(test_logic_xor_stack_underflow)
     SDDL2_Stack* stack = create_test_stack(100);
 
     // Empty stack
-    assert(SDDL2_op_xor(stack) == SDDL2_STACK_UNDERFLOW);
+    assert(SDDL2_op_xor(stack, NULL, 0) == SDDL2_STACK_UNDERFLOW);
 
     // Only one value
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(42)) == SDDL2_OK);
-    assert(SDDL2_op_xor(stack) == SDDL2_STACK_UNDERFLOW);
+    assert(SDDL2_op_xor(stack, NULL, 0) == SDDL2_STACK_UNDERFLOW);
 
     destroy_test_stack(stack);
 }
@@ -322,7 +470,7 @@ TEST(test_logic_not_stack_underflow)
     SDDL2_Stack* stack = create_test_stack(100);
 
     // Empty stack
-    assert(SDDL2_op_not(stack) == SDDL2_STACK_UNDERFLOW);
+    assert(SDDL2_op_not(stack, NULL, 0) == SDDL2_STACK_UNDERFLOW);
 
     destroy_test_stack(stack);
 }
@@ -334,46 +482,7 @@ TEST(test_logic_and_type_mismatch)
     // Push Tag instead of I64 for second operand
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(42)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(100)) == SDDL2_OK);
-    assert(SDDL2_op_and(stack) == SDDL2_TYPE_MISMATCH);
-
-    destroy_test_stack(stack);
-}
-
-TEST(test_logic_and_type_mismatch_both_tags)
-{
-    SDDL2_Stack* stack = create_test_stack(100);
-
-    // Both operands are Tags instead of I64
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(50)) == SDDL2_OK);
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(100)) == SDDL2_OK);
-    assert(SDDL2_op_and(stack) == SDDL2_TYPE_MISMATCH);
-
-    destroy_test_stack(stack);
-}
-
-TEST(test_logic_and_type_mismatch_both_types)
-{
-    SDDL2_Stack* stack = create_test_stack(100);
-
-    // Both operands are Types instead of I64
-    SDDL2_Type type1 = { .kind = SDDL2_TYPE_U8, .width = 1 };
-    SDDL2_Type type2 = { .kind = SDDL2_TYPE_U16LE, .width = 2 };
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type1)) == SDDL2_OK);
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type2)) == SDDL2_OK);
-    assert(SDDL2_op_and(stack) == SDDL2_TYPE_MISMATCH);
-
-    destroy_test_stack(stack);
-}
-
-TEST(test_logic_and_type_mismatch_tag_and_type)
-{
-    SDDL2_Stack* stack = create_test_stack(100);
-
-    // One Tag and one Type
-    SDDL2_Type type = { .kind = SDDL2_TYPE_U32LE, .width = 4 };
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(123)) == SDDL2_OK);
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type)) == SDDL2_OK);
-    assert(SDDL2_op_and(stack) == SDDL2_TYPE_MISMATCH);
+    assert(SDDL2_op_and(stack, NULL, 0) == SDDL2_TYPE_MISMATCH);
 
     destroy_test_stack(stack);
 }
@@ -386,46 +495,7 @@ TEST(test_logic_or_type_mismatch)
     SDDL2_Type type = { .kind = SDDL2_TYPE_U8, .width = 1 };
     assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(42)) == SDDL2_OK);
-    assert(SDDL2_op_or(stack) == SDDL2_TYPE_MISMATCH);
-
-    destroy_test_stack(stack);
-}
-
-TEST(test_logic_or_type_mismatch_both_tags)
-{
-    SDDL2_Stack* stack = create_test_stack(100);
-
-    // Both operands are Tags instead of I64
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(77)) == SDDL2_OK);
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(88)) == SDDL2_OK);
-    assert(SDDL2_op_or(stack) == SDDL2_TYPE_MISMATCH);
-
-    destroy_test_stack(stack);
-}
-
-TEST(test_logic_or_type_mismatch_both_types)
-{
-    SDDL2_Stack* stack = create_test_stack(100);
-
-    // Both operands are Types instead of I64
-    SDDL2_Type type1 = { .kind = SDDL2_TYPE_I32LE, .width = 4 };
-    SDDL2_Type type2 = { .kind = SDDL2_TYPE_I64LE, .width = 8 };
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type1)) == SDDL2_OK);
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type2)) == SDDL2_OK);
-    assert(SDDL2_op_or(stack) == SDDL2_TYPE_MISMATCH);
-
-    destroy_test_stack(stack);
-}
-
-TEST(test_logic_or_type_mismatch_tag_and_type)
-{
-    SDDL2_Stack* stack = create_test_stack(100);
-
-    // One Type and one Tag
-    SDDL2_Type type = { .kind = SDDL2_TYPE_U64LE, .width = 8 };
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type)) == SDDL2_OK);
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(999)) == SDDL2_OK);
-    assert(SDDL2_op_or(stack) == SDDL2_TYPE_MISMATCH);
+    assert(SDDL2_op_or(stack, NULL, 0) == SDDL2_TYPE_MISMATCH);
 
     destroy_test_stack(stack);
 }
@@ -437,47 +507,7 @@ TEST(test_logic_xor_type_mismatch)
     // Push two Tags instead of I64s
     assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(10)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(20)) == SDDL2_OK);
-    assert(SDDL2_op_xor(stack) == SDDL2_TYPE_MISMATCH);
-
-    destroy_test_stack(stack);
-}
-
-TEST(test_logic_xor_type_mismatch_type_and_i64)
-{
-    SDDL2_Stack* stack = create_test_stack(100);
-
-    // One Type and one I64
-    SDDL2_Type type = { .kind = SDDL2_TYPE_I16LE, .width = 2 };
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type)) == SDDL2_OK);
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0x1234)) == SDDL2_OK);
-    assert(SDDL2_op_xor(stack) == SDDL2_TYPE_MISMATCH);
-
-    destroy_test_stack(stack);
-}
-
-TEST(test_logic_xor_type_mismatch_both_types)
-{
-    SDDL2_Stack* stack = create_test_stack(100);
-
-    // Both operands are Types instead of I64
-    SDDL2_Type type1 = { .kind = SDDL2_TYPE_U8, .width = 1 };
-    SDDL2_Type type2 = { .kind = SDDL2_TYPE_U32LE, .width = 4 };
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type1)) == SDDL2_OK);
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type2)) == SDDL2_OK);
-    assert(SDDL2_op_xor(stack) == SDDL2_TYPE_MISMATCH);
-
-    destroy_test_stack(stack);
-}
-
-TEST(test_logic_xor_type_mismatch_tag_and_type)
-{
-    SDDL2_Stack* stack = create_test_stack(100);
-
-    // One Tag and one Type
-    SDDL2_Type type = { .kind = SDDL2_TYPE_I8, .width = 1 };
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_tag(555)) == SDDL2_OK);
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type)) == SDDL2_OK);
-    assert(SDDL2_op_xor(stack) == SDDL2_TYPE_MISMATCH);
+    assert(SDDL2_op_xor(stack, NULL, 0) == SDDL2_TYPE_MISMATCH);
 
     destroy_test_stack(stack);
 }
@@ -489,7 +519,7 @@ TEST(test_logic_not_type_mismatch)
     // Push Type instead of I64
     SDDL2_Type type = { .kind = SDDL2_TYPE_U8, .width = 1 };
     assert(SDDL2_Stack_push(stack, SDDL2_Value_type(type)) == SDDL2_OK);
-    assert(SDDL2_op_not(stack) == SDDL2_TYPE_MISMATCH);
+    assert(SDDL2_op_not(stack, NULL, 0) == SDDL2_TYPE_MISMATCH);
 
     destroy_test_stack(stack);
 }
@@ -502,41 +532,42 @@ TEST(test_logic_combined_operations)
 {
     SDDL2_Stack* stack = create_test_stack(100);
 
-    // Test: ((a AND b) OR c) XOR d
-    // a = 0xFF00, b = 0x0FF0, c = 0x000F, d = 0xFFFF
-    // a AND b = 0x0F00
-    // (a AND b) OR c = 0x0F0F
-    // ((a AND b) OR c) XOR d = 0xF0F0
+    // Test: ((a && b) || c) ^^ d
+    // a=1, b=0, c=1, d=0
+    // a && b = 0
+    // (a && b) || c = 1
+    // ((a && b) || c) ^^ d = 1
 
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0xFF00)) == SDDL2_OK);
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0x0FF0)) == SDDL2_OK);
-    assert(SDDL2_op_and(stack) == SDDL2_OK); // Result: 0x0F00
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
+    assert(SDDL2_op_and(stack, NULL, 0) == SDDL2_OK); // Result: 0
 
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0x000F)) == SDDL2_OK);
-    assert(SDDL2_op_or(stack) == SDDL2_OK); // Result: 0x0F0F
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
+    assert(SDDL2_op_or(stack, NULL, 0) == SDDL2_OK); // Result: 1
 
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0xFFFF)) == SDDL2_OK);
-    assert(SDDL2_op_xor(stack) == SDDL2_OK); // Result: 0xF0F0
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
+    assert(SDDL2_op_xor(stack, NULL, 0) == SDDL2_OK); // Result: 1
 
-    POP_AND_VERIFY_I64(stack, 0xF0F0);
+    POP_AND_VERIFY_I64(stack, 1);
 
     destroy_test_stack(stack);
 }
 
-TEST(test_logic_bit_masking)
+TEST(test_logic_de_morgan_law)
 {
     SDDL2_Stack* stack = create_test_stack(100);
 
-    // Extract bits 8-15 from 0x12345678
-    // Step 1: value & 0xFF00 = 0x5600
-    // Step 2: result >> 8 would be done with other ops, but we test masking
-    int64_t value = 0x12345678;
-    int64_t mask  = 0xFF00;
+    // Test De Morgan's Law: !(a || b) == (!a && !b)
+    // a=1, b=0
+    // a || b = 1, !(a || b) = 0
+    // !a = 0, !b = 1, (!a && !b) = 0
 
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(value)) == SDDL2_OK);
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(mask)) == SDDL2_OK);
-    assert(SDDL2_op_and(stack) == SDDL2_OK);
-    POP_AND_VERIFY_I64(stack, 0x5600);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
+    assert(SDDL2_op_or(stack, NULL, 0) == SDDL2_OK); // Result: 1
+    assert(SDDL2_op_not(stack, NULL, 0) == SDDL2_OK); // Result: 0
+
+    POP_AND_VERIFY_I64(stack, 0);
 
     destroy_test_stack(stack);
 }

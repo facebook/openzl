@@ -419,7 +419,7 @@ static void test_segments_with_arithmetic(void)
 
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(2)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(3)) == SDDL2_OK);
-    assert(SDDL2_op_add(stack) == SDDL2_OK);
+    assert(SDDL2_op_add(stack, NULL, 0) == SDDL2_OK);
     assert(SDDL2_op_segment_create_unspecified(stack, &buffer, &segments)
            == SDDL2_OK);
 
