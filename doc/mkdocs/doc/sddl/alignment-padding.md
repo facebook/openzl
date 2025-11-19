@@ -50,15 +50,16 @@ If `width` is 10, the natural size is 10 bytes. With `pad_align 4`, the record b
 When both are present, `pad_to` is applied first, then `pad_align`:
 
 ```sddl
-Record Block(size) = {
-  data: Bytes(size)
-} pad_to 100 pad_align 16
+Record Block(datasize, blocksize) = {
+  data: Bytes(datasize)
+} pad_to blocksize pad_align 8
 ```
 
-This ensures the record is at least 100 bytes, then rounds up to the next multiple of 16. If `size` is 50:
+This ensures the record is at least blocksize bytes, then rounds up to the next multiple of 8.
+For example, if `blocksize` is 50:
 
-1. `pad_to 100` makes it 100 bytes
-2. `pad_align 16` rounds 100 up to 112 bytes (next multiple of 16)
+1. `pad_to blocksize` makes it 50 bytes
+2. `pad_align 8` rounds 50 up to 56 bytes (next multiple of 8)
 
 ### Parameterized Padding
 
