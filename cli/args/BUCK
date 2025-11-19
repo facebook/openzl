@@ -1,6 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_cxxlibrary")
+load("../../defs.bzl", "zs_cxxlibrary")
 
 oncall("data_compression")
 
@@ -18,13 +18,13 @@ zs_cxxlibrary(
         "TrainArgs.h",
     ],
     exported_deps = [
-        "//data_compression/experimental/zstrong/cli:cmd",
-        "//data_compression/experimental/zstrong/cli/utils:utils",
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
-        "//data_compression/experimental/zstrong/custom_parsers:custom_parsers",
-        "//data_compression/experimental/zstrong/tools:arg",
-        "//data_compression/experimental/zstrong/tools:io",
-        "//data_compression/experimental/zstrong/tools/training:train_common",
-        "//data_compression/experimental/zstrong/tools/training/utils:training_utils",
+        "..:cmd",
+        "../../cpp:openzl_cpp",
+        "../../custom_parsers:custom_parsers",
+        "../../tools:arg",
+        "../../tools:io",
+        "../../tools/training:train_common",
+        "../../tools/training/utils:training_utils",
+        "../utils:utils",
     ],
 )

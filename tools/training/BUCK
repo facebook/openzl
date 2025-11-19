@@ -1,6 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_cxxlibrary")
+load("../../defs.bzl", "zs_cxxlibrary")
 
 oncall("data_compression")
 
@@ -15,15 +15,15 @@ zs_cxxlibrary(
             "train.h",
         ],
     deps = [
-        "//data_compression/experimental/zstrong/custom_parsers:custom_parsers",
-        "//data_compression/experimental/zstrong/tools/training/ace:automated_compressor_explorer",
-        "//data_compression/experimental/zstrong/tools/training/clustering:clustering_graph_trainer",
-        "//data_compression/experimental/zstrong/tools/training/graph_mutation:graph_mutation",
+        "../../custom_parsers:custom_parsers",
+        "ace:automated_compressor_explorer",
+        "clustering:clustering_graph_trainer",
+        "graph_mutation:graph_mutation",
     ],
     exported_deps = [
+        "..:logger",
+        "utils:training_utils",
         ":train_common",
-        "//data_compression/experimental/zstrong/tools:logger",
-        "//data_compression/experimental/zstrong/tools/training/utils:training_utils",
     ],
 )
 
@@ -35,6 +35,6 @@ zs_cxxlibrary(
             "train_params.h",
         ],
     deps = [
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
+        "../../cpp:openzl_cpp",
     ],
 )

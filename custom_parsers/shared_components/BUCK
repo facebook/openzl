@@ -1,6 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_cxxlibrary")
+load("../../defs.bzl", "zs_cxxlibrary")
 
 oncall("data_compression")
 
@@ -9,7 +9,7 @@ zs_cxxlibrary(
     srcs = ["numeric_graphs.cpp"],
     headers = ["numeric_graphs.h"],
     exported_deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
+        "../..:zstronglib",
     ],
 )
 
@@ -18,7 +18,7 @@ zs_cxxlibrary(
     srcs = ["string_graphs.cpp"],
     headers = ["string_graphs.h"],
     exported_deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
+        "../..:zstronglib",
     ],
 )
 
@@ -31,8 +31,8 @@ zs_cxxlibrary(
         "clustering.h",
     ],
     exported_deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/custom_parsers/shared_components:numeric_graphs",
-        "//data_compression/experimental/zstrong/custom_parsers/shared_components:string_graphs",
+        "../..:zstronglib",
+        ":numeric_graphs",
+        ":string_graphs",
     ],
 )

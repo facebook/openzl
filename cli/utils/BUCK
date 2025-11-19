@@ -1,6 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_cxxlibrary")
+load("../../defs.bzl", "zs_cxxlibrary")
 
 oncall("data_compression")
 
@@ -15,17 +15,17 @@ zs_cxxlibrary(
         "util.h",
     ],
     deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
-        "//data_compression/experimental/zstrong/custom_parsers:custom_parsers",
-        "//data_compression/experimental/zstrong/custom_parsers:pytorch_model_parser",
-        "//data_compression/experimental/zstrong/custom_parsers/csv:csv_parser",
-        "//data_compression/experimental/zstrong/custom_parsers/parquet:parquet_graph",
-        "//data_compression/experimental/zstrong/custom_parsers/sddl:profile",
-        "//data_compression/experimental/zstrong/custom_parsers/shared_components:clustering",
-        "//data_compression/experimental/zstrong/tools:io",
-        "//data_compression/experimental/zstrong/tools:logger",
-        "//data_compression/experimental/zstrong/tools/sddl/compiler:lib",
-        "//data_compression/experimental/zstrong/tools/training/ace:automated_compressor_explorer",
+        "../..:zstronglib",
+        "../../cpp:openzl_cpp",
+        "../../custom_parsers:custom_parsers",
+        "../../custom_parsers:pytorch_model_parser",
+        "../../custom_parsers/csv:csv_parser",
+        "../../custom_parsers/parquet:parquet_graph",
+        "../../custom_parsers/sddl:profile",
+        "../../custom_parsers/shared_components:clustering",
+        "../../tools:io",
+        "../../tools:logger",
+        "../../tools/sddl/compiler:lib",
+        "../../tools/training/ace:automated_compressor_explorer",
     ],
 )

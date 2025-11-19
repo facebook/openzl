@@ -13,9 +13,9 @@ cpp_binary(
     headers = ["VersionTestInterfaceABI.h"],
     dlopen_enabled = True,
     deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/tests:constants",
-        "//data_compression/experimental/zstrong/tests/datagen:custom_nodes",
+        "..:constants",
+        "../..:zstronglib",
+        "../datagen:custom_nodes",
     ],
 )
 
@@ -48,9 +48,9 @@ dev_only_unittest(
     },
     supports_static_listing = False,
     deps = [
+        "../../custom_transforms/thrift/kernels/tests:thrift_kernel_test_utils",
         "fbsource//xplat/tools/cxx:resourcesFbcode",
         ":version_test_interface",
-        "//data_compression/experimental/zstrong/custom_transforms/thrift/kernels/tests:thrift_kernel_test_utils",
     ],
 )
 

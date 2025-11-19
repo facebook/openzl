@@ -4,7 +4,7 @@
 
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_fuzzers")
+load("../../../defs.bzl", "zs_fuzzers")
 
 oncall("data_compression")
 
@@ -20,10 +20,10 @@ cpp_unittest(
     name = "test_parse",
     srcs = ["test_parse.cpp"],
     deps = [
+        "..:parse",
+        "../../..:zstronglib",
+        "../../../tools:zstrong_cpp",
         ":parse_test_data",
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/custom_transforms/parse:parse",
-        "//data_compression/experimental/zstrong/tools:zstrong_cpp",
         "//folly:conv",
     ],
 )
@@ -37,10 +37,10 @@ zs_fuzzers(
         ("ParseTest", "FuzzFloat64Decompress"),
     ],
     deps = [
+        "..:parse",
+        "../../../tests:fuzz_utils",
+        "../../../tools:zstrong_cpp",
         "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
         ":parse_test_data",
-        "//data_compression/experimental/zstrong/custom_transforms/parse:parse",
-        "//data_compression/experimental/zstrong/tests:fuzz_utils",
-        "//data_compression/experimental/zstrong/tools:zstrong_cpp",
     ],
 )

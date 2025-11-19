@@ -1,6 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_unittest")
+load("../../../../defs.bzl", "zs_unittest")
 
 oncall("data_compression")
 
@@ -13,6 +13,6 @@ zs_unittest(
         "*.hpp",
     ]),
     deps = [
-        "//data_compression/experimental/zstrong/tools/sddl/compiler:lib",
+        "..:lib",
     ],
 )

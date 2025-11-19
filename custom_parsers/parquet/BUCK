@@ -1,6 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_cxxlibrary")
+load("../../defs.bzl", "zs_cxxlibrary")
 
 oncall("data_compression")
 
@@ -14,8 +14,8 @@ zs_cxxlibrary(
     srcs = ["thrift_compact_reader.cpp"],
     headers = ["thrift_compact_reader.h"],
     exported_deps = [
+        "../..:zstronglib",
         ":thrift_types",
-        "//data_compression/experimental/zstrong:zstronglib",
     ],
 )
 
@@ -34,8 +34,8 @@ zs_cxxlibrary(
     srcs = ["parquet_lexer.cpp"],
     headers = ["parquet_lexer.h"],
     deps = [
+        "../..:zstronglib",
         ":parquet_metadata",
-        "//data_compression/experimental/zstrong:zstronglib",
     ],
 )
 
@@ -44,7 +44,7 @@ zs_cxxlibrary(
     srcs = ["parquet_graph.c"],
     headers = ["parquet_graph.h"],
     deps = [
+        "../..:zstronglib",
         ":parquet_lexer",
-        "//data_compression/experimental/zstrong:zstronglib",
     ],
 )

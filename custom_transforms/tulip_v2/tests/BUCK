@@ -8,7 +8,7 @@ load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:fbcode_configured_alias.bzl", "fbcode_configured_alias")
 load("@fbcode_macros//build_defs:thrift_library.bzl", "thrift_library")
 load("@fbsource//tools/build_defs:default_platform_defs.bzl", "get_host_target_platform")
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_fuzzers")
+load("../../../defs.bzl", "zs_fuzzers")
 
 oncall("data_compression")
 
@@ -28,13 +28,13 @@ cpp_library(
         "fbsource//xplat/tools/cxx:resources",
     ],
     exported_deps = [
+        "..:tulip_v2",
+        "../../../tests/datagen:datagen",
+        "../../../tools:zstrong_cpp",
+        "../../thrift/kernels/tests:thrift_kernel_test_utils",
         ":tulip_v2_data-cpp2-reflection",
         ":tulip_v2_data-cpp2-types",
         ":tulip_v2_data-cpp2-visitation",
-        "//data_compression/experimental/zstrong/custom_transforms/thrift/kernels/tests:thrift_kernel_test_utils",
-        "//data_compression/experimental/zstrong/custom_transforms/tulip_v2:tulip_v2",
-        "//data_compression/experimental/zstrong/tests/datagen:datagen",
-        "//data_compression/experimental/zstrong/tools:zstrong_cpp",
         "//folly:range",
         "//folly:subprocess",
         "//folly/io:iobuf",
@@ -46,9 +46,9 @@ cpp_unittest(
     name = "test_tulip_v2",
     srcs = ["test_tulip_v2.cpp"],
     deps = [
+        "..:tulip_v2",
+        "../../..:zstronglib",
         ":tulip_v2_data_utils",
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/custom_transforms/tulip_v2:tulip_v2",
         "//folly:conv",
     ],
 )
@@ -81,10 +81,10 @@ zs_fuzzers(
     ],
     generator = ":fuzz_tulip_v2_generator_host",
     deps = [
+        "..:tulip_v2",
+        "../../../tests:fuzz_utils",
+        "../../../tests:test_zstrong_fixtures",
         "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
         ":tulip_v2_data_utils",
-        "//data_compression/experimental/zstrong/custom_transforms/tulip_v2:tulip_v2",
-        "//data_compression/experimental/zstrong/tests:fuzz_utils",
-        "//data_compression/experimental/zstrong/tests:test_zstrong_fixtures",
     ],
 )
