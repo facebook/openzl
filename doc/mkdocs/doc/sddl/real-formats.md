@@ -30,8 +30,8 @@ Use this table to jump from a language concept to the simplest full example that
 | <a id="coverage-size-checks"></a>`parsed_length(field)` function | [Example 2: BMP 24-bit](#example-2-bmp-image-24-bit-rgb-uncompressed) |
 | <a id="coverage-sizeof"></a>`sizeof()` static size checks | [SAO Catalog (Introduction)](introduction.md#a-more-complex-example) |
 | <a id="coverage-soa"></a>`soa` structure-of-arrays layout | Not yet covered – see [Arrays chapter](arrays-collections.md#structure-of-arrays-layout) |
-| <a id="coverage-delimiter"></a>Delimiter-based fields (`Bytes until ...`) | Not yet covered – see [Core Concepts](core-concepts.md#delimiter-based-parsing) |
-| <a id="coverage-scan"></a>`scan` keyword for arrays | Not yet covered – see [Arrays chapter](arrays-collections.md#auto-sized-arrays) |
+| <a id="coverage-delimiter"></a>Delimiter-based fields (`Bytes until ...`) | [Example 4: BAM bioinformatics](#example-4-bam-bioinformatics-format) |
+| <a id="coverage-scan"></a>`scan` keyword for arrays | [Example 4: BAM bioinformatics](#example-4-bam-bioinformatics-format) |
 | <a id="coverage-annotations"></a>Annotations (`@instant_parse`, `@err_msg`, etc.) | Not yet covered – see [Annotations section](sddl-for-llm.md#10-annotations) |
 
 ---
@@ -328,6 +328,165 @@ data: DataChunk(fmt_eff,
 # RIFF size must account for the 4-byte "WAVE" + both chunks (incl. padding)
 expect riff.ChunkSize == 4 + parsed_length(fmt) + parsed_length(data)
 
+```
+
+---
+
+## Example 4: BAM bioinformatics format
+
+**Concepts Illustrated:**
+
+This example introduces several advanced patterns not shown in earlier examples: **inline record definitions** with parameters for one-off structures, **scoped auto-sized arrays** using `pad_to` to create a bounded scope for delimiter-free parsing (`scan BamTag[]` within `tags_section`), and **unions with delimiter-based parsing** (`Bytes until 0x00` for null-terminated strings). It also demonstrates byte array literal comparisons (`magic == [0x42, 0x41, 0x4D, 0x01]`), float types in union dispatch, default cases for unsupported variants, and complex multi-component size calculations (`fixed_rest`). The spec shows how to model TAG:TYPE:VALUE triplet structures and handle variable-length sections that depend on computed sizes.
+
+```sddl
+# BAM (Binary Alignment/Map) — core layout (decompressed payload)
+#
+# Supported subset: Standard BAM v1 structure after BGZF decompression —
+# valid magic ("BAM\1"), well-formed SAM text header, proper reference table,
+# and alignment records whose internal sizes (read name, CIGAR, packed seq, quals, aux payload) match block_size.
+# Auxiliary tags are parsed as TAG:TYPE:VALUE triplets; basic types (char, int, float, string) are modeled,
+# but array types ('B') are not fully decoded.
+#
+# Rejected: Any non-v1 extensions, malformed records (negative lengths, mismatched sizes, malformed names),
+# nonstandard or malformed aux encodings. BGZF framing itself is out of scope.
+
+#
+# Per-record fixed header (32 bytes total, including block_size)
+#
+Record BamCore() = {
+  block_size: Int32LE,    # size of the rest of the record (after this field)
+
+  refID: Int32LE,         # -1 for unmapped
+  pos:   Int32LE,         # 0-based position on ref
+
+  l_read_name: UInt8,     # read name length, including '\0'
+  mapq:        UInt8,     # mapping quality
+  bin:         UInt16LE,  # bin for indexing
+
+  n_cigar_op: UInt16LE,   # number of CIGAR operations
+  flag:       UInt16LE,   # SAM FLAG
+
+  l_seq:      Int32LE,    # read length (bases)
+  next_refID: Int32LE,    # mate's refID
+  next_pos:   Int32LE,    # mate's pos
+  tlen:       Int32LE,    # template length
+}
+
+#
+# Reference sequence entry in the header
+#
+Record RefSeq() = {
+  l_name: Int32LE where l_name > 0,  # length of name including trailing '\0'
+
+  name:  Bytes(l_name),             # NUL-terminated C string
+
+  l_ref: Int32LE where l_ref >= 0   # reference length (bases)
+}
+
+#
+# Auxiliary tag: TAG:TYPE:VALUE triplet
+#
+Record BamTag() = {
+  tag: Bytes(2),           # Two-character tag name (e.g., "NM", "MD", "AS")
+  type_code: UInt8,        # Type code: 'A', 'c', 'C', 's', 'S', 'i', 'I', 'f', 'Z', 'H', 'B'
+
+  value: Union(type_code) {
+    case 'A': UInt8,                          # ASCII character
+    case 'c': Int8,                           # signed int8
+    case 'C': UInt8,                          # unsigned int8
+    case 's': Int16LE,                        # signed int16
+    case 'S': UInt16LE,                       # unsigned int16
+    case 'i': Int32LE,                        # signed int32
+    case 'I': UInt32LE,                       # unsigned int32
+    case 'f': Float32LE,                      # float
+    case 'Z': Bytes until 0x00 include_delim, # null-terminated string
+    case 'H': Bytes until 0x00 include_delim, # hex string (null-terminated)
+    # Note: 'B' (typed array) would require nested structure: type + count + elements
+    # Omitted for simplicity;
+    # Non listed case will be rejected at runtime
+  }
+}
+
+#
+# Full BAM alignment record (one read / template)
+#
+Record BamRecord() = {
+  core: BamCore,
+
+  #
+  # Basic sanity on core fields
+  #
+  expect core.l_read_name > 0,
+  expect core.n_cigar_op >= 0,
+  expect core.l_seq      >= 0,
+
+  #
+  # Fixed-size part of the record AFTER block_size:
+  #   28 bytes of BamCore (excluding block_size itself)
+  # + l_read_name
+  # + 4 * n_cigar_op
+  # + ceil_div(l_seq, 2)   (4-bit packed sequence)
+  # + l_seq                (qualities)
+  #
+  var fixed_rest =
+      28
+    + core.l_read_name
+    + 4 * core.n_cigar_op
+    + ceil_div(core.l_seq, 2)
+    + core.l_seq,
+
+  expect core.block_size >= fixed_rest,
+
+  var tags_len = core.block_size - fixed_rest,
+
+  #
+  # Variable-length sections in order
+  #
+  read_name: Bytes(core.l_read_name),
+    # includes trailing '\0', as in SAM
+
+  cigar: UInt32LE[core.n_cigar_op],
+    # (len << 4) | op_code; op semantics not modelled here
+
+  seq_packed: Bytes(ceil_div(core.l_seq, 2)),
+    # 4-bit packed sequence: 2 bases per byte
+
+  qual: UInt8[core.l_seq],
+    # per-base quality scores (Phred-encoded)
+
+  #
+  # Auxiliary tags: TAG:TYPE:VALUE triplets in bounded scope
+  #
+  tags_section: Record(tags_len) {
+    tags: scan BamTag[]
+  } pad_to tags_len,
+}
+
+#
+# Complete BAM file (decompressed BGZF payload)
+#
+magic: Bytes(4),
+expect magic == [0x42, 0x41, 0x4D, 0x01],   # "BAM\1"
+
+#
+# Textual SAM header (optional, may be empty)
+#
+l_text: Int32LE where l_text >= 0,
+
+header_text: Bytes(l_text),
+
+#
+# Reference sequence dictionary
+#
+n_ref: Int32LE where n_ref >= 0,
+
+references: RefSeq[n_ref],
+
+#
+# Alignment records until end of file
+# BamRecord is non-instant-parse, so we use `scan` here.
+#
+records: scan BamRecord[],
 ```
 
 ---
