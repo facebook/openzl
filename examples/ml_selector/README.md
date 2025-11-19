@@ -18,15 +18,15 @@ The example follows 4 steps:
    divided into a train and test directory):
 
    ```
-   buck2 run @//mode/opt //data_compression/experimental/zstrong/examples/ml_selector:generate_data -- /tmp/ml_train_samples
-   buck2 run @//mode/opt //data_compression/experimental/zstrong/examples/ml_selector:generate_data -- /tmp/ml_test_samples
+   buck2 run @//mode/opt examples/ml_selector:generate_data -- /tmp/ml_train_samples
+   buck2 run @//mode/opt examples/ml_selector:generate_data -- /tmp/ml_test_samples
    ```
 
    Before going forward, check current model's inference results (the starter
    model always selects FieldLz as a successor):
 
    ```
-   buck2 run @//mode/opt //data_compression/experimental/zstrong/examples/ml_selector:zs2_mlselector  -- infer -i /tmp/ml_test_samples/
+   buck2 run @//mode/opt examples/ml_selector:zs2_mlselector  -- infer -i /tmp/ml_test_samples/
    ```
 
    Example output:
@@ -38,20 +38,20 @@ The example follows 4 steps:
 2. Run feature extraction:
 
    ```
-   buck2 run @//mode/opt //data_compression/experimental/zstrong/examples/ml_selector:zs2_mlselector  -- train -i /tmp/ml_train_samples/ -o /tmp/ml_features
+   buck2 run @//mode/opt examples/ml_selector:zs2_mlselector  -- train -i /tmp/ml_train_samples/ -o /tmp/ml_features
    ```
 
 3. Train a model and save it as the inference's new model (make sure to run this
    command from zstrong root directory):
 
    ```
-   buck2 run @//mode/opt //data_compression/experimental/zstrong/examples/ml_selector:train_model -- /tmp/ml_features -o examples/ml_selector/model -m EXAMPLE_MODEL
+   buck2 run @//mode/opt examples/ml_selector:train_model -- /tmp/ml_features -o examples/ml_selector/model -m EXAMPLE_MODEL
    ```
 
 4. Test the generated model inference on the test data:
 
    ```
-   buck2 run @//mode/opt //data_compression/experimental/zstrong/examples/ml_selector:zs2_mlselector  -- infer -i /tmp/ml_test_samples/
+   buck2 run @//mode/opt examples/ml_selector:zs2_mlselector  -- infer -i /tmp/ml_test_samples/
    ```
 
    Example output:
@@ -65,15 +65,15 @@ The example follows 4 steps:
 1. Generate test data (as alternative you can use your own data):
 
    ```
-   buck2 run @//mode/opt //data_compression/experimental/zstrong/examples/ml_selector:generate_data -- /tmp/ml_train_samples
-   buck2 run @//mode/opt //data_compression/experimental/zstrong/examples/ml_selector:generate_data -- /tmp/ml_test_samples
+   buck2 run @//mode/opt examples/ml_selector:generate_data -- /tmp/ml_train_samples
+   buck2 run @//mode/opt examples/ml_selector:generate_data -- /tmp/ml_test_samples
    ```
 
    Before going forward, check current model's inference results (the starter
    model always selects FieldLz as a successor):
 
    ```
-   buck2 run @//mode/lldb //data_compression/experimental/zstrong/examples/ml_selector:zs2_core_mlselector /tmp/ml_test_samples/
+   buck2 run @//mode/lldb examples/ml_selector:zs2_core_mlselector /tmp/ml_test_samples/
    ```
 
    Example output:
@@ -86,7 +86,7 @@ The example follows 4 steps:
    result should be better than the starter model's results.
 
    ```
-   buck2 run @//mode/lldb //data_compression/experimental/zstrong/examples/ml_selector:zs2_core_mlselector /tmp/ml_test_samples/ -g
+   buck2 run @//mode/lldb examples/ml_selector:zs2_core_mlselector /tmp/ml_test_samples/ -g
    ```
 
    Example output:
@@ -99,20 +99,20 @@ The example follows 4 steps:
 2. Run feature extraction:
 
    ```
-   buck2 run @//mode/opt //data_compression/experimental/zstrong/examples/ml_selector:zs2_mlselector  -- train -i /tmp/ml_train_samples/ -o /tmp/ml_features
+   buck2 run @//mode/opt examples/ml_selector:zs2_mlselector  -- train -i /tmp/ml_train_samples/ -o /tmp/ml_features
    ```
 
 3. Train a model and save it as the inference's new model (make sure to run this
    command from zstrong root directory):
 
    ```
-   buck2 run @//mode/opt //data_compression/experimental/zstrong/examples/ml_selector:train_model -- -c /tmp/ml_features -o examples/ml_selector/core_model -m EXAMPLE_CORE_MODEL
+   buck2 run @//mode/opt examples/ml_selector:train_model -- -c /tmp/ml_features -o examples/ml_selector/core_model -m EXAMPLE_CORE_MODEL
    ```
 
 4. Test the generated model inference on the test data:
 
    ```
-   buck2 run @//mode/lldb //data_compression/experimental/zstrong/examples/ml_selector:zs2_core_mlselector /tmp/ml_test_samples/
+   buck2 run @//mode/lldb examples/ml_selector:zs2_core_mlselector /tmp/ml_test_samples/
    ```
 
    Example output:
