@@ -19,7 +19,11 @@
 #include "tools/protobuf/ProtoSerializer.h"
 #include "tools/protobuf/serialization_utils.h"
 #ifdef OPENZL_BUCK_BUILD
-#    include "data_compression/experimental/zstrong/tools/protobuf/schema.pb.h"
+#    if ZL_FBCODE_IS_RELEASE
+#        include "openzl/versions/release/tools/protobuf/schema.pb.h"
+#    else
+#        include "data_compression/experimental/zstrong/tools/protobuf/schema.pb.h"
+#    endif
 #else
 #    include "tools/protobuf/schema.pb.h"
 #endif

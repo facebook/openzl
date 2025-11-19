@@ -1,8 +1,15 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
+
+#include "openzl/zl_version.h"
+
 // #include <google/protobuf/util/message_differencer.h>
 #include <google/protobuf/util/field_comparator.h>
 #include <google/protobuf/util/message_differencer.h>
-#include "data_compression/experimental/zstrong/tools/protobuf/tests/test_schema.pb.h"
+#if ZL_FBCODE_IS_RELEASE
+#    include "openzl/versions/release/tools/protobuf/tests/test_schema.pb.h"
+#else
+#    include "data_compression/experimental/zstrong/tools/protobuf/tests/test_schema.pb.h"
+#endif
 #include "openzl/common/errors_internal.h"
 #include "security/lionhead/utils/lib_ftest/ftest.h"
 #include "tools/protobuf/ProtoDeserializer.h"

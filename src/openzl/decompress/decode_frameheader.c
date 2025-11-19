@@ -1193,19 +1193,16 @@ static ZL_Report getDecompressedSizeV3orMore(
 // I see it used in one assert() so far,
 // though it requires duplicating the frame scanning logic here
 // so it's easy to get the duplicated part wrong.
-static ZL_Report getCompressedSizeV3orMore(
+static ZL_Report getCompressedSizeV3orMore_inner(
         const DFH_Interface* decoder,
         const void* src,
-        size_t srcSize)
+        size_t srcSize,
+        DFH_Struct* dfh)
 {
-    ZL_DLOG(SEQ, "getCompressedSizeV3orMore (srcSize=%zu)", srcSize);
-    DFH_Struct dfh;
-    DFH_init(&dfh);
     ZL_Report fhSize = decoder->decodeFrameHeader(
-            &dfh, src, srcSize, decoder->formatVersion);
+            dfh, src, srcSize, decoder->formatVersion);
     size_t frameSize = 0;
     if (ZL_isError(fhSize)) {
-        DFH_destroy(&dfh);
         ZL_RET_R(fhSize);
     }
 
@@ -1214,7 +1211,7 @@ static ZL_Report getCompressedSizeV3orMore(
     int oneMoreBlock = 1;
 
     while (oneMoreBlock) {
-        if (dfh.formatVersion >= ZL_CHUNK_VERSION_MIN) {
+        if (dfh->formatVersion >= ZL_CHUNK_VERSION_MIN) {
             ZL_RET_R_IF_GE(
                     srcSize_tooSmall,
                     frameSize,
@@ -1229,27 +1226,41 @@ static ZL_Report getCompressedSizeV3orMore(
                 chhSize,
                 decoder->decodeChunkHeader(
                         decoder,
-                        &dfh,
+                        dfh,
                         (const char*)src + frameSize,
                         srcSize - frameSize));
         frameSize += chhSize;
 
-        frameSize += dfh.totalTHSize;
+        frameSize += dfh->totalTHSize;
 
-        for (uint32_t streamNb = 0; streamNb < dfh.nbStoredStreams;
+        for (uint32_t streamNb = 0; streamNb < dfh->nbStoredStreams;
              streamNb++) {
-            frameSize += VECTOR_AT(dfh.storedStreamSizes, streamNb);
+            frameSize += VECTOR_AT(dfh->storedStreamSizes, streamNb);
         }
 
-        frameSize += dfh.frameinfo->properties.hasContentChecksum ? 4 : 0;
-        frameSize += dfh.frameinfo->properties.hasCompressedChecksum ? 4 : 0;
+        frameSize += dfh->frameinfo->properties.hasContentChecksum ? 4 : 0;
+        frameSize += dfh->frameinfo->properties.hasCompressedChecksum ? 4 : 0;
 
-        if (dfh.formatVersion < ZL_CHUNK_VERSION_MIN)
+        if (dfh->formatVersion < ZL_CHUNK_VERSION_MIN)
             break; // single block for v20-
     }
+    ZL_RET_R_IF_GT(srcSize_tooSmall, frameSize, srcSize);
 
-    DFH_destroy(&dfh);
     return ZL_returnValue(frameSize);
+}
+
+static ZL_Report getCompressedSizeV3orMore(
+        const DFH_Interface* decoder,
+        const void* src,
+        size_t srcSize)
+{
+    ZL_DLOG(SEQ, "getCompressedSizeV3orMore (srcSize=%zu)", srcSize);
+    DFH_Struct dfh;
+    DFH_init(&dfh);
+    ZL_Report report =
+            getCompressedSizeV3orMore_inner(decoder, src, srcSize, &dfh);
+    DFH_destroy(&dfh);
+    return report;
 }
 
 static ZL_Report getHeaderSizeV3orV4(

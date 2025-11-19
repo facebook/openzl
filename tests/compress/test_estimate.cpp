@@ -64,9 +64,9 @@ VariableData generateVariableData(size_t cardinality, size_t size)
     }
     std::shuffle(values.begin(), values.end(), gen);
     VariableData data;
-    data.data = std::move(values);
     data.ptrs.reserve(values.size());
     data.sizes.reserve(values.size());
+    data.data = std::move(values);
     for (auto const& s : data.data) {
         data.ptrs.push_back(s.data());
         data.sizes.push_back(s.size());
