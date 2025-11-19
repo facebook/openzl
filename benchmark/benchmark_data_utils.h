@@ -283,10 +283,12 @@ inline std::string readCorpus(const std::filesystem::path& name)
             // Try looking for a buck resource, we have two possible paths one
             // for dev and one for release
             const std::vector<std::string> paths = {
+                "openzl/dev/benchmark/corpus",
+                "openzl/prod/benchmark/corpus",
                 "data_compression/experimental/zstrong/benchmark/corpus",
                 "openzl/versions/release/benchmark/corpus"
             };
-            for (auto path : paths) {
+            for (const auto& path : paths) {
                 if (build::doesResourceExist(path))
                     return build::getResourcePath(path).string();
             }
