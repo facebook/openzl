@@ -358,7 +358,7 @@ Overflow ⇒ **format error**.
 | `ceil_div(x,d)`        | ceil division         |
 | `align_up(x,a)`        | alignment helper      |
 | `sizeof(T())`          | static size of record |
-| `size(f)`              | parsed byte size      |
+| `parsed_length(f)`     | parsed byte size      |
 | `current_position()`   | parser position       |
 | `scope_remaining()`    | bytes to end of scope |
 

@@ -27,7 +27,7 @@ Use this table to jump from a language concept to the simplest full example that
 | <a id="coverage-when-block"></a>`when { ... }` conditionals | [SAO Catalog (Introduction)](introduction.md#a-more-complex-example) |
 | <a id="coverage-unions"></a>Variant unions & dispatch | [Example 3: WAV Extended](#example-3-wave-audio-extended-format-support) |
 | <a id="coverage-enums"></a>Enums, `in`, switch expressions | [Example 3: WAV Extended](#example-3-wave-audio-extended-format-support) |
-| <a id="coverage-size-checks"></a>`size(field)` function | [Example 2: BMP 24-bit](#example-2-bmp-image-24-bit-rgb-uncompressed) |
+| <a id="coverage-size-checks"></a>`parsed_length(field)` function | [Example 2: BMP 24-bit](#example-2-bmp-image-24-bit-rgb-uncompressed) |
 | <a id="coverage-sizeof"></a>`sizeof()` static size checks | [SAO Catalog (Introduction)](introduction.md#a-more-complex-example) |
 | <a id="coverage-soa"></a>`soa` structure-of-arrays layout | Not yet covered – see [Arrays chapter](arrays-collections.md#structure-of-arrays-layout) |
 | <a id="coverage-delimiter"></a>Delimiter-based fields (`Bytes until ...`) | Not yet covered – see [Core Concepts](core-concepts.md#delimiter-based-parsing) |
@@ -98,7 +98,7 @@ This BMP description focuses on standard 24-bit RGB images with a BITMAPINFOHEAD
 
 **What This Example Teaches:**
 
-The example shows how to validate each header field with `where`, describe RGB pixels as their own record, and wrap them in a `Scanline` that uses `pad_align 4` to satisfy row alignment. It also demonstrates shape checks by comparing `image_size` against `size(pixel_rows)` instead of re-deriving padding math.
+The example shows how to validate each header field with `where`, describe RGB pixels as their own record, and wrap them in a `Scanline` that uses `pad_align 4` to satisfy row alignment. It also demonstrates shape checks by comparing `image_size` against `parsed_length(pixel_rows)` instead of re-deriving padding math.
 
 ```sddl
 # BMP 24-bit RGB Uncompressed Format
@@ -147,12 +147,12 @@ Record Scanline(width) = {
 
 # Pixel Data
 pixel_rows: Scanline(width)[height]
-expect image_size == 0 or image_size == size(pixel_rows)
+expect image_size == 0 or image_size == parsed_length(pixel_rows)
 ```
 
 **Validation and Rejection:**
 
-Files fail parsing when any header predicate is violated (wrong magic, alternative header size, negative dimensions, plane count not equal to 1, wrong bit depth, compression enabled). The spec also raises a data error if the pixel payload length does not match `size(pixel_rows)` or if trailing bytes remain after the rows are parsed.
+Files fail parsing when any header predicate is violated (wrong magic, alternative header size, negative dimensions, plane count not equal to 1, wrong bit depth, compression enabled). The spec also raises a data error if the pixel payload length does not match `parsed_length(pixel_rows)` or if trailing bytes remain after the rows are parsed.
 
 ---
 
@@ -166,7 +166,7 @@ The parser rejects RF64/RIFX containers, compressed formats, EXTENSIBLE files wi
 
 **Concepts Illustrated:**
 
-This example combines enums and the `in` operator for dispatch, grouped `when { ... }` checks, `pad_to`/`pad_align` for chunk sizing, nested unions for sample data, and switch expressions to resolve EXTENSIBLE GUIDs. It also demonstrates GUID validation, use of `size()` to confirm RIFF container sizes, and layered validation to keep `fmt`, `data`, and derived fields consistent.
+This example combines enums and the `in` operator for dispatch, grouped `when { ... }` checks, `pad_to`/`pad_align` for chunk sizing, nested unions for sample data, and switch expressions to resolve EXTENSIBLE GUIDs. It also demonstrates GUID validation, use of `parsed_length()` to confirm RIFF container sizes, and layered validation to keep `fmt`, `data`, and derived fields consistent.
 
 ```sddl
 # WAV Extended Format - PCM/FLOAT (1-8 channels, 8-384kHz)
@@ -326,7 +326,7 @@ data: DataChunk(fmt_eff,
                 fmt.body.core.BlockAlign)
 
 # RIFF size must account for the 4-byte "WAVE" + both chunks (incl. padding)
-expect riff.ChunkSize == 4 + size(fmt) + size(data)
+expect riff.ChunkSize == 4 + parsed_length(fmt) + parsed_length(data)
 
 ```
 

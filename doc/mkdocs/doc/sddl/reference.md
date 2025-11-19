@@ -223,7 +223,7 @@ SDDL follows C11 operator precedence. Use parentheses for clarity.
 | Function | Description | Instant-Parse? | Chapter |
 |----------|-------------|----------------|---------|
 | `sizeof(T())` | Static size of type T | Yes | [Variables & Expressions](variables-expressions.md#size-and-position-functions) |
-| `size(field)` | Parsed byte size of field | No (requires scan) | [Variables & Expressions](variables-expressions.md#size-and-position-functions) |
+| `parsed_length(field)` | Parsed byte size of field | No (requires scan) | [Variables & Expressions](variables-expressions.md#size-and-position-functions) |
 | `current_position()` | Current parser position | No (requires scan) | [Variables & Expressions](variables-expressions.md#size-and-position-functions) |
 | `scope_remaining()` | Bytes remaining in scope | No (requires scan) | [Variables & Expressions](variables-expressions.md#size-and-position-functions) |
 

@@ -282,20 +282,75 @@ ceil_div(x, d)      # Ceiling division: ⌈x / d⌉
 align_up(x, a)      # Round x up to next multiple of a
 ```
 
-### Size and Position Functions
+### Size Functions
+
+SDDL provides two distinct ways to measure sizes, each serving different purposes:
+
+**`sizeof(T())`** - Size of an instant-parse type
+
+- Operates on **type constructors**, not field instances
+- Only works for instant-parse types (types with statically-determinable layout)
+- **Using `sizeof()` on a type that requires scanning is a compiler error**
+- The size may depend on parameters, so it can be computed at runtime
+- Returns the size based on the type definition and provided parameters
+- Useful for: computing offsets, validating container sizes, parameter calculations
+
+Example:
 
 ```sddl
-sizeof(T())               # Static size of type T (instant-parse)
-size(field)               # Parsed byte size of field (requires scan)
-current_position()        # Current parser position (requires scan)
-scope_remaining()         # Bytes remaining in scope (requires scan)
+Record Header(header_size) = {
+  magic: Bytes(4),
+  version: Int16LE,
+  extra: Bytes(header_size - 6)
+} @instant_parse
+
+# Size depends on parameter, but type is instant-parse
+var my_header_size = sizeof(Header(total_size))  # Computed at runtime, no need for prior field instance
+
+# ERROR: Cannot use sizeof on scanned types
+Record Dynamic() = {
+  length: UInt32LE,
+  data: Bytes(length)  # Requires scan - depends on parsed field
+}
+
+# var bad = sizeof(Dynamic())  # COMPILER ERROR: Dynamic requires scan
 ```
+
+**`parsed_length(field)`** - Runtime parsed size of a field
+
+- Operates on **field instances**, not types
+- Measures the actual bytes consumed during parsing
+- Can vary based on the data (e.g., different union cases, variable-length arrays)
+- Useful for: validating container sizes, computing remaining space, checksum calculations
+
+Example:
+
+```sddl
+# RIFF-style chunks with padding
+Record Chunk() = {
+  size: UInt32LE,
+  data: Bytes(size)
+} pad_align 2  # Even-byte alignment adds padding
+
+chunk: Chunk,
+# Need parsed_length because padding varies (size field doesn't include it)
+expect parsed_length(chunk) <= max_chunk_size
+```
+
+**Key difference:** `sizeof` works on instant-parse **types** (with parameters), while `parsed_length` measures actual **fields already parsed**.
+
+### Other position functions:
+
+Mostly useful for validation purposes:
+
+- `current_position()` - Current byte offset in the file (requires scan)
+- `scope_remaining()` - Bytes remaining in current scope (requires scan)
 
 ### Notes
 
 - All arithmetic is checked for overflow and division by zero (both cause format errors)
-- Functions referencing parsed data (`size`, `current_position`, `scope_remaining`) require scanning
-- `sizeof` only works on instant-parse types
+- Functions referencing parsed data (`parsed_length`, `current_position`, `scope_remaining`) require scanning
+- `sizeof` only works on instant-parse types, but the size may be determined at runtime based on parameters
 
 ---
 
@@ -400,7 +455,7 @@ Record Descriptor() = {
 
 ## Summary
 
-Variables let you capture derived values or parameters for later use; they are immutable and stay instant-parse as long as they depend only on parameters or constants. Expressions follow 64-bit signed arithmetic rules, include bitwise/logical operators with C11 precedence, and can be organized via switch expressions when multi-way selection is needed. Standard functions cover math, range checks, and alignment helpers; `sizeof` works only for instant-parse constructs, while `size(field)` and position helpers require scanning. Overflow and division-by-zero remain format errors, so guard derived values accordingly.
+Variables let you capture derived values or parameters for later use; they are immutable and stay instant-parse as long as they depend only on parameters or constants. Expressions follow 64-bit signed arithmetic rules, include bitwise/logical operators with C11 precedence, and can be organized via switch expressions when multi-way selection is needed. Standard functions cover math, range checks, and alignment helpers; `sizeof` works only for instant-parse constructs, while `parsed_length(field)` and position helpers require scanning. Overflow and division-by-zero remain format errors, so guard derived values accordingly.
 
 ---
 
