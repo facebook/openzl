@@ -746,7 +746,9 @@ SDDL2_Error SDDL2_op_swap(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t 
  * validation rules (e.g., cmp.eq + expect_true validates equality).
  * ========================================================================= */
 
-static void SDDL2_log_expect_true_failure(int64_t value, const SDDL2_Stack* stack);
+static void SDDL2_log_expect_true_failure(
+        const SDDL2_Trace_buffer* trace,
+        const SDDL2_Stack* stack);
 
 SDDL2_Error SDDL2_op_expect_true(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace)
 {
@@ -754,12 +756,7 @@ SDDL2_Error SDDL2_op_expect_true(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace)
     SDDL2_TRY(pop_i64(stack, &value));
     
     if (value == 0) {
-        // Dump trace buffer if available
-        if (trace && trace->active) {
-            SDDL2_Trace_buffer_dump(trace);
-        }
-        
-        SDDL2_log_expect_true_failure(value, stack);
+        SDDL2_log_expect_true_failure(trace, stack);
         
         // Reset trace buffer (stop and clear) - NULL-safe
         SDDL2_Trace_buffer_reset(trace);
@@ -1545,57 +1542,48 @@ static void SDDL2_log_load(const char* op_name, int64_t addr, int64_t value)
 }
 
 /**
- * Log detailed diagnostics for expect_true validation failure.
+ * Log concise expect_true failure with trace context and stack state.
  *
- * Outputs comprehensive error information including the failed value
- * and current stack state to aid in debugging validation failures.
+ * Dumps execution trace (if available), reports validation failure,
+ * and shows remaining stack state for context.
  *
- * @param value The value that failed validation (expected non-zero, got 0)
- * @param stack The stack after the value was popped (for context)
+ * @param trace Trace buffer with execution history (NULL-safe, can be inactive)
+ * @param stack Stack after popping the failed value (for context)
  */
-static void SDDL2_log_expect_true_failure(int64_t value, const SDDL2_Stack* stack)
+static void SDDL2_log_expect_true_failure(
+        const SDDL2_Trace_buffer* trace,
+        const SDDL2_Stack* stack)
 {
-    ZL_DLOG(ERROR, "========================================");
-    ZL_DLOG(ERROR, "[SDDL2] expect_true VALIDATION FAILURE");
-    ZL_DLOG(ERROR, "========================================");
-    ZL_DLOG(ERROR, "Checked value: %lld (0x%llx)", 
-            (long long)value, (unsigned long long)value);
-    ZL_DLOG(ERROR, "Expected: non-zero value (true)");
-    ZL_DLOG(ERROR, "Actual: 0 (false)");
-    ZL_DLOG(ERROR, "");
-    ZL_DLOG(ERROR, "Remaining stack after pop:");
-    ZL_DLOG(ERROR, "  Stack depth: %zu", stack->top);
+    // Dump trace if available and non-empty
+    if (trace && trace->count > 0) {
+        SDDL2_Trace_buffer_dump(trace);
+    }
     
+    // Concise failure message
+    ZL_DLOG(ERROR, "[SDDL2] expect_true VALIDATION FAILURE: got 0 (expected non-zero)");
+    
+    // Show stack state if non-empty (useful for debugging context)
     if (stack->top > 0) {
-        size_t show_count = stack->top < 5 ? stack->top : 5;
+        ZL_DLOG(ERROR, "[SDDL2] Remaining stack: depth=%zu", stack->top);
+        size_t show_count = stack->top < 3 ? stack->top : 3;
         for (size_t i = 0; i < show_count; i++) {
             size_t idx = stack->top - 1 - i;
             const SDDL2_Value* val = &stack->items[idx];
-            
             switch (val->kind) {
                 case SDDL2_VALUE_I64:
-                    ZL_DLOG(ERROR, "  [%zu] I64: %lld (0x%llx)", 
-                            idx, 
-                            (long long)val->value.as_i64,
-                            (unsigned long long)val->value.as_i64);
+                    ZL_DLOG(ERROR, "[SDDL2]   [%zu] I64: %lld", idx, (long long)val->value.as_i64);
                     break;
                 case SDDL2_VALUE_TAG:
-                    ZL_DLOG(ERROR, "  [%zu] TAG: %u", idx, val->value.as_tag);
+                    ZL_DLOG(ERROR, "[SDDL2]   [%zu] TAG: %u", idx, val->value.as_tag);
                     break;
                 case SDDL2_VALUE_TYPE:
-                    ZL_DLOG(ERROR, "  [%zu] TYPE: kind=%d width=%u", 
-                            idx, 
-                            val->value.as_type.kind, 
-                            val->value.as_type.width);
+                    ZL_DLOG(ERROR, "[SDDL2]   [%zu] TYPE: kind=%d width=%u", 
+                            idx, val->value.as_type.kind, val->value.as_type.width);
                     break;
             }
         }
-        if (stack->top > 5) {
-            ZL_DLOG(ERROR, "  ... and %zu more values", stack->top - 5);
+        if (stack->top > 3) {
+            ZL_DLOG(ERROR, "[SDDL2]   ... and %zu more", stack->top - 3);
         }
-    } else {
-        ZL_DLOG(ERROR, "  (empty)");
     }
-    
-    ZL_DLOG(ERROR, "========================================");
 }
