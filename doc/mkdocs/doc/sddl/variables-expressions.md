@@ -183,6 +183,13 @@ var shifted = (data >> 8) & 0xFF
 
 Operators: `&` (AND), `|` (OR), `^` (XOR), `<<` (left shift), `>>` (right shift)
 
+**Shift operation semantics:**
+
+- Shift amounts follow their mathematical meaning rather than wrapping modulo 64 (unlike some CPU implementations).
+- **Left shift (`<<`)**: Shifts the value left by n bit positions. If n ≥ 64, the result is 0 (all bits shifted out).
+- **Right shift (`>>`)**: Arithmetic shift that preserves the sign bit (sign-extending shift). If n ≥ 64, the result is 0 for non-negative values and -1 for negative values.
+
+
 ### Comparisons
 
 Produce boolean values for conditions:
@@ -288,7 +295,7 @@ scope_remaining()         # Bytes remaining in scope (requires scan)
 
 - All arithmetic is checked for overflow and division by zero (both cause format errors)
 - Functions referencing parsed data (`size`, `current_position`, `scope_remaining`) require scanning
-- `sizeof` is instant-parse because it computes static type sizes
+- `sizeof` only works on instant-parse types
 
 ---
 
