@@ -18,20 +18,19 @@ Use this table to jump from a language concept to the simplest full example that
 | <a id="coverage-arrays-fixed"></a>Fixed-size arrays | [Example 1: PCM-16bit](#example-1-wave-pcm-audio-16-bit-mono-stereo) |
 | <a id="coverage-arrays-parameter"></a>Parameterized record arrays | [SAO Catalog (Introduction)](introduction.md#a-more-complex-example) |
 | <a id="coverage-arrays-auto"></a>Auto-sized arrays | [SAO simple example (Introduction)](introduction.md#a-short-example) |
+| <a id="coverage-scan"></a>`scan` keyword for arrays | [Example 4: BAM bioinformatics](#example-4-bam-bioinformatics-format) |
 | <a id="coverage-var"></a>`var` derived values | [SAO Catalog (Introduction)](introduction.md#a-more-complex-example) |
+| <a id="coverage-sizeof"></a>`sizeof()` static size checks | [SAO Catalog (Introduction)](introduction.md#a-more-complex-example) |
+| <a id="coverage-size-checks"></a>`parsed_length(field)` function | [Example 2: BMP 24-bit](#example-2-bmp-image-24-bit-rgb-uncompressed) |
 | <a id="coverage-align-up"></a>`align_up` row padding | [Example 2: BMP 24-bit](#example-2-bmp-image-24-bit-rgb-uncompressed) |
-| <a id="coverage-align-directive"></a>`align(n)` directive | Not yet covered – see [Alignment chapter](alignment-padding.md#field-alignment-with-alignn) |
 | <a id="coverage-pad-to"></a>`pad_to` sized scopes | [Example 3: WAV Extended](#example-3-wave-audio-extended-format-support) |
 | <a id="coverage-pad-align"></a>`pad_align` record padding | [Example 2: BMP 24-bit](#example-2-bmp-image-24-bit-rgb-uncompressed) |
-| <a id="coverage-when-then"></a>`when ... then` conditionals | [SAO Catalog (Introduction)](introduction.md#a-more-complex-example) |
+| <a id="coverage-align-directive"></a>`align(n)` directive | Not yet covered – see [Alignment chapter](alignment-padding.md#field-alignment-with-alignn) |
 | <a id="coverage-when-block"></a>`when { ... }` conditionals | [SAO Catalog (Introduction)](introduction.md#a-more-complex-example) |
+| <a id="coverage-delimiter"></a>Delimiter-based fields (`Bytes until ...`) | [Example 4: BAM bioinformatics](#example-4-bam-bioinformatics-format) |
 | <a id="coverage-unions"></a>Variant unions & dispatch | [Example 3: WAV Extended](#example-3-wave-audio-extended-format-support) |
 | <a id="coverage-enums"></a>Enums, `in`, switch expressions | [Example 3: WAV Extended](#example-3-wave-audio-extended-format-support) |
-| <a id="coverage-size-checks"></a>`parsed_length(field)` function | [Example 2: BMP 24-bit](#example-2-bmp-image-24-bit-rgb-uncompressed) |
-| <a id="coverage-sizeof"></a>`sizeof()` static size checks | [SAO Catalog (Introduction)](introduction.md#a-more-complex-example) |
 | <a id="coverage-soa"></a>`soa` structure-of-arrays layout | Not yet covered – see [Arrays chapter](arrays-collections.md#structure-of-arrays-layout) |
-| <a id="coverage-delimiter"></a>Delimiter-based fields (`Bytes until ...`) | [Example 4: BAM bioinformatics](#example-4-bam-bioinformatics-format) |
-| <a id="coverage-scan"></a>`scan` keyword for arrays | [Example 4: BAM bioinformatics](#example-4-bam-bioinformatics-format) |
 | <a id="coverage-annotations"></a>Annotations (`@instant_parse`, `@err_msg`, etc.) | Not yet covered – see [Annotations section](sddl-for-llm.md#10-annotations) |
 
 ---

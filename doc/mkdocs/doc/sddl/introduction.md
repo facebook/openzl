@@ -266,15 +266,7 @@ Future interoperability is possible. One could imagine a Kaitai compiler targeti
 
 These are **schema definition languages**—they define the format of new data you're creating.
 
-**SDDL is different:**
-- **Direction:** SDDL describes existing formats, schemas define new ones
-- **Control:** SDDL lets you specify exact byte layout, schemas make layout decisions
-- **Use case:** SDDL is for when you already have data and need to describe it
-
-**When to use schemas:**
-- Designing a new format from scratch
-- Need cross-platform serialization
-- Want schema evolution features
+**SDDL is different:** SDDL describes existing formats while schemas define new ones. SDDL lets you specify exact byte layout, whereas schemas make layout decisions for you. The fundamental use case differs—SDDL is for when you already have data and need to describe it.
 
 ---
 
@@ -306,13 +298,7 @@ Your SDDL spec **is** your format documentation. It's clear, unambiguous, and ac
 
 ## Current Status
 
-**SDDL is in active development** and approaching production readiness.
-
-- **Specification:** v0.6 is feature-complete for most common formats
-- **Stability:** Core features are stable
-- **Usage:** Growing adoption within OpenZL ecosystem
-- **Timeline:** Production-ready within the next few months
-- **Capabilities:** Can already describe complex formats like TIFF, GGUF, EXR, PLY, and multi-channel WAV
+**SDDL is in active development**. The v0.6 specification is feature-complete for most common formats, with core features now stable. The project is expected to be production-ready within the next few months. SDDL can already describe complex formats like TIFF, GGUF, EXR, PLY, and multi-channel WAV.
 
 As the feature set matures, we expect rapid growth in adoption—particularly as users discover how much simpler SDDL makes working with binary data.
 

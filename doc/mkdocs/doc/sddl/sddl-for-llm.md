@@ -36,52 +36,37 @@ Primitive types are always **instant-parse**.
 
 ## **3. Instant-Parse Model**
 
-Every type has an inferred property describing its **layout determinism**:
+**instant-parse**: All field offsets, sizes, alignments computable from parameters/constants alone.
+**requires scan**: Layout depends on parsed data or delimiter search.
 
-| Property          | Meaning                                                                                       |
-| ----------------- | --------------------------------------------------------------------------------------------- |
-| **instant-parse** | All field offsets, sizes, and alignments can be computed from parameters and constants alone. |
-| **requires scan** | Layout or length depends on data parsed earlier or on delimiter search.                       |
+**Triggers scan requirement:**
+* Field size/offset/branch depends on previously parsed field
+* `Bytes until ...` delimiter construct
+* `expect`/`where` referencing local fields
+* `current_position()` or state-dependent function
+* Contains scan-required member
+* Auto-sized array `Type[]`
 
-### **3.1 When a Type Requires a Scan**
+Instant-parse is transitive: record/union/array is instant-parse only if all components are.
 
-A construct requires a sequential scan if **any** of the following hold:
-
-* A field size, offset, or branching depends on a **previously parsed field**.
-* It uses `Bytes until ...` or another delimiter-based construct.
-* It contains `expect` or `where` predicates that reference local fields.
-* It invokes `current_position()` or any state-dependent function.
-* It contains a member that itself requires a scan.
-* It has an auto-sized array (`Type[]`).
-
-Instant-parse status is **transitive**: a record, union, or array is instant-parse only if all its components are instant-parse.
-
----
-
-### **3.2 Enforcing Instant-Parse**
-
-Use `@instant_parse` to *require* that a record, union, or field be instantly parsable.
-If the compiler cannot prove this, it emits a **compile-time error** with a diagnostic explanation.
+**Enforcing:** `@instant_parse` annotation requires instant-parse. Compiler error if not provable.
 
 ```sddl
 Record Header(limit) = {
   expect limit <= 4096,
   version: Int16LE
-} @instant_parse
+} @instant_parse  # OK: expect uses parameter
+
+Record Bad() = {
+  length: Int32LE,
+  data: Bytes(length)
+} @instant_parse  # ERROR: data depends on local field
 ```
 
-If a non-instant-parse construct (for example, `Bytes(length)` depending on a local field) is added later, compilation fails:
-
-> Record `Header` is not instant-parse: field `data` depends on local field `length`.
-
----
-
-### **3.3 Derived Checks**
-
-* `@instant_parse` applies recursively to subfields.
-* Arguments to `align`, `pad_to`, and `pad_align` must be parameter-only constants.
-* A field declared under `@instant_parse` may not use `scan` or delimiter parsing.
-* Diagnostics must point to the first non-instant cause (e.g. field name and dependency).
+**Rules:**
+* `@instant_parse` applies recursively
+* `align`, `pad_to`, `pad_align` args must be parameter/constant only
+* Cannot use `scan` or delimiter parsing under `@instant_parse`
 
 ---
 

@@ -45,11 +45,7 @@ You can provide this document to your AI assistant (ChatGPT, Claude, etc.) and a
 **Example prompt:**
 > "I'm attaching the SDDL specification. Can you help me write an SDDL description for [your format name]? The format has [describe your format structure]."
 
-This is particularly useful for:
-- Learning SDDL syntax quickly through examples
-- Getting help with complex format descriptions
-- Validating your SDDL code
-- Converting existing format documentation to SDDL
+This approach is particularly effective for learning SDDL syntax quickly through interactive examples, getting help with complex format descriptions that would be tedious to work through manually, validating your SDDL code against the specification, and converting existing format documentation into structured SDDL descriptions.
 
 ## Getting Started
 
