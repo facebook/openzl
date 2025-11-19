@@ -1,8 +1,8 @@
 # Alignment and Padding
 
-*Chapter 8 - Explicit control of memory layout*
+*Chapter 6 - Explicit control of memory layout*
 
-Binary formats often require precise alignment rules and padding. This chapter covers SDDL's constructs for controlling layout at the field and record level: field alignment with `align(n)`, record padding with `pad_to` and `pad_align`, and alignment verification with `expect_aligned`.
+Binary formats often require precise alignment rules and padding. This chapter covers SDDL's constructs for controlling layout at the field and record level: field alignment with `align(n)`, record padding with `pad_to` and `pad_align`.
 
 For a foundational overview of SDDL language elements like records, types, and modifiers, see the [Language Elements Overview](core-concepts.md#language-elements-overview).
 

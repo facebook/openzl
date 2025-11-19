@@ -1,6 +1,6 @@
 # Best Practices
 
-*Chapter 9 - Effective SDDL specification design*
+*Chapter 10 - Effective SDDL specification design*
 
 This chapter collects practical advice for writing clear, maintainable, and effective SDDL specifications. These guidelines come from experience writing specifications for real-world formats and reflect common pitfalls to avoid.
 
@@ -93,6 +93,7 @@ Record MyFormat() = {
 
   # V1 fields
   base_data: Bytes(100),
+}
 
 Record Data(version) = {
   base: Int32LE,

@@ -1,6 +1,6 @@
 # Variables and Expressions
 
-*Chapter 6 - Computing derived values during parsing*
+*Chapter 8 - Computing derived values during parsing*
 
 SDDL allows computing derived values during parsing using variables and expressions. This chapter covers the `var` statement, expression syntax, standard functions, and how these features interact with instant-parse.
 

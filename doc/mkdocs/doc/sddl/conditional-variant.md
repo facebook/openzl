@@ -6,7 +6,7 @@ Binary formats often contain optional fields, variant data, or structures that v
 
 For a comprehensive overview of SDDL's core language elements including conditional constructs and unions, see [Language Elements Overview](core-concepts.md#language-elements-overview).
 
-Refer to the [coverage map entries for conditional fields](real-formats.md#coverage-when-then) and [variant unions](real-formats.md#coverage-unions) whenever you need a full specification that uses these features.
+Refer to the [coverage map entries for conditional fields](real-formats.md#coverage-when-block) and [variant unions](real-formats.md#coverage-unions) whenever you need a full specification that uses these features.
 
 ---
 
