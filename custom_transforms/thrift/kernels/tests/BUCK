@@ -5,7 +5,7 @@
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:thrift_library.bzl", "thrift_library")
-load("../../../../defs.bzl", "zs_fuzzers")
+load("../../../../defs.bzl", "relative_headers", "zs_fuzzers")
 
 oncall("data_compression")
 
@@ -20,7 +20,8 @@ thrift_library(
 
 cpp_library(
     name = "thrift_kernel_test_utils",
-    headers = ["thrift_kernel_test_utils.h"],
+    headers = relative_headers(["thrift_kernel_test_utils.h"]),
+    header_namespace = "",
     exported_deps = [
         "../../../..:zstronglib",
         "../../../../tests/datagen:datagen",

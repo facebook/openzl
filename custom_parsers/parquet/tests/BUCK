@@ -1,6 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("../../../defs.bzl", "zs_cxxlibrary", "zs_fuzzers", "zs_unittest")
+load("../../../defs.bzl", "relative_headers", "zs_cxxlibrary", "zs_fuzzers", "zs_unittest")
 
 oncall("data_compression")
 
@@ -46,9 +46,10 @@ zs_fuzzers(
     srcs = [
         "fuzz_parquet_lexer.cpp",
     ],
-    headers = [
+    headers = relative_headers([
         "fuzz_utils.h",
-    ],
+    ]),
+    header_namespace = "",
     ftest_names = [
         ("ParquetLexerTest", "FuzzLexerRandomInput"),
         ("ParquetLexerTest", "FuzzLexerValidInput"),

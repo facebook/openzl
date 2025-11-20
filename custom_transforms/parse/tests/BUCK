@@ -4,13 +4,14 @@
 
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
-load("../../../defs.bzl", "zs_fuzzers")
+load("../../../defs.bzl", "relative_headers", "zs_fuzzers")
 
 oncall("data_compression")
 
 cpp_library(
     name = "parse_test_data",
-    headers = ["parse_test_data.h"],
+    headers = relative_headers(["parse_test_data.h"]),
+    header_namespace = "",
     deps = [
         "//folly:conv",
     ],

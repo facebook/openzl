@@ -2,7 +2,7 @@
 
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
-load("../../defs.bzl", "zs_fuzzers")
+load("../../defs.bzl", "relative_headers", "zs_fuzzers")
 
 oncall("data_compression")
 
@@ -31,7 +31,8 @@ cpp_unittest(
     # @autodeps-skip
     name = "test_zstrong_ml",
     srcs = ["test_zstrong_ml.cpp"],
-    headers = ["test_zstrong_ml_models.h"],
+    headers = relative_headers(["test_zstrong_ml_models.h"]),
+    header_namespace = "",
     deps = [
         "..:zstrong_ml",  # @manual
         "../..:zstronglib",  # @manual
@@ -41,6 +42,7 @@ cpp_unittest(
 )
 
 python_binary(
+    # @autodeps-skip
     name = "test_zstrong_ml_models_generator",
     main_function = ".test_zstrong_ml_models_generator.main",
     main_src = "test_zstrong_ml_models_generator.py",
@@ -57,9 +59,10 @@ zs_fuzzers(
     srcs = [
         "fuzz_zstrong_ml.cpp",
     ],
-    headers = [
+    headers = relative_headers([
         "test_zstrong_ml_models.h",
-    ],
+    ]),
+    header_namespace = "",
     ftest_names = [
         ("MLTest", "FuzzGBTPredictorConfiguration"),
         ("MLTest", "FuzzGBTPredictorPredict"),

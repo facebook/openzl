@@ -14,13 +14,18 @@ _ZL_PROD_PREFIXES = [
     "openzl/prod",
 ]
 
+_ZL_DEV_PREFIXES = [
+    "data_compression/experimental/zstrong",
+    "openzl/dev",
+]
+
+_ZL_PREFIXES = _ZL_PROD_PREFIXES + _ZL_DEV_PREFIXES
+
 def _is_release():
     for prefix in _ZL_PROD_PREFIXES:
         if native.package_name().startswith(prefix):
             return True
     return False
-
-ZS_HEADER_INCLUDE_PATH = "-Idata_compression/experimental/zstrong"
 
 def zl_fbcode_is_release_pp_flag():
     if _is_release():
@@ -42,6 +47,29 @@ def public_headers(headers):
 
 def private_headers(headers):
     return _strip_prefix(headers, "src/")
+
+def _zl_repo_prefix():
+    for prefix in _ZL_PREFIXES:
+        if native.package_name().startswith(prefix):
+            return prefix
+    fail("Unknown package name: " + native.package_name())
+
+def relative_headers(headers):
+    """
+    Returns a map of headers relative to the OpenZL repo root.
+    This must not be used in OpenZL core, and is meant only for targets that
+    don't escape the repo.
+    """
+    root = _zl_repo_prefix()
+    package = native.package_name()
+    prefix = package[len(root) + 1:]
+
+    header_map = {}
+    for header in headers:
+        name = prefix + "/" + header
+        header_map[name] = header
+
+    return header_map
 
 _ZS_COMPILER_FLAGS = [
     "-fno-sanitize=pointer-overflow",
@@ -89,10 +117,6 @@ _ZS_SRC_FILE_COMPILER_FLAGS = {
         "-Wno-format-nonliteral",
     ],
 }
-
-_ZS_PROPAGATED_PP_FLAGS = [
-    ZS_HEADER_INCLUDE_PATH,
-]
 
 _ZS_C_COMPILER_FLAGS = [
     "-std=c11",
@@ -171,6 +195,21 @@ def _add_zs_compiler_flags(kwargs, strict_conversions = True, float_equal = True
         for src in kwargs.get("srcs", [])
     ]
 
+    # Set empty header namespace
+    kwargs["header_namespace"] = ""
+    headers = kwargs.get("headers", None)
+
+    if isinstance(headers, list):
+        # Unless we already have a header map, default to headers
+        # being relative to the OpenZL repo root.
+        kwargs["headers"] = relative_headers(headers)
+
+    private_headers = kwargs.get("private_headers", None)
+    if isinstance(private_headers, list):
+        # Unless we already have a header map, default to headers
+        # being relative to the OpenZL repo root.
+        kwargs["private_headers"] = relative_headers(private_headers)
+
 def zs_library(**kwargs):
     _add_zs_compiler_flags(kwargs)
     _zs_library(**kwargs)
@@ -180,9 +219,6 @@ def zs_cxxlibrary(strict_conversions = True, float_equal = True, **kwargs):
     _zs_library(**kwargs)
 
 def _zs_library(**kwargs):
-    propagated_pp_flags = kwargs.get("propagated_pp_flags", [])
-    kwargs["propagated_pp_flags"] = _ZS_PROPAGATED_PP_FLAGS + propagated_pp_flags
-
     cpp_library(
         **kwargs
     )
