@@ -1,6 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_cxxbinary", "zs_cxxlibrary")
+load("../../../defs.bzl", "zs_cxxbinary", "zs_cxxlibrary")
 
 oncall("data_compression")
 
@@ -16,7 +16,7 @@ zs_cxxlibrary(
         "*.h",
     ]),
     exported_deps = [
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
+        "../../../cpp:openzl_cpp",
     ],
 )
 

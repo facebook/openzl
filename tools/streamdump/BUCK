@@ -1,6 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_binary", "zs_library", "zs_release_binary")
+load("../../defs.bzl", "zs_binary", "zs_library", "zs_release_binary")
 
 oncall("data_compression")
 
@@ -10,7 +10,7 @@ zs_library(
         "stream_dump2.h",
     ],
     exported_deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
+        "../..:zstronglib",
     ],
 )
 
@@ -21,9 +21,9 @@ zs_binary(
         "stream_dump2_noop_shim.c",
     ],
     deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/tools:fileio",
-        "//data_compression/experimental/zstrong/tools/streamdump:stream_dump2_headers",
+        "..:fileio",
+        "../..:zstronglib",
+        ":stream_dump2_headers",
     ],
 )
 
@@ -35,9 +35,9 @@ zs_release_binary(
         "stream_dump2.c",
     ],
     deps = [
+        "..:fileio",
+        ":stream_dump2_headers",
         "//common/managed_compression/zstrong:stream_dump_shim",
-        "//data_compression/experimental/zstrong/tools:fileio",
-        "//data_compression/experimental/zstrong/tools/streamdump:stream_dump2_headers",
         "//zstrong:zstrong",
     ],
 )
@@ -48,8 +48,8 @@ zs_release_binary(
         "stream_dump2.c",
     ],
     deps = [
-        "//data_compression/experimental/zstrong/tools:fileio",
-        "//data_compression/experimental/zstrong/tools/streamdump:stream_dump2_headers",
+        "..:fileio",
+        ":stream_dump2_headers",
         "//data_compression/experimental/zstrong_compressors/xldb/bin:xldb_compressor_stream_dump_shim",
     ],
 )

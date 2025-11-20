@@ -1,6 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_cxxlibrary")
+load("../../../defs.bzl", "zs_cxxlibrary")
 
 oncall("data_compression")
 
@@ -15,14 +15,14 @@ zs_cxxlibrary(
         "sample_limiter.h",
     ],
     exported_deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
-        "//data_compression/experimental/zstrong/tools:logger",
-        "//data_compression/experimental/zstrong/tools/training:train_common",
-        "//data_compression/experimental/zstrong/tools/training/clustering:train_api",
-        "//data_compression/experimental/zstrong/tools/training/graph_mutation:graph_mutation",
-        "//data_compression/experimental/zstrong/tools/training/sample_collection:sample_collection",
-        "//data_compression/experimental/zstrong/tools/training/utils:training_utils",
+        "..:train_common",
+        "../..:logger",
+        "../../..:zstronglib",
+        "../../../cpp:openzl_cpp",
+        "../graph_mutation:graph_mutation",
+        "../sample_collection:sample_collection",
+        "../utils:training_utils",
+        ":train_api",
     ],
 )
 
@@ -35,15 +35,15 @@ zs_cxxlibrary(
         "train_api.h",
     ],
     exported_deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
-        "//data_compression/experimental/zstrong/tools:logger",
-        "//data_compression/experimental/zstrong/tools/training:train_common",
-        "//data_compression/experimental/zstrong/tools/training/clustering:bottom_up_trainer",
-        "//data_compression/experimental/zstrong/tools/training/clustering:full_split_trainer",
-        "//data_compression/experimental/zstrong/tools/training/clustering:greedy_trainer",
-        "//data_compression/experimental/zstrong/tools/training/clustering:training_clustering",
-        "//data_compression/experimental/zstrong/tools/training/graph_mutation:graph_mutation",
+        "..:train_common",
+        "../..:logger",
+        "../../..:zstronglib",
+        "../../../cpp:openzl_cpp",
+        "../graph_mutation:graph_mutation",
+        ":bottom_up_trainer",
+        ":full_split_trainer",
+        ":greedy_trainer",
+        ":training_clustering",
     ],
 )
 
@@ -57,10 +57,10 @@ zs_cxxlibrary(
         "trainers/trainer.h",
     ],
     exported_deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
-        "//data_compression/experimental/zstrong/tools/training/clustering:training_clustering",
-        "//data_compression/experimental/zstrong/tools/training/utils:training_utils",
+        "../../..:zstronglib",
+        "../../../cpp:openzl_cpp",
+        "../utils:training_utils",
+        ":training_clustering",
     ],
 )
 
@@ -74,10 +74,10 @@ zs_cxxlibrary(
         "trainers/trainer.h",
     ],
     exported_deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
-        "//data_compression/experimental/zstrong/tools/training/clustering:training_clustering",
-        "//data_compression/experimental/zstrong/tools/training/utils:training_utils",
+        "../../..:zstronglib",
+        "../../../cpp:openzl_cpp",
+        "../utils:training_utils",
+        ":training_clustering",
     ],
 )
 
@@ -91,10 +91,10 @@ zs_cxxlibrary(
         "trainers/trainer.h",
     ],
     exported_deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
-        "//data_compression/experimental/zstrong/tools/training/clustering:training_clustering",
-        "//data_compression/experimental/zstrong/tools/training/utils:training_utils",
+        "../../..:zstronglib",
+        "../../../cpp:openzl_cpp",
+        "../utils:training_utils",
+        ":training_clustering",
     ],
 )
 
@@ -111,10 +111,10 @@ zs_cxxlibrary(
         "utils.h",
     ],
     exported_deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
-        "//data_compression/experimental/zstrong/custom_parsers:custom_parsers",
-        "//data_compression/experimental/zstrong/tools:logger",
-        "//data_compression/experimental/zstrong/tools/training/utils:training_utils",
+        "../..:logger",
+        "../../..:zstronglib",
+        "../../../cpp:openzl_cpp",
+        "../../../custom_parsers:custom_parsers",
+        "../utils:training_utils",
     ],
 )

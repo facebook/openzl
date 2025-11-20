@@ -10,8 +10,8 @@ cpp_binary(
     name = "compress",
     srcs = ["compress.cpp"],
     deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/tools:zstrong_json",
+        "..:zstronglib",
+        "../tools:zstrong_json",
         "//folly:file_util",
     ],
 )
@@ -20,6 +20,6 @@ cpp_binary(
     name = "dump_transform_inputs",
     srcs = ["dump_transform_inputs.cpp"],
     deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
+        "..:zstronglib",
     ],
 )

@@ -9,6 +9,6 @@ python_library(
     srcs = glob(["src/**/*.py"]),
     base_module = "",
     deps = [
-        "//data_compression/experimental/zstrong/py/ext:openzl_ext",  # @manual
+        "ext:openzl_ext",  # @manual
     ],
 )

@@ -2,7 +2,7 @@
 
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_fuzzers")
+load("../../defs.bzl", "zs_fuzzers")
 
 oncall("data_compression")
 
@@ -11,7 +11,7 @@ cpp_unittest(
     name = "test_zstrong_cpp",
     srcs = ["test_zstrong_cpp.cpp"],
     deps = [
-        "//data_compression/experimental/zstrong/tools:zstrong_json",
+        "..:zstrong_json",
     ],
 )
 
@@ -20,7 +20,7 @@ cpp_unittest(
     name = "test_zstrong_json",
     srcs = ["test_zstrong_json.cpp"],
     deps = [
-        "//data_compression/experimental/zstrong/tools:zstrong_json",  # @manual
+        "..:zstrong_json",  # @manual
         "//folly:file_util",
         "//folly:memory",
         "//folly/testing:test_util",
@@ -33,8 +33,8 @@ cpp_unittest(
     srcs = ["test_zstrong_ml.cpp"],
     headers = ["test_zstrong_ml_models.h"],
     deps = [
-        "//data_compression/experimental/zstrong:zstronglib",  # @manual
-        "//data_compression/experimental/zstrong/tools:zstrong_ml",  # @manual
+        "..:zstrong_ml",  # @manual
+        "../..:zstronglib",  # @manual
         "//folly:base64",
         "//folly:dynamic",
     ],
@@ -45,11 +45,11 @@ python_binary(
     main_function = ".test_zstrong_ml_models_generator.main",
     main_src = "test_zstrong_ml_models_generator.py",
     deps = [
+        "../py:zstrong_ml",
         "fbsource//third-party/pypi/click:click",
         "fbsource//third-party/pypi/numpy:numpy",
         "fbsource//third-party/pypi/pandas:pandas",
         "fbsource//third-party/pypi/xgboost:xgboost",
-        "//data_compression/experimental/zstrong/tools/py:zstrong_ml",
     ],
 )
 
@@ -68,9 +68,9 @@ zs_fuzzers(
         ("MLTest", "FuzzFeatureGeneatros_TokenizeIntFeaturesGenerator"),
     ],
     deps = [
+        "..:zstrong_ml",
+        "../../tests:fuzz_utils",
+        "../gbt_predictor:zstrong_gbt_predictor",
         "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
-        "//data_compression/experimental/zstrong/tests:fuzz_utils",
-        "//data_compression/experimental/zstrong/tools:zstrong_ml",
-        "//data_compression/experimental/zstrong/tools/gbt_predictor:zstrong_gbt_predictor",
     ],
 )

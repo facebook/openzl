@@ -40,7 +40,7 @@ def version_fuzzer(name):
             # NOTE: This cannot depend on ZStrong!
             deps = [
                 "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
-                "//data_compression/experimental/zstrong/tests:fuzz_utils",
+                "..:fuzz_utils",
                 "fbsource//xplat/tools/cxx:resourcesFbcode",
                 ":version_test_interface",
             ],

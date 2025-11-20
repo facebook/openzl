@@ -3,7 +3,7 @@
 # @noautodeps
 
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_library")
+load("../../../defs.bzl", "zs_library")
 
 oncall("data_compression")
 
@@ -12,7 +12,7 @@ zs_library(
     srcs = ["encode_thrift_kernel.c"],
     headers = ["encode_thrift_kernel.h"],
     exported_deps = [
-        "//data_compression/experimental/zstrong:common",
+        "../../..:common",
     ],
 )
 
@@ -21,7 +21,7 @@ zs_library(
     srcs = ["decode_thrift_kernel.c"],
     headers = ["decode_thrift_kernel.h"],
     exported_deps = [
-        "//data_compression/experimental/zstrong:common",
+        "../../..:common",
     ],
 )
 
@@ -38,9 +38,9 @@ cpp_library(
     srcs = ["encode_thrift_binding.cpp"],
     headers = ["encode_thrift_binding.h"],
     exported_deps = [
+        "../../..:compress",
         ":encode_thrift_kernel",
         ":thrift_kernel_utils",
-        "//data_compression/experimental/zstrong:compress",
         "//folly/memory:uninitialized_memory_hacks",
     ],
 )
@@ -50,9 +50,9 @@ cpp_library(
     srcs = ["decode_thrift_binding.cpp"],
     headers = ["decode_thrift_binding.h"],
     exported_deps = [
+        "../../..:decompress",
         ":decode_thrift_kernel",
         ":thrift_kernel_utils",
-        "//data_compression/experimental/zstrong:decompress",
         "//folly/memory:uninitialized_memory_hacks",
     ],
 )

@@ -8,6 +8,6 @@ python_unittest(
     name = "compress_test",
     srcs = ["compress_test.py"],
     resources = {
-        "//data_compression/experimental/zstrong/scripts:compress": "compress",
+        "..:compress": "compress",
     },
 )
