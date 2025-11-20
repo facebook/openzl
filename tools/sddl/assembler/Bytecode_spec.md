@@ -1,5 +1,9 @@
 # OpenZL VM Bytecode Format Specification v0.2
 
+This document describes the **bytecode format** for the OpenZL SDDL2 VM. For the complete instruction set reference (family IDs, opcode values, stack effects), see `src/openzl/compress/graphs/sddl2/sddl2_opcodes.def`, which is the single source of truth.
+
+---
+
 ## **1. Basic Encoding**
 
 All instructions are encoded as **32-bit words** in **little-endian** format.
@@ -15,81 +19,60 @@ Wire format (4 bytes, little-endian):
 [Family_Lo, Family_Hi, Opcode_Lo, Opcode_Hi]
 ```
 
-## **2. Family Identifiers**
+**Bytecode Requirements:**
+- Total bytecode size must be a multiple of 4 bytes
+- Instructions may be followed by immediate operands (see section 3)
+- Invalid instruction encodings cause `SDDL2_INVALID_BYTECODE` error
 
-```
-0x0001 - PUSH family
-0x0002 - MATH family
-0x0003 - CMP family
-0x0004 - LOGIC family
-0x0005 - CONTROL family
-0x0006 - LOAD family
-0x0007 - STACK family
-0x0008 - TYPE family
-0x0009 - VAR family
-0x000A - EXPECT family
-0x000B - CALL family
-```
+---
 
-## **3. Opcodes**
+## **2. Instruction Set Reference**
 
-### **3.1 CONTROL Family (0x0005)**
+**Source of Truth:** `src/openzl/compress/graphs/sddl2/sddl2_opcodes.def`
 
-#### **3.1.1 control.halt**
-- **Opcode**: 0x0001
-- **Encoding**: `05 00 01 00` (4 bytes)
-- **Stack Effect**: `... → (terminate)`
-- **Parameters**: None
-- **Description**: Normal program termination
+The VM instruction set is organized into families:
 
-### **3.2 PUSH Family (0x0001)**
+| Family | Purpose | Examples |
+|--------|---------|----------|
+| **PUSH** | Push constants and values onto stack | `push.zero`, `push.u32`, `push.i64`, `push.tag`, `push.remaining` |
+| **MATH** | Arithmetic operations on I64 values | `math.add`, `math.sub`, `math.mul`, `math.div`, `math.mod` |
+| **CMP** | Comparison operations | `cmp.eq`, `cmp.ne`, `cmp.lt`, `cmp.le`, `cmp.gt`, `cmp.ge` |
+| **LOGIC** | Bitwise logical operations | `logic.and`, `logic.or`, `logic.xor`, `logic.not` |
+| **CONTROL** | Control flow | `halt`, `expect_true`, `trace.start` |
+| **LOAD** | Load values from input buffer | `load.u8`, `load.i8`, `load.u16le`, `load.i32be`, etc. |
+| **STACK** | Stack manipulation | `stack.dup`, `stack.drop`, `stack.swap`, `stack.rot` |
+| **TYPE** | Type system operations | `type.fixed_array`, `type.structure`, `type.sizeof` |
+| **SEGMENT** | Segment creation | `segment.create_unspecified`, `segment.create_tagged` |
 
-#### **3.2.1 push.zero**
-- **Opcode**: 0x0001
-- **Encoding**: `01 00 01 00` (4 bytes)
-- **Stack Effect**: `... → ... I64(0)`
-- **Parameters**: None
-- **Description**: Push constant zero onto stack
+**Reserved families** (not yet implemented):
+- **VAR** - Variables (reserved for future use)
+- **CALL** - Function calls (reserved for future use)
 
-#### **3.2.2 push.u32**
-- **Opcode**: 0x0002
-- **Encoding**: `01 00 02 00 [value: 4 bytes LE]` (8 bytes total)
-- **Stack Effect**: `... → ... I64(value)`
-- **Parameters**: 32-bit unsigned immediate (little-endian)
-- **Description**: Push unsigned 32-bit value, zero-extended to I64
-- **Range**: 0 to 4,294,967,295
+For complete details (family IDs, opcode values, parameter types, stack effects, descriptions), consult `sddl2_opcodes.def`.
 
-#### **3.2.3 push.i32**
-- **Opcode**: 0x0003
-- **Encoding**: `01 00 03 00 [value: 4 bytes LE]` (8 bytes total)
-- **Stack Effect**: `... → ... I64(value)`
-- **Parameters**: 32-bit signed immediate (little-endian)
-- **Description**: Push signed 32-bit value, sign-extended to I64
-- **Range**: -2,147,483,648 to 2,147,483,647
+---
 
-#### **3.2.4 push.i64**
-- **Opcode**: 0x0004
-- **Encoding**: `01 00 04 00 [value: 8 bytes LE]` (12 bytes total)
-- **Stack Effect**: `... → ... I64(value)`
-- **Parameters**: 64-bit signed immediate (little-endian)
-- **Description**: Push signed 64-bit value
-- **Range**: -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807
+## **3. Immediate Value Encoding**
 
-## **4. Immediate Value Encoding**
+Some instructions require immediate operands that follow the instruction word. All immediate values are encoded in **little-endian** format.
 
-Immediate values follow the instruction word and are encoded in little-endian format.
+### **3.1 32-bit Immediates (u32, i32)**
+- **Size**: 4 bytes
+- **Format**: Little-endian
+- **Position**: Immediately after instruction word
+- **Used by**: `push.u32`, `push.i32`, `push.tag`, and others
 
-### **4.1 32-bit Immediates (u32, i32)**
-- Size: 4 bytes
-- Format: Little-endian
-- Follows immediately after instruction word
+### **3.2 64-bit Immediates (i64)**
+- **Size**: 8 bytes
+- **Format**: Little-endian
+- **Position**: Immediately after instruction word
+- **Used by**: `push.i64`
 
-### **4.2 64-bit Immediates (i64)**
-- Size: 8 bytes
-- Format: Little-endian
-- Follows immediately after instruction word
+---
 
-## **5. Example Programs**
+## **4. Example Programs**
+
+The following examples demonstrate bytecode encoding. **Note**: Opcode values shown are current as of v0.2 but may change in future versions. Always verify against `sddl2_opcodes.def` when generating bytecode.
 
 ### **Example 1: Push unsigned 42**
 ```
@@ -159,11 +142,13 @@ Length: 28 bytes
 Final stack: [I64(100), I64(-50), I64(1000000)]
 ```
 
-## **6. Numeric Literal Formats (Language Specification)**
+---
 
-The OpenZL assembly language supports the following numeric literal formats:
+## **5. Assembly Language Syntax**
 
-### **6.1 Decimal (default)**
+The OpenZL SDDL2 assembler supports the following numeric literal formats:
+
+### **5.1 Decimal (default)**
 No prefix. Default format.
 ```
 push.u32 42
@@ -171,7 +156,7 @@ push.i32 -100
 push.i64 1000000
 ```
 
-### **6.2 Hexadecimal**
+### **5.2 Hexadecimal**
 Prefix: `0x` or `0X` (case-insensitive).
 ```
 push.u32 0x2A      # 42
@@ -179,7 +164,7 @@ push.i32 0xFF      # 255
 push.i64 0xDEADBEEF
 ```
 
-### **6.3 Binary**
+### **5.3 Binary**
 Prefix: `0b` or `0B` (case-insensitive).
 ```
 push.u32 0b101010  # 42
@@ -188,7 +173,9 @@ push.i32 0b11111111  # 255
 
 **Note**: These three formats are the only formats defined by the OpenZL specification. Any other prefix or format is undefined behavior and may be accepted or rejected by different assembler implementations.
 
-## **7. Value Range Validation**
+---
+
+## **6. Value Range Validation**
 
 The assembler must validate that immediate values fit within their instruction's range:
 
