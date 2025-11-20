@@ -3,8 +3,9 @@
 #include "benchmark/e2e/e2e_thrift.h"
 #include <random>
 #include "openzl/zl_config.h"
+#include "openzl/zl_version.h"
 
-#if ZL_HAVE_FBCODE
+#if ZL_IS_FBCODE
 
 #    include <sstream>
 #    include <typeinfo>

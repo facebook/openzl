@@ -20,12 +20,6 @@ extern "C" {
      + ZL_LIBRARY_VERSION_PATCH * 1)
 
 /**
- * Defined to 0 in the dev copy of zstrong and 1 in the release copy of zstrong.
- * The value is replaced by regex in the release script.
- */
-#define ZL_FBCODE_IS_RELEASE 0
-
-/**
  * The frame fomat version tells zstrong which frame format to
  * encode or decode. This is important to ensure forward and
  * backward compatibility with previous releases. The frame
@@ -98,6 +92,20 @@ unsigned ZL_getDefaultEncodingVersion(void);
  * magic number, or if the format version is not supported.
  */
 ZL_Report ZL_getFormatVersionFromFrame(void const* src, size_t srcSize);
+
+/**
+ * Defined to 1 in the fbcode build of OpenZL and 0 in all other cases.
+ */
+#ifndef ZL_IS_FBCODE
+#    define ZL_IS_FBCODE 0
+#endif
+
+/**
+ * Defined to 1 in the fbcode release branch of OpenZL and 0 in all other cases.
+ */
+#ifndef ZL_FBCODE_IS_RELEASE
+#    define ZL_FBCODE_IS_RELEASE 0
+#endif
 
 #ifdef __cplusplus
 } // extern "C"

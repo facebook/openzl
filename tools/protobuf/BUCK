@@ -40,9 +40,6 @@ zs_cxxbinary(
         "-Wno-switch-enum",
         "-Wno-cast-qual",
     ],
-    preprocessor_flags = [
-        "-DOPENZL_BUCK_BUILD",
-    ],
     deps = [
         "..:arg",
         "..:io",

@@ -7,7 +7,7 @@ namespace protobuf {
 
 std::filesystem::path getTestDataPath(const std::string& filename)
 {
-#ifdef OPENZL_BUCK_BUILD
+#ifdef ZL_IS_FBCODE
     auto path =
             ("data_compression/experimental/zstrong/tools/protobuf/tests/resources"
              / std::filesystem::path(filename))

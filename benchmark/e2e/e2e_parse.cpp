@@ -14,8 +14,9 @@
 #include "openzl/zl_ctransform.h"
 #include "openzl/zl_dtransform.h"
 #include "openzl/zl_opaque_types.h"
+#include "openzl/zl_version.h"
 
-#if ZL_HAVE_FBCODE
+#if ZL_IS_FBCODE
 
 #    include "custom_transforms/parse/tests/parse_test_data.h"
 

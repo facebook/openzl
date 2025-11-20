@@ -13,8 +13,9 @@
 
 #include "openzl/shared/mem.h"
 #include "openzl/zl_config.h"
+#include "openzl/zl_version.h"
 
-#if ZL_HAVE_FBCODE
+#if ZL_IS_FBCODE
 #    include "tools/cxx/Resources.h"
 #endif
 
@@ -278,7 +279,7 @@ inline std::string readCorpus(const std::filesystem::path& name)
                 return envPath;
             }
         }
-#if ZL_HAVE_FBCODE
+#if ZL_IS_FBCODE
         {
             // Try looking for a buck resource, we have two possible paths one
             // for dev and one for release

@@ -6,10 +6,11 @@
 #include "openzl/common/vector.h"
 #include "openzl/compress/selectors/ml/features.h"
 #include "openzl/zl_config.h"
+#include "openzl/zl_version.h"
 
 // Our tools don't really compile outside of fbcode atm, this is a hack to
 // make sure we compile this benchmark only in fbcode env.
-#if ZL_HAVE_FBCODE
+#if ZL_IS_FBCODE
 
 #    include "benchmark/benchmark_testcase.h"
 #    include "benchmark/micro/micro_bench.h"
@@ -61,7 +62,7 @@ namespace zstrong::bench::micro {
 void inline registerFeatureGeneratorBench() {}
 } // namespace zstrong::bench::micro
 
-#endif // ZL_HAVE_FBCODE
+#endif // ZL_IS_FBCODE
 
 const size_t kDefaultVectorCapacity = 1024;
 
