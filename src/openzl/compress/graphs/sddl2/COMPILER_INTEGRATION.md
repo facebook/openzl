@@ -50,6 +50,301 @@ This guide is for developers implementing compilers that target the SDDL2 VM byt
 
 ---
 
+## Deployment Model
+
+### Production: Offline Compilation + Runtime Execution
+
+**Important:** The SDDL compiler and VM run at **different times** and often on **different machines**:
+
+```
+┌─────────────────────────┐
+│  Development/Build Time │
+│  (Offline)              │
+└─────────────────────────┘
+         │
+         │ 1. SDDL Compiler runs
+         │    Input: SDDL source
+         │    Output: Bytecode file
+         │
+         ▼
+    bytecode.bin
+         │
+         │ 2. Transport
+         │    (copy to production system)
+         │
+         ▼
+┌─────────────────────────┐
+│  Compression Time       │
+│  (Production)           │
+└─────────────────────────┘
+         │
+         │ 3. Create compressor
+         │    - SDDL2 VM as graph
+         │    - Load bytecode.bin as parameter
+         │
+         ▼
+    Compression happens
+    (VM executes bytecode during compression)
+```
+
+**Your compiler's job:**
+- Generate valid bytecode
+- Save to file/transport format
+- **No direct VM API calls in production**
+
+**Production integration** (handled by OpenZL framework, not by you):
+```c
+// Production code (you don't write this)
+// The compression framework does:
+ZL_Compressor* compressor = ZL_Compressor_create();
+ZL_Compressor_registerSDDL2Graph(compressor, bytecode_data, bytecode_size, destination);
+ZL_Compressor_compress(compressor, input_data, ...);
+```
+
+---
+
+### Testing: Direct VM API for Development
+
+**For testing your compiler output during development**, you can call the VM API directly:
+
+```c
+#include "openzl/compress/graphs/sddl2/sddl2_interpreter.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+    // ============================================================
+    // 1. Your compiler generated this bytecode
+    // ============================================================
+    uint8_t bytecode[] = {
+        0x01, 0x00, 0x02, 0x00,  // push.u32
+        0x0A, 0x00, 0x00, 0x00,  // 10
+        0x0C, 0x00, 0x01, 0x00,  // segment.create_unspecified
+        0x05, 0x00, 0x01, 0x00   // halt
+    };
+    size_t bytecode_size = sizeof(bytecode);
+
+    // ============================================================
+    // 2. Load test input data
+    // ============================================================
+    uint8_t input_data[] = {
+        0x48, 0x65, 0x6C, 0x6C, 0x6F,  // "Hello"
+        0x01, 0x02, 0x03, 0x04, 0x05   // Some data
+    };
+    size_t input_size = sizeof(input_data);
+
+    // ============================================================
+    // 3. Initialize segment list (output)
+    // ============================================================
+    SDDL2_Segment_list segments;
+    SDDL2_Segment_list_init(&segments);
+
+    // ============================================================
+    // 4. Execute bytecode
+    // ============================================================
+    SDDL2_Error err = SDDL2_execute_bytecode(
+        bytecode, bytecode_size,
+        input_data, input_size,
+        &segments
+    );
+
+    // ============================================================
+    // 5. Check for errors
+    // ============================================================
+    if (err != SDDL2_OK) {
+        fprintf(stderr, "VM Error: %d\n", err);
+        SDDL2_Segment_list_destroy(&segments);
+        return 1;
+    }
+
+    // ============================================================
+    // 6. Inspect results
+    // ============================================================
+    printf("Success! Created %zu segments\n", segments.count);
+    for (size_t i = 0; i < segments.count; i++) {
+        SDDL2_Segment* seg = &segments.items[i];
+        printf("  Segment %zu:\n", i);
+        printf("    Tag: %u\n", seg->tag);
+        printf("    Start: %zu\n", seg->start_pos);
+        printf("    Size: %zu bytes\n", seg->size_bytes);
+        printf("    Type: kind=%d, width=%u\n",
+               seg->type.kind, seg->type.width);
+    }
+
+    // ============================================================
+    // 7. Clean up
+    // ============================================================
+    SDDL2_Segment_list_destroy(&segments);
+
+    return 0;
+}
+```
+
+**Compile and run:**
+```bash
+# Link against OpenZL libraries
+gcc -o test_compiler test_compiler.c -I/path/to/include -L/path/to/lib -lopenzl
+
+# Run test
+./test_compiler
+```
+
+---
+
+### Testing from Files
+
+For larger tests, load bytecode and input from files:
+
+```c
+#include "openzl/compress/graphs/sddl2/sddl2_interpreter.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+// Helper: Load file into memory
+uint8_t* load_file(const char* path, size_t* size) {
+    FILE* f = fopen(path, "rb");
+    if (!f) return NULL;
+
+    fseek(f, 0, SEEK_END);
+    *size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    uint8_t* data = malloc(*size);
+    fread(data, 1, *size, f);
+    fclose(f);
+
+    return data;
+}
+
+int main(int argc, char** argv) {
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <bytecode.bin> <input.dat>\n", argv[0]);
+        return 1;
+    }
+
+    // Load bytecode generated by your compiler
+    size_t bytecode_size;
+    uint8_t* bytecode = load_file(argv[1], &bytecode_size);
+    if (!bytecode) {
+        fprintf(stderr, "Failed to load bytecode: %s\n", argv[1]);
+        return 1;
+    }
+
+    // Validate bytecode size
+    if (bytecode_size % 4 != 0) {
+        fprintf(stderr, "Invalid bytecode size: %zu (must be multiple of 4)\n",
+                bytecode_size);
+        free(bytecode);
+        return 1;
+    }
+
+    // Load test input
+    size_t input_size;
+    uint8_t* input_data = load_file(argv[2], &input_size);
+    if (!input_data) {
+        fprintf(stderr, "Failed to load input: %s\n", argv[2]);
+        free(bytecode);
+        return 1;
+    }
+
+    // Execute VM
+    SDDL2_Segment_list segments;
+    SDDL2_Segment_list_init(&segments);
+
+    SDDL2_Error err = SDDL2_execute_bytecode(
+        bytecode, bytecode_size,
+        input_data, input_size,
+        &segments
+    );
+
+    // Report results
+    if (err != SDDL2_OK) {
+        fprintf(stderr, "VM execution failed with error: %d\n", err);
+    } else {
+        printf("✓ Success: %zu segments created\n", segments.count);
+
+        // Optionally dump segment details
+        for (size_t i = 0; i < segments.count; i++) {
+            SDDL2_Segment* seg = &segments.items[i];
+            printf("  [%zu] tag=%u start=%zu size=%zu\n",
+                   i, seg->tag, seg->start_pos, seg->size_bytes);
+        }
+    }
+
+    // Cleanup
+    SDDL2_Segment_list_destroy(&segments);
+    free(bytecode);
+    free(input_data);
+
+    return (err == SDDL2_OK) ? 0 : 1;
+}
+```
+
+**Usage:**
+```bash
+# Generate bytecode with your compiler
+./my_sddl_compiler source.sddl -o program.bin
+
+# Test execution
+./vm_test program.bin test_input.dat
+```
+
+---
+
+### Regression Testing
+
+Build a test harness to validate your compiler:
+
+```bash
+#!/bin/bash
+# test_compiler.sh - Regression test suite
+
+COMPILER=./my_sddl_compiler
+VM_TEST=./vm_test
+TEST_DIR=tests
+
+passed=0
+failed=0
+
+for sddl_file in $TEST_DIR/*.sddl; do
+    base=$(basename "$sddl_file" .sddl)
+    input="$TEST_DIR/${base}.input"
+    expected="$TEST_DIR/${base}.expected"
+
+    # Compile
+    bytecode="/tmp/${base}.bin"
+    if ! $COMPILER "$sddl_file" -o "$bytecode"; then
+        echo "✗ $base: compilation failed"
+        ((failed++))
+        continue
+    fi
+
+    # Execute
+    actual="/tmp/${base}.output"
+    if ! $VM_TEST "$bytecode" "$input" > "$actual" 2>&1; then
+        echo "✗ $base: VM execution failed"
+        ((failed++))
+        continue
+    fi
+
+    # Compare
+    if diff -q "$expected" "$actual" > /dev/null; then
+        echo "✓ $base"
+        ((passed++))
+    else
+        echo "✗ $base: output mismatch"
+        diff "$expected" "$actual"
+        ((failed++))
+    fi
+done
+
+echo ""
+echo "Results: $passed passed, $failed failed"
+exit $failed
+```
+
+---
+
 ## Code Generation Walkthrough
 
 The examples below show how to generate bytecode programmatically. For more patterns, see the 53 test programs in `tests/compress/graphs/sddl2/asm/` - each demonstrates a specific feature.
