@@ -32,6 +32,20 @@ nav:
     - CLI: getting-started/cli.md
     - Advanced Build Settings: getting-started/advanced-build.md
     - Core Library Limitations: getting-started/library-limitations.md
+  - SDDL:
+      - Overview: sddl/index.md
+      - Introduction & Motivation: sddl/introduction.md
+      - Getting Started: sddl/getting-started.md
+      - Core Concepts: sddl/core-concepts.md
+      - Understanding Instant-Parse: sddl/instant-parse.md
+      - Arrays and Collections: sddl/arrays-collections.md
+      - Advanced Layout Control: sddl/alignment-padding.md
+      - Conditional & Variant Data: sddl/conditional-variant.md
+      - Variables and Expressions: sddl/variables-expressions.md
+      - Real-World Formats: sddl/real-formats.md
+      - Best Practices: sddl/best-practices.md
+      - Quick Reference: sddl/reference.md
+      - SDDL for LLMs: sddl/sddl-for-llm.md
   - API Reference:
     - C:
       - Compressor: api/c/compressor.md
