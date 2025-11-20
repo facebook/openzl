@@ -104,22 +104,22 @@ All tests can be run using the following command:
 (Note – this gives a single pass/fail result)
 
 ```bash
-buck2 test //data_compression/experimental/zstrong/cli/tests:all_integration_tests
+buck2 test cli/tests:all_integration_tests
 ```
 
 Specific tests can be run using the following commands referencing the individual targets:
 ```
-buck2 test //data_compression/experimental/zstrong/cli/tests:zstd_test
-buck2 test //data_compression/experimental/zstrong/cli/tests:csv_default_test
-buck2 test //data_compression/experimental/zstrong/cli/tests:csv_greedy_test
-buck2 test //data_compression/experimental/zstrong/cli/tests:csv_full_split_test
-buck2 test //data_compression/experimental/zstrong/cli/tests:csv_train_inline_test
-buck2 test //data_compression/experimental/zstrong/cli/tests:parquet_test
+buck2 test cli/tests:zstd_test
+buck2 test cli/tests:csv_default_test
+buck2 test cli/tests:csv_greedy_test
+buck2 test cli/tests:csv_full_split_test
+buck2 test cli/tests:csv_train_inline_test
+buck2 test cli/tests:parquet_test
 
 
 ```
 
 To get the stdout, use buck2 run instead of buck2 test, eg
 ```
-buck2 run //data_compression/experimental/zstrong/cli/tests:all_integration_tests
+buck2 run cli/tests:all_integration_tests
 ```
