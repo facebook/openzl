@@ -300,7 +300,7 @@ TEST(test_math_overflow)
     uint8_t input[] = "Test";
 
     EXPECT_ERROR(
-            SDDL2_STACK_OVERFLOW,
+            SDDL2_MATH_OVERFLOW,
             BYTECODE_TEST_MATH_OVERFLOW,
             BYTECODE_TEST_MATH_OVERFLOW_SIZE,
             input,

@@ -531,7 +531,7 @@ static void test_tagged_segment_size_overflow(void)
             stack, &buffer, &segments, &registry);
 
     // Should return overflow error, not bounds error
-    assert(err == SDDL2_STACK_OVERFLOW);
+    assert(err == SDDL2_MATH_OVERFLOW);
 
     // Nothing should be created
     assert(segments.count == 0);

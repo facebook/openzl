@@ -92,14 +92,14 @@ def parse_test_metadata(source):
         'custom_validator': None,
         'skip': False  # Default: don't skip
     }
-    
+
     # Valid error codes we recognize
     valid_errors = {
         'SDDL2_OK', 'SDDL2_STACK_UNDERFLOW', 'SDDL2_TYPE_MISMATCH',
         'SDDL2_VALIDATION_FAILED', 'SDDL2_DIV_ZERO',
         'SDDL2_INVALID_BYTECODE', 'SDDL2_UNKNOWN_OPCODE',
         'SDDL2_INVALID_TYPE', 'SDDL2_OUT_OF_MEMORY',
-        'SDDL2_STACK_OVERFLOW', 'SDDL2_LOAD_BOUNDS',
+        'SDDL2_STACK_OVERFLOW', 'SDDL2_MATH_OVERFLOW', 'SDDL2_LOAD_BOUNDS',
         'SDDL2_SEGMENT_BOUNDS', 'SDDL2_LIMIT_EXCEEDED',
         'SDDL2_ALLOCATION_FAILED'
     }

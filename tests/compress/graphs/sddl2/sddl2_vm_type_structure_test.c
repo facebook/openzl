@@ -152,19 +152,32 @@ TEST(test_vm_op_array_of_structures)
 }
 
 /* ============================================================================
- * Test 4: Error Handling - Zero Members
+ * Test 4: Zero-Member Structures (for conditional use)
  * ========================================================================= */
 
-TEST(test_vm_op_structure_error_zero_members)
+TEST(test_vm_op_structure_zero_members)
 {
     SDDL2_Stack stack;
     stack.items    = g_stack_storage;
     stack.capacity = STACK_SIZE;
     SDDL2_Stack_init(&stack);
 
-    // Push zero count - should fail
+    // Push zero count - should succeed (for conditional structures)
     assert(SDDL2_Stack_push(&stack, SDDL2_Value_i64(0)) == SDDL2_OK);
-    assert(SDDL2_op_type_structure(&stack, NULL, NULL) == SDDL2_TYPE_MISMATCH);
+    assert(SDDL2_op_type_structure(&stack, NULL, NULL) == SDDL2_OK);
+
+    // Verify result: zero-member structure with size 0
+    SDDL2_Value result;
+    assert(SDDL2_Stack_pop(&stack, &result) == SDDL2_OK);
+    assert(result.kind == SDDL2_VALUE_TYPE);
+    assert(result.value.as_type.kind == SDDL2_TYPE_STRUCTURE);
+    assert(result.value.as_type.width == 1);
+
+    // Verify total size is 0
+    SDDL2_Struct_data* struct_data = (SDDL2_Struct_data*)result.value.as_type.complex_data;
+    assert(struct_data != NULL);
+    assert(struct_data->member_count == 0);
+    assert(struct_data->total_size_bytes == 0);
 }
 
 /* ============================================================================

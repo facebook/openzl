@@ -121,9 +121,9 @@ TEST(test_array_count_one)
 }
 
 /**
- * Test: Error - array count is zero
+ * Test: Zero-width arrays (for conditional structure members)
  */
-TEST(test_error_zero_count)
+TEST(test_zero_width_array)
 {
     SDDL2_Stack stack;
     SDDL2_Value stack_storage[256];
@@ -140,13 +140,17 @@ TEST(test_error_zero_count)
     err = SDDL2_Stack_push(&stack, SDDL2_Value_i64(0));
     assert(err == SDDL2_OK);
 
-    // Try to create array of 0 elements (should fail)
+    // Create array of 0 elements (should succeed for conditional members)
     err = SDDL2_op_type_fixed_array(&stack);
-    assert(err == SDDL2_TYPE_MISMATCH);
+    assert(err == SDDL2_OK);
 
-    // Stack should have base_type left (array_count was popped, validated,
-    // failed)
-    assert(SDDL2_Stack_depth(&stack) == 1);
+    // Verify result has zero width
+    SDDL2_Value result;
+    err = SDDL2_Stack_pop(&stack, &result);
+    assert(err == SDDL2_OK);
+    assert(result.kind == SDDL2_VALUE_TYPE);
+    assert(result.value.as_type.kind == SDDL2_TYPE_U8);
+    assert(result.value.as_type.width == 0); // Zero-width array
 }
 
 /**
@@ -172,7 +176,7 @@ TEST(test_error_width_overflow)
 
     // Try to multiply by 3 (would overflow: (UINT32_MAX/2) * 3 > UINT32_MAX)
     err = SDDL2_op_type_fixed_array(&stack);
-    assert(err == SDDL2_STACK_OVERFLOW);
+    assert(err == SDDL2_MATH_OVERFLOW);
 
     // Stack should be empty (both values were popped before overflow detected)
     assert(SDDL2_Stack_depth(&stack) == 0);
@@ -202,7 +206,7 @@ TEST(test_error_width_overflow_boundary)
 
     // Try to multiply by 2 (would overflow)
     err = SDDL2_op_type_fixed_array(&stack);
-    assert(err == SDDL2_STACK_OVERFLOW);
+    assert(err == SDDL2_MATH_OVERFLOW);
 }
 
 /**

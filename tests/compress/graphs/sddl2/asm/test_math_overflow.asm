@@ -1,5 +1,5 @@
 # Test: MATH overflow error
-# Expected: SDDL2_STACK_OVERFLOW
+# Expected: SDDL2_MATH_OVERFLOW
 # Tests that overflow is properly detected and propagated
 # INT64_MAX + 1 should overflow
 

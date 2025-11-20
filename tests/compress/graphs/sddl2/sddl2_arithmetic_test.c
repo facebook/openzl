@@ -152,13 +152,13 @@ TEST(test_add_overflow)
     // INT64_MAX + 1 = overflow
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(INT64_MAX)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
-    assert(SDDL2_op_add(stack, NULL, 0) == SDDL2_STACK_OVERFLOW);
+    assert(SDDL2_op_add(stack, NULL, 0) == SDDL2_MATH_OVERFLOW);
 
     // INT64_MIN + (-1) = overflow
     SDDL2_Stack_init(stack);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(INT64_MIN)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(-1)) == SDDL2_OK);
-    assert(SDDL2_op_add(stack, NULL, 0) == SDDL2_STACK_OVERFLOW);
+    assert(SDDL2_op_add(stack, NULL, 0) == SDDL2_MATH_OVERFLOW);
 
     destroy_test_stack(stack);
 }
@@ -170,13 +170,13 @@ TEST(test_sub_overflow)
     // INT64_MIN - 1 = overflow
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(INT64_MIN)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
-    assert(SDDL2_op_sub(stack, NULL, 0) == SDDL2_STACK_OVERFLOW);
+    assert(SDDL2_op_sub(stack, NULL, 0) == SDDL2_MATH_OVERFLOW);
 
     // INT64_MAX - (-1) = overflow
     SDDL2_Stack_init(stack);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(INT64_MAX)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(-1)) == SDDL2_OK);
-    assert(SDDL2_op_sub(stack, NULL, 0) == SDDL2_STACK_OVERFLOW);
+    assert(SDDL2_op_sub(stack, NULL, 0) == SDDL2_MATH_OVERFLOW);
 
     destroy_test_stack(stack);
 }
@@ -188,13 +188,13 @@ TEST(test_mul_overflow)
     // INT64_MAX * 2 = overflow
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(INT64_MAX)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(2)) == SDDL2_OK);
-    assert(SDDL2_op_mul(stack, NULL, 0) == SDDL2_STACK_OVERFLOW);
+    assert(SDDL2_op_mul(stack, NULL, 0) == SDDL2_MATH_OVERFLOW);
 
     // INT64_MIN * (-1) = overflow
     SDDL2_Stack_init(stack);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(INT64_MIN)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(-1)) == SDDL2_OK);
-    assert(SDDL2_op_mul(stack, NULL, 0) == SDDL2_STACK_OVERFLOW);
+    assert(SDDL2_op_mul(stack, NULL, 0) == SDDL2_MATH_OVERFLOW);
 
     destroy_test_stack(stack);
 }
@@ -205,7 +205,7 @@ TEST(test_abs_overflow)
 
     // abs(INT64_MIN) = overflow
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(INT64_MIN)) == SDDL2_OK);
-    assert(SDDL2_op_abs(stack, NULL, 0) == SDDL2_STACK_OVERFLOW);
+    assert(SDDL2_op_abs(stack, NULL, 0) == SDDL2_MATH_OVERFLOW);
 
     destroy_test_stack(stack);
 }
@@ -216,7 +216,7 @@ TEST(test_neg_overflow)
 
     // -(INT64_MIN) = overflow
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(INT64_MIN)) == SDDL2_OK);
-    assert(SDDL2_op_neg(stack, NULL, 0) == SDDL2_STACK_OVERFLOW);
+    assert(SDDL2_op_neg(stack, NULL, 0) == SDDL2_MATH_OVERFLOW);
 
     destroy_test_stack(stack);
 }
@@ -256,7 +256,7 @@ TEST(test_div_overflow_special)
     // INT64_MIN / -1 = overflow
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(INT64_MIN)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(-1)) == SDDL2_OK);
-    assert(SDDL2_op_div(stack, NULL, 0) == SDDL2_STACK_OVERFLOW);
+    assert(SDDL2_op_div(stack, NULL, 0) == SDDL2_MATH_OVERFLOW);
 
     destroy_test_stack(stack);
 }

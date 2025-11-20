@@ -122,7 +122,7 @@ static const size_t BYTECODE_TEST_MATH_DIV_BY_ZERO_SIZE = 24;
 
 /* Source: test_math_overflow.asm */
 /* MATH overflow error */
-/* Expected error: SDDL2_STACK_OVERFLOW */
+/* Expected error: SDDL2_MATH_OVERFLOW */
 static const uint8_t BYTECODE_TEST_MATH_OVERFLOW[] = {
     0x04, 0x00, 0x01, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F, 0x04, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x02, 0x00, 0x01, 0x00, 0x05, 0x00
 };
@@ -538,7 +538,7 @@ static const SDDL2_TestCase SDDL2_BYTECODE_TESTS[] = {
         .bytecode = BYTECODE_TEST_MATH_OVERFLOW,
         .size = BYTECODE_TEST_MATH_OVERFLOW_SIZE,
         .description = "MATH overflow error",
-        .expected_error = SDDL2_STACK_OVERFLOW,
+        .expected_error = SDDL2_MATH_OVERFLOW,
         .input_size = 0,
         .skip = 0,
         .custom_validator = NULL

@@ -336,7 +336,7 @@ SDDL2_Error SDDL2_op_type_structure(
         // Check for size overflow
         if (struct_data->total_size_bytes > SIZE_MAX - member_size) {
             sddl2_free(struct_data, alloc_fn);
-            return SDDL2_STACK_OVERFLOW; // Size overflow
+            return SDDL2_MATH_OVERFLOW; // Size overflow
         }
 
         struct_data->total_size_bytes += member_size;
@@ -448,7 +448,7 @@ SDDL2_Error SDDL2_op_add(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t p
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
 
     if (add_would_overflow(a, b)) {
-        return SDDL2_STACK_OVERFLOW;
+        return SDDL2_MATH_OVERFLOW;
     }
 
     return push_i64(stack, a + b);
@@ -463,7 +463,7 @@ SDDL2_Error SDDL2_op_sub(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t p
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
 
     if (sub_would_overflow(a, b)) {
-        return SDDL2_STACK_OVERFLOW;
+        return SDDL2_MATH_OVERFLOW;
     }
 
     return push_i64(stack, a - b);
@@ -478,7 +478,7 @@ SDDL2_Error SDDL2_op_mul(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t p
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
 
     if (mul_would_overflow(a, b)) {
-        return SDDL2_STACK_OVERFLOW;
+        return SDDL2_MATH_OVERFLOW;
     }
 
     return push_i64(stack, a * b);
@@ -499,7 +499,7 @@ SDDL2_Error SDDL2_op_div(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t p
 
     // Overflow check: INT64_MIN / -1 = overflow
     if (a == INT64_MIN && b == -1) {
-        return SDDL2_STACK_OVERFLOW;
+        return SDDL2_MATH_OVERFLOW;
     }
 
     return push_i64(stack, a / b);
@@ -531,7 +531,7 @@ SDDL2_Error SDDL2_op_abs(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t p
 
     // Check for INT64_MIN (abs(INT64_MIN) overflows)
     if (a == INT64_MIN) {
-        return SDDL2_STACK_OVERFLOW;
+        return SDDL2_MATH_OVERFLOW;
     }
 
     return push_i64(stack, (a < 0) ? -a : a);
@@ -547,7 +547,7 @@ SDDL2_Error SDDL2_op_neg(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t p
 
     // Check for INT64_MIN (negation overflows)
     if (a == INT64_MIN) {
-        return SDDL2_STACK_OVERFLOW;
+        return SDDL2_MATH_OVERFLOW;
     }
 
     return push_i64(stack, -a);
@@ -1116,7 +1116,7 @@ static SDDL2_Error segment_create_internal(
 
     // Check for overflow in element_count * total_type_size multiplication
     if (element_count > SIZE_MAX / total_type_size) {
-        return SDDL2_STACK_OVERFLOW; // Size overflow
+        return SDDL2_MATH_OVERFLOW; // Size overflow
     }
 
     size_t size_bytes = element_count * total_type_size;
