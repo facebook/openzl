@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "openzl/compress/graphs/sddl2/sddl2.h"
+#include "openzl/codecs/zl_sddl2.h"
 #include "openzl/cpp/Compressor.hpp"
 #include "openzl/cpp/codecs/Graph.hpp"
 #include "openzl/cpp/codecs/Metadata.hpp"
