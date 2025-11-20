@@ -2,6 +2,7 @@
 
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("../../defs.bzl", "relative_headers")
 
 oncall("data_compression")
 
@@ -12,10 +13,11 @@ cpp_library(
         "decode_tulip_v2.cpp",
         "encode_tulip_v2.cpp",
     ],
-    headers = [
+    headers = relative_headers([
         "decode_tulip_v2.h",
         "encode_tulip_v2.h",
-    ],
+    ]),
+    header_namespace = "",
     exported_deps = [
         "../..:zstronglib",
         "../thrift/kernels:decode_thrift_binding",

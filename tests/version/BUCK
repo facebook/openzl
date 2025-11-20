@@ -2,7 +2,9 @@
 
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load(":defs.bzl", "dev_only_unittest", "version_fuzzer")
+load("../../defs.bzl", "relative_headers")
+load("defs.bzl", "dev_only_unittest", "version_fuzzer")
+
 # @noautodeps
 
 oncall("data_compression")
@@ -10,7 +12,8 @@ oncall("data_compression")
 cpp_binary(
     name = "version_test_interface.so",
     srcs = ["VersionTestInterfaceABI.cpp"],
-    headers = ["VersionTestInterfaceABI.h"],
+    headers = relative_headers(["VersionTestInterfaceABI.h"]),
+    header_namespace = "",
     dlopen_enabled = True,
     deps = [
         "..:constants",
@@ -26,10 +29,11 @@ cpp_binary(
 cpp_library(
     name = "version_test_interface",
     srcs = ["VersionTestInterface.cpp"],
-    headers = [
+    headers = relative_headers([
         "VersionTestInterface.h",
         "VersionTestInterfaceABI.h",
-    ],
+    ]),
+    header_namespace = "",
     external_deps = [
         "gflags",
     ],

@@ -3,7 +3,7 @@
 # @noautodeps
 
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("../../defs.bzl", "zs_cxxlibrary", "zs_unittest")
+load("../../defs.bzl", "relative_headers", "zs_cxxlibrary", "zs_unittest")
 
 oncall("data_compression")
 
@@ -49,7 +49,8 @@ zs_unittest(
 cpp_library(
     name = "custom_nodes",
     srcs = glob(["test_registry/*.cpp"]),
-    headers = glob(["test_registry/*.h"]),
+    headers = relative_headers(glob(["test_registry/*.h"])),
+    header_namespace = "",
     # NOTE: Must only be used by version_test_interface.so because it depends on Zstrong
     # Must NOT be used by version_test_interface or version_test targets.
     visibility = [

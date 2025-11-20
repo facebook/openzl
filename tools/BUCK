@@ -1,7 +1,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("../defs.bzl", "zs_cxxbinary", "zs_cxxlibrary", "zs_library", "zs_unittest")
+load("../defs.bzl", "relative_headers", "zs_cxxbinary", "zs_cxxlibrary", "zs_library", "zs_unittest")
 
 oncall("data_compression")
 
@@ -78,7 +78,8 @@ zs_cxxlibrary(
 
 cpp_library(
     name = "json",
-    headers = ["json.hpp"],
+    headers = relative_headers(["json.hpp"]),
+    header_namespace = "",
     exported_deps = [],
 )
 

@@ -9,6 +9,7 @@ zs_cxxlibrary(
     name = "utils",
     srcs = ["utils.cpp"],
     headers = ["utils.h"],
+    resources = glob(["resources/*"]),
     exported_deps = [
         "../../..:zstronglib",
         "fbsource//xplat/tools/cxx:resources",
@@ -41,7 +42,6 @@ zs_unittest(
 zs_unittest(
     name = "test_descriptor_loader",
     srcs = ["test_descriptor_loader.cpp"],
-    resources = glob(["resources/*"]),
     deps = [
         "..:utils",
         ":utils",
@@ -51,7 +51,6 @@ zs_unittest(
 zs_unittest(
     name = "test_dynamic_messages",
     srcs = ["test_dynamic_messages.cpp"],
-    resources = glob(["resources/*"]),
     deps = [
         "..:utils",
         ":utils",

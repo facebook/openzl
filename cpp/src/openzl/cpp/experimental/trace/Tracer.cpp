@@ -1,6 +1,6 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
-#include "cpp/src/openzl/cpp/experimental/trace/Tracer.hpp"
+#include "openzl/cpp/experimental/trace/Tracer.hpp"
 
 #include "openzl/common/a1cbor_helpers.h"
 #include "openzl/common/logging.h"

@@ -8,7 +8,7 @@ load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:fbcode_configured_alias.bzl", "fbcode_configured_alias")
 load("@fbcode_macros//build_defs:thrift_library.bzl", "thrift_library")
 load("@fbsource//tools/build_defs:default_platform_defs.bzl", "get_host_target_platform")
-load("../../../defs.bzl", "zs_fuzzers")
+load("../../../defs.bzl", "relative_headers", "zs_fuzzers")
 
 oncall("data_compression")
 
@@ -23,7 +23,8 @@ thrift_library(
 
 cpp_library(
     name = "tulip_v2_data_utils",
-    headers = ["tulip_v2_data_utils.h"],
+    headers = relative_headers(["tulip_v2_data_utils.h"]),
+    header_namespace = "",
     deps = [
         "fbsource//xplat/tools/cxx:resources",
     ],
