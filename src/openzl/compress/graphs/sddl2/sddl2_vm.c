@@ -158,8 +158,8 @@ static inline SDDL2_Error pop_i64(SDDL2_Stack* stack, int64_t* out)
 }
 
 /**
- * Pop a positive I64 value from stack and convert to size_t.
- * Common pattern for count/size operations that must be positive.
+ * Pop a non-negative I64 value from stack and convert to size_t.
+ * Common pattern for count/size operations (>= 0).
  * Used by type.fixed_array and type.structure for element/member counts.
  */
 static inline SDDL2_Error pop_positive_i64(SDDL2_Stack* stack, size_t* out)
@@ -171,7 +171,7 @@ static inline SDDL2_Error pop_positive_i64(SDDL2_Stack* stack, size_t* out)
         return SDDL2_TYPE_MISMATCH;
     }
 
-    if (val.value.as_i64 <= 0) {
+    if (val.value.as_i64 < 0) {
         return SDDL2_TYPE_MISMATCH;
     }
 
@@ -267,8 +267,9 @@ SDDL2_Error SDDL2_op_type_fixed_array(SDDL2_Stack* stack)
     // For unsigned multiplication overflow check: if (a > 0 && b > UINT32_MAX /
     // a)
     uint32_t base_width = base_type_val.value.as_type.width;
-    if (base_width > UINT32_MAX / array_count) {
-        return SDDL2_STACK_OVERFLOW; // Width multiplication would overflow
+    if (array_count && base_width > UINT32_MAX / array_count) {
+        ZL_DLOG(ERROR, "Width multiplication would overflow: base_width=%u, array_count=%zu", base_width, array_count);
+        return SDDL2_MATH_OVERFLOW; // Width multiplication would overflow
     }
 
     // Create new type with multiplied width

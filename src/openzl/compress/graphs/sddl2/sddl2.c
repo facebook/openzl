@@ -780,6 +780,10 @@ static ZL_Report sddl2_error_to_report(ZL_Graph* graph, SDDL2_Error err)
                    "SDDL2 VM stack underflow: operation attempted to pop "
                    "from empty stack");
 
+        case SDDL2_MATH_OVERFLOW:
+            ZL_ERR(transform_executionFailure,
+                   "SDDL2 VM mathematical operation overflows");
+
         case SDDL2_TYPE_MISMATCH:
             ZL_ERR(parameter_invalid,
                    "SDDL2 VM type error: operation received incompatible "
