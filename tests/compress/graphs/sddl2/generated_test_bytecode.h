@@ -5,8 +5,8 @@
 // Generator: tests/compress/graphs/sddl2/generate_test_bytecode.py
 //
 // To regenerate:
-//   python3 tests/compress/graphs/sddl2/generate_test_bytecode.py \
-//       -i tests/compress/graphs/sddl2/asm \
+//   python3 tests/compress/graphs/sddl2/generate_test_bytecode.py
+//       -i tests/compress/graphs/sddl2/asm
 //       -o tests/compress/graphs/sddl2/generated_test_bytecode.h
 
 #ifndef GENERATED_TEST_BYTECODE_H
@@ -15,7 +15,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
-#include "openzl/compress/graphs/sddl2/sddl2_interpreter.h"
+#include "openzl/compress/graphs/sddl2/sddl2_error.h"
 
 /* Bytecode constants from interpreter test assembly files */
 
