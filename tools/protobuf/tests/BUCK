@@ -9,10 +9,10 @@ zs_cxxlibrary(
     name = "utils",
     srcs = ["utils.cpp"],
     headers = ["utils.h"],
-    preprocessor_flags = [
-        "-DOPENZL_BUCK_BUILD",
+    exported_deps = [
+        "../../..:zstronglib",
+        "fbsource//xplat/tools/cxx:resources",
     ],
-    exported_deps = ["fbsource//xplat/tools/cxx:resources"],
 )
 
 zs_unittest(
@@ -41,9 +41,6 @@ zs_unittest(
 zs_unittest(
     name = "test_descriptor_loader",
     srcs = ["test_descriptor_loader.cpp"],
-    preprocessor_flags = [
-        "-DOPENZL_BUCK_BUILD",
-    ],
     resources = glob(["resources/*"]),
     deps = [
         "..:utils",
@@ -54,9 +51,6 @@ zs_unittest(
 zs_unittest(
     name = "test_dynamic_messages",
     srcs = ["test_dynamic_messages.cpp"],
-    preprocessor_flags = [
-        "-DOPENZL_BUCK_BUILD",
-    ],
     resources = glob(["resources/*"]),
     deps = [
         "..:utils",

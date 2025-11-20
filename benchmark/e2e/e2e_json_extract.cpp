@@ -12,8 +12,9 @@
 #include "openzl/zl_config.h"
 #include "openzl/zl_ctransform.h"
 #include "openzl/zl_dtransform.h"
+#include "openzl/zl_version.h"
 
-#if ZL_HAVE_FBCODE
+#if ZL_IS_FBCODE
 
 #    include "custom_transforms/json_extract/tests/json_extract_test_data.h"
 

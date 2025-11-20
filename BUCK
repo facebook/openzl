@@ -1,6 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load(":defs.bzl", "private_headers", "public_headers", "zs_library")
+load(":defs.bzl", "private_headers", "public_headers", "zl_fbcode_is_release_pp_flag", "zs_library")
 
 oncall("data_compression")
 
@@ -30,6 +30,10 @@ zs_library(
         ],
     )),
     header_namespace = "",
+    propagated_pp_flags = [
+        zl_fbcode_is_release_pp_flag(),
+        "-DZL_IS_FBCODE=1",
+    ],
     exported_deps = [
         ":config",
     ],

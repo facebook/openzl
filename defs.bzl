@@ -9,7 +9,24 @@ load("@fbsource//xplat/security/lionhead:defs.bzl", "ALL_EMPLOYEES", "Interactio
 load("@fbsource//xplat/security/lionhead/build_defs:generic_harness.bzl", "generic_lionhead_harness")
 load("//security/lionhead/harnesses:defs.bzl", "cpp_lionhead_harness")
 
+_ZL_PROD_PREFIXES = [
+    "openzl/versions/release",
+    "openzl/prod",
+]
+
+def _is_release():
+    for prefix in _ZL_PROD_PREFIXES:
+        if native.package_name().startswith(prefix):
+            return True
+    return False
+
 ZS_HEADER_INCLUDE_PATH = "-Idata_compression/experimental/zstrong"
+
+def zl_fbcode_is_release_pp_flag():
+    if _is_release():
+        return "-DZL_FBCODE_IS_RELEASE=1"
+    else:
+        return "-DZL_FBCODE_IS_RELEASE=0"
 
 def _strip_prefix(headers, prefix):
     header_map = {}
@@ -109,9 +126,6 @@ ZS_FUZZ_METADATA = Metadata(
     # no clicks needed by user
     user_interaction_required = Interaction.ZERO_CLICK,
 )
-
-def _is_release():
-    return native.package_name().startswith("openzl/versions/release")
 
 def _zs_src_file_compiler_flags(src):
     flags = []
