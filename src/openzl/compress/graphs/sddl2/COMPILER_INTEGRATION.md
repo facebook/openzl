@@ -17,10 +17,15 @@ This guide is for developers implementing compilers that target the SDDL2 VM byt
    - **Source of truth** for all opcodes
    - Family IDs, opcode values, parameter types, descriptions
 
-3. **Working examples** (study in order):
-   - `examples/sddl2_asm/sao_silesia.asm` - Start here (star catalog parser)
-   - `examples/sddl2_asm/sao_full.asm` - Next step (extended features)
-   - Both demonstrate dynamic arrays, structures, tagged segments
+3. **Example code** (progressive learning path):
+   - **Start simple**: `tests/compress/graphs/sddl2/asm/` - 53 focused examples
+     - `test_math_add.asm` - Basic arithmetic (8 lines)
+     - `test_multiple_typed_segments.asm` - Creating segments (21 lines)
+     - `test_push_remaining_initial.asm` - Dynamic sizing
+     - Each file demonstrates one feature clearly
+   - **Real-world programs**: `examples/sddl2_asm/`
+     - `sao_silesia.asm` - Star catalog parser (start here)
+     - `sao_full.asm` - Extended features (next step)
 
 4. **VM API**: `sddl2_interpreter.h` (this directory)
    - Entry point: `SDDL2_execute_bytecode()`
@@ -46,6 +51,8 @@ This guide is for developers implementing compilers that target the SDDL2 VM byt
 ---
 
 ## Code Generation Walkthrough
+
+The examples below show how to generate bytecode programmatically. For more patterns, see the 53 test programs in `tests/compress/graphs/sddl2/asm/` - each demonstrates a specific feature.
 
 ### Example: Generate "Push 42 and halt"
 
@@ -471,7 +478,8 @@ A: [Add your project's bug tracker info here]
 - **Bytecode spec**: `tools/sddl/assembler/Bytecode_spec.md` - Format details
 - **Assembler README**: `tools/sddl/assembler/README.md` - Assembler tool documentation
 - **Test framework**: `tests/compress/graphs/sddl2/BYTECODE_TEST_FRAMEWORK.md` - Auto-discovery testing
-- **Example programs**: `examples/sddl2_asm/` - Study `sao_silesia.asm` first, then `sao_full.asm`
+- **Test examples**: `tests/compress/graphs/sddl2/asm/` - 53 simple, focused examples (start here)
+- **Real-world examples**: `examples/sddl2_asm/` - Study `sao_silesia.asm` first, then `sao_full.asm`
 
 ---
 
