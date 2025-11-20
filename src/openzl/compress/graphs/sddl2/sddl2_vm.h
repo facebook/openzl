@@ -853,8 +853,6 @@ void SDDL2_Tag_registry_init(
         SDDL2_allocator_fn alloc_fn,
         void* alloc_ctx);
 
-void SDDL2_Tag_registry_destroy(SDDL2_Tag_registry* registry);
-
 /**
  * Create a typed, tagged segment with automatic merging.
  * Stack: tag:Tag type:Type size:I64 -> (nothing)

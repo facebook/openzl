@@ -467,8 +467,8 @@ SDDL2_Error SDDL2_execute_bytecode(
         // Decode instruction word
         // Bits 31-16: Family ID
         // Bits 15-0:  Opcode within family
-        uint16_t family = (instruction >> 16) & 0xFFFF;
-        uint16_t opcode = instruction & 0xFFFF;
+        uint16_t family = (uint16_t)((instruction >> 16) & 0xFFFF);
+        uint16_t opcode = (uint16_t)(instruction & 0xFFFF);
 
         ZL_DLOG(SEQ, "[SDDL2] PC=%zu: %s (0x%08x) stack_depth=%zu",
                 pc_before, SDDL2_instruction_name(family, opcode), instruction, SDDL2_Stack_depth(&stack));
