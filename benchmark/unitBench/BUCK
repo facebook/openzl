@@ -11,16 +11,6 @@ zs_binary(
     ],
 )
 
-zs_library(
-    name = "sao_graph",
-    srcs = ["saoGraph.c"],
-    headers = ["saoGraph.h"],
-    deps = [
-        "../..:zstronglib",
-        "fbsource//third-party/benchmark:benchmark",
-    ],
-)
-
 zs_binary(
     name = "unitBench",
     srcs = glob([
@@ -36,7 +26,6 @@ zs_binary(
         "../../tools/streamdump:stream_dump2_headers",
         "fbsource//third-party/benchmark:benchmark",
         "fbsource//third-party/zstd:zstd",
-        ":sao_graph",
     ],
 )
 
@@ -53,7 +42,6 @@ zs_release_binary(
         "../../tools:fileio",
         "../../tools:timefn",
         "../../tools/streamdump:stream_dump2_headers",
-        ":sao_graph",
         "//common/managed_compression/zstrong:stream_dump_shim",
     ],
 )

@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "benchmark/unitBench/scenarios/codecs/sddl1.h"
+#include "benchmark/unitBench/scenarios/sao_sddl1.h"
 
 #include <stdlib.h> // abort
 

@@ -6,7 +6,7 @@
  */
 
 /* ===   Dependencies   === */
-#include "benchmark/unitBench/saoGraph.h"
+#include "benchmark/unitBench/scenarios/sao_graph.h"
 
 #include <stdlib.h> // abort
 
