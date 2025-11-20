@@ -1,10 +1,10 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "benchmark/unitBench/saoGraph_sddl2.h"
+#include "benchmark/unitBench/scenarios/codecs/sddl2.h"
 
 #include <stdlib.h> // abort
 
-#include "openzl/compress/graphs/sddl2/sddl2.h" // SDDL2_parse, SDDL2_BYTECODE_PARAM
+#include "openzl/codecs/zl_sddl2.h"    // ZL_Compressor_registerSDDL2Graph, SDDL2_BYTECODE_PARAM
 #include "openzl/zl_compressor.h"               // ZL_Compressor_setParameter
 #include "openzl/zl_localParams.h"              // ZL_LocalParams
 
