@@ -793,7 +793,7 @@ static ZL_Report CompressorSerializer_serializeNode_cb(
     ZL_CompressorSerializer* const state = (ZL_CompressorSerializer*)opaque;
     ZL_RESULT_DECLARE_SCOPE_REPORT(state);
 
-    CompressorSerializer_Node info = {};
+    CompressorSerializer_Node info = { 0 };
 
     const ZL_NodeID base_nid = ZL_Compressor_Node_getBaseNodeID(c, nid);
     {
@@ -1807,7 +1807,7 @@ static ZL_RESULT_OF(ZL_LocalParams)
         resolution = &_dummy;
     }
 
-    ZL_LocalParams result = (ZL_LocalParams){};
+    ZL_LocalParams result = (ZL_LocalParams){ 0 };
     if (base != NULL) {
         result = *base;
     }

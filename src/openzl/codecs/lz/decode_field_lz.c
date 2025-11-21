@@ -586,7 +586,7 @@ ZL_selectDecompressor(unsigned eltBits, uint16_t const* tokens, size_t nbTokens)
         return ZL_FIELD_LZ_DECOMPRESS_FN(0, 14, 14);
     }
 
-    if (0) {
+    if ((0)) {
         if (eltBits == 1) {
             shortLLCode = shortMLCode = 14;
         }

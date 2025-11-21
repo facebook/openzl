@@ -70,11 +70,12 @@ ZL_FORCE_INLINE void ZS_splitTransposeDecode_impl(
     }
 }
 
-#define ZS_GEN_SPLIT_TRANSPOSE_DECODE(kEltWidth)                               \
-    static ZL_TRANSPOSE_DEC_NOINLINE void ZS_splitTransposeDecode_##kEltWidth( \
-            uint8_t* dst, uint8_t const* restrict* src, size_t nbElts)         \
-    {                                                                          \
-        ZS_splitTransposeDecode_impl(dst, src, nbElts, kEltWidth);             \
+#define ZS_GEN_SPLIT_TRANSPOSE_DECODE(kEltWidth)                       \
+    static ZL_MAYBE_UNUSED_FUNCTION ZL_TRANSPOSE_DEC_NOINLINE void     \
+    ZS_splitTransposeDecode_##kEltWidth(                               \
+            uint8_t* dst, uint8_t const* restrict* src, size_t nbElts) \
+    {                                                                  \
+        ZS_splitTransposeDecode_impl(dst, src, nbElts, kEltWidth);     \
     }
 
 ZS_GEN_SPLIT_TRANSPOSE_DECODE(2)

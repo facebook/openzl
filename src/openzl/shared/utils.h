@@ -7,6 +7,18 @@
 
 ZL_BEGIN_C_DECLS
 
+#if defined(__GNUC__) || defined(__clang__)
+#    define ZL_MAYBE_UNUSED_FUNCTION __attribute__((__unused__))
+#elif defined(_MSC_VER)
+// MSVC does not have a direct equivalent for marking an entire function as
+// "unused" to suppress a warning if it is defined but not called.
+// Usually, this warning is handled by linker settings, or by ensuring
+// the function has internal linkage (static).
+#    define ZL_MAYBE_UNUSED_FUNCTION
+#else
+#    define ZL_MAYBE_UNUSED_FUNCTION
+#endif
+
 /**
  * This should only be for small helper functions that don't belong in any
  * grouping.
