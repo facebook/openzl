@@ -28,6 +28,18 @@ class CompressionTraceHooks : public openzl::CompressIntrospectionHooks {
     // ***************************************************
     // Overridden functions from CompressIntrospectionHooks
     // ***************************************************
+    void on_segmenterEncode_start(ZL_Segmenter* segCtx) override;
+    void on_segmenterEncode_end(ZL_Segmenter* segCtx, ZL_Report r) override;
+    void on_ZL_Segmenter_processChunk_start(
+            ZL_Segmenter* segCtx,
+            const size_t numElts[],
+            size_t numInputs,
+            ZL_GraphID startingGraphID,
+            const ZL_RuntimeGraphParameters* rGraphParams) override;
+
+    void on_ZL_Segmenter_processChunk_end(ZL_Segmenter* segCtx, ZL_Report r)
+            override;
+
     void on_codecEncode_start(
             ZL_Encoder* encoder,
             const ZL_Compressor* compressor,

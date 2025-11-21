@@ -260,6 +260,14 @@ ZL_Report ZL_Segmenter_processChunk(
         ZL_GraphID startingGraphID,
         const ZL_RuntimeGraphParameters* rGraphParams)
 {
+    WAYPOINT(
+            on_ZL_Segmenter_processChunk_start,
+            segCtx,
+            numElts,
+            numInputs,
+            startingGraphID,
+            rGraphParams);
+
     ZL_ASSERT_NN(segCtx);
     ZL_CCtx* const cctx = segCtx->cctx;
     ZL_ASSERT_NN(cctx);
@@ -318,6 +326,8 @@ ZL_Report ZL_Segmenter_processChunk(
         STREAM_free(chunkInputs[n]);
     }
     CCTX_cleanChunk(cctx);
+
+    WAYPOINT(on_ZL_Segmenter_processChunk_end, segCtx, r);
     return r;
 }
 
