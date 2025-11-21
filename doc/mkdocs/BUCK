@@ -9,7 +9,8 @@ oncall("data_compression")
 python_binary(
     name = "static_docs_build_script",
     srcs = ["static_docs_build_script.py"],
-    main_module = "data_compression.experimental.zstrong.doc.mkdocs.static_docs_build_script",
+    base_module = "openzl.doc.mkdocs",
+    main_module = "openzl.doc.mkdocs.static_docs_build_script",
     par_style = "xar",
     resources = {
         ":mkdocs": "mkdocs",
@@ -51,6 +52,7 @@ buck_sh_test(
 )
 
 python_binary(
+    # @autodeps-skip
     name = "mkdocs",
     main_function = "mkdocs.__main__.cli",
     par_style = "xar",
@@ -69,6 +71,7 @@ python_binary(
 python_binary(
     name = "import_mkdocstrings_zstd",
     srcs = ["import_mkdocstrings_zstd.py"],
+    base_module = "openzl.doc.mkdocs",
     labels = ["autodeps2_generated"],
-    main_module = "data_compression.experimental.zstrong.doc.mkdocs.import_mkdocstrings_zstd",
+    main_module = "openzl.doc.mkdocs.import_mkdocstrings_zstd",
 )

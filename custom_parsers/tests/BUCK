@@ -12,8 +12,9 @@ oncall("data_compression")
 python_binary(
     name = "pytorch_model_generator",
     srcs = ["pytorch_model_generator.py"],
+    base_module = "openzl.custom_parsers.tests",
     labels = ["autodeps2_generated"],
-    main_module = "data_compression.experimental.zstrong.custom_parsers.tests.pytorch_model_generator",
+    main_module = "openzl.custom_parsers.tests.pytorch_model_generator",
 )
 
 fbcode_configured_alias(
