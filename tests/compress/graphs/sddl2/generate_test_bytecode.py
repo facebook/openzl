@@ -25,9 +25,9 @@ What this script does:
 """
 
 import argparse
-import sys
 import os
 import re
+import sys
 from pathlib import Path
 
 
