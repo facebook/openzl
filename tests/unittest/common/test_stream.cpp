@@ -185,4 +185,22 @@ TEST(Stream, copyIntMetas)
     STREAM_free(dst);
 }
 
+// Test for size overflow
+TEST(Stream, ReserveStringsOverflow)
+{
+    ZL_Data* const s = STREAM_create(kZeroID);
+    ASSERT_NE(s, nullptr);
+
+    // Test with a value that would cause nbStrings * sizeof(uint32_t) to
+    // overflow SIZE_MAX / 4 + 1 will overflow when multiplied by 4
+    size_t const overflowCount = (SIZE_MAX / sizeof(uint32_t)) + 1;
+    ZL_Report r                = STREAM_reserveStrings(s, overflowCount, 1000);
+
+    // Should return an error, not success
+    ASSERT_TRUE(ZL_isError(r));
+    ASSERT_EQ(ZL_errorCode(r), ZL_ErrorCode_allocation);
+
+    STREAM_free(s);
+}
+
 } // namespace

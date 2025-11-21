@@ -221,8 +221,17 @@ uint32_t* STREAM_reserveStringLens(Stream* stream, size_t nbStrings)
     if (stream->writeCommitted)
         return NULL; // not committed yet
     ZL_ASSERT_NN(stream->alloc);
-    uint32_t* const stringLens = ZL_Refcount_inArena(
-            &stream->stringLens, stream->alloc, nbStrings * sizeof(uint32_t));
+
+    size_t byteCount;
+    if (ZL_overflowMulST(nbStrings, sizeof(uint32_t), &byteCount)) {
+        ZL_DLOG(ERROR,
+                "STREAM_reserveStringLens: Integer overflow (nbStrings=%zu)",
+                nbStrings);
+        return NULL;
+    }
+
+    uint32_t* const stringLens =
+            ZL_Refcount_inArena(&stream->stringLens, stream->alloc, byteCount);
     if (stringLens == NULL) {
         ZL_DLOG(ERROR,
                 "STREAM_reserveStringLens: Failed allocation of array of lengths (for %zu Strings)",
@@ -958,8 +967,14 @@ ZL_Report STREAM_copyStringStream(Stream* dst, const Stream* src)
     uint32_t* const lens = STREAM_reserveStringLens(dst, nbStrings);
     ZL_RET_R_IF_NULL(allocation, lens);
 
+    size_t lensSize;
+    ZL_RET_R_IF(
+            allocation,
+            ZL_overflowMulST(nbStrings, sizeof(uint32_t), &lensSize),
+            "String lengths size overflows size_t");
+
     ZL_memcpy(STREAM_wPtr(dst), STREAM_rPtr(src), stringsTotalSize);
-    ZL_memcpy(lens, STREAM_rStringLens(src), nbStrings * sizeof(uint32_t));
+    ZL_memcpy(lens, STREAM_rStringLens(src), lensSize);
 
     ZL_RET_R_IF_ERR(STREAM_commit(dst, nbStrings));
     return ZL_returnValue(stringsTotalSize);
