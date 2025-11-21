@@ -30,7 +30,9 @@ zs_cxxbinary(
         SRC_FILE_FLAGS.get(src_file, []),
     ) for src_file in glob([
         "**/*.cpp",
-    ])],
+    ])] + [
+        "unitBench/scenarios/sao_graph.c",
+    ],
     headers = glob([
         "**/*.h",
     ]),

@@ -270,7 +270,7 @@ static void test_load_u8_at_last_valid_address(void)
 static void test_load_u8_empty_buffer(void)
 {
     SDDL2_Stack* stack = create_test_stack(100);
-    uint8_t data[]     = {}; // Empty buffer
+    uint8_t* data      = NULL; // Empty buffer
     SDDL2_Input_cursor buffer;
 
     SDDL2_Input_cursor_init(&buffer, data, 0);
