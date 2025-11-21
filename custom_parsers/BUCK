@@ -2,7 +2,7 @@
 
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("../defs.bzl", "zs_library")
+load("../defs.bzl", "relative_headers", "zs_library")
 
 oncall("data_compression")
 
@@ -27,7 +27,8 @@ cpp_library(
     # @autodeps-skip
     name = "zip_lexer",
     srcs = ["zip_lexer.c"],
-    headers = ["zip_lexer.h"],
+    headers = relative_headers(["zip_lexer.h"]),
+    header_namespace = "",
     deps = [
         "..:zstronglib",
     ],
@@ -37,7 +38,8 @@ cpp_library(
     # @autodeps-skip
     name = "pytorch_model_parser",
     srcs = ["pytorch_model_parser.c"],
-    headers = ["pytorch_model_parser.h"],
+    headers = relative_headers(["pytorch_model_parser.h"]),
+    header_namespace = "",
     deps = [
         "..:zstronglib",
         ":zip_lexer",

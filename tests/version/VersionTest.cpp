@@ -12,7 +12,7 @@
 
 #include "tools/cxx/Resources.h"
 
-#include "data_compression/experimental/zstrong/custom_transforms/thrift/kernels/tests/thrift_kernel_test_utils.h"
+#include "custom_transforms/thrift/kernels/tests/thrift_kernel_test_utils.h"
 
 namespace zstrong {
 namespace {

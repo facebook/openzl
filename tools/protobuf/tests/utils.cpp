@@ -8,11 +8,8 @@ namespace protobuf {
 std::filesystem::path getTestDataPath(const std::string& filename)
 {
 #ifdef ZL_IS_FBCODE
-    auto path =
-            ("data_compression/experimental/zstrong/tools/protobuf/tests/resources"
-             / std::filesystem::path(filename))
-                    .string();
-    return build::getResourcePath(path).string();
+    auto path = std::filesystem::path("resources") / filename;
+    return build::getResourcePath(path.string()).string();
 #else
     // Use __FILE__ to derive the test data directory
     std::string this_file = __FILE__;

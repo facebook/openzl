@@ -2,6 +2,7 @@
 
 # @noautodeps
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("../../defs.bzl", "relative_headers")
 
 oncall("data_compression")
 
@@ -10,9 +11,10 @@ cpp_unittest(
     srcs = glob([
         "**/*.cpp",
     ]),
-    headers = glob([
+    headers = relative_headers(glob([
         "**/*.hpp",
-    ]),
+    ])),
+    header_namespace = "",
     deps = [
         "..:openzl_cpp",
     ],

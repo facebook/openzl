@@ -4,15 +4,15 @@
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:thrift_library.bzl", "thrift_library")
-load("../../../defs.bzl", "ZS_HEADER_INCLUDE_PATH", "zs_fuzzers")
+load("../../../defs.bzl", "relative_headers", "zs_fuzzers")
 
 oncall("data_compression")
 
 cpp_unittest(
     name = "thrift_test",
     srcs = glob(["test_*.cpp"]),
-    headers = glob(["test_*.h"]),
-    compiler_flags = [ZS_HEADER_INCLUDE_PATH],
+    headers = relative_headers(glob(["test_*.h"])),
+    header_namespace = "",
     deps = [
         "../../tulip_v2/tests:tulip_v2_data_utils",
         ":thrift_test_utils",
@@ -25,11 +25,11 @@ cpp_library(
         "test_prob_selector_fixture.cpp",
         "util.cpp",
     ],
-    headers = [
+    headers = relative_headers([
         "test_prob_selector_fixture.h",
         "util.h",
-    ],
-    compiler_flags = [ZS_HEADER_INCLUDE_PATH],
+    ]),
+    header_namespace = "",
     exported_deps = [
         "..:thrift_lib",
         "../../..:zstronglib",

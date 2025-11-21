@@ -1,6 +1,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("../../../defs.bzl", "relative_headers")
 
 oncall("data_compression")
 
@@ -16,7 +17,7 @@ cpp_library(
         "automated_compressor_explorer.cpp",
         "crowding_distance_selector.cpp",
     ],
-    headers = [
+    headers = relative_headers([
         "ace.h",
         "ace_combination.h",
         "ace_compressor.h",
@@ -26,7 +27,9 @@ cpp_library(
         "ace_sampling.h",
         "ace_utils.h",
         "automated_compressor_explorer.h",
-    ],
+        "crowding_distance_selector.h",
+    ]),
+    header_namespace = "",
     deps = [
         "../../..:zstronglib",
     ],

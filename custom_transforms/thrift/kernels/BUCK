@@ -3,7 +3,7 @@
 # @noautodeps
 
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("../../../defs.bzl", "zs_library")
+load("../../../defs.bzl", "relative_headers", "zs_library")
 
 oncall("data_compression")
 
@@ -27,7 +27,8 @@ zs_library(
 
 cpp_library(
     name = "thrift_kernel_utils",
-    headers = ["thrift_kernel_utils.h"],
+    headers = relative_headers(["thrift_kernel_utils.h"]),
+    header_namespace = "",
     exported_deps = [
         ":encode_thrift_kernel",
     ],
@@ -36,7 +37,8 @@ cpp_library(
 cpp_library(
     name = "encode_thrift_binding",
     srcs = ["encode_thrift_binding.cpp"],
-    headers = ["encode_thrift_binding.h"],
+    headers = relative_headers(["encode_thrift_binding.h"]),
+    header_namespace = "",
     exported_deps = [
         "../../..:compress",
         ":encode_thrift_kernel",
@@ -48,7 +50,8 @@ cpp_library(
 cpp_library(
     name = "decode_thrift_binding",
     srcs = ["decode_thrift_binding.cpp"],
-    headers = ["decode_thrift_binding.h"],
+    headers = relative_headers(["decode_thrift_binding.h"]),
+    header_namespace = "",
     exported_deps = [
         "../../..:decompress",
         ":decode_thrift_kernel",

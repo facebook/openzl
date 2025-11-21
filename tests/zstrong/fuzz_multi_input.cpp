@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
-#include "include/openzl/codecs/zl_field_lz.h"
 #include "openzl/codecs/zl_concat.h"
+#include "openzl/codecs/zl_field_lz.h"
 #include "openzl/compress/graphs/generic_clustering_graph.h"
 #include "openzl/compress/selectors/ml/gbt.h"
 #include "tests/fuzz_utils.h"
