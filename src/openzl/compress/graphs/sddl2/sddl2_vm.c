@@ -47,6 +47,43 @@ int SDDL2_Stack_is_empty(const SDDL2_Stack* stack)
 }
 
 /* ============================================================================
+ * Memory Allocation Fallback Implementations
+ * ========================================================================= */
+
+#ifdef SDDL2_ENABLE_TEST_ALLOCATOR
+
+/* Test mode: Real stdlib allocator fallbacks for when alloc_fn is NULL */
+#    include <stdlib.h>
+
+void* sddl2_fallback_realloc(void* ptr, size_t size)
+{
+    return realloc(ptr, size);
+}
+
+void sddl2_fallback_free(void* ptr)
+{
+    free(ptr);
+}
+
+#else
+
+/* Production mode: No-op/failing stubs (no stdlib dependency) */
+void* sddl2_fallback_realloc(void* ptr, size_t size)
+{
+    (void)ptr;
+    (void)size;
+    return NULL; // Always fail - production must provide allocator
+}
+
+void sddl2_fallback_free(void* ptr)
+{
+    (void)ptr;
+    // No-op - production never uses heap allocation
+}
+
+#endif // SDDL2_ENABLE_TEST_ALLOCATOR
+
+/* ============================================================================
  * Type Utilities
  *
  * Helper functions for calculating sizes of SDDL2 types.
@@ -127,6 +164,37 @@ static void* sddl2_realloc(
         void* alloc_ctx);
 
 static void sddl2_free(void* ptr, SDDL2_allocator_fn alloc_fn);
+
+/* ============================================================================
+ * Value Construction Helpers
+ *
+ * Simple constructors for SDDL2_Value types.
+ * Used by Generic Stack Helpers (push_i64) and throughout VM operations.
+ * ========================================================================= */
+
+SDDL2_Value SDDL2_Value_i64(int64_t val)
+{
+    SDDL2_Value v;
+    v.kind         = SDDL2_VALUE_I64;
+    v.value.as_i64 = val;
+    return v;
+}
+
+SDDL2_Value SDDL2_Value_tag(uint32_t tag_id)
+{
+    SDDL2_Value v;
+    v.kind         = SDDL2_VALUE_TAG;
+    v.value.as_tag = tag_id;
+    return v;
+}
+
+SDDL2_Value SDDL2_Value_type(SDDL2_Type type)
+{
+    SDDL2_Value v;
+    v.kind          = SDDL2_VALUE_TYPE;
+    v.value.as_type = type;
+    return v;
+}
 
 /* ============================================================================
  * Generic Stack Operation Helpers

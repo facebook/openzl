@@ -277,6 +277,7 @@ def generate_c_disasm_header(families: Dict[str, tuple], opcodes: List[tuple]) -
     lines.append('#include "openzl/compress/graphs/sddl2/sddl2_opcodes.h"')
     lines.append("")
     lines.append("// This function implementation is generated from sddl2_opcodes.def")
+    lines.append("// NOLINTNEXTLINE(facebook-hte-StaticInHeader)")
     lines.append(
         "static inline const char* SDDL2_instruction_name_impl(uint16_t family, uint16_t opcode)"
     )

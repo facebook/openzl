@@ -177,43 +177,12 @@ typedef struct {
  * @return Allocated memory or NULL on failure
  */
 typedef void* (*SDDL2_allocator_fn)(void* allocator_ctx, size_t size);
-
 /* ============================================================================
- * Memory Allocation Fallback Implementations
+ * Memory Allocation Fallback Functions (implemented in sddl2_vm.c)
  * ========================================================================= */
 
-#ifdef SDDL2_ENABLE_TEST_ALLOCATOR
-
-/* Test mode: Real stdlib allocator fallbacks for when alloc_fn is NULL */
-#    include <stdlib.h>
-
-static inline void* sddl2_fallback_realloc(void* ptr, size_t size)
-{
-    return realloc(ptr, size);
-}
-
-static inline void sddl2_fallback_free(void* ptr)
-{
-    free(ptr);
-}
-
-#else
-
-/* Production mode: No-op/failing stubs (no stdlib dependency) */
-static inline void* sddl2_fallback_realloc(void* ptr, size_t size)
-{
-    (void)ptr;
-    (void)size;
-    return NULL; // Always fail - production must provide allocator
-}
-
-static inline void sddl2_fallback_free(void* ptr)
-{
-    (void)ptr;
-    // No-op - production never uses heap allocation
-}
-
-#endif // SDDL2_ENABLE_TEST_ALLOCATOR
+void* sddl2_fallback_realloc(void* ptr, size_t size);
+void sddl2_fallback_free(void* ptr);
 
 /**
  * Dynamic Array Capacity Configuration
@@ -426,29 +395,9 @@ int SDDL2_Stack_is_empty(const SDDL2_Stack* stack);
  * Value Construction Helpers - create typed stack values
  * ========================================================================= */
 
-static inline SDDL2_Value SDDL2_Value_i64(int64_t val)
-{
-    SDDL2_Value v;
-    v.kind         = SDDL2_VALUE_I64;
-    v.value.as_i64 = val;
-    return v;
-}
-
-static inline SDDL2_Value SDDL2_Value_tag(uint32_t tag_id)
-{
-    SDDL2_Value v;
-    v.kind         = SDDL2_VALUE_TAG;
-    v.value.as_tag = tag_id;
-    return v;
-}
-
-static inline SDDL2_Value SDDL2_Value_type(SDDL2_Type type)
-{
-    SDDL2_Value v;
-    v.kind          = SDDL2_VALUE_TYPE;
-    v.value.as_type = type;
-    return v;
-}
+SDDL2_Value SDDL2_Value_i64(int64_t val);
+SDDL2_Value SDDL2_Value_tag(uint32_t tag_id);
+SDDL2_Value SDDL2_Value_type(SDDL2_Type type);
 
 /* ============================================================================
  * Type Utilities

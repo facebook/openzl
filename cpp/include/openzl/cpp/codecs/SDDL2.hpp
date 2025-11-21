@@ -28,10 +28,10 @@ class SDDL2 : public Graph {
 
     ~SDDL2() override = default;
 
-    SDDL2(const SDDL2&) = default;
+    SDDL2(const SDDL2&)            = default;
     SDDL2& operator=(const SDDL2&) = default;
-    SDDL2(SDDL2&&) = default;
-    SDDL2& operator=(SDDL2&&) = default;
+    SDDL2(SDDL2&&)                 = default;
+    SDDL2& operator=(SDDL2&&)      = default;
 
     GraphID baseGraph() const override
     {
