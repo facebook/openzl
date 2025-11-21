@@ -3,7 +3,10 @@
 #pragma once
 
 #include <filesystem>
-#ifdef OPENZL_BUCK_BUILD
+
+#include "openzl/zl_version.h"
+
+#ifdef ZL_IS_FBCODE
 #    include "tools/cxx/Resources.h"
 #endif
 
