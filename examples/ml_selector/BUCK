@@ -37,6 +37,7 @@ zs_cxxbinary(
 )
 
 python_binary(
+    # @autodeps-skip
     name = "train_model",
     main_function = ".train_model.main",
     main_src = "train_model.py",

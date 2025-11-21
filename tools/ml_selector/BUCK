@@ -15,6 +15,7 @@ zs_library(
 )
 
 cpp_unittest(
+    # @autodeps-skip
     name = "test_ml_selector_graph",
     srcs = ["test_mlSelectorGraph.cpp"],
     deps = [
