@@ -1,6 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("../../defs.bzl", "zs_binary", "zs_library", "zs_release_binary")
+load("../../defs.bzl", "zs_binary", "zs_release_binary")
 
 oncall("data_compression")
 
