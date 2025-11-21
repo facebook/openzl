@@ -141,6 +141,14 @@ const void* ZL_Segmenter_getOpaquePtr(const ZL_Segmenter* segCtx);
 int ZL_Segmenter_getCParam(const ZL_Segmenter* segCtx, ZL_CParam gparam);
 
 /**
+ * @brief Retrieves all local params for the segmenter.
+ *
+ * A convenience function equivalent to calling ZL_Segmenter_getLocalIntParam()
+ * and ZL_Segmenter_getLocalRefParam() on each int and ref param.
+ */
+const ZL_LocalParams* ZL_Segmenter_getLocalParams(const ZL_Segmenter* segCtx);
+
+/**
  * @brief Retrieve a local integer parameter value.
  *
  * Accesses local integer parameters that were provided during segmenter
