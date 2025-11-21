@@ -75,12 +75,6 @@ zs_cxxbinary(
 )
 
 python_library(
-    name = "parsing_data_generator",
-    srcs = ["parsing_data_generator.py"],
-    labels = ["autodeps2_generated"],
-)
-
-python_library(
     name = "parsing_data_generator_correlated",
     srcs = ["parsing_data_generator_correlated.py"],
     labels = ["autodeps2_generated"],

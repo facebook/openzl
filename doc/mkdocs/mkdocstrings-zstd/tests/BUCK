@@ -13,6 +13,7 @@ buck_filegroup(
 )
 
 python_library(
+    # @autodeps-skip
     name = "helpers",
     srcs = ["helpers.py"],
     resources = {
@@ -29,6 +30,7 @@ python_library(
 )
 
 python_pytest(
+    # @autodeps-skip
     name = "test_mkdocstrings_zstd",
     srcs = [
         "conftest.py",

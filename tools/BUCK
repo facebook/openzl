@@ -77,10 +77,10 @@ zs_cxxlibrary(
 )
 
 cpp_library(
+    # @autodeps-skip
     name = "json",
     headers = relative_headers(["json.hpp"]),
     header_namespace = "",
-    exported_deps = [],
 )
 
 zs_cxxbinary(

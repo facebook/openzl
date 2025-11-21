@@ -5,6 +5,7 @@ load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 oncall("data_compression")
 
 python_library(
+    # @autodeps-skip
     name = "openzl",
     srcs = glob(["src/**/*.py"]),
     base_module = "",
