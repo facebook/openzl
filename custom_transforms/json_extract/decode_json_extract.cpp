@@ -57,7 +57,7 @@ ZL_FORCE_NOINLINE std::string_view buildBitmask(
 {
     std::fill(bitmask, bitmask + kBitmaskSize, 0);
     size_t blockSize = 0;
-#if __AVX2__
+#if defined(__AVX2__)
     blockSize = alignDown(std::min(src.size(), kBlockSize), 32);
 
     uint32_t* bitmask32 = (uint32_t*)bitmask;
