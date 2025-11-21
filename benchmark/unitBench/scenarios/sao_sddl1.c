@@ -5,8 +5,8 @@
 #include <stdlib.h> // abort
 
 #include "openzl/codecs/zl_sddl.h" // ZL_Compressor_buildSDDLGraph
+#include "openzl/codecs/zl_store.h" // ZL_GRAPH_STORE
 #include "openzl/zl_compressor.h"  // ZL_Compressor_setParameter
-#include "openzl/zl_graphs.h"      // ZL_GRAPH_STORE
 
 /* ==================================================
  * SDDL1 Bytecode for SAO
@@ -20,9 +20,6 @@
  *   2. Consume 28-byte header
  *   3. Calculate number of stars using _rem / sizeof StarEntry
  *   4. Consume array of StarEntry records
- *
- * Note: SDDL1 bytecode is much larger than SDDL2 (1348 bytes vs 96 bytes)
- * because it uses a different intermediate representation (CBOR-based AST).
  */
 
 static const unsigned char sao_sddl1_bytecode[] = {

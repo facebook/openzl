@@ -8,7 +8,6 @@
  */
 
 #include "sddl2_disasm.h"
-#include "openzl/compress/graphs/sddl2/sddl2_opcodes.h"
 
 // Include the auto-generated implementation
 #include "openzl/compress/graphs/sddl2/sddl2_disasm_generated.h"

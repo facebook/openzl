@@ -14,7 +14,6 @@
 #define SDDL2_DISASM_H
 
 #include <stdint.h>
-#include "openzl/compress/graphs/sddl2/sddl2_vm.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -29,7 +28,7 @@ extern "C" {
  * @param family Family ID (bits 31-16 of instruction word)
  * @param opcode Opcode within family (bits 15-0 of instruction word)
  * @return Instruction name (e.g., "math.add", "push.zero", "halt")
- *         or "unknown.family" / "family.unknown" if not recognized
+ *         or "?.?" / "family.?" if not recognized
  *
  * Examples:
  *   SDDL2_instruction_name(0x0002, 0x0001) → "math.add"
