@@ -591,7 +591,7 @@ static ZL_ALIGNED(32) uint32_t permute[256][8] = { // reverse binary bit order
 // clang-format on
 
 // Simulated gather.  This is sometimes faster as it can run on other ports.
-static inline __m256i
+static ZL_MAYBE_UNUSED_FUNCTION inline __m256i
 _mm256_i32gather_epi32x(void const* bv, __m256i idx, int size)
 {
     ZL_ALIGNED(32) int c[8];
@@ -648,7 +648,7 @@ _mm256_i32gather_epi32x(void const* bv, __m256i idx, int size)
 #        define LZ44_mm256_i32gather_epi32 _mm256_i32gather_epi32x
 #    endif
 
-static void dpr(char const* name, __m256i const vec32)
+static ZL_MAYBE_UNUSED_FUNCTION void dpr(char const* name, __m256i const vec32)
 {
     size_t n = 8;
     uint32_t data[8];

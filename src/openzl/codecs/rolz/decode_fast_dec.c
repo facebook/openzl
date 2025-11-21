@@ -101,7 +101,7 @@ static ZL_Report decodeCodes16(uint16_t* codes, size_t numSequences, ZL_RC* src)
 
 #if ZL_HAS_AVX2
 
-static void dpr(char const* name, __m128i const vec32)
+static ZL_MAYBE_UNUSED_FUNCTION void dpr(char const* name, __m128i const vec32)
 {
     size_t n = 4;
     uint32_t data[4];
@@ -115,7 +115,9 @@ static void dpr(char const* name, __m128i const vec32)
     fprintf(stderr, "]\n");
 }
 
-static void dpr16(char const* name, __m128i const vec32)
+static ZL_MAYBE_UNUSED_FUNCTION void dpr16(
+        char const* name,
+        __m128i const vec32)
 {
     size_t n = 8;
     uint16_t data[8];
@@ -1066,7 +1068,7 @@ static ZL_UNUSED_ATTR ZL_Report decodeOffbits(
         size_t numOffsets,
         ZL_RC* in)
 {
-    if (0) {
+    if ((0)) {
         ZS_BitDStreamFF offbits;
         ZL_RET_R_IF_ERR(getBitstream(&offbits, in));
         uint32_t* const offsets1 = offsets;

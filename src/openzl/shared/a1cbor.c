@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "./utils.h"
+
 ////////////////////////////////////////
 // Constants
 ////////////////////////////////////////
@@ -154,7 +156,7 @@ const char A1C_kBase64Map[] = {
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'
 };
 
-static size_t A1C_base64EncodedSize(size_t srcSize)
+static ZL_MAYBE_UNUSED_FUNCTION size_t A1C_base64EncodedSize(size_t srcSize)
 {
     size_t encodedSize = (srcSize / 3) * 4;
     if (srcSize % 3 != 0) {

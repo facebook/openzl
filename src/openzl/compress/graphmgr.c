@@ -849,7 +849,7 @@ GM_GraphMetadata GM_getGraphMetadata(const GraphsMgr* gm, ZL_GraphID gid)
     if (meta.graphType == ZL_GraphType_standard) {
         ZL_ASSERT(
                 !memcmp(&meta.localParams,
-                        &(ZL_LocalParams){},
+                        &(ZL_LocalParams){ 0 },
                         sizeof(ZL_LocalParams)));
     }
     if (meta.graphType == ZL_GraphType_selector) {

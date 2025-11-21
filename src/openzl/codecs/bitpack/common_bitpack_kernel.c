@@ -951,7 +951,7 @@ static size_t ZS_bitpackDecode8_generic(
 
 #if ZS_HAS_FAST_BITPACK
 
-static size_t ZS_bitpackDecode16_bmi2(
+static ZL_MAYBE_UNUSED_FUNCTION size_t ZS_bitpackDecode16_bmi2(
         uint16_t* op,
         size_t nbElts,
         uint8_t const* ip,

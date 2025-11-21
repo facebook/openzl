@@ -499,7 +499,7 @@ ZL_ErrorFrame ZL_EE_stackFrame(ZL_ErrorInfo ei, size_t idx)
     if (dy != NULL) {
         return ZL_DEE_stackFrame(dy, idx);
     }
-    return (ZL_ErrorFrame){};
+    return (ZL_ErrorFrame){ 0 };
 }
 
 static ZL_GraphContext ZL_DEE_graphContext(ZL_DynamicErrorInfo const* info)

@@ -353,7 +353,7 @@ bool findMatchDFast(
     // search the next position. If it is enabled, it may insert
     // into the hash table at the end of the match, which causes
     // offset=0 matches.
-    if (0) {
+    if ((0)) {
         uint8_t const* const ip1     = ip + kFieldSize;
         uint32_t const largeMatchPos = ZS_FastTable_getAndUpdateT(
                 largeTable, ip1, (uint32_t)(ip1 - base), kLargeMatch);
@@ -433,7 +433,7 @@ ZL_FORCE_INLINE void ZS_tokenLzMatchFinder_parseT(
         uint8_t const* match = NULL;
 
         if (1) {
-            if (0) {
+            if ((0)) {
                 for (int r = 0; r < kNumRep; ++r) {
                     bool isRepMatch =
                             ZS_checkMatch(ip, ip - rep[r], kSmallMatch);
