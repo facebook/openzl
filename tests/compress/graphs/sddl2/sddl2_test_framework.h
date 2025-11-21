@@ -65,9 +65,9 @@ static int g_sddl2_test_count = 0;
  *       // test code
  *   }
  */
-#define TEST(name)             \
-    static void name(void);    \
-    SDDL2_REGISTER_TEST(name); \
+#define TEST(name)            \
+    static void name(void);   \
+    SDDL2_REGISTER_TEST(name) \
     static void name(void)
 
 /**

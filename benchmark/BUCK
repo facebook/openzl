@@ -50,7 +50,6 @@ zs_cxxbinary(
         "fbsource//third-party/benchmark:benchmark",
         "fbsource//third-party/fmt:fmt",
         "fbsource//xplat/tools/cxx:resources",
-        "unitBench:sao_graph",
         "//folly:demangle",
         "//folly:dynamic",
         "//folly:json",
