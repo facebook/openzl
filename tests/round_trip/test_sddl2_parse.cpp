@@ -45,39 +45,9 @@ extern "C" {
 #include "openzl/compress/graphs/sddl2/sddl2.h"
 }
 
+#include "sddl2_parse_test_data.h"
+
 namespace {
-
-/**
- * Load bytecode from file
- */
-static std::vector<uint8_t> load_bytecode(const char* filename)
-{
-    FILE* f = fopen(filename, "rb");
-    if (!f) {
-        throw std::runtime_error(std::string("Failed to open ") + filename);
-    }
-
-    // Get file size
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    if (size < 0) {
-        fclose(f);
-        throw std::runtime_error("Failed to get file size");
-    }
-
-    // Read bytecode
-    std::vector<uint8_t> bytecode(static_cast<size_t>(size));
-    size_t bytes_read = fread(bytecode.data(), 1, static_cast<size_t>(size), f);
-    fclose(f);
-
-    if (bytes_read != static_cast<size_t>(size)) {
-        throw std::runtime_error("Failed to read complete file");
-    }
-
-    return bytecode;
-}
 
 /**
  * Compress using SDDL2_parse with bytecode parameter
@@ -217,23 +187,16 @@ static void roundtrip_test(
  *   push.i32 4
  *   segment.create_tagged
  *   halt
- *
- * Bytecode must be assembled before running this test:
- *   python3 tools/sddl/assembler/sddl2_assembler.py \
- *     tests/round_trip/test_data/single_u8_segment.asm \
- *     tests/round_trip/test_data/single_u8_segment.bin
  */
 TEST(SDDL2ParseTest, SingleU8Segment)
 {
-    auto bytecode =
-            load_bytecode("tests/round_trip/test_data/single_u8_segment.bin");
     std::array<uint8_t, 4> input = { 0xAA, 0xBB, 0xCC, 0xDD };
 
     roundtrip_test(
             input.data(),
             input.size(),
-            bytecode.data(),
-            bytecode.size(),
+            sddl2_parse_test_data::SINGLE_U8_SEGMENT.data(),
+            sddl2_parse_test_data::SINGLE_U8_SEGMENT.size(),
             "SingleU8Segment");
 }
 
@@ -249,15 +212,13 @@ TEST(SDDL2ParseTest, SingleU8Segment)
  */
 TEST(SDDL2ParseTest, SingleI32LESegment)
 {
-    auto bytecode = load_bytecode(
-            "tests/round_trip/test_data/single_i32le_segment.bin");
     std::array<uint8_t, 4> input = { 0x2A, 0x00, 0x00, 0x00 }; // 42 in LE
 
     roundtrip_test(
             input.data(),
             input.size(),
-            bytecode.data(),
-            bytecode.size(),
+            sddl2_parse_test_data::SINGLE_I32LE_SEGMENT.data(),
+            sddl2_parse_test_data::SINGLE_I32LE_SEGMENT.size(),
             "SingleI32LESegment");
 }
 
@@ -271,15 +232,13 @@ TEST(SDDL2ParseTest, SingleI32LESegment)
  */
 TEST(SDDL2ParseTest, BytesSegmentNoConversion)
 {
-    auto bytecode =
-            load_bytecode("tests/round_trip/test_data/bytes_segment.bin");
     std::array<uint8_t, 5> input = { 'H', 'e', 'l', 'l', 'o' };
 
     roundtrip_test(
             input.data(),
             input.size(),
-            bytecode.data(),
-            bytecode.size(),
+            sddl2_parse_test_data::BYTES_SEGMENT.data(),
+            sddl2_parse_test_data::BYTES_SEGMENT.size(),
             "BytesSegmentNoConversion");
 }
 
@@ -306,8 +265,6 @@ TEST(SDDL2ParseTest, BytesSegmentNoConversion)
  */
 TEST(SDDL2ParseTest, MixedTypeSegments)
 {
-    auto bytecode =
-            load_bytecode("tests/round_trip/test_data/mixed_segments.bin");
     std::array<uint8_t, 12> input = {
         0xAA, 0xBB, 0xCC, 0xDD, // Segment 1
         0x2A, 0x00, 0x00, 0x00, // Segment 2
@@ -317,8 +274,8 @@ TEST(SDDL2ParseTest, MixedTypeSegments)
     roundtrip_test(
             input.data(),
             input.size(),
-            bytecode.data(),
-            bytecode.size(),
+            sddl2_parse_test_data::MIXED_SEGMENTS.data(),
+            sddl2_parse_test_data::MIXED_SEGMENTS.size(),
             "MixedTypeSegments");
 }
 
@@ -334,16 +291,14 @@ TEST(SDDL2ParseTest, MixedTypeSegments)
  */
 TEST(SDDL2ParseTest, U16BESegmentBigEndian)
 {
-    auto bytecode =
-            load_bytecode("tests/round_trip/test_data/u16be_segment.bin");
     std::array<uint8_t, 8> input = { 0x12, 0x34, 0x56, 0x78,
                                      0xAB, 0xCD, 0xEF, 0x01 };
 
     roundtrip_test(
             input.data(),
             input.size(),
-            bytecode.data(),
-            bytecode.size(),
+            sddl2_parse_test_data::U16BE_SEGMENT.data(),
+            sddl2_parse_test_data::U16BE_SEGMENT.size(),
             "U16BESegmentBigEndian");
 }
 
@@ -373,9 +328,6 @@ TEST(SDDL2ParseTest, U16BESegmentBigEndian)
  */
 TEST(SDDL2ParseTest, ArrayTypeU32LE10)
 {
-    auto bytecode =
-            load_bytecode("tests/round_trip/test_data/array_type_u32le_10.bin");
-
     // Generate 25 arrays of 10 U32LE values each
     // Each array contains values [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] in
     // little-endian
@@ -395,8 +347,8 @@ TEST(SDDL2ParseTest, ArrayTypeU32LE10)
     roundtrip_test(
             input,
             sizeof(input),
-            bytecode.data(),
-            bytecode.size(),
+            sddl2_parse_test_data::ARRAY_TYPE_U32LE_10.data(),
+            sddl2_parse_test_data::ARRAY_TYPE_U32LE_10.size(),
             "ArrayTypeU32LE10");
 }
 
@@ -434,9 +386,6 @@ TEST(SDDL2ParseTest, ArrayTypeU32LE10)
  */
 TEST(SDDL2ParseTest, StructureArraySegment)
 {
-    auto bytecode = load_bytecode(
-            "tests/round_trip/test_data/struct_array_segment.bin");
-
     // Generate 10 structures of {U8, I16LE, I32LE}
     const size_t NUM_STRUCTS = 10;
 
@@ -467,8 +416,8 @@ TEST(SDDL2ParseTest, StructureArraySegment)
     roundtrip_test(
             input.data(),
             input.size(),
-            bytecode.data(),
-            bytecode.size(),
+            sddl2_parse_test_data::STRUCT_ARRAY_SEGMENT.data(),
+            sddl2_parse_test_data::STRUCT_ARRAY_SEGMENT.size(),
             "StructureArraySegment");
 }
 
