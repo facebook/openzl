@@ -25,9 +25,6 @@ static PytorchModelSuccessor selectSuccessor(const char* ptr, size_t size)
 {
     const size_t width = ZL_guessFloatWidth(ptr, size);
     switch (width) {
-        default:
-            ZL_ASSERT_FAIL("unreachable");
-            ZL_FALLTHROUGH;
         case 1:
             return PytorchModelSuccessor_U8;
         case 2:
@@ -36,6 +33,9 @@ static PytorchModelSuccessor selectSuccessor(const char* ptr, size_t size)
             return PytorchModelSuccessor_F32;
         case 8:
             return PytorchModelSuccessor_F64;
+        default:
+            ZL_ASSERT_FAIL("unreachable");
+            return PytorchModelSuccessor_U8;
     }
 }
 
