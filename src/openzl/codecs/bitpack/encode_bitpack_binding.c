@@ -55,9 +55,6 @@ static int computeNbBits(ZL_Input const* in)
     size_t const eltWidth = ZL_Input_eltWidth(in);
     uint64_t maxValue;
     switch (eltWidth) {
-        default:
-            ZL_ASSERT_FAIL("Impossible");
-            ZL_FALLTHROUGH;
         case 1:
             maxValue = computeMaxValue8((uint8_t const*)src, nbElts);
             break;
@@ -70,6 +67,9 @@ static int computeNbBits(ZL_Input const* in)
         case 8:
             maxValue = computeMaxValue64((uint64_t const*)src, nbElts);
             break;
+        default:
+            ZL_ASSERT_FAIL("Impossible");
+            return 0;
     }
     // Wastes bits when maxValue == 0...
     return 1 + (maxValue == 0 ? 0 : (int)ZL_highbit64(maxValue));

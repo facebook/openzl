@@ -251,7 +251,7 @@ static void float16_deconstruct_encode_AVX2(
         size_t const nbElts)
 {
 // TODO(embg): support recent GCC
-#    ifdef __clang__
+#    if defined(__clang__) && defined(NDEBUG)
 // Adding this pragma helps clang generate optimal code when AVX2
 // instructions are available. The generated code is 20% faster, thanks to
 // better instructions for byte-packing.
