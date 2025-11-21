@@ -390,9 +390,6 @@ SDDL2_Error SDDL2_execute_bytecode(
             case SDDL2_FAMILY_PUSH:
                 err = handle_push_family(
                         opcode, bytecode, bytecode_size, &pc, &stack, &buffer);
-                if (err != SDDL2_OK) {
-                    CLEANUP_AND_RETURN(err);
-                }
                 break;
 
             case SDDL2_FAMILY_SEGMENT:
