@@ -19,7 +19,7 @@ from typing import Dict, List, Tuple
 def parse_def_file(def_file_path: Path) -> Tuple[Dict[str, tuple], List[tuple]]:
     """
     Parse the .def file and extract family and opcode definitions.
-    
+
     Format:
         @family NAME ID "Description"
           mnemonic  opcode  [params]  "Description"
@@ -33,21 +33,23 @@ def parse_def_file(def_file_path: Path) -> Tuple[Dict[str, tuple], List[tuple]]:
     opcodes = []
 
     content = def_file_path.read_text()
-    lines = content.split('\n')
-    
+    lines = content.split("\n")
+
     current_family = None
-    
+
     for line in lines:
         stripped = line.strip()
-        
+
         # Skip comments and empty lines
-        if not stripped or stripped.startswith('#'):
+        if not stripped or stripped.startswith("#"):
             continue
-        
+
         # Parse @family directive: @family NAME ID "Description"
-        if stripped.startswith('@family'):
+        if stripped.startswith("@family"):
             # Extract family name, ID, and description (in quotes)
-            match = re.match(r'@family\s+(\w+)\s+(0x[0-9A-Fa-f]+)\s+"([^"]*)"', stripped)
+            match = re.match(
+                r'@family\s+(\w+)\s+(0x[0-9A-Fa-f]+)\s+"([^"]*)"', stripped
+            )
             if match:
                 family_name = match.group(1)
                 family_id = match.group(2)
@@ -56,39 +58,34 @@ def parse_def_file(def_file_path: Path) -> Tuple[Dict[str, tuple], List[tuple]]:
                 current_family = family_name
             else:
                 # Family without description
-                match = re.match(r'@family\s+(\w+)\s+(0x[0-9A-Fa-f]+)', stripped)
+                match = re.match(r"@family\s+(\w+)\s+(0x[0-9A-Fa-f]+)", stripped)
                 if match:
                     family_name = match.group(1)
                     family_id = match.group(2)
                     families[family_name] = (int(family_id, 16), "")
                     current_family = family_name
-        
+
         # Parse indented opcode lines
-        elif line.startswith('  ') and current_family:
+        elif line.startswith("  ") and current_family:
             # Format: mnemonic  opcode  [params]  "Description"
             match = re.match(
-                r'\s+([\w.]+)\s+(0x[0-9A-Fa-f]+)(?:\s+([^"]+))?\s+"([^"]*)"',
-                line
+                r'\s+([\w.]+)\s+(0x[0-9A-Fa-f]+)(?:\s+([^"]+))?\s+"([^"]*)"', line
             )
-            
+
             if match:
                 mnemonic = match.group(1)
                 opcode = match.group(2)
                 params_str = match.group(3)
                 description = match.group(4)
-                
+
                 # Parse parameters if present
                 params = []
                 if params_str:
                     params = [p.strip() for p in params_str.split() if p.strip()]
-                
-                opcodes.append((
-                    mnemonic,
-                    current_family,
-                    int(opcode, 16),
-                    params,
-                    description
-                ))
+
+                opcodes.append(
+                    (mnemonic, current_family, int(opcode, 16), params, description)
+                )
 
     return families, opcodes
 
@@ -96,7 +93,7 @@ def parse_def_file(def_file_path: Path) -> Tuple[Dict[str, tuple], List[tuple]]:
 def generate_c_header(families: Dict[str, tuple], opcodes: List[tuple]) -> str:
     """
     Generate C11 header code for sddl2_opcodes.h
-    
+
     Args:
         families: {name: (id, description)}
         opcodes: [(mnemonic, family, opcode, [param_types], description)]
@@ -108,11 +105,17 @@ def generate_c_header(families: Dict[str, tuple], opcodes: List[tuple]) -> str:
     lines.append("")
     lines.append("// AUTO-GENERATED FILE - DO NOT EDIT MANUALLY")
     lines.append("//")
-    lines.append("// Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def")
-    lines.append(f'// Generated at: {datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")}')
+    lines.append(
+        "// Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def"
+    )
+    lines.append(
+        f'// Generated at: {datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")}'
+    )
     lines.append("// Generator: generate_c_headers.py")
     lines.append("//")
-    lines.append("// To regenerate: python3 src/openzl/compress/graphs/sddl2/generate_c_headers.py")
+    lines.append(
+        "// To regenerate: python3 src/openzl/compress/graphs/sddl2/generate_c_headers.py"
+    )
     lines.append("")
     lines.append("#ifndef OPENZL_SDDL2_OPCODES_H")
     lines.append("#define OPENZL_SDDL2_OPCODES_H")
@@ -120,7 +123,9 @@ def generate_c_header(families: Dict[str, tuple], opcodes: List[tuple]) -> str:
     lines.append("/**")
     lines.append(" * SDDL2 VM Opcode Definitions")
     lines.append(" *")
-    lines.append(" * This file defines the opcode families and instruction opcodes for the SDDL2 VM.")
+    lines.append(
+        " * This file defines the opcode families and instruction opcodes for the SDDL2 VM."
+    )
     lines.append(" * ")
     lines.append(" * Instruction Format:")
     lines.append(" * - 32-bit instruction word (little-endian)")
@@ -130,27 +135,49 @@ def generate_c_header(families: Dict[str, tuple], opcodes: List[tuple]) -> str:
     lines.append("")
 
     # Family enum
-    lines.append("/* ============================================================================")
+    lines.append(
+        "/* ============================================================================"
+    )
     lines.append(" * OPCODE FAMILIES")
-    lines.append(" * ========================================================================= */")
+    lines.append(
+        " * ========================================================================= */"
+    )
     lines.append("")
     lines.append("enum sddl2_family {")
-    
-    family_order = ["PUSH", "MATH", "CMP", "LOGIC", "CONTROL", "LOAD", 
-                    "STACK", "TYPE", "VAR", "EXPECT", "CALL", "SEGMENT"]
-    
+
+    family_order = [
+        "PUSH",
+        "MATH",
+        "CMP",
+        "LOGIC",
+        "CONTROL",
+        "LOAD",
+        "STACK",
+        "TYPE",
+        "VAR",
+        "EXPECT",
+        "CALL",
+        "SEGMENT",
+    ]
+
     for family_name in family_order:
         if family_name in families:
             id_val, description = families[family_name]
-            lines.append(f"    SDDL2_FAMILY_{family_name:8s} = 0x{id_val:04X},  /* {description} */")
-    
+            lines.append(
+                f"    SDDL2_FAMILY_{family_name:8s} = 0x{id_val:04X},  /* {description} */"
+            )
+
     lines.append("};")
     lines.append("")
 
     # Opcode enums per family
-    lines.append("/* ============================================================================")
+    lines.append(
+        "/* ============================================================================"
+    )
     lines.append(" * OPCODES")
-    lines.append(" * ========================================================================= */")
+    lines.append(
+        " * ========================================================================= */"
+    )
     lines.append("")
 
     # Group by family
@@ -163,45 +190,49 @@ def generate_c_header(families: Dict[str, tuple], opcodes: List[tuple]) -> str:
     for family_name in family_order:
         if family_name not in by_family:
             continue
-        
+
         id_val, description = families[family_name]
         lines.append(f"/* {family_name} family (0x{id_val:04X}) - {description} */")
         lines.append(f"enum sddl2_opcode_{family_name.lower()} {{")
-        
-        for mnemonic, opcode, params, desc in sorted(by_family[family_name], key=lambda x: x[1]):
+
+        for mnemonic, opcode, params, desc in sorted(
+            by_family[family_name], key=lambda x: x[1]
+        ):
             # Convert mnemonic to C identifier (replace dots with underscores)
             # Strip family prefix if present (e.g., "push.zero" -> "zero")
             mnemonic_lower = mnemonic.lower()
             family_prefix = family_name.lower() + "."
             if mnemonic_lower.startswith(family_prefix):
-                c_name = mnemonic[len(family_prefix):].replace(".", "_").upper()
+                c_name = mnemonic[len(family_prefix) :].replace(".", "_").upper()
             else:
                 c_name = mnemonic.replace(".", "_").upper()
-            
+
             # Add parameter comment if present
             param_comment = ""
             if params:
                 param_str = ", ".join(params)
                 param_comment = f"  /* param: {param_str} */"
-            
-            lines.append(f"    SDDL2_OP_{family_name}_{c_name} = 0x{opcode:04X},{param_comment}")
-        
+
+            lines.append(
+                f"    SDDL2_OP_{family_name}_{c_name} = 0x{opcode:04X},{param_comment}"
+            )
+
         lines.append("};")
         lines.append("")
 
     lines.append("#endif // OPENZL_SDDL2_OPCODES_H")
     lines.append("")
-    
+
     return "\n".join(lines)
 
 
 def generate_c_disasm_header(families: Dict[str, tuple], opcodes: List[tuple]) -> str:
     """
     Generate C disassembler implementation header for sddl2_disasm_generated.h
-    
+
     This header is meant to be included by sddl2_disasm.c to provide the
     auto-generated instruction name lookup implementation.
-    
+
     Args:
         families: {name: (id, description)}
         opcodes: [(mnemonic, family, opcode, [param_types], description)]
@@ -213,30 +244,42 @@ def generate_c_disasm_header(families: Dict[str, tuple], opcodes: List[tuple]) -
     lines.append("")
     lines.append("// AUTO-GENERATED FILE - DO NOT EDIT MANUALLY")
     lines.append("//")
-    lines.append("// Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def")
-    lines.append(f'// Generated at: {datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")}')
+    lines.append(
+        "// Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def"
+    )
+    lines.append(
+        f'// Generated at: {datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")}'
+    )
     lines.append("// Generator: generate_c_headers.py")
     lines.append("//")
-    lines.append("// To regenerate: python3 src/openzl/compress/graphs/sddl2/generate_c_headers.py")
+    lines.append(
+        "// To regenerate: python3 src/openzl/compress/graphs/sddl2/generate_c_headers.py"
+    )
     lines.append("")
     lines.append("/**")
     lines.append(" * SDDL2 Disassembler - Generated Implementation")
     lines.append(" *")
-    lines.append(" * This file contains the auto-generated instruction name lookup logic.")
+    lines.append(
+        " * This file contains the auto-generated instruction name lookup logic."
+    )
     lines.append(" * It is included by sddl2_disasm.c to provide the implementation of")
     lines.append(" * SDDL2_instruction_name().")
     lines.append(" *")
-    lines.append(" * DO NOT include this file directly - it's included by sddl2_disasm.c")
+    lines.append(
+        " * DO NOT include this file directly - it's included by sddl2_disasm.c"
+    )
     lines.append(" */")
     lines.append("")
     lines.append("#ifndef OPENZL_SDDL2_DISASM_GENERATED_H")
     lines.append("#define OPENZL_SDDL2_DISASM_GENERATED_H")
     lines.append("")
     lines.append("#include <stdint.h>")
-    lines.append("#include \"openzl/compress/graphs/sddl2/sddl2_opcodes.h\"")
+    lines.append('#include "openzl/compress/graphs/sddl2/sddl2_opcodes.h"')
     lines.append("")
     lines.append("// This function implementation is generated from sddl2_opcodes.def")
-    lines.append("static inline const char* SDDL2_instruction_name_impl(uint16_t family, uint16_t opcode)")
+    lines.append(
+        "static inline const char* SDDL2_instruction_name_impl(uint16_t family, uint16_t opcode)"
+    )
     lines.append("{")
     lines.append("    switch (family) {")
 
@@ -265,7 +308,7 @@ def generate_c_disasm_header(families: Dict[str, tuple], opcodes: List[tuple]) -
 
     # Filter to only include families that exist in the header
     existing_families = [f for f in family_order if f in families]
-    
+
     for family_name in existing_families:
         if family_name not in by_family:
             # Handle empty families (families defined but with no opcodes)
@@ -287,11 +330,13 @@ def generate_c_disasm_header(families: Dict[str, tuple], opcodes: List[tuple]) -
             mnemonic_lower = mnemonic.lower()
             family_prefix = family_name.lower() + "."
             if mnemonic_lower.startswith(family_prefix):
-                c_name = mnemonic[len(family_prefix):].replace(".", "_").upper()
+                c_name = mnemonic[len(family_prefix) :].replace(".", "_").upper()
             else:
                 c_name = mnemonic.replace(".", "_").upper()
 
-            lines.append(f'                case SDDL2_OP_{family_name}_{c_name}: return "{mnemonic}";')
+            lines.append(
+                f'                case SDDL2_OP_{family_name}_{c_name}: return "{mnemonic}";'
+            )
 
         lines.append(f'                default: return "{family_name.lower()}.?";')
         lines.append(f"            }}")

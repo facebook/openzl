@@ -96,7 +96,7 @@ def tokenize(source: str) -> List[Tuple[str, List[str]]]:
     # First pass: extract all tokens, removing comments
     for line in lines:
         # Remove comments (support both # and ; for compatibility)
-        for comment_char in ['#', ';']:
+        for comment_char in ["#", ";"]:
             if comment_char in line:
                 line = line[: line.index(comment_char)]
                 break  # Only need to remove first comment marker
@@ -138,17 +138,17 @@ def tokenize(source: str) -> List[Tuple[str, List[str]]]:
         # Check for dot-joinable tokens: if token has dots AND next token exists,
         # try joining with dot (e.g., "push.type" + "u8" -> "push.type.u8")
         # This supports syntactic sugar: "push.type u8" -> "push.type.u8"
-        elif '.' in token and i + 1 < len(all_tokens):
+        elif "." in token and i + 1 < len(all_tokens):
             next_token = all_tokens[i + 1]
             mnemonic_with_dot = f"{token}.{next_token}"
-            
+
             if mnemonic_with_dot in INSTRUCTIONS:
                 mnemonic = mnemonic_with_dot
                 _, _, param_types = INSTRUCTIONS[mnemonic]
-                
+
                 # Advance past both tokens (the prefix and the joined part)
                 i += 2
-                
+
                 # Collect any remaining parameters
                 params = []
                 for j in range(len(param_types)):
@@ -159,10 +159,12 @@ def tokenize(source: str) -> List[Tuple[str, List[str]]]:
                         )
                     params.append(all_tokens[i])
                     i += 1
-                
+
                 instructions.append((mnemonic, params))
             else:
-                raise AssemblerError(f"Unknown instruction or unexpected token: {token}")
+                raise AssemblerError(
+                    f"Unknown instruction or unexpected token: {token}"
+                )
         else:
             raise AssemblerError(f"Unknown instruction or unexpected token: {token}")
 

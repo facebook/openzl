@@ -30,7 +30,6 @@ INSTRUCTIONS = {
     "halt": ("CONTROL", 0x0001, []),
     "expect_true": ("CONTROL", 0x0002, []),
     "trace.start": ("CONTROL", 0x0004, []),
-
     # PUSH family (0x0001)
     "push.zero": ("PUSH", 0x0001, []),
     "push.u32": ("PUSH", 0x0002, ["u32"]),
@@ -64,7 +63,6 @@ INSTRUCTIONS = {
     "push.type.f32be": ("PUSH", 0x0136, []),
     "push.type.f64le": ("PUSH", 0x0137, []),
     "push.type.f64be": ("PUSH", 0x0138, []),
-
     # STACK family (0x0007)
     "stack.dup": ("STACK", 0x0001, []),
     "stack.over": ("STACK", 0x0002, []),
@@ -72,7 +70,6 @@ INSTRUCTIONS = {
     "stack.swap": ("STACK", 0x0004, []),
     "stack.rot": ("STACK", 0x0005, []),
     "stack.drop_if": ("STACK", 0x0010, []),
-
     # MATH family (0x0002)
     "math.add": ("MATH", 0x0001, []),
     "math.sub": ("MATH", 0x0002, []),
@@ -81,7 +78,6 @@ INSTRUCTIONS = {
     "math.mod": ("MATH", 0x0005, []),
     "math.abs": ("MATH", 0x0006, []),
     "math.neg": ("MATH", 0x0007, []),
-
     # CMP family (0x0003)
     "cmp.eq": ("CMP", 0x0001, []),
     "cmp.ne": ("CMP", 0x0002, []),
@@ -89,13 +85,11 @@ INSTRUCTIONS = {
     "cmp.le": ("CMP", 0x0004, []),
     "cmp.gt": ("CMP", 0x0005, []),
     "cmp.ge": ("CMP", 0x0006, []),
-
     # LOGIC family (0x0004)
     "logic.and": ("LOGIC", 0x0001, []),
     "logic.or": ("LOGIC", 0x0002, []),
     "logic.xor": ("LOGIC", 0x0003, []),
     "logic.not": ("LOGIC", 0x0004, []),
-
     # LOAD family (0x0006)
     "load.u8": ("LOAD", 0x0001, []),
     "load.i8": ("LOAD", 0x0002, []),
@@ -109,14 +103,11 @@ INSTRUCTIONS = {
     "load.u32be": ("LOAD", 0x0120, []),
     "load.i32be": ("LOAD", 0x0121, []),
     "load.i64be": ("LOAD", 0x0130, []),
-
     # TYPE family (0x0008)
     "type.fixed_array": ("TYPE", 0x0001, []),
     "type.structure": ("TYPE", 0x0002, []),
     "type.sizeof": ("TYPE", 0x0010, []),
-
     # SEGMENT family (0x000C)
     "segment.create_unspecified": ("SEGMENT", 0x0001, []),
     "segment.create_tagged": ("SEGMENT", 0x0002, []),
-
 }

@@ -20,7 +20,7 @@ from typing import Dict, List, Tuple, Optional
 def parse_def_file(def_file_path: Path) -> Tuple[Dict[str, tuple], List[tuple]]:
     """
     Parse the .def file and extract family and opcode definitions.
-    
+
     Format:
         @family NAME ID "Description"
           mnemonic  opcode  [params]  "Description"
@@ -34,21 +34,23 @@ def parse_def_file(def_file_path: Path) -> Tuple[Dict[str, tuple], List[tuple]]:
     opcodes = []
 
     content = def_file_path.read_text()
-    lines = content.split('\n')
-    
+    lines = content.split("\n")
+
     current_family = None
-    
+
     for line in lines:
         stripped = line.strip()
-        
+
         # Skip comments and empty lines
-        if not stripped or stripped.startswith('#'):
+        if not stripped or stripped.startswith("#"):
             continue
-        
+
         # Parse @family directive: @family NAME ID "Description"
-        if stripped.startswith('@family'):
+        if stripped.startswith("@family"):
             # Extract family name, ID, and description (in quotes)
-            match = re.match(r'@family\s+(\w+)\s+(0x[0-9A-Fa-f]+)\s+"([^"]*)"', stripped)
+            match = re.match(
+                r'@family\s+(\w+)\s+(0x[0-9A-Fa-f]+)\s+"([^"]*)"', stripped
+            )
             if match:
                 family_name = match.group(1)
                 family_id = match.group(2)
@@ -57,30 +59,29 @@ def parse_def_file(def_file_path: Path) -> Tuple[Dict[str, tuple], List[tuple]]:
                 current_family = family_name
             else:
                 # Family without description
-                match = re.match(r'@family\s+(\w+)\s+(0x[0-9A-Fa-f]+)', stripped)
+                match = re.match(r"@family\s+(\w+)\s+(0x[0-9A-Fa-f]+)", stripped)
                 if match:
                     family_name = match.group(1)
                     family_id = match.group(2)
                     families[family_name] = (int(family_id, 16), "")
                     current_family = family_name
-        
+
         # Parse indented opcode lines
-        elif line.startswith('  ') and current_family:
+        elif line.startswith("  ") and current_family:
             # Format: mnemonic  opcode  [params]  "Description"
             # Mnemonic is used exactly as written (e.g., "halt", "push.zero")
             # Special case: "push.type <typename>" is treated as a single mnemonic
-            
+
             # First, try the standard pattern
             match = re.match(
-                r'\s+([\w.]+)\s+(0x[0-9A-Fa-f]+)(?:\s+([^"]+))?\s+"([^"]*)"',
-                line
+                r'\s+([\w.]+)\s+(0x[0-9A-Fa-f]+)(?:\s+([^"]+))?\s+"([^"]*)"', line
             )
-            
+
             if not match:
                 # Try multi-word mnemonic pattern (for "push.type <typename>")
                 match = re.match(
                     r'\s+([\w.]+)\s+([\w.]+)\s+(0x[0-9A-Fa-f]+)(?:\s+([^"]+))?\s+"([^"]*)"',
-                    line
+                    line,
                 )
                 if match and match.group(1) == "push.type":
                     # Merge "push.type" and the typename
@@ -88,37 +89,29 @@ def parse_def_file(def_file_path: Path) -> Tuple[Dict[str, tuple], List[tuple]]:
                     opcode = match.group(3)
                     params_str = match.group(4)
                     description = match.group(5)
-                    
+
                     # Parse parameters if present
                     params = []
                     if params_str:
                         params = [p.strip() for p in params_str.split() if p.strip()]
-                    
-                    opcodes.append((
-                        mnemonic,
-                        current_family,
-                        int(opcode, 16),
-                        params,
-                        description
-                    ))
+
+                    opcodes.append(
+                        (mnemonic, current_family, int(opcode, 16), params, description)
+                    )
             elif match:
                 mnemonic = match.group(1)
                 opcode = match.group(2)
                 params_str = match.group(3)
                 description = match.group(4)
-                
+
                 # Parse parameters if present
                 params = []
                 if params_str:
                     params = [p.strip() for p in params_str.split() if p.strip()]
-                
-                opcodes.append((
-                    mnemonic,
-                    current_family,
-                    int(opcode, 16),
-                    params,
-                    description
-                ))
+
+                opcodes.append(
+                    (mnemonic, current_family, int(opcode, 16), params, description)
+                )
 
     return families, opcodes
 
@@ -126,7 +119,7 @@ def parse_def_file(def_file_path: Path) -> Tuple[Dict[str, tuple], List[tuple]]:
 def generate_python_code(families: Dict[str, tuple], opcodes: List[tuple]) -> str:
     """
     Generate Python code for opcodes_generated.py
-    
+
     Args:
         families: {name: (id, description)}
         opcodes: [(mnemonic, family, opcode, [param_types], description)]

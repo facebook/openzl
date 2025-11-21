@@ -35,9 +35,7 @@ class SDDL2 : public Graph {
     {
         LocalParams lp;
         lp.addCopyParam(
-                SDDL2_BYTECODE_PARAM,
-                bytecode_.data(),
-                bytecode_.size());
+                SDDL2_BYTECODE_PARAM, bytecode_.data(), bytecode_.size());
         return GraphParameters{ .customGraphs = { { successor_ } },
                                 .localParams  = std::move(lp) };
     }
