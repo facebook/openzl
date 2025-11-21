@@ -4,9 +4,9 @@
 
 #include <stdlib.h> // abort
 
-#include "openzl/codecs/zl_sddl.h"     // ZL_Compressor_buildSDDLGraph
-#include "openzl/zl_compressor.h"      // ZL_Compressor_setParameter
-#include "openzl/zl_graphs.h"          // ZL_GRAPH_STORE
+#include "openzl/codecs/zl_sddl.h" // ZL_Compressor_buildSDDLGraph
+#include "openzl/zl_compressor.h"  // ZL_Compressor_setParameter
+#include "openzl/zl_graphs.h"      // ZL_GRAPH_STORE
 
 /* ==================================================
  * SDDL1 Bytecode for SAO

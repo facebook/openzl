@@ -174,7 +174,8 @@ TEST(test_vm_op_structure_zero_members)
     assert(result.value.as_type.width == 1);
 
     // Verify total size is 0
-    SDDL2_Struct_data* struct_data = (SDDL2_Struct_data*)result.value.as_type.complex_data;
+    SDDL2_Struct_data* struct_data =
+            (SDDL2_Struct_data*)result.value.as_type.complex_data;
     assert(struct_data != NULL);
     assert(struct_data->member_count == 0);
     assert(struct_data->total_size_bytes == 0);

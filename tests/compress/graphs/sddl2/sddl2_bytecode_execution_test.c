@@ -18,8 +18,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "openzl/compress/graphs/sddl2/sddl2_interpreter.h"
 #include "generated_test_bytecode.h"
+#include "openzl/compress/graphs/sddl2/sddl2_interpreter.h"
 
 /**
  * Load bytecode from file
@@ -211,11 +211,11 @@ static void test_multi_segments(void)
 int main(void)
 {
     printf("Running SDDL2 Bytecode Execution Test...\n\n");
-    
+
     printf("Testing bytecode file loading and execution:\n");
     test_assembled_hello();
     test_multi_segments();
-    
+
     printf("\n✅ All bytecode execution tests passed!\n");
     printf("Verified: Load bytecode from .bin file → Execute → Verify segments\n");
     printf("\nNote: For comprehensive bytecode testing, run sddl2_bytecode_auto_test\n");

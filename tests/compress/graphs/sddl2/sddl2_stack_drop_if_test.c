@@ -213,8 +213,10 @@ TEST(test_drop_if_multiple_values_on_stack)
     // Push several values, then drop_if on top one
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(10)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(20)) == SDDL2_OK);
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(30)) == SDDL2_OK); // value to conditionally drop
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);  // condition=true
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(30))
+           == SDDL2_OK); // value to conditionally drop
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1))
+           == SDDL2_OK); // condition=true
 
     // Drop the 30
     assert(SDDL2_op_stack_drop_if(stack, NULL, 0) == SDDL2_OK);
@@ -239,7 +241,8 @@ TEST(test_drop_if_leaves_stack_unchanged_when_false)
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(10)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(20)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(30)) == SDDL2_OK); // value
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);  // condition=false
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0))
+           == SDDL2_OK); // condition=false
 
     // Execute drop_if
     assert(SDDL2_op_stack_drop_if(stack, NULL, 0) == SDDL2_OK);
@@ -297,7 +300,8 @@ TEST(test_drop_if_with_comparison)
     SDDL2_Stack* stack = create_test_stack(10);
 
     // Pattern: compare two values, drop result based on comparison
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(999)) == SDDL2_OK); // value to drop
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(999))
+           == SDDL2_OK); // value to drop
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(10)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(5)) == SDDL2_OK);
     assert(SDDL2_op_gt(stack, NULL, 0) == SDDL2_OK); // 10 > 5 = 1 (true)
@@ -314,7 +318,7 @@ TEST(test_drop_if_with_arithmetic)
     SDDL2_Stack* stack = create_test_stack(10);
 
     // Use arithmetic result as condition
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(42)) == SDDL2_OK);  // value
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(42)) == SDDL2_OK); // value
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(10)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(10)) == SDDL2_OK);
     assert(SDDL2_op_sub(stack, NULL, 0) == SDDL2_OK); // 10 - 10 = 0 (false)

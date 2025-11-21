@@ -123,7 +123,8 @@ TEST(test_expect_true_zero_fails)
     // Test: expect_true with zero should fail with VALIDATION_FAILED
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
     assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_VALIDATION_FAILED);
-    // Stack state after error is implementation-defined, but value should be consumed
+    // Stack state after error is implementation-defined, but value should be
+    // consumed
     assert(SDDL2_Stack_depth(stack) == 0);
 
     destroy_test_stack(stack);
@@ -298,13 +299,13 @@ TEST(test_multiple_expect_true_all_pass)
     // Test: Multiple expect_true operations, all should succeed
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
     assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_OK);
-    
+
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(42)) == SDDL2_OK);
     assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_OK);
-    
+
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(-1)) == SDDL2_OK);
     assert(SDDL2_op_expect_true(stack, NULL) == SDDL2_OK);
-    
+
     assert(SDDL2_Stack_depth(stack) == 0);
 
     destroy_test_stack(stack);

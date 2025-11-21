@@ -313,7 +313,8 @@ typedef struct {
 typedef struct {
     size_t pc;                              // Program counter at this operation
     const char* op_name;                    // Operation name (static string)
-    char details[SDDL2_TRACE_DETAILS_SIZE]; // Details like "cmp.eq: 5 == 10 → 0"
+    char details[SDDL2_TRACE_DETAILS_SIZE]; // Details like "cmp.eq: 5 == 10 →
+                                            // 0"
 } SDDL2_Trace_entry;
 
 /**
@@ -538,7 +539,8 @@ SDDL2_Error SDDL2_op_type_structure(
  * Stack: Type -> I64
  *
  * Pops a Type from the stack and pushes its total size in bytes as an I64.
- * This is useful for validating structure sizes or computing memory requirements.
+ * This is useful for validating structure sizes or computing memory
+ * requirements.
  *
  * Example:
  *   push.type.i32le        // Type{I32LE, width=1}
@@ -570,13 +572,20 @@ SDDL2_Error SDDL2_op_type_sizeof(SDDL2_Stack* stack);
  * Errors: TypeMismatch, Overflow (all), DivZero (div, mod only)
  * ========================================================================= */
 
-SDDL2_Error SDDL2_op_add(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a + b
-SDDL2_Error SDDL2_op_sub(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a - b
-SDDL2_Error SDDL2_op_mul(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a * b
-SDDL2_Error SDDL2_op_div(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a / b
-SDDL2_Error SDDL2_op_mod(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a % b
-SDDL2_Error SDDL2_op_abs(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // |a|
-SDDL2_Error SDDL2_op_neg(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // -a
+SDDL2_Error
+SDDL2_op_add(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a + b
+SDDL2_Error
+SDDL2_op_sub(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a - b
+SDDL2_Error
+SDDL2_op_mul(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a * b
+SDDL2_Error
+SDDL2_op_div(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a / b
+SDDL2_Error
+SDDL2_op_mod(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a % b
+SDDL2_Error
+SDDL2_op_abs(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // |a|
+SDDL2_Error
+SDDL2_op_neg(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // -a
 
 /* ============================================================================
  * Comparison Operations (CMP Family)
@@ -587,12 +596,18 @@ SDDL2_Error SDDL2_op_neg(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t p
  * Returns 1 if comparison is true, 0 if false.
  * ========================================================================= */
 
-SDDL2_Error SDDL2_op_eq(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a == b
-SDDL2_Error SDDL2_op_ne(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a != b
-SDDL2_Error SDDL2_op_lt(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a < b
-SDDL2_Error SDDL2_op_le(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a <= b
-SDDL2_Error SDDL2_op_gt(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a > b
-SDDL2_Error SDDL2_op_ge(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a >= b
+SDDL2_Error
+SDDL2_op_eq(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a == b
+SDDL2_Error
+SDDL2_op_ne(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a != b
+SDDL2_Error
+SDDL2_op_lt(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a < b
+SDDL2_Error
+SDDL2_op_le(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a <= b
+SDDL2_Error
+SDDL2_op_gt(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a > b
+SDDL2_Error
+SDDL2_op_ge(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a >= b
 
 /* ============================================================================
  * Logical Operations (LOGIC Family)
@@ -603,10 +618,14 @@ SDDL2_Error SDDL2_op_ge(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc
  * Errors: TypeMismatch
  * ========================================================================= */
 
-SDDL2_Error SDDL2_op_and(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a & b
-SDDL2_Error SDDL2_op_or(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc);  // a | b
-SDDL2_Error SDDL2_op_xor(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a ^ b
-SDDL2_Error SDDL2_op_not(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // ~a
+SDDL2_Error
+SDDL2_op_and(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a & b
+SDDL2_Error
+SDDL2_op_or(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a | b
+SDDL2_Error
+SDDL2_op_xor(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a ^ b
+SDDL2_Error
+SDDL2_op_not(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // ~a
 
 /* ============================================================================
  * Stack Manipulation Operations (STACK Family)
@@ -617,30 +636,36 @@ SDDL2_Error SDDL2_op_not(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t p
  * Stack: value -> (empty)
  * Errors: StackUnderflow
  */
-SDDL2_Error SDDL2_op_drop(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc);
+SDDL2_Error
+SDDL2_op_drop(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc);
 
 /**
  * Conditionally drop the top value from the stack based on a condition.
- * Pops condition (I64), then pops and discards top value if condition is non-zero.
- * Stack (condition true):  value condition -> (empty)
- * Stack (condition false): value condition -> value
- * Errors: StackUnderflow, TypeMismatch
+ * Pops condition (I64), then pops and discards top value if condition is
+ * non-zero. Stack (condition true):  value condition -> (empty) Stack
+ * (condition false): value condition -> value Errors: StackUnderflow,
+ * TypeMismatch
  */
-SDDL2_Error SDDL2_op_stack_drop_if(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc);
+SDDL2_Error SDDL2_op_stack_drop_if(
+        SDDL2_Stack* stack,
+        SDDL2_Trace_buffer* trace,
+        size_t pc);
 
 /**
  * Duplicate the top value on the stack.
  * Stack: value -> value value
  * Errors: StackUnderflow, StackOverflow
  */
-SDDL2_Error SDDL2_op_dup(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc);
+SDDL2_Error
+SDDL2_op_dup(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc);
 
 /**
  * Swap the top two values on the stack.
  * Stack: a b -> b a
  * Errors: StackUnderflow
  */
-SDDL2_Error SDDL2_op_swap(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc);
+SDDL2_Error
+SDDL2_op_swap(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc);
 
 /* ============================================================================
  * Validation Operations (EXPECT Family)

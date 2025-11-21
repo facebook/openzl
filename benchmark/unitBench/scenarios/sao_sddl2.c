@@ -4,9 +4,9 @@
 
 #include <stdlib.h> // abort
 
-#include "openzl/codecs/zl_sddl2.h"    // ZL_Compressor_registerSDDL2Graph, SDDL2_BYTECODE_PARAM
-#include "openzl/zl_compressor.h"               // ZL_Compressor_setParameter
-#include "openzl/zl_localParams.h"              // ZL_LocalParams
+#include "openzl/codecs/zl_sddl2.h" // ZL_Compressor_registerSDDL2Graph, SDDL2_BYTECODE_PARAM
+#include "openzl/zl_compressor.h"  // ZL_Compressor_setParameter
+#include "openzl/zl_localParams.h" // ZL_LocalParams
 
 /* ==================================================
  * SDDL2 Bytecode for SAO

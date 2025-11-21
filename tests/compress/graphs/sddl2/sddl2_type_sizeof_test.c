@@ -55,18 +55,12 @@ TEST(test_sizeof_various_primitives)
         SDDL2_Type_kind kind;
         int64_t expected_size;
     } test_cases[] = {
-        { SDDL2_TYPE_U8, 1 },
-        { SDDL2_TYPE_I8, 1 },
-        { SDDL2_TYPE_BYTES, 1 },
-        { SDDL2_TYPE_U16LE, 2 },
-        { SDDL2_TYPE_I16BE, 2 },
-        { SDDL2_TYPE_F16LE, 2 },
-        { SDDL2_TYPE_U32LE, 4 },
-        { SDDL2_TYPE_I32BE, 4 },
-        { SDDL2_TYPE_F32LE, 4 },
-        { SDDL2_TYPE_U64LE, 8 },
-        { SDDL2_TYPE_I64BE, 8 },
-        { SDDL2_TYPE_F64LE, 8 },
+        { SDDL2_TYPE_U8, 1 },    { SDDL2_TYPE_I8, 1 },
+        { SDDL2_TYPE_BYTES, 1 }, { SDDL2_TYPE_U16LE, 2 },
+        { SDDL2_TYPE_I16BE, 2 }, { SDDL2_TYPE_F16LE, 2 },
+        { SDDL2_TYPE_U32LE, 4 }, { SDDL2_TYPE_I32BE, 4 },
+        { SDDL2_TYPE_F32LE, 4 }, { SDDL2_TYPE_U64LE, 8 },
+        { SDDL2_TYPE_I64BE, 8 }, { SDDL2_TYPE_F64LE, 8 },
     };
 
     for (size_t i = 0; i < sizeof(test_cases) / sizeof(test_cases[0]); i++) {
@@ -405,9 +399,9 @@ TEST(test_sizeof_for_validation)
     SDDL2_Stack_init(&stack);
 
     // Build a structure
-    SDDL2_Type type1 = { .kind = SDDL2_TYPE_F64LE, .width = 1 };  // 8 bytes
-    SDDL2_Type type2 = { .kind = SDDL2_TYPE_F64LE, .width = 1 };  // 8 bytes
-    SDDL2_Type type3 = { .kind = SDDL2_TYPE_BYTES, .width = 2 };  // 2 bytes
+    SDDL2_Type type1 = { .kind = SDDL2_TYPE_F64LE, .width = 1 }; // 8 bytes
+    SDDL2_Type type2 = { .kind = SDDL2_TYPE_F64LE, .width = 1 }; // 8 bytes
+    SDDL2_Type type3 = { .kind = SDDL2_TYPE_BYTES, .width = 2 }; // 2 bytes
     // Total: 18 bytes
 
     SDDL2_Error err = SDDL2_Stack_push(&stack, SDDL2_Value_type(type1));
@@ -460,7 +454,7 @@ TEST(test_sizeof_preserves_stack_below)
 
     // Push a type
     SDDL2_Type type = { .kind = SDDL2_TYPE_I32LE, .width = 1 };
-    err = SDDL2_Stack_push(&stack, SDDL2_Value_type(type));
+    err             = SDDL2_Stack_push(&stack, SDDL2_Value_type(type));
     assert(err == SDDL2_OK);
 
     assert(SDDL2_Stack_depth(&stack) == 3);

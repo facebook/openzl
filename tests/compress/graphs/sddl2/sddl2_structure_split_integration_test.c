@@ -61,10 +61,8 @@ static void test_flat_structure_split(void)
     SDDL2_Type i32_type = { SDDL2_TYPE_I32LE, 1, NULL };
 
     // Allocate structure data
-    size_t alloc_size =
-            sizeof(SDDL2_Struct_data) + 3 * sizeof(SDDL2_Type);
-    SDDL2_Struct_data* struct_data =
-            (SDDL2_Struct_data*)malloc(alloc_size);
+    size_t alloc_size = sizeof(SDDL2_Struct_data) + 3 * sizeof(SDDL2_Type);
+    SDDL2_Struct_data* struct_data = (SDDL2_Struct_data*)malloc(alloc_size);
     assert(struct_data != NULL);
 
     struct_data->member_count     = 3;
@@ -189,10 +187,8 @@ static void test_structure_with_array_field(void)
     printf("Testing structure with array field {U8, [I32LE × 5], I16LE}...\n");
 
     // Create structure with array field
-    size_t alloc_size =
-            sizeof(SDDL2_Struct_data) + 3 * sizeof(SDDL2_Type);
-    SDDL2_Struct_data* struct_data =
-            (SDDL2_Struct_data*)malloc(alloc_size);
+    size_t alloc_size = sizeof(SDDL2_Struct_data) + 3 * sizeof(SDDL2_Type);
+    SDDL2_Struct_data* struct_data = (SDDL2_Struct_data*)malloc(alloc_size);
     assert(struct_data != NULL);
 
     struct_data->member_count     = 3;
@@ -240,10 +236,8 @@ static void test_mixed_endianness_structure(void)
     printf("Testing mixed endianness structure {U16LE, I32BE, F64LE}...\n");
 
     // Create structure with mixed endianness
-    size_t alloc_size =
-            sizeof(SDDL2_Struct_data) + 3 * sizeof(SDDL2_Type);
-    SDDL2_Struct_data* struct_data =
-            (SDDL2_Struct_data*)malloc(alloc_size);
+    size_t alloc_size = sizeof(SDDL2_Struct_data) + 3 * sizeof(SDDL2_Type);
+    SDDL2_Struct_data* struct_data = (SDDL2_Struct_data*)malloc(alloc_size);
     assert(struct_data != NULL);
 
     struct_data->member_count     = 3;
@@ -288,10 +282,8 @@ static void test_field_size_extraction(void)
     printf("Testing field size extraction from structures...\n");
 
     // Test case 1: Flat structure {U8, I32LE, F64BE}
-    size_t alloc_size =
-            sizeof(SDDL2_Struct_data) + 3 * sizeof(SDDL2_Type);
-    SDDL2_Struct_data* struct_data =
-            (SDDL2_Struct_data*)malloc(alloc_size);
+    size_t alloc_size = sizeof(SDDL2_Struct_data) + 3 * sizeof(SDDL2_Type);
+    SDDL2_Struct_data* struct_data = (SDDL2_Struct_data*)malloc(alloc_size);
 
     struct_data->member_count     = 3;
     struct_data->total_size_bytes = 13; // 1 + 4 + 8

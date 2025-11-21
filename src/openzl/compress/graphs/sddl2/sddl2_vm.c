@@ -10,8 +10,8 @@
 #include "sddl2_vm.h"
 #include <limits.h>
 #include <stdbool.h>
-#include "openzl/shared/mem.h" // ZL_memcpy() for memory operations
 #include "openzl/common/logging.h"
+#include "openzl/shared/mem.h" // ZL_memcpy() for memory operations
 
 /* ============================================================================
  * Stack Operations
@@ -268,7 +268,10 @@ SDDL2_Error SDDL2_op_type_fixed_array(SDDL2_Stack* stack)
     // a)
     uint32_t base_width = base_type_val.value.as_type.width;
     if (array_count && base_width > UINT32_MAX / array_count) {
-        ZL_DLOG(ERROR, "Width multiplication would overflow: base_width=%u, array_count=%zu", base_width, array_count);
+        ZL_DLOG(ERROR,
+                "Width multiplication would overflow: base_width=%u, array_count=%zu",
+                base_width,
+                array_count);
         return SDDL2_MATH_OVERFLOW; // Width multiplication would overflow
     }
 
@@ -439,11 +442,12 @@ static inline bool mul_would_overflow(int64_t a, int64_t b)
     }
 }
 
-SDDL2_Error SDDL2_op_add(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+SDDL2_Error
+SDDL2_op_add(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     (void)trace;
     (void)pc;
-    
+
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
 
@@ -454,11 +458,12 @@ SDDL2_Error SDDL2_op_add(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t p
     return push_i64(stack, a + b);
 }
 
-SDDL2_Error SDDL2_op_sub(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+SDDL2_Error
+SDDL2_op_sub(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     (void)trace;
     (void)pc;
-    
+
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
 
@@ -469,11 +474,12 @@ SDDL2_Error SDDL2_op_sub(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t p
     return push_i64(stack, a - b);
 }
 
-SDDL2_Error SDDL2_op_mul(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+SDDL2_Error
+SDDL2_op_mul(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     (void)trace;
     (void)pc;
-    
+
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
 
@@ -484,11 +490,12 @@ SDDL2_Error SDDL2_op_mul(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t p
     return push_i64(stack, a * b);
 }
 
-SDDL2_Error SDDL2_op_div(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+SDDL2_Error
+SDDL2_op_div(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     (void)trace;
     (void)pc;
-    
+
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
 
@@ -505,11 +512,12 @@ SDDL2_Error SDDL2_op_div(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t p
     return push_i64(stack, a / b);
 }
 
-SDDL2_Error SDDL2_op_mod(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+SDDL2_Error
+SDDL2_op_mod(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     (void)trace;
     (void)pc;
-    
+
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
 
@@ -521,11 +529,12 @@ SDDL2_Error SDDL2_op_mod(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t p
     return push_i64(stack, a % b);
 }
 
-SDDL2_Error SDDL2_op_abs(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+SDDL2_Error
+SDDL2_op_abs(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     (void)trace;
     (void)pc;
-    
+
     int64_t a;
     SDDL2_TRY(pop_i64(stack, &a));
 
@@ -537,11 +546,12 @@ SDDL2_Error SDDL2_op_abs(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t p
     return push_i64(stack, (a < 0) ? -a : a);
 }
 
-SDDL2_Error SDDL2_op_neg(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+SDDL2_Error
+SDDL2_op_neg(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     (void)trace;
     (void)pc;
-    
+
     int64_t a;
     SDDL2_TRY(pop_i64(stack, &a));
 
@@ -579,7 +589,8 @@ static void SDDL2_log_unary_op(
         SDDL2_Trace_buffer* trace,
         size_t pc);
 
-SDDL2_Error SDDL2_op_eq(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+SDDL2_Error
+SDDL2_op_eq(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
@@ -588,7 +599,8 @@ SDDL2_Error SDDL2_op_eq(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc
     return push_i64(stack, result);
 }
 
-SDDL2_Error SDDL2_op_ne(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+SDDL2_Error
+SDDL2_op_ne(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
@@ -597,7 +609,8 @@ SDDL2_Error SDDL2_op_ne(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc
     return push_i64(stack, result);
 }
 
-SDDL2_Error SDDL2_op_lt(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+SDDL2_Error
+SDDL2_op_lt(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
@@ -606,7 +619,8 @@ SDDL2_Error SDDL2_op_lt(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc
     return push_i64(stack, result);
 }
 
-SDDL2_Error SDDL2_op_le(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+SDDL2_Error
+SDDL2_op_le(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
@@ -615,7 +629,8 @@ SDDL2_Error SDDL2_op_le(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc
     return push_i64(stack, result);
 }
 
-SDDL2_Error SDDL2_op_gt(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+SDDL2_Error
+SDDL2_op_gt(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
@@ -624,7 +639,8 @@ SDDL2_Error SDDL2_op_gt(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc
     return push_i64(stack, result);
 }
 
-SDDL2_Error SDDL2_op_ge(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+SDDL2_Error
+SDDL2_op_ge(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
@@ -644,7 +660,8 @@ SDDL2_Error SDDL2_op_ge(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc
  * All operations treat 0 as false and non-zero as true.
  * ========================================================================= */
 
-SDDL2_Error SDDL2_op_and(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+SDDL2_Error
+SDDL2_op_and(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
@@ -653,7 +670,8 @@ SDDL2_Error SDDL2_op_and(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t p
     return push_i64(stack, result);
 }
 
-SDDL2_Error SDDL2_op_or(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+SDDL2_Error
+SDDL2_op_or(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
@@ -662,7 +680,8 @@ SDDL2_Error SDDL2_op_or(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc
     return push_i64(stack, result);
 }
 
-SDDL2_Error SDDL2_op_xor(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+SDDL2_Error
+SDDL2_op_xor(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
@@ -671,7 +690,8 @@ SDDL2_Error SDDL2_op_xor(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t p
     return push_i64(stack, result);
 }
 
-SDDL2_Error SDDL2_op_not(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+SDDL2_Error
+SDDL2_op_not(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a;
     SDDL2_TRY(pop_i64(stack, &a));
@@ -690,46 +710,50 @@ SDDL2_Error SDDL2_op_not(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t p
  * These are type-agnostic and work with any stack value.
  * ========================================================================= */
 
-SDDL2_Error SDDL2_op_drop(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+SDDL2_Error
+SDDL2_op_drop(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     (void)trace;
     (void)pc;
-    
+
     SDDL2_Value val;
     return SDDL2_Stack_pop(stack, &val);
 }
 
-SDDL2_Error SDDL2_op_stack_drop_if(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+SDDL2_Error
+SDDL2_op_stack_drop_if(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     (void)trace;
     (void)pc;
-    
+
     int64_t condition;
     SDDL2_TRY(pop_i64(stack, &condition));
-    
+
     if (condition != 0) {
         SDDL2_Value val;
         return SDDL2_Stack_pop(stack, &val);
     }
-    
+
     return SDDL2_OK;
 }
 
-SDDL2_Error SDDL2_op_dup(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+SDDL2_Error
+SDDL2_op_dup(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     (void)trace;
     (void)pc;
-    
+
     SDDL2_Value val;
     SDDL2_TRY(SDDL2_Stack_peek(stack, &val));
     return SDDL2_Stack_push(stack, val);
 }
 
-SDDL2_Error SDDL2_op_swap(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+SDDL2_Error
+SDDL2_op_swap(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     (void)trace;
     (void)pc;
-    
+
     SDDL2_Value a, b;
     SDDL2_TRY(SDDL2_Stack_pop(stack, &a));
     SDDL2_TRY(SDDL2_Stack_pop(stack, &b));
@@ -755,19 +779,19 @@ SDDL2_Error SDDL2_op_expect_true(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace)
 {
     int64_t value;
     SDDL2_TRY(pop_i64(stack, &value));
-    
+
     if (value == 0) {
         SDDL2_log_expect_true_failure(trace, stack);
-        
+
         // Reset trace buffer (stop and clear) - NULL-safe
         SDDL2_Trace_buffer_reset(trace);
-        
+
         return SDDL2_VALIDATION_FAILED;
     }
-    
+
     // Success - reset trace buffer (stop and clear) - NULL-safe
     SDDL2_Trace_buffer_reset(trace);
-    
+
     return SDDL2_OK;
 }
 
@@ -842,7 +866,7 @@ static void SDDL2_log_load(const char* op_name, int64_t addr, int64_t value);
         SDDL2_TRY(pop_i64(stack, &addr));                         \
         SDDL2_TRY(check_load_bounds(buffer, addr, size));         \
         const uint8_t* bytes = (const uint8_t*)buffer->data;      \
-        int64_t value = (int64_t)(read_expr);                     \
+        int64_t value        = (int64_t)(read_expr);              \
         SDDL2_log_load(#name, addr, value);                       \
         return push_i64(stack, value);                            \
     }
@@ -1253,11 +1277,11 @@ void SDDL2_Trace_buffer_init(
         SDDL2_allocator_fn alloc_fn,
         void* alloc_ctx)
 {
-    trace->entries  = NULL;
-    trace->count    = 0;
-    trace->capacity = 0;
-    trace->active   = 0;
-    trace->alloc_fn = alloc_fn;
+    trace->entries   = NULL;
+    trace->count     = 0;
+    trace->capacity  = 0;
+    trace->active    = 0;
+    trace->alloc_fn  = alloc_fn;
     trace->alloc_ctx = alloc_ctx;
 }
 
@@ -1277,7 +1301,8 @@ void SDDL2_Trace_buffer_destroy(SDDL2_Trace_buffer* trace)
  */
 void SDDL2_Trace_buffer_start(SDDL2_Trace_buffer* trace)
 {
-    if (!trace) return;
+    if (!trace)
+        return;
     trace->active = 1;
 }
 
@@ -1288,7 +1313,8 @@ void SDDL2_Trace_buffer_start(SDDL2_Trace_buffer* trace)
  */
 void SDDL2_Trace_buffer_stop(SDDL2_Trace_buffer* trace)
 {
-    if (!trace) return;
+    if (!trace)
+        return;
     trace->active = 0;
 }
 
@@ -1299,9 +1325,10 @@ void SDDL2_Trace_buffer_stop(SDDL2_Trace_buffer* trace)
  */
 void SDDL2_Trace_buffer_reset(SDDL2_Trace_buffer* trace)
 {
-    if (!trace) return;
+    if (!trace)
+        return;
     trace->active = 0;
-    trace->count = 0;
+    trace->count  = 0;
 }
 
 /**
@@ -1340,7 +1367,8 @@ int SDDL2_Trace_buffer_append(
     // Copy details string (safely truncate if needed)
     size_t details_len = 0;
     if (details) {
-        while (details[details_len] && details_len < SDDL2_TRACE_DETAILS_SIZE - 1) {
+        while (details[details_len]
+               && details_len < SDDL2_TRACE_DETAILS_SIZE - 1) {
             entry->details[details_len] = details[details_len];
             details_len++;
         }
@@ -1365,8 +1393,11 @@ void SDDL2_Trace_buffer_dump(const SDDL2_Trace_buffer* trace)
     for (size_t i = 0; i < trace->count; i++) {
         const SDDL2_Trace_entry* entry = &trace->entries[i];
         if (entry->details[0] != '\0') {
-            ZL_DLOG(ERROR, "[ERROR]   PC=%zu: %s - %s",
-                    entry->pc, entry->op_name, entry->details);
+            ZL_DLOG(ERROR,
+                    "[ERROR]   PC=%zu: %s - %s",
+                    entry->pc,
+                    entry->op_name,
+                    entry->details);
         } else {
             ZL_DLOG(ERROR, "[ERROR]   PC=%zu: %s", entry->pc, entry->op_name);
         }
@@ -1446,7 +1477,8 @@ SDDL2_Error SDDL2_op_segment_create_tagged(
  * Outputs operands, operator, and result at POS log level for fine-grained
  * tracing during bytecode execution. Also records in trace buffer if active.
  *
- * @param op_name Full operation name including family (e.g., "cmp.eq", "logic.and")
+ * @param op_name Full operation name including family (e.g., "cmp.eq",
+ * "logic.and")
  * @param op_symbol Symbolic operator (e.g., "==", "&")
  * @param a First operand
  * @param b Second operand
@@ -1463,22 +1495,25 @@ static void SDDL2_log_binary_op(
         SDDL2_Trace_buffer* trace,
         size_t pc)
 {
-    ZL_DLOG(POS, "[SDDL2] %s: %lld %s %lld → %lld",
+    ZL_DLOG(POS,
+            "[SDDL2] %s: %lld %s %lld → %lld",
             op_name,
             (long long)a,
             op_symbol,
             (long long)b,
             (long long)result);
-    
+
     if (trace && trace->active) {
         char details[SDDL2_TRACE_DETAILS_SIZE];
-        snprintf(details, sizeof(details), 
-                 "%s: %lld %s %lld → %lld",
-                 op_name,
-                 (long long)a,
-                 op_symbol,
-                 (long long)b,
-                 (long long)result);
+        snprintf(
+                details,
+                sizeof(details),
+                "%s: %lld %s %lld → %lld",
+                op_name,
+                (long long)a,
+                op_symbol,
+                (long long)b,
+                (long long)result);
         SDDL2_Trace_buffer_append(trace, pc, op_name, details);
     }
 }
@@ -1505,20 +1540,23 @@ static void SDDL2_log_unary_op(
         SDDL2_Trace_buffer* trace,
         size_t pc)
 {
-    ZL_DLOG(POS, "[SDDL2] %s: %s%lld → %lld",
+    ZL_DLOG(POS,
+            "[SDDL2] %s: %s%lld → %lld",
             op_name,
             op_symbol,
             (long long)a,
             (long long)result);
-    
+
     if (trace && trace->active) {
         char details[SDDL2_TRACE_DETAILS_SIZE];
-        snprintf(details, sizeof(details), 
-                 "%s: %s%lld → %lld",
-                 op_name,
-                 op_symbol,
-                 (long long)a,
-                 (long long)result);
+        snprintf(
+                details,
+                sizeof(details),
+                "%s: %s%lld → %lld",
+                op_name,
+                op_symbol,
+                (long long)a,
+                (long long)result);
         SDDL2_Trace_buffer_append(trace, pc, op_name, details);
     }
 }
@@ -1535,7 +1573,8 @@ static void SDDL2_log_unary_op(
  */
 static void SDDL2_log_load(const char* op_name, int64_t addr, int64_t value)
 {
-    ZL_DLOG(POS, "[SDDL2] load.%s: addr=0x%llx → %lld (0x%llx)",
+    ZL_DLOG(POS,
+            "[SDDL2] load.%s: addr=0x%llx → %lld (0x%llx)",
             op_name,
             (unsigned long long)addr,
             (long long)value,
@@ -1559,27 +1598,37 @@ static void SDDL2_log_expect_true_failure(
     if (trace && trace->count > 0) {
         SDDL2_Trace_buffer_dump(trace);
     }
-    
+
     // Concise failure message
-    ZL_DLOG(ERROR, "[SDDL2] expect_true VALIDATION FAILURE: got 0 (expected non-zero)");
-    
+    ZL_DLOG(ERROR,
+            "[SDDL2] expect_true VALIDATION FAILURE: got 0 (expected non-zero)");
+
     // Show stack state if non-empty (useful for debugging context)
     if (stack->top > 0) {
         ZL_DLOG(ERROR, "[SDDL2] Remaining stack: depth=%zu", stack->top);
         size_t show_count = stack->top < 3 ? stack->top : 3;
         for (size_t i = 0; i < show_count; i++) {
-            size_t idx = stack->top - 1 - i;
+            size_t idx             = stack->top - 1 - i;
             const SDDL2_Value* val = &stack->items[idx];
             switch (val->kind) {
                 case SDDL2_VALUE_I64:
-                    ZL_DLOG(ERROR, "[SDDL2]   [%zu] I64: %lld", idx, (long long)val->value.as_i64);
+                    ZL_DLOG(ERROR,
+                            "[SDDL2]   [%zu] I64: %lld",
+                            idx,
+                            (long long)val->value.as_i64);
                     break;
                 case SDDL2_VALUE_TAG:
-                    ZL_DLOG(ERROR, "[SDDL2]   [%zu] TAG: %u", idx, val->value.as_tag);
+                    ZL_DLOG(ERROR,
+                            "[SDDL2]   [%zu] TAG: %u",
+                            idx,
+                            val->value.as_tag);
                     break;
                 case SDDL2_VALUE_TYPE:
-                    ZL_DLOG(ERROR, "[SDDL2]   [%zu] TYPE: kind=%d width=%u", 
-                            idx, val->value.as_type.kind, val->value.as_type.width);
+                    ZL_DLOG(ERROR,
+                            "[SDDL2]   [%zu] TYPE: kind=%d width=%u",
+                            idx,
+                            val->value.as_type.kind,
+                            val->value.as_type.width);
                     break;
             }
         }

@@ -386,7 +386,8 @@ TEST(test_logic_not_large_value)
     SDDL2_Stack* stack = create_test_stack(100);
 
     // Test: !(large value) = 0
-    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0x123456789ABCDEF0)) == SDDL2_OK);
+    assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0x123456789ABCDEF0))
+           == SDDL2_OK);
     assert(SDDL2_op_not(stack, NULL, 0) == SDDL2_OK);
     POP_AND_VERIFY_I64(stack, 0);
 
@@ -564,7 +565,7 @@ TEST(test_logic_de_morgan_law)
 
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(1)) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(0)) == SDDL2_OK);
-    assert(SDDL2_op_or(stack, NULL, 0) == SDDL2_OK); // Result: 1
+    assert(SDDL2_op_or(stack, NULL, 0) == SDDL2_OK);  // Result: 1
     assert(SDDL2_op_not(stack, NULL, 0) == SDDL2_OK); // Result: 0
 
     POP_AND_VERIFY_I64(stack, 0);

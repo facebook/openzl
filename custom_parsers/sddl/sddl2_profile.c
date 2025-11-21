@@ -12,9 +12,9 @@ ZL_SDDL2_setupProfile(
         const size_t bytecodeSize)
 {
     ZL_RESULT_DECLARE_SCOPE(ZL_GraphID, compressor);
-    
+
     const ZL_GraphID clustering = ZS2_createGraph_genericClustering(compressor);
-    const ZL_GraphID gid = ZL_Compressor_registerSDDL2Graph(
+    const ZL_GraphID gid        = ZL_Compressor_registerSDDL2Graph(
             compressor, bytecode, bytecodeSize, clustering);
     ZL_ERR_IF(!ZL_GraphID_isValid(gid), graph_invalid);
     return ZL_WRAP_VALUE(gid);

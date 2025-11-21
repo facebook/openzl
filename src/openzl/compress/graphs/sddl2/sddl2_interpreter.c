@@ -1,10 +1,10 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "openzl/compress/graphs/sddl2/sddl2_interpreter.h"
-#include "openzl/compress/graphs/sddl2/sddl2_opcodes.h"
-#include "openzl/compress/graphs/sddl2/sddl2_disasm.h"
-#include "openzl/shared/mem.h"
 #include "openzl/common/logging.h"
+#include "openzl/compress/graphs/sddl2/sddl2_disasm.h"
+#include "openzl/compress/graphs/sddl2/sddl2_opcodes.h"
+#include "openzl/shared/mem.h"
 
 /* ============================================================================
  * Push Type Opcode Lookup Table
@@ -56,10 +56,8 @@ static const struct {
  * All MATH, CMP, LOGIC, and STACK operations share this signature.
  * Operations that don't use tracing simply ignore the trace and pc parameters.
  */
-typedef SDDL2_Error (*SDDL2_Stack_op_fn)(
-        SDDL2_Stack*,
-        SDDL2_Trace_buffer*,
-        size_t pc);
+typedef SDDL2_Error (
+        *SDDL2_Stack_op_fn)(SDDL2_Stack*, SDDL2_Trace_buffer*, size_t pc);
 
 /**
  * Common dispatch table entry type for stack operations.
@@ -360,7 +358,8 @@ static SDDL2_Error handle_push_family(
 
 /**
  * Cleanup helper for SDDL2_execute_bytecode.
- * Destroys the tag registry, trace buffer, and returns the specified error code.
+ * Destroys the tag registry, trace buffer, and returns the specified error
+ * code.
  *
  * This macro is function-scoped and undefined after SDDL2_execute_bytecode.
  */
@@ -461,7 +460,7 @@ SDDL2_Error SDDL2_execute_bytecode(
         }
 
         uint32_t instruction = ZL_readLE32(&bytecode[pc]);
-        size_t pc_before = pc;
+        size_t pc_before     = pc;
         pc += 4;
 
         // Decode instruction word
@@ -470,8 +469,12 @@ SDDL2_Error SDDL2_execute_bytecode(
         uint16_t family = (uint16_t)((instruction >> 16) & 0xFFFF);
         uint16_t opcode = (uint16_t)(instruction & 0xFFFF);
 
-        ZL_DLOG(SEQ, "[SDDL2] PC=%zu: %s (0x%08x) stack_depth=%zu",
-                pc_before, SDDL2_instruction_name(family, opcode), instruction, SDDL2_Stack_depth(&stack));
+        ZL_DLOG(SEQ,
+                "[SDDL2] PC=%zu: %s (0x%08x) stack_depth=%zu",
+                pc_before,
+                SDDL2_instruction_name(family, opcode),
+                instruction,
+                SDDL2_Stack_depth(&stack));
 
         // Dispatch
         SDDL2_Error err = SDDL2_OK;
@@ -548,7 +551,8 @@ SDDL2_Error SDDL2_execute_bytecode(
                 DISPATCH_LOAD_OP(LOAD_OP_MAP, LOAD_OP_MAP_SIZE);
                 break;
 
-            // Note: expect_true is part of CONTROL family (ID 0x000A not generated for empty EXPECT family)
+            // Note: expect_true is part of CONTROL family (ID 0x000A not
+            // generated for empty EXPECT family)
 
             // Unimplemented families
             case SDDL2_FAMILY_VAR:

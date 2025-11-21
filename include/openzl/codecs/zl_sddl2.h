@@ -3,8 +3,8 @@
 #ifndef OPENZL_CODECS_SDDL2_H
 #define OPENZL_CODECS_SDDL2_H
 
-#include "openzl/zl_opaque_types.h"
 #include <stddef.h>
+#include "openzl/zl_opaque_types.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -14,8 +14,8 @@ extern "C" {
  * Graph ID for the SDDL2 (Simple Data Description Language v2) component.
  *
  * This is an enhanced bytecode execution engine for parsing and decomposing
- * structured data. It provides significant performance improvements over SDDL v1
- * while maintaining compatibility with the OpenZL compression framework.
+ * structured data. It provides significant performance improvements over SDDL
+ * v1 while maintaining compatibility with the OpenZL compression framework.
  *
  * The SDDL2 graph requires:
  * 1. Bytecode parameter (SDDL2_BYTECODE_PARAM)

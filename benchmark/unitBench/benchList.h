@@ -167,9 +167,9 @@ static size_t genericGraphCompression(
     return ZL_validResult(r);
 }
 
-#include "benchmark/unitBench/scenarios/sao_graph.h"     // sao_graph_v1
-#include "benchmark/unitBench/scenarios/sao_sddl1.h"  // sao_graph_sddl1
-#include "benchmark/unitBench/scenarios/sao_sddl2.h"  // sao_graph_sddl2
+#include "benchmark/unitBench/scenarios/sao_graph.h" // sao_graph_v1
+#include "benchmark/unitBench/scenarios/sao_sddl1.h" // sao_graph_sddl1
+#include "benchmark/unitBench/scenarios/sao_sddl2.h" // sao_graph_sddl2
 
 static ZL_GraphID zstdGraph(ZL_Compressor* cgraph)
 {

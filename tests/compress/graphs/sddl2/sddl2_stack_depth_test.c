@@ -215,7 +215,7 @@ TEST(test_push_stack_depth_with_arithmetic)
     assert(SDDL2_op_push_stack_depth(stack) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(10)) == SDDL2_OK);
     assert(SDDL2_op_mul(stack, NULL, 0) == SDDL2_OK);
-    assert(pop_i64(stack) == 30);  // 3 * 10
+    assert(pop_i64(stack) == 30); // 3 * 10
 
     destroy_test_stack(stack);
 }
@@ -232,7 +232,7 @@ TEST(test_push_stack_depth_with_comparison)
     assert(SDDL2_op_push_stack_depth(stack) == SDDL2_OK);
     assert(SDDL2_Stack_push(stack, SDDL2_Value_i64(2)) == SDDL2_OK);
     assert(SDDL2_op_eq(stack, NULL, 0) == SDDL2_OK);
-    assert(pop_i64(stack) == 1);  // True
+    assert(pop_i64(stack) == 1); // True
 
     destroy_test_stack(stack);
 }

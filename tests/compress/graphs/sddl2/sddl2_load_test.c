@@ -837,7 +837,9 @@ TEST(test_load_i32be_bounds_beyond_buffer)
 TEST(test_load_i64le_bounds_beyond_buffer)
 {
     SDDL2_Stack* stack = create_test_stack(100);
-    uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 }; // Only 7 bytes
+    uint8_t data[]     = {
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07
+    }; // Only 7 bytes
     SETUP_INPUT_BUFFER(buffer, data);
 
     // Try to load i64le at address 0 (needs 8 bytes, but only have 7)

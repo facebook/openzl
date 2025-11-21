@@ -5,6 +5,7 @@
 #include <stddef.h>
 
 #include "openzl/codecs/splitByStruct/encode_splitByStruct_binding.h"
+#include "openzl/codecs/zl_clustering.h" // ZL_CLUSTERING_TAG_METADATA_ID
 #include "openzl/codecs/zl_conversion.h"
 #include "openzl/common/assertion.h"
 #include "openzl/common/logging.h"
@@ -13,7 +14,6 @@
 #include "openzl/zl_compressor.h"  // ZL_Compressor_registerParameterizedGraph
 #include "openzl/zl_localParams.h" // ZL_CopyParam, ZL_LocalParams
 #include "openzl/zl_public_nodes.h"
-#include "openzl/codecs/zl_clustering.h" // ZL_CLUSTERING_TAG_METADATA_ID
 
 /**
  * SDDL2 Function Graph - OpenZL Integration
@@ -169,8 +169,7 @@ static ZL_Report sddl2_count_primitive_fields(ZL_Graph* graph, SDDL2_Type type)
         }
 
         // For single structure instance, recursively count fields
-        SDDL2_Struct_data* struct_data =
-                (SDDL2_Struct_data*)type.complex_data;
+        SDDL2_Struct_data* struct_data = (SDDL2_Struct_data*)type.complex_data;
         ZL_ERR_IF_NULL(
                 struct_data, GENERIC, "Structure type has NULL complex_data");
 
@@ -222,8 +221,7 @@ static ZL_Report sddl2_flatten_field_sizes(
         }
 
         // Recursively flatten all members
-        SDDL2_Struct_data* struct_data =
-                (SDDL2_Struct_data*)type.complex_data;
+        SDDL2_Struct_data* struct_data = (SDDL2_Struct_data*)type.complex_data;
         ZL_ERR_IF_NULL(
                 struct_data, GENERIC, "Structure type has NULL complex_data");
 
@@ -351,8 +349,7 @@ static ZL_Report sddl2_flatten_field_types(
         }
 
         // Recursively flatten all members
-        SDDL2_Struct_data* struct_data =
-                (SDDL2_Struct_data*)type.complex_data;
+        SDDL2_Struct_data* struct_data = (SDDL2_Struct_data*)type.complex_data;
         ZL_ERR_IF_NULL(
                 struct_data, GENERIC, "Structure type has NULL complex_data");
 
@@ -594,9 +591,11 @@ static ZL_Report sddl2_apply_structure_split(
 
     // Step 6: Attach clustering tags and route all field edges to destination
     for (size_t i = 0; i < split_outputs.nbEdges; i++) {
-        int stream_tag = (*next_stream_id)++;  // Assign and increment counter
+        int stream_tag = (*next_stream_id)++; // Assign and increment counter
         ZL_ERR_IF_ERR(ZL_Edge_setIntMetadata(
-            split_outputs.edges[i], ZL_CLUSTERING_TAG_METADATA_ID, stream_tag));
+                split_outputs.edges[i],
+                ZL_CLUSTERING_TAG_METADATA_ID,
+                stream_tag));
         ZL_ERR_IF_ERR(ZL_Edge_setDestination(split_outputs.edges[i], dest));
     }
 
@@ -675,7 +674,8 @@ static ZL_Report sddl2_apply_type_conversion(
  *
  * Handles three types of segments:
  * - BYTES: Route directly to destination without conversion
- * - STRUCTURE: Split into field arrays, convert each field, route to destination
+ * - STRUCTURE: Split into field arrays, convert each field, route to
+ * destination
  * - Primitive: Convert Serial→Numeric and route to destination
  *
  * @param graph Graph context for operations and error reporting
@@ -700,15 +700,17 @@ static ZL_Report sddl2_process_segment(
             {
                 int stream_tag = (*next_stream_id)++;
                 ZL_ERR_IF_ERR(ZL_Edge_setIntMetadata(
-                    edge, ZL_CLUSTERING_TAG_METADATA_ID, stream_tag));
+                        edge, ZL_CLUSTERING_TAG_METADATA_ID, stream_tag));
                 return ZL_Edge_setDestination(edge, dest);
             }
 
         case SDDL2_TYPE_STRUCTURE:
             // STRUCTURE segments: split, convert fields, attach tags, and route
-            return sddl2_apply_structure_split(graph, edge, seg, dest, next_stream_id);
+            return sddl2_apply_structure_split(
+                    graph, edge, seg, dest, next_stream_id);
 
-        // Primitive numeric types: convert Serial→Numeric, attach tag, and route
+        // Primitive numeric types: convert Serial→Numeric, attach tag, and
+        // route
         case SDDL2_TYPE_U8:
         case SDDL2_TYPE_I8:
         case SDDL2_TYPE_U16LE:
@@ -731,14 +733,13 @@ static ZL_Report sddl2_process_segment(
         case SDDL2_TYPE_F32LE:
         case SDDL2_TYPE_F32BE:
         case SDDL2_TYPE_F64LE:
-        case SDDL2_TYPE_F64BE:
-            {
-                ZL_ERR_IF_ERR(sddl2_apply_type_conversion(graph, edge, seg, &edge));
-                int stream_tag = (*next_stream_id)++;
-                ZL_ERR_IF_ERR(ZL_Edge_setIntMetadata(
+        case SDDL2_TYPE_F64BE: {
+            ZL_ERR_IF_ERR(sddl2_apply_type_conversion(graph, edge, seg, &edge));
+            int stream_tag = (*next_stream_id)++;
+            ZL_ERR_IF_ERR(ZL_Edge_setIntMetadata(
                     edge, ZL_CLUSTERING_TAG_METADATA_ID, stream_tag));
-                return ZL_Edge_setDestination(edge, dest);
-            }
+            return ZL_Edge_setDestination(edge, dest);
+        }
     }
 
     // Unreachable: all SDDL2_Type_kind values are handled above
@@ -906,7 +907,11 @@ ZL_Report SDDL2_parse(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
     int next_stream_id = 0;
     for (size_t i = 0; i < outputs.nbEdges; i++) {
         ZL_ERR_IF_ERR(sddl2_process_segment(
-                graph, outputs.edges[i], &segments.items[i], dest, &next_stream_id));
+                graph,
+                outputs.edges[i],
+                &segments.items[i],
+                dest,
+                &next_stream_id));
     }
 
     // Cleanup

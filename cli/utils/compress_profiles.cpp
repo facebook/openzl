@@ -13,8 +13,8 @@
 #include "custom_parsers/csv/csv_profile.h"
 #include "custom_parsers/parquet/parquet_graph.h"
 #include "custom_parsers/pytorch_model_parser.h"
-#include "custom_parsers/sddl/sddl_profile.h"
 #include "custom_parsers/sddl/sddl2_profile.h"
+#include "custom_parsers/sddl/sddl_profile.h"
 #include "custom_parsers/shared_components/clustering.h"
 
 #include "tools/io/InputFile.h"
@@ -240,7 +240,7 @@ compressProfiles()
                                 "The Simple Data Description Language v2 profile requires pre-compiled bytecode. Pass a path to the bytecode file with --profile-arg.");
                     }
                     auto bytecodeInput = tools::io::InputFile(it->second);
-                    auto bytecode = bytecodeInput.contents();
+                    auto bytecode      = bytecodeInput.contents();
                     return unwrap(
                             ZL_SDDL2_setupProfile(
                                     comp, bytecode.data(), bytecode.size()),

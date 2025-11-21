@@ -55,8 +55,7 @@ TEST(test_simple_structure_creation)
     assert(my_struct.complex_data != NULL);
 
     // Verify member count
-    SDDL2_Struct_data* data =
-            (SDDL2_Struct_data*)my_struct.complex_data;
+    SDDL2_Struct_data* data = (SDDL2_Struct_data*)my_struct.complex_data;
     assert(data->member_count == 3);
     assert(data->total_size_bytes == 7);
 
@@ -91,8 +90,7 @@ TEST(test_array_of_structures)
 
     // Verify
     assert(array_of_structs.width == 10);
-    SDDL2_Struct_data* data =
-            (SDDL2_Struct_data*)array_of_structs.complex_data;
+    SDDL2_Struct_data* data = (SDDL2_Struct_data*)array_of_structs.complex_data;
     assert(data->total_size_bytes == 5);
 
     // Total size should be: element_size * width = 5 * 10 = 50
@@ -133,8 +131,7 @@ TEST(test_structure_with_array_members)
                              .complex_data = struct_data };
 
     // Verify member types
-    SDDL2_Struct_data* data =
-            (SDDL2_Struct_data*)my_struct.complex_data;
+    SDDL2_Struct_data* data = (SDDL2_Struct_data*)my_struct.complex_data;
     assert(data->members[1].width == 10); // Array member has width 10
 
     free(struct_data);
@@ -181,8 +178,7 @@ TEST(test_nested_structures)
                                 .complex_data = outer_data };
 
     // Verify nested structure
-    SDDL2_Struct_data* outer_sd =
-            (SDDL2_Struct_data*)outer_struct.complex_data;
+    SDDL2_Struct_data* outer_sd = (SDDL2_Struct_data*)outer_struct.complex_data;
     assert(outer_sd->member_count == 3);
     assert(outer_sd->members[1].kind == SDDL2_TYPE_STRUCTURE);
     assert(outer_sd->members[1].complex_data != NULL);
