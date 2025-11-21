@@ -141,7 +141,7 @@ def generate_python_code(families: Dict[str, tuple], opcodes: List[tuple]) -> st
     # Family definitions
     lines.append("# Family identifiers")
     lines.append("FAMILIES = {")
-    for name, (id_val, description) in sorted(families.items(), key=lambda x: x[1][0]):
+    for name, (id_val, _description) in sorted(families.items(), key=lambda x: x[1][0]):
         lines.append(f'    "{name}": 0x{id_val:04X},')
     lines.append("}")
     lines.append("")
@@ -181,7 +181,7 @@ def generate_python_code(families: Dict[str, tuple], opcodes: List[tuple]) -> st
         id_val, description = families[family_name]
         lines.append(f"    # {family_name} family (0x{id_val:04X})")
 
-        for mnemonic, opcode, params, desc in sorted(
+        for mnemonic, opcode, params, _desc in sorted(
             by_family[family_name], key=lambda x: x[1]
         ):
             # Convert params to Python list
@@ -232,12 +232,12 @@ def main():
     python_output.write_text(python_code)
     print(f"  ✓ {python_output}")
 
-    print(f"\nSuccessfully generated Python opcode file:")
+    print("\nSuccessfully generated Python opcode file:")
     print(f"  - {len(families)} families")
     print(f"  - {len(opcodes)} instructions")
     print(f"\nSingle source of truth: {def_file}")
-    print(f"\nFor C header generation, run:")
-    print(f"  python3 src/openzl/compress/graphs/sddl2/generate_c_headers.py")
+    print("\nFor C header generation, run:")
+    print("  python3 src/openzl/compress/graphs/sddl2/generate_c_headers.py")
 
     return 0
 

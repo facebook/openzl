@@ -195,7 +195,7 @@ def generate_c_header(families: Dict[str, tuple], opcodes: List[tuple]) -> str:
         lines.append(f"/* {family_name} family (0x{id_val:04X}) - {description} */")
         lines.append(f"enum sddl2_opcode_{family_name.lower()} {{")
 
-        for mnemonic, opcode, params, desc in sorted(
+        for mnemonic, opcode, params, _desc in sorted(
             by_family[family_name], key=lambda x: x[1]
         ):
             # Convert mnemonic to C identifier (replace dots with underscores)
@@ -320,9 +320,9 @@ def generate_c_disasm_header(families: Dict[str, tuple], opcodes: List[tuple]) -
 
         id_val, description = families[family_name]
         lines.append(f"        case SDDL2_FAMILY_{family_name}:")
-        lines.append(f"            switch (opcode) {{")
+        lines.append("            switch (opcode) {")
 
-        for mnemonic, opcode, params, desc in sorted(
+        for mnemonic, _opcode, _params, _desc in sorted(
             by_family[family_name], key=lambda x: x[1]
         ):
             # Convert mnemonic to C identifier (replace dots with underscores)
@@ -339,7 +339,7 @@ def generate_c_disasm_header(families: Dict[str, tuple], opcodes: List[tuple]) -
             )
 
         lines.append(f'                default: return "{family_name.lower()}.?";')
-        lines.append(f"            }}")
+        lines.append("            }")
         lines.append("")
 
     lines.append("        default:")
@@ -380,7 +380,7 @@ def main():
     c_disasm_header_output.write_text(c_disasm_header_code)
     print(f"  ✓ {c_disasm_header_output}")
 
-    print(f"\nSuccessfully generated C header files:")
+    print("\nSuccessfully generated C header files:")
     print(f"  - {len(families)} families")
     print(f"  - {len(opcodes)} instructions")
     print(f"\nSingle source of truth: {def_file}")
