@@ -25,7 +25,6 @@ What this script does:
 """
 
 import argparse
-import os
 import re
 import sys
 from pathlib import Path
@@ -273,7 +272,7 @@ def generate_header(asm_files, output_path, assemble):
         custom_str = f'"{custom}"' if custom else "NULL"
         skip_val = "1" if metadata["skip"] else "0"
 
-        lines.append(f"    {{")
+        lines.append("    {")
         lines.append(f'        .name = "{original_name}",')
         lines.append(f"        .bytecode = BYTECODE_{name},")
         lines.append(f"        .size = BYTECODE_{name}_SIZE,")
@@ -282,7 +281,7 @@ def generate_header(asm_files, output_path, assemble):
         lines.append(f'        .input_size = {metadata["input_size"]},')
         lines.append(f"        .skip = {skip_val},")
         lines.append(f"        .custom_validator = {custom_str}")
-        lines.append(f"    }},")
+        lines.append("    },")
 
     lines.extend(
         [
@@ -322,19 +321,19 @@ def main():
         "-i",
         "--input",
         default=str(default_input),
-        help=f"Input directory containing .asm files (default: %(default)s)",
+        help="Input directory containing .asm files (default: %(default)s)",
     )
     parser.add_argument(
         "-o",
         "--output",
         default=str(default_output),
-        help=f"Output C header file path (default: %(default)s)",
+        help="Output C header file path (default: %(default)s)",
     )
     parser.add_argument(
         "-a",
         "--assembler",
         default=str(default_assembler),
-        help=f"Path to assembler.py or directory containing it (default: %(default)s)",
+        help="Path to assembler.py or directory containing it (default: %(default)s)",
     )
 
     args = parser.parse_args()

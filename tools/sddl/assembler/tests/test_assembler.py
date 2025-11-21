@@ -4,7 +4,6 @@ Test suite for OpenZL assembler
 Auto-discovers and runs all .asm files in tests/success/
 """
 
-import os
 import subprocess
 import sys
 from pathlib import Path

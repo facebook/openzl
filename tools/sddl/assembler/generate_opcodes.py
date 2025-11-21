@@ -14,7 +14,7 @@ Usage:
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 
 def parse_def_file(def_file_path: Path) -> Tuple[Dict[str, tuple], List[tuple]]:

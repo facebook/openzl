@@ -150,19 +150,19 @@ def main():
         "-i",
         "--input",
         default=str(default_input),
-        help=f"Input directory containing .asm files (default: %(default)s)",
+        help="Input directory containing .asm files (default: %(default)s)",
     )
     parser.add_argument(
         "-o",
         "--output",
         default=str(default_output),
-        help=f"Output C++ header file path (default: %(default)s)",
+        help="Output C++ header file path (default: %(default)s)",
     )
     parser.add_argument(
         "-a",
         "--assembler",
         default=str(default_assembler),
-        help=f"Path to sddl2_assembler.py or directory containing it (default: %(default)s)",
+        help="Path to sddl2_assembler.py or directory containing it (default: %(default)s)",
     )
 
     args = parser.parse_args()
