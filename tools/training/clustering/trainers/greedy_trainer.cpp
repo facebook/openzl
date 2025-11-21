@@ -67,14 +67,14 @@ ClusteringConfigBuilder GreedyTrainer::getTrainedClusteringConfig(
             // Solo splits
             std::vector<ClusteringConfigBuilder> candidates;
             auto soloSplitCandidate = bestConfig.buildConfigClusterSoloSplit(
-                    metadata, cUtils, column.tag);
+                    metadata, cUtils, column);
             // Add candidate to list of the candidates of the iteration
             candidates.emplace_back(soloSplitCandidate);
             // Pair splits
             for (auto similarTag : similarColumns_[column]) {
                 auto pairSplitCandidate =
                         bestConfig.buildConfigClusterPairSplit(
-                                metadata, cUtils, column.tag, similarTag.tag);
+                                metadata, cUtils, column, similarTag);
                 // Add candidate to list of the candidates of the iteration
                 candidates.emplace_back(pairSplitCandidate);
             }

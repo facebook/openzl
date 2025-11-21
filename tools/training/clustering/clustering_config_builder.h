@@ -20,12 +20,12 @@ class ClusteringConfigBuilder {
     ClusteringConfigBuilder buildConfigClusterSoloSplit(
             const ColumnMetadata& metadata,
             const CompressionUtils& cUtils,
-            int tag) const;
+            ColumnInfo tag) const;
     ClusteringConfigBuilder buildConfigClusterPairSplit(
             const ColumnMetadata& metadata,
             const CompressionUtils& cUtils,
-            int tag1,
-            int tag2) const;
+            ColumnInfo tag1,
+            ColumnInfo tag2) const;
     /* Builds a config where the input with @p tag is moved out of its existing
      * cluster and added to the cluster with index @p clusterIdx */
     ClusteringConfigBuilder buildConfigAddInputToCluster(
