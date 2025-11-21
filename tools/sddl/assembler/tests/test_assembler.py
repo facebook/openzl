@@ -22,7 +22,7 @@ def run_success_test(asm_file: Path, expected_file: Path):
 
     # Check if expected file exists
     if not expected_file.exists():
-        print(f"SKIP - No .expected file (run regenerate_expected.sh)")
+        print("SKIP - No .expected file (run regenerate_expected.sh)")
         return None
 
     # Read expected output
@@ -39,7 +39,7 @@ def run_success_test(asm_file: Path, expected_file: Path):
     )
 
     if result.returncode != 0:
-        print(f"FAIL - Assembler error:")
+        print("FAIL - Assembler error:")
         print(f"  {result.stdout}{result.stderr}")
         return False
 
@@ -49,7 +49,7 @@ def run_success_test(asm_file: Path, expected_file: Path):
         print("PASS")
         return True
     else:
-        print(f"FAIL")
+        print("FAIL")
         print(f"  Expected: {expected_hex}")
         print(f"  Got:      {actual_hex}")
         return False
@@ -79,7 +79,7 @@ def run_fail_test(asm_file: Path):
 
     # Should fail
     if result.returncode == 0:
-        print(f"FAIL - Expected assembler to fail but it succeeded")
+        print("FAIL - Expected assembler to fail but it succeeded")
         return False
 
     # If specific error expected, verify it
@@ -149,7 +149,7 @@ def main():
 
     if skipped > 0:
         print(
-            f"\nNote: Run './regenerate_expected.sh' to generate missing .expected files"
+            "\nNote: Run './regenerate_expected.sh' to generate missing .expected files"
         )
 
     return 0 if failed == 0 else 1
