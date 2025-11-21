@@ -13,12 +13,13 @@
 /**
  * X-macro pattern for opcode dispatch.
  * This approach generates switch cases at compile time, guaranteeing no runtime
- * array scans and allowing the same authoritative list to be reused for multiple
- * purposes (dispatch, name generation, etc.).
+ * array scans and allowing the same authoritative list to be reused for
+ * multiple purposes (dispatch, name generation, etc.).
  *
  * Pattern inspired by: https://news.ycombinator.com/item?id=43472143
  */
 
+// clang-format off
 #define FOR_EACH_LOAD_OP(_func)                   \
     _func(SDDL2_OP_LOAD_U8, SDDL2_op_load_u8)     \
     _func(SDDL2_OP_LOAD_I8, SDDL2_op_load_i8)     \
@@ -87,6 +88,7 @@
     _func(SDDL2_OP_PUSH_TYPE_F32BE, SDDL2_TYPE_F32BE)        \
     _func(SDDL2_OP_PUSH_TYPE_F64LE, SDDL2_TYPE_F64LE)        \
     _func(SDDL2_OP_PUSH_TYPE_F64BE, SDDL2_TYPE_F64BE)
+// clang-format on
 
 /* ============================================================================
  * X-Macro Dispatch Helpers
@@ -96,8 +98,8 @@
  * Helper macro to generate a switch case for stack operations.
  * Used with FOR_EACH_*_OP macros to generate compile-time dispatch.
  */
-#define EMIT_STACK_OP_CASE(_opcode, _handler) \
-    case _opcode:                             \
+#define EMIT_STACK_OP_CASE(_opcode, _handler)      \
+    case _opcode:                                  \
         err = _handler(&stack, &trace, pc_before); \
         break;
 
@@ -114,12 +116,12 @@
  * Helper macro to generate a switch case for PUSH_TYPE operations.
  * Used with FOR_EACH_PUSH_TYPE_OP macro to generate compile-time dispatch.
  */
-#define EMIT_PUSH_TYPE_CASE(_opcode, _type_kind)           \
-    case _opcode: {                                        \
-        SDDL2_Type type = { .kind = _type_kind, .width = 1 }; \
-        err = SDDL2_Stack_push(stack, SDDL2_Value_type(type)); \
-        found = 1;                                         \
-        break;                                             \
+#define EMIT_PUSH_TYPE_CASE(_opcode, _type_kind)                           \
+    case _opcode: {                                                        \
+        SDDL2_Type type = { .kind = _type_kind, .width = 1 };              \
+        err             = SDDL2_Stack_push(stack, SDDL2_Value_type(type)); \
+        found           = 1;                                               \
+        break;                                                             \
     }
 
 /**
@@ -127,13 +129,12 @@
  * Generates a switch statement with cases for all opcodes in the family.
  * Returns SDDL2_INVALID_BYTECODE for unknown opcodes.
  */
-#define DISPATCH_OP_FAMILY(_family_for_each, _emit_case) \
-    do {                                                 \
-        switch (opcode) {                                \
-            _family_for_each(_emit_case)                 \
-            default:                                     \
-                CLEANUP_AND_RETURN(SDDL2_INVALID_BYTECODE); \
-        }                                                \
+#define DISPATCH_OP_FAMILY(_family_for_each, _emit_case)          \
+    do {                                                          \
+        switch (opcode) {                                         \
+            _family_for_each(_emit_case) default                  \
+                    : CLEANUP_AND_RETURN(SDDL2_INVALID_BYTECODE); \
+        }                                                         \
     } while (0)
 
 /* ============================================================================
