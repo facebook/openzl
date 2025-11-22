@@ -17,6 +17,7 @@ zs_library(
     headers = ["scenarios/sao_graph.h"],
     deps = [
         "../..:zstronglib",
+        "fbsource//third-party/benchmark:benchmark",
     ],
 )
 
