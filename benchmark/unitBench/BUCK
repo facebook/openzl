@@ -1,6 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("../../defs.bzl", "zs_binary", "zs_release_binary")
+load("../../defs.bzl", "zs_binary", "zs_library", "zs_release_binary")
 
 oncall("data_compression")
 
@@ -8,6 +8,15 @@ zs_binary(
     name = "bench_input_gen",
     srcs = [
         "tools/input_gen.cpp",
+    ],
+)
+
+zs_library(
+    name = "sao_graph",
+    srcs = ["scenarios/sao_graph.c"],
+    headers = ["scenarios/sao_graph.h"],
+    deps = [
+        "../..:zstronglib",
     ],
 )
 

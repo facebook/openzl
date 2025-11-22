@@ -30,9 +30,7 @@ zs_cxxbinary(
         SRC_FILE_FLAGS.get(src_file, []),
     ) for src_file in glob([
         "**/*.cpp",
-    ])] + [
-        "unitBench/scenarios/sao_graph.c",
-    ],
+    ])],
     headers = glob([
         "**/*.h",
     ]),
@@ -52,6 +50,7 @@ zs_cxxbinary(
         "fbsource//third-party/benchmark:benchmark",
         "fbsource//third-party/fmt:fmt",
         "fbsource//xplat/tools/cxx:resources",
+        "unitBench:sao_graph",
         "//folly:demangle",
         "//folly:dynamic",
         "//folly:json",
