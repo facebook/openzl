@@ -6,7 +6,6 @@
 
 #include "openzl/codecs/splitByStruct/encode_splitByStruct_binding.h"
 #include "openzl/codecs/zl_clustering.h" // ZL_CLUSTERING_TAG_METADATA_ID
-#include "openzl/codecs/zl_conversion.h"
 #include "openzl/common/assertion.h"
 #include "openzl/common/logging.h"
 #include "openzl/compress/graphs/sddl2/sddl2_interpreter.h"

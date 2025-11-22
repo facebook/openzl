@@ -8,7 +8,6 @@
  */
 
 #include "sddl2_vm.h"
-#include <limits.h>
 #include <stdbool.h>
 #include "openzl/common/logging.h"
 #include "openzl/shared/mem.h" // ZL_memcpy() for memory operations
