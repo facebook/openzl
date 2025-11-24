@@ -60,7 +60,7 @@ zs_unittest(
 protobuf_library(
     name = "test_schema",
     srcs = ["test_schema.proto"],
-    base_path = "data_compression/experimental/zstrong/tools/protobuf/tests",
+    base_path = "openzl/dev/tools/protobuf/tests",
     langs = [
         "cpp",
     ],

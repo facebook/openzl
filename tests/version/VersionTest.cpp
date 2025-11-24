@@ -122,9 +122,9 @@ std::vector<std::string> generateData(Config config)
 }
 
 std::string_view constexpr kDevResourceName =
-        "data_compression/experimental/zstrong/tests/version/dev_version_test_interface.so";
+        "openzl/dev/tests/version/dev_version_test_interface.so";
 std::string_view constexpr kReleaseResourceName =
-        "data_compression/experimental/zstrong/tests/version/release_version_test_interface.so";
+        "openzl/dev/tests/version/release_version_test_interface.so";
 
 VersionTestInterface getVersionTestInterface(std::string_view resourceName)
 {

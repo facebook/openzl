@@ -20,13 +20,13 @@
 
 // TODO: Not sure if there is a better way to do this
 #if ZL_FBCODE_IS_RELEASE
-#    include "openzl/versions/release/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_fatal_types.h"
-#    include "openzl/versions/release/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_types.h"
-#    include "openzl/versions/release/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_visitation.h"
+#    include "openzl/prod/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_fatal_types.h"
+#    include "openzl/prod/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_types.h"
+#    include "openzl/prod/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_visitation.h"
 #else
-#    include "data_compression/experimental/zstrong/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_fatal_types.h"
-#    include "data_compression/experimental/zstrong/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_types.h"
-#    include "data_compression/experimental/zstrong/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_visitation.h"
+#    include "openzl/dev/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_fatal_types.h"
+#    include "openzl/dev/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_types.h"
+#    include "openzl/dev/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_visitation.h"
 #endif
 
 namespace zstrong::thrift::tests {

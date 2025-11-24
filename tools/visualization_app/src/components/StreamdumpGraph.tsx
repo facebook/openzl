@@ -19,7 +19,7 @@ const files = [
 CCtx myCCtx;
 myCCtx.writeTraces(true);
 myCCtx.compress(/* input */);
-std::string trace = myCCtx.getLatestTrace();
+std::string trace = myCCtx.getLatestTrace().first;
 std::ofstream out{"/home/user/trace.cbor"};
 out << trace;
 out.close();

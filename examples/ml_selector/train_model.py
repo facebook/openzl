@@ -262,7 +262,7 @@ def main(training_samples: str, out: str, model_name: str, core: bool):
         print("Please do not include file extension in the path")
         return
 
-    if not os.getcwd().endswith("data_compression/experimental/zstrong"):
+    if not os.getcwd().endswith("openzl/dev"):
         print("Please run this file from zstrong root director")
         return
 

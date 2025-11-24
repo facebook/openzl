@@ -50,6 +50,6 @@ zs_release_binary(
     deps = [
         "..:fileio",
         ":stream_dump2_headers",
-        "//data_compression/experimental/zstrong_compressors/xldb/bin:xldb_compressor_stream_dump_shim",
+        "//openzl/dev_compressors/xldb/bin:xldb_compressor_stream_dump_shim",
     ],
 )
