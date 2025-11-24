@@ -1,5 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
+load("@fbcode//scm/directory_branching:defs.bzl", "directory_branch_visibility")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("../../defs.bzl", "relative_headers")
@@ -15,6 +16,10 @@ cpp_binary(
     headers = relative_headers(["VersionTestInterfaceABI.h"]),
     header_namespace = "",
     dlopen_enabled = True,
+    visibility = [
+        directory_branch_visibility(),
+        "//openzl:release_version_test_interface.so",
+    ],
     deps = [
         "..:constants",
         "../..:zstronglib",

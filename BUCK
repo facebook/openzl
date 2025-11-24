@@ -1,5 +1,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 load(":defs.bzl", "private_headers", "public_headers", "zl_fbcode_is_release_pp_flag", "zs_library")
 
 oncall("data_compression")
@@ -170,5 +172,62 @@ zs_library(
     exported_deps = [
         "fbsource//xplat/secure_lib:secure_string",
         ":config",
+    ],
+)
+
+cpp_library(
+    name = "openzl_fbcode",
+    visibility = ["//openzl:openzl"],
+    exported_deps = [
+        "custom_parsers:pytorch_model_parser",  # @manual
+        "custom_parsers:zip_lexer",  # @manual
+        "custom_transforms/json_extract:json_extract",  # @manual
+        "custom_transforms/parse:parse",  # @manual
+        "custom_transforms/thrift:thrift_lib",  # @manual
+        "custom_transforms/thrift:thrift_parse_config_schema-cpp2-types",  # @manual
+        "custom_transforms/thrift/kernels:decode_thrift_binding",  # @manual
+        "custom_transforms/thrift/kernels:encode_thrift_binding",  # @manual
+        "custom_transforms/tulip_v2:tulip_v2",  # @manual
+        "tools:zstrong_cpp",  # @manual
+        "tools:zstrong_json",  # @manual
+        "tools:zstrong_ml",  # @manual
+        ":openzl_core",  # @manual
+    ],
+)
+
+# This target exposes the standalone OpenZL core library that only has zstd as an external dependency.
+cpp_library(
+    name = "openzl_core",
+    visibility = ["//openzl:openzl_core"],
+    exported_deps = [
+        "cpp:openzl_cpp",  # @manual
+    ],
+)
+
+# Not intended to be widely used. A supported Python binding is coming.
+python_library(
+    name = "openzl_py_deprecated",
+    visibility = ["//openzl:openzl_py_deprecated"],
+    deps = [
+        "custom_transforms/thrift:thrift_parse_config_schema-py3-types",  # @manual
+        "custom_transforms/thrift:thrift_parse_config_schema-python-types",  # @manual
+        "tools/py:zstrong_json",  # @manual
+        "tools/py:zstrong_ml",  # @manual
+    ],
+)
+
+# Do not use in production builds.
+cpp_library(
+    name = "openzl_test_utils",
+    visibility = ["//openzl:openzl_test_utils"],
+    exported_deps = [
+        "custom_transforms/thrift/tests:thrift_test_utils",  # @manual
+        "custom_transforms/tulip_v2/tests:tulip_v2_data_utils",  # @manual
+        "tests:fuzz_utils",  # @manual
+        "tests:selector_optimization",  # @manual
+        "tests:test_zstrong_fixtures",  # @manual
+        "tests/datagen:datagen",
+        "tools:fileio",  # @manual
+        "tools/streamdump:stream_dump2_headers",  # @manual
     ],
 )
