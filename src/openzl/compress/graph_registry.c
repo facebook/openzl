@@ -180,6 +180,8 @@ const InternalGraphDesc GR_standardGraphs[ZL_PrivateStandardGraphID_end] = {
     REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_split_struct, "!zl.private.split_struct", ZL_Type_struct, ZL_splitFnGraph),
     REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_split_numeric, "!zl.private.split_numeric", ZL_Type_numeric, ZL_splitFnGraph),
     REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_split_string, "!zl.private.split_string", ZL_Type_string, ZL_splitFnGraph),
+
+    REGISTER_MIGRAPH(ZL_PrivateStandardGraphID_n_to_n, MIGRAPH_N_TO_N),
 };
 // clang-format on
 

@@ -26,3 +26,20 @@ ZL_Report ZL_splitFnGraph(ZL_Graph* graph, ZL_Edge** inputs, size_t numInputs)
     }
     return ZL_returnSuccess();
 }
+
+ZL_Report ZL_nToNFnGraph(ZL_Graph* graph, ZL_Edge** inputs, size_t numInputs)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+
+    ZL_ASSERT_NN(inputs);
+    ZL_ASSERT_NN(graph);
+
+    const ZL_GraphIDList graphs = ZL_Graph_getCustomGraphs(graph);
+    ZL_ERR_IF_NE(graphs.nbGraphIDs, numInputs, parameter_invalid);
+
+    for (size_t i = 0; i < numInputs; ++i) {
+        ZL_ERR_IF_ERR(
+                ZL_Edge_setDestination(inputs[i], graphs.graphids[i]));
+    }
+    return ZL_returnSuccess();
+}

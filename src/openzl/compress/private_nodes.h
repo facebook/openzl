@@ -192,6 +192,8 @@ typedef enum {
     ZL_PrivateStandardGraphID_split_numeric,
     ZL_PrivateStandardGraphID_split_string,
 
+    ZL_PrivateStandardGraphID_n_to_n,
+
     ZL_PrivateStandardGraphID_end // last id, used to detect out-of-bound enum
                                   // values
 } ZL_PrivateStandardGraphID;
@@ -266,6 +268,8 @@ typedef enum {
 #define ZL_GRAPH_SPLIT_STRUCT (ZL_GraphID){ZL_PrivateStandardGraphID_split_struct}
 #define ZL_GRAPH_SPLIT_NUMERIC (ZL_GraphID){ZL_PrivateStandardGraphID_split_numeric}
 #define ZL_GRAPH_SPLIT_STRING (ZL_GraphID){ZL_PrivateStandardGraphID_split_string}
+
+#define ZL_GRAPH_N_TO_N (ZL_GraphID){ZL_PrivateStandardGraphID_n_to_n}
 
 // clang-format on
 
