@@ -8,11 +8,11 @@
 #include "openzl/zl_version.h"                       // @manual
 
 #if ZL_FBCODE_IS_RELEASE
-#    include "openzl/versions/release/custom_transforms/thrift/gen-cpp2/parse_config_types.h" // @manual
-#    include "openzl/versions/release/custom_transforms/thrift/gen-cpp2/parse_config_types_custom_protocol.h" // @manual
+#    include "openzl/prod/custom_transforms/thrift/gen-cpp2/parse_config_types.h" // @manual
+#    include "openzl/prod/custom_transforms/thrift/gen-cpp2/parse_config_types_custom_protocol.h" // @manual
 #else
-#    include "data_compression/experimental/zstrong/custom_transforms/thrift/gen-cpp2/parse_config_types.h" // @manual
-#    include "data_compression/experimental/zstrong/custom_transforms/thrift/gen-cpp2/parse_config_types_custom_protocol.h" // @manual
+#    include "openzl/dev/custom_transforms/thrift/gen-cpp2/parse_config_types.h" // @manual
+#    include "openzl/dev/custom_transforms/thrift/gen-cpp2/parse_config_types_custom_protocol.h" // @manual
 #endif
 
 #include <cstdint>

@@ -17,13 +17,13 @@
 #include "tools/zstrong_cpp.h"
 
 #if ZL_FBCODE_IS_RELEASE
-#    include "openzl/versions/release/custom_transforms/thrift/tests/gen-cpp2/test_schema_fatal_types.h"
-#    include "openzl/versions/release/custom_transforms/thrift/tests/gen-cpp2/test_schema_types.h"
-#    include "openzl/versions/release/custom_transforms/thrift/tests/gen-cpp2/test_schema_visitation.h"
+#    include "openzl/prod/custom_transforms/thrift/tests/gen-cpp2/test_schema_fatal_types.h"
+#    include "openzl/prod/custom_transforms/thrift/tests/gen-cpp2/test_schema_types.h"
+#    include "openzl/prod/custom_transforms/thrift/tests/gen-cpp2/test_schema_visitation.h"
 #else
-#    include "data_compression/experimental/zstrong/custom_transforms/thrift/tests/gen-cpp2/test_schema_fatal_types.h"
-#    include "data_compression/experimental/zstrong/custom_transforms/thrift/tests/gen-cpp2/test_schema_types.h"
-#    include "data_compression/experimental/zstrong/custom_transforms/thrift/tests/gen-cpp2/test_schema_visitation.h"
+#    include "openzl/dev/custom_transforms/thrift/tests/gen-cpp2/test_schema_fatal_types.h"
+#    include "openzl/dev/custom_transforms/thrift/tests/gen-cpp2/test_schema_types.h"
+#    include "openzl/dev/custom_transforms/thrift/tests/gen-cpp2/test_schema_visitation.h"
 #endif
 
 #include <folly/Range.h>

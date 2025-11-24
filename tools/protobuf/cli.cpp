@@ -20,9 +20,9 @@
 #include "tools/protobuf/serialization_utils.h"
 #ifdef ZL_IS_FBCODE
 #    if ZL_FBCODE_IS_RELEASE
-#        include "openzl/versions/release/tools/protobuf/schema.pb.h"
+#        include "openzl/prod/tools/protobuf/schema.pb.h"
 #    else
-#        include "data_compression/experimental/zstrong/tools/protobuf/schema.pb.h"
+#        include "openzl/dev/tools/protobuf/schema.pb.h"
 #    endif
 #else
 #    include "tools/protobuf/schema.pb.h"

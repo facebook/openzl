@@ -32,7 +32,7 @@ buck_genrule(
             "SCRIPT=\\$(readlink -f $0)",
             "SCRIPTPATH=\\$(dirname $SCRIPT)",
             "cd $SCRIPTPATH",
-            "$(location :static_docs_build_script) --pwd \\$(hg root)/fbcode/data_compression/experimental/zstrong/doc/mkdocs --use-system-python-extension --test",
+            "$(location :static_docs_build_script) --pwd \\$(hg root)/fbcode/openzl/dev/doc/mkdocs --use-system-python-extension --test",
         ])))
     ),
 )

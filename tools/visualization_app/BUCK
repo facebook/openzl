@@ -17,7 +17,7 @@ buck_genrule(
         "echo -e {0} > $OUT && chmod +x $OUT"
             .format(shell.quote("\n".join([
             "#!/bin/sh",
-            "pushd \\$(hg root)/fbcode/data_compression/experimental/zstrong/tools/visualization_app",
+            "pushd \\$(hg root)/fbcode/openzl/dev/tools/visualization_app",
             "yarn build",
             "popd",
         ])))
@@ -37,7 +37,7 @@ buck_genrule(
             .format(shell.quote("\n".join([
             "#!/bin/sh",
             "cd \\$(dirname \\$0)",
-            "cd \\$(hg root)/fbcode/data_compression/experimental/zstrong/tools/visualization_app",
+            "cd \\$(hg root)/fbcode/openzl/dev/tools/visualization_app",
             "yarn install",
             "yarn test:run",
         ])))

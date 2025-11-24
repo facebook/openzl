@@ -5,9 +5,9 @@
 #include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
 #if ZL_FBCODE_IS_RELEASE
-#    include "openzl/versions/release/tools/protobuf/tests/test_schema.pb.h"
+#    include "openzl/prod/tools/protobuf/tests/test_schema.pb.h"
 #else
-#    include "data_compression/experimental/zstrong/tools/protobuf/tests/test_schema.pb.h"
+#    include "openzl/dev/tools/protobuf/tests/test_schema.pb.h"
 #endif
 #include "openzl/cpp/Compressor.hpp"
 #include "tools/protobuf/ProtoDeserializer.h"

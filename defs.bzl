@@ -10,12 +10,12 @@ load("@fbsource//xplat/security/lionhead/build_defs:generic_harness.bzl", "gener
 load("//security/lionhead/harnesses:defs.bzl", "cpp_lionhead_harness")
 
 _ZL_PROD_PREFIXES = [
-    "openzl/versions/release",
+    "openzl/prod",
     "openzl/prod",
 ]
 
 _ZL_DEV_PREFIXES = [
-    "data_compression/experimental/zstrong",
+    "openzl/dev",
     "openzl/dev",
 ]
 

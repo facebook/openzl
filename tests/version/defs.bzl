@@ -5,11 +5,11 @@ load("@fbsource//xplat/security/lionhead:defs.bzl", "ALL_EMPLOYEES", "Metadata",
 load("//security/lionhead/harnesses:defs.bzl", "cpp_lionhead_harness")
 
 def dev_only_unittest(**kwargs):
-    if not native.package_name().startswith("openzl/versions/release"):
+    if not native.package_name().startswith("openzl/prod"):
         cpp_unittest(**kwargs)
 
 def version_fuzzer(name):
-    if not native.package_name().startswith("openzl/versions/release"):
+    if not native.package_name().startswith("openzl/prod"):
         # Derive the ftest_name from the name of the rule
         prefix = "ZStrong_VersionTest_"
         if not name.startswith(prefix):

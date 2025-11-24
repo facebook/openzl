@@ -52,10 +52,10 @@ def fixup(file: Path) -> None:
 
     relpath = file.relative_to(OPENZL_DIR).parent
 
-    regex = re.compile(r"load\(\"//data_compression/experimental/zstrong(/[^:]*:|:)")
+    regex = re.compile(r"load\(\"//openzl/dev(/[^:]*:|:)")
     content = regex.sub(lambda match: fixup_match(relpath, match, True), content)
 
-    regex = re.compile(r"//data_compression/experimental/zstrong((/[^:]*:|:))")
+    regex = re.compile(r"//openzl/dev((/[^:]*:|:))")
     content = regex.sub(lambda match: fixup_match(relpath, match), content)
 
     with open(file, "w") as f:
