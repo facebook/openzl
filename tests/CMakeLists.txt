@@ -93,5 +93,6 @@ add_zs_test(test_codecs ${test_codecs_srcs} ${test_codecs_headers})
 target_link_libraries(test_codecs
     PRIVATE
         sddl_compiler_lib
+        sddl2_compiler_lib
 )
-add_dependencies(test_codecs sddl_compiler_lib)
+add_dependencies(test_codecs sddl_compiler_lib sddl2_compiler_lib)

@@ -123,6 +123,7 @@ zs_unittest(
     deps = [
         "..:zstronglib",
         "../tools/sddl/compiler:lib",
+        "../tools/sddl2/compiler:lib",
         "datagen:datagen",
         "fbsource//third-party/zstd:zstd",
         ":utils",

@@ -93,7 +93,7 @@ target_include_directories(
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/py/ext>)
 
 # Add dependencies
-target_link_libraries(ext PRIVATE openzl_cpp openzl sddl_compiler_lib)
+target_link_libraries(ext PRIVATE openzl_cpp openzl sddl_compiler_lib sddl2_compiler_lib)
 apply_openzl_compile_options_to_target(ext NO_WARNINGS)
 
 install(TARGETS ext LIBRARY DESTINATION openzl)
