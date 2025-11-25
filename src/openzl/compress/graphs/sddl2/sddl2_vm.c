@@ -325,18 +325,13 @@ SDDL2_Error SDDL2_op_type_fixed_array(SDDL2_Stack* stack)
     SDDL2_TRY(pop_positive_i64(stack, &array_count));
 
     // Pop the base type from stack
-    SDDL2_Value base_type_val;
-    SDDL2_TRY(SDDL2_Stack_pop(stack, &base_type_val));
-
-    // Verify it's a Type value
-    if (base_type_val.kind != SDDL2_VALUE_TYPE) {
-        return SDDL2_TYPE_MISMATCH;
-    }
+    SDDL2_Type base_type;
+    SDDL2_TRY(pop_type(stack, &base_type));
 
     // Check for multiplication overflow: width * array_count
     // For unsigned multiplication overflow check: if (a > 0 && b > UINT32_MAX /
     // a)
-    uint32_t base_width = base_type_val.value.as_type.width;
+    uint32_t base_width = base_type.width;
     if (array_count && base_width > UINT32_MAX / array_count) {
         ZL_DLOG(ERROR,
                 "Width multiplication would overflow: base_width=%u, array_count=%zu",
@@ -346,7 +341,7 @@ SDDL2_Error SDDL2_op_type_fixed_array(SDDL2_Stack* stack)
     }
 
     // Create new type with multiplied width
-    SDDL2_Type array_type = base_type_val.value.as_type;
+    SDDL2_Type array_type = base_type;
     array_type.width      = base_width * (uint32_t)array_count;
 
     // Push the array type back onto stack
@@ -388,18 +383,13 @@ SDDL2_Error SDDL2_op_type_structure(
     for (size_t i = 0; i < member_count; i++) {
         size_t index = member_count - 1 - i; // Reverse index
 
-        SDDL2_Value type_val;
-        SDDL2_TRY(SDDL2_Stack_pop(stack, &type_val));
-
-        // Verify it's a Type value
-        if (type_val.kind != SDDL2_VALUE_TYPE) {
+        SDDL2_Error err = pop_type(stack, &struct_data->members[index]);
+        if (err != SDDL2_OK) {
             // Allocation leak here, but in arena mode it's OK
             // In test mode with malloc, this would leak
             sddl2_free(struct_data, alloc_fn);
-            return SDDL2_TYPE_MISMATCH;
+            return err;
         }
-
-        struct_data->members[index] = type_val.value.as_type;
     }
 
     // Compute total size by summing all member sizes
@@ -428,19 +418,11 @@ SDDL2_Error SDDL2_op_type_structure(
 SDDL2_Error SDDL2_op_type_sizeof(SDDL2_Stack* stack)
 {
     // Pop the type
-    SDDL2_Value type_val;
-    SDDL2_Error err = SDDL2_Stack_pop(stack, &type_val);
-    if (err != SDDL2_OK) {
-        return err;
-    }
-
-    // Verify it's a type
-    if (type_val.kind != SDDL2_VALUE_TYPE) {
-        return SDDL2_TYPE_MISMATCH;
-    }
+    SDDL2_Type type;
+    SDDL2_TRY(pop_type(stack, &type));
 
     // Get the size of the type
-    size_t size = SDDL2_Type_size(type_val.value.as_type);
+    size_t size = SDDL2_Type_size(type);
 
     // Push the size as I64
     return SDDL2_Stack_push(stack, SDDL2_Value_i64((int64_t)size));
