@@ -136,16 +136,20 @@ size_t SDDL2_Type_size(SDDL2_Type type)
 {
     // Handle structures specially
     if (type.kind == SDDL2_TYPE_STRUCTURE) {
+        assert(type.struct_data != NULL);
         if (type.struct_data == NULL) {
-            return 0; // Invalid structure
+            // Should not happen
+            return 0;
         }
         return type.struct_data->total_size_bytes * type.width;
     }
 
     // For primitives, use kind size
     size_t kind_size = SDDL2_kind_size(type.kind);
+    assert(kind_size > 0);
     if (kind_size == 0) {
-        return 0; // Unknown type kind
+        // Unknown type kind: should not happen
+        return 0;
     }
     return kind_size * type.width;
 }

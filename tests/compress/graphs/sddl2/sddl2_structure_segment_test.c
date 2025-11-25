@@ -80,8 +80,7 @@ TEST(test_segment_single_structure)
     assert(segments.items[0].type.width == 1);
 
     // Cleanup
-    SDDL2_Struct_data* struct_data =
-            struct_val.value.as_type.struct_data;
+    SDDL2_Struct_data* struct_data = struct_val.value.as_type.struct_data;
     free(struct_data);
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
@@ -152,8 +151,7 @@ TEST(test_segment_array_of_structures)
     assert(segments.items[0].type.width == 10);
 
     // Cleanup
-    SDDL2_Struct_data* struct_data =
-            array_val.value.as_type.struct_data;
+    SDDL2_Struct_data* struct_data = array_val.value.as_type.struct_data;
     free(struct_data);
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);

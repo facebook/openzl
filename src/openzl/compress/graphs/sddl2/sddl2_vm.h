@@ -46,7 +46,8 @@ typedef enum {
  * Represents the type of a segment, including:
  * - kind: The type category (primitive or STRUCTURE)
  * - width: Number of elements (1 for scalar, >1 for arrays)
- * - struct_data: NULL for primitives, pointer to structure data for STRUCTURE types
+ * - struct_data: NULL for primitives, pointer to structure data for STRUCTURE
+ * types
  *
  * For primitives:
  *   Total byte size = primitive_type_size(kind) * width
@@ -244,7 +245,7 @@ typedef struct {
  *     Arena mode never frees memory individually; arena handles cleanup.
  * ========================================================================= */
 
- /**
+/**
  * Dynamic list of segments.
  * Grows as segments are created during VM execution.
  *
@@ -436,15 +437,15 @@ SDDL2_Value SDDL2_Value_type(SDDL2_Type type);
 
 /**
  * Get the size in bytes of a single element of the given type kind (primitive
- * size). Returns 1 for BYTES (raw bytes with no known interpretation). Returns
- * 0 for unknown/invalid types.
+ * size). Returns 1 for BYTES (raw bytes with no known interpretation).
+ * Returns 0 for unknown/invalid types.
  */
 size_t SDDL2_kind_size(SDDL2_Type_kind kind);
 
 /**
  * Get the total size in bytes of a type (including width).
  * Calculates: SDDL2_kind_size(type.kind) × type.width
- * Returns 0 if type.kind is unknown.
+ * Returns 0 if error, like type.kind is unknown.
  */
 size_t SDDL2_Type_size(SDDL2_Type type);
 

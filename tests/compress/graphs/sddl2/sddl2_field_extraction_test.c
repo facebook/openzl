@@ -52,8 +52,8 @@ static SDDL2_Type create_test_structure_type(
         struct_data->members[i] = member_types[i];
     }
 
-    SDDL2_Type result = { .kind         = SDDL2_TYPE_STRUCTURE,
-                          .width        = 1,
+    SDDL2_Type result = { .kind        = SDDL2_TYPE_STRUCTURE,
+                          .width       = 1,
                           .struct_data = struct_data };
     return result;
 }
@@ -74,8 +74,7 @@ static void test_simple_flat_structure(void)
     SDDL2_Type struct_type = create_test_structure_type(members, 3);
 
     // Verify structure metadata
-    SDDL2_Struct_data* struct_data =
-            struct_type.struct_data;
+    SDDL2_Struct_data* struct_data = struct_type.struct_data;
     assert(struct_data != NULL);
     assert(struct_data->member_count == 3);
     assert(struct_data->total_size_bytes == 7); // 1 + 2 + 4
@@ -102,14 +101,14 @@ static void test_structure_with_array_field(void)
     // Create member types
     SDDL2_Type members[3];
     members[0] = (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
-    members[1] = (SDDL2_Type){ SDDL2_TYPE_I32LE, 10, .struct_data = NULL }; // Array!
+    members[1] =
+            (SDDL2_Type){ SDDL2_TYPE_I32LE, 10, .struct_data = NULL }; // Array!
     members[2] = (SDDL2_Type){ SDDL2_TYPE_I16LE, 1, .struct_data = NULL };
 
     SDDL2_Type struct_type = create_test_structure_type(members, 3);
 
     // Verify structure metadata
-    SDDL2_Struct_data* struct_data =
-            struct_type.struct_data;
+    SDDL2_Struct_data* struct_data = struct_type.struct_data;
     assert(struct_data != NULL);
     assert(struct_data->member_count == 3);
     assert(struct_data->total_size_bytes == 43); // 1 + 40 + 2
@@ -135,16 +134,19 @@ static void test_all_primitive_types(void)
 
     // Create structure with 1-byte, 2-byte, 4-byte, 8-byte fields
     SDDL2_Type members[4];
-    members[0] = (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };    // 1 byte
-    members[1] = (SDDL2_Type){ SDDL2_TYPE_U16LE, 1, .struct_data = NULL }; // 2 bytes
-    members[2] = (SDDL2_Type){ SDDL2_TYPE_F32BE, 1, .struct_data = NULL }; // 4 bytes
-    members[3] = (SDDL2_Type){ SDDL2_TYPE_I64LE, 1, .struct_data = NULL }; // 8 bytes
+    members[0] =
+            (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL }; // 1 byte
+    members[1] =
+            (SDDL2_Type){ SDDL2_TYPE_U16LE, 1, .struct_data = NULL }; // 2 bytes
+    members[2] =
+            (SDDL2_Type){ SDDL2_TYPE_F32BE, 1, .struct_data = NULL }; // 4 bytes
+    members[3] =
+            (SDDL2_Type){ SDDL2_TYPE_I64LE, 1, .struct_data = NULL }; // 8 bytes
 
     SDDL2_Type struct_type = create_test_structure_type(members, 4);
 
     // Verify
-    SDDL2_Struct_data* struct_data =
-            struct_type.struct_data;
+    SDDL2_Struct_data* struct_data = struct_type.struct_data;
     assert(struct_data->total_size_bytes == 15); // 1 + 2 + 4 + 8
 
     size_t expected_sizes[4] = { 1, 2, 4, 8 };
@@ -173,8 +175,7 @@ static void test_mixed_endianness(void)
     SDDL2_Type struct_type = create_test_structure_type(members, 4);
 
     // Verify
-    SDDL2_Struct_data* struct_data =
-            struct_type.struct_data;
+    SDDL2_Struct_data* struct_data = struct_type.struct_data;
     assert(struct_data->total_size_bytes == 18); // 2 + 4 + 8 + 4
 
     free(struct_data);
@@ -196,8 +197,7 @@ static void test_large_structure(void)
     SDDL2_Type struct_type = create_test_structure_type(members, 10);
 
     // Verify
-    SDDL2_Struct_data* struct_data =
-            struct_type.struct_data;
+    SDDL2_Struct_data* struct_data = struct_type.struct_data;
     assert(struct_data->member_count == 10);
     assert(struct_data->total_size_bytes == 40); // 10 × 4
 
@@ -224,8 +224,7 @@ static void test_type_size_function(void)
     struct_type.width = 10;
     assert(SDDL2_Type_size(struct_type) == 50); // 5 × 10
 
-    SDDL2_Struct_data* struct_data =
-            struct_type.struct_data;
+    SDDL2_Struct_data* struct_data = struct_type.struct_data;
     free(struct_data);
 
     printf("✓ test_type_size_function passed\n\n");
@@ -240,20 +239,19 @@ static void test_nested_structure_2_levels(void)
 
     // Create inner structure {I16LE, I32LE}
     SDDL2_Type inner_members[2];
-    inner_members[0]        = (SDDL2_Type){ SDDL2_TYPE_I16LE, 1, .struct_data = NULL };
-    inner_members[1]        = (SDDL2_Type){ SDDL2_TYPE_I32LE, 1, .struct_data = NULL };
+    inner_members[0] = (SDDL2_Type){ SDDL2_TYPE_I16LE, 1, .struct_data = NULL };
+    inner_members[1] = (SDDL2_Type){ SDDL2_TYPE_I32LE, 1, .struct_data = NULL };
     SDDL2_Type inner_struct = create_test_structure_type(inner_members, 2);
 
     // Create outer structure {U8, inner_struct, F64BE}
     SDDL2_Type outer_members[3];
-    outer_members[0]        = (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
-    outer_members[1]        = inner_struct; // Nested structure!
-    outer_members[2]        = (SDDL2_Type){ SDDL2_TYPE_F64BE, 1, .struct_data = NULL };
+    outer_members[0] = (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
+    outer_members[1] = inner_struct; // Nested structure!
+    outer_members[2] = (SDDL2_Type){ SDDL2_TYPE_F64BE, 1, .struct_data = NULL };
     SDDL2_Type outer_struct = create_test_structure_type(outer_members, 3);
 
     // Verify outer structure size
-    SDDL2_Struct_data* outer_data =
-            outer_struct.struct_data;
+    SDDL2_Struct_data* outer_data = outer_struct.struct_data;
     assert(outer_data->member_count == 3);
     assert(outer_data->total_size_bytes == 15); // 1 + (2 + 4) + 8
 
@@ -264,8 +262,7 @@ static void test_nested_structure_2_levels(void)
     // Field 3: F64BE = 8 bytes
 
     // Cleanup
-    SDDL2_Struct_data* inner_data =
-            inner_struct.struct_data;
+    SDDL2_Struct_data* inner_data = inner_struct.struct_data;
     free(inner_data);
     free(outer_data);
 
@@ -281,20 +278,23 @@ static void test_nested_structure_3_levels(void)
 
     // Level 1: {I16LE, I32LE}
     SDDL2_Type level1_members[2];
-    level1_members[0]        = (SDDL2_Type){ SDDL2_TYPE_I16LE, 1, .struct_data = NULL };
-    level1_members[1]        = (SDDL2_Type){ SDDL2_TYPE_I32LE, 1, .struct_data = NULL };
+    level1_members[0] =
+            (SDDL2_Type){ SDDL2_TYPE_I16LE, 1, .struct_data = NULL };
+    level1_members[1] =
+            (SDDL2_Type){ SDDL2_TYPE_I32LE, 1, .struct_data = NULL };
     SDDL2_Type level1_struct = create_test_structure_type(level1_members, 2);
 
     // Level 2: {U8, level1_struct}
     SDDL2_Type level2_members[2];
-    level2_members[0]        = (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
-    level2_members[1]        = level1_struct;
+    level2_members[0] = (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
+    level2_members[1] = level1_struct;
     SDDL2_Type level2_struct = create_test_structure_type(level2_members, 2);
 
     // Level 3: {level2_struct, F64BE}
     SDDL2_Type level3_members[2];
-    level3_members[0]        = level2_struct;
-    level3_members[1]        = (SDDL2_Type){ SDDL2_TYPE_F64BE, 1, .struct_data = NULL };
+    level3_members[0] = level2_struct;
+    level3_members[1] =
+            (SDDL2_Type){ SDDL2_TYPE_F64BE, 1, .struct_data = NULL };
     SDDL2_Type level3_struct = create_test_structure_type(level3_members, 2);
 
     // Verify total size: 1 + 2 + 4 + 8 = 15
@@ -320,14 +320,15 @@ static void test_nested_structure_with_arrays(void)
     // Inner: {U8, [I32LE × 5]}
     SDDL2_Type inner_members[2];
     inner_members[0] = (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
-    inner_members[1] = (SDDL2_Type){ SDDL2_TYPE_I32LE, 5, .struct_data = NULL }; // Array!
+    inner_members[1] =
+            (SDDL2_Type){ SDDL2_TYPE_I32LE, 5, .struct_data = NULL }; // Array!
     SDDL2_Type inner_struct = create_test_structure_type(inner_members, 2);
 
     // Outer: {I16LE, inner_struct, F64BE}
     SDDL2_Type outer_members[3];
-    outer_members[0]        = (SDDL2_Type){ SDDL2_TYPE_I16LE, 1, .struct_data = NULL };
-    outer_members[1]        = inner_struct;
-    outer_members[2]        = (SDDL2_Type){ SDDL2_TYPE_F64BE, 1, .struct_data = NULL };
+    outer_members[0] = (SDDL2_Type){ SDDL2_TYPE_I16LE, 1, .struct_data = NULL };
+    outer_members[1] = inner_struct;
+    outer_members[2] = (SDDL2_Type){ SDDL2_TYPE_F64BE, 1, .struct_data = NULL };
     SDDL2_Type outer_struct = create_test_structure_type(outer_members, 3);
 
     // Verify total size: 2 + (1 + 20) + 8 = 31
@@ -352,20 +353,23 @@ static void test_multiple_nested_structures(void)
     // Struct A: {U8, I16LE}
     SDDL2_Type structA_members[2];
     structA_members[0] = (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
-    structA_members[1] = (SDDL2_Type){ SDDL2_TYPE_I16LE, 1, .struct_data = NULL };
+    structA_members[1] =
+            (SDDL2_Type){ SDDL2_TYPE_I16LE, 1, .struct_data = NULL };
     SDDL2_Type structA = create_test_structure_type(structA_members, 2);
 
     // Struct B: {I32LE, F64BE}
     SDDL2_Type structB_members[2];
-    structB_members[0] = (SDDL2_Type){ SDDL2_TYPE_I32LE, 1, .struct_data = NULL };
-    structB_members[1] = (SDDL2_Type){ SDDL2_TYPE_F64BE, 1, .struct_data = NULL };
+    structB_members[0] =
+            (SDDL2_Type){ SDDL2_TYPE_I32LE, 1, .struct_data = NULL };
+    structB_members[1] =
+            (SDDL2_Type){ SDDL2_TYPE_F64BE, 1, .struct_data = NULL };
     SDDL2_Type structB = create_test_structure_type(structB_members, 2);
 
     // Outer: {structA, U32LE, structB}
     SDDL2_Type outer_members[3];
-    outer_members[0]        = structA;
-    outer_members[1]        = (SDDL2_Type){ SDDL2_TYPE_U32LE, 1, .struct_data = NULL };
-    outer_members[2]        = structB;
+    outer_members[0] = structA;
+    outer_members[1] = (SDDL2_Type){ SDDL2_TYPE_U32LE, 1, .struct_data = NULL };
+    outer_members[2] = structB;
     SDDL2_Type outer_struct = create_test_structure_type(outer_members, 3);
 
     // Verify total size: (1 + 2) + 4 + (4 + 8) = 19
@@ -411,9 +415,9 @@ static void test_field_types_flat_structure(void)
 
     // Create structure {U8, I16LE, I32LE}
     SDDL2_Type members[3];
-    members[0]             = (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
-    members[1]             = (SDDL2_Type){ SDDL2_TYPE_I16LE, 1, .struct_data = NULL };
-    members[2]             = (SDDL2_Type){ SDDL2_TYPE_I32LE, 1, .struct_data = NULL };
+    members[0] = (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
+    members[1] = (SDDL2_Type){ SDDL2_TYPE_I16LE, 1, .struct_data = NULL };
+    members[2] = (SDDL2_Type){ SDDL2_TYPE_I32LE, 1, .struct_data = NULL };
     SDDL2_Type struct_type = create_test_structure_type(members, 3);
 
     // Extract field types manually
@@ -444,15 +448,15 @@ static void test_field_types_nested_structure(void)
 
     // Create inner structure {I16LE, I32LE}
     SDDL2_Type inner_members[2];
-    inner_members[0]        = (SDDL2_Type){ SDDL2_TYPE_I16LE, 1, .struct_data = NULL };
-    inner_members[1]        = (SDDL2_Type){ SDDL2_TYPE_I32LE, 1, .struct_data = NULL };
+    inner_members[0] = (SDDL2_Type){ SDDL2_TYPE_I16LE, 1, .struct_data = NULL };
+    inner_members[1] = (SDDL2_Type){ SDDL2_TYPE_I32LE, 1, .struct_data = NULL };
     SDDL2_Type inner_struct = create_test_structure_type(inner_members, 2);
 
     // Create outer structure {U8, inner_struct, F64BE}
     SDDL2_Type outer_members[3];
-    outer_members[0]        = (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
-    outer_members[1]        = inner_struct;
-    outer_members[2]        = (SDDL2_Type){ SDDL2_TYPE_F64BE, 1, .struct_data = NULL };
+    outer_members[0] = (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
+    outer_members[1] = inner_struct;
+    outer_members[2] = (SDDL2_Type){ SDDL2_TYPE_F64BE, 1, .struct_data = NULL };
     SDDL2_Type outer_struct = create_test_structure_type(outer_members, 3);
 
     // Extract field types
@@ -487,7 +491,8 @@ static void test_field_types_with_arrays(void)
     // Create structure {U8, [I32LE × 10], I16LE}
     SDDL2_Type members[3];
     members[0] = (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
-    members[1] = (SDDL2_Type){ SDDL2_TYPE_I32LE, 10, .struct_data = NULL }; // Array!
+    members[1] =
+            (SDDL2_Type){ SDDL2_TYPE_I32LE, 10, .struct_data = NULL }; // Array!
     members[2] = (SDDL2_Type){ SDDL2_TYPE_I16LE, 1, .struct_data = NULL };
     SDDL2_Type struct_type = create_test_structure_type(members, 3);
 
@@ -520,14 +525,14 @@ static void test_field_types_sizes_alignment(void)
 
     // Create nested structure {U8, {I16LE, I32LE}, F64BE}
     SDDL2_Type inner_members[2];
-    inner_members[0]        = (SDDL2_Type){ SDDL2_TYPE_I16LE, 1, .struct_data = NULL };
-    inner_members[1]        = (SDDL2_Type){ SDDL2_TYPE_I32LE, 1, .struct_data = NULL };
+    inner_members[0] = (SDDL2_Type){ SDDL2_TYPE_I16LE, 1, .struct_data = NULL };
+    inner_members[1] = (SDDL2_Type){ SDDL2_TYPE_I32LE, 1, .struct_data = NULL };
     SDDL2_Type inner_struct = create_test_structure_type(inner_members, 2);
 
     SDDL2_Type outer_members[3];
-    outer_members[0]        = (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
-    outer_members[1]        = inner_struct;
-    outer_members[2]        = (SDDL2_Type){ SDDL2_TYPE_F64BE, 1, .struct_data = NULL };
+    outer_members[0] = (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
+    outer_members[1] = inner_struct;
+    outer_members[2] = (SDDL2_Type){ SDDL2_TYPE_F64BE, 1, .struct_data = NULL };
     SDDL2_Type outer_struct = create_test_structure_type(outer_members, 3);
 
     // Extract field types
@@ -573,10 +578,10 @@ static void test_field_types_mixed_endianness(void)
 
     // Create structure with LE and BE types
     SDDL2_Type members[4];
-    members[0]             = (SDDL2_Type){ SDDL2_TYPE_U16LE, 1, .struct_data = NULL };
-    members[1]             = (SDDL2_Type){ SDDL2_TYPE_I32BE, 1, .struct_data = NULL };
-    members[2]             = (SDDL2_Type){ SDDL2_TYPE_F64LE, 1, .struct_data = NULL };
-    members[3]             = (SDDL2_Type){ SDDL2_TYPE_U32BE, 1, .struct_data = NULL };
+    members[0] = (SDDL2_Type){ SDDL2_TYPE_U16LE, 1, .struct_data = NULL };
+    members[1] = (SDDL2_Type){ SDDL2_TYPE_I32BE, 1, .struct_data = NULL };
+    members[2] = (SDDL2_Type){ SDDL2_TYPE_F64LE, 1, .struct_data = NULL };
+    members[3] = (SDDL2_Type){ SDDL2_TYPE_U32BE, 1, .struct_data = NULL };
     SDDL2_Type struct_type = create_test_structure_type(members, 4);
 
     // Extract field types

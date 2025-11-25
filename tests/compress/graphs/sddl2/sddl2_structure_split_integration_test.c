@@ -71,8 +71,8 @@ static void test_flat_structure_split(void)
     struct_data->members[1]       = i16_type;
     struct_data->members[2]       = i32_type;
 
-    SDDL2_Type struct_type = { .kind         = SDDL2_TYPE_STRUCTURE,
-                               .width        = 1,
+    SDDL2_Type struct_type = { .kind        = SDDL2_TYPE_STRUCTURE,
+                               .width       = 1,
                                .struct_data = struct_data };
 
     // Verify structure type properties
@@ -123,11 +123,13 @@ static void test_nested_structure_split(void)
 
     inner_struct_data->member_count     = 2;
     inner_struct_data->total_size_bytes = 6; // 2 + 4
-    inner_struct_data->members[0] = (SDDL2_Type){ SDDL2_TYPE_I16LE, 1, .struct_data = NULL };
-    inner_struct_data->members[1] = (SDDL2_Type){ SDDL2_TYPE_I32LE, 1, .struct_data = NULL };
+    inner_struct_data->members[0] =
+            (SDDL2_Type){ SDDL2_TYPE_I16LE, 1, .struct_data = NULL };
+    inner_struct_data->members[1] =
+            (SDDL2_Type){ SDDL2_TYPE_I32LE, 1, .struct_data = NULL };
 
-    SDDL2_Type inner_struct_type = { .kind         = SDDL2_TYPE_STRUCTURE,
-                                     .width        = 1,
+    SDDL2_Type inner_struct_type = { .kind        = SDDL2_TYPE_STRUCTURE,
+                                     .width       = 1,
                                      .struct_data = inner_struct_data };
 
     // Create outer structure {U8, inner_struct, F64BE}
@@ -139,12 +141,14 @@ static void test_nested_structure_split(void)
 
     outer_struct_data->member_count     = 3;
     outer_struct_data->total_size_bytes = 15; // 1 + 6 + 8
-    outer_struct_data->members[0] = (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
+    outer_struct_data->members[0] =
+            (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
     outer_struct_data->members[1] = inner_struct_type;
-    outer_struct_data->members[2] = (SDDL2_Type){ SDDL2_TYPE_F64BE, 1, .struct_data = NULL };
+    outer_struct_data->members[2] =
+            (SDDL2_Type){ SDDL2_TYPE_F64BE, 1, .struct_data = NULL };
 
-    SDDL2_Type outer_struct_type = { .kind         = SDDL2_TYPE_STRUCTURE,
-                                     .width        = 1,
+    SDDL2_Type outer_struct_type = { .kind        = SDDL2_TYPE_STRUCTURE,
+                                     .width       = 1,
                                      .struct_data = outer_struct_data };
 
     // Verify nested structure properties
@@ -193,13 +197,15 @@ static void test_structure_with_array_field(void)
 
     struct_data->member_count     = 3;
     struct_data->total_size_bytes = 23; // 1 + 20 + 2
-    struct_data->members[0]       = (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
+    struct_data->members[0] =
+            (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
     struct_data->members[1] =
             (SDDL2_Type){ SDDL2_TYPE_I32LE, 5, .struct_data = NULL }; // Array!
-    struct_data->members[2] = (SDDL2_Type){ SDDL2_TYPE_I16LE, 1, .struct_data = NULL };
+    struct_data->members[2] =
+            (SDDL2_Type){ SDDL2_TYPE_I16LE, 1, .struct_data = NULL };
 
-    SDDL2_Type struct_type = { .kind         = SDDL2_TYPE_STRUCTURE,
-                               .width        = 1,
+    SDDL2_Type struct_type = { .kind        = SDDL2_TYPE_STRUCTURE,
+                               .width       = 1,
                                .struct_data = struct_data };
 
     // Verify structure properties
@@ -242,12 +248,15 @@ static void test_mixed_endianness_structure(void)
 
     struct_data->member_count     = 3;
     struct_data->total_size_bytes = 14; // 2 + 4 + 8
-    struct_data->members[0]       = (SDDL2_Type){ SDDL2_TYPE_U16LE, 1, .struct_data = NULL };
-    struct_data->members[1]       = (SDDL2_Type){ SDDL2_TYPE_I32BE, 1, .struct_data = NULL };
-    struct_data->members[2]       = (SDDL2_Type){ SDDL2_TYPE_F64LE, 1, .struct_data = NULL };
+    struct_data->members[0] =
+            (SDDL2_Type){ SDDL2_TYPE_U16LE, 1, .struct_data = NULL };
+    struct_data->members[1] =
+            (SDDL2_Type){ SDDL2_TYPE_I32BE, 1, .struct_data = NULL };
+    struct_data->members[2] =
+            (SDDL2_Type){ SDDL2_TYPE_F64LE, 1, .struct_data = NULL };
 
-    SDDL2_Type struct_type = { .kind         = SDDL2_TYPE_STRUCTURE,
-                               .width        = 1,
+    SDDL2_Type struct_type = { .kind        = SDDL2_TYPE_STRUCTURE,
+                               .width       = 1,
                                .struct_data = struct_data };
 
     // Verify structure properties
@@ -287,9 +296,12 @@ static void test_field_size_extraction(void)
 
     struct_data->member_count     = 3;
     struct_data->total_size_bytes = 13; // 1 + 4 + 8
-    struct_data->members[0]       = (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
-    struct_data->members[1]       = (SDDL2_Type){ SDDL2_TYPE_I32LE, 1, .struct_data = NULL };
-    struct_data->members[2]       = (SDDL2_Type){ SDDL2_TYPE_F64BE, 1, .struct_data = NULL };
+    struct_data->members[0] =
+            (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
+    struct_data->members[1] =
+            (SDDL2_Type){ SDDL2_TYPE_I32LE, 1, .struct_data = NULL };
+    struct_data->members[2] =
+            (SDDL2_Type){ SDDL2_TYPE_F64BE, 1, .struct_data = NULL };
 
     // Verify we can calculate sizes correctly
     assert(SDDL2_Type_size(struct_data->members[0]) == 1);
