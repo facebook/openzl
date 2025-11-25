@@ -468,5 +468,3 @@ SDDL2_Error SDDL2_execute_bytecode(
     // high-level languages where functions can end without explicit return.
     return SDDL2_OK;
 }
-
-#undef CLEANUP_AND_RETURN
