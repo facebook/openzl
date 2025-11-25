@@ -54,7 +54,9 @@ class DatasetManager:
         if len(failed_downloads) == 0:
             print("All datasets downloaded successfully")
 
-    def download_dataset(self, output_dir: str, dataset_name: str, binary_path: str) -> None:
+    def download_dataset(
+        self, output_dir: str, dataset_name: str, binary_path: str
+    ) -> None:
         """Download a single dataset to output_dir"""
         if dataset_name in self.available_datasets:
             self.available_datasets[dataset_name].download(
@@ -105,6 +107,7 @@ def create_argParser() -> argparse.ArgumentParser:
     )
     return parser
 
+
 def main() -> None:
     parser = create_argParser()
     args = parser.parse_args()
@@ -121,7 +124,9 @@ def main() -> None:
             if args.all:
                 manager.download_all_datasets(args.output_dir, args.binary_path)
             else:
-                manager.download_dataset(args.output_dir, args.dataset_name, args.binary_path)
+                manager.download_dataset(
+                    args.output_dir, args.dataset_name, args.binary_path
+                )
         else:
             manager.list_datasets()
 

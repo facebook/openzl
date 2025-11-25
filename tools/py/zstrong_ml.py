@@ -93,7 +93,7 @@ def _get_tree_strings(forest: t.List[t.Dict[str, t.Any]]) -> t.Tuple[int, str]:
 
 
 def _get_forest_strings(
-    serialized_pred: t.List[t.List[t.Dict[str, t.Any]]]
+    serialized_pred: t.List[t.List[t.Dict[str, t.Any]]],
 ) -> t.Tuple[int, str]:
     """
     Returns a tuple representing the total number of forests, and a string representing an array of forests
@@ -150,7 +150,6 @@ def _get_labels(arr_name: str, nb_name: str, labels: t.List[str]) -> str:
 
 
 def _get_gbt_model_func(prefix: str, func_name: str) -> str:
-
     func_str = """
 GBTModel {func_name}(FeatureGenerator featureGenerator)
 {{    GBTModel gbtModel = {{
