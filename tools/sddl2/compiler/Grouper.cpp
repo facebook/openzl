@@ -53,18 +53,19 @@ class GrouperImpl {
                                 + "' to close this list.");
             }
 
+            if (**it == list_sym_set.close) {
+                break;
+            }
+
+            // If we see a new list, group it
             auto maybe_list = maybe_group_list(it, end);
             if (maybe_list) {
                 cur_group_nodes.push_back(std::move(maybe_list));
                 continue;
             }
 
-            if (**it == list_sym_set.close) {
-                break;
-            }
-            if (**it == list_sym_set.sep
-                || (list_sym_set.sep == Symbol::SEMI && **it == Symbol::NL
-                    && !cur_group_nodes.empty())) {
+            // Finalize the current group if we see a separator
+            if (**it == list_sym_set.sep) {
                 if (cur_group_nodes.empty()) {
                     throw SyntaxError(
                             (*it)->loc(),

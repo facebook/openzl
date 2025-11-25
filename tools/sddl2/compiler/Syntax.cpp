@@ -41,7 +41,7 @@ const std::map<Symbol, ListSymSet> list_sym_sets{ []() {
         { ListType::CURLY,
           Symbol::CURLY_OPEN,
           Symbol::CURLY_CLOSE,
-          Symbol::SEMI },
+          Symbol::COMMA },
     };
     std::map<Symbol, ListSymSet> m;
     for (const auto& set : sets) {
