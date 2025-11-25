@@ -588,7 +588,7 @@ push.type.f32le     # Member 1: x
 push.type.f32le     # Member 2: y
 push.type.f32le     # Member 3: z
 push.i32 3          # Member count
-type.structure      # Creates: Type{STRUCTURE, width=1, complex_data=...}
+type.structure      # Creates: Type{STRUCTURE, width=1, struct_data=...}
 ```
 
 **Nested structures:**

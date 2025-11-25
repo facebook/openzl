@@ -126,7 +126,7 @@ size_t SDDL2_kind_size(SDDL2_Type_kind kind)
             return 1; // Raw bytes, unit size is 1 byte
         case SDDL2_TYPE_STRUCTURE:
             return 0; // Structures don't have a fixed kind size (use
-                      // complex_data)
+                      // struct_data)
         default:
             return 0; // Unknown type
     }
@@ -136,11 +136,10 @@ size_t SDDL2_Type_size(SDDL2_Type type)
 {
     // Handle structures specially
     if (type.kind == SDDL2_TYPE_STRUCTURE) {
-        if (type.complex_data == NULL) {
+        if (type.struct_data == NULL) {
             return 0; // Invalid structure
         }
-        SDDL2_Struct_data* struct_data = (SDDL2_Struct_data*)type.complex_data;
-        return struct_data->total_size_bytes * type.width;
+        return type.struct_data->total_size_bytes * type.width;
     }
 
     // For primitives, use kind size
@@ -416,7 +415,7 @@ SDDL2_Error SDDL2_op_type_structure(
     SDDL2_Type struct_type = { .kind  = SDDL2_TYPE_STRUCTURE,
                                .width = 1, // Single instance (can be multiplied
                                            // later with type.fixed_array)
-                               .complex_data = struct_data };
+                               .struct_data = struct_data };
 
     // Push structure type onto stack
     return SDDL2_Stack_push(stack, SDDL2_Value_type(struct_type));

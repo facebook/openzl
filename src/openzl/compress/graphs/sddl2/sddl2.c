@@ -168,16 +168,16 @@ static ZL_Report sddl2_count_primitive_fields(ZL_Graph* graph, SDDL2_Type type)
         }
 
         // For single structure instance, recursively count fields
-        SDDL2_Struct_data* struct_data = (SDDL2_Struct_data*)type.complex_data;
-        ZL_ERR_IF_NULL(
-                struct_data, GENERIC, "Structure type has NULL complex_data");
+        ZL_ERR_IF_NULL(type.struct_data,
+                       GENERIC,
+                       "Structure type has NULL struct_data");
 
         size_t total = 0;
-        for (size_t i = 0; i < struct_data->member_count; i++) {
+        for (size_t i = 0; i < type.struct_data->member_count; i++) {
             ZL_TRY_LET_R(
                     member_count,
                     sddl2_count_primitive_fields(
-                            graph, struct_data->members[i]));
+                            graph, type.struct_data->members[i]));
             total += member_count;
         }
 
@@ -220,13 +220,13 @@ static ZL_Report sddl2_flatten_field_sizes(
         }
 
         // Recursively flatten all members
-        SDDL2_Struct_data* struct_data = (SDDL2_Struct_data*)type.complex_data;
-        ZL_ERR_IF_NULL(
-                struct_data, GENERIC, "Structure type has NULL complex_data");
+        ZL_ERR_IF_NULL(type.struct_data,
+                       GENERIC,
+                       "Structure type has NULL struct_data");
 
-        for (size_t i = 0; i < struct_data->member_count; i++) {
+        for (size_t i = 0; i < type.struct_data->member_count; i++) {
             ZL_ERR_IF_ERR(sddl2_flatten_field_sizes(
-                    graph, struct_data->members[i], field_sizes, index));
+                    graph, type.struct_data->members[i], field_sizes, index));
         }
     } else {
         // Primitive type: calculate size and append
@@ -348,13 +348,13 @@ static ZL_Report sddl2_flatten_field_types(
         }
 
         // Recursively flatten all members
-        SDDL2_Struct_data* struct_data = (SDDL2_Struct_data*)type.complex_data;
-        ZL_ERR_IF_NULL(
-                struct_data, GENERIC, "Structure type has NULL complex_data");
+        ZL_ERR_IF_NULL(type.struct_data,
+                       GENERIC,
+                       "Structure type has NULL struct_data");
 
-        for (size_t i = 0; i < struct_data->member_count; i++) {
+        for (size_t i = 0; i < type.struct_data->member_count; i++) {
             ZL_ERR_IF_ERR(sddl2_flatten_field_types(
-                    graph, struct_data->members[i], field_types, index));
+                    graph, type.struct_data->members[i], field_types, index));
         }
     } else {
         // Primitive type: append its kind

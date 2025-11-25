@@ -46,14 +46,14 @@ typedef enum {
  * Represents the type of a segment, including:
  * - kind: The type category (primitive or STRUCTURE)
  * - width: Number of elements (1 for scalar, >1 for arrays)
- * - complex_data: NULL for primitives, pointer to structure data for structures
+ * - struct_data: NULL for primitives, pointer to structure data for STRUCTURE types
  *
  * For primitives:
  *   Total byte size = primitive_type_size(kind) * width
  *
  * For structures:
  *   Total byte size = structure_size * width
- *   (structure_size stored in complex_data)
+ *   (structure_size stored in struct_data)
  */
 /* Primitive types: 0-23 (1, 2, 4, or 8 byte values)
  * Complex types: 100+ */
@@ -92,8 +92,11 @@ typedef struct SDDL2_Struct_data SDDL2_Struct_data;
 typedef struct {
     SDDL2_Type_kind kind; // Type category (primitive or STRUCTURE)
     uint32_t width; // Number of elements (consistent meaning across all types)
-    void* complex_data; // NULL for primitives, SDDL2_Struct_data* for
-                        // structures
+    union {
+        void* complex_data; // Generic access: NULL for primitives, non-NULL for
+                            // complex types
+        SDDL2_Struct_data* struct_data; // Type-safe access for STRUCTURE types
+    };
 } SDDL2_Type;
 
 /**
