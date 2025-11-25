@@ -804,11 +804,15 @@ SDDL2_op_swap(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
     (void)trace;
     (void)pc;
 
-    SDDL2_Value a, b;
-    SDDL2_TRY(SDDL2_Stack_pop(stack, &a));
-    SDDL2_TRY(SDDL2_Stack_pop(stack, &b));
-    SDDL2_TRY(SDDL2_Stack_push(stack, a));
-    return SDDL2_Stack_push(stack, b);
+    if (stack->top < 2) {
+        return SDDL2_STACK_UNDERFLOW;
+    }
+
+    SDDL2_Value temp             = stack->items[stack->top - 1];
+    stack->items[stack->top - 1] = stack->items[stack->top - 2];
+    stack->items[stack->top - 2] = temp;
+
+    return SDDL2_OK;
 }
 
 /* ============================================================================
