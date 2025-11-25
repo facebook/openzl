@@ -382,8 +382,8 @@ SDDL2_Error SDDL2_op_type_structure(
 
         SDDL2_Error err = pop_type(stack, &struct_data->members[index]);
         if (err != SDDL2_OK) {
-            // Allocation leak here, but in arena mode it's OK
-            // In test mode with malloc, this would leak
+            // When *not* in arena mode (i.e. during tests),
+            // it's necessary to free() here to avoid memory leaks
             sddl2_free(struct_data, alloc_fn);
             return err;
         }
@@ -394,14 +394,13 @@ SDDL2_Error SDDL2_op_type_structure(
         size_t member_size = SDDL2_Type_size(struct_data->members[i]);
 
         // Check for size overflow when adding member_size
-        size_t new_total_size;
         if (ZL_overflowAddST(
-                    struct_data->total_size_bytes, member_size, &new_total_size)) {
+                    struct_data->total_size_bytes,
+                    member_size,
+                    &struct_data->total_size_bytes)) {
             sddl2_free(struct_data, alloc_fn);
             return SDDL2_MATH_OVERFLOW;
         }
-
-        struct_data->total_size_bytes = new_total_size;
     }
 
     // Create structure type
