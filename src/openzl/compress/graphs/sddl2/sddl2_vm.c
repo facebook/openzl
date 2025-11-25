@@ -423,7 +423,7 @@ SDDL2_Error SDDL2_op_type_sizeof(SDDL2_Stack* stack)
     size_t size = SDDL2_Type_size(type);
 
     // Push the size as I64
-    return SDDL2_Stack_push(stack, SDDL2_Value_i64((int64_t)size));
+    return push_i64(stack, (int64_t)size);
 }
 
 /* ============================================================================
@@ -883,8 +883,7 @@ SDDL2_Error SDDL2_op_current_pos(
         const SDDL2_Input_cursor* buffer)
 {
     // Push current cursor position as I64
-    return SDDL2_Stack_push(
-            stack, SDDL2_Value_i64((int64_t)buffer->current_pos));
+    return push_i64(stack, (int64_t)buffer->current_pos);
 }
 
 SDDL2_Error SDDL2_op_remaining(
@@ -892,12 +891,12 @@ SDDL2_Error SDDL2_op_remaining(
         const SDDL2_Input_cursor* buffer)
 {
     size_t remaining = buffer->size - buffer->current_pos;
-    return SDDL2_Stack_push(stack, SDDL2_Value_i64((int64_t)remaining));
+    return push_i64(stack, (int64_t)remaining);
 }
 
 SDDL2_Error SDDL2_op_push_stack_depth(SDDL2_Stack* stack)
 {
-    return SDDL2_Stack_push(stack, SDDL2_Value_i64((int64_t)stack->top));
+    return push_i64(stack, (int64_t)stack->top);
 }
 
 /**
