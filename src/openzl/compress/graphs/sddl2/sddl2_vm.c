@@ -10,7 +10,8 @@
 #include "sddl2_vm.h"
 #include <stdbool.h>
 #include "openzl/common/logging.h"
-#include "openzl/shared/mem.h" // ZL_memcpy() for memory operations
+#include "openzl/shared/mem.h"      // ZL_memcpy() for memory operations
+#include "openzl/shared/overflow.h" // ZL_overflowMulU32, ZL_overflowAddST, etc.
 
 /* ============================================================================
  * Stack Operations
@@ -328,21 +329,16 @@ SDDL2_Error SDDL2_op_type_fixed_array(SDDL2_Stack* stack)
     SDDL2_Type base_type;
     SDDL2_TRY(pop_type(stack, &base_type));
 
-    // Check for multiplication overflow: width * array_count
-    // For unsigned multiplication overflow check: if (a > 0 && b > UINT32_MAX /
-    // a)
-    uint32_t base_width = base_type.width;
-    if (array_count && base_width > UINT32_MAX / array_count) {
-        ZL_DLOG(ERROR,
-                "Width multiplication would overflow: base_width=%u, array_count=%zu",
-                base_width,
-                array_count);
-        return SDDL2_MATH_OVERFLOW; // Width multiplication would overflow
-    }
-
     // Create new type with multiplied width
     SDDL2_Type array_type = base_type;
-    array_type.width      = base_width * (uint32_t)array_count;
+    if (ZL_overflowMulU32(
+                base_type.width, (uint32_t)array_count, &array_type.width)) {
+        ZL_DLOG(ERROR,
+                "Width multiplication would overflow: base_width=%u, array_count=%zu",
+                base_type.width,
+                array_count);
+        return SDDL2_MATH_OVERFLOW;
+    }
 
     // Push the array type back onto stack
     return SDDL2_Stack_push(stack, SDDL2_Value_type(array_type));
@@ -396,13 +392,15 @@ SDDL2_Error SDDL2_op_type_structure(
     for (size_t i = 0; i < member_count; i++) {
         size_t member_size = SDDL2_Type_size(struct_data->members[i]);
 
-        // Check for size overflow
-        if (struct_data->total_size_bytes > SIZE_MAX - member_size) {
+        // Check for size overflow when adding member_size
+        size_t new_total_size;
+        if (ZL_overflowAddST(
+                    struct_data->total_size_bytes, member_size, &new_total_size)) {
             sddl2_free(struct_data, alloc_fn);
-            return SDDL2_MATH_OVERFLOW; // Size overflow
+            return SDDL2_MATH_OVERFLOW;
         }
 
-        struct_data->total_size_bytes += member_size;
+        struct_data->total_size_bytes = new_total_size;
     }
 
     // Create structure type
@@ -1191,11 +1189,10 @@ static SDDL2_Error segment_create_internal(
     }
 
     // Check for overflow in element_count * total_type_size multiplication
-    if (element_count > SIZE_MAX / total_type_size) {
+    size_t size_bytes;
+    if (ZL_overflowMulST(element_count, total_type_size, &size_bytes)) {
         return SDDL2_MATH_OVERFLOW; // Size overflow
     }
-
-    size_t size_bytes = element_count * total_type_size;
 
     // Bounds check: segment must fit in remaining input
     if (buffer->current_pos + size_bytes > buffer->size) {
