@@ -644,7 +644,7 @@ SDDL2_op_eq(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
-    int64_t result = (a == b) ? 1 : 0;
+    int64_t result = (a == b);
     SDDL2_log_binary_op("cmp.eq", "==", a, b, result, trace, pc);
     return push_i64(stack, result);
 }
@@ -654,7 +654,7 @@ SDDL2_op_ne(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
-    int64_t result = (a != b) ? 1 : 0;
+    int64_t result = (a != b);
     SDDL2_log_binary_op("cmp.ne", "!=", a, b, result, trace, pc);
     return push_i64(stack, result);
 }
@@ -664,7 +664,7 @@ SDDL2_op_lt(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
-    int64_t result = (a < b) ? 1 : 0;
+    int64_t result = (a < b);
     SDDL2_log_binary_op("cmp.lt", "<", a, b, result, trace, pc);
     return push_i64(stack, result);
 }
@@ -674,7 +674,7 @@ SDDL2_op_le(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
-    int64_t result = (a <= b) ? 1 : 0;
+    int64_t result = (a <= b);
     SDDL2_log_binary_op("cmp.le", "<=", a, b, result, trace, pc);
     return push_i64(stack, result);
 }
@@ -684,7 +684,7 @@ SDDL2_op_gt(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
-    int64_t result = (a > b) ? 1 : 0;
+    int64_t result = (a > b);
     SDDL2_log_binary_op("cmp.gt", ">", a, b, result, trace, pc);
     return push_i64(stack, result);
 }
@@ -694,7 +694,7 @@ SDDL2_op_ge(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
-    int64_t result = (a >= b) ? 1 : 0;
+    int64_t result = (a >= b);
     SDDL2_log_binary_op("cmp.ge", ">=", a, b, result, trace, pc);
     return push_i64(stack, result);
 }
@@ -715,7 +715,7 @@ SDDL2_op_and(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
-    int64_t result = (a && b) ? 1 : 0;
+    int64_t result = (a && b);
     SDDL2_log_binary_op("logic.and", "&&", a, b, result, trace, pc);
     return push_i64(stack, result);
 }
@@ -725,7 +725,7 @@ SDDL2_op_or(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
-    int64_t result = (a || b) ? 1 : 0;
+    int64_t result = (a || b);
     SDDL2_log_binary_op("logic.or", "||", a, b, result, trace, pc);
     return push_i64(stack, result);
 }
@@ -735,7 +735,7 @@ SDDL2_op_xor(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a, b;
     SDDL2_TRY(pop_binary_i64(stack, &a, &b));
-    int64_t result = ((a && !b) || (!a && b)) ? 1 : 0;
+    int64_t result = ((a && !b) || (!a && b));
     SDDL2_log_binary_op("logic.xor", "^^", a, b, result, trace, pc);
     return push_i64(stack, result);
 }
@@ -745,7 +745,7 @@ SDDL2_op_not(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
     int64_t a;
     SDDL2_TRY(pop_i64(stack, &a));
-    int64_t result = (!a) ? 1 : 0;
+    int64_t result = (!a);
     SDDL2_log_unary_op("logic.not", "!", a, result, trace, pc);
     return push_i64(stack, result);
 }
