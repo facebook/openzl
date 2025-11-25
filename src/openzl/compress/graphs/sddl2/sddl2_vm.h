@@ -180,12 +180,6 @@ typedef struct {
  * @return Allocated memory or NULL on failure
  */
 typedef void* (*SDDL2_allocator_fn)(void* allocator_ctx, size_t size);
-/* ============================================================================
- * Memory Allocation Fallback Functions (implemented in sddl2_vm.c)
- * ========================================================================= */
-
-void* sddl2_fallback_realloc(void* ptr, size_t size);
-void sddl2_fallback_free(void* ptr);
 
 /**
  * Dynamic Array Capacity Configuration
@@ -215,6 +209,13 @@ void sddl2_fallback_free(void* ptr);
 #endif
 
 /* ============================================================================
+ * Memory Allocation Fallback Functions (implemented in sddl2_vm.c)
+ * ========================================================================= */
+
+void* sddl2_fallback_realloc(void* ptr, size_t size);
+void sddl2_fallback_free(void* ptr);
+
+/* ============================================================================
  * Segments
  * ========================================================================= */
 
@@ -230,7 +231,20 @@ typedef struct {
                      // elements)
 } SDDL2_Segment;
 
-/**
+/* ============================================================================
+ * Segment & Tag Registry Operations
+ *
+ * Both segment lists and tag registries follow the same lifecycle pattern:
+ *   - init(): Prepares structure with optional arena allocator
+ *   - destroy(): Frees resources (no-op for arena mode)
+ *
+ * Allocation modes:
+ *   - alloc_fn=NULL: Falls back to realloc/free (test mode)
+ *   - alloc_fn!=NULL: Uses arena allocation (production mode)
+ *     Arena mode never frees memory individually; arena handles cleanup.
+ * ========================================================================= */
+
+ /**
  * Dynamic list of segments.
  * Grows as segments are created during VM execution.
  *
@@ -244,6 +258,13 @@ typedef struct {
     SDDL2_allocator_fn alloc_fn; // Allocator function (NULL = use realloc)
     void* alloc_ctx;             // Opaque allocator context
 } SDDL2_Segment_list;
+
+void SDDL2_Segment_list_init(
+        SDDL2_Segment_list* list,
+        SDDL2_allocator_fn alloc_fn,
+        void* alloc_ctx);
+
+void SDDL2_Segment_list_destroy(SDDL2_Segment_list* list);
 
 /**
  * Tag registry for tracking tag usage.
@@ -259,6 +280,13 @@ typedef struct {
     SDDL2_allocator_fn alloc_fn; // Allocator function (NULL = use realloc)
     void* alloc_ctx;             // Opaque allocator context
 } SDDL2_Tag_registry;
+
+void SDDL2_Tag_registry_init(
+        SDDL2_Tag_registry* registry,
+        SDDL2_allocator_fn alloc_fn,
+        void* alloc_ctx);
+
+void SDDL2_Tag_registry_destroy(SDDL2_Tag_registry* registry);
 
 /* ============================================================================
  * Trace Buffer for Validation Debugging
@@ -727,28 +755,6 @@ SDDL2_Error SDDL2_op_load_i64be(
         const SDDL2_Input_cursor* buffer);
 
 /* ============================================================================
- * Segment & Tag Registry Operations
- *
- * Both segment lists and tag registries follow the same lifecycle pattern:
- *   - init(): Prepares structure with optional arena allocator
- *   - destroy(): Frees resources (no-op for arena mode)
- *
- * Allocation modes:
- *   - alloc_fn=NULL: Falls back to realloc/free (test mode)
- *   - alloc_fn!=NULL: Uses arena allocation (production mode)
- *     Arena mode never frees memory individually; arena handles cleanup.
- * ========================================================================= */
-
-void SDDL2_Segment_list_init(
-        SDDL2_Segment_list* list,
-        SDDL2_allocator_fn alloc_fn,
-        void* alloc_ctx);
-
-void SDDL2_Segment_list_destroy(SDDL2_Segment_list* list);
-
-void SDDL2_Tag_registry_destroy(SDDL2_Tag_registry* registry);
-
-/* ============================================================================
  * Trace Buffer Operations
  * ========================================================================= */
 
@@ -824,11 +830,6 @@ SDDL2_Error SDDL2_op_segment_create_unspecified(
         SDDL2_Stack* stack,
         SDDL2_Input_cursor* buffer,
         SDDL2_Segment_list* segments);
-
-void SDDL2_Tag_registry_init(
-        SDDL2_Tag_registry* registry,
-        SDDL2_allocator_fn alloc_fn,
-        void* alloc_ctx);
 
 /**
  * Create a typed, tagged segment with automatic merging.
