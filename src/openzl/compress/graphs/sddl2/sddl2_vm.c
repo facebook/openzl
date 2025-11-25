@@ -359,10 +359,11 @@ SDDL2_Error SDDL2_op_type_structure(
             sizeof(SDDL2_Struct_data) + member_count * sizeof(SDDL2_Type);
 
     // Allocate structure data
-    SDDL2_Struct_data* const struct_data =
-            (SDDL2_Struct_data*)(alloc_fn ? alloc_fn(alloc_ctx, allocation_size)
-                                          : sddl2_fallback_realloc(
-                                                    NULL, allocation_size));
+    if (alloc_fn == NULL) {
+        assert(alloc_ctx == NULL);
+        alloc_fn = sddl2_fallback_realloc; // mostly for tests without arena
+    }
+    SDDL2_Struct_data* const struct_data = alloc_fn(alloc_ctx, allocation_size);
 
     if (struct_data == NULL) {
         return SDDL2_ALLOCATION_FAILED;
