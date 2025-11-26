@@ -1,0 +1,2 @@
+push.type
+halt

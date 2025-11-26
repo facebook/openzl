@@ -1,0 +1,2 @@
+push.u32 0x2A
+halt

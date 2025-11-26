@@ -119,13 +119,18 @@ $(eval $(call cxx_program,zli, \
 examples: zs2_pipeline zs2_trygraph zs2_selector zs2_struct zs2_round_trip
 
 .PHONY: test
-test : gtests zs2_test
+test : gtests zs2_test sddl2_test
 	$(EXEC_PREFIX) ./gtests
 
 .PHONY: zs2_test
 zs2_test : examples
 	$(EXEC_PREFIX) ./zs2_pipeline
 	$(EXEC_PREFIX) ./zs2_trygraph
+
+SDDL2_DIR = tests/compress/graphs/sddl2
+.PHONY: sddl2_test
+sddl2_test:
+	$(MAKE) -C $(SDDL2_DIR) test
 
 # ********     Tools     ********
 
@@ -224,7 +229,8 @@ $(eval $(call cxx_program_shared_o,zs2_round_trip,tests/round_trip.o tools/filei
 
 .PHONY: clean
 clean:
-	# note: done by multiconf.make
+	# note: a lot is done within multiconf.make
+	$(MAKE) -C $(SDDL2_DIR) clean
 	@echo Cleaning completed
 
 

@@ -619,6 +619,7 @@ static int help(const char* exename)
     printf("  -l=#      select compression level \n");
     printf("  -i=#      Test duration per file, in seconds \n");
     printf("  -B=#      Split input into blocks of size # bytes \n");
+    printf("  -z        Compression only");
     printf(" --csv      output result in csv format \n");
     printf(" --save-result  save the 1st generated artifact into '%s' \n",
            artifactFilename);

@@ -1,0 +1,56 @@
+# ==========================================
+# Star Catalog Format (B1950 / J2000)
+# Supports complete specification
+# at http://tdc-www.harvard.edu/software/catalogs/catalogsb.html
+# Using SDDL v0.6
+# ==========================================
+
+Record CatalogHeader() = {
+  STAR0: Int32LE,   # Subtract from star number to get sequence number
+  STAR1: Int32LE,   # First star number in file
+  STARN: Int32LE,   # Number of stars; <0 → coordinates J2000
+  STNUM: Int32LE,   # ID scheme / name flag
+                    #   0..4 → standard codes
+                    #   <0   → object name of -STNUM chars at end of entry
+  MPROP: Int32LE,   # Motion info: 0=none, 1=proper, 2=radial
+  NMAG:  Int32LE,   # Number of magnitudes (0–10); <0 → J2000 flag
+  NBENT: Int32LE    # Bytes per star entry
+}
+
+# ------------------------------------------
+# Star entry definition
+# ------------------------------------------
+Record StarEntry(STNUM, MPROP, NMAG) = {
+  when STNUM >= 0 then XNO: Float32LE,     # Catalog number
+
+  SRA0:  Float64LE,                        # Right Ascension (radians)
+  SDEC0: Float64LE,                        # Declination (radians)
+  ISP:   Bytes(2) @ascii,                  # Spectral type
+
+  when abs(NMAG) > 0 then MAG: Int16LE[abs(NMAG)],  # Magnitudes (0–10)
+
+  when MPROP >= 1 {
+    XRPM: Float32LE,                       # R.A. proper motion
+    XDPM: Float32LE                        # Dec. proper motion
+  }
+  when MPROP == 2 then SVEL: Float64LE,    # Radial velocity
+
+  when STNUM < 0 then NAME: Bytes(-STNUM) @ascii    # Object name
+}
+
+# ------------------------------------------
+# File structure
+# ------------------------------------------
+header: CatalogHeader
+
+var STNUM = header.STNUM
+var MPROP = header.MPROP
+var NMAG  = header.NMAG
+var NBENT = header.NBENT
+var STARN = header.STARN
+var record_count = abs(STARN)
+
+# Hoistable validation: parameterized sizeof is known at layout time
+expect sizeof(StarEntry(STNUM, MPROP, NMAG)) == NBENT
+
+stars: StarEntry(STNUM, MPROP, NMAG)[record_count]

@@ -54,6 +54,9 @@ file(GLOB_RECURSE test_compress_srcs CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_LIST_DIR}/compress/*.c")
 file(GLOB_RECURSE test_compress_headers CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_LIST_DIR}/compress/*.h")
+# Exclude sddl2 tests - they have their own build system and test framework (Makefile-based)
+list(FILTER test_compress_srcs EXCLUDE REGEX ".*/compress/graphs/sddl2/.*")
+list(FILTER test_compress_headers EXCLUDE REGEX ".*/compress/graphs/sddl2/.*")
 add_zs_test(test_compress ${test_compress_srcs} ${test_compress_headers})
 
 file(GLOB_RECURSE test_decompress_srcs CONFIGURE_DEPENDS

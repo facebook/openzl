@@ -1,0 +1,2 @@
+push.type bytes
+halt

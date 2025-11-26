@@ -23,10 +23,16 @@ zs_unittest(
 
 zs_unittest(
     name = "test_compress",
-    srcs = glob([
-        "compress/**/*.c",
-        "compress/**/*.cpp",
-    ]),
+    srcs = glob(
+        [
+            "compress/**/*.c",
+            "compress/**/*.cpp",
+        ],
+        exclude = [
+            # SDDL2 tests use their own test framework with main() in each file
+            "compress/graphs/sddl2/**",
+        ],
+    ),
     headers = glob(["compress/**/*.h"]),
     deps = [
         "..:compress",

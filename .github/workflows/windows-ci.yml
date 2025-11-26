@@ -167,7 +167,7 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           msystem: ${{ matrix.msystem }}
-          install: make diffutils cmake git
+          install: make diffutils cmake git python
           update: true
 
       - name: Install MinGW GCC (i686)

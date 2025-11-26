@@ -37,6 +37,13 @@ libzl.a
 libzl.so
 libopenzl.a
 libopenzl.so
+sddl_compiler
+sddl2_arithmetic_test
+sddl2_input_test
+sddl2_segments_test
+sddl2_tagged_segments_test
+sddl2_type_size_test
+sddl2_vm_test
 
 # dependencies
 /deps/*
@@ -64,6 +71,7 @@ cmake-build/
 # environment
 .venv
 .DS_Store
+*.dSYM/
 
 # corpus download
 /_corpus/
