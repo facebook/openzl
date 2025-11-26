@@ -9,8 +9,6 @@
 
 ZL_BEGIN_C_DECLS
 
-#define SPLITBYSTRUCT_NB_FIELDS_MAX 16
-
 /* DI_splitByStruct():
  * Reverses EI_splitByStruct operation:
  * join fields from multiple input streams of type ZL_Type_struct

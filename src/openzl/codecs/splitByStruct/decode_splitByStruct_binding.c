@@ -7,10 +7,6 @@
 #include "openzl/decompress/dictx.h" // ZL_Decoder_getScratchSpace
 #include "openzl/zl_errors.h"
 
-// DI_splitByStruct design notes:
-// - Currently limited to structures of max SPLITBYSTRUCT_NB_FIELDS_MAX fields.
-//   A more dynamic allocation would be required to remove this limit.
-//   To be updated when workspace allocation is available for ZL_Decoder.
 ZL_Report DI_splitByStruct(
         ZL_Decoder* dictx,
         const ZL_Input* inFixed[],
