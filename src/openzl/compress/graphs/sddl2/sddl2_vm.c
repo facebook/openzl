@@ -1316,6 +1316,39 @@ void SDDL2_Tag_registry_destroy(SDDL2_Tag_registry* registry)
     registry->capacity = 0;
 }
 
+/**
+ * Helper: Register a tag if not already registered.
+ * Returns 1 on success, 0 on allocation failure or capacity limit exceeded.
+ *
+ * Uses the unified sddl2_realloc() abstraction which handles both
+ * arena allocation and heap allocation transparently.
+ */
+static int tag_registry_register(SDDL2_Tag_registry* registry, uint32_t tag)
+{
+    // Check if tag is already registered
+    for (size_t i = 0; i < registry->count; i++) {
+        if (registry->tags[i] == tag) {
+            return 1; // Already registered
+        }
+    }
+
+    // Ensure capacity for new tag
+    if (!ensure_capacity(
+                (void*)&registry->tags,
+                registry->count,
+                &registry->capacity,
+                sizeof(uint32_t),
+                SDDL2_TAG_MAX_CAPACITY,
+                registry->alloc_fn,
+                registry->alloc_ctx)) {
+        return 0; // Allocation failed or capacity limit reached
+    }
+
+    // Register tag
+    registry->tags[registry->count++] = tag;
+    return 1;
+}
+
 /* ============================================================================
  * Trace Buffer Operations
  *
@@ -1454,39 +1487,6 @@ void SDDL2_Trace_buffer_dump(const SDDL2_Trace_buffer* trace)
             ZL_DLOG(ERROR, "[ERROR]   PC=%zu: %s", entry->pc, entry->op_name);
         }
     }
-}
-
-/**
- * Helper: Register a tag if not already registered.
- * Returns 1 on success, 0 on allocation failure or capacity limit exceeded.
- *
- * Uses the unified sddl2_realloc() abstraction which handles both
- * arena allocation and heap allocation transparently.
- */
-static int tag_registry_register(SDDL2_Tag_registry* registry, uint32_t tag)
-{
-    // Check if tag is already registered
-    for (size_t i = 0; i < registry->count; i++) {
-        if (registry->tags[i] == tag) {
-            return 1; // Already registered
-        }
-    }
-
-    // Ensure capacity for new tag
-    if (!ensure_capacity(
-                (void*)&registry->tags,
-                registry->count,
-                &registry->capacity,
-                sizeof(uint32_t),
-                SDDL2_TAG_MAX_CAPACITY,
-                registry->alloc_fn,
-                registry->alloc_ctx)) {
-        return 0; // Allocation failed or capacity limit reached
-    }
-
-    // Register tag
-    registry->tags[registry->count++] = tag;
-    return 1;
 }
 
 SDDL2_Error SDDL2_op_segment_create_tagged(
