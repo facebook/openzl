@@ -28,206 +28,224 @@ namespace tests {
 
 namespace {
 
-detail::NonNullUniqueCPtr<ZL_SDDL_Program> make_prog() {
-  return detail::NonNullUniqueCPtr<ZL_SDDL_Program>(
-      ZL_SDDL_Program_create(nullptr), ZL_SDDL_Program_free);
+detail::NonNullUniqueCPtr<ZL_SDDL_Program> make_prog()
+{
+    return detail::NonNullUniqueCPtr<ZL_SDDL_Program>(
+            ZL_SDDL_Program_create(nullptr), ZL_SDDL_Program_free);
 }
 
-detail::NonNullUniqueCPtr<ZL_SDDL_State> make_state(
-    const ZL_SDDL_Program* prog) {
-  return detail::NonNullUniqueCPtr<ZL_SDDL_State>(
-      ZL_SDDL_State_create(prog, nullptr), ZL_SDDL_State_free);
+detail::NonNullUniqueCPtr<ZL_SDDL_State> make_state(const ZL_SDDL_Program* prog)
+{
+    return detail::NonNullUniqueCPtr<ZL_SDDL_State>(
+            ZL_SDDL_State_create(prog, nullptr), ZL_SDDL_State_free);
 }
 
 std::shared_ptr<ZL_SDDL_Instructions> make_dispatch_instructions(
-    const ZL_SDDL_Instructions& instrs,
-    detail::NonNullUniqueCPtr<ZL_SDDL_State> state) {
-  auto owning_ptr = std::make_shared<std::pair<
-      ZL_SDDL_Instructions,
-      detail::NonNullUniqueCPtr<ZL_SDDL_State>>>(instrs, std::move(state));
-  auto instr_ptr = &owning_ptr->first;
-  return std::shared_ptr<ZL_SDDL_Instructions>{
-      std::move(owning_ptr), instr_ptr};
+        const ZL_SDDL_Instructions& instrs,
+        detail::NonNullUniqueCPtr<ZL_SDDL_State> state)
+{
+    auto owning_ptr = std::make_shared<std::pair<
+            ZL_SDDL_Instructions,
+            detail::NonNullUniqueCPtr<ZL_SDDL_State>>>(
+            instrs, std::move(state));
+    auto instr_ptr = &owning_ptr->first;
+    return std::shared_ptr<ZL_SDDL_Instructions>{ std::move(owning_ptr),
+                                                  instr_ptr };
 }
 
-std::string iota(size_t len) {
-  std::string ret;
-  ret.resize(len);
-  for (size_t i = 0; i < len; i++) {
-    ret[i] = (char)(i + 1);
-  }
-  return ret;
+std::string iota(size_t len)
+{
+    std::string ret;
+    ret.resize(len);
+    for (size_t i = 0; i < len; i++) {
+        ret[i] = (char)(i + 1);
+    }
+    return ret;
 }
 
-std::ostream& operator<<(std::ostream& os, const ZL_SDDL_Instructions& instrs) {
-  static const std::map<ZL_Type, const char*> zl_type_names{
-      {ZL_Type_serial, "ZL_Type_serial"},
-      {ZL_Type_numeric, "ZL_Type_numeric"},
-      {ZL_Type_struct, "ZL_Type_struct"},
-      {ZL_Type_string, "ZL_Type_string"},
-  };
+std::ostream& operator<<(std::ostream& os, const ZL_SDDL_Instructions& instrs)
+{
+    static const std::map<ZL_Type, const char*> zl_type_names{
+        { ZL_Type_serial, "ZL_Type_serial" },
+        { ZL_Type_numeric, "ZL_Type_numeric" },
+        { ZL_Type_struct, "ZL_Type_struct" },
+        { ZL_Type_string, "ZL_Type_string" },
+    };
 
-  os << "(ZL_SDDL_Instructions){\n";
-  os << "  .dispatch_instructions = (ZL_DispatchInstructions){\n";
-  os << "    .nbSegments = " << instrs.dispatch_instructions.nbSegments
-     << ",\n";
-  os << "    .nbTags = " << instrs.dispatch_instructions.nbTags << ",\n";
-  os << "    .segmentSizes = " << instrs.dispatch_instructions.segmentSizes
-     << ",\n";
-  os << "    .tags = " << instrs.dispatch_instructions.tags << ",\n";
-  os << "  },\n";
-  os << "  .outputs = {\n";
-  for (size_t i = 0; i < instrs.numOutputs; i++) {
-    const auto& oi = instrs.outputs[i];
-    const auto type_name_it = zl_type_names.find(oi.type);
-    os << "    (ZL_SDDL_OutputInfo) {\n";
-    os << "      .type = " << oi.type << ", // ("
-       << (type_name_it != zl_type_names.end() ? type_name_it->second
-                                               : "unknown")
-       << ")\n";
-    os << "      .width = " << oi.width << ",\n";
-    os << "      .big_endian = " << (oi.big_endian ? "true" : "false") << ",\n";
-    os << "    },\n";
-  }
-  os << "  },\n";
-  os << "  .numOutputs = " << instrs.numOutputs << ",\n";
-  os << "}";
-  return os;
+    os << "(ZL_SDDL_Instructions){\n";
+    os << "  .dispatch_instructions = (ZL_DispatchInstructions){\n";
+    os << "    .nbSegments = " << instrs.dispatch_instructions.nbSegments
+       << ",\n";
+    os << "    .nbTags = " << instrs.dispatch_instructions.nbTags << ",\n";
+    os << "    .segmentSizes = " << instrs.dispatch_instructions.segmentSizes
+       << ",\n";
+    os << "    .tags = " << instrs.dispatch_instructions.tags << ",\n";
+    os << "  },\n";
+    os << "  .outputs = {\n";
+    for (size_t i = 0; i < instrs.numOutputs; i++) {
+        const auto& oi          = instrs.outputs[i];
+        const auto type_name_it = zl_type_names.find(oi.type);
+        os << "    (ZL_SDDL_OutputInfo) {\n";
+        os << "      .type = " << oi.type << ", // ("
+           << (type_name_it != zl_type_names.end() ? type_name_it->second
+                                                   : "unknown")
+           << ")\n";
+        os << "      .width = " << oi.width << ",\n";
+        os << "      .big_endian = " << (oi.big_endian ? "true" : "false")
+           << ",\n";
+        os << "    },\n";
+    }
+    os << "  },\n";
+    os << "  .numOutputs = " << instrs.numOutputs << ",\n";
+    os << "}";
+    return os;
 }
 
 class SimpleDataDescriptionLanguageV2Test : public Test {
- protected:
-  enum class Expected {
-    SUCCEED,
-    FAIL_TO_COMPILE,
-    FAIL_TO_DESERIALIZE,
-    FAIL_TO_EXECUTE,
-  };
+   protected:
+    enum class Expected {
+        SUCCEED,
+        FAIL_TO_COMPILE,
+        FAIL_TO_DESERIALIZE,
+        FAIL_TO_EXECUTE,
+    };
 
-  std::string compile(std::string_view program, Expected expected) {
-    const int verbosity = 2;
-    std::stringstream logs;
-    std::string code;
-
-    try {
-      code =
-          sddl2::Compiler{
-              sddl2::Compiler::Options{}.with_log(logs).with_verbosity(
-                  verbosity)}
-              .compile(program, "[local_input]");
-    } catch (const sddl2::CompilerException&) {
-      if (expected == Expected::FAIL_TO_COMPILE) {
-        // Good.
-      } else {
-        EXPECT_TRUE(false) << "Compilation threw when it shouldn't have!\n"
-                           << "Compiler debug logs:\n"
-                           << logs.str();
-        throw;
-      }
-    } catch (...) {
-      EXPECT_TRUE(false)
-          << "Compilation threw something else! Which it should never do.\n"
-          << "Compiler debug logs:\n"
-          << logs.str();
-      throw;
-    }
-
-    // std::cerr << logs.str();
-
-    return code;
-  }
-
-  std::shared_ptr<ZL_SDDL_Instructions>
-  exec(std::string_view program, std::string_view input, Expected expected) {
-    const auto code = compile(program, expected);
-
-    auto prog = make_prog();
+    std::string compile(std::string_view program, Expected expected)
     {
-      const auto res =
-          ZL_SDDL_Program_load(prog.get(), code.data(), code.size());
-      EXPECT_EQ(ZL_RES_isError(res), expected == Expected::FAIL_TO_DESERIALIZE)
-          << ZL_SDDL_Program_getErrorContextString_fromError(
-                 prog.get(), ZL_RES_error(res));
+        const int verbosity = 2;
+        std::stringstream logs;
+        std::string code;
+
+        try {
+            code = sddl2::Compiler{ sddl2::Compiler::Options{}
+                                            .with_log(logs)
+                                            .with_verbosity(verbosity) }
+                           .compile(program, "[local_input]");
+        } catch (const sddl2::CompilerException&) {
+            if (expected == Expected::FAIL_TO_COMPILE) {
+                // Good.
+            } else {
+                EXPECT_TRUE(false)
+                        << "Compilation threw when it shouldn't have!\n"
+                        << "Compiler debug logs:\n"
+                        << logs.str();
+                throw;
+            }
+        } catch (...) {
+            EXPECT_TRUE(false)
+                    << "Compilation threw something else! Which it should never do.\n"
+                    << "Compiler debug logs:\n"
+                    << logs.str();
+            throw;
+        }
+
+        // std::cerr << logs.str();
+
+        return code;
     }
 
-    auto state = make_state(prog.get());
+    std::shared_ptr<ZL_SDDL_Instructions>
+    exec(std::string_view program, std::string_view input, Expected expected)
     {
-      const auto res =
-          ZL_SDDL_State_exec(state.get(), input.data(), input.size());
-      EXPECT_EQ(ZL_RES_isError(res), expected == Expected::FAIL_TO_EXECUTE)
-          << ZL_SDDL_State_getErrorContextString_fromError(
-                 state.get(), ZL_RES_error(res));
-      if (!ZL_RES_isError(res)) {
-        return make_dispatch_instructions(ZL_RES_value(res), std::move(state));
-      }
+        const auto code = compile(program, expected);
+
+        auto prog = make_prog();
+        {
+            const auto res =
+                    ZL_SDDL_Program_load(prog.get(), code.data(), code.size());
+            EXPECT_EQ(
+                    ZL_RES_isError(res),
+                    expected == Expected::FAIL_TO_DESERIALIZE)
+                    << ZL_SDDL_Program_getErrorContextString_fromError(
+                               prog.get(), ZL_RES_error(res));
+        }
+
+        auto state = make_state(prog.get());
+        {
+            const auto res =
+                    ZL_SDDL_State_exec(state.get(), input.data(), input.size());
+            EXPECT_EQ(
+                    ZL_RES_isError(res), expected == Expected::FAIL_TO_EXECUTE)
+                    << ZL_SDDL_State_getErrorContextString_fromError(
+                               state.get(), ZL_RES_error(res));
+            if (!ZL_RES_isError(res)) {
+                return make_dispatch_instructions(
+                        ZL_RES_value(res), std::move(state));
+            }
+        }
+
+        return {};
     }
 
-    return {};
-  }
-
-  void roundtrip(std::string_view program, std::string_view input) {
-    const auto code = compile(program, Expected::SUCCEED);
-
-    Compressor compressor;
-
+    void roundtrip(std::string_view program, std::string_view input)
     {
-      compressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
-      compressor.setParameter(CParam::MinStreamSize, 1);
+        const auto code = compile(program, Expected::SUCCEED);
 
-      const auto gid = graphs::SDDL(code, ZL_GRAPH_STORE)(compressor);
-      EXPECT_TRUE(ZL_GraphID_isValid(gid));
+        Compressor compressor;
 
-      compressor.unwrap(
-          ZL_Compressor_selectStartingGraphID(compressor.get(), gid));
+        {
+            compressor.setParameter(
+                    CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+            compressor.setParameter(CParam::MinStreamSize, 1);
+
+            const auto gid = graphs::SDDL(code, ZL_GRAPH_STORE)(compressor);
+            EXPECT_TRUE(ZL_GraphID_isValid(gid));
+
+            compressor.unwrap(
+                    ZL_Compressor_selectStartingGraphID(compressor.get(), gid));
+        }
+
+        CCtx cctx;
+        cctx.refCompressor(compressor);
+
+        const auto compressed = cctx.compressSerial(input);
+
+        DCtx dctx;
+        const auto decompressed_output = dctx.decompressOne(compressed);
+        const auto decompressed        = std::string_view(
+                static_cast<const char*>(decompressed_output.ptr()),
+                decompressed_output.contentSize());
+
+        ASSERT_EQ(input, decompressed);
     }
 
-    CCtx cctx;
-    cctx.refCompressor(compressor);
-
-    const auto compressed = cctx.compressSerial(input);
-
-    DCtx dctx;
-    const auto decompressed_output = dctx.decompressOne(compressed);
-    const auto decompressed = std::string_view(
-        static_cast<const char*>(decompressed_output.ptr()),
-        decompressed_output.contentSize());
-
-    ASSERT_EQ(input, decompressed);
-  }
-
-  std::shared_ptr<ZL_SDDL_Instructions> exec_instr;
+    std::shared_ptr<ZL_SDDL_Instructions> exec_instr;
 };
 
 } // anonymous namespace
 
-TEST_F(SimpleDataDescriptionLanguageV2Test, DieIf2Plus2DoesntEqual4) {
-  const auto prog = R"(
+TEST_F(SimpleDataDescriptionLanguageV2Test, DieIf2Plus2DoesntEqual4)
+{
+    const auto prog  = R"(
         two = 2;
         expect 2 + two == 4;
     )";
-  const auto input = std::string_view{""};
-  exec(prog, input, Expected::SUCCEED);
+    const auto input = std::string_view{ "" };
+    exec(prog, input, Expected::SUCCEED);
 }
 
-TEST_F(SimpleDataDescriptionLanguageV2Test, DieIf2Plus2Equals4) {
-  const auto prog = R"(
+TEST_F(SimpleDataDescriptionLanguageV2Test, DieIf2Plus2Equals4)
+{
+    const auto prog  = R"(
         two = 2;
         expect 2 + two != 4;
     )";
-  const auto input = std::string_view{""};
-  exec(prog, input, Expected::FAIL_TO_EXECUTE);
+    const auto input = std::string_view{ "" };
+    exec(prog, input, Expected::FAIL_TO_EXECUTE);
 }
 
-TEST_F(SimpleDataDescriptionLanguageV2Test, TrivialRoundtrip) {
-  const auto prog = R"(
+TEST_F(SimpleDataDescriptionLanguageV2Test, TrivialRoundtrip)
+{
+    const auto prog   = R"(
         : Byte[_rem]
     )";
-  const auto& input = zstrong::tests::kLoremTestInput;
-  roundtrip(prog, input);
+    const auto& input = zstrong::tests::kLoremTestInput;
+    roundtrip(prog, input);
 }
 
-TEST_F(SimpleDataDescriptionLanguageV2Test, AlternateFields) {
-  const auto prog = R"(
+TEST_F(SimpleDataDescriptionLanguageV2Test, AlternateFields)
+{
+    const auto prog  = R"(
         field_width = 4;
         Field1 = Byte[field_width];
         Field2 = Byte[field_width];
@@ -245,20 +263,22 @@ TEST_F(SimpleDataDescriptionLanguageV2Test, AlternateFields) {
         RowArray = Row[row_count];
         : RowArray;
     )";
-  const auto input = std::string_view{
-      "1234567812345678123456781234567812345678123456781234567812345678"
-      "1234567812345678123456781234567812345678123456781234567812345678"
-      "1234567812345678123456781234567812345678123456781234567812345678"
-      "1234567812345678123456781234567812345678123456781234567812345678"
-      "1234567812345678123456781234567812345678123456781234567812345678"
-      "1234567812345678123456781234567812345678123456781234567812345678"
-      "1234567812345678123456781234567812345678123456781234567812345678"
-      "1234567812345678123456781234567812345678123456781234567812345678"};
-  roundtrip(prog, input);
+    const auto input = std::string_view{
+        "1234567812345678123456781234567812345678123456781234567812345678"
+        "1234567812345678123456781234567812345678123456781234567812345678"
+        "1234567812345678123456781234567812345678123456781234567812345678"
+        "1234567812345678123456781234567812345678123456781234567812345678"
+        "1234567812345678123456781234567812345678123456781234567812345678"
+        "1234567812345678123456781234567812345678123456781234567812345678"
+        "1234567812345678123456781234567812345678123456781234567812345678"
+        "1234567812345678123456781234567812345678123456781234567812345678"
+    };
+    roundtrip(prog, input);
 }
 
-TEST_F(SimpleDataDescriptionLanguageV2Test, SAO) {
-  const auto prog = R"(
+TEST_F(SimpleDataDescriptionLanguageV2Test, SAO)
+{
+    const auto prog  = R"(
         # SAO Format Description:
         # http://tdc-www.harvard.edu/catalogs/catalogsb.html
 
@@ -299,33 +319,35 @@ TEST_F(SimpleDataDescriptionLanguageV2Test, SAO) {
         # There should be no remaining input
         expect _rem == 0
     )";
-  const auto input = std::string_view{
-      "\x00\x00\x00\x00\x01\x00\x00\x00\x0a\x00\x00\x00\x00\x00\x00\x00"
-      "\x01\x00\x00\x00\x01\x00\x00\x00\x1c\x00\x00\x00\xd4\xa7\xbb\x0b"
-      "\xb7\x4a\x38\x3f\x6b\xa6\x15\xda\xc0\x17\xf7\x3f\x41\x30\xd0\x02"
-      "\x99\x06\x22\xb5\xaa\x94\x26\x32\xb7\x4b\xf8\x98\x9f\xe4\x46\x3f"
-      "\xd4\x50\x5f\x65\x5e\x57\xf6\x3f\x46\x32\x02\x03\x69\xe0\xd0\x35"
-      "\x25\x24\x02\x34\x8e\x6d\xb5\x2c\xea\x23\x67\x3f\x16\xbb\xf7\xc5"
-      "\x1e\x01\xf7\x3f\x20\x20\x98\x03\xab\xec\xce\xb4\x00\x00\x00\x00"
-      "\xd6\xb0\x43\xef\x19\x0d\x68\x3f\xd4\x1a\x12\x51\xe1\x65\xf6\x3f"
-      "\x20\x20\xa2\x03\x61\xf1\xf6\x35\x25\x24\x02\xb4\xba\xfa\x06\x30"
-      "\x65\xf2\x6e\x3f\xa2\x4e\xaa\x42\xef\x77\xf6\x3f\x20\x20\x8e\x03"
-      "\x06\x10\x72\x34\x8a\xd0\xc5\x33\x92\x28\xce\xae\xa9\x13\x72\x3f"
-      "\x40\x81\x67\xb5\xc4\x0a\xf8\x3f\x46\x30\xa2\x03\xcb\xb0\x2f\xb5"
-      "\xaa\x94\x26\xb2\x70\x41\x08\x65\x95\x85\x78\x3f\x42\x4d\xec\x1c"
-      "\x76\xba\xf7\x3f\x20\x20\x98\x03\xd3\xe1\xa7\x34\x15\xc2\x11\x33"
-      "\xf6\xc1\x5d\x12\x4a\x59\x7d\x3f\x2d\x63\x7e\x15\xfb\x82\xf7\x3f"
-      "\x20\x20\xac\x03\xfb\xd6\x00\x35\xaa\x94\xa6\xb3\xe9\x6d\xb2\x81"
-      "\x85\xf3\x81\x3f\x39\x7e\x0f\xcc\x20\x11\xf7\x3f\x20\x20\xb6\x03"
-      "\xe3\x43\x98\x34\x3f\x67\x3b\xb3\x60\xcd\xb2\x13\x48\x13\x82\x3f"
-      "\xf5\xf1\x68\xbd\xa2\x48\xf7\x3f\x20\x20\xac\x03\x37\x36\x43\xb5"
-      "\xff\xde\x79\x32",
-      308};
-  roundtrip(prog, input);
+    const auto input = std::string_view{
+        "\x00\x00\x00\x00\x01\x00\x00\x00\x0a\x00\x00\x00\x00\x00\x00\x00"
+        "\x01\x00\x00\x00\x01\x00\x00\x00\x1c\x00\x00\x00\xd4\xa7\xbb\x0b"
+        "\xb7\x4a\x38\x3f\x6b\xa6\x15\xda\xc0\x17\xf7\x3f\x41\x30\xd0\x02"
+        "\x99\x06\x22\xb5\xaa\x94\x26\x32\xb7\x4b\xf8\x98\x9f\xe4\x46\x3f"
+        "\xd4\x50\x5f\x65\x5e\x57\xf6\x3f\x46\x32\x02\x03\x69\xe0\xd0\x35"
+        "\x25\x24\x02\x34\x8e\x6d\xb5\x2c\xea\x23\x67\x3f\x16\xbb\xf7\xc5"
+        "\x1e\x01\xf7\x3f\x20\x20\x98\x03\xab\xec\xce\xb4\x00\x00\x00\x00"
+        "\xd6\xb0\x43\xef\x19\x0d\x68\x3f\xd4\x1a\x12\x51\xe1\x65\xf6\x3f"
+        "\x20\x20\xa2\x03\x61\xf1\xf6\x35\x25\x24\x02\xb4\xba\xfa\x06\x30"
+        "\x65\xf2\x6e\x3f\xa2\x4e\xaa\x42\xef\x77\xf6\x3f\x20\x20\x8e\x03"
+        "\x06\x10\x72\x34\x8a\xd0\xc5\x33\x92\x28\xce\xae\xa9\x13\x72\x3f"
+        "\x40\x81\x67\xb5\xc4\x0a\xf8\x3f\x46\x30\xa2\x03\xcb\xb0\x2f\xb5"
+        "\xaa\x94\x26\xb2\x70\x41\x08\x65\x95\x85\x78\x3f\x42\x4d\xec\x1c"
+        "\x76\xba\xf7\x3f\x20\x20\x98\x03\xd3\xe1\xa7\x34\x15\xc2\x11\x33"
+        "\xf6\xc1\x5d\x12\x4a\x59\x7d\x3f\x2d\x63\x7e\x15\xfb\x82\xf7\x3f"
+        "\x20\x20\xac\x03\xfb\xd6\x00\x35\xaa\x94\xa6\xb3\xe9\x6d\xb2\x81"
+        "\x85\xf3\x81\x3f\x39\x7e\x0f\xcc\x20\x11\xf7\x3f\x20\x20\xb6\x03"
+        "\xe3\x43\x98\x34\x3f\x67\x3b\xb3\x60\xcd\xb2\x13\x48\x13\x82\x3f"
+        "\xf5\xf1\x68\xbd\xa2\x48\xf7\x3f\x20\x20\xac\x03\x37\x36\x43\xb5"
+        "\xff\xde\x79\x32",
+        308
+    };
+    roundtrip(prog, input);
 }
 
-TEST_F(SimpleDataDescriptionLanguageV2Test, consumeVals) {
-  const auto prog = R"(
+TEST_F(SimpleDataDescriptionLanguageV2Test, consumeVals)
+{
+    const auto prog  = R"(
         B = Byte
         I1L = Int8
         I1B = Int8
@@ -380,46 +402,48 @@ TEST_F(SimpleDataDescriptionLanguageV2Test, consumeVals) {
         expect (:U8B) == 81985529216486895
         expect (:U8B) == 8056283915067138817
     )";
-  const auto input = std::string{
-      "\x01"
-      "\xfe"
-      "\x01"
-      "\xfe"
-      "\x01"
-      "\xfe"
-      "\x01"
-      "\xef"
-      "\x01"
-      "\xef"
-      "\x23\x01"
-      "\xdc\xfe"
-      "\x01\x23"
-      "\xfe\xdc"
-      "\x23\x01"
-      "\xcd\xef"
-      "\x01\x23"
-      "\xef\xcd"
-      "\x67\x45\x23\x01"
-      "\x98\xba\xdc\xfe"
-      "\x01\x23\x45\x67"
-      "\xfe\xdc\xba\x98"
-      "\x67\x45\x23\x01"
-      "\x89\xab\xcd\xef"
-      "\x01\x23\x45\x67"
-      "\xef\xcd\xab\x89"
-      "\xef\xcd\xab\x89\x67\x45\x23\x01"
-      "\x10\x32\x54\x76\x98\xba\xdc\xfe"
-      "\x01\x23\x45\x67\x89\xab\xcd\xef"
-      "\xfe\xdc\xba\x98\x76\x54\x32\x10"
-      "\xef\xcd\xab\x89\x67\x45\x23\x01"
-      "\x01\x23\x45\x67\x89\xab\xcd\x6f"
-      "\x01\x23\x45\x67\x89\xab\xcd\xef"
-      "\x6f\xcd\xab\x89\x67\x45\x23\x01"};
-  roundtrip(prog, input);
+    const auto input = std::string{
+        "\x01"
+        "\xfe"
+        "\x01"
+        "\xfe"
+        "\x01"
+        "\xfe"
+        "\x01"
+        "\xef"
+        "\x01"
+        "\xef"
+        "\x23\x01"
+        "\xdc\xfe"
+        "\x01\x23"
+        "\xfe\xdc"
+        "\x23\x01"
+        "\xcd\xef"
+        "\x01\x23"
+        "\xef\xcd"
+        "\x67\x45\x23\x01"
+        "\x98\xba\xdc\xfe"
+        "\x01\x23\x45\x67"
+        "\xfe\xdc\xba\x98"
+        "\x67\x45\x23\x01"
+        "\x89\xab\xcd\xef"
+        "\x01\x23\x45\x67"
+        "\xef\xcd\xab\x89"
+        "\xef\xcd\xab\x89\x67\x45\x23\x01"
+        "\x10\x32\x54\x76\x98\xba\xdc\xfe"
+        "\x01\x23\x45\x67\x89\xab\xcd\xef"
+        "\xfe\xdc\xba\x98\x76\x54\x32\x10"
+        "\xef\xcd\xab\x89\x67\x45\x23\x01"
+        "\x01\x23\x45\x67\x89\xab\xcd\x6f"
+        "\x01\x23\x45\x67\x89\xab\xcd\xef"
+        "\x6f\xcd\xab\x89\x67\x45\x23\x01"
+    };
+    roundtrip(prog, input);
 }
 
-TEST_F(SimpleDataDescriptionLanguageV2Test, consumeFloats) {
-  const auto prog = R"(
+TEST_F(SimpleDataDescriptionLanguageV2Test, consumeFloats)
+{
+    const auto prog  = R"(
         F1 = Float8
         F2L = Float16LE
         F2B = Float16BE
@@ -465,12 +489,13 @@ TEST_F(SimpleDataDescriptionLanguageV2Test, consumeFloats) {
         : BF8L
         : BF8B
     )";
-  const auto input = iota(58);
-  roundtrip(prog, input);
+    const auto input = iota(58);
+    roundtrip(prog, input);
 }
 
-TEST_F(SimpleDataDescriptionLanguageV2Test, arithmetic) {
-  const auto prog = R"(
+TEST_F(SimpleDataDescriptionLanguageV2Test, arithmetic)
+{
+    const auto prog  = R"(
         expect 5 + 10 == 15
         expect -5 + 10 == 5
         expect 5 + -10 == -5
@@ -508,12 +533,13 @@ TEST_F(SimpleDataDescriptionLanguageV2Test, arithmetic) {
 
         : Byte[]
     )";
-  const auto input = iota(10);
-  roundtrip(prog, input);
+    const auto input = iota(10);
+    roundtrip(prog, input);
 }
 
-TEST_F(SimpleDataDescriptionLanguageV2Test, bitwise_ops) {
-  const auto prog = R"(
+TEST_F(SimpleDataDescriptionLanguageV2Test, bitwise_ops)
+{
+    const auto prog  = R"(
         expect (1 & 2) == 0
         expect (1 & 2) == (2 & 1)
         expect (1 | 2) == 3
@@ -536,12 +562,13 @@ TEST_F(SimpleDataDescriptionLanguageV2Test, bitwise_ops) {
 
         : Byte[]
     )";
-  const auto input = iota(10);
-  roundtrip(prog, input);
+    const auto input = iota(10);
+    roundtrip(prog, input);
 }
 
-TEST_F(SimpleDataDescriptionLanguageV2Test, logical_ops) {
-  const auto prog = R"(
+TEST_F(SimpleDataDescriptionLanguageV2Test, logical_ops)
+{
+    const auto prog = R"(
         expect 1 && 1
         expect (1 && 1) == 1
         expect !(1 && 0)
@@ -575,12 +602,13 @@ TEST_F(SimpleDataDescriptionLanguageV2Test, logical_ops) {
         : Byte[]
     )";
 
-  const auto input = iota(10);
-  roundtrip(prog, input);
+    const auto input = iota(10);
+    roundtrip(prog, input);
 }
 
-TEST_F(SimpleDataDescriptionLanguageV2Test, mildlyVexingParses) {
-  const auto prog = R"(
+TEST_F(SimpleDataDescriptionLanguageV2Test, mildlyVexingParses)
+{
+    const auto prog  = R"(
         b : B = Byte
         expect b == 1
         b = - : B
@@ -595,23 +623,26 @@ TEST_F(SimpleDataDescriptionLanguageV2Test, mildlyVexingParses) {
         A = B[--:B]
         : A
     )";
-  const auto input = std::string{
-      "\x01\x02\x03\x04\x05\x06\x07"
-      "\x02"
-      "\x01\x02"};
-  roundtrip(prog, input);
+    const auto input = std::string{
+        "\x01\x02\x03\x04\x05\x06\x07"
+        "\x02"
+        "\x01\x02"
+    };
+    roundtrip(prog, input);
 }
 
-TEST_F(SimpleDataDescriptionLanguageV2Test, exprEvalOrder) {
-  const auto prog = R"(
+TEST_F(SimpleDataDescriptionLanguageV2Test, exprEvalOrder)
+{
+    const auto prog  = R"(
         expect (:UInt16LE) + (:UInt16BE) + (:Byte) == (:Byte)
     )";
-  const auto input = std::string{"\x01\x00\x00\x02\x03\x06", 6};
-  roundtrip(prog, input);
+    const auto input = std::string{ "\x01\x00\x00\x02\x03\x06", 6 };
+    roundtrip(prog, input);
 }
 
-TEST_F(SimpleDataDescriptionLanguageV2Test, recordsWithFieldNames) {
-  const auto prog = R"(
+TEST_F(SimpleDataDescriptionLanguageV2Test, recordsWithFieldNames)
+{
+    const auto prog  = R"(
         Foo = {
             Byte,
             a : Byte,
@@ -624,12 +655,13 @@ TEST_F(SimpleDataDescriptionLanguageV2Test, recordsWithFieldNames) {
         expect foo.a == 2
         expect foo.b == 4
     )";
-  const auto input = std::string{"\x01\x02\x03\x04"};
-  roundtrip(prog, input);
+    const auto input = std::string{ "\x01\x02\x03\x04" };
+    roundtrip(prog, input);
 }
 
-TEST_F(SimpleDataDescriptionLanguageV2Test, func) {
-  const auto prog = R"(
+TEST_F(SimpleDataDescriptionLanguageV2Test, func)
+{
+    const auto prog  = R"(
         func = (arg1, arg2) {
             : Byte[arg1],
             a : Byte,
@@ -645,12 +677,13 @@ TEST_F(SimpleDataDescriptionLanguageV2Test, func) {
         expect bar.a == 5
         expect bar.b == 8
     )";
-  const auto input = iota(8);
-  roundtrip(prog, input);
+    const auto input = iota(8);
+    roundtrip(prog, input);
 }
 
-TEST_F(SimpleDataDescriptionLanguageV2Test, funcPartialApplication) {
-  const auto prog = R"(
+TEST_F(SimpleDataDescriptionLanguageV2Test, funcPartialApplication)
+{
+    const auto prog  = R"(
         func = (arg1, arg2) {
             : Byte[arg1],
             a : Byte,
@@ -674,13 +707,14 @@ TEST_F(SimpleDataDescriptionLanguageV2Test, funcPartialApplication) {
         expect bar.a == 5
         expect bar.b == 8
     )";
-  const auto input = iota(8);
-  roundtrip(prog, input);
+    const auto input = iota(8);
+    roundtrip(prog, input);
 }
 
-TEST_F(SimpleDataDescriptionLanguageV2Test, funcArgsComplexTypes) {
-  // This tests that we correctly track the lifetimes of function args
-  const auto prog = R"(
+TEST_F(SimpleDataDescriptionLanguageV2Test, funcArgsComplexTypes)
+{
+    // This tests that we correctly track the lifetimes of function args
+    const auto prog  = R"(
         f = (m, n) {
             : Byte[m],
             : Byte[n],
@@ -703,82 +737,87 @@ TEST_F(SimpleDataDescriptionLanguageV2Test, funcArgsComplexTypes) {
 
         expect r.r.val == m + n + 1
     )";
-  const auto input = iota(3);
-  roundtrip(prog, input);
+    const auto input = iota(3);
+    roundtrip(prog, input);
 }
 
-TEST_F(
-    SimpleDataDescriptionLanguageV2Test,
-    avoidScopeCopiesInTemporaryFunctions) {
-  const auto prog = R"(
+TEST_F(SimpleDataDescriptionLanguageV2Test,
+       avoidScopeCopiesInTemporaryFunctions)
+{
+    const auto prog  = R"(
         f : (a1, a2, a3, a4, a5) { : Byte } (1)(2)(3)(4)(5)
     )";
-  const auto input = iota(1);
-  roundtrip(prog, input);
+    const auto input = iota(1);
+    roundtrip(prog, input);
 }
 
-TEST_F(SimpleDataDescriptionLanguageV2Test, directlyUseAggregateFieldDecls) {
-  const auto prog = R"(
+TEST_F(SimpleDataDescriptionLanguageV2Test, directlyUseAggregateFieldDecls)
+{
+    const auto prog  = R"(
         : {}[1][1]
         : {Byte}[1][1]
         : {{Byte}}[1][1]
     )";
-  const auto input = iota(2);
-  roundtrip(prog, input);
+    const auto input = iota(2);
+    roundtrip(prog, input);
 }
 
-TEST_F(SimpleDataDescriptionLanguageV2Test, consumeTooMuch) {
-  const auto program = R"(
+TEST_F(SimpleDataDescriptionLanguageV2Test, consumeTooMuch)
+{
+    const auto program = R"(
         # error shouldn't include this line
         : Byte[10] # it should include this line
         # nor should it include this
     )";
-  const auto input = iota(1);
+    const auto input   = iota(1);
 
-  const auto code = compile(program, Expected::SUCCEED);
+    const auto code = compile(program, Expected::SUCCEED);
 
-  auto prog = make_prog();
-  ASSERT_ZS_VALID(ZL_SDDL_Program_load(prog.get(), code.data(), code.size()));
+    auto prog = make_prog();
+    ASSERT_ZS_VALID(ZL_SDDL_Program_load(prog.get(), code.data(), code.size()));
 
-  auto state = make_state(prog.get());
-  const auto res = ZL_SDDL_State_exec(state.get(), input.data(), input.size());
-  ASSERT_TRUE(ZL_RES_isError(res));
+    auto state = make_state(prog.get());
+    const auto res =
+            ZL_SDDL_State_exec(state.get(), input.data(), input.size());
+    ASSERT_TRUE(ZL_RES_isError(res));
 
-  const auto err_str =
-      std::string{ZL_SDDL_State_getErrorContextString_fromError(
-          state.get(), ZL_RES_error(res))};
+    const auto err_str =
+            std::string{ ZL_SDDL_State_getErrorContextString_fromError(
+                    state.get(), ZL_RES_error(res)) };
 
-  EXPECT_NE(
-      err_str.find(": Byte[10] # it should include this line"),
-      std::string::npos)
-      << err_str;
-  EXPECT_EQ(
-      err_str.find("# error shouldn't include this line"), std::string::npos)
-      << err_str;
-  EXPECT_EQ(err_str.find("# nor should it include this"), std::string::npos)
-      << err_str;
+    EXPECT_NE(
+            err_str.find(": Byte[10] # it should include this line"),
+            std::string::npos)
+            << err_str;
+    EXPECT_EQ(
+            err_str.find("# error shouldn't include this line"),
+            std::string::npos)
+            << err_str;
+    EXPECT_EQ(err_str.find("# nor should it include this"), std::string::npos)
+            << err_str;
 }
 
-TEST_F(SimpleDataDescriptionLanguageV2Test, indeterminateArrayLength) {
-  const auto program = R"(
+TEST_F(SimpleDataDescriptionLanguageV2Test, indeterminateArrayLength)
+{
+    const auto program = R"(
         : UInt32LE[]
         expect _rem == 0
     )";
 
-  for (size_t i = 4; i < 33; i++) {
-    exec(
-        program,
-        iota(i),
-        (i % 4) ? Expected::FAIL_TO_EXECUTE : Expected::SUCCEED);
-  }
+    for (size_t i = 4; i < 33; i++) {
+        exec(program,
+             iota(i),
+             (i % 4) ? Expected::FAIL_TO_EXECUTE : Expected::SUCCEED);
+    }
 
-  // Zero-sized objects can't be expanded.
-  exec(": {}[]; :Byte[3]", iota(3), Expected::FAIL_TO_EXECUTE);
-  exec(": Byte[0][]; :Byte[3]", iota(3), Expected::FAIL_TO_EXECUTE);
+    // Zero-sized objects can't be expanded.
+    exec(": {}[]; :Byte[3]", iota(3), Expected::FAIL_TO_EXECUTE);
+    exec(": Byte[0][]; :Byte[3]", iota(3), Expected::FAIL_TO_EXECUTE);
 }
 
-TEST_F(SimpleDataDescriptionLanguageV2Test, unusedFields) {
-  const auto prog = R"(
+TEST_F(SimpleDataDescriptionLanguageV2Test, unusedFields)
+{
+    const auto prog  = R"(
         A = UInt32LE
         B = UInt64LE
         C = UInt32LE
@@ -791,18 +830,19 @@ TEST_F(SimpleDataDescriptionLanguageV2Test, unusedFields) {
         : D[9]
         : E[11]
     )";
-  const auto input = iota((5 + 7 + 11) * 4 + 9 * 8);
-  roundtrip(prog, input);
+    const auto input = iota((5 + 7 + 11) * 4 + 9 * 8);
+    roundtrip(prog, input);
 
-  const auto instrs = exec(prog, input, Expected::SUCCEED);
-  ASSERT_TRUE(instrs);
-  EXPECT_EQ(instrs->numOutputs, 5);
+    const auto instrs = exec(prog, input, Expected::SUCCEED);
+    ASSERT_TRUE(instrs);
+    EXPECT_EQ(instrs->numOutputs, 5);
 
-  roundtrip(prog, input);
+    roundtrip(prog, input);
 }
 
-TEST_F(SimpleDataDescriptionLanguageV2Test, multipleDeclsInFunction) {
-  const auto prog = R"(
+TEST_F(SimpleDataDescriptionLanguageV2Test, multipleDeclsInFunction)
+{
+    const auto prog  = R"(
         func = (){
             : UInt32LE
         }
@@ -812,65 +852,69 @@ TEST_F(SimpleDataDescriptionLanguageV2Test, multipleDeclsInFunction) {
         : func
         : func
     )";
-  const auto input = iota(4 * 4);
-  roundtrip(prog, input);
+    const auto input = iota(4 * 4);
+    roundtrip(prog, input);
 
-  const auto instrs = exec(prog, input, Expected::SUCCEED);
-  ASSERT_TRUE(instrs);
-  EXPECT_EQ(instrs->numOutputs, 1);
+    const auto instrs = exec(prog, input, Expected::SUCCEED);
+    ASSERT_TRUE(instrs);
+    EXPECT_EQ(instrs->numOutputs, 1);
 }
 
 class SimpleDataDescriptionLanguageV2SourceCodePrettyPrintingTest
-    : public Test {
- protected:
-  void SetUp() override {
-    arena_ = ALLOC_HeapArena_create();
-  }
+        : public Test {
+   protected:
+    void SetUp() override
+    {
+        arena_ = ALLOC_HeapArena_create();
+    }
 
-  void TearDown() override {
-    ALLOC_Arena_freeArena(arena_);
-  }
+    void TearDown() override
+    {
+        ALLOC_Arena_freeArena(arena_);
+    }
 
-  Arena* arena_;
+    Arena* arena_;
 };
 
-TEST_F(
-    SimpleDataDescriptionLanguageV2SourceCodePrettyPrintingTest,
-    RandomStrings) {
-  std::mt19937 randgen{1};
-  const std::string alphabet{"abcdefghijklmnopqrstuvwxyz \n"};
-  std::uniform_int_distribution<size_t> alphabet_dist{0, alphabet.size() - 1};
-  for (size_t i = 0; i < 10000; i++) {
-    std::string src;
-    const auto src_len = std::uniform_int_distribution{0, 1000}(randgen);
-    src.reserve(src_len);
-    for (size_t j = 0; j < src_len; j++) {
-      src += alphabet[alphabet_dist(randgen)];
+TEST_F(SimpleDataDescriptionLanguageV2SourceCodePrettyPrintingTest,
+       RandomStrings)
+{
+    std::mt19937 randgen{ 1 };
+    const std::string alphabet{ "abcdefghijklmnopqrstuvwxyz \n" };
+    std::uniform_int_distribution<size_t> alphabet_dist{ 0,
+                                                         alphabet.size() - 1 };
+    for (size_t i = 0; i < 10000; i++) {
+        std::string src;
+        const auto src_len = std::uniform_int_distribution{ 0, 1000 }(randgen);
+        src.reserve(src_len);
+        for (size_t j = 0; j < src_len; j++) {
+            src += alphabet[alphabet_dist(randgen)];
+        }
+
+        ZL_SDDL_SourceCode sc;
+        ZL_SDDL_SourceCode_init(
+                arena_, &sc, StringView_init(src.data(), src.size()));
+
+        ZL_SDDL_SourceLocation sl;
+        sl.start = std::uniform_int_distribution{ 0, src_len }(randgen);
+        sl.size =
+                std::uniform_int_distribution<size_t>{ 0, src_len - sl.start }(
+                        randgen);
+
+        const auto indent = std::uniform_int_distribution{ 0, 10 }(randgen);
+
+        const auto pstr_res = ZL_SDDL_SourceLocationPrettyString_create(
+                nullptr, arena_, &sc, &sl, indent);
+        if (ZL_RES_isError(pstr_res)) {
+            std::cerr << ZL_E_str(ZL_RES_error(pstr_res)) << std::endl;
+        }
+        ASSERT_ZS_VALID(pstr_res);
+
+        const auto& pstr = ZL_RES_value(pstr_res);
+
+        ZL_SDDL_SourceLocationPrettyString_destroy(arena_, &pstr);
+        ZL_SDDL_SourceCode_destroy(arena_, &sc);
     }
-
-    ZL_SDDL_SourceCode sc;
-    ZL_SDDL_SourceCode_init(
-        arena_, &sc, StringView_init(src.data(), src.size()));
-
-    ZL_SDDL_SourceLocation sl;
-    sl.start = std::uniform_int_distribution{0, src_len}(randgen);
-    sl.size =
-        std::uniform_int_distribution<size_t>{0, src_len - sl.start}(randgen);
-
-    const auto indent = std::uniform_int_distribution{0, 10}(randgen);
-
-    const auto pstr_res = ZL_SDDL_SourceLocationPrettyString_create(
-        nullptr, arena_, &sc, &sl, indent);
-    if (ZL_RES_isError(pstr_res)) {
-      std::cerr << ZL_E_str(ZL_RES_error(pstr_res)) << std::endl;
-    }
-    ASSERT_ZS_VALID(pstr_res);
-
-    const auto& pstr = ZL_RES_value(pstr_res);
-
-    ZL_SDDL_SourceLocationPrettyString_destroy(arena_, &pstr);
-    ZL_SDDL_SourceCode_destroy(arena_, &sc);
-  }
 }
 
 } // namespace tests

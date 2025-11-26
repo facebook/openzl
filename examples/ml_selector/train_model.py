@@ -43,7 +43,8 @@ def train_model(path: str) -> t.Tuple[xgb.XGBClassifier, pd.DataFrame]:
 
     # Process the samples into dataframes
     df_features, df_results = zstrong_ml.process_training_samples(
-        samples, None  # , choice_function
+        samples,
+        None,  # , choice_function
     )
 
     choice_breakdown = (

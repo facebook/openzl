@@ -754,9 +754,7 @@ class Doxygen:
                 " ".join([f'"{str(s)}"' for s in sources]),
                 self._doxyxml_dir,
                 " ".join([f'"{p}"' for p in predefined]),
-            ).encode(
-                "utf-8"
-            )
+            ).encode("utf-8")
         )
         with open(self._doxyxml_dir / "stdout.txt", "wb") as f:
             f.write(out)

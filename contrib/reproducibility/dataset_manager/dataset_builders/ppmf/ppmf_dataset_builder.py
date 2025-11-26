@@ -35,7 +35,7 @@ class PPMFDatasetBuilder(BaseDatasetBuilder):
             print("Failed to download PPMF dataset")
             return False
 
-        if  not self.post_download_processing(download_dir, kwargs):
+        if not self.post_download_processing(download_dir, kwargs):
             print("Failed to post-process PPMF dataset")
             return False
 
