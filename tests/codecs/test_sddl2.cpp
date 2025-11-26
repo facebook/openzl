@@ -232,8 +232,8 @@ TEST_F(SimpleDataDescriptionLanguageV2Test, AlternateFields) {
         Field1 = Byte[field_width];
         Field2 = Byte[field_width];
         Row = {
-            Field1;
-            Field2;
+            Field1,
+            Field2
         };
         row_width = sizeof Row;
         input_size = _rem;
@@ -266,22 +266,22 @@ TEST_F(SimpleDataDescriptionLanguageV2Test, SAO) {
         HeaderInt = UInt32LE
 
         Header = {
-            STAR0: HeaderInt
-            STAR1: HeaderInt  # First star number in file
-            STARN: HeaderInt  # Number of stars in file
-            STNUM: HeaderInt  # star i.d. number presence
-            MPROP: HeaderInt  # True if proper motion is included
-            NMAG : HeaderInt  # Number of magnitudes present
-            NBENT: HeaderInt  # Number of bytes per star entry
+            STAR0: HeaderInt,
+            STAR1: HeaderInt,  # First star number in file
+            STARN: HeaderInt,  # Number of stars in file
+            STNUM: HeaderInt,  # star i.d. number presence
+            MPROP: HeaderInt,  # True if proper motion is included
+            NMAG : HeaderInt,  # Number of magnitudes present
+            NBENT: HeaderInt,  # Number of bytes per star entry
         }
 
         Row = {
-            SRA0 : Float64LE  # Right ascension in degrees
-            SDEC0: Float64LE  # Declination in degrees
-            IS   : Byte[2]    # Instrument status flags
-            MAG  : UInt16LE   # Magnitude * 100
-            XRPM : Float32LE  # X-axis rate per minute
-            XDPM : Float32LE  # X-axis drift per minute
+            SRA0 : Float64LE,  # Right ascension in degrees
+            SDEC0: Float64LE,  # Declination in degrees
+            IS   : Byte[2],    # Instrument status flags
+            MAG  : UInt16LE,  # Magnitude * 100
+            XRPM : Float32LE,  # X-axis rate per minute
+            XDPM : Float32LE,  # X-axis drift per minute
         }
 
         # Read the header
@@ -613,10 +613,10 @@ TEST_F(SimpleDataDescriptionLanguageV2Test, exprEvalOrder) {
 TEST_F(SimpleDataDescriptionLanguageV2Test, recordsWithFieldNames) {
   const auto prog = R"(
         Foo = {
-            Byte
-            a : Byte
-            : Byte
-            b : Byte
+            Byte,
+            a : Byte,
+            : Byte,
+            b : Byte,
         }
 
         foo : Foo
@@ -631,9 +631,9 @@ TEST_F(SimpleDataDescriptionLanguageV2Test, recordsWithFieldNames) {
 TEST_F(SimpleDataDescriptionLanguageV2Test, func) {
   const auto prog = R"(
         func = (arg1, arg2) {
-            : Byte[arg1]
-            a : Byte
-            : Byte[arg2]
+            : Byte[arg1],
+            a : Byte,
+            : Byte[arg2],
             b : Byte
         }
 
@@ -652,10 +652,10 @@ TEST_F(SimpleDataDescriptionLanguageV2Test, func) {
 TEST_F(SimpleDataDescriptionLanguageV2Test, funcPartialApplication) {
   const auto prog = R"(
         func = (arg1, arg2) {
-            : Byte[arg1]
-            a : Byte
-            : Byte[arg2]
-            b : Byte
+            : Byte[arg1],
+            a : Byte,
+            : Byte[arg2],
+            b : Byte,
         }
 
         partial_1 = func(1)
@@ -682,9 +682,9 @@ TEST_F(SimpleDataDescriptionLanguageV2Test, funcArgsComplexTypes) {
   // This tests that we correctly track the lifetimes of function args
   const auto prog = R"(
         f = (m, n) {
-            : Byte[m]
-            : Byte[n]
-            val : Byte
+            : Byte[m],
+            : Byte[n],
+            val : Byte,
         }
 
         g = (f, n) {

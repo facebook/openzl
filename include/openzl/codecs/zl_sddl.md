@@ -28,10 +28,10 @@ The operative part of an SDDL Description, the part that actually constructs tha
 
     ```
     struct AccelerometerSample {
-        uint64_t timestamp;
-        float x_accel;
-        float y_accel;
-        float z_accel;
+        uint64_t timestamp,
+        float x_accel,
+        float y_accel,
+        float z_accel,
     };
     ```
 
@@ -41,10 +41,10 @@ The operative part of an SDDL Description, the part that actually constructs tha
     # Declare a new compound field "AccelerometerSample" which describes the
     # structure of an individual sample using a Record, SDDL's aggregate type.
     AccelerometerSample = {
-        timestamp : UInt64LE;
-        x_accel : Float32LE;
-        y_accel : Float32LE;
-        z_accel : Float32LE;
+        timestamp : UInt64LE,
+        x_accel : Float32LE,
+        y_accel : Float32LE,
+        z_accel : Float32LE,
     }
 
     # Consume the whole input as an array of AccelerometerSample records.
@@ -68,22 +68,22 @@ While there's an in-depth language/syntax reference available below, the best wa
     HeaderInt = UInt32LE
 
     Header = {
-      STAR0: HeaderInt
-      STAR1: HeaderInt  # First star number in file
-      STARN: HeaderInt  # Number of stars in file
-      STNUM: HeaderInt  # star i.d. number presence
-      MPROP: HeaderInt  # True if proper motion is included
-      NMAG : HeaderInt  # Number of magnitudes present
-      NBENT: HeaderInt  # Number of bytes per star entry
+      STAR0: HeaderInt,
+      STAR1: HeaderInt,  # First star number in file
+      STARN: HeaderInt,  # Number of stars in file
+      STNUM: HeaderInt,  # star i.d. number presence
+      MPROP: HeaderInt,  # True if proper motion is included
+      NMAG : HeaderInt,  # Number of magnitudes present
+      NBENT: HeaderInt,  # Number of bytes per star entry
     }
 
     Row = {
-      SRA0 : Float64LE  # Right ascension in degrees
-      SDEC0: Float64LE  # Declination in degrees
-      IS   : Byte[2]    # Instrument status flags
-      MAG  : UInt16LE   # Magnitude * 100
-      XRPM : Float32LE  # X-axis rate per minute
-      XDPM : Float32LE  # X-axis drift per minute
+      SRA0 : Float64LE,  # Right ascension in degrees
+      SDEC0: Float64LE,  # Declination in degrees
+      IS   : Byte[2],    # Instrument status flags
+      MAG  : UInt16LE,   # Magnitude * 100
+      XRPM : Float32LE,  # X-axis rate per minute
+      XDPM : Float32LE,  # X-axis drift per minute
     }
 
     # Read the header
@@ -116,10 +116,10 @@ While there's an in-depth language/syntax reference available below, the best wa
     GenericU32 = UInt32LE
 
     FileHeader = {
-      signature   : GenericU16
-      file_size   : GenericU32
-      reserved    : GenericU32
-      data_offset : GenericU32
+      signature   : GenericU16,
+      file_size   : GenericU32,
+      reserved    : GenericU32,
+      data_offset : GenericU32,
     }
 
     file_header : FileHeader
@@ -128,17 +128,17 @@ While there's an in-depth language/syntax reference available below, the best wa
     expect file_header.reserved == 0
 
     InfoHeader = {
-      header_size      : GenericU32
-      width            : GenericU32
-      height           : GenericU32
-      planes           : GenericU16
-      bits_per_pixel   : GenericU16
-      compression      : GenericU32
-      image_size       : GenericU32
-      x_pixels_per_m   : GenericU32
-      y_pixels_per_m   : GenericU32
-      colors_used      : GenericU32
-      important_colors : GenericU32
+      header_size      : GenericU32,
+      width            : GenericU32,
+      height           : GenericU32,
+      planes           : GenericU16,
+      bits_per_pixel   : GenericU16,
+      compression      : GenericU32,
+      image_size       : GenericU32,
+      x_pixels_per_m   : GenericU32,
+      y_pixels_per_m   : GenericU32,
+      colors_used      : GenericU32,
+      important_colors : GenericU32,
     }
 
     info_header : InfoHeader
@@ -156,10 +156,10 @@ While there's an in-depth language/syntax reference available below, the best wa
     )
 
     ColorTableEntry = {
-      red      : GenericU8;
-      green    : GenericU8;
-      blue     : GenericU8;
-      reserved : GenericU8;
+      red      : GenericU8,
+      green    : GenericU8,
+      blue     : GenericU8,
+      reserved : GenericU8,
     }
 
     color_table_entries : ColorTableEntry[num_colors];
@@ -171,11 +171,11 @@ While there's an in-depth language/syntax reference available below, the best wa
     row24_bytes = 4 * ((width +  1) * 3 / 4)
 
     Image = {
-      : GenericU8[row1_bytes][height][bits_per_pixel == 1]
-      : GenericU8[row4_bytes][height][bits_per_pixel == 4]
-      : GenericU8[row8_bytes][height][bits_per_pixel == 8]
-      : GenericU16[row16_bytes / 2][height][bits_per_pixel == 16]
-      : GenericU8[row24_bytes][height][bits_per_pixel == 24]
+      : GenericU8[row1_bytes][height][bits_per_pixel == 1],
+      : GenericU8[row4_bytes][height][bits_per_pixel == 4],
+      : GenericU8[row8_bytes][height][bits_per_pixel == 8],
+      : GenericU16[row16_bytes / 2][height][bits_per_pixel == 16],
+      : GenericU8[row24_bytes][height][bits_per_pixel == 24],
     }
 
     image : Image
@@ -193,9 +193,9 @@ While there's an in-depth language/syntax reference available below, the best wa
     triangle_count : UInt32LE
 
     Triangle = {
-        normal_vec : Float32LE[3]
-        vertices   : Float32LE[3][3]
-        attributes : Byte[2]
+        normal_vec : Float32LE[3],
+        vertices   : Float32LE[3][3],
+        attributes : Byte[2],
     }
 
     # The rest of the file is triangles
@@ -214,8 +214,8 @@ The easiest way to run SDDL over an input is via the SDDL profile built into the
     ```sh
     cat <<EOF >desc.sddl
     Row = {
-      UInt32LE
-      UInt32LE
+      UInt32LE,
+      UInt32LE,
     }
     num_rows = _rem / sizeof Row
     : Row[num_rows]
