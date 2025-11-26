@@ -268,14 +268,25 @@ void SDDL2_Segment_list_init(
 void SDDL2_Segment_list_destroy(SDDL2_Segment_list* list);
 
 /**
+ * Tag entry storing both tag ID and associated type.
+ * Enforces semantic constraint: a tag uniquely identifies a type.
+ */
+typedef struct {
+    uint32_t tag;    // Tag identifier
+    SDDL2_Type type; // Associated type (must be consistent across all uses)
+} SDDL2_Tag_entry;
+
+/**
  * Tag registry for tracking tag usage.
  * Tags are registered on first use to ensure consistency.
+ * Each tag is associated with a specific type - attempting to use the same
+ * tag with a different type results in SDDL2_TYPE_MISMATCH error.
  *
  * Uses allocator callback for memory management to remain independent
  * of OpenZL infrastructure while supporting arena allocation.
  */
 typedef struct {
-    uint32_t* tags;              // Array of registered tag IDs
+    SDDL2_Tag_entry* entries;    // Array of tag entries (tag + type pairs)
     size_t count;                // Number of registered tags
     size_t capacity;             // Allocated capacity
     SDDL2_allocator_fn alloc_fn; // Allocator function (NULL = use realloc)

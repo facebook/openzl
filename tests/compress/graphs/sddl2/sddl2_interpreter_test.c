@@ -172,7 +172,7 @@ TEST(test_multiple_typed_segments)
         assert(segments.items[0].type.kind == SDDL2_TYPE_U8);
         assert(segments.items[0].type.width == 1);
 
-        assert(segments.items[1].tag == 100);
+        assert(segments.items[1].tag == 200); // Different tag!
         assert(segments.items[1].start_pos == 1);
         assert(segments.items[1].size_bytes == 4);
         assert(segments.items[1].type.kind == SDDL2_TYPE_F32LE);

@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "openzl/compress/graphs/sddl2/sddl2_vm.h"
+#include "sddl2_test_framework.h"
 
 /* Test helpers */
 static SDDL2_Stack* create_test_stack(size_t capacity)
@@ -39,38 +40,34 @@ static void destroy_test_stack(SDDL2_Stack* stack)
  * Tag Registry Init/Destroy Tests
  * ========================================================================= */
 
-static void test_tag_registry_init(void)
+TEST(test_tag_registry_init)
 {
     SDDL2_Tag_registry registry;
 
     SDDL2_Tag_registry_init(&registry, NULL, NULL);
 
-    assert(registry.tags == NULL);
+    assert(registry.entries == NULL);
     assert(registry.count == 0);
     assert(registry.capacity == 0);
-
-    printf("✓ test_tag_registry_init passed\n");
 }
 
-static void test_tag_registry_destroy(void)
+TEST(test_tag_registry_destroy)
 {
     SDDL2_Tag_registry registry;
 
     SDDL2_Tag_registry_init(&registry, NULL, NULL);
     SDDL2_Tag_registry_destroy(&registry);
 
-    assert(registry.tags == NULL);
+    assert(registry.entries == NULL);
     assert(registry.count == 0);
     assert(registry.capacity == 0);
-
-    printf("✓ test_tag_registry_destroy passed\n");
 }
 
 /* ============================================================================
  * Single Tagged Segment Tests
  * ========================================================================= */
 
-static void test_create_single_tagged_segment(void)
+TEST(test_create_single_tagged_segment)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02, 0x03, 0x04, 0x05 };
@@ -105,17 +102,15 @@ static void test_create_single_tagged_segment(void)
 
     // Check tag registered
     assert(registry.count == 1);
-    assert(registry.tags[0] == 100);
+    assert(registry.entries[0].tag == 100);
 
     // Cleanup
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
     destroy_test_stack(stack);
-
-    printf("✓ test_create_single_tagged_segment passed\n");
 }
 
-static void test_tagged_segment_zero_size(void)
+TEST(test_tagged_segment_zero_size)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02, 0x03 };
@@ -148,15 +143,13 @@ static void test_tagged_segment_zero_size(void)
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
     destroy_test_stack(stack);
-
-    printf("✓ test_tagged_segment_zero_size passed\n");
 }
 
 /* ============================================================================
  * Automatic Merging Tests (Core Feature)
  * ========================================================================= */
 
-static void test_merge_consecutive_same_tag(void)
+TEST(test_merge_consecutive_same_tag)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 1, 2, 3, 4, 5, 6, 7, 8 };
@@ -207,11 +200,9 @@ static void test_merge_consecutive_same_tag(void)
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
     destroy_test_stack(stack);
-
-    printf("✓ test_merge_consecutive_same_tag passed\n");
 }
 
-static void test_no_merge_different_tag(void)
+TEST(test_no_merge_different_tag)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 1, 2, 3, 4, 5, 6 };
@@ -264,11 +255,9 @@ static void test_no_merge_different_tag(void)
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
     destroy_test_stack(stack);
-
-    printf("✓ test_no_merge_different_tag passed\n");
 }
 
-static void test_merge_multiple_consecutive(void)
+TEST(test_merge_multiple_consecutive)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[20]   = { 0 };
@@ -306,11 +295,9 @@ static void test_merge_multiple_consecutive(void)
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
     destroy_test_stack(stack);
-
-    printf("✓ test_merge_multiple_consecutive passed\n");
 }
 
-static void test_merge_pattern_alternating(void)
+TEST(test_merge_pattern_alternating)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[20]   = { 0 };
@@ -371,11 +358,9 @@ static void test_merge_pattern_alternating(void)
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
     destroy_test_stack(stack);
-
-    printf("✓ test_merge_pattern_alternating passed\n");
 }
 
-static void test_merge_same_tag_after_other_tag(void)
+TEST(test_merge_same_tag_after_other_tag)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[20]   = { 0 };
@@ -432,15 +417,117 @@ static void test_merge_same_tag_after_other_tag(void)
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
     destroy_test_stack(stack);
+}
 
-    printf("✓ test_merge_same_tag_after_other_tag passed\n");
+TEST(test_no_merge_different_struct_types_same_size)
+{
+    SDDL2_Stack* stack = create_test_stack(100);
+    uint8_t data[32]   = { 0 }; // 16 + 16 bytes
+    SDDL2_Input_cursor buffer;
+    SDDL2_Segment_list segments;
+    SDDL2_Tag_registry registry;
+
+    SDDL2_Input_cursor_init(&buffer, data, 32);
+    SDDL2_Segment_list_init(&segments, NULL, NULL);
+    SDDL2_Tag_registry_init(&registry, NULL, NULL);
+
+    // Create first structure type: {U8, U8, I16LE, I32LE, I64LE}
+    // Size: 1 + 1 + 2 + 4 + 8 = 16 bytes
+    SDDL2_Struct_data* struct1_data =
+            malloc(sizeof(SDDL2_Struct_data) + 5 * sizeof(SDDL2_Type));
+    assert(struct1_data != NULL);
+
+    struct1_data->member_count = 5;
+    struct1_data->members[0] =
+            (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
+    struct1_data->members[1] =
+            (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
+    struct1_data->members[2] =
+            (SDDL2_Type){ SDDL2_TYPE_I16LE, 1, .struct_data = NULL };
+    struct1_data->members[3] =
+            (SDDL2_Type){ SDDL2_TYPE_I32LE, 1, .struct_data = NULL };
+    struct1_data->members[4] =
+            (SDDL2_Type){ SDDL2_TYPE_I64LE, 1, .struct_data = NULL };
+    struct1_data->total_size_bytes = 16;
+
+    SDDL2_Type type1 = { .kind        = SDDL2_TYPE_STRUCTURE,
+                         .width       = 1, // Single structure instance
+                         .struct_data = struct1_data };
+
+    // Create second structure type: {I64LE, I32LE, I16LE, U8, U8}
+    // Size: 8 + 4 + 2 + 1 + 1 = 16 bytes (SAME size, DIFFERENT layout!)
+    SDDL2_Struct_data* struct2_data =
+            malloc(sizeof(SDDL2_Struct_data) + 5 * sizeof(SDDL2_Type));
+    assert(struct2_data != NULL);
+
+    struct2_data->member_count = 5;
+    struct2_data->members[0] =
+            (SDDL2_Type){ SDDL2_TYPE_I64LE, 1, .struct_data = NULL };
+    struct2_data->members[1] =
+            (SDDL2_Type){ SDDL2_TYPE_I32LE, 1, .struct_data = NULL };
+    struct2_data->members[2] =
+            (SDDL2_Type){ SDDL2_TYPE_I16LE, 1, .struct_data = NULL };
+    struct2_data->members[3] =
+            (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
+    struct2_data->members[4] =
+            (SDDL2_Type){ SDDL2_TYPE_U8, 1, .struct_data = NULL };
+    struct2_data->total_size_bytes = 16;
+
+    SDDL2_Type type2 = { .kind        = SDDL2_TYPE_STRUCTURE,
+                         .width       = 1, // Single structure instance
+                         .struct_data = struct2_data };
+
+    // Create first segment: tag=100, type=struct1, size=16 bytes
+    SDDL2_Stack_push(stack, SDDL2_Value_tag(100));
+    SDDL2_Stack_push(stack, SDDL2_Value_type(type1));
+    SDDL2_Stack_push(stack, SDDL2_Value_i64(1)); // 1 element
+    SDDL2_Error err = SDDL2_op_segment_create_tagged(
+            stack, &buffer, &segments, &registry);
+    assert(err == SDDL2_OK);
+
+    // Check: 1 segment, size=16
+    assert(segments.count == 1);
+    assert(segments.items[0].tag == 100);
+    assert(segments.items[0].start_pos == 0);
+    assert(segments.items[0].size_bytes == 16);
+    assert(buffer.current_pos == 16);
+
+    // Create second segment: tag=100 (SAME tag!), type=struct2, size=16 bytes
+    // This should FAIL because tag 100 is already registered with a different
+    // type! The semantic constraint is: a tag uniquely identifies a type.
+    SDDL2_Stack_push(stack, SDDL2_Value_tag(100));
+    SDDL2_Stack_push(stack, SDDL2_Value_type(type2));
+    SDDL2_Stack_push(stack, SDDL2_Value_i64(1)); // 1 element
+    err = SDDL2_op_segment_create_tagged(stack, &buffer, &segments, &registry);
+
+    // Should fail with TYPE_MISMATCH because tag 100 already has a different
+    // type!
+    assert(err == SDDL2_TYPE_MISMATCH);
+
+    // Only the first segment should exist
+    assert(segments.count == 1);
+    assert(segments.items[0].tag == 100);
+    assert(segments.items[0].start_pos == 0);
+    assert(segments.items[0].size_bytes == 16);
+    assert(buffer.current_pos == 16); // Cursor not advanced for failed segment
+
+    // Only 1 tag should be registered (first registration with struct1)
+    assert(registry.count == 1);
+    assert(registry.entries[0].tag == 100);
+
+    // Cleanup
+    free(struct1_data);
+    free(struct2_data);
+    SDDL2_Segment_list_destroy(&segments);
+    SDDL2_Tag_registry_destroy(&registry);
+    destroy_test_stack(stack);
 }
 
 /* ============================================================================
  * Error Handling Tests
  * ========================================================================= */
 
-static void test_tagged_segment_bounds_error(void)
+TEST(test_tagged_segment_bounds_error)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02 };
@@ -472,11 +559,9 @@ static void test_tagged_segment_bounds_error(void)
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
     destroy_test_stack(stack);
-
-    printf("✓ test_tagged_segment_bounds_error passed\n");
 }
 
-static void test_tagged_segment_negative_tag(void)
+TEST(test_tagged_segment_negative_tag)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02, 0x03 };
@@ -504,11 +589,9 @@ static void test_tagged_segment_negative_tag(void)
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
     destroy_test_stack(stack);
-
-    printf("✓ test_tagged_segment_negative_tag passed\n");
 }
 
-static void test_tagged_segment_negative_size(void)
+TEST(test_tagged_segment_negative_size)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02, 0x03 };
@@ -536,11 +619,9 @@ static void test_tagged_segment_negative_size(void)
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
     destroy_test_stack(stack);
-
-    printf("✓ test_tagged_segment_negative_size passed\n");
 }
 
-static void test_tagged_segment_size_overflow(void)
+TEST(test_tagged_segment_size_overflow)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[1024]; // Large buffer
@@ -578,11 +659,9 @@ static void test_tagged_segment_size_overflow(void)
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
     destroy_test_stack(stack);
-
-    printf("✓ test_tagged_segment_size_overflow passed\n");
 }
 
-static void test_tagged_segment_wrong_type_tag(void)
+TEST(test_tagged_segment_wrong_type_tag)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02 };
@@ -610,11 +689,9 @@ static void test_tagged_segment_wrong_type_tag(void)
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
     destroy_test_stack(stack);
-
-    printf("✓ test_tagged_segment_wrong_type_tag passed\n");
 }
 
-static void test_tagged_segment_wrong_type_size(void)
+TEST(test_tagged_segment_wrong_type_size)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02 };
@@ -643,11 +720,9 @@ static void test_tagged_segment_wrong_type_size(void)
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
     destroy_test_stack(stack);
-
-    printf("✓ test_tagged_segment_wrong_type_size passed\n");
 }
 
-static void test_tagged_segment_stack_underflow(void)
+TEST(test_tagged_segment_stack_underflow)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[]     = { 0x01, 0x02 };
@@ -676,15 +751,13 @@ static void test_tagged_segment_stack_underflow(void)
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
     destroy_test_stack(stack);
-
-    printf("✓ test_tagged_segment_stack_underflow passed\n");
 }
 
 /* ============================================================================
  * Integration Tests
  * ========================================================================= */
 
-static void test_tagged_with_arithmetic(void)
+TEST(test_tagged_with_arithmetic)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[20]   = { 0 };
@@ -718,11 +791,9 @@ static void test_tagged_with_arithmetic(void)
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
     destroy_test_stack(stack);
-
-    printf("✓ test_tagged_with_arithmetic passed\n");
 }
 
-static void test_mixed_unspecified_and_tagged(void)
+TEST(test_mixed_unspecified_and_tagged)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[20]   = { 0 };
@@ -764,11 +835,9 @@ static void test_mixed_unspecified_and_tagged(void)
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
     destroy_test_stack(stack);
-
-    printf("✓ test_mixed_unspecified_and_tagged passed\n");
 }
 
-static void test_many_tags_registry_growth(void)
+TEST(test_many_tags_registry_growth)
 {
     SDDL2_Stack* stack = create_test_stack(100);
     uint8_t data[200]  = { 0 };
@@ -807,8 +876,6 @@ static void test_many_tags_registry_growth(void)
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
     destroy_test_stack(stack);
-
-    printf("✓ test_many_tags_registry_growth passed\n");
 }
 
 /**
@@ -822,7 +889,7 @@ static void test_many_tags_registry_growth(void)
  * Strategy: Create 100 segments with different tags to prevent merging,
  * forcing the segment list to grow from initial capacity to accommodate all.
  */
-static void test_segment_list_dynamic_growth(void)
+TEST(test_segment_list_dynamic_growth)
 {
     SDDL2_Stack* stack = create_test_stack(1000);
     uint8_t data[500]  = { 0 };
@@ -876,26 +943,21 @@ static void test_segment_list_dynamic_growth(void)
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
     destroy_test_stack(stack);
-
-    printf("✓ test_segment_list_dynamic_growth passed\n");
 }
 
 /**
  * Test: Segment list dynamic growth with different types
  *
  * This test verifies segment list growth when creating many segments with
- * DIFFERENT TYPES. Even with the same tag, different types prevent merging,
- * ensuring each segment creation adds a new segment to the list.
+ * DIFFERENT TYPES. Each type uses a different tag (as required by the semantic
+ * constraint that a tag uniquely identifies a type).
  *
- * This is more realistic than test_segment_list_dynamic_growth (which uses
- * different tags) because in real usage, typed segments with different types
- * cannot merge even if they share the same tag.
- *
- * Strategy: Create 50 segments with the SAME tag but DIFFERENT types.
+ * Strategy: Create 50 segments with DIFFERENT tags and DIFFERENT types.
  * Types cycle through: U8, I16LE, F32LE, I64BE (4 types).
- * No merging occurs because types differ between consecutive segments.
+ * Tags are assigned uniquely per segment to comply with tag-type uniqueness.
+ * No merging occurs because tags differ between consecutive segments.
  */
-static void test_segment_list_growth_different_types(void)
+TEST(test_segment_list_growth_different_types)
 {
     SDDL2_Stack* stack = create_test_stack(1000);
     uint8_t data[500]  = { 0 };
@@ -918,15 +980,15 @@ static void test_segment_list_growth_different_types(void)
     };
     size_t element_counts[] = { 2, 1, 1, 1 }; // Total per segment: 2, 2, 4, 8
 
-    // Create 50 segments with SAME tag (100) but DIFFERENT types
+    // Create 50 segments with DIFFERENT tags and DIFFERENT types
     const int NUM_SEGMENTS = 50;
     size_t expected_pos    = 0;
 
     for (int i = 0; i < NUM_SEGMENTS; i++) {
         int type_idx = i % 4;
 
-        // Same tag for all segments!
-        SDDL2_Stack_push(stack, SDDL2_Value_tag(100));
+        // Different tag for each segment (to comply with tag-type uniqueness)
+        SDDL2_Stack_push(stack, SDDL2_Value_tag((uint32_t)(100 + i)));
 
         // Different type each time (cycles through 4 types)
         SDDL2_Stack_push(
@@ -943,21 +1005,21 @@ static void test_segment_list_growth_different_types(void)
         assert(err == SDDL2_OK);
     }
 
-    // Verify all 50 segments were created (no merging despite same tag!)
+    // Verify all 50 segments were created (no merging - different tags!)
     assert(segments.count == NUM_SEGMENTS);
 
     // Verify capacity grew beyond initial
     assert(segments.capacity > initial_capacity);
     assert(segments.capacity >= NUM_SEGMENTS);
 
-    // Verify each segment has correct type and doesn't merge with neighbors
+    // Verify each segment has correct type and tag
     expected_pos = 0;
     for (int i = 0; i < NUM_SEGMENTS; i++) {
         int type_idx = i % 4;
         size_t expected_bytes =
                 element_counts[type_idx] * SDDL2_kind_size(types[type_idx]);
 
-        assert(segments.items[i].tag == 100); // Same tag!
+        assert(segments.items[i].tag == (uint32_t)(100 + i)); // Different tags
         assert(segments.items[i].type.kind
                == types[type_idx]); // Different types
         assert(segments.items[i].type.width == 1);
@@ -967,16 +1029,13 @@ static void test_segment_list_growth_different_types(void)
         expected_pos += expected_bytes;
     }
 
-    // Only 1 tag should be registered (all segments use tag 100)
-    assert(registry.count == 1);
-    assert(registry.tags[0] == 100);
+    // 50 tags should be registered (each segment uses unique tag)
+    assert(registry.count == NUM_SEGMENTS);
 
     // Cleanup
     SDDL2_Segment_list_destroy(&segments);
     SDDL2_Tag_registry_destroy(&registry);
     destroy_test_stack(stack);
-
-    printf("✓ test_segment_list_growth_different_types passed\n");
 }
 
 /* ============================================================================
@@ -985,49 +1044,5 @@ static void test_segment_list_growth_different_types(void)
 
 int main(void)
 {
-    printf("Running Phase 5 Tagged Segment Tests...\n\n");
-
-    // Tag registry tests
-    printf("=== Tag Registry Tests ===\n");
-    test_tag_registry_init();
-    test_tag_registry_destroy();
-    printf("\n");
-
-    // Single segment tests
-    printf("=== Single Tagged Segment Tests ===\n");
-    test_create_single_tagged_segment();
-    test_tagged_segment_zero_size();
-    printf("\n");
-
-    // Automatic merging tests (Core Feature!)
-    printf("=== Automatic Merging Tests ===\n");
-    test_merge_consecutive_same_tag();
-    test_no_merge_different_tag();
-    test_merge_multiple_consecutive();
-    test_merge_pattern_alternating();
-    test_merge_same_tag_after_other_tag();
-    printf("\n");
-
-    // Error handling tests
-    printf("=== Error Handling Tests ===\n");
-    test_tagged_segment_bounds_error();
-    test_tagged_segment_negative_tag();
-    test_tagged_segment_negative_size();
-    test_tagged_segment_size_overflow();
-    test_tagged_segment_wrong_type_tag();
-    test_tagged_segment_wrong_type_size();
-    test_tagged_segment_stack_underflow();
-    printf("\n");
-
-    // Integration tests
-    printf("=== Integration Tests ===\n");
-    test_tagged_with_arithmetic();
-    test_mixed_unspecified_and_tagged();
-    test_many_tags_registry_growth();
-    test_segment_list_dynamic_growth();
-    test_segment_list_growth_different_types();
-    printf("\n");
-
-    printf("✅ All Phase 5 tests passed! (23 tests)\n");
-    return 0;
+    return sddl2_run_all_tests();
 }

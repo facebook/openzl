@@ -972,7 +972,10 @@ DEFINE_LOAD_OP(i64be, 8, (int64_t)ZL_readBE64(&bytes[addr]))
  * ========================================================================= */
 
 // Forward declarations
-static int tag_registry_register(SDDL2_Tag_registry* registry, uint32_t tag);
+static int tag_registry_register(
+        SDDL2_Tag_registry* registry,
+        uint32_t tag,
+        SDDL2_Type type);
 
 /**
  * Initial capacity for dynamic arrays when growing from zero.
@@ -1204,9 +1207,10 @@ static SDDL2_Error segment_create_internal(
 
     // Register tag if non-zero (tagged segments only)
     if (tag != 0) {
-        if (!tag_registry_register(registry, tag)) {
-            return SDDL2_LIMIT_EXCEEDED; // Capacity limit exceeded or
-                                         // allocation allocation failed
+        if (!tag_registry_register(registry, tag, type)) {
+            return SDDL2_TYPE_MISMATCH; // Tag already registered with different
+                                        // type, or capacity limit exceeded, or
+                                        // allocation failed
         }
     }
 
@@ -1218,13 +1222,15 @@ static SDDL2_Error segment_create_internal(
         SDDL2_Segment* last = &segments->items[segments->count - 1];
         size_t expected_pos = last->start_pos + last->size_bytes;
 
-        // Check if types match (both kind and width)
-        bool types_match =
-                (last->type.kind == type.kind
-                 && last->type.width == type.width);
+        if (last->tag == tag && expected_pos == buffer->current_pos) {
+            // If tags match, types MUST match due to tag-type uniqueness:
+            // - Non-zero tags: enforced by tag_registry_register() above
+            // - Tag 0 (unspecified): always BYTES type by definition
+            assert(last->type.kind == type.kind);
+            assert(last->type.width == type.width);
+            assert(type.kind != SDDL2_TYPE_STRUCTURE
+                   || last->type.struct_data == type.struct_data);
 
-        if (last->tag == tag && types_match
-            && expected_pos == buffer->current_pos) {
             // MERGE: Just extend the last segment's size
             last->size_bytes += size_bytes;
             buffer->current_pos += size_bytes;
@@ -1290,7 +1296,7 @@ void SDDL2_Tag_registry_init(
         SDDL2_allocator_fn alloc_fn,
         void* alloc_ctx)
 {
-    registry->tags      = NULL;
+    registry->entries   = NULL;
     registry->count     = 0;
     registry->capacity  = 0;
     registry->alloc_fn  = alloc_fn;
@@ -1298,9 +1304,10 @@ void SDDL2_Tag_registry_init(
 
     // Pre-allocate initial capacity for arena allocators
     if (alloc_fn != NULL) {
-        size_t initial_size = SDDL2_TAG_INITIAL_CAPACITY * sizeof(uint32_t);
-        registry->tags      = (uint32_t*)alloc_fn(alloc_ctx, initial_size);
-        if (registry->tags != NULL) {
+        size_t initial_size =
+                SDDL2_TAG_INITIAL_CAPACITY * sizeof(SDDL2_Tag_entry);
+        registry->entries = (SDDL2_Tag_entry*)alloc_fn(alloc_ctx, initial_size);
+        if (registry->entries != NULL) {
             registry->capacity = SDDL2_TAG_INITIAL_CAPACITY;
         }
         // If allocation fails, capacity remains 0 and will be handled
@@ -1310,42 +1317,79 @@ void SDDL2_Tag_registry_init(
 
 void SDDL2_Tag_registry_destroy(SDDL2_Tag_registry* registry)
 {
-    sddl2_free(registry->tags, registry->alloc_fn);
-    registry->tags     = NULL;
+    sddl2_free(registry->entries, registry->alloc_fn);
+    registry->entries  = NULL;
     registry->count    = 0;
     registry->capacity = 0;
 }
 
 /**
- * Helper: Register a tag if not already registered.
- * Returns 1 on success, 0 on allocation failure or capacity limit exceeded.
- *
- * Uses the unified sddl2_realloc() abstraction which handles both
- * arena allocation and heap allocation transparently.
+ * Helper: Compare two types for equality.
+ * Returns true if types match (kind, width, and struct_data for structures).
  */
-static int tag_registry_register(SDDL2_Tag_registry* registry, uint32_t tag)
+static bool types_equal(SDDL2_Type a, SDDL2_Type b)
+{
+    if (a.kind != b.kind || a.width != b.width) {
+        return false;
+    }
+
+    // For structures, also compare struct_data pointers
+    if (a.kind == SDDL2_TYPE_STRUCTURE) {
+        return a.struct_data == b.struct_data;
+    }
+
+    return true;
+}
+
+/**
+ * Helper: Register a tag with its associated type.
+ * If tag already exists, validates that the type matches.
+ * Returns 1 on success, 0 on allocation failure or type mismatch.
+ *
+ * Semantic constraint: A tag uniquely identifies a type.
+ * Attempting to use the same tag with different types is an error.
+ */
+static int tag_registry_register(
+        SDDL2_Tag_registry* registry,
+        uint32_t tag,
+        SDDL2_Type type)
 {
     // Check if tag is already registered
     for (size_t i = 0; i < registry->count; i++) {
-        if (registry->tags[i] == tag) {
-            return 1; // Already registered
+        if (registry->entries[i].tag == tag) {
+            // Tag exists - verify type matches
+            if (!types_equal(registry->entries[i].type, type)) {
+                // Type mismatch! Same tag used with different types
+                ZL_DLOG(ERROR,
+                        "Tag %u already registered with different type "
+                        "(existing kind=%d width=%u, new kind=%d width=%u)",
+                        tag,
+                        registry->entries[i].type.kind,
+                        registry->entries[i].type.width,
+                        type.kind,
+                        type.width);
+                return 0; // Type mismatch error
+            }
+            return 1; // Already registered with same type - OK
         }
     }
 
-    // Ensure capacity for new tag
+    // Tag not yet registered - add it
     if (!ensure_capacity(
-                (void*)&registry->tags,
+                (void*)&registry->entries,
                 registry->count,
                 &registry->capacity,
-                sizeof(uint32_t),
+                sizeof(SDDL2_Tag_entry),
                 SDDL2_TAG_MAX_CAPACITY,
                 registry->alloc_fn,
                 registry->alloc_ctx)) {
         return 0; // Allocation failed or capacity limit reached
     }
 
-    // Register tag
-    registry->tags[registry->count++] = tag;
+    // Register tag with type
+    registry->entries[registry->count].tag  = tag;
+    registry->entries[registry->count].type = type;
+    registry->count++;
     return 1;
 }
 
