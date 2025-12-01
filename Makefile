@@ -91,6 +91,7 @@ VISUALIZER_CXXOBJS := $(call cxx_objs,$(VISUALIZER_CPPDIR))
 TRAINING_CXXOBJS := $(call cxx_objs,$(TRAINING_DIRS))
 TRAINING_TEST_CXXOBJS := $(call cxx_objs,$(TRAINING_TEST_DIRS))
 SDDL_COMPILER_CXXOBJS := $(filter-out %main.o, $(call cxx_objs,$(SDDL_COMPILER_DIR)))
+SDDL2_COMPILER_CXXOBJS := $(filter-out %main.o, $(call cxx_objs,$(SDDL2_COMPILER_DIR)))
 
 zli: CFLAGS += -O3
 zli: CXXFLAGS += -O3
@@ -111,6 +112,7 @@ $(eval $(call cxx_program,zli, \
 	$(IO_CXXOBJS) \
 	$(TRAINING_CXXOBJS) \
 	$(SDDL_COMPILER_CXXOBJS) \
+	$(SDDL2_COMPILER_CXXOBJS) \
 	$(ZLCPP_OBJS) \
 	$(LIBOBJS), \
 	$(LIBZSTD_A)))
@@ -194,6 +196,7 @@ ALL_GTESTS_OBJS := \
 	$(IO_CXXOBJS) \
 	$(TRAINING_CXXOBJS) \
 	$(SDDL_COMPILER_CXXOBJS) \
+	$(SDDL2_COMPILER_CXXOBJS) \
 	$(DATAGEN_OBJS) \
 	$(ZLCPP_OBJS) \
 	$(LIBOBJS)
