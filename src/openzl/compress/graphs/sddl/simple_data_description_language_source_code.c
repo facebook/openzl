@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "openzl/compress/graphs/simple_data_description_language_source_code.h"
+#include "openzl/compress/graphs/sddl/simple_data_description_language_source_code.h"
 
 #include <stdio.h>
 
