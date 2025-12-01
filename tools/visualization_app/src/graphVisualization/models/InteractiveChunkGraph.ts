@@ -486,4 +486,14 @@ export class InteractiveChunkGraph {
       }
     }
   }
+
+  // Helper methods for chunk merging
+  findCodecByName(name: string): InternalCodecNode | null {
+    for (const codec of this.codecs) {
+      if (codec.name === name) {
+        return codec;
+      }
+    }
+    return null;
+  }
 }

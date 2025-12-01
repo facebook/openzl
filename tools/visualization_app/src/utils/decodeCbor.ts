@@ -76,7 +76,7 @@ function marshallV1(obj: object): SerializedStreamdumpV1 {
       obj !== null &&
       'chunks' in obj &&
       Array.isArray(obj.chunks) &&
-      obj.chunks.length === 1 && // for now, only support single-chunk
+      obj.chunks.length !== 0 &&
       'libraryVersion' in obj &&
       typeof obj.libraryVersion === 'number' &&
       'frameVersion' in obj &&
