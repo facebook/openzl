@@ -36,25 +36,36 @@ Tracer::TraceResult Tracer::extractTrace()
 
 void Tracer::on_segmenterEncode_start(ZL_Segmenter* segCtx)
 {
-    std::cout << "[SEG] segmetner start" << std::endl;
-}
-void Tracer::on_segmenterEncode_end(ZL_Segmenter* segCtx, ZL_Report r)
-{
-    std::cout << "[SEG] segmetner end" << std::endl;
-}
-void Tracer::on_ZL_Segmenter_processChunk_start(
-        ZL_Segmenter* segCtx,
-        const size_t[],
-        size_t,
-        ZL_GraphID,
-        const ZL_RuntimeGraphParameters*)
-{
-    std::cout << "[SEG] chunk start" << std::endl;
+    if (graphRuns.size() != 0) {
+        throw std::runtime_error(
+                "Compression tracing does not support multiple segmenters within the same compression");
+    }
+    segmented = true;
+    nonChunkedRun.on_segmenterEncode_start(segCtx);
 }
 
-void Tracer::on_ZL_Segmenter_processChunk_end(ZL_Segmenter*, ZL_Report)
+void Tracer::on_segmenterEncode_end(ZL_Segmenter* segCtx, ZL_Report r)
 {
-    std::cout << "[SEG] chunk end" << std::endl;
+    currChunk = &nonChunkedRun;
+    currChunk->on_segmenterEncode_end(segCtx, r);
+}
+
+void Tracer::on_ZL_Segmenter_processChunk_start(
+        ZL_Segmenter* segCtx,
+        const size_t numElts[],
+        size_t numInputs,
+        ZL_GraphID startingGraphID,
+        const ZL_RuntimeGraphParameters* rGraphParams)
+{
+    graphRuns.emplace_back();
+    currChunk = &(graphRuns[graphRuns.size() - 1]);
+    currChunk->on_ZL_Segmenter_processChunk_start(
+            segCtx, numElts, numInputs, startingGraphID, rGraphParams);
+}
+
+void Tracer::on_ZL_Segmenter_processChunk_end(ZL_Segmenter* segCtx, ZL_Report r)
+{
+    currChunk->on_ZL_Segmenter_processChunk_end(segCtx, r);
 }
 
 void Tracer::on_codecEncode_start(
