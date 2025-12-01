@@ -1,12 +1,13 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-import {ZL_GraphType, type CodecID, type GraphID} from './idTypes';
+import {ZL_GraphType, type ChunkID, type CodecID, type GraphID} from './idTypes';
 import {LocalParamInfo} from './LocalParamInfo';
 import type {SerializedGraph} from '../interfaces/SerializedGraph';
 import type {RF_graphId} from '../graphVisualization/models/types';
 
 export class Graph {
   readonly gNum: GraphID;
+  readonly chunkId: ChunkID;
 
   readonly gType: ZL_GraphType;
   readonly gName: string;
@@ -19,6 +20,7 @@ export class Graph {
 
   constructor(
     gNum: GraphID,
+    chunkId: ChunkID,
     gType: ZL_GraphType,
     gName: string,
     gFailureString: string,
@@ -26,18 +28,20 @@ export class Graph {
     codecIDs: CodecID[],
   ) {
     this.gNum = gNum;
+    this.chunkId = chunkId;
     this.gType = gType;
     this.gName = gName;
     this.gFailureString = gFailureString;
     this.gLocalParams = gLocalParams;
     this.codecIDs = codecIDs;
 
-    this.rfId = `G${gNum}` as RF_graphId;
+    this.rfId = `C${chunkId}-G${gNum}` as RF_graphId;
   }
 
   static fromObject(obj: SerializedGraph, gNum: number): Graph {
     return new Graph(
       gNum as GraphID,
+      obj.chunkId as ChunkID,
       obj.gType,
       obj.gName,
       obj.gFailureString,

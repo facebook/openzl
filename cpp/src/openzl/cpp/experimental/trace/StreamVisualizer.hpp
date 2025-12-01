@@ -18,6 +18,7 @@ struct Stream {
     size_t cSize{};
     double share{};
     size_t contentSize{};
+    size_t chunkId{};
 
     const ZL_Report serializeStream(A1C_Arena* a1c_arena, A1C_Item* arrayItem);
 };

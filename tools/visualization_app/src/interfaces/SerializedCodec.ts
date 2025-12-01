@@ -5,6 +5,7 @@ import type {SerializedLocalParamInfo} from './SerializedLocalParamInfo';
 
 export interface SerializedCodec {
   name: string;
+  chunkId: number;
   cType: boolean;
   cID: ZL_IDType;
   cHeaderSize: number;
