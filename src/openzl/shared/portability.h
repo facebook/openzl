@@ -126,7 +126,7 @@ ZL_BEGIN_C_DECLS
 #elif defined(__aarch64__) || defined(__arm64__)
 #    define ZL_ARCH_FLAGS ZL_ARCH_FLAG_ARM64
 #elif defined(__arm__)
-#    define ZL_ARCH_FLAG ZL_ARCH_FLAG_ARM32
+#    define ZL_ARCH_FLAGS ZL_ARCH_FLAG_ARM32
 #elif defined(__powerpc64__) || defined(__ppc64__) || defined(_ARCH_PPC64)
 #    if defined(_LITTLE_ENDIAN) || defined(__LITTLE_ENDIAN__) \
             || (defined(__BYTE_ORDER__)                       \
@@ -149,6 +149,12 @@ ZL_BEGIN_C_DECLS
 #define ZL_ARCH_PPC64 ((ZL_ARCH_FLAGS & ZL_ARCH_FLAG_PPC64) != 0)
 #define ZL_ARCH_PPC64LE ((ZL_ARCH_FLAGS & ZL_ARCH_FLAG_PPC64LE) != 0)
 #define ZL_ARCH_PPC64BE ((ZL_ARCH_FLAGS & ZL_ARCH_FLAG_PPC64BE) != 0)
+
+// Enforce 64-bit compilation
+#if (ZL_ARCH_FLAGS == ZL_ARCH_FLAG_I386) \
+        || (ZL_ARCH_FLAGS == ZL_ARCH_FLAG_ARM32)
+#    error "This codebase requires a 64-bit platform. 32-bit compilation is not supported yet."
+#endif
 
 // Error on unknown architectures for now.
 // TODO: This should probably be removed before open source.
