@@ -6,6 +6,7 @@ export type ZL_IDType = BrandedType<number, 'ZL_IDType'>;
 export type StreamID = BrandedType<number, 'StreamID'>;
 export type CodecID = BrandedType<number, 'CodecID'>;
 export type GraphID = BrandedType<number, 'GraphID'>;
+export type ChunkID = BrandedType<number, 'ChunkID'>;
 
 export enum ZL_Type {
   ZL_Type_serial = 1,

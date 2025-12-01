@@ -1,22 +1,21 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import {decode} from 'cbor2';
-import type {SerializedStreamdump} from '../interfaces/SerializedStreamdump';
+import type {SerializedStreamdumpV0, SerializedStreamdumpV1} from '../interfaces/SerializedStreamdump';
 import {Streamdump} from '../models/Streamdump';
 import type {StreamID, ZL_IDType} from '../models/idTypes';
+import type {SerializedChunk} from '../interfaces/SerializedChunk';
 
 // format version 0, need to convert to format version 1
-function convertV0toV1(obj: SerializedStreamdump): SerializedStreamdump {
-  const retval: SerializedStreamdump = {
-    frameVersion: -1,
-    libraryVersion: 100,
-    traceVersion: 0,
+function convertV0toV1(obj: SerializedStreamdumpV0): SerializedStreamdumpV1 {
+  const chunk: SerializedChunk = {
     streams: obj.streams,
     codecs: obj.codecs,
     graphs: obj.graphs,
   };
+
   // insert a root node before the first node
-  retval.codecs.unshift({
+  chunk.codecs.unshift({
     name: 'zl.#start',
     cType: true,
     cID: 0 as ZL_IDType,
@@ -32,19 +31,25 @@ function convertV0toV1(obj: SerializedStreamdump): SerializedStreamdump {
   });
 
   // rename all stream source/targets
-  retval.streams.forEach((stream) => {
+  chunk.streams.forEach((stream) => {
     stream.outputIdx += 1;
   });
-  retval.graphs.forEach((graph) => {
+  chunk.graphs.forEach((graph) => {
     for (let i = 0; i < graph.codecIDs.length; ++i) {
       graph.codecIDs[i] += 1;
     }
   });
 
+  const retval: SerializedStreamdumpV1 = {
+    frameVersion: -1,
+    libraryVersion: 100,
+    traceVersion: 0,
+    chunks: [chunk],
+  };
   return retval;
 }
 
-function marshallV0(obj: object): SerializedStreamdump {
+function marshallV0(obj: object): SerializedStreamdumpV1 {
   if (
     !(
       'streams' in obj &&
@@ -59,20 +64,17 @@ function marshallV0(obj: object): SerializedStreamdump {
       'Decoded object does not have an explicit format version string but does not fit the structure of V0',
     );
   }
-  return convertV0toV1(obj as SerializedStreamdump);
+  return convertV0toV1(obj as SerializedStreamdumpV0);
 }
 
-function marshallV1(obj: object): SerializedStreamdump {
+function marshallV1(obj: object): SerializedStreamdumpV1 {
   if (
     !(
       typeof obj === 'object' &&
       obj !== null &&
-      'streams' in obj &&
-      Array.isArray(obj.streams) &&
-      'codecs' in obj &&
-      Array.isArray(obj.codecs) &&
-      'graphs' in obj &&
-      Array.isArray(obj.graphs) &&
+      'chunks' in obj &&
+      Array.isArray(obj.chunks) &&
+      obj.chunks.length === 1 && // for now, only support single-chunk
       'libraryVersion' in obj &&
       typeof obj.libraryVersion === 'number' &&
       'frameVersion' in obj &&
@@ -82,14 +84,19 @@ function marshallV1(obj: object): SerializedStreamdump {
     throw new Error('Decoded object is declared to be V1 but is malformed.');
   }
 
-  return obj as SerializedStreamdump;
+  return {
+    libraryVersion: obj.libraryVersion,
+    frameVersion: obj.frameVersion,
+    traceVersion: 1,
+    chunks: obj.chunks,
+  };
 }
 
 /**
  * Convert presented object into a valid SerializedStreamdump object with the latest format version.
  * @throw error if no conversion is possible.
  */
-function marshall(obj: unknown): SerializedStreamdump {
+function marshall(obj: unknown): SerializedStreamdumpV1 {
   if (typeof obj !== 'object' || obj === null) {
     throw new Error('Decoded data is not a valid object');
   }
