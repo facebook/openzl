@@ -6,6 +6,7 @@ export enum NodeType {
   Codec = 'codec',
   Graph = 'graph',
   Edge = 'edge',
+  Segmenter = 'segmenter',
 }
 
 // React Flow's Node implementation requires ids of nodes to be a string
