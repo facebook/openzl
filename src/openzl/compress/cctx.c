@@ -157,6 +157,8 @@ static ZL_Report CCTX_init(ZL_CCtx* cctx)
     ZL_ASSERT_NN(cctx);
     ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
 
+    ZL_OC_init(&cctx->opCtx);
+
     cctx->codecArena   = ALLOC_StackArena_create();
     cctx->graphArena   = ALLOC_StackArena_create();
     cctx->chunkArena   = ALLOC_StackArena_create();
@@ -169,7 +171,6 @@ static ZL_Report CCTX_init(ZL_CCtx* cctx)
     ZL_ERR_IF_ERR(RTGM_init(&cctx->rtgraph));
     TRS_init(&cctx->cachedCodecStates);
     CCTX_TransformHeaders_init(&cctx->trHeaders);
-    ZL_OC_init(&cctx->opCtx);
 
     return ZL_returnSuccess();
 }
