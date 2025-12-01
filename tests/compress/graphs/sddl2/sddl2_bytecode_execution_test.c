@@ -10,7 +10,7 @@
  *
  * Note: This is NOT a true end-to-end test - the assembly step is manual.
  * The bytecode must be pre-generated using the assembler:
- *   python3 tools/sddl/assembler/sddl2_assembler.py test_hello.sddl
+ *   python3 tools/sddl2/assembler/sddl2_assembler.py test_hello.sddl
  * test_hello.bin
  */
 
@@ -18,7 +18,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "generated_test_bytecode.h"
 #include "openzl/compress/graphs/sddl2/sddl2_interpreter.h"
 
 /**
@@ -86,7 +85,7 @@ static void test_assembled_hello(void)
         fprintf(stderr, "Failed to load test_hello.bin\n");
         fprintf(stderr,
                 "Make sure to run: python3 "
-                "../../../tools/sddl/assembler/sddl2_assembler.py test_hello.sddl "
+                "../../../tools/sddl2/assembler/sddl2_assembler.py test_hello.sddl "
                 "test_hello.bin\n");
         exit(1);
     }
@@ -155,7 +154,7 @@ static void test_multi_segments(void)
         fprintf(stderr, "Failed to load test_multi_segments.bin\n");
         fprintf(stderr,
                 "Make sure to run: python3 "
-                "../../../tools/sddl/assembler/sddl2_assembler.py "
+                "../../../tools/sddl2/assembler/sddl2_assembler.py "
                 "test_multi_segments.sddl test_multi_segments.bin\n");
         exit(1);
     }

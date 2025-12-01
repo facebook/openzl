@@ -316,7 +316,7 @@ python3 tests/compress/graphs/sddl2/generate_test_bytecode.py
 The script:
 - Reads all `.asm` files from `/Users/cyan/dev/openzl/cyan_openzl/tests/compress/graphs/sddl2/asm/`
 - Parses metadata from comments
-- Assembles to bytecode using `/Users/cyan/dev/openzl/cyan_openzl/tools/sddl/assembler/sddl2_assembler.py`
+- Assembles to bytecode using `/Users/cyan/dev/openzl/cyan_openzl/tools/sddl2/assembler/sddl2_assembler.py`
 - Generates `/Users/cyan/dev/openzl/cyan_openzl/tests/compress/graphs/sddl2/generated_test_bytecode.h`
 
 ### Updating Error Codes

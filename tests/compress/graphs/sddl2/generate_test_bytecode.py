@@ -8,7 +8,7 @@ Simple usage (from anywhere):
 This uses default paths:
     - Input:     tests/compress/graphs/sddl2/asm/
     - Output:    tests/compress/graphs/sddl2/generated_test_bytecode.h
-    - Assembler: tools/sddl/assembler/
+    - Assembler: tools/sddl2/assembler/
 
 Custom paths (optional):
     python3 tests/compress/graphs/sddl2/generate_test_bytecode.py \
