@@ -10,7 +10,7 @@ Several files are auto-generated from this definition and **must not be manually
 
 - `sddl2_opcodes.h` - C opcode definitions
 - `sddl2_disasm_generated.h` - Disassembler implementation
-- `tools/sddl/assembler/opcodes_generated.py` - Python assembler definitions
+- `tools/sddl2/assembler/opcodes_generated.py` - Python assembler definitions
 
 Each generated file contains a header clearly marking it as auto-generated.
 
@@ -23,7 +23,7 @@ After modifying `sddl2_opcodes.def`:
 python3 src/openzl/compress/graphs/sddl2/generate_c_headers.py
 
 # Regenerate Python code (assembler)
-python3 tools/sddl/assembler/generate_opcodes.py
+python3 tools/sddl2/assembler/generate_opcodes.py
 ```
 
 ## Debug Traces
@@ -110,7 +110,7 @@ ls -l your_bytecode.bin
 hexdump -C your_bytecode.bin | head -20
 
 # Compare with known-good bytecode from assembler
-python3 tools/sddl/assembler/sddl2_assembler.py -c "push.zero halt"
+python3 tools/sddl2/assembler/sddl2_assembler.py -c "push.zero halt"
 # Should output: 01 00 01 00 05 00 01 00
 ```
 
@@ -328,7 +328,7 @@ make BUILD_TYPE=TRACES_NOSAN LOG_LEVEL=POS
 # Generate reference bytecode using assembler
 echo "push.u32 42
 halt" > test.asm
-python3 tools/sddl/assembler/sddl2_assembler.py test.asm test.bin
+python3 tools/sddl2/assembler/sddl2_assembler.py test.asm test.bin
 
 # Compare with your compiler output
 hexdump -C test.bin
@@ -437,7 +437,7 @@ SDDL2_Error test_arithmetic() {
 ## Related Documentation
 
 - **Compiler integration**: `COMPILER_INTEGRATION.md` (this directory) - Complete guide for compiler writers
-- **Assembler**: `tools/sddl/assembler/README.md` - Assembler tool documentation
-- **Bytecode format**: `tools/sddl/assembler/Bytecode_spec.md` - Format specification
+- **Assembler**: `tools/sddl2/assembler/README.md` - Assembler tool documentation
+- **Bytecode format**: `tools/sddl2/assembler/Bytecode_spec.md` - Format specification
 - **Test framework**: `tests/compress/graphs/sddl2/BYTECODE_TEST_FRAMEWORK.md` - Auto-discovery testing
 - **Examples**: `examples/sddl2_asm/` - Working programs (start with `sao_silesia.asm`)

@@ -8,7 +8,7 @@ This guide is for developers implementing compilers that target the SDDL2 VM byt
 
 ### 1. Essential Reading (in order)
 
-1. **Bytecode format**: `tools/sddl/assembler/Bytecode_spec.md`
+1. **Bytecode format**: `tools/sddl2/assembler/Bytecode_spec.md`
    - Instruction encoding (32-bit words, little-endian)
    - Immediate value encoding
    - Example programs with hex dumps
@@ -770,8 +770,8 @@ A: [Add your project's bug tracker info here]
 ## Additional Resources
 
 - **VM README**: `README.md` (this directory) - Debugging, testing, source of truth
-- **Bytecode spec**: `tools/sddl/assembler/Bytecode_spec.md` - Format details
-- **Assembler README**: `tools/sddl/assembler/README.md` - Assembler tool documentation
+- **Bytecode spec**: `tools/sddl2/assembler/Bytecode_spec.md` - Format details
+- **Assembler README**: `tools/sddl2/assembler/README.md` - Assembler tool documentation
 - **Test framework**: `tests/compress/graphs/sddl2/BYTECODE_TEST_FRAMEWORK.md` - Auto-discovery testing
 - **Test examples**: `tests/compress/graphs/sddl2/asm/` - 53 simple, focused examples (start here)
 - **Real-world examples**: `examples/sddl2_asm/` - Study `sao_silesia.asm` first, then `sao_full.asm`

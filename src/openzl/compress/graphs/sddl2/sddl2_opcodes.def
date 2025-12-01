@@ -21,7 +21,7 @@
 # Parameter types: u32, i32, i64
 #
 # To regenerate C headers: python3 src/openzl/compress/graphs/sddl2/generate_c_headers.py
-# To regenerate Python:    python3 tools/sddl/assembler/generate_opcodes.py
+# To regenerate Python:    python3 tools/sddl2/assembler/generate_opcodes.py
 
 # ============================================================================
 # OPCODE FAMILIES & INSTRUCTIONS
