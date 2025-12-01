@@ -1,12 +1,13 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import {LocalParamInfo} from './LocalParamInfo';
-import type {ZL_IDType, StreamID, CodecID, GraphID} from './idTypes';
+import type {ZL_IDType, StreamID, CodecID, GraphID, ChunkID} from './idTypes';
 import type {SerializedCodec} from '../interfaces/SerializedCodec';
 import type {RF_codecId} from '../graphVisualization/models/types';
 
 export class Codec {
   readonly id: CodecID;
+  readonly chunkId: ChunkID;
 
   // traced properties
   readonly cID: ZL_IDType; // COdec ID as defined by OpenZL, unrelated to the "id" of this Typescript Codec object
@@ -29,6 +30,7 @@ export class Codec {
 
   constructor(
     id: CodecID,
+    chunkId: ChunkID,
     name: string,
     cType: boolean,
     cID: ZL_IDType,
@@ -40,6 +42,7 @@ export class Codec {
     owningGraph?: GraphID | null,
   ) {
     this.id = id;
+    this.chunkId = chunkId;
 
     this.cID = cID;
     this.name = name;
@@ -52,7 +55,7 @@ export class Codec {
     this.outputStreams = outputStreams;
     this.owningGraph = owningGraph ?? null;
 
-    this.rfId = `T${id}` as RF_codecId;
+    this.rfId = `C${chunkId}-T${id}` as RF_codecId;
   }
 
   codecTypeToString(): string {
@@ -62,6 +65,7 @@ export class Codec {
   static fromObject(obj: SerializedCodec, idx: number): Codec {
     return new Codec(
       idx as CodecID,
+      obj.chunkId as ChunkID,
       obj.name,
       obj.cType,
       obj.cID,

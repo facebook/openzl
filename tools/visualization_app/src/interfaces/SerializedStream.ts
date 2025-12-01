@@ -3,6 +3,7 @@
 import {ZL_Type} from '../models/idTypes';
 
 export interface SerializedStream {
+  chunkId: number;
   type: ZL_Type;
   outputIdx: number;
   eltWidth: number;

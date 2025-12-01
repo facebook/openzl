@@ -29,6 +29,8 @@
 
 namespace openzl::visualizer {
 
+static constexpr size_t MAIN_TRACE_IDX = 0;
+
 Tracer::TraceResult Tracer::extractTrace()
 {
     return std::move(trace);
@@ -36,17 +38,17 @@ Tracer::TraceResult Tracer::extractTrace()
 
 void Tracer::on_segmenterEncode_start(ZL_Segmenter* segCtx)
 {
-    if (graphRuns.size() != 0) {
+    if (graphRuns.size() != 1) {
         throw std::runtime_error(
                 "Compression tracing does not support multiple segmenters within the same compression");
     }
     segmented = true;
-    nonChunkedRun.on_segmenterEncode_start(segCtx);
+    graphRuns[MAIN_TRACE_IDX].on_segmenterEncode_start(segCtx);
 }
 
 void Tracer::on_segmenterEncode_end(ZL_Segmenter* segCtx, ZL_Report r)
 {
-    currChunk = &nonChunkedRun;
+    currChunk = &graphRuns[MAIN_TRACE_IDX];
     currChunk->on_segmenterEncode_end(segCtx, r);
 }
 
@@ -57,8 +59,9 @@ void Tracer::on_ZL_Segmenter_processChunk_start(
         ZL_GraphID startingGraphID,
         const ZL_RuntimeGraphParameters* rGraphParams)
 {
-    graphRuns.emplace_back();
-    currChunk = &(graphRuns[graphRuns.size() - 1]);
+    auto chunkNum = graphRuns.size();
+    graphRuns.emplace_back(chunkNum);
+    currChunk = &(graphRuns[chunkNum]);
     currChunk->on_ZL_Segmenter_processChunk_start(
             segCtx, numElts, numInputs, startingGraphID, rGraphParams);
 }
@@ -165,7 +168,9 @@ void Tracer::on_ZL_CCtx_compressMultiTypedRef_start(
         size_t const nbInputs)
 {
     frameVersion = ZL_CCtx_getParameter(cctx, ZL_CParam_formatVersion);
-    currChunk    = &nonChunkedRun;
+    // The "main" trace is located at idx 0 of graphRuns
+    graphRuns.emplace_back(MAIN_TRACE_IDX);
+    currChunk = &graphRuns[MAIN_TRACE_IDX];
     currChunk->initTrace();
 }
 
@@ -175,7 +180,7 @@ void Tracer::on_ZL_CCtx_compressMultiTypedRef_end(
 {
     // If the compression is successful, we can assume all the streams
     // without targets go to STORE
-    nonChunkedRun.finalizeTrace(result);
+    graphRuns[MAIN_TRACE_IDX].finalizeTrace(result);
 
     // convert compression data into a1c_items to write to a CBOR file
     Arena* arena        = ALLOC_HeapArena_create();
@@ -248,10 +253,6 @@ ZL_Report Tracer::serializeStreamdumpToCbor(
     A1C_ArrayBuilder chunksBuilder = A1C_Item_array_builder(
             &chunksPair->val, 1 + graphRuns.size(), a1c_arena);
     ZL_RET_R_IF_NULL(allocation, chunksBuilder.array);
-
-    // Add the first chunk (idx 0) for the main nonChunkedRun trace
-    ZL_RET_R_IF_ERR(
-            nonChunkedRun.serializeToCBOR(a1c_arena, &chunksBuilder, cctx_));
 
     // Add additional chunks from graphRuns
     for (auto& graphRun : graphRuns) {

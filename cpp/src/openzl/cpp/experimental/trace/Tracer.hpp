@@ -130,8 +130,6 @@ class Tracer {
             nullptr; // convenience pointer to the current chunk trace
     bool segmented = false;
 
-    ChunkTrace nonChunkedRun{};
-
     TraceResult trace;
 };
 

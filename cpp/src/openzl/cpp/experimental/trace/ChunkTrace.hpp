@@ -20,7 +20,8 @@ namespace openzl::visualizer {
  */
 class ChunkTrace {
    public:
-    ChunkTrace() = default;
+    ChunkTrace() = delete;
+    explicit ChunkTrace(size_t chunkId) : chunkId_(chunkId) {}
 
     /**
      * Callback function to start the trace.
@@ -119,6 +120,7 @@ class ChunkTrace {
     void printCodecMetadata();
     size_t fillCSize(std::vector<size_t>& cSize, const ZL_DataID streamID);
 
+    const size_t chunkId_;    // chunk ID for this specific chunk trace
     size_t compressedSize_{}; // compressed size for this specific chunk
     size_t currCodecNum_ = 0;
     std::map<ZL_DataID, Stream, ZL_DataIDCustomComparator> streamInfo_;

@@ -15,9 +15,10 @@ const ZL_Report Graph::serializeGraph(
         const ZL_CCtx* const cctx,
         const std::vector<size_t>& graphCodecs)
 {
-    A1C_MapBuilder builder = A1C_Item_map_builder(arrayItem, 5, a1c_arena);
+    A1C_MapBuilder builder = A1C_Item_map_builder(arrayItem, 6, a1c_arena);
     ZL_RET_R_IF_NULL(allocation, builder.map);
 
+    ZL_RET_R_IF_ERR(addIntValue(builder, "chunkId", this->chunkId));
     ZL_RET_R_IF_ERR(addIntValue(builder, "gType", gType));
     ZL_RET_R_IF_ERR(addStringValue(builder, "gName", gName));
     if (ZL_isError(gFailure)) {

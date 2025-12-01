@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-import type {CodecID, StreamID} from './idTypes';
+import type {ChunkID, CodecID, StreamID} from './idTypes';
 import {ZL_Type} from './idTypes';
 import type {SerializedStream} from '../interfaces/SerializedStream';
 import type {RF_edgeId} from '../graphVisualization/models/types';
@@ -9,6 +9,7 @@ export class Stream {
   static readonly NO_SOURCE: CodecID = -1 as CodecID;
 
   readonly streamId: StreamID;
+  readonly chunkId: ChunkID;
 
   // traced properties
   readonly type: ZL_Type;
@@ -29,6 +30,7 @@ export class Stream {
 
   constructor(
     streamId: StreamID,
+    chunkId: ChunkID,
     type: ZL_Type,
     outputIdx: number,
     eltWidth: number,
@@ -39,6 +41,7 @@ export class Stream {
     rfId: RF_edgeId,
   ) {
     this.streamId = streamId;
+    this.chunkId = chunkId;
 
     this.type = type;
     this.outputIdx = outputIdx;
@@ -69,6 +72,7 @@ export class Stream {
   static fromObject(obj: SerializedStream, idx: number): Stream {
     return new Stream(
       idx as StreamID,
+      obj.chunkId as ChunkID,
       obj.type,
       obj.outputIdx,
       obj.eltWidth,
@@ -76,7 +80,7 @@ export class Stream {
       obj.cSize,
       obj.share,
       obj.contentSize,
-      `S${idx}` as RF_edgeId,
+      `C${obj.chunkId}-S${idx}` as RF_edgeId,
     );
   }
 

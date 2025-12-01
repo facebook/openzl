@@ -26,6 +26,7 @@ void ChunkTrace::initTrace()
         .cID          = 0,
         .cHeaderSize  = 0,
         .cLocalParams = {},
+        .chunkId      = chunkId_,
     };
     codecInfo_.push_back(std::move(compressionStart));
     codecInEdges_[currCodecNum_] = {};
@@ -39,8 +40,14 @@ void ChunkTrace::recordStartStreams(
     for (size_t i = 0; i < numInStreams; ++i) {
         ZL_DataID streamID = ZL_Input_id(inStreams[i]);
         if (streamInfo_.find(streamID) == streamInfo_.end()) {
-            const ZL_Type stype        = ZL_Input_type(inStreams[i]);
-            streamInfo_[streamID].type = stype;
+            streamInfo_[streamID] = Stream{
+                .type        = ZL_Input_type(inStreams[i]),
+                .outputIdx   = i,
+                .eltWidth    = ZL_Input_eltWidth(inStreams[i]),
+                .numElts     = ZL_Input_numElts(inStreams[i]),
+                .contentSize = ZL_Input_contentSize(inStreams[i]),
+                .chunkId     = chunkId_,
+            };
             codecOutEdges_[0].push_back(streamID);
         }
     }
@@ -62,6 +69,7 @@ void ChunkTrace::finalizeTrace(ZL_Report const result)
                     .cID          = 0,
                     .cHeaderSize  = 0,
                     .cLocalParams = {},
+                    .chunkId      = chunkId_,
                 };
                 if (maybeConversionError_.has_value()
                     && maybeConversionError_->streamId.sid == streamID.sid) {
@@ -86,6 +94,7 @@ void ChunkTrace::finalizeTrace(ZL_Report const result)
                     .cID          = 0,
                     .cHeaderSize  = 0,
                     .cLocalParams = {},
+                    .chunkId      = chunkId_,
                 };
                 codecInfo_.push_back(std::move(store));
                 codecInEdges_[currCodecNum_].push_back(streamID);
@@ -106,8 +115,11 @@ ZL_Report ChunkTrace::serializeToCBOR(
         const ZL_CCtx* cctx)
 {
     A1C_ARRAY_TRY_ADD_R(chunkItem, *chunkArrayBuilder);
-    A1C_MapBuilder chunkBuilder = A1C_Item_map_builder(chunkItem, 3, a1c_arena);
+    A1C_MapBuilder chunkBuilder = A1C_Item_map_builder(chunkItem, 4, a1c_arena);
     ZL_RET_R_IF_NULL(allocation, chunkBuilder.map);
+
+    // Add chunkId to the chunk
+    ZL_RET_R_IF_ERR(addIntValue(chunkBuilder, "chunkId", chunkId_));
 
     // 1. Make the streams map
     A1C_MAP_TRY_ADD_R(streamsPair, chunkBuilder);
@@ -375,21 +387,15 @@ void ChunkTrace::on_codecEncode_start(
         const ZL_Input* inStreams[],
         size_t nbInStreams)
 {
-    for (size_t i = 0; i < nbInStreams; ++i) {
-        ZL_DataID streamID = ZL_Input_id(inStreams[i]);
-        if (streamInfo_.find(streamID) == streamInfo_.end()) {
-            const ZL_Type stype        = ZL_Input_type(inStreams[i]);
-            streamInfo_[streamID].type = stype;
-            codecOutEdges_[0].push_back(streamID);
-        }
-    }
+    recordStartStreams(inStreams, nbInStreams);
     // set codec metadata
     Codec newCodec{ .name  = ZL_Compressor_Node_getName(compressor, nid),
                     .cType = ZL_Compressor_Node_isStandard(compressor, nid),
                     .cID   = ZL_Compressor_Node_getCodecID(compressor, nid),
                     .cHeaderSize = 0,
                     .cLocalParams =
-                            LocalParams(*ZL_Encoder_getLocalParams(encoder)) };
+                            LocalParams(*ZL_Encoder_getLocalParams(encoder)),
+                    .chunkId = chunkId_ };
     codecInfo_.push_back(newCodec);
     for (size_t i = 0; i < nbInStreams; ++i) {
         ZL_DataID streamID = ZL_Input_id(inStreams[i]);
@@ -427,6 +433,7 @@ void ChunkTrace::on_codecEncode_end(
                      .eltWidth    = openzl::unwrap(ZL_Output_eltWidth(createdStream)),
                      .numElts     = openzl::unwrap(ZL_Output_numElts(createdStream)),
                      .contentSize = openzl::unwrap(ZL_Output_contentSize(createdStream)),
+                     .chunkId     = chunkId_,
         };
 
         codecOutEdges_[currCodecNum_].push_back(streamID);
@@ -476,6 +483,7 @@ void ChunkTrace::on_migraphEncode_start(
                              ZL_Compressor_Graph_getName(compressor, gid),
                              ZL_returnSuccess(),
                              LocalParams(*GCTX_getAllLocalParams(graph)),
+                             chunkId_,
                              std::move(inEdges) };
     graphInfo_.emplace_back(currGraph, std::vector<size_t>());
 }
@@ -507,6 +515,7 @@ void ChunkTrace::on_migraphEncode_end(
                     .cID          = 0,
                     .cHeaderSize  = 0,
                     .cLocalParams = {},
+                    .chunkId      = chunkId_,
                 };
                 codecInfo_.push_back(std::move(inProgress));
                 codecOutEdges_[currCodecNum_] = {};
@@ -567,7 +576,8 @@ void ChunkTrace::on_segmenterEncode_start(ZL_Segmenter* segCtx)
                     .cID   = 0, // eh?
                     .cHeaderSize = 0,
                     .cLocalParams =
-                            LocalParams(*ZL_Segmenter_getLocalParams(segCtx)) };
+                            LocalParams(*ZL_Segmenter_getLocalParams(segCtx)),
+                    .chunkId = chunkId_ };
     codecInfo_.push_back(newCodec);
     for (size_t i = 0; i < nbInStreams; ++i) {
         ZL_DataID streamID = ZL_Input_id(ZL_Segmenter_getInput(segCtx, i));
