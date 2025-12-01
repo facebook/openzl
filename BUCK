@@ -176,6 +176,7 @@ zs_library(
 )
 
 cpp_library(
+    # @autodeps-skip
     name = "openzl_fbcode",
     visibility = ["//openzl:openzl"],
     exported_deps = [
@@ -197,6 +198,7 @@ cpp_library(
 
 # This target exposes the standalone OpenZL core library that only has zstd as an external dependency.
 cpp_library(
+    # @autodeps-skip
     name = "openzl_core",
     visibility = ["//openzl:openzl_core"],
     exported_deps = [
@@ -206,6 +208,7 @@ cpp_library(
 
 # Not intended to be widely used. A supported Python binding is coming.
 python_library(
+    # @autodeps-skip
     name = "openzl_py_deprecated",
     visibility = ["//openzl:openzl_py_deprecated"],
     deps = [
@@ -218,6 +221,7 @@ python_library(
 
 # Do not use in production builds.
 cpp_library(
+    # @autodeps-skip
     name = "openzl_test_utils",
     visibility = ["//openzl:openzl_test_utils"],
     exported_deps = [
