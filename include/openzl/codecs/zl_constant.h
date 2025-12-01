@@ -18,11 +18,7 @@ extern "C" {
 // Note : compression will fail if the stream is empty or isn't constant
 // Example 1 : 1 1 1 1 1 as 5 fields of size 1 => 1 as 1 field of size 1
 // Example 2 : 300 300 300 as 3 fields of size 3 => 300 as 1 field of size 3
-#define ZL_GRAPH_CONSTANT           \
-    (ZL_GraphID)                    \
-    {                               \
-        ZL_StandardGraphID_constant \
-    }
+#define ZL_GRAPH_CONSTANT ZL_MAKE_GRAPH_ID(ZL_StandardGraphID_constant)
 
 #if defined(__cplusplus)
 }

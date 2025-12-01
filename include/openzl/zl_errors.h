@@ -382,16 +382,35 @@ ZL_Report ZL_reportError(
 #define ZL_ERR(...) ZS_MACRO_PAD1(ZL_ERR_RET_IMPL, __VA_ARGS__)
 
 /// Turn a @p value into a result.
-#define ZL_WRAP_VALUE(value) \
-    ((ZL__RetType){          \
-            ._value = { ._code = ZL_ErrorCode_no_error, ._value = (value) } })
+#if defined(__cplusplus)
+} // extern "C"
+
+// C++ compatible version using helper function
+#    define ZL_WRAP_VALUE(value) \
+        (::openzl::detail::make_result_with_value<ZL__RetType>(value))
+extern "C" {
+#else
+// C99 compound literal
+#    define ZL_WRAP_VALUE(value)                                     \
+        ((ZL__RetType){ ._value = { ._code  = ZL_ErrorCode_no_error, \
+                                    ._value = (value) } })
+#endif
 
 /// Turn a @p error into a result, and try to add a stack frame to the traceback
 /// in the error.
 #define ZL_WRAP_ERROR(error) ZL_WRAP_ERROR_ADD_FRAME(error)
 
 /// Turn a @p error into a result, without trying to record a stack frame.
-#define ZL_WRAP_ERROR_NO_FRAME(error) ((ZL__RetType){ ._error = (error) })
+#if defined(__cplusplus)
+} // extern "C"
+// C++ compatible version using helper function
+#    define ZL_WRAP_ERROR_NO_FRAME(error) \
+        (::openzl::detail::make_result_with_error<ZL__RetType>(error))
+extern "C" {
+#else
+// C99 compound literal
+#    define ZL_WRAP_ERROR_NO_FRAME(error) ((ZL__RetType){ ._error = (error) })
+#endif
 
 #define ZL_TRY_SET(_type, _var, _expr) ZL_TRY_SET_DT(_type, _var, _expr)
 

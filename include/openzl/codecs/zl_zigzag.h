@@ -20,11 +20,7 @@ extern "C" {
 //           with expected decreasing distribution starting from 0.
 // Note : It's unclear if this transform is really useful.
 //        If not, it will be removed from Standard Transforms.
-#define ZL_NODE_ZIGZAG           \
-    (ZL_NodeID)                  \
-    {                            \
-        ZL_StandardNodeID_zigzag \
-    }
+#define ZL_NODE_ZIGZAG ZL_MAKE_NODE_ID(ZL_StandardNodeID_zigzag)
 
 #if defined(__cplusplus)
 }

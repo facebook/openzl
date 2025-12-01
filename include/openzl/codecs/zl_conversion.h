@@ -319,11 +319,8 @@ ZL_Edge_runConvertSerialToStringNode(
 // The reverse operation, unbundling string, actually generates 2 output
 // streams: the first one (serialized) with the concatenation of all strings,
 // and the second one (numeric) for the array of string sizes.
-#define ZL_NODE_SEPARATE_STRING_COMPONENTS           \
-    (ZL_NodeID)                                      \
-    {                                                \
-        ZL_StandardNodeID_separate_string_components \
-    }
+#define ZL_NODE_SEPARATE_STRING_COMPONENTS \
+    ZL_MAKE_NODE_ID(ZL_StandardNodeID_separate_string_components)
 
 // Old names for nodes
 enum { ZL_trlip_tokenSize = 1 };

@@ -11,21 +11,13 @@ extern "C" {
 #endif
 
 // Error node, to specify an error in functions that return ZL_NodeID
-#define ZL_NODE_ILLEGAL           \
-    (ZL_NodeID)                   \
-    {                             \
-        ZL_StandardNodeID_illegal \
-    }
+#define ZL_NODE_ILLEGAL ZL_MAKE_NODE_ID(ZL_StandardNodeID_illegal)
 
 // Error graph, to specify an error in functions that return ZL_GraphID
-#define ZL_GRAPH_ILLEGAL           \
-    (ZL_GraphID)                   \
-    {                              \
-        ZL_StandardGraphID_illegal \
-    }
+#define ZL_GRAPH_ILLEGAL ZL_MAKE_GRAPH_ID(ZL_StandardGraphID_illegal)
 
 #if defined(__cplusplus)
-}
+} // extern "C"
 #endif
 
 #endif

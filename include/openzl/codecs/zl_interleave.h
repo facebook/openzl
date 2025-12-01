@@ -12,11 +12,8 @@ extern "C" {
 // Input: Variable number of stream with the same type and number of elements
 // Output: 1 stream with the same type consisting of the input streams
 // interleaved in round-robin order
-#define ZL_NODE_INTERLEAVE_STRING           \
-    (ZL_NodeID)                             \
-    {                                       \
-        ZL_StandardNodeID_interleave_string \
-    }
+#define ZL_NODE_INTERLEAVE_STRING \
+    ZL_MAKE_NODE_ID(ZL_StandardNodeID_interleave_string)
 
 #if defined(__cplusplus)
 }

@@ -2,11 +2,11 @@
 
 #pragma once
 
+#include "openzl/zl_graph_api.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "openzl/zl_graph_api.h"
 
 /**
  * A selector that chooses between a set of successors with a weighted

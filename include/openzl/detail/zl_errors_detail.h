@@ -214,10 +214,16 @@ struct ZL_Error_s {
     ZL_ErrorInfo _info;
 };
 
-#define ZL_EE_EMPTY ((ZL_ErrorInfo){ ._st = NULL })
-
-#define ZL_E_EMPTY \
-    ((ZL_Error){ ._code = ZL_ErrorCode_no_error, ._info = ZL_EE_EMPTY })
+#if defined(__cplusplus)
+// C++ compatible versions using constructor syntax
+#    define ZL_EE_EMPTY (ZL_ErrorInfo{ nullptr })
+#    define ZL_E_EMPTY (ZL_Error{ ZL_ErrorCode_no_error, ZL_EE_EMPTY })
+#else
+// C99 compound literals
+#    define ZL_EE_EMPTY ((ZL_ErrorInfo){ ._st = NULL })
+#    define ZL_E_EMPTY \
+        ((ZL_Error){ ._code = ZL_ErrorCode_no_error, ._info = ZL_EE_EMPTY })
+#endif
 
 // Returns the ZL_Error descriptor from a ZL_RESULT_OF(<T>) object.
 #define ZL_RES_error(res) ((res)._error)
@@ -372,22 +378,67 @@ typedef struct {
 #define ZL_RESULT_MAKE_ERROR_CODE(type, ...) \
     ZS_MACRO_PAD4(ZL_RESULT_MAKE_ERROR_CODE_INNER, "", "", type, __VA_ARGS__)
 
-#define ZL_RESULT_MAKE_ERROR_CODE_INNER(               \
-        __PLACEHOLDER1__, __PLACEHOLDER2__, type, ...) \
-    ((ZL_RESULT_OF(type)){                             \
-            ._error = ZL_E_create(                     \
-                    NULL, NULL, __FILE__, __func__, __LINE__, __VA_ARGS__) })
+#if defined(__cplusplus)
+} // extern "C"
 
-#define ZL_RESULT_WRAP_ERROR(type, err) \
-    ((ZL_RESULT_OF(type)){ ._error = (err) })
+// Helper functions for C++ to avoid compound literals
+// These must be outside extern "C" block
+namespace openzl::detail {
+template <typename T>
+inline T make_result_with_error(ZL_Error err)
+{
+    T result;
+    result._error = err;
+    return result;
+}
 
-#define ZL_RESULT_WRAP_VALUE(type, value) \
-    ((ZL_RESULT_OF(type)){                  \
-            ._value = {                      \
-              ._code = ZL_ErrorCode_no_error, \
-              ._value = (value),           \
-          },                               \
-  })
+template <typename T, typename V>
+inline T make_result_with_value(V value)
+{
+    T result;
+    result._value._code  = ZL_ErrorCode_no_error;
+    result._value._value = value;
+    return result;
+}
+} // namespace openzl::detail
+
+// C++ compatible versions using helper functions
+#    define ZL_RESULT_MAKE_ERROR_CODE_INNER(               \
+            __PLACEHOLDER1__, __PLACEHOLDER2__, type, ...) \
+        (::openzl::detail::make_result_with_error<         \
+                ZL_RESULT_OF(type)>(ZL_E_create(           \
+                NULL, NULL, __FILE__, __func__, __LINE__, __VA_ARGS__)))
+
+#    define ZL_RESULT_WRAP_ERROR(type, err) \
+        (::openzl::detail::make_result_with_error<ZL_RESULT_OF(type)>(err))
+
+#    define ZL_RESULT_WRAP_VALUE(type, value) \
+        (::openzl::detail::make_result_with_value<ZL_RESULT_OF(type)>(value))
+
+extern "C" {
+#else
+// C99 compound literals
+#    define ZL_RESULT_MAKE_ERROR_CODE_INNER(               \
+            __PLACEHOLDER1__, __PLACEHOLDER2__, type, ...) \
+        ((ZL_RESULT_OF(type)){ ._error = ZL_E_create(      \
+                                       NULL,               \
+                                       NULL,               \
+                                       __FILE__,           \
+                                       __func__,           \
+                                       __LINE__,           \
+                                       __VA_ARGS__) })
+
+#    define ZL_RESULT_WRAP_ERROR(type, err) \
+        ((ZL_RESULT_OF(type)){ ._error = (err) })
+
+#    define ZL_RESULT_WRAP_VALUE(type, value) \
+        ((ZL_RESULT_OF(type)){                  \
+                ._value = {                     \
+                  ._code = ZL_ErrorCode_no_error, \
+                  ._value = (value),            \
+              },                                \
+      })
+#endif
 
 #define ZL_RET_IF_NOT_UNARY_IMPL(type, errcode, expr, ...) \
     ZL_RET_IF_UNARY_IMPL(type, errcode, !(expr), __VA_ARGS__)

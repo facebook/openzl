@@ -2,11 +2,11 @@
 
 #pragma once
 
+#include "openzl/zl_selector.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "openzl/zl_selector.h"
 
 /**
  * A selector that behaves as follows:

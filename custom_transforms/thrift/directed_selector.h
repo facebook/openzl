@@ -2,11 +2,11 @@
 
 #pragma once
 
+#include "openzl/zl_selector.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "openzl/zl_selector.h"
 
 /**
  * The int metadata id / key that should be set with the index of the successor

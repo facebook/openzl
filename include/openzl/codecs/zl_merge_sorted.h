@@ -23,11 +23,7 @@ extern "C" {
 // Bitset with one bit per sorted run. The width is determined
 //           by the number of sorted runs.
 // Output 1: Numeric: The merged list of strictly increasing u32s
-#define ZL_NODE_MERGE_SORTED           \
-    (ZL_NodeID)                        \
-    {                                  \
-        ZL_StandardNodeID_merge_sorted \
-    }
+#define ZL_NODE_MERGE_SORTED ZL_MAKE_NODE_ID(ZL_StandardNodeID_merge_sorted)
 
 /**
  * Creates a graph for ZL_NODE_MERGE_SORTED that first detects whether
