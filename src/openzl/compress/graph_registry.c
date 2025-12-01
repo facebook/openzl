@@ -11,8 +11,8 @@
 #include "openzl/compress/compress_types.h" // Compression-related type definitions
 #include "openzl/compress/dyngraph_interface.h" // ZL_Graph definition and graph context functions
 #include "openzl/compress/graphs/generic_clustering_graph.h" // MIGRAPH_CLUSTERING
-#include "openzl/compress/graphs/sddl2/sddl2.h"              // SDDL2_parse
-#include "openzl/compress/graphs/simple_data_description_language.h" // ZL_SDDL_dynGraph
+#include "openzl/compress/graphs/sddl/simple_data_description_language.h" // ZL_SDDL_dynGraph
+#include "openzl/compress/graphs/sddl2/sddl2.h" // SDDL2_parse
 #include "openzl/compress/graphs/split_graph.h" // ZL_splitFnGraph
 #include "openzl/compress/implicit_conversion.h" // ICONV_isCompatible for type checking
 #include "openzl/compress/private_nodes.h" // ZL_PrivateStandardGraphID_end, private node ID definitions
@@ -177,7 +177,7 @@ const InternalGraphDesc GR_standardGraphs[ZL_PrivateStandardGraphID_end] = {
     REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_range_pack, "!zl.private.range_pack", ZL_Type_numeric, ZL_StandardNodeID_range_pack, _1_SUCCESSOR(ZL_StandardGraphID_field_lz) ),
     REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_range_pack_zstd, "!zl.private.range_pack_zstd", ZL_Type_numeric, ZL_StandardNodeID_range_pack, _1_SUCCESSOR(ZL_StandardGraphID_zstd) ),
     REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_tokenize_delta_field_lz, "!zl.private.tokenize_delta_field_lz", ZL_Type_numeric, ZL_PrivateStandardNodeID_tokenize_sorted, _2_SUCCESSORS(ZL_PrivateStandardGraphID_delta_field_lz, ZL_StandardGraphID_field_lz) ),
-    
+
     REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_split_serial, "!zl.private.split_serial", ZL_Type_serial, ZL_splitFnGraph),
     REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_split_struct, "!zl.private.split_struct", ZL_Type_struct, ZL_splitFnGraph),
     REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_split_numeric, "!zl.private.split_numeric", ZL_Type_numeric, ZL_splitFnGraph),
