@@ -3,6 +3,7 @@
 # @noautodeps
 
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 
 oncall("data_compression")
 
@@ -22,4 +23,11 @@ cpp_binary(
     deps = [
         "..:zstronglib",
     ],
+)
+
+python_binary(
+    name = "relative_buck",
+    srcs = ["relative_buck.py"],
+    base_module = "",
+    main_module = "relative_buck",
 )
