@@ -8,7 +8,7 @@ import {InternalEdge} from './InternalEdge';
 import {Stream} from '../../models/Stream';
 import type {CodecID} from '../../models/idTypes';
 import {ZL_GraphType} from '../../models/idTypes';
-import type {SerializedStreamdump} from '../../interfaces/SerializedStreamdump';
+import type {SerializedStreamdumpV1} from '../../interfaces/SerializedStreamdump';
 import {CodecDag} from './CodecDag';
 import {Codec} from '../../models/Codec';
 import {Graph} from '../../models/Graph';
@@ -25,7 +25,7 @@ export class InteractiveStreamdumpGraph {
 
   private edgeViewModels = new Map<RF_edgeId, InternalEdge>();
 
-  constructor(obj: SerializedStreamdump, isDefaultCollapsed = false) {
+  constructor(obj: SerializedStreamdumpV1, isDefaultCollapsed = false) {
     this.buildFromSerialized(obj);
     this.markLargestCompressionPath(this.codecs[InteractiveStreamdumpGraph.ROOT_CODEC_ID].id, this.streams);
     if (isDefaultCollapsed) {
