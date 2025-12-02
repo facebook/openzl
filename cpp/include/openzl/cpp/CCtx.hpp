@@ -98,6 +98,11 @@ class CCtx {
 
     void writeTraces(bool enabled);
 
+    /**
+     * @returns a pair of the latest trace, and a map from internal stream IDs
+     * to a pair of the raw stream buffer, and a buffer to the string lengths of
+     * the corresponding stream if it is a string stream, otherwise "".
+     */
     std::pair<
             poly::string_view,
             std::map<size_t, std::pair<poly::string_view, poly::string_view>>>
