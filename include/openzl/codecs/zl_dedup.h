@@ -13,11 +13,7 @@ extern "C" {
 // Input : Multiple Numeric streams (this is a VI node)
 // Condition: All input streams must be exactly identical
 // Output : 1 numeric stream, one copy of Input Streams
-#define ZL_NODE_DEDUP_NUMERIC       \
-    (ZL_NodeID)                     \
-    {                               \
-        ZL_StandardNodeID_dedup_num \
-    }
+#define ZL_NODE_DEDUP_NUMERIC ZL_MAKE_NODE_ID(ZL_StandardNodeID_dedup_num)
 
 #if defined(__cplusplus)
 }

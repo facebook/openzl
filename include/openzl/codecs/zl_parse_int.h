@@ -14,11 +14,7 @@ extern "C" {
 // Input: 1 string stream, each string containing an ASCII representation of an
 // int64
 // Output: 1 numeric stream, integers converted from input strings
-#define ZL_NODE_PARSE_INT           \
-    (ZL_NodeID)                     \
-    {                               \
-        ZL_StandardNodeID_parse_int \
-    }
+#define ZL_NODE_PARSE_INT ZL_MAKE_NODE_ID(ZL_StandardNodeID_parse_int)
 
 /**
  * Try Parse Int

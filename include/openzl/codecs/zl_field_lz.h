@@ -23,11 +23,7 @@ extern "C" {
 // Output 3: Offsets: A numeric stream of non-zero u32 offsets.
 // Output 4: Extra Literal Lengths: A numeric stream of u32 lengths.
 // Output 5: Extra Match Lengths: A numeric stream of u32 lengths.
-#define ZL_NODE_FIELD_LZ           \
-    (ZL_NodeID)                    \
-    {                              \
-        ZL_StandardNodeID_field_lz \
-    }
+#define ZL_NODE_FIELD_LZ ZL_MAKE_NODE_ID(ZL_StandardNodeID_field_lz)
 
 /**
  * Create the field lz graph with the default backends.
@@ -36,11 +32,7 @@ extern "C" {
  *
  * Input: A fixed size stream of width 1, 2, 4, or 8.
  */
-#define ZL_GRAPH_FIELD_LZ           \
-    (ZL_GraphID)                    \
-    {                               \
-        ZL_StandardGraphID_field_lz \
-    }
+#define ZL_GRAPH_FIELD_LZ ZL_MAKE_GRAPH_ID(ZL_StandardGraphID_field_lz)
 
 /// DEPRECATED: Use ZL_GRAPH_FIELD_LZ instead.
 /// @returns ZL_GRAPH_FIELD_LZ

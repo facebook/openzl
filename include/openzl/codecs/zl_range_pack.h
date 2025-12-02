@@ -13,11 +13,7 @@ extern "C" {
 // Substracts the minimal (unsigned) element from all other elements in the
 // stream and outputs the minimal sized numeric stream type that can contain the
 // 0-based range of values.
-#define ZL_NODE_RANGE_PACK           \
-    (ZL_NodeID)                      \
-    {                                \
-        ZL_StandardNodeID_range_pack \
-    }
+#define ZL_NODE_RANGE_PACK ZL_MAKE_NODE_ID(ZL_StandardNodeID_range_pack)
 
 #if defined(__cplusplus)
 }

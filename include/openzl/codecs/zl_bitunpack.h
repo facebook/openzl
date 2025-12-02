@@ -23,11 +23,7 @@ extern "C" {
 // zeroes. Both of these invariants are checked and compression would fail if
 // the checks fail.
 enum { ZL_Bitunpack_numBits = 1 };
-#define ZS2_NODE_BITUNPACK          \
-    (ZL_NodeID)                     \
-    {                               \
-        ZL_StandardNodeID_bitunpack \
-    }
+#define ZS2_NODE_BITUNPACK ZL_MAKE_NODE_ID(ZL_StandardNodeID_bitunpack)
 #define ZL_CREATENODE_BITUNPACK(graph, nbBits)                              \
     ZL_Compressor_cloneNode(                                                \
             graph,                                                          \

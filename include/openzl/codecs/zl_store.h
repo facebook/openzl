@@ -10,11 +10,7 @@ extern "C" {
 #endif
 
 // Storage operation. Final stage of any stored stream.
-#define ZL_GRAPH_STORE           \
-    (ZL_GraphID)                 \
-    {                            \
-        ZL_StandardGraphID_store \
-    }
+#define ZL_GRAPH_STORE ZL_MAKE_GRAPH_ID(ZL_StandardGraphID_store)
 
 #if defined(__cplusplus)
 }

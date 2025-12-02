@@ -10,11 +10,7 @@
 extern "C" {
 #endif
 
-#define ZL_GRAPH_ZSTD           \
-    (ZL_GraphID)                \
-    {                           \
-        ZL_StandardGraphID_zstd \
-    }
+#define ZL_GRAPH_ZSTD ZL_MAKE_GRAPH_ID(ZL_StandardGraphID_zstd)
 
 /// @return zstd graph with a compression level overridden
 ZL_GraphID ZL_Compressor_registerZstdGraph_withLevel(

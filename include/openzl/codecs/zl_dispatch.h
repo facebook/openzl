@@ -57,11 +57,7 @@ extern "C" {
 // ZL_DISPATCH_CHANNEL_ID, which can be used for coordination with
 // downstream node if needed.
 //
-#define ZL_NODE_DISPATCH                  \
-    (ZL_NodeID)                           \
-    {                                     \
-        ZL_StandardNodeID_dispatchN_byTag \
-    }
+#define ZL_NODE_DISPATCH ZL_MAKE_NODE_ID(ZL_StandardNodeID_dispatchN_byTag)
 
 typedef struct {
     const size_t* segmentSizes;
@@ -134,11 +130,8 @@ ZL_Edge_runDispatchNode(
 #define ZL_DISPATCH_STRING_NUM_OUTPUTS_PID 47
 #define ZL_DISPATCH_STRING_INDICES_PID 48
 
-#define ZL_NODE_DISPATCH_STRING           \
-    (ZL_NodeID)                           \
-    {                                     \
-        ZL_StandardNodeID_dispatch_string \
-    }
+#define ZL_NODE_DISPATCH_STRING \
+    ZL_MAKE_NODE_ID(ZL_StandardNodeID_dispatch_string)
 
 /**
  * Convenience function to get the maximum number of dispatches supported by the

@@ -48,7 +48,13 @@ typedef enum {
             ZL_Type_serial | ZL_Type_struct | ZL_Type_numeric \
             | ZL_Type_string)
 
-#define ZL_DATA_ID_INPUTSTREAM (ZL_DataID){ .sid = (ZL_IDType) - 1 }
+#if defined(__cplusplus)
+// C++ compatible version using constructor syntax
+#    define ZL_DATA_ID_INPUTSTREAM (ZL_DataID{ (ZL_IDType) - 1 })
+#else
+// C99 compound literal
+#    define ZL_DATA_ID_INPUTSTREAM (ZL_DataID){ .sid = (ZL_IDType) - 1 }
+#endif
 
 /* ============================== */
 /* =====    Data object     ===== */

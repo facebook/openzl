@@ -29,11 +29,7 @@ extern "C" {
 // If the
 //       stream is not sorted or there is not much overlap between the strings,
 //       another transform may be more performant (see example 2)
-#define ZL_NODE_PREFIX           \
-    (ZL_NodeID)                  \
-    {                            \
-        ZL_StandardNodeID_prefix \
-    }
+#define ZL_NODE_PREFIX ZL_MAKE_NODE_ID(ZL_StandardNodeID_prefix)
 
 #if defined(__cplusplus)
 }

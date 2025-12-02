@@ -20,11 +20,7 @@ extern "C" {
 // by the divisor. If 0 is
 //           provided or the divisor is unavailable, instead calculates the GCD
 //           and uses that as the divisor.
-#define ZL_NODE_DIVIDE_BY           \
-    (ZL_NodeID)                     \
-    {                               \
-        ZL_StandardNodeID_divide_by \
-    }
+#define ZL_NODE_DIVIDE_BY ZL_MAKE_NODE_ID(ZL_StandardNodeID_divide_by)
 
 /// If set, 8-byte local param key containing the divisor
 /// If unset, the divisor is computed to be the GCD

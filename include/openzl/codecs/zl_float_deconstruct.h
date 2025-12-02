@@ -16,21 +16,12 @@ extern "C" {
 // Note : See zstrong/compress/transforms/float_deconstruct_encode.h for
 // detailed description
 //        of the bit layout for each transform.
-#define ZL_NODE_FLOAT32_DECONSTRUCT           \
-    (ZL_NodeID)                               \
-    {                                         \
-        ZL_StandardNodeID_float32_deconstruct \
-    }
-#define ZL_NODE_BFLOAT16_DECONSTRUCT           \
-    (ZL_NodeID)                                \
-    {                                          \
-        ZL_StandardNodeID_bfloat16_deconstruct \
-    }
-#define ZL_NODE_FLOAT16_DECONSTRUCT           \
-    (ZL_NodeID)                               \
-    {                                         \
-        ZL_StandardNodeID_float16_deconstruct \
-    }
+#define ZL_NODE_FLOAT32_DECONSTRUCT \
+    ZL_MAKE_NODE_ID(ZL_StandardNodeID_float32_deconstruct)
+#define ZL_NODE_BFLOAT16_DECONSTRUCT \
+    ZL_MAKE_NODE_ID(ZL_StandardNodeID_bfloat16_deconstruct)
+#define ZL_NODE_FLOAT16_DECONSTRUCT \
+    ZL_MAKE_NODE_ID(ZL_StandardNodeID_float16_deconstruct)
 
 #if defined(__cplusplus)
 }

@@ -33,6 +33,17 @@ typedef struct {
     ZL_IDType gid;
 } ZL_GraphID;
 
+// Helper macros for creating ZL_NodeID and ZL_GraphID in a C++ compatible way
+#if defined(__cplusplus)
+// C++ compatible versions using constructor syntax
+#    define ZL_MAKE_NODE_ID(id) (ZL_NodeID{ (id) })
+#    define ZL_MAKE_GRAPH_ID(id) (ZL_GraphID{ (id) })
+#else
+// C99 compound literals
+#    define ZL_MAKE_NODE_ID(id) ((ZL_NodeID){ .nid = (id) })
+#    define ZL_MAKE_GRAPH_ID(id) ((ZL_GraphID){ .gid = (id) })
+#endif
+
 // Incomplete types
 typedef struct Stream_s Stream;
 typedef Stream ZL_Data;
