@@ -9,6 +9,7 @@
 #include "openzl/zl_input.h"
 #include "openzl/zl_output.h"
 #include "openzl/zl_reflection.h"
+#include "openzl/zl_segmenter.h"
 
 #include <algorithm>
 #include <iomanip>
@@ -542,6 +543,63 @@ void ChunkTrace::on_cctx_convertOneInput(
             .failureReport = conversionResult,
         };
     }
+}
+
+void ChunkTrace::on_segmenterEncode_start(ZL_Segmenter* segCtx)
+{
+    const auto nbInStreams = ZL_Segmenter_numInputs(segCtx);
+
+    // This is necessary because the cctx multiInput start doesn't use real
+    // stream IDs, so these aren't recorded anywhere
+    if (ZL_Input_id(ZL_Segmenter_getInput(segCtx, 0)).sid == 0) {
+        std::vector<const ZL_Input*> streams;
+        for (size_t i = 0; i < nbInStreams; ++i) {
+            streams.push_back(ZL_Segmenter_getInput(segCtx, i));
+        }
+        recordStartStreams(streams.data(), nbInStreams);
+    }
+
+    // A segmenter is technically a graph.
+    // However, they behave more like a dispatch codec in the trace because they
+    // ingest the in streams and send them to a successor graph.
+    Codec newCodec{ .name  = "segmenter", // TODO(segm): expose segmenter name
+                    .cType = false,
+                    .cID   = 0, // eh?
+                    .cHeaderSize = 0,
+                    .cLocalParams =
+                            LocalParams(*ZL_Segmenter_getLocalParams(segCtx)) };
+    codecInfo_.push_back(newCodec);
+    for (size_t i = 0; i < nbInStreams; ++i) {
+        ZL_DataID streamID = ZL_Input_id(ZL_Segmenter_getInput(segCtx, i));
+        codecInEdges_[currCodecNum_].push_back(
+                streamID); // set input streams of this codec
+        streamConsumerCodec_[streamID] =
+                currCodecNum_; // set consumer codec number of
+                               // this streams to retrieve header
+                               // number in cSize calculation
+    }
+}
+
+void ChunkTrace::on_segmenterEncode_end(ZL_Segmenter*, ZL_Report r)
+{
+    if (ZL_isError(r)) {
+        codecInfo_[currCodecNum_].cFailure = r;
+    }
+}
+
+void ChunkTrace::on_ZL_Segmenter_processChunk_start(
+        ZL_Segmenter*,
+        const size_t[],
+        size_t,
+        ZL_GraphID,
+        const ZL_RuntimeGraphParameters*)
+{
+    initTrace();
+}
+
+void ChunkTrace::on_ZL_Segmenter_processChunk_end(ZL_Segmenter*, ZL_Report r)
+{
+    finalizeTrace(r);
 }
 
 } // namespace openzl::visualizer
