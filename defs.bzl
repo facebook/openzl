@@ -4,7 +4,9 @@ load("@fbcode//fbpkg:fbpkg.bzl", "fbpkg")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs:selects.bzl", "selects")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_string")
+load("@fbsource//tools/build_defs/windows:windows_flag_map.bzl", "windows_convert_gcc_clang_flags")
 load("@fbsource//xplat/security/lionhead:defs.bzl", "ALL_EMPLOYEES", "Interaction", "Metadata", "Priv", "Reachability", "Severity")
 load("@fbsource//xplat/security/lionhead/build_defs:generic_harness.bzl", "generic_lionhead_harness")
 load("//security/lionhead/harnesses:defs.bzl", "cpp_lionhead_harness")
@@ -71,11 +73,13 @@ def relative_headers(headers):
 
     return header_map
 
-_ZS_COMPILER_FLAGS = [
+# Base compiler flags for all builds (GCC/Clang syntax)
+_ZS_COMPILER_FLAGS_CLANG = [
     "-fno-sanitize=pointer-overflow",
 ]
 
-_ZS_DEV_COMPILER_FLAGS = [
+# Dev compiler flags (GCC/Clang syntax)
+_ZS_DEV_COMPILER_FLAGS_CLANG = [
     "-Wall",
     "-Wcast-qual",
     "-Wcast-align",
@@ -97,13 +101,15 @@ _ZS_DEV_COMPILER_FLAGS = [
     # "-DZS_ERROR_ENABLE_LEAKY_ALLOCATIONS=1", # set this to always create verbose errors
 ]
 
-_ZS_DEV_C_COMPILER_FLAGS = [
+# Dev C-specific compiler flags (GCC/Clang syntax)
+_ZS_DEV_C_COMPILER_FLAGS_CLANG = [
     "-Wextra",
     "-Wconversion",
     "-Wno-missing-field-initializers",  # Allow missing fields in designated initializers
 ]
 
-_ZS_SRC_FILE_COMPILER_FLAGS = {
+# File-specific compiler flags (GCC/Clang syntax)
+_ZS_SRC_FILE_COMPILER_FLAGS_CLANG = {
     "src/openzl/common/errors.c": [
         "-Wno-format-nonliteral",
     ],
@@ -118,14 +124,48 @@ _ZS_SRC_FILE_COMPILER_FLAGS = {
     ],
 }
 
-_ZS_C_COMPILER_FLAGS = [
+# Convert flags for MSVC when needed
+_ZS_COMPILER_FLAGS = select({
+    "DEFAULT": _ZS_COMPILER_FLAGS_CLANG,
+    "ovr_config//compiler:msvc": windows_convert_gcc_clang_flags(_ZS_COMPILER_FLAGS_CLANG),
+})
+
+_ZS_DEV_COMPILER_FLAGS = select({
+    "DEFAULT": _ZS_DEV_COMPILER_FLAGS_CLANG,
+    "ovr_config//compiler:msvc": windows_convert_gcc_clang_flags(_ZS_DEV_COMPILER_FLAGS_CLANG),
+})
+
+_ZS_DEV_C_COMPILER_FLAGS = select({
+    "DEFAULT": _ZS_DEV_C_COMPILER_FLAGS_CLANG,
+    "ovr_config//compiler:msvc": windows_convert_gcc_clang_flags(_ZS_DEV_C_COMPILER_FLAGS_CLANG),
+})
+
+_ZS_SRC_FILE_COMPILER_FLAGS = {
+    src: select({
+        "DEFAULT": flags,
+        "ovr_config//compiler:msvc": windows_convert_gcc_clang_flags(flags),
+    })
+    for src, flags in _ZS_SRC_FILE_COMPILER_FLAGS_CLANG.items()
+}
+
+_ZS_C_COMPILER_FLAGS_CLANG = [
     "-std=c11",
 ]
 
-_ZS_CXX_COMPILER_FLAGS = [
+_ZS_C_COMPILER_FLAGS = select({
+    "DEFAULT": _ZS_C_COMPILER_FLAGS_CLANG,
+    "ovr_config//compiler:msvc": windows_convert_gcc_clang_flags(_ZS_C_COMPILER_FLAGS_CLANG),
+})
+
+_ZS_CXX_COMPILER_FLAGS_CLANG = [
     "-Wno-c99-extensions",  # permit use of C99 features from C++ (i.e., tests)
     "-Wno-language-extension-token",
 ]
+
+_ZS_CXX_COMPILER_FLAGS = select({
+    "DEFAULT": _ZS_CXX_COMPILER_FLAGS_CLANG,
+    "ovr_config//compiler:msvc": windows_convert_gcc_clang_flags(_ZS_CXX_COMPILER_FLAGS_CLANG),
+})
 
 ZS_HARNESS_MODES = [
     "fbcode//security/lionhead/mode/dbgo-asan-libfuzzer",
@@ -169,23 +209,24 @@ def _zs_src_file_compiler_flags(src):
     return (src, flags)
 
 def _add_zs_compiler_flags(kwargs, strict_conversions = True, float_equal = True):
-    # Add common compiler flags
-    compiler_flags = list(_ZS_COMPILER_FLAGS)
+    # Start with base compiler flags (already converted for MSVC via select)
+    compiler_flags = _ZS_COMPILER_FLAGS
 
-    # Add dev or release compiler flags
+    # Add dev or release compiler flags (already converted for MSVC via select)
     if not _is_release():
         compiler_flags += _ZS_DEV_COMPILER_FLAGS
 
-    # Add the original compiler flags
+    # Add the original compiler flags from kwargs
     compiler_flags += kwargs.get("compiler_flags", [])
 
-    # Remove strict conversions
+    # Handle strict_conversions and float_equal filtering
+    # Note: These filters work on GCC/Clang flags. For MSVC, the flags are already
+    # converted and these specific flags won't be present, so filtering is safe.
     if not strict_conversions:
-        compiler_flags = [x for x in compiler_flags if x != "-Wconversion"]
+        compiler_flags = selects.apply(compiler_flags, lambda flags: [x for x in flags if x != "-Wconversion"])
 
-    # Remove float equal
     if not float_equal:
-        compiler_flags = [x for x in compiler_flags if x != "-Wfloat-equal"]
+        compiler_flags = selects.apply(compiler_flags, lambda flags: [x for x in flags if x != "-Wfloat-equal"])
 
     kwargs["compiler_flags"] = compiler_flags
 
