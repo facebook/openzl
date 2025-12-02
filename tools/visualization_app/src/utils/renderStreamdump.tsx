@@ -39,9 +39,9 @@ export function renderStreamdump(streamdump: Streamdump): React.ReactNode {
   return (
     <div>
       digraph stream_topo {'{'}
-      {renderStreams(streamdump.streams)}
+      {renderStreams(streamdump.chunks[0].streams)}
       <br />
-      {renderCodecsAndGraphs(streamdump.codecs, streamdump.graphs)}
+      {renderCodecsAndGraphs(streamdump.chunks[0].codecs, streamdump.chunks[0].graphs)}
       {'}'}
     </div>
   );
