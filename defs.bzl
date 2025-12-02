@@ -231,10 +231,13 @@ def _add_zs_compiler_flags(kwargs, strict_conversions = True, float_equal = True
     kwargs["compiler_flags"] = compiler_flags
 
     # add file-specific compiler flags
-    kwargs["srcs"] = [
-        _zs_src_file_compiler_flags(src)
-        for src in kwargs.get("srcs", [])
-    ]
+    # Use selects.apply to handle cases where srcs might contain select() expressions
+    srcs = kwargs.get("srcs", [])
+    if srcs:
+        kwargs["srcs"] = selects.apply(
+            srcs,
+            lambda src_list: [_zs_src_file_compiler_flags(src) for src in src_list],
+        )
 
     # Set empty header namespace
     kwargs["header_namespace"] = ""

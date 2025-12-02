@@ -8,7 +8,7 @@
 
 namespace openzl {
 namespace {
-std::string format(
+std::string formatMsg(
         std::string_view msg,
         const poly::optional<ZL_ErrorCode>& code,
         poly::string_view errorContext,
@@ -63,7 +63,7 @@ Exception::Exception(
         poly::optional<ZL_ErrorCode> code,
         poly::string_view errorContext,
         poly::source_location location)
-        : std::runtime_error(format(msg, code, errorContext, location)),
+        : std::runtime_error(formatMsg(msg, code, errorContext, location)),
           msg_(msg),
           code_(std::move(code)),
           errorContext_(errorContext),

@@ -50,7 +50,8 @@ extern "C" {
  * warn_unused_result is only used in clang, because gcc's version doesn't work
  * on structs.
  */
-#if ZL_HAS_C_ATTRIBUTE(nodiscard) || ZL_HAS_CPP_ATTRIBUTE(nodiscard)
+#if (ZL_HAS_C_ATTRIBUTE(nodiscard) && __STDC_VERSION__ >= 202311L) \
+        || ZL_HAS_CPP_ATTRIBUTE(nodiscard)
 #    define ZL_NODISCARD [[nodiscard]]
 #elif defined(__clang__) && ZL_HAS_ATTRIBUTE(__warn_unused_result__)
 #    define ZL_NODISCARD __attribute__((__warn_unused_result__))

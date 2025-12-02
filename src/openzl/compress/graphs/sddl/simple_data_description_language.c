@@ -288,7 +288,8 @@ ZL_INLINE ZL_SDDL_Expr ZL_SDDL_Expr_makeNum(ZL_SDDL_IntT val)
  * Utils *
  *********/
 
-static const char* ZL_SDDL_FieldType_toString(ZL_SDDL_FieldType type)
+ZL_MAYBE_UNUSED_FUNCTION static const char* ZL_SDDL_FieldType_toString(
+        ZL_SDDL_FieldType type)
 {
     switch (type) {
         case ZL_SDDL_FieldType_poison:
@@ -2480,7 +2481,7 @@ static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr_bind(
 static ZL_RESULT_OF(ZL_SDDL_Expr) ZL_SDDL_State_execExpr_op_inner(
         ZL_SDDL_State* const state,
         ZL_SDDL_Scope* const scope,
-        const ZL_SDDL_Expr args[const ZL_SDDL_OP_ARG_COUNT],
+        const ZL_SDDL_Expr args[ZL_SDDL_OP_ARG_COUNT],
         const size_t num_args,
         const ZL_SDDL_Op* const op)
 {
@@ -3044,7 +3045,7 @@ ZL_SDDL_State_exec(
             GENERIC,
             "Incorrectly tracked expression lifetimes!");
 
-    ZL_SDDL_Instructions instructions = {};
+    ZL_SDDL_Instructions instructions = { 0 };
 
     instructions.dispatch_instructions.nbSegments =
             VECTOR_SIZE(state->segment_sizes);
@@ -3258,12 +3259,12 @@ ZL_Compressor_buildSDDLGraph(
         .paramSize = programSize,
     };
     const ZL_LocalParams lp = {
-        .intParams = {},
+        .intParams = {0},
         .copyParams = {
             .copyParams = &cp,
             .nbCopyParams = 1,
         },
-        .refParams = {},
+        .refParams = {0},
     };
     const ZL_ParameterizedGraphDesc desc = {
         .name           = NULL,

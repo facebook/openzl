@@ -162,10 +162,14 @@ zs_library(
     name = "fse",
     srcs = glob([
         "src/openzl/fse/**/*.c",
-        "src/openzl/fse/**/*.S",
         "src/zstrong/fse/**/*.c",
-        "src/zstrong/fse/**/*.S",
-    ]),
+    ]) + select({
+        "DEFAULT": glob([
+            "src/openzl/fse/**/*.S",
+            "src/zstrong/fse/**/*.S",
+        ]),
+        "ovr_config//compiler:msvc": [],
+    }),
     headers = private_headers(glob([
         "src/openzl/fse/**/*.h",
         "src/zstrong/fse/**/*.h",
