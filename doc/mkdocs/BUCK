@@ -6,6 +6,8 @@ load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 
 oncall("data_compression")
 
+BRANCH_NAME = read_package_value("directory_branching.branch_name")  # Gets "dev" or "prod" from the path
+
 python_binary(
     name = "static_docs_build_script",
     srcs = ["static_docs_build_script.py"],
@@ -32,7 +34,7 @@ buck_genrule(
             "SCRIPT=\\$(readlink -f $0)",
             "SCRIPTPATH=\\$(dirname $SCRIPT)",
             "cd $SCRIPTPATH",
-            "$(location :static_docs_build_script) --pwd \\$(hg root)/fbcode/openzl/dev/doc/mkdocs --use-system-python-extension --test",
+            "$(location :static_docs_build_script) --pwd \\$(hg root)/fbcode/openzl/{}/doc/mkdocs --use-system-python-extension --test".format(BRANCH_NAME),
         ])))
     ),
 )

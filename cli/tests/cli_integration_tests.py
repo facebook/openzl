@@ -276,7 +276,7 @@ def main():
 
     This script expects the CLI binary path as the first command line argument.
     The CLI binary path can be provided either when built with buck or make:
-    - Buck: $(location //openzl/dev/cli:zli)
+    - Buck: $(location cli:zli)
     - Make: "${PROJECT_BINARY_DIR}/cli/zli"
 
     The CLI binary path is used to execute commands in command_utils.py.
