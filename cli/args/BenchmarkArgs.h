@@ -30,7 +30,7 @@ struct BenchmarkArgs : public GlobalArgs {
                 kOutputCsv,
                 0,
                 true,
-                "Output file path for CSV-formatted sumamry statistic.");
+                "Output file path for CSV-formatted summary statistic.");
         parser.addCommandFlag(
                 cmd(), kProfile, 'p', true, "Benchmark the given profile.");
         parser.addCommandFlag(
