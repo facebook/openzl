@@ -171,23 +171,22 @@ compressProfiles()
                 kCsvName,
                 "CSV. Pass optional non-comma separator with --profile-arg <char>.",
                 [](ZL_Compressor* comp, void*, const ProfileArgs& args) {
-                    auto it = args.argmap.find("TBD");
-                    if (it != args.argmap.end()) {
+                    char sep             = ',';
+                    const auto chunkSize = args.chunkSize().value_or(
+                            custom_parsers::kDefaultChunkSize);
+                    auto argmap = args.map();
+                    auto it     = argmap.find("TBD");
+                    if (it != argmap.end()) {
                         auto str = it->second;
                         if (str.size() != 1) {
                             throw InvalidArgsException(
                                     "The CSV profile separator must be a single character. Pass it with --profile-arg <char>.");
                         }
-                        return openzl::custom_parsers::
-                                ZL_createGraph_genericCSVCompressorWithOptions(
-                                        comp,
-                                        custom_parsers::kDefaultChunkSize,
-                                        true,
-                                        str[0],
-                                        false);
+                        sep = str[0];
                     }
                     return openzl::custom_parsers::
-                            ZL_createGraph_genericCSVCompressor(comp);
+                            ZL_createGraph_genericCSVCompressorWithOptions(
+                                    comp, chunkSize, true, sep, false);
                 });
 
         addLEintProfile(mp, true, 16);
@@ -214,8 +213,9 @@ compressProfiles()
                 kSDDLName,
                 "Data that can be parsed using the Simple Data Description Language. Pass a path to the data description file with --profile-arg.",
                 [](ZL_Compressor* comp, void*, const ProfileArgs& args) {
-                    auto it = args.argmap.find("TBD");
-                    if (it == args.argmap.end()) {
+                    auto argmap = args.map();
+                    auto it     = argmap.find("TBD");
+                    if (it == argmap.end()) {
                         throw InvalidArgsException(
                                 "The Simple Data Description Language profile requires a data description. Pass a path to the description file with --profile-arg.");
                     }
@@ -234,8 +234,9 @@ compressProfiles()
                 kSDDL2Name,
                 "Data that can be parsed using Simple Data Description Language v2. Pass a path to the pre-compiled bytecode file with --profile-arg.",
                 [](ZL_Compressor* comp, void*, const ProfileArgs& args) {
-                    auto it = args.argmap.find("TBD");
-                    if (it == args.argmap.end()) {
+                    auto argmap = args.map();
+                    auto it     = argmap.find("TBD");
+                    if (it == argmap.end()) {
                         throw InvalidArgsException(
                                 "The Simple Data Description Language v2 profile requires pre-compiled bytecode. Pass a path to the bytecode file with --profile-arg.");
                     }

@@ -17,7 +17,7 @@
 
 namespace openzl::cli {
 
-struct BenchmarkArgs : public GlobalArgs {
+struct BenchmarkArgs : public GlobalArgs, public ProfileArgs {
     static void addArgs(arg::ArgParser& parser)
     {
         // Add the command
@@ -31,14 +31,6 @@ struct BenchmarkArgs : public GlobalArgs {
                 0,
                 true,
                 "Output file path for CSV-formatted sumamry statistic.");
-        parser.addCommandFlag(
-                cmd(), kProfile, 'p', true, "Benchmark the given profile.");
-        parser.addCommandFlag(
-                cmd(),
-                kProfileArg,
-                0,
-                true,
-                "Pass the given value as an argument to constructing the profile.");
         parser.addCommandFlag(
                 cmd(),
                 kCompressor,
@@ -62,12 +54,12 @@ struct BenchmarkArgs : public GlobalArgs {
                 "Enforce strict mode compression. This will fail the compression in cases of errors, instead of falling back.");
     }
 
-    explicit BenchmarkArgs(const arg::ParsedArgs& parsed) : GlobalArgs(parsed)
+    explicit BenchmarkArgs(const arg::ParsedArgs& parsed)
+            : GlobalArgs(parsed), ProfileArgs(parsed)
     {
-        compressor = createCompressorFromArgs(
-                parsed.cmdFlag(cmd(), kProfile),
-                parsed.cmdFlag(cmd(), kProfileArg),
-                parsed.cmdFlag(cmd(), kCompressor));
+        // Create the compressor
+        setCompressor(createCompressorFromArgs(
+                *this, parsed.cmdFlag(cmd(), kCompressor)));
         auto inputPath = parsed.cmdPositional(Cmd::BENCHMARK, kInput);
 
         auto input_set = tools::io::InputSetBuilder(recursive)
@@ -92,8 +84,10 @@ struct BenchmarkArgs : public GlobalArgs {
         strict = parsed.cmdHasFlag(Cmd::BENCHMARK, kStrict);
     }
 
-    explicit BenchmarkArgs(const GlobalArgs& globalArgs)
-            : GlobalArgs(globalArgs)
+    explicit BenchmarkArgs(
+            const GlobalArgs& globalArgs,
+            const std::shared_ptr<Compressor>& compressor)
+            : GlobalArgs(globalArgs), ProfileArgs(compressor)
     {
     }
 
@@ -101,8 +95,6 @@ struct BenchmarkArgs : public GlobalArgs {
     {
         return Cmd::BENCHMARK;
     }
-
-    std::shared_ptr<Compressor> compressor;
 
     std::vector<training::MultiInput> inputs;
     std::unique_ptr<tools::io::Output> outputCsv;
@@ -113,11 +105,8 @@ struct BenchmarkArgs : public GlobalArgs {
     bool strict     = false;
 
    private:
-    inline static const std::string kInput     = "input";
-    inline static const std::string kOutputCsv = "output-csv";
-
-    inline static const std::string kProfile    = "profile";
-    inline static const std::string kProfileArg = "profile-arg";
+    inline static const std::string kInput      = "input";
+    inline static const std::string kOutputCsv  = "output-csv";
     inline static const std::string kCompressor = "compressor";
 
     inline static const std::string kLevel    = "level";

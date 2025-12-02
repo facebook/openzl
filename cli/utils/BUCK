@@ -23,6 +23,7 @@ zs_cxxlibrary(
         "../../custom_parsers/parquet:parquet_graph",
         "../../custom_parsers/sddl:profile",
         "../../custom_parsers/shared_components:clustering",
+        "../../tools:arg",
         "../../tools:io",
         "../../tools:logger",
         "../../tools/sddl/compiler:lib",

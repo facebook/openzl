@@ -81,15 +81,14 @@ int cmdTrain(const TrainArgs& args)
     auto filteredInputsPtr = limiter.getFilteredInputsPtr(inputs);
 
     // Benchmark the untrained compressor
-    BenchmarkArgs benchmarkArgs(args);
-    benchmarkArgs.compressor = args.compressor;
+    BenchmarkArgs benchmarkArgs(args, args.compressor());
     benchmarkArgs.inputs = training::inputSetToMultiInputs(*filteredInputsPtr);
     Logger::log(INFO, "Benchmarking untrained compressor...");
     auto untrainedBenchmark = runCompressionBenchmarks(benchmarkArgs);
 
     std::vector<std::shared_ptr<const std::string_view>>
             serializedTrainedCompressors = openzl::training::train(
-                    benchmarkArgs.inputs, *args.compressor, args.trainParams);
+                    benchmarkArgs.inputs, *args.compressor(), args.trainParams);
 
     poly::optional<tools::io::OutputFile> resultsCsv;
     if (args.trainParams.paretoFrontier) {
@@ -110,9 +109,9 @@ int cmdTrain(const TrainArgs& args)
     for (size_t i = 0; i < serializedTrainedCompressors.size(); ++i) {
         auto& serializedTrainedCompressor = serializedTrainedCompressors[i];
         // Benchmark the trained compressor
-        benchmarkArgs.compressor =
+        benchmarkArgs.setCompressor(
                 custom_parsers::createCompressorFromSerialized(
-                        *serializedTrainedCompressor);
+                        *serializedTrainedCompressor));
         if (!args.trainParams.paretoFrontier) {
             Logger::log(INFO, "Benchmarking trained compressor...");
         }

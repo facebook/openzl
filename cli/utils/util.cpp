@@ -39,15 +39,15 @@ std::unique_ptr<Compressor> createCompressorFromProfile(const ProfileArgs& args)
 {
     auto compressor = std::make_unique<Compressor>();
 
-    if (args.name.empty()) {
+    if (args.name().value_or("").empty()) {
         throw InvalidArgsException(
                 "Please provide a profile. See `zli list-profiles` for a list of supported profiles.");
     }
-
-    auto profile = compressProfiles().find(args.name);
+    auto name    = args.name().value();
+    auto profile = compressProfiles().find(name);
     if (profile == compressProfiles().end()) {
         throw InvalidArgsException(
-                "Profile not found: '" + args.name
+                "Profile not found: '" + name
                 + "'. See `zli list-profiles` for a list of supported profiles.");
     }
 
