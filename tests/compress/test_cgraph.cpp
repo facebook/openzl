@@ -411,9 +411,15 @@ TEST_F(CGraphTest, replaceGraphParams)
     openzl::LocalParams nullParams;
     openzl::LocalParams intParams;
     intParams.addIntParam(1, 1);
+    ZL_GraphID customGraphs[1] = { ZL_GRAPH_ZSTD };
+    ZL_NodeID customNodes[1]   = { ZL_NODE_ZIGZAG };
     // Set up cctx, compressor and input
     auto params        = (openzl::GraphParameters){ .localParams = nullParams };
-    const auto rparams = (ZL_GraphParameters){ .localParams = intParams.get() };
+    const auto rparams = (ZL_GraphParameters){ .customGraphs   = customGraphs,
+                                               .nbCustomGraphs = 1,
+                                               .customNodes    = customNodes,
+                                               .nbCustomNodes  = 1,
+                                               .localParams = intParams.get() };
 
     auto customStore = compressor_.parameterizeGraph(ZL_GRAPH_STORE, params);
     EXPECT_ZS_VALID(ZL_Compressor_overrideGraphParams(
@@ -421,11 +427,46 @@ TEST_F(CGraphTest, replaceGraphParams)
     auto r = ZL_Compressor_Graph_getLocalParams(compressor_.get(), customStore);
     EXPECT_EQ(r.intParams.intParams[0].paramId, 1);
     EXPECT_EQ(r.intParams.intParams[0].paramValue, 1);
+    auto cg =
+            ZL_Compressor_Graph_getCustomGraphs(compressor_.get(), customStore);
+    EXPECT_EQ(cg.nbGraphIDs, 1);
+    EXPECT_EQ(cg.graphids[0].gid, ZL_GRAPH_ZSTD.gid);
+    auto cn =
+            ZL_Compressor_Graph_getCustomNodes(compressor_.get(), customStore);
+    EXPECT_EQ(cn.nbNodeIDs, 1);
+    EXPECT_EQ(cn.nodeids[0], ZL_NODE_ZIGZAG);
+}
+
+TEST_F(CGraphTest, cannotReplaceName)
+{
+    auto params = (ZL_GraphParameters){
+        .name = "replaceName",
+    };
+    auto replaceParams = (ZL_GraphParameters){
+        .name = "testParameterized",
+    };
+    const auto graph_func = [](ZL_Graph*, ZL_Edge*[], size_t) noexcept {
+        ZL_RET_R_ERR(GENERIC, "Unimplemented! Can't actually run.");
+    };
+    ZL_FunctionGraphDesc desc = {
+        .name    = "testBase",
+        .graph_f = graph_func,
+    };
+    auto newBaseGraph =
+            ZL_Compressor_registerFunctionGraph(compressor_.get(), &desc);
+    auto newGraph = ZL_RES_value(ZL_Compressor_parameterizeGraph(
+            compressor_.get(), newBaseGraph, &params));
+    EXPECT_ZS_ERROR(ZL_Compressor_overrideGraphParams(
+            compressor_.get(), newGraph, &replaceParams));
 }
 
 TEST_F(CGraphTest, cannotReplaceWhenGraphIsNotParameterized)
 {
-    auto params           = (ZL_GraphParameters){ .name = "zstdalt" };
+    ZL_GraphID customGraphs[1] = { ZL_GRAPH_ZSTD };
+    auto params                = (ZL_GraphParameters){
+                       .customGraphs   = customGraphs,
+                       .nbCustomGraphs = 1,
+    };
     const auto graph_func = [](ZL_Graph*, ZL_Edge*[], size_t) noexcept {
         ZL_RET_R_ERR(GENERIC, "Unimplemented! Can't actually run.");
     };
@@ -445,6 +486,46 @@ TEST_F(CGraphTest, cannotReplaceWhenGraphIsNotParameterized)
 
     EXPECT_ZS_ERROR(ZL_Compressor_overrideGraphParams(
             compressor_.get(), newBaseGraph, &params));
+}
+
+TEST_F(CGraphTest, replaceGraphParamsOnlyWhenParamExists)
+{
+    const auto graph_func = [](ZL_Graph*, ZL_Edge*[], size_t) noexcept {
+        ZL_RET_R_ERR(GENERIC, "Unimplemented! Can't actually run.");
+    };
+    ZL_GraphID customGraphs[1] = { ZL_GRAPH_ZSTD };
+    ZL_NodeID customNodes[1]   = { ZL_NODE_ZIGZAG };
+    openzl::LocalParams localParams;
+    localParams.addIntParam(1, 1);
+    ZL_FunctionGraphDesc desc = {
+        .name    = "testBase",
+        .graph_f = graph_func,
+    };
+    ZL_GraphParameters initialParams = {
+        .customGraphs   = customGraphs,
+        .nbCustomGraphs = 1,
+        .customNodes    = customNodes,
+        .nbCustomNodes  = 1,
+        .localParams    = localParams.get(),
+    };
+    auto baseGraph =
+            ZL_Compressor_registerFunctionGraph(compressor_.get(), &desc);
+    auto newGraph             = ZL_RES_value(ZL_Compressor_parameterizeGraph(
+            compressor_.get(), baseGraph, &initialParams));
+    ZL_GraphParameters params = { .nbCustomGraphs = 0,
+                                  .nbCustomNodes  = 0,
+                                  .localParams    = NULL };
+    EXPECT_ZS_VALID(ZL_Compressor_overrideGraphParams(
+            compressor_.get(), newGraph, &params));
+    auto lp = ZL_Compressor_Graph_getLocalParams(compressor_.get(), newGraph);
+    EXPECT_EQ(lp.intParams.intParams[0].paramId, 1);
+    EXPECT_EQ(lp.intParams.intParams[0].paramValue, 1);
+    auto cg = ZL_Compressor_Graph_getCustomGraphs(compressor_.get(), newGraph);
+    EXPECT_EQ(cg.nbGraphIDs, 1);
+    EXPECT_EQ(cg.graphids[0].gid, ZL_GRAPH_ZSTD.gid);
+    auto cn = ZL_Compressor_Graph_getCustomNodes(compressor_.get(), newGraph);
+    EXPECT_EQ(cn.nbNodeIDs, 1);
+    EXPECT_EQ(cn.nodeids[0], ZL_NODE_ZIGZAG);
 }
 
 } // namespace
