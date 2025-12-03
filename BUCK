@@ -184,19 +184,19 @@ cpp_library(
     name = "openzl_fbcode",
     visibility = ["//openzl:openzl"],
     exported_deps = [
-        "custom_parsers:pytorch_model_parser",  # @manual
-        "custom_parsers:zip_lexer",  # @manual
-        "custom_transforms/json_extract:json_extract",  # @manual
-        "custom_transforms/parse:parse",  # @manual
-        "custom_transforms/thrift:thrift_lib",  # @manual
-        "custom_transforms/thrift:thrift_parse_config_schema-cpp2-types",  # @manual
-        "custom_transforms/thrift/kernels:decode_thrift_binding",  # @manual
-        "custom_transforms/thrift/kernels:encode_thrift_binding",  # @manual
-        "custom_transforms/tulip_v2:tulip_v2",  # @manual
-        "tools:zstrong_cpp",  # @manual
-        "tools:zstrong_json",  # @manual
-        "tools:zstrong_ml",  # @manual
         ":openzl_core",  # @manual
+        "//openzl/dev/custom_parsers:pytorch_model_parser",  # @manual
+        "//openzl/dev/custom_parsers:zip_lexer",  # @manual
+        "//openzl/dev/custom_transforms/json_extract:json_extract",  # @manual
+        "//openzl/dev/custom_transforms/parse:parse",  # @manual
+        "//openzl/dev/custom_transforms/thrift:thrift_lib",  # @manual
+        "//openzl/dev/custom_transforms/thrift:thrift_parse_config_schema-cpp2-types",  # @manual
+        "//openzl/dev/custom_transforms/thrift/kernels:decode_thrift_binding",  # @manual
+        "//openzl/dev/custom_transforms/thrift/kernels:encode_thrift_binding",  # @manual
+        "//openzl/dev/custom_transforms/tulip_v2:tulip_v2",  # @manual
+        "//openzl/dev/tools:zstrong_cpp",  # @manual
+        "//openzl/dev/tools:zstrong_json",  # @manual
+        "//openzl/dev/tools:zstrong_ml",  # @manual
     ],
 )
 
@@ -206,7 +206,7 @@ cpp_library(
     name = "openzl_core",
     visibility = ["//openzl:openzl_core"],
     exported_deps = [
-        "cpp:openzl_cpp",  # @manual
+        "//openzl/dev/cpp:openzl_cpp",  # @manual
     ],
 )
 
@@ -216,10 +216,10 @@ python_library(
     name = "openzl_py_deprecated",
     visibility = ["//openzl:openzl_py_deprecated"],
     deps = [
-        "custom_transforms/thrift:thrift_parse_config_schema-py3-types",  # @manual
-        "custom_transforms/thrift:thrift_parse_config_schema-python-types",  # @manual
-        "tools/py:zstrong_json",  # @manual
-        "tools/py:zstrong_ml",  # @manual
+        "//openzl/dev/custom_transforms/thrift:thrift_parse_config_schema-py3-types",  # @manual
+        "//openzl/dev/custom_transforms/thrift:thrift_parse_config_schema-python-types",  # @manual
+        "//openzl/dev/tools/py:zstrong_json",  # @manual
+        "//openzl/dev/tools/py:zstrong_ml",  # @manual
     ],
 )
 
@@ -229,13 +229,13 @@ cpp_library(
     name = "openzl_test_utils",
     visibility = ["//openzl:openzl_test_utils"],
     exported_deps = [
-        "custom_transforms/thrift/tests:thrift_test_utils",  # @manual
-        "custom_transforms/tulip_v2/tests:tulip_v2_data_utils",  # @manual
-        "tests:fuzz_utils",  # @manual
-        "tests:selector_optimization",  # @manual
-        "tests:test_zstrong_fixtures",  # @manual
-        "tests/datagen:datagen",
-        "tools:fileio",  # @manual
-        "tools/streamdump:stream_dump2_headers",  # @manual
+        "//openzl/dev/custom_transforms/thrift/tests:thrift_test_utils",  # @manual
+        "//openzl/dev/custom_transforms/tulip_v2/tests:tulip_v2_data_utils",  # @manual
+        "//openzl/dev/tests:fuzz_utils",  # @manual
+        "//openzl/dev/tests:selector_optimization",  # @manual
+        "//openzl/dev/tests:test_zstrong_fixtures",  # @manual
+        "//openzl/dev/tests/datagen:datagen",
+        "//openzl/dev/tools:fileio",  # @manual
+        "//openzl/dev/tools/streamdump:stream_dump2_headers",  # @manual
     ],
 )
