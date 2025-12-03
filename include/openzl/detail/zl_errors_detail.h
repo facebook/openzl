@@ -151,11 +151,16 @@ struct ZL_StaticErrorInfo_s {
 };
 
 #if ZL_ERROR_ENABLE_STATIC_ERROR_INFO
-#    define ZL_E_DECLARE_STATIC_ERROR_INFO(name, c, f)               \
-        static const ZL_StaticErrorInfo name = (ZL_StaticErrorInfo)  \
-        {                                                            \
-            .code = c, .fmt = f, .file = __FILE__, .func = __func__, \
-            .line = __LINE__                                         \
+// MSVC doesn't allow __func__ in static initializers (it's a variable, not a
+// constant) Use __FUNCTION__ instead for MSVC (it's a string literal constant)
+#    ifdef _MSC_VER
+#        define ZL_FUNC_NAME __FUNCTION__
+#    else
+#        define ZL_FUNC_NAME __func__
+#    endif
+#    define ZL_E_DECLARE_STATIC_ERROR_INFO(name, c, f) \
+        static const ZL_StaticErrorInfo name = {       \
+            c, (f), __FILE__, ZL_FUNC_NAME, __LINE__   \
         }
 #    define ZL_E_POINTER_TO_STATIC_ERROR_INFO(name) (&(name))
 #else
@@ -562,11 +567,18 @@ extern "C" {
 // implementation (if enabled) or the fallback standards-compliant version (if
 // disabled).
 #ifndef ZL_ENABLE_RET_IF_ARG_PRINTING
-#    if defined(__GNUC__)
+#    if defined(__GNUC__) && !defined(__cplusplus)
 #        define ZL_ENABLE_RET_IF_ARG_PRINTING 1
+#    elif defined(__cplusplus) && (defined(__GNUC__) || defined(__clang__))
+#        define ZL_ENABLE_RET_IF_ARG_PRINTING 1
+#        define ZL_TYPEOF(x) decltype(x)
 #    else
 #        define ZL_ENABLE_RET_IF_ARG_PRINTING 0
 #    endif
+#endif
+
+#ifndef ZL_TYPEOF
+#    define ZL_TYPEOF(x) __typeof__(x)
 #endif
 
 #if ZL_ENABLE_RET_IF_ARG_PRINTING
@@ -585,36 +597,42 @@ extern "C" {
  * because clang has a warning (-Wnull-pointer-subtraction) that fires if one
  * of the arguments is a null pointer. So we use surrogate variables.
  */
-#    define ZL_RET_IF_BINARY_IMPL_WITH_STATIC_AND_CONTEXT(                                         \
-            type, static_error, scope_context, errcode, op, lhs, rhs, ...)                         \
-        do {                                                                                       \
-            const __typeof__(lhs) __dbg_lhs_type = (__typeof__(lhs))0;                             \
-            const __typeof__(rhs) __dbg_rhs_type = (__typeof__(rhs))0;                             \
-            const __typeof__((__dbg_lhs_type) + ((__dbg_lhs_type) - (__dbg_rhs_type))) __dbg_lhs = \
-                    (__typeof__((__dbg_lhs_type) + ((__dbg_lhs_type) - (__dbg_rhs_type))))(lhs);   \
-            const __typeof__((__dbg_lhs_type) + ((__dbg_lhs_type) - (__dbg_rhs_type))) __dbg_rhs = \
-                    (__typeof__((__dbg_lhs_type) + ((__dbg_lhs_type) - (__dbg_rhs_type))))(rhs);   \
-            if (0 && ((lhs)op(rhs))) /* enforce type comparability */ {                            \
-            }                                                                                      \
-            if (ZL_UNLIKELY(__dbg_lhs op __dbg_rhs)) {                                             \
-                ZL_E_DECLARE_WITH_STATIC_AND_CONTEXT(                                              \
-                        __zl_tmp_error,                                                            \
-                        static_error,                                                              \
-                        scope_context,                                                             \
-                        errcode,                                                                   \
-                        ZS_GENERIC_PRINTF_BUILD_FORMAT_2_ARG(                                      \
-                                __dbg_lhs,                                                         \
-                                "Check `%s %s %s' failed where:\n\tlhs = ",                        \
-                                "\n\trhs = ",                                                      \
-                                ""),                                                               \
-                        #lhs,                                                                      \
-                        #op,                                                                       \
-                        #rhs,                                                                      \
-                        ZS_GENERIC_PRINTF_CAST(__dbg_lhs),                                         \
-                        ZS_GENERIC_PRINTF_CAST(__dbg_rhs));                                        \
-                ZL_E_appendToMessage(__zl_tmp_error, "\n\t" __VA_ARGS__);                          \
-                return ZL_RESULT_WRAP_ERROR(type, __zl_tmp_error);                                 \
-            }                                                                                      \
+#    define ZL_RET_IF_BINARY_IMPL_WITH_STATIC_AND_CONTEXT(                    \
+            type, static_error, scope_context, errcode, op, lhs, rhs, ...)    \
+        do {                                                                  \
+            const ZL_TYPEOF(lhs) __dbg_lhs_type = (ZL_TYPEOF(lhs))0;          \
+            const ZL_TYPEOF(rhs) __dbg_rhs_type = (ZL_TYPEOF(rhs))0;          \
+            const ZL_TYPEOF(                                                  \
+                    (__dbg_lhs_type) + ((__dbg_lhs_type) - (__dbg_rhs_type))) \
+                    __dbg_lhs = (ZL_TYPEOF(                                   \
+                            (__dbg_lhs_type)                                  \
+                            + ((__dbg_lhs_type) - (__dbg_rhs_type))))(lhs);   \
+            const ZL_TYPEOF(                                                  \
+                    (__dbg_lhs_type) + ((__dbg_lhs_type) - (__dbg_rhs_type))) \
+                    __dbg_rhs = (ZL_TYPEOF(                                   \
+                            (__dbg_lhs_type)                                  \
+                            + ((__dbg_lhs_type) - (__dbg_rhs_type))))(rhs);   \
+            if (0 && ((lhs)op(rhs))) /* enforce type comparability */ {       \
+            }                                                                 \
+            if (ZL_UNLIKELY(__dbg_lhs op __dbg_rhs)) {                        \
+                ZL_E_DECLARE_WITH_STATIC_AND_CONTEXT(                         \
+                        __zl_tmp_error,                                       \
+                        static_error,                                         \
+                        scope_context,                                        \
+                        errcode,                                              \
+                        ZS_GENERIC_PRINTF_BUILD_FORMAT_2_ARG(                 \
+                                __dbg_lhs,                                    \
+                                "Check `%s %s %s' failed where:\n\tlhs = ",   \
+                                "\n\trhs = ",                                 \
+                                ""),                                          \
+                        #lhs,                                                 \
+                        #op,                                                  \
+                        #rhs,                                                 \
+                        ZS_GENERIC_PRINTF_CAST(__dbg_lhs),                    \
+                        ZS_GENERIC_PRINTF_CAST(__dbg_rhs));                   \
+                ZL_E_appendToMessage(__zl_tmp_error, "\n\t" __VA_ARGS__);     \
+                return ZL_RESULT_WRAP_ERROR(type, __zl_tmp_error);            \
+            }                                                                 \
         } while (0)
 #else
 /* Otherwise, if we don't have typeof(), it's impossible to store the results

@@ -152,9 +152,9 @@ ZL_FORCE_NOINLINE void ZS_splitTransposeEncode_2_avx2(
 
     __m256i ymm0[2];
     __m256i ymm1[2];
-    __m256i const oddEvenShuffleMask = _mm256_broadcastsi128_si256(
+    __m256i oddEvenShuffleMask = _mm256_broadcastsi128_si256(
             _mm_set_epi8(15, 13, 11, 9, 14, 12, 10, 8, 7, 5, 3, 1, 6, 4, 2, 0));
-    __m256i const evenOddShuffleMask = _mm256_broadcastsi128_si256(
+    __m256i evenOddShuffleMask = _mm256_broadcastsi128_si256(
             _mm_set_epi8(14, 12, 10, 8, 15, 13, 11, 9, 6, 4, 2, 0, 7, 5, 3, 1));
     uint8_t const* nextSrc       = src + prefix * kBytesPerElt;
     uint8_t const* const lastSrc = src + nbElts * kBytesPerElt;
@@ -305,7 +305,7 @@ static ZL_TRANSPOSE_ENC_NOINLINE void ZS_splitTransposeEncode_4_avx2(
 
 ZL_FORCE_NOINLINE __m256i getTSplit8Group4Mask(void)
 {
-    return _mm_broadcastsi128_si256(_mm_set_epi8(
+    return _mm256_broadcastsi128_si256(_mm_set_epi8(
             -1, -1, 0, 0, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1, 0, 0));
 }
 
@@ -329,35 +329,35 @@ ZL_FORCE_NOINLINE void ZS_splitTransposeEncode_8_avx2(
 
     __m256i ymm0[8];
     __m256i ymm1[8];
-    __m256i const group2Masks[8] = {
-        _mm_broadcastsi128_si256(_mm_set_epi8(
+    __m256i group2Masks[8] = {
+        _mm256_broadcastsi128_si256(_mm_set_epi8(
                 15, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 0)),
-        _mm_broadcastsi128_si256(_mm_set_epi8(
+        _mm256_broadcastsi128_si256(_mm_set_epi8(
                 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 0, 15, 7)),
-        _mm_broadcastsi128_si256(_mm_set_epi8(
+        _mm256_broadcastsi128_si256(_mm_set_epi8(
                 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 0, 15, 7, 14, 6)),
-        _mm_broadcastsi128_si256(_mm_set_epi8(
+        _mm256_broadcastsi128_si256(_mm_set_epi8(
                 12, 4, 11, 3, 10, 2, 9, 1, 8, 0, 15, 7, 14, 6, 13, 5)),
-        _mm_broadcastsi128_si256(_mm_set_epi8(
+        _mm256_broadcastsi128_si256(_mm_set_epi8(
                 11, 3, 10, 2, 9, 1, 8, 0, 15, 7, 14, 6, 13, 5, 12, 4)),
-        _mm_broadcastsi128_si256(_mm_set_epi8(
+        _mm256_broadcastsi128_si256(_mm_set_epi8(
                 10, 2, 9, 1, 8, 0, 15, 7, 14, 6, 13, 5, 12, 4, 11, 3)),
-        _mm_broadcastsi128_si256(_mm_set_epi8(
+        _mm256_broadcastsi128_si256(_mm_set_epi8(
                 9, 1, 8, 0, 15, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2)),
-        _mm_broadcastsi128_si256(_mm_set_epi8(
+        _mm256_broadcastsi128_si256(_mm_set_epi8(
                 8, 0, 15, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1)),
     };
-    __m256i const evenShuffleMasks[4] = {
-        _mm_broadcastsi128_si256(_mm_set_epi8(
+    __m256i evenShuffleMasks[4] = {
+        _mm256_broadcastsi128_si256(_mm_set_epi8(
                 1, 0, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2)),
-        _mm_broadcastsi128_si256(_mm_set_epi8(
+        _mm256_broadcastsi128_si256(_mm_set_epi8(
                 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10)),
-        _mm_broadcastsi128_si256(_mm_set_epi8(
+        _mm256_broadcastsi128_si256(_mm_set_epi8(
                 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6)),
-        _mm_broadcastsi128_si256(_mm_set_epi8(
+        _mm256_broadcastsi128_si256(_mm_set_epi8(
                 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 15, 14)),
     };
-    __m256i const group32Mask = _mm_broadcastsi128_si256(
+    __m256i group32Mask = _mm256_broadcastsi128_si256(
             _mm_set_epi8(15, 14, 11, 10, 13, 12, 9, 8, 7, 6, 3, 2, 5, 4, 1, 0));
     __m256i const permute32Masks[4] = {
         _mm256_set_epi32(7, 3, 6, 2, 5, 1, 4, 0),

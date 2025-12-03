@@ -225,9 +225,6 @@ static ZL_Report DFH_decodeOutputSizes_v21(
     // decode Nb strings
     for (size_t n = 0; n < nbOutputs; n++) {
         switch (types[n]) {
-            default:
-                ZL_ASSERT_FAIL("invalid type");
-                ZL_FALLTHROUGH;
             case ZL_Type_struct:
             case ZL_Type_numeric:
                 // no idea at this stage (unsupported)
@@ -238,6 +235,9 @@ static ZL_Report DFH_decodeOutputSizes_v21(
                 break;
             case ZL_Type_string:
                 ZL_TRY_SET_T(uint64_t, numElts[n], ZL_varintDecode(&ptr, end));
+                break;
+            default:
+                ZL_ASSERT_FAIL("invalid type");
                 break;
         }
     }

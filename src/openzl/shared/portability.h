@@ -33,7 +33,7 @@ ZL_BEGIN_C_DECLS
 #endif
 
 /// Attributes
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 #    define ZL_FORCE_INLINE_ATTR __forceinline
 #    define ZL_FORCE_NOINLINE_ATTR __declspec(noinline)
 #    define ZL_FLATTEN_ATTR // MSVC doesn't have equivalent to flatten
@@ -179,6 +179,11 @@ ZL_BEGIN_C_DECLS
 #    endif
 #    if defined(_MSC_VER)
 #        include <intrin.h>
+// MSVC doesn't define __m256i_u and __m128i_u types like GCC/Clang do.
+// These types are used for unaligned SIMD loads/stores. In MSVC, we just
+// use the regular __m256i and __m128i types for both aligned and unaligned.
+typedef __m256i __m256i_u;
+typedef __m128i __m128i_u;
 #    endif
 #else
 #    define ZL_HAS_AVX2 0

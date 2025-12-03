@@ -1646,9 +1646,6 @@ ZL_Report ZL_DCtx_decompressMultiTBuffer(
                 ZL_FrameInfo_getDecompressedSize(dctx->dfh.frameinfo, (int)n));
 
         switch (type_st) {
-            default:
-                ZL_ASSERT_FAIL("invalid type");
-                ZL_FALLTHROUGH;
             case ZL_Type_serial: {
                 ZL_DLOG(SEQ,
                         "pre-allocating output %zu, type Serial, capacity %zu bytes",
@@ -1681,7 +1678,10 @@ ZL_Report ZL_DCtx_decompressMultiTBuffer(
                         ZL_FrameInfo_getNumElts(dctx->dfh.frameinfo, (int)n));
                 ZL_ERR_IF_ERR(
                         STREAM_reserveStrings(outputs[n], numStrings, dSize));
-            }
+            } break;
+            default:
+                ZL_ASSERT_FAIL("invalid type");
+                break;
         }
     }
 
