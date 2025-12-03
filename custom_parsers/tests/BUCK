@@ -57,7 +57,8 @@ python_binary(
     srcs = [
         "test_pytorch_model_compressor.py",
     ],
-    main_module = "openzl.dev.custom_parsers.tests.test_pytorch_model_compressor",
+    base_module = "openzl.custom_parsers.tests",
+    main_module = "openzl.custom_parsers.tests.test_pytorch_model_compressor",
 )
 
 zs_unittest(

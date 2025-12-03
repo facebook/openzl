@@ -13,11 +13,9 @@ load("//security/lionhead/harnesses:defs.bzl", "cpp_lionhead_harness")
 
 _ZL_PROD_PREFIXES = [
     "openzl/prod",
-    "openzl/prod",
 ]
 
 _ZL_DEV_PREFIXES = [
-    "openzl/dev",
     "openzl/dev",
 ]
 

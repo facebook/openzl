@@ -2,8 +2,6 @@
 
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
-load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
-load("@fbsource//tools/target_determinator/macros:ci_skycastle.bzl", "ci_skycastle")
 load(":defs.bzl", "private_headers", "public_headers", "zl_fbcode_is_release_pp_flag", "zs_library")
 
 oncall("data_compression")
@@ -239,19 +237,5 @@ cpp_library(
         "tests/datagen:datagen",
         "tools:fileio",  # @manual
         "tools/streamdump:stream_dump2_headers",  # @manual
-    ],
-)
-
-# CI Skycastle workflow to enforce relative Buck dependencies
-ci_skycastle(
-    name = "check_relative_deps",
-    workflow = "//openzl/dev/skycastle/check_relative_deps.sky",
-    ci_srcs = [
-        "fbcode/openzl/dev/**",
-    ],
-    entrypoint = "main",
-    oncall = "data_compression",
-    schedules = [
-        ci.diff,
     ],
 )
