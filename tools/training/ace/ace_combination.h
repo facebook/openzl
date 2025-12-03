@@ -101,16 +101,12 @@ class CandidateSelection {
  *
  * @param makeCompressor A function used to create new compressors that have
  * processed dependencies.
- * @param allCandidates A map of sub-compressor names to the vector of
- * subcompressors and their benchmarks.
+ * @param trainedSerializedCompressor The compressor obtained from ace training.
  * @param trainParams The training parameters to use for the algorithm.
  */
 std::vector<std::shared_ptr<const std::string_view>> getCombinedCompressors(
-        const std::function<Compressor()>& makeCompressor,
-        const std::unordered_map<
-                std::string,
-                std::vector<std::pair<ACECompressor, ACECompressionResult>>>&
-                allCandidates,
+        const std::vector<MultiInput>& inputs,
+        std::shared_ptr<const std::string_view> trainedSerializedCompressor,
         const TrainParams& trainParams);
 
 /**

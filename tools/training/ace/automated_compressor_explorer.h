@@ -89,6 +89,14 @@ class AutomatedCompressorExplorer : public GeneticAlgorithm<ACECompressor> {
         }
     }
 
+    explicit AutomatedCompressorExplorer(
+            poly::span<const Input> inputs,
+            poly::string_view snapshot)
+            : AutomatedCompressorExplorer(inputs, Parameters{})
+    {
+        loadPopulation(snapshot);
+    }
+
     Type inputType() const
     {
         if (inputs_.empty()) {
@@ -138,6 +146,8 @@ class AutomatedCompressorExplorer : public GeneticAlgorithm<ACECompressor> {
 
     std::vector<std::vector<float>> computeFitness(
             poly::span<const ACECompressor> genes) override;
+
+    static constexpr size_t kAceStateParamId = 592;
 
    private:
     static std::vector<float> computeFitness(

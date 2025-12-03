@@ -6,6 +6,7 @@
 
 #include "openzl/cpp/Compressor.hpp"
 
+#include "openzl/compress/cgraph.h"
 #include "tools/logger/Logger.h"
 #include "tools/training/ace/ace.h"
 #include "tools/training/ace/ace_combination.h"
@@ -26,14 +27,15 @@ using namespace openzl::tools::logger;
 /**
  * @returns The Pareto-optimal set of compressors for @p samples.
  */
-std::vector<std::pair<ACECompressor, ACECompressionResult>> trainBackend(
+std::string trainBackend(
         std::vector<MultiInput>& samples,
         const TrainParams& trainParams,
-        unsigned graphIdx,
-        unsigned numGraphs)
+        size_t graphIdx,
+        size_t numGraphs)
 {
     if (samples.empty()) {
-        return { { buildCompressGenericCompressor(), ACECompressionResult{} } };
+        throw Exception(
+                "There cannot be no samples for a backend graph to be trained.");
     }
     auto flattened = std::vector<Input>();
     for (auto& sample : samples) {
@@ -67,34 +69,12 @@ std::vector<std::pair<ACECompressor, ACECompressionResult>> trainBackend(
         ace.step();
     }
     Logger::finalizeProgress(INFO);
-    auto solutions = ace.solution();
-    if (solutions.empty()) {
-        throw Exception("ACE training failed to find a solution");
-    }
-
-    std::vector<std::pair<ACECompressor, ACECompressionResult>> result;
-    for (auto&& [candidate, _] : solutions) {
-        auto benchmark = *candidate.benchmark(flattened);
-        result.emplace_back(std::move(candidate), std::move(benchmark));
-        if (!trainParams.paretoFrontier) {
-            break;
-        }
-    }
-    if (result.empty()) {
-        Logger::log(
-                WARNINGS,
-                "No solution found that meets speed constraints: Falling back to store");
-        auto store = buildStoreCompressor();
-        return { { store, *store.benchmark(flattened) } };
-    }
-
-    // Register the new graph on the compressor and return the new graph ID
-    return result;
+    return ace.savePopulation();
 }
 
 } // namespace
 
-std::vector<std::shared_ptr<const std::string_view>> trainAceCompressor(
+std::vector<std::shared_ptr<const std::string_view>> ACETrainer::train(
         const std::vector<MultiInput>& inputs,
         std::string_view serializedCompressorInput,
         const TrainParams& trainParams)
@@ -133,17 +113,36 @@ std::vector<std::shared_ptr<const std::string_view>> trainAceCompressor(
             std::vector<std::pair<ACECompressor, ACECompressionResult>>>
             candidates;
 
+    std::unordered_map<std::string, LocalParams> paramsToReplace;
+
     size_t graphIdx        = 0;
     const size_t numGraphs = autoBackendGraphs.size();
     for (const auto& backendGraph : autoBackendGraphs) {
-        candidates.emplace(
-                backendGraph,
-                trainBackend(
-                        samples[backendGraph],
-                        trainParams,
-                        ++graphIdx,
-                        numGraphs));
+        auto aceState = trainBackend(
+                samples[backendGraph], trainParams, ++graphIdx, numGraphs);
+        auto localParams = LocalParams();
+        localParams.addCopyParam(
+                AutomatedCompressorExplorer::kAceStateParamId,
+                aceState.data(),
+                aceState.size());
+        auto backendGraphID =
+                ZL_Compressor_getGraph(compressor.get(), backendGraph.c_str());
+        auto graphs = ZL_Compressor_Graph_getCustomGraphs(
+                compressor.get(), backendGraphID);
+        auto nodes = ZL_Compressor_Graph_getCustomNodes(
+                compressor.get(), backendGraphID);
+        auto gp = ZL_GraphParameters{ .customGraphs   = graphs.graphids,
+                                      .nbCustomGraphs = graphs.nbGraphIDs,
+                                      .customNodes    = nodes.nodeids,
+                                      .nbCustomNodes  = nodes.nbNodeIDs,
+                                      .localParams    = localParams.get() };
+        compressor.unwrap(
+                ZL_Compressor_overrideGraphParams(
+                        compressor.get(), backendGraphID, &gp),
+                "Graph replacement failed");
     }
-    return getCombinedCompressors(makeCompressor, candidates, trainParams);
+    checkPoint_ =
+            graph_mutation::createSharedStringView(compressor.serialize());
+    return getCombinedCompressors(inputs, checkPoint_, trainParams);
 }
 } // namespace openzl::training

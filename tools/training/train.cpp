@@ -31,10 +31,12 @@ std::vector<std::shared_ptr<const std::string_view>> train(
                 trainParams.compressorGenFunc(*serializedTrainedCompressors[0]);
         compressor = std::move(*newCompressor);
     }
-
     if (graph_mutation::hasTargetGraph(compressor, ACE_GRAPH_NAME)) {
+        // TODO: The ace trainer supports checkpointing now but we need to add
+        // flags to utilize it
+        ACETrainer aceTrainer;
         serializedTrainedCompressors =
-                trainAceCompressor(inputs, compressor.serialize(), trainParams);
+                aceTrainer.train(inputs, compressor.serialize(), trainParams);
     }
 
     if (serializedTrainedCompressors.empty()) {
