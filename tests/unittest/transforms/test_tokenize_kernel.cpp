@@ -15,10 +15,16 @@ namespace zstrong::tests {
 namespace {
 void roundtrip2to1(const std::vector<uint16_t>& input)
 {
-    std::vector<uint8_t> indexes(std::max(input.size(), size_t(1)));
+    std::vector<uint8_t> indexes(input.size());
+    if (input.size() == 0) {
+        indexes.reserve(1); // force a non-null pointer
+    }
     assert(indexes.data() != NULL);
     std::vector<uint16_t> alphabet(256);
-    std::vector<uint16_t> regenerated(std::max(input.size(), size_t(1)));
+    std::vector<uint16_t> regenerated(input.size());
+    if (input.size() == 0) {
+        regenerated.reserve(1); // force a non-null pointer
+    }
     assert(regenerated.data() != NULL);
 
     size_t const alphabetSize = ZS_tokenize2to1_encode(
