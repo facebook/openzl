@@ -39,7 +39,8 @@ ARFLAGS  += -c # do not print warning message when creating the archive (expecte
 
 # Default build mode
 # support both BUILD_TYPE and BUILD_MODE, priority to BUILD_TYPE
-BUILD_MODE ?= DEFAULT
+# ADAPTIVE mode provides smart per-target defaults (targets add their own flags)
+BUILD_MODE ?= ADAPTIVE
 BUILD_TYPE ?= $(BUILD_MODE)
 
 # Sanitizer flags
@@ -96,11 +97,12 @@ else ifeq ($(BUILD_TYPE),DBGO_ASAN)
     CFLAGS += $(SANITIZER_FLAGS)
     CXXFLAGS += $(SANITIZER_FLAGS)
     LDFLAGS += $(SANITIZER_FLAGS)
-else ifeq ($(BUILD_TYPE),DEFAULT)
+else ifeq ($(BUILD_TYPE),BASELINE)
 # no modification, just use baseline flags
-    MCM_STRIP ?= 1
+else ifeq ($(BUILD_TYPE),ADAPTIVE)
+# ADAPTIVE mode: baseline flags, targets add their own optimizations
 else
-    $(error Invalid BUILD_TYPE: $(BUILD_TYPE). Valid options: DEFAULT, DEV, DEV_NOSAN, OPT, OPT_ASAN, DBGO, DBGO_ASAN, TRACES, TRACES_NOSAN)
+    $(error Invalid BUILD_TYPE: $(BUILD_TYPE). Valid options: ADAPTIVE, OPT, BASELINE, OPT_ASAN, DBGO, DBGO_ASAN, DEV, DEV_NOSAN, TRACES, TRACES_NOSAN)
 endif
 
 # position user flags at the end, so that they have higher priority
@@ -118,23 +120,28 @@ show-config:
 	@echo "CPPFLAGS: $(CPPFLAGS)"
 	@echo "LDFLAGS: $(LDFLAGS)"
 
-# Help target
 .PHONY: help
 help:
 	@echo "Available build types:"
-	@echo "  BUILD_TYPE=DEV        - Debug build with asserts and sanitizers"
-	@echo "  BUILD_TYPE=DEV_NOSAN  - Debug build with asserts (no sanitizers)"
-	@echo "  BUILD_TYPE=OPT        - Optimized build, no asserts (default)"
-	@echo "  BUILD_TYPE=OPT_ASAN   - Optimized build with sanitizers"
-	@echo "  BUILD_TYPE=DBGO       - Optimized build with asserts"
-	@echo "  BUILD_TYPE=DBGO_ASAN  - Optimized build with asserts and sanitizers"
-	@echo "  BUILD_TYPE=TRACES     - Debug build with asserts, sanitizers and traces"
+	@echo "  BUILD_TYPE=ADAPTIVE     - (default) Smart per-target defaults"
+	@echo "                            Production: -O3 -DNDEBUG"
+	@echo "                            Tests: -g -DZL_ENABLE_ASSERT"
+	@echo "                            Benchmarks: -O3 -DNDEBUG"
+	@echo "  BUILD_TYPE=OPT          - Optimized build, no asserts (coercive for all targets)"
+	@echo "  BUILD_TYPE=DEV          - Debug build with asserts and sanitizers (coercive)"
+	@echo "  BUILD_TYPE=DEV_NOSAN    - Debug build with asserts (no sanitizers)"
+	@echo "  BUILD_TYPE=OPT_ASAN     - Optimized build with sanitizers"
+	@echo "  BUILD_TYPE=DBGO         - Optimized build with asserts"
+	@echo "  BUILD_TYPE=DBGO_ASAN    - Optimized build with asserts and sanitizers"
+	@echo "  BUILD_TYPE=TRACES       - Debug build with asserts, sanitizers and traces"
 	@echo "  BUILD_TYPE=TRACES_NOSAN - Debug build with asserts and traces"
 	@echo ""
 	@echo "Usage examples:"
-	@echo "  make lib                        # Build library with DEFAULT type"
-	@echo "  make lib BUILD_TYPE=DBGO_ASAN   # Build library with DBGO_ASAN type"
-	@echo "  make zli BUILD_TYPE=DEV         # Build executable with DEV type"
+	@echo "  make                            # Build with ADAPTIVE mode (smart defaults)"
+	@echo "  make zli                        # Build zli with -O3 -DNDEBUG (ADAPTIVE)"
+	@echo "  make gtests                     # Build gtests with -g -DZL_ENABLE_ASSERT (ADAPTIVE)"
+	@echo "  make BUILD_TYPE=OPT             # Force OPT mode for all targets"
+	@echo "  make BUILD_TYPE=DEV             # Force DEV mode for all targets"
 	@echo "  make show-config BUILD_TYPE=DEV # Show configuration for DEV type"
 
 # Paths to source files

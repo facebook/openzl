@@ -10,6 +10,32 @@ include build/make/zldefs.make
 # Provides macros to generate targets
 include build/make/multiconf.make
 
+# =====================================
+# ADAPTIVE mode: Per-Target Smart Defaults
+# =====================================
+# In ADAPTIVE mode, targets add their own appropriate flags
+# In coercive modes (OPT, DEV, etc.), these complement are overridden by global settings
+ifeq ($(BUILD_TYPE),ADAPTIVE)
+    # Production binaries: optimize for performance
+    zli: CFLAGS += -g0 -O3
+    zli: CXXFLAGS += -g0 -O3
+    zli: CPPFLAGS += -DNDEBUG
+
+    libopenzl.a: CFLAGS += -g0 -O3
+    libopenzl.so: CFLAGS += -g0 -O3
+    libopenzl.a: CPPFLAGS += -DNDEBUG
+    libopenzl.so: CPPFLAGS += -DNDEBUG
+
+    # Benchmarks: optimize for representative performance
+    unitBench: CFLAGS += -g0 -O3
+    unitBench: CPPFLAGS += -DNDEBUG
+
+    # Test programs: enable asserts for correctness checking
+    gtests: CFLAGS += -g
+    gtests: CXXFLAGS += -g
+    gtests: CPPFLAGS += -DZL_ENABLE_ASSERT
+endif
+
 # dependencies
 ifneq (,$(filter Windows%,$(OS)))
 LIBZSTD_SO := deps/zstd/lib/dll/libzstd.dll
@@ -93,8 +119,6 @@ TRAINING_TEST_CXXOBJS := $(call cxx_objs,$(TRAINING_TEST_DIRS))
 SDDL_COMPILER_CXXOBJS := $(filter-out %main.o, $(call cxx_objs,$(SDDL_COMPILER_DIR)))
 SDDL2_COMPILER_CXXOBJS := $(filter-out %main.o, $(call cxx_objs,$(SDDL2_COMPILER_DIR)))
 
-zli: CFLAGS += -O3
-zli: CXXFLAGS += -O3
 $(eval $(call cxx_program,zli, \
 	cli/zli.o \
 	$(CLI_CXXOBJS) \
@@ -136,8 +160,6 @@ sddl2_test:
 
 # ********     Tools     ********
 
-unitBench: CFLAGS += -O3
-unitBench: CPPFLAGS += -DNDEBUG
 UNITBENCH_COBJS := $(foreach DIR,$(UNITBENCH_DIRS),$(call c_objs,$(DIR)))
 $(eval $(call c_program_shared_o,unitBench,tools/time/timefn.o tools/fileio/fileio.o $(UNITBENCH_COBJS) $(LIBOBJS),$(LIBZSTD_A)))
 
@@ -205,7 +227,6 @@ gtests: $(LIBGTEST_A) $(LIBZSTD_A)
 gtests: CPPFLAGS += -Ideps/googletest/googletest/include
 gtests: CXXFLAGS += -Wno-undef -Wno-sign-compare
 gtests: LDLIBS   += -lpthread
-gtests: CPPFLAGS += -g -DZL_ENABLE_ASSERT
 $(eval $(call cxx_program,gtests, \
 	$(ALL_GTESTS_OBJS), \
 	$(LIBGTEST_A) $(LIBZSTD_A)))
