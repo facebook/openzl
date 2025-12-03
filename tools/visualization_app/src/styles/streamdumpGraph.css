@@ -61,6 +61,24 @@
   box-shadow: 0 4px 10px rgba(219, 52, 52, 0.3);
 }
 
+.segmenter-node {
+  padding: 10px;
+  border-radius: 25px;
+  background-color: #f2d0e5; /* Default color */
+  border: 2px solid #db3490;
+  min-width: 300px;
+  max-width: 600px;
+  height: fit-content;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  color: #000;
+  text-align: center;
+  overflow: visible;
+  z-index: 2;
+  display: inline-block;
+  word-break: break-word; /* Break long words instead of overflowing */
+  transition: all 0.3s ease; /* Smooth transition for color changes */
+}
+
 .node-header {
   font-weight: bold;
   margin-bottom: 8px;

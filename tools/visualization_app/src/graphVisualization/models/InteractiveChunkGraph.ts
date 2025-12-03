@@ -14,6 +14,7 @@ import {Codec} from '../../models/Codec';
 import {Graph} from '../../models/Graph';
 import {InsertOnlyJournal} from '../../utils/InsertOnlyJournal';
 import type {InternalNode} from './InternalNode';
+import {InternalSegmenterNode} from './InternalSegmenterNode';
 
 export class InteractiveChunkGraph {
   private static readonly ROOT_CODEC_ID: CodecID = 0 as CodecID;
@@ -64,7 +65,10 @@ export class InteractiveChunkGraph {
     this.codecs = intermediateCodecs.map((codec) => {
       const owningGraphId = codec.owningGraph;
       const graphViewModel = owningGraphId == null ? null : this.graphs[owningGraphId];
-      const codecViewModel = new InternalCodecNode(codec.rfId, NodeType.Codec, codec, graphViewModel);
+      const codecViewModel =
+        codec.name === 'segmenter'
+          ? new InternalSegmenterNode(codec.rfId, NodeType.Segmenter, codec, graphViewModel)
+          : new InternalCodecNode(codec.rfId, NodeType.Codec, codec, graphViewModel);
       if (graphViewModel !== null) {
         graphViewModel.codecs.push(codecViewModel);
       }

@@ -9,6 +9,7 @@ import type {NullableStreamdump} from '../../interfaces/NullableStreamdump';
 import {InternalCodecNode} from '../models/InternalCodecNode';
 import {InternalGraphNode} from '../models/InternalGraphNode';
 import {NodeType, type RF_nodeId} from '../models/types';
+import {InternalSegmenterNode} from '../models/InternalSegmenterNode';
 
 const STANDARD_GRAPHS_START_COLLAPSED = true; // Default state of graph visualization upon loading data
 
@@ -23,6 +24,65 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
   // React Flow instance for viewport control for the animations
   const reactFlowInstance = useReactFlow();
 
+  const handleSetVisibleChunk = useCallback(
+    (chunkNum: number) => {
+      if (interactiveStreamdumpGraph) {
+        interactiveStreamdumpGraph.setVisibleChunk(chunkNum);
+        const {dagOrderedNodes: visibleNodes, edges: visibleEdges} =
+          interactiveStreamdumpGraph.getVisibleStreamdumpGraph();
+        const {nodes: updatedNodes, edges: updatedEdges} = applyLayout(visibleNodes, visibleEdges);
+        setNodes(updatedNodes);
+        setEdges(updatedEdges);
+        const maybeSegmenterNode = updatedNodes.find((n) => n.type === NodeType.Segmenter);
+        if (!maybeSegmenterNode) {
+          return;
+        }
+        if (!(maybeSegmenterNode instanceof InternalSegmenterNode)) {
+          return;
+        }
+        const segmenterNode = maybeSegmenterNode as InternalSegmenterNode;
+        const newlyVisibleNodes = visibleNodes.map((n) => n.rfid as RF_nodeId);
+
+        // Focus on newly visible nodes after a short delay to allow DOM to update
+        setTimeout(() => {
+          if (newlyVisibleNodes && newlyVisibleNodes.length > 0) {
+            // For large subgraphs, we can expand to show the entire subgraph, and then focus back onto the expanded node
+            if (newlyVisibleNodes.length > 20) {
+              // Show newly expanded ndoes
+              reactFlowInstance.fitView({
+                padding: 0.2,
+                includeHiddenNodes: false,
+                duration: 1600, // Longer animation to show the entire subgraph smoothly
+                nodes: updatedNodes.filter((n) => newlyVisibleNodes.includes(n.id as RF_nodeId)),
+              });
+
+              // Go back to node that was just expanded
+              setTimeout(() => {
+                const expandedNode = updatedNodes.find((n) => n.id === segmenterNode.rfid);
+                if (expandedNode) {
+                  reactFlowInstance.fitView({
+                    padding: 0.2,
+                    includeHiddenNodes: false,
+                    duration: 800,
+                    nodes: [expandedNode],
+                  });
+                }
+              }, 1700);
+            } else {
+              // Smaller subgraph expanding, so can just show the entire expanded subgraph
+              reactFlowInstance.fitView({
+                padding: 0.2,
+                includeHiddenNodes: false,
+                duration: 800,
+                nodes: updatedNodes.filter((n) => newlyVisibleNodes.includes(n.id as RF_nodeId)),
+              });
+            }
+          }
+        }, 50);
+      }
+    },
+    [interactiveStreamdumpGraph, setNodes, setEdges, reactFlowInstance],
+  );
   // Function to handle a subgraph (rooted at a codec node) collapsing/expanding
   const handleNodeCollapse = useCallback(
     (node: InternalCodecNode) => {
@@ -190,10 +250,18 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
             onToggleGraphCollapse: handleGraphCollapse,
           },
         };
+      } else if (node.type === NodeType.Segmenter) {
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            onSetVisibleChunk: handleSetVisibleChunk,
+          },
+        };
       }
       return node;
     });
-  }, [nodes, handleNodeCollapse, handleGraphCollapse, handleNodeExpandOneLevel]);
+  }, [nodes, handleNodeCollapse, handleGraphCollapse, handleNodeExpandOneLevel, handleSetVisibleChunk]);
 
   // When a streamdump file is uploaded and the graph option is selected to visualize it
   const initializeGraph = useCallback(() => {

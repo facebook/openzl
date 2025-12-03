@@ -8,14 +8,19 @@ import {InteractiveChunkGraph} from './InteractiveChunkGraph';
 import type {InternalNode} from './InternalNode';
 import {InternalEdge} from './InternalEdge';
 import {InsertOnlyJournal} from '../../utils/InsertOnlyJournal';
+import {InternalSegmenterNode} from './InternalSegmenterNode';
 
 export class InteractiveStreamdumpGraph {
   private chunkGraphs: InteractiveChunkGraph[] = [];
-  private visibleChunkIndex: number | null = 1;
+  private visibleChunkIndex: number | null = 0;
 
   constructor(obj: SerializedStreamdumpV1, isDefaultCollapsed = false) {
     // Create a chunk graph for each chunk in the streamdump
     this.chunkGraphs = obj.chunks.map((chunk) => new InteractiveChunkGraph(chunk, isDefaultCollapsed));
+    const maybeSegmenterNode = this.chunkGraphs[0].findCodecByName('segmenter');
+    if (maybeSegmenterNode) {
+      (maybeSegmenterNode as InternalSegmenterNode).numChunks = this.chunkGraphs.length - 1;
+    }
   }
 
   // Set which chunk should be visible alongside the 0th chunk
@@ -40,7 +45,10 @@ export class InteractiveStreamdumpGraph {
     const chunk0 = this.chunkGraphs[0].getVisibleStreamdumpGraph();
     const chunkN = this.chunkGraphs[this.visibleChunkIndex].getVisibleStreamdumpGraph();
 
-    const segmenterCodec = this.chunkGraphs[0].findCodecByName('segmenter');
+    const segmenterCodec = this.chunkGraphs[0].findCodecByName('segmenter') as InternalSegmenterNode;
+    // todo: no need for this hack if we set it correctly
+    segmenterCodec.numChunks = this.chunkGraphs.length - 1;
+
     const zlStartCodec = this.chunkGraphs[this.visibleChunkIndex].findCodecByName('zl.#start');
     if (!segmenterCodec) {
       console.warn('Could not find segmenter codec in chunk 0');

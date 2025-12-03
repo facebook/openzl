@@ -13,6 +13,7 @@ import {Box} from '@chakra-ui/react/box';
 import {Portal} from '@chakra-ui/react/portal';
 import {ScrollablePopover} from './ScrollablePopover';
 import {EdgeView} from './EdgeView';
+import {SegmenterNode} from './SegmenterView';
 
 interface NodeViewProps {
   data: {
@@ -131,5 +132,6 @@ export function CodecNode({data}: NodeViewProps) {
 export const nodeTypes = {
   codec: CodecNode,
   graph: GraphNodeView,
+  segmenter: SegmenterNode,
   edge: EdgeView,
 };
