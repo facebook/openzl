@@ -19,6 +19,9 @@ class EncoderState {
    public:
     EncoderState(ZL_Encoder* encoder, poly::span<const ZL_Input*> inputs);
 
+    EncoderState(const EncoderState&)            = delete;
+    EncoderState& operator=(const EncoderState&) = delete;
+
     ZL_Encoder* get()
     {
         return encoder_;
