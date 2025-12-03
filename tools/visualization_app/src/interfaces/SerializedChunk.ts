@@ -5,6 +5,7 @@ import type {SerializedGraph} from './SerializedGraph';
 import type {SerializedStream} from './SerializedStream';
 
 export interface SerializedChunk {
+  chunkId: number;
   streams: SerializedStream[];
   codecs: SerializedCodec[];
   graphs: SerializedGraph[];

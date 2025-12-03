@@ -7,13 +7,13 @@ import {Stream} from './Stream';
 import {Graph} from './Graph';
 
 export class Chunk {
-  readonly id: ChunkID;
+  readonly chunkId: ChunkID;
   readonly streams: Stream[];
   readonly codecs: Codec[];
   readonly graphs: Graph[];
 
   constructor(id: ChunkID, streams: Stream[], codecs: Codec[], graphs: Graph[]) {
-    this.id = id;
+    this.chunkId = id;
     this.streams = streams;
     this.codecs = codecs;
     this.graphs = graphs;

@@ -11,9 +11,10 @@ const ZL_Report Stream::serializeStream(
         A1C_Arena* a1c_arena,
         A1C_Item* arrayItem)
 {
-    A1C_MapBuilder builder = A1C_Item_map_builder(arrayItem, 7, a1c_arena);
+    A1C_MapBuilder builder = A1C_Item_map_builder(arrayItem, 8, a1c_arena);
     ZL_RET_R_IF_NULL(allocation, builder.map);
 
+    ZL_RET_R_IF_ERR(addIntValue(builder, "chunkId", this->chunkId));
     ZL_RET_R_IF_ERR(addIntValue(builder, "type", type));
     ZL_RET_R_IF_ERR(addIntValue(builder, "outputIdx", outputIdx));
     ZL_RET_R_IF_ERR(addIntValue(builder, "eltWidth", eltWidth));

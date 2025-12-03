@@ -9,6 +9,7 @@ import type {SerializedChunk} from '../interfaces/SerializedChunk';
 // format version 0, need to convert to format version 1
 function convertV0toV1(obj: SerializedStreamdumpV0): SerializedStreamdumpV1 {
   const chunk: SerializedChunk = {
+    chunkId: 0,
     streams: obj.streams,
     codecs: obj.codecs,
     graphs: obj.graphs,
@@ -28,6 +29,7 @@ function convertV0toV1(obj: SerializedStreamdumpV0): SerializedStreamdumpV1 {
     },
     inputStreams: [],
     outputStreams: [0 as StreamID],
+    chunkId: 0,
   });
 
   // rename all stream source/targets

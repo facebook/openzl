@@ -18,6 +18,7 @@ struct Codec {
     size_t cHeaderSize{};
     ZL_Report cFailure = ZL_returnSuccess();
     LocalParams cLocalParams{};
+    size_t chunkId{};
 
     const ZL_Report serializeCodec(
             A1C_Arena* a1c_arena,

@@ -33,9 +33,10 @@ const ZL_Report Codec::serializeCodec(
         const std::vector<ZL_DataID>& inEdges,
         const std::vector<ZL_DataID>& outEdges)
 {
-    A1C_MapBuilder builder = A1C_Item_map_builder(arrayItem, 8, a1c_arena);
+    A1C_MapBuilder builder = A1C_Item_map_builder(arrayItem, 9, a1c_arena);
     ZL_RET_R_IF_NULL(allocation, builder.map);
 
+    ZL_RET_R_IF_ERR(addIntValue(builder, "chunkId", this->chunkId));
     ZL_RET_R_IF_ERR(addStringValue(builder, "name", name.c_str()));
     ZL_RET_R_IF_ERR(addBooleanValue(builder, "cType", cType));
     ZL_RET_R_IF_ERR(addIntValue(builder, "cID", cID));

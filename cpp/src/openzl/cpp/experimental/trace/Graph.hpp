@@ -14,6 +14,7 @@ struct Graph {
     const char* gName{};
     ZL_Report gFailure = ZL_returnSuccess();
     LocalParams gLocalParams{};
+    size_t chunkId{};
 
     // temporary hack to report failed graphs that have no codecs
     // ultimately, the idea is that edges will go to graphs and not codecs so
