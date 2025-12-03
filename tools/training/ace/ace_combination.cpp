@@ -3,8 +3,11 @@
 #include "openzl/zl_reflection.h"
 #include "tools/logger/Logger.h"
 #include "tools/training/ace/ace_combination.h"
+#include "tools/training/ace/ace_compressors.h"
+#include "tools/training/ace/automated_compressor_explorer.h"
 #include "tools/training/ace/crowding_distance_selector.h"
 #include "tools/training/graph_mutation/graph_mutation_utils.h"
+#include "tools/training/sample_collection/training_sample_collector.h"
 #include "tools/training/utils/genetic_algorithm.h"
 
 namespace openzl::training {
@@ -12,6 +15,7 @@ namespace openzl::training {
 // TODO: Make these hyperparameters training args
 const size_t kNumIntermediateFrontierCandidates = 1000;
 const size_t kNumFinalParetoCandidates          = 100;
+const std::string ACE_GRAPH_NAME                = "zl.ace";
 
 using namespace openzl::tools::logger;
 using namespace openzl::training::graph_mutation;
@@ -144,6 +148,38 @@ std::shared_ptr<const std::string_view> makeCombinedCompressor(
     auto compressor = makeCompressor();
     return runReplacements(compressor, replacements);
 }
+
+std::vector<std::pair<ACECompressor, ACECompressionResult>> benchmarkAce(
+        const AutomatedCompressorExplorer& ace,
+        const TrainParams& trainParams)
+{
+    auto solutions = ace.solution();
+    if (solutions.empty()) {
+        throw Exception("ACE training failed to find a solution");
+    }
+    // Save this state, do the benchmarking, at the next stages. Call
+    // ace.solution() again to kick off the benchmarking.
+
+    auto inputs = ace.inputs();
+    std::vector<std::pair<ACECompressor, ACECompressionResult>> result;
+    for (auto&& [candidate, _] : solutions) {
+        auto benchmark = *candidate.benchmark(inputs);
+        result.emplace_back(std::move(candidate), std::move(benchmark));
+        if (!trainParams.paretoFrontier) {
+            break;
+        }
+    }
+    if (result.empty()) {
+        Logger::log(
+                WARNINGS,
+                "No solution found that meets speed constraints: Falling back to store");
+        auto store = buildStoreCompressor();
+        return { { store, *store.benchmark(inputs) } };
+    }
+
+    // Register the new graph on the compressor and return the new graph ID
+    return result;
+}
 } // namespace
 
 /**
@@ -235,13 +271,64 @@ std::vector<CandidateSelection> combineCandidates(
 }
 
 std::vector<std::shared_ptr<const std::string_view>> getCombinedCompressors(
-        const std::function<Compressor()>& makeCompressor,
-        const std::unordered_map<
-                std::string,
-                std::vector<std::pair<ACECompressor, ACECompressionResult>>>&
-                allCandidates,
+        const std::vector<MultiInput>& inputs,
+        std::shared_ptr<const std::string_view> trainedSerializedCompressor,
         const TrainParams& trainParams)
 {
+    auto makeCompressor = [&trainedSerializedCompressor, &trainParams] {
+        return std::move(
+                *trainParams.compressorGenFunc(*trainedSerializedCompressor));
+    };
+    auto compressor = makeCompressor();
+    auto cctx       = refCCtxForTraining(compressor);
+    auto serialized = compressor.serialize();
+    /// Get the ACECompressor for each backend graph from the
+    /// trainedSerializedCompressor
+    const std::vector<std::string> autoBackendGraphs =
+            findAllGraphsWithPrefix(serialized, ACE_GRAPH_NAME);
+
+    // Note this is done a second time (is it worth caching the flattened
+    // samples)
+    auto samples =
+            collectInputStreamsForGraphs(inputs, autoBackendGraphs, cctx);
+    std::unordered_map<
+            std::string,
+            std::vector<std::pair<ACECompressor, ACECompressionResult>>>
+            allCandidates;
+    for (const auto& backendGraph : autoBackendGraphs) {
+        auto backendGraphID = compressor.getGraph(backendGraph);
+        if (!backendGraphID.has_value()) {
+            throw Exception("Unexpected error: backend graph not found");
+        }
+        auto localParams = LocalParams(ZL_Compressor_Graph_getLocalParams(
+                compressor.get(), backendGraphID.value()));
+        auto copyParams  = localParams.getCopyParams();
+        auto copyParam   = std::find_if(
+                copyParams.begin(), copyParams.end(), [](auto& param) {
+                    return param.paramId
+                            == AutomatedCompressorExplorer::kAceStateParamId;
+                });
+        if (copyParam == copyParams.end()) {
+            // These are the unparameterized versions without ACE states
+            continue;
+        }
+        auto aceInputs = samples[backendGraph];
+        auto flattened = std::vector<Input>();
+        for (auto& sample : aceInputs) {
+            for (auto& input : *sample) {
+                flattened.push_back(InputRef(input.get()));
+            }
+        }
+        if (flattened.empty()) {
+            continue;
+        }
+        auto aceState = std::string(
+                (const char*)copyParam->paramPtr, copyParam->paramSize);
+        AutomatedCompressorExplorer ace(flattened, aceState);
+        auto benchmarks = benchmarkAce(ace, trainParams);
+        allCandidates.emplace(backendGraph, std::move(benchmarks));
+    }
+
     if (!trainParams.paretoFrontier) {
         return { getSmallestCandidate(makeCompressor, allCandidates) };
     }
