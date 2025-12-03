@@ -17,6 +17,8 @@ class ArgParser {
    public:
     static constexpr int CMD_UNSPECIFIED = 0;
 
+    ArgParser();
+
     // see the documentation in struct Flag, Command, Positional for more info
     // on expected arguments
     void addGlobalFlag(
