@@ -94,10 +94,16 @@ void ArgParser::addCommandImmediate(
 
 void ArgParser::addCommandPositional(
         int cmd,
+        NumArgs numArgs,
         const std::string& name,
         const std::string& help)
 {
-    cmdPositionals_[cmd].push_back({ name, help });
+    if (!cmdPositionals_[cmd].empty()
+        && cmdPositionals_[cmd].back().numArgs != NumArgs::One) {
+        throw ParseException(
+                "Cannot add a positional argument after a variadic positional argument!");
+    }
+    cmdPositionals_[cmd].push_back({ numArgs, name, help });
 }
 
 std::string ArgParser::help() const
@@ -163,7 +169,20 @@ std::string ArgParser::help(const Command& command) const
     ss << "Positionals:\n";
     if (cmdPositionals_.find(command.cmd) != cmdPositionals_.end()) {
         for (auto const& positional : cmdPositionals_.at(command.cmd)) {
-            ss << "  " << positional.name << "\n";
+            switch (positional.numArgs) {
+                case NumArgs::ZeroOrOne:
+                    ss << "  [" << positional.name << "]\n";
+                    break;
+                case NumArgs::One:
+                    ss << "  " << positional.name << "\n";
+                    break;
+                case NumArgs::OneOrMore:
+                    ss << "  " << positional.name << "...\n";
+                    break;
+                case NumArgs::ZeroOrMore:
+                    ss << "  [" << positional.name << "]...\n";
+                    break;
+            }
             ss << "    " << positional.help << "\n";
         }
     }
@@ -245,9 +264,9 @@ ParsedArgs ArgParser::parse(int argc, char** argv) const
                             "Option " + flag->name + " requires a value";
                     throw ParseException(err);
                 }
-                parsedArgs.cmdVals_[cmd][flag->name] = argv[i];
+                parsedArgs.cmdVals_[cmd][flag->name].push_back(argv[i]);
             } else {
-                parsedArgs.cmdVals_[cmd][flag->name] = "";
+                parsedArgs.cmdVals_[cmd][flag->name].push_back("");
             }
         };
         auto processShortFlag = [&](char shortName, int chosenCmd) {
@@ -298,8 +317,8 @@ ParsedArgs ArgParser::parse(int argc, char** argv) const
                     throw ParseException(err);
                 }
                 auto [flag, cmd] = flagOpt.value();
-                parsedArgs.cmdVals_[cmd][flag->name] =
-                        std::to_string(arg.size() + 2);
+                parsedArgs.cmdVals_[cmd][flag->name].push_back(
+                        std::to_string(arg.size() + 2));
             } else {
                 processShortFlag(argv[i][1], parsedArgs.chosenCmd_);
             }
@@ -341,36 +360,46 @@ ParsedArgs ArgParser::parse(int argc, char** argv) const
                 throw ParseException(
                         "Trying to pass a positional argument before specifying a subcommand!");
             }
-            const auto positionalIdx =
-                    cmdPositionalIndex[parsedArgs.chosenCmd_]++;
+            auto positionalIdx = cmdPositionalIndex[parsedArgs.chosenCmd_]++;
             const auto positionalSize =
                     cmdPositionals_.at(parsedArgs.chosenCmd_).size();
-            if (positionalSize <= positionalIdx) {
-                std::ostringstream msg;
-                msg << "Too many positional arguments for command '"
-                    << commandName(parsedArgs.chosenCmd_) << "'.\n";
+            if (positionalSize == 0) {
+                throw ParseException(
+                        "Trying to pass a positional argument when no positional arguments are expected!");
+            }
+            if (positionalIdx >= positionalSize) {
+                positionalIdx          = positionalSize - 1;
+                const auto& positional = cmdPositionals_.at(
+                        parsedArgs.chosenCmd_)[positionalIdx];
+                if (positional.numArgs == NumArgs::ZeroOrOne
+                    || positional.numArgs == NumArgs::One) {
+                    std::ostringstream msg;
+                    msg << "Too many positional arguments for command '"
+                        << commandName(parsedArgs.chosenCmd_) << "'.\n";
 
-                // Show expected positional arguments
-                msg << "Expected " << positionalSize << " positional argument"
-                    << (positionalSize == 1 ? "" : "s") << ":";
-                for (size_t j = 0; j < positionalSize; ++j) {
-                    msg << " <"
-                        << cmdPositionals_.at(parsedArgs.chosenCmd_)[j].name
-                        << ">";
+                    // Show expected positional arguments
+                    msg << "Expected " << positionalSize
+                        << " positional argument"
+                        << (positionalSize == 1 ? "" : "s") << ":";
+                    for (size_t j = 0; j < positionalSize; ++j) {
+                        msg << " <"
+                            << cmdPositionals_.at(parsedArgs.chosenCmd_)[j].name
+                            << ">";
+                    }
+                    msg << "\n";
+
+                    // Show the problematic argument
+                    msg << "Got unexpected positional argument '" << argv[i]
+                        << "' at position " << (positionalIdx + 1);
+
+                    throw ParseException({ msg.str() });
                 }
-                msg << "\n";
-
-                // Show the problematic argument
-                msg << "Got unexpected positional argument '" << argv[i]
-                    << "' at position " << (positionalIdx + 1);
-
-                throw ParseException({ msg.str() });
             }
             auto positionalName =
                     cmdPositionals_.at(parsedArgs.chosenCmd_)[positionalIdx]
                             .name;
-            parsedArgs.cmdVals_[parsedArgs.chosenCmd_][positionalName] =
-                    argv[i];
+            parsedArgs.cmdVals_[parsedArgs.chosenCmd_][positionalName]
+                    .push_back(argv[i]);
         }
     }
     return parsedArgs;
@@ -382,10 +411,24 @@ void ArgParser::validate(const ParsedArgs& parsedArgs) const
         throw ParseException("No subcommand specified!");
     }
     for (const auto& positional : cmdPositionals_.at(parsedArgs.chosenCmd_)) {
-        if (parsedArgs.cmdVals_.at(parsedArgs.chosenCmd_).find(positional.name)
-            == parsedArgs.cmdVals_.at(parsedArgs.chosenCmd_).end()) {
-            std::string err = "Missing positional argument: " + positional.name;
-            throw ParseException({ err });
+        const auto& positionals = parsedArgs.cmdVals_.at(parsedArgs.chosenCmd_);
+
+        // Validate required positional arguments are present
+        if (positionals.count(positional.name) == 0
+            || positionals.at(positional.name).size() == 0) {
+            if (positional.numArgs == NumArgs::One
+                || positional.numArgs == NumArgs::OneOrMore) {
+                throw ParseException(
+                        "Missing positional argument: " + positional.name);
+            } else {
+                continue;
+            }
+        }
+
+        auto numArgs = positionals.at(positional.name).size();
+        if (numArgs > 1 && positional.numArgs == NumArgs::One) {
+            throw ParseException(
+                    "Too many positional arguments for " + positional.name);
         }
     }
 }
