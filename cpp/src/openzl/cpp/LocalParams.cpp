@@ -87,8 +87,8 @@ void LocalParams::addRefParam(ZL_RefParam param)
     params_.refParams.nbRefParams = refParams_.size();
 }
 
-void LocalParams::addRefParam(int key, const void* ref)
+void LocalParams::addRefParam(int key, const void* ref, size_t size)
 {
-    return addRefParam(ZL_RefParam{ key, ref });
+    return addRefParam(ZL_RefParam{ key, ref, size });
 }
 } // namespace openzl

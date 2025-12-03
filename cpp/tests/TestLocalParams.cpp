@@ -84,6 +84,26 @@ TEST(TestLocalParams, addRefParam)
     ASSERT_THROW(params.addCopyParam({ 0, &x, sizeof(x) }), Exception);
 }
 
+TEST(TestLocalParams, addRefParamWithSize)
+{
+    LocalParams params;
+    int x     = 42;
+    int64_t y = 350;
+    params.addRefParam(0, &x, sizeof(x));
+    params.addRefParam(1, &y, sizeof(y));
+
+    auto p = params.getRefParams();
+    ASSERT_EQ(p.size(), 2);
+
+    ASSERT_EQ(p[0].paramId, 0);
+    ASSERT_EQ(p[0].paramRef, &x);
+    ASSERT_EQ(p[0].paramSize, sizeof(x));
+
+    ASSERT_EQ(p[1].paramId, 1);
+    ASSERT_EQ(p[1].paramRef, &y);
+    ASSERT_EQ(p[1].paramSize, sizeof(y));
+}
+
 TEST(TestLocalParams, move)
 {
     auto params = std::make_unique<LocalParams>();

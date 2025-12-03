@@ -67,7 +67,7 @@ class LocalParams {
     }
 
     void addRefParam(ZL_RefParam param);
-    void addRefParam(int key, const void* ref);
+    void addRefParam(int key, const void* ref, size_t size = 0);
 
     poly::span<const ZL_IntParam> getIntParams() const
     {
