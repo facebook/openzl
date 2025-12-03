@@ -7,6 +7,15 @@
 
 #include "tests/version/VersionTestInterface.h"
 
+extern "C" int LLVMFuzzerTestOneInput(uint8_t const* data, size_t size);
+
+extern "C" void FtestFuzzerSetup()
+{
+    // Run once during global setup so we are fully initialized before fuzzing
+    uint8_t c = 0;
+    LLVMFuzzerTestOneInput(&c, 1);
+}
+
 namespace zstrong {
 namespace tests {
 namespace {
