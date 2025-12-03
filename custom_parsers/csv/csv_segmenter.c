@@ -4,6 +4,8 @@
 #include "custom_parsers/csv/csv_lexer.h"
 #include "custom_parsers/csv/csv_parser.h"
 #include "openzl/common/assertion.h"
+#include "openzl/shared/utils.h"
+#include "openzl/zl_selector.h"
 
 // Parameter to set the chunk size desired during chunking
 #define ZL_CSV_CHUNK_BYTE_SIZE_MAX_ID 100
@@ -17,24 +19,61 @@
 
 static ZL_Report SEGM_csvProcessChunk(
         ZL_Segmenter* sctx,
-        const ZL_CSV_lexResult* lexed,
         ZL_GraphID headGraph,
-        size_t currentChunkByteSize)
+        size_t chunkSizeBytes,
+        const ZL_CSV_TokenType* types,
+        const uint32_t* sizes,
+        const uint32_t* cols,
+        size_t numTokens,
+        size_t numCols,
+        bool hasHeader)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(sctx);
-    ZL_CopyParam cParam = {
-        .paramId   = ZL_CSV_CHUNKED_LEXED_RESULT_ID,
-        .paramPtr  = lexed,
-        .paramSize = sizeof(ZL_CSV_lexResult),
+    const ZL_IntParam intParams[2] = {
+        {
+                ZL_CSV_CHUNKED_HAS_HEADER_ID,
+                (int)hasHeader,
+        },
+        {
+                ZL_CSV_CHUNKED_NUM_COLS_ID,
+                (int)numCols,
+        },
     };
-    ZL_LocalParams chunkParams = { .copyParams = { .copyParams   = &cParam,
-                                                   .nbCopyParams = 1 } };
+    const ZL_RefParam refParams[3] = {
+        {
+                ZL_CSV_CHUNKED_TYPES_ID,
+                types,
+                numTokens * sizeof(types[0]),
+        },
+        {
+                ZL_CSV_CHUNKED_SIZES_ID,
+                sizes,
+                numTokens * sizeof(sizes[0]),
+        },
+        {
+                ZL_CSV_CHUNKED_COLS_ID,
+                cols,
+                numTokens * sizeof(cols[0]),
+        },
+    };
+    const ZL_LocalParams chunkParams = {
+        .intParams = { intParams, 2 },
+        .refParams = { refParams, 3 },
+    };
     const ZL_RuntimeGraphParameters gparams = {
         .localParams = &chunkParams,
     };
     ZL_ERR_IF_ERR(ZL_Segmenter_processChunk(
-            sctx, &currentChunkByteSize, 1, headGraph, &gparams));
+            sctx, &chunkSizeBytes, 1, headGraph, &gparams));
     return ZL_returnSuccess();
+}
+
+static ZL_Report tryGetIntParam(ZL_Segmenter* segmenter, int key)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(segmenter);
+    ZL_IntParam intParam = ZL_Segmenter_getLocalIntParam(segmenter, key);
+    ZL_ERR_IF_EQ(intParam.paramId, ZL_LP_INVALID_PARAMID, node_invalid_input);
+    return ZL_returnValue((size_t)intParam.paramValue);
 }
 
 static ZL_Report SEGM_csv(ZL_Segmenter* sctx)
@@ -48,78 +87,91 @@ static ZL_Report SEGM_csv(ZL_Segmenter* sctx)
     const size_t byteSize     = ZL_Input_contentSize(input);
     const char* const content = (const char* const)ZL_Input_ptr(input);
 
+    if (byteSize == 0) {
+        ZL_ERR_IF_ERR(ZL_Segmenter_processChunk(
+                sctx, &byteSize, 1, ZL_GRAPH_STORE, NULL));
+        return ZL_returnSuccess();
+    }
+
     ZL_GraphIDList const customGraphs = ZL_Segmenter_getCustomGraphs(sctx);
     ZL_ASSERT_EQ(customGraphs.nbGraphIDs, 1);
     ZL_GraphID const headGraph = customGraphs.graphids[0];
     // Note: assumes a positive chunkByteSizeMax is passed in.
-    size_t chunkByteSizeMax = (size_t)ZL_Segmenter_getLocalIntParam(
-                                      sctx, ZL_CSV_CHUNK_BYTE_SIZE_MAX_ID)
-                                      .paramValue;
-    int hasHeader =
-            ZL_Segmenter_getLocalIntParam(sctx, ZL_PARSER_HAS_HEADER_PID)
-                    .paramValue;
-    int intSep = ZL_Segmenter_getLocalIntParam(sctx, ZL_PARSER_SEPARATOR_PID)
-                         .paramValue;
+    ZL_TRY_LET_CONST(
+            size_t,
+            chunkByteSizeMax,
+            tryGetIntParam(sctx, ZL_CSV_CHUNK_BYTE_SIZE_MAX_ID));
+    ZL_TRY_LET(
+            size_t, hasHeader, tryGetIntParam(sctx, ZL_PARSER_HAS_HEADER_PID));
+    ZL_TRY_LET_CONST(
+            size_t, intSep, tryGetIntParam(sctx, ZL_PARSER_SEPARATOR_PID));
     ZL_ERR_IF(
-            (intSep > 255) || (intSep < 0),
-            node_invalid_input,
-            "Separator must be a char value");
+            intSep > 127, node_invalid_input, "Separator must be a char value");
     char sep = (char)intSep;
-    int useNullAwareParse =
-            ZL_Segmenter_getLocalIntParam(sctx, ZL_PARSER_USE_NULL_AWARE_PID)
-                    .paramValue;
-    ZL_ERR_IF(
-            (useNullAwareParse != 0) && (useNullAwareParse != 1),
-            node_invalid_input,
-            "UseNullAware must be 0 or 1");
+    ZL_TRY_LET_CONST(
+            size_t,
+            useNullAwareParse,
+            tryGetIntParam(sctx, ZL_PARSER_USE_NULL_AWARE_PID));
 
-    ZL_CSV_lexResult lexed = {};
-    ZL_Report lexRes       = (useNullAwareParse)
-                  ? ZL_CSV_lexNullAware(
-                      sctx, content, byteSize, hasHeader, sep, &lexed)
-                  : ZL_CSV_lex(sctx, content, byteSize, hasHeader, sep, &lexed);
-    ZL_ERR_IF_ERR(lexRes);
+    const size_t maxNumTokens = ZL_MIN(byteSize, chunkByteSizeMax);
+    ZL_ERR_IF_GE(
+            maxNumTokens, 1u << 30, node_invalid_input, "chunk size too big");
+    ZL_CSV_TokenType* types = ZL_Segmenter_getScratchSpace(
+            sctx, maxNumTokens * sizeof(ZL_CSV_TokenType));
+    ZL_ERR_IF_NULL(types, allocation);
+    uint32_t* sizes =
+            ZL_Segmenter_getScratchSpace(sctx, maxNumTokens * sizeof(uint32_t));
+    ZL_ERR_IF_NULL(sizes, allocation);
+    uint32_t* cols =
+            ZL_Segmenter_getScratchSpace(sctx, maxNumTokens * sizeof(uint32_t));
+    ZL_ERR_IF_NULL(cols, allocation);
 
-    // Can pick a subset of lexed result to pass in as local params
-    size_t numElts     = ZL_Input_numElts(input);
-    size_t prevIdx     = 0;
-    size_t rowByteSize = 0;
-    if (lexed.nbNewlines > 0) { // Can do chunking
-        // Chunk must contain at least one row
-        for (size_t start = 0; start <= lexed.newlineIndices[0]; start++) {
-            rowByteSize += lexed.stringLens[start];
+    ZL_CSV_Lexer lexer;
+    ZL_CSV_Lexer_init(
+            &lexer,
+            ZL_Segmenter_getOperationContext(sctx),
+            content,
+            byteSize,
+            sep,
+            useNullAwareParse);
+
+    while (!ZL_CSV_Lexer_finished(&lexer)) {
+        const char* const begin = lexer.src;
+        ZL_TRY_LET_CONST(
+                size_t,
+                numTokens,
+                ZL_CSV_Lexer_lex(
+                        &lexer,
+                        types,
+                        sizes,
+                        cols,
+                        maxNumTokens,
+                        chunkByteSizeMax));
+        ZL_ERR_IF_EQ(
+                lexer.row,
+                0,
+                node_invalid_input,
+                "CSV is not well formed: No newline found");
+        const char* const end = lexer.src;
+        ZL_ERR_IF_EQ(numTokens, 0, logicError);
+        if (end != lexer.end) {
+            ZL_ERR_IF_LT((size_t)(end - begin), chunkByteSizeMax, logicError);
+            ZL_ERR_IF_NE(
+                    types[numTokens - 1], ZL_CSV_TokenType_Newline, logicError);
         }
-        size_t currentChunkByteSize = rowByteSize;
-        for (size_t row = 1; row < lexed.nbNewlines; row++) {
-            rowByteSize = 0;
-            for (size_t start = lexed.newlineIndices[row - 1] + 1;
-                 start <= lexed.newlineIndices[row];
-                 start++) {
-                rowByteSize += lexed.stringLens[start];
-            }
-            if (currentChunkByteSize + rowByteSize > chunkByteSizeMax) {
-                ZL_CSV_lexResult chunkedLex = {
-                    .nbStrs     = lexed.newlineIndices[row - 1] - prevIdx + 1,
-                    .nbColumns  = lexed.nbColumns,
-                    .stringLens = lexed.stringLens + prevIdx,
-                    .dispatchIndices = lexed.dispatchIndices + prevIdx,
-                };
-                ZL_ERR_IF_ERR(SEGM_csvProcessChunk(
-                        sctx, &chunkedLex, headGraph, currentChunkByteSize));
-                numElts -= currentChunkByteSize;
-                currentChunkByteSize = 0;
-                prevIdx              = lexed.newlineIndices[row - 1] + 1;
-            }
-            currentChunkByteSize += rowByteSize;
-        }
+        ZL_ERR_IF_ERR(SEGM_csvProcessChunk(
+                sctx,
+                headGraph,
+                (size_t)(end - begin),
+                types,
+                sizes,
+                cols,
+                numTokens,
+                lexer.numCols,
+                hasHeader));
+        // Subsequent chunks have no header
+        hasHeader = false;
     }
-    ZL_CSV_lexResult chunkedLex = {
-        .nbStrs          = lexed.nbStrs - prevIdx,
-        .nbColumns       = lexed.nbColumns,
-        .stringLens      = lexed.stringLens + prevIdx,
-        .dispatchIndices = lexed.dispatchIndices + prevIdx,
-    };
-    ZL_ERR_IF_ERR(SEGM_csvProcessChunk(sctx, &chunkedLex, headGraph, numElts));
     return ZL_returnSuccess();
 }
 

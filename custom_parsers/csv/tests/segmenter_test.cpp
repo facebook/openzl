@@ -73,6 +73,11 @@ class CsvSegmentTestingReaderHook : public CompressIntrospectionHooks {
     std::vector<std::string> inputs_;
 };
 
+TEST_F(CsvSegmenterUnitTest, EmptyInputRoundTrip)
+{
+    roundtrip("");
+}
+
 TEST_F(CsvSegmenterUnitTest, FixedCsvInputRoundTrip)
 {
     constexpr std::string_view str =
