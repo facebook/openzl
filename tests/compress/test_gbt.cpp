@@ -229,11 +229,14 @@ class GBTBinaryForestTest : public Test {
     void SetUp() override
     {
         const size_t kTreeNb = 5;
-        nodes                = { { .featureIdx      = -1,
-                                   .value           = 0.2f,
-                                   .leftChildIdx    = 0,
-                                   .rightChildIdx   = 0,
-                                   .missingChildIdx = 0 } };
+        GBTPredictor_Node node;
+        node.featureIdx      = -1;
+        node.value           = 0.2f;
+        node.leftChildIdx    = 0;
+        node.rightChildIdx   = 0;
+        node.missingChildIdx = 0;
+        nodes.clear();
+        nodes.push_back(node);
         for (size_t i = 0; i < kTreeNb; i++) {
             trees.push_back(
                     { .numNodes = nodes.size(), .nodes = nodes.data() });
