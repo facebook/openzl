@@ -39,7 +39,7 @@ ARFLAGS  += -c # do not print warning message when creating the archive (expecte
 
 # Default build mode
 # support both BUILD_TYPE and BUILD_MODE, priority to BUILD_TYPE
-BUILD_MODE ?= DEFAULT
+BUILD_MODE ?= OPT
 BUILD_TYPE ?= $(BUILD_MODE)
 
 # Sanitizer flags
@@ -100,7 +100,7 @@ else ifeq ($(BUILD_TYPE),DEFAULT)
 # no modification, just use baseline flags
     MCM_STRIP ?= 1
 else
-    $(error Invalid BUILD_TYPE: $(BUILD_TYPE). Valid options: DEFAULT, DEV, DEV_NOSAN, OPT, OPT_ASAN, DBGO, DBGO_ASAN, TRACES, TRACES_NOSAN)
+    $(error Invalid BUILD_TYPE: $(BUILD_TYPE). Valid options: OPT, OPT_ASAN, DBGO, DBGO_ASAN, DEV, DEV_NOSAN, TRACES, TRACES_NOSAN)
 endif
 
 # position user flags at the end, so that they have higher priority
