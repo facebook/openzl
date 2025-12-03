@@ -164,6 +164,34 @@ class CsvBottomUpTest(_CsvBaseTest):
         self.train_compress_decompress()
 
 
+class CsvChunkedTest(_CsvBaseTest):
+    """
+    Test case for CSV training and compression using the trainer with chunking.
+
+    This test demonstrates the train-compress-decompress workflow for CSV files
+    using including chunking the input data.
+
+    Sample files are located in cli/tests/sample_files/csv/
+    Output files are stored in {output_dir_path}
+    """
+
+    @property
+    def extra_args(self) -> str | None:
+        return "--chunk-size-mb 1"
+
+    def test_train_compress_decompress(self):
+        """
+        Test the train, compress, and decompress workflow for CSV files using the greedy trainer.
+
+        This test:
+        1. Trains a compressor on the CSV files in cli/tests/sample_files/csv/ using the greedy trainer
+        2. Saves the trained compressor to {output_dir_path}/trained_compressor.zlc
+        3. Uses the trained compressor to compress and decompress the CSV files
+        4. Verifies that the decompressed files match the originals
+        """
+        self.train_compress_decompress()
+
+
 class ParquetTest(_TrainBaseTest):
     """
     Parquet compression tests with training.

@@ -18,7 +18,7 @@
 
 namespace openzl::cli {
 
-struct CompressArgs : public GlobalArgs {
+struct CompressArgs : public GlobalArgs, public ProfileArgs {
     static void addArgs(arg::ArgParser& parser)
     {
         // Add the command
@@ -29,14 +29,6 @@ struct CompressArgs : public GlobalArgs {
         parser.addCommandFlag(cmd(), kOutput, 'o', true, "Output file path.");
         parser.addCommandFlag(
                 cmd(), kForce, 'f', false, "Overwrite output file.");
-        parser.addCommandFlag(
-                cmd(), kProfile, 'p', true, "Compress with the given profile.");
-        parser.addCommandFlag(
-                cmd(),
-                kProfileArg,
-                0,
-                true,
-                "Pass the given value as an argument to constructing the profile.");
         parser.addCommandFlag(
                 cmd(),
                 kCompressor,
@@ -71,13 +63,12 @@ struct CompressArgs : public GlobalArgs {
                 "Directory to write trace streamdump to.");
     }
 
-    explicit CompressArgs(const arg::ParsedArgs& parsed) : GlobalArgs(parsed)
+    explicit CompressArgs(const arg::ParsedArgs& parsed)
+            : GlobalArgs(parsed), ProfileArgs(parsed)
     {
         // Create the compressor
-        compressor = createCompressorFromArgs(
-                parsed.cmdFlag(cmd(), kProfile),
-                parsed.cmdFlag(cmd(), kProfileArg),
-                parsed.cmdFlag(cmd(), kCompressor));
+        setCompressor(createCompressorFromArgs(
+                *this, parsed.cmdFlag(cmd(), kCompressor)));
 
         // Get the input and output files
         auto inputPath = parsed.cmdPositional(cmd(), kInput);
@@ -106,8 +97,6 @@ struct CompressArgs : public GlobalArgs {
         return Cmd::COMPRESS;
     };
 
-    std::shared_ptr<Compressor> compressor;
-
     std::shared_ptr<tools::io::Input> input;
     std::shared_ptr<tools::io::Output> output;
 
@@ -118,12 +107,9 @@ struct CompressArgs : public GlobalArgs {
     std::optional<std::string> traceStreamsDir;
 
    private:
-    inline static const std::string kInput  = "input";
-    inline static const std::string kOutput = "output";
-    inline static const std::string kForce  = "force";
-
-    inline static const std::string kProfile    = "profile";
-    inline static const std::string kProfileArg = "profile-arg";
+    inline static const std::string kInput      = "input";
+    inline static const std::string kOutput     = "output";
+    inline static const std::string kForce      = "force";
     inline static const std::string kCompressor = "compressor";
 
     inline static const std::string kVerbose     = "verbose";

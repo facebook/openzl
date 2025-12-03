@@ -98,8 +98,8 @@ BenchmarkResult runCompressionBenchmarks(const BenchmarkArgs& args)
     const auto iters = args.numIters;
 
     // create compressor, context, and decompression context
-    auto cctx =
-            createCompressionContext(*args.compressor, args.level, args.strict);
+    auto cctx = createCompressionContext(
+            *args.compressor(), args.level, args.strict);
     DCtx dctx;
 
     // if output is not specified, don't write csv-formatted summary statistics

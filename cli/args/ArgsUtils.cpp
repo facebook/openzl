@@ -36,20 +36,19 @@ void checkOutput(const std::string& path, bool force)
 }
 
 std::unique_ptr<Compressor> createCompressorFromArgs(
-        const std::optional<std::string>& profileName,
-        const std::optional<std::string>& profileArg,
+        const ProfileArgs& profileArgs,
         const std::optional<std::string>& compressorPath)
 {
-    if (profileName && compressorPath) {
+    if (profileArgs.name() && compressorPath) {
         throw InvalidArgsException(
                 "Both compressor profile and serialized compressor specified. Please provide only one.");
     }
 
-    if (profileName) {
-        ProfileArgs profileArgs;
-        profileArgs.name = profileName.value();
-        if (profileArg) {
-            profileArgs.argmap.emplace("TBD", profileArg.value());
+    if (profileArgs.name()) {
+        if (profileArgs.chunkSize()) {
+            Logger::log(
+                    INFO,
+                    "Chunking is not currently implemented for all profiles. Ignoring size parameter if unimplemented.\nChunking is implemented for the following profiles: csv");
         }
         return util::createCompressorFromProfile(profileArgs);
     }

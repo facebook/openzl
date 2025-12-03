@@ -105,6 +105,20 @@ custom_unittest(
 )
 
 custom_unittest(
+    name = "csv_chunked_test",
+    command = [
+        "$(location :integration_test_bin)",
+        "$(location ..:zli)",
+        "CsvChunkedTest.test_train_compress_decompress",
+    ],
+    type = "simple",
+    deps = [
+        "..:zli",
+        ":integration_test_bin",
+    ],
+)
+
+custom_unittest(
     name = "parquet_test",
     command = [
         "$(location :integration_test_bin)",

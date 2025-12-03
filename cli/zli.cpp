@@ -40,6 +40,7 @@ int impl(int argc, char** argv)
 
     // set command-line arguments
     GlobalArgs::addArgs(argParser);
+    ProfileArgs::addArgs(argParser);
     CompressArgs::addArgs(argParser);
     DecompressArgs::addArgs(argParser);
     TrainArgs::addArgs(argParser);

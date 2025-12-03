@@ -63,11 +63,10 @@ int trainCompressorOnSampleFile(CompressArgs& args)
             std::make_shared<tools::io::OutputBuffer>(compressorData);
 
     // Construct args for training
-    TrainArgs trainArgs(args);
+    TrainArgs trainArgs(args, args.compressor());
     trainArgs.inputs =
             std::make_unique<tools::io::InputSetStatic>(std::move(inputVec));
-    trainArgs.output     = compressorOutput;
-    trainArgs.compressor = args.compressor;
+    trainArgs.output = compressorOutput;
     if (args.trainInlineTestLimit) {
         trainArgs.trainParams.maxTimeSecs = args.trainInlineTestLimit.value();
     }
@@ -79,8 +78,9 @@ int trainCompressorOnSampleFile(CompressArgs& args)
     }
 
     // Save the trained compressor
-    args.compressor = custom_parsers::createCompressorFromSerialized(
-            compressorOutput->to_input()->contents());
+    args.setCompressor(
+            custom_parsers::createCompressorFromSerialized(
+                    compressorOutput->to_input()->contents()));
 
     return result;
 }
@@ -131,7 +131,7 @@ int performCompression(const CompressArgs& args)
     // create compressor and context
     CCtx cctx;
     cctx.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
-    cctx.refCompressor(*args.compressor);
+    cctx.refCompressor(*args.compressor());
     if (args.traceOutput) {
         args.traceOutput->open();
         Logger::log(
