@@ -527,12 +527,23 @@ ZL_Report GM_overrideGraphParams(
                 i);
     }
 
-    ZL_ERR_IF_ERR(GM_transferCustomGIDs(
-            gm, gp->customGraphs, gp->nbCustomGraphs, &migd->customGraphs));
-    ZL_ERR_IF_ERR(GM_transferCustomNIDs(
-            gm, gp->customNodes, gp->nbCustomNodes, &migd->customNodes));
-    migd->localParams = *gp->localParams;
-    ZL_ERR_IF_ERR(GM_transferLocalParameters(gm, &migd->localParams));
+    if (gp->nbCustomGraphs > 0) {
+        ZL_ERR_IF_ERR(GM_transferCustomGIDs(
+                gm, gp->customGraphs, gp->nbCustomGraphs, &migd->customGraphs));
+        migd->nbCustomGraphs = gp->nbCustomGraphs;
+    }
+    if (gp->nbCustomNodes > 0) {
+        ZL_ERR_IF_ERR(GM_transferCustomNIDs(
+                gm, gp->customNodes, gp->nbCustomNodes, &migd->customNodes));
+        migd->nbCustomNodes = gp->nbCustomNodes;
+    }
+    if (gp->localParams) {
+        migd->localParams = *gp->localParams;
+        ZL_ERR_IF_ERR(GM_transferLocalParameters(gm, &migd->localParams));
+    }
+    if (gp->name) {
+        ZL_ERR(parameter_invalid, "Cannot replace the name of a graph");
+    }
     return ZL_returnSuccess();
 }
 
