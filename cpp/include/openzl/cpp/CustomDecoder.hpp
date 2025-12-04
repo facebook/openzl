@@ -20,6 +20,9 @@ class DecoderState {
             poly::span<const ZL_Input*> singletonInputs,
             poly::span<const ZL_Input*> variableInputs);
 
+    DecoderState(const DecoderState&)            = delete;
+    DecoderState& operator=(const DecoderState&) = delete;
+
     poly::span<const InputRef> singletonInputs() const
     {
         return singletonInputs_;
