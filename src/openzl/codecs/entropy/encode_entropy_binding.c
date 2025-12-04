@@ -2,8 +2,6 @@
 
 #include "openzl/codecs/entropy/encode_entropy_binding.h"
 
-#include <limits.h>
-
 #define FSE_STATIC_LINKING_ONLY
 #define HUF_STATIC_LINKING_ONLY
 

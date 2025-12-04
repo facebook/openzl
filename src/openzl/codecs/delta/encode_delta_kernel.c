@@ -5,7 +5,6 @@
 
 #include <assert.h>
 #include <stdbool.h>
-#include <stddef.h> // size_t
 #include <stdint.h> // uint32_t, uint64_t
 #include <string.h>
 

@@ -4,7 +4,6 @@
 
 #include <errno.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "custom_parsers/csv/csv_lexer.h"
 #include "openzl/codecs/zl_clustering.h"

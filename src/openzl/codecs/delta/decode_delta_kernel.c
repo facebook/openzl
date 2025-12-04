@@ -4,7 +4,6 @@
 #include "decode_delta_kernel.h"
 
 #include <assert.h>
-#include <stddef.h> // size_t
 #include <stdint.h> // uint32_t
 
 #include "openzl/shared/mem.h"
