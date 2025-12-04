@@ -10,8 +10,11 @@
 extern "C" {
 #endif
 
-// The parameter for the lexed result to be used
-#define ZL_CSV_CHUNKED_LEXED_RESULT_ID 101
+#define ZL_CSV_CHUNKED_HAS_HEADER_ID 101
+#define ZL_CSV_CHUNKED_NUM_COLS_ID 102
+#define ZL_CSV_CHUNKED_TYPES_ID 103
+#define ZL_CSV_CHUNKED_SIZES_ID 104
+#define ZL_CSV_CHUNKED_COLS_ID 105
 
 /**
  * @brief Registers the csv parser graph. This graph takes a serialized input
