@@ -48,6 +48,11 @@ std::optional<const Flag*> findFlagByShort(
 
 } // namespace
 
+ArgParser::ArgParser()
+{
+    cmdFlags_[CMD_UNSPECIFIED] = {};
+}
+
 void ArgParser::addGlobalFlag(
         const std::string& name,
         char shortName,
@@ -336,8 +341,9 @@ ParsedArgs ArgParser::parse(int argc, char** argv) const
             bool isSubcommand = false;
             for (const auto& command : commands_) {
                 if (command.name == argv[i]
-                    || (argv[i][1] == 0 && command.shortName != 0
-                        && command.shortName == argv[i][0])) {
+                    || (command.shortName != 0
+                        && command.shortName == argv[i][0]
+                        && argv[i][1] == 0)) {
                     if (parsedArgs.chosenCmd_ != CMD_UNSPECIFIED) {
                         std::string err =
                                 "Trying to choose another subcommand '"
