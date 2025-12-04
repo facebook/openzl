@@ -43,11 +43,42 @@ class ArgParser {
             char shortName,
             bool hasVal,
             const std::string& help);
-    // order matters
+    /**
+     * @brief Add a positional argument to a command with a specified number of
+     * arguments.
+     *
+     * Positional arguments are added in order. Once a variadic positional
+     * argument (ZeroOrOne, ZeroOrMore, or OneOrMore) is added, no more
+     * positional arguments can be added to that command.
+     *
+     * @param cmd The command ID to which the positional argument should be
+     * added.
+     * @param numArgs Specifies how many values this positional accepts.
+     * @param name The name of the positional argument (used for lookup and
+     * help).
+     * @param help The help text describing this positional argument.
+     *
+     * @note Order matters - positional arguments must be specified in the order
+     * they appear on the command line.
+     */
+    void addCommandPositional(
+            int cmd,
+            NumArgs numArgs,
+            const std::string& name,
+            const std::string& help);
+
+    /**
+     * @brief Add a positional argument to a command (single value).
+     *
+     * Convenience overload that assumes exactly one value (NumArgs::One).
+     */
     void addCommandPositional(
             int cmd,
             const std::string& name,
-            const std::string& help);
+            const std::string& help)
+    {
+        return addCommandPositional(cmd, NumArgs::One, name, help);
+    }
 
     // Populated based on added flags, commands, and positionals
     std::string help() const;
