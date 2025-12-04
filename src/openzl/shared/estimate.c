@@ -8,7 +8,6 @@
 #include <string.h>
 
 #include "openzl/common/assertion.h"
-#include "openzl/common/debug.h"
 #include "openzl/shared/bits.h"
 #include "openzl/shared/data_stats.h"
 #include "openzl/shared/hash.h"

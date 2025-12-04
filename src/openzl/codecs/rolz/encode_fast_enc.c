@@ -9,13 +9,10 @@
 #define FSE_STATIC_LINKING_ONLY
 
 #include "openzl/codecs/entropy/deprecated/common_entropy.h"
-#include "openzl/codecs/entropy/deprecated/encode_fse_kernel.h"
-#include "openzl/codecs/entropy/encode_huffman_kernel.h"
 #include "openzl/codecs/rolz/encode_encoder.h"
 #include "openzl/common/cursor.h"
 #include "openzl/common/limits.h"
 #include "openzl/common/vector.h"
-#include "openzl/fse/fse.h"
 #include "openzl/shared/mem.h"
 
 #define kTokenOFBits 2

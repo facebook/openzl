@@ -5,7 +5,6 @@
 
 #include "openzl/codecs/common/copy.h"
 #include "openzl/common/assertion.h"
-#include "openzl/shared/numeric_operations.h"
 #include "openzl/shared/overflow.h"
 #include "openzl/zl_errors.h"
 
