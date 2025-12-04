@@ -5,10 +5,10 @@
 default : zli
 
 # Common repository-wide definitions
-include build/make/zldefs.make
+include build-scripts/make/zldefs.make
 
 # Provides macros to generate targets
-include build/make/multiconf.make
+include build-scripts/make/multiconf.make
 
 # =====================================
 # ADAPTIVE mode: Per-Target Smart Defaults

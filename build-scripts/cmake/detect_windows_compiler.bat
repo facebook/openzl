@@ -120,7 +120,7 @@ if "!MINGW_AVAILABLE!" == "false" (
     echo.
 )
 
-echo For detailed build instructions, see build/cmake/WINDOWS_BUILD.md
+echo For detailed build instructions, see build-scripts/cmake/WINDOWS_BUILD.md
 echo.
 echo Happy building! ^🚀
 

@@ -156,13 +156,13 @@ Run our detection script to check available compilers and get recommendations:
 
 ```cmd
 # PowerShell
-./build/cmake/detect_windows_compiler.ps1
+./build-scripts/cmake/detect_windows_compiler.ps1
 
 # Command Prompt
-./build/cmake/detect_windows_compiler.bat
+./build-scripts/cmake/detect_windows_compiler.bat
 ```
 
-For detailed Windows build instructions, troubleshooting, and installation guides, see [build/cmake/WINDOWS_BUILD.md](build/cmake/WINDOWS_BUILD.md).
+For detailed Windows build instructions, troubleshooting, and installation guides, see [build-scripts/cmake/WINDOWS_BUILD.md](build-scripts/cmake/WINDOWS_BUILD.md).
 
 ## License
 
