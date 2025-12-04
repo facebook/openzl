@@ -39,13 +39,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ---- CMake Module Path ----
 set(CMAKE_MODULE_PATH
-    "${CMAKE_CURRENT_SOURCE_DIR}/build/cmake"
+    "${CMAKE_CURRENT_SOURCE_DIR}/build-scripts/cmake"
     # For in-fbsource release builds
     "${CMAKE_CURRENT_SOURCE_DIR}/../../opensource/fbcode_builder/CMake"
     # For in-fbsource dev builds
     "${CMAKE_CURRENT_SOURCE_DIR}/../../../opensource/fbcode_builder/CMake"
     # For shipit-transformed builds
-    "${CMAKE_CURRENT_SOURCE_DIR}/build/fbcode_builder/CMake"
+    "${CMAKE_CURRENT_SOURCE_DIR}/build-scripts/fbcode_builder/CMake"
     ${CMAKE_MODULE_PATH})
 
 # ---- Package Information ----
@@ -134,7 +134,7 @@ include(OpenZLFunctions)
 include(openzl-deps)
 include(OpenZLConfigChecks)
 configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/build/cmake/zl_config.h.cmake
+    ${CMAKE_CURRENT_SOURCE_DIR}/build-scripts/cmake/zl_config.h.cmake
     ${CMAKE_CURRENT_BINARY_DIR}/include/openzl/zl_config.h
 )
 set(CONFIG "${CMAKE_CURRENT_BINARY_DIR}/include/openzl/zl_config.h")
@@ -292,7 +292,7 @@ if (OPENZL_INSTALL)
     # files using "find_package(openzl CONFIG)"
     include(CMakePackageConfigHelpers)
     configure_package_config_file(
-        build/cmake/openzl-config.cmake.in
+        build-scripts/cmake/openzl-config.cmake.in
         openzl-config.cmake
         INSTALL_DESTINATION ${OPENZL_INSTALL_CMAKEDIR}
         PATH_VARS

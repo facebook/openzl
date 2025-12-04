@@ -113,23 +113,23 @@ cmake --build cmake-build --config Release
 
 ```powershell
 # PowerShell - Get compiler recommendations and installation instructions
-./build/cmake/detect_windows_compiler.ps1
+./build-scripts/cmake/detect_windows_compiler.ps1
 
 # Command Prompt - Get compiler recommendations and installation instructions
-./build/cmake/detect_windows_compiler.bat
+./build-scripts/cmake/detect_windows_compiler.bat
 ```
 
 #### Step 2: Run Complete Setup Helper
 
 ```powershell
 # PowerShell - Comprehensive setup: detect, recommend, and test
-./build/cmake/detect_windows_compiler.ps1
+./build-scripts/cmake/detect_windows_compiler.ps1
 
 # For CI/automation (non-interactive)
-./build/cmake/detect_windows_compiler.ps1 -CI
+./build-scripts/cmake/detect_windows_compiler.ps1 -CI
 
 # Only test configurations (skip detection phase)
-./build/cmake/detect_windows_compiler.ps1 -TestOnly
+./build-scripts/cmake/detect_windows_compiler.ps1 -TestOnly
 ```
 
 This script will:

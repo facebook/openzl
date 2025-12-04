@@ -52,6 +52,7 @@ sddl2_vm_test
 !/deps/json_examples.json
 
 # Build system temporary objects
+build/
 build-*/
 __pycache__/
 .cache/

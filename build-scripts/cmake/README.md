@@ -39,5 +39,5 @@ cmake --build build --config Release
 **Compiler detection:**
 
 ```bash
-./build/cmake/detect_windows_compiler.ps1
+./build-scripts/cmake/detect_windows_compiler.ps1
 ```

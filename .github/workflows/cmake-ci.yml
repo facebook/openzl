@@ -113,7 +113,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test CMake installation
-        run: ./build/cmake/tests/test-install.py
+        run: ./build-scripts/cmake/tests/test-install.py
 
   # Tarball build test (no git repository)
   cmake-tarball-test:

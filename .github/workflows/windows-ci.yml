@@ -40,9 +40,9 @@ jobs:
           echo "=== Testing Windows Compiler Detection Script ==="
           echo "This validates our Windows setup script works correctly in CI"
           echo "Testing help functionality..."
-          powershell -ExecutionPolicy Bypass -File build/cmake/detect_windows_compiler.ps1 -Help
+          powershell -ExecutionPolicy Bypass -File build-scripts/cmake/detect_windows_compiler.ps1 -Help
           echo "Testing detection functionality (without builds)..."
-          powershell -ExecutionPolicy Bypass -File build/cmake/detect_windows_compiler.ps1 -DetectOnly
+          powershell -ExecutionPolicy Bypass -File build-scripts/cmake/detect_windows_compiler.ps1 -DetectOnly
           echo "=== Script functionality tests completed successfully ==="
         shell: cmd
 
@@ -79,7 +79,7 @@ jobs:
         run: |
           echo "=== Running Windows Compiler Detection Script ==="
           echo "This will detect available compilers and verify clang-cl setup"
-          powershell -ExecutionPolicy Bypass -File build/cmake/detect_windows_compiler.ps1 -DetectOnly
+          powershell -ExecutionPolicy Bypass -File build-scripts/cmake/detect_windows_compiler.ps1 -DetectOnly
           echo "=== Manual verification ==="
           where clang-cl
           clang-cl --version
