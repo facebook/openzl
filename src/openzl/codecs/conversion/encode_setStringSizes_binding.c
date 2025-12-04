@@ -1,6 +1,5 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include <limits.h>
 #include <stdint.h>
 #include "openzl/codecs/conversion/encode_conversion_binding.h"
 #include "openzl/common/assertion.h"

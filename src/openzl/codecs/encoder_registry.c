@@ -31,10 +31,6 @@
 #include "openzl/codecs/zstd/encode_zstd_binding.h"
 #include "openzl/common/assertion.h"
 #include "openzl/compress/private_nodes.h"
-#include "openzl/compress/selectors/selector_compress.h"
-#include "openzl/compress/selectors/selector_constant.h"
-#include "openzl/compress/selectors/selector_genericLZ.h"
-#include "openzl/compress/selectors/selector_store.h"
 #include "openzl/shared/utils.h"
 #include "openzl/zl_version.h"
 

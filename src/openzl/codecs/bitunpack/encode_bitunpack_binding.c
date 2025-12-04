@@ -5,8 +5,6 @@
 #include "openzl/codecs/bitpack/common_bitpack_kernel.h"
 #include "openzl/common/assertion.h"
 #include "openzl/common/errors_internal.h"
-#include "openzl/shared/bits.h"
-#include "openzl/shared/utils.h"
 #include "openzl/zl_ctransform.h"
 #include "openzl/zl_data.h"
 #include "openzl/zl_errors.h"

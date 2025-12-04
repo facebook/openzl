@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include "openzl/common/assertion.h"
 #include "openzl/common/logging.h"            // ZL_DLOG
-#include "openzl/common/stream.h"             // STREAM_*
 #include "openzl/compress/enc_interface.h"    // ENC_refTypedStream
 #include "openzl/shared/bits.h"               // ZL_isLittleEndian()
 #include "openzl/shared/mem.h"                // MEM_isAlignedForNumericWidth

@@ -6,10 +6,7 @@
 
 #include "openzl/codecs/entropy/common_huffman_kernel.h"
 #include "openzl/codecs/entropy/deprecated/common_entropy.h"
-#include "openzl/common/debug.h"
 #include "openzl/fse/bitstream.h"
-#include "openzl/fse/huf.h"
-#include "openzl/shared/mem.h"
 #include "openzl/shared/utils.h"
 #include "openzl/zl_errors.h"
 
