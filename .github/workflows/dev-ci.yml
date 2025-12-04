@@ -222,17 +222,16 @@ jobs:
         run: make test
 
   # # Code quality checks
-  # test-quality:
-  #   name: Code Quality (clang-format)
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: Run clang-format style check
-  #       uses: jidicula/clang-format-action@1ca6f2218b4d8a56817f3654c4a7f47d34117251 # v4.8.0
-  #       with:
-  #         clang-format-version: '18'
-  #         check-path: '.'
-  #         exclude-regex: '.*/fbcode_builder/.*'
+  test-quality:
+    name: Code Quality (clang-format)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run clang-format style check
+        uses: jidicula/clang-format-action@6cd220de46c89139a0365edae93eee8eb30ca8fe # v4.16.0
+        with:
+          clang-format-version: '21'
+          check-path: '.'
 
   # Static analysis
   test-static-analysis:
