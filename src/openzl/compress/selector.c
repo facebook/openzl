@@ -4,7 +4,6 @@
 #include "openzl/compress/cctx.h"     // CCTX_*
 #include "openzl/compress/graphmgr.h" // GM_*
 #include "openzl/compress/localparams.h"
-#include "openzl/zl_common_types.h" // ZL_TernaryParam_disable
 #include "openzl/zl_data.h"
 #include "openzl/zl_reflection.h" // ZL_Compressor_Graph_getInput0Mask
 #include "openzl/zl_selector.h"   // ZL_GraphReport, ZL_Selector_tryGraph def

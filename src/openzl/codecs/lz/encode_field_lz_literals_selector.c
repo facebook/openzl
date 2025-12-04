@@ -2,8 +2,6 @@
 
 #include "openzl/codecs/lz/encode_field_lz_literals_selector.h"
 
-#include <zstd.h>
-
 #include "openzl/codecs/constant/encode_constant_binding.h"
 #include "openzl/common/assertion.h"
 #include "openzl/shared/data_stats.h"

@@ -3,7 +3,6 @@
 #include "./a1cbor.h"
 
 #include <assert.h>
-#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 

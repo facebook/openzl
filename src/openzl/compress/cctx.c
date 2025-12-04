@@ -36,8 +36,6 @@
 #include "openzl/zl_opaque_types.h"
 #include "openzl/zl_reflection.h"
 
-#include "openzl/common/logging.h" // ZL_LOG
-
 // --------------------------
 // Transform's private header
 // --------------------------

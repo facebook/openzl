@@ -1,9 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "graphmgr.h"
-#include "openzl/common/assertion.h"
 #include "openzl/common/errors_internal.h"
-#include "openzl/compress/cgraph.h"
 #include "openzl/zl_errors.h"
 #include "openzl/zl_graph_api.h"
 
