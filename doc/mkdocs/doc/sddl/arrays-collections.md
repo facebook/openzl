@@ -574,10 +574,8 @@ Union Pixel(channels) = {
 
 header: ImageHeader where header.magic == "IMGF"
 
-var num_pixels = header.width * header.height
-
-# This format uses structure-of-arrays layout
-pixels: soa Pixel(header.channels)[num_pixels]
+# This format uses structure-of-2D-arrays layout
+pixels: soa Pixel(header.channels)[header.height][header.width]
 ```
 
 **Note:** The anonymous `Record() { ... }` syntax means the fields (`r`, `g`, `b`, `a`) become direct members of `Pixel`, not nested under a named field. When `channels == 3`, a `Pixel` has three direct fields: `r`, `g`, and `b`. This is essential for SOA to work— `soa Pixel[n]` creates three separate arrays (one for each color channel), not a single nested structure array.

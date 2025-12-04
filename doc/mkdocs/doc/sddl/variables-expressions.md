@@ -348,7 +348,7 @@ Mostly useful for validation purposes:
 
 ### Notes
 
-- All arithmetic is checked for overflow and division by zero (both cause format errors)
+- All arithmetic is checked for overflow and division by zero (both cause data errors)
 - Functions referencing parsed data (`parsed_length`, `current_position`, `scope_remaining`) require scanning
 - `sizeof` only works on instant-parse types, but the size may be determined at runtime based on parameters
 
