@@ -47,6 +47,7 @@ file(GLOB_RECURSE unittest_srcs CONFIGURE_DEPENDS
 file(GLOB_RECURSE unittest_headers CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_LIST_DIR}/unittest/*.h")
 add_zs_test(unittest ${unittest_srcs} ${unittest_headers})
+target_link_libraries(unittest PRIVATE utils args)
 # list(FILTER lib_srcs EXCLUDE REGEX ".*b44ExpLogTable\\.cpp$")
 
 file(GLOB_RECURSE test_compress_srcs CONFIGURE_DEPENDS
