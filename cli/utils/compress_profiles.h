@@ -34,23 +34,7 @@ class ProfileArgs {
                 "The chunk size in MB for the input to be separated into. This reduces the memory usage to a multiplicative factor of the chunk size instead of the whole input. Defaults to 20MB if segmenter exists for profile.");
     }
 
-    explicit ProfileArgs(const arg::ParsedArgs& parsed)
-    {
-        auto chunkSize = parsed.globalFlag(kChunkSize);
-        if (chunkSize.has_value()) {
-            chunkSize_ = std::stoull(chunkSize.value()) * 1000 * 1000;
-        } else {
-            chunkSize_ = poly::nullopt;
-        }
-        auto profileArg = parsed.globalFlag(kProfileArg);
-        if (profileArg) {
-            argmap_.emplace("TBD", profileArg.value());
-        }
-        auto profile = parsed.globalFlag(kProfile);
-        if (profile) {
-            name_ = std::move(profile);
-        }
-    }
+    explicit ProfileArgs(const arg::ParsedArgs& parsed);
 
     explicit ProfileArgs(const std::shared_ptr<Compressor>& compressor)
             : compressor_(compressor)

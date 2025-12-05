@@ -75,11 +75,11 @@ struct BenchmarkArgs : public GlobalArgs, public ProfileArgs {
         }
         auto levelArg = parsed.cmdFlag(cmd(), kLevel);
         if (levelArg) {
-            level = std::stoi(levelArg.value());
+            level = util::parseStrictInt(levelArg.value());
         }
         auto numItersArg = parsed.cmdFlag(cmd(), kNumIters);
         if (numItersArg) {
-            numIters = std::stoi(numItersArg.value());
+            numIters = util::parseStrictInt(numItersArg.value());
         }
         strict = parsed.cmdHasFlag(Cmd::BENCHMARK, kStrict);
     }

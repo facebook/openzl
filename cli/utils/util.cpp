@@ -58,4 +58,83 @@ std::unique_ptr<Compressor> createCompressorFromProfile(const ProfileArgs& args)
     return compressor;
 }
 
+int parseStrictInt(const std::string& str)
+{
+    if (str.empty()) {
+        throw InvalidArgsException("Empty string is not a valid integer");
+    }
+
+    size_t pos = 0;
+    int result;
+
+    try {
+        result = std::stoi(str, &pos);
+    } catch (const std::exception& e) {
+        throw InvalidArgsException(
+                "Invalid integer: '" + str + "' - " + e.what());
+    }
+
+    // Check if entire string was consumed
+    if (pos != str.length()) {
+        throw InvalidArgsException(
+                "Invalid integer: '" + str
+                + "' contains trailing characters starting at position "
+                + std::to_string(pos));
+    }
+
+    return result;
+}
+
+unsigned long parseStrictULong(const std::string& str)
+{
+    if (str.empty()) {
+        throw InvalidArgsException("Empty string is not a valid number");
+    }
+
+    size_t pos = 0;
+    unsigned long result;
+
+    try {
+        result = std::stoul(str, &pos);
+    } catch (const std::exception& e) {
+        throw InvalidArgsException(
+                "Invalid number: '" + str + "' - " + e.what());
+    }
+
+    if (pos != str.length()) {
+        throw InvalidArgsException(
+                "Invalid number: '" + str
+                + "' contains trailing characters starting at position "
+                + std::to_string(pos));
+    }
+
+    return result;
+}
+
+unsigned long long parseStrictULL(const std::string& str)
+{
+    if (str.empty()) {
+        throw InvalidArgsException("Empty string is not a valid number");
+    }
+
+    size_t pos = 0;
+    unsigned long long result;
+
+    try {
+        result = std::stoull(str, &pos);
+    } catch (const std::exception& e) {
+        throw InvalidArgsException(
+                "Invalid number: '" + str + "' - " + e.what());
+    }
+
+    if (pos != str.length()) {
+        throw InvalidArgsException(
+                "Invalid number: '" + str
+                + "' contains trailing characters starting at position "
+                + std::to_string(pos));
+    }
+
+    return result;
+}
+
 } // namespace openzl::cli::util

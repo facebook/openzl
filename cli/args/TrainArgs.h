@@ -153,24 +153,24 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
 
         auto threads = parsed.cmdFlag(cmd(), kThreads);
         if (threads) {
-            trainParams.threads = std::stoul(threads.value());
+            trainParams.threads = util::parseStrictULong(threads.value());
         }
         auto numSamples = parsed.cmdFlag(cmd(), kNumSamples);
         if (numSamples) {
-            trainParams.numSamples = std::stoul(numSamples.value());
+            trainParams.numSamples = util::parseStrictULong(numSamples.value());
         }
         auto maxTimeSecs = parsed.cmdFlag(cmd(), kMaxTimeSecs);
         if (maxTimeSecs) {
-            trainParams.maxTimeSecs = std::stoul(maxTimeSecs.value());
+            trainParams.maxTimeSecs = util::parseStrictULong(maxTimeSecs.value());
         }
         useAllSamples      = parsed.cmdHasFlag(cmd(), kUseAllSamples);
         auto maxFileSizeMb = parsed.cmdFlag(cmd(), kMaxFileSizeMb);
         if (maxFileSizeMb) {
-            trainParams.maxFileSizeMb = std::stoul(maxFileSizeMb.value());
+            trainParams.maxFileSizeMb = util::parseStrictULong(maxFileSizeMb.value());
         }
         auto maxTotalSizeMb = parsed.cmdFlag(cmd(), kMaxTotalSizeMb);
         if (maxTotalSizeMb) {
-            trainParams.maxTotalSizeMb = std::stoul(maxTotalSizeMb.value());
+            trainParams.maxTotalSizeMb = util::parseStrictULong(maxTotalSizeMb.value());
         }
 
         if (parsed.cmdHasFlag(cmd(), kParetoFrontier)) {

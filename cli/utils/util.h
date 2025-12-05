@@ -48,6 +48,32 @@ void setVerbosity(int level);
 std::string sizeString(size_t sz);
 
 /**
+ * Strict integer parsing that throws InvalidArgsException on invalid input.
+ * Unlike std::stoi, this rejects trailing characters.
+ *
+ * @param str The string to parse
+ * @return The parsed integer
+ * @throws InvalidArgsException if string contains non-numeric characters
+ */
+int parseStrictInt(const std::string& str);
+
+/**
+ * Strict unsigned long parsing.
+ * @throws InvalidArgsException if string contains non-numeric characters
+ *
+ * Note: parseStrictULL could technically handle all unsigned integer cases,
+ * but we provide type-specific functions to match the actual variable types
+ * in the codebase (reduces implicit conversions and makes intent clearer).
+ */
+unsigned long parseStrictULong(const std::string& str);
+
+/**
+ * Strict unsigned long long parsing.
+ * @throws InvalidArgsException if string contains non-numeric characters
+ */
+unsigned long long parseStrictULL(const std::string& str);
+
+/**
  * Creates a compressor based on the provided profile.
  *
  * @param profilePath The path to the compression profile to use

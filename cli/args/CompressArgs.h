@@ -80,7 +80,7 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
 
         trainInline = parsed.cmdHasFlag(cmd(), kTrainInline);
         if (parsed.cmdHasFlag(cmd(), kTrainInlineTestLimit)) {
-            trainInlineTestLimit = std::stoul(
+            trainInlineTestLimit = util::parseStrictULong(
                     parsed.cmdFlag(cmd(), kTrainInlineTestLimit).value());
         }
 
