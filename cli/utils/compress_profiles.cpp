@@ -21,23 +21,6 @@
 #include "tools/sddl/compiler/Compiler.h"
 
 namespace openzl::cli {
-ProfileArgs::ProfileArgs(const arg::ParsedArgs& parsed)
-{
-    auto chunkSize = parsed.globalFlag(kChunkSize);
-    if (chunkSize.has_value()) {
-        chunkSize_ = util::parseStrictULL(chunkSize.value()) * 1000 * 1000;
-    } else {
-        chunkSize_ = poly::nullopt;
-    }
-    auto profileArg = parsed.globalFlag(kProfileArg);
-    if (profileArg) {
-        argmap_.emplace("TBD", profileArg.value());
-    }
-    auto profile = parsed.globalFlag(kProfile);
-    if (profile) {
-        name_ = std::move(profile);
-    }
-}
 namespace {
 ZL_GraphID saoProfile(Compressor& compressor)
 {

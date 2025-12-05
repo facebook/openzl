@@ -23,8 +23,9 @@ TEST(StrictParsingTest, ParseStrictInt_RejectsTrailingCharacters)
 
 TEST(StrictParsingTest, ParseStrictInt_RejectsInvalidInputs)
 {
-    EXPECT_THROW(util::parseStrictInt(""), InvalidArgsException);      // empty
-    EXPECT_THROW(util::parseStrictInt("abc"), InvalidArgsException);   // no digits
+    EXPECT_THROW(util::parseStrictInt(""), InvalidArgsException); // empty
+    EXPECT_THROW(
+            util::parseStrictInt("abc"), InvalidArgsException); // no digits
 }
 
 // Tests for parseStrictULong
@@ -44,7 +45,8 @@ TEST(StrictParsingTest, ParseStrictULong_RejectsTrailingCharacters)
 TEST(StrictParsingTest, ParseStrictULong_RejectsInvalidInputs)
 {
     EXPECT_THROW(util::parseStrictULong(""), InvalidArgsException);
-    // Note: std::stoul accepts negative numbers (wraps to large positive), so we don't reject them
+    // Note: std::stoul accepts negative numbers (wraps to large positive), so
+    // we don't reject them
 }
 
 // Tests for parseStrictULL
@@ -58,13 +60,16 @@ TEST(StrictParsingTest, ParseStrictULL_AcceptsValidInputs)
 TEST(StrictParsingTest, ParseStrictULL_RejectsTrailingCharacters)
 {
     EXPECT_THROW(util::parseStrictULL("1000abc"), InvalidArgsException);
-    EXPECT_THROW(util::parseStrictULL("2000MB"), InvalidArgsException);  // common mistake
+    EXPECT_THROW(
+            util::parseStrictULL("2000MB"),
+            InvalidArgsException); // common mistake
 }
 
 TEST(StrictParsingTest, ParseStrictULL_RejectsInvalidInputs)
 {
     EXPECT_THROW(util::parseStrictULL(""), InvalidArgsException);
-    // Note: std::stoull accepts negative numbers (wraps to large positive), so we don't reject them
+    // Note: std::stoull accepts negative numbers (wraps to large positive), so
+    // we don't reject them
 }
 
 TEST(StrictParsingTest, Issue225_RegressionTest)

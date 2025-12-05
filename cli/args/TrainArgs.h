@@ -161,16 +161,19 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
         }
         auto maxTimeSecs = parsed.cmdFlag(cmd(), kMaxTimeSecs);
         if (maxTimeSecs) {
-            trainParams.maxTimeSecs = util::parseStrictULong(maxTimeSecs.value());
+            trainParams.maxTimeSecs =
+                    util::parseStrictULong(maxTimeSecs.value());
         }
         useAllSamples      = parsed.cmdHasFlag(cmd(), kUseAllSamples);
         auto maxFileSizeMb = parsed.cmdFlag(cmd(), kMaxFileSizeMb);
         if (maxFileSizeMb) {
-            trainParams.maxFileSizeMb = util::parseStrictULong(maxFileSizeMb.value());
+            trainParams.maxFileSizeMb =
+                    util::parseStrictULong(maxFileSizeMb.value());
         }
         auto maxTotalSizeMb = parsed.cmdFlag(cmd(), kMaxTotalSizeMb);
         if (maxTotalSizeMb) {
-            trainParams.maxTotalSizeMb = util::parseStrictULong(maxTotalSizeMb.value());
+            trainParams.maxTotalSizeMb =
+                    util::parseStrictULong(maxTotalSizeMb.value());
         }
 
         if (parsed.cmdHasFlag(cmd(), kParetoFrontier)) {
