@@ -22,7 +22,7 @@ namespace visualizer {
 
 class CompressionTraceHooks; // forward declaration
 
-}; // namespace visualizer
+} // namespace visualizer
 
 class CCtx {
    public:

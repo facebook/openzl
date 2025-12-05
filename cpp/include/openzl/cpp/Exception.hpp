@@ -105,7 +105,7 @@ class ExceptionBuilder {
         // ExceptionBuilder should only be called with one call to one of
         // withResult() or withErrorCode().
         assert(!error_);
-        error_ = (ZL_Error){ ._code = code };
+        error_ = (ZL_Error){ ._code = code, ._info = {} };
         return std::move(*this);
     }
 

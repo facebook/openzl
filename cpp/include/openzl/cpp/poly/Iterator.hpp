@@ -45,6 +45,7 @@ std::size_t size(const C& c)
 template <class T, std::size_t N>
 constexpr std::size_t size(T (&array)[N]) noexcept
 {
+    (void)array;
     return N;
 }
 
