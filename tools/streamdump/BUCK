@@ -9,9 +9,6 @@ zs_library(
     headers = [
         "stream_dump2.h",
     ],
-    exported_deps = [
-        "../..:zstronglib",
-    ],
 )
 
 zs_binary(
@@ -35,10 +32,10 @@ zs_release_binary(
         "stream_dump2.c",
     ],
     deps = [
-        "..:fileio",
         ":stream_dump2_headers",
         "//common/managed_compression/zstrong:stream_dump_shim",
         "//openzl:openzl",
+        "//openzl:openzl_test_utils",
     ],
 )
 
@@ -48,8 +45,9 @@ zs_release_binary(
         "stream_dump2.c",
     ],
     deps = [
-        "..:fileio",
         ":stream_dump2_headers",
         "//data_compression/experimental/zstrong_compressors/xldb/bin:xldb_compressor_stream_dump_shim",
+        "//openzl:openzl",
+        "//openzl:openzl_test_utils",
     ],
 )
