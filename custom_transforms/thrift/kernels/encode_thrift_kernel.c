@@ -197,7 +197,7 @@ ZL_Report ZS2_ThriftKernel_deserializeMapI32ArrayFloat(
                 node_invalid_input, ZL_uintFits(ZL_RES_value(arraySize), 4));
         lengths[i] = (uint32_t)ZL_RES_value(arraySize);
 
-        ZL_RET_R_IF_GT(srcSize_tooSmall, 4 * lengths[i], (size_t)(iend - ip));
+        ZL_RET_R_IF_GT(srcSize_tooSmall, lengths[i], (size_t)(iend - ip) / 4);
 
         for (uint32_t pos = 0, end = lengths[i]; pos < end;) {
             if (values.ptr == values.end) {
@@ -456,7 +456,7 @@ ZL_Report ZS2_ThriftKernel_deserializeArrayFloat(
             ZS2_ThriftKernel_validateArrayHeader(&ip, iend, 0xD, arraySize));
 
     // Copy the floats
-    ZL_RET_R_IF_GT(srcSize_tooSmall, arraySize * 4, (size_t)(iend - ip));
+    ZL_RET_R_IF_GT(srcSize_tooSmall, arraySize, (size_t)(iend - ip) / 4);
     for (size_t i = 0; i < arraySize; ++i) {
         ZL_write32(values + i, ZL_readBE32(ip + 4 * i));
     }

@@ -356,7 +356,7 @@ ZL_Report ZS2_ThriftKernel_serializeArrayFloat(
     ZL_RET_R_IF_ERR(
             ZS2_ThriftKernel_serializeArrayHeader(&op, oend, 0xD, arraySize));
 
-    ZL_RET_R_IF_GT(internalBuffer_tooSmall, arraySize * 4, (size_t)(oend - op));
+    ZL_RET_R_IF_GT(internalBuffer_tooSmall, arraySize, (size_t)(oend - op) / 4);
     for (size_t i = 0; i < arraySize; ++i) {
         ZL_writeBE32(op + 4 * i, values[i]);
     }
