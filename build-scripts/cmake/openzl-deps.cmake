@@ -66,11 +66,18 @@ if(NOT ZSTD_AVAILABLE)
     file(REMOVE_RECURSE "${CMAKE_CURRENT_SOURCE_DIR}/deps/zstd")
     file(REMOVE_RECURSE "${CMAKE_CURRENT_SOURCE_DIR}/deps/${ZSTD_DIRNAME}")
 
+    # DOWNLOAD_EXTRACT_TIMESTAMP was added in CMake 3.24
+    if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.24")
+        set(ZSTD_FETCH_TIMESTAMP_OPT DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+    else()
+        set(ZSTD_FETCH_TIMESTAMP_OPT)
+    endif()
+
     message(STATUS "Using hash verification for tarball download")
     FetchContent_Declare(zstd_tarball
         URL https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/${ZSTD_DIRNAME}.tar.gz
         URL_HASH SHA256=${ZSTD_TARBALL_SHA256}
-        DOWNLOAD_EXTRACT_TIMESTAMP ON
+        ${ZSTD_FETCH_TIMESTAMP_OPT}
         SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/zstd"
     )
 
