@@ -4,15 +4,17 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 oncall("data_compression")
 
 cpp_library(
+    # @autodeps-skip
     name = "lz_compressors",
     srcs = ["LzCompressors.cpp"],
     headers = ["LzCompressors.hpp"],
     exported_deps = [
-        "//openzl/dev/cpp:openzl_cpp",
+        "../../cpp:openzl_cpp",
     ],
 )
 
 cpp_library(
+    # @autodeps-skip
     name = "compressor",
     srcs = ["Compressor.cpp"],
     headers = ["Compressor.hpp"],
@@ -20,38 +22,40 @@ cpp_library(
         ":lz_compressors",
     ],
     exported_deps = [
+        "../../cpp:openzl_cpp",
+        "../../tools:io",
+        "../../tools:json",
+        "../../tools/training:train",
         "fbsource//third-party/lz4:lz4",
         "fbsource//third-party/zstd:zstd",
-        "//openzl/dev/cpp:openzl_cpp",
-        "//openzl/dev/tools:io",
-        "//openzl/dev/tools:json",
-        "//openzl/dev/tools/training:train",
     ],
 )
 
 cpp_library(
+    # @autodeps-skip
     name = "benchmark",
     srcs = ["Benchmark.cpp"],
     headers = ["Benchmark.hpp"],
     exported_deps = [
+        "../../tools:io",
+        "../../tools:json",
+        "../../tools:logger",
         ":compressor",
-        "//openzl/dev/tools:io",
-        "//openzl/dev/tools:json",
-        "//openzl/dev/tools:logger",
     ],
 )
 
 cpp_binary(
+    # @autodeps-skip
     name = "lz",
     srcs = [
         "Main.cpp",
     ],
     deps = [
+        "../../cpp:openzl_cpp",
+        "../../tools:arg",
+        "../../tools:fileio",
+        "../../tools:logger",
         "fbsource//third-party/zstd:zstd",
         ":benchmark",
-        "//openzl/dev/cpp:openzl_cpp",
-        "//openzl/dev/tools:arg",
-        "//openzl/dev/tools:fileio",
-        "//openzl/dev/tools:logger",
     ],
 )
