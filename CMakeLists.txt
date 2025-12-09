@@ -24,6 +24,7 @@ option(OPENZL_ALLOW_INTROSPECTION "Allow introspection" ON)
 option(OPENZL_INSTALL "Install OpenZL" ON)
 option(OPENZL_CPP_INSTALL "Install C++ bindings" ${OPENZL_INSTALL})
 option(OPENZL_BUILD_PYTHON_DEMO "Build openzl_demo Python extension" ${OPENZL_BUILD_ALL})
+option(OPENZL_USE_SYSTEM_ZSTD "Use system-installed zstd library instead of bundled" OFF)
 
 # Fine-grained control of build directories that can be disabled.
 # NOTE: Disabling some but not all of these may break the build, use with caution.

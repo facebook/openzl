@@ -14,6 +14,11 @@
 
 include(CMakeFindDependencyMacro)
 
+# Ensure zstd is available when openzl was built with system zstd
+if (@OPENZL_USE_SYSTEM_ZSTD@)
+  find_dependency(zstd CONFIG REQUIRED)
+endif()
+
 set_and_check(OPENZL_INCLUDE_DIR "@PACKAGE_INCLUDE_INSTALL_DIR@")
 set_and_check(OPENZL_CMAKE_DIR "@PACKAGE_CMAKE_INSTALL_DIR@")
 

@@ -3,8 +3,10 @@
 if (OPENZL_BUILD_PARQUET_TOOLS)
   set(ARROW_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/arrow_ep")
 
-  # Point arrow to the zstd build directory
-  list(APPEND CMAKE_PREFIX_PATH "${zstd_BINARY_DIR}")
+  # Point arrow to the bundled zstd build directory
+  if(NOT OPENZL_USE_SYSTEM_ZSTD)
+    list(APPEND CMAKE_PREFIX_PATH "${zstd_BINARY_DIR}")
+  endif()
 
   set(ARROW_CMAKE_ARGS
       -DARROW_PARQUET=ON
