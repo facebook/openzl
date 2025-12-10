@@ -29,4 +29,20 @@ TEST_F(TestCodecs, bitpack)
             compressor_, Input::refNumeric(poly::span<const int>{ data }));
     EXPECT_LE(compressed.size(), bound);
 }
+
+TEST_F(TestCodecs, lz4)
+{
+    std::string data(10000, 'a');
+    auto graph = graphs::Lz4().parameterize(compressor_);
+    compressor_.selectStartingGraph(graph);
+    auto compressed = testRoundTrip(compressor_, Input::refSerial(data));
+}
+
+TEST_F(TestCodecs, lz4_hc)
+{
+    std::string data(10000, 'a');
+    auto graph = graphs::Lz4(9).parameterize(compressor_);
+    compressor_.selectStartingGraph(graph);
+    auto compressed = testRoundTrip(compressor_, Input::refSerial(data));
+}
 } // namespace openzl

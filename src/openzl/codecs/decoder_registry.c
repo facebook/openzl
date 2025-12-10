@@ -18,6 +18,7 @@
 #include "openzl/codecs/interleave/decode_interleave_binding.h"
 #include "openzl/codecs/lz/decode_lz_binding.h"
 #include "openzl/codecs/lz/graph_lz.h"
+#include "openzl/codecs/lz4/decode_lz4_binding.h"
 #include "openzl/codecs/merge_sorted/decode_merge_sorted_binding.h"
 #include "openzl/codecs/parse_int/decode_parse_int_binding.h"
 #include "openzl/codecs/parse_int/graph_parse_int.h"
@@ -124,6 +125,7 @@ const StandardDTransform SDecoders_array[ZL_StandardTransformID_end] = {
     REGISTER_TTRANSFORM(ZL_StandardTransformID_prefix, 11, PREFIX),
     REGISTER_TTRANSFORM_G(ZL_StandardTransformID_divide_by, 16, DI_DIVIDE_BY_INT, NUMPIPE_GRAPH),
     REGISTER_TTRANSFORM(ZL_StandardTransformID_parse_int, 19, PARSE_INT),
+    REGISTER_TTRANSFORM_G(ZL_StandardTransformID_lz4, 23, DI_LZ4, PIPE_GRAPH),
 
     REGISTER_VOTRANSFORM_G(ZL_StandardTransformID_splitn, 9, DI_SPLITN, GRAPH_VO_SERIAL),
     REGISTER_VOTRANSFORM_G(ZL_StandardTransformID_splitn_struct, 14, DI_SPLITN_STRUCT, GRAPH_VO_STRUCT),

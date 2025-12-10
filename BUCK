@@ -102,6 +102,7 @@ zs_library(
         "-DUSE_FOLLY",
     ],
     deps = [
+        "fbsource//third-party/lz4:lz4",
         "fbsource//third-party/zstd:zstd",
         ":common",
     ],
@@ -133,7 +134,10 @@ zs_library(
         "src/zstrong/transforms/decoder_registry.h",
     ])),
     header_namespace = "",
-    deps = ["fbsource//third-party/zstd:zstd"],
+    deps = [
+        "fbsource//third-party/lz4:lz4",
+        "fbsource//third-party/zstd:zstd",
+    ],
     exported_deps = [
         ":common",
         ":fse",

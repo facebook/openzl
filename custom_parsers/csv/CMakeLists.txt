@@ -17,7 +17,8 @@ target_include_directories(csv_parser PRIVATE
     ${PROJECT_SOURCE_DIR})
 target_link_libraries(csv_parser
     openzl
+    shared_components
 )
 
-add_dependencies(csv_parser openzl)
+add_dependencies(csv_parser openzl shared_components)
 apply_openzl_compile_options_to_target(csv_parser)

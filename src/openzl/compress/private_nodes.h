@@ -143,6 +143,8 @@ typedef enum {
     ZL_PrivateStandardNodeID_transpose_split4_deprecated,
     ZL_PrivateStandardNodeID_transpose_split8_deprecated,
 
+    ZL_PrivateStandardNodeID_lz4,
+
     ZL_PrivateStandardNodeID_end // last id, used to detect out-of-bound enum
                                  // values
 } ZL_PrivateStandardNodeID;

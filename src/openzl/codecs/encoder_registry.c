@@ -17,6 +17,7 @@
 #include "openzl/codecs/float_deconstruct/encode_float_deconstruct_binding.h"
 #include "openzl/codecs/interleave/encode_interleave_binding.h"
 #include "openzl/codecs/lz/encode_lz_binding.h"
+#include "openzl/codecs/lz4/encode_lz4_binding.h"
 #include "openzl/codecs/merge_sorted/encode_merge_sorted_binding.h"
 #include "openzl/codecs/parse_int/encode_parse_int_binding.h"
 #include "openzl/codecs/prefix/encode_prefix_binding.h"
@@ -124,6 +125,7 @@ const CNode ER_standardNodes[STANDARD_ENCODERS_NB] = {
     REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_tokenize_sorted, ZL_StandardTransformID_tokenize_numeric, 8, EI_TOKENIZE_SORTED),
     REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_tokenize_string_sorted, ZL_StandardTransformID_tokenize_string, 11, EI_TOKENIZE_VSF_SORTED),
     REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_dedup_num_trusted, ZL_StandardTransformID_dedup_num, 16, EI_DEDUP_NUM_TRUSTED),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_lz4, ZL_StandardTransformID_lz4, 23, EI_LZ4),
 
     // Deprecated Nodes
     REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_rolz_deprecated, ZL_StandardTransformID_rolz, 3, 12, EI_ROLZ),

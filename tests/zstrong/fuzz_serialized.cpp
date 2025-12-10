@@ -107,6 +107,13 @@ FUZZ_F(SerializedTest, FuzzZstdRoundTrip)
     testNodeOnInput(ZL_NODE_ZSTD, input);
 }
 
+FUZZ_F(SerializedTest, FuzzLZ4RoundTrip)
+{
+    datagen::DataGen dg = fromFDP(f);
+    std::string input   = dg.randString("input_data");
+    testGraphOnInput(ZL_GRAPH_LZ4, input);
+}
+
 FUZZ_F(SerializedTest, FuzzBitpackRoundTrip)
 {
     datagen::DataGen dg = fromFDP(f);
