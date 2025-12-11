@@ -21,6 +21,11 @@ FrameInfo::FrameInfo(poly::string_view compressed)
 {
 }
 
+size_t FrameInfo::formatVersion() const
+{
+    return unwrap(ZL_FrameInfo_getFormatVersion(get()));
+}
+
 size_t FrameInfo::numOutputs() const
 {
     return unwrap(ZL_FrameInfo_getNumOutputs(get()));
@@ -34,6 +39,13 @@ Type FrameInfo::outputType(size_t index) const
 size_t FrameInfo::outputContentSize(size_t index) const
 {
     return unwrap(ZL_FrameInfo_getDecompressedSize(get(), (int)index));
+}
+
+poly::string_view FrameInfo::comment() const
+{
+    const auto raw_comment = unwrap(ZL_FrameInfo_getComment(get()));
+    return poly::string_view{ static_cast<const char*>(raw_comment.data),
+                              raw_comment.size };
 }
 
 } // namespace openzl
