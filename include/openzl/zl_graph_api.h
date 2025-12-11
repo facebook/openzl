@@ -45,8 +45,6 @@ extern "C" {
  * Note: Function Graph is (currently) the only way to deal with multiple
  * Inputs.
  */
-typedef struct ZL_Graph_s ZL_Graph;
-typedef struct ZL_Edge_s ZL_Edge;
 typedef struct ZL_FunctionGraphDesc ZL_FunctionGraphDesc;
 /**
  * The function signature for function graphs.
@@ -157,8 +155,6 @@ const ZL_Input* ZL_Edge_getData(const ZL_Edge* sctx);
 
 /* Actions */
 /* ------- */
-
-typedef struct ZL_GraphParameters_s ZL_RuntimeGraphParameters;
 
 /* Scratch space allocation:
  * When the function graph function needs some temporary space for some
