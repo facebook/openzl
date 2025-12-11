@@ -14,7 +14,7 @@
 #include "custom_transforms/tulip_v2/tests/tulip_v2_data_utils.h"
 
 namespace {
-using namespace zstrong::tulip_v2::tests;
+using namespace openzl::tulip_v2::tests;
 namespace fs = std::filesystem;
 
 std::vector<std::string> generateFuzzCompressCorpus()

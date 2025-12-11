@@ -359,7 +359,7 @@ class GBTBinaryModelTest : public Test {
 
     GBTModel model;
 
-    std::unique_ptr<zstrong::tests::WrappedStream<int>> stream;
+    std::unique_ptr<openzl::tests::WrappedStream<int>> stream;
 
     void SetUp() override
     {
@@ -406,7 +406,7 @@ class GBTBinaryModelTest : public Test {
                   .nbFeatures       = featureLabels.size(),
                   .featureLabels    = featureLabels.data() };
 
-        stream = std::make_unique<zstrong::tests::WrappedStream<int>>(
+        stream = std::make_unique<openzl::tests::WrappedStream<int>>(
                 streamData, ZL_Type_numeric);
     }
 
@@ -479,7 +479,7 @@ class GBTMultiClassModelTest : public GBTMultiClassForestTest {
     std::unique_ptr<GBTPredictor> multiClassPredictor;
     GBTModel model;
 
-    std::unique_ptr<zstrong::tests::WrappedStream<int>> stream;
+    std::unique_ptr<openzl::tests::WrappedStream<int>> stream;
 
     void SetUp() override
     {
@@ -529,7 +529,7 @@ class GBTMultiClassModelTest : public GBTMultiClassForestTest {
                   .nbFeatures       = featureLabels.size(),
                   .featureLabels    = featureLabels.data() };
 
-        stream = std::make_unique<zstrong::tests::WrappedStream<int>>(
+        stream = std::make_unique<openzl::tests::WrappedStream<int>>(
                 streamData, ZL_Type_numeric);
     }
 

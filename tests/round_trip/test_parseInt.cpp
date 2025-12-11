@@ -89,7 +89,7 @@ static void testRoundTrip(
         ZL_GraphFn const graphFn)
 {
     auto const [input, fieldSizes] =
-            zstrong::tests::datagen::IntegerStringProducer::flatten(data);
+            openzl::tests::datagen::IntegerStringProducer::flatten(data);
     size_t uncompressedSize =
             input.size() + fieldSizes.size() * sizeof(uint32_t);
     size_t const compressedBound = ZL_compressBound(uncompressedSize);
@@ -127,7 +127,7 @@ static void testCompressFail(
         ZL_GraphFn const graphFn)
 {
     auto const [input, fieldSizes] =
-            zstrong::tests::datagen::IntegerStringProducer::flatten(data);
+            openzl::tests::datagen::IntegerStringProducer::flatten(data);
     size_t uncompressedSize =
             input.size() + fieldSizes.size() * sizeof(uint32_t);
     size_t const compressedBound = ZL_compressBound(uncompressedSize);
@@ -237,9 +237,9 @@ TEST(ParseIntTest, Basic)
 
 TEST(ParseIntTest, GeneratedRandom)
 {
-    auto rw = std::make_shared<zstrong::tests::datagen::PRNGWrapper>(
+    auto rw = std::make_shared<openzl::tests::datagen::PRNGWrapper>(
             std::make_shared<std::mt19937>());
-    auto gen = zstrong::tests::datagen::IntegerStringProducer(rw);
+    auto gen = openzl::tests::datagen::IntegerStringProducer(rw);
     for (size_t trials = 0; trials < 1000; ++trials) {
         auto data = gen("data");
         testRoundTrip(data, registerParseIntGraph);

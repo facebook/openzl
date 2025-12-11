@@ -6,7 +6,7 @@
 #include "tests/fuzz_utils.h"
 #include "tests/zstrong/test_serialized_fixture.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 namespace {
 ZL_NodeID selectNode(
@@ -311,4 +311,4 @@ FUZZ_F(SerializedTest, FuzzConstantRoundTrip)
 
 } // namespace
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

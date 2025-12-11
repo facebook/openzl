@@ -13,7 +13,11 @@
 using apache::thrift::BinarySerializer;
 using apache::thrift::CompactSerializer;
 
-namespace zstrong::thrift::tests {
+namespace openzl::thrift::tests {
+
+using namespace zstrong::thrift;
+namespace cpp2 = zstrong::thrift::tests::cpp2;
+
 namespace {
 
 template <typename Parser, typename Serializer>
@@ -325,4 +329,4 @@ TEST(SplitTest, CompactAgainstBinary)
     }
 }
 
-} // namespace zstrong::thrift::tests
+} // namespace openzl::thrift::tests

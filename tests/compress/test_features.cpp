@@ -47,7 +47,7 @@ void generateStreamAndVerifyIntegerFeatures(
         const std::map<std::string, double>& featureMap)
 {
     ASSERT_TRUE(std::is_arithmetic<T>::value);
-    zstrong::tests::WrappedStream<T> stream(streamData, ZL_Type_numeric);
+    openzl::tests::WrappedStream<T> stream(streamData, ZL_Type_numeric);
 
     verifyIntegerFeatures(stream.getStream(), featureMap);
 }

@@ -1,12 +1,14 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "custom_transforms/thrift/tests/test_prob_selector_fixture.h"
+
+#include "custom_transforms/thrift/constants.h" // @manual
 #include "custom_transforms/thrift/probabilistic_selector.h"
 
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_decompress.h"
 
-namespace zstrong::thrift::tests {
+namespace openzl::thrift::tests {
 
 ZL_Report ProbSelectorTest::compress(
         ZL_Compressor* const cgraph,
@@ -134,4 +136,4 @@ size_t ProbSelectorTest::compressWithGid(
     free(dstBuff);
     return ZL_validResult(result);
 }
-} // namespace zstrong::thrift::tests
+} // namespace openzl::thrift::tests

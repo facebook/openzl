@@ -13,7 +13,7 @@
 #include "openzl/zl_compress.h"
 
 using namespace testing;
-namespace zstrong::tests {
+namespace openzl::tests {
 
 #define EXPECT_SUCCESS(r)                                          \
     EXPECT_FALSE(ZL_isError(r)) << "Zstrong failed with message: " \
@@ -159,4 +159,4 @@ TEST_F(BruteForceSelectorTest, testString)
     ZL_TypedRef_free(data);
 }
 
-} // namespace zstrong::tests
+} // namespace openzl::tests

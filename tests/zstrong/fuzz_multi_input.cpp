@@ -8,7 +8,7 @@
 #include "tests/zstrong/test_multi_input_fixture.h"
 #include "tools/ml_selector/ml_selector_graph.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 namespace {
 
@@ -397,4 +397,4 @@ FUZZ_F(MLSelectorMultiInputTest, FuzzMLSelectorRoundTrip)
 
 } // namespace
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

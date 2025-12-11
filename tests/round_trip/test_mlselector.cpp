@@ -190,7 +190,7 @@ class MLSelectorTest : public ::testing::Test {
         // EXPECT_TRUE(ZL_GraphID_isValid(tokenizeGid_));
 
         deltaData = generateDeltaData();
-        auto dg   = zstrong::tests::datagen::DataGen();
+        auto dg   = openzl::tests::datagen::DataGen();
         // Generate data with repeated values
         tokenizeData = dg.template randLongVector<uint64_t>(
                 "randLongVec", 0, 500, 10000, 10000);

@@ -10,7 +10,7 @@
 
 using namespace ::testing;
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 namespace {
 
@@ -120,4 +120,4 @@ TEST(UniformDistributionTest, IntegralChiSquare)
     EXPECT_LT(csStat<uint32_t>(data, 0, 100), csCriticalValue);
 }
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

@@ -8,7 +8,7 @@
 #include "tests/datagen/distributions/UniformDistribution.h"
 #include "tests/datagen/structures/FixedWidthDataProducer.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 class FSENCountProducer : public FixedWidthDataProducer {
    public:
@@ -42,4 +42,4 @@ class FSENCountProducer : public FixedWidthDataProducer {
     UniformDistribution<unsigned> tableLog_;
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

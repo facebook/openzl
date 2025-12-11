@@ -9,7 +9,7 @@
 #include "tests/utils.h"
 #include "tests/zstrong/test_fixed_fixture.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 void FixedTest::setAlphabetMask(const std::string& mask)
 {
@@ -130,4 +130,4 @@ void FixedTest::testGraphOnInput(
     testRoundTrip(input);
 }
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

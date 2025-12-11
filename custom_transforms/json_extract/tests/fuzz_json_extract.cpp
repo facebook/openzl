@@ -13,20 +13,22 @@
 
 using namespace ::testing;
 
-namespace zstrong::tests {
+namespace openzl::tests {
+using namespace zstrong;
+
 namespace {
 std::string compressJson(std::string_view data)
 {
-    CGraph cgraph;
+    zstrong::CGraph cgraph;
     auto node = ZS2_Compressor_registerJsonExtract(cgraph.get(), 0);
     std::vector<ZL_GraphID> store(4, ZL_GRAPH_STORE);
     ZL_GraphID graph = ZL_Compressor_registerStaticGraph_fromNode(
             cgraph.get(), node, store.data(), store.size());
     cgraph.unwrap(ZL_Compressor_selectStartingGraphID(cgraph.get(), graph));
-    CCtx cctx;
+    zstrong::CCtx cctx;
     std::string compressed;
     compressed.resize(data.size() * 6 + 1024);
-    compress(cctx, &compressed, data, cgraph);
+    zstrong::compress(cctx, &compressed, data, cgraph);
     return compressed;
 }
 
@@ -34,9 +36,9 @@ std::string decompressJson(
         std::string_view compressed,
         std::optional<size_t> maxDstSize = std::nullopt)
 {
-    DCtx dctx;
+    zstrong::DCtx dctx;
     dctx.unwrap(ZS2_DCtx_registerJsonExtract(dctx.get(), 0));
-    return decompress(dctx, compressed, maxDstSize);
+    return zstrong::decompress(dctx, compressed, maxDstSize);
 }
 
 std::vector<std::string> const& compressExamples()
@@ -87,4 +89,4 @@ FUZZ(JsonExtractTest, FuzzDecompress)
     }
 }
 
-} // namespace zstrong::tests
+} // namespace openzl::tests

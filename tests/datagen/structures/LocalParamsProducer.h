@@ -9,7 +9,7 @@
 #include "tests/datagen/random_producer/RandWrapper.h"
 #include "tests/local_params_utils.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 class LocalParamsProducer : public DataProducer<LocalParams> {
    public:
@@ -66,4 +66,4 @@ class LocalParamsProducer : public DataProducer<LocalParams> {
     std::shared_ptr<RandWrapper> rw_;
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

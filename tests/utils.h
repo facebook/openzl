@@ -35,7 +35,7 @@
 #    define ZS_CHECK_REQUIRE_FIRES(expr) expr
 #endif
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 
 extern const std::string kEmptyTestInput;
@@ -104,4 +104,4 @@ ZL_GraphID addConversionToGraph(
 ZL_GraphID buildTrivialGraph(ZL_Compressor* cgraph, ZL_NodeID node);
 
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

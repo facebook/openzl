@@ -13,7 +13,7 @@
 #include "tests/utils.h"
 #include "tests/zstrong/test_serialized_fixture.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 TEST_F(SerializedTest, InterpretAsLEU64)
 {
@@ -531,4 +531,4 @@ TEST_F(SerializedTest, SplitOptimizationInMultiInputGraph)
 }
 
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

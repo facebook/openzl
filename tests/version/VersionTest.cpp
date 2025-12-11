@@ -14,7 +14,7 @@
 
 #include "custom_transforms/thrift/kernels/tests/thrift_kernel_test_utils.h"
 
-namespace zstrong {
+namespace openzl {
 namespace {
 uint32_t hash4(uint32_t x)
 {
@@ -556,4 +556,4 @@ TEST_P(ReleaseGraphTest, BackwardCompatibility)
 }
 
 } // namespace
-} // namespace zstrong
+} // namespace openzl

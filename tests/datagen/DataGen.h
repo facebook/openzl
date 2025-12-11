@@ -10,7 +10,7 @@
 #include "tests/datagen/structures/StringProducer.h"
 #include "tests/datagen/structures/VectorProducer.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 class DataGen {
    public:
@@ -195,4 +195,4 @@ class DataGen {
     std::shared_ptr<RandWrapper> rw_;
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

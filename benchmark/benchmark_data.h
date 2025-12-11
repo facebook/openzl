@@ -530,7 +530,7 @@ class CustomDistributionData : public BenchmarkData {
 class FixedWidthDataProducerData : public BenchmarkData {
    public:
     explicit FixedWidthDataProducerData(
-            zstrong::tests::datagen::FixedWidthDataProducer& producer)
+            openzl::tests::datagen::FixedWidthDataProducer& producer)
             : data_(producer("FixedWidthDataProducerData"))
     {
         std::ostringstream oss;
@@ -552,7 +552,7 @@ class FixedWidthDataProducerData : public BenchmarkData {
     }
 
    private:
-    zstrong::tests::datagen::FixedWidthData data_;
+    openzl::tests::datagen::FixedWidthData data_;
     std::string name_;
 };
 

@@ -10,7 +10,7 @@
 
 using namespace ::testing;
 using namespace facebook::security::lionhead::fdp;
-using zstrong::tests::datagen::LionheadFDPWrapper;
+using openzl::tests::datagen::LionheadFDPWrapper;
 
 namespace openzl::custom_parsers {
 

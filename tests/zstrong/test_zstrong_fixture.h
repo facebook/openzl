@@ -16,7 +16,7 @@
 #include "openzl/common/stream.h"
 #include "openzl/zl_data.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 
 struct ZS2_TypedRef_Deleter {
@@ -220,4 +220,4 @@ class ZStrongTest : public testing::Test {
 };
 
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

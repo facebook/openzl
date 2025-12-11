@@ -12,7 +12,7 @@
 
 using namespace ::testing;
 
-namespace zstrong::tests::parse {
+namespace openzl::tests::parse {
 
 namespace {
 void testRoundTrip(std::vector<std::string> const& data)
@@ -165,4 +165,4 @@ TEST(TestParse, Random)
 }
 
 } // namespace
-} // namespace zstrong::tests::parse
+} // namespace openzl::tests::parse

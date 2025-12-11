@@ -241,7 +241,7 @@ TEST_F(SimpleDataDescriptionLanguageTest, TrivialRoundtrip)
     const auto prog   = R"(
         : Byte[_rem]
     )";
-    const auto& input = zstrong::tests::kLoremTestInput;
+    const auto& input = openzl::tests::kLoremTestInput;
     roundtrip(prog, input);
 }
 

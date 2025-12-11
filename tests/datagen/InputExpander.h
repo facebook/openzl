@@ -6,7 +6,7 @@
 #include <random>
 #include <string>
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 class InputExpander {
    public:
@@ -27,4 +27,4 @@ class InputExpander {
     InputExpander() = default;
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

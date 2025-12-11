@@ -15,7 +15,7 @@
 #include "tests/utils.h"
 #include "tests/zstrong/test_zstrong_fixture.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 
 template <size_t seed>
@@ -403,4 +403,4 @@ TEST_F(SelectorTest, StreamTypeSerializedSuccess)
 }
 
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

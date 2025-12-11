@@ -12,7 +12,7 @@
 
 #include "tests/datagen/structures/FixedWidthDataProducer.h"
 
-namespace zstrong::tests::datagen::test_registry {
+namespace openzl::tests::datagen::test_registry {
 
 // NOTE: The IDs must remain stable!
 enum class TransformID : int {
@@ -59,4 +59,4 @@ struct CustomGraph {
 std::unordered_map<TransformID, CustomNode> const& getCustomNodes();
 
 std::unordered_map<TransformID, CustomGraph> const& getCustomGraphs();
-} // namespace zstrong::tests::datagen::test_registry
+} // namespace openzl::tests::datagen::test_registry

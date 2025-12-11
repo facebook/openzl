@@ -45,7 +45,7 @@ class JsonExtractCompressor : public ZstrongCompressor {
 void registerBenchmark(size_t size)
 {
     auto corpus = std::make_shared<ArbitrarySerializedData>(
-            tests::genJsonLikeData(size));
+            openzl::tests::genJsonLikeData(size));
     auto compressor = std::make_shared<JsonExtractCompressor>();
     E2EBenchmarkTestcase(compressor, corpus).registerBenchmarks();
 }

@@ -19,7 +19,7 @@
 
 using namespace ::testing;
 
-namespace zstrong::tests {
+namespace openzl::tests {
 
 namespace {
 
@@ -336,4 +336,4 @@ TEST(CompressIntrospectionTest, EncoderSpecific)
     ZL_CCtx_free(mcctx);
 }
 
-} // namespace zstrong::tests
+} // namespace openzl::tests

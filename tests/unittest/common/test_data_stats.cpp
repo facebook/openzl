@@ -14,7 +14,7 @@
 #define HUF_STATIC_LINKING_ONLY
 #include "openzl/fse/huf.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 namespace {
 
@@ -621,4 +621,4 @@ INSTANTIATE_TEST_SUITE_P(
 
 } // namespace
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

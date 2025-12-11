@@ -11,7 +11,7 @@
  * We want to make sure that exceeding these limits doesn't crash.
  */
 
-namespace zstrong::tests {
+namespace openzl::tests {
 
 class SurpassingLimitsTest : public ZStrongTest {
    public:
@@ -143,4 +143,4 @@ TEST_F(SurpassingLimitsTest, TestRuntimeStreamLimit)
         }
     }
 }
-} // namespace zstrong::tests
+} // namespace openzl::tests

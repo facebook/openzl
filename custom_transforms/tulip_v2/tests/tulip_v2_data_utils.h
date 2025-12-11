@@ -31,8 +31,9 @@
 #    include "openzl/dev/custom_transforms/tulip_v2/tests/gen-cpp2/tulip_v2_data_visitation.h"
 #endif
 
-namespace zstrong::tulip_v2::tests {
-using zstrong::thrift::tests::generate;
+namespace openzl::tulip_v2::tests {
+using openzl::thrift::tests::generate;
+using zstrong::tulip_v2::tests::TulipV2Data;
 
 inline std::string encodeTulipV2(TulipV2Data const& data)
 {
@@ -60,21 +61,21 @@ std::string generateTulipV2(size_t n, RNG&& gen)
     return out;
 }
 
-class TulipV2Producer : public zstrong::tests::datagen::FixedWidthDataProducer {
+class TulipV2Producer : public openzl::tests::datagen::FixedWidthDataProducer {
    public:
     explicit TulipV2Producer(
-            std::shared_ptr<zstrong::tests::datagen::RandWrapper> rw,
+            std::shared_ptr<openzl::tests::datagen::RandWrapper> rw,
             size_t maxSamples = 10)
             : FixedWidthDataProducer(rw, 1), dist_(rw, 5, maxSamples)
     {
     }
 
-    ::zstrong::tests::datagen::FixedWidthData operator()(
-            ::zstrong::tests::datagen::RandWrapper::NameType name) override
+    ::openzl::tests::datagen::FixedWidthData operator()(
+            ::openzl::tests::datagen::RandWrapper::NameType name) override
     {
         return { generateTulipV2(
                          dist_(name),
-                         zstrong::tests::datagen::RNGEngine<uint32_t>(
+                         openzl::tests::datagen::RNGEngine<uint32_t>(
                                  this->rw_.get(),
                                  "TulipV2Producer::RNGEngine::operator()")),
                  1 };
@@ -86,22 +87,23 @@ class TulipV2Producer : public zstrong::tests::datagen::FixedWidthDataProducer {
     }
 
    private:
-    ::zstrong::tests::datagen::VecLengthDistribution dist_;
+    ::openzl::tests::datagen::VecLengthDistribution dist_;
 };
 
 inline std::string compressTulipV2(
         std::string_view data,
-        TulipV2Successors const& successors,
+        zstrong::tulip_v2::TulipV2Successors const& successors,
         std::optional<size_t> minDstCapacity = std::nullopt)
 {
-    CGraph cgraph;
-    auto graph = createTulipV2Graph(cgraph.get(), successors, 0, 100);
+    zstrong::CGraph cgraph;
+    auto graph = zstrong::tulip_v2::createTulipV2Graph(
+            cgraph.get(), successors, 0, 100);
     cgraph.unwrap(ZL_Compressor_selectStartingGraphID(cgraph.get(), graph));
     size_t const compressBound = ZL_compressBound(data.size());
     std::string compressed;
     compressed.resize(
             std::max(compressBound, minDstCapacity.value_or(compressBound)));
-    CCtx cctx;
+    zstrong::CCtx cctx;
     cctx.unwrap(ZL_CCtx_refCompressor(cctx.get(), cgraph.get()));
     cctx.unwrap(ZL_CCtx_setParameter(
             cctx.get(), ZL_CParam_formatVersion, ZL_MAX_FORMAT_VERSION));
@@ -119,9 +121,10 @@ inline std::string decompressTulipV2(
         std::string_view data,
         std::optional<size_t> maxDstSize = std::nullopt)
 {
-    DCtx dctx;
-    dctx.unwrap(registerCustomTransforms(dctx.get(), 0, 100));
-    return decompress(dctx, data, maxDstSize);
+    zstrong::DCtx dctx;
+    dctx.unwrap(
+            zstrong::tulip_v2::registerCustomTransforms(dctx.get(), 0, 100));
+    return zstrong::decompress(dctx, data, maxDstSize);
 }
 
-} // namespace zstrong::tulip_v2::tests
+} // namespace openzl::tulip_v2::tests

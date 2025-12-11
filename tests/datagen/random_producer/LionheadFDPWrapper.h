@@ -9,7 +9,7 @@
 #include "tests/datagen/random_producer/RNGEngine.h"
 #include "tests/datagen/random_producer/RandWrapper.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 // A non-templated wrapper around StructuredFDP that provides a consistent
 // interface for downstream distributions to use.
@@ -123,4 +123,4 @@ class LionheadFDPWrapper : public RandWrapper {
     FDP* fdp_;
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

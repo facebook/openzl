@@ -91,7 +91,7 @@ static std::ostream& operator<<(
     return os;
 }
 
-namespace zstrong::tests {
+namespace openzl::tests {
 namespace {
 
 class GenericClusteringTest : public testing::Test {
@@ -409,4 +409,4 @@ TEST_F(GenericClusteringTest, TestEmptyConfig)
 }
 
 } // namespace
-} // namespace zstrong::tests
+} // namespace openzl::tests

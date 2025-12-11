@@ -18,7 +18,7 @@
 #include "openzl/zl_compress.h"
 #include "openzl/zl_reflection.h"
 
-namespace zstrong::tests {
+namespace openzl::tests {
 namespace {
 
 enum CsvSuccessorIdx : size_t {
@@ -876,7 +876,7 @@ ZL_Report TestCsv::run(const std::string& csvFile)
 }
 
 } // namespace
-} // namespace zstrong::tests
+} // namespace openzl::tests
 
 int main(int argc, char** argv)
 {
@@ -885,7 +885,7 @@ int main(int argc, char** argv)
         return 1;
     }
     std::string csvFile = argv[1];
-    auto report         = zstrong::tests::TestCsv().run(csvFile);
+    auto report         = openzl::tests::TestCsv().run(csvFile);
     if (ZL_isError(report)) {
         std::cerr << ZL_ErrorCode_toString(ZL_errorCode(report));
     }

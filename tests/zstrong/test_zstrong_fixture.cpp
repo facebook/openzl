@@ -15,7 +15,7 @@
 #include "openzl/zl_reflection.h"
 #include "openzl/zl_selector.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 
 ZStrongTest::~ZStrongTest()
@@ -496,4 +496,4 @@ void ZStrongTest::testRoundTripMIImpl(
 }
 
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

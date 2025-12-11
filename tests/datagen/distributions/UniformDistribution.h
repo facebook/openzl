@@ -4,7 +4,7 @@
 
 #include "tests/datagen/distributions/Distribution.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 template <typename RetType>
 class UniformDistribution : public Distribution<RetType> {
@@ -62,4 +62,4 @@ class UniformDistribution : public Distribution<RetType> {
     RetType max_;
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

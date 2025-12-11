@@ -16,7 +16,7 @@ extern "C" void FtestFuzzerSetup()
     LLVMFuzzerTestOneInput(&c, 1);
 }
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 namespace {
 
@@ -226,4 +226,4 @@ FUZZ(VersionTest, FuzzRandomGraphBackwardCompatible)
 
 } // namespace
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

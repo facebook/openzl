@@ -10,7 +10,7 @@
 #include "tests/datagen/distributions/UniformDistribution.h"
 #include "tests/datagen/structures/FixedWidthDataProducer.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 struct VectorOfTokensParameters {
     /// At every level of the tree, there will be branchingFactor children
@@ -110,4 +110,4 @@ class VectorOfTokensProducer : public FixedWidthDataProducer {
     uint32_t nextToken_ = 0;
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

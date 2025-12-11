@@ -18,7 +18,7 @@
 
 using namespace ::testing;
 
-namespace zstrong::tests {
+namespace openzl::tests {
 
 namespace {
 
@@ -74,4 +74,4 @@ TEST(NoIntrospectionTest, IFnoHooksTHENnoop)
     ZL_CCtx_free(cctx);
 }
 
-} // namespace zstrong::tests
+} // namespace openzl::tests

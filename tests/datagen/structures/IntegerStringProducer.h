@@ -10,7 +10,7 @@
 #include "tests/datagen/distributions/UniformDistribution.h"
 #include "tests/datagen/distributions/VecLengthDistribution.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 class IntegerStringProducer : public DataProducer<std::vector<std::string>> {
    public:
@@ -79,4 +79,4 @@ class IntegerStringProducer : public DataProducer<std::vector<std::string>> {
     std::shared_ptr<RandWrapper> rw_;
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

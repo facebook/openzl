@@ -20,7 +20,7 @@ class TestMLSelectorGraph : public testing::Test {
     void SetUp() override
     {
         deltaData_ = generateDeltaData();
-        auto dg    = zstrong::tests::datagen::DataGen();
+        auto dg    = openzl::tests::datagen::DataGen();
         randomData_ =
                 dg.template randVector<uint64_t>("randVec", 0, 10000, 10000);
 

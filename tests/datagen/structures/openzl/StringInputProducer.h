@@ -8,7 +8,7 @@
 #include "tests/datagen/DataProducer.h"
 #include "tests/datagen/structures/StringProducer.h"
 
-namespace zstrong::tests::datagen::openzl {
+namespace openzl::tests::datagen::openzl {
 
 // Generator for string openzl::Input. Since Input is non-owning, we return a
 // pair that can then be ref-ed by Input.
@@ -67,4 +67,4 @@ class StringInputProducer : public DataProducer<PreStringInput> {
     Strategy strategy_;
 };
 
-} // namespace zstrong::tests::datagen::openzl
+} // namespace openzl::tests::datagen::openzl
