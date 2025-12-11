@@ -1,7 +1,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 [build-system]
-requires = ["scikit-build-core >=0.11.5", "nanobind >=2.7.0"]
+requires = ["scikit-build-core >=0.11.5", "nanobind >=2.7.0, <2.10.0"]
 build-backend = "scikit_build_core.build"
 
 # TODO: Figure out how to get the version from zl_version.h
