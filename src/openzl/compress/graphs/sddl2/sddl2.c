@@ -120,12 +120,12 @@ ZL_GraphID ZL_Compressor_registerSDDL2Graph(
     };
 
     const ZL_LocalParams lp = {
-        .intParams  = {},
+        .intParams  = {0},
         .copyParams = {
             .copyParams   = &cp,
             .nbCopyParams = 1,
         },
-        .refParams = {},
+        .refParams = {0},
     };
 
     // Create parameterized graph descriptor with bytecode and destination
