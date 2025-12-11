@@ -2,13 +2,13 @@
 
 #include <algorithm>
 #include <array>
-#include <numeric>
 #include <random>
 #include <vector>
 
 #include <gtest/gtest.h>
 
 #include "openzl/compress/private_nodes.h" // ZS2_NODE_*
+#include "openzl/zl_errors.h"
 #include "openzl/zl_opaque_types.h"
 #include "tests/utils.h"
 #include "tests/zstrong/test_serialized_fixture.h"
@@ -71,6 +71,33 @@ TEST_F(SerializedTest, HuffmanNode)
 TEST_F(SerializedTest, HuffmanGraph)
 {
     testGraph(ZL_GRAPH_HUFFMAN);
+}
+
+TEST_F(SerializedTest, LZ4)
+{
+    // Test default level
+    testGraph(ZL_GRAPH_LZ4);
+
+    // Test with HC
+    reset();
+    auto res = ZL_Compressor_buildLZ4Graph(cgraph_, 9);
+    ASSERT_TRUE(!ZL_RES_isError(res));
+    finalizeGraph(ZL_RES_value(res), 1);
+    test();
+
+    // Test with default level
+    reset();
+    res = ZL_Compressor_buildLZ4Graph(cgraph_, 1);
+    ASSERT_TRUE(!ZL_RES_isError(res));
+    finalizeGraph(ZL_RES_value(res), 1);
+    test();
+
+    // Test with negative level
+    reset();
+    res = ZL_Compressor_buildLZ4Graph(cgraph_, -5);
+    ASSERT_TRUE(!ZL_RES_isError(res));
+    finalizeGraph(ZL_RES_value(res), 1);
+    test();
 }
 
 TEST_F(SerializedTest, Zstd)

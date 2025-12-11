@@ -35,6 +35,7 @@ CXXFLAGS += $(CXXDEBUGFLAGS) $(MOREFLAGS)
 LDFLAGS  += $(MOREFLAGS)
 LDLIBS   += -lm # note: to be removed from library once dependency fixed
 CPPFLAGS += -Ideps/zstd/lib/ # "zstd.h"
+CPPFLAGS += -Ideps/lz4/lib/  # "lz4.h"
 ARFLAGS  += -c # do not print warning message when creating the archive (expected)
 
 # Default build mode

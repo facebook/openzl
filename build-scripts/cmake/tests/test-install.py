@@ -35,13 +35,19 @@ run(
         "-lopenzl_cpp",
         "-lopenzl",
         "-lzstd",
+        "-llz4",
         "-o",
         f"{BUILD_DIR}/main",
     ],
     cwd=TEST_DIR,
     check=True,
 )
-run(["./main"], cwd=BUILD_DIR, check=True)
+import os
+
+env = os.environ.copy()
+lib_paths = [str(INSTALL_DIR / "lib"), str(INSTALL_DIR / "lib64")]
+env["LD_LIBRARY_PATH"] = ":".join(lib_paths)
+run(["./main"], cwd=BUILD_DIR, check=True, env=env)
 
 # Clean up build dir on success. On failure, keep it around so we can debug.
 shutil.rmtree(BUILD_DIR, ignore_errors=True)

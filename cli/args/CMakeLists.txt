@@ -20,11 +20,13 @@ target_link_libraries(args
     openzl_cpp
     custom_parsers
     tools_io
-    arg)
+    arg
+    utils)
 
 
 add_dependencies(args
     openzl_cpp
     custom_parsers
     tools_io
-    arg)
+    arg
+    utils)

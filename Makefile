@@ -39,13 +39,17 @@ endif
 # dependencies
 ifneq (,$(filter Windows%,$(OS)))
 LIBZSTD_SO := deps/zstd/lib/dll/libzstd.dll
+LIBLZ4_SO := deps/lz4/lib/dll/liblz4.dll
 else ifeq ($(shell uname), Darwin)
 LIBZSTD_SO := deps/zstd/lib/libzstd.dylib
+LIBLZ4_SO := deps/lz4/lib/liblz4.dylib
 else
 LIBZSTD_SO := deps/zstd/lib/libzstd.so
+LIBLZ4_SO := deps/lz4/lib/liblz4.so
 endif
 
 LIBZSTD_A := deps/zstd/lib/libzstd.a
+LIBLZ4_A := deps/lz4/lib/liblz4.a
 LIBGTEST_A := deps/googletest/lib/libgtest.a
 
 GTEST_HEADERS := deps/googletest/googletest/include/gtest/gtest.h
@@ -78,10 +82,10 @@ LIBASMSRCS := $(wildcard $(addsuffix /*.S, $(LIBDIRS)))
 LIBOBJS := $(patsubst %.c,%.o,$(LIBCSRCS)) $(patsubst %.S,%.o,$(LIBASMSRCS))
 
 libopenzl.a:
-$(eval $(call static_library,libopenzl.a,$(LIBOBJS),$(LIBZSTD_A)))
+$(eval $(call static_library,libopenzl.a,$(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 libopenzl.so: CFLAGS += -fPIC
-$(eval $(call c_dynamic_library,libopenzl.so,$(LIBOBJS),$(LIBZSTD_SO)))
+$(eval $(call c_dynamic_library,libopenzl.so,$(LIBOBJS),$(LIBZSTD_SO) $(LIBLZ4_SO)))
 
 .PHONY:lib
 lib: libopenzl.a libopenzl.so
@@ -139,7 +143,7 @@ $(eval $(call cxx_program,zli, \
 	$(SDDL2_COMPILER_CXXOBJS) \
 	$(ZLCPP_OBJS) \
 	$(LIBOBJS), \
-	$(LIBZSTD_A)))
+	$(LIBZSTD_A) $(LIBLZ4_A)))
 
 .PHONY: examples
 examples: zs2_pipeline zs2_trygraph zs2_selector zs2_struct zs2_round_trip
@@ -161,18 +165,18 @@ sddl2_test:
 # ********     Tools     ********
 
 UNITBENCH_COBJS := $(foreach DIR,$(UNITBENCH_DIRS),$(call c_objs,$(DIR)))
-$(eval $(call c_program_shared_o,unitBench,tools/time/timefn.o tools/fileio/fileio.o $(UNITBENCH_COBJS) $(LIBOBJS),$(LIBZSTD_A)))
+$(eval $(call c_program_shared_o,unitBench,tools/time/timefn.o tools/fileio/fileio.o $(UNITBENCH_COBJS) $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 stream_dump2:
 $(eval $(call c_program_shared_o,stream_dump2, \
-    $(STREAMDUMP_COBJS) tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A)))
+    $(STREAMDUMP_COBJS) tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 $(eval $(call cxx_program,sddl_compiler, \
 	$(SDDL_COMPILER_DIR)/main.o \
 	$(SDDL_COMPILER_CXXOBJS) \
 	$(ZLCPP_OBJS), \
 	libopenzl.a \
-	$(LIBZSTD_A)))
+	$(LIBZSTD_A) $(LIBLZ4_A)))
 
 # Selection of gtest units (by file name convention)
 CXX_FILE_OBJS := $(notdir $(CXX_OBJS))
@@ -223,30 +227,30 @@ ALL_GTESTS_OBJS := \
 	$(ZLCPP_OBJS) \
 	$(LIBOBJS)
 
-gtests: $(LIBGTEST_A) $(LIBZSTD_A)
+gtests: $(LIBGTEST_A) $(LIBZSTD_A) $(LIBLZ4_A)
 gtests: CPPFLAGS += -Ideps/googletest/googletest/include
 gtests: CXXFLAGS += -Wno-undef -Wno-sign-compare
 gtests: LDLIBS   += -lpthread
 $(eval $(call cxx_program,gtests, \
 	$(ALL_GTESTS_OBJS), \
-	$(LIBGTEST_A) $(LIBZSTD_A)))
+	$(LIBGTEST_A) $(LIBZSTD_A) $(LIBLZ4_A)))
 
 # ********     Examples     ********
 
 zs2_pipeline:
-$(eval $(call c_program_shared_o,zs2_pipeline,examples/zs2_pipeline.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A)))
+$(eval $(call c_program_shared_o,zs2_pipeline,examples/zs2_pipeline.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 zs2_struct:
-$(eval $(call c_program_shared_o,zs2_struct,examples/zs2_struct.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A)))
+$(eval $(call c_program_shared_o,zs2_struct,examples/zs2_struct.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 zs2_trygraph:
-$(eval $(call c_program_shared_o,zs2_trygraph,examples/zs2_trygraph.o $(LIBOBJS),$(LIBZSTD_A)))
+$(eval $(call c_program_shared_o,zs2_trygraph,examples/zs2_trygraph.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 zs2_selector:
-$(eval $(call c_program_shared_o,zs2_selector,examples/zs2_selector.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A)))
+$(eval $(call c_program_shared_o,zs2_selector,examples/zs2_selector.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 zs2_round_trip:
-$(eval $(call cxx_program_shared_o,zs2_round_trip,tests/round_trip.o tools/fileio/fileio.o $(SHARED_COMPONENTS_CXXOBJS) $(LIBOBJS),$(LIBZSTD_A)))
+$(eval $(call cxx_program_shared_o,zs2_round_trip,tests/round_trip.o tools/fileio/fileio.o $(SHARED_COMPONENTS_CXXOBJS) $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 
 # ********     Cleaning     ********
@@ -273,13 +277,15 @@ TAR ?= tar
 # Use this target as a work-around if dependencies are not correctly built
 # automatically.
 .PHONY : builddeps
-builddeps : $(LIBGTEST_A) $(LIBZSTD_A) $(LIBZSTD_SO)
+builddeps : $(LIBGTEST_A) $(LIBZSTD_A) $(LIBZSTD_SO) $(LIBLZ4_A) $(LIBLZ4_SO)
 
 .PHONY: cleandeps
 cleandeps:
 	$(RM) -r deps/googletest deps/googletest.tar.gz
 	-$(GIT) submodule deinit -f deps/zstd 2> /dev/null
 	$(RM) -r deps/zstd deps/$(ZSTD_DIRNAME) $(ZSTD_TARBALL)
+	-$(GIT) submodule deinit -f deps/lz4 2> /dev/null
+	$(RM) -r deps/lz4 deps/$(LZ4_DIRNAME) $(LZ4_TARBALL)
 
 # Variables are by default not exported, but when they're passed on the CLI,
 # they are exported. We do not want to pass super restrictive flags to our
@@ -325,6 +331,44 @@ $(LIBZSTD_SO) : $(ZSTD_MAKEFILE)
 $(LIBZSTD_A) : MAKEOVERRIDES=
 $(LIBZSTD_A) : $(ZSTD_MAKEFILE)
 	$(MAKE) -C $(ZSTD_LIBDIR) libzstd.a
+
+# LZ4
+LZ4_LIBDIR := deps/lz4/lib
+LZ4_HEADER := $(LZ4_LIBDIR)/lz4.h
+LZ4_MAKEFILE := $(LZ4_LIBDIR)/Makefile
+
+LZ4_VERSION ?= 1.10.0
+LZ4_DIRNAME := lz4-$(LZ4_VERSION)
+LZ4_TARBALL := deps/$(LZ4_DIRNAME).tar.gz
+
+$(LZ4_TARBALL):
+	$(MKDIR) -p deps
+	$(CURL) -L https://github.com/lz4/lz4/releases/download/v$(LZ4_VERSION)/$(LZ4_DIRNAME).tar.gz -o $@
+
+.PHONY: lz4-fallback
+lz4-fallback: $(LZ4_TARBALL)
+	$(RM) -r deps/$(LZ4_DIRNAME)
+	$(TAR) -xzf $(LZ4_TARBALL) -C deps
+	$(RM) -r deps/lz4
+	mv deps/$(LZ4_DIRNAME) deps/lz4
+
+$(LZ4_HEADER):
+	-$(GIT) submodule update --init --single-branch --depth 1 deps/lz4
+	if [ ! -f $@ ]; then \
+		echo "Falling back to tarball download and extraction for lz4"; \
+		$(MAKE) lz4-fallback; \
+	fi
+
+$(LZ4_MAKEFILE): $(LZ4_HEADER)
+	touch $@
+
+$(LIBLZ4_SO) : MAKEOVERRIDES=
+$(LIBLZ4_SO) : $(LZ4_MAKEFILE)
+	$(MAKE) -C $(LZ4_LIBDIR) liblz4
+
+$(LIBLZ4_A) : MAKEOVERRIDES=
+$(LIBLZ4_A) : $(LZ4_MAKEFILE)
+	$(MAKE) -C $(LZ4_LIBDIR) liblz4.a
 
 # Google Test
 

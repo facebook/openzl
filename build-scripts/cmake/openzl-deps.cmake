@@ -95,6 +95,86 @@ add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/deps/zstd/build/cmake" zstd_build)
 # Note: find_package not needed when using add_subdirectory - targets are directly available
 list(APPEND OPENZL_LINK_LIBRARIES libzstd)
 
+# Same two-tier lz4 dependency resolution with automated hash verification
+set(LZ4_VERSION "1.10.0")
+set(LZ4_DIRNAME "lz4-${LZ4_VERSION}")
+set(LZ4_TARBALL_SHA256 "537512904744b35e232912055ccf8ec66d768639ff3abe5788d90d792ec5f48b")
+set(LZ4_EXPECTED_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/deps/lz4/lib/lz4.h")
+set(LZ4_EXPECTED_CMAKE "${CMAKE_CURRENT_SOURCE_DIR}/deps/lz4/build/cmake/CMakeLists.txt")
+
+function(check_lz4_available RESULT_VAR)
+    if(EXISTS "${LZ4_EXPECTED_HEADER}" AND EXISTS "${LZ4_EXPECTED_CMAKE}")
+        set(${RESULT_VAR} TRUE PARENT_SCOPE)
+    else()
+        set(${RESULT_VAR} FALSE PARENT_SCOPE)
+    endif()
+endfunction()
+
+message(STATUS "Attempting lz4 dependency resolution...")
+check_lz4_available(LZ4_AVAILABLE)
+
+if (NOT LZ4_AVAILABLE)
+    message(STATUS "Tier 1: Trying git submodule...")
+    execute_process(
+        COMMAND git submodule update --init --single-branch --depth 1 deps/lz4
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        RESULT_VARIABLE GIT_SUBMOD_RESULT
+        OUTPUT_QUIET ERROR_QUIET
+    )
+
+    check_lz4_available(LZ4_AVAILABLE)
+endif()
+
+check_lz4_available(LZ4_AVAILABLE)
+if(NOT LZ4_AVAILABLE)
+    message(STATUS "Tier 1 failed. Tier 2: Trying FetchContent with verified tarball...")
+
+    include(FetchContent)
+
+    # Clean up any partial downloads first
+    file(REMOVE_RECURSE "${CMAKE_CURRENT_SOURCE_DIR}/deps/lz4")
+    file(REMOVE_RECURSE "${CMAKE_CURRENT_SOURCE_DIR}/deps/${LZ4_DIRNAME}")
+
+    message(STATUS "Using hash verification for tarball download")
+    FetchContent_Declare(lz4_tarball
+        URL https://github.com/lz4/lz4/releases/download/v${LZ4_VERSION}/${LZ4_DIRNAME}.tar.gz
+        URL_HASH SHA256=${LZ4_TARBALL_SHA256}
+        DOWNLOAD_EXTRACT_TIMESTAMP ON
+        SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/lz4"
+    )
+
+    FetchContent_MakeAvailable(lz4_tarball)
+endif()
+
+check_lz4_available(LZ4_AVAILABLE)
+if(NOT LZ4_AVAILABLE)
+    message(FATAL_ERROR "Failed to obtain lz4 dependency through all available methods (git submodule, FetchContent+tarball)")
+endif()
+message(STATUS "lz4 dependency resolved successfully")
+
+set(LZ4_BUILD_TESTS OFF CACHE BOOL "")
+set(LZ4_BUILD_CLI OFF CACHE BOOL "" FORCE)
+set(LZ4_BUNDLED_MODE OFF CACHE BOOL "" FORCE)
+
+# Save current BUILD_SHARED_LIBS and BUILD_STATIC_LIBS values
+set(_OPENZL_SAVED_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
+set(_OPENZL_SAVED_BUILD_STATIC_LIBS ${BUILD_STATIC_LIBS})
+
+# Force lz4 to build static library only to avoid polluting global BUILD_SHARED_LIBS
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)
+
+# Add lz4 subdirectory directly instead of using FetchContent
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/deps/lz4/build/cmake" lz4_build)
+
+# Restore BUILD_SHARED_LIBS and BUILD_STATIC_LIBS to their original values
+set(BUILD_SHARED_LIBS ${_OPENZL_SAVED_BUILD_SHARED_LIBS} CACHE BOOL "" FORCE)
+set(BUILD_STATIC_LIBS ${_OPENZL_SAVED_BUILD_STATIC_LIBS} CACHE BOOL "" FORCE)
+
+list(APPEND OPENZL_LINK_LIBRARIES lz4)
+list(APPEND OPENZL_INCLUDE_DIRECTORIES
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/deps/lz4/lib>")
+
 find_library(MATH_LIBRARY m)
 if(MATH_LIBRARY)
     list(APPEND OPENZL_LINK_LIBRARIES m)
