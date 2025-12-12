@@ -101,6 +101,20 @@ ZL_MLSelector_registerGraph(
 ZL_RESULT_OF(ZL_GraphID)
 ZL_MLSelector_registerBaseGraph(ZL_Compressor* compressor);
 
+/**
+ * @brief Registers graph with empty GBTModel for the ML selector. Compression
+ * will work on empty GBTModel and it will always select the first successor.
+ * NOTE: This is a temporary placeholder
+ * @param compressor The compressor to register the graph with
+ * @param successors The set of successors
+ * @param nbSuccessors The number of successors
+ */
+ZL_RESULT_OF(ZL_GraphID)
+MLSelector_registerGraphWithEmptyGBTModel(
+        ZL_Compressor* compressor,
+        const ZL_GraphID* successors,
+        size_t nbSuccessors);
+
 #if defined(__cplusplus)
 }
 #endif

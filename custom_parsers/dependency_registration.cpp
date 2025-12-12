@@ -6,6 +6,7 @@
 #include "custom_parsers/csv/csv_profile.h"
 #include "custom_parsers/dependency_registration.h"
 #include "custom_parsers/parquet/parquet_graph.h"
+#include "tools/ml_selector/ml_selector_graph.h"
 
 namespace openzl::custom_parsers {
 
@@ -30,6 +31,12 @@ void processDependencies(Compressor& compressor, poly::string_view serialized)
             if (csvResult == ZL_GRAPH_ILLEGAL) {
                 throw std::runtime_error("Failed to create CSV graph");
             }
+        }
+
+        if (graphName == "mlSelector") {
+            // ML Selector
+            compressor.unwrap(
+                    ZL_MLSelector_registerBaseGraph(compressor.get()));
         }
     }
 
