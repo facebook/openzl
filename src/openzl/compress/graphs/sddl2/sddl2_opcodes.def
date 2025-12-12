@@ -131,5 +131,5 @@
 @family CALL 0x000B "Function call operations"
 
 @family SEGMENT 0x000C "Segment creation operations"
-  segment.create_unspecified  0x0001  "Create an unspecified segment (tag=0, type=BYTES)"
-  segment.create_tagged       0x0002  "Create a tagged segment with explicit tag and type"
+  segment.create_unspecified  0x0001  "Pop I64 (size_bytes), create unspecified segment"
+  segment.create_tagged       0x0002  "Pop I64 (element_count), pop Type, pop Tag, create typed segment"
