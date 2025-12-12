@@ -23,7 +23,7 @@
 #include "tests/datagen/test_registry/CustomNodes.h"
 
 namespace {
-using namespace zstrong::tests::datagen::test_registry;
+using namespace openzl::tests::datagen::test_registry;
 
 struct CGraphDeleter {
     void operator()(ZL_Compressor* cgraph) const
@@ -64,7 +64,7 @@ ZL_NodeID vtiNodeIDToZStrongNodeID(ZL_Compressor* cgraph, int nodeID)
     }
 }
 
-std::vector<zstrong::tests::datagen::FixedWidthData> genCustomTestDataForNode(
+std::vector<openzl::tests::datagen::FixedWidthData> genCustomTestDataForNode(
         int nodeID)
 {
     if (nodeID >= 0) {
@@ -74,7 +74,7 @@ std::vector<zstrong::tests::datagen::FixedWidthData> genCustomTestDataForNode(
         if (it != getCustomNodes().end()) {
             if (it->second.dataProducer != nullptr) {
                 // generate 10 samples
-                std::vector<zstrong::tests::datagen::FixedWidthData> samples;
+                std::vector<openzl::tests::datagen::FixedWidthData> samples;
                 for (size_t i = 0; i < 10; ++i) {
                     samples.emplace_back((*it->second.dataProducer)(
                             "VTI:Node:FixedWidthData"));
@@ -116,7 +116,7 @@ ZL_GraphID vtiGraphIDToZStrongGraphID(ZL_Compressor* cgraph, int graphID)
     }
 }
 
-std::vector<zstrong::tests::datagen::FixedWidthData> genCustomTestDataForGraph(
+std::vector<openzl::tests::datagen::FixedWidthData> genCustomTestDataForGraph(
         int graphID)
 {
     if (graphID >= 0) {
@@ -126,7 +126,7 @@ std::vector<zstrong::tests::datagen::FixedWidthData> genCustomTestDataForGraph(
         if (it != getCustomGraphs().end()) {
             if (it->second.dataProducer != nullptr) {
                 // generate 10 samples
-                std::vector<zstrong::tests::datagen::FixedWidthData> samples;
+                std::vector<openzl::tests::datagen::FixedWidthData> samples;
                 for (size_t i = 0; i < 10; ++i) {
                     samples.emplace_back((*it->second.dataProducer)(
                             "VTI:Graph:FixedWidthData"));
@@ -144,7 +144,7 @@ std::vector<zstrong::tests::datagen::FixedWidthData> genCustomTestDataForGraph(
 
 extern "C" unsigned VersionTestInterface_getZStrongVersion(int versionType)
 {
-    using VT = zstrong::detail::VersionType;
+    using VT = openzl::detail::VersionType;
     switch (static_cast<VT>(versionType)) {
         case VT::MAJOR:
             return ZL_LIBRARY_VERSION_MAJOR;
@@ -433,7 +433,7 @@ static ZL_GraphID buildGraph(
         unsigned maxVersion = ZL_MAX_FORMAT_VERSION)
 {
     ++nodesInGraph;
-    if (nodesInGraph > zstrong::tests::kMaxNodesInGraph || entropy.size() < 2) {
+    if (nodesInGraph > openzl::tests::kMaxNodesInGraph || entropy.size() < 2) {
         return store(cgraph, inType);
     }
     unsigned const stopByte    = (unsigned)entropy[0];
@@ -612,7 +612,7 @@ static size_t fillCustomTestData(
         char** bufferPtr,
         size_t** eltWidthsPtr,
         size_t** sizesPtr,
-        const std::vector<zstrong::tests::datagen::FixedWidthData>& testData)
+        const std::vector<openzl::tests::datagen::FixedWidthData>& testData)
 {
     if (testData.empty()) {
         *bufferPtr    = nullptr;

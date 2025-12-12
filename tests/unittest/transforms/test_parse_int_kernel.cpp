@@ -53,9 +53,9 @@ TEST(ParseIntKernelTest, UnsafeVsFallbackFailure)
 
 TEST(ParseIntKernelTest, GeneratedRandom)
 {
-    auto rw = std::make_shared<zstrong::tests::datagen::PRNGWrapper>(
+    auto rw = std::make_shared<openzl::tests::datagen::PRNGWrapper>(
             std::make_shared<std::mt19937>());
-    auto gen = zstrong::tests::datagen::IntegerStringProducer(rw);
+    auto gen = openzl::tests::datagen::IntegerStringProducer(rw);
     for (size_t i = 0; i < 1000; i++) {
         for (auto& intStr : gen("intstring_vec")) {
             int64_t value;

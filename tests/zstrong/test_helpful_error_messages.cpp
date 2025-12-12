@@ -10,7 +10,7 @@
 
 using namespace ::testing;
 
-namespace zstrong::tests {
+namespace openzl::tests {
 namespace {
 /**
  * These test cases test common scenarios that the user may run into where we
@@ -150,4 +150,4 @@ TEST_F(HelpfulErrorMessagesTest, TestGetErrorContextOnWrongObject)
 }
 
 } // namespace
-} // namespace zstrong::tests
+} // namespace openzl::tests

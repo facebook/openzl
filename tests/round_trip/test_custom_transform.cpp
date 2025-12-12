@@ -14,7 +14,7 @@
 
 using namespace ::testing;
 
-namespace zstrong::tests {
+namespace openzl::tests {
 namespace {
 template <typename T, void (*FreeFn)(T*)>
 struct StaticFunctionDeleter {
@@ -424,4 +424,4 @@ TEST_F(TestCustomTransform, ZeroOutputTransform)
 }
 
 } // namespace
-} // namespace zstrong::tests
+} // namespace openzl::tests

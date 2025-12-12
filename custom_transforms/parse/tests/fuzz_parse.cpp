@@ -11,7 +11,7 @@
 
 using namespace ::testing;
 
-namespace zstrong::tests::parse {
+namespace openzl::tests::parse {
 namespace {
 template <Type kType>
 std::vector<std::string> const& fieldExamples()
@@ -102,4 +102,4 @@ FUZZ(ParseTest, FuzzFloat64Decompress)
     }
 }
 
-} // namespace zstrong::tests::parse
+} // namespace openzl::tests::parse

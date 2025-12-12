@@ -35,9 +35,9 @@ constexpr ZL_TypedDecoderDesc kTransform = {
 
 FUZZ(DecompressTest, ReuseDCtx)
 {
-    zstrong::tests::datagen::DataGen dg = zstrong::tests::fromFDP(f);
-    ZL_g_logLevel                       = ZL_LOG_LVL_ALWAYS;
-    ZL_DCtx* const dctx                 = ZL_DCtx_create();
+    openzl::tests::datagen::DataGen dg = openzl::tests::fromFDP(f);
+    ZL_g_logLevel                      = ZL_LOG_LVL_ALWAYS;
+    ZL_DCtx* const dctx                = ZL_DCtx_create();
     ZL_REQUIRE_NN(dctx);
     while (dg.has_more_data()) {
         std::string input      = dg.randString("input_data");

@@ -18,7 +18,7 @@
 
 #include <algorithm>
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 namespace {
 
@@ -311,4 +311,4 @@ FUZZ(AllocFailureTest, FuzzAllocFailure)
 }
 } // namespace
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

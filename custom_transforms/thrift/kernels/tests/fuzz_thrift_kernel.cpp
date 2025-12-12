@@ -16,8 +16,9 @@
 #include "tests/fuzz_utils.h"
 #include "tests/zstrong/test_zstrong_fixture.h"
 
-namespace zstrong::thrift::tests {
-using namespace zstrong::tests;
+namespace openzl::thrift::tests {
+using namespace openzl::tests;
+using ThriftKernelData = zstrong::thrift::tests::ThriftKernelData;
 
 enum class TransformIDs {
     MapI32Float,
@@ -212,4 +213,4 @@ FUZZ_F(ThriftKernelTest, FuzzDecompress)
     testDecompress(input);
 }
 
-} // namespace zstrong::thrift::tests
+} // namespace openzl::thrift::tests

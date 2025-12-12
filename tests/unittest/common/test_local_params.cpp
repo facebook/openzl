@@ -9,7 +9,7 @@
 
 using namespace ::testing;
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 
 namespace {
@@ -75,4 +75,4 @@ TEST_F(LocalParamsTest, ComparisonOfRandomParams)
 }
 
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

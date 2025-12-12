@@ -7,7 +7,7 @@
 
 #include "tests/datagen/random_producer/RandWrapper.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 class PRNGWrapper : public RandWrapper {
    public:
@@ -120,4 +120,4 @@ class PRNGWrapper : public RandWrapper {
     std::uniform_real_distribution<double> f64dist_;
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

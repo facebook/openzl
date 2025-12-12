@@ -7,7 +7,7 @@
 #include "tests/fuzz_utils.h"
 #include "tests/zstrong/test_fixed_fixture.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 
 FUZZ_F(FixedTest, FuzzInterpretTokenAsLEIntRoundTrip)
@@ -252,4 +252,4 @@ FUZZ_F(FixedTest, FuzzSplitNRoundTrip)
 }
 
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

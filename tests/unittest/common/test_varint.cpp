@@ -7,7 +7,7 @@
 
 #include "openzl/shared/varint.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 namespace {
 
@@ -174,4 +174,4 @@ TEST(VarintTest, VarintStrictDecodeEncode)
 
 } // namespace
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

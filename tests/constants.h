@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 #pragma once
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 
 // Maximum number of nodes to include in a graph when creating a random graph
@@ -15,4 +15,4 @@ static size_t constexpr kMaxNodesInGraph = 20;
 static size_t constexpr kMaxGraphDepth = 4;
 
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

@@ -9,7 +9,7 @@
 #include "openzl/codecs/entropy/deprecated/encode_fse_kernel.h"
 #include "tests/utils.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 namespace {
 
@@ -232,4 +232,4 @@ TEST(FSEContextTest, testUniformCompressibleRoundTrip)
 
 } // namespace
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

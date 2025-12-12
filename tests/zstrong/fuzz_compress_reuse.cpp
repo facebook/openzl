@@ -106,9 +106,9 @@ ZL_GraphID setCopyGraph(ZL_Compressor* cgraph)
 
 FUZZ(CompressTest, ReuseCCtx)
 {
-    zstrong::tests::datagen::DataGen dg = zstrong::tests::fromFDP(f);
-    ZL_g_logLevel                       = ZL_LOG_LVL_ALWAYS;
-    ZL_CCtx* const cctx                 = ZL_CCtx_create();
+    openzl::tests::datagen::DataGen dg = openzl::tests::fromFDP(f);
+    ZL_g_logLevel                      = ZL_LOG_LVL_ALWAYS;
+    ZL_CCtx* const cctx                = ZL_CCtx_create();
     ZL_REQUIRE_NN(cctx);
     ZL_Compressor* const cgraph1 = ZL_Compressor_create();
     ZL_REQUIRE_NN(cgraph1);

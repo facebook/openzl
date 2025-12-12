@@ -8,12 +8,12 @@
 
 namespace openzl::tests {
 
-using zstrong::tests::datagen::openzl::PreStringInput;
-using zstrong::tests::datagen::openzl::StringInputProducer;
+using openzl::tests::datagen::openzl::PreStringInput;
+using openzl::tests::datagen::openzl::StringInputProducer;
 
 FUZZ_F(InterleaveTest, FuzzInterleaveRoundTrip)
 {
-    zstrong::tests::datagen::DataGen dg = zstrong::tests::fromFDP(f);
+    openzl::tests::datagen::DataGen dg = openzl::tests::fromFDP(f);
     // At least one is required, library version 20 can only support 2048 inputs
     uint16_t nbInputs = dg.u16_range("nbInputs", 0, 2048);
     // Flip a coin to decide if we should test with equal-sized inputs or not.

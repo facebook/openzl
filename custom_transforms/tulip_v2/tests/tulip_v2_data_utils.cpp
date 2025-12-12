@@ -7,8 +7,8 @@
 
 #include "tools/cxx/Resources.h"
 
-namespace zstrong::tulip_v2::tests {
+namespace openzl::tulip_v2::tests {
 
 namespace {
 
-} // namespace zstrong::tulip_v2::tests
+} // namespace openzl::tulip_v2::tests

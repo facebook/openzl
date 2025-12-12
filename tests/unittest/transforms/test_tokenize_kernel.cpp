@@ -10,7 +10,7 @@
 #include "openzl/codecs/tokenize/encode_tokenize4to2_kernel.h"
 #include "openzl/codecs/tokenize/encode_tokenizeVarto4_kernel.h"
 
-namespace zstrong::tests {
+namespace openzl::tests {
 
 namespace {
 void roundtrip2to1(const std::vector<uint16_t>& input)
@@ -206,4 +206,4 @@ TEST(TokenizeKernelTest, RoundTripVarTo4)
             maxLength /* because content is all the same char */);
 }
 
-} // namespace zstrong::tests
+} // namespace openzl::tests

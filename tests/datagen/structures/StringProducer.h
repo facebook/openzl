@@ -5,7 +5,7 @@
 #include "tests/datagen/DataProducer.h"
 #include "tests/datagen/distributions/StringLengthDistribution.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 class StringProducer : public DataProducer<std::string> {
    public:
@@ -46,4 +46,4 @@ class StringProducer : public DataProducer<std::string> {
     StringLengthDistribution lengthDist_;
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

@@ -17,7 +17,7 @@
 #include "openzl/zl_public_nodes.h"
 #include "tools/zstrong_cpp.h"
 
-namespace zstrong::tests::parse {
+namespace openzl::tests::parse {
 inline ZL_SetStringLensInstructions setFieldSizes(
         ZL_SetStringLensState* state,
         ZL_Input const*)
@@ -54,7 +54,7 @@ inline std::pair<std::string, std::vector<uint32_t>> flatten(
 
 inline std::string compress(std::vector<std::string> const& data, Type type)
 {
-    CGraph cgraph;
+    zstrong::CGraph cgraph;
     auto node = type == Type::Int64
             ? ZS2_Compressor_registerParseInt64(cgraph.get(), 0)
             : ZS2_Compressor_registerParseFloat64(cgraph.get(), 1);
@@ -70,7 +70,7 @@ inline std::string compress(std::vector<std::string> const& data, Type type)
     auto const content       = flatten(data).first;
     auto const compressBound = data.size() * 5 + content.size() * 2 + 1000;
 
-    CCtx cctx;
+    zstrong::CCtx cctx;
     cctx.unwrap(ZL_CCtx_setParameter(
             cctx.get(), ZL_CParam_formatVersion, ZL_MAX_FORMAT_VERSION));
     cctx.unwrap(ZL_CCtx_refCompressor(cctx.get(), cgraph.get()));
@@ -91,13 +91,13 @@ inline std::string decompress(
         Type type,
         std::optional<size_t> maxDstSize = std::nullopt)
 {
-    DCtx dctx;
+    zstrong::DCtx dctx;
     if (type == Type::Int64) {
         dctx.unwrap(ZS2_DCtx_registerParseInt64(dctx.get(), 0));
     } else {
         dctx.unwrap(ZS2_DCtx_registerParseFloat64(dctx.get(), 1));
     }
-    return decompress(dctx, compressed, maxDstSize);
+    return zstrong::decompress(dctx, compressed, maxDstSize);
 }
 
 template <typename Gen>
@@ -143,4 +143,4 @@ inline std::vector<std::string> genData(size_t bytes, Type type)
     return genData(gen, bytes, type);
 }
 
-} // namespace zstrong::tests::parse
+} // namespace openzl::tests::parse

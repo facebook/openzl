@@ -7,7 +7,7 @@
 #include <folly/dynamic.h>
 #include <folly/json.h>
 
-namespace zstrong::tests {
+namespace openzl::tests {
 
 template <typename Gen>
 int64_t genInt(Gen& gen)
@@ -104,4 +104,4 @@ inline std::string genJsonLikeData(size_t bytes)
     return genJsonLikeData(gen, bytes);
 }
 
-} // namespace zstrong::tests
+} // namespace openzl::tests

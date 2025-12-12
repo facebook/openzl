@@ -11,7 +11,7 @@
 
 #include "tests/utils.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 namespace datagen {
 
@@ -1054,4 +1054,4 @@ RandomCompressorMultiBuilder::Compressor RandomCompressorMultiBuilder::make() &&
 
 } // namespace datagen
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

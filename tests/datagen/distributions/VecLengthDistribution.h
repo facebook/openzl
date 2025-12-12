@@ -4,7 +4,7 @@
 
 #include "tests/datagen/distributions/Distribution.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 /**
  * @brief Distribution for generating vector lengths, skewed towards shorter
@@ -66,4 +66,4 @@ class VecLengthDistribution : public Distribution<size_t> {
     const size_t max_;
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

@@ -6,7 +6,7 @@
 #include "tests/utils.h"
 #include "tests/zstrong/test_variable_fixture.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 
 // TODO: replace with the datagen StringInputProducer
@@ -101,4 +101,4 @@ void VariableTest::testGraphOnInput(
 }
 
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

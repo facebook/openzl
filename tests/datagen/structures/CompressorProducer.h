@@ -13,7 +13,7 @@
 #include "tests/datagen/random_producer/RandWrapper.h"
 #include "tests/datagen/structures/LocalParamsProducer.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 /**
  * This is a work in progress class. The motivation was originally to provide
@@ -316,4 +316,4 @@ class RandomCompressorMultiBuilder {
     ZL_IDType next_ctid_{ 1 };
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

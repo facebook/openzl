@@ -18,7 +18,7 @@ void createStreamAndVerifyPrediction(
      * Creates a ZL_Data and populates it with the data from streamData. Uses
      * GBTModel to make a prediction and verifies the prediction.
      */
-    zstrong::tests::WrappedStream<int> stream(streamData, ZL_Type_numeric);
+    openzl::tests::WrappedStream<int> stream(streamData, ZL_Type_numeric);
 
     ZL_RESULT_OF(Label)
     predicted = GBTModel_predict(&gbtModel, stream.getStream());

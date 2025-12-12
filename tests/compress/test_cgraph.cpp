@@ -17,8 +17,8 @@
 #include "tests/utils.h"
 
 using namespace ::testing;
-using namespace ::zstrong::tests;
-using namespace ::zstrong::tests::datagen;
+using namespace ::openzl::tests;
+using namespace ::openzl::tests::datagen;
 
 namespace {
 

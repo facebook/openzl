@@ -6,7 +6,7 @@
 
 using namespace ::testing;
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 TEST(InputExpanderTest, expandSerialWithMutation)
 {
@@ -21,4 +21,4 @@ TEST(InputExpanderTest, expandSerialWithMutation)
     }
 }
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

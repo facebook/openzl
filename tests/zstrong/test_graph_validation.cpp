@@ -10,7 +10,7 @@
 #include "openzl/zl_errors.h"
 #include "tests/zstrong/test_zstrong_fixture.h"
 
-namespace zstrong::tests {
+namespace openzl::tests {
 
 class GraphValidationTest : public ZStrongTest {
    public:
@@ -147,4 +147,4 @@ TEST_F(GraphValidationTest, ErrorContextIsProvided)
             << std::string(errorContext);
 }
 
-} // namespace zstrong::tests
+} // namespace openzl::tests

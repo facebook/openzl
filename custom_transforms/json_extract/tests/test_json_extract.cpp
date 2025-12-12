@@ -14,26 +14,26 @@
 
 using namespace ::testing;
 
-namespace zstrong::tests {
+namespace openzl::tests {
 
 namespace {
 std::string compressJson(std::string_view data)
 {
-    CGraph cgraph;
+    zstrong::CGraph cgraph;
     auto node = ZS2_Compressor_registerJsonExtract(cgraph.get(), 0);
     std::vector<ZL_GraphID> store(4, ZL_GRAPH_STORE);
     ZL_GraphID graph = ZL_Compressor_registerStaticGraph_fromNode(
             cgraph.get(), node, store.data(), store.size());
     cgraph.unwrap(ZL_Compressor_selectStartingGraphID(cgraph.get(), graph));
-    CCtx cctx;
-    return compress(cctx, data, cgraph);
+    zstrong::CCtx cctx;
+    return zstrong::compress(cctx, data, cgraph);
 }
 
 std::string decompressJson(std::string_view compressed)
 {
-    DCtx dctx;
+    zstrong::DCtx dctx;
     dctx.unwrap(ZS2_DCtx_registerJsonExtract(dctx.get(), 0));
-    return decompress(dctx, compressed);
+    return zstrong::decompress(dctx, compressed);
 }
 
 void testRoundTripJson(std::string_view data)
@@ -114,4 +114,4 @@ TEST(TestJsonExtract, JsonLikeData)
 }
 
 } // namespace
-} // namespace zstrong::tests
+} // namespace openzl::tests

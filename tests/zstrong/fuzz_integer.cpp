@@ -8,7 +8,7 @@
 
 #include "openzl/zl_compressor.h" // ZS2_Compressor_*, ZL_Compressor_registerStaticGraph_fromNode1o
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 namespace {
 
@@ -206,4 +206,4 @@ FUZZ_F(IntegerTest, FuzzIntegerDivideBy)
 }
 } // namespace
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

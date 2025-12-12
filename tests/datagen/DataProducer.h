@@ -6,7 +6,7 @@
 
 #include "tests/datagen/random_producer/RandWrapper.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 /**
  * Base class for all data-generating objects.
@@ -30,4 +30,4 @@ std::ostream& operator<<(std::ostream& os, const DataProducer<RetType>& dist)
     return os;
 }
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

@@ -14,7 +14,7 @@
 
 using namespace ::testing;
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 
 namespace {
@@ -340,4 +340,4 @@ TEST_F(CompressorSerializationTest, GetDepsWithCompressor)
 }
 
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

@@ -16,7 +16,7 @@
 #include "tests/utils.h"
 #include "tests/zstrong/test_zstrong_fixture.h"
 
-namespace zstrong::tests {
+namespace openzl::tests {
 namespace {
 class FormatVersionTest : public ZStrongTest {
    public:
@@ -150,4 +150,4 @@ TEST_F(FormatVersionTest, MaxFormatVersionWorksFailsCompression)
 }
 
 } // namespace
-} // namespace zstrong::tests
+} // namespace openzl::tests

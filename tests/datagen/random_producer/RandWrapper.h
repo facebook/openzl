@@ -7,7 +7,7 @@
 #include <type_traits>
 #include <vector>
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 class RandWrapper {
    public:
@@ -180,4 +180,4 @@ class RandWrapper {
     explicit RandWrapper(RandType type_) : type(type_) {}
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

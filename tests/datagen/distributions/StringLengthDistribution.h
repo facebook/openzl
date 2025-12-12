@@ -4,7 +4,7 @@
 
 #include "tests/datagen/distributions/VecLengthDistribution.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 constexpr size_t kDefaultMaxStringLength = 4096;
 
@@ -34,4 +34,4 @@ class StringLengthDistribution : public VecLengthDistribution {
     }
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

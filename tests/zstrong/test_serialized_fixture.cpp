@@ -10,7 +10,7 @@
 #include "tests/utils.h"
 #include "tests/zstrong/test_serialized_fixture.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 
 std::string SerializedTest::generatedData(size_t nbElts, size_t cardinality)
@@ -115,4 +115,4 @@ void SerializedTest::testParameterizedNodeOnInput(
 }
 
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

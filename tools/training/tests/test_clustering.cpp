@@ -139,7 +139,7 @@ class TestTraining : public testing::Test {
     std::vector<ZL_NodeID> clusteringCodecs_;
     A1C_Arena a1cArena_{};
     Arena* backingArena_{};
-    zstrong::tests::datagen::DataGen dataGen_;
+    openzl::tests::datagen::DataGen dataGen_;
 };
 
 TEST_F(TestTraining, TestTrainingBasic)

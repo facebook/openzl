@@ -4,7 +4,7 @@
 #include "openzl/shared/string_view.h"
 #include "tests/datagen/DataGen.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 class StringViewTest : public ::testing::Test {
    protected:
@@ -83,4 +83,4 @@ TEST_F(StringViewTest, SubstringView)
     EXPECT_TRUE(StringView_eq(&sv3Sub1, &sv3Sub2));
 }
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

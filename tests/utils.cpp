@@ -6,7 +6,7 @@
 #include "openzl/zl_data.h"
 #include "openzl/zl_reflection.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 
 const std::string kEmptyTestInput = "";
@@ -1209,4 +1209,4 @@ ZL_GraphID buildTrivialGraph(ZL_Compressor* cgraph, ZL_NodeID node)
 }
 
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

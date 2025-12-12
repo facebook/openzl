@@ -2,7 +2,7 @@
 
 #include "tests/datagen/structures/openzl/StringInputProducer.h"
 
-namespace zstrong::tests::datagen::openzl {
+namespace openzl::tests::datagen::openzl {
 
 std::ostream& operator<<(
         std::ostream& os,
@@ -96,4 +96,4 @@ std::vector<uint32_t> StringInputProducer::genSplitRoughlyEvenSizes(
     return fieldSizes;
 }
 
-} // namespace zstrong::tests::datagen::openzl
+} // namespace openzl::tests::datagen::openzl

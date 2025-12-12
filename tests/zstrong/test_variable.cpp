@@ -6,7 +6,7 @@
 #include "openzl/compress/private_nodes.h"
 #include "tests/zstrong/test_variable_fixture.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 
 TEST_F(VariableTest, Prefix)
@@ -37,4 +37,4 @@ TEST_F(VariableTest, TokenizeSorted)
 }
 
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

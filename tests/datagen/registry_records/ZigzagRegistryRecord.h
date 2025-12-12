@@ -6,7 +6,7 @@
 
 #include "tests/datagen/registry_records/RegistryRecord.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 class ZigzagRegistryRecord : public RegistryRecord {
    public:
@@ -36,4 +36,4 @@ class ZigzagRegistryRecord : public RegistryRecord {
     };
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

@@ -7,7 +7,7 @@
 #include "tests/fuzz_utils.h"
 #include "tests/zstrong/test_fixed_fixture.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 
 class LargeInputTest : public ZStrongTest {};
@@ -82,4 +82,4 @@ FUZZ_F(LargeInputTest, FuzzSerialGraph)
 }
 
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

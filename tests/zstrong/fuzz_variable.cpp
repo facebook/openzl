@@ -12,7 +12,7 @@
 #include "tests/fuzz_utils.h"
 #include "tests/zstrong/test_variable_fixture.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 namespace {
 
@@ -223,7 +223,7 @@ FUZZ_F(VariableTest, FuzzParseIntRoundTrip)
 
     reset();
     auto const [input, fieldSizes] =
-            zstrong::tests::datagen::IntegerStringProducer::flatten(data);
+            openzl::tests::datagen::IntegerStringProducer::flatten(data);
 
     std::vector<std::unique_ptr<ZL_TypedRef, ZS2_TypedRef_Deleter>> inputs;
     std::vector<TypedInputDesc> inputDescs;
@@ -272,4 +272,4 @@ FUZZ_F(VariableTest, FuzzParseIntSafeRoundTrip)
 
 } // namespace
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

@@ -4,7 +4,7 @@
 #include "custom_transforms/thrift/tests/test_prob_selector_fixture.h"
 #include "openzl/zl_public_nodes.h"
 
-namespace zstrong::thrift::tests {
+namespace openzl::thrift::tests {
 
 // A test that tests a few random inputs and checks the graph ID obtained is
 // correct.
@@ -113,4 +113,4 @@ TEST_F(ProbSelectorTest, ProbSelectorRoundTrip)
                 sample);
     }
 }
-} // namespace zstrong::thrift::tests
+} // namespace openzl::thrift::tests

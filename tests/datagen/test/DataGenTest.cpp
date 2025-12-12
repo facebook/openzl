@@ -6,7 +6,7 @@
 
 using namespace ::testing;
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 TEST(DataGenTest, RandVal)
 {
@@ -78,4 +78,4 @@ TEST(DataGenTest, RandString)
     EXPECT_LT(data.size(), 4096);
 }
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

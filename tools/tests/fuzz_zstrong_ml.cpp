@@ -20,7 +20,7 @@ namespace {
 
 using namespace gbt_predictor;
 using namespace zstrong::ml::features;
-using namespace zstrong::tests;
+using namespace openzl::tests;
 
 std::vector<std::string> getConfigExamples()
 {

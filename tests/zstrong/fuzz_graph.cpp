@@ -17,7 +17,7 @@
 
 #include <algorithm>
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 namespace {
 
@@ -212,4 +212,4 @@ FUZZ(GraphTest, FuzzGraphRoundTrip)
 }
 } // namespace
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

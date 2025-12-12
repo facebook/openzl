@@ -14,7 +14,7 @@
 
 #include "tests/utils.h"
 
-namespace zstrong::tests {
+namespace openzl::tests {
 namespace {
 
 class TestClusteringGraph : public testing::Test {
@@ -38,7 +38,7 @@ class TestClusteringGraph : public testing::Test {
         cctx_   = ZL_CCtx_create();
         ZL_REQUIRE_SUCCESS(ZL_CCtx_setParameter(
                 cctx_, ZL_CParam_formatVersion, ZL_MAX_FORMAT_VERSION));
-        hooks_ = std::make_unique<DebugIntrospectionHooks>();
+        hooks_ = std::make_unique<openzl::DebugIntrospectionHooks>();
         if (0) {
             ZL_REQUIRE_SUCCESS(ZL_CCtx_attachIntrospectionHooks(
                     cctx_, hooks_->getRawHooks()));
@@ -137,7 +137,7 @@ class TestClusteringGraph : public testing::Test {
     ZL_Compressor* cgraph_{};
     ZL_DCtx* dctx_{};
     ZL_CCtx* cctx_{};
-    std::unique_ptr<DebugIntrospectionHooks> hooks_;
+    std::unique_ptr<openzl::DebugIntrospectionHooks> hooks_;
     std::vector<ZL_GraphID> successors_; /* Assume successors are registered in
                                              the same cgraph */
     std::vector<ZL_Type> defaultSuccessorTypes_{ ZL_Type_serial,
@@ -576,4 +576,4 @@ TEST_F(TestClusteringGraph, TestClusteringValidCodecIndices)
 }
 
 } // namespace
-} // namespace zstrong::tests
+} // namespace openzl::tests

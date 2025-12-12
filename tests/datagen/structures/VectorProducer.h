@@ -8,7 +8,7 @@
 #include "tests/datagen/distributions/UniformDistribution.h"
 #include "tests/datagen/distributions/VecLengthDistribution.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 template <typename RetType>
 class VectorProducer : public DataProducer<std::vector<RetType>> {
@@ -54,4 +54,4 @@ class VectorProducer : public DataProducer<std::vector<RetType>> {
     std::unique_ptr<DataProducer<size_t>> lengthDist_;
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

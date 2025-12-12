@@ -12,7 +12,11 @@
 using apache::thrift::BinarySerializer;
 using apache::thrift::CompactSerializer;
 
-namespace zstrong::thrift::tests {
+namespace openzl::thrift::tests {
+
+using namespace zstrong::thrift;
+namespace cpp2 = zstrong::thrift::tests::cpp2;
+
 namespace {
 // Test round-trip where the root type is not T_STRUCT
 template <typename Serializer>
@@ -134,7 +138,7 @@ TEST(RoundTripTest, TestTulipV2)
 
     std::mt19937 gen(0xdeadbeef);
     for (size_t n = 1; n < 10; ++n) {
-        auto data = zstrong::tulip_v2::tests::generateTulipV2(n, gen);
+        auto data = openzl::tulip_v2::tests::generateTulipV2(n, gen);
         EXPECT_NO_THROW(runThriftSplitterRoundTrip(
                 thriftCompactConfigurableSplitter,
                 data,
@@ -296,4 +300,4 @@ TEST(RoundTripTest, OldStyleVSF)
                 ZL_MAX_FORMAT_VERSION));
     }
 }
-} // namespace zstrong::thrift::tests
+} // namespace openzl::thrift::tests

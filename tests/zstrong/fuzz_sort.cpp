@@ -7,7 +7,7 @@
 
 #include "openzl/shared/pdqsort.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 namespace {
 
@@ -48,4 +48,4 @@ FUZZ(SortTest, FuzzPDQsort)
 
 } // namespace
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

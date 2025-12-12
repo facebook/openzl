@@ -8,7 +8,7 @@
 
 using namespace ::testing;
 
-namespace zstrong::tests {
+namespace openzl::tests {
 
 TEST(RTGraphsTest, WHENcreateAndDeleteStreamsTHENallStreamsHaveUniqueID)
 {
@@ -55,4 +55,4 @@ TEST(RTGraphsTest, WHENcreateAndDeleteStreamsTHENallStreamsHaveUniqueID)
     free(rtgm);
 }
 
-} // namespace zstrong::tests
+} // namespace openzl::tests

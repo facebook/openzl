@@ -4,7 +4,7 @@
 
 #include "tests/datagen/distributions/Distribution.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 template <typename RetType>
 class ConstantDistribution : public Distribution<RetType> {
@@ -25,4 +25,4 @@ class ConstantDistribution : public Distribution<RetType> {
     const RetType value_;
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

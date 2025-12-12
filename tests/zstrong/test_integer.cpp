@@ -10,7 +10,7 @@
 #include "openzl/zl_opaque_types.h"
 #include "tests/zstrong/test_integer_fixture.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 TEST_F(IntegerTest, ConvertIntToToken1)
 {
@@ -283,4 +283,4 @@ TEST_F(IntegerTest, FSENCount)
 }
 
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

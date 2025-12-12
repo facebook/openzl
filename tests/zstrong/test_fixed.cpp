@@ -14,7 +14,7 @@
 #include "openzl/zl_opaque_types.h"
 #include "tests/zstrong/test_fixed_fixture.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 TEST_F(FixedTest, InterpretTokenAsLEInt1)
 {
@@ -543,4 +543,4 @@ TEST_F(FixedTest, SplitN)
 }
 
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

@@ -12,7 +12,7 @@
 
 #include <gflags/gflags.h>
 
-namespace zstrong {
+namespace openzl {
 
 VersionTestInterface::VersionTestInterface(
         char const* libVersionTestInterfaceSO)
@@ -376,4 +376,4 @@ std::string VersionTestInterface::decompress(std::string_view source) const
     out.resize(ret);
     return out;
 }
-} // namespace zstrong
+} // namespace openzl

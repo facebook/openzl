@@ -5,7 +5,7 @@
 
 #include "tests/zstrong/test_zstrong_fixture.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 class MultiInputTest : public ZStrongTest {
    public:
@@ -13,4 +13,4 @@ class MultiInputTest : public ZStrongTest {
             TypedInputDesc const& inputDesc);
 };
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

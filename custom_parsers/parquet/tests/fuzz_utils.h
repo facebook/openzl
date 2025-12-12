@@ -24,7 +24,7 @@ std::shared_ptr<arrow::Field> gen_arrow_field(
 {
     bool isLeaf = maxDepth == depth ? true : f.coin("is_leaf");
     // Hack to enforce unique names for the same struct
-    auto name = tests::gen_str(f, "field_name", Range<size_t>(1, 10));
+    auto name = openzl::tests::gen_str(f, "field_name", Range<size_t>(1, 10));
     name += std::to_string(name.size()) + std::to_string(idx);
 
     std::shared_ptr<arrow::DataType> type;
@@ -97,7 +97,7 @@ std::vector<std::optional<std::string>> gen_str_vec(
         if (!f.has_more_data() || f.coin("null")) {
             vec[i] = std::nullopt;
         } else {
-            vec[i] = tests::gen_str(f, name, lenDist);
+            vec[i] = openzl::tests::gen_str(f, name, lenDist);
         }
     }
     return vec;
