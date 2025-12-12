@@ -22,7 +22,21 @@ zs_cxxlibrary(
         "../../cpp:openzl_cpp",
         "../training:train_common",
         "../training/graph_mutation:graph_mutation",
+        "../training/sample_collection:sample_collection",
         "../training/utils:training_utils",
+        ":ml_features",
         ":ml_selector_graph",
+    ],
+)
+
+zs_cxxlibrary(
+    name = "ml_features",
+    srcs = ["ml_features.cpp"],
+    headers = ["ml_features.h"],
+    deps = [
+        "..:logger",
+        "../..:zstronglib",
+        "../../cpp:openzl_cpp",
+        "../training/utils:training_utils",
     ],
 )
