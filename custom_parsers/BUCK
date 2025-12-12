@@ -17,6 +17,7 @@ zs_library(
     deps = [
         "..:zstronglib",
         "../cpp:openzl_cpp",
+        "../tools/ml_selector:ml_selector_graph",
         "csv:csv_parser",
         "parquet:parquet_graph",
         "shared_components:clustering",
