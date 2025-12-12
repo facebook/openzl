@@ -8,6 +8,7 @@ Instruction definitions are auto-generated from sddl2_opcodes.def
 To regenerate: python3 generate_opcodes.py
 """
 
+import os
 import struct
 import sys
 from typing import List, Tuple
@@ -222,6 +223,15 @@ def assemble(source: str) -> bytes:
     return bytes(bytecode)
 
 
+def default_output_path(input_file: str) -> str:
+    """
+    Choose a safe default output path so we never overwrite the source file.
+    If the input has an extension, replace it with .bin; otherwise append .bin.
+    """
+    root, ext = os.path.splitext(input_file)
+    return f"{root or input_file}.bin" if ext else f"{input_file}.bin"
+
+
 def main():
     # Help flag
     if len(sys.argv) > 1 and sys.argv[1] in ["-h", "--help", "help"]:
@@ -264,9 +274,7 @@ def main():
     # File mode
     else:
         input_file = sys.argv[1]
-        output_file = (
-            sys.argv[2] if len(sys.argv) > 2 else input_file.replace(".asm", ".bin")
-        )
+        output_file = sys.argv[2] if len(sys.argv) > 2 else default_output_path(input_file)
 
         try:
             with open(input_file, "r") as f:
