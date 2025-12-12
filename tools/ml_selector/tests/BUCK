@@ -8,10 +8,12 @@ zs_unittest(
     name = "test_mlSelectorTrainer",
     srcs = ["test_mlSelectorTrainer.cpp"],
     deps = [
+        "..:ml_features",
         "..:ml_selector_graph",
         "..:ml_selector_trainer",
         "../../../tests:ml_selector_utils",
         "../../../tests:utils",
+        "../../../tests/datagen:datagen",
         "../../training:train",
         "fbsource//third-party/googletest:gtest",
     ],
