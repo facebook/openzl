@@ -122,6 +122,8 @@ TRAINING_CXXOBJS := $(call cxx_objs,$(TRAINING_DIRS))
 TRAINING_TEST_CXXOBJS := $(call cxx_objs,$(TRAINING_TEST_DIRS))
 SDDL_COMPILER_CXXOBJS := $(filter-out %main.o, $(call cxx_objs,$(SDDL_COMPILER_DIR)))
 SDDL2_COMPILER_CXXOBJS := $(filter-out %main.o, $(call cxx_objs,$(SDDL2_COMPILER_DIR)))
+ML_SELECTOR_COBJS := $(call c_objs,$(ML_SELECTOR_DIR))
+ML_SELECTOR_CXXOBJS := $(call cxx_objs,$(ML_SELECTOR_DIR))
 
 $(eval $(call cxx_program,zli, \
 	cli/zli.o \
@@ -141,6 +143,8 @@ $(eval $(call cxx_program,zli, \
 	$(TRAINING_CXXOBJS) \
 	$(SDDL_COMPILER_CXXOBJS) \
 	$(SDDL2_COMPILER_CXXOBJS) \
+	$(ML_SELECTOR_COBJS) \
+	$(ML_SELECTOR_CXXOBJS) \
 	$(ZLCPP_OBJS) \
 	$(LIBOBJS), \
 	$(LIBZSTD_A) $(LIBLZ4_A)))
@@ -223,6 +227,8 @@ ALL_GTESTS_OBJS := \
 	$(TRAINING_CXXOBJS) \
 	$(SDDL_COMPILER_CXXOBJS) \
 	$(SDDL2_COMPILER_CXXOBJS) \
+	$(ML_SELECTOR_COBJS) \
+	$(ML_SELECTOR_CXXOBJS) \
 	$(DATAGEN_OBJS) \
 	$(ZLCPP_OBJS) \
 	$(LIBOBJS)

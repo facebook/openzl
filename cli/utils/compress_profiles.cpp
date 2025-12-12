@@ -18,6 +18,7 @@
 #include "custom_parsers/shared_components/clustering.h"
 
 #include "tools/io/InputFile.h"
+#include "tools/ml_selector/ml_selector_graph.h"
 #include "tools/sddl/compiler/Compiler.h"
 
 namespace openzl::cli {
@@ -143,6 +144,55 @@ static void addLEintProfile(
 }
 } // namespace
 
+/**
+ * @brief Registers static successor graphs for the ML selector.
+ * NOTE: This is a temporary placeholder
+ * @param compressor The compressor to register the graph with
+ */
+static ZL_RESULT_OF(ZL_GraphID)
+        numeric64BitMLSelectorProfile(ZL_Compressor* compressor)
+{
+    ZL_RESULT_DECLARE_SCOPE(ZL_GraphID, compressor);
+
+    ZL_GraphID fieldlz    = ZL_Compressor_registerFieldLZGraph(compressor);
+    ZL_GraphID range_pack = ZL_Compressor_registerStaticGraph_fromNode(
+            compressor, ZL_NODE_RANGE_PACK, &fieldlz, 1);
+    ZL_GraphID zstd            = ZL_GRAPH_ZSTD;
+    ZL_GraphID range_pack_zstd = ZL_Compressor_registerStaticGraph_fromNode(
+            compressor, ZL_NODE_RANGE_PACK, &zstd, 1);
+    ZL_GraphID delta_fieldlz = ZL_Compressor_registerStaticGraph_fromNode(
+            compressor, ZL_NODE_DELTA_INT, &fieldlz, 1);
+    ZL_GraphID tokenize_delta_fieldlz = ZL_Compressor_registerTokenizeGraph(
+            compressor,
+            ZL_Type_numeric,
+            /* sort */ true,
+            delta_fieldlz,
+            fieldlz);
+
+    ZL_GraphID successors[6] = { fieldlz,
+                                 range_pack,
+                                 range_pack_zstd,
+                                 delta_fieldlz,
+                                 tokenize_delta_fieldlz,
+                                 zstd };
+
+    ZL_TRY_LET(
+            ZL_GraphID,
+            mlSelectorGraphId,
+            MLSelector_registerGraphWithEmptyGBTModel(
+                    compressor, successors, 6));
+
+    // Wrap with serial-to-numeric conversion so the graph accepts serial input
+    ZL_GraphID staticGraph = ZL_Compressor_registerStaticGraph_fromNode1o(
+            compressor, ZL_NODE_CONVERT_SERIAL_TO_NUM_LE64, mlSelectorGraphId);
+
+    // Parameterize so ml selector graph can be updated during training
+    ZL_GraphParameters const wrapperDesc = {};
+
+    return ZL_Compressor_parameterizeGraph(
+            compressor, staticGraph, &wrapperDesc);
+}
+
 const std::map<std::string, std::shared_ptr<CompressProfile>>&
 compressProfiles()
 {
@@ -256,6 +306,18 @@ compressProfiles()
                 [](ZL_Compressor* comp, void*, const ProfileArgs&) {
                     CompressorRef compressor(comp);
                     return saoProfile(compressor);
+                });
+
+        std::string kGenericNumericName = "numeric-ml-selector-64";
+        mp[kGenericNumericName]         = std::make_shared<CompressProfile>(
+                kGenericNumericName,
+                "64 bit numeric data using ml selectors (Placeholder)",
+                [](ZL_Compressor* comp, void*, const ProfileArgs& args) {
+                    (void)args;
+                    return unwrap(
+                            numeric64BitMLSelectorProfile(comp),
+                            "Failed to set up numeric profile",
+                            comp);
                 });
 
         return mp;

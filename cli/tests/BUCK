@@ -215,3 +215,17 @@ python_library(
     deps = [
     ],
 )
+
+custom_unittest(
+    name = "ml_selector_test",
+    command = [
+        "$(location :integration_test_bin)",
+        "$(location ..:zli)",
+        "MLSelectorTest.test_train_compress_decompress",
+    ],
+    type = "simple",
+    deps = [
+        "..:zli",
+        ":integration_test_bin",
+    ],
+)

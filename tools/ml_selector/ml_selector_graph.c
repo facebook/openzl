@@ -6,6 +6,7 @@
 #include "openzl/shared/a1cbor.h"
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_errors.h"
+#include "openzl/zl_reflection.h"
 
 /**
  * Declare types in order to use ZL_RESULT_OF, this allows function to return
@@ -744,4 +745,72 @@ ZL_MLSelector_registerGraph(
      */
     ALLOC_Arena_freeArena(arena);
     return ZL_RESULT_WRAP_VALUE(ZL_GraphID, graph);
+}
+
+ZL_RESULT_OF(ZL_GraphID)
+MLSelector_registerGraphWithEmptyGBTModel(
+        ZL_Compressor* compressor,
+        const ZL_GraphID* successors,
+        size_t nbSuccessors)
+{
+    const GBTPredictor_Node emptyNode = {
+        .featureIdx      = -1, // leaf node
+        .value           = 0.0f,
+        .leftChildIdx    = 0,
+        .rightChildIdx   = 0,
+        .missingChildIdx = 0,
+    };
+
+    const GBTPredictor_Tree emptyTree = {
+        .numNodes = 1,
+        .nodes    = &emptyNode,
+    };
+
+    const GBTPredictor_Forest emptyForest = {
+        .numTrees = 1,
+        .trees    = &emptyTree,
+    };
+
+    const GBTPredictor emptyPredictor = {
+        .numForests = 1,
+        .forests    = &emptyForest,
+    };
+
+    const Label featureLabels[] = { "placeholder" };
+
+    Arena* arena = ALLOC_HeapArena_create();
+
+    Label* classLabels =
+            ALLOC_Arena_malloc(arena, sizeof(Label) * nbSuccessors);
+
+    if (classLabels == NULL) {
+        ALLOC_Arena_freeArena(arena);
+        ZL_RET_T_ERR(ZL_GraphID, allocation, "Failed to allocate classLabels");
+    }
+
+    for (size_t i = 0; i < nbSuccessors; i++) {
+        classLabels[i] = ZL_Compressor_Graph_getName(compressor, successors[i]);
+    }
+
+    GBTModel emptyModel = {
+        .predictor        = &emptyPredictor,
+        .featureGenerator = FeatureGen_integer,
+        .featureContext   = NULL,
+        .nbLabels         = nbSuccessors,
+        .classLabels      = classLabels,
+        .nbFeatures       = 1,
+        .featureLabels    = featureLabels,
+    };
+
+    ZL_MLSelectorConfig config = {
+        .model         = ZL_GBT,
+        .runtimeConfig = (void*)&emptyModel,
+    };
+
+    ZL_RESULT_OF(ZL_GraphID)
+    result = ZL_MLSelector_registerGraph(
+            compressor, &config, successors, nbSuccessors);
+
+    ALLOC_Arena_freeArena(arena);
+    return result;
 }

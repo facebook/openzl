@@ -1,7 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
-load("../../defs.bzl", "zs_library")
+load("../../defs.bzl", "zs_cxxlibrary", "zs_library")
 
 oncall("data_compression")
 
@@ -14,16 +13,16 @@ zs_library(
     ],
 )
 
-cpp_unittest(
-    # @autodeps-skip
-    name = "test_ml_selector_graph",
-    srcs = ["test_mlSelectorGraph.cpp"],
+zs_cxxlibrary(
+    name = "ml_selector_trainer",
+    srcs = ["ml_selector_trainer.cpp"],
+    headers = ["ml_selector_trainer.h"],
     deps = [
         "../..:zstronglib",
         "../../cpp:openzl_cpp",
-        "../../tests:ml_selector_utils",  # @manual
-        "../../tests:utils",  # @manual
-        "../../tests/datagen:datagen",  # @manual
-        ":ml_selector_graph",  # @manual
+        "../training:train_common",
+        "../training/graph_mutation:graph_mutation",
+        "../training/utils:training_utils",
+        ":ml_selector_graph",
     ],
 )

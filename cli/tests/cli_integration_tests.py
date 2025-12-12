@@ -192,6 +192,54 @@ class CsvChunkedTest(_CsvBaseTest):
         self.train_compress_decompress()
 
 
+class MLSelectorTest(_TrainBaseTest):
+    """
+    Test case for ml selector and compression using the trainer.
+    """
+
+    @property
+    def input_dir_name(self) -> str:
+        """
+        Return the directory name for input sample files.
+
+        This property determines where sample files are located:
+        cli/tests/sample_files/ml_selector/
+
+        Note: sample files are generated using the following command from
+        tutorial in examples/ml_selector and taking the first file:
+
+        ```
+        buck2 run @//mode/opt examples/ml_selector:generate_data -- /tmp/ml_test_samples
+        ```
+
+        Returns:
+            "ml_selector" as the input directory name
+        """
+        return "ml_selector"
+
+    @property
+    def compressor_profile_name(self) -> str:
+        """
+        Return the profile name to use for compression/training.
+
+        Returns:
+            "numeric-ml-selector-64" as the profile name
+        """
+        return "numeric-ml-selector-64"
+
+    def test_train_compress_decompress(self):
+        """
+        Test the train, compress, and decompress workflow for numeric 64 bit files using the ml selector trainer.
+
+        This test:
+        1. Trains a compressor on files in cli/tests/sample_files/ml_selector/
+        2. Saves the trained compressor to {output_dir_path}/trained_compressor.zlc
+        3. Uses the trained compressor to compress and decompress the files
+        4. Verifies that the decompressed files match the originals
+        """
+        self.train_compress_decompress()
+
+
 class ParquetTest(_TrainBaseTest):
     """
     Parquet compression tests with training.
