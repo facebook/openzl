@@ -220,9 +220,30 @@ ZL_Report ZS2_test_errors_binary_arg_types_deduced_in_c_inner(
 
     EXPECT_ERROR_MESSAGE_CONTAINS(pi_1, pi_2, "(pointer)");
 
-    EXPECT_ERROR_MESSAGE_CONTAINS(
-            e_1, e_2, "(int"); // matches both "(int)" and "(unsigned int)"
-                               // across platforms
+    // Enum underlying type differs across platforms:
+    // - Linux/GCC: "(unsigned int)"
+    // - Windows/MSVC: "(int)"
+    // - ARM64 may use either depending on ABI
+    // Check for both possibilities explicitly
+    {
+        ZL_Report _report =
+                generate_error_message_e_1(ZL__scopeContext, e_1, e_2);
+        ZL_RET_R_IF_NOT(
+                GENERIC,
+                ZL_RES_isError(_report),
+                "ZL_RET_R_IF_LT(e_1, e_2) failed to fail.");
+        ZL_E_ADDFRAME(&ZL_RES_error(_report), ZL_EE_EMPTY, "");
+        const char* _str = ZL_E_str(ZL_RES_error(_report));
+        ZL_RET_R_IF_NULL(GENERIC, _str, "Error message is NULL!");
+        const char* _found_int  = strstr(_str, "(int)");
+        const char* _found_uint = strstr(_str, "(unsigned int)");
+        if (!_found_int && !_found_uint) {
+            ZL_RET_R_ERR(
+                    GENERIC,
+                    "Message '(int)' or '(unsigned int)' not found in error message '%s'",
+                    _str);
+        }
+    }
 
     return ZL_returnSuccess();
 }
