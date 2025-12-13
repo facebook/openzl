@@ -274,7 +274,9 @@ def main():
     # File mode
     else:
         input_file = sys.argv[1]
-        output_file = sys.argv[2] if len(sys.argv) > 2 else default_output_path(input_file)
+        output_file = (
+            sys.argv[2] if len(sys.argv) > 2 else default_output_path(input_file)
+        )
 
         try:
             with open(input_file, "r") as f:
