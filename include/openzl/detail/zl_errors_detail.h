@@ -567,7 +567,7 @@ extern "C" {
 // implementation (if enabled) or the fallback standards-compliant version (if
 // disabled).
 #ifndef ZL_ENABLE_RET_IF_ARG_PRINTING
-#    if defined(__GNUC__) && !defined(__cplusplus)
+#    if (defined(__GNUC__) || defined(__clang__)) && !defined(__cplusplus)
 #        define ZL_ENABLE_RET_IF_ARG_PRINTING 1
 #    elif defined(__cplusplus) && (defined(__GNUC__) || defined(__clang__))
 #        define ZL_ENABLE_RET_IF_ARG_PRINTING 1

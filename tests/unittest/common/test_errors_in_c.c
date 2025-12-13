@@ -220,7 +220,9 @@ ZL_Report ZS2_test_errors_binary_arg_types_deduced_in_c_inner(
 
     EXPECT_ERROR_MESSAGE_CONTAINS(pi_1, pi_2, "(pointer)");
 
-    EXPECT_ERROR_MESSAGE_CONTAINS(e_1, e_2, "(unsigned int)");
+    EXPECT_ERROR_MESSAGE_CONTAINS(
+            e_1, e_2, "(int"); // matches both "(int)" and "(unsigned int)"
+                               // across platforms
 
     return ZL_returnSuccess();
 }
