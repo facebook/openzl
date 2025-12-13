@@ -1,6 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <gtest/gtest.h>
+#include <numeric>
 #include <random>
 
 #include "openzl/common/assertion.h"

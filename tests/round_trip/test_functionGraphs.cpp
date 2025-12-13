@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 // standard C
+#include <array>
 #include <stdio.h> // printf
 
 // Zstrong

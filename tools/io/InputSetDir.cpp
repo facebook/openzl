@@ -3,6 +3,7 @@
 #include "tools/io/InputSetDir.h"
 
 #include <filesystem>
+#include <stdexcept>
 
 #include "tools/io/InputFile.h"
 
