@@ -3,8 +3,8 @@
 #include <gtest/gtest.h>
 
 // standard C
-#include <array>
 #include <stdio.h> // printf
+#include <array>
 
 // Zstrong
 #include <zstd.h> // ZSTD_c_* parameters

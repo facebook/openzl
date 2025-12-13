@@ -226,8 +226,7 @@ typedef __m128i __m128i_u;
 #if (defined(__STDC_IEC_559__) && __STDC_IEC_559__) \
         || (defined(__STDC_IEC_60559_BFP__)         \
             && __STDC_IEC_60559_BFP__ >= 202311L)   \
-        || defined(__APPLE__) || defined(__MINGW32__) \
-        || defined(_MSC_VER)
+        || defined(__APPLE__) || defined(__MINGW32__) || defined(_MSC_VER)
 #    define ZL_HAS_IEEE_754 1
 #else
 #    define ZL_HAS_IEEE_754 0
