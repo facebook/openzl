@@ -14,8 +14,8 @@
 
 include(CMakeFindDependencyMacro)
 
-set_and_check(OPENZL_INCLUDE_DIR "@PACKAGE_INCLUDE_INSTALL_DIR@")
-set_and_check(OPENZL_CMAKE_DIR "@PACKAGE_CMAKE_INSTALL_DIR@")
+set_and_check(OPENZL_INCLUDE_DIR "@PACKAGE_OPENZL_INSTALL_INCLUDEDIR@")
+set_and_check(OPENZL_CMAKE_DIR "@PACKAGE_OPENZL_INSTALL_CMAKEDIR@")
 
 # find_dependency() ends up changing PACKAGE_PREFIX_DIR, so save
 # openzl's prefix directory in the OPENZL_PREFIX_DIR variable
