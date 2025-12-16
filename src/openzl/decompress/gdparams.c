@@ -56,13 +56,10 @@ int GDParams_getParameter(const GDParams* gdparams, ZL_DParam paramId)
     switch (paramId) {
         case ZL_DParam_stickyParameters:
             return gdparams->stickyParameters;
-            break;
         case ZL_DParam_checkCompressedChecksum:
             return (int)gdparams->checkCompressedChecksum;
-            break;
         case ZL_DParam_checkContentChecksum:
             return (int)gdparams->checkContentChecksum;
-            break;
         default:
             return 0;
     }
