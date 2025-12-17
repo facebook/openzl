@@ -156,6 +156,10 @@ examples: zs2_pipeline zs2_trygraph zs2_selector zs2_struct zs2_round_trip
 test : gtests zs2_test sddl2_test
 	$(EXEC_PREFIX) ./gtests
 
+.PHONY: check-python-format
+check-python-format:
+	@./scripts/check_python_format.sh .
+
 .PHONY: zs2_test
 zs2_test : examples
 	$(EXEC_PREFIX) ./zs2_pipeline

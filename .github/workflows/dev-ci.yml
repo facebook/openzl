@@ -233,6 +233,21 @@ jobs:
           clang-format-version: '21'
           check-path: '.'
 
+  # Python formatting check
+  test-python-format:
+    name: Python Code Formating (black)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install black
+        run: pip install black
+      - name: Check Python formatting with black
+        run: make check-python-format
+
   # Static analysis
   test-static-analysis:
     name: Static Analysis (scan-build)
