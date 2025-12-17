@@ -37,14 +37,15 @@ using FeatureMap = std::unordered_map<std::string, double>;
 using TargetsMap =
         std::unordered_map<std::string, std::unordered_map<std::string, float>>;
 
+// Forward declaration
+class FeatureGenerator;
+
 /// A base class that defines the interface of any ML based
 /// model used by Zstrong's selectors.
 class MLModel {
    public:
-    virtual Label predict(
-            const ZL_Input* input,
-            FeatureGenerator fgen,
-            const void* featureCxt) const = 0;
+    virtual Label predict(const ZL_Input* input, const FeatureGenerator* fgen)
+            const = 0;
 
     virtual size_t predict(const FeatureMap& features) const = 0;
     std::string predictLabel(const FeatureMap& features) const
@@ -60,10 +61,8 @@ class GBTModel : public MLModel {
    public:
     explicit GBTModel(folly::dynamic const& model);
     explicit GBTModel(std::string_view model);
-    Label predict(
-            const ZL_Input* input,
-            FeatureGenerator fgen,
-            const void* featureCxt) const override;
+    Label predict(const ZL_Input* input, const FeatureGenerator* fgen)
+            const override;
     size_t predict(const FeatureMap& features) const override;
     std::span<const std::string> getLabels() const override
     {
@@ -77,7 +76,6 @@ class GBTModel : public MLModel {
     const std::vector<Label> features_;
 
     const gbt_predictor::GBTPredictor predictor_;
-    const ::GBTModel gbtModel_;
 };
 
 /// FeatureGenerators are used to create a FeatureMaps from a Zstrong Streams
@@ -109,26 +107,6 @@ class FeatureGenerator {
                 ZL_Input_type(data),
                 ZL_Input_eltWidth(data),
                 ZL_Input_numElts(data));
-    }
-
-    void getCFeatures(VECTOR(LabeledFeature) * features, ZL_Input const* data)
-            const
-    {
-        FeatureMap featuresMap;
-        getFeatures(
-                featuresMap,
-                ZL_Input_ptr(data),
-                ZL_Input_type(data),
-                ZL_Input_eltWidth(data),
-                ZL_Input_numElts(data));
-        bool badAlloc = false;
-        for (auto it : featuresMap) {
-            LabeledFeature lf = { getLabel(it.first), (float)it.second };
-            badAlloc |= !VECTOR_PUSHBACK(*features, lf);
-        }
-        if (badAlloc) {
-            throw std::runtime_error("Failed to add features to vector");
-        }
     }
 
     virtual ~FeatureGenerator() = default;
@@ -232,28 +210,6 @@ class MLSelector : public CustomSelector {
                             + label);
                 }
             }
-        }
-    }
-
-    static ZL_Report featureGen_MLSelector(
-            const ZL_Input* inputStream,
-            VECTOR(LabeledFeature) * features,
-            const void* featureContext)
-    {
-        try {
-            // TODO: Not efficient to use cpp implementation to get features,
-            // since the cpp implementation uses the c implementation, this
-            // means that we are turning VECTOR into FeatureMap then back to
-            // VECTOR.
-
-            const FeatureGenerator* cppFeatureGen =
-                    (const FeatureGenerator*)featureContext;
-
-            cppFeatureGen->getCFeatures(features, inputStream);
-
-            return ZL_returnSuccess();
-        } catch (const std::exception& e) {
-            ZL_RET_R_ERR(GENERIC, "ML selector error %s", e.what());
         }
     }
 

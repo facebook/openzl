@@ -135,9 +135,8 @@ ProcessedMLTrainingSamples extractMLFeatures(
             compressor.selectStartingGraph(startingGraphId);
             targetData.push_back(targets);
 
-            FeatureMap features = VECTOR_EMPTY(kMaxVectorSize);
-            const ZL_Report report =
-                    featureGen(input.get(), &features, nullptr);
+            FeatureMap features    = VECTOR_EMPTY(kMaxVectorSize);
+            const ZL_Report report = featureGen(input.get(), &features);
             if (ZL_isError(report)) {
                 throw std::runtime_error(
                         std::string("Error generating integer features: ")

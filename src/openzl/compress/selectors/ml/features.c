@@ -228,11 +228,8 @@ static bool calcIntegerFeatures(
 
 ZL_Report FeatureGen_integer(
         const ZL_Input* inputStream,
-        VECTOR(LabeledFeature) * features,
-        const void* featureContext)
+        VECTOR(LabeledFeature) * features)
 {
-    (void)featureContext;
-
     ZL_ASSERT(ZL_Input_type(inputStream) == ZL_Type_numeric);
     const void* data      = ZL_Input_ptr(inputStream);
     const size_t nbElts   = ZL_Input_numElts(inputStream);

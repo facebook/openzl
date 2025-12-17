@@ -484,9 +484,6 @@ static ZL_RESULT_OF(GBTModel) GBTModel_deserialize(
     ZL_ERR_IF_ERR(featureGenerator);
     model.featureGenerator = ZL_RES_value(featureGenerator);
 
-    // Ignoring feature context for now since it is not used
-    model.featureContext = NULL;
-
     // Deserialize nbLabels
     A1C_TRY_EXTRACT_INT64(nbLabels, A1C_Map_get_cstr(&rootMap, "nbLabels"));
     model.nbLabels = (size_t)nbLabels;
@@ -637,9 +634,8 @@ MLSelector_deserializeMLSelectorConfig(
                     ZL_MLSelectorConfig, ZL_RES_error(gbtModelResult));
         }
 
-        *gbtModelCopy                = ZL_RES_value(gbtModelResult);
-        gbtModelCopy->featureContext = NULL;
-        runtimeConfig                = gbtModelCopy;
+        *gbtModelCopy = ZL_RES_value(gbtModelResult);
+        runtimeConfig = gbtModelCopy;
     }
     dst.runtimeConfig = runtimeConfig;
 

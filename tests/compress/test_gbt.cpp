@@ -364,12 +364,9 @@ class GBTBinaryModelTest : public Test {
     void SetUp() override
     {
         // Lambda for generating hardcoded features
-        auto featureGen_binaryModelTest =
-                [](const ZL_Input* inputStream,
-                   VECTOR(LabeledFeature) * features,
-                   const void* featureContext) -> ZL_Report {
-            (void)featureContext;
-
+        auto featureGen_binaryModelTest = [](const ZL_Input* inputStream,
+                                             VECTOR(LabeledFeature)
+                                                     * features) -> ZL_Report {
             ZL_ASSERT(ZL_Input_type(inputStream) == ZL_Type_numeric);
 
             LabeledFeature meanFeature             = { "mean", 2.0f };
@@ -400,7 +397,6 @@ class GBTBinaryModelTest : public Test {
 
         model = { .predictor        = &binaryClassPredictor,
                   .featureGenerator = featureGen_binaryModelTest,
-                  .featureContext   = nullptr,
                   .nbLabels         = classLabels.size(),
                   .classLabels      = classLabels.data(),
                   .nbFeatures       = featureLabels.size(),
@@ -490,10 +486,7 @@ class GBTMultiClassModelTest : public GBTMultiClassForestTest {
 
         auto featureGen_multiClassModelTest =
                 [](const ZL_Input* inputStream,
-                   VECTOR(LabeledFeature) * features,
-                   const void* featureContext) -> ZL_Report {
-            (void)featureContext;
-
+                   VECTOR(LabeledFeature) * features) -> ZL_Report {
             ZL_ASSERT(ZL_Input_type(inputStream) == ZL_Type_numeric);
 
             LabeledFeature meanFeature             = { "mean", 5.0f };
@@ -523,7 +516,6 @@ class GBTMultiClassModelTest : public GBTMultiClassForestTest {
         };
         model = { .predictor        = multiClassPredictor.get(),
                   .featureGenerator = featureGen_multiClassModelTest,
-                  .featureContext   = nullptr,
                   .nbLabels         = classLabels.size(),
                   .classLabels      = classLabels.data(),
                   .nbFeatures       = featureLabels.size(),
