@@ -184,6 +184,13 @@ export class InteractiveChunkGraph {
     });
   }
 
+  contains(node: InternalCodecNode | InternalGraphNode): boolean {
+    if (node instanceof InternalGraphNode) {
+      return this.graphs.includes(node);
+    }
+    return this.codecs.includes(node);
+  }
+
   // Helper function to identify all the visible nodes, edges, and graphs to display on the graph upon collapse/expanding of a component on the graph
   //
   // TODO [T223424749] (edge case to consider): if a child graph is collapsed, and the parent graph collapses, we need to add logic to connect a

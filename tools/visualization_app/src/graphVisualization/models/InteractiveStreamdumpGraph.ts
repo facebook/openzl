@@ -99,22 +99,57 @@ export class InteractiveStreamdumpGraph {
   }
 
   toggleSubgraphCollapse(codec: InternalCodecNode): RF_nodeId[] {
+    if (this.chunkGraphs[0].contains(codec)) {
+      return this.chunkGraphs[0].toggleSubgraphCollapse(codec);
+    }
+    if (this.visibleChunkIndex != null && this.chunkGraphs[this.visibleChunkIndex].contains(codec)) {
+      return this.chunkGraphs[this.visibleChunkIndex].toggleSubgraphCollapse(codec);
+    }
+    throw new Error(
+      `Could not find codec ${codec.id} in root chunk or currently selected chunk ${this.visibleChunkIndex}`,
+    );
     return this.chunkGraphs[0].toggleSubgraphCollapse(codec);
   }
 
   expandOneLevel(codec: InternalCodecNode): RF_nodeId[] {
-    return this.chunkGraphs[0].expandOneLevel(codec);
+    if (this.chunkGraphs[0].contains(codec)) {
+      return this.chunkGraphs[0].expandOneLevel(codec);
+    }
+    if (this.visibleChunkIndex != null && this.chunkGraphs[this.visibleChunkIndex].contains(codec)) {
+      return this.chunkGraphs[this.visibleChunkIndex].expandOneLevel(codec);
+    }
+    throw new Error(
+      `Could not find codec ${codec.id} in root chunk or currently selected chunk ${this.visibleChunkIndex}`,
+    );
   }
 
   toggleGraphCollapse(graph: InternalGraphNode): RF_nodeId[] {
-    return this.chunkGraphs[0].toggleGraphCollapse(graph);
+    if (this.chunkGraphs[0].contains(graph)) {
+      return this.chunkGraphs[0].toggleGraphCollapse(graph);
+    }
+    if (this.visibleChunkIndex != null && this.chunkGraphs[this.visibleChunkIndex].contains(graph)) {
+      return this.chunkGraphs[this.visibleChunkIndex].toggleGraphCollapse(graph);
+    }
+    throw new Error(
+      `Could not find graph ${graph.id} in root chunk or currently selected chunk ${this.visibleChunkIndex}`,
+    );
   }
 
   toggleGraphHide(graph: InternalGraphNode): RF_nodeId[] {
-    return this.chunkGraphs[0].toggleGraphHide(graph);
+    if (this.chunkGraphs[0].contains(graph)) {
+      return this.chunkGraphs[0].toggleGraphHide(graph);
+    }
+    if (this.visibleChunkIndex != null && this.chunkGraphs[this.visibleChunkIndex].contains(graph)) {
+      return this.chunkGraphs[this.visibleChunkIndex].toggleGraphHide(graph);
+    }
+    throw new Error(
+      `Could not find graph ${graph.id} in root chunk or currently selected chunk ${this.visibleChunkIndex}`,
+    );
   }
 
   toggleAllStandardGraphs(isCollapsed: boolean): void {
-    this.chunkGraphs[0].toggleAllStandardGraphs(isCollapsed);
+    for (const chunkGraph of this.chunkGraphs) {
+      chunkGraph.toggleAllStandardGraphs(isCollapsed);
+    }
   }
 }
