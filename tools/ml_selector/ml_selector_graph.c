@@ -795,7 +795,6 @@ MLSelector_registerGraphWithEmptyGBTModel(
     GBTModel emptyModel = {
         .predictor        = &emptyPredictor,
         .featureGenerator = FeatureGen_integer,
-        .featureContext   = NULL,
         .nbLabels         = nbSuccessors,
         .classLabels      = classLabels,
         .nbFeatures       = 1,

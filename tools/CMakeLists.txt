@@ -8,10 +8,10 @@ add_subdirectory(logger)
 add_subdirectory(time)
 
 # Tools
+add_subdirectory(ml_selector)
 add_subdirectory(parquet)
 add_subdirectory(sddl)
 add_subdirectory(sddl2)
 add_subdirectory(streamdump)
 add_subdirectory(training)
 add_subdirectory(protobuf)
-add_subdirectory(ml_selector)
