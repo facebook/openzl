@@ -158,7 +158,11 @@ test : gtests zs2_test sddl2_test
 
 .PHONY: check-python-format
 check-python-format:
-	@./scripts/check_python_format.sh .
+	@./scripts/check_python_format.sh
+
+.PHONY: fix-python-format
+fix-python-format:
+	@./scripts/check_python_format.sh --fix
 
 .PHONY: zs2_test
 zs2_test : examples

@@ -1,16 +1,23 @@
 #!/bin/bash
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
-# Check Python file formatting using black.
+# Check or fix Python file formatting using black.
 # Reports file and line numbers when formatting issues are detected.
 #
-# Usage: ./scripts/check_python_format.sh
+# Usage: ./scripts/check_python_format.sh [--fix]
+#   --fix: Apply formatting fixes instead of just checking
 #
 # Exit codes:
-#   0 - All files are correctly formatted
-#   1 - Formatting issues detected
+#   0 - All files are correctly formatted (or fixed successfully)
+#   1 - Formatting issues detected (check mode only)
 
 set -euo pipefail
+
+# Parse arguments
+FIX_MODE=false
+if [[ "${1:-}" == "--fix" ]]; then
+    FIX_MODE=true
+fi
 
 # Check if black is installed
 if ! command -v black &> /dev/null; then
@@ -45,6 +52,17 @@ if [[ ${#PYTHON_FILES[@]} -eq 0 ]]; then
     exit 0
 fi
 
+if [[ "$FIX_MODE" == true ]]; then
+    echo "Fixing Python file formatting with black..."
+    echo "Found ${#PYTHON_FILES[@]} Python files"
+    echo ""
+    black "${PYTHON_FILES[@]}"
+    echo ""
+    echo "✓ Python formatting complete."
+    exit 0
+fi
+
+# Check mode
 echo "Checking Python file formatting with black..."
 echo "Found ${#PYTHON_FILES[@]} Python files"
 echo ""
@@ -90,7 +108,7 @@ while IFS= read -r line; do
         echo ""
         echo "❌ $line"
         echo "   Explanation: Some Python files need reformatting."
-        echo "   To fix all issues: Run 'make check-python-format' after fixing, or 'black <file>' for individual files."
+        echo "   To fix all issues: Run 'make fix-python-format'"
     elif [[ -n "$line" ]]; then
         echo "$line"
     fi
@@ -99,6 +117,6 @@ done <<< "$BLACK_OUTPUT"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Python formatting check failed!"
-echo "Run 'black <file>' to auto-format individual files."
+echo "Run 'make fix-python-format' to auto-format all Python files."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 exit 1
