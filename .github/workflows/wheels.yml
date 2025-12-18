@@ -4,13 +4,28 @@ name: Wheels
 
 on:
   workflow_dispatch:
+
   pull_request:
+    paths: &wheel_paths
+      - 'py/**'
+      - 'cpp/**'
+      - 'src/**'
+      - 'include/**'
+      - 'tools/sddl/**'
+      - 'tools/sddl2/**'
+      - 'CMakeLists.txt'
+      - 'build-scripts/**'
+      - '.github/workflows/wheels.yml'
+
   push:
     branches:
-     - dev
+      - dev
+    paths: *wheel_paths
+
   release:
     types:
       - published
+
 
 jobs:
   build_sdist:
@@ -42,7 +57,7 @@ jobs:
         # Once MSVC is supported we can build Windows packages as well by adding windows-latest
         # Once we're public we can build on ubuntu-24.04-arm & windows-11-arm.
         # They are not supported for private repos.
-        os: [ubuntu-latest, macos-13, macos-latest]
+        os: [ubuntu-latest, macos-latest]
 
     steps:
     - uses: actions/checkout@v4
