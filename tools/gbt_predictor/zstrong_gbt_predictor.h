@@ -19,7 +19,7 @@ namespace zstrong::ml::gbt_predictor {
 // values per forest. The forest with the highest value is chosen as the
 // predicted class.
 // Binary-classificaiton is a special case in which only one forest is needed
-// and if its combined value is compared to 0.5 to decide on the class.
+// and if its combined value is compared to 0 to decide on the class.
 //
 // The predictor is initialized from a JSON string / a folly:dynamic object. The
 // schema for the JSON is an array of arrays of trees. Each tree is encoded

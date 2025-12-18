@@ -16,13 +16,13 @@ SampleBinaryGBTModel::SampleBinaryGBTModel()
                  .rightChildIdx   = 2,
                  .missingChildIdx = 2 },
                { .featureIdx      = -1,
-                 .value           = 0.1f,
+                 .value           = -0.1f,
                  .leftChildIdx    = 0,
                  .rightChildIdx   = 0,
                  .missingChildIdx = 0 },
                /* If skewness > 0.001 select class 1
                otherwise select class 2
-               Binary classification threshold is 0.5
+               Binary classification threshold is 0
                */
                { .featureIdx      = 1,
                  .value           = 0.001f,
@@ -35,7 +35,7 @@ SampleBinaryGBTModel::SampleBinaryGBTModel()
                  .rightChildIdx   = 0,
                  .missingChildIdx = 0 },
                { .featureIdx      = -1,
-                 .value           = 0.25f,
+                 .value           = -0.25f,
                  .leftChildIdx    = 0,
                  .rightChildIdx   = 0,
                  .missingChildIdx = 0 }

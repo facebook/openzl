@@ -76,7 +76,7 @@ size_t GBTPredictor_predict(
     }
 
     if (predictor->numForests == 1) {
-        if (maxValue < 0.5) {
+        if (maxValue < 0) {
             return 0;
         }
         return 1;
