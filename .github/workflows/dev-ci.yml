@@ -244,7 +244,8 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install black
-        run: pip install black
+        # pin to internal phabricator version (not: may change in the future)
+        run: pip install black==25.11.0
       - name: Check Python formatting with black
         run: make check-python-format
 
