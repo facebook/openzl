@@ -19,40 +19,39 @@ if ! command -v black &> /dev/null; then
     exit 1
 fi
 
-# Explicitly list source directories containing Python files.
-# This avoids scanning large build/deps directories.
-PYTHON_DIRS=(
-    benchmark
-    cli
-    custom_parsers
-    examples
-    py
-    scripts
-    src
-    tests
-    tools
-)
+# Directories to exclude (build artifacts, dependencies, caches)
+EXCLUDE_DIRS=(deps build cachedObjs cmakebuild .git __pycache__ .eggs build-py node_modules .cache .claude .vscode)
 
-# Filter to only existing directories
-EXISTING_DIRS=()
-for dir in "${PYTHON_DIRS[@]}"; do
-    if [[ -d "$dir" ]]; then
-        EXISTING_DIRS+=("$dir")
+# Build the find prune expression
+PRUNE_EXPR=""
+for dir in "${EXCLUDE_DIRS[@]}"; do
+    if [[ -n "$PRUNE_EXPR" ]]; then
+        PRUNE_EXPR="$PRUNE_EXPR -o"
     fi
+    PRUNE_EXPR="$PRUNE_EXPR -name $dir"
 done
 
-if [[ ${#EXISTING_DIRS[@]} -eq 0 ]]; then
-    echo "No Python source directories found."
+# Find all Python files directly (skip excluded directories with -prune)
+# Pass files to black instead of directories - avoids black's slow directory traversal
+PYTHON_FILES=()
+while IFS= read -r file; do
+    [[ -n "$file" ]] && PYTHON_FILES+=("$file")
+done < <(
+    find . \( $PRUNE_EXPR \) -prune -o -name "*.py" -type f -print
+)
+
+if [[ ${#PYTHON_FILES[@]} -eq 0 ]]; then
+    echo "No Python files found."
     exit 0
 fi
 
 echo "Checking Python file formatting with black..."
-echo "Directories: ${EXISTING_DIRS[*]}"
+echo "Found ${#PYTHON_FILES[@]} Python files"
 echo ""
 
 # Run black in check mode with diff output
 set +e
-BLACK_OUTPUT=$(black --check --diff --color "${EXISTING_DIRS[@]}" 2>&1)
+BLACK_OUTPUT=$(black --check --diff --color "${PYTHON_FILES[@]}" 2>&1)
 BLACK_EXIT_CODE=$?
 set -e
 
@@ -91,7 +90,7 @@ while IFS= read -r line; do
         echo ""
         echo "❌ $line"
         echo "   Explanation: Some Python files need reformatting."
-        echo "   To fix all issues: Run 'black ${EXISTING_DIRS[*]}' from the repository root."
+        echo "   To fix all issues: Run 'make check-python-format' after fixing, or 'black <file>' for individual files."
     elif [[ -n "$line" ]]; then
         echo "$line"
     fi
@@ -100,6 +99,6 @@ done <<< "$BLACK_OUTPUT"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Python formatting check failed!"
-echo "Run 'black ${EXISTING_DIRS[*]}' locally to auto-format all Python files."
+echo "Run 'black <file>' to auto-format individual files."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 exit 1
