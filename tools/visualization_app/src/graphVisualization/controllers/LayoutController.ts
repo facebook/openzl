@@ -13,7 +13,7 @@ import {NodeType} from '../models/types';
 const NODEWIDTH = 180;
 const NODEHEIGHT = 100;
 const DAGRE_NODE_SEPARATION = 300;
-const DAGRE_RANK_SEPARATION = 50;
+const DAGRE_RANK_SEPARATION = 20;
 const EDGEDIST = 1;
 const GRAPH_OFFSET_X = 60;
 const GRAPH_OFFSET_Y = -75;
