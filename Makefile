@@ -40,19 +40,25 @@ endif
 ifneq (,$(filter Windows%,$(OS)))
 LIBZSTD_SO := deps/zstd/lib/dll/libzstd.dll
 LIBLZ4_SO := deps/lz4/lib/dll/liblz4.dll
+LIBXGBOOST_SO := deps/xgboost/lib/libxgboost.dll
 else ifeq ($(shell uname), Darwin)
 LIBZSTD_SO := deps/zstd/lib/libzstd.dylib
 LIBLZ4_SO := deps/lz4/lib/liblz4.dylib
+LIBXGBOOST_SO := deps/xgboost/lib/libxgboost.dylib
 else
 LIBZSTD_SO := deps/zstd/lib/libzstd.so
 LIBLZ4_SO := deps/lz4/lib/liblz4.so
+LIBXGBOOST_SO := deps/xgboost/lib/libxgboost.so
 endif
 
 LIBZSTD_A := deps/zstd/lib/libzstd.a
 LIBLZ4_A := deps/lz4/lib/liblz4.a
 LIBGTEST_A := deps/googletest/lib/libgtest.a
+LIBXGBOOST_A := deps/xgboost/lib/libxgboost.a
+LIBDMLC_A := deps/xgboost/lib/libdmlc.a
 
 GTEST_HEADERS := deps/googletest/googletest/include/gtest/gtest.h
+XGBOOST_HEADER := deps/xgboost/include/xgboost/c_api.h
 
 ifndef SKIP_BUILDDEPS_CHECK
   # Check if any gtest-dependent targets are being built
@@ -65,6 +71,24 @@ ifndef SKIP_BUILDDEPS_CHECK
       GTEST_BUILD_RESULT := $(shell $(MAKE) SKIP_BUILDDEPS_CHECK=1 $(GTEST_HEADERS))
       _ := $(shell sync)
       $(if $(shell test -f $(GTEST_HEADERS) && echo EXISTS),,$(error FATAL: $(GTEST_HEADERS) still missing after download attempt))
+    endif
+  endif
+
+  # Check if xgboost headers are being built
+  XGBOOST_TARGETS := zli gtests test all
+  BUILDING_XGBOOST_TARGETS := $(filter $(XGBOOST_TARGETS),$(MAKECMDGOALS))
+  ifeq ($(MAKECMDGOALS),)
+    # If no targets are specified, assume we're building everything
+    BUILDING_XGBOOST_TARGETS := zli
+  endif
+
+  ifneq ($(BUILDING_XGBOOST_TARGETS),)
+    # Download XGBoost library
+    ifeq ($(wildcard $(XGBOOST_HEADER)),)
+      $(info Downloading xgboost dependency for targets: $(BUILDING_XGBOOST_TARGETS))
+      XGBOOST_BUILD_RESULT := $(shell $(MAKE) SKIP_BUILDDEPS_CHECK=1 $(XGBOOST_HEADER))
+      _ := $(shell sync)
+      $(if $(shell test -f $(XGBOOST_HEADER) && echo EXISTS),,$(error FATAL: $(XGBOOST_HEADER) still missing after download attempt))
     endif
   endif
 endif
@@ -82,10 +106,10 @@ LIBASMSRCS := $(wildcard $(addsuffix /*.S, $(LIBDIRS)))
 LIBOBJS := $(patsubst %.c,%.o,$(LIBCSRCS)) $(patsubst %.S,%.o,$(LIBASMSRCS))
 
 libopenzl.a:
-$(eval $(call static_library,libopenzl.a,$(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
+$(eval $(call static_library,libopenzl.a,$(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
 
 libopenzl.so: CFLAGS += -fPIC
-$(eval $(call c_dynamic_library,libopenzl.so,$(LIBOBJS),$(LIBZSTD_SO) $(LIBLZ4_SO)))
+$(eval $(call c_dynamic_library,libopenzl.so,$(LIBOBJS),$(LIBZSTD_SO) $(LIBLZ4_SO) $(LIBXGBOOST_SO)))
 
 .PHONY:lib
 lib: libopenzl.a libopenzl.so
@@ -125,6 +149,16 @@ SDDL2_COMPILER_CXXOBJS := $(filter-out %main.o, $(call cxx_objs,$(SDDL2_COMPILER
 ML_SELECTOR_COBJS := $(call c_objs,$(ML_SELECTOR_DIR))
 ML_SELECTOR_CXXOBJS := $(call cxx_objs,$(ML_SELECTOR_DIR))
 
+# ML selector files depend on xgboost headers
+$(ML_SELECTOR_COBJS) $(ML_SELECTOR_CXXOBJS): | $(XGBOOST_HEADER)
+
+# Add flags for cross platform compatibility for Windows
+zli: LDFLAGS += $(XGBOOST_LDFLAGS)
+zli: LDLIBS += $(XGBOOST_LDLIBS)
+
+gtests: LDFLAGS += $(XGBOOST_LDFLAGS)
+gtests: LDLIBS += $(XGBOOST_LDLIBS)
+
 $(eval $(call cxx_program,zli, \
 	cli/zli.o \
 	$(CLI_CXXOBJS) \
@@ -147,7 +181,7 @@ $(eval $(call cxx_program,zli, \
 	$(ML_SELECTOR_CXXOBJS) \
 	$(ZLCPP_OBJS) \
 	$(LIBOBJS), \
-	$(LIBZSTD_A) $(LIBLZ4_A)))
+	$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
 
 .PHONY: examples
 examples: zs2_pipeline zs2_trygraph zs2_selector zs2_struct zs2_round_trip
@@ -169,18 +203,18 @@ sddl2_test:
 # ********     Tools     ********
 
 UNITBENCH_COBJS := $(foreach DIR,$(UNITBENCH_DIRS),$(call c_objs,$(DIR)))
-$(eval $(call c_program_shared_o,unitBench,tools/time/timefn.o tools/fileio/fileio.o $(UNITBENCH_COBJS) $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
+$(eval $(call c_program_shared_o,unitBench,tools/time/timefn.o tools/fileio/fileio.o $(UNITBENCH_COBJS) $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
 
 stream_dump2:
 $(eval $(call c_program_shared_o,stream_dump2, \
-    $(STREAMDUMP_COBJS) tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
+    $(STREAMDUMP_COBJS) tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
 
 $(eval $(call cxx_program,sddl_compiler, \
 	$(SDDL_COMPILER_DIR)/main.o \
 	$(SDDL_COMPILER_CXXOBJS) \
 	$(ZLCPP_OBJS), \
 	libopenzl.a \
-	$(LIBZSTD_A) $(LIBLZ4_A)))
+	$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
 
 # Selection of gtest units (by file name convention)
 CXX_FILE_OBJS := $(notdir $(CXX_OBJS))
@@ -233,31 +267,30 @@ ALL_GTESTS_OBJS := \
 	$(ZLCPP_OBJS) \
 	$(LIBOBJS)
 
-gtests: $(LIBGTEST_A) $(LIBZSTD_A) $(LIBLZ4_A)
+gtests: $(LIBGTEST_A) $(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A)
 gtests: CPPFLAGS += -Ideps/googletest/googletest/include
 gtests: CXXFLAGS += -Wno-undef -Wno-sign-compare
 gtests: LDLIBS   += -lpthread
 $(eval $(call cxx_program,gtests, \
 	$(ALL_GTESTS_OBJS), \
-	$(LIBGTEST_A) $(LIBZSTD_A) $(LIBLZ4_A)))
+	$(LIBGTEST_A) $(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
 
 # ********     Examples     ********
 
 zs2_pipeline:
-$(eval $(call c_program_shared_o,zs2_pipeline,examples/zs2_pipeline.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
+$(eval $(call c_program_shared_o,zs2_pipeline,examples/zs2_pipeline.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
 
 zs2_struct:
-$(eval $(call c_program_shared_o,zs2_struct,examples/zs2_struct.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
+$(eval $(call c_program_shared_o,zs2_struct,examples/zs2_struct.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
 
 zs2_trygraph:
-$(eval $(call c_program_shared_o,zs2_trygraph,examples/zs2_trygraph.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
+$(eval $(call c_program_shared_o,zs2_trygraph,examples/zs2_trygraph.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
 
 zs2_selector:
-$(eval $(call c_program_shared_o,zs2_selector,examples/zs2_selector.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
+$(eval $(call c_program_shared_o,zs2_selector,examples/zs2_selector.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
 
 zs2_round_trip:
-$(eval $(call cxx_program_shared_o,zs2_round_trip,tests/round_trip.o tools/fileio/fileio.o $(SHARED_COMPONENTS_CXXOBJS) $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
-
+$(eval $(call cxx_program_shared_o,zs2_round_trip,tests/round_trip.o tools/fileio/fileio.o $(SHARED_COMPONENTS_CXXOBJS) $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
 
 # ********     Cleaning     ********
 
@@ -266,7 +299,6 @@ clean:
 	# note: a lot is done within multiconf.make
 	$(MAKE) -C $(SDDL2_DIR) clean
 	@echo Cleaning completed
-
 
 #special cases : these targets require additional flags to compile without warnings
 $(CACHE_ROOT)/%/src/openzl/common/errors.o : CFLAGS += -Wno-format-nonliteral
@@ -283,7 +315,7 @@ TAR ?= tar
 # Use this target as a work-around if dependencies are not correctly built
 # automatically.
 .PHONY : builddeps
-builddeps : $(LIBGTEST_A) $(LIBZSTD_A) $(LIBZSTD_SO) $(LIBLZ4_A) $(LIBLZ4_SO)
+builddeps : $(LIBGTEST_A) $(LIBZSTD_A) $(LIBZSTD_SO) $(LIBLZ4_A) $(LIBLZ4_SO) $(LIBXGBOOST_A) $(LIBXGBOOST_SO)
 
 .PHONY: cleandeps
 cleandeps:
@@ -292,6 +324,7 @@ cleandeps:
 	$(RM) -r deps/zstd deps/$(ZSTD_DIRNAME) $(ZSTD_TARBALL)
 	-$(GIT) submodule deinit -f deps/lz4 2> /dev/null
 	$(RM) -r deps/lz4 deps/$(LZ4_DIRNAME) $(LZ4_TARBALL)
+	$(RM) -r deps/xgboost deps/xgboost.tar.gz
 
 # Variables are by default not exported, but when they're passed on the CLI,
 # they are exported. We do not want to pass super restrictive flags to our
@@ -393,3 +426,68 @@ $(LIBGTEST_A) : MAKEOVERRIDES=
 $(LIBGTEST_A) : $(GTEST_HEADERS)
 	cd deps/googletest && cmake .
 	$(MAKE) -C deps/googletest
+
+# XGBoost
+XGBOOST_LIBDIR := deps/xgboost/lib
+
+XGBOOST_VERSION ?= 3.1.0
+XGBOOST_DIRNAME := xgboost-src-$(XGBOOST_VERSION)
+XGBOOST_TARBALL := deps/$(XGBOOST_DIRNAME).tar.gz
+
+# Common CMake flags for xgboost shared library build
+XGBOOST_CMAKE_COMMON := -DBUILD_STATIC_LIB=OFF -DUSE_OPENMP=OFF \
+	-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=$(abspath $(XGBOOST_LIBDIR))
+
+# Platform-specific CMake flags for xgboost
+XGBOOST_CMAKE_PLATFORM :=
+XGBOOST_LDFLAGS :=
+XGBOOST_LDLIBS :=
+ifneq (,$(filter $(SMALL_CMD_LINE),$(UNAME)))
+    # MinGW/MSYS: Link ws2_32 for Windows socket functions
+    XGBOOST_CMAKE_PLATFORM := -DCMAKE_CXX_STANDARD_LIBRARIES="-lws2_32" \
+        -DCMAKE_SHARED_LINKER_FLAGS="-lws2_32"
+    XGBOOST_LDFLAGS += -L$(abspath $(XGBOOST_LIBDIR))
+    XGBOOST_LDLIBS += -lws2_32
+else ifeq ($(shell uname),Darwin)
+    # macOS: Set install_name to absolute path so dyld can find the library
+    XGBOOST_CMAKE_PLATFORM := -DCMAKE_INSTALL_NAME_DIR=$(abspath $(XGBOOST_LIBDIR)) \
+        -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_MACOSX_RPATH=ON
+endif
+
+$(XGBOOST_TARBALL):
+	$(MKDIR) -p deps
+	$(CURL) -L https://github.com/dmlc/xgboost/releases/download/v$(XGBOOST_VERSION)/$(XGBOOST_DIRNAME).tar.gz -o $@
+
+.PHONY: xgboost-fallback
+xgboost-fallback: $(XGBOOST_TARBALL)
+	$(RM) -r deps/xgboost
+	$(TAR) -xzf $(XGBOOST_TARBALL) -C deps
+	@if [ -d deps/$(XGBOOST_DIRNAME) ] && [ ! -d deps/xgboost ]; then \
+		mv deps/$(XGBOOST_DIRNAME) deps/xgboost; \
+	fi
+
+$(XGBOOST_HEADER):
+	-$(GIT) submodule update --init --recursive --single-branch --depth 1 deps/xgboost
+	if [ ! -f $@ ]; then \
+		echo "Falling back to tarball download and extraction for xgboost"; \
+		$(MAKE) xgboost-fallback; \
+	fi
+
+# Build shared library only after static library is done (to avoid parallel cmake conflicts)
+$(LIBXGBOOST_SO) : MAKEOVERRIDES=
+$(LIBXGBOOST_SO) : $(LIBXGBOOST_A)
+	$(MKDIR) -p $(XGBOOST_LIBDIR)
+	cd deps/xgboost && mkdir -p build-shared && cd build-shared && \
+		cmake .. $(XGBOOST_CMAKE_COMMON) $(XGBOOST_CMAKE_PLATFORM) && $(MAKE)
+ifeq ($(shell uname),Darwin)
+	install_name_tool -id "$(abspath $(XGBOOST_LIBDIR))/libxgboost.dylib" \
+		"$(abspath $(XGBOOST_LIBDIR))/libxgboost.dylib" || true
+endif
+
+$(LIBXGBOOST_A) : MAKEOVERRIDES=
+$(LIBXGBOOST_A) : $(XGBOOST_HEADER)
+	$(MKDIR) -p $(XGBOOST_LIBDIR)
+	cd deps/xgboost && mkdir -p build && cd build && cmake .. -DBUILD_STATIC_LIB=ON -DUSE_OPENMP=OFF -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=$(abspath $(XGBOOST_LIBDIR)) && $(MAKE)
+
+# libdmlc.a is built as part of xgboost static build
+$(LIBDMLC_A): $(LIBXGBOOST_A)
