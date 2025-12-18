@@ -111,6 +111,8 @@ nav:
     - Names: api/names.md
   - Tools:
     - Trace Visualizer: tools/trace
+  - Blog:
+    - blog/index.md
 
 not_in_nav: |
   demo.md
@@ -157,6 +159,7 @@ theme:
 
 markdown_extensions:
   - admonition
+  - attr_list
   - pymdownx.details
   - tables
   - md_in_html
@@ -180,6 +183,10 @@ plugins:
       build_directory: ./build-openzl
   - search
   - autorefs
+  - blog:
+      authors: true
+      post_url_date_format: yyyy-MM-dd
+      post_url_format: "{date}-{slug}"
   - mkdocstrings:
       default_handler: zstd
       handlers:
