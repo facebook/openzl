@@ -4,13 +4,31 @@ name: Wheels
 
 on:
   workflow_dispatch:
+
   pull_request:
+    paths:
+      - 'py/**'
+      - 'src/**'
+      - 'include/**'
+      - 'deps/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/wheels.yml'
+
   push:
     branches:
-     - dev
+      - dev
+    paths:
+      - 'py/**'
+      - 'src/**'
+      - 'include/**'
+      - 'deps/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/wheels.yml'
+
   release:
     types:
       - published
+
 
 jobs:
   build_sdist:
