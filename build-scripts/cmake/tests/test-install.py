@@ -49,5 +49,15 @@ lib_paths = [str(INSTALL_DIR / "lib"), str(INSTALL_DIR / "lib64")]
 env["LD_LIBRARY_PATH"] = ":".join(lib_paths)
 run(["./main"], cwd=BUILD_DIR, check=True, env=env)
 
+# Make sure the installed package can be imported in cmake
+BUILD_DIR_FOR_TEST = tempfile.mkdtemp(dir=TEST_DIR, prefix="build-")
+run(
+    ["cmake", f"-DCMAKE_PREFIX_PATH={INSTALL_DIR}", ".."],
+    cwd=BUILD_DIR_FOR_TEST,
+    check=True,
+)
+run(["make"], cwd=BUILD_DIR_FOR_TEST, check=True)
+run(["./build_test"], cwd=BUILD_DIR_FOR_TEST, check=True)
+
 # Clean up build dir on success. On failure, keep it around so we can debug.
 shutil.rmtree(BUILD_DIR, ignore_errors=True)
