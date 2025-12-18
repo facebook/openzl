@@ -6,24 +6,21 @@ on:
   workflow_dispatch:
 
   pull_request:
-    paths:
+    paths: &wheel_paths
       - 'py/**'
+      - 'cpp/**'
       - 'src/**'
       - 'include/**'
-      - 'deps/**'
+      - 'tools/sddl/**'
+      - 'tools/sddl2/**'
       - 'CMakeLists.txt'
+      - 'build-scripts/**'
       - '.github/workflows/wheels.yml'
 
   push:
     branches:
       - dev
-    paths:
-      - 'py/**'
-      - 'src/**'
-      - 'include/**'
-      - 'deps/**'
-      - 'CMakeLists.txt'
-      - '.github/workflows/wheels.yml'
+    paths: *wheel_paths
 
   release:
     types:
