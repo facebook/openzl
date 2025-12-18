@@ -33,8 +33,7 @@ typedef enum {
  */
 ZL_Report FeatureGen_integer(
         const ZL_Input* inputStream,
-        VECTOR(LabeledFeature) * features,
-        const void* featureContext);
+        VECTOR(LabeledFeature) * features);
 
 /**
  * Defines type Feature Generator, which takes a stream and generates various
@@ -44,8 +43,7 @@ ZL_Report FeatureGen_integer(
  */
 typedef ZL_Report (*FeatureGenerator)(
         const ZL_Input* inputStream,
-        VECTOR(LabeledFeature) * features,
-        const void* featureContext);
+        VECTOR(LabeledFeature) * features);
 
 ZL_RESULT_DECLARE_TYPE(FeatureGenerator);
 

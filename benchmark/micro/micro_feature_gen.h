@@ -84,7 +84,7 @@ void inline registerFeatureGenIntegerBench(size_t size)
         VECTOR(LabeledFeature) features = empty_vector();
 
         while (state.KeepRunning()) {
-            ZL_Report report = FeatureGen_integer(stream, &features, nullptr);
+            ZL_Report report = FeatureGen_integer(stream, &features);
             VECTOR_CLEAR(features);
             benchmark::DoNotOptimize(report);
             benchmark::ClobberMemory();

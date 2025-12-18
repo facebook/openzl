@@ -58,7 +58,6 @@ SampleBinaryGBTModel::SampleBinaryGBTModel()
     gbtModel_ = {
         .predictor        = &predictor_,
         .featureGenerator = FeatureGen_integer,
-        .featureContext   = NULL, // Ignoring for now
         .nbLabels         = classLabels_.size(),
         .classLabels      = classLabels_.data(),
         .nbFeatures       = featureLabels_.size(),
@@ -88,7 +87,6 @@ SampleCyclicGBTModel::SampleCyclicGBTModel()
     gbtModel_ = {
         .predictor        = &predictor_,
         .featureGenerator = FeatureGen_integer,
-        .featureContext   = NULL, // Ignoring for now
         .nbLabels         = classLabels_.size(),
         .classLabels      = classLabels_.data(),
         .nbFeatures       = featureLabels_.size(),

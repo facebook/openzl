@@ -101,8 +101,7 @@ GBTModel_predictInd(const GBTModel* model, const ZL_Input* in, ZL_Graph* graph)
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
 
     VECTOR(LabeledFeature) featuresMap = VECTOR_EMPTY(kMaxFeaturesCapacity);
-    const ZL_Report report =
-            model->featureGenerator(in, &featuresMap, model->featureContext);
+    const ZL_Report report = model->featureGenerator(in, &featuresMap);
 
     if (ZL_isError(report)) {
         VECTOR_DESTROY(featuresMap);

@@ -110,16 +110,14 @@ ZL_RESULT_DECLARE_TYPE(Label);
 /**
  * Defines type GBTModel, which is composed of 3 parts. First, the predictor,
  * which can take a vector of features as input and return a class id. Second,
- * the feature generator, which takes a stream and returns the features. The
- * feature generator can use the optional featureContext opaque ptr. Lastly, the
- * labels for the classes and features, which allows us to easily translate
+ * the feature generator, which takes a stream and returns the features. Lastly,
+ * the labels for the classes and features, which allows us to easily translate
  * class ids to class names and also ensure portability between training and
  * inference time.
  */
 typedef struct {
     const GBTPredictor* predictor;
     FeatureGenerator featureGenerator;
-    const void* featureContext;
     size_t nbLabels;
     const Label* classLabels;
     size_t nbFeatures;

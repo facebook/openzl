@@ -58,10 +58,8 @@ class ZstrongCoreBinaryMLTest : public Test {
 
     static ZL_Report featureGenerator(
             const ZL_Input* inputStream,
-            VECTOR(LabeledFeature) * features,
-            const void* featureContext)
+            VECTOR(LabeledFeature) * features)
     {
-        (void)featureContext;
         ZL_ASSERT_EQ((int)ZL_Input_type(inputStream), (int)ZL_Type_numeric);
 
         ZL_ASSERT_EQ(ZL_Input_eltWidth(inputStream), 4);
@@ -93,10 +91,8 @@ class ZstrongCoreMultiMLTest : public Test {
     // features
     static ZL_Report featureGenerator(
             const ZL_Input* inputStream,
-            VECTOR(LabeledFeature) * features,
-            const void* featureContext)
+            VECTOR(LabeledFeature) * features)
     {
-        (void)featureContext;
         ZL_ASSERT_EQ((int)ZL_Input_type(inputStream), (int)ZL_Type_numeric);
 
         ZL_ASSERT_EQ(ZL_Input_eltWidth(inputStream), 4);

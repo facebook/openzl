@@ -288,11 +288,10 @@ TEST_F(TestMLSelectorGraph, TestInvalidGBTModel)
 TEST_F(TestMLSelectorGraph, TestInvalidFeatureGenerator)
 {
     gbtModel_.featureGenerator = [](const ZL_Input* inputStream,
-                                    VECTOR(LabeledFeature) * features,
-                                    const void* featureContext) -> ZL_Report {
+                                    VECTOR(LabeledFeature)
+                                            * features) -> ZL_Report {
         (void)inputStream;
         (void)features;
-        (void)featureContext;
         return ZL_returnSuccess();
     };
 

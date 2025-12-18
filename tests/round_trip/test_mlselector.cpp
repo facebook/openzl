@@ -19,14 +19,12 @@
 namespace {
 auto deltaFeatureGenerator(
         const ZL_Input* inputStream,
-        VECTOR(LabeledFeature) * features,
-        const void* featureContext)
+        VECTOR(LabeledFeature) * features)
 {
     // Calculates nbElts, eltWidth and hasConstDelta features. hasConstDelta
     // represents whether or not the stream is an arithmetic sequence, which
     // will always have a constant delta since the difference between each ith
     // and (i+1)th element is the same.
-    (void)featureContext;
 
     const void* data      = ZL_Input_ptr(inputStream);
     const size_t nbElts   = ZL_Input_numElts(inputStream);

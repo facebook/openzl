@@ -71,20 +71,6 @@ gbt_predictor::GBTPredictor getPredictorFromJson(folly::dynamic const& model)
     return gbt_predictor::GBTPredictor(model["predictor"]);
 }
 
-::GBTModel getModel(
-        const gbt_predictor::GBTPredictor& predictor,
-        const std::vector<Label>& labels,
-        const std::vector<Label>& features)
-{
-    ::GBTModel model{
-        .predictor     = predictor.getCorePredictor().get(),
-        .nbLabels      = labels.size(),
-        .classLabels   = labels.data(),
-        .nbFeatures    = features.size(),
-        .featureLabels = features.data(),
-    };
-    return model;
-}
 } // namespace
 
 GBTModel::GBTModel(folly::dynamic const& model)
@@ -92,8 +78,7 @@ GBTModel::GBTModel(folly::dynamic const& model)
           labels_(getLabelsFromStrings(labels_str_)),
           features_str_(getFeaturesFromJson(model)),
           features_(getLabelsFromStrings(features_str_)),
-          predictor_(getPredictorFromJson(model)),
-          gbtModel_(getModel(predictor_, labels_, features_))
+          predictor_(getPredictorFromJson(model))
 {
     if (predictor_.getNumClasses() != labels_str_.size()) {
         throw std::runtime_error(
@@ -105,20 +90,16 @@ GBTModel::GBTModel(std::string_view model) : GBTModel(folly::parseJson(model))
 {
 }
 
-Label GBTModel::predict(
-        const ZL_Input* input,
-        ::FeatureGenerator fgen,
-        const void* featureCxt) const
+Label GBTModel::predict(const ZL_Input* input, const FeatureGenerator* fgen)
+        const
 {
-    auto gbtModel              = gbtModel_;
-    gbtModel.featureGenerator  = fgen;
-    gbtModel.featureContext    = featureCxt;
-    ZL_RESULT_OF(Label) result = GBTModel_predict(&gbtModel, input);
-    if (ZL_RES_isError(result)) {
+    FeatureMap featuresMap;
+    fgen->getFeatures(featuresMap, input);
+    size_t classIdx = predict(featuresMap);
+    if (classIdx >= labels_.size()) {
         return "";
     }
-    const char* decodedLabel = ZL_RES_value(result);
-    return decodedLabel;
+    return labels_[classIdx];
 }
 
 size_t GBTModel::predict(const FeatureMap& featuresMap) const
@@ -145,7 +126,7 @@ void calcIntegerFeatures(
 {
     ZL_Input* stream = ZL_TypedRef_createNumeric(data, eltWidth, nbElts);
     VECTOR(LabeledFeature) features = VECTOR_EMPTY(kMaxVectorSize);
-    const ZL_Report report = FeatureGen_integer(stream, &features, nullptr);
+    const ZL_Report report          = FeatureGen_integer(stream, &features);
     for (size_t i = 0; i < VECTOR_SIZE(features); i++) {
         auto const& feature        = VECTOR_AT(features, i);
         featuresMap[feature.label] = feature.value;
@@ -329,11 +310,9 @@ ZL_GraphID MLSelector::select(
         ZL_Input const* input,
         std::span<ZL_GraphID const> successors) const
 {
-    (void)eictx;
-
     if (labelsIdx_.size()) {
-        std::string predictedLabel = model_.get()->predict(
-                input, featureGen_MLSelector, featureGenerator_.get());
+        std::string predictedLabel =
+                model_.get()->predict(input, featureGenerator_.get());
         size_t predictedIdx = labelsIdx_.at(predictedLabel);
         return successors[predictedIdx];
     } else {
