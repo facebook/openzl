@@ -1,12 +1,14 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <gtest/gtest.h>
+#include "openzl/cpp/CCtx.hpp"
 #include "openzl/cpp/Compressor.hpp"
 #include "openzl/cpp/DCtx.hpp"
 #include "tests/datagen/DataGen.h"
 #include "tests/ml_selector_utils.h"
 #include "tools/ml_selector/ml_features.h"
 #include "tools/ml_selector/ml_selector_graph.h"
+#include "tools/ml_selector/ml_selector_trainer.h"
 #include "tools/training/train.h"
 #include "tools/training/train_params.h"
 #include "tools/training/utils/utils.h"
@@ -14,10 +16,17 @@
 namespace openzl::tests {
 namespace {
 
-class TestMLSelectorGraph : public testing::Test {
+class TestMLSelectorTrainer : public testing::Test {
    public:
     void SetUp() override
     {
+        trainedCompressor_.setParameter(
+                CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+        compressor_.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+
+        generateTrainData();
+        testData_ = generateTestData();
+
         trainParams_ = {
             .compressorGenFunc =
                     [](std::string_view serialized) {
@@ -27,68 +36,135 @@ class TestMLSelectorGraph : public testing::Test {
                         return compressor;
                     },
         };
-        deltaData_    = generateDeltaData();
-        auto dg       = openzl::tests::datagen::DataGen();
-        tokenizeData_ = dg.template randLongVector<uint64_t>(
-                "randLongVec", 0, 500, 10000, 10000);
-        compressor_.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
-
-        numericInputs_.emplace_back();
-        numericInputs_.back().add(
-                Input::refNumeric(deltaData_.data(), deltaData_.size()));
-
-        numericInputs_.emplace_back();
-        numericInputs_.back().add(
-                Input::refNumeric(tokenizeData_.data(), tokenizeData_.size()));
-
-        serialInputs_.emplace_back();
-        serialInputs_.back().add(
-                Input::refNumeric(deltaData_.data(), deltaData_.size()));
-
-        serialInputs_.emplace_back();
-        serialInputs_.back().add(
-                Input::refNumeric(tokenizeData_.data(), tokenizeData_.size()));
-
-        SetUpCompressorWithStaticSuccessors();
     }
 
-    void SetUpCompressorWithStaticSuccessors()
+    std::vector<GraphID> registerSuccessors(
+            Compressor& compressor,
+            bool multi = false)
     {
-        auto deltaGid_ = ZL_Compressor_registerStaticGraph_fromNode1o(
-                compressor_.get(), ZL_NODE_DELTA_INT, ZL_GRAPH_ZSTD);
+        auto deltaGid = ZL_Compressor_registerStaticGraph_fromNode1o(
+                compressor.get(), ZL_NODE_DELTA_INT, ZL_GRAPH_ZSTD);
 
-        auto tokenizeGid_ = ZL_Compressor_registerTokenizeGraph(
-                compressor_.get(),
+        auto tokenizeGid = ZL_Compressor_registerTokenizeGraph(
+                compressor.get(),
                 ZL_Type_numeric,
                 true,
-                deltaGid_,
+                deltaGid,
                 ZL_GRAPH_ZSTD);
 
-        successors_ = { deltaGid_, tokenizeGid_ };
+        std::vector<ZL_GraphID> successorGraphs = { deltaGid, tokenizeGid };
 
-        ZL_RESULT_OF(ZL_GraphID)
-        mlSelectorResult = MLSelector_registerGraphWithEmptyGBTModel(
-                compressor_.get(), successors_.data(), successors_.size());
-        ASSERT_FALSE(ZL_RES_isError(mlSelectorResult));
-
-        ZL_GraphID mlSelectorGraphId = ZL_RES_value(mlSelectorResult);
-
-        ZL_GraphID _ = ZL_Compressor_registerStaticGraph_fromNode1o(
-                compressor_.get(),
-                ZL_NODE_CONVERT_SERIAL_TO_NUM_LE64,
-                mlSelectorGraphId);
+        if (multi) {
+            successorGraphs.push_back(ZL_GRAPH_ZSTD);
+        }
+        return successorGraphs;
     }
 
-    Compressor deserializeCompressor(
-            std::shared_ptr<const std::string_view>& serializedCompressor)
+    std::vector<GraphID> setUpCompressor(
+            Compressor& compressor,
+            bool multi = false)
     {
-        Compressor mlCompressor;
-        auto graphid = ZL_MLSelector_registerBaseGraph(mlCompressor.get());
-        EXPECT_TRUE(!ZL_RES_isError(graphid));
-        mlCompressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
-        mlCompressor.deserialize(*serializedCompressor.get());
+        std::vector<ZL_GraphID> successorGraphs =
+                registerSuccessors(compressor, multi);
 
-        return mlCompressor;
+        auto mlSelectorGraphId = MLSelector_registerGraphWithEmptyGBTModel(
+                compressor.get(),
+                successorGraphs.data(),
+                successorGraphs.size());
+
+        EXPECT_TRUE(!ZL_RES_isError(mlSelectorGraphId));
+
+        // Wrap with serial-to-numeric conversion so the graph accepts serial
+        // input
+        ZL_GraphID staticGraph = ZL_Compressor_registerStaticGraph_fromNode1o(
+                compressor.get(),
+                ZL_NODE_CONVERT_SERIAL_TO_NUM_LE64,
+                ZL_RES_value(mlSelectorGraphId));
+
+        // Parameterize so ml selector graph can be updated during training
+        ZL_GraphParameters const wrapperDesc = {};
+
+        auto sgid = ZL_Compressor_parameterizeGraph(
+                compressor.get(), staticGraph, &wrapperDesc);
+        EXPECT_TRUE(!ZL_RES_isError(sgid));
+        compressor.selectStartingGraph(ZL_RES_value(sgid));
+
+        return successorGraphs;
+    }
+
+    std::vector<std::vector<uint64_t>> generateTestData()
+    {
+        std::vector<std::vector<uint64_t>> data;
+        auto dg = openzl::tests::datagen::DataGen();
+
+        data.push_back(generateDeltaData());
+        data.push_back(dg.template randLongVector<uint64_t>(
+                "randLongVec", 0, 100, 10000, 10000));
+
+        data.push_back(dg.template randLongVector<uint64_t>(
+                "randLongVec", 0, UINT64_MAX, 10000, 10000));
+        return data;
+    }
+
+    void generateDeltaInputs()
+    {
+        deltaData_.push_back(generateDeltaData());
+
+        training::MultiInput binaryInput;
+        binaryInput.add(
+                Input::refSerial(
+                        deltaData_.back().data(),
+                        deltaData_.back().size() * sizeof(uint64_t)));
+        binaryInputs_.push_back(std::move(binaryInput));
+
+        training::MultiInput multInput;
+        multInput.add(
+                Input::refSerial(
+                        deltaData_.back().data(),
+                        deltaData_.back().size() * sizeof(uint64_t)));
+        multiInputs_.push_back(std::move(multInput));
+    }
+
+    void generateTokenizeInputs(openzl::tests::datagen::DataGen& dg)
+    {
+        tokenizeData_.push_back(dg.template randLongVector<uint64_t>(
+                "randLongVec", 0, 100, 10000, 10000));
+
+        training::MultiInput binaryInput;
+        binaryInput.add(
+                Input::refSerial(
+                        tokenizeData_.back().data(),
+                        tokenizeData_.back().size() * sizeof(uint64_t)));
+        binaryInputs_.push_back(std::move(binaryInput));
+
+        training::MultiInput multiInput;
+        multiInput.add(
+                Input::refSerial(
+                        tokenizeData_.back().data(),
+                        tokenizeData_.back().size() * sizeof(uint64_t)));
+        multiInputs_.push_back(std::move(multiInput));
+    }
+
+    void generateZstdInputs(openzl::tests::datagen::DataGen& dg)
+    {
+        zstd_.push_back(dg.template randLongVector<uint64_t>(
+                "randLongVec", 0, UINT64_MAX, 10000, 10000));
+        training::MultiInput input;
+        input.add(
+                Input::refSerial(
+                        zstd_.back().data(),
+                        zstd_.back().size() * sizeof(uint64_t)));
+        multiInputs_.push_back(std::move(input));
+    }
+
+    void generateTrainData(int size = 500)
+    {
+        auto dg = openzl::tests::datagen::DataGen();
+        for (auto i = 0; i < size; ++i) {
+            generateDeltaInputs();
+            generateTokenizeInputs(dg);
+            generateZstdInputs(dg);
+        }
     }
 
     size_t compress(
@@ -99,6 +175,7 @@ class TestMLSelectorGraph : public testing::Test {
         compressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
 
         cctx_.refCompressor(compressor);
+        // Use refSerial since ./zli assumes all data is serial
         auto s_input =
                 Input::refSerial(input.data(), input.size() * sizeof(uint64_t));
         return cctx_.compressOne(dst, s_input);
@@ -115,6 +192,7 @@ class TestMLSelectorGraph : public testing::Test {
         cBuffer.resize(compressedSize);
 
         // Decompress and verify that the result is the same as the input
+        // Since we compress with refSerial, we use decompressSerial
         const auto decompressedOutput = dctx_.decompressSerial(cBuffer);
 
         const uint64_t* output =
@@ -125,57 +203,180 @@ class TestMLSelectorGraph : public testing::Test {
         EXPECT_EQ(outputVec, input);
     }
 
+    void testSelection(
+            const std::vector<uint64_t>& input,
+            Compressor& compressor,
+            Compressor& mlCompressor)
+    {
+        auto compressBound = ZL_compressBound(input.size() * sizeof(uint64_t));
+
+        // Compress using selected successor
+        std::string cBuffer = std::string(compressBound, '\0');
+        auto compressedSize = compress(compressor, cBuffer, input);
+        cBuffer.resize(compressedSize);
+
+        // Compress using ml selector graph
+        std::string scBuffer  = std::string(compressBound, '\0');
+        auto mlCompressedSize = compress(mlCompressor, scBuffer, input);
+        scBuffer.resize(mlCompressedSize);
+
+        // Check that the ml selector graph selects the correct successor
+        EXPECT_EQ(cBuffer, scBuffer);
+    }
+
+    Compressor deserializeCompressor(
+            std::shared_ptr<const std::string_view>& serializedCompressor)
+    {
+        Compressor mlCompressor;
+        auto graphid = ZL_MLSelector_registerBaseGraph(mlCompressor.get());
+        EXPECT_TRUE(!ZL_RES_isError(graphid));
+        mlCompressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+        mlCompressor.deserialize(*serializedCompressor.get());
+
+        return mlCompressor;
+    }
+
    protected:
     Compressor compressor_;
-    CCtx cctx_;
-    DCtx dctx_;
+    Compressor trainedCompressor_;
 
-    std::vector<uint64_t> deltaData_;
-    std::vector<uint64_t> tokenizeData_;
-    std::vector<uint64_t> serialData_;
-    std::vector<training::MultiInput> numericInputs_;
-    std::vector<training::MultiInput> serialInputs_;
+    std::vector<std::vector<uint64_t>> deltaData_;
+    std::vector<std::vector<uint64_t>> tokenizeData_;
+    std::vector<std::vector<uint64_t>> zstd_;
+
+    std::vector<std::vector<uint64_t>> testData_;
+
+    std::vector<training::MultiInput> binaryInputs_;
+    std::vector<training::MultiInput> multiInputs_;
+
+    std::vector<ZL_GraphID> multiSuccessors_;
+    std::vector<std::string> multiSuccessorLabels_ = { "delta",
+                                                       "tokenize",
+                                                       "zstd" };
+
+    std::vector<ZL_GraphID> binarySuccessors_;
+    std::vector<std::string> binarySuccessorsLabels_ = { "delta", "tokenize" };
+
     openzl::training::TrainParams trainParams_;
 
-    std::vector<ZL_GraphID> successors_;
-    std::vector<std::string> successorLabels_ = { "delta", "tokenize" };
+    CCtx cctx_;
+    DCtx dctx_;
 };
 
-TEST_F(TestMLSelectorGraph, TestNumericRoundTrip)
+TEST_F(TestMLSelectorTrainer, MultiClassSelection)
 {
-    auto serializedTrainedCompressors =
-            openzl::training::train(numericInputs_, compressor_, trainParams_);
+    multiSuccessors_ = registerSuccessors(compressor_, true);
+    setUpCompressor(trainedCompressor_, true);
+    auto serializedCompressor = openzl::training::trainMLSelectorGraph(
+            multiInputs_, trainedCompressor_, trainParams_);
 
-    ASSERT_FALSE(serializedTrainedCompressors.empty());
-    ASSERT_NE(serializedTrainedCompressors[0], nullptr);
+    // Deserialize the trained compressor
+    Compressor mlCompressor = deserializeCompressor(serializedCompressor);
 
-    Compressor comp = deserializeCompressor(serializedTrainedCompressors[0]);
-    testRoundTrip(deltaData_, comp);
+    // Check that the ml selector graph selects the correct successor
+    for (size_t i = 0; i < multiSuccessors_.size(); i++) {
+        auto gid = compressor_.buildStaticGraph(
+                ZL_NODE_CONVERT_SERIAL_TO_NUM_LE64, { multiSuccessors_[i] });
+        compressor_.selectStartingGraph(gid);
+        testSelection(testData_[i], compressor_, mlCompressor);
+    }
 }
 
-TEST_F(TestMLSelectorGraph, TestSerialRoundTrip)
+TEST_F(TestMLSelectorTrainer, BinaryClassSelection)
 {
-    auto serializedTrainedCompressors =
-            openzl::training::train(serialInputs_, compressor_, trainParams_);
+    binarySuccessors_ = registerSuccessors(compressor_);
+    setUpCompressor(trainedCompressor_);
 
-    ASSERT_FALSE(serializedTrainedCompressors.empty());
-    ASSERT_NE(serializedTrainedCompressors[0], nullptr);
+    auto serializedCompressor = openzl::training::trainMLSelectorGraph(
+            binaryInputs_, trainedCompressor_, trainParams_);
 
-    Compressor comp = deserializeCompressor(serializedTrainedCompressors[0]);
-    testRoundTrip(deltaData_, comp);
+    // Deserialize the trained compressor
+    Compressor mlCompressor = deserializeCompressor(serializedCompressor);
+
+    // Check that the ml selector graph selects the correct successor
+    for (size_t i = 0; i < binarySuccessors_.size(); i++) {
+        auto gid = compressor_.buildStaticGraph(
+                ZL_NODE_CONVERT_SERIAL_TO_NUM_LE64, { binarySuccessors_[i] });
+        compressor_.selectStartingGraph(gid);
+        testSelection(testData_[i], compressor_, mlCompressor);
+    }
 }
 
-TEST_F(TestMLSelectorGraph, TestFeatureExtraction)
+TEST_F(TestMLSelectorTrainer, BinaryClassRoundTrip)
 {
+    binarySuccessors_ = setUpCompressor(trainedCompressor_);
+
+    auto serializedBinaryClassCompressors =
+            openzl::training::trainMLSelectorGraph(
+                    binaryInputs_, trainedCompressor_, trainParams_);
+
+    Compressor mlCompressor =
+            deserializeCompressor(serializedBinaryClassCompressors);
+
+    // Make sure deserialized data is same as original data
+    for (size_t i = 0; i < testData_.size(); i++) {
+        testRoundTrip(testData_[i], mlCompressor);
+    }
+}
+
+TEST_F(TestMLSelectorTrainer, MultiClassRoundTrip)
+{
+    multiSuccessors_ = setUpCompressor(trainedCompressor_, true);
+
+    auto serializedMultiClassCompressors =
+            openzl::training::trainMLSelectorGraph(
+                    multiInputs_, trainedCompressor_, trainParams_);
+
+    Compressor mlCompressor =
+            deserializeCompressor(serializedMultiClassCompressors);
+
+    // Make sure deserialized data is same as original data
+    for (size_t i = 0; i < testData_.size(); i++) {
+        testRoundTrip(testData_[i], mlCompressor);
+    }
+}
+
+TEST_F(TestMLSelectorTrainer, TrainRoundTrip)
+{
+    multiSuccessors_ = setUpCompressor(trainedCompressor_, true);
+
+    auto serializedCompressor = openzl::training::train(
+            multiInputs_, trainedCompressor_, trainParams_);
+
+    Compressor mlCompressor =
+            deserializeCompressor(serializedCompressor.front());
+
+    testRoundTrip(testData_.front(), mlCompressor);
+}
+
+TEST_F(TestMLSelectorTrainer, TestFeatureExtraction)
+{
+    // Use refNumeric here since extactMLFeatures expects numeric data
+    training::MultiInput multiInput1;
+    multiInput1.add(
+            Input::refNumeric(
+                    deltaData_.front().data(), deltaData_.front().size()));
+
+    training::MultiInput multiInput2;
+    multiInput2.add(
+            Input::refNumeric(
+                    tokenizeData_.front().data(),
+                    tokenizeData_.front().size()));
+
+    std::vector<training::MultiInput> featureInputs = { multiInput1,
+                                                        multiInput2 };
+
+    binarySuccessors_ = setUpCompressor(trainedCompressor_);
     training::ProcessedMLTrainingSamples trainingSample = extractMLFeatures(
-            numericInputs_, compressor_, cctx_, successors_, successorLabels_);
+            featureInputs,
+            trainedCompressor_,
+            cctx_,
+            binarySuccessors_,
+            binarySuccessorsLabels_);
 
-    std::vector<std::string> expectedLabels = { "delta", "tokenize" };
+    EXPECT_EQ(trainingSample.labels[0], "delta");
+    EXPECT_EQ(trainingSample.labels[1], "tokenize");
 
-    EXPECT_EQ(trainingSample.labels.size(), 2);
-    EXPECT_EQ(trainingSample.labels, expectedLabels);
-
-    EXPECT_EQ(trainingSample.features.size(), 2);
     // featureGen_int should generate 11 features
     EXPECT_EQ(trainingSample.features[0].size(), 11);
 
@@ -192,14 +393,19 @@ TEST_F(TestMLSelectorGraph, TestFeatureExtraction)
                                                       "kurtosis" };
 
     EXPECT_EQ(trainingSample.featureNames, expectedFeatureNames);
-    std::swap(numericInputs_[0], numericInputs_[1]);
-    std::swap(expectedLabels[0], expectedLabels[1]);
+
+    // Swap to verify that we are getting correct labels
+    std::swap(featureInputs[0], featureInputs[1]);
 
     training::ProcessedMLTrainingSamples trainingSample2 = extractMLFeatures(
-            numericInputs_, compressor_, cctx_, successors_, successorLabels_);
+            featureInputs,
+            trainedCompressor_,
+            cctx_,
+            binarySuccessors_,
+            binarySuccessorsLabels_);
 
-    EXPECT_EQ(trainingSample2.labels.size(), 2);
-    EXPECT_EQ(trainingSample2.labels, expectedLabels);
+    EXPECT_EQ(trainingSample2.labels[0], "tokenize");
+    EXPECT_EQ(trainingSample2.labels[1], "delta");
 }
 
 } // namespace
