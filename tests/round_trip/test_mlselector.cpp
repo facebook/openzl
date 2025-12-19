@@ -68,7 +68,7 @@ auto deltaFeatureGenerator(
 // contains one forest with a single tree possessing three nodes. The root
 // node examines whether the stream has a const delta throughout
 // (hasConstDelta < 0.5), and if so, it returns the value of the left child
-// node (which is less than 0.5), effectively assigning the label class1.
+// node (which is less than 0), effectively assigning the label class1.
 
 const std::vector<GBTPredictor_Node> nodes = { { .featureIdx      = 0,
                                                  .value           = 0.5f,
@@ -76,7 +76,7 @@ const std::vector<GBTPredictor_Node> nodes = { { .featureIdx      = 0,
                                                  .rightChildIdx   = 2,
                                                  .missingChildIdx = 1 },
                                                { .featureIdx      = -1,
-                                                 .value           = 0.1f,
+                                                 .value           = -0.1f,
                                                  .leftChildIdx    = 0,
                                                  .rightChildIdx   = 0,
                                                  .missingChildIdx = 0 },

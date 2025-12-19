@@ -53,7 +53,7 @@ typedef struct {
  * trees and getting a sum of the values per forest. The forest with the highest
  * value is chosen as the predicted class. Binary-classification is a special
  * case in which only one forest is needed and if its combined value is compared
- * to 0.5 to decide on the class.
+ * to 0 to decide on the class.
  */
 typedef struct {
     size_t numForests;

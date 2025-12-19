@@ -249,7 +249,7 @@ class GBTBinaryForestTest : public Test {
 TEST_F(GBTBinaryForestTest, binaryClassification)
 {
     /* Result should be 1, since each tree in the 5 forests have value of 0.2.
-     * The resulting sum is greater than 0.5, so the predicted label is 1.
+     * The resulting sum is greater than 0, so the predicted label is 1.
      */
     const GBTPredictor predictor = { .numForests = binaryForest.size(),
                                      .forests    = binaryForest.data() };
@@ -422,7 +422,7 @@ TEST_F(GBTBinaryModelTest, labeledBinaryClass)
              /            \                  //            \
      (card = 5, 4) (card_u = 5, 5)    (card_l = 5, 6) (range = 4, 7)
 
-     The final result depends on the 5th node of this tree, since 6 > 0.5 the
+     The final result depends on the 5th node of this tree, since 6 > 0 the
      resulting binary classification is 1.
    */
     ZL_RESULT_OF(Label) result = GBTModel_predict(&model, stream->getStream());
@@ -435,10 +435,10 @@ TEST_F(GBTBinaryModelTest, swappedLabeledBinaryClass)
 {
     /* From the above test, we know that the result depends on the 5th node of
      * the tree, we want to make sure that if we change the value of this node
-     * that the resulting classification changes too. Set the value to 0.45, and
-     * verify that the classification is now 0 since 0.45f < 0.5.
+     * that the resulting classification changes too. Set the value to -0.45,
+     * and verify that the classification is now 0 since -0.45f < 0.
      */
-    nodes[5].value             = 0.45f;
+    nodes[5].value             = -0.45f;
     ZL_RESULT_OF(Label) result = GBTModel_predict(&model, stream->getStream());
     ASSERT_FALSE(ZL_RES_isError(result));
     const std::string decodedLabel = ZL_RES_value(result);

@@ -167,6 +167,68 @@ class TestMLSelectorTrainer : public testing::Test {
         }
     }
 
+    std::vector<training::MultiInput> generateAmbiguousData(
+            std::vector<std::vector<uint64_t>>& delta,
+            std::vector<std::vector<uint64_t>>& token)
+    {
+        std::vector<training::MultiInput> trainData;
+        auto dg = openzl::tests::datagen::DataGen();
+
+        /* The training data will have following features:
+         * - Delta optimized data: 500-800 elements, values starting in range
+         * [100000, 300000]
+         * - Tokenize optimized data: 700-1000 elements, values starting in
+         * range [200000, 400000]
+         *
+         * XGBoost learns to distinguish these patterns:
+         * - Choose Delta when nbElts < 700 and mean < 200000
+         * - Choose Token when nbElts > 800 and mean > 300000
+         *
+         * If we make the test data have the following features:
+         * - Size: 700-800 elements
+         * - Mean: 200000-300000
+         *
+         * The resulting prediction will be very close to 0 because this input
+         * is ambiguous and straddling the threshold of choosing between Delta
+         * and Tokenize.
+         */
+        for (auto i = 0; i < 100; ++i) {
+            uint64_t dSize = dg.u64_range("deltaSize", 500, 800);
+            uint64_t tSize = dg.u64_range("tokenSize", 700, 1000);
+
+            std::vector<uint64_t> data(dSize);
+            uint64_t deltaStart = dg.u64_range("deltaStart", 100000, 300000);
+            for (size_t j = 0; j < dSize; ++j) {
+                data[j] = deltaStart;
+                deltaStart += dg.i64_range("deltaDiff", -2, 4);
+            }
+            delta.push_back(data);
+
+            uint64_t tokenStart = dg.u64_range("tokenStart", 200000, 400000);
+            token.push_back(dg.template randLongVector<uint64_t>(
+                    "randLongVec",
+                    tokenStart,
+                    tokenStart + dg.u64_range("tokenDiff", 500, 1000),
+                    tSize,
+                    tSize));
+
+            training::MultiInput binaryInput1;
+            binaryInput1.add(
+                    Input::refSerial(
+                            delta.back().data(),
+                            delta.back().size() * sizeof(uint64_t)));
+            trainData.push_back(std::move(binaryInput1));
+
+            training::MultiInput binaryInput2;
+            binaryInput2.add(
+                    Input::refSerial(
+                            token.back().data(),
+                            token.back().size() * sizeof(uint64_t)));
+            trainData.push_back(std::move(binaryInput2));
+        }
+        return trainData;
+    }
+
     size_t compress(
             Compressor& compressor,
             std::string& dst,
@@ -406,6 +468,53 @@ TEST_F(TestMLSelectorTrainer, TestFeatureExtraction)
 
     EXPECT_EQ(trainingSample2.labels[0], "tokenize");
     EXPECT_EQ(trainingSample2.labels[1], "delta");
+}
+
+TEST_F(TestMLSelectorTrainer, TestAmbiguousData)
+{
+    std::vector<std::vector<uint64_t>> delta;
+    std::vector<std::vector<uint64_t>> token;
+    std::vector<training::MultiInput> trainData =
+            generateAmbiguousData(delta, token);
+
+    auto successors = registerSuccessors(compressor_);
+    setUpCompressor(trainedCompressor_);
+
+    auto dg = openzl::tests::datagen::DataGen();
+
+    // Test data has nbElts < 700 and mean ~200000 which leans towards delta,
+    // but other features (like high variance) should correctly push prediction
+    // to tokenize, making the final prediction close to 0 (this specific
+    // test data has prediction around 0.48).
+    auto testData = (dg.template randLongVector<uint64_t>(
+            "randLongVec", 195000, 205400, 695, 695));
+
+    auto serializedCompressor = openzl::training::trainMLSelectorGraph(
+            trainData, trainedCompressor_, trainParams_);
+
+    // Deserialize the trained compressor
+    Compressor mlCompressor = deserializeCompressor(serializedCompressor);
+
+    // Check that the ml selector graph selects the correct successor
+    std::vector<size_t> sizes          = {};
+    std::vector<GraphID> staticGraphId = {};
+    for (size_t i = 0; i < successors.size(); i++) {
+        auto gid = compressor_.buildStaticGraph(
+                ZL_NODE_CONVERT_SERIAL_TO_NUM_LE64, { successors[i] });
+        compressor_.selectStartingGraph(gid);
+        staticGraphId.push_back(gid);
+
+        // Compress
+        auto compressBound =
+                ZL_compressBound(testData.size() * sizeof(uint64_t));
+        std::string cBuffer = std::string(compressBound, '\0');
+        sizes.push_back(compress(compressor_, cBuffer, testData));
+    }
+
+    // Expect tokenize to compress better and ml selector should choose tokenize
+    EXPECT_LE(sizes[1], sizes[0]);
+    compressor_.selectStartingGraph(staticGraphId[1]);
+    testSelection(testData, compressor_, mlCompressor);
 }
 
 } // namespace

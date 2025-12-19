@@ -468,6 +468,11 @@ static GBTPredictorWrapper trainXGBoostModel(
     } else {
         safe_xgboost(XGBoosterSetParam(
                 boosterHandle, "objective", "binary:logistic"));
+        // Explicitly set base_score to 0.5 (this just means that data has 50/50
+        // chance to be in class 1 or class 2 as a start point). This is to
+        // avoid auto-computation error, which happens if training data is
+        // heavily imbalanced and only labeled to one class.
+        safe_xgboost(XGBoosterSetParam(boosterHandle, "base_score", "0.5"));
     }
 
     const int eval_dmats_size                 = 2;

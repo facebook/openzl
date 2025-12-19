@@ -751,7 +751,7 @@ MLSelector_registerGraphWithEmptyGBTModel(
 {
     const GBTPredictor_Node emptyNode = {
         .featureIdx      = -1, // leaf node
-        .value           = 0.0f,
+        .value           = -1.0f,
         .leftChildIdx    = 0,
         .rightChildIdx   = 0,
         .missingChildIdx = 0,
