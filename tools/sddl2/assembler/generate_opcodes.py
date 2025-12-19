@@ -131,7 +131,7 @@ def generate_python_code(families: Dict[str, tuple], opcodes: List[tuple]) -> st
     lines.append("AUTO-GENERATED FILE - DO NOT EDIT MANUALLY")
     lines.append("")
     lines.append("Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def")
-    lines.append(f'Generated at: {datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")}')
+    lines.append(f"Generated at: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}")
     lines.append("Generator: generate_opcodes.py")
     lines.append("")
     lines.append("To regenerate: python3 generate_opcodes.py")

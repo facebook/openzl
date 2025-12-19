@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
-# Check or fix Python file formatting using black.
+# Check or fix Python file formatting using ruff.
 # Reports file and line numbers when formatting issues are detected.
 #
 # Usage: ./scripts/check_python_format.sh [--fix]
@@ -19,10 +19,10 @@ if [[ "${1:-}" == "--fix" ]]; then
     FIX_MODE=true
 fi
 
-# Check if black is installed
-if ! command -v black &> /dev/null; then
-    echo "Error: 'black' is not installed."
-    echo "Install it with: pip install black"
+# Check if ruff is installed
+if ! command -v ruff &> /dev/null; then
+    echo "Error: 'ruff' is not installed."
+    echo "Install it with: pip install ruff"
     exit 1
 fi
 
@@ -39,7 +39,7 @@ for dir in "${EXCLUDE_DIRS[@]}"; do
 done
 
 # Find all Python files directly (skip excluded directories with -prune)
-# Pass files to black instead of directories - avoids black's slow directory traversal
+# Pass files to ruff instead of directories - avoids slow directory traversal
 PYTHON_FILES=()
 while IFS= read -r file; do
     [[ -n "$file" ]] && PYTHON_FILES+=("$file")
@@ -53,37 +53,35 @@ if [[ ${#PYTHON_FILES[@]} -eq 0 ]]; then
 fi
 
 if [[ "$FIX_MODE" == true ]]; then
-    echo "Fixing Python file formatting with black..."
+    echo "Fixing Python file formatting with ruff..."
     echo "Found ${#PYTHON_FILES[@]} Python files"
     echo ""
-    black "${PYTHON_FILES[@]}"
+    ruff format "${PYTHON_FILES[@]}"
     echo ""
     echo "✓ Python formatting complete."
     exit 0
 fi
 
 # Check mode
-echo "Checking Python file formatting with black..."
+echo "Checking Python file formatting with ruff..."
 echo "Found ${#PYTHON_FILES[@]} Python files"
 echo ""
 
-# Run black in check mode with diff output
+# Run ruff format in check mode with diff output
 set +e
-BLACK_OUTPUT=$(black --check --diff --color "${PYTHON_FILES[@]}" 2>&1)
-BLACK_EXIT_CODE=$?
+RUFF_OUTPUT=$(ruff format --check --diff "${PYTHON_FILES[@]}" 2>&1)
+RUFF_EXIT_CODE=$?
 set -e
 
-if [[ $BLACK_EXIT_CODE -eq 0 ]]; then
+if [[ $RUFF_EXIT_CODE -eq 0 ]]; then
     echo "✓ All Python files are correctly formatted."
     exit 0
 fi
 
 # Parse and display the diff output with enhanced information
-CURRENT_FILE=""
 while IFS= read -r line; do
     # Detect file being processed from diff header
     if [[ "$line" =~ ^"--- " ]]; then
-        CURRENT_FILE=$(echo "$line" | sed 's/^--- //' | sed 's/[[:space:]]*$//')
         echo "$line"
     elif [[ "$line" =~ ^"+++ " ]]; then
         echo "$line"
@@ -97,22 +95,17 @@ while IFS= read -r line; do
     elif [[ "$line" =~ ^[-+] ]] && [[ ! "$line" =~ ^"---" ]] && [[ ! "$line" =~ ^"+++" ]]; then
         # Show actual diff lines (additions/removals)
         echo "$line"
-    elif [[ "$line" =~ "would reformat" ]]; then
+    elif [[ "$line" =~ "would be reformatted" ]]; then
         echo ""
         echo "❌ $line"
-        echo "   Explanation: This file does not match black's formatting standards."
-        echo "   To fix: Run 'black <file>' locally to auto-format."
-    elif [[ "$line" =~ "file would be left unchanged" ]] || [[ "$line" =~ "files would be left unchanged" ]]; then
+        echo "   Explanation: This file does not match ruff's formatting standards."
+        echo "   To fix: Run 'ruff format <file>' locally to auto-format."
+    elif [[ "$line" =~ "file already formatted" ]] || [[ "$line" =~ "files already formatted" ]]; then
         echo "✓ $line"
-    elif [[ "$line" =~ "Oh no!" ]]; then
-        echo ""
-        echo "❌ $line"
-        echo "   Explanation: Some Python files need reformatting."
-        echo "   To fix all issues: Run 'make fix-python-format'"
     elif [[ -n "$line" ]]; then
         echo "$line"
     fi
-done <<< "$BLACK_OUTPUT"
+done <<< "$RUFF_OUTPUT"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

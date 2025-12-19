@@ -143,9 +143,9 @@ def main():
                     failed += 1
 
     # Summary
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f"Total: {passed} passed, {failed} failed, {skipped} skipped")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
 
     if skipped > 0:
         print(
