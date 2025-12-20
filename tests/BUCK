@@ -116,6 +116,7 @@ zs_cxxlibrary(
     headers = glob(["zstrong/**/*ixture.h"]),
     deps = [
         "..:zstronglib",
+        "datagen:datagen",
         "fbsource//third-party/googletest:gtest",
         ":utils",
     ],

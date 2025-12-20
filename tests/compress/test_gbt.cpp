@@ -2,11 +2,13 @@
 
 #include <gtest/gtest.h>
 #include <cmath>
+#include <numeric>
 #include <random>
 #include <vector>
 
 #include "openzl/common/stream.h" // For stream usage in hardcoded feature generators
 #include "openzl/compress/selectors/ml/gbt.h"
+#include "tests/datagen/random_producer/compat_uniform_distribution.h"
 #include "tests/zstrong/test_zstrong_fixture.h"
 
 using namespace ::testing;
@@ -33,7 +35,8 @@ GBTPredictor_Tree generateTree(
         bool forceRight         = false)
 {
     std::mt19937_64 mt(kRandomSeed);
-    std::uniform_int_distribution<uint8_t> dist(0, 100);
+    openzl::tests::datagen::compat_uniform_int_distribution<uint8_t> dist(
+            0, 100);
 
     for (size_t i = 0; i < sz; ++i) {
         // Update necessary variables if node is leaf node

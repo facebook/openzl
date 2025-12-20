@@ -12,6 +12,7 @@
 #include "openzl/zl_errors.h"
 #include "openzl/zl_selector.h"
 #include "openzl/zl_version.h"
+#include "tests/datagen/random_producer/compat_uniform_distribution.h"
 #include "tests/utils.h"
 #include "tests/zstrong/test_zstrong_fixture.h"
 
@@ -27,7 +28,8 @@ static size_t xorRandTransform(
 {
     EXPECT_GE(dstCapacity, srcSize);
     std::mt19937_64 generator(seed);
-    std::uniform_int_distribution<unsigned char> distribution(0, 255);
+    datagen::compat_uniform_int_distribution<unsigned char> distribution(
+            0, 255);
     const unsigned char* const src8 = (const unsigned char*)src;
     unsigned char* const dst8       = (unsigned char*)dst;
     for (unsigned int i = 0; i < srcSize; i++) {
