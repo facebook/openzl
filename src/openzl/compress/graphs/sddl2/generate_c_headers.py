@@ -109,7 +109,7 @@ def generate_c_header(families: Dict[str, tuple], opcodes: List[tuple]) -> str:
         "// Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def"
     )
     lines.append(
-        f'// Generated at: {datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")}'
+        f"// Generated at: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}"
     )
     lines.append("// Generator: generate_c_headers.py")
     lines.append("//")
@@ -248,7 +248,7 @@ def generate_c_disasm_header(families: Dict[str, tuple], opcodes: List[tuple]) -
         "// Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def"
     )
     lines.append(
-        f'// Generated at: {datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")}'
+        f"// Generated at: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}"
     )
     lines.append("// Generator: generate_c_headers.py")
     lines.append("//")

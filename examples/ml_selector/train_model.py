@@ -105,7 +105,7 @@ def train_model(path: str) -> t.Tuple[xgb.XGBClassifier, pd.DataFrame]:
     prediction_best_size = sum(y_test.best_size)
     prediction_ratio = prediction_size / prediction_best_size
     logger.info(
-        f"Using our model on the training + test data we will get {100 * (prediction_ratio-1):.02}% worse compression ratio than optimum (predicted size = {prediction_size:.02}, best size = {prediction_best_size:.02})"
+        f"Using our model on the training + test data we will get {100 * (prediction_ratio - 1):.02}% worse compression ratio than optimum (predicted size = {prediction_size:.02}, best size = {prediction_best_size:.02})"
     )
     return (booster, df_features)
 

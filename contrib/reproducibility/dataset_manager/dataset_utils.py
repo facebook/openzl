@@ -292,9 +292,10 @@ class DownloadUtils:
                     os.path.basename(filepath).replace(".bz2", ""),
                 )
 
-                with bz2.open(filepath, "rb") as f_in, open(
-                    temp_grb_file, "wb"
-                ) as f_out:
+                with (
+                    bz2.open(filepath, "rb") as f_in,
+                    open(temp_grb_file, "wb") as f_out,
+                ):
                     f_out.write(f_in.read())
 
                 # convert to .bin

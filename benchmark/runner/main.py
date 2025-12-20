@@ -120,7 +120,7 @@ class MainHandler:
                 content = []
                 if self.start_time and self.end_time:
                     content.append(
-                        f"Benchmark ended at {self.end_time.strftime('%m-%d-%Y %H:%M:%S')} and took {(self.end_time-self.start_time).total_seconds()/60:0.2f} minutes to execute."
+                        f"Benchmark ended at {self.end_time.strftime('%m-%d-%Y %H:%M:%S')} and took {(self.end_time - self.start_time).total_seconds() / 60:0.2f} minutes to execute."
                     )
                 content.append(
                     f"Comparing current run {self.run_id} against {self.compare}"
