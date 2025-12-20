@@ -2,6 +2,8 @@
 
 #include "tools/training/utils/genetic_algorithm.h"
 
+#include <numeric>
+
 namespace openzl {
 namespace training {
 

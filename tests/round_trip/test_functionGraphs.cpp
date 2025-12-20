@@ -4,6 +4,7 @@
 
 // standard C
 #include <stdio.h> // printf
+#include <array>
 
 // Zstrong
 #include <zstd.h> // ZSTD_c_* parameters

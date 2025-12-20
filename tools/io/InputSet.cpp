@@ -2,6 +2,8 @@
 
 #include "tools/io/InputSet.h"
 
+#include <stdexcept>
+
 namespace openzl::tools::io {
 
 InputSet::Iterator InputSet::begin() const

@@ -1,6 +1,9 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "tools/training/clustering/trainers/bottom_up_trainer.h"
+
+#include <chrono>
+
 #include "tools/logger/Logger.h"
 #include "tools/training/clustering/clustering_config_builder.h"
 

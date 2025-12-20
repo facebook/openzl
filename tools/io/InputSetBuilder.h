@@ -3,6 +3,8 @@
 #pragma once
 
 #include <memory>
+#include <optional>
+#include <string>
 #include <vector>
 
 #include "tools/io/InputSet.h"

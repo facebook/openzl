@@ -222,10 +222,11 @@ typedef __m128i __m128i_u;
 // Detect IEEE 754 floating point support.
 // Apple doesn't define __STDC_IEC_559__, but supports IEEE 754.
 // MinGW doesn't define __STDC_IEC_559__, but supports IEEE 754.
+// MSVC on x86/x64 supports IEEE 754.
 #if (defined(__STDC_IEC_559__) && __STDC_IEC_559__) \
         || (defined(__STDC_IEC_60559_BFP__)         \
             && __STDC_IEC_60559_BFP__ >= 202311L)   \
-        || defined(__APPLE__) || defined(__MINGW32__)
+        || defined(__APPLE__) || defined(__MINGW32__) || defined(_MSC_VER)
 #    define ZL_HAS_IEEE_754 1
 #else
 #    define ZL_HAS_IEEE_754 0
