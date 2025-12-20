@@ -9,6 +9,7 @@
 
 #include "openzl/openzl.hpp"
 #include "tests/codecs/test_codec.h"
+#include "tests/datagen/random_producer/compat_uniform_distribution.h"
 
 namespace openzl {
 namespace tests {
@@ -234,7 +235,7 @@ TEST_F(TokenizeTest, TokenizeStringSorted)
             { "hello", "me", "world", "zstd" },
             std::vector<uint8_t>{ 3, 0, 2, 0, 1, 3 });
 
-    std::uniform_int_distribution<uint8_t> chrDist('a', 'z');
+    datagen::compat_uniform_int_distribution<uint8_t> chrDist('a', 'z');
     std::uniform_int_distribution<size_t> lenDist(0, 5);
     std::mt19937 gen(0xdeadbeef);
 

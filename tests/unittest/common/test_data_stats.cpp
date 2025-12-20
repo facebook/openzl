@@ -10,6 +10,7 @@
 #include "openzl/codecs/flatpack/common_flatpack.h"
 #include "openzl/codecs/flatpack/encode_flatpack_kernel.h"
 #include "openzl/shared/data_stats.h"
+#include "tests/datagen/random_producer/compat_uniform_distribution.h"
 
 #define HUF_STATIC_LINKING_ONLY
 #include "openzl/fse/huf.h"
@@ -55,7 +56,8 @@ std::vector<uint8_t> generateUniformVec(
         const uint8_t max = 255)
 {
     std::mt19937_64 mt(kRandomSeed);
-    std::uniform_int_distribution<uint8_t> dist(min, max);
+    openzl::tests::datagen::compat_uniform_int_distribution<uint8_t> dist(
+            min, max);
 
     std::vector<uint8_t> vec(n);
     for (size_t i = 0; i < n; i++) {

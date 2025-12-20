@@ -6,6 +6,7 @@
 #include <random>
 
 #include "tests/datagen/random_producer/RandWrapper.h"
+#include "tests/datagen/random_producer/compat_uniform_distribution.h"
 
 namespace openzl::tests::datagen {
 
@@ -52,42 +53,42 @@ class PRNGWrapper : public RandWrapper {
 
     uint8_t u8_range(NameType, uint8_t min, uint8_t max) override
     {
-        return std::uniform_int_distribution<uint8_t>(min, max)(*generator_);
+        return compat_uniform_int_distribution<uint8_t>(min, max)(*generator_);
     }
 
     uint16_t u16_range(NameType, uint16_t min, uint16_t max) override
     {
-        return std::uniform_int_distribution<uint16_t>(min, max)(*generator_);
+        return compat_uniform_int_distribution<uint16_t>(min, max)(*generator_);
     }
 
     uint32_t u32_range(NameType, uint32_t min, uint32_t max) override
     {
-        return std::uniform_int_distribution<uint32_t>(min, max)(*generator_);
+        return compat_uniform_int_distribution<uint32_t>(min, max)(*generator_);
     }
 
     uint64_t u64_range(NameType, uint64_t min, uint64_t max) override
     {
-        return std::uniform_int_distribution<uint64_t>(min, max)(*generator_);
+        return compat_uniform_int_distribution<uint64_t>(min, max)(*generator_);
     }
 
     int8_t i8_range(NameType, int8_t min, int8_t max) override
     {
-        return std::uniform_int_distribution<int8_t>(min, max)(*generator_);
+        return compat_uniform_int_distribution<int8_t>(min, max)(*generator_);
     }
 
     int16_t i16_range(NameType, int16_t min, int16_t max) override
     {
-        return std::uniform_int_distribution<int16_t>(min, max)(*generator_);
+        return compat_uniform_int_distribution<int16_t>(min, max)(*generator_);
     }
 
     int32_t i32_range(NameType, int32_t min, int32_t max) override
     {
-        return std::uniform_int_distribution<int32_t>(min, max)(*generator_);
+        return compat_uniform_int_distribution<int32_t>(min, max)(*generator_);
     }
 
     int64_t i64_range(NameType, int64_t min, int64_t max) override
     {
-        return std::uniform_int_distribution<int64_t>(min, max)(*generator_);
+        return compat_uniform_int_distribution<int64_t>(min, max)(*generator_);
     }
 
     float f32_range(NameType, float min, float max) override
@@ -113,9 +114,9 @@ class PRNGWrapper : public RandWrapper {
 
    private:
     std::shared_ptr<std::mt19937> generator_;
-    std::uniform_int_distribution<uint8_t> u8dist_;
-    std::uniform_int_distribution<uint32_t> u32dist_;
-    std::uniform_int_distribution<uint64_t> u64dist_;
+    compat_uniform_int_distribution<uint8_t> u8dist_;
+    compat_uniform_int_distribution<uint32_t> u32dist_;
+    compat_uniform_int_distribution<uint64_t> u64dist_;
     std::uniform_real_distribution<float> f32dist_;
     std::uniform_real_distribution<double> f64dist_;
 };
