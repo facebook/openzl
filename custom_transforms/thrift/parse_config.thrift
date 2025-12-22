@@ -2,6 +2,11 @@
 
 // @nolint
 
+include "thrift/annotation/thrift.thrift"
+
+@thrift.AllowLegacyMissingUris
+package;
+
 namespace cpp2 zstrong.thrift.cpp2
 namespace py3 zstrong.thrift
 
