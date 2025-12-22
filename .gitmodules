@@ -1,3 +1,11 @@
 [submodule "deps/zstd"]
 	path = deps/zstd
 	url = https://github.com/facebook/zstd.git
+
+[submodule "deps/lz4"]
+	path = deps/lz4
+	url = https://github.com/lz4/lz4.git
+
+[submodule "deps/xgboost"]
+	path = deps/xgboost
+	url = https://github.com/dmlc/xgboost.git
