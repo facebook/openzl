@@ -413,7 +413,9 @@ class StrictModeTest(_CompressDecompressBaseTest):
             "Expected at least one compression to fail in strict mode",
         )
 
-        print(f"Verified that strict mode fails: {failed_count} file(s) failed as expected")
+        print(
+            f"Verified that strict mode fails: {failed_count} file(s) failed as expected"
+        )
 
 
 def main():
