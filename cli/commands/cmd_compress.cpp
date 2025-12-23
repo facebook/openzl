@@ -131,6 +131,9 @@ int performCompression(const CompressArgs& args)
     // create compressor and context
     CCtx cctx;
     cctx.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+    if (!args.strict) {
+        cctx.setParameter(CParam::PermissiveCompression, 1);
+    }
     cctx.refCompressor(*args.compressor());
     if (args.traceOutput) {
         args.traceOutput->open();
