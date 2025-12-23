@@ -190,6 +190,10 @@ examples: zs2_pipeline zs2_trygraph zs2_selector zs2_struct zs2_round_trip
 test : gtests zs2_test sddl2_test
 	$(EXEC_PREFIX) ./gtests
 
+.PHONY: cli_test
+cli_test: zli
+	cd cli/tests && python3 cli_integration_tests.py ../../zli
+
 .PHONY: check-python-format
 check-python-format:
 	@./scripts/check_python_format.sh
