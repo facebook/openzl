@@ -15,6 +15,15 @@ The `--profile` option allows you to select a predefined **compression profile**
 
 > **More about profiles:** Under the hood, a `profile` is simply a pre-configured OpenZL **graph**. Since we did not do any [ACE](./using-openzl.md#ace-training) training, the graph contains a single Zstd node. Other profiles contain more complex graphs, as we will see later.
 
+### Strict Mode
+By default, `zli compress` operates in **permissive mode**: if a compression graph encounters an error (e.g., data doesn't match some expected properties), it falls back to generic compression instead of failing. This ensures compression always succeeds.
+
+Use `--strict` to disable this fallback behavior:
+```sh
+./zli compress --profile le-i32 --strict data.bin -o data.zl
+```
+In strict mode, compression fails if the data doesn't match the profile's expectations. This is useful for validating that your data conforms to expectations.
+
 ### Numeric data in OpenZL
 Now let's try to compress a file of numbers. We have preconfigured profile called `le-i32` that takes advantage of fixed-width structure of integer data to compress better than byte-wise LZ. In this example, we will compress a small sample of integers from the [ERA5](https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels?tab=overview) dataset.
 

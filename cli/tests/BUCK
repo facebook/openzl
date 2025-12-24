@@ -161,6 +161,34 @@ custom_unittest(
 )
 
 custom_unittest(
+    name = "strict_mode_permissive_test",
+    command = [
+        "$(location :integration_test_bin)",
+        "$(location ..:zli)",
+        "StrictModeTest.test_permissive_mode_succeeds",
+    ],
+    type = "simple",
+    deps = [
+        "..:zli",
+        ":integration_test_bin",
+    ],
+)
+
+custom_unittest(
+    name = "strict_mode_fails_test",
+    command = [
+        "$(location :integration_test_bin)",
+        "$(location ..:zli)",
+        "StrictModeTest.test_strict_mode_fails",
+    ],
+    type = "simple",
+    deps = [
+        "..:zli",
+        ":integration_test_bin",
+    ],
+)
+
+custom_unittest(
     name = "all_integration_tests",
     command = [
         "$(location :integration_test_bin)",

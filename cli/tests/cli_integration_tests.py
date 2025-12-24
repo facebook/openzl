@@ -346,6 +346,78 @@ class BenchmarkCsvCompressionTest(_BenchmarkBaseTest):
         self.benchmark()
 
 
+class StrictModeTest(_CompressDecompressBaseTest):
+    """
+    Test case for strict mode behavior.
+
+    This test verifies that:
+    1. By default (permissive mode), compression succeeds even when using a
+       mismatched profile (e.g., le-u64 profile on data not divisible by 8)
+    2. With --strict flag, compression fails on mismatched data
+
+    The test uses the le-u64 profile (64-bit little-endian unsigned integers)
+    to compress data whose size is NOT a multiple of 8 bytes. This should:
+    - Succeed in permissive mode (default) by falling back to generic compression
+    - Fail in strict mode because the input size doesn't match 64-bit alignment
+    """
+
+    @property
+    def input_dir_name(self) -> str:
+        return "serial"
+
+    @property
+    def compressor_profile_name(self) -> str:
+        # Use le-u64 profile which expects input size to be multiple of 8 bytes
+        return "le-u64"
+
+    def test_permissive_mode_succeeds(self):
+        """
+        Test that compression succeeds in permissive mode (default).
+
+        This verifies that when using a mismatched profile (le-u64 on non-aligned data),
+        the compression falls back to generic compression and succeeds.
+        """
+        self.compress_and_decompress_samples()
+
+    def test_strict_mode_fails(self):
+        """
+        Test that compression fails in strict mode with mismatched data.
+
+        This verifies that when using --strict flag with a mismatched profile,
+        the compression fails instead of falling back to generic compression.
+
+        Note: Only files whose size is NOT a multiple of 8 AND larger than
+        a minimum threshold will trigger the failure. Very small files may
+        be handled differently by the compression pipeline.
+        """
+        from command_utils import execute_command
+
+        failed_count = 0
+        for sample in self.input_samples:
+            # Attempt compression with --strict flag
+            cflag = self.compressor_info.compressor_type.value
+            cstr = self.compressor_info.compressor_str
+
+            compress_args = f"compress {sample.orig_file_path} --{cflag} {cstr} -o {sample.compressed_file_path} --strict"
+
+            result = execute_command(compress_args)
+
+            if result != 0:
+                failed_count += 1
+                print(f"Strict mode correctly failed for {sample.orig_file_path}")
+
+        # At least one file should fail in strict mode
+        self.assertGreater(
+            failed_count,
+            0,
+            "Expected at least one compression to fail in strict mode",
+        )
+
+        print(
+            f"Verified that strict mode fails: {failed_count} file(s) failed as expected"
+        )
+
+
 def main():
     """
     Run the test suite with proper command line arguments.

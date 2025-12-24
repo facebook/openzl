@@ -61,6 +61,12 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
                 0,
                 true,
                 "Directory to write trace streamdump to.");
+        parser.addCommandFlag(
+                cmd(),
+                kStrict,
+                0,
+                false,
+                "Enforce strict mode compression. Fail on errors instead of falling back to generic compression.");
     }
 
     explicit CompressArgs(const arg::ParsedArgs& parsed)
@@ -90,6 +96,7 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
         }
 
         traceStreamsDir = parsed.cmdFlag(cmd(), kTraceStreamsDir);
+        strict          = parsed.cmdHasFlag(cmd(), kStrict);
     }
 
     static Cmd cmd()
@@ -105,6 +112,7 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
 
     std::shared_ptr<tools::io::Output> traceOutput;
     std::optional<std::string> traceStreamsDir;
+    bool strict = false;
 
    private:
     inline static const std::string kInput      = "input";
@@ -119,6 +127,7 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
             "train-inline-test-limit";
     inline static const std::string kTrace           = "trace";
     inline static const std::string kTraceStreamsDir = "trace-streams-dir";
+    inline static const std::string kStrict          = "strict";
 };
 
 } // namespace openzl::cli
