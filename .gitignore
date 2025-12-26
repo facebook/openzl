@@ -47,9 +47,6 @@ sddl2_vm_test
 
 # dependencies
 /deps/*
-!/deps/nci-short
-!/deps/sao-short
-!/deps/json_examples.json
 
 # Build system temporary objects
 build/
