@@ -25,6 +25,14 @@
 #include "tools/logger/Logger.h"
 
 #include "openzl/common/logging.h"
+#include "version.h"
+
+// Provide a compile-time fallback for editors / IDEs that analyze the source
+// before CMake has generated `build/cli/version.h`. This avoids spurious
+// "undefined identifier" diagnostics in the language server.
+#ifndef ZLI_VERSION
+#define ZLI_VERSION "0.0.0-dev"
+#endif
 
 using openzl::cli::Cmd;
 
@@ -51,11 +59,12 @@ int impl(int argc, char** argv)
     auto usage = [&](const Cmd& cmd) -> std::string {
         auto help = cmd == Cmd::UNSPECIFIED ? argParser.help()
                                             : argParser.help(cmd);
-        return "Demo CLI for OpenZL. NO VERSION STABILITY IS IMPLIED!!\n"
-                "\n"
-                "Usage: " + std::string(argv[0]) + " <command> [options] <args>\n"
-                "\n" +
-                std::move(help) + "<<<< NO VERSION STABILITY IS IMPLIED!! >>>>";
+        return std::string("zstrong-cli version ") + ZLI_VERSION + "\n\n" +
+               "Demo CLI for OpenZL. NO VERSION STABILITY IS IMPLIED!!\n"
+               "\n"
+               "Usage: " + std::string(argv[0]) + " <command> [options] <args>\n"
+               "\n" +
+               std::move(help) + "<<<< NO VERSION STABILITY IS IMPLIED!! >>>>";
     };
     if (argc == 1) {
         Logger::log(INFO, usage(Cmd::UNSPECIFIED));
@@ -75,7 +84,7 @@ int impl(int argc, char** argv)
                 return 0;
             }
             case GlobalImmediate::VERSION: {
-                Logger::log(INFO, "zstrong-cli version 0.1");
+                Logger::log(INFO, std::string("zstrong-cli version ") + ZLI_VERSION);
                 return 0;
             }
         }
