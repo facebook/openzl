@@ -210,7 +210,7 @@ TEST_F(SerializedTest, ConstantZeroRanges)
 
 TEST_F(SerializedTest, ConstantSingleBytePatterns)
 {
-    const std::vector<size_t> sizes = { 1, 10, 100, 1000, 10000 };
+    const std::vector<size_t> sizes  = { 1, 10, 100, 1000, 10000 };
     const std::vector<char> patterns = { '\x00', '\xFF', '\x55', '\xAA' };
     for (char pattern : patterns) {
         for (size_t size : sizes) {
