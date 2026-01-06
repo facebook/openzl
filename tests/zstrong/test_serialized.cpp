@@ -198,6 +198,28 @@ TEST_F(SerializedTest, Constant)
     }
 }
 
+TEST_F(SerializedTest, ConstantZeroRanges)
+{
+    const std::vector<size_t> sizes = { 1, 10, 100, 1000, 10000, 50000 };
+    for (size_t size : sizes) {
+        std::string zeroData(size, '\0');
+        testGraphOnInput(ZL_GRAPH_CONSTANT, zeroData);
+        testNodeOnInput(ZL_NODE_CONSTANT_SERIAL, zeroData);
+    }
+}
+
+TEST_F(SerializedTest, ConstantSingleBytePatterns)
+{
+    const std::vector<size_t> sizes = { 1, 10, 100, 1000, 10000 };
+    const std::vector<char> patterns = { '\x00', '\xFF', '\x55', '\xAA' };
+    for (char pattern : patterns) {
+        for (size_t size : sizes) {
+            std::string patternData(size, pattern);
+            testGraphOnInput(ZL_GRAPH_CONSTANT, patternData);
+        }
+    }
+}
+
 TEST_F(SerializedTest, SplitN)
 {
     reset();

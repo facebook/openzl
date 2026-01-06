@@ -44,7 +44,7 @@ ZL_GraphID SI_selector_constant(
     ZL_ASSERT(inType == ZL_Type_serial || inType == ZL_Type_struct);
 
     /* If all bytes are identical, Serial path is more efficient */
-    if (isSingleBytePattern(inputStream)) {
+    if (ZL_Input_eltWidth(inputStream)> 1 && isSingleBytePattern(inputStream)) {
         return ZL_GRAPH_CONSTANT_SERIAL;
     }
 
