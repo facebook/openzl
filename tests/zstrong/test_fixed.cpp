@@ -470,6 +470,37 @@ TEST_F(FixedTest, Constant)
     }
 }
 
+TEST_F(FixedTest, ConstantZeroRanges)
+{
+    const std::vector<size_t> sizes     = { 1, 10, 100, 1000, 10000, 50000 };
+    const std::vector<size_t> eltWidths = { 1, 2, 4, 8, 16, 32, 64 };
+    for (size_t eltWidth : eltWidths) {
+        for (size_t size : sizes) {
+            std::string inputStr(size * eltWidth, '\0');
+            reset();
+            setStreamInType(ZL_Type_struct);
+            testGraphOnInput(ZL_GRAPH_CONSTANT, eltWidth, inputStr);
+        }
+    }
+}
+
+TEST_F(FixedTest, ConstantSingleBytePatterns)
+{
+    const std::vector<size_t> sizes     = { 1, 10, 100, 1000, 10000 };
+    const std::vector<size_t> eltWidths = { 2, 4, 8, 16 };
+    const std::vector<char> patterns    = { '\x00', '\xFF', '\x55', '\xAA' };
+    for (char pattern : patterns) {
+        for (size_t eltWidth : eltWidths) {
+            for (size_t size : sizes) {
+                std::string inputStr(size * eltWidth, pattern);
+                reset();
+                setStreamInType(ZL_Type_struct);
+                testGraphOnInput(ZL_GRAPH_CONSTANT, eltWidth, inputStr);
+            }
+        }
+    }
+}
+
 TEST_F(FixedTest, SplitN)
 {
     reset();
