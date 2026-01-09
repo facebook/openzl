@@ -99,12 +99,8 @@ class TestMLSelectorGraph : public testing::Test {
     void assert_model_equal(GBTModel m1, GBTModel m2)
     {
         ASSERT_EQ(m1.predictor->numForests, m2.predictor->numForests);
-        ASSERT_EQ(m1.nbLabels, m2.nbLabels);
+        ASSERT_EQ(m1.nbSuccessors, m2.nbSuccessors);
         ASSERT_EQ(m1.nbFeatures, m2.nbFeatures);
-
-        for (size_t ind = 0; ind < m1.nbLabels; ind++) {
-            ASSERT_STREQ(m1.classLabels[ind], m2.classLabels[ind]);
-        }
 
         for (size_t ind = 0; ind < m1.nbFeatures; ind++) {
             ASSERT_STREQ(m1.featureLabels[ind], m2.featureLabels[ind]);

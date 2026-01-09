@@ -175,14 +175,12 @@ using DMatrixUniquePtr = std::unique_ptr<void, DMatrixHandleDeleter>;
  * at the position corresponding to its nodeid.
  *
  * @param nodeJson    The JSON representation of the tree node
- * @param labelMap    Mapping from feature names to feature indices
  * @param nodes       Output vector where parsed nodes are stored by their ID
  *
  * @throws Exception if nodeid exceeds the bounds of the nodes vector
  */
 static void parseXGBoostNode(
         const xgboost::Json& nodeJson,
-        std::unordered_map<std::string, int>& labelMap,
         std::vector<GBTPredictor_Node>& nodes)
 {
     GBTPredictor_Node node{};
@@ -199,6 +197,7 @@ static void parseXGBoostNode(
         Logger::log_c(VERBOSE1, "Leaf node: %f\n", leafValue);
     } else {
         // Internal node
+        // Parse feature index from "fN" format
         std::string splitFeature =
                 xgboost::get<xgboost::JsonString const>(nodeJson["split"]);
         float threshold  = extractNumericVal(nodeJson["split_condition"]);
@@ -206,7 +205,8 @@ static void parseXGBoostNode(
         int noChild      = extractNumericVal(nodeJson["no"]);
         int missingChild = extractNumericVal(nodeJson["missing"]);
 
-        node.featureIdx      = labelMap[splitFeature];
+        node.featureIdx =
+                std::stoi(splitFeature.substr(1)); // Skip the 'f' prefix
         node.leftChildIdx    = yesChild;
         node.rightChildIdx   = noChild;
         node.missingChildIdx = missingChild;
@@ -229,7 +229,7 @@ static void parseXGBoostNode(
             auto& children = xgboost::get<xgboost::JsonArray const>(
                     nodeJson["children"]);
             for (const auto& child : children) {
-                parseXGBoostNode(child, labelMap, nodes);
+                parseXGBoostNode(child, nodes);
             }
         }
     }
@@ -302,7 +302,6 @@ static TestTrainData trainTestSplit(
  * Transforms a trained XGBoost model into GBTPredictor.
  *
  * @param xgBoostDump      JSON strings for each tree
- * @param featureLabelMap  Mapping from feature names to indices
  * @param numClasses       Number of classification classes (2 for binary)
  *
  * @return GBTPredictorWrapper containing the converted model with ownership
@@ -311,7 +310,6 @@ static TestTrainData trainTestSplit(
  */
 static GBTPredictorWrapper createGBTModelFromXGBoost(
         std::vector<std::string>& xgBoostDump,
-        std::unordered_map<std::string, int>& featureLabelMap,
         size_t numClasses)
 {
     GBTPredictorWrapper pred;
@@ -350,7 +348,7 @@ static GBTPredictorWrapper createGBTModelFromXGBoost(
             int maxNodeId = findMaxNodeId(treeJson);
             nodes.resize(maxNodeId + 1);
 
-            parseXGBoostNode(treeJson, featureLabelMap, nodes);
+            parseXGBoostNode(treeJson, nodes);
 
             pred.core_nodes_.push_back(
                     std::make_unique<std::vector<GBTPredictor_Node>>(
@@ -387,9 +385,6 @@ static GBTPredictorWrapper createGBTModelFromXGBoost(
  * GBTPredictor format for inference.
  *
  * @param data          Train/test split data
- * @param featureNames  Feature names
- * @param featureTypes  Feature types (e.g., "q" for quantitative)
- * @param featuresMap   Mapping from feature names to indices
  * @param num_classes   Number of classification classes
  *
  * @return GBTPredictorWrapper containing the trained model
@@ -397,9 +392,6 @@ static GBTPredictorWrapper createGBTModelFromXGBoost(
  */
 static GBTPredictorWrapper trainXGBoostModel(
         TestTrainData& data,
-        std::vector<const char*>& featureNames,
-        std::vector<const char*>& featureTypes,
-        std::unordered_map<std::string, int>& featuresMap,
         size_t num_classes)
 {
     if (data.train.X.empty() || data.train.y.empty()) {
@@ -503,12 +495,10 @@ static GBTPredictorWrapper trainXGBoostModel(
 
     const char** dump = nullptr;
 
-    safe_xgboost(XGBoosterDumpModelExWithFeatures(
+    safe_xgboost(XGBoosterDumpModelEx(
             boosterHandle,
-            (int)featureNames.size(),
-            featureNames.data(),
-            featureTypes.data(),
-            0, // No stats
+            "", // fmap (empty string for no feature map)
+            0,  // No stats
             "json",
             &len,
             &dump));
@@ -516,7 +506,7 @@ static GBTPredictorWrapper trainXGBoostModel(
     xgBoostDump = std::vector<std::string>(dump, dump + len);
 
     // unique_ptr will automatically free the handles when they go out of scope
-    return createGBTModelFromXGBoost(xgBoostDump, featuresMap, num_classes);
+    return createGBTModelFromXGBoost(xgBoostDump, num_classes);
 }
 
 std::shared_ptr<const std::string_view> trainMLSelectorGraph(
@@ -526,7 +516,6 @@ std::shared_ptr<const std::string_view> trainMLSelectorGraph(
 {
     (void)trainParams;
     std::vector<ZL_GraphID> successorGraphs;
-    std::vector<std::string> successorLabels;
 
     // Find the ML selector graph by prefix
     auto mlSelectorGraphNames = graph_mutation::findAllGraphsWithPrefix(
@@ -545,10 +534,10 @@ std::shared_ptr<const std::string_view> trainMLSelectorGraph(
 
     const auto successors = ZL_Compressor_Graph_getCustomGraphs(
             compressor.get(), mlSelectorGraph);
+
+    successorGraphs.reserve(successors.nbGraphIDs);
     for (size_t i = 0; i < successors.nbGraphIDs; ++i) {
         successorGraphs.push_back(successors.graphids[i]);
-        successorLabels.emplace_back(ZL_Compressor_Graph_getName(
-                compressor.get(), successorGraphs.back()));
     }
 
     auto cctx = refCCtxForTraining(compressor);
@@ -561,56 +550,20 @@ std::shared_ptr<const std::string_view> trainMLSelectorGraph(
     }
 
     ProcessedMLTrainingSamples trainingSample = extractMLFeatures(
-            mlSelectorInputs,
-            compressor,
-            cctx,
-            successorGraphs,
-            successorLabels);
+            mlSelectorInputs, compressor, cctx, successorGraphs);
 
     TestTrainData splitData = trainTestSplit(
             trainingSample.features, trainingSample.numericLabels);
 
-    // all integer features are quantitative and not categorical
-    std::vector<std::string> featureTypes(
-            trainingSample.featureNames.size(), "q");
-
-    std::vector<const char*> featureNamePtrs;
-    std::vector<const char*> featureTypePtrs;
-    std::unordered_map<std::string, int> featuresMap;
-    featureNamePtrs.reserve(trainingSample.featureNames.size());
-    featureTypePtrs.reserve(featureTypes.size());
-
-    int ind = 0;
-    for (const auto& name : trainingSample.featureNames) {
-        featuresMap[name] = ind++;
-        featureNamePtrs.push_back(name.c_str());
-    }
-
-    for (const auto& type : featureTypes) {
-        featureTypePtrs.push_back(type.c_str());
-    }
-
-    std::vector<Label> classLabelPtrs;
-    classLabelPtrs.reserve(successorLabels.size());
-
-    for (const auto& label : successorLabels) {
-        classLabelPtrs.push_back(label.c_str());
-    }
-
-    GBTPredictorWrapper gbtPred = trainXGBoostModel(
-            splitData,
-            featureNamePtrs,
-            featureTypePtrs,
-            featuresMap,
-            trainingSample.labelMap.size());
+    GBTPredictorWrapper gbtPred =
+            trainXGBoostModel(splitData, successors.nbGraphIDs);
 
     GBTModel coreModel = {
         .predictor        = gbtPred.core_predictor_.get(),
         .featureGenerator = FeatureGen_integer,
-        .nbLabels         = classLabelPtrs.size(),
-        .classLabels      = classLabelPtrs.data(),
-        .nbFeatures       = featureNamePtrs.size(),
-        .featureLabels    = featureNamePtrs.data(),
+        .nbSuccessors     = successors.nbGraphIDs,
+        .nbFeatures       = trainingSample.featurePtrNames.size(),
+        .featureLabels    = trainingSample.featurePtrNames.data(),
     };
 
     ZL_MLSelectorConfig config = { .model         = ZL_GBT,

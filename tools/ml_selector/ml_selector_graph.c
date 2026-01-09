@@ -75,11 +75,11 @@ MLSel_compress(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
     if (config.model == ZL_GBT) {
         GBTModel* gbt = config.runtimeConfig;
         ZL_ERR_IF_NE(
-                gbt->nbLabels,
+                gbt->nbSuccessors,
                 succList.nbGraphIDs,
                 successor_invalid,
                 "GBT model has %zu labels, but graph has %zu successors",
-                gbt->nbLabels,
+                gbt->nbSuccessors,
                 succList.nbGraphIDs);
         for (size_t ind = 0; ind < nbInputs; ind++) {
             ZL_TRY_LET(
@@ -258,23 +258,11 @@ static ZL_Report GBTModel_serialize(
         A1C_Item_int64(&pair->val, (A1C_Int64)fg);
     }
 
-    // Serialize nbLabels
+    // Serialize nbSuccessors
     {
         A1C_MAP_TRY_ADD_R(pair, rootMapBuilder);
-        A1C_Item_string_refCStr(&pair->key, "nbLabels");
-        A1C_Item_int64(&pair->val, (A1C_Int64)model->nbLabels);
-    }
-
-    // Serialize classLabels array
-    {
-        A1C_MAP_TRY_ADD_R(pair, rootMapBuilder);
-        A1C_Item_string_refCStr(&pair->key, "classLabels");
-        A1C_Item* labels =
-                A1C_Item_array(&pair->val, model->nbLabels, a1cArena);
-        ZL_RET_R_IF_NULL(allocation, labels);
-        for (size_t i = 0; i < model->nbLabels; i++) {
-            A1C_Item_string_refCStr(&labels[i], model->classLabels[i]);
-        }
+        A1C_Item_string_refCStr(&pair->key, "nbSuccessors");
+        A1C_Item_int64(&pair->val, (A1C_Int64)model->nbSuccessors);
     }
 
     // Serialize nbFeatures
@@ -484,35 +472,10 @@ static ZL_RESULT_OF(GBTModel) GBTModel_deserialize(
     ZL_ERR_IF_ERR(featureGenerator);
     model.featureGenerator = ZL_RES_value(featureGenerator);
 
-    // Deserialize nbLabels
-    A1C_TRY_EXTRACT_INT64(nbLabels, A1C_Map_get_cstr(&rootMap, "nbLabels"));
-    model.nbLabels = (size_t)nbLabels;
-
-    // Deserialize classLabels array
-    A1C_TRY_EXTRACT_ARRAY(
-            classLabelsArray, A1C_Map_get_cstr(&rootMap, "classLabels"));
-    ZL_ERR_IF_NE(
-            classLabelsArray.size,
-            model.nbLabels,
-            GENERIC,
-            "nbLabels doesn't match classLabels array size");
-
-    Label* classLabels =
-            a1cArena->calloc(a1cArena->opaque, model.nbLabels * sizeof(Label));
-    for (size_t i = 0; i < model.nbLabels; i++) {
-        const A1C_Item* labelItem = A1C_Array_get(&classLabelsArray, i);
-        ZL_ERR_IF_NULL(labelItem, corruption);
-        A1C_TRY_EXTRACT_STRING(labelStr, labelItem);
-
-        // Allocate space for the string and copy it (with null terminator)
-        char* label = (char*)a1cArena->calloc(
-                a1cArena->opaque, (labelStr.size + 1) * sizeof(char));
-        ZL_ERR_IF_NULL(label, allocation);
-        memcpy(label, labelStr.data, labelStr.size);
-        label[labelStr.size] = '\0';
-        classLabels[i]       = label;
-    }
-    model.classLabels = classLabels;
+    // Deserialize nbSuccessors
+    A1C_TRY_EXTRACT_INT64(
+            nbSuccessors, A1C_Map_get_cstr(&rootMap, "nbSuccessors"));
+    model.nbSuccessors = (size_t)nbSuccessors;
 
     // Deserialize nbFeatures
     A1C_TRY_EXTRACT_INT64(nbFeatures, A1C_Map_get_cstr(&rootMap, "nbFeatures"));
@@ -767,32 +730,35 @@ MLSelector_registerGraphWithEmptyGBTModel(
         .trees    = &emptyTree,
     };
 
+    Arena* arena = ALLOC_HeapArena_create();
+
+    // For binary classification (2 successors), we need 1 forest.
+    // For multi-class classification (>2 successors), we need numForests =
+    // nbSuccessors.
+    size_t numForests = (nbSuccessors == 2) ? 1 : nbSuccessors;
+
+    GBTPredictor_Forest* forests =
+            ALLOC_Arena_malloc(arena, sizeof(GBTPredictor_Forest) * numForests);
+    if (forests == NULL) {
+        ALLOC_Arena_freeArena(arena);
+        ZL_RET_T_ERR(ZL_GraphID, allocation, "Failed to allocate forests");
+    }
+
+    for (size_t i = 0; i < numForests; i++) {
+        forests[i] = emptyForest;
+    }
+
     const GBTPredictor emptyPredictor = {
-        .numForests = 1,
-        .forests    = &emptyForest,
+        .numForests = numForests,
+        .forests    = forests,
     };
 
     const Label featureLabels[] = { "placeholder" };
 
-    Arena* arena = ALLOC_HeapArena_create();
-
-    Label* classLabels =
-            ALLOC_Arena_malloc(arena, sizeof(Label) * nbSuccessors);
-
-    if (classLabels == NULL) {
-        ALLOC_Arena_freeArena(arena);
-        ZL_RET_T_ERR(ZL_GraphID, allocation, "Failed to allocate classLabels");
-    }
-
-    for (size_t i = 0; i < nbSuccessors; i++) {
-        classLabels[i] = ZL_Compressor_Graph_getName(compressor, successors[i]);
-    }
-
     GBTModel emptyModel = {
         .predictor        = &emptyPredictor,
         .featureGenerator = FeatureGen_integer,
-        .nbLabels         = nbSuccessors,
-        .classLabels      = classLabels,
+        .nbSuccessors     = nbSuccessors,
         .nbFeatures       = 1,
         .featureLabels    = featureLabels,
     };

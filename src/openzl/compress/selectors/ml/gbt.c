@@ -130,32 +130,28 @@ GBTModel_predictInd(const GBTModel* model, const ZL_Input* in, ZL_Graph* graph)
     VECTOR_DESTROY(featuresMap);
     ZL_ERR_IF_GE(
             classInd,
-            model->nbLabels,
+            model->nbSuccessors,
             GENERIC,
-            "Predicted class index larger than number of classes");
+            "Predicted class index larger than number of successors");
     return ZL_RESULT_WRAP_VALUE(size_t, classInd);
 }
 
-ZL_RESULT_OF(Label)
+ZL_RESULT_OF(size_t)
 GBTModel_predict(const GBTModel* model, const ZL_Input* in)
 {
-    ZL_RESULT_DECLARE_SCOPE(Label, NULL);
-
-    ZL_TRY_LET_CONST(size_t, classInd, GBTModel_predictInd(model, in, NULL));
-    const Label classification = model->classLabels[classInd];
-    return ZL_RESULT_WRAP_VALUE(Label, classification);
+    ZL_RESULT_DECLARE_SCOPE(ZL_GraphID, NULL);
+    return GBTModel_predictInd(model, in, NULL);
 }
 
-const char* GBTModel_Desc_predict(const void* opaque, const ZL_Input* in)
+size_t GBTModel_Desc_predict(const void* opaque, const ZL_Input* in)
 {
     const GBTModel* model = (const GBTModel*)opaque;
-    ZL_RESULT_OF(Label)
+    ZL_RESULT_OF(size_t)
     result = GBTModel_predict(model, in);
     if (ZL_RES_isError(result)) {
-        return "";
+        return model->nbSuccessors;
     }
-    const char* decodedLabel = ZL_RES_value(result);
-    return decodedLabel;
+    return ZL_RES_value(result);
 }
 
 ZL_Report GBTPredictor_validate_forest(
@@ -271,14 +267,24 @@ ZL_Report GBTModel_validate(const GBTModel* model)
     ZL_RET_R_IF_NULL(GENERIC, model->predictor, "GBTModel's predictor is null");
     ZL_RET_R_IF_NULL(
             GENERIC,
-            model->classLabels,
-            "GBTModel's classLabels array is null");
-    ZL_RET_R_IF_NULL(
-            GENERIC,
             model->featureLabels,
             "GBTModel's featureLabels array is null");
     ZL_RET_R_IF_NULL(
             GENERIC, model->predictor->forests, "GBTModel's forests is null");
+
+    if (model->predictor->numForests == 1) {
+        ZL_RET_R_IF_NE(
+                GENERIC,
+                2,
+                model->nbSuccessors,
+                "There is only one forest(binary classification), but number of successors is not 2");
+    } else {
+        ZL_RET_R_IF_NE(
+                GENERIC,
+                model->predictor->numForests,
+                model->nbSuccessors,
+                "Multiclass classification. Number of forests not equal to number of successors");
+    }
 
     ZL_RET_R_IF_ERR(
             GBTPredictor_validate(model->predictor, (int)model->nbFeatures));

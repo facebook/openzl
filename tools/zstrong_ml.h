@@ -44,16 +44,13 @@ class FeatureGenerator;
 /// model used by Zstrong's selectors.
 class MLModel {
    public:
-    virtual Label predict(const ZL_Input* input, const FeatureGenerator* fgen)
+    virtual size_t predict(const ZL_Input* input, const FeatureGenerator* fgen)
             const = 0;
 
     virtual size_t predict(const FeatureMap& features) const = 0;
-    std::string predictLabel(const FeatureMap& features) const
-    {
-        return getLabels()[predict(features)];
-    }
-    virtual std::span<const std::string> getLabels() const = 0;
-    virtual ~MLModel()                                     = default;
+    virtual std::span<const std::string> getLabels() const   = 0;
+    virtual size_t getNumSuccessors() const                  = 0;
+    virtual ~MLModel()                                       = default;
 };
 
 /// A Gradient Boosted Tree base Model for Zstrong selectors
@@ -61,20 +58,23 @@ class GBTModel : public MLModel {
    public:
     explicit GBTModel(folly::dynamic const& model);
     explicit GBTModel(std::string_view model);
-    Label predict(const ZL_Input* input, const FeatureGenerator* fgen)
+    size_t predict(const ZL_Input* input, const FeatureGenerator* fgen)
             const override;
     size_t predict(const FeatureMap& features) const override;
+    size_t getNumSuccessors() const override
+    {
+        return nbSuccessors_;
+    }
     std::span<const std::string> getLabels() const override
     {
         return labels_str_;
     }
 
    private:
-    const std::vector<std::string> labels_str_;
-    const std::vector<Label> labels_;
+    const size_t nbSuccessors_;
     const std::vector<std::string> features_str_;
     const std::vector<Label> features_;
-
+    const std::vector<std::string> labels_str_;
     const gbt_predictor::GBTPredictor predictor_;
 };
 
@@ -177,16 +177,14 @@ class TokenizeIntFeatureGenerator : public FeatureGenerator {
 } // namespace features
 
 /// An MLSelector is a custom Zstrong selector that uses a given trained MLModel
-/// and FeatureGenerator to decide on successors. It's highly recommended to
-/// provide the labels of the successors to avoid errors caused by mismatch of
-/// ordering between model and code.
+/// and FeatureGenerator to decide on successors.
 class MLSelector : public CustomSelector {
    public:
     MLSelector(
             ZL_Type inputType,
             std::shared_ptr<MLModel> model,
             std::shared_ptr<FeatureGenerator> featureGenerator,
-            std::vector<std::string> labels = {})
+            const std::vector<std::string>& labels = {})
             : inputType_(inputType),
               model_(model),
               featureGenerator_(featureGenerator)
@@ -199,16 +197,23 @@ class MLSelector : public CustomSelector {
             throw std::runtime_error(
                     "MLSelector must be constructed with a featureGenerator.");
         }
-        if (labels.size()) {
-            for (size_t i = 0; i < labels.size(); i++) {
-                labelsIdx_.emplace(labels[i], i);
+        if (!labels.empty() && labels.size() != model->getNumSuccessors()) {
+            // Using sklearn version of GBTModel fallback to using labels
+            std::unordered_map<std::string, size_t> labelToIndex;
+            labelToIndex.reserve(labels.size());
+            for (size_t i = 0; i < labels.size(); ++i) {
+                labelToIndex.emplace(labels[i], i);
             }
-            for (auto label : model.get()->getLabels()) {
-                if (!labelsIdx_.contains(label)) {
+
+            std::span<const std::string> modelLabels = model->getLabels();
+            for (size_t i = 0; i < modelLabels.size(); ++i) {
+                auto it = labelToIndex.find(modelLabels[i]);
+                if (it == labelToIndex.end()) {
                     throw std::runtime_error(
-                            "MLSelector doesn't expect a model with label "
-                            + label);
+                            "Label in model not found in expected labels: "
+                            + modelLabels[i]);
                 }
+                labelsIdx_.emplace(i, it->second);
             }
         }
     }
@@ -220,7 +225,7 @@ class MLSelector : public CustomSelector {
 
     std::optional<size_t> expectedNbSuccessors() const override
     {
-        return model_.get()->getLabels().size();
+        return model_.get()->getNumSuccessors();
     }
 
     ZL_Type inputType() const override
@@ -232,7 +237,7 @@ class MLSelector : public CustomSelector {
     ZL_Type inputType_;
     std::shared_ptr<MLModel> model_;
     std::shared_ptr<FeatureGenerator> featureGenerator_;
-    std::unordered_map<std::string, size_t> labelsIdx_;
+    std::unordered_map<size_t, size_t> labelsIdx_;
 };
 
 struct MLTrainingSampleData {
@@ -338,8 +343,8 @@ class MemMLTrainingSelector : public MLTrainingSelector {
 };
 
 /// A selector that records samples for ML training to a file stream. Each
-/// sample is a json encoded line in the output. Labels should match the
-/// successors given to the selector.
+/// sample is a json encoded line in the output. The number of labels should
+/// match the number of successors given to the selector.
 class FileMLTrainingSelector : public MLTrainingSelector {
    public:
     FileMLTrainingSelector(
