@@ -195,12 +195,6 @@ class GrouperImpl {
                     }
                     continue;
                 }
-                if (*token == Symbol::SEMI) {
-                    nodes_in_cur_stmt.push_back(*it);
-                    stmts.push_back(group_expr(std::move(nodes_in_cur_stmt)));
-                    nodes_in_cur_stmt.clear();
-                    continue;
-                }
 
                 auto maybe_list = maybe_group_list(it, end);
                 if (maybe_list) {

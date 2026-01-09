@@ -5,7 +5,7 @@ This section serves as an in-depth reference for the features of SDDL. For an in
 !!! warning
     The SDDL Language is under active development. Its capabilities are expected to grow significantly. As part of that development, the syntax and semantics of existing features may change or break without warning.
 
-An SDDL Description is a series of **Statements**. A statement is a newline or semicolon-terminated **Expression**. There are multiple kinds of **Expressions**:
+An SDDL Description is a series of **Statements**. A statement is a newline-terminated **Expression**. There are multiple kinds of **Expressions**:
 
 ### Fields
 

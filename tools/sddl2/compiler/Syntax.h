@@ -13,7 +13,6 @@ namespace openzl::sddl2 {
 enum class Symbol {
     // Grouping Tokens
     NL,           // \n
-    SEMI,         // ;
     COMMA,        // ,
     PAREN_OPEN,   // (
     PAREN_CLOSE,  // )
