@@ -108,49 +108,47 @@ typedef const char* Label;
 ZL_RESULT_DECLARE_TYPE(Label);
 
 /**
- * Defines type GBTModel, which is composed of 3 parts. First, the predictor,
- * which can take a vector of features as input and return a class id. Second,
- * the feature generator, which takes a stream and returns the features. Lastly,
- * the labels for the classes and features, which allows us to easily translate
- * class ids to class names and also ensure portability between training and
- * inference time.
+ * Defines type GBTModel
+ * - predictor: can take a vector of features as input and return a class id.
+ * - featureGenerator: takes a stream and returns the features.
+ * - nbSuccessors: number of successors in the graph
+ * - nbFeatures: number of features in the graph
+ * - featureLabels: labels for each feature
  */
 typedef struct {
     const GBTPredictor* predictor;
     FeatureGenerator featureGenerator;
-    size_t nbLabels;
-    const Label* classLabels;
+    size_t nbSuccessors;
     size_t nbFeatures;
     const Label* featureLabels;
 } GBTModel;
 
 /**
  * Calculates the prediction for a single model and set of features generated
- from the input stream.
-
- @returns the error if the model fails to predict a classification, otherwise
- returns index of prediction.
+ * from the input stream.
+ *
+ *@returns the error if the model fails to predict a classification, otherwise
+ *returns index of prediction.
  */
 ZL_RESULT_OF(size_t)
 GBTModel_predictInd(const GBTModel* model, const ZL_Input* in, ZL_Graph* graph);
 
 /**
- * Wrapper around GBTModel_predictInd and returns the class label instead of
- * index.
-
- @returns the error if the model fails to predict a classification, otherwise
- returns the classified label.
+ * Wrapper around GBTModel_predictInd.
+ *
+ * @returns the error if the model fails to predict a classification, otherwise
+ * returns the index of the classified successor.
  */
-ZL_RESULT_OF(Label)
+ZL_RESULT_OF(size_t)
 GBTModel_predict(const GBTModel* model, const ZL_Input* in);
 
 /**
- * Predicts the label of the input stream using GBTModel_predict
+ * Predicts the indice of the input stream using GBTModel_predict
  *
- * @returns an empty string if the model fails to predict a classification,
- * otherwise returns the string representation of the classification
+ * @returns nbSuccessors if the model fails to predict a classification,
+ * otherwise returns the index of the classified successor.
  */
-const char* GBTModel_Desc_predict(const void* model, const ZL_Input* in);
+size_t GBTModel_Desc_predict(const void* model, const ZL_Input* in);
 
 /**
  * Validates the model by making sure each tree inside of the model is

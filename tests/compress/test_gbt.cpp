@@ -334,8 +334,7 @@ class GBTBinaryModelTest : public Test {
     const size_t sz = 7;
 
     const std::vector<int> streamData = { 0, 1, 2, 3, 4 };
-
-    const std::vector<Label> classLabels = { Label("zero"), Label("one") };
+    const size_t nbSuccessors         = 2;
 
     // Feature values hardcoded in featureGen_binaryModelTest lambda
     const std::vector<Label> featureLabels = {
@@ -400,8 +399,7 @@ class GBTBinaryModelTest : public Test {
 
         model = { .predictor        = &binaryClassPredictor,
                   .featureGenerator = featureGen_binaryModelTest,
-                  .nbLabels         = classLabels.size(),
-                  .classLabels      = classLabels.data(),
+                  .nbSuccessors     = nbSuccessors,
                   .nbFeatures       = featureLabels.size(),
                   .featureLabels    = featureLabels.data() };
 
@@ -428,10 +426,11 @@ TEST_F(GBTBinaryModelTest, labeledBinaryClass)
      The final result depends on the 5th node of this tree, since 6 > 0 the
      resulting binary classification is 1.
    */
-    ZL_RESULT_OF(Label) result = GBTModel_predict(&model, stream->getStream());
+    ZL_RESULT_OF(size_t)
+    result = GBTModel_predict(&model, stream->getStream());
     ASSERT_FALSE(ZL_RES_isError(result));
-    const std::string decodedLabel = ZL_RES_value(result);
-    EXPECT_EQ(decodedLabel, "one");
+    const size_t decodedLabel = ZL_RES_value(result);
+    EXPECT_EQ(decodedLabel, 1);
 }
 
 TEST_F(GBTBinaryModelTest, swappedLabeledBinaryClass)
@@ -441,11 +440,12 @@ TEST_F(GBTBinaryModelTest, swappedLabeledBinaryClass)
      * that the resulting classification changes too. Set the value to -0.45,
      * and verify that the classification is now 0 since -0.45f < 0.
      */
-    nodes[5].value             = -0.45f;
-    ZL_RESULT_OF(Label) result = GBTModel_predict(&model, stream->getStream());
+    nodes[5].value = -0.45f;
+    ZL_RESULT_OF(size_t)
+    result = GBTModel_predict(&model, stream->getStream());
     ASSERT_FALSE(ZL_RES_isError(result));
-    const std::string decodedLabel = ZL_RES_value(result);
-    EXPECT_EQ(decodedLabel, "zero");
+    const size_t decodedLabel = ZL_RES_value(result);
+    EXPECT_EQ(decodedLabel, 0);
 }
 
 class GBTMultiClassModelTest : public GBTMultiClassForestTest {
@@ -459,9 +459,7 @@ class GBTMultiClassModelTest : public GBTMultiClassForestTest {
     const size_t testNodeIdx          = 2;
     const std::vector<int> streamData = { 0, 2, 4, 6, 8, 10 };
 
-    const std::vector<Label> classLabels = { Label("class1"),
-                                             Label("class2"),
-                                             Label("class3") };
+    const size_t nbSuccessors = 3;
 
     const std::vector<Label> featureLabels = {
         Label("mean"),              // 5
@@ -519,8 +517,7 @@ class GBTMultiClassModelTest : public GBTMultiClassForestTest {
         };
         model = { .predictor        = multiClassPredictor.get(),
                   .featureGenerator = featureGen_multiClassModelTest,
-                  .nbLabels         = classLabels.size(),
-                  .classLabels      = classLabels.data(),
+                  .nbSuccessors     = nbSuccessors,
                   .nbFeatures       = featureLabels.size(),
                   .featureLabels    = featureLabels.data() };
 
@@ -545,21 +542,22 @@ TEST_F(GBTMultiClassModelTest, labeledMultiClass)
      * always select the forest containing largeTree. Verify that result is the
      * label corresponding to the largeTree.
      */
-    ZL_RESULT_OF(Label) result = GBTModel_predict(&model, stream->getStream());
+    ZL_RESULT_OF(size_t)
+    result = GBTModel_predict(&model, stream->getStream());
     ASSERT_FALSE(ZL_RES_isError(result));
-    const std::string decodedLabel = ZL_RES_value(result);
-    EXPECT_EQ(decodedLabel, "class2");
+    const size_t decodedLabel = ZL_RES_value(result);
+    EXPECT_EQ(decodedLabel, 1);
 }
 
-TEST_F(GBTMultiClassModelTest, IncorrectNumClassLabels)
+TEST_F(GBTMultiClassModelTest, IncorrectNumSuccessors)
 {
     /*
      * Verify that if the number of class labels is less than the number of
      * forests, we get an error.
      */
-    model.nbLabels             = 0;
-    model.classLabels          = {};
-    ZL_RESULT_OF(Label) result = GBTModel_predict(&model, stream->getStream());
+    model.nbSuccessors = 0;
+    ZL_RESULT_OF(size_t)
+    result = GBTModel_predict(&model, stream->getStream());
     ASSERT_TRUE(ZL_RES_isError(result));
 }
 
@@ -610,8 +608,7 @@ class GBTValidModelTest : public GBTMultiClassModelTest {
     {
         GBTModel tmp_model = { .predictor        = predictor,
                                .featureGenerator = FeatureGen_integer,
-                               .nbLabels         = classLabels.size(),
-                               .classLabels      = classLabels.data(),
+                               .nbSuccessors     = nbSuccessors,
                                .nbFeatures       = featureLabels.size(),
                                .featureLabels    = featureLabels.data() };
 
@@ -624,14 +621,6 @@ TEST_F(GBTValidModelTest, verifyGBTModelNullPredictor)
 {
     // Verify that we get errors when predictor is null
     model.predictor        = nullptr;
-    const ZL_Report report = GBTModel_validate(&model);
-    ASSERT_TRUE(ZL_isError(report));
-}
-
-TEST_F(GBTValidModelTest, verifyGBTModelNullClassLabels)
-{
-    // Verify that we get errors when classLabels is null
-    model.classLabels      = nullptr;
     const ZL_Report report = GBTModel_validate(&model);
     ASSERT_TRUE(ZL_isError(report));
 }

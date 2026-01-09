@@ -98,14 +98,13 @@ const std::vector<Label> featureLabels = {
     Label("nbElts"),
     Label("eltWidth"),
 };
-const std::vector<Label> classLabels = { Label("class1"), Label("class2") };
-const GBTModel gbtModel              = {
-                 .predictor        = &binaryClassPredictor,
-                 .featureGenerator = deltaFeatureGenerator,
-                 .nbLabels         = classLabels.size(),
-                 .classLabels      = classLabels.data(),
-                 .nbFeatures       = featureLabels.size(),
-                 .featureLabels    = featureLabels.data(),
+
+const GBTModel gbtModel = {
+    .predictor        = &binaryClassPredictor,
+    .featureGenerator = deltaFeatureGenerator,
+    .nbSuccessors     = 2,
+    .nbFeatures       = featureLabels.size(),
+    .featureLabels    = featureLabels.data(),
 };
 
 ZL_GraphID selectGBTModel(
@@ -120,14 +119,11 @@ ZL_GraphID selectGBTModel(
     // represents delta and the second graph represents tokenize, we return the
     // first graph when label is class1. If there is any errors,
     // the first graph is returned
-    ZL_RESULT_OF(Label) result     = GBTModel_predict(&gbtModel, in);
-    const std::string decodedLabel = ZL_RES_value(result);
-
-    if (ZL_RES_isError(result) || !strcmp(decodedLabel.c_str(), "class1")) {
+    ZL_RESULT_OF(size_t) result = GBTModel_predict(&gbtModel, in);
+    if (ZL_RES_isError(result)) {
         return graphs[0];
-    } else {
-        return graphs[1];
     }
+    return graphs[ZL_RES_value(result)];
 }
 } // namespace
 

@@ -3,7 +3,6 @@
 import json
 import os
 import tempfile
-
 import typing as t
 
 import pandas as pd
@@ -17,10 +16,11 @@ class CoreModel(t.NamedTuple):
 
 
 def get_serialized_predictor(
-    booster: xgb.XGBClassifier,
+    booster: t.Union[xgb.XGBClassifier, xgb.Booster],
 ) -> t.List[t.List[t.Dict[str, t.Any]]]:
     """
-    Returns a json representation of an XGBoost booster as a GBT predictor
+    Returns a json representation of an XGBoost booster as a GBT predictor.
+    Accepts either an XGBClassifier (sklearn wrapper) or a native xgb.Booster.
     """
     with tempfile.TemporaryDirectory() as tmpdirname:
         booster_path = os.path.join(tmpdirname, "booster.json")
@@ -84,7 +84,7 @@ def _get_tree_strings(forest: t.List[t.Dict[str, t.Any]]) -> t.Tuple[int, str]:
                     .numNodes = {num_nodes},
                     .nodes = (GBTPredictor_Node[])
                     {{{node_strings}
-                    }} 
+                    }}
                 }}"""
 
         tree_strings.append(tree_data_str)
@@ -118,7 +118,7 @@ def _get_forest_strings(
 
 
 def get_core_predictor(
-    booster: xgb.XGBClassifier,
+    booster: t.Union[xgb.XGBClassifier, xgb.Booster],
     prefix: str,
 ) -> str:
     """
@@ -155,8 +155,7 @@ GBTModel {func_name}(FeatureGenerator featureGenerator)
 {{    GBTModel gbtModel = {{
         .predictor        = &{predictor},
         .featureGenerator = featureGenerator,
-        .nbLabels         = {nbLabels},
-        .classLabels      = {classLabels},
+        .nbSuccessors     = {nbSuccessors},
         .nbFeatures       = {nbFeatures},
         .featureLabels    = {featureLabels},
     }};
@@ -165,16 +164,34 @@ GBTModel {func_name}(FeatureGenerator featureGenerator)
     """.format(
         func_name=func_name,
         predictor=f"{prefix}_PREDICTOR",
-        nbLabels=f"{prefix}_NB_LABELS",
-        classLabels=f"{prefix}_CLASS_LABELS",
+        nbSuccessors=f"{prefix}_NB_SUCCESSORS",
         nbFeatures=f"{prefix}_NB_FEATURES",
         featureLabels=f"{prefix}_FEATURE_LABELS",
     )
     return func_str
 
 
+def _get_label_enum(prefix: str, labels: t.List[str]) -> str:
+    # Append the class labels enum
+    label_enum_name: str = f"{prefix}_LABEL_ENUM"
+    words = [x.capitalize() for x in label_enum_name.lower().split("_")]
+    label_enum_name = "".join(words)
+
+    enum_str = "\ntypedef enum {\n"
+    for (
+        ind,
+        label,
+    ) in enumerate(labels):
+        enum_str += f"    {prefix}_{label.upper()} = {ind},\n"
+    enum_str += "}" + f" {label_enum_name};\n"
+    return enum_str
+
+
 def get_core_model(
-    booster: xgb.XGBClassifier, features: t.List[str], labels: t.List[str], prefix: str
+    booster: t.Union[xgb.XGBClassifier, xgb.Booster],
+    features: t.List[str],
+    labels: t.List[str],
+    prefix: str,
 ) -> CoreModel:
     """
     Return a dictionary containing two keys: c_strings and header_strings
@@ -189,10 +206,9 @@ def get_core_model(
     c_strings = get_core_predictor(booster, prefix)
     header_strings = ""
 
-    # Append the class labels
-    class_labels = f"{prefix}_CLASS_LABELS"
-    nb_labels = f"{prefix}_NB_LABELS"
-    c_strings += _get_labels(class_labels, nb_labels, labels)
+    c_strings += f"static const size_t {prefix}_NB_SUCCESSORS = {len(labels)};\n"
+
+    header_strings += _get_label_enum(prefix, labels)
 
     # Append the feature labels
     feature_labels = f"{prefix}_FEATURE_LABELS"
@@ -200,8 +216,10 @@ def get_core_model(
     c_strings += _get_labels(feature_labels, nb_features, features)
 
     # Create the extern getter function declarations
-    func_name = f" GET_{prefix}_GBT_MODEL"
-    func_name = "".join(x.capitalize() for x in func_name.lower().split("_"))
+    func_name = f"GET_{prefix}_GBT_MODEL"
+    words = [x.capitalize() for x in func_name.lower().split("_")]
+    words[0] = words[0].lower()
+    func_name = "".join(words)
 
     header_strings += f"\n// GENERATED {prefix} MODEL GETTER FUNCTION\n"
     header_strings += (
@@ -213,7 +231,9 @@ def get_core_model(
 
 
 def get_serialized_model(
-    booster: xgb.XGBClassifier, features: t.List[str], labels: t.List[str]
+    booster: t.Union[xgb.XGBClassifier, xgb.Booster],
+    features: t.List[str],
+    labels: t.List[str],
 ) -> str:
     """
     Returns a json representation of a model, including the booster, ordered feature list and ordered labels
@@ -249,14 +269,20 @@ def process_training_samples(
     targets = []
     for s in samples:
         labels = list(s.targets.keys())
-        sizes = {t: s.targets[t]["size"] for t in labels}
-        ctimes = {f"{t}": s.targets[t]["ctime"] for t in labels}
+        sizes = {k: s.targets[k]["size"] for k in labels}
+        ctimes = {k: s.targets[k]["ctime"] for k in labels}
         if choice_function:
             choice = choice_function(sizes, ctimes)
         else:
             choice = min(sizes, key=lambda k: sizes[k])
+
         target = {**sizes}
-        target["choice"] = choice
+        if isinstance(choice, str):
+            labelToIdx = {k: s.targets[k]["idx"] for k in labels}
+            target["choice"] = labelToIdx[choice]
+        else:
+            target["choice"] = choice
+
         target.update({f"{t}_ctime": ctimes[t] for t in ctimes})
         target["best_size"] = min(sizes.values())
         targets.append(target)

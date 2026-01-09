@@ -12,6 +12,15 @@
 extern "C" {
 #endif
 
+typedef enum {
+    GENERIC_NUMERIC_DELTA_FIELDLZ = 0,
+    GENERIC_NUMERIC_FIELDLZ = 1,
+    GENERIC_NUMERIC_RANGE_PACK = 2,
+    GENERIC_NUMERIC_RANGE_PACK_ZSTD = 3,
+    GENERIC_NUMERIC_TOKENIZE_DELTA_FIELDLZ = 4,
+    GENERIC_NUMERIC_ZSTD = 5,
+} GenericNumericLabelEnum;
+
 // GENERATED GENERIC_NUMERIC MODEL GETTER FUNCTION
 extern GBTModel  getGenericNumericGbtModel(FeatureGenerator featureGenerator);
 

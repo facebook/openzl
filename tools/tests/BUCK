@@ -51,6 +51,7 @@ python_binary(
         "fbsource//third-party/pypi/click:click",
         "fbsource//third-party/pypi/numpy:numpy",
         "fbsource//third-party/pypi/pandas:pandas",
+        "fbsource//third-party/pypi/scikit-learn:scikit-learn",
         "fbsource//third-party/pypi/xgboost:xgboost",
     ],
 )

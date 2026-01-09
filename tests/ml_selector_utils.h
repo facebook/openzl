@@ -15,7 +15,6 @@ class SampleGBTModel {
     GBTPredictor_Forest forest_{};
     GBTPredictor predictor_{};
     std::vector<Label> featureLabels_;
-    std::vector<Label> classLabels_;
 
    public:
     virtual GBTModel getModel() = 0;

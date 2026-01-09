@@ -21,105 +21,102 @@ static const GBTPredictor GBT_BINARY_CORE_PREDICTOR = {
                     {
                         {
                             .featureIdx      = 1,
-                            .value           = 0.5f,
+                            .value           = 1.0f,
                             .leftChildIdx    = 1,
                             .rightChildIdx   = 2,
-                            .missingChildIdx = 1
+                            .missingChildIdx = 2
                         },
                         {
                             .featureIdx      = 0,
-                            .value           = 0.5f,
+                            .value           = 1.0f,
                             .leftChildIdx    = 3,
                             .rightChildIdx   = 4,
-                            .missingChildIdx = 3
+                            .missingChildIdx = 4
                         },
                         {
                             .featureIdx      = -1,
-                            .value           = -1.8709677f,
+                            .value           = -1.1203319f,
                             .leftChildIdx    = 0,
                             .rightChildIdx   = 0,
                             .missingChildIdx = 0
                         },
                         {
                             .featureIdx      = -1,
-                            .value           = -1.7037038f,
+                            .value           = -1.007752f,
                             .leftChildIdx    = 0,
                             .rightChildIdx   = 0,
                             .missingChildIdx = 0
                         },
                         {
                             .featureIdx      = -1,
-                            .value           = 1.6521739f,
+                            .value           = 3.8095236f,
                             .leftChildIdx    = 0,
                             .rightChildIdx   = 0,
                             .missingChildIdx = 0
                         }
-                    } 
+                    }
                 },
                 {
                     .numNodes = 5,
                     .nodes = (GBTPredictor_Node[])
                     {
                         {
-                            .featureIdx      = 1,
-                            .value           = 0.5f,
+                            .featureIdx      = 0,
+                            .value           = 1.0f,
                             .leftChildIdx    = 1,
                             .rightChildIdx   = 2,
-                            .missingChildIdx = 1
+                            .missingChildIdx = 2
                         },
                         {
-                            .featureIdx      = 0,
-                            .value           = 0.5f,
+                            .featureIdx      = -1,
+                            .value           = -0.8604836f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 1.0f,
                             .leftChildIdx    = 3,
                             .rightChildIdx   = 4,
-                            .missingChildIdx = 3
+                            .missingChildIdx = 4
                         },
                         {
                             .featureIdx      = -1,
-                            .value           = -1.0042307f,
+                            .value           = 0.65244645f,
                             .leftChildIdx    = 0,
                             .rightChildIdx   = 0,
                             .missingChildIdx = 0
                         },
                         {
                             .featureIdx      = -1,
-                            .value           = -0.8862287f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.85729164f,
+                            .value           = -0.7151537f,
                             .leftChildIdx    = 0,
                             .rightChildIdx   = 0,
                             .missingChildIdx = 0
                         }
-                    } 
+                    }
                 }
             }
         }
         
     }
 };
-static const Label GBT_BINARY_CORE_CLASS_LABELS[] = {"zero", "one"};
-static const size_t GBT_BINARY_CORE_NB_LABELS = 2;
+static const size_t GBT_BINARY_CORE_NB_SUCCESSORS = 2;
 static const Label GBT_BINARY_CORE_FEATURE_LABELS[] = {"a", "b"};
 static const size_t GBT_BINARY_CORE_NB_FEATURES = 2;
 
-GBTModel  getGbtBinaryCoreGbtModel(FeatureGenerator featureGenerator)
+GBTModel getGbtBinaryCoreGbtModel(FeatureGenerator featureGenerator)
 {    GBTModel gbtModel = {
         .predictor        = &GBT_BINARY_CORE_PREDICTOR,
         .featureGenerator = featureGenerator,
-        .nbLabels         = GBT_BINARY_CORE_NB_LABELS,
-        .classLabels      = GBT_BINARY_CORE_CLASS_LABELS,
+        .nbSuccessors     = GBT_BINARY_CORE_NB_SUCCESSORS,
         .nbFeatures       = GBT_BINARY_CORE_NB_FEATURES,
         .featureLabels    = GBT_BINARY_CORE_FEATURE_LABELS,
     };
     return gbtModel;
 }
-    
-// GENERATED GBT_MULTICLASS_CORE MODEL MEMBER FIELDS
+    // GENERATED GBT_MULTICLASS_CORE MODEL MEMBER FIELDS
 
 static const GBTPredictor GBT_MULTICLASS_CORE_PREDICTOR = {
     .numForests = 3,
@@ -135,726 +132,63 @@ static const GBTPredictor GBT_MULTICLASS_CORE_PREDICTOR = {
                     {
                         {
                             .featureIdx      = 1,
-                            .value           = 0.5f,
+                            .value           = 1.0f,
                             .leftChildIdx    = 1,
                             .rightChildIdx   = 2,
-                            .missingChildIdx = 1
+                            .missingChildIdx = 2
                         },
                         {
-                            .featureIdx      = 2,
-                            .value           = 0.5f,
+                            .featureIdx      = 0,
+                            .value           = 1.0f,
                             .leftChildIdx    = 3,
                             .rightChildIdx   = 4,
-                            .missingChildIdx = 3
+                            .missingChildIdx = 4
                         },
                         {
-                            .featureIdx      = 0,
-                            .value           = 0.5f,
+                            .featureIdx      = 2,
+                            .value           = 1.0f,
                             .leftChildIdx    = 5,
                             .rightChildIdx   = 6,
-                            .missingChildIdx = 5
+                            .missingChildIdx = 6
                         },
                         {
-                            .featureIdx      = 0,
-                            .value           = 0.5f,
+                            .featureIdx      = 2,
+                            .value           = 1.0f,
                             .leftChildIdx    = 7,
                             .rightChildIdx   = 8,
-                            .missingChildIdx = 7
+                            .missingChildIdx = 8
                         },
                         {
-                            .featureIdx      = 0,
-                            .value           = 0.5f,
+                            .featureIdx      = 2,
+                            .value           = 1.0f,
                             .leftChildIdx    = 9,
                             .rightChildIdx   = 10,
-                            .missingChildIdx = 9
+                            .missingChildIdx = 10
                         },
                         {
-                            .featureIdx      = 2,
-                            .value           = 0.5f,
+                            .featureIdx      = 0,
+                            .value           = 1.0f,
                             .leftChildIdx    = 11,
                             .rightChildIdx   = 12,
-                            .missingChildIdx = 11
+                            .missingChildIdx = 12
                         },
                         {
-                            .featureIdx      = 2,
-                            .value           = 0.5f,
+                            .featureIdx      = 0,
+                            .value           = 1.0f,
                             .leftChildIdx    = 13,
                             .rightChildIdx   = 14,
-                            .missingChildIdx = 13
+                            .missingChildIdx = 14
                         },
                         {
                             .featureIdx      = -1,
-                            .value           = 1.4219654f,
+                            .value           = 1.4042553f,
                             .leftChildIdx    = 0,
                             .rightChildIdx   = 0,
                             .missingChildIdx = 0
                         },
                         {
                             .featureIdx      = -1,
-                            .value           = -0.7269625f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.7341177f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 15,
-                            .rightChildIdx   = 16,
-                            .missingChildIdx = 15
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.72563183f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.5008103f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 17,
-                            .rightChildIdx   = 18,
-                            .missingChildIdx = 17
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 19,
-                            .rightChildIdx   = 20,
-                            .missingChildIdx = 19
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 21,
-                            .rightChildIdx   = 22,
-                            .missingChildIdx = 21
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 23,
-                            .rightChildIdx   = 24,
-                            .missingChildIdx = 23
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 25,
-                            .rightChildIdx   = 26,
-                            .missingChildIdx = 25
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 27,
-                            .rightChildIdx   = 28,
-                            .missingChildIdx = 27
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 29,
-                            .rightChildIdx   = 30,
-                            .missingChildIdx = 29
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 31,
-                            .rightChildIdx   = 32,
-                            .missingChildIdx = 31
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.70909095f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 1.4285715f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 1.4014598f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.7100592f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.6741574f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 1.4237288f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 1.3714286f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.7142858f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 33,
-                            .rightChildIdx   = 34,
-                            .missingChildIdx = 33
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.7278689f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.7278689f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 35,
-                            .rightChildIdx   = 36,
-                            .missingChildIdx = 35
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 1.3953488f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.70700645f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.69600004f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 1.4068966f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        }
-                    } 
-                },
-                {
-                    .numNodes = 35,
-                    .nodes = (GBTPredictor_Node[])
-                    {
-                        {
-                            .featureIdx      = 0,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 1,
-                            .rightChildIdx   = 2,
-                            .missingChildIdx = 1
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 3,
-                            .rightChildIdx   = 4,
-                            .missingChildIdx = 3
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 5,
-                            .rightChildIdx   = 6,
-                            .missingChildIdx = 5
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 7,
-                            .rightChildIdx   = 8,
-                            .missingChildIdx = 7
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 9,
-                            .rightChildIdx   = 10,
-                            .missingChildIdx = 9
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 11,
-                            .rightChildIdx   = 12,
-                            .missingChildIdx = 11
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 13,
-                            .rightChildIdx   = 14,
-                            .missingChildIdx = 13
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.5718974f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.5213649f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.5091445f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 15,
-                            .rightChildIdx   = 16,
-                            .missingChildIdx = 15
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 17,
-                            .rightChildIdx   = 18,
-                            .missingChildIdx = 17
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 19,
-                            .rightChildIdx   = 20,
-                            .missingChildIdx = 19
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 21,
-                            .rightChildIdx   = 22,
-                            .missingChildIdx = 21
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 23,
-                            .rightChildIdx   = 24,
-                            .missingChildIdx = 23
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 25,
-                            .rightChildIdx   = 26,
-                            .missingChildIdx = 25
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 27,
-                            .rightChildIdx   = 28,
-                            .missingChildIdx = 27
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.50410056f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 29,
-                            .rightChildIdx   = 30,
-                            .missingChildIdx = 29
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.55633605f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.56521213f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.20873131f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.5674702f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.5138941f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.6952867f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.63332886f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.7518081f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.75839627f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.63109124f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 31,
-                            .rightChildIdx   = 32,
-                            .missingChildIdx = 31
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 33,
-                            .rightChildIdx   = 34,
-                            .missingChildIdx = 33
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.48233476f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.5600104f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.5746739f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.46032077f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        }
-                    } 
-                }
-            }
-        }
-        ,
-        {
-            .numTrees = 2,
-            .trees = (GBTPredictor_Tree[])
-            {
-                {
-                    .numNodes = 43,
-                    .nodes = (GBTPredictor_Node[])
-                    {
-                        {
-                            .featureIdx      = 2,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 1,
-                            .rightChildIdx   = 2,
-                            .missingChildIdx = 1
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 3,
-                            .rightChildIdx   = 4,
-                            .missingChildIdx = 3
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 5,
-                            .rightChildIdx   = 6,
-                            .missingChildIdx = 5
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 7,
-                            .rightChildIdx   = 8,
-                            .missingChildIdx = 7
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 9,
-                            .rightChildIdx   = 10,
-                            .missingChildIdx = 9
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 11,
-                            .rightChildIdx   = 12,
-                            .missingChildIdx = 11
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 13,
-                            .rightChildIdx   = 14,
-                            .missingChildIdx = 13
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 15,
-                            .rightChildIdx   = 16,
-                            .missingChildIdx = 15
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 17,
-                            .rightChildIdx   = 18,
-                            .missingChildIdx = 17
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.728972f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 19,
-                            .rightChildIdx   = 20,
-                            .missingChildIdx = 19
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.73190355f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 1.4014598f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 21,
-                            .rightChildIdx   = 22,
-                            .missingChildIdx = 21
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.7266437f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 23,
-                            .rightChildIdx   = 24,
-                            .missingChildIdx = 23
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 25,
-                            .rightChildIdx   = 26,
-                            .missingChildIdx = 25
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 27,
-                            .rightChildIdx   = 28,
-                            .missingChildIdx = 27
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 29,
-                            .rightChildIdx   = 30,
-                            .missingChildIdx = 29
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 31,
-                            .rightChildIdx   = 32,
-                            .missingChildIdx = 31
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 33,
-                            .rightChildIdx   = 34,
-                            .missingChildIdx = 33
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 35,
-                            .rightChildIdx   = 36,
-                            .missingChildIdx = 35
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 37,
-                            .rightChildIdx   = 38,
-                            .missingChildIdx = 37
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.71098274f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 1.4068966f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 1.4389141f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.704698f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 39,
-                            .rightChildIdx   = 40,
-                            .missingChildIdx = 39
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.72631586f,
+                            .value           = -0.7317074f,
                             .leftChildIdx    = 0,
                             .rightChildIdx   = 0,
                             .missingChildIdx = 0
@@ -867,22 +201,85 @@ static const GBTPredictor GBT_MULTICLASS_CORE_PREDICTOR = {
                             .missingChildIdx = 0
                         },
                         {
-                            .featureIdx      = 1,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 41,
-                            .rightChildIdx   = 42,
-                            .missingChildIdx = 41
+                            .featureIdx      = 2,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 15,
+                            .rightChildIdx   = 16,
+                            .missingChildIdx = 16
                         },
                         {
                             .featureIdx      = -1,
-                            .value           = -0.68571436f,
+                            .value           = -0.72332025f,
                             .leftChildIdx    = 0,
                             .rightChildIdx   = 0,
                             .missingChildIdx = 0
                         },
                         {
                             .featureIdx      = -1,
-                            .value           = 1.4285715f,
+                            .value           = 0.5320197f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 17,
+                            .rightChildIdx   = 18,
+                            .missingChildIdx = 18
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 19,
+                            .rightChildIdx   = 20,
+                            .missingChildIdx = 20
+                        },
+                        {
+                            .featureIdx      = 0,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 21,
+                            .rightChildIdx   = 22,
+                            .missingChildIdx = 22
+                        },
+                        {
+                            .featureIdx      = 0,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 23,
+                            .rightChildIdx   = 24,
+                            .missingChildIdx = 24
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 25,
+                            .rightChildIdx   = 26,
+                            .missingChildIdx = 26
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 27,
+                            .rightChildIdx   = 28,
+                            .missingChildIdx = 28
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 29,
+                            .rightChildIdx   = 30,
+                            .missingChildIdx = 30
+                        },
+                        {
+                            .featureIdx      = 0,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 31,
+                            .rightChildIdx   = 32,
+                            .missingChildIdx = 32
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.70700645f,
                             .leftChildIdx    = 0,
                             .rightChildIdx   = 0,
                             .missingChildIdx = 0
@@ -896,544 +293,28 @@ static const GBTPredictor GBT_MULTICLASS_CORE_PREDICTOR = {
                         },
                         {
                             .featureIdx      = -1,
-                            .value           = -0.69600004f,
+                            .value           = 1.4181818f,
                             .leftChildIdx    = 0,
                             .rightChildIdx   = 0,
                             .missingChildIdx = 0
                         },
                         {
                             .featureIdx      = -1,
-                            .value           = -0.7142858f,
+                            .value           = -0.69767445f,
                             .leftChildIdx    = 0,
                             .rightChildIdx   = 0,
                             .missingChildIdx = 0
                         },
                         {
                             .featureIdx      = -1,
-                            .value           = 1.4140128f,
+                            .value           = -0.7127072f,
                             .leftChildIdx    = 0,
                             .rightChildIdx   = 0,
                             .missingChildIdx = 0
                         },
                         {
                             .featureIdx      = -1,
-                            .value           = 1.4201183f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.70909095f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 1.4117647f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.6741574f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.70072997f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 1.4093959f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        }
-                    } 
-                },
-                {
-                    .numNodes = 43,
-                    .nodes = (GBTPredictor_Node[])
-                    {
-                        {
-                            .featureIdx      = 2,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 1,
-                            .rightChildIdx   = 2,
-                            .missingChildIdx = 1
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 3,
-                            .rightChildIdx   = 4,
-                            .missingChildIdx = 3
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 5,
-                            .rightChildIdx   = 6,
-                            .missingChildIdx = 5
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 7,
-                            .rightChildIdx   = 8,
-                            .missingChildIdx = 7
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 9,
-                            .rightChildIdx   = 10,
-                            .missingChildIdx = 9
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 11,
-                            .rightChildIdx   = 12,
-                            .missingChildIdx = 11
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 13,
-                            .rightChildIdx   = 14,
-                            .missingChildIdx = 13
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 15,
-                            .rightChildIdx   = 16,
-                            .missingChildIdx = 15
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.5135021f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.5046074f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.57464546f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 17,
-                            .rightChildIdx   = 18,
-                            .missingChildIdx = 17
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 19,
-                            .rightChildIdx   = 20,
-                            .missingChildIdx = 19
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 21,
-                            .rightChildIdx   = 22,
-                            .missingChildIdx = 21
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 23,
-                            .rightChildIdx   = 24,
-                            .missingChildIdx = 23
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 25,
-                            .rightChildIdx   = 26,
-                            .missingChildIdx = 25
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 27,
-                            .rightChildIdx   = 28,
-                            .missingChildIdx = 27
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.57785547f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.49395284f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.51668644f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 29,
-                            .rightChildIdx   = 30,
-                            .missingChildIdx = 29
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 31,
-                            .rightChildIdx   = 32,
-                            .missingChildIdx = 31
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 33,
-                            .rightChildIdx   = 34,
-                            .missingChildIdx = 33
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 35,
-                            .rightChildIdx   = 36,
-                            .missingChildIdx = 35
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.5687817f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.48493275f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.5664608f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.56825083f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.44080478f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.47128305f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.5712829f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.563356f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 37,
-                            .rightChildIdx   = 38,
-                            .missingChildIdx = 37
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 39,
-                            .rightChildIdx   = 40,
-                            .missingChildIdx = 39
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 41,
-                            .rightChildIdx   = 42,
-                            .missingChildIdx = 41
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.5672704f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.46542704f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.56564116f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.7132853f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.46478736f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.6982921f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.56867665f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.57217145f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        }
-                    } 
-                }
-            }
-        }
-        ,
-        {
-            .numTrees = 2,
-            .trees = (GBTPredictor_Tree[])
-            {
-                {
-                    .numNodes = 37,
-                    .nodes = (GBTPredictor_Node[])
-                    {
-                        {
-                            .featureIdx      = 2,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 1,
-                            .rightChildIdx   = 2,
-                            .missingChildIdx = 1
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 3,
-                            .rightChildIdx   = 4,
-                            .missingChildIdx = 3
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 5,
-                            .rightChildIdx   = 6,
-                            .missingChildIdx = 5
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 7,
-                            .rightChildIdx   = 8,
-                            .missingChildIdx = 7
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 9,
-                            .rightChildIdx   = 10,
-                            .missingChildIdx = 9
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 11,
-                            .rightChildIdx   = 12,
-                            .missingChildIdx = 11
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 13,
-                            .rightChildIdx   = 14,
-                            .missingChildIdx = 13
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.7324676f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 15,
-                            .rightChildIdx   = 16,
-                            .missingChildIdx = 15
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 17,
-                            .rightChildIdx   = 18,
-                            .missingChildIdx = 17
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 19,
-                            .rightChildIdx   = 20,
-                            .missingChildIdx = 19
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 1.4366198f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.7272728f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.73065907f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.3996627f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 21,
-                            .rightChildIdx   = 22,
-                            .missingChildIdx = 21
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 23,
-                            .rightChildIdx   = 24,
-                            .missingChildIdx = 23
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 25,
-                            .rightChildIdx   = 26,
-                            .missingChildIdx = 25
-                        },
-                        {
-                            .featureIdx      = 2,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 27,
-                            .rightChildIdx   = 28,
-                            .missingChildIdx = 27
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 29,
-                            .rightChildIdx   = 30,
-                            .missingChildIdx = 29
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 31,
-                            .rightChildIdx   = 32,
-                            .missingChildIdx = 31
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.70588243f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 1.4093959f,
+                            .value           = 1.416149f,
                             .leftChildIdx    = 0,
                             .rightChildIdx   = 0,
                             .missingChildIdx = 0
@@ -1447,6 +328,48 @@ static const GBTPredictor GBT_MULTICLASS_CORE_PREDICTOR = {
                         },
                         {
                             .featureIdx      = -1,
+                            .value           = -0.704698f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = 0,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 33,
+                            .rightChildIdx   = 34,
+                            .missingChildIdx = 34
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.7266437f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.7287067f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 35,
+                            .rightChildIdx   = 36,
+                            .missingChildIdx = 36
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 1.4219654f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
                             .value           = -0.70072997f,
                             .leftChildIdx    = 0,
                             .rightChildIdx   = 0,
@@ -1454,384 +377,160 @@ static const GBTPredictor GBT_MULTICLASS_CORE_PREDICTOR = {
                         },
                         {
                             .featureIdx      = -1,
-                            .value           = -0.70344836f,
+                            .value           = -0.7021277f,
                             .leftChildIdx    = 0,
                             .rightChildIdx   = 0,
                             .missingChildIdx = 0
                         },
                         {
                             .featureIdx      = -1,
-                            .value           = 1.4093959f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 1.4042553f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.7142858f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 33,
-                            .rightChildIdx   = 34,
-                            .missingChildIdx = 33
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.7310925f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.72597873f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 1.5f,
-                            .leftChildIdx    = 35,
-                            .rightChildIdx   = 36,
-                            .missingChildIdx = 35
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 1.3483146f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.68571436f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.704698f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 1.392f,
+                            .value           = 1.4140128f,
                             .leftChildIdx    = 0,
                             .rightChildIdx   = 0,
                             .missingChildIdx = 0
                         }
-                    } 
+                    }
                 },
                 {
-                    .numNodes = 45,
+                    .numNodes = 31,
                     .nodes = (GBTPredictor_Node[])
                     {
                         {
-                            .featureIdx      = 2,
-                            .value           = 1.5f,
+                            .featureIdx      = 1,
+                            .value           = 1.0f,
                             .leftChildIdx    = 1,
                             .rightChildIdx   = 2,
-                            .missingChildIdx = 1
+                            .missingChildIdx = 2
                         },
                         {
-                            .featureIdx      = 1,
-                            .value           = 1.5f,
+                            .featureIdx      = 2,
+                            .value           = 1.0f,
                             .leftChildIdx    = 3,
                             .rightChildIdx   = 4,
-                            .missingChildIdx = 3
+                            .missingChildIdx = 4
                         },
                         {
-                            .featureIdx      = 1,
-                            .value           = 1.5f,
+                            .featureIdx      = 2,
+                            .value           = 1.0f,
                             .leftChildIdx    = 5,
                             .rightChildIdx   = 6,
-                            .missingChildIdx = 5
+                            .missingChildIdx = 6
                         },
                         {
                             .featureIdx      = 0,
-                            .value           = 1.5f,
+                            .value           = 1.0f,
                             .leftChildIdx    = 7,
                             .rightChildIdx   = 8,
-                            .missingChildIdx = 7
+                            .missingChildIdx = 8
                         },
                         {
                             .featureIdx      = 0,
-                            .value           = 1.5f,
+                            .value           = 1.0f,
                             .leftChildIdx    = 9,
                             .rightChildIdx   = 10,
-                            .missingChildIdx = 9
+                            .missingChildIdx = 10
                         },
                         {
                             .featureIdx      = 0,
-                            .value           = 1.5f,
+                            .value           = 1.0f,
                             .leftChildIdx    = 11,
                             .rightChildIdx   = 12,
-                            .missingChildIdx = 11
+                            .missingChildIdx = 12
                         },
                         {
                             .featureIdx      = 0,
-                            .value           = 1.5f,
+                            .value           = 1.0f,
                             .leftChildIdx    = 13,
                             .rightChildIdx   = 14,
-                            .missingChildIdx = 13
+                            .missingChildIdx = 14
                         },
                         {
-                            .featureIdx      = 2,
-                            .value           = 0.5f,
+                            .featureIdx      = -1,
+                            .value           = 0.5656097f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.5683136f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.5177248f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = 0,
+                            .value           = 2.0f,
                             .leftChildIdx    = 15,
                             .rightChildIdx   = 16,
-                            .missingChildIdx = 15
+                            .missingChildIdx = 16
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.50612986f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 0.20929128f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 0.18638352f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
                         },
                         {
                             .featureIdx      = 1,
-                            .value           = 0.5f,
+                            .value           = 2.0f,
                             .leftChildIdx    = 17,
                             .rightChildIdx   = 18,
-                            .missingChildIdx = 17
+                            .missingChildIdx = 18
                         },
                         {
                             .featureIdx      = 2,
-                            .value           = 0.5f,
+                            .value           = 2.0f,
                             .leftChildIdx    = 19,
                             .rightChildIdx   = 20,
-                            .missingChildIdx = 19
+                            .missingChildIdx = 20
                         },
                         {
                             .featureIdx      = 2,
-                            .value           = 0.5f,
+                            .value           = 2.0f,
                             .leftChildIdx    = 21,
                             .rightChildIdx   = 22,
-                            .missingChildIdx = 21
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 23,
-                            .rightChildIdx   = 24,
-                            .missingChildIdx = 23
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 25,
-                            .rightChildIdx   = 26,
-                            .missingChildIdx = 25
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 27,
-                            .rightChildIdx   = 28,
-                            .missingChildIdx = 27
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.61457556f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 29,
-                            .rightChildIdx   = 30,
-                            .missingChildIdx = 29
-                        },
-                        {
-                            .featureIdx      = 1,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 31,
-                            .rightChildIdx   = 32,
-                            .missingChildIdx = 31
+                            .missingChildIdx = 22
                         },
                         {
                             .featureIdx      = 2,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 33,
-                            .rightChildIdx   = 34,
-                            .missingChildIdx = 33
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.5142705f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
+                            .value           = 2.0f,
+                            .leftChildIdx    = 23,
+                            .rightChildIdx   = 24,
+                            .missingChildIdx = 24
                         },
                         {
                             .featureIdx      = 0,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 35,
-                            .rightChildIdx   = 36,
-                            .missingChildIdx = 35
+                            .value           = 2.0f,
+                            .leftChildIdx    = 25,
+                            .rightChildIdx   = 26,
+                            .missingChildIdx = 26
                         },
                         {
                             .featureIdx      = -1,
-                            .value           = -0.56659806f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.4877399f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.5629581f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 37,
-                            .rightChildIdx   = 38,
-                            .missingChildIdx = 37
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.6152538f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.48149866f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.78480965f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.44551954f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.7787018f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.51411456f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 39,
-                            .rightChildIdx   = 40,
-                            .missingChildIdx = 39
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 41,
-                            .rightChildIdx   = 42,
-                            .missingChildIdx = 41
-                        },
-                        {
-                            .featureIdx      = 0,
-                            .value           = 0.5f,
-                            .leftChildIdx    = 43,
-                            .rightChildIdx   = 44,
-                            .missingChildIdx = 43
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.5656658f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.47128305f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.5635658f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.45336577f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.57685995f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.48777962f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.4749832f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = 0.5493352f,
-                            .leftChildIdx    = 0,
-                            .rightChildIdx   = 0,
-                            .missingChildIdx = 0
-                        },
-                        {
-                            .featureIdx      = -1,
-                            .value           = -0.4956725f,
+                            .value           = -0.581066f,
                             .leftChildIdx    = 0,
                             .rightChildIdx   = 0,
                             .missingChildIdx = 0
@@ -1845,40 +544,1167 @@ static const GBTPredictor GBT_MULTICLASS_CORE_PREDICTOR = {
                         },
                         {
                             .featureIdx      = -1,
-                            .value           = 0.7165425f,
+                            .value           = 0.6896345f,
                             .leftChildIdx    = 0,
                             .rightChildIdx   = 0,
                             .missingChildIdx = 0
                         },
                         {
                             .featureIdx      = -1,
-                            .value           = -0.46482655f,
+                            .value           = -0.46780372f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = 0,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 27,
+                            .rightChildIdx   = 28,
+                            .missingChildIdx = 28
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.5105352f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.51342064f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 29,
+                            .rightChildIdx   = 30,
+                            .missingChildIdx = 30
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 0.5721305f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.47128305f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.47305343f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 0.56921756f,
                             .leftChildIdx    = 0,
                             .rightChildIdx   = 0,
                             .missingChildIdx = 0
                         }
-                    } 
+                    }
+                }
+            }
+        }
+        ,
+        {
+            .numTrees = 2,
+            .trees = (GBTPredictor_Tree[])
+            {
+                {
+                    .numNodes = 43,
+                    .nodes = (GBTPredictor_Node[])
+                    {
+                        {
+                            .featureIdx      = 0,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 1,
+                            .rightChildIdx   = 2,
+                            .missingChildIdx = 2
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 3,
+                            .rightChildIdx   = 4,
+                            .missingChildIdx = 4
+                        },
+                        {
+                            .featureIdx      = 0,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 5,
+                            .rightChildIdx   = 6,
+                            .missingChildIdx = 6
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 7,
+                            .rightChildIdx   = 8,
+                            .missingChildIdx = 8
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 9,
+                            .rightChildIdx   = 10,
+                            .missingChildIdx = 10
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 11,
+                            .rightChildIdx   = 12,
+                            .missingChildIdx = 12
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 13,
+                            .rightChildIdx   = 14,
+                            .missingChildIdx = 14
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 15,
+                            .rightChildIdx   = 16,
+                            .missingChildIdx = 16
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.7328245f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.7272728f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 1.4093959f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 17,
+                            .rightChildIdx   = 18,
+                            .missingChildIdx = 18
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 19,
+                            .rightChildIdx   = 20,
+                            .missingChildIdx = 20
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 21,
+                            .rightChildIdx   = 22,
+                            .missingChildIdx = 22
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 23,
+                            .rightChildIdx   = 24,
+                            .missingChildIdx = 24
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 25,
+                            .rightChildIdx   = 26,
+                            .missingChildIdx = 26
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 27,
+                            .rightChildIdx   = 28,
+                            .missingChildIdx = 28
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 29,
+                            .rightChildIdx   = 30,
+                            .missingChildIdx = 30
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 31,
+                            .rightChildIdx   = 32,
+                            .missingChildIdx = 32
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.7127072f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 33,
+                            .rightChildIdx   = 34,
+                            .missingChildIdx = 34
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.72843456f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 1.3953488f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 35,
+                            .rightChildIdx   = 36,
+                            .missingChildIdx = 36
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.72563183f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.7021277f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 1.4014598f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 1.3884298f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.7127072f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 1.4181818f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.6992482f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.728972f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 37,
+                            .rightChildIdx   = 38,
+                            .missingChildIdx = 38
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 1.416149f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.70909095f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 39,
+                            .rightChildIdx   = 40,
+                            .missingChildIdx = 40
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 41,
+                            .rightChildIdx   = 42,
+                            .missingChildIdx = 42
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.70909095f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 1.4201183f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.7127072f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 1.4014598f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 1.4042553f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.7021277f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        }
+                    }
+                },
+                {
+                    .numNodes = 31,
+                    .nodes = (GBTPredictor_Node[])
+                    {
+                        {
+                            .featureIdx      = 1,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 1,
+                            .rightChildIdx   = 2,
+                            .missingChildIdx = 2
+                        },
+                        {
+                            .featureIdx      = 0,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 3,
+                            .rightChildIdx   = 4,
+                            .missingChildIdx = 4
+                        },
+                        {
+                            .featureIdx      = 0,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 5,
+                            .rightChildIdx   = 6,
+                            .missingChildIdx = 6
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 7,
+                            .rightChildIdx   = 8,
+                            .missingChildIdx = 8
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 9,
+                            .rightChildIdx   = 10,
+                            .missingChildIdx = 10
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 11,
+                            .rightChildIdx   = 12,
+                            .missingChildIdx = 12
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 13,
+                            .rightChildIdx   = 14,
+                            .missingChildIdx = 14
+                        },
+                        {
+                            .featureIdx      = 0,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 15,
+                            .rightChildIdx   = 16,
+                            .missingChildIdx = 16
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 17,
+                            .rightChildIdx   = 18,
+                            .missingChildIdx = 18
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.5954352f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 0.19785446f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.5637001f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 0.17522162f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 0.7202468f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.5114188f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 19,
+                            .rightChildIdx   = 20,
+                            .missingChildIdx = 20
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 21,
+                            .rightChildIdx   = 22,
+                            .missingChildIdx = 22
+                        },
+                        {
+                            .featureIdx      = 0,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 23,
+                            .rightChildIdx   = 24,
+                            .missingChildIdx = 24
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 25,
+                            .rightChildIdx   = 26,
+                            .missingChildIdx = 26
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.47328582f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 0.5575687f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 0.690161f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.44513193f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 27,
+                            .rightChildIdx   = 28,
+                            .missingChildIdx = 28
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.56888866f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.51656187f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = 0,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 29,
+                            .rightChildIdx   = 30,
+                            .missingChildIdx = 30
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 0.56396335f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.49957976f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.47839633f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 0.5715523f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        }
+                    }
+                }
+            }
+        }
+        ,
+        {
+            .numTrees = 2,
+            .trees = (GBTPredictor_Tree[])
+            {
+                {
+                    .numNodes = 37,
+                    .nodes = (GBTPredictor_Node[])
+                    {
+                        {
+                            .featureIdx      = 0,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 1,
+                            .rightChildIdx   = 2,
+                            .missingChildIdx = 2
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 3,
+                            .rightChildIdx   = 4,
+                            .missingChildIdx = 4
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 5,
+                            .rightChildIdx   = 6,
+                            .missingChildIdx = 6
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 7,
+                            .rightChildIdx   = 8,
+                            .missingChildIdx = 8
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 9,
+                            .rightChildIdx   = 10,
+                            .missingChildIdx = 10
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 11,
+                            .rightChildIdx   = 12,
+                            .missingChildIdx = 12
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 13,
+                            .rightChildIdx   = 14,
+                            .missingChildIdx = 14
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.72332025f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 15,
+                            .rightChildIdx   = 16,
+                            .missingChildIdx = 16
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 1.4042553f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.7278689f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 0.35494325f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.72631586f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = 0,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 17,
+                            .rightChildIdx   = 18,
+                            .missingChildIdx = 18
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 19,
+                            .rightChildIdx   = 20,
+                            .missingChildIdx = 20
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 21,
+                            .rightChildIdx   = 22,
+                            .missingChildIdx = 22
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 23,
+                            .rightChildIdx   = 24,
+                            .missingChildIdx = 24
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 25,
+                            .rightChildIdx   = 26,
+                            .missingChildIdx = 26
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 27,
+                            .rightChildIdx   = 28,
+                            .missingChildIdx = 28
+                        },
+                        {
+                            .featureIdx      = 0,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 29,
+                            .rightChildIdx   = 30,
+                            .missingChildIdx = 30
+                        },
+                        {
+                            .featureIdx      = 0,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 31,
+                            .rightChildIdx   = 32,
+                            .missingChildIdx = 32
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.70072997f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 1.4439834f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 1.4254143f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.70807457f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 33,
+                            .rightChildIdx   = 34,
+                            .missingChildIdx = 34
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.7297298f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.72843456f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 35,
+                            .rightChildIdx   = 36,
+                            .missingChildIdx = 36
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.7100592f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 1.3953488f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 1.4181818f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.70700645f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 1.3984963f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.71098274f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.70072997f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 1.4042553f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        }
+                    }
+                },
+                {
+                    .numNodes = 37,
+                    .nodes = (GBTPredictor_Node[])
+                    {
+                        {
+                            .featureIdx      = 1,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 1,
+                            .rightChildIdx   = 2,
+                            .missingChildIdx = 2
+                        },
+                        {
+                            .featureIdx      = 0,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 3,
+                            .rightChildIdx   = 4,
+                            .missingChildIdx = 4
+                        },
+                        {
+                            .featureIdx      = 0,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 5,
+                            .rightChildIdx   = 6,
+                            .missingChildIdx = 6
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 7,
+                            .rightChildIdx   = 8,
+                            .missingChildIdx = 8
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 9,
+                            .rightChildIdx   = 10,
+                            .missingChildIdx = 10
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 11,
+                            .rightChildIdx   = 12,
+                            .missingChildIdx = 12
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 13,
+                            .rightChildIdx   = 14,
+                            .missingChildIdx = 14
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.5092313f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 0.58028257f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 0.18739705f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.50997317f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 15,
+                            .rightChildIdx   = 16,
+                            .missingChildIdx = 16
+                        },
+                        {
+                            .featureIdx      = 0,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 17,
+                            .rightChildIdx   = 18,
+                            .missingChildIdx = 18
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.5595142f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 19,
+                            .rightChildIdx   = 20,
+                            .missingChildIdx = 20
+                        },
+                        {
+                            .featureIdx      = 0,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 21,
+                            .rightChildIdx   = 22,
+                            .missingChildIdx = 22
+                        },
+                        {
+                            .featureIdx      = 0,
+                            .value           = 1.0f,
+                            .leftChildIdx    = 23,
+                            .rightChildIdx   = 24,
+                            .missingChildIdx = 24
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 25,
+                            .rightChildIdx   = 26,
+                            .missingChildIdx = 26
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 27,
+                            .rightChildIdx   = 28,
+                            .missingChildIdx = 28
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 29,
+                            .rightChildIdx   = 30,
+                            .missingChildIdx = 30
+                        },
+                        {
+                            .featureIdx      = 1,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 31,
+                            .rightChildIdx   = 32,
+                            .missingChildIdx = 32
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.46048066f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 0.72062385f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 0.56384486f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.5654189f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 33,
+                            .rightChildIdx   = 34,
+                            .missingChildIdx = 34
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.512225f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.51641506f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = 2,
+                            .value           = 2.0f,
+                            .leftChildIdx    = 35,
+                            .rightChildIdx   = 36,
+                            .missingChildIdx = 36
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.47128305f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 0.5670938f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 0.5600116f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.47957614f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 0.57459754f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.48105377f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = -0.47890803f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        },
+                        {
+                            .featureIdx      = -1,
+                            .value           = 0.5706471f,
+                            .leftChildIdx    = 0,
+                            .rightChildIdx   = 0,
+                            .missingChildIdx = 0
+                        }
+                    }
                 }
             }
         }
         
     }
 };
-static const Label GBT_MULTICLASS_CORE_CLASS_LABELS[] = {"zero", "one", "two"};
-static const size_t GBT_MULTICLASS_CORE_NB_LABELS = 3;
+static const size_t GBT_MULTICLASS_CORE_NB_SUCCESSORS = 3;
 static const Label GBT_MULTICLASS_CORE_FEATURE_LABELS[] = {"a", "b", "c"};
 static const size_t GBT_MULTICLASS_CORE_NB_FEATURES = 3;
 
-GBTModel  getGbtMulticlassCoreGbtModel(FeatureGenerator featureGenerator)
+GBTModel getGbtMulticlassCoreGbtModel(FeatureGenerator featureGenerator)
 {    GBTModel gbtModel = {
         .predictor        = &GBT_MULTICLASS_CORE_PREDICTOR,
         .featureGenerator = featureGenerator,
-        .nbLabels         = GBT_MULTICLASS_CORE_NB_LABELS,
-        .classLabels      = GBT_MULTICLASS_CORE_CLASS_LABELS,
+        .nbSuccessors     = GBT_MULTICLASS_CORE_NB_SUCCESSORS,
         .nbFeatures       = GBT_MULTICLASS_CORE_NB_FEATURES,
         .featureLabels    = GBT_MULTICLASS_CORE_FEATURE_LABELS,
     };
     return gbtModel;
 }
     
-

@@ -48,6 +48,8 @@ The `numeric-ml-selector-64` profile currently uses the following hardcoded succ
 - `tokenize_delta_fieldlz`
 - `zstd`
 
+**Important**: The ordering of successors must not change between training and inference. Since the model uses numeric indices to represent successors, any change in successor ordering would cause predictions to map to incorrect compression strategies.
+
 ### Training
 
 1. **Feature Extraction**: For each training file, the system extracts 11 statistical features:
@@ -64,9 +66,9 @@ The `numeric-ml-selector-64` profile currently uses the following hardcoded succ
     - `kurtosis`: Higher number means dataset is more prone to outliers compared to a normal distribution
 
 
-2. **Labeling**: For each training sample, the system compresses it using every available successor and evaluates the results. A choice function then selects the "best" successor. By default, this is the successor that produces the smallest compressed output. The "best" successor becomes the label for that sample.
+2. **Classification**: For each training sample, the system compresses it using every available successor and evaluates the results. A choice function then selects the "best" successor. By default, this is the successor that produces the smallest compressed output. The "best" successor becomes the classification for that sample.
 
-3. **Model Training**: A XGBoost model is trained on these feature-label pairs. Once trained, the model can predict the best successor for a new file based on its extracted features. The XGBoost model is then turned into a `gbtModel`, which can be serialized.
+3. **Model Training**: A XGBoost model is trained on these feature-class pairs. Once trained, the model can predict the best successor for a new file based on its extracted features. The XGBoost model is then turned into a `gbtModel`, which can be serialized.
 
 ### Inference
 
