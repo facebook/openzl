@@ -52,7 +52,6 @@ const std::map<Symbol, ListSymSet> list_sym_sets{ []() {
 
 static const std::map<Symbol, SymbolType> sym_types{
     { Symbol::NL, SymbolType::GROUPING },
-    { Symbol::SEMI, SymbolType::GROUPING },
     { Symbol::COMMA, SymbolType::GROUPING },
     { Symbol::PAREN_OPEN, SymbolType::GROUPING },
     { Symbol::PAREN_CLOSE, SymbolType::GROUPING },
@@ -148,7 +147,6 @@ SymbolType sym_type(Symbol sym)
 
 static const std::map<Symbol, poly::string_view> syms_to_debug_strs{
     { Symbol::NL, "NL" },
-    { Symbol::SEMI, "SEMI" },
     { Symbol::COMMA, "COMMA" },
     { Symbol::PAREN_OPEN, "PAREN_OPEN" },
     { Symbol::PAREN_CLOSE, "PAREN_CLOSE" },
@@ -245,7 +243,6 @@ poly::string_view sym_to_debug_str(Symbol sym)
 
 /* non-static: this is exposed */
 const std::vector<std::pair<poly::string_view, Symbol>> strs_to_syms{
-    { ";", Symbol::SEMI },
     { ",", Symbol::COMMA },
     { "(", Symbol::PAREN_OPEN },
     { ")", Symbol::PAREN_CLOSE },

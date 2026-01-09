@@ -217,8 +217,8 @@ class SimpleDataDescriptionLanguageV2Test : public Test {
 TEST_F(SimpleDataDescriptionLanguageV2Test, DieIf2Plus2DoesntEqual4)
 {
     const auto prog  = R"(
-        two = 2;
-        expect 2 + two == 4;
+        two = 2
+        expect 2 + two == 4
     )";
     const auto input = std::string_view{ "" };
     exec(prog, input, Expected::SUCCEED);
@@ -227,8 +227,8 @@ TEST_F(SimpleDataDescriptionLanguageV2Test, DieIf2Plus2DoesntEqual4)
 TEST_F(SimpleDataDescriptionLanguageV2Test, DieIf2Plus2Equals4)
 {
     const auto prog  = R"(
-        two = 2;
-        expect 2 + two != 4;
+        two = 2
+        expect 2 + two != 4
     )";
     const auto input = std::string_view{ "" };
     exec(prog, input, Expected::FAIL_TO_EXECUTE);
@@ -246,22 +246,22 @@ TEST_F(SimpleDataDescriptionLanguageV2Test, TrivialRoundtrip)
 TEST_F(SimpleDataDescriptionLanguageV2Test, AlternateFields)
 {
     const auto prog  = R"(
-        field_width = 4;
-        Field1 = Byte[field_width];
-        Field2 = Byte[field_width];
+        field_width = 4
+        Field1 = Byte[field_width]
+        Field2 = Byte[field_width]
         Row = {
             Field1,
             Field2
-        };
-        row_width = sizeof Row;
-        input_size = _rem;
-        row_count = input_size / row_width;
+        }
+        row_width = sizeof Row
+        input_size = _rem
+        row_count = input_size / row_width
 
         # check row size evenly divides input
-        expect input_size % row_width == 0;
+        expect input_size % row_width == 0
 
-        RowArray = Row[row_count];
-        : RowArray;
+        RowArray = Row[row_count]
+        : RowArray
     )";
     const auto input = std::string_view{
         "1234567812345678123456781234567812345678123456781234567812345678"
@@ -811,8 +811,8 @@ TEST_F(SimpleDataDescriptionLanguageV2Test, indeterminateArrayLength)
     }
 
     // Zero-sized objects can't be expanded.
-    exec(": {}[]; :Byte[3]", iota(3), Expected::FAIL_TO_EXECUTE);
-    exec(": Byte[0][]; :Byte[3]", iota(3), Expected::FAIL_TO_EXECUTE);
+    exec(": {}[] :Byte[3]", iota(3), Expected::FAIL_TO_EXECUTE);
+    exec(": Byte[0][] :Byte[3]", iota(3), Expected::FAIL_TO_EXECUTE);
 }
 
 TEST_F(SimpleDataDescriptionLanguageV2Test, unusedFields)

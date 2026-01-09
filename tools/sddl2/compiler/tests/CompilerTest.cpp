@@ -48,13 +48,13 @@ class CompilerTest : public Test {
 
 TEST_F(CompilerTest, ErrorMsgOpsMissingArgs)
 {
-    expect_error("foo = ;", "right-hand argument");
-    expect_error("= foo;", "left-hand argument");
+    expect_error("foo = \n", "right-hand argument");
+    expect_error("= foo\n", "left-hand argument");
 }
 
 TEST_F(CompilerTest, ErrorMsgEmptyExpr)
 {
-    expect_error(";", "Empty expression");
+    expect_error("()", "Empty expression");
 }
 
 TEST_F(CompilerTest, ErrorMsgNoOperatorBetweenSubExpressions)
