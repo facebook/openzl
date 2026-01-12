@@ -14,7 +14,6 @@ from command_utils import (
     execute_train,
     execute_train_inline,
 )
-
 from file_utils import (
     file_contents_match,
     get_sample_files_from_dir,

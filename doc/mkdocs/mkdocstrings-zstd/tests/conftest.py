@@ -5,7 +5,6 @@ import pytest
 from markdown.core import Markdown
 from mkdocs.config.defaults import MkDocsConfig
 from mkdocstrings.plugin import MkdocstringsPlugin
-
 from mkdocstrings_handlers.zstd.doxygen import Doxygen
 from mkdocstrings_handlers.zstd.handler import ZstdHandler
 

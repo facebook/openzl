@@ -4,7 +4,6 @@ import sys
 import unittest
 
 import command_utils
-
 from abstract_compression_test import (
     _BenchmarkBaseTest,
     _CompressDecompressBaseTest,

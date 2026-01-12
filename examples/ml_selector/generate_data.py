@@ -8,9 +8,7 @@ import shutil
 from typing import List
 
 import click
-
 import numpy as np
-
 from manifold.clients.python import ManifoldClient
 
 
