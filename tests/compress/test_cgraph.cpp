@@ -40,25 +40,6 @@ class CGraphTest : public Test {
         ZL_Compressor_free(cgraph_);
     }
 
-    ZL_GraphID declareGraph(
-            ZL_NodeID node,
-            std::vector<ZL_GraphID> const& successors)
-    {
-        return ZL_Compressor_registerStaticGraph_fromNode(
-                cgraph_, node, successors.data(), successors.size());
-    }
-
-    size_t nbOutcomes(ZL_NodeID node) const
-    {
-        return ZL_Compressor_Node_getNumOutcomes(cgraph_, node);
-    }
-
-    ZL_GraphID declareGraph(ZL_NodeID node)
-    {
-        std::vector<ZL_GraphID> successors(nbOutcomes(node), ZL_GRAPH_STORE);
-        return declareGraph(node, successors);
-    }
-
     ZL_Compressor* cgraph_{ nullptr };
 
     openzl::Compressor compressor_;
