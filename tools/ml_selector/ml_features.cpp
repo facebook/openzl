@@ -2,6 +2,7 @@
 #include "tools/ml_selector/ml_features.h"
 #include <chrono>
 #include <cstdio>
+#include <queue>
 #include <string>
 #include <vector>
 #include "openzl/zl_reflection.h"
@@ -24,6 +25,27 @@ static size_t compress(CCtx& cctx, Compressor& compressor, const Input& input)
 {
     cctx.refCompressor(compressor);
     return cctx.compressOne(input).size();
+}
+
+ChoiceFunction makeWeightedChoiceFunc(float weight)
+{
+    return [weight](std::vector<TargetsMap>& targets) {
+        std::vector<float> result;
+        for (size_t i = 0; i < targets.size(); i++) {
+            std::priority_queue<
+                    std::pair<float, size_t>,
+                    std::vector<std::pair<float, size_t>>,
+                    std::greater<std::pair<float, size_t>>>
+                    pq;
+            for (const auto& it : targets[i]) {
+                float score = weight * it.second.at("size")
+                        + (1 - weight) * it.second.at("ctime");
+                pq.emplace(score, it.first);
+            }
+            result.push_back((float)pq.top().second);
+        }
+        return result;
+    };
 }
 
 std::vector<float> minSizeChoiceFunc(std::vector<TargetsMap>& targets)

@@ -29,6 +29,7 @@ struct TrainParams {
     poly::optional<size_t> maxFileSizeMb;
     poly::optional<size_t> maxTotalSizeMb;
     bool paretoFrontier{ false };
+    bool tuneHyperparams{ false };
 };
 
 } // namespace openzl::training

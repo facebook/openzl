@@ -67,6 +67,10 @@ add_library(ml_selector_graph
     ml_selector_graph.h
     ml_selector_trainer.cpp
     ml_selector_trainer.h
+    ml_selector_trainer_utils.cpp
+    ml_selector_trainer_utils.h
+    ml_selector_tuner.cpp
+    ml_selector_tuner.h
     ml_features.cpp
     ml_features.h
 )

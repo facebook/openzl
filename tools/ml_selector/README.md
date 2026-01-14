@@ -76,3 +76,60 @@ When you compress data with a trained model:
 1. Features are extracted from the input
 2. The `gbtModel` uses those features to predict which successor to use
 3. Compress data with selected successor
+
+# ML Selector Tuner
+
+Tune XGBoost hyperparameters to optimize for compression size and speed.
+
+## How to Use
+
+```bash
+buck2 run @//mode/opt tools/ml_selector:ml_selector_tuner -- <input_path> [population_size] [survival_rate] [max_iterations] [convergence_threshold] [mutation_rate] [compression_weight]
+```
+
+### Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `population_size` | 20 | Number of hyperparameter sets per generation |
+| `survival_rate` | 0.25 | Fraction of population that survives to next generation |
+| `max_iterations` | 10 | Maximum number of generations to run |
+| `convergence_threshold` | 2 | Generations without improvement before stopping |
+| `mutation_rate` | 0.25 | Probability of random modification to a hyperparameter |
+| `compression_weight` | 0.75 | Weight for compression size vs. time (0.0–1.0) |
+
+## How It Works
+
+The tuner uses a genetic algorithm to search for optimal XGBoost hyperparameters:
+
+- **Initialization**: Generates an initial population by dividing each hyperparameter range into equal intervals and randomly sampling exactly once from each interval.
+
+- **Evaluation**: Scores each candidate by training an XGBoost model and compressing test inputs, computing a weighted score of compression size and time
+
+- **Selection**: Ranks candidates by score and selects the top performers (based on `survival_rate`) as parents for the next generation
+
+- **Crossover**: Creates child configurations by randomly inheriting each hyperparameter from one of two randomly selected parents
+
+- **Mutation**: Applies random noise to genes with probability `mutation_rate`, clamping to valid bounds
+
+- **Convergence**: Stops when max iterations are reached or the best score hasn't improved by more than 0.0005% for `convergence_threshold` consecutive generations
+
+- **Output**: Returns the best hyperparameter configuration and compares it against default XGBoost parameters
+
+### Tuned Hyperparameters
+
+The following XGBoost hyperparameters are searched:
+
+| Parameter | Range | Description |
+|-----------|-------|-------------|
+| `learning_rate` | 0.001–1.0 | How much model adjusts weights in response to estimated error during training |
+| `min_child_weight` | 0–30 | Minimum sum of instance weight in a child |
+| `subsample` | 0.1–1.0 | Fraction of samples used per tree |
+| `colsample_bynode` | 0.1–1.0 | Fraction of features used per split |
+| `max_depth` | 0–20 | Maximum tree depth |
+| `max_leaves` | 0–60 | Maximum number of leaves per tree |
+| `reg_alpha` | 0–10 | L1 regularization |
+| `gamma` | 0–20 | Minimum loss reduction for split |
+| `num_boost_round` | 5–60 | Number of boosting rounds |
+| `max_delta_step` | 0–10 | Maximum delta step for weight estimation |
+| `scale_pos_weight` | 0.5–20 | Balance of positive/negative weights (for imbalanced datasets) |

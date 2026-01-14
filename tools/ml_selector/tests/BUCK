@@ -11,6 +11,8 @@ zs_unittest(
         "..:ml_features",
         "..:ml_selector_graph",
         "..:ml_selector_trainer",
+        "..:ml_selector_trainer_utils",
+        "..:ml_selector_tuner",
         "../../../tests:ml_selector_utils",
         "../../../tests:utils",
         "../../../tests/datagen:datagen",
