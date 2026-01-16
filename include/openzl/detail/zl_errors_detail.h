@@ -23,6 +23,17 @@
 extern "C" {
 #endif
 
+// Zero-initialization syntax differs between C and C++.
+// C++ uses {} to avoid -Wmissing-braces with nested structs.
+// C uses { 0 } which is the standard zero-initialization idiom.
+#if defined(__cplusplus)
+#    define ZL_ZERO_INIT \
+        {                \
+        }
+#else
+#    define ZL_ZERO_INIT { 0 }
+#endif
+
 #ifndef ZL_ERROR_ENABLE_STATIC_ERROR_INFO
 #    define ZL_ERROR_ENABLE_STATIC_ERROR_INFO 1
 #endif
@@ -358,8 +369,8 @@ typedef struct {
     {                                                                    \
         /* Avoids using the inactive members of the union. */            \
         if (ZL_RES_isError(result)) {                                    \
-            *error = result._error;                                      \
-            _value_type dummy_value;                                     \
+            *error                  = result._error;                     \
+            _value_type dummy_value = ZL_ZERO_INIT;                      \
             memset(&dummy_value, 0, sizeof(dummy_value));                \
             return dummy_value;                                          \
         } else {                                                         \

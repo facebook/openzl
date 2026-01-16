@@ -752,7 +752,7 @@ static ZL_Report CCTX_runGraph_internal(
         } else {
             size_t nbSuccs = VECTOR_SIZE(gctx->dstGraphDescs);
             DECLARE_VECTOR_TYPE(ZL_GraphID);
-            VECTOR(ZL_GraphID) succGids;
+            VECTOR(ZL_GraphID) succGids = { 0 };
             VECTOR_INIT(succGids, nbSuccs);
             for (size_t i = 0; i < nbSuccs; i++) {
                 bool pushbackSuccess = VECTOR_PUSHBACK(
