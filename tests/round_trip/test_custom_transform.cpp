@@ -262,30 +262,6 @@ class TestCustomTransform : public Test {
                 cgraph_.get(), node, dsts.begin(), dsts.size());
     }
 
-    ZL_NodeID registerTransform(
-            ZL_PipeEncoderDesc cdesc,
-            ZL_PipeDecoderDesc ddesc)
-    {
-        ZL_REQUIRE_SUCCESS(ZL_DCtx_registerPipeDecoder(dctx_.get(), &ddesc));
-        return ZL_Compressor_registerPipeEncoder(cgraph_.get(), &cdesc);
-    }
-
-    ZL_NodeID registerTransform(
-            ZL_SplitEncoderDesc cdesc,
-            ZL_SplitDecoderDesc ddesc)
-    {
-        ZL_REQUIRE_SUCCESS(ZL_DCtx_registerSplitDecoder(dctx_.get(), &ddesc));
-        return ZL_Compressor_registerSplitEncoder(cgraph_.get(), &cdesc);
-    }
-
-    ZL_NodeID registerTransform(
-            ZL_TypedEncoderDesc cdesc,
-            ZL_TypedDecoderDesc ddesc)
-    {
-        ZL_REQUIRE_SUCCESS(ZL_DCtx_registerTypedDecoder(dctx_.get(), &ddesc));
-        return ZL_Compressor_registerTypedEncoder(cgraph_.get(), &cdesc);
-    }
-
     ZL_NodeID registerTransform(ZL_VOEncoderDesc cdesc, ZL_VODecoderDesc ddesc)
     {
         ZL_REQUIRE_SUCCESS(ZL_DCtx_registerVODecoder(dctx_.get(), &ddesc));
