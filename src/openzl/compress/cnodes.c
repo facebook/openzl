@@ -12,15 +12,63 @@
 #include "openzl/shared/xxhash.h"
 #include "openzl/zl_errors.h"
 
-ZL_Report CTM_init(CNodes_manager* ctm)
+size_t MaterializedParamMap_hash(const MaterializedParamKey* key)
 {
+    XXH3_state_t hs;
+    XXH3_INITSTATE(&hs);
+    XXH3_64bits_reset(&hs);
+
+    size_t lpHash = ZL_LocalParams_hash(&key->localParams);
+    XXH3_64bits_update(&hs, &lpHash, sizeof(lpHash));
+
+    XXH3_64bits_update(
+            &hs,
+            &key->materializer.materializeFn,
+            sizeof(key->materializer.materializeFn));
+    XXH3_64bits_update(
+            &hs,
+            &key->materializer.dematerializeFn,
+            sizeof(key->materializer.dematerializeFn));
+    XXH3_64bits_update(
+            &hs, &key->materializer.opaque, sizeof(key->materializer.opaque));
+
+    return XXH3_64bits_digest(&hs);
+}
+
+bool MaterializedParamMap_eq(
+        const MaterializedParamKey* lhs,
+        const MaterializedParamKey* rhs)
+{
+    if (!ZL_LocalParams_eq(&lhs->localParams, &rhs->localParams)) {
+        return false;
+    }
+
+    if (lhs->materializer.materializeFn != rhs->materializer.materializeFn
+        || lhs->materializer.dematerializeFn
+                != rhs->materializer.dematerializeFn) {
+        return false;
+    }
+
+    if (lhs->materializer.opaque != rhs->materializer.opaque) {
+        return false;
+    }
+
+    return true;
+}
+
+ZL_Report CTM_init(CNodes_manager* ctm, ZL_OperationContext* opCtx)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(opCtx);
     VECTOR_INIT(ctm->cnodes, ZL_ENCODER_CUSTOM_NODE_LIMIT);
+    ctm->materializedParams =
+            MaterializedParamMap_create(ZL_ENCODER_CUSTOM_NODE_LIMIT);
     ZL_OpaquePtrRegistry_init(&ctm->opaquePtrs);
+    ctm->opCtx = opCtx;
     // Note: this Arena could also be borrowed from the cgraph,
     // but it doesn't have one (yet).
     // Note 2: this is why this init function can fail
     ctm->allocator = ALLOC_HeapArena_create();
-    ZL_RET_R_IF_NULL(allocation, ctm->allocator);
+    ZL_ERR_IF_NULL(ctm->allocator, allocation);
     return ZL_returnSuccess();
 }
 
@@ -29,6 +77,19 @@ void CTM_destroy(CNodes_manager* ctm)
     ZL_DLOG(OBJ, "CTM_destroy");
     ZL_ASSERT_NN(ctm);
     ZL_OpaquePtrRegistry_destroy(&ctm->opaquePtrs);
+    // Dematerialize all materialized params before freeing any corresponding
+    // CNodes
+    MaterializedParamMap_Iter iter =
+            MaterializedParamMap_iter(&ctm->materializedParams);
+    MaterializedParamMap_Entry const* entry;
+    while ((entry = MaterializedParamMap_Iter_next(&iter)) != NULL) {
+        if (entry->val.materializedParam != NULL
+            && entry->key.materializer.dematerializeFn != NULL) {
+            entry->key.materializer.dematerializeFn(
+                    NULL, entry->val.materializedParam);
+        }
+    }
+    MaterializedParamMap_destroy(&ctm->materializedParams);
     VECTOR_DESTROY(ctm->cnodes);
     ALLOC_Arena_freeArena(ctm->allocator);
     ZL_zeroes(ctm, sizeof(*ctm));
@@ -39,6 +100,19 @@ void CTM_reset(CNodes_manager* ctm)
     ZL_DLOG(FRAME, "CTM_reset");
     ZL_ASSERT_NN(ctm);
     ZL_OpaquePtrRegistry_reset(&ctm->opaquePtrs);
+    // Dematerialize all materialized params before freeing any corresponding
+    // CNodes
+    MaterializedParamMap_Iter iter =
+            MaterializedParamMap_iter(&ctm->materializedParams);
+    MaterializedParamMap_Entry const* entry;
+    while ((entry = MaterializedParamMap_Iter_next(&iter)) != NULL) {
+        if (entry->val.materializedParam != NULL
+            && entry->key.materializer.dematerializeFn != NULL) {
+            entry->key.materializer.dematerializeFn(
+                    NULL, entry->val.materializedParam);
+        }
+    }
+    MaterializedParamMap_clear(&ctm->materializedParams);
     VECTOR_RESET(ctm->cnodes);
     ALLOC_Arena_freeAll(ctm->allocator);
 }
@@ -66,6 +140,73 @@ static ZL_Report CTM_transferLocalParams(
     return LP_transferLocalParams(cnm->allocator, lp);
 }
 
+// Validate that paramId is not invalid and not already in use by existing local
+// params
+static ZL_Report validateMaterializedParamId(ZL_LocalParams* lp, int paramId)
+{
+    ZL_RET_R_IF_EQ(
+            node_invalid,
+            paramId,
+            ZL_LP_INVALID_PARAMID,
+            "Materialized paramId cannot be ZL_LP_INVALID_PARAMID");
+
+    ZL_RefParam rp = LP_getLocalRefParam(lp, paramId);
+    ZL_RET_R_IF_NE(
+            node_invalid,
+            rp.paramId,
+            ZL_LP_INVALID_PARAMID,
+            "Materialized paramId %d is already registered",
+            paramId);
+
+    ZL_IntParam ip = LP_getLocalIntParam(lp, paramId);
+    ZL_RET_R_IF_NE(
+            node_invalid,
+            ip.paramId,
+            ZL_LP_INVALID_PARAMID,
+            "Materialized paramId %d is already registered as an intParam",
+            paramId);
+    return ZL_returnSuccess();
+}
+
+/* CTM_addMaterializedRefParam():
+ * Add a materialized param to the refParams of the local params.
+ * @return : success, or error if paramId is already in use
+ */
+static ZL_Report CTM_addMaterializedRefParam(
+        CNodes_manager* cnm,
+        ZL_LocalParams* lp,
+        int paramId,
+        const void* materializedObj)
+{
+    ZL_ASSERT_NN(cnm);
+    ZL_ASSERT_NN(lp);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cnm->opCtx);
+
+    // Allocate new refParams array with one more entry
+    size_t const newNbRefParams = lp->refParams.nbRefParams + 1;
+    ZL_RefParam* newRefParams   = ALLOC_Arena_malloc(
+            cnm->allocator, newNbRefParams * sizeof(ZL_RefParam));
+    ZL_ERR_IF_NULL(newRefParams, allocation);
+
+    // Copy existing refParams
+    for (size_t i = 0; i < lp->refParams.nbRefParams; i++) {
+        newRefParams[i] = lp->refParams.refParams[i];
+    }
+
+    // Add the materialized param
+    newRefParams[lp->refParams.nbRefParams] = (ZL_RefParam){
+        .paramId   = paramId,
+        .paramRef  = materializedObj,
+        .paramSize = 0, // Size unknown for materialized objects
+    };
+
+    // Update the localParams
+    lp->refParams.refParams   = newRefParams;
+    lp->refParams.nbRefParams = newNbRefParams;
+
+    return ZL_returnSuccess();
+}
+
 /* CTM_transferStreamTypes():
  * Transfer streamType information from user-controlled memory
  * towards internal memory,
@@ -90,6 +231,67 @@ static ZL_Report CTM_transferPrivateParam(
     ZL_ASSERT_NN(itd);
     ZL_DLOG(BLOCK, "CTM_transferPrivateParam: ppSize=%zu", itd->ppSize);
     return CTM_transferBuffer(cnm, &itd->privateParam, itd->ppSize);
+}
+
+/**
+ * Find or create a materialized param in the registry. This function will
+ * handle cleaning up the materialized object if an error occurs.
+ */
+static ZL_Report CTM_addOrReuseMaterializedParam(
+        CNodes_manager* ctm,
+        ZL_LocalParams* lp,
+        const ZL_MaterializerDesc* materializer)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(ctm->opCtx);
+    if (materializer == NULL || materializer->materializeFn == NULL) {
+        return ZL_returnSuccess();
+    }
+    if (materializer->dematerializeFn == NULL) {
+        ZL_ERR(GENERIC,
+               "Materializer must provide a valid dematerialize function pointer");
+    }
+
+    // Create key for lookup
+    MaterializedParamKey key = {
+        .localParams  = *lp,
+        .materializer = *materializer,
+    };
+
+    // Search for existing materialized param with same key
+    MaterializedParamMap_Entry const* existingEntry =
+            MaterializedParamMap_find(&ctm->materializedParams, &key);
+    if (existingEntry != NULL) {
+        return CTM_addMaterializedRefParam(
+                ctm,
+                lp,
+                materializer->paramId,
+                existingEntry->val.materializedParam);
+    }
+
+    // Not found, create new materialized param
+    ZL_RESULT_OF(ZL_VoidPtr) matResult = materializer->materializeFn(NULL, lp);
+    ZL_ERR_IF_ERR(matResult);
+
+    void* materialized = ZL_RES_value(matResult);
+
+    MaterializedParamEntry newEntry = {
+        .materializedParam = materialized,
+    };
+
+    MaterializedParamMap_Entry entryToInsert = {
+        .key = key,
+        .val = newEntry,
+    };
+
+    MaterializedParamMap_Insert insertResult = MaterializedParamMap_insert(
+            &ctm->materializedParams, &entryToInsert);
+    if (insertResult.badAlloc) {
+        materializer->dematerializeFn(NULL, materialized);
+        ZL_ERR(allocation, "Failed to insert materialized param into map");
+    }
+
+    return CTM_addMaterializedRefParam(
+            ctm, lp, materializer->paramId, materialized);
 }
 
 /*
@@ -148,6 +350,24 @@ static ZL_RESULT_OF(CNodeID) CTM_registerCNode(
             ZL_RET_T_IF_ERR(
                     CNodeID,
                     CTM_transferLocalParams(ctm, &trDesc->localParams));
+            // Materialize params if materializer is provided (with
+            // deduplication)
+            if (trDesc->materializer.materializeFn != NULL) {
+                // Validate provided params don't contain the paramId reserved
+                // for the materializer
+                ZL_RET_T_IF_ERR(
+                        CNodeID,
+                        validateMaterializedParamId(
+                                &trDesc->localParams,
+                                trDesc->materializer.paramId));
+                // Add the materialized object to refParams
+                ZL_RET_T_IF_ERR(
+                        CNodeID,
+                        CTM_addOrReuseMaterializedParam(
+                                ctm,
+                                &trDesc->localParams,
+                                &trDesc->materializer));
+            }
             // A valid transform must have at least one input
             ZL_RET_T_IF_LT(
                     CNodeID,
@@ -273,6 +493,9 @@ CTM_parameterizeNode(
 
 void CTM_rollback(CNodes_manager* ctm, CNodeID id)
 {
+    // Note that local params and materialized params are not rolled back. Local
+    // params will stay allocated in the arena and materialized params will stay
+    // allocated in the vector.
     ZL_ASSERT_EQ(id.cnid + 1, VECTOR_SIZE(ctm->cnodes));
     VECTOR_POPBACK(ctm->cnodes);
 }

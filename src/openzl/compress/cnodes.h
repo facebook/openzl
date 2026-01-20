@@ -4,6 +4,7 @@
 #define ZSTRONG_COMPRESS_CNODES_H
 
 #include "openzl/common/allocation.h" // Arena
+#include "openzl/common/map.h"
 #include "openzl/common/opaque.h"
 #include "openzl/common/vector.h"
 #include "openzl/compress/cnode.h"          // CNode
@@ -20,15 +21,35 @@ ZL_RESULT_DECLARE_TYPE(CNodeID);
 
 DECLARE_VECTOR_TYPE(CNode)
 
+// Definitions for MaterializedParamMap
+typedef ZL_MIEncoderDesc MaterializedParamKey;
+typedef struct {
+    void* materializedParam; // The materialized object
+} MaterializedParamEntry;
+
+// Custom hash and equality functions for MaterializedParamKey. Uses the
+// LocalParams object and ZL_MaterializerDesc for the comparison.
+size_t MaterializedParamMap_hash(const MaterializedParamKey* key);
+bool MaterializedParamMap_eq(
+        const MaterializedParamKey* lhs,
+        const MaterializedParamKey* rhs);
+
+ZL_DECLARE_CUSTOM_MAP_TYPE(
+        MaterializedParamMap,
+        MaterializedParamKey,
+        MaterializedParamEntry);
+
 typedef struct {
     VECTOR(CNode) cnodes;
     ZL_OpaquePtrRegistry opaquePtrs;
     Arena* allocator;
+    MaterializedParamMap materializedParams;
+    ZL_OperationContext* opCtx; // Non-owning pointer to error context
 } CNodes_manager;
 
 // Lifetime Management
 
-ZL_Report CTM_init(CNodes_manager* ctm);
+ZL_Report CTM_init(CNodes_manager* ctm, ZL_OperationContext* opCtx);
 
 void CTM_destroy(CNodes_manager* ctm);
 
@@ -72,8 +93,11 @@ CTM_registerStandardTransform(
         unsigned minFormatVersion,
         unsigned maxFormatVersion);
 
-/// Rolls back the registration of @p id
-/// @warning This only works when @p id was the last node registered
+/**
+ * Rolls back the registration of @p id
+ * @warning This only works when @p id was the last node registered. If local
+ * params are transferred or a materialized param created, it will not be freed.
+ */
 void CTM_rollback(CNodes_manager* ctm, CNodeID id);
 
 ZL_END_C_DECLS
