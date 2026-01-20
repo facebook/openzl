@@ -65,6 +65,15 @@ typedef struct {
     size_t size;
 } ZL_Comment;
 
+/**
+ * @brief Typedef for void pointer to satisfy ZL_RESULT_OF requirements.
+ *
+ * ZL_RESULT_OF requires a bare type name, so we need a typedef for void*. You
+ * should use ZL_RESULT_OF(VoidPtr) instead of ZL_RESULT_OF(void*) and similarly
+ * with ZL_RESULT_DECLARE_SCOPE
+ */
+typedef void* ZL_VoidPtr;
+
 #if defined(__cplusplus)
 } // extern "C"
 #endif
