@@ -66,11 +66,22 @@ file(GLOB_RECURSE test_decompress_headers CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_LIST_DIR}/decompress/*.h")
 add_zs_test(test_decompress ${test_decompress_srcs} ${test_decompress_headers})
 
+# Collect all integrationtest files except the conditional ones
+file(GLOB_RECURSE integrationtest_srcs CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_LIST_DIR}/integrationtest/*.cpp")
+
+# Exclude the conditional test files
+list(FILTER integrationtest_srcs EXCLUDE REGEX ".*/CompressIntrospectionTest\\.cpp$")
+list(FILTER integrationtest_srcs EXCLUDE REGEX ".*/NoIntrospectionTest\\.cpp$")
+
+# Add the appropriate conditional file
 if (OPENZL_ALLOW_INTROSPECTION)
     add_zs_test(integrationtest
+                ${integrationtest_srcs}
                 ${CMAKE_CURRENT_LIST_DIR}/integrationtest/CompressIntrospectionTest.cpp)
 else()
     add_zs_test(integrationtest
+                ${integrationtest_srcs}
                 ${CMAKE_CURRENT_LIST_DIR}/integrationtest/NoIntrospectionTest.cpp)
 endif()
 target_link_libraries(integrationtest PRIVATE openzl_cpp)
