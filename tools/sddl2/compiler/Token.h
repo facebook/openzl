@@ -4,7 +4,6 @@
 
 #include <cstdint>
 #include <string>
-#include <type_traits>
 
 #include "tools/sddl2/compiler/Exception.h"
 #include "tools/sddl2/compiler/Source.h"

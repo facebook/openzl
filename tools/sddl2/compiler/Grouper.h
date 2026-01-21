@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include <string>
-
 #include "tools/sddl2/compiler/Grouping.h"
 #include "tools/sddl2/compiler/Logger.h"
 #include "tools/sddl2/compiler/Token.h"

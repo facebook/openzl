@@ -2,7 +2,6 @@
 
 #include "tools/sddl2/compiler/Tokenizer.h"
 
-#include <algorithm>
 #include <cctype>
 #include <cstdint>
 

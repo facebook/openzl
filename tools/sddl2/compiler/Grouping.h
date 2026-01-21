@@ -6,8 +6,6 @@
 #include <ostream>
 #include <vector>
 
-#include "openzl/shared/a1cbor.h"
-
 #include "tools/sddl2/compiler/Source.h"
 #include "tools/sddl2/compiler/Syntax.h"
 #include "tools/sddl2/compiler/Token.h"
