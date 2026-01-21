@@ -1,5 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 #pragma once
+#include <functional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -19,7 +20,8 @@ using FeatureMap = VECTOR(LabeledFeature);
  * @returns  vector containing index of "best" possible  successors. Note that
  * index is cast as float due to XGBoost requirement.
  */
-using ChoiceFunction = std::vector<float> (*)(std::vector<TargetsMap>& targets);
+using ChoiceFunction =
+        std::function<std::vector<float>(std::vector<TargetsMap>&)>;
 
 /**
  * Container for processed ML training data with features and labels.
@@ -37,6 +39,12 @@ struct ProcessedMLTrainingSamples {
     std::vector<std::string> featureNames;
     std::vector<const char*> featurePtrNames;
 };
+
+/**
+ * Make weighted choice function that chooses index successor with best 'score'
+ * which is calculated by weight * cSize + (1 - weight) * cTime.
+ */
+ChoiceFunction makeWeightedChoiceFunc(float weight);
 
 /**
  * Default choice function that chooses index successor with minimum compression

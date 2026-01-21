@@ -9,6 +9,7 @@
 #include "tools/ml_selector/ml_features.h"
 #include "tools/ml_selector/ml_selector_graph.h"
 #include "tools/ml_selector/ml_selector_trainer.h"
+#include "tools/ml_selector/ml_selector_tuner.h"
 #include "tools/training/train.h"
 #include "tools/training/train_params.h"
 #include "tools/training/utils/utils.h"
@@ -229,6 +230,19 @@ class TestMLSelectorTrainer : public testing::Test {
         return trainData;
     }
 
+    std::pair<size_t, float> compressAndTime(
+            Compressor& compressor,
+            const std::vector<uint64_t>& input)
+    {
+        auto compressBound  = ZL_compressBound(input.size() * sizeof(uint64_t));
+        std::string cBuffer = std::string(compressBound, '\0');
+        auto start          = std::chrono::steady_clock::now();
+        auto compressedSize = compress(compressor, cBuffer, input);
+        auto end            = std::chrono::steady_clock::now();
+        std::chrono::duration<double, std::milli> defaultElapsed = end - start;
+
+        return std::make_pair(compressedSize, defaultElapsed.count());
+    }
     size_t compress(
             Compressor& compressor,
             std::string& dst,
@@ -507,6 +521,43 @@ TEST_F(TestMLSelectorTrainer, TestAmbiguousData)
     EXPECT_LE(sizes[1], sizes[0]);
     compressor_.selectStartingGraph(staticGraphId[1]);
     testSelection(testData, compressor_, mlCompressor);
+}
+
+TEST_F(TestMLSelectorTrainer, TestHyperparamTuner)
+{
+    multiInputs_.clear();
+    generateTrainData(20);
+    EXPECT_EQ(multiInputs_.size(), 60);
+    multiSuccessors_ = registerSuccessors(compressor_, true);
+    setUpCompressor(trainedCompressor_, true);
+    auto serializedCompressor = openzl::training::trainMLSelectorGraph(
+            multiInputs_, trainedCompressor_, trainParams_);
+
+    // Set up a fresh compressor for training with hyperparam tuning
+    Compressor tunedTrainedCompressor;
+    setUpCompressor(tunedTrainedCompressor, true);
+    trainParams_.tuneHyperparams   = true;
+    auto tunedSerializedCompressor = openzl::training::trainMLSelectorGraph(
+            multiInputs_, tunedTrainedCompressor, trainParams_);
+
+    // Deserialized compressor with default hyperparams and compress test data
+    Compressor mlCompressor = deserializeCompressor(serializedCompressor);
+    auto [defaultSize, defaultTime] =
+            compressAndTime(mlCompressor, testData_[0]);
+
+    // Deserialized compressor with tuned hyperparams and compress test data
+    Compressor tunedMlCompressor =
+            deserializeCompressor(tunedSerializedCompressor);
+    auto [tunedSize, tunedTime] =
+            compressAndTime(tunedMlCompressor, testData_[0]);
+
+    training::TuningConfig config;
+    auto tunedScore = config.compressionWeight * tunedSize
+            + (1 - config.compressionWeight) * tunedTime;
+
+    auto defaultScore = config.compressionWeight * defaultSize
+            + (1 - config.compressionWeight) * defaultTime;
+    EXPECT_LE(tunedScore, defaultScore);
 }
 
 } // namespace

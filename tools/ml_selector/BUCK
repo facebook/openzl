@@ -1,5 +1,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
+# @noautodeps
+
 load("../../defs.bzl", "zs_cxxlibrary", "zs_library")
 
 oncall("data_compression")
@@ -22,14 +24,29 @@ zs_cxxlibrary(
     ],
     deps = [
         "../..:zstronglib",
-        "../../cpp:openzl_cpp",
-        "../../tests/datagen:datagen",  # @manual
-        "../training:train_common",
         "../training/graph_mutation:graph_mutation",
         "../training/sample_collection:sample_collection",
-        "../training/utils:training_utils",
         ":ml_features",
         ":ml_selector_graph",
+        ":ml_selector_trainer_utils",
+        ":ml_selector_tuner",
+    ],
+    exported_deps = [
+        "../training:train_common",
+        "../training/utils:training_utils",
+    ],
+)
+
+zs_cxxlibrary(
+    name = "ml_selector_trainer_utils",
+    srcs = ["ml_selector_trainer_utils.cpp"],
+    headers = ["ml_selector_trainer_utils.h"],
+    compiler_flags = [
+        "-Wno-unused-exception-parameter",  # For XGBoost warnings
+    ],
+    deps = [
+        "..:logger",
+        "../../cpp:openzl_cpp",
     ],
     exported_external_deps = [
         ("xgboost", None, "xgboost-cpp"),
@@ -44,7 +61,28 @@ zs_cxxlibrary(
     deps = [
         "..:logger",
         "../..:zstronglib",
-        "../../cpp:openzl_cpp",
+    ],
+    exported_deps = [
         "../training/utils:training_utils",
+    ],
+)
+
+zs_cxxlibrary(
+    name = "ml_selector_tuner",
+    srcs = ["ml_selector_tuner.cpp"],
+    headers = ["ml_selector_tuner.h"],
+    compiler_flags = [
+        "-Wno-unused-exception-parameter",  # For XGBoost warnings
+    ],
+    deps = [
+        "..:io",
+        "../..:zstronglib",
+        ":ml_features",
+        ":ml_selector_graph",
+        ":ml_selector_trainer_utils",
+    ],
+    external_deps = [
+        ("xgboost", None, "xgboost-cpp"),
+        ("xgboost", None, "dmlc"),
     ],
 )
