@@ -243,3 +243,12 @@ cpp_library(
         "tools/streamdump:stream_dump2_headers",  # @manual
     ],
 )
+
+python_library(
+    # @autodeps-skip
+    name = "openzl_py",
+    visibility = ["//openzl:openzl_py"],
+    deps = [
+        "py:openzl",
+    ],
+)
