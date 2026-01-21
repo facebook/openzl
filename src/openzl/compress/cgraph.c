@@ -39,8 +39,10 @@ struct ZL_Compressor_s {
 ZL_Compressor* ZL_Compressor_create(void)
 {
     ZL_Compressor* const cgraph = ZL_calloc(sizeof(ZL_Compressor));
-    if (cgraph == NULL)
+    if (cgraph == NULL) {
         return NULL;
+    }
+    ZL_OC_init(&cgraph->opCtx);
     if (ZL_isError(NM_init(&cgraph->nmgr, &cgraph->opCtx))) {
         ZL_Compressor_free(cgraph);
         return NULL;
@@ -56,8 +58,6 @@ ZL_Compressor* ZL_Compressor_create(void)
     // In debug mode, runtime check on the configuration of the Standard Graphs
     GR_validate();
 #endif
-
-    ZL_OC_init(&cgraph->opCtx);
     ZL_OC_startOperation(&cgraph->opCtx, ZL_Operation_createCGraph);
     return cgraph;
 }

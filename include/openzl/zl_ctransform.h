@@ -75,6 +75,80 @@ _Static_assert(
         "Condition required to ensure H(ZL_CodecStateManager) doesn't depend on padding bytes");
 #endif
 
+/**
+ * @brief Descriptor for materializing and dematerializing local params
+ *
+ * This structure defines functions to materialize an in-memory object from
+ * local parameters and to dematerialize (free) that object.
+ *
+ * Materialized objects are available as a @ref ZL_RefParam via the typical
+ * local params access methods. Specify the retrieval key with the paramId
+ * field.
+ */
+typedef struct ZL_MaterializerDesc_s {
+    /**
+     * @brief A custom function that materializes an in-memory object from a
+     * provided @p params object.
+     *
+     * This function may arbitrarily use none, any, or all of the provided
+     * local params to generate the materialized object, but the generation
+     * MUST be deterministic and hermetic. In particular, materialization shall
+     * not depend on variables other than the provided @ref ZL_LocalParams
+     * object.
+     *
+     * Materialized object lifetimes will be managed by the @ref ZL_Compressor
+     * on which the node is registered/parameterized. Objects will be
+     * materialized around the time of node registration/parameterization and
+     * will remain allocated for the lifetime of the associated @ref
+     * ZL_Compressor.
+     *
+     * Do NOT rely on the materialization function being called at any specific
+     * time to do side-effect work. Doing so will result in undefined behavior.
+     *
+     * The @ref ZL_Compressor may arbitrarily share the same materialized object
+     * between multiple nodes with the same @p params and the @ref ZL_CCtx may
+     * provide concurrent access to materialized objects. DO NOT attempt to
+     * modify the materialized object after creation, either directly or via API
+     * getters.
+     *
+     * @param params  A pointer to the local params object to materialize. The
+     * provided params have no lifetime guarantees past the invocation of this
+     * function. You may not hold references into the params object in the
+     * materialized object.
+     *
+     * @returns A ZL_RESULT containing a pointer to the materialized object on
+     * success, or an error. Returning NULL as a valid result (when there's
+     * nothing to materialize) should be wrapped in ZL_WRAP_VALUE(NULL). Ensure
+     * the function declares a result scope with ZL_RESULT_DECLARE_SCOPE or you
+     * will get a compiler error.
+     */
+    ZL_RESULT_OF(ZL_VoidPtr) (*materializeFn)(
+            const void* opaque,
+            const ZL_LocalParams* params)ZL_NOEXCEPT_FUNC_PTR;
+
+    /**
+     * @brief A custom function that destructs a materialized object.
+     * NB: if this fn fails to deallocate memory allocated by @ref
+     * materializeFn, you will leak memory!
+     */
+    void (*dematerializeFn)(const void* opaque, void* materialized)
+            ZL_NOEXCEPT_FUNC_PTR;
+
+    /**
+     * The paramId to use for the materialized param. If there is an existing
+     * param that uses this paramId, the registration will fail.
+     */
+    int paramId;
+
+    /**
+     * Optionally an opaque pointer that can be queried with
+     * ZL_Materializer_getOpaquePtr(). OpenZL does not take ownership of this
+     * pointer. If lifetime extension is needed, it should be managed by the
+     * `ZL_OpaquePtr` in the outer `ZL_MIEncoderDesc`.
+     */
+    const void* opaque;
+} ZL_MaterializerDesc;
+
 /* ------------------------------------
  * Typed Transforms
  * ------------------------------------
@@ -336,6 +410,12 @@ typedef struct {
      * registration fails, and it lives for the lifetime of the compressor.
      */
     ZL_OpaquePtr opaque;
+    /**
+     * Optional materializer descriptor for materialized local params.
+     * If both materializeFn and dematerializeFn are non-null, the materializer
+     * will be used to create materialized objects from local params.
+     */
+    ZL_MaterializerDesc materializer;
 } ZL_MIEncoderDesc;
 
 /**

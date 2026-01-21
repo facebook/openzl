@@ -27,7 +27,7 @@ static ZL_Report NM_fillStandardNodes(Nodes_manager* nmgr)
 
 ZL_Report NM_init(Nodes_manager* nmgr, ZL_OperationContext* opCtx)
 {
-    ZL_RET_R_IF_ERR(CTM_init(&nmgr->ctm));
+    ZL_RET_R_IF_ERR(CTM_init(&nmgr->ctm, opCtx));
     nmgr->nameMap = NodeMap_create(ZL_ENCODER_GRAPH_LIMIT);
     nmgr->opCtx   = opCtx;
     return NM_fillStandardNodes(nmgr);
