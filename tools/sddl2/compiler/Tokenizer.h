@@ -2,10 +2,6 @@
 
 #pragma once
 
-#include <string>
-
-#include "openzl/cpp/poly/StringView.hpp"
-
 #include "tools/sddl2/compiler/Logger.h"
 #include "tools/sddl2/compiler/Source.h"
 #include "tools/sddl2/compiler/Token.h"

@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include <map>
 #include <vector>
 
+#include "openzl/cpp/poly/Optional.hpp"
 #include "openzl/cpp/poly/StringView.hpp"
 
 #include "tools/sddl2/compiler/AST.h"

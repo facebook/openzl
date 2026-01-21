@@ -1,6 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <gtest/gtest.h>
+#include <iomanip>
 
 #include "tools/sddl2/compiler/Compiler.h"
 #include "tools/sddl2/compiler/Exception.h"

@@ -5,7 +5,6 @@
 #include <map>
 #include <vector>
 
-#include "openzl/cpp/poly/Optional.hpp"
 #include "openzl/cpp/poly/StringView.hpp"
 
 namespace openzl::sddl2 {
