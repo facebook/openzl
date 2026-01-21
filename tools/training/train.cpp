@@ -1,5 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+#include <chrono>
 #include <stdexcept>
 
 #include "tools/logger/Logger.h"
@@ -19,6 +20,7 @@ std::vector<std::shared_ptr<const std::string_view>> train(
         Compressor& compressor,
         const TrainParams& trainParams)
 {
+    auto startTime = std::chrono::steady_clock::now();
     std::vector<std::shared_ptr<const std::string_view>>
             serializedTrainedCompressors;
     if (!trainParams.compressorGenFunc) {
@@ -51,7 +53,13 @@ std::vector<std::shared_ptr<const std::string_view>> train(
         throw Exception("No trainable graph found in compressor.");
     }
 
-    Logger::log(VERBOSE1, "Training completed successfully.");
+    auto endTime = std::chrono::steady_clock::now();
+    Logger::log_c(
+            INFO,
+            "Trained %d compressors in %lf minutes (wall time).",
+            serializedTrainedCompressors.size(),
+            std::chrono::duration<double, std::ratio<60>>(endTime - startTime)
+                    .count());
     // TODO pretty print just the graphs (exclude params etc)
     Logger::log(
             VERBOSE3,
