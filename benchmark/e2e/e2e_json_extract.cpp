@@ -9,9 +9,6 @@
 #include "benchmark/e2e/e2e_compressor.h"
 #include "custom_transforms/json_extract/decode_json_extract.h"
 #include "custom_transforms/json_extract/encode_json_extract.h"
-#include "openzl/zl_config.h"
-#include "openzl/zl_ctransform.h"
-#include "openzl/zl_dtransform.h"
 #include "openzl/zl_version.h"
 
 #if ZL_IS_FBCODE

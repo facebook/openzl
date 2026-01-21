@@ -12,8 +12,6 @@
 #include "tools/io/OutputBuffer.h"
 #include "tools/logger/Logger.h"
 
-#include "custom_parsers/dependency_registration.h"
-
 #include "cli/args/TrainArgs.h"
 #include "cli/commands/cmd_compress.h"
 #include "cli/commands/cmd_train.h"

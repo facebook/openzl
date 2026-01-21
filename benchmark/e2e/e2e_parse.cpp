@@ -10,11 +10,7 @@
 #include "benchmark/e2e/e2e_fieldlz.h"
 #include "custom_transforms/parse/decode_parse.h"
 #include "custom_transforms/parse/encode_parse.h"
-#include "openzl/zl_config.h"
-#include "openzl/zl_ctransform.h"
-#include "openzl/zl_dtransform.h"
 #include "openzl/zl_opaque_types.h"
-#include "openzl/zl_version.h"
 
 #if ZL_IS_FBCODE
 

@@ -3,7 +3,6 @@
 #include "tools/arg/parsed_args.h"
 
 #include <algorithm>
-#include <stdexcept>
 
 #include "tools/arg/ParseException.h"
 #include "tools/arg/arg_parser.h"

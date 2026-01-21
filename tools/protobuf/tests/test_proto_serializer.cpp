@@ -1,7 +1,5 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "openzl/zl_version.h"
-
 #include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
 #if ZL_FBCODE_IS_RELEASE

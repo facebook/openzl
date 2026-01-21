@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <memory>
-#include <stdexcept>
 #include <string>
 
 #include "openzl/common/a1cbor_helpers.h"
