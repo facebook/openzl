@@ -1,5 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
+import os
 import sys
 import unittest
 
@@ -8,9 +9,17 @@ from abstract_compression_test import (
     _BenchmarkBaseTest,
     _CompressDecompressBaseTest,
     _CsvBaseTest,
+    _MLBaseTest,
     _TrainBaseTest,
     _TrainInlineBaseTest,
 )
+from command_utils import (
+    CompressorInfo,
+    CompressorType,
+    execute_compress,
+    execute_train,
+)
+from file_utils import input_dir_path
 
 
 class SerialTest(_CompressDecompressBaseTest):
@@ -191,40 +200,121 @@ class CsvChunkedTest(_CsvBaseTest):
         self.train_compress_decompress()
 
 
-class MLSelectorTest(_TrainBaseTest):
+class MLDynamicSuccessorTest(_MLBaseTest):
+    """
+    Test case for ml selector with dynamic successors created from folder of serialized compressors.
+    Sample files are located in cli/tests/sample_files/ml_selector/
+    Serialized compressors are located in cli/tests/sample_files/serialized_compressors/
+    """
+
+    @property
+    def extra_args(self) -> str | None:
+        """Pass the serialized compressor folder via --profile-arg."""
+        return f"--profile-arg {self.serialized_compressors_folder}"
+
+    def test_dynamic_ml_successors(self):
+        """
+        Test train_compress_decompress works when there is ml selector successor in compressor.
+        """
+        default_compressor_info = CompressorInfo(
+            compressor_str=self.compressor_profile_name,
+            compressor_type=CompressorType.PROFILE,
+        )
+
+        # Train ml selector and save trained compressor
+        execute_train(
+            compressor_info=default_compressor_info,
+            uncompressed_dir=input_dir_path(self.input_dir_name),
+            trained_compressor_path=os.path.join(
+                self.serialized_compressors_folder, "trained.cbor"
+            ),
+        )
+
+        # Train ml selector that has a ml selector as a successor
+        execute_train(
+            compressor_info=default_compressor_info,
+            uncompressed_dir=input_dir_path(self.input_dir_name),
+            trained_compressor_path=self.compressor_info.compressor_str,
+            trainer_name=self.trainer_name,
+            extra_args=self.extra_args,
+        )
+
+        self.compress_and_decompress_samples()
+
+    def test_compression_ratios(self):
+        """
+        Create trained compressor using dynamic successors that match static successors in numeric-ml-selector-64 profile.
+        Resulting compressed files should have the same compression ratio as directly using the numeric-ml-selector-64 profile.
+        """
+        from file_utils import file_contents_match
+
+        default_compressor_info = CompressorInfo(
+            compressor_str=self.compressor_profile_name,
+            compressor_type=CompressorType.PROFILE,
+        )
+
+        # Train with static successors (no extra_args)
+        static_trained_path = os.path.join(self.output_dir_path, "static_trained.zlc")
+        execute_train(
+            compressor_info=default_compressor_info,
+            uncompressed_dir=input_dir_path(self.input_dir_name),
+            trained_compressor_path=static_trained_path,
+            trainer_name=self.trainer_name,
+            extra_args=None,
+        )
+
+        # Train with dynamic successors (with extra_args)
+        dynamic_trained_path = os.path.join(self.output_dir_path, "dynamic_trained.zlc")
+        execute_train(
+            compressor_info=default_compressor_info,
+            uncompressed_dir=input_dir_path(self.input_dir_name),
+            trained_compressor_path=dynamic_trained_path,
+            trainer_name=self.trainer_name,
+            extra_args=self.extra_args,
+        )
+
+        # Compress samples with both trained compressors and compare outputs
+        static_compressor_info = CompressorInfo(
+            compressor_str=static_trained_path,
+            compressor_type=CompressorType.FILE,
+        )
+        dynamic_compressor_info = CompressorInfo(
+            compressor_str=dynamic_trained_path,
+            compressor_type=CompressorType.FILE,
+        )
+
+        for sample in self.input_samples:
+            static_compressed_path = sample.compressed_file_path + "_static"
+            execute_compress(
+                file_to_compress_path=sample.orig_file_path,
+                compressor_info=static_compressor_info,
+                compressed_file_path=static_compressed_path,
+                extra_args=None,
+            )
+
+            dynamic_compressed_path = sample.compressed_file_path + "_dynamic"
+            execute_compress(
+                file_to_compress_path=sample.orig_file_path,
+                compressor_info=dynamic_compressor_info,
+                compressed_file_path=dynamic_compressed_path,
+                extra_args=None,
+            )
+
+            self.assertTrue(
+                file_contents_match(static_compressed_path, dynamic_compressed_path),
+                f"Compressed files differ for {sample.orig_file_path}: "
+                f"static={os.path.getsize(static_compressed_path)} bytes, "
+                f"dynamic={os.path.getsize(dynamic_compressed_path)} bytes",
+            )
+
+        print("Compressed files are identical between static and dynamic successors.")
+
+
+class MLSelectorTest(_MLBaseTest):
     """
     Test case for ml selector and compression using the trainer.
+    Sample files are located in cli/tests/sample_files/ml_selector/
     """
-
-    @property
-    def input_dir_name(self) -> str:
-        """
-        Return the directory name for input sample files.
-
-        This property determines where sample files are located:
-        cli/tests/sample_files/ml_selector/
-
-        Note: sample files are generated using the following command from
-        tutorial in examples/ml_selector and taking the first file:
-
-        ```
-        buck2 run @//mode/opt examples/ml_selector:generate_data -- /tmp/ml_test_samples
-        ```
-
-        Returns:
-            "ml_selector" as the input directory name
-        """
-        return "ml_selector"
-
-    @property
-    def compressor_profile_name(self) -> str:
-        """
-        Return the profile name to use for compression/training.
-
-        Returns:
-            "numeric-ml-selector-64" as the profile name
-        """
-        return "numeric-ml-selector-64"
 
     def test_train_compress_decompress(self):
         """

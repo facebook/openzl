@@ -9,8 +9,10 @@
 #include "openzl/cpp/Exception.hpp"
 #include "openzl/openzl.hpp"
 #include "openzl/zl_compressor.h"
+#include "openzl/zl_reflection.h"
 
 #include "custom_parsers/csv/csv_profile.h"
+#include "custom_parsers/dependency_registration.h"
 #include "custom_parsers/parquet/parquet_graph.h"
 #include "custom_parsers/pytorch_model_parser.h"
 #include "custom_parsers/sddl/sddl2_profile.h"
@@ -18,6 +20,7 @@
 #include "custom_parsers/shared_components/clustering.h"
 
 #include "tools/io/InputFile.h"
+#include "tools/io/InputSetFileOrDir.h"
 #include "tools/ml_selector/ml_selector_graph.h"
 #include "tools/sddl/compiler/Compiler.h"
 
@@ -143,6 +146,51 @@ static void addLEintProfile(
             std::move(nodeid));
 }
 } // namespace
+
+static ZL_RESULT_OF(ZL_GraphID) extractFolderOfCompressors(
+        Compressor& compressor,
+        const std::string& folder)
+{
+    ZL_RESULT_DECLARE_SCOPE(ZL_GraphID, compressor.get());
+
+    auto inputSet = tools::io::InputSetFileOrDir(folder, true);
+
+    std::vector<ZL_GraphID> successors;
+    for (const auto& input : inputSet) {
+        auto contents = input->contents();
+
+        custom_parsers::processDependencies(compressor, contents);
+
+        compressor.deserialize(contents);
+
+        ZL_GraphID startingGraphId;
+        ZL_Compressor_getStartingGraphID(compressor.get(), &startingGraphId);
+        successors.push_back(startingGraphId);
+    }
+
+    // ML selectors require at least 2 successors to choose between
+    if (successors.size() < 2) {
+        throw Exception(
+                "ML selector requires at least 2 successor compressors, but "
+                "only "
+                + std::to_string(successors.size()) + " were provided in '"
+                + folder + "'");
+    }
+
+    ZL_TRY_LET(
+            ZL_GraphID,
+            mlSelectorGraphId,
+            MLSelector_registerGraphWithEmptyGBTModel(
+                    compressor.get(), successors.data(), successors.size()));
+
+    // Wrap with serial-to-numeric conversion so the graph accepts serial input
+    auto graph = ZL_Compressor_registerStaticGraph_fromNode1o(
+            compressor.get(),
+            ZL_NODE_CONVERT_SERIAL_TO_NUM_LE64,
+            mlSelectorGraphId);
+
+    return ZL_RESULT_WRAP_VALUE(ZL_GraphID, graph);
+}
 
 /**
  * @brief Registers static successor graphs for the ML selector.
@@ -314,10 +362,16 @@ compressProfiles()
                 "64 bit numeric data using ml selectors (Placeholder)",
                 [](ZL_Compressor* comp, void*, const ProfileArgs& args) {
                     (void)args;
-                    return unwrap(
-                            numeric64BitMLSelectorProfile(comp),
-                            "Failed to set up numeric profile",
-                            comp);
+                    if (args.map().find("TBD") != args.map().end()) {
+                        CompressorRef compressor(comp);
+                        return unwrap(extractFolderOfCompressors(
+                                compressor, args.map().at("TBD")));
+                    } else {
+                        return unwrap(
+                                numeric64BitMLSelectorProfile(comp),
+                                "Failed to set up numeric profile",
+                                comp);
+                    }
                 });
 
         return mp;

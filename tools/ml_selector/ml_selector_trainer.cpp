@@ -509,6 +509,34 @@ static GBTPredictorWrapper trainXGBoostModel(
     return createGBTModelFromXGBoost(xgBoostDump, num_classes);
 }
 
+/** If there is more than one ml selector, we want to train the 'first' ml
+ * selector. The starting graph should be a wrapper around a ml selector
+ */
+static std::string findStartingMLSelectorGraph(Compressor& compressor)
+{
+    ZL_GraphID startingGraph;
+    ZL_Compressor_getStartingGraphID(compressor.get(), &startingGraph);
+
+    ZL_GraphIDList customGraphs = ZL_Compressor_Graph_getCustomGraphs(
+            compressor.get(), startingGraph);
+
+    if (customGraphs.nbGraphIDs != 1) {
+        throw std::runtime_error(
+                "Expected starting graph to wrap exactly 1 graph");
+    }
+
+    // This should be the new mlSelector to train
+    ZL_GraphID mlSelectorGraph = customGraphs.graphids[0];
+    const char* mlSelectorGraphName =
+            ZL_Compressor_Graph_getName(compressor.get(), mlSelectorGraph);
+    std::string mlSelectorGraphNameStr(mlSelectorGraphName);
+    if (mlSelectorGraphNameStr.find(ML_SELECTOR_GRAPH_NAME)
+        == std::string::npos) {
+        throw std::runtime_error("Unable to find starting mlSelector graph");
+    }
+    return mlSelectorGraphName;
+}
+
 std::shared_ptr<const std::string_view> trainMLSelectorGraph(
         const std::vector<MultiInput>& inputs,
         Compressor& compressor,
@@ -521,16 +549,23 @@ std::shared_ptr<const std::string_view> trainMLSelectorGraph(
     auto mlSelectorGraphNames = graph_mutation::findAllGraphsWithPrefix(
             compressor.serialize(), ML_SELECTOR_GRAPH_NAME);
 
-    if (mlSelectorGraphNames.empty() || mlSelectorGraphNames.size() > 1) {
+    if (mlSelectorGraphNames.empty()) {
         throw std::runtime_error(
                 "Error finding ML selector graph with prefix '"
                 + ML_SELECTOR_GRAPH_NAME + "'");
     }
 
-    // Use the first mlSelector graph found
+    // Use the first mlSelector graph found, or find the starting one if
+    // multiple exist
+    std::string mlSelectorGraphName;
+    if (mlSelectorGraphNames.size() == 1) {
+        mlSelectorGraphName = std::move(mlSelectorGraphNames[0]);
+    } else {
+        mlSelectorGraphName = findStartingMLSelectorGraph(compressor);
+    }
+
     const ZL_GraphID mlSelectorGraph =
-            compressor.getGraph(mlSelectorGraphNames[0]).value();
-    const auto& mlSelectorGraphName = mlSelectorGraphNames[0];
+            compressor.getGraph(mlSelectorGraphName).value();
 
     const auto successors = ZL_Compressor_Graph_getCustomGraphs(
             compressor.get(), mlSelectorGraph);
