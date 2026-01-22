@@ -14,6 +14,9 @@
 #include "openzl/cpp/DCtx.hpp"
 #include "openzl/zl_compress.h"
 #include "openzl/zl_compressor.h"
+#include "openzl/zl_ctransform.h"
+#include "openzl/zl_dtransform.h"
+#include "openzl/zl_errors.h"
 #include "openzl/zl_graph_api.h"
 #include "openzl/zl_opaque_types.h"
 #include "openzl/zl_reflection.h"
@@ -23,6 +26,68 @@
 
 using namespace ::testing;
 using namespace ::openzl::tests;
+
+namespace {
+
+// Param IDs for test
+constexpr int MATERIALIZED_PARAM_ID = 100;
+
+// Track materializations and dematerializations for testing
+static int materializeCount      = 0;
+static int dematerializeCount    = 0;
+static void* lastMaterializedPtr = nullptr;
+
+struct TestMaterializedData {
+    int value;
+};
+
+static ZL_RESULT_OF(ZL_VoidPtr)
+        testMaterialize(const void*, const ZL_LocalParams* params)
+                ZL_NOEXCEPT_FUNC_PTR
+{
+    ZL_RESULT_DECLARE_SCOPE(ZL_VoidPtr, nullptr);
+    if (params->intParams.nbIntParams > 1) {
+        ZL_ERR(GENERIC,
+               "Too many int params provided to materialize test object");
+    }
+
+    if (params->intParams.nbIntParams == 0) {
+        return ZL_WRAP_VALUE(nullptr);
+    }
+    materializeCount++;
+    auto* data          = new TestMaterializedData();
+    data->value         = params->intParams.intParams[0].paramValue;
+    lastMaterializedPtr = data;
+    return ZL_WRAP_VALUE(data);
+}
+
+static void testDematerialize(const void*, void* materialized)
+        ZL_NOEXCEPT_FUNC_PTR
+{
+    dematerializeCount++;
+    auto* data = static_cast<TestMaterializedData*>(materialized);
+    delete data;
+}
+
+static ZL_Report dummyEncoder(
+        ZL_Encoder* eictx,
+        const ZL_Input* inputs[],
+        size_t nbInputs) ZL_NOEXCEPT_FUNC_PTR
+{
+    return ZL_returnSuccess();
+}
+
+static ZL_Report dummyDecoder(
+        ZL_Decoder* dictx,
+        const ZL_Input* compulsorySrcs[],
+        size_t nbCompulsorySrcs,
+        const ZL_Input* variableSrcs[],
+        size_t nbVariableSrcs) ZL_NOEXCEPT_FUNC_PTR
+{
+    return ZL_returnSuccess();
+}
+
+} // namespace
 
 // =============================================================================
 // CompressorTest - Unified test fixture for all Compressor functionality
@@ -55,6 +120,28 @@ class CompressorTest : public Test {
         cctx_.setParameter(
                 openzl::CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
         cctx_.setParameter(openzl::CParam::StickyParameters, 1);
+
+        // Reset materializer counters for each test
+        materializeCount    = 0;
+        dematerializeCount  = 0;
+        lastMaterializedPtr = nullptr;
+
+        // Set up materializer descriptor
+        materializer_ = {
+            .materializeFn   = testMaterialize,
+            .dematerializeFn = testDematerialize,
+            .paramId         = MATERIALIZED_PARAM_ID,
+        };
+    }
+
+    void TearDown() override
+    {
+        // Free compressor to trigger dematerialization before checking counts
+        compressor_    = openzl::Compressor();
+        compressorCpp_ = openzl::Compressor();
+
+        EXPECT_EQ(materializeCount, dematerializeCount)
+                << "Every materialized object should be dematerialized";
     }
 
     void setParameter(ZL_CParam param, int value)
@@ -271,6 +358,67 @@ class CompressorTest : public Test {
         return ZL_Compressor_registerTypedEncoder(compressor_.get(), &desc);
     }
 
+    // Register a new encoder node with materialization
+    ZL_NodeID registerNodeWithMaterialization(
+            ZL_IDType ctid,
+            const char* name,
+            const ZL_LocalParams& localParams,
+            const ZL_MaterializerDesc* materializer)
+    {
+        static ZL_Type typetype = ZL_Type_serial;
+        ZL_MIGraphDesc graphDesc{
+            .CTid                = ctid,
+            .inputTypes          = &typetype,
+            .nbInputs            = 1,
+            .lastInputIsVariable = false,
+            .soTypes             = &typetype,
+            .nbSOs               = 1,
+            .voTypes             = nullptr,
+            .nbVOs               = 0,
+        };
+
+        ZL_MIEncoderDesc encoderDesc{
+            .gd          = graphDesc,
+            .transform_f = dummyEncoder,
+            .localParams = localParams,
+            .name        = name,
+        };
+        if (materializer != nullptr) {
+            encoderDesc.materializer = *materializer;
+        }
+
+        auto nodeid = ZL_Compressor_registerMIEncoder(
+                compressor_.get(), &encoderDesc);
+        return nodeid;
+    }
+
+    ZL_NodeID parameterizeNodeWithMaterialization(
+            ZL_NodeID baseNode,
+            const char* name,
+            const ZL_LocalParams& localParams)
+    {
+        ZL_ParameterizedNodeDesc paramDesc{
+            .name        = name,
+            .node        = baseNode,
+            .localParams = &localParams,
+        };
+
+        auto paramNode = ZL_Compressor_registerParameterizedNode(
+                compressor_.get(), &paramDesc);
+        return paramNode;
+    }
+
+    // Helper to create local params with a single int param
+    ZL_LocalParams createLocalParamsWithInt(ZL_IntParam* intParam)
+    {
+        return ZL_LocalParams{
+            .intParams = {
+                .intParams   = intParam,
+                .nbIntParams = 1,
+            },
+        };
+    }
+
    protected:
     openzl::Compressor compressor_;
     ZL_LocalParams localParams_;
@@ -281,6 +429,8 @@ class CompressorTest : public Test {
     openzl::Compressor compressorCpp_;
     openzl::CCtx cctx_;
     openzl::DCtx dctx_;
+
+    ZL_MaterializerDesc materializer_{};
 };
 
 // =============================================================================
@@ -1539,4 +1689,275 @@ TEST_F(CompressorTest, ReplaceGraphParamsOnlyWhenParamExists)
             ZL_Compressor_Graph_getCustomNodes(compressorCpp_.get(), newGraph);
     EXPECT_EQ(cn.nbNodeIDs, 1);
     EXPECT_EQ(cn.nodeids[0], ZL_NODE_ZIGZAG);
+}
+
+// =============================================================================
+// Materialization Tests
+// =============================================================================
+
+TEST_F(CompressorTest,
+       GIVENnoMaterializerPassedWHENnodeRegisteredOrParameterizedTHENitWorks)
+{
+    auto intParam = ZL_IntParam{ .paramId = 1, .paramValue = 100 };
+    auto lp       = createLocalParamsWithInt(&intParam);
+
+    auto nodeid =
+            registerNodeWithMaterialization(2000, "test_encoder", lp, nullptr);
+    EXPECT_NE(nodeid.nid, ZL_NODE_ILLEGAL.nid);
+
+    // Parameterize the node with different local params
+    ZL_IntParam intParam2{
+        .paramId    = 1,
+        .paramValue = 10,
+    };
+    ZL_LocalParams localParams = createLocalParamsWithInt(&intParam2);
+
+    auto nid = parameterizeNodeWithMaterialization(
+            nodeid, "parameterized_node", localParams);
+    EXPECT_NE(nid.nid, ZL_NODE_ILLEGAL.nid);
+
+    // No materialization should occur
+    EXPECT_EQ(materializeCount, 0)
+            << "Materialization should not occur when no materializer is passed";
+}
+
+TEST_F(CompressorTest,
+       GIVENaMaterializerPassedWHENnodeRegisteredTHENobjectIsMaterialized)
+{
+    auto intParam = ZL_IntParam{ .paramId = 1, .paramValue = 100 };
+    auto nodeid   = registerNodeWithMaterialization(
+            2000,
+            "test_encoder",
+            createLocalParamsWithInt(&intParam),
+            &materializer_);
+    EXPECT_NE(nodeid.nid, ZL_NODE_ILLEGAL.nid);
+
+    // At this point, materialization should have occurred during registration
+    EXPECT_EQ(materializeCount, 1)
+            << "Materialization should occur during registration";
+
+    // Compressor will be freed in TearDown, which will trigger
+    // dematerialization
+}
+
+TEST_F(CompressorTest,
+       GIVENaMaterializerPassedWHENmaterializerReturnsNullTHENitStillWorks)
+{
+    auto nodeid = registerNodeWithMaterialization(
+            2000, "test_encoder", {}, &materializer_);
+    EXPECT_NE(nodeid.nid, ZL_NODE_ILLEGAL.nid);
+
+    auto nodeid2 =
+            parameterizeNodeWithMaterialization(nodeid, "new_encoder", {});
+    EXPECT_NE(nodeid2.nid, ZL_NODE_ILLEGAL.nid);
+
+    EXPECT_EQ(materializeCount, 0) << "NULL means no object was created";
+}
+
+TEST_F(CompressorTest,
+       GIVENaMaterializerPassedWHENmaterializerFailsTHENerrorReturned)
+{
+    ZL_IntParam intParams[2] = { { .paramId = 1, .paramValue = 1 },
+                                 { .paramId = 2, .paramValue = 2 } };
+    ZL_LocalParams localParams = {
+        .intParams = {
+            .intParams   = intParams,
+            .nbIntParams = 2,
+        },
+    };
+
+    auto nodeid = registerNodeWithMaterialization(
+            2001, "test_encoder", localParams, &materializer_);
+    EXPECT_EQ(nodeid.nid, ZL_NODE_ILLEGAL.nid);
+
+    EXPECT_EQ(materializeCount, 0);
+}
+
+TEST_F(CompressorTest,
+       GIVENaMaterializerPassedWHENregistrationWithBadParamIdTHENerrorReturned)
+{
+    // 1. Reuse param ID as an int param
+    {
+        ZL_IntParam intParam{
+            .paramId    = MATERIALIZED_PARAM_ID,
+            .paramValue = 42,
+        };
+        auto lp     = createLocalParamsWithInt(&intParam);
+        auto nodeid = registerNodeWithMaterialization(
+                2001, "test1", lp, &materializer_);
+        EXPECT_EQ(nodeid.nid, ZL_NODE_ILLEGAL.nid)
+                << "Should fail when int param uses same ID as materialized param";
+    }
+
+    // 2. Reuse param ID as a ref param
+    {
+        int refData    = 42;
+        ZL_RefParam rp = {
+            .paramId  = MATERIALIZED_PARAM_ID,
+            .paramRef = &refData,
+        };
+        ZL_LocalParams localParams = {
+            .refParams = {
+                .refParams   = &rp,
+                .nbRefParams = 1,
+            },
+        };
+        auto nodeid = registerNodeWithMaterialization(
+                2002, "test2", localParams, &materializer_);
+        EXPECT_EQ(nodeid.nid, ZL_NODE_ILLEGAL.nid)
+                << "Should fail when ref param uses same ID as materialized param";
+    }
+
+    // 3. Reuse param ID as a copy param
+    {
+        int copyData    = 42;
+        ZL_CopyParam cp = {
+            .paramId   = MATERIALIZED_PARAM_ID,
+            .paramPtr  = &copyData,
+            .paramSize = sizeof(copyData),
+        };
+        ZL_LocalParams localParams = {
+            .copyParams = {
+                .copyParams   = &cp,
+                .nbCopyParams = 1,
+            },
+        };
+        auto nodeid = registerNodeWithMaterialization(
+                2003, "test3", localParams, &materializer_);
+        EXPECT_EQ(nodeid.nid, ZL_NODE_ILLEGAL.nid)
+                << "Should fail when copy param uses same ID as materialized param";
+    }
+
+    // 4. Use invalid param ID
+    {
+        ZL_MaterializerDesc badMaterializer = {
+            .materializeFn   = testMaterialize,
+            .dematerializeFn = testDematerialize,
+            .paramId         = ZL_LP_INVALID_PARAMID,
+        };
+        auto nodeid = registerNodeWithMaterialization(
+                2004, "test4", {}, &badMaterializer);
+        EXPECT_EQ(nodeid.nid, ZL_NODE_ILLEGAL.nid)
+                << "Should fail when materializer uses invalid param ID";
+    }
+}
+
+TEST_F(CompressorTest,
+       GIVENaMaterializerPassedWHENnodeParamterizedTHENobjectIsMaterialized)
+{
+    const ZL_NodeID baseNode = registerNodeWithMaterialization(
+            2002, "base_node", {}, &materializer_);
+
+    // Parameterize the node with different local params
+    ZL_IntParam intParam{
+        .paramId    = 1,
+        .paramValue = 100,
+    };
+    ZL_LocalParams localParams = createLocalParamsWithInt(&intParam);
+
+    auto nid = parameterizeNodeWithMaterialization(
+            baseNode, "parameterized_node", localParams);
+    EXPECT_NE(nid.nid, ZL_NODE_ILLEGAL.nid);
+
+    // Materialization should occur when parameterizing the node
+    EXPECT_EQ(materializeCount, 1)
+            << "Materialization should occur when parameterizing a node";
+}
+
+TEST_F(CompressorTest,
+       GIVENaMaterializerPassedWHENnodeParametrizedWithBadParamIdTHENerrorReturned)
+{
+    // Register base node with materializer
+    const ZL_NodeID baseNode = registerNodeWithMaterialization(
+            2010, "base_node_bad_params", {}, &materializer_);
+    ASSERT_NE(baseNode.nid, ZL_NODE_ILLEGAL.nid);
+
+    // 1. Create an int param with the materialized param ID
+    {
+        ZL_IntParam intParam{
+            .paramId    = MATERIALIZED_PARAM_ID,
+            .paramValue = 42,
+        };
+        auto lp  = createLocalParamsWithInt(&intParam);
+        auto nid = parameterizeNodeWithMaterialization(
+                baseNode, "param_with_int", lp);
+        EXPECT_EQ(nid.nid, ZL_NODE_ILLEGAL.nid)
+                << "Should fail when parameterizing with int param using same ID as "
+                   "materialized param";
+    }
+
+    // 2. Create a ref param with the materialized param ID
+    {
+        int refData    = 42;
+        ZL_RefParam rp = {
+            .paramId  = MATERIALIZED_PARAM_ID,
+            .paramRef = &refData,
+        };
+        ZL_LocalParams localParams = {
+            .refParams = {
+                .refParams   = &rp,
+                .nbRefParams = 1,
+            },
+        };
+        auto nid = parameterizeNodeWithMaterialization(
+                baseNode, "param_with_ref", localParams);
+        EXPECT_EQ(nid.nid, ZL_NODE_ILLEGAL.nid)
+                << "Should fail when parameterizing with ref param using same ID as "
+                   "materialized param";
+    }
+
+    // 3. Create a copy param with the materialized param ID
+    {
+        int copyData    = 42;
+        ZL_CopyParam cp = {
+            .paramId   = MATERIALIZED_PARAM_ID,
+            .paramPtr  = &copyData,
+            .paramSize = sizeof(copyData),
+        };
+        ZL_LocalParams localParams = {
+            .copyParams = {
+                .copyParams   = &cp,
+                .nbCopyParams = 1,
+            },
+        };
+        auto nid = parameterizeNodeWithMaterialization(
+                baseNode, "param_with_copy", localParams);
+        EXPECT_EQ(nid.nid, ZL_NODE_ILLEGAL.nid)
+                << "Should fail when parameterizing with copy param using same ID as "
+                   "materialized param";
+    }
+}
+
+TEST_F(CompressorTest,
+       GIVENaMaterializerPassedWHENnodeParameterizedTwiceWithSameLocalParamsTHENonlyOneObjectIsMaterialized)
+{
+    const ZL_NodeID baseNode = registerNodeWithMaterialization(
+            2003, "base_node_for_dedup", {}, &materializer_);
+
+    // Create the same local params for both parameterizations
+    ZL_IntParam intParam1{
+        .paramId    = 5,
+        .paramValue = 200,
+    };
+    ZL_LocalParams localParams1 = createLocalParamsWithInt(&intParam1);
+
+    // Parameterize first node
+    auto nodeid = parameterizeNodeWithMaterialization(
+            baseNode, "param_node_1", localParams1);
+    EXPECT_NE(nodeid.nid, ZL_NODE_ILLEGAL.nid);
+
+    ZL_IntParam intParam2{
+        .paramId    = 5,
+        .paramValue = 200,
+    };
+    ZL_LocalParams localParams2 = createLocalParamsWithInt(&intParam2);
+
+    // Parameterize second node with SAME local params
+    nodeid = parameterizeNodeWithMaterialization(
+            baseNode, "param_node_2", localParams2);
+    EXPECT_NE(nodeid.nid, ZL_NODE_ILLEGAL.nid);
+
+    // Should not create a new materialized object for identical params
+    EXPECT_EQ(materializeCount, 1)
+            << "Should reuse materialized object when local params are identical";
 }
