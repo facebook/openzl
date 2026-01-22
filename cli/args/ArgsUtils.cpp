@@ -7,8 +7,6 @@
 
 #include "custom_parsers/dependency_registration.h"
 
-#include "openzl/codecs/zl_ace.h"
-
 #include "tools/io/InputFile.h"
 #include "tools/logger/Logger.h"
 

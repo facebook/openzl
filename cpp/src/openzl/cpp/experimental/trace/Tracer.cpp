@@ -11,10 +11,8 @@
 #include "openzl/cpp/experimental/trace/StreamVisualizer.hpp"
 #include "openzl/zl_data.h"
 #include "openzl/zl_errors.h"
-#include "openzl/zl_input.h"
 #include "openzl/zl_opaque_types.h"
 #include "openzl/zl_output.h"
-#include "openzl/zl_reflection.h"
 
 #include <algorithm>
 #include <cstdlib>
