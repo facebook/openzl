@@ -6,7 +6,9 @@
 #include <string>
 #include <vector>
 #include "ml_features.h"
+#include "openzl/common/a1cbor_helpers.h"
 #include "openzl/zl_reflection.h"
+#include "src/openzl/compress/cgraph.h"
 #include "src/openzl/compress/selectors/ml/features.h"
 #include "tools/logger/Logger.h"
 #include "tools/ml_selector/ml_selector_graph.h"
@@ -509,32 +511,42 @@ static GBTPredictorWrapper trainXGBoostModel(
     return createGBTModelFromXGBoost(xgBoostDump, num_classes);
 }
 
-/** If there is more than one ml selector, we want to train the 'first' ml
- * selector. The starting graph should be a wrapper around a ml selector
- */
-static std::string findStartingMLSelectorGraph(Compressor& compressor)
+static void updateCompressor(
+        Compressor& compressor,
+        ZL_MLSelectorConfig& config,
+        std::string& mlSelectorGraphName)
 {
-    ZL_GraphID startingGraph;
-    ZL_Compressor_getStartingGraphID(compressor.get(), &startingGraph);
+    Arena* arena       = ALLOC_HeapArena_create();
+    A1C_Arena a1cArena = A1C_Arena_wrap(arena);
 
-    ZL_GraphIDList customGraphs = ZL_Compressor_Graph_getCustomGraphs(
-            compressor.get(), startingGraph);
+    ZL_SerializedMLConfig serializedConfig = unwrap(
+            MLSelector_serializeMLSelectorConfig(nullptr, &config, &a1cArena));
 
-    if (customGraphs.nbGraphIDs != 1) {
-        throw std::runtime_error(
-                "Expected starting graph to wrap exactly 1 graph");
+    ZL_CopyParam configParam = {
+        .paramId   = ZL_GENERIC_ML_SELECTOR_CONFIG_ID,
+        .paramPtr  = serializedConfig.data,
+        .paramSize = serializedConfig.size,
+    };
+
+    ZL_LocalParams localParams = { .copyParams = { .genParams    = &configParam,
+                                                   .nbCopyParams = 1 } };
+
+    ZL_GraphParameters newParams = {
+        .localParams = &localParams,
+    };
+
+    ZL_GraphID existingMlSelectorGraphId =
+            compressor.getGraph(mlSelectorGraphName).value();
+
+    // Replace old config with new trained config
+    auto result = ZL_Compressor_overrideGraphParams(
+            compressor.get(), existingMlSelectorGraphId, &newParams);
+
+    ALLOC_Arena_freeArena(arena);
+
+    if (ZL_isError(result)) {
+        throw std::runtime_error("Error overriding graph params");
     }
-
-    // This should be the new mlSelector to train
-    ZL_GraphID mlSelectorGraph = customGraphs.graphids[0];
-    const char* mlSelectorGraphName =
-            ZL_Compressor_Graph_getName(compressor.get(), mlSelectorGraph);
-    std::string mlSelectorGraphNameStr(mlSelectorGraphName);
-    if (mlSelectorGraphNameStr.find(ML_SELECTOR_GRAPH_NAME)
-        == std::string::npos) {
-        throw std::runtime_error("Unable to find starting mlSelector graph");
-    }
-    return mlSelectorGraphName;
 }
 
 std::shared_ptr<const std::string_view> trainMLSelectorGraph(
@@ -543,7 +555,6 @@ std::shared_ptr<const std::string_view> trainMLSelectorGraph(
         const TrainParams& trainParams)
 {
     (void)trainParams;
-    std::vector<ZL_GraphID> successorGraphs;
 
     // Find the ML selector graph by prefix
     auto mlSelectorGraphNames = graph_mutation::findAllGraphsWithPrefix(
@@ -555,68 +566,87 @@ std::shared_ptr<const std::string_view> trainMLSelectorGraph(
                 + ML_SELECTOR_GRAPH_NAME + "'");
     }
 
-    // Use the first mlSelector graph found, or find the starting one if
-    // multiple exist
-    std::string mlSelectorGraphName;
-    if (mlSelectorGraphNames.size() == 1) {
-        mlSelectorGraphName = std::move(mlSelectorGraphNames[0]);
-    } else {
-        mlSelectorGraphName = findStartingMLSelectorGraph(compressor);
+    std::set<std::string> trainedMlSelectors;
+    bool trainedAnyThisPass = true;
+    /**
+     * Process ML selectors iteratively until no more can be trained.
+     *
+     * ML selectors may be chained (output of one feeds into another), but
+     * mlSelectorGraphNames has no guaranteed order. On each pass, we train
+     * any selector that currently has available inputs. Once trained, its
+     * outputs become inputs for downstream selectors, which can then be
+     * trained in subsequent passes.
+     */
+    while (trainedMlSelectors.size() < mlSelectorGraphNames.size()
+           && trainedAnyThisPass) {
+        trainedAnyThisPass = false;
+
+        for (auto& mlSelectorGraphName : mlSelectorGraphNames) {
+            if (trainedMlSelectors.count(mlSelectorGraphName) > 0) {
+                continue;
+            }
+
+            auto cctx = refCCtxForTraining(compressor);
+
+            // Collect inputs for first mlSelector graph
+            auto mlSelectorInputs = collectInputStreamsForGraph(
+                    inputs, mlSelectorGraphName, cctx);
+
+            if (mlSelectorInputs.empty()) {
+                continue;
+            }
+
+            const ZL_GraphID mlSelectorGraph =
+                    compressor.getGraph(mlSelectorGraphName).value();
+
+            const auto successors = ZL_Compressor_Graph_getCustomGraphs(
+                    compressor.get(), mlSelectorGraph);
+
+            std::vector<ZL_GraphID> successorGraphs;
+            successorGraphs.reserve(successors.nbGraphIDs);
+            for (size_t i = 0; i < successors.nbGraphIDs; ++i) {
+                successorGraphs.push_back(successors.graphids[i]);
+            }
+
+            ProcessedMLTrainingSamples trainingSample = extractMLFeatures(
+                    mlSelectorInputs, compressor, cctx, successorGraphs);
+
+            TestTrainData splitData = trainTestSplit(
+                    trainingSample.features, trainingSample.numericLabels);
+
+            GBTPredictorWrapper gbtPred =
+                    trainXGBoostModel(splitData, successors.nbGraphIDs);
+
+            GBTModel coreModel = {
+                .predictor        = gbtPred.core_predictor_.get(),
+                .featureGenerator = FeatureGen_integer,
+                .nbSuccessors     = successors.nbGraphIDs,
+                .nbFeatures       = trainingSample.featurePtrNames.size(),
+                .featureLabels    = trainingSample.featurePtrNames.data(),
+            };
+
+            ZL_MLSelectorConfig config = { .model         = ZL_GBT,
+                                           .runtimeConfig = &coreModel };
+
+            updateCompressor(compressor, config, mlSelectorGraphName);
+            trainedAnyThisPass = true;
+            trainedMlSelectors.insert(mlSelectorGraphName);
+        }
     }
 
-    const ZL_GraphID mlSelectorGraph =
-            compressor.getGraph(mlSelectorGraphName).value();
-
-    const auto successors = ZL_Compressor_Graph_getCustomGraphs(
-            compressor.get(), mlSelectorGraph);
-
-    successorGraphs.reserve(successors.nbGraphIDs);
-    for (size_t i = 0; i < successors.nbGraphIDs; ++i) {
-        successorGraphs.push_back(successors.graphids[i]);
+    if (trainedMlSelectors.size() == 0) {
+        throw std::runtime_error("No inputs captured for any mlSelector graph");
     }
 
-    auto cctx = refCCtxForTraining(compressor);
-    // Collect inputs for first mlSelector graph
-    auto mlSelectorInputs =
-            collectInputStreamsForGraph(inputs, mlSelectorGraphName, cctx);
-
-    if (mlSelectorInputs.empty()) {
-        throw std::runtime_error("Unable to get inputs to mlSelector");
+    // Warn if some mlSelectors were left untrained
+    if (trainedMlSelectors.size() < mlSelectorGraphNames.size()) {
+        Logger::log(
+                VERBOSE1,
+                "Warning: ",
+                mlSelectorGraphNames.size() - trainedMlSelectors.size(),
+                " mlSelector(s) could not be trained - no inputs captured.");
     }
 
-    ProcessedMLTrainingSamples trainingSample = extractMLFeatures(
-            mlSelectorInputs, compressor, cctx, successorGraphs);
-
-    TestTrainData splitData = trainTestSplit(
-            trainingSample.features, trainingSample.numericLabels);
-
-    GBTPredictorWrapper gbtPred =
-            trainXGBoostModel(splitData, successors.nbGraphIDs);
-
-    GBTModel coreModel = {
-        .predictor        = gbtPred.core_predictor_.get(),
-        .featureGenerator = FeatureGen_integer,
-        .nbSuccessors     = successors.nbGraphIDs,
-        .nbFeatures       = trainingSample.featurePtrNames.size(),
-        .featureLabels    = trainingSample.featurePtrNames.data(),
-    };
-
-    ZL_MLSelectorConfig config = { .model         = ZL_GBT,
-                                   .runtimeConfig = &coreModel };
-
-    auto mlSelectorGraphId = unwrap(ZL_MLSelector_registerGraph(
-            compressor.get(),
-            &config,
-            successorGraphs.data(),
-            successorGraphs.size()));
-
-    auto newMlSelectorGraphName =
-            ZL_Compressor_Graph_getName(compressor.get(), mlSelectorGraphId);
-
-    return graph_mutation::createSharedStringView(
-            graph_mutation::renameGraphInCompressor(
-                    compressor.serialize(),
-                    mlSelectorGraphName,
-                    newMlSelectorGraphName));
+    return graph_mutation::createSharedStringView(compressor.serialize());
 }
 } // namespace openzl::training
