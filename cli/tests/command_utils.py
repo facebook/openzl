@@ -181,6 +181,7 @@ def execute_train(
     uncompressed_dir: str,
     trained_compressor_path: str,
     trainer_name: str | None = None,
+    extra_args: str | None = None,
 ):
     """
     Execute the train command to train a compressor on sample files.
@@ -202,6 +203,8 @@ def execute_train(
             - "greedy": Makes locally optimal choices at each step
             - "full-split": Analyzes the entire dataset before making decisions
             If None, the default trainer for the profile will be used.
+        extra_args: Additional arguments to pass to the train command (optional).
+            For example: "--profile-arg /path/to/folder"
 
     Raises:
         ValueError: If the training fails or the trained compressor is not created
@@ -212,6 +215,8 @@ def execute_train(
     train_args = f"train --max-time-secs 1 --{cflag} {cstr} {str(uncompressed_dir)} -o {str(trained_compressor_path)}"
     if trainer_name:
         train_args += f" -t {trainer_name}"
+    if extra_args:
+        train_args += f" {extra_args}"
 
     if execute_command(train_args) != 0:
         raise ValueError("Executing train command failed")
