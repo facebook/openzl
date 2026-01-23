@@ -234,6 +234,118 @@ class _TrainBaseTest(_CompressDecompressBaseTest):
         self.compress_and_decompress_samples()
 
 
+class _MLBaseTest(_TrainBaseTest):
+    """
+    Abstract base class for ML compression tests with training.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        # Create the serialized compressors folder once per test
+        self.serialized_compressors_folder = self.get_serialized_compressors()
+
+    def get_serialized_compressors(self) -> str:
+        """
+        Generate serialized compressors using static successors from numeric-ml-selector-64 profile.
+
+        Returns:
+            str: Path to the temporary folder containing the serialized .cbor files
+        """
+        import openzl.ext as zl
+
+        def field_lz() -> bytes:
+            compressor = zl.Compressor()
+            graph = zl.graphs.FieldLz()(compressor)
+            compressor.select_starting_graph(graph)
+            return compressor.serialize()
+
+        def delta_field_lz() -> bytes:
+            compressor = zl.Compressor()
+            graph = zl.graphs.FieldLz()(compressor)
+            graph = zl.nodes.DeltaInt()(compressor, graph)
+            compressor.select_starting_graph(graph)
+            return compressor.serialize()
+
+        def range_pack() -> bytes:
+            compressor = zl.Compressor()
+            graph = zl.nodes.RangePack()(compressor, successor=zl.graphs.FieldLz())
+            compressor.select_starting_graph(graph)
+            return compressor.serialize()
+
+        def range_pack_zstd() -> bytes:
+            compressor = zl.Compressor()
+            graph = zl.nodes.RangePack()(compressor, successor=zl.graphs.Zstd())
+            compressor.select_starting_graph(graph)
+            return compressor.serialize()
+
+        def tokenize_delta_fieldlz() -> bytes:
+            compressor = zl.Compressor()
+            delta_fieldlz = zl.nodes.DeltaInt()(compressor, zl.graphs.FieldLz())
+            tokenize = zl.nodes.Tokenize(type=zl.Type.Numeric, sort=True)
+            graph = tokenize(
+                compressor,
+                alphabet=delta_fieldlz,
+                indices=zl.graphs.FieldLz(),
+            )
+            compressor.select_starting_graph(graph)
+            return compressor.serialize()
+
+        def zstd() -> bytes:
+            compressor = zl.Compressor()
+            graph = zl.graphs.Zstd()(compressor)
+            compressor.select_starting_graph(graph)
+            return compressor.serialize()
+
+        compressors = {
+            "00_field_lz": field_lz(),
+            "01_range_pack": range_pack(),
+            "02_range_pack_zstd": range_pack_zstd(),
+            "03_delta_field_lz": delta_field_lz(),
+            "04_tokenize_delta_fieldlz": tokenize_delta_fieldlz(),
+            "05_zstd": zstd(),
+        }
+
+        # Create a temporary directory for the serialized compressors
+        compressor_dir = tempfile.mkdtemp()
+        self.addCleanup(lambda: shutil.rmtree(compressor_dir, True))
+
+        for name, data in compressors.items():
+            with open(os.path.join(compressor_dir, f"{name}.cbor"), "wb") as f:
+                f.write(data)
+
+        return compressor_dir
+
+    @property
+    def input_dir_name(self) -> str:
+        """
+        Return the directory name for input sample files.
+
+        This property determines where sample files are located:
+        cli/tests/sample_files/ml_selector/
+
+        Note: sample files are generated using the following command from
+        tutorial in examples/ml_selector and taking the first file:
+
+        ```
+        buck2 run @//mode/opt examples/ml_selector:generate_data -- /tmp/ml_test_samples
+        ```
+
+        Returns:
+            "ml_selector" as the input directory name
+        """
+        return "ml_selector"
+
+    @property
+    def compressor_profile_name(self) -> str:
+        """
+        Return the profile name to use for compression/training.
+
+        Returns:
+            "numeric-ml-selector-64" as the profile name
+        """
+        return "numeric-ml-selector-64"
+
+
 class _CsvBaseTest(_TrainBaseTest):
     """
     Abstract base class for CSV compression tests with training.
