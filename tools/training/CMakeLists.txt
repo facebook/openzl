@@ -39,14 +39,14 @@ if (OPENZL_BUILD_TRAINING_TOOLS)
             openzl_cpp
             tools_io
             logger
-            ml_selector_graph)
+            ml_selector)
     add_dependencies(
         tools_training
         openzl
         openzl_cpp
         tools_io
         logger
-        ml_selector_graph
+        ml_selector
         xgboost_external)
 
   if (OPENZL_BUILD_TESTS AND OPENZL_ALLOW_INTROSPECTION)

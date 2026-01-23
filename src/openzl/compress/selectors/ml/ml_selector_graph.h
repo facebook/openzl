@@ -91,29 +91,19 @@ ZL_MLSelector_registerGraph(
         const ZL_GraphID* successors,
         size_t nbSuccessors);
 
-/**
- * @brief Registers a statically defined ml selector graph that can be
- * parameterized later.
+/** @brief Retrieves list of successors and ZL_MLSelectorConfig from graph and
+ * selects successor based on prediction made by model specified inside the
+ * ZL_MLSelectorConfig.
  *
- * @returns The graph ID registered for the ml selector graph
- * @param compressor The compressor to register the graph with
+ * @param graph      Graph containing ZL_MLSelectorConfig and list of successors
+ * @param inputs     Array of input edges to be routed to selected successor
+ * @param nbInputs   Number of input edges in the inputs array
+ * @return           Failure if unable to get config from graph or if the
+ * selected successor is out of bounds or if unable to select successor. Success
+ * otherwise.
  */
-ZL_RESULT_OF(ZL_GraphID)
-ZL_MLSelector_registerBaseGraph(ZL_Compressor* compressor);
-
-/**
- * @brief Registers graph with empty GBTModel for the ML selector. Compression
- * will work on empty GBTModel and it will always select the first successor.
- * NOTE: This is a temporary placeholder
- * @param compressor The compressor to register the graph with
- * @param successors The set of successors
- * @param nbSuccessors The number of successors
- */
-ZL_RESULT_OF(ZL_GraphID)
-MLSelector_registerGraphWithEmptyGBTModel(
-        ZL_Compressor* compressor,
-        const ZL_GraphID* successors,
-        size_t nbSuccessors);
+ZL_Report
+ZL_MLSel_dynGraph(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs);
 
 #if defined(__cplusplus)
 }

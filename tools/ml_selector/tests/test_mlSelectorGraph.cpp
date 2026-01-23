@@ -2,15 +2,14 @@
 
 #include <gtest/gtest.h>
 #include "openzl/common/a1cbor_helpers.h"
-
 #include "openzl/compress/selectors/ml/gbt.h"
+#include "openzl/compress/selectors/ml/ml_selector_graph.h"
 #include "openzl/cpp/CCtx.hpp"
 #include "openzl/cpp/Compressor.hpp"
 #include "openzl/cpp/DCtx.hpp"
 #include "tests/datagen/DataGen.h"
 #include "tests/ml_selector_utils.h"
 #include "tests/utils.h"
-#include "tools/ml_selector/ml_selector_graph.h"
 
 namespace openzl::tests {
 namespace {
@@ -235,9 +234,7 @@ TEST_F(TestMLSelectorGraph, TestMLSelectorGraphSerializable)
     std::string serialCompress = compressor.serialize();
 
     Compressor deserializedCompressor;
-    // need to register base graph for decompression
 
-    ZL_RES_value(ZL_MLSelector_registerBaseGraph(deserializedCompressor.get()));
     deserializedCompressor.deserialize(serialCompress);
 
     // Make sure selection works after deserialization

@@ -19,6 +19,8 @@ Or use data from [Manifold](https://www.internalfb.com/manifold/explorer/openzl_
 
 ### Training
 
+#### Using `numeric-ml-selector-64` profile
+
 Here are sample commands using generated data:
 
 ```bash
@@ -33,6 +35,43 @@ Using the trained compressor, you can now compress and decompress similar data:
 
 ```bash
 ./zli decompress ml_compressed.zl -o ml_decompressed
+```
+
+#### Using Custom Successors with `ZL_Compressor_buildUntrainedMLSelector`
+
+If you want to use your own custom successor graphs instead of the hardcoded ones in `numeric-ml-selector-64`, you can build the ML selector programmatically. This approach lets you define exactly which compression strategies the ML selector will choose between.
+
+The following code snippet shows how to set up an untrained ML selector. Note that you must wrap the graph with a serial-to-numeric conversion node (since `zli` reads data as serial by default) and parameterize the graph so it can be updated during training:
+
+```cpp
+// Build the untrained ML selector with your custom successors
+auto mlSelectorGraphId = ZL_Compressor_buildUntrainedMLSelector(
+        compressor.get(), successors.data(), successors.size());
+
+// Wrap with serial-to-numeric conversion (required for zli which reads serial data)
+// Here we use ZL_NODE_CONVERT_SERIAL_TO_NUM_LE64 for 64-bit little-endian data.
+// Change to LE32, LE16, etc. for other bit sizes.
+ZL_GraphID staticGraph = ZL_Compressor_registerStaticGraph_fromNode1o(
+        compressor.get(),
+        ZL_NODE_CONVERT_SERIAL_TO_NUM_LE64,
+        ZL_RES_value(mlSelectorGraphId));
+
+// Parameterize so the graph can be updated during training
+ZL_GraphParameters wrapperDesc = {};
+auto startingGraph = ZL_Compressor_parameterizeGraph(
+        compressor.get(), staticGraph, &wrapperDesc);
+compressor.selectStartingGraph(ZL_RES_value(startingGraph));
+
+// Serialize and save to file
+std::string serialized = compressor.serialize();
+// ... write serialized to "untrained.zlc" ...
+```
+
+Then train and use the compressor via `zli`:
+
+```bash
+./zli train --compressor untrained.zlc /tmp/ml_train_samples -o trained_ml_sel.zli
+./zli compress --compressor trained_ml_sel.zli /tmp/ml_test_samples/1 -o ml_compressed.zl
 ```
 
 ## How It Works

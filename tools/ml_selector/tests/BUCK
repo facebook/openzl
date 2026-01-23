@@ -9,7 +9,6 @@ zs_unittest(
     srcs = ["test_mlSelectorTrainer.cpp"],
     deps = [
         "..:ml_features",
-        "..:ml_selector_graph",
         "..:ml_selector_trainer",
         "../../../tests:ml_selector_utils",
         "../../../tests:utils",
@@ -24,7 +23,6 @@ zs_unittest(
     name = "test_mlSelectorGraph",
     srcs = ["test_mlSelectorGraph.cpp"],
     deps = [
-        "..:ml_selector_graph",
         "../../..:zstronglib",
         "../../../cpp:openzl_cpp",
         "../../../tests:ml_selector_utils",

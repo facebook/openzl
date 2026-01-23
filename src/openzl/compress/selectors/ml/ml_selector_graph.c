@@ -1,12 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 // Note: This file is work in progress and is not ready for use yet.
 
-#include "tools/ml_selector/ml_selector_graph.h"
+#include "openzl/compress/selectors/ml/ml_selector_graph.h"
+#include "openzl/codecs/zl_mlselector.h"
 #include "openzl/common/a1cbor_helpers.h"
 #include "openzl/shared/a1cbor.h"
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_errors.h"
-#include "openzl/zl_reflection.h"
 
 /**
  * Declare types in order to use ZL_RESULT_OF, this allows function to return
@@ -53,19 +53,7 @@ static ZL_RESULT_OF(ZL_MLSelectorConfig) MLSel_getConfig(ZL_Graph* graph)
             ZL_ERR_CTX_PTR, serializedConfig, configSize, &a1cArena);
 }
 
-/** @brief Retrieves list of successors and ZL_MLSelectorConfig from graph and
- * selects successor based on prediction made by model specified inside the
- * ZL_MLSelectorConfig.
- *
- * @param graph      Graph containing ZL_MLSelectorConfig and list of successors
- * @param inputs     Array of input edges to be routed to selected successor
- * @param nbInputs   Number of input edges in the inputs array
- * @return           Failure if unable to get config from graph or if the
- * selected successor is out of bounds or if unable to select successor. Success
- * otherwise.
- */
-static ZL_Report
-MLSel_compress(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
+ZL_Report ZL_MLSel_dynGraph(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
     ZL_TRY_LET_T(ZL_MLSelectorConfig, config, MLSel_getConfig(graph));
@@ -606,27 +594,6 @@ MLSelector_deserializeMLSelectorConfig(
 }
 
 ZL_RESULT_OF(ZL_GraphID)
-ZL_MLSelector_registerBaseGraph(ZL_Compressor* compressor)
-{
-    ZL_GraphID mlSelectorGraph =
-            ZL_Compressor_getGraph(compressor, "mlSelector");
-    if (mlSelectorGraph.gid == ZL_GRAPH_ILLEGAL.gid) {
-        ZL_FunctionGraphDesc mlSelectorGraphDesc = {
-            .name           = "!mlSelector",
-            .graph_f        = MLSel_compress,
-            .inputTypeMasks = (const ZL_Type[]){ ZL_Type_any },
-            .nbInputs       = 1,
-            .customGraphs   = NULL,
-            .nbCustomGraphs = 0,
-            .localParams    = {},
-        };
-        mlSelectorGraph = ZL_Compressor_registerFunctionGraph(
-                compressor, &mlSelectorGraphDesc);
-    }
-    return ZL_RESULT_WRAP_VALUE(ZL_GraphID, mlSelectorGraph);
-}
-
-ZL_RESULT_OF(ZL_GraphID)
 ZL_MLSelector_registerGraph(
         ZL_Compressor* compressor,
         const ZL_MLSelectorConfig* config,
@@ -677,17 +644,8 @@ ZL_MLSelector_registerGraph(
             (ZL_LocalParams){ .copyParams = { .copyParams   = &configParam,
                                               .nbCopyParams = 1 } };
 
-    ZL_RESULT_OF(ZL_GraphID)
-    baseGraph = ZL_MLSelector_registerBaseGraph(compressor);
-
-    if (ZL_RES_isError(baseGraph)) {
-        return baseGraph;
-    }
-
-    ZL_GraphID mlSelectorGraph = ZL_RES_value(baseGraph);
-
     ZL_ParameterizedGraphDesc const graphDesc = {
-        .graph          = mlSelectorGraph,
+        .graph          = ZL_GRAPH_ML_SELECTOR,
         .customGraphs   = successors,
         .nbCustomGraphs = nbSuccessors,
         .localParams    = &params,
@@ -707,7 +665,7 @@ ZL_MLSelector_registerGraph(
 }
 
 ZL_RESULT_OF(ZL_GraphID)
-MLSelector_registerGraphWithEmptyGBTModel(
+ZL_Compressor_buildUntrainedMLSelector(
         ZL_Compressor* compressor,
         const ZL_GraphID* successors,
         size_t nbSuccessors)

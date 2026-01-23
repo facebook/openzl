@@ -44,7 +44,7 @@ target_link_libraries(custom_parsers
     openzl
     openzl_cpp
     csv_parser
-    ml_selector_graph
+    ml_selector
     parquet_graph
     shared_components
 )

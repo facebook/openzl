@@ -7,11 +7,11 @@
 #include <vector>
 #include "ml_features.h"
 #include "openzl/common/a1cbor_helpers.h"
+#include "openzl/compress/selectors/ml/ml_selector_graph.h"
 #include "openzl/zl_reflection.h"
 #include "src/openzl/compress/cgraph.h"
 #include "src/openzl/compress/selectors/ml/features.h"
 #include "tools/logger/Logger.h"
-#include "tools/ml_selector/ml_selector_graph.h"
 #include "tools/training/graph_mutation/graph_mutation_utils.h"
 #include "tools/training/sample_collection/training_sample_collector.h"
 
@@ -27,7 +27,7 @@ using namespace openzl::tools::logger;
 
 namespace openzl::training {
 
-const std::string ML_SELECTOR_GRAPH_NAME = "mlSelector";
+const std::string ML_SELECTOR_GRAPH_NAME = "zl.ml_selector";
 
 namespace {
 /**

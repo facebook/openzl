@@ -62,28 +62,26 @@ set_target_properties(dmlc PROPERTIES
 )
 add_dependencies(dmlc xgboost_external)
 
-add_library(ml_selector_graph
-    ml_selector_graph.c
-    ml_selector_graph.h
+add_library(ml_selector
     ml_selector_trainer.cpp
     ml_selector_trainer.h
     ml_features.cpp
     ml_features.h
 )
 
-target_include_directories(ml_selector_graph
+target_include_directories(ml_selector
     PUBLIC
         ${PROJECT_SOURCE_DIR}
         ${XGBOOST_INSTALL_DIR}/include
 )
 
 # Disable DMLC stack trace to avoid dependency on execinfo.h
-target_compile_definitions(ml_selector_graph
+target_compile_definitions(ml_selector
     PUBLIC
         DMLC_LOG_STACK_TRACE=0
 )
 
-target_link_libraries(ml_selector_graph
+target_link_libraries(ml_selector
         PUBLIC
         openzl
         openzl_cpp
@@ -91,24 +89,24 @@ target_link_libraries(ml_selector_graph
         dmlc
     )
 
-add_dependencies(ml_selector_graph xgboost_external)
+add_dependencies(ml_selector xgboost_external)
 
 if (OPENZL_BUILD_TESTS)
-    add_executable(test_ml_selector_graph tests/test_mlSelectorGraph.cpp)
-    add_dependencies(test_ml_selector_graph xgboost_external)
+    add_executable(test_ml_selector tests/test_mlSelectorGraph.cpp)
+    add_dependencies(test_ml_selector xgboost_external)
 
-    target_link_libraries(test_ml_selector_graph
+    target_link_libraries(test_ml_selector
         PRIVATE
-            ml_selector_graph
+            ml_selector
             openzl
             openzl_cpp
             openzl_test_support
             tools_training
             GTest::gtest_main
     )
-    apply_openzl_compile_options_to_target(test_ml_selector_graph)
+    apply_openzl_compile_options_to_target(test_ml_selector)
 
-    gtest_discover_tests(test_ml_selector_graph)
+    gtest_discover_tests(test_ml_selector)
 
     if (OPENZL_ALLOW_INTROSPECTION)
         add_executable(test_ml_selector_trainer
@@ -117,7 +115,7 @@ if (OPENZL_BUILD_TESTS)
 
         target_link_libraries(test_ml_selector_trainer
             PRIVATE
-                ml_selector_graph
+                ml_selector
                 openzl
                 openzl_cpp
                 openzl_test_support

@@ -1,13 +1,13 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <gtest/gtest.h>
+#include "openzl/codecs/zl_mlselector.h"
 #include "openzl/cpp/CCtx.hpp"
 #include "openzl/cpp/Compressor.hpp"
 #include "openzl/cpp/DCtx.hpp"
 #include "tests/datagen/DataGen.h"
 #include "tests/ml_selector_utils.h"
 #include "tools/ml_selector/ml_features.h"
-#include "tools/ml_selector/ml_selector_graph.h"
 #include "tools/ml_selector/ml_selector_trainer.h"
 #include "tools/training/train.h"
 #include "tools/training/train_params.h"
@@ -67,7 +67,7 @@ class TestMLSelectorTrainer : public testing::Test {
         std::vector<ZL_GraphID> successorGraphs =
                 registerSuccessors(compressor, multi);
 
-        auto mlSelectorGraphId = MLSelector_registerGraphWithEmptyGBTModel(
+        auto mlSelectorGraphId = ZL_Compressor_buildUntrainedMLSelector(
                 compressor.get(),
                 successorGraphs.data(),
                 successorGraphs.size());
@@ -290,8 +290,6 @@ class TestMLSelectorTrainer : public testing::Test {
             std::shared_ptr<const std::string_view>& serializedCompressor)
     {
         Compressor mlCompressor;
-        auto graphid = ZL_MLSelector_registerBaseGraph(mlCompressor.get());
-        EXPECT_TRUE(!ZL_RES_isError(graphid));
         mlCompressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
         mlCompressor.deserialize(*serializedCompressor.get());
 
