@@ -344,7 +344,6 @@ zs_fuzzers(
         ("MLSelectorMultiInputTest", "FuzzMLSelectorRoundTrip"),
     ],
     deps = FUZZER_DEPS + [
-        "../tools/ml_selector:ml_selector_graph",
         ":ml_selector_utils",
     ],
 )

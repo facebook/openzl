@@ -18,6 +18,7 @@
 #include "openzl/compress/private_nodes.h" // ZL_PrivateStandardGraphID_end, private node ID definitions
 #include "openzl/compress/segmenters/segmenter_numeric.h" // SEGM_numeric_desc
 #include "openzl/compress/selector.h" // SelectorCtx, ZL_SelectorFn, SelCtx_* functions
+#include "openzl/compress/selectors/ml/ml_selector_graph.h" // ZL_MLSel_dynGraph
 #include "openzl/compress/selectors/selector_compress.h" // SI_selector_compress, SI_selector_compress_* functions
 #include "openzl/compress/selectors/selector_constant.h" // SI_selector_constant
 #include "openzl/compress/selectors/selector_genericLZ.h" // SI_selector_genericLZ
@@ -143,6 +144,7 @@ const InternalGraphDesc GR_standardGraphs[ZL_PrivateStandardGraphID_end] = {
     REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_simple_data_description_language_v2, "!zl.sddl2", ZL_Type_serial, SDDL2_parse),
     REGISTER_MIGRAPH(ZL_StandardGraphID_try_parse_int, MIGRAPH_TRY_PARSE_INT),
     REGISTER_STATIC_GRAPH(ZL_StandardGraphID_lz4, "!zl.lz4", ZL_Type_serial, ZL_PrivateStandardNodeID_lz4, _1_SUCCESSOR(ZL_PrivateStandardGraphID_serial_store)),
+    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_ml_selector,"!zl.ml_selector", ZL_Type_numeric, ZL_MLSel_dynGraph),
 
     // Private graphs
     REGISTER_SELECTOR(ZL_PrivateStandardGraphID_store1, "!zl.private.store1", SI_selector_store, ZL_Type_any),

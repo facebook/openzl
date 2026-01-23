@@ -3,10 +3,10 @@
 #include "openzl/codecs/zl_field_lz.h"
 #include "openzl/compress/graphs/generic_clustering_graph.h"
 #include "openzl/compress/selectors/ml/gbt.h"
+#include "openzl/compress/selectors/ml/ml_selector_graph.h"
 #include "tests/fuzz_utils.h"
 #include "tests/ml_selector_utils.h"
 #include "tests/zstrong/test_multi_input_fixture.h"
-#include "tools/ml_selector/ml_selector_graph.h"
 
 namespace openzl {
 namespace tests {

@@ -27,6 +27,7 @@ typedef enum {
     ZL_StandardGraphID_select_generic_lz_backend,
     ZL_StandardGraphID_segment_numeric,
     ZL_StandardGraphID_select_numeric,
+    ZL_StandardGraphID_ml_selector,
     ZL_StandardGraphID_clustering,
     ZL_StandardGraphID_try_parse_int,
 

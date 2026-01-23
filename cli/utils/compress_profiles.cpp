@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "openzl/codecs/zl_conversion.h"
+#include "openzl/codecs/zl_mlselector.h"
 #include "openzl/cpp/Exception.hpp"
 #include "openzl/openzl.hpp"
 #include "openzl/zl_compressor.h"
@@ -21,7 +22,6 @@
 
 #include "tools/io/InputFile.h"
 #include "tools/io/InputSetFileOrDir.h"
-#include "tools/ml_selector/ml_selector_graph.h"
 #include "tools/sddl/compiler/Compiler.h"
 
 namespace openzl::cli {
@@ -159,7 +159,15 @@ static ZL_RESULT_OF(ZL_GraphID) extractFolderOfCompressors(
     for (const auto& input : inputSet) {
         auto contents = input->contents();
 
-        custom_parsers::processDependencies(compressor, contents);
+        const auto deps = compressor.getUnmetDependencies(contents);
+
+        for (const auto& graphName : deps.graphNames) {
+            if (graphName == "Parquet Parser" || graphName == "CSV Parser") {
+                throw std::runtime_error(
+                        "CSV and Parquet parsers are not supported in ML Selector profiles. "
+                        "CSV and Parquet parsers require clustering which ML Selector does not provide.");
+            }
+        }
 
         compressor.deserialize(contents);
 
@@ -180,16 +188,20 @@ static ZL_RESULT_OF(ZL_GraphID) extractFolderOfCompressors(
     ZL_TRY_LET(
             ZL_GraphID,
             mlSelectorGraphId,
-            MLSelector_registerGraphWithEmptyGBTModel(
+            ZL_Compressor_buildUntrainedMLSelector(
                     compressor.get(), successors.data(), successors.size()));
 
     // Wrap with serial-to-numeric conversion so the graph accepts serial input
-    auto graph = ZL_Compressor_registerStaticGraph_fromNode1o(
+    ZL_GraphID staticGraph = ZL_Compressor_registerStaticGraph_fromNode1o(
             compressor.get(),
             ZL_NODE_CONVERT_SERIAL_TO_NUM_LE64,
             mlSelectorGraphId);
 
-    return ZL_RESULT_WRAP_VALUE(ZL_GraphID, graph);
+    // Parameterize so ml selector graph can be updated during training
+    ZL_GraphParameters const wrapperDesc = {};
+
+    return ZL_Compressor_parameterizeGraph(
+            compressor.get(), staticGraph, &wrapperDesc);
 }
 
 /**
@@ -227,8 +239,7 @@ static ZL_RESULT_OF(ZL_GraphID)
     ZL_TRY_LET(
             ZL_GraphID,
             mlSelectorGraphId,
-            MLSelector_registerGraphWithEmptyGBTModel(
-                    compressor, successors, 6));
+            ZL_Compressor_buildUntrainedMLSelector(compressor, successors, 6));
 
     // Wrap with serial-to-numeric conversion so the graph accepts serial input
     ZL_GraphID staticGraph = ZL_Compressor_registerStaticGraph_fromNode1o(

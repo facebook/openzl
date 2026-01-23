@@ -1,17 +1,8 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("../../defs.bzl", "zs_cxxlibrary", "zs_library")
+load("../../defs.bzl", "zs_cxxlibrary")
 
 oncall("data_compression")
-
-zs_library(
-    name = "ml_selector_graph",
-    srcs = ["ml_selector_graph.c"],
-    headers = ["ml_selector_graph.h"],
-    deps = [
-        "../..:zstronglib",
-    ],
-)
 
 zs_cxxlibrary(
     name = "ml_selector_trainer",
@@ -29,7 +20,6 @@ zs_cxxlibrary(
         "../training/sample_collection:sample_collection",
         "../training/utils:training_utils",
         ":ml_features",
-        ":ml_selector_graph",
     ],
     exported_external_deps = [
         ("xgboost", None, "xgboost-cpp"),
