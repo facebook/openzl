@@ -570,7 +570,6 @@ HUF_decompress4X1_usingDTable_internal_body(
     {   const BYTE* const istart = (const BYTE*) cSrc;
         BYTE* const ostart = (BYTE*) dst;
         BYTE* const oend = ostart + dstSize;
-        BYTE* const olimit = oend - 3;
         const void* const dtPtr = DTable + 1;
         const HUF_DEltX1* const dt = (const HUF_DEltX1*)dtPtr;
 
@@ -608,6 +607,7 @@ HUF_decompress4X1_usingDTable_internal_body(
 
         /* up to 16 symbols per loop (4 symbols per stream) in 64-bit mode */
         if ((size_t)(oend - op4) >= sizeof(size_t)) {
+            BYTE* const olimit = oend - 3;
             for ( ; (endSignal) & (op4 < olimit) ; ) {
                 HUF_DECODE_SYMBOLX1_2(op1, &bitD1);
                 HUF_DECODE_SYMBOLX1_2(op2, &bitD2);
@@ -1273,7 +1273,6 @@ HUF_decompress4X2_usingDTable_internal_body(
     {   const BYTE* const istart = (const BYTE*) cSrc;
         BYTE* const ostart = (BYTE*) dst;
         BYTE* const oend = ostart + dstSize;
-        BYTE* const olimit = oend - (sizeof(size_t)-1);
         const void* const dtPtr = DTable+1;
         const HUF_DEltX2* const dt = (const HUF_DEltX2*)dtPtr;
 
@@ -1311,6 +1310,7 @@ HUF_decompress4X2_usingDTable_internal_body(
 
         /* 16-32 symbols per loop (4-8 symbols per stream) */
         if ((size_t)(oend - op4) >= sizeof(size_t)) {
+            BYTE* const olimit = oend - (sizeof(size_t)-1);
             for ( ; (endSignal) & (op4 < olimit); ) {
 #if defined(__clang__) && (defined(__x86_64__) || defined(__i386__))
                 HUF_DECODE_SYMBOLX2_2(op1, &bitD1);
