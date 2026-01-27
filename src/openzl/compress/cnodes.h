@@ -22,7 +22,11 @@ ZL_RESULT_DECLARE_TYPE(CNodeID);
 DECLARE_VECTOR_TYPE(CNode)
 
 // Definitions for MaterializedParamMap
-typedef ZL_MIEncoderDesc MaterializedParamKey;
+typedef struct {
+    ZL_LocalParams localParams;
+    ZL_MaterializerDesc matDesc; // The description provided at registration
+} MaterializedParamKey;
+
 typedef struct {
     void* materializedParam; // The materialized object
 } MaterializedParamEntry;

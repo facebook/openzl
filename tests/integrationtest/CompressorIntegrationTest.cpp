@@ -124,9 +124,9 @@ class CompressorIntegrationTest : public Test {
         (void)compressedSize; // Suppress unused variable warning
     }
 
-    static ZL_RESULT_OF(ZL_VoidPtr)
-            materializeDictionary(const void*, const ZL_LocalParams* params)
-                    ZL_NOEXCEPT_FUNC_PTR
+    static ZL_RESULT_OF(ZL_VoidPtr) materializeDictionary(
+            ZL_Materializer*,
+            const ZL_LocalParams* params) ZL_NOEXCEPT_FUNC_PTR
     {
         ZL_RESULT_DECLARE_SCOPE(ZL_VoidPtr, nullptr);
         auto* dict = new MaterializedDictionary();
@@ -148,7 +148,7 @@ class CompressorIntegrationTest : public Test {
         return ZL_WRAP_VALUE(dict);
     }
 
-    static void dematerializeDictionary(const void*, void* materialized)
+    static void dematerializeDictionary(ZL_Materializer*, void* materialized)
             ZL_NOEXCEPT_FUNC_PTR
     {
         auto* dict = static_cast<MaterializedDictionary*>(materialized);
@@ -366,7 +366,7 @@ TEST_F(CompressorIntegrationTest,
        GIVENmultipleNodesWithDifferentMaterializersButSameParamsWHENrequestedTHENdifferentObjectsAreReturned)
 {
     const auto newMaterialize =
-            [](const void*, const ZL_LocalParams* params)
+            [](ZL_Materializer*, const ZL_LocalParams* params)
                     ZL_NOEXCEPT_FUNC_PTR -> ZL_RESULT_OF(ZL_VoidPtr) {
         ZL_RESULT_DECLARE_SCOPE(ZL_VoidPtr, nullptr);
         auto* dict = new MaterializedDictionary();
