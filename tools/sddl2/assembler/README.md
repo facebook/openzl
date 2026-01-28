@@ -25,6 +25,8 @@ The SDDL2 assembler bridges human-readable assembly and VM-executable bytecode. 
 - **Examples**: Demonstrating VM capabilities (see `../../../examples/sddl2_asm/`)
 
 > **For compiler writers**: If you're generating bytecode programmatically, see `../../../src/openzl/compress/graphs/sddl2/COMPILER_INTEGRATION.md` for the integration API documentation.
+>
+> **For assembly authors**: See `Assembly_reference.md` for the consolidated execution model, instruction semantics, and authoring rules.
 
 ## Assembly Syntax
 
@@ -257,6 +259,8 @@ This creates `opcodes_generated.py` with instruction definitions synchronized wi
 
 ## Related Documentation
 
+- **Assembly Reference**: `Assembly_reference.md` - Execution model, instruction semantics, authoring rules
+- **Opcode Reference**: `Assembly_opcodes.md` - Auto-generated full instruction list
 - **Bytecode Specification**: `Bytecode_spec.md` - Complete bytecode format details
 - **VM Documentation**: `../../../src/openzl/compress/graphs/sddl2/README.md` - VM features and debugging
 - **Compiler Integration**: `../../../src/openzl/compress/graphs/sddl2/COMPILER_INTEGRATION.md` - For programmatic bytecode generation
@@ -270,6 +274,8 @@ tools/sddl2/assembler/
 ├── sddl2_assembler.py       # Main assembler implementation
 ├── opcodes_generated.py     # Auto-generated opcode definitions
 ├── generate_opcodes.py      # Opcode generator script
+├── Assembly_reference.md    # Execution model + instruction semantics
+├── Assembly_opcodes.md      # Auto-generated opcode list
 ├── Bytecode_spec.md         # Bytecode format specification
 ├── README.md                # This file
 └── tests/                   # Test suite
