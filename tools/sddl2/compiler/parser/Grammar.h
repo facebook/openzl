@@ -7,8 +7,8 @@
 #include "openzl/cpp/poly/Optional.hpp"
 #include "openzl/cpp/poly/StringView.hpp"
 
-#include "tools/sddl2/compiler/AST.h"
 #include "tools/sddl2/compiler/Syntax.h"
+#include "tools/sddl2/compiler/parser/AST.h"
 
 namespace openzl::sddl2 {
 

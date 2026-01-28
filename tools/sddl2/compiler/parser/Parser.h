@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include "tools/sddl2/compiler/AST.h"
-#include "tools/sddl2/compiler/Grouping.h"
 #include "tools/sddl2/compiler/Logger.h"
+#include "tools/sddl2/compiler/grouper/Grouping.h"
+#include "tools/sddl2/compiler/parser/AST.h"
 
 namespace openzl::sddl2 {
 

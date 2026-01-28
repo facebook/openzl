@@ -1,17 +1,16 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "tools/sddl2/compiler/Parser.h"
+#include "tools/sddl2/compiler/parser/Parser.h"
 
 #include <algorithm>
 #include <list>
 #include <set>
-#include <type_traits>
 
 #include "openzl/shared/portability.h"
 
 #include "tools/sddl2/compiler/Exception.h"
-#include "tools/sddl2/compiler/Grammar.h"
 #include "tools/sddl2/compiler/Utils.h"
+#include "tools/sddl2/compiler/parser/Grammar.h"
 
 using namespace openzl::sddl2::detail;
 

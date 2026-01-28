@@ -9,11 +9,19 @@ zs_cxxlibrary(
     srcs = glob(
         [
             "*.cpp",
+            "tokenizer/*.cpp",
+            "grouper/*.cpp",
+            "parser/*.cpp",
+            "serializer/*.cpp",
         ],
         exclude = ["main.cpp"],
     ),
     headers = glob([
         "*.h",
+        "tokenizer/*.h",
+        "grouper/*.h",
+        "parser/*.h",
+        "serializer/*.h",
     ]),
     exported_deps = [
         "../../../cpp:openzl_cpp",

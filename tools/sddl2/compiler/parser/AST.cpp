@@ -2,10 +2,10 @@
 
 #include <iostream>
 
-#include "tools/sddl2/compiler/AST.h"
 #include "tools/sddl2/compiler/Exception.h"
 #include "tools/sddl2/compiler/Syntax.h"
 #include "tools/sddl2/compiler/Utils.h"
+#include "tools/sddl2/compiler/parser/AST.h"
 
 using namespace openzl::sddl2::detail;
 

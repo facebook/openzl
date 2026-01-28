@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "tools/sddl2/compiler/Tokenizer.h"
+#include "tools/sddl2/compiler/tokenizer/Tokenizer.h"
 
 #include <cctype>
 #include <cstdint>

@@ -4,9 +4,9 @@
 
 #include <string>
 
-#include "tools/sddl2/compiler/AST.h"
 #include "tools/sddl2/compiler/Logger.h"
 #include "tools/sddl2/compiler/Source.h"
+#include "tools/sddl2/compiler/parser/AST.h"
 
 namespace openzl::sddl2 {
 
