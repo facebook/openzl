@@ -42,7 +42,7 @@ struct TestMaterializedData {
 };
 
 static ZL_RESULT_OF(ZL_VoidPtr)
-        testMaterialize(const void*, const ZL_LocalParams* params)
+        testMaterialize(ZL_Materializer*, const ZL_LocalParams* params)
                 ZL_NOEXCEPT_FUNC_PTR
 {
     ZL_RESULT_DECLARE_SCOPE(ZL_VoidPtr, nullptr);
@@ -61,7 +61,7 @@ static ZL_RESULT_OF(ZL_VoidPtr)
     return ZL_WRAP_VALUE(data);
 }
 
-static void testDematerialize(const void*, void* materialized)
+static void testDematerialize(ZL_Materializer*, void* materialized)
         ZL_NOEXCEPT_FUNC_PTR
 {
     dematerializeCount++;

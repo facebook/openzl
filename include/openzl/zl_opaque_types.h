@@ -51,6 +51,7 @@ typedef struct ZL_Input_s ZL_Input;
 typedef struct ZL_Output_s ZL_Output;
 typedef ZL_Input ZL_TypedRef;
 typedef struct ZL_Compressor_s ZL_Compressor;
+typedef struct ZL_Materializer_s ZL_Materializer;
 typedef struct ZL_CompressorSerializer_s ZL_CompressorSerializer;
 typedef struct ZL_CompressorDeserializer_s ZL_CompressorDeserializer;
 typedef struct ZL_CCtx_s ZL_CCtx;

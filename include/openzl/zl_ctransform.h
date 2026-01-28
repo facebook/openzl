@@ -111,6 +111,10 @@ typedef struct ZL_MaterializerDesc_s {
      * modify the materialized object after creation, either directly or via API
      * getters.
      *
+     * @param matCtx A pointer to a materializer context object associated with
+     * the @ref ZL_Compressor. The materialization function may use this to
+     * request managed memory from the ZL_Compressor as an alternative to
+     * managing allocations itself and via the dematerializeFn.
      * @param params  A pointer to the local params object to materialize. The
      * provided params have no lifetime guarantees past the invocation of this
      * function. You may not hold references into the params object in the
@@ -123,15 +127,17 @@ typedef struct ZL_MaterializerDesc_s {
      * will get a compiler error.
      */
     ZL_RESULT_OF(ZL_VoidPtr) (*materializeFn)(
-            const void* opaque,
+            ZL_Materializer* matCtx,
             const ZL_LocalParams* params)ZL_NOEXCEPT_FUNC_PTR;
 
     /**
      * @brief A custom function that destructs a materialized object.
-     * NB: if this fn fails to deallocate memory allocated by @ref
-     * materializeFn, you will leak memory!
+     *
+     * You should use this to deallocate all non-arena memory and free any held
+     * resources. As a convenience, if there are no resources or memory to free,
+     * you may use ZL_NOOP_DEMATERIALIZE as a placeholder.
      */
-    void (*dematerializeFn)(const void* opaque, void* materialized)
+    void (*dematerializeFn)(ZL_Materializer* matCtx, void* materialized)
             ZL_NOEXCEPT_FUNC_PTR;
 
     /**
@@ -148,6 +154,28 @@ typedef struct ZL_MaterializerDesc_s {
      */
     const void* opaque;
 } ZL_MaterializerDesc;
+
+void ZL_NOOP_DEMATERIALIZE(ZL_Materializer* matCtx, void* materialized)
+        ZL_NOEXCEPT_FUNC_PTR;
+
+/**
+ * Managed space allocation:
+ * Materialization may request arena space to hold materialized objects. It is
+ * allowed to request multiple buffers of any size. Returned buffers are not
+ * initialized, and cannot be freed individually. All buffers are
+ * automatically released at end of the owning @ref ZL_Compressor 's lifetime.
+ */
+void* ZL_Materializer_allocate(ZL_Materializer* matCtx, size_t size);
+
+/**
+ * Scratch space allocation:
+ * When the materializer needs some buffer space for some local operation,
+ * it can request such space from the engine. It is allowed to
+ * request multiple buffers of any size. Returned buffers are not
+ * initialized, and cannot be freed individually. All scratch buffers are
+ * automatically released at the end of the materializer's execution.
+ */
+void* ZL_Materializer_getScratchSpace(ZL_Materializer* matCtx, size_t size);
 
 /* ------------------------------------
  * Typed Transforms

@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include <random>
+
 #include "openzl/compress/cnodes.h"
 #include "openzl/compress/compress_types.h"
 #include "openzl/zl_ctransform.h"
@@ -35,7 +37,7 @@ struct MaterializationCounter {
 static MaterializationCounter gCounter{};
 
 static ZL_RESULT_OF(ZL_VoidPtr)
-        trackingMaterialize(const void*, const ZL_LocalParams* params)
+        trackingMaterialize(ZL_Materializer*, const ZL_LocalParams* params)
                 ZL_NOEXCEPT_FUNC_PTR
 {
     ZL_RESULT_DECLARE_SCOPE(ZL_VoidPtr, nullptr);
@@ -47,7 +49,7 @@ static ZL_RESULT_OF(ZL_VoidPtr)
     return ZL_WRAP_VALUE(data);
 }
 
-static void trackingDematerialize(const void*, void* materialized)
+static void trackingDematerialize(ZL_Materializer*, void* materialized)
         ZL_NOEXCEPT_FUNC_PTR
 {
     gCounter.dematerializeCount++;
@@ -162,5 +164,122 @@ class CNodesTest : public Test {
 };
 
 } // namespace
+
+TEST_F(CNodesTest, WHENaMaterializerRequestsPersistentMemoryTHENitIsAllocated)
+{
+    const auto materializeWithPersistent =
+            [](ZL_Materializer* matCtx, const ZL_LocalParams* params)
+                    ZL_NOEXCEPT_FUNC_PTR -> ZL_RESULT_OF(ZL_VoidPtr) {
+        ZL_RESULT_DECLARE_SCOPE(ZL_VoidPtr, nullptr);
+
+        // Allocate persistent memory from the arena
+        if (params->intParams.nbIntParams == 0) {
+            return ZL_WRAP_VALUE(nullptr);
+        }
+        auto amt = params->intParams.intParams[0].paramValue;
+        int* persistent =
+                static_cast<int*>(ZL_Materializer_allocate(matCtx, amt));
+        ZL_ERR_IF_NULL(
+                persistent, allocation, "Failed to allocate persistent memory");
+
+        return ZL_WRAP_VALUE(persistent);
+    };
+
+    ZL_MaterializerDesc materializer = {
+        .materializeFn   = materializeWithPersistent,
+        .dematerializeFn = ZL_NOOP_DEMATERIALIZE,
+        .paramId         = MATERIALIZED_PARAM_ID,
+    };
+
+    Arena* arena = ctm_.allocator;
+
+    CNodeID nodeId   = registerCustomNode({}, &materializer);
+    auto allocBefore = ALLOC_Arena_memAllocated(arena);
+    auto usedBefore  = ALLOC_Arena_memUsed(arena);
+
+    // Parameterize the node and allocate memory
+    std::mt19937 gen(67);
+    std::uniform_int_distribution<> uniform(1000, 1100);
+    size_t memForNewParamNode;
+
+    // Track the number of unique values
+    std::set<int> values;
+    {
+        auto value = uniform(gen);
+        values.insert(value);
+        ZL_IntParam intParam = {
+            .paramId    = 1,
+            .paramValue = value,
+        };
+        ZL_LocalParams localParams = createLocalParamsWithInt(&intParam);
+        parameterizeNode(nodeId, localParams);
+        memForNewParamNode =
+                ALLOC_Arena_memAllocated(arena) - allocBefore - value;
+        ASSERT_EQ(
+                memForNewParamNode,
+                ALLOC_Arena_memUsed(arena) - usedBefore - value);
+    }
+
+    for (size_t i = 0; i < 20; ++i) {
+        auto value = uniform(gen);
+        values.insert(value);
+        ZL_IntParam intParam = {
+            .paramId    = 1,
+            .paramValue = value,
+        };
+        ZL_LocalParams localParams = createLocalParamsWithInt(&intParam);
+        parameterizeNode(nodeId, localParams);
+    }
+    const auto totalAlloc = std::accumulate(values.begin(), values.end(), 0);
+    ASSERT_EQ(
+            allocBefore + memForNewParamNode * 21 + totalAlloc,
+            ALLOC_Arena_memAllocated(arena));
+    ASSERT_EQ(
+            usedBefore + memForNewParamNode * 21 + totalAlloc,
+            ALLOC_Arena_memUsed(arena));
+}
+
+TEST_F(CNodesTest,
+       WHENaMaterializerRequestsScratchSpaceTHENitIsAllocatedAndFreedAfterwards)
+{
+    // ASAN will verify proper memory lifetimes
+    const auto materializeWithTransient =
+            [](ZL_Materializer* matCtx, const ZL_LocalParams*)
+                    ZL_NOEXCEPT_FUNC_PTR -> ZL_RESULT_OF(ZL_VoidPtr) {
+        ZL_RESULT_DECLARE_SCOPE(ZL_VoidPtr, nullptr);
+
+        // Allocate transient scratch space
+        int* scratch1 = static_cast<int*>(
+                ZL_Materializer_getScratchSpace(matCtx, sizeof(int) * 10));
+        ZL_ERR_IF_NULL(
+                scratch1, allocation, "Failed to allocate scratch space 1");
+
+        int* scratch2 = static_cast<int*>(
+                ZL_Materializer_getScratchSpace(matCtx, sizeof(int) * 20));
+        ZL_ERR_IF_NULL(
+                scratch2, allocation, "Failed to allocate scratch space 2");
+
+        // Use scratch space for something
+        for (int i = 0; i < 10; i++) {
+            scratch1[i] = i * 2;
+        }
+
+        return ZL_WRAP_VALUE(nullptr);
+    };
+
+    ZL_MaterializerDesc materializer = {
+        .materializeFn   = materializeWithTransient,
+        .dematerializeFn = ZL_NOOP_DEMATERIALIZE,
+        .paramId         = MATERIALIZED_PARAM_ID,
+    };
+
+    // Register node with transient memory materializer
+    CNodeID nodeId       = registerCustomNode({}, &materializer);
+    ZL_IntParam intParam = {
+        .paramId    = 1,
+        .paramValue = 10000,
+    };
+    parameterizeNode(nodeId, createLocalParamsWithInt(&intParam));
+}
 
 } // namespace openzl
