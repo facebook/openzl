@@ -13,7 +13,9 @@ from typing import Dict, List, Optional
 
 
 ROOT = Path(__file__).resolve().parents[3]
-OPCODES_DEF = ROOT / "src" / "openzl" / "compress" / "graphs" / "sddl2" / "sddl2_opcodes.def"
+OPCODES_DEF = (
+    ROOT / "src" / "openzl" / "compress" / "graphs" / "sddl2" / "sddl2_opcodes.def"
+)
 REFERENCE_MD = ROOT / "tools" / "sddl2" / "assembler" / "Assembly_opcodes.md"
 
 BEGIN_MARKER = "<!-- BEGIN SDDL2_OPCODE_LIST -->"
@@ -30,7 +32,7 @@ def parse_opcodes(path: Path) -> List[Dict[str, object]]:
 
     family_re = re.compile(r'^@family\s+(\S+)\s+(0x[0-9A-Fa-f]+)\s+"([^"]*)"\s*$')
     inst_re = re.compile(
-        r'^([^\s]+)\s+(0x[0-9A-Fa-f]+)'
+        r"^([^\s]+)\s+(0x[0-9A-Fa-f]+)"
         r'(?:\s+([a-z0-9]+))?\s+"([^"]*)"\s*$'
     )
 
@@ -114,20 +116,14 @@ def render_appendix(families: List[Dict[str, object]]) -> str:
                     widths[idx] = len(cell)
 
         lines.append(
-            "| "
-            + " | ".join(_pad(header[i], widths[i]) for i in range(4))
-            + " |"
+            "| " + " | ".join(_pad(header[i], widths[i]) for i in range(4)) + " |"
         )
         lines.append(
-            "| "
-            + " | ".join("-" * max(widths[i], 3) for i in range(4))
-            + " |"
+            "| " + " | ".join("-" * max(widths[i], 3) for i in range(4)) + " |"
         )
         for row in rows:
             lines.append(
-                "| "
-                + " | ".join(_pad(row[i], widths[i]) for i in range(4))
-                + " |"
+                "| " + " | ".join(_pad(row[i], widths[i]) for i in range(4)) + " |"
             )
 
     lines.append("")
