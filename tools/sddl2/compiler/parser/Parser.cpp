@@ -41,39 +41,70 @@ bool operator==(const GroupType& a, const uint32_t& b)
     return static_cast<uint32_t>(a) == b;
 }
 
+struct PendingOp {
+    PendingOp(
+            std::list<ASTPtr>::iterator _node_it,
+            size_t _pos,
+            const GrammarRule& _rule)
+            : node_it(_node_it), pos(_pos), rule(_rule)
+    {
+    }
+
+    void print(std::ostream& os, size_t indent = 0) const
+    {
+        os << std::string(indent, ' ') << "PendingOp(\n";
+        os << std::string(indent + 2, ' ') << "AST Node:\n";
+        some(*node_it).print(os, indent + 4);
+        os << std::string(indent + 2, ' ') << "AST Pos: " << pos << ":\n";
+        const auto& loc = some(*node_it).loc();
+        os << std::string(indent + 4, ' ') << loc.pos_str() << "\n";
+        os << loc.contents_str(indent + 4);
+        os << std::string(indent + 2, ' ') << "Rule:\n";
+        os << std::string(indent + 4, ' ') << rule.get().info_str() << "\n";
+        os << std::string(indent, ' ') << ")\n";
+    }
+
+    std::list<ASTPtr>::iterator node_it;
+    size_t pos;
+    std::reference_wrapper<const GrammarRule> rule;
+};
+
+/**
+ * This is a comparator for sorting pending ops by precedence and
+ * associativity.
+ */
+bool pending_op_comparator(const PendingOp& lhs, const PendingOp& rhs)
+{
+    const auto& lrule = lhs.rule.get();
+    const auto& rrule = rhs.rule.get();
+
+    if (lrule.precedence() != rrule.precedence()) {
+        return lrule.precedence() < rrule.precedence();
+    }
+    if (lrule.associativity() != rrule.associativity()) {
+        throw ParseError(
+                maybe_loc(*lhs.node_it) + maybe_loc(*rhs.node_it),
+                "Two symbols ('" + std::string{ sym_to_debug_str(lrule.op()) }
+                        + "' and '"
+                        + std::string{ sym_to_debug_str(rrule.op()) }
+                        + "') with the same precedence can't have different associativities.");
+    }
+    const auto associativity = lrule.associativity();
+    switch (associativity) {
+        case Associativity::LEFT_TO_RIGHT:
+            return lhs.pos < rhs.pos;
+        case Associativity::RIGHT_TO_LEFT:
+            return lhs.pos > rhs.pos;
+        default:
+            throw InvariantViolation("Illegal associativity!");
+    }
+}
+
 class ParserImpl {
    public:
     explicit ParserImpl(const Logger& logger) : log_(logger) {}
 
    private:
-    struct PendingOp {
-        PendingOp(
-                std::list<ASTPtr>::iterator _node_it,
-                size_t _pos,
-                const GrammarRule& _rule)
-                : node_it(_node_it), pos(_pos), rule(_rule)
-        {
-        }
-
-        void print(std::ostream& os, size_t indent = 0) const
-        {
-            os << std::string(indent, ' ') << "PendingOp(\n";
-            os << std::string(indent + 2, ' ') << "AST Node:\n";
-            some(*node_it).print(os, indent + 4);
-            os << std::string(indent + 2, ' ') << "AST Pos: " << pos << ":\n";
-            const auto& loc = some(*node_it).loc();
-            os << std::string(indent + 4, ' ') << loc.pos_str() << "\n";
-            os << loc.contents_str(indent + 4);
-            os << std::string(indent + 2, ' ') << "Rule:\n";
-            os << std::string(indent + 4, ' ') << rule.get().info_str() << "\n";
-            os << std::string(indent, ' ') << ")\n";
-        }
-
-        std::list<ASTPtr>::iterator node_it;
-        size_t pos;
-        std::reference_wrapper<const GrammarRule> rule;
-    };
-
     void check_partially_parsed_expr_has_no_unmergeable_adjacent_exprs(
             const SourceLocation& full_loc,
             const std::list<ASTPtr>& nodes) const
@@ -296,36 +327,6 @@ class ParserImpl {
                 }
                 i++;
             }
-
-            const auto pending_op_comparator = [](const PendingOp& lhs,
-                                                  const PendingOp& rhs) {
-                const auto& lrule = lhs.rule.get();
-                const auto& rrule = rhs.rule.get();
-
-                if (lrule.precedence() != rrule.precedence()) {
-                    return lrule.precedence() < rrule.precedence();
-                }
-                if (lrule.associativity() != rrule.associativity()) {
-                    throw ParseError(
-                            maybe_loc(*lhs.node_it) + maybe_loc(*rhs.node_it),
-                            "Two symbols ('"
-                                    + std::string{ sym_to_debug_str(
-                                            lrule.op()) }
-                                    + "' and '"
-                                    + std::string{ sym_to_debug_str(
-                                            rrule.op()) }
-                                    + "') with the same precedence can't have different associativities.");
-                }
-                const auto associativity = lrule.associativity();
-                switch (associativity) {
-                    case Associativity::LEFT_TO_RIGHT:
-                        return lhs.pos < rhs.pos;
-                    case Associativity::RIGHT_TO_LEFT:
-                        return lhs.pos > rhs.pos;
-                    default:
-                        throw InvariantViolation("Illegal associativity!");
-                }
-            };
 
             std::sort(
                     sorted_pending_ops.begin(),
