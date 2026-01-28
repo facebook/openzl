@@ -118,7 +118,7 @@ class ParserImpl {
         }
 
         ++it2;
-        while (it2 != end) {
+        for (; it2 != end; it1++, it2++) {
             const auto& lhs = some(*it1);
             const auto& rhs = some(*it2);
 
@@ -126,13 +126,14 @@ class ParserImpl {
             const auto rhs_is_sym  = rhs.as_sym() != nullptr;
             const auto rhs_is_list = rhs.as_list() != nullptr;
 
+            // Check for two adjacent expressions.
             if (!lhs_is_sym && !rhs_is_sym && !rhs_is_list) {
                 // TODO: actually consult implicit operators list?
                 throw ParseError(
                         lhs.loc() + rhs.loc(),
                         "Expected operator between expressions.");
             }
-
+            // Check for two adjacent binary operators.
             if (lhs_is_sym && rhs_is_sym) {
                 const auto lhs_sym = **lhs.as_sym();
                 const auto rhs_sym = **rhs.as_sym();
@@ -144,9 +145,6 @@ class ParserImpl {
                             "Expected expression between operators.");
                 }
             }
-
-            it1 = it2;
-            ++it2;
         }
     }
 
@@ -156,49 +154,48 @@ class ParserImpl {
             const GrammarRule& rule,
             const ASTPtr& lhs) const
     {
-        const auto arity = rule.arity();
+        if (!(rules.size() == 1 || rules.size() == 2)) {
+            throw InvariantViolation(
+                    loc, "Invalid number of rules (not 1 or 2)!");
+        }
 
         if (rules.size() == 1) {
             if (&rules[0].get() != &rule) {
                 throw InvariantViolation(
-                        loc,
-                        "Processing a rule not in the list of rules for that op!");
+                        loc, "Rule not in the list of rules for that op!");
             }
-            return arity;
+            return rule.arity();
         }
 
-        if (rules.size() != 2) {
-            throw InvariantViolation(loc, "More than two rules!");
-        }
-
-        std::set<Arity> arities;
+        // For ambigious operators, we expect exactly two arity rules, one
+        // prefix unary and one infix binary.
+        bool has_prefix_unary = false;
+        bool has_infix_binary = false;
         for (const auto& r : rules) {
-            arities.insert(r.get().arity());
+            has_infix_binary |= (r.get().arity() == Arity::INFIX_BINARY);
+            has_prefix_unary |= (r.get().arity() == Arity::PREFIX_UNARY);
         }
 
-        if (arities
-            != std::set<Arity>{
-                    { Arity::PREFIX_UNARY, Arity::INFIX_BINARY } }) {
+        if (!(has_infix_binary && has_prefix_unary)) {
             throw InvariantViolation(
                     loc,
                     "Can only handle operators with more than one interpretation when the possible interpretations are (1) prefix-unary or (2) infix-binary!");
         }
 
+        // If there's no lhs, we resolve to prefix-unary.
         if (lhs == nullptr) {
             return Arity::PREFIX_UNARY;
         }
-
+        // If the lhs is an expression, we resolve to infix-binary.
         if (lhs->as_sym() == nullptr) {
             return Arity::INFIX_BINARY;
         }
 
         const auto& lhs_sym     = *lhs->as_sym();
         const auto lhs_sym_type = sym_type(*lhs_sym);
-
         if (lhs_sym_type == SymbolType::OPERATOR) {
             // TODO: handle postfix-unary ops if/when they're
             // added.
-            // const auto& lhs_rules = sym_to_rules(*lhs_sym);
             return Arity::PREFIX_UNARY;
         } else {
             // This... shouldn't happen?
