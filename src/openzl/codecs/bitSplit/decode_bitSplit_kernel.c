@@ -10,11 +10,11 @@ uint64_t ZS_bitSplitDecode64(
         size_t idx)
 {
     uint64_t result = 0;
-    size_t bitPos = 0;
+    size_t bitPos   = 0;
 
     for (size_t i = 0; i < nbWidths; i++) {
         unsigned const width = bitWidths[i];
-        uint64_t extracted = 0;
+        uint64_t extracted   = 0;
 
         switch (inputWidths[i]) {
             case 1:

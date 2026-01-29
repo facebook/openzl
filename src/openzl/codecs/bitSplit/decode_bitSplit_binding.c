@@ -73,14 +73,11 @@ ZL_Report DI_bitSplit(
     }
 
     // Validate: must have at least one width
-    ZL_RET_R_IF_EQ(
-            corruption,
-            nbWidths,
-            0,
-            "bitSplit: no bit widths present");
+    ZL_RET_R_IF_EQ(corruption, nbWidths, 0, "bitSplit: no bit widths present");
 
     // Validate number of input streams
-    // For partial coverage, we may have fewer input streams (the last is implicit zeros)
+    // For partial coverage, we may have fewer input streams (the last is
+    // implicit zeros)
     ZL_RET_R_IF_GT(
             corruption,
             nbVariableSrcs,
@@ -123,14 +120,14 @@ ZL_Report DI_bitSplit(
                 expectedWidth,
                 "bitSplit: input stream element width mismatch");
 
-        inputPtrs[i] = ZL_Input_ptr(in);
+        inputPtrs[i]   = ZL_Input_ptr(in);
         inputWidths[i] = expectedWidth;
     }
 
     // Handle missing input streams (implicit zeros for partial coverage)
     // If nbVariableSrcs < nbWidths, the missing stream contributes zeros
     for (size_t i = nbVariableSrcs; i < nbWidths; i++) {
-        inputPtrs[i] = NULL; // Will be treated as zeros
+        inputPtrs[i]   = NULL; // Will be treated as zeros
         inputWidths[i] = ZS_bitSplit_outputEltWidth(allWidths[i]);
     }
 
@@ -147,7 +144,7 @@ ZL_Report DI_bitSplit(
     // Reconstruct each element
     for (size_t e = 0; e < nbElts; e++) {
         uint64_t value = 0;
-        size_t bitPos = 0;
+        size_t bitPos  = 0;
 
         for (size_t i = 0; i < nbWidths; i++) {
             uint64_t part = 0;

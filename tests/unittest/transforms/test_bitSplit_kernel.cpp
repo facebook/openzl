@@ -44,7 +44,7 @@ TEST_F(BitSplitKernelTest, OutputEltWidth)
 TEST_F(BitSplitKernelTest, ValidateParams_Valid)
 {
     uint8_t widths1[] = { 8 };
-    size_t sum = 0;
+    size_t sum        = 0;
     EXPECT_EQ(ZS_bitSplit_validateParams(widths1, 1, 8, &sum), 0);
     EXPECT_EQ(sum, 8);
 
@@ -78,7 +78,8 @@ TEST_F(BitSplitKernelTest, TopBitsAreZero)
     EXPECT_TRUE(ZS_bitSplit_topBitsAreZero(0xFFFFFFFF, 32));
 
     // Partial coverage with top bits zero
-    EXPECT_TRUE(ZS_bitSplit_topBitsAreZero(0x0FFF, 12)); // 12 bits used, top 4 zero
+    EXPECT_TRUE(
+            ZS_bitSplit_topBitsAreZero(0x0FFF, 12)); // 12 bits used, top 4 zero
     EXPECT_TRUE(ZS_bitSplit_topBitsAreZero(0x00000FFF, 12));
 
     // Partial coverage with top bits non-zero
@@ -89,7 +90,7 @@ TEST_F(BitSplitKernelTest, TopBitsAreZero)
 TEST_F(BitSplitKernelTest, EncodeDecodeSingleValue_8bit)
 {
     // Split 8-bit value 0xA5 into [4, 4]
-    uint8_t bitWidths[] = { 4, 4 };
+    uint8_t bitWidths[]   = { 4, 4 };
     size_t outputWidths[] = { 1, 1 };
 
     uint8_t out0, out1;
@@ -110,7 +111,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodeSingleValue_8bit)
 TEST_F(BitSplitKernelTest, EncodeDecodeSingleValue_32bit)
 {
     // Split 32-bit value 0xDEADBEEF into [4, 8, 12, 8]
-    uint8_t bitWidths[] = { 4, 8, 12, 8 };
+    uint8_t bitWidths[]   = { 4, 8, 12, 8 };
     size_t outputWidths[] = { 1, 1, 2, 1 }; // u8, u8, u16, u8
 
     uint8_t out0, out1, out3;
@@ -135,7 +136,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodePartialCoverage)
 {
     // Split 32-bit value with only 12 bits used (top 20 bits are zero)
     // Value: 0x00000ABC (bits 0-11 used)
-    uint8_t bitWidths[] = { 3, 4, 5 };
+    uint8_t bitWidths[]   = { 3, 4, 5 };
     size_t outputWidths[] = { 1, 1, 1 };
 
     uint8_t out0, out1, out2;
@@ -161,7 +162,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodePartialCoverage)
 TEST_F(BitSplitKernelTest, EncodeDecodeSingleStream)
 {
     // Single stream: bitSplit(32) on 32-bit value (identity-like)
-    uint8_t bitWidths[] = { 32 };
+    uint8_t bitWidths[]   = { 32 };
     size_t outputWidths[] = { 4 }; // u32
 
     uint32_t out0;
@@ -179,7 +180,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodeSingleStream)
 TEST_F(BitSplitKernelTest, EncodeDecodeMultipleElements)
 {
     // Test encoding/decoding array of values
-    uint8_t bitWidths[] = { 4, 4 };
+    uint8_t bitWidths[]   = { 4, 4 };
     size_t outputWidths[] = { 1, 1 };
 
     std::vector<uint8_t> input = { 0x12, 0x34, 0x56, 0x78, 0x9A };
@@ -196,7 +197,8 @@ TEST_F(BitSplitKernelTest, EncodeDecodeMultipleElements)
     const void* inputs[] = { stream0.data(), stream1.data() };
     size_t inputWidths[] = { 1, 1 };
     for (size_t i = 0; i < input.size(); i++) {
-        uint64_t result = ZS_bitSplitDecode64(bitWidths, 2, inputs, inputWidths, i);
+        uint64_t result =
+                ZS_bitSplitDecode64(bitWidths, 2, inputs, inputWidths, i);
         EXPECT_EQ(result, input[i]) << "Mismatch at index " << i;
     }
 }
@@ -204,7 +206,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodeMultipleElements)
 TEST_F(BitSplitKernelTest, EncodeDecodeWideValues)
 {
     // 64-bit value split into [16, 16, 16, 16]
-    uint8_t bitWidths[] = { 16, 16, 16, 16 };
+    uint8_t bitWidths[]   = { 16, 16, 16, 16 };
     size_t outputWidths[] = { 2, 2, 2, 2 }; // all u16
 
     uint16_t out0, out1, out2, out3;

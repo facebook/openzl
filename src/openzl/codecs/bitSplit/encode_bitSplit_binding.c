@@ -47,7 +47,7 @@ ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
             "bitSplit bit widths parameter is NULL");
 
     const uint8_t* bitWidths = (const uint8_t*)widthsParam.paramRef;
-    size_t const nbWidths = (size_t)nbWidthsParam.paramValue;
+    size_t const nbWidths    = (size_t)nbWidthsParam.paramValue;
 
     // Validate: must have at least one width
     ZL_RET_R_IF_EQ(
@@ -61,10 +61,10 @@ ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
             inputEltWidth == 1 || inputEltWidth == 2 || inputEltWidth == 4
             || inputEltWidth == 8);
     size_t const inputEltWidthBits = inputEltWidth * 8;
-    size_t const nbElts = ZL_Input_numElts(in);
+    size_t const nbElts            = ZL_Input_numElts(in);
 
     // Validate parameters
-    size_t sumWidths = 0;
+    size_t sumWidths           = 0;
     int const validationResult = ZS_bitSplit_validateParams(
             bitWidths, nbWidths, inputEltWidthBits, &sumWidths);
     ZL_RET_R_IF_NE(
@@ -99,8 +99,8 @@ ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 
     for (size_t i = 0; i < nbWidths; i++) {
         outputWidths[i] = ZS_bitSplit_outputEltWidth(bitWidths[i]);
-        outputs[i] = ZL_Encoder_createTypedStream(
-                eictx, 0, nbElts, outputWidths[i]);
+        outputs[i] =
+                ZL_Encoder_createTypedStream(eictx, 0, nbElts, outputWidths[i]);
         ZL_RET_R_IF_NULL(allocation, outputs[i]);
     }
 
@@ -169,12 +169,10 @@ ZL_NodeID ZL_Compressor_registerBitSplitNode(
         return ZL_NODE_ILLEGAL;
     }
 
-    ZL_CopyParam const widthsParam = {
-        .paramId   = ZL_BITSPLIT_WIDTHS_PID,
-        .paramPtr  = bitWidths,
-        .paramSize = nbWidths
-    };
-    ZL_LocalCopyParams const lgp = { &widthsParam, 1 };
+    ZL_CopyParam const widthsParam = { .paramId   = ZL_BITSPLIT_WIDTHS_PID,
+                                       .paramPtr  = bitWidths,
+                                       .paramSize = nbWidths };
+    ZL_LocalCopyParams const lgp   = { &widthsParam, 1 };
 
     ZL_IntParam const nbWidthsParam = {
         .paramId    = ZL_BITSPLIT_NBWIDTHS_PID,
@@ -184,7 +182,5 @@ ZL_NodeID ZL_Compressor_registerBitSplitNode(
 
     ZL_LocalParams const lParams = { .copyParams = lgp, .intParams = lip };
     return ZL_Compressor_cloneNode(
-            cgraph,
-            (ZL_NodeID){ ZL_PrivateStandardNodeID_bitSplit },
-            &lParams);
+            cgraph, (ZL_NodeID){ ZL_PrivateStandardNodeID_bitSplit }, &lParams);
 }

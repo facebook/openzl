@@ -44,7 +44,8 @@ ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
  * @param cgraph The compressor graph to register with
  * @param bitWidths Array of bit widths (LSB to MSB order, 1 byte each)
  * @param nbWidths Number of bit widths (must be > 0)
- * @return Node ID for the configured bitSplit transform, or ZL_NODE_ILLEGAL on error
+ * @return Node ID for the configured bitSplit transform, or ZL_NODE_ILLEGAL on
+ * error
  *
  * Example:
  *   uint8_t widths[] = {4, 8, 12, 8};  // Split 32-bit into 4 ranges

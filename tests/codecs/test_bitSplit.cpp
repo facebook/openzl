@@ -37,8 +37,8 @@ class BitSplitTest : public CodecTest {
                 compressor_.get(), bitWidths, nbWidths);
         ASSERT_NE(bitSplitNode.nid, ZL_NODE_ILLEGAL.nid);
 
-        // bitSplit uses Variable Output (VO) - 1 port that generates N outputs at runtime
-        // The single successor will be instantiated N times
+        // bitSplit uses Variable Output (VO) - 1 port that generates N outputs
+        // at runtime The single successor will be instantiated N times
         auto graph = compressor_.buildStaticGraph(
                 bitSplitNode, { graphs::Compress{}() });
         compressor_.selectStartingGraph(graph);
