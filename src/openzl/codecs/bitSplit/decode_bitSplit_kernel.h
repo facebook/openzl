@@ -7,11 +7,6 @@
 #include <stdint.h>
 
 #include "openzl/codecs/bitSplit/bitSplit_common.h"
-#include "openzl/zl_portability.h"
-
-#if defined(__cplusplus)
-extern "C" {
-#endif
 
 /**
  * Decodes bit-split streams back into original values.
@@ -29,9 +24,5 @@ uint64_t ZS_bitSplitDecode64(
         const void* const inputs[],
         const size_t* inputWidths,
         size_t idx);
-
-#if defined(__cplusplus)
-}
-#endif
 
 #endif // ZSTRONG_TRANSFORMS_BITSPLIT_DECODE_BITSPLIT_KERNEL_H

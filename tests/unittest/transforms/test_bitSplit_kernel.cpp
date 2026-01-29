@@ -6,8 +6,10 @@
 
 #include <gtest/gtest.h>
 
+extern "C" {
 #include "openzl/codecs/bitSplit/decode_bitSplit_kernel.h"
 #include "openzl/codecs/bitSplit/encode_bitSplit_kernel.h"
+}
 
 namespace openzl {
 namespace tests {

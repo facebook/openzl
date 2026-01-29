@@ -1,5 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+#include <assert.h>
 #include "openzl/codecs/bitSplit/bitSplit_common.h"
 
 size_t ZS_bitSplit_outputEltWidth(unsigned bitWidth)
@@ -13,5 +14,6 @@ size_t ZS_bitSplit_outputEltWidth(unsigned bitWidth)
     if (bitWidth <= 32) {
         return 4;
     }
+    assert(bitWidth <= 64);
     return 8;
 }

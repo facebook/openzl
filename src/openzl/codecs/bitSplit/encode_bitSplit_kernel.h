@@ -7,11 +7,6 @@
 #include <stdint.h>
 
 #include "openzl/codecs/bitSplit/bitSplit_common.h"
-#include "openzl/zl_portability.h"
-
-#if defined(__cplusplus)
-extern "C" {
-#endif
 
 /**
  * Encodes a single element by extracting bit ranges.
@@ -52,9 +47,5 @@ int ZS_bitSplit_validateParams(
  * @return 1 if top bits are zero, 0 otherwise
  */
 int ZS_bitSplit_topBitsAreZero(uint64_t value, size_t sumWidths);
-
-#if defined(__cplusplus)
-}
-#endif
 
 #endif // ZSTRONG_TRANSFORMS_BITSPLIT_ENCODE_BITSPLIT_KERNEL_H
