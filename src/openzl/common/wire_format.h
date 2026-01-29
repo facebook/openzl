@@ -300,8 +300,10 @@ typedef enum {
 
     ZL_StandardTransformID_lz4 = 62,
 
+    ZL_StandardTransformID_bitSplit = 63,
+
     ZL_StandardTransformID_end =
-            63 // last id, used to detect end of ID range (impacts
+            64 // last id, used to detect end of ID range (impacts
                // header encoding) give some room to be able to add new
                // transforms without breaking encoder / decoder
 } ZL_StandardTransformID;

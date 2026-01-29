@@ -47,6 +47,7 @@ sddl2_vm_test
 
 # dependencies
 /deps/*
+!/deps/googletest
 
 # Build system temporary objects
 build/

@@ -207,7 +207,7 @@ math.div               # star_count = remaining / 28
 
 # Create segment with all stars
 push.tag 1
-stack.rot              # Move type to TOS
+stack.rot              # Move Type to top of stack
 segment.create_tagged
 halt
 ```
