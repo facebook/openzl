@@ -2,6 +2,7 @@
 
 #include <string.h>
 
+#include "openzl/codecs/bitSplit/bitSplit_common.h"  /* ZS_bitSplit_outputEltWidth */
 #include "openzl/codecs/bitSplit/encode_bitSplit_binding.h"
 #include "openzl/codecs/bitSplit/encode_bitSplit_kernel.h"
 #include "openzl/common/assertion.h"
