@@ -4,7 +4,6 @@
 
 #include "openzl/codecs/bitSplit/decode_bitSplit_binding.h"
 #include "openzl/codecs/bitSplit/decode_bitSplit_kernel.h"
-#include "openzl/codecs/bitSplit/encode_bitSplit_kernel.h" // ZS_bitSplit_outputEltWidth
 #include "openzl/common/assertion.h"
 #include "openzl/decompress/dictx.h"
 

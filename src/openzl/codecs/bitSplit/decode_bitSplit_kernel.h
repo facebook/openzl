@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "openzl/codecs/bitSplit/bitSplit_common.h"
 #include "openzl/zl_portability.h"
 
 #if defined(__cplusplus)
