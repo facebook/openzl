@@ -73,6 +73,16 @@ ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
             0,
             "bitSplit parameter validation failed");
 
+    // Validate top bits are zero if partial coverage
+    if (sumWidths < inputEltWidthBits) {
+        ZL_RET_R_IF_EQ(
+                corruption,
+                ZS_bitSplit_topBitsAreZero(
+                        ZL_Input_ptr(in), inputEltWidth, nbElts, sumWidths),
+                0,
+                "bitSplit: top bits must be zero for partial coverage");
+    }
+
     // Build header: [inputEltWidth] [widths...]
     // Full coverage: omit last width (computed by decoder)
     // Partial coverage: send all widths (decoder adds implicit padding)
@@ -95,6 +105,7 @@ ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     // Create output streams
     ZL_Output* outputs[64];
     size_t outputWidths[64];
+    void* dstPtrs[64];
     ZL_ASSERT_LE(nbWidths, 64);
 
     for (size_t i = 0; i < nbWidths; i++) {
@@ -102,50 +113,18 @@ ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
         outputs[i] =
                 ZL_Encoder_createTypedStream(eictx, 0, nbElts, outputWidths[i]);
         ZL_RET_R_IF_NULL(allocation, outputs[i]);
-    }
-
-    // Process each element
-    const void* srcPtr = ZL_Input_ptr(in);
-    void* dstPtrs[64];
-    for (size_t i = 0; i < nbWidths; i++) {
         dstPtrs[i] = ZL_Output_ptr(outputs[i]);
     }
 
-    for (size_t e = 0; e < nbElts; e++) {
-        // Read input value
-        uint64_t value = 0;
-        switch (inputEltWidth) {
-            case 1:
-                value = ((const uint8_t*)srcPtr)[e];
-                break;
-            case 2:
-                value = ((const uint16_t*)srcPtr)[e];
-                break;
-            case 4:
-                value = ((const uint32_t*)srcPtr)[e];
-                break;
-            case 8:
-                value = ((const uint64_t*)srcPtr)[e];
-                break;
-        }
-
-        // Validate top bits are zero if partial coverage
-        if (sumWidths < inputEltWidthBits) {
-            ZL_RET_R_IF_EQ(
-                    corruption,
-                    ZS_bitSplit_topBitsAreZero(value, sumWidths),
-                    0,
-                    "bitSplit: top bits must be zero for partial coverage");
-        }
-
-        // Split the value into bit ranges
-        ZS_bitSplitEncode64(value, bitWidths, nbWidths, dstPtrs, outputWidths);
-
-        // Advance output pointers
-        for (size_t i = 0; i < nbWidths; i++) {
-            dstPtrs[i] = (char*)dstPtrs[i] + outputWidths[i];
-        }
-    }
+    // Kernel owns the hot loop - single call processes all elements
+    ZS_bitSplitEncode64(
+            ZL_Input_ptr(in),
+            inputEltWidth,
+            nbElts,
+            bitWidths,
+            nbWidths,
+            dstPtrs,
+            outputWidths);
 
     // Commit all outputs
     for (size_t i = 0; i < nbWidths; i++) {

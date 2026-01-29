@@ -138,59 +138,15 @@ ZL_Report DI_bitSplit(
             ZL_Decoder_create1OutStream(dictx, nbElts, outputEltWidth);
     ZL_RET_R_IF_NULL(allocation, out);
 
-    void* dstPtr = ZL_Output_ptr(out);
-
-    // Reconstruct each element
-    for (size_t e = 0; e < nbElts; e++) {
-        uint64_t value = 0;
-        size_t bitPos  = 0;
-
-        for (size_t i = 0; i < nbWidths; i++) {
-            uint64_t part = 0;
-            if (inputPtrs[i] != NULL) {
-                // Read from actual input stream
-                switch (inputWidths[i]) {
-                    case 1:
-                        part = ((const uint8_t*)inputPtrs[i])[e];
-                        break;
-                    case 2:
-                        part = ((const uint16_t*)inputPtrs[i])[e];
-                        break;
-                    case 4:
-                        part = ((const uint32_t*)inputPtrs[i])[e];
-                        break;
-                    case 8:
-                        part = ((const uint64_t*)inputPtrs[i])[e];
-                        break;
-                }
-            }
-            // else: inputPtrs[i] == NULL means implicit zeros, part stays 0
-
-            // Mask to the bit width
-            uint64_t const mask =
-                    (allWidths[i] == 64) ? ~0ULL : ((1ULL << allWidths[i]) - 1);
-            part &= mask;
-
-            // Place in output value
-            value |= (part << bitPos);
-            bitPos += allWidths[i];
-        }
-
-        switch (outputEltWidth) {
-            case 1:
-                ((uint8_t*)dstPtr)[e] = (uint8_t)value;
-                break;
-            case 2:
-                ((uint16_t*)dstPtr)[e] = (uint16_t)value;
-                break;
-            case 4:
-                ((uint32_t*)dstPtr)[e] = (uint32_t)value;
-                break;
-            case 8:
-                ((uint64_t*)dstPtr)[e] = value;
-                break;
-        }
-    }
+    // Kernel owns the hot loop - single call processes all elements
+    ZS_bitSplitDecode64(
+            inputPtrs,
+            inputWidths,
+            allWidths,
+            nbWidths,
+            ZL_Output_ptr(out),
+            outputEltWidth,
+            nbElts);
 
     ZL_RET_R_IF_ERR(ZL_Output_commit(out, nbElts));
     return ZL_returnValue(1);

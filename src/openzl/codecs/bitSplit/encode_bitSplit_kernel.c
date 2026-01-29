@@ -23,43 +23,90 @@ int ZS_bitSplit_validateParams(
     return 0;
 }
 
-int ZS_bitSplit_topBitsAreZero(uint64_t value, size_t sumWidths)
+int ZS_bitSplit_topBitsAreZero(
+        const void* src,
+        size_t srcEltWidth,
+        size_t nbElts,
+        size_t sumWidths)
 {
     if (sumWidths >= 64) {
         return 1;
     }
     uint64_t const mask = ~((1ULL << sumWidths) - 1);
-    return (value & mask) == 0;
+
+    for (size_t e = 0; e < nbElts; e++) {
+        uint64_t value = 0;
+        switch (srcEltWidth) {
+            case 1:
+                value = ((const uint8_t*)src)[e];
+                break;
+            case 2:
+                value = ((const uint16_t*)src)[e];
+                break;
+            case 4:
+                value = ((const uint32_t*)src)[e];
+                break;
+            case 8:
+                value = ((const uint64_t*)src)[e];
+                break;
+        }
+        if ((value & mask) != 0) {
+            return 0;
+        }
+    }
+    return 1;
 }
 
 void ZS_bitSplitEncode64(
-        uint64_t value,
+        const void* src,
+        size_t srcEltWidth,
+        size_t nbElts,
         const uint8_t* bitWidths,
         size_t nbWidths,
-        void* const outputs[],
-        const size_t* outputWidths)
+        void* const dstPtrs[],
+        const size_t* dstEltWidths)
 {
-    size_t bitPos = 0;
-    for (size_t i = 0; i < nbWidths; i++) {
-        unsigned const width = bitWidths[i];
-        uint64_t const mask  = (width >= 64) ? ~0ULL : ((1ULL << width) - 1);
-        uint64_t const extracted = (value >> bitPos) & mask;
-
-        switch (outputWidths[i]) {
+    for (size_t e = 0; e < nbElts; e++) {
+        // Read input value
+        uint64_t value = 0;
+        switch (srcEltWidth) {
             case 1:
-                *(uint8_t*)outputs[i] = (uint8_t)extracted;
+                value = ((const uint8_t*)src)[e];
                 break;
             case 2:
-                *(uint16_t*)outputs[i] = (uint16_t)extracted;
+                value = ((const uint16_t*)src)[e];
                 break;
             case 4:
-                *(uint32_t*)outputs[i] = (uint32_t)extracted;
+                value = ((const uint32_t*)src)[e];
                 break;
             case 8:
-                *(uint64_t*)outputs[i] = extracted;
+                value = ((const uint64_t*)src)[e];
                 break;
         }
 
-        bitPos += width;
+        // Split the value into bit ranges
+        size_t bitPos = 0;
+        for (size_t i = 0; i < nbWidths; i++) {
+            unsigned const width = bitWidths[i];
+            uint64_t const mask  = (width >= 64) ? ~0ULL : ((1ULL << width) - 1);
+            uint64_t const extracted = (value >> bitPos) & mask;
+
+            switch (dstEltWidths[i]) {
+                case 1:
+                    ((uint8_t*)dstPtrs[i])[e] = (uint8_t)extracted;
+                    break;
+                case 2:
+                    ((uint16_t*)dstPtrs[i])[e] = (uint16_t)extracted;
+                    break;
+                case 4:
+                    ((uint32_t*)dstPtrs[i])[e] = (uint32_t)extracted;
+                    break;
+                case 8:
+                    ((uint64_t*)dstPtrs[i])[e] = extracted;
+                    break;
+            }
+
+            bitPos += width;
+        }
     }
 }
