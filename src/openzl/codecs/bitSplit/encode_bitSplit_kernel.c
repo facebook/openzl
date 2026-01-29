@@ -57,7 +57,7 @@ int ZS_bitSplit_topBitsAreZero(
     return 1;
 }
 
-void ZS_bitSplitEncode64(
+void ZS_bitSplitEncode(
         const void* src,
         size_t srcEltWidth,
         size_t nbElts,
@@ -88,7 +88,7 @@ void ZS_bitSplitEncode64(
         size_t bitPos = 0;
         for (size_t i = 0; i < nbWidths; i++) {
             unsigned const width = bitWidths[i];
-            uint64_t const mask  = (width >= 64) ? ~0ULL : ((1ULL << width) - 1);
+            uint64_t const mask = (width >= 64) ? ~0ULL : ((1ULL << width) - 1);
             uint64_t const extracted = (value >> bitPos) & mask;
 
             switch (dstEltWidths[i]) {

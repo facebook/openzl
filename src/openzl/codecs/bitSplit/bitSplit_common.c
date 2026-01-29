@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include <assert.h>
 #include "openzl/codecs/bitSplit/bitSplit_common.h"
+#include <assert.h>
 
 size_t ZS_bitSplit_outputEltWidth(unsigned bitWidth)
 {

@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 
 extern "C" {
+#include "openzl/codecs/bitSplit/bitSplit_common.h"
 #include "openzl/codecs/bitSplit/decode_bitSplit_kernel.h"
 #include "openzl/codecs/bitSplit/encode_bitSplit_kernel.h"
 }
@@ -107,7 +108,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodeSingleValue_8bit)
     uint8_t out0, out1;
     void* outputs[] = { &out0, &out1 };
 
-    ZS_bitSplitEncode64(&input, 1, 1, bitWidths, 2, outputs, outputWidths);
+    ZS_bitSplitEncode(&input, 1, 1, bitWidths, 2, outputs, outputWidths);
 
     EXPECT_EQ(out0, 0x5); // bits 0-3
     EXPECT_EQ(out1, 0xA); // bits 4-7
@@ -116,7 +117,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodeSingleValue_8bit)
     const void* inputs[] = { &out0, &out1 };
     size_t inputWidths[] = { 1, 1 };
     uint8_t result;
-    ZS_bitSplitDecode64(inputs, inputWidths, bitWidths, 2, &result, 1, 1);
+    ZS_bitSplitDecode(&result, 1, 1, inputs, inputWidths, bitWidths, 2);
     EXPECT_EQ(result, 0xA5);
 }
 
@@ -131,7 +132,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodeSingleValue_32bit)
     uint16_t out2;
     void* outputs[] = { &out0, &out1, &out2, &out3 };
 
-    ZS_bitSplitEncode64(&input, 4, 1, bitWidths, 4, outputs, outputWidths);
+    ZS_bitSplitEncode(&input, 4, 1, bitWidths, 4, outputs, outputWidths);
 
     EXPECT_EQ(out0, 0xF);   // bits 0-3
     EXPECT_EQ(out1, 0xEE);  // bits 4-11
@@ -142,7 +143,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodeSingleValue_32bit)
     const void* inputs[] = { &out0, &out1, &out2, &out3 };
     size_t inputWidths[] = { 1, 1, 2, 1 };
     uint32_t result;
-    ZS_bitSplitDecode64(inputs, inputWidths, bitWidths, 4, &result, 4, 1);
+    ZS_bitSplitDecode(&result, 4, 1, inputs, inputWidths, bitWidths, 4);
     EXPECT_EQ(result, 0xDEADBEEF);
 }
 
@@ -157,7 +158,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodePartialCoverage)
     uint8_t out0, out1, out2;
     void* outputs[] = { &out0, &out1, &out2 };
 
-    ZS_bitSplitEncode64(&input, 4, 1, bitWidths, 3, outputs, outputWidths);
+    ZS_bitSplitEncode(&input, 4, 1, bitWidths, 3, outputs, outputWidths);
 
     // bits 0-2: 100 = 4
     // bits 3-6: 0111 = 7
@@ -170,7 +171,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodePartialCoverage)
     const void* inputs[] = { &out0, &out1, &out2 };
     size_t inputWidths[] = { 1, 1, 1 };
     uint32_t result;
-    ZS_bitSplitDecode64(inputs, inputWidths, bitWidths, 3, &result, 4, 1);
+    ZS_bitSplitDecode(&result, 4, 1, inputs, inputWidths, bitWidths, 3);
     EXPECT_EQ(result, input);
 }
 
@@ -184,13 +185,13 @@ TEST_F(BitSplitKernelTest, EncodeDecodeSingleStream)
     uint32_t out0;
     void* outputs[] = { &out0 };
 
-    ZS_bitSplitEncode64(&input, 4, 1, bitWidths, 1, outputs, outputWidths);
+    ZS_bitSplitEncode(&input, 4, 1, bitWidths, 1, outputs, outputWidths);
     EXPECT_EQ(out0, 0x12345678);
 
     const void* inputs[] = { &out0 };
     size_t inputWidths[] = { 4 };
     uint32_t result;
-    ZS_bitSplitDecode64(inputs, inputWidths, bitWidths, 1, &result, 4, 1);
+    ZS_bitSplitDecode(&result, 4, 1, inputs, inputWidths, bitWidths, 1);
     EXPECT_EQ(result, 0x12345678);
 }
 
@@ -207,7 +208,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodeMultipleElements)
     void* outputs[] = { stream0.data(), stream1.data() };
 
     // Encode all elements in one call
-    ZS_bitSplitEncode64(
+    ZS_bitSplitEncode(
             input.data(), 1, input.size(), bitWidths, 2, outputs, outputWidths);
 
     // Verify encoded values
@@ -220,14 +221,8 @@ TEST_F(BitSplitKernelTest, EncodeDecodeMultipleElements)
     const void* inputs[] = { stream0.data(), stream1.data() };
     size_t inputWidths[] = { 1, 1 };
     std::vector<uint8_t> decoded(input.size());
-    ZS_bitSplitDecode64(
-            inputs,
-            inputWidths,
-            bitWidths,
-            2,
-            decoded.data(),
-            1,
-            input.size());
+    ZS_bitSplitDecode(
+            decoded.data(), 1, input.size(), inputs, inputWidths, bitWidths, 2);
 
     for (size_t i = 0; i < input.size(); i++) {
         EXPECT_EQ(decoded[i], input[i]) << "Mismatch at index " << i;
@@ -244,7 +239,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodeWideValues)
     uint16_t out0, out1, out2, out3;
     void* outputs[] = { &out0, &out1, &out2, &out3 };
 
-    ZS_bitSplitEncode64(&input, 8, 1, bitWidths, 4, outputs, outputWidths);
+    ZS_bitSplitEncode(&input, 8, 1, bitWidths, 4, outputs, outputWidths);
 
     EXPECT_EQ(out0, 0xDEF0);
     EXPECT_EQ(out1, 0x9ABC);
@@ -254,7 +249,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodeWideValues)
     const void* inputs[] = { &out0, &out1, &out2, &out3 };
     size_t inputWidths[] = { 2, 2, 2, 2 };
     uint64_t result;
-    ZS_bitSplitDecode64(inputs, inputWidths, bitWidths, 4, &result, 8, 1);
+    ZS_bitSplitDecode(&result, 8, 1, inputs, inputWidths, bitWidths, 4);
     EXPECT_EQ(result, input);
 }
 

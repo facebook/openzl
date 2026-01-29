@@ -3,10 +3,8 @@
 #ifndef ZSTRONG_TRANSFORMS_BITSPLIT_ENCODE_BITSPLIT_KERNEL_H
 #define ZSTRONG_TRANSFORMS_BITSPLIT_ENCODE_BITSPLIT_KERNEL_H
 
-#include <stddef.h>
-#include <stdint.h>
-
-#include "openzl/codecs/bitSplit/bitSplit_common.h"
+#include <stddef.h> /* size_t */
+#include <stdint.h> /* uint8_t */
 
 /**
  * Encodes an array of elements by extracting bit ranges.
@@ -19,7 +17,7 @@
  * @param dstPtrs Array of destination pointers (one per bit range)
  * @param dstEltWidths Array of destination element widths in bytes
  */
-void ZS_bitSplitEncode64(
+void ZS_bitSplitEncode(
         const void* src,
         size_t srcEltWidth,
         size_t nbElts,

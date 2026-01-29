@@ -2,6 +2,7 @@
 
 #include <string.h>
 
+#include "openzl/codecs/bitSplit/bitSplit_common.h"
 #include "openzl/codecs/bitSplit/decode_bitSplit_binding.h"
 #include "openzl/codecs/bitSplit/decode_bitSplit_kernel.h"
 #include "openzl/common/assertion.h"
@@ -61,32 +62,29 @@ ZL_Report DI_bitSplit(
             inputEltWidthBits,
             "bitSplit: sum of stored widths exceeds input element width");
 
+    // Determine coverage based on number of input streams:
+    // - N inputs (== nbStoredWidths) → partial coverage, upper bits are zero
+    // - N+1 inputs → full coverage, last width = inputEltWidthBits - sum
     size_t const lastWidth = inputEltWidthBits - sumStoredWidths;
 
-    // Build complete widths array
-    uint8_t allWidths[65];
-    memcpy(allWidths, storedWidths, nbStoredWidths);
-    size_t nbWidths = nbStoredWidths;
-    if (lastWidth > 0) {
-        allWidths[nbWidths++] = (uint8_t)lastWidth;
+    uint8_t bitWidths[65];
+    size_t nbWidths;
+
+    if (nbVariableSrcs == nbStoredWidths) {
+        // Partial coverage: use stored widths as-is
+        memcpy(bitWidths, storedWidths, nbStoredWidths);
+        nbWidths = nbStoredWidths;
+    } else if (nbVariableSrcs == nbStoredWidths + 1) {
+        // Full coverage: add computed last width
+        memcpy(bitWidths, storedWidths, nbStoredWidths);
+        bitWidths[nbStoredWidths] = (uint8_t)lastWidth;
+        nbWidths                  = nbStoredWidths + 1;
+    } else {
+        ZL_RET_R_IF_NOT(corruption, 0, "bitSplit: input stream count mismatch");
     }
 
     // Validate: must have at least one width
     ZL_RET_R_IF_EQ(corruption, nbWidths, 0, "bitSplit: no bit widths present");
-
-    // Validate number of input streams
-    // For partial coverage, we may have fewer input streams (the last is
-    // implicit zeros)
-    ZL_RET_R_IF_GT(
-            corruption,
-            nbVariableSrcs,
-            nbWidths,
-            "bitSplit: too many input streams");
-    ZL_RET_R_IF_LT(
-            corruption,
-            nbVariableSrcs,
-            nbStoredWidths,
-            "bitSplit: not enough input streams");
 
     // Validate all input streams and get their pointers
     size_t nbElts = 0;
@@ -94,7 +92,7 @@ ZL_Report DI_bitSplit(
     size_t inputWidths[64];
     ZL_ASSERT_LE(nbWidths, 64);
 
-    for (size_t i = 0; i < nbVariableSrcs; i++) {
+    for (size_t i = 0; i < nbWidths; i++) {
         const ZL_Input* in = variableSrcs[i];
         ZL_ASSERT_NN(in);
         ZL_ASSERT_EQ(ZL_Input_type(in), ZL_Type_numeric);
@@ -112,7 +110,7 @@ ZL_Report DI_bitSplit(
         }
 
         // Verify element width matches expected
-        size_t const expectedWidth = ZS_bitSplit_outputEltWidth(allWidths[i]);
+        size_t const expectedWidth = ZS_bitSplit_outputEltWidth(bitWidths[i]);
         ZL_RET_R_IF_NE(
                 corruption,
                 ZL_Input_eltWidth(in),
@@ -121,13 +119,6 @@ ZL_Report DI_bitSplit(
 
         inputPtrs[i]   = ZL_Input_ptr(in);
         inputWidths[i] = expectedWidth;
-    }
-
-    // Handle missing input streams (implicit zeros for partial coverage)
-    // If nbVariableSrcs < nbWidths, the missing stream contributes zeros
-    for (size_t i = nbVariableSrcs; i < nbWidths; i++) {
-        inputPtrs[i]   = NULL; // Will be treated as zeros
-        inputWidths[i] = ZS_bitSplit_outputEltWidth(allWidths[i]);
     }
 
     // Use inputEltWidth from header for output (not computed from sum)
@@ -139,14 +130,14 @@ ZL_Report DI_bitSplit(
     ZL_RET_R_IF_NULL(allocation, out);
 
     // Kernel owns the hot loop - single call processes all elements
-    ZS_bitSplitDecode64(
-            inputPtrs,
-            inputWidths,
-            allWidths,
-            nbWidths,
+    ZS_bitSplitDecode(
             ZL_Output_ptr(out),
             outputEltWidth,
-            nbElts);
+            nbElts,
+            inputPtrs,
+            inputWidths,
+            bitWidths,
+            nbWidths);
 
     ZL_RET_R_IF_ERR(ZL_Output_commit(out, nbElts));
     return ZL_returnValue(1);

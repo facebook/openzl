@@ -117,7 +117,7 @@ ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     }
 
     // Kernel owns the hot loop - single call processes all elements
-    ZS_bitSplitEncode64(
+    ZS_bitSplitEncode(
             ZL_Input_ptr(in),
             inputEltWidth,
             nbElts,
