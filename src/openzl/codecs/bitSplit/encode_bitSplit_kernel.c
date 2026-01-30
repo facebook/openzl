@@ -2,6 +2,7 @@
 
 #include "openzl/codecs/bitSplit/encode_bitSplit_kernel.h"
 
+#include <assert.h> /* assert */
 #include <string.h>
 
 bool ZS_bitSplit_paramsAreValid(
@@ -10,6 +11,9 @@ bool ZS_bitSplit_paramsAreValid(
         size_t inputEltWidthBits,
         size_t* sumWidths)
 {
+    assert(bitWidths != NULL);
+    assert(nbWidths > 0);
+
     size_t sum = 0;
     for (size_t i = 0; i < nbWidths; i++) {
         if (bitWidths[i] == 0) {
@@ -32,6 +36,12 @@ bool ZS_bitSplit_topBitsAreZero(
         size_t nbElts,
         size_t sumWidths)
 {
+    if (nbElts == 0) return true;
+
+    assert(src != NULL);
+    assert(srcEltWidth == 1 || srcEltWidth == 2 || srcEltWidth == 4
+           || srcEltWidth == 8);
+
     if (sumWidths >= 64) {
         return true;
     }
@@ -69,6 +79,31 @@ void ZS_bitSplitEncode(
         const uint8_t* bitWidths,
         size_t nbWidths)
 {
+    if (nbElts == 0) return;
+
+    assert(dstPtrs != NULL);
+    assert(dstEltWidths != NULL);
+    assert(src != NULL);
+    assert(srcEltWidth == 1 || srcEltWidth == 2 || srcEltWidth == 4
+           || srcEltWidth == 8);
+    assert(bitWidths != NULL);
+    assert(nbWidths > 0);
+    assert(nbWidths <= 64);
+
+    /* Validate parameters and individual streams */
+    {
+        size_t sumBitWidths = 0;
+        for (size_t i = 0; i < nbWidths; i++) {
+            assert(dstPtrs[i] != NULL);
+            assert(dstEltWidths[i] == 1 || dstEltWidths[i] == 2
+                   || dstEltWidths[i] == 4 || dstEltWidths[i] == 8);
+            assert(bitWidths[i] > 0);
+            assert(bitWidths[i] <= dstEltWidths[i] * 8);
+            sumBitWidths += bitWidths[i];
+        }
+        assert(sumBitWidths <= srcEltWidth * 8);
+    }
+
     for (size_t e = 0; e < nbElts; e++) {
         // Read input value
         uint64_t value = 0;

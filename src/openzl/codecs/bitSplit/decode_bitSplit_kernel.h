@@ -16,13 +16,15 @@
  * If sum(bitWidths) < dstEltWidth*8, upper bits of output are zero.
  *
  * Preconditions:
- *   - dst != NULL
  *   - dstEltWidth in {1, 2, 4, 8}
- *   - srcPtrs != NULL, and each srcPtrs[i] != NULL
- *   - srcEltWidths != NULL
- *   - bitWidths != NULL, each bitWidths[i] > 0
  *   - 0 < nbWidths <= 64
- *   - sum(bitWidths) <= dstEltWidth * 8
+ *   - If nbElts > 0:
+ *     - dst != NULL
+ *     - srcPtrs != NULL, and each srcPtrs[i] != NULL
+ *     - srcEltWidths != NULL, each srcEltWidths[i] in {1, 2, 4, 8}
+ *     - bitWidths != NULL, each bitWidths[i] > 0
+ *     - Each bitWidths[i] <= srcEltWidths[i] * 8
+ *     - sum(bitWidths) <= dstEltWidth * 8
  *
  * @param dst Destination array for reconstructed values
  * @param dstEltWidth Element width of destination in bytes (1, 2, 4, or 8)

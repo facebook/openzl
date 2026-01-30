@@ -111,6 +111,8 @@ void ZS_bitSplitDecode(
         const uint8_t* bitWidths,
         size_t nbWidths)
 {
+    if (nbElts == 0) return;
+
     assert(dst != NULL);
     assert(dstEltWidth == 1 || dstEltWidth == 2 || dstEltWidth == 4
            || dstEltWidth == 8);
@@ -125,7 +127,10 @@ void ZS_bitSplitDecode(
         size_t sumBitWidths = 0;
         for (size_t i = 0; i < nbWidths; i++) {
             assert(srcPtrs[i] != NULL);
+            assert(srcEltWidths[i] == 1 || srcEltWidths[i] == 2
+                   || srcEltWidths[i] == 4 || srcEltWidths[i] == 8);
             assert(bitWidths[i] > 0);
+            assert(bitWidths[i] <= srcEltWidths[i] * 8);
             sumBitWidths += bitWidths[i];
         }
         assert(sumBitWidths <= dstEltWidth * 8);
