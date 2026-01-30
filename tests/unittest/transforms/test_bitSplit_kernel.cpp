@@ -108,7 +108,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodeSingleValue_8bit)
     uint8_t out0, out1;
     void* outputs[] = { &out0, &out1 };
 
-    ZS_bitSplitEncode(&input, 1, 1, bitWidths, 2, outputs, outputWidths);
+    ZS_bitSplitEncode(outputs, outputWidths, 1, &input, 1, bitWidths, 2);
 
     EXPECT_EQ(out0, 0x5); // bits 0-3
     EXPECT_EQ(out1, 0xA); // bits 4-7
@@ -132,7 +132,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodeSingleValue_32bit)
     uint16_t out2;
     void* outputs[] = { &out0, &out1, &out2, &out3 };
 
-    ZS_bitSplitEncode(&input, 4, 1, bitWidths, 4, outputs, outputWidths);
+    ZS_bitSplitEncode(outputs, outputWidths, 1, &input, 4, bitWidths, 4);
 
     EXPECT_EQ(out0, 0xF);   // bits 0-3
     EXPECT_EQ(out1, 0xEE);  // bits 4-11
@@ -158,7 +158,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodePartialCoverage)
     uint8_t out0, out1, out2;
     void* outputs[] = { &out0, &out1, &out2 };
 
-    ZS_bitSplitEncode(&input, 4, 1, bitWidths, 3, outputs, outputWidths);
+    ZS_bitSplitEncode(outputs, outputWidths, 1, &input, 4, bitWidths, 3);
 
     // bits 0-2: 100 = 4
     // bits 3-6: 0111 = 7
@@ -185,7 +185,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodeSingleStream)
     uint32_t out0;
     void* outputs[] = { &out0 };
 
-    ZS_bitSplitEncode(&input, 4, 1, bitWidths, 1, outputs, outputWidths);
+    ZS_bitSplitEncode(outputs, outputWidths, 1, &input, 4, bitWidths, 1);
     EXPECT_EQ(out0, 0x12345678);
 
     const void* inputs[] = { &out0 };
@@ -209,7 +209,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodeMultipleElements)
 
     // Encode all elements in one call
     ZS_bitSplitEncode(
-            input.data(), 1, input.size(), bitWidths, 2, outputs, outputWidths);
+            outputs, outputWidths, input.size(), input.data(), 1, bitWidths, 2);
 
     // Verify encoded values
     for (size_t i = 0; i < input.size(); i++) {
@@ -239,7 +239,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodeWideValues)
     uint16_t out0, out1, out2, out3;
     void* outputs[] = { &out0, &out1, &out2, &out3 };
 
-    ZS_bitSplitEncode(&input, 8, 1, bitWidths, 4, outputs, outputWidths);
+    ZS_bitSplitEncode(outputs, outputWidths, 1, &input, 8, bitWidths, 4);
 
     EXPECT_EQ(out0, 0xDEF0);
     EXPECT_EQ(out1, 0x9ABC);

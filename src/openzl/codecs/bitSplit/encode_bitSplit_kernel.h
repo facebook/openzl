@@ -9,22 +9,22 @@
 /**
  * Encodes an array of elements by extracting bit ranges.
  *
- * @param src Source array of input values
- * @param srcEltWidth Element width of source (1, 2, 4, or 8 bytes)
- * @param nbElts Number of elements to encode
- * @param bitWidths Array of bit widths (LSB to MSB order)
- * @param nbWidths Number of bit widths
  * @param dstPtrs Array of destination pointers (one per bit range)
  * @param dstEltWidths Array of destination element widths in bytes
+ * @param nbElts Number of elements to encode
+ * @param src Source array of input values
+ * @param srcEltWidth Element width of source (1, 2, 4, or 8 bytes)
+ * @param bitWidths Array of bit widths (LSB to MSB order)
+ * @param nbWidths Number of bit widths
  */
 void ZS_bitSplitEncode(
+        void* const dstPtrs[],
+        const size_t* dstEltWidths,
+        size_t nbElts,
         const void* src,
         size_t srcEltWidth,
-        size_t nbElts,
         const uint8_t* bitWidths,
-        size_t nbWidths,
-        void* const dstPtrs[],
-        const size_t* dstEltWidths);
+        size_t nbWidths);
 
 /**
  * Validates bitSplit parameters.

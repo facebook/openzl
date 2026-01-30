@@ -58,13 +58,13 @@ int ZS_bitSplit_topBitsAreZero(
 }
 
 void ZS_bitSplitEncode(
+        void* const dstPtrs[],
+        const size_t* dstEltWidths,
+        size_t nbElts,
         const void* src,
         size_t srcEltWidth,
-        size_t nbElts,
         const uint8_t* bitWidths,
-        size_t nbWidths,
-        void* const dstPtrs[],
-        const size_t* dstEltWidths)
+        size_t nbWidths)
 {
     for (size_t e = 0; e < nbElts; e++) {
         // Read input value
