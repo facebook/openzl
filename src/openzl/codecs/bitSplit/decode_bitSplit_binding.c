@@ -92,7 +92,7 @@ ZL_Report DI_bitSplit(
     // Validate: must have at least one width
     ZL_RET_R_IF_EQ(corruption, nbWidths, 0, "bitSplit: no bit widths present");
 
-    // Validate all input streams and get their pointers
+    // Validate all input streams, and collect their pointers
     size_t nbElts = 0;
     const void* inputPtrs[64];
     size_t inputWidths[64];
@@ -114,6 +114,14 @@ ZL_Report DI_bitSplit(
                     nbElts,
                     "bitSplit: all input streams must have same element count");
         }
+
+        // Verify bit width doesn't exceed input stream capacity
+        size_t const inputEltWidthBits = ZL_Input_eltWidth(in) * 8;
+        ZL_RET_R_IF_GT(
+                corruption,
+                bitWidths[i],
+                inputEltWidthBits,
+                "bitSplit: bit width exceeds input stream element width");
 
         // Verify element width matches expected
         size_t const expectedWidth = ZS_bitSplit_outputEltWidth(bitWidths[i]);
