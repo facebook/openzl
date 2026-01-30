@@ -71,6 +71,7 @@ bool ZS_bitSplit_topBitsAreZero(
  *     - bitWidths != NULL, each bitWidths[i] > 0
  *     - sum(bitWidths) <= srcEltWidth * 8
  *     - Each bitWidths[i] <= dstEltWidths[i] * 8
+ *     - Top bits of src elements (beyond sum(bitWidths)) must be zero
  *
  * @param dstPtrs Array of destination pointers (one per bit range)
  * @param dstEltWidths Array of destination element widths in bytes

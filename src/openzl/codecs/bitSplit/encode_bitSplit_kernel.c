@@ -30,23 +30,12 @@ bool ZS_bitSplit_paramsAreValid(
     return true;
 }
 
-bool ZS_bitSplit_topBitsAreZero(
+static inline bool ZS_checkTopBitsZero(
         const void* src,
         size_t srcEltWidth,
         size_t nbElts,
-        size_t sumWidths)
+        uint64_t mask)
 {
-    if (nbElts == 0) return true;
-
-    assert(src != NULL);
-    assert(srcEltWidth == 1 || srcEltWidth == 2 || srcEltWidth == 4
-           || srcEltWidth == 8);
-
-    if (sumWidths >= 64) {
-        return true;
-    }
-    uint64_t const mask = ~((1ULL << sumWidths) - 1);
-
     for (size_t e = 0; e < nbElts; e++) {
         uint64_t value = 0;
         switch (srcEltWidth) {
@@ -68,6 +57,88 @@ bool ZS_bitSplit_topBitsAreZero(
         }
     }
     return true;
+}
+
+bool ZS_bitSplit_topBitsAreZero(
+        const void* src,
+        size_t srcEltWidth,
+        size_t nbElts,
+        size_t sumWidths)
+{
+    if (nbElts == 0) return true;
+
+    assert(src != NULL);
+    assert(srcEltWidth == 1 || srcEltWidth == 2 || srcEltWidth == 4
+           || srcEltWidth == 8);
+
+    if (sumWidths >= srcEltWidth * 8) {
+        return true;  /* Full coverage, no top bits to check */
+    }
+    uint64_t const mask = ~((1ULL << sumWidths) - 1);
+
+    switch (srcEltWidth) {
+        case 1:
+            return ZS_checkTopBitsZero(src, 1, nbElts, mask);
+        case 2:
+            return ZS_checkTopBitsZero(src, 2, nbElts, mask);
+        case 4:
+            return ZS_checkTopBitsZero(src, 4, nbElts, mask);
+        case 8:
+            return ZS_checkTopBitsZero(src, 8, nbElts, mask);
+    }
+    return true;
+}
+
+static inline void ZS_encodeElements(
+        void* const dstPtrs[],
+        const size_t* dstEltWidths,
+        size_t nbElts,
+        const void* src,
+        size_t srcEltWidth,
+        const uint8_t* bitWidths,
+        size_t nbWidths)
+{
+    for (size_t e = 0; e < nbElts; e++) {
+        uint64_t value = 0;
+        switch (srcEltWidth) {
+            case 1:
+                value = ((const uint8_t*)src)[e];
+                break;
+            case 2:
+                value = ((const uint16_t*)src)[e];
+                break;
+            case 4:
+                value = ((const uint32_t*)src)[e];
+                break;
+            case 8:
+                value = ((const uint64_t*)src)[e];
+                break;
+        }
+
+        size_t bitPos = 0;
+        for (size_t i = 0; i < nbWidths; i++) {
+            unsigned const width = bitWidths[i];
+            uint64_t const mask = (width >= 64) ? ~0ULL : ((1ULL << width) - 1);
+            uint64_t const extracted = (value >> bitPos) & mask;
+
+            switch (dstEltWidths[i]) {
+                case 1:
+                    ((uint8_t*)dstPtrs[i])[e] = (uint8_t)extracted;
+                    break;
+                case 2:
+                    ((uint16_t*)dstPtrs[i])[e] = (uint16_t)extracted;
+                    break;
+                case 4:
+                    ((uint32_t*)dstPtrs[i])[e] = (uint32_t)extracted;
+                    break;
+                case 8:
+                    ((uint64_t*)dstPtrs[i])[e] = extracted;
+                    break;
+            }
+
+            bitPos += width;
+        }
+    }
 }
 
 void ZS_bitSplitEncode(
@@ -102,49 +173,26 @@ void ZS_bitSplitEncode(
             sumBitWidths += bitWidths[i];
         }
         assert(sumBitWidths <= srcEltWidth * 8);
+        assert(ZS_bitSplit_topBitsAreZero(src, srcEltWidth, nbElts, sumBitWidths));
     }
 
-    for (size_t e = 0; e < nbElts; e++) {
-        // Read input value
-        uint64_t value = 0;
-        switch (srcEltWidth) {
-            case 1:
-                value = ((const uint8_t*)src)[e];
-                break;
-            case 2:
-                value = ((const uint16_t*)src)[e];
-                break;
-            case 4:
-                value = ((const uint32_t*)src)[e];
-                break;
-            case 8:
-                value = ((const uint64_t*)src)[e];
-                break;
-        }
-
-        // Split the value into bit ranges
-        size_t bitPos = 0;
-        for (size_t i = 0; i < nbWidths; i++) {
-            unsigned const width = bitWidths[i];
-            uint64_t const mask = (width >= 64) ? ~0ULL : ((1ULL << width) - 1);
-            uint64_t const extracted = (value >> bitPos) & mask;
-
-            switch (dstEltWidths[i]) {
-                case 1:
-                    ((uint8_t*)dstPtrs[i])[e] = (uint8_t)extracted;
-                    break;
-                case 2:
-                    ((uint16_t*)dstPtrs[i])[e] = (uint16_t)extracted;
-                    break;
-                case 4:
-                    ((uint32_t*)dstPtrs[i])[e] = (uint32_t)extracted;
-                    break;
-                case 8:
-                    ((uint64_t*)dstPtrs[i])[e] = extracted;
-                    break;
-            }
-
-            bitPos += width;
-        }
+    /* Dispatch with constant srcEltWidth for compiler optimization */
+    switch (srcEltWidth) {
+        case 1:
+            ZS_encodeElements(
+                    dstPtrs, dstEltWidths, nbElts, src, 1, bitWidths, nbWidths);
+            break;
+        case 2:
+            ZS_encodeElements(
+                    dstPtrs, dstEltWidths, nbElts, src, 2, bitWidths, nbWidths);
+            break;
+        case 4:
+            ZS_encodeElements(
+                    dstPtrs, dstEltWidths, nbElts, src, 4, bitWidths, nbWidths);
+            break;
+        case 8:
+            ZS_encodeElements(
+                    dstPtrs, dstEltWidths, nbElts, src, 8, bitWidths, nbWidths);
+            break;
     }
 }
