@@ -59,6 +59,50 @@ static inline bool ZS_checkTopBitsZero(
     return true;
 }
 
+/*
+ * Specialized encoder for bf16 pattern:
+ * - srcEltWidth is 2 (uint16_t)
+ * - 3 streams with bitWidths {7, 8, 1}
+ * - All dstEltWidths are 1 (uint8_t)
+ *
+ * Layout: [mantissa:7][exponent:8][sign:1] = 16 bits
+ */
+static inline void ZS_bitSplit_bf16(
+        void* const dstPtrs[],
+        size_t nbElts,
+        const void* src)
+{
+    uint8_t* restrict const mantissa = (uint8_t*)dstPtrs[0];
+    uint8_t* restrict const exponent = (uint8_t*)dstPtrs[1];
+    uint8_t* restrict const sign     = (uint8_t*)dstPtrs[2];
+    const uint16_t* restrict const src16 = (const uint16_t*)src;
+
+    for (size_t e = 0; e < nbElts; e++) {
+        uint16_t const value = src16[e];
+        mantissa[e] = (uint8_t)(value & 0x7F);         /* bits 0-6 */
+        exponent[e] = (uint8_t)((value >> 7) & 0xFF);  /* bits 7-14 */
+        sign[e]     = (uint8_t)((value >> 15) & 0x01); /* bit 15 */
+    }
+}
+
+/*
+ * Check if parameters match the bf16 encode pattern.
+ */
+static inline bool ZS_isEncodeBf16Pattern(
+        size_t srcEltWidth,
+        const size_t* dstEltWidths,
+        const uint8_t* bitWidths,
+        size_t nbWidths)
+{
+    if (srcEltWidth != 2) return false;
+    if (nbWidths != 3) return false;
+    if (bitWidths[0] != 7 || bitWidths[1] != 8 || bitWidths[2] != 1)
+        return false;
+    if (dstEltWidths[0] != 1 || dstEltWidths[1] != 1 || dstEltWidths[2] != 1)
+        return false;
+    return true;
+}
+
 bool ZS_bitSplit_topBitsAreZero(
         const void* src,
         size_t srcEltWidth,
@@ -162,8 +206,8 @@ void ZS_bitSplitEncode(
     assert(nbWidths <= 64);
 
     /* Validate parameters and individual streams */
+    size_t sumBitWidths = 0;
     {
-        size_t sumBitWidths = 0;
         for (size_t i = 0; i < nbWidths; i++) {
             assert(dstPtrs[i] != NULL);
             assert(dstEltWidths[i] == 1 || dstEltWidths[i] == 2
@@ -176,7 +220,13 @@ void ZS_bitSplitEncode(
         assert(ZS_bitSplit_topBitsAreZero(src, srcEltWidth, nbElts, sumBitWidths));
     }
 
-    /* Dispatch with constant srcEltWidth for compiler optimization */
+    /* Check for specialized patterns and dispatch */
+    if (ZS_isEncodeBf16Pattern(srcEltWidth, dstEltWidths, bitWidths, nbWidths)) {
+        ZS_bitSplit_bf16(dstPtrs, nbElts, src);
+        return;
+    }
+
+    /* Generic path */
     switch (srcEltWidth) {
         case 1:
             ZS_encodeElements(
