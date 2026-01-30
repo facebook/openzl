@@ -13,10 +13,8 @@
  *
  * Layout: [mantissa:7][exponent:8][sign:1] = 16 bits
  */
-static inline void ZS_decodeBf16(
-        void* dst,
-        size_t nbElts,
-        const void* const srcPtrs[])
+static inline void
+ZS_decodeBf16(void* dst, size_t nbElts, const void* const srcPtrs[])
 {
     uint16_t* const dst16         = (uint16_t*)dst;
     const uint8_t* const mantissa = (const uint8_t*)srcPtrs[0];
@@ -24,9 +22,9 @@ static inline void ZS_decodeBf16(
     const uint8_t* const sign     = (const uint8_t*)srcPtrs[2];
 
     for (size_t e = 0; e < nbElts; e++) {
-        uint16_t value = (uint16_t)mantissa[e];        /* bits 0-6 */
-        value |= (uint16_t)exponent[e] << 7;           /* bits 7-14 */
-        value |= (uint16_t)(sign[e] & 1) << 15;        /* bit 15 */
+        uint16_t value = (uint16_t)mantissa[e]; /* bits 0-6 */
+        value |= (uint16_t)exponent[e] << 7;    /* bits 7-14 */
+        value |= (uint16_t)(sign[e] & 1) << 15; /* bit 15 */
         dst16[e] = value;
     }
 }
@@ -40,8 +38,10 @@ static inline bool ZS_isBf16Pattern(
         const uint8_t* bitWidths,
         size_t nbWidths)
 {
-    if (dstEltWidth != 2) return false;
-    if (nbWidths != 3) return false;
+    if (dstEltWidth != 2)
+        return false;
+    if (nbWidths != 3)
+        return false;
     if (bitWidths[0] != 7 || bitWidths[1] != 8 || bitWidths[2] != 1)
         return false;
     if (srcEltWidths[0] != 1 || srcEltWidths[1] != 1 || srcEltWidths[2] != 1)
@@ -111,7 +111,8 @@ void ZS_bitSplitDecode(
         const uint8_t* bitWidths,
         size_t nbWidths)
 {
-    if (nbElts == 0) return;
+    if (nbElts == 0)
+        return;
 
     assert(dst != NULL);
     assert(dstEltWidth == 1 || dstEltWidth == 2 || dstEltWidth == 4

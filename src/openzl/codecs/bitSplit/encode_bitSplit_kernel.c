@@ -67,21 +67,19 @@ static inline bool ZS_checkTopBitsZero(
  *
  * Layout: [mantissa:7][exponent:8][sign:1] = 16 bits
  */
-static inline void ZS_bitSplit_bf16(
-        void* const dstPtrs[],
-        size_t nbElts,
-        const void* src)
+static inline void
+ZS_bitSplit_bf16(void* const dstPtrs[], size_t nbElts, const void* src)
 {
-    uint8_t* restrict const mantissa = (uint8_t*)dstPtrs[0];
-    uint8_t* restrict const exponent = (uint8_t*)dstPtrs[1];
-    uint8_t* restrict const sign     = (uint8_t*)dstPtrs[2];
+    uint8_t* restrict const mantissa     = (uint8_t*)dstPtrs[0];
+    uint8_t* restrict const exponent     = (uint8_t*)dstPtrs[1];
+    uint8_t* restrict const sign         = (uint8_t*)dstPtrs[2];
     const uint16_t* restrict const src16 = (const uint16_t*)src;
 
     for (size_t e = 0; e < nbElts; e++) {
         uint16_t const value = src16[e];
-        mantissa[e] = (uint8_t)(value & 0x7F);         /* bits 0-6 */
-        exponent[e] = (uint8_t)((value >> 7) & 0xFF);  /* bits 7-14 */
-        sign[e]     = (uint8_t)((value >> 15) & 0x01); /* bit 15 */
+        mantissa[e]          = (uint8_t)(value & 0x7F);         /* bits 0-6 */
+        exponent[e]          = (uint8_t)((value >> 7) & 0xFF);  /* bits 7-14 */
+        sign[e]              = (uint8_t)((value >> 15) & 0x01); /* bit 15 */
     }
 }
 
@@ -94,8 +92,10 @@ static inline bool ZS_isEncodeBf16Pattern(
         const uint8_t* bitWidths,
         size_t nbWidths)
 {
-    if (srcEltWidth != 2) return false;
-    if (nbWidths != 3) return false;
+    if (srcEltWidth != 2)
+        return false;
+    if (nbWidths != 3)
+        return false;
     if (bitWidths[0] != 7 || bitWidths[1] != 8 || bitWidths[2] != 1)
         return false;
     if (dstEltWidths[0] != 1 || dstEltWidths[1] != 1 || dstEltWidths[2] != 1)
@@ -109,14 +109,15 @@ bool ZS_bitSplit_topBitsAreZero(
         size_t nbElts,
         size_t sumWidths)
 {
-    if (nbElts == 0) return true;
+    if (nbElts == 0)
+        return true;
 
     assert(src != NULL);
     assert(srcEltWidth == 1 || srcEltWidth == 2 || srcEltWidth == 4
            || srcEltWidth == 8);
 
     if (sumWidths >= srcEltWidth * 8) {
-        return true;  /* Full coverage, no top bits to check */
+        return true; /* Full coverage, no top bits to check */
     }
     uint64_t const mask = ~((1ULL << sumWidths) - 1);
 
@@ -194,7 +195,8 @@ void ZS_bitSplitEncode(
         const uint8_t* bitWidths,
         size_t nbWidths)
 {
-    if (nbElts == 0) return;
+    if (nbElts == 0)
+        return;
 
     assert(dstPtrs != NULL);
     assert(dstEltWidths != NULL);
@@ -217,11 +219,13 @@ void ZS_bitSplitEncode(
             sumBitWidths += bitWidths[i];
         }
         assert(sumBitWidths <= srcEltWidth * 8);
-        assert(ZS_bitSplit_topBitsAreZero(src, srcEltWidth, nbElts, sumBitWidths));
+        assert(ZS_bitSplit_topBitsAreZero(
+                src, srcEltWidth, nbElts, sumBitWidths));
     }
 
     /* Check for specialized patterns and dispatch */
-    if (ZS_isEncodeBf16Pattern(srcEltWidth, dstEltWidths, bitWidths, nbWidths)) {
+    if (ZS_isEncodeBf16Pattern(
+                srcEltWidth, dstEltWidths, bitWidths, nbWidths)) {
         ZS_bitSplit_bf16(dstPtrs, nbElts, src);
         return;
     }
