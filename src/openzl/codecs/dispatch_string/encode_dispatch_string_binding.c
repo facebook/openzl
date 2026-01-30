@@ -71,7 +71,7 @@ EI_dispatch_string(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
         outputSizes[indices[i]] += srcStrLens[i];
     }
 
-    ZL_DLOG(DEBUG,
+    ZL_DLOG(TRANSFORM,
             "EI_dispatch_string: splitting %u strings into %i outputs",
             nbElts,
             nbOutputs);
