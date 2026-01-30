@@ -135,6 +135,7 @@ void ZS_bitSplitDecode(
             sumBitWidths += bitWidths[i];
         }
         assert(sumBitWidths <= dstEltWidth * 8);
+        (void)sumBitWidths;
     }
 
     /* Check for specialized patterns and dispatch */

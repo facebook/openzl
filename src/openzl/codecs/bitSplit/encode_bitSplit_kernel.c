@@ -208,8 +208,8 @@ void ZS_bitSplitEncode(
     assert(nbWidths <= 64);
 
     /* Validate parameters and individual streams */
-    size_t sumBitWidths = 0;
     {
+        size_t sumBitWidths = 0;
         for (size_t i = 0; i < nbWidths; i++) {
             assert(dstPtrs[i] != NULL);
             assert(dstEltWidths[i] == 1 || dstEltWidths[i] == 2
@@ -221,6 +221,7 @@ void ZS_bitSplitEncode(
         assert(sumBitWidths <= srcEltWidth * 8);
         assert(ZS_bitSplit_topBitsAreZero(
                 src, srcEltWidth, nbElts, sumBitWidths));
+        (void)sumBitWidths;
     }
 
     /* Check for specialized patterns and dispatch */
