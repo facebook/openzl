@@ -44,34 +44,34 @@ TEST_F(BitSplitKernelTest, OutputEltWidth)
     EXPECT_EQ(ZS_bitSplit_outputEltWidth(64), 8);
 }
 
-TEST_F(BitSplitKernelTest, ValidateParams_Valid)
+TEST_F(BitSplitKernelTest, ParamsAreValid_Valid)
 {
     uint8_t widths1[] = { 8 };
     size_t sum        = 0;
-    EXPECT_EQ(ZS_bitSplit_validateParams(widths1, 1, 8, &sum), 0);
+    EXPECT_TRUE(ZS_bitSplit_paramsAreValid(widths1, 1, 8, &sum));
     EXPECT_EQ(sum, 8);
 
     uint8_t widths2[] = { 4, 8, 12, 8 };
-    EXPECT_EQ(ZS_bitSplit_validateParams(widths2, 4, 32, &sum), 0);
+    EXPECT_TRUE(ZS_bitSplit_paramsAreValid(widths2, 4, 32, &sum));
     EXPECT_EQ(sum, 32);
 
     // Partial coverage is valid
     uint8_t widths3[] = { 3, 4, 5 };
-    EXPECT_EQ(ZS_bitSplit_validateParams(widths3, 3, 32, &sum), 0);
+    EXPECT_TRUE(ZS_bitSplit_paramsAreValid(widths3, 3, 32, &sum));
     EXPECT_EQ(sum, 12);
 }
 
-TEST_F(BitSplitKernelTest, ValidateParams_Invalid)
+TEST_F(BitSplitKernelTest, ParamsAreValid_Invalid)
 {
     size_t sum = 0;
 
     // Zero width is invalid
     uint8_t widths1[] = { 0, 8 };
-    EXPECT_NE(ZS_bitSplit_validateParams(widths1, 2, 16, &sum), 0);
+    EXPECT_FALSE(ZS_bitSplit_paramsAreValid(widths1, 2, 16, &sum));
 
     // Sum exceeds element width
     uint8_t widths2[] = { 16, 16, 16 };
-    EXPECT_NE(ZS_bitSplit_validateParams(widths2, 3, 32, &sum), 0);
+    EXPECT_FALSE(ZS_bitSplit_paramsAreValid(widths2, 3, 32, &sum));
 }
 
 TEST_F(BitSplitKernelTest, TopBitsAreZero)

@@ -4,33 +4,36 @@
 
 #include <string.h>
 
-int ZS_bitSplit_validateParams(
+bool ZS_bitSplit_paramsAreValid(
         const uint8_t* bitWidths,
         size_t nbWidths,
         size_t inputEltWidthBits,
         size_t* sumWidths)
 {
-    *sumWidths = 0;
+    size_t sum = 0;
     for (size_t i = 0; i < nbWidths; i++) {
         if (bitWidths[i] == 0) {
-            return -1; // width == 0 is invalid
+            return false;
         }
-        *sumWidths += bitWidths[i];
+        sum += bitWidths[i];
     }
-    if (*sumWidths > inputEltWidthBits) {
-        return -2; // sum of widths exceeds input element width
+    if (sum > inputEltWidthBits) {
+        return false;
     }
-    return 0;
+    if (sumWidths != NULL) {
+        *sumWidths = sum;
+    }
+    return true;
 }
 
-int ZS_bitSplit_topBitsAreZero(
+bool ZS_bitSplit_topBitsAreZero(
         const void* src,
         size_t srcEltWidth,
         size_t nbElts,
         size_t sumWidths)
 {
     if (sumWidths >= 64) {
-        return 1;
+        return true;
     }
     uint64_t const mask = ~((1ULL << sumWidths) - 1);
 
@@ -51,10 +54,10 @@ int ZS_bitSplit_topBitsAreZero(
                 break;
         }
         if ((value & mask) != 0) {
-            return 0;
+            return false;
         }
     }
-    return 1;
+    return true;
 }
 
 void ZS_bitSplitEncode(

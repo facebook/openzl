@@ -65,22 +65,19 @@ ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     size_t const nbElts            = ZL_Input_numElts(in);
 
     // Validate parameters
-    size_t sumWidths           = 0;
-    int const validationResult = ZS_bitSplit_validateParams(
-            bitWidths, nbWidths, inputEltWidthBits, &sumWidths);
-    ZL_RET_R_IF_NE(
+    size_t sumWidths = 0;
+    ZL_RET_R_IF(
             nodeParameter_invalid,
-            validationResult,
-            0,
+            !ZS_bitSplit_paramsAreValid(
+                    bitWidths, nbWidths, inputEltWidthBits, &sumWidths),
             "bitSplit parameter validation failed");
 
     // Validate top bits are zero if partial coverage
     if (sumWidths < inputEltWidthBits) {
-        ZL_RET_R_IF_EQ(
+        ZL_RET_R_IF(
                 corruption,
-                ZS_bitSplit_topBitsAreZero(
+                !ZS_bitSplit_topBitsAreZero(
                         ZL_Input_ptr(in), inputEltWidth, nbElts, sumWidths),
-                0,
                 "bitSplit: top bits must be zero for partial coverage");
     }
 
