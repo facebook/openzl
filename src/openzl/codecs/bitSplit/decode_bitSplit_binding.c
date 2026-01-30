@@ -2,7 +2,7 @@
 
 #include <string.h>
 
-#include "openzl/codecs/bitSplit/bitSplit_common.h"
+#include "openzl/codecs/bitSplit/common_bitSplit_kernel.h"
 #include "openzl/codecs/bitSplit/decode_bitSplit_binding.h"
 #include "openzl/codecs/bitSplit/decode_bitSplit_kernel.h"
 #include "openzl/common/assertion.h"
