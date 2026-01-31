@@ -317,7 +317,7 @@ size_t bitSplitEncode_bf16_wrapper(
                             g_encState_bf16.dstStreams[1],
                             g_encState_bf16.dstStreams[2] };
 
-    ZS_bitSplitEncode(
+    ZL_bitSplitEncode(
             dstPtrs,
             dstEltWidths,
             nbElts,
@@ -385,7 +385,7 @@ size_t bitSplitEncode_bounded32_wrapper(
     void* dstPtrs[2]    = { g_encState_bounded32.dstStreams[0],
                             g_encState_bounded32.dstStreams[1] };
 
-    ZS_bitSplitEncode(
+    ZL_bitSplitEncode(
             dstPtrs,
             dstEltWidths,
             nbElts,
@@ -466,7 +466,7 @@ size_t bitSplitDecode_bf16_wrapper(
                                g_decState_bf16.srcStreams[1],
                                g_decState_bf16.srcStreams[2] };
 
-    ZS_bitSplitDecode(
+    ZL_bitSplitDecode(
             dst,
             dstEltWidth,
             nbElts,
@@ -532,7 +532,7 @@ size_t bitSplitDecode_bounded32_wrapper(
     const void* srcPtrs[2] = { g_decState_bounded32.srcStreams[0],
                                g_decState_bounded32.srcStreams[1] };
 
-    ZS_bitSplitDecode(
+    ZL_bitSplitDecode(
             dst,
             dstEltWidth,
             nbElts,

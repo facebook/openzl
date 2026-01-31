@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#ifndef ZSTRONG_TRANSFORMS_BITSPLIT_GRAPH_BITSPLIT_H
-#define ZSTRONG_TRANSFORMS_BITSPLIT_GRAPH_BITSPLIT_H
+#ifndef OPENZL_CODECS_BITSPLIT_GRAPH_BITSPLIT_H
+#define OPENZL_CODECS_BITSPLIT_GRAPH_BITSPLIT_H
 
 #include "openzl/zl_data.h"
 
@@ -15,4 +15,4 @@
         .soTypes             = ZL_STREAMTYPELIST(ZL_Type_numeric), \
     }
 
-#endif // ZSTRONG_TRANSFORMS_BITSPLIT_GRAPH_BITSPLIT_H
+#endif // OPENZL_CODECS_BITSPLIT_GRAPH_BITSPLIT_H

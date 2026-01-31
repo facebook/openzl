@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#ifndef ZSTRONG_TRANSFORMS_BITSPLIT_ENCODE_BITSPLIT_BINDING_H
-#define ZSTRONG_TRANSFORMS_BITSPLIT_ENCODE_BITSPLIT_BINDING_H
+#ifndef OPENZL_CODECS_BITSPLIT_ENCODE_BITSPLIT_BINDING_H
+#define OPENZL_CODECS_BITSPLIT_ENCODE_BITSPLIT_BINDING_H
 
 #include "openzl/codecs/common/graph_vo.h"
 #include "openzl/shared/portability.h"
@@ -58,4 +58,4 @@ ZL_NodeID ZL_Compressor_registerBitSplitNode(
 
 ZL_END_C_DECLS
 
-#endif // ZSTRONG_TRANSFORMS_BITSPLIT_ENCODE_BITSPLIT_BINDING_H
+#endif // OPENZL_CODECS_BITSPLIT_ENCODE_BITSPLIT_BINDING_H
