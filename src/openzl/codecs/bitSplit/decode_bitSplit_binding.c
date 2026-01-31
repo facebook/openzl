@@ -1,13 +1,11 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include <string.h>
-
-#include "openzl/codecs/bitSplit/common_bitSplit_kernel.h"
 #include "openzl/codecs/bitSplit/decode_bitSplit_binding.h"
+#include "openzl/codecs/bitSplit/common_bitSplit_kernel.h"
 #include "openzl/codecs/bitSplit/decode_bitSplit_kernel.h"
 #include "openzl/common/assertion.h"
 #include "openzl/decompress/dictx.h"
-#include "src/openzl/shared/mem.h" // ZL_memcpy
+#include "openzl/shared/mem.h" // ZL_memcpy
 
 ZL_Report DI_bitSplit(
         ZL_Decoder* dictx,

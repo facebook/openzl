@@ -1,15 +1,14 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include <string.h>
-
-#include "openzl/codecs/bitSplit/common_bitSplit_kernel.h" /* ZL_bitSplit_outputEltWidth */
 #include "openzl/codecs/bitSplit/encode_bitSplit_binding.h"
+#include "openzl/codecs/bitSplit/common_bitSplit_kernel.h" /* ZL_bitSplit_outputEltWidth */
 #include "openzl/codecs/bitSplit/encode_bitSplit_kernel.h"
 #include "openzl/common/assertion.h"
 #include "openzl/common/errors_internal.h"
 #include "openzl/common/logging.h"
 #include "openzl/compress/enc_interface.h"
 #include "openzl/compress/private_nodes.h"
+#include "openzl/shared/mem.h" // ZL_memcpy
 #include "openzl/zl_data.h"
 #include "openzl/zl_graph_api.h"
 
@@ -90,11 +89,11 @@ ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 
     if (sumWidths == inputEltWidthBits) {
         // Full coverage: omit last width (computed by decoder)
-        memcpy(header + 1, bitWidths, nbWidths - 1);
+        ZL_memcpy(header + 1, bitWidths, nbWidths - 1);
         headerSize = 1 + nbWidths - 1;
     } else {
         // Partial coverage: send all widths (decoder adds implicit padding)
-        memcpy(header + 1, bitWidths, nbWidths);
+        ZL_memcpy(header + 1, bitWidths, nbWidths);
         headerSize = 1 + nbWidths;
     }
 
@@ -133,7 +132,7 @@ ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 }
 
 ZL_NodeID ZL_Compressor_registerBitSplitNode(
-        ZL_Compressor* cgraph,
+        ZL_Compressor* compressor,
         const uint8_t* bitWidths,
         size_t nbWidths)
 {
@@ -159,5 +158,7 @@ ZL_NodeID ZL_Compressor_registerBitSplitNode(
 
     ZL_LocalParams const lParams = { .copyParams = lgp, .intParams = lip };
     return ZL_Compressor_cloneNode(
-            cgraph, (ZL_NodeID){ ZL_PrivateStandardNodeID_bitSplit }, &lParams);
+            compressor,
+            (ZL_NodeID){ ZL_PrivateStandardNodeID_bitSplit },
+            &lParams);
 }

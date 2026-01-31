@@ -52,7 +52,7 @@ ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
  *   ZL_NodeID node = ZL_Compressor_registerBitSplitNode(cgraph, widths, 4);
  */
 ZL_NodeID ZL_Compressor_registerBitSplitNode(
-        ZL_Compressor* cgraph,
+        ZL_Compressor* compressor,
         const uint8_t* bitWidths,
         size_t nbWidths);
 
