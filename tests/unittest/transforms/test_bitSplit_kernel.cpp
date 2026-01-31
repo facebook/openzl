@@ -24,40 +24,40 @@ class BitSplitKernelTest : public ::testing::Test {};
 TEST_F(BitSplitKernelTest, OutputEltWidth)
 {
     // 1-8 bits -> u8
-    EXPECT_EQ(ZS_bitSplit_outputEltWidth(1), 1);
-    EXPECT_EQ(ZS_bitSplit_outputEltWidth(7), 1);
-    EXPECT_EQ(ZS_bitSplit_outputEltWidth(8), 1);
+    EXPECT_EQ(ZL_bitSplit_outputEltWidth(1), 1);
+    EXPECT_EQ(ZL_bitSplit_outputEltWidth(7), 1);
+    EXPECT_EQ(ZL_bitSplit_outputEltWidth(8), 1);
 
     // 9-16 bits -> u16
-    EXPECT_EQ(ZS_bitSplit_outputEltWidth(9), 2);
-    EXPECT_EQ(ZS_bitSplit_outputEltWidth(15), 2);
-    EXPECT_EQ(ZS_bitSplit_outputEltWidth(16), 2);
+    EXPECT_EQ(ZL_bitSplit_outputEltWidth(9), 2);
+    EXPECT_EQ(ZL_bitSplit_outputEltWidth(15), 2);
+    EXPECT_EQ(ZL_bitSplit_outputEltWidth(16), 2);
 
     // 17-32 bits -> u32
-    EXPECT_EQ(ZS_bitSplit_outputEltWidth(17), 4);
-    EXPECT_EQ(ZS_bitSplit_outputEltWidth(31), 4);
-    EXPECT_EQ(ZS_bitSplit_outputEltWidth(32), 4);
+    EXPECT_EQ(ZL_bitSplit_outputEltWidth(17), 4);
+    EXPECT_EQ(ZL_bitSplit_outputEltWidth(31), 4);
+    EXPECT_EQ(ZL_bitSplit_outputEltWidth(32), 4);
 
     // 33-64 bits -> u64
-    EXPECT_EQ(ZS_bitSplit_outputEltWidth(33), 8);
-    EXPECT_EQ(ZS_bitSplit_outputEltWidth(63), 8);
-    EXPECT_EQ(ZS_bitSplit_outputEltWidth(64), 8);
+    EXPECT_EQ(ZL_bitSplit_outputEltWidth(33), 8);
+    EXPECT_EQ(ZL_bitSplit_outputEltWidth(63), 8);
+    EXPECT_EQ(ZL_bitSplit_outputEltWidth(64), 8);
 }
 
 TEST_F(BitSplitKernelTest, ParamsAreValid_Valid)
 {
     uint8_t widths1[] = { 8 };
     size_t sum        = 0;
-    EXPECT_TRUE(ZS_bitSplit_paramsAreValid(widths1, 1, 8, &sum));
+    EXPECT_TRUE(ZL_bitSplit_paramsAreValid(widths1, 1, 8, &sum));
     EXPECT_EQ(sum, 8);
 
     uint8_t widths2[] = { 4, 8, 12, 8 };
-    EXPECT_TRUE(ZS_bitSplit_paramsAreValid(widths2, 4, 32, &sum));
+    EXPECT_TRUE(ZL_bitSplit_paramsAreValid(widths2, 4, 32, &sum));
     EXPECT_EQ(sum, 32);
 
     // Partial coverage is valid
     uint8_t widths3[] = { 3, 4, 5 };
-    EXPECT_TRUE(ZS_bitSplit_paramsAreValid(widths3, 3, 32, &sum));
+    EXPECT_TRUE(ZL_bitSplit_paramsAreValid(widths3, 3, 32, &sum));
     EXPECT_EQ(sum, 12);
 }
 
@@ -67,35 +67,35 @@ TEST_F(BitSplitKernelTest, ParamsAreValid_Invalid)
 
     // Zero width is invalid
     uint8_t widths1[] = { 0, 8 };
-    EXPECT_FALSE(ZS_bitSplit_paramsAreValid(widths1, 2, 16, &sum));
+    EXPECT_FALSE(ZL_bitSplit_paramsAreValid(widths1, 2, 16, &sum));
 
     // Sum exceeds element width
     uint8_t widths2[] = { 16, 16, 16 };
-    EXPECT_FALSE(ZS_bitSplit_paramsAreValid(widths2, 3, 32, &sum));
+    EXPECT_FALSE(ZL_bitSplit_paramsAreValid(widths2, 3, 32, &sum));
 }
 
 TEST_F(BitSplitKernelTest, TopBitsAreZero)
 {
     // Full coverage - always true
     uint8_t val8 = 0xFF;
-    EXPECT_TRUE(ZS_bitSplit_topBitsAreZero(&val8, 1, 1, 8));
+    EXPECT_TRUE(ZL_bitSplit_topBitsAreZero(&val8, 1, 1, 8));
 
     uint32_t val32 = 0xFFFFFFFF;
-    EXPECT_TRUE(ZS_bitSplit_topBitsAreZero(&val32, 4, 1, 32));
+    EXPECT_TRUE(ZL_bitSplit_topBitsAreZero(&val32, 4, 1, 32));
 
     // Partial coverage with top bits zero
     uint16_t val16a = 0x0FFF;
-    EXPECT_TRUE(ZS_bitSplit_topBitsAreZero(&val16a, 2, 1, 12));
+    EXPECT_TRUE(ZL_bitSplit_topBitsAreZero(&val16a, 2, 1, 12));
 
     uint32_t val32a = 0x00000FFF;
-    EXPECT_TRUE(ZS_bitSplit_topBitsAreZero(&val32a, 4, 1, 12));
+    EXPECT_TRUE(ZL_bitSplit_topBitsAreZero(&val32a, 4, 1, 12));
 
     // Partial coverage with top bits non-zero
     uint16_t val16b = 0x1FFF;
-    EXPECT_FALSE(ZS_bitSplit_topBitsAreZero(&val16b, 2, 1, 12));
+    EXPECT_FALSE(ZL_bitSplit_topBitsAreZero(&val16b, 2, 1, 12));
 
     uint16_t val16c = 0xFFFF;
-    EXPECT_FALSE(ZS_bitSplit_topBitsAreZero(&val16c, 2, 1, 12));
+    EXPECT_FALSE(ZL_bitSplit_topBitsAreZero(&val16c, 2, 1, 12));
 }
 
 TEST_F(BitSplitKernelTest, EncodeDecodeSingleValue_8bit)
@@ -108,7 +108,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodeSingleValue_8bit)
     uint8_t out0, out1;
     void* outputs[] = { &out0, &out1 };
 
-    ZS_bitSplitEncode(outputs, outputWidths, 1, &input, 1, bitWidths, 2);
+    ZL_bitSplitEncode(outputs, outputWidths, 1, &input, 1, bitWidths, 2);
 
     EXPECT_EQ(out0, 0x5); // bits 0-3
     EXPECT_EQ(out1, 0xA); // bits 4-7
@@ -117,7 +117,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodeSingleValue_8bit)
     const void* inputs[] = { &out0, &out1 };
     size_t inputWidths[] = { 1, 1 };
     uint8_t result;
-    ZS_bitSplitDecode(&result, 1, 1, inputs, inputWidths, bitWidths, 2);
+    ZL_bitSplitDecode(&result, 1, 1, inputs, inputWidths, bitWidths, 2);
     EXPECT_EQ(result, 0xA5);
 }
 
@@ -132,7 +132,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodeSingleValue_32bit)
     uint16_t out2;
     void* outputs[] = { &out0, &out1, &out2, &out3 };
 
-    ZS_bitSplitEncode(outputs, outputWidths, 1, &input, 4, bitWidths, 4);
+    ZL_bitSplitEncode(outputs, outputWidths, 1, &input, 4, bitWidths, 4);
 
     EXPECT_EQ(out0, 0xF);   // bits 0-3
     EXPECT_EQ(out1, 0xEE);  // bits 4-11
@@ -143,7 +143,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodeSingleValue_32bit)
     const void* inputs[] = { &out0, &out1, &out2, &out3 };
     size_t inputWidths[] = { 1, 1, 2, 1 };
     uint32_t result;
-    ZS_bitSplitDecode(&result, 4, 1, inputs, inputWidths, bitWidths, 4);
+    ZL_bitSplitDecode(&result, 4, 1, inputs, inputWidths, bitWidths, 4);
     EXPECT_EQ(result, 0xDEADBEEF);
 }
 
@@ -158,7 +158,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodePartialCoverage)
     uint8_t out0, out1, out2;
     void* outputs[] = { &out0, &out1, &out2 };
 
-    ZS_bitSplitEncode(outputs, outputWidths, 1, &input, 4, bitWidths, 3);
+    ZL_bitSplitEncode(outputs, outputWidths, 1, &input, 4, bitWidths, 3);
 
     // bits 0-2: 100 = 4
     // bits 3-6: 0111 = 7
@@ -171,7 +171,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodePartialCoverage)
     const void* inputs[] = { &out0, &out1, &out2 };
     size_t inputWidths[] = { 1, 1, 1 };
     uint32_t result;
-    ZS_bitSplitDecode(&result, 4, 1, inputs, inputWidths, bitWidths, 3);
+    ZL_bitSplitDecode(&result, 4, 1, inputs, inputWidths, bitWidths, 3);
     EXPECT_EQ(result, input);
 }
 
@@ -185,13 +185,13 @@ TEST_F(BitSplitKernelTest, EncodeDecodeSingleStream)
     uint32_t out0;
     void* outputs[] = { &out0 };
 
-    ZS_bitSplitEncode(outputs, outputWidths, 1, &input, 4, bitWidths, 1);
+    ZL_bitSplitEncode(outputs, outputWidths, 1, &input, 4, bitWidths, 1);
     EXPECT_EQ(out0, 0x12345678);
 
     const void* inputs[] = { &out0 };
     size_t inputWidths[] = { 4 };
     uint32_t result;
-    ZS_bitSplitDecode(&result, 4, 1, inputs, inputWidths, bitWidths, 1);
+    ZL_bitSplitDecode(&result, 4, 1, inputs, inputWidths, bitWidths, 1);
     EXPECT_EQ(result, 0x12345678);
 }
 
@@ -208,7 +208,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodeMultipleElements)
     void* outputs[] = { stream0.data(), stream1.data() };
 
     // Encode all elements in one call
-    ZS_bitSplitEncode(
+    ZL_bitSplitEncode(
             outputs, outputWidths, input.size(), input.data(), 1, bitWidths, 2);
 
     // Verify encoded values
@@ -221,7 +221,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodeMultipleElements)
     const void* inputs[] = { stream0.data(), stream1.data() };
     size_t inputWidths[] = { 1, 1 };
     std::vector<uint8_t> decoded(input.size());
-    ZS_bitSplitDecode(
+    ZL_bitSplitDecode(
             decoded.data(), 1, input.size(), inputs, inputWidths, bitWidths, 2);
 
     for (size_t i = 0; i < input.size(); i++) {
@@ -239,7 +239,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodeWideValues)
     uint16_t out0, out1, out2, out3;
     void* outputs[] = { &out0, &out1, &out2, &out3 };
 
-    ZS_bitSplitEncode(outputs, outputWidths, 1, &input, 8, bitWidths, 4);
+    ZL_bitSplitEncode(outputs, outputWidths, 1, &input, 8, bitWidths, 4);
 
     EXPECT_EQ(out0, 0xDEF0);
     EXPECT_EQ(out1, 0x9ABC);
@@ -249,7 +249,7 @@ TEST_F(BitSplitKernelTest, EncodeDecodeWideValues)
     const void* inputs[] = { &out0, &out1, &out2, &out3 };
     size_t inputWidths[] = { 2, 2, 2, 2 };
     uint64_t result;
-    ZS_bitSplitDecode(&result, 8, 1, inputs, inputWidths, bitWidths, 4);
+    ZL_bitSplitDecode(&result, 8, 1, inputs, inputWidths, bitWidths, 4);
     EXPECT_EQ(result, input);
 }
 

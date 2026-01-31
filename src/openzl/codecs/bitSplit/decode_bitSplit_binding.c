@@ -124,7 +124,7 @@ ZL_Report DI_bitSplit(
                 "bitSplit: bit width exceeds input stream element width");
 
         // Verify element width matches expected
-        size_t const expectedWidth = ZS_bitSplit_outputEltWidth(bitWidths[i]);
+        size_t const expectedWidth = ZL_bitSplit_outputEltWidth(bitWidths[i]);
         ZL_RET_R_IF_NE(
                 corruption,
                 ZL_Input_eltWidth(in),
@@ -141,7 +141,7 @@ ZL_Report DI_bitSplit(
     ZL_RET_R_IF_NULL(allocation, out);
 
     // Kernel owns the hot loop - single call processes all elements
-    ZS_bitSplitDecode(
+    ZL_bitSplitDecode(
             ZL_Output_ptr(out),
             outputEltWidth,
             nbElts,

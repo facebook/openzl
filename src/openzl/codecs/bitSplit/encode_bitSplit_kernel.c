@@ -5,7 +5,7 @@
 #include <assert.h> /* assert */
 #include <string.h>
 
-bool ZS_bitSplit_paramsAreValid(
+bool ZL_bitSplit_paramsAreValid(
         const uint8_t* bitWidths,
         size_t nbWidths,
         size_t inputEltWidthBits,
@@ -30,7 +30,7 @@ bool ZS_bitSplit_paramsAreValid(
     return true;
 }
 
-static inline bool ZS_checkTopBitsZero(
+static inline bool checkTopBitsZero(
         const void* src,
         size_t srcEltWidth,
         size_t nbElts,
@@ -68,7 +68,7 @@ static inline bool ZS_checkTopBitsZero(
  * Layout: [mantissa:7][exponent:8][sign:1] = 16 bits
  */
 static inline void
-ZS_bitSplit_bf16(void* const dstPtrs[], size_t nbElts, const void* src)
+bitSplit_bf16(void* const dstPtrs[], size_t nbElts, const void* src)
 {
     uint8_t* restrict const mantissa     = (uint8_t*)dstPtrs[0];
     uint8_t* restrict const exponent     = (uint8_t*)dstPtrs[1];
@@ -86,7 +86,7 @@ ZS_bitSplit_bf16(void* const dstPtrs[], size_t nbElts, const void* src)
 /*
  * Check if parameters match the bf16 encode pattern.
  */
-static inline bool ZS_isEncodeBf16Pattern(
+static inline bool isEncodeBf16Pattern(
         size_t srcEltWidth,
         const size_t* dstEltWidths,
         const uint8_t* bitWidths,
@@ -103,7 +103,7 @@ static inline bool ZS_isEncodeBf16Pattern(
     return true;
 }
 
-bool ZS_bitSplit_topBitsAreZero(
+bool ZL_bitSplit_topBitsAreZero(
         const void* src,
         size_t srcEltWidth,
         size_t nbElts,
@@ -123,18 +123,18 @@ bool ZS_bitSplit_topBitsAreZero(
 
     switch (srcEltWidth) {
         case 1:
-            return ZS_checkTopBitsZero(src, 1, nbElts, mask);
+            return checkTopBitsZero(src, 1, nbElts, mask);
         case 2:
-            return ZS_checkTopBitsZero(src, 2, nbElts, mask);
+            return checkTopBitsZero(src, 2, nbElts, mask);
         case 4:
-            return ZS_checkTopBitsZero(src, 4, nbElts, mask);
+            return checkTopBitsZero(src, 4, nbElts, mask);
         case 8:
-            return ZS_checkTopBitsZero(src, 8, nbElts, mask);
+            return checkTopBitsZero(src, 8, nbElts, mask);
     }
     return true;
 }
 
-static inline void ZS_encodeElements(
+static inline void encodeElements(
         void* const dstPtrs[],
         const size_t* dstEltWidths,
         size_t nbElts,
@@ -186,7 +186,7 @@ static inline void ZS_encodeElements(
     }
 }
 
-void ZS_bitSplitEncode(
+void ZL_bitSplitEncode(
         void* const dstPtrs[],
         const size_t* dstEltWidths,
         size_t nbElts,
@@ -219,34 +219,33 @@ void ZS_bitSplitEncode(
             sumBitWidths += bitWidths[i];
         }
         assert(sumBitWidths <= srcEltWidth * 8);
-        assert(ZS_bitSplit_topBitsAreZero(
+        assert(ZL_bitSplit_topBitsAreZero(
                 src, srcEltWidth, nbElts, sumBitWidths));
         (void)sumBitWidths;
     }
 
     /* Check for specialized patterns and dispatch */
-    if (ZS_isEncodeBf16Pattern(
-                srcEltWidth, dstEltWidths, bitWidths, nbWidths)) {
-        ZS_bitSplit_bf16(dstPtrs, nbElts, src);
+    if (isEncodeBf16Pattern(srcEltWidth, dstEltWidths, bitWidths, nbWidths)) {
+        bitSplit_bf16(dstPtrs, nbElts, src);
         return;
     }
 
     /* Generic path */
     switch (srcEltWidth) {
         case 1:
-            ZS_encodeElements(
+            encodeElements(
                     dstPtrs, dstEltWidths, nbElts, src, 1, bitWidths, nbWidths);
             break;
         case 2:
-            ZS_encodeElements(
+            encodeElements(
                     dstPtrs, dstEltWidths, nbElts, src, 2, bitWidths, nbWidths);
             break;
         case 4:
-            ZS_encodeElements(
+            encodeElements(
                     dstPtrs, dstEltWidths, nbElts, src, 4, bitWidths, nbWidths);
             break;
         case 8:
-            ZS_encodeElements(
+            encodeElements(
                     dstPtrs, dstEltWidths, nbElts, src, 8, bitWidths, nbWidths);
             break;
     }

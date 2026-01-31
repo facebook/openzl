@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#ifndef ZSTRONG_TRANSFORMS_BITSPLIT_DECODE_BITSPLIT_KERNEL_H
-#define ZSTRONG_TRANSFORMS_BITSPLIT_DECODE_BITSPLIT_KERNEL_H
+#ifndef OPENZL_CODECS_BITSPLIT_DECODE_BITSPLIT_KERNEL_H
+#define OPENZL_CODECS_BITSPLIT_DECODE_BITSPLIT_KERNEL_H
 
 #include <stddef.h> /* size_t */
 #include <stdint.h> /* uint8_t */
@@ -34,7 +34,7 @@
  * @param bitWidths Array of bit widths, ordered LSB to MSB
  * @param nbWidths Number of bit ranges / source streams (1-64)
  */
-void ZS_bitSplitDecode(
+void ZL_bitSplitDecode(
         void* dst,
         size_t dstEltWidth,
         size_t nbElts,
@@ -43,4 +43,4 @@ void ZS_bitSplitDecode(
         const uint8_t* bitWidths,
         size_t nbWidths);
 
-#endif // ZSTRONG_TRANSFORMS_BITSPLIT_DECODE_BITSPLIT_KERNEL_H
+#endif // OPENZL_CODECS_BITSPLIT_DECODE_BITSPLIT_KERNEL_H

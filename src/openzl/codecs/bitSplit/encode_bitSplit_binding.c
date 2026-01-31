@@ -2,7 +2,7 @@
 
 #include <string.h>
 
-#include "openzl/codecs/bitSplit/common_bitSplit_kernel.h" /* ZS_bitSplit_outputEltWidth */
+#include "openzl/codecs/bitSplit/common_bitSplit_kernel.h" /* ZL_bitSplit_outputEltWidth */
 #include "openzl/codecs/bitSplit/encode_bitSplit_binding.h"
 #include "openzl/codecs/bitSplit/encode_bitSplit_kernel.h"
 #include "openzl/common/assertion.h"
@@ -68,7 +68,7 @@ ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     size_t sumWidths = 0;
     ZL_RET_R_IF(
             nodeParameter_invalid,
-            !ZS_bitSplit_paramsAreValid(
+            !ZL_bitSplit_paramsAreValid(
                     bitWidths, nbWidths, inputEltWidthBits, &sumWidths),
             "bitSplit parameter validation failed");
 
@@ -76,7 +76,7 @@ ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     if (sumWidths < inputEltWidthBits) {
         ZL_RET_R_IF(
                 corruption,
-                !ZS_bitSplit_topBitsAreZero(
+                !ZL_bitSplit_topBitsAreZero(
                         ZL_Input_ptr(in), inputEltWidth, nbElts, sumWidths),
                 "bitSplit: top bits must be zero for partial coverage");
     }
@@ -107,7 +107,7 @@ ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     ZL_ASSERT_LE(nbWidths, 64);
 
     for (size_t i = 0; i < nbWidths; i++) {
-        outputWidths[i] = ZS_bitSplit_outputEltWidth(bitWidths[i]);
+        outputWidths[i] = ZL_bitSplit_outputEltWidth(bitWidths[i]);
         outputs[i] =
                 ZL_Encoder_createTypedStream(eictx, 0, nbElts, outputWidths[i]);
         ZL_RET_R_IF_NULL(allocation, outputs[i]);
@@ -115,7 +115,7 @@ ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     }
 
     // Kernel owns the hot loop - single call processes all elements
-    ZS_bitSplitEncode(
+    ZL_bitSplitEncode(
             dstPtrs,
             outputWidths,
             nbElts,

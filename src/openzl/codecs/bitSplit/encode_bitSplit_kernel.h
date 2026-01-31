@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#ifndef ZSTRONG_TRANSFORMS_BITSPLIT_ENCODE_BITSPLIT_KERNEL_H
-#define ZSTRONG_TRANSFORMS_BITSPLIT_ENCODE_BITSPLIT_KERNEL_H
+#ifndef OPENZL_CODECS_BITSPLIT_ENCODE_BITSPLIT_KERNEL_H
+#define OPENZL_CODECS_BITSPLIT_ENCODE_BITSPLIT_KERNEL_H
 
 #include <stdbool.h> /* bool */
 #include <stddef.h>  /* size_t */
@@ -29,7 +29,7 @@
  * @param sumWidths Output: sum of all bit widths (may be NULL)
  * @return true if parameters are valid, false otherwise
  */
-bool ZS_bitSplit_paramsAreValid(
+bool ZL_bitSplit_paramsAreValid(
         const uint8_t* bitWidths,
         size_t nbWidths,
         size_t inputEltWidthBits,
@@ -48,7 +48,7 @@ bool ZS_bitSplit_paramsAreValid(
  * @param sumWidths Sum of bit widths used
  * @return true if all top bits are zero, false otherwise
  */
-bool ZS_bitSplit_topBitsAreZero(
+bool ZL_bitSplit_topBitsAreZero(
         const void* src,
         size_t srcEltWidth,
         size_t nbElts,
@@ -81,7 +81,7 @@ bool ZS_bitSplit_topBitsAreZero(
  * @param bitWidths Array of bit widths (LSB to MSB order)
  * @param nbWidths Number of bit widths (1-64)
  */
-void ZS_bitSplitEncode(
+void ZL_bitSplitEncode(
         void* const dstPtrs[],
         const size_t* dstEltWidths,
         size_t nbElts,
@@ -90,4 +90,4 @@ void ZS_bitSplitEncode(
         const uint8_t* bitWidths,
         size_t nbWidths);
 
-#endif // ZSTRONG_TRANSFORMS_BITSPLIT_ENCODE_BITSPLIT_KERNEL_H
+#endif // OPENZL_CODECS_BITSPLIT_ENCODE_BITSPLIT_KERNEL_H

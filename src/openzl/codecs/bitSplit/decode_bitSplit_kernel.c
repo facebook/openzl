@@ -14,7 +14,7 @@
  * Layout: [mantissa:7][exponent:8][sign:1] = 16 bits
  */
 static inline void
-ZS_decodeBf16(void* dst, size_t nbElts, const void* const srcPtrs[])
+decodeBf16(void* dst, size_t nbElts, const void* const srcPtrs[])
 {
     uint16_t* const dst16         = (uint16_t*)dst;
     const uint8_t* const mantissa = (const uint8_t*)srcPtrs[0];
@@ -32,7 +32,7 @@ ZS_decodeBf16(void* dst, size_t nbElts, const void* const srcPtrs[])
 /*
  * Check if parameters match the bf16 pattern.
  */
-static inline bool ZS_isBf16Pattern(
+static inline bool isBf16Pattern(
         size_t dstEltWidth,
         const size_t* srcEltWidths,
         const uint8_t* bitWidths,
@@ -49,7 +49,7 @@ static inline bool ZS_isBf16Pattern(
     return true;
 }
 
-static inline void ZS_decodeElements(
+static inline void decodeElements(
         void* dst,
         const size_t dstEltWidth,
         size_t nbElts,
@@ -83,7 +83,7 @@ static inline void ZS_decodeElements(
             bitPos += bitWidths[i];
         }
 
-        // If `dstEltWidth` is a constant and `ZS_decodeElements()` is inlined,
+        // If `dstEltWidth` is a constant and `decodeElements()` is inlined,
         // we expect the compiler to fold this switch() statement.
         switch (dstEltWidth) {
             case 1:
@@ -102,7 +102,7 @@ static inline void ZS_decodeElements(
     }
 }
 
-void ZS_bitSplitDecode(
+void ZL_bitSplitDecode(
         void* dst,
         size_t dstEltWidth,
         size_t nbElts,
@@ -139,29 +139,29 @@ void ZS_bitSplitDecode(
     }
 
     /* Check for specialized patterns and dispatch */
-    if (ZS_isBf16Pattern(dstEltWidth, srcEltWidths, bitWidths, nbWidths)) {
-        ZS_decodeBf16(dst, nbElts, srcPtrs);
+    if (isBf16Pattern(dstEltWidth, srcEltWidths, bitWidths, nbWidths)) {
+        decodeBf16(dst, nbElts, srcPtrs);
         return;
     }
 
     /* Generic path */
-    // We expect the compiler to optimize ZS_decodeElements() by propagating the
+    // We expect the compiler to optimize decodeElements() by propagating the
     // constant (thus resulting in several instances).
     switch (dstEltWidth) {
         case 1:
-            ZS_decodeElements(
+            decodeElements(
                     dst, 1, nbElts, srcPtrs, srcEltWidths, bitWidths, nbWidths);
             break;
         case 2:
-            ZS_decodeElements(
+            decodeElements(
                     dst, 2, nbElts, srcPtrs, srcEltWidths, bitWidths, nbWidths);
             break;
         case 4:
-            ZS_decodeElements(
+            decodeElements(
                     dst, 4, nbElts, srcPtrs, srcEltWidths, bitWidths, nbWidths);
             break;
         case 8:
-            ZS_decodeElements(
+            decodeElements(
                     dst, 8, nbElts, srcPtrs, srcEltWidths, bitWidths, nbWidths);
             break;
     }

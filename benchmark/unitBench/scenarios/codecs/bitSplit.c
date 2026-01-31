@@ -7,8 +7,8 @@
 #include <stdlib.h> /* malloc, free, rand */
 #include <string.h> /* memcpy */
 
-#include "openzl/codecs/bitSplit/decode_bitSplit_kernel.h" /* ZS_bitSplitDecode */
-#include "openzl/codecs/bitSplit/encode_bitSplit_kernel.h" /* ZS_bitSplitEncode */
+#include "openzl/codecs/bitSplit/decode_bitSplit_kernel.h" /* ZL_bitSplitDecode */
+#include "openzl/codecs/bitSplit/encode_bitSplit_kernel.h" /* ZL_bitSplitEncode */
 
 /*
  * Static state for each scenario to hold allocated source streams.
@@ -146,7 +146,7 @@ size_t bitSplitDecode_fp32_wrapper(
                                g_decState_fp32.srcStreams[1],
                                g_decState_fp32.srcStreams[2] };
 
-    ZS_bitSplitDecode(
+    ZL_bitSplitDecode(
             dst,
             dstEltWidth,
             nbElts,
@@ -237,7 +237,7 @@ size_t bitSplitEncode_fp32_wrapper(
                             g_encState_fp32.dstStreams[1],
                             g_encState_fp32.dstStreams[2] };
 
-    ZS_bitSplitEncode(
+    ZL_bitSplitEncode(
             dstPtrs,
             dstEltWidths,
             nbElts,

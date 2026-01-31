@@ -3,7 +3,7 @@
 #include "openzl/codecs/bitSplit/common_bitSplit_kernel.h"
 #include <assert.h>
 
-size_t ZS_bitSplit_outputEltWidth(unsigned bitWidth)
+size_t ZL_bitSplit_outputEltWidth(unsigned bitWidth)
 {
     if (bitWidth <= 8) {
         return 1;

@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#ifndef ZSTRONG_TRANSFORMS_BITSPLIT_COMMON_H
-#define ZSTRONG_TRANSFORMS_BITSPLIT_COMMON_H
+#ifndef OPENZL_CODECS_BITSPLIT_COMMON_BITSPLIT_KERNEL_H
+#define OPENZL_CODECS_BITSPLIT_COMMON_BITSPLIT_KERNEL_H
 
 #include <stddef.h>
 
@@ -11,6 +11,6 @@
  * @param bitWidth Number of bits (1-64)
  * @return Output element width in bytes (1, 2, 4, or 8)
  */
-size_t ZS_bitSplit_outputEltWidth(unsigned bitWidth);
+size_t ZL_bitSplit_outputEltWidth(unsigned bitWidth);
 
-#endif // ZSTRONG_TRANSFORMS_BITSPLIT_COMMON_H
+#endif // OPENZL_CODECS_BITSPLIT_COMMON_BITSPLIT_KERNEL_H
