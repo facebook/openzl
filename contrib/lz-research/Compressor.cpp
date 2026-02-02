@@ -4,6 +4,8 @@
 
 #include "Compressor.hpp"
 
+#include <snappy.h>
+
 #include "openzl/shared/varint.h"
 #include "tools/io/OutputFile.h"
 #include "tools/training/train.h"
@@ -443,6 +445,55 @@ size_t Lz4Compressor::decompress(
             decompressed.size()));
 }
 
+SnappyCompressor::SnappyCompressor(nlohmann::json config)
+{
+    if (config.contains("level")) {
+        level_ = config["level"];
+    }
+}
+
+std::string SnappyCompressor::name() const
+{
+    std::string name = "snappy";
+    if (level_.has_value()) {
+        name += "[lvl=" + std::to_string(level_.value()) + "]";
+    }
+    return name;
+}
+
+size_t SnappyCompressor::compressBound(std::string_view data) const
+{
+    return snappy::MaxCompressedLength(data.size());
+}
+
+size_t SnappyCompressor::decompressedSize(std::string_view compressed) const
+{
+    size_t size;
+    snappy::GetUncompressedLength(compressed.data(), compressed.size(), &size);
+    return size;
+}
+
+size_t SnappyCompressor::compress(
+        std::span<char> compressed,
+        std::string_view data)
+{
+    size_t compressedSize = compressed.size();
+    snappy::RawCompress(
+            data.data(), data.size(), compressed.data(), &compressedSize);
+    return compressedSize;
+}
+
+size_t SnappyCompressor::decompress(
+        std::span<char> decompressed,
+        std::string_view compressed)
+{
+    if (!snappy::RawUncompress(
+                compressed.data(), compressed.size(), decompressed.data())) {
+        throw std::runtime_error("snappy decompress failed");
+    }
+    return decompressedSize(compressed);
+}
+
 OpenZLCompressor::OpenZLCompressor(nlohmann::json config)
 {
     if (config.contains("params")) {
@@ -632,6 +683,8 @@ std::unique_ptr<Compressor> makeCompressor(nlohmann::json config)
         return std::make_unique<ZstdCompressor>(config);
     } else if (algo == "lz4") {
         return std::make_unique<Lz4Compressor>(config);
+    } else if (algo == "snappy") {
+        return std::make_unique<SnappyCompressor>(config);
     } else if (algo == "openzl") {
         return std::make_unique<OpenZLCompressor>(config);
     } else {

@@ -123,6 +123,23 @@ class Lz4Compressor : public Compressor {
     std::unique_ptr<uint8_t[]> cctx_;
 };
 
+class SnappyCompressor : public Compressor {
+   public:
+    explicit SnappyCompressor(std::optional<int> level) : level_(level) {}
+    explicit SnappyCompressor(nlohmann::json config);
+
+    std::string name() const override;
+    size_t compressBound(std::string_view data) const override;
+    size_t decompressedSize(std::string_view compressed) const override;
+    size_t compress(std::span<char> compressed, std::string_view data) override;
+    size_t decompress(std::span<char> decompressed, std::string_view compressed)
+            override;
+
+    virtual ~SnappyCompressor() = default;
+
+    std::optional<int> level_;
+};
+
 class OpenZLCompressor : public Compressor {
    public:
     OpenZLCompressor(
