@@ -4,9 +4,6 @@
         "level": 1
     },
     {
-        "algorithm": "lz4like"
-    },
-    {
         "algorithm": "openzl",
         "params": {
             "CompressionLevel": 1
@@ -37,7 +34,9 @@
         "params": {
             "CompressionLevel": 1
         },
-        "compressor_name": "lz-zstd-slow"
+        "compressor_name": "lz-zstd-slow",
+        "trace": "/tmp/trace.cbor",
+        "trace_streams": "/tmp/trace-streams"
     },
     {
         "algorithm": "openzl",

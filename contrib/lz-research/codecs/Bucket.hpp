@@ -12,8 +12,11 @@ class BucketEncoder : public CustomEncoder {
 
     void encode(EncoderState& encoder) const override;
 
-    static Edge::RunNodeResult
-    runNode(Edge& edge, NodeID node, poly::span<const uint8_t> bases);
+    static Edge::RunNodeResult runNode(
+            Edge& edge,
+            NodeID node,
+            poly::span<const uint8_t> bases,
+            uint8_t maxSymbolValue);
 
     ~BucketEncoder() override = default;
 };

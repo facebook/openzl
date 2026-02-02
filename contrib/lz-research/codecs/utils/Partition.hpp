@@ -19,7 +19,7 @@ std::vector<size_t> partition(poly::span<const T> histogram, CostFn&& costFn)
     const size_t N  = histogram.size();
     const size_t N1 = N + 1;
     // opt[e] = The optimal cost to partion [1, e)
-    std::vector<uint32_t> opt(N1, 0);
+    std::vector<float> opt(N1, 0);
     // begin[e] = map from bucket end index to the optimal begin index
     std::vector<uint32_t> begin(N1, 0);
     // numBuckets[e] = number of buckets in the optimal partion of [0, e)
@@ -30,8 +30,8 @@ std::vector<size_t> partition(poly::span<const T> histogram, CostFn&& costFn)
     // NOTE: numBuckets[0] = 0
     for (size_t e = 1; e < N1; ++e) {
         for (size_t b = 0; b < e; ++b) {
-            const auto endCost = costFn(histogram.subspan(b, e - b));
-            const auto cost    = opt[b] + endCost;
+            const float endCost = costFn(histogram.subspan(b, e - b));
+            const float cost    = opt[b] + endCost;
             if (b == 0 || cost < opt[e]) {
                 opt[e]   = cost;
                 begin[e] = b;
@@ -62,7 +62,7 @@ template <typename T, typename CostFn>
 std::vector<size_t>
 partition(poly::span<const T> histogram, size_t numBuckets, CostFn&& costFn)
 {
-    const size_t B  = numBuckets;
+    const size_t B  = std::min(numBuckets, histogram.size());
     const size_t B1 = B + 1;
     const size_t N  = histogram.size();
     const size_t N1 = N + 1;
@@ -91,7 +91,7 @@ partition(poly::span<const T> histogram, size_t numBuckets, CostFn&& costFn)
         }
     }
 
-    std::vector<size_t> partitions(numBuckets, 0);
+    std::vector<size_t> partitions(B, 0);
     for (size_t e = N, pos = partitions.size(); e > 0;) {
         auto b = begin[N1 * pos-- + e];
         assert(b < e);

@@ -8,6 +8,7 @@
 #include <numeric>
 
 #include "CodecIDs.hpp"
+#include "utils/Portability.hpp"
 
 #include "openzl/codecs/common/bitstream/ff_bitstream.h"
 #include "openzl/common/assertion.h"
@@ -19,8 +20,13 @@
 #include "openzl/shared/utils.h"
 #include "utils/Partition.hpp"
 
+#if ZL_ARCH_X86_64
+#    include <immintrin.h>
+#endif
+
 namespace openzl::lz {
 namespace {
+
 SimpleCodecDescription bucket16CodecDescription()
 {
     return SimpleCodecDescription{
@@ -33,7 +39,8 @@ SimpleCodecDescription bucket16CodecDescription()
 
 class Bucket16EncoderState {
    public:
-    Bucket16EncoderState(poly::span<const uint8_t> param)
+    Bucket16EncoderState(poly::span<const uint8_t> param, int maxSymbolValue)
+            : numSymbols_(maxSymbolValue + 1)
     {
         if (param.size() % 2 != 0) {
             throw std::runtime_error("Param is not multiple of 2");
@@ -128,14 +135,15 @@ class Bucket16EncoderState {
             return 1;
         }
         size_t base = bases_[baseIdx];
-        assert(base < 65536);
-        auto end = baseIdx + 1 == bases_.size() ? size_t(65536)
+        assert(base < numSymbols_);
+        auto end = baseIdx + 1 == bases_.size() ? numSymbols_
                                                 : size_t(bases_[baseIdx + 1]);
         assert(end > base);
         return end - base;
     }
 
     poly::span<const uint16_t> bases_;
+    size_t numSymbols_;
     size_t fixedBits_;
     // TODO(terrelln): Fix this memory usage
     // Idea: Ensure bases transition when low e.g. 4 bits == 0
@@ -150,11 +158,13 @@ class Bucket16DecoderState {
    public:
     Bucket16DecoderState(poly::span<const uint8_t> header)
     {
-        if (header.empty()) {
+        if (header.size() < 3) {
             throw std::runtime_error("header is empty");
         }
-        unusedFixedBits_ = header[0] % 8;
-        header           = header.subspan(1);
+        unusedFixedBits_      = header[0] % 8;
+        size_t maxSymbolValue = ZL_readLE16(header.data() + 1);
+        numSymbols_           = maxSymbolValue + 1;
+        header                = header.subspan(3);
         if (header.empty()) {
             throw std::runtime_error("bases is empty");
         }
@@ -167,6 +177,9 @@ class Bucket16DecoderState {
         // TODO: Handle big endian
         memcpy(bases_.data(), header.data(), header.size());
         numBases_ = header.size() / 2;
+        if (bases_.back() > maxSymbolValue) {
+            throw std::runtime_error("bases[-1] is > maxSymbolValue");
+        }
         for (size_t i = 1; i < numBases_; ++i) {
             if (bases_[i - 1] >= bases_[i]) {
                 throw std::runtime_error("bases not strictly increasing");
@@ -291,7 +304,7 @@ class Bucket16DecoderState {
                 f += 2;
 
                 const uint64_t vData  = ZL_readLE64(v) >> bitsConsumed;
-                const uint64_t offset = _pdep_u64(vData, mask);
+                const uint64_t offset = utils::bitDeposit(vData, mask);
 
                 ZL_writeLE64(o, base + offset);
                 o += 4;
@@ -416,7 +429,7 @@ class Bucket16DecoderState {
                             | (uint64_t(maskLUT[fs[k + 1]]) << 32);
 
                     const uint64_t vData  = ZL_readLE64(v) >> bitsConsumed;
-                    const uint64_t offset = _pdep_u64(vData, mask);
+                    const uint64_t offset = utils::bitDeposit(vData, mask);
 
                     ZL_writeLE64(o, base + offset);
                     o += 4;
@@ -536,7 +549,7 @@ class Bucket16DecoderState {
                             | (uint64_t(maskLUT[f1]) << 32);
 
                     const uint64_t vData  = ZL_readLE64(v) >> bitsConsumed;
-                    const uint64_t offset = _pdep_u64(vData, mask);
+                    const uint64_t offset = utils::bitDeposit(vData, mask);
 
                     ZL_writeLE64(o, base + offset);
                     o += 4;
@@ -613,8 +626,8 @@ class Bucket16DecoderState {
             return 1;
         }
         size_t base = bases_[baseIdx];
-        assert(base < 65536);
-        auto end = baseIdx + 1 == numBases_ ? size_t(65536)
+        assert(base < numSymbols_);
+        auto end = baseIdx + 1 == numBases_ ? numSymbols_
                                             : size_t(bases_[baseIdx + 1]);
         assert(end > base);
         return end - base;
@@ -626,6 +639,7 @@ class Bucket16DecoderState {
     size_t fixedBits_;
     size_t numBases_;
     size_t maxVarBits_;
+    size_t numSymbols_;
 };
 } // namespace
 
@@ -640,7 +654,11 @@ void Bucket16Encoder::encode(EncoderState& encoder) const
     if (!bases.has_value()) {
         throw std::runtime_error("bases not present");
     }
-    Bucket16EncoderState state(*bases);
+    auto maxSymbolValue = encoder.getLocalIntParam(1);
+    if (!maxSymbolValue.has_value()) {
+        throw std::runtime_error("maxSymbolValue not present");
+    }
+    Bucket16EncoderState state(*bases, *maxSymbolValue);
 
     const auto& input    = encoder.inputs()[0];
     const size_t numElts = input.numElts();
@@ -649,13 +667,15 @@ void Bucket16Encoder::encode(EncoderState& encoder) const
         throw std::runtime_error("Unsupported width != 2");
     }
 
-    uint8_t header[513];
+    uint8_t header[515];
     // first byte is the # of unused bits in the bitstream
     header[0] = (8 - ((state.fixedBits() * numElts) % 8)) % 8;
+    // next 2 bytes are the max symbol value
+    ZL_writeLE16(header + 1, *maxSymbolValue);
     // TODO: Handle big endian
-    memcpy(header + 1, state.bases().data(), state.bases().size() * 2);
+    memcpy(header + 3, state.bases().data(), state.bases().size() * 2);
 
-    encoder.sendCodecHeader(header, 1 + state.bases().size() * 2);
+    encoder.sendCodecHeader(header, 3 + state.bases().size() * 2);
 
     auto fixedStream =
             encoder.createOutput(0, state.fixedStreamSize(numElts), 1);
@@ -672,11 +692,13 @@ void Bucket16Encoder::encode(EncoderState& encoder) const
 /* static */ Edge::RunNodeResult Bucket16Encoder::runNode(
         Edge& edge,
         NodeID node,
-        poly::span<const uint16_t> bases)
+        poly::span<const uint16_t> bases,
+        uint16_t maxSymbolValue)
 {
     NodeParameters params;
     params.localParams.emplace();
     params.localParams->addRefParam(0, bases.data(), bases.size_bytes());
+    params.localParams->addIntParam(1, maxSymbolValue);
     auto r = edge.runNode(node, std::move(params));
     return r;
 }
@@ -807,11 +829,16 @@ std::vector<uint16_t> fixedPartition(
         bucketedHistogram[bucket] += histogram[i];
     }
 
+    poly::span<const uint32_t> hist(bucketedHistogram);
+    while (!hist.empty() && hist.back() == 0) {
+        hist = hist.subspan(0, hist.size() - 1);
+    }
+
     auto bucketedPartitions = utils::partition(
-            poly::span<const uint32_t>{ bucketedHistogram },
+            hist,
             numBuckets,
             [&, fixed = ZL_highbit32(numBuckets)](auto bucket) {
-                auto beginIdx = bucket.data() - bucketedHistogram.data();
+                auto beginIdx = bucket.data() - hist.data();
                 auto endIdx   = beginIdx + bucket.size();
                 auto begin    = bucketToBase(beginIdx);
                 auto end      = bucketToBase(endIdx);
@@ -970,7 +997,8 @@ void Bucket16Graph::graph(GraphState& state) const
     ZL_Histogram_init(&histogram.base, 65535);
     ZL_Histogram_build(&histogram.base, inputStream.ptr(), numElts, 2);
 
-    poly::span<const uint32_t> hist{ histogram.base.count, 65536 };
+    poly::span<const uint32_t> hist{ histogram.base.count,
+                                     histogram.base.maxSymbol + 1 };
     // partitions = fixedPartition(hist);
     // TODO: Allow for 1, 2, 4, 8, 32, 64, 128, 256 #buckets
     // const auto partitions = OptimalFixedPartition{ hist, 16 }.run();
@@ -1007,7 +1035,8 @@ void Bucket16Graph::graph(GraphState& state) const
         throw std::runtime_error("CustomNodes must have exactly one node");
     }
 
-    auto outEdges = Bucket16Encoder::runNode(inputEdge, nodes[0], partitions);
+    auto outEdges = Bucket16Encoder::runNode(
+            inputEdge, nodes[0], partitions, histogram.base.maxSymbol);
     assert(outEdges.size() == 2);
 
     if (0)
