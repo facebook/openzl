@@ -24,40 +24,99 @@ struct BenchmarkArgs {
     std::chrono::nanoseconds minTime{ 1 };
     BenchmarkMode mode{ BenchmarkMode::Both };
     std::vector<nlohmann::json> compressorConfigs;
+    std::optional<size_t> blockSize;
+};
+
+struct BlockResult {
+    size_t originalSize;
+    size_t compressedSize;
+    std::vector<std::chrono::nanoseconds> compressionDurations;
+    std::vector<std::chrono::nanoseconds> decompressionDurations;
+
+    std::chrono::nanoseconds bestCompressionDuration() const
+    {
+        if (compressionDurations.empty()) {
+            return std::chrono::nanoseconds(0);
+        }
+        return *std::min_element(
+                compressionDurations.begin(), compressionDurations.end());
+    }
+
+    std::chrono::nanoseconds bestDecompressionDuration() const
+    {
+        if (decompressionDurations.empty()) {
+            return std::chrono::nanoseconds(0);
+        }
+        return *std::min_element(
+                decompressionDurations.begin(), decompressionDurations.end());
+    }
+
+    nlohmann::json json() const;
 };
 
 struct BenchmarkResult {
     std::string fileName;
     std::string compressorName;
     nlohmann::json compressorConfig;
-    size_t originalSize;
-    size_t compressedSize;
-    std::vector<std::chrono::nanoseconds> compressionDurations;
-    std::vector<std::chrono::nanoseconds> decompressionDurations;
+    std::vector<BlockResult> blockResults;
+
+    size_t originalSize() const
+    {
+        size_t total = 0;
+        for (const auto& block : blockResults) {
+            total += block.originalSize;
+        }
+        return total;
+    }
+
+    size_t compressedSize() const
+    {
+        size_t total = 0;
+        for (const auto& block : blockResults) {
+            total += block.compressedSize;
+        }
+        return total;
+    }
 
     double compressionRatio() const
     {
-        return (double)originalSize / compressedSize;
+        return (double)originalSize() / compressedSize();
+    }
+
+    std::chrono::nanoseconds bestCompressionDuration() const
+    {
+        std::chrono::nanoseconds total{ 0 };
+        for (const auto& block : blockResults) {
+            total += block.bestCompressionDuration();
+        }
+        return total;
+    }
+
+    std::chrono::nanoseconds bestDecompressionDuration() const
+    {
+        std::chrono::nanoseconds total{ 0 };
+        for (const auto& block : blockResults) {
+            total += block.bestDecompressionDuration();
+        }
+        return total;
     }
 
     double bestCompressionSpeedMBps() const
     {
-        if (compressionDurations.empty()) {
+        auto dur = bestCompressionDuration();
+        if (dur.count() == 0) {
             return std::numeric_limits<double>::quiet_NaN();
         }
-        auto dur = *std::min_element(
-                compressionDurations.begin(), compressionDurations.end());
-        return (double)originalSize * 1000.0 / dur.count();
+        return (double)originalSize() * 1000.0 / dur.count();
     }
 
     double bestDecompressionSpeedMBps() const
     {
-        if (decompressionDurations.empty()) {
+        auto dur = bestDecompressionDuration();
+        if (dur.count() == 0) {
             return std::numeric_limits<double>::quiet_NaN();
         }
-        auto dur = *std::min_element(
-                decompressionDurations.begin(), decompressionDurations.end());
-        return (double)originalSize * 1000.0 / dur.count();
+        return (double)originalSize() * 1000.0 / dur.count();
     }
 
     nlohmann::json json() const;
