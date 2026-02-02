@@ -146,8 +146,11 @@ std::vector<BenchmarkResult> benchmark(
 
             result.compressedSize = benchmarkFn(
                     result.compressionDurations,
-                    args.minIters,
-                    args.minTime,
+                    args.mode == BenchmarkMode::Decompression ? 0
+                                                              : args.minIters,
+                    args.mode == BenchmarkMode::Decompression
+                            ? std::chrono::seconds(0)
+                            : args.minTime,
                     [&] {
                         return compressor->compress(
                                 { cBuf.get(), cCapacity }, data);
@@ -155,8 +158,10 @@ std::vector<BenchmarkResult> benchmark(
 
             auto dSize = benchmarkFn(
                     result.decompressionDurations,
-                    args.minIters,
-                    args.minTime,
+                    args.mode == BenchmarkMode::Compression ? 0 : args.minIters,
+                    args.mode == BenchmarkMode::Compression
+                            ? std::chrono::seconds(0)
+                            : args.minTime,
                     [&] {
                         return compressor->decompress(
                                 { dBuf.get(), data.size() },

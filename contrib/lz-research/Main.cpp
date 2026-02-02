@@ -94,6 +94,18 @@ class BenchmarkCommand : public Command {
                 'o',
                 true,
                 "Path to output file");
+        parser.addCommandFlag(
+                int(Commands::Benchmark),
+                "compress-only",
+                'C',
+                false,
+                "Only benchmark compression, not decompression");
+        parser.addCommandFlag(
+                int(Commands::Benchmark),
+                "decompress-only",
+                'D',
+                false,
+                "Only benchmark decompression, not compression");
     }
 
     void parseArguments(const openzl::arg::ParsedArgs& args) override
@@ -120,6 +132,24 @@ class BenchmarkCommand : public Command {
             throw std::runtime_error("Specify a value for --output");
         }
         output_ = outputFlag.value();
+
+        const bool compressOnly =
+                args.cmdFlag(int(Commands::Benchmark), "compress-only")
+                        .has_value();
+        const bool decompressOnly =
+                args.cmdFlag(int(Commands::Benchmark), "decompress-only")
+                        .has_value();
+        if (compressOnly && decompressOnly) {
+            throw std::runtime_error(
+                    "Cannot specify both --compress-only and --decompress-only");
+        }
+        if (compressOnly) {
+            args_.mode = bench::BenchmarkMode::Compression;
+        } else if (decompressOnly) {
+            args_.mode = bench::BenchmarkMode::Decompression;
+        } else {
+            args_.mode = bench::BenchmarkMode::Both;
+        }
 
         auto compressorsFlag =
                 args.cmdFlag(int(Commands::Benchmark), "compressors");
