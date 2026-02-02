@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "Benchmark.hpp"
@@ -106,6 +107,12 @@ class BenchmarkCommand : public Command {
                 'D',
                 false,
                 "Only benchmark decompression, not compression");
+        parser.addCommandFlag(
+                int(Commands::Benchmark),
+                "block-size",
+                'B',
+                true,
+                "Break input into blocks of this size, and benchmark on each block");
     }
 
     void parseArguments(const openzl::arg::ParsedArgs& args) override
@@ -125,6 +132,12 @@ class BenchmarkCommand : public Command {
         if (minSecsFlag.has_value()) {
             args_.minTime =
                     std::chrono::seconds(std::stoull(minSecsFlag.value()));
+        }
+
+        auto blockSizeFlag =
+                args.cmdFlag(int(Commands::Benchmark), "block-size");
+        if (blockSizeFlag.has_value()) {
+            args_.blockSize = std::stoull(blockSizeFlag.value());
         }
 
         auto outputFlag = args.cmdFlag(int(Commands::Benchmark), "output");

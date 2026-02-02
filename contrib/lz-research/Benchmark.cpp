@@ -66,16 +66,37 @@ std::string trunc(std::string str, size_t n, bool left)
 }
 } // namespace
 
+nlohmann::json BlockResult::json() const
+{
+    nlohmann::json data;
+    data["original_size"]                = originalSize;
+    data["compressed_size"]              = compressedSize;
+    data["best_compression_duration_ns"] = bestCompressionDuration().count();
+    data["best_decompression_duration_ns"] =
+            bestDecompressionDuration().count();
+    data["compression_durations_ns"]   = toJson(compressionDurations);
+    data["decompression_durations_ns"] = toJson(decompressionDurations);
+    return data;
+}
+
 nlohmann::json BenchmarkResult::json() const
 {
     nlohmann::json data;
-    data["file_name"]                  = fileName;
-    data["compressor_name"]            = compressorName;
-    data["compressor_config"]          = compressorConfig;
-    data["original_size"]              = originalSize;
-    data["compressed_size"]            = compressedSize;
-    data["compression_durations_ns"]   = toJson(compressionDurations);
-    data["decompression_durations_ns"] = toJson(decompressionDurations);
+    data["file_name"]                    = fileName;
+    data["compressor_name"]              = compressorName;
+    data["compressor_config"]            = compressorConfig;
+    data["original_size"]                = originalSize();
+    data["compressed_size"]              = compressedSize();
+    data["compression_ratio"]            = compressionRatio();
+    data["best_compression_duration_ns"] = bestCompressionDuration().count();
+    data["best_decompression_duration_ns"] =
+            bestDecompressionDuration().count();
+    data["best_compression_speed_mbps"]   = bestCompressionSpeedMBps();
+    data["best_decompression_speed_mbps"] = bestDecompressionSpeedMBps();
+    data["blocks"]                        = nlohmann::json::array();
+    for (const auto& block : blockResults) {
+        data["blocks"].push_back(block.json());
+    }
     return data;
 }
 
@@ -138,40 +159,52 @@ std::vector<BenchmarkResult> benchmark(
             result.fileName         = input->name();
             result.compressorName   = compressor->name();
             result.compressorConfig = compressorConfig;
-            result.originalSize     = data.size();
 
-            auto cCapacity = compressor->compressBound(data);
-            auto cBuf      = std::make_unique<char[]>(cCapacity);
-            auto dBuf      = std::make_unique<char[]>(data.size());
+            const auto blockSize   = args.blockSize.value_or(data.size());
+            const size_t numBlocks = (data.size() + blockSize - 1) / blockSize;
+            const auto minTimePerBlock = args.minTime / numBlocks;
 
-            result.compressedSize = benchmarkFn(
-                    result.compressionDurations,
-                    args.mode == BenchmarkMode::Decompression ? 0
-                                                              : args.minIters,
-                    args.mode == BenchmarkMode::Decompression
-                            ? std::chrono::seconds(0)
-                            : args.minTime,
-                    [&] {
-                        return compressor->compress(
-                                { cBuf.get(), cCapacity }, data);
-                    });
+            do {
+                auto block = data.substr(0, blockSize);
+                BlockResult blockResult;
+                blockResult.originalSize = block.size();
+                auto cCapacity           = compressor->compressBound(block);
+                auto cBuf                = std::make_unique<char[]>(cCapacity);
+                auto dBuf = std::make_unique<char[]>(block.size());
 
-            auto dSize = benchmarkFn(
-                    result.decompressionDurations,
-                    args.mode == BenchmarkMode::Compression ? 0 : args.minIters,
-                    args.mode == BenchmarkMode::Compression
-                            ? std::chrono::seconds(0)
-                            : args.minTime,
-                    [&] {
-                        return compressor->decompress(
-                                { dBuf.get(), data.size() },
-                                { cBuf.get(), result.compressedSize });
-                    });
+                blockResult.compressedSize = benchmarkFn(
+                        blockResult.compressionDurations,
+                        args.mode == BenchmarkMode::Decompression
+                                ? 0
+                                : args.minIters,
+                        args.mode == BenchmarkMode::Decompression
+                                ? std::chrono::seconds(0)
+                                : minTimePerBlock,
+                        [&] {
+                            return compressor->compress(
+                                    { cBuf.get(), cCapacity }, block);
+                        });
+
+                auto dSize = benchmarkFn(
+                        blockResult.decompressionDurations,
+                        args.mode == BenchmarkMode::Compression ? 0
+                                                                : args.minIters,
+                        args.mode == BenchmarkMode::Compression
+                                ? std::chrono::seconds(0)
+                                : minTimePerBlock,
+                        [&] {
+                            return compressor->decompress(
+                                    { dBuf.get(), block.size() },
+                                    { cBuf.get(), blockResult.compressedSize });
+                        });
+
+                if (poly::string_view{ dBuf.get(), dSize } != block) {
+                    throw std::runtime_error("Corruption!");
+                }
+                result.blockResults.push_back(blockResult);
+                data = data.substr(block.size());
+            } while (!data.empty());
             Logger::log_c(LogLevel::INFO, "%s", result.pretty().c_str());
-
-            if (poly::string_view{ dBuf.get(), dSize } != data) {
-                throw std::runtime_error("Corruption!");
-            }
             results.push_back(result);
         }
     }
