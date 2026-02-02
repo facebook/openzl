@@ -13,9 +13,16 @@
 
 namespace openzl::bench {
 
+enum class BenchmarkMode {
+    Both,
+    Compression,
+    Decompression,
+};
+
 struct BenchmarkArgs {
     size_t minIters{ 1 };
     std::chrono::nanoseconds minTime{ 1 };
+    BenchmarkMode mode{ BenchmarkMode::Both };
     std::vector<nlohmann::json> compressorConfigs;
 };
 
@@ -35,6 +42,9 @@ struct BenchmarkResult {
 
     double bestCompressionSpeedMBps() const
     {
+        if (compressionDurations.empty()) {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
         auto dur = *std::min_element(
                 compressionDurations.begin(), compressionDurations.end());
         return (double)originalSize * 1000.0 / dur.count();
@@ -42,6 +52,9 @@ struct BenchmarkResult {
 
     double bestDecompressionSpeedMBps() const
     {
+        if (decompressionDurations.empty()) {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
         auto dur = *std::min_element(
                 decompressionDurations.begin(), decompressionDurations.end());
         return (double)originalSize * 1000.0 / dur.count();
