@@ -4,12 +4,39 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 oncall("data_compression")
 
 cpp_library(
+    name = "codecs",
+    srcs = [
+        "codecs/Bucket.cpp",
+        "codecs/Bucket16.cpp",
+        "codecs/IsoByte.cpp",
+        "codecs/Lz.cpp",
+        "codecs/SmallInt.cpp",
+        "codecs/VarByte.cpp",
+    ],
+    headers = [
+        "codecs/Bucket.hpp",
+        "codecs/Bucket16.hpp",
+        "codecs/CodecIDs.hpp",
+        "codecs/IsoByte.hpp",
+        "codecs/Lz.hpp",
+        "codecs/SmallInt.hpp",
+        "codecs/VarByte.hpp",
+        "codecs/utils/Partition.hpp",
+    ],
+    exported_deps = [
+        "../../cpp:openzl_cpp",
+    ],
+)
+
+cpp_library(
     # @autodeps-skip
     name = "lz_compressors",
     srcs = ["LzCompressors.cpp"],
     headers = ["LzCompressors.hpp"],
+    deps = [":codecs"],
     exported_deps = [
         "../../cpp:openzl_cpp",
+        ":codecs",
     ],
 )
 
