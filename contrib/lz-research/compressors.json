@@ -1,0 +1,102 @@
+[
+    {
+        "algorithm": "lz4",
+        "level": 1
+    },
+    {
+        "algorithm": "zstd",
+        "level": 1
+    },
+    {
+        "algorithm": "zstd",
+        "level": 1,
+        "params": {
+            "windowLog": 16,
+            "hashLog": 14
+        }
+    },
+    {
+        "algorithm": "openzl",
+        "params": {
+            "CompressionLevel": 1
+        },
+        "compressor_name": "lz-zstd-iso"
+    },
+    {
+        "algorithm": "openzl",
+        "params": {
+            "CompressionLevel": 1
+        },
+        "compressor_name": "lz-zstd-buc"
+    },
+    {
+        "algorithm": "openzl",
+        "params": {
+            "CompressionLevel": 1
+        },
+        "compressor_name": "lz-zstd-slow"
+    },
+    {
+        "algorithm": "openzl",
+        "params": {
+            "CompressionLevel": 1
+        },
+        "compressor_name": "lz-zstd-fast"
+    },
+    {
+        "algorithm": "openzl",
+        "params": {
+            "CompressionLevel": 1
+        },
+        "compressor_name": "lz-zstd-iso[llbits=4]"
+    },
+    {
+        "algorithm": "openzl",
+        "params": {
+            "CompressionLevel": 1
+        },
+        "compressor_name": "lz-zstd-buc[llbits=4]"
+    },
+    {
+        "algorithm": "openzl",
+        "params": {
+            "CompressionLevel": 1
+        },
+        "compressor_name": "lz-zstd-slow[llbits=4]"
+    },
+    {
+        "algorithm": "openzl",
+        "params": {
+            "CompressionLevel": 1
+        },
+        "compressor_name": "lz-zstd-fast[llbits=4]"
+    },
+    {
+        "algorithm": "openzl",
+        "params": {
+            "CompressionLevel": 1
+        },
+        "compressor_name": "lz-zstd-iso[llbits=3]"
+    },
+    {
+        "algorithm": "openzl",
+        "params": {
+            "CompressionLevel": 1
+        },
+        "compressor_name": "lz-zstd-buc[llbits=3]"
+    },
+    {
+        "algorithm": "openzl",
+        "params": {
+            "CompressionLevel": 1
+        },
+        "compressor_name": "lz-zstd-slow[llbits=3]"
+    },
+    {
+        "algorithm": "openzl",
+        "params": {
+            "CompressionLevel": 1
+        },
+        "compressor_name": "lz-zstd-fast[llbits=3]"
+    }
+]
