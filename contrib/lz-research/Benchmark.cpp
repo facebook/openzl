@@ -199,7 +199,12 @@ std::vector<BenchmarkResult> benchmark(
                         });
 
                 if (poly::string_view{ dBuf.get(), dSize } != block) {
-                    throw std::runtime_error("Corruption!");
+                    for (size_t i = 0; i < block.size(); ++i) {
+                        if (dBuf[i] != block[i]) {
+                            throw std::runtime_error(
+                                    "Corruption: pos " + std::to_string(i));
+                        }
+                    }
                 }
                 result.blockResults.push_back(blockResult);
                 data = data.substr(block.size());
