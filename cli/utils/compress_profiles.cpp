@@ -126,22 +126,21 @@ static void addLEintProfile(
             isSigned ? ([](ZL_Compressor* comp,
                            void* opaque,
                            const ProfileArgs&) {
-                auto graph =
-                        ZL_Compressor_registerStaticGraph_fromPipelineNodes1o(
-                                comp, (ZL_NodeID*)opaque, 2, ZL_GRAPH_FIELD_LZ);
-                return ZL_Compressor_buildACEGraphWithDefault(comp, graph);
+                const ZL_NodeID* nodes = (const ZL_NodeID*)opaque;
+                auto graph = ZL_Compressor_registerStaticGraph_fromNode1o(
+                        comp, nodes[1], ZL_GRAPH_FIELD_LZ);
+                graph = ZL_Compressor_buildACEGraphWithDefault(comp, graph);
+                return ZL_Compressor_registerStaticGraph_fromNode1o(
+                        comp, nodes[0], graph);
             })
                      : ([](ZL_Compressor* comp,
                            void* opaque,
                            const ProfileArgs&) {
-                           auto graph =
-                                   ZL_Compressor_registerStaticGraph_fromPipelineNodes1o(
-                                           comp,
-                                           (ZL_NodeID*)opaque,
-                                           1,
-                                           ZL_GRAPH_FIELD_LZ);
-                           return ZL_Compressor_buildACEGraphWithDefault(
-                                   comp, graph);
+                           const ZL_NodeID* nodes = (const ZL_NodeID*)opaque;
+                           auto graph = ZL_Compressor_buildACEGraphWithDefault(
+                                   comp, ZL_GRAPH_FIELD_LZ);
+                           return ZL_Compressor_registerStaticGraph_fromNode1o(
+                                   comp, nodes[0], graph);
                        }),
             std::move(nodeid));
 }
