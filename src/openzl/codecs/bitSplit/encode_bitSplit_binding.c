@@ -136,14 +136,31 @@ ZL_NodeID ZL_Compressor_registerBitSplitNode(
         const uint8_t* bitWidths,
         size_t nbWidths)
 {
-    if (nbWidths == 0) {
-        ZL_LOG(ERROR, "bitSplit requires at least one bit width");
+    ZL_RESULT_OF(ZL_NodeID) const result =
+            ZL_Compressor_buildBitSplitNode(compressor, bitWidths, nbWidths);
+    if (ZL_RES_isError(result))
         return ZL_NODE_ILLEGAL;
-    }
-    if (nbWidths > 64) {
-        ZL_LOG(ERROR, "bitSplit supports at most 64 bit widths");
-        return ZL_NODE_ILLEGAL;
-    }
+    return ZL_RES_value(result);
+}
+
+ZL_RESULT_OF(ZL_NodeID)
+ZL_Compressor_buildBitSplitNode(
+        ZL_Compressor* compressor,
+        const uint8_t* bitWidths,
+        size_t nbWidths)
+{
+    ZL_RESULT_DECLARE_SCOPE(ZL_NodeID, compressor);
+
+    ZL_ERR_IF_EQ(
+            nbWidths,
+            0,
+            nodeParameter_invalid,
+            "bitSplit requires at least one bit width");
+    ZL_ERR_IF_GT(
+            nbWidths,
+            64,
+            nodeParameter_invalid,
+            "bitSplit supports at most 64 bit widths");
 
     ZL_CopyParam const widthsParam = { .paramId   = ZL_BITSPLIT_WIDTHS_PID,
                                        .paramPtr  = bitWidths,
@@ -155,10 +172,9 @@ ZL_NodeID ZL_Compressor_registerBitSplitNode(
         .paramValue = (int)nbWidths,
     };
     ZL_LocalIntParams const lip = { &nbWidthsParam, 1 };
-
     ZL_LocalParams const lParams = { .copyParams = lgp, .intParams = lip };
-    return ZL_Compressor_cloneNode(
-            compressor,
-            (ZL_NodeID){ ZL_PrivateStandardNodeID_bitSplit },
-            &lParams);
+    ZL_NodeParameters const nParams = { .localParams = &lParams };
+
+    return ZL_Compressor_parameterizeNode(compressor, ZL_NODE_BITSPLIT, &nParams);
+
 }

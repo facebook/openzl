@@ -56,6 +56,17 @@ ZL_NodeID ZL_Compressor_registerBitSplitNode(
         const uint8_t* bitWidths,
         size_t nbWidths);
 
+/**
+ * Same as ZL_Compressor_registerBitSplitNode(),
+ * but @returns a ZL_RESULT_OF(ZL_NodeID) error type,
+ * which can transport more information when there is an error.
+ */
+ZL_RESULT_OF(ZL_NodeID)
+ZL_Compressor_buildBitSplitNode(
+        ZL_Compressor* compressor,
+        const uint8_t* bitWidths,
+        size_t nbWidths);
+
 ZL_END_C_DECLS
 
 #endif // OPENZL_CODECS_BITSPLIT_ENCODE_BITSPLIT_BINDING_H
