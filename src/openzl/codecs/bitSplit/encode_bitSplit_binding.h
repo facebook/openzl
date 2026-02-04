@@ -36,7 +36,7 @@ ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 #define EI_BITSPLIT(id)                \
     { .gd          = GRAPH_VO_NUM(id), \
       .transform_f = EI_bitSplit,      \
-      .name        = "!zl.private.bitSplit" }
+      .name        = "!zl.private.bit_split" }
 
 /**
  * Register a bitSplit node with specified bit widths.

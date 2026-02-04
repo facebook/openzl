@@ -32,7 +32,7 @@ ZL_Report DI_bitSplit(
         size_t nbVariableSrcs);
 
 #define DI_BITSPLIT(id) \
-    { .transform_f = DI_bitSplit, .name = "!zl.private.bitSplit" }
+    { .transform_f = DI_bitSplit, .name = "!zl.private.bit_split" }
 
 ZL_END_C_DECLS
 
