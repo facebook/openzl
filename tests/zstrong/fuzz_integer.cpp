@@ -1,6 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "openzl/compress/private_nodes.h"
+#include "openzl/codecs/bitSplit/encode_bitSplit_binding.h" // ZL_Compressor_registerBitSplitNode
 #include "openzl/shared/mem.h"
 #include "tests/datagen/DataGen.h"
 #include "tests/fuzz_utils.h"
@@ -231,7 +232,7 @@ FUZZ_F(IntegerTest, FuzzBitSplitRoundTrip)
     reset();
     ZL_NodeID node = ZL_Compressor_registerBitSplitNode(
             cgraph_, bitWidths.data(), nbWidths);
-    if (node.id == ZL_NODE_ILLEGAL.id) {
+    if (node.nid == ZL_NODE_ILLEGAL.nid) {
         return;
     }
     ZL_GraphID graph = declareGraph(node);
