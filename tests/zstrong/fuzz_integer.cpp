@@ -204,6 +204,40 @@ FUZZ_F(IntegerTest, FuzzIntegerDivideBy)
         testRoundTrip(input);
     }
 }
+
+FUZZ_F(IntegerTest, FuzzBitSplitRoundTrip)
+{
+    datagen::DataGen dg = fromFDP(f);
+    auto const eltWidth =
+            dg.choices("elt_width", std::vector<size_t>{ 1, 2, 4, 8 });
+    size_t const eltWidthBits = eltWidth * 8;
+
+    size_t const maxNbWidths = std::min(size_t(64), eltWidthBits);
+    size_t const nbWidths    = dg.usize_range("nb_widths", 1, maxNbWidths);
+
+    std::vector<uint8_t> bitWidths(nbWidths);
+    size_t sumWidths = 0;
+    for (size_t i = 0; i < nbWidths - 1; i++) {
+        size_t const remaining    = eltWidthBits - sumWidths - (nbWidths - i - 1);
+        size_t const maxBitWidth  = std::min(size_t(64), remaining);
+        bitWidths[i] = (uint8_t)dg.usize_range("bit_width", 1, maxBitWidth);
+        sumWidths += bitWidths[i];
+    }
+    bitWidths[nbWidths - 1] = (uint8_t)(eltWidthBits - sumWidths);
+
+    std::string input =
+            dg.randStringWithQuantizedLength("input_data", eltWidth);
+
+    reset();
+    ZL_NodeID node = ZL_Compressor_registerBitSplitNode(
+            cgraph_, bitWidths.data(), nbWidths);
+    if (node.id == ZL_NODE_ILLEGAL.id) {
+        return;
+    }
+    ZL_GraphID graph = declareGraph(node);
+    finalizeGraph(graph, eltWidth);
+    testRoundTrip(input);
+}
 } // namespace
 } // namespace tests
 } // namespace openzl
