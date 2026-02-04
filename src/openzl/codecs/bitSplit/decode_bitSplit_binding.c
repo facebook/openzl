@@ -78,6 +78,7 @@ ZL_Report DI_bitSplit(
     } else if (nbVariableSrcs == nbStoredWidths + 1) {
         // Full coverage: add computed last width
         ZL_ASSERT_LE(nbStoredWidths, 64); // already checked via sumStoredWidths
+        ZL_RET_R_IF_EQ(corruption, lastWidth, 0, "bitSplit: invalid last width (set to 0)");
         ZL_memcpy(bitWidths_local, storedWidths, nbStoredWidths);
         bitWidths_local[nbStoredWidths] = (uint8_t)lastWidth;
 
