@@ -150,5 +150,5 @@ ZL_Report DI_bitSplit(
             nbWidths);
 
     ZL_RET_R_IF_ERR(ZL_Output_commit(out, nbElts));
-    return ZL_returnValue(1);
+    return ZL_returnSuccess();
 }
