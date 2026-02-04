@@ -218,8 +218,8 @@ FUZZ_F(IntegerTest, FuzzBitSplitRoundTrip)
     std::vector<uint8_t> bitWidths(nbWidths);
     size_t sumWidths = 0;
     for (size_t i = 0; i < nbWidths - 1; i++) {
-        size_t const remaining    = eltWidthBits - sumWidths - (nbWidths - i - 1);
-        size_t const maxBitWidth  = std::min(size_t(64), remaining);
+        size_t const remaining = eltWidthBits - sumWidths - (nbWidths - i - 1);
+        size_t const maxBitWidth = std::min(size_t(64), remaining);
         bitWidths[i] = (uint8_t)dg.usize_range("bit_width", 1, maxBitWidth);
         sumWidths += bitWidths[i];
     }

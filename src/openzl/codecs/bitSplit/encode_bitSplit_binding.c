@@ -136,7 +136,8 @@ ZL_NodeID ZL_Compressor_registerBitSplitNode(
         const uint8_t* bitWidths,
         size_t nbWidths)
 {
-    ZL_RESULT_OF(ZL_NodeID) const result =
+    ZL_RESULT_OF(ZL_NodeID)
+    const result =
             ZL_Compressor_buildBitSplitNode(compressor, bitWidths, nbWidths);
     if (ZL_RES_isError(result))
         return ZL_NODE_ILLEGAL;
@@ -171,10 +172,10 @@ ZL_Compressor_buildBitSplitNode(
         .paramId    = ZL_BITSPLIT_NBWIDTHS_PID,
         .paramValue = (int)nbWidths,
     };
-    ZL_LocalIntParams const lip = { &nbWidthsParam, 1 };
-    ZL_LocalParams const lParams = { .copyParams = lgp, .intParams = lip };
+    ZL_LocalIntParams const lip     = { &nbWidthsParam, 1 };
+    ZL_LocalParams const lParams    = { .copyParams = lgp, .intParams = lip };
     ZL_NodeParameters const nParams = { .localParams = &lParams };
 
-    return ZL_Compressor_parameterizeNode(compressor, ZL_NODE_BITSPLIT, &nParams);
-
+    return ZL_Compressor_parameterizeNode(
+            compressor, ZL_NODE_BITSPLIT, &nParams);
 }
