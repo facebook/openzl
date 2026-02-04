@@ -4,6 +4,7 @@
 
 #include <random>
 
+#include "openzl/common/operation_context.h"
 #include "openzl/compress/cnodes.h"
 #include "openzl/compress/compress_types.h"
 #include "openzl/zl_ctransform.h"
@@ -70,7 +71,8 @@ class CNodesTest : public Test {
     void SetUp() override
     {
         gCounter.reset();
-        ZL_Report r = CTM_init(&ctm_, NULL);
+        ZL_OC_init(&opCtx_);
+        ZL_Report r = CTM_init(&ctm_, &opCtx_);
         ASSERT_FALSE(ZL_isError(r)) << "CTM_init should succeed";
         nextCtid_ = 1000;
     }
@@ -78,6 +80,7 @@ class CNodesTest : public Test {
     void TearDown() override
     {
         CTM_destroy(&ctm_);
+        ZL_OC_destroy(&opCtx_);
         EXPECT_TRUE(gCounter.balanced())
                 << "materializeCount=" << gCounter.materializeCount
                 << " dematerializeCount=" << gCounter.dematerializeCount;
@@ -154,6 +157,7 @@ class CNodesTest : public Test {
         };
     }
 
+    ZL_OperationContext opCtx_{};
     CNodes_manager ctm_{};
     ZL_IDType nextCtid_;
     ZL_MaterializerDesc trackingMaterializer_{
