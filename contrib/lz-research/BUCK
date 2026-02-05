@@ -55,6 +55,7 @@ cpp_library(
         "../../tools/training:train",
         "fbsource//third-party/lz4:lz4",
         "fbsource//third-party/zstd:zstd",
+        "fbsource//xplat/third-party/snappy:snappy",
     ],
 )
 
