@@ -10,7 +10,6 @@
 #include "tools/sddl2/compiler/Logger.h"
 #include "tools/sddl2/compiler/grouper/Grouper.h"
 #include "tools/sddl2/compiler/parser/Parser.h"
-#include "tools/sddl2/compiler/serializer/Serializer.h"
 #include "tools/sddl2/compiler/tokenizer/Tokenizer.h"
 
 namespace openzl::sddl2 {
@@ -122,7 +121,6 @@ class Compiler {
     const Tokenizer tokenizer_;
     const Grouper grouper_;
     const Parser parser_;
-    const Serializer serializer_;
 };
 
 } // namespace openzl::sddl2

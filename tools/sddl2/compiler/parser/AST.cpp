@@ -10,49 +10,6 @@
 using namespace openzl::sddl2::detail;
 
 namespace openzl::sddl2 {
-
-namespace {
-
-void add_debug_info(
-        const ASTNode& node,
-        const SerializationOptions& opts,
-        const A1C_MapBuilder& map_builder)
-{
-    if (!opts.include_source_locations) {
-        return;
-    }
-
-    const auto loc   = node.loc();
-    auto* const pair = A1C_MapBuilder_add(map_builder);
-    if (pair == nullptr) {
-        throw SerializationError(
-                loc, "Failed to add debug element to node map.");
-    }
-
-    A1C_Item_string_refCStr(&pair->key, "dbg");
-
-    const auto dbg_map_builder =
-            A1C_Item_map_builder(&pair->val, 1, opts.arena);
-    auto* const loc_pair = A1C_MapBuilder_add(dbg_map_builder);
-    if (loc_pair == nullptr) {
-        throw SerializationError(
-                loc, "Failed to add location element to debug info map.");
-    }
-
-    A1C_Item_string_refCStr(&loc_pair->key, "loc");
-
-    auto* const loc_items = A1C_Item_array(&loc_pair->val, 2, opts.arena);
-    if (loc_items == nullptr) {
-        throw SerializationError(
-                loc, "Failed to add location array to debug info map.");
-    }
-
-    A1C_Item_int64(&loc_items[0], loc.start());
-    A1C_Item_int64(&loc_items[1], loc.size());
-}
-
-} // anonymous namespace
-
 ASTNode::ASTNode(SourceLocation loc) : loc_(std::move(loc)) {}
 
 const SourceLocation& ASTNode::loc() const
@@ -100,13 +57,6 @@ void ASTSym::print(std::ostream& os, size_t indent) const
        << std::endl;
 }
 
-A1C_Item ASTSym::serialize(const SerializationOptions&) const
-{
-    throw InvariantViolation(
-            loc(),
-            "Attempting to serialize AST which contains unconverted symbols!");
-}
-
 ASTList::ASTList(
         ListType type,
         const ASTPtr& open,
@@ -142,13 +92,6 @@ void ASTList::print(std::ostream& os, size_t indent) const
     for (const auto& ptr : nodes_) {
         ptr->print(os, indent + 2);
     }
-}
-
-A1C_Item ASTList::serialize(const SerializationOptions&) const
-{
-    throw ParseError(
-            loc(),
-            "Attempting to serialize AST which still contains a list expression which hasn't been consumed or implicitly unwrapped.");
 }
 
 ASTPtr unwrap_parens(ASTPtr arg_ptr)
@@ -214,24 +157,6 @@ void ASTNum::print(std::ostream& os, size_t indent) const
     os << std::string(indent, ' ') << "Num: " << val_ << std::endl;
 }
 
-A1C_Item ASTNum::serialize(const SerializationOptions& opts) const
-{
-    auto* const arena = opts.arena;
-    A1C_Item map;
-    const auto builder = A1C_Item_map_builder(&map, 2, arena);
-    auto* const pair   = A1C_MapBuilder_add(builder);
-    if (pair == nullptr) {
-        throw SerializationError(loc(), "Failed to allocate A1C_Item map.");
-    }
-    if (!A1C_Item_string_cstr(&pair->key, "int", arena)) {
-        throw SerializationError(loc(), "Failed to allocate A1C_Item string.");
-    }
-    A1C_Item_int64(&pair->val, val_);
-
-    add_debug_info(*this, opts, builder);
-    return map;
-}
-
 int64_t ASTNum::val() const
 {
     return val_;
@@ -247,26 +172,6 @@ void ASTVar::print(std::ostream& os, size_t indent) const
     os << std::string(indent, ' ') << "Var: " << name_ << std::endl;
 }
 
-A1C_Item ASTVar::serialize(const SerializationOptions& opts) const
-{
-    auto* const arena = opts.arena;
-    A1C_Item map;
-    const auto builder = A1C_Item_map_builder(&map, 2, arena);
-    auto* const pair   = A1C_MapBuilder_add(builder);
-    if (pair == nullptr) {
-        throw SerializationError(loc(), "Failed to allocate A1C_Item map.");
-    }
-    if (!A1C_Item_string_cstr(&pair->key, "var", arena)) {
-        throw SerializationError(loc(), "Failed to allocate A1C_Item string.");
-    }
-    if (!A1C_Item_string_copy(&pair->val, name_.data(), name_.size(), arena)) {
-        throw SerializationError(loc(), "Failed to allocate A1C_Item string.");
-    }
-
-    add_debug_info(*this, opts, builder);
-    return map;
-}
-
 // TODO: message
 ASTPoison::ASTPoison(const Token& token, const ASTPtr& paren_ptr)
         : ASTField(token.loc() + maybe_loc(paren_ptr))
@@ -277,23 +182,6 @@ ASTPoison::ASTPoison(const Token& token, const ASTPtr& paren_ptr)
 void ASTPoison::print(std::ostream& os, size_t indent) const
 {
     os << std::string(indent, ' ') << "Field: POISON" << std::endl;
-}
-
-A1C_Item ASTPoison::serialize(const SerializationOptions& opts) const
-{
-    auto* const arena = opts.arena;
-    A1C_Item map;
-    const auto builder = A1C_Item_map_builder(&map, 2, arena);
-    auto* const pair   = A1C_MapBuilder_add(builder);
-    if (pair == nullptr) {
-        throw SerializationError(loc(), "Failed to allocate A1C_Item map.");
-    }
-    const auto tag = sym_to_ser_str(Symbol::POISON);
-    A1C_Item_string_ref(&pair->key, tag.data(), tag.size());
-    A1C_Item_null(&pair->val);
-
-    add_debug_info(*this, opts, builder);
-    return map;
 }
 
 void ASTPoison::validate_args(const ASTPtr& paren_ptr)
@@ -319,23 +207,6 @@ void ASTAtom::print(std::ostream& os, size_t indent) const
 {
     os << std::string(indent, ' ') << "Field: ATOM:" << std::endl;
     width_->print(os, indent + 2);
-}
-
-A1C_Item ASTAtom::serialize(const SerializationOptions& opts) const
-{
-    auto* const arena = opts.arena;
-    A1C_Item map;
-    const auto builder = A1C_Item_map_builder(&map, 2, arena);
-    auto* const pair   = A1C_MapBuilder_add(builder);
-    if (pair == nullptr) {
-        throw SerializationError(loc(), "Failed to allocate A1C_Item map.");
-    }
-    const auto tag = sym_to_ser_str(Symbol::ATOM);
-    A1C_Item_string_ref(&pair->key, tag.data(), tag.size());
-    pair->val = width_->serialize(opts);
-
-    add_debug_info(*this, opts, builder);
-    return map;
 }
 
 ASTPtr ASTAtom::extract_width_arg(
@@ -367,24 +238,6 @@ void ASTBuiltinField::print(std::ostream& os, size_t indent) const
        << std::endl;
 }
 
-A1C_Item ASTBuiltinField::serialize(const SerializationOptions& opts) const
-{
-    auto* const arena = opts.arena;
-    A1C_Item map;
-    const auto builder = A1C_Item_map_builder(&map, 2, arena);
-    auto* const pair   = A1C_MapBuilder_add(builder);
-    if (pair == nullptr) {
-        throw SerializationError(loc(), "Failed to allocate A1C_Item map.");
-    }
-    const auto tag = sym_to_ser_str(Symbol::ATOM);
-    A1C_Item_string_ref(&pair->key, tag.data(), tag.size());
-    const auto kw_name = sym_to_ser_str(kw_);
-    A1C_Item_string_ref(&pair->val, kw_name.data(), kw_name.size());
-
-    add_debug_info(*this, opts, builder);
-    return map;
-}
-
 ASTRecord::ASTRecord(const ASTPtr& paren_ptr)
         : ASTField(some(paren_ptr).loc()),
           fields_(extract_fields(loc(), paren_ptr))
@@ -397,29 +250,6 @@ void ASTRecord::print(std::ostream& os, size_t indent) const
     for (const auto& field : fields_) {
         field->print(os, indent + 2);
     }
-}
-
-A1C_Item ASTRecord::serialize(const SerializationOptions& opts) const
-{
-    auto* const arena = opts.arena;
-    A1C_Item map;
-    const auto builder = A1C_Item_map_builder(&map, 2, arena);
-    auto* const pair   = A1C_MapBuilder_add(builder);
-    if (pair == nullptr) {
-        throw SerializationError(loc(), "Failed to allocate A1C_Item map.");
-    }
-    const auto tag = sym_to_ser_str(Symbol::RECORD);
-    A1C_Item_string_ref(&pair->key, tag.data(), tag.size());
-    auto* const items = A1C_Item_array(&pair->val, fields_.size(), arena);
-    if (items == nullptr) {
-        throw SerializationError(loc(), "Failed to allocate A1C_Item array.");
-    }
-    for (size_t i = 0; i < fields_.size(); i++) {
-        items[i] = fields_[i]->serialize(opts);
-    }
-
-    add_debug_info(*this, opts, builder);
-    return map;
 }
 
 ASTVec ASTRecord::extract_fields(
@@ -452,28 +282,6 @@ void ASTArray::print(std::ostream& os, size_t indent) const
     len_->print(os, indent + 2);
 }
 
-A1C_Item ASTArray::serialize(const SerializationOptions& opts) const
-{
-    auto* const arena = opts.arena;
-    A1C_Item map;
-    const auto builder = A1C_Item_map_builder(&map, 2, arena);
-    auto* const pair   = A1C_MapBuilder_add(builder);
-    if (pair == nullptr) {
-        throw SerializationError(loc(), "Failed to allocate A1C_Item map.");
-    }
-    const auto tag = sym_to_ser_str(Symbol::ARRAY);
-    A1C_Item_string_ref(&pair->key, tag.data(), tag.size());
-    auto* const items = A1C_Item_array(&pair->val, 2, arena);
-    if (items == nullptr) {
-        throw SerializationError(loc(), "Failed to allocate A1C_Item array.");
-    }
-    items[0] = field_->serialize(opts);
-    items[1] = len_->serialize(opts);
-
-    add_debug_info(*this, opts, builder);
-    return map;
-}
-
 ASTDest::ASTDest(const Token& token, const ASTPtr& paren_ptr)
         : ASTConverted(token.loc() + maybe_loc(paren_ptr))
 {
@@ -483,23 +291,6 @@ ASTDest::ASTDest(const Token& token, const ASTPtr& paren_ptr)
 void ASTDest::print(std::ostream& os, size_t indent) const
 {
     os << std::string(indent, ' ') << "Dest" << std::endl;
-}
-
-A1C_Item ASTDest::serialize(const SerializationOptions& opts) const
-{
-    auto* const arena = opts.arena;
-    A1C_Item map;
-    const auto builder = A1C_Item_map_builder(&map, 2, arena);
-    auto* const pair   = A1C_MapBuilder_add(builder);
-    if (pair == nullptr) {
-        throw SerializationError(loc(), "Failed to allocate A1C_Item map.");
-    }
-    const auto tag = sym_to_ser_str(Symbol::DEST);
-    A1C_Item_string_ref(&pair->key, tag.data(), tag.size());
-    A1C_Item_null(&pair->val);
-
-    add_debug_info(*this, opts, builder);
-    return map;
 }
 
 void ASTDest::validate_args(const ASTPtr& paren_ptr)
@@ -531,36 +322,6 @@ void ASTOp::print(std::ostream& os, size_t indent) const
     }
 }
 
-A1C_Item ASTOp::serialize(const SerializationOptions& opts) const
-{
-    auto* const arena = opts.arena;
-    A1C_Item map;
-    const auto builder = A1C_Item_map_builder(&map, 2, arena);
-    auto* const pair   = A1C_MapBuilder_add(builder);
-    if (pair == nullptr) {
-        throw SerializationError(loc(), "Failed to allocate A1C_Item map.");
-    }
-    const auto op_name = sym_to_ser_str(op_);
-    A1C_Item_string_ref(&pair->key, op_name.data(), op_name.size());
-    if (args_.size() == 0) {
-        A1C_Item_null(&pair->val);
-    } else if (args_.size() == 1) {
-        pair->val = args_[0]->serialize(opts);
-    } else {
-        auto* const items = A1C_Item_array(&pair->val, args_.size(), arena);
-        if (items == nullptr) {
-            throw SerializationError(
-                    loc(), "Failed to allocate A1C_Item array.");
-        }
-        for (size_t i = 0; i < args_.size(); i++) {
-            items[i] = args_[i]->serialize(opts);
-        }
-    }
-
-    add_debug_info(*this, opts, builder);
-    return map;
-}
-
 ASTFunc::ASTFunc(ASTVec args, ASTVec body)
         : ASTConverted(join_locs(args) + join_locs(body)),
           args_(std::move(args)),
@@ -581,43 +342,6 @@ void ASTFunc::print(std::ostream& os, size_t indent) const
     }
 }
 
-A1C_Item ASTFunc::serialize(const SerializationOptions& opts) const
-{
-    auto* const arena = opts.arena;
-    A1C_Item map;
-    const auto builder = A1C_Item_map_builder(&map, 2, arena);
-    auto* const pair   = A1C_MapBuilder_add(builder);
-    if (pair == nullptr) {
-        throw SerializationError(loc(), "Failed to allocate A1C_Item map.");
-    }
-    A1C_Item_string_refCStr(&pair->key, "func");
-
-    auto* const val_items = A1C_Item_array(&pair->val, 2, arena);
-    if (val_items == nullptr) {
-        throw SerializationError(loc(), "Failed to allocate A1C_Item array.");
-    }
-
-    auto* const arg_items  = A1C_Item_array(&val_items[0], args_.size(), arena);
-    auto* const body_items = A1C_Item_array(&val_items[1], body_.size(), arena);
-
-    if (args_.size() != 0 && arg_items == nullptr) {
-        throw SerializationError(loc(), "Failed to allocate A1C_Item array.");
-    }
-    if (body_.size() != 0 && body_items == nullptr) {
-        throw SerializationError(loc(), "Failed to allocate A1C_Item array.");
-    }
-
-    for (size_t i = 0; i < args_.size(); i++) {
-        arg_items[i] = some(args_[i]).serialize(opts);
-    }
-    for (size_t i = 0; i < body_.size(); i++) {
-        body_items[i] = some(body_[i]).serialize(opts);
-    }
-
-    add_debug_info(*this, opts, builder);
-    return map;
-}
-
 ASTTuple::ASTTuple(ASTPtr list)
         : ASTConverted(some(list).loc()), tuple_(extract_exprs(loc(), list))
 {
@@ -629,30 +353,6 @@ void ASTTuple::print(std::ostream& os, size_t indent) const
     for (const auto& expr : tuple_) {
         expr->print(os, indent + 2);
     }
-}
-
-A1C_Item ASTTuple::serialize(const SerializationOptions& opts) const
-{
-    auto* const arena = opts.arena;
-    A1C_Item map;
-    const auto builder = A1C_Item_map_builder(&map, 2, arena);
-    auto* const pair   = A1C_MapBuilder_add(builder);
-    if (pair == nullptr) {
-        throw SerializationError(loc(), "Failed to allocate A1C_Item map.");
-    }
-    A1C_Item_string_refCStr(&pair->key, "tuple");
-
-    auto* const val_items = A1C_Item_array(&pair->val, tuple_.size(), arena);
-    if (val_items == nullptr) {
-        throw SerializationError(loc(), "Failed to allocate A1C_Item array.");
-    }
-
-    for (size_t i = 0; i < tuple_.size(); i++) {
-        val_items[i] = some(tuple_[i]).serialize(opts);
-    }
-
-    add_debug_info(*this, opts, builder);
-    return map;
 }
 
 ASTVec ASTTuple::extract_exprs(
