@@ -22,6 +22,7 @@ cpp_library(
         "codecs/SmallInt.hpp",
         "codecs/VarByte.hpp",
         "codecs/utils/Partition.hpp",
+        "codecs/utils/Portability.hpp",
     ],
     exported_deps = [
         "../../cpp:openzl_cpp",

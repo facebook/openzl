@@ -6,6 +6,17 @@
 
 namespace openzl::lz {
 
+struct SmallInt {
+    static size_t
+    encode(uint8_t* small, uint16_t* large, const uint16_t* src, size_t n);
+    static void decode(
+            uint16_t* dst,
+            const uint8_t* small,
+            size_t numSmall,
+            const uint16_t* large,
+            size_t numLarge);
+};
+
 class SmallIntEncoder : public CustomEncoder {
    public:
     SimpleCodecDescription simpleCodecDescription() const override;

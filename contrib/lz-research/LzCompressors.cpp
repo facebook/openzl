@@ -76,13 +76,14 @@ std::string lzLz4Compressor(int llBits, bool huf)
     registerGraphComponents(compressor);
     auto lzNode = registerLz(compressor, { .llBits = llBits });
     auto store  = graphs::Store{}();
-    auto lits   = huf ? graphs::Huffman{}() : store;
-    auto graph  = compressor.buildStaticGraph(
+    // TODO: Bitpack offsets when input is small enough
+    auto lits  = huf ? graphs::Huffman{}() : store;
+    auto graph = compressor.buildStaticGraph(
             lzNode,
             { lits,
-               store,
-               store,
-               smallIntGraph(
+              store,
+              store,
+              smallIntGraph(
                       compressor,
                       store,
                       nodes::RangePack{}(compressor, store)) });
@@ -109,8 +110,11 @@ lzZstdCompressor(int llBits, bool slow, bool iso = false, bool bucket = false)
     if (bucket) {
         offsets = bucket16Graph(compressor);
     }
-    auto extraLens = smallIntGraph(compressor, slow ? huf : store, quantize);
-    auto graph     = compressor.buildStaticGraph(
+    auto extraLens = smallIntGraph(
+            compressor,
+            slow ? huf : store,
+            sizeof(length_t) == 2 ? store : quantize);
+    auto graph = compressor.buildStaticGraph(
             lzNode, { lits, tokens, offsets, extraLens });
     compressor.selectStartingGraph(graph);
     return compressor.serialize();
@@ -142,7 +146,7 @@ std::string isoByteCompressor(bool useBucket, bool entropy = false)
     return compressor.serialize();
 }
 
-std::string smallIntCompressor(bool slow)
+std::string smallIntCompressor(int width, bool slow)
 {
     openzl::Compressor compressor;
     registerGraphComponents(compressor);
@@ -150,8 +154,9 @@ std::string smallIntCompressor(bool slow)
     auto huf   = graphs::Huffman{}();
     auto quantize =
             nodes::QuantizeLengths{}(compressor, graphs::Fse{}(), store);
-    auto graph = smallIntGraph(compressor, slow ? huf : store, quantize);
-    graph      = nodes::ConvertSerialToNumLE{ 4 }(compressor, graph);
+    auto graph = smallIntGraph(
+            compressor, slow ? huf : store, width == 2 ? store : quantize);
+    graph = nodes::ConvertSerialToNumLE{ width }(compressor, graph);
     compressor.selectStartingGraph(graph);
     return compressor.serialize();
 }
@@ -201,10 +206,14 @@ std::string getSerializedCompressor(std::string_view name)
         return isoByteCompressor(true, true);
     } else if (name == "varbyte32") {
         return varByteCompressor(4);
-    } else if (name == "smallint-store") {
-        return smallIntCompressor(false);
-    } else if (name == "smallint-huf") {
-        return smallIntCompressor(true);
+    } else if (name == "smallint16-store") {
+        return smallIntCompressor(2, false);
+    } else if (name == "smallint16-huf") {
+        return smallIntCompressor(2, true);
+    } else if (name == "smallint32-store") {
+        return smallIntCompressor(4, false);
+    } else if (name == "smallint32-huf") {
+        return smallIntCompressor(4, true);
     } else if (name == "bucket16") {
         return bucket16Compressor();
     }

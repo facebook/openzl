@@ -11,6 +11,10 @@
 #include "openzl/shared/mem.h"
 #include "openzl/shared/portability.h"
 
+#if ZL_ARCH_X86_64
+#    include <immintrin.h>
+#endif
+
 namespace openzl::lz {
 namespace {
 VariableOutputCodecDescription isoByteCodecDescription()
@@ -53,6 +57,7 @@ void isoByteDecodeNaive(
     }
 }
 
+#if ZL_ARCH_X86_64
 template <typename UInt>
 class IsoByteDecode {
    public:
@@ -339,6 +344,7 @@ class IsoByteDecode {
                 makeLoHiShuffleLUT()
             };
 };
+#endif // ZL_ARCH_X86_64
 
 } // namespace
 
@@ -411,12 +417,21 @@ void IsoByteDecoder::decode(DecoderState& decoder) const
     const size_t srcSize = highBytes8.numElts() + highBytes16.numElts();
     auto output          = decoder.createOutput(0, srcSize, 2);
 
+#if ZL_ARCH_X86_64
     IsoByteDecode<uint16_t>::decode(
             { (uint16_t*)output.ptr(), srcSize },
             { (const uint8_t*)bitmap.ptr(), bitmap.numElts() },
             { (const uint8_t*)lowBytes.ptr(), lowBytes.numElts() },
             { (const uint8_t*)highBytes8.ptr(), highBytes8.numElts() },
             { (const uint8_t*)highBytes16.ptr(), highBytes16.numElts() });
+#else
+    isoByteDecodeNaive(
+            { (uint16_t*)output.ptr(), srcSize },
+            { (const uint8_t*)bitmap.ptr(), bitmap.numElts() },
+            { (const uint8_t*)lowBytes.ptr(), lowBytes.numElts() },
+            { (const uint8_t*)highBytes8.ptr(), highBytes8.numElts() },
+            { (const uint8_t*)highBytes16.ptr(), highBytes16.numElts() });
+#endif
 
     output.commit(srcSize);
 }

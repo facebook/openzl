@@ -11,6 +11,7 @@
 #include "tools/training/train.h"
 
 #include "LzCompressors.hpp"
+#include "codecs/Lz.hpp"
 
 namespace openzl::bench {
 
@@ -494,6 +495,38 @@ size_t SnappyCompressor::decompress(
     return decompressedSize(compressed);
 }
 
+Lz4LikeCompressor::Lz4LikeCompressor(nlohmann::json config) {}
+
+std::string Lz4LikeCompressor::name() const
+{
+    std::string name = "lz4like";
+    return name;
+}
+
+size_t Lz4LikeCompressor::compressBound(std::string_view data) const
+{
+    return lz::Lz4Like::compressBound(data.size());
+}
+
+size_t Lz4LikeCompressor::decompressedSize(std::string_view compressed) const
+{
+    return lz::Lz4Like::decompressedSize(compressed);
+}
+
+size_t Lz4LikeCompressor::compress(
+        std::span<char> compressed,
+        std::string_view data)
+{
+    return lz::Lz4Like::compress(compressed, data);
+}
+
+size_t Lz4LikeCompressor::decompress(
+        std::span<char> decompressed,
+        std::string_view compressed)
+{
+    return lz::Lz4Like::decompress(decompressed, compressed);
+}
+
 OpenZLCompressor::OpenZLCompressor(nlohmann::json config)
 {
     if (config.contains("params")) {
@@ -685,6 +718,8 @@ std::unique_ptr<Compressor> makeCompressor(nlohmann::json config)
         return std::make_unique<Lz4Compressor>(config);
     } else if (algo == "snappy") {
         return std::make_unique<SnappyCompressor>(config);
+    } else if (algo == "lz4like") {
+        return std::make_unique<Lz4LikeCompressor>(config);
     } else if (algo == "openzl") {
         return std::make_unique<OpenZLCompressor>(config);
     } else {

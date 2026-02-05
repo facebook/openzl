@@ -8,6 +8,7 @@
 #include <numeric>
 
 #include "CodecIDs.hpp"
+#include "utils/Portability.hpp"
 
 #include "openzl/codecs/common/bitstream/ff_bitstream.h"
 #include "openzl/common/assertion.h"
@@ -19,8 +20,13 @@
 #include "openzl/shared/utils.h"
 #include "utils/Partition.hpp"
 
+#if ZL_ARCH_X86_64
+#    include <immintrin.h>
+#endif
+
 namespace openzl::lz {
 namespace {
+
 SimpleCodecDescription bucketCodecDescription()
 {
     return SimpleCodecDescription{
@@ -33,7 +39,8 @@ SimpleCodecDescription bucketCodecDescription()
 
 class BucketEncoderState {
    public:
-    BucketEncoderState(poly::span<const uint8_t> bases) : bases_(bases)
+    BucketEncoderState(poly::span<const uint8_t> bases, int maxSymbolValue)
+            : bases_(bases), numSymbols_(maxSymbolValue + 1)
     {
         if (bases.empty()) {
             throw std::runtime_error("bases is empty");
@@ -121,14 +128,15 @@ class BucketEncoderState {
             return 1;
         }
         size_t base = bases_[baseIdx];
-        assert(base < 256);
-        auto end = baseIdx + 1 == bases_.size() ? size_t(256)
+        assert(base < numSymbols_);
+        auto end = baseIdx + 1 == bases_.size() ? numSymbols_
                                                 : size_t(bases_[baseIdx + 1]);
         assert(end > base);
         return end - base;
     }
 
     poly::span<const uint8_t> bases_;
+    size_t numSymbols_;
     size_t fixedBits_;
     std::array<uint8_t, 256> byteToBucket_;
     std::array<uint8_t, 256> byteToBase_;
@@ -140,16 +148,21 @@ class BucketDecoderState {
    public:
     BucketDecoderState(poly::span<const uint8_t> header)
     {
-        if (header.empty()) {
+        if (header.size() < 2) {
             throw std::runtime_error("header is empty");
         }
-        unusedFixedBits_ = header[0] % 8;
-        const auto bases = header.subspan(1);
+        unusedFixedBits_      = header[0] % 8;
+        size_t maxSymbolValue = header[1];
+        numSymbols_           = maxSymbolValue + 1;
+        const auto bases      = header.subspan(2);
         if (bases.empty()) {
             throw std::runtime_error("bases is empty");
         }
         if (bases.size() > bases_.size()) {
             throw std::runtime_error("bases is > 256");
+        }
+        if (bases.back() > maxSymbolValue) {
+            throw std::runtime_error("bases[-1] is > maxSymbolValue");
         }
         for (size_t i = 1; i < bases.size(); ++i) {
             if (bases[i - 1] >= bases[i]) {
@@ -284,7 +297,7 @@ class BucketDecoderState {
                 f += 4;
 
                 const uint64_t vData  = ZL_readLE64(v) >> bitsConsumed;
-                const uint64_t offset = _pdep_u64(vData, mask);
+                const uint64_t offset = utils::bitDeposit(vData, mask);
 
                 ZL_writeLE64(o, base + offset);
                 o += 8;
@@ -354,8 +367,8 @@ class BucketDecoderState {
             return 1;
         }
         size_t base = bases_[baseIdx];
-        assert(base < 256);
-        auto end = baseIdx + 1 == numBases_ ? size_t(256)
+        assert(base < numSymbols_);
+        auto end = baseIdx + 1 == numBases_ ? numSymbols_
                                             : size_t(bases_[baseIdx + 1]);
         assert(end > base);
         return end - base;
@@ -367,6 +380,7 @@ class BucketDecoderState {
     size_t fixedBits_;
     size_t numBases_;
     size_t maxVarBits_;
+    size_t numSymbols_;
 };
 } // namespace
 
@@ -381,17 +395,22 @@ void BucketEncoder::encode(EncoderState& encoder) const
     if (!bases.has_value()) {
         throw std::runtime_error("bases not present");
     }
-    BucketEncoderState state(*bases);
+    auto maxSymbolValue = encoder.getLocalIntParam(1);
+    if (!maxSymbolValue.has_value()) {
+        throw std::runtime_error("maxSymbolValue not present");
+    }
+    BucketEncoderState state(*bases, *maxSymbolValue);
 
     const auto& input    = encoder.inputs()[0];
     const size_t numElts = input.numElts();
 
-    uint8_t header[257];
+    uint8_t header[258];
     // first byte is the # of unused bits in the bitstream
     header[0] = (8 - ((state.fixedBits() * numElts) % 8)) % 8;
-    memcpy(header + 1, state.bases().data(), state.bases().size());
+    header[1] = (uint8_t)*maxSymbolValue;
+    memcpy(header + 2, state.bases().data(), state.bases().size());
 
-    encoder.sendCodecHeader(header, 1 + state.bases().size());
+    encoder.sendCodecHeader(header, 2 + state.bases().size());
 
     auto fixedStream =
             encoder.createOutput(0, state.fixedStreamSize(numElts), 1);
@@ -405,12 +424,16 @@ void BucketEncoder::encode(EncoderState& encoder) const
     fixedStream.commit(state.fixedStreamSize(numElts));
     varStream.commit(varStreamSize);
 }
-/* static */ Edge::RunNodeResult
-BucketEncoder::runNode(Edge& edge, NodeID node, poly::span<const uint8_t> bases)
+/* static */ Edge::RunNodeResult BucketEncoder::runNode(
+        Edge& edge,
+        NodeID node,
+        poly::span<const uint8_t> bases,
+        uint8_t maxSymbolValue)
 {
     NodeParameters params;
     params.localParams.emplace();
     params.localParams->addRefParam(0, bases.data(), bases.size());
+    params.localParams->addIntParam(1, maxSymbolValue);
     auto r = edge.runNode(node, std::move(params));
     return r;
 }
@@ -537,10 +560,13 @@ uint32_t entropyCompressedBucketCost(
 //     const auto cost          = fixedCost - entropyCost;
 //     return cost >= 0 ? cost : -cost;
 // }
-uint32_t fixedBucketCost(poly::span<const uint32_t> bucket, uint32_t fixedCost)
+float fixedBucketCost(poly::span<const uint32_t> bucket, uint32_t fixedCost)
 {
-    const uint32_t bucketCount =
-            std::accumulate(bucket.begin(), bucket.end(), 0);
+    if (bucket.size() > 128) {
+        // Reject buckets that are too large
+        return std::numeric_limits<float>::infinity();
+    }
+    const float bucketCount = std::accumulate(bucket.begin(), bucket.end(), 0);
     return bucketCount * (fixedCost + ZL_nextPow2(bucket.size()));
 }
 
@@ -768,7 +794,8 @@ void BucketGraph::graph(GraphState& state) const
         throw std::runtime_error("CustomNodes must have exactly one node");
     }
 
-    auto outEdges = BucketEncoder::runNode(inputEdge, nodes[0], partitions);
+    auto outEdges = BucketEncoder::runNode(
+            inputEdge, nodes[0], partitions, histogram.base.maxSymbol);
     assert(outEdges.size() == 2);
 
     if (entropyCompressFixed) {

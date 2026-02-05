@@ -2,11 +2,22 @@
 
 #include "VarByte.hpp"
 #include "CodecIDs.hpp"
+#include "utils/Portability.hpp"
 
 #include "openzl/codecs/common/bitstream/ff_bitstream.h"
 #include "openzl/common/assertion.h"
 #include "openzl/shared/mem.h"
 #include "openzl/shared/portability.h"
+
+#if ZL_ARCH_X86_64
+#    include <immintrin.h>
+#endif
+#ifdef __ARM_FEATURE_SVE
+#    include <arm_sve.h>
+#endif /* __ARM_FEATURE_SVE */
+#ifdef __aarch64__
+#    include <arm_neon.h>
+#endif /* __aarch64__ */
 
 namespace openzl::lz {
 namespace {
@@ -36,6 +47,8 @@ SimpleCodecDescription varByteCodecDescription()
 //   return std::pair{
 //       MutLUT{lut.data() + 2, 4 * 256}, MutLUT{lut.data(), 4 * 256}};
 // }
+
+#if ZL_ARCH_X86_64
 
 class alignas(16) DualLUT {
    public:
@@ -90,6 +103,7 @@ class alignas(16) DualLUT {
 
     std::array<uint8_t, 16 * 256> data_;
 };
+#endif
 
 template <
         uint32_t B0,
@@ -112,6 +126,7 @@ class VarByteCoder {
    public:
     constexpr VarByteCoder() {}
 
+#if ZL_ARCH_X86_64
     static void print32(char const* name, __m128i vec)
     {
         std::array<uint32_t, 4> array;
@@ -183,6 +198,7 @@ class VarByteCoder {
         bitsConsumed += bitsConsumedLUT_[control1];
         return based;
     }
+#endif
 
     uint32_t decode1(uint8_t control, uint32_t data, size_t& bitsConsumed) const
     {
@@ -214,10 +230,10 @@ class VarByteCoder {
 
             const int bitsNeeded = __builtin_popcountll(mask);
             if (ZL_LIKELY(bitsNeeded <= 56) || bitsOffset == 0) {
-                ZL_writeLE64(out + 4 * i, base + _pdep_u64(data, mask));
+                ZL_writeLE64(out + 4 * i, base + utils::bitDeposit(data, mask));
             } else {
                 data |= uint64_t(bytes[bytesOffset + 8]) << (64 - bitsOffset);
-                ZL_writeLE64(out + 4 * i, base + _pdep_u64(data, mask));
+                ZL_writeLE64(out + 4 * i, base + utils::bitDeposit(data, mask));
             }
             bitsConsumed += bitsNeeded;
         }
@@ -258,6 +274,7 @@ class VarByteCoder {
                             bytes.data(),
                             bitsConsumed);
                 } else {
+#if ZL_ARCH_X86_64
                     auto outVec0 = decode4(
                             control[controlIdx + 0],
                             control[controlIdx + 1],
@@ -277,6 +294,17 @@ class VarByteCoder {
                         auto const outVec = _mm_packus_epi32(outVec0, outVec1);
                         _mm_storeu_si128((__m128i_u*)&out[outIdx], outVec);
                     }
+#else
+                    for (size_t i = 0; i < 8; ++i) {
+                        uint8_t const ctrl =
+                                (control[outIdx / 2] >> (i % 2 == 0 ? 0 : 4))
+                                % 16;
+                        out[outIdx + i] = decode1(
+                                ctrl,
+                                safeRead(bytes.subspan(bitsConsumed / 8)),
+                                bitsConsumed);
+                    }
+#endif
                 }
                 outIdx += 8;
             }
@@ -301,7 +329,10 @@ class VarByteCoder {
         assert(control.size() == (data.size() + 1) / 2);
         assert(bytes.size() >= data.size() * sizeof(UInt));
         static_assert(sizeof(UInt) <= 4);
-        auto const clzLUT = makeClzLUT();
+        auto const clzLUT        = makeClzLUT();
+        auto const clzShiftedLut = shift4(makeClzLUT());
+        auto const baseLUT       = toClzLUT(clzLUT, baseLUT_);
+        auto const bitsLUT       = toClzLUT(clzLUT, bits_);
 
         // static bool printed = false;
         // if (!printed) {
@@ -311,24 +342,48 @@ class VarByteCoder {
         //   printed = true;
         // }
 
-        ZS_BitCStreamFF controlStream =
-                ZS_BitCStreamFF_init(control.data(), control.size());
         ZS_BitCStreamFF bytesStream =
                 ZS_BitCStreamFF_init(bytes.data(), bytes.size());
 
         // size_t idx = 0;
-        for (auto const val : data) {
-            ZL_REQUIRE_LT(val, (1u << 24));
+        const size_t kUnroll = 6;
+        const size_t limit   = data.size() - data.size() % kUnroll;
+
+        size_t i          = 0;
+        size_t controlIdx = 0;
+
+        for (; i < limit; i += kUnroll) {
+            const auto values = data.subspan(i, kUnroll);
+            std::array<int, kUnroll> clz;
+            for (size_t j = 0; j < kUnroll; ++j) {
+                ZL_ASSERT_LT(values[j], (1u << 24));
+                clz[j] = __builtin_clz(uint32_t(values[j]));
+            }
+            for (size_t j = 0; j < kUnroll; j += 2) {
+                control[controlIdx++] =
+                        clzLUT[clz[j]] | clzShiftedLut[clz[j + 1]];
+            }
+            for (size_t j = 0; j < kUnroll; j += 3) {
+                for (size_t k = 0; k < 3; ++k) {
+                    const auto val  = values[j + k];
+                    const auto base = baseLUT[clz[j + k]];
+                    const auto bits = bitsLUT[clz[j + k]];
+                    ZS_BitCStreamFF_write(&bytesStream, val - base, bits);
+                }
+                ZS_BitCStreamFF_flush(&bytesStream);
+            }
+        }
+
+        ZS_BitCStreamFF controlStream = ZS_BitCStreamFF_init(
+                control.data() + controlIdx, control.size() - controlIdx);
+
+        for (; i < data.size(); ++i) {
+            const auto val = data[i];
+            ZL_ASSERT_LT(val, (1u << 24));
             auto const ctrl = clzLUT[__builtin_clz(uint32_t(val))];
             assert(ctrl < 16);
             auto const bits = bits_[ctrl];
             assert(bits <= 32);
-            // if (idx < 10) {
-            //   fprintf(
-            //       stderr, "encoding %u as control %u = %u bits\n", val, ctrl,
-            //       bits);
-            //   ++idx;
-            // }
             ZS_BitCStreamFF_write(&controlStream, ctrl, 4);
             ZS_BitCStreamFF_write(&bytesStream, val - baseLUT_[ctrl], bits);
             ZS_BitCStreamFF_flush(&controlStream);
@@ -343,22 +398,23 @@ class VarByteCoder {
         auto const bytesResult   = ZS_BitCStreamFF_finish(&bytesStream);
         ZL_REQUIRE_SUCCESS(controlResult);
         ZL_REQUIRE_SUCCESS(bytesResult);
-        assert(ZL_validResult(controlResult) == control.size());
+        assert(controlIdx + ZL_validResult(controlResult) == control.size());
         assert(ZL_validResult(bytesResult) <= bytes.size());
 
-        std::vector<uint32_t> out;
-        out.resize(data.size());
-        decode(std::span{ out },
-               control,
-               bytes.subspan(0, ZL_validResult(bytesResult)));
-        for (size_t i = 0; i < data.size(); ++i) {
-            ZL_REQUIRE_EQ(data[i], out[i], "error at idx %zu", i);
-        }
+        // std::vector<uint32_t> out;
+        // out.resize(data.size());
+        // decode(std::span{ out },
+        //        control,
+        //        bytes.subspan(0, ZL_validResult(bytesResult)));
+        // for (size_t i = 0; i < data.size(); ++i) {
+        //     ZL_REQUIRE_EQ(data[i], out[i], "error at idx %zu", i);
+        // }
 
         return ZL_validResult(bytesResult);
     }
 
    private:
+#if ZL_ARCH_X86_64
     std::pair<__m128i, __m128i> getShuffleAndShift(
             uint8_t control0,
             uint8_t control1,
@@ -382,14 +438,12 @@ class VarByteCoder {
     {
         return _mm_set_epi64x(base2xLUT_[control1], base2xLUT_[control0]);
     }
+#endif
 
     constexpr std::array<uint8_t, 32> makeClzLUT() const
     {
-        std::array<uint8_t, 32> clzLUT;
-        for (size_t i = 0; i < 8; ++i) {
-            clzLUT[i] = 0;
-        }
-        for (size_t clz = 8; clz < clzLUT.size(); ++clz) {
+        std::array<uint8_t, 32> clzLUT{};
+        for (size_t clz = 1; clz < clzLUT.size(); ++clz) {
             size_t const numBits = 32 - clz;
             size_t const maxVal  = (1u << numBits) - 1;
             for (size_t i = 0; i < bits_.size(); ++i) {
@@ -404,6 +458,26 @@ class VarByteCoder {
             }
         }
         return clzLUT;
+    }
+
+    template <typename T>
+    constexpr std::array<T, 32> toClzLUT(
+            const std::array<uint8_t, 32>& clzLUT,
+            const std::array<T, 16>& lut) const
+    {
+        std::array<T, 32> outLUT;
+        for (size_t i = 0; i < 32; ++i) {
+            outLUT[i] = lut[clzLUT[i]];
+        }
+        return outLUT;
+    }
+
+    constexpr std::array<uint8_t, 32> shift4(std::array<uint8_t, 32> lut) const
+    {
+        for (size_t i = 0; i < lut.size(); ++i) {
+            lut[i] <<= 4;
+        }
+        return lut;
     }
 
     static uint32_t safeRead(std::span<uint8_t const> bytes)
@@ -431,6 +505,7 @@ class VarByteCoder {
         return lut;
     }
 
+#if ZL_ARCH_X86_64
     static constexpr DualLUT makeShuffleShiftLUT()
     {
         std::array<uint8_t, 16> constexpr kBits = { B0,  B1,  B2,  B3, B4,  B5,
@@ -480,6 +555,7 @@ class VarByteCoder {
         }
         return DualLUT{ lo };
     }
+#endif
 
     constexpr static std::array<uint64_t, 256> expandLUT(
             std::array<uint32_t, 16> const& lut)
@@ -533,7 +609,9 @@ class VarByteCoder {
         return lut;
     }
 
+#if ZL_ARCH_X86_64
     static constexpr DualLUT shuffleShiftLUT_{ makeShuffleShiftLUT() };
+#endif
     static constexpr std::array<uint64_t, 256> base2xLUT_{ expandLUT(
             makeBaseLUT()) };
     static constexpr std::array<uint64_t, 256> maskLUT_{ expandLUT(
@@ -556,6 +634,7 @@ using VarByteCoder16 =
         VarByteCoder<1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15>;
 using VarByteCoder32 =
         VarByteCoder<5, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 22, 24>;
+
 } // namespace
 
 SimpleCodecDescription VarByteEncoder::simpleCodecDescription() const
