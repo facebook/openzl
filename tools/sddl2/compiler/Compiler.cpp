@@ -21,18 +21,26 @@ Compiler::Compiler(Options options)
 /**
  * The compiler for SDDL is comprised of four passes:
  *
+ * ```
+ *   Record Entry() = {
+ *       id: Int32LE,
+ *   }
+ *   : Entry
+ * ```
+ *
  * 1. Tokenization:
  *
  *    Converts the contiguous string of source code into a flat list of tokens.
  *    Strips whitespace and comments.
  *
- *    E.g., `arr = Array(foo, bar + 1); consume arr;` ->
+ *    The previous source code would be tokenized as:
  *    ```
  *    [
- *      Word("arr"), Symbol::ASSIGN, Symbol::ARRAY, Symbol::PAREN_OPEN,
- *      Word("foo"), Symbol::COMMA, Word("bar"), Symbol::ADD, Num(1),
- *      Symbol::PAREN_CLOSE, Symbol::SEMI, Symbol::CONSUME, Word("arr"),
- *      Symbol::SEMI,
+ *      Symbol::RECORD, Word("Entry"), Symbol::PAREN_OPEN, Symbol::PAREN_CLOSE,
+ *      Symbol: ASSIGN, Symbol::CURLY_OPEN, Symbol::NL, Word("id"),
+ *      Symbol: ASSUME, Symbol: I32LE, Symbol::COMMA, Symbol::NL,
+ *      Symbol::CURLY_CLOSE, Symbol::NL, Symbol::ASSUME,
+ *      Word("Entry"), Symbol::NL
  *    ]
  *    ```
  *
@@ -51,13 +59,12 @@ Compiler::Compiler(Options options)
  *    ```
  *    [
  *      Expr([
- *        Word("arr"), Symbol::ASSIGN, Symbol::ARRAY,
- *        List(PAREN, [
- *          Expr([Word("foo")]),
- *          Expr([Word("bar"), Symbol::ADD, Num(1)]),
- *        ]),
+ *        Symbol::RECORD, Word("Entry"), List(PAREN, []), Symbol::ASSIGN,
+ *        List(CURLY, [Expr([Word("id"), Symbol::ASSUME, Symbol::I32LE])]),
  *      ]),
- *      Expr([Symbol::CONSUME, Word("arr")]),
+ *      Expr([
+ *        Symbol::ASSUME, Word("Entry"),
+ *      ]),
  *    ]
  *    ```
  *
@@ -71,19 +78,24 @@ Compiler::Compiler(Options options)
  *    [
  *      Op(
  *        ASSIGN,
- *        Var("arr"),
- *        Array(
- *          Var("foo"),
- *          Op(
- *            ADD,
- *            Var("bar"),
- *            Num(1),
- *          ),
+ *        Var("Entry"),
+ *        Record(
+ *          [],
+ *          [
+ *            Op(
+ *              ASSIGN,
+ *              Var("id"),
+ *              Op(
+ *                CONSUME,
+ *                Field("I32LE"),
+ *              ),
+ *            ),
+ *          ],
  *        ),
  *      ),
  *      Op(
  *        CONSUME,
- *        Var("arr"),
+ *        Var("Entry"),
  *      ),
  *    ]
  *    ```
