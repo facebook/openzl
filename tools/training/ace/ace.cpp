@@ -118,8 +118,24 @@ std::vector<std::shared_ptr<const std::string_view>> ACETrainer::train(
     size_t graphIdx        = 0;
     const size_t numGraphs = autoBackendGraphs.size();
     for (const auto& backendGraph : autoBackendGraphs) {
+        ++graphIdx;
+        // Skip graphs with no training samples (e.g., optional fields that
+        // aren't present in the training data). These will use default
+        // compression.
+        if (samples[backendGraph].empty()) {
+            Logger::log(
+                    VERBOSE1,
+                    "Skipping ACE graph ",
+                    graphIdx,
+                    " / ",
+                    numGraphs,
+                    " (",
+                    backendGraph,
+                    "): no training samples");
+            continue;
+        }
         auto aceState = trainBackend(
-                samples[backendGraph], trainParams, ++graphIdx, numGraphs);
+                samples[backendGraph], trainParams, graphIdx, numGraphs);
         auto localParams = LocalParams();
         localParams.addCopyParam(
                 AutomatedCompressorExplorer::kAceStateParamId,

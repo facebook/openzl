@@ -18,7 +18,7 @@
 #include "tools/protobuf/ProtoDeserializer.h"
 #include "tools/protobuf/ProtoSerializer.h"
 #include "tools/protobuf/serialization_utils.h"
-#ifdef ZL_IS_FBCODE
+#if ZL_IS_FBCODE
 #    if ZL_FBCODE_IS_RELEASE
 #        include "openzl/prod/tools/protobuf/schema.pb.h"
 #    else
