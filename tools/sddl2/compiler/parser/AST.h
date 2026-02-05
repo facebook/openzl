@@ -39,8 +39,6 @@ class ASTNode {
 
     virtual void print(std::ostream& os, size_t indent = 0) const = 0;
 
-    virtual A1C_Item serialize(const SerializationOptions& opts) const = 0;
-
     const SourceLocation& loc() const;
 
    private:
@@ -89,8 +87,6 @@ class ASTSym : public ASTUnconverted {
 
     void print(std::ostream& os, size_t indent) const override;
 
-    A1C_Item serialize(const SerializationOptions& opts) const override;
-
    private:
     const Symbol sym_;
 };
@@ -117,8 +113,6 @@ class ASTList : public ASTUnconverted {
 
     void print(std::ostream& os, size_t indent) const override;
 
-    A1C_Item serialize(const SerializationOptions& opts) const override;
-
    private:
     const ListType type_;
     const ASTVec nodes_;
@@ -129,8 +123,6 @@ class ASTNum : public ASTConverted {
     explicit ASTNum(const Token& token);
 
     void print(std::ostream& os, size_t indent) const override;
-
-    A1C_Item serialize(const SerializationOptions& opts) const override;
 
     int64_t val() const;
 
@@ -143,8 +135,6 @@ class ASTVar : public ASTConverted {
     explicit ASTVar(const Token& token);
 
     void print(std::ostream& os, size_t indent) const override;
-
-    A1C_Item serialize(const SerializationOptions& opts) const override;
 
    private:
     const std::string name_;
@@ -163,8 +153,6 @@ class ASTPoison : public ASTField {
 
     void print(std::ostream& os, size_t indent) const override;
 
-    A1C_Item serialize(const SerializationOptions& opts) const override;
-
    private:
     void validate_args(const ASTPtr& paren_ptr);
 };
@@ -174,8 +162,6 @@ class ASTAtom : public ASTField {
     explicit ASTAtom(const Token& token, const ASTPtr& paren_ptr);
 
     void print(std::ostream& os, size_t indent) const override;
-
-    A1C_Item serialize(const SerializationOptions& opts) const override;
 
    private:
     static ASTPtr extract_width_arg(
@@ -191,8 +177,6 @@ class ASTBuiltinField : public ASTField {
 
     void print(std::ostream& os, size_t indent) const override;
 
-    A1C_Item serialize(const SerializationOptions& opts) const override;
-
    private:
     const Symbol kw_;
 };
@@ -202,8 +186,6 @@ class ASTRecord : public ASTField {
     explicit ASTRecord(const ASTPtr& paren_ptr);
 
     void print(std::ostream& os, size_t indent) const override;
-
-    A1C_Item serialize(const SerializationOptions& opts) const override;
 
    private:
     static ASTVec extract_fields(
@@ -219,8 +201,6 @@ class ASTArray : public ASTField {
 
     void print(std::ostream& os, size_t indent) const override;
 
-    A1C_Item serialize(const SerializationOptions& opts) const override;
-
    private:
     const ASTPtr field_;
     const ASTPtr len_;
@@ -232,8 +212,6 @@ class ASTDest : public ASTConverted {
 
     void print(std::ostream& os, size_t indent) const override;
 
-    A1C_Item serialize(const SerializationOptions& opts) const override;
-
    private:
     void validate_args(const ASTPtr& paren_ptr);
 };
@@ -243,8 +221,6 @@ class ASTOp : public ASTConverted {
     explicit ASTOp(const Token& token, ASTVec args);
 
     void print(std::ostream& os, size_t indent) const override;
-
-    A1C_Item serialize(const SerializationOptions& opts) const override;
 
    private:
     const Symbol op_;
@@ -257,8 +233,6 @@ class ASTFunc : public ASTConverted {
 
     void print(std::ostream& os, size_t indent) const override;
 
-    A1C_Item serialize(const SerializationOptions& opts) const override;
-
    private:
     const ASTVec args_;
     const ASTVec body_;
@@ -269,8 +243,6 @@ class ASTTuple : public ASTConverted {
     explicit ASTTuple(ASTPtr list);
 
     void print(std::ostream& os, size_t indent) const override;
-
-    A1C_Item serialize(const SerializationOptions& opts) const override;
 
    private:
     static ASTVec extract_exprs(

@@ -120,10 +120,6 @@ poly::string_view sym_to_debug_str(Symbol symbol);
 /// (E.g., Symbol::ADD -> "+")
 poly::string_view sym_to_repr_str(Symbol symbol);
 
-/// @returns the string used to represent a symbol in the serialized CBOR.
-/// (E.g., Symbol::U64LE -> "u8l")
-poly::string_view sym_to_ser_str(Symbol symbol);
-
 /**
  * This is a vector not a map because some operators are prefixes of others, so
  * we have to check the longer ones first.
