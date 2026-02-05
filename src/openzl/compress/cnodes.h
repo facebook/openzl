@@ -4,13 +4,12 @@
 #define ZSTRONG_COMPRESS_CNODES_H
 
 #include "openzl/common/allocation.h" // Arena
-#include "openzl/common/map.h"
 #include "openzl/common/opaque.h"
 #include "openzl/common/vector.h"
 #include "openzl/compress/cnode.h"          // CNode
 #include "openzl/compress/compress_types.h" // InternalTransform_Desc
+#include "openzl/compress/materializer.h"   // MaterializedParamMap
 #include "openzl/shared/portability.h"
-#include "openzl/zl_errors.h" // ZL_RESULT_DECLARE_TYPE_IMPL, ZL_RESULT_OF
 
 ZL_BEGIN_C_DECLS
 
@@ -21,29 +20,7 @@ ZL_RESULT_DECLARE_TYPE(CNodeID);
 
 DECLARE_VECTOR_TYPE(CNode)
 
-// Definitions for MaterializedParamMap
-typedef struct {
-    ZL_LocalParams localParams;
-    ZL_MaterializerDesc matDesc; // The description provided at registration
-} MaterializedParamKey;
-
-typedef struct {
-    void* materializedParam; // The materialized object
-} MaterializedParamEntry;
-
-// Custom hash and equality functions for MaterializedParamKey. Uses the
-// LocalParams object and ZL_MaterializerDesc for the comparison.
-size_t MaterializedParamMap_hash(const MaterializedParamKey* key);
-bool MaterializedParamMap_eq(
-        const MaterializedParamKey* lhs,
-        const MaterializedParamKey* rhs);
-
-ZL_DECLARE_CUSTOM_MAP_TYPE(
-        MaterializedParamMap,
-        MaterializedParamKey,
-        MaterializedParamEntry);
-
-typedef struct {
+typedef struct CNodes_manager_s {
     VECTOR(CNode) cnodes;
     ZL_OpaquePtrRegistry opaquePtrs;
     Arena* allocator;
