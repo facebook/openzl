@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "tools/sddl2/compiler/Grammar.h"
+#include "tools/sddl2/compiler/parser/Grammar.h"
 
 #include <sstream>
 #include <string>

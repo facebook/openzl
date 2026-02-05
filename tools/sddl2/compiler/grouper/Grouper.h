@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include "tools/sddl2/compiler/Grouping.h"
 #include "tools/sddl2/compiler/Logger.h"
-#include "tools/sddl2/compiler/Token.h"
+#include "tools/sddl2/compiler/grouper/Grouping.h"
+#include "tools/sddl2/compiler/tokenizer/Token.h"
 
 namespace openzl::sddl2 {
 

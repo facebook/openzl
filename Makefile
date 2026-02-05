@@ -145,7 +145,7 @@ VISUALIZER_CXXOBJS := $(call cxx_objs,$(VISUALIZER_CPPDIR))
 TRAINING_CXXOBJS := $(call cxx_objs,$(TRAINING_DIRS))
 TRAINING_TEST_CXXOBJS := $(call cxx_objs,$(TRAINING_TEST_DIRS))
 SDDL_COMPILER_CXXOBJS := $(filter-out %main.o, $(call cxx_objs,$(SDDL_COMPILER_DIR)))
-SDDL2_COMPILER_CXXOBJS := $(filter-out %main.o, $(call cxx_objs,$(SDDL2_COMPILER_DIR)))
+SDDL2_COMPILER_CXXOBJS := $(filter-out %main.o, $(call cxx_objs,$(SDDL2_COMPILER_DIRS)))
 ML_SELECTOR_COBJS := $(call c_objs,$(ML_SELECTOR_DIR))
 ML_SELECTOR_CXXOBJS := $(call cxx_objs,$(ML_SELECTOR_DIR))
 

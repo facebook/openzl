@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "tools/sddl2/compiler/Grouper.h"
+#include "tools/sddl2/compiler/grouper/Grouper.h"
 
 #include "tools/sddl2/compiler/Exception.h"
 #include "tools/sddl2/compiler/Utils.h"
