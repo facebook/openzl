@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "tools/sddl2/compiler/Grouping.h"
+#include "tools/sddl2/compiler/grouper/Grouping.h"
 #include "tools/sddl2/compiler/Utils.h"
 
 using namespace openzl::sddl2::detail;
