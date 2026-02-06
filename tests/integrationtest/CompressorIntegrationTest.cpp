@@ -10,6 +10,9 @@
 #include "openzl/zl_compress.h"
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_ctransform.h"
+#include "openzl/zl_graph_api.h"
+#include "openzl/zl_segmenter.h"
+#include "openzl/zl_selector.h"
 
 using namespace ::testing;
 
@@ -477,6 +480,242 @@ TEST_F(CompressorIntegrationTest,
             encoderWithoutMaterializedParam, {}, nullptr);
     buildAndSelectGraph(encoderNode);
     compressData();
+}
+
+// ========================================================================
+// Some (Limited) Graph Materialization Tests
+// ========================================================================
+
+TEST_F(CompressorIntegrationTest,
+       GIVENaFunctionGraphWithMaterializedParamWHENinvokedTHENitIsAccessible)
+{
+    const auto graphFunction =
+            [](ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
+                    ZL_NOEXCEPT_FUNC_PTR -> ZL_Report {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+        ZL_ERR_IF_NE(nbInputs, 1, GENERIC);
+
+        // Access the materialized param
+        const MaterializedDictionary* materialized =
+                (const MaterializedDictionary*)ZL_Graph_getLocalRefParam(
+                        graph, MATERIALIZED_PARAM_ID)
+                        .paramRef;
+        ZL_ERR_IF_NULL(
+                materialized,
+                GENERIC,
+                "Expected materialized object to be nonnull");
+
+        // Verify materialized data is correct
+        memcpy(materialized->ptr,
+               materialized->str.data(),
+               materialized->str.size());
+
+        // Forward the input to STORE
+        return ZL_Edge_setDestination(inputs[0], ZL_GRAPH_STORE);
+    };
+
+    std::string str = "Graph materialized params!";
+    std::string str2(str.size(), 0);
+    ZL_IntParam ip = {
+        .paramId    = 1,
+        .paramValue = (int)str.size(),
+    };
+    ZL_CopyParam cp = {
+        .paramId   = 2,
+        .paramPtr  = str.data(),
+        .paramSize = str.size(),
+    };
+    ZL_RefParam rp = {
+        .paramId  = 3,
+        .paramRef = str2.data(),
+    };
+    ZL_LocalParams lp = {
+        .intParams = {
+            .intParams   = &ip,
+            .nbIntParams = 1,
+        },
+        .copyParams = {
+            .copyParams   = &cp,
+            .nbCopyParams = 1,
+        },
+        .refParams = {
+            .refParams   = &rp,
+            .nbRefParams = 1,
+        },
+    };
+
+    static ZL_Type inputType       = ZL_Type_serial;
+    ZL_FunctionGraphDesc graphDesc = {
+        .name           = "test_graph_with_materializer",
+        .graph_f        = graphFunction,
+        .inputTypeMasks = &inputType,
+        .nbInputs       = 1,
+        .localParams    = lp,
+        .materializer   = defaultMaterializer_,
+    };
+
+    auto graphId = compressor_.registerFunctionGraph(graphDesc);
+    ASSERT_NE(graphId.gid, ZL_GRAPH_ILLEGAL.gid);
+    compressor_.selectStartingGraph(graphId);
+
+    compressData();
+    EXPECT_EQ(str, str2);
+}
+
+TEST_F(CompressorIntegrationTest,
+       GIVENaSegmenterWithMaterializedParamWHENinvokedTHENitIsAccessible)
+{
+    const auto segmenterFunction = [](ZL_Segmenter* segmenter)
+                                           ZL_NOEXCEPT_FUNC_PTR -> ZL_Report {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(segmenter);
+
+        // Access the materialized param
+        const MaterializedDictionary* materialized =
+                (const MaterializedDictionary*)ZL_Segmenter_getLocalRefParam(
+                        segmenter, MATERIALIZED_PARAM_ID)
+                        .paramRef;
+        ZL_ERR_IF_NULL(
+                materialized,
+                GENERIC,
+                "Expected materialized object to be nonnull");
+
+        // Verify materialized data is correct
+        memcpy(materialized->ptr,
+               materialized->str.data(),
+               materialized->str.size());
+
+        // Process all input as a single chunk to STORE graph
+        size_t numInputs = ZL_Segmenter_numInputs(segmenter);
+        size_t* numElts  = (size_t*)ZL_Segmenter_getScratchSpace(
+                segmenter, numInputs * sizeof(size_t));
+        ZL_ERR_IF_NULL(numElts, allocation);
+        ZL_ERR_IF_ERR(ZL_Segmenter_getNumElts(segmenter, numElts, numInputs));
+        ZL_ERR_IF_ERR(ZL_Segmenter_processChunk(
+                segmenter, numElts, numInputs, ZL_GRAPH_STORE, nullptr));
+
+        return ZL_returnSuccess();
+    };
+
+    std::string str = "Segmenter materialized params!";
+    std::string str2(str.size(), 0);
+    ZL_IntParam ip = {
+        .paramId    = 1,
+        .paramValue = (int)str.size(),
+    };
+    ZL_CopyParam cp = {
+        .paramId   = 2,
+        .paramPtr  = str.data(),
+        .paramSize = str.size(),
+    };
+    ZL_RefParam rp = {
+        .paramId  = 3,
+        .paramRef = str2.data(),
+    };
+    ZL_LocalParams lp = {
+        .intParams = {
+            .intParams   = &ip,
+            .nbIntParams = 1,
+        },
+        .copyParams = {
+            .copyParams   = &cp,
+            .nbCopyParams = 1,
+        },
+        .refParams = {
+            .refParams   = &rp,
+            .nbRefParams = 1,
+        },
+    };
+
+    static ZL_Type inputType = ZL_Type_serial;
+    ZL_SegmenterDesc segDesc = {
+        .name                = "test_segmenter_with_materializer",
+        .segmenterFn         = segmenterFunction,
+        .inputTypeMasks      = &inputType,
+        .numInputs           = 1,
+        .lastInputIsVariable = false,
+        .localParams         = lp,
+        .materializer        = defaultMaterializer_,
+    };
+
+    // Use C API for segmenter registration
+    auto graphId = ZL_Compressor_registerSegmenter(compressor_.get(), &segDesc);
+    ASSERT_NE(graphId.gid, ZL_GRAPH_ILLEGAL.gid);
+    compressor_.selectStartingGraph(graphId);
+
+    compressData();
+    EXPECT_EQ(str, str2);
+}
+
+TEST_F(CompressorIntegrationTest,
+       GIVENaSelectorWithMaterializedParamWHENinvokedTHENitIsAccessible)
+{
+    const auto selectorFunction = [](const ZL_Selector* selector,
+                                     const ZL_Input*,
+                                     const ZL_GraphID*,
+                                     size_t)
+                                          ZL_NOEXCEPT_FUNC_PTR -> ZL_GraphID {
+        // Access the materialized param
+        const MaterializedDictionary* materialized =
+                (const MaterializedDictionary*)ZL_Selector_getLocalParam(
+                        selector, MATERIALIZED_PARAM_ID)
+                        .paramRef;
+        if (materialized == nullptr) {
+            return ZL_GRAPH_ILLEGAL;
+        }
+
+        // Verify materialized data is correct
+        memcpy(materialized->ptr,
+               materialized->str.data(),
+               materialized->str.size());
+
+        // Always select STORE graph
+        return ZL_GRAPH_STORE;
+    };
+
+    std::string str = "Selector materialized params!";
+    std::string str2(str.size(), 0);
+    ZL_IntParam ip = {
+        .paramId    = 1,
+        .paramValue = (int)str.size(),
+    };
+    ZL_CopyParam cp = {
+        .paramId   = 2,
+        .paramPtr  = str.data(),
+        .paramSize = str.size(),
+    };
+    ZL_RefParam rp = {
+        .paramId  = 3,
+        .paramRef = str2.data(),
+    };
+    ZL_LocalParams lp = {
+        .intParams = {
+            .intParams   = &ip,
+            .nbIntParams = 1,
+        },
+        .copyParams = {
+            .copyParams   = &cp,
+            .nbCopyParams = 1,
+        },
+        .refParams = {
+            .refParams   = &rp,
+            .nbRefParams = 1,
+        },
+    };
+
+    ZL_SelectorDesc selDesc = {
+        .selector_f   = selectorFunction,
+        .inStreamType = ZL_Type_serial,
+        .localParams  = lp,
+        .materializer = defaultMaterializer_,
+        .name         = "test_selector_with_materializer",
+    };
+
+    auto graphId = compressor_.registerSelectorGraph(selDesc);
+    ASSERT_NE(graphId.gid, ZL_GRAPH_ILLEGAL.gid);
+    compressor_.selectStartingGraph(graphId);
+
+    compressData();
+    EXPECT_EQ(str, str2);
 }
 
 } // namespace openzl

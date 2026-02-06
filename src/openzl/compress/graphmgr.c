@@ -11,9 +11,11 @@
 #include "openzl/compress/graph_registry.h" // ZL_PrivateStandardGraphID_end, GR_standardGraphs, InternalGraphDesc
 #include "openzl/compress/implicit_conversion.h" // ICONV_isCompatible for type checking
 #include "openzl/compress/localparams.h" // LP_transferLocalParams for parameter management
+#include "openzl/compress/materializer.h" // MPM_* functions for materializer operations
 #include "openzl/compress/name.h" // ZL_Name_*, ZS2_Name_* for graph name handling
 #include "openzl/shared/mem.h" // ZL_malloc, ZL_free, ZL_memcpy memory utilities
 #include "openzl/shared/overflow.h" // ZL_overflowMulST for integer overflow checks
+#include "openzl/zl_ctransform.h" // ZL_MaterializerDesc, ZL_Materializer for materialization
 #include "openzl/zl_opaque_types.h" // Opaque type definitions used by the API
 #include "openzl/zl_reflection.h" // ZL_MIGraphDesc and type reflection utilities
 
@@ -30,6 +32,7 @@ struct GraphsMgr_s {
     Arena* allocator;
     const Nodes_manager* nmgr;
     ZL_OpaquePtrRegistry opaquePtrs;
+    MaterializedParamMap materializedParams;
     ZL_OperationContext* opCtx;
 }; // note: typedef'd to GraphsMgr
 
@@ -68,6 +71,8 @@ GraphsMgr* GM_create(const Nodes_manager* nmgr)
         GM_free(gm);
         return NULL;
     }
+    gm->materializedParams =
+            MaterializedParamMap_create(ZL_ENCODER_GRAPH_LIMIT);
     VECTOR_INIT(gm->gdv, ZL_ENCODER_GRAPH_LIMIT);
     gm->nameMap = GraphMap_create(ZL_ENCODER_GRAPH_LIMIT);
     if (ZL_isError(GM_fillStandardGraphs(gm))) {
@@ -82,6 +87,8 @@ void GM_free(GraphsMgr* gm)
 {
     if (gm == NULL)
         return;
+    MPM_dematerializeAllParams(&gm->materializedParams, gm->allocator);
+    MaterializedParamMap_destroy(&gm->materializedParams);
     ZL_OpaquePtrRegistry_destroy(&gm->opaquePtrs);
     VECTOR_DESTROY(gm->gdv);
     GraphMap_destroy(&gm->nameMap);
@@ -298,7 +305,23 @@ static ZL_RESULT_OF(ZL_GraphID) GM_registerInternalGraph(
             &gdi.migd.customGraphs));
     ZL_ERR_IF_ERR(GM_transferCustomNIDs(
             gm, migd->customNodes, migd->nbCustomNodes, &gdi.migd.customNodes));
+
+    // do materialization here
     ZL_ERR_IF_ERR(GM_transferLocalParameters(gm, &gdi.migd.localParams));
+    // Materialize params if materializer is provided (with deduplication)
+    if (migd->materializer.materializeFn != NULL) {
+        // Validate provided params don't contain the paramId reserved for the
+        // materializer
+        ZL_ERR_IF_ERR(MPM_validateMaterializedParamId(
+                &gdi.migd.localParams, migd->materializer.paramId));
+        // Add the materialized object to refParams
+        ZL_ERR_IF_ERR(MPM_addOrReuseMaterializedParam(
+                gm->allocator,
+                &gm->materializedParams,
+                gm->opCtx,
+                &gdi.migd.localParams,
+                &migd->materializer));
+    }
 
     if (ppSize == 0) {
         // No need to transfer, just copy the pointer
@@ -373,6 +396,7 @@ GM_registerTypedSelectorGraph(GraphsMgr* gm, const ZL_SelectorDesc* tsd)
         .customGraphs   = tsd->customGraphs,
         .nbCustomGraphs = tsd->nbCustomGraphs,
         .localParams    = tsd->localParams,
+        .materializer   = tsd->materializer,
         .opaque         = { .ptr = tsd->opaque.ptr },
     };
     return GM_registerInternalGraph(
@@ -680,7 +704,23 @@ static ZL_RESULT_OF(ZL_GraphID) GM_registerSegmenter_internal(
             segDesc->customGraphs,
             segDesc->numCustomGraphs,
             &gdi.segDesc.customGraphs));
+
+    // do materialization here
     ZL_ERR_IF_ERR(GM_transferLocalParameters(gm, &gdi.segDesc.localParams));
+    // Materialize params if materializer is provided (with deduplication)
+    if (segDesc->materializer.materializeFn != NULL) {
+        // Validate provided params don't contain the paramId reserved for the
+        // materializer
+        ZL_ERR_IF_ERR(MPM_validateMaterializedParamId(
+                &gdi.segDesc.localParams, segDesc->materializer.paramId));
+        // Add the materialized object to refParams
+        ZL_ERR_IF_ERR(MPM_addOrReuseMaterializedParam(
+                gm->allocator,
+                &gm->materializedParams,
+                gm->opCtx,
+                &gdi.segDesc.localParams,
+                &segDesc->materializer));
+    }
 
     if (ppSize == 0) {
         // No need to transfer, just copy the pointer
