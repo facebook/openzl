@@ -5,7 +5,6 @@
 #include "tools/sddl2/compiler/Source.h"
 #include "tools/sddl2/compiler/grouper/Grouper.h"
 #include "tools/sddl2/compiler/parser/Parser.h"
-#include "tools/sddl2/compiler/serializer/Serializer.h"
 #include "tools/sddl2/compiler/tokenizer/Tokenizer.h"
 
 namespace openzl::sddl2 {
@@ -15,8 +14,7 @@ Compiler::Compiler(Options options)
           logger_(*options_.log_os, options_.verbosity),
           tokenizer_(logger_),
           grouper_(logger_),
-          parser_(logger_),
-          serializer_(logger_, options_.include_debug_info)
+          parser_(logger_)
 {
 }
 
@@ -90,10 +88,7 @@ Compiler::Compiler(Options options)
  *    ]
  *    ```
  *
- * 4. Serialization:
- *
- *    Converts the expression trees into the corresponding CBOR tree and
- *    serializes that tree to its binary representation.
+ * 4. Serialization: (TODO)
  */
 
 std::string Compiler::compile(
@@ -104,7 +99,8 @@ std::string Compiler::compile(
     const auto tokens = tokenizer_.tokenize(src);
     const auto groups = grouper_.group(tokens);
     const auto tree   = parser_.parse(groups);
-    return serializer_.serialize(tree, src);
+    // TODO: serialize the ast
+    return "";
 }
 
 Compiler::Options::Options() {}

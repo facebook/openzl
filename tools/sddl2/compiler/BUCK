@@ -12,7 +12,6 @@ zs_cxxlibrary(
             "tokenizer/*.cpp",
             "grouper/*.cpp",
             "parser/*.cpp",
-            "serializer/*.cpp",
         ],
         exclude = ["main.cpp"],
     ),
@@ -21,7 +20,6 @@ zs_cxxlibrary(
         "tokenizer/*.h",
         "grouper/*.h",
         "parser/*.h",
-        "serializer/*.h",
     ]),
     exported_deps = [
         "../../../cpp:openzl_cpp",
