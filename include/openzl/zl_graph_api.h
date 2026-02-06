@@ -11,6 +11,7 @@
 #include "openzl/zl_errors.h"   // ZL_Report
 #include "openzl/zl_input.h"
 #include "openzl/zl_localParams.h"  // ZL_LocalParams
+#include "openzl/zl_materializer.h" // ZL_MaterializerDesc
 #include "openzl/zl_opaque_types.h" // ZL_GraphID
 #include "openzl/zl_portability.h"  // ZL_NOEXCEPT_FUNC_PTR
 
@@ -87,6 +88,12 @@ struct ZL_FunctionGraphDesc {
     const ZL_NodeID* customNodes;   // can be NULL when none employed
     size_t nbCustomNodes;           // Must be zero when customNodes==NULL
     ZL_LocalParams localParams;
+    /**
+     * Optional materializer descriptor for materialized local params.
+     * If both materializeFn and dematerializeFn are non-null, the materializer
+     * will be used to create materialized objects from local params.
+     */
+    ZL_MaterializerDesc materializer;
     /**
      * Optionally an opaque pointer that can be queried with
      * ZL_Graph_getOpaquePtr().

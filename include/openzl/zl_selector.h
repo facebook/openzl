@@ -19,6 +19,7 @@
 #include "openzl/zl_data.h"     // ZL_Data
 #include "openzl/zl_input.h"
 #include "openzl/zl_localParams.h"  // ZL_LocalParams
+#include "openzl/zl_materializer.h" // ZL_MaterializerDesc
 #include "openzl/zl_opaque_types.h" // ZL_GraphID, ZL_Selector
 #include "openzl/zl_portability.h"  // ZL_NOEXCEPT_FUNC_PTR
 
@@ -179,6 +180,12 @@ typedef struct {
                            // successors, can be NULL when none employed
     size_t nbCustomGraphs; // Must be zero when customGraphs==NULL
     ZL_LocalParams localParams;
+    /**
+     * Optional materializer descriptor for materialized local params.
+     * If both materializeFn and dematerializeFn are non-null, the materializer
+     * will be used to create materialized objects from local params.
+     */
+    ZL_MaterializerDesc materializer;
     /**
      * Optional, the name of the graph rooted by the selector.
      */
