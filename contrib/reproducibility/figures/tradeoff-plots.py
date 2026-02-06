@@ -91,6 +91,13 @@ def write_output(title: str, outdir: str, df, regenerate: bool):
 
     add_in_algo_speed_frontier(df, "in_algo_cspeed_frontier", "compress_speed_mbps")
     add_in_algo_speed_frontier(df, "in_algo_dspeed_frontier", "decompress_speed_mbps")
+    # filter out openzl points that are not in either frontier
+    df = df[
+        (df["algorithm"] != "openzl")
+        | df["in_algo_cspeed_frontier"]
+        | df["in_algo_dspeed_frontier"]
+    ]
+
     df.to_csv(os.path.join(outdir, "data.csv"), index=False)
 
     algorithm_dfs = {}
@@ -112,14 +119,36 @@ def load_csv(csv: str) -> pd.DataFrame:
         # lzbench
         df["algorithm"] = [n.split(" ")[0] for n in df["Compressor name"]]
         df["config"] = [n.split(" ")[-1] for n in df["Compressor name"]]
-        df["compression_ratio"] = df["Original size"] / df["Compressed size"]
-        df["compress_speed_mbps"] = df["Compression speed"]
-        df["decompress_speed_mbps"] = df["Decompression speed"]
+        df["ctime"] = df["Original size"] / df["Compression speed"] / 1000000
+        df["dtime"] = df["Original size"] / df["Decompression speed"] / 1000000
 
-    if "ctimeMs" in df:
+        df_agg = (
+            df.groupby(["algorithm", "config"])
+            .agg(
+                {
+                    "Original size": "sum",
+                    "Compressed size": "sum",
+                    "ctime": "sum",
+                    "dtime": "sum",
+                }
+            )
+            .reset_index()
+        )
+        df_agg["compression_ratio"] = (
+            df_agg["Original size"] / df_agg["Compressed size"]
+        )
+        df_agg["compress_speed_mbps"] = (
+            df_agg["Original size"] / df_agg["ctime"] / 1000000
+        )
+        df_agg["decompress_speed_mbps"] = (
+            df_agg["Original size"] / df_agg["dtime"] / 1000000
+        )
+        print(len(df_agg))
+
+    elif "ctimeMs" in df:
         # zstrong benchmark
 
-        df = pd.DataFrame(
+        df_agg = pd.DataFrame(
             {
                 "algorithm": ["openzl"],
                 "config": [None],
@@ -130,11 +159,11 @@ def load_csv(csv: str) -> pd.DataFrame:
             }
         )
 
-        df["compression_ratio"] = df["srcSize"] / df["compressedSize"]
-        df["compress_speed_mbps"] = df["srcSize"] / df["ctimeMs"] / 1000.0
-        df["decompress_speed_mbps"] = df["srcSize"] / df["dtimeMs"] / 1000.0
+        df_agg["compression_ratio"] = df_agg["srcSize"] / df_agg["compressedSize"]
+        df_agg["compress_speed_mbps"] = df_agg["srcSize"] / df_agg["ctimeMs"] / 1000.0
+        df_agg["decompress_speed_mbps"] = df_agg["srcSize"] / df_agg["dtimeMs"] / 1000.0
 
-    return df[
+    return df_agg[
         [
             "algorithm",
             "config",

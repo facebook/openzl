@@ -1,0 +1,1 @@
+./make-pareto-optimal-figures.py --lzbench ../lzbench/lzbench/lzbench --title TLC /home/csv/openzl_corpus//tlc_canonical/train /home/csv/openzl_corpus//tlc_canonical/test --output /home/csv/2026-01-22-openzl-whitepaper-pareto-optimal//tlc --profile parquet --zli ../../../zli --tradeoff-plots ./tradeoff-plots.py

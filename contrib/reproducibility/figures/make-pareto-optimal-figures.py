@@ -60,23 +60,33 @@ def copy_subset(files: [str], output: str, n: int | None) -> None:
 
 
 def partition_samples(
-    dataset: str, output: str, num_train_files: int | None, num_test_files: int | None
+    dataset_train: str,
+    dataset_test: str,
+    output: str,
+    num_train_files: int | None,
+    num_test_files: int | None,
 ) -> None:
-    all_files = []
-    if os.path.isdir(dataset):
-        for root, _, files in os.walk(dataset):
-            all_files.extend([os.path.join(root, file) for file in files])
+    all_train_files = []
+    if os.path.isdir(dataset_train):
+        for root, _, files in os.walk(dataset_train):
+            all_train_files.extend([os.path.join(root, file) for file in files])
     else:
-        all_files = [dataset]
+        all_train_files = [dataset_train]
 
     train_files = copy_subset(
-        all_files, os.path.join(output, "samples/train"), num_train_files
+        all_train_files, os.path.join(output, "samples/train"), num_train_files
     )
 
-    if len(train_files) < len(all_files):
-        all_files = [file for file in all_files if file not in train_files]
+    # if len(train_files) < len(all_files):
+    # all_files = [file for file in all_files if file not in train_files]
 
-    copy_subset(all_files, os.path.join(output, "samples/test"), num_test_files)
+    all_test_files: list[str] = []
+    if os.path.isdir(dataset_test):
+        for root, _, files in os.walk(dataset_test):
+            all_test_files.extend([os.path.join(root, file) for file in files])
+    else:
+        all_test_files = [dataset_test]
+    copy_subset(all_test_files, os.path.join(output, "samples/test"), num_test_files)
 
 
 def run_lzbench(lzbench: str, output: str) -> None:
@@ -107,6 +117,7 @@ def run_zli_training(
             "train",
             "--profile",
             profile,
+            "--use-all-samples",
             os.path.join(output, "samples/train"),
             "--output",
             compressors,
@@ -133,6 +144,8 @@ def run_zli_benchmark(zli: str, output: str) -> None:
                 "benchmark",
                 "-c",
                 os.path.join(compressor_dir, compressor),
+                "--num-iters",
+                "3",
                 os.path.join(output, "samples/test"),
                 "--output-csv",
                 os.path.join(benchmark_dir, compressor[:-3] + ".csv"),
@@ -164,7 +177,8 @@ def run_tradeoff_plots(tradeoff_plots, output: str, title: str) -> None:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("dataset", type=str)
+    parser.add_argument("dataset_train", type=str)
+    parser.add_argument("dataset_test", type=str)
     parser.add_argument("--title", type=str, required=True)
     parser.add_argument("--lzbench", type=str, required=True)
     parser.add_argument("--zli", type=str)
@@ -195,9 +209,13 @@ def main():
         f.write(" ".join(sys.argv))
 
     partition_samples(
-        args.dataset, args.output, args.num_train_files, args.num_test_files
+        args.dataset_train,
+        args.dataset_test,
+        args.output,
+        args.num_train_files,
+        args.num_test_files,
     )
-    run_zli_training(args.zli, args.profile, args.profile_arg, args.output)
+    # run_zli_training(args.zli, args.profile, args.profile_arg, args.output)
     run_zli_benchmark(args.zli, args.output)
     run_lzbench(args.lzbench, args.output)
     run_tradeoff_plots(args.tradeoff_plots, args.output, args.title)

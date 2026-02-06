@@ -1,0 +1,1 @@
+./make-pareto-optimal-figures.py --lzbench ../lzbench/lzbench/lzbench --title PSAM-P /home/csv/openzl_corpus//psam_p/train /home/csv/openzl_corpus//psam_p/test --output /home/csv/2026-01-22-openzl-whitepaper-pareto-optimal//psam-p --profile csv --zli ../../../zli --tradeoff-plots ./tradeoff-plots.py
