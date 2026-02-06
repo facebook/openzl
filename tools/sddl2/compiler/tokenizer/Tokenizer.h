@@ -4,7 +4,7 @@
 
 #include "tools/sddl2/compiler/Logger.h"
 #include "tools/sddl2/compiler/Source.h"
-#include "tools/sddl2/compiler/Token.h"
+#include "tools/sddl2/compiler/tokenizer/Token.h"
 
 namespace openzl::sddl2 {
 

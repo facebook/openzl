@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "tools/sddl2/compiler/Serializer.h"
+#include "tools/sddl2/compiler/serializer/Serializer.h"
 
 #include <iomanip>
 

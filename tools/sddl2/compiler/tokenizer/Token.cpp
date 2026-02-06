@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "tools/sddl2/compiler/Token.h"
+#include "tools/sddl2/compiler/tokenizer/Token.h"
 
 #include <iomanip>
 #include <sstream>
