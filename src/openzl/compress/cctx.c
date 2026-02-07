@@ -1197,7 +1197,8 @@ ZL_Report CCTX_runSuccessor(
             depth,
             ZL_MAX_GRAPH_DEPTH,
             temporaryLibraryLimitation,
-            "Graph depth limit exceeded (depth=%u)", depth);
+            "Graph depth limit exceeded (depth=%u)",
+            depth);
     ZL_DLOG(BLOCK, "CCTX_runSuccessor (graphid=%u)", graphid.gid);
     int const isSegmentable =
             (rtInputs[0].rtsid == 0 && nbInputs == cctx->nbInputs
