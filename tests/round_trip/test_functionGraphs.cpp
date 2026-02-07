@@ -966,6 +966,26 @@ static ZL_FunctionGraphDesc const dyngraph_failDeep_dgd = {
     .lastInputIsVariable = false,
 };
 
+/* ------ self-loop: graph that always routes back to itself ------ */
+
+static ZL_GraphID g_selfLoop_graphid = ZL_GRAPH_ILLEGAL;
+
+static ZL_Report
+selfLoopGraphFn(ZL_Graph*, ZL_Edge* inputs[], size_t nbIns) noexcept
+{
+    assert(nbIns == 1);
+    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(inputs[0], g_selfLoop_graphid));
+    return ZL_returnSuccess();
+}
+
+static ZL_FunctionGraphDesc const selfLoop_dgd = {
+    .name                = "self-loop function graph (infinite recursion)",
+    .graph_f             = selfLoopGraphFn,
+    .inputTypeMasks      = &serialInputType,
+    .nbInputs            = 1,
+    .lastInputIsVariable = false,
+};
+
 /* ------   create the cgraph   -------- */
 
 // This graph function follows the ZL_GraphFn definition
@@ -1019,6 +1039,17 @@ static ZL_GraphID registerDynGraph_deep(ZL_Compressor* cgraph) noexcept
             transforms,
             2,
             ZL_Compressor_registerFunctionGraph(cgraph, g_dynGraph_dgdPtr));
+}
+
+static ZL_GraphID registerSelfLoopGraph(ZL_Compressor* cgraph) noexcept
+{
+    ZL_Report const setr = ZL_Compressor_setParameter(
+            cgraph, ZL_CParam_formatVersion, ZL_MAX_FORMAT_VERSION);
+    if (ZL_isError(setr))
+        abort();
+    g_selfLoop_graphid =
+            ZL_Compressor_registerFunctionGraph(cgraph, &selfLoop_dgd);
+    return g_selfLoop_graphid;
 }
 
 /* ------   compress, using provided graph function   -------- */
@@ -1374,6 +1405,13 @@ TEST(DynGraphs, graphFailure_deep)
 {
     g_dynGraph_dgdPtr = &dyngraph_failDeep_dgd;
     cFailTest(registerDynGraph_deep, g_dynGraph_dgdPtr->name);
+}
+
+TEST(DynGraphs, graphDepthLimitExceeded)
+{
+    cFailTest(
+            registerSelfLoopGraph,
+            "self-loop function graph triggers ZL_MAX_GRAPH_DEPTH limit");
 }
 
 TEST(DynGraphs, invalidNodeVersion_permissive)
