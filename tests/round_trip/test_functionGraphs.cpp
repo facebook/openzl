@@ -1486,19 +1486,6 @@ TEST(DynGraphs, graphFailure_deep_permissive)
     permissiveTest(registerDynGraph_deep, g_dynGraph_dgdPtr->name);
 }
 
-/* Permissive mode rescues the self-loop:
- * the depth limit fires, permissive mode catches the error,
- * and the backup graph (ZL_GRAPH_COMPRESS_GENERIC) is allowed past
- * the depth limit because inBackupMode is set. */
-static ZL_GraphID registerSelfLoopGraph_permissive(ZL_Compressor* cgraph) noexcept
-{
-    ZL_Report const spp = ZL_Compressor_setParameter(
-            cgraph, ZL_CParam_permissiveCompression, 1);
-    if (ZL_isError(spp))
-        abort();
-    return registerSelfLoopGraph(cgraph);
-}
-
 TEST(DynGraphs, graphDepthLimitExceeded_permissive)
 {
     permissiveTest(
