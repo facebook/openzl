@@ -77,6 +77,9 @@ static inline void decodeElements(
                 case 8:
                     part = ((const uint64_t*)srcPtrs[i])[e];
                     break;
+                default:
+                    assert(false);
+                    break;
             }
 
             value |= (part << bitPos);
@@ -97,6 +100,9 @@ static inline void decodeElements(
                 break;
             case 8:
                 ((uint64_t*)dst)[e] = (uint64_t)value;
+                break;
+            default:
+                assert(false);
                 break;
         }
     }
@@ -163,6 +169,9 @@ void ZL_bitSplitDecode(
         case 8:
             decodeElements(
                     dst, 8, nbElts, srcPtrs, srcEltWidths, bitWidths, nbWidths);
+            break;
+        default:
+            assert(false);
             break;
     }
 }

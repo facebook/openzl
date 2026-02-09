@@ -51,6 +51,9 @@ static inline bool checkTopBitsZero(
             case 8:
                 value = ((const uint64_t*)src)[e];
                 break;
+            default:
+                assert(false);
+                break;
         }
         if ((value & mask) != 0) {
             return false;
@@ -130,6 +133,9 @@ bool ZL_bitSplit_topBitsAreZero(
             return checkTopBitsZero(src, 4, nbElts, mask);
         case 8:
             return checkTopBitsZero(src, 8, nbElts, mask);
+        default:
+            assert(false);
+            break;
     }
     return true;
 }
@@ -158,6 +164,9 @@ static inline void encodeElements(
             case 8:
                 value = ((const uint64_t*)src)[e];
                 break;
+            default:
+                assert(false);
+                break;
         }
 
         size_t bitPos = 0;
@@ -178,6 +187,9 @@ static inline void encodeElements(
                     break;
                 case 8:
                     ((uint64_t*)dstPtrs[i])[e] = extracted;
+                    break;
+                default:
+                    assert(false);
                     break;
             }
 
@@ -247,6 +259,9 @@ void ZL_bitSplitEncode(
         case 8:
             encodeElements(
                     dstPtrs, dstEltWidths, nbElts, src, 8, bitWidths, nbWidths);
+            break;
+        default:
+            assert(false);
             break;
     }
 }
