@@ -5,7 +5,6 @@
 #include <assert.h> /* assert */
 #include <stdint.h> /* uint8_t, uint16_t, uint32_t, uint64_t */
 #include <stdlib.h> /* malloc, free, rand */
-#include <string.h> /* memcpy */
 
 #include "openzl/codecs/bitSplit/decode_bitSplit_kernel.h" /* ZL_bitSplitDecode */
 #include "openzl/codecs/bitSplit/encode_bitSplit_kernel.h" /* ZL_bitSplitEncode */
