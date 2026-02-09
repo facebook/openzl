@@ -1193,6 +1193,18 @@ ZL_Report CCTX_runSuccessor(
         unsigned depth)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
+    /* Depth limit: catch runaway recursion in user-defined graphs.
+     * Skipped in backup mode, where the library runs its own fallback graph
+     * (currently ZL_GRAPH_COMPRESS_GENERIC). This is safe as long as the
+     * backup graph has deterministic bounded depth (no dynamic decisions
+     * that could loop). If the backup graph ever gains dynamic routing,
+     * this assumption must be revisited — e.g. by introducing a dedicated
+     * ZL_GRAPH_COMPRESS_BACKUP with static-only decisions. */
+    if (depth >= ZL_MAX_GRAPH_DEPTH && !cctx->inBackupMode) {
+        ZL_ERR(temporaryLibraryLimitation,
+               "Graph depth limit exceeded (depth=%u)",
+               depth);
+    }
     ZL_DLOG(BLOCK, "CCTX_runSuccessor (graphid=%u)", graphid.gid);
     int const isSegmentable =
             (rtInputs[0].rtsid == 0 && nbInputs == cctx->nbInputs
