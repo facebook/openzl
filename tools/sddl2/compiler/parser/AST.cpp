@@ -177,14 +177,14 @@ void ASTVar::print(std::ostream& os, size_t indent) const
     os << std::string(indent, ' ') << "Var: " << name_ << std::endl;
 }
 
-ASTBuiltinField::ASTBuiltinField(const SourceLocation& loc, const Op& op)
-        : ASTField(loc), kw_(op)
+ASTBuiltinField::ASTBuiltinField(const SourceLocation& loc, const Symbol& sym)
+        : ASTField(loc), kw_(sym)
 {
 }
 
 void ASTBuiltinField::print(std::ostream& os, size_t indent) const
 {
-    os << std::string(indent, ' ') << "Field: " << op_to_debug_str(kw_)
+    os << std::string(indent, ' ') << "Field: " << sym_to_debug_str(kw_)
        << std::endl;
 }
 

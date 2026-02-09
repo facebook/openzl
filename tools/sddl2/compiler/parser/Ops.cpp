@@ -38,40 +38,6 @@ static const std::map<Op, poly::string_view> ops_to_debug_strs{
     { Op::LOG_AND, "LOG_AND" },
     { Op::LOG_OR, "LOG_OR" },
     { Op::LOG_NOT, "LOG_NOT" },
-
-    // Integer Numeric Types
-    { Op::BYTE, "BYTE" },
-    { Op::U8, "U8" },
-    { Op::I8, "I8" },
-    { Op::U16LE, "U16LE" },
-    { Op::U16BE, "U16BE" },
-    { Op::I16LE, "I16LE" },
-    { Op::I16BE, "I16BE" },
-    { Op::U32LE, "U32LE" },
-    { Op::U32BE, "U32BE" },
-    { Op::I32LE, "I32LE" },
-    { Op::I32BE, "I32BE" },
-    { Op::U64LE, "U64LE" },
-    { Op::U64BE, "U64BE" },
-    { Op::I64LE, "I64LE" },
-    { Op::I64BE, "I64BE" },
-
-    // Float Numeric Types
-    { Op::F8, "F8" },
-    { Op::F16LE, "F16LE" },
-    { Op::F16BE, "F16BE" },
-    { Op::F32LE, "F32LE" },
-    { Op::F32BE, "F32BE" },
-    { Op::F64LE, "F64LE" },
-    { Op::F64BE, "F64BE" },
-    { Op::BF8, "BF8" },
-    { Op::BF16LE, "BF16LE" },
-    { Op::BF16BE, "BF16BE" },
-    { Op::BF32LE, "BF32LE" },
-    { Op::BF32BE, "BF32BE" },
-    { Op::BF64LE, "BF64LE" },
-    { Op::BF64BE, "BF64BE" },
-
 };
 
 poly::string_view op_to_debug_str(Op op)
