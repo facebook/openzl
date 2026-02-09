@@ -2,8 +2,8 @@
 
 #include "benchmark/unitBench/scenarios/codecs/bitSplit.h"
 
-#include <stdint.h>  /* uint8_t, uint16_t, uint32_t, uint64_t */
-#include <stdlib.h>  /* rand */
+#include <stdint.h> /* uint8_t, uint16_t, uint32_t, uint64_t */
+#include <stdlib.h> /* rand */
 
 #include "openzl/codecs/bitSplit/decode_bitSplit_kernel.h" /* ZL_bitSplitDecode */
 #include "openzl/codecs/bitSplit/encode_bitSplit_kernel.h" /* ZL_bitSplitEncode */
@@ -81,7 +81,7 @@ bitSplitDecode_fp32_prep(void* src, size_t srcSize, const BenchPayload* bp)
     if (nbElts == 0)
         return 0;
 
-    uint8_t* p = (uint8_t*)src;
+    uint8_t* p    = (uint8_t*)src;
     size_t offset = 0;
     for (int i = 0; i < 3; i++) {
         fillRandomMasked(p + offset, nbElts, srcEltWidths[i], bitWidths[i]);
@@ -154,7 +154,7 @@ bitSplitDecode_bf16_prep(void* src, size_t srcSize, const BenchPayload* bp)
     if (nbElts == 0)
         return 0;
 
-    uint8_t* p = (uint8_t*)src;
+    uint8_t* p    = (uint8_t*)src;
     size_t offset = 0;
     for (int i = 0; i < 3; i++) {
         fillRandomMasked(p + offset, nbElts, srcEltWidths[i], bitWidths[i]);
@@ -227,7 +227,7 @@ bitSplitDecode_bounded32_prep(void* src, size_t srcSize, const BenchPayload* bp)
     if (nbElts == 0)
         return 0;
 
-    uint8_t* p = (uint8_t*)src;
+    uint8_t* p    = (uint8_t*)src;
     size_t offset = 0;
     for (int i = 0; i < 2; i++) {
         fillRandomMasked(p + offset, nbElts, srcEltWidths[i], bitWidths[i]);
