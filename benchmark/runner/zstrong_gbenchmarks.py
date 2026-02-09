@@ -327,14 +327,16 @@ class ZstrongGoogleBenchmarkResults:
             def calc_p_value(type="two-sided", shift=0):
                 col_name = f"{metric}_p_value_{type.replace('-', '_')}"
                 joint[col_name] = joint[[f"{metric}_arr_1", f"{metric}_arr_2"]].apply(
-                    lambda x: st.ttest_ind(
-                        x[0] * (1 + shift),
-                        x[1],
-                        trim=0.1,
-                        equal_var=False,
-                        alternative=type,
-                        random_state=1337,
-                    ).pvalue,
+                    lambda x: (
+                        st.ttest_ind(
+                            x[0] * (1 + shift),
+                            x[1],
+                            trim=0.1,
+                            equal_var=False,
+                            alternative=type,
+                            random_state=1337,
+                        ).pvalue
+                    ),
                     axis=1,
                 )
                 metric_columns.append(col_name)
