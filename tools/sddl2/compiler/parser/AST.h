@@ -8,6 +8,7 @@
 #include "openzl/shared/a1cbor.h"
 
 #include "tools/sddl2/compiler/Source.h"
+#include "tools/sddl2/compiler/parser/Ops.h"
 #include "tools/sddl2/compiler/tokenizer/Token.h"
 
 namespace openzl::sddl2 {
@@ -36,6 +37,7 @@ class ASTNode {
     virtual const ASTList* as_list() const;
 
     bool operator==(const Symbol& symbol) const;
+    bool operator!=(const Symbol& symbol) const;
 
     virtual void print(std::ostream& os, size_t indent = 0) const = 0;
 
@@ -145,45 +147,19 @@ class ASTField : public ASTConverted {
     using ASTConverted::ASTConverted;
 };
 
-class ASTPoison : public ASTField {
-   public:
-    explicit ASTPoison(
-            const Token& token,
-            const ASTPtr& paren_ptr = { nullptr });
-
-    void print(std::ostream& os, size_t indent) const override;
-
-   private:
-    void validate_args(const ASTPtr& paren_ptr);
-};
-
-class ASTAtom : public ASTField {
-   public:
-    explicit ASTAtom(const Token& token, const ASTPtr& paren_ptr);
-
-    void print(std::ostream& os, size_t indent) const override;
-
-   private:
-    static ASTPtr extract_width_arg(
-            const SourceLocation& loc,
-            const ASTPtr& paren_ptr);
-
-    const ASTPtr width_;
-};
-
 class ASTBuiltinField : public ASTField {
    public:
-    explicit ASTBuiltinField(const Token& token);
+    explicit ASTBuiltinField(const SourceLocation& loc, const Op& op);
 
     void print(std::ostream& os, size_t indent) const override;
 
    private:
-    const Symbol kw_;
+    const Op kw_;
 };
 
 class ASTRecord : public ASTField {
    public:
-    explicit ASTRecord(const ASTPtr& paren_ptr);
+    explicit ASTRecord(const ASTPtr& params, const ASTPtr& fields);
 
     void print(std::ostream& os, size_t indent) const override;
 
@@ -192,6 +168,11 @@ class ASTRecord : public ASTField {
             const SourceLocation& loc,
             const ASTPtr& paren_ptr);
 
+    static ASTVec extract_params(
+            const SourceLocation& loc,
+            const ASTPtr& paren_ptr);
+
+    const ASTVec params_;
     const ASTVec fields_;
 };
 
@@ -206,50 +187,153 @@ class ASTArray : public ASTField {
     const ASTPtr len_;
 };
 
-class ASTDest : public ASTConverted {
-   public:
-    explicit ASTDest(const Token& token, const ASTPtr& paren_ptr);
-
-    void print(std::ostream& os, size_t indent) const override;
-
-   private:
-    void validate_args(const ASTPtr& paren_ptr);
-};
-
 class ASTOp : public ASTConverted {
    public:
-    explicit ASTOp(const Token& token, ASTVec args);
+    explicit ASTOp(const SourceLocation& loc, const Op& op, ASTVec args);
 
     void print(std::ostream& os, size_t indent) const override;
 
    private:
-    const Symbol op_;
+    const Op op_;
     const ASTVec args_;
 };
 
-class ASTFunc : public ASTConverted {
+/**
+ * Helper to build a synthetic AST tree rather than translating tokens 1:1.
+ */
+class Codegen {
    public:
-    explicit ASTFunc(ASTVec args, ASTVec body);
+    explicit Codegen(SourceLocation loc) : loc_(std::move(loc)) {}
 
-    void print(std::ostream& os, size_t indent) const override;
+    Token token(Symbol sym) const
+    {
+        return Token{ loc_, sym };
+    }
+
+    template <typename... Args>
+    ASTVec vec(Args... args) const
+    {
+        return ASTVec{ std::move(args)... };
+    }
+
+    template <typename... Args>
+    ASTPtr op(Op op, Args... args) const
+    {
+        return std::make_shared<ASTOp>(
+                SourceLocation::null(), op, vec(std::move(args)...));
+    }
+
+    // Ops
+    ASTPtr expect(ASTPtr arg) const
+    {
+        return op(Op::EXPECT, std::move(arg));
+    }
+
+    ASTPtr consume(ASTPtr arg) const
+    {
+        return op(Op::CONSUME, std::move(arg));
+    }
+
+    ASTPtr size_of(ASTPtr arg) const
+    {
+        return op(Op::SIZEOF, std::move(arg));
+    }
+
+    ASTPtr assign(ASTPtr lhs, ASTPtr rhs) const
+    {
+        return op(Op::ASSIGN, std::move(lhs), std::move(rhs));
+    }
+
+    ASTPtr eq(ASTPtr lhs, ASTPtr rhs) const
+    {
+        return op(Op::EQ, std::move(lhs), std::move(rhs));
+    }
+
+    ASTPtr ne(ASTPtr lhs, ASTPtr rhs) const
+    {
+        return op(Op::NE, std::move(lhs), std::move(rhs));
+    }
+
+    ASTPtr add(ASTPtr lhs, ASTPtr rhs) const
+    {
+        return op(Op::ADD, std::move(lhs), std::move(rhs));
+    }
+
+    ASTPtr sub(ASTPtr lhs, ASTPtr rhs) const
+    {
+        return op(Op::SUB, std::move(lhs), std::move(rhs));
+    }
+
+    ASTPtr mul(ASTPtr lhs, ASTPtr rhs) const
+    {
+        return op(Op::MUL, std::move(lhs), std::move(rhs));
+    }
+
+    ASTPtr div(ASTPtr lhs, ASTPtr rhs) const
+    {
+        return op(Op::DIV, std::move(lhs), std::move(rhs));
+    }
+
+    ASTPtr mod(ASTPtr lhs, ASTPtr rhs) const
+    {
+        return op(Op::MOD, std::move(lhs), std::move(rhs));
+    }
+
+    // Other types of things
+
+    ASTPtr num(int64_t val) const
+    {
+        return std::make_shared<ASTNum>(Token{ loc_, val });
+    }
+
+    ASTPtr builtin_field(Op op) const
+    {
+        return std::make_shared<ASTBuiltinField>(loc_, op);
+    }
+
+    ASTPtr array(ASTPtr field, ASTPtr len) const
+    {
+        return std::make_shared<ASTArray>(std::move(field), std::move(len));
+    }
+
+    ASTPtr record(ASTVec params, ASTVec fields) const
+    {
+        return std::make_shared<ASTRecord>(
+                paren_list(std::move(params)), curly_list(std::move(fields)));
+    }
+
+    ASTPtr var(poly::string_view name) const
+    {
+        return std::make_shared<ASTVar>(Token{ loc_, name });
+    }
+
+    ASTPtr list(Symbol open_sym, ASTVec elts) const
+    {
+        const auto& list_sym_set = list_sym_sets.at(open_sym);
+        return std::make_shared<ASTList>(
+                list_sym_set.type,
+                std::make_shared<ASTSym>(token(list_sym_set.open)),
+                std::make_shared<ASTSym>(token(list_sym_set.close)),
+                std::move(elts));
+    }
+
+    ASTPtr paren_list(ASTVec elts) const
+    {
+        return list(Symbol::PAREN_OPEN, std::move(elts));
+    }
+
+    ASTPtr square_list(ASTVec elts) const
+    {
+        return list(Symbol::SQUARE_OPEN, std::move(elts));
+    }
+
+    ASTPtr curly_list(ASTVec elts) const
+    {
+        return list(Symbol::CURLY_OPEN, std::move(elts));
+    }
 
    private:
-    const ASTVec args_;
-    const ASTVec body_;
-};
-
-class ASTTuple : public ASTConverted {
-   public:
-    explicit ASTTuple(ASTPtr list);
-
-    void print(std::ostream& os, size_t indent) const override;
-
-   private:
-    static ASTVec extract_exprs(
-            const SourceLocation& loc,
-            const ASTPtr& paren_ptr);
-
-    const ASTVec tuple_;
+    const SourceLocation loc_;
 };
 
 } // namespace openzl::sddl2

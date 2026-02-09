@@ -113,7 +113,7 @@ class Compiler {
         bool include_debug_info{ true };
     };
 
-   private:
+   protected:
     const Options options_;
 
     const detail::Logger logger_;
