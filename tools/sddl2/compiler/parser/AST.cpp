@@ -36,6 +36,11 @@ bool ASTNode::operator==(const Symbol& sym) const
     return **tok == sym;
 }
 
+bool ASTNode::operator!=(const Symbol& sym) const
+{
+    return !(*this == sym);
+}
+
 ASTSym::ASTSym(const Token& token)
         : ASTUnconverted(token.loc()), sym_(token.sym())
 {
@@ -172,83 +177,35 @@ void ASTVar::print(std::ostream& os, size_t indent) const
     os << std::string(indent, ' ') << "Var: " << name_ << std::endl;
 }
 
-// TODO: message
-ASTPoison::ASTPoison(const Token& token, const ASTPtr& paren_ptr)
-        : ASTField(token.loc() + maybe_loc(paren_ptr))
-{
-    // validate_args(paren_ptr);
-}
-
-void ASTPoison::print(std::ostream& os, size_t indent) const
-{
-    os << std::string(indent, ' ') << "Field: POISON" << std::endl;
-}
-
-void ASTPoison::validate_args(const ASTPtr& paren_ptr)
-{
-    const auto* paren = paren_ptr->as_list();
-    if (paren == nullptr) {
-        throw InvariantViolation(
-                loc(),
-                "Field declaration must be given a parenthesized argument list.");
-    }
-    if (paren->nodes().size() != 0) {
-        throw ParseError(loc(), "Poison field declaration takes 0 arguments.");
-    }
-}
-
-ASTAtom::ASTAtom(const Token& token, const ASTPtr& paren_ptr)
-        : ASTField(token.loc() + some(paren_ptr).loc()),
-          width_(extract_width_arg(loc(), paren_ptr))
-{
-}
-
-void ASTAtom::print(std::ostream& os, size_t indent) const
-{
-    os << std::string(indent, ' ') << "Field: ATOM:" << std::endl;
-    width_->print(os, indent + 2);
-}
-
-ASTPtr ASTAtom::extract_width_arg(
-        const SourceLocation& loc,
-        const ASTPtr& paren_ptr)
-{
-    const auto* paren = paren_ptr->as_list();
-    if (paren == nullptr) {
-        throw InvariantViolation(
-                loc,
-                "Field declaration must be given a parenthesized argument list.");
-    }
-    const auto& nodes = paren->nodes();
-    if (nodes.size() != 1) {
-        throw ParseError(
-                loc, "Atom field declaration requires exactly 1 argument.");
-    }
-    return nodes[0];
-}
-
-ASTBuiltinField::ASTBuiltinField(const Token& token)
-        : ASTField(token.loc()), kw_(token.sym())
+ASTBuiltinField::ASTBuiltinField(const SourceLocation& loc, const Op& op)
+        : ASTField(loc), kw_(op)
 {
 }
 
 void ASTBuiltinField::print(std::ostream& os, size_t indent) const
 {
-    os << std::string(indent, ' ') << "Field: " << sym_to_debug_str(kw_)
+    os << std::string(indent, ' ') << "Field: " << op_to_debug_str(kw_)
        << std::endl;
 }
 
-ASTRecord::ASTRecord(const ASTPtr& paren_ptr)
-        : ASTField(some(paren_ptr).loc()),
-          fields_(extract_fields(loc(), paren_ptr))
+ASTRecord::ASTRecord(const ASTPtr& params, const ASTPtr& fields)
+        : ASTField(params->loc() + fields->loc()),
+          params_(extract_params(loc(), params)),
+          fields_(extract_fields(loc(), fields))
+
 {
 }
 
 void ASTRecord::print(std::ostream& os, size_t indent) const
 {
-    os << std::string(indent, ' ') << "Field: RECORD:" << std::endl;
+    os << std::string(indent, ' ') << "Field: Record:" << std::endl;
+    os << std::string(indent + 2, ' ') << "Captures: " << std::endl;
+    for (const auto& capture : params_) {
+        capture->print(os, indent + 4);
+    }
+    os << std::string(indent + 2, ' ') << "Fields: " << std::endl;
     for (const auto& field : fields_) {
-        field->print(os, indent + 2);
+        field->print(os, indent + 4);
     }
 }
 
@@ -259,11 +216,27 @@ ASTVec ASTRecord::extract_fields(
     const auto* list = paren_ptr->as_list();
     if (list == nullptr) {
         throw InvariantViolation(
-                loc, "Record declaration must be given a list as argument.");
+                loc, "Record declaration must be given a list of fields.");
     }
     if (list->list_type() != ListType::CURLY) {
         throw InvariantViolation(
-                loc, "Record declaration argument list must be curly-braced.");
+                loc, "Record declaration fields list must be curly-braced.");
+    }
+    return unwrap_parens(list->nodes());
+}
+
+ASTVec ASTRecord::extract_params(
+        const SourceLocation& loc,
+        const ASTPtr& paren_ptr)
+{
+    const auto* list = paren_ptr->as_list();
+    if (list == nullptr) {
+        throw InvariantViolation(
+                loc, "Record declaration must be given a list of params.");
+    }
+    if (list->list_type() != ListType::PAREN) {
+        throw InvariantViolation(
+                loc, "Record declaration params list must be parens.");
     }
     return unwrap_parens(list->nodes());
 }
@@ -282,92 +255,17 @@ void ASTArray::print(std::ostream& os, size_t indent) const
     len_->print(os, indent + 2);
 }
 
-ASTDest::ASTDest(const Token& token, const ASTPtr& paren_ptr)
-        : ASTConverted(token.loc() + maybe_loc(paren_ptr))
-{
-    // validate_args(paren_ptr);
-}
-
-void ASTDest::print(std::ostream& os, size_t indent) const
-{
-    os << std::string(indent, ' ') << "Dest" << std::endl;
-}
-
-void ASTDest::validate_args(const ASTPtr& paren_ptr)
-{
-    const auto* paren = paren_ptr->as_list();
-    if (paren == nullptr) {
-        throw InvariantViolation(
-                loc(),
-                "Dest declaration must be given a parenthesized argument list.");
-    }
-    if (paren->nodes().size() != 0) {
-        throw ParseError(loc(), "Dest declaration takes 0 arguments.");
-    }
-}
-
-ASTOp::ASTOp(const Token& token, ASTVec args)
-        : ASTConverted(token.loc() + join_locs(args)),
-          op_(token.sym()),
-          args_(std::move(args))
+ASTOp::ASTOp(const SourceLocation& loc, const Op& op, ASTVec args)
+        : ASTConverted(loc + join_locs(args)), op_(op), args_(std::move(args))
 {
 }
 
 void ASTOp::print(std::ostream& os, size_t indent) const
 {
-    os << std::string(indent, ' ') << "Op: " << sym_to_debug_str(op_)
+    os << std::string(indent, ' ') << "Op: " << op_to_debug_str(op_)
        << std::endl;
     for (const auto& arg : args_) {
         arg->print(os, indent + 2);
     }
-}
-
-ASTFunc::ASTFunc(ASTVec args, ASTVec body)
-        : ASTConverted(join_locs(args) + join_locs(body)),
-          args_(std::move(args)),
-          body_(std::move(body))
-{
-}
-
-void ASTFunc::print(std::ostream& os, size_t indent) const
-{
-    os << std::string(indent, ' ') << "Func:" << std::endl;
-    os << std::string(indent + 2, ' ') << "Args:" << std::endl;
-    for (const auto& arg : args_) {
-        arg->print(os, indent + 4);
-    }
-    os << std::string(indent + 2, ' ') << "Body:" << std::endl;
-    for (const auto& expr : body_) {
-        expr->print(os, indent + 4);
-    }
-}
-
-ASTTuple::ASTTuple(ASTPtr list)
-        : ASTConverted(some(list).loc()), tuple_(extract_exprs(loc(), list))
-{
-}
-
-void ASTTuple::print(std::ostream& os, size_t indent) const
-{
-    os << std::string(indent, ' ') << "Tuple:" << std::endl;
-    for (const auto& expr : tuple_) {
-        expr->print(os, indent + 2);
-    }
-}
-
-ASTVec ASTTuple::extract_exprs(
-        const SourceLocation& loc,
-        const ASTPtr& paren_ptr)
-{
-    const auto* list = paren_ptr->as_list();
-    if (list == nullptr) {
-        throw InvariantViolation(
-                loc, "Tuple declaration must be given a list as argument.");
-    }
-    if (list->list_type() != ListType::PAREN) {
-        throw InvariantViolation(
-                loc, "Tuple declaration argument list must be curly-braced.");
-    }
-    return unwrap_parens(list->nodes());
 }
 } // namespace openzl::sddl2
