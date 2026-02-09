@@ -14,32 +14,19 @@ extern "C" {
 
 /**
  * Preparation function for fp32 decomposition benchmark.
- * Generates 3 source streams with bitWidths {23, 8, 1} and srcEltWidths {4, 1,
- * 1}.
+ * Packs 3 source streams with bitWidths {23, 8, 1} contiguously into src.
  */
 size_t
 bitSplitDecode_fp32_prep(void* src, size_t srcSize, const BenchPayload* bp);
 
 /**
- * Preparation function for bf16 decomposition benchmark.
- * Generates 3 source streams with bitWidths {7, 8, 1} and srcEltWidths {1, 1,
- * 1}.
+ * Output size for fp32 decode: nbElts * 4, where nbElts = srcSize / 6.
  */
-size_t
-bitSplitDecode_bf16_prep(void* src, size_t srcSize, const BenchPayload* bp);
-
-/**
- * Preparation function for bounded32 integer benchmark.
- * Generates 2 source streams with bitWidths {13, 8} and srcEltWidths {2, 1}.
- */
-size_t bitSplitDecode_bounded32_prep(
-        void* src,
-        size_t srcSize,
-        const BenchPayload* bp);
+size_t bitSplitDecode_fp32_outSize(const void* src, size_t srcSize);
 
 /**
  * Wrapper function for fp32 decomposition decode benchmark.
- * Decodes 3 streams into 32-bit elements.
+ * Decodes 3 streams from src into 32-bit elements in dst.
  */
 size_t bitSplitDecode_fp32_wrapper(
         const void* src,
@@ -49,8 +36,20 @@ size_t bitSplitDecode_fp32_wrapper(
         void* customPayload);
 
 /**
+ * Preparation function for bf16 decomposition benchmark.
+ * Packs 3 source streams with bitWidths {7, 8, 1} contiguously into src.
+ */
+size_t
+bitSplitDecode_bf16_prep(void* src, size_t srcSize, const BenchPayload* bp);
+
+/**
+ * Output size for bf16 decode: nbElts * 2, where nbElts = srcSize / 3.
+ */
+size_t bitSplitDecode_bf16_outSize(const void* src, size_t srcSize);
+
+/**
  * Wrapper function for bf16 decomposition decode benchmark.
- * Decodes 3 streams into 16-bit elements.
+ * Decodes 3 streams from src into 16-bit elements in dst.
  */
 size_t bitSplitDecode_bf16_wrapper(
         const void* src,
@@ -60,8 +59,22 @@ size_t bitSplitDecode_bf16_wrapper(
         void* customPayload);
 
 /**
+ * Preparation function for bounded32 integer benchmark.
+ * Packs 2 source streams with bitWidths {13, 8} contiguously into src.
+ */
+size_t bitSplitDecode_bounded32_prep(
+        void* src,
+        size_t srcSize,
+        const BenchPayload* bp);
+
+/**
+ * Output size for bounded32 decode: nbElts * 4, where nbElts = srcSize / 3.
+ */
+size_t bitSplitDecode_bounded32_outSize(const void* src, size_t srcSize);
+
+/**
  * Wrapper function for bounded32 integer decode benchmark.
- * Decodes 2 streams into 32-bit elements.
+ * Decodes 2 streams from src into 32-bit elements in dst.
  */
 size_t bitSplitDecode_bounded32_wrapper(
         const void* src,
@@ -70,40 +83,23 @@ size_t bitSplitDecode_bounded32_wrapper(
         size_t dstCapacity,
         void* customPayload);
 
-/**
- * Output size function for bf16 decode scenario.
- * Returns nbElts * 2 (16-bit destination elements).
- */
-size_t bitSplitDecode_bf16_outSize(const void* src, size_t srcSize);
-
 /* ===   Encode scenarios   === */
 
 /**
  * Preparation function for fp32 encode benchmark.
- * Generates source array with random 32-bit values (top bits zero).
+ * Fills src with random 32-bit values.
  */
 size_t
 bitSplitEncode_fp32_prep(void* src, size_t srcSize, const BenchPayload* bp);
 
 /**
- * Preparation function for bf16 encode benchmark.
- * Generates source array with random 16-bit values.
+ * Output size for fp32 encode: nbElts * 6, where nbElts = srcSize / 4.
  */
-size_t
-bitSplitEncode_bf16_prep(void* src, size_t srcSize, const BenchPayload* bp);
-
-/**
- * Preparation function for bounded32 encode benchmark.
- * Generates source array with random 32-bit values (top 11 bits zero).
- */
-size_t bitSplitEncode_bounded32_prep(
-        void* src,
-        size_t srcSize,
-        const BenchPayload* bp);
+size_t bitSplitEncode_fp32_outSize(const void* src, size_t srcSize);
 
 /**
  * Wrapper function for fp32 encode benchmark.
- * Encodes 32-bit elements into 3 streams.
+ * Encodes 32-bit elements from src into 3 streams in dst.
  */
 size_t bitSplitEncode_fp32_wrapper(
         const void* src,
@@ -113,8 +109,20 @@ size_t bitSplitEncode_fp32_wrapper(
         void* customPayload);
 
 /**
+ * Preparation function for bf16 encode benchmark.
+ * Fills src with random 16-bit values.
+ */
+size_t
+bitSplitEncode_bf16_prep(void* src, size_t srcSize, const BenchPayload* bp);
+
+/**
+ * Output size for bf16 encode: nbElts * 3, where nbElts = srcSize / 2.
+ */
+size_t bitSplitEncode_bf16_outSize(const void* src, size_t srcSize);
+
+/**
  * Wrapper function for bf16 encode benchmark.
- * Encodes 16-bit elements into 3 streams.
+ * Encodes 16-bit elements from src into 3 streams in dst.
  */
 size_t bitSplitEncode_bf16_wrapper(
         const void* src,
@@ -124,8 +132,22 @@ size_t bitSplitEncode_bf16_wrapper(
         void* customPayload);
 
 /**
+ * Preparation function for bounded32 encode benchmark.
+ * Fills src with random 32-bit values (top 11 bits zero).
+ */
+size_t bitSplitEncode_bounded32_prep(
+        void* src,
+        size_t srcSize,
+        const BenchPayload* bp);
+
+/**
+ * Output size for bounded32 encode: nbElts * 3, where nbElts = srcSize / 4.
+ */
+size_t bitSplitEncode_bounded32_outSize(const void* src, size_t srcSize);
+
+/**
  * Wrapper function for bounded32 encode benchmark.
- * Encodes 32-bit elements into 2 streams.
+ * Encodes 32-bit elements from src into 2 streams in dst.
  */
 size_t bitSplitEncode_bounded32_wrapper(
         const void* src,
@@ -133,12 +155,6 @@ size_t bitSplitEncode_bounded32_wrapper(
         void* dst,
         size_t dstCapacity,
         void* customPayload);
-
-/**
- * Output size function for bf16 encode scenario.
- * Returns nbElts * 2 (source is 16-bit elements).
- */
-size_t bitSplitEncode_bf16_outSize(const void* src, size_t srcSize);
 
 #ifdef __cplusplus
 }

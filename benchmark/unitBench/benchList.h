@@ -408,11 +408,11 @@ static size_t varintEncode32_wrapper(
 // clang-format off
 Bench_Entry const scenarioList[] = {
     { "bitSplitDecode_bf16", bitSplitDecode_bf16_wrapper, .prep = bitSplitDecode_bf16_prep, .outSize = bitSplitDecode_bf16_outSize },
-    { "bitSplitDecode_bounded32", bitSplitDecode_bounded32_wrapper, .prep = bitSplitDecode_bounded32_prep, .outSize = out_identical },
-    { "bitSplitDecode_fp32", bitSplitDecode_fp32_wrapper, .prep = bitSplitDecode_fp32_prep, .outSize = out_identical },
+    { "bitSplitDecode_bounded32", bitSplitDecode_bounded32_wrapper, .prep = bitSplitDecode_bounded32_prep, .outSize = bitSplitDecode_bounded32_outSize },
+    { "bitSplitDecode_fp32", bitSplitDecode_fp32_wrapper, .prep = bitSplitDecode_fp32_prep, .outSize = bitSplitDecode_fp32_outSize },
     { "bitSplitEncode_bf16", bitSplitEncode_bf16_wrapper, .prep = bitSplitEncode_bf16_prep, .outSize = bitSplitEncode_bf16_outSize },
-    { "bitSplitEncode_bounded32", bitSplitEncode_bounded32_wrapper, .prep = bitSplitEncode_bounded32_prep, .outSize = out_identical },
-    { "bitSplitEncode_fp32", bitSplitEncode_fp32_wrapper, .prep = bitSplitEncode_fp32_prep, .outSize = out_identical },
+    { "bitSplitEncode_bounded32", bitSplitEncode_bounded32_wrapper, .prep = bitSplitEncode_bounded32_prep, .outSize = bitSplitEncode_bounded32_outSize },
+    { "bitSplitEncode_fp32", bitSplitEncode_fp32_wrapper, .prep = bitSplitEncode_fp32_prep, .outSize = bitSplitEncode_fp32_outSize },
     { "deltaDecode8", deltaDecode8_wrapper, .outSize = out_identical },
     { "deltaDecode16", deltaDecode16_wrapper, .outSize = out_identical },
     { "deltaEncode32", deltaEncode32_wrapper, .outSize = out_identical },
