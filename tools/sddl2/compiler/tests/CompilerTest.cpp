@@ -282,4 +282,61 @@ TEST_F(CompilerTest, ComplexArithmeticExpressionAST)
     expect_ast(prog, expected);
 }
 
+TEST_F(CompilerTest, SimpleSaoAST)
+{
+    const auto prog = R"(
+        # Star catalog entry (28 bytes)
+        Record StarEntry() = {
+            SRA0:  Float64LE,    # Right Ascension (radians)
+            SDEC0: Float64LE,    # Declination (radians)
+            ISP:   Bytes(2),     # Spectral type
+            MAG:   Int16LE,      # Magnitude
+            XRPM:  Float32LE,    # R.A. proper motion
+            XDPM:  Float32LE     # Dec. proper motion
+        }
+
+        # File structure
+        header: Bytes(28)
+        stars: StarEntry[10]
+    )";
+
+    // TODO: Update this test once auto-sized arrays are supported
+    const auto cg       = Codegen(SourceLocation::null());
+    const auto expected = std::vector<ASTPtr>({
+            cg.assign(
+                    cg.var("StarEntry"),
+                    cg.record(
+                            ArgVec{},
+                            ArgVec{
+                                    cg.assign(
+                                            cg.var("SRA0"),
+                                            cg.consume(cg.builtin_field(
+                                                    Op::F64LE))),
+                                    cg.assign(
+                                            cg.var("SDEC0"),
+                                            cg.consume(cg.builtin_field(
+                                                    Op::F64LE))),
+                                    cg.assign(
+                                            cg.var("ISP"),
+                                            cg.consume(cg.bytes(cg.num(2)))),
+                                    cg.assign(
+                                            cg.var("MAG"),
+                                            cg.consume(cg.builtin_field(
+                                                    Op::I16LE))),
+                                    cg.assign(
+                                            cg.var("XRPM"),
+                                            cg.consume(cg.builtin_field(
+                                                    Op::F32LE))),
+                                    cg.assign(
+                                            cg.var("XDPM"),
+                                            cg.consume(cg.builtin_field(
+                                                    Op::F32LE))),
+                            })),
+            cg.assign(cg.var("header"), cg.consume(cg.bytes(cg.num(28)))),
+            cg.assign(
+                    cg.var("stars"),
+                    cg.consume(cg.array(cg.var("StarEntry"), cg.num(10)))),
+    });
+    expect_ast(prog, expected);
+}
 } // namespace openzl::sddl2::tests

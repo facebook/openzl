@@ -94,7 +94,8 @@ enum class Symbol {
     BF64BE,
 
     // Other Fields
-    RECORD,
+    BYTES,
+    RECORD
 };
 
 /// @returns a name string for a symbol.
