@@ -1,0 +1,21 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
+load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
+
+oncall("data_compression")
+
+python_library(
+    name = "opcodes_generated",
+    srcs = ["opcodes_generated.py"],
+    base_module = "",
+)
+
+python_binary(
+    name = "assembler",
+    srcs = ["sddl2_assembler.py"],
+    base_module = "",
+    main_function = "sddl2_assembler.main",
+    deps = [
+        ":opcodes_generated",
+    ],
+)
