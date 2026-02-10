@@ -157,6 +157,18 @@ class ASTBuiltinField : public ASTField {
     const Op kw_;
 };
 
+class ASTBytes : public ASTField {
+   public:
+    explicit ASTBytes(const SourceLocation& loc, const ASTPtr& len);
+
+    void print(std::ostream& os, size_t indent) const override;
+
+   private:
+    static ASTPtr extract_len(const ASTPtr& paren_ptr);
+
+    const ASTPtr len_;
+};
+
 class ASTRecord : public ASTField {
    public:
     explicit ASTRecord(const ASTPtr& params, const ASTPtr& fields);
@@ -294,6 +306,11 @@ class Codegen {
     ASTPtr array(ASTPtr field, ASTPtr len) const
     {
         return std::make_shared<ASTArray>(std::move(field), std::move(len));
+    }
+
+    ASTPtr bytes(ASTPtr len) const
+    {
+        return std::make_shared<ASTBytes>(loc_, paren_list({ std::move(len) }));
     }
 
     ASTPtr record(ASTVec params, ASTVec fields) const
