@@ -11,7 +11,6 @@ enum class Op {
     ASSIGN,
     SIZEOF,
     CONSUME,
-    ASSUME,
     SEND,
 
     // Arithmetic Operators

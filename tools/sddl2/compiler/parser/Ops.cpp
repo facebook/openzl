@@ -11,7 +11,6 @@ static const std::map<Op, poly::string_view> ops_to_debug_strs{
     { Op::EXPECT, "EXPECT" },
     { Op::ASSIGN, "ASSIGN" },
     { Op::CONSUME, "CONSUME" },
-    { Op::ASSUME, "ASSUME" },
     { Op::SEND, "SEND" },
 
     // Arithmetic Operators
