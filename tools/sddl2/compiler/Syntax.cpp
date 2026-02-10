@@ -119,6 +119,7 @@ static const std::map<Symbol, poly::string_view> syms_to_debug_strs{
     { Symbol::BF64LE, "BF64LE" },
     { Symbol::BF64BE, "BF64BE" },
 
+    { Symbol::BYTES, "BYTES" },
     { Symbol::RECORD, "RECORD" },
 };
 
@@ -194,6 +195,7 @@ const std::vector<std::pair<poly::string_view, Symbol>> strs_to_syms{
     { "BFloat32BE", Symbol::BF32BE },
     { "BFloat64LE", Symbol::BF64LE },
     { "BFloat64BE", Symbol::BF64BE },
+    { "Bytes", Symbol::BYTES },
     { "Record", Symbol::RECORD },
 };
 

@@ -188,6 +188,39 @@ void ASTBuiltinField::print(std::ostream& os, size_t indent) const
        << std::endl;
 }
 
+ASTBytes::ASTBytes(const SourceLocation& loc, const ASTPtr& len)
+        : ASTField(loc + some(len).loc()), len_(extract_len(len))
+{
+}
+
+void ASTBytes::print(std::ostream& os, size_t indent) const
+{
+    os << std::string(indent, ' ') << "Field: BYTES:" << std::endl;
+    os << std::string(indent + 2, ' ') << "Len: " << std::endl;
+    len_->print(os, indent + 4);
+}
+
+ASTPtr ASTBytes::extract_len(const ASTPtr& paren_ptr)
+{
+    const auto* list = paren_ptr->as_list();
+    if (list == nullptr) {
+        throw InvariantViolation(
+                paren_ptr->loc(),
+                "Bytes declaration must be given a list of params.");
+    }
+    if (list->list_type() != ListType::PAREN) {
+        throw InvariantViolation(
+                paren_ptr->loc(),
+                "Bytes declaration params list must be parens.");
+    }
+    if (list->nodes().size() != 1) {
+        throw InvariantViolation(
+                paren_ptr->loc(),
+                "Bytes declaration must be given a single param.");
+    }
+    return list->nodes()[0];
+}
+
 ASTRecord::ASTRecord(const ASTPtr& params, const ASTPtr& fields)
         : ASTField(params->loc() + fields->loc()),
           params_(extract_params(loc(), params)),
@@ -198,7 +231,7 @@ ASTRecord::ASTRecord(const ASTPtr& params, const ASTPtr& fields)
 
 void ASTRecord::print(std::ostream& os, size_t indent) const
 {
-    os << std::string(indent, ' ') << "Field: Record:" << std::endl;
+    os << std::string(indent, ' ') << "Field: RECORD:" << std::endl;
     os << std::string(indent + 2, ' ') << "Captures: " << std::endl;
     for (const auto& capture : params_) {
         capture->print(os, indent + 4);
