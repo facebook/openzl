@@ -16,23 +16,7 @@ namespace openzl::sddl2 {
 
 namespace {
 
-Arity arity_of(ArgType lhs_type, ArgType rhs_type)
-{
-    if (lhs_type == ArgType::NONE) {
-        if (rhs_type == ArgType::NONE) {
-            return Arity::NULLARY;
-        } else {
-            return Arity::PREFIX_UNARY;
-        }
-    } else {
-        if (rhs_type == ArgType::NONE) {
-            throw InvariantViolation(
-                    "Postfix unary operators aren't supported!");
-        } else {
-            return Arity::INFIX_BINARY;
-        }
-    }
-}
+using ArgsVec = std::vector<ASTPtr>;
 
 Token token_of(const ASTPtr& node)
 {
@@ -108,195 +92,12 @@ const std::map<Associativity, poly::string_view> associativities_to_strs{
     { Associativity::RIGHT_TO_LEFT, "RIGHT_TO_LEFT" },
 };
 
-const std::map<Arity, poly::string_view> arities_to_strs{
-    { Arity::NULLARY, "NULLARY" },
-    { Arity::PREFIX_UNARY, "PREFIX_UNARY" },
-    { Arity::INFIX_BINARY, "INFIX_BINARY" },
-};
-
 const std::map<ArgType, poly::string_view> arg_types_to_strs{
-    { ArgType::NONE, "NONE" },
+    { ArgType::SYM, "SYM" },
     { ArgType::LIST_PAREN, "LIST_PAREN" },
     { ArgType::LIST_SQUARE, "LIST_SQUARE" },
     { ArgType::LIST_CURLY, "LIST_CURLY" },
     { ArgType::EXPR, "EXPR" },
-};
-
-/**
- * Helper to build a synthetic AST tree rather than translating tokens 1:1.
- */
-class Codegen {
-   public:
-    explicit Codegen(SourceLocation loc) : loc_(std::move(loc)) {}
-
-    Token token(Symbol sym) const
-    {
-        return Token{ loc_, sym };
-    }
-
-    template <typename... Args>
-    ASTVec vec(Args... args) const
-    {
-        return ASTVec{ std::move(args)... };
-    }
-
-    template <typename... Args>
-    ASTPtr op(Symbol sym, Args... args) const
-    {
-        return std::make_shared<ASTOp>(token(sym), vec(std::move(args)...));
-    }
-
-    // Ops
-
-    ASTPtr expect(ASTPtr arg) const
-    {
-        return op(Symbol::EXPECT, std::move(arg));
-    }
-
-    ASTPtr consume(ASTPtr arg) const
-    {
-        return op(Symbol::CONSUME, std::move(arg));
-    }
-
-    ASTPtr size_of(ASTPtr arg) const
-    {
-        return op(Symbol::SIZEOF, std::move(arg));
-    }
-
-    ASTPtr send(ASTPtr lhs, ASTPtr rhs) const
-    {
-        return op(Symbol::SEND, std::move(lhs), std::move(rhs));
-    }
-
-    ASTPtr assign(ASTPtr lhs, ASTPtr rhs) const
-    {
-        return op(Symbol::ASSIGN, std::move(lhs), std::move(rhs));
-    }
-
-    ASTPtr member(ASTPtr lhs, ASTPtr rhs) const
-    {
-        return op(Symbol::MEMBER, std::move(lhs), std::move(rhs));
-    }
-
-    ASTPtr bind(ASTPtr lhs, ASTPtr rhs) const
-    {
-        return op(Symbol::BIND, std::move(lhs), std::move(rhs));
-    }
-
-    ASTPtr neg(ASTPtr arg) const
-    {
-        return op(Symbol::NEG, std::move(arg));
-    }
-
-    ASTPtr eq(ASTPtr lhs, ASTPtr rhs) const
-    {
-        return op(Symbol::EQ, std::move(lhs), std::move(rhs));
-    }
-
-    ASTPtr ne(ASTPtr lhs, ASTPtr rhs) const
-    {
-        return op(Symbol::NE, std::move(lhs), std::move(rhs));
-    }
-
-    ASTPtr add(ASTPtr lhs, ASTPtr rhs) const
-    {
-        return op(Symbol::ADD, std::move(lhs), std::move(rhs));
-    }
-
-    ASTPtr sub(ASTPtr lhs, ASTPtr rhs) const
-    {
-        return op(Symbol::SUB, std::move(lhs), std::move(rhs));
-    }
-
-    ASTPtr mul(ASTPtr lhs, ASTPtr rhs) const
-    {
-        return op(Symbol::MUL, std::move(lhs), std::move(rhs));
-    }
-
-    ASTPtr div(ASTPtr lhs, ASTPtr rhs) const
-    {
-        return op(Symbol::DIV, std::move(lhs), std::move(rhs));
-    }
-
-    ASTPtr mod(ASTPtr lhs, ASTPtr rhs) const
-    {
-        return op(Symbol::MOD, std::move(lhs), std::move(rhs));
-    }
-
-    // Other types of things
-
-    ASTPtr num(int64_t val) const
-    {
-        return std::make_shared<ASTNum>(Token{ loc_, val });
-    }
-
-    ASTPtr array(ASTPtr field, ASTPtr len) const
-    {
-        return std::make_shared<ASTArray>(std::move(field), std::move(len));
-    }
-
-    ASTPtr record(ASTVec fields) const
-    {
-        return std::make_shared<ASTRecord>(curly_list(std::move(fields)));
-    }
-
-    ASTPtr dest() const
-    {
-        return std::make_shared<ASTDest>(Token{ loc_, 0 }, nullptr);
-    }
-
-    ASTPtr var(poly::string_view name) const
-    {
-        return std::make_shared<ASTVar>(Token{ loc_, name });
-    }
-
-    ASTPtr tuple(poly::string_view name) const
-    {
-        return std::make_shared<ASTVar>(Token{ loc_, name });
-    }
-
-    ASTPtr list(Symbol open_sym, ASTVec elts) const
-    {
-        const auto& list_sym_set = list_sym_sets.at(open_sym);
-        return std::make_shared<ASTList>(
-                list_sym_set.type,
-                std::make_shared<ASTSym>(token(list_sym_set.open)),
-                std::make_shared<ASTSym>(token(list_sym_set.close)),
-                std::move(elts));
-    }
-
-    ASTPtr paren_list(ASTVec elts) const
-    {
-        return list(Symbol::PAREN_OPEN, std::move(elts));
-    }
-
-    ASTPtr square_list(ASTVec elts) const
-    {
-        return list(Symbol::SQUARE_OPEN, std::move(elts));
-    }
-
-    ASTPtr curly_list(ASTVec elts) const
-    {
-        return list(Symbol::CURLY_OPEN, std::move(elts));
-    }
-
-    ASTPtr tuple(ASTVec elts) const
-    {
-        return std::make_shared<ASTTuple>(paren_list(std::move(elts)));
-    }
-
-    ASTPtr func(ASTVec args, ASTVec body) const
-    {
-        const auto args_ast   = paren_list(std::move(args));
-        const auto body_ast   = curly_list(std::move(body));
-        const auto& args_list = some(args_ast).as_list();
-        const auto& body_list = some(body_ast).as_list();
-        return std::make_shared<ASTFunc>(
-                args_list->nodes(), body_list->nodes());
-    }
-
-   private:
-    const SourceLocation loc_;
 };
 
 Associativity associativity_of(Precedence precedence)
@@ -309,6 +110,44 @@ Associativity associativity_of(Precedence precedence)
                 + std::string{ precedence_to_str(precedence) } + ")");
     }
 }
+
+const std::map<Symbol, Op> builtin_field_syms_to_ops{
+    { Symbol::BYTE, Op::BYTE },     { Symbol::U8, Op::U8 },
+    { Symbol::I8, Op::I8 },         { Symbol::U16LE, Op::U16LE },
+    { Symbol::U16BE, Op::U16BE },   { Symbol::I16LE, Op::I16LE },
+    { Symbol::I16BE, Op::I16BE },   { Symbol::U32LE, Op::U32LE },
+    { Symbol::U32BE, Op::U32BE },   { Symbol::I32LE, Op::I32LE },
+    { Symbol::I32BE, Op::I32BE },   { Symbol::U64LE, Op::U64LE },
+    { Symbol::U64BE, Op::U64BE },   { Symbol::I64LE, Op::I64LE },
+    { Symbol::I64BE, Op::I64BE },   { Symbol::F8, Op::F8 },
+    { Symbol::F16LE, Op::F16LE },   { Symbol::F16BE, Op::F16BE },
+    { Symbol::F32LE, Op::F32LE },   { Symbol::F32BE, Op::F32BE },
+    { Symbol::F64LE, Op::F64LE },   { Symbol::F64BE, Op::F64BE },
+    { Symbol::BF8, Op::BF8 },       { Symbol::BF16LE, Op::BF16LE },
+    { Symbol::BF16BE, Op::BF16BE }, { Symbol::BF32LE, Op::BF32LE },
+    { Symbol::BF32BE, Op::BF32BE }, { Symbol::BF64LE, Op::BF64LE },
+    { Symbol::BF64BE, Op::BF64BE },
+};
+
+const std::map<Symbol, Op> syms_to_ops{
+    { Symbol::EXPECT, Op::EXPECT },   { Symbol::ASSIGN, Op::ASSIGN },
+    { Symbol::SIZEOF, Op::SIZEOF },
+
+    { Symbol::EQ, Op::EQ },           { Symbol::NE, Op::NE },
+
+    { Symbol::ADD, Op::ADD },         { Symbol::SUB, Op::SUB },
+    { Symbol::MUL, Op::MUL },         { Symbol::DIV, Op::DIV },
+    { Symbol::MOD, Op::MOD },
+
+    { Symbol::GT, Op::GT },           { Symbol::GE, Op::GE },
+    { Symbol::LT, Op::LT },           { Symbol::LE, Op::LE },
+
+    { Symbol::LOG_AND, Op::LOG_AND }, { Symbol::LOG_OR, Op::LOG_OR },
+    { Symbol::LOG_NOT, Op::LOG_NOT },
+
+    { Symbol::BIT_AND, Op::BIT_AND }, { Symbol::BIT_XOR, Op::BIT_XOR },
+    { Symbol::BIT_OR, Op::BIT_OR },   { Symbol::BIT_NOT, Op::BIT_NOT },
+};
 
 } // anonymous namespace
 
@@ -330,15 +169,6 @@ poly::string_view associativity_to_str(Associativity associativity)
     }
 }
 
-poly::string_view arity_to_str(Arity arity)
-{
-    try {
-        return arities_to_strs.at(arity);
-    } catch (const std::out_of_range&) {
-        throw InvariantViolation("Lookup failed in arity_to_str()");
-    }
-}
-
 poly::string_view arg_type_to_str(ArgType arg_type)
 {
     try {
@@ -349,22 +179,21 @@ poly::string_view arg_type_to_str(ArgType arg_type)
 }
 
 GrammarRule::GrammarRule(
-        Symbol op,
+        Symbol sym,
         Precedence precedence,
-        ArgType lhs_type,
-        ArgType rhs_type)
-        : op_(op),
+        std::vector<ArgType> arg_types,
+        bool has_lhs_arg)
+        : sym_(sym),
           precedence_(precedence),
           associativity_(associativity_of(precedence)),
-          arity_(arity_of(lhs_type, rhs_type)),
-          lhs_type_(lhs_type),
-          rhs_type_(rhs_type)
+          arg_types_(std::move(arg_types)),
+          has_lhs_arg_(has_lhs_arg)
 {
 }
 
-Symbol GrammarRule::op() const
+Symbol GrammarRule::sym() const
 {
-    return op_;
+    return sym_;
 }
 
 Precedence GrammarRule::precedence() const
@@ -377,24 +206,29 @@ Associativity GrammarRule::associativity() const
     return associativity_;
 }
 
-Arity GrammarRule::arity() const
+std::vector<ArgType> GrammarRule::arg_types() const&
 {
-    return arity_;
+    return arg_types_;
 }
 
-ArgType GrammarRule::lhs_type() const
+size_t GrammarRule::num_args() const
 {
-    return lhs_type_;
+    return arg_types_.size();
 }
 
-ArgType GrammarRule::rhs_type() const
+size_t GrammarRule::num_rhs_args() const
 {
-    return rhs_type_;
+    return num_args() - (has_lhs_arg_ ? 1 : 0);
 }
 
-poly::string_view GrammarRule::op_str() const
+bool GrammarRule::has_lhs_arg() const
 {
-    return sym_to_debug_str(op());
+    return has_lhs_arg_;
+}
+
+poly::string_view GrammarRule::sym_str() const
+{
+    return sym_to_debug_str(sym());
 }
 
 poly::string_view GrammarRule::precedence_str() const
@@ -407,96 +241,59 @@ poly::string_view GrammarRule::associativity_str() const
     return associativity_to_str(associativity());
 }
 
-poly::string_view GrammarRule::arity_str() const
+std::string GrammarRule::arg_types_str() const
 {
-    return arity_to_str(arity());
-}
-
-poly::string_view GrammarRule::lhs_type_str() const
-{
-    return arg_type_to_str(lhs_type());
-}
-
-poly::string_view GrammarRule::rhs_type_str() const
-{
-    return arg_type_to_str(rhs_type());
+    std::stringstream ss;
+    ss << "[";
+    for (const auto& arg_type : arg_types()) {
+        ss << arg_type_to_str(arg_type) << ", ";
+    }
+    ss << "]";
+    return std::move(ss).str();
 }
 
 std::string GrammarRule::info_str() const
 {
     std::stringstream ss;
     ss << "GrammarRule(";
-    ss << "Symbol::" << op_str() << ", ";
+    ss << "Symbol::" << sym_str() << ", ";
     ss << "Precedence::" << precedence_str() << ", ";
     ss << "Associativity::" << associativity_str() << ", ";
-    ss << "Arity::" << arity_str() << ", ";
-    ss << "ArgType::" << lhs_type_str() << ", ";
-    ss << "ArgType::" << rhs_type_str();
+    ss << "ArgTypes: " << arg_types_str();
     ss << ")";
     return std::move(ss).str();
 }
 
-ASTPtr GrammarRule::gen(ASTPtr op, ASTPtr lhs, ASTPtr rhs) const
+ASTPtr GrammarRule::gen(ASTPtr op, ArgsVec args) const
 {
-    const auto lt = lhs_type();
-    const auto rt = rhs_type();
-    if ((lt == ArgType::NONE) != (lhs == nullptr)) {
-        if (lhs) {
-            throw InvariantViolation(
-                    some(op).loc(),
-                    "Unexpectedly received left-hand argument when this rule doesn't expect one.");
-        } else {
-            throw InvariantViolation(
-                    some(op).loc(),
-                    "Got null left-hand argument when this rule expects one.");
-        }
-    }
-    if ((rt == ArgType::NONE) != (rhs == nullptr)) {
-        if (rhs) {
-            throw InvariantViolation(
-                    some(op).loc(),
-                    "Unexpectedly received right-hand argument when this rule doesn't expect one.");
-        } else {
-            throw InvariantViolation(
-                    some(op).loc(),
-                    "Got null right-hand argument when this rule expects one.");
-        }
+    if (args.size() != arg_types().size()) {
+        throw InvariantViolation(
+                some(op).loc(),
+                "Expected " + std::to_string(arg_types().size())
+                        + " arguments, but got " + std::to_string(args.size())
+                        + "!");
     }
 
-    {
-        auto maybe_lhs = match_lhs(op, std::move(lhs));
-        if (!maybe_lhs) {
+    for (size_t i = 0; i < args.size(); ++i) {
+        auto& arg      = args.at(i);
+        auto maybe_arg = match_arg(op, std::move(arg), i);
+        if (!maybe_arg) {
             throw InvariantViolation(
                     some(op).loc(),
-                    "Left-hand argument failed to match while the op was being generated, i.e., after it should already have successfully been matched!");
+                    "Argument failed to match while the op was being generated, i.e., after it should already have successfully been matched!");
         }
-        lhs = std::move(maybe_lhs).value();
+        args.at(i) = std::move(maybe_arg).value();
     }
-    {
-        auto maybe_rhs = match_rhs(op, std::move(rhs));
-        if (!maybe_rhs) {
-            throw InvariantViolation(
-                    some(op).loc(),
-                    "Right-hand argument failed to match while the op was being generated, i.e., after it should already have successfully been matched!");
-        }
-        rhs = std::move(maybe_rhs).value();
-    }
-
-    auto result = do_gen(std::move(op), std::move(lhs), std::move(rhs));
+    auto result = do_gen(std::move(op), std::move(args));
     some(result);
     return result;
 }
 
-poly::optional<ASTPtr> GrammarRule::match_lhs(const ASTPtr& op, ASTPtr arg)
-        const
+poly::optional<ASTPtr>
+GrammarRule::match_arg(const ASTPtr& op, ASTPtr arg, size_t idx) const
 {
-    const auto type = lhs_type();
+    const auto type = arg_types().at(idx);
     switch (type) {
-        case ArgType::NONE:
-            if (arg != nullptr) {
-                return poly::nullopt;
-            }
-            break;
         case ArgType::LIST_SQUARE:
         case ArgType::LIST_CURLY:
             arg = unwrap_parens(std::move(arg));
@@ -522,45 +319,8 @@ poly::optional<ASTPtr> GrammarRule::match_lhs(const ASTPtr& op, ASTPtr arg)
             }
             break;
         }
-        default:
-            throw InvariantViolation(
-                    some(op).loc() + some(arg).loc(), "Illegal ArgType!");
-    }
-
-    return do_match_lhs(op, std::move(arg));
-}
-
-poly::optional<ASTPtr> GrammarRule::match_rhs(const ASTPtr& op, ASTPtr arg)
-        const
-{
-    const auto type = rhs_type();
-    switch (type) {
-        case ArgType::NONE:
-            if (arg != nullptr) {
-                return poly::nullopt;
-            }
-            break;
-        case ArgType::LIST_SQUARE:
-        case ArgType::LIST_CURLY:
-            arg = unwrap_parens(std::move(arg));
-            ZL_FALLTHROUGH;
-        case ArgType::LIST_PAREN: {
-            const auto* const list = some(arg).as_list();
-            if (list == nullptr) {
-                return poly::nullopt;
-            }
-            const auto list_type = arg_types_to_list_types.at(type);
-            if (list->list_type() != list_type) {
-                return poly::nullopt;
-            }
-            break;
-        }
-        case ArgType::EXPR: {
-            if (some(arg).as_sym() != nullptr) {
-                return poly::nullopt;
-            }
-            arg = unwrap_parens(arg);
-            if (some(arg).as_list() != nullptr) {
+        case ArgType::SYM: {
+            if (some(arg).as_sym() == nullptr) {
                 return poly::nullopt;
             }
             break;
@@ -570,17 +330,11 @@ poly::optional<ASTPtr> GrammarRule::match_rhs(const ASTPtr& op, ASTPtr arg)
                     some(op).loc() + some(arg).loc(), "Illegal ArgType!");
     }
 
-    return do_match_rhs(op, std::move(arg));
+    return do_match_arg(op, std::move(arg), idx);
 }
 
-poly::optional<ASTPtr> GrammarRule::do_match_lhs(const ASTPtr&, ASTPtr arg)
-        const
-{
-    return std::move(arg);
-}
-
-poly::optional<ASTPtr> GrammarRule::do_match_rhs(const ASTPtr&, ASTPtr arg)
-        const
+poly::optional<ASTPtr>
+GrammarRule::do_match_arg(const ASTPtr&, ASTPtr arg, size_t) const
 {
     return std::move(arg);
 }
@@ -589,145 +343,17 @@ namespace {
 
 class BuiltInFieldRule : public GrammarRule {
    public:
-    explicit BuiltInFieldRule(Symbol op)
-            : GrammarRule(op, Precedence::NULLARY, ArgType::NONE, ArgType::NONE)
+    explicit BuiltInFieldRule(Symbol sym)
+            : GrammarRule(sym, Precedence::NULLARY, std::vector<ArgType>())
     {
     }
 
    private:
-    ASTPtr do_gen(ASTPtr op, ASTPtr, ASTPtr) const override
+    ASTPtr do_gen(ASTPtr op, ArgsVec) const override
     {
-        ASTVec args{
-            std::make_shared<ASTBuiltinField>(token_of(op)),
-            std::make_shared<ASTDest>(token_of(op), nullptr),
-        };
-
-        return std::make_shared<ASTOp>(
-                Token{ op->loc(), Symbol::SEND }, std::move(args));
-    }
-};
-
-class PoisonRule : public GrammarRule {
-   public:
-    explicit PoisonRule()
-            : GrammarRule(
-                      Symbol::POISON,
-                      Precedence::NULLARY,
-                      ArgType::NONE,
-                      ArgType::NONE)
-    {
-    }
-
-   private:
-    ASTPtr do_gen(ASTPtr op, ASTPtr, ASTPtr) const override
-    {
-        return std::make_shared<ASTPoison>(token_of(op));
-    }
-};
-
-class RecordRule : public GrammarRule {
-   public:
-    explicit RecordRule()
-            : GrammarRule(
-                      Symbol::RECORD,
-                      Precedence::UNARY,
-                      ArgType::NONE,
-                      ArgType::LIST_CURLY)
-    {
-    }
-
-   private:
-    ASTPtr do_gen(ASTPtr, ASTPtr, ASTPtr rhs) const override
-    {
-        return std::make_shared<ASTRecord>(std::move(rhs));
-    }
-};
-
-class FuncRule : public GrammarRule {
-   public:
-    explicit FuncRule()
-            : GrammarRule(
-                      Symbol::RECORD,
-                      Precedence::ACCESS,
-                      ArgType::LIST_PAREN,
-                      ArgType::LIST_CURLY)
-    {
-    }
-
-   private:
-    ASTPtr do_gen(ASTPtr, ASTPtr lhs, ASTPtr rhs) const override
-    {
-        const auto& args = some(lhs).as_list();
-        const auto& body = some(rhs).as_list();
-        return std::make_shared<ASTFunc>(args->nodes(), body->nodes());
-    }
-};
-
-class ArrayRule : public GrammarRule {
-   public:
-    explicit ArrayRule()
-            : GrammarRule(
-                      Symbol::ARRAY,
-                      Precedence::ACCESS,
-                      ArgType::EXPR,
-                      ArgType::LIST_SQUARE)
-    {
-    }
-
-   private:
-    ASTPtr do_gen(ASTPtr, ASTPtr lhs, ASTPtr rhs) const override
-    {
-        const auto& rhs_nodes                      = unwrap_square(rhs);
-        constexpr bool allow_implicit_array_sizing = true;
-        if (allow_implicit_array_sizing && rhs_nodes.size() == 0) {
-            const Codegen cg{ maybe_loc(lhs) + maybe_loc(rhs) };
-
-            /**
-             * This expands:
-             * ```
-             * field[]
-             * ```
-             * into
-             * ```
-             * (: (__field, __rem) {
-             *   __size = sizeof __field
-             *   expect __rem % __size == 0
-             *   __len = __rem / __size
-             *   __resolved = __field[__len]
-             * } (field, _rem)).__resolved
-             * ```
-             */
-
-            const auto field_var    = cg.var("__field");
-            const auto rem_var      = cg.var("__rem");
-            const auto size_var     = cg.var("__size");
-            const auto len_var      = cg.var("__len");
-            const auto resolved_var = cg.var("__resolved");
-            return cg.member(
-                    cg.consume(cg.bind(
-                            cg.func(cg.vec(field_var, rem_var),
-                                    cg.vec(cg.assign(
-                                                   size_var,
-                                                   cg.size_of(field_var)),
-                                           cg.assign(
-                                                   len_var,
-                                                   cg.div(rem_var, size_var)),
-                                           cg.expect(cg.eq(
-                                                   cg.mod(rem_var, size_var),
-                                                   cg.num(0))),
-                                           cg.assign(
-                                                   resolved_var,
-                                                   cg.array(
-                                                           field_var,
-                                                           len_var)))),
-                            cg.tuple(cg.vec(std::move(lhs), cg.var("_rem"))))),
-                    resolved_var);
-        } else if (rhs_nodes.size() != 1) {
-            throw ParseError(
-                    some(rhs).loc(),
-                    "Array declaration right-hand side list must have single element.");
-        }
-        return std::make_shared<ASTArray>(std::move(lhs), rhs_nodes[0]);
+        auto token = token_of(op);
+        return std::make_shared<ASTBuiltinField>(
+                token.loc(), builtin_field_syms_to_ops.at(token.sym()));
     }
 };
 
@@ -739,38 +365,21 @@ class OpRule : public GrammarRule {
     }
 
    protected:
-    ASTPtr do_gen(ASTPtr op, ASTPtr lhs, ASTPtr rhs) const override
+    ASTPtr do_gen(ASTPtr op, ArgsVec args) const override
     {
-        std::vector<ASTPtr> args;
-        switch (arity()) {
-            case Arity::INFIX_BINARY:
-                args.push_back(std::move(lhs));
-                ZL_FALLTHROUGH;
-            case Arity::PREFIX_UNARY:
-                args.push_back(std::move(rhs));
-                ZL_FALLTHROUGH;
-            case Arity::NULLARY:
-                break;
-        }
+        auto token = op->as_sym()
+                ? token_of(op)
+                : Token{ SourceLocation::null(), this->sym() };
 
-        auto token = op->as_sym() ? token_of(op)
-                                  : Token{ SourceLocation::null(), this->op() };
-        return std::make_shared<ASTOp>(token, std::move(args));
-    }
-};
-
-class NullaryOpRule : public OpRule {
-   public:
-    explicit NullaryOpRule(Symbol op)
-            : OpRule(op, Precedence::NULLARY, ArgType::NONE, ArgType::NONE)
-    {
+        return std::make_shared<ASTOp>(
+                token.loc(), syms_to_ops.at(token.sym()), std::move(args));
     }
 };
 
 class UnaryOpRule : public OpRule {
    public:
     explicit UnaryOpRule(Symbol op, Precedence precedence = Precedence::UNARY)
-            : OpRule(op, precedence, ArgType::NONE, ArgType::EXPR)
+            : OpRule(op, precedence, std::vector<ArgType>({ ArgType::EXPR }))
     {
     }
 };
@@ -778,7 +387,10 @@ class UnaryOpRule : public OpRule {
 class BinaryOpRule : public OpRule {
    public:
     explicit BinaryOpRule(Symbol op, Precedence precedence)
-            : OpRule(op, precedence, ArgType::EXPR, ArgType::EXPR)
+            : OpRule(op,
+                     precedence,
+                     std::vector<ArgType>({ ArgType::EXPR, ArgType::EXPR }),
+                     true)
     {
     }
 };
@@ -790,16 +402,13 @@ class BinaryAssumeRule : public BinaryOpRule {
     {
     }
 
-    ASTPtr do_gen(ASTPtr op, ASTPtr lhs, ASTPtr rhs) const override
+    ASTPtr do_gen(ASTPtr op, ArgsVec args) const override
     {
-        ASTVec args{ std::move(rhs) };
-        rhs = std::make_shared<ASTOp>(
-                Token{ some(op).loc(), Symbol::CONSUME }, std::move(args));
-        args.clear();
-        args.push_back(std::move(lhs));
-        args.push_back(std::move(rhs));
-        return std::make_shared<ASTOp>(
-                Token{ some(op).loc(), Symbol::ASSIGN }, std::move(args));
+        auto& name = args.at(0);
+        auto& val  = args.at(1);
+
+        Codegen cg{ some(op).loc() };
+        return cg.assign(std::move(name), cg.consume(std::move(val)));
     }
 };
 
@@ -810,11 +419,10 @@ class UnaryAssumeRule : public UnaryOpRule {
     {
     }
 
-    ASTPtr do_gen(ASTPtr op, ASTPtr, ASTPtr rhs) const override
+    ASTPtr do_gen(ASTPtr op, ArgsVec args) const override
     {
-        ASTVec args{ std::move(rhs) };
         return std::make_shared<ASTOp>(
-                Token{ some(op).loc(), Symbol::CONSUME }, std::move(args));
+                some(op).loc(), Op::CONSUME, std::move(args));
     }
 };
 
@@ -822,51 +430,81 @@ class NegationRule : public UnaryOpRule {
    public:
     explicit NegationRule() : UnaryOpRule(Symbol::SUB, Precedence::UNARY) {}
 
-    ASTPtr do_gen(ASTPtr op, ASTPtr, ASTPtr rhs) const override
+    ASTPtr do_gen(ASTPtr op, ArgsVec args) const override
     {
-        const auto* const rhs_num = dynamic_cast<const ASTNum*>(&some(rhs));
-        if (rhs_num != NULL) {
-            // Optimization: if the rhs is a literal number, fold the negation
-            // into the literal rather than emit a negation operation on the
-            // positive literal.
+        const auto& arg           = args.at(0);
+        const auto* const arg_num = dynamic_cast<const ASTNum*>(&some(arg));
+        if (arg_num != NULL) {
+            // Optimization: if the rhs is a literal number, fold the
+            // negation into the literal rather than emit a negation
+            // operation on the positive literal.
             return std::make_shared<ASTNum>(
-                    Token{ some(op).loc() + rhs->loc(), -rhs_num->val() });
+                    Token{ some(op).loc() + arg->loc(), -arg_num->val() });
         }
 
-        ASTVec args{ std::move(rhs) };
         return std::make_shared<ASTOp>(
-                Token{ some(op).loc(), Symbol::NEG }, std::move(args));
+                some(op).loc(), Op::NEG, std::move(args));
     }
 };
 
-class BindRule : public OpRule {
+class ArrayRule : public GrammarRule {
    public:
-    explicit BindRule()
-            : OpRule(Symbol::BIND,
-                     Precedence::ACCESS,
-                     ArgType::EXPR,
-                     ArgType::LIST_PAREN)
+    explicit ArrayRule()
+            : GrammarRule(
+                      Symbol::PAREN_OPEN, /* bit weird */
+                      Precedence::ACCESS,
+                      std::vector<ArgType>({ ArgType::EXPR }),
+                      true)
     {
     }
 
-    ASTPtr do_gen(ASTPtr op, ASTPtr lhs, ASTPtr rhs) const override
+   private:
+    ASTPtr do_gen(ASTPtr op, ArgsVec args) const override
     {
-        return OpRule::do_gen(
-                std::move(op),
-                std::move(lhs),
-                std::make_shared<ASTTuple>(std::move(rhs)));
+        auto& type      = args.at(0);
+        auto& len_nodes = unwrap_square(op);
+
+        // TODO: allow implicit array sizing
+        if (len_nodes.size() != 1) {
+            throw ParseError(
+                    some(op).loc(),
+                    "Array declaration square must have single element.");
+        }
+        return std::make_shared<ASTArray>(std::move(type), len_nodes.at(0));
     }
 };
 
-const std::vector<Symbol> builtin_field_ops{
-    Symbol::BYTE,   Symbol::U8,     Symbol::I8,     Symbol::U16LE,
-    Symbol::U16BE,  Symbol::I16LE,  Symbol::I16BE,  Symbol::U32LE,
-    Symbol::U32BE,  Symbol::I32LE,  Symbol::I32BE,  Symbol::U64LE,
-    Symbol::U64BE,  Symbol::I64LE,  Symbol::I64BE,  Symbol::F8,
-    Symbol::F16LE,  Symbol::F16BE,  Symbol::F32LE,  Symbol::F32BE,
-    Symbol::F64LE,  Symbol::F64BE,  Symbol::BF8,    Symbol::BF16LE,
-    Symbol::BF16BE, Symbol::BF32LE, Symbol::BF32BE, Symbol::BF64LE,
-    Symbol::BF64BE,
+class RecordRule : public GrammarRule {
+   public:
+    explicit RecordRule()
+            : GrammarRule(
+                      Symbol::RECORD,
+                      Precedence::NULLARY,
+                      std::vector<ArgType>({ ArgType::EXPR,
+                                             ArgType::LIST_PAREN,
+                                             ArgType::SYM,
+                                             ArgType::LIST_CURLY }))
+    {
+    }
+
+    ASTPtr do_gen(ASTPtr op, ArgsVec args) const override
+    {
+        auto& name   = args.at(0);
+        auto& params = args.at(1);
+        auto& assign = args.at(2);
+        auto& fields = args.at(3);
+
+        if (some(assign) != Symbol::ASSIGN) {
+            throw InvariantViolation(
+                    some(op).loc(),
+                    "Expected assignment operator in record declaration!");
+        }
+
+        return Codegen{ some(op).loc() }.assign(
+                std::move(name),
+                std::make_shared<ASTRecord>(
+                        std::move(params), std::move(fields)));
+    }
 };
 
 template <typename RuleT, typename... Args>
@@ -880,37 +518,19 @@ void add_rule(
 const std::vector<std::unique_ptr<const GrammarRule>> grammar_rules{ []() {
     std::vector<std::unique_ptr<const GrammarRule>> r;
 
-    // Types and Dests
-
-    // Built-ins
-    for (const auto op : builtin_field_ops) {
-        add_rule<BuiltInFieldRule>(r, op);
+    // Built-in fields
+    for (const auto& [sym, _] : builtin_field_syms_to_ops) {
+        add_rule<BuiltInFieldRule>(r, sym);
     }
 
-    // Compound type ops
-    // add_rule<RecordRule>(r);
-    add_rule<ArrayRule>(r);
-
-    add_rule<PoisonRule>(r);
-    // add_rule<AtomRule>(r);
-    // add_rule<RecordRule>(r);
-    // add_rule<ArrayRule>(r);
-
-    // add_rule<DestRule>(r);
+    // Complex fields
+    add_rule<RecordRule>(r);
 
     // Ops
-
-    add_rule<NullaryOpRule>(r, Symbol::DIE);
-
     add_rule<UnaryOpRule>(r, Symbol::EXPECT, Precedence::ASSIGNMENT);
-    add_rule<UnaryOpRule>(r, Symbol::LOG);
-
-    add_rule<UnaryOpRule>(r, Symbol::CONSUME);
     add_rule<UnaryOpRule>(r, Symbol::SIZEOF);
-
     add_rule<NegationRule>(r);
 
-    add_rule<BinaryOpRule>(r, Symbol::SEND, Precedence::ASSIGNMENT);
     add_rule<BinaryOpRule>(r, Symbol::ASSIGN, Precedence::ASSIGNMENT);
     add_rule<BinaryAssumeRule>(r);
     add_rule<UnaryAssumeRule>(r);
@@ -945,47 +565,32 @@ const std::vector<std::unique_ptr<const GrammarRule>> grammar_rules{ []() {
     return r;
 }() };
 
-const std::map<Symbol, std::vector<std::reference_wrapper<const GrammarRule>>>
-        syms_to_rules{ []() {
-            std::map<
-                    Symbol,
-                    std::vector<std::reference_wrapper<const GrammarRule>>>
-                    m;
-            for (const auto& rule_ptr : grammar_rules) {
-                const auto& rule = *rule_ptr;
-                m[rule.op()].emplace_back(rule);
-            }
-            return m;
-        }() };
+using GrammarRuleRefs = std::vector<std::reference_wrapper<const GrammarRule>>;
 
-const std::map<ListType, std::vector<std::reference_wrapper<const GrammarRule>>>
-        list_types_to_implicit_rules{ []() {
-            std::map<
-                    ListType,
-                    std::vector<std::reference_wrapper<const GrammarRule>>>
-                    m;
+const std::map<Symbol, GrammarRuleRefs> syms_to_rules{ []() {
+    std::map<Symbol, GrammarRuleRefs> m;
+    for (const auto& rule_ptr : grammar_rules) {
+        const auto& rule = *rule_ptr;
+        m[rule.sym()].emplace_back(rule);
+    }
+    return m;
+}() };
 
-            static const std::unique_ptr<const GrammarRule> bind_rule =
-                    std::make_unique<BindRule>();
-            m[ListType::PAREN].emplace_back(*bind_rule);
+const std::map<ListType, GrammarRuleRefs> list_types_to_rules{ []() {
+    std::map<ListType, GrammarRuleRefs> m;
 
-            static const std::unique_ptr<const GrammarRule> array_rule =
-                    std::make_unique<ArrayRule>();
-            m[ListType::SQUARE].emplace_back(*array_rule);
+    m[ListType::PAREN] = {};
 
-            static const std::unique_ptr<const GrammarRule> record_rule =
-                    std::make_unique<RecordRule>();
-            m[ListType::CURLY].emplace_back(*record_rule);
-            static const std::unique_ptr<const GrammarRule> func_rule =
-                    std::make_unique<FuncRule>();
-            m[ListType::CURLY].emplace_back(*func_rule);
-            return m;
-        }() };
+    static const std::unique_ptr<const GrammarRule> array_rule =
+            std::make_unique<ArrayRule>();
+    m[ListType::SQUARE] = { *array_rule };
+    m[ListType::CURLY]  = {};
+    return m;
+}() };
 
 } // anonymous namespace
 
-const std::vector<std::reference_wrapper<const GrammarRule>>& sym_to_rules(
-        const Symbol sym)
+const GrammarRuleRefs& sym_to_rules(const Symbol sym)
 {
     try {
         return syms_to_rules.at(sym);
@@ -996,27 +601,14 @@ const std::vector<std::reference_wrapper<const GrammarRule>>& sym_to_rules(
     }
 }
 
-const std::vector<std::reference_wrapper<const GrammarRule>>&
-list_type_to_implicit_rules(const ListType list_type)
+const GrammarRuleRefs& list_type_to_rules(const ListType list_type)
 {
     try {
-        return list_types_to_implicit_rules.at(list_type);
+        return list_types_to_rules.at(list_type);
     } catch (const std::out_of_range&) {
         throw InvariantViolation(
-                "Lookup failed in list_type_to_implicit_rules(ListType::"
+                "Lookup failed in list_type_to_rules(ListType::"
                 + std::string{ list_type_to_debug_str(list_type) } + ")");
     }
 }
-
-bool sym_is_always_binary_op(Symbol sym)
-{
-    const auto& rules = sym_to_rules(sym);
-    for (const auto& rule : rules) {
-        if (rule.get().arity() != Arity::INFIX_BINARY) {
-            return false;
-        }
-    }
-    return true;
-}
-
 } // namespace openzl::sddl2
