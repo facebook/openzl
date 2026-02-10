@@ -116,29 +116,6 @@ class GrouperImpl {
         return group_list_inner(it, end, lss_it->second);
     }
 
-    void check_token_legal_in_expr(
-            const SourceLocation& expr_loc,
-            GroupingPtr ptr) const
-    {
-        const auto* const token = some(ptr).as_token();
-        if (token != nullptr) {
-            if ((**token).is_sym()) {
-                const auto sym = (**token).sym();
-                if (sym_type(sym) == SymbolType::GROUPING) {
-                    log_(0) << InfoError(
-                                       expr_loc,
-                                       "While parsing this expression:")
-                                       .what();
-                    throw SyntaxError(
-                            some(ptr).loc(),
-                            "Unexpected separator token '"
-                                    + std::string{ sym_to_repr_str(sym) }
-                                    + "' in the middle of an expression.");
-                }
-            }
-        }
-    }
-
     // @p nodes includes statement terminator
     GroupingPtr group_expr(GroupingVec nodes) const
     {
@@ -159,12 +136,6 @@ class GrouperImpl {
                 grouped.push_back(std::move(maybe_list));
                 continue;
             }
-
-            if (it + 1 != end) {
-                check_token_legal_in_expr(full_loc, *it);
-            }
-
-            // otherwise
             grouped.push_back(*it);
         }
 

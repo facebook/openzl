@@ -44,14 +44,8 @@ enum class Associativity {
     RIGHT_TO_LEFT,
 };
 
-enum class Arity {
-    NULLARY,
-    PREFIX_UNARY,
-    INFIX_BINARY,
-};
-
 enum class ArgType {
-    NONE,
+    SYM,
     LIST_PAREN,
     LIST_SQUARE,
     LIST_CURLY,
@@ -62,27 +56,27 @@ poly::string_view precedence_to_str(Precedence precedence);
 
 poly::string_view associativity_to_str(Associativity associativity);
 
-poly::string_view arity_to_str(Arity arity);
-
 poly::string_view arg_type_to_str(ArgType arg_type);
 
 class GrammarRule {
    public:
     virtual ~GrammarRule() = default;
 
-    Symbol op() const;
+    Symbol sym() const;
     Precedence precedence() const;
     Associativity associativity() const;
-    Arity arity() const;
-    ArgType lhs_type() const;
-    ArgType rhs_type() const;
 
-    poly::string_view op_str() const;
+    /// The types of arguments that this rule accepts.
+    std::vector<ArgType> arg_types() const&;
+    size_t num_args() const;
+    size_t num_rhs_args() const;
+    bool has_lhs_arg() const;
+
+    poly::string_view sym_str() const;
     poly::string_view precedence_str() const;
     poly::string_view associativity_str() const;
-    poly::string_view arity_str() const;
-    poly::string_view lhs_type_str() const;
-    poly::string_view rhs_type_str() const;
+
+    std::string arg_types_str() const;
 
     /// An assemblage of the above strings into one record.
     std::string info_str() const;
@@ -90,47 +84,40 @@ class GrammarRule {
     /**
      * Apply this rule and construct an ASTNode from the op and args.
      */
-    ASTPtr gen(ASTPtr op, ASTPtr lhs, ASTPtr rhs) const;
+    ASTPtr gen(ASTPtr op, std::vector<ASTPtr> args) const;
 
-    poly::optional<ASTPtr> match_lhs(const ASTPtr& op, ASTPtr arg) const;
-
-    poly::optional<ASTPtr> match_rhs(const ASTPtr& op, ASTPtr arg) const;
+    poly::optional<ASTPtr> match_arg(const ASTPtr& op, ASTPtr arg, size_t idx)
+            const;
 
    protected:
     GrammarRule(
-            Symbol op,
+            Symbol sym,
             Precedence precedence,
-            ArgType lhs_type,
-            ArgType rhs_type);
+            std::vector<ArgType> arg_types,
+            bool has_lhs_arg = false);
 
    private:
-    virtual ASTPtr do_gen(ASTPtr op, ASTPtr lhs, ASTPtr rhs) const = 0;
+    virtual ASTPtr do_gen(ASTPtr op, std::vector<ASTPtr> args) const = 0;
 
-    /// Can set custom matching logic on top of the matching done in @ref
-    /// lhs_matches, defaults to permissive.
-    virtual poly::optional<ASTPtr> do_match_lhs(const ASTPtr& op, ASTPtr arg)
-            const;
-
-    /// Can set custom matching logic on top of the matching done in @ref
-    /// rhs_matches, defaults to permissive.
-    virtual poly::optional<ASTPtr> do_match_rhs(const ASTPtr& op, ASTPtr arg)
-            const;
+    virtual poly::optional<ASTPtr>
+    do_match_arg(const ASTPtr& op, ASTPtr arg, size_t idx) const;
 
    private:
-    const Symbol op_;
+    /// The symbol that this rule matches.
+    const Symbol sym_;
+
     const Precedence precedence_;
     const Associativity associativity_;
-    const Arity arity_;
-    const ArgType lhs_type_;
-    const ArgType rhs_type_;
+    const std::vector<ArgType> arg_types_;
+
+    /// True if the first argument is the left-hand side of the operator.
+    bool has_lhs_arg_ = false;
 };
 
 const std::vector<std::reference_wrapper<const GrammarRule>>& sym_to_rules(
         Symbol symbol);
 
 const std::vector<std::reference_wrapper<const GrammarRule>>&
-list_type_to_implicit_rules(ListType list_type);
-
-bool sym_is_always_binary_op(Symbol symbol);
+list_type_to_rules(ListType list_type);
 
 } // namespace openzl::sddl2
