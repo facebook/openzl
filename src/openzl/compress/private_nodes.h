@@ -61,6 +61,15 @@ extern "C" {
 // Only use in scenarios where the condition is guaranteed to be true.
 #define ZL_NODE_DEDUP_NUM_TRUSTED (ZL_NodeID){ZL_PrivateStandardNodeID_dedup_num_trusted}
 
+// bitSplit
+// Input: 1 numeric stream (all widths supported)
+// Output: N numeric streams (one per bit range specified in parameters)
+// Parameters: Array of bit widths [w₀, w₁, ..., wₙ₋₁] (LSB to MSB order)
+// Result: Splits each element by bit ranges into multiple streams
+// Note: Fully reversible. Parameters required (empty params = error).
+//       If sum(widths) < element_width, top bits must be zero.
+#define ZL_NODE_BITSPLIT (ZL_NodeID){ZL_PrivateStandardNodeID_bitSplit}
+
 // Internal node for conversion from Serial to String
 // Requires passing parameters, documented in encode_conversion_binding.h
 #define ZL_NODE_SETSTRINGLENS (ZL_NodeID){ZL_PrivateStandardNodeID_set_string_lens}
@@ -128,6 +137,8 @@ typedef enum {
     ZL_PrivateStandardNodeID_tokenize_string_sorted,
 
     ZL_PrivateStandardNodeID_dedup_num_trusted,
+
+    ZL_PrivateStandardNodeID_bitSplit,
 
     // Deprecated nodes that should not be used in new code.
     // We retain support for testing purposes.

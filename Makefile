@@ -429,16 +429,28 @@ $(LIBLZ4_A) : $(LZ4_MAKEFILE)
 
 # Google Test
 
-deps/googletest.tar.gz :
-	$(MKDIR) -p deps
-	$(CURL) -L https://github.com/google/googletest/releases/download/v1.17.0/googletest-1.17.0.tar.gz -o $@
+GTEST_VERSION ?= 1.17.0
+GTEST_DIRNAME := googletest-$(GTEST_VERSION)
+GTEST_TARBALL := deps/$(GTEST_DIRNAME).tar.gz
 
-# Ensure headers are available (no need for compiled library yet)
-$(GTEST_HEADERS): deps/googletest.tar.gz
-	cd deps && tar xzf googletest.tar.gz
+$(GTEST_TARBALL):
+	$(MKDIR) -p deps
+	$(CURL) -L https://github.com/google/googletest/releases/download/v$(GTEST_VERSION)/$(GTEST_DIRNAME).tar.gz -o $@
+
+.PHONY: gtest-fallback
+gtest-fallback: $(GTEST_TARBALL)
+	$(RM) -r deps/$(GTEST_DIRNAME)
+	$(TAR) -xzf $(GTEST_TARBALL) -C deps
 	$(RM) -r deps/googletest
-	mv deps/googletest*/ deps/googletest
-	touch $@
+	mv deps/$(GTEST_DIRNAME) deps/googletest
+
+# Ensure headers are available - prefer submodule, fallback to tarball
+$(GTEST_HEADERS):
+	-$(GIT) submodule update --init --single-branch --depth 1 deps/googletest
+	if [ ! -f $@ ]; then \
+		echo "Falling back to tarball download and extraction for googletest"; \
+		$(MAKE) gtest-fallback; \
+	fi
 
 $(LIBGTEST_A) : MAKEOVERRIDES=
 $(LIBGTEST_A) : $(GTEST_HEADERS)

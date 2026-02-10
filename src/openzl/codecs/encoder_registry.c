@@ -2,6 +2,7 @@
 
 #include "openzl/codecs/encoder_registry.h"
 
+#include "openzl/codecs/bitSplit/encode_bitSplit_binding.h"
 #include "openzl/codecs/bitpack/encode_bitpack_binding.h"
 #include "openzl/codecs/bitunpack/encode_bitunpack_binding.h"
 #include "openzl/codecs/concat/encode_concat_binding.h"
@@ -126,6 +127,7 @@ const CNode ER_standardNodes[STANDARD_ENCODERS_NB] = {
     REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_tokenize_string_sorted, ZL_StandardTransformID_tokenize_string, 11, EI_TOKENIZE_VSF_SORTED),
     REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_dedup_num_trusted, ZL_StandardTransformID_dedup_num, 16, EI_DEDUP_NUM_TRUSTED),
     REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_lz4, ZL_StandardTransformID_lz4, 23, EI_LZ4),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_bitSplit, ZL_StandardTransformID_bitSplit, ZL_MAX_FORMAT_VERSION, EI_BITSPLIT),
 
     // Deprecated Nodes
     REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_rolz_deprecated, ZL_StandardTransformID_rolz, 3, 12, EI_ROLZ),

@@ -110,3 +110,6 @@ target_link_libraries(test_codecs
         sddl2_compiler_lib
 )
 add_dependencies(test_codecs sddl_compiler_lib sddl2_compiler_lib)
+
+# NOTE: Fuzzer tests (zstrong/fuzz_*.cpp) are BUCK-only targets using Meta's
+# Lionhead infrastructure and are not included in the CMake build.

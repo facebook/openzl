@@ -270,6 +270,7 @@ zs_fuzzers(
         ("IntegerTest", "FuzzFSENCountRoundTrip"),
         ("IntegerTest", "FuzzIntegerSelector"),
         ("IntegerTest", "FuzzIntegerDivideBy"),
+        ("IntegerTest", "FuzzBitSplitRoundTrip"),
     ],
     deps = FUZZER_DEPS,
 )
