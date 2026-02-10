@@ -6,6 +6,8 @@
 #include "openzl/zl_reflection.h"
 #include "tools/training/ace/ace_sampling.h"
 
+#include "openzl/cpp/codecs/Top8bits.hpp"
+
 namespace openzl {
 namespace training {
 namespace {
@@ -88,6 +90,7 @@ std::vector<ACENode> makeAllNodes()
     n.push_back(buildNode(nodes::QuantizeOffsets{}));
     n.push_back(buildNode(nodes::QuantizeLengths{}));
     n.push_back(buildNode(nodes::TransposeSplit{}));
+    n.push_back(buildNode(nodes::Top8bits{}));
     n.push_back(buildNode(nodes::Zigzag{}));
     n.push_back(buildNode(nodes::ConvertSerialToNum8{}));
     n.push_back(buildNode(nodes::ConvertSerialToNumLE16{}));

@@ -16,45 +16,18 @@
 #define ZL_BITSPLIT_WIDTHS_PID 701
 #define ZL_BITSPLIT_NBWIDTHS_PID 702
 
-ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
+ZL_Report EI_bitSplit_withWidths(
+        ZL_Encoder* eictx,
+        const ZL_Input* in,
+        const uint8_t* bitWidths,
+        size_t nbWidths)
 {
     ZL_ASSERT_NN(eictx);
-    ZL_ASSERT_EQ(nbIns, 1);
-    ZL_ASSERT_NN(ins);
-    const ZL_Input* in = ins[0];
     ZL_ASSERT_NN(in);
     ZL_ASSERT_EQ(ZL_Input_type(in), ZL_Type_numeric);
-
-    // Get parameters from local params
-    ZL_RefParam const widthsParam =
-            ZL_Encoder_getLocalParam(eictx, ZL_BITSPLIT_WIDTHS_PID);
-    ZL_IntParam const nbWidthsParam =
-            ZL_Encoder_getLocalIntParam(eictx, ZL_BITSPLIT_NBWIDTHS_PID);
-
-    ZL_RET_R_IF_EQ(
-            nodeParameter_invalid,
-            widthsParam.paramId,
-            ZL_LP_INVALID_PARAMID,
-            "bitSplit requires bit widths parameter");
-    ZL_RET_R_IF_EQ(
-            nodeParameter_invalid,
-            nbWidthsParam.paramId,
-            ZL_LP_INVALID_PARAMID,
-            "bitSplit requires nbWidths parameter");
-    ZL_RET_R_IF_NULL(
-            nodeParameter_invalid,
-            widthsParam.paramRef,
-            "bitSplit bit widths parameter is NULL");
-
-    const uint8_t* bitWidths = (const uint8_t*)widthsParam.paramRef;
-    size_t const nbWidths    = (size_t)nbWidthsParam.paramValue;
-
-    // Validate: must have at least one width
-    ZL_RET_R_IF_EQ(
-            nodeParameter_invalid,
-            nbWidths,
-            0,
-            "bitSplit requires at least one bit width parameter");
+    ZL_ASSERT_NN(bitWidths);
+    ZL_ASSERT_GT(nbWidths, 0);
+    ZL_ASSERT_LE(nbWidths, 64);
 
     size_t const inputEltWidth = ZL_Input_eltWidth(in);
     ZL_ASSERT(
@@ -103,7 +76,6 @@ ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     ZL_Output* outputs[64];
     size_t outputWidths[64];
     void* dstPtrs[64];
-    ZL_ASSERT_LE(nbWidths, 64);
 
     for (size_t i = 0; i < nbWidths; i++) {
         outputWidths[i] = ZL_bitSplit_outputEltWidth(bitWidths[i]);
@@ -129,6 +101,49 @@ ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     }
 
     return ZL_returnValue(nbWidths);
+}
+
+ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
+{
+    ZL_ASSERT_NN(eictx);
+    ZL_ASSERT_EQ(nbIns, 1);
+    ZL_ASSERT_NN(ins);
+    const ZL_Input* in = ins[0];
+    ZL_ASSERT_NN(in);
+    ZL_ASSERT_EQ(ZL_Input_type(in), ZL_Type_numeric);
+
+    // Get parameters from local params
+    ZL_RefParam const widthsParam =
+            ZL_Encoder_getLocalParam(eictx, ZL_BITSPLIT_WIDTHS_PID);
+    ZL_IntParam const nbWidthsParam =
+            ZL_Encoder_getLocalIntParam(eictx, ZL_BITSPLIT_NBWIDTHS_PID);
+
+    ZL_RET_R_IF_EQ(
+            nodeParameter_invalid,
+            widthsParam.paramId,
+            ZL_LP_INVALID_PARAMID,
+            "bitSplit requires bit widths parameter");
+    ZL_RET_R_IF_EQ(
+            nodeParameter_invalid,
+            nbWidthsParam.paramId,
+            ZL_LP_INVALID_PARAMID,
+            "bitSplit requires nbWidths parameter");
+    ZL_RET_R_IF_NULL(
+            nodeParameter_invalid,
+            widthsParam.paramRef,
+            "bitSplit bit widths parameter is NULL");
+
+    const uint8_t* bitWidths = (const uint8_t*)widthsParam.paramRef;
+    size_t const nbWidths    = (size_t)nbWidthsParam.paramValue;
+
+    // Validate: must have at least one width
+    ZL_RET_R_IF_EQ(
+            nodeParameter_invalid,
+            nbWidths,
+            0,
+            "bitSplit requires at least one bit width parameter");
+
+    return EI_bitSplit_withWidths(eictx, in, bitWidths, nbWidths);
 }
 
 ZL_NodeID ZL_Compressor_registerBitSplitNode(

@@ -28,6 +28,7 @@
 #include "openzl/codecs/splitByStruct/encode_splitByStruct_binding.h"
 #include "openzl/codecs/splitN/encode_splitN_binding.h"
 #include "openzl/codecs/tokenize/encode_tokenize_binding.h"
+#include "openzl/codecs/top8bits/encode_top8bits_binding.h"
 #include "openzl/codecs/transpose/encode_transpose_binding.h"
 #include "openzl/codecs/zigzag/encode_zigzag_binding.h"
 #include "openzl/codecs/zstd/encode_zstd_binding.h"
@@ -106,6 +107,7 @@ const CNode ER_standardNodes[STANDARD_ENCODERS_NB] = {
     REGISTER_TRANSFORM(ZL_StandardNodeID_tokenize_string, ZL_StandardTransformID_tokenize_string, 11, EI_TOKENIZE_STRING),
     REGISTER_TRANSFORM(ZL_StandardNodeID_quantize_offsets, ZL_StandardTransformID_quantize_offsets, 3, EI_QUANTIZE_OFFSETS),
     REGISTER_TRANSFORM(ZL_StandardNodeID_quantize_lengths, ZL_StandardTransformID_quantize_lengths, 3, EI_QUANTIZE_LENGTHS),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_top8bits, ZL_StandardTransformID_bitSplit, ZL_MAX_FORMAT_VERSION, EI_TOP8BITS),
 
     // Private Nodes
     REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_set_string_lens,           ZL_StandardTransformID_convert_serial_string, 10, EI_SETSTRINGLENS),

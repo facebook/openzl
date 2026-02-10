@@ -33,6 +33,24 @@ ZL_BEGIN_C_DECLS
  */
 ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 
+/**
+ * Shared bitSplit encode logic used by both EI_bitSplit and EI_top8bits.
+ *
+ * Validates parameters, checks top bits, builds codec header,
+ * creates output streams, runs the kernel, and commits outputs.
+ *
+ * @param eictx Encoder context
+ * @param in Input stream (must be numeric)
+ * @param bitWidths Array of bit widths (LSB to MSB order, 1 byte each)
+ * @param nbWidths Number of bit widths (must be > 0, <= 64)
+ * @return ZL_Report with number of outputs on success
+ */
+ZL_Report EI_bitSplit_withWidths(
+        ZL_Encoder* eictx,
+        const ZL_Input* in,
+        const uint8_t* bitWidths,
+        size_t nbWidths);
+
 #define EI_BITSPLIT(id)                \
     { .gd          = GRAPH_VO_NUM(id), \
       .transform_f = EI_bitSplit,      \
