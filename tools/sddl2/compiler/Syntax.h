@@ -10,7 +10,9 @@
 namespace openzl::sddl2 {
 
 enum class Symbol {
-    // Grouping Tokens
+    /*
+     * Grouping Tokens
+     */
     NL,           // \n
     COMMA,        // ,
     PAREN_OPEN,   // (
@@ -20,25 +22,18 @@ enum class Symbol {
     SQUARE_OPEN,  // [
     SQUARE_CLOSE, // ]
 
-    // Operators
-    DIE,
+    /*
+     * Operators
+     */
     EXPECT,
-    LOG,
-
-    CONSUME,
     SIZEOF,
-    SEND,
     ASSIGN,
 
     ASSUME, // fused assign and consume
 
     MEMBER,
 
-    BIND,
-
-    NEG, // `-` is tokenized as SUB, but the unary form is converted into this
-         // during parsing.
-
+    // Arithmetic Operators
     EQ,
     NE,
     GT,
@@ -51,17 +46,20 @@ enum class Symbol {
     DIV,
     MOD,
 
+    // Bitwise Operators
     BIT_AND,
     BIT_OR,
     BIT_XOR,
     BIT_NOT,
 
+    // Logical Operators
     LOG_AND,
     LOG_OR,
     LOG_NOT,
 
-    // Keywords
-
+    /*
+     * Keywords
+     */
     // Integer Numeric Types
     BYTE,
     U8,
@@ -96,21 +94,8 @@ enum class Symbol {
     BF64BE,
 
     // Other Fields
-    POISON,
-    ATOM,
     RECORD,
-    ARRAY,
-
-    DEST,
 };
-
-enum class SymbolType {
-    GROUPING,
-    OPERATOR,
-    KEYWORD,
-};
-
-SymbolType sym_type(Symbol symbol);
 
 /// @returns a name string for a symbol.
 /// (E.g., Symbol::ADD -> "ADD")

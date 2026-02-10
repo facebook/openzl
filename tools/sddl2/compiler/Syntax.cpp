@@ -50,101 +50,6 @@ const std::map<Symbol, ListSymSet> list_sym_sets{ []() {
     return m;
 }() };
 
-static const std::map<Symbol, SymbolType> sym_types{
-    { Symbol::NL, SymbolType::GROUPING },
-    { Symbol::COMMA, SymbolType::GROUPING },
-    { Symbol::PAREN_OPEN, SymbolType::GROUPING },
-    { Symbol::PAREN_CLOSE, SymbolType::GROUPING },
-    { Symbol::CURLY_OPEN, SymbolType::GROUPING },
-    { Symbol::CURLY_CLOSE, SymbolType::GROUPING },
-    { Symbol::SQUARE_OPEN, SymbolType::GROUPING },
-    { Symbol::SQUARE_CLOSE, SymbolType::GROUPING },
-
-    { Symbol::DIE, SymbolType::OPERATOR },
-    { Symbol::EXPECT, SymbolType::OPERATOR },
-    { Symbol::LOG, SymbolType::OPERATOR },
-
-    { Symbol::CONSUME, SymbolType::OPERATOR },
-    { Symbol::SIZEOF, SymbolType::OPERATOR },
-    { Symbol::SEND, SymbolType::OPERATOR },
-    { Symbol::ASSIGN, SymbolType::OPERATOR },
-    { Symbol::ASSUME, SymbolType::OPERATOR },
-    { Symbol::MEMBER, SymbolType::OPERATOR },
-    { Symbol::BIND, SymbolType::OPERATOR },
-
-    { Symbol::NEG, SymbolType::OPERATOR },
-
-    { Symbol::EQ, SymbolType::OPERATOR },
-    { Symbol::NE, SymbolType::OPERATOR },
-    { Symbol::GT, SymbolType::OPERATOR },
-    { Symbol::GE, SymbolType::OPERATOR },
-    { Symbol::LT, SymbolType::OPERATOR },
-    { Symbol::LE, SymbolType::OPERATOR },
-    { Symbol::ADD, SymbolType::OPERATOR },
-    { Symbol::SUB, SymbolType::OPERATOR },
-    { Symbol::MUL, SymbolType::OPERATOR },
-    { Symbol::DIV, SymbolType::OPERATOR },
-    { Symbol::MOD, SymbolType::OPERATOR },
-
-    { Symbol::BIT_AND, SymbolType::OPERATOR },
-    { Symbol::BIT_OR, SymbolType::OPERATOR },
-    { Symbol::BIT_XOR, SymbolType::OPERATOR },
-    { Symbol::BIT_NOT, SymbolType::OPERATOR },
-
-    { Symbol::LOG_AND, SymbolType::OPERATOR },
-    { Symbol::LOG_OR, SymbolType::OPERATOR },
-    { Symbol::LOG_NOT, SymbolType::OPERATOR },
-
-    { Symbol::BYTE, SymbolType::KEYWORD },
-    { Symbol::U8, SymbolType::KEYWORD },
-    { Symbol::I8, SymbolType::KEYWORD },
-    { Symbol::U16LE, SymbolType::KEYWORD },
-    { Symbol::U16BE, SymbolType::KEYWORD },
-    { Symbol::I16LE, SymbolType::KEYWORD },
-    { Symbol::I16BE, SymbolType::KEYWORD },
-    { Symbol::U32LE, SymbolType::KEYWORD },
-    { Symbol::U32BE, SymbolType::KEYWORD },
-    { Symbol::I32LE, SymbolType::KEYWORD },
-    { Symbol::I32BE, SymbolType::KEYWORD },
-    { Symbol::U64LE, SymbolType::KEYWORD },
-    { Symbol::U64BE, SymbolType::KEYWORD },
-    { Symbol::I64LE, SymbolType::KEYWORD },
-    { Symbol::I64BE, SymbolType::KEYWORD },
-
-    { Symbol::F8, SymbolType::KEYWORD },
-    { Symbol::F16LE, SymbolType::KEYWORD },
-    { Symbol::F16BE, SymbolType::KEYWORD },
-    { Symbol::F32LE, SymbolType::KEYWORD },
-    { Symbol::F32BE, SymbolType::KEYWORD },
-    { Symbol::F64LE, SymbolType::KEYWORD },
-    { Symbol::F64BE, SymbolType::KEYWORD },
-
-    { Symbol::BF8, SymbolType::KEYWORD },
-    { Symbol::BF16LE, SymbolType::KEYWORD },
-    { Symbol::BF16BE, SymbolType::KEYWORD },
-    { Symbol::BF32LE, SymbolType::KEYWORD },
-    { Symbol::BF32BE, SymbolType::KEYWORD },
-    { Symbol::BF64LE, SymbolType::KEYWORD },
-    { Symbol::BF64BE, SymbolType::KEYWORD },
-
-    { Symbol::POISON, SymbolType::KEYWORD },
-    { Symbol::ATOM, SymbolType::KEYWORD },
-    { Symbol::RECORD, SymbolType::KEYWORD },
-    { Symbol::ARRAY, SymbolType::KEYWORD },
-    { Symbol::DEST, SymbolType::KEYWORD },
-};
-
-SymbolType sym_type(Symbol sym)
-{
-    try {
-        return sym_types.at(sym);
-    } catch (const std::out_of_range&) {
-        throw InvariantViolation(
-                "Lookup failed in sym_type(Symbol::"
-                + std::string{ sym_to_debug_str(sym) } + ")");
-    }
-}
-
 static const std::map<Symbol, poly::string_view> syms_to_debug_strs{
     { Symbol::NL, "NL" },
     { Symbol::COMMA, "COMMA" },
@@ -155,20 +60,11 @@ static const std::map<Symbol, poly::string_view> syms_to_debug_strs{
     { Symbol::SQUARE_OPEN, "SQUARE_OPEN" },
     { Symbol::SQUARE_CLOSE, "SQUARE_CLOSE" },
 
-    { Symbol::DIE, "DIE" },
     { Symbol::EXPECT, "EXPECT" },
-    { Symbol::LOG, "LOG" },
-
-    { Symbol::CONSUME, "CONSUME" },
     { Symbol::SIZEOF, "SIZEOF" },
-    { Symbol::SEND, "SEND" },
     { Symbol::ASSIGN, "ASSIGN" },
-
     { Symbol::ASSUME, "ASSUME" },
     { Symbol::MEMBER, "MEMBER" },
-    { Symbol::BIND, "BIND" },
-
-    { Symbol::NEG, "NEG" },
 
     { Symbol::EQ, "EQ" },
     { Symbol::NE, "NE" },
@@ -223,11 +119,7 @@ static const std::map<Symbol, poly::string_view> syms_to_debug_strs{
     { Symbol::BF64LE, "BF64LE" },
     { Symbol::BF64BE, "BF64BE" },
 
-    { Symbol::POISON, "POISON" },
-    { Symbol::ATOM, "ATOM" },
     { Symbol::RECORD, "RECORD" },
-    { Symbol::ARRAY, "ARRAY" },
-    { Symbol::DEST, "DEST" },
 };
 
 poly::string_view sym_to_debug_str(Symbol sym)
@@ -237,7 +129,6 @@ poly::string_view sym_to_debug_str(Symbol sym)
     } catch (const std::out_of_range&) {
         static const poly::string_view unknown{ "UNKNOWN???" };
         return unknown;
-        // throw InvariantViolation("Lookup failed in sym_to_debug_str()");
     }
 }
 
@@ -271,12 +162,9 @@ const std::vector<std::pair<poly::string_view, Symbol>> strs_to_syms{
     { "~", Symbol::BIT_NOT },
     { ":", Symbol::ASSUME },
     { ".", Symbol::MEMBER },
-    { "die", Symbol::DIE },
     { "expect", Symbol::EXPECT },
-    { "log", Symbol::LOG },
-    { "consume", Symbol::CONSUME },
     { "sizeof", Symbol::SIZEOF },
-    { "sendto", Symbol::SEND },
+
     { "Byte", Symbol::BYTE },
     { "UInt8", Symbol::U8 },
     { "Int8", Symbol::I8 },
@@ -306,16 +194,14 @@ const std::vector<std::pair<poly::string_view, Symbol>> strs_to_syms{
     { "BFloat32BE", Symbol::BF32BE },
     { "BFloat64LE", Symbol::BF64LE },
     { "BFloat64BE", Symbol::BF64BE },
-    { "Poison", Symbol::POISON },
+    { "Record", Symbol::RECORD },
 };
 
 /* These symbols can't actually be accessed via these names. */
 static const std::vector<std::pair<poly::string_view, Symbol>>
         addl_strs_to_syms{
-            { "\\n", Symbol::NL },        { "Atom", Symbol::ATOM },
-            { "Record", Symbol::RECORD }, { "Array", Symbol::ARRAY },
-            { "Dest", Symbol::DEST },     { "bind", Symbol::BIND },
-            { "-", Symbol::NEG },
+            { "\\n", Symbol::NL },
+
         };
 
 static const std::map<Symbol, poly::string_view> syms_to_repr_strs{ []() {
