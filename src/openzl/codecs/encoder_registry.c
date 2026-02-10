@@ -3,6 +3,7 @@
 #include "openzl/codecs/encoder_registry.h"
 
 #include "openzl/codecs/bitSplit/encode_bitSplit_binding.h"
+#include "openzl/codecs/bitSplit/encode_top8bits_binding.h"
 #include "openzl/codecs/bitpack/encode_bitpack_binding.h"
 #include "openzl/codecs/bitunpack/encode_bitunpack_binding.h"
 #include "openzl/codecs/concat/encode_concat_binding.h"
@@ -28,7 +29,6 @@
 #include "openzl/codecs/splitByStruct/encode_splitByStruct_binding.h"
 #include "openzl/codecs/splitN/encode_splitN_binding.h"
 #include "openzl/codecs/tokenize/encode_tokenize_binding.h"
-#include "openzl/codecs/top8bits/encode_top8bits_binding.h"
 #include "openzl/codecs/transpose/encode_transpose_binding.h"
 #include "openzl/codecs/zigzag/encode_zigzag_binding.h"
 #include "openzl/codecs/zstd/encode_zstd_binding.h"

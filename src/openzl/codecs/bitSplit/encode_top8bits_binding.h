@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#ifndef OPENZL_CODECS_TOP8BITS_ENCODE_TOP8BITS_BINDING_H
-#define OPENZL_CODECS_TOP8BITS_ENCODE_TOP8BITS_BINDING_H
+#ifndef OPENZL_CODECS_BITSPLIT_ENCODE_TOP8BITS_BINDING_H
+#define OPENZL_CODECS_BITSPLIT_ENCODE_TOP8BITS_BINDING_H
 
 #include "openzl/codecs/common/graph_vo.h" /* GRAPH_VO_NUM */
 #include "openzl/shared/portability.h"
@@ -36,4 +36,4 @@ ZL_Report EI_top8bits(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 
 ZL_END_C_DECLS
 
-#endif // OPENZL_CODECS_TOP8BITS_ENCODE_TOP8BITS_BINDING_H
+#endif // OPENZL_CODECS_BITSPLIT_ENCODE_TOP8BITS_BINDING_H

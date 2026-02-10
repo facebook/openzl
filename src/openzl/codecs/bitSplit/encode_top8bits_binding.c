@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "openzl/codecs/top8bits/encode_top8bits_binding.h"
+#include "openzl/codecs/bitSplit/encode_top8bits_binding.h"
 #include "openzl/codecs/bitSplit/encode_bitSplit_binding.h" /* EI_bitSplit_withWidths */
 #include "openzl/common/assertion.h"                        /* ZL_ASSERT */
 #include "openzl/zl_data.h"                                 /* ZL_Input_type */
