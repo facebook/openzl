@@ -159,6 +159,18 @@ bool ZL_Graph_isNodeSupported(const ZL_Graph* gctx, ZL_NodeID nodeid);
 
 const void* ZL_Graph_getOpaquePtr(const ZL_Graph* graph);
 
+/**
+ * @brief Query the current graph execution depth.
+ *
+ * Returns the depth at which the current graph is executing.
+ * Depth 1 is the root graph; each successor level increments by 1.
+ * This can be used to detect runaway graph growth.
+ *
+ * @param gctx  Graph context, must be non-NULL.
+ * @return Current graph execution depth (>= 1).
+ */
+unsigned ZL_Graph_getDepth(const ZL_Graph* gctx);
+
 /* access the content of an Edge */
 const ZL_Input* ZL_Edge_getData(const ZL_Edge* sctx);
 

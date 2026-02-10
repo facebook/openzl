@@ -27,6 +27,8 @@ struct ZL_Selector_s {
     /// are scoped to the current context
     Arena* wkspArena;
     const void* opaque;
+    /// Current graph execution depth
+    unsigned depth;
 }; /// typedef'd to ZL_Selector within zs2_transform_api.h
 
 ZL_Report SelCtx_initSelectorCtx(
@@ -35,7 +37,8 @@ ZL_Report SelCtx_initSelectorCtx(
         Arena* wkspArena,
         const ZL_LocalParams* lparams,
         SelectorSuccessorParams* successorLParams,
-        const void* opaque);
+        const void* opaque,
+        unsigned depth);
 
 void SelCtx_destroySelectorCtx(ZL_Selector* selCtx);
 

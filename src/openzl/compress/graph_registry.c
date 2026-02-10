@@ -412,7 +412,8 @@ GR_selectorWrapper(ZL_Graph* gctx, ZL_Edge* inputCtxs[], size_t nbInputs)
             gctx->graphArena,
             lparams,
             successorParams,
-            ZL_Graph_getOpaquePtr(gctx)));
+            ZL_Graph_getOpaquePtr(gctx),
+            gctx->depth));
     ZL_ASSERT_NN(selector_f);
     ZL_GraphID selectedSuccessor = selector_f(
             &siState,
