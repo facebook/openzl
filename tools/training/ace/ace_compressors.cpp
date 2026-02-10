@@ -152,6 +152,8 @@ std::vector<ACECompressor> makePrebuiltNumericCompressors()
     ACECompressor rangePackFieldLz(buildNode(nodes::RangePack{}), { fieldLz });
     ACECompressor rangePackDeltaFieldLz(
             buildNode(nodes::RangePack{}), { deltaFieldLz });
+    ACECompressor entropy(buildGraph(graphs::Entropy{}));
+    ACECompressor top8bitsEntropy(buildNode(nodes::Top8bits{}), { entropy });
     ACECompressor fse(buildGraph(graphs::Fse{}));
     ACECompressor store(buildGraph(graphs::Store{}));
     ACECompressor quantizeOffsets(
@@ -170,6 +172,7 @@ std::vector<ACECompressor> makePrebuiltNumericCompressors()
         deltaZigzagFieldLz,
         rangePackFieldLz,
         rangePackDeltaFieldLz,
+        top8bitsEntropy,
         quantizeOffsets,
         quantizeLengths,
     };
