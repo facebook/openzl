@@ -132,5 +132,6 @@ const void* ZL_Selector_getOpaquePtr(const ZL_Selector* selector)
 unsigned ZL_Selector_getGraphDepth(const ZL_Selector* selCtx)
 {
     ZL_ASSERT_NN(selCtx);
+    ZL_ASSERT_GE(selCtx->depth, 1);
     return selCtx->depth;
 }

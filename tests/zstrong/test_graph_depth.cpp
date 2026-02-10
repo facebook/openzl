@@ -149,8 +149,7 @@ TEST_F(GraphDepthTest, FunctionGraphDepthNested)
         .customGraphs   = &innerGraph,
         .nbCustomGraphs = 1,
     };
-    auto rootGraph =
-            ZL_Compressor_registerSelectorGraph(compressor_, &selDesc);
+    auto rootGraph = ZL_Compressor_registerSelectorGraph(compressor_, &selDesc);
     ASSERT_NE(rootGraph, ZL_GRAPH_ILLEGAL);
     testRoundTrip(rootGraph);
 }

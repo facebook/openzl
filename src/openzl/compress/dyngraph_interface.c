@@ -454,6 +454,7 @@ const void* ZL_Graph_getOpaquePtr(const ZL_Graph* gctx)
 unsigned ZL_Graph_getDepth(const ZL_Graph* gctx)
 {
     ZL_ASSERT_NN(gctx);
+    ZL_ASSERT_GE(gctx->depth, 1);
     return gctx->depth;
 }
 
