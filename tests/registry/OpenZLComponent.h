@@ -1,0 +1,192 @@
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+
+#pragma once
+
+#include <vector>
+
+#include "openzl/cpp/Compressor.hpp"
+#include "openzl/cpp/DCtx.hpp"
+#include "openzl/zl_version.h"
+#include "tests/datagen/DataGen.h"
+#include "tests/registry/OpenZLInput.h"
+
+namespace openzl::tests {
+
+/**
+ * Base class for components that can be used in OpenZL tests. A component
+ * provides a set of predefined and generated node and graph configurations,
+ * as well as predefined and generated inputs that MUST succeed for every
+ * node and graph configuration.
+ *
+ * These components are used in the OpenZL test suite to:
+ * - Test every possible node and graph configuration against every input
+ * - Test version compatbility tests against previous OpenZL versions
+ * - Fuzz OpenZL components
+ */
+class OpenZLComponent {
+   public:
+    /**
+     * @returns the CamelCase name for this component containing only
+     alphanumeric
+     * characters (not '_').
+     *
+     * NOTE: This name must be unique.
+     */
+    virtual std::string name() const = 0;
+
+    /**
+     * @returns the minimum format version that this component supports.
+     */
+    virtual int minFormatVersion() const = 0;
+
+    /**
+     * @returns the maximum format version that this component supports.
+     * Non-deprecated components do not need to override this method.
+     */
+    virtual int maxFormatVersion() const
+    {
+        return ZL_MAX_FORMAT_VERSION;
+    }
+
+    /**
+     * @returns true if the component is a standard component.
+     */
+    virtual bool isStandardComponent() const
+    {
+        return true;
+    }
+
+    /**
+     * @returns true if the component supports serialization. This means that
+     * any compressor using NodeIDs or GraphIDs from this component must be
+     * deserializable after the `registerComponent(Compressor& compressor)`
+     * call.
+     */
+    virtual bool supportsSerialization() const
+    {
+        return true;
+    }
+
+    /**
+     * Registers the base component with the compressor so it can be used within
+     * serialized compressors when `supportsSerialization()` returns true.
+     * Standard components do not need to implement this method, since there is
+     * nothing to register.
+     */
+    void registerComponent(Compressor& compressor) const
+    {
+        (void)compressor;
+    }
+
+    /**
+     * Registers the component with the DCtx. Standard components do not need to
+     * implement this method, since there is nothing to register.
+     */
+    virtual void registerComponent(DCtx& dctx) const
+    {
+        (void)dctx;
+    }
+
+    /**
+     * @returns The maximum compressed size of @p inputs.
+     * Components can override this if ZL_compressBound() is not large enough,
+     * e.g. because it expands the inputs significantly.
+     */
+    virtual size_t compressBound(poly::span<const Input> inputs) const
+    {
+        size_t totalSrcSize = 0;
+        for (const auto& input : inputs) {
+            totalSrcSize += input.contentSize();
+            if (input.type() == openzl::Type::String) {
+                totalSrcSize += input.numElts() * sizeof(*input.stringLens());
+            }
+        }
+        totalSrcSize += inputs.size() * 256;
+        return ZL_compressBound(totalSrcSize);
+    }
+
+    /**
+     * @returns A list of predefined node configurations for this component.
+     *
+     * Graph-only components should not implement this method.
+     */
+    virtual std::vector<NodeID> predefinedNodes(Compressor& compressor) const
+    {
+        return {};
+    }
+
+    /**
+     * @returns A list of predefined graph configurations for this component.
+     *
+     * Node-only components should not implement this method.
+     */
+    virtual std::vector<GraphID> predefinedGraphs(Compressor& compressor) const
+    {
+        return {};
+    }
+
+    /**
+     * @returns A list of at most `num` generated node configurations for this
+     * component. This method should only be overridden if there are interesting
+     * node configurations that are not covered by `predefinedNodes()`.
+     *
+     * Graph-only components should not implement this method.
+     */
+    virtual std::vector<NodeID> generateNodes(
+            Compressor& compressor,
+            datagen::DataGen& gen,
+            size_t num) const
+    {
+        return {};
+    }
+
+    /**
+     * @param gen Random number generator (may be backed by a fuzzer or PRNG).
+     * @param num Generate at most this number of inputs.
+     * @param maxInputSize Each input should be at most this large. This can be
+     * interpreted as a loose bound, rather than a strict limit if needed.
+     * @returns A list of at most `num` generated graph configurations for this
+     * component. This method should only be overridden if there are interesting
+     * graph configurations that are not covered by `predefinedGraphs()`.
+     *
+     * Node-only components should not implement this method.
+     */
+    virtual std::vector<GraphID> generateGraphs(
+            Compressor& compressor,
+            datagen::DataGen& gen,
+            size_t num) const
+    {
+        return {};
+    }
+
+    /**
+     * @returns A list of predefined inputs for this component that MUST succeed
+     * compression for every NodeID and GraphID returned by any of the
+     * predefined*() or generate*() methods.
+     */
+    virtual std::vector<std::unique_ptr<OpenZLInput>> predefinedInputs()
+            const = 0;
+
+    /**
+     * @param gen Random number generator (may be backed by a fuzzer or PRNG).
+     * @param num Generate at most this number of inputs.
+     * @param maxInputSize Each input should be at most this large. This can be
+     * interpreted as a loose bound, rather than a strict limit if needed.
+     * @returns A list of at most `num` generated inputs for this component that
+     * MUST succeed compression for every NodeID and GraphID returned by any of
+     * the predefined*() or generate*() methods. If there aren't interesting
+     * inputs beyond the predefined inputs, this method should not be
+     * overridden.
+     */
+    virtual std::vector<std::unique_ptr<OpenZLInput>>
+    generateInputs(datagen::DataGen& gen, size_t num, size_t maxInputSize) const
+    {
+        return {};
+    }
+
+    virtual ~OpenZLComponent() = default;
+
+   private:
+};
+
+} // namespace openzl::tests
