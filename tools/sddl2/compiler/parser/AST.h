@@ -21,6 +21,23 @@ struct SerializationOptions {
 // Forward declarations of subtypes
 class ASTSym;
 class ASTList;
+class ASTNum;
+class ASTVar;
+class ASTBuiltinField;
+class ASTBytes;
+class ASTArray;
+class ASTRecord;
+class ASTOp;
+
+enum class ConvertedNodeType {
+    NUM,
+    VAR,
+    BUILTIN_FIELD,
+    BYTES,
+    ARRAY,
+    RECORD,
+    OP
+};
 
 /**
  * Abstract base class for an AST node.
@@ -33,8 +50,14 @@ class ASTNode {
     virtual ~ASTNode() = default;
 
     virtual const ASTSym* as_sym() const;
-
     virtual const ASTList* as_list() const;
+    virtual const ASTNum* as_num() const;
+    virtual const ASTVar* as_var() const;
+    virtual const ASTBuiltinField* as_builtin_field() const;
+    virtual const ASTBytes* as_bytes() const;
+    virtual const ASTArray* as_array() const;
+    virtual const ASTRecord* as_record() const;
+    virtual const ASTOp* as_op() const;
 
     bool operator==(const Symbol& symbol) const;
     bool operator!=(const Symbol& symbol) const;
@@ -42,6 +65,8 @@ class ASTNode {
     virtual void print(std::ostream& os, size_t indent = 0) const = 0;
 
     const SourceLocation& loc() const;
+
+    virtual ConvertedNodeType converted_node_type() const = 0;
 
    private:
     const SourceLocation loc_;
@@ -65,6 +90,11 @@ const ASTVec& unwrap_curly(const ASTPtr& arg);
 class ASTUnconverted : public ASTNode {
    public:
     using ASTNode::ASTNode;
+
+    ConvertedNodeType converted_node_type() const override final
+    {
+        throw InvariantViolation("Expected a converted node!");
+    }
 };
 
 /**
@@ -124,9 +154,16 @@ class ASTNum : public ASTConverted {
    public:
     explicit ASTNum(const Token& token);
 
+    const ASTNum* as_num() const override;
+
     void print(std::ostream& os, size_t indent) const override;
 
     int64_t val() const;
+
+    ConvertedNodeType converted_node_type() const override final
+    {
+        return ConvertedNodeType::NUM;
+    }
 
    private:
     const int64_t val_;
@@ -136,7 +173,14 @@ class ASTVar : public ASTConverted {
    public:
     explicit ASTVar(const Token& token);
 
+    const ASTVar* as_var() const override;
+
     void print(std::ostream& os, size_t indent) const override;
+
+    ConvertedNodeType converted_node_type() const override final
+    {
+        return ConvertedNodeType::VAR;
+    }
 
    private:
     const std::string name_;
@@ -151,7 +195,14 @@ class ASTBuiltinField : public ASTField {
    public:
     explicit ASTBuiltinField(const SourceLocation& loc, const Symbol& op);
 
+    const ASTBuiltinField* as_builtin_field() const override;
+
     void print(std::ostream& os, size_t indent) const override;
+
+    ConvertedNodeType converted_node_type() const override final
+    {
+        return ConvertedNodeType::BUILTIN_FIELD;
+    }
 
    private:
     const Symbol kw_;
@@ -161,7 +212,14 @@ class ASTBytes : public ASTField {
    public:
     explicit ASTBytes(const SourceLocation& loc, const ASTPtr& len);
 
+    const ASTBytes* as_bytes() const override;
+
     void print(std::ostream& os, size_t indent) const override;
+
+    ConvertedNodeType converted_node_type() const override final
+    {
+        return ConvertedNodeType::BYTES;
+    }
 
    private:
     static ASTPtr extract_len(const ASTPtr& paren_ptr);
@@ -173,7 +231,14 @@ class ASTRecord : public ASTField {
    public:
     explicit ASTRecord(const ASTPtr& params, const ASTPtr& fields);
 
+    const ASTRecord* as_record() const override;
+
     void print(std::ostream& os, size_t indent) const override;
+
+    ConvertedNodeType converted_node_type() const override final
+    {
+        return ConvertedNodeType::RECORD;
+    }
 
    private:
     static ASTVec extract_fields(
@@ -192,7 +257,14 @@ class ASTArray : public ASTField {
    public:
     explicit ASTArray(const ASTPtr& field, const ASTPtr& len);
 
+    const ASTArray* as_array() const override;
+
     void print(std::ostream& os, size_t indent) const override;
+
+    ConvertedNodeType converted_node_type() const override final
+    {
+        return ConvertedNodeType::ARRAY;
+    }
 
    private:
     const ASTPtr field_;
@@ -203,7 +275,14 @@ class ASTOp : public ASTConverted {
    public:
     explicit ASTOp(const SourceLocation& loc, const Op& op, ASTVec args);
 
+    const ASTOp* as_op() const override;
+
     void print(std::ostream& os, size_t indent) const override;
+
+    ConvertedNodeType converted_node_type() const override final
+    {
+        return ConvertedNodeType::OP;
+    }
 
    private:
     const Op op_;

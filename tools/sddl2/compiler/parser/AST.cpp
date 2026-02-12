@@ -27,6 +27,41 @@ const ASTList* ASTNode::as_list() const
     return nullptr;
 }
 
+const ASTNum* ASTNode::as_num() const
+{
+    return nullptr;
+}
+
+const ASTVar* ASTNode::as_var() const
+{
+    return nullptr;
+}
+
+const ASTBuiltinField* ASTNode::as_builtin_field() const
+{
+    return nullptr;
+}
+
+const ASTBytes* ASTNode::as_bytes() const
+{
+    return nullptr;
+}
+
+const ASTArray* ASTNode::as_array() const
+{
+    return nullptr;
+}
+
+const ASTRecord* ASTNode::as_record() const
+{
+    return nullptr;
+}
+
+const ASTOp* ASTNode::as_op() const
+{
+    return nullptr;
+}
+
 bool ASTNode::operator==(const Symbol& sym) const
 {
     const auto* tok = as_sym();
@@ -157,6 +192,11 @@ ASTNum::ASTNum(const Token& token)
 {
 }
 
+const ASTNum* ASTNum::as_num() const
+{
+    return this;
+}
+
 void ASTNum::print(std::ostream& os, size_t indent) const
 {
     os << std::string(indent, ' ') << "Num: " << val_ << std::endl;
@@ -172,6 +212,11 @@ ASTVar::ASTVar(const Token& token)
 {
 }
 
+const ASTVar* ASTVar::as_var() const
+{
+    return this;
+}
+
 void ASTVar::print(std::ostream& os, size_t indent) const
 {
     os << std::string(indent, ' ') << "Var: " << name_ << std::endl;
@@ -180,6 +225,11 @@ void ASTVar::print(std::ostream& os, size_t indent) const
 ASTBuiltinField::ASTBuiltinField(const SourceLocation& loc, const Symbol& sym)
         : ASTField(loc), kw_(sym)
 {
+}
+
+const ASTBuiltinField* ASTBuiltinField::as_builtin_field() const
+{
+    return this;
 }
 
 void ASTBuiltinField::print(std::ostream& os, size_t indent) const
@@ -191,6 +241,11 @@ void ASTBuiltinField::print(std::ostream& os, size_t indent) const
 ASTBytes::ASTBytes(const SourceLocation& loc, const ASTPtr& len)
         : ASTField(loc + some(len).loc()), len_(extract_len(len))
 {
+}
+
+const ASTBytes* ASTBytes::as_bytes() const
+{
+    return this;
 }
 
 void ASTBytes::print(std::ostream& os, size_t indent) const
@@ -227,6 +282,11 @@ ASTRecord::ASTRecord(const ASTPtr& params, const ASTPtr& fields)
           fields_(extract_fields(loc(), fields))
 
 {
+}
+
+const ASTRecord* ASTRecord::as_record() const
+{
+    return this;
 }
 
 void ASTRecord::print(std::ostream& os, size_t indent) const
@@ -281,6 +341,11 @@ ASTArray::ASTArray(const ASTPtr& field, const ASTPtr& len)
 {
 }
 
+const ASTArray* ASTArray::as_array() const
+{
+    return this;
+}
+
 void ASTArray::print(std::ostream& os, size_t indent) const
 {
     os << std::string(indent, ' ') << "Field: ARRAY:" << std::endl;
@@ -291,6 +356,11 @@ void ASTArray::print(std::ostream& os, size_t indent) const
 ASTOp::ASTOp(const SourceLocation& loc, const Op& op, ASTVec args)
         : ASTConverted(loc + join_locs(args)), op_(op), args_(std::move(args))
 {
+}
+
+const ASTOp* ASTOp::as_op() const
+{
+    return this;
 }
 
 void ASTOp::print(std::ostream& os, size_t indent) const
