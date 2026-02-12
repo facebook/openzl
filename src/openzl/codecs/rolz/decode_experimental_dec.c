@@ -588,6 +588,28 @@ static ZL_Report ZS_experimentalDecoder_decompress(
     uint32_t const numLiterals        = ZL_RC_popLE32(&in);
     uint32_t const numSequences       = ZL_RC_popLE32(&in);
 
+    switch (rolzContextDepth) {
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+        case 7:
+        case 8:
+        case 12:
+        case 16:
+            break;
+        default:
+            ZL_RET_R_ERR(
+                    node_invalid_input,
+                    "Invalid contextDepth %u",
+                    rolzContextDepth);
+    }
+    ZL_RET_R_IF_EQ(
+            node_invalid_input,
+            rolzContextLog,
+            0,
+            "contextLog must be greater than 0");
     ZL_RET_R_IF_GE(GENERIC, numSequences, (1 << 30), "too many sequences");
     ZL_RET_R_IF_GE(GENERIC, numLiterals, (1 << 30), "too many literals");
 
