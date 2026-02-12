@@ -111,22 +111,15 @@ Associativity associativity_of(Precedence precedence)
     }
 }
 
-const std::map<Symbol, Op> builtin_field_syms_to_ops{
-    { Symbol::BYTE, Op::BYTE },     { Symbol::U8, Op::U8 },
-    { Symbol::I8, Op::I8 },         { Symbol::U16LE, Op::U16LE },
-    { Symbol::U16BE, Op::U16BE },   { Symbol::I16LE, Op::I16LE },
-    { Symbol::I16BE, Op::I16BE },   { Symbol::U32LE, Op::U32LE },
-    { Symbol::U32BE, Op::U32BE },   { Symbol::I32LE, Op::I32LE },
-    { Symbol::I32BE, Op::I32BE },   { Symbol::U64LE, Op::U64LE },
-    { Symbol::U64BE, Op::U64BE },   { Symbol::I64LE, Op::I64LE },
-    { Symbol::I64BE, Op::I64BE },   { Symbol::F8, Op::F8 },
-    { Symbol::F16LE, Op::F16LE },   { Symbol::F16BE, Op::F16BE },
-    { Symbol::F32LE, Op::F32LE },   { Symbol::F32BE, Op::F32BE },
-    { Symbol::F64LE, Op::F64LE },   { Symbol::F64BE, Op::F64BE },
-    { Symbol::BF8, Op::BF8 },       { Symbol::BF16LE, Op::BF16LE },
-    { Symbol::BF16BE, Op::BF16BE }, { Symbol::BF32LE, Op::BF32LE },
-    { Symbol::BF32BE, Op::BF32BE }, { Symbol::BF64LE, Op::BF64LE },
-    { Symbol::BF64BE, Op::BF64BE },
+const std::vector<Symbol> builtin_field_syms{
+    Symbol::BYTE,   Symbol::U8,     Symbol::I8,     Symbol::U16LE,
+    Symbol::U16BE,  Symbol::I16LE,  Symbol::I16BE,  Symbol::U32LE,
+    Symbol::U32BE,  Symbol::I32LE,  Symbol::I32BE,  Symbol::U64LE,
+    Symbol::U64BE,  Symbol::I64LE,  Symbol::I64BE,  Symbol::F8,
+    Symbol::F16LE,  Symbol::F16BE,  Symbol::F32LE,  Symbol::F32BE,
+    Symbol::F64LE,  Symbol::F64BE,  Symbol::BF8,    Symbol::BF16LE,
+    Symbol::BF16BE, Symbol::BF32LE, Symbol::BF32BE, Symbol::BF64LE,
+    Symbol::BF64BE,
 };
 
 const std::map<Symbol, Op> syms_to_ops{
@@ -352,8 +345,7 @@ class BuiltInFieldRule : public GrammarRule {
     ASTPtr do_gen(ASTPtr op, ArgsVec) const override
     {
         auto token = token_of(op);
-        return std::make_shared<ASTBuiltinField>(
-                token.loc(), builtin_field_syms_to_ops.at(token.sym()));
+        return std::make_shared<ASTBuiltinField>(token.loc(), token.sym());
     }
 };
 
@@ -537,7 +529,7 @@ const std::vector<std::unique_ptr<const GrammarRule>> grammar_rules{ []() {
     std::vector<std::unique_ptr<const GrammarRule>> r;
 
     // Built-in fields
-    for (const auto& [sym, _] : builtin_field_syms_to_ops) {
+    for (const auto& sym : builtin_field_syms) {
         add_rule<BuiltInFieldRule>(r, sym);
     }
 

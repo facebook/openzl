@@ -149,12 +149,12 @@ class ASTField : public ASTConverted {
 
 class ASTBuiltinField : public ASTField {
    public:
-    explicit ASTBuiltinField(const SourceLocation& loc, const Op& op);
+    explicit ASTBuiltinField(const SourceLocation& loc, const Symbol& op);
 
     void print(std::ostream& os, size_t indent) const override;
 
    private:
-    const Op kw_;
+    const Symbol kw_;
 };
 
 class ASTBytes : public ASTField {
@@ -298,9 +298,9 @@ class Codegen {
         return std::make_shared<ASTNum>(Token{ loc_, val });
     }
 
-    ASTPtr builtin_field(Op op) const
+    ASTPtr builtin_field(Symbol sym) const
     {
-        return std::make_shared<ASTBuiltinField>(loc_, op);
+        return std::make_shared<ASTBuiltinField>(loc_, sym);
     }
 
     ASTPtr array(ASTPtr field, ASTPtr len) const
