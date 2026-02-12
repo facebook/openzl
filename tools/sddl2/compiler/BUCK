@@ -30,6 +30,7 @@ zs_cxxbinary(
     name = "compiler",
     srcs = ["main.cpp"],
     deps = [
+        "../../../tools:io",
         ":lib",
     ],
 )

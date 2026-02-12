@@ -1,17 +1,5 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-set(OPENZL_BUILD_SDDL_TOOLS OFF)
-
-if(OPENZL_BUILD_TOOLS)
-  set(OPENZL_BUILD_SDDL_TOOLS ON)
-endif()
-if(OPENZL_BUILD_CLI)
-  set(OPENZL_BUILD_SDDL_TOOLS ON)
-endif()
-if(OPENZL_BUILD_PYTHON_EXT)
-  set(OPENZL_BUILD_SDDL_TOOLS ON)
-endif()
-
 if (OPENZL_BUILD_SDDL_TOOLS)
         file(
         GLOB sddl2_compiler_lib_sources
@@ -44,7 +32,9 @@ if (OPENZL_BUILD_SDDL_TOOLS)
     target_link_libraries(sddl2_compiler_lib
         openzl_cpp
     )
-    add_dependencies(sddl2_compiler_lib openzl_cpp)
+    add_dependencies(sddl2_compiler_lib
+        openzl_cpp
+    )
     apply_openzl_compile_options_to_target(sddl2_compiler_lib)
 
 
@@ -55,10 +45,16 @@ if (OPENZL_BUILD_SDDL_TOOLS)
         ${PROJECT_BINARY_DIR}/include
         ${PROJECT_SOURCE_DIR}
     )
-    target_link_libraries(sddl2_compiler
+    target_link_libraries(sddl2_compiler PRIVATE
         sddl2_compiler_lib
+        tools_io
+        openzl_cpp
     )
-    add_dependencies(sddl2_compiler sddl2_compiler_lib)
+    add_dependencies(sddl2_compiler
+        sddl2_compiler_lib
+        tools_io
+        openzl_cpp
+    )
     apply_openzl_compile_options_to_target(sddl2_compiler)
 
     if (OPENZL_BUILD_TESTS)

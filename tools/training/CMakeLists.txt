@@ -1,14 +1,5 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-set(OPENZL_BUILD_TRAINING_TOOLS OFF)
-
-if(OPENZL_BUILD_TOOLS)
-  set(OPENZL_BUILD_TRAINING_TOOLS ON)
-endif()
-if(OPENZL_BUILD_CLI)
-  set(OPENZL_BUILD_TRAINING_TOOLS ON)
-endif()
-
 if (OPENZL_BUILD_TRAINING_TOOLS)
   file(
       GLOB_RECURSE training_sources
