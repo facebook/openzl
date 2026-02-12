@@ -947,6 +947,7 @@ static ZL_Report CCTX_runGraphDesc(
 
     ZL_Graph graphCtx     = GCTX_init(cctx, migd);
     graphCtx.privateParam = privateParam;
+    graphCtx.depth        = depth;
 
     for (unsigned n = 0; n < nbInputs; n++) {
         const ZL_Report ret =

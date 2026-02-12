@@ -241,6 +241,19 @@ ZL_Type ZL_Selector_getInput0MaskForGraph(
 
 const void* ZL_Selector_getOpaquePtr(const ZL_Selector* selector);
 
+/**
+ * @brief Query the current graph execution depth.
+ *
+ * Returns the depth at which the current graph is executing.
+ * Depth 1 is the root graph; each successor level increments by 1.
+ * This can be used by a selector/transformer to detect runaway
+ * graph growth.
+ *
+ * @param selCtx  Selector context, must be non-NULL.
+ * @return Current graph execution depth (>= 1).
+ */
+unsigned ZL_Selector_getGraphDepth(const ZL_Selector* selCtx);
+
 /* =======================================================
  * tryGraph:
  * =======================================================

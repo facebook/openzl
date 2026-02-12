@@ -451,6 +451,13 @@ const void* ZL_Graph_getOpaquePtr(const ZL_Graph* gctx)
     return gctx->dgd->opaque.ptr;
 }
 
+unsigned ZL_Graph_getDepth(const ZL_Graph* gctx)
+{
+    ZL_ASSERT_NN(gctx);
+    ZL_ASSERT_GE(gctx->depth, 1);
+    return gctx->depth;
+}
+
 ZL_RESULT_OF(ZL_GraphPerformance)
 ZL_Graph_tryMultiInputGraph(
         const ZL_Graph* gctx,
