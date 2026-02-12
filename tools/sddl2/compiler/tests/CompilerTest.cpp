@@ -156,6 +156,45 @@ TEST_F(CompilerTest, ParseSimpleOps)
     expect_success(prog);
 }
 
+TEST_F(CompilerTest, ParseBuiltinFields)
+{
+    const auto prog = R"(
+        # integer numeric types
+        :Byte
+        :U8
+        :I8
+        :U16LE
+        :U16BE
+        :I16LE
+        :I16BE
+        :U32LE
+        :U32BE
+        :I32LE
+        :I32BE
+        :U64LE
+        :U64BE
+        :I64LE
+        :I64BE
+
+        # float numeric types
+        :F8
+        :F16LE
+        :F16BE
+        :F32LE
+        :F32BE
+        :F64LE
+        :F64BE
+        :BF8
+        :BF16LE
+        :BF16BE
+        :BF32LE
+        :BF32BE
+        :BF64LE
+        :BF64BE
+    )";
+    expect_success(prog);
+}
+
 TEST_F(CompilerTest, MildlyVexingParsing)
 {
     const auto prog = R"(
@@ -213,8 +252,8 @@ TEST_F(CompilerTest, ArrayAST)
     const auto cg       = Codegen(SourceLocation::null());
     const auto expected = std::vector<ASTPtr>(
             { cg.assign(cg.var("len"), cg.add(cg.num(1), cg.num(2))),
-              cg.consume(
-                      cg.array(cg.builtin_field(Op::BYTE), cg.var("len"))) });
+              cg.consume(cg.array(
+                      cg.builtin_field(Symbol::BYTE), cg.var("len"))) });
 
     expect_ast(prog, expected);
 }
@@ -234,7 +273,7 @@ TEST_F(CompilerTest, RecordAST)
                     ArgVec{},
                     ArgVec{ cg.assign(
                             cg.var("id"),
-                            cg.consume(cg.builtin_field(Op::I32LE))) })) });
+                            cg.consume(cg.builtin_field(Symbol::I32LE))) })) });
     expect_ast(prog, expected);
 }
 
@@ -314,26 +353,26 @@ TEST_F(CompilerTest, SimpleSaoAST)
                                     cg.assign(
                                             cg.var("SRA0"),
                                             cg.consume(cg.builtin_field(
-                                                    Op::F64LE))),
+                                                    Symbol::F64LE))),
                                     cg.assign(
                                             cg.var("SDEC0"),
                                             cg.consume(cg.builtin_field(
-                                                    Op::F64LE))),
+                                                    Symbol::F64LE))),
                                     cg.assign(
                                             cg.var("ISP"),
                                             cg.consume(cg.bytes(cg.num(2)))),
                                     cg.assign(
                                             cg.var("MAG"),
                                             cg.consume(cg.builtin_field(
-                                                    Op::I16LE))),
+                                                    Symbol::I16LE))),
                                     cg.assign(
                                             cg.var("XRPM"),
                                             cg.consume(cg.builtin_field(
-                                                    Op::F32LE))),
+                                                    Symbol::F32LE))),
                                     cg.assign(
                                             cg.var("XDPM"),
                                             cg.consume(cg.builtin_field(
-                                                    Op::F32LE))),
+                                                    Symbol::F32LE))),
                             })),
             cg.assign(cg.var("header"), cg.consume(cg.bytes(cg.num(28)))),
             cg.assign(
