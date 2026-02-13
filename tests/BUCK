@@ -61,10 +61,12 @@ zs_unittest(
         exclude = ["integrationtest/NoIntrospectionTest.cpp"],
     ),
     headers = glob(["integrationtest/**/*.h"]),
+    supports_static_listing = False,
     deps = [
         "..:compress",
         "../cpp:openzl_cpp",
         "datagen:datagen",
+        "registry:openzl_components",
     ],
 )
 
