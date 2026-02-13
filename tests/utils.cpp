@@ -2,9 +2,16 @@
 
 #include "tests/utils.h"
 
+#include "openzl/cpp/CCtx.hpp"
+#include "openzl/cpp/CustomDecoder.hpp"
+#include "openzl/cpp/CustomEncoder.hpp"
+#include "openzl/cpp/DCtx.hpp"
+#include "openzl/cpp/FunctionGraph.hpp"
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_data.h"
 #include "openzl/zl_reflection.h"
+
+#include "tests/registry/OpenZLInput.h"
 
 namespace openzl {
 namespace tests {
@@ -1206,6 +1213,237 @@ ZL_GraphID buildTrivialGraph(ZL_Compressor* cgraph, ZL_NodeID node)
     std::vector<ZL_GraphID> dsts(nbOutcomes, ZL_GRAPH_STORE);
     return ZL_Compressor_registerStaticGraph_fromNode(
             cgraph, node, dsts.data(), dsts.size());
+}
+
+namespace {
+class DeserializeEncoder : public CustomEncoder {
+   public:
+    VariableOutputCodecDescription variableOutputDescription() const override
+    {
+        return VariableOutputCodecDescription{
+            .id                  = 52970813,
+            .name                = "!tests.deserialize",
+            .inputType           = Type::Serial,
+            .variableOutputTypes = { Type::Serial,
+                                     Type::Struct,
+                                     Type::Numeric,
+                                     Type::String },
+        };
+    }
+
+    static size_t typeToIdx(Type type)
+    {
+        switch (type) {
+            case Type::Serial:
+                return 0;
+            case Type::Struct:
+                return 1;
+            case Type::Numeric:
+                return 2;
+            case Type::String:
+                return 3;
+            default:
+                throw std::runtime_error("Bad type");
+        }
+    }
+
+    void encode(EncoderState& encoder) const override
+    {
+        const auto& input = encoder.inputs()[0];
+        std::string_view data{ (const char*)input.ptr(), input.numElts() };
+        auto deserialized = OpenZLInput::deserialize(data);
+        for (const auto& stream : deserialized->inputs()) {
+            auto output = encoder.createOutput(
+                    typeToIdx(stream.type()),
+                    stream.type() == Type::String ? stream.contentSize()
+                                                  : stream.numElts(),
+                    stream.type() == Type::String ? 1 : stream.eltWidth());
+            if (stream.contentSize() != 0) {
+                memcpy(output.ptr(), stream.ptr(), stream.contentSize());
+            }
+            if (stream.type() == Type::String) {
+                auto lens = output.reserveStringLens(stream.numElts());
+                if (stream.numElts() != 0) {
+                    memcpy(lens,
+                           stream.stringLens(),
+                           stream.numElts() * sizeof(lens[0]));
+                }
+            }
+            output.commit(stream.numElts());
+        }
+    }
+
+    ~DeserializeEncoder() = default;
+};
+
+class DeserializeDecoder : public CustomDecoder {
+   public:
+    VariableOutputCodecDescription variableOutputDescription() const override
+    {
+        return VariableOutputCodecDescription{
+            .id                  = 52970813,
+            .name                = "!tests.deserialize",
+            .inputType           = Type::Serial,
+            .variableOutputTypes = { Type::Serial,
+                                     Type::Struct,
+                                     Type::Numeric,
+                                     Type::String },
+        };
+    }
+
+    void decode(DecoderState& decoder) const override
+    {
+        auto inputs     = decoder.variableInputs();
+        auto serialized = OpenZLInput::serialize(
+                { (const Input*)inputs.data(), inputs.size() });
+        auto out = decoder.createOutput(0, serialized.size(), 1);
+        if (!serialized.empty()) {
+            memcpy(out.ptr(), serialized.data(), serialized.size());
+        }
+        out.commit(serialized.size());
+    }
+
+    ~DeserializeDecoder() override = default;
+};
+
+class DeserializeGraph : public FunctionGraph {
+   public:
+    DeserializeGraph(NodeID deserializeNode) : deserializeNode_(deserializeNode)
+    {
+    }
+
+    FunctionGraphDescription functionGraphDescription() const override
+    {
+        return FunctionGraphDescription{
+            .name           = "!tests.deserialize_graph",
+            .inputTypeMasks = { TypeMask::Serial },
+            .customNodes    = { deserializeNode_ },
+        };
+    }
+
+    void graph(GraphState& state) const override
+    {
+        auto& edge = state.edges()[0];
+        auto nodes = state.customNodes();
+        if (nodes.size() != 1) {
+            throw std::runtime_error("bad node");
+        }
+        auto inputs = edge.runNode(state.customNodes()[0]);
+        auto graphs = state.customGraphs();
+        if (graphs.size() != 1) {
+            throw std::runtime_error("bad graph");
+        }
+        if (!inputs.empty()) {
+            Edge::setMultiInputDestination(inputs, graphs[0]);
+        }
+    }
+
+    ~DeserializeGraph() override = default;
+
+    static GraphID registerGraph(Compressor& compressor)
+    {
+        auto graph = compressor.getGraph("tests.deserialize_graph");
+        if (!graph.has_value()) {
+            graph = compressor.registerFunctionGraph(
+                    std::make_shared<DeserializeGraph>(
+                            registerNode(compressor)));
+        }
+        return *graph;
+    }
+
+    static GraphParameters graphParams(GraphID backendGraph)
+    {
+        return GraphParameters{ .customGraphs = { { backendGraph } } };
+    }
+
+    static void registerCodec(DCtx& dctx)
+    {
+        dctx.registerCustomDecoder(std::make_shared<DeserializeDecoder>());
+    }
+
+   private:
+    static NodeID registerNode(Compressor& compressor)
+    {
+        auto node = compressor.getNode("tests.deserialize");
+        if (node.has_value()) {
+            return node.value();
+        }
+        auto encoder = std::make_shared<DeserializeEncoder>();
+        return compressor.registerCustomEncoder(encoder);
+    }
+
+    NodeID deserializeNode_;
+};
+
+size_t testRoundTripImpl(
+        poly::span<char> compressed,
+        Compressor& compressor,
+        CCtx& cctx,
+        DCtx& dctx,
+        GraphID graph,
+        poly::optional<GraphParameters> params,
+        int formatVersion,
+        poly::span<const Input> inputs)
+{
+    // TODO: Without this call, cctx.refCompressor() fails
+    compressor.selectStartingGraph(graph);
+    cctx.refCompressor(compressor);
+    cctx.setParameter(CParam::FormatVersion, formatVersion);
+    cctx.selectStartingGraph(graph, params);
+
+    auto csize        = cctx.compress(compressed, inputs);
+    auto decompressed = dctx.decompress({ compressed.data(), csize });
+
+    if (decompressed.size() != inputs.size()) {
+        throw std::runtime_error("Corruption: Wrong number of outputs");
+    }
+    for (size_t i = 0; i < inputs.size(); ++i) {
+        if (decompressed[i] != inputs[i]) {
+            throw std::runtime_error("Corruption: Output mismatch");
+        }
+    }
+
+    return csize;
+}
+} // namespace
+
+size_t testRoundTrip(
+        poly::span<char> compressed,
+        Compressor& compressor,
+        CCtx& cctx,
+        DCtx& dctx,
+        GraphID graph,
+        int formatVersion,
+        poly::span<const Input> inputs)
+{
+    const bool needsSerialization = formatVersion <= 14
+            && (inputs.size() != 1 || inputs[0].type() != Type::Serial);
+    if (needsSerialization) {
+        auto deserializeGraph  = DeserializeGraph::registerGraph(compressor);
+        auto deserializeParams = DeserializeGraph::graphParams(graph);
+        auto serialized        = OpenZLInput::serialize(inputs);
+        auto serialInput       = Input::refSerial(serialized);
+        DeserializeGraph::registerCodec(dctx);
+        return testRoundTripImpl(
+                compressed,
+                compressor,
+                cctx,
+                dctx,
+                deserializeGraph,
+                std::move(deserializeParams),
+                formatVersion,
+                { &serialInput, 1 });
+    } else {
+        return testRoundTripImpl(
+                compressed,
+                compressor,
+                cctx,
+                dctx,
+                graph,
+                {},
+                formatVersion,
+                inputs);
+    }
 }
 
 } // namespace tests
