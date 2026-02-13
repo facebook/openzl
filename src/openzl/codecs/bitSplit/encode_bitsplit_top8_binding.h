@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#ifndef OPENZL_CODECS_BITSPLIT_ENCODE_TOP8BITS_BINDING_H
-#define OPENZL_CODECS_BITSPLIT_ENCODE_TOP8BITS_BINDING_H
+#ifndef OPENZL_CODECS_BITSPLIT_ENCODE_BITSPLIT_TOP8_BINDING_H
+#define OPENZL_CODECS_BITSPLIT_ENCODE_BITSPLIT_TOP8_BINDING_H
 
 #include "openzl/codecs/common/graph_vo.h" /* GRAPH_VO_NUM */
 #include "openzl/shared/portability.h"
@@ -12,7 +12,7 @@
 ZL_BEGIN_C_DECLS
 
 /**
- * top8bits encoder
+ * bitsplit_top8 encoder
  *
  * Scans input for max value, determines effective bit width, and splits
  * the field into at most 2 streams: the top 8 significant bits and the
@@ -27,13 +27,14 @@ ZL_BEGIN_C_DECLS
  *
  * Wire format: reuses bitSplit transform ID and codec header.
  */
-ZL_Report EI_top8bits(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
+ZL_Report
+EI_bitsplit_top8(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 
-#define EI_TOP8BITS(id)                \
+#define EI_BITSPLIT_TOP8(id)           \
     { .gd          = GRAPH_VO_NUM(id), \
-      .transform_f = EI_top8bits,      \
-      .name        = "!zl.top8bits" }
+      .transform_f = EI_bitsplit_top8, \
+      .name        = "!zl.bitsplit_top8" }
 
 ZL_END_C_DECLS
 
-#endif // OPENZL_CODECS_BITSPLIT_ENCODE_TOP8BITS_BINDING_H
+#endif // OPENZL_CODECS_BITSPLIT_ENCODE_BITSPLIT_TOP8_BINDING_H

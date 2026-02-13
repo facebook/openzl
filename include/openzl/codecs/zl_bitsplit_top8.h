@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#ifndef OPENZL_CODECS_TOP8BITS_H
-#define OPENZL_CODECS_TOP8BITS_H
+#ifndef OPENZL_CODECS_BITSPLIT_TOP8_H
+#define OPENZL_CODECS_BITSPLIT_TOP8_H
 
 #include "openzl/zl_nodes.h"
 
@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-// top8bits
+// bitsplit_top8
 // Input : 1 numeric stream (all widths supported: 1, 2, 4, 8 bytes)
 // Output : 1 or 2 numeric streams
 // Result : Scans for maximum value to determine effective bit width,
@@ -19,7 +19,7 @@ extern "C" {
 //            (lower remainder bits, upper 8 bits).
 // Note : Parameter-free. Uses the same wire format as bitSplit.
 //        All-zero input produces a single 8-bit stream of zeros.
-#define ZL_NODE_TOP8BITS ZL_MAKE_NODE_ID(ZL_StandardNodeID_top8bits)
+#define ZL_NODE_BITSPLIT_TOP8 ZL_MAKE_NODE_ID(ZL_StandardNodeID_bitsplit_top8)
 
 #if defined(__cplusplus)
 }

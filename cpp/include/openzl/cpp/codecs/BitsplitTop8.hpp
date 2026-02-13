@@ -2,16 +2,16 @@
 
 #pragma once
 
-#include "openzl/codecs/zl_top8bits.h"
+#include "openzl/codecs/zl_bitsplit_top8.h"
 #include "openzl/cpp/Compressor.hpp"
 #include "openzl/cpp/codecs/Metadata.hpp"
 #include "openzl/cpp/codecs/Node.hpp"
 
 namespace openzl {
 namespace nodes {
-struct Top8bits : public SimplePipeNode<Top8bits> {
+struct BitsplitTop8 : public SimplePipeNode<BitsplitTop8> {
    public:
-    static constexpr NodeID node = ZL_NODE_TOP8BITS;
+    static constexpr NodeID node = ZL_NODE_BITSPLIT_TOP8;
 
     static constexpr NodeMetadata<1, 0, 1> metadata = {
         .inputs          = { InputMetadata{ .type = Type::Numeric } },

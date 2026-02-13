@@ -13,6 +13,7 @@
 
 #include "openzl/codecs/zl_ace.h"                  // IWYU pragma: export
 #include "openzl/codecs/zl_bitpack.h"              // IWYU pragma: export
+#include "openzl/codecs/zl_bitsplit_top8.h"        // IWYU pragma: export
 #include "openzl/codecs/zl_bitunpack.h"            // IWYU pragma: export
 #include "openzl/codecs/zl_brute_force_selector.h" // IWYU pragma: export
 #include "openzl/codecs/zl_concat.h"               // IWYU pragma: export
@@ -41,7 +42,6 @@
 #include "openzl/codecs/zl_split_by_struct.h"      // IWYU pragma: export
 #include "openzl/codecs/zl_store.h"                // IWYU pragma: export
 #include "openzl/codecs/zl_tokenize.h"             // IWYU pragma: export
-#include "openzl/codecs/zl_top8bits.h"             // IWYU pragma: export
 #include "openzl/codecs/zl_transpose.h"            // IWYU pragma: export
 #include "openzl/codecs/zl_zigzag.h"               // IWYU pragma: export
 #include "openzl/codecs/zl_zstd.h"                 // IWYU pragma: export

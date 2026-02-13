@@ -34,7 +34,7 @@ ZL_BEGIN_C_DECLS
 ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 
 /**
- * Shared bitSplit encode logic used by both EI_bitSplit and EI_top8bits.
+ * Shared bitSplit encode logic used by both EI_bitSplit and EI_bitsplit_top8.
  *
  * Validates parameters, checks top bits, builds codec header,
  * creates output streams, runs the kernel, and commits outputs.

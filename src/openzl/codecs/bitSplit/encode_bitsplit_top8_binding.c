@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "openzl/codecs/bitSplit/encode_top8bits_binding.h"
+#include "openzl/codecs/bitSplit/encode_bitsplit_top8_binding.h"
 #include "openzl/codecs/bitSplit/encode_bitSplit_binding.h" /* EI_bitSplit_withWidths */
 #include "openzl/common/assertion.h"                        /* ZL_ASSERT */
 #include "openzl/zl_data.h"                                 /* ZL_Input_type */
@@ -77,7 +77,8 @@ static unsigned floorLog2(uint64_t v)
     return r;
 }
 
-ZL_Report EI_top8bits(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
+ZL_Report
+EI_bitsplit_top8(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
     ZL_ASSERT_NN(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
