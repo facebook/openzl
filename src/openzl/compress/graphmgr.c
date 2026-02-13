@@ -490,10 +490,10 @@ GM_registerStaticGraph(GraphsMgr* gm, const ZL_StaticGraphDesc* sgDesc)
         .nbCustomNodes       = 1,
         .customGraphs        = successors,
         .nbCustomGraphs      = nbSuccessors,
-        .localParams         = sgDesc->localParams
-                        ? sgDesc->localParams[0]
-                        : cnode->transformDesc.publicDesc.localParams,
     };
+    if (sgDesc->localParams) {
+        migd.localParams = *sgDesc->localParams;
+    }
     unsigned const nsParam = (unsigned)nbSingletons;
     return GM_registerInternalGraph(
             gm,
