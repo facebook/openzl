@@ -203,6 +203,12 @@ size_t constexpr kSmallMatch = 5;
 size_t constexpr kLargeMatch = 8;
 size_t constexpr kNoOpOffset = 16;
 
+inline length_t boundML(uint32_t ml)
+{
+    return length_t(
+            std::min<uint32_t>(ml, std::numeric_limits<length_t>::max()));
+}
+
 inline length_t matchLength(ZS_FastTagTable_Entry entry, uint8_t const* ip)
 {
     if constexpr (ZS_FastTagTable_kMaxMatchLen >= 12) {
@@ -394,7 +400,7 @@ class Transform {
         while (ip < ilimit) {
             auto entry = ZS_FastTagTable_getAndUpdateT(
                     &table, ip, ip - istart, kMinMatch);
-            auto ml             = matchLength(entry, ip);
+            auto ml             = boundML(matchLength(entry, ip));
             auto* match         = istart + entry.pos;
             const auto distance = ip - match;
             if (ml >= kMinMatch && valueFits(distance, sizeof(offset_t))
@@ -402,11 +408,12 @@ class Transform {
                 if (ZL_UNLIKELY(ml >= ZS_FastTagTable_kMaxMatchLen)) {
                     ZL_ASSERT_EQ(
                             memcmp(match, ip, ZS_FastTagTable_kMaxMatchLen), 0);
-                    ml = ZS_FastTagTable_kMaxMatchLen
+                    ml = boundML(
+                            ZS_FastTagTable_kMaxMatchLen
                             + matchLength(
                                     match + ZS_FastTagTable_kMaxMatchLen,
                                     ip + ZS_FastTagTable_kMaxMatchLen,
-                                    iend);
+                                    iend));
                 } else {
                     ZL_ASSERT_EQ(memcmp(match, ip, ml), 0, "ml = %u", ml);
                 }
@@ -545,7 +552,7 @@ class Transform {
                 uint32_t distance  = ip - match;
                 match              = distance >= 65536 ? ip - 1 : match;
                 distance           = distance >= 65536 ? 1 : distance;
-                length_t ml        = matchLength(match, ip, iend);
+                length_t ml        = boundML(matchLength(match, ip, iend));
                 ml                 = ml == 0 ? 1 : ml;
                 const bool isMatch = (ml >= kMinMatch);
 
@@ -703,7 +710,7 @@ class Transform {
             uint32_t distance  = ip - match;
             match              = distance >= 65536 ? ip - 1 : match;
             distance           = distance >= 65536 ? 1 : distance;
-            length_t ml        = matchLength(match, ip, iend);
+            length_t ml        = boundML(matchLength(match, ip, iend));
             ml                 = ml == 0 ? 1 : ml;
             const bool isMatch = (ml >= kMinMatch);
 
@@ -798,6 +805,7 @@ class Transform {
                     --ip;
                     ++ml;
                 }
+                ml        = boundML(ml);
                 size_t ll = ip - anchor;
                 offset_t const offset =
                         kIsIndex ? (match - istart) : (ip - match);
@@ -912,6 +920,7 @@ class Transform {
                     --ip;
                     ++ml;
                 }
+                ml        = boundML(ml);
                 size_t ll = ip - anchor;
                 offset_t const offset =
                         kIsIndex ? (match - istart) : (ip - match);
@@ -1011,6 +1020,7 @@ class Transform {
                     --ip;
                     ++ml;
                 }
+                ml        = boundML(ml);
                 size_t ll = ip - anchor;
                 offset_t const offset =
                         kIsIndex ? (match - istart) : (ip - match);
@@ -1095,6 +1105,7 @@ class Transform {
                 --ptr;
                 ++ml;
             }
+            ml                    = boundML(ml);
             size_t ll             = ptr - anchor;
             offset_t const offset = kIsIndex ? (match - istart) : (ptr - match);
 
