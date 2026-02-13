@@ -47,6 +47,7 @@ inline std::unique_ptr<OpenZLComponent> makeOpenZLComponent(
         case OpenZLComponentID::Zstd:
             return components::makeZstdComponent();
         case OpenZLComponentID::NumComponents:
+        default:
             throw std::runtime_error("Invalid component");
     }
 }

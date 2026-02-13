@@ -19,6 +19,11 @@ file(
     CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_LIST_DIR}/openzl/test_*_fixture.*")
 
+file(
+    GLOB_RECURSE test_registry
+    CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_LIST_DIR}/registry/*.cpp")
+
 add_library(openzl_test_support
     ${support_sources}
     ${CMAKE_CURRENT_LIST_DIR}/utils.cpp
@@ -28,6 +33,7 @@ add_library(openzl_test_support
     ${CMAKE_CURRENT_LIST_DIR}/ml_selector_utils.cpp
     ${CMAKE_CURRENT_LIST_DIR}/ml_selector_utils.h
     ${test_fixtures}
+    ${test_registry}
 )
 target_include_directories(openzl_test_support
     SYSTEM

@@ -1,0 +1,44 @@
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:fbcode_configured_alias.bzl", "fbcode_configured_alias")
+load("@fbsource//tools/build_defs:default_platform_defs.bzl", "get_host_target_platform")
+load("../../defs.bzl", "zs_fuzzers")
+
+oncall("data_compression")
+
+cpp_binary(
+    # @autodeps-skip
+    name = "openzl_component_fuzzer_generator",
+    srcs = ["OpenZLComponentFuzzerGenerator.cpp"],
+    deps = [
+        "..:utils",
+        "../datagen:datagen",
+        "../registry:openzl_components",
+        "//folly:file_util",
+        "//folly:string",
+    ],
+    external_deps = [
+        ("openssl", None, "crypto"),
+    ],
+)
+
+fbcode_configured_alias(
+    name = "openzl_component_fuzzer_generator_host",
+    actual = ":openzl_component_fuzzer_generator",
+    platform = get_host_target_platform(),
+)
+
+zs_fuzzers(
+    # @autodeps-skip
+    srcs = ["OpenZLComponentFuzzer.cpp"],
+    ftest_names = [
+        ("OpenZLComponentFuzzer", "FuzzRoundTrip"),
+        ("OpenZLComponentFuzzer", "FuzzCompress"),
+        ("OpenZLComponentFuzzer", "FuzzDecompress"),
+    ],
+    generator = ":openzl_component_fuzzer_generator_host",
+    deps = [
+        "..:fuzz_utils",
+        "..:utils",
+        "../registry:openzl_components",
+    ],
+)
