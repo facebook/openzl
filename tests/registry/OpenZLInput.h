@@ -128,6 +128,16 @@ class StructOpenZLInput : public OpenZLInput {
     {
     }
 
+    template <typename T>
+    StructOpenZLInput(const std::vector<T>& vec)
+            : StructOpenZLInput(
+                      std::string(
+                              (const char*)vec.data(),
+                              vec.size() * sizeof(T)),
+                      sizeof(T))
+    {
+    }
+
     template <typename... Args>
     static std::unique_ptr<OpenZLInput> make(Args&&... args)
     {
