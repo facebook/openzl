@@ -1,5 +1,6 @@
 // (c) Meta Platforms, Inc. and affiliates.
 
+#include "openzl/common/limits.h"
 #include "openzl/cpp/CCtx.hpp"
 #include "openzl/cpp/DCtx.hpp"
 #include "openzl/zl_reflection.h"
@@ -11,35 +12,42 @@
 namespace openzl::tests {
 namespace {
 
+constexpr bool kDebug = false;
+
 void fuzzRoundTrip(
         const OpenZLComponent& component,
-        const Compressor& compressor,
+        Compressor& compressor,
         const OpenZLInput& input,
         GraphID graph,
         int formatVersion)
 {
-    CCtx cctx;
-    cctx.refCompressor(compressor);
-    cctx.selectStartingGraph(graph);
-    cctx.setParameter(openzl::CParam::FormatVersion, formatVersion);
-
     auto inputs = input.inputs();
-    std::string compressed;
-    compressed.resize(component.compressBound(inputs));
-    compressed.resize(cctx.compress(compressed, input.inputs()));
-
-    DCtx dctx;
-    component.registerComponent(dctx);
-    auto decompressed = dctx.decompress(compressed);
-
-    if (decompressed.size() != inputs.size()) {
-        throw std::runtime_error("wrong number of outputs");
-    }
-    for (size_t i = 0; i < inputs.size(); ++i) {
-        if (decompressed[i] != inputs[i]) {
-            throw std::runtime_error("corruption");
+    if (kDebug) {
+        fprintf(stderr, "# inputs = %zu\n", inputs.size());
+        for (size_t i = 0; i < inputs.size(); ++i) {
+            fprintf(stderr,
+                    "input %zu: type=%d, width=%zu, numElts=%zu, contentSize=%zu\n",
+                    i,
+                    int(inputs[i].type()),
+                    inputs[i].eltWidth(),
+                    inputs[i].numElts(),
+                    inputs[i].contentSize());
         }
     }
+    std::string compressed;
+    compressed.resize(component.compressBound(inputs));
+    if (kDebug) {
+        fprintf(stderr, "compressed bound = %zu\n", compressed.size());
+    }
+    if (inputs.empty()) {
+        return;
+    }
+
+    CCtx cctx;
+    DCtx dctx;
+    component.registerComponent(dctx);
+    testRoundTrip(
+            compressed, compressor, cctx, dctx, graph, formatVersion, inputs);
 }
 
 GraphID getGraph(
@@ -70,9 +78,8 @@ int getFormatVersion(const OpenZLComponent& component, datagen::DataGen& gen)
     return gen.i32_range("format_version", min, max);
 }
 
-std::unique_ptr<OpenZLInput> generateInput(
-        datagen::DataGen& gen,
-        TypeMask typeMask)
+std::unique_ptr<OpenZLInput>
+generateInput(datagen::DataGen& gen, TypeMask typeMask, int formatVersion)
 {
     std::vector<Type> supportedTypes;
     if ((typeMask & TypeMask::Serial) != TypeMask::None) {
@@ -84,7 +91,8 @@ std::unique_ptr<OpenZLInput> generateInput(
     if ((typeMask & TypeMask::Numeric) != TypeMask::None) {
         supportedTypes.push_back(Type::Numeric);
     }
-    if ((typeMask & TypeMask::String) != TypeMask::None) {
+    if ((typeMask & TypeMask::String) != TypeMask::None
+        && formatVersion >= 10) {
         supportedTypes.push_back(Type::String);
     }
     auto type = gen.choices("type", supportedTypes);
@@ -125,7 +133,8 @@ std::unique_ptr<OpenZLInput> generateInput(
 std::unique_ptr<OpenZLInput> generateInput(
         datagen::DataGen& gen,
         const Compressor& compressor,
-        GraphID graph)
+        GraphID graph,
+        int formatVersion)
 {
     const auto numInputs =
             ZL_Compressor_Graph_getNumInputs(compressor.get(), graph);
@@ -135,17 +144,21 @@ std::unique_ptr<OpenZLInput> generateInput(
     std::vector<std::unique_ptr<OpenZLInput>> inputs;
     for (size_t i = 0; i < numInputs; ++i) {
         if (i + 1 == numInputs && isVariableInput) {
-            while (gen.has_more_data() && gen.boolean("more_variable_inputs")) {
+            while (gen.has_more_data() && gen.boolean("more_variable_inputs")
+                   && inputs.size() < ZL_runtimeInputLimit(
+                              std::max(formatVersion, 15))) {
                 inputs.push_back(generateInput(
                         gen,
                         TypeMask(ZL_Compressor_Graph_getInputMask(
-                                compressor.get(), graph, i))));
+                                compressor.get(), graph, i)),
+                        formatVersion));
             }
         } else {
             inputs.push_back(generateInput(
                     gen,
                     TypeMask(ZL_Compressor_Graph_getInputMask(
-                            compressor.get(), graph, 0))));
+                            compressor.get(), graph, 0)),
+                    formatVersion));
         }
     }
 
@@ -177,6 +190,13 @@ FUZZ(OpenZLComponentFuzzer, FuzzRoundTrip)
 
     auto graph         = getGraph(*component, gen, compressor);
     auto formatVersion = getFormatVersion(*component, gen);
+
+    if (kDebug) {
+        fprintf(stderr,
+                "component = %s, formatVersion = %d\n",
+                component->name().c_str(),
+                formatVersion);
+    }
 
     while (gen.has_more_data()) {
         const size_t size = gen.usize_range("input_size", 1, 4096);
@@ -213,8 +233,15 @@ FUZZ(OpenZLComponentFuzzer, FuzzCompress)
     auto graph         = getGraph(*component, gen, compressor);
     auto formatVersion = getFormatVersion(*component, gen);
 
+    if (kDebug) {
+        fprintf(stderr,
+                "component = %s, formatVersion = %d\n",
+                component->name().c_str(),
+                formatVersion);
+    }
+
     while (gen.has_more_data()) {
-        auto input = generateInput(gen, compressor, graph);
+        auto input = generateInput(gen, compressor, graph, formatVersion);
         fuzzRoundTrip(*component, compressor, *input, graph, formatVersion);
     }
 }

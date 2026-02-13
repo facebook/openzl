@@ -3,10 +3,15 @@
 #include <gtest/gtest.h>
 
 #include "openzl/cpp/CCtx.hpp"
+#include "openzl/cpp/CustomDecoder.hpp"
+#include "openzl/cpp/CustomEncoder.hpp"
 #include "openzl/cpp/DCtx.hpp"
+#include "openzl/cpp/FunctionGraph.hpp"
 #include "openzl/cpp/codecs/Store.hpp"
 #include "openzl/zl_reflection.h"
 #include "tests/registry/OpenZLComponents.h"
+#include "tests/registry/OpenZLInput.h"
+#include "tests/utils.h"
 
 namespace openzl::tests {
 
@@ -36,33 +41,23 @@ class OpenZLComponentTest : public ::testing::TestWithParam<int> {
             const OpenZLInput& input,
             int formatVersion)
     {
-        cctx_.refCompressor(compressor_);
-        cctx_.setParameter(CParam::FormatVersion, formatVersion);
-        cctx_.selectStartingGraph(graph);
         auto inputs = input.inputs();
         std::string compressed;
         compressed.resize(component_->compressBound(inputs));
-        compressed.resize(cctx_.compress(compressed, input.inputs()));
-
-        auto decompressed = dctx_.decompress(compressed);
-
-        ASSERT_EQ(inputs.size(), decompressed.size());
-        for (size_t i = 0; i < inputs.size(); ++i) {
-            ASSERT_EQ(inputs[i], decompressed[i])
-                    << "Output " << i << " corrupted:\n"
-                    << "\tcomponent = " << component_->name()
-                    << "\tformatVersion = " << formatVersion;
-        }
+        testRoundTrip(
+                compressed,
+                compressor_,
+                cctx_,
+                dctx_,
+                graph,
+                formatVersion,
+                inputs);
     }
 
     void testComponentWithGraphOnInput(GraphID graph, const OpenZLInput& input)
     {
         auto min =
                 std::max(component_->minFormatVersion(), ZL_MIN_FORMAT_VERSION);
-        // TODO(terrelln): Remove this limitation by serializing the input
-        // streams and adding a conversion node in front that deserializes
-        // the streams.
-        min = std::max(min, 14);
         auto max =
                 std::min(component_->maxFormatVersion(), ZL_MAX_FORMAT_VERSION);
         for (auto formatVersion = min; formatVersion <= max; ++formatVersion) {
@@ -70,7 +65,7 @@ class OpenZLComponentTest : public ::testing::TestWithParam<int> {
         }
     }
 
-    void testComponentOnGraphs(const std::vector<GraphID> graphs)
+    void testComponentOnGraphs(const std::vector<GraphID>& graphs)
     {
         for (const auto& input : component_->predefinedInputs()) {
             for (const auto graph : graphs) {

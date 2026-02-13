@@ -8,6 +8,7 @@ zs_cxxlibrary(
     headers = ["OpenZLComponent.h"],
     exported_deps = [
         "../../cpp:openzl_cpp",
+        "../datagen:datagen",
         ":openzl_input",
     ],
 )
@@ -15,10 +16,10 @@ zs_cxxlibrary(
 zs_cxxlibrary(
     # @autodeps-skip
     name = "openzl_input",
+    srcs = ["OpenZLInput.cpp"],
     headers = ["OpenZLInput.h"],
     exported_deps = [
         "../../cpp:openzl_cpp",
-        "../datagen:datagen",
     ],
 )
 
