@@ -1357,6 +1357,13 @@ static ZL_Report addChunksIntoFinalStreams(ZL_DCtx* dctx)
         size_t const numElts         = ZL_Data_numElts(chunkOutput);
         size_t const chunkOutputSize = ZL_Data_contentSize(chunkOutput);
 
+        ZL_TRY_LET(
+                size_t,
+                expectedType,
+                ZL_FrameInfo_getOutputType(dctx->dfh.frameinfo, (int)outputN));
+        ZL_ERR_IF_NE(
+                type, expectedType, corruption, "Final stream type mismatch");
+
         if (chunkOutput == output) {
             ZL_DLOG(SEQ,
                     "final content already decompressed directly into output %zu (total size: %zu bytes)",
