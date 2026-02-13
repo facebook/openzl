@@ -39,6 +39,19 @@ class DataGen {
         return (StringProducer(rw_))(name, quantizationBytes);
     }
 
+    std::string randString(RandWrapper::NameType name, size_t maxLength)
+    {
+        return randStringWithQuantizedLength(name, maxLength, 1);
+    }
+
+    std::string randStringWithQuantizedLength(
+            RandWrapper::NameType name,
+            size_t maxLength,
+            size_t quantizationBytes)
+    {
+        return (StringProducer(rw_, maxLength))(name, quantizationBytes);
+    }
+
     template <class Res>
     Res randVal(
             RandWrapper::NameType name,
