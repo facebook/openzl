@@ -11,7 +11,9 @@ static int isSingleBytePattern(const ZL_Input* inputStream)
 {
     const uint8_t* ptr    = ZL_Input_ptr(inputStream);
     size_t const eltWidth = ZL_Input_eltWidth(inputStream);
-    ZL_ASSERT_NE(ZL_Input_numElts(inputStream), 0);
+    if (ZL_Input_numElts(inputStream) == 0) {
+        return 0;
+    }
     uint8_t const firstByte = ptr[0];
     for (size_t i = 1; i < eltWidth; ++i) {
         if (ptr[i] != firstByte)
