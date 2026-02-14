@@ -13,6 +13,7 @@
 
 #include "openzl/codecs/zl_ace.h"                  // IWYU pragma: export
 #include "openzl/codecs/zl_bitpack.h"              // IWYU pragma: export
+#include "openzl/codecs/zl_bitsplit.h"             // IWYU pragma: export
 #include "openzl/codecs/zl_bitunpack.h"            // IWYU pragma: export
 #include "openzl/codecs/zl_brute_force_selector.h" // IWYU pragma: export
 #include "openzl/codecs/zl_concat.h"               // IWYU pragma: export

@@ -141,7 +141,7 @@ const StandardDTransform SDecoders_array[ZL_StandardTransformID_end] = {
     REGISTER_MITRANSFORM_G(ZL_StandardTransformID_concat_string, 18, DI_CONCAT_STRING, CONCAT_STRING_GRAPH),
     REGISTER_MITRANSFORM_G(ZL_StandardTransformID_dedup_num, 16, DI_DEDUP_NUM, DEDUP_NUM_GRAPH),
     REGISTER_MITRANSFORM_G(ZL_StandardTransformID_interleave_string, 20, DI_INTERLEAVE, INTERLEAVE_STRING_GRAPH),
-    REGISTER_VOTRANSFORM_G(ZL_StandardTransformID_bitSplit, ZL_MAX_FORMAT_VERSION, DI_BITSPLIT, GRAPH_VO_NUM),
+    REGISTER_VOTRANSFORM_G(ZL_StandardTransformID_bitSplit, 24, DI_BITSPLIT, GRAPH_VO_NUM),
 
     // Conversion operations
     REGISTER_TTRANSFORM_G(ZL_StandardTransformID_convert_serial_to_struct,    3, DI_REVERT_SERIAL_TO_STRUCT, CONVERT_SERIAL_TOKEN_GRAPH),
