@@ -1,0 +1,40 @@
+load("../../defs.bzl", "zs_cxxlibrary")
+
+oncall("data_compression")
+
+zs_cxxlibrary(
+    # @autodeps-skip
+    name = "openzl_component",
+    headers = ["OpenZLComponent.h"],
+    exported_deps = [
+        "../../cpp:openzl_cpp",
+        ":openzl_input",
+    ],
+)
+
+zs_cxxlibrary(
+    # @autodeps-skip
+    name = "openzl_input",
+    headers = ["OpenZLInput.h"],
+    exported_deps = [
+        "../../cpp:openzl_cpp",
+        "../datagen:datagen",
+    ],
+)
+
+zs_cxxlibrary(
+    # @autodeps-skip
+    name = "openzl_components",
+    srcs = [
+        "OpenZLComponents.cpp",
+    ] + glob([
+        "components/*.cpp",
+    ]),
+    headers = ["OpenZLComponents.h"],
+    deps = [
+        "fbsource//third-party/zstd:zstd",
+    ],
+    exported_deps = [
+        ":openzl_component",
+    ],
+)
