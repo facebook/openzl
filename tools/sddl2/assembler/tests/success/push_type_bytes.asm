@@ -1,2 +1,0 @@
-push.type bytes
-halt
