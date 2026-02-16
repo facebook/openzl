@@ -1,0 +1,29 @@
+load("../../../defs.bzl", "zs_cxxbinary", "zs_cxxlibrary")
+
+oncall("data_compression")
+
+zs_cxxlibrary(
+    name = "opcodes_generated",
+    srcs = ["OpcodesGenerated.cpp"],
+    headers = ["OpcodesGenerated.h"],
+)
+
+zs_cxxlibrary(
+    name = "lib",
+    srcs = ["Assembler.cpp"],
+    headers = ["Assembler.h"],
+    deps = [":opcodes_generated"],
+    exported_deps = [
+        "../../../cpp:openzl_cpp",
+    ],
+)
+
+zs_cxxbinary(
+    name = "sddl2_assembler",
+    srcs = ["main.cpp"],
+    deps = [
+        "../..:arg",
+        "../..:io",
+        ":lib",
+    ],
+)
