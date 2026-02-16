@@ -10,7 +10,7 @@ Several files are auto-generated from this definition and **must not be manually
 
 - `sddl2_opcodes.h` - C opcode definitions
 - `sddl2_disasm_generated.h` - Disassembler implementation
-- `tools/sddl2/assembler/opcodes_generated.py` - Python assembler definitions
+- `tools/sddl2/assembler/OpcodesGenerated.h` - C++ assembler opcode definitions
 
 Each generated file contains a header clearly marking it as auto-generated.
 
@@ -22,7 +22,7 @@ After modifying `sddl2_opcodes.def`:
 # Regenerate C headers (VM)
 python3 src/openzl/compress/graphs/sddl2/generate_c_headers.py
 
-# Regenerate Python code (assembler)
+# Regenerate C++ assembler opcodes
 python3 tools/sddl2/assembler/generate_opcodes.py
 ```
 
@@ -110,7 +110,7 @@ ls -l your_bytecode.bin
 hexdump -C your_bytecode.bin | head -20
 
 # Compare with known-good bytecode from assembler
-python3 tools/sddl2/assembler/sddl2_assembler.py -c "push.zero halt"
+./sddl2_assembler -c "push.zero halt"
 # Should output: 01 00 01 00 05 00 01 00
 ```
 
@@ -328,7 +328,7 @@ make BUILD_TYPE=TRACES_NOSAN LOG_LEVEL=POS
 # Generate reference bytecode using assembler
 echo "push.u32 42
 halt" > test.asm
-python3 tools/sddl2/assembler/sddl2_assembler.py test.asm test.bin
+./sddl2_assembler -i test.asm -o test.bin
 
 # Compare with your compiler output
 hexdump -C test.bin
