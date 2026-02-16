@@ -1,2 +1,0 @@
-push.zero
-halt
