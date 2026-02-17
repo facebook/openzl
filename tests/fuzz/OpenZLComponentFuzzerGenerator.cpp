@@ -26,7 +26,7 @@ constexpr size_t kSamplesPerComponent = 10;
 void addToCorpora(
         std::vector<std::string>& corpora,
         datagen::DataGen& gen,
-        const Compressor& compressor,
+        Compressor& compressor,
         const OpenZLComponent& component,
         const OpenZLInput& input,
         GraphID graph)
@@ -34,15 +34,22 @@ void addToCorpora(
     auto min = std::max(component.minFormatVersion(), ZL_MIN_FORMAT_VERSION);
     auto max = std::min(component.maxFormatVersion(), ZL_MAX_FORMAT_VERSION);
     for (auto formatVersion = min; formatVersion <= max; ++formatVersion) {
-        CCtx cctx;
-        cctx.refCompressor(compressor);
-        cctx.selectStartingGraph(graph);
-        cctx.setParameter(CParam::FormatVersion, formatVersion);
-
         auto inputs = input.inputs();
         std::string compressed;
         compressed.resize(component.compressBound(inputs));
-        compressed.resize(cctx.compress(compressed, input.inputs()));
+
+        CCtx cctx;
+        DCtx dctx;
+        component.registerComponent(dctx);
+        auto csize = testRoundTrip(
+                compressed,
+                compressor,
+                cctx,
+                dctx,
+                graph,
+                formatVersion,
+                inputs);
+        compressed.resize(csize);
         corpora.push_back(std::move(compressed));
     }
 }
