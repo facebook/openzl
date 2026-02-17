@@ -27,6 +27,16 @@ class DataGen {
         return rw_;
     }
 
+    size_t randLength(
+            RandWrapper::NameType name,
+            size_t maxLength,
+            size_t quantizationBytes = 1)
+    {
+        StringLengthDistribution lengthDist(rw_, maxLength);
+        auto len = lengthDist(name);
+        return (len / quantizationBytes) * quantizationBytes;
+    }
+
     std::string randString(RandWrapper::NameType name)
     {
         return randStringWithQuantizedLength(name, 1);

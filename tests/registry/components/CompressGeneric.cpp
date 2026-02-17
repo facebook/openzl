@@ -70,6 +70,8 @@ class CompressGenericComponent : public OpenZLComponent {
                     break;
                 }
                 case 1: {
+                    // TODO: Generate other widths and use the
+                    // CompressibleVectorProducer
                     auto maxElts = maxInputSize / sizeof(uint32_t);
                     inputs.push_back(
                             U32OpenZLInput::make(gen.randVector<uint32_t>(

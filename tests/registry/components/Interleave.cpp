@@ -80,6 +80,8 @@ class InterleaveStringComponent : public OpenZLComponent {
         std::vector<std::unique_ptr<OpenZLInput>> inputs;
         inputs.reserve(num);
         for (size_t i = 0; i < num; ++i) {
+            // TODO: This is too tightly constricting the numInputs and
+            // numStrings. Find a better way to do this.
             auto numInputs  = gen.usize_range("num_inputs", 2, 4);
             auto numStrings = gen.usize_range("num_strings", 0, 20);
             std::vector<std::unique_ptr<OpenZLInput>> inner;

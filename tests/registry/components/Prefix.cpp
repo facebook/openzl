@@ -68,13 +68,11 @@ class PrefixComponent : public OpenZLComponent {
         std::vector<std::unique_ptr<OpenZLInput>> inputs;
         inputs.reserve(num);
         for (size_t i = 0; i < num; ++i) {
-            auto numStrings = gen.usize_range("num_strings", 0, 100);
+            auto size = gen.usize_range("size", 0, maxInputSize);
             std::string data;
             std::vector<uint32_t> lens;
-            lens.reserve(numStrings);
-            for (size_t j = 0; j < numStrings && data.size() < maxInputSize;
-                 ++j) {
-                auto remaining = maxInputSize - data.size();
+            for (; gen.has_more_data() && data.size() < size;) {
+                auto remaining = size - data.size();
                 auto str       = gen.randString("str", remaining);
                 data += str;
                 lens.push_back(str.size());
