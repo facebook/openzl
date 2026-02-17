@@ -146,6 +146,7 @@ TRAINING_CXXOBJS := $(call cxx_objs,$(TRAINING_DIRS))
 TRAINING_TEST_CXXOBJS := $(call cxx_objs,$(TRAINING_TEST_DIRS))
 SDDL_COMPILER_CXXOBJS := $(filter-out %main.o, $(call cxx_objs,$(SDDL_COMPILER_DIR)))
 SDDL2_COMPILER_CXXOBJS := $(filter-out %main.o, $(call cxx_objs,$(SDDL2_COMPILER_DIRS)))
+SDDL2_ASSEMBLER_CXXOBJS :=  $(filter-out %main.o, $(call cxx_objs,$(SDDL2_ASSEMBLER_DIR)))
 ML_SELECTOR_COBJS := $(call c_objs,$(ML_SELECTOR_DIR))
 ML_SELECTOR_CXXOBJS := $(call cxx_objs,$(ML_SELECTOR_DIR))
 
@@ -177,6 +178,7 @@ $(eval $(call cxx_program,zli, \
 	$(TRAINING_CXXOBJS) \
 	$(SDDL_COMPILER_CXXOBJS) \
 	$(SDDL2_COMPILER_CXXOBJS) \
+ 	$(SDDL2_ASSEMBLER_CXXOBJS) \
 	$(ML_SELECTOR_COBJS) \
 	$(ML_SELECTOR_CXXOBJS) \
 	$(ZLCPP_OBJS) \
@@ -187,7 +189,7 @@ $(eval $(call cxx_program,zli, \
 examples: zs2_pipeline zs2_trygraph zs2_selector zs2_struct zs2_round_trip
 
 .PHONY: test
-test : gtests zs2_test sddl2_test
+test : gtests zs2_test
 	$(EXEC_PREFIX) ./gtests
 
 # Python bindings for openzl.ext module (required for ML tests)
@@ -212,11 +214,6 @@ fix-python-format:
 zs2_test : examples
 	$(EXEC_PREFIX) ./zs2_pipeline
 	$(EXEC_PREFIX) ./zs2_trygraph
-
-SDDL2_DIR = tests/compress/graphs/sddl2
-.PHONY: sddl2_test
-sddl2_test:
-	$(MAKE) -C $(SDDL2_DIR) test
 
 # ********     Tools     ********
 
@@ -281,6 +278,7 @@ ALL_GTESTS_OBJS := \
 	$(TRAINING_CXXOBJS) \
 	$(SDDL_COMPILER_CXXOBJS) \
 	$(SDDL2_COMPILER_CXXOBJS) \
+	$(SDDL2_ASSEMBLER_CXXOBJS) \
 	$(ML_SELECTOR_COBJS) \
 	$(ML_SELECTOR_CXXOBJS) \
 	$(DATAGEN_OBJS) \
