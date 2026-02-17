@@ -2,13 +2,30 @@
 
 #pragma once
 
+#include <string>
+#include <string_view>
+#include <vector>
+
 #include "openzl/cpp/Input.hpp"
 
 namespace openzl::tests {
 
+/**
+ * Class that holds inputs for testing OpenZL.
+ * Unlike openzl::Input, this class owns the lifetime of the data.
+ * Create sub-classes based on your type.
+ *
+ * It also supports serializing and deserializing the inputs. This
+ * is mainly for supporting older format versions that don't support
+ * multiple typed inputs.
+ */
 class OpenZLInput {
    public:
     virtual std::vector<Input> inputs() const = 0;
+
+    std::string serialize() const;
+    static std::string serialize(poly::span<const Input> inputs);
+    static std::unique_ptr<OpenZLInput> deserialize(std::string_view data);
 
     virtual ~OpenZLInput() = default;
 

@@ -67,6 +67,7 @@ zs_unittest(
         "../cpp:openzl_cpp",
         "datagen:datagen",
         "registry:openzl_components",
+        ":utils",
     ],
 )
 
@@ -168,6 +169,9 @@ zs_cxxlibrary(
     headers = [
         "local_params_utils.h",
         "utils.h",
+    ],
+    deps = [
+        "registry:openzl_input",
     ],
     exported_deps = [
         "..:zstronglib",
