@@ -26,6 +26,49 @@ namespace openzl::tests {
 
 enum class OpenZLComponentID {
     Zstd,
+    Lz4,
+    Delta,
+    Zigzag,
+    Transpose,
+    Float32Deconstruct,
+    BFloat16Deconstruct,
+    Float16Deconstruct,
+    ConvertStructToSerial,
+    ConvertSerialToStruct,
+    ConvertNumToSerialLE,
+    ConvertNumToStructLE,
+    ConvertStructToNumLE,
+    ConvertStructToNumBE,
+    ConvertSerialToNumLE,
+    ConvertSerialToNumBE,
+    SeparateStringComponents,
+    Bitunpack,
+    RangePack,
+    MergeSorted,
+    Prefix,
+    DivideBy,
+    ConcatSerial,
+    ConcatNumeric,
+    ConcatStruct,
+    ConcatString,
+    DedupNumeric,
+    ParseInt,
+    InterleaveString,
+    TokenizeStruct,
+    TokenizeNumeric,
+    TokenizeString,
+    QuantizeOffsets,
+    QuantizeLengths,
+    Store,
+    StoreString,
+    Fse,
+    Huffman,
+    Entropy,
+    Bitpack,
+    Flatpack,
+    Constant,
+    FieldLz,
+    CompressGeneric,
     // Must be last enum value
     NumComponents,
 };
@@ -38,7 +81,50 @@ inline std::unique_ptr<OpenZLComponent> makeComponent(
 
 namespace components {
 std::unique_ptr<OpenZLComponent> makeZstdComponent();
-}
+std::unique_ptr<OpenZLComponent> makeLz4Component();
+std::unique_ptr<OpenZLComponent> makeDeltaComponent();
+std::unique_ptr<OpenZLComponent> makeZigzagComponent();
+std::unique_ptr<OpenZLComponent> makeTransposeComponent();
+std::unique_ptr<OpenZLComponent> makeFloat32DeconstructComponent();
+std::unique_ptr<OpenZLComponent> makeBFloat16DeconstructComponent();
+std::unique_ptr<OpenZLComponent> makeFloat16DeconstructComponent();
+std::unique_ptr<OpenZLComponent> makeConvertStructToSerialComponent();
+std::unique_ptr<OpenZLComponent> makeConvertSerialToStructComponent();
+std::unique_ptr<OpenZLComponent> makeConvertNumToSerialLEComponent();
+std::unique_ptr<OpenZLComponent> makeConvertNumToStructLEComponent();
+std::unique_ptr<OpenZLComponent> makeConvertStructToNumLEComponent();
+std::unique_ptr<OpenZLComponent> makeConvertStructToNumBEComponent();
+std::unique_ptr<OpenZLComponent> makeConvertSerialToNumLEComponent();
+std::unique_ptr<OpenZLComponent> makeConvertSerialToNumBEComponent();
+std::unique_ptr<OpenZLComponent> makeSeparateStringComponentsComponent();
+std::unique_ptr<OpenZLComponent> makeBitunpackComponent();
+std::unique_ptr<OpenZLComponent> makeRangePackComponent();
+std::unique_ptr<OpenZLComponent> makeMergeSortedComponent();
+std::unique_ptr<OpenZLComponent> makePrefixComponent();
+std::unique_ptr<OpenZLComponent> makeDivideByComponent();
+std::unique_ptr<OpenZLComponent> makeConcatSerialComponent();
+std::unique_ptr<OpenZLComponent> makeConcatNumericComponent();
+std::unique_ptr<OpenZLComponent> makeConcatStructComponent();
+std::unique_ptr<OpenZLComponent> makeConcatStringComponent();
+std::unique_ptr<OpenZLComponent> makeDedupNumericComponent();
+std::unique_ptr<OpenZLComponent> makeParseIntComponent();
+std::unique_ptr<OpenZLComponent> makeInterleaveStringComponent();
+std::unique_ptr<OpenZLComponent> makeTokenizeStructComponent();
+std::unique_ptr<OpenZLComponent> makeTokenizeNumericComponent();
+std::unique_ptr<OpenZLComponent> makeTokenizeStringComponent();
+std::unique_ptr<OpenZLComponent> makeQuantizeOffsetsComponent();
+std::unique_ptr<OpenZLComponent> makeQuantizeLengthsComponent();
+std::unique_ptr<OpenZLComponent> makeStoreComponent();
+std::unique_ptr<OpenZLComponent> makeStoreStringComponent();
+std::unique_ptr<OpenZLComponent> makeFseComponent();
+std::unique_ptr<OpenZLComponent> makeHuffmanComponent();
+std::unique_ptr<OpenZLComponent> makeEntropyComponent();
+std::unique_ptr<OpenZLComponent> makeBitpackComponent();
+std::unique_ptr<OpenZLComponent> makeFlatpackComponent();
+std::unique_ptr<OpenZLComponent> makeConstantComponent();
+std::unique_ptr<OpenZLComponent> makeFieldLzComponent();
+std::unique_ptr<OpenZLComponent> makeCompressGenericComponent();
+} // namespace components
 
 inline std::unique_ptr<OpenZLComponent> makeOpenZLComponent(
         OpenZLComponentID component)
@@ -46,6 +132,92 @@ inline std::unique_ptr<OpenZLComponent> makeOpenZLComponent(
     switch (component) {
         case OpenZLComponentID::Zstd:
             return components::makeZstdComponent();
+        case OpenZLComponentID::Lz4:
+            return components::makeLz4Component();
+        case OpenZLComponentID::Delta:
+            return components::makeDeltaComponent();
+        case OpenZLComponentID::Zigzag:
+            return components::makeZigzagComponent();
+        case OpenZLComponentID::Transpose:
+            return components::makeTransposeComponent();
+        case OpenZLComponentID::Float32Deconstruct:
+            return components::makeFloat32DeconstructComponent();
+        case OpenZLComponentID::BFloat16Deconstruct:
+            return components::makeBFloat16DeconstructComponent();
+        case OpenZLComponentID::Float16Deconstruct:
+            return components::makeFloat16DeconstructComponent();
+        case OpenZLComponentID::ConvertStructToSerial:
+            return components::makeConvertStructToSerialComponent();
+        case OpenZLComponentID::ConvertSerialToStruct:
+            return components::makeConvertSerialToStructComponent();
+        case OpenZLComponentID::ConvertNumToSerialLE:
+            return components::makeConvertNumToSerialLEComponent();
+        case OpenZLComponentID::ConvertNumToStructLE:
+            return components::makeConvertNumToStructLEComponent();
+        case OpenZLComponentID::ConvertStructToNumLE:
+            return components::makeConvertStructToNumLEComponent();
+        case OpenZLComponentID::ConvertStructToNumBE:
+            return components::makeConvertStructToNumBEComponent();
+        case OpenZLComponentID::ConvertSerialToNumLE:
+            return components::makeConvertSerialToNumLEComponent();
+        case OpenZLComponentID::ConvertSerialToNumBE:
+            return components::makeConvertSerialToNumBEComponent();
+        case OpenZLComponentID::SeparateStringComponents:
+            return components::makeSeparateStringComponentsComponent();
+        case OpenZLComponentID::Bitunpack:
+            return components::makeBitunpackComponent();
+        case OpenZLComponentID::RangePack:
+            return components::makeRangePackComponent();
+        case OpenZLComponentID::MergeSorted:
+            return components::makeMergeSortedComponent();
+        case OpenZLComponentID::Prefix:
+            return components::makePrefixComponent();
+        case OpenZLComponentID::DivideBy:
+            return components::makeDivideByComponent();
+        case OpenZLComponentID::ConcatSerial:
+            return components::makeConcatSerialComponent();
+        case OpenZLComponentID::ConcatNumeric:
+            return components::makeConcatNumericComponent();
+        case OpenZLComponentID::ConcatStruct:
+            return components::makeConcatStructComponent();
+        case OpenZLComponentID::ConcatString:
+            return components::makeConcatStringComponent();
+        case OpenZLComponentID::DedupNumeric:
+            return components::makeDedupNumericComponent();
+        case OpenZLComponentID::ParseInt:
+            return components::makeParseIntComponent();
+        case OpenZLComponentID::InterleaveString:
+            return components::makeInterleaveStringComponent();
+        case OpenZLComponentID::TokenizeStruct:
+            return components::makeTokenizeStructComponent();
+        case OpenZLComponentID::TokenizeNumeric:
+            return components::makeTokenizeNumericComponent();
+        case OpenZLComponentID::TokenizeString:
+            return components::makeTokenizeStringComponent();
+        case OpenZLComponentID::QuantizeOffsets:
+            return components::makeQuantizeOffsetsComponent();
+        case OpenZLComponentID::QuantizeLengths:
+            return components::makeQuantizeLengthsComponent();
+        case OpenZLComponentID::Store:
+            return components::makeStoreComponent();
+        case OpenZLComponentID::StoreString:
+            return components::makeStoreStringComponent();
+        case OpenZLComponentID::Fse:
+            return components::makeFseComponent();
+        case OpenZLComponentID::Huffman:
+            return components::makeHuffmanComponent();
+        case OpenZLComponentID::Entropy:
+            return components::makeEntropyComponent();
+        case OpenZLComponentID::Bitpack:
+            return components::makeBitpackComponent();
+        case OpenZLComponentID::Flatpack:
+            return components::makeFlatpackComponent();
+        case OpenZLComponentID::Constant:
+            return components::makeConstantComponent();
+        case OpenZLComponentID::FieldLz:
+            return components::makeFieldLzComponent();
+        case OpenZLComponentID::CompressGeneric:
+            return components::makeCompressGenericComponent();
         case OpenZLComponentID::NumComponents:
         default:
             throw std::runtime_error("Invalid component");
