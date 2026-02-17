@@ -859,7 +859,7 @@ EI_entropyDynamicGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
     if (ZL_Graph_getCParam(gctx, ZL_CParam_formatVersion) < 15) {
         ZL_Input const* stream = ZL_Edge_getData(input);
         if (ZL_Input_type(stream) != ZL_Type_serial) {
-            return EI_huffmanDynamicGraph(gctx, inputs, nbIns);
+            return EI_huffmanDynamicGraph(gctx, &input, 1);
         }
         ZL_GraphID const graph = EI_selector_entropy(gctx, input);
         return ZL_Edge_setDestination(input, graph);
