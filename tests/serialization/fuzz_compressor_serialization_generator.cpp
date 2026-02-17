@@ -1,0 +1,96 @@
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+
+#include <cstdio>
+#include <filesystem>
+#include <optional>
+#include <string_view>
+
+#include <openssl/sha.h>
+
+#include <folly/FileUtil.h>
+#include <folly/String.h>
+
+#include "openzl/cpp/Compressor.hpp"
+
+#include "tests/datagen/random_producer/PRNGWrapper.h"
+#include "tests/datagen/structures/CompressorProducer.h"
+
+namespace {
+
+using namespace openzl::tests;
+namespace fs = std::filesystem;
+
+std::vector<std::string> generateFuzzDeserializationCorpus()
+{
+    auto gen                = std::make_shared<std::mt19937>(0xdeadbeef);
+    auto rw                 = std::make_shared<datagen::PRNGWrapper>(gen);
+    auto compressorProducer = datagen::CompressorProducer{ rw };
+
+    std::vector<std::string> corpus;
+    corpus.reserve(1000);
+    for (uint32_t i = 0; i < 1000; ++i) {
+        auto zlCompressor = compressorProducer.make();
+        openzl::CompressorRef compressor(zlCompressor.get());
+        corpus.emplace_back(compressor.serialize());
+    }
+    return corpus;
+}
+
+std::optional<std::vector<std::string>> generateCorpus(std::string_view harness)
+{
+    if (harness == "FuzzDeserialization") {
+        return generateFuzzDeserializationCorpus();
+    } else {
+        return std::nullopt;
+    }
+}
+
+std::string sha256(std::string_view data)
+{
+    std::vector<uint8_t> digest;
+    digest.resize(SHA256_DIGEST_LENGTH, 0);
+    SHA256(reinterpret_cast<uint8_t const*>(data.data()),
+           data.size(),
+           digest.data());
+    return folly::hexlify(digest);
+}
+
+} // namespace
+
+int main(int argc, char** argv)
+{
+    if (argc != 4) {
+        std::fprintf(
+                stderr,
+                "USAGE: %s TEST_SUITE TEST_CASE OUTPUT_DIRECTORY\n",
+                argv[0]);
+        return 1;
+    }
+
+    std::string const testSuite = argv[1];
+    std::string const testCase  = argv[2];
+    fs::path const outDir       = argv[3];
+
+    if (testSuite != "CompressorSerializationTest") {
+        fprintf(stderr, "Unknown test suite: %s\n", testSuite.c_str());
+        return 2;
+    }
+
+    auto const corpus = generateCorpus(testCase);
+    if (!corpus.has_value()) {
+        std::fprintf(stderr, "Unknown test case: %s\n", testCase.c_str());
+        return 3;
+    }
+
+    fs::create_directories(outDir);
+
+    for (auto const& blob : *corpus) {
+        auto const path = outDir / sha256(blob);
+        if (!folly::writeFile(blob, path.c_str())) {
+            std::fprintf(stderr, "Failed to write path: %s\n", path.c_str());
+            return 4;
+        }
+    }
+
+    return 0;
+}

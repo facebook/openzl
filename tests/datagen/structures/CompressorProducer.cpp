@@ -42,18 +42,21 @@ CompressorProducer::make_multi(
             num_full_compressors, num_base_compressors);
 }
 
-std::string RandomCompressorMultiBuilder::make_name(const std::string& prefix)
+std::string RandomCompressorMultiBuilder::make_unique_name(
+        const std::string& prefix)
 {
     std::string suffix{ "123456789" };
-    ZL_REQUIRE_EQ(
-            snprintf(
-                    suffix.data(),
-                    suffix.size(),
-                    "%08x",
-                    rw_->u32("component_name")),
-            8);
-    suffix.resize(8);
-    return prefix + suffix;
+    std::string name;
+    uint32_t component_name = rw_->u32("component_name");
+    do {
+        ZL_REQUIRE_EQ(
+                snprintf(
+                        suffix.data(), suffix.size(), "%08x", component_name++),
+                8);
+        name = prefix + suffix.substr(0, 8);
+    } while (names_.count(name) != 0);
+    names_.insert(name);
+    return name;
 }
 
 ZL_IDType RandomCompressorMultiBuilder::make_ctid()
@@ -272,7 +275,7 @@ std::vector<std::string> RandomCompressorMultiBuilder::register_pipe_node()
                 memcpy(dst, src, srcSize);
                 return srcSize;
             };
-    const auto name = make_name("!tests.rand_graph.nodes.pipe.");
+    const auto name = make_unique_name("!tests.rand_graph.nodes.pipe.");
     const auto desc = (ZL_PipeEncoderDesc){
         .CTid        = make_ctid(),
         .transform_f = transform,
@@ -291,7 +294,7 @@ std::vector<std::string> RandomCompressorMultiBuilder::register_pipe_node()
 
 std::vector<std::string> RandomCompressorMultiBuilder::register_split_node()
 {
-    const auto name = make_name("!tests.rand_graph.nodes.split.");
+    const auto name = make_unique_name("!tests.rand_graph.nodes.split.");
     const auto transform =
             [](ZL_Encoder*, size_t[], const void*, size_t) noexcept {
                 ZL_RET_R_ERR(GENERIC, "Unimplemented! Can't actually run.");
@@ -317,7 +320,7 @@ std::vector<std::string> RandomCompressorMultiBuilder::register_split_node()
 std::vector<std::string> RandomCompressorMultiBuilder::register_typed_node(
         const TypeSpec ts)
 {
-    const auto name      = make_name("!tests.rand_graph.nodes.typed.");
+    const auto name      = make_unique_name("!tests.rand_graph.nodes.typed.");
     const auto transform = [](ZL_Encoder*, const ZL_Input*) noexcept {
         ZL_RET_R_ERR(GENERIC, "Unimplemented! Can't actually run.");
     };
@@ -354,7 +357,7 @@ std::vector<std::string> RandomCompressorMultiBuilder::register_typed_node(
 std::vector<std::string> RandomCompressorMultiBuilder::register_vo_node(
         const TypeSpec ts)
 {
-    const auto name      = make_name("!tests.rand_graph.nodes.vo.");
+    const auto name      = make_unique_name("!tests.rand_graph.nodes.vo.");
     const auto transform = [](ZL_Encoder*, const ZL_Input*) noexcept {
         ZL_RET_R_ERR(GENERIC, "Unimplemented! Can't actually run.");
     };
@@ -393,7 +396,7 @@ std::vector<std::string> RandomCompressorMultiBuilder::register_vo_node(
 
 std::vector<std::string> RandomCompressorMultiBuilder::register_mi_node()
 {
-    const auto name      = make_name("!tests.rand_graph.nodes.mi.");
+    const auto name      = make_unique_name("!tests.rand_graph.nodes.mi.");
     const auto transform = [](ZL_Encoder*, const ZL_Input*[], size_t) noexcept {
         ZL_RET_R_ERR(GENERIC, "Unimplemented! Can't actually run.");
     };
@@ -774,7 +777,7 @@ std::vector<std::string> RandomCompressorMultiBuilder::make_multi_input_graph(
         const TypeSpec ts,
         size_t depth)
 {
-    const auto name       = make_name("!tests.rand_graph.graphs.multi.");
+    const auto name       = make_unique_name("!tests.rand_graph.graphs.multi.");
     const auto graph_func = [](ZL_Graph*, ZL_Edge*[], size_t) noexcept {
         ZL_RET_R_ERR(GENERIC, "Unimplemented! Can't actually run.");
     };
