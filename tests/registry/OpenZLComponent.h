@@ -18,6 +18,14 @@ namespace openzl::tests {
  * as well as predefined and generated inputs that MUST succeed for every
  * node and graph configuration.
  *
+ * A component can be a node-only component, a graph-only component, or both.
+ * There does not need to be a 1:1 mapping between components and nodes or
+ * graphs. A single node or codec could have multiple components. Or a single
+ * component could be used to test multiple nodes or graphs that are logically
+ * similar. This is up to the authors discretion. However, if two nodes or
+ * graphs require different inputs, they should be in different components, so
+ * the inputs can be specialized to the component.
+ *
  * These components are used in the OpenZL test suite to:
  * - Test every possible node and graph configuration against every input
  * - Test version compatbility tests against previous OpenZL versions

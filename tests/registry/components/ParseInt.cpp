@@ -67,11 +67,12 @@ class ParseIntComponent : public OpenZLComponent {
         std::vector<std::unique_ptr<OpenZLInput>> inputs;
         inputs.reserve(num);
         for (size_t i = 0; i < num; ++i) {
-            auto numStrings = gen.usize_range("num_strings", 0, 100);
+            auto numStrings = gen.randLength("num_strings", maxInputSize);
             std::string data;
             std::vector<uint32_t> lens;
             lens.reserve(numStrings);
-            for (size_t j = 0; j < numStrings && data.size() < maxInputSize;
+            for (size_t j = 0; j < numStrings && gen.has_more_data()
+                 && data.size() < maxInputSize;
                  ++j) {
                 auto val = gen.i64_range("value", INT64_MIN, INT64_MAX);
                 auto str = std::to_string(val);

@@ -6,6 +6,13 @@
 
 namespace openzl::tests::components {
 namespace {
+// TODO: This only tests a small subset of possible nodes due to the
+// constraints on generating inputs that work for all possible bit-widths.
+// To fix this, add 3 new components to test prime bit-widths of 2-, 4-, and
+// 8-byte integers:
+// - Bitunpack13Component
+// - Bitunpack23Component
+// - Bitunpack37Component
 class BitunpackComponent : public OpenZLComponent {
    public:
     std::string name() const override
