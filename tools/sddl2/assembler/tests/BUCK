@@ -1,0 +1,15 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("../../../../defs.bzl", "zs_unittest")
+
+oncall("data_compression")
+
+zs_unittest(
+    name = "test_assembler",
+    srcs = glob([
+        "*.cpp",
+    ]),
+    deps = [
+        "..:lib",
+    ],
+)

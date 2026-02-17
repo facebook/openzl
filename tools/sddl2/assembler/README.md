@@ -1,17 +1,17 @@
 # SDDL2 Assembler
 
-A Python assembler that converts SDDL2 assembly language into bytecode for the OpenZL SDDL2 Virtual Machine.
+An assembler that converts SDDL2 assembly language into bytecode for the OpenZL SDDL2 Virtual Machine.
 
 ## Quick Start
 
 **Assemble a file:**
 ```bash
-python3 sddl2_assembler.py program.asm output.bin
+./sddl2_assembler -i program.asm  -o output.bin
 ```
 
-**Assemble from command line (displays hex output):**
+**Assemble from command line:**
 ```bash
-python3 sddl2_assembler.py -c "push.i32 42 halt"
+./sddl2_assembler -c "push.i32 42 halt"
 # 03 00 01 00 2a 00 00 00 01 00 05 00
 ```
 
@@ -54,27 +54,17 @@ halt               # Stop execution
 
 The assembler supports a large SDDL2 instruction set, which is **auto-generated** from the VM opcode definitions.
 
-> **Complete instruction reference**: See `opcodes_generated.py` for the definitive, always-up-to-date list of all instructions.
+> **Complete instruction reference**: See `OpcodesGenerated.h` for the definitive, always-up-to-date list of all instructions.
 
 ### How Instructions Are Defined
 
 1. **Source of truth**: `../../../src/openzl/compress/graphs/sddl2/sddl2_opcodes.def` defines all opcodes
-2. **Auto-generation**: Run `python3 generate_opcodes.py` to create `opcodes_generated.py`
+2. **Auto-generation**: Run `python3 generate_opcodes.py` to create `OpcodesGenerated.h`
 3. **Synchronization**: Keeps assembler in sync with VM implementation
-
-### Viewing All Available Instructions
-
-```python
-# List all instructions
-python3 -c "from opcodes_generated import INSTRUCTIONS; print('\n'.join(sorted(INSTRUCTIONS.keys())))"
-
-# Show instruction families
-python3 -c "from opcodes_generated import FAMILIES; print(FAMILIES)"
-```
 
 ### Key Instruction Families
 
-At the time of this wrting, the instruction set is organized into these families (see `opcodes_generated.py` for complete details):
+At the time of this wrting, the instruction set is organized into these families (see `OpcodesGenerated.h` for complete details):
 
 **CONTROL (0x0005)** - Control flow
 - `halt`, `expect_true`, `trace.start`
@@ -231,19 +221,6 @@ Encoding: (opcode << 16) | family
 
 For complete bytecode specification, see `Bytecode_spec.md`.
 
-## Testing
-
-### Run the assembler test suite:
-```bash
-cd tests
-python3 test_assembler.py
-```
-
-### Test structure:
-- `tests/success/` - Programs that should assemble successfully
-- `tests/fail/` - Programs that should fail with specific errors
-- `regenerate_expected.sh` - Update expected outputs after opcode changes
-
 ## Opcode Generation
 
 The assembler uses auto-generated opcode definitions from the VM source:
@@ -253,7 +230,7 @@ The assembler uses auto-generated opcode definitions from the VM source:
 python3 generate_opcodes.py
 ```
 
-This creates `opcodes_generated.py` with instruction definitions synchronized with the VM.
+This creates `OpcodesGenerated.h` with instruction definitions synchronized with the VM.
 
 **Source of truth**: `../../../src/openzl/compress/graphs/sddl2/sddl2_opcodes.def`
 
@@ -271,18 +248,16 @@ This creates `opcodes_generated.py` with instruction definitions synchronized wi
 
 ```
 tools/sddl2/assembler/
-├── sddl2_assembler.py       # Main assembler implementation
-├── opcodes_generated.py     # Auto-generated opcode definitions
+├── main.cpp                 # Assembler cli tool
+├── Assembler.h              # Main assembler implementation
+├── OpcodesGenerated.h       # Auto-generated opcode definitions
 ├── generate_opcodes.py      # Opcode generator script
 ├── Assembly_reference.md    # Execution model + instruction semantics
 ├── Assembly_opcodes.md      # Auto-generated opcode list
 ├── Bytecode_spec.md         # Bytecode format specification
 ├── README.md                # This file
 └── tests/                   # Test suite
-    ├── test_assembler.py
-    ├── regenerate_expected.sh
-    ├── success/             # Valid assembly programs
-    └── fail/                # Invalid programs (for error testing)
+    ├── AssemblerTest.cpp    # C++ test harness
 ```
 
 ## Common Workflows
@@ -316,12 +291,12 @@ tools/sddl2/assembler/
 The assembler provides clear error messages:
 
 ```bash
-$ python3 sddl2_assembler.py -c "push.u32"
+$ ./sddl2_assembler -c "push.u32"
 Assembly error: Instruction 'push.u32' requires 1 parameter(s), but only 0 provided
 ```
 
 ```bash
-$ python3 sddl2_assembler.py -c "invalid_instruction"
+$ ./sddl2_assembler -c "invalid_instruction"
 Assembly error: Unknown instruction or unexpected token: invalid_instruction
 ```
 

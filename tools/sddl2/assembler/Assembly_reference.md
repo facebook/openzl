@@ -332,7 +332,7 @@ halt
 
 ## 6. Debugging and Verification
 
-- **Assembler**: `tools/sddl2/assembler/sddl2_assembler.py`
+- **Assembler**: `tools/sddl2/assembler/Assembler.h`
 - **Disassembler**: `openzl/compress/graphs/sddl2/sddl2_disasm.h`
 - **Trace logs**: use `trace.start` and build with traces
   (`make BUILD_TYPE=TRACES_NOSAN LOG_LEVEL=POS`)
