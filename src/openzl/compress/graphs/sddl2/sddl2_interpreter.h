@@ -7,6 +7,10 @@
 #include <stdint.h>
 #include "openzl/compress/graphs/sddl2/sddl2_vm.h"
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 /**
  * OpenZL VM Bytecode Interpreter
  *
@@ -36,5 +40,9 @@ SDDL2_Error SDDL2_execute_bytecode(
         const void* input_data,
         size_t input_size,
         SDDL2_Segment_list* output_segments);
+
+#if defined(__cplusplus)
+} // extern "C"
+#endif
 
 #endif // OPENZL_SDDL2_INTERPRETER_H
