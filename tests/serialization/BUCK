@@ -1,0 +1,45 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("@fbcode_macros//build_defs:fbcode_configured_alias.bzl", "fbcode_configured_alias")
+load("@fbsource//tools/build_defs:default_platform_defs.bzl", "get_host_target_platform")
+load("../../defs.bzl", "zs_cxxbinary", "zs_fuzzers")
+
+oncall("data_compression")
+
+FUZZER_DEPS = [
+    "../..:zstronglib",
+    "..:fuzz_utils",
+    "../datagen:datagen",
+]
+
+zs_cxxbinary(
+    name = "fuzz_compressor_serialization_generator",
+    srcs = ["fuzz_compressor_serialization_generator.cpp"],
+    deps = [
+        "../../cpp:openzl_cpp",
+        "../datagen:datagen",
+        "//folly:file_util",
+        "//folly:string",
+    ],
+    external_deps = [
+        ("openssl", None, "crypto"),
+    ],
+)
+
+fbcode_configured_alias(
+    name = "fuzz_compressor_serialization_generator_host",
+    actual = ":fuzz_compressor_serialization_generator",
+    platform = get_host_target_platform(),
+)
+
+zs_fuzzers(
+    srcs = [
+        "fuzz_compressor_serialization.cpp",
+    ],
+    ftest_names = [
+        ("CompressorSerializationTest", "FuzzDeserialization"),
+        ("CompressorSerializationTest", "FuzzRandomCompressorDeserializesSuccessfully"),
+    ],
+    generator = ":fuzz_compressor_serialization_generator_host",
+    deps = FUZZER_DEPS,
+)
