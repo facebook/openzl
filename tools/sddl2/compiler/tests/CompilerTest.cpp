@@ -267,13 +267,15 @@ TEST_F(CompilerTest, ArrayAST)
     const auto prog = R"(
         len =  1 + 2
         : Byte[len]
+        : Byte[]
     )";
 
     const auto cg       = Codegen(SourceLocation::null());
     const auto expected = std::vector<ASTPtr>(
             { cg.assign(cg.var("len"), cg.add(cg.num(1), cg.num(2))),
-              cg.consume(cg.array(
-                      cg.builtin_field(Symbol::BYTE), cg.var("len"))) });
+              cg.consume(
+                      cg.array(cg.builtin_field(Symbol::BYTE), cg.var("len"))),
+              cg.consume(cg.array(cg.builtin_field(Symbol::BYTE))) });
 
     expect_ast(prog, expected);
 }

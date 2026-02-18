@@ -256,6 +256,7 @@ class ASTRecord : public ASTField {
 class ASTArray : public ASTField {
    public:
     explicit ASTArray(const ASTPtr& field, const ASTPtr& len);
+    explicit ASTArray(const ASTPtr& field);
 
     const ASTArray* as_array() const override;
 
@@ -390,6 +391,11 @@ class Codegen {
     ASTPtr array(ASTPtr field, ASTPtr len) const
     {
         return std::make_shared<ASTArray>(std::move(field), std::move(len));
+    }
+
+    ASTPtr array(ASTPtr field) const
+    {
+        return std::make_shared<ASTArray>(std::move(field));
     }
 
     ASTPtr bytes(ASTPtr len) const

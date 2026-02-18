@@ -341,6 +341,11 @@ ASTArray::ASTArray(const ASTPtr& field, const ASTPtr& len)
 {
 }
 
+ASTArray::ASTArray(const ASTPtr& field)
+        : ASTField(some(field).loc()), field_(field)
+{
+}
+
 const ASTArray* ASTArray::as_array() const
 {
     return this;
@@ -350,7 +355,9 @@ void ASTArray::print(std::ostream& os, size_t indent) const
 {
     os << std::string(indent, ' ') << "Field: ARRAY:" << std::endl;
     field_->print(os, indent + 2);
-    len_->print(os, indent + 2);
+    if (len_) {
+        len_->print(os, indent + 2);
+    }
 }
 
 ASTOp::ASTOp(const SourceLocation& loc, const Op& op, ASTVec args)

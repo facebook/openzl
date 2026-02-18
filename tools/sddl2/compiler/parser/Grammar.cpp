@@ -436,12 +436,16 @@ class ArrayRule : public GrammarRule {
         auto& type      = args.at(0);
         auto& len_nodes = unwrap_square(op);
 
-        // TODO: allow implicit array sizing
+        if (len_nodes.size() == 0) {
+            return std::make_shared<ASTArray>(std::move(type));
+        }
+
         if (len_nodes.size() != 1) {
             throw ParseError(
                     some(op).loc(),
-                    "Array declaration square must have single element.");
+                    "Array declaration square must have 0-1 elements.");
         }
+
         return std::make_shared<ASTArray>(std::move(type), len_nodes.at(0));
     }
 };
