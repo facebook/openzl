@@ -335,6 +335,11 @@ class Codegen {
         return op(Op::ASSIGN, std::move(lhs), std::move(rhs));
     }
 
+    ASTPtr assume(ASTPtr lhs, ASTPtr rhs) const
+    {
+        return op(Op::ASSUME, std::move(lhs), std::move(rhs));
+    }
+
     ASTPtr eq(ASTPtr lhs, ASTPtr rhs) const
     {
         return op(Op::EQ, std::move(lhs), std::move(rhs));
