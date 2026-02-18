@@ -121,7 +121,7 @@ const std::vector<Symbol> builtin_field_syms{
 
 const std::map<Symbol, Op> syms_to_ops{
     { Symbol::EXPECT, Op::EXPECT },   { Symbol::ASSIGN, Op::ASSIGN },
-    { Symbol::SIZEOF, Op::SIZEOF },
+    { Symbol::SIZEOF, Op::SIZEOF },   { Symbol::ASSUME, Op::ASSUME },
 
     { Symbol::EQ, Op::EQ },           { Symbol::NE, Op::NE },
 
@@ -384,23 +384,6 @@ class BinaryOpRule : public OpRule {
     }
 };
 
-class BinaryAssumeRule : public BinaryOpRule {
-   public:
-    explicit BinaryAssumeRule()
-            : BinaryOpRule(Symbol::ASSUME, Precedence::ASSIGNMENT)
-    {
-    }
-
-    ASTPtr do_gen(ASTPtr op, ArgsVec args) const override
-    {
-        auto& name = args.at(0);
-        auto& val  = args.at(1);
-
-        Codegen cg{ some(op).loc() };
-        return cg.assign(std::move(name), cg.consume(std::move(val)));
-    }
-};
-
 class UnaryAssumeRule : public UnaryOpRule {
    public:
     explicit UnaryAssumeRule()
@@ -540,7 +523,7 @@ const std::vector<std::unique_ptr<const GrammarRule>> grammar_rules{ []() {
     add_rule<NegationRule>(r);
 
     add_rule<BinaryOpRule>(r, Symbol::ASSIGN, Precedence::ASSIGNMENT);
-    add_rule<BinaryAssumeRule>(r);
+    add_rule<BinaryOpRule>(r, Symbol::ASSUME, Precedence::ASSIGNMENT);
     add_rule<UnaryAssumeRule>(r);
     add_rule<BinaryOpRule>(r, Symbol::MEMBER, Precedence::ACCESS);
 
