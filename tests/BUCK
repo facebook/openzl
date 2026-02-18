@@ -30,14 +30,11 @@ zs_unittest(
             "compress/**/*.c",
             "compress/**/*.cpp",
         ],
-        exclude = [
-            # SDDL2 tests use their own test framework with main() in each file
-            "compress/graphs/sddl2/**",
-        ],
     ),
     headers = glob(["compress/**/*.h"]),
     deps = [
         "..:compress",
+        "../tools/sddl2/assembler:lib",
         "datagen:datagen",
         ":test_zstrong_fixtures",
         ":utils",
