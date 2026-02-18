@@ -297,6 +297,22 @@ TEST_F(CompilerTest, RecordAST)
     expect_ast(prog, expected);
 }
 
+TEST_F(CompilerTest, AnonymousRecordAST)
+{
+    const auto prog = R"(
+        : Record() {id: Int32LE, val: Int32LE}
+    )";
+
+    const auto cg       = Codegen(SourceLocation::null());
+    const auto expected = std::vector<ASTPtr>({ cg.consume(cg.record(
+            ArgVec{},
+            ArgVec{ cg.assume(cg.var("id"), cg.builtin_field(Symbol::I32LE)),
+                    cg.assume(
+                            cg.var("val"),
+                            cg.builtin_field(Symbol::I32LE)) })) });
+    expect_ast(prog, expected);
+}
+
 TEST_F(CompilerTest, ParenthesesOverridePrecedenceAST)
 {
     const auto prog = R"(
