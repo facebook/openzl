@@ -156,45 +156,6 @@ TEST_F(CompilerTest, ParseSimpleOps)
     expect_success(prog);
 }
 
-TEST_F(CompilerTest, ParseBuiltinFields)
-{
-    const auto prog = R"(
-        # integer numeric types
-        :Byte
-        :U8
-        :I8
-        :U16LE
-        :U16BE
-        :I16LE
-        :I16BE
-        :U32LE
-        :U32BE
-        :I32LE
-        :I32BE
-        :U64LE
-        :U64BE
-        :I64LE
-        :I64BE
-
-        # float numeric types
-        :F8
-        :F16LE
-        :F16BE
-        :F32LE
-        :F32BE
-        :F64LE
-        :F64BE
-        :BF8
-        :BF16LE
-        :BF16BE
-        :BF32LE
-        :BF32BE
-        :BF64LE
-        :BF64BE
-    )";
-    expect_success(prog);
-}
-
 TEST_F(CompilerTest, MildlyVexingParsing)
 {
     const auto prog = R"(
@@ -214,6 +175,65 @@ TEST_F(CompilerTest, MildlyVexingParsing)
     )";
 
     expect_success(prog);
+}
+
+TEST_F(CompilerTest, ConsumeBuiltinFieldsAST)
+{
+    const auto prog     = R"(
+        # integer numeric types
+        : Byte
+        : UInt8
+        : Int8
+        : UInt16LE
+        : UInt16BE
+        : Int16LE
+        : Int16BE
+        : UInt32LE
+        : UInt32BE
+        : Int32LE
+        : Int32BE
+        : UInt64LE
+        : UInt64BE
+        : Int64LE
+        : Int64BE
+
+        # float numeric types
+        : Float16LE
+        : Float16BE
+        : Float32LE
+        : Float32BE
+        : Float64LE
+        : Float64BE
+        : BFloat16LE
+        : BFloat16BE
+    )";
+    const auto cg       = Codegen(SourceLocation::null());
+    const auto expected = std::vector<ASTPtr>({
+            cg.consume(cg.builtin_field(Symbol::BYTE)),
+            cg.consume(cg.builtin_field(Symbol::U8)),
+            cg.consume(cg.builtin_field(Symbol::I8)),
+            cg.consume(cg.builtin_field(Symbol::U16LE)),
+            cg.consume(cg.builtin_field(Symbol::U16BE)),
+            cg.consume(cg.builtin_field(Symbol::I16LE)),
+            cg.consume(cg.builtin_field(Symbol::I16BE)),
+            cg.consume(cg.builtin_field(Symbol::U32LE)),
+            cg.consume(cg.builtin_field(Symbol::U32BE)),
+            cg.consume(cg.builtin_field(Symbol::I32LE)),
+            cg.consume(cg.builtin_field(Symbol::I32BE)),
+            cg.consume(cg.builtin_field(Symbol::U64LE)),
+            cg.consume(cg.builtin_field(Symbol::U64BE)),
+            cg.consume(cg.builtin_field(Symbol::I64LE)),
+            cg.consume(cg.builtin_field(Symbol::I64BE)),
+            cg.consume(cg.builtin_field(Symbol::F16LE)),
+            cg.consume(cg.builtin_field(Symbol::F16BE)),
+            cg.consume(cg.builtin_field(Symbol::F32LE)),
+            cg.consume(cg.builtin_field(Symbol::F32BE)),
+            cg.consume(cg.builtin_field(Symbol::F64LE)),
+            cg.consume(cg.builtin_field(Symbol::F64BE)),
+            cg.consume(cg.builtin_field(Symbol::BF16LE)),
+            cg.consume(cg.builtin_field(Symbol::BF16BE)),
+    });
+    expect_ast(prog, expected);
 }
 
 TEST_F(CompilerTest, UnaryNegationAST)
