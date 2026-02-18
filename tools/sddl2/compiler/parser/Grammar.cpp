@@ -480,6 +480,28 @@ class RecordRule : public GrammarRule {
     }
 };
 
+class AnonymousRecordRule : public GrammarRule {
+   public:
+    explicit AnonymousRecordRule()
+            : GrammarRule(
+                      Symbol::RECORD,
+                      Precedence::NULLARY,
+                      std::vector<ArgType>(
+                              { ArgType::LIST_PAREN, ArgType::LIST_CURLY }))
+    {
+    }
+
+   private:
+    ASTPtr do_gen(ASTPtr op, ArgsVec args) const override
+    {
+        auto& params = args.at(0);
+        auto& fields = args.at(1);
+
+        return std::make_shared<ASTRecord>(
+                std::move(params), std::move(fields));
+    }
+};
+
 class BytesRule : public GrammarRule {
    public:
     explicit BytesRule()
@@ -515,6 +537,7 @@ const std::vector<std::unique_ptr<const GrammarRule>> grammar_rules{ []() {
 
     // Complex fields
     add_rule<RecordRule>(r);
+    add_rule<AnonymousRecordRule>(r);
     add_rule<BytesRule>(r);
 
     // Ops
