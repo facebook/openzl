@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include "tests/compress/graphs/sddl2/utils.h"
+
 #include "openzl/compress/graphs/sddl2/sddl2_interpreter.h"
 #include "tools/sddl2/assembler/Assembler.h"
 
@@ -9,7 +11,7 @@ namespace openzl {
 namespace sddl2 {
 namespace testing {
 
-class SDDL2AssemblyExecutionTest : public ::testing::Test {
+class SDDL2AssemblyExecutionTest : public SDDL2TestBase {
    protected:
     void SetUp() override
     {
@@ -31,19 +33,8 @@ class SDDL2AssemblyExecutionTest : public ::testing::Test {
                 input.size(),
                 &segments_);
     }
-
-    static void* alloc_fn(void* allocator_ctx, size_t size)
-    {
-        auto arena = (std::vector<std::string>*)allocator_ctx;
-        arena->push_back(std::string(size, 'x'));
-        return arena->back().data();
-    }
-
     Assembler assembler_;
     SDDL2_Segment_list segments_;
-
-    std::vector<std::string> arena_;
-    void* alloc_ctx_ = &arena_;
 };
 
 // ============================================================================
