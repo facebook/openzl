@@ -171,23 +171,41 @@ class OpenZLComponent {
      * @returns A list of predefined inputs for this component that MUST succeed
      * compression for every NodeID and GraphID returned by any of the
      * predefined*() or generate*() methods.
+     *
+     * @note If not all inputs are valid for all nodes and graphs, you should
+     * use the generateInputs() method, which is given the GraphID.
      */
     virtual std::vector<std::unique_ptr<OpenZLInput>> predefinedInputs()
             const = 0;
 
     /**
+     * Generates a list of inputs to test the @p graphID that MUST succeed
+     * compression. These inputs will only be used to test this @p graphID,
+     * so do not need to succeed in general for all possible nodes & graphs.
+     *
      * @param gen Random number generator (may be backed by a fuzzer or PRNG).
      * @param num Generate at most this number of inputs.
      * @param maxInputSize Each input should be at most this large. This can be
      * interpreted as a loose bound, rather than a strict limit if needed.
+     * @param compressor The compressor that owns the @p graphID.
+     * @param graphID The graph that the inputs will be compressed against.
+     * This graph comes either from predefinedGraphs() or generateGraphs(), or
+     * is a static graph with the head node from either predefinedNodes() or
+     * generatedNodes(). You can use this graphID to query the compressor for
+     * its parameters, so you can generate inputs that are compatible with the
+     * graph. These inputs will only be used to test this one @p graphID.
      * @returns A list of at most `num` generated inputs for this component that
      * MUST succeed compression for every NodeID and GraphID returned by any of
      * the predefined*() or generate*() methods. If there aren't interesting
      * inputs beyond the predefined inputs, this method should not be
      * overridden.
      */
-    virtual std::vector<std::unique_ptr<OpenZLInput>>
-    generateInputs(datagen::DataGen& gen, size_t num, size_t maxInputSize) const
+    virtual std::vector<std::unique_ptr<OpenZLInput>> generateInputs(
+            datagen::DataGen& gen,
+            size_t num,
+            size_t maxInputSize,
+            const Compressor& compressor,
+            GraphID graphID) const
     {
         return {};
     }
