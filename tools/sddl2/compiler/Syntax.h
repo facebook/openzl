@@ -78,20 +78,14 @@ enum class Symbol {
     I64BE,
 
     // Float Numeric Types
-    F8,
     F16LE,
     F16BE,
     F32LE,
     F32BE,
     F64LE,
     F64BE,
-    BF8,
     BF16LE,
     BF16BE,
-    BF32LE,
-    BF32BE,
-    BF64LE,
-    BF64BE,
 
     // Other Fields
     BYTES,
