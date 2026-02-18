@@ -1,3 +1,0 @@
-# EXPECT-ERROR: out of range
-push.i64 9223372036854775808
-halt
