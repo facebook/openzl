@@ -200,7 +200,8 @@ FUZZ(OpenZLComponentFuzzer, FuzzRoundTrip)
 
     while (gen.has_more_data()) {
         const size_t size = gen.usize_range("input_size", 1, 4096);
-        auto inputs       = component->generateInputs(gen, 1, size);
+        auto inputs =
+                component->generateInputs(gen, 1, size, compressor, graph);
         if (inputs.empty()) {
             break;
         }
