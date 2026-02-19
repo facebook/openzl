@@ -56,7 +56,9 @@ ZL_DECLARE_CUSTOM_MAP_TYPE(
  * local params.
  * @return : success, or error if paramId is invalid or already in use
  */
-ZL_Report MPM_validateMaterializedParamId(ZL_LocalParams* lp, int paramId);
+ZL_Report MPM_validateMaterializedParamId(
+        const ZL_LocalParams* lp,
+        int paramId);
 
 /* MPM_addMaterializedRefParam():
  * Add a materialized param to the refParams of the local params.
@@ -88,6 +90,50 @@ ZL_Report MPM_addOrReuseMaterializedParam(
 void MPM_dematerializeAllParams(
         MaterializedParamMap* materializedParams,
         Arena* allocator);
+
+// ******************************************************************
+// MaterializedParamMap: Static functions
+// ******************************************************************
+
+typedef struct {
+    ZL_LocalParams modifiedParams;
+    void* materializedObj;
+    ZL_MaterializerDesc matDesc;
+} OneshotMaterializationResult;
+ZL_RESULT_DECLARE_TYPE(OneshotMaterializationResult);
+
+/**
+ * @brief Materialize runtime params on-the-fly
+ *
+ * Materializes the params using the provided materializer and returns modified
+ * params with the materialized ref added. The returned context must be cleaned
+ * up with MPM_dematerializeOneshot() after use.
+ *
+ * @param allocator Arena for allocations that should persist during use
+ * @param opCtx Operation context for error reporting
+ * @param runtimeParams The runtime params to materialize (will be copied)
+ * @param matDesc The materializer descriptor
+ * @return On success, returns modified params and associated objects required
+ * to dematerialize.
+ *
+ * Note: we cannot simply return the modified local params because deallocation
+ * would require freeing a const pointer.
+ */
+ZL_RESULT_OF(OneshotMaterializationResult)
+MPM_materializeOneshot(
+        Arena* allocator,
+        ZL_OperationContext* opCtx,
+        const ZL_LocalParams* runtimeParams,
+        const ZL_MaterializerDesc* matDesc);
+
+/**
+ * @brief Clean up on-the-fly materialized params
+ *
+ * Dematerializes the object and frees all associated resources.
+ */
+void MPM_dematerializeOneshot(
+        Arena* allocator,
+        OneshotMaterializationResult* matResult);
 
 ZL_END_C_DECLS
 

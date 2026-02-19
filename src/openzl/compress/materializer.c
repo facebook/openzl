@@ -65,7 +65,7 @@ void ZL_NOOP_DEMATERIALIZE(ZL_Materializer* matCtx, void* materialized)
 
 // Validate that paramId is not invalid and not already in use by existing local
 // params
-ZL_Report MPM_validateMaterializedParamId(ZL_LocalParams* lp, int paramId)
+ZL_Report MPM_validateMaterializedParamId(const ZL_LocalParams* lp, int paramId)
 {
     ZL_RET_R_IF_EQ(
             GENERIC,
@@ -213,5 +213,89 @@ void MPM_dematerializeAllParams(
                     mat, entry->val.materializedParam);
             ZL_Materializer_free(mat);
         }
+    }
+}
+
+// ******************************************************************
+// On-the-fly Materialization (for runtime params)
+// ******************************************************************
+
+ZL_RESULT_OF(OneshotMaterializationResult)
+MPM_materializeOneshot(
+        Arena* allocator,
+        ZL_OperationContext* opCtx,
+        const ZL_LocalParams* runtimeParams,
+        const ZL_MaterializerDesc* matDesc)
+{
+    ZL_RESULT_DECLARE_SCOPE(OneshotMaterializationResult, opCtx);
+    ZL_ASSERT_NN(allocator);
+    ZL_ASSERT_NN(opCtx);
+    ZL_ASSERT_NN(matDesc);
+    ZL_ASSERT_NN(runtimeParams);
+    // This should be impossible, since we check the validity of the
+    // materializer when it's first registered alongside the base node.
+    ZL_ERR_IF_NULL(
+            matDesc->dematerializeFn,
+            logicError,
+            "Materializer must provide a valid materialize function pointer");
+
+    ZL_ERR_IF_ERR(
+            MPM_validateMaterializedParamId(runtimeParams, matDesc->paramId));
+
+    ZL_Materializer* mat = ZL_Materializer_create(allocator, *matDesc);
+    ZL_ERR_IF_NULL(mat, allocation);
+    ZL_RESULT_OF(ZL_VoidPtr)
+    matResult = matDesc->materializeFn(mat, runtimeParams);
+    ZL_Materializer_free(mat);
+    ZL_ERR_IF_ERR(matResult);
+    void* materialized = ZL_RES_value(matResult);
+
+    OneshotMaterializationResult retval = {
+        .modifiedParams  = *runtimeParams,
+        .materializedObj = materialized,
+        .matDesc         = *matDesc,
+    };
+
+    ZL_Report addResult = MPM_addMaterializedRefParam(
+            allocator,
+            opCtx,
+            &retval.modifiedParams,
+            matDesc->paramId,
+            materialized);
+
+    if (ZL_isError(addResult)) {
+        // Clean up materialized object
+        ZL_Materializer* mat2 = ZL_Materializer_create(allocator, *matDesc);
+        if (mat2 != NULL) {
+            matDesc->dematerializeFn(mat2, materialized);
+            ZL_Materializer_free(mat2);
+        }
+        ZL_ERR_IF_ERR(addResult);
+    }
+
+    return ZL_WRAP_VALUE(retval);
+}
+
+void MPM_dematerializeOneshot(
+        Arena* allocator,
+        OneshotMaterializationResult* matResult)
+{
+    ZL_ASSERT_NN(allocator);
+    ZL_ASSERT_NN(matResult);
+
+    if (matResult->materializedObj == NULL) {
+        return;
+    }
+
+    // This should be impossible, since nonnull materializedObj indicates
+    // materialization happened via MPM_materializeOneshot, and we check the
+    // validity of the materializer in MPM_materializeOneshot
+    ZL_ASSERT_NN(matResult->matDesc.dematerializeFn);
+
+    ZL_Materializer* mat =
+            ZL_Materializer_create(allocator, matResult->matDesc);
+    if (mat != NULL) {
+        matResult->matDesc.dematerializeFn(mat, matResult->materializedObj);
+        ZL_Materializer_free(mat);
     }
 }

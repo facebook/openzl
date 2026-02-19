@@ -705,7 +705,6 @@ static ZL_RESULT_OF(ZL_GraphID) GM_registerSegmenter_internal(
             segDesc->numCustomGraphs,
             &gdi.segDesc.customGraphs));
 
-    // do materialization here
     ZL_ERR_IF_ERR(GM_transferLocalParameters(gm, &gdi.segDesc.localParams));
     // Materialize params if materializer is provided (with deduplication)
     if (segDesc->materializer.materializeFn != NULL) {
