@@ -291,9 +291,9 @@ TEST_F(CompilerTest, RecordAST)
             cg.var("Entry"),
             cg.record(
                     ArgVec{},
-                    ArgVec{ cg.assign(
+                    ArgVec{ cg.assume(
                             cg.var("id"),
-                            cg.consume(cg.builtin_field(Symbol::I32LE))) })) });
+                            cg.builtin_field(Symbol::I32LE)) })) });
     expect_ast(prog, expected);
 }
 
@@ -370,34 +370,27 @@ TEST_F(CompilerTest, SimpleSaoAST)
                     cg.record(
                             ArgVec{},
                             ArgVec{
-                                    cg.assign(
+                                    cg.assume(
                                             cg.var("SRA0"),
-                                            cg.consume(cg.builtin_field(
-                                                    Symbol::F64LE))),
-                                    cg.assign(
+                                            cg.builtin_field(Symbol::F64LE)),
+                                    cg.assume(
                                             cg.var("SDEC0"),
-                                            cg.consume(cg.builtin_field(
-                                                    Symbol::F64LE))),
-                                    cg.assign(
-                                            cg.var("ISP"),
-                                            cg.consume(cg.bytes(cg.num(2)))),
-                                    cg.assign(
+                                            cg.builtin_field(Symbol::F64LE)),
+                                    cg.assume(
+                                            cg.var("ISP"), cg.bytes(cg.num(2))),
+                                    cg.assume(
                                             cg.var("MAG"),
-                                            cg.consume(cg.builtin_field(
-                                                    Symbol::I16LE))),
-                                    cg.assign(
+                                            cg.builtin_field(Symbol::I16LE)),
+                                    cg.assume(
                                             cg.var("XRPM"),
-                                            cg.consume(cg.builtin_field(
-                                                    Symbol::F32LE))),
-                                    cg.assign(
+                                            cg.builtin_field(Symbol::F32LE)),
+                                    cg.assume(
                                             cg.var("XDPM"),
-                                            cg.consume(cg.builtin_field(
-                                                    Symbol::F32LE))),
+                                            cg.builtin_field(Symbol::F32LE)),
                             })),
-            cg.assign(cg.var("header"), cg.consume(cg.bytes(cg.num(28)))),
-            cg.assign(
-                    cg.var("stars"),
-                    cg.consume(cg.array(cg.var("StarEntry"), cg.num(10)))),
+            cg.assume(cg.var("header"), cg.bytes(cg.num(28))),
+            cg.assume(
+                    cg.var("stars"), cg.array(cg.var("StarEntry"), cg.num(10))),
     });
     expect_ast(prog, expected);
 }

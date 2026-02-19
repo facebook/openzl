@@ -16,17 +16,19 @@ enum class Op {
 
     // Arithmetic Operators
     NEG,
+    ADD,
+    SUB,
+    MUL,
+    DIV,
+    MOD,
+
+    // Comparison Operators
     EQ,
     NE,
     GT,
     GE,
     LT,
     LE,
-    ADD,
-    SUB,
-    MUL,
-    DIV,
-    MOD,
 
     // Bitwise Operators
     BIT_AND,
