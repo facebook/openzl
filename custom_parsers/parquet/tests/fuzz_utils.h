@@ -131,8 +131,8 @@ std::shared_ptr<arrow::Array> gen_array_from_field(
                 gen_str_vec(f, typeName, numElts, Const<size_t>(width)), width);
     } else if (typeName == "struct") {
         std::vector<std::shared_ptr<arrow::Array>> arrays;
-        for (const auto& field : field->type()->fields()) {
-            arrays.push_back(gen_array_from_field(f, field, numElts));
+        for (const auto& childField : field->type()->fields()) {
+            arrays.push_back(gen_array_from_field(f, childField, numElts));
         }
         return std::make_shared<arrow::StructArray>(
                 arrow::StructArray(type, numElts, arrays, nullptr, 0, 0));
