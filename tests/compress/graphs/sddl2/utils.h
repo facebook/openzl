@@ -5,8 +5,22 @@
 namespace openzl {
 namespace sddl2 {
 namespace testing {
+
+class SDDL2TestBase : public ::testing::Test {
+   protected:
+    static void* alloc_fn(void* allocator_ctx, size_t size)
+    {
+        auto arena = (std::vector<std::string>*)allocator_ctx;
+        arena->push_back(std::string(size, 'x'));
+        return arena->back().data();
+    }
+
+    std::vector<std::string> arena_;
+    void* alloc_ctx_ = &arena_;
+};
+
 template <size_t StackCapacity>
-class SDDL2StackTestCustomCapacity : public ::testing::Test {
+class SDDL2StackTestCustomCapacity : public SDDL2TestBase {
    protected:
     void SetUp() override
     {
@@ -26,16 +40,7 @@ class SDDL2StackTestCustomCapacity : public ::testing::Test {
         free(stack_);
     }
 
-    static void* alloc_fn(void* allocator_ctx, size_t size)
-    {
-        auto arena = (std::vector<std::string>*)allocator_ctx;
-        arena->push_back(std::string(size, 'x'));
-        return arena->back().data();
-    }
-
     SDDL2_Stack* stack_;
-    std::vector<std::string> arena_;
-    void* alloc_ctx_ = &arena_;
 };
 
 using SDDL2StackTest = SDDL2StackTestCustomCapacity<100>;
