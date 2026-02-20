@@ -55,10 +55,10 @@ jobs:
           echo "=== Dependencies built ==="
 
 
-      - name: Build zli CLI
+      - name: Build zli CLI (statically linked)
         run: |
           echo "=== Building zli CLI executable ==="
-          make -j zli BUILD_TYPE=OPT V=1
+          LDFLAGS="-static" make -j zli BUILD_TYPE=OPT V=1
           echo "=== zli CLI executable build completed ==="
 
 
@@ -72,8 +72,10 @@ jobs:
 
       - name: Verify release artifact
         run: |
-          echo "=== Verifying release artifact ==="
+          echo "=== Verifying binary runs standalone ==="
           ./release/openzl-cli-windows-x64.exe --version
+          echo "=== Checking for non-system DLL dependencies ==="
+          objdump -p release/openzl-cli-windows-x64.exe | grep "DLL Name" || true
           echo "=== Checking binary size ==="
           ls -lh release/openzl-cli-windows-x64.exe
           echo "=== Release artifact verified ==="
