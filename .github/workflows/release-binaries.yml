@@ -16,18 +16,6 @@ on:
   release:
     types: [published]
   workflow_dispatch:
-    inputs:
-      build_type:
-        description: "Build type (Release or Debug)"
-        required: false
-        default: "Release"
-        type: choice
-        options:
-          - Release
-          - Debug
-
-env:
-  BUILD_TYPE: ${{ github.event.inputs.build_type || 'Release' }}
 
 
 jobs:
@@ -48,14 +36,12 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
-          install: make diffutils cmake git mingw-w64-x86_64-clang
+          install: make diffutils cmake git mingw-w64-x86_64-gcc
           update: true
 
       - name: Show build environment
         run: |
           echo "=== Build environment ==="
-          echo "CC: gcc"
-          echo "CXX: g++"
           gcc --version
           g++ --version
           make --version
@@ -80,17 +66,17 @@ jobs:
         run: |
           echo "=== Preparing release artifact ==="
           mkdir release
-          cp cli/zli.exe release/openzl-cli-windows-x64.exe
+          cp zli.exe release/openzl-cli-windows-x64.exe
           echo "=== Release artifact prepared ==="
           ls -la release
 
       - name: Verify release artifact
         run: |
           echo "=== Verifying release artifact ==="
-          ./release/openzl-cli-windows-x64.exe
+          ./release/openzl-cli-windows-x64.exe --version
           echo "=== Checking binary size ==="
           ls -lh release/openzl-cli-windows-x64.exe
-          echo "=== Binary size verified ==="
+          echo "=== Release artifact verified ==="
 
 
       - name: Upload binary to Github Releases
