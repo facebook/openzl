@@ -1,0 +1,104 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+name: Release Binaries
+
+# This workflow builds pre-compiled binaries and attaches them to github releases
+# It is triggered by a release event, this builds and uploads binaries to that release
+
+# Usage:
+# 1. Go to Github -> Releases -> Create a new release
+# 2. Create a new tag (e.g., v1.0.0) and publish the release
+# 3. This workflow automatically runs and attaches binaries
+
+# You can also manually trigger the workflow via workflow_dispatch for testing
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: "Build type (Release or Debug)"
+        required: false
+        default: "Release"
+        type: choice
+        options:
+          - Release
+          - Debug
+
+env:
+  BUILD_TYPE: ${{ github.event.inputs.build_type || 'Release' }}
+
+
+jobs:
+  # =============================================================================#
+  # WINDOWS X64 BINARY
+  # =============================================================================#
+  build-windows-x64:
+    name: Windows X64 CLI Binary
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Verify clang-cl availability
+        run: |
+          echo "=== Verifying clang-cl availability ==="
+          where clang-cl
+          echo "=== clang-cl availability verified ==="
+        shell: cmd
+
+      - name: Configure CMake with clang-cl
+        run: |
+          echo "=== Configuring CMake with clang-cl ==="
+          cmake -S . -B build ^
+            -G "Visual Studio 17 2022" ^
+            -A x64 ^
+            -T ClangCL ^
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} ^
+            -DCMAKE_C_FLAGS="/W2" ^
+            -DCMAKE_CXX_FLAGS="/W2" ^
+            -DOPENZL_BUILD_SHARED_LIBS=OFF ^
+            -DCMAKE_INSTALL_PREFIX="./install"
+          echo "=== CMake configuration completed ==="
+        shell: cmd
+
+      - name: Build zli CLI
+        run: |
+          echo "=== Building zli CLI executable ==="
+          cmake --build build --config ${{ env.BUILD_TYPE }} --target zli --verbose
+          echo "=== zli CLI executable build completed ==="
+        shell: cmd
+
+      - name: Create release artifact
+        run: |
+          echo "=== Preparing release artifact ==="
+          mkdir release
+          copy build\cli\${{ env.BUILD_TYPE }}\zli.exe release\openzl-cli-windows-x64.exe
+          echo "=== Release artifact prepared ==="
+          dir release
+        shell: cmd
+
+      - name: Upload binary to Github Releases
+        if: github.event_name == 'release' && github.event.action == 'published'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release\openzl-cli-windows-x64.exe
+
+      - name: Upload artifact (for manual workflow runs)
+        uses: actions/upload-artifact@v4
+        with:
+          name: openzl-cli-windows-x64
+          path: release\openzl-cli-windows-x64.exe
+          retention-days: 30
+
+# =============================================================================#
+# Future platform support will go here
+# =============================================================================#
+
+
+
+
