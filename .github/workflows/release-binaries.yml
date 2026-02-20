@@ -37,53 +37,64 @@ jobs:
   build-windows-x64:
     name: Windows X64 CLI Binary
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v2
+      - name: Setup MSYS2 with MinGW-w64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: make diffutils cmake git mingw-w64-x86_64-clang
+          update: true
 
-      - name: Verify clang-cl availability
+      - name: Show build environment
         run: |
-          echo "=== Verifying clang-cl availability ==="
-          where clang-cl
-          echo "=== clang-cl availability verified ==="
-        shell: cmd
+          echo "=== Build environment ==="
+          echo "CC: gcc"
+          echo "CXX: g++"
+          gcc --version
+          g++ --version
+          make --version
+          echo "=== Build environment verified ==="
 
-      - name: Configure CMake with clang-cl
+
+      - name: Build dependencies
         run: |
-          echo "=== Configuring CMake with clang-cl ==="
-          cmake -S . -B build ^
-            -G "Visual Studio 17 2022" ^
-            -A x64 ^
-            -T ClangCL ^
-            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} ^
-            -DCMAKE_C_FLAGS="/W2" ^
-            -DCMAKE_CXX_FLAGS="/W2" ^
-            -DOPENZL_BUILD_SHARED_LIBS=OFF ^
-            -DCMAKE_INSTALL_PREFIX="./install"
-          echo "=== CMake configuration completed ==="
-        shell: cmd
+          echo "=== Building dependencies ==="
+          make -j builddeps
+          echo "=== Dependencies built ==="
+
 
       - name: Build zli CLI
         run: |
           echo "=== Building zli CLI executable ==="
-          cmake --build build --config ${{ env.BUILD_TYPE }} --target zli --verbose
+          make -j zli BUILD_TYPE=OPT V=1
           echo "=== zli CLI executable build completed ==="
-        shell: cmd
 
-      - name: Create release artifact
+
+      - name: Prepare release artifact
         run: |
           echo "=== Preparing release artifact ==="
           mkdir release
-          copy build\cli\${{ env.BUILD_TYPE }}\zli.exe release\openzl-cli-windows-x64.exe
+          cp cli/zli.exe release/openzl-cli-windows-x64.exe
           echo "=== Release artifact prepared ==="
-          dir release
-        shell: cmd
+          ls -la release
+
+      - name: Verify release artifact
+        run: |
+          echo "=== Verifying release artifact ==="
+          ./release/openzl-cli-windows-x64.exe
+          echo "=== Checking binary size ==="
+          ls -lh release/openzl-cli-windows-x64.exe
+          echo "=== Binary size verified ==="
+
 
       - name: Upload binary to Github Releases
-        if: github.event_name == 'release' && github.event.action == 'published'
+        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
           files: release\openzl-cli-windows-x64.exe
