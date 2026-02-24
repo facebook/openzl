@@ -4,7 +4,6 @@
 
 #include <map>
 #include <optional>
-#include <unordered_map>
 #include <vector>
 
 #include "openzl/cpp/experimental/trace/Codec.hpp"
@@ -125,17 +124,7 @@ class ChunkTrace {
     size_t currCodecNum_ = 0;
     std::map<ZL_DataID, Stream, ZL_DataIDCustomComparator> streamInfo_;
     std::vector<Codec> codecInfo_;
-    std::unordered_map<size_t, std::vector<ZL_DataID>> codecInEdges_;
-    std::unordered_map<size_t, std::vector<ZL_DataID>> codecOutEdges_;
-    std::unordered_map<
-            ZL_DataID,
-            std::vector<ZL_DataID>,
-            ZL_DataIDHash,
-            ZL_DataIDEquality>
-            streamSuccessors_;
-    std::unordered_map<ZL_DataID, size_t, ZL_DataIDHash, ZL_DataIDEquality>
-            streamConsumerCodec_;
-    std::vector<std::pair<Graph, std::vector<size_t>>> graphInfo_;
+    std::vector<Graph> graphInfo_;
     bool currEncompassingGraph_ = false; // if codecs are running within a graph
     std::optional<ConversionError> maybeConversionError_ = std::nullopt;
 };
