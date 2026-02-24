@@ -81,6 +81,7 @@ typedef enum {
     ZL_StandardNodeID_quantize_lengths,
 
     ZL_StandardNodeID_bitsplit_top8,
+    ZL_StandardNodeID_bitsplit_fp32,
 
     ZL_StandardNodeID_public_end // last id, used to detect end of public range
 } ZL_StandardNodeID;
