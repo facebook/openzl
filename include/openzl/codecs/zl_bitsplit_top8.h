@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#ifndef OPENZL_CODECS_BITSPLIT_H
-#define OPENZL_CODECS_BITSPLIT_H
+#ifndef OPENZL_CODECS_BITSPLIT_TOP8_H
+#define OPENZL_CODECS_BITSPLIT_TOP8_H
 
 #include "openzl/zl_nodes.h"
 

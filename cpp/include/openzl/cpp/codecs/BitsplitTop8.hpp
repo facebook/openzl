@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "openzl/codecs/zl_bitsplit.h"
+#include "openzl/codecs/zl_bitsplit_top8.h"
 #include "openzl/cpp/Compressor.hpp"
 #include "openzl/cpp/codecs/Metadata.hpp"
 #include "openzl/cpp/codecs/Node.hpp"
