@@ -454,9 +454,9 @@ void ChunkTrace::on_ZL_Encoder_sendCodecHeader(
 void ChunkTrace::on_ZL_Encoder_createTypedStream(
         ZL_Encoder*,
         int,
-        size_t eltsCapacity,
-        size_t eltWidth,
-        ZL_Output* createdStream)
+        size_t /*eltsCapacity*/,
+        size_t /*eltWidth*/,
+        ZL_Output* /*createdStream*/)
 {
 }
 

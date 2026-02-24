@@ -110,9 +110,9 @@ void Tracer::on_ZL_Encoder_sendCodecHeader(
 void Tracer::on_ZL_Encoder_createTypedStream(
         ZL_Encoder*,
         int,
-        size_t eltsCapacity,
-        size_t eltWidth,
-        ZL_Output* createdStream)
+        size_t /*eltsCapacity*/,
+        size_t /*eltWidth*/,
+        ZL_Output* /*createdStream*/)
 {
 }
 
@@ -160,10 +160,10 @@ void Tracer::on_ZL_Edge_setMultiInputDestination_wParams(
 
 void Tracer::on_ZL_CCtx_compressMultiTypedRef_start(
         ZL_CCtx const* const cctx,
-        void const* const dst,
-        size_t const dstCapacity,
-        ZL_TypedRef const* const inputs[],
-        size_t const nbInputs)
+        void const* const /*dst*/,
+        size_t const /*dstCapacity*/,
+        ZL_TypedRef const* const /*inputs*/[],
+        size_t const /*nbInputs*/)
 {
     frameVersion = ZL_CCtx_getParameter(cctx, ZL_CParam_formatVersion);
     // The "main" trace is located at idx 0 of graphRuns
