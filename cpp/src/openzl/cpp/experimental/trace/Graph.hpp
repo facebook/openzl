@@ -3,9 +3,12 @@
 #pragma once
 
 #include "openzl/cpp/LocalParams.hpp"
+#include "openzl/cpp/experimental/trace/types.hpp"
 #include "openzl/shared/a1cbor.h"
 #include "openzl/zl_errors.h"
 #include "openzl/zl_reflection.h"
+
+#include <vector>
 
 namespace openzl::visualizer {
 
@@ -20,12 +23,12 @@ struct Graph {
     // ultimately, the idea is that edges will go to graphs and not codecs so
     // there's no need to store this info
     std::vector<ZL_Edge*> inEdges;
+    std::vector<CodecID> codecs;
 
     const ZL_Report serializeGraph(
             A1C_Arena* a1c_arena,
             A1C_Item* arrayItem,
-            const ZL_CCtx* const cctx,
-            const std::vector<size_t>& graphCodecs);
+            const ZL_CCtx* const cctx);
 };
 
 } // namespace openzl::visualizer
