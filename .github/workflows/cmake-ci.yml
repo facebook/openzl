@@ -113,10 +113,12 @@ jobs:
         run: cmake --build . --target unitBench
 
       - name: Test
+        if: ${{ matrix.cmake_version == '' }}
         working-directory: ${{github.workspace}}/build
         run: ctest --output-on-failure
 
       - name: Install
+        if: ${{ matrix.cmake_version == '' }}
         working-directory: ${{github.workspace}}/build
         run: make install
 
