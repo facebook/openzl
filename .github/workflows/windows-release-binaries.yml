@@ -1,16 +1,10 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-name: Release Binaries
+name: Windows Release Binaries
 
-# This workflow builds pre-compiled binaries and attaches them to github releases
-# It is triggered by a release event, this builds and uploads binaries to that release
-
-# Usage:
-# 1. Go to Github -> Releases -> Create a new release
-# 2. Create a new tag (e.g., v1.0.0) and publish the release
-# 3. This workflow automatically runs and attaches binaries
-
-# You can also manually trigger the workflow via workflow_dispatch for testing
+# This workflow builds pre-compiled Windows x64 CLI binaries (zli).
+# Triggered on release publish or manually via workflow_dispatch.
+# Binaries are uploaded as GitHub Actions artifacts for download.
 
 on:
   release:
@@ -81,23 +75,10 @@ jobs:
           echo "=== Release artifact verified ==="
 
 
-      - name: Upload binary to Github Releases
-        if: github.event_name == 'release'
-        uses: softprops/action-gh-release@v2
-        with:
-          files: release\openzl-cli-windows-x64.exe
-
-      - name: Upload artifact (for manual workflow runs)
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: openzl-cli-windows-x64
           path: release\openzl-cli-windows-x64.exe
           retention-days: 30
-
-# =============================================================================#
-# Future platform support will go here
-# =============================================================================#
-
-
-
 
