@@ -182,6 +182,8 @@ class ASTVar : public ASTConverted {
         return ConvertedNodeType::VAR;
     }
 
+    const std::string& name() const;
+
    private:
     const std::string name_;
 };
@@ -204,6 +206,8 @@ class ASTBuiltinField : public ASTField {
         return ConvertedNodeType::BUILTIN_FIELD;
     }
 
+    const Symbol& kw() const;
+
    private:
     const Symbol kw_;
 };
@@ -220,6 +224,8 @@ class ASTBytes : public ASTField {
     {
         return ConvertedNodeType::BYTES;
     }
+
+    const ASTPtr& len() const;
 
    private:
     static ASTPtr extract_len(const ASTPtr& paren_ptr);
@@ -239,6 +245,9 @@ class ASTRecord : public ASTField {
     {
         return ConvertedNodeType::RECORD;
     }
+
+    const ASTVec& params() const;
+    const ASTVec& fields() const;
 
    private:
     static ASTVec extract_fields(
@@ -267,6 +276,9 @@ class ASTArray : public ASTField {
         return ConvertedNodeType::ARRAY;
     }
 
+    const ASTPtr& field() const;
+    const ASTPtr& len() const;
+
    private:
     const ASTPtr field_;
     const ASTPtr len_;
@@ -284,6 +296,9 @@ class ASTOp : public ASTConverted {
     {
         return ConvertedNodeType::OP;
     }
+
+    const Op& op() const;
+    const ASTVec& args() const;
 
    private:
     const Op op_;
