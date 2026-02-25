@@ -69,6 +69,8 @@ enum class OpenZLComponentID {
     Constant,
     FieldLz,
     CompressGeneric,
+    BitSplit,
+    BitSplitTop8,
     // Must be last enum value
     NumComponents,
 };
@@ -124,6 +126,8 @@ std::unique_ptr<OpenZLComponent> makeFlatpackComponent();
 std::unique_ptr<OpenZLComponent> makeConstantComponent();
 std::unique_ptr<OpenZLComponent> makeFieldLzComponent();
 std::unique_ptr<OpenZLComponent> makeCompressGenericComponent();
+std::unique_ptr<OpenZLComponent> makeBitSplitComponent();
+std::unique_ptr<OpenZLComponent> makeBitSplitTop8Component();
 } // namespace components
 
 inline std::unique_ptr<OpenZLComponent> makeOpenZLComponent(
@@ -218,6 +222,10 @@ inline std::unique_ptr<OpenZLComponent> makeOpenZLComponent(
             return components::makeFieldLzComponent();
         case OpenZLComponentID::CompressGeneric:
             return components::makeCompressGenericComponent();
+        case OpenZLComponentID::BitSplit:
+            return components::makeBitSplitComponent();
+        case OpenZLComponentID::BitSplitTop8:
+            return components::makeBitSplitTop8Component();
         case OpenZLComponentID::NumComponents:
         default:
             throw std::runtime_error("Invalid component");
