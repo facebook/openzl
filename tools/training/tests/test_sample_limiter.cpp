@@ -1,6 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <gtest/gtest.h>
+#include <algorithm>
 #include "tools/training/clustering/sample_limiter.h"
 
 namespace openzl {
