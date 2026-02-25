@@ -30,6 +30,10 @@ jobs:
             os: ubuntu-latest
             build_mode: dev
             extra_flags: "-Werror"
+          - name: "CMake Linux (Ubuntu 22.04, cmake 3.22)"
+            os: ubuntu-22.04
+            build_mode: dev
+            extra_flags: "-Werror"
           - name: "CMake macOS"
             os: macos-latest
             build_mode: dev
@@ -52,6 +56,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Check CMake version
+        run: cmake --version
 
       - name: Configure CMake
         run: |
