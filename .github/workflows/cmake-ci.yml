@@ -105,12 +105,12 @@ jobs:
 
       - name: Build
         working-directory: ${{github.workspace}}/build
-        run: make
+        run: make -j2
 
       - name: Build unitBench
         if: ${{ matrix.name == 'CMake Linux' }}
         working-directory: ${{github.workspace}}/build
-        run: cmake --build . --target unitBench
+        run: cmake --build . --parallel --target unitBench
 
       - name: Test
         if: ${{ matrix.cmake_version == '' }}
