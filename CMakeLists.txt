@@ -214,10 +214,8 @@ if (OPENZL_BUILD_TESTS)
         googletest # v1.14.0
         URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
         URL_HASH SHA256=1f357c27ca988c3f7c6b4bf68a9395005ac6761f034046e9dde0896e3aba00e4
-        OVERRIDE_FIND_PACKAGE
     )
     FetchContent_MakeAvailable(googletest)
-    find_package(googletest REQUIRED)
     include(GoogleTest)
     enable_testing()
 
