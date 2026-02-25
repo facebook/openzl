@@ -72,9 +72,9 @@ class OpenZLComponentTest : public ::testing::TestWithParam<int> {
                 testComponentWithGraphOnInput(graph, *input);
             }
         }
-        for (const auto& input :
-             component_->generateInputs(gen_, 3, 256 * 1024)) {
-            for (const auto graph : graphs) {
+        for (const auto graph : graphs) {
+            for (const auto& input : component_->generateInputs(
+                         gen_, 3, 256 * 1024, compressor_, graph)) {
                 testComponentWithGraphOnInput(graph, *input);
             }
         }

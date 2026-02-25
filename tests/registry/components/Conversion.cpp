@@ -56,7 +56,9 @@ class ConvertStructToSerialComponent : public OpenZLComponent {
     std::vector<std::unique_ptr<OpenZLInput>> generateInputs(
             datagen::DataGen& gen,
             size_t num,
-            size_t maxInputSize) const override
+            size_t maxInputSize,
+            const Compressor&,
+            GraphID) const override
     {
         std::vector<std::unique_ptr<OpenZLInput>> inputs;
         inputs.reserve(num);
@@ -128,7 +130,9 @@ class ConvertSerialToStructComponent : public OpenZLComponent {
     std::vector<std::unique_ptr<OpenZLInput>> generateInputs(
             datagen::DataGen& gen,
             size_t num,
-            size_t maxInputSize) const override
+            size_t maxInputSize,
+            const Compressor&,
+            GraphID) const override
     {
         std::vector<std::unique_ptr<OpenZLInput>> inputs;
         inputs.reserve(num);
@@ -189,7 +193,9 @@ class ConvertNumToSerialLEComponent : public OpenZLComponent {
     std::vector<std::unique_ptr<OpenZLInput>> generateInputs(
             datagen::DataGen& gen,
             size_t num,
-            size_t maxInputSize) const override
+            size_t maxInputSize,
+            const Compressor&,
+            GraphID) const override
     {
         std::vector<std::unique_ptr<OpenZLInput>> inputs;
         inputs.reserve(num);
@@ -271,7 +277,9 @@ class ConvertNumToStructLEComponent : public OpenZLComponent {
     std::vector<std::unique_ptr<OpenZLInput>> generateInputs(
             datagen::DataGen& gen,
             size_t num,
-            size_t maxInputSize) const override
+            size_t maxInputSize,
+            const Compressor&,
+            GraphID) const override
     {
         std::vector<std::unique_ptr<OpenZLInput>> inputs;
         inputs.reserve(num);
@@ -347,7 +355,9 @@ class ConvertStructToNumLEComponent : public OpenZLComponent {
     std::vector<std::unique_ptr<OpenZLInput>> generateInputs(
             datagen::DataGen& gen,
             size_t num,
-            size_t maxInputSize) const override
+            size_t maxInputSize,
+            const Compressor&,
+            GraphID) const override
     {
         constexpr size_t widths[] = { 1, 2, 4, 8 };
         std::vector<std::unique_ptr<OpenZLInput>> inputs;
@@ -397,7 +407,9 @@ class ConvertStructToNumBEComponent : public OpenZLComponent {
     std::vector<std::unique_ptr<OpenZLInput>> generateInputs(
             datagen::DataGen& gen,
             size_t num,
-            size_t maxInputSize) const override
+            size_t maxInputSize,
+            const Compressor&,
+            GraphID) const override
     {
         constexpr size_t widths[] = { 1, 2, 4, 8 };
         std::vector<std::unique_ptr<OpenZLInput>> inputs;
@@ -448,7 +460,9 @@ class ConvertSerialToNumLEComponent : public OpenZLComponent {
     std::vector<std::unique_ptr<OpenZLInput>> generateInputs(
             datagen::DataGen& gen,
             size_t num,
-            size_t maxInputSize) const override
+            size_t maxInputSize,
+            const Compressor&,
+            GraphID) const override
     {
         std::vector<std::unique_ptr<OpenZLInput>> inputs;
         inputs.reserve(num);
@@ -497,7 +511,9 @@ class ConvertSerialToNumBEComponent : public OpenZLComponent {
     std::vector<std::unique_ptr<OpenZLInput>> generateInputs(
             datagen::DataGen& gen,
             size_t num,
-            size_t maxInputSize) const override
+            size_t maxInputSize,
+            const Compressor&,
+            GraphID) const override
     {
         std::vector<std::unique_ptr<OpenZLInput>> inputs;
         inputs.reserve(num);
@@ -574,7 +590,9 @@ class SeparateStringComponentsComponent : public OpenZLComponent {
     std::vector<std::unique_ptr<OpenZLInput>> generateInputs(
             datagen::DataGen& gen,
             size_t num,
-            size_t maxInputSize) const override
+            size_t maxInputSize,
+            const Compressor&,
+            GraphID) const override
     {
         std::vector<std::unique_ptr<OpenZLInput>> inputs;
         inputs.reserve(num);

@@ -57,50 +57,35 @@ void addToCorpora(
 void addToCorpora(
         std::vector<std::string>& corpora,
         datagen::DataGen& gen,
-        Compressor& compressor,
-        const OpenZLComponent& component,
-        const OpenZLInput& input)
-{
-    for (auto node : component.predefinedNodes(compressor)) {
-        addToCorpora(
-                corpora,
-                gen,
-                compressor,
-                component,
-                input,
-                buildTrivialGraph(compressor.get(), node));
-    }
-    for (auto node : component.generateNodes(compressor, gen, 1)) {
-        addToCorpora(
-                corpora,
-                gen,
-                compressor,
-                component,
-                input,
-                buildTrivialGraph(compressor.get(), node));
-    }
-    for (auto graph : component.predefinedGraphs(compressor)) {
-        addToCorpora(corpora, gen, compressor, component, input, graph);
-    }
-    for (auto graph : component.generateGraphs(compressor, gen, 1)) {
-        addToCorpora(corpora, gen, compressor, component, input, graph);
-    }
-}
-
-void addToCorpora(
-        std::vector<std::string>& corpora,
-        datagen::DataGen& gen,
         const OpenZLComponent& component)
 {
     Compressor compressor;
     component.registerComponent(compressor);
     compressor.setParameter(CParam::MinStreamSize, -1);
     compressor.setParameter(CParam::PermissiveCompression, 0);
-    for (const auto& input : component.predefinedInputs()) {
-        addToCorpora(corpora, gen, compressor, component, *input);
+    std::vector<GraphID> graphs;
+    for (auto node : component.predefinedNodes(compressor)) {
+        graphs.push_back(buildTrivialGraph(compressor.get(), node));
     }
-    for (const auto& input : component.generateInputs(gen, 10, 4096)) {
-        addToCorpora(corpora, gen, compressor, component, *input);
+    for (auto node : component.generateNodes(compressor, gen, 1)) {
+        graphs.push_back(buildTrivialGraph(compressor.get(), node));
+    }
+    for (auto graph : component.predefinedGraphs(compressor)) {
+        graphs.push_back(graph);
+    }
+    for (auto graph : component.generateGraphs(compressor, gen, 1)) {
+        graphs.push_back(graph);
+    }
+    for (const auto& input : component.predefinedInputs()) {
+        for (auto graph : graphs) {
+            addToCorpora(corpora, gen, compressor, component, *input, graph);
+        }
+    }
+    for (auto graph : graphs) {
+        for (const auto& input :
+             component.generateInputs(gen, 10, 4096, compressor, graph)) {
+            addToCorpora(corpora, gen, compressor, component, *input, graph);
+        }
     }
 }
 

@@ -70,7 +70,9 @@ class QuantizeOffsetsComponent : public OpenZLComponent {
     std::vector<std::unique_ptr<OpenZLInput>> generateInputs(
             datagen::DataGen& gen,
             size_t num,
-            size_t maxInputSize) const override
+            size_t maxInputSize,
+            const Compressor&,
+            GraphID) const override
     {
         std::vector<std::unique_ptr<OpenZLInput>> inputs;
         inputs.reserve(num);
@@ -144,7 +146,9 @@ class QuantizeLengthsComponent : public OpenZLComponent {
     std::vector<std::unique_ptr<OpenZLInput>> generateInputs(
             datagen::DataGen& gen,
             size_t num,
-            size_t maxInputSize) const override
+            size_t maxInputSize,
+            const Compressor&,
+            GraphID) const override
     {
         std::vector<std::unique_ptr<OpenZLInput>> inputs;
         inputs.reserve(num);
