@@ -104,7 +104,9 @@ void CompressionTraceHooks::on_codecEncode_end(
     tracer_->on_codecEncode_end(eictx, outStreams, nbOutputs, codecExecResult);
 }
 
-void CompressionTraceHooks::on_ZL_Encoder_getScratchSpace(ZL_Encoder*, size_t)
+void CompressionTraceHooks::on_ZL_Encoder_getScratchSpace(
+        ZL_Encoder* /*ei*/,
+        size_t /*size*/)
 {
 }
 
@@ -118,11 +120,11 @@ void CompressionTraceHooks::on_ZL_Encoder_sendCodecHeader(
 }
 
 void CompressionTraceHooks::on_ZL_Encoder_createTypedStream(
-        ZL_Encoder*,
-        int,
-        size_t eltsCapacity,
-        size_t eltWidth,
-        ZL_Output* createdStream)
+        ZL_Encoder* /*encoder*/,
+        int /*outStreamIndex*/,
+        size_t /*eltsCapacity*/,
+        size_t /*eltWidth*/,
+        ZL_Output* /*createdStream*/)
 {
 }
 
@@ -160,14 +162,18 @@ void CompressionTraceHooks::on_cctx_convertOneInput(
             cctx, input, inType, portTypeMask, conversionResult);
 }
 
-void CompressionTraceHooks::on_ZL_Graph_getScratchSpace(ZL_Graph*, size_t) {}
+void CompressionTraceHooks::on_ZL_Graph_getScratchSpace(
+        ZL_Graph* /*graph*/,
+        size_t /*size*/)
+{
+}
 
 void CompressionTraceHooks::on_ZL_Edge_setMultiInputDestination_wParams(
-        ZL_Graph*,
-        ZL_Edge*[],
-        size_t,
-        ZL_GraphID,
-        const ZL_LocalParams*)
+        ZL_Graph* /*graph*/,
+        ZL_Edge*[] /*inputs*/,
+        size_t /*nbInputs*/,
+        ZL_GraphID /*gid*/,
+        const ZL_LocalParams* /*lparams*/)
 {
 }
 
