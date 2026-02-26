@@ -54,6 +54,8 @@ int impl(int argc, char** argv)
         return "Demo CLI for OpenZL. NO VERSION STABILITY IS IMPLIED!!\n"
                 "\n"
                 "Usage: " + std::string(argv[0]) + " <command> [options] <args>\n"
+                "\n"
+                "Options can be specified with or without = sign. For example: --profile=u32 or --profile u32\n"
                 "\n" +
                 std::move(help) + "<<<< NO VERSION STABILITY IS IMPLIED!! >>>>";
     };
