@@ -33,6 +33,8 @@ class FieldLzComponent : public OpenZLComponent {
         return {
             graphs::FieldLz{}(compressor),
             graphs::FieldLz{ 7 }(compressor),
+            graphs::FieldLz{ graphs::FieldLz::Parameters{
+                    .literalsGraph = ZL_GRAPH_STORE } }(compressor),
         };
     }
 
