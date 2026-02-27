@@ -8,14 +8,16 @@ if (OPENZL_BUILD_SDDL_TOOLS)
         "${CMAKE_CURRENT_LIST_DIR}/compiler/*.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/compiler/tokenizer/*.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/compiler/grouper/*.cpp"
-        "${CMAKE_CURRENT_LIST_DIR}/compiler/parser/*.cpp")
+        "${CMAKE_CURRENT_LIST_DIR}/compiler/parser/*.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/compiler/codegen/*.cpp")
     file(
         GLOB sddl2_compiler_lib_headers
         CONFIGURE_DEPENDS
         "${CMAKE_CURRENT_LIST_DIR}/compiler/*.h"
         "${CMAKE_CURRENT_LIST_DIR}/compiler/tokenizer/*.h"
         "${CMAKE_CURRENT_LIST_DIR}/compiler/grouper/*.h"
-        "${CMAKE_CURRENT_LIST_DIR}/compiler/parser/*.h")
+        "${CMAKE_CURRENT_LIST_DIR}/compiler/parser/*.h"
+        "${CMAKE_CURRENT_LIST_DIR}/compiler/codegen/*.h")
     list(REMOVE_ITEM sddl2_compiler_lib_sources
       ${CMAKE_CURRENT_LIST_DIR}/compiler/main.cpp)
 

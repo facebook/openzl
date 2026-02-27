@@ -1,5 +1,9 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <numeric>
+#include <random>
+
 #include "openzl/compress/graphs/sddl2/sddl2_vm.h"
 
 namespace openzl {
@@ -13,6 +17,33 @@ class SDDL2TestBase : public ::testing::Test {
         auto arena = (std::vector<std::string>*)allocator_ctx;
         arena->push_back(std::string(size, 'x'));
         return arena->back().data();
+    }
+
+    template <typename T>
+    static std::vector<T> gen(
+            size_t length,
+            std::optional<T> opt_min = std::nullopt,
+            std::optional<T> opt_max = std::nullopt)
+    {
+        std::vector<T> vec(length);
+
+        // Generate distribution
+        T min = opt_min.value_or(std::numeric_limits<T>::lowest());
+        T max = opt_max.value_or(std::numeric_limits<T>::max());
+        std::uniform_int_distribution<T> dist(min, max);
+
+        std::mt19937 mersenne_engine(10);
+        auto gen = [&dist, &mersenne_engine]() {
+            return dist(mersenne_engine);
+        };
+
+        std::generate(vec.begin(), vec.end(), gen);
+        return vec;
+    }
+
+    static size_t sum(const std::vector<size_t>& vec)
+    {
+        return std::accumulate(vec.begin(), vec.end(), size_t{ 0 });
     }
 
     std::vector<std::string> arena_;

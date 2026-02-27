@@ -35,6 +35,7 @@ zs_unittest(
     deps = [
         "..:compress",
         "../tools/sddl2/assembler:lib",
+        "../tools/sddl2/compiler:lib",
         "datagen:datagen",
         ":test_zstrong_fixtures",
         ":utils",

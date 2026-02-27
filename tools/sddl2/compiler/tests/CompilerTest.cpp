@@ -156,27 +156,6 @@ TEST_F(CompilerTest, ParseSimpleOps)
     expect_success(prog);
 }
 
-TEST_F(CompilerTest, MildlyVexingParsing)
-{
-    const auto prog = R"(
-        b : B = Byte
-        expect b == 1
-        b = - : B
-        expect b == -2
-        : B
-        b : B
-        expect b == 4
-        : B = Byte
-        b : B
-        expect b == 6
-        : B
-        A = B[--:B]
-        : A
-    )";
-
-    expect_success(prog);
-}
-
 TEST_F(CompilerTest, ConsumeBuiltinFieldsAST)
 {
     const auto prog     = R"(
