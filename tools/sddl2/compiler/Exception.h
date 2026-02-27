@@ -56,6 +56,19 @@ class SerializationError : public CompilerException {
     }
 };
 
+class CodegenError : public CompilerException {
+   public:
+    CodegenError(const SourceLocation& loc, const poly::string_view& msg)
+            : CompilerException(loc, "code generation error", msg)
+    {
+    }
+
+    explicit CodegenError(const poly::string_view& msg)
+            : CodegenError(SourceLocation::null(), msg)
+    {
+    }
+};
+
 class InvariantViolation : public CompilerException {
    public:
     InvariantViolation(const SourceLocation& loc, const poly::string_view& msg)

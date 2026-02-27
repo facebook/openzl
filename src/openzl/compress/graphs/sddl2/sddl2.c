@@ -160,14 +160,7 @@ static ZL_Report sddl2_count_primitive_fields(ZL_Graph* graph, SDDL2_Type type)
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
 
     if (type.kind == SDDL2_TYPE_STRUCTURE) {
-        // Reject arrays of structures (complex edge case)
-        if (type.width > 1) {
-            ZL_ERR(GENERIC,
-                   "Arrays of structures not yet supported (width=%u)",
-                   type.width);
-        }
-
-        // For single structure instance, recursively count fields
+        // Recursively count fields
         ZL_ERR_IF_NULL(
                 type.struct_data,
                 GENERIC,
@@ -213,13 +206,6 @@ static ZL_Report sddl2_flatten_field_sizes(
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
 
     if (type.kind == SDDL2_TYPE_STRUCTURE) {
-        // Reject arrays of structures
-        if (type.width > 1) {
-            ZL_ERR(GENERIC,
-                   "Arrays of structures not yet supported (width=%u)",
-                   type.width);
-        }
-
         // Recursively flatten all members
         ZL_ERR_IF_NULL(
                 type.struct_data,
@@ -342,13 +328,6 @@ static ZL_Report sddl2_flatten_field_types(
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
 
     if (type.kind == SDDL2_TYPE_STRUCTURE) {
-        // Reject arrays of structures
-        if (type.width > 1) {
-            ZL_ERR(GENERIC,
-                   "Arrays of structures not yet supported (width=%u)",
-                   type.width);
-        }
-
         // Recursively flatten all members
         ZL_ERR_IF_NULL(
                 type.struct_data,
