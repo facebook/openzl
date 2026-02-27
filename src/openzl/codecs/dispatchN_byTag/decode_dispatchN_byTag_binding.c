@@ -23,6 +23,7 @@ ZL_Report DI_dispatchN_byTag(
         const ZL_Input* inVariable[],
         size_t nbInVariable)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_DLOG(BLOCK, "DI_dispatchN_byTag (%zu inputs to join)", nbInVariable);
     ZL_ASSERT_NN(dictx);
     ZL_ASSERT_EQ(nbInFixed, 2);
@@ -37,26 +38,25 @@ ZL_Report DI_dispatchN_byTag(
     const ZL_Input* tags     = inFixed[dnbt_tags];
     const ZL_Input* segSizes = inFixed[dnbt_segSizes];
     size_t const nbSegments  = ZL_Input_numElts(segSizes);
-    ZL_RET_R_IF_NE(corruption, ZL_Input_numElts(tags), nbSegments);
+    ZL_ERR_IF_NE(ZL_Input_numElts(tags), nbSegments, corruption);
 
     if (DI_getFrameFormatVersion(dictx) < 20) {
-        ZL_RET_R_IF_GE(temporaryLibraryLimitation, nbInVariable, 256);
-        ZL_RET_R_IF_GT(temporaryLibraryLimitation, ZL_Input_eltWidth(tags), 1);
+        ZL_ERR_IF_GE(nbInVariable, 256, temporaryLibraryLimitation);
+        ZL_ERR_IF_GT(ZL_Input_eltWidth(tags), 1, temporaryLibraryLimitation);
     } else {
-        ZL_RET_R_IF_GE(temporaryLibraryLimitation, nbInVariable, 1 << 16);
-        ZL_RET_R_IF_GT(temporaryLibraryLimitation, ZL_Input_eltWidth(tags), 2);
+        ZL_ERR_IF_GE(nbInVariable, 1 << 16, temporaryLibraryLimitation);
+        ZL_ERR_IF_GT(ZL_Input_eltWidth(tags), 2, temporaryLibraryLimitation);
     }
 
     size_t total = 0;
     for (size_t n = 0; n < nbInVariable; n++) {
         // Must be validated
         ZL_ASSERT_NN(inVariable[n]);
-        ZL_RET_R_IF_NE(
-                corruption, ZL_Input_type(inVariable[n]), ZL_Type_serial);
+        ZL_ERR_IF_NE(ZL_Input_type(inVariable[n]), ZL_Type_serial, corruption);
         total += ZL_Input_numElts(inVariable[n]);
     }
     ZL_Output* const out = ZL_Decoder_create1OutStream(dictx, total, 1);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
 
     // Note : reserving scratch buffers should be a property offered by DICtx*.
     // Currently it doesn't exist, so allocate directly instead.
@@ -74,7 +74,7 @@ ZL_Report DI_dispatchN_byTag(
             ZL_Decoder_getScratchSpace(dictx, sizeof(*bufIndex) * nbSegments);
 
     if (!srcs || !srcSizes || !segmentSizes || !bufIndex) {
-        ZL_RET_R_ERR(allocation);
+        ZL_ERR(allocation);
     }
 
     /* prepare arrays for raw transform */
@@ -98,9 +98,8 @@ ZL_Report DI_dispatchN_byTag(
 
     /* Check validity of tags */
     if (!NUMOP_underLimitU16(bufIndex, nbSegments, (unsigned)nbInVariable)) {
-        ZL_RET_R_ERR(
-                corruption,
-                "vector of tags incorrect : some value(s) > nb srcs");
+        ZL_ERR(corruption,
+               "vector of tags incorrect : some value(s) > nb srcs");
     }
 
     /* Check validity of segment sizes */
@@ -109,10 +108,9 @@ ZL_Report DI_dispatchN_byTag(
     }
     for (size_t n = 0; n < nbInVariable; n++) {
         if (srcSizes[n] != ZL_Input_numElts(inVariable[n])) {
-            ZL_RET_R_ERR(
-                    corruption,
-                    "segment sizes incorrect : invalid total size for stream %zu",
-                    n);
+            ZL_ERR(corruption,
+                   "segment sizes incorrect : invalid total size for stream %zu",
+                   n);
         }
     }
 
@@ -127,7 +125,7 @@ ZL_Report DI_dispatchN_byTag(
 
     ZL_ASSERT_EQ(r, total);
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, total));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, total));
 
     return ZL_returnSuccess();
 }

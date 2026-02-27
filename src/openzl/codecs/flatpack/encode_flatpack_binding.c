@@ -6,6 +6,7 @@
 
 ZL_Report EI_flatpack(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
     const ZL_Input* in = ins[0];
@@ -20,7 +21,7 @@ ZL_Report EI_flatpack(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
             ZL_Encoder_createTypedStream(eictx, 1, packedCapacity, 1);
 
     if (alphabet == NULL || packed == NULL) {
-        ZL_RET_R_ERR(allocation);
+        ZL_ERR(allocation);
     }
 
     ZS_FlatPackSize const size = ZS_flatpackEncode(
@@ -32,8 +33,8 @@ ZL_Report EI_flatpack(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
             nbElts);
     ZL_ASSERT(!ZS_FlatPack_isError(size));
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(alphabet, ZS_FlatPack_alphabetSize(size)));
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(ZL_Output_commit(alphabet, ZS_FlatPack_alphabetSize(size)));
+    ZL_ERR_IF_ERR(
             ZL_Output_commit(packed, ZS_FlatPack_packedSize(size, nbElts)));
 
     return ZL_returnValue(2);

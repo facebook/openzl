@@ -9,6 +9,7 @@
 
 ZL_Report DI_divide_by_int(ZL_Decoder* dictx, const ZL_Input* ins[])
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_ASSERT_NN(dictx);
     ZL_ASSERT_NN(ins);
     const ZL_Input* const in = ins[0];
@@ -21,57 +22,57 @@ ZL_Report DI_divide_by_int(ZL_Decoder* dictx, const ZL_Input* ins[])
 
     void const* quotients = ZL_Input_ptr(in);
     if (header.size == 0) {
-        ZL_RET_R_ERR(corruption);
+        ZL_ERR(corruption);
     }
 
     ZL_Output* const out = ZL_Decoder_create1OutStream(dictx, nbElts, intWidth);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
     const uint8_t* headerPtr = (const uint8_t*)header.start;
     ZL_RESULT_OF(uint64_t)
     const varint = ZL_varintDecode(
             &headerPtr, (const uint8_t*)header.start + header.size);
     ZL_TRY_LET_T(uint64_t, divisor, varint);
-    ZL_RET_R_IF_EQ(node_invalid_input, divisor, 0, "Attempt to divide by 0");
+    ZL_ERR_IF_EQ(divisor, 0, node_invalid_input, "Attempt to divide by 0");
     switch (intWidth) {
         case 1:
-            ZL_RET_R_IF_GT(node_invalid_input, divisor, UCHAR_MAX);
+            ZL_ERR_IF_GT(divisor, UCHAR_MAX, node_invalid_input);
             for (size_t i = 0; i < nbElts; ++i) {
-                ZL_RET_R_IF_GT(
-                        node_invalid_input,
+                ZL_ERR_IF_GT(
                         ((const uint8_t*)quotients)[i],
-                        UCHAR_MAX / divisor);
+                        UCHAR_MAX / divisor,
+                        node_invalid_input);
             }
             break;
         case 2:
-            ZL_RET_R_IF_GT(node_invalid_input, divisor, USHRT_MAX);
+            ZL_ERR_IF_GT(divisor, USHRT_MAX, node_invalid_input);
             for (size_t i = 0; i < nbElts; ++i) {
-                ZL_RET_R_IF_GT(
-                        node_invalid_input,
+                ZL_ERR_IF_GT(
                         ((const uint16_t*)quotients)[i],
-                        USHRT_MAX / divisor);
+                        USHRT_MAX / divisor,
+                        node_invalid_input);
             }
             break;
         case 4:
-            ZL_RET_R_IF_GT(node_invalid_input, divisor, UINT_MAX);
+            ZL_ERR_IF_GT(divisor, UINT_MAX, node_invalid_input);
             for (size_t i = 0; i < nbElts; ++i) {
-                ZL_RET_R_IF_GT(
-                        node_invalid_input,
+                ZL_ERR_IF_GT(
                         ((const uint32_t*)quotients)[i],
-                        UINT_MAX / divisor);
+                        UINT_MAX / divisor,
+                        node_invalid_input);
             }
             break;
         case 8:
             for (size_t i = 0; i < nbElts; ++i) {
-                ZL_RET_R_IF_GT(
-                        node_invalid_input,
+                ZL_ERR_IF_GT(
                         ((const uint64_t*)quotients)[i],
-                        ULLONG_MAX / divisor);
+                        ULLONG_MAX / divisor,
+                        node_invalid_input);
             }
             break;
         default:
             ZL_ASSERT_FAIL("Unsupported int width");
     }
     ZS_divideByDecode(ZL_Output_ptr(out), quotients, nbElts, divisor, intWidth);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, nbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, nbElts));
     return ZL_returnSuccess();
 }
