@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "openzl/codecs/zl_merge_sorted.h"
+#include "openzl/codecs/zl_store.h"
 #include "openzl/cpp/codecs/MergeSorted.hpp"
 #include "tests/registry/OpenZLComponents.h"
 #include "tests/registry/OpenZLInput.h"
@@ -34,6 +36,17 @@ class MergeSortedComponent : public OpenZLComponent {
     std::vector<NodeID> predefinedNodes(Compressor& compressor) const override
     {
         return { nodes::MergeSorted{}.parameterize(compressor) };
+    }
+
+    std::vector<GraphID> predefinedGraphs(Compressor& compressor) const override
+    {
+        return {
+            ZL_Compressor_registerMergeSortedGraph(
+                    compressor.get(),
+                    ZL_GRAPH_STORE,
+                    ZL_GRAPH_STORE,
+                    ZL_GRAPH_STORE),
+        };
     }
 
     std::vector<std::unique_ptr<OpenZLInput>> predefinedInputs() const override
