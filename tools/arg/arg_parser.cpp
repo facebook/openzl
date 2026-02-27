@@ -250,24 +250,30 @@ ParsedArgs ArgParser::parse(int argc, char** argv) const
                                    { ptr.value(), chosenCmd })
                          : std::nullopt;
         };
-        auto populateOption = [&](const Flag* flag, int cmd) {
+        auto formatFlagName = [](const Flag* flag) {
+            auto flagName = "--" + std::string(flag->name);
+            if (flag->shortName != 0) {
+                flagName += ", -" + std::string(1, flag->shortName);
+            }
+            return flagName;
+        };
+        auto checkDuplicateFlag = [&](const Flag* flag, int cmd) {
             if (parsedArgs.cmdVals_[cmd].find(flag->name)
                 != parsedArgs.cmdVals_[cmd].end()) {
-                auto flagName = "--" + std::string(flag->name);
-                if (flag->shortName != 0) {
-                    flagName += ", -" + std::string(1, flag->shortName);
-                }
-                std::string err =
-                        "Option " + flagName + " specified more than once";
-                throw ParseException(err);
+                throw ParseException(
+                        "Option " + formatFlagName(flag)
+                        + " specified more than once");
             }
+        };
+        auto populateOption = [&](const Flag* flag, int cmd) {
+            checkDuplicateFlag(flag, cmd);
 
             if (flag->hasVal) {
                 ++i;
                 if (i >= argc || isShortOpt(argv[i]) || isLongOpt(argv[i])) {
-                    std::string err =
-                            "Option " + flag->name + " requires a value";
-                    throw ParseException(err);
+                    throw ParseException(
+                            "Option " + formatFlagName(flag)
+                            + " requires a value");
                 }
                 parsedArgs.cmdVals_[cmd][flag->name].push_back(argv[i]);
             } else {
@@ -285,14 +291,41 @@ ParsedArgs ArgParser::parse(int argc, char** argv) const
             populateOption(flag, cmd);
         };
         auto processLongFlag = [&](char* name, int chosenCmd) {
-            auto str     = std::string{ name };
-            auto flagOpt = findFlag(false, str, chosenCmd);
+            std::string str{ name };
+            auto equalPos = str.find('=');
+
+            auto flagName = (equalPos != std::string::npos)
+                    ? str.substr(0, equalPos)
+                    : str;
+
+            auto flagOpt = findFlag(false, flagName, chosenCmd);
             if (!flagOpt.has_value()) {
-                std::string err = "Unknown option: " + std::string(argv[i]);
-                throw ParseException(err);
+                throw ParseException("Unknown option: --" + flagName);
             }
             auto [flag, cmd] = flagOpt.value();
-            populateOption(flag, cmd);
+
+            // No = syntax, use populateOption for space-separated or boolean
+            if (equalPos == std::string::npos) {
+                populateOption(flag, cmd);
+                return;
+            }
+
+            auto flagValue = str.substr(equalPos + 1);
+
+            if (!flag->hasVal) {
+                throw ParseException(
+                        "Option " + formatFlagName(flag)
+                        + " does not accept a value, but got '=" + flagValue
+                        + "'");
+            }
+            if (flagValue.empty()) {
+                throw ParseException(
+                        "Option " + formatFlagName(flag)
+                        + " requires a value, but got '--" + flag->name + "='");
+            }
+
+            checkDuplicateFlag(flag, cmd);
+            parsedArgs.cmdVals_[cmd][flag->name].push_back(flagValue);
         };
 
         if (seenEndOfOptions) {
