@@ -1273,7 +1273,7 @@ class DeserializeEncoder : public CustomEncoder {
         }
     }
 
-    ~DeserializeEncoder() = default;
+    ~DeserializeEncoder() override = default;
 };
 
 class DeserializeDecoder : public CustomDecoder {

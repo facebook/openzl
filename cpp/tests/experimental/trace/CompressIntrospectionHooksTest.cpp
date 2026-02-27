@@ -36,7 +36,7 @@ TEST(CompressIntrospectionHooksTest, writeTestFile)
     cctx.writeTraces(true);
     auto str         = cctx.compressOne(input);
     const auto trace = cctx.getLatestTrace();
-    if (0) {
+    if ((0)) {
         std::ofstream out("/tmp/streamdump.cbor", std::ios::binary);
         ASSERT_TRUE(out);
         out << trace.first;

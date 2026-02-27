@@ -7,9 +7,19 @@ load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbsource//tools/build_defs:selects.bzl", "selects")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_string")
 load("@fbsource//tools/build_defs/windows:windows_flag_map.bzl", "windows_convert_gcc_clang_flags")
+load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
 load("@fbsource//xplat/security/lionhead:defs.bzl", "ALL_EMPLOYEES", "Interaction", "Metadata", "Priv", "Reachability", "Severity")
 load("@fbsource//xplat/security/lionhead/build_defs:generic_harness.bzl", "generic_lionhead_harness")
 load("//security/lionhead/harnesses:defs.bzl", "cpp_lionhead_harness")
+
+# Labels that should be added to tests that pass cross-platform
+def cross_platform_labels():
+    return ci.labels(
+        ci.mac(ci.mode("fbsource//arvr/mode/mac-arm/opt")),
+        ci.mac(ci.mode("fbsource//arvr/mode/mac-arm/dev")),
+        ci.linux(ci.mode("fbsource//arvr/mode/fb-linux-nh/opt")),
+        ci.linux(ci.mode("fbsource//arvr/mode/fb-linux-nh/dev-asan")),
+    )
 
 _ZL_PROD_PREFIXES = [
     "openzl/prod",

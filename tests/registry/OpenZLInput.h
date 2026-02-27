@@ -49,6 +49,8 @@ class SerialOpenZLInput : public OpenZLInput {
         return result;
     }
 
+    ~SerialOpenZLInput() override = default;
+
    private:
     std::string str_;
 };
@@ -92,7 +94,7 @@ class NumericOpenZLInput : public OpenZLInput {
         return result;
     }
 
-    ~NumericOpenZLInput() = default;
+    ~NumericOpenZLInput() override = default;
 
    private:
     std::vector<T> vec_;
@@ -144,7 +146,7 @@ class StructOpenZLInput : public OpenZLInput {
         return std::make_unique<StructOpenZLInput>(std::forward<Args>(args)...);
     }
 
-    std::vector<Input> inputs() const
+    std::vector<Input> inputs() const override
     {
         std::vector<Input> result;
         result.push_back(
@@ -152,7 +154,7 @@ class StructOpenZLInput : public OpenZLInput {
         return result;
     }
 
-    ~StructOpenZLInput() = default;
+    ~StructOpenZLInput() override = default;
 
    private:
     std::string data_;
@@ -184,14 +186,14 @@ class StringOpenZLInput : public OpenZLInput {
         return std::make_unique<StringOpenZLInput>(std::forward<Args>(args)...);
     }
 
-    std::vector<Input> inputs() const
+    std::vector<Input> inputs() const override
     {
         std::vector<Input> result;
         result.push_back(Input::refString(data_, lens_));
         return result;
     }
 
-    ~StringOpenZLInput() = default;
+    ~StringOpenZLInput() override = default;
 
    private:
     std::string data_;
@@ -225,6 +227,8 @@ class MultiOpenZLInput : public OpenZLInput {
         }
         return ins;
     }
+
+    ~MultiOpenZLInput() override = default;
 
    private:
     std::vector<std::unique_ptr<OpenZLInput>> inputs_;
