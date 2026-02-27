@@ -43,11 +43,6 @@ static ZL_RESULT_OF(ZL_SplitInstructions)
         getSplitInstructions(ZL_Encoder* eictx, const ZL_Input* in)
 {
     ZL_DLOG(SEQ, "getSplitInstructions()");
-    if (ZL_Input_numElts(in) == 0) {
-        // Special case: Empty input means no segments
-        ZL_SplitInstructions si = { NULL, 0 };
-        return ZL_RESULT_WRAP_VALUE(ZL_SplitInstructions, si);
-    }
 
     ZL_SplitState allocState = { eictx };
 
@@ -81,17 +76,15 @@ static ZL_RESULT_OF(ZL_SplitInstructions)
             nbSegments.paramId,
             ZL_LP_INVALID_PARAMID,
             "can't find any instruction to split");
+    if (nbSegments.paramValue == 0) {
+        ZL_SplitInstructions r = { NULL, 0 };
+        return ZL_RESULT_WRAP_VALUE(ZL_SplitInstructions, r);
+    }
     ZL_RET_T_IF_NULL(
             ZL_SplitInstructions,
             nodeParameter_invalid,
             segmentSizes.paramRef,
             "instructions to split are NULL");
-    ZL_RET_T_IF_EQ(
-            ZL_SplitInstructions,
-            nodeParameter_invalidValue,
-            nbSegments.paramValue,
-            0,
-            "instructions to split are empty");
     ZL_SplitInstructions r;
     r.segmentSizes = segmentSizes.paramRef;
     r.nbSegments   = (size_t)nbSegments.paramValue;

@@ -420,7 +420,8 @@ ZL_Report DT_voTransformWrapper(
             dictx,
             ZL_codemodDatasAsInputs(ins),
             nbO1s,
-            ZL_codemodDatasAsInputs(ins) + nbO1s,
+            nbO1s ? ZL_codemodDatasAsInputs(ins) + nbO1s
+                  : ZL_codemodDatasAsInputs(ins),
             nbIns - nbO1s);
 }
 
