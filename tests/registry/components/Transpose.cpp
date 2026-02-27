@@ -1,6 +1,8 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "openzl/cpp/codecs/Transpose.hpp"
+#include "openzl/codecs/zl_store.h"
+#include "openzl/codecs/zl_transpose.h"
 #include "tests/registry/OpenZLComponents.h"
 #include "tests/registry/OpenZLInput.h"
 
@@ -21,6 +23,14 @@ class TransposeComponent : public OpenZLComponent {
     std::vector<NodeID> predefinedNodes(Compressor& compressor) const override
     {
         return { nodes::TransposeSplit{}.parameterize(compressor) };
+    }
+
+    std::vector<GraphID> predefinedGraphs(Compressor& compressor) const override
+    {
+        return {
+            ZL_Compressor_registerTransposeSplitGraph(
+                    compressor.get(), ZL_GRAPH_STORE),
+        };
     }
 
     std::vector<std::unique_ptr<OpenZLInput>> predefinedInputs() const override
