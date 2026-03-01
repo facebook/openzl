@@ -441,22 +441,26 @@ void ChunkTrace::on_codecEncode_end(
     ++currCodecNum_;
 }
 
-void ChunkTrace::on_ZL_Encoder_getScratchSpace(ZL_Encoder*, size_t) {}
+void ChunkTrace::on_ZL_Encoder_getScratchSpace(
+        ZL_Encoder* /*ei*/,
+        size_t /*size*/)
+{
+}
 
 void ChunkTrace::on_ZL_Encoder_sendCodecHeader(
-        ZL_Encoder*,
-        const void*,
+        ZL_Encoder* /*encoder*/,
+        const void* /*trh*/,
         size_t trhSize)
 {
     codecInfo_[currCodecNum_].cHeaderSize = trhSize;
 }
 
 void ChunkTrace::on_ZL_Encoder_createTypedStream(
-        ZL_Encoder*,
-        int,
-        size_t eltsCapacity,
-        size_t eltWidth,
-        ZL_Output* createdStream)
+        ZL_Encoder* /*encoder*/,
+        int /*outStreamIndex*/,
+        size_t /*eltsCapacity*/,
+        size_t /*eltWidth*/,
+        ZL_Output* /*createdStream*/)
 {
 }
 
@@ -534,10 +538,10 @@ void ChunkTrace::on_migraphEncode_end(
 }
 
 void ChunkTrace::on_cctx_convertOneInput(
-        const ZL_CCtx* const,
+        const ZL_CCtx* const /*cctx*/,
         const ZL_Data* const input,
-        const ZL_Type,
-        const ZL_Type,
+        const ZL_Type /*inType*/,
+        const ZL_Type /*portTypeMask*/,
         const ZL_Report conversionResult)
 {
     if (ZL_isError(conversionResult)) {
@@ -585,7 +589,7 @@ void ChunkTrace::on_segmenterEncode_start(ZL_Segmenter* segCtx)
     }
 }
 
-void ChunkTrace::on_segmenterEncode_end(ZL_Segmenter*, ZL_Report r)
+void ChunkTrace::on_segmenterEncode_end(ZL_Segmenter* /*segCtx*/, ZL_Report r)
 {
     if (ZL_isError(r)) {
         codecInfo_[currCodecNum_].cFailure = r;
@@ -593,16 +597,18 @@ void ChunkTrace::on_segmenterEncode_end(ZL_Segmenter*, ZL_Report r)
 }
 
 void ChunkTrace::on_ZL_Segmenter_processChunk_start(
-        ZL_Segmenter*,
-        const size_t[],
-        size_t,
-        ZL_GraphID,
-        const ZL_RuntimeGraphParameters*)
+        ZL_Segmenter* /*segCtx*/,
+        const size_t /*numElts*/[],
+        size_t /*numInputs*/,
+        ZL_GraphID /*startingGraphID*/,
+        const ZL_RuntimeGraphParameters* /*rGraphParams*/)
 {
     initTrace();
 }
 
-void ChunkTrace::on_ZL_Segmenter_processChunk_end(ZL_Segmenter*, ZL_Report r)
+void ChunkTrace::on_ZL_Segmenter_processChunk_end(
+        ZL_Segmenter* /*segCtx*/,
+        ZL_Report r)
 {
     finalizeTrace(r);
 }
