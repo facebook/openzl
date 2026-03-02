@@ -14,6 +14,7 @@ ZL_Report DI_bitSplit(
         const ZL_Input* variableSrcs[],
         size_t nbVariableSrcs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_ASSERT_NN(dictx);
     ZL_ASSERT_EQ(nbCompulsorySrcs, 0);
     (void)compulsorySrcs;
@@ -24,10 +25,10 @@ ZL_Report DI_bitSplit(
     ZL_RBuffer const header = ZL_Decoder_getCodecHeader(dictx);
 
     // Validate: header must have at least outputEltWidth byte
-    ZL_RET_R_IF_LT(
-            corruption,
+    ZL_ERR_IF_LT(
             header.size,
             1,
+            corruption,
             "bitSplit: header must contain outputEltWidth");
 
     // Parse header
@@ -36,19 +37,19 @@ ZL_Report DI_bitSplit(
     const uint8_t* storedWidths  = (const uint8_t*)header.start + 1;
 
     // Validate outputEltWidth
-    ZL_RET_R_IF_NOT(
-            corruption,
+    ZL_ERR_IF_NOT(
             outputEltWidth == 1 || outputEltWidth == 2 || outputEltWidth == 4
                     || outputEltWidth == 8,
+            corruption,
             "bitSplit: invalid outputEltWidth in header");
 
     // Compute sum of stored widths and determine last width
     size_t sumStoredWidths = 0;
     for (size_t i = 0; i < nbStoredWidths; i++) {
-        ZL_RET_R_IF_EQ(
-                corruption,
+        ZL_ERR_IF_EQ(
                 storedWidths[i],
                 0,
+                corruption,
                 "bitSplit: bit width cannot be zero");
         sumStoredWidths += storedWidths[i];
     }
@@ -56,10 +57,10 @@ ZL_Report DI_bitSplit(
     size_t const outputEltWidthBits = (size_t)outputEltWidth * 8;
 
     // Validate sum doesn't exceed output width
-    ZL_RET_R_IF_GT(
-            corruption,
+    ZL_ERR_IF_GT(
             sumStoredWidths,
             outputEltWidthBits,
+            corruption,
             "bitSplit: sum of stored widths exceeds output element width");
 
     // Determine coverage based on number of input streams:
@@ -78,10 +79,10 @@ ZL_Report DI_bitSplit(
     } else if (nbVariableSrcs == nbStoredWidths + 1) {
         // Full coverage: add computed last width
         ZL_ASSERT_LE(nbStoredWidths, 64); // already checked via sumStoredWidths
-        ZL_RET_R_IF_EQ(
-                corruption,
+        ZL_ERR_IF_EQ(
                 lastWidth,
                 0,
+                corruption,
                 "bitSplit: invalid last width (set to 0)");
         ZL_memcpy(bitWidths_local, storedWidths, nbStoredWidths);
         bitWidths_local[nbStoredWidths] = (uint8_t)lastWidth;
@@ -89,11 +90,11 @@ ZL_Report DI_bitSplit(
         bitWidths = bitWidths_local;
         nbWidths  = nbStoredWidths + 1;
     } else {
-        ZL_RET_R_IF_NOT(corruption, 0, "bitSplit: input stream count mismatch");
+        ZL_ERR_IF_NOT(0, corruption, "bitSplit: input stream count mismatch");
     }
 
     // Validate: must have at least one width
-    ZL_RET_R_IF_EQ(corruption, nbWidths, 0, "bitSplit: no bit widths present");
+    ZL_ERR_IF_EQ(nbWidths, 0, corruption, "bitSplit: no bit widths present");
 
     // Validate all input streams, and collect their pointers
     size_t nbElts = 0;
@@ -111,27 +112,27 @@ ZL_Report DI_bitSplit(
         if (i == 0) {
             nbElts = streamNbElts;
         } else {
-            ZL_RET_R_IF_NE(
-                    corruption,
+            ZL_ERR_IF_NE(
                     streamNbElts,
                     nbElts,
+                    corruption,
                     "bitSplit: all input streams must have same element count");
         }
 
         // Verify bit width doesn't exceed input stream capacity
         size_t const inputEltWidthBits = ZL_Input_eltWidth(in) * 8;
-        ZL_RET_R_IF_GT(
-                corruption,
+        ZL_ERR_IF_GT(
                 bitWidths[i],
                 inputEltWidthBits,
+                corruption,
                 "bitSplit: bit width exceeds input stream element width");
 
         // Verify element width matches expected
         size_t const expectedWidth = ZL_bitSplit_outputEltWidth(bitWidths[i]);
-        ZL_RET_R_IF_NE(
-                corruption,
+        ZL_ERR_IF_NE(
                 ZL_Input_eltWidth(in),
                 expectedWidth,
+                corruption,
                 "bitSplit: input stream element width mismatch");
 
         inputPtrs[i]   = ZL_Input_ptr(in);
@@ -141,7 +142,7 @@ ZL_Report DI_bitSplit(
     // Create output stream
     ZL_Output* const out =
             ZL_Decoder_create1OutStream(dictx, nbElts, outputEltWidth);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
 
     // Kernel owns the hot loop - single call processes all elements
     ZL_bitSplitDecode(
@@ -153,6 +154,6 @@ ZL_Report DI_bitSplit(
             bitWidths,
             nbWidths);
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, nbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, nbElts));
     return ZL_returnSuccess();
 }
