@@ -172,15 +172,9 @@ class CodeGeneratorImpl {
         // TODO: eventually we want to be able to generate scan records. For
         // now, we define them as a structure type.
 
-        // Field types
+        // Field types (sema guarantees each field is an ASSUME op)
         for (const auto& field : record.fields()) {
-            // We expect assign + consume operations
             auto assume = field->as_op();
-            if (!assume || assume->op() != Op::ASSUME) {
-                throw CodegenError(
-                        assume->loc(),
-                        "Record field must be an assume operation!");
-            }
             generateNode(assume->args()[1], output);
         }
         // Number of fields
@@ -252,12 +246,7 @@ class CodeGeneratorImpl {
                 break;
             }
             case Op::ASSIGN: {
-                auto maybe_var = op.args()[0];
-                if (!maybe_var->as_var()) {
-                    throw InvariantViolation(
-                            maybe_var->loc(),
-                            "Left-hand side of assignment must be a variable name!");
-                }
+                // Sema guarantees LHS is a variable
                 // TODO: actually handle variable assignment
                 break;
             }
@@ -265,14 +254,6 @@ class CodeGeneratorImpl {
             case Op::CONSUME: {
                 const auto val =
                         (op.op() == Op::ASSUME) ? op.args()[1] : op.args()[0];
-                const auto type = val->converted_node_type();
-
-                if (type == ConvertedNodeType::OP
-                    || type == ConvertedNodeType::NUM) {
-                    throw InvariantViolation(
-                            val->loc(),
-                            "Consume operation expects a valid field type.");
-                }
 
                 // Tag
                 output.emplace_back("push.tag " + std::to_string(tag_++));
