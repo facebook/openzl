@@ -9,6 +9,7 @@
 
 ZL_Report EI_concat(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_GE(nbIns, 1);
     ZL_ASSERT_NN(ins);
     size_t nbElts   = 0;
@@ -16,42 +17,41 @@ ZL_Report EI_concat(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     size_t eltWidth = ZL_Input_eltWidth(ins[0]);
     for (size_t n = 0; n < nbIns; n++) {
         ZL_ASSERT_NN(ins[n]);
-        ZL_RET_R_IF_NE(
-                node_unexpected_input_type,
+        ZL_ERR_IF_NE(
                 ZL_Input_type(ins[n]),
                 type,
-                "Concat types must be homogenous");
-        ZL_RET_R_IF_NE(
                 node_unexpected_input_type,
+                "Concat types must be homogenous");
+        ZL_ERR_IF_NE(
                 ZL_Input_eltWidth(ins[n]),
                 eltWidth,
+                node_unexpected_input_type,
                 "Concat widths must be homogenous");
 
-        ZL_RET_R_IF_GE(
-                node_invalid_input, ZL_Input_numElts(ins[n]), UINT32_MAX);
-        ZL_RET_R_IF(
-                node_invalid_input,
-                ZL_overflowAddST(nbElts, ZL_Input_numElts(ins[n]), &nbElts));
+        ZL_ERR_IF_GE(ZL_Input_numElts(ins[n]), UINT32_MAX, node_invalid_input);
+        ZL_ERR_IF(
+                ZL_overflowAddST(nbElts, ZL_Input_numElts(ins[n]), &nbElts),
+                node_invalid_input);
     }
     size_t eltsCapacity = nbElts;
     if (type == ZL_Type_string) {
         eltWidth     = 1;
         eltsCapacity = 0;
         for (size_t n = 0; n < nbIns; n++) {
-            ZL_RET_R_IF(
-                    node_invalid_input,
+            ZL_ERR_IF(
                     ZL_overflowAddST(
                             eltsCapacity,
                             ZL_Input_contentSize(ins[n]),
-                            &eltsCapacity));
+                            &eltsCapacity),
+                    node_invalid_input);
         }
     }
 
     ZL_Output* const sizes = ZL_Encoder_createTypedStream(eictx, 0, nbIns, 4);
-    ZL_RET_R_IF_NULL(allocation, sizes);
+    ZL_ERR_IF_NULL(sizes, allocation);
     ZL_Output* const out =
             ZL_Encoder_createTypedStream(eictx, 1, eltsCapacity, eltWidth);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
 
     uint8_t* outPtr = (uint8_t*)ZL_Output_ptr(out);
     ZL_ASSERT_NN(outPtr);
@@ -90,7 +90,7 @@ ZL_Report EI_concat(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     ZL_ASSERT_EQ(outPtr, outEnd);
     (void)outEnd;
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, nbElts));
-    ZL_RET_R_IF_ERR(ZL_Output_commit(sizes, nbIns));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, nbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(sizes, nbIns));
     return ZL_returnSuccess();
 }

@@ -14,6 +14,7 @@ ZL_Report DI_dedup_num(
         const ZL_Input* variableSrcs[],
         size_t nbVariableSrcs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_ASSERT_EQ(nbVariableSrcs, 0);
     (void)variableSrcs;
     ZL_ASSERT_EQ(nbCompulsorySrcs, 1);
@@ -30,7 +31,7 @@ ZL_Report DI_dedup_num(
     for (size_t n = 0; n < nbRegens; n++) {
         ZL_Output* const out = DI_outStream_asReference(
                 dictx, (int)n, numSrc, 0, eltWidth, eltCount);
-        ZL_RET_R_IF_NULL(allocation, out);
+        ZL_ERR_IF_NULL(out, allocation);
     }
     return ZL_returnSuccess();
 }
