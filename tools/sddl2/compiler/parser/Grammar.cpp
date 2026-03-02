@@ -404,16 +404,6 @@ class NegationRule : public UnaryOpRule {
 
     ASTPtr do_gen(ASTPtr op, ArgsVec args) const override
     {
-        const auto& arg           = args.at(0);
-        const auto* const arg_num = dynamic_cast<const ASTNum*>(&some(arg));
-        if (arg_num != NULL) {
-            // Optimization: if the rhs is a literal number, fold the
-            // negation into the literal rather than emit a negation
-            // operation on the positive literal.
-            return std::make_shared<ASTNum>(
-                    Token{ some(op).loc() + arg->loc(), -arg_num->val() });
-        }
-
         return std::make_shared<ASTOp>(
                 some(op).loc(), Op::NEG, std::move(args));
     }
@@ -547,7 +537,6 @@ const std::vector<std::unique_ptr<const GrammarRule>> grammar_rules{ []() {
     // Ops
     add_rule<UnaryOpRule>(r, Symbol::EXPECT, Precedence::ASSIGNMENT);
     add_rule<UnaryOpRule>(r, Symbol::SIZEOF);
-    add_rule<NegationRule>(r);
 
     add_rule<BinaryOpRule>(r, Symbol::ASSIGN, Precedence::ASSIGNMENT);
     add_rule<BinaryOpRule>(r, Symbol::ASSUME, Precedence::ASSIGNMENT);
@@ -564,6 +553,7 @@ const std::vector<std::unique_ptr<const GrammarRule>> grammar_rules{ []() {
 
     add_rule<BinaryOpRule>(r, Symbol::ADD, Precedence::ADD_SUB);
     add_rule<BinaryOpRule>(r, Symbol::SUB, Precedence::ADD_SUB);
+    add_rule<NegationRule>(r);
 
     add_rule<BinaryOpRule>(r, Symbol::MUL, Precedence::MUL_DIV_MOD);
     add_rule<BinaryOpRule>(r, Symbol::DIV, Precedence::MUL_DIV_MOD);
