@@ -145,6 +145,7 @@ static ZL_Report tokensDynGraph(ZL_Graph* gctx, ZL_Edge* tokens)
 static ZL_Report
 quantizeDynGraph(ZL_Graph* gctx, ZL_Edge* stream, ZL_NodeID quantizeNode)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     ZL_TRY_LET_T(ZL_EdgeList, streams, ZL_Edge_runNode(stream, quantizeNode));
     ZL_ASSERT_EQ(streams.nbEdges, 2);
 
@@ -155,10 +156,10 @@ quantizeDynGraph(ZL_Graph* gctx, ZL_Edge* stream, ZL_NodeID quantizeNode)
     } else {
         codesGraph = ZL_GRAPH_FSE;
     }
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(codes, codesGraph));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(codes, codesGraph));
 
     ZL_Edge* const extraBits = streams.edges[1];
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(extraBits, ZL_GRAPH_STORE));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(extraBits, ZL_GRAPH_STORE));
 
     return ZL_returnSuccess();
 }
@@ -173,7 +174,8 @@ static size_t getMinStreamSize(ZL_Graph* gctx)
 
 ZL_Report EI_fieldLzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
 {
-    ZL_RET_R_IF(graph_invalidNumInputs, nbIns != 1);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
+    ZL_ERR_IF(nbIns != 1, graph_invalidNumInputs);
     ZL_Edge* input     = inputs[0];
     ZL_Input const* in = ZL_Edge_getData(input);
     ZL_ASSERT_NE(ZL_Input_type(in) & (ZL_Type_struct | ZL_Type_numeric), 0);
@@ -226,7 +228,7 @@ ZL_Report EI_fieldLzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
         size_t const streamSize =
                 ZL_Input_contentSize(ZL_Edge_getData(streams.edges[i]));
         if (streamSize < streamSizeLimit) {
-            ZL_RET_R_IF_ERR(
+            ZL_ERR_IF_ERR(
                     ZL_Edge_setDestination(streams.edges[i], ZL_GRAPH_STORE));
             successorSet[i] = 1;
             continue;
@@ -234,13 +236,13 @@ ZL_Report EI_fieldLzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
 
         ZL_IntParam const param = ZL_Graph_getLocalIntParam(gctx, i);
         if (param.paramId == i) {
-            ZL_RET_R_IF_LT(nodeParameter_invalid, param.paramValue, 0);
-            ZL_RET_R_IF_GT(
-                    nodeParameter_invalid,
+            ZL_ERR_IF_LT(param.paramValue, 0, nodeParameter_invalid);
+            ZL_ERR_IF_GT(
                     (size_t)param.paramValue,
-                    customGraphs.nbGraphIDs);
+                    customGraphs.nbGraphIDs,
+                    nodeParameter_invalid);
             ZL_GraphID const graph = customGraphs.graphids[param.paramValue];
-            ZL_RET_R_IF_ERR(ZL_Edge_setDestination(streams.edges[i], graph));
+            ZL_ERR_IF_ERR(ZL_Edge_setDestination(streams.edges[i], graph));
             successorSet[i] = 1;
         }
     }
@@ -256,22 +258,22 @@ ZL_Report EI_fieldLzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
 
     // Run the successors
     if (literals != NULL) {
-        ZL_RET_R_IF_ERR(
+        ZL_ERR_IF_ERR(
                 ZL_Edge_setDestination(literals, ZL_GRAPH_FIELD_LZ_LITERALS));
     }
     if (tokens != NULL) {
-        ZL_RET_R_IF_ERR(tokensDynGraph(gctx, tokens));
+        ZL_ERR_IF_ERR(tokensDynGraph(gctx, tokens));
     }
     if (offsets != NULL) {
-        ZL_RET_R_IF_ERR(
+        ZL_ERR_IF_ERR(
                 quantizeDynGraph(gctx, offsets, ZL_NODE_QUANTIZE_OFFSETS));
     }
     if (extraLiteralLengths != NULL) {
-        ZL_RET_R_IF_ERR(quantizeDynGraph(
+        ZL_ERR_IF_ERR(quantizeDynGraph(
                 gctx, extraLiteralLengths, ZL_NODE_QUANTIZE_LENGTHS));
     }
     if (extraMatchLengths != NULL) {
-        ZL_RET_R_IF_ERR(quantizeDynGraph(
+        ZL_ERR_IF_ERR(quantizeDynGraph(
                 gctx, extraMatchLengths, ZL_NODE_QUANTIZE_LENGTHS));
     }
 
@@ -281,15 +283,16 @@ ZL_Report EI_fieldLzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
 ZL_Report
 EI_fieldLzLiteralsDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     (void)gctx;
-    ZL_RET_R_IF(graph_invalidNumInputs, nbIns != 1);
+    ZL_ERR_IF(nbIns != 1, graph_invalidNumInputs);
     ZL_Edge* literals = inputs[0];
     // Transpose
     // TODO(terrelln): Determine if we should transpose at all.
     // E.g. if we have a small number of literals don't transpose.
     size_t const eltWidth = ZL_Input_eltWidth(ZL_Edge_getData(literals));
     if (eltWidth == 1) {
-        ZL_RET_R_IF_ERR(ZL_Edge_setDestination(
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(
                 literals, ZL_GRAPH_FIELD_LZ_LITERALS_CHANNEL));
         return ZL_returnSuccess();
     }
@@ -301,7 +304,7 @@ EI_fieldLzLiteralsDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
     // E.g. if stream i is uncompressible, then stream i+1 is likely to be
     // uncompressible, if we're compressing numeric data.
     for (size_t i = 0; i < streams.nbEdges; ++i) {
-        ZL_RET_R_IF_ERR(ZL_Edge_setDestination(
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(
                 streams.edges[i], ZL_GRAPH_FIELD_LZ_LITERALS_CHANNEL));
     }
 

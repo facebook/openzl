@@ -15,7 +15,7 @@ ZL_Report EI_interleave(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
             node_invalid_input,
             "Too many inputs. Only support up to 512 inputs for now");
     for (size_t i = 0; i < nbIns; i++) {
-        ZL_RET_R_IF_NULL(node_invalid_input, ins[i]);
+        ZL_ERR_IF_NULL(ins[i], node_invalid_input);
         ZL_ERR_IF_NE(
                 ZL_Input_type(ins[i]),
                 ZL_Type_string,
@@ -37,7 +37,7 @@ ZL_Report EI_interleave(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     ZL_Encoder_sendCodecHeader(eictx, &nbInsU32, sizeof(nbInsU32));
     ZL_Output* out = ZL_Encoder_createStringStream(
             eictx, 0, nbStrsPerInput * nbIns, totSize);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
 
     char* ptr           = ZL_Output_ptr(out);
     uint32_t* strLenPtr = ZL_Output_stringLens(out);
@@ -60,6 +60,6 @@ ZL_Report EI_interleave(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
             ++strLenPtr;
         }
     }
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, nbStrsPerInput * nbIns));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, nbStrsPerInput * nbIns));
     return ZL_returnSuccess();
 }

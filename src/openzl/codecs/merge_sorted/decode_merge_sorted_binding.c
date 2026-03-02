@@ -13,10 +13,11 @@ static ZL_Report fillDstPtrsFromHeader(
         size_t bitsetWidth,
         size_t nbElts)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     uint64_t maxDstSize = 0;
-    ZL_RET_R_IF(
-            corruption,
+    ZL_ERR_IF(
             ZL_overflowMulU64(bitsetWidth * 8, nbElts, &maxDstSize),
+            corruption,
             "Multiplication overflowed");
 
     ZL_RBuffer const header = ZL_Decoder_getCodecHeader(dictx);
@@ -26,22 +27,22 @@ static ZL_Report fillDstPtrsFromHeader(
     uint64_t dstSize        = 0;
     while (hp != he) {
         ZL_TRY_LET_T(uint64_t, size, ZL_varintDecode(&hp, he));
-        ZL_RET_R_IF(
-                corruption,
+        ZL_ERR_IF(
                 ZL_overflowAddU64(dstSize, size, &dstSize),
+                corruption,
                 "Addition overflowed");
     }
-    ZL_RET_R_IF_GT(
-            corruption, dstSize, maxDstSize, "dstSize bigger than possible!");
+    ZL_ERR_IF_GT(
+            dstSize, maxDstSize, corruption, "dstSize bigger than possible!");
 
     ZL_Output* dst = ZL_Decoder_create1OutStream(dictx, dstSize, 4);
-    ZL_RET_R_IF_NULL(allocation, dst);
+    ZL_ERR_IF_NULL(dst, allocation);
     uint32_t* dstPtr = ZL_Output_ptr(dst);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(dst, dstSize));
+    ZL_ERR_IF_ERR(ZL_Output_commit(dst, dstSize));
     hp            = hs;
     size_t nbDsts = 0;
     while (hp != he) {
-        ZL_RET_R_IF_EQ(corruption, nbDsts, 64);
+        ZL_ERR_IF_EQ(nbDsts, 64, corruption);
         ZL_RESULT_OF(uint64_t) size = ZL_varintDecode(&hp, he);
         ZL_ASSERT(!ZL_RES_isError(size));
         dsts[nbDsts] = dstPtr;
@@ -50,10 +51,10 @@ static ZL_Report fillDstPtrsFromHeader(
         ++nbDsts;
     }
 
-    ZL_RET_R_IF_GT(
-            corruption,
+    ZL_ERR_IF_GT(
             nbDsts,
             bitsetWidth * 8,
+            corruption,
             "Too many dsts for the width of the bitset");
 
     return ZL_returnValue(nbDsts);
@@ -61,19 +62,20 @@ static ZL_Report fillDstPtrsFromHeader(
 
 ZL_Report DI_mergeSorted(ZL_Decoder* dictx, ZL_Input const* ins[])
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_Input const* bitset = ins[0];
     ZL_Input const* merged = ins[1];
 
-    ZL_RET_R_IF_NE(
-            corruption, ZL_Input_numElts(merged), ZL_Input_numElts(bitset));
-    ZL_RET_R_IF_NE(corruption, ZL_Input_eltWidth(merged), 4);
+    ZL_ERR_IF_NE(
+            ZL_Input_numElts(merged), ZL_Input_numElts(bitset), corruption);
+    ZL_ERR_IF_NE(ZL_Input_eltWidth(merged), 4, corruption);
     size_t const bitsetWidth = ZL_Input_eltWidth(bitset);
 
     uint32_t* dsts[64];
     uint32_t* dstEnds[64];
     ZL_Report const nbDsts = fillDstPtrsFromHeader(
             dictx, dsts, dstEnds, bitsetWidth, ZL_Input_numElts(bitset));
-    ZL_RET_R_IF_ERR(nbDsts);
+    ZL_ERR_IF_ERR(nbDsts);
 
     bool success;
     switch (bitsetWidth) {
@@ -114,9 +116,9 @@ ZL_Report DI_mergeSorted(ZL_Decoder* dictx, ZL_Input const* ins[])
                     ZL_Input_numElts(merged));
             break;
         default:
-            ZL_RET_R_ERR(corruption, "Bad bitset width!");
+            ZL_ERR(corruption, "Bad bitset width!");
     }
-    ZL_RET_R_IF_NOT(corruption, success);
+    ZL_ERR_IF_NOT(success, corruption);
 
     return ZL_returnSuccess();
 }

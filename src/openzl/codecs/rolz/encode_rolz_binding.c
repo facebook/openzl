@@ -10,6 +10,7 @@
 // ZL_TypedEncoderFn
 ZL_Report EI_rolz_typed(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
     const ZL_Input* in = ins[0];
@@ -23,7 +24,7 @@ ZL_Report EI_rolz_typed(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     ZL_ASSERT_GE(dstCapacity, 4);
     ZL_Output* const out =
             ZL_Encoder_createTypedStream(eictx, 0, dstCapacity, 1);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
     void* const dst = ZL_Output_ptr(out);
     ZL_ASSERT_LT(srcSize, INT_MAX);
     ZL_writeLE32(dst, (uint32_t)srcSize);
@@ -32,9 +33,9 @@ ZL_Report EI_rolz_typed(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     // deprecated) ZL_Report API To be updated
     ZL_Report const r =
             ZS_rolzCompress((char*)dst + 4, dstCapacity - 4, src, srcSize);
-    ZL_RET_R_IF(transform_executionFailure, ZL_isError(r));
+    ZL_ERR_IF(ZL_isError(r), transform_executionFailure);
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, ZL_validResult(r) + 4));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, ZL_validResult(r) + 4));
     return ZL_returnValue(1);
 }
 
@@ -42,6 +43,7 @@ ZL_Report EI_rolz_typed(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 ZL_Report
 EI_fastlz_typed(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
     const ZL_Input* in = ins[0];
@@ -55,7 +57,7 @@ EI_fastlz_typed(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     ZL_ASSERT_GE(dstCapacity, 4);
     ZL_Output* const out =
             ZL_Encoder_createTypedStream(eictx, 0, dstCapacity, 1);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
     void* const dst = ZL_Output_ptr(out);
     ZL_ASSERT_LT(srcSize, INT_MAX);
     ZL_writeLE32(dst, (uint32_t)srcSize);
@@ -64,9 +66,9 @@ EI_fastlz_typed(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     // deprecated) ZL_Report API To be updated
     ZL_Report const r =
             ZS_fastLzCompress((char*)dst + 4, dstCapacity - 4, src, srcSize);
-    ZL_RET_R_IF(transform_executionFailure, ZL_isError(r));
+    ZL_ERR_IF(ZL_isError(r), transform_executionFailure);
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, ZL_validResult(r) + 4));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, ZL_validResult(r) + 4));
     return ZL_returnValue(1);
 }
 

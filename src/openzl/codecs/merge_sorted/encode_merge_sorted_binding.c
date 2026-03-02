@@ -50,10 +50,11 @@ static ZL_Report writeHeader(
         uint32_t const* srcEnds[64],
         size_t nbSrcs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     uint8_t* header =
             ZL_Encoder_getScratchSpace(eictx, nbSrcs * ZL_VARINT_LENGTH_64);
     uint8_t* hp = header;
-    ZL_RET_R_IF_NULL(allocation, header);
+    ZL_ERR_IF_NULL(header, allocation);
     for (size_t i = 0; i < nbSrcs; ++i) {
         uint64_t const srcSize = (uint64_t)(srcEnds[i] - srcs[i]);
         hp += ZL_varintEncode(srcSize, hp);
@@ -64,11 +65,12 @@ static ZL_Report writeHeader(
 
 ZL_Report EI_mergeSorted(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
     const ZL_Input* in  = ins[0];
     size_t const nbElts = ZL_Input_numElts(in);
-    ZL_RET_R_IF_NE(node_invalid_input, ZL_Input_eltWidth(in), 4);
+    ZL_ERR_IF_NE(ZL_Input_eltWidth(in), 4, node_invalid_input);
     uint32_t const* srcs[64];
     uint32_t const* srcEnds[64];
     ZL_TRY_LET_R(nbSrcs, getSortedRuns(in, srcs, srcEnds));
@@ -80,10 +82,10 @@ ZL_Report EI_mergeSorted(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
             ZL_Encoder_createTypedStream(eictx, 0, nbElts, bitsetWidth);
     ZL_Output* merged = ZL_Encoder_createTypedStream(eictx, 1, nbElts, 4);
 
-    ZL_RET_R_IF_NULL(allocation, bitset);
-    ZL_RET_R_IF_NULL(allocation, merged);
+    ZL_ERR_IF_NULL(bitset, allocation);
+    ZL_ERR_IF_NULL(merged, allocation);
 
-    ZL_RET_R_IF_ERR(writeHeader(eictx, srcs, srcEnds, nbSrcs));
+    ZL_ERR_IF_ERR(writeHeader(eictx, srcs, srcEnds, nbSrcs));
 
     ZL_Report nbUniqueValues = ZL_returnValue(0);
     if (nbSrcs > 0) {
@@ -126,10 +128,10 @@ ZL_Report EI_mergeSorted(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
         }
     }
 
-    ZL_RET_R_IF_ERR(nbUniqueValues);
+    ZL_ERR_IF_ERR(nbUniqueValues);
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(bitset, ZL_validResult(nbUniqueValues)));
-    ZL_RET_R_IF_ERR(ZL_Output_commit(merged, ZL_validResult(nbUniqueValues)));
+    ZL_ERR_IF_ERR(ZL_Output_commit(bitset, ZL_validResult(nbUniqueValues)));
+    ZL_ERR_IF_ERR(ZL_Output_commit(merged, ZL_validResult(nbUniqueValues)));
 
     return ZL_returnSuccess();
 }

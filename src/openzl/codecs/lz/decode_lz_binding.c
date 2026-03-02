@@ -11,6 +11,7 @@
 
 ZL_Report DI_fieldLz(ZL_Decoder* dictx, const ZL_Input* ins[])
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_Input const* const literals            = ins[0];
     ZL_Input const* const tokens              = ins[1];
     ZL_Input const* const offsets             = ins[2];
@@ -24,32 +25,32 @@ ZL_Report DI_fieldLz(ZL_Decoder* dictx, const ZL_Input* ins[])
     ZL_ASSERT_NN(ins[4]);
 
     size_t const eltWidth = ZL_Input_eltWidth(literals);
-    ZL_RET_R_IF_NOT(corruption, ZL_isPow2(eltWidth));
+    ZL_ERR_IF_NOT(ZL_isPow2(eltWidth), corruption);
 
-    ZL_RET_R_IF_NE(corruption, 2, ZL_Input_eltWidth(tokens));
-    ZL_RET_R_IF_NE(corruption, 4, ZL_Input_eltWidth(offsets));
-    ZL_RET_R_IF_NE(corruption, 4, ZL_Input_eltWidth(extraLiteralLengths));
-    ZL_RET_R_IF_NE(corruption, 4, ZL_Input_eltWidth(extraMatchLengths));
+    ZL_ERR_IF_NE(2, ZL_Input_eltWidth(tokens), corruption);
+    ZL_ERR_IF_NE(4, ZL_Input_eltWidth(offsets), corruption);
+    ZL_ERR_IF_NE(4, ZL_Input_eltWidth(extraLiteralLengths), corruption);
+    ZL_ERR_IF_NE(4, ZL_Input_eltWidth(extraMatchLengths), corruption);
 
-    ZL_RET_R_IF_NE(
-            corruption,
+    ZL_ERR_IF_NE(
             ZL_Input_eltWidth(tokens),
             2,
-            "FieldLz tokens should be 2 bytes width");
-    ZL_RET_R_IF_NE(
             corruption,
+            "FieldLz tokens should be 2 bytes width");
+    ZL_ERR_IF_NE(
             ZL_Input_eltWidth(offsets),
             4,
-            "FieldLz offsets should be 4 bytes width");
-    ZL_RET_R_IF_NE(
             corruption,
+            "FieldLz offsets should be 4 bytes width");
+    ZL_ERR_IF_NE(
             ZL_Input_eltWidth(extraLiteralLengths),
             4,
-            "FieldLz extraLiteralLengths should be 4 bytes width");
-    ZL_RET_R_IF_NE(
             corruption,
+            "FieldLz extraLiteralLengths should be 4 bytes width");
+    ZL_ERR_IF_NE(
             ZL_Input_eltWidth(extraMatchLengths),
             4,
+            corruption,
             "FieldLz extraMatchLengths should be 4 bytes width");
 
     ZL_FieldLz_InSequences src = {
@@ -78,18 +79,18 @@ ZL_Report DI_fieldLz(ZL_Decoder* dictx, const ZL_Input* ins[])
         ZL_RESULT_OF(uint64_t) const r = ZL_varintDecode(&hdr, end);
         if (ZL_RES_isError(r)) {
             ZL_DLOG(ERROR, "header decoding failed");
-            ZL_RET_R_ERR(srcSize_tooSmall);
+            ZL_ERR(srcSize_tooSmall);
         }
         if (hdr < end) {
             ZL_DLOG(ERROR, "header leftover bytes");
-            ZL_RET_R_ERR(GENERIC);
+            ZL_ERR(GENERIC);
         }
         dstEltsCapacity = ZL_RES_value(r);
     }
 
     ZL_Output* dst =
             ZL_Decoder_create1OutStream(dictx, dstEltsCapacity, eltWidth);
-    ZL_RET_R_IF_NULL(allocation, dst);
+    ZL_ERR_IF_NULL(dst, allocation);
 
     ZL_Report const dstSize = ZS2_FieldLz_decompress(
             ZL_Output_ptr(dst), dstEltsCapacity, eltWidth, &src);
@@ -97,7 +98,7 @@ ZL_Report DI_fieldLz(ZL_Decoder* dictx, const ZL_Input* ins[])
         return dstSize;
     }
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(dst, ZL_validResult(dstSize)));
+    ZL_ERR_IF_ERR(ZL_Output_commit(dst, ZL_validResult(dstSize)));
 
     return ZL_returnValue(1);
 }

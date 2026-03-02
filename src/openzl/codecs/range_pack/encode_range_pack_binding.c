@@ -13,6 +13,7 @@
 
 ZL_Report EI_rangePack(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
     const ZL_Input* in    = ins[0];
@@ -25,10 +26,10 @@ ZL_Report EI_rangePack(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 
     ZL_Output* const dstStream =
             ZL_Encoder_createTypedStream(eictx, 0, nbElts, dstWidth);
-    ZL_RET_R_IF(allocation, !dstStream);
+    ZL_ERR_IF(!dstStream, allocation);
     void* dst = ZL_Output_ptr(dstStream);
     rangePackEncode(dst, dstWidth, src, srcWidth, nbElts, range.min);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(dstStream, nbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(dstStream, nbElts));
 
     /* Header has the source size and the min value if needed */
     uint8_t header[9];
