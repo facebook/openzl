@@ -12,6 +12,7 @@
 ZL_Report
 EI_constant_typed(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
     const ZL_Input* in = ins[0];
@@ -24,13 +25,13 @@ EI_constant_typed(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     const uint8_t* const src = ZL_Input_ptr(in);
     size_t const nbElts      = ZL_Input_numElts(in);
     size_t const eltWidth    = ZL_Input_eltWidth(in);
-    ZL_RET_R_IF_LT(srcSize_tooSmall, nbElts, 1);
+    ZL_ERR_IF_LT(nbElts, 1, srcSize_tooSmall);
     ZL_ASSERT_GE(eltWidth, 1);
-    ZL_RET_R_IF_EQ(
-            node_invalid_input, ZS_isConstantStream(src, nbElts, eltWidth), 0);
+    ZL_ERR_IF_EQ(
+            ZS_isConstantStream(src, nbElts, eltWidth), 0, node_invalid_input);
 
     ZL_Output* const out = ZL_Encoder_createTypedStream(eictx, 0, 1, eltWidth);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
     uint8_t* const outPtr = (uint8_t*)ZL_Output_ptr(out);
     ZL_ASSERT_NN(outPtr);
 
@@ -39,6 +40,6 @@ EI_constant_typed(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     ZL_Encoder_sendCodecHeader(eictx, header, varintSize);
 
     ZS_encodeConstant(outPtr, src, eltWidth);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, 1));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, 1));
     return ZL_returnSuccess();
 }

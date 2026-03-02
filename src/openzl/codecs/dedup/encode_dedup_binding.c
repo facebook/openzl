@@ -14,6 +14,7 @@ static ZL_Report EI_dedup_num_internal(
         size_t nbIns,
         int inputsIdentical)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     // Input sanitization
     ZL_ASSERT_GE(nbIns, 1);
     ZL_ASSERT_NN(ins);
@@ -37,19 +38,19 @@ static ZL_Report EI_dedup_num_internal(
                     0);
         } else {
             // Actively check that inputs are indeed all identical
-            ZL_RET_R_IF_NE(
-                    node_invalid_input, ZL_Input_eltWidth(ins[n]), eltWidth);
-            ZL_RET_R_IF_NE(
-                    node_invalid_input, ZL_Input_numElts(ins[n]), eltCount);
+            ZL_ERR_IF_NE(
+                    ZL_Input_eltWidth(ins[n]), eltWidth, node_invalid_input);
+            ZL_ERR_IF_NE(
+                    ZL_Input_numElts(ins[n]), eltCount, node_invalid_input);
             int const isDifferent = memcmp(
                     ZL_Input_ptr(ins[n]), ZL_Input_ptr(ins[0]), totalSize);
-            ZL_RET_R_IF(node_invalid_input, isDifferent);
+            ZL_ERR_IF(isDifferent, node_invalid_input);
         }
     }
 
     ZL_Output* const out =
             ENC_refTypedStream(eictx, 0, eltWidth, eltCount, ins[0], 0);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
 
     return ZL_returnSuccess();
 }
