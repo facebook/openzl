@@ -14,6 +14,7 @@ zs_cxxlibrary(
             "parser/*.cpp",
             "codegen/*.cpp",
             "semantic_analyzer/*.cpp",
+            "optimizer/*.cpp",
         ],
         exclude = ["main.cpp"],
     ),
@@ -24,6 +25,7 @@ zs_cxxlibrary(
         "parser/*.h",
         "codegen/*.h",
         "semantic_analyzer/*.h",
+        "optimizer/*.h",
     ]),
     exported_deps = [
         "../../../cpp:openzl_cpp",

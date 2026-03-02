@@ -31,7 +31,7 @@ class ASTCompiler : public Compiler {
         const auto groups = grouper_.group(tokens);
         const auto tree   = parser_.parse(groups);
         semantic_analyzer_.analyze(tree);
-        return tree;
+        return optimizer_.optimize(tree);
     }
 };
 
@@ -91,7 +91,7 @@ class CompilerTest : public Test {
         }
     }
 
-    int verbosity_{ 3 };
+    int verbosity_{ 1 };
     std::stringstream logs_;
     std::unique_ptr<Compiler> compiler_;
     std::unique_ptr<ASTCompiler> ast_compiler_;
@@ -223,7 +223,7 @@ TEST_F(CompilerTest, UnaryNegationAST)
 
     const auto cg       = Codegen(SourceLocation::null());
     const auto expected = std::vector<ASTPtr>({
-            cg.assign(cg.var("tmp"), cg.sub(cg.num(10), cg.num(-11))),
+            cg.assign(cg.var("tmp"), cg.num(21)),
     });
     expect_ast(prog, expected);
 }
@@ -236,7 +236,7 @@ TEST_F(CompilerTest, SimpleArithmeticAST)
 
     const auto cg       = Codegen(SourceLocation::null());
     const auto expected = std::vector<ASTPtr>({
-            cg.expect(cg.eq(cg.add(cg.num(1), cg.num(2)), cg.num(3))),
+            cg.expect(cg.num(1)),
     });
     expect_ast(prog, expected);
 }
@@ -251,9 +251,8 @@ TEST_F(CompilerTest, ArrayAST)
 
     const auto cg       = Codegen(SourceLocation::null());
     const auto expected = std::vector<ASTPtr>(
-            { cg.assign(cg.var("len"), cg.add(cg.num(1), cg.num(2))),
-              cg.consume(
-                      cg.array(cg.builtin_field(Symbol::BYTE), cg.var("len"))),
+            { cg.assign(cg.var("len"), cg.num(3)),
+              cg.consume(cg.array(cg.builtin_field(Symbol::BYTE), cg.num(3))),
               cg.consume(cg.array(cg.builtin_field(Symbol::BYTE))) });
 
     expect_ast(prog, expected);
@@ -302,9 +301,7 @@ TEST_F(CompilerTest, ParenthesesOverridePrecedenceAST)
 
     const auto cg       = Codegen(SourceLocation::null());
     const auto expected = std::vector<ASTPtr>({
-            cg.assign(
-                    cg.var("tmp"),
-                    cg.mul(cg.sub(cg.num(1), cg.num(2)), cg.num(3))),
+            cg.assign(cg.var("tmp"), cg.num(-3)),
     });
     expect_ast(prog, expected);
 }
@@ -317,10 +314,7 @@ TEST_F(CompilerTest, NestedParenthesesAST)
 
     const auto cg       = Codegen(SourceLocation::null());
     const auto expected = std::vector<ASTPtr>({
-            cg.assign(
-                    cg.var("tmp"),
-                    cg.mul(cg.add(cg.num(1), cg.num(2)),
-                           cg.add(cg.num(3), cg.num(4)))),
+            cg.assign(cg.var("tmp"), cg.num(21)),
     });
     expect_ast(prog, expected);
 }
@@ -333,10 +327,7 @@ TEST_F(CompilerTest, ComplexArithmeticExpressionAST)
 
     const auto cg       = Codegen(SourceLocation::null());
     const auto expected = std::vector<ASTPtr>({
-            cg.assign(
-                    cg.var("tmp"),
-                    cg.sub(cg.add(cg.num(1), cg.mul(cg.num(2), cg.num(3))),
-                           cg.div(cg.num(4), cg.num(2)))),
+            cg.assign(cg.var("tmp"), cg.num(5)),
     });
     expect_ast(prog, expected);
 }
@@ -425,16 +416,14 @@ TEST_F(CompilerTest, UndefinedRecordMemberVar)
     expect_error(prog, "Undefined variable");
 }
 
-TEST_F(CompilerTest, DefinedVar)
+TEST_F(CompilerTest, DefinedConstVar)
 {
     const auto prog = R"(
         tmp = 1
         expect tmp
     )";
 
-    // TODO: Update this once once variable references are supported in codegen.
-    // This still shows us that the semantic analysis passes.
-    expect_error(prog, "not yet supported");
+    expect_success(prog);
 }
 
 TEST_F(CompilerTest, AssumeDefinesVar)
@@ -489,4 +478,103 @@ TEST_F(CompilerTest, ExpectFieldType)
     expect_error(prog, "numeric");
 }
 
+// ============================================================================
+// Optimizer Tests
+// ============================================================================
+
+TEST_F(CompilerTest, ArithmeticConstFold)
+{
+    const auto prog     = R"(
+        tmp = 1 + 2
+        tmp = -(3 + 2)
+        tmp = 2 * 3 + 4
+        expect tmp == 10
+    )";
+    const auto cg       = Codegen(SourceLocation::null());
+    const auto expected = std::vector<ASTPtr>({
+            cg.assign(cg.var("tmp"), cg.num(3)),
+            cg.assign(cg.var("tmp"), cg.num(-5)),
+            cg.assign(cg.var("tmp"), cg.num(10)),
+            cg.expect(cg.num(1)),
+    });
+    expect_ast(prog, expected);
+}
+
+TEST_F(CompilerTest, ComparisonConstFold)
+{
+    const auto prog     = R"(
+        expect 5 > 3
+        expect 5 >= 3
+        expect 5 < 3
+    )";
+    const auto cg       = Codegen(SourceLocation::null());
+    const auto expected = std::vector<ASTPtr>({ cg.expect(cg.num(1)),
+                                                cg.expect(cg.num(1)),
+                                                cg.expect(cg.num(0)) });
+    expect_ast(prog, expected);
+}
+
+TEST_F(CompilerTest, LogicalConstFold)
+{
+    const auto prog     = R"(
+        expect !0
+        expect 1 && 0
+        expect 1 || 0
+    )";
+    const auto cg       = Codegen(SourceLocation::null());
+    const auto expected = std::vector<ASTPtr>({ cg.expect(cg.num(1)),
+                                                cg.expect(cg.num(0)),
+                                                cg.expect(cg.num(1)) });
+    expect_ast(prog, expected);
+}
+
+TEST_F(CompilerTest, ConstPropagation)
+{
+    const auto prog     = R"(
+        x = 5
+        expect x + 1 == 6
+    )";
+    const auto cg       = Codegen(SourceLocation::null());
+    const auto expected = std::vector<ASTPtr>({
+            cg.assign(cg.var("x"), cg.num(5)),
+            cg.expect(cg.num(1)),
+    });
+    expect_ast(prog, expected);
+}
+
+TEST_F(CompilerTest, ChainedConstPropagation)
+{
+    const auto prog     = R"(
+        a = 1
+        b = 1 + a
+        b = 2 * b
+        expect b == 4
+    )";
+    const auto cg       = Codegen(SourceLocation::null());
+    const auto expected = std::vector<ASTPtr>({
+            cg.assign(cg.var("a"), cg.num(1)),
+            cg.assign(cg.var("b"), cg.num(2)),
+            cg.assign(cg.var("b"), cg.num(4)),
+            cg.expect(cg.num(1)),
+    });
+    expect_ast(prog, expected);
+}
+
+TEST_F(CompilerTest, DivideByZeroError)
+{
+    const auto prog = R"(
+        tmp = 2 - 2
+        tmp = 1 / tmp
+    )";
+    expect_error(prog, "Division by zero");
+}
+
+TEST_F(CompilerTest, ModuloByZeroError)
+{
+    const auto prog = R"(
+        tmp = 2 - 2
+        tmp = 1 % tmp
+    )";
+    expect_error(prog, "Modulo by zero");
+}
 } // namespace openzl::sddl2::tests
