@@ -43,19 +43,6 @@ class ParseError : public CompilerException {
     }
 };
 
-class SerializationError : public CompilerException {
-   public:
-    SerializationError(const SourceLocation& loc, const poly::string_view& msg)
-            : CompilerException(loc, "serialization error", msg)
-    {
-    }
-
-    explicit SerializationError(const poly::string_view& msg)
-            : SerializationError(SourceLocation::null(), msg)
-    {
-    }
-};
-
 class CodegenError : public CompilerException {
    public:
     CodegenError(const SourceLocation& loc, const poly::string_view& msg)
