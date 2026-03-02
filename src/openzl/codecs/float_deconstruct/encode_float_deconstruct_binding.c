@@ -11,10 +11,11 @@ ZL_INLINE_KEYWORD ZL_Report float_deconstruct(
         const ZL_Input* in,
         FLTDECON_ElementType_e eltType)
 {
-    ZL_RET_R_IF_GT(logicError, eltType, FLTDECON_ElementTypeEnumMaxValue);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
+    ZL_ERR_IF_GT(eltType, FLTDECON_ElementTypeEnumMaxValue, logicError);
     ZL_TRY_LET_R(expectedEltWidth, FLTDECON_ElementWidth(eltType));
-    ZL_RET_R_IF_NE(
-            streamParameter_invalid, ZL_Input_eltWidth(in), expectedEltWidth);
+    ZL_ERR_IF_NE(
+            ZL_Input_eltWidth(in), expectedEltWidth, streamParameter_invalid);
     ZL_ASSERT_EQ(ZL_Input_type(in), ZL_Type_numeric);
 
     size_t const nbElts = ZL_Input_numElts(in);
@@ -25,7 +26,7 @@ ZL_INLINE_KEYWORD ZL_Report float_deconstruct(
         uint8_t safeEltType = (uint8_t)eltType;
         ZL_Encoder_sendCodecHeader(eictx, &safeEltType, sizeof(safeEltType));
     } else {
-        ZL_RET_R_IF_NE(logicError, eltType, FLTDECON_ElementType_float32);
+        ZL_ERR_IF_NE(eltType, FLTDECON_ElementType_float32, logicError);
     }
 
     ZL_TRY_LET_R(signFracWidth, FLTDECON_SignFracWidth(eltType));
@@ -37,7 +38,7 @@ ZL_INLINE_KEYWORD ZL_Report float_deconstruct(
             ZL_Encoder_createTypedStream(eictx, 1, nbElts, exponentWidth);
 
     if (signFracStream == NULL || exponentStream == NULL) {
-        ZL_RET_R_ERR(allocation);
+        ZL_ERR(allocation);
     }
 
     uint8_t* const exponent = (uint8_t*)ZL_Output_ptr(exponentStream);
@@ -60,8 +61,8 @@ ZL_INLINE_KEYWORD ZL_Report float_deconstruct(
             break;
     }
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(exponentStream, nbElts));
-    ZL_RET_R_IF_ERR(ZL_Output_commit(signFracStream, nbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(exponentStream, nbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(signFracStream, nbElts));
 
     return ZL_returnValue(2);
 }
