@@ -15,6 +15,7 @@
 // - An N x W input stream becomes a W x N output stream
 ZL_Report EI_transpose(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_NN(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
@@ -29,19 +30,20 @@ ZL_Report EI_transpose(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     size_t const newNbFields = nbFields ? fieldWidth : 0;
     ZL_Output* const out =
             ZL_Encoder_createTypedStream(eictx, 0, newNbFields, newFieldWidth);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
     const void* const src = ZL_Input_ptr(in);
     void* const dst       = ZL_Output_ptr(out);
     // TODO(@Cyan) : optimize with a reference when newFieldWidth==1, or
     // nbFields<=1
     ZS_transposeEncode(dst, src, nbFields, fieldWidth);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, newNbFields));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, newNbFields));
     return ZL_returnValue(1);
 }
 
 ZL_Report
 EI_transpose_split(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_NN(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
@@ -59,19 +61,19 @@ EI_transpose_split(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 
     uint8_t** const outPtrs =
             ZL_Encoder_getScratchSpace(eictx, nbOutStreams * sizeof(uint8_t*));
-    ZL_RET_R_IF_NULL(allocation, outPtrs);
+    ZL_ERR_IF_NULL(outPtrs, allocation);
     for (size_t i = 0; i < nbOutStreams; i++) {
         ZL_Output* const out =
                 ZL_Encoder_createTypedStream(eictx, 0, dstNbElts, 1);
-        ZL_RET_R_IF_NULL(
-                allocation,
+        ZL_ERR_IF_NULL(
                 out,
+                allocation,
                 "allocation error in transposeVO while trying to create output stream %zu of size %zu",
                 i,
                 dstNbElts);
 
         outPtrs[i] = (uint8_t*)ZL_Output_ptr(out);
-        ZL_RET_R_IF_ERR(ZL_Output_commit(out, dstNbElts));
+        ZL_ERR_IF_ERR(ZL_Output_commit(out, dstNbElts));
     }
 
     ZS_splitTransposeEncode(outPtrs, src, nbElts, eltWidth);
@@ -90,26 +92,27 @@ static ZL_Report EI_transpose_serial_typed(
         const ZL_Input* in,
         size_t eltWidth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_NN(eictx);
     ZL_ASSERT_NN(in);
     ZL_ASSERT_EQ(ZL_Input_type(in), ZL_Type_serial);
     ZL_ASSERT_EQ(ZL_Input_eltWidth(in), 1);
     size_t const srcSize = ZL_Input_numElts(in);
-    ZL_RET_R_IF_NE(
-            GENERIC,
+    ZL_ERR_IF_NE(
             srcSize % eltWidth,
             0,
+            GENERIC,
             "source size is not a multiple of transpose width");
     size_t const dstCapacity = srcSize;
     ZL_Output* const out =
             ZL_Encoder_createTypedStream(eictx, 0, dstCapacity, 1);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
     // Note : we should also check alignment here,
     // but since this interface will disappear in the near future,
     // this is a disappearing concern too
     ZS_transposeEncode(
             ZL_Output_ptr(out), ZL_Input_ptr(in), srcSize / eltWidth, eltWidth);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, srcSize));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, srcSize));
     return ZL_returnValue(1);
 }
 
@@ -204,10 +207,11 @@ size_t EI_transpose_8bytes(
 static ZL_Report
 EI_transpose_split_bytes(ZL_Encoder* eictx, const ZL_Input* in, size_t eltWidth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_NN(eictx);
     ZL_ASSERT_NN(in);
     ZL_ASSERT_EQ(ZL_Input_type(in), ZL_Type_struct);
-    ZL_RET_R_IF_NE(GENERIC, ZL_Input_eltWidth(in), eltWidth);
+    ZL_ERR_IF_NE(ZL_Input_eltWidth(in), eltWidth, GENERIC);
 
     // Create one output buffer per elt byte
     size_t const nbElts = ZL_Input_numElts(in);
@@ -215,7 +219,7 @@ EI_transpose_split_bytes(ZL_Encoder* eictx, const ZL_Input* in, size_t eltWidth)
     uint8_t* dst[8];
     for (size_t i = 0; i < eltWidth; ++i) {
         out[i] = ZL_Encoder_createTypedStream(eictx, (int)i, nbElts, 1);
-        ZL_RET_R_IF_NULL(allocation, out[i]);
+        ZL_ERR_IF_NULL(out[i], allocation);
         dst[i] = (uint8_t*)ZL_Output_ptr(out[i]);
     }
 
@@ -224,7 +228,7 @@ EI_transpose_split_bytes(ZL_Encoder* eictx, const ZL_Input* in, size_t eltWidth)
     ZS_splitTransposeEncode(dst, src, nbElts, eltWidth);
 
     for (size_t i = 0; i < eltWidth; ++i) {
-        ZL_RET_R_IF_ERR(ZL_Output_commit(out[i], nbElts));
+        ZL_ERR_IF_ERR(ZL_Output_commit(out[i], nbElts));
     }
     return ZL_returnValue(eltWidth);
 }

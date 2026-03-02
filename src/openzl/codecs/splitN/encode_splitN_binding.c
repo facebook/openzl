@@ -97,6 +97,7 @@ static ZL_RESULT_OF(ZL_SplitInstructions)
 // into output streams, as described in ZL_SPLITN_SEGMENTSIZES_PID parameter.
 ZL_Report EI_splitN(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
     const ZL_Input* in = ins[0];
@@ -132,22 +133,21 @@ ZL_Report EI_splitN(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
             segSize = inSize - pos;
         }
         ZL_DLOG(SEQ, "EI_splitN: segment %zu of size %zu", n, segSize);
-        ZL_RET_R_IF_GT(
-                nodeParameter_invalidValue,
+        ZL_ERR_IF_GT(
                 pos + segSize,
                 inSize,
+                nodeParameter_invalidValue,
                 "split instructions require more length than input");
         ZL_Output* const s = ENC_refTypedStream(
                 eictx, 0, eltWidth, segSize, in, pos * eltWidth);
-        ZL_RET_R_IF_NULL(allocation, s);
-        ZL_RET_R_IF_ERR(
-                ZL_Output_setIntMetadata(s, ZL_SPLIT_CHANNEL_ID, (int)n));
+        ZL_ERR_IF_NULL(s, allocation);
+        ZL_ERR_IF_ERR(ZL_Output_setIntMetadata(s, ZL_SPLIT_CHANNEL_ID, (int)n));
         pos += segSize;
     }
-    ZL_RET_R_IF_NE(
-            nodeParameter_invalidValue,
+    ZL_ERR_IF_NE(
             pos,
             inSize,
+            nodeParameter_invalidValue,
             "split instructions do not map exactly the entire input");
 
     return ZL_returnSuccess();

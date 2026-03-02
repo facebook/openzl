@@ -59,6 +59,7 @@ static ZL_RESULT_OF(uint64_t) getFrameContentSize(
 
 ZL_Report DI_zstd(ZL_Decoder* dictx, ZL_Input const* ins[])
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_ASSERT_NN(dictx);
     ZL_ASSERT_NN(ins);
     ZL_Input const* const in = ins[0];
@@ -70,47 +71,47 @@ ZL_Report DI_zstd(ZL_Decoder* dictx, ZL_Input const* ins[])
     uint8_t const* const srcEnd = src + ZL_Input_numElts(in);
 
     ZL_TRY_LET_T(uint64_t, dstEltWidth, ZL_varintDecode(&src, srcEnd));
-    ZL_RET_R_IF_EQ(corruption, dstEltWidth, 0);
+    ZL_ERR_IF_EQ(dstEltWidth, 0, corruption);
 
     size_t const srcSize = (size_t)(srcEnd - src);
     ZL_TRY_LET_T(uint64_t, dstSize, getFrameContentSize(dictx, src, srcSize));
-    ZL_RET_R_IF_NE(
-            corruption,
+    ZL_ERR_IF_NE(
             dstSize % dstEltWidth,
             0,
+            corruption,
             "content size not multiple of element width");
     size_t const dstNbElts = dstSize / dstEltWidth;
 
     ZL_Output* const out =
             ZL_Decoder_create1OutStream(dictx, dstNbElts, dstEltWidth);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
 
     ZSTD_DCtx* const dctx = ZL_Decoder_getState(dictx);
-    ZL_RET_R_IF_NULL(
-            allocation,
+    ZL_ERR_IF_NULL(
             dctx,
+            allocation,
             "Zstandard decompression state allocation failed");
-    ZL_RET_R_IF(
-            logicError,
+    ZL_ERR_IF(
             ZSTD_isError(
-                    ZSTD_DCtx_reset(dctx, ZSTD_reset_session_and_parameters)));
+                    ZSTD_DCtx_reset(dctx, ZSTD_reset_session_and_parameters)),
+            logicError);
     if (DI_getFrameFormatVersion(dictx) >= 9) {
         // See encoder_zstd.c for details
         if (ZSTD_isError(ZSTD_DCtx_setParameter(
                     dctx, ZSTD_d_format, ZSTD_f_zstd1_magicless))) {
-            ZL_RET_R_ERR(logicError, "Zstd unable to set parameter!");
+            ZL_ERR(logicError, "Zstd unable to set parameter!");
         }
     }
     size_t const dSize = ZSTD_decompressDCtx(
             dctx, ZL_Output_ptr(out), dstSize, src, srcSize);
-    ZL_RET_R_IF(
-            corruption,
+    ZL_ERR_IF(
             ZSTD_isError(dSize),
+            corruption,
             "Zstd decompression failed: %s",
             ZSTD_getErrorName(dSize));
-    ZL_RET_R_IF_NE(corruption, dSize, dstSize, "bad destination size");
+    ZL_ERR_IF_NE(dSize, dstSize, corruption, "bad destination size");
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, dstNbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, dstNbElts));
 
     return ZL_returnValue(1);
 }

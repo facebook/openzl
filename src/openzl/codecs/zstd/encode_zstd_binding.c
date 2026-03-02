@@ -32,12 +32,12 @@ static bool EI_zstd_parameter_valid(ZSTD_cParameter param)
     return true;
 }
 
-#define ZL_RET_R_IF_ZSTD_ERR(zstdResult)         \
+#define ZL_ERR_IF_ZSTD_ERR(zstdResult)           \
     do {                                         \
         size_t const _zstdResult = (zstdResult); \
-        ZL_RET_R_IF(                             \
-                GENERIC,                         \
+        ZL_ERR_IF(                               \
                 ZSTD_isError(_zstdResult),       \
+                GENERIC,                         \
                 "Zstd Error: %s",                \
                 ZSTD_getErrorName(_zstdResult)); \
     } while (0)
@@ -45,6 +45,7 @@ static bool EI_zstd_parameter_valid(ZSTD_cParameter param)
 static ZL_Report
 EI_zstdWithCCtx(ZL_Encoder* eictx, ZSTD_CCtx* cctx, const ZL_Input* src)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_NN(eictx);
     ZL_ASSERT_NN(src);
     ZL_ASSERT(
@@ -65,24 +66,24 @@ EI_zstdWithCCtx(ZL_Encoder* eictx, ZSTD_CCtx* cctx, const ZL_Input* src)
             + (blockSplit ? nbElts * 3 : 0) + ZL_varintSize((uint64_t)eltWidth);
     ZL_Output* const dst =
             ZL_Encoder_createTypedStream(eictx, 0, outCapacity, 1);
-    ZL_RET_R_IF_NULL(allocation, dst);
+    ZL_ERR_IF_NULL(dst, allocation);
 
     uint8_t* const ostart   = (uint8_t*)ZL_Output_ptr(dst);
     size_t const headerSize = ZL_varintEncode((uint64_t)eltWidth, ostart);
 
     /* Global parameters influence compression parameters */
-    ZL_RET_R_IF_ZSTD_ERR(
+    ZL_ERR_IF_ZSTD_ERR(
             ZSTD_CCtx_reset(cctx, ZSTD_reset_session_and_parameters));
 
     if (ZL_Encoder_getCParam(eictx, ZL_CParam_formatVersion) >= 9) {
         // Skip the zstd magic number for two reasons:
         // 1. We don't need it, Zstrong tells us we are decompressing zstd.
         // 2. It makes fuzzing harder, because the fuzzer can't find the magic.
-        ZL_RET_R_IF_ZSTD_ERR(ZSTD_CCtx_setParameter(
+        ZL_ERR_IF_ZSTD_ERR(ZSTD_CCtx_setParameter(
                 cctx, ZSTD_c_format, ZSTD_f_zstd1_magicless));
     }
 
-    ZL_RET_R_IF_ZSTD_ERR(ZSTD_CCtx_setParameter(
+    ZL_ERR_IF_ZSTD_ERR(ZSTD_CCtx_setParameter(
             cctx,
             ZSTD_c_compressionLevel,
             ZL_Encoder_getCParam(eictx, ZL_CParam_compressionLevel)));
@@ -90,7 +91,7 @@ EI_zstdWithCCtx(ZL_Encoder* eictx, ZSTD_CCtx* cctx, const ZL_Input* src)
     int const decompressionLevel =
             ZL_Encoder_getCParam(eictx, ZL_CParam_decompressionLevel);
     if (decompressionLevel == 1) {
-        ZL_RET_R_IF_ZSTD_ERR(ZSTD_CCtx_setParameter(
+        ZL_ERR_IF_ZSTD_ERR(ZSTD_CCtx_setParameter(
                 cctx, ZSTD_c_literalCompressionMode, ZSTD_lcm_uncompressed));
     }
 
@@ -105,12 +106,11 @@ EI_zstdWithCCtx(ZL_Encoder* eictx, ZSTD_CCtx* cctx, const ZL_Input* src)
     for (size_t n = 0; n < lips.nbIntParams; n++) {
         ZL_IntParam const ip        = lips.intParams[n];
         ZSTD_cParameter const param = (ZSTD_cParameter)ip.paramId;
-        ZL_RET_R_IF_NOT(
-                nodeParameter_invalid,
+        ZL_ERR_IF_NOT(
                 EI_zstd_parameter_valid(param),
+                nodeParameter_invalid,
                 "zstd parameter %i cannot be modified");
-        ZL_RET_R_IF_ZSTD_ERR(
-                ZSTD_CCtx_setParameter(cctx, param, ip.paramValue));
+        ZL_ERR_IF_ZSTD_ERR(ZSTD_CCtx_setParameter(cctx, param, ip.paramValue));
     }
 
     if (blockSize == srcSize) {
@@ -120,8 +120,8 @@ EI_zstdWithCCtx(ZL_Encoder* eictx, ZSTD_CCtx* cctx, const ZL_Input* src)
                 outCapacity - headerSize,
                 ZL_Input_ptr(src),
                 srcSize);
-        ZL_RET_R_IF_ZSTD_ERR(cSize);
-        ZL_RET_R_IF_ERR(ZL_Output_commit(dst, headerSize + cSize));
+        ZL_ERR_IF_ZSTD_ERR(cSize);
+        ZL_ERR_IF_ERR(ZL_Output_commit(dst, headerSize + cSize));
     } else {
         ZSTD_CCtx_setPledgedSrcSize(cctx, srcSize);
 
@@ -134,11 +134,11 @@ EI_zstdWithCCtx(ZL_Encoder* eictx, ZSTD_CCtx* cctx, const ZL_Input* src)
                 ZSTD_EndDirective const flush =
                         in.size == srcSize ? ZSTD_e_end : ZSTD_e_flush;
                 size_t const ret = ZSTD_compressStream2(cctx, &out, &in, flush);
-                ZL_RET_R_IF_ZSTD_ERR(ret);
+                ZL_ERR_IF_ZSTD_ERR(ret);
             }
         }
         ZL_ASSERT_EQ(in.pos, srcSize);
-        ZL_RET_R_IF_ERR(ZL_Output_commit(dst, out.pos));
+        ZL_ERR_IF_ERR(ZL_Output_commit(dst, out.pos));
     }
 
     return ZL_returnValue(1);
@@ -155,11 +155,12 @@ void EIZSTD_freeCCtx(void* state)
 
 ZL_Report EI_zstd(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
     const ZL_Input* in    = ins[0];
     ZSTD_CCtx* const cctx = ZL_Encoder_getState(eictx);
-    ZL_RET_R_IF_NULL(allocation, cctx);
+    ZL_ERR_IF_NULL(cctx, allocation);
     return EI_zstdWithCCtx(eictx, cctx, in);
 }
 
