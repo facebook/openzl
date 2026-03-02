@@ -16,6 +16,7 @@ Compiler::Compiler(Options options)
           grouper_(logger_),
           parser_(logger_),
           semantic_analyzer_(logger_),
+          optimizer_(logger_),
           codegen_(logger_)
 {
 }
@@ -115,7 +116,8 @@ std::string Compiler::compile(
     const auto groups = grouper_.group(tokens);
     const auto tree   = parser_.parse(groups);
     semantic_analyzer_.analyze(tree);
-    return codegen_.generate(tree);
+    const auto optimized = optimizer_.optimize(tree);
+    return codegen_.generate(optimized);
 }
 
 Compiler::Options::Options() {}
