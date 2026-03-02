@@ -24,17 +24,18 @@ static ZL_Report DI_quantize(
         const ZL_Input* ins[],
         ZL_Quantize32Params const* params)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_Input const* const codes = ins[0];
     ZL_Input const* const bits  = ins[1];
 
-    ZL_RET_R_IF_NE(corruption, ZL_Input_eltWidth(codes), 1, "Unsupported");
+    ZL_ERR_IF_NE(ZL_Input_eltWidth(codes), 1, corruption, "Unsupported");
     ZL_ASSERT_EQ(ZL_Input_type(bits), ZL_Type_serial);
     ZL_ASSERT_EQ(ZL_Input_eltWidth(codes), 1);
 
     size_t const nbCodes = ZL_Input_numElts(codes);
 
     ZL_Output* const out = ZL_Decoder_create1OutStream(dictx, nbCodes, 4);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
 
     // TODO(terrelln): Get this information from the stream metadata
     // if it is available.
@@ -52,7 +53,7 @@ static ZL_Report DI_quantize(
         return ret;
     }
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, nbCodes));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, nbCodes));
 
     return ZL_returnValue(1);
 }

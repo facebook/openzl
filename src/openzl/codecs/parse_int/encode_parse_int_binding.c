@@ -9,6 +9,7 @@
 
 ZL_Report EI_parseInt(ZL_Encoder* encoder, const ZL_Input* ins[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(encoder);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
     char const* data      = (char const*)ZL_Input_ptr(ins[0]);
@@ -17,19 +18,19 @@ ZL_Report EI_parseInt(ZL_Encoder* encoder, const ZL_Input* ins[], size_t nbIns)
     size_t const eltWidth = 8;
     ZL_Output* numbers =
             ZL_Encoder_createTypedStream(encoder, 0, nbElts, eltWidth);
-    ZL_RET_R_IF_NULL(allocation, numbers);
+    ZL_ERR_IF_NULL(numbers, allocation);
     int64_t* const nums = (int64_t*)ZL_Output_ptr(numbers);
     const ZL_RefParam parsedInts =
             ZL_Encoder_getLocalParam(encoder, ZL_PARSE_INT_PREPARSED_PARAMS);
     if (nbElts > 0 && parsedInts.paramRef) {
-        ZL_RET_R_IF_NE(nodeParameter_invalid, nbElts * 8, parsedInts.paramSize);
+        ZL_ERR_IF_NE(nbElts * 8, parsedInts.paramSize, nodeParameter_invalid);
         // Copy the prepared list of ints to the output
         memcpy(nums, parsedInts.paramRef, parsedInts.paramSize);
     } else {
-        ZL_RET_R_IF_NOT(
-                node_invalid_input, ZL_parseInt(nums, data, sizes, nbElts));
+        ZL_ERR_IF_NOT(
+                ZL_parseInt(nums, data, sizes, nbElts), node_invalid_input);
     }
-    ZL_RET_R_IF_ERR(ZL_Output_commit(numbers, nbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(numbers, nbElts));
     return ZL_returnSuccess();
 }
 
