@@ -69,6 +69,19 @@ class CodegenError : public CompilerException {
     }
 };
 
+class SemanticError : public CompilerException {
+   public:
+    SemanticError(const SourceLocation& loc, const poly::string_view& msg)
+            : CompilerException(loc, "semantic error", msg)
+    {
+    }
+
+    explicit SemanticError(const poly::string_view& msg)
+            : SemanticError(SourceLocation::null(), msg)
+    {
+    }
+};
+
 class InvariantViolation : public CompilerException {
    public:
     InvariantViolation(const SourceLocation& loc, const poly::string_view& msg)

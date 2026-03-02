@@ -3,21 +3,18 @@
 if (OPENZL_BUILD_SDDL_TOOLS)
     # Compiler
     file(
-        GLOB sddl2_compiler_lib_sources
+        GLOB_RECURSE sddl2_compiler_lib_sources
         CONFIGURE_DEPENDS
-        "${CMAKE_CURRENT_LIST_DIR}/compiler/*.cpp"
-        "${CMAKE_CURRENT_LIST_DIR}/compiler/tokenizer/*.cpp"
-        "${CMAKE_CURRENT_LIST_DIR}/compiler/grouper/*.cpp"
-        "${CMAKE_CURRENT_LIST_DIR}/compiler/parser/*.cpp"
-        "${CMAKE_CURRENT_LIST_DIR}/compiler/codegen/*.cpp")
+        "${CMAKE_CURRENT_LIST_DIR}/compiler/*.cpp")
+    list(FILTER sddl2_compiler_lib_sources EXCLUDE REGEX
+        ".*/compiler/tests/.*")
+
     file(
-        GLOB sddl2_compiler_lib_headers
+        GLOB_RECURSE sddl2_compiler_lib_headers
         CONFIGURE_DEPENDS
-        "${CMAKE_CURRENT_LIST_DIR}/compiler/*.h"
-        "${CMAKE_CURRENT_LIST_DIR}/compiler/tokenizer/*.h"
-        "${CMAKE_CURRENT_LIST_DIR}/compiler/grouper/*.h"
-        "${CMAKE_CURRENT_LIST_DIR}/compiler/parser/*.h"
-        "${CMAKE_CURRENT_LIST_DIR}/compiler/codegen/*.h")
+        "${CMAKE_CURRENT_LIST_DIR}/compiler/*.h")
+    list(FILTER sddl2_compiler_lib_headers EXCLUDE REGEX
+        ".*/compiler/tests/.*")
     list(REMOVE_ITEM sddl2_compiler_lib_sources
       ${CMAKE_CURRENT_LIST_DIR}/compiler/main.cpp)
 

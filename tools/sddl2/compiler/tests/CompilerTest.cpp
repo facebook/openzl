@@ -30,7 +30,7 @@ class ASTCompiler : public Compiler {
         const auto tokens = tokenizer_.tokenize(src);
         const auto groups = grouper_.group(tokens);
         const auto tree   = parser_.parse(groups);
-
+        semantic_analyzer_.analyze(tree);
         return tree;
     }
 };
@@ -391,4 +391,102 @@ TEST_F(CompilerTest, SimpleSaoAST)
     });
     expect_ast(prog, expected);
 }
+
+// ============================================================================
+// Semantic Analysis Tests
+// ============================================================================
+
+TEST_F(CompilerTest, UndefinedVar)
+{
+    const auto prog = R"(
+        expect x
+    )";
+    expect_error(prog, "Undefined variable");
+}
+
+TEST_F(CompilerTest, UndefinedVarInExpression)
+{
+    const auto prog = R"(
+        x = x + 1
+    )";
+    expect_error(prog, "Undefined variable");
+}
+
+TEST_F(CompilerTest, UndefinedRecordMemberVar)
+{
+    const auto prog = R"(
+        Record Foo() = {
+            x: Int32LE
+        }
+        foo: Foo
+        expect x
+   )";
+
+    expect_error(prog, "Undefined variable");
+}
+
+TEST_F(CompilerTest, DefinedVar)
+{
+    const auto prog = R"(
+        tmp = 1
+        expect tmp
+    )";
+
+    // TODO: Update this once once variable references are supported in codegen.
+    // This still shows us that the semantic analysis passes.
+    expect_error(prog, "not yet supported");
+}
+
+TEST_F(CompilerTest, AssumeDefinesVar)
+{
+    const auto prog = R"(
+        count: UInt8
+        : Byte[count]
+    )";
+
+    // TODO: Update this once once variable references are supported in codegen.
+    // This still shows us that the semantic analysis passes.
+    expect_error(prog, "not yet supported");
+}
+
+TEST_F(CompilerTest, AssignLHSNotVar)
+{
+    const auto prog = R"(
+        1 = 2
+    )";
+    expect_error(prog, "must be a variable");
+}
+
+TEST_F(CompilerTest, ConsumeNonFieldType)
+{
+    const auto prog = R"(
+        : 42
+    )";
+    expect_error(prog, "field type");
+}
+
+TEST_F(CompilerTest, AssumeNonFieldType)
+{
+    const auto prog = R"(
+        x: 42
+    )";
+    expect_error(prog, "field type");
+}
+
+TEST_F(CompilerTest, ArithmeticOnFieldType)
+{
+    const auto prog = R"(
+        tmp = Int32LE + 1
+    )";
+    expect_error(prog, "numeric");
+}
+
+TEST_F(CompilerTest, ExpectFieldType)
+{
+    const auto prog = R"(
+        expect Int32LE
+    )";
+    expect_error(prog, "numeric");
+}
+
 } // namespace openzl::sddl2::tests
