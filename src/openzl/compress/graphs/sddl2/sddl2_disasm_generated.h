@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
 // Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-// Generated at: 2025-11-21 17:16:01 UTC
+// Generated at: 2026-02-25 19:35:29 UTC
 // Generator: generate_c_headers.py
 //
 // To regenerate: python3 src/openzl/compress/graphs/sddl2/generate_c_headers.py
@@ -226,7 +226,16 @@ static inline const char* SDDL2_instruction_name_impl(
             }
 
         case SDDL2_FAMILY_VAR:
-            return "var.?";
+            switch (opcode) {
+                case SDDL2_OP_VAR_STORE:
+                    return "var.store";
+                case SDDL2_OP_VAR_LOAD:
+                    return "var.load";
+                case SDDL2_OP_VAR_CLEAR:
+                    return "var.clear";
+                default:
+                    return "var.?";
+            }
 
         case SDDL2_FAMILY_CALL:
             return "call.?";

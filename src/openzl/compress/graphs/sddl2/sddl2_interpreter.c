@@ -88,6 +88,12 @@
     _func(SDDL2_OP_PUSH_TYPE_F32BE, SDDL2_TYPE_F32BE)        \
     _func(SDDL2_OP_PUSH_TYPE_F64LE, SDDL2_TYPE_F64LE)        \
     _func(SDDL2_OP_PUSH_TYPE_F64BE, SDDL2_TYPE_F64BE)
+
+#define FOR_EACH_VAR_OP(_func)              \
+    _func(SDDL2_OP_VAR_STORE, SDDL2_op_var_store) \
+    _func(SDDL2_OP_VAR_LOAD, SDDL2_op_var_load)   \
+    _func(SDDL2_OP_VAR_CLEAR, SDDL2_op_var_clear)
+
 // clang-format on
 
 /* ============================================================================
@@ -331,6 +337,9 @@ SDDL2_Error SDDL2_execute_bytecode(
     SDDL2_Input_cursor buffer;
     SDDL2_Input_cursor_init(&buffer, input_data, input_size);
 
+    SDDL2_Var_registers var_regs;
+    SDDL2_Var_registers_init(&var_regs);
+
     SDDL2_Tag_registry registry;
     // Use same allocator as output_segments (arena in production, NULL in
     // tests)
@@ -443,11 +452,25 @@ SDDL2_Error SDDL2_execute_bytecode(
                 DISPATCH_OP_FAMILY(FOR_EACH_LOAD_OP, EMIT_LOAD_OP_CASE);
                 break;
 
-            // Note: expect_true is part of CONTROL family (ID 0x000A not
-            // generated for empty EXPECT family)
+                // Note: expect_true is part of CONTROL family (ID 0x000A not
+                // generated for empty EXPECT family)
+
+            case SDDL2_FAMILY_VAR:
+                if (opcode == SDDL2_OP_VAR_STORE) {
+                    err = SDDL2_op_var_store(
+                            &stack, &trace, pc_before, &var_regs);
+                } else if (opcode == SDDL2_OP_VAR_LOAD) {
+                    err = SDDL2_op_var_load(
+                            &stack, &trace, pc_before, &var_regs);
+                } else if (opcode == SDDL2_OP_VAR_CLEAR) {
+                    err = SDDL2_op_var_clear(
+                            &stack, &trace, pc_before, &var_regs);
+                } else {
+                    CLEANUP_AND_RETURN(SDDL2_INVALID_BYTECODE);
+                }
+                break;
 
             // Unimplemented families
-            case SDDL2_FAMILY_VAR:
             case SDDL2_FAMILY_CALL:
                 CLEANUP_AND_RETURN(SDDL2_INVALID_BYTECODE);
         }

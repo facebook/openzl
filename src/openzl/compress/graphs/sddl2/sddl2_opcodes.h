@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
 // Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-// Generated at: 2025-11-21 17:16:01 UTC
+// Generated at: 2026-02-25 19:35:29 UTC
 // Generator: generate_c_headers.py
 //
 // To regenerate: python3 src/openzl/compress/graphs/sddl2/generate_c_headers.py
@@ -148,6 +148,13 @@ enum sddl2_opcode_type {
     SDDL2_OP_TYPE_FIXED_ARRAY = 0x0001,
     SDDL2_OP_TYPE_STRUCTURE   = 0x0002,
     SDDL2_OP_TYPE_SIZEOF      = 0x0010,
+};
+
+/* VAR family (0x0009) - Variable operations */
+enum sddl2_opcode_var {
+    SDDL2_OP_VAR_STORE = 0x0001,
+    SDDL2_OP_VAR_LOAD  = 0x0002,
+    SDDL2_OP_VAR_CLEAR = 0x0003,
 };
 
 /* SEGMENT family (0x000C) - Segment creation operations */

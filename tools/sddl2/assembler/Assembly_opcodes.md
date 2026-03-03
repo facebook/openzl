@@ -135,7 +135,11 @@ Type operations
 ### VAR (0x0009)
 Variable operations
 
-_No instructions defined._
+| Mnemonic    | Opcode   | Params | Description                                            |
+| ----------- | -------- | ------ | ------------------------------------------------------ |
+| `var.store` | `0x0001` | `-`    | Pop Value, pop I64 (register), store Value in register |
+| `var.load`  | `0x0002` | `-`    | Pop I64 (register), push Value stored in register      |
+| `var.clear` | `0x0003` | `-`    | Pop I64 (register), mark register as unoccupied        |
 
 ### CALL (0x000B)
 Function call operations

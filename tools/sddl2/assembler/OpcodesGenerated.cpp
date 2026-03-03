@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
 // Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-// Generated at: 2026-02-13 16:24:43 UTC
+// Generated at: 2026-02-25 19:35:34 UTC
 // Generator: generate_opcodes.py
 //
 // To regenerate: python3 generate_opcodes.py
@@ -181,6 +181,12 @@ const std::unordered_map<std::string, Instruction> INSTRUCTIONS = {
       Instruction{ Family::TYPE, 0x0010, std::vector<ParamType>{} } },
 
     // VAR family (0x0009)
+    { "var.store",
+      Instruction{ Family::VAR, 0x0001, std::vector<ParamType>{} } },
+    { "var.load",
+      Instruction{ Family::VAR, 0x0002, std::vector<ParamType>{} } },
+    { "var.clear",
+      Instruction{ Family::VAR, 0x0003, std::vector<ParamType>{} } },
 
     // CALL family (0x000B)
 
