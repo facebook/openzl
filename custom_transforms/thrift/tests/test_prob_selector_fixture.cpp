@@ -18,12 +18,13 @@ ZL_Report ProbSelectorTest::compress(
         size_t srcSize,
         ZL_GraphID graphid)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cgraph);
     ZL_CCtx* const cctx = ZL_CCtx_create();
 
-    ZL_RET_R_IF_ERR(ZL_Compressor_setParameter(
+    ZL_ERR_IF_ERR(ZL_Compressor_setParameter(
             cgraph, ZL_CParam_formatVersion, ZL_MAX_FORMAT_VERSION));
-    ZL_RET_R_IF_ERR(ZL_Compressor_selectStartingGraphID(cgraph, graphid));
-    ZL_RET_R_IF_ERR(ZL_CCtx_refCompressor(cctx, cgraph));
+    ZL_ERR_IF_ERR(ZL_Compressor_selectStartingGraphID(cgraph, graphid));
+    ZL_ERR_IF_ERR(ZL_CCtx_refCompressor(cctx, cgraph));
 
     ZL_Report result =
             ZL_CCtx_compress(cctx, dstBuff, dstCapacity, src, srcSize);
