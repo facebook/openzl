@@ -181,21 +181,21 @@ ZL_Report ZL_Clustering_serializeClusteringConfig(
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(errCtx);
     A1C_Item* root = A1C_Item_root(arena);
-    ZL_RET_R_IF_NULL(allocation, root);
+    ZL_ERR_IF_NULL(root, allocation);
     A1C_MapBuilder rootMapBuilder = A1C_Item_map_builder(root, 2, arena);
     {
         A1C_MAP_TRY_ADD_R(pair, rootMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "clusters");
         A1C_Item* clusters =
                 A1C_Item_array(&pair->val, config->nbClusters, arena);
-        ZL_RET_R_IF_NULL(allocation, clusters);
+        ZL_ERR_IF_NULL(clusters, allocation);
         for (size_t i = 0; i < config->nbClusters; i++) {
             A1C_MapBuilder clustersMapBuilder =
                     A1C_Item_map_builder(&clusters[i], 2, arena);
             {
                 A1C_MAP_TRY_ADD_R(p, clustersMapBuilder);
                 A1C_Item_string_refCStr(&p->key, "typeSuccessor");
-                ZL_RET_R_IF_ERR(cbor_serializeTypeSuccessor(
+                ZL_ERR_IF_ERR(cbor_serializeTypeSuccessor(
                         errCtx,
                         &p->val,
                         arena,
@@ -206,7 +206,7 @@ ZL_Report ZL_Clustering_serializeClusteringConfig(
                 A1C_Item_string_refCStr(&p->key, "memberTags");
                 A1C_Item* memberTags = A1C_Item_array(
                         &p->val, config->clusters[i].nbMemberTags, arena);
-                ZL_RET_R_IF_NULL(allocation, memberTags);
+                ZL_ERR_IF_NULL(memberTags, allocation);
                 for (size_t j = 0; j < config->clusters[i].nbMemberTags; j++) {
                     A1C_Item_int64(
                             &memberTags[j],
@@ -220,21 +220,21 @@ ZL_Report ZL_Clustering_serializeClusteringConfig(
         A1C_Item_string_refCStr(&pair->key, "typeDefaults");
         A1C_Item* typeDefaults =
                 A1C_Item_array(&pair->val, config->nbTypeDefaults, arena);
-        ZL_RET_R_IF_NULL(allocation, typeDefaults);
+        ZL_ERR_IF_NULL(typeDefaults, allocation);
         for (size_t i = 0; i < config->nbTypeDefaults; i++) {
-            ZL_RET_R_IF_ERR(cbor_serializeTypeSuccessor(
+            ZL_ERR_IF_ERR(cbor_serializeTypeSuccessor(
                     errCtx, &typeDefaults[i], arena, &config->typeDefaults[i]));
         }
     }
     *dstSize = A1C_Item_encodedSize(root);
     *dst     = arena->calloc(arena->opaque, *dstSize);
-    ZL_RET_R_IF_NULL(allocation, *dst);
+    ZL_ERR_IF_NULL(*dst, allocation);
     A1C_Error error;
     size_t res = A1C_Item_encode(root, *dst, *dstSize, &error);
     if (res == 0) {
-        ZL_RET_R_WRAP_ERR(A1C_Error_convert(NULL, error));
+        return ZL_WRAP_ERROR(A1C_Error_convert(NULL, error));
     }
-    ZL_RET_R_IF_NE(allocation, res, *dstSize);
+    ZL_ERR_IF_NE(res, *dstSize, allocation);
     return ZL_returnSuccess();
 }
 
@@ -439,17 +439,17 @@ static ZL_Report validateClusteredConfig(
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
     /* Check successor index is not out of range for clusters */
     for (size_t i = 0; i < config->nbClusters; i++) {
-        ZL_RET_R_IF_GE(
-                graphParameter_invalid,
+        ZL_ERR_IF_GE(
                 config->clusters[i].typeSuccessor.successorIdx,
-                succList->nbGraphIDs);
+                succList->nbGraphIDs,
+                graphParameter_invalid);
     }
     /* Check successor index is not out of range for defaultSuccessors */
     for (size_t i = 0; i < config->nbTypeDefaults; i++) {
-        ZL_RET_R_IF_GE(
-                graphParameter_invalid,
+        ZL_ERR_IF_GE(
                 config->typeDefaults[i].successorIdx,
-                succList->nbGraphIDs);
+                succList->nbGraphIDs,
+                graphParameter_invalid);
     }
     return ZL_returnSuccess();
 }
@@ -481,7 +481,7 @@ static ZL_Report sendClustersToSuccessors(
         if (nbEdges == 1) {
             // Directly send edge to successor if there is only a single edge in
             // the cluster.
-            ZL_RET_R_IF_ERR(ZL_Edge_setDestination(cluster[0], successor));
+            ZL_ERR_IF_ERR(ZL_Edge_setDestination(cluster[0], successor));
             continue;
         }
 
@@ -498,13 +498,13 @@ static ZL_Report sendClustersToSuccessors(
             // TODO: These numeric streams can be concat together across all
             // clusters. It is worth checking if this is worthwhile at the stage
             // of benchmarking the testing corpus
-            ZL_RET_R_IF_ERR(ZL_Edge_setDestination(
+            ZL_ERR_IF_ERR(ZL_Edge_setDestination(
                     clustered.edges[0], ZL_GRAPH_FIELD_LZ));
             clusteredOutIdx = 1;
         }
 
         // The second edge goes to the custom successor
-        ZL_RET_R_IF_ERR(ZL_Edge_setDestination(
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(
                 clustered.edges[clusteredOutIdx], successor));
     }
     return ZL_returnSuccess();
@@ -548,7 +548,7 @@ static ZL_Report setClusterInfosUnconfigured_byTag(
         ZL_TRY_LET_T(Tag, tag, getTagForEdge(inputs[i]));
         TagToClusterMap_Insert status = TagToClusterMap_insertVal(
                 tagToClusterMap, (TagToClusterMap_Entry){ tag, nbClusters });
-        ZL_RET_R_IF(allocation, status.badAlloc);
+        ZL_ERR_IF(status.badAlloc, allocation);
 
         size_t idx = status.ptr->val;
         // Skip if configured cluster
@@ -602,10 +602,10 @@ static ZL_Report setClusterInfosConfigured(
             Tag tag = { .tag = cluster.memberTags[j], .typeWidth = typeWidth };
             TagToClusterMap_Insert status = TagToClusterMap_insertVal(
                     tagToCluster, (TagToClusterMap_Entry){ tag, i });
-            ZL_RET_R_IF(allocation, status.badAlloc);
+            ZL_ERR_IF(status.badAlloc, allocation);
             // Checks that for clusters of the same type, a tag does not appear
             // twice
-            ZL_RET_R_IF(node_invalid_input, !status.inserted);
+            ZL_ERR_IF(!status.inserted, node_invalid_input);
         }
         clusterInfos[i].nbEdges = 0;
         ZL_ERR_IF_GE(
@@ -661,7 +661,7 @@ static ZL_Report graph_compressClusteredImpl(
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
     ZL_GraphIDList succList            = ZL_Graph_getCustomGraphs(graph);
     ZL_NodeIDList clusteringCodecsList = ZL_Graph_getCustomNodes(graph);
-    ZL_RET_R_IF_ERR(validateClusteredConfig(graph, config, &succList));
+    ZL_ERR_IF_ERR(validateClusteredConfig(graph, config, &succList));
 
     // Initialize cluster infos
     size_t maxNbClusters      = nbInputs + config->nbClusters;
@@ -689,9 +689,9 @@ static ZL_Report graph_compressClusteredImpl(
         TypeToSuccessorMap_Insert status = TypeToSuccessorMap_insertVal(
                 defaultSuccessors,
                 (TypeToSuccessorMap_Entry){ typeWidth, *typeSuccesor });
-        ZL_RET_R_IF(allocation, status.badAlloc);
+        ZL_ERR_IF(status.badAlloc, allocation);
         // Checks that there are no duplicates among type defualts
-        ZL_RET_R_IF(node_invalid_input, !status.inserted);
+        ZL_ERR_IF(!status.inserted, node_invalid_input);
     }
 
     // Cluster unconfigured inputs and update nbClusters
@@ -711,7 +711,7 @@ static ZL_Report graph_compressClusteredImpl(
     // Group edges present by cluster
     ZL_Edge*** clusteredEdges =
             ZL_Graph_getScratchSpace(graph, nbClusters * sizeof(ZL_Edge**));
-    ZL_RET_R_IF_NULL(allocation, clusteredEdges);
+    ZL_ERR_IF_NULL(clusteredEdges, allocation);
     size_t* clusterSizes =
             ZL_Graph_getScratchSpace(graph, nbClusters * sizeof(size_t));
     memset(clusterSizes, 0, nbClusters * sizeof(size_t));
@@ -719,7 +719,7 @@ static ZL_Report graph_compressClusteredImpl(
     for (size_t i = 0; i < nbClusters; i++) {
         clusteredEdges[i] = ZL_Graph_getScratchSpace(
                 graph, clusterInfos[i].nbEdges * sizeof(ZL_Edge*));
-        ZL_RET_R_IF_NULL(allocation, clusteredEdges[i]);
+        ZL_ERR_IF_NULL(clusteredEdges[i], allocation);
     }
 
     // Group edges by cluster
@@ -727,14 +727,14 @@ static ZL_Report graph_compressClusteredImpl(
         ZL_TRY_LET_T(Tag, tag, getTagForEdge(inputs[i]));
         const TagToClusterMap_Entry* entry =
                 TagToClusterMap_findVal(tagToClusterIdxMap, tag);
-        ZL_RET_R_IF_NULL(GENERIC, entry);
+        ZL_ERR_IF_NULL(entry, GENERIC);
         size_t idx = entry->val;
-        ZL_RET_R_IF_GT(GENERIC, clusterSizes[idx], clusterInfos[idx].nbEdges);
+        ZL_ERR_IF_GT(clusterSizes[idx], clusterInfos[idx].nbEdges, GENERIC);
         clusteredEdges[idx][clusterSizes[idx]++] = inputs[i];
     }
 
     // Send clustered edges to their successors
-    ZL_RET_R_IF_ERR(sendClustersToSuccessors(
+    ZL_ERR_IF_ERR(sendClustersToSuccessors(
             ZL_ERR_CTX_PTR, clusteredEdges, clusterInfos, nbClusters));
     return ZL_returnSuccess();
 }

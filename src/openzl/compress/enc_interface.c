@@ -126,6 +126,8 @@ ZL_Report ZL_Encoder_createAllOutBuffers(
         const size_t buffSizes[],
         size_t nbBuffs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eic);
+
     /* General idea :
      *
      * 1) Access the definition of the node in the immutable cgraph,
@@ -164,10 +166,10 @@ ZL_Report ZL_Encoder_createAllOutBuffers(
     for (int n = 0; n < (int)nbBuffs; n++) {
         ZL_Output* const data =
                 ZL_Encoder_createTypedStream(eic, n, buffSizes[n], 1);
-        ZL_RET_R_IF_NULL(allocation, data);
+        ZL_ERR_IF_NULL(data, allocation);
         buffStarts[n] = ZL_Output_ptr(data);
         if (buffSizes[n] > 0 && buffStarts[n] == NULL)
-            ZL_RET_R_ERR(allocation);
+            ZL_ERR(allocation);
     }
     return ZL_returnSuccess();
 }
@@ -240,6 +242,7 @@ static ZL_Report ENC_runTransform_internal(
         const ZL_Data* inStreams[],
         size_t nbInStreams)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_DLOG(BLOCK,
             "ENC_runTransform_internal (%s, nodeid=%zu, nbInputs=%zu)",
             CT_getTrName(trDesc),
@@ -285,9 +288,9 @@ static ZL_Report ENC_runTransform_internal(
                     RTGM_getOutStreamID(rtgm, eictx->rtnodeid, (int)i);
             const ZL_Data* d     = RTGM_getRStream(rtgm, rtsid);
             bool pushbackSuccess = VECTOR_PUSHBACK(odata, d);
-            ZL_RET_R_IF_NOT(
-                    allocation,
+            ZL_ERR_IF_NOT(
                     pushbackSuccess,
+                    allocation,
                     "Unable to append to the waypoint odata vector");
         }
         WAYPOINT(
@@ -300,7 +303,7 @@ static ZL_Report ENC_runTransform_internal(
     }
 
     // Check that we didn't encounter an error sending the transform header.
-    ZL_RET_R_IF_ERR(eictx->sendTransformHeaderError);
+    ZL_ERR_IF_ERR(eictx->sendTransformHeaderError);
 
     // Check that the transform has generated
     // at least as many output streams as compulsory singleton outputs.
@@ -309,23 +312,23 @@ static ZL_Report ENC_runTransform_internal(
     //        This can't be done with a simple counter though,
     //        and would require contribution from the RTGraph Manager.
     size_t const nbOut1 = trDesc->publicDesc.gd.nbSOs;
-    ZL_RET_R_IF_LT(transform_executionFailure, nbOutStreams, nbOut1);
+    ZL_ERR_IF_LT(nbOutStreams, nbOut1, transform_executionFailure);
 
     unsigned const formatVersion =
             (unsigned)ZL_Encoder_getCParam(eictx, ZL_CParam_formatVersion);
     if (formatVersion < 9) {
         // Format versions less than 9 don't support 0 output streams.
-        ZL_RET_R_IF_EQ(
-                formatVersion_unsupported,
+        ZL_ERR_IF_EQ(
                 nbOutStreams,
                 0,
+                formatVersion_unsupported,
                 "Not supported until format version 9");
     }
 
-    ZL_RET_R_IF_GT(
-            formatVersion_unsupported,
+    ZL_ERR_IF_GT(
             nbOutStreams,
-            ZL_transformOutStreamsLimit(formatVersion));
+            ZL_transformOutStreamsLimit(formatVersion),
+            formatVersion_unsupported);
 
     return ZL_returnValue(nbOutStreams);
 }
@@ -342,6 +345,7 @@ ZL_Report ENC_runTransform(
         Arena* wkspArena,
         CachedStates* trstates)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
     ZL_ASSERT_NN(trDesc);
     ZL_DLOG(BLOCK,
             "ENC_runTransform on Transform '%s' (%u) (lparams=%p)",
@@ -351,7 +355,7 @@ ZL_Report ENC_runTransform(
     if (lparams == NULL)
         lparams = CNODE_getLocalParams(cnode);
     ZL_Encoder eiState;
-    ZL_RET_R_IF_ERR(ENC_initEICtx(
+    ZL_ERR_IF_ERR(ENC_initEICtx(
             &eiState, cctx, wkspArena, &rtnodeid, cnode, lparams, trstates));
     ZL_Report const transformRes = ENC_runTransform_internal(
             &eiState, nodeid, trDesc, inputs, nbInputs);
