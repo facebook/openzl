@@ -468,6 +468,7 @@ void validateExtraction(Extracted const& extracted)
 
 ZL_Report jsonExtractEncode(ZL_Encoder* eictx, const ZL_Input* input) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     std::string_view src{ (char const*)ZL_Input_ptr(input),
                           ZL_Input_numElts(input) };
 
@@ -480,7 +481,7 @@ ZL_Report jsonExtractEncode(ZL_Encoder* eictx, const ZL_Input* input) noexcept
     }
     validateExtraction(extracted);
 
-    ZL_RET_R_IF_ERR(extracted.commit());
+    ZL_ERR_IF_ERR(extracted.commit());
 
     return ZL_returnSuccess();
 }
