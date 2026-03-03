@@ -8,10 +8,14 @@
 #include <string>
 #include <vector>
 
+namespace {
+
 struct Corpus {
     std::string name;
     std::string profile;
 };
+
+} // namespace
 
 std::string getHgRoot()
 {
