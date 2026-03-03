@@ -114,10 +114,12 @@ std::string Compiler::compile(
     const Source src{ source, filename };
     const auto tokens = tokenizer_.tokenize(src);
     const auto groups = grouper_.group(tokens);
-    const auto tree   = parser_.parse(groups);
+    auto tree         = parser_.parse(groups);
     semantic_analyzer_.analyze(tree);
-    const auto optimized = optimizer_.optimize(tree);
-    return codegen_.generate(optimized);
+    if (options_.optimize) {
+        tree = optimizer_.optimize(tree);
+    }
+    return codegen_.generate(tree);
 }
 
 Compiler::Options::Options() {}
@@ -180,5 +182,27 @@ Compiler::Options& Compiler::Options::with_no_debug_info() &
 Compiler::Options&& Compiler::Options::with_no_debug_info() &&
 {
     return std::move(with_no_debug_info());
+}
+
+Compiler::Options& Compiler::Options::with_optimization(bool o) &
+{
+    optimize = o;
+    return *this;
+}
+
+Compiler::Options&& Compiler::Options::with_optimization(bool o) &&
+{
+    return std::move(with_optimization(o));
+}
+
+Compiler::Options& Compiler::Options::with_no_optimization() &
+{
+    optimize = false;
+    return *this;
+}
+
+Compiler::Options&& Compiler::Options::with_no_optimization() &&
+{
+    return std::move(with_no_optimization());
 }
 } // namespace openzl::sddl2

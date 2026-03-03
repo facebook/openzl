@@ -111,9 +111,22 @@ class Compiler {
         Options& with_no_debug_info() &;
         Options&& with_no_debug_info() &&;
 
+        /**
+         * Whether to perform the optimization pass.
+         */
+        Options& with_optimization(bool o = true) &;
+        Options&& with_optimization(bool o = true) &&;
+
+        /**
+         * Don't perform the optimization pass.
+         */
+        Options& with_no_optimization() &;
+        Options&& with_no_optimization() &&;
+
         std::ostream* log_os{ &std::cerr };
         int verbosity{ 0 };
         bool include_debug_info{ true };
+        bool optimize{ true };
     };
 
    protected:
