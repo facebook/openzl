@@ -18,6 +18,7 @@ ZL_Report commitOutputStream(
         size_t idx,
         std::vector<std::vector<T> const*> const& vectors)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     size_t size = 0;
     for (auto const* vector : vectors) {
         size += vector->size();
@@ -25,7 +26,7 @@ ZL_Report commitOutputStream(
 
     ZL_Output* stream =
             ZL_Encoder_createTypedStream(eictx, idx, size, sizeof(T));
-    ZL_RET_R_IF_NULL(allocation, stream);
+    ZL_ERR_IF_NULL(stream, allocation);
     uint8_t* op = (uint8_t*)ZL_Output_ptr(stream);
     for (auto const* vector : vectors) {
         if (vector->size() > 0)
@@ -33,7 +34,7 @@ ZL_Report commitOutputStream(
         op += vector->size() * sizeof(T);
     }
     assert((op - (uint8_t*)ZL_Output_ptr(stream)) == size * sizeof(T));
-    ZL_RET_R_IF_ERR(ZL_Output_commit(stream, size));
+    ZL_ERR_IF_ERR(ZL_Output_commit(stream, size));
     return ZL_returnSuccess();
 }
 
@@ -43,20 +44,21 @@ ZL_Report commitOutputStream(
         size_t idx,
         std::vector<ZeroCopyDynamicOutput<T> const*> const& outs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     size_t size = 0;
     for (auto const* out : outs) {
         size += out->size();
     }
     ZL_Output* stream =
             ZL_Encoder_createTypedStream(eictx, idx, size, sizeof(T));
-    ZL_RET_R_IF_NULL(allocation, stream);
+    ZL_ERR_IF_NULL(stream, allocation);
     uint8_t* op = (uint8_t*)ZL_Output_ptr(stream);
     for (auto const* out : outs) {
         out->copyToBuffer(op, out->nbytes());
         op += out->nbytes();
     }
     assert((op - (uint8_t*)ZL_Output_ptr(stream)) == size * sizeof(T));
-    ZL_RET_R_IF_ERR(ZL_Output_commit(stream, size));
+    ZL_ERR_IF_ERR(ZL_Output_commit(stream, size));
     return ZL_returnSuccess();
 }
 
@@ -65,13 +67,14 @@ ZL_Report commitOutputStreams(
         ZL_Encoder* eictx,
         std::vector<std::tuple<Ts...>> const& outputs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     if constexpr (idx < sizeof...(Ts)) {
         std::vector<std::tuple_element_t<idx, std::tuple<Ts...>> const*> output;
         output.reserve(outputs.size());
         for (auto&& tuple : outputs) {
             output.push_back(&std::get<idx>(tuple));
         }
-        ZL_RET_R_IF_ERR(commitOutputStream(eictx, idx + 1, output));
+        ZL_ERR_IF_ERR(commitOutputStream(eictx, idx + 1, output));
         return commitOutputStreams<idx + 1>(eictx, outputs);
     } else {
         return ZL_returnSuccess();
@@ -84,10 +87,11 @@ template <typename Kernel>
 ZL_Report typedTransform(ZL_Encoder* eictx, ZL_Input const* input) noexcept
 {
     // These transforms were added in version 9
-    ZL_RET_R_IF_LT(
-            formatVersion_unsupported,
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
+    ZL_ERR_IF_LT(
             ZL_Encoder_getCParam(eictx, ZL_CParam_formatVersion),
-            9);
+            9,
+            formatVersion_unsupported);
 
     assert(ZL_Input_type(input) == ZL_Type_serial);
     try {
@@ -114,17 +118,16 @@ ZL_Report typedTransform(ZL_Encoder* eictx, ZL_Input const* input) noexcept
         // Add the lengths stream
         {
             std::vector<std::vector<uint64_t> const*> outs_2 = { &lengths };
-            ZL_RET_R_IF_ERR(commitOutputStream(eictx, 0, outs_2));
+            ZL_ERR_IF_ERR(commitOutputStream(eictx, 0, outs_2));
         }
 
-        ZL_RET_R_IF_ERR(commitOutputStreams(eictx, outs));
+        ZL_ERR_IF_ERR(commitOutputStreams(eictx, outs));
 
         return ZL_returnSuccess();
     } catch (std::exception const& e) {
-        ZL_RET_R_ERR(
-                transform_executionFailure,
-                "Thrift kernel failure: %s",
-                e.what());
+        ZL_ERR(transform_executionFailure,
+               "Thrift kernel failure: %s",
+               e.what());
     }
 }
 
