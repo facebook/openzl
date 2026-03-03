@@ -105,7 +105,7 @@ csvParserGraphFn(ZL_Graph* gctx, ZL_Edge* inputs[], size_t numInputs)
     // Delimiters - ZL_GRAPH_COMPRESS_GENERIC
     // Header - ZL_GRAPH_COMPRESS_GENERIC
     ZL_GraphIDList customGraphs = ZL_Graph_getCustomGraphs(gctx);
-    ZL_RET_R_IF_NE(node_invalid_input, customGraphs.nbGraphIDs, 3);
+    ZL_ERR_IF_NE(customGraphs.nbGraphIDs, 3, node_invalid_input);
 
     ZL_TRY_LET(
             ZL_RefParam,

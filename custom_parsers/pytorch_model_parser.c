@@ -71,6 +71,7 @@ static bool isDataFile(const char* filename, size_t filenameSize)
 static ZL_Report
 pytorchModelDynGraph(ZL_Graph* gctx, ZL_Edge* sctxs[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
 #ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
     // Allow interesting fuzzing with smaller inputs
     const size_t kMultiplier = 4;
@@ -79,13 +80,13 @@ pytorchModelDynGraph(ZL_Graph* gctx, ZL_Edge* sctxs[], size_t nbIns)
 #endif
     const size_t kMaxSegmentSize = 1024 * kMultiplier;
 
-    ZL_RET_R_IF(graph_invalidNumInputs, nbIns != 1);
+    ZL_ERR_IF(nbIns != 1, graph_invalidNumInputs);
     ZL_Edge* sctx               = sctxs[0];
     ZL_Input const* const input = ZL_Edge_getData(sctx);
     const size_t inputSize      = ZL_Input_numElts(input);
 
     ZS2_ZipLexer lexer;
-    ZL_RET_R_IF_ERR(ZS2_ZipLexer_init(&lexer, ZL_Input_ptr(input), inputSize));
+    ZL_ERR_IF_ERR(ZS2_ZipLexer_init(&lexer, ZL_Input_ptr(input), inputSize));
 
     const size_t nbFiles = ZS2_ZipLexer_numFiles(&lexer);
     const size_t maxNbSegments =
@@ -95,8 +96,8 @@ pytorchModelDynGraph(ZL_Graph* gctx, ZL_Edge* sctxs[], size_t nbIns)
             ZL_Graph_getScratchSpace(gctx, maxNbSegments * sizeof(size_t));
     unsigned* const tags =
             ZL_Graph_getScratchSpace(gctx, maxNbSegments * sizeof(unsigned));
-    ZL_RET_R_IF_NULL(allocation, segmentSizes);
-    ZL_RET_R_IF_NULL(allocation, tags);
+    ZL_ERR_IF_NULL(segmentSizes, allocation);
+    ZL_ERR_IF_NULL(tags, allocation);
 
     // Iterate over all the tokens in the Zip file, and fill out segmentSizes
     // and tags.
@@ -105,7 +106,7 @@ pytorchModelDynGraph(ZL_Graph* gctx, ZL_Edge* sctxs[], size_t nbIns)
         ZS2_ZipToken tokens[32];
         ZL_TRY_LET_R(nbTokens, ZS2_ZipLexer_lex(&lexer, tokens, 32));
         for (size_t i = 0; i < nbTokens; ++i) {
-            ZL_RET_R_IF_GE(corruption, nbSegments, maxNbSegments);
+            ZL_ERR_IF_GE(nbSegments, maxNbSegments, corruption);
             const ZS2_ZipToken token = tokens[i];
 
             // Assign the appropriate tag to the token.
@@ -133,7 +134,7 @@ pytorchModelDynGraph(ZL_Graph* gctx, ZL_Edge* sctxs[], size_t nbIns)
             // Split large files into smaller segments to optimize
             // (de)compression speed by improving memory locality.
             while (segmentSizes[nbSegments - 1] > kMaxSegmentSize) {
-                ZL_RET_R_IF_GE(corruption, nbSegments, maxNbSegments);
+                ZL_ERR_IF_GE(nbSegments, maxNbSegments, corruption);
                 const size_t segmentSize     = segmentSizes[nbSegments - 1];
                 segmentSizes[nbSegments - 1] = kMaxSegmentSize;
                 segmentSizes[nbSegments]     = segmentSize - kMaxSegmentSize;
@@ -153,7 +154,7 @@ pytorchModelDynGraph(ZL_Graph* gctx, ZL_Edge* sctxs[], size_t nbIns)
 
     // Set the destination for every segment
     for (size_t i = 0; i < streams.nbStreams; ++i) {
-        ZL_RET_R_IF_ERR(ZL_Edge_setDestination(
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(
                 streams.streams[i], graphs.graphids[tags[i]]));
     }
 
