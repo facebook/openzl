@@ -330,16 +330,7 @@ def zs_fuzzers(ftest_names, generator = None, **kwargs):
 
     for ftest_name in ftest_names:
         name = prefix + "_".join(ftest_name)
-        cpp_lionhead_harness(
-            name = name,
-            metadata = ZS_FUZZ_METADATA,
-            ftest_name = ftest_name,
-            harness_configs = {mode: {} for mode in ZS_HARNESS_MODES},
-            **kwargs
-        )
-
         if generator:
-            generator_name = name + "_Generator"
             generator_config = {
                 "seed_generator_command": [
                     "./generator",
@@ -349,7 +340,7 @@ def zs_fuzzers(ftest_names, generator = None, **kwargs):
                 ],
             }
             generic_lionhead_harness(
-                name = generator_name,
+                name = name,
                 bundle_spec_version = 1,
                 environment_constraints = {
                     "remote_execution.linux": {},
@@ -365,10 +356,18 @@ def zs_fuzzers(ftest_names, generator = None, **kwargs):
                     "fuzz": "fbsource//xplat/security/lionhead/utils/runners/libfuzzer:fuzz",
                     "fuzz_utils.py": "fbsource//xplat/security/lionhead/utils/runners:fuzz_utils",
                     "generator": generator,
-                    generator_name: ":" + name + "_bin",
+                    name: ":" + name + "_NoGenerator_bin",
                 },
                 metadata = ZS_FUZZ_METADATA,
             )
+
+        cpp_lionhead_harness(
+            name = name if not generator else name + "_NoGenerator",
+            metadata = ZS_FUZZ_METADATA,
+            ftest_name = ftest_name,
+            harness_configs = {mode: {} for mode in ZS_HARNESS_MODES},
+            **kwargs
+        )
 
 def zs_raw_fuzzer(name, **kwargs):
     if _is_release():
