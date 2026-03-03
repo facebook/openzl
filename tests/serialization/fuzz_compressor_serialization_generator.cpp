@@ -22,7 +22,8 @@ namespace fs = std::filesystem;
 
 std::vector<std::string> generateFuzzDeserializationCorpus()
 {
-    auto gen                = std::make_shared<std::mt19937>(0xdeadbeef);
+    std::random_device rd;
+    auto gen                = std::make_shared<std::mt19937>(rd());
     auto rw                 = std::make_shared<datagen::PRNGWrapper>(gen);
     auto compressorProducer = datagen::CompressorProducer{ rw };
 
@@ -40,6 +41,8 @@ std::optional<std::vector<std::string>> generateCorpus(std::string_view harness)
 {
     if (harness == "FuzzDeserialization") {
         return generateFuzzDeserializationCorpus();
+    } else if (harness == "FuzzRandomCompressorDeserializesSuccessfully") {
+        return std::vector<std::string>{};
     } else {
         return std::nullopt;
     }
