@@ -20,11 +20,9 @@
 
 // TODO: Not sure if there is a better way to do this
 #if ZL_FBCODE_IS_RELEASE
-#    include "openzl/prod/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_fatal_types.h"
 #    include "openzl/prod/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_types.h"
 #    include "openzl/prod/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_visitation.h"
 #else
-#    include "openzl/dev/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_fatal_types.h"
 #    include "openzl/dev/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_types.h"
 #    include "openzl/dev/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_visitation.h"
 #endif
