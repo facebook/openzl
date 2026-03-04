@@ -237,7 +237,7 @@ ZL_Report EI_fieldLzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
         ZL_IntParam const param = ZL_Graph_getLocalIntParam(gctx, i);
         if (param.paramId == i) {
             ZL_ERR_IF_LT(param.paramValue, 0, nodeParameter_invalid);
-            ZL_ERR_IF_GT(
+            ZL_ERR_IF_GE(
                     (size_t)param.paramValue,
                     customGraphs.nbGraphIDs,
                     nodeParameter_invalid);

@@ -114,17 +114,12 @@ SizeTimePair CompressionUtils::compressSample(
             ZL_Clustering_serializeClusteringConfig(
                     errCtx, &dst, &dstSize, config.get(), &a1cArena),
             "Failed to serialize clustering config");
-    ZL_IntParam sizeParam = (ZL_IntParam){
-        .paramId    = ZL_GENERIC_CLUSTERING_CONFIG_SIZE_ID,
-        .paramValue = (int)dstSize,
-    };
     ZL_CopyParam configParam = (ZL_CopyParam){
         .paramId   = ZL_GENERIC_CLUSTERING_CONFIG_ID,
         .paramPtr  = dst,
         .paramSize = dstSize,
     };
     ZL_LocalParams clusteringParams = (ZL_LocalParams){
-        .intParams  = { .intParams = &sizeParam, .nbIntParams = 1 },
         .copyParams = { .copyParams = &configParam, .nbCopyParams = 1 },
     };
     ZL_RuntimeGraphParameters runtimeParams = (ZL_RuntimeGraphParameters){
