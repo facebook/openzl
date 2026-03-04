@@ -15,7 +15,6 @@
 
 // could be any (non trivial) arbitrary value
 #define ZL_SPLITN_SEGMENTSIZES_PID 323
-#define ZL_SPLITN_NBSEGMENTS_PID 324
 #define ZL_SPLITN_PARSINGF_PID 436
 
 struct ZL_SplitState_s {
@@ -31,6 +30,8 @@ ZL_RESULT_DECLARE_TYPE(ZL_SplitInstructions);
 
 static SplitN_ExtParser_s const* getExtParser(ZL_Encoder const* eictx)
 {
+    // TODO: We are using a copy param as a function pointer and this
+    // is non-serializable. Fix this when the fuzzer finds the issue.
     ZL_CopyParam const gpParsef =
             ZL_Encoder_getLocalCopyParam(eictx, ZL_SPLITN_PARSINGF_PID);
     if (gpParsef.paramId != ZL_SPLITN_PARSINGF_PID) {
@@ -62,32 +63,25 @@ static ZL_RESULT_OF(ZL_SplitInstructions)
     // Priority 2 : check for fixed-size parameters
     ZL_RefParam const segmentSizes =
             ZL_Encoder_getLocalParam(eictx, ZL_SPLITN_SEGMENTSIZES_PID);
-    ZL_IntParam const nbSegments =
-            ZL_Encoder_getLocalIntParam(eictx, ZL_SPLITN_NBSEGMENTS_PID);
     ZL_RET_T_IF_EQ(
             ZL_SplitInstructions,
             nodeParameter_invalid,
             segmentSizes.paramId,
             ZL_LP_INVALID_PARAMID,
             "can't find any instruction to split");
-    ZL_RET_T_IF_EQ(
-            ZL_SplitInstructions,
-            nodeParameter_invalid,
-            nbSegments.paramId,
-            ZL_LP_INVALID_PARAMID,
-            "can't find any instruction to split");
-    if (nbSegments.paramValue == 0) {
-        ZL_SplitInstructions r = { NULL, 0 };
-        return ZL_RESULT_WRAP_VALUE(ZL_SplitInstructions, r);
-    }
     ZL_RET_T_IF_NULL(
             ZL_SplitInstructions,
             nodeParameter_invalid,
             segmentSizes.paramRef,
             "instructions to split are NULL");
+    // Handle the case of 0 segments (empty split)
+    if (segmentSizes.paramSize == 0) {
+        ZL_SplitInstructions r = { NULL, 0 };
+        return ZL_RESULT_WRAP_VALUE(ZL_SplitInstructions, r);
+    }
     ZL_SplitInstructions r;
     r.segmentSizes = segmentSizes.paramRef;
-    r.nbSegments   = (size_t)nbSegments.paramValue;
+    r.nbSegments   = segmentSizes.paramSize / sizeof(size_t);
     return ZL_RESULT_WRAP_VALUE(ZL_SplitInstructions, r);
 }
 
@@ -186,13 +180,7 @@ ZL_NodeID ZL_Compressor_registerSplitNode_withParams(
     };
     ZL_LocalCopyParams const lgp = { &segmentSizesParam, 1 };
 
-    ZL_IntParam const nbSegmentsParam = {
-        .paramId    = ZL_SPLITN_NBSEGMENTS_PID,
-        .paramValue = (int)nbSegments,
-    };
-    ZL_LocalIntParams lip = { &nbSegmentsParam, 1 };
-
-    ZL_LocalParams const lParams = { .copyParams = lgp, .intParams = lip };
+    ZL_LocalParams const lParams = { .copyParams = lgp };
     return ZL_Compressor_cloneNode(cgraph, getSplitNNodeID(type), &lParams);
 }
 
@@ -280,18 +268,13 @@ ZL_Edge_runSplitNode(
             "nbSegments is too large (temporary limitation)");
 
     ZL_RefParam const segmentSizesParam = {
-        .paramId  = ZL_SPLITN_SEGMENTSIZES_PID,
-        .paramRef = segmentSizes,
+        .paramId   = ZL_SPLITN_SEGMENTSIZES_PID,
+        .paramRef  = segmentSizes,
+        .paramSize = nbSegments * sizeof(size_t)
     };
     ZL_LocalRefParams const lrp = { &segmentSizesParam, 1 };
 
-    ZL_IntParam const nbSegmentsParam = {
-        .paramId    = ZL_SPLITN_NBSEGMENTS_PID,
-        .paramValue = (int)nbSegments,
-    };
-    ZL_LocalIntParams lip = { &nbSegmentsParam, 1 };
-
-    ZL_LocalParams const lParams = { .refParams = lrp, .intParams = lip };
+    ZL_LocalParams const lParams = { .refParams = lrp };
     ZL_Type type                 = ZL_Input_type(ZL_Edge_getData(input));
     return ZL_Edge_runNode_withParams(input, getSplitNNodeID(type), &lParams);
 }

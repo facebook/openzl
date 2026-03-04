@@ -13,11 +13,14 @@
 namespace openzl::tests::components {
 namespace {
 
+const size_t kMaxRandomTotalSegmentSize = 4096;
+
 std::vector<size_t> randomSegmentSizes(datagen::DataGen& gen)
 {
     auto nbSegments = gen.usize_range("nb_segments", 0, 100);
     std::vector<size_t> sizes;
-    size_t remaining = gen.usize_range("total_fixed", 0, 4096);
+    size_t remaining =
+            gen.usize_range("total_fixed", 0, kMaxRandomTotalSegmentSize);
     for (size_t j = 0; j + 1 < nbSegments; ++j) {
         auto sz = gen.usize_range("seg_size", 0, remaining);
         sizes.push_back(sz);
@@ -72,6 +75,12 @@ std::pair<size_t, size_t> getMinMaxInputElements(
     size_t sum = 0;
     for (auto sz : segSizes) {
         sum += sz;
+    }
+
+    if (sum > std::max(kMaxRandomTotalSegmentSize, maxInputSize)) {
+        // Minimum required size exceeds both the maximum requested size and the
+        // random total segment size.
+        return { 0, 0 };
     }
     // If the last segment is 0 ("rest"), the minimum is the sum of
     // the other segments. If all are non-zero, input must be exactly
@@ -206,6 +215,9 @@ class SplitByParamComponent : public OpenZLComponent {
         inputs.reserve(num);
         auto [minSize, maxSize] =
                 getMinMaxInputElements(compressor, graphID, maxInputSize);
+        if (minSize == 0 && maxSize == 0) {
+            return inputs;
+        }
         for (size_t i = 0; i < num; ++i) {
             auto inputSize = gen.usize_range("input_size", minSize, maxSize);
             inputs.push_back(
@@ -347,6 +359,9 @@ class SplitStructByParamComponent : public OpenZLComponent {
             auto width                      = gen.usize_range("width", 1, 10);
             auto [minElements, maxElements] = getMinMaxInputElements(
                     compressor, graphID, maxInputSize / width);
+            if (minElements == 0 && maxElements == 0) {
+                continue;
+            }
             auto numElements =
                     gen.usize_range("num_elements", minElements, maxElements);
             auto input = gen.randStringWithLength("input", numElements * width);
@@ -484,6 +499,9 @@ class SplitNumericByParamComponent : public OpenZLComponent {
             size_t width = gen.choices<size_t>("width", { 1, 2, 4, 8 });
             auto [minElements, maxElements] = getMinMaxInputElements(
                     compressor, graphID, maxInputSize / width);
+            if (minElements == 0 && maxElements == 0) {
+                continue;
+            }
             auto numElements =
                     gen.usize_range("num_elements", minElements, maxElements);
             auto input = gen.randStringWithLength("input", numElements * width);
