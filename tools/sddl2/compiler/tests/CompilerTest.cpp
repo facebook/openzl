@@ -219,12 +219,11 @@ TEST_F(CompilerTest, UnaryNegationAST)
 {
     const auto prog = R"(
         tmp = 10 - - 11
+        expect tmp == 21
     )";
 
     const auto cg       = Codegen(SourceLocation::null());
-    const auto expected = std::vector<ASTPtr>({
-            cg.assign(cg.var("tmp"), cg.num(21)),
-    });
+    const auto expected = std::vector<ASTPtr>({ cg.expect(cg.num(1)) });
     expect_ast(prog, expected);
 }
 
@@ -251,8 +250,7 @@ TEST_F(CompilerTest, ArrayAST)
 
     const auto cg       = Codegen(SourceLocation::null());
     const auto expected = std::vector<ASTPtr>(
-            { cg.assign(cg.var("len"), cg.num(3)),
-              cg.consume(cg.array(cg.builtin_field(Symbol::BYTE), cg.num(3))),
+            { cg.consume(cg.array(cg.builtin_field(Symbol::BYTE), cg.num(3))),
               cg.consume(cg.array(cg.builtin_field(Symbol::BYTE))) });
 
     expect_ast(prog, expected);
@@ -264,16 +262,19 @@ TEST_F(CompilerTest, RecordAST)
         Record Entry() = {
             id: Int32LE,
         }
+        : Entry
     )";
 
     const auto cg       = Codegen(SourceLocation::null());
-    const auto expected = std::vector<ASTPtr>({ cg.assign(
-            cg.var("Entry"),
-            cg.record(
-                    ArgVec{},
-                    ArgVec{ cg.assume(
-                            cg.var("id"),
-                            cg.builtin_field(Symbol::I32LE)) })) });
+    const auto expected = std::vector<ASTPtr>(
+            { cg.assign(
+                      cg.var("Entry"),
+                      cg.record(
+                              ArgVec{},
+                              ArgVec{ cg.assume(
+                                      cg.var("id"),
+                                      cg.builtin_field(Symbol::I32LE)) })),
+              cg.consume(cg.var("Entry", true)) });
     expect_ast(prog, expected);
 }
 
@@ -297,11 +298,12 @@ TEST_F(CompilerTest, ParenthesesOverridePrecedenceAST)
 {
     const auto prog = R"(
         tmp = (1 - 2) * 3
+        expect tmp == -3
     )";
 
     const auto cg       = Codegen(SourceLocation::null());
     const auto expected = std::vector<ASTPtr>({
-            cg.assign(cg.var("tmp"), cg.num(-3)),
+            cg.expect(cg.num(1)),
     });
     expect_ast(prog, expected);
 }
@@ -310,11 +312,12 @@ TEST_F(CompilerTest, NestedParenthesesAST)
 {
     const auto prog = R"(
         tmp = ((1 + 2) * (3 + 4))
+        expect tmp == 21
     )";
 
     const auto cg       = Codegen(SourceLocation::null());
     const auto expected = std::vector<ASTPtr>({
-            cg.assign(cg.var("tmp"), cg.num(21)),
+            cg.expect(cg.num(1)),
     });
     expect_ast(prog, expected);
 }
@@ -323,11 +326,12 @@ TEST_F(CompilerTest, ComplexArithmeticExpressionAST)
 {
     const auto prog = R"(
         tmp = 1 + 2 * 3 - 4 / 2
+        expect tmp == 5
     )";
 
     const auto cg       = Codegen(SourceLocation::null());
     const auto expected = std::vector<ASTPtr>({
-            cg.assign(cg.var("tmp"), cg.num(5)),
+            cg.expect(cg.num(1)),
     });
     expect_ast(prog, expected);
 }
@@ -376,9 +380,8 @@ TEST_F(CompilerTest, SimpleSaoAST)
                                             cg.var("XDPM"),
                                             cg.builtin_field(Symbol::F32LE)),
                             })),
-            cg.assume(cg.var("header"), cg.bytes(cg.num(28))),
-            cg.assume(
-                    cg.var("stars"), cg.array(cg.var("StarEntry"), cg.num(10))),
+            cg.consume(cg.bytes(cg.num(28))),
+            cg.consume(cg.array(cg.var("StarEntry"), cg.num(10))),
     });
     expect_ast(prog, expected);
 }
@@ -486,15 +489,12 @@ TEST_F(CompilerTest, ArithmeticConstFold)
 {
     const auto prog     = R"(
         tmp = 1 + 2
-        tmp = -(3 + 2)
-        tmp = 2 * 3 + 4
-        expect tmp == 10
+        tmp = -(tmp + 2)
+        tmp = 2 * 3 + tmp
+        expect tmp == 1
     )";
     const auto cg       = Codegen(SourceLocation::null());
     const auto expected = std::vector<ASTPtr>({
-            cg.assign(cg.var("tmp"), cg.num(3)),
-            cg.assign(cg.var("tmp"), cg.num(-5)),
-            cg.assign(cg.var("tmp"), cg.num(10)),
             cg.expect(cg.num(1)),
     });
     expect_ast(prog, expected);
@@ -536,7 +536,6 @@ TEST_F(CompilerTest, ConstPropagation)
     )";
     const auto cg       = Codegen(SourceLocation::null());
     const auto expected = std::vector<ASTPtr>({
-            cg.assign(cg.var("x"), cg.num(5)),
             cg.expect(cg.num(1)),
     });
     expect_ast(prog, expected);
@@ -552,9 +551,6 @@ TEST_F(CompilerTest, ChainedConstPropagation)
     )";
     const auto cg       = Codegen(SourceLocation::null());
     const auto expected = std::vector<ASTPtr>({
-            cg.assign(cg.var("a"), cg.num(1)),
-            cg.assign(cg.var("b"), cg.num(2)),
-            cg.assign(cg.var("b"), cg.num(4)),
             cg.expect(cg.num(1)),
     });
     expect_ast(prog, expected);

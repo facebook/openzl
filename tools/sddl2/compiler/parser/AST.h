@@ -171,7 +171,7 @@ class ASTNum : public ASTConverted {
 
 class ASTVar : public ASTConverted {
    public:
-    explicit ASTVar(const Token& token);
+    explicit ASTVar(const Token& token, bool is_last_reference = false);
 
     const ASTVar* as_var() const override;
 
@@ -183,9 +183,11 @@ class ASTVar : public ASTConverted {
     }
 
     const std::string& name() const;
+    bool is_last_reference() const;
 
    private:
     const std::string name_;
+    bool is_last_reference_ = false;
 };
 
 class ASTField : public ASTConverted {
@@ -427,6 +429,11 @@ class Codegen {
     ASTPtr var(poly::string_view name) const
     {
         return std::make_shared<ASTVar>(Token{ loc_, name });
+    }
+
+    ASTPtr var(poly::string_view name, bool is_last_reference) const
+    {
+        return std::make_shared<ASTVar>(Token{ loc_, name }, is_last_reference);
     }
 
     ASTPtr list(Symbol open_sym, ASTVec elts) const
