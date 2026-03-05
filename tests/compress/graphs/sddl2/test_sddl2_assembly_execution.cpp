@@ -1236,6 +1236,67 @@ TEST_F(SDDL2AssemblyExecutionTest, SegmentZero)
     EXPECT_EQ(segments_.items[0].size_bytes, 0u);
 }
 
+// ============================================================================
+// Variable Operation Tests
+// ============================================================================
+
+TEST_F(SDDL2AssemblyExecutionTest, VarStoreLoadExecution)
+{
+    const std::string input = "Test";
+    ASSERT_EQ(
+            run(R"(
+                push.i32 42
+                push.i32 0
+                var.store
+                push.i32 0
+                var.load
+                push.i32 42
+                cmp.eq
+                expect_true
+                halt
+            )",
+                input),
+            SDDL2_OK);
+}
+
+TEST_F(SDDL2AssemblyExecutionTest, VarMultipleRegistersExecution)
+{
+    const std::string input = "Test";
+    ASSERT_EQ(
+            run(R"(
+                push.i32 10
+                push.i32 0
+                var.store
+                push.i32 20
+                push.i32 1
+                var.store
+                push.i32 30
+                push.i32 2
+                var.store
+
+                push.i32 0
+                var.load
+                push.i32 10
+                cmp.eq
+                expect_true
+
+                push.i32 1
+                var.load
+                push.i32 20
+                cmp.eq
+                expect_true
+
+                push.i32 2
+                var.load
+                push.i32 30
+                cmp.eq
+                expect_true
+                halt
+            )",
+                input),
+            SDDL2_OK);
+}
+
 } // namespace testing
 } // namespace sddl2
 } // namespace openzl
