@@ -2,12 +2,12 @@
 
 #include "openzl/codecs/transpose/encode_transpose_binding.h"
 #include "openzl/codecs/transpose/encode_transpose_kernel.h" // ZS_transposeEncode
+#include "openzl/codecs/zl_transpose.h" // ZL_GRAPH_TRANSPOSE_SPLIT
 #include "openzl/common/assertion.h"
 #include "openzl/common/errors_internal.h"
 #include "openzl/compress/private_nodes.h"
 #include "openzl/zl_data.h"
 #include "openzl/zl_graph_api.h"
-#include "openzl/zl_selector_declare_helper.h"
 
 // EI_transpose design notes:
 // - Accepts a single stream of type ZL_Type_struct
@@ -260,36 +260,51 @@ EI_transpose_split8bytes(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     return EI_transpose_split_bytes(eictx, in, 8);
 }
 
-ZL_DECLARE_SELECTOR(
-        ZL_splitTransposeSelector,
-        ZL_Type_struct,
-        SUCCESSOR(transposeSplit1),
-        SUCCESSOR(transposeSplit2),
-        SUCCESSOR(transposeSplit4),
-        SUCCESSOR(transposeSplit8),
-        SUCCESSOR(transposeSplit))
-
-ZL_GraphID ZL_splitTransposeSelector_impl(
-        const ZL_Selector* selCtx,
-        ZL_Input const* input,
-        ZL_splitTransposeSelector_Successors const* successors)
+ZL_Report transposeSplitSelectorFnGraph(
+        ZL_Graph* graph,
+        ZL_Edge* inputs[],
+        size_t nbInputs)
 {
-    if (ZL_Selector_isTransposeSplitSupported(selCtx)) {
-        return successors->transposeSplit;
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+    ZL_ASSERT_EQ(nbInputs, 1);
+    ZL_Edge* input = inputs[0];
+
+    ZL_GraphIDList const customGraphs = ZL_Graph_getCustomGraphs(graph);
+    ZL_ERR_IF_NE(customGraphs.nbGraphIDs, 5, graphParameter_invalid);
+    ZL_GraphID const transposeSplit1 = customGraphs.graphids[0];
+    ZL_GraphID const transposeSplit2 = customGraphs.graphids[1];
+    ZL_GraphID const transposeSplit4 = customGraphs.graphids[2];
+    ZL_GraphID const transposeSplit8 = customGraphs.graphids[3];
+    ZL_GraphID const transposeSplit  = customGraphs.graphids[4];
+
+    const ZL_Input* in = ZL_Edge_getData(input);
+    ZL_ASSERT_NN(in);
+
+    if (ZL_Graph_isTransposeSplitSupported(graph)) {
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(input, transposeSplit));
+        return ZL_returnSuccess();
     }
 
-    switch (ZL_Input_eltWidth(input)) {
+    switch (ZL_Input_eltWidth(in)) {
         case 1:
-            return successors->transposeSplit1;
+            ZL_ERR_IF_ERR(ZL_Edge_setDestination(input, transposeSplit1));
+            break;
         case 2:
-            return successors->transposeSplit2;
+            ZL_ERR_IF_ERR(ZL_Edge_setDestination(input, transposeSplit2));
+            break;
         case 4:
-            return successors->transposeSplit4;
+            ZL_ERR_IF_ERR(ZL_Edge_setDestination(input, transposeSplit4));
+            break;
         case 8:
-            return successors->transposeSplit8;
+            ZL_ERR_IF_ERR(ZL_Edge_setDestination(input, transposeSplit8));
+            break;
         default:
-            return ZL_GRAPH_ILLEGAL;
+            ZL_ERR(GENERIC,
+                   "Invalid input element width: %zu",
+                   ZL_Input_eltWidth(in));
     }
+
+    return ZL_returnSuccess();
 }
 
 ZL_NodeID ZL_Graph_getTransposeSplitNode(const ZL_Graph* gctx, size_t eltWidth)
@@ -341,14 +356,21 @@ ZL_GraphID ZL_Compressor_registerTransposeSplitGraph(
             ZL_Compressor_registerStaticGraph_fromNode(
                     cgraph, ZL_NODE_TRANSPOSE_SPLIT, ZL_GRAPHLIST(successor));
 
-    return ZL_splitTransposeSelector_declareGraph(
-            cgraph,
-            ZL_splitTransposeSelector_successors_init(
-                    transpose1,
-                    transpose2,
-                    transpose4,
-                    transpose8,
-                    transposeSplit));
+    ZL_GraphID const successors[] = {
+        transpose1, transpose2, transpose4, transpose8, transposeSplit
+    };
+    ZL_GraphParameters const params = {
+        .customGraphs   = successors,
+        .nbCustomGraphs = 5,
+    };
+
+    ZL_RESULT_OF(ZL_GraphID)
+    const result = ZL_Compressor_parameterizeGraph(
+            cgraph, ZL_GRAPH_TRANSPOSE_SPLIT, &params);
+    if (ZL_RES_isError(result)) {
+        return ZL_GRAPH_ILLEGAL;
+    }
+    return ZL_RES_value(result);
 }
 
 ZL_RESULT_OF(ZL_EdgeList)
