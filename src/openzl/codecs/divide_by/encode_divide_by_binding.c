@@ -98,15 +98,16 @@ EI_divide_by_int(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     void* dst       = ZL_Output_ptr(out);
 
     uint8_t header[ZL_VARINT_LENGTH_64];
-    ZL_RefParam div = ZL_Encoder_getLocalParam(eictx, ZL_DIVIDE_BY_PID);
-    ZL_RESULT_OF(uint64_t)
-    divisor = getDivisor(
-            intWidth,
-            nbInts,
-            div.paramRef ? *(const uint64_t*)div.paramRef : 0,
-            src);
-    ZL_ERR_IF_ERR(divisor);
-    uint64_t divisorValue = ZL_RES_value(divisor);
+    ZL_RefParam div   = ZL_Encoder_getLocalParam(eictx, ZL_DIVIDE_BY_PID);
+    uint64_t divParam = 0;
+    if (div.paramRef != NULL) {
+        ZL_ERR_IF_NE(div.paramSize, sizeof(uint64_t), graphParameter_invalid);
+        divParam = *(const uint64_t*)div.paramRef;
+    }
+    ZL_TRY_LET(
+            uint64_t,
+            divisorValue,
+            getDivisor(intWidth, nbInts, divParam, src));
     ZS_divideByEncode(dst, src, nbInts, divisorValue, intWidth);
     size_t encodeSize = ZL_varintEncode64Fast(divisorValue, header);
     ZL_Encoder_sendCodecHeader(eictx, header, encodeSize);

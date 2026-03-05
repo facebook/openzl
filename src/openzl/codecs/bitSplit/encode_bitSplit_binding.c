@@ -14,7 +14,6 @@
 
 // Parameter IDs for bitSplit
 #define ZL_BITSPLIT_WIDTHS_PID 701
-#define ZL_BITSPLIT_NBWIDTHS_PID 702
 
 ZL_Report EI_bitSplit_withWidths(
         ZL_Encoder* eictx,
@@ -117,26 +116,19 @@ ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     // Get parameters from local params
     ZL_RefParam const widthsParam =
             ZL_Encoder_getLocalParam(eictx, ZL_BITSPLIT_WIDTHS_PID);
-    ZL_IntParam const nbWidthsParam =
-            ZL_Encoder_getLocalIntParam(eictx, ZL_BITSPLIT_NBWIDTHS_PID);
 
     ZL_ERR_IF_EQ(
             widthsParam.paramId,
             ZL_LP_INVALID_PARAMID,
             nodeParameter_invalid,
             "bitSplit requires bit widths parameter");
-    ZL_ERR_IF_EQ(
-            nbWidthsParam.paramId,
-            ZL_LP_INVALID_PARAMID,
-            nodeParameter_invalid,
-            "bitSplit requires nbWidths parameter");
     ZL_ERR_IF_NULL(
             widthsParam.paramRef,
             nodeParameter_invalid,
             "bitSplit bit widths parameter is NULL");
 
     const uint8_t* bitWidths = (const uint8_t*)widthsParam.paramRef;
-    size_t const nbWidths    = (size_t)nbWidthsParam.paramValue;
+    size_t const nbWidths    = widthsParam.paramSize;
 
     // Validate: must have at least one width
     ZL_ERR_IF_EQ(
@@ -185,12 +177,7 @@ ZL_Compressor_buildBitSplitNode(
                                        .paramSize = nbWidths };
     ZL_LocalCopyParams const lgp   = { &widthsParam, 1 };
 
-    ZL_IntParam const nbWidthsParam = {
-        .paramId    = ZL_BITSPLIT_NBWIDTHS_PID,
-        .paramValue = (int)nbWidths,
-    };
-    ZL_LocalIntParams const lip     = { &nbWidthsParam, 1 };
-    ZL_LocalParams const lParams    = { .copyParams = lgp, .intParams = lip };
+    ZL_LocalParams const lParams    = { .copyParams = lgp };
     ZL_NodeParameters const nParams = { .localParams = &lParams };
 
     return ZL_Compressor_parameterizeNode(
