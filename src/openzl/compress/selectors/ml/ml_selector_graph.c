@@ -143,9 +143,9 @@ static ZL_Report GBTModel_serializeTree(
         A1C_MAP_TRY_ADD_R(pair, treeMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "nodes");
         A1C_Item* nodes = A1C_Item_array(&pair->val, tree->numNodes, a1cArena);
-        ZL_RET_R_IF_NULL(allocation, nodes);
+        ZL_ERR_IF_NULL(nodes, allocation);
         for (size_t i = 0; i < tree->numNodes; i++) {
-            ZL_RET_R_IF_ERR(GBTModel_serializeNode(
+            ZL_ERR_IF_ERR(GBTModel_serializeNode(
                     errCtx, &nodes[i], a1cArena, &tree->nodes[i]));
         }
     }
@@ -170,9 +170,9 @@ static ZL_Report GBTModel_serializeForest(
         A1C_Item_string_refCStr(&pair->key, "trees");
         A1C_Item* trees =
                 A1C_Item_array(&pair->val, forest->numTrees, a1cArena);
-        ZL_RET_R_IF_NULL(allocation, trees);
+        ZL_ERR_IF_NULL(trees, allocation);
         for (size_t i = 0; i < forest->numTrees; i++) {
-            ZL_RET_R_IF_ERR(GBTModel_serializeTree(
+            ZL_ERR_IF_ERR(GBTModel_serializeTree(
                     errCtx, &trees[i], a1cArena, &forest->trees[i]));
         }
     }
@@ -198,9 +198,9 @@ static ZL_Report GBTModel_serializePredictor(
         A1C_Item_string_refCStr(&pair->key, "forests");
         A1C_Item* forests =
                 A1C_Item_array(&pair->val, predictor->numForests, a1cArena);
-        ZL_RET_R_IF_NULL(allocation, forests);
+        ZL_ERR_IF_NULL(forests, allocation);
         for (size_t i = 0; i < predictor->numForests; i++) {
-            ZL_RET_R_IF_ERR(GBTModel_serializeForest(
+            ZL_ERR_IF_ERR(GBTModel_serializeForest(
                     errCtx, &forests[i], a1cArena, &predictor->forests[i]));
         }
     }
@@ -227,19 +227,20 @@ static ZL_Report GBTModel_serialize(
         A1C_Item* parent,
         A1C_Arena* a1cArena)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(errCtx);
     A1C_MapBuilder rootMapBuilder = A1C_Item_map_builder(parent, 6, a1cArena);
 
     // Serialize predictor
     {
         A1C_MAP_TRY_ADD_R(pair, rootMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "predictor");
-        ZL_RET_R_IF_ERR(GBTModel_serializePredictor(
+        ZL_ERR_IF_ERR(GBTModel_serializePredictor(
                 errCtx, &pair->val, a1cArena, model->predictor));
     }
     // Serialize featureGenerator using enum
     {
         FeatureGenId fg = FeatureGen_getId(model->featureGenerator);
-        ZL_RET_R_IF_EQ(invalidName, fg, FeatureGenId_Invalid);
+        ZL_ERR_IF_EQ(fg, FeatureGenId_Invalid, invalidName);
 
         A1C_MAP_TRY_ADD_R(pair, rootMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "featureGenerator");
@@ -266,7 +267,7 @@ static ZL_Report GBTModel_serialize(
         A1C_Item_string_refCStr(&pair->key, "featureLabels");
         A1C_Item* labels =
                 A1C_Item_array(&pair->val, model->nbFeatures, a1cArena);
-        ZL_RET_R_IF_NULL(allocation, labels);
+        ZL_ERR_IF_NULL(labels, allocation);
         for (size_t i = 0; i < model->nbFeatures; i++) {
             A1C_Item_string_refCStr(&labels[i], model->featureLabels[i]);
         }

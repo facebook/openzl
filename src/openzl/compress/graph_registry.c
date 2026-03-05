@@ -287,6 +287,7 @@ void GR_validate(void)
 ZL_Report
 GR_staticGraphWrapper(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     ZL_ASSERT_NN(gctx);
     ZL_ASSERT_NN(inputs);
     ZL_NodeIDList const headNode_l = ZL_Graph_getCustomNodes(gctx);
@@ -309,7 +310,7 @@ GR_staticGraphWrapper(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
     // Note: this version only supports TypedTransform as HeadNode
     ZL_ASSERT_EQ(gidl.nbGraphIDs, nbOutputs);
     for (size_t n = 0; n < nbOutputs; n++) {
-        ZL_RET_R_IF_ERR(
+        ZL_ERR_IF_ERR(
                 ZL_Edge_setDestination(outputList.edges[n], gidl.graphids[n]));
     }
     return ZL_returnSuccess();
@@ -321,6 +322,7 @@ GR_staticGraphWrapper(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
 //       it might be more readable to keep them separated.
 ZL_Report GR_VOGraphWrapper(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     ZL_ASSERT_NN(gctx);
     ZL_ASSERT_EQ(nbInputs, 1);
     ZL_ASSERT_NN(inputs);
@@ -345,10 +347,10 @@ ZL_Report GR_VOGraphWrapper(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
     const void* const pp = GCTX_getPrivateParam(gctx);
     ZL_ASSERT_NN(pp);
     unsigned const nbSingletons = ((const unsigned*)pp)[0];
-    ZL_RET_R_IF_LT(
-            nodeExecution_invalidOutputs,
+    ZL_ERR_IF_LT(
             nbOutputs,
             (size_t)nbSingletons,
+            nodeExecution_invalidOutputs,
             "the head VO Node has not generated enough outputs according to its definition ");
 
     // Register and check that all singular outputs receive one successor.
@@ -359,27 +361,27 @@ ZL_Report GR_VOGraphWrapper(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
         ZL_IDType const outcomeID = StreamCtx_getOutcomeID(sctx);
         if (n < nbSingletons) {
             /* Singular output */
-            ZL_RET_R_IF_NE(
-                    nodeExecution_invalidOutputs,
+            ZL_ERR_IF_NE(
                     outcomeID,
                     n,
+                    nodeExecution_invalidOutputs,
                     "a Singular output has not received a Successor");
         } else {
             /* Variable outputs */
-            ZL_RET_R_IF_LT(
-                    nodeExecution_invalidOutputs,
+            ZL_ERR_IF_LT(
                     outcomeID,
                     nbSingletons,
-                    "overloading Singular output");
-            ZL_RET_R_IF_GE(
                     nodeExecution_invalidOutputs,
+                    "overloading Singular output");
+            ZL_ERR_IF_GE(
                     outcomeID,
                     outcomeList.nbGraphIDs,
+                    nodeExecution_invalidOutputs,
                     "Variable Output ID is out of range");
         }
         // assign successor
         ZL_GraphID const next_gid = outcomeList.graphids[outcomeID];
-        ZL_RET_R_IF_ERR(ZL_Edge_setDestination(sctx, next_gid));
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(sctx, next_gid));
     }
 
     return ZL_returnSuccess();
@@ -388,6 +390,7 @@ ZL_Report GR_VOGraphWrapper(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
 ZL_Report
 GR_selectorWrapper(ZL_Graph* gctx, ZL_Edge* inputCtxs[], size_t nbInputs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     ZL_ASSERT_NN(gctx);
     ZL_ASSERT_EQ(nbInputs, 1);
     ZL_Edge* const inputCtx             = inputCtxs[0];
@@ -406,7 +409,7 @@ GR_selectorWrapper(ZL_Graph* gctx, ZL_Edge* inputCtxs[], size_t nbInputs)
             SelectorSuccessorParams, successorParams, 1, gctx->graphArena);
     successorParams->params = NULL; // init to NULL, will be set by selector if
                                     // there are params to be sent
-    ZL_RET_R_IF_ERR(SelCtx_initSelectorCtx(
+    ZL_ERR_IF_ERR(SelCtx_initSelectorCtx(
             &siState,
             gctx->cctx,
             gctx->graphArena,
@@ -423,7 +426,7 @@ GR_selectorWrapper(ZL_Graph* gctx, ZL_Edge* inputCtxs[], size_t nbInputs)
 
     ZL_RuntimeGraphParameters const rgp = { .localParams =
                                                     successorParams->params };
-    ZL_RET_R_IF_ERR(ZL_Edge_setParameterizedDestination(
+    ZL_ERR_IF_ERR(ZL_Edge_setParameterizedDestination(
             inputCtxs, nbInputs, selectedSuccessor, &rgp));
     SelCtx_destroySelectorCtx(&siState);
 
