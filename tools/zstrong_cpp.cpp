@@ -1015,13 +1015,14 @@ ZL_Report CustomTransform::decode(
         ZL_Input const*[],
         size_t nbVO) const
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     assert(nbFixed == nbFixedSuccessors());
     (void)nbFixed;
     if (nbVariableSuccessors() == 0) {
-        ZL_RET_R_IF_NE(node_invalid_input, nbVO, 0);
+        ZL_ERR_IF_NE(nbVO, 0, node_invalid_input);
         return this->decode(dictx, fixedInputs);
     }
-    ZL_RET_R_ERR(logicError);
+    ZL_ERR(logicError);
 }
 
 ZL_GraphID CustomSelector::registerSelector(
