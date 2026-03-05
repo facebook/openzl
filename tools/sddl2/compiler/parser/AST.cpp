@@ -207,8 +207,10 @@ int64_t ASTNum::val() const
     return val_;
 }
 
-ASTVar::ASTVar(const Token& token)
-        : ASTConverted(token.loc()), name_(token.word())
+ASTVar::ASTVar(const Token& token, bool is_last_reference)
+        : ASTConverted(token.loc()),
+          name_(token.word()),
+          is_last_reference_(is_last_reference)
 {
 }
 
@@ -219,12 +221,21 @@ const ASTVar* ASTVar::as_var() const
 
 void ASTVar::print(std::ostream& os, size_t indent) const
 {
-    os << std::string(indent, ' ') << "Var: " << name_ << std::endl;
+    os << std::string(indent, ' ') << "Var: " << name_;
+    if (is_last_reference_) {
+        os << " (last ref)";
+    }
+    os << std::endl;
 }
 
 const std::string& ASTVar::name() const
 {
     return name_;
+}
+
+bool ASTVar::is_last_reference() const
+{
+    return is_last_reference_;
 }
 
 ASTBuiltinField::ASTBuiltinField(const SourceLocation& loc, const Symbol& sym)
