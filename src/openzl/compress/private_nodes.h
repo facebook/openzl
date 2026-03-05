@@ -207,6 +207,9 @@ typedef enum {
 
     ZL_PrivateStandardGraphID_n_to_n,
 
+    ZL_PrivateStandardGraphID_merge_sorted,
+    ZL_PrivateStandardGraphID_transpose_split,
+
     ZL_PrivateStandardGraphID_end // last id, used to detect out-of-bound enum
                                   // values
 } ZL_PrivateStandardGraphID;
@@ -283,6 +286,32 @@ typedef enum {
 #define ZL_GRAPH_SPLIT_STRING (ZL_GraphID){ZL_PrivateStandardGraphID_split_string}
 
 #define ZL_GRAPH_N_TO_N (ZL_GraphID){ZL_PrivateStandardGraphID_n_to_n}
+
+
+/**
+ * This graph selects between the merge sorted transform and a backup graph
+ * based on the number of sorted runs in the input. Chooses backup graph if
+ * width is not 4.
+ *
+ * Input: A stream of width 1, 2, 4, or 8.
+ */
+#define ZL_GRAPH_MERGE_SORTED           \
+    (ZL_GraphID)                        \
+    {                                   \
+        ZL_PrivateStandardGraphID_merge_sorted \
+    }
+
+/**
+ * This graph selects between different transpose implementations based on
+ * element width.
+ *
+ * Input: A stream of width 1, 2, 4, or 8.
+ */
+#define ZL_GRAPH_TRANSPOSE_SPLIT           \
+    (ZL_GraphID)                           \
+    {                                      \
+        ZL_PrivateStandardGraphID_transpose_split \
+    }
 
 // clang-format on
 

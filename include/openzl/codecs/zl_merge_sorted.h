@@ -3,6 +3,7 @@
 #ifndef ZSTRONG_CODECS_MERGE_SORTED_H
 #define ZSTRONG_CODECS_MERGE_SORTED_H
 
+#include "openzl/zl_graphs.h"
 #include "openzl/zl_nodes.h"
 #include "openzl/zl_opaque_types.h"
 
