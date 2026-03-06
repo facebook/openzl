@@ -66,6 +66,7 @@ ZL_Report ZL_Selector_setSuccessorParams(
         const ZL_Selector* selCtx,
         const ZL_LocalParams* lparams)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(selCtx->cctx);
     if (lparams) {
         ALLOC_ARENA_MALLOC_CHECKED(
                 ZL_LocalParams, lparamsCopy, 1, selCtx->wkspArena);

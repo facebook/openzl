@@ -269,6 +269,7 @@ static ZL_Report DFH_FrameInfo_decodeFrameHeader(
         const void* cSrc,
         size_t cSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL); // T258630070
     ZL_DLOG(BLOCK, "*****   DFH_FrameInfo_decodeFrameHeader   ***** \n");
     memset(zfi, 0, sizeof(*zfi));
     ZL_TRY_LET_R(formatVersion, ZL_getFormatVersionFromFrame(cSrc, cSize));

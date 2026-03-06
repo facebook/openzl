@@ -91,18 +91,15 @@ RTGM_createNode(
         const RTStreamID* inRtsids,
         size_t nbInRtsids)
 {
+    ZL_RESULT_DECLARE_SCOPE(RTNodeID, NULL); // T258630070
     ZL_DLOG(SEQ, "RTGM_createNode (cnode: %s)", CNODE_getName(cnode));
     ZL_ASSERT_NN(rtgraph);
     size_t const nbOutSingletons = CNODE_getNbOut1s(cnode);
 
     // Assign new RTnode
     size_t const rtsids_byteSize = sizeof(RTStreamID) * nbInRtsids;
-    ALLOC_ARENA_MALLOC_CHECKED_T(
-            RTStreamID,
-            rtsids_stored,
-            nbInRtsids,
-            rtgraph->rtsidsArena,
-            RTNodeID);
+    ALLOC_ARENA_MALLOC_CHECKED(
+            RTStreamID, rtsids_stored, nbInRtsids, rtgraph->rtsidsArena);
     ZL_memcpy(rtsids_stored, inRtsids, rtsids_byteSize);
     RTNode node = {
         .cnode          = cnode,
