@@ -119,24 +119,18 @@ static ZL_RESULT_OF(ZL_ClusteringConfig)
         graph_getClusteringConfig(ZL_Graph* graph)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
-    const uint8_t* serializedConfig =
-            ZL_Graph_getLocalRefParam(graph, ZL_GENERIC_CLUSTERING_CONFIG_ID)
-                    .paramRef;
+    ZL_RefParam serializedConfig =
+            ZL_Graph_getLocalRefParam(graph, ZL_GENERIC_CLUSTERING_CONFIG_ID);
+    const uint8_t* config = serializedConfig.paramRef;
+    size_t configSize     = serializedConfig.paramSize;
+
     // TODO: provide a default config when config parameter is not passed to
     // graph
-    ZL_RET_T_IF_NULL(
-            ZL_ClusteringConfig, graphParameter_invalid, serializedConfig);
-    ZL_IntParam configSizeParam = ZL_Graph_getLocalIntParam(
-            graph, ZL_GENERIC_CLUSTERING_CONFIG_SIZE_ID);
-    ZL_RET_T_IF_EQ(
-            ZL_ClusteringConfig,
-            graphParameter_invalid,
-            configSizeParam.paramId,
-            ZL_LP_INVALID_PARAMID);
-    size_t configSize = (size_t)configSizeParam.paramValue;
-    A1C_Arena arena   = graph_wrapArena(graph);
+    ZL_RET_T_IF_NULL(ZL_ClusteringConfig, graphParameter_invalid, config);
+
+    A1C_Arena arena = graph_wrapArena(graph);
     return ZL_Clustering_deserializeClusteringConfig(
-            ZL_ERR_CTX_PTR, serializedConfig, configSize, &arena);
+            ZL_ERR_CTX_PTR, config, configSize, &arena);
 }
 
 static ZL_Report cbor_serializeTypeSuccessor(
@@ -811,17 +805,12 @@ ZL_GraphID ZL_Clustering_registerGraphWithCustomClusteringCodecs(
         ALLOC_Arena_freeArena(arena);
         return ZL_GRAPH_ILLEGAL;
     }
-    ZL_IntParam sizeParam = (ZL_IntParam){
-        .paramId    = ZL_GENERIC_CLUSTERING_CONFIG_SIZE_ID,
-        .paramValue = (int)dstSize,
-    };
     ZL_CopyParam configParam = (ZL_CopyParam){
         .paramId   = ZL_GENERIC_CLUSTERING_CONFIG_ID,
         .paramPtr  = dst,
         .paramSize = dstSize,
     };
     ZL_LocalParams clusteringParams = (ZL_LocalParams){
-        .intParams  = { .intParams = &sizeParam, .nbIntParams = 1 },
         .copyParams = { .copyParams = &configParam, .nbCopyParams = 1 },
     };
     ZL_ParameterizedGraphDesc const clusteringGraphDesc = {

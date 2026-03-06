@@ -6,6 +6,7 @@
 #include <numeric>
 #include <unordered_map>
 
+#include "openzl/codecs/zl_field_lz.h"     // ZL_FIELD_LZ_*_PID
 #include "openzl/compress/private_nodes.h" // ZS2_NODE_*
 #include "openzl/shared/mem.h"
 #include "openzl/zl_compressor.h"
@@ -208,6 +209,39 @@ TEST_F(FixedTest, FieldLzGraphWithCompressionLevelOverride)
                 ZL_Compressor_registerFieldLZGraph_withLevel(cgraph_, level),
                 1);
     }
+}
+
+TEST_F(FixedTest, FieldLzGraphWithInvalidLocalParameterIndex)
+{
+    reset();
+    setLevels(1, 1);
+
+    ZL_IntParam invalidIndexParam = {
+        .paramId    = ZL_FIELD_LZ_LITERALS_GRAPH_OVERRIDE_INDEX_PID,
+        .paramValue = 1, // Invalid: only index 0 is valid when nbCustomGraphs=1
+    };
+    ZL_LocalIntParams intParams = { .intParams   = &invalidIndexParam,
+                                    .nbIntParams = 1 };
+    ZL_LocalParams localParams  = { .intParams = intParams };
+
+    ZL_GraphID customGraph         = ZL_GRAPH_STORE;
+    ZL_ParameterizedGraphDesc desc = {
+        .name           = "field_lz_invalid_index_test",
+        .graph          = ZL_GRAPH_FIELD_LZ,
+        .customGraphs   = &customGraph,
+        .nbCustomGraphs = 1,
+        .localParams    = &localParams,
+    };
+
+    ZL_GraphID graph = ZL_Compressor_registerParameterizedGraph(cgraph_, &desc);
+
+    // Finalize and try to compress - should fail during compression with
+    // nodeParameter_invalid error due to invalid custom graph index
+    finalizeGraph(graph, 2);
+
+    std::string input = generatedData(10000, 100);
+    auto [report, _]  = compress(input);
+    EXPECT_TRUE(ZL_isError(report));
 }
 
 TEST_F(FixedTest, ZstdGraphWithCompressionLevelOverride)
