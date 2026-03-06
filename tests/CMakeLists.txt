@@ -117,5 +117,13 @@ target_link_libraries(test_codecs
 )
 add_dependencies(test_codecs sddl_compiler_lib sddl2_compiler_lib)
 
+# Serialization tests (excludes fuzzer files)
+file(GLOB serialization_test_srcs CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_LIST_DIR}/serialization/*.cpp")
+file(GLOB serialization_test_headers CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_LIST_DIR}/serialization/*.h")
+list(FILTER serialization_test_srcs EXCLUDE REGEX ".*/fuzz_.*\\.cpp$")
+add_zs_test(test_serialization ${serialization_test_srcs} ${serialization_test_headers})
+
 # NOTE: Fuzzer tests (zstrong/fuzz_*.cpp) are BUCK-only targets using Meta's
 # Lionhead infrastructure and are not included in the CMake build.
