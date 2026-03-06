@@ -539,6 +539,9 @@ ZL_FORCE_INLINE size_t ZS_execExperimentalSequence(
     ZL_ASSERT_GE(match, ostart);
     ZL_ASSERT_LT(match, op);
 
+    if (op + matchLength > oend) {
+        return 0;
+    }
     for (size_t i = 0; i < matchLength; ++i) {
         op[i] = match[i];
     }
@@ -610,6 +613,13 @@ static ZL_Report ZS_experimentalDecoder_decompress(
             rolzContextLog,
             0,
             "contextLog must be greater than 0");
+    ZL_RET_R_IF_EQ(
+            node_invalid_input, rolzRowLog, 0, "rowLog must be greater than 0");
+    ZL_RET_R_IF_GT(
+            node_invalid_input,
+            rolzContextLog + rolzRowLog,
+            27,
+            "contextLog + rowLog exceeds maximum");
     ZL_RET_R_IF_GE(GENERIC, numSequences, (1 << 30), "too many sequences");
     ZL_RET_R_IF_GE(GENERIC, numLiterals, (1 << 30), "too many literals");
 
