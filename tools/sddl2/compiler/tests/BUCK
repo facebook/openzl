@@ -10,7 +10,7 @@ zs_unittest(
         "*.cpp",
     ]),
     headers = glob([
-        "*.hpp",
+        "*.h",
     ]),
     deps = [
         "..:lib",
