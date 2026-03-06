@@ -14,7 +14,6 @@ thrift_library(
     languages = [
         "cpp2",
     ],
-    thrift_cpp2_options = "reflection",
     thrift_srcs = {"fuzz_data.thrift": []},
 )
 
