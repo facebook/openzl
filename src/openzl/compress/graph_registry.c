@@ -5,7 +5,9 @@
 #include "openzl/codecs/encoder_registry.h" // ER_standardNodes, CNode definitions
 #include "openzl/codecs/entropy/encode_entropy_binding.h" // EI_fseDynamicGraph, EI_huffmanDynamicGraph, EI_entropyDynamicGraph
 #include "openzl/codecs/lz/encode_lz_binding.h" // EI_fieldLzDynGraph, EI_fieldLzLiteralsDynGraph, SI_fieldLzLiteralsChannelSelector
+#include "openzl/codecs/merge_sorted/encode_merge_sorted_binding.h" // MIGRAPH_MERGE_SORTED
 #include "openzl/codecs/parse_int/encode_parse_int_binding.h" // MIGRAPH_TRY_PARSE_INT
+#include "openzl/codecs/transpose/encode_transpose_binding.h" // MIGRAPH_TRANSPOSE_SPLIT
 #include "openzl/common/assertion.h" // ZL_ASSERT_* macros for runtime checks
 #include "openzl/common/logging.h"   // STR_REPLACE_NULL, logging utilities
 #include "openzl/compress/compress_types.h" // Compression-related type definitions
@@ -145,6 +147,8 @@ const InternalGraphDesc GR_standardGraphs[ZL_PrivateStandardGraphID_end] = {
     REGISTER_MIGRAPH(ZL_StandardGraphID_try_parse_int, MIGRAPH_TRY_PARSE_INT),
     REGISTER_STATIC_GRAPH(ZL_StandardGraphID_lz4, "!zl.lz4", ZL_Type_serial, ZL_PrivateStandardNodeID_lz4, _1_SUCCESSOR(ZL_PrivateStandardGraphID_serial_store)),
     REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_ml_selector,"!zl.ml_selector", ZL_Type_numeric, ZL_MLSel_dynGraph),
+    REGISTER_MIGRAPH(ZL_PrivateStandardGraphID_merge_sorted, MIGRAPH_MERGE_SORTED),
+    REGISTER_MIGRAPH(ZL_PrivateStandardGraphID_transpose_split, MIGRAPH_TRANSPOSE_SPLIT),
 
     // Private graphs
     REGISTER_SELECTOR(ZL_PrivateStandardGraphID_store1, "!zl.private.store1", SI_selector_store, ZL_Type_any),

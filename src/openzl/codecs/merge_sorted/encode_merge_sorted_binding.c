@@ -2,12 +2,13 @@
 #include "openzl/codecs/merge_sorted/encode_merge_sorted_binding.h"
 
 #include "openzl/codecs/merge_sorted/encode_merge_sorted_kernel.h"
+#include "openzl/codecs/zl_merge_sorted.h"
 #include "openzl/common/errors_internal.h"
+#include "openzl/compress/private_nodes.h"
 #include "openzl/shared/bits.h"
 #include "openzl/shared/varint.h"
 #include "openzl/zl_compressor.h"
-#include "openzl/zl_selector.h"
-#include "openzl/zl_selector_declare_helper.h"
+#include "openzl/zl_graph_api.h"
 
 /**
  * Fill in @p srcs and @p srcEnds with the begin/end of each sorted run.
@@ -136,20 +137,31 @@ ZL_Report EI_mergeSorted(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     return ZL_returnSuccess();
 }
 
-ZL_DECLARE_SELECTOR(
-        ZS2_SelectMergeSorted,
-        ZL_Type_numeric,
-        SUCCESSOR(mergeSortedGraph),
-        SUCCESSOR(backupGraph))
-
-ZL_GraphID ZS2_SelectMergeSorted_impl(
-        ZL_Selector const* selCtx,
-        ZL_Input const* in,
-        ZS2_SelectMergeSorted_Successors const* successors)
+/**
+ * Function graph that selects between the merge sorted graph and backup graph.
+ * Selects mergeSortedGraph if input has <= 64 sorted runs, otherwise
+ * backupGraph.
+ *
+ * Custom graphs are expected in order: [mergeSortedGraph, backupGraph]
+ */
+ZL_Report
+mergeSortedSelectorFnGraph(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
 {
-    (void)selCtx;
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+    ZL_ASSERT_EQ(nbInputs, 1);
+    ZL_Edge* input = inputs[0];
+
+    ZL_GraphIDList const customGraphs = ZL_Graph_getCustomGraphs(graph);
+    ZL_ERR_IF_NE(customGraphs.nbGraphIDs, 2, graphParameter_invalid);
+    ZL_GraphID const mergeSortedGraph = customGraphs.graphids[0];
+    ZL_GraphID const backupGraph      = customGraphs.graphids[1];
+
+    const ZL_Input* in = ZL_Edge_getData(input);
+    ZL_ASSERT_NN(in);
+
     if (ZL_Input_eltWidth(in) != 4) {
-        return successors->backupGraph;
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(input, backupGraph));
+        return ZL_returnSuccess();
     }
 
     size_t const kMaxNbRuns    = 64;
@@ -170,10 +182,12 @@ ZL_GraphID ZS2_SelectMergeSorted_impl(
     }
 
     if (nbRuns <= kMaxNbRuns) {
-        return successors->mergeSortedGraph;
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(input, mergeSortedGraph));
     } else {
-        return successors->backupGraph;
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(input, backupGraph));
     }
+
+    return ZL_returnSuccess();
 }
 
 ZL_GraphID ZL_Compressor_registerMergeSortedGraph(
@@ -187,8 +201,18 @@ ZL_GraphID ZL_Compressor_registerMergeSortedGraph(
                     cgraph,
                     ZL_NODE_MERGE_SORTED,
                     ZL_GRAPHLIST(bitsetGraph, mergedGraph));
-    return ZS2_SelectMergeSorted_declareGraph(
-            cgraph,
-            ZS2_SelectMergeSorted_successors_init(
-                    mergeSortedGraph, backupGraph));
+
+    ZL_GraphID const successors[]   = { mergeSortedGraph, backupGraph };
+    ZL_GraphParameters const params = {
+        .customGraphs   = successors,
+        .nbCustomGraphs = 2,
+    };
+
+    ZL_RESULT_OF(ZL_GraphID)
+    const result = ZL_Compressor_parameterizeGraph(
+            cgraph, ZL_GRAPH_MERGE_SORTED, &params);
+    if (ZL_RES_isError(result)) {
+        return ZL_GRAPH_ILLEGAL;
+    }
+    return ZL_RES_value(result);
 }
