@@ -12,9 +12,11 @@
 
 #include "openzl/cpp/Compressor.hpp"
 
+#include "tests/datagen/DataGen.h"
 #include "tests/datagen/random_producer/PRNGWrapper.h"
 #include "tests/datagen/structures/CompressorProducer.h"
 #include "tests/registry/OpenZLComponents.h"
+#include "tests/serialization/GraphBuilder.h"
 #include "tests/utils.h"
 
 namespace {
@@ -83,12 +85,35 @@ std::vector<std::string> generateFuzzDeserializeAndCompressSimpleCorpus()
     return corpus;
 }
 
+std::vector<std::string> generateFuzzDeserializeAndCompressRandomCorpus()
+{
+    std::random_device rd;
+    auto gen = std::make_shared<std::mt19937>(rd());
+    auto rw  = std::make_shared<datagen::PRNGWrapper>(gen);
+    datagen::DataGen dataGen{ rw };
+
+    std::vector<std::string> corpus;
+    corpus.reserve(1000);
+    for (uint32_t i = 0; i < 1000; ++i) {
+        openzl::Compressor compressor;
+        GraphBuilder builder(dataGen, compressor);
+        builder.addAllComponents();
+        builder.buildCompressor();
+        corpus.emplace_back(compressor.serialize());
+    }
+    return corpus;
+}
+
 std::optional<std::vector<std::string>> generateCorpus(std::string_view harness)
 {
     if (harness == "FuzzDeserialization") {
         return generateFuzzDeserializationCorpus();
     } else if (harness == "FuzzDeserializeAndCompressSimple") {
         return generateFuzzDeserializeAndCompressSimpleCorpus();
+    } else if (harness == "FuzzDeserializeAndCompressRandom") {
+        return generateFuzzDeserializeAndCompressRandomCorpus();
+    } else if (harness == "FuzzRandomGraphsSerializesAndCompresses") {
+        return std::vector<std::string>{};
     } else if (harness == "FuzzRandomCompressorDeserializesSuccessfully") {
         return std::vector<std::string>{};
     } else {

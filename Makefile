@@ -247,6 +247,9 @@ DATAGEN_OBJS := \
 	tests/datagen/structures/LocalParamsProducer.o \
 	tests/datagen/structures/openzl/StringInputProducer.o \
 	tests/datagen/InputExpander.o
+SERIALIZATION_TEST_OBJS := \
+	tests/serialization/GraphBuilder.o \
+	tests/serialization/GraphBuilderUtils.o
 TEST_REGISTRY_SRCS = $(wildcard $(addsuffix /*.cpp, $(TEST_REGISTRY_DIRS)))
 TEST_REGISTRY_OBJS = $(patsubst %.cpp,%.o,$(TEST_REGISTRY_SRCS))
 CLI_TEST_OBJS := $(filter-out test_%.o,$(notdir $(foreach DIR,$(CLI_TEST_DIRS),$(call cxx_objs,$(DIR)))))
@@ -282,6 +285,7 @@ ALL_GTESTS_OBJS := \
 	$(ML_SELECTOR_COBJS) \
 	$(ML_SELECTOR_CXXOBJS) \
 	$(DATAGEN_OBJS) \
+	$(SERIALIZATION_TEST_OBJS) \
 	$(TEST_REGISTRY_OBJS) \
 	$(ZLCPP_OBJS) \
 	$(LIBOBJS)

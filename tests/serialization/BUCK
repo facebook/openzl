@@ -2,24 +2,65 @@
 
 load("@fbcode_macros//build_defs:fbcode_configured_alias.bzl", "fbcode_configured_alias")
 load("@fbsource//tools/build_defs:default_platform_defs.bzl", "get_host_target_platform")
-load("../../defs.bzl", "zs_cxxbinary", "zs_fuzzers")
+load("../../defs.bzl", "cross_platform_labels", "zs_cxxbinary", "zs_cxxlibrary", "zs_fuzzers", "zs_unittest")
 
 oncall("data_compression")
+
+zs_cxxlibrary(
+    name = "graph_builder_utils",
+    srcs = ["GraphBuilderUtils.cpp"],
+    headers = ["GraphBuilderUtils.h"],
+    exported_deps = [
+        "../../cpp:openzl_cpp",
+        "../datagen:datagen",
+        "../registry:openzl_input",
+    ],
+)
+
+zs_cxxlibrary(
+    name = "graph_builder",
+    srcs = ["GraphBuilder.cpp"],
+    headers = ["GraphBuilder.h"],
+    exported_deps = [
+        "../../cpp:openzl_cpp",
+        "../datagen:datagen",
+        "../registry:openzl_components",
+    ],
+)
+
+zs_unittest(
+    name = "test_graph_builder",
+    srcs = ["GraphBuilderTest.cpp"],
+    labels = cross_platform_labels(),
+    deps = [
+        "..:utils",
+        "../../cpp:openzl_cpp",
+        "../datagen:datagen",
+        "../registry:openzl_components",
+        "fbsource//third-party/glog:glog",
+        ":graph_builder",
+        ":graph_builder_utils",
+    ],
+)
 
 FUZZER_DEPS = [
     "../..:zstronglib",
     "..:fuzz_utils",
     "../datagen:datagen",
     "../registry:openzl_components",
+    ":graph_builder_utils",
+    ":graph_builder",
 ]
 
 zs_cxxbinary(
     name = "fuzz_compressor_serialization_generator",
     srcs = ["fuzz_compressor_serialization_generator.cpp"],
     deps = [
+        "..:utils",
         "../../cpp:openzl_cpp",
         "../datagen:datagen",
         "../registry:openzl_components",
+        ":graph_builder",
         "//folly:file_util",
         "//folly:string",
     ],
@@ -43,6 +84,8 @@ zs_fuzzers(
         ("CompressorSerializationTest", "FuzzDeserializeAndCompressSimpleRestricted"),
         ("CompressorSerializationTest", "FuzzDeserialization"),
         ("CompressorSerializationTest", "FuzzRandomCompressorDeserializesSuccessfully"),
+        ("CompressorSerializationTest", "FuzzRandomGraphsSerializesAndCompresses"),
+        ("CompressorSerializationTest", "FuzzDeserializeAndCompressRandom"),
     ],
     generator = ":fuzz_compressor_serialization_generator_host",
     deps = FUZZER_DEPS,

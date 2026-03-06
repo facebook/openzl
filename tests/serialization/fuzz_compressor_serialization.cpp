@@ -3,128 +3,19 @@
 #include "openzl/cpp/CCtx.hpp"
 #include "openzl/cpp/Compressor.hpp"
 #include "openzl/cpp/DCtx.hpp"
+#include "openzl/cpp/Input.hpp"
 #include "openzl/zl_reflection.h"
 
 #include "security/lionhead/utils/lib_ftest/ftest.h" // @manual
 #include "tests/datagen/structures/CompressorProducer.h"
 #include "tests/fuzz_utils.h"
 #include "tests/registry/OpenZLComponents.h"
+#include "tests/serialization/GraphBuilder.h"
+#include "tests/serialization/GraphBuilderUtils.h"
 #include "tests/utils.h"
 
 namespace openzl::tests {
 namespace {
-
-/**
- * Partitions a string into random segments and returns the lengths of each
- * segment. This is done by numbering a number of segments, and selecting the
- * desired number without replacement.
- *
- * @param input The string to partition. Will be shuffled in place.
- * @param gen Random number generator for determining segment count and
- * shuffling.
- * @return Vector of segment lengths that sum to input.size(), or empty if
- *         input is empty.
- */
-std::vector<uint32_t> getPartitionedStringLengths(
-        std::string& input,
-        datagen::DataGen& gen)
-{
-    if (input.size() == 0) {
-        return {};
-    }
-    int numSegments = gen.i32_range(
-            "num_segments", 1, std::min<size_t>(50, input.size()));
-    if (numSegments == 1) {
-        return { (uint32_t)input.size() };
-    }
-    std::vector<uint32_t> partitions;
-    partitions.reserve(input.size());
-    for (size_t i = 1; i < input.size(); i++) {
-        partitions.push_back(i);
-    }
-    std::mt19937 rng(gen.u32("shuffle"));
-    std::shuffle(partitions.begin(), partitions.end(), rng);
-    std::sort(partitions.begin(), partitions.begin() + numSegments - 1);
-    std::vector<uint32_t> partitionLengths(numSegments);
-    partitionLengths[0] = partitions[0];
-    for (size_t i = 1; i < numSegments - 1; i++) {
-        partitionLengths[i] = partitions[i] - partitions[i - 1];
-    }
-    partitionLengths[numSegments - 1] =
-            input.size() - partitions[numSegments - 2];
-    return partitionLengths;
-}
-
-/**
- * Generates a random input that is compatible with the given graph's input
- * requirements. Inspects the graph's input mask to determine valid input types
- * and generates random data of a compatible type.
- *
- * @param compressor The compressor containing the graph.
- * @param gen Random number generator for input generation.
- * @param startingGraph The graph ID to generate compatible input for.
- * @return A unique pointer to an OpenZLInput compatible with the graph.
- */
-std::unique_ptr<OpenZLInput> generateGraphCompatibleInput(
-        Compressor& compressor,
-        datagen::DataGen& gen,
-        ZL_GraphID startingGraph)
-{
-    std::vector<std::unique_ptr<OpenZLInput>> openzlInputs;
-    auto numInputs =
-            ZL_Compressor_Graph_getNumInputs(compressor.get(), startingGraph);
-    // Generate inputs of the correct type for non variable inputs
-    for (size_t i = 0; i < numInputs; i++) {
-        std::unique_ptr<OpenZLInput> randomInput;
-        std::vector<ZL_Type> choices;
-        auto mask = ZL_Compressor_Graph_getInputMask(
-                compressor.get(), startingGraph, i);
-        for (size_t shift = 0; shift < 4; shift++) {
-            auto type = (ZL_Type)(1 << shift);
-            if (mask & type) {
-                choices.push_back(type);
-            }
-        }
-        auto type = gen.choices("type", choices);
-        switch (type) {
-            case ZL_Type_serial: {
-                auto inputStr = gen.randString("input", 4096);
-                randomInput   = SerialOpenZLInput::make(inputStr);
-                break;
-            }
-            case ZL_Type_numeric: {
-                auto width =
-                        gen.choices("width", (std::vector<int>){ 1, 2, 4, 8 });
-                auto inputStr =
-                        gen.randStringWithQuantizedLength("input", 4096, width);
-                randomInput = makeNumericInput(inputStr, width);
-                break;
-            }
-            case ZL_Type_struct: {
-                auto width =
-                        gen.choices("width", (std::vector<int>){ 1, 2, 4, 8 });
-                auto inputStr =
-                        gen.randStringWithQuantizedLength("input", 4096, width);
-                randomInput = StructOpenZLInput::make(inputStr, width);
-                break;
-            }
-            case ZL_Type_string: {
-                auto inputStr = gen.randString("input", 4096);
-                randomInput   = StringOpenZLInput::make(
-                        inputStr, getPartitionedStringLengths(inputStr, gen));
-                break;
-            }
-            default:
-                throw std::runtime_error("Unexpected type!");
-        }
-        if (numInputs == 1) {
-            return randomInput;
-        } else {
-            openzlInputs.push_back(std::move(randomInput));
-        }
-    }
-    return MultiOpenZLInput::make(std::move(openzlInputs));
-}
 
 FUZZ(CompressorSerializationTest, FuzzDeserializeAndCompressSimple)
 {
@@ -173,7 +64,7 @@ FUZZ(CompressorSerializationTest, FuzzDeserializeAndCompressSimple)
             openzlInputs.push_back(std::move(predfinedInput));
         }
         // Also generate one random compatible input
-        openzlInputs.push_back(generateGraphCompatibleInput(
+        openzlInputs.push_back(generateInputCompatibleWithGraph(
                 deserializedCompressor, gen, startingGraph));
         std::string compressed;
         for (auto& openzlInput : openzlInputs) {
@@ -289,6 +180,91 @@ FUZZ(CompressorSerializationTest, FuzzDeserializeAndCompressSimpleRestricted)
                         inputs);
             }
         }
+    }
+}
+
+FUZZ(CompressorSerializationTest, FuzzRandomGraphsSerializesAndCompresses)
+{
+    datagen::DataGen dg = fromFDP(f);
+    Compressor compressor;
+    auto input = dg.randString("input");
+    GraphBuilder builder(dg, compressor);
+    builder.addAllComponents();
+    builder.buildCompressor();
+    // Do a serialization round trip on compressor
+    auto serialized = compressor.serialize();
+    Compressor deserializedCompressor;
+    for (const auto& component : getAllOpenZLComponents()) {
+        component->registerComponent(deserializedCompressor);
+    }
+    deserializedCompressor.deserialize(serialized);
+
+    // Try a compression round trip
+    try {
+        ZL_GraphID startingGraph;
+        ZL_Compressor_getStartingGraphID(
+                deserializedCompressor.get(), &startingGraph);
+        auto openzlInput = generateInputCompatibleWithGraph(
+                deserializedCompressor, dg, startingGraph);
+        std::string compressed;
+        compressed.resize(getCompressedBound(openzlInput));
+        CCtx cctx;
+        DCtx dctx;
+        for (const auto& component : getAllOpenZLComponents()) {
+            component->registerComponent(dctx);
+        }
+        testRoundTrip(
+                compressed,
+                deserializedCompressor,
+                cctx,
+                dctx,
+                startingGraph,
+                ZL_MAX_FORMAT_VERSION,
+                openzlInput->inputs());
+    } catch (const Exception&) {
+        // Ignore the exception as long as ZL_Result is returned since not
+        // crashing is acceptable.
+    }
+}
+
+FUZZ(CompressorSerializationTest, FuzzDeserializeAndCompressRandom)
+{
+    // Must at least have 4 bytes for the random seed
+    if (Size < 4) {
+        return;
+    }
+    Compressor compressor;
+    std::string serialized(reinterpret_cast<const char*>(Data), Size);
+    // Use the first 4 bytes as a seed for the random number generator
+    uint32_t randSeed = *(const uint32_t*)Data;
+    datagen::DataGen gen(randSeed);
+
+    // Deserialize the graph
+    Compressor deserializedCompressor;
+    try {
+        deserializedCompressor.deserialize(serialized);
+        // Compress with the deserialized graph using generated inputs
+
+        CCtx cctx;
+        DCtx dctx;
+        ZL_GraphID startingGraph;
+        ZL_Compressor_getStartingGraphID(
+                deserializedCompressor.get(), &startingGraph);
+        auto input = generateInputCompatibleWithGraph(
+                deserializedCompressor, gen, startingGraph);
+        std::string compressed;
+        compressed.resize(getCompressedBound(input));
+        testRoundTrip(
+                compressed,
+                deserializedCompressor,
+                cctx,
+                dctx,
+                startingGraph,
+                ZL_MAX_FORMAT_VERSION,
+                input->inputs());
+    } catch (const Exception&) {
+        // Ignore the exception as long as ZL_Result is returned since not
+        // crashing is acceptable.
     }
 }
 
