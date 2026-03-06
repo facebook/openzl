@@ -155,13 +155,14 @@ ZL_Edge_runMultiInputNode_withParams(
     ZL_ASSERT_GE(nbInputs, 1);
     ZL_ASSERT_NN(inputCtxs);
     ZL_ASSERT_NN(inputCtxs[0]);
+    ZL_RESULT_DECLARE_SCOPE(ZL_EdgeList, inputCtxs[0]);
     ZL_Graph* const gctx = inputCtxs[0]->gctx;
     ZL_ASSERT_NN(gctx);
     Arena* const allocator = gctx->graphArena;
     ZL_ASSERT_NN(allocator);
 
 #define ALLOC_ARRAY(type, name, nb) \
-    ALLOC_ARENA_MALLOC_CHECKED_T(type, name, nb, allocator, ZL_EdgeList)
+    ALLOC_ARENA_MALLOC_CHECKED(type, name, nb, allocator)
 
     // Check input doesn't already have a set successor
     ALLOC_ARRAY(DG_StreamCtx*, inDGSCtxs, nbInputs);
@@ -274,6 +275,7 @@ static ZL_Report ZL_transferRuntimeGraphParams_stage2(
         Arena* arena,
         ZL_RuntimeGraphParameters* rgp)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL); // T258630070
     ZL_ASSERT_NN(arena);
     ZL_ASSERT_NN(rgp);
     if (rgp->localParams) {

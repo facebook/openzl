@@ -129,6 +129,7 @@ static ZL_Report fillStreamAndTransformInfo(
         ZL_ReflectionCtx* rctx,
         const char* src)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(rctx->dctx);
     DFH_Struct const* dfh = DCtx_getFrameHeader(rctx->dctx);
     ZL_RET_R_IF_NULL(GENERIC, dfh);
     const size_t nbStreams    = ZL_DCtx_getNumStreams(rctx->dctx);
@@ -216,6 +217,7 @@ static ZL_Report fillExtraStreamInfo(
         ZL_ReflectionCtx* rctx,
         size_t nbInputStreams)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(rctx->dctx);
     const DFH_Struct* dfh        = DCtx_getFrameHeader(rctx->dctx);
     const size_t nbStoredStreams = dfh->nbStoredStreams;
 
@@ -277,6 +279,7 @@ static ZL_Report ZL_ReflectionCtx_setCompressedFrame_impl(
         const void* src,
         size_t srcSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(rctx->dctx);
     // Create the output stream storage in our arena.
     // We reference these streams, so they must live for the lifetime of the
     // ZL_ReflectionCtx.

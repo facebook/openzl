@@ -60,6 +60,7 @@ static ZL_Report DTM_storeTransformName(
         DTransforms_manager* dtm,
         const char** namePtr)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL); // T258630070
     const char* name = *namePtr;
     if (name != NULL) {
         const size_t len = strlen(name) + 1;
