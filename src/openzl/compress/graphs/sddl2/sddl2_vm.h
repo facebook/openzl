@@ -165,6 +165,38 @@ typedef struct {
 } SDDL2_Stack;
 
 /* ============================================================================
+ * Variable Register File
+ * ========================================================================= */
+
+/**
+ * Number of variable registers available to VM programs.
+ * Can be overridden at compile time with -DSDDL2_VAR_REGISTER_COUNT=value.
+ */
+#ifndef SDDL2_VAR_REGISTER_COUNT
+#    define SDDL2_VAR_REGISTER_COUNT 256
+#endif
+
+/**
+ * Variable register file for the SDDL2 VM.
+ *
+ * Provides a fixed set of named registers that can store any Value type.
+ * Programs use var.store/var.load to save and restore intermediate values
+ * across sequences of stack operations.
+ *
+ * Each register tracks whether it has been written to (occupied), so that
+ * loading from an uninitialized register produces a clear error.
+ */
+typedef struct {
+    SDDL2_Value values[SDDL2_VAR_REGISTER_COUNT];
+    uint8_t occupied[SDDL2_VAR_REGISTER_COUNT];
+} SDDL2_Var_registers;
+
+/**
+ * Initialize a variable register file (all registers unoccupied).
+ */
+void SDDL2_Var_registers_init(SDDL2_Var_registers* regs);
+
+/* ============================================================================
  * Memory Allocation Strategy
  * ========================================================================= */
 
@@ -658,6 +690,48 @@ SDDL2_op_dup(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc);
  */
 SDDL2_Error
 SDDL2_op_swap(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc);
+
+/* ============================================================================
+ * Variable Operations (VAR Family)
+ * ========================================================================= */
+
+/**
+ * Store a value into a variable register.
+ * Stack: value:Value register:I64 -> (empty)
+ *
+ * Pops an I64 register index, then pops a generic Value, and stores the
+ * Value into the given register. The register index must be in range
+ * [0, SDDL2_VAR_REGISTER_COUNT).
+ *
+ * Errors:
+ *   - SDDL2_STACK_UNDERFLOW: stack has fewer than 2 values
+ *   - SDDL2_TYPE_MISMATCH: top value is not I64 (register index)
+ *   - SDDL2_LOAD_BOUNDS: register index out of range
+ */
+SDDL2_Error SDDL2_op_var_store(
+        SDDL2_Stack* stack,
+        SDDL2_Trace_buffer* trace,
+        size_t pc,
+        SDDL2_Var_registers* regs);
+
+/**
+ * Load a value from a variable register.
+ * Stack: register:I64 -> value:Value
+ *
+ * Pops an I64 register index and pushes the Value stored in that register
+ * onto the stack. The register must have been previously written to with
+ * var.store.
+ *
+ * Errors:
+ *   - SDDL2_STACK_UNDERFLOW: stack is empty
+ *   - SDDL2_TYPE_MISMATCH: top value is not I64 (register index)
+ *   - SDDL2_LOAD_BOUNDS: register index out of range or register uninitialized
+ */
+SDDL2_Error SDDL2_op_var_load(
+        SDDL2_Stack* stack,
+        SDDL2_Trace_buffer* trace,
+        size_t pc,
+        SDDL2_Var_registers* regs);
 
 /* ============================================================================
  * Validation Operations (EXPECT Family)
