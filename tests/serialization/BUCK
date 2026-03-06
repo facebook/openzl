@@ -10,6 +10,7 @@ FUZZER_DEPS = [
     "../..:zstronglib",
     "..:fuzz_utils",
     "../datagen:datagen",
+    "../registry:openzl_components",
 ]
 
 zs_cxxbinary(
@@ -18,6 +19,7 @@ zs_cxxbinary(
     deps = [
         "../../cpp:openzl_cpp",
         "../datagen:datagen",
+        "../registry:openzl_components",
         "//folly:file_util",
         "//folly:string",
     ],
@@ -37,6 +39,8 @@ zs_fuzzers(
         "fuzz_compressor_serialization.cpp",
     ],
     ftest_names = [
+        ("CompressorSerializationTest", "FuzzDeserializeAndCompressSimple"),
+        ("CompressorSerializationTest", "FuzzDeserializeAndCompressSimpleRestricted"),
         ("CompressorSerializationTest", "FuzzDeserialization"),
         ("CompressorSerializationTest", "FuzzRandomCompressorDeserializesSuccessfully"),
     ],
