@@ -68,7 +68,7 @@ class CompilerTest : public testing::Test {
 
     virtual bool optimize() const
     {
-        return false;
+        return true;
     }
 
     void expect_error(std::string_view source, std::string_view msg)

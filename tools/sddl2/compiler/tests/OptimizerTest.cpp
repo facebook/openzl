@@ -4,13 +4,7 @@
 
 namespace openzl::sddl2::tests {
 namespace {
-class OptimizerTest : public CompilerTest {
-   protected:
-    bool optimize() const override
-    {
-        return true;
-    }
-};
+class OptimizerTest : public CompilerTest {};
 } // namespace
 
 TEST_F(OptimizerTest, ArithmeticConstFold)
@@ -137,15 +131,10 @@ TEST_F(OptimizerTest, RecordAST)
     )";
 
     const auto cg       = Codegen(SourceLocation::null());
-    const auto expected = std::vector<ASTPtr>(
-            { cg.assign(
-                      cg.var("Entry"),
-                      cg.record(
-                              ArgVec{},
-                              ArgVec{ cg.assume(
-                                      cg.var("id"),
-                                      cg.builtin_field(Symbol::I32LE)) })),
-              cg.consume(cg.var("Entry", true)) });
+    const auto expected = std::vector<ASTPtr>({ cg.consume(cg.record(
+            ArgVec{},
+            ArgVec{ cg.assume(
+                    cg.var("id"), cg.builtin_field(Symbol::I32LE)) })) });
     expect_ast(prog, expected);
 }
 
@@ -210,6 +199,33 @@ TEST_F(OptimizerTest, RecordMemberLastReference)
                     cg.eq(cg.member(cg.var("entry", true), cg.var("val")),
                           cg.num(0))),
     });
+    expect_ast(prog, expected);
+}
+
+TEST_F(OptimizerTest, TypeAliasResolution)
+{
+    const auto prog     = R"(
+            MyType = Int32LE
+            MyOtherType = MyType
+            : MyType
+        )";
+    const auto cg       = Codegen(SourceLocation::null());
+    const auto expected = std::vector<ASTPtr>(
+            { cg.consume(cg.builtin_field(Symbol::I32LE)) });
+    expect_ast(prog, expected);
+}
+
+TEST_F(OptimizerTest, TypeAliasInsideRecord)
+{
+    const auto prog     = R"(
+            MyType = Int32LE
+            entry: Record() { x: MyType }
+        )";
+    const auto cg       = Codegen(SourceLocation::null());
+    const auto expected = std::vector<ASTPtr>({ cg.consume(cg.record(
+            ArgVec{},
+            ArgVec{ cg.assume(
+                    cg.var("x"), cg.builtin_field(Symbol::I32LE)) })) });
     expect_ast(prog, expected);
 }
 

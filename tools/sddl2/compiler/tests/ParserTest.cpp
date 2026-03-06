@@ -5,7 +5,13 @@
 namespace openzl::sddl2::tests {
 
 namespace {
-class ParserTest : public CompilerTest {};
+class ParserTest : public CompilerTest {
+   protected:
+    bool optimize() const override
+    {
+        return false;
+    }
+};
 } // namespace
 
 TEST_F(ParserTest, ErrorMsgOpsMissingArgs)
