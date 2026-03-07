@@ -30,6 +30,10 @@ static int isSingleBytePattern(const ZL_Input* inputStream)
  *
  * Single-byte patterns (0x00, 0xFF, 0x55, etc.) are routed
  * to CONSTANT_SERIAL (more efficient).
+ *
+ * Note: data arriving at this selector should be verified constant.
+ * No verification is done here, but if the data is not constant,
+ * operation will later fail, on reaching the constant node.
  */
 
 ZL_GraphID SI_selector_constant(
@@ -48,8 +52,7 @@ ZL_GraphID SI_selector_constant(
             || inType == ZL_Type_numeric);
 
     /* If all bytes are identical, Serial path is more efficient */
-    if (ZL_Input_eltWidth(inputStream) > 1
-        && isSingleBytePattern(inputStream)) {
+    if (isSingleBytePattern(inputStream)) {
         return ZL_GRAPH_CONSTANT_SERIAL;
     }
 
