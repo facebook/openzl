@@ -43,7 +43,9 @@ ZL_GraphID SI_selector_constant(
     (void)nbCustomGraphs;
 
     ZL_Type const inType = ZL_Input_type(inputStream);
-    ZL_ASSERT(inType == ZL_Type_serial || inType == ZL_Type_struct || inType == ZL_Type_numeric);
+    ZL_ASSERT(
+            inType == ZL_Type_serial || inType == ZL_Type_struct
+            || inType == ZL_Type_numeric);
 
     /* If all bytes are identical, Serial path is more efficient */
     if (ZL_Input_eltWidth(inputStream) > 1
