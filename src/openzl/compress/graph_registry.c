@@ -132,7 +132,7 @@ const InternalGraphDesc GR_standardGraphs[ZL_PrivateStandardGraphID_end] = {
     REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_fse, "!zl.fse", ZL_Type_serial, EI_fseDynamicGraph),
     REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_huffman, "!zl.huffman", ZL_Type_serial | ZL_Type_struct | ZL_Type_numeric, EI_huffmanDynamicGraph),
     REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_entropy, "!zl.entropy", ZL_Type_serial | ZL_Type_struct | ZL_Type_numeric, EI_entropyDynamicGraph),
-    REGISTER_SELECTOR(ZL_StandardGraphID_constant, "!zl.constant", SI_selector_constant, ZL_Type_serial | ZL_Type_struct),
+    REGISTER_SELECTOR(ZL_StandardGraphID_constant, "!zl.constant", SI_selector_constant, ZL_Type_serial | ZL_Type_struct | ZL_Type_numeric),
     REGISTER_STATIC_GRAPH(ZL_StandardGraphID_zstd, "!zl.zstd", ZL_Type_serial, ZL_PrivateStandardNodeID_zstd, _1_SUCCESSOR(ZL_PrivateStandardGraphID_serial_store) ),
     REGISTER_SELECTOR(ZL_StandardGraphID_bitpack, "!zl.bitpack", SI_selector_bitpack, ZL_Type_serial | ZL_Type_numeric),
     REGISTER_STATIC_GRAPH(ZL_StandardGraphID_flatpack, "!zl.flatpack", ZL_Type_serial, ZL_PrivateStandardNodeID_flatpack, _2_SUCCESSORS(ZL_PrivateStandardGraphID_serial_store, ZL_PrivateStandardGraphID_serial_store) ),
