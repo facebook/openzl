@@ -297,6 +297,8 @@ compressProfiles()
                                     comp, chunkSize, true, sep, false);
                 });
 
+        addLEintProfile(mp, true, 8);
+        addLEintProfile(mp, false, 8);
         addLEintProfile(mp, true, 16);
         addLEintProfile(mp, false, 16);
         addLEintProfile(mp, true, 32);
