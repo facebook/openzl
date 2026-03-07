@@ -112,8 +112,9 @@ static void addLEintProfile(
 {
     std::string signage = isSigned ? "i" : "u";
     // For 8-bit values, no endianness needed (single byte)
-    std::string name = (bitWidth == 8) ? (signage + std::to_string(bitWidth))
-                                       : ("le-" + signage + std::to_string(bitWidth));
+    std::string name       = (bitWidth == 8)
+                  ? (signage + std::to_string(bitWidth))
+                  : ("le-" + signage + std::to_string(bitWidth));
     auto interpretAsLEnode = ZL_Node_interpretAsLE(bitWidth);
 
     std::shared_ptr<void> nodeid = std::shared_ptr<void>(
