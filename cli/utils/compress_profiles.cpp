@@ -110,8 +110,10 @@ static void addLEintProfile(
         bool isSigned,
         size_t bitWidth)
 {
-    std::string signage    = isSigned ? "i" : "u";
-    std::string name       = "le-" + signage + std::to_string(bitWidth);
+    std::string signage = isSigned ? "i" : "u";
+    // For 8-bit values, no endianness needed (single byte)
+    std::string name = (bitWidth == 8) ? (signage + std::to_string(bitWidth))
+                                       : ("le-" + signage + std::to_string(bitWidth));
     auto interpretAsLEnode = ZL_Node_interpretAsLE(bitWidth);
 
     std::shared_ptr<void> nodeid = std::shared_ptr<void>(
@@ -119,10 +121,19 @@ static void addLEintProfile(
     ((ZL_NodeID*)nodeid.get())[0] = interpretAsLEnode;
     ((ZL_NodeID*)nodeid.get())[1] = ZL_NODE_ZIGZAG;
 
+    std::string description;
+    if (bitWidth == 8) {
+        description = (isSigned ? "Signed " : "Unsigned ")
+                + std::to_string(bitWidth) + "-bit data";
+    } else {
+        description = std::string("Little-endian ")
+                + (isSigned ? "signed " : "unsigned ")
+                + std::to_string(bitWidth) + "-bit data";
+    }
+
     mp[name] = std::make_shared<CompressProfile>(
             name,
-            std::string("Little-endian ") + (isSigned ? "signed " : "unsigned ")
-                    + std::to_string(bitWidth) + "-bit data",
+            description,
             isSigned ? ([](ZL_Compressor* comp,
                            void* opaque,
                            const ProfileArgs&) {
