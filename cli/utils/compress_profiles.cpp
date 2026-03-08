@@ -118,8 +118,8 @@ static std::string makeProfileDescription(bool isSigned, size_t bitWidth)
     if (bitWidth == 8) {
         return (isSigned ? "Signed " : "Unsigned ") + std::string("8-bit data");
     }
-    return std::string("Little-endian ") + (isSigned ? "signed " : "unsigned ") 
-          + std::to_string(bitWidth) + "-bit data";
+    return std::string("Little-endian ") + (isSigned ? "signed " : "unsigned ")
+            + std::to_string(bitWidth) + "-bit data";
 }
 
 static void addIntProfile(
@@ -130,7 +130,7 @@ static void addIntProfile(
     std::string signage     = isSigned ? "i" : "u";
     std::string name        = makeProfileName(signage, bitWidth);
     std::string description = makeProfileDescription(isSigned, bitWidth);
-    
+
     auto interpretAsLEnode = ZL_Node_interpretAsLE(bitWidth);
 
     std::shared_ptr<void> nodeid = std::shared_ptr<void>(
