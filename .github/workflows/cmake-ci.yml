@@ -30,6 +30,11 @@ jobs:
             os: ubuntu-latest
             build_mode: dev
             extra_flags: "-Werror"
+          - name: "CMake Linux (cmake 3.20.2)"
+            os: ubuntu-latest
+            build_mode: dev
+            extra_flags: "-Werror"
+            cmake_version: "3.20.2"
           - name: "CMake macOS"
             os: macos-latest
             build_mode: dev
@@ -52,6 +57,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install specific CMake version
+        if: ${{ matrix.cmake_version != '' }}
+        run: |
+          sudo apt-get remove --purge -y cmake
+          pip install cmake==${{ matrix.cmake_version }}
+
+      - name: Check CMake version
+        run: cmake --version
 
       - name: Configure CMake
         run: |
@@ -91,18 +105,20 @@ jobs:
 
       - name: Build
         working-directory: ${{github.workspace}}/build
-        run: make
+        run: make -j2
 
       - name: Build unitBench
         if: ${{ matrix.name == 'CMake Linux' }}
         working-directory: ${{github.workspace}}/build
-        run: cmake --build . --target unitBench
+        run: cmake --build . --parallel --target unitBench
 
       - name: Test
+        if: ${{ matrix.cmake_version == '' }}
         working-directory: ${{github.workspace}}/build
         run: ctest --output-on-failure
 
       - name: Install
+        if: ${{ matrix.cmake_version == '' }}
         working-directory: ${{github.workspace}}/build
         run: make install
 
