@@ -30,11 +30,11 @@ jobs:
             os: ubuntu-latest
             build_mode: dev
             extra_flags: "-Werror"
-          - name: "CMake Linux (cmake 3.22)"
+          - name: "CMake Linux (cmake 3.20.2)"
             os: ubuntu-latest
             build_mode: dev
             extra_flags: "-Werror"
-            cmake_version: "3.22.6"
+            cmake_version: "3.20.2"
           - name: "CMake macOS"
             os: macos-latest
             build_mode: dev
