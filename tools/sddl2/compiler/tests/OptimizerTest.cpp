@@ -167,4 +167,50 @@ TEST_F(OptimizerTest, ModuloByZeroError)
     expect_error(prog, "Modulo by zero");
 }
 
+TEST_F(OptimizerTest, DeadRecordVarElimination)
+{
+    const auto prog = R"(
+        entry: Record() { id: Int32LE }
+    )";
+
+    const auto cg       = Codegen(SourceLocation::null());
+    const auto expected = std::vector<ASTPtr>({
+            cg.consume(cg.record(
+                    ArgVec{},
+                    ArgVec{ cg.assume(
+                            cg.var("id"), cg.builtin_field(Symbol::I32LE)) })),
+    });
+    expect_ast(prog, expected);
+}
+
+TEST_F(OptimizerTest, RecordMemberLastReference)
+{
+    const auto prog = R"(
+        entry: Record() { id: Int32LE, val: Int32LE }
+        expect entry.id == 0
+        expect entry.val == 0
+    )";
+
+    const auto cg       = Codegen(SourceLocation::null());
+    const auto expected = std::vector<ASTPtr>({
+            cg.assume(
+                    cg.var("entry"),
+                    cg.record(
+                            ArgVec{},
+                            ArgVec{ cg.assume(
+                                            cg.var("id"),
+                                            cg.builtin_field(Symbol::I32LE)),
+                                    cg.assume(
+                                            cg.var("val"),
+                                            cg.builtin_field(
+                                                    Symbol::I32LE)) })),
+            cg.expect(
+                    cg.eq(cg.member(cg.var("entry"), cg.var("id")), cg.num(0))),
+            cg.expect(
+                    cg.eq(cg.member(cg.var("entry", true), cg.var("val")),
+                          cg.num(0))),
+    });
+    expect_ast(prog, expected);
+}
+
 } // namespace openzl::sddl2::tests
