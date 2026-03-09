@@ -378,6 +378,11 @@ class Codegen {
         return op(Op::SUB, std::move(lhs), std::move(rhs));
     }
 
+    ASTPtr neg(ASTPtr arg) const
+    {
+        return op(Op::NEG, std::move(arg));
+    }
+
     ASTPtr mul(ASTPtr lhs, ASTPtr rhs) const
     {
         return op(Op::MUL, std::move(lhs), std::move(rhs));
