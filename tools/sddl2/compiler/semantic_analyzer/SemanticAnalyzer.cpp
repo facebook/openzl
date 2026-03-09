@@ -142,6 +142,10 @@ class SemanticAnalyzerImpl {
                 var_types_[op.args()[0]->as_var()->name()] = ValueType::NUMERIC;
                 break;
             }
+            case Op::MEMBER: {
+                // TODO: implement
+                return ValueType::NUMERIC;
+            }
             case Op::CONSUME: {
                 expectFieldType(analyzeNode(op.args()[0]));
                 return ValueType::NONE;
