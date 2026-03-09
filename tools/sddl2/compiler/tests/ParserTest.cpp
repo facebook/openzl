@@ -39,11 +39,11 @@ TEST_F(ParserTest, ParseSimpleOps)
 {
     const auto prog = R"(
         # arithmetic operators
-        tmp = 1 + 2
-        tmp = 1 - 2
-        tmp = 1 * 2
-        tmp = 1 / 2
-        tmp = 1 % 2
+        expect 1 + 2
+        expect 1 - 2
+        expect 1 * 2
+        expect 1 / 2
+        expect 1 % 2
 
         # conditional operators
         expect 1 < 2
@@ -59,10 +59,10 @@ TEST_F(ParserTest, ParseSimpleOps)
         expect !0
 
         # bitwise operators
-        tmp = 1 & 2
-        tmp = 1 | 2
-        tmp = 1 ^ 2
-        tmp = ~1
+        expect 1 & 2
+        expect 1 | 2
+        expect 1 ^ 2
+        expect ~1
     )";
     expect_success(prog);
 }

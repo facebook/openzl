@@ -56,6 +56,24 @@ TEST_F(SemanticAnalyzerTest, AssignLHSNotVar)
     expect_error(prog, "variable name");
 }
 
+TEST_F(SemanticAnalyzerTest, RedefineVar)
+{
+    const auto prog = R"(
+        x = 5
+        x = 6
+    )";
+    expect_error(prog, "already defined");
+}
+
+TEST_F(SemanticAnalyzerTest, RedefineAssumedVar)
+{
+    const auto prog = R"(
+        x: Int32LE
+        x: Int32LE
+    )";
+    expect_error(prog, "already defined");
+}
+
 TEST_F(SemanticAnalyzerTest, ConsumeNonFieldType)
 {
     const auto prog = R"(

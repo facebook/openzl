@@ -16,10 +16,10 @@ class OptimizerTest : public CompilerTest {
 TEST_F(OptimizerTest, ArithmeticConstFold)
 {
     const auto prog     = R"(
-        tmp = 1 + 2
-        tmp = -(tmp + 2)
-        tmp = 2 * 3 + tmp
-        expect tmp == 1
+        a = 1 + 2
+        b = -(a + 2)
+        c = 2 * 3 + b
+        expect c == 1
     )";
     const auto cg       = Codegen(SourceLocation::null());
     const auto expected = std::vector<ASTPtr>({
@@ -74,8 +74,8 @@ TEST_F(OptimizerTest, ChainedConstPropagation)
     const auto prog     = R"(
         a = 1
         b = 1 + a
-        b = 2 * b
-        expect b == 4
+        c = 2 * b
+        expect c == 4
     )";
     const auto cg       = Codegen(SourceLocation::null());
     const auto expected = std::vector<ASTPtr>({
@@ -153,7 +153,7 @@ TEST_F(OptimizerTest, DivideByZeroError)
 {
     const auto prog = R"(
         tmp = 2 - 2
-        tmp = 1 / tmp
+        div = 1 / tmp
     )";
     expect_error(prog, "Division by zero");
 }
@@ -162,7 +162,7 @@ TEST_F(OptimizerTest, ModuloByZeroError)
 {
     const auto prog = R"(
         tmp = 2 - 2
-        tmp = 1 % tmp
+        mod = 1 % tmp
     )";
     expect_error(prog, "Modulo by zero");
 }
