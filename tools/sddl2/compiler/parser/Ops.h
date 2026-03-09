@@ -13,6 +13,7 @@ enum class Op {
     CONSUME,
     ASSUME,
     SEND,
+    MEMBER,
 
     // Arithmetic Operators
     NEG,
