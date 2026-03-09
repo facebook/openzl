@@ -62,11 +62,15 @@ class DeadVarImpl {
             }
             case ConvertedNodeType::OP: {
                 const auto& op = *node->as_op();
+                if (op.op() == Op::ASSIGN || op.op() == Op::ASSUME) {
+                    recordLastRefs(op.args()[1]);
+                    return;
+                }
+                if (op.op() == Op::MEMBER) {
+                    recordLastRefs(op.args()[0]);
+                    return;
+                }
                 for (size_t i = 0; i < op.args().size(); ++i) {
-                    if ((op.op() == Op::ASSIGN || op.op() == Op::ASSUME)
-                        && i == 0) {
-                        continue;
-                    }
                     recordLastRefs(op.args()[i]);
                 }
                 return;
@@ -138,6 +142,11 @@ class DeadVarImpl {
             }
             return Codegen(op->loc()).op(
                     Op::ASSUME, op->args()[0], optimizeNode(op->args()[1]));
+        }
+
+        if (op->op() == Op::MEMBER) {
+            return Codegen(op->loc()).member(
+                    optimizeNode(op->args()[0]), op->args()[1]);
         }
 
         // Other ops
