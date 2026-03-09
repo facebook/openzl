@@ -1,11 +1,11 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include <sstream>
-#include <unordered_set>
-
-#include "src/openzl/compress/graphs/sddl2/sddl2_vm.h"
+#include <algorithm>
+#include <unordered_map>
+#include <vector>
 
 #include "tools/sddl2/compiler/Exception.h"
+#include "tools/sddl2/compiler/codegen/AssemblyOutput.h"
 #include "tools/sddl2/compiler/codegen/CodeGenerator.h"
 #include "tools/sddl2/compiler/codegen/RegisterAllocator.h"
 #include "tools/sddl2/compiler/parser/AST.h"
@@ -56,10 +56,20 @@ const std::map<Symbol, std::string> builtin_field_to_asm = {
 };
 
 /**
- * Output of the code generator: a sequence of assembly instructions.
+ * Maps builtin field types to their corresponding load instructions.
  */
-using Instruction    = std::string;
-using AssemblyOutput = std::vector<Instruction>;
+const std::map<Symbol, std::string> builtin_field_to_load = {
+    { Symbol::BYTE, "load.u8" },     { Symbol::U8, "load.u8" },
+    { Symbol::I8, "load.i8" },       { Symbol::U16LE, "load.u16le" },
+    { Symbol::U16BE, "load.u16be" }, { Symbol::I16LE, "load.i16le" },
+    { Symbol::I16BE, "load.i16be" }, { Symbol::U32LE, "load.u32le" },
+    { Symbol::U32BE, "load.u32be" }, { Symbol::I32LE, "load.i32le" },
+    { Symbol::I32BE, "load.i32be" }, { Symbol::U64LE, "load.u64le" },
+    { Symbol::U64BE, "load.u64be" }, { Symbol::I64LE, "load.i64le" },
+    { Symbol::I64BE, "load.i64be" },
+};
+
+using TypeResult = std::pair<AssemblyOutput, ASTPtr>;
 
 /**
  * Takes an AST and generates assembly code.
@@ -78,158 +88,34 @@ class CodeGeneratorImpl {
         (void)log_;
         AssemblyOutput output;
         for (const auto& node : ast) {
-            generateNode(node, output);
+            output += generateOp(*node->as_op());
         }
-
-        std::ostringstream oss;
-        for (const auto& inst : output) {
-            oss << inst << std::endl;
-        }
-
-        return std::move(oss).str();
+        return output.str();
     }
 
    private:
     /**
-     * Generates code for a single AST node.
-     *
-     * @param node The AST node to process.
-     * @param output The output vector to append instructions to.
+     * Generates code for an operation node. This is the central dispatch
+     * for the code generator. Each op knows whether its arguments are
+     * values or types.
      */
-    void generateNode(const ASTPtr& node, AssemblyOutput& output)
+    AssemblyOutput generateOp(const ASTOp& op)
     {
-        const auto type = node->converted_node_type();
-        switch (type) {
-            case ConvertedNodeType::NUM: {
-                return generate(*node->as_num(), output);
-            };
-            case ConvertedNodeType::VAR: {
-                return generate(*node->as_var(), output);
-            };
-            case ConvertedNodeType::BUILTIN_FIELD: {
-                return generate(*node->as_builtin_field(), output);
-            };
-            case ConvertedNodeType::BYTES: {
-                return generate(*node->as_bytes(), output);
-            };
-            case ConvertedNodeType::RECORD: {
-                return generate(*node->as_record(), output);
-            }
-            case ConvertedNodeType::ARRAY: {
-                return generate(*node->as_array(), output);
-            }
-            case ConvertedNodeType::OP: {
-                return generate(*node->as_op(), output);
-            }
-            default:
-                throw std::runtime_error("Unsupported AST node type");
-        }
-    }
-
-    /**
-     * Generates code for a numeric literal.
-     *
-     * @param value The numeric value.
-     * @param output The output vector to append instructions to.
-     */
-    void generate(const ASTNum& num, AssemblyOutput& output) const
-    {
-        output.emplace_back("push.i64 " + std::to_string(num.val()));
-    }
-
-    /**
-     * Generates code for a variable reference.
-     *
-     * @param var The variable node.
-     * @param output The output vector to append instructions to.
-     */
-    void generate(const ASTVar& var, AssemblyOutput& output)
-    {
-        output.emplace_back(
-                "push.i64 " + std::to_string(registers_.get(var.name())));
-        output.emplace_back("var.load");
-        if (var.is_last_reference()) {
-            registers_.unassign(var.name());
-        }
-    }
-
-    /**
-     * Generates code for a builtin field type.
-     */
-    void generate(const ASTBuiltinField& field, AssemblyOutput& output) const
-    {
-        output.emplace_back("push.type." + builtin_field_to_asm.at(field.kw()));
-    }
-
-    /**
-     * Generates code for Bytes field type.
-     */
-    void generate(const ASTBytes& bytes, AssemblyOutput& output)
-    {
-        output.emplace_back("push.type.bytes");
-        generateNode(bytes.len(), output);
-        output.emplace_back("type.fixed_array");
-    }
-
-    /**
-     * Generates code for Record field type.
-     */
-    void generate(const ASTRecord& record, AssemblyOutput& output)
-    {
-        // TODO: eventually we want to be able to generate scan records. For
-        // now, we define them as a structure type.
-
-        // Field types (sema guarantees each field is an ASSUME op)
-        for (const auto& field : record.fields()) {
-            auto assume = field->as_op();
-            generateNode(assume->args()[1], output);
-        }
-        // Number of fields
-        output.emplace_back(
-                "push.i64 " + std::to_string(record.fields().size()));
-        output.emplace_back("type.structure");
-    }
-
-    /**
-     * Generates code for Array field type.
-     */
-    void generate(const ASTArray& array, AssemblyOutput& output)
-    {
-        // Field type
-        generateNode(array.field(), output);
-        // Array length
-        auto& len = array.len();
-        if (len) {
-            generateNode(len, output);
-        } else {
-            output.emplace_back("stack.dup");
-            output.emplace_back("type.sizeof");
-            output.emplace_back("push.remaining");
-            output.emplace_back("stack.swap");
-            output.emplace_back("math.div");
-        }
-        output.emplace_back("type.fixed_array");
-    }
-
-    /**
-     * Generates code for an operation node.
-     *
-     * @param op The operation type.
-     * @param args The operation arguments.
-     * @param output The output vector to append instructions to.
-     */
-
-    void generate(const ASTOp& op, AssemblyOutput& output)
-    {
+        AssemblyOutput output;
         switch (op.op()) {
             case Op::EXPECT:
             case Op::NEG:
             case Op::LOG_NOT:
-            case Op::BIT_NOT:
+            case Op::BIT_NOT: {
+                output += generateValue(op.args()[0]);
+                output += op_to_asm.at(op.op());
+                return output;
+            }
             case Op::SIZEOF: {
-                generateNode(op.args()[0], output);
-                output.emplace_back(op_to_asm.at(op.op()));
-                break;
+                auto [type_asm, _] = generateType(op.args()[0]);
+                output += std::move(type_asm);
+                output += op_to_asm.at(op.op());
+                return output;
             }
             case Op::ADD:
             case Op::SUB:
@@ -247,43 +133,239 @@ class CodeGeneratorImpl {
             case Op::BIT_XOR:
             case Op::LOG_AND:
             case Op::LOG_OR: {
-                generateNode(op.args()[0], output);
-                generateNode(op.args()[1], output);
-                output.emplace_back(op_to_asm.at(op.op()));
-                break;
+                output += generateValue(op.args()[0]);
+                output += generateValue(op.args()[1]);
+                output += op_to_asm.at(op.op());
+                return output;
             }
-            case Op::ASSIGN: {
-                // Sema guarantees LHS is a variable
-                auto var = op.args()[0]->as_var();
-                generateNode(op.args()[1], output);
-                output.emplace_back(
-                        "push.i64 "
-                        + std::to_string(registers_.assign(var->name())));
-                output.emplace_back("var.store");
-                break;
-            }
-            case Op::ASSUME: // TODO: treat assume differently from consume
-            case Op::CONSUME: {
-                const auto val =
-                        (op.op() == Op::ASSUME) ? op.args()[1] : op.args()[0];
-
-                // Tag
-                output.emplace_back("push.tag " + std::to_string(tag_++));
-                // Type
-                generateNode(val, output);
-                // Length
-                output.emplace_back("push.i64 1");
-                output.emplace_back("segment.create_tagged");
-                break;
-            }
-            case Op::MEMBER: {
-                throw CodegenError(
-                        op.loc(), "Member access not yet supported.");
-            }
+            case Op::ASSIGN:
+                return generateAssign(op);
+            case Op::ASSUME:
+                return generateAssume(op);
+            case Op::CONSUME:
+                return generateConsume(generateType(op.args()[0]));
+            case Op::MEMBER:
+                return generateMember(op);
             case Op::SEND:
             default:
                 throw InvariantViolation(op.loc(), "Unsupported operation.");
         };
+    }
+
+    /**
+     * Generates code that pushes a value onto the stack.
+     * Handles numeric literals, variable references, and value-producing ops.
+     */
+    AssemblyOutput generateValue(const ASTPtr& node)
+    {
+        AssemblyOutput output;
+        switch (node->converted_node_type()) {
+            case ConvertedNodeType::NUM: {
+                output += "push.i64 " + std::to_string(node->as_num()->val());
+                return output;
+            }
+            case ConvertedNodeType::VAR: {
+                auto var = node->as_var();
+                output += "push.i64 "
+                        + std::to_string(registers_.get(var->name()));
+                output += "var.load";
+                return output;
+            }
+            case ConvertedNodeType::OP:
+                return generateOp(*node->as_op());
+            case ConvertedNodeType::BUILTIN_FIELD:
+            case ConvertedNodeType::BYTES:
+            case ConvertedNodeType::ARRAY:
+            case ConvertedNodeType::RECORD:
+            default:
+                throw InvariantViolation(
+                        node->loc(), "Expected a value, got a type.");
+        }
+    }
+
+    TypeResult generateType(const ASTPtr& type)
+    {
+        AssemblyOutput output;
+
+        switch (type->converted_node_type()) {
+            case ConvertedNodeType::VAR: {
+                auto var = type->as_var();
+                auto it  = type_aliases_.find(var->name());
+                if (it == type_aliases_.end()) {
+                    throw InvariantViolation(
+                            type->loc(), "Undefined variable!");
+                }
+                output += "push.i64 "
+                        + std::to_string(registers_.get(var->name()));
+                output += "var.load";
+                return { std::move(output), it->second };
+            }
+            case ConvertedNodeType::BUILTIN_FIELD: {
+                output += "push.type."
+                        + builtin_field_to_asm.at(
+                                type->as_builtin_field()->kw());
+                return { std::move(output), type };
+            }
+            case ConvertedNodeType::RECORD: {
+                auto record = type->as_record();
+                for (const auto& field : record->fields()) {
+                    auto assume            = field->as_op();
+                    const auto& field_type = assume->args()[1];
+                    auto [field_asm, _]    = generateType(field_type);
+                    output += std::move(field_asm);
+                }
+                output += "push.i64 " + std::to_string(record->fields().size());
+                output += "type.structure";
+                return { std::move(output), type };
+            }
+            case ConvertedNodeType::BYTES: {
+                auto bytes = type->as_bytes();
+                output += "push.type.bytes";
+                output += generateValue(bytes->len());
+                output += "type.fixed_array";
+                return { std::move(output), type };
+            }
+            case ConvertedNodeType::ARRAY: {
+                auto array          = type->as_array();
+                auto [field_asm, _] = generateType(array->field());
+                output += std::move(field_asm);
+                auto& len = array->len();
+                if (len) {
+                    output += generateValue(len);
+                } else {
+                    output += "stack.dup";
+                    output += "type.sizeof";
+                    output += "push.remaining";
+                    output += "stack.swap";
+                    output += "math.div";
+                }
+                output += "type.fixed_array";
+                return { std::move(output), type };
+            }
+            case ConvertedNodeType::NUM:
+            case ConvertedNodeType::OP:
+            default:
+                throw InvariantViolation(
+                        type->loc(), "Expected a type, got a value.");
+        }
+    }
+
+    std::pair<const ASTVar&, std::vector<std::string>> flattenMember(
+            const ASTOp& op)
+    {
+        ASTPtr root                   = op.args()[0];
+        std::vector<std::string> path = { op.args()[1]->as_var()->name() };
+
+        while (auto member_op = root->as_op()) {
+            if (member_op->op() != Op::MEMBER)
+                break;
+            path.push_back(member_op->args()[1]->as_var()->name());
+            root = member_op->args()[0];
+        }
+
+        // Reverse path since we built it from leaf to root
+        std::reverse(path.begin(), path.end());
+
+        return { *root->as_var(), std::move(path) };
+    }
+
+    AssemblyOutput generateMember(const ASTOp& op)
+    {
+        AssemblyOutput output;
+        // Flatten the member chain
+        const auto& [root, path] = flattenMember(op);
+
+        // Get the type info
+        auto type = assumed_types_[root.name()];
+
+        // Load the base offset
+        output += "push.i64 " + std::to_string(registers_.get(root.name()));
+        output += "var.load";
+
+        // Walk through the path, accumulating offsets
+        for (const auto& name : path) {
+            auto curr_record = type->as_record();
+            for (const auto& field : curr_record->fields()) {
+                auto assume      = field->as_op();
+                auto& field_name = assume->args()[0]->as_var()->name();
+                auto [field_asm, field_type] = generateType(assume->args()[1]);
+                if (name == field_name) {
+                    type = field_type;
+                    log_(0) << "  Found " << name << std::endl;
+                    break;
+                }
+                output += std::move(field_asm);
+                output += "type.sizeof";
+                output += "math.add";
+            }
+        }
+
+        // Load the final value if it's a builtin type
+        if (auto builtin = type->as_builtin_field()) {
+            output += builtin_field_to_load.at(builtin->kw());
+        } else {
+            throw CodegenError(
+                    op.loc(), "Member access must be a builtin type.");
+        }
+        return output;
+    }
+
+    AssemblyOutput generateAssign(const ASTOp& op)
+    {
+        auto& var             = *op.args()[0]->as_var();
+        auto [type_asm, type] = generateType(op.args()[1]);
+
+        type_aliases_[var.name()] = type;
+
+        AssemblyOutput output;
+        output += std::move(type_asm);
+        output += "push.i64 " + std::to_string(registers_.assign(var.name()));
+        output += "var.store";
+        return output;
+    }
+
+    AssemblyOutput generateAssume(const ASTOp& op)
+    {
+        auto& var        = *op.args()[0]->as_var();
+        auto type_result = generateType(op.args()[1]);
+        AssemblyOutput output;
+
+        // Save the current position
+        output += "push.current_pos";
+
+        // Consume the type
+        output += generateConsume(type_result);
+
+        auto type = type_result.second;
+
+        if (const auto builtin = type->as_builtin_field()) {
+            // If the type is a builtin field save the loaded value
+            output += builtin_field_to_load.at(builtin->kw());
+            output +=
+                    "push.i64 " + std::to_string(registers_.assign(var.name()));
+        } else if (type->as_record()) {
+            // Otherwise, save the current position and type information
+            output +=
+                    "push.i64 " + std::to_string(registers_.assign(var.name()));
+            assumed_types_[var.name()] = type;
+        } else {
+            throw CodegenError(
+                    op.loc(), "Assume must be a builtin field or record.");
+        }
+
+        output += "var.store";
+        return output;
+    }
+
+    AssemblyOutput generateConsume(TypeResult type_result)
+    {
+        AssemblyOutput output;
+        auto& [type_asm, _] = type_result;
+        output += "push.tag " + std::to_string(tag_++);
+        output += std::move(type_asm);
+        output += "push.i64 1";
+        output += "segment.create_tagged";
+        return output;
     }
 
     const detail::Logger& log_;
@@ -291,6 +373,8 @@ class CodeGeneratorImpl {
 
     // Register allocation
     RegisterAllocator registers_;
+    std::unordered_map<std::string, ASTPtr> type_aliases_;
+    std::unordered_map<std::string, ASTPtr> assumed_types_;
 };
 
 } // namespace

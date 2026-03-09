@@ -42,10 +42,7 @@ TEST_F(SemanticAnalyzerTest, AssumeDefinesVar)
         count: UInt8
         : Byte[count]
     )";
-
-    // TODO: This will succees when codegen is implemented. For now we know it
-    // passes semantic analysis.
-    expect_error(prog, "code generation error");
+    expect_success(prog);
 }
 
 TEST_F(SemanticAnalyzerTest, AssignLHSNotVar)
@@ -113,9 +110,7 @@ TEST_F(SemanticAnalyzerTest, AssumeRecordAndMemberAccess)
         expect entry.id == 0
     )";
 
-    // TODO: This will succees when codegen is implemented. For now we know it
-    // passes semantic analysis.
-    expect_error(prog, "code generation error");
+    expect_success(prog);
 }
 
 TEST_F(SemanticAnalyzerTest, MemberAccessOnNonRecord)
@@ -156,9 +151,7 @@ TEST_F(SemanticAnalyzerTest, AssumeRecordTypeAlias)
         expect entry.id == 0
         expect entry.val == 0
     )";
-    // TODO: This will succees when codegen is implemented. For now we know it
-    // passes semantic analysis.
-    expect_error(prog, "code generation error");
+    expect_success(prog);
 }
 
 TEST_F(SemanticAnalyzerTest, AssumeBuiltinTypeAlias)
@@ -168,9 +161,7 @@ TEST_F(SemanticAnalyzerTest, AssumeBuiltinTypeAlias)
         x: MyType
         expect x == 0
     )";
-    // TODO: This will succees when codegen is implemented. For now we know it
-    // passes semantic analysis.
-    expect_error(prog, "code generation error");
+    expect_success(prog);
 }
 
 TEST_F(SemanticAnalyzerTest, AssumeFloatType)
@@ -200,9 +191,7 @@ TEST_F(SemanticAnalyzerTest, AssumeChainedTypeAlias)
         x: MyType
         expect x == 0
     )";
-    // TODO: This will succees when codegen is implemented. For now we know it
-    // passes semantic analysis.
-    expect_error(prog, "code generation error");
+    expect_success(prog);
 }
 
 TEST_F(SemanticAnalyzerTest, NestedMemberAccess)
@@ -219,9 +208,7 @@ TEST_F(SemanticAnalyzerTest, NestedMemberAccess)
         expect bar.foo.x == 1
     )";
 
-    // TODO: This will succees when codegen is implemented. For now we know it
-    // passes semantic analysis.
-    expect_error(prog, "code generation error");
+    expect_success(prog);
 }
 
 TEST_F(SemanticAnalyzerTest, NestedMemberAccessOnNonRecordField)

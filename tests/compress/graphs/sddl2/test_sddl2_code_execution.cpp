@@ -262,6 +262,118 @@ TEST_F(SDDL2CodeExecutionTest, VarRecordType)
             expected_sizes);
 }
 
+TEST_F(SDDL2CodeExecutionTest, AssumeBuiltInType)
+{
+    const std::vector<size_t> expected_sizes = { 4, 2 };
+    std::vector<uint8_t> input               = {
+        0x01, 0x00, 0x00, 0x00, 0x02, 0x00,
+    };
+
+    const auto prog = R"(
+        x : Int32LE
+        y : Int16LE
+        expect x == 1
+        expect y == 2
+    )";
+
+    expect_success(prog, input, expected_sizes);
+}
+TEST_F(SDDL2CodeExecutionTest, AssumeRecord)
+{
+    const size_t record_size = sizeof(int32_t) + sizeof(int16_t);
+    const std::vector<size_t> expected_sizes = { record_size };
+    std::vector<uint8_t> input               = {
+        0x01, 0x00, 0x00, 0x00, 0x02, 0x00,
+    };
+
+    const auto prog = R"(
+        Record Foo() = {
+            x: Int32LE,
+            y: Int16LE
+        }
+        foo: Foo
+        expect foo.x == 1
+        expect foo.y == 2
+
+    )";
+
+    expect_success(prog, input, expected_sizes);
+}
+
+TEST_F(SDDL2CodeExecutionTest, AssumeNestedRecord)
+{
+    const std::vector<size_t> expected_sizes = {
+        sizeof(int32_t) + sizeof(int16_t) + sizeof(char)
+    };
+    std::vector<uint8_t> input = {
+        0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x03,
+    };
+
+    const auto prog = R"(
+        Record Bar() = {
+            x : Int32LE,
+            y : Int16LE,
+        }
+        Record Foo() = {
+            bar : Bar,
+            x : Byte,
+        }
+
+        foo : Foo
+        expect foo.bar.x == 1
+        expect foo.bar.y == 2
+        expect foo.x == 3
+    )";
+    expect_success(prog, input, expected_sizes);
+}
+
+TEST_F(SDDL2CodeExecutionTest, AssumeAnonymousNestedRecord)
+{
+    const std::vector<size_t> expected_sizes = {
+        sizeof(int32_t) + sizeof(int16_t) + sizeof(char)
+    };
+    std::vector<uint8_t> input = {
+        0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x03,
+    };
+
+    const auto prog = R"(
+        Record Foo() = {
+            bar : Record() { x : Int32LE, y : Int16LE },
+            x : Byte,
+        }
+
+        foo : Foo
+        expect foo.bar.x == 1
+        expect foo.bar.y == 2
+        expect foo.x == 3
+    )";
+    expect_success(prog, input, expected_sizes);
+}
+
+TEST_F(SDDL2CodeExecutionTest, AssumeRecordWithGlobalVariableReference)
+{
+    const std::vector<size_t> expected_sizes = {
+        1,
+        4,
+    };
+    std::vector<uint8_t> input = {
+        /* len */ 0x03,
+        /* foo */ 0x01, 0x02, 0x03, 0x01,
+    };
+
+    const auto prog = R"(
+        len: Byte
+        Record Foo() = {
+            a : Bytes(len),
+            b : Byte,
+        }
+        foo : Foo
+        expect len == 3
+        expect foo.b == 1
+    )";
+    expect_success(prog, input, expected_sizes);
+}
+
 } // namespace testing
 } // namespace sddl2
 } // namespace openzl

@@ -186,29 +186,32 @@ TEST_F(OptimizerTest, DeadRecordVarElimination)
 TEST_F(OptimizerTest, RecordMemberLastReference)
 {
     const auto prog = R"(
-        entry: Record() { id: Int32LE, val: Int32LE }
-        expect entry.id == 0
-        expect entry.val == 0
+        Record Foo() = {
+            x: Int32LE,
+            y: Int16LE
+        }
+        foo: Foo
+        expect foo.x == 1
+        expect foo.y == 2
     )";
 
     const auto cg       = Codegen(SourceLocation::null());
     const auto expected = std::vector<ASTPtr>({
-            cg.assume(
-                    cg.var("entry"),
+            cg.assign(
+                    cg.var("Foo"),
                     cg.record(
                             ArgVec{},
                             ArgVec{ cg.assume(
-                                            cg.var("id"),
+                                            cg.var("x"),
                                             cg.builtin_field(Symbol::I32LE)),
                                     cg.assume(
-                                            cg.var("val"),
+                                            cg.var("y"),
                                             cg.builtin_field(
-                                                    Symbol::I32LE)) })),
-            cg.expect(
-                    cg.eq(cg.member(cg.var("entry"), cg.var("id")), cg.num(0))),
-            cg.expect(
-                    cg.eq(cg.member(cg.var("entry", true), cg.var("val")),
-                          cg.num(0))),
+                                                    Symbol::I16LE)) })),
+            cg.assume(cg.var("foo"), cg.var("Foo", true)),
+            cg.expect(cg.eq(cg.member(cg.var("foo"), cg.var("x")), cg.num(1))),
+            cg.expect(cg.eq(
+                    cg.member(cg.var("foo", true), cg.var("y")), cg.num(2))),
     });
     expect_ast(prog, expected);
 }

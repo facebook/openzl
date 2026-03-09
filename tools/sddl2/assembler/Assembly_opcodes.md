@@ -137,7 +137,7 @@ Variable operations
 
 | Mnemonic    | Opcode   | Params | Description                                            |
 | ----------- | -------- | ------ | ------------------------------------------------------ |
-| `var.store` | `0x0001` | `-`    | Pop Value, pop I64 (register), store Value in register |
+| `var.store` | `0x0001` | `-`    | Pop I64 (register), pop Value, store Value in register |
 | `var.load`  | `0x0002` | `-`    | Pop I64 (register), push Value stored in register      |
 
 ### CALL (0x000B)
