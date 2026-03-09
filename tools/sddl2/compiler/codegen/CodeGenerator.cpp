@@ -279,6 +279,10 @@ class CodeGeneratorImpl {
                 output.emplace_back("segment.create_tagged");
                 break;
             }
+            case Op::MEMBER: {
+                throw CodegenError(
+                        op.loc(), "Member access not yet supported.");
+            }
             case Op::SEND:
             default:
                 throw InvariantViolation(op.loc(), "Unsupported operation.");
