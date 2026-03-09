@@ -178,7 +178,7 @@ TEST_F(SDDL2CodeExecutionTest, ConsumeArrayOfArrays)
             expected_sizes);
 }
 
-TEST_F(SDDL2CodeExecutionTest, ConsumeSimpleSAO)
+TEST_F(SDDL2CodeExecutionTest, ConsumeSimpleAnonymous)
 {
     const size_t star_entry_size = 2 * sizeof(double) + 2 * sizeof(uint8_t)
             + sizeof(int16_t) + 2 * sizeof(float);
@@ -196,6 +196,67 @@ TEST_F(SDDL2CodeExecutionTest, ConsumeSimpleSAO)
                     XRPM : Float32LE, # R.A. proper motion
                     XDPM : Float32LE # Dec. proper motion
                 }[]
+            )",
+            input,
+            expected_sizes);
+}
+
+TEST_F(SDDL2CodeExecutionTest, ConsumeSimpleSAO)
+{
+    const size_t star_entry_size = 2 * sizeof(double) + 2 * sizeof(uint8_t)
+            + sizeof(int16_t) + 2 * sizeof(float);
+    const std::vector<size_t> expected_sizes = { 28, 4 * star_entry_size };
+    const auto input = gen<uint8_t>(sum(expected_sizes));
+
+    expect_success(
+            R"(
+                # Star catalog entry (28 bytes)
+                Record StarEntry() = {
+                    SRA0:  Float64LE,    # Right Ascension (radians)
+                    SDEC0: Float64LE,    # Declination (radians)
+                    ISP:   Bytes(2),     # Spectral type
+                    MAG:   Int16LE,      # Magnitude
+                    XRPM:  Float32LE,    # R.A. proper motion
+                    XDPM:  Float32LE     # Dec. proper motion
+                }
+
+                # File structure
+                header: Bytes(28)
+                stars: StarEntry[]
+            )",
+            input,
+            expected_sizes);
+}
+
+TEST_F(SDDL2CodeExecutionTest, ConsumeArrayTypeVars)
+{
+    const std::vector<size_t> expected_sizes = { 16, 16 * 10, 12, 12 * 10 };
+    const auto input = gen<uint8_t>(sum(expected_sizes));
+
+    expect_success(
+            R"(
+                Foo = Int32LE[4]
+                Bar = Int32LE[3]
+                : Foo
+                : Foo[10]
+                : Bar
+                : Bar[10]
+            )",
+            input,
+            expected_sizes);
+}
+
+TEST_F(SDDL2CodeExecutionTest, VarRecordType)
+{
+    const size_t record_size = sizeof(int32_t) + sizeof(int16_t);
+    const std::vector<size_t> expected_sizes = { record_size, 3 * record_size };
+    const auto input = gen<uint8_t>(sum(expected_sizes));
+
+    expect_success(
+            R"(
+                Entry = Record() { x: Int32LE, y: Int16LE }
+                : Entry
+                : Entry[3]
             )",
             input,
             expected_sizes);
