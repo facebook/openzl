@@ -418,6 +418,65 @@ class CsvAlternativeSeparatorTest(_CompressDecompressBaseTest):
         self.compress_and_decompress_samples()
 
 
+class U8Test(_CompressDecompressBaseTest):
+    """
+    Test case for u8 profile compression and decompression.
+
+    This test verifies that the u8 (unsigned 8-bit) profile
+    can compress and decompress 8-bit data correctly.
+    Sample files are located in cli/tests/sample_files/u8/
+    """
+
+    @property
+    def input_dir_name(self) -> str:
+        return "u8"
+
+    @property
+    def compressor_profile_name(self) -> str:
+        return "u8"
+
+    def test_compress_decompress(self):
+        """
+        Test that u8 profile can compress and decompress 8-bit data.
+
+        This test:
+        1. Compresses all files in cli/tests/sample_files/u8/
+        2. Decompresses the compressed files
+        3. Verifies that the decompressed files match the originals
+        """
+        self.compress_and_decompress_samples()
+
+
+class U8TrainTest(_TrainBaseTest):
+    """
+    Test case for u8 profile with ACE training.
+
+    This test verifies that the u8 profile can be trained using ACE
+    (Automated Compressor Explorer) and that the trained compressor works correctly.
+    Sample files are located in cli/tests/sample_files/u8/
+    """
+
+    @property
+    def input_dir_name(self) -> str:
+        return "u8"
+
+    @property
+    def compressor_profile_name(self) -> str:
+        return "u8"
+
+    def test_train_compress_decompress(self):
+        """
+        Test the train, compress, and decompress workflow for u8 profile.
+
+        This test:
+        1. Trains a compressor on the u8 files in cli/tests/sample_files/u8/ using ACE
+        2. Saves the trained compressor to {output_dir_path}/trained_compressor.zlc
+        3. Uses the trained compressor to compress and decompress the u8 files
+        4. Verifies that the decompressed files match the originals
+        """
+        self.train_compress_decompress()
+
+
 class BenchmarkCsvCompressionTest(_BenchmarkBaseTest):
     """
     Test case for benchmarking compression.

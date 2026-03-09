@@ -105,13 +105,32 @@ ZL_GraphID saoProfile(Compressor& compressor)
             splitSizes.size());
 }
 
-static void addLEintProfile(
+static std::string makeProfileName(const std::string& signage, size_t bitWidth)
+{
+    if (bitWidth == 8) {
+        return signage + "8";
+    }
+    return "le-" + signage + std::to_string(bitWidth);
+}
+
+static std::string makeProfileDescription(bool isSigned, size_t bitWidth)
+{
+    if (bitWidth == 8) {
+        return (isSigned ? "Signed " : "Unsigned ") + std::string("8-bit data");
+    }
+    return std::string("Little-endian ") + (isSigned ? "signed " : "unsigned ")
+            + std::to_string(bitWidth) + "-bit data";
+}
+
+static void addIntProfile(
         std::map<std::string, std::shared_ptr<CompressProfile>>& mp,
         bool isSigned,
         size_t bitWidth)
 {
-    std::string signage    = isSigned ? "i" : "u";
-    std::string name       = "le-" + signage + std::to_string(bitWidth);
+    std::string signage     = isSigned ? "i" : "u";
+    std::string name        = makeProfileName(signage, bitWidth);
+    std::string description = makeProfileDescription(isSigned, bitWidth);
+
     auto interpretAsLEnode = ZL_Node_interpretAsLE(bitWidth);
 
     std::shared_ptr<void> nodeid = std::shared_ptr<void>(
@@ -121,8 +140,7 @@ static void addLEintProfile(
 
     mp[name] = std::make_shared<CompressProfile>(
             name,
-            std::string("Little-endian ") + (isSigned ? "signed " : "unsigned ")
-                    + std::to_string(bitWidth) + "-bit data",
+            description,
             isSigned ? ([](ZL_Compressor* comp,
                            void* opaque,
                            const ProfileArgs&) {
@@ -297,12 +315,14 @@ compressProfiles()
                                     comp, chunkSize, true, sep, false);
                 });
 
-        addLEintProfile(mp, true, 16);
-        addLEintProfile(mp, false, 16);
-        addLEintProfile(mp, true, 32);
-        addLEintProfile(mp, false, 32);
-        addLEintProfile(mp, true, 64);
-        addLEintProfile(mp, false, 64);
+        addIntProfile(mp, true, 8);
+        addIntProfile(mp, false, 8);
+        addIntProfile(mp, true, 16);
+        addIntProfile(mp, false, 16);
+        addIntProfile(mp, true, 32);
+        addIntProfile(mp, false, 32);
+        addIntProfile(mp, true, 64);
+        addIntProfile(mp, false, 64);
 
         std::string kParquetName = "parquet";
         mp[kParquetName]         = std::make_shared<CompressProfile>(
