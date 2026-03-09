@@ -3,7 +3,7 @@
 #include <limits>
 
 #include "openzl/codecs/bitSplit/encode_bitSplit_binding.h"
-#include "openzl/cpp/codecs/BitsplitTop8.hpp"
+#include "openzl/cpp/codecs/Bitsplit.hpp"
 #include "openzl/zl_reflection.h"
 #include "tests/registry/OpenZLComponents.h"
 #include "tests/registry/OpenZLInput.h"
@@ -277,6 +277,111 @@ class BitSplitTop8Component : public OpenZLComponent {
     }
 };
 
+class BitSplitFPComponent : public OpenZLComponent {
+   public:
+    std::string name() const override
+    {
+        return "BitSplitFP";
+    }
+
+    int minFormatVersion() const override
+    {
+        return 24;
+    }
+
+    std::vector<NodeID> predefinedNodes(Compressor& compressor) const override
+    {
+        return { nodes::BitsplitFP{}.parameterize(compressor) };
+    }
+
+    std::vector<std::unique_ptr<OpenZLInput>> predefinedInputs() const override
+    {
+        std::vector<std::unique_ptr<OpenZLInput>> inputs;
+        // fp32 (IEEE 754)
+        inputs.push_back(F32OpenZLInput::make(std::vector<float>{}));
+        inputs.push_back(F32OpenZLInput::make(std::vector<float>{ 0.0f }));
+        inputs.push_back(
+                F32OpenZLInput::make(
+                        std::vector<float>{
+                                std::numeric_limits<float>::quiet_NaN() }));
+        inputs.push_back(
+                F32OpenZLInput::make(
+                        std::vector<float>{
+                                std::numeric_limits<float>::infinity(),
+                                -std::numeric_limits<float>::infinity() }));
+        inputs.push_back(F32OpenZLInput::make(std::vector<float>{ -0.0f }));
+        inputs.push_back(
+                F32OpenZLInput::make(
+                        std::vector<float>{
+                                std::numeric_limits<float>::lowest(),
+                                std::numeric_limits<float>::max() }));
+        inputs.push_back(
+                F32OpenZLInput::make(
+                        std::vector<float>{
+                                std::numeric_limits<float>::denorm_min() }));
+        // fp64 (IEEE 754)
+        inputs.push_back(F64OpenZLInput::make(std::vector<double>{}));
+        inputs.push_back(F64OpenZLInput::make(std::vector<double>{ 0.0 }));
+        inputs.push_back(
+                F64OpenZLInput::make(
+                        std::vector<double>{
+                                std::numeric_limits<double>::quiet_NaN() }));
+        inputs.push_back(
+                F64OpenZLInput::make(
+                        std::vector<double>{
+                                std::numeric_limits<double>::infinity(),
+                                -std::numeric_limits<double>::infinity() }));
+        inputs.push_back(F64OpenZLInput::make(std::vector<double>{ -0.0 }));
+        inputs.push_back(
+                F64OpenZLInput::make(
+                        std::vector<double>{
+                                std::numeric_limits<double>::lowest(),
+                                std::numeric_limits<double>::max() }));
+        inputs.push_back(
+                F64OpenZLInput::make(
+                        std::vector<double>{
+                                std::numeric_limits<double>::denorm_min() }));
+        // fp16 (IEEE 754)
+        inputs.push_back(U16OpenZLInput::make(std::vector<uint16_t>{}));
+        inputs.push_back(U16OpenZLInput::make(std::vector<uint16_t>{ 0x0000 }));
+        inputs.push_back(
+                U16OpenZLInput::make(
+                        std::vector<uint16_t>{ 0x7E00 })); // quiet NaN
+        inputs.push_back(
+                U16OpenZLInput::make(
+                        std::vector<uint16_t>{ 0x7C00, 0xFC00 })); // +-Inf
+        inputs.push_back(
+                U16OpenZLInput::make(std::vector<uint16_t>{ 0x8000 })); // -0
+        inputs.push_back(
+                U16OpenZLInput::make(
+                        std::vector<uint16_t>{
+                                0x0400, 0x7BFF })); // min normal, max finite
+        inputs.push_back(
+                U16OpenZLInput::make(
+                        std::vector<uint16_t>{ 0x0001 })); // smallest subnormal
+
+        return inputs;
+    }
+
+    std::vector<std::unique_ptr<OpenZLInput>> generateInputs(
+            datagen::DataGen& gen,
+            size_t num,
+            size_t maxInputSize,
+            const Compressor&,
+            GraphID) const override
+    {
+        std::vector<std::unique_ptr<OpenZLInput>> inputs;
+        inputs.reserve(num);
+        for (size_t i = 0; i < num; ++i) {
+            auto width = gen.choices("width", std::vector<size_t>{ 2, 4, 8 });
+            auto data  = gen.randStringWithQuantizedLength(
+                    "data", maxInputSize, width);
+            inputs.push_back(makeNumericInput(data, width));
+        }
+        return inputs;
+    }
+};
+
 } // namespace
 
 std::unique_ptr<OpenZLComponent> makeBitSplitComponent()
@@ -287,6 +392,11 @@ std::unique_ptr<OpenZLComponent> makeBitSplitComponent()
 std::unique_ptr<OpenZLComponent> makeBitSplitTop8Component()
 {
     return std::make_unique<BitSplitTop8Component>();
+}
+
+std::unique_ptr<OpenZLComponent> makeBitSplitFPComponent()
+{
+    return std::make_unique<BitSplitFPComponent>();
 }
 
 } // namespace openzl::tests::components
