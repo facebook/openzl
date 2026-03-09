@@ -17,6 +17,7 @@ zs_unittest(
     deps = [
         "..:common",
         "..:compress",
+        # "..:dict",
         "../cpp:openzl_cpp",
         "../tools:json",
         "datagen:datagen",
