@@ -495,3 +495,137 @@ size_t bitSplitEncode_bounded32_wrapper(
 
     return nbElts * sumDstElt;
 }
+
+/* ===   fp64 encode scenario   ===
+ * srcEltWidth=8, bitWidths {52, 11, 1}, dstEltWidths {8, 2, 1}
+ * sum(dstEltWidths) = 11
+ */
+
+size_t
+bitSplitEncode_fp64_prep(void* src, size_t srcSize, const BenchPayload* bp)
+{
+    (void)bp;
+
+    static const size_t srcEltWidth = 8;
+    static const size_t sumBits     = 52 + 11 + 1; /* 64 bits total */
+
+    size_t const nbElts = srcSize / srcEltWidth;
+    if (nbElts == 0)
+        return 0;
+
+    fillRandomSrc(src, nbElts, srcEltWidth, sumBits);
+
+    return nbElts * srcEltWidth;
+}
+
+size_t bitSplitEncode_fp64_outSize(const void* src, size_t srcSize)
+{
+    (void)src;
+    /* nbElts = srcSize / 8, output = nbElts * 11 */
+    return (srcSize / 8) * 11;
+}
+
+size_t bitSplitEncode_fp64_wrapper(
+        const void* src,
+        size_t srcSize,
+        void* dst,
+        size_t dstCapacity,
+        void* customPayload)
+{
+    (void)dstCapacity;
+    (void)customPayload;
+
+    static const size_t srcEltWidth     = 8;
+    static const size_t dstEltWidths[3] = { 8, 2, 1 };
+    static const uint8_t bitWidths[3]   = { 52, 11, 1 };
+    static const size_t nbWidths        = 3;
+    static const size_t sumDstElt       = 8 + 2 + 1; /* 11 */
+
+    size_t const nbElts = srcSize / srcEltWidth;
+    uint8_t* p          = (uint8_t*)dst;
+
+    size_t offset = 0;
+    void* dstPtrs[3];
+    for (int i = 0; i < 3; i++) {
+        dstPtrs[i] = p + offset;
+        offset += nbElts * dstEltWidths[i];
+    }
+
+    ZL_bitSplitEncode(
+            dstPtrs,
+            dstEltWidths,
+            nbElts,
+            src,
+            srcEltWidth,
+            bitWidths,
+            nbWidths);
+
+    return nbElts * sumDstElt;
+}
+
+/* ===   fp16 encode scenario   ===
+ * srcEltWidth=2, bitWidths {10, 5, 1}, dstEltWidths {2, 1, 1}
+ * sum(dstEltWidths) = 4
+ */
+
+size_t
+bitSplitEncode_fp16_prep(void* src, size_t srcSize, const BenchPayload* bp)
+{
+    (void)bp;
+
+    static const size_t srcEltWidth = 2;
+    static const size_t sumBits     = 10 + 5 + 1; /* 16 bits total */
+
+    size_t const nbElts = srcSize / srcEltWidth;
+    if (nbElts == 0)
+        return 0;
+
+    fillRandomSrc(src, nbElts, srcEltWidth, sumBits);
+
+    return nbElts * srcEltWidth;
+}
+
+size_t bitSplitEncode_fp16_outSize(const void* src, size_t srcSize)
+{
+    (void)src;
+    /* nbElts = srcSize / 2, output = nbElts * 4 */
+    return (srcSize / 2) * 4;
+}
+
+size_t bitSplitEncode_fp16_wrapper(
+        const void* src,
+        size_t srcSize,
+        void* dst,
+        size_t dstCapacity,
+        void* customPayload)
+{
+    (void)dstCapacity;
+    (void)customPayload;
+
+    static const size_t srcEltWidth     = 2;
+    static const size_t dstEltWidths[3] = { 2, 1, 1 };
+    static const uint8_t bitWidths[3]   = { 10, 5, 1 };
+    static const size_t nbWidths        = 3;
+    static const size_t sumDstElt       = 2 + 1 + 1; /* 4 */
+
+    size_t const nbElts = srcSize / srcEltWidth;
+    uint8_t* p          = (uint8_t*)dst;
+
+    size_t offset = 0;
+    void* dstPtrs[3];
+    for (int i = 0; i < 3; i++) {
+        dstPtrs[i] = p + offset;
+        offset += nbElts * dstEltWidths[i];
+    }
+
+    ZL_bitSplitEncode(
+            dstPtrs,
+            dstEltWidths,
+            nbElts,
+            src,
+            srcEltWidth,
+            bitWidths,
+            nbWidths);
+
+    return nbElts * sumDstElt;
+}
