@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <vector>
 
@@ -268,5 +269,95 @@ TEST_F(BitsplitFPTest, FP16_Subnormals)
     testBitsplitFPRoundTrip(input);
 }
 
+// =============================================================================
+// Split Order Cases
+// =============================================================================
+
+TEST_F(BitsplitFPTest, FP32_OutputOrder)
+{
+    std::vector<float> input{ -3.14f };
+
+    uint32_t rawBits;
+    // write the float to 4 bytes of raw bits
+
+    std::memcpy(&rawBits, input.data(), sizeof(rawBits));
+    uint32_t mantissaVal = rawBits & 0x7FFFFF;     // bottom 23 bits
+    uint8_t exponentVal  = (rawBits >> 23) & 0xFF; // next 8 bits
+    uint8_t signVal      = (rawBits >> 31) & 0x1;  // top 1 bit
+
+    std::vector<uint32_t> expectedMantissa{ mantissaVal };
+    std::vector<uint8_t> expectedExponent{ exponentVal };
+    std::vector<uint8_t> expectedSign{ signVal };
+
+    Input inMantissa =
+            Input::refNumeric(poly::span<const uint32_t>{ expectedMantissa });
+    Input inExponent =
+            Input::refNumeric(poly::span<const uint8_t>{ expectedExponent });
+    Input inSign = Input::refNumeric(poly::span<const uint8_t>{ expectedSign });
+
+    Input numericInput = Input::refNumeric(poly::span<const float>{ input });
+    testCodecVO(
+            ZL_NODE_BITSPLIT_FP,
+            numericInput,
+            { &inMantissa, &inExponent, &inSign },
+            24); // 24 is version where we added this codec
+}
+
+TEST_F(BitsplitFPTest, FP64_OutputOrder)
+{
+    std::vector<double> input{ -3.14 };
+
+    uint64_t rawBits;
+    std::memcpy(&rawBits, input.data(), sizeof(rawBits));
+    uint64_t mantissaVal = rawBits & 0xFFFFFFFFFFFFF; // bottom 52 bits
+    uint16_t exponentVal = (rawBits >> 52) & 0x7FF;   // next 11 bits
+    uint8_t signVal      = (rawBits >> 63) & 0x1;     // top 1 bit
+
+    std::vector<uint64_t> expectedMantissa{ mantissaVal };
+    std::vector<uint16_t> expectedExponent{ exponentVal };
+    std::vector<uint8_t> expectedSign{ signVal };
+
+    Input inMantissa =
+            Input::refNumeric(poly::span<const uint64_t>{ expectedMantissa });
+    Input inExponent =
+            Input::refNumeric(poly::span<const uint16_t>{ expectedExponent });
+    Input inSign = Input::refNumeric(poly::span<const uint8_t>{ expectedSign });
+
+    Input numericInput = Input::refNumeric(poly::span<const double>{ input });
+    testCodecVO(
+            ZL_NODE_BITSPLIT_FP,
+            numericInput,
+            { &inMantissa, &inExponent, &inSign },
+            24); // 24 is version where we added this codec
+}
+
+TEST_F(BitsplitFPTest, FP16_OutputOrder)
+{
+    // -3.14 in fp16 = 0xC248
+    std::vector<uint16_t> input{ 0xC248 };
+
+    uint16_t rawBits;
+    std::memcpy(&rawBits, input.data(), sizeof(rawBits));
+    uint16_t mantissaVal = rawBits & 0x3FF;        // bottom 10 bits
+    uint8_t exponentVal  = (rawBits >> 10) & 0x1F; // next 5 bits
+    uint8_t signVal      = (rawBits >> 15) & 0x1;  // top 1 bit
+
+    std::vector<uint16_t> expectedMantissa{ mantissaVal };
+    std::vector<uint8_t> expectedExponent{ exponentVal };
+    std::vector<uint8_t> expectedSign{ signVal };
+
+    Input inMantissa =
+            Input::refNumeric(poly::span<const uint16_t>{ expectedMantissa });
+    Input inExponent =
+            Input::refNumeric(poly::span<const uint8_t>{ expectedExponent });
+    Input inSign = Input::refNumeric(poly::span<const uint8_t>{ expectedSign });
+
+    Input numericInput = Input::refNumeric(poly::span<const uint16_t>{ input });
+    testCodecVO(
+            ZL_NODE_BITSPLIT_FP,
+            numericInput,
+            { &inMantissa, &inExponent, &inSign },
+            24); // 24 is version where we added this codec
+}
 } // namespace tests
 } // namespace openzl
