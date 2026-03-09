@@ -474,7 +474,8 @@ static ZL_Report STREAM_refStreamStringSlice(
     ZL_ASSERT_NN(dst);
     ZL_ASSERT_EQ(STREAM_type(dst), ZL_Type_string);
     ZL_ASSERT(dst->buffer._ptr == src->buffer._ptr);
-    dst->buffer._ptr = (char*)dst->buffer._ptr + skipped;
+    dst->buffer._ptr     = (char*)dst->buffer._ptr + skipped;
+    dst->stringLens._ptr = (uint32_t*)dst->stringLens._ptr + startingEltNum;
     ZL_ASSERT_GE(dst->eltCount, eltCount);
     dst->eltCount      = eltCount;
     dst->lastCommmited = eltCount;
@@ -780,14 +781,15 @@ static ZL_Report STREAM_commitStrings(Stream* s, size_t numStrings)
     ZL_DLOG(SEQ, "STREAM_commitStrings (numStrings=%zu)", numStrings);
     ZL_ASSERT_NN(s);
     ZL_ASSERT_EQ(s->type, ZL_Type_string);
+    const uint32_t* const stringLens = ZL_Refcount_get(&s->stringLens);
 
     ZL_RET_R_IF_GT(
             streamCapacity_tooSmall,
             numStrings,
             s->eltsCapacity,
             "Number of strings committed is greater than capacity");
-    uint64_t const totalStringsSize =
-            NUMOP_sumArray32(ZL_Refcount_get(&s->stringLens), numStrings);
+    uint64_t const totalStringsSize = NUMOP_sumArray32(
+            s->eltCount ? stringLens + s->eltCount : stringLens, numStrings);
     ZL_RET_R_IF_GT(
             streamCapacity_tooSmall,
             totalStringsSize,
@@ -798,6 +800,7 @@ static ZL_Report STREAM_commitStrings(Stream* s, size_t numStrings)
     s->eltCount += numStrings;
     s->lastCommmited = numStrings;
     s->bufferUsed += totalStringsSize;
+    ZL_ASSERT_LE(s->bufferUsed, s->bufferCapacity);
     s->writeCommitted = 1;
     return ZL_returnSuccess();
 }
@@ -822,6 +825,7 @@ ZL_Report STREAM_commit(Stream* s, size_t eltCount)
     s->eltCount += eltCount;
     s->lastCommmited = eltCount;
     s->bufferUsed += eltCount * s->eltWidth;
+    ZL_ASSERT_LE(s->bufferUsed, s->bufferCapacity);
     s->writeCommitted = 1;
     ZL_DLOG(SEQ, "STREAM_commit: new total eltCount=%zu", s->eltCount);
     return ZL_returnSuccess();

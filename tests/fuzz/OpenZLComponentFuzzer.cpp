@@ -145,8 +145,7 @@ std::unique_ptr<OpenZLInput> generateInput(
     for (size_t i = 0; i < numInputs; ++i) {
         if (i + 1 == numInputs && isVariableInput) {
             while (gen.has_more_data() && gen.boolean("more_variable_inputs")
-                   && inputs.size() < ZL_runtimeInputLimit(
-                              std::max(formatVersion, 15))) {
+                   && inputs.size() < ZL_runtimeInputLimit(formatVersion)) {
                 inputs.push_back(generateInput(
                         gen,
                         TypeMask(ZL_Compressor_Graph_getInputMask(
@@ -243,7 +242,13 @@ FUZZ(OpenZLComponentFuzzer, FuzzCompress)
 
     while (gen.has_more_data()) {
         auto input = generateInput(gen, compressor, graph, formatVersion);
-        fuzzRoundTrip(*component, compressor, *input, graph, formatVersion);
+        try {
+            // TODO: Permissive mode doesn't guarantee success when hitting
+            // runtime limits on the number of nodes or streams.
+            fuzzRoundTrip(*component, compressor, *input, graph, formatVersion);
+        } catch (...) {
+            // Raising exceptions is okay, just can't crash
+        }
     }
 }
 

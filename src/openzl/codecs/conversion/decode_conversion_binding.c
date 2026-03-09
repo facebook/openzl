@@ -84,11 +84,9 @@ ZL_Report DI_revert_num_to_serial_le(ZL_Decoder* di, const ZL_Input* ins[])
 
     ZL_RBuffer const header = ZL_Decoder_getCodecHeader(di);
     ZL_ERR_IF_NE(header.size, 1, header_unknown, "Invalid transform header!");
+    size_t const intLog = ((const uint8_t*)header.start)[0];
+    ZL_ERR_IF_GT(intLog, 3, header_unknown, "Invalid intLog");
     size_t const intSize = (size_t)1 << (((const uint8_t*)header.start)[0]);
-    ZL_ERR_IF(
-            !(intSize == 1 || intSize == 2 || intSize == 4 || intSize == 8),
-            header_unknown,
-            "header contains bad integer width");
     size_t const nbBytes = ZL_Input_contentSize(in);
     ZL_ERR_IF_NE(
             nbBytes % intSize,
