@@ -167,6 +167,7 @@ class ConstFoldImpl {
             case Op::CONSUME:
             case Op::ASSUME:
             case Op::SIZEOF:
+            case Op::MEMBER:
             case Op::SEND:
             default:
                 return std::make_shared<ASTOp>(
