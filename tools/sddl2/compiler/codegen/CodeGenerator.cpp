@@ -7,6 +7,7 @@
 
 #include "tools/sddl2/compiler/Exception.h"
 #include "tools/sddl2/compiler/codegen/CodeGenerator.h"
+#include "tools/sddl2/compiler/codegen/RegisterAllocator.h"
 #include "tools/sddl2/compiler/parser/AST.h"
 
 namespace openzl::sddl2 {
@@ -144,16 +145,11 @@ class CodeGeneratorImpl {
      */
     void generate(const ASTVar& var, AssemblyOutput& output)
     {
-        auto it = var_registry_.find(var.name());
-        if (it == var_registry_.end()) {
-            throw CodegenError(var.loc(), "Undefined variable: " + var.name());
-        }
-        output.emplace_back("push.i64 " + std::to_string(it->second));
+        output.emplace_back(
+                "push.i64 " + std::to_string(registers_.get(var.name())));
         output.emplace_back("var.load");
-        // If this is the last reference to the variable, free the register
         if (var.is_last_reference()) {
-            free_registers_.insert(it->second);
-            var_registry_.erase(it);
+            registers_.unassign(var.name());
         }
     }
 
@@ -260,8 +256,9 @@ class CodeGeneratorImpl {
                 // Sema guarantees LHS is a variable
                 auto var = op.args()[0]->as_var();
                 generateNode(op.args()[1], output);
-                auto reg = assignRegister(var->name());
-                output.emplace_back("push.i64 " + std::to_string(reg));
+                output.emplace_back(
+                        "push.i64 "
+                        + std::to_string(registers_.assign(var->name())));
                 output.emplace_back("var.store");
                 break;
             }
@@ -289,40 +286,11 @@ class CodeGeneratorImpl {
         };
     }
 
-    size_t assignRegister(const std::string& name)
-    {
-        // If the variable is already in the registry, return its register
-        auto it = var_registry_.find(name);
-        if (it != var_registry_.end()) {
-            return it->second;
-        }
-
-        // Otherwise, allocate a new register
-        size_t reg;
-        if (!free_registers_.empty()) {
-            auto free_it = free_registers_.begin();
-            reg          = *free_it;
-            free_registers_.erase(free_it);
-        } else {
-            reg = next_register_++;
-            if (reg >= SDDL2_VAR_REGISTER_COUNT) {
-                throw CodegenError(
-                        "Too many variables! Maximum number of variables is "
-                        + std::to_string(SDDL2_VAR_REGISTER_COUNT));
-            }
-        }
-
-        var_registry_[name] = reg;
-        return reg;
-    }
-
     const detail::Logger& log_;
     size_t tag_ = 1;
 
     // Register allocation
-    std::map<std::string, size_t> var_registry_;
-    std::unordered_set<size_t> free_registers_;
-    size_t next_register_ = 0;
+    RegisterAllocator registers_;
 };
 
 } // namespace

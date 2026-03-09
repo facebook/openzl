@@ -14,7 +14,9 @@ std::string make_msg(
         const poly::string_view& msg)
 {
     if (loc.empty()) {
-        return std::string{ msg } + '\n';
+        std::stringstream ss;
+        ss << error_type << ": " << msg << "\n";
+        return std::move(ss).str();
     }
     std::stringstream ss;
     ss << loc.pos_str() << ": " << error_type << ": " << msg << "\n";
