@@ -7,11 +7,13 @@
 #include <snappy.h>
 
 #include "openzl/shared/varint.h"
+#include "openzl/zl_reflection.h"
 #include "tools/io/OutputFile.h"
 #include "tools/training/train.h"
 
 #include "LzCompressors.hpp"
 #include "codecs/Lz.hpp"
+#include "openzl/shared/xxhash.h"
 
 namespace openzl::bench {
 
@@ -115,6 +117,20 @@ static std::string base64Decode(std::string_view in)
                         | (kBase64DecodeTable[src[i + 3]]);
             }
         }
+    }
+    return out;
+}
+
+static std::string hexEncode(uint64_t in)
+{
+    constexpr std::array<char, 16> hex = { '0', '1', '2', '3', '4', '5',
+                                           '6', '7', '8', '9', 'a', 'b',
+                                           'c', 'd', 'e', 'f' };
+    std::string out;
+    out.reserve(16);
+    for (size_t i = 0; i < 16; ++i) {
+        auto nibble = (in >> (4 * i)) & 0xF;
+        out.push_back(hex[nibble]);
     }
     return out;
 }
@@ -527,6 +543,79 @@ size_t Lz4LikeCompressor::decompress(
     return lz::Lz4Like::decompress(decompressed, compressed);
 }
 
+namespace {
+class SaveInputStreamsIntrospectionHooks
+        : public openzl::CompressIntrospectionHooks {
+   public:
+    SaveInputStreamsIntrospectionHooks(
+            std::string dir,
+            std::unordered_set<std::string> nodes)
+            : dir_(std::move(dir)), nodes_(std::move(nodes))
+    {
+    }
+
+    void on_codecEncode_start(
+            ZL_Encoder* eictx,
+            const ZL_Compressor* compressor,
+            ZL_NodeID nid,
+            const ZL_Input* inStreams[],
+            size_t nbInStreams) override
+    {
+        std::string name = ZL_Compressor_Node_getName(compressor, nid);
+        if (!nodes_.contains(name)) {
+            return;
+        }
+        auto out = dir_ / name;
+        fs::create_directories(out);
+        for (size_t i = 0; i < nbInStreams; ++i) {
+            saveInStream(out, inStreams[i]);
+        }
+    }
+
+    ~SaveInputStreamsIntrospectionHooks() override = default;
+
+   private:
+    void saveInStream(const fs::path& dir, const ZL_Input* in) const
+    {
+        XXH3_state_t state;
+        XXH3_64bits_reset(&state);
+        const auto type           = ZL_Input_type(in);
+        const auto width          = ZL_Input_eltWidth(in);
+        poly::string_view content = { (const char*)ZL_Input_ptr(in),
+                                      ZL_Input_contentSize(in) };
+        auto lengths              = type == ZL_Type_string
+                             ? poly::string_view{ (const char*)ZL_Input_stringLens(in),
+                                     ZL_Input_numElts(in) * sizeof(uint32_t) }
+                             : poly::string_view{};
+        XXH3_64bits_update(&state, &type, sizeof(type));
+        XXH3_64bits_update(&state, &width, sizeof(width));
+        XXH3_64bits_update(&state, content.data(), content.size());
+        XXH3_64bits_update(&state, lengths.data(), lengths.size());
+        auto hash = hexEncode(XXH3_64bits_digest(&state));
+
+        std::string name = dir / hash;
+        if (type == ZL_Type_serial) {
+            name += ".serial";
+        } else if (type == ZL_Type_struct) {
+            name += ".struct." + std::to_string(width);
+        } else if (type == ZL_Type_numeric) {
+            name += ".num." + std::to_string(width);
+        } else if (type == ZL_Type_string) {
+            name += ".string";
+            auto lensName = name + ".lengths";
+            name += ".content";
+            tools::io::OutputFile out(lensName);
+            out.write(lengths);
+        }
+        tools::io::OutputFile out(name);
+        out.write(content);
+    }
+
+    fs::path dir_;
+    std::unordered_set<std::string> nodes_;
+};
+} // namespace
+
 OpenZLCompressor::OpenZLCompressor(nlohmann::json config)
 {
     if (config.contains("params")) {
@@ -554,6 +643,25 @@ OpenZLCompressor::OpenZLCompressor(nlohmann::json config)
     }
     if (config.contains("trace_streams")) {
         traceStreamsDir_ = config["trace_streams"];
+    }
+    if (config.contains("save_input_streams")) {
+        if (tracePath_.has_value()) {
+            throw std::runtime_error(
+                    "Cannot save input streams when trace is enabled");
+        }
+        const auto& saveInputStreamsConfig = config["save_input_streams"];
+        if (!saveInputStreamsConfig.contains("dir")) {
+            throw std::runtime_error(
+                    "Must set output `dir` for save_input_streams");
+        }
+        if (!saveInputStreamsConfig.contains("nodes")) {
+            throw std::runtime_error("Must set `nodes` for save_input_streams");
+        }
+        saveInputStreamsHooks_ =
+                std::make_unique<SaveInputStreamsIntrospectionHooks>(
+                        saveInputStreamsConfig["dir"],
+                        saveInputStreamsConfig["nodes"]
+                                .get<std::unordered_set<std::string>>());
     }
 
     configure(compressor_);
@@ -584,6 +692,10 @@ void OpenZLCompressor::configure(openzl::CCtx& cctx) const
     }
     if (tracePath_) {
         cctx.writeTraces(true);
+    }
+    if (saveInputStreamsHooks_ != nullptr) {
+        cctx.unwrap(ZL_CCtx_attachIntrospectionHooks(
+                cctx.get(), saveInputStreamsHooks_->getRawHooks()));
     }
 }
 

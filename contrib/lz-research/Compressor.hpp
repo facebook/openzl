@@ -199,6 +199,7 @@ class OpenZLCompressor : public Compressor {
     std::optional<openzl::DCtx> dctx_;
     std::optional<std::string> tracePath_;
     std::optional<std::string> traceStreamsDir_;
+    std::unique_ptr<CompressIntrospectionHooks> saveInputStreamsHooks_;
 };
 
 std::unique_ptr<Compressor> makeCompressor(nlohmann::json config);
