@@ -44,6 +44,41 @@ class AssertEqFunctionGraph : public FunctionGraph {
     const Input& expected_;
 };
 
+class AssertEqVOFunctionGraph : public FunctionGraph {
+   public:
+    explicit AssertEqVOFunctionGraph(const std::vector<const Input*>& expected)
+            : expected_(expected), callIndex_(0)
+    {
+    }
+
+    FunctionGraphDescription functionGraphDescription() const override
+    {
+        return FunctionGraphDescription{
+            .name           = "AssertEqVO",
+            .inputTypeMasks = { TypeMask::Any },
+        };
+    }
+
+    void graph(GraphState& state) const override
+    {
+        auto& edge        = state.edges()[0];
+        const auto& input = edge.getInput();
+        if (callIndex_ >= expected_.size()) {
+            throw AssertEqException("More streams than expected");
+        }
+        if (input != *expected_[callIndex_]) {
+            throw AssertEqException(
+                    "Stream " + std::to_string(callIndex_) + " does not match");
+        }
+        ++callIndex_;
+        edge.setDestination(graphs::Compress{}());
+    }
+
+   private:
+    const std::vector<const Input*>& expected_;
+    mutable int callIndex_;
+};
+
 class CodecTest : public testing::Test {
     void testCodecImpl(
             NodeID node,
@@ -64,6 +99,21 @@ class CodecTest : public testing::Test {
             }
         }
         auto graph = compressor_.buildStaticGraph(node, successors);
+        compressor_.selectStartingGraph(graph);
+
+        testRoundTrip(input);
+    }
+
+    void testCodecVOImpl(
+            NodeID node,
+            poly::span<const Input> input,
+            const std::vector<const Input*>& expectedOutputs,
+            int formatVersion)
+    {
+        compressor_.setParameter(CParam::FormatVersion, formatVersion);
+        auto successor = compressor_.registerFunctionGraph(
+                std::make_shared<AssertEqVOFunctionGraph>(expectedOutputs));
+        auto graph = compressor_.buildStaticGraph(node, { successor });
         compressor_.selectStartingGraph(graph);
 
         testRoundTrip(input);
@@ -116,6 +166,46 @@ class CodecTest : public testing::Test {
              formatVersion <= maxFormatVersion;
              ++formatVersion) {
             testCodecImpl(node, input, expectedOutputs, formatVersion);
+        }
+    }
+
+    /**
+     * Tests @p node on @p input, expecting @p expectedOutputs streams on a
+     * single output for each format version between @p minFormatVersion and
+     * @p maxFormatVersion.
+     */
+    void testCodecVO(
+            NodeID node,
+            const Input& input,
+            const std::vector<const Input*>& expectedOutputs,
+            int minFormatVersion,
+            int maxFormatVersion = ZL_MAX_FORMAT_VERSION)
+    {
+        testCodecVO(
+                node,
+                { &input, 1 },
+                expectedOutputs,
+                minFormatVersion,
+                maxFormatVersion);
+    }
+
+    /**
+     * Tests @p node on @p input, expecting @p expectedOutputs streams on a
+     * single output for each format version between @p minFormatVersion and
+     * @p maxFormatVersion.
+     */
+    void testCodecVO(
+            NodeID node,
+            poly::span<const Input> input,
+            const std::vector<const Input*>& expectedOutputs,
+            int minFormatVersion,
+            int maxFormatVersion = ZL_MAX_FORMAT_VERSION)
+    {
+        for (int formatVersion =
+                     std::max<int>(minFormatVersion, ZL_MIN_FORMAT_VERSION);
+             formatVersion <= maxFormatVersion;
+             ++formatVersion) {
+            testCodecVOImpl(node, input, expectedOutputs, formatVersion);
         }
     }
 
