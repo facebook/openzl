@@ -1,6 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <unordered_map>
+#include <unordered_set>
 
 #include "tools/sddl2/compiler/Exception.h"
 #include "tools/sddl2/compiler/parser/AST.h"
@@ -9,7 +10,74 @@
 namespace openzl::sddl2 {
 namespace {
 
-enum class ValueType { NUMERIC, ARRAY, RECORD, BYTES, BUILTIN_FIELD, NONE };
+enum class TypeKind {
+    NUMERIC,
+    CONSUMED_RECORD,
+    NONE,
+    ARRAY,
+    RECORD,
+    BYTES,
+    BUILTIN_FIELD,
+};
+
+struct Type {
+    TypeKind kind           = TypeKind::NONE;
+    const ASTNode* type_def = nullptr;
+};
+
+void expectNumeric(const Type& t)
+{
+    if (t.kind != TypeKind::NUMERIC) {
+        throw SemanticError("Expected a numeric expression.");
+    }
+}
+
+void expectFieldType(const Type& t)
+{
+    if (!(t.kind == TypeKind::ARRAY || t.kind == TypeKind::RECORD
+          || t.kind == TypeKind::BYTES || t.kind == TypeKind::BUILTIN_FIELD)) {
+        throw SemanticError("Expected a field type expression.");
+    }
+}
+
+const ASTVar* someVar(const ASTPtr& node)
+{
+    if (auto var = node->as_var()) {
+        return var;
+    }
+    throw SemanticError("Expected a variable name.");
+}
+
+bool hasLoadInstruction(Symbol sym)
+{
+    static const std::unordered_set<Symbol> loadable{
+        Symbol::BYTE,  Symbol::U8,    Symbol::I8,    Symbol::U16LE,
+        Symbol::U16BE, Symbol::I16LE, Symbol::I16BE, Symbol::U32LE,
+        Symbol::U32BE, Symbol::I32LE, Symbol::I32BE, Symbol::U64LE,
+        Symbol::U64BE, Symbol::I64LE, Symbol::I64BE,
+    };
+    return loadable.count(sym) > 0;
+}
+
+/**
+ * Returns the type of the resulting variable after assuming a field of the
+ * given field_type.
+ */
+Type assumedType(const Type& field_type)
+{
+    if (field_type.kind == TypeKind::RECORD) {
+        return Type{ TypeKind::CONSUMED_RECORD, field_type.type_def };
+    }
+    if (field_type.kind == TypeKind::BUILTIN_FIELD) {
+        const auto* builtin = field_type.type_def->as_builtin_field();
+        if (builtin && hasLoadInstruction(builtin->kw())) {
+            return Type{ TypeKind::NUMERIC };
+        }
+    }
+    // Assume not defined for other types. Trying to use the result in an
+    // operation will fail.
+    return Type{ TypeKind::NONE };
+}
 
 class SemanticAnalyzerImpl {
    public:
@@ -26,29 +94,19 @@ class SemanticAnalyzerImpl {
     }
 
    private:
-    void expectNumeric(ValueType type)
-    {
-        if (type != ValueType::NUMERIC) {
-            throw SemanticError("Expected a numeric expression.");
-        }
-    }
+    // Data members
+    const detail::Logger& log_;
+    std::unordered_map<std::string, Type> var_types_;
 
-    void expectFieldType(ValueType type)
+    // Analysis methods
+    Type analyzeNode(const ASTPtr& node)
     {
-        if (type != ValueType::BUILTIN_FIELD && type != ValueType::ARRAY
-            && type != ValueType::RECORD && type != ValueType::BYTES) {
-            throw SemanticError("Expected a field type expression.");
-        }
-    }
-
-    ValueType analyzeNode(const ASTPtr& node)
-    {
-        const auto type = node->converted_node_type();
-        switch (type) {
+        switch (node->converted_node_type()) {
             case ConvertedNodeType::NUM:
-                return ValueType::NUMERIC;
+                return Type{ TypeKind::NUMERIC };
             case ConvertedNodeType::BUILTIN_FIELD:
-                return ValueType::BUILTIN_FIELD;
+                return Type{ TypeKind::BUILTIN_FIELD,
+                             node->as_builtin_field() };
             case ConvertedNodeType::VAR:
                 return analyze(*node->as_var());
             case ConvertedNodeType::BYTES:
@@ -64,31 +122,32 @@ class SemanticAnalyzerImpl {
         }
     }
 
-    ValueType analyze(const ASTVar& var)
+    Type analyze(const ASTVar& var)
     {
-        if (var_types_.find(var.name()) == var_types_.end()) {
+        auto it = var_types_.find(var.name());
+        if (it == var_types_.end()) {
             throw SemanticError(
                     var.loc(), "Undefined variable: '" + var.name() + "'");
         }
-        return var_types_[var.name()];
+        return it->second;
     }
 
-    ValueType analyze(const ASTBytes& bytes)
+    Type analyze(const ASTBytes& bytes)
     {
         expectNumeric(analyzeNode(bytes.len()));
-        return ValueType::BYTES;
+        return Type{ TypeKind::BYTES, &bytes };
     }
 
-    ValueType analyze(const ASTArray& array)
+    Type analyze(const ASTArray& array)
     {
         expectFieldType(analyzeNode(array.field()));
         if (array.len()) {
             expectNumeric(analyzeNode(array.len()));
         }
-        return ValueType::ARRAY;
+        return Type{ TypeKind::ARRAY, &array };
     }
 
-    ValueType analyze(const ASTRecord& record)
+    Type analyze(const ASTRecord& record)
     {
         // Validate all fields are ASSUME ops
         auto saved_vars = var_types_;
@@ -99,7 +158,7 @@ class SemanticAnalyzerImpl {
                         field->loc(),
                         "Record field must be an assume operation!");
             }
-            analyzeNode(field);
+            analyzeAssume(*assume);
         }
         var_types_ = std::move(saved_vars);
 
@@ -109,61 +168,34 @@ class SemanticAnalyzerImpl {
                     record.loc(), "Record params not yet supported!");
         }
 
-        return ValueType::RECORD;
+        return Type{ TypeKind::RECORD, &record };
     }
 
-    ValueType analyze(const ASTOp& op)
+    Type analyze(const ASTOp& op)
     {
         switch (op.op()) {
-            case Op::ASSIGN: {
-                // LHS must be a variable
-                if (!op.args()[0]->as_var()) {
-                    throw SemanticError(
-                            op.args()[0]->loc(),
-                            "Left-hand side of assignment must be a variable "
-                            "name!");
-                }
-                // Analyze RHS first (so `x = x + 1` errors if x undefined)
-                auto type = analyzeNode(op.args()[1]);
-                var_types_[op.args()[0]->as_var()->name()] = type;
-                break;
-            }
-            case Op::ASSUME: {
-                // LHS must be a variable
-                if (!op.args()[0]->as_var()) {
-                    throw SemanticError(
-                            op.args()[0]->loc(),
-                            "Left-hand side of assume must be a variable "
-                            "name!");
-                }
-                // Value must be a field type
-                auto type = analyzeNode(op.args()[1]);
-                expectFieldType(type);
-                var_types_[op.args()[0]->as_var()->name()] = ValueType::NUMERIC;
-                break;
-            }
-            case Op::MEMBER: {
-                // TODO: implement
-                return ValueType::NUMERIC;
-            }
-            case Op::CONSUME: {
+            case Op::ASSIGN:
+                var_types_[someVar(op.args()[0])->name()] =
+                        analyzeNode(op.args()[1]);
+                return Type{ TypeKind::NONE };
+            case Op::ASSUME:
+                return analyzeAssume(op);
+            case Op::MEMBER:
+                return analyzeMember(op);
+            case Op::CONSUME:
                 expectFieldType(analyzeNode(op.args()[0]));
-                return ValueType::NONE;
-            }
-            case Op::SIZEOF: {
+                return Type{ TypeKind::NONE };
+            case Op::SIZEOF:
                 expectFieldType(analyzeNode(op.args()[0]));
-                return ValueType::NUMERIC;
-            }
-            case Op::EXPECT: {
+                return Type{ TypeKind::NUMERIC };
+            case Op::EXPECT:
                 expectNumeric(analyzeNode(op.args()[0]));
-                return ValueType::NONE;
-            }
+                return Type{ TypeKind::NONE };
             case Op::NEG:
             case Op::LOG_NOT:
-            case Op::BIT_NOT: {
+            case Op::BIT_NOT:
                 expectNumeric(analyzeNode(op.args()[0]));
-                return ValueType::NUMERIC;
-            }
+                return Type{ TypeKind::NUMERIC };
             case Op::ADD:
             case Op::SUB:
             case Op::MUL:
@@ -179,20 +211,52 @@ class SemanticAnalyzerImpl {
             case Op::BIT_OR:
             case Op::BIT_XOR:
             case Op::LOG_AND:
-            case Op::LOG_OR: {
+            case Op::LOG_OR:
                 expectNumeric(analyzeNode(op.args()[0]));
                 expectNumeric(analyzeNode(op.args()[1]));
-                return ValueType::NUMERIC;
-            }
+                return Type{ TypeKind::NUMERIC };
             case Op::SEND:
             default:
                 throw InvariantViolation(op.loc(), "Unsupported operation.");
         }
-        return ValueType::NONE;
     }
 
-    const detail::Logger& log_;
-    std::unordered_map<std::string, ValueType> var_types_;
+    Type analyzeAssume(const ASTOp& op)
+    {
+        // Check that the RHS is a valid field type
+        auto field_type = analyzeNode(op.args()[1]);
+        expectFieldType(field_type);
+
+        // Assign the var to the assumed type
+        var_types_[someVar(op.args()[0])->name()] = assumedType(field_type);
+
+        return Type{ TypeKind::NONE };
+    }
+
+    Type analyzeMember(const ASTOp& op)
+    {
+        // Check that the LHS is a consumed record
+        auto lhs_type = analyzeNode(op.args()[0]);
+        if (lhs_type.kind != TypeKind::CONSUMED_RECORD) {
+            throw SemanticError(
+                    op.args()[0]->loc(),
+                    "LHS of member access is not a record.");
+        }
+
+        // Check that the RHS is a valid field name return the consumed type
+        const auto* record     = lhs_type.type_def->as_record();
+        const auto& field_name = someVar(op.args()[1])->name();
+        for (const auto& field : record->fields()) {
+            auto assume = field->as_op();
+            auto& name  = assume->args()[0]->as_var()->name();
+            if (name == field_name) {
+                return assumedType(analyzeNode(assume->args()[1]));
+            }
+        }
+        throw SemanticError(
+                op.args()[1]->loc(),
+                "Field '" + field_name + "' not a valid record field.");
+    }
 };
 
 } // namespace
