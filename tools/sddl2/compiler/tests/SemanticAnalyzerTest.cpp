@@ -43,9 +43,9 @@ TEST_F(SemanticAnalyzerTest, AssumeDefinesVar)
         : Byte[count]
     )";
 
-    // TODO: Update this once once assume is supported in codegen.
-    // This still shows us that the semantic analysis passes.
-    expect_error(prog, "Undefined variable");
+    // TODO: This will succees when codegen is implemented. For now we know it
+    // passes semantic analysis.
+    expect_error(prog, "code generation error");
 }
 
 TEST_F(SemanticAnalyzerTest, AssignLHSNotVar)
@@ -53,7 +53,7 @@ TEST_F(SemanticAnalyzerTest, AssignLHSNotVar)
     const auto prog = R"(
         1 = 2
     )";
-    expect_error(prog, "must be a variable");
+    expect_error(prog, "variable name");
 }
 
 TEST_F(SemanticAnalyzerTest, ConsumeNonFieldType)
@@ -86,6 +86,136 @@ TEST_F(SemanticAnalyzerTest, ExpectFieldType)
         expect Int32LE
     )";
     expect_error(prog, "numeric");
+}
+
+TEST_F(SemanticAnalyzerTest, AssumeRecordAndMemberAccess)
+{
+    const auto prog = R"(
+        entry: Record() { id: Int32LE }
+        expect entry.id == 0
+    )";
+
+    // TODO: This will succees when codegen is implemented. For now we know it
+    // passes semantic analysis.
+    expect_error(prog, "code generation error");
+}
+
+TEST_F(SemanticAnalyzerTest, MemberAccessOnNonRecord)
+{
+    const auto prog = R"(
+        x: Int32LE
+        expect x.id == 0
+    )";
+    expect_error(prog, "not a record");
+}
+
+TEST_F(SemanticAnalyzerTest, MemberAccessUndefinedField)
+{
+    const auto prog = R"(
+        entry: Record() { id: Int32LE }
+        expect entry.nonexistent == 0
+    )";
+    expect_error(prog, "not a valid record field");
+}
+
+TEST_F(SemanticAnalyzerTest, MemberAccessUndefinedVar)
+{
+    const auto prog = R"(
+        expect entry.id == 0
+    )";
+    expect_error(prog, "Undefined variable");
+}
+
+TEST_F(SemanticAnalyzerTest, AssumeRecordTypeAlias)
+{
+    const auto prog = R"(
+        Record Entry() = {
+            id: Int32LE,
+            val: Int32LE,
+            bytes: Byte[4]
+        }
+        entry: Entry
+        expect entry.id == 0
+        expect entry.val == 0
+    )";
+    // TODO: This will succees when codegen is implemented. For now we know it
+    // passes semantic analysis.
+    expect_error(prog, "code generation error");
+}
+
+TEST_F(SemanticAnalyzerTest, AssumeBuiltinTypeAlias)
+{
+    const auto prog = R"(
+        MyType = Int32LE
+        x: MyType
+        expect x == 0
+    )";
+    // TODO: This will succees when codegen is implemented. For now we know it
+    // passes semantic analysis.
+    expect_error(prog, "code generation error");
+}
+
+TEST_F(SemanticAnalyzerTest, AssumeFloatType)
+{
+    const auto prog = R"(
+        x: Float32LE
+        expect x == 0
+    )";
+    expect_error(prog, "numeric expression");
+}
+
+TEST_F(SemanticAnalyzerTest, AssumeFloatTypeAlias)
+{
+    const auto prog = R"(
+        MyFloat = Float32LE
+        x: MyFloat
+        expect x == 0
+    )";
+    expect_error(prog, "numeric expression");
+}
+
+TEST_F(SemanticAnalyzerTest, AssumeChainedTypeAlias)
+{
+    const auto prog = R"(
+        MyInt = Int32LE
+        MyType = MyInt
+        x: MyType
+        expect x == 0
+    )";
+    // TODO: This will succees when codegen is implemented. For now we know it
+    // passes semantic analysis.
+    expect_error(prog, "code generation error");
+}
+
+TEST_F(SemanticAnalyzerTest, NestedMemberAccess)
+{
+    const auto prog = R"(
+        Record Foo() = {
+            x: Int32LE
+        }
+        Record Bar() = {
+            foo: Foo,
+            y: Int16LE
+        }
+        bar: Bar
+        expect bar.foo.x == 1
+    )";
+
+    // TODO: This will succees when codegen is implemented. For now we know it
+    // passes semantic analysis.
+    expect_error(prog, "code generation error");
+}
+
+TEST_F(SemanticAnalyzerTest, NestedMemberAccessOnNonRecordField)
+{
+    const auto prog = R"(
+        Record Bar() = {
+            y: Int16LE
+        }
+        bar: Bar
+        expect bar.y.z == 0
+    )";
+    expect_error(prog, "not a record");
 }
 
 } // namespace openzl::sddl2::tests
