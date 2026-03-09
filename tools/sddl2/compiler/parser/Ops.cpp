@@ -13,6 +13,7 @@ static const std::map<Op, poly::string_view> ops_to_debug_strs{
     { Op::CONSUME, "CONSUME" },
     { Op::ASSUME, "ASSUME" },
     { Op::SEND, "SEND" },
+    { Op::MEMBER, "MEMBER" },
     { Op::SIZEOF, "SIZEOF" },
 
     // Arithmetic Operators
