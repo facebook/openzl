@@ -43,9 +43,9 @@ TEST_F(SemanticAnalyzerTest, AssumeDefinesVar)
         : Byte[count]
     )";
 
-    // TODO: Update this once once variable references are supported in codegen.
+    // TODO: Update this once once assume is supported in codegen.
     // This still shows us that the semantic analysis passes.
-    expect_error(prog, "not yet supported");
+    expect_error(prog, "Undefined variable");
 }
 
 TEST_F(SemanticAnalyzerTest, AssignLHSNotVar)
