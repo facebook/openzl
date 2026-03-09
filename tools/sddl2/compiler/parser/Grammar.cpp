@@ -122,6 +122,7 @@ const std::vector<Symbol> builtin_field_syms{
 const std::map<Symbol, Op> syms_to_ops{
     { Symbol::EXPECT, Op::EXPECT },   { Symbol::ASSIGN, Op::ASSIGN },
     { Symbol::SIZEOF, Op::SIZEOF },   { Symbol::ASSUME, Op::ASSUME },
+    { Symbol::MEMBER, Op::MEMBER },
 
     { Symbol::EQ, Op::EQ },           { Symbol::NE, Op::NE },
 
