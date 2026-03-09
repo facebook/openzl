@@ -104,6 +104,8 @@ using U8OpenZLInput  = NumericOpenZLInput<uint8_t>;
 using U16OpenZLInput = NumericOpenZLInput<uint16_t>;
 using U32OpenZLInput = NumericOpenZLInput<uint32_t>;
 using U64OpenZLInput = NumericOpenZLInput<uint64_t>;
+using F32OpenZLInput = NumericOpenZLInput<float>;
+using F64OpenZLInput = NumericOpenZLInput<double>;
 
 inline std::unique_ptr<OpenZLInput> makeNumericInput(
         std::string str,

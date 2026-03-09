@@ -20,5 +20,17 @@ struct BitsplitTop8 : public SimplePipeNode<BitsplitTop8> {
         .description = "Split numeric into top 8 significant bits and remainder"
     };
 };
+
+struct BitsplitFP : public SimplePipeNode<BitsplitFP> {
+   public:
+    static constexpr NodeID node = ZL_NODE_BITSPLIT_FP;
+
+    static constexpr NodeMetadata<1, 0, 1> metadata = {
+        .inputs          = { InputMetadata{ .type = Type::Numeric } },
+        .variableOutputs = { OutputMetadata{ .type = Type::Numeric,
+                                             .name = "bit_ranges" } },
+        .description = "Split IEEE 754 floats into sign, exponent, and mantissa"
+    };
+};
 } // namespace nodes
 } // namespace openzl
