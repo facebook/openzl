@@ -150,6 +150,7 @@ std::vector<BenchmarkResult> benchmark(
 
     Logger::log_c(LogLevel::INFO, "%s", BenchmarkResult::header().c_str());
     std::vector<BenchmarkResult> results;
+    std::unordered_map<nlohmann::json, BenchmarkResult> summaryResults;
     for (const auto& input : inputs) {
         for (const auto& compressorConfig : args.compressorConfigs) {
             auto compressor = makeCompressor(compressorConfig);
@@ -211,7 +212,11 @@ std::vector<BenchmarkResult> benchmark(
             } while (!data.empty());
             Logger::log_c(LogLevel::INFO, "%s", result.pretty().c_str());
             results.push_back(result);
+            summaryResults[compressorConfig] += result;
         }
+    }
+    for (const auto& [compressorConfig, result] : summaryResults) {
+        Logger::log_c(LogLevel::INFO, "%s", result.pretty().c_str());
     }
     return results;
 }

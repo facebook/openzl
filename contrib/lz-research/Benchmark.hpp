@@ -119,6 +119,35 @@ struct BenchmarkResult {
         return (double)originalSize() * 1000.0 / dur.count();
     }
 
+    BenchmarkResult& operator+=(const BenchmarkResult& other)
+    {
+        if (!compressorName.empty() && compressorName != other.compressorName) {
+            throw std::runtime_error(
+                    "Cannot merge results from different compressors");
+        }
+        if (!compressorConfig.empty()
+            && compressorConfig != other.compressorConfig) {
+            throw std::runtime_error(
+                    "Cannot merge results from different compressor configs");
+        }
+
+        fileName         = "total";
+        compressorName   = other.compressorName;
+        compressorConfig = other.compressorConfig;
+        blockResults.insert(
+                blockResults.end(),
+                other.blockResults.begin(),
+                other.blockResults.end());
+        return *this;
+    }
+
+    BenchmarkResult operator+(const BenchmarkResult& other) const
+    {
+        auto result = *this;
+        result += other;
+        return result;
+    }
+
     nlohmann::json json() const;
     static std::string header();
     std::string pretty() const;
