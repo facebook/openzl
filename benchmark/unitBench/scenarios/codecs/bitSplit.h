@@ -156,6 +156,52 @@ size_t bitSplitEncode_bounded32_wrapper(
         size_t dstCapacity,
         void* customPayload);
 
+/**
+ * Preparation function for fp64 encode benchmark.
+ * Fills src with random 64-bit values.
+ */
+size_t
+bitSplitEncode_fp64_prep(void* src, size_t srcSize, const BenchPayload* bp);
+
+/**
+ * Output size for fp64 encode: nbElts * 11, where nbElts = srcSize / 8.
+ */
+size_t bitSplitEncode_fp64_outSize(const void* src, size_t srcSize);
+
+/**
+ * Wrapper function for fp64 encode benchmark.
+ * Encodes 64-bit elements from src into 3 streams in dst.
+ */
+size_t bitSplitEncode_fp64_wrapper(
+        const void* src,
+        size_t srcSize,
+        void* dst,
+        size_t dstCapacity,
+        void* customPayload);
+
+/**
+ * Preparation function for fp16 encode benchmark.
+ * Fills src with random 16-bit values.
+ */
+size_t
+bitSplitEncode_fp16_prep(void* src, size_t srcSize, const BenchPayload* bp);
+
+/**
+ * Output size for fp16 encode: nbElts * 4, where nbElts = srcSize / 2.
+ */
+size_t bitSplitEncode_fp16_outSize(const void* src, size_t srcSize);
+
+/**
+ * Wrapper function for fp16 encode benchmark.
+ * Encodes 16-bit elements from src into 3 streams in dst.
+ */
+size_t bitSplitEncode_fp16_wrapper(
+        const void* src,
+        size_t srcSize,
+        void* dst,
+        size_t dstCapacity,
+        void* customPayload);
+
 #ifdef __cplusplus
 }
 #endif
