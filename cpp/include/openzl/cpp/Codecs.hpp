@@ -4,7 +4,7 @@
 
 #include "openzl/cpp/codecs/ACE.hpp"              // IWYU pragma: export
 #include "openzl/cpp/codecs/Bitpack.hpp"          // IWYU pragma: export
-#include "openzl/cpp/codecs/BitsplitTop8.hpp"     // IWYU pragma: export
+#include "openzl/cpp/codecs/Bitsplit.hpp"         // IWYU pragma: export
 #include "openzl/cpp/codecs/Bitunpack.hpp"        // IWYU pragma: export
 #include "openzl/cpp/codecs/BruteForce.hpp"       // IWYU pragma: export
 #include "openzl/cpp/codecs/Compress.hpp"         // IWYU pragma: export
