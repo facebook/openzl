@@ -73,7 +73,10 @@ class BitunpackComponent : public OpenZLComponent {
 
     int getNumBits(const Compressor& compressor, GraphID graph) const
     {
-        auto node   = ZL_Compressor_Graph_getHeadNode(compressor.get(), graph);
+        auto node = ZL_Compressor_Graph_getHeadNode(compressor.get(), graph);
+        if (node.nid == ZL_NODE_ILLEGAL.nid) {
+            throw std::runtime_error("Failed to get head node in graph");
+        }
         auto params = ZL_Compressor_Node_getLocalParams(compressor.get(), node);
         if (params.intParams.nbIntParams != 1) {
             throw std::runtime_error("Failed to get width");
