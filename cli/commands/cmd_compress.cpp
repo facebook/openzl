@@ -96,7 +96,7 @@ void writeTrace(CCtx& cctx, const CompressArgs& args)
             throw InvalidArgsException(msg);
         }
         for (const auto& [id, stream] : trace.second) {
-            std::filesystem::path path = dir / (std::to_string(id) + ".sdd");
+            std::filesystem::path path = dir / (id + ".sdd");
             std::ofstream file{ path, std::ios::binary };
             if (!file.is_open()) {
                 Logger::log(
@@ -107,8 +107,7 @@ void writeTrace(CCtx& cctx, const CompressArgs& args)
             }
             file.write(stream.first.data(), stream.first.size());
             if (stream.second != "") {
-                std::filesystem::path strLensPath =
-                        dir / (std::to_string(id) + ".sdlens");
+                std::filesystem::path strLensPath = dir / (id + ".sdlens");
                 std::ofstream strLensFile{ strLensPath, std::ios::binary };
                 if (!strLensFile.is_open()) {
                     Logger::log(

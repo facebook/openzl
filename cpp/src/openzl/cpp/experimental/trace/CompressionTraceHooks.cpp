@@ -187,8 +187,7 @@ void CompressionTraceHooks::on_ZL_CCtx_compressMultiTypedRef_start(
     // Reset the output stream
     outStream_.str("");
     outStream_.clear();
-    latestStreamdumpCache_ =
-            std::map<size_t, std::pair<std::string, std::string>>();
+    latestStreamdumpCache_ = {};
 
     if (tracer_) {
         throw std::runtime_error(
@@ -213,15 +212,21 @@ void CompressionTraceHooks::on_ZL_CCtx_compressMultiTypedRef_end(
 
 std::pair<
         poly::string_view,
-        std::map<size_t, std::pair<poly::string_view, poly::string_view>>>
+        std::map<std::string, std::pair<poly::string_view, poly::string_view>>>
 CompressionTraceHooks::getLatestTrace()
 {
-    std::map<size_t, std::pair<poly::string_view, poly::string_view>>
+    std::map<std::string, std::pair<poly::string_view, poly::string_view>>
             streamdumps;
-    for (auto& [k, v] : latestStreamdumpCache_) {
-        streamdumps[k] = { poly::string_view(v.first),
-                           poly::string_view(v.second) };
+    for (size_t chunkId = 0; chunkId < latestStreamdumpCache_.size();
+         chunkId++) {
+        for (const auto& streamdump : latestStreamdumpCache_[chunkId]) {
+            std::string key = "chunk_" + std::to_string(chunkId) + "_stream_"
+                    + std::to_string(streamdump.streamId);
+            streamdumps[key] = { poly::string_view(streamdump.content),
+                                 poly::string_view(streamdump.strLens) };
+        }
     }
+
     return { latestTraceCache_, std::move(streamdumps) };
 }
 

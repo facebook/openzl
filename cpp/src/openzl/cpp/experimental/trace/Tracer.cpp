@@ -31,6 +31,20 @@ static constexpr size_t MAIN_TRACE_IDX = 0;
 
 Tracer::TraceResult Tracer::extractTrace()
 {
+    // Aggregate streamdump from all chunks
+    trace.streamdump.reserve(graphRuns.size());
+    for (auto& chunk : graphRuns) {
+        auto streamdump                  = chunk.getStreamdump();
+        std::vector<StreamdumpEntry> tmp = {};
+        tmp.reserve(streamdump.size());
+        for (auto& [k, v] : streamdump) {
+            tmp.push_back(
+                    StreamdumpEntry{ std::move(k),
+                                     std::move(v.first),
+                                     std::move(v.second) });
+        }
+        trace.streamdump.push_back(tmp);
+    }
     return std::move(trace);
 }
 
@@ -88,10 +102,6 @@ void Tracer::on_codecEncode_end(
 {
     currChunk->on_codecEncode_end(
             encoder, outStreams, nbOutputs, codecExecResult);
-    // streamdump needs to remain in Tracer as it accesses trace member
-    for (size_t i = 0; i < nbOutputs; ++i) {
-        streamdump(outStreams[i]);
-    }
 }
 
 void Tracer::on_ZL_Encoder_getScratchSpace(ZL_Encoder* ei, size_t size)
@@ -283,22 +293,6 @@ ZL_Report Tracer::writeSerializedStreamdump(std::vector<uint8_t>& buffer)
     ZL_LOG(ALWAYS, "Successfully wrote streamdump CBOR");
 
     return ZL_returnSuccess();
-}
-
-void Tracer::streamdump(const ZL_Output* createdStream)
-{
-    auto content = std::string(
-            (const char*)ZL_Output_constPtr(createdStream),
-            ZL_validResult(ZL_Output_contentSize(createdStream)));
-    std::string strLens = "";
-    if (ZL_Output_type(createdStream) == ZL_Type_string) {
-        auto ptr = ZL_Output_constStringLens(createdStream);
-        strLens  = std::string(
-                (const char*)ptr,
-                ZL_validResult(ZL_Output_numElts(createdStream))
-                        * sizeof(ptr[0]));
-    }
-    trace.streamdump[ZL_Output_id(createdStream).sid] = { content, strLens };
 }
 
 } // namespace openzl::visualizer

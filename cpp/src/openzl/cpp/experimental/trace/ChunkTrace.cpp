@@ -579,6 +579,7 @@ void ChunkTrace::on_codecEncode_end(
         };
 
         codecInfo_[currCodecNum_].outEdges.push_back(streamID);
+        streamdump(outStreams[i]);
     }
 
     // connect stream successors for cSize calculation
@@ -761,4 +762,24 @@ void ChunkTrace::on_ZL_Segmenter_processChunk_end(
     finalizeTrace(r);
 }
 
+void ChunkTrace::streamdump(const ZL_Output* createdStream)
+{
+    auto content = std::string(
+            (const char*)ZL_Output_constPtr(createdStream),
+            ZL_validResult(ZL_Output_contentSize(createdStream)));
+    std::string strLens = "";
+    if (ZL_Output_type(createdStream) == ZL_Type_string) {
+        auto ptr = ZL_Output_constStringLens(createdStream);
+        strLens  = std::string(
+                (const char*)ptr,
+                ZL_validResult(ZL_Output_numElts(createdStream))
+                        * sizeof(ptr[0]));
+    }
+    streamdump_[ZL_Output_id(createdStream).sid] = { content, strLens };
+}
+std::map<size_t, std::pair<std::string, std::string>>&&
+ChunkTrace::getStreamdump()
+{
+    return std::move(streamdump_);
+}
 } // namespace openzl::visualizer
