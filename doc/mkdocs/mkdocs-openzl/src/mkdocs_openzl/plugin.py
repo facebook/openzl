@@ -79,7 +79,7 @@ class StreamdumpBuilder:
         self._src_dir = Path(config.docs_dir) / "../../../tools/visualization_app"
         assert self._src_dir.exists()
         self._build_dir = Path(build_directory) / "tools" / "trace"
-        self._skip_build = os.getenv("OPENZL_SKIP_VISUALIZER_BUILD", False)
+        self._skip_build = os.getenv("OPENZL_SKIP_VISUALIZER_BUILD", "") == "1"
         self._stamp = Stamp(
             self._build_dir / "stamp.txt",
             [self._src_dir],
@@ -124,8 +124,8 @@ class PythonBuilder:
         self._config = config
         self._src_dir = Path(config.docs_dir) / "../../../py"
         self._build_dir = Path(build_directory) / "py"
-        self._use_system_python_extension = os.getenv(
-            "OPENZL_USE_SYSTEM_PYTHON_EXTENSION", False
+        self._use_system_python_extension = (
+            os.getenv("OPENZL_USE_SYSTEM_PYTHON_EXTENSION", "") == "1"
         )
         self._stamp = Stamp(
             self._build_dir / "stamp.txt",
