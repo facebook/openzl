@@ -79,6 +79,7 @@ class StreamdumpBuilder:
         self._src_dir = Path(config.docs_dir) / "../../../tools/visualization_app"
         assert self._src_dir.exists()
         self._build_dir = Path(build_directory) / "tools" / "trace"
+        self._skip_build = os.getenv("OPENZL_SKIP_VISUALIZER_BUILD", False)
         self._stamp = Stamp(
             self._build_dir / "stamp.txt",
             [self._src_dir],
@@ -92,6 +93,12 @@ class StreamdumpBuilder:
         """
         Build the visualization app
         """
+        if self._skip_build:
+            print(
+                "Skipping trace visualizer build (OPENZL_SKIP_VISUALIZER_BUILD is set)"
+            )
+            return
+
         stamp = self._stamp.compute_stamp()
 
         if self._stamp.needs_rebuild(stamp) or not (self._src_dir / "dist").exists():
