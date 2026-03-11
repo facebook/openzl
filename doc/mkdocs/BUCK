@@ -42,6 +42,12 @@ buck_genrule(
 # Test the internal website builds successfully
 buck_sh_test(
     name = "static_docs_test",
+    env = {
+        "DOXYGEN_PATH": "$(location fbsource//third-party/doxygen:doxygen)",
+        # Skip building the trace visualizer in tests since it requires external network access
+        # to fetch npm packages, which is not available in remote execution
+        "OPENZL_SKIP_VISUALIZER_BUILD": "1",
+    },
     test = ":static_docs",
     deps = [
         ":static_docs_build_script",
@@ -50,6 +56,8 @@ buck_sh_test(
         # Inject fake dependencies to ensure the test triggers on changes to the library and visualization app
         "../..:zstronglib",  # @manual
         "../../tools/visualization_app:app_srcs",  # @manual
+        # Doxygen binary must be explicitly declared as a dependency to be materialized in remote execution
+        "fbsource//third-party/doxygen:doxygen",  # @manual
     ],
 )
 

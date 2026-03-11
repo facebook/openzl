@@ -271,6 +271,7 @@ export class InteractiveChunkGraph {
             totCSize,
             totShare,
             -1,
+            undefined, // streamPreview: empty for coalesced edges
             edges[0].source,
             edges[0].target,
           );
