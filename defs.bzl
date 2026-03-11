@@ -339,6 +339,15 @@ def zs_fuzzers(ftest_names, generator = None, **kwargs):
                     "@out_seed_folder@",
                 ],
             }
+
+            # Determine the binary target suffix based on fuzzer mode
+            # (libfuzzer uses _bin suffix, AFL uses _afl suffix)
+            fuzzer = native.read_config("lionhead", "fuzzer") or "libfuzzer"
+            if fuzzer == "afl":
+                fuzzer_binary_suffix = "_afl"
+            else:
+                fuzzer_binary_suffix = "_bin"
+
             generic_lionhead_harness(
                 name = name,
                 bundle_spec_version = 1,
@@ -356,7 +365,7 @@ def zs_fuzzers(ftest_names, generator = None, **kwargs):
                     "fuzz": "fbsource//xplat/security/lionhead/utils/runners/libfuzzer:fuzz",
                     "fuzz_utils.py": "fbsource//xplat/security/lionhead/utils/runners:fuzz_utils",
                     "generator": generator,
-                    name: ":" + name + "_NoGenerator_bin",
+                    name: ":" + name + "_NoGenerator" + fuzzer_binary_suffix,
                 },
                 metadata = ZS_FUZZ_METADATA,
             )
