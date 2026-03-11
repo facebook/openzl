@@ -4,6 +4,7 @@ import {ZL_Type, type StreamID} from '../../models/idTypes';
 import type {Stream} from '../../models/Stream';
 import type {InternalNode} from './InternalNode';
 import type {RF_edgeId} from './types';
+import type {StreamPreviewData} from '../../interfaces/SerializedStream';
 
 export class InternalEdge {
   readonly streamId: StreamID;
@@ -17,6 +18,7 @@ export class InternalEdge {
   readonly cSize: number;
   readonly share: number;
   readonly contentSize: number;
+  readonly streamPreview?: StreamPreviewData;
 
   // graph properties
   readonly source: InternalNode;
@@ -34,6 +36,7 @@ export class InternalEdge {
     cSize: number,
     share: number,
     contentSize: number,
+    streamPreview: StreamPreviewData | undefined,
     source: InternalNode,
     target: InternalNode,
   ) {
@@ -46,6 +49,7 @@ export class InternalEdge {
     this.cSize = cSize;
     this.share = share;
     this.contentSize = contentSize;
+    this.streamPreview = streamPreview;
 
     this.source = source;
     this.target = target;
@@ -67,6 +71,7 @@ export class InternalEdge {
       stream.cSize,
       stream.share,
       stream.contentSize,
+      stream.streamPreview,
       source,
       target,
     );
@@ -88,6 +93,7 @@ export class InternalEdge {
       edge.cSize,
       edge.share,
       edge.contentSize,
+      edge.streamPreview,
       source,
       target,
     );

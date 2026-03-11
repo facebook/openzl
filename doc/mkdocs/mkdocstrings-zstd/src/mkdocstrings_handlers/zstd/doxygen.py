@@ -731,7 +731,8 @@ class Doxygen:
         shutil.rmtree(self._doxyxml_dir, ignore_errors=True)
         os.makedirs(self._doxyxml_dir, exist_ok=True)
         # Run doxygen.
-        cmd = ["doxygen", "-"]
+        doxygen_path = os.environ.get("DOXYGEN_PATH", "doxygen")
+        cmd = [doxygen_path, "-"]
         p = Popen(cmd, cwd=source_directory, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         include_paths = [str(p) for p in include_paths] + ["."]
         out, err = p.communicate(
