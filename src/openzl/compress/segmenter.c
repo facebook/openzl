@@ -22,7 +22,7 @@ struct ZL_Segmenter_s {
     ZL_Data** inputs;
     size_t nbInputs;
     size_t* consumed;
-    Arena* arena;
+    Arena* sessionArena;
     Arena* chunkArena;
 };
 
@@ -49,29 +49,29 @@ ZL_Segmenter* SEGM_init(
         size_t nbInputs,
         ZL_CCtx* cctx,
         RTGraph* rtgm,
-        Arena* arena,
+        Arena* sessionArena,
         Arena* chunkArena)
 {
     ZL_DLOG(BLOCK, "SEGM_init");
-    ZL_Segmenter* seg = ALLOC_Arena_malloc(arena, sizeof(ZL_Segmenter));
+    ZL_Segmenter* seg = ALLOC_Arena_malloc(sessionArena, sizeof(ZL_Segmenter));
     if (seg == NULL)
         return NULL;
-    seg->segDesc    = segDesc;
-    seg->cctx       = cctx;
-    seg->rtgm       = rtgm;
-    seg->arena      = arena;
-    seg->chunkArena = chunkArena;
+    seg->segDesc      = segDesc;
+    seg->cctx         = cctx;
+    seg->rtgm         = rtgm;
+    seg->sessionArena = sessionArena;
+    seg->chunkArena   = chunkArena;
     ZL_ASSERT_EQ(nbInputs, VECTOR_SIZE(rtgm->streams));
     seg->nbInputs = nbInputs;
-    seg->inputs   = ALLOC_Arena_malloc(arena, nbInputs * sizeof(ZL_Data*));
+    seg->inputs = ALLOC_Arena_malloc(sessionArena, nbInputs * sizeof(ZL_Data*));
     if (seg->inputs == NULL)
         return NULL;
-    seg->consumed = ALLOC_Arena_calloc(arena, nbInputs * sizeof(size_t));
+    seg->consumed = ALLOC_Arena_calloc(sessionArena, nbInputs * sizeof(size_t));
     if (seg->consumed == NULL)
         return NULL;
     for (size_t n = 0; n < nbInputs; n++) {
         seg->inputs[n] =
-                STREAM_createInArena(arena, (ZL_DataID){ (ZL_IDType)n });
+                STREAM_createInArena(sessionArena, (ZL_DataID){ (ZL_IDType)n });
         ZL_Report ref = STREAM_refStreamWithoutRefCount(
                 seg->inputs[n], VECTOR_AT(rtgm->streams, n).stream);
         if (ZL_isError(ref))
@@ -198,7 +198,7 @@ const ZL_Input* ZL_Segmenter_getInput(
     if (alreadyConsumed > ZL_Data_numElts(sessionInput))
         return NULL;
     ZL_Data* const chunkInput = STREAM_createInArena(
-            segCtx->arena, (ZL_DataID){ (ZL_IDType)inputID });
+            segCtx->sessionArena, (ZL_DataID){ (ZL_IDType)inputID });
     if (chunkInput == NULL)
         return NULL;
     ZL_Report r = STREAM_refEndStreamWithoutRefCount(
@@ -234,7 +234,7 @@ ZL_Report ZL_Segmenter_getNumElts(
  * */
 void* ZL_Segmenter_getScratchSpace(ZL_Segmenter* segCtx, size_t size)
 {
-    return ALLOC_Arena_malloc(segCtx->arena, size);
+    return ALLOC_Arena_malloc(segCtx->sessionArena, size);
 }
 
 /**
@@ -292,7 +292,7 @@ ZL_Report ZL_Segmenter_processChunk(
                 ZL_Data_numElts(segCtx->inputs[n]),
                 parameter_invalid);
         chunkInputs[n] = STREAM_createInArena(
-                segCtx->arena, (ZL_DataID){ (ZL_IDType)n });
+                segCtx->chunkArena, (ZL_DataID){ (ZL_IDType)n });
         ZL_ERR_IF_NULL(chunkInputs[n], allocation);
         ZL_ERR_IF_ERR(STREAM_refStreamSliceWithoutRefCount(
                 chunkInputs[n],
