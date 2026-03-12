@@ -787,6 +787,23 @@ SDDL2_op_stack_drop_if(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
     return SDDL2_OK;
 }
 
+SDDL2_Error SDDL2_op_jump_if(SDDL2_Stack* stack, size_t* out_skip_count)
+{
+    int64_t condition;
+    SDDL2_TRY(pop_i64(stack, &condition));
+
+    size_t n;
+    SDDL2_TRY(pop_positive_i64(stack, &n));
+
+    if (condition != 0) {
+        *out_skip_count = n;
+    } else {
+        *out_skip_count = 0;
+    }
+
+    return SDDL2_OK;
+}
+
 SDDL2_Error
 SDDL2_op_dup(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {

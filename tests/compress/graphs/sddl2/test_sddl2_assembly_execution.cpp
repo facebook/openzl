@@ -1297,6 +1297,60 @@ TEST_F(SDDL2AssemblyExecutionTest, VarMultipleRegistersExecution)
             SDDL2_OK);
 }
 
+// ============================================================================
+// jump_if Tests
+// ============================================================================
+
+TEST_F(SDDL2AssemblyExecutionTest, JumpIfTrueSkipsInstructions)
+{
+    const std::string input = "Test";
+    ASSERT_EQ(
+            run(R"(
+                push.i32 2
+                push.i32 1
+                jump_if
+                push.i32 0
+                expect_true
+                push.i32 1
+                expect_true
+                halt
+            )",
+                input),
+            SDDL2_OK);
+}
+
+TEST_F(SDDL2AssemblyExecutionTest, JumpIfFalseExecutesInstructions)
+{
+    const std::string input = "Test";
+    ASSERT_EQ(
+            run(R"(
+                push.i32 2
+                push.i32 0
+                jump_if
+                push.i32 0
+                expect_true
+                push.i32 1
+                expect_true
+                halt
+            )",
+                input),
+            SDDL2_VALIDATION_FAILED);
+}
+
+TEST_F(SDDL2AssemblyExecutionTest, JumpIfLargerThanInstructions)
+{
+    const std::string input = "Test";
+    ASSERT_EQ(
+            run(R"(
+                push.i32 10
+                push.i32 1
+                jump_if
+                halt
+            )",
+                input),
+            SDDL2_INVALID_BYTECODE);
+}
+
 } // namespace testing
 } // namespace sddl2
 } // namespace openzl

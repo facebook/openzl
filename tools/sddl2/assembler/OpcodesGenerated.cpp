@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
 // Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-// Generated at: 2026-02-25 19:35:34 UTC
+// Generated at: 2026-03-11 19:40:34 UTC
 // Generator: generate_opcodes.py
 //
 // To regenerate: python3 generate_opcodes.py
@@ -21,6 +21,8 @@ const std::unordered_map<std::string, Instruction> INSTRUCTIONS = {
       Instruction{ Family::CONTROL, 0x0001, std::vector<ParamType>{} } },
     { "expect_true",
       Instruction{ Family::CONTROL, 0x0002, std::vector<ParamType>{} } },
+    { "jump_if",
+      Instruction{ Family::CONTROL, 0x0003, std::vector<ParamType>{} } },
     { "trace.start",
       Instruction{ Family::CONTROL, 0x0004, std::vector<ParamType>{} } },
 
