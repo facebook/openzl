@@ -47,6 +47,18 @@ size_t NUMOP_findMaxST(const size_t array[], size_t arraySize)
     return max;
 }
 
+uint8_t NUMOP_findMaxU8(const uint8_t array[], size_t arraySize)
+{
+    if (arraySize)
+        ZL_ASSERT_NN(array);
+    uint8_t max = 0;
+    for (size_t n = 0; n < arraySize; n++) {
+        if (max < array[n])
+            max = array[n];
+    }
+    return max;
+}
+
 uint32_t NUMOP_findMaxArr32(const uint32_t array32[], size_t arraySize)
 {
     if (arraySize)
