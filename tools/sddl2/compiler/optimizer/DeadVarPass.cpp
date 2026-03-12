@@ -54,6 +54,14 @@ class DeadVarImpl {
                 }
                 return;
             }
+            case ConvertedNodeType::CALL: {
+                auto call = node->as_call();
+                recordLastRefs(call->target());
+                for (const auto& arg : call->args()) {
+                    recordLastRefs(arg);
+                }
+                return;
+            }
             case ConvertedNodeType::RECORD: {
                 for (const auto& field : node->as_record()->fields()) {
                     recordLastRefs(field);
@@ -91,6 +99,8 @@ class DeadVarImpl {
                 return optimize(node->as_bytes());
             case ConvertedNodeType::ARRAY:
                 return optimize(node->as_array());
+            case ConvertedNodeType::CALL:
+                return optimize(node->as_call());
             case ConvertedNodeType::OP:
                 return optimize(node->as_op());
             default:
@@ -123,6 +133,17 @@ class DeadVarImpl {
         }
         return Codegen(arr->loc())
                 .array(optimizeNode(arr->field()), optimizeNode(arr->len()));
+    }
+
+    ASTPtr optimize(const ASTCall* call)
+    {
+        ASTVec new_args;
+        new_args.reserve(call->args().size());
+        for (const auto& arg : call->args()) {
+            new_args.push_back(optimizeNode(arg));
+        }
+        return Codegen(call->loc())
+                .call(optimizeNode(call->target()), std::move(new_args));
     }
 
     ASTPtr optimize(const ASTOp* op)

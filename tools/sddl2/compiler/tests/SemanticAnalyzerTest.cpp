@@ -223,4 +223,35 @@ TEST_F(SemanticAnalyzerTest, NestedMemberAccessOnNonRecordField)
     expect_error(prog, "not a record");
 }
 
+TEST_F(SemanticAnalyzerTest, ParameterizedRecordWrongArgCount)
+{
+    const auto prog = R"(
+        Record Entry(N) = {
+            items: Int32LE[N]
+        }
+        : Entry(1, 2)
+    )";
+    expect_error(prog, "Expected 1 arguments but got 2");
+}
+
+TEST_F(SemanticAnalyzerTest, ParameterizedRecordNonNumericArg)
+{
+    const auto prog = R"(
+        Record Entry(N) = {
+            items: Int32LE[N]
+        }
+        : Entry(Int32LE)
+    )";
+    expect_error(prog, "numeric");
+}
+
+TEST_F(SemanticAnalyzerTest, ParameterizedRecordCallNonRecord)
+{
+    const auto prog = R"(
+        MyType = Int32LE
+        : MyType(10)
+    )";
+    expect_error(prog, "record type");
+}
+
 } // namespace openzl::sddl2::tests

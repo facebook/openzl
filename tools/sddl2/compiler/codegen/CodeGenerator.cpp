@@ -177,6 +177,7 @@ class CodeGeneratorImpl {
             case ConvertedNodeType::BYTES:
             case ConvertedNodeType::ARRAY:
             case ConvertedNodeType::RECORD:
+            case ConvertedNodeType::CALL:
             default:
                 throw InvariantViolation(
                         node->loc(), "Expected a value, got a type.");
@@ -242,6 +243,8 @@ class CodeGeneratorImpl {
                 output += "type.fixed_array";
                 return { std::move(output), type };
             }
+            case ConvertedNodeType::CALL:
+                throw CodegenError(type->loc(), "Call not yet implemented.");
             case ConvertedNodeType::NUM:
             case ConvertedNodeType::OP:
             default:

@@ -57,6 +57,11 @@ const ASTRecord* ASTNode::as_record() const
     return nullptr;
 }
 
+const ASTCall* ASTNode::as_call() const
+{
+    return nullptr;
+}
+
 const ASTOp* ASTNode::as_op() const
 {
     return nullptr;
@@ -368,6 +373,39 @@ ASTVec ASTRecord::extract_params(
                 loc, "Record declaration params list must be parens.");
     }
     return unwrap_parens(list->nodes());
+}
+
+ASTCall::ASTCall(ASTPtr target, ASTVec args)
+        : ASTField(some(target).loc() + join_locs(args)),
+          target_(std::move(target)),
+          args_(std::move(args))
+{
+}
+
+const ASTCall* ASTCall::as_call() const
+{
+    return this;
+}
+
+void ASTCall::print(std::ostream& os, size_t indent) const
+{
+    os << std::string(indent, ' ') << "Field: CALL:" << std::endl;
+    os << std::string(indent + 2, ' ') << "Target: " << std::endl;
+    target_->print(os, indent + 4);
+    os << std::string(indent + 2, ' ') << "Args: " << std::endl;
+    for (const auto& arg : args_) {
+        arg->print(os, indent + 4);
+    }
+}
+
+const ASTPtr& ASTCall::target() const
+{
+    return target_;
+}
+
+const ASTVec& ASTCall::args() const
+{
+    return args_;
 }
 
 ASTArray::ASTArray(const ASTPtr& field, const ASTPtr& len)
