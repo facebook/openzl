@@ -64,18 +64,26 @@ typedef struct {
     uint8_t* outputTailPtr;
 } ZL_AppendToOutputOptimization;
 
+#define ZL_PRODUCER_STORE ((ZL_IDType)(-1))
+
 typedef struct ZL_DCtx_DataInfo {
     ZL_Data* data;
     ZL_AppendToOutputOptimization* appendOpt;
+    /// The index of the node that produced this stream or
+    /// ZL_PRODUCER_STORE if stored in the frame.
+    ZL_IDType producerNodeIdx;
 } ZL_DCtx_DataInfo;
 
-DECLARE_VECTOR_TYPE(ZL_DCtx_DataInfo)
+typedef struct {
+    ZL_DCtx_DataInfo* ptr;
+    size_t size;
+} ZL_DCtx_DataInfoArray;
 
 struct ZL_DCtx_s {
     DTransforms_manager dtm;
     DFH_Struct dfh;
     VECTOR_CONST_POINTERS(ZL_Data) transformInputStreams;
-    VECTOR(ZL_DCtx_DataInfo) dataInfos;
+    ZL_DCtx_DataInfoArray dataInfo;
     ZL_Data** outputs;
     size_t nbOutputs;
     ZL_RBuffer thstream;
@@ -129,7 +137,6 @@ ZL_DCtx* ZL_DCtx_create(void)
     VECTOR_INIT(
             dctx->transformInputStreams,
             ZL_transformOutStreamsLimit(ZL_MAX_FORMAT_VERSION));
-    VECTOR_INIT(dctx->dataInfos, ZL_runtimeStreamLimit(ZL_MAX_FORMAT_VERSION));
     return dctx;
 }
 
@@ -164,10 +171,9 @@ static void DCTX_freeStreams(ZL_DCtx* dctx)
 {
     ZL_DLOG(SEQ, "DCTX_freeStreams");
     ZL_ASSERT_NN(dctx);
-    size_t const nbStreams = VECTOR_SIZE(dctx->dataInfos);
+    size_t const nbStreams = dctx->dataInfo.size;
     ZL_DLOG(SEQ, "free %zu Streams", nbStreams);
     ALLOC_Arena_freeAll(dctx->streamArena);
-    VECTOR_CLEAR(dctx->dataInfos);
 }
 
 void ZL_DCtx_free(ZL_DCtx* dctx)
@@ -176,7 +182,6 @@ void ZL_DCtx_free(ZL_DCtx* dctx)
         return;
     VECTOR_DESTROY(dctx->transformInputStreams);
     DCTX_freeStreams(dctx);
-    VECTOR_DESTROY(dctx->dataInfos);
     DTM_destroy(&dctx->dtm);
     DFH_destroy(&dctx->dfh);
     ALLOC_Arena_freeArena(dctx->workspaceArena);
@@ -234,7 +239,7 @@ unsigned ZL_DCtx_getFrameFormatVersion(const ZL_DCtx* dctx)
 
 size_t ZL_DCtx_getNumStreams(const ZL_DCtx* dctx)
 {
-    return VECTOR_SIZE(dctx->dataInfos);
+    return dctx->dataInfo.size;
 }
 
 const ZL_Data* ZL_DCtx_getConstStream(const ZL_DCtx* dctx, ZL_IDType streamID)
@@ -242,7 +247,7 @@ const ZL_Data* ZL_DCtx_getConstStream(const ZL_DCtx* dctx, ZL_IDType streamID)
     if (streamID >= ZL_DCtx_getNumStreams(dctx)) {
         return NULL;
     }
-    return VECTOR_AT(dctx->dataInfos, streamID).data;
+    return dctx->dataInfo.ptr[streamID].data;
 }
 
 ZL_Report ZL_DCtx_registerPipeDecoder(
@@ -620,23 +625,6 @@ static ZL_Report ZL_AppendToOutputOptimization_newStreamHook(
     return ZL_returnValue(1);
 }
 
-// getNbInputs():
-static ZL_Report
-getNbInputs(const ZL_DCtx* dctx, PublicTransformInfo trinfo, size_t nbVOs)
-{
-    ZL_TRY_LET_T(
-            DTrPtr,
-            wrappedTr,
-            DTM_getTransform(&dctx->dtm, trinfo, dctx->dfh.formatVersion));
-    size_t const nbIn1s = wrappedTr->miGraphDesc.nbSOs;
-    ZL_RET_R_IF_GT(
-            formatVersion_unsupported,
-            nbIn1s + nbVOs,
-            ZL_transformOutStreamsLimit(dctx->dfh.formatVersion));
-
-    return ZL_returnValue(nbIn1s + nbVOs);
-}
-
 /* Reference streams stored in the frame.
  * Allocate them at their position in the graph.
  * @return size read from input
@@ -645,8 +633,7 @@ static ZL_Report fillStoredStreams(
         ZL_DCtx* dctx,
         const void* src,
         size_t srcSize,
-        size_t startPos,
-        VECTOR(uint8_t) * isRegeneratedStream)
+        size_t startPos)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
 
@@ -654,8 +641,7 @@ static ZL_Report fillStoredStreams(
             "fillStoredStreams (srcSize=%zu, startPos=%zu)",
             srcSize,
             startPos);
-    ZL_ASSERT_EQ(VECTOR_SIZE(dctx->dataInfos), 0);
-    ZL_ASSERT_EQ(VECTOR_SIZE(*isRegeneratedStream), 0);
+    ZL_ASSERT_EQ(dctx->dataInfo.size, 0);
 
     // Start by referencing the Transforms' Header stream
     size_t srcPos = startPos;
@@ -681,16 +667,21 @@ static ZL_Report fillStoredStreams(
             temporaryLibraryLimitation,
             "too many Streams defined in this Frame");
 
-    ZL_ERR_IF_NE(
-            totalNbStreams,
-            VECTOR_RESIZE(dctx->dataInfos, totalNbStreams),
-            allocation);
-    ZL_ERR_IF_NE(
-            totalNbStreams,
-            VECTOR_RESIZE(*isRegeneratedStream, totalNbStreams),
-            allocation);
-    /* note: vectors are expected to remain in place after this initialization
-     * because they are supposed to be correctly sized upfront */
+    ALLOC_ARENA_MALLOC_CHECKED(
+            ZL_DCtx_DataInfo, dataInfo, totalNbStreams, dctx->chunkArena);
+    dctx->dataInfo.ptr  = dataInfo;
+    dctx->dataInfo.size = totalNbStreams;
+
+    ZL_ASSERT_LE(nbTransforms, ZL_runtimeNodeLimit(dctx->dfh.formatVersion));
+    ZL_ASSERT_EQ(VECTOR_SIZE(dctx->dfh.nodes), nbTransforms);
+    DFH_NodeInfo* nodeInfo = VECTOR_DATA(dctx->dfh.nodes);
+
+    // Initialize the dataInfo array
+    for (size_t stream = 0; stream < totalNbStreams; ++stream) {
+        dataInfo[stream].data            = NULL;
+        dataInfo[stream].appendOpt       = NULL;
+        dataInfo[stream].producerNodeIdx = ZL_PRODUCER_STORE;
+    }
 
     // Index of the stream being analyzed,
     // can be either stored or regenerated stream.
@@ -706,8 +697,17 @@ static ZL_Report fillStoredStreams(
             nbStoredStreams);
     for (size_t transformIdx = 0; transformIdx < nbTransforms; ++transformIdx) {
         const DFH_NodeInfo* node = &VECTOR_AT(dctx->dfh.nodes, transformIdx);
-        ZL_TRY_LET_CONST(
-                size_t, nbTrIns, getNbInputs(dctx, node->trpid, node->nbVOs));
+        ZL_TRY_LET_T(
+                DTrPtr,
+                wrappedTr,
+                DTM_getTransform(
+                        &dctx->dtm, node->trpid, dctx->dfh.formatVersion));
+        const size_t nbTrIns = wrappedTr->miGraphDesc.nbSOs + node->nbVOs;
+        ZL_ERR_IF_GT(
+                nbTrIns,
+                ZL_transformOutStreamsLimit(dctx->dfh.formatVersion),
+                formatVersion_unsupported);
+
         ZL_DLOG(BLOCK,
                 "node %i : transform %i needs %i processed inputs",
                 (int)transformIdx,
@@ -725,22 +725,22 @@ static ZL_Report fillStoredStreams(
                 corruption,
                 "Graph inconsistency: Transform has no regenerated streams");
 
+        nodeInfo[transformIdx].inputStreamBaseIdx = (ZL_IDType)streamIdx;
+        nodeInfo[transformIdx].numInputStreams    = (ZL_IDType)nbTrIns;
+
         for (size_t n = 0; n < node->nbRegens; n++) {
             size_t const outputStreamIdx =
                     inputEndIdx + node->regenDistances[n];
             ZL_ASSERT_GE(outputStreamIdx, inputEndIdx);
 
             // Set the output stream as regenerated
-            ZL_ERR_IF_GE(
-                    outputStreamIdx,
-                    VECTOR_SIZE(*isRegeneratedStream),
-                    corruption);
-            ZL_ERR_IF_EQ(
-                    VECTOR_AT(*isRegeneratedStream, outputStreamIdx),
-                    1,
+            ZL_ERR_IF_GE(outputStreamIdx, totalNbStreams, corruption);
+            ZL_ERR_IF_NE(
+                    dataInfo[outputStreamIdx].producerNodeIdx,
+                    ZL_PRODUCER_STORE,
                     corruption,
                     "Graph inconsistency: regenerated stream is already assigned. \n");
-            VECTOR_AT(*isRegeneratedStream, outputStreamIdx) = 1;
+            dataInfo[outputStreamIdx].producerNodeIdx = (ZL_IDType)transformIdx;
         }
 
         if (node->nbRegens == 1) {
@@ -756,9 +756,9 @@ static ZL_Report fillStoredStreams(
                         ZL_AppendToOutputOptimization_register(
                                 dctx,
                                 node,
-                                &VECTOR_AT(dctx->dataInfos, streamIdx),
+                                dataInfo + streamIdx,
                                 nbTrIns,
-                                &VECTOR_AT(dctx->dataInfos, regenIdx),
+                                dataInfo + regenIdx,
                                 outputData));
                 if (hasAppendOpt) {
                     ZL_LOG(FRAME,
@@ -778,9 +778,9 @@ static ZL_Report fillStoredStreams(
     // streams for each non-regenerated stream.
     for (streamIdx = 0; streamIdx < totalNbStreams; ++streamIdx) {
         // Skip over regenerated streams
-        ZL_ASSERT_LT(streamIdx, VECTOR_SIZE(*isRegeneratedStream));
-        if (VECTOR_AT(*isRegeneratedStream, streamIdx))
+        if (dataInfo[streamIdx].producerNodeIdx != ZL_PRODUCER_STORE) {
             continue;
+        }
 
         // Check that we haven't run out ouf stored streams
         ZL_ERR_IF_EQ(
@@ -827,10 +827,7 @@ static ZL_Report fillStoredStreams(
             " - Incorrect Transform definition, such as registering a different Transform with same ID as expected one \n");
 
     ZL_ERR_IF_EQ(
-            VECTOR_SIZE(dctx->dataInfos),
-            0,
-            corruption,
-            "Frame doesn't contain any stream!");
+            totalNbStreams, 0, corruption, "Frame doesn't contain any stream!");
 
     ZL_LOG(FRAME, "read so far from frame: %zu/%zu", srcPos, srcSize);
     ZL_ERR_IF_GT(srcPos, srcSize, srcSize_tooSmall);
@@ -874,7 +871,7 @@ ZL_Data* DCTX_newStream(
     int finalStream = 0;
     /* presume that dctx->streams has been sized exactly
      * at frame header decoding time */
-    size_t const totalNbStreams = VECTOR_SIZE(dctx->dataInfos);
+    size_t const totalNbStreams = dctx->dataInfo.size;
     ZL_DLOG(BLOCK,
             "DCTX_newStream: new buffer id=%i/%zu of (Width;Capacity)=(%zu;%zu)",
             streamID,
@@ -886,7 +883,7 @@ ZL_Data* DCTX_newStream(
     if (streamID >= (unsigned)(totalNbStreams - dctx->nbOutputs)) {
         finalStream = 1;
     }
-    ZL_DCtx_DataInfo* const info = &VECTOR_AT(dctx->dataInfos, streamID);
+    ZL_DCtx_DataInfo* const info = &dctx->dataInfo.ptr[streamID];
 
     if (dctx->preserveStreams && info->data) {
         // Allow re-using an existing stream if preserveStreams is enabled.
@@ -998,11 +995,11 @@ ZL_Data* DCTX_newStreamFromConstRef(
     ZL_DLOG(BLOCK,
             "DCTX_newStreamFromConstRef: new buffer id=%i/%zu of %zu elts",
             streamID,
-            VECTOR_SIZE(dctx->dataInfos) - 1,
+            dctx->dataInfo.size,
             numElts);
     ZL_ASSERT_NN(dctx);
-    ZL_ASSERT_LT(streamID, VECTOR_SIZE(dctx->dataInfos));
-    ZL_DCtx_DataInfo* const info = &VECTOR_AT(dctx->dataInfos, streamID);
+    ZL_ASSERT_LT(streamID, dctx->dataInfo.size);
+    ZL_DCtx_DataInfo* const info = &dctx->dataInfo.ptr[streamID];
 
     ZL_ASSERT_NULL(info->data); // stream_id not used yet
     info->data =
@@ -1031,12 +1028,12 @@ ZL_Data* DCTX_newStreamFromStreamRef(
     ZL_DLOG(BLOCK,
             "DCTX_newStreamFromStreamRef: new stream id=%i/%zu of %zu elts of width %zu",
             streamID,
-            VECTOR_SIZE(dctx->dataInfos),
+            dctx->dataInfo.size,
             numElts,
             eltWidth);
     ZL_ASSERT_NN(dctx);
-    ZL_ASSERT_LT(streamID, VECTOR_SIZE(dctx->dataInfos));
-    ZL_DCtx_DataInfo* const info = &VECTOR_AT(dctx->dataInfos, streamID);
+    ZL_ASSERT_LT(streamID, dctx->dataInfo.size);
+    ZL_DCtx_DataInfo* const info = &dctx->dataInfo.ptr[streamID];
 
     // stream_id should not be used yet
     ZL_ASSERT_NULL(info->data);
@@ -1117,17 +1114,17 @@ static ZL_Report processStream(
 
     // We already validated the input streams during decode frame header.
     // Though they may not all be filled, so we have to check that.
-    ZL_ASSERT_LE(streamID + nbInStreams, VECTOR_SIZE(dctx->dataInfos));
+    ZL_ASSERT_LE(streamID + nbInStreams, dctx->dataInfo.size);
     // Check that output streams are not used as input streams
     ZL_ERR_IF_GT(
             streamID + nbInStreams,
-            VECTOR_SIZE(dctx->dataInfos) - dctx->nbOutputs,
+            dctx->dataInfo.size - dctx->nbOutputs,
             graph_invalid);
 
     if (nodeInfo->nbRegens == 1) {
         const size_t regenIdx =
                 streamID + nbInStreams + nodeInfo->regenDistances[0];
-        ZL_DCtx_DataInfo* info = &VECTOR_AT(dctx->dataInfos, regenIdx);
+        ZL_DCtx_DataInfo* info = &dctx->dataInfo.ptr[regenIdx];
         if (info->appendOpt) {
             ZL_TRY_LET_R(
                     success,
@@ -1143,8 +1140,7 @@ static ZL_Report processStream(
                 ZL_ASSERT(!dctx->preserveStreams);
                 ZL_ASSERT(STREAM_isCommitted(info->data));
                 for (size_t i = 0; i < nbInStreams; ++i) {
-                    ZL_Data* input =
-                            VECTOR_AT(dctx->dataInfos, streamID + i).data;
+                    ZL_Data* input = dctx->dataInfo.ptr[streamID + i].data;
                     ZL_ASSERT_NULL(input, "Input must already be freed");
                 }
                 return ZL_returnValue(nbInStreams);
@@ -1162,7 +1158,7 @@ static ZL_Report processStream(
     for (ZL_IDType n = 0; n < nbInStreams; n++) {
         ZL_IDType const snb = streamID + n;
         size_t const inb    = nbInStreams - 1 - n; // reverse order
-        inputs[inb]         = VECTOR_AT(dctx->dataInfos, snb).data;
+        inputs[inb]         = dctx->dataInfo.ptr[snb].data;
 
         ZL_ERR_IF_NULL(
                 inputs[inb], graph_invalid, "Input stream %u not filled!", inb);
@@ -1213,7 +1209,7 @@ static ZL_Report processStream(
     }
     // Check that regenerated streams slots are not already filled
     for (size_t n = 0; n < nodeInfo->nbRegens; n++) {
-        ZL_Data* outStream = VECTOR_AT(dctx->dataInfos, regensID[n]).data;
+        ZL_Data* outStream = dctx->dataInfo.ptr[regensID[n]].data;
         ZL_ERR_IF_NN(
                 outStream,
                 graph_invalid,
@@ -1246,7 +1242,7 @@ static ZL_Report processStream(
 
     // Check transform's outcome
     for (size_t n = 0; n < nodeInfo->nbRegens; n++) {
-        ZL_Data* outStream = VECTOR_AT(dctx->dataInfos, regensID[n]).data;
+        ZL_Data* outStream = dctx->dataInfo.ptr[regensID[n]].data;
         ZL_ERR_IF_NULL(
                 outStream,
                 transform_executionFailure,
@@ -1267,7 +1263,7 @@ static ZL_Report processStream(
     if (!dctx->preserveStreams) {
         for (ZL_IDType n = 0; n < nbInStreams; n++) {
             ZL_IDType const snb       = streamID + n;
-            ZL_Data** const streamPtr = &VECTOR_AT(dctx->dataInfos, snb).data;
+            ZL_Data** const streamPtr = &dctx->dataInfo.ptr[snb].data;
             STREAM_free(*streamPtr);
             *streamPtr = NULL;
         }
@@ -1316,8 +1312,7 @@ ZL_Report DCTX_runTransformID(ZL_DCtx* dctx, ZL_IDType transformID)
         DFH_NodeInfo const* node       = &VECTOR_AT(dctx->dfh.nodes, stage);
         PublicTransformInfo const trid = node->trpid;
         if (trid.trid != transformID) {
-            ZL_TRY_LET_R(nbInputs, getNbInputs(dctx, trid, node->nbVOs));
-            startingStream += nbInputs;
+            startingStream += node->numInputStreams;
             continue;
         }
         ZL_DLOG(BLOCK, "transformID = %u (type:%u)", trid.trid, trid.trt);
@@ -1336,7 +1331,7 @@ ZL_Report DCTX_runTransformID(ZL_DCtx* dctx, ZL_IDType transformID)
                 "This method only supports Transforms regenerating a single stream");
         ZL_IDType const outStreamID =
                 (ZL_IDType)(startingStream + node->regenDistances[0]);
-        const ZL_Data* out = VECTOR_AT(dctx->dataInfos, outStreamID).data;
+        const ZL_Data* out = dctx->dataInfo.ptr[outStreamID].data;
         ZL_ASSERT_NN(out);
         ZL_ASSERT(
                 STREAM_isCommitted(out),
@@ -1352,7 +1347,7 @@ static ZL_Report addChunksIntoFinalStreams(ZL_DCtx* dctx)
 {
     ZL_ASSERT_NN(dctx);
     ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
-    size_t const nbStreams = VECTOR_SIZE(dctx->dataInfos);
+    size_t const nbStreams = dctx->dataInfo.size;
     ZL_ERR_IF_GT(
             dctx->nbOutputs,
             nbStreams,
@@ -1362,7 +1357,7 @@ static ZL_Report addChunksIntoFinalStreams(ZL_DCtx* dctx)
     for (size_t outputN = 0; outputN < dctx->nbOutputs; outputN++) {
         ZL_Data* const output      = dctx->outputs[outputN];
         size_t const lsid          = nbStreams - outputN - 1;
-        const ZL_Data* chunkOutput = VECTOR_AT(dctx->dataInfos, lsid).data;
+        const ZL_Data* chunkOutput = dctx->dataInfo.ptr[lsid].data;
         ZL_ERR_IF_NULL(
                 chunkOutput, graph_invalid, "Final stream not produced!");
         ZL_Type const type    = ZL_Data_type(chunkOutput);
@@ -1448,6 +1443,7 @@ static void cleanChunkBuffers(ZL_DCtx* dctx)
     ALLOC_Arena_freeAll(dctx->streamArena);
     ALLOC_Arena_freeAll(dctx->workspaceArena);
     ALLOC_Arena_freeAll(dctx->chunkArena);
+    memset(&dctx->dataInfo, 0, sizeof(dctx->dataInfo));
 }
 
 static void cleanAllBuffers(ZL_DCtx* dctx)
@@ -1491,14 +1487,11 @@ static ZL_Report ZL_DCtx_decompressChunk(
                     frameSize - consumedSize));
     consumedSize += chunkHeaderSize;
 
-    VECTOR(uint8_t)
-    isRegeneratedStream =
-            VECTOR_EMPTY(ZL_runtimeStreamLimit(dctx->dfh.formatVersion));
-    ZL_Report const chunkStreamsSize = fillStoredStreams(
-            dctx, framePtr, frameSize, consumedSize, &isRegeneratedStream);
-    VECTOR_DESTROY(isRegeneratedStream);
-    ZL_ERR_IF_ERR(chunkStreamsSize);
-    consumedSize += ZL_validResult(chunkStreamsSize);
+    ZL_TRY_LET(
+            size_t,
+            chunkStreamsSize,
+            fillStoredStreams(dctx, framePtr, frameSize, consumedSize));
+    consumedSize += chunkStreamsSize;
 
     // If present, verify the compressed checksum before running decoders.
     // Assuming we aren't handling malicious inputs, this ensures that we
@@ -1938,15 +1931,11 @@ DFH_Struct const* DCtx_getFrameHeader(ZL_DCtx const* dctx)
 /* Note : this is only used by streamdump2 currently */
 ZL_Report DCtx_getNbInputStreams(ZL_DCtx const* dctx, ZL_IDType decoderIdx)
 {
-    ZL_ASSERT_NN(dctx);
-    ZL_RET_R_IF_GE(GENERIC, decoderIdx, VECTOR_SIZE(dctx->dfh.nodes));
-    const DFH_NodeInfo* const ni = &VECTOR_AT(dctx->dfh.nodes, decoderIdx);
-    const PublicTransformInfo* const ptri = &(ni->trpid);
-    const ZL_RESULT_OF(DTrPtr) transform =
-            DTM_getTransform(&dctx->dtm, *ptri, dctx->dfh.formatVersion);
-    ZL_RET_R_IF_ERR(transform);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+
+    ZL_ERR_IF_GE(decoderIdx, VECTOR_SIZE(dctx->dfh.nodes), GENERIC);
     return ZL_returnValue(
-            ZL_RES_value(transform)->miGraphDesc.nbSOs + ni->nbVOs);
+            VECTOR_AT(dctx->dfh.nodes, decoderIdx).numInputStreams);
 }
 
 /* Note : this is only used by streamdump2 currently */
