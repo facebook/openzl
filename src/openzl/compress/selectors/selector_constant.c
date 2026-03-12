@@ -30,6 +30,10 @@ static int isSingleBytePattern(const ZL_Input* inputStream)
  *
  * Single-byte patterns (0x00, 0xFF, 0x55, etc.) are routed
  * to CONSTANT_SERIAL (more efficient).
+ *
+ * Note: data arriving at this selector should be verified constant.
+ * No verification is done here, but if the data is not constant,
+ * operation will later fail, on reaching the constant node.
  */
 
 ZL_GraphID SI_selector_constant(
@@ -43,11 +47,12 @@ ZL_GraphID SI_selector_constant(
     (void)nbCustomGraphs;
 
     ZL_Type const inType = ZL_Input_type(inputStream);
-    ZL_ASSERT(inType == ZL_Type_serial || inType == ZL_Type_struct);
+    ZL_ASSERT(
+            inType == ZL_Type_serial || inType == ZL_Type_struct
+            || inType == ZL_Type_numeric);
 
     /* If all bytes are identical, Serial path is more efficient */
-    if (ZL_Input_eltWidth(inputStream) > 1
-        && isSingleBytePattern(inputStream)) {
+    if (isSingleBytePattern(inputStream)) {
         return ZL_GRAPH_CONSTANT_SERIAL;
     }
 
@@ -55,9 +60,9 @@ ZL_GraphID SI_selector_constant(
         case ZL_Type_serial:
             return ZL_GRAPH_CONSTANT_SERIAL;
         case ZL_Type_struct:
+        case ZL_Type_numeric:
             return ZL_GRAPH_CONSTANT_FIXED;
         /* fallthrough - not supported */
-        case ZL_Type_numeric:
         case ZL_Type_string:
         default:
             ZL_REQUIRE(0, "Unsupported input type for constant selector");

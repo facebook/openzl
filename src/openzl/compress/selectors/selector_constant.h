@@ -9,7 +9,7 @@
 ZL_BEGIN_C_DECLS
 
 // .selector_f   = SI_selector_constant,
-// .inStreamType = ZL_Type_serial | ZL_Type_struct,
+// .inStreamType = ZL_Type_serial | ZL_Type_struct | ZL_Type_numeric,
 ZL_GraphID SI_selector_constant(
         const ZL_Selector* selCtx,
         const ZL_Input* inputStream,
