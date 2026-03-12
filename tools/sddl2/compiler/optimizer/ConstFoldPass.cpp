@@ -15,20 +15,22 @@ ASTPtr makeNum(const SourceLocation& loc, int64_t val)
 
 class ConstFoldImpl {
    public:
-    explicit ConstFoldImpl(const detail::Logger& logger) : log_(logger) {}
-
     ASTVec optimize(const ASTVec& ast)
     {
-        (void)log_;
+        return optimizeVec(ast);
+    }
+
+   private:
+    ASTVec optimizeVec(const ASTVec& ast)
+    {
         ASTVec result;
         result.reserve(ast.size());
         for (const auto& node : ast) {
             result.push_back(optimizeNode(node));
         }
         return result;
-    }
+    };
 
-   private:
     ASTPtr optimizeNode(const ASTPtr& node)
     {
         switch (node->converted_node_type()) {
@@ -36,23 +38,23 @@ class ConstFoldImpl {
             case ConvertedNodeType::BUILTIN_FIELD:
                 return node;
             case ConvertedNodeType::VAR:
-                return optimize(*node->as_var());
+                return optimizeVar(*node->as_var());
             case ConvertedNodeType::BYTES:
-                return optimize(*node->as_bytes());
+                return optimizeBytes(*node->as_bytes());
             case ConvertedNodeType::ARRAY:
-                return optimize(*node->as_array());
+                return optimizeArray(*node->as_array());
             case ConvertedNodeType::RECORD:
-                return optimize(*node->as_record());
+                return optimizeRecord(*node->as_record());
             case ConvertedNodeType::CALL:
-                return optimize(*node->as_call());
+                return optimizeCall(*node->as_call());
             case ConvertedNodeType::OP:
-                return optimize(*node->as_op());
+                return optimizeOp(*node->as_op());
             default:
                 throw InvariantViolation("Unsupported AST node type.");
         }
     }
 
-    ASTPtr optimize(const ASTVar& var)
+    ASTPtr optimizeVar(const ASTVar& var)
     {
         auto it = const_vars_.find(var.name());
         if (it != const_vars_.end()) {
@@ -61,12 +63,12 @@ class ConstFoldImpl {
         return std::make_shared<ASTVar>(var);
     }
 
-    ASTPtr optimize(const ASTBytes& bytes)
+    ASTPtr optimizeBytes(const ASTBytes& bytes)
     {
         return Codegen(bytes.loc()).bytes(optimizeNode(bytes.len()));
     }
 
-    ASTPtr optimize(const ASTArray& array)
+    ASTPtr optimizeArray(const ASTArray& array)
     {
         if (!array.len()) {
             return Codegen(array.loc()).array(optimizeNode(array.field()));
@@ -75,31 +77,22 @@ class ConstFoldImpl {
                 .array(optimizeNode(array.field()), optimizeNode(array.len()));
     }
 
-    ASTPtr optimize(const ASTCall& call)
+    ASTPtr optimizeCall(const ASTCall& call)
     {
-        ASTVec new_args;
-        new_args.reserve(call.args().size());
-        for (const auto& arg : call.args()) {
-            new_args.push_back(optimizeNode(arg));
-        }
         return Codegen(call.loc())
-                .call(optimizeNode(call.target()), std::move(new_args));
+                .call(optimizeNode(call.target()), optimizeVec(call.args()));
     }
 
-    ASTPtr optimize(const ASTRecord& record)
+    ASTPtr optimizeRecord(const ASTRecord& record)
     {
-        auto saved_vars = const_vars_;
-        ASTVec new_fields;
-        new_fields.reserve(record.fields().size());
-        for (const auto& field : record.fields()) {
-            new_fields.push_back(optimizeNode(field));
-        }
-        const_vars_ = std::move(saved_vars);
+        auto saved_vars   = const_vars_;
+        ASTVec new_fields = optimizeVec(record.fields());
+        const_vars_       = std::move(saved_vars);
         return Codegen(record.loc())
                 .record(record.params(), std::move(new_fields));
     }
 
-    ASTPtr optimize(const ASTOp& op)
+    ASTPtr optimizeOp(const ASTOp& op)
     {
         ASTVec new_args;
 
@@ -188,7 +181,6 @@ class ConstFoldImpl {
         }
     }
 
-    const detail::Logger& log_;
     std::unordered_map<std::string, int64_t> const_vars_;
 };
 
@@ -198,7 +190,8 @@ ConstFoldPass::ConstFoldPass(const detail::Logger& logger) : log_(logger) {}
 
 ASTVec ConstFoldPass::optimize(const ASTVec& ast) const
 {
-    return ConstFoldImpl{ log_ }.optimize(ast);
+    log_(1) << "Running Constant Folding Pass ..." << std::endl;
+    return ConstFoldImpl{}.optimize(ast);
 }
 
 } // namespace openzl::sddl2
