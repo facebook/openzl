@@ -47,7 +47,7 @@
 typedef struct {
     /// Pointer to the inputs array
     /// @note Inputs are listed in reverse order!
-    struct ZL_DataInfo* inputInfos;
+    struct ZL_DCtx_DataInfo* inputInfos;
     /// Index of the next input to append to the head of the output.
     /// Starts at 0.
     size_t headInputIdx;
@@ -57,25 +57,25 @@ typedef struct {
     size_t nbInputs; ///< Number of input streams
 
     /// Pointer to the output
-    struct ZL_DataInfo* outputInfo;
+    struct ZL_DCtx_DataInfo* outputInfo;
     /// Head inputs get appended to this pointer
     uint8_t* outputHeadPtr;
     /// Tail inputs get prepended to this pointer
     uint8_t* outputTailPtr;
 } ZL_AppendToOutputOptimization;
 
-typedef struct ZL_DataInfo {
+typedef struct ZL_DCtx_DataInfo {
     ZL_Data* data;
     ZL_AppendToOutputOptimization* appendOpt;
-} ZL_DataInfo;
+} ZL_DCtx_DataInfo;
 
-DECLARE_VECTOR_TYPE(ZL_DataInfo)
+DECLARE_VECTOR_TYPE(ZL_DCtx_DataInfo)
 
 struct ZL_DCtx_s {
     DTransforms_manager dtm;
     DFH_Struct dfh;
     VECTOR_CONST_POINTERS(ZL_Data) transformInputStreams;
-    VECTOR(ZL_DataInfo) dataInfos;
+    VECTOR(ZL_DCtx_DataInfo) dataInfos;
     ZL_Data** outputs;
     size_t nbOutputs;
     ZL_RBuffer thstream;
@@ -326,9 +326,9 @@ ZL_Report ZL_DCtx_registerMIDecoder(
 static ZL_Report ZL_AppendToOutputOptimization_register(
         ZL_DCtx* dctx,
         const DFH_NodeInfo* node,
-        ZL_DataInfo* inputInfos,
+        ZL_DCtx_DataInfo* inputInfos,
         size_t nbInputs,
-        ZL_DataInfo* outputInfo,
+        ZL_DCtx_DataInfo* outputInfo,
         ZL_Data* outputData)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
@@ -412,8 +412,8 @@ static ZL_Report ZL_AppendToOutputOptimization_commitInput(
     // Append to head if equal to the headInputIdx.
     const bool head = (inputIdx == append->headInputIdx);
     // Inputs are listed in reverse order
-    const size_t infoInputPos    = append->nbInputs - (inputIdx + 1);
-    ZL_DataInfo* const inputInfo = &append->inputInfos[infoInputPos];
+    const size_t infoInputPos         = append->nbInputs - (inputIdx + 1);
+    ZL_DCtx_DataInfo* const inputInfo = &append->inputInfos[infoInputPos];
     ZL_ASSERT_NN(inputInfo);
     ZL_ASSERT_EQ(inputInfo->appendOpt, append);
     ZL_Data* const input = inputInfo->data;
@@ -514,7 +514,7 @@ static ZL_Report ZS2_AppendToOutputOptimization_commitInputs(
  *    streams are committed, and commits the output stream.
  */
 static ZL_Report ZL_AppendToOutputOptimization_preTransformHook(
-        ZL_DataInfo* info)
+        ZL_DCtx_DataInfo* info)
 {
     ZL_AppendToOutputOptimization* append = info->appendOpt;
     ZL_ASSERT_NN(append);
@@ -560,7 +560,7 @@ static ZL_Report ZL_AppendToOutputOptimization_preTransformHook(
  * output, point the input directly at the output, to elide a copy.
  */
 static ZL_Report ZL_AppendToOutputOptimization_newStreamHook(
-        ZL_DataInfo* const info,
+        ZL_DCtx_DataInfo* const info,
         ZL_Type type,
         size_t eltWidth,
         size_t eltsCapacity)
@@ -886,7 +886,7 @@ ZL_Data* DCTX_newStream(
     if (streamID >= (unsigned)(totalNbStreams - dctx->nbOutputs)) {
         finalStream = 1;
     }
-    ZL_DataInfo* const info = &VECTOR_AT(dctx->dataInfos, streamID);
+    ZL_DCtx_DataInfo* const info = &VECTOR_AT(dctx->dataInfos, streamID);
 
     if (dctx->preserveStreams && info->data) {
         // Allow re-using an existing stream if preserveStreams is enabled.
@@ -1002,7 +1002,7 @@ ZL_Data* DCTX_newStreamFromConstRef(
             numElts);
     ZL_ASSERT_NN(dctx);
     ZL_ASSERT_LT(streamID, VECTOR_SIZE(dctx->dataInfos));
-    ZL_DataInfo* const info = &VECTOR_AT(dctx->dataInfos, streamID);
+    ZL_DCtx_DataInfo* const info = &VECTOR_AT(dctx->dataInfos, streamID);
 
     ZL_ASSERT_NULL(info->data); // stream_id not used yet
     info->data =
@@ -1036,7 +1036,7 @@ ZL_Data* DCTX_newStreamFromStreamRef(
             eltWidth);
     ZL_ASSERT_NN(dctx);
     ZL_ASSERT_LT(streamID, VECTOR_SIZE(dctx->dataInfos));
-    ZL_DataInfo* const info = &VECTOR_AT(dctx->dataInfos, streamID);
+    ZL_DCtx_DataInfo* const info = &VECTOR_AT(dctx->dataInfos, streamID);
 
     // stream_id should not be used yet
     ZL_ASSERT_NULL(info->data);
@@ -1127,7 +1127,7 @@ static ZL_Report processStream(
     if (nodeInfo->nbRegens == 1) {
         const size_t regenIdx =
                 streamID + nbInStreams + nodeInfo->regenDistances[0];
-        ZL_DataInfo* info = &VECTOR_AT(dctx->dataInfos, regenIdx);
+        ZL_DCtx_DataInfo* info = &VECTOR_AT(dctx->dataInfos, regenIdx);
         if (info->appendOpt) {
             ZL_TRY_LET_R(
                     success,
