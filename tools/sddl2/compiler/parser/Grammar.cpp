@@ -539,6 +539,28 @@ class BytesRule : public GrammarRule {
     }
 };
 
+class WhenRule : public GrammarRule {
+   public:
+    explicit WhenRule()
+            : GrammarRule(
+                      Symbol::WHEN,
+                      Precedence::NULLARY,
+                      std::vector<ArgType>(
+                              { ArgType::EXPR, ArgType::LIST_CURLY }))
+    {
+    }
+
+   private:
+    ASTPtr do_gen(ASTPtr op, ArgsVec args) const override
+    {
+        auto& condition = args.at(0);
+        auto& body_list = args.at(1);
+
+        return std::make_shared<ASTWhen>(
+                std::move(condition), unwrap_curly(body_list));
+    }
+};
+
 template <typename RuleT, typename... Args>
 void add_rule(
         std::vector<std::unique_ptr<const GrammarRule>>& rules,
@@ -563,6 +585,7 @@ const std::vector<std::unique_ptr<const GrammarRule>> grammar_rules{ []() {
     // Ops
     add_rule<UnaryOpRule>(r, Symbol::EXPECT, Precedence::ASSIGNMENT);
     add_rule<UnaryOpRule>(r, Symbol::SIZEOF);
+    add_rule<WhenRule>(r);
 
     add_rule<BinaryOpRule>(r, Symbol::ASSIGN, Precedence::ASSIGNMENT);
     add_rule<BinaryOpRule>(r, Symbol::ASSUME, Precedence::ASSIGNMENT);

@@ -72,6 +72,10 @@ class DeadVarImpl {
                 recordLastRefs(op.args());
                 return;
             }
+            case ConvertedNodeType::WHEN: {
+                // TODO: implement
+                return;
+            }
         }
     }
 
@@ -106,6 +110,9 @@ class DeadVarImpl {
                 return optimizeCall(node->as_call());
             case ConvertedNodeType::OP:
                 return optimizeOp(node->as_op());
+            case ConvertedNodeType::WHEN:
+                // TODO: implement
+                return node;
             default:
                 throw InvariantViolation("Unsupported AST node type.");
         }
