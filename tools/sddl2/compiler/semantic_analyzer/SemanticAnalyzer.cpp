@@ -118,6 +118,8 @@ class SemanticAnalyzerImpl {
                 return analyze(*node->as_record());
             case ConvertedNodeType::CALL:
                 return analyze(*node->as_call());
+            case ConvertedNodeType::WHEN:
+                return analyze(*node->as_when());
             case ConvertedNodeType::OP:
                 return analyze(*node->as_op());
             default:
@@ -150,6 +152,23 @@ class SemanticAnalyzerImpl {
         return Type{ TypeKind::ARRAY, &array };
     }
 
+    void analyzeRecordFields(const ASTVec& fields)
+    {
+        for (const auto& field : fields) {
+            if (auto op = field->as_op()) {
+                if (op->op() != Op::ASSUME) {
+                    throw SemanticError(op->loc(), "Invalid record field!");
+                }
+                analyzeAssume(*op);
+            } else if (auto when = field->as_when()) {
+                expectNumeric(analyzeNode(when->condition()));
+                analyzeRecordFields(when->body());
+            } else {
+                throw SemanticError(field->loc(), "Invalid record field!");
+            }
+        }
+    }
+
     Type analyze(const ASTRecord& record)
     {
         // Validate params are variable names and introduce them as NUMERIC
@@ -164,16 +183,8 @@ class SemanticAnalyzerImpl {
             var_types_[var->name()] = Type{ TypeKind::NUMERIC };
         }
 
-        // Validate all fields are ASSUME ops
-        for (const auto& field : record.fields()) {
-            auto assume = field->as_op();
-            if (!assume || assume->op() != Op::ASSUME) {
-                throw SemanticError(
-                        field->loc(),
-                        "Record field must be an assume operation!");
-            }
-            analyzeAssume(*assume);
-        }
+        // Validate all fields
+        analyzeRecordFields(record.fields());
         var_types_ = std::move(saved_vars);
 
         return Type{ TypeKind::RECORD, &record };
@@ -325,6 +336,15 @@ class SemanticAnalyzerImpl {
         }
         var_types_ = std::move(saved_vars);
         return *found_type;
+    }
+
+    Type analyze(const ASTWhen& when)
+    {
+        expectNumeric(analyzeNode(when.condition()));
+        for (const auto& stmt : when.body()) {
+            analyzeNode(stmt);
+        }
+        return Type{ TypeKind::NONE };
     }
 };
 

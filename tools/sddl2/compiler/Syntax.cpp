@@ -115,6 +115,8 @@ static const std::map<Symbol, poly::string_view> syms_to_debug_strs{
 
     { Symbol::BYTES, "BYTES" },
     { Symbol::RECORD, "RECORD" },
+
+    { Symbol::WHEN, "WHEN" },
 };
 
 poly::string_view sym_to_debug_str(Symbol sym)
@@ -185,6 +187,7 @@ const std::vector<std::pair<poly::string_view, Symbol>> strs_to_syms{
     { "BFloat16BE", Symbol::BF16BE },
     { "Bytes", Symbol::BYTES },
     { "Record", Symbol::RECORD },
+    { "when", Symbol::WHEN },
 };
 
 /* These symbols can't actually be accessed via these names. */

@@ -349,4 +349,56 @@ TEST_F(ParserTest, CallAST)
     expect_ast(prog, expected);
 }
 
+TEST_F(ParserTest, WhenBlockAST)
+{
+    const auto prog = R"(
+        flag: UInt8
+        when flag == 1 {
+            x: Int32LE
+        }
+    )";
+
+    const auto cg       = Codegen(SourceLocation::null());
+    const auto expected = std::vector<ASTPtr>({
+            cg.assume(cg.var("flag"), cg.builtin_field(Symbol::U8)),
+            cg.when(cg.eq(cg.var("flag"), cg.num(1)),
+                    ArgVec{ cg.assume(
+                            cg.var("x"), cg.builtin_field(Symbol::I32LE)) }),
+    });
+    expect_ast(prog, expected);
+}
+
+TEST_F(ParserTest, WhenBlockInRecordAST)
+{
+    const auto prog = R"(
+        Record Data(flag) = {
+            base: UInt32LE,
+            when flag {
+                optional: UInt16LE
+            }
+        }
+        : Data(1)
+    )";
+
+    const auto cg       = Codegen(SourceLocation::null());
+    const auto expected = std::vector<ASTPtr>({
+            cg.assign(
+                    cg.var("Data"),
+                    cg.record(
+                            ArgVec{ cg.var("flag") },
+                            ArgVec{
+                                    cg.assume(
+                                            cg.var("base"),
+                                            cg.builtin_field(Symbol::U32LE)),
+                                    cg.when(cg.var("flag"),
+                                            ArgVec{ cg.assume(
+                                                    cg.var("optional"),
+                                                    cg.builtin_field(
+                                                            Symbol::U16LE)) }),
+                            })),
+            cg.consume(cg.call(cg.var("Data"), ArgVec{ cg.num(1) })),
+    });
+    expect_ast(prog, expected);
+}
+
 } // namespace openzl::sddl2::tests
