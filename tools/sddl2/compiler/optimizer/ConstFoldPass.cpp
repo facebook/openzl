@@ -43,6 +43,8 @@ class ConstFoldImpl {
                 return optimize(*node->as_array());
             case ConvertedNodeType::RECORD:
                 return optimize(*node->as_record());
+            case ConvertedNodeType::CALL:
+                return optimize(*node->as_call());
             case ConvertedNodeType::OP:
                 return optimize(*node->as_op());
             default:
@@ -71,6 +73,17 @@ class ConstFoldImpl {
         }
         return Codegen(array.loc())
                 .array(optimizeNode(array.field()), optimizeNode(array.len()));
+    }
+
+    ASTPtr optimize(const ASTCall& call)
+    {
+        ASTVec new_args;
+        new_args.reserve(call.args().size());
+        for (const auto& arg : call.args()) {
+            new_args.push_back(optimizeNode(arg));
+        }
+        return Codegen(call.loc())
+                .call(optimizeNode(call.target()), std::move(new_args));
     }
 
     ASTPtr optimize(const ASTRecord& record)

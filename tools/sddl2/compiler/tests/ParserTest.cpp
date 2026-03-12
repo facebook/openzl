@@ -314,4 +314,39 @@ TEST_F(ParserTest, SimpleSaoAST)
     expect_ast(prog, expected);
 }
 
+TEST_F(ParserTest, CallAST)
+{
+    const auto prog = R"(
+        Record Foo(A, B) = {
+            x: Int32LE[A],
+            y: Int16LE[B]
+        }
+        : Foo(3, 5)
+    )";
+
+    const auto cg       = Codegen(SourceLocation::null());
+    const auto expected = std::vector<ASTPtr>({
+            cg.assign(
+                    cg.var("Foo"),
+                    cg.record(
+                            ArgVec{ cg.var("A"), cg.var("B") },
+                            ArgVec{
+                                    cg.assume(
+                                            cg.var("x"),
+                                            cg.array(
+                                                    cg.builtin_field(
+                                                            Symbol::I32LE),
+                                                    cg.var("A"))),
+                                    cg.assume(
+                                            cg.var("y"),
+                                            cg.array(
+                                                    cg.builtin_field(
+                                                            Symbol::I16LE),
+                                                    cg.var("B"))),
+                            })),
+            cg.consume(cg.call(cg.var("Foo"), ArgVec{ cg.num(3), cg.num(5) })),
+    });
+    expect_ast(prog, expected);
+}
+
 } // namespace openzl::sddl2::tests
