@@ -33,7 +33,6 @@ cpp_library(
         "../../../tests/datagen:datagen",
         "../../../tools:zstrong_cpp",
         "../../thrift/kernels/tests:thrift_kernel_test_utils",
-        ":tulip_v2_data-cpp2-reflection",
         ":tulip_v2_data-cpp2-types",
         ":tulip_v2_data-cpp2-visitation",
         "//folly:range",
