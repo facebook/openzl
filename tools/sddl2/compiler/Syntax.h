@@ -89,7 +89,10 @@ enum class Symbol {
 
     // Other Fields
     BYTES,
-    RECORD
+    RECORD,
+
+    // Control Flow
+    WHEN
 };
 
 /// @returns a name string for a symbol.

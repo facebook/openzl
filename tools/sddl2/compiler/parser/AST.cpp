@@ -62,6 +62,11 @@ const ASTCall* ASTNode::as_call() const
     return nullptr;
 }
 
+const ASTWhen* ASTNode::as_when() const
+{
+    return nullptr;
+}
+
 const ASTOp* ASTNode::as_op() const
 {
     return nullptr;
@@ -406,6 +411,39 @@ const ASTPtr& ASTCall::target() const
 const ASTVec& ASTCall::args() const
 {
     return args_;
+}
+
+ASTWhen::ASTWhen(ASTPtr condition, ASTVec body)
+        : ASTConverted(some(condition).loc() + join_locs(body)),
+          condition_(std::move(condition)),
+          body_(std::move(body))
+{
+}
+
+const ASTWhen* ASTWhen::as_when() const
+{
+    return this;
+}
+
+void ASTWhen::print(std::ostream& os, size_t indent) const
+{
+    os << std::string(indent, ' ') << "When:" << std::endl;
+    os << std::string(indent + 2, ' ') << "Condition:" << std::endl;
+    condition_->print(os, indent + 4);
+    os << std::string(indent + 2, ' ') << "Body:" << std::endl;
+    for (const auto& stmt : body_) {
+        stmt->print(os, indent + 4);
+    }
+}
+
+const ASTPtr& ASTWhen::condition() const
+{
+    return condition_;
+}
+
+const ASTVec& ASTWhen::body() const
+{
+    return body_;
 }
 
 ASTArray::ASTArray(const ASTPtr& field, const ASTPtr& len)
