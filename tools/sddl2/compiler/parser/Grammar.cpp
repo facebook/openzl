@@ -497,6 +497,31 @@ class AnonymousRecordRule : public GrammarRule {
     }
 };
 
+class CallRule : public GrammarRule {
+   public:
+    explicit CallRule()
+            : GrammarRule(
+                      Symbol::PAREN_OPEN, /* bit weird */
+                      Precedence::ACCESS,
+                      std::vector<ArgType>({ ArgType::EXPR }),
+                      true)
+    {
+    }
+
+   private:
+    ASTPtr do_gen(ASTPtr op, ArgsVec args) const override
+    {
+        auto& target     = args.at(0);
+        const auto* list = some(op).as_list();
+        if (list == nullptr || list->list_type() != ListType::PAREN) {
+            throw InvariantViolation(
+                    some(op).loc(), "Expected paren list in call.");
+        }
+        return std::make_shared<ASTCall>(
+                std::move(target), unwrap_parens(list->nodes()));
+    }
+};
+
 class BytesRule : public GrammarRule {
    public:
     explicit BytesRule()
@@ -588,7 +613,9 @@ const std::map<Symbol, GrammarRuleRefs> syms_to_rules{ []() {
 const std::map<ListType, GrammarRuleRefs> list_types_to_rules{ []() {
     std::map<ListType, GrammarRuleRefs> m;
 
-    m[ListType::PAREN] = {};
+    static const std::unique_ptr<const GrammarRule> call_rule =
+            std::make_unique<CallRule>();
+    m[ListType::PAREN] = { *call_rule };
 
     static const std::unique_ptr<const GrammarRule> array_rule =
             std::make_unique<ArrayRule>();

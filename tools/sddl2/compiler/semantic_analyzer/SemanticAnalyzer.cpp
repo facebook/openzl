@@ -1,5 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -115,6 +116,8 @@ class SemanticAnalyzerImpl {
                 return analyze(*node->as_array());
             case ConvertedNodeType::RECORD:
                 return analyze(*node->as_record());
+            case ConvertedNodeType::CALL:
+                return analyze(*node->as_call());
             case ConvertedNodeType::OP:
                 return analyze(*node->as_op());
             default:
@@ -149,8 +152,19 @@ class SemanticAnalyzerImpl {
 
     Type analyze(const ASTRecord& record)
     {
-        // Validate all fields are ASSUME ops
+        // Validate params are variable names and introduce them as NUMERIC
         auto saved_vars = var_types_;
+        for (const auto& param : record.params()) {
+            const auto* var = param->as_var();
+            if (!var) {
+                throw SemanticError(
+                        param->loc(),
+                        "Record parameter must be a variable name.");
+            }
+            var_types_[var->name()] = Type{ TypeKind::NUMERIC };
+        }
+
+        // Validate all fields are ASSUME ops
         for (const auto& field : record.fields()) {
             auto assume = field->as_op();
             if (!assume || assume->op() != Op::ASSUME) {
@@ -162,13 +176,39 @@ class SemanticAnalyzerImpl {
         }
         var_types_ = std::move(saved_vars);
 
-        // TODO: support params
-        if (!record.params().empty()) {
+        return Type{ TypeKind::RECORD, &record };
+    }
+
+    Type analyze(const ASTCall& call)
+    {
+        // Target must resolve to a record type
+        auto target_type = analyzeNode(call.target());
+        if (target_type.kind != TypeKind::RECORD) {
             throw SemanticError(
-                    record.loc(), "Record params not yet supported!");
+                    call.target()->loc(), "Call target must be a record type.");
         }
 
-        return Type{ TypeKind::RECORD, &record };
+        const auto* record = target_type.type_def->as_record();
+        if (!record) {
+            throw SemanticError(
+                    call.target()->loc(), "Call target must be a record type.");
+        }
+
+        // Validate argument count matches parameter count
+        if (call.args().size() != record->params().size()) {
+            throw SemanticError(
+                    call.loc(),
+                    "Expected " + std::to_string(record->params().size())
+                            + " arguments but got "
+                            + std::to_string(call.args().size()) + ".");
+        }
+
+        // Validate each argument is a numeric expression
+        for (const auto& arg : call.args()) {
+            expectNumeric(analyzeNode(arg));
+        }
+
+        return Type{ TypeKind::RECORD, target_type.type_def };
     }
 
     Type analyze(const ASTOp& op)
@@ -251,6 +291,7 @@ class SemanticAnalyzerImpl {
 
     Type analyzeMember(const ASTOp& op)
     {
+        auto saved_vars = var_types_;
         // Check that the LHS is a consumed record
         auto lhs_type = analyzeNode(op.args()[0]);
         if (lhs_type.kind != TypeKind::CONSUMED_RECORD) {
@@ -260,18 +301,30 @@ class SemanticAnalyzerImpl {
         }
 
         // Check that the RHS is a valid field name return the consumed type
-        const auto* record     = lhs_type.type_def->as_record();
+        auto* record           = lhs_type.type_def->as_record();
         const auto& field_name = someVar(op.args()[1])->name();
+
+        // Add the record params to scope
+        for (const auto& param : record->params()) {
+            var_types_[param->as_var()->name()] = Type{ TypeKind::NUMERIC };
+        }
+
+        // Find the field
+        std::optional<Type> found_type;
         for (const auto& field : record->fields()) {
             auto assume = field->as_op();
             auto& name  = assume->args()[0]->as_var()->name();
             if (name == field_name) {
-                return assumedType(analyzeNode(assume->args()[1]));
+                found_type = assumedType(analyzeNode(assume->args()[1]));
             }
         }
-        throw SemanticError(
-                op.args()[1]->loc(),
-                "Field '" + field_name + "' not a valid record field.");
+        if (!found_type) {
+            throw SemanticError(
+                    op.args()[1]->loc(),
+                    "Field '" + field_name + "' not a valid record field.");
+        }
+        var_types_ = std::move(saved_vars);
+        return *found_type;
     }
 };
 
