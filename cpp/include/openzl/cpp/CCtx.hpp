@@ -105,7 +105,9 @@ class CCtx {
      */
     std::pair<
             poly::string_view,
-            std::map<size_t, std::pair<poly::string_view, poly::string_view>>>
+            std::map<
+                    std::string,
+                    std::pair<poly::string_view, poly::string_view>>>
     getLatestTrace();
 
    protected:
