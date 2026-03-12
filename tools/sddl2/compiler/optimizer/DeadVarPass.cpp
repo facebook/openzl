@@ -73,7 +73,9 @@ class DeadVarImpl {
                 return;
             }
             case ConvertedNodeType::WHEN: {
-                // TODO: implement
+                auto when = node->as_when();
+                recordLastRefs(when->condition());
+                recordLastRefs(when->body());
                 return;
             }
         }
@@ -111,8 +113,7 @@ class DeadVarImpl {
             case ConvertedNodeType::OP:
                 return optimizeOp(node->as_op());
             case ConvertedNodeType::WHEN:
-                // TODO: implement
-                return node;
+                return optimizeWhen(node->as_when());
             default:
                 throw InvariantViolation("Unsupported AST node type.");
         }
@@ -177,6 +178,13 @@ class DeadVarImpl {
 
         // Other ops
         return Codegen(op->loc()).op(op->op(), optimizeVec(op->args()));
+    }
+
+    ASTPtr optimizeWhen(const ASTWhen* when)
+    {
+        return Codegen(when->loc())
+                .when(optimizeNode(when->condition()),
+                      optimizeVec(when->body()));
     }
 
     // Maps variable name → the last time it is referenced. Variables not in

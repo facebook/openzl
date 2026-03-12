@@ -26,7 +26,12 @@ class ConstFoldImpl {
         ASTVec result;
         result.reserve(ast.size());
         for (const auto& node : ast) {
-            result.push_back(optimizeNode(node));
+            if (auto when = node->as_when()) {
+                auto optimized = optimizeWhen(*when);
+                result.insert(result.end(), optimized.begin(), optimized.end());
+            } else {
+                result.push_back(optimizeNode(node));
+            }
         }
         return result;
     };
@@ -50,8 +55,6 @@ class ConstFoldImpl {
             case ConvertedNodeType::OP:
                 return optimizeOp(*node->as_op());
             case ConvertedNodeType::WHEN:
-                // TODO: implement
-                return node;
             default:
                 throw InvariantViolation("Unsupported AST node type.");
         }
@@ -93,6 +96,23 @@ class ConstFoldImpl {
         const_vars_       = std::move(saved_vars);
         return Codegen(record.loc())
                 .record(record.params(), std::move(new_fields));
+    }
+
+    ASTVec optimizeWhen(const ASTWhen& when)
+    {
+        auto optimized_cond = optimizeNode(when.condition());
+        auto optimized_body = optimizeVec(when.body());
+
+        if (auto* cond_num = optimized_cond->as_num()) {
+            if (cond_num->val() == 0) {
+                return ASTVec{};
+            }
+            return optimized_body;
+        }
+
+        return { Codegen(when.loc())
+                         .when(std::move(optimized_cond),
+                               std::move(optimized_body)) };
     }
 
     ASTPtr optimizeOp(const ASTOp& op)
