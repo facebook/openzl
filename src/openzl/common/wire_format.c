@@ -56,3 +56,13 @@ unsigned ZL_getDefaultEncodingVersion(void)
 {
     return ZL_MAX_FORMAT_VERSION;
 }
+
+int ZL_StandardTransformID_numBits(unsigned formatVersion)
+{
+    if (formatVersion < 24) {
+        return ZL_nextPow2(64);
+    } else {
+        ZL_ASSERT_EQ(ZL_StandardTransformID_end, 128);
+        return ZL_nextPow2(ZL_StandardTransformID_end);
+    }
+}

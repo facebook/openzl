@@ -59,6 +59,7 @@ enum class OpenZLComponentID {
     TokenizeString,
     QuantizeOffsets,
     QuantizeLengths,
+    Partition,
     Store,
     StoreString,
     Fse,
@@ -121,6 +122,7 @@ std::unique_ptr<OpenZLComponent> makeTokenizeNumericComponent();
 std::unique_ptr<OpenZLComponent> makeTokenizeStringComponent();
 std::unique_ptr<OpenZLComponent> makeQuantizeOffsetsComponent();
 std::unique_ptr<OpenZLComponent> makeQuantizeLengthsComponent();
+std::unique_ptr<OpenZLComponent> makePartitionComponent();
 std::unique_ptr<OpenZLComponent> makeStoreComponent();
 std::unique_ptr<OpenZLComponent> makeStoreStringComponent();
 std::unique_ptr<OpenZLComponent> makeFseComponent();
@@ -213,6 +215,8 @@ inline std::unique_ptr<OpenZLComponent> makeOpenZLComponent(
             return components::makeQuantizeOffsetsComponent();
         case OpenZLComponentID::QuantizeLengths:
             return components::makeQuantizeLengthsComponent();
+        case OpenZLComponentID::Partition:
+            return components::makePartitionComponent();
         case OpenZLComponentID::Store:
             return components::makeStoreComponent();
         case OpenZLComponentID::StoreString:
