@@ -22,7 +22,9 @@ class CompressionTraceHooks : public openzl::CompressIntrospectionHooks {
 
     std::pair<
             poly::string_view,
-            std::map<size_t, std::pair<poly::string_view, poly::string_view>>>
+            std::map<
+                    std::string,
+                    std::pair<poly::string_view, poly::string_view>>>
     getLatestTrace();
 
     // ***************************************************
@@ -108,10 +110,11 @@ class CompressionTraceHooks : public openzl::CompressIntrospectionHooks {
 
    private:
     std::stringstream outStream_; // output stream to write to
-    std::map<size_t, std::pair<std::string, std::string>>
-            latestStreamdumpCache_; // cache for latest streamdumps. Key is the
-                                    // stream ID, value is a pair of strings
-                                    // (content, string lengths (or ""))
+    std::vector<std::vector<Tracer::StreamdumpEntry>>
+            latestStreamdumpCache_; // cache for latest streamdumps. Key
+                                    // is the stream ID, value is a pair
+                                    // of strings (content, string
+                                    // lengths (or ""))
     std::string latestTraceCache_;  // cache for latest trace
 
     std::unique_ptr<Tracer>

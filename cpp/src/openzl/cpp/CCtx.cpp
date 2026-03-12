@@ -166,7 +166,7 @@ void CCtx::writeTraces(bool enabled)
 
 std::pair<
         poly::string_view,
-        std::map<size_t, std::pair<poly::string_view, poly::string_view>>>
+        std::map<std::string, std::pair<poly::string_view, poly::string_view>>>
 CCtx::getLatestTrace()
 {
     if (!visHooks_) {

@@ -746,17 +746,15 @@ size_t OpenZLCompressor::compress(
         }
         if (traceStreamsDir_.has_value()) {
             fs::create_directories(*traceStreamsDir_);
-            for (const auto& [index, data] : streams) {
+            for (const auto& [id, data] : streams) {
                 {
                     tools::io::OutputFile out(
-                            fs::path(*traceStreamsDir_)
-                            / (std::to_string(index) + ".sdd"));
+                            fs::path(*traceStreamsDir_) / (id + ".sdd"));
                     out.write(data.first);
                 }
                 if (!data.second.empty()) {
                     tools::io::OutputFile out(
-                            fs::path(*traceStreamsDir_)
-                            / (std::to_string(index) + ".sdlens"));
+                            fs::path(*traceStreamsDir_) / (id + ".sdlens"));
                     out.write(data.first);
                 }
             }

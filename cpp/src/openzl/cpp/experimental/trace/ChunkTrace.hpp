@@ -114,6 +114,8 @@ class ChunkTrace {
         ZL_Report failureReport;
     };
 
+    std::map<size_t, std::pair<std::string, std::string>>&& getStreamdump();
+
    private:
     void printStreamMetadata();
     void printCodecMetadata();
@@ -123,10 +125,12 @@ class ChunkTrace {
     size_t compressedSize_{}; // compressed size for this specific chunk
     size_t currCodecNum_ = 0;
     std::map<ZL_DataID, Stream, ZL_DataIDCustomComparator> streamInfo_;
+    std::map<size_t, std::pair<std::string, std::string>> streamdump_;
     std::vector<Codec> codecInfo_;
     std::vector<Graph> graphInfo_;
     bool currEncompassingGraph_ = false; // if codecs are running within a graph
     std::optional<ConversionError> maybeConversionError_ = std::nullopt;
+    void streamdump(const ZL_Output* createdStream);
 };
 
 } // namespace openzl::visualizer

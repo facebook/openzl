@@ -16,9 +16,15 @@ class Tracer {
    public:
     explicit Tracer(const ZL_CCtx* const cctx) : cctx_(cctx) {}
 
+    struct StreamdumpEntry {
+        size_t streamId;
+        std::string content;
+        std::string strLens;
+    };
+
     struct TraceResult {
         std::string trace;
-        std::map<size_t, std::pair<std::string, std::string>> streamdump;
+        std::vector<std::vector<StreamdumpEntry>> streamdump;
     };
 
     TraceResult extractTrace();
@@ -103,8 +109,6 @@ class Tracer {
    private:
     void printStreamMetadata();
     void printCodecMetadata();
-
-    void streamdump(const ZL_Output* stream);
 
     ZL_Report serializeStreamdumpToCbor(
             A1C_Arena* a1c_arena,

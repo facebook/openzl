@@ -18,5 +18,6 @@ cpp_unittest(
     labels = cross_platform_labels(),
     deps = [
         "..:openzl_cpp",
+        "../../tests/datagen:datagen",
     ],
 )
