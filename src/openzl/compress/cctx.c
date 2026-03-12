@@ -144,7 +144,7 @@ struct ZL_CCtx_s {
     Arena* sessionArena; // Entire compression lifetime
     const ZL_TypedRef** inputs;
     unsigned nbInputs;
-    int segmenterStarted;
+    int numSegments;         // number of segments in the current frame
     void* dstBuffer;         // where to write chunks
     size_t dstCapacity;      // capacity of dstBuffer
     size_t currentFrameSize; // already written into dstBuffer
@@ -913,15 +913,6 @@ static ZL_Report CCTX_runSegmenter(
         ZL_DLOG(SEQ, "RTStreamID: %u", rtsids[n].rtsid);
     }
 
-    // Check version
-    ZL_ERR_IF_LT(
-            cctx->appliedGCParams.formatVersion,
-            ZL_CHUNK_VERSION_MIN,
-            formatVersion_unsupported,
-            "Segmenter is supported starting wire format version %u > %u (requested)",
-            ZL_CHUNK_VERSION_MIN,
-            cctx->appliedGCParams.formatVersion);
-
     // Check Input Types
     ALLOC_ARENA_MALLOC_CHECKED(ZL_Type, inTypes, nbInputs, cctx->sessionArena);
     ZL_ERR_IF_NULL(inTypes, allocation);
@@ -985,7 +976,6 @@ static ZL_Report CCTX_runSegmenter(
         segDesc = migd;
     }
 
-    cctx->segmenterStarted           = 1;
     ZL_Segmenter* const segmenterCtx = SEGM_init(
             segDesc,
             nbInputs,
@@ -1333,7 +1323,7 @@ ZL_Report CCTX_runSuccessor(
     ZL_DLOG(BLOCK, "CCTX_runSuccessor (graphid=%u)", graphid.gid);
     int const isSegmentable =
             (rtInputs[0].rtsid == 0 && nbInputs == cctx->nbInputs
-             && !cctx->segmenterStarted);
+             && cctx->numSegments == 0);
 
     // Segmenter
     if (CGRAPH_graphType(cctx->cgraph, graphid) == gt_segmenter) {
@@ -1397,8 +1387,8 @@ CCTX_startCompression(ZL_CCtx* cctx, const ZL_Data* inputs[], size_t nbInputs)
     cctx->inputs = ZL_codemodDatasAsInputs(inputs);
     ZL_ERR_IF_LT(nbInputs, 1, successor_invalidNumInputs);
     ZL_ASSERT_LT(nbInputs, INT_MAX);
-    cctx->nbInputs         = (unsigned)nbInputs;
-    cctx->segmenterStarted = 0;
+    cctx->nbInputs    = (unsigned)nbInputs;
+    cctx->numSegments = 0;
     ALLOC_ARENA_MALLOC_CHECKED(
             RTStreamID, rtsids, nbInputs, cctx->sessionArena);
     for (size_t n = 0; n < nbInputs; n++) {
@@ -1426,7 +1416,7 @@ CCTX_startCompression(ZL_CCtx* cctx, const ZL_Data* inputs[], size_t nbInputs)
             nbInputs,
             /* depth */ 1));
 
-    if (cctx->segmenterStarted == 0) {
+    if (cctx->numSegments == 0) {
         /* no segmenter -> only one chunk */
         ZL_ERR_IF_ERR(CCTX_flushChunk(cctx, inputs, nbInputs));
     }
@@ -1724,6 +1714,7 @@ CCTX_flushChunk(ZL_CCtx* cctx, const ZL_Data* inputs[], size_t nbInputs)
 
     // Update dest buffer info
     cctx->currentFrameSize = frameSize;
+    ++cctx->numSegments;
 
     return ZL_returnValue(frameSize - startFrameSize);
 }
