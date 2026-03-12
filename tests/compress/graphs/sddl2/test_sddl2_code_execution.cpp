@@ -374,6 +374,119 @@ TEST_F(SDDL2CodeExecutionTest, AssumeRecordWithGlobalVariableReference)
     expect_success(prog, input, expected_sizes);
 }
 
+// ============================================================================
+// Parameterized Records
+// ============================================================================
+
+TEST_F(SDDL2CodeExecutionTest, ConsumeParameterizedRecord)
+{
+    const std::vector<size_t> expected_sizes = { 40 };
+    const auto input = gen<uint8_t>(sum(expected_sizes));
+
+    const auto prog = R"(
+        Record Entry(N) = {
+            items: Int32LE[N]
+        }
+        : Entry(10)
+    )";
+
+    expect_success(prog, input, expected_sizes);
+}
+
+TEST_F(SDDL2CodeExecutionTest, ConsumeParameterizedRecordMultipleParams)
+{
+    const std::vector<size_t> expected_sizes = { 22 };
+    const auto input = gen<uint8_t>(sum(expected_sizes));
+
+    const auto prog = R"(
+        Record Foo(A, B) = {
+            x: Int32LE[A],
+            y: Int16LE[B]
+        }
+        ParamFoo = Foo(3, 5)
+        : ParamFoo
+    )";
+
+    expect_success(prog, input, expected_sizes);
+}
+
+TEST_F(SDDL2CodeExecutionTest, ConsumeParameterizedRecordMultipleCalls)
+{
+    const std::vector<size_t> expected_sizes = { 8, 12 };
+    const auto input = gen<uint8_t>(sum(expected_sizes));
+
+    const auto prog = R"(
+        Record Entry(N) = {
+            items: Int32LE[N]
+        }
+        : Entry(2)
+        : Entry(3)
+    )";
+
+    expect_success(prog, input, expected_sizes);
+}
+
+TEST_F(SDDL2CodeExecutionTest, ConsumeArrayOfParameterizedRecord)
+{
+    const std::vector<size_t> expected_sizes = { 60 };
+    const auto input = gen<uint8_t>(sum(expected_sizes));
+
+    const auto prog = R"(
+        Record Entry(N) = {
+            items: Int32LE[N]
+        }
+        : Entry(5)[3]
+    )";
+
+    expect_success(prog, input, expected_sizes);
+}
+
+TEST_F(SDDL2CodeExecutionTest, AssumeParameterizedRecord)
+{
+    const std::vector<size_t> expected_sizes = { 1, 21 };
+    std::vector<uint8_t> input(22, 0);
+    input[0]  = 5; // n = 5
+    input[21] = 3; // tag = 3
+
+    const auto prog = R"(
+        Record Entry(N) = {
+            items: Int32LE[N],
+            tag: Byte
+        }
+        n: Byte
+        entry: Entry(n)
+        expect entry.tag == 3
+    )";
+
+    expect_success(prog, input, expected_sizes);
+}
+
+TEST_F(SDDL2CodeExecutionTest, AssumeNestedParameterizedRecord)
+{
+    const std::vector<size_t> expected_sizes = { 1, 10 };
+    std::vector<uint8_t> input(11, 0);
+    input[0]  = 2; // n = 2
+    input[9]  = 3; // foo.bar.tag = 3
+    input[10] = 5; // foo.tag = 5
+
+    const auto prog = R"(
+        Record Bar(N) = {
+            items: Int32LE[N],
+            tag: Byte
+        }
+        Record Foo(M) = {
+            bar: Bar(M),
+            tag: Byte
+        }
+        N: Byte
+        foo: Foo(N)
+        expect foo.bar.tag == 3
+        expect foo.tag == 5
+        expect N == 2
+    )";
+
+    expect_success(prog, input, expected_sizes);
+}
 } // namespace testing
 } // namespace sddl2
 } // namespace openzl

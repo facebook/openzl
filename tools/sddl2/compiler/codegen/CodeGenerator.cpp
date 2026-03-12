@@ -184,6 +184,19 @@ class CodeGeneratorImpl {
         }
     }
 
+    AssemblyOutput bindParams(const ASTRecord* record, const ASTVec& args)
+    {
+        AssemblyOutput output;
+        for (size_t i = 0; i < record->params().size(); ++i) {
+            const auto& param_name = record->params()[i]->as_var()->name();
+            auto reg               = registers_.assign(param_name);
+            output += generateValue(args[i]);
+            output += "push.i64 " + std::to_string(reg);
+            output += "var.store";
+        }
+        return output;
+    }
+
     TypeResult generateType(const ASTPtr& type)
     {
         AssemblyOutput output;
@@ -243,8 +256,24 @@ class CodeGeneratorImpl {
                 output += "type.fixed_array";
                 return { std::move(output), type };
             }
-            case ConvertedNodeType::CALL:
-                throw CodegenError(type->loc(), "Call not yet implemented.");
+            case ConvertedNodeType::CALL: {
+                auto call               = type->as_call();
+                const auto& target_name = call->target()->as_var()->name();
+                auto target             = type_aliases_.at(target_name);
+
+                auto saved_regs = registers_;
+                // Bind params to registers
+                output += bindParams(target->as_record(), call->args());
+
+                // Generate the record body
+                auto [record_asm, _] = generateType(target);
+                output += std::move(record_asm);
+
+                // Restore the registers
+                registers_ = std::move(saved_regs);
+
+                return { std::move(output), type };
+            }
             case ConvertedNodeType::NUM:
             case ConvertedNodeType::OP:
             default:
@@ -278,23 +307,27 @@ class CodeGeneratorImpl {
         // Flatten the member chain
         const auto& [root, path] = flattenMember(op);
 
-        // Get the type info
-        auto type = assumed_types_[root.name()];
-
         // Load the base offset
         output += "push.i64 " + std::to_string(registers_.get(root.name()));
         output += "var.load";
 
+        auto type       = assumed_types_[root.name()];
+        auto saved_regs = registers_;
+
         // Walk through the path, accumulating offsets
         for (const auto& name : path) {
             auto curr_record = type->as_record();
+            if (const auto call = type->as_call()) {
+                auto const target_name = call->target()->as_var()->name();
+                curr_record = type_aliases_.at(target_name)->as_record();
+                output += bindParams(curr_record, call->args());
+            }
             for (const auto& field : curr_record->fields()) {
                 auto assume      = field->as_op();
                 auto& field_name = assume->args()[0]->as_var()->name();
                 auto [field_asm, field_type] = generateType(assume->args()[1]);
                 if (name == field_name) {
                     type = field_type;
-                    log_(0) << "  Found " << name << std::endl;
                     break;
                 }
                 output += std::move(field_asm);
@@ -302,6 +335,7 @@ class CodeGeneratorImpl {
                 output += "math.add";
             }
         }
+        registers_ = std::move(saved_regs);
 
         // Load the final value if it's a builtin type
         if (auto builtin = type->as_builtin_field()) {
@@ -315,9 +349,18 @@ class CodeGeneratorImpl {
 
     AssemblyOutput generateAssign(const ASTOp& op)
     {
-        auto& var             = *op.args()[0]->as_var();
-        auto [type_asm, type] = generateType(op.args()[1]);
+        auto& var = *op.args()[0]->as_var();
+        auto& rhs = op.args()[1];
 
+        // If the RHS is a parameterized record, do not generate the code
+        if (auto record = rhs->as_record()) {
+            if (!record->params().empty()) {
+                type_aliases_[var.name()] = rhs;
+                return AssemblyOutput{};
+            }
+        }
+
+        auto [type_asm, type]     = generateType(rhs);
         type_aliases_[var.name()] = type;
 
         AssemblyOutput output;
@@ -346,7 +389,7 @@ class CodeGeneratorImpl {
             output += builtin_field_to_load.at(builtin->kw());
             output +=
                     "push.i64 " + std::to_string(registers_.assign(var.name()));
-        } else if (type->as_record()) {
+        } else if (type->as_record() || type->as_call()) {
             // Otherwise, save the current position and type information
             output +=
                     "push.i64 " + std::to_string(registers_.assign(var.name()));
