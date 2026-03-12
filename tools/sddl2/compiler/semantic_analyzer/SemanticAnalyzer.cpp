@@ -175,9 +175,7 @@ class SemanticAnalyzerImpl {
     {
         switch (op.op()) {
             case Op::ASSIGN:
-                var_types_[someVar(op.args()[0])->name()] =
-                        analyzeNode(op.args()[1]);
-                return Type{ TypeKind::NONE };
+                return analyzeAssign(op);
             case Op::ASSUME:
                 return analyzeAssume(op);
             case Op::MEMBER:
@@ -221,6 +219,18 @@ class SemanticAnalyzerImpl {
         }
     }
 
+    Type analyzeAssign(const ASTOp& op)
+    {
+        auto var = someVar(op.args()[0]);
+        if (var_types_.count(var->name()) > 0) {
+            throw SemanticError(
+                    var->loc(),
+                    "Variable '" + var->name() + "' already defined.");
+        }
+        var_types_[var->name()] = analyzeNode(op.args()[1]);
+        return Type{ TypeKind::NONE };
+    }
+
     Type analyzeAssume(const ASTOp& op)
     {
         // Check that the RHS is a valid field type
@@ -228,7 +238,13 @@ class SemanticAnalyzerImpl {
         expectFieldType(field_type);
 
         // Assign the var to the assumed type
-        var_types_[someVar(op.args()[0])->name()] = assumedType(field_type);
+        auto var = someVar(op.args()[0]);
+        if (var_types_.count(var->name()) > 0) {
+            throw SemanticError(
+                    var->loc(),
+                    "Variable '" + var->name() + "' already defined.");
+        }
+        var_types_[var->name()] = assumedType(field_type);
 
         return Type{ TypeKind::NONE };
     }
