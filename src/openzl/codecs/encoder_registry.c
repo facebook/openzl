@@ -23,6 +23,7 @@
 #include "openzl/codecs/lz4/encode_lz4_binding.h"
 #include "openzl/codecs/merge_sorted/encode_merge_sorted_binding.h"
 #include "openzl/codecs/parse_int/encode_parse_int_binding.h"
+#include "openzl/codecs/partition/encode_partition_binding.h"
 #include "openzl/codecs/prefix/encode_prefix_binding.h"
 #include "openzl/codecs/quantize/encode_quantize_binding.h"
 #include "openzl/codecs/range_pack/encode_range_pack_binding.h"
@@ -110,6 +111,7 @@ const CNode ER_standardNodes[STANDARD_ENCODERS_NB] = {
     REGISTER_TRANSFORM(ZL_StandardNodeID_quantize_lengths, ZL_StandardTransformID_quantize_lengths, 3, EI_QUANTIZE_LENGTHS),
     REGISTER_TRANSFORM(ZL_StandardNodeID_bitsplit_top8, ZL_StandardTransformID_bitSplit, 24, EI_BITSPLIT_TOP8),
     REGISTER_TRANSFORM(ZL_StandardNodeID_bitsplit_fp, ZL_StandardTransformID_bitSplit, 24, EI_BITSPLIT_FP),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_partition, ZL_StandardTransformID_partition, 24, EI_PARTITION),
 
     // Private Nodes
     REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_set_string_lens,           ZL_StandardTransformID_convert_serial_string, 10, EI_SETSTRINGLENS),

@@ -23,6 +23,7 @@
 #include "openzl/cpp/codecs/Lz4.hpp"              // IWYU pragma: export
 #include "openzl/cpp/codecs/MergeSorted.hpp"      // IWYU pragma: export
 #include "openzl/cpp/codecs/ParseInt.hpp"         // IWYU pragma: export
+#include "openzl/cpp/codecs/Partition.hpp"        // IWYU pragma: export
 #include "openzl/cpp/codecs/Prefix.hpp"           // IWYU pragma: export
 #include "openzl/cpp/codecs/Quantize.hpp"         // IWYU pragma: export
 #include "openzl/cpp/codecs/RangePack.hpp"        // IWYU pragma: export
