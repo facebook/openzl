@@ -1,0 +1,105 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+name: Release Binaries
+
+# This workflow builds pre-compiled binaries and attaches them to github releases
+# It is triggered by a release event, this builds and uploads binaries to that release
+
+# Usage:
+# 1. Go to Github -> Releases -> Create a new release
+# 2. Create a new tag (e.g., v1.0.0) and publish the release
+# 3. This workflow automatically runs and attaches binaries
+
+# You can also manually trigger the workflow via workflow_dispatch for testing
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: write  # Required to upload assets to GitHub Releases
+
+jobs:
+  # =============================================================================#
+  # WINDOWS X64 BINARY
+  # =============================================================================#
+  build-windows-x64:
+    name: Windows X64 CLI Binary
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup MSYS2 with MinGW-w64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: make diffutils cmake git mingw-w64-x86_64-gcc
+          update: true
+
+      - name: Show build environment
+        run: |
+          echo "=== Build environment ==="
+          gcc --version
+          g++ --version
+          make --version
+          echo "=== Build environment verified ==="
+
+
+      - name: Build dependencies
+        run: |
+          echo "=== Building dependencies ==="
+          make -j builddeps
+          echo "=== Dependencies built ==="
+
+
+      - name: Build zli CLI (statically linked)
+        run: |
+          echo "=== Building zli CLI executable ==="
+          LDFLAGS="-static" make -j zli BUILD_TYPE=OPT V=1
+          echo "=== zli CLI executable build completed ==="
+
+
+      - name: Prepare release artifact
+        run: |
+          echo "=== Preparing release artifact ==="
+          mkdir release
+          cp zli.exe release/openzl-cli-windows-x64.exe
+          echo "=== Release artifact prepared ==="
+          ls -la release
+
+      - name: Verify release artifact
+        run: |
+          echo "=== Verifying binary runs standalone ==="
+          ./release/openzl-cli-windows-x64.exe --version
+          echo "=== Checking for non-system DLL dependencies ==="
+          objdump -p release/openzl-cli-windows-x64.exe | grep "DLL Name" || true
+          echo "=== Checking binary size ==="
+          ls -lh release/openzl-cli-windows-x64.exe
+          echo "=== Release artifact verified ==="
+
+
+      - name: Upload binary to Github Releases
+        if: github.event_name == 'release'
+        shell: bash
+        run: gh release upload "${{ github.event.release.tag_name }}" release/openzl-cli-windows-x64.exe --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Upload artifact (for manual workflow runs)
+        uses: actions/upload-artifact@v4
+        with:
+          name: openzl-cli-windows-x64
+          path: release\openzl-cli-windows-x64.exe
+          retention-days: 30
+
+# =============================================================================#
+# Future platform support will go here
+# =============================================================================#s
