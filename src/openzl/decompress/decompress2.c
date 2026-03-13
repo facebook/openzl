@@ -82,7 +82,7 @@ struct ZL_DCtx_s {
     size_t currentStreamNb;
     size_t streamEndPos;
     bool preserveStreams;
-    Arena* decompressArena; ///< Lives for the lifetime of the decompression
+    Arena* chunkArena; ///< Lives for the lifetime of the chunk decompression
     Arena* workspaceArena;
     Arena* streamArena;
     ZL_OperationContext opCtx;
@@ -103,8 +103,8 @@ ZL_DCtx* ZL_DCtx_create(void)
     ZL_OC_init(&dctx->opCtx);
     ZL_OC_startOperation(&dctx->opCtx, ZL_Operation_decompress);
 
-    dctx->decompressArena = ALLOC_StackArena_create();
-    if (!dctx->decompressArena) {
+    dctx->chunkArena = ALLOC_StackArena_create();
+    if (!dctx->chunkArena) {
         ZL_DCtx_free(dctx);
         return NULL;
     }
@@ -181,7 +181,7 @@ void ZL_DCtx_free(ZL_DCtx* dctx)
     DFH_destroy(&dctx->dfh);
     ALLOC_Arena_freeArena(dctx->workspaceArena);
     ALLOC_Arena_freeArena(dctx->streamArena);
-    ALLOC_Arena_freeArena(dctx->decompressArena);
+    ALLOC_Arena_freeArena(dctx->chunkArena);
     ZL_OC_destroy(&dctx->opCtx);
     ZL_free(dctx);
 }
@@ -370,7 +370,7 @@ static ZL_Report ZL_AppendToOutputOptimization_register(
             break;
     }
     ZL_AppendToOutputOptimization* append = ALLOC_Arena_calloc(
-            dctx->decompressArena, sizeof(ZL_AppendToOutputOptimization));
+            dctx->chunkArena, sizeof(ZL_AppendToOutputOptimization));
     ZL_ERR_IF_NULL(append, allocation);
     append->inputInfos   = inputInfos;
     append->nbInputs     = nbInputs;
@@ -1447,12 +1447,12 @@ static void cleanChunkBuffers(ZL_DCtx* dctx)
     DCTX_freeStreams(dctx);
     ALLOC_Arena_freeAll(dctx->streamArena);
     ALLOC_Arena_freeAll(dctx->workspaceArena);
+    ALLOC_Arena_freeAll(dctx->chunkArena);
 }
 
 static void cleanAllBuffers(ZL_DCtx* dctx)
 {
     cleanChunkBuffers(dctx);
-    ALLOC_Arena_freeAll(dctx->decompressArena);
 }
 
 // -------------------------------------
