@@ -12,6 +12,10 @@
 #endif
 #include <zstd.h>
 
+// Approximately log2 of the factor for the allowed memory usage for the most
+// expensive zstd parameter configuration
+#define ZSTD_MEMORY_USAGE_CAP_LOG_FACTOR 3
+
 /// Determines if we should cut blocks for each element.
 /// E.g. if the input is transposed.
 static bool EI_zstd_shouldCutBlocks(ZL_Input const* in)
@@ -23,12 +27,31 @@ static bool EI_zstd_shouldCutBlocks(ZL_Input const* in)
     return nbElts > 0 && eltWidth >= kMinBlockSize && nbElts <= kMaxNbElts;
 }
 
-static bool EI_zstd_parameter_valid(ZSTD_cParameter param)
+// A more restrictive bounds check on parameters for running zstd that affect
+// how much memory is used, and preventing certain parameters from being
+// overriden.
+
+static bool EI_zstd_parameter_valid(ZSTD_cParameter param, int paramValue)
 {
-    if (param == ZSTD_c_format)
+    if (param == ZSTD_c_format || param == ZSTD_c_contentSizeFlag) {
         return false;
-    if (param == ZSTD_c_contentSizeFlag)
-        return false;
+    }
+    if (param == ZSTD_c_windowLog) {
+        return paramValue
+                <= ZSTD_WINDOWLOG_MAX - ZSTD_MEMORY_USAGE_CAP_LOG_FACTOR;
+    }
+    if (param == ZSTD_c_hashLog) {
+        return paramValue
+                <= ZSTD_HASHLOG_MAX - ZSTD_MEMORY_USAGE_CAP_LOG_FACTOR;
+    }
+    if (param == ZSTD_c_chainLog) {
+        return paramValue
+                <= ZSTD_CHAINLOG_MAX - ZSTD_MEMORY_USAGE_CAP_LOG_FACTOR;
+    }
+    if (param == ZSTD_c_ldmHashLog) {
+        return paramValue
+                <= ZSTD_LDM_HASHLOG_MAX - ZSTD_MEMORY_USAGE_CAP_LOG_FACTOR;
+    }
     return true;
 }
 
@@ -107,12 +130,11 @@ EI_zstdWithCCtx(ZL_Encoder* eictx, ZSTD_CCtx* cctx, const ZL_Input* src)
         ZL_IntParam const ip        = lips.intParams[n];
         ZSTD_cParameter const param = (ZSTD_cParameter)ip.paramId;
         ZL_ERR_IF_NOT(
-                EI_zstd_parameter_valid(param),
+                EI_zstd_parameter_valid(param, ip.paramValue),
                 nodeParameter_invalid,
                 "zstd parameter %i cannot be modified");
         ZL_ERR_IF_ZSTD_ERR(ZSTD_CCtx_setParameter(cctx, param, ip.paramValue));
     }
-
     if (blockSize == srcSize) {
         size_t const cSize = ZSTD_compress2(
                 cctx,
