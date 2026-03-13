@@ -847,4 +847,48 @@ TEST(Segmenter, stringVariableLengthChunks)
     free(stringLengths);
 }
 
+/* =======   Single-chunk segmenter across all format versions   ======== */
+
+ZL_Report singleChunkSegmenterFn(ZL_Segmenter* sctx)
+{
+    assert(ZL_Segmenter_numInputs(sctx) == 1);
+    const ZL_Input* input = ZL_Segmenter_getInput(sctx, 0);
+    assert(input != NULL);
+    size_t numElts     = ZL_Input_numElts(input);
+    ZL_Report processR = ZL_Segmenter_processChunk(
+            sctx, &numElts, 1, ZL_GRAPH_COMPRESS_GENERIC, NULL);
+    EXPECT_FALSE(ZL_isError(processR));
+    return processR;
+}
+
+static ZL_SegmenterDesc const singleChunkSegmenter = {
+    .name           = "Single Chunk Segmenter",
+    .segmenterFn    = singleChunkSegmenterFn,
+    .inputTypeMasks = (const ZL_Type[]){ ZL_Type_serial },
+    .numInputs      = 1,
+};
+
+static int g_singleChunkTestVersion = 0;
+static ZL_GraphID registerSingleChunkSegmenter(
+        ZL_Compressor* compressor) noexcept
+{
+    ZL_Report const setr = ZL_Compressor_setParameter(
+            compressor, ZL_CParam_formatVersion, g_singleChunkTestVersion);
+    if (ZL_isError(setr))
+        abort();
+
+    return ZL_Compressor_registerSegmenter(compressor, &singleChunkSegmenter);
+}
+
+TEST(Segmenter, singleChunkAllVersions)
+{
+    for (int version = ZL_MIN_FORMAT_VERSION; version <= ZL_MAX_FORMAT_VERSION;
+         ++version) {
+        g_singleChunkTestVersion = version;
+        char name[64];
+        snprintf(name, sizeof(name), "single chunk segmenter v%d", version);
+        (void)roundTripGen(ZL_Type_serial, registerSingleChunkSegmenter, name);
+    }
+}
+
 } // namespace
