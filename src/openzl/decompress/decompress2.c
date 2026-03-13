@@ -99,6 +99,10 @@ ZL_DCtx* ZL_DCtx_create(void)
     if (!dctx) {
         return NULL;
     }
+
+    ZL_OC_init(&dctx->opCtx);
+    ZL_OC_startOperation(&dctx->opCtx, ZL_Operation_decompress);
+
     dctx->decompressArena = ALLOC_StackArena_create();
     if (!dctx->decompressArena) {
         ZL_DCtx_free(dctx);
@@ -114,13 +118,14 @@ ZL_DCtx* ZL_DCtx_create(void)
         ZL_DCtx_free(dctx);
         return NULL;
     }
-    if (ZL_isError(DTM_init(&dctx->dtm, ZL_CUSTOM_TRANSFORM_LIMIT))) {
+    if (ZL_isError(DTM_init(
+                &dctx->dtm,
+                ZL_GET_OPERATION_CONTEXT(dctx),
+                ZL_CUSTOM_TRANSFORM_LIMIT))) {
         ZL_DCtx_free(dctx);
         return NULL;
     }
     DFH_init(&dctx->dfh);
-    ZL_OC_init(&dctx->opCtx);
-    ZL_OC_startOperation(&dctx->opCtx, ZL_Operation_decompress);
     VECTOR_INIT(
             dctx->transformInputStreams,
             ZL_transformOutStreamsLimit(ZL_MAX_FORMAT_VERSION));

@@ -90,11 +90,15 @@ typedef struct {
     void* states[ZL_StandardTransformID_end]; /* state storage for Standard
                                                  Transforms */
     ZL_OpaquePtrRegistry opaquePtrs;
+    ZL_OperationContext* opCtx;
 } DTransforms_manager;
 
 // Constructors / destructors
 
-ZL_Report DTM_init(DTransforms_manager* dtm, uint32_t maxNbTransforms);
+ZL_Report DTM_init(
+        DTransforms_manager* dtm,
+        ZL_OperationContext* opCtx,
+        uint32_t maxNbTransforms);
 
 void DTM_destroy(DTransforms_manager* dtm);
 
