@@ -111,6 +111,9 @@ class BitSplitComponent : public OpenZLComponent {
             params.copyParams.copyParams[0].paramSize
         };
         auto sum = std::accumulate(widths.begin(), widths.end(), 0);
+        if (sum > 64) {
+            throw std::runtime_error("sum of widths is invalid");
+        }
         return sum;
     }
 
