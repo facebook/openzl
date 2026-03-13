@@ -53,12 +53,16 @@ cpp_unittest(
 )
 
 python_binary(
+    # @autodeps-skip
     name = "test_pytorch_model_compressor_bin",
     srcs = [
         "test_pytorch_model_compressor.py",
     ],
     base_module = "openzl.custom_parsers.tests",
     main_module = "openzl.custom_parsers.tests.test_pytorch_model_compressor",
+    deps = [
+        "../../py:openzl",
+    ],
 )
 
 zs_unittest(
