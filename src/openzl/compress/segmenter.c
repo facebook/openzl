@@ -266,7 +266,7 @@ ZL_Report ZL_Segmenter_processChunk(
         ZL_GraphID startingGraphID,
         const ZL_RuntimeGraphParameters* rGraphParams)
 {
-    WAYPOINT(
+    CWAYPOINT(
             on_ZL_Segmenter_processChunk_start,
             segCtx,
             numElts,
@@ -333,7 +333,7 @@ ZL_Report ZL_Segmenter_processChunk(
     }
     CCTX_cleanChunk(cctx);
 
-    WAYPOINT(on_ZL_Segmenter_processChunk_end, segCtx, r);
+    CWAYPOINT(on_ZL_Segmenter_processChunk_end, segCtx, r);
     return r;
 }
 

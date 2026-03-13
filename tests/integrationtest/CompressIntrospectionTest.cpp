@@ -97,7 +97,7 @@ TEST(CompressIntrospectionTest, IFnoHooksTHENnoop)
 // code snippet containing a waypoint
 static int func(ZL_CCtx* cctx)
 {
-    IF_WAYPOINT_ENABLED(on_codecEncode_start, cctx)
+    IF_CWAYPOINT_ENABLED(on_codecEncode_start, cctx)
     {
         return 1;
     }

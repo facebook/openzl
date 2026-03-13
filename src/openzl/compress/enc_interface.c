@@ -104,7 +104,7 @@ void ZL_Encoder_sendCodecHeader(
         size_t trhSize)
 {
     ZL_DLOG(SEQ, "ZL_Encoder_sendCodecHeader (%zu bytes)", trhSize);
-    WAYPOINT(on_ZL_Encoder_sendCodecHeader, eictx, trh, trhSize);
+    CWAYPOINT(on_ZL_Encoder_sendCodecHeader, eictx, trh, trhSize);
     ZL_ASSERT_NN(eictx);
     if (trhSize)
         ZL_ASSERT_NN(trh);
@@ -183,7 +183,7 @@ ZL_Output* ZL_Encoder_createTypedStream(
     ZL_ASSERT_NN(eic);
     ZL_Data* ret = CCTX_getNewStream(
             eic->cctx, eic->rtnodeid, outStreamIndex, eltWidth, eltsCapacity);
-    WAYPOINT(
+    CWAYPOINT(
             on_ZL_Encoder_createTypedStream,
             eic,
             outStreamIndex,
@@ -259,9 +259,9 @@ static ZL_Report ENC_runTransform_internal(
 
     // Run transform
     ZL_ASSERT_NN(trDesc->publicDesc.transform_f);
-    IF_WAYPOINT_ENABLED(on_codecEncode_start, eictx)
+    IF_CWAYPOINT_ENABLED(on_codecEncode_start, eictx)
     {
-        WAYPOINT(
+        CWAYPOINT(
                 on_codecEncode_start,
                 eictx,
                 CCTX_getCGraph(eictx->cctx),
@@ -272,13 +272,13 @@ static ZL_Report ENC_runTransform_internal(
     ZL_Report codecExecResult = (trDesc->publicDesc.transform_f(
             eictx, ZL_codemodDatasAsInputs(inStreams), nbInStreams));
     if (ZL_isError(codecExecResult)) {
-        WAYPOINT(on_codecEncode_end, eictx, NULL, 0, codecExecResult);
+        CWAYPOINT(on_codecEncode_end, eictx, NULL, 0, codecExecResult);
         ZL_RET_R_IF_ERR_COERCE(
                 codecExecResult, "transform %s failed", CT_getTrName(trDesc));
     }
     const RTGraph* rtgm       = CCTX_getRTGraph(eictx->cctx);
     const size_t nbOutStreams = RTGM_getNbOutStreams(rtgm, eictx->rtnodeid);
-    IF_WAYPOINT_ENABLED(on_codecEncode_end, eictx)
+    IF_CWAYPOINT_ENABLED(on_codecEncode_end, eictx)
     {
         DECLARE_VECTOR_CONST_POINTERS_TYPE(ZL_Data);
         VECTOR_CONST_POINTERS(ZL_Data) odata;
@@ -293,7 +293,7 @@ static ZL_Report ENC_runTransform_internal(
                     allocation,
                     "Unable to append to the waypoint odata vector");
         }
-        WAYPOINT(
+        CWAYPOINT(
                 on_codecEncode_end,
                 eictx,
                 ZL_codemodConstDatasAsOutputs(VECTOR_DATA(odata)),
@@ -365,7 +365,7 @@ ZL_Report ENC_runTransform(
 
 void* ZL_Encoder_getScratchSpace(ZL_Encoder* ei, size_t size)
 {
-    WAYPOINT(on_ZL_Encoder_getScratchSpace, ei, size);
+    CWAYPOINT(on_ZL_Encoder_getScratchSpace, ei, size);
     return ALLOC_Arena_malloc(ei->wkspArena, size);
 }
 

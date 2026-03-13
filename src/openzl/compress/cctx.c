@@ -242,8 +242,8 @@ ZL_Report ZL_CCtx_attachIntrospectionHooks(
     ZL_ERR_IF_NULL(hooks, allocation);
     ZL_OperationContext* oc = ZL_CCtx_getOperationContext(cctx);
     ZL_ASSERT_NN(oc);
-    oc->introspectionHooks    = *hooks;
-    oc->hasIntrospectionHooks = true;
+    oc->compressIntrospectionHooks = *hooks;
+    oc->hasCompressionHooks        = true;
     return ZL_returnSuccess();
 }
 
@@ -252,8 +252,10 @@ ZL_Report ZL_CCtx_detachAllIntrospectionHooks(ZL_CCtx* cctx)
     ZL_ASSERT_NN(cctx);
     ZL_OperationContext* oc = ZL_CCtx_getOperationContext(cctx);
     ZL_ASSERT_NN(oc);
-    ZL_zeroes(&oc->introspectionHooks, sizeof(oc->introspectionHooks));
-    oc->hasIntrospectionHooks = false;
+    ZL_zeroes(
+            &oc->compressIntrospectionHooks,
+            sizeof(oc->compressIntrospectionHooks));
+    oc->hasCompressionHooks = false;
     return ZL_returnSuccess();
 }
 
@@ -640,7 +642,7 @@ static ZL_Report CCTX_convertInputs(
                 input,
                 inType,
                 portTypeMask);
-        WAYPOINT(
+        CWAYPOINT(
                 on_cctx_convertOneInput,
                 cctx,
                 input,
@@ -788,7 +790,7 @@ static ZL_Report CCTX_runGraph_internal(
     (void)graphid; // required only for waypoints
     // All streams created after this index will be created by the dynamic
     // graph
-    WAYPOINT(
+    CWAYPOINT(
             on_migraphEncode_start,
             gctx,
             CCTX_getCGraph(cctx),
@@ -797,10 +799,11 @@ static ZL_Report CCTX_runGraph_internal(
             nbInputs);
     ZL_Report const graphExecutionReport =
             GCTX_runMultiInputGraph(gctx, inputs, nbInputs);
-    IF_WAYPOINT_ENABLED(on_migraphEncode_end, gctx)
+    IF_CWAYPOINT_ENABLED(on_migraphEncode_end, gctx)
     {
         if (ZL_isError(graphExecutionReport)) {
-            WAYPOINT(on_migraphEncode_end, gctx, NULL, 0, graphExecutionReport);
+            CWAYPOINT(
+                    on_migraphEncode_end, gctx, NULL, 0, graphExecutionReport);
         } else {
             size_t nbSuccs = VECTOR_SIZE(gctx->dstGraphDescs);
             DECLARE_VECTOR_TYPE(ZL_GraphID);
@@ -814,7 +817,7 @@ static ZL_Report CCTX_runGraph_internal(
                         allocation,
                         "Unable to append to the waypoint succGids vector");
             }
-            WAYPOINT(
+            CWAYPOINT(
                     on_migraphEncode_end,
                     gctx,
                     VECTOR_DATA(succGids),
@@ -983,9 +986,9 @@ static ZL_Report CCTX_runSegmenter(
             &cctx->rtgraph,
             cctx->sessionArena,
             cctx->chunkArena);
-    WAYPOINT(on_segmenterEncode_start, segmenterCtx, /* placeholder */ NULL);
+    CWAYPOINT(on_segmenterEncode_start, segmenterCtx, /* placeholder */ NULL);
     const ZL_Report r = SEGM_runSegmenter(segmenterCtx);
-    WAYPOINT(on_segmenterEncode_end, segmenterCtx, r);
+    CWAYPOINT(on_segmenterEncode_end, segmenterCtx, r);
 
     // Maybe clean up on-the-fly materialized params
     MPM_dematerializeOneshot(cctx->sessionArena, &segMatRes);
