@@ -16,6 +16,7 @@
 // could be any (non trivial) arbitrary value
 #define ZL_SPLITN_SEGMENTSIZES_PID 323
 #define ZL_SPLITN_PARSINGF_PID 436
+#define ZL_SPLITN_PARSING_OPAQUE_PTR_PID 437
 
 struct ZL_SplitState_s {
     ZL_Encoder* eictx;
@@ -28,16 +29,31 @@ typedef struct {
 
 ZL_RESULT_DECLARE_TYPE(ZL_SplitInstructions);
 
-static SplitN_ExtParser_s const* getExtParser(ZL_Encoder const* eictx)
+/**
+ * Gets the external parser by checking through the local parameters for a
+ * matching refParam. The reason why we cannot directly use
+ * ZL_Encoder_getLocalCopyParam is function pointers are not serializable,
+ * therefore we only check for refParams to ensure a deserialized compressor
+ * cannot contain this parameter.
+ */
+static SplitN_ExtParser_s getExtParser(ZL_Encoder const* eictx)
 {
-    // TODO: We are using a copy param as a function pointer and this
-    // is non-serializable. Fix this when the fuzzer finds the issue.
-    ZL_CopyParam const gpParsef =
-            ZL_Encoder_getLocalCopyParam(eictx, ZL_SPLITN_PARSINGF_PID);
-    if (gpParsef.paramId != ZL_SPLITN_PARSINGF_PID) {
-        return NULL;
+    SplitN_ExtParser_s extParser = { NULL, NULL };
+    const ZL_LocalParams* lp     = ZL_Encoder_getLocalParams(eictx);
+    for (size_t n = 0; n < lp->refParams.nbRefParams; n++) {
+        if (lp->refParams.refParams[n].paramId == ZL_SPLITN_PARSINGF_PID) {
+            // We use memcpy here to avoid compiler warnings about casting a
+            // const pointer to a function pointer.
+            memcpy(&extParser.f,
+                   &lp->refParams.refParams[n].paramRef,
+                   sizeof(extParser.f));
+        }
+        if (lp->refParams.refParams[n].paramId
+            == ZL_SPLITN_PARSING_OPAQUE_PTR_PID) {
+            extParser.opaque = lp->refParams.refParams[n].paramRef;
+        }
     }
-    return (const SplitN_ExtParser_s*)gpParsef.paramPtr;
+    return extParser;
 }
 
 static ZL_RESULT_OF(ZL_SplitInstructions)
@@ -48,9 +64,9 @@ static ZL_RESULT_OF(ZL_SplitInstructions)
     ZL_SplitState allocState = { eictx };
 
     // Priority 1 : check for external parsing function
-    SplitN_ExtParser_s const* extParser = getExtParser(eictx);
-    if (extParser != NULL) {
-        ZL_SplitParserFn f      = extParser->f;
+    SplitN_ExtParser_s extParser = getExtParser(eictx);
+    if (extParser.f != NULL) {
+        ZL_SplitParserFn f      = extParser.f;
         ZL_SplitInstructions si = f(&allocState, in);
         ZL_RET_T_IF_NULL(
                 ZL_SplitInstructions,
@@ -191,13 +207,13 @@ ZL_NodeID ZL_Compressor_registerSplitNode_withParser(
         void const* opaque)
 {
     ZL_DLOG(SEQ, "ZL_Compressor_registerSplitNode_withParser");
-    SplitN_ExtParser_s const s = { f, opaque };
-    ZL_CopyParam const ssp     = { .paramId   = ZL_SPLITN_PARSINGF_PID,
-                                   .paramPtr  = &s,
-                                   .paramSize = sizeof(s) };
+    ZL_RefParam const refParams[2] = {
+        { .paramId = ZL_SPLITN_PARSINGF_PID, .paramRef = (void const*)f },
+        { .paramId = ZL_SPLITN_PARSING_OPAQUE_PTR_PID, .paramRef = opaque }
+    };
 
-    ZL_LocalCopyParams const lgp = { &ssp, 1 };
-    ZL_LocalParams const lParams = { .copyParams = lgp };
+    ZL_LocalRefParams const lgp  = { refParams, 2 };
+    ZL_LocalParams const lParams = { .refParams = lgp };
     return ZL_Compressor_cloneNode(cgraph, getSplitNNodeID(type), &lParams);
 }
 
@@ -208,11 +224,11 @@ void* ZL_SplitState_malloc(ZL_SplitState* state, size_t size)
 
 void const* ZL_SplitState_getOpaquePtr(ZL_SplitState* state)
 {
-    SplitN_ExtParser_s const* extParser = getExtParser(state->eictx);
-    if (extParser == NULL) {
+    SplitN_ExtParser_s extParser = getExtParser(state->eictx);
+    if (extParser.f == NULL) {
         return NULL;
     }
-    return extParser->opaque;
+    return extParser.opaque;
 }
 
 static ZL_GraphID splitBackendGraph(ZL_Type type)
