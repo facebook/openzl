@@ -5,7 +5,8 @@
 
 // basic definitions
 #include "openzl/zl_common_types.h"
-#include "openzl/zl_errors.h" // ZL_Report, ZL_isError()
+#include "openzl/zl_errors.h"        // ZL_Report, ZL_isError()
+#include "openzl/zl_introspection.h" // ZL_DecompressIntrospectionHooks
 #include "openzl/zl_output.h"
 
 #if defined(__cplusplus)
@@ -615,6 +616,29 @@ const uint32_t* ZL_TypedBuffer_rStringLens(const ZL_TypedBuffer* tbuffer);
  * versions
  */
 ZL_Report ZL_getHeaderSize(const void* src, size_t srcSize);
+
+// -----------------------------
+// Decompression Introspection
+// -----------------------------
+
+/**
+ * Attach introspection hooks to the DCtx. Hooks allow code to run at specific
+ * DWAYPOINTs during decompression. A hook set to NULL will simply be skipped.
+ * There can only be one set of hooks attached at a time; calling this again
+ * will overwrite the previous hooks. The caller is responsible for maintaining
+ * the lifetime of the objects referenced by the hooks.
+ *
+ * @note This will only do something if the library is compiled with the
+ * ALLOW_INTROSPECTION option. Otherwise, all the hooks will be no-ops.
+ */
+ZL_Report ZL_DCtx_attachDecompressIntrospectionHooks(
+        ZL_DCtx* dctx,
+        const ZL_DecompressIntrospectionHooks* hooks);
+
+/**
+ * Detach any decompression introspection hooks currently attached to the DCtx.
+ */
+ZL_Report ZL_DCtx_detachAllDecompressIntrospectionHooks(ZL_DCtx* dctx);
 
 #if defined(__cplusplus)
 } // extern "C"
