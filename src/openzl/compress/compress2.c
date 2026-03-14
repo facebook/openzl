@@ -340,7 +340,7 @@ ZL_Report ZL_CCtx_compressMultiTypedRef(
         size_t nbInputs)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
-    WAYPOINT(
+    CWAYPOINT(
             on_ZL_CCtx_compressMultiTypedRef_start,
             cctx,
             dst,
@@ -354,7 +354,7 @@ ZL_Report ZL_CCtx_compressMultiTypedRef(
     ZL_ERR_IF_NOT(CCTX_isGraphSet(cctx), compressionParameter_invalid);
     const ZL_Report rep = CCTX_compressInputs_withGraphSet(
             cctx, dst, dstCapacity, ZL_codemodInputsAsDatas(inputs), nbInputs);
-    WAYPOINT(on_ZL_CCtx_compressMultiTypedRef_end, cctx, rep);
+    CWAYPOINT(on_ZL_CCtx_compressMultiTypedRef_end, cctx, rep);
     return rep;
 }
 
