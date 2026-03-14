@@ -87,7 +87,7 @@ static ZL_Report ZL_PartitionParams_sendHeader(
         flags |= ZL_PARTITION_HEADER_IS_POW2_BIT;
 
         size_t numBits = (size_t)ZL_nextPow2(
-                NUMOP_findMaxU8(bits, params->numPartitions));
+                NUMOP_findMaxU8(bits, params->numPartitions) + 1);
         numBits = ZL_MAX(numBits, 3);
         ZL_ASSERT_LE(numBits, 6, "Impossible for valid params");
 

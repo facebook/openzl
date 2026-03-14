@@ -74,7 +74,7 @@ class OpenZLComponentTest : public ::testing::TestWithParam<int> {
         }
         for (const auto graph : graphs) {
             for (const auto& input : component_->generateInputs(
-                         gen_, 3, 256 * 1024, compressor_, graph)) {
+                         gen_, 10, 256 * 1024, compressor_, graph)) {
                 testComponentWithGraphOnInput(graph, *input);
             }
         }
@@ -83,14 +83,14 @@ class OpenZLComponentTest : public ::testing::TestWithParam<int> {
     void testComponent()
     {
         auto graphs = component_->predefinedGraphs(compressor_);
-        for (auto graph : component_->generateGraphs(compressor_, gen_, 3)) {
+        for (auto graph : component_->generateGraphs(compressor_, gen_, 10)) {
             graphs.push_back(graph);
         }
 
         for (auto node : component_->predefinedNodes(compressor_)) {
             graphs.push_back(makeTrivialGraph(node));
         }
-        for (auto node : component_->generateNodes(compressor_, gen_, 3)) {
+        for (auto node : component_->generateNodes(compressor_, gen_, 10)) {
             graphs.push_back(makeTrivialGraph(node));
         }
 
