@@ -14,24 +14,19 @@ class DeadVarImpl {
     {
         // Phase 1: collect all variable reads and record the last reference to
         // a variable
-        for (const auto& node : ast) {
-            recordLastRefs(node);
-        }
+        recordLastRefs(ast);
 
         // Phase 2: optimize the AST
-        ASTVec result;
-        result.reserve(ast.size());
-        for (const auto& node : ast) {
-            // It's possible that the node is optimized away.
-            auto optimized = optimizeNode(node);
-            if (optimized) {
-                result.push_back(optimized);
-            }
-        }
-        return result;
+        return optimizeVec(ast);
     }
 
    private:
+    void recordLastRefs(const ASTVec& vec)
+    {
+        for (const auto& node : vec) {
+            recordLastRefs(node);
+        }
+    }
     void recordLastRefs(const ASTPtr& node)
     {
         switch (node->converted_node_type()) {
@@ -57,15 +52,11 @@ class DeadVarImpl {
             case ConvertedNodeType::CALL: {
                 auto call = node->as_call();
                 recordLastRefs(call->target());
-                for (const auto& arg : call->args()) {
-                    recordLastRefs(arg);
-                }
+                recordLastRefs(call->args());
                 return;
             }
             case ConvertedNodeType::RECORD: {
-                for (const auto& field : node->as_record()->fields()) {
-                    recordLastRefs(field);
-                }
+                recordLastRefs(node->as_record()->fields());
                 return;
             }
             case ConvertedNodeType::OP: {
@@ -78,12 +69,24 @@ class DeadVarImpl {
                     recordLastRefs(op.args()[0]);
                     return;
                 }
-                for (size_t i = 0; i < op.args().size(); ++i) {
-                    recordLastRefs(op.args()[i]);
-                }
+                recordLastRefs(op.args());
                 return;
             }
         }
+    }
+
+    ASTVec optimizeVec(const ASTVec& vec)
+    {
+        ASTVec result;
+        result.reserve(vec.size());
+        for (const auto& node : vec) {
+            // It's possible that the node is optimized away.
+            auto optimized = optimizeNode(node);
+            if (optimized) {
+                result.push_back(optimized);
+            }
+        }
+        return result;
     }
 
     ASTPtr optimizeNode(const ASTPtr& node)
@@ -94,21 +97,21 @@ class DeadVarImpl {
             case ConvertedNodeType::RECORD:
                 return node;
             case ConvertedNodeType::VAR:
-                return optimize(node->as_var());
+                return optimizeVar(node->as_var());
             case ConvertedNodeType::BYTES:
-                return optimize(node->as_bytes());
+                return optimizeBytes(node->as_bytes());
             case ConvertedNodeType::ARRAY:
-                return optimize(node->as_array());
+                return optimizeArray(node->as_array());
             case ConvertedNodeType::CALL:
-                return optimize(node->as_call());
+                return optimizeCall(node->as_call());
             case ConvertedNodeType::OP:
-                return optimize(node->as_op());
+                return optimizeOp(node->as_op());
             default:
                 throw InvariantViolation("Unsupported AST node type.");
         }
     }
 
-    ASTPtr optimize(const ASTVar* var)
+    ASTPtr optimizeVar(const ASTVar* var)
     {
         const auto& last_ref_it = last_ref_.find(var->name());
         if (last_ref_it == last_ref_.end()) {
@@ -121,12 +124,12 @@ class DeadVarImpl {
         return Codegen(var->loc()).var(var->name());
     }
 
-    ASTPtr optimize(const ASTBytes* bytes)
+    ASTPtr optimizeBytes(const ASTBytes* bytes)
     {
         return Codegen(bytes->loc()).bytes(optimizeNode(bytes->len()));
     }
 
-    ASTPtr optimize(const ASTArray* arr)
+    ASTPtr optimizeArray(const ASTArray* arr)
     {
         if (!arr->len()) {
             return Codegen(arr->loc()).array(optimizeNode(arr->field()));
@@ -135,18 +138,13 @@ class DeadVarImpl {
                 .array(optimizeNode(arr->field()), optimizeNode(arr->len()));
     }
 
-    ASTPtr optimize(const ASTCall* call)
+    ASTPtr optimizeCall(const ASTCall* call)
     {
-        ASTVec new_args;
-        new_args.reserve(call->args().size());
-        for (const auto& arg : call->args()) {
-            new_args.push_back(optimizeNode(arg));
-        }
         return Codegen(call->loc())
-                .call(optimizeNode(call->target()), std::move(new_args));
+                .call(optimizeNode(call->target()), optimizeVec(call->args()));
     }
 
-    ASTPtr optimize(const ASTOp* op)
+    ASTPtr optimizeOp(const ASTOp* op)
     {
         // If the variable is not referenced, we can remove the assignment
         if (op->op() == Op::ASSIGN) {
@@ -171,11 +169,7 @@ class DeadVarImpl {
         }
 
         // Other ops
-        ASTVec args;
-        for (size_t i = 0; i < op->args().size(); ++i) {
-            args.push_back(optimizeNode(op->args()[i]));
-        }
-        return Codegen(op->loc()).op(op->op(), std::move(args));
+        return Codegen(op->loc()).op(op->op(), optimizeVec(op->args()));
     }
 
     // Maps variable name → the last time it is referenced. Variables not in
