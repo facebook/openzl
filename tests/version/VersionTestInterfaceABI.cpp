@@ -285,8 +285,12 @@ convertFromSerial(ZL_Compressor* cgraph, ZL_GraphID graphID, unsigned eltWidth)
             ZL_LocalParams const params = {
                 .intParams = { .intParams = &param, .nbIntParams = 1 },
             };
-            ZL_NodeID const convert = ZL_Compressor_cloneNode(
-                    cgraph, ZL_NODE_CONVERT_SERIAL_TO_TOKENX, &params);
+            const ZL_ParameterizedNodeDesc pndesc = {
+                .node        = ZL_NODE_CONVERT_SERIAL_TO_TOKENX,
+                .localParams = &params,
+            };
+            ZL_NodeID const convert =
+                    ZL_Compressor_registerParameterizedNode(cgraph, &pndesc);
             return ZL_Compressor_registerStaticGraph_fromNode1o(
                     cgraph, convert, graphID);
         }

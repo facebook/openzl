@@ -198,8 +198,12 @@ std::string thriftSplitCompress(
                                                          .nbCopyParams = 1 } };
     const ZL_NodeID nodeWithoutParams =
             ZL_Compressor_registerVOEncoder(cgraph.get(), &compress);
-    const ZL_NodeID nodeWithParams = ZL_Compressor_cloneNode(
-            cgraph.get(), nodeWithoutParams, &localParams);
+    const ZL_ParameterizedNodeDesc desc = {
+        .node        = nodeWithoutParams,
+        .localParams = &localParams,
+    };
+    const ZL_NodeID nodeWithParams =
+            ZL_Compressor_registerParameterizedNode(cgraph.get(), &desc);
 
     std::vector<ZL_GraphID> thriftSuccessors;
     for (size_t i = 0; i < compress.gd.nbSingletons; i++) {

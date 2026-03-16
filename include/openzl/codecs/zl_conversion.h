@@ -324,14 +324,19 @@ ZL_Edge_runConvertSerialToStringNode(
 
 // Old names for nodes
 enum { ZL_trlip_tokenSize = 1 };
-#define ZL_CREATENODE_CONVERT_SERIAL_TO_TOKEN(g, l)                       \
-    ZL_Compressor_cloneNode(                                              \
-            g,                                                            \
-            ZL_NODE_CONVERT_SERIAL_TO_STRUCT,                             \
-            &(const ZL_LocalParams){                                      \
-                    { &(const ZL_IntParam){ ZL_trlip_tokenSize, l }, 1 }, \
-                    { NULL, 0 },                                          \
-                    { NULL, 0 } })
+#define ZL_CREATENODE_CONVERT_SERIAL_TO_TOKEN(g, l)                    \
+    ZL_Compressor_registerParameterizedNode(                           \
+            g,                                                         \
+            &(const ZL_ParameterizedNodeDesc){                         \
+                    .node = ZL_NODE_CONVERT_SERIAL_TO_STRUCT,          \
+                    .localParams =                                     \
+                            &(const ZL_LocalParams){                   \
+                                    { &(const ZL_IntParam){            \
+                                              ZL_trlip_tokenSize, l }, \
+                                      1 },                             \
+                                    { NULL, 0 },                       \
+                                    { NULL, 0 } },                     \
+            })
 
 #define ZL_NODE_CONVERT_SERIAL_TO_TOKENX ZL_NODE_CONVERT_SERIAL_TO_STRUCT
 #define ZL_NODE_CONVERT_SERIAL_TO_TOKEN2 ZL_NODE_CONVERT_SERIAL_TO_STRUCT2

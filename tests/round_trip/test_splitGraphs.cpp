@@ -233,11 +233,15 @@ static ZL_GraphID treeGraph(ZL_Compressor* cgraph) noexcept
             ZL_Compressor_registerPipeEncoder(cgraph, &add1_CDesc);
     EXPECT_NE(node_add1_orig, ZL_NODE_ILLEGAL);
 
-    // Let's exercise cloneNode on a PipeTransform
+    // Let's exercise registerParameterizedNode on a PipeTransform
     ZL_LocalParams lparams_add1;
     memset(&lparams_add1, 0, sizeof(lparams_add1));
+    const ZL_ParameterizedNodeDesc pndesc = {
+        .node        = node_add1_orig,
+        .localParams = &lparams_add1,
+    };
     ZL_NodeID const node_add1 =
-            ZL_Compressor_cloneNode(cgraph, node_add1_orig, &lparams_add1);
+            ZL_Compressor_registerParameterizedNode(cgraph, &pndesc);
     EXPECT_NE(node_add1, ZL_NODE_ILLEGAL);
     ZL_NodeID const node_split2 =
             ZL_Compressor_registerSplitEncoder(cgraph, &split2_CDesc);
@@ -249,9 +253,10 @@ static ZL_GraphID treeGraph(ZL_Compressor* cgraph) noexcept
             ZL_Compressor_registerSplitEncoder(cgraph, &add4_CDesc);
     EXPECT_NE(node_add4, ZL_NODE_ILLEGAL);
 
-    // Test : ZL_Compressor_cloneNode() with non-constant parameters
-    // Ensure it still works when @lparams lies in non-constant memory,
-    // in this case, on stack, memory content no longer valid at function's end
+    // Test : ZL_Compressor_registerParameterizedNode() with non-constant
+    // parameters Ensure it still works when @lparams lies in non-constant
+    // memory, in this case, on stack, memory content no longer valid at
+    // function's end
     ZL_IntParam intParam;
     intParam.paramId = add4_paramId;
     intParam.paramValue =
@@ -259,10 +264,14 @@ static ZL_GraphID treeGraph(ZL_Compressor* cgraph) noexcept
                   % add4_paramV_bound); // dynamic value => can't be a const
     ZL_LocalParams lparams;
     memset(&lparams, 0, sizeof(lparams));
-    lparams.intParams.nbIntParams = add4_nbParams;
-    lparams.intParams.intParams   = &intParam;
+    lparams.intParams.nbIntParams          = add4_nbParams;
+    lparams.intParams.intParams            = &intParam;
+    const ZL_ParameterizedNodeDesc pndesc2 = {
+        .node        = node_add4,
+        .localParams = &lparams,
+    };
     ZL_NodeID const node_add4_v2 =
-            ZL_Compressor_cloneNode(cgraph, node_add4, &lparams);
+            ZL_Compressor_registerParameterizedNode(cgraph, &pndesc2);
     EXPECT_NE(node_add4_v2, ZL_NODE_ILLEGAL);
 
     // Create & combine sub-graphs

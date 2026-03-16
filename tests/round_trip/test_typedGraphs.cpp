@@ -223,12 +223,17 @@ static ZL_GraphID typedGraph(ZL_Compressor* cgraph) noexcept
     ZL_NodeID const node_add1 =
             ZL_Compressor_registerTypedEncoder(cgraph, &add1_CDesc);
 
-    // test exercising ZL_Compressor_cloneNode() from a standard Node
-    ZL_LocalParams const lp = { { nullptr, 0 },
-                                { nullptr, 0 },
-                                { nullptr, 0 } };
+    // test exercising ZL_Compressor_registerParameterizedNode() from a standard
+    // Node
+    ZL_LocalParams const lp               = { { nullptr, 0 },
+                                              { nullptr, 0 },
+                                              { nullptr, 0 } };
+    const ZL_ParameterizedNodeDesc pndesc = {
+        .node        = ZL_NODE_TRANSPOSE_SPLIT,
+        .localParams = &lp,
+    };
     ZL_NodeID const node_myTranspose =
-            ZL_Compressor_cloneNode(cgraph, ZL_NODE_TRANSPOSE_SPLIT, &lp);
+            ZL_Compressor_registerParameterizedNode(cgraph, &pndesc);
 
     // Graph : src => serial->int32 => add1 => delta => convertToken (implicit)
     // => tselect

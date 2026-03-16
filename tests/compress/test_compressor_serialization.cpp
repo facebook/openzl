@@ -270,16 +270,25 @@ TEST_F(CompressorSerializationTest, Roundtrip)
                     },
         };
     };
-    auto lp     = make_lp();
-    auto cp_nid = ZL_Compressor_cloneNode(compressor, ZL_NODE_ZIGZAG, &lp);
+    auto lp                               = make_lp();
+    const ZL_ParameterizedNodeDesc pndesc = {
+        .node        = ZL_NODE_ZIGZAG,
+        .localParams = &lp,
+    };
+    auto cp_nid = ZL_Compressor_registerParameterizedNode(compressor, &pndesc);
     EXPECT_NE(cp_nid, ZL_NODE_ILLEGAL);
 
     ips.push_back((ZL_IntParam){
             .paramId    = 123,
             .paramValue = 5678,
     });
-    lp             = make_lp();
-    auto cp_cp_nid = ZL_Compressor_cloneNode(compressor, cp_nid, &lp);
+    lp                                     = make_lp();
+    const ZL_ParameterizedNodeDesc pndesc2 = {
+        .node        = cp_nid,
+        .localParams = &lp,
+    };
+    auto cp_cp_nid =
+            ZL_Compressor_registerParameterizedNode(compressor, &pndesc2);
     EXPECT_NE(cp_cp_nid, ZL_NODE_ILLEGAL);
 
     ZL_REQUIRE_SUCCESS(

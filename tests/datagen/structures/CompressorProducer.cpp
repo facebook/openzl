@@ -533,10 +533,14 @@ std::vector<std::string> RandomCompressorMultiBuilder::clone_node(
                 ZL_Compressor_Node_getLocalParams(c, base_nid);
         const auto new_params =
                 transform_localparams(LocalParams{ base_localparams });
-        auto new_localparams      = *new_params;
-        new_localparams.refParams = base_localparams.refParams;
+        auto new_localparams                  = *new_params;
+        new_localparams.refParams             = base_localparams.refParams;
+        const ZL_ParameterizedNodeDesc pndesc = {
+            .node        = base_nid,
+            .localParams = &new_localparams,
+        };
         const auto new_nid =
-                ZL_Compressor_cloneNode(c, base_nid, &new_localparams);
+                ZL_Compressor_registerParameterizedNode(c, &pndesc);
         const auto new_name = ZL_Compressor_Node_getName(c, new_nid);
         names.emplace_back(new_name);
     }

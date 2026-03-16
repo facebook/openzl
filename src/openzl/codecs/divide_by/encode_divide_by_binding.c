@@ -126,8 +126,12 @@ ZL_NodeID ZL_Compressor_registerDivideByNode(
     ZL_LocalCopyParams copyParams = { .copyParams   = &copyParam,
                                       .nbCopyParams = 1 };
     ZL_LocalParams localParams    = { .copyParams = copyParams };
-    ZL_NodeID const node_divideBy =
-            ZL_Compressor_cloneNode(cgraph, ZL_NODE_DIVIDE_BY, &localParams);
+    ZL_NodeID const node_divideBy = ZL_Compressor_registerParameterizedNode(
+            cgraph,
+            &(const ZL_ParameterizedNodeDesc){
+                    .node        = ZL_NODE_DIVIDE_BY,
+                    .localParams = &localParams,
+            });
     return node_divideBy;
 }
 
