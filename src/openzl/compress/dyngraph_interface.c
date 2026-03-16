@@ -126,7 +126,7 @@ bool ZL_Graph_isNodeSupported(const ZL_Graph* gctx, ZL_NodeID nodeid)
 
 void* ZL_Graph_getScratchSpace(ZL_Graph* gctx, size_t size)
 {
-    WAYPOINT(on_ZL_Graph_getScratchSpace, gctx, size);
+    CWAYPOINT(on_ZL_Graph_getScratchSpace, gctx, size);
     return ALLOC_Arena_malloc(gctx->graphArena, size);
 }
 

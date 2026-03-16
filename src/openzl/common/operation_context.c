@@ -15,7 +15,8 @@ void ZL_OC_init(ZL_OperationContext* opCtx)
     memset(opCtx, 0, sizeof(*opCtx));
     VECTOR_INIT(opCtx->errorInfos, 1024);
     VECTOR_INIT(opCtx->warnings, 1024);
-    opCtx->hasIntrospectionHooks = false;
+    opCtx->hasCompressionHooks   = false;
+    opCtx->hasDecompressionHooks = false;
 }
 
 void ZL_OC_destroy(ZL_OperationContext* opCtx)
