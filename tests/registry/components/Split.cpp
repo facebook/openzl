@@ -511,6 +511,123 @@ class SplitNumericByParamComponent : public OpenZLComponent {
     }
 };
 
+namespace {
+// Splits input into one segment of the size of the input.
+ZL_SplitInstructions oneSegmentParser(ZL_SplitState* s, const ZL_Input* in)
+{
+    if (in == nullptr) {
+        return { nullptr, 0 };
+    }
+
+    size_t const numElts   = ZL_Input_numElts(in);
+    size_t* const segSizes = (size_t*)ZL_SplitState_malloc(s, sizeof(size_t));
+    if (segSizes == nullptr) {
+        return { nullptr, 0 };
+    }
+    segSizes[0] = numElts;
+    return { segSizes, 1 };
+}
+
+// Splits input into segments based on space character as delimiter.
+// Each segment includes the space delimiter at the end (except the last
+// segment).
+ZL_SplitInstructions spaceDelimSplitParser(ZL_SplitState* s, const ZL_Input* in)
+{
+    if (in == nullptr) {
+        return { nullptr, 0 };
+    }
+
+    size_t const numElts = ZL_Input_numElts(in);
+    size_t* const segSizes =
+            (size_t*)ZL_SplitState_malloc(s, sizeof(size_t) * numElts);
+    if (segSizes == nullptr) {
+        return { nullptr, 0 };
+    }
+
+    size_t numSegs       = 0;
+    size_t previousSpace = 0;
+    const char* rptr     = (const char*)ZL_Data_rPtr(ZL_codemodInputAsData(in));
+    for (size_t i = 0; i < numElts; ++i) {
+        if (rptr[i] == ' ') {
+            // Include the space character in the current segment
+            segSizes[numSegs++] = i - previousSpace + 1;
+            previousSpace       = i + 1;
+        }
+    }
+    // Final segment includes remaining bytes (no trailing space)
+    if (previousSpace < numElts) {
+        segSizes[numSegs++] = numElts - previousSpace;
+    }
+    return { segSizes, numSegs };
+}
+} // namespace
+
+// ---- SplitByExtparser (min format version 9) ----
+
+class SplitByExtParserComponent : public OpenZLComponent {
+   public:
+    std::string name() const override
+    {
+        return "SplitByExtParser";
+    }
+
+    int minFormatVersion() const override
+    {
+        return 9;
+    }
+
+    bool isStandardComponent() const override
+    {
+        return false;
+    }
+
+    bool supportsSerialization() const override
+    {
+        return false;
+    }
+
+    std::vector<NodeID> predefinedNodes(Compressor& compressor) const override
+    {
+        std::vector<NodeID> nodes;
+        nodes.push_back(ZL_Compressor_registerSplitNode_withParser(
+                compressor.get(), ZL_Type_serial, oneSegmentParser, nullptr));
+        nodes.push_back(ZL_Compressor_registerSplitNode_withParser(
+                compressor.get(),
+                ZL_Type_serial,
+                spaceDelimSplitParser,
+                nullptr));
+        return nodes;
+    }
+
+    std::vector<std::unique_ptr<OpenZLInput>> predefinedInputs() const override
+    {
+        std::vector<std::unique_ptr<OpenZLInput>> inputs;
+        inputs.push_back(SerialOpenZLInput::make(std::string(100, 'a')));
+        inputs.push_back(SerialOpenZLInput::make(std::string(100, ' ')));
+        inputs.push_back(SerialOpenZLInput::make(std::string()));
+        inputs.push_back(SerialOpenZLInput::make("Lorem ipsum dolor sit amet"));
+        return inputs;
+    }
+
+    std::vector<std::unique_ptr<OpenZLInput>> generateInputs(
+            datagen::DataGen& gen,
+            size_t num,
+            size_t maxInputSize,
+            const Compressor& /* compressor */,
+            GraphID /* graphID */) const override
+    {
+        std::vector<std::unique_ptr<OpenZLInput>> inputs;
+        inputs.reserve(num);
+        for (size_t i = 0; i < num; ++i) {
+            auto inputSize = gen.usize_range("input_size", 0, maxInputSize);
+            inputs.push_back(
+                    SerialOpenZLInput::make(
+                            gen.randStringWithLength("input", inputSize)));
+        }
+        return inputs;
+    }
+};
+
 } // namespace
 
 std::unique_ptr<OpenZLComponent> makeSplitByParamComponent()
@@ -524,5 +641,9 @@ std::unique_ptr<OpenZLComponent> makeSplitStructByParamComponent()
 std::unique_ptr<OpenZLComponent> makeSplitNumericByParamComponent()
 {
     return std::make_unique<SplitNumericByParamComponent>();
+}
+std::unique_ptr<OpenZLComponent> makeSplitByExtParserComponent()
+{
+    return std::make_unique<SplitByExtParserComponent>();
 }
 } // namespace openzl::tests::components
