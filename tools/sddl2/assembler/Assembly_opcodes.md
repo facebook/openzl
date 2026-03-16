@@ -87,11 +87,12 @@ Logical operations
 ### CONTROL (0x0005)
 Control flow operations
 
-| Mnemonic      | Opcode   | Params | Description                                                |
-| ------------- | -------- | ------ | ---------------------------------------------------------- |
-| `halt`        | `0x0001` | `-`    | Stop VM execution                                          |
-| `expect_true` | `0x0002` | `-`    | Pop I64 value, error if value is 0 (false)                 |
-| `trace.start` | `0x0004` | `-`    | Begin collecting execution traces for validation debugging |
+| Mnemonic      | Opcode   | Params | Description                                                                                           |
+| ------------- | -------- | ------ | ----------------------------------------------------------------------------------------------------- |
+| `halt`        | `0x0001` | `-`    | Stop VM execution                                                                                     |
+| `expect_true` | `0x0002` | `-`    | Pop I64 value, error if value is 0 (false)                                                            |
+| `jump_if`     | `0x0003` | `-`    | Pop I64 value, pop I64 N, skip next N instructions (advance PC by N*4 bytes) if value is not 0 (true) |
+| `trace.start` | `0x0004` | `-`    | Begin collecting execution traces for validation debugging                                            |
 
 ### LOAD (0x0006)
 Load operations
@@ -137,7 +138,7 @@ Variable operations
 
 | Mnemonic    | Opcode   | Params | Description                                            |
 | ----------- | -------- | ------ | ------------------------------------------------------ |
-| `var.store` | `0x0001` | `-`    | Pop I64 (register), pop Value, store Value in register |
+| `var.store` | `0x0001` | `-`    | Pop Value, pop I64 (register), store Value in register |
 | `var.load`  | `0x0002` | `-`    | Pop I64 (register), push Value stored in register      |
 
 ### CALL (0x000B)

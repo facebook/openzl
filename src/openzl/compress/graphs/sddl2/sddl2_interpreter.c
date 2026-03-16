@@ -307,6 +307,63 @@ static SDDL2_Error handle_push_family(
         return (error_code);                   \
     } while (0)
 
+static SDDL2_Error SDDL2_skip(
+        const char* bytecode,
+        size_t bytecode_size,
+        size_t* pc,
+        size_t skip_count)
+{
+    while (skip_count > 0) {
+        // Need at least the 4-byte instruction header
+        if (*pc + 4 > bytecode_size) {
+            return SDDL2_INVALID_BYTECODE;
+        }
+
+        uint32_t instruction = ZL_readLE32(&bytecode[*pc]);
+        uint16_t family      = (uint16_t)((instruction >> 16) & 0xFFFF);
+        uint16_t opcode      = (uint16_t)(instruction & 0xFFFF);
+
+        // Advance past the instruction header
+        *pc += 4;
+
+        // Advance past any immediate payload for this opcode
+        switch (family) {
+            case SDDL2_FAMILY_PUSH:
+                switch (opcode) {
+                    case SDDL2_OP_PUSH_U32:
+                    case SDDL2_OP_PUSH_I32:
+                    case SDDL2_OP_PUSH_TAG:
+                        if (*pc + 4 > bytecode_size) {
+                            return SDDL2_INVALID_BYTECODE;
+                        }
+                        *pc += 4;
+                        break;
+
+                    case SDDL2_OP_PUSH_I64:
+                        if (*pc + 8 > bytecode_size) {
+                            return SDDL2_INVALID_BYTECODE;
+                        }
+                        *pc += 8;
+                        break;
+
+                    default:
+                        // No immediate payload
+                        break;
+                }
+                break;
+
+            default:
+                // Other families currently have no variable-sized immediates
+                // here
+                break;
+        }
+
+        skip_count--;
+    }
+
+    return SDDL2_OK;
+}
+
 SDDL2_Error SDDL2_execute_bytecode(
         const void* bytecode_buffer,
         size_t bytecode_size,
@@ -388,6 +445,13 @@ SDDL2_Error SDDL2_execute_bytecode(
                     halted = 1;
                 } else if (opcode == SDDL2_OP_CONTROL_EXPECT_TRUE) {
                     err = SDDL2_op_expect_true(&stack, &trace);
+                } else if (opcode == SDDL2_OP_CONTROL_JUMP_IF) {
+                    size_t skip_count = 0;
+                    err               = SDDL2_op_jump_if(&stack, &skip_count);
+                    if (err == SDDL2_OK) {
+                        err = SDDL2_skip(
+                                bytecode, bytecode_size, &pc, skip_count);
+                    }
                 } else if (opcode == SDDL2_OP_CONTROL_TRACE_START) {
                     SDDL2_Trace_buffer_start(&trace);
                 } else {

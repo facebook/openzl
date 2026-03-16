@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
 // Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-// Generated at: 2026-02-25 19:35:29 UTC
+// Generated at: 2026-03-11 19:40:34 UTC
 // Generator: generate_c_headers.py
 //
 // To regenerate: python3 src/openzl/compress/graphs/sddl2/generate_c_headers.py
@@ -114,6 +114,7 @@ enum sddl2_opcode_logic {
 enum sddl2_opcode_control {
     SDDL2_OP_CONTROL_HALT        = 0x0001,
     SDDL2_OP_CONTROL_EXPECT_TRUE = 0x0002,
+    SDDL2_OP_CONTROL_JUMP_IF     = 0x0003,
     SDDL2_OP_CONTROL_TRACE_START = 0x0004,
 };
 

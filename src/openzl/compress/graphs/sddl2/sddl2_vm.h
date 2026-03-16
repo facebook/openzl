@@ -753,6 +753,26 @@ SDDL2_Error SDDL2_op_var_load(
  */
 SDDL2_Error SDDL2_op_expect_true(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace);
 
+/**
+ * Conditionally skip N instructions (control flow operation).
+ * Stack: N:I64 condition:I64 -> (empty)
+ *
+ * Pops an I64 condition and an I64 value N from the stack.
+ * If condition is non-zero (true), returns N via out_skip_count.
+ * If condition is zero (false), returns 0 via out_skip_count.
+ * The interpreter should advance PC by out_skip_count*4 bytes.
+ * N must be non-negative.
+ *
+ * @param stack The VM stack
+ * @param out_skip_count Output parameter for the number of instructions to skip
+ * @return SDDL2_OK on success, error code on failure
+ *
+ * Errors:
+ *   - SDDL2_STACK_UNDERFLOW: stack has fewer than 2 elements
+ *   - SDDL2_TYPE_MISMATCH: values are not I64 or N is negative
+ */
+SDDL2_Error SDDL2_op_jump_if(SDDL2_Stack* stack, size_t* out_skip_count);
+
 /* ============================================================================
  * Input Cursor Operations
  * ========================================================================= */
