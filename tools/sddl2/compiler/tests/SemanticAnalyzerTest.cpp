@@ -254,4 +254,86 @@ TEST_F(SemanticAnalyzerTest, ParameterizedRecordCallNonRecord)
     expect_error(prog, "record type");
 }
 
+TEST_F(SemanticAnalyzerTest, WhenBlockWithNonNumericCondition)
+{
+    const auto prog = R"(
+        when Int32LE {
+            : Int32LE
+        }
+    )";
+    expect_error(prog, "numeric");
+}
+
+TEST_F(SemanticAnalyzerTest, WhenBlockWithUndefinedVarInCondition)
+{
+    const auto prog = R"(
+        when undefined_var == 1 {
+            : Int32LE
+        }
+    )";
+    expect_error(prog, "Undefined variable");
+}
+
+TEST_F(SemanticAnalyzerTest, NestedWhenBlocks)
+{
+    const auto prog = R"(
+        a: UInt8
+        b: UInt8
+        when a == 1 {
+            when b == 2 {
+                : Int32LE
+            }
+        }
+    )";
+
+    // TODO: this will pass once codegen is implemented
+    expect_error(prog, "code generation error");
+}
+
+TEST_F(SemanticAnalyzerTest, WhenBlockInRecord)
+{
+    const auto prog = R"(
+        Record Data(flags) = {
+            base: UInt32LE,
+            when flags == 1 {
+                optional: UInt16LE
+            }
+        }
+        : Data(1)
+    )";
+
+    // TODO: this will pass once codegen is implemented
+    expect_error(prog, "code generation error");
+}
+
+TEST_F(SemanticAnalyzerTest, WhenBlockInRecordWithUndefinedParam)
+{
+    const auto prog = R"(
+        Record Data(flags) = {
+            base: UInt32LE,
+            when undefined_param == 1 {
+                optional: UInt16LE
+            }
+        }
+        : Data(1)
+    )";
+    expect_error(prog, "Undefined variable");
+}
+
+TEST_F(SemanticAnalyzerTest, WhenBlockInRecordWithFieldReference)
+{
+    const auto prog = R"(
+        Record Data() = {
+            flags: UInt8,
+            when flags == 1 {
+                optional: UInt16LE
+            }
+        }
+        : Data
+    )";
+
+    // TODO: this will pass once codegen is implemented
+    expect_error(prog, "code generation error");
+}
+
 } // namespace openzl::sddl2::tests

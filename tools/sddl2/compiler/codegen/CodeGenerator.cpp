@@ -88,7 +88,15 @@ class CodeGeneratorImpl {
         (void)log_;
         AssemblyOutput output;
         for (const auto& node : ast) {
-            output += generateOp(*node->as_op());
+            if (auto op = node->as_op()) {
+                output += generateOp(*op);
+            } else if (auto when = node->as_when()) {
+                (void)when;
+                throw CodegenError(node->loc(), "Not yet implemented!");
+            } else {
+                throw InvariantViolation(
+                        node->loc(), "Expected an operation or when.");
+            }
         }
         return output.str();
     }
@@ -178,6 +186,7 @@ class CodeGeneratorImpl {
             case ConvertedNodeType::ARRAY:
             case ConvertedNodeType::RECORD:
             case ConvertedNodeType::CALL:
+            case ConvertedNodeType::WHEN:
             default:
                 throw InvariantViolation(
                         node->loc(), "Expected a value, got a type.");
@@ -223,10 +232,16 @@ class CodeGeneratorImpl {
             case ConvertedNodeType::RECORD: {
                 auto record = type->as_record();
                 for (const auto& field : record->fields()) {
-                    auto assume            = field->as_op();
-                    const auto& field_type = assume->args()[1];
-                    auto [field_asm, _]    = generateType(field_type);
-                    output += std::move(field_asm);
+                    if (auto assume = field->as_op()) {
+                        const auto& field_type = assume->args()[1];
+                        auto [field_asm, _]    = generateType(field_type);
+                        output += std::move(field_asm);
+                    }
+                    if (auto when = field->as_when()) {
+                        (void)when;
+                        throw CodegenError(
+                                field->loc(), "Not yet implemented!");
+                    }
                 }
                 output += "push.i64 " + std::to_string(record->fields().size());
                 output += "type.structure";
@@ -276,6 +291,7 @@ class CodeGeneratorImpl {
             }
             case ConvertedNodeType::NUM:
             case ConvertedNodeType::OP:
+            case ConvertedNodeType::WHEN:
             default:
                 throw InvariantViolation(
                         type->loc(), "Expected a type, got a value.");

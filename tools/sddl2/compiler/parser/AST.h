@@ -28,6 +28,7 @@ class ASTBytes;
 class ASTArray;
 class ASTRecord;
 class ASTCall;
+class ASTWhen;
 class ASTOp;
 
 enum class ConvertedNodeType {
@@ -38,6 +39,7 @@ enum class ConvertedNodeType {
     ARRAY,
     RECORD,
     CALL,
+    WHEN,
     OP
 };
 
@@ -60,6 +62,7 @@ class ASTNode {
     virtual const ASTArray* as_array() const;
     virtual const ASTRecord* as_record() const;
     virtual const ASTCall* as_call() const;
+    virtual const ASTWhen* as_when() const;
     virtual const ASTOp* as_op() const;
 
     bool operator==(const Symbol& symbol) const;
@@ -288,6 +291,27 @@ class ASTCall : public ASTField {
     const ASTVec args_;
 };
 
+class ASTWhen : public ASTConverted {
+   public:
+    explicit ASTWhen(ASTPtr condition, ASTVec body);
+
+    const ASTWhen* as_when() const override;
+
+    void print(std::ostream& os, size_t indent) const override;
+
+    ConvertedNodeType converted_node_type() const override final
+    {
+        return ConvertedNodeType::WHEN;
+    }
+
+    const ASTPtr& condition() const;
+    const ASTVec& body() const;
+
+   private:
+    const ASTPtr condition_;
+    const ASTVec body_;
+};
+
 class ASTArray : public ASTField {
    public:
     explicit ASTArray(const ASTPtr& field, const ASTPtr& len);
@@ -463,6 +487,11 @@ class Codegen {
     ASTPtr call(ASTPtr target, ASTVec args) const
     {
         return std::make_shared<ASTCall>(std::move(target), std::move(args));
+    }
+
+    ASTPtr when(ASTPtr condition, ASTVec body) const
+    {
+        return std::make_shared<ASTWhen>(std::move(condition), std::move(body));
     }
 
     ASTPtr var(poly::string_view name) const
