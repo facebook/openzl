@@ -770,6 +770,10 @@ ZL_GraphID GM_getLastRegisteredGraph(const GraphsMgr* gm)
 
 ZL_GraphID GM_getGraphByName(const GraphsMgr* gm, const char* graph)
 {
+    // Lookup should not be done using anchor names
+    if (graph == NULL || ZL_keyIsAnchor(graph)) {
+        return ZL_GRAPH_ILLEGAL;
+    }
     const ZL_Name key           = ZL_Name_wrapKey(graph);
     const GraphMap_Entry* entry = GraphMap_find(&gm->nameMap, &key);
     if (entry != NULL) {
