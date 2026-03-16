@@ -216,4 +216,20 @@ TEST_F(OptimizerTest, RecordMemberLastReference)
     expect_ast(prog, expected);
 }
 
+TEST_F(OptimizerTest, WhenConstant)
+{
+    const auto prog     = R"(
+        when 1 {
+            : Int32LE
+        }
+        when 0 {
+            : Int16LE
+        }
+    )";
+    const auto cg       = Codegen(SourceLocation::null());
+    const auto expected = std::vector<ASTPtr>(
+            { cg.consume(cg.builtin_field(Symbol::I32LE)) });
+    expect_ast(prog, expected);
+}
+
 } // namespace openzl::sddl2::tests
