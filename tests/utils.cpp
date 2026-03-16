@@ -2,6 +2,7 @@
 
 #include "tests/utils.h"
 
+#include "openzl/compress/implicit_conversion.h"
 #include "openzl/cpp/CCtx.hpp"
 #include "openzl/cpp/CustomDecoder.hpp"
 #include "openzl/cpp/CustomEncoder.hpp"
@@ -1405,6 +1406,43 @@ size_t testRoundTripImpl(
 
     return csize;
 }
+
+bool inputTypesAreCompatibleWithGraph(
+        Compressor& compressor,
+        GraphID graph,
+        poly::span<const Input> inputs)
+{
+    auto numInputs = ZL_Compressor_Graph_getNumInputs(compressor.get(), graph);
+    bool isVariableInput =
+            ZL_Compressor_Graph_isVariableInput(compressor.get(), graph);
+    if ((!isVariableInput && inputs.size() != numInputs)
+        || (isVariableInput && inputs.size() < numInputs - 1)) {
+        return false;
+    }
+    for (size_t i = 0; i < numInputs; i++) {
+        if (i == numInputs - 1 && i == inputs.size()) {
+            // The case where the variable input has 0 inputs
+            break;
+        }
+        ZL_Type typeMask =
+                ZL_Compressor_Graph_getInputMask(compressor.get(), graph, i);
+        if (!ICONV_isCompatible((ZL_Type)inputs[i].type(), typeMask)) {
+            return false;
+        }
+    }
+    if (isVariableInput) {
+        ZL_Type finalInputTypeMask = ZL_Compressor_Graph_getInputMask(
+                compressor.get(), graph, numInputs - 1);
+        for (size_t i = numInputs; i < inputs.size(); i++) {
+            if (!ICONV_isCompatible(
+                        (ZL_Type)inputs[i].type(), finalInputTypeMask)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 } // namespace
 
 size_t testRoundTrip(
@@ -1416,6 +1454,9 @@ size_t testRoundTrip(
         int formatVersion,
         poly::span<const Input> inputs)
 {
+    if (!inputTypesAreCompatibleWithGraph(compressor, graph, inputs)) {
+        throw Exception("Input types are not compatible with graph");
+    }
     const bool needsSerialization = formatVersion <= 14
             && (inputs.size() != 1 || inputs[0].type() != Type::Serial);
     if (needsSerialization) {
