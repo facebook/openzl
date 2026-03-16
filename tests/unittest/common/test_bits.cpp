@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include <random>
+
 #include "openzl/shared/bits.h"
 #include "openzl/shared/mem.h"
 
@@ -234,4 +236,123 @@ TEST(BitsTest, convertDoubleToInt)
     ASSERT_EQ(testDouble(-0.5).first, false);
     ASSERT_EQ(testDouble(-0.99999).first, false);
 }
+TEST(BitsTest, bitDeposit32)
+{
+    // Zero mask -> zero result
+    ASSERT_EQ(ZL_bitDeposit32(0xFFFFFFFF, 0), 0u);
+    // All-ones mask -> identity
+    ASSERT_EQ(ZL_bitDeposit32(0x12345678, 0xFFFFFFFF), 0x12345678u);
+    // Scatter low bits into mask positions
+    // src=0b111 deposits into mask=0b10101010: bits {1,3,5} set -> 0b00101010
+    ASSERT_EQ(ZL_bitDeposit32(0b111, 0b10101010), 0b00101010u);
+    ASSERT_EQ(ZL_bitDeposit32(0b1010, 0b11110000), 0b10100000u);
+    // Single bit
+    ASSERT_EQ(ZL_bitDeposit32(1, 0x80000000u), 0x80000000u);
+    ASSERT_EQ(ZL_bitDeposit32(0, 0x80000000u), 0u);
+    // Verify fallback matches optimized
+    std::mt19937 rng32(42);
+    std::uniform_int_distribution<uint32_t> dist32;
+    for (int i = 0; i < 10000; ++i) {
+        uint32_t src  = dist32(rng32);
+        uint32_t mask = dist32(rng32);
+        ASSERT_EQ(
+                ZL_bitDeposit32(src, mask),
+                ZL_bitDeposit32_fallback(src, mask));
+    }
+}
+
+TEST(BitsTest, bitDeposit64)
+{
+    ASSERT_EQ(ZL_bitDeposit64(0xFFFFFFFFFFFFFFFFull, 0), 0ull);
+    ASSERT_EQ(
+            ZL_bitDeposit64(0x123456789ABCDEFull, 0xFFFFFFFFFFFFFFFFull),
+            0x123456789ABCDEFull);
+    ASSERT_EQ(ZL_bitDeposit64(0b111, 0b10101010), 0b00101010ull);
+    ASSERT_EQ(ZL_bitDeposit64(1, 0x8000000000000000ull), 0x8000000000000000ull);
+    std::mt19937 rng(42);
+    std::uniform_int_distribution<uint64_t> dist64;
+    for (int i = 0; i < 10000; ++i) {
+        uint64_t src  = dist64(rng);
+        uint64_t mask = dist64(rng);
+        ASSERT_EQ(
+                ZL_bitDeposit64(src, mask),
+                ZL_bitDeposit64_fallback(src, mask));
+    }
+}
+
+TEST(BitsTest, bitExtract32)
+{
+    // Zero mask -> zero result
+    ASSERT_EQ(ZL_bitExtract32(0xFFFFFFFF, 0), 0u);
+    // All-ones mask -> identity
+    ASSERT_EQ(ZL_bitExtract32(0x12345678, 0xFFFFFFFF), 0x12345678u);
+    // Gather bits from mask positions into contiguous low bits
+    // mask=0b10101010 selects bits {1,3,5,7}; src=0b10101000 has {3,5,7} set
+    ASSERT_EQ(ZL_bitExtract32(0b10101000, 0b10101010), 0b1110u);
+    ASSERT_EQ(ZL_bitExtract32(0b10100000, 0b11110000), 0b1010u);
+    // Single bit
+    ASSERT_EQ(ZL_bitExtract32(0x80000000u, 0x80000000u), 1u);
+    ASSERT_EQ(ZL_bitExtract32(0u, 0x80000000u), 0u);
+    // Verify fallback matches optimized
+    std::mt19937 rng32(123);
+    std::uniform_int_distribution<uint32_t> dist32;
+    for (int i = 0; i < 10000; ++i) {
+        uint32_t src  = dist32(rng32);
+        uint32_t mask = dist32(rng32);
+        ASSERT_EQ(
+                ZL_bitExtract32(src, mask),
+                ZL_bitExtract32_fallback(src, mask));
+    }
+}
+
+TEST(BitsTest, bitExtract64)
+{
+    ASSERT_EQ(ZL_bitExtract64(0xFFFFFFFFFFFFFFFFull, 0), 0ull);
+    ASSERT_EQ(
+            ZL_bitExtract64(0x123456789ABCDEFull, 0xFFFFFFFFFFFFFFFFull),
+            0x123456789ABCDEFull);
+    ASSERT_EQ(ZL_bitExtract64(0b10101000, 0b10101010), 0b1110ull);
+    ASSERT_EQ(
+            ZL_bitExtract64(0x8000000000000000ull, 0x8000000000000000ull),
+            1ull);
+    std::mt19937 rng(123);
+    std::uniform_int_distribution<uint64_t> dist64;
+    for (int i = 0; i < 10000; ++i) {
+        uint64_t src  = dist64(rng);
+        uint64_t mask = dist64(rng);
+        ASSERT_EQ(
+                ZL_bitExtract64(src, mask),
+                ZL_bitExtract64_fallback(src, mask));
+    }
+}
+
+TEST(BitsTest, bitDepositExtractRoundTrip32)
+{
+    // PEXT(PDEP(src, mask), mask) == src & ((1 << popcount(mask)) - 1)
+    std::mt19937 rng(456);
+    std::uniform_int_distribution<uint32_t> dist32;
+    for (int i = 0; i < 10000; ++i) {
+        uint32_t src       = dist32(rng);
+        uint32_t mask      = dist32(rng);
+        int nbits          = ZL_popcount64(mask);
+        uint32_t srcMasked = src & ((nbits >= 32) ? ~0u : ((1u << nbits) - 1));
+        ASSERT_EQ(ZL_bitExtract32(ZL_bitDeposit32(src, mask), mask), srcMasked);
+    }
+}
+
+TEST(BitsTest, bitDepositExtractRoundTrip64)
+{
+    // PEXT(PDEP(src, mask), mask) == src & ((1 << popcount(mask)) - 1)
+    std::mt19937 rng(456);
+    std::uniform_int_distribution<uint64_t> dist64;
+    for (int i = 0; i < 10000; ++i) {
+        uint64_t src  = dist64(rng);
+        uint64_t mask = dist64(rng);
+        int nbits     = ZL_popcount64(mask);
+        uint64_t srcMasked =
+                src & ((nbits >= 64) ? ~0ull : ((1ull << nbits) - 1));
+        ASSERT_EQ(ZL_bitExtract64(ZL_bitDeposit64(src, mask), mask), srcMasked);
+    }
+}
+
 } // namespace
