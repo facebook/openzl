@@ -81,6 +81,11 @@ ZL_INLINE ZL_Name ZL_Name_wrapKey(const char* key)
     return name;
 }
 
+ZL_INLINE bool ZL_keyIsAnchor(const char* key)
+{
+    return key[0] == '!';
+}
+
 /// @returns True if the name object is empty (standard graphs / nodes don't
 /// fill their ZL_Name)
 ZL_INLINE bool ZL_Name_isEmpty(const ZL_Name* name)

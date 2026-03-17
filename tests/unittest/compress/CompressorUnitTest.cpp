@@ -718,6 +718,18 @@ TEST_F(CompressorTest, GetNode)
     ASSERT_EQ(node, ZL_NODE_FIELD_LZ);
 }
 
+TEST_F(CompressorTest, GetNodeBadInputs)
+{
+    auto node = ZL_Compressor_getNode(compressor_.get(), NULL);
+    ASSERT_EQ(node, ZL_NODE_ILLEGAL);
+
+    node = ZL_Compressor_getNode(compressor_.get(), "");
+    ASSERT_EQ(node, ZL_NODE_ILLEGAL);
+
+    node = ZL_Compressor_getNode(compressor_.get(), "!");
+    ASSERT_EQ(node, ZL_NODE_ILLEGAL);
+}
+
 TEST_F(CompressorTest, RegisterParameterizedNode)
 {
     auto node                     = ZL_NODE_FIELD_LZ;
@@ -819,6 +831,18 @@ TEST_F(CompressorTest, GetGraph)
     ASSERT_EQ(multiInput1, graph);
     graph = ZL_Compressor_getGraph(compressor_.get(), "multi_input#10");
     ASSERT_EQ(multiInput0, graph);
+}
+
+TEST_F(CompressorTest, GetGraphBadInputs)
+{
+    auto graph = ZL_Compressor_getGraph(compressor_.get(), NULL);
+    ASSERT_EQ(graph, ZL_GRAPH_ILLEGAL);
+
+    graph = ZL_Compressor_getGraph(compressor_.get(), "");
+    ASSERT_EQ(graph, ZL_GRAPH_ILLEGAL);
+
+    graph = ZL_Compressor_getGraph(compressor_.get(), "!");
+    ASSERT_EQ(graph, ZL_GRAPH_ILLEGAL);
 }
 
 TEST_F(CompressorTest, ForEachGraph)
