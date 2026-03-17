@@ -57,7 +57,10 @@ class DivideByComponent : public OpenZLComponent {
 
     uint64_t getDivisor(const Compressor& compressor, GraphID graph) const
     {
-        auto node   = ZL_Compressor_Graph_getHeadNode(compressor.get(), graph);
+        auto node = ZL_Compressor_Graph_getHeadNode(compressor.get(), graph);
+        if (!ZL_NodeID_isValid(node)) {
+            throw std::runtime_error("Failed to get head node");
+        }
         auto params = ZL_Compressor_Node_getLocalParams(compressor.get(), node);
         if (params.copyParams.nbCopyParams == 0) {
             // Use GCD => any values are okay
