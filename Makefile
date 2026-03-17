@@ -75,7 +75,7 @@ ifndef SKIP_BUILDDEPS_CHECK
   endif
 
   # Check if xgboost headers are being built
-  XGBOOST_TARGETS := zli gtests test all
+  XGBOOST_TARGETS := zli gtests test all cli_test
   BUILDING_XGBOOST_TARGETS := $(filter $(XGBOOST_TARGETS),$(MAKECMDGOALS))
   ifeq ($(MAKECMDGOALS),)
     # If no targets are specified, assume we're building everything
@@ -106,10 +106,10 @@ LIBASMSRCS := $(wildcard $(addsuffix /*.S, $(LIBDIRS)))
 LIBOBJS := $(patsubst %.c,%.o,$(LIBCSRCS)) $(patsubst %.S,%.o,$(LIBASMSRCS))
 
 libopenzl.a:
-$(eval $(call static_library,libopenzl.a,$(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
+$(eval $(call static_library,libopenzl.a,$(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 libopenzl.so: CFLAGS += -fPIC
-$(eval $(call c_dynamic_library,libopenzl.so,$(LIBOBJS),$(LIBZSTD_SO) $(LIBLZ4_SO) $(LIBXGBOOST_SO)))
+$(eval $(call c_dynamic_library,libopenzl.so,$(LIBOBJS),$(LIBZSTD_SO) $(LIBLZ4_SO)))
 
 .PHONY:lib
 lib: libopenzl.a libopenzl.so
@@ -153,11 +153,15 @@ ML_SELECTOR_CXXOBJS := $(call cxx_objs,$(ML_SELECTOR_DIR))
 # ML selector files depend on xgboost headers
 $(ML_SELECTOR_COBJS) $(ML_SELECTOR_CXXOBJS): | $(XGBOOST_HEADER)
 
+XGBOOST_INCLUDE_PATHS := -Ideps/xgboost/include -Ideps/xgboost/dmlc-core/include # xgboost headers
+
 # Add flags for cross platform compatibility for Windows
 zli: LDFLAGS += $(XGBOOST_LDFLAGS)
+zli: CPPFLAGS += $(XGBOOST_INCLUDE_PATHS)
 zli: LDLIBS += $(XGBOOST_LDLIBS)
 
 gtests: LDFLAGS += $(XGBOOST_LDFLAGS)
+gtests: CPPFLAGS += $(XGBOOST_INCLUDE_PATHS)
 gtests: LDLIBS += $(XGBOOST_LDLIBS)
 
 $(eval $(call cxx_program,zli, \
@@ -218,18 +222,18 @@ zs2_test : examples
 # ********     Tools     ********
 
 UNITBENCH_COBJS := $(foreach DIR,$(UNITBENCH_DIRS),$(call c_objs,$(DIR)))
-$(eval $(call c_program_shared_o,unitBench,tools/time/timefn.o tools/fileio/fileio.o $(UNITBENCH_COBJS) $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
+$(eval $(call c_program_shared_o,unitBench,tools/time/timefn.o tools/fileio/fileio.o $(UNITBENCH_COBJS) $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 stream_dump2:
 $(eval $(call c_program_shared_o,stream_dump2, \
-    $(STREAMDUMP_COBJS) tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
+    $(STREAMDUMP_COBJS) tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 $(eval $(call cxx_program,sddl_compiler, \
 	$(SDDL_COMPILER_DIR)/main.o \
 	$(SDDL_COMPILER_CXXOBJS) \
 	$(ZLCPP_OBJS), \
 	libopenzl.a \
-	$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
+	$(LIBZSTD_A) $(LIBLZ4_A)))
 
 # Selection of gtest units (by file name convention)
 CXX_FILE_OBJS := $(notdir $(CXX_OBJS))
@@ -301,19 +305,19 @@ $(eval $(call cxx_program,gtests, \
 # ********     Examples     ********
 
 zs2_pipeline:
-$(eval $(call c_program_shared_o,zs2_pipeline,examples/zs2_pipeline.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
+$(eval $(call c_program_shared_o,zs2_pipeline,examples/zs2_pipeline.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 zs2_struct:
-$(eval $(call c_program_shared_o,zs2_struct,examples/zs2_struct.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
+$(eval $(call c_program_shared_o,zs2_struct,examples/zs2_struct.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 zs2_trygraph:
-$(eval $(call c_program_shared_o,zs2_trygraph,examples/zs2_trygraph.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
+$(eval $(call c_program_shared_o,zs2_trygraph,examples/zs2_trygraph.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 zs2_selector:
-$(eval $(call c_program_shared_o,zs2_selector,examples/zs2_selector.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
+$(eval $(call c_program_shared_o,zs2_selector,examples/zs2_selector.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 zs2_round_trip:
-$(eval $(call cxx_program_shared_o,zs2_round_trip,tests/round_trip.o tools/fileio/fileio.o $(SHARED_COMPONENTS_CXXOBJS) $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
+$(eval $(call cxx_program_shared_o,zs2_round_trip,tests/round_trip.o tools/fileio/fileio.o $(SHARED_COMPONENTS_CXXOBJS) $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 # ********     Cleaning     ********
 
@@ -337,7 +341,7 @@ TAR ?= tar
 # Use this target as a work-around if dependencies are not correctly built
 # automatically.
 .PHONY : builddeps
-builddeps : $(LIBGTEST_A) $(LIBZSTD_A) $(LIBZSTD_SO) $(LIBLZ4_A) $(LIBLZ4_SO) $(LIBXGBOOST_A) $(LIBXGBOOST_SO)
+builddeps : $(LIBGTEST_A) $(LIBZSTD_A) $(LIBZSTD_SO) $(LIBLZ4_A) $(LIBLZ4_SO)
 
 .PHONY: cleandeps
 cleandeps:
