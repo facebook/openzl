@@ -92,6 +92,10 @@ class BitunpackComponent : public OpenZLComponent {
             GraphID graph) const override
     {
         auto numBits = getNumBits(compressor, graph);
+        if (numBits <= 0 || numBits > 64) {
+            throw std::runtime_error(
+                    "Invalid numBits: must be in range [1, 64]");
+        }
         std::vector<std::unique_ptr<OpenZLInput>> inputs;
         inputs.reserve(num);
         for (size_t i = 0; i < num; ++i) {
