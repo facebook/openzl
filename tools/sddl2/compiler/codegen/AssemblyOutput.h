@@ -39,6 +39,11 @@ class AssemblyOutput {
         return std::move(oss).str();
     }
 
+    size_t size() const
+    {
+        return insts_.size();
+    }
+
    private:
     std::list<Instruction> insts_;
 };

@@ -487,6 +487,165 @@ TEST_F(SDDL2CodeExecutionTest, AssumeNestedParameterizedRecord)
 
     expect_success(prog, input, expected_sizes);
 }
+
+// ============================================================================
+// When Blocks
+// ============================================================================
+
+TEST_F(SDDL2CodeExecutionTest, WhenBlockTrueCondition)
+{
+    const std::vector<size_t> expected_sizes = { 1, 4 };
+    std::vector<uint8_t> input               = {
+        0x01,                   // flag = 1 (true)
+        0x0A, 0x00, 0x00, 0x00, // optional = 10
+    };
+
+    const auto prog = R"(
+        flag: UInt8
+        when flag {
+            optional: Int32LE
+        }
+        expect flag == 1
+    )";
+
+    expect_success(prog, input, expected_sizes);
+}
+
+TEST_F(SDDL2CodeExecutionTest, WhenBlockFalseCondition)
+{
+    const std::vector<size_t> expected_sizes = { 1 };
+    std::vector<uint8_t> input               = {
+        0x00, // flag = 0 (false)
+    };
+
+    const auto prog = R"(
+        flag: UInt8
+        when flag {
+            optional: Int32LE
+        }
+        expect flag == 0
+    )";
+
+    expect_success(prog, input, expected_sizes);
+}
+
+TEST_F(SDDL2CodeExecutionTest, NestedWhenBlocks)
+{
+    const std::vector<size_t> expected_sizes = { 1, 1, 4 };
+    std::vector<uint8_t> input               = {
+        0x01,                   // a = 1
+        0x02,                   // b = 2
+        0x0A, 0x00, 0x00, 0x00, // optional = 10
+    };
+
+    const auto prog = R"(
+        a: UInt8
+        b: UInt8
+        when a == 1 {
+            when b == 2 {
+                optional: Int32LE
+            }
+        }
+        expect a == 1
+        expect b == 2
+    )";
+
+    expect_success(prog, input, expected_sizes);
+}
+
+TEST_F(SDDL2CodeExecutionTest, NestedWhenBlocksOuterFalse)
+{
+    const std::vector<size_t> expected_sizes = { 1, 1 };
+    std::vector<uint8_t> input               = {
+        0x00, // a = 0 (outer false)
+        0x02, // b = 2
+    };
+
+    const auto prog = R"(
+        a: UInt8
+        b: UInt8
+        when a == 1 {
+            when b == 2 {
+                optional: Int32LE
+            }
+        }
+        expect a == 0
+        expect b == 2
+    )";
+
+    expect_success(prog, input, expected_sizes);
+}
+
+TEST_F(SDDL2CodeExecutionTest, NestedWhenBlocksInnerFalse)
+{
+    const std::vector<size_t> expected_sizes = { 1, 1 };
+    std::vector<uint8_t> input               = {
+        0x01, // a = 1 (outer true)
+        0x05, // b = 5 (inner false, not 2)
+    };
+
+    const auto prog = R"(
+        a: UInt8
+        b: UInt8
+        when a == 1 {
+            when b == 2 {
+                optional: Int32LE
+            }
+        }
+        expect a == 1
+        expect b == 5
+    )";
+
+    expect_success(prog, input, expected_sizes);
+}
+
+TEST_F(SDDL2CodeExecutionTest, WhenBlockInParameterizedRecord)
+{
+    const std::vector<size_t> expected_sizes = { 10 };
+    std::vector<uint8_t> input               = {
+        0x01, 0x00, 0x00, 0x00, // a = 1
+        0x02, 0x00,             // optional = 2
+        0x03, 0x00, 0x00, 0x00, // b = 3
+    };
+
+    const auto prog = R"(
+        Record Data(flag) = {
+            a: Int32LE,
+            when flag {
+                optional: Int16LE
+            },
+            b: Int32LE
+        }
+        data: Data(1)
+        expect data.a == 1
+        expect data.b == 3
+    )";
+    expect_success(prog, input, expected_sizes);
+}
+
+TEST_F(SDDL2CodeExecutionTest, WhenBlockInParameterizedRecordFalse)
+{
+    const std::vector<size_t> expected_sizes = { 8 };
+    std::vector<uint8_t> input               = {
+        0x01, 0x00, 0x00, 0x00, // a = 1
+        0x02, 0x00, 0x00, 0x00, // b = 2
+    };
+
+    const auto prog = R"(
+        Record Data(flag) = {
+            a: Int32LE,
+            when flag {
+                optional: Int16LE
+            },
+            b: Int32LE
+        }
+        data: Data(0)
+        expect data.a == 1
+        expect data.b == 2
+    )";
+
+    expect_success(prog, input, expected_sizes);
+}
 } // namespace testing
 } // namespace sddl2
 } // namespace openzl

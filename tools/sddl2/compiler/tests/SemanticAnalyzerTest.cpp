@@ -286,8 +286,7 @@ TEST_F(SemanticAnalyzerTest, NestedWhenBlocks)
         }
     )";
 
-    // TODO: this will pass once codegen is implemented
-    expect_error(prog, "code generation error");
+    expect_success(prog);
 }
 
 TEST_F(SemanticAnalyzerTest, WhenBlockInRecord)
@@ -302,8 +301,7 @@ TEST_F(SemanticAnalyzerTest, WhenBlockInRecord)
         : Data(1)
     )";
 
-    // TODO: this will pass once codegen is implemented
-    expect_error(prog, "code generation error");
+    expect_success(prog);
 }
 
 TEST_F(SemanticAnalyzerTest, WhenBlockInRecordWithUndefinedParam)
@@ -362,8 +360,7 @@ TEST_F(SemanticAnalyzerTest, MemberAccessOnNonConditionalField)
         expect data.present == 0
     )";
 
-    // TODO: this will pass once codegen is implemented
-    expect_error(prog, "code generation error");
+    expect_success(prog);
 }
 
 } // namespace openzl::sddl2::tests
