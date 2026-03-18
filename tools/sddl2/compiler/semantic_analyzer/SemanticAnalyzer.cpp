@@ -116,6 +116,8 @@ class SemanticAnalyzerImpl {
                 return analyze(*node->as_array());
             case ConvertedNodeType::RECORD:
                 return analyze(*node->as_record());
+            case ConvertedNodeType::RECORD_FIELD:
+                return analyze(*node->as_record_field());
             case ConvertedNodeType::CALL:
                 return analyze(*node->as_call());
             case ConvertedNodeType::WHEN:
@@ -152,21 +154,14 @@ class SemanticAnalyzerImpl {
         return Type{ TypeKind::ARRAY, &array };
     }
 
-    void analyzeRecordFields(const ASTVec& fields)
+    Type analyze(const ASTRecordField& field)
     {
-        for (const auto& field : fields) {
-            if (auto op = field->as_op()) {
-                if (op->op() != Op::ASSUME) {
-                    throw SemanticError(op->loc(), "Invalid record field!");
-                }
-                analyzeAssume(*op);
-            } else if (auto when = field->as_when()) {
-                expectNumeric(analyzeNode(when->condition()));
-                analyzeRecordFields(when->body());
-            } else {
-                throw SemanticError(field->loc(), "Invalid record field!");
-            }
+        const auto* var = field.name()->as_var();
+        if (!var) {
+            throw SemanticError(field.loc(), "Field name must be a variable.");
         }
+        expectFieldType(analyzeNode(field.type()));
+        return Type{ TypeKind::NONE };
     }
 
     Type analyze(const ASTRecord& record)
@@ -184,7 +179,10 @@ class SemanticAnalyzerImpl {
         }
 
         // Validate all fields
-        analyzeRecordFields(record.fields());
+        for (const auto& field : record.fields()) {
+            analyzeNode(field);
+        }
+
         var_types_ = std::move(saved_vars);
 
         return Type{ TypeKind::RECORD, &record };
@@ -323,10 +321,10 @@ class SemanticAnalyzerImpl {
         // Find the field
         std::optional<Type> found_type;
         for (const auto& field : record->fields()) {
-            auto assume = field->as_op();
-            auto& name  = assume->args()[0]->as_var()->name();
+            auto record_field = field->as_record_field();
+            auto& name        = record_field->name()->as_var()->name();
             if (name == field_name) {
-                found_type = assumedType(analyzeNode(assume->args()[1]));
+                found_type = assumedType(analyzeNode(record_field->type()));
             }
         }
         if (!found_type) {

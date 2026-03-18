@@ -27,6 +27,7 @@ class ASTBuiltinField;
 class ASTBytes;
 class ASTArray;
 class ASTRecord;
+class ASTRecordField;
 class ASTCall;
 class ASTWhen;
 class ASTOp;
@@ -38,6 +39,7 @@ enum class ConvertedNodeType {
     BYTES,
     ARRAY,
     RECORD,
+    RECORD_FIELD,
     CALL,
     WHEN,
     OP
@@ -64,6 +66,7 @@ class ASTNode {
     virtual const ASTCall* as_call() const;
     virtual const ASTWhen* as_when() const;
     virtual const ASTOp* as_op() const;
+    virtual const ASTRecordField* as_record_field() const;
 
     bool operator==(const Symbol& symbol) const;
     bool operator!=(const Symbol& symbol) const;
@@ -353,6 +356,27 @@ class ASTOp : public ASTConverted {
    private:
     const Op op_;
     const ASTVec args_;
+};
+
+class ASTRecordField : public ASTConverted {
+   public:
+    explicit ASTRecordField(ASTPtr name, ASTPtr type);
+
+    const ASTRecordField* as_record_field() const override;
+
+    void print(std::ostream& os, size_t indent) const override;
+
+    ConvertedNodeType converted_node_type() const override final
+    {
+        return ConvertedNodeType::RECORD_FIELD;
+    }
+
+    const ASTPtr& name() const;
+    const ASTPtr& type() const;
+
+   private:
+    const ASTPtr name_;
+    const ASTPtr type_;
 };
 
 /**

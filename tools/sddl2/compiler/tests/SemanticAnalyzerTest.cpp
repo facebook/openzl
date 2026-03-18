@@ -332,8 +332,7 @@ TEST_F(SemanticAnalyzerTest, WhenBlockInRecordWithFieldReference)
         : Data
     )";
 
-    // TODO: this will pass once codegen is implemented
-    expect_error(prog, "code generation error");
+    expect_error(prog, "Undefined variable");
 }
 
 } // namespace openzl::sddl2::tests
