@@ -59,6 +59,10 @@ class DeadVarImpl {
                 recordLastRefs(node->as_record()->fields());
                 return;
             }
+            case ConvertedNodeType::RECORD_FIELD: {
+                recordLastRefs(node->as_record_field()->type());
+                return;
+            }
             case ConvertedNodeType::OP: {
                 const auto& op = *node->as_op();
                 if (op.op() == Op::ASSIGN || op.op() == Op::ASSUME) {
@@ -101,6 +105,7 @@ class DeadVarImpl {
             case ConvertedNodeType::NUM:
             case ConvertedNodeType::BUILTIN_FIELD:
             case ConvertedNodeType::RECORD:
+            case ConvertedNodeType::RECORD_FIELD:
                 return node;
             case ConvertedNodeType::VAR:
                 return optimizeVar(node->as_var());

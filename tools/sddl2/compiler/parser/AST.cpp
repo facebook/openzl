@@ -72,6 +72,11 @@ const ASTOp* ASTNode::as_op() const
     return nullptr;
 }
 
+const ASTRecordField* ASTNode::as_record_field() const
+{
+    return nullptr;
+}
+
 bool ASTNode::operator==(const Symbol& sym) const
 {
     const auto* tok = as_sym();
@@ -348,20 +353,39 @@ const ASTVec& ASTRecord::fields() const
     return fields_;
 }
 
-ASTVec ASTRecord::extract_fields(
-        const SourceLocation& loc,
-        const ASTPtr& paren_ptr)
+/**
+ * Converts a list of ASTNodes into a list of ASTRecordFields. This is used
+ * when parsing the fields of a record.
+ */
+static ASTVec toRecordFields(const ASTVec& nodes)
 {
-    const auto* list = paren_ptr->as_list();
-    if (list == nullptr) {
-        throw InvariantViolation(
-                loc, "Record declaration must be given a list of fields.");
+    ASTVec fields;
+    for (const auto& node : nodes) {
+        if (node->as_record_field()) {
+            fields.push_back(node);
+        } else if (auto when = node->as_when()) {
+            fields.push_back(
+                    std::make_shared<ASTWhen>(
+                            when->condition(), toRecordFields(when->body())));
+        } else if (auto op = node->as_op()) {
+            if (op->op() != Op::ASSUME) {
+                throw ParseError(
+                        node->loc(), "Record field must be an assume op.");
+            };
+            fields.push_back(
+                    std::make_shared<ASTRecordField>(
+                            op->args()[0], op->args()[1]));
+        } else {
+            throw ParseError(
+                    node->loc(), "Record field must be an op or when.");
+        }
     }
-    if (list->list_type() != ListType::CURLY) {
-        throw InvariantViolation(
-                loc, "Record declaration fields list must be curly-braced.");
-    }
-    return unwrap_parens(list->nodes());
+    return fields;
+}
+
+ASTVec ASTRecord::extract_fields(const SourceLocation&, const ASTPtr& paren_ptr)
+{
+    return toRecordFields(unwrap_curly(paren_ptr));
 }
 
 ASTVec ASTRecord::extract_params(
@@ -509,6 +533,37 @@ const Op& ASTOp::op() const
 const ASTVec& ASTOp::args() const
 {
     return args_;
+}
+
+ASTRecordField::ASTRecordField(ASTPtr name, ASTPtr type)
+        : ASTConverted(some(name).loc() + some(type).loc()),
+          name_(std::move(name)),
+          type_(std::move(type))
+{
+}
+
+const ASTRecordField* ASTRecordField::as_record_field() const
+{
+    return this;
+}
+
+void ASTRecordField::print(std::ostream& os, size_t indent) const
+{
+    os << std::string(indent, ' ') << "RecordField:" << std::endl;
+    os << std::string(indent + 2, ' ') << "Name:" << std::endl;
+    name_->print(os, indent + 4);
+    os << std::string(indent + 2, ' ') << "Type:" << std::endl;
+    type_->print(os, indent + 4);
+}
+
+const ASTPtr& ASTRecordField::name() const
+{
+    return name_;
+}
+
+const ASTPtr& ASTRecordField::type() const
+{
+    return type_;
 }
 
 } // namespace openzl::sddl2

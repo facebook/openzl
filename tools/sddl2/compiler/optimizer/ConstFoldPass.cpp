@@ -41,6 +41,7 @@ class ConstFoldImpl {
         switch (node->converted_node_type()) {
             case ConvertedNodeType::NUM:
             case ConvertedNodeType::BUILTIN_FIELD:
+            case ConvertedNodeType::RECORD_FIELD:
                 return node;
             case ConvertedNodeType::VAR:
                 return optimizeVar(*node->as_var());

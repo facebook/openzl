@@ -185,6 +185,7 @@ class CodeGeneratorImpl {
             case ConvertedNodeType::BYTES:
             case ConvertedNodeType::ARRAY:
             case ConvertedNodeType::RECORD:
+            case ConvertedNodeType::RECORD_FIELD:
             case ConvertedNodeType::CALL:
             case ConvertedNodeType::WHEN:
             default:
@@ -232,20 +233,23 @@ class CodeGeneratorImpl {
             case ConvertedNodeType::RECORD: {
                 auto record = type->as_record();
                 for (const auto& field : record->fields()) {
-                    if (auto assume = field->as_op()) {
-                        const auto& field_type = assume->args()[1];
-                        auto [field_asm, _]    = generateType(field_type);
-                        output += std::move(field_asm);
-                    }
                     if (auto when = field->as_when()) {
                         (void)when;
                         throw CodegenError(
                                 field->loc(), "Not yet implemented!");
                     }
+                    auto [field_asm, _] = generateType(field);
+                    output += std::move(field_asm);
                 }
                 output += "push.i64 " + std::to_string(record->fields().size());
                 output += "type.structure";
                 return { std::move(output), type };
+            }
+            case ConvertedNodeType::RECORD_FIELD: {
+                auto field                   = type->as_record_field();
+                auto [field_asm, field_type] = generateType(field->type());
+                output += std::move(field_asm);
+                return { std::move(output), field_type };
             }
             case ConvertedNodeType::BYTES: {
                 auto bytes = type->as_bytes();
@@ -339,9 +343,10 @@ class CodeGeneratorImpl {
                 output += bindParams(curr_record, call->args());
             }
             for (const auto& field : curr_record->fields()) {
-                auto assume      = field->as_op();
-                auto& field_name = assume->args()[0]->as_var()->name();
-                auto [field_asm, field_type] = generateType(assume->args()[1]);
+                auto record_field = field->as_record_field();
+                auto& field_name  = record_field->name()->as_var()->name();
+                auto [field_asm, field_type] =
+                        generateType(record_field->type());
                 if (name == field_name) {
                     type = field_type;
                     break;
