@@ -384,6 +384,7 @@ class ASTRecordField : public ASTConverted {
  */
 class Codegen {
    public:
+    explicit Codegen() : loc_(SourceLocation::null()) {}
     explicit Codegen(SourceLocation loc) : loc_(std::move(loc)) {}
 
     Token token(Symbol sym) const

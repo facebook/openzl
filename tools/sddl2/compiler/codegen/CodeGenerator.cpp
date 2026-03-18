@@ -86,22 +86,28 @@ class CodeGeneratorImpl {
     std::string generate(const ASTVec& ast)
     {
         (void)log_;
+        AssemblyOutput output = generateBlock(ast);
+        auto result           = output.str();
+        return result;
+    }
+
+   private:
+    AssemblyOutput generateBlock(const ASTVec& ast)
+    {
         AssemblyOutput output;
         for (const auto& node : ast) {
             if (auto op = node->as_op()) {
                 output += generateOp(*op);
             } else if (auto when = node->as_when()) {
-                (void)when;
-                throw CodegenError(node->loc(), "Not yet implemented!");
+                output += generateWhen(*when);
             } else {
-                throw InvariantViolation(
-                        node->loc(), "Expected an operation or when.");
+                auto [type_asm, _] = generateType(node);
+                output += std::move(type_asm);
             }
         }
-        return output.str();
+        return output;
     }
 
-   private:
     /**
      * Generates code for an operation node. This is the central dispatch
      * for the code generator. Each op knows whether its arguments are
@@ -158,6 +164,32 @@ class CodeGeneratorImpl {
             default:
                 throw InvariantViolation(op.loc(), "Unsupported operation.");
         };
+    }
+
+    /**
+     * Generates code for a when block.
+     */
+    AssemblyOutput generateWhen(const ASTWhen& when)
+    {
+        AssemblyOutput output;
+
+        // Get code for body
+        auto body_asm = generateBlock(when.body());
+
+        // Push N (number of instructions in body)
+        output += "push.i64 " + std::to_string(body_asm.size());
+
+        // Evaluate condition
+        output += generateValue(when.condition());
+
+        // Negate condition (cmp.eq with 0) so we skip the body when false
+        output += "push.zero";
+        output += "cmp.eq";
+        output += "jump_if";
+
+        output += std::move(body_asm);
+
+        return output;
     }
 
     /**
@@ -232,17 +264,24 @@ class CodeGeneratorImpl {
             }
             case ConvertedNodeType::RECORD: {
                 auto record = type->as_record();
-                for (const auto& field : record->fields()) {
-                    if (auto when = field->as_when()) {
-                        (void)when;
-                        throw CodegenError(
-                                field->loc(), "Not yet implemented!");
-                    }
-                    auto [field_asm, _] = generateType(field);
-                    output += std::move(field_asm);
-                }
-                output += "push.i64 " + std::to_string(record->fields().size());
+                // Save the current stack depth
+                auto reg = registers_.allocate();
+                output += "push.stack_depth";
+                output += "push.i64 " + std::to_string(reg);
+                output += "var.store";
+
+                // Generate the record body
+                output += generateBlock(record->fields());
+
+                // Restore the stack depth and get the size of the record based
+                // on the number of types that were generated
+                output += "push.stack_depth";
+                output += "push.i64 " + std::to_string(reg);
+                output += "var.load";
+                output += "math.sub";
                 output += "type.structure";
+                registers_.free(reg);
+
                 return { std::move(output), type };
             }
             case ConvertedNodeType::RECORD_FIELD: {
@@ -343,15 +382,22 @@ class CodeGeneratorImpl {
                 output += bindParams(curr_record, call->args());
             }
             for (const auto& field : curr_record->fields()) {
-                auto record_field = field->as_record_field();
-                auto& field_name  = record_field->name()->as_var()->name();
-                auto [field_asm, field_type] =
-                        generateType(record_field->type());
-                if (name == field_name) {
-                    type = field_type;
-                    break;
+                if (auto record_field = field->as_record_field()) {
+                    auto [field_asm, field_type] = generateType(field);
+                    auto& field_name = record_field->name()->as_var()->name();
+                    if (name == field_name) {
+                        type = field_type;
+                        break;
+                    }
+                    output += std::move(field_asm);
                 }
-                output += std::move(field_asm);
+                if (field->as_when()) {
+                    // Hack: we generate a dummy type for the when block so that
+                    // we can get its size
+                    auto dummy = Codegen().record(ASTVec{}, ASTVec{ field });
+                    auto [when_asm, _] = generateType(dummy);
+                    output += std::move(when_asm);
+                }
                 output += "type.sizeof";
                 output += "math.add";
             }

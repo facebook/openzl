@@ -32,8 +32,9 @@ class TestCompiler : public Compiler {
 
     ASTVec compile_ast(std::string_view source, std::string_view filename)
     {
-        const Source src{ source, filename };
-        const auto tokens = tokenizer_.tokenize(src);
+        // Store Source as member so it outlives the returned AST
+        src_              = std::make_unique<Source>(source, filename);
+        const auto tokens = tokenizer_.tokenize(*src_);
         const auto groups = grouper_.group(tokens);
         auto tree         = parser_.parse(groups);
         semantic_analyzer_.analyze(tree);
@@ -45,6 +46,7 @@ class TestCompiler : public Compiler {
 
    private:
     bool optimize_;
+    std::unique_ptr<Source> src_;
 };
 
 void expect_node_eq(const ASTNode& lhs, const ASTNode& rhs)
