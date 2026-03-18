@@ -335,4 +335,35 @@ TEST_F(SemanticAnalyzerTest, WhenBlockInRecordWithFieldReference)
     expect_error(prog, "Undefined variable");
 }
 
+TEST_F(SemanticAnalyzerTest, MemberAccessOnConditionalField)
+{
+    const auto prog = R"(
+        Record Data(flags) = {
+            when flags {
+                optional: Int32LE
+            }
+        }
+        data: Data(1)
+        expect data.optional == 0
+    )";
+    expect_error(prog, "access not supported");
+}
+
+TEST_F(SemanticAnalyzerTest, MemberAccessOnNonConditionalField)
+{
+    const auto prog = R"(
+        Record Data(flags) = {
+            when flags {
+                optional: Int32LE
+            },
+            present: Int32LE
+        }
+        data: Data(1)
+        expect data.present == 0
+    )";
+
+    // TODO: this will pass once codegen is implemented
+    expect_error(prog, "code generation error");
+}
+
 } // namespace openzl::sddl2::tests
