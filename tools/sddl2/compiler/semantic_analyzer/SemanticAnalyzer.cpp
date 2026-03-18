@@ -298,6 +298,27 @@ class SemanticAnalyzerImpl {
         return Type{ TypeKind::NONE };
     }
 
+    std::optional<Type> findField(const ASTVec& fields, const std::string& name)
+    {
+        for (const auto& field : fields) {
+            if (auto record_field = field->as_record_field()) {
+                auto& field_name = record_field->name()->as_var()->name();
+                if (field_name == name) {
+                    return assumedType(analyzeNode(record_field->type()));
+                }
+            }
+            if (auto when = field->as_when()) {
+                auto found_type = findField(when->body(), name);
+                if (found_type) {
+                    throw SemanticError(
+                            field->loc(),
+                            "Member access not supported on optional fields.");
+                }
+            }
+        }
+        return std::nullopt;
+    }
+
     Type analyzeMember(const ASTOp& op)
     {
         auto saved_vars = var_types_;
@@ -319,14 +340,7 @@ class SemanticAnalyzerImpl {
         }
 
         // Find the field
-        std::optional<Type> found_type;
-        for (const auto& field : record->fields()) {
-            auto record_field = field->as_record_field();
-            auto& name        = record_field->name()->as_var()->name();
-            if (name == field_name) {
-                found_type = assumedType(analyzeNode(record_field->type()));
-            }
-        }
+        auto found_type = findField(record->fields(), field_name);
         if (!found_type) {
             throw SemanticError(
                     op.args()[1]->loc(),
