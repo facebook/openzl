@@ -288,10 +288,11 @@ static ZL_Report ENC_runTransform_internal(
                     RTGM_getOutStreamID(rtgm, eictx->rtnodeid, (int)i);
             const ZL_Data* d     = RTGM_getRStream(rtgm, rtsid);
             bool pushbackSuccess = VECTOR_PUSHBACK(odata, d);
-            ZL_ERR_IF_NOT(
-                    pushbackSuccess,
-                    allocation,
-                    "Unable to append to the waypoint odata vector");
+            if (!pushbackSuccess) {
+                VECTOR_DESTROY(odata);
+                ZL_ERR(allocation,
+                       "Unable to append to the waypoint odata vector");
+            }
         }
         CWAYPOINT(
                 on_codecEncode_end,

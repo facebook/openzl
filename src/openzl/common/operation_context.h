@@ -55,6 +55,7 @@ struct ZL_OperationContext_s {
     // snippets at specified CWAYPOINT()s / DWAYPOINT()s within the operation.
     // See common/introspection.h for more details.
     ZL_CompressIntrospectionHooks compressIntrospectionHooks;
+    ZL_DecompressIntrospectionHooks decompressIntrospectionHooks;
     bool hasCompressionHooks;
     bool hasDecompressionHooks;
 };

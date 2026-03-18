@@ -1237,7 +1237,11 @@ static ZL_Report processStream(
             "Could not find state for transform %u",
             nodeInfo->trpid.trid);
 
+    DWAYPOINT(on_codecDecode_start, &diState, inputs, nbInStreams);
     ZL_Report const report = dt->transformFn(&diState, dt, inputs, nbInStreams);
+    if (ZL_isError(report)) {
+        DWAYPOINT(on_codecDecode_end, &diState, NULL, 0, report);
+    }
     ZL_RET_R_IF_ERR_COERCE(report);
 
     // Check transform's outcome
@@ -1250,6 +1254,27 @@ static ZL_Report processStream(
         ZL_ASSERT(
                 STREAM_isCommitted(outStream),
                 "Decoding transform did not provide its output size");
+    }
+    IF_DWAYPOINT_ENABLED(on_codecDecode_end, &diState)
+    {
+        VECTOR_CONST_POINTERS(ZL_Data) odata;
+        VECTOR_INIT(odata, nodeInfo->nbRegens);
+        for (size_t n = 0; n < nodeInfo->nbRegens; n++) {
+            const ZL_Data* d     = dctx->dataInfo.ptr[regensID[n]].data;
+            bool pushbackSuccess = VECTOR_PUSHBACK(odata, d);
+            if (!pushbackSuccess) {
+                VECTOR_DESTROY(odata);
+                ZL_ERR(allocation,
+                       "Unable to append to the waypoint odata vector");
+            }
+        }
+        DWAYPOINT(
+                on_codecDecode_end,
+                &diState,
+                VECTOR_DATA(odata),
+                VECTOR_SIZE(odata),
+                ZL_returnSuccess());
+        VECTOR_DESTROY(odata);
     }
     ALLOC_Arena_freeAll(dctx->workspaceArena);
 
@@ -1608,7 +1633,12 @@ ZL_Report ZL_DCtx_decompressMultiTBuffer(
     ZL_OC_startOperation(&dctx->opCtx, ZL_Operation_decompress);
     ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
 
-    // Set the applied parameters
+    DWAYPOINT(
+            on_ZL_DCtx_decompressMultiTBuffer_start,
+            dctx,
+            nbOutputs,
+            framePtr,
+            frameSize);
     ZL_ERR_IF_ERR(DCtx_setAppliedParameters(dctx));
 
     // Clean up state - may be dirty if previous decompression failed
@@ -1702,6 +1732,7 @@ ZL_Report ZL_DCtx_decompressMultiTBuffer(
     }
 
     // main decompression loop
+    size_t chunkIndex = 0;
     while (1) {
         // Check end of frame marker
         if (dctx->dfh.formatVersion >= ZL_CHUNK_VERSION_MIN) {
@@ -1718,13 +1749,16 @@ ZL_Report ZL_DCtx_decompressMultiTBuffer(
             }
         }
 
+        DWAYPOINT(on_decompressChunk_start, dctx, chunkIndex);
         ZL_TRY_LET(
                 size_t,
                 chunkSize,
                 ZL_DCtx_decompressChunk(
                         dctx, nbOutputs, framePtr, frameSize, consumed));
+        DWAYPOINT(on_decompressChunk_end, dctx, ZL_returnValue(chunkSize));
         ZL_DLOG(SEQ, "chunk size: %zu", chunkSize);
         consumed += chunkSize;
+        chunkIndex++;
 
         if (dctx->dfh.formatVersion < ZL_CHUNK_VERSION_MIN)
             break;
@@ -1785,6 +1819,10 @@ ZL_Report ZL_DCtx_decompressMultiTBuffer(
     ZL_DLOG(BLOCK,
             "ZL_DCtx_decompressMultiTBuffer: success: decompressed %zu Typed Buffers",
             nbOutputs);
+    DWAYPOINT(
+            on_ZL_DCtx_decompressMultiTBuffer_end,
+            dctx,
+            ZL_returnValue(nbOutputs));
     return ZL_returnValue(nbOutputs);
 }
 
@@ -1952,4 +1990,29 @@ const char* DCTX_getTrName(ZL_DCtx const* dctx, ZL_IDType decoderIdx)
 size_t DCTX_streamMemory(ZL_DCtx const* dctx)
 {
     return ALLOC_Arena_memAllocated(dctx->streamArena);
+}
+
+ZL_Report ZL_DCtx_attachDecompressIntrospectionHooks(
+        ZL_DCtx* dctx,
+        const ZL_DecompressIntrospectionHooks* hooks)
+{
+    ZL_ASSERT_NN(dctx);
+    ZL_RET_R_IF_NULL(allocation, hooks);
+    ZL_OperationContext* oc = ZL_DCtx_getOperationContext(dctx);
+    ZL_ASSERT_NN(oc);
+    oc->decompressIntrospectionHooks = *hooks;
+    oc->hasDecompressionHooks        = true;
+    return ZL_returnSuccess();
+}
+
+ZL_Report ZL_DCtx_detachAllDecompressIntrospectionHooks(ZL_DCtx* dctx)
+{
+    ZL_ASSERT_NN(dctx);
+    ZL_OperationContext* oc = ZL_DCtx_getOperationContext(dctx);
+    ZL_ASSERT_NN(oc);
+    ZL_zeroes(
+            &oc->decompressIntrospectionHooks,
+            sizeof(oc->decompressIntrospectionHooks));
+    oc->hasDecompressionHooks = false;
+    return ZL_returnSuccess();
 }
