@@ -197,7 +197,12 @@ ZL_NodeID ZL_Compressor_registerSplitNode_withParams(
     ZL_LocalCopyParams const lgp = { &segmentSizesParam, 1 };
 
     ZL_LocalParams const lParams = { .copyParams = lgp };
-    return ZL_Compressor_cloneNode(cgraph, getSplitNNodeID(type), &lParams);
+    return ZL_Compressor_registerParameterizedNode(
+            cgraph,
+            &(const ZL_ParameterizedNodeDesc){
+                    .node        = getSplitNNodeID(type),
+                    .localParams = &lParams,
+            });
 }
 
 ZL_NodeID ZL_Compressor_registerSplitNode_withParser(
@@ -214,7 +219,12 @@ ZL_NodeID ZL_Compressor_registerSplitNode_withParser(
 
     ZL_LocalRefParams const lgp  = { refParams, 2 };
     ZL_LocalParams const lParams = { .refParams = lgp };
-    return ZL_Compressor_cloneNode(cgraph, getSplitNNodeID(type), &lParams);
+    return ZL_Compressor_registerParameterizedNode(
+            cgraph,
+            &(const ZL_ParameterizedNodeDesc){
+                    .node        = getSplitNNodeID(type),
+                    .localParams = &lParams,
+            });
 }
 
 void* ZL_SplitState_malloc(ZL_SplitState* state, size_t size)

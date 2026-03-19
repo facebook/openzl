@@ -2705,7 +2705,11 @@ class Transform {
         }
         LocalParams lp;
         lp.addIntParam(0, params.llBits);
-        return ZL_Compressor_cloneNode(cgraph, node, lp.get());
+        const ZL_ParameterizedNodeDesc desc = {
+            .node        = node,
+            .localParams = lp.get(),
+        };
+        return ZL_Compressor_registerParameterizedNode(cgraph, &desc);
     }
 
     // static ZL_GraphID storeGraph(ZL_Compressor* cgraph)

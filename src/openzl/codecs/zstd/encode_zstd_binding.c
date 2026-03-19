@@ -195,8 +195,12 @@ ZL_GraphID ZL_Compressor_registerZstdGraph_withLevel(
                                                    ZSTD_c_compressionLevel,
                                                    compressionLevel,
                                            }) };
-    ZL_NodeID node_zstd        = ZL_Compressor_cloneNode(
-            cgraph, (ZL_NodeID){ ZL_PrivateStandardNodeID_zstd }, &localParams);
+    ZL_NodeID node_zstd        = ZL_Compressor_registerParameterizedNode(
+            cgraph,
+            &(const ZL_ParameterizedNodeDesc){
+                           .node        = (ZL_NodeID){ ZL_PrivateStandardNodeID_zstd },
+                           .localParams = &localParams,
+            });
     return ZL_Compressor_registerStaticGraph_fromNode1o(
             cgraph, node_zstd, ZL_GRAPH_STORE);
 }

@@ -135,7 +135,12 @@ ZL_NodeID ZL_Compressor_registerConvertSerialToStringNode(
 
     ZL_LocalCopyParams const lgp = { &ssp, 1 };
     ZL_LocalParams const lParams = { .copyParams = lgp };
-    return ZL_Compressor_cloneNode(cgraph, ZL_NODE_SETSTRINGLENS, &lParams);
+    return ZL_Compressor_registerParameterizedNode(
+            cgraph,
+            &(const ZL_ParameterizedNodeDesc){
+                    .node        = ZL_NODE_SETSTRINGLENS,
+                    .localParams = &lParams,
+            });
 }
 
 ZL_RESULT_OF(ZL_EdgeList)

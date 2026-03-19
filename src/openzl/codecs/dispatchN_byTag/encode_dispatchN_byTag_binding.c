@@ -220,7 +220,12 @@ ZL_NodeID ZL_Compressor_registerDispatchNode(
 
     ZL_LocalCopyParams const lgp = { &ssp, 1 };
     ZL_LocalParams const lParams = { .copyParams = lgp };
-    return ZL_Compressor_cloneNode(cgraph, ZL_NODE_DISPATCH, &lParams);
+    return ZL_Compressor_registerParameterizedNode(
+            cgraph,
+            &(const ZL_ParameterizedNodeDesc){
+                    .node        = ZL_NODE_DISPATCH,
+                    .localParams = &lParams,
+            });
 }
 
 void* ZL_DispatchState_malloc(ZL_DispatchState* state, size_t size)

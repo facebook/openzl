@@ -127,7 +127,6 @@ zs_cxxlibrary(
     deps = [
         "..:zstronglib",
         "datagen:datagen",
-        "fbsource//third-party/googletest:gtest",
         ":utils",
     ],
     exported_deps = ["fbsource//third-party/googletest:gtest"],

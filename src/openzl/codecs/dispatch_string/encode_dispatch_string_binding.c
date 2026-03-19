@@ -146,8 +146,12 @@ ZL_NodeID ZL_Compressor_registerDispatchStringNode(
         .refParams = ZL_REFPARAMS(
                 { ZL_DISPATCH_STRING_INDICES_PID, dispatchIndicesParam }),
     };
-    return ZL_Compressor_cloneNode(
-            cgraph, ZL_NODE_DISPATCH_STRING, &localParams);
+    return ZL_Compressor_registerParameterizedNode(
+            cgraph,
+            &(const ZL_ParameterizedNodeDesc){
+                    .node        = ZL_NODE_DISPATCH_STRING,
+                    .localParams = &localParams,
+            });
 }
 
 ZL_RESULT_OF(ZL_EdgeList)

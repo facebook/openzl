@@ -2193,8 +2193,12 @@ static ZL_Report ZL_CompressorDeserializer_tryBuildNode(
                     &base_local_params,
                     NULL));
 
-    const ZL_NodeID node_id =
-            ZL_Compressor_cloneNode(compressor, base_nid, &local_params);
+    const ZL_NodeID node_id = ZL_Compressor_registerParameterizedNode(
+            compressor,
+            &(const ZL_ParameterizedNodeDesc){
+                    .node        = base_nid,
+                    .localParams = &local_params,
+            });
     ZL_ERR_IF_EQ(node_id.nid, ZL_NODE_ILLEGAL.nid, corruption);
 
     const char* new_name = ZL_Compressor_Node_getName(compressor, node_id);

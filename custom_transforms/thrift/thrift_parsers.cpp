@@ -689,12 +689,16 @@ ZL_NodeID cloneThriftNodeWithLocalParams(
         ZL_NodeID nodeId,
         std::string_view serializedConfig)
 {
-    const ZL_CopyParam gp            = { .paramId   = 0,
-                                         .paramPtr  = serializedConfig.data(),
-                                         .paramSize = serializedConfig.size() };
-    const ZL_LocalParams localParams = { .copyParams = { .copyParams   = &gp,
-                                                         .nbCopyParams = 1 } };
-    return ZL_Compressor_cloneNode(cgraph, nodeId, &localParams);
+    const ZL_CopyParam gp               = { .paramId   = 0,
+                                            .paramPtr  = serializedConfig.data(),
+                                            .paramSize = serializedConfig.size() };
+    const ZL_LocalParams localParams    = { .copyParams = { .copyParams   = &gp,
+                                                            .nbCopyParams = 1 } };
+    const ZL_ParameterizedNodeDesc desc = {
+        .node        = nodeId,
+        .localParams = &localParams,
+    };
+    return ZL_Compressor_registerParameterizedNode(cgraph, &desc);
 }
 
 } // namespace zstrong::thrift

@@ -437,19 +437,6 @@ ZL_NodeID ZL_Compressor_registerParameterizedNode(
     return ZL_RES_value(nodeidResult);
 }
 
-ZL_NodeID ZL_Compressor_cloneNode(
-        ZL_Compressor* cgraph,
-        ZL_NodeID nodeid,
-        const ZL_LocalParams* localParams)
-{
-    ZL_ParameterizedNodeDesc desc = {
-        .name        = NULL,
-        .node        = nodeid,
-        .localParams = localParams,
-    };
-    return ZL_Compressor_registerParameterizedNode(cgraph, &desc);
-}
-
 ZL_NodeID CGraph_registerStandardVOTransform(
         ZL_Compressor* cgraph,
         const ZL_VOEncoderDesc* votd,

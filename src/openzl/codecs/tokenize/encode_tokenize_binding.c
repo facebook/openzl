@@ -622,7 +622,12 @@ ZL_NodeID ZS2_createNode_customTokenize(
                     .paramId   = ZL_TOKENIZE_TOKENIZER_PID,
                     .paramPtr  = &param,
                     .paramSize = sizeof(param));
-    return ZL_Compressor_cloneNode(cgraph, ZL_NODE_TOKENIZE, &lParams);
+    return ZL_Compressor_registerParameterizedNode(
+            cgraph,
+            &(const ZL_ParameterizedNodeDesc){
+                    .node        = ZL_NODE_TOKENIZE,
+                    .localParams = &lParams,
+            });
 }
 
 ZL_GraphID ZL_Compressor_registerCustomTokenizeGraph(
