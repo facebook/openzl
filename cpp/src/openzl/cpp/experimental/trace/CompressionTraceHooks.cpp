@@ -52,14 +52,14 @@ inline std::string graphTypeToStr(ZL_GraphType gtype)
 
 void CompressionTraceHooks::on_segmenterEncode_start(ZL_Segmenter* segCtx)
 {
-    // Trampoline to Tracer
+    // Trampoline to CompressTracer
     tracer_->on_segmenterEncode_start(segCtx);
 }
 void CompressionTraceHooks::on_segmenterEncode_end(
         ZL_Segmenter* segCtx,
         ZL_Report r)
 {
-    // Trampoline to Tracer
+    // Trampoline to CompressTracer
     tracer_->on_segmenterEncode_end(segCtx, r);
 }
 void CompressionTraceHooks::on_ZL_Segmenter_processChunk_start(
@@ -69,7 +69,7 @@ void CompressionTraceHooks::on_ZL_Segmenter_processChunk_start(
         ZL_GraphID startingGraphID,
         const ZL_RuntimeGraphParameters* rGraphParams)
 {
-    // Trampoline to Tracer
+    // Trampoline to CompressTracer
     tracer_->on_ZL_Segmenter_processChunk_start(
             segCtx, numElts, numInputs, startingGraphID, rGraphParams);
 }
@@ -78,7 +78,7 @@ void CompressionTraceHooks::on_ZL_Segmenter_processChunk_end(
         ZL_Segmenter* segCtx,
         ZL_Report r)
 {
-    // Trampoline to Tracer
+    // Trampoline to CompressTracer
     tracer_->on_ZL_Segmenter_processChunk_end(segCtx, r);
 }
 
@@ -89,7 +89,7 @@ void CompressionTraceHooks::on_codecEncode_start(
         const ZL_Input* inStreams[],
         size_t nbInStreams)
 {
-    // Trampoline to Tracer
+    // Trampoline to CompressTracer
     tracer_->on_codecEncode_start(
             encoder, compressor, nid, inStreams, nbInStreams);
 }
@@ -100,7 +100,7 @@ void CompressionTraceHooks::on_codecEncode_end(
         size_t nbOutputs,
         ZL_Report codecExecResult)
 {
-    // Trampoline to Tracer
+    // Trampoline to CompressTracer
     tracer_->on_codecEncode_end(eictx, outStreams, nbOutputs, codecExecResult);
 }
 
@@ -115,7 +115,7 @@ void CompressionTraceHooks::on_ZL_Encoder_sendCodecHeader(
         const void* trh,
         size_t trhSize)
 {
-    // Trampoline to Tracer
+    // Trampoline to CompressTracer
     tracer_->on_ZL_Encoder_sendCodecHeader(eictx, trh, trhSize);
 }
 
@@ -135,7 +135,7 @@ void CompressionTraceHooks::on_migraphEncode_start(
         ZL_Edge* edges[],
         size_t nbEdges)
 {
-    // Trampoline to Tracer
+    // Trampoline to CompressTracer
     tracer_->on_migraphEncode_start(graph, compressor, gid, edges, nbEdges);
 }
 
@@ -145,7 +145,7 @@ void CompressionTraceHooks::on_migraphEncode_end(
         size_t nbSuccessors,
         ZL_Report graphExecResult)
 {
-    // Trampoline to Tracer
+    // Trampoline to CompressTracer
     tracer_->on_migraphEncode_end(
             gctx, ssuccesorGraphs, nbSuccessors, graphExecResult);
 }
@@ -157,7 +157,7 @@ void CompressionTraceHooks::on_cctx_convertOneInput(
         const ZL_Type portTypeMask,
         const ZL_Report conversionResult)
 {
-    // Trampoline to Tracer
+    // Trampoline to CompressTracer
     tracer_->on_cctx_convertOneInput(
             cctx, input, inType, portTypeMask, conversionResult);
 }
@@ -193,7 +193,7 @@ void CompressionTraceHooks::on_ZL_CCtx_compressMultiTypedRef_start(
         throw std::runtime_error(
                 "Corrupted state. Trace context already exists!");
     }
-    tracer_ = std::make_unique<Tracer>(cctx);
+    tracer_ = std::make_unique<CompressTracer>(cctx);
     tracer_->on_ZL_CCtx_compressMultiTypedRef_start(
             cctx, dst, dstCapacity, inputs, nbInputs);
 }

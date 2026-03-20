@@ -1,6 +1,9 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 #pragma once
 
+#include <string>
+#include <vector>
+
 #include "openzl/cpp/LocalParams.hpp"
 #include "openzl/shared/a1cbor.h"
 #include "openzl/zl_errors.h"
