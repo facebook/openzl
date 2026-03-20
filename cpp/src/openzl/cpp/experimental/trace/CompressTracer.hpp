@@ -5,27 +5,16 @@
 #include <map>
 #include <optional>
 
-#include "openzl/cpp/experimental/trace/ChunkTrace.hpp"
 #include "openzl/cpp/experimental/trace/Codec.hpp"
+#include "openzl/cpp/experimental/trace/CompressChunkTrace.hpp"
 #include "openzl/cpp/experimental/trace/Graph.hpp"
 #include "openzl/cpp/experimental/trace/StreamVisualizer.hpp"
 
 namespace openzl::visualizer {
 
-class Tracer {
+class CompressTracer {
    public:
-    explicit Tracer(const ZL_CCtx* const cctx) : cctx_(cctx) {}
-
-    struct StreamdumpEntry {
-        size_t streamId;
-        std::string content;
-        std::string strLens;
-    };
-
-    struct TraceResult {
-        std::string trace;
-        std::vector<std::vector<StreamdumpEntry>> streamdump;
-    };
+    explicit CompressTracer(const ZL_CCtx* const cctx) : cctx_(cctx) {}
 
     TraceResult extractTrace();
 
@@ -113,7 +102,6 @@ class Tracer {
     ZL_Report serializeStreamdumpToCbor(
             A1C_Arena* a1c_arena,
             std::vector<uint8_t>& buffer);
-    ZL_Report writeSerializedStreamdump(std::vector<uint8_t>& buffer);
 
     void setCompressedSize(size_t compressionResultSize);
     size_t fillCSize(std::vector<size_t>& cSize, const ZL_DataID streamID);
@@ -129,8 +117,8 @@ class Tracer {
     static constexpr uint32_t traceVersion = 1;
     size_t compressedSize_{};
 
-    std::vector<ChunkTrace> graphRuns;
-    ChunkTrace* currChunk =
+    std::vector<CompressChunkTrace> graphRuns;
+    CompressChunkTrace* currChunk =
             nullptr; // convenience pointer to the current chunk trace
     bool segmented = false;
 

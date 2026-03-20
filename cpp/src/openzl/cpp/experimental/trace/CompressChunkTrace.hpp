@@ -6,6 +6,7 @@
 #include <optional>
 #include <vector>
 
+#include "openzl/cpp/experimental/trace/ChunkTraceCore.hpp"
 #include "openzl/cpp/experimental/trace/Codec.hpp"
 #include "openzl/cpp/experimental/trace/Graph.hpp"
 #include "openzl/cpp/experimental/trace/StreamVisualizer.hpp"
@@ -17,10 +18,10 @@ namespace openzl::visualizer {
  * ingests stream 0). A chunked compression will have multiple such top-level
  * invocations.
  */
-class ChunkTrace {
+class CompressChunkTrace {
    public:
-    ChunkTrace() = delete;
-    explicit ChunkTrace(size_t chunkId) : chunkId_(chunkId) {}
+    CompressChunkTrace() = delete;
+    explicit CompressChunkTrace(size_t chunkId) : chunkId_(chunkId) {}
 
     /**
      * Callback function to start the trace.
