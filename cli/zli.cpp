@@ -27,13 +27,6 @@
 #include "openzl/common/logging.h"
 #include "version.h"
 
-// Provide a compile-time fallback for editors / IDEs that analyze the source
-// before CMake has generated `build/cli/version.h`. This avoids spurious
-// "undefined identifier" diagnostics in the language server.
-#ifndef ZLI_VERSION
-#define ZLI_VERSION "0.0.0-dev"
-#endif
-
 using openzl::cli::Cmd;
 
 using namespace openzl;
@@ -84,7 +77,9 @@ int impl(int argc, char** argv)
                 return 0;
             }
             case GlobalImmediate::VERSION: {
-                Logger::log(INFO, std::string("zstrong-cli version ") + ZLI_VERSION);
+                Logger::log(
+                        INFO,
+                        std::string("zstrong-cli version ") + ZLI_VERSION);
                 return 0;
             }
         }
