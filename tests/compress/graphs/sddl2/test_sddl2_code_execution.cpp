@@ -646,6 +646,31 @@ TEST_F(SDDL2CodeExecutionTest, WhenBlockInParameterizedRecordFalse)
 
     expect_success(prog, input, expected_sizes);
 }
+
+// ============================================================================
+// Runtime Value Assignment
+// ============================================================================
+
+TEST_F(SDDL2CodeExecutionTest, AssignRuntimeValue)
+{
+    const std::vector<size_t> expected_sizes = { 4, 4 };
+    std::vector<uint8_t> input               = {
+        0x05, 0x00, 0x00, 0x00, // x = 5
+        0x03, 0x00, 0x00, 0x00, // y = 3
+    };
+
+    const auto prog = R"(
+        x: Int32LE
+        y: Int32LE
+        sum = x + y
+        expect x == 5
+        expect y == 3
+        expect sum == 8
+    )";
+
+    expect_success(prog, input, expected_sizes);
+}
+
 } // namespace testing
 } // namespace sddl2
 } // namespace openzl
