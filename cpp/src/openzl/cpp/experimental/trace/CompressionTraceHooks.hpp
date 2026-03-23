@@ -3,7 +3,7 @@
 #pragma once
 
 #include "openzl/cpp/CompressIntrospectionHooks.hpp"
-#include "openzl/cpp/experimental/trace/Tracer.hpp"
+#include "openzl/cpp/experimental/trace/CompressTracer.hpp"
 #include "openzl/cpp/poly/StringView.hpp"
 #include "openzl/shared/a1cbor.h"
 #include "openzl/zl_opaque_types.h"
@@ -110,14 +110,14 @@ class CompressionTraceHooks : public openzl::CompressIntrospectionHooks {
 
    private:
     std::stringstream outStream_; // output stream to write to
-    std::vector<std::vector<Tracer::StreamdumpEntry>>
+    std::vector<std::vector<StreamdumpEntry>>
             latestStreamdumpCache_; // cache for latest streamdumps. Key
                                     // is the stream ID, value is a pair
                                     // of strings (content, string
                                     // lengths (or ""))
     std::string latestTraceCache_;  // cache for latest trace
 
-    std::unique_ptr<Tracer>
+    std::unique_ptr<CompressTracer>
             tracer_; // pointer to the actual class that does a trace
 };
 } // namespace openzl::visualizer

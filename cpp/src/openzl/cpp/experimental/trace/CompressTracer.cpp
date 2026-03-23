@@ -1,6 +1,6 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
-#include "openzl/cpp/experimental/trace/Tracer.hpp"
+#include "openzl/cpp/experimental/trace/CompressTracer.hpp"
 
 #include "openzl/common/a1cbor_helpers.h"
 #include "openzl/common/logging.h"
@@ -10,9 +10,7 @@
 #include "openzl/zl_opaque_types.h"
 
 #include <cstdlib>
-#include <iostream>
 #include <map>
-#include <sstream>
 #include <utility>
 #include <vector>
 
@@ -20,7 +18,7 @@ namespace openzl::visualizer {
 
 static constexpr size_t MAIN_TRACE_IDX = 0;
 
-Tracer::TraceResult Tracer::extractTrace()
+TraceResult CompressTracer::extractTrace()
 {
     // Aggregate streamdump from all chunks
     trace.streamdump.reserve(graphRuns.size());
@@ -33,12 +31,12 @@ Tracer::TraceResult Tracer::extractTrace()
                     StreamdumpEntry{
                             k, std::move(v.first), std::move(v.second) });
         }
-        trace.streamdump.push_back(tmp);
+        trace.streamdump.push_back(std::move(tmp));
     }
     return std::move(trace);
 }
 
-void Tracer::on_segmenterEncode_start(ZL_Segmenter* segCtx)
+void CompressTracer::on_segmenterEncode_start(ZL_Segmenter* segCtx)
 {
     if (graphRuns.size() != 1) {
         throw std::runtime_error(
@@ -48,13 +46,13 @@ void Tracer::on_segmenterEncode_start(ZL_Segmenter* segCtx)
     graphRuns[MAIN_TRACE_IDX].on_segmenterEncode_start(segCtx);
 }
 
-void Tracer::on_segmenterEncode_end(ZL_Segmenter* segCtx, ZL_Report r)
+void CompressTracer::on_segmenterEncode_end(ZL_Segmenter* segCtx, ZL_Report r)
 {
     currChunk = &graphRuns[MAIN_TRACE_IDX];
     currChunk->on_segmenterEncode_end(segCtx, r);
 }
 
-void Tracer::on_ZL_Segmenter_processChunk_start(
+void CompressTracer::on_ZL_Segmenter_processChunk_start(
         ZL_Segmenter* segCtx,
         const size_t numElts[],
         size_t numInputs,
@@ -68,12 +66,14 @@ void Tracer::on_ZL_Segmenter_processChunk_start(
             segCtx, numElts, numInputs, startingGraphID, rGraphParams);
 }
 
-void Tracer::on_ZL_Segmenter_processChunk_end(ZL_Segmenter* segCtx, ZL_Report r)
+void CompressTracer::on_ZL_Segmenter_processChunk_end(
+        ZL_Segmenter* segCtx,
+        ZL_Report r)
 {
     currChunk->on_ZL_Segmenter_processChunk_end(segCtx, r);
 }
 
-void Tracer::on_codecEncode_start(
+void CompressTracer::on_codecEncode_start(
         ZL_Encoder* encoder,
         const ZL_Compressor* compressor,
         ZL_NodeID nid,
@@ -84,7 +84,7 @@ void Tracer::on_codecEncode_start(
             encoder, compressor, nid, inStreams, nbInStreams);
 }
 
-void Tracer::on_codecEncode_end(
+void CompressTracer::on_codecEncode_end(
         ZL_Encoder* encoder,
         const ZL_Output* outStreams[],
         size_t nbOutputs,
@@ -94,12 +94,12 @@ void Tracer::on_codecEncode_end(
             encoder, outStreams, nbOutputs, codecExecResult);
 }
 
-void Tracer::on_ZL_Encoder_getScratchSpace(ZL_Encoder* ei, size_t size)
+void CompressTracer::on_ZL_Encoder_getScratchSpace(ZL_Encoder* ei, size_t size)
 {
     currChunk->on_ZL_Encoder_getScratchSpace(ei, size);
 }
 
-void Tracer::on_ZL_Encoder_sendCodecHeader(
+void CompressTracer::on_ZL_Encoder_sendCodecHeader(
         ZL_Encoder* encoder,
         const void* trh,
         size_t trhSize)
@@ -107,16 +107,16 @@ void Tracer::on_ZL_Encoder_sendCodecHeader(
     currChunk->on_ZL_Encoder_sendCodecHeader(encoder, trh, trhSize);
 }
 
-void Tracer::on_ZL_Encoder_createTypedStream(
+void CompressTracer::on_ZL_Encoder_createTypedStream(
         ZL_Encoder*,
         int,
-        size_t eltsCapacity,
-        size_t eltWidth,
-        ZL_Output* createdStream)
+        size_t,
+        size_t,
+        ZL_Output*)
 {
 }
 
-void Tracer::on_migraphEncode_start(
+void CompressTracer::on_migraphEncode_start(
         ZL_Graph* graph,
         const ZL_Compressor* compressor,
         ZL_GraphID gid,
@@ -126,7 +126,7 @@ void Tracer::on_migraphEncode_start(
     currChunk->on_migraphEncode_start(graph, compressor, gid, edges, nbEdges);
 }
 
-void Tracer::on_migraphEncode_end(
+void CompressTracer::on_migraphEncode_end(
         ZL_Graph* graph,
         ZL_GraphID successorGraphs[],
         size_t nbSuccessors,
@@ -136,7 +136,7 @@ void Tracer::on_migraphEncode_end(
             graph, successorGraphs, nbSuccessors, graphExecResult);
 }
 
-void Tracer::on_cctx_convertOneInput(
+void CompressTracer::on_cctx_convertOneInput(
         const ZL_CCtx* const cctx,
         const ZL_Data* const input,
         const ZL_Type inType,
@@ -147,9 +147,9 @@ void Tracer::on_cctx_convertOneInput(
             cctx, input, inType, portTypeMask, conversionResult);
 }
 
-void Tracer::on_ZL_Graph_getScratchSpace(ZL_Graph*, size_t) {}
+void CompressTracer::on_ZL_Graph_getScratchSpace(ZL_Graph*, size_t) {}
 
-void Tracer::on_ZL_Edge_setMultiInputDestination_wParams(
+void CompressTracer::on_ZL_Edge_setMultiInputDestination_wParams(
         ZL_Graph*,
         ZL_Edge*[],
         size_t,
@@ -158,12 +158,12 @@ void Tracer::on_ZL_Edge_setMultiInputDestination_wParams(
 {
 }
 
-void Tracer::on_ZL_CCtx_compressMultiTypedRef_start(
+void CompressTracer::on_ZL_CCtx_compressMultiTypedRef_start(
         ZL_CCtx const* const cctx,
-        void const* const dst,
-        size_t const dstCapacity,
-        ZL_TypedRef const* const inputs[],
-        size_t const nbInputs)
+        void const* const,
+        size_t const,
+        ZL_TypedRef const* const[],
+        size_t const)
 {
     frameVersion = ZL_CCtx_getParameter(cctx, ZL_CParam_formatVersion);
     // The "main" trace is located at idx 0 of graphRuns
@@ -172,7 +172,7 @@ void Tracer::on_ZL_CCtx_compressMultiTypedRef_start(
     currChunk->initTrace();
 }
 
-void Tracer::on_ZL_CCtx_compressMultiTypedRef_end(
+void CompressTracer::on_ZL_CCtx_compressMultiTypedRef_end(
         ZL_CCtx const* const,
         ZL_Report const result)
 {
@@ -191,8 +191,10 @@ void Tracer::on_ZL_CCtx_compressMultiTypedRef_end(
         throw std::runtime_error("Failed to serialize streamdump content.");
     }
     ALLOC_Arena_freeArena(arena);
-    // Write the serialized streamdump content to a file
-    if (ZL_isError(writeSerializedStreamdump(buffer))) {
+    // Write the serialized streamdump content to a string
+    if (ZL_isError(
+                ChunkTraceCore::writeSerializedStreamdump(
+                        buffer, trace.trace))) {
         ZL_LOG(ERROR,
                "Failed to write serialized streamdump content to a file!");
         throw std::runtime_error(
@@ -200,27 +202,12 @@ void Tracer::on_ZL_CCtx_compressMultiTypedRef_end(
     }
 }
 
-void Tracer::setCompressedSize(size_t compressionResultSize)
+void CompressTracer::setCompressedSize(size_t compressionResultSize)
 {
     compressedSize_ = compressionResultSize;
 }
 
-static bool writeToFile(const std::vector<uint8_t>& buffer, std::ostream& out)
-{
-    if (!out.good()) {
-        return false;
-    }
-    std::string bufferString(buffer.begin(), buffer.end());
-    out.write(bufferString.c_str(), bufferString.size());
-    out.flush();
-    if (out.fail()) {
-        return false;
-    }
-
-    return true;
-}
-
-ZL_Report Tracer::serializeStreamdumpToCbor(
+ZL_Report CompressTracer::serializeStreamdumpToCbor(
         A1C_Arena* a1c_arena,
         std::vector<uint8_t>& buffer)
 {
@@ -268,19 +255,6 @@ ZL_Report Tracer::serializeStreamdumpToCbor(
         ZL_RET_R_WRAP_ERR(A1C_Error_convert(NULL, error));
     }
     ZL_RET_R_IF_NE(allocation, bytesWritten, encodedSize);
-
-    return ZL_returnSuccess();
-}
-
-ZL_Report Tracer::writeSerializedStreamdump(std::vector<uint8_t>& buffer)
-{
-    std::stringstream ss;
-    bool successfulWrite = writeToFile(buffer, ss);
-    if (!successfulWrite) {
-        ZL_RET_R_ERR(GENERIC, "Failed to write to streamdump CBOR file");
-    }
-    trace.trace = ss.str();
-    ZL_LOG(ALWAYS, "Successfully wrote streamdump CBOR");
 
     return ZL_returnSuccess();
 }
