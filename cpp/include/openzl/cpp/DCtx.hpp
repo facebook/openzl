@@ -2,8 +2,12 @@
 
 #pragma once
 
+#include <map>
+#include <memory>
+#include <string>
 #include <vector>
 
+#include "openzl/cpp/DecompressIntrospectionHooks.hpp"
 #include "openzl/cpp/Output.hpp"
 #include "openzl/cpp/detail/NonNullUniqueCPtr.hpp"
 #include "openzl/cpp/poly/Span.hpp"
@@ -14,6 +18,10 @@
 
 namespace openzl {
 class CustomDecoder;
+
+namespace visualizer {
+class DecompressionTraceHooks; // forward declaration
+} // namespace visualizer
 
 enum class DParam {
     StickyParameters        = ZL_DParam_stickyParameters,
@@ -30,12 +38,14 @@ class DCtx {
     DCtx();
 
     DCtx(const DCtx&) = delete;
-    DCtx(DCtx&&)      = default;
+    // Can't be declared default in the header because the forward-declared
+    // DecompressionTraceHooks is an incomplete type here.
+    DCtx(DCtx&&) noexcept; /* = default; */
 
     DCtx& operator=(const DCtx&) = delete;
-    DCtx& operator=(DCtx&&)      = default;
+    DCtx& operator=(DCtx&&) noexcept; /* = default; */
 
-    ~DCtx() = default;
+    ~DCtx(); /* = default; */
 
     /// @returns pointer to the underlying ZL_DCtx* object.
     ZL_DCtx* get()
@@ -64,6 +74,20 @@ class DCtx {
     void registerCustomDecoder(const ZL_MIDecoderDesc& desc);
     void registerCustomDecoder(std::shared_ptr<CustomDecoder> decoder);
 
+    void writeTraces(bool enabled);
+
+    /**
+     * @returns a pair of the latest trace, and a map from internal stream IDs
+     * to a pair of the raw stream buffer, and a buffer to the string lengths of
+     * the corresponding stream if it is a string stream, otherwise "".
+     */
+    std::pair<
+            poly::string_view,
+            std::map<
+                    std::string,
+                    std::pair<poly::string_view, poly::string_view>>>
+    getLatestTrace();
+
     poly::string_view getErrorContextString(ZL_Error error) const;
 
     template <typename ResultType>
@@ -91,6 +115,7 @@ class DCtx {
 
    private:
     detail::NonNullUniqueCPtr<ZL_DCtx> dctx_;
+    std::unique_ptr<DecompressIntrospectionHooks> visHooks_{ nullptr };
 };
 
 class DCtxRef : public DCtx {
