@@ -24,6 +24,9 @@
 #include "tools/io/InputSetFileOrDir.h"
 #include "tools/sddl/compiler/Compiler.h"
 
+#include "tools/sddl2/assembler/Assembler.h"
+#include "tools/sddl2/compiler/Compiler.h"
+
 namespace openzl::cli {
 namespace {
 ZL_GraphID saoProfile(Compressor& compressor)
@@ -360,16 +363,18 @@ compressProfiles()
         std::string kSDDL2Name = "sddl2";
         mp[kSDDL2Name]         = std::make_shared<CompressProfile>(
                 kSDDL2Name,
-                "Data that can be parsed using Simple Data Description Language v2. Pass a path to the pre-compiled bytecode file with --profile-arg.",
+                "Data that can be parsed using Simple Data Description Language v2 (https://openzl.org/sddl/). Pass a path to the description file with --profile-arg.",
                 [](ZL_Compressor* comp, void*, const ProfileArgs& args) {
                     auto argmap = args.map();
                     auto it     = argmap.find("TBD");
                     if (it == argmap.end()) {
                         throw InvalidArgsException(
-                                "The Simple Data Description Language v2 profile requires pre-compiled bytecode. Pass a path to the bytecode file with --profile-arg.");
+                                "The Simple Data Description Language v2 profile requires a data description file. Pass a path to the description file with --profile-arg.");
                     }
-                    auto bytecodeInput = tools::io::InputFile(it->second);
-                    auto bytecode      = bytecodeInput.contents();
+                    auto description = tools::io::InputFile(it->second);
+                    auto compiled    = sddl2::Compiler{}.compile(
+                            description.contents(), description.name());
+                    auto bytecode = sddl2::Assembler{}.assemble(compiled);
                     return unwrap(
                             ZL_SDDL2_setupProfile(
                                     comp, bytecode.data(), bytecode.size()),
