@@ -43,20 +43,43 @@ std::vector<std::string> getStringsArrayFromJsonObject(
     return values;
 }
 
-std::vector<std::string> getLabelsFromJson(folly::dynamic const& model)
-{
-    return getStringsArrayFromJsonObject(model, "labels");
-}
-
 std::vector<std::string> getFeaturesFromJson(folly::dynamic const& model)
 {
     return getStringsArrayFromJsonObject(model, "features");
+}
+
+std::vector<std::string> getLabelsFromJson(folly::dynamic const& model)
+{
+    if (model.contains("labels")) {
+        return getStringsArrayFromJsonObject(model, "labels");
+    }
+    return {};
+}
+
+size_t getNumSuccessorsFromJson(folly::dynamic const& model)
+{
+    if (!model.isObject()) {
+        throw std::runtime_error("Invalid JSON format");
+    }
+
+    if (model.contains("nbSuccessors")) {
+        const auto& field = model["nbSuccessors"];
+        if (!field.isInt()) {
+            throw std::runtime_error(
+                    "Invalid JSON format - nbSuccessors must be an integer");
+        }
+        return static_cast<size_t>(field.asInt());
+    }
+
+    // Fall back to deriving from labels array
+    return getLabelsFromJson(model).size();
 }
 
 std::vector<Label> getLabelsFromStrings(
         const std::vector<std::string>& label_strs)
 {
     std::vector<Label> labels;
+    labels.reserve(label_strs.size());
     for (const auto& label_str : label_strs) {
         labels.push_back(label_str.data());
     }
@@ -74,15 +97,15 @@ gbt_predictor::GBTPredictor getPredictorFromJson(folly::dynamic const& model)
 } // namespace
 
 GBTModel::GBTModel(folly::dynamic const& model)
-        : labels_str_(getLabelsFromJson(model)),
-          labels_(getLabelsFromStrings(labels_str_)),
+        : nbSuccessors_(getNumSuccessorsFromJson(model)),
           features_str_(getFeaturesFromJson(model)),
           features_(getLabelsFromStrings(features_str_)),
+          labels_str_(getLabelsFromJson(model)),
           predictor_(getPredictorFromJson(model))
 {
-    if (predictor_.getNumClasses() != labels_str_.size()) {
+    if (predictor_.getNumClasses() != nbSuccessors_) {
         throw std::runtime_error(
-                "Invalid JSON format - labels and classes mismatch");
+                "Invalid JSON format - num_successors and predictor classes mismatch");
     }
 }
 
@@ -90,16 +113,12 @@ GBTModel::GBTModel(std::string_view model) : GBTModel(folly::parseJson(model))
 {
 }
 
-Label GBTModel::predict(const ZL_Input* input, const FeatureGenerator* fgen)
+size_t GBTModel::predict(const ZL_Input* input, const FeatureGenerator* fgen)
         const
 {
     FeatureMap featuresMap;
     fgen->getFeatures(featuresMap, input);
-    size_t classIdx = predict(featuresMap);
-    if (classIdx >= labels_.size()) {
-        return "";
-    }
-    return labels_[classIdx];
+    return predict(featuresMap);
 }
 
 size_t GBTModel::predict(const FeatureMap& featuresMap) const
@@ -310,17 +329,13 @@ ZL_GraphID MLSelector::select(
         ZL_Input const* input,
         std::span<ZL_GraphID const> successors) const
 {
-    if (labelsIdx_.size()) {
-        std::string predictedLabel =
-                model_.get()->predict(input, featureGenerator_.get());
-        size_t predictedIdx = labelsIdx_.at(predictedLabel);
-        return successors[predictedIdx];
-    } else {
-        FeatureMap features;
-        featureGenerator_.get()->getFeatures(features, input);
-        auto prediction = model_.get()->predict(features);
+    FeatureMap features;
+    featureGenerator_.get()->getFeatures(features, input);
+    auto prediction = model_.get()->predict(features);
+    if (labelsIdx_.empty()) {
         return successors[prediction];
     }
+    return successors[labelsIdx_.at(prediction)];
 }
 
 ZL_GraphID MLTrainingSelector::select(
@@ -356,7 +371,8 @@ ZL_GraphID MLTrainingSelector::select(
             best     = successor;
         }
         targets[label] = { { "size", size },
-                           { "ctime", timeElapsedMS.count() } };
+                           { "ctime", timeElapsedMS.count() },
+                           { "idx", i } };
     }
     collectSample(input, std::move(targets));
     return best;

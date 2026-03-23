@@ -12,7 +12,7 @@
 #include "openzl/common/assertion.h"  // ZS_ASSERT_*
 #include "openzl/common/cursor.h"     // ZL_RC
 #include "openzl/common/limits.h"
-#include "openzl/common/wire_format.h" // ZL_StandardTransformID_end
+#include "openzl/common/wire_format.h" // ZL_StandardTransformID_numBits
 #include "openzl/fse/fse.h"            // FSE_getErrorName
 #include "openzl/fse/hist.h"           // HIST_count_simple
 #include "openzl/shared/bits.h"
@@ -269,6 +269,7 @@ static ZL_Report DFH_FrameInfo_decodeFrameHeader(
         const void* cSrc,
         size_t cSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL); // T258630070
     ZL_DLOG(BLOCK, "*****   DFH_FrameInfo_decodeFrameHeader   ***** \n");
     memset(zfi, 0, sizeof(*zfi));
     ZL_TRY_LET_R(formatVersion, ZL_getFormatVersionFromFrame(cSrc, cSize));
@@ -682,7 +683,8 @@ static ZL_Report decompressTrID(
         size_t nbTransforms,
         ZL_RC* src,
         const uint8_t trt8[],
-        uint32_t scratch[])
+        uint32_t scratch[],
+        unsigned formatVersion)
 {
     if (!nbTransforms)
         return ZL_returnSuccess();
@@ -707,7 +709,7 @@ static ZL_Report decompressTrID(
 
     // start decoding standard nodes
     uint32_t* snodeids = scratch;
-    int const nbBits   = ZL_nextPow2(ZL_StandardTransformID_end);
+    int const nbBits   = ZL_StandardTransformID_numBits(formatVersion);
     ZL_RET_R_IF_ERR(checkedBitpackDecode32(snodeids, nbTrs[0], src, nbBits));
 
     // then decode custom nodes
@@ -1022,8 +1024,13 @@ static ZL_Report decodeChunkHeader_internal(
         }
 
         uint32_t* trIDs = wksp.scratch0;
-        ZL_RET_R_IF_ERR(
-                decompressTrID(trIDs, nbDecoders, &in, trt8, wksp.scratch1));
+        ZL_RET_R_IF_ERR(decompressTrID(
+                trIDs,
+                nbDecoders,
+                &in,
+                trt8,
+                wksp.scratch1,
+                decoder->formatVersion));
         for (unsigned u = 0; u < nbDecoders; u++) {
             if (nodes[u].trpid.trt == trt_standard
                 && trIDs[u] >= ZL_StandardTransformID_end) {

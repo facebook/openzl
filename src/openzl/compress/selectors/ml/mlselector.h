@@ -18,11 +18,10 @@ typedef struct ZL_MLModelDesc ZS2_MLModel_Desc;
  * Defines type ZL_MLModelPredictFn, which is a function that takes an input
  * stream and generates various features from it. These features are then used
  * to make a prediction using the model's predict and opaque fields. The
- * corresponding predicted label is returned.
- @returns const char* specifying the label of the predicted class
+ * corresponding predicted successor indice is returned.
+ @returns size_t specifying the index of the predicted successor
  */
-typedef const char* (
-        *ZL_MLModelPredictFn)(const void* opaque, const ZL_Input* in);
+typedef size_t (*ZL_MLModelPredictFn)(const void* opaque, const ZL_Input* in);
 
 /**
  * Defines type ZL_MLModelFreeFn, which is a function that frees the model

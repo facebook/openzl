@@ -11,9 +11,12 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+typedef enum {
+    EXAMPLE_CORE_MODEL_FIELDLZ = 0,
+} ExampleCoreModelLabelEnum;
 
 // GENERATED EXAMPLE_CORE_MODEL MODEL GETTER FUNCTION
-extern GBTModel  getExampleCoreModelGbtModel(FeatureGenerator featureGenerator);
+extern GBTModel getExampleCoreModelGbtModel(FeatureGenerator featureGenerator);
 
 #ifdef __cplusplus
 }

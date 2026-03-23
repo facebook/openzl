@@ -612,7 +612,11 @@ TEST_F(OpaqueTest, ParameterizeNodeWithOpaque)
             .nbIntParams = 1,
         },
     };
-    node = ZL_Compressor_cloneNode(compressor_, node, &params);
+    const ZL_ParameterizedNodeDesc pndesc = {
+        .node        = node,
+        .localParams = &params,
+    };
+    node = ZL_Compressor_registerParameterizedNode(compressor_, &pndesc);
 
     graph = ZL_Compressor_registerStaticGraph_fromNode1o(
             compressor_, node, graph);

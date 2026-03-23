@@ -200,7 +200,7 @@ FUZZ_F(VariableTest, FuzzDispatchStringRoundTrip)
             cgraph_, nbOutputs, indices.data());
     ZL_GraphID dispatchGraph = declareGraph(dispatchStringNode);
     finalizeGraph(dispatchGraph, 1);
-    setLargeCompressBound(1024);
+    setLargeCompressBound(4096);
 
     bool compressionShouldSucceed =
             std::all_of(indices.begin(), indices.end(), [nbOutputs](auto i) {

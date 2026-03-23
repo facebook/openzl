@@ -39,8 +39,10 @@ struct ZL_Compressor_s {
 ZL_Compressor* ZL_Compressor_create(void)
 {
     ZL_Compressor* const cgraph = ZL_calloc(sizeof(ZL_Compressor));
-    if (cgraph == NULL)
+    if (cgraph == NULL) {
         return NULL;
+    }
+    ZL_OC_init(&cgraph->opCtx);
     if (ZL_isError(NM_init(&cgraph->nmgr, &cgraph->opCtx))) {
         ZL_Compressor_free(cgraph);
         return NULL;
@@ -56,8 +58,6 @@ ZL_Compressor* ZL_Compressor_create(void)
     // In debug mode, runtime check on the configuration of the Standard Graphs
     GR_validate();
 #endif
-
-    ZL_OC_init(&cgraph->opCtx);
     ZL_OC_startOperation(&cgraph->opCtx, ZL_Operation_createCGraph);
     return cgraph;
 }
@@ -105,6 +105,7 @@ ZL_Report ZL_Compressor_selectStartingGraphID(
         ZL_Compressor* cgraph,
         ZL_GraphID gid)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cgraph);
     ZL_ASSERT_NN(cgraph);
     if (CGRAPH_checkGraphIDExists(cgraph, gid)) {
         ZL_DLOG(FRAME,
@@ -112,7 +113,7 @@ ZL_Report ZL_Compressor_selectStartingGraphID(
                 ZL_Compressor_Graph_getName(cgraph, gid),
                 gid.gid);
     }
-    ZL_RET_R_IF_ERR(ZL_Compressor_validate(cgraph, gid));
+    ZL_ERR_IF_ERR(ZL_Compressor_validate(cgraph, gid));
     cgraph->starting_graph = gid;
     return ZL_returnSuccess();
 }
@@ -129,6 +130,7 @@ int ZL_NodeID_isValid(ZL_NodeID nodeid)
 static ZL_Report
 CGraph_pipeAdaptor(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbInputs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_DLOG(BLOCK, "CGraph_pipeAdaptor");
     ZL_ASSERT_NN(ins);
     ZL_ASSERT_EQ(nbInputs, 1);
@@ -147,14 +149,14 @@ CGraph_pipeAdaptor(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbInputs)
     ZL_ASSERT_NN(eictx);
     ZL_Output* const out =
             ZL_Encoder_createTypedStream(eictx, 0, outCapacity, 1);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
 
-    ZL_RET_R_IF_NULL(customNode_definitionInvalid, pipeDesc->transform_f);
+    ZL_ERR_IF_NULL(pipeDesc->transform_f, customNode_definitionInvalid);
     size_t const dstSize = pipeDesc->transform_f(
             ZL_Output_ptr(out), outCapacity, src, srcSize);
 
-    ZL_RET_R_IF_GT(transform_executionFailure, dstSize, outCapacity);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, dstSize));
+    ZL_ERR_IF_GT(dstSize, outCapacity, transform_executionFailure);
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, dstSize));
 
     return ZL_returnValue(1);
 }
@@ -199,6 +201,7 @@ typedef struct {
 static ZL_Report
 CGraph_splitAdaptor(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbInputs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_DLOG(BLOCK, "CGraph_splitAdaptor");
     ZL_ASSERT_NN(ins);
     ZL_ASSERT_EQ(nbInputs, 1);
@@ -214,14 +217,14 @@ CGraph_splitAdaptor(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbInputs)
     size_t const nbDsts = splitDesc->nbOuts;
     size_t* const dstSizes =
             ZL_Encoder_getScratchSpace(eictx, nbDsts * sizeof(*dstSizes));
-    ZL_RET_R_IF_NULL(allocation, dstSizes);
+    ZL_ERR_IF_NULL(dstSizes, allocation);
     ZL_Report const r = splitDesc->transform_f(eictx, dstSizes, src, srcSize);
-    ZL_RET_R_IF_ERR(r);
+    ZL_ERR_IF_ERR(r);
     ZL_ASSERT_EQ(
             nbDsts, ZL_validResult(r)); // create as many outputs as pledged
 
     ZL_ASSERT_NN(eictx);
-    ZL_RET_R_IF_ERR(CCTX_setOutBufferSizes(
+    ZL_ERR_IF_ERR(CCTX_setOutBufferSizes(
             eictx->cctx, eictx->rtnodeid, dstSizes, nbDsts));
 
     return r;
@@ -432,19 +435,6 @@ ZL_NodeID ZL_Compressor_registerParameterizedNode(
         return ZL_NODE_ILLEGAL;
     }
     return ZL_RES_value(nodeidResult);
-}
-
-ZL_NodeID ZL_Compressor_cloneNode(
-        ZL_Compressor* cgraph,
-        ZL_NodeID nodeid,
-        const ZL_LocalParams* localParams)
-{
-    ZL_ParameterizedNodeDesc desc = {
-        .name        = NULL,
-        .node        = nodeid,
-        .localParams = localParams,
-    };
-    return ZL_Compressor_registerParameterizedNode(cgraph, &desc);
 }
 
 ZL_NodeID CGraph_registerStandardVOTransform(

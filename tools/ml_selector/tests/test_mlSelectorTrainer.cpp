@@ -1,13 +1,13 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <gtest/gtest.h>
+#include "openzl/codecs/zl_mlselector.h"
 #include "openzl/cpp/CCtx.hpp"
 #include "openzl/cpp/Compressor.hpp"
 #include "openzl/cpp/DCtx.hpp"
 #include "tests/datagen/DataGen.h"
 #include "tests/ml_selector_utils.h"
 #include "tools/ml_selector/ml_features.h"
-#include "tools/ml_selector/ml_selector_graph.h"
 #include "tools/ml_selector/ml_selector_trainer.h"
 #include "tools/training/train.h"
 #include "tools/training/train_params.h"
@@ -67,7 +67,7 @@ class TestMLSelectorTrainer : public testing::Test {
         std::vector<ZL_GraphID> successorGraphs =
                 registerSuccessors(compressor, multi);
 
-        auto mlSelectorGraphId = MLSelector_registerGraphWithEmptyGBTModel(
+        auto mlSelectorGraphId = ZL_Compressor_buildUntrainedMLSelector(
                 compressor.get(),
                 successorGraphs.data(),
                 successorGraphs.size());
@@ -290,8 +290,6 @@ class TestMLSelectorTrainer : public testing::Test {
             std::shared_ptr<const std::string_view>& serializedCompressor)
     {
         Compressor mlCompressor;
-        auto graphid = ZL_MLSelector_registerBaseGraph(mlCompressor.get());
-        EXPECT_TRUE(!ZL_RES_isError(graphid));
         mlCompressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
         mlCompressor.deserialize(*serializedCompressor.get());
 
@@ -430,14 +428,10 @@ TEST_F(TestMLSelectorTrainer, TestFeatureExtraction)
 
     binarySuccessors_ = setUpCompressor(trainedCompressor_);
     training::ProcessedMLTrainingSamples trainingSample = extractMLFeatures(
-            featureInputs,
-            trainedCompressor_,
-            cctx_,
-            binarySuccessors_,
-            binarySuccessorsLabels_);
+            featureInputs, trainedCompressor_, cctx_, binarySuccessors_);
 
-    EXPECT_EQ(trainingSample.labels[0], "delta");
-    EXPECT_EQ(trainingSample.labels[1], "tokenize");
+    EXPECT_EQ((int)trainingSample.numericLabels[0], 0);
+    EXPECT_EQ((int)trainingSample.numericLabels[1], 1);
 
     // featureGen_int should generate 11 features
     EXPECT_EQ(trainingSample.features[0].size(), 11);
@@ -460,14 +454,10 @@ TEST_F(TestMLSelectorTrainer, TestFeatureExtraction)
     std::swap(featureInputs[0], featureInputs[1]);
 
     training::ProcessedMLTrainingSamples trainingSample2 = extractMLFeatures(
-            featureInputs,
-            trainedCompressor_,
-            cctx_,
-            binarySuccessors_,
-            binarySuccessorsLabels_);
+            featureInputs, trainedCompressor_, cctx_, binarySuccessors_);
 
-    EXPECT_EQ(trainingSample2.labels[0], "tokenize");
-    EXPECT_EQ(trainingSample2.labels[1], "delta");
+    EXPECT_EQ((int)trainingSample2.numericLabels[0], 1);
+    EXPECT_EQ((int)trainingSample2.numericLabels[1], 0);
 }
 
 TEST_F(TestMLSelectorTrainer, TestAmbiguousData)

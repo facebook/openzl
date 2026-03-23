@@ -27,6 +27,16 @@ class DataGen {
         return rw_;
     }
 
+    size_t randLength(
+            RandWrapper::NameType name,
+            size_t maxLength,
+            size_t quantizationBytes = 1)
+    {
+        StringLengthDistribution lengthDist(rw_, maxLength);
+        auto len = lengthDist(name);
+        return (len / quantizationBytes) * quantizationBytes;
+    }
+
     std::string randString(RandWrapper::NameType name)
     {
         return randStringWithQuantizedLength(name, 1);
@@ -37,6 +47,29 @@ class DataGen {
             size_t quantizationBytes)
     {
         return (StringProducer(rw_))(name, quantizationBytes);
+    }
+
+    std::string randString(RandWrapper::NameType name, size_t maxLength)
+    {
+        return randStringWithQuantizedLength(name, maxLength, 1);
+    }
+
+    std::string randStringWithQuantizedLength(
+            RandWrapper::NameType name,
+            size_t maxLength,
+            size_t quantizationBytes)
+    {
+        return (StringProducer(rw_, maxLength))(name, quantizationBytes);
+    }
+
+    std::string randStringWithLength(RandWrapper::NameType name, size_t length)
+    {
+        std::string res;
+        res.reserve(length);
+        for (size_t i = 0; i < length; ++i) {
+            res.push_back(rw_->u8("char"));
+        }
+        return res;
     }
 
     template <class Res>

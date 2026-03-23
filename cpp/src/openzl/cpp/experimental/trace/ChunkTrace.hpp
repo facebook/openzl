@@ -4,7 +4,6 @@
 
 #include <map>
 #include <optional>
-#include <unordered_map>
 #include <vector>
 
 #include "openzl/cpp/experimental/trace/Codec.hpp"
@@ -115,6 +114,8 @@ class ChunkTrace {
         ZL_Report failureReport;
     };
 
+    std::map<size_t, std::pair<std::string, std::string>>&& getStreamdump();
+
    private:
     void printStreamMetadata();
     void printCodecMetadata();
@@ -124,20 +125,12 @@ class ChunkTrace {
     size_t compressedSize_{}; // compressed size for this specific chunk
     size_t currCodecNum_ = 0;
     std::map<ZL_DataID, Stream, ZL_DataIDCustomComparator> streamInfo_;
+    std::map<size_t, std::pair<std::string, std::string>> streamdump_;
     std::vector<Codec> codecInfo_;
-    std::unordered_map<size_t, std::vector<ZL_DataID>> codecInEdges_;
-    std::unordered_map<size_t, std::vector<ZL_DataID>> codecOutEdges_;
-    std::unordered_map<
-            ZL_DataID,
-            std::vector<ZL_DataID>,
-            ZL_DataIDHash,
-            ZL_DataIDEquality>
-            streamSuccessors_;
-    std::unordered_map<ZL_DataID, size_t, ZL_DataIDHash, ZL_DataIDEquality>
-            streamConsumerCodec_;
-    std::vector<std::pair<Graph, std::vector<size_t>>> graphInfo_;
+    std::vector<Graph> graphInfo_;
     bool currEncompassingGraph_ = false; // if codecs are running within a graph
     std::optional<ConversionError> maybeConversionError_ = std::nullopt;
+    void streamdump(const ZL_Output* createdStream);
 };
 
 } // namespace openzl::visualizer

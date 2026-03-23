@@ -1,14 +1,5 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-set(OPENZL_BUILD_TRAINING_TOOLS OFF)
-
-if(OPENZL_BUILD_TOOLS)
-  set(OPENZL_BUILD_TRAINING_TOOLS ON)
-endif()
-if(OPENZL_BUILD_CLI)
-  set(OPENZL_BUILD_TRAINING_TOOLS ON)
-endif()
-
 if (OPENZL_BUILD_TRAINING_TOOLS)
   file(
       GLOB_RECURSE training_sources
@@ -39,14 +30,14 @@ if (OPENZL_BUILD_TRAINING_TOOLS)
             openzl_cpp
             tools_io
             logger
-            ml_selector_graph)
+            ml_selector)
     add_dependencies(
         tools_training
         openzl
         openzl_cpp
         tools_io
         logger
-        ml_selector_graph
+        ml_selector
         xgboost_external)
 
   if (OPENZL_BUILD_TESTS AND OPENZL_ALLOW_INTROSPECTION)

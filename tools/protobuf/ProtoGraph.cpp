@@ -2,7 +2,6 @@
 
 #include "tools/protobuf/ProtoGraph.h"
 #include "openzl/compress/graphs/generic_clustering_graph.h"
-#include "openzl/zl_dyngraph.h"
 
 namespace openzl {
 namespace protobuf {

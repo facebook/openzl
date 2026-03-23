@@ -10,40 +10,39 @@
 namespace openzl::training {
 
 using TargetsMap =
-        std::unordered_map<std::string, std::unordered_map<std::string, float>>;
+        std::unordered_map<size_t, std::unordered_map<std::string, float>>;
 using FeatureMap = VECTOR(LabeledFeature);
 
 /**
  * Defines type ChoiceFunction, which parses target map containing compression
  * data for each successor and selects the "best" possible successor.
- * @returns vector containing "best" possible successors
+ * @returns  vector containing index of "best" possible  successors. Note that
+ * index is cast as float due to XGBoost requirement.
  */
-using ChoiceFunction =
-        std::vector<std::string> (*)(std::vector<TargetsMap>& targets);
+using ChoiceFunction = std::vector<float> (*)(std::vector<TargetsMap>& targets);
 
 /**
  * Container for processed ML training data with features and labels.
  *
- * labels is the "best" successor based on choice function for each sample.
- * numericLabels is numeric representation of labels.
- * labelMap is a mapping from string label to numeric label.
+ * numericLabels is the index of the "best" successor based on choice function
+ * for each sample. This is cast as a float due to XGBoost requirement.
  * features is a vector containing features for each sample.
  * featureNames is the name of each feature
+ * featurePtrNames is the name of each feature as a const char*
  */
 struct ProcessedMLTrainingSamples {
-    std::vector<std::string> labels;
     std::vector<float> numericLabels;
-    std::unordered_map<std::string, int> labelMap;
 
     std::vector<std::vector<float>> features;
     std::vector<std::string> featureNames;
+    std::vector<const char*> featurePtrNames;
 };
 
 /**
- * Default choice function that chooses successor with minimum compression size
- * as "best".
+ * Default choice function that chooses index successor with minimum compression
+ * size as "best".
  */
-std::vector<std::string> minSizeChoiceFunc(std::vector<TargetsMap>& targets);
+std::vector<float> minSizeChoiceFunc(std::vector<TargetsMap>& targets);
 
 /**
  * Given data, return processed samples needed to train ml model by:
@@ -58,7 +57,6 @@ std::vector<std::string> minSizeChoiceFunc(std::vector<TargetsMap>& targets);
  * @param cctx The context to use
  * @param compressor The compressor to use
  * @param successorGraphs The graph ids of successors the ml selector can choose
- * @param successorLabels The name of the successors
  * @param featureGen featureGenerator to use
  * @param choiceFunction choiceFunction to use
  *
@@ -70,7 +68,6 @@ ProcessedMLTrainingSamples extractMLFeatures(
         Compressor& compressor,
         CCtx& cctx,
         const std::vector<ZL_GraphID>& successorGraphs,
-        const std::vector<std::string>& successorLabels,
         FeatureGenerator featureGen   = FeatureGen_integer,
         ChoiceFunction choiceFunction = minSizeChoiceFunc);
 

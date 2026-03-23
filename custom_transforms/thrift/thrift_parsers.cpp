@@ -319,10 +319,11 @@ ZL_Output* copyStringLogicalClusterToEICtx(
 template <typename Parser>
 ZL_Report configurableEncode(ZL_Encoder* eictx, const ZL_Input* in)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     unsigned int const formatVersion =
             ZL_Encoder_getCParam(eictx, ZL_CParam_formatVersion);
-    ZL_RET_R_IF_LT(
-            formatVersion_unsupported, formatVersion, kMinFormatVersionEncode);
+    ZL_ERR_IF_LT(
+            formatVersion, kMinFormatVersionEncode, formatVersion_unsupported);
 
     try {
         ZL_ASSERT(ZL_Input_type(in) == ZL_Type_serial);
@@ -331,26 +332,26 @@ ZL_Report configurableEncode(ZL_Encoder* eictx, const ZL_Input* in)
 
         // Read config
         ZL_CopyParam gp = ZL_Encoder_getLocalCopyParam(eictx, 0);
-        ZL_RET_R_IF_EQ(corruption, gp.paramId, ZL_LP_INVALID_PARAMID);
+        ZL_ERR_IF_EQ(gp.paramId, ZL_LP_INVALID_PARAMID, corruption);
         std::string_view const encoderConfigStr(
                 (const char*)gp.paramPtr, gp.paramSize);
         EncoderConfig config = EncoderConfig(encoderConfigStr);
 
         // Fail compression if config uses unsupported features
-        ZL_RET_R_IF_LT(
-                formatVersion_unsupported,
+        ZL_ERR_IF_LT(
                 formatVersion,
-                config.getMinFormatVersion());
+                config.getMinFormatVersion(),
+                formatVersion_unsupported);
 
         // Temporary requirement: ensure contiguous LogicalIds
         // (starting from 0)
         for (const auto& streamId : config.getLogicalIds()) {
             static_assert(std::is_unsigned_v<std::underlying_type_t<
                                   std::decay_t<decltype(streamId)>>>);
-            ZL_RET_R_IF_GE(
-                    temporaryLibraryLimitation,
+            ZL_ERR_IF_GE(
                     static_cast<size_t>(streamId),
-                    config.getLogicalIds().size());
+                    config.getLogicalIds().size(),
+                    temporaryLibraryLimitation);
         }
 
         // Encode the input stream!
@@ -360,10 +361,9 @@ ZL_Report configurableEncode(ZL_Encoder* eictx, const ZL_Input* in)
         try {
             parser.parse();
         } catch (const std::exception& ex) {
-            ZL_RET_R_ERR(
-                    GENERIC,
-                    "Thrift kernel failed inside core parser: %s",
-                    ex.what());
+            ZL_ERR(GENERIC,
+                   "Thrift kernel failed inside core parser: %s",
+                   ex.what());
         }
         debug("Encoder side:");
         debug(srcStream.repr());
@@ -472,10 +472,9 @@ ZL_Report configurableEncode(ZL_Encoder* eictx, const ZL_Input* in)
 
         return ZL_returnSuccess();
     } catch (const std::exception& ex) {
-        ZL_RET_R_ERR(
-                GENERIC,
-                "Thrift kernel failed outside of core parsing: %s",
-                ex.what());
+        ZL_ERR(GENERIC,
+               "Thrift kernel failed outside of core parsing: %s",
+               ex.what());
     }
 }
 
@@ -487,9 +486,10 @@ ZL_Report configurableDecode(
         const ZL_Input* variableSrcs[],
         size_t nbVariableSrcs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     const unsigned int formatVersion = DI_getFrameFormatVersion(dictx);
-    ZL_RET_R_IF_LT(
-            formatVersion_unsupported, formatVersion, kMinFormatVersionDecode);
+    ZL_ERR_IF_LT(
+            formatVersion, kMinFormatVersionDecode, formatVersion_unsupported);
 
     assert(nbCompulsorySrcs == (size_t)SingletonId::kNumSingletonIds);
     try {
@@ -516,23 +516,21 @@ ZL_Report configurableDecode(
         try {
             parser.unparse();
         } catch (const std::exception& ex) {
-            ZL_RET_R_ERR(
-                    GENERIC,
-                    "Thrift kernel failed inside core parser: %s",
-                    ex.what());
+            ZL_ERR(GENERIC,
+                   "Thrift kernel failed inside core parser: %s",
+                   ex.what());
         }
         debug("Decoder side:");
         debug(srcStreams.repr());
         debug(dstStream.writeStream().repr());
 
-        ZL_RET_R_IF_ERR(dstStream.commit());
+        ZL_ERR_IF_ERR(dstStream.commit());
 
         return ZL_returnValue(1);
     } catch (const std::exception& ex) {
-        ZL_RET_R_ERR(
-                GENERIC,
-                "Thrift kernel failed outside of core parsing: %s",
-                ex.what());
+        ZL_ERR(GENERIC,
+               "Thrift kernel failed outside of core parsing: %s",
+               ex.what());
     }
 }
 
@@ -650,9 +648,10 @@ ZL_VODecoderDesc const thriftBinaryConfigurableUnSplitter = {
 
 ZL_Report registerCustomTransforms(ZL_DCtx* dctx)
 {
-    ZL_RET_R_IF_ERR(ZL_DCtx_registerVODecoder(
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
+    ZL_ERR_IF_ERR(ZL_DCtx_registerVODecoder(
             dctx, &thriftCompactConfigurableUnSplitter));
-    ZL_RET_R_IF_ERR(ZL_DCtx_registerVODecoder(
+    ZL_ERR_IF_ERR(ZL_DCtx_registerVODecoder(
             dctx, &thriftBinaryConfigurableUnSplitter));
     return ZL_returnSuccess();
 }
@@ -690,12 +689,16 @@ ZL_NodeID cloneThriftNodeWithLocalParams(
         ZL_NodeID nodeId,
         std::string_view serializedConfig)
 {
-    const ZL_CopyParam gp            = { .paramId   = 0,
-                                         .paramPtr  = serializedConfig.data(),
-                                         .paramSize = serializedConfig.size() };
-    const ZL_LocalParams localParams = { .copyParams = { .copyParams   = &gp,
-                                                         .nbCopyParams = 1 } };
-    return ZL_Compressor_cloneNode(cgraph, nodeId, &localParams);
+    const ZL_CopyParam gp               = { .paramId   = 0,
+                                            .paramPtr  = serializedConfig.data(),
+                                            .paramSize = serializedConfig.size() };
+    const ZL_LocalParams localParams    = { .copyParams = { .copyParams   = &gp,
+                                                            .nbCopyParams = 1 } };
+    const ZL_ParameterizedNodeDesc desc = {
+        .node        = nodeId,
+        .localParams = &localParams,
+    };
+    return ZL_Compressor_registerParameterizedNode(cgraph, &desc);
 }
 
 } // namespace zstrong::thrift

@@ -93,6 +93,7 @@
 @family CONTROL 0x0005 "Control flow operations"
   halt         0x0001          "Stop VM execution"
   expect_true  0x0002          "Pop I64 value, error if value is 0 (false)"
+  jump_if      0x0003          "Pop I64 value, pop I64 N, skip next N instructions (advance PC by N*4 bytes) if value is not 0 (true)"
   trace.start  0x0004          "Begin collecting execution traces for validation debugging"
 
 @family LOAD 0x0006 "Load operations"
@@ -119,7 +120,7 @@
   stack.swap 0x0004         "Swap top two stack values"
   stack.rot  0x0005         "Rotate top three stack values"
   # Conditional operations: 0x0010+
-  stack.drop_if  0x0010     "Pop I64 condition, then pop and discard top value if condition is non-zero (true)"
+  stack.drop_if  0x0010   "Pop I64 condition, then pop and discard top value if condition is non-zero (true)"
 
 @family TYPE 0x0008 "Type operations"
   type.fixed_array  0x0001  "Pop I64 (count), pop Type, push Type with width multiplied by count"
@@ -127,6 +128,8 @@
   type.sizeof       0x0010  "Pop Type, push its total size in bytes as I64"
 
 @family VAR 0x0009 "Variable operations"
+  var.store 0x0001  "Pop Value, pop I64 (register), store Value in register"
+  var.load  0x0002  "Pop I64 (register), push Value stored in register"
 
 @family CALL 0x000B "Function call operations"
 

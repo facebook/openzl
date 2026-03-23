@@ -32,8 +32,9 @@ ZL_GraphID ZL_Compressor_registerStringTokenize(ZL_Compressor* compressor)
 static ZL_Report
 nullAwareDispatchGraphFn(ZL_Graph* gctx, ZL_Edge* inputs[], size_t) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     const auto successors = ZL_Graph_getCustomGraphs(gctx);
-    ZL_RET_R_IF_NE(node_invalid_input, successors.nbGraphIDs, 3);
+    ZL_ERR_IF_NE(successors.nbGraphIDs, 3, node_invalid_input);
 
     auto* input        = ZL_Edge_getData(inputs[0]);
     const auto numStrs = ZL_Input_numElts(input);
@@ -46,14 +47,14 @@ nullAwareDispatchGraphFn(ZL_Graph* gctx, ZL_Edge* inputs[], size_t) noexcept
     }
     auto result =
             ZL_Edge_runDispatchStringNode(inputs[0], 2, dispatchIdx.data());
-    ZL_RET_R_IF_ERR(result);
-    ZL_RET_R_IF_NE(node_invalid_input, ZL_RES_value(result).nbEdges, 3);
+    ZL_ERR_IF_ERR(result);
+    ZL_ERR_IF_NE(ZL_RES_value(result).nbEdges, 3, node_invalid_input);
     const auto edgeList = ZL_RES_value(result);
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZL_Edge_setDestination(edgeList.edges[0], successors.graphids[0]));
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZL_Edge_setDestination(edgeList.edges[1], successors.graphids[1]));
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZL_Edge_setDestination(edgeList.edges[2], successors.graphids[2]));
     return ZL_returnSuccess();
 }

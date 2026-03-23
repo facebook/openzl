@@ -1,17 +1,5 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-set(OPENZL_BUILD_SDDL_TOOLS OFF)
-
-if(OPENZL_BUILD_TOOLS)
-  set(OPENZL_BUILD_SDDL_TOOLS ON)
-endif()
-if(OPENZL_BUILD_CLI)
-  set(OPENZL_BUILD_SDDL_TOOLS ON)
-endif()
-if(OPENZL_BUILD_PYTHON_EXT)
-  set(OPENZL_BUILD_SDDL_TOOLS ON)
-endif()
-
 if (OPENZL_BUILD_SDDL_TOOLS)
     file(
         GLOB sddl_compiler_lib_sources

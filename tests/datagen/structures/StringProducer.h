@@ -16,6 +16,13 @@ class StringProducer : public DataProducer<std::string> {
     {
     }
 
+    StringProducer(std::shared_ptr<RandWrapper> generator, size_t maxLength)
+            : DataProducer<std::string>(),
+              rw_(generator),
+              lengthDist_(generator, maxLength)
+    {
+    }
+
     std::string operator()(RandWrapper::NameType name) override
     {
         return operator()(name, 1);

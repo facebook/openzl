@@ -16,25 +16,24 @@ ZL_GraphID SI_selector_numeric(
     (void)nbCustomGraphs;
 
     GBTModel gbtModel = getGenericNumericGbtModel(FeatureGen_integer);
-    ZL_RESULT_OF(Label)
-
+    ZL_RESULT_OF(size_t)
     result = GBTModel_predict(&gbtModel, inputStream);
     if (ZL_RES_isError(result)) {
         return ZL_GRAPH_ILLEGAL;
     }
+    size_t decodedLabel = ZL_RES_value(result);
 
-    const char* decodedLabel = ZL_RES_value(result);
-    if (!strcmp(decodedLabel, "fieldlz")) {
+    if (decodedLabel == GENERIC_NUMERIC_FIELDLZ) {
         return ZL_GRAPH_FIELD_LZ;
-    } else if (!strcmp(decodedLabel, "range_pack")) {
+    } else if (decodedLabel == GENERIC_NUMERIC_RANGE_PACK) {
         return ZL_GRAPH_RANGE_PACK;
-    } else if (!strcmp(decodedLabel, "range_pack_zstd")) {
+    } else if (decodedLabel == GENERIC_NUMERIC_RANGE_PACK_ZSTD) {
         return ZL_GRAPH_RANGE_PACK_ZSTD;
-    } else if (!strcmp(decodedLabel, "delta_fieldlz")) {
+    } else if (decodedLabel == GENERIC_NUMERIC_DELTA_FIELDLZ) {
         return ZL_GRAPH_DELTA_FIELD_LZ;
-    } else if (!strcmp(decodedLabel, "tokenize_delta_fieldlz")) {
+    } else if (decodedLabel == GENERIC_NUMERIC_TOKENIZE_DELTA_FIELDLZ) {
         return ZL_GRAPH_TOKENIZE_DELTA_FIELD_LZ;
-    } else if (!strcmp(decodedLabel, "zstd")) {
+    } else if (decodedLabel == GENERIC_NUMERIC_ZSTD) {
         return ZL_GRAPH_ZSTD;
     }
 

@@ -38,6 +38,7 @@ static ZL_Report writeFrameHeader(
         const ZL_Data* inputs[],
         size_t numInputs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
     ZL_DLOG(BLOCK, "writeFrameHeader");
 
     // Check format limitations
@@ -47,10 +48,10 @@ static ZL_Report writeFrameHeader(
     ZL_ASSERT(
             ZL_isFormatVersionSupported(formatVersion),
             "Format should already have been validated.");
-    ZL_RET_R_IF_GT(
-            formatVersion_unsupported,
+    ZL_ERR_IF_GT(
             numInputs,
-            ZL_runtimeInputLimit(formatVersion));
+            ZL_runtimeInputLimit(formatVersion),
+            formatVersion_unsupported);
 
     // Allocate array for description of inputs
     ALLOC_MALLOC_CHECKED(InputDesc, inputDescs, numInputs);
@@ -131,6 +132,7 @@ ZL_Report CCTX_compressInputs_withGraphSet(
         size_t nbInputs)
 {
     // @note all compression entry points converge here.
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
     ZL_DLOG(FRAME, "CCTX_compressInputs_withGraphSet");
 
     ZL_Report const r = CCTX_compressInputs_withGraphSet_stage2(
@@ -141,7 +143,7 @@ ZL_Report CCTX_compressInputs_withGraphSet(
     CCTX_clean(cctx);
     if (!CCTX_getAppliedGParam(cctx, ZL_CParam_stickyParameters)) {
         // If cctx parameters are not explicitly sticky, reset them
-        ZL_RET_R_IF_ERR(ZL_CCtx_resetParameters(cctx));
+        ZL_ERR_IF_ERR(ZL_CCtx_resetParameters(cctx));
     }
 
     return r;
@@ -175,7 +177,8 @@ static ZL_Report ZL_CCtx_compress_usingCGraph(
         size_t srcSize,
         const ZL_Compressor* cgraph)
 {
-    ZL_RET_R_IF_ERR(ZL_CCtx_refCompressor(cctx, cgraph));
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
+    ZL_ERR_IF_ERR(ZL_CCtx_refCompressor(cctx, cgraph));
     return CCTX_compressSerial_withGraphSet(
             cctx, dst, dstCapacity, src, srcSize);
 }
@@ -188,9 +191,10 @@ static ZL_Report ZL_CCtx_compress_usingGraph2Desc(
         size_t srcSize,
         ZL_Graph2Desc gfDesc)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
     ZL_LOG(FRAME, "ZL_CCtx_compress_usingGraph2Desc (srcSize=%zu)", srcSize);
     ZL_ASSERT_NN(cctx);
-    ZL_RET_R_IF_ERR(CCTX_setLocalCGraph_usingGraph2Desc(cctx, gfDesc));
+    ZL_ERR_IF_ERR(CCTX_setLocalCGraph_usingGraph2Desc(cctx, gfDesc));
     return CCTX_compressSerial_withGraphSet(
             cctx, dst, dstCapacity, src, srcSize);
 }
@@ -335,21 +339,22 @@ ZL_Report ZL_CCtx_compressMultiTypedRef(
         const ZL_TypedRef* inputs[],
         size_t nbInputs)
 {
-    WAYPOINT(
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
+    CWAYPOINT(
             on_ZL_CCtx_compressMultiTypedRef_start,
             cctx,
             dst,
             dstCapacity,
             inputs,
             nbInputs);
-    ZL_RET_R_IF_NULL(compressionParameter_invalid, inputs);
+    ZL_ERR_IF_NULL(inputs, compressionParameter_invalid);
     // this works directly because ZL_TypedRef == ZL_Data
     // In the future, if these types diverge, a conversion operation will be
     // required
-    ZL_RET_R_IF_NOT(compressionParameter_invalid, CCTX_isGraphSet(cctx));
+    ZL_ERR_IF_NOT(CCTX_isGraphSet(cctx), compressionParameter_invalid);
     const ZL_Report rep = CCTX_compressInputs_withGraphSet(
             cctx, dst, dstCapacity, ZL_codemodInputsAsDatas(inputs), nbInputs);
-    WAYPOINT(on_ZL_CCtx_compressMultiTypedRef_end, cctx, rep);
+    CWAYPOINT(on_ZL_CCtx_compressMultiTypedRef_end, cctx, rep);
     return rep;
 }
 

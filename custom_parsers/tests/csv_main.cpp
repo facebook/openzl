@@ -16,7 +16,6 @@
 #include "openzl/compress/graphs/generic_clustering_graph.h"
 #include "openzl/compress/private_nodes.h"
 #include "openzl/zl_compress.h"
-#include "openzl/zl_reflection.h"
 
 namespace openzl::tests {
 namespace {

@@ -787,6 +787,23 @@ SDDL2_op_stack_drop_if(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
     return SDDL2_OK;
 }
 
+SDDL2_Error SDDL2_op_jump_if(SDDL2_Stack* stack, size_t* out_skip_count)
+{
+    int64_t condition;
+    SDDL2_TRY(pop_i64(stack, &condition));
+
+    size_t n;
+    SDDL2_TRY(pop_positive_i64(stack, &n));
+
+    if (condition != 0) {
+        *out_skip_count = n;
+    } else {
+        *out_skip_count = 0;
+    }
+
+    return SDDL2_OK;
+}
+
 SDDL2_Error
 SDDL2_op_dup(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
@@ -813,6 +830,71 @@ SDDL2_op_swap(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
     stack->items[stack->top - 2] = temp;
 
     return SDDL2_OK;
+}
+
+/* ============================================================================
+ * Variable Operations (VAR Family)
+ *
+ * Provides register-based variable storage:
+ * - var.store: Pop value + register index, store value in register
+ * - var.load: Pop register index, push value from register
+ * These enable saving and restoring intermediate values across stack
+ * operations without complex stack manipulation.
+ * ========================================================================= */
+
+void SDDL2_Var_registers_init(SDDL2_Var_registers* regs)
+{
+    for (size_t i = 0; i < SDDL2_VAR_REGISTER_COUNT; i++) {
+        regs->occupied[i] = 0;
+    }
+}
+
+SDDL2_Error SDDL2_op_var_store(
+        SDDL2_Stack* stack,
+        SDDL2_Trace_buffer* trace,
+        size_t pc,
+        SDDL2_Var_registers* regs)
+{
+    (void)trace;
+    (void)pc;
+
+    int64_t reg_index;
+    SDDL2_TRY(pop_i64(stack, &reg_index));
+
+    if (reg_index < 0 || reg_index >= SDDL2_VAR_REGISTER_COUNT) {
+        return SDDL2_LOAD_BOUNDS;
+    }
+
+    SDDL2_Value val;
+    SDDL2_TRY(SDDL2_Stack_pop(stack, &val));
+
+    regs->values[reg_index]   = val;
+    regs->occupied[reg_index] = 1;
+
+    return SDDL2_OK;
+}
+
+SDDL2_Error SDDL2_op_var_load(
+        SDDL2_Stack* stack,
+        SDDL2_Trace_buffer* trace,
+        size_t pc,
+        SDDL2_Var_registers* regs)
+{
+    (void)trace;
+    (void)pc;
+
+    int64_t reg_index;
+    SDDL2_TRY(pop_i64(stack, &reg_index));
+
+    if (reg_index < 0 || reg_index >= SDDL2_VAR_REGISTER_COUNT) {
+        return SDDL2_LOAD_BOUNDS;
+    }
+
+    if (!regs->occupied[reg_index]) {
+        return SDDL2_LOAD_BOUNDS;
+    }
+
+    return SDDL2_Stack_push(stack, regs->values[reg_index]);
 }
 
 /* ============================================================================

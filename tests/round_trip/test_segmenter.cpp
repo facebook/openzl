@@ -736,4 +736,159 @@ TEST(Segmenter, parameterizedSegmenterIsSerializable)
     deserialized.deserialize(serialized);
 }
 
+/* =======   Segmenter on string input with variable-length chunks   ======== */
+
+// Custom segmenter: splits input into two halves by element count
+ZL_Report halfSplitStringSegmenterFn(ZL_Segmenter* sctx)
+{
+    assert(ZL_Segmenter_numInputs(sctx) == 1);
+    const ZL_Input* input = ZL_Segmenter_getInput(sctx, 0);
+    assert(ZL_Input_type(input) == ZL_Type_string);
+
+    size_t const totalElts = ZL_Input_numElts(input);
+    size_t firstHalf       = totalElts / 2;
+
+    // Chunk 1: first half
+    ZL_Report r = ZL_Segmenter_processChunk(
+            sctx, &firstHalf, 1, ZL_GRAPH_COMPRESS_GENERIC, NULL);
+    EXPECT_FALSE(ZL_isError(r));
+    if (ZL_isError(r))
+        return r;
+
+    // Chunk 2: remaining
+    input             = ZL_Segmenter_getInput(sctx, 0);
+    size_t secondHalf = ZL_Input_numElts(input);
+    r                 = ZL_Segmenter_processChunk(
+            sctx, &secondHalf, 1, ZL_GRAPH_COMPRESS_GENERIC, NULL);
+    EXPECT_FALSE(ZL_isError(r));
+    if (ZL_isError(r))
+        return r;
+
+    return ZL_returnSuccess();
+}
+
+static ZL_SegmenterDesc const halfSplitStringSegmenter = {
+    .name           = "Half-Split String Segmenter",
+    .segmenterFn    = halfSplitStringSegmenterFn,
+    .inputTypeMasks = (const ZL_Type[]){ ZL_Type_string },
+    .numInputs      = 1,
+};
+
+TEST(Segmenter, stringVariableLengthChunks)
+{
+    if (g_testVersion < ZL_CHUNK_VERSION_MIN)
+        return;
+
+    // Create variable-length strings:
+    // First 50 strings are 2 bytes each (100 bytes total)
+    // Last 50 strings are 6 bytes each (300 bytes total)
+    size_t const numStrings       = 100;
+    size_t const firstHalf        = 50;
+    size_t const shortLen         = 2;
+    size_t const longLen          = 6;
+    size_t const totalContentSize = firstHalf * shortLen + firstHalf * longLen;
+
+    uint32_t* stringLengths = (uint32_t*)malloc(numStrings * sizeof(uint32_t));
+    assert(stringLengths);
+    for (size_t i = 0; i < firstHalf; i++)
+        stringLengths[i] = shortLen;
+    for (size_t i = firstHalf; i < numStrings; i++)
+        stringLengths[i] = longLen;
+
+    // Fill content with recognizable pattern
+    unsigned char* content = (unsigned char*)malloc(totalContentSize);
+    assert(content);
+    for (size_t i = 0; i < totalContentSize; i++)
+        content[i] = (unsigned char)(i & 0xFF);
+
+    ZL_TypedRef* input = ZL_TypedRef_createString(
+            content, totalContentSize, stringLengths, numStrings);
+    assert(input);
+
+    // Compress
+    size_t const compressedBound = ZL_compressBound(totalContentSize);
+    void* const compressed       = malloc(compressedBound);
+    assert(compressed);
+
+    g_segmenterDescPtr = &halfSplitStringSegmenter;
+
+    ZL_CCtx* const cctx = ZL_CCtx_create();
+    assert(cctx);
+    ZL_Compressor* const compressor = ZL_Compressor_create();
+    assert(compressor);
+    ZL_Report gssr =
+            ZL_Compressor_initUsingGraphFn(compressor, registerSegmenter);
+    EXPECT_FALSE(ZL_isError(gssr)) << "cgraph initialization failed";
+    ZL_Report rcgr = ZL_CCtx_refCompressor(cctx, compressor);
+    EXPECT_FALSE(ZL_isError(rcgr)) << "CGraph reference failed";
+    ZL_Report r =
+            ZL_CCtx_compressTypedRef(cctx, compressed, compressedBound, input);
+    EXPECT_FALSE(ZL_isError(r)) << "compression failed";
+    size_t const compressedSize = ZL_validResult(r);
+
+    ZL_Compressor_free(compressor);
+    ZL_CCtx_free(cctx);
+
+    // Decompress
+    void* const decompressed = malloc(totalContentSize);
+    assert(decompressed);
+    size_t const decompressedSize = decompress(
+            decompressed, totalContentSize, compressed, compressedSize);
+
+    // Verify
+    EXPECT_EQ(decompressedSize, totalContentSize);
+    EXPECT_EQ(memcmp(content, decompressed, totalContentSize), 0)
+            << "Decompressed content differs from original";
+
+    free(decompressed);
+    free(compressed);
+    ZL_TypedRef_free(input);
+    free(content);
+    free(stringLengths);
+}
+
+/* =======   Single-chunk segmenter across all format versions   ======== */
+
+ZL_Report singleChunkSegmenterFn(ZL_Segmenter* sctx)
+{
+    assert(ZL_Segmenter_numInputs(sctx) == 1);
+    const ZL_Input* input = ZL_Segmenter_getInput(sctx, 0);
+    assert(input != NULL);
+    size_t numElts     = ZL_Input_numElts(input);
+    ZL_Report processR = ZL_Segmenter_processChunk(
+            sctx, &numElts, 1, ZL_GRAPH_COMPRESS_GENERIC, NULL);
+    EXPECT_FALSE(ZL_isError(processR));
+    return processR;
+}
+
+static ZL_SegmenterDesc const singleChunkSegmenter = {
+    .name           = "Single Chunk Segmenter",
+    .segmenterFn    = singleChunkSegmenterFn,
+    .inputTypeMasks = (const ZL_Type[]){ ZL_Type_serial },
+    .numInputs      = 1,
+};
+
+static int g_singleChunkTestVersion = 0;
+static ZL_GraphID registerSingleChunkSegmenter(
+        ZL_Compressor* compressor) noexcept
+{
+    ZL_Report const setr = ZL_Compressor_setParameter(
+            compressor, ZL_CParam_formatVersion, g_singleChunkTestVersion);
+    if (ZL_isError(setr))
+        abort();
+
+    return ZL_Compressor_registerSegmenter(compressor, &singleChunkSegmenter);
+}
+
+TEST(Segmenter, singleChunkAllVersions)
+{
+    for (int version = ZL_MIN_FORMAT_VERSION; version <= ZL_MAX_FORMAT_VERSION;
+         ++version) {
+        g_singleChunkTestVersion = version;
+        char name[64];
+        snprintf(name, sizeof(name), "single chunk segmenter v%d", version);
+        (void)roundTripGen(ZL_Type_serial, registerSingleChunkSegmenter, name);
+    }
+}
+
 } // namespace

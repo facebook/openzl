@@ -75,7 +75,7 @@ ifndef SKIP_BUILDDEPS_CHECK
   endif
 
   # Check if xgboost headers are being built
-  XGBOOST_TARGETS := zli gtests test all
+  XGBOOST_TARGETS := zli gtests test all cli_test
   BUILDING_XGBOOST_TARGETS := $(filter $(XGBOOST_TARGETS),$(MAKECMDGOALS))
   ifeq ($(MAKECMDGOALS),)
     # If no targets are specified, assume we're building everything
@@ -106,10 +106,10 @@ LIBASMSRCS := $(wildcard $(addsuffix /*.S, $(LIBDIRS)))
 LIBOBJS := $(patsubst %.c,%.o,$(LIBCSRCS)) $(patsubst %.S,%.o,$(LIBASMSRCS))
 
 libopenzl.a:
-$(eval $(call static_library,libopenzl.a,$(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
+$(eval $(call static_library,libopenzl.a,$(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 libopenzl.so: CFLAGS += -fPIC
-$(eval $(call c_dynamic_library,libopenzl.so,$(LIBOBJS),$(LIBZSTD_SO) $(LIBLZ4_SO) $(LIBXGBOOST_SO)))
+$(eval $(call c_dynamic_library,libopenzl.so,$(LIBOBJS),$(LIBZSTD_SO) $(LIBLZ4_SO)))
 
 .PHONY:lib
 lib: libopenzl.a libopenzl.so
@@ -145,18 +145,23 @@ VISUALIZER_CXXOBJS := $(call cxx_objs,$(VISUALIZER_CPPDIR))
 TRAINING_CXXOBJS := $(call cxx_objs,$(TRAINING_DIRS))
 TRAINING_TEST_CXXOBJS := $(call cxx_objs,$(TRAINING_TEST_DIRS))
 SDDL_COMPILER_CXXOBJS := $(filter-out %main.o, $(call cxx_objs,$(SDDL_COMPILER_DIR)))
-SDDL2_COMPILER_CXXOBJS := $(filter-out %main.o, $(call cxx_objs,$(SDDL2_COMPILER_DIR)))
+SDDL2_COMPILER_CXXOBJS := $(filter-out %main.o, $(call cxx_objs,$(SDDL2_COMPILER_DIRS)))
+SDDL2_ASSEMBLER_CXXOBJS :=  $(filter-out %main.o, $(call cxx_objs,$(SDDL2_ASSEMBLER_DIR)))
 ML_SELECTOR_COBJS := $(call c_objs,$(ML_SELECTOR_DIR))
 ML_SELECTOR_CXXOBJS := $(call cxx_objs,$(ML_SELECTOR_DIR))
 
 # ML selector files depend on xgboost headers
 $(ML_SELECTOR_COBJS) $(ML_SELECTOR_CXXOBJS): | $(XGBOOST_HEADER)
 
+XGBOOST_INCLUDE_PATHS := -Ideps/xgboost/include -Ideps/xgboost/dmlc-core/include # xgboost headers
+
 # Add flags for cross platform compatibility for Windows
 zli: LDFLAGS += $(XGBOOST_LDFLAGS)
+zli: CPPFLAGS += $(XGBOOST_INCLUDE_PATHS)
 zli: LDLIBS += $(XGBOOST_LDLIBS)
 
 gtests: LDFLAGS += $(XGBOOST_LDFLAGS)
+gtests: CPPFLAGS += $(XGBOOST_INCLUDE_PATHS)
 gtests: LDLIBS += $(XGBOOST_LDLIBS)
 
 $(eval $(call cxx_program,zli, \
@@ -177,6 +182,7 @@ $(eval $(call cxx_program,zli, \
 	$(TRAINING_CXXOBJS) \
 	$(SDDL_COMPILER_CXXOBJS) \
 	$(SDDL2_COMPILER_CXXOBJS) \
+ 	$(SDDL2_ASSEMBLER_CXXOBJS) \
 	$(ML_SELECTOR_COBJS) \
 	$(ML_SELECTOR_CXXOBJS) \
 	$(ZLCPP_OBJS) \
@@ -187,11 +193,17 @@ $(eval $(call cxx_program,zli, \
 examples: zs2_pipeline zs2_trygraph zs2_selector zs2_struct zs2_round_trip
 
 .PHONY: test
-test : gtests zs2_test sddl2_test
+test : gtests zs2_test
 	$(EXEC_PREFIX) ./gtests
 
+# Python bindings for openzl.ext module (required for ML tests)
+.PHONY: python-bindings
+python-bindings:
+	@echo "Building and installing openzl Python bindings..."
+	pip install --quiet py/
+
 .PHONY: cli_test
-cli_test: zli
+cli_test: zli python-bindings
 	cd cli/tests && python3 cli_integration_tests.py ../../zli
 
 .PHONY: check-python-format
@@ -207,26 +219,21 @@ zs2_test : examples
 	$(EXEC_PREFIX) ./zs2_pipeline
 	$(EXEC_PREFIX) ./zs2_trygraph
 
-SDDL2_DIR = tests/compress/graphs/sddl2
-.PHONY: sddl2_test
-sddl2_test:
-	$(MAKE) -C $(SDDL2_DIR) test
-
 # ********     Tools     ********
 
 UNITBENCH_COBJS := $(foreach DIR,$(UNITBENCH_DIRS),$(call c_objs,$(DIR)))
-$(eval $(call c_program_shared_o,unitBench,tools/time/timefn.o tools/fileio/fileio.o $(UNITBENCH_COBJS) $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
+$(eval $(call c_program_shared_o,unitBench,tools/time/timefn.o tools/fileio/fileio.o $(UNITBENCH_COBJS) $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 stream_dump2:
 $(eval $(call c_program_shared_o,stream_dump2, \
-    $(STREAMDUMP_COBJS) tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
+    $(STREAMDUMP_COBJS) tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 $(eval $(call cxx_program,sddl_compiler, \
 	$(SDDL_COMPILER_DIR)/main.o \
 	$(SDDL_COMPILER_CXXOBJS) \
 	$(ZLCPP_OBJS), \
 	libopenzl.a \
-	$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
+	$(LIBZSTD_A) $(LIBLZ4_A)))
 
 # Selection of gtest units (by file name convention)
 CXX_FILE_OBJS := $(notdir $(CXX_OBJS))
@@ -244,6 +251,11 @@ DATAGEN_OBJS := \
 	tests/datagen/structures/LocalParamsProducer.o \
 	tests/datagen/structures/openzl/StringInputProducer.o \
 	tests/datagen/InputExpander.o
+SERIALIZATION_TEST_OBJS := \
+	tests/serialization/GraphBuilder.o \
+	tests/serialization/GraphBuilderUtils.o
+TEST_REGISTRY_SRCS = $(wildcard $(addsuffix /*.cpp, $(TEST_REGISTRY_DIRS)))
+TEST_REGISTRY_OBJS = $(patsubst %.cpp,%.o,$(TEST_REGISTRY_SRCS))
 CLI_TEST_OBJS := $(filter-out test_%.o,$(notdir $(foreach DIR,$(CLI_TEST_DIRS),$(call cxx_objs,$(DIR)))))
 ZLCPP_TEST_OBJS := $(call cxx_objs,$(ZLCPP_TEST_DIR))
 
@@ -273,9 +285,12 @@ ALL_GTESTS_OBJS := \
 	$(TRAINING_CXXOBJS) \
 	$(SDDL_COMPILER_CXXOBJS) \
 	$(SDDL2_COMPILER_CXXOBJS) \
+	$(SDDL2_ASSEMBLER_CXXOBJS) \
 	$(ML_SELECTOR_COBJS) \
 	$(ML_SELECTOR_CXXOBJS) \
 	$(DATAGEN_OBJS) \
+	$(SERIALIZATION_TEST_OBJS) \
+	$(TEST_REGISTRY_OBJS) \
 	$(ZLCPP_OBJS) \
 	$(LIBOBJS)
 
@@ -290,26 +305,25 @@ $(eval $(call cxx_program,gtests, \
 # ********     Examples     ********
 
 zs2_pipeline:
-$(eval $(call c_program_shared_o,zs2_pipeline,examples/zs2_pipeline.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
+$(eval $(call c_program_shared_o,zs2_pipeline,examples/zs2_pipeline.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 zs2_struct:
-$(eval $(call c_program_shared_o,zs2_struct,examples/zs2_struct.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
+$(eval $(call c_program_shared_o,zs2_struct,examples/zs2_struct.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 zs2_trygraph:
-$(eval $(call c_program_shared_o,zs2_trygraph,examples/zs2_trygraph.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
+$(eval $(call c_program_shared_o,zs2_trygraph,examples/zs2_trygraph.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 zs2_selector:
-$(eval $(call c_program_shared_o,zs2_selector,examples/zs2_selector.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
+$(eval $(call c_program_shared_o,zs2_selector,examples/zs2_selector.o tools/fileio/fileio.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 zs2_round_trip:
-$(eval $(call cxx_program_shared_o,zs2_round_trip,tests/round_trip.o tools/fileio/fileio.o $(SHARED_COMPONENTS_CXXOBJS) $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
+$(eval $(call cxx_program_shared_o,zs2_round_trip,tests/round_trip.o tools/fileio/fileio.o $(SHARED_COMPONENTS_CXXOBJS) $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
 # ********     Cleaning     ********
 
 .PHONY: clean
 clean:
 	# note: a lot is done within multiconf.make
-	$(MAKE) -C $(SDDL2_DIR) clean
 	@echo Cleaning completed
 
 #special cases : these targets require additional flags to compile without warnings
@@ -327,7 +341,7 @@ TAR ?= tar
 # Use this target as a work-around if dependencies are not correctly built
 # automatically.
 .PHONY : builddeps
-builddeps : $(LIBGTEST_A) $(LIBZSTD_A) $(LIBZSTD_SO) $(LIBLZ4_A) $(LIBLZ4_SO) $(LIBXGBOOST_A) $(LIBXGBOOST_SO)
+builddeps : $(LIBGTEST_A) $(LIBZSTD_A) $(LIBZSTD_SO) $(LIBLZ4_A) $(LIBLZ4_SO)
 
 .PHONY: cleandeps
 cleandeps:
@@ -423,16 +437,28 @@ $(LIBLZ4_A) : $(LZ4_MAKEFILE)
 
 # Google Test
 
-deps/googletest.tar.gz :
-	$(MKDIR) -p deps
-	$(CURL) -L https://github.com/google/googletest/releases/download/v1.17.0/googletest-1.17.0.tar.gz -o $@
+GTEST_VERSION ?= 1.17.0
+GTEST_DIRNAME := googletest-$(GTEST_VERSION)
+GTEST_TARBALL := deps/$(GTEST_DIRNAME).tar.gz
 
-# Ensure headers are available (no need for compiled library yet)
-$(GTEST_HEADERS): deps/googletest.tar.gz
-	cd deps && tar xzf googletest.tar.gz
+$(GTEST_TARBALL):
+	$(MKDIR) -p deps
+	$(CURL) -L https://github.com/google/googletest/releases/download/v$(GTEST_VERSION)/$(GTEST_DIRNAME).tar.gz -o $@
+
+.PHONY: gtest-fallback
+gtest-fallback: $(GTEST_TARBALL)
+	$(RM) -r deps/$(GTEST_DIRNAME)
+	$(TAR) -xzf $(GTEST_TARBALL) -C deps
 	$(RM) -r deps/googletest
-	mv deps/googletest*/ deps/googletest
-	touch $@
+	mv deps/$(GTEST_DIRNAME) deps/googletest
+
+# Ensure headers are available - prefer submodule, fallback to tarball
+$(GTEST_HEADERS):
+	-$(GIT) submodule update --init --single-branch --depth 1 deps/googletest
+	if [ ! -f $@ ]; then \
+		echo "Falling back to tarball download and extraction for googletest"; \
+		$(MAKE) gtest-fallback; \
+	fi
 
 $(LIBGTEST_A) : MAKEOVERRIDES=
 $(LIBGTEST_A) : $(GTEST_HEADERS)

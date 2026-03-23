@@ -13,6 +13,7 @@
 
 #include "openzl/common/cursor.h"
 #include "openzl/common/debug.h"
+#include "openzl/cpp/Input.hpp"
 
 ////////////////////////////////////////
 // Macros to Adapt Zstrong Success or Failure to GTest Success or Failure
@@ -102,6 +103,38 @@ ZL_GraphID addConversionToGraph(
  * node.
  */
 ZL_GraphID buildTrivialGraph(ZL_Compressor* cgraph, ZL_NodeID node);
+
+/**
+ * Tests that round tripping @p inputs works using the given @p graph.
+ * NOTE: This function handles format versions older than 15 that don't
+ * accept multiple typed inputs.
+ *
+ * @param compressed The buffer to compress into. It must already be
+ *                   sized to be large enough.
+ * @param compressor The compressor to use. This function will add one
+ *                   node and one graph to this compressor once, but
+ *                   subsequent calls will reuse that node/graph.
+ * @param cctx The cctx to use. It should be configured as needed.
+ *             This function will call cctx.refCompressor().
+ * @param dctx The dctx to use. It should be configured as needed.
+ * @param graph The graphID to test. cctx.selectStartingGraph() will be
+ *              called (though it may not be this GraphID).
+ * @param formatVersion The format version to use. This parameter will
+ *                      be set on the @p cctx.
+ * @param inputs The inputs to test.
+ *
+ * @returns The compressed size.
+ *
+ * @throws An exception if the inputs do not round trip successfully.
+ */
+size_t testRoundTrip(
+        poly::span<char> compressed,
+        Compressor& compressor,
+        CCtx& cctx,
+        DCtx& dctx,
+        GraphID graph,
+        int formatVersion,
+        poly::span<const Input> inputs);
 
 } // namespace tests
 } // namespace openzl

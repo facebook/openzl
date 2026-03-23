@@ -2,11 +2,10 @@
 
 #include "tools/sddl2/compiler/Compiler.h"
 
-#include "tools/sddl2/compiler/Grouper.h"
-#include "tools/sddl2/compiler/Parser.h"
-#include "tools/sddl2/compiler/Serializer.h"
 #include "tools/sddl2/compiler/Source.h"
-#include "tools/sddl2/compiler/Tokenizer.h"
+#include "tools/sddl2/compiler/grouper/Grouper.h"
+#include "tools/sddl2/compiler/parser/Parser.h"
+#include "tools/sddl2/compiler/tokenizer/Tokenizer.h"
 
 namespace openzl::sddl2 {
 
@@ -16,25 +15,35 @@ Compiler::Compiler(Options options)
           tokenizer_(logger_),
           grouper_(logger_),
           parser_(logger_),
-          serializer_(logger_, options_.include_debug_info)
+          semantic_analyzer_(logger_),
+          optimizer_(logger_),
+          codegen_(logger_)
 {
 }
 
 /**
  * The compiler for SDDL is comprised of four passes:
  *
+ * ```
+ *   Record Entry() = {
+ *       id: Int32LE,
+ *   }
+ *   : Entry
+ * ```
+ *
  * 1. Tokenization:
  *
  *    Converts the contiguous string of source code into a flat list of tokens.
  *    Strips whitespace and comments.
  *
- *    E.g., `arr = Array(foo, bar + 1); consume arr;` ->
+ *    The previous source code would be tokenized as:
  *    ```
  *    [
- *      Word("arr"), Symbol::ASSIGN, Symbol::ARRAY, Symbol::PAREN_OPEN,
- *      Word("foo"), Symbol::COMMA, Word("bar"), Symbol::ADD, Num(1),
- *      Symbol::PAREN_CLOSE, Symbol::SEMI, Symbol::CONSUME, Word("arr"),
- *      Symbol::SEMI,
+ *      Symbol::RECORD, Word("Entry"), Symbol::PAREN_OPEN, Symbol::PAREN_CLOSE,
+ *      Symbol: ASSIGN, Symbol::CURLY_OPEN, Symbol::NL, Word("id"),
+ *      Symbol: ASSUME, Symbol: I32LE, Symbol::COMMA, Symbol::NL,
+ *      Symbol::CURLY_CLOSE, Symbol::NL, Symbol::ASSUME,
+ *      Word("Entry"), Symbol::NL
  *    ]
  *    ```
  *
@@ -53,13 +62,12 @@ Compiler::Compiler(Options options)
  *    ```
  *    [
  *      Expr([
- *        Word("arr"), Symbol::ASSIGN, Symbol::ARRAY,
- *        List(PAREN, [
- *          Expr([Word("foo")]),
- *          Expr([Word("bar"), Symbol::ADD, Num(1)]),
- *        ]),
+ *        Symbol::RECORD, Word("Entry"), List(PAREN, []), Symbol::ASSIGN,
+ *        List(CURLY, [Expr([Word("id"), Symbol::ASSUME, Symbol::I32LE])]),
  *      ]),
- *      Expr([Symbol::CONSUME, Word("arr")]),
+ *      Expr([
+ *        Symbol::ASSUME, Word("Entry"),
+ *      ]),
  *    ]
  *    ```
  *
@@ -73,27 +81,30 @@ Compiler::Compiler(Options options)
  *    [
  *      Op(
  *        ASSIGN,
- *        Var("arr"),
- *        Array(
- *          Var("foo"),
- *          Op(
- *            ADD,
- *            Var("bar"),
- *            Num(1),
- *          ),
+ *        Var("Entry"),
+ *        Record(
+ *          [],
+ *          [
+ *            Op(
+ *              ASSIGN,
+ *              Var("id"),
+ *              Op(
+ *                CONSUME,
+ *                Field("I32LE"),
+ *              ),
+ *            ),
+ *          ],
  *        ),
  *      ),
  *      Op(
  *        CONSUME,
- *        Var("arr"),
+ *        Var("Entry"),
  *      ),
  *    ]
  *    ```
  *
- * 4. Serialization:
- *
- *    Converts the expression trees into the corresponding CBOR tree and
- *    serializes that tree to its binary representation.
+ * 4. Codegen:
+ *    Transforms the expression tree into assembly instructions.
  */
 
 std::string Compiler::compile(
@@ -104,7 +115,9 @@ std::string Compiler::compile(
     const auto tokens = tokenizer_.tokenize(src);
     const auto groups = grouper_.group(tokens);
     const auto tree   = parser_.parse(groups);
-    return serializer_.serialize(tree, src);
+    semantic_analyzer_.analyze(tree);
+    const auto optimized = optimizer_.optimize(tree);
+    return codegen_.generate(optimized);
 }
 
 Compiler::Options::Options() {}

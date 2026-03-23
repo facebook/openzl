@@ -12,6 +12,19 @@
 
 ZL_BEGIN_C_DECLS
 
+ZL_Report transposeSplitSelectorFnGraph(
+        ZL_Graph* graph,
+        ZL_Edge* edges[],
+        size_t nbEdges);
+
+#define MIGRAPH_TRANSPOSE_SPLIT                                   \
+    {                                                             \
+        .name           = "!zl.private.transpose_split_selector", \
+        .graph_f        = transposeSplitSelectorFnGraph,          \
+        .inputTypeMasks = (ZL_Type[]){ ZL_Type_struct },          \
+        .nbInputs       = 1,                                      \
+    }
+
 // New Transpose operation,
 // which automatically adjusts to token's size.
 // Accepts and generates `ZL_Type_struct` stream type.

@@ -117,4 +117,52 @@ typedef struct ZL_CompressIntrospectionHooks_s {
             ZL_Report const result) ZL_NOEXCEPT_FUNC_PTR;
 } ZL_CompressIntrospectionHooks;
 
+// Introspection hooks for decompress
+typedef struct ZL_DecompressIntrospectionHooks_s {
+    void* opaque; // an opaque pointer, passed as-is to all the hooks as the
+    // first argument
+
+    /* ******** DCtx entrypoint ******** */
+    void (*on_ZL_DCtx_decompressMultiTBuffer_start)(
+            void* opaque,
+            ZL_DCtx* dctx,
+            size_t nbOutputs,
+            const void* framePtr,
+            size_t frameSize) ZL_NOEXCEPT_FUNC_PTR;
+    void (*on_ZL_DCtx_decompressMultiTBuffer_end)(
+            void* opaque,
+            ZL_DCtx* dctx,
+            ZL_Report result) ZL_NOEXCEPT_FUNC_PTR;
+
+    /* ******** Per-chunk ******** */
+    void (*on_decompressChunk_start)(
+            void* opaque,
+            ZL_DCtx* dctx,
+            size_t chunkIndex) ZL_NOEXCEPT_FUNC_PTR;
+    void (*on_decompressChunk_end)(
+            void* opaque,
+            ZL_DCtx* dctx,
+            ZL_Report result) ZL_NOEXCEPT_FUNC_PTR;
+
+    /* ******** Decoder API methods ******** */
+    void (*on_ZL_Decoder_getCodecHeader)(
+            void* opaque,
+            const ZL_Decoder* dictx,
+            const void* trh,
+            size_t trhSize) ZL_NOEXCEPT_FUNC_PTR;
+
+    /* ******** Per-codec/transform execution ******** */
+    void (*on_codecDecode_start)(
+            void* opaque,
+            ZL_Decoder* dictx,
+            const ZL_Data* const* inStreams,
+            size_t nbInStreams) ZL_NOEXCEPT_FUNC_PTR;
+    void (*on_codecDecode_end)(
+            void* opaque,
+            ZL_Decoder* dictx,
+            const ZL_Data* const* outStreams,
+            size_t nbOutStreams,
+            ZL_Report result) ZL_NOEXCEPT_FUNC_PTR;
+} ZL_DecompressIntrospectionHooks;
+
 #endif // OPENZL_ZL_INTROSPECTION_H

@@ -6,11 +6,14 @@
 #include <string.h>
 
 #include "openzl/codecs/zl_conversion.h"
+#include "openzl/codecs/zl_mlselector.h"
 #include "openzl/cpp/Exception.hpp"
 #include "openzl/openzl.hpp"
 #include "openzl/zl_compressor.h"
+#include "openzl/zl_reflection.h"
 
 #include "custom_parsers/csv/csv_profile.h"
+#include "custom_parsers/dependency_registration.h"
 #include "custom_parsers/parquet/parquet_graph.h"
 #include "custom_parsers/pytorch_model_parser.h"
 #include "custom_parsers/sddl/sddl2_profile.h"
@@ -18,7 +21,7 @@
 #include "custom_parsers/shared_components/clustering.h"
 
 #include "tools/io/InputFile.h"
-#include "tools/ml_selector/ml_selector_graph.h"
+#include "tools/io/InputSetFileOrDir.h"
 #include "tools/sddl/compiler/Compiler.h"
 
 namespace openzl::cli {
@@ -102,13 +105,32 @@ ZL_GraphID saoProfile(Compressor& compressor)
             splitSizes.size());
 }
 
-static void addLEintProfile(
+static std::string makeProfileName(const std::string& signage, size_t bitWidth)
+{
+    if (bitWidth == 8) {
+        return signage + "8";
+    }
+    return "le-" + signage + std::to_string(bitWidth);
+}
+
+static std::string makeProfileDescription(bool isSigned, size_t bitWidth)
+{
+    if (bitWidth == 8) {
+        return (isSigned ? "Signed " : "Unsigned ") + std::string("8-bit data");
+    }
+    return std::string("Little-endian ") + (isSigned ? "signed " : "unsigned ")
+            + std::to_string(bitWidth) + "-bit data";
+}
+
+static void addIntProfile(
         std::map<std::string, std::shared_ptr<CompressProfile>>& mp,
         bool isSigned,
         size_t bitWidth)
 {
-    std::string signage    = isSigned ? "i" : "u";
-    std::string name       = "le-" + signage + std::to_string(bitWidth);
+    std::string signage     = isSigned ? "i" : "u";
+    std::string name        = makeProfileName(signage, bitWidth);
+    std::string description = makeProfileDescription(isSigned, bitWidth);
+
     auto interpretAsLEnode = ZL_Node_interpretAsLE(bitWidth);
 
     std::shared_ptr<void> nodeid = std::shared_ptr<void>(
@@ -118,31 +140,86 @@ static void addLEintProfile(
 
     mp[name] = std::make_shared<CompressProfile>(
             name,
-            std::string("Little-endian ") + (isSigned ? "signed " : "unsigned ")
-                    + std::to_string(bitWidth) + "-bit data",
+            description,
             isSigned ? ([](ZL_Compressor* comp,
                            void* opaque,
                            const ProfileArgs&) {
-                auto graph =
-                        ZL_Compressor_registerStaticGraph_fromPipelineNodes1o(
-                                comp, (ZL_NodeID*)opaque, 2, ZL_GRAPH_FIELD_LZ);
-                return ZL_Compressor_buildACEGraphWithDefault(comp, graph);
+                const ZL_NodeID* nodes = (const ZL_NodeID*)opaque;
+                auto graph = ZL_Compressor_registerStaticGraph_fromNode1o(
+                        comp, nodes[1], ZL_GRAPH_FIELD_LZ);
+                graph = ZL_Compressor_buildACEGraphWithDefault(comp, graph);
+                return ZL_Compressor_registerStaticGraph_fromNode1o(
+                        comp, nodes[0], graph);
             })
                      : ([](ZL_Compressor* comp,
                            void* opaque,
                            const ProfileArgs&) {
-                           auto graph =
-                                   ZL_Compressor_registerStaticGraph_fromPipelineNodes1o(
-                                           comp,
-                                           (ZL_NodeID*)opaque,
-                                           1,
-                                           ZL_GRAPH_FIELD_LZ);
-                           return ZL_Compressor_buildACEGraphWithDefault(
-                                   comp, graph);
+                           const ZL_NodeID* nodes = (const ZL_NodeID*)opaque;
+                           auto graph = ZL_Compressor_buildACEGraphWithDefault(
+                                   comp, ZL_GRAPH_FIELD_LZ);
+                           return ZL_Compressor_registerStaticGraph_fromNode1o(
+                                   comp, nodes[0], graph);
                        }),
             std::move(nodeid));
 }
 } // namespace
+
+static ZL_RESULT_OF(ZL_GraphID) extractFolderOfCompressors(
+        Compressor& compressor,
+        const std::string& folder)
+{
+    ZL_RESULT_DECLARE_SCOPE(ZL_GraphID, compressor.get());
+
+    auto inputSet = tools::io::InputSetFileOrDir(folder, true);
+
+    std::vector<ZL_GraphID> successors;
+    for (const auto& input : inputSet) {
+        auto contents = input->contents();
+
+        const auto deps = compressor.getUnmetDependencies(contents);
+
+        for (const auto& graphName : deps.graphNames) {
+            if (graphName == "Parquet Parser" || graphName == "CSV Parser") {
+                throw std::runtime_error(
+                        "CSV and Parquet parsers are not supported in ML Selector profiles. "
+                        "CSV and Parquet parsers require clustering which ML Selector does not provide.");
+            }
+        }
+
+        compressor.deserialize(contents);
+
+        ZL_GraphID startingGraphId;
+        ZL_Compressor_getStartingGraphID(compressor.get(), &startingGraphId);
+        successors.push_back(startingGraphId);
+    }
+
+    // ML selectors require at least 2 successors to choose between
+    if (successors.size() < 2) {
+        throw Exception(
+                "ML selector requires at least 2 successor compressors, but "
+                "only "
+                + std::to_string(successors.size()) + " were provided in '"
+                + folder + "'");
+    }
+
+    ZL_TRY_LET(
+            ZL_GraphID,
+            mlSelectorGraphId,
+            ZL_Compressor_buildUntrainedMLSelector(
+                    compressor.get(), successors.data(), successors.size()));
+
+    // Wrap with serial-to-numeric conversion so the graph accepts serial input
+    ZL_GraphID staticGraph = ZL_Compressor_registerStaticGraph_fromNode1o(
+            compressor.get(),
+            ZL_NODE_CONVERT_SERIAL_TO_NUM_LE64,
+            mlSelectorGraphId);
+
+    // Parameterize so ml selector graph can be updated during training
+    ZL_GraphParameters const wrapperDesc = {};
+
+    return ZL_Compressor_parameterizeGraph(
+            compressor.get(), staticGraph, &wrapperDesc);
+}
 
 /**
  * @brief Registers static successor graphs for the ML selector.
@@ -179,8 +256,7 @@ static ZL_RESULT_OF(ZL_GraphID)
     ZL_TRY_LET(
             ZL_GraphID,
             mlSelectorGraphId,
-            MLSelector_registerGraphWithEmptyGBTModel(
-                    compressor, successors, 6));
+            ZL_Compressor_buildUntrainedMLSelector(compressor, successors, 6));
 
     // Wrap with serial-to-numeric conversion so the graph accepts serial input
     ZL_GraphID staticGraph = ZL_Compressor_registerStaticGraph_fromNode1o(
@@ -239,12 +315,14 @@ compressProfiles()
                                     comp, chunkSize, true, sep, false);
                 });
 
-        addLEintProfile(mp, true, 16);
-        addLEintProfile(mp, false, 16);
-        addLEintProfile(mp, true, 32);
-        addLEintProfile(mp, false, 32);
-        addLEintProfile(mp, true, 64);
-        addLEintProfile(mp, false, 64);
+        addIntProfile(mp, true, 8);
+        addIntProfile(mp, false, 8);
+        addIntProfile(mp, true, 16);
+        addIntProfile(mp, false, 16);
+        addIntProfile(mp, true, 32);
+        addIntProfile(mp, false, 32);
+        addIntProfile(mp, true, 64);
+        addIntProfile(mp, false, 64);
 
         std::string kParquetName = "parquet";
         mp[kParquetName]         = std::make_shared<CompressProfile>(
@@ -314,10 +392,16 @@ compressProfiles()
                 "64 bit numeric data using ml selectors (Placeholder)",
                 [](ZL_Compressor* comp, void*, const ProfileArgs& args) {
                     (void)args;
-                    return unwrap(
-                            numeric64BitMLSelectorProfile(comp),
-                            "Failed to set up numeric profile",
-                            comp);
+                    if (args.map().find("TBD") != args.map().end()) {
+                        CompressorRef compressor(comp);
+                        return unwrap(extractFolderOfCompressors(
+                                compressor, args.map().at("TBD")));
+                    } else {
+                        return unwrap(
+                                numeric64BitMLSelectorProfile(comp),
+                                "Failed to set up numeric profile",
+                                comp);
+                    }
                 });
 
         return mp;

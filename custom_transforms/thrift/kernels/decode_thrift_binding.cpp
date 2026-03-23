@@ -50,10 +50,11 @@ template <typename Kernel>
 ZL_Report typedTransform(ZL_Decoder* dictx, ZL_Input const* src[]) noexcept
 {
     using InputStreams = typename Kernel::InputStreams;
-    ZL_RET_R_IF_LT(
-            formatVersion_unsupported,
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
+    ZL_ERR_IF_LT(
             DI_getFrameFormatVersion(dictx),
             9,
+            formatVersion_unsupported,
             "Support first added in format version 9");
     try {
         InputStreams inputs;
@@ -65,36 +66,35 @@ ZL_Report typedTransform(ZL_Decoder* dictx, ZL_Input const* src[]) noexcept
             uint8_t const* ip   = (uint8_t const*)header.start;
             uint8_t const* iend = ip + header.size;
             dstCapacity         = unwrap(ZL_varintDecode(&ip, iend));
-            ZL_RET_R_IF_NE(corruption, ip, iend);
+            ZL_ERR_IF_NE(ip, iend, corruption);
         }
 
         ZL_Output* stream = ZL_Decoder_create1OutStream(dictx, dstCapacity, 1);
-        ZL_RET_R_IF_NULL(allocation, stream);
+        ZL_ERR_IF_NULL(stream, allocation);
         std::span<uint8_t> out = { (uint8_t*)ZL_Output_ptr(stream),
                                    dstCapacity };
 
-        ZL_RET_R_IF_NE(corruption, ZL_Input_eltWidth(src[0]), 8);
+        ZL_ERR_IF_NE(ZL_Input_eltWidth(src[0]), 8, corruption);
         std::span<uint64_t const> sizes = {
             (uint64_t const*)ZL_Input_ptr(src[0]), ZL_Input_numElts(src[0])
         };
 
         for (auto const& size : sizes) {
             auto const written = Kernel{}(dictx, out, inputs, size);
-            ZL_RET_R_IF_ERR(written);
+            ZL_ERR_IF_ERR(written);
             assert(ZL_validResult(written) <= out.size());
             out = out.subspan(ZL_validResult(written));
         }
 
-        ZL_RET_R_IF(corruption, !out.empty());
+        ZL_ERR_IF(!out.empty(), corruption);
 
-        ZL_RET_R_IF_ERR(ZL_Output_commit(stream, dstCapacity));
+        ZL_ERR_IF_ERR(ZL_Output_commit(stream, dstCapacity));
 
         return ZL_returnSuccess();
     } catch (std::exception const& e) {
-        ZL_RET_R_ERR(
-                transform_executionFailure,
-                "Thrift kernel failure: %s",
-                e.what());
+        ZL_ERR(transform_executionFailure,
+               "Thrift kernel failure: %s",
+               e.what());
     }
 }
 
@@ -133,9 +133,10 @@ ZL_Report ZS2_ThriftKernel_registerDTransformMapI32Float(
                 InputStreams& in,
                 size_t mapSize)
         {
+            ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
             auto& [keys, values] = in;
-            ZL_RET_R_IF_NE(corruption, keys.size(), values.size());
-            ZL_RET_R_IF_LT(corruption, keys.size(), mapSize);
+            ZL_ERR_IF_NE(keys.size(), values.size(), corruption);
+            ZL_ERR_IF_LT(keys.size(), mapSize, corruption);
             auto ret = ZS2_ThriftKernel_serializeMapI32Float(
                     out.data(),
                     out.size(),
@@ -167,9 +168,10 @@ ZL_Report ZS2_ThriftKernel_registerDTransformMapI32ArrayFloat(
                 InputStreams& in,
                 size_t mapSize)
         {
+            ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
             auto& [keys, lengths, innerValues] = in;
-            ZL_RET_R_IF_NE(corruption, keys.size(), lengths.size());
-            ZL_RET_R_IF_LT(corruption, keys.size(), mapSize);
+            ZL_ERR_IF_NE(keys.size(), lengths.size(), corruption);
+            ZL_ERR_IF_LT(keys.size(), mapSize, corruption);
             auto* innerValuesPtr = innerValues.data();
             auto* innerValuesEnd = innerValues.data() + innerValues.size();
             auto ret             = ZS2_ThriftKernel_serializeMapI32ArrayFloat(
@@ -207,9 +209,10 @@ ZL_Report ZS2_ThriftKernel_registerDTransformMapI32ArrayI64(
                 InputStreams& in,
                 size_t mapSize)
         {
+            ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
             auto& [keys, lengths, innerValues] = in;
-            ZL_RET_R_IF_NE(corruption, keys.size(), lengths.size());
-            ZL_RET_R_IF_LT(corruption, keys.size(), mapSize);
+            ZL_ERR_IF_NE(keys.size(), lengths.size(), corruption);
+            ZL_ERR_IF_LT(keys.size(), mapSize, corruption);
             auto* innerValuesPtr = innerValues.data();
             auto* innerValuesEnd = innerValues.data() + innerValues.size();
             auto ret             = ZS2_ThriftKernel_serializeMapI32ArrayI64(
@@ -248,9 +251,10 @@ ZL_Report ZS2_ThriftKernel_registerDTransformMapI32ArrayArrayI64(
                 InputStreams& in,
                 size_t mapSize)
         {
+            ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
             auto& [keys, lengths, innerLengths, innerInnerValues] = in;
-            ZL_RET_R_IF_NE(corruption, keys.size(), lengths.size());
-            ZL_RET_R_IF_LT(corruption, keys.size(), mapSize);
+            ZL_ERR_IF_NE(keys.size(), lengths.size(), corruption);
+            ZL_ERR_IF_LT(keys.size(), mapSize, corruption);
             auto* innerLengthsPtr = innerLengths.data();
             auto* innerLengthsEnd = innerLengths.data() + innerLengths.size();
             auto* innerInnerValuesPtr = innerInnerValues.data();
@@ -296,9 +300,10 @@ ZL_Report ZS2_ThriftKernel_registerDTransformMapI32MapI64Float(
                 InputStreams& in,
                 size_t mapSize)
         {
+            ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
             auto& [keys, lengths, innerKeys, innerValues] = in;
-            ZL_RET_R_IF_NE(corruption, keys.size(), lengths.size());
-            ZL_RET_R_IF_LT(corruption, keys.size(), mapSize);
+            ZL_ERR_IF_NE(keys.size(), lengths.size(), corruption);
+            ZL_ERR_IF_LT(keys.size(), mapSize, corruption);
             auto* innerKeysPtr   = innerKeys.data();
             auto* innerKeysEnd   = innerKeys.data() + innerKeys.size();
             auto* innerValuesPtr = innerValues.data();
@@ -339,8 +344,9 @@ ZL_Report ZS2_ThriftKernel_registerDTransformArrayI64(
                 InputStreams& in,
                 size_t arraySize)
         {
+            ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
             auto& [values] = in;
-            ZL_RET_R_IF_LT(corruption, values.size(), arraySize);
+            ZL_ERR_IF_LT(values.size(), arraySize, corruption);
             auto ret = ZS2_ThriftKernel_serializeArrayI64(
                     out.data(), out.size(), values.data(), arraySize);
             values = values.subspan(arraySize);
@@ -364,8 +370,9 @@ ZL_Report ZS2_ThriftKernel_registerDTransformArrayI32(
                 InputStreams& in,
                 size_t arraySize)
         {
+            ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
             auto& [values] = in;
-            ZL_RET_R_IF_LT(corruption, values.size(), arraySize);
+            ZL_ERR_IF_LT(values.size(), arraySize, corruption);
             auto ret = ZS2_ThriftKernel_serializeArrayI32(
                     out.data(), out.size(), values.data(), arraySize);
             values = values.subspan(arraySize);
@@ -389,8 +396,9 @@ ZL_Report ZS2_ThriftKernel_registerDTransformArrayFloat(
                 InputStreams& in,
                 size_t arraySize)
         {
+            ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
             auto& [values] = in;
-            ZL_RET_R_IF_LT(corruption, values.size(), arraySize);
+            ZL_ERR_IF_LT(values.size(), arraySize, corruption);
             auto ret = ZS2_ThriftKernel_serializeArrayFloat(
                     out.data(), out.size(), values.data(), arraySize);
             values = values.subspan(arraySize);

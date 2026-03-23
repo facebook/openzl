@@ -52,10 +52,12 @@ struct ZL_OperationContext_s {
 
     // Introspection hooks for the current operation. Realistically only
     // relevant for CCtx and DCtx. These allow the user to execute custom code
-    // snippets at specified WAYPOINT()s within the operation. See
-    // common/introspection.h for more details.
-    ZL_CompressIntrospectionHooks introspectionHooks;
-    bool hasIntrospectionHooks;
+    // snippets at specified CWAYPOINT()s / DWAYPOINT()s within the operation.
+    // See common/introspection.h for more details.
+    ZL_CompressIntrospectionHooks compressIntrospectionHooks;
+    ZL_DecompressIntrospectionHooks decompressIntrospectionHooks;
+    bool hasCompressionHooks;
+    bool hasDecompressionHooks;
 };
 
 void ZL_OC_init(ZL_OperationContext* opCtx);

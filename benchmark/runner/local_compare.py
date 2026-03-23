@@ -11,12 +11,10 @@ import subprocess
 import typing as t
 
 import click
-
 from scm.hgrepo import HgCommit, HgRepository
 
 from .phabricator_utils import PHAB_ACCESS_TYPE, PhabricatorUtils
 from .quiet_cpu_utils import QuietCPUManager
-
 from .zstrong_gbenchmarks import (
     ZstrongGoogleBenchmarkResults,
     ZstrongGoogleBenchmarkRunner,

@@ -6,6 +6,7 @@
 #include <stddef.h>
 
 #include "openzl/zl_graph_api.h"
+#include "openzl/zl_graphs.h"
 #include "openzl/zl_nodes.h"
 #include "openzl/zl_opaque_types.h"
 

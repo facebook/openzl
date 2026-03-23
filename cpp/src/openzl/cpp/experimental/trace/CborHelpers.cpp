@@ -41,6 +41,66 @@ ZL_Report addBooleanValue(A1C_MapBuilder& builder, const char* key, bool val)
     return ZL_returnSuccess();
 }
 
+ZL_Report addBytesArray(
+        A1C_Arena* a1c_arena,
+        A1C_MapBuilder& builder,
+        const char* key,
+        const std::vector<uint8_t>& bytes)
+{
+    A1C_MAP_TRY_ADD_R(pair, builder);
+    A1C_Item_string_refCStr(&pair->key, key);
+
+    if (!bytes.empty()) {
+        bool success = A1C_Item_bytes_copy(
+                &pair->val, bytes.data(), bytes.size(), a1c_arena);
+        ZL_RET_R_IF(allocation, !success, "Failed to copy bytes data.");
+    } else {
+        A1C_Item_bytes_ref(&pair->val, nullptr, 0);
+    }
+
+    return ZL_returnSuccess();
+}
+
+ZL_Report addNumArray(
+        A1C_Arena* a1c_arena,
+        A1C_MapBuilder& builder,
+        const char* key,
+        const std::vector<int64_t>& numbers)
+{
+    A1C_MAP_TRY_ADD_R(pair, builder);
+    A1C_Item_string_refCStr(&pair->key, key);
+
+    A1C_ArrayBuilder arrayBuilder =
+            A1C_Item_array_builder(&pair->val, numbers.size(), a1c_arena);
+    ZL_RET_R_IF_NULL(allocation, arrayBuilder.array);
+
+    for (const int64_t val : numbers) {
+        A1C_ARRAY_TRY_ADD_R(item, arrayBuilder);
+        A1C_Item_int64(item, val);
+    }
+    return ZL_returnSuccess();
+}
+
+ZL_Report addStrArray(
+        A1C_Arena* a1c_arena,
+        A1C_MapBuilder& builder,
+        const char* key,
+        const std::vector<std::string>& strs)
+{
+    A1C_MAP_TRY_ADD_R(pair, builder);
+    A1C_Item_string_refCStr(&pair->key, key);
+
+    A1C_ArrayBuilder arrayBuilder =
+            A1C_Item_array_builder(&pair->val, strs.size(), a1c_arena);
+    ZL_RET_R_IF_NULL(allocation, arrayBuilder.array);
+
+    for (const std::string& str : strs) {
+        A1C_ARRAY_TRY_ADD_R(item, arrayBuilder);
+        A1C_Item_string_refCStr(item, str.c_str());
+    }
+    return ZL_returnSuccess();
+}
+
 ZL_Report serializeLocalParams(
         A1C_Arena* a1c_arena,
         A1C_Item* a1c_localParamsParent,

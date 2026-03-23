@@ -2,8 +2,9 @@
 
 import type {ChunkID, CodecID, StreamID} from './idTypes';
 import {ZL_Type} from './idTypes';
-import type {SerializedStream} from '../interfaces/SerializedStream';
+import type {SerializedStream, StreamPreviewData} from '../interfaces/SerializedStream';
 import type {RF_edgeId} from '../graphVisualization/models/types';
+
 export class Stream {
   static readonly NO_TARGET: CodecID = -1 as CodecID;
   static readonly NO_SOURCE: CodecID = -1 as CodecID;
@@ -19,6 +20,7 @@ export class Stream {
   readonly cSize: number;
   readonly share: number;
   readonly contentSize: number;
+  readonly streamPreview?: StreamPreviewData;
 
   // graph properties
   sourceCodec: CodecID = Stream.NO_SOURCE;
@@ -38,6 +40,7 @@ export class Stream {
     cSize: number,
     share: number,
     contentSize: number,
+    streamPreview: StreamPreviewData | undefined,
     rfId: RF_edgeId,
   ) {
     this.streamId = streamId;
@@ -50,6 +53,7 @@ export class Stream {
     this.cSize = cSize;
     this.share = share;
     this.contentSize = contentSize;
+    this.streamPreview = streamPreview;
 
     this.rfId = rfId;
   }
@@ -80,6 +84,7 @@ export class Stream {
       obj.cSize,
       obj.share,
       obj.contentSize,
+      obj.streamPreview,
       `C${obj.chunkId}-S${idx}` as RF_edgeId,
     );
   }

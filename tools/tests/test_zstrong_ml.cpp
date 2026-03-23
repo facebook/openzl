@@ -1,7 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <memory>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 
@@ -40,14 +39,11 @@ TEST(ZstrongMLTest, BinaryGBTModelTest)
     for (int a = 0; a <= 1; a++) {
         for (int b = 0; b <= 1; b++) {
             FeatureMap features;
-            features["a"]         = (float)a;
-            features["b"]         = (float)b;
-            std::string predicted = model->predictLabel(features);
+            features["a"]    = (float)a;
+            features["b"]    = (float)b;
+            size_t predicted = model->predict(features);
             // The model predicts the function `a & (b ^ 1)`
-            if ((a & (b ^ 1)) == 0)
-                ASSERT_EQ(predicted, "zero");
-            else
-                ASSERT_EQ(predicted, "one");
+            ASSERT_EQ(predicted, (a & (b ^ 1)));
         }
     }
 }
@@ -57,17 +53,14 @@ TEST(ZstrongMLTest, MulticlassGBTModelTest)
     auto model = getMulticlassGBTModel();
     for (int a = 0; a <= 2; a++) {
         for (int b = 0; b <= 2; b++) {
-            for (int c = 0; b <= 2; b++) {
+            for (int c = 0; c <= 2; c++) {
                 FeatureMap features;
-                features["a"]               = (float)a;
-                features["b"]               = (float)b;
-                features["c"]               = (float)c;
-                const std::string predicted = model->predictLabel(features);
+                features["a"]          = (float)a;
+                features["b"]          = (float)b;
+                features["c"]          = (float)c;
+                const size_t predicted = model->predict(features);
                 // The model predicts the function `(a+b+c)%3`
-                const std::vector<std::string> answers = { "zero",
-                                                           "one",
-                                                           "two" };
-                ASSERT_EQ(answers[(a + b + c) % 3], predicted);
+                ASSERT_EQ((a + b + c) % 3, predicted);
             }
         }
     }
@@ -75,8 +68,7 @@ TEST(ZstrongMLTest, MulticlassGBTModelTest)
 
 TEST(ZstrongMLTest, BinaryMLSelectorTest)
 {
-    auto test = [](std::vector<ZL_GraphID> successors,
-                   std::vector<std::string> labels = {}) {
+    auto test = [](std::vector<ZL_GraphID> successors) {
         class TestFeatureGenerator : public FeatureGenerator {
            public:
             TestFeatureGenerator() : FeatureGenerator(getFeatureNames()) {}
@@ -109,7 +101,7 @@ TEST(ZstrongMLTest, BinaryMLSelectorTest)
             auto model            = getBinaryGBTModel();
             auto featureGenerator = std::make_shared<TestFeatureGenerator>();
             auto selector         = std::make_unique<MLSelector>(
-                    ZL_Type_serial, model, featureGenerator, labels);
+                    ZL_Type_serial, model, featureGenerator);
 
             return registerOwnedSelector(
                     *cgraph,
@@ -137,12 +129,6 @@ TEST(ZstrongMLTest, BinaryMLSelectorTest)
         ASSERT_GT(store_compressed_size, 10000);
     };
     test({ ZL_GRAPH_FSE, ZL_GRAPH_STORE });
-    test({ ZL_GRAPH_FSE, ZL_GRAPH_STORE }, { "zero", "one" });
-    test({ ZL_GRAPH_STORE, ZL_GRAPH_FSE }, { "one", "zero" });
-    test({ ZL_GRAPH_FSE, ZL_GRAPH_STORE }, { "zero", "one", "two" });
-    EXPECT_THROW(
-            test({ ZL_GRAPH_FSE, ZL_GRAPH_STORE }, { "zero" }),
-            std::runtime_error);
 }
 
 TEST(ZstrongMLTest, MemTrainingCollectorTest)

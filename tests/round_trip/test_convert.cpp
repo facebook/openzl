@@ -44,6 +44,11 @@ static ZL_GraphID conversionGraph(ZL_Compressor* cgraph) noexcept
     ZL_IntParam const tokenL4              = { ZL_trlip_tokenSize, 4 };
     ZL_LocalParams const castToToken4Param = { .intParams = { &tokenL4, 1 } };
 
+    const ZL_ParameterizedNodeDesc pndesc = {
+        .node        = ZL_NODE_CONVERT_SERIAL_TO_TOKENX,
+        .localParams = &castToToken4Param,
+    };
+
     const ZL_NodeID pipeline[] = {
         ZL_NODE_INTERPRET_AS_LE32,
         ZL_NODE_DELTA_INT,
@@ -55,8 +60,7 @@ static ZL_GraphID conversionGraph(ZL_Compressor* cgraph) noexcept
         ZL_NODE_CONVERT_SERIAL_TO_TOKEN4,
         /* serial->token4 using generic TOKENX conversion transform with length
            parameter */
-        ZL_Compressor_cloneNode(
-                cgraph, ZL_NODE_CONVERT_SERIAL_TO_TOKENX, &castToToken4Param),
+        ZL_Compressor_registerParameterizedNode(cgraph, &pndesc),
         ZL_NODE_INTERPRET_TOKEN_AS_LE,
         ZL_NODE_CONVERT_NUM_TO_SERIAL,
     };

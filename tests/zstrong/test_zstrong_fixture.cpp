@@ -42,7 +42,7 @@ void ZStrongTest::reset()
     inType_                 = std::nullopt;
     vsfFieldSizesInstructs_ = {};
 
-    // Default the format version to the max format verison.
+    // Default the format version to the max format version.
     // Set it in the cgraph because these parameters have lower priority.
     ZL_REQUIRE_SUCCESS(ZL_Compressor_setParameter(
             cgraph_,
@@ -127,7 +127,11 @@ ZL_NodeID ZStrongTest::createParameterizedNode(
         ZL_NodeID node,
         const ZL_LocalParams& localParams)
 {
-    return ZL_Compressor_cloneNode(cgraph_, node, &localParams);
+    const ZL_ParameterizedNodeDesc pndesc = {
+        .node        = node,
+        .localParams = &localParams,
+    };
+    return ZL_Compressor_registerParameterizedNode(cgraph_, &pndesc);
 }
 
 ZL_GraphID ZStrongTest::convertSerializedToType(
@@ -164,8 +168,12 @@ ZL_GraphID ZStrongTest::convertSerializedToType(
         ZL_LocalParams const params = {
             .intParams = { .intParams = &param, .nbIntParams = 1 },
         };
-        ZL_NodeID const convert = ZL_Compressor_cloneNode(
-                cgraph_, ZL_NODE_CONVERT_SERIAL_TO_TOKENX, &params);
+        const ZL_ParameterizedNodeDesc pndesc2 = {
+            .node        = ZL_NODE_CONVERT_SERIAL_TO_TOKENX,
+            .localParams = &params,
+        };
+        ZL_NodeID const convert =
+                ZL_Compressor_registerParameterizedNode(cgraph_, &pndesc2);
         return declareGraph(convert, graph);
     } else if (type & ZL_Type_string) {
         ZL_SetStringLensParserFn parser =

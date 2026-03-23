@@ -2,7 +2,6 @@
 
 #include "benchmark/e2e/e2e_thrift.h"
 #include <random>
-#include "openzl/zl_config.h"
 #include "openzl/zl_version.h"
 
 #if ZL_IS_FBCODE
@@ -14,10 +13,8 @@
 
 #    include "benchmark/benchmark_data.h"
 #    include "benchmark/benchmark_data_utils.h"
-#    include "benchmark/benchmark_testcase.h"
 #    include "benchmark/e2e/e2e_bench.h"
 #    include "benchmark/e2e/e2e_compressor.h"
-#    include "benchmark/e2e/e2e_zstrong_utils.h"
 #    include "custom_transforms/thrift/parse_config.h"
 #    include "custom_transforms/thrift/tests/util.h"
 #    include "custom_transforms/thrift/thrift_parsers.h"

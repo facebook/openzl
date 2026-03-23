@@ -11,7 +11,7 @@ const ZL_Report Stream::serializeStream(
         A1C_Arena* a1c_arena,
         A1C_Item* arrayItem)
 {
-    A1C_MapBuilder builder = A1C_Item_map_builder(arrayItem, 8, a1c_arena);
+    A1C_MapBuilder builder = A1C_Item_map_builder(arrayItem, 9, a1c_arena);
     ZL_RET_R_IF_NULL(allocation, builder.map);
 
     ZL_RET_R_IF_ERR(addIntValue(builder, "chunkId", this->chunkId));
@@ -22,6 +22,26 @@ const ZL_Report Stream::serializeStream(
     ZL_RET_R_IF_ERR(addIntValue(builder, "cSize", cSize));
     ZL_RET_R_IF_ERR(addFloatValue(builder, "share", share));
     ZL_RET_R_IF_ERR(addIntValue(builder, "contentSize", contentSize));
+
+    if (type == ZL_Type_string) {
+        ZL_RET_R_IF_ERR(addStrArray(
+                a1c_arena,
+                builder,
+                "streamPreview",
+                std::get<std::vector<std::string>>(streamPreview)));
+    } else if (type == ZL_Type_numeric) {
+        ZL_RET_R_IF_ERR(addNumArray(
+                a1c_arena,
+                builder,
+                "streamPreview",
+                std::get<std::vector<int64_t>>(streamPreview)));
+    } else {
+        ZL_RET_R_IF_ERR(addBytesArray(
+                a1c_arena,
+                builder,
+                "streamPreview",
+                std::get<std::vector<uint8_t>>(streamPreview)));
+    }
 
     return ZL_returnSuccess();
 }

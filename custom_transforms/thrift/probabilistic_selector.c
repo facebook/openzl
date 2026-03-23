@@ -10,9 +10,10 @@
 static ZL_Report
 probabilisticSelectorImpl(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     ZL_GraphIDList customGraphs = ZL_Graph_getCustomGraphs(gctx);
     size_t nbCustomGraphs       = customGraphs.nbGraphIDs;
-    ZL_RET_R_IF_EQ(node_invalid_input, customGraphs.nbGraphIDs, 0);
+    ZL_ERR_IF_EQ(customGraphs.nbGraphIDs, 0, node_invalid_input);
 
     const size_t* probWeights =
             (const size_t*)ZL_Graph_getLocalRefParam(
@@ -21,8 +22,8 @@ probabilisticSelectorImpl(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
     size_t totalWeight = 0;
     for (size_t i = 0; i < nbCustomGraphs; ++i) {
         // Weight overflow
-        ZL_RET_R_IF_GT(
-                node_invalid_input, totalWeight, SIZE_MAX - probWeights[i]);
+        ZL_ERR_IF_GT(
+                totalWeight, SIZE_MAX - probWeights[i], node_invalid_input);
         totalWeight += probWeights[i];
     }
     XXH32_hash_t hash = 0;

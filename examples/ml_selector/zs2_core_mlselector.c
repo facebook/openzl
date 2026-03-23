@@ -153,10 +153,10 @@ static LabeledGraphResult generateSuccessors(ZL_Compressor* cgraph)
             cgraph, ZL_Type_numeric, /* sort */ true, delta_fieldlz, fieldlz);
 
     ZL_LabeledGraphID temp_graphs[6] = {
+        { .label = "delta_fieldlz", .graph = delta_fieldlz },
         { .label = "fieldlz", .graph = fieldlz },
         { .label = "range_pack", .graph = range_pack },
         { .label = "range_pack_zstd", .graph = range_pack_zstd },
-        { .label = "delta_fieldlz", .graph = delta_fieldlz },
         { .label = "tokenize_delta_fieldlz", .graph = tokenize_delta_fieldlz },
         { .label = "zstd", .graph = ZL_GRAPH_ZSTD }
     };

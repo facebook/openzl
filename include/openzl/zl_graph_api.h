@@ -11,6 +11,7 @@
 #include "openzl/zl_errors.h"   // ZL_Report
 #include "openzl/zl_input.h"
 #include "openzl/zl_localParams.h"  // ZL_LocalParams
+#include "openzl/zl_materializer.h" // ZL_MaterializerDesc
 #include "openzl/zl_opaque_types.h" // ZL_GraphID
 #include "openzl/zl_portability.h"  // ZL_NOEXCEPT_FUNC_PTR
 
@@ -88,6 +89,12 @@ struct ZL_FunctionGraphDesc {
     size_t nbCustomNodes;           // Must be zero when customNodes==NULL
     ZL_LocalParams localParams;
     /**
+     * Optional materializer descriptor for materialized local params.
+     * If both materializeFn and dematerializeFn are non-null, the materializer
+     * will be used to create materialized objects from local params.
+     */
+    ZL_MaterializerDesc materializer;
+    /**
      * Optionally an opaque pointer that can be queried with
      * ZL_Graph_getOpaquePtr().
      * OpenZL unconditionally takes ownership of this pointer, even if
@@ -151,6 +158,18 @@ ZL_RefParam ZL_Graph_getLocalRefParam(const ZL_Graph* gctx, int refParamId);
 bool ZL_Graph_isNodeSupported(const ZL_Graph* gctx, ZL_NodeID nodeid);
 
 const void* ZL_Graph_getOpaquePtr(const ZL_Graph* graph);
+
+/**
+ * @brief Query the current graph execution depth.
+ *
+ * Returns the depth at which the current graph is executing.
+ * Depth 1 is the root graph; each successor level increments by 1.
+ * This can be used to detect runaway graph growth.
+ *
+ * @param gctx  Graph context, must be non-NULL.
+ * @return Current graph execution depth (>= 1).
+ */
+unsigned ZL_Graph_getDepth(const ZL_Graph* gctx);
 
 /* access the content of an Edge */
 const ZL_Input* ZL_Edge_getData(const ZL_Edge* sctx);

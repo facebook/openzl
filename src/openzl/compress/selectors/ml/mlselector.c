@@ -76,14 +76,8 @@ static ZL_GraphID ML_selector(
 
     ZL_ASSERT_EQ(ZL_Input_type(in), mlSelector->inStreamType);
 
-    const char* label = mlSelector->model.predict(mlSelector->model.opaque, in);
-    size_t graphIdx   = mlSelector->nbGraphs;
-    for (size_t i = 0; i < mlSelector->nbGraphs; i++) {
-        if (!strcmp(mlSelector->graphs[i].label, label)) {
-            graphIdx = i;
-            break;
-        }
-    }
+    const size_t graphIdx =
+            mlSelector->model.predict(mlSelector->model.opaque, in);
 
     if (graphIdx >= mlSelector->nbGraphs) {
         return ZL_GRAPH_ILLEGAL;

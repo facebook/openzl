@@ -19,6 +19,11 @@ file(
     CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_LIST_DIR}/openzl/test_*_fixture.*")
 
+file(
+    GLOB_RECURSE test_registry
+    CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_LIST_DIR}/registry/*.cpp")
+
 add_library(openzl_test_support
     ${support_sources}
     ${CMAKE_CURRENT_LIST_DIR}/utils.cpp
@@ -28,6 +33,7 @@ add_library(openzl_test_support
     ${CMAKE_CURRENT_LIST_DIR}/ml_selector_utils.cpp
     ${CMAKE_CURRENT_LIST_DIR}/ml_selector_utils.h
     ${test_fixtures}
+    ${test_registry}
 )
 target_include_directories(openzl_test_support
     SYSTEM
@@ -66,11 +72,22 @@ file(GLOB_RECURSE test_decompress_headers CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_LIST_DIR}/decompress/*.h")
 add_zs_test(test_decompress ${test_decompress_srcs} ${test_decompress_headers})
 
+# Collect all integrationtest files except the conditional ones
+file(GLOB_RECURSE integrationtest_srcs CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_LIST_DIR}/integrationtest/*.cpp")
+
+# Exclude the conditional test files
+list(FILTER integrationtest_srcs EXCLUDE REGEX ".*/CompressIntrospectionTest\\.cpp$")
+list(FILTER integrationtest_srcs EXCLUDE REGEX ".*/NoIntrospectionTest\\.cpp$")
+
+# Add the appropriate conditional file
 if (OPENZL_ALLOW_INTROSPECTION)
     add_zs_test(integrationtest
+                ${integrationtest_srcs}
                 ${CMAKE_CURRENT_LIST_DIR}/integrationtest/CompressIntrospectionTest.cpp)
 else()
     add_zs_test(integrationtest
+                ${integrationtest_srcs}
                 ${CMAKE_CURRENT_LIST_DIR}/integrationtest/NoIntrospectionTest.cpp)
 endif()
 target_link_libraries(integrationtest PRIVATE openzl_cpp)
@@ -99,3 +116,14 @@ target_link_libraries(test_codecs
         sddl2_compiler_lib
 )
 add_dependencies(test_codecs sddl_compiler_lib sddl2_compiler_lib)
+
+# Serialization tests (excludes fuzzer files)
+file(GLOB serialization_test_srcs CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_LIST_DIR}/serialization/*.cpp")
+file(GLOB serialization_test_headers CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_LIST_DIR}/serialization/*.h")
+list(FILTER serialization_test_srcs EXCLUDE REGEX ".*/fuzz_.*\\.cpp$")
+add_zs_test(test_serialization ${serialization_test_srcs} ${serialization_test_headers})
+
+# NOTE: Fuzzer tests (zstrong/fuzz_*.cpp) are BUCK-only targets using Meta's
+# Lionhead infrastructure and are not included in the CMake build.

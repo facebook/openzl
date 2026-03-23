@@ -106,7 +106,7 @@ Arena* ALLOC_HeapArena_create(void);
  * When there is not enough room in the Primary Buffer,
  * StackArena employs a HeapArena as backup,
  * and since it's not possible to safely increase Primary Buffer's size without
- * modifying pointer adresses.
+ * modifying pointer addresses.
  * Then, at next session (a session ends with an invocation to
  * ALLOC_Arena_freeAll()), the Primary Buffer is speculatively resized based on
  * previous session's needs.
@@ -143,40 +143,40 @@ size_t ALLOC_Arena_memUsed(const Arena* arena);
 /* =============================== */
 
 // Note: these macros require including the error header.
-// They only work if the host function returns a ZL_Report.
-#define ALLOC_CHECKED(_type, _var, _mallocf, _count)                     \
-    _type* _var;                                                         \
-    {                                                                    \
-        size_t _allocSize;                                               \
-        ZL_RET_R_IF(                                                     \
-                allocation,                                              \
-                ZL_overflowMulST(sizeof(_type), (_count), &_allocSize)); \
-        _var = (_mallocf)(_allocSize);                                   \
-    }                                                                    \
-    ZL_RET_R_IF_NULL(                                                    \
-            allocation,                                                  \
-            _var,                                                        \
-            "cannot allocate buffer of %zu bytes using %s",              \
-            (_count) * sizeof(_type),                                    \
+// They only work if the host function has declared ZL_RESULT_DECLARE_SCOPE.
+#define ALLOC_CHECKED(_type, _var, _mallocf, _count)                    \
+    _type* _var;                                                        \
+    {                                                                   \
+        size_t _allocSize;                                              \
+        ZL_ERR_IF(                                                      \
+                ZL_overflowMulST(sizeof(_type), (_count), &_allocSize), \
+                allocation);                                            \
+        _var = (_mallocf)(_allocSize);                                  \
+    }                                                                   \
+    ZL_ERR_IF_NULL(                                                     \
+            _var,                                                       \
+            allocation,                                                 \
+            "cannot allocate buffer of %zu bytes using %s",             \
+            (_count) * sizeof(_type),                                   \
             #_mallocf)
 
 #define ALLOC_MALLOC_CHECKED(_type, _var, _count) \
     ALLOC_CHECKED(_type, _var, ZL_malloc, _count)
 
-#define ALLOC_ARENA_CHECKED(_type, _var, _mallocf, _count, _arena)       \
-    _type* _var;                                                         \
-    {                                                                    \
-        size_t _allocSize;                                               \
-        ZL_RET_R_IF(                                                     \
-                allocation,                                              \
-                ZL_overflowMulST(sizeof(_type), (_count), &_allocSize)); \
-        _var = (_mallocf)(_arena, _allocSize);                           \
-    }                                                                    \
-    ZL_RET_R_IF_NULL(                                                    \
-            allocation,                                                  \
-            _var,                                                        \
-            "cannot allocate buffer of %zu bytes using %s",              \
-            (_count) * sizeof(_type),                                    \
+#define ALLOC_ARENA_CHECKED(_type, _var, _mallocf, _count, _arena)      \
+    _type* _var;                                                        \
+    {                                                                   \
+        size_t _allocSize;                                              \
+        ZL_ERR_IF(                                                      \
+                ZL_overflowMulST(sizeof(_type), (_count), &_allocSize), \
+                allocation);                                            \
+        _var = (_mallocf)(_arena, _allocSize);                          \
+    }                                                                   \
+    ZL_ERR_IF_NULL(                                                     \
+            _var,                                                       \
+            allocation,                                                 \
+            "cannot allocate buffer of %zu bytes using %s",             \
+            (_count) * sizeof(_type),                                   \
             #_arena)
 
 #define ALLOC_ARENA_MALLOC_CHECKED(_type, _var, _count, _arena) \
@@ -184,29 +184,6 @@ size_t ALLOC_Arena_memUsed(const Arena* arena);
 
 #define ALLOC_ARENA_CALLOC_CHECKED(_type, _var, _count, _arena) \
     ALLOC_ARENA_CHECKED(_type, _var, ALLOC_Arena_calloc, _count, _arena)
-
-#define ALLOC_ARENA_CHECKED_T(                                           \
-        _type, _var, _mallocf, _count, _arena, _errorType)               \
-    _type* _var;                                                         \
-    {                                                                    \
-        size_t _allocSize;                                               \
-        ZL_RET_T_IF(                                                     \
-                _errorType,                                              \
-                allocation,                                              \
-                ZL_overflowMulST(sizeof(_type), (_count), &_allocSize)); \
-        _var = (_mallocf)(_arena, _allocSize);                           \
-    }                                                                    \
-    ZL_RET_T_IF_NULL(                                                    \
-            _errorType,                                                  \
-            allocation,                                                  \
-            _var,                                                        \
-            "cannot allocate buffer of %zu bytes using %s",              \
-            (_count) * sizeof(_type),                                    \
-            #_arena)
-
-#define ALLOC_ARENA_MALLOC_CHECKED_T(_type, _var, _count, _arena, _errorType) \
-    ALLOC_ARENA_CHECKED_T(                                                    \
-            _type, _var, ALLOC_Arena_malloc, _count, _arena, _errorType)
 
 ZL_END_C_DECLS
 

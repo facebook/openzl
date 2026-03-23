@@ -104,7 +104,11 @@ class StandardTransform : public ParameterizedTransform {
             // parameters that were already set on the standard node.
             // TODO: Standard nodes probably shouldn't "internally" use
             // parameters like convert_serial_to_token2 does.
-            node = ZL_Compressor_cloneNode(&cgraph, node_, &params);
+            const ZL_ParameterizedNodeDesc desc = {
+                .node        = node_,
+                .localParams = &params,
+            };
+            node = ZL_Compressor_registerParameterizedNode(&cgraph, &desc);
         }
         return ZL_Compressor_registerStaticGraph_fromNode(
                 &cgraph, node, successors.data(), successors.size());
@@ -300,8 +304,12 @@ class ThriftTransform : public StandardFnTransform {
                                       &cgraph,
                                       thrift::kThriftBinaryConfigurable);
                           }
-                          node = ZL_Compressor_cloneNode(
-                                  &cgraph, node, &params);
+                          const ZL_ParameterizedNodeDesc desc = {
+                              .node        = node,
+                              .localParams = &params,
+                          };
+                          node = ZL_Compressor_registerParameterizedNode(
+                                  &cgraph, &desc);
                           return ZL_Compressor_registerStaticGraph_fromNode(
                                   &cgraph,
                                   node,
@@ -1015,13 +1023,14 @@ ZL_Report CustomTransform::decode(
         ZL_Input const*[],
         size_t nbVO) const
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     assert(nbFixed == nbFixedSuccessors());
     (void)nbFixed;
     if (nbVariableSuccessors() == 0) {
-        ZL_RET_R_IF_NE(node_invalid_input, nbVO, 0);
+        ZL_ERR_IF_NE(nbVO, 0, node_invalid_input);
         return this->decode(dictx, fixedInputs);
     }
-    ZL_RET_R_ERR(logicError);
+    ZL_ERR(logicError);
 }
 
 ZL_GraphID CustomSelector::registerSelector(

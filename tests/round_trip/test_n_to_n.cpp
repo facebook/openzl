@@ -2,10 +2,8 @@
 
 #include <gtest/gtest.h>
 
-#include <stdio.h>
 #include <string.h>
 
-#include "openzl/common/debug.h"
 #include "openzl/compress/private_nodes.h"
 #include "openzl/zl_compress.h"
 #include "openzl/zl_compressor.h"

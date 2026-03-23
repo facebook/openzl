@@ -9,11 +9,23 @@ zs_cxxlibrary(
     srcs = glob(
         [
             "*.cpp",
+            "tokenizer/*.cpp",
+            "grouper/*.cpp",
+            "parser/*.cpp",
+            "codegen/*.cpp",
+            "semantic_analyzer/*.cpp",
+            "optimizer/*.cpp",
         ],
         exclude = ["main.cpp"],
     ),
     headers = glob([
         "*.h",
+        "tokenizer/*.h",
+        "grouper/*.h",
+        "parser/*.h",
+        "codegen/*.h",
+        "semantic_analyzer/*.h",
+        "optimizer/*.h",
     ]),
     exported_deps = [
         "../../../cpp:openzl_cpp",
@@ -24,6 +36,7 @@ zs_cxxbinary(
     name = "compiler",
     srcs = ["main.cpp"],
     deps = [
+        "../../../tools:io",
         ":lib",
     ],
 )

@@ -47,8 +47,6 @@ SampleBinaryGBTModel::SampleBinaryGBTModel()
         .forests    = &forest_,
     };
 
-    classLabels_ = { Label("class1"), Label("class2") };
-
     // Only take these features from feature generator
     featureLabels_ = {
         Label("eltWidth"),
@@ -58,8 +56,7 @@ SampleBinaryGBTModel::SampleBinaryGBTModel()
     gbtModel_ = {
         .predictor        = &predictor_,
         .featureGenerator = FeatureGen_integer,
-        .nbLabels         = classLabels_.size(),
-        .classLabels      = classLabels_.data(),
+        .nbSuccessors     = 2,
         .nbFeatures       = featureLabels_.size(),
         .featureLabels    = featureLabels_.data(),
     };
@@ -78,7 +75,6 @@ SampleCyclicGBTModel::SampleCyclicGBTModel()
         .numForests = 1,
         .forests    = &forest_,
     };
-    classLabels_ = { Label("class1"), Label("class2") };
 
     featureLabels_ = {
         Label("eltWidth"),
@@ -87,8 +83,7 @@ SampleCyclicGBTModel::SampleCyclicGBTModel()
     gbtModel_ = {
         .predictor        = &predictor_,
         .featureGenerator = FeatureGen_integer,
-        .nbLabels         = classLabels_.size(),
-        .classLabels      = classLabels_.data(),
+        .nbSuccessors     = 2,
         .nbFeatures       = featureLabels_.size(),
         .featureLabels    = featureLabels_.data(),
     };

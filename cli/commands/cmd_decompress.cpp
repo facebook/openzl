@@ -9,7 +9,6 @@
 
 #include "openzl/cpp/DCtx.hpp"
 #include "openzl/cpp/Exception.hpp"
-#include "openzl/zl_decompress.h"
 
 namespace openzl::cli {
 constexpr size_t BYTES_TO_MB = 1000 * 1000;

@@ -75,6 +75,7 @@ static size_t out_identical(const void* src, size_t srcSize)
 #include "benchmark/unitBench/scenarios/zstd.h"
 
 // openzl standard codecs
+#include "benchmark/unitBench/scenarios/codecs/bitSplit.h"
 #include "benchmark/unitBench/scenarios/codecs/delta.h"
 #include "benchmark/unitBench/scenarios/codecs/dispatch_by_tag.h"
 #include "benchmark/unitBench/scenarios/codecs/dispatch_string.h"
@@ -406,6 +407,14 @@ static size_t varintEncode32_wrapper(
 
 // clang-format off
 Bench_Entry const scenarioList[] = {
+    { "bitSplitDecode_bf16", bitSplitDecode_bf16_wrapper, .prep = bitSplitDecode_bf16_prep, .outSize = bitSplitDecode_bf16_outSize },
+    { "bitSplitDecode_bounded32", bitSplitDecode_bounded32_wrapper, .prep = bitSplitDecode_bounded32_prep, .outSize = bitSplitDecode_bounded32_outSize },
+    { "bitSplitDecode_fp32", bitSplitDecode_fp32_wrapper, .prep = bitSplitDecode_fp32_prep, .outSize = bitSplitDecode_fp32_outSize },
+    { "bitSplitEncode_bf16", bitSplitEncode_bf16_wrapper, .prep = bitSplitEncode_bf16_prep, .outSize = bitSplitEncode_bf16_outSize },
+    { "bitSplitEncode_bounded32", bitSplitEncode_bounded32_wrapper, .prep = bitSplitEncode_bounded32_prep, .outSize = bitSplitEncode_bounded32_outSize },
+    { "bitSplitEncode_fp16", bitSplitEncode_fp16_wrapper, .prep = bitSplitEncode_fp16_prep, .outSize = bitSplitEncode_fp16_outSize },
+    { "bitSplitEncode_fp32", bitSplitEncode_fp32_wrapper, .prep = bitSplitEncode_fp32_prep, .outSize = bitSplitEncode_fp32_outSize },
+    { "bitSplitEncode_fp64", bitSplitEncode_fp64_wrapper, .prep = bitSplitEncode_fp64_prep, .outSize = bitSplitEncode_fp64_outSize },
     { "deltaDecode8", deltaDecode8_wrapper, .outSize = out_identical },
     { "deltaDecode16", deltaDecode16_wrapper, .outSize = out_identical },
     { "deltaEncode32", deltaEncode32_wrapper, .outSize = out_identical },

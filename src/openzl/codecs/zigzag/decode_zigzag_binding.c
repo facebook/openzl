@@ -7,6 +7,7 @@
 // ZL_TypedEncoderFn, NUMPIPE
 ZL_Report DI_zigzag_num(ZL_Decoder* dictx, const ZL_Input* ins[])
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_ASSERT_NN(dictx);
     ZL_ASSERT_NN(ins);
     const ZL_Input* const in = ins[0];
@@ -15,7 +16,7 @@ ZL_Report DI_zigzag_num(ZL_Decoder* dictx, const ZL_Input* ins[])
     size_t const numWidth = ZL_Input_eltWidth(in);
     size_t const nbInts   = ZL_Input_numElts(in);
     ZL_Output* const out = ZL_Decoder_create1OutStream(dictx, nbInts, numWidth);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
     ZL_ASSERT(numWidth == 1 || numWidth == 2 || numWidth == 4 || numWidth == 8);
     switch (numWidth) {
         case 1:
@@ -33,6 +34,6 @@ ZL_Report DI_zigzag_num(ZL_Decoder* dictx, const ZL_Input* ins[])
         default:
             ZL_ASSERT_FAIL("Unreachable");
     }
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, nbInts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, nbInts));
     return ZL_returnValue(1);
 }

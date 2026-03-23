@@ -25,7 +25,6 @@ cpp_library(
     exported_deps = [
         "../../../..:zstronglib",
         "../../../../tests/datagen:datagen",
-        ":fuzz_data-cpp2-reflection",
         ":fuzz_data-cpp2-types",
         ":fuzz_data-cpp2-visitation",
         "//folly:overload",

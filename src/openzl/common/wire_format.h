@@ -300,11 +300,21 @@ typedef enum {
 
     ZL_StandardTransformID_lz4 = 62,
 
+    ZL_StandardTransformID_bitSplit = 63,
+
+    ZL_StandardTransformID_partition = 64,
+
     ZL_StandardTransformID_end =
-            63 // last id, used to detect end of ID range (impacts
-               // header encoding) give some room to be able to add new
-               // transforms without breaking encoder / decoder
+            128 // last id, used to detect end of ID range (impacts
+                // header encoding) give some room to be able to add new
+                // transforms without breaking encoder / decoder
 } ZL_StandardTransformID;
+
+/**
+ * @returns The number of bits required to encode standard transform IDs
+ * in the given format version.
+ */
+int ZL_StandardTransformID_numBits(unsigned formatVersion);
 
 // Min version of standard transforms is published
 // for standard transforms which can be dynamically defined at runtime.

@@ -2,15 +2,21 @@
 
 #pragma once
 
+#include "openzl/cpp/experimental/trace/types.hpp"
 #include "openzl/shared/a1cbor.h"
 #include "openzl/zl_data.h"
 #include "openzl/zl_opaque_types.h"
 
 #include <functional>
+#include <optional>
+#include <string>
+#include <variant>
+#include <vector>
 
 namespace openzl::visualizer {
 
 struct Stream {
+    StreamID id{};
     ZL_Type type{};
     size_t outputIdx{};
     size_t eltWidth{};
@@ -19,6 +25,13 @@ struct Stream {
     double share{};
     size_t contentSize{};
     size_t chunkId{};
+    std::vector<StreamID> successors;
+    std::optional<CodecID> consumerCodec;
+    std::variant<
+            std::vector<std::string>,
+            std::vector<int64_t>,
+            std::vector<uint8_t>>
+            streamPreview;
 
     const ZL_Report serializeStream(A1C_Arena* a1c_arena, A1C_Item* arrayItem);
 };

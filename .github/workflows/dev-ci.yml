@@ -257,7 +257,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install ruff
-        run: pip install ruff
+        run: pip install ruff==0.15.0
       - name: Check Python formatting with ruff
         run: make check-python-format
 
@@ -273,7 +273,7 @@ jobs:
           sudo apt-get install -y clang-tools
       - name: Run scan-build
         continue-on-error: true
-        run: CFLAGS="-Og -g" scan-build --status-bugs -v make -j unitBench V=1
+        run: CFLAGS="-Og -g" scan-build --status-bugs -v make -j2 unitBench V=1
 
   # =============================================================================
   # FUTURE WORK / DISABLED JOBS

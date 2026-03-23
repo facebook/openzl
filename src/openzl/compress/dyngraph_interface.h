@@ -94,6 +94,7 @@ struct ZL_Graph_s {
     VECTOR(RTStreamID)
     rtsids;           /**< Runtime stream IDs for destination routing */
     ZL_Report status; /**< Error status during graph execution */
+    unsigned depth;   /**< Current graph execution depth */
 
     /** @name Memory Allocators
      *  Allocators with specified lifetime durations

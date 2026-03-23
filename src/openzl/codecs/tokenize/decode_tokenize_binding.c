@@ -11,6 +11,7 @@
 
 ZL_Report DI_tokenize(ZL_Decoder* dictx, const ZL_Input* in[])
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_Input const* const alphabet = in[0];
     ZL_Input const* const indices  = in[1];
 
@@ -21,7 +22,7 @@ ZL_Report DI_tokenize(ZL_Decoder* dictx, const ZL_Input* in[])
     size_t const idxWidth = ZL_Input_eltWidth(indices);
 
     ZL_Output* out = ZL_Decoder_create1OutStream(dictx, nbElts, eltWidth);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
 
     bool const success = ZS_tokenizeDecode(
             ZL_Output_ptr(out),
@@ -31,15 +32,16 @@ ZL_Report DI_tokenize(ZL_Decoder* dictx, const ZL_Input* in[])
             nbElts,
             eltWidth,
             idxWidth);
-    ZL_RET_R_IF_NOT(corruption, success, "Tokenize detected corrupted input!");
+    ZL_ERR_IF_NOT(success, corruption, "Tokenize detected corrupted input!");
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, nbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, nbElts));
 
     return ZL_returnValue(1);
 }
 
 ZL_Report DI_tokenizeVSF(ZL_Decoder* dictx, const ZL_Input* ins[])
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_ASSERT_NN(dictx);
     ZL_ASSERT_NN(ins);
 
@@ -59,25 +61,25 @@ ZL_Report DI_tokenizeVSF(ZL_Decoder* dictx, const ZL_Input* ins[])
     size_t const dstNbElts             = ZL_Input_numElts(indices);
     size_t const idxWidth              = ZL_Input_eltWidth(indices);
 
-    ZL_RET_R_IF_NOT(
-            corruption,
+    ZL_ERR_IF_NOT(
             ZS_tokenizeValidateIndices(
-                    alphabetSize, indicesSrc, dstNbElts, idxWidth));
+                    alphabetSize, indicesSrc, dstNbElts, idxWidth),
+            corruption);
 
     size_t const dstNbBytes = ZS_tokenizeComputeVSFContentSize(
             indicesSrc, idxWidth, dstNbElts, alphabetFieldSizes, alphabetSize);
-    ZL_RET_R_IF_LT(corruption, dstNbElts, alphabetSize);
+    ZL_ERR_IF_LT(dstNbElts, alphabetSize, corruption);
 
     ZL_Output* const out = ZL_Decoder_create1OutStream(dictx, dstNbBytes, 1);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
     uint32_t* const dstFieldSizes = ZL_Output_reserveStringLens(out, dstNbElts);
-    ZL_RET_R_IF_NULL(allocation, dstFieldSizes);
+    ZL_ERR_IF_NULL(dstFieldSizes, allocation);
 
     void* workspace = ZL_Decoder_getScratchSpace(
             dictx,
             ZS_tokenizeVSFDecodeWorkspaceSize(
                     alphabetSize, alphabetFieldSizesSum));
-    ZL_RET_R_IF_NULL(allocation, workspace);
+    ZL_ERR_IF_NULL(workspace, allocation);
 
     ZS_tokenizeVSFDecode(
             ZL_Input_ptr(alphabet),
@@ -92,6 +94,6 @@ ZL_Report DI_tokenizeVSF(ZL_Decoder* dictx, const ZL_Input* ins[])
             idxWidth,
             workspace);
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, dstNbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, dstNbElts));
     return ZL_returnSuccess();
 }

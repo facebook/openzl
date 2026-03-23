@@ -14,7 +14,8 @@ ZL_Report SelCtx_initSelectorCtx(
         Arena* wkspArena,
         const ZL_LocalParams* lparams,
         SelectorSuccessorParams* successorLParams,
-        const void* opaque)
+        const void* opaque,
+        unsigned depth)
 {
     ZL_ASSERT_NN(selCtx);
     ZL_ASSERT_NN(wkspArena);
@@ -22,7 +23,8 @@ ZL_Report SelCtx_initSelectorCtx(
                              .wkspArena        = wkspArena,
                              .lparams          = lparams,
                              .successorLParams = successorLParams,
-                             .opaque           = opaque };
+                             .opaque           = opaque,
+                             .depth            = depth };
     return ZL_returnSuccess();
 }
 
@@ -64,6 +66,7 @@ ZL_Report ZL_Selector_setSuccessorParams(
         const ZL_Selector* selCtx,
         const ZL_LocalParams* lparams)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(selCtx->cctx);
     if (lparams) {
         ALLOC_ARENA_MALLOC_CHECKED(
                 ZL_LocalParams, lparamsCopy, 1, selCtx->wkspArena);
@@ -125,4 +128,11 @@ void* ZL_Selector_getScratchSpace(const ZL_Selector* selCtx, size_t size)
 const void* ZL_Selector_getOpaquePtr(const ZL_Selector* selector)
 {
     return selector->opaque;
+}
+
+unsigned ZL_Selector_getGraphDepth(const ZL_Selector* selCtx)
+{
+    ZL_ASSERT_NN(selCtx);
+    ZL_ASSERT_GE(selCtx->depth, 1);
+    return selCtx->depth;
 }

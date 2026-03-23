@@ -11,6 +11,7 @@
 
 ZL_Report DI_bitunpack(ZL_Decoder* dictx, const ZL_Input* ins[])
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_ASSERT_NN(dictx);
     ZL_ASSERT_NN(ins);
     const ZL_Input* const in = ins[0];
@@ -22,40 +23,40 @@ ZL_Report DI_bitunpack(ZL_Decoder* dictx, const ZL_Input* ins[])
     size_t nbElts   = ZL_Input_numElts(in);
 
     ZL_RBuffer const headerBuffer = ZL_Decoder_getCodecHeader(dictx);
-    ZL_RET_R_IF_LT(header_unknown, headerBuffer.size, 1);
-    ZL_RET_R_IF_GT(header_unknown, headerBuffer.size, 2);
+    ZL_ERR_IF_LT(headerBuffer.size, 1, header_unknown);
+    ZL_ERR_IF_GT(headerBuffer.size, 2, header_unknown);
     uint8_t const nbBits = *(uint8_t const*)headerBuffer.start;
-    ZL_RET_R_IF_GT(corruption, nbBits, 8 * eltWidth);
+    ZL_ERR_IF_GT(nbBits, 8 * eltWidth, corruption);
 
     size_t const dstSize = ZS_bitpackEncodeBound(nbElts, nbBits);
     ZL_Output* const dst = ZL_Decoder_create1OutStream(dictx, dstSize, 1);
-    ZL_RET_R_IF_NULL(allocation, dst);
+    ZL_ERR_IF_NULL(dst, allocation);
 
     void* dstBuffer = ZL_Output_ptr(dst);
     const size_t bytesWritten =
             ZS_bitpackEncode(dstBuffer, dstSize, src, nbElts, eltWidth, nbBits);
-    ZL_RET_R_IF_NE(GENERIC, bytesWritten, dstSize);
+    ZL_ERR_IF_NE(bytesWritten, dstSize, GENERIC);
 
     if (headerBuffer.size == 2) {
         // We have some leftover bits
         uint8_t remBits        = ((uint8_t const*)headerBuffer.start)[1];
         const size_t remNbBits = dstSize * 8 - nbElts * nbBits;
         ZL_ASSERT_LT(remNbBits, 8);
-        ZL_RET_R_IF_EQ(
-                corruption,
+        ZL_ERR_IF_EQ(
                 remNbBits,
                 0,
-                "remNbBits is zero although trailing bits are expected");
-        ZL_RET_R_IF_EQ(
                 corruption,
+                "remNbBits is zero although trailing bits are expected");
+        ZL_ERR_IF_EQ(
                 dstSize,
                 0,
+                corruption,
                 "dstSize is zero although trailing bits are expected");
         ((uint8_t*)dstBuffer)[dstSize - 1] |=
                 (uint8_t)(remBits << (8 - remNbBits));
     }
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(dst, dstSize));
+    ZL_ERR_IF_ERR(ZL_Output_commit(dst, dstSize));
 
     // Return the number of output streams.
     return ZL_returnValue(1);

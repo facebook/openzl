@@ -379,21 +379,6 @@ ZL_NodeID ZL_Compressor_registerParameterizedNode(
         const ZL_ParameterizedNodeDesc* desc);
 
 /**
- * @brief Simplified variant of @ref ZL_Compressor_registerParameterizedNode().
- * Clone an existing @ref ZL_NodeID from an already registered
- * @p nodeid but employs new parameters, set via @p localParams.
- *
- * @returns The new node id of the cloned node.
- *
- * @param nodeid The node to clone.
- * @param localParams The local parameters to use for the node.
- **/
-ZL_NodeID ZL_Compressor_cloneNode(
-        ZL_Compressor* compressor,
-        ZL_NodeID nodeid,
-        const ZL_LocalParams* localParams);
-
-/**
  * @}
  */
 

@@ -88,6 +88,11 @@
     _func(SDDL2_OP_PUSH_TYPE_F32BE, SDDL2_TYPE_F32BE)        \
     _func(SDDL2_OP_PUSH_TYPE_F64LE, SDDL2_TYPE_F64LE)        \
     _func(SDDL2_OP_PUSH_TYPE_F64BE, SDDL2_TYPE_F64BE)
+
+#define FOR_EACH_VAR_OP(_func)              \
+    _func(SDDL2_OP_VAR_STORE, SDDL2_op_var_store) \
+    _func(SDDL2_OP_VAR_LOAD, SDDL2_op_var_load)
+
 // clang-format on
 
 /* ============================================================================
@@ -302,6 +307,63 @@ static SDDL2_Error handle_push_family(
         return (error_code);                   \
     } while (0)
 
+static SDDL2_Error SDDL2_skip(
+        const char* bytecode,
+        size_t bytecode_size,
+        size_t* pc,
+        size_t skip_count)
+{
+    while (skip_count > 0) {
+        // Need at least the 4-byte instruction header
+        if (*pc + 4 > bytecode_size) {
+            return SDDL2_INVALID_BYTECODE;
+        }
+
+        uint32_t instruction = ZL_readLE32(&bytecode[*pc]);
+        uint16_t family      = (uint16_t)((instruction >> 16) & 0xFFFF);
+        uint16_t opcode      = (uint16_t)(instruction & 0xFFFF);
+
+        // Advance past the instruction header
+        *pc += 4;
+
+        // Advance past any immediate payload for this opcode
+        switch (family) {
+            case SDDL2_FAMILY_PUSH:
+                switch (opcode) {
+                    case SDDL2_OP_PUSH_U32:
+                    case SDDL2_OP_PUSH_I32:
+                    case SDDL2_OP_PUSH_TAG:
+                        if (*pc + 4 > bytecode_size) {
+                            return SDDL2_INVALID_BYTECODE;
+                        }
+                        *pc += 4;
+                        break;
+
+                    case SDDL2_OP_PUSH_I64:
+                        if (*pc + 8 > bytecode_size) {
+                            return SDDL2_INVALID_BYTECODE;
+                        }
+                        *pc += 8;
+                        break;
+
+                    default:
+                        // No immediate payload
+                        break;
+                }
+                break;
+
+            default:
+                // Other families currently have no variable-sized immediates
+                // here
+                break;
+        }
+
+        skip_count--;
+    }
+
+    return SDDL2_OK;
+}
+
 SDDL2_Error SDDL2_execute_bytecode(
         const void* bytecode_buffer,
         size_t bytecode_size,
@@ -330,6 +392,9 @@ SDDL2_Error SDDL2_execute_bytecode(
 
     SDDL2_Input_cursor buffer;
     SDDL2_Input_cursor_init(&buffer, input_data, input_size);
+
+    SDDL2_Var_registers var_regs;
+    SDDL2_Var_registers_init(&var_regs);
 
     SDDL2_Tag_registry registry;
     // Use same allocator as output_segments (arena in production, NULL in
@@ -380,6 +445,13 @@ SDDL2_Error SDDL2_execute_bytecode(
                     halted = 1;
                 } else if (opcode == SDDL2_OP_CONTROL_EXPECT_TRUE) {
                     err = SDDL2_op_expect_true(&stack, &trace);
+                } else if (opcode == SDDL2_OP_CONTROL_JUMP_IF) {
+                    size_t skip_count = 0;
+                    err               = SDDL2_op_jump_if(&stack, &skip_count);
+                    if (err == SDDL2_OK) {
+                        err = SDDL2_skip(
+                                bytecode, bytecode_size, &pc, skip_count);
+                    }
                 } else if (opcode == SDDL2_OP_CONTROL_TRACE_START) {
                     SDDL2_Trace_buffer_start(&trace);
                 } else {
@@ -443,11 +515,22 @@ SDDL2_Error SDDL2_execute_bytecode(
                 DISPATCH_OP_FAMILY(FOR_EACH_LOAD_OP, EMIT_LOAD_OP_CASE);
                 break;
 
-            // Note: expect_true is part of CONTROL family (ID 0x000A not
-            // generated for empty EXPECT family)
+                // Note: expect_true is part of CONTROL family (ID 0x000A not
+                // generated for empty EXPECT family)
+
+            case SDDL2_FAMILY_VAR:
+                if (opcode == SDDL2_OP_VAR_STORE) {
+                    err = SDDL2_op_var_store(
+                            &stack, &trace, pc_before, &var_regs);
+                } else if (opcode == SDDL2_OP_VAR_LOAD) {
+                    err = SDDL2_op_var_load(
+                            &stack, &trace, pc_before, &var_regs);
+                } else {
+                    CLEANUP_AND_RETURN(SDDL2_INVALID_BYTECODE);
+                }
+                break;
 
             // Unimplemented families
-            case SDDL2_FAMILY_VAR:
             case SDDL2_FAMILY_CALL:
                 CLEANUP_AND_RETURN(SDDL2_INVALID_BYTECODE);
         }

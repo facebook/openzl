@@ -13,6 +13,7 @@
 //
 ZL_Report DI_transpose(ZL_Decoder* dictx, const ZL_Input* ins[])
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_ASSERT_NN(dictx);
     ZL_ASSERT_NN(ins);
     const ZL_Input* const in = ins[0];
@@ -25,12 +26,12 @@ ZL_Report DI_transpose(ZL_Decoder* dictx, const ZL_Input* ins[])
     size_t const newFieldWidth = nbFields ? nbFields : fieldWidth;
     ZL_Output* const out =
             ZL_Decoder_create1OutStream(dictx, newNbFields, newFieldWidth);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
     // TODO(@Cyan) : optimize with a reference when newFieldWidth==1, or
     // nbFields<=1
     ZS_transposeDecode(
             ZL_Output_ptr(out), ZL_Input_ptr(in), newNbFields, newFieldWidth);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, newNbFields));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, newNbFields));
     return ZL_returnValue(1);
 }
 
@@ -41,10 +42,11 @@ ZL_Report DI_transpose_split(
         const ZL_Input* inVOs[],
         size_t nbInVOs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     (void)inFixed;
     ZL_ASSERT_NN(dictx);
     ZL_ASSERT_EQ(nbInFixed, 0);
-    ZL_RET_R_IF_EQ(corruption, nbInVOs, 0);
+    ZL_ERR_IF_EQ(nbInVOs, 0, corruption);
     ZL_ASSERT_NN(inVOs);
 
     size_t const nbElts      = ZL_Input_numElts(inVOs[0]);
@@ -52,24 +54,24 @@ ZL_Report DI_transpose_split(
     size_t const dstEltWidth = nbInVOs;
 
     for (size_t i = 0; i < nbInVOs; ++i) {
-        ZL_RET_R_IF_NE(corruption, ZL_Type_serial, ZL_Input_type(inVOs[i]));
-        ZL_RET_R_IF_NE(corruption, nbElts, ZL_Input_numElts(inVOs[i]));
+        ZL_ERR_IF_NE(ZL_Type_serial, ZL_Input_type(inVOs[i]), corruption);
+        ZL_ERR_IF_NE(nbElts, ZL_Input_numElts(inVOs[i]), corruption);
     }
 
     ZL_Output* const out =
             ZL_Decoder_create1OutStream(dictx, dstNbElts, dstEltWidth);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
 
     const uint8_t** const inPtrs =
             ZL_Decoder_getScratchSpace(dictx, nbInVOs * sizeof(uint8_t*));
-    ZL_RET_R_IF_NULL(allocation, inPtrs);
+    ZL_ERR_IF_NULL(inPtrs, allocation);
 
     for (size_t i = 0; i < nbInVOs; i++) {
         inPtrs[i] = (const uint8_t*)ZL_Input_ptr(inVOs[i]);
     }
 
     ZS_splitTransposeDecode(ZL_Output_ptr(out), inPtrs, dstNbElts, dstEltWidth);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, dstNbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, dstNbElts));
     return ZL_returnSuccess();
 }
 
@@ -82,6 +84,7 @@ ZL_Report DI_transpose_split(
 static ZL_Report
 DI_transposeN_typed(ZL_Decoder* dictx, const ZL_Input* ins[], size_t fieldSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_ASSERT_NN(dictx);
     ZL_ASSERT_NN(ins);
     const ZL_Input* const in = ins[0];
@@ -89,16 +92,16 @@ DI_transposeN_typed(ZL_Decoder* dictx, const ZL_Input* ins[], size_t fieldSize)
     ZL_ASSERT_EQ(ZL_Input_type(in), ZL_Type_serial);
     ZL_ASSERT_EQ(ZL_Input_eltWidth(in), 1);
     size_t const srcSize = ZL_Input_numElts(in);
-    ZL_RET_R_IF_NE(GENERIC, srcSize % fieldSize, 0);
+    ZL_ERR_IF_NE(srcSize % fieldSize, 0, GENERIC);
     size_t const dstCapacity = srcSize;
     ZL_Output* const out = ZL_Decoder_create1OutStream(dictx, dstCapacity, 1);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
     ZS_transposeDecode(
             ZL_Output_ptr(out),
             ZL_Input_ptr(in),
             srcSize / fieldSize,
             fieldSize);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, srcSize));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, srcSize));
     return ZL_returnValue(1);
 }
 
@@ -125,6 +128,7 @@ static ZL_Report DI_transpose_split_bytes(
         const ZL_Input* ins[],
         size_t eltWidth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_ASSERT_NN(dictx);
     ZL_ASSERT_NN(ins);
     ZL_ASSERT_NN(ins[0]);
@@ -134,19 +138,19 @@ static ZL_Report DI_transpose_split_bytes(
     uint8_t const* src[8];
     for (size_t i = 0; i < eltWidth; ++i) {
         ZL_ASSERT_NN(ins[i]);
-        ZL_RET_R_IF_NE(
-                corruption,
+        ZL_ERR_IF_NE(
                 nbElts,
                 ZL_Input_numElts(ins[i]),
+                corruption,
                 "Not all streams the same size");
         src[i] = ZL_Input_ptr(ins[i]);
     }
     ZL_Output* const out = ZL_Decoder_create1OutStream(dictx, nbElts, eltWidth);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
     uint8_t* dst = (uint8_t*)ZL_Output_ptr(out);
     ZS_splitTransposeDecode(dst, src, nbElts, eltWidth);
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, nbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, nbElts));
     return ZL_returnValue(1);
 }
 

@@ -7,7 +7,6 @@
 #include "openzl/compress/graphs/sddl/simple_data_description_language.h"
 #include "openzl/compress/graphs/sddl/simple_data_description_language_source_code.h"
 
-#include "openzl/codecs/zl_sddl.h"
 #include "openzl/zl_reflection.h"
 
 #include "openzl/cpp/CCtx.hpp"

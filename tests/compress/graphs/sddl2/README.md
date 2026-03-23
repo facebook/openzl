@@ -1,109 +1,41 @@
 # SDDL2 Test Suite
 
-## Quick Start
-
-```bash
-# Run all tests
-make test
-
-# Run specific test
-./sddl2_vm_test
-./sddl2_interpreter_test
-
-# Clean build artifacts
-make clean
-```
-
 ## Test Organization
 
-```
-tests/compress/graphs/sddlv2/
-├── README.md                    (this file)
-├── Makefile                     (simple build)
-│
-├── sddl2_vm_test.c              (Stack operations)
-├── sddl2_arithmetic_test.c      (Arithmetic ops)
-├── sddl2_input_test.c           (Input buffer)
-├── sddl2_segments_test.c        (Segments)
-├── sddl2_tagged_segments_test.c (Tagged segments)
-├── sddl2_interpreter_test.c     (Bytecode interpreter)
-├── sddl2_assembly_test.c        (End-to-end)
-│
-├── asm/                         (Assembly test sources)
-│   ├── test_math_add.asm
-│   ├── test_math_combined.asm
-│   ├── test_stack_drop.asm
-│   └── test_cmp_all.asm
-│
-├── generate_test_bytecode.py   (Generator script)
-└── generated_test_bytecode.h   (Auto-generated, do not edit)
-```
+The tests are split into two layers:
 
-## Interpreter Tests from Assembly
+### Assembly Execution Tests (`test_sddl2_assembly_execution.cpp`)
 
-Some interpreter tests use assembly sources that are auto-converted to bytecode.
+End-to-end tests that exercise the full pipeline: assembly source → assembler
+→ bytecode → VM execution → segment output. Each test case contains an inline
+assembly program as a raw string literal, assembles it, executes the resulting
+bytecode against an input buffer, and verifies the output segments and error
+codes.
 
-**Regenerate when opcodes change:**
-```bash
-python3 generate_test_bytecode.py
-```
+### VM Unit Tests (`test_sddl2_*.cpp`)
 
-**Add new test:**
-1. Create `asm/test_name.asm` with assembly code
-2. Run `python3 generate_test_bytecode.py`
-3. Use `BYTECODE_TEST_NAME` constant in C test:
-   ```c
-   #include "generated_test_bytecode.h"
+Lower-level tests that exercise individual VM operations directly through the
+C API (e.g. `SDDL2_op_add`, `SDDL2_Stack_push`, `SDDL2_op_expect_true`).
+These set up the stack and input cursor manually, call a single operation, and
+verify the resulting stack state, error codes, and side effects. They use a
+shared test fixture defined in `utils.h`.
 
-   static void test_name(void) {
-       const uint8_t* bytecode = BYTECODE_TEST_NAME;
-       size_t size = BYTECODE_TEST_NAME_SIZE;
-       // ... execute and assert
-   }
-   ```
-
-## Adding Tests
-
-### Standard C Test
-
-1. Write test function in appropriate file:
-   ```c
-   static void test_my_feature(void) {
-       SDDL2_Stack* stack = create_test_stack(100);
-
-       assert(SDDL2_op_my_feature(stack) == SDDL2_OK);
-       assert(/* verify result */);
-
-       destroy_test_stack(stack);
-       printf("✓ test_my_feature passed\n");
-   }
-   ```
-
-2. Register in `main()`:
-   ```c
-   int main(void) {
-       test_existing();
-       test_my_feature();  // Add here
-       return 0;
-   }
-   ```
-
-3. Run: `make test`
-
-### Conventions
-
-- Use `assert()` for critical checks
-- Descriptive names: `test_<feature>_<scenario>`
-- Print success: `printf("✓ test_name passed\n")`
-- Clean up resources
-- Keep tests isolated
-
-## Why Standalone C Tests?
-
-These tests use plain C (not gtest) because:
-- **Zero dependencies**: Matches VM's architecture
-- **Portable**: Runs anywhere with a C compiler
-- **Simple**: No framework, just `make` and run
-- **Fast**: Compile and execute in <1 second
-
-For higher-level OpenZL integration tests, gtest is appropriate. These are VM unit tests.
+| File | What it covers |
+|------|----------------|
+| `test_sddl2_vm.cpp` | Stack push/pop, value types |
+| `test_sddl2_arithmetic.cpp` | Math operations (add, sub, mul, div, mod, abs, neg) |
+| `test_sddl2_logic.cpp` | Bitwise logic (and, or, xor, not) |
+| `test_sddl2_segments.cpp` | Unspecified segment creation, bounds checking |
+| `test_sddl2_tagged_segments.cpp` | Tagged segment creation with types |
+| `test_sddl2_input.cpp` | Input cursor management |
+| `test_sddl2_expect.cpp` | `expect_true` validation operation |
+| `test_sddl2_stack_depth.cpp` | `push.stack_depth` introspection |
+| `test_sddl2_stack_drop_if.cpp` | Conditional stack drop |
+| `test_sddl2_type_fixed_array.cpp` | `type.fixed_array` composite type |
+| `test_sddl2_type_structure.cpp` | `type.structure` composite type |
+| `test_sddl2_type_sizeof.cpp` | Type size calculations |
+| `test_sddl2_vm_kind_size.cpp` | Type kind → byte size mapping |
+| `test_sddl2_field_extraction.cpp` | Field extraction from segments |
+| `test_sddl2_structure_segment.cpp` | Structure-typed segments |
+| `test_sddl2_structure_split_integration.cpp` | Structure splitting integration |
+| `test_sddl2_load.cpp` | Load operations |

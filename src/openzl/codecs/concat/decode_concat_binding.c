@@ -15,14 +15,15 @@ ZL_Report DI_concat(
         const ZL_Input* variableSrcs[],
         size_t nbVariableSrcs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_ASSERT_EQ(nbVariableSrcs, 0);
     (void)variableSrcs;
     ZL_ASSERT_EQ(nbCompulsorySrcs, 2);
     ZL_ASSERT_NN(compulsorySrcs);
     const ZL_Input* const sizes = compulsorySrcs[0];
     ZL_ASSERT_NN(sizes);
-    ZL_RET_R_IF_NE(corruption, ZL_Input_type(sizes), ZL_Type_numeric);
-    ZL_RET_R_IF_NE(corruption, ZL_Input_eltWidth(sizes), sizeof(uint32_t));
+    ZL_ERR_IF_NE(ZL_Input_type(sizes), ZL_Type_numeric, corruption);
+    ZL_ERR_IF_NE(ZL_Input_eltWidth(sizes), sizeof(uint32_t), corruption);
     const ZL_Input* const concatenated = compulsorySrcs[1];
     ZL_ASSERT_NN(concatenated);
 
@@ -30,45 +31,45 @@ ZL_Report DI_concat(
     size_t const eltWidth = ZL_Input_eltWidth(concatenated);
     size_t const nbElts   = ZL_Input_numElts(concatenated);
     const size_t nbRegens = ZL_Input_numElts(sizes);
-    ZL_RET_R_IF_EQ(corruption, nbRegens, 0);
+    ZL_ERR_IF_EQ(nbRegens, 0, corruption);
     const uint32_t* const regenSizes = ZL_Input_ptr(sizes);
 
     size_t rPos = 0;
-    ZL_RET_R_IF_LT(corruption, nbRegens, dictx->nbRegens);
+    ZL_ERR_IF_LT(nbRegens, dictx->nbRegens, corruption);
 
     if (type == ZL_Type_string) {
         const uint32_t* strLens = ZL_Input_stringLens(concatenated);
         size_t bytePos          = 0;
         for (size_t n = 0; n < nbRegens; n++) {
             size_t const rSize = regenSizes[n];
-            ZL_RET_R_IF_GT(corruption, rPos + rSize, nbElts);
+            ZL_ERR_IF_GT(rPos + rSize, nbElts, corruption);
             size_t byteSize = 0;
             for (size_t i = rPos; i < rPos + rSize; i++) {
                 byteSize += strLens[i];
             }
             ZL_Output* out = DI_outStream_asReference(
                     dictx, (int)n, concatenated, bytePos, 1, byteSize);
-            ZL_RET_R_IF_NULL(allocation, out);
+            ZL_ERR_IF_NULL(out, allocation);
             uint32_t* regenStrLens = ZL_Output_reserveStringLens(out, rSize);
             /* TODO(T220688634): This can be avoided if we have API to reference
              * string lengths*/
             ZL_memcpy(regenStrLens, strLens + rPos, rSize * sizeof(uint32_t));
-            ZL_RET_R_IF_ERR(ZL_Output_commit(out, rSize));
+            ZL_ERR_IF_ERR(ZL_Output_commit(out, rSize));
             rPos += rSize;
             bytePos += byteSize;
         }
-        ZL_RET_R_IF_NE(corruption, rPos, nbElts);
+        ZL_ERR_IF_NE(rPos, nbElts, corruption);
     } else {
         for (size_t n = 0; n < nbRegens; n++) {
             size_t const rSize = regenSizes[n];
-            ZL_RET_R_IF_GT(
-                    corruption, rPos + rSize * eltWidth, nbElts * eltWidth);
+            ZL_ERR_IF_GT(
+                    rPos + rSize * eltWidth, nbElts * eltWidth, corruption);
             ZL_Output* out = DI_outStream_asReference(
                     dictx, (int)n, concatenated, rPos, eltWidth, rSize);
-            ZL_RET_R_IF_NULL(allocation, out);
+            ZL_ERR_IF_NULL(out, allocation);
             rPos += rSize * eltWidth;
         }
-        ZL_RET_R_IF_NE(corruption, rPos, nbElts * eltWidth);
+        ZL_ERR_IF_NE(rPos, nbElts * eltWidth, corruption);
     }
 
     return ZL_returnSuccess();

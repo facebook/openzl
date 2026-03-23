@@ -20,10 +20,11 @@ void createStreamAndVerifyPrediction(
      */
     openzl::tests::WrappedStream<int> stream(streamData, ZL_Type_numeric);
 
-    ZL_RESULT_OF(Label)
-    predicted = GBTModel_predict(&gbtModel, stream.getStream());
-    ASSERT_FALSE(ZL_RES_isError(predicted));
-    std::string decodedLabel = ZL_RES_value(predicted);
+    ZL_RESULT_OF(size_t)
+    result = GBTModel_predict(&gbtModel, stream.getStream());
+    ASSERT_FALSE(ZL_RES_isError(result));
+
+    size_t predictedIdx = ZL_RES_value(result);
 
     ASSERT_GE((int)streamData.size(), 2);
 
@@ -31,20 +32,14 @@ void createStreamAndVerifyPrediction(
     int b = streamData[1];
 
     if (streamData.size() < 3) {
-        EXPECT_EQ(decodedLabel, (a & (b ^ 1)) == 1 ? "one" : "zero");
+        // Binary classification: expected index is 0 or 1
+        size_t expectedIdx = (a & (b ^ 1)) == 1 ? 1 : 0;
+        EXPECT_EQ(predictedIdx, expectedIdx);
     } else {
-        int c = streamData[2];
-        std::string expectedLabel;
-
-        if ((a + b + c) % 3 == 0) {
-            expectedLabel = "zero";
-        } else if ((a + b + c) % 3 == 1) {
-            expectedLabel = "one";
-        } else {
-            expectedLabel = "two";
-        }
-
-        EXPECT_EQ(decodedLabel, expectedLabel);
+        // Multiclass classification: expected index is (a + b + c) % 3
+        int c              = streamData[2];
+        size_t expectedIdx = (a + b + c) % 3;
+        EXPECT_EQ(predictedIdx, expectedIdx);
     }
 }
 
@@ -144,7 +139,7 @@ TEST_F(ZstrongCoreMultiMLTest, GBTModelTest)
 
     for (int a = 0; a <= 2; a++) {
         for (int b = 0; b <= 2; b++) {
-            for (int c = 0; b <= 2; b++) {
+            for (int c = 0; c <= 2; c++) {
                 std::vector<int> streamData = { a, b, c };
                 createStreamAndVerifyPrediction(gbtModel, streamData);
             }

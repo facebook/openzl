@@ -6,10 +6,12 @@
 #include <string>
 #include <vector>
 #include "ml_features.h"
+#include "openzl/common/a1cbor_helpers.h"
+#include "openzl/compress/selectors/ml/ml_selector_graph.h"
 #include "openzl/zl_reflection.h"
+#include "src/openzl/compress/cgraph.h"
 #include "src/openzl/compress/selectors/ml/features.h"
 #include "tools/logger/Logger.h"
-#include "tools/ml_selector/ml_selector_graph.h"
 #include "tools/training/graph_mutation/graph_mutation_utils.h"
 #include "tools/training/sample_collection/training_sample_collector.h"
 
@@ -25,7 +27,7 @@ using namespace openzl::tools::logger;
 
 namespace openzl::training {
 
-const std::string ML_SELECTOR_GRAPH_NAME = "mlSelector";
+const std::string ML_SELECTOR_GRAPH_NAME = "zl.ml_selector";
 
 namespace {
 /**
@@ -175,14 +177,12 @@ using DMatrixUniquePtr = std::unique_ptr<void, DMatrixHandleDeleter>;
  * at the position corresponding to its nodeid.
  *
  * @param nodeJson    The JSON representation of the tree node
- * @param labelMap    Mapping from feature names to feature indices
  * @param nodes       Output vector where parsed nodes are stored by their ID
  *
  * @throws Exception if nodeid exceeds the bounds of the nodes vector
  */
 static void parseXGBoostNode(
         const xgboost::Json& nodeJson,
-        std::unordered_map<std::string, int>& labelMap,
         std::vector<GBTPredictor_Node>& nodes)
 {
     GBTPredictor_Node node{};
@@ -199,6 +199,7 @@ static void parseXGBoostNode(
         Logger::log_c(VERBOSE1, "Leaf node: %f\n", leafValue);
     } else {
         // Internal node
+        // Parse feature index from "fN" format
         std::string splitFeature =
                 xgboost::get<xgboost::JsonString const>(nodeJson["split"]);
         float threshold  = extractNumericVal(nodeJson["split_condition"]);
@@ -206,7 +207,8 @@ static void parseXGBoostNode(
         int noChild      = extractNumericVal(nodeJson["no"]);
         int missingChild = extractNumericVal(nodeJson["missing"]);
 
-        node.featureIdx      = labelMap[splitFeature];
+        node.featureIdx =
+                std::stoi(splitFeature.substr(1)); // Skip the 'f' prefix
         node.leftChildIdx    = yesChild;
         node.rightChildIdx   = noChild;
         node.missingChildIdx = missingChild;
@@ -229,7 +231,7 @@ static void parseXGBoostNode(
             auto& children = xgboost::get<xgboost::JsonArray const>(
                     nodeJson["children"]);
             for (const auto& child : children) {
-                parseXGBoostNode(child, labelMap, nodes);
+                parseXGBoostNode(child, nodes);
             }
         }
     }
@@ -302,7 +304,6 @@ static TestTrainData trainTestSplit(
  * Transforms a trained XGBoost model into GBTPredictor.
  *
  * @param xgBoostDump      JSON strings for each tree
- * @param featureLabelMap  Mapping from feature names to indices
  * @param numClasses       Number of classification classes (2 for binary)
  *
  * @return GBTPredictorWrapper containing the converted model with ownership
@@ -311,7 +312,6 @@ static TestTrainData trainTestSplit(
  */
 static GBTPredictorWrapper createGBTModelFromXGBoost(
         std::vector<std::string>& xgBoostDump,
-        std::unordered_map<std::string, int>& featureLabelMap,
         size_t numClasses)
 {
     GBTPredictorWrapper pred;
@@ -350,7 +350,7 @@ static GBTPredictorWrapper createGBTModelFromXGBoost(
             int maxNodeId = findMaxNodeId(treeJson);
             nodes.resize(maxNodeId + 1);
 
-            parseXGBoostNode(treeJson, featureLabelMap, nodes);
+            parseXGBoostNode(treeJson, nodes);
 
             pred.core_nodes_.push_back(
                     std::make_unique<std::vector<GBTPredictor_Node>>(
@@ -387,9 +387,6 @@ static GBTPredictorWrapper createGBTModelFromXGBoost(
  * GBTPredictor format for inference.
  *
  * @param data          Train/test split data
- * @param featureNames  Feature names
- * @param featureTypes  Feature types (e.g., "q" for quantitative)
- * @param featuresMap   Mapping from feature names to indices
  * @param num_classes   Number of classification classes
  *
  * @return GBTPredictorWrapper containing the trained model
@@ -397,9 +394,6 @@ static GBTPredictorWrapper createGBTModelFromXGBoost(
  */
 static GBTPredictorWrapper trainXGBoostModel(
         TestTrainData& data,
-        std::vector<const char*>& featureNames,
-        std::vector<const char*>& featureTypes,
-        std::unordered_map<std::string, int>& featuresMap,
         size_t num_classes)
 {
     if (data.train.X.empty() || data.train.y.empty()) {
@@ -503,12 +497,10 @@ static GBTPredictorWrapper trainXGBoostModel(
 
     const char** dump = nullptr;
 
-    safe_xgboost(XGBoosterDumpModelExWithFeatures(
+    safe_xgboost(XGBoosterDumpModelEx(
             boosterHandle,
-            (int)featureNames.size(),
-            featureNames.data(),
-            featureTypes.data(),
-            0, // No stats
+            "", // fmap (empty string for no feature map)
+            0,  // No stats
             "json",
             &len,
             &dump));
@@ -516,7 +508,45 @@ static GBTPredictorWrapper trainXGBoostModel(
     xgBoostDump = std::vector<std::string>(dump, dump + len);
 
     // unique_ptr will automatically free the handles when they go out of scope
-    return createGBTModelFromXGBoost(xgBoostDump, featuresMap, num_classes);
+    return createGBTModelFromXGBoost(xgBoostDump, num_classes);
+}
+
+static void updateCompressor(
+        Compressor& compressor,
+        ZL_MLSelectorConfig& config,
+        std::string& mlSelectorGraphName)
+{
+    Arena* arena       = ALLOC_HeapArena_create();
+    A1C_Arena a1cArena = A1C_Arena_wrap(arena);
+
+    ZL_SerializedMLConfig serializedConfig = unwrap(
+            MLSelector_serializeMLSelectorConfig(nullptr, &config, &a1cArena));
+
+    ZL_CopyParam configParam = {
+        .paramId   = ZL_GENERIC_ML_SELECTOR_CONFIG_ID,
+        .paramPtr  = serializedConfig.data,
+        .paramSize = serializedConfig.size,
+    };
+
+    ZL_LocalParams localParams = { .copyParams = { .genParams    = &configParam,
+                                                   .nbCopyParams = 1 } };
+
+    ZL_GraphParameters newParams = {
+        .localParams = &localParams,
+    };
+
+    ZL_GraphID existingMlSelectorGraphId =
+            compressor.getGraph(mlSelectorGraphName).value();
+
+    // Replace old config with new trained config
+    auto result = ZL_Compressor_overrideGraphParams(
+            compressor.get(), existingMlSelectorGraphId, &newParams);
+
+    ALLOC_Arena_freeArena(arena);
+
+    if (ZL_isError(result)) {
+        throw std::runtime_error("Error overriding graph params");
+    }
 }
 
 std::shared_ptr<const std::string_view> trainMLSelectorGraph(
@@ -525,110 +555,99 @@ std::shared_ptr<const std::string_view> trainMLSelectorGraph(
         const TrainParams& trainParams)
 {
     (void)trainParams;
-    std::vector<ZL_GraphID> successorGraphs;
-    std::vector<std::string> successorLabels;
 
     // Find the ML selector graph by prefix
     auto mlSelectorGraphNames = graph_mutation::findAllGraphsWithPrefix(
             compressor.serialize(), ML_SELECTOR_GRAPH_NAME);
 
-    if (mlSelectorGraphNames.empty() || mlSelectorGraphNames.size() > 1) {
+    if (mlSelectorGraphNames.empty()) {
         throw std::runtime_error(
                 "Error finding ML selector graph with prefix '"
                 + ML_SELECTOR_GRAPH_NAME + "'");
     }
 
-    // Use the first mlSelector graph found
-    const ZL_GraphID mlSelectorGraph =
-            compressor.getGraph(mlSelectorGraphNames[0]).value();
-    const auto& mlSelectorGraphName = mlSelectorGraphNames[0];
+    std::set<std::string> trainedMlSelectors;
+    bool trainedAnyThisPass = true;
+    /**
+     * Process ML selectors iteratively until no more can be trained.
+     *
+     * ML selectors may be chained (output of one feeds into another), but
+     * mlSelectorGraphNames has no guaranteed order. On each pass, we train
+     * any selector that currently has available inputs. Once trained, its
+     * outputs become inputs for downstream selectors, which can then be
+     * trained in subsequent passes.
+     */
+    while (trainedMlSelectors.size() < mlSelectorGraphNames.size()
+           && trainedAnyThisPass) {
+        trainedAnyThisPass = false;
 
-    const auto successors = ZL_Compressor_Graph_getCustomGraphs(
-            compressor.get(), mlSelectorGraph);
-    for (size_t i = 0; i < successors.nbGraphIDs; ++i) {
-        successorGraphs.push_back(successors.graphids[i]);
-        successorLabels.emplace_back(ZL_Compressor_Graph_getName(
-                compressor.get(), successorGraphs.back()));
+        for (auto& mlSelectorGraphName : mlSelectorGraphNames) {
+            if (trainedMlSelectors.count(mlSelectorGraphName) > 0) {
+                continue;
+            }
+
+            auto cctx = refCCtxForTraining(compressor);
+
+            // Collect inputs for mlSelector graph
+            auto mlSelectorInputs = collectInputStreamsForGraph(
+                    inputs, mlSelectorGraphName, cctx);
+
+            if (mlSelectorInputs.empty()) {
+                continue;
+            }
+
+            const ZL_GraphID mlSelectorGraph =
+                    compressor.getGraph(mlSelectorGraphName).value();
+
+            const auto successors = ZL_Compressor_Graph_getCustomGraphs(
+                    compressor.get(), mlSelectorGraph);
+
+            std::vector<ZL_GraphID> successorGraphs;
+            successorGraphs.reserve(successors.nbGraphIDs);
+            for (size_t i = 0; i < successors.nbGraphIDs; ++i) {
+                successorGraphs.push_back(successors.graphids[i]);
+            }
+
+            ProcessedMLTrainingSamples trainingSample = extractMLFeatures(
+                    mlSelectorInputs, compressor, cctx, successorGraphs);
+
+            TestTrainData splitData = trainTestSplit(
+                    trainingSample.features, trainingSample.numericLabels);
+
+            GBTPredictorWrapper gbtPred =
+                    trainXGBoostModel(splitData, successors.nbGraphIDs);
+
+            GBTModel coreModel = {
+                .predictor        = gbtPred.core_predictor_.get(),
+                .featureGenerator = FeatureGen_integer,
+                .nbSuccessors     = successors.nbGraphIDs,
+                .nbFeatures       = trainingSample.featurePtrNames.size(),
+                .featureLabels    = trainingSample.featurePtrNames.data(),
+            };
+
+            ZL_MLSelectorConfig config = { .model         = ZL_GBT,
+                                           .runtimeConfig = &coreModel };
+
+            // Update compressor with new trained config
+            updateCompressor(compressor, config, mlSelectorGraphName);
+            trainedAnyThisPass = true;
+            trainedMlSelectors.insert(mlSelectorGraphName);
+        }
     }
 
-    auto cctx = refCCtxForTraining(compressor);
-    // Collect inputs for first mlSelector graph
-    auto mlSelectorInputs =
-            collectInputStreamsForGraph(inputs, mlSelectorGraphName, cctx);
-
-    if (mlSelectorInputs.empty()) {
-        throw std::runtime_error("Unable to get inputs to mlSelector");
+    if (trainedMlSelectors.size() == 0) {
+        throw std::runtime_error("No inputs captured for any mlSelector graph");
     }
 
-    ProcessedMLTrainingSamples trainingSample = extractMLFeatures(
-            mlSelectorInputs,
-            compressor,
-            cctx,
-            successorGraphs,
-            successorLabels);
-
-    TestTrainData splitData = trainTestSplit(
-            trainingSample.features, trainingSample.numericLabels);
-
-    // all integer features are quantitative and not categorical
-    std::vector<std::string> featureTypes(
-            trainingSample.featureNames.size(), "q");
-
-    std::vector<const char*> featureNamePtrs;
-    std::vector<const char*> featureTypePtrs;
-    std::unordered_map<std::string, int> featuresMap;
-    featureNamePtrs.reserve(trainingSample.featureNames.size());
-    featureTypePtrs.reserve(featureTypes.size());
-
-    int ind = 0;
-    for (const auto& name : trainingSample.featureNames) {
-        featuresMap[name] = ind++;
-        featureNamePtrs.push_back(name.c_str());
+    // Warn if some mlSelectors were left untrained
+    if (trainedMlSelectors.size() < mlSelectorGraphNames.size()) {
+        Logger::log(
+                WARNINGS,
+                "Warning: ",
+                mlSelectorGraphNames.size() - trainedMlSelectors.size(),
+                " mlSelector(s) could not be trained - no inputs captured.");
     }
 
-    for (const auto& type : featureTypes) {
-        featureTypePtrs.push_back(type.c_str());
-    }
-
-    std::vector<Label> classLabelPtrs;
-    classLabelPtrs.reserve(successorLabels.size());
-
-    for (const auto& label : successorLabels) {
-        classLabelPtrs.push_back(label.c_str());
-    }
-
-    GBTPredictorWrapper gbtPred = trainXGBoostModel(
-            splitData,
-            featureNamePtrs,
-            featureTypePtrs,
-            featuresMap,
-            trainingSample.labelMap.size());
-
-    GBTModel coreModel = {
-        .predictor        = gbtPred.core_predictor_.get(),
-        .featureGenerator = FeatureGen_integer,
-        .nbLabels         = classLabelPtrs.size(),
-        .classLabels      = classLabelPtrs.data(),
-        .nbFeatures       = featureNamePtrs.size(),
-        .featureLabels    = featureNamePtrs.data(),
-    };
-
-    ZL_MLSelectorConfig config = { .model         = ZL_GBT,
-                                   .runtimeConfig = &coreModel };
-
-    auto mlSelectorGraphId = unwrap(ZL_MLSelector_registerGraph(
-            compressor.get(),
-            &config,
-            successorGraphs.data(),
-            successorGraphs.size()));
-
-    auto newMlSelectorGraphName =
-            ZL_Compressor_Graph_getName(compressor.get(), mlSelectorGraphId);
-
-    return graph_mutation::createSharedStringView(
-            graph_mutation::renameGraphInCompressor(
-                    compressor.serialize(),
-                    mlSelectorGraphName,
-                    newMlSelectorGraphName));
+    return graph_mutation::createSharedStringView(compressor.serialize());
 }
 } // namespace openzl::training

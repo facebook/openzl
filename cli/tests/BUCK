@@ -6,6 +6,8 @@ load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 
 oncall("data_compression")
 
+# @autodeps-skip
+
 custom_unittest(
     name = "serial_test",
     command = [
@@ -189,6 +191,34 @@ custom_unittest(
 )
 
 custom_unittest(
+    name = "u8_test",
+    command = [
+        "$(location :integration_test_bin)",
+        "$(location ..:zli)",
+        "U8Test.test_compress_decompress",
+    ],
+    type = "simple",
+    deps = [
+        "..:zli",
+        ":integration_test_bin",
+    ],
+)
+
+custom_unittest(
+    name = "u8_train_test",
+    command = [
+        "$(location :integration_test_bin)",
+        "$(location ..:zli)",
+        "U8TrainTest.test_train_compress_decompress",
+    ],
+    type = "simple",
+    deps = [
+        "..:zli",
+        ":integration_test_bin",
+    ],
+)
+
+custom_unittest(
     name = "all_integration_tests",
     command = [
         "$(location :integration_test_bin)",
@@ -209,6 +239,7 @@ python_binary(
     deps = [
         ":abstract_compression_test",
         ":command_utils",
+        ":file_utils",
     ],
 )
 
@@ -220,6 +251,7 @@ python_library(
     deps = [
         ":command_utils",
         ":file_utils",
+        "//openzl:openzl_py",
     ],
 )
 
@@ -250,6 +282,34 @@ custom_unittest(
         "$(location :integration_test_bin)",
         "$(location ..:zli)",
         "MLSelectorTest.test_train_compress_decompress",
+    ],
+    type = "simple",
+    deps = [
+        "..:zli",
+        ":integration_test_bin",
+    ],
+)
+
+custom_unittest(
+    name = "ml_dynamic_successor_test",
+    command = [
+        "$(location :integration_test_bin)",
+        "$(location ..:zli)",
+        "MLDynamicSuccessorTest.test_dynamic_ml_successors",
+    ],
+    type = "simple",
+    deps = [
+        "..:zli",
+        ":integration_test_bin",
+    ],
+)
+
+custom_unittest(
+    name = "ml_dynamic_successor_compression_ratio_test",
+    command = [
+        "$(location :integration_test_bin)",
+        "$(location ..:zli)",
+        "MLDynamicSuccessorTest.test_compression_ratios",
     ],
     type = "simple",
     deps = [

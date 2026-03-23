@@ -1,6 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("../defs.bzl", "zs_cxxbinary", "zs_cxxlibrary", "zs_fuzzers", "zs_library", "zs_raw_fuzzer", "zs_unittest")
+load("../defs.bzl", "cross_platform_labels", "zs_cxxbinary", "zs_cxxlibrary", "zs_fuzzers", "zs_library", "zs_raw_fuzzer", "zs_unittest")
 
 oncall("data_compression")
 
@@ -12,9 +12,12 @@ zs_unittest(
         "unittest/**/*.c",
     ]),
     headers = glob(["unittest/**/*.h"]),
+    labels = cross_platform_labels(),
     supports_static_listing = False,
     deps = [
         "..:common",
+        "..:compress",
+        "../cpp:openzl_cpp",
         "../tools:json",
         "datagen:datagen",
         ":utils",
@@ -28,14 +31,13 @@ zs_unittest(
             "compress/**/*.c",
             "compress/**/*.cpp",
         ],
-        exclude = [
-            # SDDL2 tests use their own test framework with main() in each file
-            "compress/graphs/sddl2/**",
-        ],
     ),
     headers = glob(["compress/**/*.h"]),
+    labels = cross_platform_labels(),
     deps = [
         "..:compress",
+        "../tools/sddl2/assembler:lib",
+        "../tools/sddl2/compiler:lib",
         "datagen:datagen",
         ":test_zstrong_fixtures",
         ":utils",
@@ -46,6 +48,7 @@ zs_unittest(
     name = "test_decompress",
     srcs = glob(["decompress/**/*.cpp"]),
     headers = glob(["decompress/**/*.h"]),
+    labels = cross_platform_labels(),
     deps = [
         "..:decompress",
         ":utils",
@@ -59,10 +62,14 @@ zs_unittest(
         exclude = ["integrationtest/NoIntrospectionTest.cpp"],
     ),
     headers = glob(["integrationtest/**/*.h"]),
+    labels = cross_platform_labels(),
+    supports_static_listing = False,
     deps = [
         "..:compress",
         "../cpp:openzl_cpp",
         "datagen:datagen",
+        "registry:openzl_components",
+        ":utils",
     ],
 )
 
@@ -73,6 +80,7 @@ zs_unittest(
         exclude = ["round_trip/test_mlselector.cpp"],
     ),
     headers = glob(["round_trip/**/*.h"]),
+    labels = cross_platform_labels(),
     deps = [
         "..:compress",
         "..:decompress",
@@ -87,6 +95,7 @@ zs_unittest(
 zs_unittest(
     name = "test_ml_selector",
     srcs = ["round_trip/test_mlselector.cpp"],
+    labels = cross_platform_labels(),
     deps = [
         "..:compress",
         "..:decompress",
@@ -103,6 +112,7 @@ zs_unittest(
     name = "test_zstrong",
     srcs = glob(["zstrong/**/test_*.cpp"]),
     headers = glob(["zstrong/**/test_*.h"]),
+    labels = cross_platform_labels(),
     deps = [
         "..:zstronglib",
         "datagen:datagen",
@@ -117,7 +127,6 @@ zs_cxxlibrary(
     deps = [
         "..:zstronglib",
         "datagen:datagen",
-        "fbsource//third-party/googletest:gtest",
         ":utils",
     ],
     exported_deps = ["fbsource//third-party/googletest:gtest"],
@@ -127,6 +136,7 @@ zs_unittest(
     name = "test_codecs",
     srcs = glob(["codecs/**/test_*.cpp"]),
     headers = glob(["codecs/**/test_*.h"]),
+    labels = cross_platform_labels(),
     deps = [
         "..:zstronglib",
         "../tools/sddl/compiler:lib",
@@ -164,6 +174,9 @@ zs_cxxlibrary(
     headers = [
         "local_params_utils.h",
         "utils.h",
+    ],
+    deps = [
+        "registry:openzl_input",
     ],
     exported_deps = [
         "..:zstronglib",
@@ -268,6 +281,7 @@ zs_fuzzers(
         ("IntegerTest", "FuzzFSENCountRoundTrip"),
         ("IntegerTest", "FuzzIntegerSelector"),
         ("IntegerTest", "FuzzIntegerDivideBy"),
+        ("IntegerTest", "FuzzBitSplitRoundTrip"),
     ],
     deps = FUZZER_DEPS,
 )
@@ -342,7 +356,6 @@ zs_fuzzers(
         ("MLSelectorMultiInputTest", "FuzzMLSelectorRoundTrip"),
     ],
     deps = FUZZER_DEPS + [
-        "../tools/ml_selector:ml_selector_graph",
         ":ml_selector_utils",
     ],
 )

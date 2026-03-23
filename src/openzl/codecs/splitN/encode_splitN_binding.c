@@ -15,8 +15,8 @@
 
 // could be any (non trivial) arbitrary value
 #define ZL_SPLITN_SEGMENTSIZES_PID 323
-#define ZL_SPLITN_NBSEGMENTS_PID 324
 #define ZL_SPLITN_PARSINGF_PID 436
+#define ZL_SPLITN_PARSING_OPAQUE_PTR_PID 437
 
 struct ZL_SplitState_s {
     ZL_Encoder* eictx;
@@ -29,32 +29,44 @@ typedef struct {
 
 ZL_RESULT_DECLARE_TYPE(ZL_SplitInstructions);
 
-static SplitN_ExtParser_s const* getExtParser(ZL_Encoder const* eictx)
+/**
+ * Gets the external parser by checking through the local parameters for a
+ * matching refParam. The reason why we cannot directly use
+ * ZL_Encoder_getLocalCopyParam is function pointers are not serializable,
+ * therefore we only check for refParams to ensure a deserialized compressor
+ * cannot contain this parameter.
+ */
+static SplitN_ExtParser_s getExtParser(ZL_Encoder const* eictx)
 {
-    ZL_CopyParam const gpParsef =
-            ZL_Encoder_getLocalCopyParam(eictx, ZL_SPLITN_PARSINGF_PID);
-    if (gpParsef.paramId != ZL_SPLITN_PARSINGF_PID) {
-        return NULL;
+    SplitN_ExtParser_s extParser = { NULL, NULL };
+    const ZL_LocalParams* lp     = ZL_Encoder_getLocalParams(eictx);
+    for (size_t n = 0; n < lp->refParams.nbRefParams; n++) {
+        if (lp->refParams.refParams[n].paramId == ZL_SPLITN_PARSINGF_PID) {
+            // We use memcpy here to avoid compiler warnings about casting a
+            // const pointer to a function pointer.
+            memcpy(&extParser.f,
+                   &lp->refParams.refParams[n].paramRef,
+                   sizeof(extParser.f));
+        }
+        if (lp->refParams.refParams[n].paramId
+            == ZL_SPLITN_PARSING_OPAQUE_PTR_PID) {
+            extParser.opaque = lp->refParams.refParams[n].paramRef;
+        }
     }
-    return (const SplitN_ExtParser_s*)gpParsef.paramPtr;
+    return extParser;
 }
 
 static ZL_RESULT_OF(ZL_SplitInstructions)
         getSplitInstructions(ZL_Encoder* eictx, const ZL_Input* in)
 {
     ZL_DLOG(SEQ, "getSplitInstructions()");
-    if (ZL_Input_numElts(in) == 0) {
-        // Special case: Empty input means no segments
-        ZL_SplitInstructions si = { NULL, 0 };
-        return ZL_RESULT_WRAP_VALUE(ZL_SplitInstructions, si);
-    }
 
     ZL_SplitState allocState = { eictx };
 
     // Priority 1 : check for external parsing function
-    SplitN_ExtParser_s const* extParser = getExtParser(eictx);
-    if (extParser != NULL) {
-        ZL_SplitParserFn f      = extParser->f;
+    SplitN_ExtParser_s extParser = getExtParser(eictx);
+    if (extParser.f != NULL) {
+        ZL_SplitParserFn f      = extParser.f;
         ZL_SplitInstructions si = f(&allocState, in);
         ZL_RET_T_IF_NULL(
                 ZL_SplitInstructions,
@@ -67,18 +79,10 @@ static ZL_RESULT_OF(ZL_SplitInstructions)
     // Priority 2 : check for fixed-size parameters
     ZL_RefParam const segmentSizes =
             ZL_Encoder_getLocalParam(eictx, ZL_SPLITN_SEGMENTSIZES_PID);
-    ZL_IntParam const nbSegments =
-            ZL_Encoder_getLocalIntParam(eictx, ZL_SPLITN_NBSEGMENTS_PID);
     ZL_RET_T_IF_EQ(
             ZL_SplitInstructions,
             nodeParameter_invalid,
             segmentSizes.paramId,
-            ZL_LP_INVALID_PARAMID,
-            "can't find any instruction to split");
-    ZL_RET_T_IF_EQ(
-            ZL_SplitInstructions,
-            nodeParameter_invalid,
-            nbSegments.paramId,
             ZL_LP_INVALID_PARAMID,
             "can't find any instruction to split");
     ZL_RET_T_IF_NULL(
@@ -86,15 +90,14 @@ static ZL_RESULT_OF(ZL_SplitInstructions)
             nodeParameter_invalid,
             segmentSizes.paramRef,
             "instructions to split are NULL");
-    ZL_RET_T_IF_EQ(
-            ZL_SplitInstructions,
-            nodeParameter_invalidValue,
-            nbSegments.paramValue,
-            0,
-            "instructions to split are empty");
+    // Handle the case of 0 segments (empty split)
+    if (segmentSizes.paramSize == 0) {
+        ZL_SplitInstructions r = { NULL, 0 };
+        return ZL_RESULT_WRAP_VALUE(ZL_SplitInstructions, r);
+    }
     ZL_SplitInstructions r;
     r.segmentSizes = segmentSizes.paramRef;
-    r.nbSegments   = (size_t)nbSegments.paramValue;
+    r.nbSegments   = segmentSizes.paramSize / sizeof(size_t);
     return ZL_RESULT_WRAP_VALUE(ZL_SplitInstructions, r);
 }
 
@@ -104,6 +107,7 @@ static ZL_RESULT_OF(ZL_SplitInstructions)
 // into output streams, as described in ZL_SPLITN_SEGMENTSIZES_PID parameter.
 ZL_Report EI_splitN(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
     const ZL_Input* in = ins[0];
@@ -139,22 +143,21 @@ ZL_Report EI_splitN(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
             segSize = inSize - pos;
         }
         ZL_DLOG(SEQ, "EI_splitN: segment %zu of size %zu", n, segSize);
-        ZL_RET_R_IF_GT(
-                nodeParameter_invalidValue,
+        ZL_ERR_IF_GT(
                 pos + segSize,
                 inSize,
+                nodeParameter_invalidValue,
                 "split instructions require more length than input");
         ZL_Output* const s = ENC_refTypedStream(
                 eictx, 0, eltWidth, segSize, in, pos * eltWidth);
-        ZL_RET_R_IF_NULL(allocation, s);
-        ZL_RET_R_IF_ERR(
-                ZL_Output_setIntMetadata(s, ZL_SPLIT_CHANNEL_ID, (int)n));
+        ZL_ERR_IF_NULL(s, allocation);
+        ZL_ERR_IF_ERR(ZL_Output_setIntMetadata(s, ZL_SPLIT_CHANNEL_ID, (int)n));
         pos += segSize;
     }
-    ZL_RET_R_IF_NE(
-            nodeParameter_invalidValue,
+    ZL_ERR_IF_NE(
             pos,
             inSize,
+            nodeParameter_invalidValue,
             "split instructions do not map exactly the entire input");
 
     return ZL_returnSuccess();
@@ -193,14 +196,13 @@ ZL_NodeID ZL_Compressor_registerSplitNode_withParams(
     };
     ZL_LocalCopyParams const lgp = { &segmentSizesParam, 1 };
 
-    ZL_IntParam const nbSegmentsParam = {
-        .paramId    = ZL_SPLITN_NBSEGMENTS_PID,
-        .paramValue = (int)nbSegments,
-    };
-    ZL_LocalIntParams lip = { &nbSegmentsParam, 1 };
-
-    ZL_LocalParams const lParams = { .copyParams = lgp, .intParams = lip };
-    return ZL_Compressor_cloneNode(cgraph, getSplitNNodeID(type), &lParams);
+    ZL_LocalParams const lParams = { .copyParams = lgp };
+    return ZL_Compressor_registerParameterizedNode(
+            cgraph,
+            &(const ZL_ParameterizedNodeDesc){
+                    .node        = getSplitNNodeID(type),
+                    .localParams = &lParams,
+            });
 }
 
 ZL_NodeID ZL_Compressor_registerSplitNode_withParser(
@@ -210,14 +212,19 @@ ZL_NodeID ZL_Compressor_registerSplitNode_withParser(
         void const* opaque)
 {
     ZL_DLOG(SEQ, "ZL_Compressor_registerSplitNode_withParser");
-    SplitN_ExtParser_s const s = { f, opaque };
-    ZL_CopyParam const ssp     = { .paramId   = ZL_SPLITN_PARSINGF_PID,
-                                   .paramPtr  = &s,
-                                   .paramSize = sizeof(s) };
+    ZL_RefParam const refParams[2] = {
+        { .paramId = ZL_SPLITN_PARSINGF_PID, .paramRef = (void const*)f },
+        { .paramId = ZL_SPLITN_PARSING_OPAQUE_PTR_PID, .paramRef = opaque }
+    };
 
-    ZL_LocalCopyParams const lgp = { &ssp, 1 };
-    ZL_LocalParams const lParams = { .copyParams = lgp };
-    return ZL_Compressor_cloneNode(cgraph, getSplitNNodeID(type), &lParams);
+    ZL_LocalRefParams const lgp  = { refParams, 2 };
+    ZL_LocalParams const lParams = { .refParams = lgp };
+    return ZL_Compressor_registerParameterizedNode(
+            cgraph,
+            &(const ZL_ParameterizedNodeDesc){
+                    .node        = getSplitNNodeID(type),
+                    .localParams = &lParams,
+            });
 }
 
 void* ZL_SplitState_malloc(ZL_SplitState* state, size_t size)
@@ -227,11 +234,11 @@ void* ZL_SplitState_malloc(ZL_SplitState* state, size_t size)
 
 void const* ZL_SplitState_getOpaquePtr(ZL_SplitState* state)
 {
-    SplitN_ExtParser_s const* extParser = getExtParser(state->eictx);
-    if (extParser == NULL) {
+    SplitN_ExtParser_s extParser = getExtParser(state->eictx);
+    if (extParser.f == NULL) {
         return NULL;
     }
-    return extParser->opaque;
+    return extParser.opaque;
 }
 
 static ZL_GraphID splitBackendGraph(ZL_Type type)
@@ -287,18 +294,13 @@ ZL_Edge_runSplitNode(
             "nbSegments is too large (temporary limitation)");
 
     ZL_RefParam const segmentSizesParam = {
-        .paramId  = ZL_SPLITN_SEGMENTSIZES_PID,
-        .paramRef = segmentSizes,
+        .paramId   = ZL_SPLITN_SEGMENTSIZES_PID,
+        .paramRef  = segmentSizes,
+        .paramSize = nbSegments * sizeof(size_t)
     };
     ZL_LocalRefParams const lrp = { &segmentSizesParam, 1 };
 
-    ZL_IntParam const nbSegmentsParam = {
-        .paramId    = ZL_SPLITN_NBSEGMENTS_PID,
-        .paramValue = (int)nbSegments,
-    };
-    ZL_LocalIntParams lip = { &nbSegmentsParam, 1 };
-
-    ZL_LocalParams const lParams = { .refParams = lrp, .intParams = lip };
+    ZL_LocalParams const lParams = { .refParams = lrp };
     ZL_Type type                 = ZL_Input_type(ZL_Edge_getData(input));
     return ZL_Edge_runNode_withParams(input, getSplitNNodeID(type), &lParams);
 }

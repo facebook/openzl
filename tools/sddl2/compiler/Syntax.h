@@ -5,15 +5,15 @@
 #include <map>
 #include <vector>
 
-#include "openzl/cpp/poly/Optional.hpp"
 #include "openzl/cpp/poly/StringView.hpp"
 
 namespace openzl::sddl2 {
 
 enum class Symbol {
-    // Grouping Tokens
+    /*
+     * Grouping Tokens
+     */
     NL,           // \n
-    SEMI,         // ;
     COMMA,        // ,
     PAREN_OPEN,   // (
     PAREN_CLOSE,  // )
@@ -22,25 +22,18 @@ enum class Symbol {
     SQUARE_OPEN,  // [
     SQUARE_CLOSE, // ]
 
-    // Operators
-    DIE,
+    /*
+     * Operators
+     */
     EXPECT,
-    LOG,
-
-    CONSUME,
     SIZEOF,
-    SEND,
     ASSIGN,
 
     ASSUME, // fused assign and consume
 
     MEMBER,
 
-    BIND,
-
-    NEG, // `-` is tokenized as SUB, but the unary form is converted into this
-         // during parsing.
-
+    // Arithmetic Operators
     EQ,
     NE,
     GT,
@@ -53,17 +46,20 @@ enum class Symbol {
     DIV,
     MOD,
 
+    // Bitwise Operators
     BIT_AND,
     BIT_OR,
     BIT_XOR,
     BIT_NOT,
 
+    // Logical Operators
     LOG_AND,
     LOG_OR,
     LOG_NOT,
 
-    // Keywords
-
+    /*
+     * Keywords
+     */
     // Integer Numeric Types
     BYTE,
     U8,
@@ -82,37 +78,22 @@ enum class Symbol {
     I64BE,
 
     // Float Numeric Types
-    F8,
     F16LE,
     F16BE,
     F32LE,
     F32BE,
     F64LE,
     F64BE,
-    BF8,
     BF16LE,
     BF16BE,
-    BF32LE,
-    BF32BE,
-    BF64LE,
-    BF64BE,
 
     // Other Fields
-    POISON,
-    ATOM,
+    BYTES,
     RECORD,
-    ARRAY,
 
-    DEST,
+    // Control Flow
+    WHEN
 };
-
-enum class SymbolType {
-    GROUPING,
-    OPERATOR,
-    KEYWORD,
-};
-
-SymbolType sym_type(Symbol symbol);
 
 /// @returns a name string for a symbol.
 /// (E.g., Symbol::ADD -> "ADD")
@@ -121,10 +102,6 @@ poly::string_view sym_to_debug_str(Symbol symbol);
 /// @returns the representation of a symbol that would appear in source code.
 /// (E.g., Symbol::ADD -> "+")
 poly::string_view sym_to_repr_str(Symbol symbol);
-
-/// @returns the string used to represent a symbol in the serialized CBOR.
-/// (E.g., Symbol::U64LE -> "u8l")
-poly::string_view sym_to_ser_str(Symbol symbol);
 
 /**
  * This is a vector not a map because some operators are prefixes of others, so

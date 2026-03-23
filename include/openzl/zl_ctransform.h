@@ -16,6 +16,7 @@
 #include "openzl/zl_ctransform_legacy.h" // Pipe and Split transforms
 #include "openzl/zl_errors.h"            // ZL_Report
 #include "openzl/zl_input.h"
+#include "openzl/zl_materializer.h" // ZL_MaterializerDesc
 #include "openzl/zl_opaque_types.h"
 #include "openzl/zl_output.h"
 #include "openzl/zl_portability.h" // ZL_NOEXCEPT_FUNC_PTR
@@ -336,6 +337,12 @@ typedef struct {
      * registration fails, and it lives for the lifetime of the compressor.
      */
     ZL_OpaquePtr opaque;
+    /**
+     * Optional materializer descriptor for materialized local params.
+     * If both materializeFn and dematerializeFn are non-null, the materializer
+     * will be used to create materialized objects from local params.
+     */
+    ZL_MaterializerDesc materializer;
 } ZL_MIEncoderDesc;
 
 /**

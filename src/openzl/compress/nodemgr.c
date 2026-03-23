@@ -27,7 +27,7 @@ static ZL_Report NM_fillStandardNodes(Nodes_manager* nmgr)
 
 ZL_Report NM_init(Nodes_manager* nmgr, ZL_OperationContext* opCtx)
 {
-    ZL_RET_R_IF_ERR(CTM_init(&nmgr->ctm));
+    ZL_RET_R_IF_ERR(CTM_init(&nmgr->ctm, opCtx));
     nmgr->nameMap = NodeMap_create(ZL_ENCODER_GRAPH_LIMIT);
     nmgr->opCtx   = opCtx;
     return NM_fillStandardNodes(nmgr);
@@ -159,6 +159,10 @@ const CNode* NM_getCNode(const Nodes_manager* nmgr, ZL_NodeID nodeid)
 
 ZL_NodeID NM_getNodeByName(const Nodes_manager* nmgr, const char* node)
 {
+    // Lookup should not be done using anchor names
+    if (node == NULL || ZL_keyIsAnchor(node)) {
+        return ZL_NODE_ILLEGAL;
+    }
     const ZL_Name key          = ZL_Name_wrapKey(node);
     const NodeMap_Entry* entry = NodeMap_find(&nmgr->nameMap, &key);
     if (entry != NULL) {

@@ -26,18 +26,17 @@ static size_t compress(CCtx& cctx, Compressor& compressor, const Input& input)
     return cctx.compressOne(input).size();
 }
 
-std::vector<std::string> minSizeChoiceFunc(std::vector<TargetsMap>& targets)
+std::vector<float> minSizeChoiceFunc(std::vector<TargetsMap>& targets)
 {
-    std::vector<std::string> result;
+    std::vector<float> result;
     for (size_t i = 0; i < targets.size(); i++) {
-        std::string min_label = "";
+        size_t min_ind = targets[i].begin()->first;
         for (const auto& it : targets[i]) {
-            if (min_label == ""
-                || it.second.at("size") < targets[i].at(min_label).at("size")) {
-                min_label = it.first;
+            if (it.second.at("size") < targets[i].at(min_ind).at("size")) {
+                min_ind = it.first;
             }
         }
-        result.push_back(min_label);
+        result.push_back((float)min_ind);
     }
 
     return result;
@@ -50,12 +49,18 @@ std::vector<std::string> minSizeChoiceFunc(std::vector<TargetsMap>& targets)
  */
 static ProcessedMLTrainingSamples processTrainingSamples(
         MLTrainingSample& samples,
-        const std::vector<std::string>& successorLabels,
         ChoiceFunction choiceFunction)
 {
-    std::vector<std::string> labels = choiceFunction(samples.targetData);
+    std::vector<float> numericLabels = choiceFunction(samples.targetData);
     std::vector<std::vector<float>> features;
     std::vector<std::string> featureNames;
+    std::vector<const char*> featurePtrNames;
+
+    if (!samples.featureData.empty()) {
+        size_t numFeatures = VECTOR_SIZE(samples.featureData[0]);
+        featureNames.reserve(numFeatures);
+        featurePtrNames.reserve(numFeatures);
+    }
 
     // convert features to vector for easier shuffling for train test split
     for (size_t i = 0; i < samples.featureData.size(); i++) {
@@ -65,29 +70,16 @@ static ProcessedMLTrainingSamples processTrainingSamples(
             // save features strings
             if (i == 0) {
                 featureNames.emplace_back(VECTOR_AT(feature, j).label);
+                featurePtrNames.emplace_back(featureNames.back().c_str());
             }
             features.back().push_back(VECTOR_AT(feature, j).value);
         }
     }
 
-    std::unordered_map<std::string, int> labelMap;
-    for (size_t i = 0; i < successorLabels.size(); i++) {
-        labelMap[successorLabels[i]] = (int)i;
-    }
-
-    std::vector<float> numericLabels;
-    numericLabels.reserve(labels.size());
-    for (const auto& label : labels) {
-        numericLabels.push_back(labelMap[label]);
-    }
-
-    return {
-        .labels        = std::move(labels),
-        .numericLabels = std::move(numericLabels),
-        .labelMap      = std::move(labelMap),
-        .features      = std::move(features),
-        .featureNames  = std::move(featureNames),
-    };
+    return { .numericLabels   = std::move(numericLabels),
+             .features        = std::move(features),
+             .featureNames    = std::move(featureNames),
+             .featurePtrNames = std::move(featurePtrNames) };
 }
 
 ProcessedMLTrainingSamples extractMLFeatures(
@@ -95,7 +87,6 @@ ProcessedMLTrainingSamples extractMLFeatures(
         Compressor& compressor,
         CCtx& cctx,
         const std::vector<ZL_GraphID>& successorGraphs,
-        const std::vector<std::string>& successorLabels,
         FeatureGenerator featureGen,
         ChoiceFunction choiceFunction)
 {
@@ -127,9 +118,8 @@ ProcessedMLTrainingSamples extractMLFeatures(
 
                 std::chrono::duration<double, std::milli> const timeElapsedMS =
                         (std::chrono::steady_clock::now() - timerStart);
-                targets[successorLabels[i]] = {
-                    { "size", totalSize }, { "ctime", timeElapsedMS.count() }
-                };
+                targets[i] = { { "size", totalSize },
+                               { "ctime", timeElapsedMS.count() } };
             }
 
             compressor.selectStartingGraph(startingGraphId);
@@ -148,8 +138,8 @@ ProcessedMLTrainingSamples extractMLFeatures(
         MLTrainingSample samples = { .featureData = featureData,
                                      .targetData  = targetData };
 
-        ProcessedMLTrainingSamples results = processTrainingSamples(
-                samples, successorLabels, choiceFunction);
+        ProcessedMLTrainingSamples results =
+                processTrainingSamples(samples, choiceFunction);
 
         // free memory since we already copied into vector
         for (auto& feature : featureData) {

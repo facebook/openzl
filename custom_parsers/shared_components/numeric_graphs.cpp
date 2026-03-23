@@ -2,11 +2,8 @@
 
 #include "custom_parsers/shared_components/numeric_graphs.h"
 
-#include <cstdint>
-#include <vector>
 #include "openzl/zl_stream.h"
 
-#include "openzl/shared/bits.h"
 #include "openzl/zl_selector_declare_helper.h"
 
 namespace openzl::custom_parsers {

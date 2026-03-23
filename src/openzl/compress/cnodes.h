@@ -8,8 +8,8 @@
 #include "openzl/common/vector.h"
 #include "openzl/compress/cnode.h"          // CNode
 #include "openzl/compress/compress_types.h" // InternalTransform_Desc
+#include "openzl/compress/materializer.h"   // MaterializedParamMap
 #include "openzl/shared/portability.h"
-#include "openzl/zl_errors.h" // ZL_RESULT_DECLARE_TYPE_IMPL, ZL_RESULT_OF
 
 ZL_BEGIN_C_DECLS
 
@@ -20,15 +20,17 @@ ZL_RESULT_DECLARE_TYPE(CNodeID);
 
 DECLARE_VECTOR_TYPE(CNode)
 
-typedef struct {
+typedef struct CNodes_manager_s {
     VECTOR(CNode) cnodes;
     ZL_OpaquePtrRegistry opaquePtrs;
     Arena* allocator;
+    MaterializedParamMap materializedParams;
+    ZL_OperationContext* opCtx; // Non-owning pointer to error context
 } CNodes_manager;
 
 // Lifetime Management
 
-ZL_Report CTM_init(CNodes_manager* ctm);
+ZL_Report CTM_init(CNodes_manager* ctm, ZL_OperationContext* opCtx);
 
 void CTM_destroy(CNodes_manager* ctm);
 
@@ -72,8 +74,11 @@ CTM_registerStandardTransform(
         unsigned minFormatVersion,
         unsigned maxFormatVersion);
 
-/// Rolls back the registration of @p id
-/// @warning This only works when @p id was the last node registered
+/**
+ * Rolls back the registration of @p id
+ * @warning This only works when @p id was the last node registered. If local
+ * params are transferred or a materialized param created, it will not be freed.
+ */
 void CTM_rollback(CNodes_manager* ctm, CNodeID id);
 
 ZL_END_C_DECLS

@@ -161,7 +161,8 @@ static void compressTrID(
         size_t nbTransforms,
         const uint8_t ctrFlags[],
         uint32_t* snodeidsScratch,
-        uint32_t* cnodeidsScratch)
+        uint32_t* cnodeidsScratch,
+        unsigned formatVersion)
 {
     if (!nbTransforms)
         return;
@@ -179,7 +180,7 @@ static void compressTrID(
     size_t const nbCNodeIds =
             MEM_ptrDistance(cnodeids, niPtr[1]) / sizeof(uint32_t);
     // use bitPacking for standard nodes
-    int const nbBits = ZL_nextPow2(ZL_StandardTransformID_end);
+    int const nbBits = ZL_StandardTransformID_numBits(formatVersion);
     ZL_ASSERT_GE(ZL_WC_avail(out), ((nbTransforms * (size_t)nbBits) + 7) / 8);
 
     ZL_WC_bitpackEncode32(out, snodeids, nbSNodeIds, nbBits);
@@ -747,7 +748,13 @@ static ZL_Report writeChunkHeaderV8_internal(
             array32[u] = (uint32_t)gip->trInfo[u].trid;
         }
         compressTrID(
-                &out, array32, nbCodecs, trt, wksp->scratch1, wksp->scratch2);
+                &out,
+                array32,
+                nbCodecs,
+                trt,
+                wksp->scratch1,
+                wksp->scratch2,
+                encoder->formatVersion);
     }
 
     /* Encode Transform's private header's sizes */

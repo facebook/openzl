@@ -13,22 +13,24 @@ ZL_Report registerCustomTransforms(
         unsigned idRangeBegin,
         unsigned idRangeEnd)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
+
     if (idRangeEnd - idRangeBegin < kNumCustomTransforms) {
         throw std::runtime_error("Not enough IDs");
     }
 
     // NOTE: These IDs must remain stable & in-sync with the compressor!
-    ZL_RET_R_IF_ERR(ZS2_ThriftKernel_registerDTransformMapI32Float(
+    ZL_ERR_IF_ERR(ZS2_ThriftKernel_registerDTransformMapI32Float(
             dctx, idRangeBegin + static_cast<unsigned>(Tag::FloatFeatures)));
-    ZL_RET_R_IF_ERR(ZS2_ThriftKernel_registerDTransformMapI32ArrayFloat(
+    ZL_ERR_IF_ERR(ZS2_ThriftKernel_registerDTransformMapI32ArrayFloat(
             dctx,
             idRangeBegin + static_cast<unsigned>(Tag::FloatListFeatures)));
-    ZL_RET_R_IF_ERR(ZS2_ThriftKernel_registerDTransformMapI32ArrayI64(
+    ZL_ERR_IF_ERR(ZS2_ThriftKernel_registerDTransformMapI32ArrayI64(
             dctx, idRangeBegin + static_cast<unsigned>(Tag::IdListFeatures)));
-    ZL_RET_R_IF_ERR(ZS2_ThriftKernel_registerDTransformMapI32ArrayArrayI64(
+    ZL_ERR_IF_ERR(ZS2_ThriftKernel_registerDTransformMapI32ArrayArrayI64(
             dctx,
             idRangeBegin + static_cast<unsigned>(Tag::IdListListFeatures)));
-    ZL_RET_R_IF_ERR(ZS2_ThriftKernel_registerDTransformMapI32MapI64Float(
+    ZL_ERR_IF_ERR(ZS2_ThriftKernel_registerDTransformMapI32MapI64Float(
             dctx,
             idRangeBegin + static_cast<unsigned>(Tag::IdScoreListFeatures)));
 

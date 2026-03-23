@@ -90,7 +90,7 @@ extern "C" {
  *     component, produced by modifying or composing the original
  *     non-serializable component, via, e.g.:
  *
- *     - ZL_Compressor_cloneNode (see note)
+ *     - ZL_Compressor_registerParameterizedNode (see note)
  *
  *     - ZL_Compressor_registerStaticGraph_fromNode1o
  *     - ZL_Compressor_registerStaticGraph_fromPipelineNodes1o

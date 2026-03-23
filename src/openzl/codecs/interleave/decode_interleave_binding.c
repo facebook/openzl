@@ -88,7 +88,7 @@ ZL_Report DI_interleave(
         }
     }
     for (size_t i = 0; i < nbStreams; ++i) {
-        ZL_RET_R_IF_ERR(ZL_Output_commit(regen[i], nbStringsPerStream));
+        ZL_ERR_IF_ERR(ZL_Output_commit(regen[i], nbStringsPerStream));
     }
 
     return ZL_WRAP_VALUE(0);

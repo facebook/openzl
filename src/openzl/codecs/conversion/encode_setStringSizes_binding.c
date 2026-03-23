@@ -68,6 +68,7 @@ static ZL_SetStringLensInstructions getStringLens(
 ZL_Report
 EI_setStringLens(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
     const ZL_Input* in = ins[0];
@@ -81,7 +82,7 @@ EI_setStringLens(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     const size_t nbStrings            = sfsi.nbStrings;
     const uint32_t* const stringLens  = sfsi.stringLens;
 
-    ZL_RET_R_IF(nodeParameter_invalid, nbStrings && stringLens == NULL);
+    ZL_ERR_IF(nbStrings && stringLens == NULL, nodeParameter_invalid);
 
     ZL_DLOG(BLOCK,
             "EI_setStringLens: converting %zu bytes into %zu strings",
@@ -90,21 +91,21 @@ EI_setStringLens(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 
     // Here : check parser's output
     uint64_t const parserTotalSize = NUMOP_sumArray32(stringLens, nbStrings);
-    ZL_RET_R_IF_NE(
-            nodeParameter_invalidValue,
+    ZL_ERR_IF_NE(
             parserTotalSize,
             (uint64_t)inputSize,
+            nodeParameter_invalidValue,
             "EI_setStringLens: the external parser provides invalid total size");
 
     ZL_Output* const out = ENC_refTypedStream(eictx, 0, 1, inputSize, in, 0);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
 
     uint32_t* const fs = ZL_Output_reserveStringLens(out, nbStrings);
-    ZL_RET_R_IF_NULL(allocation, fs);
+    ZL_ERR_IF_NULL(fs, allocation);
 
     ZL_memcpy(fs, stringLens, nbStrings * sizeof(uint32_t));
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, nbStrings));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, nbStrings));
 
     return ZL_returnSuccess();
 }
@@ -134,7 +135,12 @@ ZL_NodeID ZL_Compressor_registerConvertSerialToStringNode(
 
     ZL_LocalCopyParams const lgp = { &ssp, 1 };
     ZL_LocalParams const lParams = { .copyParams = lgp };
-    return ZL_Compressor_cloneNode(cgraph, ZL_NODE_SETSTRINGLENS, &lParams);
+    return ZL_Compressor_registerParameterizedNode(
+            cgraph,
+            &(const ZL_ParameterizedNodeDesc){
+                    .node        = ZL_NODE_SETSTRINGLENS,
+                    .localParams = &lParams,
+            });
 }
 
 ZL_RESULT_OF(ZL_EdgeList)

@@ -873,11 +873,6 @@
  #elif !defined (__VMS) \
    && (defined (__cplusplus) \
    || (defined (__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L) /* C99 */) )
- #   ifdef _AIX
- #     include <inttypes.h>
- #   else
- #     include <stdint.h>
- #   endif
     typedef uint64_t XXH64_hash_t;
  #else
  #  include <limits.h>
@@ -2414,7 +2409,6 @@
   * @internal
   * @brief XXH_memset() macro can be redirected at compile time
   */
- #  include <string.h>
  #  define XXH_memset memset
  #endif
  
@@ -2424,7 +2418,6 @@
   * @brief XXH_memcmp() macro can be redirected at compile time
   * Note: only needed by XXH128.
   */
- #  include <string.h>
  #  define XXH_memcmp memcmp
  #endif
  
@@ -2570,11 +2563,6 @@
  #if !defined (__VMS) \
   && (defined (__cplusplus) \
   || (defined (__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L) /* C99 */) )
- #   ifdef _AIX
- #     include <inttypes.h>
- #   else
- #     include <stdint.h>
- #   endif
      typedef uint8_t xxh_u8;
  #else
      typedef unsigned char xxh_u8;

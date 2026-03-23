@@ -8,9 +8,9 @@
 ZL_Report
 MultiInputGraph_store(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
 {
-    (void)gctx;
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     for (size_t n = 0; n < nbInputs; n++) {
-        ZL_RET_R_IF_ERR(ZL_Edge_setDestination(inputs[n], ZL_GRAPH_STORE1));
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(inputs[n], ZL_GRAPH_STORE1));
     }
     return ZL_returnSuccess();
 }

@@ -43,15 +43,28 @@ class ParseError : public CompilerException {
     }
 };
 
-class SerializationError : public CompilerException {
+class CodegenError : public CompilerException {
    public:
-    SerializationError(const SourceLocation& loc, const poly::string_view& msg)
-            : CompilerException(loc, "serialization error", msg)
+    CodegenError(const SourceLocation& loc, const poly::string_view& msg)
+            : CompilerException(loc, "code generation error", msg)
     {
     }
 
-    explicit SerializationError(const poly::string_view& msg)
-            : SerializationError(SourceLocation::null(), msg)
+    explicit CodegenError(const poly::string_view& msg)
+            : CodegenError(SourceLocation::null(), msg)
+    {
+    }
+};
+
+class SemanticError : public CompilerException {
+   public:
+    SemanticError(const SourceLocation& loc, const poly::string_view& msg)
+            : CompilerException(loc, "semantic error", msg)
+    {
+    }
+
+    explicit SemanticError(const poly::string_view& msg)
+            : SemanticError(SourceLocation::null(), msg)
     {
     }
 };

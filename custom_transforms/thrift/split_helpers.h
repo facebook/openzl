@@ -244,7 +244,7 @@ class WriteStream : public detail::BaseWriteStream<WriteStream> {
     ZL_FORCE_INLINE_ATTR void writeValue(Value val)
     {
         static_assert(folly::kIsLittleEndian);
-        appender_.writeLE(val);
+        appender_.writeLE<Value>(val);
     }
 
     void copyTo(folly::MutableByteRange dst) const

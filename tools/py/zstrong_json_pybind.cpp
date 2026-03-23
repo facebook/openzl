@@ -63,6 +63,7 @@ ZL_Report fillFromObject(
         ZL_Type streamType,
         py::handle const& handle)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
     try {
         if (streamType == ZL_Type_string) {
             auto const list   = handle.cast<py::list>();
@@ -70,7 +71,7 @@ ZL_Report fillFromObject(
                     list, streamType, [idx, createStream](size_t contentSize) {
                         return createStream(idx, contentSize, 1);
                     });
-            ZL_RET_R_IF_NULL(allocation, stream);
+            ZL_ERR_IF_NULL(stream, allocation);
         } else {
             auto const buffer = handle.cast<py::buffer>();
             auto const info   = buffer.request();
@@ -80,21 +81,19 @@ ZL_Report fillFromObject(
                     [idx, createStream](size_t nbElts, size_t eltWidth) {
                         return createStream(idx, nbElts, eltWidth);
                     });
-            ZL_RET_R_IF_NULL(allocation, stream);
+            ZL_ERR_IF_NULL(stream, allocation);
         }
         return ZL_returnSuccess();
     } catch (py::cast_error const& e) {
-        ZL_RET_R_ERR(
-                transform_executionFailure,
-                "Stream returned by python fn %d is not the right type: %s!",
-                idx,
-                e.what());
+        ZL_ERR(transform_executionFailure,
+               "Stream returned by python fn %d is not the right type: %s!",
+               idx,
+               e.what());
     } catch (std::exception const& e) {
-        ZL_RET_R_ERR(
-                transform_executionFailure,
-                "Unexpected error reading stream %d: %s",
-                idx,
-                e.what());
+        ZL_ERR(transform_executionFailure,
+               "Unexpected error reading stream %d: %s",
+               idx,
+               e.what());
     }
 }
 
@@ -547,17 +546,17 @@ class PyCustomTransformAdaptor : public CustomTransform {
             ZL_Input const* inputs[],
             size_t nbInputs) const override
     {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
         try {
             ZL_Report report;
             PyEncoderCtx ctx{ eictx, this, inputs, nbInputs, &report };
             transform().encode(ctx);
-            ZL_RET_R_IF_ERR(report);
+            ZL_ERR_IF_ERR(report);
             return ZL_returnValue(nbSuccessors());
         } catch (std::runtime_error const& err) {
-            ZL_RET_R_ERR(
-                    transform_executionFailure,
-                    "Exception thrown: %s",
-                    err.what());
+            ZL_ERR(transform_executionFailure,
+                   "Exception thrown: %s",
+                   err.what());
         }
     }
 
@@ -568,18 +567,18 @@ class PyCustomTransformAdaptor : public CustomTransform {
             ZL_Input const* voInputs[],
             size_t nbVoInputs) const override
     {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
         try {
             ZL_Report report;
             PyDecoderCtx ctx{ dictx,    this,       fixedInputs, nbFixedInputs,
                               voInputs, nbVoInputs, &report };
             transform().decode(ctx);
-            ZL_RET_R_IF_ERR(report);
+            ZL_ERR_IF_ERR(report);
             return ZL_returnValue(nbSuccessors());
         } catch (std::runtime_error const& err) {
-            ZL_RET_R_ERR(
-                    transform_executionFailure,
-                    "Exception thrown: %s",
-                    err.what());
+            ZL_ERR(transform_executionFailure,
+                   "Exception thrown: %s",
+                   err.what());
         }
     }
 

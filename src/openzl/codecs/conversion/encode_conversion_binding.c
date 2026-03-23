@@ -144,16 +144,17 @@ static ZL_Report EI_convert_serial_to_struct_generic(
         const ZL_Input* in,
         size_t tokenWidth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_NN(eictx);
     ZL_ASSERT_NN(in);
     size_t const inByteSize = ZL_Input_contentSize(in);
     if (inByteSize % tokenWidth) {
-        ZL_RET_R_ERR(streamParameter_invalid); // Not a clean multiple
+        ZL_ERR(streamParameter_invalid); // Not a clean multiple
     }
     size_t const nbTokens = inByteSize / tokenWidth;
-    ZL_RET_R_IF_NULL(
-            allocation,
-            ENC_refTypedStream(eictx, 0, tokenWidth, nbTokens, in, 0));
+    ZL_ERR_IF_NULL(
+            ENC_refTypedStream(eictx, 0, tokenWidth, nbTokens, in, 0),
+            allocation);
     return ZL_returnValue(1);
 }
 
@@ -162,6 +163,7 @@ ZL_Report EI_convert_serial_to_struct(
         const ZL_Input* ins[],
         size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
     const ZL_Input* in = ins[0];
@@ -169,9 +171,9 @@ ZL_Report EI_convert_serial_to_struct(
     ZL_IntParam const tokenSize =
             ZL_Encoder_getLocalIntParam(eictx, ZL_trlip_tokenSize);
     // Parameter **must** be set.
-    ZL_RET_R_IF_EQ(
-            nodeParameter_invalid, tokenSize.paramId, ZL_LP_INVALID_PARAMID);
-    ZL_RET_R_IF_LE(nodeParameter_invalidValue, tokenSize.paramValue, 0);
+    ZL_ERR_IF_EQ(
+            tokenSize.paramId, ZL_LP_INVALID_PARAMID, nodeParameter_invalid);
+    ZL_ERR_IF_LE(tokenSize.paramValue, 0, nodeParameter_invalidValue);
     return EI_convert_serial_to_struct_generic(
             eictx, in, (size_t)tokenSize.paramValue);
 }
@@ -207,6 +209,7 @@ ZL_Report EI_convert_num_to_struct_le(
         const ZL_Input* ins[],
         size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
     const ZL_Input* in = ins[0];
@@ -219,22 +222,23 @@ ZL_Report EI_convert_num_to_struct_le(
     size_t const eltWidth = ZL_Input_eltWidth(in);
     ZL_ASSERT_GT(eltWidth, 0);
     size_t const nbElts = ZL_Input_numElts(in);
-    ZL_RET_R_IF_NULL(
-            allocation, ENC_refTypedStream(eictx, 0, eltWidth, nbElts, in, 0));
+    ZL_ERR_IF_NULL(
+            ENC_refTypedStream(eictx, 0, eltWidth, nbElts, in, 0), allocation);
     return ZL_returnValue(1);
 }
 
 static ZL_Report
 EI_convert_to_serial(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
     const ZL_Input* in = ins[0];
     ZL_ASSERT_NN(in);
     size_t const byteSize = ZL_Input_contentSize(in);
     ZL_ASSERT_NN(eictx);
-    ZL_RET_R_IF_NULL(
-            allocation, ENC_refTypedStream(eictx, 0, 1, byteSize, in, 0));
+    ZL_ERR_IF_NULL(
+            ENC_refTypedStream(eictx, 0, 1, byteSize, in, 0), allocation);
     return ZL_returnValue(1);
 }
 
@@ -286,21 +290,22 @@ ZL_Report EI_separate_VSF_components(
         const ZL_Input* ins[],
         size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
     const ZL_Input* in = ins[0];
     ZL_ASSERT_NN(eictx);
     ZL_ASSERT_EQ(ZL_Input_type(in), ZL_Type_string);
-    ZL_RET_R_IF_ERR(EI_convert_to_serial(eictx, ins, nbIns));
+    ZL_ERR_IF_ERR(EI_convert_to_serial(eictx, ins, nbIns));
     const uint32_t* fieldSizes = ZL_Input_stringLens(in);
     const size_t nbFields      = ZL_Input_numElts(in);
     size_t const numWidth = NUMOP_numericWidthForArray32(fieldSizes, nbFields);
     ZL_Output* const sizeStream =
             ZL_Encoder_createTypedStream(eictx, 1, nbFields, numWidth);
-    ZL_RET_R_IF_NULL(allocation, sizeStream);
+    ZL_ERR_IF_NULL(sizeStream, allocation);
     void* const dst = ZL_Output_ptr(sizeStream);
     NUMOP_writeNumerics_fromU32(dst, numWidth, fieldSizes, nbFields);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(sizeStream, nbFields));
+    ZL_ERR_IF_ERR(ZL_Output_commit(sizeStream, nbFields));
     return ZL_returnValue(2);
 }
 

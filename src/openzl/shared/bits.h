@@ -12,6 +12,10 @@
 #include "openzl/common/debug.h"
 #include "openzl/shared/portability.h"
 
+#if ZL_HAS_BMI2
+#    include <immintrin.h>
+#endif
+
 ZL_BEGIN_C_DECLS
 
 ZL_INLINE bool ZL_32bits(void)
@@ -481,6 +485,92 @@ ZL_INLINE bool ZL_convertIntToDouble(ZL_IEEEDouble* dbl, int64_t value)
 }
 
 #endif
+
+// ---------------------------------------------------------------------------
+// bitDeposit: scatter contiguous source bits into positions given by mask
+// (PDEP)
+// ---------------------------------------------------------------------------
+
+ZL_INLINE uint64_t ZL_bitDeposit64_fallback(uint64_t src, uint64_t mask)
+{
+    uint64_t result = 0;
+    uint64_t srcBit = 1;
+    while (mask != 0) {
+        uint64_t const lowestBit = mask & (~mask + 1);
+        if (src & srcBit) {
+            result |= lowestBit;
+        }
+        mask &= ~lowestBit;
+        srcBit <<= 1;
+    }
+    return result;
+}
+
+ZL_INLINE uint64_t ZL_bitDeposit64(uint64_t src, uint64_t mask)
+{
+#if ZL_HAS_BMI2
+    return _pdep_u64(src, mask);
+#else
+    return ZL_bitDeposit64_fallback(src, mask);
+#endif
+}
+
+ZL_INLINE uint32_t ZL_bitDeposit32_fallback(uint32_t src, uint32_t mask)
+{
+    return (uint32_t)ZL_bitDeposit64_fallback((uint64_t)src, (uint64_t)mask);
+}
+
+ZL_INLINE uint32_t ZL_bitDeposit32(uint32_t src, uint32_t mask)
+{
+#if ZL_HAS_BMI2
+    return _pdep_u32(src, mask);
+#else
+    return ZL_bitDeposit32_fallback(src, mask);
+#endif
+}
+
+// ---------------------------------------------------------------------------
+// bitExtract: collect bits from positions given by mask into contiguous result
+// (PEXT)
+// ---------------------------------------------------------------------------
+
+ZL_INLINE uint64_t ZL_bitExtract64_fallback(uint64_t src, uint64_t mask)
+{
+    uint64_t result = 0;
+    uint64_t dstBit = 1;
+    while (mask != 0) {
+        uint64_t const lowestBit = mask & (~mask + 1);
+        if (src & lowestBit) {
+            result |= dstBit;
+        }
+        mask &= ~lowestBit;
+        dstBit <<= 1;
+    }
+    return result;
+}
+
+ZL_INLINE uint64_t ZL_bitExtract64(uint64_t src, uint64_t mask)
+{
+#if ZL_HAS_BMI2
+    return _pext_u64(src, mask);
+#else
+    return ZL_bitExtract64_fallback(src, mask);
+#endif
+}
+
+ZL_INLINE uint32_t ZL_bitExtract32_fallback(uint32_t src, uint32_t mask)
+{
+    return (uint32_t)ZL_bitExtract64_fallback((uint64_t)src, (uint64_t)mask);
+}
+
+ZL_INLINE uint32_t ZL_bitExtract32(uint32_t src, uint32_t mask)
+{
+#if ZL_HAS_BMI2
+    return _pext_u32(src, mask);
+#else
+    return ZL_bitExtract32_fallback(src, mask);
+#endif
+}
 
 ZL_END_C_DECLS
 

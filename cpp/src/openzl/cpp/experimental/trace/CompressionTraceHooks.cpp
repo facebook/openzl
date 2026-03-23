@@ -104,7 +104,9 @@ void CompressionTraceHooks::on_codecEncode_end(
     tracer_->on_codecEncode_end(eictx, outStreams, nbOutputs, codecExecResult);
 }
 
-void CompressionTraceHooks::on_ZL_Encoder_getScratchSpace(ZL_Encoder*, size_t)
+void CompressionTraceHooks::on_ZL_Encoder_getScratchSpace(
+        ZL_Encoder* /*ei*/,
+        size_t /*size*/)
 {
 }
 
@@ -118,11 +120,11 @@ void CompressionTraceHooks::on_ZL_Encoder_sendCodecHeader(
 }
 
 void CompressionTraceHooks::on_ZL_Encoder_createTypedStream(
-        ZL_Encoder*,
-        int,
-        size_t eltsCapacity,
-        size_t eltWidth,
-        ZL_Output* createdStream)
+        ZL_Encoder* /*encoder*/,
+        int /*outStreamIndex*/,
+        size_t /*eltsCapacity*/,
+        size_t /*eltWidth*/,
+        ZL_Output* /*createdStream*/)
 {
 }
 
@@ -160,14 +162,18 @@ void CompressionTraceHooks::on_cctx_convertOneInput(
             cctx, input, inType, portTypeMask, conversionResult);
 }
 
-void CompressionTraceHooks::on_ZL_Graph_getScratchSpace(ZL_Graph*, size_t) {}
+void CompressionTraceHooks::on_ZL_Graph_getScratchSpace(
+        ZL_Graph* /*graph*/,
+        size_t /*size*/)
+{
+}
 
 void CompressionTraceHooks::on_ZL_Edge_setMultiInputDestination_wParams(
-        ZL_Graph*,
-        ZL_Edge*[],
-        size_t,
-        ZL_GraphID,
-        const ZL_LocalParams*)
+        ZL_Graph* /*graph*/,
+        ZL_Edge*[] /*inputs*/,
+        size_t /*nbInputs*/,
+        ZL_GraphID /*gid*/,
+        const ZL_LocalParams* /*lparams*/)
 {
 }
 
@@ -181,8 +187,7 @@ void CompressionTraceHooks::on_ZL_CCtx_compressMultiTypedRef_start(
     // Reset the output stream
     outStream_.str("");
     outStream_.clear();
-    latestStreamdumpCache_ =
-            std::map<size_t, std::pair<std::string, std::string>>();
+    latestStreamdumpCache_ = {};
 
     if (tracer_) {
         throw std::runtime_error(
@@ -207,15 +212,21 @@ void CompressionTraceHooks::on_ZL_CCtx_compressMultiTypedRef_end(
 
 std::pair<
         poly::string_view,
-        std::map<size_t, std::pair<poly::string_view, poly::string_view>>>
+        std::map<std::string, std::pair<poly::string_view, poly::string_view>>>
 CompressionTraceHooks::getLatestTrace()
 {
-    std::map<size_t, std::pair<poly::string_view, poly::string_view>>
+    std::map<std::string, std::pair<poly::string_view, poly::string_view>>
             streamdumps;
-    for (auto& [k, v] : latestStreamdumpCache_) {
-        streamdumps[k] = { poly::string_view(v.first),
-                           poly::string_view(v.second) };
+    for (size_t chunkId = 0; chunkId < latestStreamdumpCache_.size();
+         chunkId++) {
+        for (const auto& streamdump : latestStreamdumpCache_[chunkId]) {
+            std::string key = "chunk_" + std::to_string(chunkId) + "_stream_"
+                    + std::to_string(streamdump.streamId);
+            streamdumps[key] = { poly::string_view(streamdump.content),
+                                 poly::string_view(streamdump.strLens) };
+        }
     }
+
     return { latestTraceCache_, std::move(streamdumps) };
 }
 

@@ -10,6 +10,7 @@
 #include "openzl/zl_compress.h"     // ZL_CParam
 #include "openzl/zl_graph_api.h"    // ZL_RuntimeGraphParameters
 #include "openzl/zl_localParams.h"  // ZL_LocalParams
+#include "openzl/zl_materializer.h" // ZL_MaterializerDesc
 #include "openzl/zl_opaque_types.h" // ZL_GraphID
 
 #if defined(__cplusplus)
@@ -81,6 +82,12 @@ typedef struct {
     const ZL_GraphID* customGraphs; // can be NULL when none employed
     size_t numCustomGraphs;         // Must be zero when customGraphs==NULL
     ZL_LocalParams localParams;
+    /**
+     * Optional materializer descriptor for materialized local params.
+     * If both materializeFn and dematerializeFn are non-null, the materializer
+     * will be used to create materialized objects from local params.
+     */
+    ZL_MaterializerDesc materializer;
     /**
      * Optionally an opaque pointer that can be queried with
      * ZL_Graph_getOpaquePtr().

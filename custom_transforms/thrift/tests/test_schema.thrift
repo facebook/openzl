@@ -25,7 +25,9 @@ struct InnerTestStruct {
 struct TestStruct {
   4: InnerTestStruct struct1;
   3: InnerTestStruct struct2;
+  @thrift.AllowUnsafeNonSealedKeyType
   2: set<InnerTestStruct> set1;
+  @thrift.AllowUnsafeNonSealedKeyType
   1: map<InnerTestStruct, InnerTestStruct> map1;
 
   # Ensure test coverage for structure-optimized kernels

@@ -6,6 +6,8 @@
 #include "openzl/zl_reflection.h"
 #include "tools/training/ace/ace_sampling.h"
 
+#include "openzl/cpp/codecs/Bitsplit.hpp"
+
 namespace openzl {
 namespace training {
 namespace {
@@ -88,6 +90,8 @@ std::vector<ACENode> makeAllNodes()
     n.push_back(buildNode(nodes::QuantizeOffsets{}));
     n.push_back(buildNode(nodes::QuantizeLengths{}));
     n.push_back(buildNode(nodes::TransposeSplit{}));
+    n.push_back(buildNode(nodes::BitsplitFP{}));
+    n.push_back(buildNode(nodes::BitsplitTop8{}));
     n.push_back(buildNode(nodes::Zigzag{}));
     n.push_back(buildNode(nodes::ConvertSerialToNum8{}));
     n.push_back(buildNode(nodes::ConvertSerialToNumLE16{}));
@@ -149,6 +153,10 @@ std::vector<ACECompressor> makePrebuiltNumericCompressors()
     ACECompressor rangePackFieldLz(buildNode(nodes::RangePack{}), { fieldLz });
     ACECompressor rangePackDeltaFieldLz(
             buildNode(nodes::RangePack{}), { deltaFieldLz });
+    ACECompressor entropy(buildGraph(graphs::Entropy{}));
+    ACECompressor top8bitsEntropy(
+            buildNode(nodes::BitsplitTop8{}), { entropy });
+    ACECompressor fpBitsEntropy(buildNode(nodes::BitsplitFP{}), { entropy });
     ACECompressor fse(buildGraph(graphs::Fse{}));
     ACECompressor store(buildGraph(graphs::Store{}));
     ACECompressor quantizeOffsets(
@@ -167,6 +175,8 @@ std::vector<ACECompressor> makePrebuiltNumericCompressors()
         deltaZigzagFieldLz,
         rangePackFieldLz,
         rangePackDeltaFieldLz,
+        top8bitsEntropy,
+        fpBitsEntropy,
         quantizeOffsets,
         quantizeLengths,
     };

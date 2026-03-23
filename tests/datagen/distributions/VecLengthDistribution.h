@@ -19,9 +19,6 @@ class VecLengthDistribution : public Distribution<size_t> {
             size_t max = kMaxVecLength)
             : Distribution<size_t>(generator), min_(min), max_(max)
     {
-        if (max > kMaxVecLength) {
-            throw std::runtime_error("VecLengthDistribution: max is too large");
-        }
         if (min > max) {
             throw std::runtime_error("VecLengthDistribution: min > max");
         }
@@ -51,7 +48,7 @@ class VecLengthDistribution : public Distribution<size_t> {
         if (op < 0b11111111) {
             return std::max(len_val % std::min(size_t(4096), max_), min_);
         }
-        return std::max(len_val % max_, min_);
+        return std::max(len_val % (max_ + 1), min_);
     }
 
     void print(std::ostream& os) const override
