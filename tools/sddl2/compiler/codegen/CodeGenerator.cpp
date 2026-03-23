@@ -427,11 +427,15 @@ class CodeGeneratorImpl {
             }
         }
 
-        auto [type_asm, type]     = generateType(rhs);
-        type_aliases_[var.name()] = type;
-
         AssemblyOutput output;
-        output += std::move(type_asm);
+        try {
+            auto [type_asm, type]     = generateType(rhs);
+            type_aliases_[var.name()] = type;
+            output += std::move(type_asm);
+        } catch (const InvariantViolation&) {
+            output += generateValue(rhs);
+        }
+
         output += "push.i64 " + std::to_string(registers_.assign(var.name()));
         output += "var.store";
         return output;
