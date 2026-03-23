@@ -333,6 +333,14 @@ TEST_F(SemanticAnalyzerTest, WhenBlockInRecordWithFieldReference)
     expect_error(prog, "Undefined variable");
 }
 
+TEST_F(SemanticAnalyzerTest, AbsFieldType)
+{
+    const auto prog = R"(
+        tmp = abs(Int32LE)
+    )";
+    expect_error(prog, "numeric");
+}
+
 TEST_F(SemanticAnalyzerTest, MemberAccessOnConditionalField)
 {
     const auto prog = R"(

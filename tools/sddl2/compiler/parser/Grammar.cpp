@@ -128,7 +128,7 @@ const std::map<Symbol, Op> syms_to_ops{
 
     { Symbol::ADD, Op::ADD },         { Symbol::SUB, Op::SUB },
     { Symbol::MUL, Op::MUL },         { Symbol::DIV, Op::DIV },
-    { Symbol::MOD, Op::MOD },
+    { Symbol::MOD, Op::MOD },         { Symbol::ABS, Op::ABS },
 
     { Symbol::GT, Op::GT },           { Symbol::GE, Op::GE },
     { Symbol::LT, Op::LT },           { Symbol::LE, Op::LE },
@@ -561,6 +561,36 @@ class WhenRule : public GrammarRule {
     }
 };
 
+class AbsRule : public GrammarRule {
+   public:
+    explicit AbsRule()
+            : GrammarRule(
+                      Symbol::ABS,
+                      Precedence::ACCESS,
+                      std::vector<ArgType>({ ArgType::LIST_PAREN }))
+    {
+    }
+
+   private:
+    ASTPtr do_gen(ASTPtr op, ArgsVec args) const override
+    {
+        auto& paren_list = args.at(0);
+        const auto* list = some(paren_list).as_list();
+        if (list == nullptr) {
+            throw ParseError(some(op).loc(), "abs() requires a paren list.");
+        }
+
+        const auto& inner_args = list->nodes();
+        if (inner_args.size() != 1) {
+            throw ParseError(
+                    some(op).loc(), "abs() requires exactly 1 argument.");
+        }
+
+        return std::make_shared<ASTOp>(
+                op->loc(), Op::ABS, ArgsVec{ inner_args.at(0) });
+    }
+};
+
 template <typename RuleT, typename... Args>
 void add_rule(
         std::vector<std::unique_ptr<const GrammarRule>>& rules,
@@ -586,6 +616,7 @@ const std::vector<std::unique_ptr<const GrammarRule>> grammar_rules{ []() {
     add_rule<UnaryOpRule>(r, Symbol::EXPECT, Precedence::ASSIGNMENT);
     add_rule<UnaryOpRule>(r, Symbol::SIZEOF);
     add_rule<WhenRule>(r);
+    add_rule<AbsRule>(r);
 
     add_rule<BinaryOpRule>(r, Symbol::ASSIGN, Precedence::ASSIGNMENT);
     add_rule<BinaryOpRule>(r, Symbol::ASSUME, Precedence::ASSIGNMENT);
