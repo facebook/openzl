@@ -1,0 +1,16 @@
+Record Header() = {
+    magic: UInt32LE,
+    flag: Byte,
+}
+
+Record Entry(flag) = {
+    id: UInt32LE,
+    when flag {
+        optional: UInt16LE,
+    },
+    required: UInt64LE,
+}
+
+header: Header
+expect header.magic == 0xdeadbeef
+entries: Entry(header.flag)[]

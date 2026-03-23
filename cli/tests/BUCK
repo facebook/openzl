@@ -270,7 +270,7 @@ python_library(
     name = "file_utils",
     srcs = ["file_utils.py"],
     base_module = "",
-    resources = glob(["sample_files/**/*"]),
+    resources = glob(["sample_files/**/*"]) + glob(["profile_files/**/*"]),
     typing = True,
     deps = [
     ],
@@ -310,6 +310,20 @@ custom_unittest(
         "$(location :integration_test_bin)",
         "$(location ..:zli)",
         "MLDynamicSuccessorTest.test_compression_ratios",
+    ],
+    type = "simple",
+    deps = [
+        "..:zli",
+        ":integration_test_bin",
+    ],
+)
+
+custom_unittest(
+    name = "sddl2_test",
+    command = [
+        "$(location :integration_test_bin)",
+        "$(location ..:zli)",
+        "SDDL2TrainTest.test_train_compress_decompress",
     ],
     type = "simple",
     deps = [
