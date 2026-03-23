@@ -27,6 +27,8 @@ zs_cxxlibrary(
         "../../tools:io",
         "../../tools:logger",
         "../../tools/sddl/compiler:lib",
+        "../../tools/sddl2/assembler:lib",
+        "../../tools/sddl2/compiler:lib",
         "../../tools/training/ace:automated_compressor_explorer",
     ],
 )
