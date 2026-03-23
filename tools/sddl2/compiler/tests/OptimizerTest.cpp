@@ -232,4 +232,20 @@ TEST_F(OptimizerTest, WhenConstant)
     expect_ast(prog, expected);
 }
 
+TEST_F(OptimizerTest, AbsConstFold)
+{
+    const auto prog     = R"(
+        expect abs(-7) == 7
+        expect abs(5) == 5
+        expect abs(0) == 0
+        expect abs(3 - 10) == 7
+    )";
+    const auto cg       = Codegen(SourceLocation::null());
+    const auto expected = std::vector<ASTPtr>({ cg.expect(cg.num(1)),
+                                                cg.expect(cg.num(1)),
+                                                cg.expect(cg.num(1)),
+                                                cg.expect(cg.num(1)) });
+    expect_ast(prog, expected);
+}
+
 } // namespace openzl::sddl2::tests

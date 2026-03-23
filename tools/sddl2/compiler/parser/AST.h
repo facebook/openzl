@@ -421,6 +421,11 @@ class Codegen {
         return op(Op::SIZEOF, std::move(arg));
     }
 
+    ASTPtr abs(ASTPtr arg) const
+    {
+        return op(Op::ABS, std::move(arg));
+    }
+
     ASTPtr assign(ASTPtr lhs, ASTPtr rhs) const
     {
         return op(Op::ASSIGN, std::move(lhs), std::move(rhs));
