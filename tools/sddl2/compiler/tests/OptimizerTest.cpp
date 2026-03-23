@@ -21,7 +21,7 @@ TEST_F(OptimizerTest, ArithmeticConstFold)
         c = 2 * 3 + b
         expect c == 1
     )";
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>({
             cg.expect(cg.num(1)),
     });
@@ -35,7 +35,7 @@ TEST_F(OptimizerTest, ComparisonConstFold)
         expect 5 >= 3
         expect 5 < 3
     )";
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>({ cg.expect(cg.num(1)),
                                                 cg.expect(cg.num(1)),
                                                 cg.expect(cg.num(0)) });
@@ -49,7 +49,7 @@ TEST_F(OptimizerTest, LogicalConstFold)
         expect 1 && 0
         expect 1 || 0
     )";
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>({ cg.expect(cg.num(1)),
                                                 cg.expect(cg.num(0)),
                                                 cg.expect(cg.num(1)) });
@@ -62,7 +62,7 @@ TEST_F(OptimizerTest, ConstPropagation)
         x = 5
         expect x + 1 == 6
     )";
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>({
             cg.expect(cg.num(1)),
     });
@@ -77,7 +77,7 @@ TEST_F(OptimizerTest, ChainedConstPropagation)
         c = 2 * b
         expect c == 4
     )";
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>({
             cg.expect(cg.num(1)),
     });
@@ -90,7 +90,7 @@ TEST_F(OptimizerTest, SimpleArithmeticAST)
        expect 1 + 2 == 3
     )";
 
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>({
             cg.expect(cg.num(1)),
     });
@@ -104,7 +104,7 @@ TEST_F(OptimizerTest, ComplexArithmeticExpressionAST)
         expect tmp == 5
     )";
 
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>({
             cg.expect(cg.num(1)),
     });
@@ -119,7 +119,7 @@ TEST_F(OptimizerTest, ArrayAST)
         : Byte[]
     )";
 
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>(
             { cg.consume(cg.array(cg.builtin_field(Symbol::BYTE), cg.num(3))),
               cg.consume(cg.array(cg.builtin_field(Symbol::BYTE))) });
@@ -136,7 +136,7 @@ TEST_F(OptimizerTest, RecordAST)
         : Entry
     )";
 
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>(
             { cg.assign(
                       cg.var("Entry"),
@@ -173,7 +173,7 @@ TEST_F(OptimizerTest, DeadRecordVarElimination)
         entry: Record() { id: Int32LE }
     )";
 
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>({
             cg.consume(cg.record(
                     ArgVec{},
@@ -195,7 +195,7 @@ TEST_F(OptimizerTest, RecordMemberLastReference)
         expect foo.y == 2
     )";
 
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>({
             cg.assign(
                     cg.var("Foo"),
@@ -226,7 +226,7 @@ TEST_F(OptimizerTest, WhenConstant)
             : Int16LE
         }
     )";
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>(
             { cg.consume(cg.builtin_field(Symbol::I32LE)) });
     expect_ast(prog, expected);
@@ -240,7 +240,7 @@ TEST_F(OptimizerTest, AbsConstFold)
         expect abs(0) == 0
         expect abs(3 - 10) == 7
     )";
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>({ cg.expect(cg.num(1)),
                                                 cg.expect(cg.num(1)),
                                                 cg.expect(cg.num(1)),
