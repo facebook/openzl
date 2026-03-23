@@ -97,7 +97,7 @@ TEST_F(ParserTest, ConsumeBuiltinFieldsAST)
         : BFloat16LE
         : BFloat16BE
     )";
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>({
             cg.consume(cg.builtin_field(Symbol::BYTE)),
             cg.consume(cg.builtin_field(Symbol::U8)),
@@ -133,7 +133,7 @@ TEST_F(ParserTest, UnaryNegationAST)
         expect tmp == 21
     )";
 
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>({
             cg.assign(cg.var("tmp"), cg.sub(cg.num(10), cg.neg(cg.num(11)))),
             cg.expect(cg.eq(cg.var("tmp"), cg.num(21))),
@@ -147,7 +147,7 @@ TEST_F(ParserTest, SimpleArithmeticAST)
        expect 1 + 2 == 3
     )";
 
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>({
             cg.expect(cg.eq(cg.add(cg.num(1), cg.num(2)), cg.num(3))),
     });
@@ -162,7 +162,7 @@ TEST_F(ParserTest, ArrayAST)
         : Byte[]
     )";
 
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>(
             { cg.assign(cg.var("len"), cg.add(cg.num(1), cg.num(2))),
               cg.consume(
@@ -181,7 +181,7 @@ TEST_F(ParserTest, RecordAST)
         : Entry
     )";
 
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>(
             { cg.assign(
                       cg.var("Entry"),
@@ -200,7 +200,7 @@ TEST_F(ParserTest, AnonymousRecordAST)
         : Record() {id: Int32LE, val: Int32LE}
     )";
 
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>({ cg.consume(cg.record(
             ArgVec{},
             ArgVec{ cg.assume(cg.var("id"), cg.builtin_field(Symbol::I32LE)),
@@ -217,7 +217,7 @@ TEST_F(ParserTest, ParenthesesOverridePrecedenceAST)
         expect tmp == -3
     )";
 
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>({
             cg.assign(
                     cg.var("tmp"),
@@ -234,7 +234,7 @@ TEST_F(ParserTest, NestedParenthesesAST)
         expect tmp == 21
     )";
 
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>({
             cg.assign(
                     cg.var("tmp"),
@@ -252,7 +252,7 @@ TEST_F(ParserTest, ComplexArithmeticExpressionAST)
         expect tmp == 5
     )";
 
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>({
             cg.assign(
                     cg.var("tmp"),
@@ -282,7 +282,7 @@ TEST_F(ParserTest, SimpleSaoAST)
     )";
 
     // TODO: Update this test once auto-sized arrays are supported
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>({
             cg.assign(
                     cg.var("StarEntry"),
@@ -324,7 +324,7 @@ TEST_F(ParserTest, CallAST)
         : Foo(3, 5)
     )";
 
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>({
             cg.assign(
                     cg.var("Foo"),
@@ -358,7 +358,7 @@ TEST_F(ParserTest, WhenBlockAST)
         }
     )";
 
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>({
             cg.assume(cg.var("flag"), cg.builtin_field(Symbol::U8)),
             cg.when(cg.eq(cg.var("flag"), cg.num(1)),
@@ -380,7 +380,7 @@ TEST_F(ParserTest, WhenBlockInRecordAST)
         : Data(1)
     )";
 
-    const auto cg       = Codegen(SourceLocation::null());
+    const auto cg       = Codegen();
     const auto expected = std::vector<ASTPtr>({
             cg.assign(
                     cg.var("Data"),
