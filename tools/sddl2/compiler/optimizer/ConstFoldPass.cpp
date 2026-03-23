@@ -143,6 +143,8 @@ class ConstFoldImpl {
         switch (op.op()) {
             case Op::NEG:
                 return makeNum(loc, -num_at(0));
+            case Op::ABS:
+                return makeNum(loc, num_at(0) < 0 ? -num_at(0) : num_at(0));
             case Op::LOG_NOT:
                 return makeNum(loc, !num_at(0) ? 1 : 0);
             case Op::BIT_NOT:

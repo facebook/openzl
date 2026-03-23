@@ -22,6 +22,7 @@ enum class Op {
     MUL,
     DIV,
     MOD,
+    ABS,
 
     // Comparison Operators
     EQ,
