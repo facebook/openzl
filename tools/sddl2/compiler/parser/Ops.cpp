@@ -29,6 +29,7 @@ static const std::map<Op, poly::string_view> ops_to_debug_strs{
     { Op::MUL, "MUL" },
     { Op::DIV, "DIV" },
     { Op::MOD, "MOD" },
+    { Op::ABS, "ABS" },
 
     // Bitwise Operators
     { Op::BIT_AND, "BIT_AND" },

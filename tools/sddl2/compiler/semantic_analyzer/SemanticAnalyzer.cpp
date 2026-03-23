@@ -241,6 +241,7 @@ class SemanticAnalyzerImpl {
             case Op::NEG:
             case Op::LOG_NOT:
             case Op::BIT_NOT:
+            case Op::ABS:
                 expectNumeric(analyzeNode(op.args()[0]));
                 return Type{ TypeKind::NUMERIC };
             case Op::ADD:

@@ -25,6 +25,7 @@ const std::map<Op, std::string> op_to_asm = {
     { Op::ADD, "math.add" },       { Op::SUB, "math.sub" },
     { Op::MUL, "math.mul" },       { Op::DIV, "math.div" },
     { Op::MOD, "math.mod" },       { Op::NEG, "math.neg" },
+    { Op::ABS, "math.abs" },
 
     { Op::EQ, "cmp.eq" },          { Op::NE, "cmp.ne" },
     { Op::GT, "cmp.gt" },          { Op::GE, "cmp.ge" },
@@ -120,7 +121,8 @@ class CodeGeneratorImpl {
             case Op::EXPECT:
             case Op::NEG:
             case Op::LOG_NOT:
-            case Op::BIT_NOT: {
+            case Op::BIT_NOT:
+            case Op::ABS: {
                 output += generateValue(op.args()[0]);
                 output += op_to_asm.at(op.op());
                 return output;

@@ -45,6 +45,7 @@ enum class Symbol {
     MUL,
     DIV,
     MOD,
+    ABS,
 
     // Bitwise Operators
     BIT_AND,
