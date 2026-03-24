@@ -4,8 +4,8 @@
 #define CUSTOM_PARSERS_PARQUET_LEXER_H
 
 #include "openzl/shared/portability.h"
+#include "openzl/zl_data.h"
 #include "openzl/zl_errors.h"
-#include "openzl/zl_stream.h"
 
 ZL_BEGIN_C_DECLS
 

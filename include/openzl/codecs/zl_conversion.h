@@ -6,12 +6,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "openzl/zl_data.h"
 #include "openzl/zl_graph_api.h"
 #include "openzl/zl_graphs.h"
 #include "openzl/zl_localParams.h"
 #include "openzl/zl_nodes.h"
 #include "openzl/zl_opaque_types.h"
-#include "openzl/zl_stream.h"
 
 #if defined(__cplusplus)
 extern "C" {
