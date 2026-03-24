@@ -6,10 +6,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "openzl/zl_data.h"
 #include "openzl/zl_errors.h"
 #include "openzl/zl_graph_api.h"
 #include "openzl/zl_opaque_types.h"
-#include "openzl/zl_stream.h"
 
 #if defined(__cplusplus)
 extern "C" {

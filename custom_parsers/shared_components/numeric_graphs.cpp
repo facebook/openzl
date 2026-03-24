@@ -2,7 +2,7 @@
 
 #include "custom_parsers/shared_components/numeric_graphs.h"
 
-#include "openzl/zl_stream.h"
+#include "openzl/zl_data.h"
 
 #include "openzl/zl_selector_declare_helper.h"
 
