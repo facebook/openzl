@@ -80,6 +80,18 @@ nodes::Partition generateCustomPartition(
         }
     }
 
+    // Avoid the no-op case rejected by ZL_PartitionParams_validate:
+    // numPartitions == 1 && startValue == 0
+    if (startValue == 0 && partitionSizes.size() == 1) {
+        auto total = partitionSizes[0];
+        if (total >= 2) {
+            partitionSizes[0] = total / 2;
+            partitionSizes.push_back(total - total / 2);
+        } else {
+            partitionSizes.push_back(1);
+        }
+    }
+
     return nodes::Partition{ startValue, std::move(partitionSizes) };
 }
 
