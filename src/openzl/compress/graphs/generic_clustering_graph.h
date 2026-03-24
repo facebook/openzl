@@ -5,7 +5,7 @@
 
 #include "openzl/codecs/zl_clustering.h"
 #include "openzl/shared/a1cbor.h"
-#include "openzl/zl_cgraph.h"
+#include "openzl/zl_compressor.h"
 #include "openzl/zl_data.h"
 
 #if defined(__cplusplus)
