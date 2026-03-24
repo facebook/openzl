@@ -175,8 +175,10 @@ ZL_FORCE_INLINE ZL_Report ZL_FieldLz_decompress_impl2(
     ZL_ASSERT(kShortLL % 16 == 0 || kShortLLCode == kMaxLitLengthCode - 1);
     ZL_ASSERT(kShortML % 16 == 0 || kShortMLCode == kMaxMatchLengthCode - 1);
 
-    uint8_t const* const outLimit   = outEnd - kUnroll * (kTokenLL + kTokenML);
-    uint8_t const* const litsLimit  = litsEnd - kUnroll * kTokenLL;
+    uint8_t const* const outLimit =
+            outEnd - kUnroll * (kTokenLL + kTokenML) - ZS_WILDCOPY_OVERLENGTH;
+    uint8_t const* const litsLimit =
+            litsEnd - kUnroll * kTokenLL - ZS_WILDCOPY_OVERLENGTH;
     uint16_t const* const toksLimit = toksEnd - kUnroll + 1;
     uint32_t const* const offsLimit = offsEnd - kUnroll + 1;
 
