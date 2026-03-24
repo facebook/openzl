@@ -20,6 +20,16 @@ class SelectorState {
    public:
     explicit SelectorState(GraphState& state) : state_(&state) {}
 
+    ZL_Graph* get()
+    {
+        return state_->get();
+    }
+
+    const ZL_Graph* get() const
+    {
+        return state_->get();
+    }
+
     poly::span<const GraphID> customGraphs() const
     {
         return state_->customGraphs();
