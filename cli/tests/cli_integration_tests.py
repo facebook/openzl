@@ -17,6 +17,7 @@ from command_utils import (
     CompressorInfo,
     CompressorType,
     execute_compress,
+    execute_decompress,
     execute_train,
 )
 from file_utils import input_dir_path
@@ -492,6 +493,102 @@ class BenchmarkCsvCompressionTest(_BenchmarkBaseTest):
 
     def test_benchmark(self):
         self.benchmark()
+
+
+class TraceTest(_CompressDecompressBaseTest):
+    """
+    Test case for compression and decompression with tracing enabled.
+
+    This test verifies that the --trace and --trace-streams-dir flags work
+    correctly during compress and decompress without crashing, and that
+    trace output files are actually created.
+    """
+
+    @property
+    def input_dir_name(self) -> str:
+        return "trace"
+
+    @property
+    def compressor_profile_name(self) -> str:
+        return "csv"
+
+    def test_compress_decompress_with_trace(self):
+        """
+        Test that compress and decompress with --trace flags produce trace files
+        and roundtrip correctly.
+
+        This test:
+        1. Compresses a CSV sample with --trace and --trace-streams-dir
+        2. Asserts the compress trace CBOR file exists and is non-empty
+        3. Decompresses with --trace
+        4. Asserts the decompress trace CBOR file exists and is non-empty
+        5. Verifies the decompressed file matches the original (roundtrip check)
+        """
+        sample = self.input_samples[0]
+
+        compress_trace_path = os.path.join(self.output_dir_path, "compress_trace.cbor")
+        decompress_trace_path = os.path.join(
+            self.output_dir_path, "decompress_trace.cbor"
+        )
+        streams_dir = os.path.join(self.output_dir_path, "streams")
+        os.makedirs(streams_dir, exist_ok=True)
+
+        execute_compress(
+            file_to_compress_path=sample.orig_file_path,
+            compressor_info=self.compressor_info,
+            compressed_file_path=sample.compressed_file_path,
+            extra_args=f"--trace {compress_trace_path} --trace-streams-dir {streams_dir}",
+        )
+
+        self.assertTrue(
+            os.path.exists(sample.compressed_file_path),
+            "Compressed file was not created",
+        )
+        self.assertTrue(
+            os.path.exists(compress_trace_path),
+            "Compress trace file was not created",
+        )
+        self.assertGreater(
+            os.path.getsize(compress_trace_path),
+            0,
+            "Compress trace file is empty",
+        )
+        self.assertGreater(
+            len(os.listdir(streams_dir)),
+            0,
+            "Compress streams dir is empty",
+        )
+
+        decompress_streams_dir = os.path.join(
+            self.output_dir_path, "decompress_streams"
+        )
+        os.makedirs(decompress_streams_dir, exist_ok=True)
+
+        execute_decompress(
+            compressed_file_path=sample.compressed_file_path,
+            decompressed_file_path=sample.decompressed_file_path,
+            extra_args=f"--trace {decompress_trace_path} --trace-streams-dir {decompress_streams_dir}",
+        )
+
+        self.assertTrue(
+            os.path.exists(decompress_trace_path),
+            "Decompress trace file was not created",
+        )
+        self.assertGreater(
+            os.path.getsize(decompress_trace_path),
+            0,
+            "Decompress trace file is empty",
+        )
+        self.assertGreater(
+            len(os.listdir(decompress_streams_dir)),
+            0,
+            "Decompress streams dir is empty",
+        )
+
+        self.assertTrue(
+            sample.original_matches_decompressed,
+            f"Decompressed file does not match original: {sample.orig_file_path}",
+        )
 
 
 class StrictModeTest(_CompressDecompressBaseTest):
