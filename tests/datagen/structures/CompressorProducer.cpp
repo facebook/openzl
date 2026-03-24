@@ -4,7 +4,7 @@
 
 #include <set>
 
-#include "openzl/zl_dyngraph.h"
+#include "openzl/zl_graph_api.h"
 #include "openzl/zl_graphs.h"
 #include "openzl/zl_reflection.h"
 #include "openzl/zl_selector.h"
