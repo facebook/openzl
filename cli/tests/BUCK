@@ -277,6 +277,20 @@ python_library(
 )
 
 custom_unittest(
+    name = "trace_test",
+    command = [
+        "$(location :integration_test_bin)",
+        "$(location ..:zli)",
+        "TraceTest.test_compress_decompress_with_trace",
+    ],
+    type = "simple",
+    deps = [
+        "..:zli",
+        ":integration_test_bin",
+    ],
+)
+
+custom_unittest(
     name = "ml_selector_test",
     command = [
         "$(location :integration_test_bin)",

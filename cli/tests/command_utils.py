@@ -145,6 +145,7 @@ def execute_compress(
 def execute_decompress(
     compressed_file_path: str,
     decompressed_file_path: str,
+    extra_args: str | None = None,
 ) -> None:
     """
     Execute the decompress command to decompress a file.
@@ -159,13 +160,12 @@ def execute_decompress(
     Args:
         compressed_file_path: Path to the compressed file
         decompressed_file_path: Path where the decompressed file will be saved
+        extra_args: Additional arguments to pass to the decompress command (optional)
 
     Raises:
         ValueError: If the decompression fails or the decompressed file is not created
     """
-    decompress_args = (
-        f"decompress {str(compressed_file_path)} -o {str(decompressed_file_path)}"
-    )
+    decompress_args = f"decompress {str(compressed_file_path)} -o {str(decompressed_file_path)} {extra_args or ''}"
 
     if execute_command(decompress_args) != 0:
         raise ValueError("Executing decompress command failed")

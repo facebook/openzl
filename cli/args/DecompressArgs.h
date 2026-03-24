@@ -4,6 +4,8 @@
 
 #include <filesystem>
 #include <memory>
+#include <optional>
+#include <string>
 
 #include "cli/args/ArgsUtils.h"
 #include "cli/args/GlobalArgs.h"
@@ -26,6 +28,18 @@ class DecompressArgs : GlobalArgs {
         parser.addCommandFlag(cmd(), kOutput, 'o', true, "Output file path.");
         parser.addCommandFlag(
                 cmd(), kForce, 'f', false, "Overwrite output file.");
+        parser.addCommandFlag(
+                cmd(),
+                kTrace,
+                0,
+                true,
+                "Record a trace of the decompression to be visualized with streamdump. Writes a CBOR file to the provided path.");
+        parser.addCommandFlag(
+                cmd(),
+                kTraceStreamsDir,
+                0,
+                true,
+                "Directory to write trace streamdump to.");
     }
 
     explicit DecompressArgs(const arg::ParsedArgs& parsed) : GlobalArgs(parsed)
@@ -48,6 +62,13 @@ class DecompressArgs : GlobalArgs {
         input  = std::make_unique<tools::io::InputFile>(std::move(inputPath));
         output = std::make_unique<tools::io::OutputFile>(
                 std::move(outputPath).value());
+
+        if (parsed.cmdHasFlag(cmd(), kTrace)) {
+            auto path   = parsed.cmdFlag(cmd(), kTrace).value();
+            traceOutput = std::make_shared<tools::io::OutputFile>(path);
+        }
+
+        traceStreamsDir = parsed.cmdFlag(cmd(), kTraceStreamsDir);
     }
 
     static Cmd cmd()
@@ -58,10 +79,15 @@ class DecompressArgs : GlobalArgs {
     std::unique_ptr<tools::io::Input> input;
     std::unique_ptr<tools::io::Output> output;
 
+    std::shared_ptr<tools::io::Output> traceOutput;
+    std::optional<std::string> traceStreamsDir;
+
    private:
-    inline static const std::string kInput  = "input";
-    inline static const std::string kOutput = "output";
-    inline static const std::string kForce  = "force";
+    inline static const std::string kInput           = "input";
+    inline static const std::string kOutput          = "output";
+    inline static const std::string kForce           = "force";
+    inline static const std::string kTrace           = "trace";
+    inline static const std::string kTraceStreamsDir = "trace-streams-dir";
 };
 
 } // namespace openzl::cli
