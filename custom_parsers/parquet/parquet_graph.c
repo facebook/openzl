@@ -4,7 +4,6 @@
 
 #include "custom_parsers/parquet/parquet_lexer.h"
 #include "openzl/compress/graphs/generic_clustering_graph.h"
-#include "openzl/zl_dyngraph.h"
 #include "openzl/zl_errors.h"
 #include "openzl/zl_graph_api.h"
 #include "openzl/zl_segmenter.h"
