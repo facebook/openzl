@@ -16,6 +16,8 @@
 #include "openzl/shared/xxhash.h"
 
 #include "benchmark/unitBench/bench_entry.h" // Bench_Entry
+#include "openzl/codecs/zl_delta.h"
+#include "openzl/codecs/zl_generic.h"
 #include "openzl/compress/private_nodes.h"
 #include "openzl/zl_data.h"
 #include "openzl/zl_public_nodes.h"
@@ -171,6 +173,7 @@ static size_t genericGraphCompression(
 #include "benchmark/unitBench/scenarios/sao_graph.h" // sao_graph_v1
 #include "benchmark/unitBench/scenarios/sao_sddl1.h" // sao_graph_sddl1
 #include "benchmark/unitBench/scenarios/sao_sddl2.h" // sao_graph_sddl2
+#include "benchmark/unitBench/scenarios/split_byrange_graph.h" // splitByRange*_graph
 
 static ZL_GraphID zstdGraph(ZL_Compressor* cgraph)
 {
@@ -268,6 +271,22 @@ static ZL_GraphID tokenSort16bitGraph(ZL_Compressor* cgraph)
                     true,
                     ZL_GRAPH_STORE,
                     ZL_GRAPH_STORE));
+}
+
+static inline ZL_GraphID tokenSort64bitGraph(ZL_Compressor* cgraph)
+{
+    ZL_GraphID alphabetGraph = ZL_Compressor_registerStaticGraph_fromNode1o(
+            cgraph, ZL_NODE_DELTA_INT, ZL_GRAPH_NUMERIC);
+
+    return ZL_Compressor_registerStaticGraph_fromNode1o(
+            cgraph,
+            ZL_NODE_INTERPRET_AS_LE64,
+            ZL_Compressor_registerTokenizeGraph(
+                    cgraph,
+                    ZL_Type_numeric,
+                    true,
+                    alphabetGraph,
+                    ZL_GRAPH_NUMERIC));
 }
 
 // =============================================================
@@ -470,6 +489,15 @@ Bench_Entry const scenarioList[] = {
     { "saoIngestCompiled", saoIngestCompiled_wrapper },
     { "splitBy4", splitBy4_wrapper, .prep = splitBy4_preparation },
     { "splitBy8", splitBy8_wrapper, .prep = splitBy8_preparation },
+    { "splitByRange8", .graphF = splitByRange8_graph },
+    { "splitByRange16", .graphF = splitByRange16_graph },
+    { "splitByRange32", .graphF = splitByRange32_graph },
+    { "splitByRange32_zstd", .graphF = splitByRange32_zstd_graph },
+    { "splitByRange64", .graphF = splitByRange64_graph },
+    { "splitByRange64_concatAlpha_tokenSort", .graphF = splitByRange64_concatAlpha_tokenSort_graph },
+    { "splitByRange64_tokenSort", .graphF = splitByRange64_tokenSort_graph },
+    { "splitByRange64_zstd", .graphF = splitByRange64_zstd_graph },
+    { "tokenSort64_splitIndices", .graphF = tokenSort64_splitIndices_graph },
     { "tokenize2", .graphF=tokenize2Graph },
     { "tokenize2to1Encode", tokenize2to1Encode_wrapper },
     { "tokenize2to1Decode", tokenize2to1Decode_wrapper, .display = tokenize2to1Decode_displayResult },
@@ -479,6 +507,7 @@ Bench_Entry const scenarioList[] = {
     { "tokenize32_delta_fieldlz", .graphF=tokenize32_delta_fieldlz },
     { "tokenize64_delta_fieldlz", .graphF=tokenize64_delta_fieldlz },
     { "tokenSort16", .graphF=tokenSort16bitGraph },
+    { "tokenSort64", .graphF=tokenSort64bitGraph },
     { "transposeEncode16", transposeEncode16_wrapper, .outSize = out_identical },
     { "transposeDecode16", transposeDecode16_wrapper, .outSize = out_identical },
     { "transposeEncode32", transposeEncode32_wrapper, .outSize = out_identical },
