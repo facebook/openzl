@@ -61,6 +61,7 @@ nav:
         - Entropy: api/c/codecs/entropy.md
         - Interleave: api/c/codecs/interleave.md
         - Parse Int: api/c/codecs/parse-int.md
+        - Split By Range: api/c/codecs/split-byrange.md
       - Data: api/c/data.md
       - Graphs:
         - Simple Data Description Language: api/c/graphs/sddl.md
