@@ -46,6 +46,12 @@ void DecompressChunkTrace::finalizeTrace(ZL_Report result)
         ChunkTraceCore::finalizeUnsourcedStreams(
                 "zl.regen", streamInfo_, codecInfo_, currCodecNum_, chunkId_);
     }
+
+    // Fill cSize and share for all streams
+    for (auto& [streamID, stream] : streamInfo_) {
+        ChunkTraceCore::fillCSize(
+                streamID, streamInfo_, codecInfo_, totalCompressedSize_);
+    }
 }
 
 ZL_Report DecompressChunkTrace::serializeToCBOR(
@@ -91,6 +97,8 @@ void DecompressChunkTrace::on_codecDecode_start(
                     codecInfo_,
                     currCodecNum_,
                     chunkId_);
+            // NB: this does not account for the various non-codec header costs
+            totalCompressedSize_ += streamInfo_[streamID].contentSize;
         }
     }
 

@@ -93,6 +93,50 @@ void ChunkTraceCore::finalizeUnconsumedStreams(
     }
 }
 
+size_t ChunkTraceCore::fillCSize(
+        const StreamID& streamID,
+        std::map<ZL_DataID, Stream, ZL_DataIDCustomComparator>& streamInfo,
+        const std::vector<Codec>& codecInfo,
+        size_t totalSize)
+{
+    Stream& stream = streamInfo.at(streamID);
+
+    // Already computed
+    if (stream.cSize != 0) {
+        return stream.cSize;
+    }
+
+    // Base case: stream has no successors
+    if (stream.successors.empty()) {
+        stream.cSize = stream.contentSize;
+        stream.share = totalSize > 0 ? static_cast<double>(stream.cSize)
+                        / static_cast<double>(totalSize) * 100
+                                     : 0;
+        return stream.cSize;
+    }
+
+    // Start with the header size from the consumer codec
+    if (stream.consumerCodec.has_value()) {
+        stream.cSize = codecInfo[stream.consumerCodec.value()].cHeaderSize;
+    }
+
+    // Recursively sum the cSize of successor streams
+    for (const auto& successor : stream.successors) {
+        stream.cSize += fillCSize(successor, streamInfo, codecInfo, totalSize);
+    }
+
+    // If the consumer codec has multiple inputs, assume each input
+    // provides equal contribution
+    if (stream.consumerCodec.has_value()) {
+        stream.cSize /= codecInfo[stream.consumerCodec.value()].inEdges.size();
+    }
+
+    stream.share = totalSize > 0 ? static_cast<double>(stream.cSize)
+                    / static_cast<double>(totalSize) * 100
+                                 : 0;
+    return stream.cSize;
+}
+
 ZL_Report ChunkTraceCore::serializeChunkDataToCBOR(
         A1C_Arena* a1c_arena,
         A1C_ArrayBuilder* chunkArrayBuilder,
