@@ -4,6 +4,7 @@
 
 #include <map>
 #include <string>
+#include <variant>
 #include <vector>
 
 #include "openzl/cpp/experimental/trace/Codec.hpp"
@@ -11,6 +12,11 @@
 #include "openzl/cpp/experimental/trace/StreamVisualizer.hpp"
 
 namespace openzl::visualizer {
+
+using StreamPreview = std::variant<
+        std::vector<std::string>,
+        std::vector<int64_t>,
+        std::vector<uint8_t>>;
 
 struct StreamdumpEntry {
     size_t streamId;
@@ -79,6 +85,17 @@ class ChunkTraceCore {
             std::vector<Codec>& codecInfo,
             size_t& currCodecNum,
             size_t chunkId);
+
+    /**
+     * Builds a StreamPreview from raw stream data, dispatching by ZL_Type.
+     * stringLens is only used for ZL_Type_string streams.
+     */
+    static StreamPreview getStreamPreview(
+            const void* data,
+            ZL_Type type,
+            size_t eltWidth,
+            size_t numElts,
+            const uint32_t* stringLens = nullptr);
 
     /**
      * Recursively computes the compressed size (cSize) of a stream by
