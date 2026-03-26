@@ -49,10 +49,18 @@ void DecompressTracer::on_ZL_DCtx_decompressMultiTBuffer_start(
 
 void DecompressTracer::on_ZL_DCtx_decompressMultiTBuffer_end(
         ZL_DCtx* /* dctx */,
-        ZL_Report result)
+        ZL_Report /* result */)
 {
-    // Finalize the main chunk (or the last active chunk)
-    chunks_[MAIN_CHUNK_IDX].finalizeTrace(result);
+    // Create a dummy "main" chunk, if necessary
+    if (chunks_.size() > 1) {
+        auto dummyChunk =
+                DecompressChunkTrace::makeSegmenterChunk(chunks_.size());
+        std::vector<DecompressChunkTrace> newChunks = { std::move(dummyChunk) };
+        for (auto& chunk : chunks_) {
+            newChunks.push_back(std::move(chunk));
+        }
+        this->chunks_ = std::move(newChunks);
+    }
 
     // Serialize the trace to CBOR
     Arena* arena        = ALLOC_HeapArena_create();
@@ -83,17 +91,13 @@ void DecompressTracer::on_decompressChunk_start(
         chunks_.emplace_back(chunkIndex);
         currChunk_ = &chunks_.back();
     }
-    // For chunkIndex == 0, we reuse the main chunk created in
-    // decompressMultiTBuffer_start
 }
 
 void DecompressTracer::on_decompressChunk_end(
         ZL_DCtx* /* dctx */,
         ZL_Report result)
 {
-    if (chunks_.size() > 1 && currChunk_ != &chunks_[MAIN_CHUNK_IDX]) {
-        currChunk_->finalizeTrace(result);
-    }
+    currChunk_->finalizeTrace(result);
     // The main chunk is finalized in decompressMultiTBuffer_end
 }
 

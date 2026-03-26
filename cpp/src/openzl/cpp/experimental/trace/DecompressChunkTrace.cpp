@@ -33,6 +33,19 @@ emptyPreview(ZL_Type type)
 }
 } // namespace
 
+DecompressChunkTrace DecompressChunkTrace::makeSegmenterChunk(size_t chunkId)
+{
+    auto ret = DecompressChunkTrace(chunkId);
+    Codec newCodec{ .name  = "segmenter", // TODO(segm): expose segmenter name
+                    .cType = false,
+                    .cID   = 0, // eh?
+                    .cHeaderSize = 0,
+                    .chunkId     = chunkId };
+    newCodec.codecNum = 0;
+    ret.codecInfo_.push_back(newCodec);
+    return ret;
+}
+
 void DecompressChunkTrace::finalizeTrace(ZL_Report result)
 {
     if (ZL_isError(result)) {
@@ -44,7 +57,7 @@ void DecompressChunkTrace::finalizeTrace(ZL_Report result)
                 chunkId_);
     } else {
         ChunkTraceCore::finalizeUnsourcedStreams(
-                "zl.regen", streamInfo_, codecInfo_, currCodecNum_, chunkId_);
+                "zl.#regen", streamInfo_, codecInfo_, currCodecNum_, chunkId_);
     }
 
     // Fill cSize and share for all streams
