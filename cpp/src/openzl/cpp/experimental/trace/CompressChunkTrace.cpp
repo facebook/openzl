@@ -19,126 +19,6 @@
 
 namespace openzl::visualizer {
 
-using StreamPreview = std::variant<
-        std::vector<std::string>,
-        std::vector<int64_t>,
-        std::vector<uint8_t>>;
-
-static std::vector<int64_t>
-getNumericData(const void* data, size_t eltWidth, size_t numElts)
-{
-    if (data == nullptr || numElts == 0) {
-        return {};
-    }
-
-    std::vector<int64_t> numericData;
-    numericData.reserve(numElts);
-
-    const auto* bytes = reinterpret_cast<const uint8_t*>(data);
-    for (size_t i = 0; i < numElts; ++i) {
-        int64_t val = 0;
-        switch (eltWidth) {
-            case 1:
-                val = reinterpret_cast<const int8_t*>(bytes)[i];
-                break;
-            case 2:
-                val = reinterpret_cast<const int16_t*>(bytes)[i];
-                break;
-            case 4:
-                val = reinterpret_cast<const int32_t*>(bytes)[i];
-                break;
-            case 8:
-                val = reinterpret_cast<const int64_t*>(bytes)[i];
-                break;
-            default:
-                throw std::runtime_error("Unexpected numeric eltWidth!");
-        }
-        numericData.push_back(val);
-    }
-
-    return numericData;
-}
-
-static std::vector<std::string>
-getStringData(const void* data, size_t numStrings, const uint32_t* stringLens)
-{
-    if (data == nullptr || stringLens == nullptr || numStrings == 0) {
-        return {};
-    }
-
-    std::vector<std::string> strings;
-    strings.reserve(numStrings);
-
-    const auto* bytes = reinterpret_cast<const char*>(data);
-    size_t offset     = 0;
-
-    for (size_t i = 0; i < numStrings; ++i) {
-        uint32_t len          = stringLens[i];
-        std::string rawStr    = std::string(bytes + offset, len);
-        std::string parsedStr = "";
-        if (rawStr.find('\n') != std::string::npos
-            || rawStr.find('\t') != std::string::npos
-            || rawStr.find('\r') != std::string::npos) {
-            for (char c : rawStr) {
-                switch (c) {
-                    case '\n':
-                        parsedStr += "\\n";
-                        break;
-                    case '\t':
-                        parsedStr += "\\t";
-                        break;
-                    case '\r':
-                        parsedStr += "\\r";
-                        break;
-                    default:
-                        parsedStr += c;
-                        break;
-                }
-            }
-        } else {
-            parsedStr = std::move(rawStr);
-        }
-
-        strings.push_back(parsedStr);
-        offset += len;
-    }
-
-    return strings;
-}
-
-static std::vector<uint8_t> getSerialData(const void* data, size_t numBytes)
-{
-    if (data == nullptr || numBytes == 0) {
-        return {};
-    }
-
-    std::vector<uint8_t> bytes;
-    const auto* rawBytes = reinterpret_cast<const uint8_t*>(data);
-    bytes.assign(rawBytes, rawBytes + numBytes);
-
-    return bytes;
-}
-
-static StreamPreview getStreamPreviewData(
-        const void* data,
-        ZL_Type type,
-        size_t eltWidth,
-        size_t numElts,
-        const uint32_t* stringLens = nullptr)
-{
-    switch (type) {
-        case ZL_Type_numeric:
-            return getNumericData(data, eltWidth, numElts);
-        case ZL_Type_string:
-            return getStringData(data, numElts, stringLens);
-        case ZL_Type_struct:
-        case ZL_Type_serial:
-            return getSerialData(data, numElts);
-        default:
-            throw std::runtime_error("Unsupported stream preview type!");
-    }
-}
-
 void CompressChunkTrace::recordStartStreams(
         const ZL_Input* inStreams[],
         size_t numInStreams)
@@ -151,7 +31,7 @@ void CompressChunkTrace::recordStartStreams(
             size_t numElts     = ZL_Input_numElts(inStreams[i]);
             size_t contentSize = ZL_Input_contentSize(inStreams[i]);
 
-            StreamPreview preview = getStreamPreviewData(
+            StreamPreview preview = ChunkTraceCore::getStreamPreview(
                     ZL_Input_ptr(inStreams[i]),
                     type,
                     eltWidth,
@@ -454,7 +334,7 @@ void CompressChunkTrace::on_codecEncode_end(
         size_t contentSize =
                 openzl::unwrap(ZL_Output_contentSize(createdStream));
 
-        StreamPreview preview = getStreamPreviewData(
+        StreamPreview preview = ChunkTraceCore::getStreamPreview(
                 ZL_Output_constPtr(createdStream),
                 type,
                 eltWidth,
