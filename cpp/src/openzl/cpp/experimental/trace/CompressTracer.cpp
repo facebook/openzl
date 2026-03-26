@@ -5,6 +5,7 @@
 #include "openzl/common/a1cbor_helpers.h"
 #include "openzl/common/logging.h"
 #include "openzl/cpp/experimental/trace/CborHelpers.hpp"
+#include "openzl/zl_compress.h"
 #include "openzl/zl_data.h"
 #include "openzl/zl_errors.h"
 #include "openzl/zl_opaque_types.h"
@@ -172,12 +173,17 @@ void CompressTracer::on_ZL_CCtx_compressMultiTypedRef_start(
 }
 
 void CompressTracer::on_ZL_CCtx_compressMultiTypedRef_end(
-        ZL_CCtx const* const,
+        ZL_CCtx const* const cctx,
         ZL_Report const result)
 {
     // If the compression is successful, we can assume all the streams
     // without targets go to STORE
     graphRuns[MAIN_TRACE_IDX].finalizeTrace(result);
+
+    // Resolve error strings while the CCtx is still alive
+    for (auto& graphRun : graphRuns) {
+        graphRun.resolveErrorStrings(cctx);
+    }
 
     // convert compression data into a1c_items to write to a CBOR file
     Arena* arena        = ALLOC_HeapArena_create();
@@ -241,8 +247,7 @@ ZL_Report CompressTracer::serializeStreamdumpToCbor(
 
     // Add additional chunks from graphRuns
     for (auto& graphRun : graphRuns) {
-        ZL_RET_R_IF_ERR(
-                graphRun.serializeToCBOR(a1c_arena, &chunksBuilder, cctx_));
+        ZL_RET_R_IF_ERR(graphRun.serializeToCBOR(a1c_arena, &chunksBuilder));
     }
 
     // encode + write data to a buffer

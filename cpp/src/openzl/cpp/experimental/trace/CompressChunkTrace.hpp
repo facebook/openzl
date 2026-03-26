@@ -38,10 +38,15 @@ class CompressChunkTrace {
      */
     void finalizeTrace(ZL_Report const result);
 
+    /**
+     * Resolve error context strings for all codecs and graphs.
+     * Must be called while the CCtx is still alive.
+     */
+    void resolveErrorStrings(const ZL_CCtx* cctx);
+
     ZL_Report serializeToCBOR(
             A1C_Arena* a1c_arena,
-            A1C_ArrayBuilder* chunkArrayBuilder,
-            const ZL_CCtx* cctx);
+            A1C_ArrayBuilder* chunkArrayBuilder);
 
     size_t getCompressedSize();
 

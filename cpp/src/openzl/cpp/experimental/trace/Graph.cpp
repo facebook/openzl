@@ -9,10 +9,7 @@
 
 namespace openzl::visualizer {
 
-const ZL_Report Graph::serializeGraph(
-        A1C_Arena* a1c_arena,
-        A1C_Item* arrayItem,
-        const ZL_CCtx* const cctx)
+const ZL_Report Graph::serializeGraph(A1C_Arena* a1c_arena, A1C_Item* arrayItem)
 {
     A1C_MapBuilder builder = A1C_Item_map_builder(arrayItem, 6, a1c_arena);
     ZL_RET_R_IF_NULL(allocation, builder.map);
@@ -20,11 +17,9 @@ const ZL_Report Graph::serializeGraph(
     ZL_RET_R_IF_ERR(addIntValue(builder, "chunkId", this->chunkId));
     ZL_RET_R_IF_ERR(addIntValue(builder, "gType", gType));
     ZL_RET_R_IF_ERR(addStringValue(builder, "gName", gName));
-    if (ZL_isError(gFailure)) {
+    if (!gFailureString.empty()) {
         ZL_RET_R_IF_ERR(addStringValue(
-                builder,
-                "gFailureString",
-                ZL_CCtx_getErrorContextString(cctx, gFailure)));
+                builder, "gFailureString", gFailureString.c_str()));
     }
 
     // local params
