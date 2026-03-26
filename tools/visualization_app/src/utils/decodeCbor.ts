@@ -90,6 +90,7 @@ function marshallV1(obj: object): SerializedStreamdumpV1 {
     libraryVersion: obj.libraryVersion,
     frameVersion: obj.frameVersion,
     traceVersion: 1,
+    operationType: 'operationType' in obj && typeof obj.operationType === 'number' ? obj.operationType : 0,
     chunks: obj.chunks,
   };
 }

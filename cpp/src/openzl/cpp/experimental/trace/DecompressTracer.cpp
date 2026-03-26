@@ -131,13 +131,15 @@ ZL_Report DecompressTracer::serializeStreamdumpToCbor(
     A1C_Item* root = A1C_Item_root(a1c_arena);
     ZL_RET_R_IF_NULL(allocation, root);
 
-    // 4 top-level fields: libraryVersion, frameVersion, traceVersion, chunks
-    A1C_MapBuilder rootBuilder = A1C_Item_map_builder(root, 4, a1c_arena);
+    // 5 top-level fields: libraryVersion, frameVersion, traceVersion,
+    // operationType, chunks
+    A1C_MapBuilder rootBuilder = A1C_Item_map_builder(root, 5, a1c_arena);
     ZL_RET_R_IF_NULL(allocation, rootBuilder.map);
 
     ZL_RET_R_IF_ERR(addIntValue(rootBuilder, "libraryVersion", libraryVersion));
     ZL_RET_R_IF_ERR(addIntValue(rootBuilder, "frameVersion", frameVersion_));
     ZL_RET_R_IF_ERR(addIntValue(rootBuilder, "traceVersion", traceVersion));
+    ZL_RET_R_IF_ERR(addIntValue(rootBuilder, "operationType", 1));
 
     // Wrap chunks in a "chunks" array
     A1C_MAP_TRY_ADD_R(chunksPair, rootBuilder);

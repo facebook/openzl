@@ -219,13 +219,14 @@ ZL_Report CompressTracer::serializeStreamdumpToCbor(
      * 3. graph info, specifically, which codecs and edges are within a
      * graph
      */
-    A1C_MapBuilder rootBuilder = A1C_Item_map_builder(root, 4, a1c_arena);
+    A1C_MapBuilder rootBuilder = A1C_Item_map_builder(root, 5, a1c_arena);
 
     ZL_RET_R_IF_NULL(allocation, rootBuilder.map);
 
     ZL_RET_R_IF_ERR(addIntValue(rootBuilder, "libraryVersion", libraryVersion));
     ZL_RET_R_IF_ERR(addIntValue(rootBuilder, "frameVersion", frameVersion));
     ZL_RET_R_IF_ERR(addIntValue(rootBuilder, "traceVersion", traceVersion));
+    ZL_RET_R_IF_ERR(addIntValue(rootBuilder, "operationType", 0));
 
     // Wrap streams, codecs, and graphs in a "chunks" array
     // Non-segmented runs will have 1 chunk in idx 0.

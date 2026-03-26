@@ -9,6 +9,7 @@ export interface SerializedStreamdumpV1 {
   libraryVersion: number;
   frameVersion: number;
   traceVersion: number;
+  operationType?: number; // 0 = compress, 1 = decompress
   chunks: SerializedChunk[];
 }
 
