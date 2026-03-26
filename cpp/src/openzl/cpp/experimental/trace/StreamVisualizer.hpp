@@ -27,6 +27,7 @@ struct Stream {
     size_t chunkId{};
     std::vector<StreamID> successors;
     std::optional<CodecID> consumerCodec;
+    std::optional<CodecID> producerCodec;
     std::variant<
             std::vector<std::string>,
             std::vector<int64_t>,

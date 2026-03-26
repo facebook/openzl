@@ -139,11 +139,6 @@ static StreamPreview getStreamPreviewData(
     }
 }
 
-void CompressChunkTrace::initTrace()
-{
-    ChunkTraceCore::initTrace(codecInfo_, currCodecNum_, chunkId_);
-}
-
 void CompressChunkTrace::recordStartStreams(
         const ZL_Input* inStreams[],
         size_t numInStreams)
@@ -173,7 +168,13 @@ void CompressChunkTrace::recordStartStreams(
                 .chunkId       = chunkId_,
                 .streamPreview = std::move(preview),
             };
-            codecInfo_[0].outEdges.push_back(streamID);
+            ChunkTraceCore::createSourceForStream(
+                    "zl.#start",
+                    streamID,
+                    streamInfo_[streamID],
+                    codecInfo_,
+                    currCodecNum_,
+                    chunkId_);
         }
     }
 }
@@ -511,6 +512,7 @@ void CompressChunkTrace::on_codecEncode_end(
             .streamPreview = std::move(preview),
         };
 
+        streamInfo_[streamID].producerCodec = currCodecNum_;
         codecInfo_[currCodecNum_].outEdges.push_back(streamID);
         streamdump(outStreams[i]);
     }
@@ -687,7 +689,6 @@ void CompressChunkTrace::on_ZL_Segmenter_processChunk_start(
         ZL_GraphID /*startingGraphID*/,
         const ZL_RuntimeGraphParameters* /*rGraphParams*/)
 {
-    initTrace();
 }
 
 void CompressChunkTrace::on_ZL_Segmenter_processChunk_end(

@@ -169,7 +169,6 @@ void CompressTracer::on_ZL_CCtx_compressMultiTypedRef_start(
     // The "main" trace is located at idx 0 of graphRuns
     graphRuns.emplace_back(MAIN_TRACE_IDX);
     currChunk = &graphRuns[MAIN_TRACE_IDX];
-    currChunk->initTrace();
 }
 
 void CompressTracer::on_ZL_CCtx_compressMultiTypedRef_end(
