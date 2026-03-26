@@ -55,7 +55,8 @@ class DecompressChunkTrace {
     void streamdump(const ZL_Data* data);
 
     const size_t chunkId_;
-    size_t currCodecNum_ = 0;
+    size_t totalCompressedSize_ = 0;
+    size_t currCodecNum_        = 0;
     std::map<ZL_DataID, Stream, ZL_DataIDCustomComparator> streamInfo_;
     std::map<size_t, std::pair<std::string, std::string>> streamdump_;
     std::vector<Codec> codecInfo_;

@@ -113,7 +113,6 @@ class CompressChunkTrace {
    private:
     void printStreamMetadata();
     void printCodecMetadata();
-    size_t fillCSize(std::vector<size_t>& cSize, const ZL_DataID streamID);
 
     const size_t chunkId_;    // chunk ID for this specific chunk trace
     size_t compressedSize_{}; // compressed size for this specific chunk

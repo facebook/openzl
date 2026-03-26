@@ -81,6 +81,17 @@ class ChunkTraceCore {
             size_t chunkId);
 
     /**
+     * Recursively computes the compressed size (cSize) of a stream by
+     * summing the cSize of its successors. Uses Stream::cSize directly
+     * for memoization (0 means not yet computed).
+     */
+    static size_t fillCSize(
+            const StreamID& streamID,
+            std::map<ZL_DataID, Stream, ZL_DataIDCustomComparator>& streamInfo,
+            const std::vector<Codec>& codecInfo,
+            size_t totalSize);
+
+    /**
      * Serializes chunkId, streams, codecs, and optionally graphs into
      * a CBOR chunk item appended to chunkArrayBuilder.
      * cctx may be nullptr (decompress side).
