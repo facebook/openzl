@@ -20,7 +20,7 @@ from command_utils import (
     execute_decompress,
     execute_train,
 )
-from file_utils import input_dir_path
+from file_utils import input_dir_path, profile_dir_path
 
 
 class SerialTest(_CompressDecompressBaseTest):
@@ -661,6 +661,38 @@ class StrictModeTest(_CompressDecompressBaseTest):
         print(
             f"Verified that strict mode fails: {failed_count} file(s) failed as expected"
         )
+
+
+class SDDL2TrainTest(_TrainBaseTest):
+    """
+    Test case for SDDL2 compression, decompression, and training using the clustering trainer.
+
+    This test verifies that a simple format described by SDDL2 can be trained,
+    compressed and decompressed correctly. The format includes a header
+    with an array of entries with a mix of fixed and optional fields.
+    """
+
+    @property
+    def input_dir_name(self) -> str:
+        return "sddl2"
+
+    @property
+    def compressor_profile_name(self) -> str:
+        return "sddl2"
+
+    @property
+    def extra_args(self) -> str | None:
+        return (
+            "--profile-arg "
+            + profile_dir_path(self.input_dir_name)
+            + "/simple_description.sddl"
+        )
+
+    def test_train_compress_decompress(self):
+        """
+        Test the train, compress, and decompress workflow for files decribed by SDDL2.
+        """
+        self.train_compress_decompress()
 
 
 def main():
