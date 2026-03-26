@@ -9,12 +9,15 @@ import {Box} from '@chakra-ui/react/box';
 import {Button} from '@chakra-ui/react/button';
 import {Flex} from '@chakra-ui/react/flex';
 
+import {OperationType} from '../../models/idTypes';
+
 const showExpansionButton = false;
 
 interface VersionInfo {
   libraryVersion: number;
   frameVersion: number;
   traceVersion: number;
+  operationType: OperationType;
 }
 
 interface StreamdumpGraphViewProps {
@@ -44,7 +47,10 @@ export function StreamdumpGraphView({
     // The controller will use this instance for viewport manipulation, which is handled internally by React Flow
   }, [reactFlowInstance]);
   return (
-    <Box w={'100%'} h={'100%'}>
+    <Box
+      w={'100%'}
+      h={'100%'}
+      className={versionInfo.operationType === OperationType.Decompress ? 'decompress-trace' : ''}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -71,6 +77,9 @@ export function StreamdumpGraphView({
               {isTrackpadMode ? 'Switch to Mouse Controls' : 'Switch to Trackpad Controls'}
             </Button>
             <div className="header-text">
+              <p style={{fontWeight: 'bold'}}>
+                {versionInfo.operationType === OperationType.Decompress ? 'Decompression Trace' : 'Compression Trace'}
+              </p>
               <p>Library Version: {versionInfo.libraryVersion}</p>
               <p>Frame Version: {versionInfo.frameVersion}</p>
               <p>Trace Version: {versionInfo.traceVersion}</p>
