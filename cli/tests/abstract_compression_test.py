@@ -228,6 +228,7 @@ class _TrainBaseTest(_CompressDecompressBaseTest):
             uncompressed_dir=input_dir_path(self.input_dir_name),
             trained_compressor_path=self.compressor_info.compressor_str,
             trainer_name=self.trainer_name,
+            extra_args=self.extra_args,
         )
 
         # Compress and decompress using the trained compressor

@@ -9,6 +9,7 @@ TEMP_DIR_PREFIX = os.path.join(tempfile.gettempdir(), "zli_integration_test")
 
 # Directory structure constants
 SAMPLE_FILES_DIR = "sample_files"  # read-only input in local test dir
+PROFILE_FILES_DIR = "profile_files"  # read-only input in local test dir
 COMPRESSED_DIR = "compressed"  # temp output under /tmp/
 DECOMPRESSED_DIR = "decompressed"  # temp output under /tmp/
 
@@ -66,6 +67,26 @@ def input_dir_path(input_dir_name: str) -> str:
     return os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
         SAMPLE_FILES_DIR,
+        input_dir_name,
+    )
+
+
+def profile_dir_path(input_dir_name: str) -> str:
+    """
+    Get the directory path for profile-related files.
+
+    The input files are located at:
+    cli/tests/profile_files/{input_dir_name}/
+
+    Args:
+        input_dir_name: Directory name for input sample files
+
+    Returns:
+        Absolute path to the directory containing input files for this test
+    """
+    return os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        PROFILE_FILES_DIR,
         input_dir_name,
     )
 
