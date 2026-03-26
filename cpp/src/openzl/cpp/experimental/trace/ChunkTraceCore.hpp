@@ -33,17 +33,45 @@ class ChunkTraceCore {
     ChunkTraceCore() = delete; // non-instantiable
 
     /**
-     * Creates a "zl.#start" placeholder codec and appends it to codecInfo.
-     * Increments currCodecNum.
+     * Creates a source codec with the given name for a single stream.
+     * Wires the stream into the source codec's outEdges, sets producerCodec,
+     * and increments currCodecNum.
      */
-    static void initTrace(
+    static void createSourceForStream(
+            const char* sourceCodecName,
+            const StreamID& streamID,
+            Stream& stream,
+            std::vector<Codec>& codecInfo,
+            size_t& currCodecNum,
+            size_t chunkId);
+
+    /**
+     * Creates a sink codec with the given name for a single stream.
+     * Wires the stream into the sink codec's inEdges, sets consumerCodec,
+     * and increments currCodecNum.
+     */
+    static void createSinkForStream(
+            const char* sinkCodecName,
+            const StreamID& streamID,
+            Stream& stream,
+            std::vector<Codec>& codecInfo,
+            size_t& currCodecNum,
+            size_t chunkId);
+
+    /**
+     * For each unsourced stream (no producerCodec), creates a source codec
+     * with the given name via createSourceForStream.
+     */
+    static void finalizeUnsourcedStreams(
+            const char* sourceCodecName,
+            std::map<ZL_DataID, Stream, ZL_DataIDCustomComparator>& streamInfo,
             std::vector<Codec>& codecInfo,
             size_t& currCodecNum,
             size_t chunkId);
 
     /**
      * For each unconsumed stream (no consumerCodec), creates a terminal codec
-     * with the given name, wires it up, and increments currCodecNum.
+     * with the given name via createSinkForStream.
      */
     static void finalizeUnconsumedStreams(
             const char* terminalCodecName,

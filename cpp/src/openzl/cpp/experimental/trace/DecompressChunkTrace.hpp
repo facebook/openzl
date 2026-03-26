@@ -22,13 +22,9 @@ class DecompressChunkTrace {
     explicit DecompressChunkTrace(size_t chunkId) : chunkId_(chunkId) {}
 
     /**
-     * Initialize the trace with a placeholder start node.
-     */
-    void initTrace();
-
-    /**
-     * Finalize the trace. On success, unconsumed streams go to "zl.store".
-     * On failure, unconsumed streams go to "zl.#in_progress".
+     * Finalize the trace.
+     * - On success, unsourced streams (decoded outputs) go to "zl.regen".
+     * - On failure, unsourced streams go to "zl.#in_progress".
      */
     void finalizeTrace(ZL_Report result);
 

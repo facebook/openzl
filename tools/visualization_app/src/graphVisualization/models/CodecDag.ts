@@ -27,9 +27,6 @@ export class CodecDag {
     });
     console.assert(codecs.length === this.adjList.size);
 
-    // Ensure codec at index 0 is the root
-    console.assert(codecs[0].inputStreams.length === 0);
-
     // generate dag order
     this.dagOrderList = this.findTopologicalSort(this.adjList).map((id) => this.codecList[id]);
   }

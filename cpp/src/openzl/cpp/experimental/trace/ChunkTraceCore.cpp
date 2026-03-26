@@ -7,22 +7,70 @@
 
 namespace openzl::visualizer {
 
-void ChunkTraceCore::initTrace(
+void ChunkTraceCore::createSourceForStream(
+        const char* sourceCodecName,
+        const StreamID& streamID,
+        Stream& stream,
         std::vector<Codec>& codecInfo,
         size_t& currCodecNum,
         size_t chunkId)
 {
-    Codec startCodec = {
-        .name         = "zl.#start",
+    Codec source = {
+        .name         = sourceCodecName,
         .cType        = true, // standard
         .cID          = 0,
         .cHeaderSize  = 0,
         .cLocalParams = {},
         .chunkId      = chunkId,
     };
-    startCodec.codecNum = currCodecNum;
-    codecInfo.push_back(std::move(startCodec));
+    source.codecNum = currCodecNum;
+    codecInfo.push_back(std::move(source));
+    codecInfo[currCodecNum].outEdges.push_back(streamID);
+    stream.producerCodec = currCodecNum;
     ++currCodecNum;
+}
+
+void ChunkTraceCore::createSinkForStream(
+        const char* sinkCodecName,
+        const StreamID& streamID,
+        Stream& stream,
+        std::vector<Codec>& codecInfo,
+        size_t& currCodecNum,
+        size_t chunkId)
+{
+    Codec sink = {
+        .name         = sinkCodecName,
+        .cType        = true, // standard
+        .cID          = 0,
+        .cHeaderSize  = 0,
+        .cLocalParams = {},
+        .chunkId      = chunkId,
+    };
+    sink.codecNum = currCodecNum;
+    codecInfo.push_back(std::move(sink));
+    codecInfo[currCodecNum].inEdges.push_back(streamID);
+    stream.consumerCodec = currCodecNum;
+    ++currCodecNum;
+}
+
+void ChunkTraceCore::finalizeUnsourcedStreams(
+        const char* sourceCodecName,
+        std::map<ZL_DataID, Stream, ZL_DataIDCustomComparator>& streamInfo,
+        std::vector<Codec>& codecInfo,
+        size_t& currCodecNum,
+        size_t chunkId)
+{
+    for (auto& [streamID, stream] : streamInfo) {
+        if (!stream.producerCodec.has_value()) {
+            createSourceForStream(
+                    sourceCodecName,
+                    streamID,
+                    stream,
+                    codecInfo,
+                    currCodecNum,
+                    chunkId);
+        }
+    }
 }
 
 void ChunkTraceCore::finalizeUnconsumedStreams(
@@ -34,19 +82,13 @@ void ChunkTraceCore::finalizeUnconsumedStreams(
 {
     for (auto& [streamID, stream] : streamInfo) {
         if (!stream.consumerCodec.has_value()) {
-            Codec terminal = {
-                .name         = terminalCodecName,
-                .cType        = true, // standard
-                .cID          = 0,
-                .cHeaderSize  = 0,
-                .cLocalParams = {},
-                .chunkId      = chunkId,
-            };
-            terminal.codecNum = currCodecNum;
-            codecInfo.push_back(std::move(terminal));
-            codecInfo[currCodecNum].inEdges.push_back(streamID);
-            stream.consumerCodec = currCodecNum;
-            ++currCodecNum;
+            createSinkForStream(
+                    terminalCodecName,
+                    streamID,
+                    stream,
+                    codecInfo,
+                    currCodecNum,
+                    chunkId);
         }
     }
 }

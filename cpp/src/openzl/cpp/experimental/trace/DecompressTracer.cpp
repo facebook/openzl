@@ -45,7 +45,6 @@ void DecompressTracer::on_ZL_DCtx_decompressMultiTBuffer_start(
     // Create the main chunk at index 0
     chunks_.emplace_back(MAIN_CHUNK_IDX);
     currChunk_ = &chunks_[MAIN_CHUNK_IDX];
-    currChunk_->initTrace();
 }
 
 void DecompressTracer::on_ZL_DCtx_decompressMultiTBuffer_end(
@@ -83,7 +82,6 @@ void DecompressTracer::on_decompressChunk_start(
         // Multi-chunk frame: create additional chunk traces
         chunks_.emplace_back(chunkIndex);
         currChunk_ = &chunks_.back();
-        currChunk_->initTrace();
     }
     // For chunkIndex == 0, we reuse the main chunk created in
     // decompressMultiTBuffer_start

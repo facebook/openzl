@@ -24,13 +24,6 @@ class CompressChunkTrace {
     explicit CompressChunkTrace(size_t chunkId) : chunkId_(chunkId) {}
 
     /**
-     * Callback function to start the trace.
-     * - Placeholder start node is inserted
-     * - (Maybe?) start streams are recorded
-     */
-    void initTrace();
-
-    /**
      * Callback to record the first streams (aka user-input). They are never
      * surfaced to the hooks (properly) until either a codec or segmenter takes
      * them in as input.

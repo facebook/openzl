@@ -33,22 +33,17 @@ emptyPreview(ZL_Type type)
 }
 } // namespace
 
-void DecompressChunkTrace::initTrace()
-{
-    ChunkTraceCore::initTrace(codecInfo_, currCodecNum_, chunkId_);
-}
-
 void DecompressChunkTrace::finalizeTrace(ZL_Report result)
 {
     if (ZL_isError(result)) {
-        ChunkTraceCore::finalizeUnconsumedStreams(
+        ChunkTraceCore::finalizeUnsourcedStreams(
                 "zl.#in_progress",
                 streamInfo_,
                 codecInfo_,
                 currCodecNum_,
                 chunkId_);
     } else {
-        ChunkTraceCore::finalizeUnconsumedStreams(
+        ChunkTraceCore::finalizeUnsourcedStreams(
                 "zl.regen", streamInfo_, codecInfo_, currCodecNum_, chunkId_);
     }
 }
@@ -73,6 +68,32 @@ void DecompressChunkTrace::on_codecDecode_start(
         const ZL_Data* const* inStreams,
         size_t nbInStreams)
 {
+    // Discover new streams and create sink placeholders before pushing the
+    // decode codec, so that currCodecNum_ remains valid for the decode codec.
+    for (size_t i = 0; i < nbInStreams; ++i) {
+        StreamID streamID = ZL_Data_id(inStreams[i]);
+        if (streamInfo_.find(streamID) == streamInfo_.end()) {
+            ZL_Type type          = ZL_Data_type(inStreams[i]);
+            streamInfo_[streamID] = Stream{
+                .id            = streamID,
+                .type          = type,
+                .outputIdx     = i,
+                .eltWidth      = ZL_Data_eltWidth(inStreams[i]),
+                .numElts       = ZL_Data_numElts(inStreams[i]),
+                .contentSize   = ZL_Data_contentSize(inStreams[i]),
+                .chunkId       = chunkId_,
+                .streamPreview = emptyPreview(type),
+            };
+            ChunkTraceCore::createSinkForStream(
+                    "zl.store",
+                    streamID,
+                    streamInfo_[streamID],
+                    codecInfo_,
+                    currCodecNum_,
+                    chunkId_);
+        }
+    }
+
     // Extract transform info from ZL_Decoder
     const char* transformName = DT_getTransformName(dictx->dt);
 
@@ -88,25 +109,8 @@ void DecompressChunkTrace::on_codecDecode_start(
     codecInfo_.push_back(std::move(newCodec));
 
     for (size_t i = 0; i < nbInStreams; ++i) {
-        StreamID streamID = ZL_Data_id(inStreams[i]);
-        // Lazy discovery: if stream not yet seen, it's a stored/initial stream
-        if (streamInfo_.find(streamID) == streamInfo_.end()) {
-            ZL_Type type          = ZL_Data_type(inStreams[i]);
-            streamInfo_[streamID] = Stream{
-                .id            = streamID,
-                .type          = type,
-                .outputIdx     = i,
-                .eltWidth      = ZL_Data_eltWidth(inStreams[i]),
-                .numElts       = ZL_Data_numElts(inStreams[i]),
-                .contentSize   = ZL_Data_contentSize(inStreams[i]),
-                .chunkId       = chunkId_,
-                .streamPreview = emptyPreview(type),
-            };
-            // Link as output of start node (codec 0)
-            codecInfo_[0].outEdges.push_back(streamID);
-        }
-        codecInfo_[currCodecNum_].inEdges.push_back(streamID);
-        streamInfo_[streamID].consumerCodec = currCodecNum_;
+        codecInfo_[currCodecNum_].outEdges.push_back(ZL_Data_id(inStreams[i]));
+        streamInfo_[ZL_Data_id(inStreams[i])].producerCodec = currCodecNum_;
     }
 }
 
@@ -136,7 +140,8 @@ void DecompressChunkTrace::on_codecDecode_end(
                 .streamPreview = emptyPreview(type),
             };
         }
-        codecInfo_[currCodecNum_].outEdges.push_back(streamID);
+        codecInfo_[currCodecNum_].inEdges.push_back(streamID);
+        streamInfo_[streamID].consumerCodec = currCodecNum_;
     }
 
     // Capture streamdump for each output stream
