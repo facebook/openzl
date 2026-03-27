@@ -198,37 +198,38 @@ TEST_F(SplitByRangeGeneratorTest, Stage1_TwoRanges_HighThenLow)
 
 TEST_F(SplitByRangeGeneratorTest, Stage2_ThreeRanges_HighLowHigher)
 {
-    // A=[100,200], B=[5,50], C=[500,600]
-    // First pass finds boundary between [A,B] and C.
-    // Second pass (recursive) finds boundary between A and B.
+    // A=[500,600], B=[0,50], C=[1500,1600]
+    // Gaps (400, 1450) >> 2×typAmp (~100) for reliable detection.
     auto data = generateSample(
             {
-                    { 100, 200, 300 },
-                    { 5, 50, 200 },
-                    { 500, 600, 400 },
+                    { 500, 600, 300 },
+                    { 0, 50, 200 },
+                    { 1500, 1600, 400 },
             });
-    printf("Stage 2: Three ranges high-low-higher (100-200, 5-50, 500-600)\n");
+    printf("Stage 2: Three ranges high-low-higher (500-600, 0-50, 1500-1600)\n");
     verifyExactBoundaries(data, { 300, 200, 400 });
 }
 
 TEST_F(SplitByRangeGeneratorTest, Stage2_ThreeRanges_Ascending)
 {
+    // Gaps (300) >> 2×typAmp (~100) for reliable detection.
     auto data = generateSample(
             {
                     { 0, 100, 200 },
-                    { 200, 300, 200 },
                     { 400, 500, 200 },
+                    { 800, 900, 200 },
             });
-    printf("Stage 2: Three ascending ranges (0-100, 200-300, 400-500)\n");
+    printf("Stage 2: Three ascending ranges (0-100, 400-500, 800-900)\n");
     verifyExactBoundaries(data, { 200, 200, 200 });
 }
 
 TEST_F(SplitByRangeGeneratorTest, Stage2_ThreeRanges_Descending)
 {
+    // Gaps (300) >> 2×typAmp (~100) for reliable detection.
     auto data = generateSample(
             {
+                    { 800, 900, 200 },
                     { 400, 500, 200 },
-                    { 200, 300, 200 },
                     { 0, 100, 200 },
             });
     printf("Stage 2: Three descending ranges\n");
@@ -241,17 +242,18 @@ TEST_F(SplitByRangeGeneratorTest, Stage2_ThreeRanges_Descending)
 
 TEST_F(SplitByRangeGeneratorTest, Stage3_FiveRanges_Ascending)
 {
-    // Ranges in ascending order: prefix max always < suffix min at boundaries
+    // Ranges in ascending order: prefix max always < suffix min at boundaries.
+    // Each segment needs >= M*blockSize = 7*16 = 112 elements for u32.
     auto data = generateSample(
             {
-                    { 0, 50, 100 },
-                    { 500, 550, 150 },
-                    { 1000, 1100, 200 },
-                    { 2000, 2100, 100 },
-                    { 3000, 3100, 150 },
+                    { 0, 50, 150 },
+                    { 500, 550, 200 },
+                    { 1000, 1100, 250 },
+                    { 2000, 2100, 150 },
+                    { 3000, 3100, 200 },
             });
     printf("Stage 3: Five ascending ranges\n");
-    verifyExactBoundaries(data, { 100, 150, 200, 100, 150 });
+    verifyExactBoundaries(data, { 150, 200, 250, 150, 200 });
 }
 
 TEST_F(SplitByRangeGeneratorTest, Stage3_FiveRanges_Descending)
@@ -259,14 +261,14 @@ TEST_F(SplitByRangeGeneratorTest, Stage3_FiveRanges_Descending)
     // Ranges in descending order: suffix max always < prefix min at boundaries
     auto data = generateSample(
             {
-                    { 3000, 3100, 150 },
-                    { 2000, 2100, 100 },
-                    { 1000, 1100, 200 },
-                    { 500, 550, 150 },
-                    { 0, 50, 100 },
+                    { 3000, 3100, 200 },
+                    { 2000, 2100, 150 },
+                    { 1000, 1100, 250 },
+                    { 500, 550, 200 },
+                    { 0, 50, 150 },
             });
     printf("Stage 3: Five descending ranges\n");
-    verifyExactBoundaries(data, { 150, 100, 200, 150, 100 });
+    verifyExactBoundaries(data, { 200, 150, 250, 200, 150 });
 }
 
 TEST_F(SplitByRangeGeneratorTest, Stage3_FourRanges_Valley)
@@ -274,12 +276,12 @@ TEST_F(SplitByRangeGeneratorTest, Stage3_FourRanges_Valley)
     // Valley pattern: high, low, high — prefix/suffix splits find boundaries
     auto data = generateSample(
             {
-                    { 2000, 2100, 100 },
-                    { 0, 50, 200 },
-                    { 3000, 3100, 150 },
+                    { 2000, 2100, 150 },
+                    { 0, 50, 250 },
+                    { 3000, 3100, 200 },
             });
     printf("Stage 3: Valley pattern (high, low, high)\n");
-    verifyExactBoundaries(data, { 100, 200, 150 });
+    verifyExactBoundaries(data, { 150, 250, 200 });
 }
 
 // =============================================================================
@@ -314,16 +316,17 @@ TEST_F(SplitByRangeGeneratorTest, Stage4_NearRanges_Gap10)
 
 TEST_F(SplitByRangeGeneratorTest, Stage5_TenAscendingSegments)
 {
-    // 10 contiguous segments with ascending ranges — algorithm can split these
+    // 10 contiguous segments with ascending ranges — algorithm can split these.
+    // Each segment needs >= M*blockSize = 7*16 = 112 elements for u32.
     std::vector<RangeSpec> specs;
     std::vector<size_t> expectedSizes;
     for (int i = 0; i < 10; i++) {
         uint32_t base = static_cast<uint32_t>(i) * 1000;
-        specs.push_back({ base, base + 100, 50 });
-        expectedSizes.push_back(50);
+        specs.push_back({ base, base + 100, 150 });
+        expectedSizes.push_back(150);
     }
     auto data = generateSample(specs);
-    printf("Stage 5: 10 ascending segments of 50 elements each\n");
+    printf("Stage 5: 10 ascending segments of 150 elements each\n");
     verifyExactBoundaries(data, expectedSizes);
 }
 
@@ -376,26 +379,29 @@ TEST_F(SplitByRangeGeneratorTest, Stage7_OverlappingRanges_NoSplit)
 
 TEST_F(SplitByRangeGeneratorTest, Stage8_MinSizeSegments)
 {
-    // Each segment has exactly 16 elements (the default minimum)
+    // Each segment has exactly minSegSize=32 elements (the default for u32).
+    // With blockSize=16 and M=7, 2 blocks per segment is too few for full
+    // confirmation, but the Meff fallback to 1 still detects well-separated
+    // ranges.
+    auto data = generateSample(
+            {
+                    { 1000, 1100, 150 },
+                    { 0, 50, 150 },
+            });
+    printf("Stage 8: Two segments of 150 elements each\n");
+    verifyExactBoundaries(data, { 150, 150 });
+}
+
+TEST_F(SplitByRangeGeneratorTest, Stage8b_BelowMinSize_NoSplit)
+{
+    // 32 elements total < 2*DEFAULT_MIN_SEGMENT_SIZE=64, so no split
     auto data = generateSample(
             {
                     { 1000, 1100, 16 },
                     { 0, 50, 16 },
             });
-    printf("Stage 8: Two segments of 16 elements each (default min size)\n");
-    verifyExactBoundaries(data, { 16, 16 });
-}
-
-TEST_F(SplitByRangeGeneratorTest, Stage8b_BelowMinSize_NoSplit)
-{
-    // 16 elements total < 2*DEFAULT_MIN_SEGMENT_SIZE=32, so no split
-    auto data = generateSample(
-            {
-                    { 1000, 1100, 8 },
-                    { 0, 50, 8 },
-            });
     printf("Stage 8b: Below default min size, no split expected\n");
-    verifyExactBoundaries(data, { 16 });
+    verifyExactBoundaries(data, { 32 });
 }
 
 // =============================================================================
@@ -471,13 +477,13 @@ TEST_F(SplitByRangeGeneratorTest, Stage11_FourRanges_Shuffled)
     // D=[3000,3100], A=[0,50], C=[1000,1100], B=[500,550]
     auto data = generateSample(
             {
-                    { 3000, 3100, 100 },
-                    { 0, 50, 150 },
-                    { 1000, 1100, 100 },
-                    { 500, 550, 200 },
+                    { 3000, 3100, 150 },
+                    { 0, 50, 200 },
+                    { 1000, 1100, 150 },
+                    { 500, 550, 250 },
             });
     printf("Stage 11: Four ranges in non-monotonic order\n");
-    verifyExactBoundaries(data, { 100, 150, 100, 200 });
+    verifyExactBoundaries(data, { 150, 200, 150, 250 });
 }
 
 // =============================================================================
@@ -486,44 +492,48 @@ TEST_F(SplitByRangeGeneratorTest, Stage11_FourRanges_Shuffled)
 
 TEST_F(SplitByRangeGeneratorTest, Stage12_Width8bit)
 {
+    // u8: minSegSize=128, blockSize=64. Need >= M*64 = 448 elts per segment.
     auto data = generateTypedSample<uint8_t>({
-            { 200, 250, 50 },
-            { 0, 30, 50 },
+            { 200, 250, 512 },
+            { 0, 30, 512 },
     });
     printf("Stage 12: u8 two ranges (200-250, 0-30)\n");
-    verifyTypedExactBoundaries<uint8_t>(data, { 50, 50 });
+    verifyTypedExactBoundaries<uint8_t>(data, { 512, 512 });
 }
 
 TEST_F(SplitByRangeGeneratorTest, Stage12_Width16bit)
 {
+    // u16: minSegSize=64, blockSize=32. Need >= M*32 = 224 elts per segment.
     auto data = generateTypedSample<uint16_t>({
-            { 0, 100, 100 },
-            { 50000, 60000, 100 },
-            { 200, 300, 100 },
+            { 0, 100, 256 },
+            { 50000, 60000, 256 },
+            { 200, 300, 256 },
     });
     printf("Stage 12: u16 three ascending-then-low ranges\n");
-    verifyTypedExactBoundaries<uint16_t>(data, { 100, 100, 100 });
+    verifyTypedExactBoundaries<uint16_t>(data, { 256, 256, 256 });
 }
 
 TEST_F(SplitByRangeGeneratorTest, Stage12_Width64bit)
 {
+    // u64: minSegSize=32, blockSize=16. Need >= M*16 = 112 elts per segment.
     auto data = generateTypedSample<uint64_t>({
-            { 1000000000ULL, 1000001000ULL, 100 },
-            { 0, 500, 100 },
+            { 1000000000ULL, 1000001000ULL, 150 },
+            { 0, 500, 150 },
     });
     printf("Stage 12: u64 two ranges (1e9-range, 0-500)\n");
-    verifyTypedExactBoundaries<uint64_t>(data, { 100, 100 });
+    verifyTypedExactBoundaries<uint64_t>(data, { 150, 150 });
 }
 
 TEST_F(SplitByRangeGeneratorTest, Stage12_Width8bit_ThreeRanges)
 {
+    // u8: blockSize=64, need >= 448 elts per segment for M=7.
     auto data = generateTypedSample<uint8_t>({
-            { 0, 10, 30 },
-            { 100, 110, 30 },
-            { 200, 210, 30 },
+            { 0, 10, 512 },
+            { 100, 110, 512 },
+            { 200, 210, 512 },
     });
     printf("Stage 12: u8 three ascending ranges\n");
-    verifyTypedExactBoundaries<uint8_t>(data, { 30, 30, 30 });
+    verifyTypedExactBoundaries<uint8_t>(data, { 512, 512, 512 });
 }
 
 // =============================================================================
@@ -532,15 +542,17 @@ TEST_F(SplitByRangeGeneratorTest, Stage12_Width8bit_ThreeRanges)
 
 TEST_F(SplitByRangeGeneratorTest, Stage13_SmallMinSegSize_AllowsSmallSegments)
 {
-    // With default minSegmentSize=16, 8-element segments can't be detected.
-    // With minSegmentSize=4, they can.
+    // With default minSegmentSize (32 for u32), total < 2*32 triggers early
+    // exit (no split).  With minSegmentSize=4, the early exit threshold drops
+    // to 2*4=8, allowing the split to proceed.  blockSize=4/2=2, so 24/2=12
+    // blocks per segment, enough for M=7 confirmation.
     auto data = generateSample(
             {
-                    { 1000, 1100, 8 },
-                    { 0, 50, 8 },
+                    { 1000, 1100, 24 },
+                    { 0, 50, 24 },
             });
-    printf("Stage 13: minSegmentSize=4 allows 8-element segments\n");
-    verifyExactBoundariesWithMinSegSize(data, { 8, 8 }, 4);
+    printf("Stage 13: minSegmentSize=4 allows 24-element segments\n");
+    verifyExactBoundariesWithMinSegSize(data, { 24, 24 }, 4);
 }
 
 TEST_F(SplitByRangeGeneratorTest, Stage13_LargeMinSegSize_PreventsSmallSplits)
@@ -563,8 +575,8 @@ TEST_F(SplitByRangeGeneratorTest, Stage13_DefaultParam_SameAsUnparameterized)
                     { 0, 100, 200 },
                     { 1000, 1100, 200 },
             });
-    printf("Stage 13: Explicit default minSegmentSize=16\n");
-    verifyExactBoundariesWithMinSegSize(data, { 200, 200 }, 16);
+    printf("Stage 13: Explicit default minSegmentSize=32\n");
+    verifyExactBoundariesWithMinSegSize(data, { 200, 200 }, 32);
 }
 
 // =============================================================================
@@ -605,85 +617,85 @@ TEST_F(SplitByRangeGeneratorTest, Stage14_ABCBA_Palindrome)
     // Palindrome pattern: ranges go up then back down to same values.
     auto data = generateSample(
             {
-                    { 0, 50, 100 },
-                    { 500, 600, 100 },
-                    { 2000, 2100, 100 },
-                    { 500, 600, 100 },
-                    { 0, 50, 100 },
+                    { 0, 50, 150 },
+                    { 500, 600, 150 },
+                    { 2000, 2100, 150 },
+                    { 500, 600, 150 },
+                    { 0, 50, 150 },
             });
     printf("Stage 14: A-B-C-B-A palindrome pattern\n");
-    verifyExactBoundaries(data, { 100, 100, 100, 100, 100 });
+    verifyExactBoundaries(data, { 150, 150, 150, 150, 150 });
 }
 
 // =============================================================================
 // Stage 15: Short segments between larger ones (confirmation window stress)
 // =============================================================================
 
-TEST_F(SplitByRangeGeneratorTest, Stage15_ShortMiddle_16elts)
+TEST_F(SplitByRangeGeneratorTest, Stage15_ShortMiddle)
 {
-    // Short segment (exactly minSegSize=16) between two large segments.
-    // Requires M <= 3 to detect — M=4 can't fit a confirmation window.
+    // Short segment between two large segments.  Must span >= M blocks
+    // (7*16=112 for u32) for both adjacent boundaries' confirmation windows.
     auto data = generateSample(
             {
-                    { 5000, 6000, 200 },
-                    { 0, 100, 16 },
-                    { 8000, 9000, 200 },
+                    { 5000, 6000, 300 },
+                    { 0, 100, 128 },
+                    { 8000, 9000, 300 },
             });
-    printf("Stage 15: Short middle segment (16 elements)\n");
-    verifyExactBoundaries(data, { 200, 16, 200 });
+    printf("Stage 15: Short middle segment\n");
+    verifyExactBoundaries(data, { 300, 128, 300 });
 }
 
 TEST_F(SplitByRangeGeneratorTest, Stage15_TwoShortMiddles)
 {
-    // Two short segments, each 16 elements, between larger ones.
+    // Two short segments between larger ones.
     auto data = generateSample(
             {
-                    { 5000, 6000, 100 },
-                    { 0, 100, 16 },
-                    { 8000, 9000, 100 },
-                    { 200, 300, 16 },
-                    { 12000, 13000, 100 },
+                    { 5000, 6000, 200 },
+                    { 0, 100, 128 },
+                    { 8000, 9000, 200 },
+                    { 200, 300, 128 },
+                    { 12000, 13000, 200 },
             });
-    printf("Stage 15: Two short middle segments (16 elements each)\n");
-    verifyExactBoundaries(data, { 100, 16, 100, 16, 100 });
+    printf("Stage 15: Two short middle segments\n");
+    verifyExactBoundaries(data, { 200, 128, 200, 128, 200 });
 }
 
-TEST_F(SplitByRangeGeneratorTest, Stage15_ShortFirst_16elts)
+TEST_F(SplitByRangeGeneratorTest, Stage15_ShortFirst)
 {
     // Short segment at the beginning.
     auto data = generateSample(
             {
-                    { 0, 100, 16 },
-                    { 5000, 6000, 200 },
+                    { 0, 100, 128 },
+                    { 5000, 6000, 300 },
             });
-    printf("Stage 15: Short first segment (16 elements)\n");
-    verifyExactBoundaries(data, { 16, 200 });
+    printf("Stage 15: Short first segment\n");
+    verifyExactBoundaries(data, { 128, 300 });
 }
 
-TEST_F(SplitByRangeGeneratorTest, Stage15_ShortLast_16elts)
+TEST_F(SplitByRangeGeneratorTest, Stage15_ShortLast)
 {
     // Short segment at the end.
     auto data = generateSample(
             {
-                    { 5000, 6000, 200 },
-                    { 0, 100, 16 },
+                    { 5000, 6000, 300 },
+                    { 0, 100, 128 },
             });
-    printf("Stage 15: Short last segment (16 elements)\n");
-    verifyExactBoundaries(data, { 200, 16 });
+    printf("Stage 15: Short last segment\n");
+    verifyExactBoundaries(data, { 300, 128 });
 }
 
 TEST_F(SplitByRangeGeneratorTest, Stage15_ConsecutiveShort)
 {
-    // Two consecutive short (16-element) segments.
+    // Two consecutive short segments.
     auto data = generateSample(
             {
-                    { 5000, 6000, 100 },
-                    { 0, 100, 16 },
-                    { 2000, 2100, 16 },
-                    { 8000, 9000, 100 },
+                    { 5000, 6000, 200 },
+                    { 0, 100, 128 },
+                    { 2000, 2100, 128 },
+                    { 8000, 9000, 200 },
             });
     printf("Stage 15: Two consecutive short segments\n");
-    verifyExactBoundaries(data, { 100, 16, 16, 100 });
+    verifyExactBoundaries(data, { 200, 128, 128, 200 });
 }
 
 // =============================================================================
@@ -692,15 +704,15 @@ TEST_F(SplitByRangeGeneratorTest, Stage15_ConsecutiveShort)
 
 TEST_F(SplitByRangeGeneratorTest, Stage16_ABA_ShortB)
 {
-    // A-B-A where B is the minimum size (16 elements).
+    // A-B-A where B is a short segment (>= M*blockSize = 112 for u32).
     auto data = generateSample(
             {
-                    { 100, 200, 200 },
-                    { 5000, 6000, 16 },
-                    { 100, 200, 200 },
+                    { 100, 200, 300 },
+                    { 5000, 6000, 128 },
+                    { 100, 200, 300 },
             });
-    printf("Stage 16: A-B-A with short B (16 elements)\n");
-    verifyExactBoundaries(data, { 200, 16, 200 });
+    printf("Stage 16: A-B-A with short B\n");
+    verifyExactBoundaries(data, { 300, 128, 300 });
 }
 
 TEST_F(SplitByRangeGeneratorTest, Stage16_ABAB_ShortB)
@@ -708,13 +720,13 @@ TEST_F(SplitByRangeGeneratorTest, Stage16_ABAB_ShortB)
     // A-B-A-B where both B segments are short.
     auto data = generateSample(
             {
-                    { 0, 100, 100 },
-                    { 5000, 6000, 16 },
-                    { 0, 100, 100 },
-                    { 5000, 6000, 16 },
+                    { 0, 100, 200 },
+                    { 5000, 6000, 128 },
+                    { 0, 100, 200 },
+                    { 5000, 6000, 128 },
             });
     printf("Stage 16: A-B-A-B with short B segments\n");
-    verifyExactBoundaries(data, { 100, 16, 100, 16 });
+    verifyExactBoundaries(data, { 200, 128, 200, 128 });
 }
 
 // =============================================================================
@@ -743,12 +755,12 @@ static unsigned getNumSeeds()
 //    sides. We pre-generate all amplitudes, then compute each gap based
 //    on the actual adjacent pair — no global worst-case needed.
 //
-// 2. Each segment ≥ 256 elements (32 blocks at blockSize=8).
-//    Well above the 7-block minimum for M=3 confirmation windows.
+// 2. Each segment ≥ 512 elements (32 blocks at blockSize=16).
+//    Well above the 7-block minimum for M=7 confirmation windows.
 //
-// 3. minSegSize=32 → blockSize=max(32/4,4)=8. With 8 elements per block,
-//    the probability of the stability heuristic false-negative drops to
-//    ~6e-9 per boundary. (With blockSize=4, it's ~2e-4.)
+// 3. FIXED_MIN_SEG_SIZE=32 → blockSize=32/2=16. With 16 elements per
+//    block, the probability of the stability heuristic false-negative
+//    is negligible.
 //    Custom minSegSize values are tested deterministically in Stage 13.
 //
 // These invariants are symmetric — ascending/descending/valley all use
@@ -757,7 +769,7 @@ static unsigned getNumSeeds()
 static constexpr uint64_t AMP_MIN       = 50;
 static constexpr uint64_t AMP_MAX       = 500;
 static constexpr int FIXED_MIN_SEG_SIZE = 32;
-static constexpr size_t MIN_SEG_ELTS    = 256;
+static constexpr size_t MIN_SEG_ELTS    = 512;
 
 // Helper: build ascending ranges from pre-generated parameters.
 // Returns the number of ranges that fit in the value space.

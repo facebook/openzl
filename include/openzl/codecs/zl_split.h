@@ -27,14 +27,15 @@ extern "C" {
 // will not be split.
 //
 // Optional parameter:
-//   ZL_SPLIT_BYRANGE_MIN_SEGMENT_SIZE_PID (int, default 16):
+//   ZL_SPLIT_BYRANGE_MIN_SEGMENT_SIZE_PID (int):
 //     Minimum number of elements per segment. A split is rejected if either
 //     side would have fewer elements. Higher values reduce false positives
 //     from noise; lower values allow detecting shorter segments.
+//     Default is width-dependent: larger for narrow types (u8).
 #define ZL_NODE_SPLIT_BYRANGE ZL_MAKE_NODE_ID(ZL_StandardNodeID_split_byrange)
 
 /// Optional int param: minimum segment size for split_byrange.
-/// If unset, defaults to 16.
+/// If unset, uses a width-dependent default (larger for narrow types).
 #define ZL_SPLIT_BYRANGE_MIN_SEGMENT_SIZE_PID 324
 
 // SplitN
