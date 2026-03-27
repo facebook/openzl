@@ -1,6 +1,8 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#ifdef ZL_ALLOW_INTROSPECTION
+#include "openzl/zl_config.h"
+
+#if ZL_ALLOW_INTROSPECTION
 #    include <gtest/gtest.h>
 
 #    include "openzl/cpp/CCtx.hpp"
