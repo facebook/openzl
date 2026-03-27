@@ -16,7 +16,9 @@
 #include "openzl/common/operation_context.h"
 #include "openzl/common/vector.h"
 
+#include "openzl/compress/cgraph.h"
 #include "openzl/compress/localparams.h"
+#include "openzl/compress/private_nodes.h"
 
 ////////////////////////////////////////
 // Misc Utilities
@@ -2421,6 +2423,12 @@ static ZL_Report ZL_CompressorDeserializer_tryBuildGraph(
                 ZL_ERR_IF_NN(setup_item, logicError);
                 ZL_ASSERT_NE(base_gid.gid, ZL_GRAPH_ILLEGAL.gid);
             }
+
+            ZL_ERR_IF_EQ(
+                    base_gid.gid,
+                    ZL_PrivateStandardGraphID_serial_store,
+                    corruption,
+                    "The private store graph cannot be used as a base graph and parameterized");
 
             const ZL_LocalParams base_graph_local_params =
                     ZL_Compressor_Graph_getLocalParams(compressor, base_gid);
