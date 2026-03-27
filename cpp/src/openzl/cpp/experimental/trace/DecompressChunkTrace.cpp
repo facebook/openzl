@@ -13,26 +13,6 @@
 
 namespace openzl::visualizer {
 
-namespace {
-std::variant<
-        std::vector<std::string>,
-        std::vector<int64_t>,
-        std::vector<uint8_t>>
-emptyPreview(ZL_Type type)
-{
-    switch (type) {
-        case ZL_Type_string:
-            return std::vector<std::string>{};
-        case ZL_Type_numeric:
-            return std::vector<int64_t>{};
-        case ZL_Type_struct:
-        case ZL_Type_serial:
-        default:
-            return std::vector<uint8_t>{};
-    }
-}
-} // namespace
-
 DecompressChunkTrace DecompressChunkTrace::makeSegmenterChunk(size_t chunkId)
 {
     auto ret = DecompressChunkTrace(chunkId);
@@ -92,16 +72,26 @@ void DecompressChunkTrace::on_codecDecode_start(
     for (size_t i = 0; i < nbInStreams; ++i) {
         StreamID streamID = ZL_Data_id(inStreams[i]);
         if (streamInfo_.find(streamID) == streamInfo_.end()) {
-            ZL_Type type          = ZL_Data_type(inStreams[i]);
+            ZL_Type type    = ZL_Data_type(inStreams[i]);
+            size_t eltWidth = ZL_Data_eltWidth(inStreams[i]);
+            size_t numElts  = ZL_Data_numElts(inStreams[i]);
+
+            StreamPreview preview = ChunkTraceCore::getStreamPreview(
+                    ZL_Data_rPtr(inStreams[i]),
+                    type,
+                    eltWidth,
+                    numElts,
+                    ZL_Data_rStringLens(inStreams[i]));
+
             streamInfo_[streamID] = Stream{
                 .id            = streamID,
                 .type          = type,
                 .outputIdx     = i,
-                .eltWidth      = ZL_Data_eltWidth(inStreams[i]),
-                .numElts       = ZL_Data_numElts(inStreams[i]),
+                .eltWidth      = eltWidth,
+                .numElts       = numElts,
                 .contentSize   = ZL_Data_contentSize(inStreams[i]),
                 .chunkId       = chunkId_,
-                .streamPreview = emptyPreview(type),
+                .streamPreview = std::move(preview),
             };
             ChunkTraceCore::createSinkForStream(
                     "zl.store",
@@ -149,16 +139,26 @@ void DecompressChunkTrace::on_codecDecode_end(
     for (size_t i = 0; i < nbOutStreams; ++i) {
         StreamID streamID = ZL_Data_id(outStreams[i]);
         if (streamInfo_.find(streamID) == streamInfo_.end()) {
-            ZL_Type type          = ZL_Data_type(outStreams[i]);
+            ZL_Type type    = ZL_Data_type(outStreams[i]);
+            size_t eltWidth = ZL_Data_eltWidth(outStreams[i]);
+            size_t numElts  = ZL_Data_numElts(outStreams[i]);
+
+            StreamPreview preview = ChunkTraceCore::getStreamPreview(
+                    ZL_Data_rPtr(outStreams[i]),
+                    type,
+                    eltWidth,
+                    numElts,
+                    ZL_Data_rStringLens(outStreams[i]));
+
             streamInfo_[streamID] = Stream{
                 .id            = streamID,
                 .type          = type,
                 .outputIdx     = i,
-                .eltWidth      = ZL_Data_eltWidth(outStreams[i]),
-                .numElts       = ZL_Data_numElts(outStreams[i]),
+                .eltWidth      = eltWidth,
+                .numElts       = numElts,
                 .contentSize   = ZL_Data_contentSize(outStreams[i]),
                 .chunkId       = chunkId_,
-                .streamPreview = emptyPreview(type),
+                .streamPreview = std::move(preview),
             };
         }
         codecInfo_[currCodecNum_].inEdges.push_back(streamID);
