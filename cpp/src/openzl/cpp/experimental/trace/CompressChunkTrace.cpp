@@ -247,15 +247,12 @@ inline std::string streamTypeToStr(ZL_Type stype)
 
 void CompressChunkTrace::printStreamMetadata()
 {
-    std::vector<size_t> cSize(streamInfo_.size(), SIZE_MAX);
     std::cout << "digraph stream_topo {" << std::endl;
     for (auto& s : streamInfo_) {
-        const StreamID streamID     = s.first;
-        ZL_IDType sid               = streamID.sid;
-        streamInfo_[streamID].cSize = fillCSize(cSize, streamID);
-        streamInfo_[streamID].share =
-                static_cast<double>(streamInfo_[streamID].cSize)
-                / static_cast<double>(compressedSize_) * 100;
+        const StreamID streamID = s.first;
+        ZL_IDType sid           = streamID.sid;
+        ChunkTraceCore::fillCSize(
+                streamID, streamInfo_, codecInfo_, compressedSize_);
 
         Stream metadata = s.second;
         std::cout << 'S' << sid << " [shape=record, label=\"Stream: " << sid
@@ -401,43 +398,6 @@ void CompressChunkTrace::printCodecMetadata()
     }
 
     std::cout << "}" << std::endl;
-}
-
-size_t CompressChunkTrace::fillCSize(
-        std::vector<size_t>& cSize,
-        const StreamID streamID)
-{
-    size_t cSize_idx = streamID.sid;
-    // already filled up
-    if (cSize.size() != 0 && cSize[cSize_idx] != SIZE_MAX) {
-        return cSize[cSize_idx];
-    }
-
-    const Stream& stream = streamInfo_.at(streamID);
-
-    // base case: stream has no successors, and is input to the frame
-    if (stream.successors.empty()) {
-        cSize[cSize_idx] = stream.contentSize;
-        return cSize[cSize_idx];
-    }
-
-    // Get the header size
-    if (stream.consumerCodec.has_value()) {
-        cSize[cSize_idx] = codecInfo_[stream.consumerCodec.value()].cHeaderSize;
-    } else {
-        cSize[cSize_idx] = 0;
-    }
-
-    // recursively fill cSize of this stream by summing the cSize of its
-    // successor streams
-    for (const auto& successor : stream.successors) {
-        cSize[cSize_idx] += fillCSize(cSize, successor);
-    }
-
-    // if the consumer codec has multiple inputs, assume each input provides
-    // equal contribution
-    cSize[cSize_idx] /= codecInfo_[stream.consumerCodec.value()].inEdges.size();
-    return cSize[cSize_idx];
 }
 
 void CompressChunkTrace::on_codecEncode_start(
