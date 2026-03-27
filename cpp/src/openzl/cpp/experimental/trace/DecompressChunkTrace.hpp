@@ -33,6 +33,12 @@ class DecompressChunkTrace {
      */
     void finalizeTrace(ZL_Report result);
 
+    /**
+     * Resolve error context strings for all codecs.
+     * Must be called while the DCtx is still alive.
+     */
+    void resolveErrorStrings(const ZL_DCtx* dctx);
+
     ZL_Report serializeToCBOR(
             A1C_Arena* a1c_arena,
             A1C_ArrayBuilder* chunkArrayBuilder);

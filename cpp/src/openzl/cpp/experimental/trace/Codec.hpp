@@ -19,16 +19,14 @@ struct Codec {
     ZL_IDType cID{};
     size_t cHeaderSize{};
     ZL_Report cFailure = ZL_returnSuccess();
+    std::string cFailureString;
     LocalParams cLocalParams{};
     size_t chunkId{};
     size_t codecNum{};
     std::vector<StreamID> inEdges;
     std::vector<StreamID> outEdges;
 
-    const ZL_Report serializeCodec(
-            A1C_Arena* a1c_arena,
-            A1C_Item* arrayItem,
-            const ZL_CCtx* const cctx);
+    const ZL_Report serializeCodec(A1C_Arena* a1c_arena, A1C_Item* arrayItem);
 };
 
 } // namespace openzl::visualizer

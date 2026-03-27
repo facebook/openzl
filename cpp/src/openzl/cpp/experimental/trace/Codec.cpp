@@ -5,7 +5,6 @@
 #include "openzl/common/a1cbor_helpers.h"
 #include "openzl/cpp/experimental/trace/CborHelpers.hpp"
 #include "openzl/shared/a1cbor.h"
-#include "openzl/zl_compress.h"
 #include "openzl/zl_errors.h"
 
 namespace openzl::visualizer {
@@ -26,10 +25,7 @@ static ZL_Report serializeCodecEdges(
     return ZL_returnSuccess();
 }
 
-const ZL_Report Codec::serializeCodec(
-        A1C_Arena* a1c_arena,
-        A1C_Item* arrayItem,
-        const ZL_CCtx* const cctx)
+const ZL_Report Codec::serializeCodec(A1C_Arena* a1c_arena, A1C_Item* arrayItem)
 {
     A1C_MapBuilder builder = A1C_Item_map_builder(arrayItem, 9, a1c_arena);
     ZL_RET_R_IF_NULL(allocation, builder.map);
@@ -39,11 +35,9 @@ const ZL_Report Codec::serializeCodec(
     ZL_RET_R_IF_ERR(addBooleanValue(builder, "cType", cType));
     ZL_RET_R_IF_ERR(addIntValue(builder, "cID", cID));
     ZL_RET_R_IF_ERR(addIntValue(builder, "cHeaderSize", cHeaderSize));
-    if (ZL_isError(cFailure)) {
+    if (!cFailureString.empty()) {
         ZL_RET_R_IF_ERR(addStringValue(
-                builder,
-                "cFailureString",
-                ZL_CCtx_getErrorContextString(cctx, cFailure)));
+                builder, "cFailureString", cFailureString.c_str()));
     }
 
     // local params

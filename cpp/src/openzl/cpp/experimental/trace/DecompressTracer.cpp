@@ -6,6 +6,7 @@
 #include "openzl/common/logging.h"
 #include "openzl/cpp/Exception.hpp"
 #include "openzl/cpp/experimental/trace/CborHelpers.hpp"
+#include "openzl/zl_decompress.h"
 #include "openzl/zl_errors.h"
 
 #include <utility>
@@ -48,9 +49,14 @@ void DecompressTracer::on_ZL_DCtx_decompressMultiTBuffer_start(
 }
 
 void DecompressTracer::on_ZL_DCtx_decompressMultiTBuffer_end(
-        ZL_DCtx* /* dctx */,
+        ZL_DCtx* dctx,
         ZL_Report /* result */)
 {
+    // Resolve error strings while the DCtx is still alive
+    for (auto& chunk : chunks_) {
+        chunk.resolveErrorStrings(dctx);
+    }
+
     // Create a dummy "main" chunk, if necessary
     if (chunks_.size() > 1) {
         auto dummyChunk =

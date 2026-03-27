@@ -8,6 +8,7 @@
 #include "openzl/zl_errors.h"
 #include "openzl/zl_reflection.h"
 
+#include <string>
 #include <vector>
 
 namespace openzl::visualizer {
@@ -16,6 +17,7 @@ struct Graph {
     ZL_GraphType gType{};
     const char* gName{};
     ZL_Report gFailure = ZL_returnSuccess();
+    std::string gFailureString;
     LocalParams gLocalParams{};
     size_t chunkId{};
 
@@ -25,10 +27,7 @@ struct Graph {
     std::vector<ZL_Edge*> inEdges;
     std::vector<CodecID> codecs;
 
-    const ZL_Report serializeGraph(
-            A1C_Arena* a1c_arena,
-            A1C_Item* arrayItem,
-            const ZL_CCtx* const cctx);
+    const ZL_Report serializeGraph(A1C_Arena* a1c_arena, A1C_Item* arrayItem);
 };
 
 } // namespace openzl::visualizer

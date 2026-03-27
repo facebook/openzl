@@ -14,7 +14,7 @@ namespace openzl::visualizer {
 
 class CompressTracer {
    public:
-    explicit CompressTracer(const ZL_CCtx* const cctx) : cctx_(cctx) {}
+    CompressTracer() = default;
 
     TraceResult extractTrace();
 
@@ -111,7 +111,6 @@ class CompressTracer {
         ZL_Report failureReport;
     };
 
-    const ZL_CCtx* cctx_{};
     static constexpr uint32_t libraryVersion = ZL_LIBRARY_VERSION_NUMBER;
     uint32_t frameVersion;
     static constexpr uint32_t traceVersion = 1;

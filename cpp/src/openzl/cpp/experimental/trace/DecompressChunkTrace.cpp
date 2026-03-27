@@ -7,6 +7,7 @@
 #include "openzl/cpp/experimental/trace/CborHelpers.hpp"
 #include "openzl/decompress/dictx.h"
 #include "openzl/zl_data.h"
+#include "openzl/zl_decompress.h"
 #include "openzl/zl_errors.h"
 
 #include <variant>
@@ -47,6 +48,17 @@ void DecompressChunkTrace::finalizeTrace(ZL_Report result)
     }
 }
 
+void DecompressChunkTrace::resolveErrorStrings(const ZL_DCtx* dctx)
+{
+    for (auto& codec : codecInfo_) {
+        if (ZL_isError(codec.cFailure)) {
+            const char* str =
+                    ZL_DCtx_getErrorContextString(dctx, codec.cFailure);
+            codec.cFailureString = str ? str : "";
+        }
+    }
+}
+
 ZL_Report DecompressChunkTrace::serializeToCBOR(
         A1C_Arena* a1c_arena,
         A1C_ArrayBuilder* chunkArrayBuilder)
@@ -58,8 +70,7 @@ ZL_Report DecompressChunkTrace::serializeToCBOR(
             chunkId_,
             streamInfo_,
             codecInfo_,
-            noGraphs,
-            nullptr);
+            noGraphs);
 }
 
 void DecompressChunkTrace::on_codecDecode_start(

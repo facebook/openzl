@@ -111,7 +111,6 @@ class ChunkTraceCore {
     /**
      * Serializes chunkId, streams, codecs, and optionally graphs into
      * a CBOR chunk item appended to chunkArrayBuilder.
-     * cctx may be nullptr (decompress side).
      * graphInfo may be empty (decompress side has no graphs).
      */
     static ZL_Report serializeChunkDataToCBOR(
@@ -120,8 +119,7 @@ class ChunkTraceCore {
             size_t chunkId,
             std::map<ZL_DataID, Stream, ZL_DataIDCustomComparator>& streamInfo,
             std::vector<Codec>& codecInfo,
-            std::vector<Graph>& graphInfo,
-            const ZL_CCtx* cctx);
+            std::vector<Graph>& graphInfo);
 
     /**
      * Encodes CBOR buffer bytes into a string (for trace output).

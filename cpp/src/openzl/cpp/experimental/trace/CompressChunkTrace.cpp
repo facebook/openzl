@@ -6,6 +6,7 @@
 #include "openzl/compress/dyngraph_interface.h"
 #include "openzl/cpp/Exception.hpp"
 #include "openzl/cpp/experimental/trace/CborHelpers.hpp"
+#include "openzl/zl_compress.h"
 #include "openzl/zl_input.h"
 #include "openzl/zl_output.h"
 #include "openzl/zl_reflection.h"
@@ -89,10 +90,27 @@ void CompressChunkTrace::finalizeTrace(ZL_Report const result)
     printCodecMetadata();
 }
 
+void CompressChunkTrace::resolveErrorStrings(const ZL_CCtx* cctx)
+{
+    for (auto& codec : codecInfo_) {
+        if (ZL_isError(codec.cFailure)) {
+            const char* str =
+                    ZL_CCtx_getErrorContextString(cctx, codec.cFailure);
+            codec.cFailureString = str ? str : "";
+        }
+    }
+    for (auto& graph : graphInfo_) {
+        if (ZL_isError(graph.gFailure)) {
+            const char* str =
+                    ZL_CCtx_getErrorContextString(cctx, graph.gFailure);
+            graph.gFailureString = str ? str : "";
+        }
+    }
+}
+
 ZL_Report CompressChunkTrace::serializeToCBOR(
         A1C_Arena* a1c_arena,
-        A1C_ArrayBuilder* chunkArrayBuilder,
-        const ZL_CCtx* cctx)
+        A1C_ArrayBuilder* chunkArrayBuilder)
 {
     return ChunkTraceCore::serializeChunkDataToCBOR(
             a1c_arena,
@@ -100,8 +118,7 @@ ZL_Report CompressChunkTrace::serializeToCBOR(
             chunkId_,
             streamInfo_,
             codecInfo_,
-            graphInfo_,
-            cctx);
+            graphInfo_);
 }
 
 size_t CompressChunkTrace::getCompressedSize()
@@ -218,11 +235,8 @@ void CompressChunkTrace::printCodecMetadata()
             std::cout << "subgraph cluster_" << graphInfoIdx << '{' << std::endl
                       << "label=\"" << graph.gName
                       << "\\ntype=" << graphTypeToStr(graph.gType);
-            if (ZL_isError(graph.gFailure)) {
-                std::cout << "\\nFailure: "
-                          << "[PLACEHOLDER]";
-                // << ZL_CCtx_getErrorContextString(
-                //            cctx_, graph.gFailure);
+            if (!graph.gFailureString.empty()) {
+                std::cout << "\\nFailure: " << graph.gFailureString;
             }
             printLocalParams(graph.gLocalParams);
             std::cout << "\";" << std::endl << "color=maroon" << std::endl;
@@ -234,11 +248,8 @@ void CompressChunkTrace::printCodecMetadata()
                   << metadata.name << "(ID: " << metadata.cID << ")\\n "
                   << codecName << " transform " << codecNum
                   << "\\n Header size: " << metadata.cHeaderSize;
-        if (ZL_isError(metadata.cFailure)) {
-            std::cout << "\\n Failure: "
-                      << "[PLACEHOLDER]";
-            // << ZL_CCtx_getErrorContextString(
-            //            cctx_, metadata.cFailure);
+        if (!metadata.cFailureString.empty()) {
+            std::cout << "\\n Failure: " << metadata.cFailureString;
         }
         printLocalParams(metadata.cLocalParams);
         std::cout << "\"];" << std::endl;
@@ -401,12 +412,13 @@ void CompressChunkTrace::on_migraphEncode_start(
     for (size_t i = 0; i < nbEdges; ++i) {
         inEdges.push_back(edges[i]);
     }
-    Graph currGraph = Graph{ ZL_Compressor_getGraphType(compressor, gid),
-                             ZL_Compressor_Graph_getName(compressor, gid),
-                             ZL_returnSuccess(),
-                             LocalParams(*GCTX_getAllLocalParams(graph)),
-                             chunkId_,
-                             std::move(inEdges) };
+    Graph currGraph =
+            Graph{ .gType        = ZL_Compressor_getGraphType(compressor, gid),
+                   .gName        = ZL_Compressor_Graph_getName(compressor, gid),
+                   .gFailure     = ZL_returnSuccess(),
+                   .gLocalParams = LocalParams(*GCTX_getAllLocalParams(graph)),
+                   .chunkId      = chunkId_,
+                   .inEdges      = std::move(inEdges) };
     graphInfo_.push_back(std::move(currGraph));
 }
 

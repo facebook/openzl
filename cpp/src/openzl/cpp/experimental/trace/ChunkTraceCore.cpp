@@ -265,8 +265,7 @@ ZL_Report ChunkTraceCore::serializeChunkDataToCBOR(
         size_t chunkId,
         std::map<ZL_DataID, Stream, ZL_DataIDCustomComparator>& streamInfo,
         std::vector<Codec>& codecInfo,
-        std::vector<Graph>& graphInfo,
-        const ZL_CCtx* cctx)
+        std::vector<Graph>& graphInfo)
 {
     A1C_ARRAY_TRY_ADD_R(chunkItem, *chunkArrayBuilder);
     A1C_MapBuilder chunkBuilder = A1C_Item_map_builder(chunkItem, 4, a1c_arena);
@@ -294,7 +293,7 @@ ZL_Report ChunkTraceCore::serializeChunkDataToCBOR(
     for (size_t codecNum = 0; codecNum < codecInfo.size(); ++codecNum) {
         Codec& codec = codecInfo[codecNum];
         A1C_ARRAY_TRY_ADD_R(a1c_codec, codecsBuilder);
-        ZL_RET_R_IF_ERR(codec.serializeCodec(a1c_arena, a1c_codec, cctx));
+        ZL_RET_R_IF_ERR(codec.serializeCodec(a1c_arena, a1c_codec));
     }
 
     // Graphs (empty array for decompress)
@@ -305,7 +304,7 @@ ZL_Report ChunkTraceCore::serializeChunkDataToCBOR(
     ZL_RET_R_IF_NULL(allocation, graphsBuilder.array);
     for (auto& graph : graphInfo) {
         A1C_ARRAY_TRY_ADD_R(a1c_graph, graphsBuilder);
-        ZL_RET_R_IF_ERR(graph.serializeGraph(a1c_arena, a1c_graph, cctx));
+        ZL_RET_R_IF_ERR(graph.serializeGraph(a1c_arena, a1c_graph));
     }
 
     return ZL_returnSuccess();
