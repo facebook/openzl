@@ -22,6 +22,11 @@ class DecompressChunkTrace {
     explicit DecompressChunkTrace(size_t chunkId) : chunkId_(chunkId) {}
 
     /**
+     * Helper function to create a dummy chunk that just contains a segmenter
+     * node, in cases where the trace is a multi-chunk run.
+     */
+    static DecompressChunkTrace makeSegmenterChunk(size_t chunkId);
+    /**
      * Finalize the trace.
      * - On success, unsourced streams (decoded outputs) go to "zl.regen".
      * - On failure, unsourced streams go to "zl.#in_progress".
