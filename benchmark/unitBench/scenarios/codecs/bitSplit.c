@@ -282,6 +282,152 @@ size_t bitSplitDecode_bounded32_wrapper(
     return nbElts * dstEltWidth;
 }
 
+/* ===   fp16 decode scenario   ===
+ * bitWidths {10, 5, 1}, srcEltWidths {2, 1, 1}, dstEltWidth=2
+ * sum(srcEltWidths) = 4
+ */
+
+size_t
+bitSplitDecode_fp16_prep(void* src, size_t srcSize, const BenchPayload* bp)
+{
+    (void)bp;
+
+    static const size_t srcEltWidths[3] = { 2, 1, 1 };
+    static const unsigned bitWidths[3]  = { 10, 5, 1 };
+    static const size_t sumSrcElt       = 2 + 1 + 1; /* 4 */
+
+    size_t const nbElts = srcSize / sumSrcElt;
+    if (nbElts == 0)
+        return 0;
+
+    uint8_t* p    = (uint8_t*)src;
+    size_t offset = 0;
+    for (int i = 0; i < 3; i++) {
+        fillRandomMasked(p + offset, nbElts, srcEltWidths[i], bitWidths[i]);
+        offset += nbElts * srcEltWidths[i];
+    }
+
+    return nbElts * sumSrcElt;
+}
+
+size_t bitSplitDecode_fp16_outSize(const void* src, size_t srcSize)
+{
+    (void)src;
+    /* nbElts = srcSize / 4, output = nbElts * 2 */
+    return (srcSize / 4) * 2;
+}
+
+size_t bitSplitDecode_fp16_wrapper(
+        const void* src,
+        size_t srcSize,
+        void* dst,
+        size_t dstCapacity,
+        void* customPayload)
+{
+    (void)dstCapacity;
+    (void)customPayload;
+
+    static const size_t dstEltWidth     = 2;
+    static const size_t srcEltWidths[3] = { 2, 1, 1 };
+    static const uint8_t bitWidths[3]   = { 10, 5, 1 };
+    static const size_t nbWidths        = 3;
+    static const size_t sumSrcElt       = 2 + 1 + 1; /* 4 */
+
+    size_t const nbElts = srcSize / sumSrcElt;
+    const uint8_t* p    = (const uint8_t*)src;
+
+    size_t offset = 0;
+    const void* srcPtrs[3];
+    for (int i = 0; i < 3; i++) {
+        srcPtrs[i] = p + offset;
+        offset += nbElts * srcEltWidths[i];
+    }
+
+    ZL_bitSplitDecode(
+            dst,
+            dstEltWidth,
+            nbElts,
+            srcPtrs,
+            srcEltWidths,
+            bitWidths,
+            nbWidths);
+
+    return nbElts * dstEltWidth;
+}
+
+/* ===   fp64 decode scenario   ===
+ * bitWidths {52, 11, 1}, srcEltWidths {8, 2, 1}, dstEltWidth=8
+ * sum(srcEltWidths) = 11
+ */
+
+size_t
+bitSplitDecode_fp64_prep(void* src, size_t srcSize, const BenchPayload* bp)
+{
+    (void)bp;
+
+    static const size_t srcEltWidths[3] = { 8, 2, 1 };
+    static const unsigned bitWidths[3]  = { 52, 11, 1 };
+    static const size_t sumSrcElt       = 8 + 2 + 1; /* 11 */
+
+    size_t const nbElts = srcSize / sumSrcElt;
+    if (nbElts == 0)
+        return 0;
+
+    uint8_t* p    = (uint8_t*)src;
+    size_t offset = 0;
+    for (int i = 0; i < 3; i++) {
+        fillRandomMasked(p + offset, nbElts, srcEltWidths[i], bitWidths[i]);
+        offset += nbElts * srcEltWidths[i];
+    }
+
+    return nbElts * sumSrcElt;
+}
+
+size_t bitSplitDecode_fp64_outSize(const void* src, size_t srcSize)
+{
+    (void)src;
+    /* nbElts = srcSize / 11, output = nbElts * 8 */
+    return (srcSize / 11) * 8;
+}
+
+size_t bitSplitDecode_fp64_wrapper(
+        const void* src,
+        size_t srcSize,
+        void* dst,
+        size_t dstCapacity,
+        void* customPayload)
+{
+    (void)dstCapacity;
+    (void)customPayload;
+
+    static const size_t dstEltWidth     = 8;
+    static const size_t srcEltWidths[3] = { 8, 2, 1 };
+    static const uint8_t bitWidths[3]   = { 52, 11, 1 };
+    static const size_t nbWidths        = 3;
+    static const size_t sumSrcElt       = 8 + 2 + 1; /* 11 */
+
+    size_t const nbElts = srcSize / sumSrcElt;
+    const uint8_t* p    = (const uint8_t*)src;
+
+    size_t offset = 0;
+    const void* srcPtrs[3];
+    for (int i = 0; i < 3; i++) {
+        srcPtrs[i] = p + offset;
+        offset += nbElts * srcEltWidths[i];
+    }
+
+    ZL_bitSplitDecode(
+            dst,
+            dstEltWidth,
+            nbElts,
+            srcPtrs,
+            srcEltWidths,
+            bitWidths,
+            nbWidths);
+
+    return nbElts * dstEltWidth;
+}
+
 /* =========================================================================
  *                          ENCODE SCENARIOS
  * =========================================================================

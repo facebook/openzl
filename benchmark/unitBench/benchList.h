@@ -428,7 +428,9 @@ static size_t varintEncode32_wrapper(
 Bench_Entry const scenarioList[] = {
     { "bitSplitDecode_bf16", bitSplitDecode_bf16_wrapper, .prep = bitSplitDecode_bf16_prep, .outSize = bitSplitDecode_bf16_outSize },
     { "bitSplitDecode_bounded32", bitSplitDecode_bounded32_wrapper, .prep = bitSplitDecode_bounded32_prep, .outSize = bitSplitDecode_bounded32_outSize },
+    { "bitSplitDecode_fp16", bitSplitDecode_fp16_wrapper, .prep = bitSplitDecode_fp16_prep, .outSize = bitSplitDecode_fp16_outSize },
     { "bitSplitDecode_fp32", bitSplitDecode_fp32_wrapper, .prep = bitSplitDecode_fp32_prep, .outSize = bitSplitDecode_fp32_outSize },
+    { "bitSplitDecode_fp64", bitSplitDecode_fp64_wrapper, .prep = bitSplitDecode_fp64_prep, .outSize = bitSplitDecode_fp64_outSize },
     { "bitSplitEncode_bf16", bitSplitEncode_bf16_wrapper, .prep = bitSplitEncode_bf16_prep, .outSize = bitSplitEncode_bf16_outSize },
     { "bitSplitEncode_bounded32", bitSplitEncode_bounded32_wrapper, .prep = bitSplitEncode_bounded32_prep, .outSize = bitSplitEncode_bounded32_outSize },
     { "bitSplitEncode_fp16", bitSplitEncode_fp16_wrapper, .prep = bitSplitEncode_fp16_prep, .outSize = bitSplitEncode_fp16_outSize },

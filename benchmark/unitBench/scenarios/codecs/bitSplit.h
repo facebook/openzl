@@ -83,6 +83,52 @@ size_t bitSplitDecode_bounded32_wrapper(
         size_t dstCapacity,
         void* customPayload);
 
+/**
+ * Preparation function for fp16 decomposition benchmark.
+ * Packs 3 source streams with bitWidths {10, 5, 1} contiguously into src.
+ */
+size_t
+bitSplitDecode_fp16_prep(void* src, size_t srcSize, const BenchPayload* bp);
+
+/**
+ * Output size for fp16 decode: nbElts * 2, where nbElts = srcSize / 4.
+ */
+size_t bitSplitDecode_fp16_outSize(const void* src, size_t srcSize);
+
+/**
+ * Wrapper function for fp16 decomposition decode benchmark.
+ * Decodes 3 streams from src into 16-bit elements in dst.
+ */
+size_t bitSplitDecode_fp16_wrapper(
+        const void* src,
+        size_t srcSize,
+        void* dst,
+        size_t dstCapacity,
+        void* customPayload);
+
+/**
+ * Preparation function for fp64 decomposition benchmark.
+ * Packs 3 source streams with bitWidths {52, 11, 1} contiguously into src.
+ */
+size_t
+bitSplitDecode_fp64_prep(void* src, size_t srcSize, const BenchPayload* bp);
+
+/**
+ * Output size for fp64 decode: nbElts * 8, where nbElts = srcSize / 11.
+ */
+size_t bitSplitDecode_fp64_outSize(const void* src, size_t srcSize);
+
+/**
+ * Wrapper function for fp64 decomposition decode benchmark.
+ * Decodes 3 streams from src into 64-bit elements in dst.
+ */
+size_t bitSplitDecode_fp64_wrapper(
+        const void* src,
+        size_t srcSize,
+        void* dst,
+        size_t dstCapacity,
+        void* customPayload);
+
 /* ===   Encode scenarios   === */
 
 /**
