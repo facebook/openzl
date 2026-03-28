@@ -131,9 +131,12 @@ size_t ALLOC_Arena_memUsed(const Arena* arena)
  * ==============================================================
  */
 
-typedef struct {
-    size_t index;
-    size_t size;
+typedef union {
+    struct {
+        size_t index;
+        size_t size;
+    }; // Anonymous struct (C11)
+    char _padding[16];
 } HeapMeta;
 
 DECLARE_VECTOR_POINTERS_TYPE(HeapMeta)
