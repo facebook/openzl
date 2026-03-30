@@ -7,17 +7,18 @@
 
 static ZL_Report ZL_validatePrefix(const char* prefix, bool isStandard)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     const bool hasStandardPrefix = (strncmp(prefix, "!zl.", 4) == 0);
     if (isStandard) {
-        ZL_RET_R_IF_NOT(
-                invalidName,
+        ZL_ERR_IF_NOT(
                 hasStandardPrefix,
+                invalidName,
                 "Standard name \"%s\" doesn't start with \"!zl.\"",
                 prefix);
     } else {
-        ZL_RET_R_IF(
-                invalidName,
+        ZL_ERR_IF(
                 hasStandardPrefix,
+                invalidName,
                 "User defined anchor name \"%s\" cannot start with the "
                 "standard prefix \"!zl.\"",
                 prefix);
@@ -29,24 +30,24 @@ static ZL_Report ZL_validatePrefix(const char* prefix, bool isStandard)
         ++idx;
     }
     for (; prefix[idx] != '\0'; ++idx) {
-        ZL_RET_R_IF_EQ(
-                invalidName,
+        ZL_ERR_IF_EQ(
                 prefix[idx],
                 '!',
+                invalidName,
                 "Name \"%s\" contains '!', which denotes that a name is an "
                 "anchor, and is only allowed in the first byte of the name",
                 prefix);
-        ZL_RET_R_IF_EQ(
-                invalidName,
+        ZL_ERR_IF_EQ(
                 prefix[idx],
                 '#',
+                invalidName,
                 "Name \"%s\" contains '#', which is not allowed in names",
                 prefix);
     }
-    ZL_RET_R_IF_GT(
-            invalidName,
+    ZL_ERR_IF_GT(
             idx,
             ZL_PREFIX_MAX_LEN,
+            invalidName,
             "Name \"%s\" is too long. Names must be no more than %d characters",
             prefix,
             ZL_PREFIX_MAX_LEN);
@@ -59,17 +60,18 @@ ZL_Report ZL_Name_init(
         const char* prefix,
         ZL_IDType uniqueID)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (prefix == NULL) {
         prefix = "";
     }
 
-    ZL_RET_R_IF_ERR(ZL_validatePrefix(prefix, false));
+    ZL_ERR_IF_ERR(ZL_validatePrefix(prefix, false));
     size_t prefixLen = strlen(prefix);
     ZL_ASSERT_LE(prefixLen, ZL_NAME_MAX_LEN);
 
     {
         char* prefixStorage = ALLOC_Arena_calloc(arena, ZL_NAME_STORAGE_SIZE);
-        ZL_RET_R_IF_NULL(allocation, prefixStorage);
+        ZL_ERR_IF_NULL(prefixStorage, allocation);
         strcpy(prefixStorage, prefix);
         prefix = prefixStorage;
     }
@@ -84,16 +86,16 @@ ZL_Report ZL_Name_init(
     }
 
     char* unique = ALLOC_Arena_calloc(arena, ZL_NAME_STORAGE_SIZE);
-    ZL_RET_R_IF_NULL(allocation, unique);
+    ZL_ERR_IF_NULL(unique, allocation);
 
     const int nameLen =
             snprintf(unique, ZL_NAME_STORAGE_SIZE, "%s#%u", prefix, uniqueID);
     ZL_ASSERT_LT(nameLen, ZL_NAME_STORAGE_SIZE);
     ZL_ASSERT_EQ(nameLen, (int)strlen(unique));
-    ZL_RET_R_IF_LT(
-            invalidName,
+    ZL_ERR_IF_LT(
             nameLen,
             0,
+            invalidName,
             "Name formatting for \"%s\" failed",
             prefix);
 

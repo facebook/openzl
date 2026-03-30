@@ -56,7 +56,7 @@ static ZL_RESULT_OF(ZL_MLSelectorConfig) MLSel_getConfig(ZL_Graph* graph)
 ZL_Report ZL_MLSel_dynGraph(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
-    ZL_TRY_LET_T(ZL_MLSelectorConfig, config, MLSel_getConfig(graph));
+    ZL_TRY_LET(ZL_MLSelectorConfig, config, MLSel_getConfig(graph));
 
     ZL_GraphIDList succList = ZL_Graph_getCustomGraphs(graph);
 
@@ -521,15 +521,10 @@ MLSelector_serializeMLSelectorConfig(
         A1C_MAP_TRY_ADD_T(ZL_SerializedMLConfig, pair, rootMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "runtimeConfig");
         if (config->model == ZL_GBT) {
-            ZL_RET_T_IF_ERR(
-                    ZL_SerializedMLConfig,
-                    GBTModel_serialize(
-                            errCtx, config->runtimeConfig, &pair->val, arena));
+            ZL_ERR_IF_ERR(GBTModel_serialize(
+                    errCtx, config->runtimeConfig, &pair->val, arena));
         } else {
-            ZL_RET_T_ERR(
-                    ZL_SerializedMLConfig,
-                    graph_invalid,
-                    "model type not supported");
+            ZL_ERR(graph_invalid, "model type not supported");
         }
     }
     dst.size = A1C_Item_encodedSize(root);
@@ -538,11 +533,10 @@ MLSelector_serializeMLSelectorConfig(
     A1C_Error error;
     size_t res = A1C_Item_encode(root, (uint8_t*)dst.data, dst.size, &error);
     if (res == 0) {
-        ZL_RET_T_WRAP_ERR(
-                ZL_SerializedMLConfig, A1C_Error_convert(NULL, error));
+        return ZL_WRAP_ERROR(A1C_Error_convert(NULL, error));
     }
-    ZL_RET_T_IF_NE(ZL_SerializedMLConfig, allocation, res, dst.size);
-    return ZL_RESULT_WRAP_VALUE(ZL_SerializedMLConfig, dst);
+    ZL_ERR_IF_NE(res, dst.size, allocation);
+    return ZL_WRAP_VALUE(dst);
 }
 
 ZL_RESULT_OF(ZL_MLSelectorConfig)
@@ -552,7 +546,7 @@ MLSelector_deserializeMLSelectorConfig(
         size_t size,
         A1C_Arena* arena)
 {
-    ZL_RESULT_DECLARE_SCOPE_REPORT(errCtx);
+    ZL_RESULT_DECLARE_SCOPE(ZL_MLSelectorConfig, errCtx);
     ZL_MLSelectorConfig dst;
     A1C_Decoder decoder;
     A1C_DecoderConfig decoderConfig =
@@ -563,18 +557,17 @@ MLSelector_deserializeMLSelectorConfig(
     A1C_Decoder_init(&decoder, *arena, decoderConfig);
     const A1C_Item* root =
             A1C_Decoder_decode(&decoder, (const uint8_t*)config, size);
-    ZL_RET_T_IF_NULL(ZL_MLSelectorConfig, allocation, root);
+    ZL_ERR_IF_NULL(root, allocation);
 
-    A1C_TRY_EXTRACT_T_MAP(ZL_MLSelectorConfig, rootMap, root);
+    A1C_TRY_EXTRACT_MAP(rootMap, root);
 
-    A1C_TRY_EXTRACT_T_INT64(
-            ZL_MLSelectorConfig, model, A1C_Map_get_cstr(&rootMap, "model"));
+    A1C_TRY_EXTRACT_INT64(model, A1C_Map_get_cstr(&rootMap, "model"));
     dst.model           = (ZL_MLSelectorModelType)model;
     void* runtimeConfig = NULL;
     if (dst.model == ZL_GBT) {
         const A1C_Item* runtimeConfigItem =
                 A1C_Map_get_cstr(&rootMap, "runtimeConfig");
-        ZL_RET_T_IF_NULL(ZL_MLSelectorConfig, corruption, runtimeConfigItem);
+        ZL_ERR_IF_NULL(runtimeConfigItem, corruption);
         GBTModel* gbtModelCopy =
                 (GBTModel*)arena->calloc(arena->opaque, sizeof(GBTModel));
 
@@ -582,8 +575,7 @@ MLSelector_deserializeMLSelectorConfig(
         gbtModelResult = GBTModel_deserialize(errCtx, runtimeConfigItem, arena);
 
         if (ZL_RES_isError(gbtModelResult)) {
-            return ZL_RESULT_WRAP_ERROR(
-                    ZL_MLSelectorConfig, ZL_RES_error(gbtModelResult));
+            return ZL_WRAP_ERROR(ZL_RES_error(gbtModelResult));
         }
 
         *gbtModelCopy = ZL_RES_value(gbtModelResult);
@@ -591,7 +583,7 @@ MLSelector_deserializeMLSelectorConfig(
     }
     dst.runtimeConfig = runtimeConfig;
 
-    return ZL_RESULT_WRAP_VALUE(ZL_MLSelectorConfig, dst);
+    return ZL_WRAP_VALUE(dst);
 }
 
 ZL_RESULT_OF(ZL_GraphID)
@@ -689,6 +681,7 @@ ZL_Compressor_buildUntrainedMLSelector(
         .trees    = &emptyTree,
     };
 
+    ZL_RESULT_DECLARE_SCOPE(ZL_GraphID, compressor);
     Arena* arena = ALLOC_HeapArena_create();
 
     // For binary classification (2 successors), we need 1 forest.
@@ -700,7 +693,7 @@ ZL_Compressor_buildUntrainedMLSelector(
             ALLOC_Arena_malloc(arena, sizeof(GBTPredictor_Forest) * numForests);
     if (forests == NULL) {
         ALLOC_Arena_freeArena(arena);
-        ZL_RET_T_ERR(ZL_GraphID, allocation, "Failed to allocate forests");
+        ZL_ERR(allocation, "Failed to allocate forests");
     }
 
     for (size_t i = 0; i < numForests; i++) {

@@ -39,7 +39,7 @@ ZL_Report SCTX_initInput(ZL_Edge* outEdge, ZL_Graph* gctx, RTStreamID irtsid)
             allocation);
     ZL_ASSERT_GE(VECTOR_SIZE(gctx->streamCtxs), 1);
     ZL_IDType n = (ZL_IDType)VECTOR_SIZE(gctx->streamCtxs) - 1;
-    ZL_ASSERT_NN(sctx);
+    ZL_ASSERT_NN(outEdge);
     outEdge[0] = (ZL_Edge){
         .gctx     = gctx,
         .scHandle = n,
@@ -172,11 +172,8 @@ ZL_Edge_runMultiInputNode_withParams(
     for (size_t n = 0; n < nbInputs; n++) {
         ZL_ASSERT_NN(inputCtxs[n]);
         inDGSCtxs[n] = &VECTOR_AT(gctx->streamCtxs, inputCtxs[n]->scHandle);
-        ZL_RET_T_IF_NE(
-                ZL_EdgeList,
-                successor_alreadySet,
-                inDGSCtxs[n]->dest_set,
-                sds_unassigned);
+        ZL_ERR_IF_NE(
+                inDGSCtxs[n]->dest_set, sds_unassigned, successor_alreadySet);
         inStreams[n] = ZL_codemodInputAsData(ZL_Edge_getData(inputCtxs[n]));
         rtsids[n]    = inDGSCtxs[n]->rtsid;
     }
@@ -188,7 +185,7 @@ ZL_Edge_runMultiInputNode_withParams(
             cctx, &rtnid, inStreams, rtsids, nbInputs, nodeid, localParams);
 
     // check node execution status
-    ZL_RET_T_IF_ERR(ZL_EdgeList, trStatus);
+    ZL_ERR_IF_ERR(trStatus);
     size_t const nbOuts = ZL_validResult(trStatus);
 
     // Set Input Streams as processed
@@ -203,7 +200,7 @@ ZL_Edge_runMultiInputNode_withParams(
     size_t const newNbStreams = oldNbStreams + nbOuts;
     size_t const reservedSize =
             VECTOR_RESIZE_UNINITIALIZED(gctx->streamCtxs, newNbStreams);
-    ZL_RET_T_IF_GT(ZL_EdgeList, allocation, newNbStreams, reservedSize);
+    ZL_ERR_IF_GT(newNbStreams, reservedSize, allocation);
 
     ZL_DLOG(SEQ, "node %u created %zu outputs", nodeid.nid, nbOuts);
     for (size_t n = 0; n < nbOuts; n++) {
@@ -281,7 +278,7 @@ static ZL_Report ZL_transferRuntimeGraphParams_stage2(
     if (rgp->localParams) {
         ALLOC_ARENA_MALLOC_CHECKED(ZL_LocalParams, lparamsCopy, 1, arena);
         *lparamsCopy = *rgp->localParams;
-        ZL_RET_R_IF_ERR(LP_transferLocalParams(arena, lparamsCopy));
+        ZL_ERR_IF_ERR(LP_transferLocalParams(arena, lparamsCopy));
         rgp->localParams = lparamsCopy;
     }
     if (rgp->nbCustomGraphs > 0) {
