@@ -33,7 +33,7 @@ Before creating scenarios, ask the user:
 | BUCK file | `benchmark/unitBench/BUCK` |
 | Test data | `/tmp/` (use `dd if=/dev/urandom`) |
 
-All paths relative to `fbcode/openzl/dev/`.
+All paths relative to the openzl dev root.
 
 ## Kernel Benchmark
 
@@ -165,23 +165,23 @@ Kernel `.c`/`.h` files are auto-included by the unitBench binary's `glob(["**/*.
 dd if=/dev/urandom of=/tmp/openzl_bench/test_1MB.bin bs=1M count=1
 dd if=/dev/urandom of=/tmp/openzl_bench/test_10MB.bin bs=1M count=10
 
-# Build with make (optimized -O3, no ASAN - use this for benchmarking) (located in fbcode/openzl/dev/)
-make unitBench
+# Build with BUCK in opt mode (best practice - optimized, no ASAN)
+buck build @//mode/opt //openzl/dev/benchmark/unitBench:unitBench
 
-# Run benchmark
-./unitBench <scenarioName> /tmp/openzl_bench/test_10MB.bin
+# Run benchmark via buck run
+buck run @//mode/opt //openzl/dev/benchmark/unitBench:unitBench -- <scenarioName> /tmp/openzl_bench/test_10MB.bin
 
-# Useful options
+# Useful options (after the -- separator)
 #   -i <seconds>    benchmark duration (default ~2s)
 #   -B <bytes>      split input into blocks
 #   --csv           CSV output for parsing
 #   -z              compression only (skip decompression round-trip)
 
 # List all scenarios
-./unitBench --list
+buck run @//mode/opt //openzl/dev/benchmark/unitBench:unitBench -- --list
 ```
 
-**Do NOT use buck for benchmarking** - buck builds include ASAN and debug flags that make results 10-50x slower than production. Use `make unitBench` for representative numbers.
+**Always use `buck build/run @//mode/opt`** for benchmarking. If buck is not available, fall back to `make unitBench` (from the openzl dev root).
 
 ## Common Mistakes
 
