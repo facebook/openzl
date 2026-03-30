@@ -123,11 +123,12 @@ void CTM_reset(CNodes_manager* ctm)
 static ZL_Report
 CTM_transferBuffer(CNodes_manager* ctm, const void** bufferPtr, size_t nbytes)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (nbytes == 0) {
         *bufferPtr = NULL;
     } else {
         void* const dst = ALLOC_Arena_malloc(ctm->allocator, nbytes);
-        ZL_RET_R_IF_NULL(allocation, dst);
+        ZL_ERR_IF_NULL(dst, allocation);
         ZL_memcpy(dst, *bufferPtr, nbytes);
         *bufferPtr = dst;
     }
@@ -151,9 +152,10 @@ static ZL_Report CTM_transferLocalParams(
 static ZL_Report
 CTM_transferStreamTypes(CNodes_manager* cnm, const ZL_Type** outST, size_t nbST)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DLOG(BLOCK, "CTM_transferStreamTypes : nbST=%zu", nbST);
     void const* buffer = *outST;
-    ZL_RET_R_IF_ERR(CTM_transferBuffer(cnm, &buffer, nbST * sizeof(**outST)));
+    ZL_ERR_IF_ERR(CTM_transferBuffer(cnm, &buffer, nbST * sizeof(**outST)));
     *outST = buffer;
     return ZL_returnSuccess();
 }
@@ -185,6 +187,7 @@ static ZL_RESULT_OF(CNodeID) CTM_registerCNode(
         const CNode* srcCNode,
         const char* prefix)
 {
+    ZL_RESULT_DECLARE_SCOPE(CNodeID, NULL);
     ZL_ASSERT_NN(ctm);
     ZL_ASSERT_NN(srcCNode);
     ZL_DLOG(BLOCK,
@@ -199,12 +202,11 @@ static ZL_RESULT_OF(CNodeID) CTM_registerCNode(
 
     // Need to check the name before pushing into the vector
     ZL_Name name;
-    ZL_RET_T_IF_ERR(CNodeID, ZL_Name_init(&name, ctm->allocator, prefix, lnid));
+    ZL_ERR_IF_ERR(ZL_Name_init(&name, ctm->allocator, prefix, lnid));
 
-    ZL_RET_T_IF_NOT(
-            CNodeID,
-            temporaryLibraryLimitation,
-            VECTOR_PUSHBACK(ctm->cnodes, *srcCNode));
+    ZL_ERR_IF_NOT(
+            VECTOR_PUSHBACK(ctm->cnodes, *srcCNode),
+            temporaryLibraryLimitation);
 
     CNode* const cnode = &VECTOR_AT(ctm->cnodes, lnid);
     ZL_DLOG(SEQ, "cnode address = %p", cnode);
@@ -216,63 +218,46 @@ static ZL_RESULT_OF(CNodeID) CTM_registerCNode(
     switch (cnode->nodetype) {
         /* only localParams */
         case node_internalTransform:
-            ZL_RET_T_IF_ERR(
-                    CNodeID,
-                    CTM_transferPrivateParam(ctm, &cnode->transformDesc));
+            ZL_ERR_IF_ERR(CTM_transferPrivateParam(ctm, &cnode->transformDesc));
             ZL_MIEncoderDesc* const trDesc = &cnode->transformDesc.publicDesc;
-            ZL_RET_T_IF_ERR(
-                    CNodeID,
-                    CTM_transferLocalParams(ctm, &trDesc->localParams));
+            ZL_ERR_IF_ERR(CTM_transferLocalParams(ctm, &trDesc->localParams));
             // Materialize params if materializer is provided (with
             // deduplication)
             if (trDesc->materializer.materializeFn != NULL) {
                 // Validate provided params don't contain the paramId reserved
                 // for the materializer
-                ZL_RET_T_IF_ERR(
-                        CNodeID,
-                        MPM_validateMaterializedParamId(
-                                &trDesc->localParams,
-                                trDesc->materializer.paramId));
+                ZL_ERR_IF_ERR(MPM_validateMaterializedParamId(
+                        &trDesc->localParams, trDesc->materializer.paramId));
                 // Add the materialized object to refParams
-                ZL_RET_T_IF_ERR(
-                        CNodeID,
-                        MPM_addOrReuseMaterializedParam(
-                                ctm->allocator,
-                                &ctm->materializedParams,
-                                ctm->opCtx,
-                                &trDesc->localParams,
-                                &trDesc->materializer));
+                ZL_ERR_IF_ERR(MPM_addOrReuseMaterializedParam(
+                        ctm->allocator,
+                        &ctm->materializedParams,
+                        ctm->opCtx,
+                        &trDesc->localParams,
+                        &trDesc->materializer));
             }
             // A valid transform must have at least one input
-            ZL_RET_T_IF_LT(
-                    CNodeID,
-                    node_invalid_input,
+            ZL_ERR_IF_LT(
                     CNODE_getNbInputPorts(cnode),
                     1,
+                    node_invalid_input,
                     "Transform '%s' must declare at least 1 Input Port!",
                     CNODE_getName(cnode));
             // and at most ZL_runtimeNodeInputLimit() inputs
-            ZL_RET_T_IF_GT(
-                    CNodeID,
-                    node_invalid_input,
+            ZL_ERR_IF_GT(
                     CNODE_getNbInputPorts(cnode),
                     ZL_runtimeNodeInputLimit(ZL_MAX_FORMAT_VERSION),
+                    node_invalid_input,
                     "Too many inputs (%u) defined for transform '%s' (max=%u)",
                     CNODE_getNbInputPorts(cnode),
                     CNODE_getName(cnode),
                     ZL_runtimeNodeInputLimit(ZL_MAX_FORMAT_VERSION));
-            ZL_RET_T_IF_ERR(
-                    CNodeID,
-                    CTM_transferStreamTypes(
-                            ctm, &trDesc->gd.inputTypes, trDesc->gd.nbInputs));
-            ZL_RET_T_IF_ERR(
-                    CNodeID,
-                    CTM_transferStreamTypes(
-                            ctm, &trDesc->gd.soTypes, trDesc->gd.nbSOs));
-            ZL_RET_T_IF_ERR(
-                    CNodeID,
-                    CTM_transferStreamTypes(
-                            ctm, &trDesc->gd.voTypes, trDesc->gd.nbVOs));
+            ZL_ERR_IF_ERR(CTM_transferStreamTypes(
+                    ctm, &trDesc->gd.inputTypes, trDesc->gd.nbInputs));
+            ZL_ERR_IF_ERR(CTM_transferStreamTypes(
+                    ctm, &trDesc->gd.soTypes, trDesc->gd.nbSOs));
+            ZL_ERR_IF_ERR(CTM_transferStreamTypes(
+                    ctm, &trDesc->gd.voTypes, trDesc->gd.nbVOs));
             // Add automatic state ID when none provided
             if (trDesc->trStateMgr.optionalStateID == 0) {
                 // Note: currently, void* opaque pointers are not exposed.
@@ -284,8 +269,7 @@ static ZL_RESULT_OF(CNodeID) CTM_registerCNode(
         case node_illegal:
             // We should never reach here with an illegal node
             ZL_ASSERT_FAIL("Impossible, illegal node type");
-            ZL_RET_T_ERR(
-                    CNodeID, GENERIC, "Trying to register an illegal node");
+            ZL_ERR(GENERIC, "Trying to register an illegal node");
         default:
             ZL_ASSERT_FAIL(
                     "node type (%u) not possible at this stage",
@@ -299,11 +283,10 @@ CTM_registerCustomTransform(
         CNodes_manager* ctm,
         const InternalTransform_Desc* ctd)
 {
+    ZL_RESULT_DECLARE_SCOPE(CNodeID, NULL);
     ZL_DLOG(BLOCK, "CTM_registerCustomTransform");
-    ZL_RET_T_IF_ERR(
-            CNodeID,
-            ZL_OpaquePtrRegistry_register(
-                    &ctm->opaquePtrs, ctd->publicDesc.opaque));
+    ZL_ERR_IF_ERR(ZL_OpaquePtrRegistry_register(
+            &ctm->opaquePtrs, ctd->publicDesc.opaque));
     CNode cnode      = { .nodetype      = node_internalTransform,
                          .publicIDtype  = trt_custom,
                          .transformDesc = *ctd,
@@ -321,11 +304,10 @@ CTM_registerStandardTransform(
         unsigned minFormatVersion,
         unsigned maxFormatVersion)
 {
+    ZL_RESULT_DECLARE_SCOPE(CNodeID, NULL);
     ZL_DLOG(BLOCK, "CTM_registerStandardTransform");
-    ZL_RET_T_IF_ERR(
-            CNodeID,
-            ZL_OpaquePtrRegistry_register(
-                    &ctm->opaquePtrs, ctd->publicDesc.opaque));
+    ZL_ERR_IF_ERR(ZL_OpaquePtrRegistry_register(
+            &ctm->opaquePtrs, ctd->publicDesc.opaque));
     CNode cnode      = { .nodetype         = node_internalTransform,
                          .publicIDtype     = trt_standard,
                          .minFormatVersion = minFormatVersion,
@@ -344,11 +326,11 @@ CTM_parameterizeNode(
         const CNode* srcCNode,
         const ZL_ParameterizedNodeDesc* desc)
 {
-    ZL_RET_T_IF_NE(
-            CNodeID,
-            node_invalid,
+    ZL_RESULT_DECLARE_SCOPE(CNodeID, NULL);
+    ZL_ERR_IF_NE(
             srcCNode->nodetype,
             node_internalTransform,
+            node_invalid,
             "Invalid CNode");
     CNode clonedCNode      = *srcCNode;
     clonedCNode.baseNodeID = desc->node;

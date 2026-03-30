@@ -105,13 +105,13 @@ GBTModel_predictInd(const GBTModel* model, const ZL_Input* in, ZL_Graph* graph)
 
     if (ZL_isError(report)) {
         VECTOR_DESTROY(featuresMap);
-        ZL_ERR_IF_ERR(report, "Error in generating features");
+        ZL_ERR_IF_ERR(report);
     }
 
     float* featuresData = (float*)malloc(model->nbFeatures * sizeof(float));
     if (featuresData == NULL) {
         VECTOR_DESTROY(featuresMap);
-        ZL_ERR(allocation, "Error allocating features");
+        ZL_ERR(allocation);
     }
 
     for (size_t i = 0; i < model->nbFeatures; i++) {
@@ -159,22 +159,23 @@ ZL_Report GBTPredictor_validate_forest(
         const size_t forest_idx,
         const int nbFeatures)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     const GBTPredictor_Forest* forest = &predictor->forests[forest_idx];
-    ZL_RET_R_IF_NULL(
-            GENERIC,
+    ZL_ERR_IF_NULL(
             forest->trees,
+            GENERIC,
             "GBTModel's %u forest's tree array is null",
             forest_idx);
 
     for (size_t j = 0; j < forest->numTrees; j++) {
         const GBTPredictor_Tree* tree = &forest->trees[j];
-        ZL_RET_R_IF_NULL(
-                GENERIC,
+        ZL_ERR_IF_NULL(
                 tree->nodes,
+                GENERIC,
                 "GBTModel's %u forest's %u tree is null",
                 forest_idx,
                 j);
-        ZL_RET_R_IF_ERR(GBTPredictor_validate_tree(tree, nbFeatures));
+        ZL_ERR_IF_ERR(GBTPredictor_validate_tree(tree, nbFeatures));
     }
 
     return ZL_returnSuccess();
@@ -184,21 +185,22 @@ ZL_Report GBTPredictor_validate_tree(
         const GBTPredictor_Tree* tree,
         int nbFeatures)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     for (size_t currNodeIdx = 0; currNodeIdx < tree->numNodes; currNodeIdx++) {
         const GBTPredictor_Node node = tree->nodes[currNodeIdx];
 
         // Feature index is out of bounds
         if (nbFeatures != -1) {
             // Only check if available
-            ZL_RET_R_IF_GE(
-                    GENERIC,
+            ZL_ERR_IF_GE(
                     node.featureIdx,
                     nbFeatures,
+                    GENERIC,
                     "Feature index is out of bounds");
         }
 
-        ZL_RET_R_IF_LT(
-                GENERIC, node.featureIdx, -1, "Feature index is out of bounds");
+        ZL_ERR_IF_LT(
+                node.featureIdx, -1, GENERIC, "Feature index is out of bounds");
 
         // If feature index is -1, then node is leaf node so we do
         // not need to verify left/right/missing child indices
@@ -207,46 +209,46 @@ ZL_Report GBTPredictor_validate_tree(
         }
 
         // Verify that the node value is a valid numeric float
-        ZL_RET_R_IF(GENERIC, isnan(node.value), "Node value is nan");
-        ZL_RET_R_IF(
-                GENERIC,
+        ZL_ERR_IF(isnan(node.value), GENERIC, "Node value is nan");
+        ZL_ERR_IF(
                 isinf(node.value),
+                GENERIC,
                 "Node value is positive or negative infinity");
 
         // If children indices come before the current node index
         // then there might be a cycle, we expect the index to always
         // advance
-        ZL_RET_R_IF_GE(
-                GENERIC,
+        ZL_ERR_IF_GE(
                 currNodeIdx,
                 node.leftChildIdx,
-                "Left child index is less than current node index");
-        ZL_RET_R_IF_GE(
                 GENERIC,
+                "Left child index is less than current node index");
+        ZL_ERR_IF_GE(
                 currNodeIdx,
                 node.rightChildIdx,
-                "Right child index is less than current node index");
-        ZL_RET_R_IF_GE(
                 GENERIC,
+                "Right child index is less than current node index");
+        ZL_ERR_IF_GE(
                 currNodeIdx,
                 node.missingChildIdx,
+                GENERIC,
                 "Missing child index is less than current node index");
 
         // Check if child indices are out of bounds
-        ZL_RET_R_IF_GE(
-                GENERIC,
+        ZL_ERR_IF_GE(
                 node.leftChildIdx,
                 tree->numNodes,
-                "Left child index is out of bounds");
-        ZL_RET_R_IF_GE(
                 GENERIC,
+                "Left child index is out of bounds");
+        ZL_ERR_IF_GE(
                 node.rightChildIdx,
                 tree->numNodes,
-                "Right child index is out of bounds");
-        ZL_RET_R_IF_GE(
                 GENERIC,
+                "Right child index is out of bounds");
+        ZL_ERR_IF_GE(
                 node.missingChildIdx,
                 tree->numNodes,
+                GENERIC,
                 "Missing child index is out of bounds");
     }
     return ZL_returnSuccess();
@@ -254,39 +256,41 @@ ZL_Report GBTPredictor_validate_tree(
 
 ZL_Report GBTPredictor_validate(const GBTPredictor* predictor, int nbFeatures)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     for (size_t i = 0; i < predictor->numForests; i++) {
-        ZL_RET_R_IF_ERR(GBTPredictor_validate_forest(predictor, i, nbFeatures));
+        ZL_ERR_IF_ERR(GBTPredictor_validate_forest(predictor, i, nbFeatures));
     }
     return ZL_returnSuccess();
 }
 
 ZL_Report GBTModel_validate(const GBTModel* model)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     // Check if any model elements are null
-    ZL_RET_R_IF_NULL(GENERIC, model, "GBTModel is null");
-    ZL_RET_R_IF_NULL(GENERIC, model->predictor, "GBTModel's predictor is null");
-    ZL_RET_R_IF_NULL(
-            GENERIC,
+    ZL_ERR_IF_NULL(model, GENERIC, "GBTModel is null");
+    ZL_ERR_IF_NULL(model->predictor, GENERIC, "GBTModel's predictor is null");
+    ZL_ERR_IF_NULL(
             model->featureLabels,
+            GENERIC,
             "GBTModel's featureLabels array is null");
-    ZL_RET_R_IF_NULL(
-            GENERIC, model->predictor->forests, "GBTModel's forests is null");
+    ZL_ERR_IF_NULL(
+            model->predictor->forests, GENERIC, "GBTModel's forests is null");
 
     if (model->predictor->numForests == 1) {
-        ZL_RET_R_IF_NE(
-                GENERIC,
+        ZL_ERR_IF_NE(
                 2,
                 model->nbSuccessors,
+                GENERIC,
                 "There is only one forest(binary classification), but number of successors is not 2");
     } else {
-        ZL_RET_R_IF_NE(
-                GENERIC,
+        ZL_ERR_IF_NE(
                 model->predictor->numForests,
                 model->nbSuccessors,
+                GENERIC,
                 "Multiclass classification. Number of forests not equal to number of successors");
     }
 
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             GBTPredictor_validate(model->predictor, (int)model->nbFeatures));
     return ZL_returnSuccess();
 }
