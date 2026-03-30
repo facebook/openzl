@@ -5,6 +5,10 @@
 #include "openzl/zl_opaque_types.h"
 
 #include <cstddef>
+#include <cstdint>
+#include <string>
+#include <variant>
+#include <vector>
 
 namespace openzl::visualizer {
 
@@ -18,5 +22,10 @@ namespace openzl::visualizer {
 using StreamID = ZL_DataID;
 using CodecID  = size_t;
 using GraphID  = size_t;
+
+using StreamPreview = std::variant<
+        std::vector<uint8_t>, // default
+        std::vector<int64_t>,
+        std::vector<std::string>>;
 
 } // namespace openzl::visualizer

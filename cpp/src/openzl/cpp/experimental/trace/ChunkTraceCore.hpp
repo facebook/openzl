@@ -3,8 +3,6 @@
 #pragma once
 
 #include <map>
-#include <string>
-#include <variant>
 #include <vector>
 
 #include "openzl/cpp/experimental/trace/Codec.hpp"
@@ -12,11 +10,6 @@
 #include "openzl/cpp/experimental/trace/StreamVisualizer.hpp"
 
 namespace openzl::visualizer {
-
-using StreamPreview = std::variant<
-        std::vector<std::string>,
-        std::vector<int64_t>,
-        std::vector<uint8_t>>;
 
 struct StreamdumpEntry {
     size_t streamId;
