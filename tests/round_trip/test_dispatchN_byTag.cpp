@@ -151,6 +151,7 @@ static ZL_Report dispatchN_specializeNode(
         ZL_Edge* sctxs[],
         size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbIns == 1);
     ZL_Edge* sctx            = sctxs[0];
     ZL_Input const* const in = ZL_Edge_getData(sctx);
@@ -165,10 +166,9 @@ static ZL_Report dispatchN_specializeNode(
         .nbSegments   = 5,
         .nbTags       = nbTags,
     };
-    ZL_TRY_LET_T(
-            ZL_EdgeList, out, ZL_Edge_runDispatchNode(sctx, &instructions));
+    ZL_TRY_LET(ZL_EdgeList, out, ZL_Edge_runDispatchNode(sctx, &instructions));
     for (size_t i = 0; i < out.nbEdges; ++i) {
-        ZL_RET_R_IF_ERR(ZL_Edge_setDestination(out.edges[i], ZL_GRAPH_STORE));
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(out.edges[i], ZL_GRAPH_STORE));
     }
     return ZL_returnSuccess();
 }
@@ -176,6 +176,7 @@ static ZL_Report dispatchN_specializeNode(
 static ZL_Report
 dispatchN_manyTags(ZL_Graph* graph, ZL_Edge* ins[], size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
     assert(nbIns == 1);
     ZL_Edge* in                 = ins[0];
     ZL_Input const* const input = ZL_Edge_getData(in);
@@ -202,9 +203,9 @@ dispatchN_manyTags(ZL_Graph* graph, ZL_Edge* ins[], size_t nbIns) noexcept
         .nbTags       = nbTags,
     };
 
-    ZL_TRY_LET_T(ZL_EdgeList, out, ZL_Edge_runDispatchNode(in, &instructions));
+    ZL_TRY_LET(ZL_EdgeList, out, ZL_Edge_runDispatchNode(in, &instructions));
     for (size_t i = 0; i < out.nbEdges; ++i) {
-        ZL_RET_R_IF_ERR(ZL_Edge_setDestination(out.edges[i], ZL_GRAPH_STORE));
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(out.edges[i], ZL_GRAPH_STORE));
     }
     return ZL_returnSuccess();
 }

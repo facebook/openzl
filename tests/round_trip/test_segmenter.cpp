@@ -336,11 +336,12 @@ PARSER_Result PARSER_analyzeChunk(PARSER_State* ps, const ZL_Input* input)
  */
 ZL_Report test_PrivateGraphFn(ZL_Graph* graph, const void* payload)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
     PARSER_State ps = *(const PARSER_State*)payload;
     EXPECT_EQ(ps.chunkNb, g_chunkNb_current);
 
     (void)graph;
-    ZL_RET_R_IF(GENERIC, 1); // unfinished
+    ZL_ERR_IF(1, GENERIC); // unfinished
 
     // assert(ZL_Graph_numInputs(graph) == 1);
     // ZL_Edge* input = ZL_Graph_getEdge(graph, 0);

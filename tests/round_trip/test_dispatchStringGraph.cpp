@@ -71,6 +71,7 @@ static const std::vector<uint16_t> genDispatchIndices(
 static ZL_Report
 oneToManyDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     EXPECT_EQ(nbInputs, 1);
     ZL_Edge* input = inputs[0];
     const int nbOutputs =
@@ -83,7 +84,7 @@ oneToManyDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs) noexcept
         indices[i] = i % nbOutputs;
     }
 
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             so,
             ZL_Edge_runDispatchStringNode(input, nbOutputs, indices));
@@ -93,7 +94,7 @@ oneToManyDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs) noexcept
             (size_t)(nbVariableOutputs + 1)); // +1 for the indices stream
 
     for (size_t i = 0; i < so.nbEdges; ++i) {
-        ZL_RET_R_IF_ERR(ZL_Edge_setDestination(so.edges[i], ZL_GRAPH_STORE));
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(so.edges[i], ZL_GRAPH_STORE));
     }
 
     free(indices);

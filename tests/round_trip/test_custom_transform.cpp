@@ -66,6 +66,7 @@ static void splitN(
 // concatenate the input streams.
 static ZL_Report split4_encoder(ZL_Encoder* eic, const ZL_Input* in) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eic);
     ZL_REQUIRE(eic != nullptr);
     ZL_REQUIRE(in != nullptr);
     ZL_REQUIRE(ZL_Input_type(in) == ZL_Type_serial);
@@ -80,19 +81,19 @@ static ZL_Report split4_encoder(ZL_Encoder* eic, const ZL_Input* in) noexcept
     size_t const s4     = srcSize - (s1 + s2 + s3);
 
     ZL_Output* const out0 = ZL_Encoder_createTypedStream(eic, 0, 4, 1);
-    ZL_RET_R_IF_NULL(allocation, out0);
+    ZL_ERR_IF_NULL(out0, allocation);
 
     ZL_Output* const out1 = ZL_Encoder_createTypedStream(eic, 1, s1, 1);
-    ZL_RET_R_IF_NULL(allocation, out1);
+    ZL_ERR_IF_NULL(out1, allocation);
 
     ZL_Output* const out2 = ZL_Encoder_createTypedStream(eic, 1, s2, 1);
-    ZL_RET_R_IF_NULL(allocation, out2);
+    ZL_ERR_IF_NULL(out2, allocation);
 
     ZL_Output* const out3 = ZL_Encoder_createTypedStream(eic, 1, s3, 1);
-    ZL_RET_R_IF_NULL(allocation, out3);
+    ZL_ERR_IF_NULL(out3, allocation);
 
     ZL_Output* const out4 = ZL_Encoder_createTypedStream(eic, 1, s4, 1);
-    ZL_RET_R_IF_NULL(allocation, out4);
+    ZL_ERR_IF_NULL(out4, allocation);
 
     void* dstArray[] = {
         ZL_Output_ptr(out2),
@@ -109,11 +110,11 @@ static ZL_Report split4_encoder(ZL_Encoder* eic, const ZL_Input* in) noexcept
     const uint8_t dstOrders[] = { 1, 0, 3, 2 };
     memcpy(ZL_Output_ptr(out0), dstOrders, 4);
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out0, 4));
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out1, s1));
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out2, s2));
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out3, s3));
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out4, s4));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out0, 4));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out1, s1));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out2, s2));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out3, s3));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out4, s4));
 
     return ZL_returnSuccess();
 }
@@ -152,6 +153,7 @@ static ZL_Report concat_decoder(
         const ZL_Input* VOsrcs[],
         size_t nbVOSrcs) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_REQUIRE(nbO1Srcs == 1);
     ZL_REQUIRE(VOsrcs != nullptr);
     for (size_t n = 0; n < nbVOSrcs; n++)
@@ -177,14 +179,14 @@ static ZL_Report concat_decoder(
     size_t const dstSize = sum(srcSizes, nbVOSrcs);
 
     ZL_Output* const out = ZL_Decoder_create1OutStream(eictx, dstSize, 1);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
 
     size_t const r = concatenate(
             ZL_Output_ptr(out), dstSize, srcPtrs, srcSizes, nbVOSrcs);
     ZL_REQUIRE(r == dstSize);
     (void)r;
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, dstSize));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, dstSize));
 
     return ZL_returnSuccess();
 }

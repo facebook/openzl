@@ -21,6 +21,7 @@ auto deltaFeatureGenerator(
         const ZL_Input* inputStream,
         VECTOR(LabeledFeature) * features)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
     // Calculates nbElts, eltWidth and hasConstDelta features. hasConstDelta
     // represents whether or not the stream is an arithmetic sequence, which
     // will always have a constant delta since the difference between each ith
@@ -59,7 +60,7 @@ auto deltaFeatureGenerator(
     badAlloc |= !VECTOR_PUSHBACK(*features, eltWidthFeature);
     badAlloc |= !VECTOR_PUSHBACK(*features, hasConstDeltaFeature);
 
-    ZL_RET_R_IF(allocation, badAlloc, "Failed to add features to vector");
+    ZL_ERR_IF(badAlloc, allocation, "Failed to add features to vector");
     return ZL_returnSuccess();
 }
 

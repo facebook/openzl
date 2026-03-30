@@ -428,6 +428,7 @@ static int g_intParamTest = 0;
 static ZL_Report
 printParamGraph(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
     assert(nbInputs == 1);
     const ZL_IntParam ip = ZL_Graph_getLocalIntParam(graph, TEST_INT_PARAM_ID);
     if (ip.paramId == TEST_INT_PARAM_ID) {
@@ -435,7 +436,7 @@ printParamGraph(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs) noexcept
         g_intParamTest = ip.paramValue;
     }
     // send input to successor (which must be a Graph)
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(inputs[0], ZL_GRAPH_ZSTD));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(inputs[0], ZL_GRAPH_ZSTD));
     return ZL_returnSuccess();
 }
 

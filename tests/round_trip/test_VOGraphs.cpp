@@ -69,6 +69,7 @@ static ZL_Report customSplit4_encoder(
         ZL_Encoder* eic,
         const ZL_Input* in) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eic);
     printf("starting customSplit4_encoder \n");
     assert(eic != nullptr);
     assert(in != nullptr);
@@ -84,16 +85,16 @@ static ZL_Report customSplit4_encoder(
     size_t const s4     = srcSize - (s1 + s2 + s3);
 
     ZL_Output* const out1 = ZL_Encoder_createTypedStream(eic, 0, s1, 1);
-    ZL_RET_R_IF_NULL(allocation, out1);
+    ZL_ERR_IF_NULL(out1, allocation);
 
     ZL_Output* const out2 = ZL_Encoder_createTypedStream(eic, 0, s2, 1);
-    ZL_RET_R_IF_NULL(allocation, out2);
+    ZL_ERR_IF_NULL(out2, allocation);
 
     ZL_Output* const out3 = ZL_Encoder_createTypedStream(eic, 0, s3, 1);
-    ZL_RET_R_IF_NULL(allocation, out3);
+    ZL_ERR_IF_NULL(out3, allocation);
 
     ZL_Output* const out4 = ZL_Encoder_createTypedStream(eic, 0, s4, 1);
-    ZL_RET_R_IF_NULL(allocation, out4);
+    ZL_ERR_IF_NULL(out4, allocation);
 
     void* dstArray[] = {
         ZL_Output_ptr(out1),
@@ -112,10 +113,10 @@ static ZL_Report customSplit4_encoder(
 
     splitN(dstArray, dstSizes, nbOuts, src, srcSize);
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out1, s1));
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out2, s2));
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out3, s3));
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out4, s4));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out1, s1));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out2, s2));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out3, s3));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out4, s4));
 
     return ZL_returnSuccess();
 }
@@ -141,6 +142,7 @@ static ZL_Report fail_overAllocateStream(
         ZL_Encoder* eic,
         const ZL_Input* in) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eic);
     printf("starting fail_overAllocateStream \n");
     (void)eic; // not used
     (void)in;  // not used
@@ -155,7 +157,7 @@ static ZL_Report fail_overAllocateStream(
     assert(out2 == nullptr);
 
     if (out2 == nullptr) {
-        ZL_RET_R_ERR(allocation);
+        ZL_ERR(allocation);
     }
 
     assert(0); // should never reach that point
@@ -271,6 +273,7 @@ static ZL_Report concat_decoder(
         const ZL_Input* VOsrcs[],
         size_t nbVOSrcs) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     assert(nbO1Srcs == 0);
     (void)nbO1Srcs;
     (void)O1srcs;
@@ -293,14 +296,14 @@ static ZL_Report concat_decoder(
     size_t const dstSize = sum(srcSizes, nbVOSrcs);
 
     ZL_Output* const out = ZL_Decoder_create1OutStream(eictx, dstSize, 1);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
 
     size_t const r = concatenate(
             ZL_Output_ptr(out), dstSize, srcPtrs, srcSizes, nbVOSrcs);
     assert(r == dstSize);
     (void)r;
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, dstSize));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, dstSize));
 
     return ZL_returnSuccess();
 }
