@@ -611,6 +611,14 @@ void ZL_EE_log(ZL_ErrorInfo ei, int level);
         ZL_RET_IF_ERR_IMPL(type, _res, __VA_ARGS__);                                                                                                                                                                  \
     } while (0)
 
+/**
+ * Adds a ZL_GraphContext to the error scope
+ */
+#define ZL_RESULT_SCOPE_ADD_GRAPH_CONTEXT(...)   \
+    do {                                         \
+        ZL__errorContext.graphCtx = __VA_ARGS__; \
+    } while (0)
+
 ZL_END_C_DECLS
 
 #endif // ZSTRONG_COMMON_ERRORS_INTERNAL_H
