@@ -296,13 +296,14 @@ static ZL_Report ZS_largeHuffmanBuildCTableFromTree(
         uint16_t maxSymbolValue,
         int maxNbBits)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     int const alphabetSize = (int)(maxSymbolValue + 1);
     uint16_t* nbPerRank    = calloc((size_t)1 << maxNbBits, sizeof(uint16_t));
-    ZL_RET_R_IF_NULL(allocation, nbPerRank);
+    ZL_ERR_IF_NULL(nbPerRank, allocation);
     uint16_t* valPerRank = calloc((size_t)1 << maxNbBits, sizeof(uint16_t));
     if (valPerRank == NULL) {
         free(nbPerRank);
-        ZL_RET_R_ERR(allocation);
+        ZL_ERR(allocation);
     }
 
     for (int n = 0; n <= nonNullRank; n++) {
@@ -337,10 +338,11 @@ ZL_Report ZS_largeHuffmanBuildCTable(
         uint16_t maxSymbolValue,
         int maxNbBits)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZS_RankPos rankPosition[ZS_kLargeHuffmanMaxRank + 1];
     ZS_NodeElt* const huffNodeTable =
             calloc((size_t)(2 * maxSymbolValue + 3), sizeof(ZS_NodeElt));
-    ZL_RET_R_IF_NULL(allocation, huffNodeTable);
+    ZL_ERR_IF_NULL(huffNodeTable, allocation);
 
     ZS_NodeElt* const huffNode = huffNodeTable + 1;
 
@@ -362,13 +364,13 @@ ZL_Report ZS_largeHuffmanBuildCTable(
     maxNbBits = ZS_largeHuffmanSetMaxHeight(huffNode, nonNullRank, maxNbBits);
     if (maxNbBits > ZS_kLargeHuffmanMaxTableLog) {
         free(huffNodeTable);
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
 
     const ZL_Report report = ZS_largeHuffmanBuildCTableFromTree(
             ctable, huffNode, nonNullRank, maxSymbolValue, maxNbBits);
     free(huffNodeTable);
-    ZL_RET_R_IF_ERR(report);
+    ZL_ERR_IF_ERR(report);
 
     return ZL_returnValue((size_t)maxNbBits);
 }
@@ -379,9 +381,10 @@ ZL_Report ZS_largeHuffmanWriteCTable(
         uint16_t maxSymbolValue,
         int maxNbBits)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     int const maxSymbolValue1 = (int)maxSymbolValue + 1;
     uint8_t* const weights    = malloc((size_t)(maxSymbolValue + 1));
-    ZL_RET_R_IF_NULL(allocation, weights);
+    ZL_ERR_IF_NULL(weights, allocation);
 
     for (int s = 0; s < maxSymbolValue1; ++s) {
         ZL_ASSERT_LE(ctable[s].nbBits, maxNbBits);
@@ -395,14 +398,14 @@ ZL_Report ZS_largeHuffmanWriteCTable(
 
     if (ZL_WC_avail(dst) < 7) {
         free(weights);
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     ZL_WC_push(dst, (uint8_t)maxNbBits);
     ZL_WC_pushCE16(dst, maxSymbolValue);
     if (ZL_isError(ZS_Entropy_encodeFse(
                 dst, weights, (size_t)maxSymbolValue1, 1, 2))) {
         free(weights);
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
 
     free(weights);
@@ -441,8 +444,9 @@ ZL_Report ZS_largeHuffmanEncodeUsingCTable(
         ZS_Huf16CElt const* ctable,
         int maxNbBits)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (ZL_WC_avail(dst) < 8) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     ZL_WC_pushCE32(dst, (uint32_t)size);
     uint8_t* const sizePtr = ZL_WC_ptr(dst);
@@ -451,7 +455,7 @@ ZL_Report ZS_largeHuffmanEncodeUsingCTable(
     BIT_CStream_t cstream;
     if (ERR_isError(
                 BIT_initCStream(&cstream, ZL_WC_ptr(dst), ZL_WC_avail(dst)))) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
 
     if (ZL_64bits()) {
@@ -479,7 +483,7 @@ ZL_Report ZS_largeHuffmanEncodeUsingCTable(
 
     size_t const streamSize = BIT_closeCStream(&cstream);
     if (streamSize == 0) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     ZL_WC_advance(dst, streamSize);
 
@@ -494,11 +498,12 @@ ZL_Report ZS_largeHuffmanEncodeUsingCTableX4(
         ZS_Huf16CElt const* ctable,
         int maxNbBits)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     size_t off                = 0;
     size_t const maxChunkSize = size / 4 + 1;
     for (int i = 0; i < 4; ++i) {
         size_t const chunkSize = ZL_MIN(maxChunkSize, size - off);
-        ZL_RET_R_IF_ERR(ZS_largeHuffmanEncodeUsingCTable(
+        ZL_ERR_IF_ERR(ZS_largeHuffmanEncodeUsingCTable(
                 dst, src + off, chunkSize, ctable, maxNbBits));
         off += chunkSize;
     }
@@ -509,8 +514,9 @@ ZL_Report ZS_largeHuffmanEncodeUsingCTableX4(
 static ZL_Report
 ZS_largeHuffmanUncompressed(ZL_WC* dst, uint16_t const* src, size_t size)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (ZL_WC_avail(dst) < 1 + ZL_varintSize((uint64_t)size) + 2 * size) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     ZL_WC_push(dst, (uint8_t)ZS_HufTransformPrefix_lit);
     ZL_WC_pushVarint(dst, (uint64_t)size);
@@ -527,6 +533,7 @@ ZL_Report ZS_largeHuffmanEncode(
         uint16_t maxSymbolValue,
         int maxTableLog)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (maxTableLog > ZS_kLargeHuffmanMaxTableLog || maxTableLog == 0) {
         maxTableLog = ZS_kLargeHuffmanMaxTableLog;
     }
@@ -536,7 +543,7 @@ ZL_Report ZS_largeHuffmanEncode(
 
     ZL_WC cpy = *dst;
     if (ZL_WC_avail(dst) < 1) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
 
     uint8_t* const header = ZL_WC_ptr(dst);
@@ -544,7 +551,7 @@ ZL_Report ZS_largeHuffmanEncode(
     //> Histogram
     uint32_t* const histogram =
             calloc((size_t)(maxSymbolValue + 1), sizeof(uint32_t));
-    ZL_RET_R_IF_NULL(allocation, histogram);
+    ZL_ERR_IF_NULL(histogram, allocation);
     {
         int maxSymbolValueUpperBound = 0;
         for (size_t i = 0; i < size; ++i) {
@@ -567,7 +574,7 @@ ZL_Report ZS_largeHuffmanEncode(
         *header = (uint8_t)ZS_HufTransformPrefix_constant;
         if (ZL_WC_avail(dst)
             < ZL_varintSize((uint64_t)size) + sizeof(uint16_t)) {
-            ZL_RET_R_ERR(GENERIC);
+            ZL_ERR(GENERIC);
         }
         ZL_WC_pushVarint(dst, (uint64_t)size);
         ZL_WC_pushCE16(dst, maxSymbolValue);
@@ -579,14 +586,14 @@ ZL_Report ZS_largeHuffmanEncode(
             calloc((size_t)(maxSymbolValue + 1), sizeof(ZS_Huf16CElt));
     if (ctable == NULL) {
         free(histogram);
-        ZL_RET_R_ERR(allocation);
+        ZL_ERR(allocation);
     }
     ZL_Report const maxNbBitsReport = ZS_largeHuffmanBuildCTable(
             ctable, histogram, maxSymbolValue, maxTableLog);
     if (ZL_isError(maxNbBitsReport)) {
         free(histogram);
         free(ctable);
-        ZL_RET_R(maxNbBitsReport);
+        return maxNbBitsReport;
     }
     int const maxNbBits = (int)ZL_validResult(maxNbBitsReport);
 

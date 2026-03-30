@@ -473,13 +473,14 @@ ZL_Report DI_huffman_struct_v2(ZL_Decoder* dictx, const ZL_Input* in[])
 static ZL_Report
 DI_entropyDstBound(const void* src, size_t srcSize, size_t eltWidth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (srcSize == 0) {
         return ZL_returnValue(0);
     }
     ZL_Report const ret = ZS_Entropy_getDecodedSize(src, srcSize, eltWidth);
-    ZL_RET_R_IF(
-            GENERIC,
+    ZL_ERR_IF(
             ZL_isError(ret),
+            GENERIC,
             "corruption: ZS_Entropy_getDecodedSize failed");
     return ret;
 }
@@ -492,6 +493,7 @@ static ZL_Report DI_entropyDecode(
         size_t eltWidth,
         ZS_Entropy_DecodeParameters const* optionalParams)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (srcSize == 0) {
         return ZL_returnValue(0);
     }
@@ -504,8 +506,8 @@ static ZL_Report DI_entropyDecode(
             &rc,
             eltWidth,
             optionalParams ? optionalParams : &deafultParams);
-    ZL_RET_R_IF(corruption, ZL_isError(ret), "ZS_Entropy_decodeDefault failed");
-    ZL_RET_R_IF_NE(corruption, ZL_RC_avail(&rc), 0, "Not all input consumed");
+    ZL_ERR_IF(ZL_isError(ret), corruption, "ZS_Entropy_decodeDefault failed");
+    ZL_ERR_IF_NE(ZL_RC_avail(&rc), 0, corruption, "Not all input consumed");
     return ret;
 }
 
@@ -549,14 +551,17 @@ DI_huffman_typed(ZL_Decoder* dictx, const ZL_Input* ins[], bool hasHeader)
         ZL_ERR_IF_EQ(eltWidth, 0, header_unknown, "Invalid element width!");
 
         entropyEltWidth = isTransposed ? 1 : eltWidth;
-        ZL_TRY_LET_R(nbElts, DI_entropyDstBound(src, srcSize, entropyEltWidth));
+        ZL_TRY_LET(
+                size_t,
+                nbElts,
+                DI_entropyDstBound(src, srcSize, entropyEltWidth));
         entropyNbElts = nbElts;
 
         dstEltWidth = eltWidth;
         dstNbElts   = entropyNbElts / (dstEltWidth / entropyEltWidth);
     } else {
         entropyEltWidth = 1;
-        ZL_TRY_LET_R(nbElts, DI_entropyDstBound(src, srcSize, 1));
+        ZL_TRY_LET(size_t, nbElts, DI_entropyDstBound(src, srcSize, 1));
         entropyNbElts = nbElts;
         dstEltWidth   = 1;
         dstNbElts     = entropyNbElts;
@@ -581,7 +586,8 @@ DI_huffman_typed(ZL_Decoder* dictx, const ZL_Input* ins[], bool hasHeader)
     ZL_ERR_IF_NULL(out, allocation);
 
     //> Decode & tell how much we wrote to the output buffer.
-    ZL_TRY_LET_R(
+    ZL_TRY_LET(
+            size_t,
             dSize,
             DI_entropyDecode(
                     ZL_Output_ptr(out),
@@ -642,7 +648,7 @@ ZL_Report DI_fse_typed(ZL_Decoder* dictx, const ZL_Input* ins[])
                 nbStates);
     }
 
-    ZL_TRY_LET_R(nbElts, DI_entropyDstBound(src, srcSize, 1));
+    ZL_TRY_LET(size_t, nbElts, DI_entropyDstBound(src, srcSize, 1));
 
     // Create the output stream.
     ZL_Output* const out = ZL_Decoder_create1OutStream(dictx, nbElts, 1);
@@ -651,7 +657,8 @@ ZL_Report DI_fse_typed(ZL_Decoder* dictx, const ZL_Input* ins[])
     // Decode & tell how much we wrote to the output buffer.
     ZS_Entropy_DecodeParameters params = ZS_Entropy_DecodeParameters_default();
     params.fseNbStates                 = nbStates;
-    ZL_TRY_LET_R(
+    ZL_TRY_LET(
+            size_t,
             dSize,
             DI_entropyDecode(
                     ZL_Output_ptr(out), nbElts, src, srcSize, 1, &params));
