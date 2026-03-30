@@ -230,6 +230,7 @@ ZL_Report FeatureGen_integer(
         const ZL_Input* inputStream,
         VECTOR(LabeledFeature) * features)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT(ZL_Input_type(inputStream) == ZL_Type_numeric);
     const void* data      = ZL_Input_ptr(inputStream);
     const size_t nbElts   = ZL_Input_numElts(inputStream);
@@ -237,21 +238,19 @@ ZL_Report FeatureGen_integer(
 
     bool badAlloc = calcIntegerFeatures(features, data, eltWidth, nbElts);
 
-    ZL_RET_R_IF(allocation, badAlloc, "Failed to add features to vector");
+    ZL_ERR_IF(badAlloc, allocation, "Failed to add features to vector");
     return ZL_returnSuccess();
 }
 
 ZL_RESULT_OF(FeatureGenerator)
 FeatureGen_getFeatureGen(FeatureGenId id)
 {
+    ZL_RESULT_DECLARE_SCOPE(FeatureGenerator, NULL);
     if (id == FeatureGenId_Int) {
-        return ZL_RESULT_WRAP_VALUE(FeatureGenerator, FeatureGen_integer);
+        return ZL_WRAP_VALUE(FeatureGen_integer);
     }
 
-    ZL_RET_T_ERR(
-            FeatureGenerator,
-            compressionParameter_invalid,
-            "Must use standard feature generator");
+    ZL_ERR(compressionParameter_invalid, "Must use standard feature generator");
 }
 
 FeatureGenId FeatureGen_getId(FeatureGenerator featureGenerator)

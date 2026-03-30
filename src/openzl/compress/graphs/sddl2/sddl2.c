@@ -168,7 +168,8 @@ static ZL_Report sddl2_count_primitive_fields(ZL_Graph* graph, SDDL2_Type type)
 
         size_t total = 0;
         for (size_t i = 0; i < type.struct_data->member_count; i++) {
-            ZL_TRY_LET_R(
+            ZL_TRY_LET(
+                    size_t,
                     member_count,
                     sddl2_count_primitive_fields(
                             graph, type.struct_data->members[i]));
@@ -272,8 +273,10 @@ static ZL_Report sddl2_extract_flat_field_sizes(
             (int)struct_type.kind);
 
     // Count total primitive fields (recursive)
-    ZL_TRY_LET_R(
-            total_fields, sddl2_count_primitive_fields(graph, struct_type));
+    ZL_TRY_LET(
+            size_t,
+            total_fields,
+            sddl2_count_primitive_fields(graph, struct_type));
 
     ZL_ERR_IF_EQ(
             total_fields,
@@ -367,8 +370,10 @@ static ZL_Report sddl2_extract_flat_field_types(
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
 
     // Count total primitive fields (reuse existing function)
-    ZL_TRY_LET_R(
-            total_fields, sddl2_count_primitive_fields(graph, struct_type));
+    ZL_TRY_LET(
+            size_t,
+            total_fields,
+            sddl2_count_primitive_fields(graph, struct_type));
 
     ZL_ERR_IF_EQ(
             total_fields,
@@ -442,7 +447,7 @@ static ZL_Report sddl2_apply_struct_field_conversion(
     }
 
     // Apply Struct→Numeric conversion
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList, converted, ZL_Edge_runNode(struct_edge, convert_node));
 
     // Validate that conversion produced exactly one edge
@@ -504,7 +509,8 @@ static ZL_Report sddl2_apply_structure_split(
 
     // Step 2: Extract flattened field types (for later conversion)
     SDDL2_Type_kind* field_types = NULL;
-    ZL_TRY_LET_R(
+    ZL_TRY_LET(
+            size_t,
             nb_field_types,
             sddl2_extract_flat_field_types(graph, seg->type, &field_types));
 
@@ -529,7 +535,7 @@ static ZL_Report sddl2_apply_structure_split(
     ZL_LocalParams const lParams = { .copyParams = lcp };
 
     // Step 4: Run split-by-struct node with runtime parameters
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             split_outputs,
             ZL_Edge_runNode_withParams(
@@ -636,7 +642,7 @@ static ZL_Report sddl2_apply_type_conversion(
     }
 
     // Apply type conversion to the edge
-    ZL_TRY_LET_T(ZL_EdgeList, converted, ZL_Edge_runNode(edge, convert_node));
+    ZL_TRY_LET(ZL_EdgeList, converted, ZL_Edge_runNode(edge, convert_node));
 
     // Validate that conversion produced exactly one edge
     ZL_ERR_IF_NE(
