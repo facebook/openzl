@@ -67,9 +67,10 @@ static ZL_Report ZS_Bit_getHeader(ZS_Bit_Header_t* header, ZL_RC* src);
 
 ZL_Report ZS_Entropy_getType(void const* src, size_t srcSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (srcSize == 0) {
         ZL_DLOG(ERROR, "Source is empty");
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     uint8_t const header         = *(uint8_t const*)src;
     ZS_Entropy_Type_e const type = header & 0x7;
@@ -78,7 +79,7 @@ ZL_Report ZS_Entropy_getType(void const* src, size_t srcSize)
             "Assumption");
     if (type >= ZS_Entropy_Type_reserved0) {
         ZL_DLOG(V1, "Bad type");
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     ZL_DLOG(V1, "Type = %d", type);
     return ZL_returnValue(type);
@@ -90,52 +91,53 @@ static ZL_Report ZS_Entropy_getEncodedSize_internal(
         size_t elementSize,
         size_t maxDepth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_RC rc      = ZL_RC_wrap((uint8_t const*)src, srcSize);
     ZL_Report ret = ZS_Entropy_getType(src, srcSize);
-    ZL_RET_R_IF_ERR(ret);
+    ZL_ERR_IF_ERR(ret);
     size_t extraSize;
     switch (ZL_validResult(ret)) {
         case ZS_Entropy_Type_fse:
         case ZS_Entropy_Type_huf: {
             ZS_HufAndFse_Header_t header;
-            ZL_RET_R_IF_ERR(ZS_HufAndFse_getHeader(&header, &rc));
+            ZL_ERR_IF_ERR(ZS_HufAndFse_getHeader(&header, &rc));
             extraSize = header.encodedSize;
             break;
         }
         case ZS_Entropy_Type_raw: {
             ZS_RawAndConstant_Header_t header;
-            ZL_RET_R_IF_ERR(ZS_RawAndConstant_getHeader(&header, &rc));
+            ZL_ERR_IF_ERR(ZS_RawAndConstant_getHeader(&header, &rc));
             extraSize = header.decodedSize * elementSize;
             break;
         }
         case ZS_Entropy_Type_constant: {
             ZS_RawAndConstant_Header_t header;
-            ZL_RET_R_IF_ERR(ZS_RawAndConstant_getHeader(&header, &rc));
+            ZL_ERR_IF_ERR(ZS_RawAndConstant_getHeader(&header, &rc));
             extraSize = elementSize;
             break;
         }
         // TODO: Add these modes
         case ZS_Entropy_Type_bit: {
             ZS_Bit_Header_t header;
-            ZL_RET_R_IF_ERR(ZS_Bit_getHeader(&header, &rc));
+            ZL_ERR_IF_ERR(ZS_Bit_getHeader(&header, &rc));
             extraSize = (header.decodedSize * header.numBits + 7) / 8;
             break;
         }
         case ZS_Entropy_Type_multi: {
             if (maxDepth == 0) {
-                ZL_RET_R_ERR(GENERIC);
+                ZL_ERR(GENERIC);
             }
             ZS_Multi_Header_t header;
-            ZL_RET_R_IF_ERR(ZS_Multi_getHeader(&header, &rc));
+            ZL_ERR_IF_ERR(ZS_Multi_getHeader(&header, &rc));
             for (uint64_t block = 0; block < header.numBlocks; ++block) {
                 ZL_Report const blockSize = ZS_Entropy_getEncodedSize_internal(
                         ZL_RC_ptr(&rc),
                         ZL_RC_avail(&rc),
                         elementSize,
                         maxDepth - 1);
-                ZL_RET_R_IF_ERR(blockSize);
+                ZL_ERR_IF_ERR(blockSize);
                 if (ZL_validResult(blockSize) > ZL_RC_avail(&rc)) {
-                    ZL_RET_R_ERR(GENERIC);
+                    ZL_ERR(GENERIC);
                 }
                 ZL_RC_advance(&rc, ZL_validResult(blockSize));
             }
@@ -143,10 +145,10 @@ static ZL_Report ZS_Entropy_getEncodedSize_internal(
             break;
         }
         default:
-            ZL_RET_R_ERR(GENERIC);
+            ZL_ERR(GENERIC);
     }
     if (ZL_RC_avail(&rc) < extraSize) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     size_t const consumed = srcSize - ZL_RC_avail(&rc);
     ZL_ASSERT_NE(consumed, 0);
@@ -171,36 +173,37 @@ static ZL_Report ZS_Entropy_getDecodedSize_internal(
         size_t elementSize,
         size_t maxDepth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_RC rc      = ZL_RC_wrap((uint8_t const*)src, srcSize);
     ZL_Report ret = ZS_Entropy_getType(src, srcSize);
-    ZL_RET_R_IF_ERR(ret);
+    ZL_ERR_IF_ERR(ret);
     switch (ZL_validResult(ret)) {
         case ZS_Entropy_Type_fse:
         case ZS_Entropy_Type_huf: {
             ZS_HufAndFse_Header_t header;
-            ZL_RET_R_IF_ERR(ZS_HufAndFse_getHeader(&header, &rc));
+            ZL_ERR_IF_ERR(ZS_HufAndFse_getHeader(&header, &rc));
             return ZL_returnValue(header.decodedSize);
         }
         case ZS_Entropy_Type_raw:
         case ZS_Entropy_Type_constant: {
             ZS_RawAndConstant_Header_t header;
-            ZL_RET_R_IF_ERR(ZS_RawAndConstant_getHeader(&header, &rc));
+            ZL_ERR_IF_ERR(ZS_RawAndConstant_getHeader(&header, &rc));
             return ZL_returnValue(header.decodedSize);
         }
         // TODO: Add these modes
         case ZS_Entropy_Type_bit: {
             ZS_Bit_Header_t header;
-            ZL_RET_R_IF_ERR(ZS_Bit_getHeader(&header, &rc));
+            ZL_ERR_IF_ERR(ZS_Bit_getHeader(&header, &rc));
             return ZL_returnValue(header.decodedSize);
         }
         case ZS_Entropy_Type_multi: {
             if (maxDepth == 0) {
-                ZL_RET_R_ERR(GENERIC);
+                ZL_ERR(GENERIC);
             }
             ZS_Multi_Header_t header;
             uint64_t decodedSize = 0;
-            ZL_RET_R_IF_ERR(ZS_Multi_getHeader(&header, &rc));
-            ZL_RET_R_IF_GT(corruption, header.numBlocks, ZL_RC_avail(&rc));
+            ZL_ERR_IF_ERR(ZS_Multi_getHeader(&header, &rc));
+            ZL_ERR_IF_GT(header.numBlocks, ZL_RC_avail(&rc), corruption);
             for (uint64_t block = 0; block < header.numBlocks; ++block) {
                 ZL_Report const blockEncodedSize =
                         ZS_Entropy_getEncodedSize_internal(
@@ -214,14 +217,14 @@ static ZL_Report ZS_Entropy_getDecodedSize_internal(
                                 ZL_RC_avail(&rc),
                                 elementSize,
                                 maxDepth - 1);
-                ZL_RET_R_IF_ERR(blockEncodedSize);
-                ZL_RET_R_IF_ERR(blockDecodedSize);
+                ZL_ERR_IF_ERR(blockEncodedSize);
+                ZL_ERR_IF_ERR(blockDecodedSize);
                 // Disallow zero sized blocks because it makes no sense to
                 // generate them, and the fuzzer generates a bunch of them and
                 // times out.
-                ZL_RET_R_IF_EQ(corruption, ZL_validResult(blockDecodedSize), 0);
+                ZL_ERR_IF_EQ(ZL_validResult(blockDecodedSize), 0, corruption);
                 if (ZL_validResult(blockEncodedSize) > ZL_RC_avail(&rc)) {
-                    ZL_RET_R_ERR(GENERIC);
+                    ZL_ERR(GENERIC);
                 }
                 ZL_RC_advance(&rc, ZL_validResult(blockEncodedSize));
                 decodedSize += ZL_validResult(blockDecodedSize);
@@ -229,7 +232,7 @@ static ZL_Report ZS_Entropy_getDecodedSize_internal(
             return ZL_returnValue(decodedSize);
         }
         default:
-            ZL_RET_R_ERR(GENERIC);
+            ZL_ERR(GENERIC);
     }
 }
 
@@ -246,35 +249,36 @@ ZS_Entropy_getDecodedSize(void const* src, size_t srcSize, size_t elementSize)
 
 ZL_Report ZS_Entropy_getHeaderSize(void const* src, size_t srcSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_RC rc      = ZL_RC_wrap((uint8_t const*)src, srcSize);
     ZL_Report ret = ZS_Entropy_getType(src, srcSize);
-    ZL_RET_R_IF_ERR(ret);
+    ZL_ERR_IF_ERR(ret);
     switch (ZL_validResult(ret)) {
         case ZS_Entropy_Type_fse:
         case ZS_Entropy_Type_huf: {
             ZS_HufAndFse_Header_t header;
-            ZL_RET_R_IF_ERR(ZS_HufAndFse_getHeader(&header, &rc));
+            ZL_ERR_IF_ERR(ZS_HufAndFse_getHeader(&header, &rc));
             break;
         }
         case ZS_Entropy_Type_raw:
         case ZS_Entropy_Type_constant: {
             ZS_RawAndConstant_Header_t header;
-            ZL_RET_R_IF_ERR(ZS_RawAndConstant_getHeader(&header, &rc));
+            ZL_ERR_IF_ERR(ZS_RawAndConstant_getHeader(&header, &rc));
             break;
         }
         // TODO: Add these modes
         case ZS_Entropy_Type_bit: {
             ZS_Bit_Header_t header;
-            ZL_RET_R_IF_ERR(ZS_Bit_getHeader(&header, &rc));
+            ZL_ERR_IF_ERR(ZS_Bit_getHeader(&header, &rc));
             break;
         }
         case ZS_Entropy_Type_multi: {
             ZS_Multi_Header_t header;
-            ZL_RET_R_IF_ERR(ZS_Multi_getHeader(&header, &rc));
+            ZL_ERR_IF_ERR(ZS_Multi_getHeader(&header, &rc));
             break;
         }
         default:
-            ZL_RET_R_ERR(GENERIC);
+            ZL_ERR(GENERIC);
     }
     return ZL_returnValue(srcSize - ZL_RC_avail(&rc));
 }
@@ -296,31 +300,32 @@ static ZL_Report ZS_Entropy_decode_internal(
         ZS_Entropy_DecodeParameters const* params,
         size_t maxDepth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DLOG(V1,
             "ZS_Entropy_decode(dstCapacity = %zu, ZL_RC_avail(src) = %zu, elementSize = %zu",
             dstCapacity,
             ZL_RC_avail(src),
             elementSize);
     ZL_Report ret = ZS_Entropy_getType(ZL_RC_ptr(src), ZL_RC_avail(src));
-    ZL_RET_R_IF_ERR(ret);
+    ZL_ERR_IF_ERR(ret);
     if (!(params->allowedTypes & (1 << ZL_validResult(ret)))) {
         ZL_DLOG(ERROR, "Type not allowed!");
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
 
     switch (ZL_validResult(ret)) {
         case ZS_Entropy_Type_fse: {
             ZS_HufAndFse_Header_t header;
-            ZL_RET_R_IF_ERR(ZS_HufAndFse_getHeader(&header, src));
+            ZL_ERR_IF_ERR(ZS_HufAndFse_getHeader(&header, src));
             if (ZL_RC_avail(src) < header.encodedSize) {
                 ZL_DLOG(ERROR, "Source size too small");
-                ZL_RET_R_ERR(GENERIC);
+                ZL_ERR(GENERIC);
             }
             if (dstCapacity < header.decodedSize) {
                 ZL_DLOG(ERROR, "Dst size too small");
-                ZL_RET_R_ERR(GENERIC);
+                ZL_ERR(GENERIC);
             }
-            ZL_RET_R_IF_ERR(ZS_Fse_decode(
+            ZL_ERR_IF_ERR(ZS_Fse_decode(
                     dst,
                     header.decodedSize,
                     ZL_RC_ptr(src),
@@ -332,16 +337,16 @@ static ZL_Report ZS_Entropy_decode_internal(
         }
         case ZS_Entropy_Type_huf: {
             ZS_HufAndFse_Header_t header;
-            ZL_RET_R_IF_ERR(ZS_HufAndFse_getHeader(&header, src));
+            ZL_ERR_IF_ERR(ZS_HufAndFse_getHeader(&header, src));
             if (ZL_RC_avail(src) < header.encodedSize) {
                 ZL_DLOG(ERROR, "Src size too small");
-                ZL_RET_R_ERR(GENERIC);
+                ZL_ERR(GENERIC);
             }
             if (dstCapacity < header.decodedSize) {
                 ZL_DLOG(ERROR, "Dst size too small");
-                ZL_RET_R_ERR(GENERIC);
+                ZL_ERR(GENERIC);
             }
-            ZL_RET_R_IF_ERR(ZS_Huf_decodeImpl(
+            ZL_ERR_IF_ERR(ZS_Huf_decodeImpl(
                     dst,
                     header.decodedSize,
                     ZL_RC_ptr(src),
@@ -355,20 +360,20 @@ static ZL_Report ZS_Entropy_decode_internal(
         }
         case ZS_Entropy_Type_raw: {
             ZS_RawAndConstant_Header_t header;
-            ZL_RET_R_IF_ERR(ZS_RawAndConstant_getHeader(&header, src));
+            ZL_ERR_IF_ERR(ZS_RawAndConstant_getHeader(&header, src));
             size_t const srcSize = header.decodedSize * elementSize;
             if (ZL_RC_avail(src) < srcSize) {
                 ZL_DLOG(ERROR,
                         "Source size too small: %zu < %zu",
                         ZL_RC_avail(src),
                         srcSize);
-                ZL_RET_R_ERR(GENERIC);
+                ZL_ERR(GENERIC);
             }
             if (dstCapacity < header.decodedSize) {
                 ZL_DLOG(ERROR, "Dst size too small");
-                ZL_RET_R_ERR(GENERIC);
+                ZL_ERR(GENERIC);
             }
-            ZL_RET_R_IF_ERR(ZS_Raw_decode(
+            ZL_ERR_IF_ERR(ZS_Raw_decode(
                     dst,
                     header.decodedSize,
                     ZL_RC_ptr(src),
@@ -382,13 +387,13 @@ static ZL_Report ZS_Entropy_decode_internal(
         }
         case ZS_Entropy_Type_constant: {
             ZS_RawAndConstant_Header_t header;
-            ZL_RET_R_IF_ERR(ZS_RawAndConstant_getHeader(&header, src));
+            ZL_ERR_IF_ERR(ZS_RawAndConstant_getHeader(&header, src));
             size_t const srcSize = elementSize;
             if (ZL_RC_avail(src) < srcSize
                 || dstCapacity < header.decodedSize) {
-                ZL_RET_R_ERR(GENERIC);
+                ZL_ERR(GENERIC);
             }
-            ZL_RET_R_IF_ERR(ZS_Constant_decode(
+            ZL_ERR_IF_ERR(ZS_Constant_decode(
                     dst,
                     header.decodedSize,
                     ZL_RC_ptr(src),
@@ -399,18 +404,18 @@ static ZL_Report ZS_Entropy_decode_internal(
         }
         case ZS_Entropy_Type_bit: {
             ZS_Bit_Header_t header;
-            ZL_RET_R_IF_ERR(ZS_Bit_getHeader(&header, src));
+            ZL_ERR_IF_ERR(ZS_Bit_getHeader(&header, src));
             size_t const srcSize =
                     (header.decodedSize * header.numBits + 7) / 8;
             if (ZL_RC_avail(src) < srcSize) {
                 ZL_DLOG(ERROR, "src size too small");
-                ZL_RET_R_ERR(GENERIC);
+                ZL_ERR(GENERIC);
             }
             if (dstCapacity < header.decodedSize) {
                 ZL_DLOG(ERROR, "dst size too small");
-                ZL_RET_R_ERR(GENERIC);
+                ZL_ERR(GENERIC);
             }
-            ZL_RET_R_IF_ERR(ZS_Bit_decode(
+            ZL_ERR_IF_ERR(ZS_Bit_decode(
                     dst,
                     header.decodedSize,
                     ZL_RC_ptr(src),
@@ -423,10 +428,10 @@ static ZL_Report ZS_Entropy_decode_internal(
         case ZS_Entropy_Type_multi: {
             ZL_DLOG(V1, "MULTI decode");
             if (maxDepth == 0) {
-                ZL_RET_R_ERR(GENERIC);
+                ZL_ERR(GENERIC);
             }
             ZS_Multi_Header_t header;
-            ZL_RET_R_IF_ERR(ZS_Multi_getHeader(&header, src));
+            ZL_ERR_IF_ERR(ZS_Multi_getHeader(&header, src));
             ZL_DLOG(V1, "NBlocks = %llu", (unsigned long long)header.numBlocks);
             size_t dstSize = 0;
             for (size_t i = 0; i < header.numBlocks; ++i) {
@@ -440,7 +445,7 @@ static ZL_Report ZS_Entropy_decode_internal(
                         elementSize,
                         params,
                         maxDepth - 1);
-                ZL_RET_R_IF_ERR(blockSizeRet);
+                ZL_ERR_IF_ERR(blockSizeRet);
                 size_t const blockSize = ZL_validResult(blockSizeRet);
                 dstSize += blockSize;
                 size_t const avail2 = ZL_RC_avail(src);
@@ -450,7 +455,7 @@ static ZL_Report ZS_Entropy_decode_internal(
             return ZL_returnValue(dstSize);
         }
         default:
-            ZL_RET_R_ERR(GENERIC);
+            ZL_ERR(GENERIC);
     }
 }
 
@@ -473,9 +478,10 @@ static ZL_Report ZS_HufAndFse_getHeader(
         ZS_HufAndFse_Header_t* header,
         ZL_RC* src)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (ZL_RC_avail(src) < 2) {
         ZL_DLOG(ERROR, "Source too small");
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     size_t const avail    = ZL_RC_avail(src);
     uint16_t const hdr    = ZL_RC_popCE16(src);
@@ -486,10 +492,10 @@ static ZL_Report ZS_HufAndFse_getHeader(
     header->encodedSize   = (hdr >> 12) & 0x0F;
     if (hasVarints) {
         ZL_DLOG(V1, "varint 1...");
-        ZL_TRY_LET_CONST_T(uint64_t, decodedSizeVarint, ZL_RC_popVarint(src));
+        ZL_TRY_LET_CONST(uint64_t, decodedSizeVarint, ZL_RC_popVarint(src));
         header->decodedSize |= decodedSizeVarint << 5;
         ZL_DLOG(V1, "varint 2...");
-        ZL_TRY_LET_CONST_T(uint64_t, encodedSizeVarint, ZL_RC_popVarint(src));
+        ZL_TRY_LET_CONST(uint64_t, encodedSizeVarint, ZL_RC_popVarint(src));
         header->encodedSize |= encodedSizeVarint << 4;
     }
     size_t const avail2 = ZL_RC_avail(src);
@@ -506,15 +512,16 @@ static ZL_Report ZS_RawAndConstant_getHeader(
         ZS_RawAndConstant_Header_t* header,
         ZL_RC* src)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (ZL_RC_avail(src) < 1) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     uint8_t const hdr    = ZL_RC_pop(src);
     bool const hasVarint = hdr & 0x80;
     header->decodedSize  = (hdr >> 3) & 0xF;
     if (hasVarint) {
         ZL_DLOG(V1, "grabbing varint");
-        ZL_TRY_LET_CONST_T(uint64_t, decodedSizeVarint, ZL_RC_popVarint(src));
+        ZL_TRY_LET_CONST(uint64_t, decodedSizeVarint, ZL_RC_popVarint(src));
         header->decodedSize |= decodedSizeVarint << 4;
     }
     ZL_DLOG(V1, "decodedSize = %llu", (unsigned long long)header->decodedSize);
@@ -523,15 +530,16 @@ static ZL_Report ZS_RawAndConstant_getHeader(
 
 static ZL_Report ZS_Multi_getHeader(ZS_Multi_Header_t* header, ZL_RC* src)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (ZL_RC_avail(src) < 1) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     uint8_t const hdr    = ZL_RC_pop(src);
     bool const hasVarint = hdr & 0x80;
     header->numBlocks    = (hdr >> 3) & 0xF;
     if (hasVarint) {
         ZL_DLOG(V1, "have varint");
-        ZL_TRY_LET_CONST_T(uint64_t, numBlocksVarint, ZL_RC_popVarint(src));
+        ZL_TRY_LET_CONST(uint64_t, numBlocksVarint, ZL_RC_popVarint(src));
         header->numBlocks |= numBlocksVarint << 4;
     }
     return ZL_returnSuccess();
@@ -539,13 +547,14 @@ static ZL_Report ZS_Multi_getHeader(ZS_Multi_Header_t* header, ZL_RC* src)
 
 static ZL_Report ZS_Bit_getHeader(ZS_Bit_Header_t* header, ZL_RC* src)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (ZL_RC_avail(src) < 1) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     uint8_t const hdr = ZL_RC_pop(src);
     ZL_ASSERT_EQ(hdr & 0x7, ZS_Entropy_Type_bit);
     header->numBits = hdr >> 3;
-    ZL_TRY_LET_CONST_T(uint64_t, decodedSizeVarint, ZL_RC_popVarint(src));
+    ZL_TRY_LET_CONST(uint64_t, decodedSizeVarint, ZL_RC_popVarint(src));
     header->decodedSize = decodedSizeVarint;
     return ZL_returnSuccess();
 }
@@ -558,16 +567,17 @@ ZL_Report ZS_Fse_decode(
         size_t elementSize,
         ZS_Entropy_DecodeParameters const* params)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DLOG(V1, "FSE decode");
     (void)params;
     if (elementSize != 1) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     // TODO: Customize the format for e.g. vectorization, for now just use FSE.
     size_t const fseDSize =
             FSE_decompress2(dst, dstSize, src, srcSize, 0, params->fseNbStates);
     if (FSE_isError(fseDSize) || fseDSize != dstSize) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     return ZL_returnSuccess();
 }
@@ -581,10 +591,11 @@ static ZL_Report ZS_Huf_decodeImpl(
         bool avx2,
         ZS_Entropy_DecodeParameters const* params)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DLOG(V1, "HUF decode");
     (void)params;
     if (elementSize < 1 || elementSize > 2) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     // TODO: Currently large alphabet huffman has its own header with the
     // encoded/decoded size. Fix that by absorbing the header into this layer.
@@ -594,15 +605,15 @@ static ZL_Report ZS_Huf_decodeImpl(
             size_t const dsize =
                     ZS_Huf16Avx2_decode(dst, dstSize, src, srcSize);
             if (dsize != dstSize) {
-                ZL_RET_R_ERR(GENERIC);
+                ZL_ERR(GENERIC);
             }
         } else {
             ZL_RC rc = ZL_RC_wrap(src, srcSize);
             ZL_Report hufDSize =
                     ZS_largeHuffmanDecode((uint16_t*)dst, dstSize, &rc);
-            ZL_RET_R_IF_ERR(hufDSize);
+            ZL_ERR_IF_ERR(hufDSize);
             if (ZL_validResult(hufDSize) != dstSize || ZL_RC_avail(&rc) > 0) {
-                ZL_RET_R_ERR(GENERIC);
+                ZL_ERR(GENERIC);
             }
         }
         return ZL_returnSuccess();
@@ -614,12 +625,12 @@ static ZL_Report ZS_Huf_decodeImpl(
     if (avx2) {
         size_t const ret = ZS_HufAvx2_decode(dst, dstSize, src, srcSize);
         if (ret != dstSize) {
-            ZL_RET_R_ERR(GENERIC);
+            ZL_ERR(GENERIC);
         }
     } else {
         if (HUF_isError(HUF_decompress(dst, dstSize, src, srcSize))) {
             ZL_DLOG(ERROR, "Huff error");
-            ZL_RET_R_ERR(GENERIC);
+            ZL_ERR(GENERIC);
         }
     }
     return ZL_returnSuccess();
@@ -644,12 +655,13 @@ ZL_Report ZS_Raw_decode(
         size_t const srcSize,
         size_t const elementSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DLOG(V1, "RAW decode");
     if (!ZL_isPow2(elementSize) || elementSize == 0 || elementSize > 8) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     if (dstSize * elementSize != srcSize) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     if (srcSize == 0) {
         return ZL_returnSuccess();
@@ -675,12 +687,13 @@ ZL_Report ZS_Constant_decode(
         size_t srcSize,
         size_t elementSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DLOG(V1, "Constant decode");
     if (!ZL_isPow2(elementSize) || elementSize == 0 || elementSize > 8) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     if (srcSize != elementSize) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     if (elementSize == 1) {
         uint8_t const value = *(uint8_t const*)src;
@@ -729,17 +742,18 @@ ZL_Report ZS_Bit_decode(
         size_t elementSize,
         size_t numBits)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (elementSize > 2) {
         ZL_DLOG(ERROR, "Not supported yet.");
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     if (numBits >= 8 * elementSize) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     size_t const expectedSrcSize = (dstSize * numBits + 7) / 8;
     if (srcSize != expectedSrcSize) {
         ZL_DLOG(ERROR, "Corruption!");
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
 
     ZS_bitpackDecode(dst, dstSize, elementSize, src, srcSize, (int)numBits);
