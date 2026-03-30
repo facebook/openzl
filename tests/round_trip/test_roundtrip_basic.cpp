@@ -42,13 +42,14 @@ static ZL_Report decFail_encoder(
         ZL_Encoder* eictx, // To create output stream
         const ZL_Input* in) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     assert(ZL_Input_type(in) == ZL_Type_serial);
     size_t const size    = ZL_Input_contentSize(in);
     ZL_Output* const out = ZL_Encoder_createTypedStream(eictx, 0, size, 1);
-    ZL_RET_R_IF_NULL(allocation, out); // control allocation success
+    ZL_ERR_IF_NULL(out, allocation); // control allocation success
 
     memcpy(ZL_Output_ptr(out), ZL_Input_ptr(in), size);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, size));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, size));
 
     return ZL_returnValue(1); // nb Out Streams
 }
@@ -73,9 +74,10 @@ static ZL_Report compressFail_encoder(
         ZL_Encoder* eictx, // To create output stream
         const ZL_Input* in) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     (void)eictx;
     (void)in;
-    ZL_RET_R_ERR(GENERIC);
+    ZL_ERR(GENERIC);
 }
 
 // We use a #define, to be employed as initializer in static const declarations
@@ -99,6 +101,7 @@ static ZL_Report justCopy_encoder(
         ZL_Encoder* eictx, // To create output stream
         const ZL_Input* in) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     (void)eictx;
     assert(in != NULL);
     assert(ZL_Input_type(in) == ZL_Type_serial);
@@ -107,7 +110,7 @@ static ZL_Report justCopy_encoder(
     ZL_Output* out    = ZL_Encoder_createTypedStream(eictx, 0, size, 1);
     assert(out != NULL);
     memcpy(ZL_Output_ptr(out), ZL_Input_ptr(in), size);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, size));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, size));
     return ZL_returnSuccess();
 }
 
@@ -230,6 +233,7 @@ static ZL_Report decFail_decoder(
         ZL_Decoder* eictx,
         const ZL_Input* ins[]) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     assert(ins != nullptr);
     const ZL_Input* const in = ins[0];
     assert(in != nullptr);
@@ -237,13 +241,13 @@ static ZL_Report decFail_decoder(
 
     size_t const size    = ZL_Input_contentSize(in);
     ZL_Output* const out = ZL_Decoder_create1OutStream(eictx, size, 1);
-    ZL_RET_R_IF_NULL(allocation, out); // control allocation success
+    ZL_ERR_IF_NULL(out, allocation); // control allocation success
 
     memcpy(ZL_Output_ptr(out), ZL_Input_ptr(in), size);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, size));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, size));
 
     // now, let's fail on purpose
-    ZL_RET_R_ERR(GENERIC);
+    ZL_ERR(GENERIC);
 }
 static ZL_TypedDecoderDesc const decFail_DDesc = {
     .gd          = DECFAIL_GDESC,
@@ -255,6 +259,7 @@ static ZL_Report justCopy_decoder(
         ZL_Decoder* eictx, // To create output stream
         const ZL_Input* ins[]) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     (void)eictx;
     assert(ins != NULL);
     const ZL_Input* const in = ins[0];
@@ -265,7 +270,7 @@ static ZL_Report justCopy_decoder(
     ZL_Output* out    = ZL_Decoder_create1OutStream(eictx, size, 1);
     assert(out != NULL);
     memcpy(ZL_Output_ptr(out), ZL_Input_ptr(in), size);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, size));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, size));
     return ZL_returnSuccess();
 }
 

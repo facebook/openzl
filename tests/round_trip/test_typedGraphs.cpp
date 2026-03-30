@@ -57,6 +57,7 @@ static ZL_Report add1_int(
         ZL_Encoder* eictx, // To create output stream
         const ZL_Input* in) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     assert(in != nullptr);
     size_t const eltWidth = ZL_Input_eltWidth(in);
     printf("add1 transform (integer width : %zu)\n", eltWidth);
@@ -68,7 +69,7 @@ static ZL_Report add1_int(
     assert(eictx != nullptr);
     ZL_Output* const out =
             ZL_Encoder_createTypedStream(eictx, 0, nbElts, eltWidth);
-    ZL_RET_R_IF_NULL(allocation, out); // control allocation success
+    ZL_ERR_IF_NULL(out, allocation); // control allocation success
 
     const u32* const iarr = (const u32*)ZL_Input_ptr(in);
     u32* const oarr       = (u32*)ZL_Output_ptr(out);
@@ -83,7 +84,7 @@ static ZL_Report add1_int(
             printf("incorrect eltWidth (%zu) \n", eltWidth);
             assert(0); // should be impossible (eltWidth asserted just before)
     }
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, nbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, nbElts));
 
     return ZL_returnValue(1); // nb Out Streams
 }
@@ -108,6 +109,7 @@ using u16 = uint16_t;
 
 static ZL_Report tokenize_u32(ZL_Encoder* eictx, const ZL_Input* in) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     printf("tokenize_u32 \n");
     assert(ZL_Input_type(in) == ZL_Type_numeric);
     assert(ZL_Input_eltWidth(in) == 4); // 32-bit
@@ -144,8 +146,8 @@ static ZL_Report tokenize_u32(ZL_Encoder* eictx, const ZL_Input* in) noexcept
             ZS_tam_unsorted);
     assert(cardinality <= alphabetCapacity);
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(alphabet, cardinality));
-    ZL_RET_R_IF_ERR(ZL_Output_commit(indexes, nbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(alphabet, cardinality));
+    ZL_ERR_IF_ERR(ZL_Output_commit(indexes, nbElts));
     return ZL_returnValue(2); // nb Out Streams
 }
 #define TOKENIZE32_GDESC                                                     \
@@ -165,12 +167,13 @@ static ZL_Report forgetCommit(
         ZL_Encoder* eictx, // To create output stream
         const ZL_Input* in) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     assert(in != nullptr);
     assert(ZL_Input_type(in) == ZL_Type_serial);
     size_t const size = ZL_Input_contentSize(in);
     assert(eictx != nullptr);
     ZL_Output* const out = ZL_Encoder_createTypedStream(eictx, 0, size, 1);
-    ZL_RET_R_IF_NULL(allocation, out); // control allocation success
+    ZL_ERR_IF_NULL(out, allocation); // control allocation success
 
     memcpy(ZL_Output_ptr(out), ZL_Input_ptr(in), size);
 
@@ -321,6 +324,7 @@ static ZL_Report split2_reverseDeclarationOrder(
         ZL_Encoder* eictx, // To create output stream
         const ZL_Input* in) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     assert(in != nullptr);
     assert(ZL_Input_type(in) == ZL_Type_serial);
     printf("split2_reverseOrder \n");
@@ -331,19 +335,19 @@ static ZL_Report split2_reverseDeclarationOrder(
     /* intentionally create output streams in reverse order : out2, then out1 */
     assert(eictx != nullptr);
     ZL_Output* const out2 = ZL_Encoder_createTypedStream(eictx, 1, seg2Size, 1);
-    ZL_RET_R_IF_NULL(allocation, out2); // control allocation success
+    ZL_ERR_IF_NULL(out2, allocation); // control allocation success
     ZL_Output* const out1 = ZL_Encoder_createTypedStream(eictx, 0, seg1Size, 1);
-    ZL_RET_R_IF_NULL(allocation, out1); // control allocation success
+    ZL_ERR_IF_NULL(out1, allocation); // control allocation success
 
     const char* const ip = (const char*)ZL_Input_ptr(in);
     char* const op1      = (char*)ZL_Output_ptr(out1);
     char* const op2      = (char*)ZL_Output_ptr(out2);
 
     memcpy(op1, ip, seg1Size);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out1, seg1Size));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out1, seg1Size));
 
     memcpy(op2, ip + seg1Size, seg2Size);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out2, seg2Size));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out2, seg2Size));
 
     return ZL_returnValue(2); // nb Out Streams
 }
@@ -428,6 +432,7 @@ static void sub1_u32(u32* dst32, const u32* src32, size_t nbU32)
 // custom decoder transform description
 static ZL_Report add1_decode(ZL_Decoder* eictx, const ZL_Input* ins[]) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     assert(ins != nullptr);
     const ZL_Input* const in = ins[0];
     assert(in != nullptr);
@@ -439,7 +444,7 @@ static ZL_Report add1_decode(ZL_Decoder* eictx, const ZL_Input* ins[]) noexcept
                            // 32-bit integers However, a more complete example
                            // should be ready to work with any integer width
     ZL_Output* const out = ZL_Decoder_create1OutStream(eictx, nbElts, eltWidth);
-    ZL_RET_R_IF_NULL(allocation, out); // control allocation success
+    ZL_ERR_IF_NULL(out, allocation); // control allocation success
 
     const u32* const iarr = (const u32*)ZL_Input_ptr(in);
     u32* const oarr       = (u32*)ZL_Output_ptr(out);
@@ -454,7 +459,7 @@ static ZL_Report add1_decode(ZL_Decoder* eictx, const ZL_Input* ins[]) noexcept
             printf("incorrect eltWidth (%zu) \n", eltWidth);
             assert(0); // should be impossible (eltWidth asserted just before)
     }
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, nbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, nbElts));
 
     return ZL_returnValue(1); // nb Out Streams
 }
@@ -468,6 +473,7 @@ static ZL_Report tokenize_u32_decode(
         ZL_Decoder* dictx,
         const ZL_Input* ins[]) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     printf("tokenize_u32_decode \n");
     enum { alphabetStreamID = 0, indexStreamID = 1 };
     assert(ins != nullptr);
@@ -497,7 +503,7 @@ static ZL_Report tokenize_u32_decode(
     assert(nbEltsRegenerated == nbElts);
     (void)nbEltsRegenerated;
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, nbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, nbElts));
     return ZL_returnValue(1); // nb Out Streams
 }
 static ZL_TypedDecoderDesc const tokenize32DDesc = {

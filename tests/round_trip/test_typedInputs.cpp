@@ -41,6 +41,7 @@ static ZL_Report stringCopy_ct(
         ZL_Encoder* eictx, // To create output stream
         const ZL_Input* in) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     assert(in != nullptr);
     size_t const nbStrings = ZL_Input_numElts(in);
     printf("copy %zu strings\n", nbStrings);
@@ -48,12 +49,12 @@ static ZL_Report stringCopy_ct(
     size_t stringsTotalSize = ZL_Input_contentSize(in);
     ZL_Output* const out    = ZL_Encoder_createStringStream(
             eictx, 0, nbStrings, stringsTotalSize);
-    ZL_RET_R_IF_NULL(allocation, out); // control allocation success
+    ZL_ERR_IF_NULL(out, allocation); // control allocation success
 
     memcpy(ZL_Output_ptr(out), ZL_Input_ptr(in), stringsTotalSize);
     memcpy(ZL_Output_stringLens(out), ZL_Input_stringLens(in), 4 * nbStrings);
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, nbStrings));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, nbStrings));
 
     return ZL_returnValue(1); // nb Out Streams
 }
@@ -170,6 +171,7 @@ static ZL_Report stringCopy_decode(
         ZL_Decoder* eictx,
         const ZL_Input* ins[]) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     assert(ins != nullptr);
     const ZL_Input* const in = ins[0];
     assert(in != nullptr);
@@ -180,14 +182,14 @@ static ZL_Report stringCopy_decode(
     size_t stringsTotalSize = ZL_Input_contentSize(in);
     ZL_Output* const out =
             ZL_Decoder_create1OutStream(eictx, stringsTotalSize, 1);
-    ZL_RET_R_IF_NULL(allocation, out); // control allocation success
+    ZL_ERR_IF_NULL(out, allocation); // control allocation success
     uint32_t* stringLengths = ZL_Output_reserveStringLens(out, nbStrings);
-    ZL_RET_R_IF_NULL(allocation, stringLengths); // control allocation success
+    ZL_ERR_IF_NULL(stringLengths, allocation); // control allocation success
 
     memcpy(ZL_Output_ptr(out), ZL_Input_ptr(in), stringsTotalSize);
     memcpy(stringLengths, ZL_Input_stringLens(in), 4 * nbStrings);
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, nbStrings));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, nbStrings));
 
     return ZL_returnValue(1); // nb Out Streams
 }
