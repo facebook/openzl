@@ -156,8 +156,9 @@ static ZL_Report CCTX_compressSerial_withGraphSet(
         const void* src,
         size_t srcSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
     ZL_Data* stream = STREAM_create(ZL_DATA_ID_INPUTSTREAM);
-    ZL_RET_R_IF_NULL(allocation, stream);
+    ZL_ERR_IF_NULL(stream, allocation);
     ZL_Report ret =
             STREAM_refConstBuffer(stream, src, ZL_Type_serial, 1, srcSize);
     if (!ZL_isError(ret)) {
@@ -216,9 +217,10 @@ ZL_Report ZL_compress_usingGraphFn(
         size_t srcSize,
         ZL_GraphFn graphFunction)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_LOG(FRAME, "ZL_compress_usingGraphFn");
     ZL_CCtx* const cctx = ZL_CCtx_create();
-    ZL_RET_R_IF_NULL(allocation, cctx);
+    ZL_ERR_IF_NULL(cctx, allocation);
 
     ZL_Graph2Desc const g2d = { useGraphF, &(ZL_Graph_s){ graphFunction } };
     ZL_Report r             = ZL_CCtx_compress_usingGraph2Desc(
@@ -237,8 +239,9 @@ ZL_Report ZL_compress_usingCompressor(
         size_t srcSize,
         const ZL_Compressor* compressor)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_CCtx* const cctx = CCTX_create();
-    ZL_RET_R_IF_NULL(allocation, cctx);
+    ZL_ERR_IF_NULL(cctx, allocation);
 
     ZL_Report r = ZL_CCtx_compress_usingCGraph(
             cctx, dst, dstCapacity, src, srcSize, compressor);

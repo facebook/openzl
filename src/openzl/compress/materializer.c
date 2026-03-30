@@ -67,25 +67,26 @@ void ZL_NOOP_DEMATERIALIZE(ZL_Materializer* matCtx, void* materialized)
 // params
 ZL_Report MPM_validateMaterializedParamId(const ZL_LocalParams* lp, int paramId)
 {
-    ZL_RET_R_IF_EQ(
-            GENERIC,
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_EQ(
             paramId,
             ZL_LP_INVALID_PARAMID,
+            GENERIC,
             "Materialized paramId cannot be ZL_LP_INVALID_PARAMID");
 
     ZL_RefParam rp = LP_getLocalRefParam(lp, paramId);
-    ZL_RET_R_IF_NE(
-            GENERIC,
+    ZL_ERR_IF_NE(
             rp.paramId,
             ZL_LP_INVALID_PARAMID,
+            GENERIC,
             "Materialized paramId %d is already registered",
             paramId);
 
     ZL_IntParam ip = LP_getLocalIntParam(lp, paramId);
-    ZL_RET_R_IF_NE(
-            GENERIC,
+    ZL_ERR_IF_NE(
             ip.paramId,
             ZL_LP_INVALID_PARAMID,
+            GENERIC,
             "Materialized paramId %d is already registered as an intParam",
             paramId);
     return ZL_returnSuccess();

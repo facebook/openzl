@@ -41,11 +41,12 @@ static ZL_Report GM_fillStandardGraphsCallback(
         ZL_GraphID graph,
         const InternalGraphDesc* desc)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     GraphsMgr* gm      = opaque;
     const ZL_Name name = ZS2_Name_wrapStandard(desc->gdi.migd.name);
     GraphMap_Insert insert =
             GraphMap_insertVal(&gm->nameMap, (GraphMap_Entry){ name, graph });
-    ZL_RET_R_IF(allocation, insert.badAlloc);
+    ZL_ERR_IF(insert.badAlloc, allocation);
     ZL_ASSERT_EQ(
             insert.ptr->val.gid,
             graph.gid,
@@ -129,7 +130,7 @@ bool GM_isValidGraphID(const GraphsMgr* gm, ZL_GraphID gid)
 #define GM_TRANSFER_ARRAY(_dgm, _arr, _size, _out)                      \
     do {                                                                \
         const void* _out_void;                                          \
-        ZL_RET_R_IF_ERR(GM_transferBuffer(                              \
+        ZL_ERR_IF_ERR(GM_transferBuffer(                                \
                 (_dgm), (_arr), sizeof(*(_arr)), (_size), &_out_void)); \
         *(_out) = _out_void;                                            \
     } while (0)
@@ -150,6 +151,7 @@ static ZL_Report GM_transferBuffer(
         size_t nbElts,
         const void** out)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gm->opCtx);
     *out = NULL;
     if (buffer == NULL)
         ZL_ASSERT_EQ(nbElts, 0);
@@ -158,11 +160,10 @@ static ZL_Report GM_transferBuffer(
     }
     size_t nbBytes;
     if (ZL_overflowMulST(eltWidth, nbElts, &nbBytes)) {
-        ZL_RET_R_ERR(
-                allocation, "Integer overflow: %zu * %zu", eltWidth, nbElts);
+        ZL_ERR(allocation, "Integer overflow: %zu * %zu", eltWidth, nbElts);
     }
     void* const dst = ALLOC_Arena_malloc(gm->allocator, nbBytes);
-    ZL_RET_R_IF_NULL(allocation, dst);
+    ZL_ERR_IF_NULL(dst, allocation);
     ZL_memcpy(dst, buffer, nbBytes);
     *out = dst;
     return ZL_returnSuccess();
@@ -174,6 +175,7 @@ static ZL_Report GM_transferCustomGIDs(
         size_t nbGids,
         const ZL_GraphID** out)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gm->opCtx);
     GM_TRANSFER_ARRAY(gm, gids, nbGids, out);
     return ZL_returnSuccess();
 }
@@ -184,6 +186,7 @@ static ZL_Report GM_transferCustomNIDs(
         size_t nbNids,
         const ZL_NodeID** out)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gm->opCtx);
     GM_TRANSFER_ARRAY(gm, nids, nbNids, out);
     return ZL_returnSuccess();
 }
@@ -194,6 +197,7 @@ static ZL_Report GM_transferTypes(
         size_t nbTypes,
         const ZL_Type** out)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gm->opCtx);
     GM_TRANSFER_ARRAY(gm, types, nbTypes, out);
     return ZL_returnSuccess();
 }
@@ -210,29 +214,29 @@ static ZL_Report GM_finalizeGraphRegistration(
         GraphsMgr* gm,
         Graph_Desc_internal* gdi)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gm->opCtx);
     const ZL_IDType lgid = (ZL_IDType)VECTOR_SIZE(gm->gdv);
 
     // Need to check the name before pushing into the vector
     ZL_Name name;
-    ZL_RET_R_IF_ERR(ZL_Name_init(&name, gm->allocator, gdi->migd.name, lgid));
+    ZL_ERR_IF_ERR(ZL_Name_init(&name, gm->allocator, gdi->migd.name, lgid));
 
     // Update the name in the GDI
     gdi->migd.name = ZL_Name_unique(&name);
     gdi->maybeName = name;
 
-    ZL_RET_R_IF_NOT(allocation, VECTOR_PUSHBACK(gm->gdv, *gdi));
+    ZL_ERR_IF_NOT(VECTOR_PUSHBACK(gm->gdv, *gdi), allocation);
 
     const ZL_GraphID gid = GM_lgid_to_zgid(lgid);
     GraphMap_Insert insert =
             GraphMap_insertVal(&gm->nameMap, (GraphMap_Entry){ name, gid });
     if (insert.badAlloc || !insert.inserted) {
         VECTOR_POPBACK(gm->gdv); // Rollback the state
-        ZL_RET_R_IF(allocation, insert.badAlloc);
+        ZL_ERR_IF(insert.badAlloc, allocation);
         ZL_ASSERT(name.isAnchor, "Non-anchor is guaranteed to be unique");
-        ZL_RET_R_ERR(
-                invalidName,
-                "Graph anchor name \"%s\" is not unique!",
-                ZL_Name_unique(&name));
+        ZL_ERR(invalidName,
+               "Graph anchor name \"%s\" is not unique!",
+               ZL_Name_unique(&name));
     }
 
     return ZL_returnValue(lgid);
@@ -1030,9 +1034,10 @@ ZL_Report GM_forEachGraph(
         void* opaque,
         const ZL_Compressor* compressor)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     for (size_t i = 0; i < VECTOR_SIZE(gmgr->gdv); ++i) {
         const ZL_GraphID gid = GM_lgid_to_zgid((ZL_IDType)i);
-        ZL_RET_R_IF_ERR(callback(opaque, compressor, gid));
+        ZL_ERR_IF_ERR(callback(opaque, compressor, gid));
     }
     return ZL_returnSuccess();
 }

@@ -28,7 +28,7 @@
 #include "openzl/compress/selectors/selector_store.h" // SI_selector_store, MIGRAPH_STORE
 #include "openzl/shared/utils.h"                      // ZL_ARRAY_SIZE macro
 #include "openzl/zl_data.h"   // ZL_Type definitions and data structures
-#include "openzl/zl_errors.h" // ZL_TRY_LET_T, ZL_RET_R_IF_* error handling macros
+#include "openzl/zl_errors.h" // ZL_TRY_LET, ZL_ERR_IF_* error handling macros
 #include "openzl/zl_graph_api.h"    // ZL_Graph_*, ZL_Edge_* API functions
 #include "openzl/zl_localParams.h"  // ZL_LocalParams structure and functions
 #include "openzl/zl_opaque_types.h" // Opaque type definitions used by the API
@@ -38,8 +38,6 @@
 
 // Pay attention to match the following conditions:
 // - intype => input type of the Graph, hence of the Head Node
-// - minv => highest minimum version of Head Node and all Successor Graphs
-// - maxv => lowest maximum version of Head Node and all Successor Graphs
 // These values must be manually determined and provided,
 // they can't be extracted from ER_standardNodes nor GR_standardGraphs,
 // because these sources are not considered "constant" by the C standard.
@@ -202,6 +200,7 @@ int GR_isStandardGraph(ZL_GraphID gid)
 static ZL_Report GR_validateStaticGraph(ZL_IDType sgid)
 {
     ZL_ASSERT_LT(sgid, ZL_PrivateStandardGraphID_end);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_FunctionGraphDesc const migd = GR_standardGraphs[sgid].gdi.migd;
     ZL_ASSERT_EQ(migd.nbCustomNodes, 1);
     const CNode* const cnode = &ER_standardNodes[migd.customNodes[0].nid];
@@ -216,47 +215,47 @@ static ZL_Report GR_validateStaticGraph(ZL_IDType sgid)
 
     // Check compatibility with Head Node
     size_t const nbOutputs = mitgd->nbSOs;
-    ZL_RET_R_IF_NE(
-            logicError,
+    ZL_ERR_IF_NE(
             mitgd->nbInputs,
             1,
+            logicError,
             "Node %s has too many inputs",
             gname);
-    ZL_RET_R_IF_NE(
-            logicError,
+    ZL_ERR_IF_NE(
             migd.inputTypeMasks[0],
             mitgd->inputTypes[0],
+            logicError,
             "Incorrect input type for Graph %s",
             gname);
 
     // Ensure that Successors are valid
-    ZL_RET_R_IF_NE(
-            logicError,
+    ZL_ERR_IF_NE(
             nbOutputs,
             nbSuccessors,
+            logicError,
             "incorrect nb of successors for graph %s",
             gname);
 
     for (size_t n = 0; n < nbSuccessors; n++) {
-        ZL_RET_R_IF_NOT(
-                logicError,
+        ZL_ERR_IF_NOT(
                 GR_isStandardGraph(successors[n]),
+                logicError,
                 "all successors of Graph %s must be standard Graphs",
                 gname);
         const ZL_FunctionGraphDesc* succDesc =
                 &GR_standardGraphs[successors[n].gid].gdi.migd;
 
-        ZL_RET_R_IF_NE(
-                logicError,
+        ZL_ERR_IF_NE(
                 succDesc->nbInputs,
                 1,
+                logicError,
                 "Successor graph must take exactly one input");
         // check type mismatch
         ZL_Type const origType = mitgd->soTypes[n];
         ZL_Type const dstTypes = succDesc->inputTypeMasks[0];
-        ZL_RET_R_IF_NOT(
-                logicError,
+        ZL_ERR_IF_NOT(
                 ICONV_isCompatible(origType, dstTypes),
+                logicError,
                 "one of the successors of graph %s requires an incompatible stream type (orig:%x != %x:dst)",
                 gname,
                 origType,
@@ -304,7 +303,7 @@ GR_staticGraphWrapper(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
         // no local parameter passed
         lparams = NULL;
     }
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             outputList,
             ZL_Edge_runMultiInputNode_withParams(
@@ -340,7 +339,7 @@ ZL_Report GR_VOGraphWrapper(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
         // no local parameter passed
         lparams = NULL;
     }
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             outputList,
             ZL_Edge_runMultiInputNode_withParams(
@@ -469,9 +468,10 @@ void GR_getAllStandardGraphIDs(ZL_GraphID* graphs, size_t graphsSize)
 
 ZL_Report GR_forEachStandardGraph(GR_StandardGraphsCallback cb, void* opaque)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     for (ZL_IDType gid = 0; gid < ZL_ARRAY_SIZE(GR_standardGraphs); ++gid) {
         if (GR_standardGraphs[gid].type != GR_illegal) {
-            ZL_RET_R_IF_ERR(
+            ZL_ERR_IF_ERR(
                     cb(opaque, (ZL_GraphID){ gid }, &GR_standardGraphs[gid]));
         }
     }
