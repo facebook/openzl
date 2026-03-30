@@ -28,7 +28,10 @@ struct Stream {
     std::optional<CodecID> producerCodec;
     StreamPreview streamPreview;
 
-    const ZL_Report serializeStream(A1C_Arena* a1c_arena, A1C_Item* arrayItem);
+    const ZL_Report serializeStream(
+            A1C_Arena* a1c_arena,
+            A1C_Item* arrayItem,
+            ZL_OperationContext* opCtx);
 };
 
 // custom operators for maps using ZL_DataID as a key to identify streams

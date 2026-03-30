@@ -46,7 +46,8 @@ class CompressChunkTrace {
 
     ZL_Report serializeToCBOR(
             A1C_Arena* a1c_arena,
-            A1C_ArrayBuilder* chunkArrayBuilder);
+            A1C_ArrayBuilder* chunkArrayBuilder,
+            ZL_OperationContext* opCtx);
 
     size_t getCompressedSize();
 

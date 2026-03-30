@@ -35,7 +35,7 @@ TraceResult DecompressTracer::extractTrace()
 }
 
 void DecompressTracer::on_ZL_DCtx_decompressMultiTBuffer_start(
-        ZL_DCtx* /* dctx */,
+        ZL_DCtx* dctx,
         size_t /* nbOutputs */,
         const void* framePtr,
         size_t frameSize)
@@ -46,6 +46,7 @@ void DecompressTracer::on_ZL_DCtx_decompressMultiTBuffer_start(
     // Create the main chunk at index 0
     chunks_.emplace_back(MAIN_CHUNK_IDX);
     currChunk_ = &chunks_[MAIN_CHUNK_IDX];
+    opCtx_     = ZL_GET_OPERATION_CONTEXT(dctx);
 }
 
 void DecompressTracer::on_ZL_DCtx_decompressMultiTBuffer_end(
@@ -136,28 +137,32 @@ ZL_Report DecompressTracer::serializeStreamdumpToCbor(
         A1C_Arena* a1c_arena,
         std::vector<uint8_t>& buffer)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(opCtx_);
     A1C_Item* root = A1C_Item_root(a1c_arena);
-    ZL_RET_R_IF_NULL(allocation, root);
+    ZL_ERR_IF_NULL(root, allocation);
 
     // 5 top-level fields: libraryVersion, frameVersion, traceVersion,
     // operationType, chunks
     A1C_MapBuilder rootBuilder = A1C_Item_map_builder(root, 5, a1c_arena);
-    ZL_RET_R_IF_NULL(allocation, rootBuilder.map);
+    ZL_ERR_IF_NULL(rootBuilder.map, allocation);
 
-    ZL_RET_R_IF_ERR(addIntValue(rootBuilder, "libraryVersion", libraryVersion));
-    ZL_RET_R_IF_ERR(addIntValue(rootBuilder, "frameVersion", frameVersion_));
-    ZL_RET_R_IF_ERR(addIntValue(rootBuilder, "traceVersion", traceVersion));
-    ZL_RET_R_IF_ERR(addIntValue(rootBuilder, "operationType", 1));
+    ZL_ERR_IF_ERR(
+            addIntValue(rootBuilder, "libraryVersion", libraryVersion, opCtx_));
+    ZL_ERR_IF_ERR(
+            addIntValue(rootBuilder, "frameVersion", frameVersion_, opCtx_));
+    ZL_ERR_IF_ERR(
+            addIntValue(rootBuilder, "traceVersion", traceVersion, opCtx_));
+    ZL_ERR_IF_ERR(addIntValue(rootBuilder, "operationType", 1, opCtx_));
 
     // Wrap chunks in a "chunks" array
-    A1C_MAP_TRY_ADD_R(chunksPair, rootBuilder);
+    A1C_MAP_TRY_ADD(chunksPair, rootBuilder);
     A1C_Item_string_refCStr(&chunksPair->key, "chunks");
     A1C_ArrayBuilder chunksBuilder =
             A1C_Item_array_builder(&chunksPair->val, chunks_.size(), a1c_arena);
-    ZL_RET_R_IF_NULL(allocation, chunksBuilder.array);
+    ZL_ERR_IF_NULL(chunksBuilder.array, allocation);
 
     for (auto& chunk : chunks_) {
-        ZL_RET_R_IF_ERR(chunk.serializeToCBOR(a1c_arena, &chunksBuilder));
+        ZL_ERR_IF_ERR(chunk.serializeToCBOR(a1c_arena, &chunksBuilder, opCtx_));
     }
 
     // Encode to buffer
@@ -167,9 +172,9 @@ ZL_Report DecompressTracer::serializeStreamdumpToCbor(
     size_t bytesWritten =
             A1C_Item_encode(root, buffer.data(), encodedSize, &error);
     if (bytesWritten == 0) {
-        ZL_RET_R_WRAP_ERR(A1C_Error_convert(NULL, error));
+        return ZL_WRAP_ERROR(A1C_Error_convert(NULL, error));
     }
-    ZL_RET_R_IF_NE(allocation, bytesWritten, encodedSize);
+    ZL_ERR_IF_NE(bytesWritten, encodedSize, allocation);
 
     return ZL_returnSuccess();
 }

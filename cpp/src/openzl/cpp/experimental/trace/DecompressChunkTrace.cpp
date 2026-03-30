@@ -23,7 +23,7 @@ DecompressChunkTrace DecompressChunkTrace::makeSegmenterChunk(size_t chunkId)
                     .cHeaderSize = 0,
                     .chunkId     = chunkId };
     newCodec.codecNum = 0;
-    ret.codecInfo_.push_back(newCodec);
+    ret.codecInfo_.push_back(std::move(newCodec));
     return ret;
 }
 
@@ -61,7 +61,8 @@ void DecompressChunkTrace::resolveErrorStrings(const ZL_DCtx* dctx)
 
 ZL_Report DecompressChunkTrace::serializeToCBOR(
         A1C_Arena* a1c_arena,
-        A1C_ArrayBuilder* chunkArrayBuilder)
+        A1C_ArrayBuilder* chunkArrayBuilder,
+        ZL_OperationContext* opCtx)
 {
     std::vector<Graph> noGraphs;
     return ChunkTraceCore::serializeChunkDataToCBOR(
@@ -70,7 +71,8 @@ ZL_Report DecompressChunkTrace::serializeToCBOR(
             chunkId_,
             streamInfo_,
             codecInfo_,
-            noGraphs);
+            noGraphs,
+            opCtx);
 }
 
 void DecompressChunkTrace::on_codecDecode_start(

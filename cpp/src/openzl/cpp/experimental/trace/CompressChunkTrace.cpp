@@ -110,7 +110,8 @@ void CompressChunkTrace::resolveErrorStrings(const ZL_CCtx* cctx)
 
 ZL_Report CompressChunkTrace::serializeToCBOR(
         A1C_Arena* a1c_arena,
-        A1C_ArrayBuilder* chunkArrayBuilder)
+        A1C_ArrayBuilder* chunkArrayBuilder,
+        ZL_OperationContext* opCtx)
 {
     return ChunkTraceCore::serializeChunkDataToCBOR(
             a1c_arena,
@@ -118,7 +119,8 @@ ZL_Report CompressChunkTrace::serializeToCBOR(
             chunkId_,
             streamInfo_,
             codecInfo_,
-            graphInfo_);
+            graphInfo_,
+            opCtx);
 }
 
 size_t CompressChunkTrace::getCompressedSize()
@@ -308,7 +310,7 @@ void CompressChunkTrace::on_codecEncode_start(
                             LocalParams(*ZL_Encoder_getLocalParams(encoder)),
                     .chunkId = chunkId_ };
     newCodec.codecNum = currCodecNum_;
-    codecInfo_.push_back(newCodec);
+    codecInfo_.push_back(std::move(newCodec));
     for (size_t i = 0; i < nbInStreams; ++i) {
         StreamID streamID = ZL_Input_id(inStreams[i]);
         codecInfo_[currCodecNum_].inEdges.push_back(
@@ -513,7 +515,7 @@ void CompressChunkTrace::on_segmenterEncode_start(ZL_Segmenter* segCtx)
                             LocalParams(*ZL_Segmenter_getLocalParams(segCtx)),
                     .chunkId = chunkId_ };
     newCodec.codecNum = currCodecNum_;
-    codecInfo_.push_back(newCodec);
+    codecInfo_.push_back(std::move(newCodec));
     for (size_t i = 0; i < nbInStreams; ++i) {
         StreamID streamID = ZL_Input_id(ZL_Segmenter_getInput(segCtx, i));
         codecInfo_[currCodecNum_].inEdges.push_back(

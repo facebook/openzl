@@ -106,7 +106,7 @@ typedef struct ZL_CompressIntrospectionHooks_s {
     /* ******** CCtx entrypoint ******** */
     void (*on_ZL_CCtx_compressMultiTypedRef_start)(
             void* opaque,
-            ZL_CCtx const* const cctx,
+            ZL_CCtx* cctx,
             void const* const dst,
             size_t const dstCapacity,
             ZL_TypedRef const* const inputs[],

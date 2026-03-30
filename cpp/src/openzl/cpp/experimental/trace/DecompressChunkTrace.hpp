@@ -41,7 +41,8 @@ class DecompressChunkTrace {
 
     ZL_Report serializeToCBOR(
             A1C_Arena* a1c_arena,
-            A1C_ArrayBuilder* chunkArrayBuilder);
+            A1C_ArrayBuilder* chunkArrayBuilder,
+            ZL_OperationContext* opCtx);
 
     /* ************** Trampolined hook calls ************** */
     void on_ZL_Decoder_getCodecHeader(

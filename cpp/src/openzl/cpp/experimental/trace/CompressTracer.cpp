@@ -160,13 +160,14 @@ void CompressTracer::on_ZL_Edge_setMultiInputDestination_wParams(
 }
 
 void CompressTracer::on_ZL_CCtx_compressMultiTypedRef_start(
-        ZL_CCtx const* const cctx,
+        ZL_CCtx* cctx,
         void const* const,
         size_t const,
         ZL_TypedRef const* const[],
         size_t const)
 {
     frameVersion = ZL_CCtx_getParameter(cctx, ZL_CParam_formatVersion);
+    opCtx_       = ZL_GET_OPERATION_CONTEXT(cctx);
     // The "main" trace is located at idx 0 of graphRuns
     graphRuns.emplace_back(MAIN_TRACE_IDX);
     currChunk = &graphRuns[MAIN_TRACE_IDX];
@@ -216,8 +217,9 @@ ZL_Report CompressTracer::serializeStreamdumpToCbor(
         A1C_Arena* a1c_arena,
         std::vector<uint8_t>& buffer)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(opCtx_);
     A1C_Item* root = A1C_Item_root(a1c_arena);
-    ZL_RET_R_IF_NULL(allocation, root);
+    ZL_ERR_IF_NULL(root, allocation);
     /* want 3 inner maps:
      * 1. streams and their associated metadata
      * 2. codecs and their associated metadata, and their in/out edges
@@ -226,12 +228,15 @@ ZL_Report CompressTracer::serializeStreamdumpToCbor(
      */
     A1C_MapBuilder rootBuilder = A1C_Item_map_builder(root, 5, a1c_arena);
 
-    ZL_RET_R_IF_NULL(allocation, rootBuilder.map);
+    ZL_ERR_IF_NULL(rootBuilder.map, allocation);
 
-    ZL_RET_R_IF_ERR(addIntValue(rootBuilder, "libraryVersion", libraryVersion));
-    ZL_RET_R_IF_ERR(addIntValue(rootBuilder, "frameVersion", frameVersion));
-    ZL_RET_R_IF_ERR(addIntValue(rootBuilder, "traceVersion", traceVersion));
-    ZL_RET_R_IF_ERR(addIntValue(rootBuilder, "operationType", 0));
+    ZL_ERR_IF_ERR(
+            addIntValue(rootBuilder, "libraryVersion", libraryVersion, opCtx_));
+    ZL_ERR_IF_ERR(
+            addIntValue(rootBuilder, "frameVersion", frameVersion, opCtx_));
+    ZL_ERR_IF_ERR(
+            addIntValue(rootBuilder, "traceVersion", traceVersion, opCtx_));
+    ZL_ERR_IF_ERR(addIntValue(rootBuilder, "operationType", 0, opCtx_));
 
     // Wrap streams, codecs, and graphs in a "chunks" array
     // Non-segmented runs will have 1 chunk in idx 0.
@@ -239,15 +244,16 @@ ZL_Report CompressTracer::serializeStreamdumpToCbor(
     // chunks in idx 1+. By the "main" trace we mean the trace that includes the
     // start of the compression, up to the segmenter but not including child
     // chunk traces.
-    A1C_MAP_TRY_ADD_R(chunksPair, rootBuilder);
+    A1C_MAP_TRY_ADD(chunksPair, rootBuilder);
     A1C_Item_string_refCStr(&chunksPair->key, "chunks");
     A1C_ArrayBuilder chunksBuilder = A1C_Item_array_builder(
             &chunksPair->val, 1 + graphRuns.size(), a1c_arena);
-    ZL_RET_R_IF_NULL(allocation, chunksBuilder.array);
+    ZL_ERR_IF_NULL(chunksBuilder.array, allocation);
 
     // Add additional chunks from graphRuns
     for (auto& graphRun : graphRuns) {
-        ZL_RET_R_IF_ERR(graphRun.serializeToCBOR(a1c_arena, &chunksBuilder));
+        ZL_ERR_IF_ERR(
+                graphRun.serializeToCBOR(a1c_arena, &chunksBuilder, opCtx_));
     }
 
     // encode + write data to a buffer
@@ -257,9 +263,9 @@ ZL_Report CompressTracer::serializeStreamdumpToCbor(
     size_t bytesWritten =
             A1C_Item_encode(root, buffer.data(), encodedSize, &error);
     if (bytesWritten == 0) {
-        ZL_RET_R_WRAP_ERR(A1C_Error_convert(NULL, error));
+        return ZL_WRAP_ERROR(A1C_Error_convert(NULL, error));
     }
-    ZL_RET_R_IF_NE(allocation, bytesWritten, encodedSize);
+    ZL_ERR_IF_NE(bytesWritten, encodedSize, allocation);
 
     return ZL_returnSuccess();
 }
