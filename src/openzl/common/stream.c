@@ -105,37 +105,38 @@ void STREAM_free(Stream* s)
 
 static ZL_Report STREAM_validateTypeWidth(ZL_Type type, size_t eltWidth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     switch (type) {
         case ZL_Type_serial:
-            ZL_RET_R_IF_NE(
-                    streamParameter_invalid,
+            ZL_ERR_IF_NE(
                     eltWidth,
                     1,
+                    streamParameter_invalid,
                     "Serialized must set width == 1");
             break;
         case ZL_Type_string:
-            ZL_RET_R_IF_NE(
-                    streamParameter_invalid,
+            ZL_ERR_IF_NE(
                     eltWidth,
                     1,
+                    streamParameter_invalid,
                     "String must set width == 1");
             break;
         case ZL_Type_struct:
-            ZL_RET_R_IF_EQ(
-                    streamParameter_invalid,
+            ZL_ERR_IF_EQ(
                     eltWidth,
                     0,
+                    streamParameter_invalid,
                     "Struct size must be > 0");
             break;
         case ZL_Type_numeric:
-            ZL_RET_R_IF_NOT(
-                    streamParameter_invalid,
+            ZL_ERR_IF_NOT(
                     eltWidth == 1 || eltWidth == 2 || eltWidth == 4
                             || eltWidth == 8,
+                    streamParameter_invalid,
                     "Numeric must be width 1, 2, 4, or 8");
             break;
         default:
-            ZL_RET_R_ERR(streamParameter_invalid, "Unknown type");
+            ZL_ERR(streamParameter_invalid, "Unknown type");
     }
     ZL_ASSERT_NE(eltWidth, 0);
     return ZL_returnSuccess();
@@ -149,23 +150,24 @@ ZL_Report STREAM_typeAttachedBuffer(
         size_t eltWidth,
         size_t eltCapacity)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DLOG(SEQ, "STREAM_typeAttachedBuffer (type:%u)", type);
     ZL_ASSERT_NN(s);
     if (s->type != 0) {
         ZL_DLOG(SEQ, "already initialized");
-        ZL_RET_R_IF_NE(corruption, s->type, type);
-        ZL_RET_R_IF_NE(corruption, s->eltWidth, eltWidth);
-        ZL_RET_R_IF_LT(corruption, s->bufferCapacity, eltCapacity * eltWidth);
+        ZL_ERR_IF_NE(s->type, type, corruption);
+        ZL_ERR_IF_NE(s->eltWidth, eltWidth, corruption);
+        ZL_ERR_IF_LT(s->bufferCapacity, eltCapacity * eltWidth, corruption);
         return ZL_returnSuccess();
     }
 
     /* Here, buffer exists, but nothing else is initialized */
-    ZL_RET_R_IF_ERR(STREAM_validateTypeWidth(type, eltWidth));
+    ZL_ERR_IF_ERR(STREAM_validateTypeWidth(type, eltWidth));
     s->type = type;
     // control eltWidth validity
     ZL_ASSERT_NN(eltWidth);
-    ZL_RET_R_IF_LT(
-            streamCapacity_tooSmall, s->bufferCapacity / eltWidth, eltCapacity);
+    ZL_ERR_IF_LT(
+            s->bufferCapacity / eltWidth, eltCapacity, streamCapacity_tooSmall);
     s->eltWidth     = eltWidth;
     s->eltsCapacity = s->bufferCapacity / eltWidth;
     return ZL_returnSuccess();
@@ -173,6 +175,7 @@ ZL_Report STREAM_typeAttachedBuffer(
 
 ZL_Report STREAM_reserveRawBuffer(Stream* s, size_t byteCapacity)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_NN(s);
     // For the time being, only one allocation is allowed. No resizing.
     ZL_ASSERT(ZL_Refcount_null(&s->buffer));
@@ -181,9 +184,9 @@ ZL_Report STREAM_reserveRawBuffer(Stream* s, size_t byteCapacity)
 
     void* const buffer =
             ZL_Refcount_inArena(&s->buffer, s->alloc, byteCapacity);
-    ZL_RET_R_IF_NULL(
-            allocation,
+    ZL_ERR_IF_NULL(
             buffer,
+            allocation,
             "STREAM_reserveRawBuffer: Failed allocating stream's buffer");
 
     ZL_DLOG(SEQ,
@@ -196,12 +199,13 @@ ZL_Report STREAM_reserveRawBuffer(Stream* s, size_t byteCapacity)
 ZL_Report
 STREAM_reserve(Stream* s, ZL_Type type, size_t eltWidth, size_t eltsCapacity)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     size_t byteCapacity;
-    ZL_RET_R_IF(
-            allocation,
+    ZL_ERR_IF(
             ZL_overflowMulST(eltsCapacity, eltWidth, &byteCapacity),
+            allocation,
             "Allocation overflows size_t");
-    ZL_RET_R_IF_ERR(STREAM_reserveRawBuffer(s, byteCapacity));
+    ZL_ERR_IF_ERR(STREAM_reserveRawBuffer(s, byteCapacity));
     ZL_Report const r =
             STREAM_typeAttachedBuffer(s, type, eltWidth, eltsCapacity);
     if (ZL_isError(r)) {
@@ -245,7 +249,8 @@ uint32_t* STREAM_reserveStringLens(Stream* stream, size_t nbStrings)
 ZL_Report
 STREAM_reserveStrings(Stream* s, size_t numStrings, size_t bufferCapacity)
 {
-    ZL_RET_R_IF_ERR(STREAM_reserveRawBuffer(s, bufferCapacity));
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_ERR(STREAM_reserveRawBuffer(s, bufferCapacity));
     ZL_ASSERT_EQ(s->type, 0);
     s->type = ZL_Type_string;
 
@@ -271,19 +276,19 @@ static ZL_Report STREAM_referenceInternal(
         size_t eltCount,
         const void* ref)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DLOG(SEQ,
             "STREAM_referenceInternal (%zu elts of width %zu)",
             eltCount,
             eltWidth);
-    ZL_RET_R_IF(
-            stream_wrongInit, s->writeCommitted, "Stream already committed");
+    ZL_ERR_IF(s->writeCommitted, stream_wrongInit, "Stream already committed");
     // ZL_ASSERT(!ZL_Refcount_null(&s->buffer));
-    ZL_RET_R_IF_ERR(STREAM_validateTypeWidth(type, eltWidth));
+    ZL_ERR_IF_ERR(STREAM_validateTypeWidth(type, eltWidth));
     s->type = type;
     if (type == ZL_Type_numeric) {
-        ZL_RET_R_IF_NOT(
-                userBuffer_alignmentIncorrect,
+        ZL_ERR_IF_NOT(
                 MEM_IS_ALIGNED_N(ref, MEM_alignmentForNumericWidth(eltWidth)),
+                userBuffer_alignmentIncorrect,
                 "provided src buffer is incorrectly aligned for numerics of width %zu bytes",
                 eltWidth);
     }
@@ -310,12 +315,13 @@ ZL_Report STREAM_refConstBuffer(
         size_t eltWidth,
         size_t eltCount)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_NN(s);
     ZL_ASSERT(ZL_Refcount_null(&s->buffer));
     ZL_ASSERT_NE(type, ZL_Type_string);
     if (eltCount > 0)
         ZL_ASSERT_NN(ref);
-    ZL_RET_R_IF_ERR(ZL_Refcount_initConstRef(&s->buffer, ref));
+    ZL_ERR_IF_ERR(ZL_Refcount_initConstRef(&s->buffer, ref));
     return STREAM_referenceInternal(s, type, eltWidth, eltCount, ref);
 }
 
@@ -326,19 +332,19 @@ ZL_Report STREAM_refConstExtString(
         const uint32_t* strLengths,
         size_t nbStrings)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_NN(s);
     ZL_ASSERT(ZL_Refcount_null(&s->buffer));
     ZL_ASSERT(ZL_Refcount_null(&s->stringLens));
-    ZL_RET_R_IF(
-            stream_wrongInit, s->writeCommitted, "Stream already committed");
+    ZL_ERR_IF(s->writeCommitted, stream_wrongInit, "Stream already committed");
     if (nbStrings)
         ZL_ASSERT_NN(strLengths);
-    ZL_RET_R_IF_ERR(ZL_Refcount_initConstRef(&s->buffer, strBuffer));
-    ZL_RET_R_IF_ERR(STREAM_referenceInternal(
+    ZL_ERR_IF_ERR(ZL_Refcount_initConstRef(&s->buffer, strBuffer));
+    ZL_ERR_IF_ERR(STREAM_referenceInternal(
             s, ZL_Type_string, 1, bufferSize, strBuffer));
-    ZL_RET_R_IF_ERR(ZL_Refcount_initConstRef(&s->stringLens, strLengths));
+    ZL_ERR_IF_ERR(ZL_Refcount_initConstRef(&s->stringLens, strLengths));
     s->eltsCapacity = nbStrings;
-    ZL_RET_R_IF_ERR(STREAM_commit(s, nbStrings));
+    ZL_ERR_IF_ERR(STREAM_commit(s, nbStrings));
     return ZL_returnSuccess();
 }
 
@@ -349,6 +355,7 @@ ZL_Report STREAM_attachWritableBuffer(
         size_t eltWidth,
         size_t eltCount)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DLOG(SEQ, "STREAM_attachWritableBuffer (eltCount=%zu)", eltCount);
     ZL_ASSERT_NN(s);
     ZL_ASSERT(ZL_Refcount_null(&s->buffer));
@@ -356,7 +363,7 @@ ZL_Report STREAM_attachWritableBuffer(
     ZL_ASSERT_GT(eltWidth, 0);
     if (eltCount > 0)
         ZL_ASSERT_NN(ref);
-    ZL_RET_R_IF_ERR(ZL_Refcount_initMutRef(&s->buffer, ref));
+    ZL_ERR_IF_ERR(ZL_Refcount_initMutRef(&s->buffer, ref));
     s->bufferCapacity = eltCount * eltWidth;
     return STREAM_typeAttachedBuffer(s, type, eltWidth, eltCount);
 }
@@ -364,35 +371,37 @@ ZL_Report STREAM_attachWritableBuffer(
 ZL_Report
 STREAM_refMutStringLens(Stream* s, uint32_t* stringLens, size_t eltsCapacity)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_NN(s);
-    ZL_RET_R_IF_NE(streamType_incorrect, s->type, ZL_Type_string);
-    ZL_RET_R_IF_NOT(stream_wrongInit, ZL_Refcount_null(&s->stringLens));
+    ZL_ERR_IF_NE(s->type, ZL_Type_string, streamType_incorrect);
+    ZL_ERR_IF_NOT(ZL_Refcount_null(&s->stringLens), stream_wrongInit);
     if (eltsCapacity > 0)
         ZL_ASSERT_NN(stringLens);
-    ZL_RET_R_IF_ERR(ZL_Refcount_initMutRef(&s->stringLens, stringLens));
+    ZL_ERR_IF_ERR(ZL_Refcount_initMutRef(&s->stringLens, stringLens));
     s->eltsCapacity = eltsCapacity;
     return ZL_returnSuccess();
 }
 
 ZL_Report STREAM_attachRawBuffer(Stream* s, void* rawBuf, size_t bufByteSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DLOG(SEQ, "STREAM_attachRawBuffer (bufByteSize=%zu)", bufByteSize);
     ZL_ASSERT_NN(s);
     ZL_ASSERT(ZL_Refcount_null(&s->buffer));
     if (bufByteSize > 0)
         ZL_ASSERT_NN(rawBuf);
-    ZL_RET_R_IF_ERR(ZL_Refcount_initMutRef(&s->buffer, rawBuf));
+    ZL_ERR_IF_ERR(ZL_Refcount_initMutRef(&s->buffer, rawBuf));
     s->bufferCapacity = bufByteSize;
     return ZL_returnSuccess();
 }
 
 ZL_Report STREAM_refStreamWithoutRefCount(Stream* s, const Stream* ref)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_NN(s);
     ZL_ASSERT_NN(ref);
     ZL_ASSERT(ref->writeCommitted);
-    ZL_RET_R_IF(
-            stream_wrongInit, s->writeCommitted, "Stream already committed");
+    ZL_ERR_IF(s->writeCommitted, stream_wrongInit, "Stream already committed");
     s->type           = ref->type;
     s->eltCount       = ref->eltCount;
     s->eltWidth       = ref->eltWidth;
@@ -414,9 +423,9 @@ ZL_Report STREAM_refStreamWithoutRefCount(Stream* s, const Stream* ref)
         }
     }
 
-    ZL_RET_R_IF_ERR(ZL_Refcount_initConstRef(
+    ZL_ERR_IF_ERR(ZL_Refcount_initConstRef(
             &s->buffer, ZL_Refcount_get(&ref->buffer)));
-    ZL_RET_R_IF_ERR(ZL_Refcount_initConstRef(
+    ZL_ERR_IF_ERR(ZL_Refcount_initConstRef(
             &s->stringLens, ZL_Refcount_get(&ref->stringLens)));
 
     // Turn our buffers into immutable references
@@ -434,17 +443,18 @@ ZL_Report STREAM_refStreamByteSlice(
         size_t eltWidth,
         size_t eltCount)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     size_t const streamBytes = STREAM_byteSize(src);
     size_t neededBytes;
-    ZL_RET_R_IF(
-            allocation,
+    ZL_ERR_IF(
             ZL_overflowMulST(eltCount, eltWidth, &neededBytes),
-            "Size overflows size_t");
-    ZL_RET_R_IF(
             allocation,
-            ZL_overflowAddST(offsetBytes, neededBytes, &neededBytes),
             "Size overflows size_t");
-    ZL_RET_R_IF_GT(allocation, neededBytes, streamBytes);
+    ZL_ERR_IF(
+            ZL_overflowAddST(offsetBytes, neededBytes, &neededBytes),
+            allocation,
+            "Size overflows size_t");
+    ZL_ERR_IF_GT(neededBytes, streamBytes, allocation);
     dst->buffer = ZL_Refcount_aliasOffset(&src->buffer, offsetBytes);
     // Turn our buffer into an immutable reference
     ZL_Refcount_constify(&dst->buffer);
@@ -497,6 +507,7 @@ ZL_Report STREAM_refStreamSliceWithoutRefCount(
         size_t startingEltNum,
         size_t eltCount)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DLOG(SEQ,
             "STREAM_refStreamSliceWithoutRefCount (start:%zu, eltCount=%zu)",
             startingEltNum,
@@ -504,7 +515,7 @@ ZL_Report STREAM_refStreamSliceWithoutRefCount(
     ZL_ASSERT_NN(src);
     ZL_ASSERT_LE(startingEltNum + eltCount, STREAM_eltCount(src));
     ZL_ASSERT_NN(dst);
-    ZL_RET_R_IF_ERR(STREAM_refStreamWithoutRefCount(dst, src));
+    ZL_ERR_IF_ERR(STREAM_refStreamWithoutRefCount(dst, src));
     if (eltCount == STREAM_eltCount(src))
         return ZL_returnSuccess();
 
@@ -730,6 +741,7 @@ ZL_Report STREAM_hashLastCommit_xxh3low32(
         size_t nbStreams,
         unsigned formatVersion)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DLOG(SEQ,
             "STREAM_hashLastCommit_xxh3low32 (nbStreams=%zu, formatVersion=%u)",
             nbStreams,
@@ -737,10 +749,10 @@ ZL_Report STREAM_hashLastCommit_xxh3low32(
     ZL_ASSERT_GT(nbStreams, 0);
     ZL_ASSERT_NN(streams);
     XXH3_state_t xxh3;
-    ZL_RET_R_IF_NE(GENERIC, XXH3_64bits_reset(&xxh3), XXH_OK);
+    ZL_ERR_IF_NE(XXH3_64bits_reset(&xxh3), XXH_OK, GENERIC);
     for (size_t n = 0; n < nbStreams; n++) {
         // Hashing content only makes sense if content has been committed
-        ZL_RET_R_IF_NOT(GENERIC, STREAM_isCommitted(streams[n]));
+        ZL_ERR_IF_NOT(STREAM_isCommitted(streams[n]), GENERIC);
         // Numeric data might have a different endianness depending on the
         // platform which might lead to checksum errors.
         // For that reason, one convention must be selected, so that
@@ -749,23 +761,23 @@ ZL_Report STREAM_hashLastCommit_xxh3low32(
         // For now, the library is not able calculate checksum on Numeric
         // input on non-little-endian platforms
         if (STREAM_type(streams[n]) == ZL_Type_numeric) {
-            ZL_RET_R_IF_NOT(
-                    temporaryLibraryLimitation,
+            ZL_ERR_IF_NOT(
                     ZL_isLittleEndian(),
+                    temporaryLibraryLimitation,
                     "Cannot calculate hash of numeric input on non little-endian platforms");
         }
         ZL_RBuffer const rb = STREAM_lastCommittedBufferContent(streams[n]);
-        ZL_RET_R_IF_NE(
-                GENERIC, XXH3_64bits_update(&xxh3, rb.start, rb.size), XXH_OK);
+        ZL_ERR_IF_NE(
+                XXH3_64bits_update(&xxh3, rb.start, rb.size), XXH_OK, GENERIC);
         if ((STREAM_type(streams[n]) == ZL_Type_string)
             && (formatVersion >= 15)) {
             /** @note format v14 supports Type String, but did not checksum the
              * array of lengths (just skipping it) */
             ZL_RBuffer const lcslb = STREAM_lastCommittedStringLens(streams[n]);
-            ZL_RET_R_IF_NE(
-                    GENERIC,
+            ZL_ERR_IF_NE(
                     XXH3_64bits_update(&xxh3, lcslb.start, lcslb.size),
-                    XXH_OK);
+                    XXH_OK,
+                    GENERIC);
         }
     }
     uint32_t const hash = (uint32_t)XXH3_64bits_digest(&xxh3);
@@ -778,22 +790,23 @@ ZL_Report STREAM_hashLastCommit_xxh3low32(
 
 static ZL_Report STREAM_commitStrings(Stream* s, size_t numStrings)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DLOG(SEQ, "STREAM_commitStrings (numStrings=%zu)", numStrings);
     ZL_ASSERT_NN(s);
     ZL_ASSERT_EQ(s->type, ZL_Type_string);
     const uint32_t* const stringLens = ZL_Refcount_get(&s->stringLens);
 
-    ZL_RET_R_IF_GT(
-            streamCapacity_tooSmall,
+    ZL_ERR_IF_GT(
             numStrings,
             s->eltsCapacity,
+            streamCapacity_tooSmall,
             "Number of strings committed is greater than capacity");
     uint64_t const totalStringsSize = NUMOP_sumArray32(
             s->eltCount ? stringLens + s->eltCount : stringLens, numStrings);
-    ZL_RET_R_IF_GT(
-            streamCapacity_tooSmall,
+    ZL_ERR_IF_GT(
             totalStringsSize,
             (uint64_t)s->bufferCapacity,
+            streamCapacity_tooSmall,
             "Total string content size is greater than capacity");
 
     // All conditions fulfilled : now set
@@ -807,16 +820,17 @@ static ZL_Report STREAM_commitStrings(Stream* s, size_t numStrings)
 
 ZL_Report STREAM_commit(Stream* s, size_t eltCount)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DLOG(SEQ, "STREAM_commit (eltCount=%zu)", eltCount);
     ZL_ASSERT_NN(s);
     if (s->writeCommitted == 0) {
         ZL_ASSERT_EQ(s->eltCount, 0);
         ZL_ASSERT_EQ(s->bufferUsed, 0);
     }
-    ZL_RET_R_IF_GT(
-            stream_wrongInit,
+    ZL_ERR_IF_GT(
             s->eltCount + eltCount,
             s->eltsCapacity,
+            stream_wrongInit,
             "Stream capacity too small");
     if (s->type == ZL_Type_string) {
         return STREAM_commitStrings(s, eltCount);
@@ -959,6 +973,7 @@ ZL_Report STREAM_copyBytes(Stream* dst, const Stream* src, size_t size)
 
 ZL_Report STREAM_copyStringStream(Stream* dst, const Stream* src)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_NN(dst);
     ZL_ASSERT_NN(src);
     ZL_ASSERT(!STREAM_hasBuffer(dst));
@@ -966,37 +981,38 @@ ZL_Report STREAM_copyStringStream(Stream* dst, const Stream* src)
     size_t const nbStrings        = STREAM_eltCount(src);
     size_t const stringsTotalSize = STREAM_byteSize(src);
 
-    ZL_RET_R_IF_ERR(STREAM_reserve(dst, ZL_Type_string, 1, stringsTotalSize));
+    ZL_ERR_IF_ERR(STREAM_reserve(dst, ZL_Type_string, 1, stringsTotalSize));
 
     uint32_t* const lens = STREAM_reserveStringLens(dst, nbStrings);
-    ZL_RET_R_IF_NULL(allocation, lens);
+    ZL_ERR_IF_NULL(lens, allocation);
 
     size_t lensSize;
-    ZL_RET_R_IF(
-            allocation,
+    ZL_ERR_IF(
             ZL_overflowMulST(nbStrings, sizeof(uint32_t), &lensSize),
+            allocation,
             "String lengths size overflows size_t");
 
     ZL_memcpy(STREAM_wPtr(dst), STREAM_rPtr(src), stringsTotalSize);
     ZL_memcpy(lens, STREAM_rStringLens(src), lensSize);
 
-    ZL_RET_R_IF_ERR(STREAM_commit(dst, nbStrings));
+    ZL_ERR_IF_ERR(STREAM_commit(dst, nbStrings));
     return ZL_returnValue(stringsTotalSize);
 }
 
 static ZL_Report STREAM_copyIntMetas(Stream* dst, const Stream* src)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_NN(dst);
     ZL_ASSERT_NN(src);
 
     size_t const meta_size = VECTOR_SIZE(src->intMetas);
     VECTOR_CLEAR(dst->intMetas);
-    ZL_RET_R_IF_LT(
-            allocation, VECTOR_RESERVE(dst->intMetas, meta_size), meta_size);
+    ZL_ERR_IF_LT(
+            VECTOR_RESERVE(dst->intMetas, meta_size), meta_size, allocation);
 
     for (size_t pos = 0; pos < meta_size; pos++) {
         IntMeta e = VECTOR_AT(src->intMetas, pos);
-        ZL_RET_R_IF_NOT(allocation, VECTOR_PUSHBACK(dst->intMetas, e));
+        ZL_ERR_IF_NOT(VECTOR_PUSHBACK(dst->intMetas, e), allocation);
     }
 
     return ZL_returnSuccess();
@@ -1004,19 +1020,20 @@ static ZL_Report STREAM_copyIntMetas(Stream* dst, const Stream* src)
 
 ZL_Report STREAM_copy(Stream* dst, const Stream* src)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT(!STREAM_hasBuffer(dst));
     ZL_ASSERT(src->writeCommitted);
     const ZL_Type type = STREAM_type(src);
 
-    ZL_RET_R_IF_ERR(STREAM_copyIntMetas(dst, src));
+    ZL_ERR_IF_ERR(STREAM_copyIntMetas(dst, src));
 
     if (type == ZL_Type_string) {
         return STREAM_copyStringStream(dst, src);
     }
 
-    ZL_RET_R_IF_ERR(STREAM_reserve(
+    ZL_ERR_IF_ERR(STREAM_reserve(
             dst, type, STREAM_eltWidth(src), STREAM_eltCount(src)));
-    ZL_RET_R_IF_ERR(STREAM_copyBytes(dst, src, STREAM_byteSize(src)));
+    ZL_ERR_IF_ERR(STREAM_copyBytes(dst, src, STREAM_byteSize(src)));
     return ZL_returnSuccess();
 }
 
@@ -1024,19 +1041,21 @@ ZL_Report STREAM_copy(Stream* dst, const Stream* src)
 // eltCount must be <= eltCount(data)
 static ZL_Report STREAM_consumeStrings(Stream* data, size_t eltCount)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_NN(data);
     ZL_ASSERT_LE(eltCount, STREAM_eltCount(data));
     // unfinished
-    ZL_RET_R_IF(GENERIC, 1);
+    ZL_ERR_IF(1, GENERIC);
 }
 
 // data must be valid
 // eltCount must be <= eltCount(data)
 ZL_Report STREAM_consume(Stream* data, size_t eltCount)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_NN(data);
     ZL_ASSERT_EQ(data->writeCommitted, 1);
-    ZL_RET_R_IF_GT(parameter_invalid, eltCount, STREAM_eltCount(data));
+    ZL_ERR_IF_GT(eltCount, STREAM_eltCount(data), parameter_invalid);
     if (STREAM_type(data) == ZL_Type_string)
         return STREAM_consumeStrings(data, eltCount);
     size_t eltSize    = STREAM_eltWidth(data);
@@ -1065,16 +1084,17 @@ static int findIntMeta(VECTOR(IntMeta) m, int id)
 
 ZL_Report STREAM_setIntMetadata(Stream* s, int mId, int mValue)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_NN(s);
     // Currently forbids setting same metadata ID multiple times
-    ZL_RET_R_IF_NE(
-            streamParameter_invalid,
+    ZL_ERR_IF_NE(
             findIntMeta(s->intMetas, mId),
             -1,
+            streamParameter_invalid,
             "Int Metadata ID already present");
-    ZL_RET_R_IF_NOT(
-            allocation,
-            VECTOR_PUSHBACK(s->intMetas, ((IntMeta){ mId, mValue })));
+    ZL_ERR_IF_NOT(
+            VECTOR_PUSHBACK(s->intMetas, ((IntMeta){ mId, mValue })),
+            allocation);
     return ZL_returnSuccess();
 }
 
@@ -1227,33 +1247,38 @@ ZL_wrapGeneric(ZL_Type type, size_t eltWidth, size_t eltCapacity, void* buffer)
 
 ZL_Report ZL_Output_eltWidth(const ZL_Output* output)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (ZL_Output_type(output) != ZL_Type_string) {
-        ZL_RET_R_IF_EQ(outputNotReserved, output->data.eltWidth, 0);
+        ZL_ERR_IF_EQ(output->data.eltWidth, 0, outputNotReserved);
     }
     return ZL_returnValue(output->data.eltWidth);
 }
 
 ZL_Report ZL_Output_numElts(const ZL_Output* output)
 {
-    ZL_RET_R_IF_EQ(outputNotCommitted, output->data.writeCommitted, 0);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_EQ(output->data.writeCommitted, 0, outputNotCommitted);
     return ZL_returnValue(output->data.eltCount);
 }
 
 ZL_Report ZL_Output_contentSize(const ZL_Output* output)
 {
-    ZL_RET_R_IF_NOT(outputNotCommitted, STREAM_isCommitted(&output->data));
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_NOT(STREAM_isCommitted(&output->data), outputNotCommitted);
     return ZL_returnValue(STREAM_byteSize(&output->data));
 }
 
 ZL_Report ZL_Output_eltsCapacity(const ZL_Output* output)
 {
-    ZL_RET_R_IF(outputNotReserved, !STREAM_hasBuffer(&output->data));
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF(!STREAM_hasBuffer(&output->data), outputNotReserved);
     return ZL_returnValue(output->data.eltsCapacity);
 }
 
 ZL_Report ZL_Output_contentCapacity(const ZL_Output* output)
 {
-    ZL_RET_R_IF(outputNotReserved, !STREAM_hasBuffer(&output->data));
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF(!STREAM_hasBuffer(&output->data), outputNotReserved);
     return ZL_returnValue(output->data.bufferCapacity);
 }
 
