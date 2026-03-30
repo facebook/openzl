@@ -9,8 +9,6 @@
 
 #include <functional>
 #include <optional>
-#include <string>
-#include <variant>
 #include <vector>
 
 namespace openzl::visualizer {
@@ -28,11 +26,7 @@ struct Stream {
     std::vector<StreamID> successors;
     std::optional<CodecID> consumerCodec;
     std::optional<CodecID> producerCodec;
-    std::variant<
-            std::vector<std::string>,
-            std::vector<int64_t>,
-            std::vector<uint8_t>>
-            streamPreview;
+    StreamPreview streamPreview;
 
     const ZL_Report serializeStream(A1C_Arena* a1c_arena, A1C_Item* arrayItem);
 };
