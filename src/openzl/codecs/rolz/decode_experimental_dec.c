@@ -49,11 +49,12 @@ static ZL_Report decodeCodes(uint8_t* codes, size_t numSequences, ZL_RC* src);
 
 static ZL_Report decodeLiterals(ZS_Lits* lits, ZL_RC* src)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (lits->numLits == 0) {
         lits->o1 = false;
         return ZL_returnSuccess();
     }
-    ZL_RET_R_IF_LT(srcSize_tooSmall, ZL_RC_avail(src), 1);
+    ZL_ERR_IF_LT(ZL_RC_avail(src), 1, srcSize_tooSmall);
     lits->o1 = ZL_RC_pop(src);
     // ZL_WC out = ZL_WC_wrap(lits->lits, lits->numLits);
     if (!lits->o1) {
@@ -62,19 +63,19 @@ static ZL_Report decodeLiterals(ZS_Lits* lits, ZL_RC* src)
 
     ZL_ContextClustering clustering;
 
-    ZL_RET_R_IF_ERR(ZL_ContextClustering_decode(&clustering, src));
+    ZL_ERR_IF_ERR(ZL_ContextClustering_decode(&clustering, src));
     ZL_ASSERT_LE(clustering.numClusters, kMaxNumClusters);
     lits->numClusters = clustering.numClusters;
 
     uint8_t* litPtr       = lits->lits;
     uint8_t* const litEnd = litPtr + lits->numLits;
     for (size_t c = 0; c < clustering.numClusters; ++c) {
-        ZL_RET_R_IF_LT(srcSize_tooSmall, ZL_RC_avail(src), 4);
+        ZL_ERR_IF_LT(ZL_RC_avail(src), 4, srcSize_tooSmall);
         uint32_t const numLits = ZL_RC_popLE32(src);
-        ZL_RET_R_IF_GT(corruption, numLits, (size_t)(litEnd - litPtr));
+        ZL_ERR_IF_GT(numLits, (size_t)(litEnd - litPtr), corruption);
         lits->o1LitsByCluster[c]    = litPtr;
         lits->o1LitsEndByCluster[c] = litPtr + numLits;
-        ZL_RET_R_IF_ERR(decodeCodes(litPtr, numLits, src));
+        ZL_ERR_IF_ERR(decodeCodes(litPtr, numLits, src));
         litPtr += numLits;
         // lits->o1LitsByCluster[c] = ZL_WC_ptr(&out);
         // ZL_TRY_LET_CONST_T(uint64_t, numSplits, ZL_RC_popVarint(src));
@@ -88,7 +89,7 @@ static ZL_Report decodeLiterals(ZS_Lits* lits, ZL_RC* src)
         // }
     }
     // ZL_REQUIRE_EQ(ZL_WC_avail(&out), 0);
-    ZL_RET_R_IF_NE(corruption, (uint32_t)(litPtr - lits->lits), lits->numLits);
+    ZL_ERR_IF_NE((uint32_t)(litPtr - lits->lits), lits->numLits, corruption);
     for (uint32_t ctx = 0; ctx < 256; ++ctx) {
         if (ctx > clustering.maxSymbol)
             lits->o1LitsByContext[ctx] = NULL;
@@ -106,20 +107,22 @@ typedef enum {
 
 static ZL_Report decodeCodes(uint8_t* codes, size_t numSequences, ZL_RC* src)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZS_Entropy_DecodeParameters params = {
         .allowedTypes = ZS_Entropy_TypeMask_all,
         .tableManager = NULL,
     };
-    ZL_RET_R_IF_ERR(ZS_Entropy_decode(codes, numSequences, src, 1, &params));
+    ZL_ERR_IF_ERR(ZS_Entropy_decode(codes, numSequences, src, 1, &params));
     return ZL_returnSuccess();
 }
 
 static ZL_Report
 decodeMatchTypes(uint8_t* codes, size_t numSequences, ZL_RC* src)
 {
-    ZL_RET_R_IF_ERR(decodeCodes(codes, numSequences, src));
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_ERR(decodeCodes(codes, numSequences, src));
     for (size_t c = 0; c < numSequences; ++c) {
-        ZL_RET_R_IF_GE(corruption, codes[c], 4, "Invalid match type!");
+        ZL_ERR_IF_GE(codes[c], 4, corruption, "Invalid match type!");
     }
     return ZL_returnSuccess();
 }
@@ -149,30 +152,31 @@ static ZL_Report decodeSeq(
         uint8_t const* types,
         ZL_RC* src)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (numSequences == 0)
         return ZL_returnSuccess();
-    ZL_RET_R_IF_LT(
-            srcSize_tooSmall, ZL_RC_avail(src), 4 + 4 * ZS_MARKOV_NUM_STATES);
+    ZL_ERR_IF_LT(
+            ZL_RC_avail(src), 4 + 4 * ZS_MARKOV_NUM_STATES, srcSize_tooSmall);
     uint32_t const bitSize = ZL_RC_popLE32(src);
     uint32_t totals[ZS_MARKOV_NUM_STATES];
     for (size_t m = 0; m < ZS_MARKOV_NUM_STATES; ++m) {
         totals[m] = ZL_RC_popLE32(src);
         if (m != 0)
-            ZL_RET_R_IF_GT(corruption, totals[m - 1], totals[m]);
+            ZL_ERR_IF_GT(totals[m - 1], totals[m], corruption);
     }
-    ZL_RET_R_IF_NE(GENERIC, totals[ZS_MARKOV_NUM_STATES - 1], numSequences);
+    ZL_ERR_IF_NE(totals[ZS_MARKOV_NUM_STATES - 1], numSequences, GENERIC);
     // uint32_t const fseSize = ZL_RC_popLE32(src);
-    ZL_RET_R_IF_LT(srcSize_tooSmall, ZL_RC_avail(src), bitSize);
+    ZL_ERR_IF_LT(ZL_RC_avail(src), bitSize, srcSize_tooSmall);
 
     BIT_DStream_t dstream;
-    ZL_RET_R_IF(
-            corruption,
+    ZL_ERR_IF(
             ERR_isError(BIT_initDStream(&dstream, ZL_RC_ptr(src), bitSize)),
+            corruption,
             "bitstream is corrupt");
     ZL_RC_advance(src, bitSize);
 
     uint8_t* const codes = ZL_malloc(numSequences);
-    ZL_RET_R_IF_NULL(allocation, codes);
+    ZL_ERR_IF_NULL(codes, allocation);
     for (size_t m = 0; m < ZS_MARKOV_NUM_STATES; ++m) {
         uint32_t offset = m == 0 ? 0 : totals[m - 1];
         ZL_ASSERT_LE(offset, numSequences);
@@ -181,7 +185,7 @@ static ZL_Report decodeSeq(
         ZL_Report report = decodeCodes(codes + offset, totals[m] - offset, src);
         if (ZL_isError(report)) {
             ZL_free(codes);
-            ZL_RET_R_IF_ERR(report);
+            return report;
         }
     }
     for (size_t m = ZS_MARKOV_NUM_STATES - 1; m-- > 0;) {
@@ -195,18 +199,18 @@ static ZL_Report decodeSeq(
         size_t const idx = totals[state]++;
         if (idx >= numSequences) {
             ZL_free(codes);
-            ZL_RET_R_ERR(corruption, "Invalid state!");
+            ZL_ERR(corruption, "Invalid state!");
         }
         uint8_t const code = codes[idx];
         if (code >= ZL_ARRAY_SIZE(base)) {
             ZL_free(codes);
-            ZL_RET_R_ERR(corruption, "Invalid code!");
+            ZL_ERR(corruption, "Invalid code!");
         }
         values[s] = base[code] + (uint32_t)BIT_readBits(&dstream, bits[code]);
         BIT_reloadDStream(&dstream);
     }
     ZL_free(codes);
-    ZL_RET_R_IF_NE(GENERIC, totals[ZS_MARKOV_NUM_STATES - 1], numSequences);
+    ZL_ERR_IF_NE(totals[ZS_MARKOV_NUM_STATES - 1], numSequences, GENERIC);
     return ZL_returnSuccess();
 }
 
@@ -572,6 +576,7 @@ static ZL_Report ZS_experimentalDecoder_decompress(
         uint8_t const* const src,
         size_t size)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     (void)ctx;
     uint8_t* const ostart = dst;
     uint8_t* op           = ostart;
@@ -580,7 +585,7 @@ static ZL_Report ZS_experimentalDecoder_decompress(
     ZL_RC in = ZL_RC_wrap(src, size);
 
     // Bounds checks
-    ZL_RET_R_IF_LT(corruption, ZL_RC_avail(&in), 15);
+    ZL_ERR_IF_LT(ZL_RC_avail(&in), 15, corruption);
     uint32_t const rolzContextDepth   = ZL_RC_pop(&in);
     uint32_t const rolzContextLog     = ZL_RC_pop(&in);
     uint32_t const rolzRowLog         = ZL_RC_pop(&in);
@@ -603,39 +608,38 @@ static ZL_Report ZS_experimentalDecoder_decompress(
         case 16:
             break;
         default:
-            ZL_RET_R_ERR(
-                    node_invalid_input,
-                    "Invalid contextDepth %u",
-                    rolzContextDepth);
+            ZL_ERR(node_invalid_input,
+                   "Invalid contextDepth %u",
+                   rolzContextDepth);
     }
-    ZL_RET_R_IF_EQ(
-            node_invalid_input,
+    ZL_ERR_IF_EQ(
             rolzContextLog,
             0,
-            "contextLog must be greater than 0");
-    ZL_RET_R_IF_EQ(
-            node_invalid_input, rolzRowLog, 0, "rowLog must be greater than 0");
-    ZL_RET_R_IF_GT(
             node_invalid_input,
+            "contextLog must be greater than 0");
+    ZL_ERR_IF_EQ(
+            rolzRowLog, 0, node_invalid_input, "rowLog must be greater than 0");
+    ZL_ERR_IF_GT(
             rolzContextLog + rolzRowLog,
             27,
+            node_invalid_input,
             "contextLog + rowLog exceeds maximum");
-    ZL_RET_R_IF_GE(GENERIC, numSequences, (1 << 30), "too many sequences");
-    ZL_RET_R_IF_GE(GENERIC, numLiterals, (1 << 30), "too many literals");
+    ZL_ERR_IF_GE(numSequences, (1 << 30), GENERIC, "too many sequences");
+    ZL_ERR_IF_GE(numLiterals, (1 << 30), GENERIC, "too many literals");
 
     ZS_window window;
     ZS_RolzDTable2 rolz;
     ZS_rep reps = ZS_initialReps;
-    ZL_RET_R_IF(GENERIC, ZS_window_init(&window, (uint32_t)(oend - ostart), 8));
-    ZL_RET_R_IF(
-            GENERIC,
+    ZL_ERR_IF(ZS_window_init(&window, (uint32_t)(oend - ostart), 8), GENERIC);
+    ZL_ERR_IF(
             ZL_isError(ZS_RolzDTable2_init(
                     &rolz,
                     rolzContextDepth,
                     rolzContextLog,
                     rolzRowLog,
                     rolzMinLength,
-                    rolzPredictMatchLength)));
+                    rolzPredictMatchLength)),
+            GENERIC);
 
     ZS_Lits lits;
     uint8_t* litsBuffer = ZL_malloc(numLiterals + ZS_WILDCOPY_OVERLENGTH);
@@ -783,7 +787,7 @@ _error:
     ZL_free(litsBuffer);
     ZS_RolzDTable2_destroy(&rolz);
 
-    ZL_RET_R_ERR(GENERIC);
+    ZL_ERR(GENERIC);
 }
 
 const ZS_decoder ZS_experimentalDecoder = {
