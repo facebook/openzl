@@ -414,6 +414,7 @@ static ZL_Report ZL_AppendToOutputOptimization_commitInput(
         ZL_AppendToOutputOptimization* append,
         size_t inputIdx)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     // Append to head if equal to the headInputIdx.
     const bool head = (inputIdx == append->headInputIdx);
     // Inputs are listed in reverse order
@@ -430,7 +431,7 @@ static ZL_Report ZL_AppendToOutputOptimization_commitInput(
     ZL_ASSERT_LE(append->outputHeadPtr, append->outputTailPtr);
     const size_t outputCapacity =
             (size_t)(append->outputTailPtr - append->outputHeadPtr);
-    ZL_RET_R_IF_GT(dstCapacity_tooSmall, inputSize, outputCapacity);
+    ZL_ERR_IF_GT(inputSize, outputCapacity, dstCapacity_tooSmall);
 
     uint8_t* const outputBegin = ZL_Data_wPtr(append->outputInfo->data);
     uint8_t const* outputEnd =
@@ -481,10 +482,12 @@ static ZL_Report ZL_AppendToOutputOptimization_commitInput(
 static ZL_Report ZS2_AppendToOutputOptimization_commitInputs(
         ZL_AppendToOutputOptimization* append)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     for (; append->headInputIdx < append->tailInputIdx;) {
         // First check if we can commit head inputs.
         {
-            ZL_TRY_LET_R(
+            ZL_TRY_LET(
+                    size_t,
                     success,
                     ZL_AppendToOutputOptimization_commitInput(
                             append, append->headInputIdx));
@@ -495,7 +498,8 @@ static ZL_Report ZS2_AppendToOutputOptimization_commitInputs(
         }
         // Next check if we can commit tail inputs.
         {
-            ZL_TRY_LET_R(
+            ZL_TRY_LET(
+                    size_t,
                     success,
                     ZL_AppendToOutputOptimization_commitInput(
                             append, append->tailInputIdx - 1));
@@ -521,16 +525,17 @@ static ZL_Report ZS2_AppendToOutputOptimization_commitInputs(
 static ZL_Report ZL_AppendToOutputOptimization_preTransformHook(
         ZL_DCtx_DataInfo* info)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_AppendToOutputOptimization* append = info->appendOpt;
     ZL_ASSERT_NN(append);
 
-    ZL_RET_R_IF_ERR(ZS2_AppendToOutputOptimization_commitInputs(append));
+    ZL_ERR_IF_ERR(ZS2_AppendToOutputOptimization_commitInputs(append));
 
     if (info == info->appendOpt->outputInfo) {
-        ZL_RET_R_IF_NE(
-                corruption,
+        ZL_ERR_IF_NE(
                 append->headInputIdx,
                 append->tailInputIdx,
+                corruption,
                 "Not all input streams committed!");
         ZL_ASSERT_LE(append->outputHeadPtr, append->outputTailPtr);
         uint8_t* const outputBegin = ZL_Data_wPtr(info->data);
@@ -547,7 +552,7 @@ static ZL_Report ZL_AppendToOutputOptimization_preTransformHook(
         append->outputHeadPtr += tailSize;
 
         const size_t outputSize = (size_t)(append->outputHeadPtr - outputBegin);
-        ZL_RET_R_IF_ERR(ZL_Data_commit(info->data, outputSize));
+        ZL_ERR_IF_ERR(ZL_Data_commit(info->data, outputSize));
         ZL_LOG(FRAME,
                "AppendToOutputOptimization: Successfully committed %zu bytes",
                outputSize);
@@ -570,14 +575,15 @@ static ZL_Report ZL_AppendToOutputOptimization_newStreamHook(
         size_t eltWidth,
         size_t eltsCapacity)
 {
-    ZL_RET_R_IF_EQ(
-            corruption,
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_EQ(
             type,
             ZL_Type_string,
-            "Strings not supported (already validated cannot be string)");
-    ZL_RET_R_IF(
             corruption,
+            "Strings not supported (already validated cannot be string)");
+    ZL_ERR_IF(
             type == ZL_Type_numeric,
+            corruption,
             "Numeric not supported (already validated cannot be int)");
 
     ZL_AppendToOutputOptimization* append = info->appendOpt;
@@ -597,12 +603,12 @@ static ZL_Report ZL_AppendToOutputOptimization_newStreamHook(
         return ZL_returnValue(0);
     }
 
-    ZL_RET_R_IF_ERR(ZS2_AppendToOutputOptimization_commitInputs(append));
+    ZL_ERR_IF_ERR(ZS2_AppendToOutputOptimization_commitInputs(append));
 
     size_t bytesNeeded;
-    ZL_RET_R_IF(
-            integerOverflow,
-            ZL_overflowMulST(eltWidth, eltsCapacity, &bytesNeeded));
+    ZL_ERR_IF(
+            ZL_overflowMulST(eltWidth, eltsCapacity, &bytesNeeded),
+            integerOverflow);
 
     ZL_ASSERT_LE(append->outputHeadPtr, append->outputTailPtr);
     const size_t outputCapacity =
@@ -619,7 +625,7 @@ static ZL_Report ZL_AppendToOutputOptimization_newStreamHook(
         return ZL_returnValue(0);
     }
 
-    ZL_RET_R_IF_ERR(STREAM_attachWritableBuffer(
+    ZL_ERR_IF_ERR(STREAM_attachWritableBuffer(
             info->data, append->outputHeadPtr, type, eltWidth, eltsCapacity));
 
     return ZL_returnValue(1);
@@ -697,7 +703,7 @@ static ZL_Report fillStoredStreams(
             nbStoredStreams);
     for (size_t transformIdx = 0; transformIdx < nbTransforms; ++transformIdx) {
         const DFH_NodeInfo* node = &VECTOR_AT(dctx->dfh.nodes, transformIdx);
-        ZL_TRY_LET_T(
+        ZL_TRY_LET(
                 DTrPtr,
                 wrappedTr,
                 DTM_getTransform(
@@ -849,9 +855,9 @@ static ZL_Report decodeFrameHeader(
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
     ZL_DLOG(FRAME, "decodeFrameHeader (srcSize = %zu)", srcSize);
-    ZL_TRY_LET_R(hSize, DFH_decodeFrameHeader(&dctx->dfh, src, srcSize));
+    ZL_TRY_LET(size_t, hSize, DFH_decodeFrameHeader(&dctx->dfh, src, srcSize));
 
-    ZL_TRY_LET_R(nbOuts, ZL_FrameInfo_getNumOutputs(dctx->dfh.frameinfo));
+    ZL_TRY_LET(size_t, nbOuts, ZL_FrameInfo_getNumOutputs(dctx->dfh.frameinfo));
     ZL_ERR_IF_NE(nbOuts, nbOutputs, userBuffers_invalidNum);
     dctx->nbOutputs = nbOutputs;
     return ZL_returnValue(hSize);
@@ -1062,8 +1068,8 @@ static ZL_Report processStream(
     ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
     ZL_ASSERT_NN(dctx);
     const char* const trName = DT_getTransformName(dt);
-    ZL_SCOPE_GRAPH_CONTEXT(
-            dctx, { .transformID = dt->miGraphDesc.CTid, .name = trName });
+    ZL_RESULT_SCOPE_ADD_GRAPH_CONTEXT((ZL_GraphContext){
+            .transformID = dt->miGraphDesc.CTid, .name = trName });
     size_t const nbInStreams = dt->miGraphDesc.nbSOs + nodeInfo->nbVOs;
     ZL_DLOG(BLOCK,
             "processStream streams [%u-%u] with transform '%s'(%u)",
@@ -1126,7 +1132,8 @@ static ZL_Report processStream(
                 streamID + nbInStreams + nodeInfo->regenDistances[0];
         ZL_DCtx_DataInfo* info = &dctx->dataInfo.ptr[regenIdx];
         if (info->appendOpt) {
-            ZL_TRY_LET_R(
+            ZL_TRY_LET(
+                    size_t,
                     success,
                     ZL_AppendToOutputOptimization_preTransformHook(info));
             if (success) {
@@ -1193,7 +1200,7 @@ static ZL_Report processStream(
     }
 
     ZL_ASSERT_NN(dt->transformFn);
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_RBuffer,
             thContent,
             ZL_RBuffer_slice(
@@ -1242,7 +1249,7 @@ static ZL_Report processStream(
     if (ZL_isError(report)) {
         DWAYPOINT(on_codecDecode_end, &diState, NULL, 0, report);
     }
-    ZL_RET_R_IF_ERR_COERCE(report);
+    ZL_ERR_IF_ERR_COERCE(report);
 
     // Check transform's outcome
     for (size_t n = 0; n < nodeInfo->nbRegens; n++) {
@@ -1317,7 +1324,8 @@ static ZL_Report runDecoders(ZL_DCtx* dctx)
                 DTM_getTransform(&dctx->dtm, trid, dctx->dfh.formatVersion);
         ZL_ERR_IF_ERR(transform);
         DTrPtr const dt = ZL_RES_value(transform);
-        ZL_TRY_LET_R(
+        ZL_TRY_LET(
+                size_t,
                 nbps,
                 processStream(dctx, (ZL_IDType)startingStream, dt, nodeInfo));
         startingStream += nbps;
@@ -1346,8 +1354,10 @@ ZL_Report DCTX_runTransformID(ZL_DCtx* dctx, ZL_IDType transformID)
                 DTM_getTransform(&dctx->dtm, trid, dctx->dfh.formatVersion);
         ZL_ERR_IF_ERR(transform);
         DTrPtr const dt = ZL_RES_value(transform);
-        ZL_TRY_LET_R(
-                nbps, processStream(dctx, (ZL_IDType)startingStream, dt, node));
+        ZL_TRY_LET(
+                size_t,
+                nbps,
+                processStream(dctx, (ZL_IDType)startingStream, dt, node));
         startingStream += nbps;
         ZL_ERR_IF_NE(
                 node->nbRegens,
@@ -1504,7 +1514,8 @@ static ZL_Report ZL_DCtx_decompressChunk(
     cleanChunkBuffers(dctx);
 
     ZL_ASSERT_LE(consumedSize, frameSize);
-    ZL_TRY_LET_R(
+    ZL_TRY_LET(
+            size_t,
             chunkHeaderSize,
             DFH_decodeChunkHeader(
                     &dctx->dfh,
@@ -1570,7 +1581,7 @@ static ZL_Report ZL_DCtx_decompressChunk(
 
     // write result into user's buffer
     {
-        ZL_TRY_LET_R(nbOuts, addChunksIntoFinalStreams(dctx));
+        ZL_TRY_LET(size_t, nbOuts, addChunksIntoFinalStreams(dctx));
         ZL_ERR_IF_NE(nbOuts, nbOutputs, corruption);
     }
 
@@ -1588,7 +1599,8 @@ static ZL_Report ZL_DCtx_decompressChunk(
                         "Cannot calculate hash of numeric output on non little-endian platforms");
             }
         }
-        ZL_TRY_LET_R(
+        ZL_TRY_LET(
+                size_t,
                 actualHashT,
                 STREAM_hashLastCommit_xxh3low32(
                         (const ZL_Data**)(void*)outputs,
@@ -1917,8 +1929,9 @@ ZL_Report ZL_DCtx_decompress(
 ZL_Report
 ZL_decompress(void* dst, size_t dstCapacity, const void* src, size_t srcSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DCtx* const dctx = ZL_DCtx_create();
-    ZL_RET_R_IF_NULL(allocation, dctx);
+    ZL_ERR_IF_NULL(dctx, allocation);
 
     ZL_Report r = ZL_DCtx_decompress(dctx, dst, dstCapacity, src, srcSize);
 
@@ -1996,8 +2009,9 @@ ZL_Report ZL_DCtx_attachDecompressIntrospectionHooks(
         ZL_DCtx* dctx,
         const ZL_DecompressIntrospectionHooks* hooks)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
     ZL_ASSERT_NN(dctx);
-    ZL_RET_R_IF_NULL(allocation, hooks);
+    ZL_ERR_IF_NULL(hooks, allocation);
     ZL_OperationContext* oc = ZL_DCtx_getOperationContext(dctx);
     ZL_ASSERT_NN(oc);
     oc->decompressIntrospectionHooks = *hooks;

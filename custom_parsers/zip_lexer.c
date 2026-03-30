@@ -109,22 +109,18 @@ static ZL_RESULT_OF(uint64_t) readZip64Info(
         size_t zip64InfoSize,
         size_t offsetTrusted)
 {
+    ZL_RESULT_DECLARE_SCOPE(uint64_t, NULL);
     const char* const zip64InfoEnd = zip64InfoPtr + zip64InfoSize;
     ZL_ASSERT_LE(offsetTrusted, 20);
     for (;;) {
-        ZL_RET_T_IF_LT(uint64_t, corruption, zip64InfoEnd - zip64InfoPtr, 4);
+        ZL_ERR_IF_LT(zip64InfoEnd - zip64InfoPtr, 4, corruption);
         const uint16_t id = ZL_readLE16(zip64InfoPtr);
         const size_t size = ZL_readLE16(zip64InfoPtr + 2);
         zip64InfoPtr += 4;
-        ZL_RET_T_IF_LT(
-                uint64_t,
-                corruption,
-                (size_t)(zip64InfoEnd - zip64InfoPtr),
-                size);
+        ZL_ERR_IF_LT((size_t)(zip64InfoEnd - zip64InfoPtr), size, corruption);
         if (id == kZip64InfoID) {
-            ZL_RET_T_IF_GT(uint64_t, corruption, offsetTrusted + 8, size);
-            return ZL_RESULT_WRAP_VALUE(
-                    uint64_t, ZL_readLE64(zip64InfoPtr + offsetTrusted));
+            ZL_ERR_IF_GT(offsetTrusted + 8, size, corruption);
+            return ZL_WRAP_VALUE(ZL_readLE64(zip64InfoPtr + offsetTrusted));
         }
         zip64InfoPtr += size;
     }
@@ -142,25 +138,26 @@ static ZL_Report readCentralDirectoryFileHeader(
         uint64_t* localFileHeaderOffset,
         uint64_t* compressedSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     // suppress -Wmaybe-uninitialized
     *localFileHeaderOffset = 0;
 
     const size_t remaining = (size_t)(cdfhEnd - cdfhPtr);
-    ZL_RET_R_IF_LT(corruption, remaining, kMinCentralDirectoryFileHeaderSize);
+    ZL_ERR_IF_LT(remaining, kMinCentralDirectoryFileHeaderSize, corruption);
 
-    ZL_RET_R_IF_NE(corruption, ZL_readLE32(cdfhPtr), 0x02014b50);
+    ZL_ERR_IF_NE(ZL_readLE32(cdfhPtr), 0x02014b50, corruption);
     const size_t filenameLength    = ZL_readLE16(cdfhPtr + 28);
     const size_t extraFieldLength  = ZL_readLE16(cdfhPtr + 30);
     const size_t fileCommentLength = ZL_readLE16(cdfhPtr + 32);
     const size_t cdfhLength        = kMinCentralDirectoryFileHeaderSize
             + filenameLength + extraFieldLength + fileCommentLength;
-    ZL_RET_R_IF_LT(corruption, remaining, cdfhLength);
+    ZL_ERR_IF_LT(remaining, cdfhLength, corruption);
     const char* const extraFieldPtr =
             cdfhPtr + kMinCentralDirectoryFileHeaderSize + filenameLength;
 
     *localFileHeaderOffset = read32OrNeg1(cdfhPtr + 42);
     if (*localFileHeaderOffset == (uint64_t)-1) {
-        ZL_TRY_LET_T(
+        ZL_TRY_LET(
                 uint64_t,
                 offset,
                 readZip64Info(extraFieldPtr, extraFieldLength, 16));
@@ -169,7 +166,7 @@ static ZL_Report readCentralDirectoryFileHeader(
 
     *compressedSize = read32OrNeg1(cdfhPtr + 20);
     if (*compressedSize == (uint64_t)-1) {
-        ZL_TRY_LET_T(
+        ZL_TRY_LET(
                 uint64_t,
                 size,
                 readZip64Info(extraFieldPtr, extraFieldLength, 0));
@@ -188,6 +185,7 @@ static ZL_Report readEOCD64(
         const char* eocd64End,
         ZS2_ZipLexer_EndOfCentralDirectory* eocd)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     // suppress -Wmaybe-uninitialized
     eocd->diskNumber                        = 0;
     eocd->centralDirectoryDiskNumber        = 0;
@@ -196,23 +194,23 @@ static ZL_Report readEOCD64(
     eocd->centralDirectorySize              = 0;
     eocd->centralDirectoryOffset            = 0;
 
-    ZL_RET_R_IF_LT(
-            corruption,
+    ZL_ERR_IF_LT(
             (size_t)(eocd64End - eocd64Ptr),
-            kMinZip64EndOfCentralDirectoryRecordSize);
+            kMinZip64EndOfCentralDirectoryRecordSize,
+            corruption);
 
-    ZL_RET_R_IF_NE(
-            corruption,
+    ZL_ERR_IF_NE(
             ZL_readLE32(eocd64Ptr),
             0x06064b50,
+            corruption,
             "Zip64 End of Central Directory signature incorrect");
     const uint64_t eocd64Size = ZL_readLE64(eocd64Ptr + 4);
-    ZL_RET_R_IF_GT(
-            corruption, eocd64Size, (uint64_t)(eocd64End - (eocd64Ptr + 12)));
-    ZL_RET_R_IF_LT(
-            corruption,
+    ZL_ERR_IF_GT(
+            eocd64Size, (uint64_t)(eocd64End - (eocd64Ptr + 12)), corruption);
+    ZL_ERR_IF_LT(
             eocd64Size,
-            kMinZip64EndOfCentralDirectoryRecordSize - 12);
+            kMinZip64EndOfCentralDirectoryRecordSize - 12,
+            corruption);
 
     eocd->diskNumber                        = ZL_readLE32(eocd64Ptr + 16);
     eocd->centralDirectoryDiskNumber        = ZL_readLE32(eocd64Ptr + 20);
@@ -299,17 +297,18 @@ static ZL_Report ZS2_ZipLexer_findZipBegin(
         const char* maxRecordEnd,
         bool (*validate)(const ZS2_ZipLexer*, const char*, const char*))
 {
-    ZL_RET_R_IF_LT(corruption, minRecordSize, 4);
-    ZL_RET_R_IF_GT(
-            corruption,
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_LT(minRecordSize, 4, corruption);
+    ZL_ERR_IF_GT(
             minRecordSize,
-            (size_t)(maxRecordEnd - lexer->zipBegin));
+            (size_t)(maxRecordEnd - lexer->zipBegin),
+            corruption);
     const char* const maxRecordBegin = maxRecordEnd - minRecordSize;
 
-    ZL_RET_R_IF_GT(
-            corruption,
+    ZL_ERR_IF_GT(
             recordOffset,
-            (size_t)(maxRecordBegin - lexer->zipBegin));
+            (size_t)(maxRecordBegin - lexer->zipBegin),
+            corruption);
     const char* const minRecordBegin = lexer->zipBegin + recordOffset;
 
     // We must search from min to max because the central directory signature
@@ -329,7 +328,7 @@ static ZL_Report ZS2_ZipLexer_findZipBegin(
                 break;
             }
         }
-        ZL_RET_R_IF_EQ(corruption, recordBegin, maxRecordBegin);
+        ZL_ERR_IF_EQ(recordBegin, maxRecordBegin, corruption);
         ++recordBegin;
     }
     ZL_ASSERT_LE(recordOffset, (size_t)(recordBegin - lexer->zipBegin));
@@ -347,37 +346,38 @@ static ZL_Report ZS2_ZipLexer_findEOCD64(
         const char* eocdPtr,
         ZS2_ZipLexer_EndOfCentralDirectory* eocd)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT(ZS2_ZipLexer_EndOfCentralDirectory_needZip64(eocd));
     ZL_ASSERT_GE(eocdPtr, lexer->zipBegin);
     ZL_ASSERT_LE(eocdPtr, lexer->srcEnd);
     const size_t eocdOffset = (size_t)(eocdPtr - lexer->zipBegin);
 
-    ZL_RET_R_IF_LT(
-            corruption, eocdOffset, kZip64EndOfCentralDirectoryLocatorSize);
+    ZL_ERR_IF_LT(
+            eocdOffset, kZip64EndOfCentralDirectoryLocatorSize, corruption);
     const char* const locatorPtr =
             eocdPtr - kZip64EndOfCentralDirectoryLocatorSize;
 
-    ZL_RET_R_IF_NE(
-            corruption,
+    ZL_ERR_IF_NE(
             ZL_readLE32(locatorPtr),
             0x07064b50,
-            "Zip64 End of Central Directory Locator signature incorrect");
-    ZL_RET_R_IF_NE(
             corruption,
+            "Zip64 End of Central Directory Locator signature incorrect");
+    ZL_ERR_IF_NE(
             ZL_readLE32(locatorPtr + 4),
             0,
-            "Only single disk supported");
-    ZL_RET_R_IF_NE(
             corruption,
+            "Only single disk supported");
+    ZL_ERR_IF_NE(
             ZL_readLE32(locatorPtr + 16),
             1,
+            corruption,
             "Only single disk supported");
 
     const uint64_t eocd64Offset = ZL_readLE64(locatorPtr + 8);
-    ZL_RET_R_IF_GT(
-            corruption, eocd64Offset, (size_t)(locatorPtr - lexer->zipBegin));
+    ZL_ERR_IF_GT(
+            eocd64Offset, (size_t)(locatorPtr - lexer->zipBegin), corruption);
 
-    ZL_RET_R_IF_ERR(ZS2_ZipLexer_findZipBegin(
+    ZL_ERR_IF_ERR(ZS2_ZipLexer_findZipBegin(
             lexer,
             0x06064b50,
             eocd64Offset,
@@ -386,7 +386,7 @@ static ZL_Report ZS2_ZipLexer_findEOCD64(
             ZS2_ZipLexer_validateEOCD64));
 
     const char* eocd64Ptr = lexer->zipBegin + eocd64Offset;
-    ZL_TRY_LET_R(eocd64Size, readEOCD64(eocd64Ptr, locatorPtr, eocd));
+    ZL_TRY_LET(size_t, eocd64Size, readEOCD64(eocd64Ptr, locatorPtr, eocd));
 
     lexer->zip64EndOfCentralDirectoryRecordPtr  = eocd64Ptr;
     lexer->zip64EndOfCentralDirectoryRecordSize = eocd64Size + 12;
@@ -402,14 +402,15 @@ static ZL_Report ZS2_ZipLexer_findEOCD64(
  */
 static ZL_Report ZS2_ZipLexer_parseEOCD(ZS2_ZipLexer* lexer, size_t eocdOffset)
 {
-    ZL_RET_R_IF_GT(
-            corruption, eocdOffset, (size_t)(lexer->srcEnd - lexer->zipBegin));
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_GT(
+            eocdOffset, (size_t)(lexer->srcEnd - lexer->zipBegin), corruption);
     const char* const eocdPtr = lexer->zipBegin + eocdOffset;
-    ZL_RET_R_IF_LT(
-            corruption,
+    ZL_ERR_IF_LT(
             (size_t)(lexer->srcEnd - eocdPtr),
-            kMinEndOfCentralDirectoryRecordSize);
-    ZL_RET_R_IF(corruption, !isEOCD(eocdPtr));
+            kMinEndOfCentralDirectoryRecordSize,
+            corruption);
+    ZL_ERR_IF(!isEOCD(eocdPtr), corruption);
 
     ZS2_ZipLexer_EndOfCentralDirectory eocd;
     eocd.diskNumber                        = read16OrNeg1(eocdPtr + 4);
@@ -422,19 +423,19 @@ static ZL_Report ZS2_ZipLexer_parseEOCD(ZS2_ZipLexer* lexer, size_t eocdOffset)
     // Check the comment isn't too long, but allow garbage at the end of the zip
     // file.
     const uint32_t commentLength = ZL_readLE16(eocdPtr + 20);
-    ZL_RET_R_IF_GT(
-            corruption,
+    ZL_ERR_IF_GT(
             commentLength,
-            lexer->srcEnd - (eocdPtr + kMinEndOfCentralDirectoryRecordSize));
+            lexer->srcEnd - (eocdPtr + kMinEndOfCentralDirectoryRecordSize),
+            corruption);
 
     if (ZS2_ZipLexer_EndOfCentralDirectory_needZip64(&eocd)) {
-        ZL_RET_R_IF_ERR(ZS2_ZipLexer_findEOCD64(lexer, eocdPtr, &eocd));
+        ZL_ERR_IF_ERR(ZS2_ZipLexer_findEOCD64(lexer, eocdPtr, &eocd));
     } else {
         if (eocd.centralDirectoryRecordCount > 0) {
             // If there are any entries in the Central Directory, we need to
             // adjust the beginning of the zip file in case there is garbage at
             // the beginning.
-            ZL_RET_R_IF_ERR(ZS2_ZipLexer_findZipBegin(
+            ZL_ERR_IF_ERR(ZS2_ZipLexer_findZipBegin(
                     lexer,
                     0x02014b50,
                     eocd.centralDirectoryOffset,
@@ -449,27 +450,26 @@ static ZL_Report ZS2_ZipLexer_parseEOCD(ZS2_ZipLexer* lexer, size_t eocdOffset)
     // Compute srcSize now that we've adjusted lexer->zipBegin
     const size_t srcSize = (size_t)(lexer->srcEnd - lexer->zipBegin);
 
-    ZL_RET_R_IF_NE(
-            corruption, eocd.diskNumber, 0, "Only single disk supported");
-    ZL_RET_R_IF_NE(
-            corruption,
+    ZL_ERR_IF_NE(eocd.diskNumber, 0, corruption, "Only single disk supported");
+    ZL_ERR_IF_NE(
             eocd.centralDirectoryDiskNumber,
             0,
+            corruption,
             "Only single disk supported");
 
-    ZL_RET_R_IF_GT(corruption, eocd.centralDirectoryOffset, srcSize);
-    ZL_RET_R_IF_GT(
-            corruption,
+    ZL_ERR_IF_GT(eocd.centralDirectoryOffset, srcSize, corruption);
+    ZL_ERR_IF_GT(
             eocd.centralDirectorySize,
-            srcSize - eocd.centralDirectoryOffset);
+            srcSize - eocd.centralDirectoryOffset,
+            corruption);
 
     // Sanity check the number of files, so we don't report an
     // impossible number.
     const size_t kMinBytesPerFile =
             kMinLocalHeaderSize + kMinCentralDirectoryFileHeaderSize;
     const size_t maxNumFilesPossible = srcSize / kMinBytesPerFile;
-    ZL_RET_R_IF_GT(
-            corruption, eocd.centralDirectoryRecordCount, maxNumFilesPossible);
+    ZL_ERR_IF_GT(
+            eocd.centralDirectoryRecordCount, maxNumFilesPossible, corruption);
 
     lexer->cdfhPtr = lexer->zipBegin + eocd.centralDirectoryOffset;
     lexer->cdfhEnd = lexer->cdfhPtr + eocd.centralDirectorySize;
@@ -510,16 +510,17 @@ static bool ZS2_ZipLexer_tryInit(
 ZL_Report
 ZS2_ZipLexer_init(ZS2_ZipLexer* lexer, const void* src, size_t srcSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     const size_t minReverseOffset = kMinEndOfCentralDirectoryRecordSize;
     // Maximum allowed offset if there is no garbage at the end
     const size_t maxLegalReverseOffset =
             ZL_MIN(kMinEndOfCentralDirectoryRecordSize + 65535, srcSize);
     const size_t maxReverseOffset = srcSize;
 
-    ZL_RET_R_IF_LT(
-            GENERIC,
+    ZL_ERR_IF_LT(
             srcSize,
             kMinEndOfCentralDirectoryRecordSize,
+            GENERIC,
             "Zip file too small");
     ZL_ASSERT_GE(maxReverseOffset, minReverseOffset);
 
@@ -537,7 +538,7 @@ ZS2_ZipLexer_init(ZS2_ZipLexer* lexer, const void* src, size_t srcSize)
             break;
         }
     }
-    ZL_RET_R_IF_GE(GENERIC, reverseOffset, maxReverseOffset, "EOCD not found");
+    ZL_ERR_IF_GE(reverseOffset, maxReverseOffset, GENERIC, "EOCD not found");
     return ZL_returnSuccess();
 }
 
@@ -547,18 +548,19 @@ ZL_Report ZS2_ZipLexer_initWithEOCD(
         size_t srcSize,
         size_t eocdOffset)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     lexer->zipBegin = src;
     lexer->srcPtr   = src;
     lexer->srcEnd   = lexer->zipBegin + srcSize;
 
     memset(&lexer->fileState, 0, sizeof(lexer->fileState));
 
-    ZL_RET_R_IF_ERR(ZS2_ZipLexer_parseEOCD(lexer, eocdOffset));
+    ZL_ERR_IF_ERR(ZS2_ZipLexer_parseEOCD(lexer, eocdOffset));
 
     if (lexer->cdfhIdx < lexer->cdfhNum) {
         // Proactively initialize the file state to catch more invalid zip files
         // in the init() function.
-        ZL_RET_R_IF_ERR(ZS2_ZipLexer_setFileState(lexer));
+        ZL_ERR_IF_ERR(ZS2_ZipLexer_setFileState(lexer));
     }
     return ZL_returnSuccess();
 }
@@ -576,6 +578,7 @@ static ZL_Report ZS2_ZipLexer_lexUnknown(
         ZS2_ZipToken* out,
         const char* nextPtr)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_GT(nextPtr, lexer->srcPtr);
     ZL_ASSERT_LE(nextPtr, lexer->srcEnd);
 
@@ -609,11 +612,12 @@ static ZL_Report ZS2_ZipLexer_lexSection(
         const char** sectionPtrPtr,
         size_t sectionSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     // Ensure the srcPtr is at the beginning of the section
     if (lexer->srcPtr < *sectionPtrPtr) {
         return ZS2_ZipLexer_lexUnknown(lexer, out, *sectionPtrPtr);
     }
-    ZL_RET_R_IF_GT(corruption, lexer->srcPtr, *sectionPtrPtr);
+    ZL_ERR_IF_GT(lexer->srcPtr, *sectionPtrPtr, corruption);
 
     ZL_ASSERT_LE(sectionSize, (size_t)(lexer->srcEnd - *sectionPtrPtr));
 
@@ -630,7 +634,8 @@ static ZL_Report ZS2_ZipLexer_lexSection(
 /// Handles emitting tokens for all sections after the files.
 static ZL_Report ZS2_ZipLexer_lexTail(ZS2_ZipLexer* lexer, ZS2_ZipToken* out)
 {
-    ZL_RET_R_IF_NE(corruption, lexer->cdfhPtr, lexer->cdfhEnd);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_NE(lexer->cdfhPtr, lexer->cdfhEnd, corruption);
 
     memset(out, 0, sizeof(*out));
 
@@ -686,8 +691,10 @@ static ZL_Report ZS2_ZipLexer_readNextCentralDirectoryFileHeader(
         uint64_t* localFileHeaderOffset,
         uint64_t* compressedSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_LT(lexer->cdfhIdx, lexer->cdfhNum);
-    ZL_TRY_LET_R(
+    ZL_TRY_LET(
+            size_t,
             cdfhLength,
             readCentralDirectoryFileHeader(
                     lexer->cdfhPtr,
@@ -716,25 +723,26 @@ static bool ZS2_ZipLexer_FileState_empty(
  */
 static ZL_Report ZS2_ZipLexer_setFileState(ZS2_ZipLexer* lexer)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT(ZS2_ZipLexer_FileState_empty(&lexer->fileState));
 
     // Read fields from the CDFH. The compressed size is read from the CDFH,
     // because it may be in the DataDescriptor in the LFH.
     uint64_t localFileHeaderOffset;
     uint64_t compressedSize;
-    ZL_RET_R_IF_ERR(ZS2_ZipLexer_readNextCentralDirectoryFileHeader(
+    ZL_ERR_IF_ERR(ZS2_ZipLexer_readNextCentralDirectoryFileHeader(
             lexer, &localFileHeaderOffset, &compressedSize));
 
     ZL_ASSERT_LE(lexer->zipBegin, lexer->srcEnd);
-    ZL_RET_R_IF_GT(
-            corruption,
+    ZL_ERR_IF_GT(
             localFileHeaderOffset,
-            (uint64_t)(lexer->srcEnd - lexer->zipBegin));
+            (uint64_t)(lexer->srcEnd - lexer->zipBegin),
+            corruption);
     const char* const lfhPtr = lexer->zipBegin + localFileHeaderOffset;
-    ZL_RET_R_IF_LT(
-            corruption, (size_t)(lexer->srcEnd - lfhPtr), kMinLocalHeaderSize);
+    ZL_ERR_IF_LT(
+            (size_t)(lexer->srcEnd - lfhPtr), kMinLocalHeaderSize, corruption);
 
-    ZL_RET_R_IF_NE(corruption, ZL_readLE32(lfhPtr), 0x04034b50);
+    ZL_ERR_IF_NE(ZL_readLE32(lfhPtr), 0x04034b50, corruption);
     const uint16_t generalPurposeBits = ZL_readLE16(lfhPtr + 6);
     const uint16_t filenameLength     = ZL_readLE16(lfhPtr + 26);
     const size_t extraFieldLength     = ZL_readLE16(lfhPtr + 28);
@@ -742,16 +750,16 @@ static ZL_Report ZS2_ZipLexer_setFileState(ZS2_ZipLexer* lexer)
             kMinLocalHeaderSize + filenameLength + extraFieldLength;
     const char* const extraFieldPtr =
             lfhPtr + kMinLocalHeaderSize + filenameLength;
-    ZL_RET_R_IF_LT(corruption, (size_t)(lexer->srcEnd - lfhPtr), lfhSize);
+    ZL_ERR_IF_LT((size_t)(lexer->srcEnd - lfhPtr), lfhSize, corruption);
 
     const bool hasDataDescriptor =
             (generalPurposeBits & kDataDescriptorMask) != 0;
 
     const char* const compressedDataPtr = lfhPtr + lfhSize;
-    ZL_RET_R_IF_GT(
-            corruption,
+    ZL_ERR_IF_GT(
             compressedSize,
-            (size_t)(lexer->srcEnd - compressedDataPtr));
+            (size_t)(lexer->srcEnd - compressedDataPtr),
+            corruption);
 
     lexer->fileState.compressionMethod = ZL_readLE16(lfhPtr + 8);
     lexer->fileState.filename          = lfhPtr + kMinLocalHeaderSize;
@@ -765,16 +773,16 @@ static ZL_Report ZS2_ZipLexer_setFileState(ZS2_ZipLexer* lexer)
     if (hasDataDescriptor) {
         const char* const dataDescriptorPtr =
                 compressedDataPtr + compressedSize;
-        ZL_RET_R_IF_LT(corruption, lexer->srcEnd - dataDescriptorPtr, 4);
+        ZL_ERR_IF_LT(lexer->srcEnd - dataDescriptorPtr, 4, corruption);
         const uint32_t signature = ZL_readLE32(dataDescriptorPtr);
         const bool hasSignature  = signature == 0x08074b50;
         const bool isZip64 = hasZip64Info(extraFieldPtr, extraFieldLength);
         const size_t dataDescriptorSize =
                 (hasSignature ? 4u : 0u) + 4u + (isZip64 ? 16u : 8u);
-        ZL_RET_R_IF_LT(
-                corruption,
+        ZL_ERR_IF_LT(
                 (size_t)(lexer->srcEnd - dataDescriptorPtr),
-                dataDescriptorSize);
+                dataDescriptorSize,
+                corruption);
 
         lexer->fileState.dataDescriptorPtr  = dataDescriptorPtr;
         lexer->fileState.dataDescriptorSize = dataDescriptorSize;
@@ -788,6 +796,7 @@ static ZL_Report ZS2_ZipLexer_setFileState(ZS2_ZipLexer* lexer)
 
 static ZL_Report ZS2_ZipLexer_lexFile(ZS2_ZipLexer* lexer, ZS2_ZipToken* out)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_LE(lexer->cdfhIdx, lexer->cdfhNum);
     ZL_ASSERT_LE(lexer->cdfhPtr, lexer->cdfhEnd);
 
@@ -795,7 +804,7 @@ static ZL_Report ZS2_ZipLexer_lexFile(ZS2_ZipLexer* lexer, ZS2_ZipToken* out)
     // file.
     if (ZS2_ZipLexer_FileState_empty(&lexer->fileState)) {
         ZL_ASSERT_LT(lexer->cdfhIdx, lexer->cdfhNum);
-        ZL_RET_R_IF_ERR(ZS2_ZipLexer_setFileState(lexer));
+        ZL_ERR_IF_ERR(ZS2_ZipLexer_setFileState(lexer));
         ZL_ASSERT_NN(lexer->fileState.localFileHeaderPtr);
         ZL_ASSERT_NN(lexer->fileState.compressedDataPtr);
     }
@@ -832,7 +841,7 @@ static ZL_Report ZS2_ZipLexer_lexFile(ZS2_ZipLexer* lexer, ZS2_ZipToken* out)
                 lexer->fileState.dataDescriptorSize);
     }
 
-    ZL_RET_R_ERR(logicError);
+    ZL_ERR(logicError);
 }
 
 static ZL_Report ZS2_ZipLexer_lexOne(ZS2_ZipLexer* lexer, ZS2_ZipToken* out)
@@ -850,10 +859,11 @@ static ZL_Report ZS2_ZipLexer_lexOne(ZS2_ZipLexer* lexer, ZS2_ZipToken* out)
 ZL_Report
 ZS2_ZipLexer_lex(ZS2_ZipLexer* lexer, ZS2_ZipToken* out, size_t outCapacity)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     size_t entries;
     for (entries = 0; !ZS2_ZipLexer_finished(lexer) && entries < outCapacity;
          ++entries) {
-        ZL_RET_R_IF_ERR(ZS2_ZipLexer_lexOne(lexer, out + entries));
+        ZL_ERR_IF_ERR(ZS2_ZipLexer_lexOne(lexer, out + entries));
     }
     return ZL_returnValue(entries);
 }
