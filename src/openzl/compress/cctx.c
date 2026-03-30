@@ -49,17 +49,18 @@ typedef struct {
 
 static ZL_Report appendToVector(VECTOR(uint8_t) * vector, ZL_RBuffer buffer)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     size_t const originalSize   = VECTOR_SIZE(*vector);
     size_t const neededCapacity = originalSize + buffer.size;
-    ZL_RET_R_IF_GT(
-            allocation,
+    ZL_ERR_IF_GT(
             neededCapacity,
             ZL_ENCODER_TRANSFORM_HEADER_SIZE_LIMIT,
-            "Refusing to allocate more header space");
-    ZL_RET_R_IF_LT(
             allocation,
+            "Refusing to allocate more header space");
+    ZL_ERR_IF_LT(
             VECTOR_RESIZE_UNINITIALIZED(*vector, neededCapacity),
-            neededCapacity);
+            neededCapacity,
+            allocation);
     if (buffer.size > 0) {
         memcpy(VECTOR_DATA(*vector) + originalSize, buffer.start, buffer.size);
     }
@@ -398,8 +399,12 @@ static const ZL_Data* CCTX_getRStream(const ZL_CCtx* cctx, RTStreamID rtsid)
 
 ZL_Report CCTX_sendTrHeader(ZL_CCtx* cctx, RTNodeID rtnodeid, ZL_RBuffer trh)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_NN(cctx);
-    ZL_TRY_LET_R(headerPos, CCTX_TransformHeaders_stage(&cctx->trHeaders, trh));
+    ZL_TRY_LET(
+            size_t,
+            headerPos,
+            CCTX_TransformHeaders_stage(&cctx->trHeaders, trh));
     RTGM_setNodeHeaderSegment(
             &cctx->rtgraph,
             rtnodeid,
@@ -468,7 +473,7 @@ static ZL_Report CCTX_runCNode_wParams(
     // Note: this action registers @cnode without its (optional) new @lparams,
     // but it's fine, since local parameters won't be requested again from there
     {
-        ZL_TRY_LET_T(
+        ZL_TRY_LET(
                 RTNodeID,
                 tmp,
                 RTGM_createNode(&cctx->rtgraph, cnode, irtsids, nbInputs));
@@ -1238,9 +1243,9 @@ static ZL_Report CCTX_runSuccessor_internal(
         unsigned depth)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
+    ZL_RESULT_SCOPE_ADD_GRAPH_CONTEXT((ZL_GraphContext){ .graphID = graphid });
 
     ZL_ASSERT_NN(cctx);
-    ZL_SCOPE_GRAPH_CONTEXT(cctx, { .graphID = graphid });
 
     // Special: Single small Input get STORED immediately
     ZL_ASSERT_GT(nbInputs, 0);
@@ -1550,6 +1555,7 @@ ZL_Report CCTX_setOutBufferSizes(
 
 ZL_Report CCTX_checkOutputCommitted(const ZL_CCtx* cctx, RTNodeID rtnodeid)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_NN(cctx);
     size_t const nbOutStreams = RTGM_getNbOutStreams(&cctx->rtgraph, rtnodeid);
     ZL_DLOG(BLOCK,
@@ -1561,15 +1567,13 @@ ZL_Report CCTX_checkOutputCommitted(const ZL_CCtx* cctx, RTNodeID rtnodeid)
         RTStreamID const rtstreamid =
                 RTGM_getOutStreamID(&cctx->rtgraph, rtnodeid, n);
         if (!STREAM_isCommitted(CCTX_getRStream(cctx, rtstreamid))) {
-            ZL_RET_R_ERR(
-                    transform_executionFailure,
-                    "Error from Transform '%s'(%u): output stream %i/%zu was not committed",
-                    CNODE_getName(RTGM_getCNode(&cctx->rtgraph, rtnodeid)),
-                    CNODE_getTransformID(
-                            RTGM_getCNode(&cctx->rtgraph, rtnodeid))
-                            .trid,
-                    n,
-                    nbOutStreams);
+            ZL_ERR(transform_executionFailure,
+                   "Error from Transform '%s'(%u): output stream %i/%zu was not committed",
+                   CNODE_getName(RTGM_getCNode(&cctx->rtgraph, rtnodeid)),
+                   CNODE_getTransformID(RTGM_getCNode(&cctx->rtgraph, rtnodeid))
+                           .trid,
+                   n,
+                   nbOutStreams);
         };
     }
     return ZL_returnSuccess();
@@ -1580,13 +1584,15 @@ ZL_Report CCTX_listBuffersToStore(
         ZL_RBuffer* rba,
         size_t rbaCapacity)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_NN(cctx);
     ZL_ASSERT_NN(rba);
     // start by Transforms' header stream
     ZL_ASSERT_GT(rbaCapacity, 1);
     rba[0] = ZL_RBuffer_fromVector(&cctx->trHeaders.sentHeaderStream);
     rbaCapacity--;
-    ZL_TRY_LET_R(
+    ZL_TRY_LET(
+            size_t,
             nbStreams,
             RTGM_listBuffersToStore(&cctx->rtgraph, rba + 1, rbaCapacity));
     ZL_ASSERT_LE(nbStreams, rbaCapacity);
@@ -1806,7 +1812,7 @@ ZL_Report CCTX_getFinalGraph(ZL_CCtx* cctx, GraphInfo* gip)
                 gip->trInfo[n].trid);
         // Copy header into final Transform's Header stream
         // in the order they will be consumed by the decoder.
-        ZL_TRY_LET_T(
+        ZL_TRY_LET(
                 ZL_RBuffer,
                 buffer_slice,
                 ZL_RBuffer_slice(
@@ -1843,7 +1849,8 @@ ZL_Report CCTX_getFinalGraph(ZL_CCtx* cctx, GraphInfo* gip)
 
     // List Stored buffers
     size_t const nbBuffsMax = nbStreamsMax;
-    ZL_TRY_LET_R(nbBuffs, CCTX_listBuffersToStore(cctx, buffs, nbBuffsMax));
+    ZL_TRY_LET(
+            size_t, nbBuffs, CCTX_listBuffersToStore(cctx, buffs, nbBuffsMax));
     ZL_ASSERT_LE(nbBuffs, nbBuffsMax);
     gip->nbStoredBuffs = nbBuffs;
 
