@@ -129,9 +129,10 @@ ZL_Report EI_fieldLz(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 
 static ZL_Report tokensDynGraph(ZL_Graph* gctx, ZL_Edge* tokens)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     if (ZL_Graph_getCParam(gctx, ZL_CParam_decompressionLevel) <= 1
         || ZL_Input_numElts(ZL_Edge_getData(tokens)) <= 128) {
-        ZL_TRY_LET_T(
+        ZL_TRY_LET(
                 ZL_EdgeList,
                 streams,
                 ZL_Edge_runNode(tokens, ZL_NODE_INTERPRET_TOKEN_AS_LE));
@@ -146,7 +147,7 @@ static ZL_Report
 quantizeDynGraph(ZL_Graph* gctx, ZL_Edge* stream, ZL_NodeID quantizeNode)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
-    ZL_TRY_LET_T(ZL_EdgeList, streams, ZL_Edge_runNode(stream, quantizeNode));
+    ZL_TRY_LET(ZL_EdgeList, streams, ZL_Edge_runNode(stream, quantizeNode));
     ZL_ASSERT_EQ(streams.nbEdges, 2);
 
     ZL_Edge* const codes = streams.edges[0];
@@ -191,7 +192,7 @@ ZL_Report EI_fieldLzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
     // the input type is numeric.
     bool const inputIsNumeric = ZL_Input_type(in) == ZL_Type_numeric;
     if (inputIsNumeric) {
-        ZL_TRY_LET_T(
+        ZL_TRY_LET(
                 ZL_EdgeList,
                 streams,
                 ZL_Edge_runNode(input, ZL_NODE_CONVERT_NUM_TO_TOKEN));
@@ -213,7 +214,7 @@ ZL_Report EI_fieldLzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
         localParams.intParams.intParams   = &compressionLevelOverride;
         localParams.intParams.nbIntParams = 1;
     }
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             streams,
             ZL_Edge_runNode_withParams(input, ZL_NODE_FIELD_LZ, &localParams));
@@ -297,7 +298,7 @@ EI_fieldLzLiteralsDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
         return ZL_returnSuccess();
     }
     ZL_NodeID const transpose = ZL_Graph_getTransposeSplitNode(gctx, eltWidth);
-    ZL_TRY_LET_T(ZL_EdgeList, streams, ZL_Edge_runNode(literals, transpose));
+    ZL_TRY_LET(ZL_EdgeList, streams, ZL_Edge_runNode(literals, transpose));
     ZL_ASSERT_EQ(streams.nbEdges, eltWidth);
 
     // TODO(terrelln): Share information between channels.

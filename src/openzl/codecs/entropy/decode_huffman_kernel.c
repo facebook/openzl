@@ -162,6 +162,7 @@ ZL_FORCE_INLINE ZL_Report ZS_largeHuffmanDecodeX4_body(
         int tableLog,
         int const kUnroll)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     uint16_t* ptrs[4];
     memcpy(ptrs, dsts, sizeof(ptrs));
     if ((size_t)(dsts[4] - dsts[3]) >= (size_t)kUnroll) {
@@ -181,7 +182,7 @@ ZL_FORCE_INLINE ZL_Report ZS_largeHuffmanDecodeX4_body(
     }
     for (int i = 0; i < 4; ++i) {
         if (ptrs[i] > dsts[i + 1]) {
-            ZL_RET_R_ERR(GENERIC);
+            ZL_ERR(GENERIC);
         }
         ZS_largeHuffmanDecode_body(
                 ptrs[i],
@@ -201,23 +202,24 @@ ZL_Report ZS_largeHuffmanDecodeUsingDTableX4(
         ZS_Huf16DElt const* dtable,
         int tableLog)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     uint16_t* dsts[5];
     BIT_DStream_t dstreams[4];
     uint16_t* dstEnd = dst;
     for (int i = 0; i < 4; ++i) {
         dsts[i] = dstEnd;
         if (ZL_RC_avail(src) < 8) {
-            ZL_RET_R_ERR(GENERIC);
+            ZL_ERR(GENERIC);
         }
         uint32_t const dstSize = ZL_RC_popCE32(src);
         uint32_t const srcSize = ZL_RC_popCE32(src);
         if (ZL_RC_avail(src) < srcSize
             || capacity < (size_t)(dstSize + (dstEnd - dst))) {
-            ZL_RET_R_ERR(GENERIC);
+            ZL_ERR(GENERIC);
         }
         if (ERR_isError(
                     BIT_initDStream(&dstreams[i], ZL_RC_ptr(src), srcSize))) {
-            ZL_RET_R_ERR(GENERIC);
+            ZL_ERR(GENERIC);
         }
         ZL_RC_advance(src, srcSize);
         dstEnd += dstSize;
@@ -253,17 +255,18 @@ ZL_Report ZS_largeHuffmanDecodeUsingDTable(
         ZS_Huf16DElt const* dtable,
         int tableLog)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (ZL_RC_avail(src) < 8) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     uint32_t const dstSize = ZL_RC_popCE32(src);
     uint32_t const srcSize = ZL_RC_popCE32(src);
     if (ZL_RC_avail(src) < srcSize || capacity < dstSize) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     BIT_DStream_t dstream;
     if (ERR_isError(BIT_initDStream(&dstream, ZL_RC_ptr(src), srcSize))) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
 
     ZL_RC_advance(src, srcSize);
@@ -294,19 +297,20 @@ ZL_Report ZS_largeHuffmanDecodeUsingDTable(
 
 ZL_Report ZS_largeHuffmanDecode(uint16_t* dst, size_t capacity, ZL_RC* src)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (ZL_RC_avail(src) < 1) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     ZS_HufTransformPrefix_e const header =
             (ZS_HufTransformPrefix_e)ZL_RC_pop(src);
     if (header == ZS_HufTransformPrefix_constant) {
-        ZL_TRY_LET_CONST_T(uint64_t, nelts, ZL_RC_popVarint(src));
+        ZL_TRY_LET_CONST(uint64_t, nelts, ZL_RC_popVarint(src));
         if (ZL_RC_avail(src) < sizeof(uint16_t)) {
-            ZL_RET_R_ERR(GENERIC);
+            ZL_ERR(GENERIC);
         }
         uint16_t const value = ZL_RC_popCE16(src);
         if (capacity < nelts) {
-            ZL_RET_R_ERR(GENERIC);
+            ZL_ERR(GENERIC);
         }
         for (size_t i = 0; i < nelts; ++i) {
             dst[i] = value;
@@ -314,12 +318,12 @@ ZL_Report ZS_largeHuffmanDecode(uint16_t* dst, size_t capacity, ZL_RC* src)
         return ZL_returnValue((size_t)nelts);
     }
     if (header == ZS_HufTransformPrefix_lit) {
-        ZL_TRY_LET_CONST_T(uint64_t, nelts, ZL_RC_popVarint(src));
+        ZL_TRY_LET_CONST(uint64_t, nelts, ZL_RC_popVarint(src));
         if (capacity < nelts) {
-            ZL_RET_R_ERR(GENERIC);
+            ZL_ERR(GENERIC);
         }
         if (ZL_RC_avail(src) < nelts * sizeof(uint16_t)) {
-            ZL_RET_R_ERR(GENERIC);
+            ZL_ERR(GENERIC);
         }
         for (size_t i = 0; i < nelts; ++i) {
             dst[i] = ZL_RC_popCE16(src);
@@ -327,19 +331,19 @@ ZL_Report ZS_largeHuffmanDecode(uint16_t* dst, size_t capacity, ZL_RC* src)
         return ZL_returnValue((size_t)nelts);
     }
     if (header != ZS_HufTransformPrefix_huf) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
 
     int tableLog;
     ZS_Huf16DElt* const dtable = ZS_largeHuffmanCreateDTable(src, &tableLog);
     if (dtable == NULL) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
 
     // Decompress
     if (ZL_RC_avail(src) < 1) {
         free(dtable);
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
 
     bool const x4 = (bool)ZL_RC_pop(src);

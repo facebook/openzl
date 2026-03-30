@@ -497,6 +497,7 @@ EI_huffman_typed(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 static ZL_RESULT_OF(ZL_EdgeList)
         chunkInputStream(ZL_Graph* gctx, ZL_Edge** sctx)
 {
+    ZL_RESULT_DECLARE_SCOPE(ZL_EdgeList, gctx);
     ZL_Input const* input = ZL_Edge_getData(*sctx);
     size_t const nbElts   = ZL_Input_numElts(input);
     ZL_ASSERT_NE(ZL_Input_type(input) & (ZL_Type_serial | ZL_Type_struct), 0);
@@ -507,13 +508,13 @@ static ZL_RESULT_OF(ZL_EdgeList)
     size_t const kMinSizeToChunk = 100000;
     if (nbElts < kMinSizeToChunk) {
         ZL_EdgeList out = { .edges = sctx, .nbEdges = 1 };
-        return ZL_RESULT_WRAP_VALUE(ZL_EdgeList, out);
+        return ZL_WRAP_VALUE(out);
     }
 
     size_t const nbChunks = (nbElts + kChunkSize - 1) / kChunkSize;
     size_t* chunkSizes =
             ZL_Graph_getScratchSpace(gctx, sizeof(size_t) * nbChunks);
-    ZL_RET_T_IF_NULL(ZL_EdgeList, allocation, chunkSizes);
+    ZL_ERR_IF_NULL(chunkSizes, allocation);
 
     ZL_ASSERT_GE(nbChunks, 1);
     for (size_t i = 0; i < nbChunks - 1; ++i) {
@@ -591,12 +592,13 @@ static ZL_Histogram* getHistogram8(ZL_Graph* gctx, DataStatsU8* stats)
 
 static ZL_Report runBitpack(ZL_Edge* input)
 {
-    ZL_TRY_LET_T(
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_TRY_LET(
             ZL_EdgeList,
             streams,
             ZL_Edge_runNode(input, ZL_NODE_INTERPRET_TOKEN_AS_LE));
     ZL_ASSERT_EQ(streams.nbEdges, 1);
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(streams.edges[0], ZL_GRAPH_BITPACK));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(streams.edges[0], ZL_GRAPH_BITPACK));
     return ZL_returnSuccess();
 }
 
@@ -656,7 +658,7 @@ entropyCompressChunk(ZL_Graph* gctx, ZL_Edge* chunk, EntropyBackendMode mode)
 
         // Check if we can use tokenization
         if (histogram->cardinality < 256) {
-            ZL_TRY_LET_T(
+            ZL_TRY_LET(
                     ZL_EdgeList,
                     streams,
                     ZL_Edge_runNode(chunk, ZL_NODE_TOKENIZE));
@@ -673,7 +675,7 @@ entropyCompressChunk(ZL_Graph* gctx, ZL_Edge* chunk, EntropyBackendMode mode)
         }
 
         // TODO: Allow tokenization
-        ZL_TRY_LET_T(
+        ZL_TRY_LET(
                 ZL_EdgeList,
                 streams,
                 runNode_wHistogram(
@@ -728,7 +730,7 @@ entropyCompressChunk(ZL_Graph* gctx, ZL_Edge* chunk, EntropyBackendMode mode)
 
     ZL_Histogram* histogram = getHistogram8(gctx, &stats);
     if (mode == EBM_huf) {
-        ZL_TRY_LET_T(
+        ZL_TRY_LET(
                 ZL_EdgeList,
                 streams,
                 runNode_wHistogram(
@@ -740,7 +742,7 @@ entropyCompressChunk(ZL_Graph* gctx, ZL_Edge* chunk, EntropyBackendMode mode)
         ZL_ERR_IF_ERR(ZL_Edge_setDestination(streams.edges[1], ZL_GRAPH_STORE));
         return ZL_returnSuccess();
     } else {
-        ZL_TRY_LET_T(
+        ZL_TRY_LET(
                 ZL_EdgeList,
                 streams,
                 runNode_wHistogram(
@@ -760,7 +762,7 @@ static ZL_Report
 entropyDynamicGraph(ZL_Graph* gctx, ZL_Edge* sctx, EntropyBackendMode mode)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
-    ZL_TRY_LET_T(ZL_EdgeList, chunks, chunkInputStream(gctx, &sctx));
+    ZL_TRY_LET(ZL_EdgeList, chunks, chunkInputStream(gctx, &sctx));
     for (size_t i = 0; i < chunks.nbEdges; ++i) {
         ZL_ERR_IF_ERR(entropyCompressChunk(gctx, chunks.edges[i], mode));
     }
@@ -783,8 +785,7 @@ static ZL_Report doEntropyConversion(ZL_Graph* gctx, ZL_Edge** sctx)
             ZL_NodeID const conversion = type == ZL_Type_numeric
                     ? ZL_NODE_CONVERT_NUM_TO_SERIAL
                     : ZL_NODE_CONVERT_TOKEN_TO_SERIAL;
-            ZL_TRY_LET_T(
-                    ZL_EdgeList, serial, ZL_Edge_runNode(*sctx, conversion));
+            ZL_TRY_LET(ZL_EdgeList, serial, ZL_Edge_runNode(*sctx, conversion));
             *sctx = serial.edges[0];
         }
     } else {
@@ -795,7 +796,7 @@ static ZL_Report doEntropyConversion(ZL_Graph* gctx, ZL_Edge** sctx)
             // Accept numeric inputs so we don't get a conversion from
             // numeric -> struct -> serial for eltWidth 1 data. Then convert
             // to struct for eltWidth 2.
-            ZL_TRY_LET_T(
+            ZL_TRY_LET(
                     ZL_EdgeList,
                     structs,
                     ZL_Edge_runNode(*sctx, ZL_NODE_CONVERT_NUM_TO_TOKEN));
@@ -824,7 +825,7 @@ ZL_Report EI_fseDynamicGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
     ZL_Edge* input = inputs[0];
     ZL_ERR_IF_ERR(doEntropyConversion(gctx, &input));
     if (ZL_Graph_getCParam(gctx, ZL_CParam_formatVersion) < 15) {
-        ZL_TRY_LET_T(
+        ZL_TRY_LET(
                 ZL_EdgeList,
                 streams,
                 ZL_Edge_runNode(
@@ -851,7 +852,7 @@ EI_huffmanDynamicGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
                 : (ZL_NodeID){
                       ZL_PrivateStandardNodeID_huffman_fixed_deprecated
                   };
-        ZL_TRY_LET_T(ZL_EdgeList, streams, ZL_Edge_runNode(input, node));
+        ZL_TRY_LET(ZL_EdgeList, streams, ZL_Edge_runNode(input, node));
         ZL_ASSERT_EQ(streams.nbEdges, 1);
         return ZL_Edge_setDestination(streams.edges[0], ZL_GRAPH_STORE);
     }
