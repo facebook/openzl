@@ -58,6 +58,7 @@ static ZL_Report writeOutSequences(
         ZS_seqStore const* seqStore,
         size_t eltWidth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     int const eltBits = ZL_highbit32((uint32_t)eltWidth);
     //> Copy literals
     {
@@ -65,8 +66,7 @@ static ZL_Report writeOutSequences(
                 (size_t)(seqStore->lits.ptr - seqStore->lits.start);
         ZL_ASSERT_EQ(litsSize % eltWidth, 0);
         size_t const nbLits = litsSize >> eltBits;
-        ZL_RET_R_IF_GT(
-                internalBuffer_tooSmall, nbLits, dst->literalEltsCapacity);
+        ZL_ERR_IF_GT(nbLits, dst->literalEltsCapacity, internalBuffer_tooSmall);
         memcpy(dst->literalElts, seqStore->lits.start, litsSize);
         dst->nbLiteralElts = nbLits;
     }
@@ -91,10 +91,10 @@ static ZL_Report writeOutSequences(
             } else if (seqs[s].matchType == ZS_mt_lz) {
                 uint32_t const offset = seqs[s].matchCode;
                 token |= 3;
-                ZL_RET_R_IF_GE(
-                        internalBuffer_tooSmall,
+                ZL_ERR_IF_GE(
                         dst->nbOffsets,
-                        dst->sequencesCapacity);
+                        dst->sequencesCapacity,
+                        internalBuffer_tooSmall);
                 // Offset has already been reduced by eltBits.
                 // TODO(terrelln): Clean up the eltBits reduction logic.
                 dst->offsets[dst->nbOffsets++] = offset;
@@ -114,10 +114,10 @@ static ZL_Report writeOutSequences(
                 token |= (uint16_t)(literalLengthCode << kTokenOFBits);
             } else {
                 token |= (uint16_t)(kMaxLitLengthCode << kTokenOFBits);
-                ZL_RET_R_IF_GE(
-                        internalBuffer_tooSmall,
+                ZL_ERR_IF_GE(
                         dst->nbExtraLiteralLengths,
-                        dst->sequencesCapacity);
+                        dst->sequencesCapacity,
+                        internalBuffer_tooSmall);
                 dst->extraLiteralLengths[dst->nbExtraLiteralLengths++] =
                         literalLengthCode - kMaxLitLengthCode;
             }
@@ -128,17 +128,17 @@ static ZL_Report writeOutSequences(
             } else {
                 token |= (uint16_t)(kMaxMatchLengthCode
                                     << (kTokenOFBits + kTokenLLBits));
-                ZL_RET_R_IF_GE(
-                        internalBuffer_tooSmall,
+                ZL_ERR_IF_GE(
                         dst->nbExtraMatchLengths,
-                        dst->sequencesCapacity);
+                        dst->sequencesCapacity,
+                        internalBuffer_tooSmall);
                 dst->extraMatchLengths[dst->nbExtraMatchLengths++] =
                         matchLengthCode - kMaxMatchLengthCode;
             }
-            ZL_RET_R_IF_GE(
-                    internalBuffer_tooSmall,
+            ZL_ERR_IF_GE(
                     dst->nbTokens,
-                    dst->sequencesCapacity);
+                    dst->sequencesCapacity,
+                    internalBuffer_tooSmall);
             dst->tokens[dst->nbTokens++] = token;
         }
     }
@@ -153,9 +153,10 @@ ZL_Report ZS2_FieldLz_compress(
         int level,
         ZL_FieldLz_Allocator alloc)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (!ZL_isPow2(eltWidth)) {
         ZL_LOG(ERROR, "eltWidth %u is not a power of 2", (unsigned)eltWidth);
-        ZL_RET_R_ERR(compressionParameter_invalid);
+        ZL_ERR(compressionParameter_invalid);
     }
 
     ZL_Report ret;
@@ -171,12 +172,12 @@ ZL_Report ZS2_FieldLz_compress(
                 &seqStore, srcSize, ZL_MAX(eltWidth, 4), alloc);
         error |=
                 ZS_window_init(&window, ZL_MIN((uint32_t)srcSize, 1u << 23), 8);
-        ZL_RET_R_IF(allocation, error);
+        ZL_ERR_IF(error, allocation);
     }
     ZS_matchFinder const* matchFinder =
             greedy ? &ZS_greedyTokenLzMatchFinder : &ZS_tokenLzMatchFinder;
     ZS_matchFinderCtx* mfCtx = matchFinder->ctx_create(&window, &params);
-    ZL_RET_R_IF_NULL(allocation, mfCtx);
+    ZL_ERR_IF_NULL(mfCtx, allocation);
 
     ZS_window_update(&window, (uint8_t const*)src, srcSize);
     // TODO(terrelln): We can write directly to the output streams

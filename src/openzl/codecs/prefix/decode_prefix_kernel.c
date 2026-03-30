@@ -31,11 +31,12 @@ ZL_FORCE_NOINLINE ZL_Report ZS_decodePrefix_fallback(
         const uint32_t* const matchSizes,
         size_t prevFieldSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     const uint8_t* currSuffixPtr = suffixes;
     for (size_t i = 0; i < nbElts; ++i) {
         uint32_t const currEltWidth  = eltWidths[i];
         uint32_t const currMatchSize = matchSizes[i];
-        ZL_RET_R_IF_GT(corruption, currMatchSize, prevFieldSize);
+        ZL_ERR_IF_GT(currMatchSize, prevFieldSize, corruption);
 
         // Write the shared prefix
         memcpy(currOutPtr, prevOutPtr, currMatchSize);
@@ -47,9 +48,9 @@ ZL_FORCE_NOINLINE ZL_Report ZS_decodePrefix_fallback(
         prevOutPtr    = currOutPtr;
         currOutPtr += prevFieldSize;
         currSuffixPtr += currEltWidth;
-        ZL_RET_R_IF(
-                corruption,
-                ZL_overflowAddU32(currMatchSize, currEltWidth, &fieldSizes[i]));
+        ZL_ERR_IF(
+                ZL_overflowAddU32(currMatchSize, currEltWidth, &fieldSizes[i]),
+                corruption);
     }
 
     return ZL_returnSuccess();
@@ -107,6 +108,7 @@ ZL_Report ZS_decodePrefix(
         const uint32_t* const eltWidths,
         const uint32_t* const matchSizes)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     // Calculate the number of safe wildcopies
     size_t nbWildcopies = nbElts;
 
@@ -131,7 +133,7 @@ ZL_Report ZS_decodePrefix(
     for (size_t i = 0; i < nbWildcopies; ++i) {
         uint32_t const currEltWidth  = eltWidths[i];
         uint32_t const currMatchSize = matchSizes[i];
-        ZL_RET_R_IF_GT(corruption, currMatchSize, prevFieldSize);
+        ZL_ERR_IF_GT(currMatchSize, prevFieldSize, corruption);
 
 // Write the shared prefix and the suffix
 // We branch between two implementations, where one is an optimized version that
@@ -181,9 +183,9 @@ ZL_Report ZS_decodePrefix(
         prevOutPtr    = currOutPtr;
         currOutPtr += prevFieldSize;
         currSuffixPtr += currEltWidth;
-        ZL_RET_R_IF(
-                corruption,
-                ZL_overflowAddU32(currMatchSize, currEltWidth, &fieldSizes[i]));
+        ZL_ERR_IF(
+                ZL_overflowAddU32(currMatchSize, currEltWidth, &fieldSizes[i]),
+                corruption);
     }
 
     // Fallback to copy rest of elements

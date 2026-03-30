@@ -36,8 +36,10 @@ ZL_FORCE_INLINE ZL_Report ZS_fseContextDecodeImpl(
         uint8_t (*mix)(void* opaque, uint8_t ctx, uint8_t o1) /* template */,
         bool const O1 /* template */)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+
     //> Read the number of symbols
-    ZL_TRY_LET_CONST_T(uint64_t, nbSymbols, ZL_RC_popVarint(src));
+    ZL_TRY_LET_CONST(uint64_t, nbSymbols, ZL_RC_popVarint(src));
 
     ZL_ASSERT(mix == NULL || (ctx != NULL && ZL_RC_avail(ctx) >= nbSymbols));
     ZL_ASSERT(mix == NULL || O1);
@@ -49,7 +51,7 @@ ZL_FORCE_INLINE ZL_Report ZS_fseContextDecodeImpl(
 
     //> Read the clustering
     ZL_ContextClustering clustering;
-    ZL_RET_R_IF_ERR(ZL_ContextClustering_decode(&clustering, src));
+    ZL_ERR_IF_ERR(ZL_ContextClustering_decode(&clustering, src));
     size_t const numClusters = clustering.numClusters;
 
     //> Read the headers and build the table for each cluster
