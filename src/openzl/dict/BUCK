@@ -1,0 +1,15 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fill in oncall here @nocommit")
+
+cpp_library(
+    name = "dict",
+    srcs = ["dict.h"],
+    labels = ["autodeps2_generated"],
+)
+
+cpp_library(
+    name = "dictloader",
+    srcs = ["dictloader.h"],
+    labels = ["autodeps2_generated"],
+)
