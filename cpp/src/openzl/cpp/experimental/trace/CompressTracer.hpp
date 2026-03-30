@@ -86,7 +86,7 @@ class CompressTracer {
             const ZL_LocalParams* lparams);
 
     void on_ZL_CCtx_compressMultiTypedRef_start(
-            ZL_CCtx const* const cctx,
+            ZL_CCtx* cctx,
             void const* const dst,
             size_t const dstCapacity,
             ZL_TypedRef const* const inputs[],
@@ -119,7 +119,8 @@ class CompressTracer {
     std::vector<CompressChunkTrace> graphRuns;
     CompressChunkTrace* currChunk =
             nullptr; // convenience pointer to the current chunk trace
-    bool segmented = false;
+    bool segmented              = false;
+    ZL_OperationContext* opCtx_ = nullptr;
 
     TraceResult trace;
 };

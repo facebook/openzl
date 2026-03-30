@@ -99,7 +99,7 @@ class CompressionTraceHooks : public openzl::CompressIntrospectionHooks {
             const ZL_LocalParams* lparams) override;
 
     void on_ZL_CCtx_compressMultiTypedRef_start(
-            ZL_CCtx const* const cctx,
+            ZL_CCtx* cctx,
             void const* const dst,
             size_t const dstCapacity,
             ZL_TypedRef const* const inputs[],

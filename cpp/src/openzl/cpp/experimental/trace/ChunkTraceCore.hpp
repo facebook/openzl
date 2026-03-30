@@ -112,7 +112,8 @@ class ChunkTraceCore {
             size_t chunkId,
             std::map<ZL_DataID, Stream, ZL_DataIDCustomComparator>& streamInfo,
             std::vector<Codec>& codecInfo,
-            std::vector<Graph>& graphInfo);
+            std::vector<Graph>& graphInfo,
+            ZL_OperationContext* opCtx);
 
     /**
      * Encodes CBOR buffer bytes into a string (for trace output).

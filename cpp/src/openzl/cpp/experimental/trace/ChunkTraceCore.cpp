@@ -87,7 +87,7 @@ getStringData(const void* data, size_t numStrings, const uint32_t* stringLens)
             parsedStr = std::move(rawStr);
         }
 
-        strings.push_back(parsedStr);
+        strings.push_back(std::move(parsedStr));
         offset += len;
     }
 
@@ -265,46 +265,49 @@ ZL_Report ChunkTraceCore::serializeChunkDataToCBOR(
         size_t chunkId,
         std::map<ZL_DataID, Stream, ZL_DataIDCustomComparator>& streamInfo,
         std::vector<Codec>& codecInfo,
-        std::vector<Graph>& graphInfo)
+        std::vector<Graph>& graphInfo,
+        ZL_OperationContext* opCtx)
 {
-    A1C_ARRAY_TRY_ADD_R(chunkItem, *chunkArrayBuilder);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(opCtx);
+    A1C_ARRAY_TRY_ADD(chunkItem, *chunkArrayBuilder);
     A1C_MapBuilder chunkBuilder = A1C_Item_map_builder(chunkItem, 4, a1c_arena);
-    ZL_RET_R_IF_NULL(allocation, chunkBuilder.map);
+    ZL_ERR_IF_NULL(chunkBuilder.map, allocation);
 
-    ZL_RET_R_IF_ERR(addIntValue(chunkBuilder, "chunkId", chunkId));
+    ZL_ERR_IF_ERR(addIntValue(chunkBuilder, "chunkId", chunkId, opCtx));
 
     // Streams
-    A1C_MAP_TRY_ADD_R(streamsPair, chunkBuilder);
+    A1C_MAP_TRY_ADD(streamsPair, chunkBuilder);
     A1C_Item_string_refCStr(&streamsPair->key, "streams");
     A1C_ArrayBuilder streamsBuilder = A1C_Item_array_builder(
             &streamsPair->val, streamInfo.size(), a1c_arena);
-    ZL_RET_R_IF_NULL(allocation, streamsBuilder.array);
+    ZL_ERR_IF_NULL(streamsBuilder.array, allocation);
     for (auto& stream : streamInfo) {
-        A1C_ARRAY_TRY_ADD_R(a1c_stream, streamsBuilder);
-        ZL_RET_R_IF_ERR(stream.second.serializeStream(a1c_arena, a1c_stream));
+        A1C_ARRAY_TRY_ADD(a1c_stream, streamsBuilder);
+        ZL_ERR_IF_ERR(
+                stream.second.serializeStream(a1c_arena, a1c_stream, opCtx));
     }
 
     // Codecs
-    A1C_MAP_TRY_ADD_R(codecsPair, chunkBuilder);
+    A1C_MAP_TRY_ADD(codecsPair, chunkBuilder);
     A1C_Item_string_refCStr(&codecsPair->key, "codecs");
     A1C_ArrayBuilder codecsBuilder = A1C_Item_array_builder(
             &codecsPair->val, codecInfo.size(), a1c_arena);
-    ZL_RET_R_IF_NULL(allocation, codecsBuilder.array);
+    ZL_ERR_IF_NULL(codecsBuilder.array, allocation);
     for (size_t codecNum = 0; codecNum < codecInfo.size(); ++codecNum) {
         Codec& codec = codecInfo[codecNum];
-        A1C_ARRAY_TRY_ADD_R(a1c_codec, codecsBuilder);
-        ZL_RET_R_IF_ERR(codec.serializeCodec(a1c_arena, a1c_codec));
+        A1C_ARRAY_TRY_ADD(a1c_codec, codecsBuilder);
+        ZL_ERR_IF_ERR(codec.serializeCodec(a1c_arena, a1c_codec, opCtx));
     }
 
     // Graphs (empty array for decompress)
-    A1C_MAP_TRY_ADD_R(graphsPair, chunkBuilder);
+    A1C_MAP_TRY_ADD(graphsPair, chunkBuilder);
     A1C_Item_string_refCStr(&graphsPair->key, "graphs");
     A1C_ArrayBuilder graphsBuilder = A1C_Item_array_builder(
             &graphsPair->val, graphInfo.size(), a1c_arena);
-    ZL_RET_R_IF_NULL(allocation, graphsBuilder.array);
+    ZL_ERR_IF_NULL(graphsBuilder.array, allocation);
     for (auto& graph : graphInfo) {
-        A1C_ARRAY_TRY_ADD_R(a1c_graph, graphsBuilder);
-        ZL_RET_R_IF_ERR(graph.serializeGraph(a1c_arena, a1c_graph));
+        A1C_ARRAY_TRY_ADD(a1c_graph, graphsBuilder);
+        ZL_ERR_IF_ERR(graph.serializeGraph(a1c_arena, a1c_graph, opCtx));
     }
 
     return ZL_returnSuccess();

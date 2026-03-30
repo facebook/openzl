@@ -55,6 +55,7 @@ class DecompressTracer {
     std::vector<DecompressChunkTrace> chunks_;
     DecompressChunkTrace* currChunk_ =
             nullptr; // convenience pointer to the current chunk trace
+    ZL_OperationContext* opCtx_ = nullptr;
 
     TraceResult trace_;
 };

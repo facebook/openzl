@@ -27,7 +27,7 @@ static int ctr = 0;
 class IncrementingHooks : public ::openzl::CompressIntrospectionHooks {
    public:
     void on_ZL_CCtx_compressMultiTypedRef_start(
-            const ZL_CCtx* const,
+            ZL_CCtx*,
             const void* const,
             const size_t,
             const ZL_TypedRef* const*,

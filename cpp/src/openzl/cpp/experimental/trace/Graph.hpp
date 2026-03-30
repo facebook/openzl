@@ -27,7 +27,10 @@ struct Graph {
     std::vector<ZL_Edge*> inEdges;
     std::vector<CodecID> codecs;
 
-    const ZL_Report serializeGraph(A1C_Arena* a1c_arena, A1C_Item* arrayItem);
+    const ZL_Report serializeGraph(
+            A1C_Arena* a1c_arena,
+            A1C_Item* arrayItem,
+            ZL_OperationContext* opCtx);
 };
 
 } // namespace openzl::visualizer
