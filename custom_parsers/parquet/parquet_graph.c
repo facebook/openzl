@@ -8,7 +8,7 @@
 #include "openzl/zl_graph_api.h"
 #include "openzl/zl_segmenter.h"
 
-#define ZL_TRY_SET_EL(_var, _expr) ZL_TRY_SET_T(ZL_EdgeList, _var, _expr)
+#define ZL_TRY_SET_EL(_var, _expr) ZL_TRY_SET(ZL_EdgeList, _var, _expr)
 
 #define ZL_PARQUET_TOKENS_PID 1
 #define ZL_PARQUET_CHUNK_SIZE_PID 2
@@ -111,7 +111,7 @@ static ZL_Report parquetGraphFn(ZL_Graph* graph, ZL_Edge* ins[], size_t nbIns)
     // Split the input according to segmentSizes
     ZL_ERR_IF_NE(nbIns, 1, graph_invalidNumInputs);
     ZL_Edge* const edge = ins[0];
-    ZL_TRY_LET_T(ZL_EdgeList, el, ZL_Edge_runDispatchNode(edge, &di));
+    ZL_TRY_LET(ZL_EdgeList, el, ZL_Edge_runDispatchNode(edge, &di));
     ZL_ERR_IF_NE(el.nbEdges, nbTags + 3, GENERIC);
 
     // Set the destination for the tags and segment sizes
@@ -196,7 +196,8 @@ static ZL_Report parquetSegmenterInner(
                                .paramValue;
 
     // Allocate space for token metadata.
-    ZL_TRY_LET_R(maxNbTokens, ZL_ParquetLexer_maxNumTokens(lexer, errCtx));
+    ZL_TRY_LET(
+            size_t, maxNbTokens, ZL_ParquetLexer_maxNumTokens(lexer, errCtx));
     size_t nbTokens               = 0;
     ZL_ParquetToken* const tokens = ZL_Segmenter_getScratchSpace(
             seg, maxNbTokens * sizeof(ZL_ParquetToken));

@@ -21,6 +21,7 @@ ZL_FORCE_INLINE uint32_t ZS2_ThriftKernel_zigzagEncode32(uint32_t value)
 ZL_FORCE_INLINE ZL_Report
 ZS2_ThriftKernel_serializeLength(uint32_t val, uint8_t** op, uint8_t* oend)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     size_t const capacity = (size_t)(oend - *op);
     if (capacity >= ZL_VARINT_FAST_OVERWRITE_32) {
         *op += ZL_varintEncode32Fast(val, *op);
@@ -31,13 +32,14 @@ ZS2_ThriftKernel_serializeLength(uint32_t val, uint8_t** op, uint8_t* oend)
         ZL_ASSERT_LE(*op, oend);
         return ZL_returnSuccess();
     } else {
-        ZL_RET_R_ERR(internalBuffer_tooSmall);
+        ZL_ERR(internalBuffer_tooSmall);
     }
 }
 
 ZL_FORCE_INLINE ZL_Report
 ZS2_ThriftKernel_serializeI64(uint64_t val, uint8_t** op, uint8_t* oend)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     uint64_t const zz     = ZS2_ThriftKernel_zigzagEncode64(val);
     size_t const capacity = (size_t)(oend - *op);
     if (capacity >= ZL_VARINT_FAST_OVERWRITE_64) {
@@ -49,7 +51,7 @@ ZS2_ThriftKernel_serializeI64(uint64_t val, uint8_t** op, uint8_t* oend)
         ZL_ASSERT_LE(*op, oend);
         return ZL_returnSuccess();
     } else {
-        ZL_RET_R_ERR(internalBuffer_tooSmall);
+        ZL_ERR(internalBuffer_tooSmall);
     }
 }
 
@@ -67,12 +69,13 @@ ZL_FORCE_INLINE ZL_Report ZS2_ThriftKernel_serializeMapHeader(
         uint8_t valueType,
         size_t size)
 {
-    ZL_RET_R_IF_ERR(ZS2_ThriftKernel_serializeLength((uint32_t)size, op, oend));
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_ERR(ZS2_ThriftKernel_serializeLength((uint32_t)size, op, oend));
 
     uint8_t const type = (uint8_t)((keyType << 4) | valueType);
 
     if (size > 0) {
-        ZL_RET_R_IF_EQ(internalBuffer_tooSmall, *op, oend);
+        ZL_ERR_IF_EQ(*op, oend, internalBuffer_tooSmall);
         **op = type;
         ++*op;
     }
@@ -86,15 +89,16 @@ ZL_FORCE_INLINE ZL_Report ZS2_ThriftKernel_serializeArrayHeader(
         uint8_t type,
         size_t size)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     uint8_t const lengthNibble = (uint8_t)(size >= 0xF ? 0xF : size);
     uint8_t const lengthType   = (uint8_t)(type | (lengthNibble << 4));
 
-    ZL_RET_R_IF_EQ(internalBuffer_tooSmall, *op, oend);
+    ZL_ERR_IF_EQ(*op, oend, internalBuffer_tooSmall);
     **op = lengthType;
     ++*op;
 
     if (size >= 0xF) {
-        ZL_RET_R_IF_ERR(
+        ZL_ERR_IF_ERR(
                 ZS2_ThriftKernel_serializeLength((uint32_t)size, op, oend));
     }
     return ZL_returnSuccess();
@@ -106,11 +110,12 @@ ZL_FORCE_INLINE ZL_Report ZS2_ThriftKernel_serializeArrayI64_inline(
         uint64_t const* values,
         size_t arraySize)
 {
-    ZL_RET_R_IF_ERR(
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_ERR(
             ZS2_ThriftKernel_serializeArrayHeader(op, oend, 0x6, arraySize));
 
     for (size_t i = 0; i < arraySize; ++i) {
-        ZL_RET_R_IF_ERR(ZS2_ThriftKernel_serializeI64(values[i], op, oend));
+        ZL_ERR_IF_ERR(ZS2_ThriftKernel_serializeI64(values[i], op, oend));
     }
 
     return ZL_returnSuccess();
@@ -123,17 +128,18 @@ ZL_Report ZS2_ThriftKernel_serializeMapI32Float(
         uint32_t const* floats,
         size_t mapSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     uint8_t* const ostart = (uint8_t*)dst;
     uint8_t* const oend   = ostart + dstCapacity;
     uint8_t* op           = ostart;
 
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZS2_ThriftKernel_serializeMapHeader(&op, oend, 0x5, 0xD, mapSize));
 
     // TODO: Unroll to remove bounds checks, speed up varint encoding
     for (size_t i = 0; i < mapSize; ++i) {
-        ZL_RET_R_IF_ERR(ZS2_ThriftKernel_serializeI32(keys[i], &op, oend));
-        ZL_RET_R_IF_GT(internalBuffer_tooSmall, 4, (size_t)(oend - op));
+        ZL_ERR_IF_ERR(ZS2_ThriftKernel_serializeI32(keys[i], &op, oend));
+        ZL_ERR_IF_GT(4, (size_t)(oend - op), internalBuffer_tooSmall);
         ZL_writeBE32(op, floats[i]);
         op += 4;
     }
@@ -150,24 +156,25 @@ ZL_Report ZS2_ThriftKernel_serializeMapI32ArrayFloat(
         uint32_t const** innerValuesPtr,
         uint32_t const* innerValuesEnd)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     uint8_t* const ostart = (uint8_t*)dst;
     uint8_t* const oend   = ostart + dstCapacity;
     uint8_t* op           = ostart;
 
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZS2_ThriftKernel_serializeMapHeader(&op, oend, 0x5, 0x9, mapSize));
 
     for (size_t i = 0; i < mapSize; ++i) {
-        ZL_RET_R_IF_ERR(ZS2_ThriftKernel_serializeI32(keys[i], &op, oend));
+        ZL_ERR_IF_ERR(ZS2_ThriftKernel_serializeI32(keys[i], &op, oend));
 
         size_t const arraySize = lengths[i];
-        ZL_RET_R_IF_GT(
-                srcSize_tooSmall,
+        ZL_ERR_IF_GT(
                 arraySize,
-                (size_t)(innerValuesEnd - *innerValuesPtr));
+                (size_t)(innerValuesEnd - *innerValuesPtr),
+                srcSize_tooSmall);
         ZL_Report const arrayBytes = ZS2_ThriftKernel_serializeArrayFloat(
                 op, (size_t)(oend - op), *innerValuesPtr, arraySize);
-        ZL_RET_R_IF_ERR(arrayBytes);
+        ZL_ERR_IF_ERR(arrayBytes);
         op += ZL_validResult(arrayBytes);
         *innerValuesPtr += arraySize;
     }
@@ -185,22 +192,23 @@ ZL_Report ZS2_ThriftKernel_serializeMapI32ArrayI64(
         uint64_t const** innerValuesPtr,
         uint64_t const* innerValuesEnd)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     uint8_t* const ostart = (uint8_t*)dst;
     uint8_t* const oend   = ostart + dstCapacity;
     uint8_t* op           = ostart;
 
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZS2_ThriftKernel_serializeMapHeader(&op, oend, 0x5, 0x9, mapSize));
 
     for (size_t i = 0; i < mapSize; ++i) {
-        ZL_RET_R_IF_ERR(ZS2_ThriftKernel_serializeI32(keys[i], &op, oend));
+        ZL_ERR_IF_ERR(ZS2_ThriftKernel_serializeI32(keys[i], &op, oend));
 
         size_t const arraySize = lengths[i];
-        ZL_RET_R_IF_GT(
-                srcSize_tooSmall,
+        ZL_ERR_IF_GT(
                 arraySize,
-                (size_t)(innerValuesEnd - *innerValuesPtr));
-        ZL_RET_R_IF_ERR(ZS2_ThriftKernel_serializeArrayI64_inline(
+                (size_t)(innerValuesEnd - *innerValuesPtr),
+                srcSize_tooSmall);
+        ZL_ERR_IF_ERR(ZS2_ThriftKernel_serializeArrayI64_inline(
                 &op, oend, *innerValuesPtr, arraySize));
         *innerValuesPtr += arraySize;
     }
@@ -220,31 +228,32 @@ ZL_Report ZS2_ThriftKernel_serializeMapI32ArrayArrayI64(
         uint64_t const** innerInnerValuesPtr,
         uint64_t const* innerInnerValuesEnd)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     uint8_t* const ostart = (uint8_t*)dst;
     uint8_t* const oend   = ostart + dstCapacity;
     uint8_t* op           = ostart;
 
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZS2_ThriftKernel_serializeMapHeader(&op, oend, 0x5, 0x9, mapSize));
 
     for (size_t i = 0; i < mapSize; ++i) {
-        ZL_RET_R_IF_ERR(ZS2_ThriftKernel_serializeI32(keys[i], &op, oend));
+        ZL_ERR_IF_ERR(ZS2_ThriftKernel_serializeI32(keys[i], &op, oend));
 
         size_t const arraySize = lengths[i];
-        ZL_RET_R_IF_ERR(ZS2_ThriftKernel_serializeArrayHeader(
+        ZL_ERR_IF_ERR(ZS2_ThriftKernel_serializeArrayHeader(
                 &op, oend, 0x9, arraySize));
 
-        ZL_RET_R_IF_GT(
-                srcSize_tooSmall,
+        ZL_ERR_IF_GT(
                 arraySize,
-                (size_t)(innerLengthsEnd - *innerLengthsPtr));
+                (size_t)(innerLengthsEnd - *innerLengthsPtr),
+                srcSize_tooSmall);
         for (size_t j = 0; j < arraySize; ++j) {
             size_t const innerArraySize = (*innerLengthsPtr)[j];
-            ZL_RET_R_IF_GT(
-                    srcSize_tooSmall,
+            ZL_ERR_IF_GT(
                     innerArraySize,
-                    (size_t)(innerInnerValuesEnd - *innerInnerValuesPtr));
-            ZL_RET_R_IF_ERR(ZS2_ThriftKernel_serializeArrayI64_inline(
+                    (size_t)(innerInnerValuesEnd - *innerInnerValuesPtr),
+                    srcSize_tooSmall);
+            ZL_ERR_IF_ERR(ZS2_ThriftKernel_serializeArrayI64_inline(
                     &op, oend, *innerInnerValuesPtr, innerArraySize));
             *innerInnerValuesPtr += innerArraySize;
         }
@@ -267,34 +276,35 @@ ZL_Report ZS2_ThriftKernel_serializeMapI32MapI64Float(
         uint32_t const** innerValuesPtr,
         uint32_t const* innerValuesEnd)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     uint8_t* const ostart = (uint8_t*)dst;
     uint8_t* const oend   = ostart + dstCapacity;
     uint8_t* op           = ostart;
 
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZS2_ThriftKernel_serializeMapHeader(&op, oend, 0x5, 0xB, mapSize));
 
-    ZL_RET_R_IF_NE(
-            corruption,
+    ZL_ERR_IF_NE(
             (size_t)(innerKeysEnd - *innerKeysPtr),
             (size_t)(innerValuesEnd - *innerValuesPtr),
+            corruption,
             "Keys and values must be the same length!");
 
     for (size_t i = 0; i < mapSize; ++i) {
-        ZL_RET_R_IF_ERR(ZS2_ThriftKernel_serializeI32(keys[i], &op, oend));
+        ZL_ERR_IF_ERR(ZS2_ThriftKernel_serializeI32(keys[i], &op, oend));
 
         size_t const innerMapSize = lengths[i];
-        ZL_RET_R_IF_ERR(ZS2_ThriftKernel_serializeMapHeader(
+        ZL_ERR_IF_ERR(ZS2_ThriftKernel_serializeMapHeader(
                 &op, oend, 0x6, 0xD, innerMapSize));
 
-        ZL_RET_R_IF_GT(
-                srcSize_tooSmall,
+        ZL_ERR_IF_GT(
                 innerMapSize,
-                (size_t)(innerKeysEnd - *innerKeysPtr));
+                (size_t)(innerKeysEnd - *innerKeysPtr),
+                srcSize_tooSmall);
         for (size_t j = 0; j < innerMapSize; ++j) {
-            ZL_RET_R_IF_ERR(ZS2_ThriftKernel_serializeI64(
+            ZL_ERR_IF_ERR(ZS2_ThriftKernel_serializeI64(
                     (*innerKeysPtr)[j], &op, oend));
-            ZL_RET_R_IF_GT(internalBuffer_tooSmall, 4, (size_t)(oend - op));
+            ZL_ERR_IF_GT(4, (size_t)(oend - op), internalBuffer_tooSmall);
             ZL_writeBE32(op, (*innerValuesPtr)[j]);
             op += 4;
         }
@@ -313,11 +323,12 @@ ZL_Report ZS2_ThriftKernel_serializeArrayI64(
         uint64_t const* values,
         size_t arraySize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     uint8_t* const ostart = (uint8_t*)dst;
     uint8_t* const oend   = ostart + dstCapacity;
     uint8_t* op           = ostart;
 
-    ZL_RET_R_IF_ERR(ZS2_ThriftKernel_serializeArrayI64_inline(
+    ZL_ERR_IF_ERR(ZS2_ThriftKernel_serializeArrayI64_inline(
             &op, oend, values, arraySize));
 
     return ZL_returnValue((size_t)(op - ostart));
@@ -329,15 +340,16 @@ ZL_Report ZS2_ThriftKernel_serializeArrayI32(
         uint32_t const* values,
         size_t arraySize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     uint8_t* const ostart = (uint8_t*)dst;
     uint8_t* const oend   = ostart + dstCapacity;
     uint8_t* op           = ostart;
 
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZS2_ThriftKernel_serializeArrayHeader(&op, oend, 0x5, arraySize));
 
     for (size_t i = 0; i < arraySize; ++i) {
-        ZL_RET_R_IF_ERR(ZS2_ThriftKernel_serializeI32(values[i], &op, oend));
+        ZL_ERR_IF_ERR(ZS2_ThriftKernel_serializeI32(values[i], &op, oend));
     }
 
     return ZL_returnValue((size_t)(op - ostart));
@@ -349,14 +361,15 @@ ZL_Report ZS2_ThriftKernel_serializeArrayFloat(
         uint32_t const* values,
         size_t arraySize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     uint8_t* const ostart = (uint8_t*)dst;
     uint8_t* const oend   = ostart + dstCapacity;
     uint8_t* op           = ostart;
 
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZS2_ThriftKernel_serializeArrayHeader(&op, oend, 0xD, arraySize));
 
-    ZL_RET_R_IF_GT(internalBuffer_tooSmall, arraySize, (size_t)(oend - op) / 4);
+    ZL_ERR_IF_GT(arraySize, (size_t)(oend - op) / 4, internalBuffer_tooSmall);
     for (size_t i = 0; i < arraySize; ++i) {
         ZL_writeBE32(op + 4 * i, values[i]);
     }
