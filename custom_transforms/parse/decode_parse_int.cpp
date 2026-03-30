@@ -206,6 +206,7 @@ ZL_Report parseDecodeIntFillFieldSizes(
         uint32_t const* exSizes,
         uint32_t* fieldSizes)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
     ZL_ASSERT_LE(nbNums, nbElts);
     auto const numsEnd = nums + nbNums;
     auto exIdxsEnd     = exIdxs + (nbElts - nbNums);
@@ -216,14 +217,14 @@ ZL_Report parseDecodeIntFillFieldSizes(
             ++exIdxs;
             fieldSize = *exSizes++;
         } else {
-            ZL_RET_R_IF_EQ(srcSize_tooSmall, nums, numsEnd);
+            ZL_ERR_IF_EQ(nums, numsEnd, srcSize_tooSmall);
             fieldSize = numberStringLength(*(nums++));
         }
         fieldSizes[i] = fieldSize;
         outSize += fieldSize;
     }
-    ZL_RET_R_IF_NE(corruption, nums, numsEnd);
-    ZL_RET_R_IF_NE(corruption, exIdxs, exIdxsEnd);
+    ZL_ERR_IF_NE(nums, numsEnd, corruption);
+    ZL_ERR_IF_NE(exIdxs, exIdxsEnd, corruption);
     return ZL_returnValue(outSize);
 }
 
@@ -351,7 +352,8 @@ ZL_Report parseDecodeInt(ZL_Decoder* dictx, ZL_Input const* inputs[]) noexcept
     auto exSizes    = ZL_Input_stringLens(exceptions);
     auto exDataSize = ZL_Input_contentSize(exceptions);
 
-    ZL_TRY_LET_R(
+    ZL_TRY_LET(
+            size_t,
             outSize,
             parseDecodeIntFillFieldSizes(
                     nbElts, nums, nbNums, exIdxs, exSizes, fieldSizes));
