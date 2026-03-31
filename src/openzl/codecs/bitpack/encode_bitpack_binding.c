@@ -77,6 +77,7 @@ static int computeNbBits(ZL_Input const* in)
 
 static ZL_Report checkEtlWidth(size_t eltWidth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     switch (eltWidth) {
         case 1:
         case 2:
@@ -84,8 +85,7 @@ static ZL_Report checkEtlWidth(size_t eltWidth)
         case 8:
             return ZL_returnSuccess();
         default:
-            ZL_RET_R_ERR(
-                    GENERIC, "Bitpack expects element width of 1, 2, 4 or 8");
+            ZL_ERR(GENERIC, "Bitpack expects element width of 1, 2, 4 or 8");
     }
 }
 

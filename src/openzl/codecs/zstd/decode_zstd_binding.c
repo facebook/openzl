@@ -24,35 +24,30 @@ static bool useMagicless(ZL_Decoder const* dictx)
     return DI_getFrameFormatVersion(dictx) >= 9;
 }
 
-static ZL_RESULT_OF(uint64_t) getFrameContentSize(
-        ZL_Decoder const* dictx,
-        void const* src,
-        size_t srcSize)
+static ZL_RESULT_OF(uint64_t)
+        getFrameContentSize(ZL_Decoder* dictx, void const* src, size_t srcSize)
 {
+    ZL_RESULT_DECLARE_SCOPE(uint64_t, dictx);
     ZSTD_format_e const format =
             useMagicless(dictx) ? ZSTD_f_zstd1_magicless : ZSTD_f_zstd1;
     ZSTD_frameHeader frameHeader;
     size_t const ret =
             ZSTD_getFrameHeader_advanced(&frameHeader, src, srcSize, format);
-    ZL_RET_T_IF(
-            uint64_t,
-            corruption,
+    ZL_ERR_IF(
             ZSTD_isError(ret),
+            corruption,
             "Unable to read zstd frame header: %s",
             ZSTD_getErrorName(ret));
-    ZL_RET_T_IF_NE(
-            uint64_t, srcSize_tooSmall, ret, 0, "Incomplete frame header");
-    ZL_RET_T_IF_EQ(
-            uint64_t,
-            corruption,
+    ZL_ERR_IF_NE(ret, 0, srcSize_tooSmall, "Incomplete frame header");
+    ZL_ERR_IF_EQ(
             frameHeader.frameContentSize,
             ZSTD_CONTENTSIZE_ERROR,
-            "content size is error (reject to be safe)");
-    ZL_RET_T_IF_EQ(
-            uint64_t,
             corruption,
+            "content size is error (reject to be safe)");
+    ZL_ERR_IF_EQ(
             frameHeader.frameContentSize,
             ZSTD_CONTENTSIZE_UNKNOWN,
+            corruption,
             "content size not present");
     return ZL_RESULT_WRAP_VALUE(uint64_t, frameHeader.frameContentSize);
 }
@@ -70,11 +65,11 @@ ZL_Report DI_zstd(ZL_Decoder* dictx, ZL_Input const* ins[])
     uint8_t const* src          = (uint8_t const*)ZL_Input_ptr(in);
     uint8_t const* const srcEnd = src + ZL_Input_numElts(in);
 
-    ZL_TRY_LET_T(uint64_t, dstEltWidth, ZL_varintDecode(&src, srcEnd));
+    ZL_TRY_LET(uint64_t, dstEltWidth, ZL_varintDecode(&src, srcEnd));
     ZL_ERR_IF_EQ(dstEltWidth, 0, corruption);
 
     size_t const srcSize = (size_t)(srcEnd - src);
-    ZL_TRY_LET_T(uint64_t, dstSize, getFrameContentSize(dictx, src, srcSize));
+    ZL_TRY_LET(uint64_t, dstSize, getFrameContentSize(dictx, src, srcSize));
     ZL_ERR_IF_NE(
             dstSize % dstEltWidth,
             0,

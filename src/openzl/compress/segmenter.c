@@ -96,6 +96,7 @@ ZL_Segmenter* SEGM_init(
  */
 ZL_Report SEGM_runSegmenter(ZL_Segmenter* segCtx)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(segCtx);
     ZL_ASSERT_NN(segCtx);
     ZL_SegmenterFn const segfn = segCtx->segDesc->segmenterFn;
     ZL_ASSERT_NN(segfn);
@@ -104,10 +105,10 @@ ZL_Report SEGM_runSegmenter(ZL_Segmenter* segCtx)
     // if successful, check that all inputs were consumed
     if (!ZL_isError(r)) {
         for (size_t n = 0; n < segCtx->nbInputs; n++) {
-            ZL_RET_R_IF_LT(
-                    segmenter_inputNotConsumed,
+            ZL_ERR_IF_LT(
                     segCtx->consumed[n],
                     ZL_Data_numElts(segCtx->inputs[n]),
+                    segmenter_inputNotConsumed,
                     "input %zu wasn't entirely consumed",
                     n);
         }

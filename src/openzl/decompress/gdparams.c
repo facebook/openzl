@@ -15,6 +15,7 @@ const GDParams GDParams_default = {
 ZL_Report
 GDParams_setParameter(GDParams* gdparams, ZL_DParam paramId, int value)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_NN(gdparams);
     switch (paramId) {
         case ZL_DParam_stickyParameters:
@@ -27,7 +28,7 @@ GDParams_setParameter(GDParams* gdparams, ZL_DParam paramId, int value)
             gdparams->checkContentChecksum = (ZL_TernaryParam)value;
             break;
         default:
-            ZL_RET_R_ERR(compressionParameter_invalid);
+            ZL_ERR(compressionParameter_invalid);
     }
     return ZL_returnSuccess();
 }

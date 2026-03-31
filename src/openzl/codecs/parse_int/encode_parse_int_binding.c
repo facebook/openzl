@@ -83,7 +83,7 @@ ZL_Report parseIntSafeFnGraph(ZL_Graph* graph, ZL_Edge* edges[], size_t nbEdges)
                                              .nbRefParams = 1 } };
     if (numParsed == nbElts) {
         // Run parse int node with localParam of pre-parsed integers
-        ZL_TRY_LET_T(
+        ZL_TRY_LET(
                 ZL_EdgeList,
                 so,
                 ZL_Edge_runNode_withParams(
@@ -94,7 +94,7 @@ ZL_Report parseIntSafeFnGraph(ZL_Graph* graph, ZL_Edge* edges[], size_t nbEdges)
     } else if (numParsed == 0) {
         ZL_ERR_IF_ERR(ZL_Edge_setDestination(edges[0], succList.graphids[1]));
     } else {
-        ZL_TRY_LET_T(
+        ZL_TRY_LET(
                 ZL_EdgeList,
                 dispatchedEdges,
                 ZL_Edge_runDispatchStringNode(edges[0], 2, indices));
@@ -104,7 +104,7 @@ ZL_Report parseIntSafeFnGraph(ZL_Graph* graph, ZL_Edge* edges[], size_t nbEdges)
         ZL_ERR_IF_ERR(ZL_Edge_setDestination(
                 dispatchedEdges.edges[0], succList.graphids[2]));
         // Run parse int node with localParam of pre-parsed integers
-        ZL_TRY_LET_T(
+        ZL_TRY_LET(
                 ZL_EdgeList,
                 so,
                 ZL_Edge_runNode_withParams(
