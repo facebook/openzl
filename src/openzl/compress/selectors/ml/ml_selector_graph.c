@@ -99,27 +99,27 @@ static ZL_Report GBTModel_serializeNode(
     ZL_RESULT_DECLARE_SCOPE_REPORT(errCtx);
     A1C_MapBuilder nodeMapBuilder = A1C_Item_map_builder(parent, 5, a1cArena);
     {
-        A1C_MAP_TRY_ADD_R(pair, nodeMapBuilder);
+        A1C_MAP_TRY_ADD(pair, nodeMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "featureIdx");
         A1C_Item_int64(&pair->val, (A1C_Int64)node->featureIdx);
     }
     {
-        A1C_MAP_TRY_ADD_R(pair, nodeMapBuilder);
+        A1C_MAP_TRY_ADD(pair, nodeMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "value");
         A1C_Item_float64(&pair->val, node->value);
     }
     {
-        A1C_MAP_TRY_ADD_R(pair, nodeMapBuilder);
+        A1C_MAP_TRY_ADD(pair, nodeMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "leftChildIdx");
         A1C_Item_int64(&pair->val, (A1C_Int64)node->leftChildIdx);
     }
     {
-        A1C_MAP_TRY_ADD_R(pair, nodeMapBuilder);
+        A1C_MAP_TRY_ADD(pair, nodeMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "rightChildIdx");
         A1C_Item_int64(&pair->val, (A1C_Int64)node->rightChildIdx);
     }
     {
-        A1C_MAP_TRY_ADD_R(pair, nodeMapBuilder);
+        A1C_MAP_TRY_ADD(pair, nodeMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "missingChildIdx");
         A1C_Item_int64(&pair->val, (A1C_Int64)node->missingChildIdx);
     }
@@ -135,12 +135,12 @@ static ZL_Report GBTModel_serializeTree(
     ZL_RESULT_DECLARE_SCOPE_REPORT(errCtx);
     A1C_MapBuilder treeMapBuilder = A1C_Item_map_builder(parent, 2, a1cArena);
     {
-        A1C_MAP_TRY_ADD_R(pair, treeMapBuilder);
+        A1C_MAP_TRY_ADD(pair, treeMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "numNodes");
         A1C_Item_int64(&pair->val, (A1C_Int64)tree->numNodes);
     }
     {
-        A1C_MAP_TRY_ADD_R(pair, treeMapBuilder);
+        A1C_MAP_TRY_ADD(pair, treeMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "nodes");
         A1C_Item* nodes = A1C_Item_array(&pair->val, tree->numNodes, a1cArena);
         ZL_ERR_IF_NULL(nodes, allocation);
@@ -161,12 +161,12 @@ static ZL_Report GBTModel_serializeForest(
     ZL_RESULT_DECLARE_SCOPE_REPORT(errCtx);
     A1C_MapBuilder forestMapBuilder = A1C_Item_map_builder(parent, 2, a1cArena);
     {
-        A1C_MAP_TRY_ADD_R(pair, forestMapBuilder);
+        A1C_MAP_TRY_ADD(pair, forestMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "numTrees");
         A1C_Item_int64(&pair->val, (A1C_Int64)forest->numTrees);
     }
     {
-        A1C_MAP_TRY_ADD_R(pair, forestMapBuilder);
+        A1C_MAP_TRY_ADD(pair, forestMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "trees");
         A1C_Item* trees =
                 A1C_Item_array(&pair->val, forest->numTrees, a1cArena);
@@ -189,12 +189,12 @@ static ZL_Report GBTModel_serializePredictor(
     A1C_MapBuilder predictorMapBuilder =
             A1C_Item_map_builder(parent, 2, a1cArena);
     {
-        A1C_MAP_TRY_ADD_R(pair, predictorMapBuilder);
+        A1C_MAP_TRY_ADD(pair, predictorMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "numForests");
         A1C_Item_int64(&pair->val, (A1C_Int64)predictor->numForests);
     }
     {
-        A1C_MAP_TRY_ADD_R(pair, predictorMapBuilder);
+        A1C_MAP_TRY_ADD(pair, predictorMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "forests");
         A1C_Item* forests =
                 A1C_Item_array(&pair->val, predictor->numForests, a1cArena);
@@ -232,7 +232,7 @@ static ZL_Report GBTModel_serialize(
 
     // Serialize predictor
     {
-        A1C_MAP_TRY_ADD_R(pair, rootMapBuilder);
+        A1C_MAP_TRY_ADD(pair, rootMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "predictor");
         ZL_ERR_IF_ERR(GBTModel_serializePredictor(
                 errCtx, &pair->val, a1cArena, model->predictor));
@@ -242,28 +242,28 @@ static ZL_Report GBTModel_serialize(
         FeatureGenId fg = FeatureGen_getId(model->featureGenerator);
         ZL_ERR_IF_EQ(fg, FeatureGenId_Invalid, invalidName);
 
-        A1C_MAP_TRY_ADD_R(pair, rootMapBuilder);
+        A1C_MAP_TRY_ADD(pair, rootMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "featureGenerator");
         A1C_Item_int64(&pair->val, (A1C_Int64)fg);
     }
 
     // Serialize nbSuccessors
     {
-        A1C_MAP_TRY_ADD_R(pair, rootMapBuilder);
+        A1C_MAP_TRY_ADD(pair, rootMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "nbSuccessors");
         A1C_Item_int64(&pair->val, (A1C_Int64)model->nbSuccessors);
     }
 
     // Serialize nbFeatures
     {
-        A1C_MAP_TRY_ADD_R(pair, rootMapBuilder);
+        A1C_MAP_TRY_ADD(pair, rootMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "nbFeatures");
         A1C_Item_int64(&pair->val, (A1C_Int64)model->nbFeatures);
     }
 
     // Serialize featureLabels array
     {
-        A1C_MAP_TRY_ADD_R(pair, rootMapBuilder);
+        A1C_MAP_TRY_ADD(pair, rootMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "featureLabels");
         A1C_Item* labels =
                 A1C_Item_array(&pair->val, model->nbFeatures, a1cArena);
@@ -512,13 +512,13 @@ MLSelector_serializeMLSelectorConfig(
     // serialize model type
     A1C_MapBuilder rootMapBuilder = A1C_Item_map_builder(root, 2, arena);
     {
-        A1C_MAP_TRY_ADD_T(ZL_SerializedMLConfig, pair, rootMapBuilder);
+        A1C_MAP_TRY_ADD(pair, rootMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "model");
         A1C_Item_int64(&pair->val, (A1C_Int64)config->model);
     }
     // Serialize predictor
     {
-        A1C_MAP_TRY_ADD_T(ZL_SerializedMLConfig, pair, rootMapBuilder);
+        A1C_MAP_TRY_ADD(pair, rootMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "runtimeConfig");
         if (config->model == ZL_GBT) {
             ZL_ERR_IF_ERR(GBTModel_serialize(

@@ -143,22 +143,22 @@ static ZL_Report cbor_serializeTypeSuccessor(
     A1C_MapBuilder typeSuccessorMapBuilder =
             A1C_Item_map_builder(parent, 4, arena);
     {
-        A1C_MAP_TRY_ADD_R(pair, typeSuccessorMapBuilder);
+        A1C_MAP_TRY_ADD(pair, typeSuccessorMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "type");
         A1C_Item_int64(&pair->val, (A1C_Int64)typeSuccesor->type);
     }
     {
-        A1C_MAP_TRY_ADD_R(pair, typeSuccessorMapBuilder);
+        A1C_MAP_TRY_ADD(pair, typeSuccessorMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "eltWidth");
         A1C_Item_int64(&pair->val, (A1C_Int64)typeSuccesor->eltWidth);
     }
     {
-        A1C_MAP_TRY_ADD_R(pair, typeSuccessorMapBuilder);
+        A1C_MAP_TRY_ADD(pair, typeSuccessorMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "successorIdx");
         A1C_Item_int64(&pair->val, (A1C_Int64)typeSuccesor->successorIdx);
     }
     {
-        A1C_MAP_TRY_ADD_R(pair, typeSuccessorMapBuilder);
+        A1C_MAP_TRY_ADD(pair, typeSuccessorMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "clusteringCodecIdx");
         A1C_Item_int64(&pair->val, (A1C_Int64)typeSuccesor->clusteringCodecIdx);
     }
@@ -178,7 +178,7 @@ ZL_Report ZL_Clustering_serializeClusteringConfig(
     ZL_ERR_IF_NULL(root, allocation);
     A1C_MapBuilder rootMapBuilder = A1C_Item_map_builder(root, 2, arena);
     {
-        A1C_MAP_TRY_ADD_R(pair, rootMapBuilder);
+        A1C_MAP_TRY_ADD(pair, rootMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "clusters");
         A1C_Item* clusters =
                 A1C_Item_array(&pair->val, config->nbClusters, arena);
@@ -187,7 +187,7 @@ ZL_Report ZL_Clustering_serializeClusteringConfig(
             A1C_MapBuilder clustersMapBuilder =
                     A1C_Item_map_builder(&clusters[i], 2, arena);
             {
-                A1C_MAP_TRY_ADD_R(p, clustersMapBuilder);
+                A1C_MAP_TRY_ADD(p, clustersMapBuilder);
                 A1C_Item_string_refCStr(&p->key, "typeSuccessor");
                 ZL_ERR_IF_ERR(cbor_serializeTypeSuccessor(
                         errCtx,
@@ -196,7 +196,7 @@ ZL_Report ZL_Clustering_serializeClusteringConfig(
                         &config->clusters[i].typeSuccessor));
             }
             {
-                A1C_MAP_TRY_ADD_R(p, clustersMapBuilder);
+                A1C_MAP_TRY_ADD(p, clustersMapBuilder);
                 A1C_Item_string_refCStr(&p->key, "memberTags");
                 A1C_Item* memberTags = A1C_Item_array(
                         &p->val, config->clusters[i].nbMemberTags, arena);
@@ -210,7 +210,7 @@ ZL_Report ZL_Clustering_serializeClusteringConfig(
         }
     }
     {
-        A1C_MAP_TRY_ADD_R(pair, rootMapBuilder);
+        A1C_MAP_TRY_ADD(pair, rootMapBuilder);
         A1C_Item_string_refCStr(&pair->key, "typeDefaults");
         A1C_Item* typeDefaults =
                 A1C_Item_array(&pair->val, config->nbTypeDefaults, arena);
@@ -238,15 +238,15 @@ static ZL_Report cbor_deserializeTypeSuccessor(
         ZL_ClusteringConfig_TypeSuccessor* typeSuccessor)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(errCtx);
-    A1C_TRY_EXTRACT_R_INT64(type, A1C_Map_get_cstr(typeSuccessorMap, "type"));
+    A1C_TRY_EXTRACT_INT64(type, A1C_Map_get_cstr(typeSuccessorMap, "type"));
     typeSuccessor->type = (ZL_Type)type;
-    A1C_TRY_EXTRACT_R_INT64(
+    A1C_TRY_EXTRACT_INT64(
             eltWidth, A1C_Map_get_cstr(typeSuccessorMap, "eltWidth"));
     typeSuccessor->eltWidth = (size_t)eltWidth;
-    A1C_TRY_EXTRACT_R_INT64(
+    A1C_TRY_EXTRACT_INT64(
             successorIdx, A1C_Map_get_cstr(typeSuccessorMap, "successorIdx"));
     typeSuccessor->successorIdx = (size_t)successorIdx;
-    A1C_TRY_EXTRACT_R_INT64(
+    A1C_TRY_EXTRACT_INT64(
             clusteringCodecIdx,
             A1C_Map_get_cstr(typeSuccessorMap, "clusteringCodecIdx"));
     typeSuccessor->clusteringCodecIdx = (size_t)clusteringCodecIdx;
@@ -271,12 +271,9 @@ ZL_Clustering_deserializeClusteringConfig(
                                  .rejectUnknownSimple = true };
     A1C_Decoder_init(&decoder, *arena, decoderConfig);
     const A1C_Item* root = A1C_Decoder_decode(&decoder, config, configSize);
-    A1C_TRY_EXTRACT_T_MAP(ZL_ClusteringConfig, rootMap, root);
+    A1C_TRY_EXTRACT_MAP(rootMap, root);
 
-    A1C_TRY_EXTRACT_T_ARRAY(
-            ZL_ClusteringConfig,
-            clustersItem,
-            A1C_Map_get_cstr(&rootMap, "clusters"));
+    A1C_TRY_EXTRACT_ARRAY(clustersItem, A1C_Map_get_cstr(&rootMap, "clusters"));
     dst.nbClusters = clustersItem.size;
     ZL_ERR_IF_GT(
             dst.nbClusters,
@@ -288,34 +285,27 @@ ZL_Clustering_deserializeClusteringConfig(
     ZL_ERR_IF_NULL(dst.clusters, allocation);
     for (size_t i = 0; i < dst.nbClusters; i++) {
         const A1C_Item* clusterItem = A1C_Array_get(&clustersItem, i);
-        A1C_TRY_EXTRACT_T_MAP(ZL_ClusteringConfig, clusterMap, clusterItem);
-        A1C_TRY_EXTRACT_T_MAP(
-                ZL_ClusteringConfig,
+        A1C_TRY_EXTRACT_MAP(clusterMap, clusterItem);
+        A1C_TRY_EXTRACT_MAP(
                 typeSuccessorMap,
                 A1C_Map_get_cstr(&clusterMap, "typeSuccessor"));
         ZL_ERR_IF_ERR(cbor_deserializeTypeSuccessor(
                 errCtx, &typeSuccessorMap, &dst.clusters[i].typeSuccessor));
-        A1C_TRY_EXTRACT_T_ARRAY(
-                ZL_ClusteringConfig,
-                memberTagsArray,
-                A1C_Map_get_cstr(&clusterMap, "memberTags"));
+        A1C_TRY_EXTRACT_ARRAY(
+                memberTagsArray, A1C_Map_get_cstr(&clusterMap, "memberTags"));
         dst.clusters[i].nbMemberTags = memberTagsArray.size;
         dst.clusters[i].memberTags   = arena->calloc(
                 arena->opaque, dst.clusters[i].nbMemberTags * sizeof(int));
         ZL_ERR_IF_NULL(dst.clusters[i].memberTags, allocation);
         for (size_t j = 0; j < dst.clusters[i].nbMemberTags; j++) {
-            A1C_TRY_EXTRACT_T_INT64(
-                    ZL_ClusteringConfig,
-                    memberTag,
-                    A1C_Array_get(&memberTagsArray, j));
+            A1C_TRY_EXTRACT_INT64(
+                    memberTag, A1C_Array_get(&memberTagsArray, j));
             ZL_ERR_IF_GT(memberTag, INT32_MAX, nodeParameter_invalidValue);
             dst.clusters[i].memberTags[j] = (int)memberTag;
         }
     }
-    A1C_TRY_EXTRACT_T_ARRAY(
-            ZL_ClusteringConfig,
-            typeDefaultsItem,
-            A1C_Map_get_cstr(&rootMap, "typeDefaults"));
+    A1C_TRY_EXTRACT_ARRAY(
+            typeDefaultsItem, A1C_Map_get_cstr(&rootMap, "typeDefaults"));
     dst.nbTypeDefaults = typeDefaultsItem.size;
     dst.typeDefaults   = arena->calloc(
             arena->opaque,
@@ -323,8 +313,7 @@ ZL_Clustering_deserializeClusteringConfig(
     ZL_ERR_IF_NULL(dst.typeDefaults, allocation);
     for (size_t i = 0; i < dst.nbTypeDefaults; i++) {
         const A1C_Item* typeDefaultItem = A1C_Array_get(&typeDefaultsItem, i);
-        A1C_TRY_EXTRACT_T_MAP(
-                ZL_ClusteringConfig, typeDefaultMap, typeDefaultItem);
+        A1C_TRY_EXTRACT_MAP(typeDefaultMap, typeDefaultItem);
         ZL_ERR_IF_ERR(cbor_deserializeTypeSuccessor(
                 errCtx, &typeDefaultMap, &dst.typeDefaults[i]));
     }
