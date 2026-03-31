@@ -34,7 +34,7 @@ ZL_Report DI_splitN(
         ZL_RBuffer header = ZL_Decoder_getCodecHeader(dictx);
         if (header.size != 0) {
             uint8_t const* ptr = (uint8_t const*)header.start;
-            ZL_TRY_LET_T(
+            ZL_TRY_LET(
                     uint64_t,
                     eltWidth64,
                     ZL_varintDecode(&ptr, ptr + header.size));

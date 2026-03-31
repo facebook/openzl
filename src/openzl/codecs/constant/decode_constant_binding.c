@@ -28,7 +28,7 @@ ZL_Report DI_constant_typed(ZL_Decoder* dictx, const ZL_Input* ins[])
     ZL_RBuffer const header = ZL_Decoder_getCodecHeader(dictx);
     uint8_t const* hdrStart = (uint8_t const*)header.start;
     uint8_t const* hdrEnd   = hdrStart + header.size;
-    ZL_TRY_LET_T(uint64_t, dstNbElts, ZL_varintDecode(&hdrStart, hdrEnd));
+    ZL_TRY_LET(uint64_t, dstNbElts, ZL_varintDecode(&hdrStart, hdrEnd));
     ZL_ERR_IF_NE(hdrStart, hdrEnd, corruption);
     ZL_ERR_IF_LT(dstNbElts, 1, corruption);
 

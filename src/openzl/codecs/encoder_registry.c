@@ -179,9 +179,10 @@ void ER_getAllStandardNodeIDs(ZL_NodeID* nodes, size_t nodesSize)
 
 ZL_Report ER_forEachStandardNode(ER_StandardNodesCallback cb, void* opaque)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     for (ZL_IDType nid = 0; nid < ZL_ARRAY_SIZE(ER_standardNodes); ++nid) {
         if (ER_standardNodes[nid].nodetype == node_internalTransform) {
-            ZL_RET_R_IF_ERR(
+            ZL_ERR_IF_ERR(
                     cb(opaque, (ZL_NodeID){ nid }, &ER_standardNodes[nid]));
         }
     }

@@ -31,12 +31,12 @@ ZL_Report DI_float_deconstruct(ZL_Decoder* dictx, const ZL_Input* ins[])
         eltType = (FLTDECON_ElementType_e)(*hdr);
     }
 
-    ZL_TRY_LET_R(signFracWidth, FLTDECON_SignFracWidth(eltType));
-    ZL_TRY_LET_R(exponentWidth, FLTDECON_ExponentWidth(eltType));
+    ZL_TRY_LET(size_t, signFracWidth, FLTDECON_SignFracWidth(eltType));
+    ZL_TRY_LET(size_t, exponentWidth, FLTDECON_ExponentWidth(eltType));
     ZL_ERR_IF_NE(ZL_Input_eltWidth(signFracStream), signFracWidth, corruption);
     ZL_ERR_IF_NE(ZL_Input_eltWidth(exponentStream), exponentWidth, corruption);
 
-    ZL_TRY_LET_R(eltWidth, FLTDECON_ElementWidth(eltType));
+    ZL_TRY_LET(size_t, eltWidth, FLTDECON_ElementWidth(eltType));
     ZL_Output* const out = ZL_Decoder_create1OutStream(dictx, nbElts, eltWidth);
     ZL_ERR_IF_NULL(out, allocation);
 
