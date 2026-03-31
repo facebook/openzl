@@ -146,7 +146,7 @@ csvParserGraphFn(ZL_Graph* gctx, ZL_Edge* inputs[], size_t numInputs)
     const size_t numOutputs = numCols + 1 + (hasHeader ? 1 : 0);
 
     // Run newly created Node, collect outputs at intermediate output
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             io,
             ZL_Edge_runConvertSerialToStringNode(inputs[0], sizes, numTokens));

@@ -137,7 +137,7 @@ pytorchModelDynGraph(ZL_Graph* gctx, ZL_Edge* sctxs[], size_t nbIns)
     }
 
     // Split the input according to segmentSizes
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             streams,
             ZL_Edge_runSplitNode(sctx, segmentSizes, nbSegments));
@@ -189,7 +189,7 @@ static ZL_Report pytorchModelSegmenter(ZL_Segmenter* sctx)
 
     while (!ZS2_ZipLexer_finished(&lexer)) {
         ZS2_ZipToken tokens[32];
-        ZL_TRY_LET_R(nbTokens, ZS2_ZipLexer_lex(&lexer, tokens, 32));
+        ZL_TRY_LET(size_t, nbTokens, ZS2_ZipLexer_lex(&lexer, tokens, 32));
         for (size_t i = 0; i < nbTokens; ++i) {
             const ZS2_ZipToken token = tokens[i];
 

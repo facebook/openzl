@@ -781,6 +781,7 @@ class TestCsv {
 
 ZL_Report TestCsv::run(const std::string& csvFile)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
     SetUp();
     ZL_g_logLevel = ZL_LOG_LVL_DEBUG;
 
@@ -815,14 +816,14 @@ ZL_Report TestCsv::run(const std::string& csvFile)
 
     for (auto clevel : { 1, 6 }) {
         for (ZL_GraphID csvParserGid : toTest) {
-            ZL_RET_R_IF_ERR(ZL_CCtx_setParameter(
+            ZL_ERR_IF_ERR(ZL_CCtx_setParameter(
                     cctx, ZL_CParam_formatVersion, ZL_MAX_FORMAT_VERSION));
-            ZL_RET_R_IF_ERR(ZL_CCtx_refCompressor(cctx, compressor_));
-            ZL_RET_R_IF_ERR(ZL_CCtx_setParameter(
+            ZL_ERR_IF_ERR(ZL_CCtx_refCompressor(cctx, compressor_));
+            ZL_ERR_IF_ERR(ZL_CCtx_setParameter(
                     cctx, ZL_CParam_compressionLevel, clevel));
             auto gssr = ZL_Compressor_selectStartingGraphID(
                     compressor_, csvParserGid);
-            ZL_RET_R_IF_ERR(gssr);
+            ZL_ERR_IF_ERR(gssr);
             std::string dst(src.size() * 2, 0);
 
             auto start = std::chrono::high_resolution_clock::now();
