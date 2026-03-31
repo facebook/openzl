@@ -6,16 +6,17 @@ ZL_Report ZL_ContextClustering_decode(
         ZL_ContextClustering* clustering,
         ZL_RC* src)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     //> Read the max symbol value
     if (ZL_RC_avail(src) < 1) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     size_t const maxSymbol = ZL_RC_pop(src);
     clustering->maxSymbol  = maxSymbol;
 
     //> Read the contextToCluster map
     if (ZL_RC_avail(src) < maxSymbol + 1) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     memcpy(clustering->contextToCluster, ZL_RC_ptr(src), maxSymbol + 1);
     ZL_RC_advance(src, maxSymbol + 1);

@@ -9,7 +9,8 @@
 
 ZL_Report ZL_getFormatVersionFromFrame(void const* src, size_t srcSize)
 {
-    ZL_RET_R_IF_LT(srcSize_tooSmall, srcSize, 4);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_LT(srcSize, 4, srcSize_tooSmall);
     uint32_t const magic = ZL_readCE32(src);
     return ZL_getFormatVersionFromMagic(magic);
 }
@@ -23,16 +24,17 @@ void ZL_writeMagicNumber(void* dst, size_t dstCapacity, uint32_t version)
 
 ZL_Report ZL_getFormatVersionFromMagic(uint32_t magic)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     // Detect invalid magic numbers - outside of the range of versions
     // we know about. Pad the top end of the range to handle versions added
     // after this library was shipped.
     if (magic < ZSTRONG_MAGIC_NUMBER_BASE || magic > ZS2_MAX_MAGIC + 16)
-        ZL_RET_R_ERR(header_unknown);
+        ZL_ERR(header_unknown);
 
     // Detect magic numbers we used for older versions that we no longer
     // support or newer versions we don't yet support.
-    ZL_RET_R_IF_LT(formatVersion_unsupported, magic, ZS2_MIN_MAGIC);
-    ZL_RET_R_IF_GT(formatVersion_unsupported, magic, ZS2_MAX_MAGIC);
+    ZL_ERR_IF_LT(magic, ZS2_MIN_MAGIC, formatVersion_unsupported);
+    ZL_ERR_IF_GT(magic, ZS2_MAX_MAGIC, formatVersion_unsupported);
 
     // Extract the supported version number.
     uint32_t const version = magic - ZSTRONG_MAGIC_NUMBER_BASE;

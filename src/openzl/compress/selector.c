@@ -71,7 +71,7 @@ ZL_Report ZL_Selector_setSuccessorParams(
         ALLOC_ARENA_MALLOC_CHECKED(
                 ZL_LocalParams, lparamsCopy, 1, selCtx->wkspArena);
         *lparamsCopy = *lparams;
-        ZL_RET_R_IF_ERR(LP_transferLocalParams(selCtx->wkspArena, lparamsCopy));
+        ZL_ERR_IF_ERR(LP_transferLocalParams(selCtx->wkspArena, lparamsCopy));
         SelectorSuccessorParams* p = selCtx->successorLParams;
         p->params                  = lparamsCopy;
     }

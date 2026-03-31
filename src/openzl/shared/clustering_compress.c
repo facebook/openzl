@@ -12,9 +12,10 @@ ZL_Report ZL_ContextClustering_encode(
         ZL_WC* dst,
         ZL_ContextClustering const* clustering)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     size_t const size = 1 + clustering->maxSymbol + 1;
     if (ZL_WC_avail(dst) < size) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
 
     //> Write max symbol value
@@ -37,6 +38,7 @@ ZL_Report ZL_cluster(
         size_t maxClusters,
         ZL_ClusteringMode mode)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     switch (mode) {
         case ZL_ClusteringMode_identity:
             ZL_ContextClustering_identity(clustering, context);
@@ -50,10 +52,10 @@ ZL_Report ZL_cluster(
                     clustering, context, maxContext, maxClusters);
             break;
         default:
-            ZL_RET_R_ERR(GENERIC);
+            ZL_ERR(GENERIC);
     }
     if (clustering->numClusters > maxClusters)
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     return ZL_returnSuccess();
 }
 

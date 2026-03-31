@@ -35,6 +35,7 @@ ZL_Report ZL_OpaquePtrRegistry_register(
         ZL_OpaquePtrRegistry* registry,
         ZL_OpaquePtr opaque)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (opaque.freeFn == NULL) {
         // Free is no-op => do not track
         return ZL_returnSuccess();
@@ -42,7 +43,7 @@ ZL_Report ZL_OpaquePtrRegistry_register(
     const bool success = VECTOR_PUSHBACK(registry->ptrs, opaque);
     if (!success) {
         ZL_OpaquePtr_free(opaque);
-        ZL_RET_R_ERR(allocation, "Failed to pushback to opaque vector");
+        ZL_ERR(allocation, "Failed to pushback to opaque vector");
     }
     return ZL_returnSuccess();
 }

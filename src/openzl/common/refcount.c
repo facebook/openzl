@@ -22,6 +22,7 @@ ZL_Report ZL_Refcount_init(
         ZL_Refcount_FreeFn freeFn,
         void* opaque)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (ctrlAlloc == NULL) {
         // just a reference, no ownership
         rc->_ref = NULL;
@@ -31,7 +32,7 @@ ZL_Report ZL_Refcount_init(
         ZL_ASSERT_NN(ctrlAlloc->sfree);
         struct ZS2_Refcount_Control* const ctrl =
                 ctrlAlloc->malloc(ctrlAlloc->opaque, sizeof(*ctrl));
-        ZL_RET_R_IF_NULL(allocation, ctrl);
+        ZL_ERR_IF_NULL(ctrl, allocation);
 
         ctrl->ptr           = ptr;
         ctrl->count         = 1;
@@ -74,9 +75,10 @@ ZL_Report ZL_Refcount_initMalloc(ZL_Refcount* rc, void* ptr)
 
 ZL_Report ZL_Refcount_initConstRef(ZL_Refcount* rc, const void* ptr)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     void* ptrMut;
     memcpy(&ptrMut, &ptr, sizeof(ptr));
-    ZL_RET_R_IF_ERR(ZL_Refcount_init(rc, ptrMut, NULL, NULL, NULL));
+    ZL_ERR_IF_ERR(ZL_Refcount_init(rc, ptrMut, NULL, NULL, NULL));
     rc->_mutable = false;
     ZL_ASSERT(!ZL_Refcount_mutable(rc));
     return ZL_returnSuccess();
@@ -84,7 +86,8 @@ ZL_Report ZL_Refcount_initConstRef(ZL_Refcount* rc, const void* ptr)
 
 ZL_Report ZL_Refcount_initMutRef(ZL_Refcount* rc, void* ptr)
 {
-    ZL_RET_R_IF_ERR(ZL_Refcount_init(rc, ptr, NULL, NULL, NULL));
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_ERR(ZL_Refcount_init(rc, ptr, NULL, NULL, NULL));
     rc->_mutable = true;
     ZL_ASSERT(ZL_Refcount_mutable(rc));
     return ZL_returnSuccess();

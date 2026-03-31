@@ -31,7 +31,7 @@ ZL_Report DI_divide_by_int(ZL_Decoder* dictx, const ZL_Input* ins[])
     ZL_RESULT_OF(uint64_t)
     const varint = ZL_varintDecode(
             &headerPtr, (const uint8_t*)header.start + header.size);
-    ZL_TRY_LET_T(uint64_t, divisor, varint);
+    ZL_TRY_LET(uint64_t, divisor, varint);
     ZL_ERR_IF_EQ(divisor, 0, node_invalid_input, "Attempt to divide by 0");
     switch (intWidth) {
         case 1:

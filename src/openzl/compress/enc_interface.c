@@ -248,10 +248,9 @@ static ZL_Report ENC_runTransform_internal(
             CT_getTrName(trDesc),
             nodeid.nid,
             nbInStreams);
-    ZL_SCOPE_GRAPH_CONTEXT(
-            eictx,
-            { .transformID = trDesc->publicDesc.gd.CTid,
-              .name        = trDesc->publicDesc.name });
+    ZL_RESULT_SCOPE_ADD_GRAPH_CONTEXT(
+            (ZL_GraphContext){ .transformID = trDesc->publicDesc.gd.CTid,
+                               .name        = trDesc->publicDesc.name });
 
     eictx->privateParam             = trDesc->privateParam;
     eictx->opaquePtr                = trDesc->publicDesc.opaque.ptr;
@@ -273,7 +272,7 @@ static ZL_Report ENC_runTransform_internal(
             eictx, ZL_codemodDatasAsInputs(inStreams), nbInStreams));
     if (ZL_isError(codecExecResult)) {
         CWAYPOINT(on_codecEncode_end, eictx, NULL, 0, codecExecResult);
-        ZL_RET_R_IF_ERR_COERCE(
+        ZL_ERR_IF_ERR_COERCE(
                 codecExecResult, "transform %s failed", CT_getTrName(trDesc));
     }
     const RTGraph* rtgm       = CCTX_getRTGraph(eictx->cctx);

@@ -46,7 +46,7 @@ ZL_Report EI_bitunpack(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     ZL_ASSERT_NN(eictx);
     ZL_ASSERT_NN(in);
     ZL_ASSERT(ZL_Input_type(in) == ZL_Type_serial);
-    ZL_TRY_LET_R(nbBits, getNbBits(eictx));
+    ZL_TRY_LET(size_t, nbBits, getNbBits(eictx));
     const void* const src = ZL_Input_ptr(in);
     size_t const srcSize  = ZL_Input_numElts(in);
 
