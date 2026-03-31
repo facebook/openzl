@@ -59,6 +59,7 @@ static SplitN_ExtParser_s getExtParser(ZL_Encoder const* eictx)
 static ZL_RESULT_OF(ZL_SplitInstructions)
         getSplitInstructions(ZL_Encoder* eictx, const ZL_Input* in)
 {
+    ZL_RESULT_DECLARE_SCOPE(ZL_SplitInstructions, eictx);
     ZL_DLOG(SEQ, "getSplitInstructions()");
 
     ZL_SplitState allocState = { eictx };
@@ -68,10 +69,9 @@ static ZL_RESULT_OF(ZL_SplitInstructions)
     if (extParser.f != NULL) {
         ZL_SplitParserFn f      = extParser.f;
         ZL_SplitInstructions si = f(&allocState, in);
-        ZL_RET_T_IF_NULL(
-                ZL_SplitInstructions,
-                nodeParameter_invalid,
+        ZL_ERR_IF_NULL(
                 si.segmentSizes,
+                nodeParameter_invalid,
                 "external parser failed to provide split instructions");
         return ZL_RESULT_WRAP_VALUE(ZL_SplitInstructions, si);
     }
@@ -79,16 +79,14 @@ static ZL_RESULT_OF(ZL_SplitInstructions)
     // Priority 2 : check for fixed-size parameters
     ZL_RefParam const segmentSizes =
             ZL_Encoder_getLocalParam(eictx, ZL_SPLITN_SEGMENTSIZES_PID);
-    ZL_RET_T_IF_EQ(
-            ZL_SplitInstructions,
-            nodeParameter_invalid,
+    ZL_ERR_IF_EQ(
             segmentSizes.paramId,
             ZL_LP_INVALID_PARAMID,
-            "can't find any instruction to split");
-    ZL_RET_T_IF_NULL(
-            ZL_SplitInstructions,
             nodeParameter_invalid,
+            "can't find any instruction to split");
+    ZL_ERR_IF_NULL(
             segmentSizes.paramRef,
+            nodeParameter_invalid,
             "instructions to split are NULL");
     // Handle the case of 0 segments (empty split)
     if (segmentSizes.paramSize == 0) {
@@ -119,7 +117,7 @@ ZL_Report EI_splitN(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
                     & ~(ZL_Type_serial | ZL_Type_struct | ZL_Type_numeric),
             0);
 
-    ZL_TRY_LET_T(ZL_SplitInstructions, si, getSplitInstructions(eictx, in));
+    ZL_TRY_LET(ZL_SplitInstructions, si, getSplitInstructions(eictx, in));
 
     size_t const inSize   = ZL_Input_numElts(in);
     size_t const eltWidth = ZL_Input_eltWidth(in);
@@ -285,12 +283,12 @@ ZL_Edge_runSplitNode(
         const size_t* segmentSizes,
         size_t nbSegments)
 {
+    ZL_RESULT_DECLARE_SCOPE(ZL_EdgeList, input);
     ZL_DLOG(SEQ, "ZL_Edge_runSplitNode");
-    ZL_RET_T_IF_GT(
-            ZL_EdgeList,
-            nodeParameter_invalid,
+    ZL_ERR_IF_GT(
             nbSegments,
             (size_t)INT_MAX,
+            nodeParameter_invalid,
             "nbSegments is too large (temporary limitation)");
 
     ZL_RefParam const segmentSizesParam = {

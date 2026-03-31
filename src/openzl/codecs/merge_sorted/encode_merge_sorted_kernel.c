@@ -123,9 +123,10 @@ ZL_FORCE_INLINE ZL_Report ZS2_MergeSorted_merge(
         size_t nbSrcs,
         size_t kBitsetWidth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     assert(kBitsetWidth <= 8);
     assert(nbSrcs <= kBitsetWidth * 8);
-    ZL_RET_R_IF_NOT(allocation, PQ_init(pq, nbSrcs));
+    ZL_ERR_IF_NOT(PQ_init(pq, nbSrcs), allocation);
 
     const uint32_t* srcs[64];
     memcpy((void*)srcs, (const void*)srcStarts, sizeof(*srcs) * nbSrcs);

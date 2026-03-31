@@ -13,7 +13,7 @@ ZL_INLINE_KEYWORD ZL_Report float_deconstruct(
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ERR_IF_GT(eltType, FLTDECON_ElementTypeEnumMaxValue, logicError);
-    ZL_TRY_LET_R(expectedEltWidth, FLTDECON_ElementWidth(eltType));
+    ZL_TRY_LET(size_t, expectedEltWidth, FLTDECON_ElementWidth(eltType));
     ZL_ERR_IF_NE(
             ZL_Input_eltWidth(in), expectedEltWidth, streamParameter_invalid);
     ZL_ASSERT_EQ(ZL_Input_type(in), ZL_Type_numeric);
@@ -29,11 +29,11 @@ ZL_INLINE_KEYWORD ZL_Report float_deconstruct(
         ZL_ERR_IF_NE(eltType, FLTDECON_ElementType_float32, logicError);
     }
 
-    ZL_TRY_LET_R(signFracWidth, FLTDECON_SignFracWidth(eltType));
+    ZL_TRY_LET(size_t, signFracWidth, FLTDECON_SignFracWidth(eltType));
     ZL_Output* signFracStream =
             ZL_Encoder_createTypedStream(eictx, 0, nbElts, signFracWidth);
 
-    ZL_TRY_LET_R(exponentWidth, FLTDECON_ExponentWidth(eltType));
+    ZL_TRY_LET(size_t, exponentWidth, FLTDECON_ExponentWidth(eltType));
     ZL_Output* exponentStream =
             ZL_Encoder_createTypedStream(eictx, 1, nbElts, exponentWidth);
 

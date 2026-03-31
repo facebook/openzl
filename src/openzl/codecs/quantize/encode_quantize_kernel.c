@@ -26,12 +26,13 @@ ZL_Report ZS2_quantize32Encode(
         ZL_Quantize32Params const* params)
 {
     ZL_ASSERT(ZL_isPow2(params->maxPow2));
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
 
     ZS_BitCStreamFF bitstream = ZS_BitCStreamFF_init(bits, bitsCapacity);
     for (size_t i = 0; i < srcSize; ++i) {
         uint32_t const value = src[i];
         if (params->maxPow2 == 0 && value == 0) {
-            ZL_RET_R_ERR(GENERIC);
+            ZL_ERR(GENERIC);
         }
         uint8_t const code = ZL_code32(value, params);
         codes[i]           = code;
@@ -39,6 +40,6 @@ ZL_Report ZS2_quantize32Encode(
         ZS_BitCStreamFF_flush(&bitstream);
     }
     ZL_Report const ret = ZS_BitCStreamFF_finish(&bitstream);
-    ZL_RET_R_IF(internalBuffer_tooSmall, ZL_isError(ret));
+    ZL_ERR_IF(ZL_isError(ret), internalBuffer_tooSmall);
     return ret;
 }
