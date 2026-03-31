@@ -67,6 +67,12 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
                 0,
                 false,
                 "Enforce strict mode compression. Fail on errors instead of falling back to generic compression.");
+        parser.addCommandFlag(
+                cmd(),
+                kNoStreamPreview,
+                0,
+                false,
+                "Omit stream preview data from the trace CBOR output. Requires --trace.");
     }
 
     explicit CompressArgs(const arg::ParsedArgs& parsed)
@@ -97,6 +103,12 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
 
         traceStreamsDir = parsed.cmdFlag(cmd(), kTraceStreamsDir);
         strict          = parsed.cmdHasFlag(cmd(), kStrict);
+        streamPreview   = !parsed.cmdHasFlag(cmd(), kNoStreamPreview);
+
+        if (!streamPreview && !traceOutput) {
+            throw InvalidArgsException(
+                    "--no-stream-preview requires --trace to be specified.");
+        }
     }
 
     static Cmd cmd()
@@ -112,7 +124,8 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
 
     std::shared_ptr<tools::io::Output> traceOutput;
     std::optional<std::string> traceStreamsDir;
-    bool strict = false;
+    bool strict        = false;
+    bool streamPreview = true;
 
    private:
     inline static const std::string kInput      = "input";
@@ -128,6 +141,7 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
     inline static const std::string kTrace           = "trace";
     inline static const std::string kTraceStreamsDir = "trace-streams-dir";
     inline static const std::string kStrict          = "strict";
+    inline static const std::string kNoStreamPreview = "no-stream-preview";
 };
 
 } // namespace openzl::cli

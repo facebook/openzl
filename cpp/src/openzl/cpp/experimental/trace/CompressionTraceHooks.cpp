@@ -193,7 +193,7 @@ void CompressionTraceHooks::on_ZL_CCtx_compressMultiTypedRef_start(
         throw std::runtime_error(
                 "Corrupted state. Trace context already exists!");
     }
-    tracer_ = std::make_unique<CompressTracer>();
+    tracer_ = std::make_unique<CompressTracer>(showStreamPreview_);
     tracer_->on_ZL_CCtx_compressMultiTypedRef_start(
             cctx, dst, dstCapacity, inputs, nbInputs);
 }

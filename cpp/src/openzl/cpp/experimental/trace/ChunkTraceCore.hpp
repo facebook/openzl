@@ -91,6 +91,13 @@ class ChunkTraceCore {
             const uint32_t* stringLens = nullptr);
 
     /**
+     * Returns a type-correct empty StreamPreview for the given ZL_Type.
+     * Used when stream preview is disabled to avoid variant type mismatches
+     * during serialization.
+     */
+    static StreamPreview emptyPreview(ZL_Type type);
+
+    /**
      * Recursively computes the compressed size (cSize) of a stream by
      * summing the cSize of its successors. Uses Stream::cSize directly
      * for memoization (0 means not yet computed).

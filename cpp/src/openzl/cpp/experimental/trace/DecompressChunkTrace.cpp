@@ -14,9 +14,11 @@
 
 namespace openzl::visualizer {
 
-DecompressChunkTrace DecompressChunkTrace::makeSegmenterChunk(size_t chunkId)
+DecompressChunkTrace DecompressChunkTrace::makeSegmenterChunk(
+        size_t chunkId,
+        bool showStreamPreview)
 {
-    auto ret = DecompressChunkTrace(chunkId);
+    auto ret = DecompressChunkTrace(chunkId, showStreamPreview);
     Codec newCodec{ .name  = "segmenter", // TODO(segm): expose segmenter name
                     .cType = false,
                     .cID   = 0, // eh?
@@ -89,12 +91,14 @@ void DecompressChunkTrace::on_codecDecode_start(
             size_t eltWidth = ZL_Data_eltWidth(inStreams[i]);
             size_t numElts  = ZL_Data_numElts(inStreams[i]);
 
-            StreamPreview preview = ChunkTraceCore::getStreamPreview(
-                    ZL_Data_rPtr(inStreams[i]),
-                    type,
-                    eltWidth,
-                    numElts,
-                    ZL_Data_rStringLens(inStreams[i]));
+            StreamPreview preview = showStreamPreview_
+                    ? ChunkTraceCore::getStreamPreview(
+                              ZL_Data_rPtr(inStreams[i]),
+                              type,
+                              eltWidth,
+                              numElts,
+                              ZL_Data_rStringLens(inStreams[i]))
+                    : ChunkTraceCore::emptyPreview(type);
 
             streamInfo_[streamID] = Stream{
                 .id            = streamID,
@@ -156,12 +160,14 @@ void DecompressChunkTrace::on_codecDecode_end(
             size_t eltWidth = ZL_Data_eltWidth(outStreams[i]);
             size_t numElts  = ZL_Data_numElts(outStreams[i]);
 
-            StreamPreview preview = ChunkTraceCore::getStreamPreview(
-                    ZL_Data_rPtr(outStreams[i]),
-                    type,
-                    eltWidth,
-                    numElts,
-                    ZL_Data_rStringLens(outStreams[i]));
+            StreamPreview preview = showStreamPreview_
+                    ? ChunkTraceCore::getStreamPreview(
+                              ZL_Data_rPtr(outStreams[i]),
+                              type,
+                              eltWidth,
+                              numElts,
+                              ZL_Data_rStringLens(outStreams[i]))
+                    : ChunkTraceCore::emptyPreview(type);
 
             streamInfo_[streamID] = Stream{
                 .id            = streamID,

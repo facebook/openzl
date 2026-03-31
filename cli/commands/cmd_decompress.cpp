@@ -92,7 +92,7 @@ int cmdDecompress(const DecompressArgs& args)
                 VERBOSE1,
                 "Tracing decompression to ",
                 args.traceOutput->name().data());
-        dctx.writeTraces(true);
+        dctx.writeTraces(true, args.streamPreview);
     }
 
     // decompress

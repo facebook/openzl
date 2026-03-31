@@ -40,6 +40,12 @@ class DecompressArgs : GlobalArgs {
                 0,
                 true,
                 "Directory to write trace streamdump to.");
+        parser.addCommandFlag(
+                cmd(),
+                kNoStreamPreview,
+                0,
+                false,
+                "Omit stream preview data from the trace CBOR output. Requires --trace.");
     }
 
     explicit DecompressArgs(const arg::ParsedArgs& parsed) : GlobalArgs(parsed)
@@ -69,6 +75,12 @@ class DecompressArgs : GlobalArgs {
         }
 
         traceStreamsDir = parsed.cmdFlag(cmd(), kTraceStreamsDir);
+        streamPreview   = !parsed.cmdHasFlag(cmd(), kNoStreamPreview);
+
+        if (!streamPreview && !traceOutput) {
+            throw InvalidArgsException(
+                    "--no-stream-preview requires --trace to be specified.");
+        }
     }
 
     static Cmd cmd()
@@ -81,6 +93,7 @@ class DecompressArgs : GlobalArgs {
 
     std::shared_ptr<tools::io::Output> traceOutput;
     std::optional<std::string> traceStreamsDir;
+    bool streamPreview = true;
 
    private:
     inline static const std::string kInput           = "input";
@@ -88,6 +101,7 @@ class DecompressArgs : GlobalArgs {
     inline static const std::string kForce           = "force";
     inline static const std::string kTrace           = "trace";
     inline static const std::string kTraceStreamsDir = "trace-streams-dir";
+    inline static const std::string kNoStreamPreview = "no-stream-preview";
 };
 
 } // namespace openzl::cli

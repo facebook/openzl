@@ -74,7 +74,7 @@ class DCtx {
     void registerCustomDecoder(const ZL_MIDecoderDesc& desc);
     void registerCustomDecoder(std::shared_ptr<CustomDecoder> decoder);
 
-    void writeTraces(bool enabled);
+    void writeTraces(bool enabled, bool streamPreview = true);
 
     /**
      * @returns a pair of the latest trace, and a map from internal stream IDs

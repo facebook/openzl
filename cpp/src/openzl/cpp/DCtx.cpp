@@ -101,13 +101,14 @@ poly::string_view DCtx::getErrorContextString(ZL_Error error) const
     return ZL_DCtx_getErrorContextString_fromError(get(), error);
 }
 
-void DCtx::writeTraces(bool enabled)
+void DCtx::writeTraces(bool enabled, bool streamPreview)
 {
     if ((bool)visHooks_ == enabled) {
         return; // no need to re-create or re-destroy the hooks
     }
     if (enabled) {
-        visHooks_ = std::make_unique<visualizer::DecompressionTraceHooks>();
+        visHooks_ = std::make_unique<visualizer::DecompressionTraceHooks>(
+                streamPreview);
         unwrap(ZL_DCtx_attachDecompressIntrospectionHooks(
                 get(), visHooks_->getRawHooks()));
     } else {

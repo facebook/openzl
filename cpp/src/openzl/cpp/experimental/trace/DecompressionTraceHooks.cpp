@@ -21,7 +21,7 @@ void DecompressionTraceHooks::on_ZL_DCtx_decompressMultiTBuffer_start(
         throw std::runtime_error(
                 "Corrupted state. Trace context already exists!");
     }
-    tracer_ = std::make_unique<DecompressTracer>();
+    tracer_ = std::make_unique<DecompressTracer>(showStreamPreview_);
     tracer_->on_ZL_DCtx_decompressMultiTBuffer_start(
             dctx, nbOutputs, framePtr, frameSize);
 }

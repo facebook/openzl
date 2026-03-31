@@ -149,13 +149,14 @@ void CCtx::selectStartingGraph(
     selectStartingGraphImpl(*this, compressor.get(), graph, params);
 }
 
-void CCtx::writeTraces(bool enabled)
+void CCtx::writeTraces(bool enabled, bool streamPreview)
 {
     if ((bool)visHooks_ == enabled) {
         return; // no need to re-create or re-destroy the hooks
     }
     if (enabled) {
-        visHooks_ = std::make_unique<visualizer::CompressionTraceHooks>();
+        visHooks_ = std::make_unique<visualizer::CompressionTraceHooks>(
+                streamPreview);
         unwrap(ZL_CCtx_attachIntrospectionHooks(
                 get(), visHooks_->getRawHooks()));
     } else {

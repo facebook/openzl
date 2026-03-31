@@ -32,12 +32,14 @@ void CompressChunkTrace::recordStartStreams(
             size_t numElts     = ZL_Input_numElts(inStreams[i]);
             size_t contentSize = ZL_Input_contentSize(inStreams[i]);
 
-            StreamPreview preview = ChunkTraceCore::getStreamPreview(
-                    ZL_Input_ptr(inStreams[i]),
-                    type,
-                    eltWidth,
-                    numElts,
-                    ZL_Input_stringLens(inStreams[i]));
+            StreamPreview preview = showStreamPreview_
+                    ? ChunkTraceCore::getStreamPreview(
+                              ZL_Input_ptr(inStreams[i]),
+                              type,
+                              eltWidth,
+                              numElts,
+                              ZL_Input_stringLens(inStreams[i]))
+                    : ChunkTraceCore::emptyPreview(type);
 
             streamInfo_[streamID] = Stream{
                 .id            = streamID,
@@ -347,12 +349,14 @@ void CompressChunkTrace::on_codecEncode_end(
         size_t contentSize =
                 openzl::unwrap(ZL_Output_contentSize(createdStream));
 
-        StreamPreview preview = ChunkTraceCore::getStreamPreview(
-                ZL_Output_constPtr(createdStream),
-                type,
-                eltWidth,
-                numElts,
-                ZL_Output_constStringLens(createdStream));
+        StreamPreview preview = showStreamPreview_
+                ? ChunkTraceCore::getStreamPreview(
+                          ZL_Output_constPtr(createdStream),
+                          type,
+                          eltWidth,
+                          numElts,
+                          ZL_Output_constStringLens(createdStream))
+                : ChunkTraceCore::emptyPreview(type);
 
         streamInfo_[streamID] = {
             .id            = streamID,
