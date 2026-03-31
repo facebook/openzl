@@ -103,6 +103,7 @@ void ZL_Encoder_sendCodecHeader(
         const void* trh,
         size_t trhSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_DLOG(SEQ, "ZL_Encoder_sendCodecHeader (%zu bytes)", trhSize);
     CWAYPOINT(on_ZL_Encoder_sendCodecHeader, eictx, trh, trhSize);
     ZL_ASSERT_NN(eictx);

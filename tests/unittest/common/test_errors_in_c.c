@@ -13,36 +13,37 @@
 
 typedef enum { FOO, BAR } Foo;
 
-#define DEFINE_ERROR_MESSAGE_CONTAINS(type_name, type)              \
-    /* typename type type_name; */                                  \
-    static ZL_Report generate_error_message_##type_name(            \
-            ZL_ScopeContext ZL__scopeContext, type arg1, type arg2) \
-    {                                                               \
-        ZL_RET_R_IF_LT(GENERIC, arg1, arg2);                        \
-        return ZL_returnSuccess();                                  \
+#define DEFINE_ERROR_MESSAGE_CONTAINS(type_name, type)        \
+    /* typename type type_name; */                            \
+    static ZL_Report generate_error_message_##type_name(      \
+            ZL_OperationContext* opCtx, type arg1, type arg2) \
+    {                                                         \
+        ZL_RESULT_DECLARE_SCOPE_REPORT(opCtx);                \
+        ZL_ERR_IF_LT(arg1, arg2, GENERIC);                    \
+        return ZL_returnSuccess();                            \
     }
 
-#define EXPECT_ERROR_MESSAGE_CONTAINS(arg1, arg2, msg)                       \
-    do {                                                                     \
-        ZL_Report _report =                                                  \
-                generate_error_message_##arg1(ZL__scopeContext, arg1, arg2); \
-        ZL_RET_R_IF_NOT(                                                     \
-                GENERIC,                                                     \
-                ZL_RES_isError(_report),                                     \
-                "ZL_RET_R_IF_LT"                                             \
-                "(" #arg1 ", " #arg2 ") failed to fail.");                   \
-        ZL_E_ADDFRAME(&ZL_RES_error(_report), ZL_EE_EMPTY, "");              \
-        const char* _str = ZL_E_str(ZL_RES_error(_report));                  \
-        ZL_RET_R_IF_NULL(GENERIC, _str, "Error message is NULL!");           \
-        const char* _found = strstr(_str, msg);                              \
-        fprintf(stderr, "%s\n", _str);                                       \
-        fprintf(stderr, "%s\n", _found);                                     \
-        ZL_RET_R_IF_NULL(                                                    \
-                GENERIC,                                                     \
-                _found,                                                      \
-                "Message '%s' not found in error message '%s'",              \
-                msg,                                                         \
-                _str);                                                       \
+#define EXPECT_ERROR_MESSAGE_CONTAINS(arg1, arg2, msg)                        \
+    do {                                                                      \
+        ZL_Report _report = generate_error_message_##arg1(opCtx, arg1, arg2); \
+        ZL_ERR_IF_NOT(                                                        \
+                ZL_RES_isError(_report),                                      \
+                GENERIC,                                                      \
+                "ZL_ERR_IF_LT"                                                \
+                "(" #arg1 ", " #arg2 ") failed to fail.");                    \
+        ZL_RES_error(_report) =                                               \
+                ZL_E_ADDFRAME(ZL_RES_error(_report), ZL_EE_EMPTY, "");        \
+        const char* _str = ZL_E_str(ZL_RES_error(_report));                   \
+        ZL_ERR_IF_NULL(_str, GENERIC, "Error message is NULL!");              \
+        const char* _found = strstr(_str, msg);                               \
+        fprintf(stderr, "%s\n", _str);                                        \
+        fprintf(stderr, "%s\n", _found);                                      \
+        ZL_ERR_IF_NULL(                                                       \
+                _found,                                                       \
+                GENERIC,                                                      \
+                "Message '%s' not found in error message '%s'",               \
+                msg,                                                          \
+                _str);                                                        \
     } while (0)
 
 DEFINE_ERROR_MESSAGE_CONTAINS(c_1, char)
@@ -82,8 +83,10 @@ DEFINE_ERROR_MESSAGE_CONTAINS(pi_1, const int32_t*)
 DEFINE_ERROR_MESSAGE_CONTAINS(e_1, Foo)
 
 ZL_Report ZS2_test_errors_binary_arg_types_deduced_in_c_inner(
-        ZL_ScopeContext ZL__scopeContext)
+        ZL_OperationContext* opCtx)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(opCtx);
+
     const char c_1       = (char)1;
     const char c_2       = c_1 + 1;
     const short h_1      = c_1;
@@ -148,39 +151,39 @@ ZL_Report ZS2_test_errors_binary_arg_types_deduced_in_c_inner(
     const Foo e_1 = FOO;
     const Foo e_2 = BAR;
 
-    ZL_RET_R_IF_EQ(GENERIC, c_1, c_2);
-    ZL_RET_R_IF_EQ(GENERIC, h_1, h_2);
-    ZL_RET_R_IF_EQ(GENERIC, i_1, i_2);
-    ZL_RET_R_IF_EQ(GENERIC, l_1, l_2);
-    ZL_RET_R_IF_EQ(GENERIC, ll_1, ll_2);
+    ZL_ERR_IF_EQ(c_1, c_2, GENERIC);
+    ZL_ERR_IF_EQ(h_1, h_2, GENERIC);
+    ZL_ERR_IF_EQ(i_1, i_2, GENERIC);
+    ZL_ERR_IF_EQ(l_1, l_2, GENERIC);
+    ZL_ERR_IF_EQ(ll_1, ll_2, GENERIC);
 
-    ZL_RET_R_IF_EQ(GENERIC, sc_1, sc_2);
-    ZL_RET_R_IF_EQ(GENERIC, sh_1, sh_2);
-    ZL_RET_R_IF_EQ(GENERIC, si_1, si_2);
-    ZL_RET_R_IF_EQ(GENERIC, sl_1, sl_2);
-    ZL_RET_R_IF_EQ(GENERIC, sll_1, sll_2);
+    ZL_ERR_IF_EQ(sc_1, sc_2, GENERIC);
+    ZL_ERR_IF_EQ(sh_1, sh_2, GENERIC);
+    ZL_ERR_IF_EQ(si_1, si_2, GENERIC);
+    ZL_ERR_IF_EQ(sl_1, sl_2, GENERIC);
+    ZL_ERR_IF_EQ(sll_1, sll_2, GENERIC);
 
-    ZL_RET_R_IF_EQ(GENERIC, uc_1, uc_2);
-    ZL_RET_R_IF_EQ(GENERIC, uh_1, uh_2);
-    ZL_RET_R_IF_EQ(GENERIC, ui_1, ui_2);
-    ZL_RET_R_IF_EQ(GENERIC, ul_1, ul_2);
-    ZL_RET_R_IF_EQ(GENERIC, ull_1, ull_2);
+    ZL_ERR_IF_EQ(uc_1, uc_2, GENERIC);
+    ZL_ERR_IF_EQ(uh_1, uh_2, GENERIC);
+    ZL_ERR_IF_EQ(ui_1, ui_2, GENERIC);
+    ZL_ERR_IF_EQ(ul_1, ul_2, GENERIC);
+    ZL_ERR_IF_EQ(ull_1, ull_2, GENERIC);
 
-    ZL_RET_R_IF_EQ(GENERIC, i8_1, i8_2);
-    ZL_RET_R_IF_EQ(GENERIC, i16_1, i16_2);
-    ZL_RET_R_IF_EQ(GENERIC, i32_1, i32_2);
-    ZL_RET_R_IF_EQ(GENERIC, i64_1, i64_2);
+    ZL_ERR_IF_EQ(i8_1, i8_2, GENERIC);
+    ZL_ERR_IF_EQ(i16_1, i16_2, GENERIC);
+    ZL_ERR_IF_EQ(i32_1, i32_2, GENERIC);
+    ZL_ERR_IF_EQ(i64_1, i64_2, GENERIC);
 
-    ZL_RET_R_IF_EQ(GENERIC, u8_1, u8_2);
-    ZL_RET_R_IF_EQ(GENERIC, u16_1, u16_2);
-    ZL_RET_R_IF_EQ(GENERIC, u32_1, u32_2);
-    ZL_RET_R_IF_EQ(GENERIC, u64_1, u64_2);
+    ZL_ERR_IF_EQ(u8_1, u8_2, GENERIC);
+    ZL_ERR_IF_EQ(u16_1, u16_2, GENERIC);
+    ZL_ERR_IF_EQ(u32_1, u32_2, GENERIC);
+    ZL_ERR_IF_EQ(u64_1, u64_2, GENERIC);
 
-    ZL_RET_R_IF_GE(GENERIC, f_1, f_2);
-    ZL_RET_R_IF_GE(GENERIC, lf_1, lf_2);
-    ZL_RET_R_IF_GE(GENERIC, llf_1, llf_2);
+    ZL_ERR_IF_GE(f_1, f_2, GENERIC);
+    ZL_ERR_IF_GE(lf_1, lf_2, GENERIC);
+    ZL_ERR_IF_GE(llf_1, llf_2, GENERIC);
 
-    ZL_RET_R_IF_EQ(GENERIC, pi_1, pi_2);
+    ZL_ERR_IF_EQ(pi_1, pi_2, GENERIC);
 
     EXPECT_ERROR_MESSAGE_CONTAINS(c_1, c_2, "(int)"); // because promotion
     EXPECT_ERROR_MESSAGE_CONTAINS(h_1, h_2, "(int)"); // because promotion
@@ -226,22 +229,21 @@ ZL_Report ZS2_test_errors_binary_arg_types_deduced_in_c_inner(
     // - ARM64 may use either depending on ABI
     // Check for both possibilities explicitly
     {
-        ZL_Report _report =
-                generate_error_message_e_1(ZL__scopeContext, e_1, e_2);
-        ZL_RET_R_IF_NOT(
-                GENERIC,
+        ZL_Report _report = generate_error_message_e_1(opCtx, e_1, e_2);
+        ZL_ERR_IF_NOT(
                 ZL_RES_isError(_report),
-                "ZL_RET_R_IF_LT(e_1, e_2) failed to fail.");
-        ZL_E_ADDFRAME(&ZL_RES_error(_report), ZL_EE_EMPTY, "");
+                GENERIC,
+                "ZL_ERR_IF_LT(e_1, e_2) failed to fail.");
+        ZL_RES_error(_report) =
+                ZL_E_ADDFRAME(ZL_RES_error(_report), ZL_EE_EMPTY, "");
         const char* _str = ZL_E_str(ZL_RES_error(_report));
-        ZL_RET_R_IF_NULL(GENERIC, _str, "Error message is NULL!");
+        ZL_ERR_IF_NULL(_str, GENERIC, "Error message is NULL!");
         const char* _found_int  = strstr(_str, "(int)");
         const char* _found_uint = strstr(_str, "(unsigned int)");
         if (!_found_int && !_found_uint) {
-            ZL_RET_R_ERR(
-                    GENERIC,
-                    "Message '(int)' or '(unsigned int)' not found in error message '%s'",
-                    _str);
+            ZL_ERR(GENERIC,
+                   "Message '(int)' or '(unsigned int)' not found in error message '%s'",
+                   _str);
         }
     }
 

@@ -241,6 +241,20 @@ struct ZL_Error_s {
         ((ZL_Error){ ._code = ZL_ErrorCode_no_error, ._info = ZL_EE_EMPTY })
 #endif
 
+ZL_INLINE ZL_ErrorInfo ZL_EE_fromStaticErrorInfo(const ZL_StaticErrorInfo* st)
+{
+    ZL_ErrorInfo ei = ZL_EE_EMPTY;
+    ei._st          = st;
+    return ei;
+}
+
+#if ZL_ERROR_ENABLE_STATIC_ERROR_INFO
+#    define ZL_EE_FROM_STATIC(name) \
+        ZL_EE_fromStaticErrorInfo(ZL_E_POINTER_TO_STATIC_ERROR_INFO(name))
+#else
+#    define ZL_EE_FROM_STATIC(name) ZL_EE_EMPTY
+#endif
+
 // Returns the ZL_Error descriptor from a ZL_RESULT_OF(<T>) object.
 #define ZL_RES_error(res) ((res)._error)
 
@@ -293,9 +307,9 @@ void ZL_E_appendToMessage(ZL_Error err, char const* fmt, ...);
  *
  * This function can be called directly, but is primarily used indirectly.
  * Firstly, if you want to invoke this function yourself, it's easier to use
- * @ref ZL_E_ADDFRAME_PUBLIC instead since it populates some of the arguments
+ * @ref ZL_E_ADDFRAME instead since it populates some of the arguments
  * for you. Secondly, this is an implementation detail mostly here to be used
- * by @ref ZL_RET_T_IF_ERR and friends, which call this to add more context to
+ * by @ref ZL_ERR_IF_ERR and friends, which call this to add more context to
  * the error as it passes by.
  *
  * @note OpenZL must have been compiled with ZL_ERROR_ENABLE_STACKS defined to
@@ -303,9 +317,10 @@ void ZL_E_appendToMessage(ZL_Error err, char const* fmt, ...);
  *
  * @returns the modified error.
  */
-ZL_Error ZL_E_addFrame_public(
+ZL_Error ZL_E_addFrame(
         ZL_ErrorContext const* ctx,
         ZL_Error error,
+        ZL_ErrorInfo backup,
         const char* file,
         const char* func,
         int line,
@@ -313,11 +328,18 @@ ZL_Error ZL_E_addFrame_public(
         ...);
 
 /**
- * Macro wrapper around @ref ZL_E_addFrame_public that automatically adds the
- * file, function, and line number macros to the args.
+ * Macro wrapper around @ref ZL_E_addFrame that automatically adds the
+ * scope context, file, function, and line number macros to the args.
  */
-#define ZL_E_ADDFRAME_PUBLIC(ctx, error, ...) \
-    ZL_E_addFrame_public(ctx, error, __FILE__, __func__, __LINE__, __VA_ARGS__)
+#define ZL_E_ADDFRAME(error, backup, ...) \
+    ZL_E_addFrame(                        \
+            &ZL__errorContext,            \
+            error,                        \
+            backup,                       \
+            __FILE__,                     \
+            __func__,                     \
+            __LINE__,                     \
+            __VA_ARGS__)
 
 /**
  * ZL_Error_Array: a const view into an array of errors, returned by some
@@ -674,8 +696,7 @@ extern "C" {
 //////////////////////////////////////////////
 
 #define ZL_WRAP_ERROR_ADD_FRAME(error) \
-    ZL_WRAP_ERROR_NO_FRAME(            \
-            ZL_E_ADDFRAME_PUBLIC(&ZL__errorContext, error, "Wrapping error."))
+    ZL_WRAP_ERROR_NO_FRAME(ZL_E_ADDFRAME(error, ZL_EE_EMPTY, "Wrapping error."))
 
 #define ZL_ERR_RET_IMPL(errcode, ...)                                      \
     do {                                                                   \
@@ -694,14 +715,20 @@ extern "C" {
         return ZL_WRAP_ERROR_NO_FRAME(__zl_tmp_error);                     \
     } while (0)
 
-#define ZL_ERR_IF_ERR_IMPL(expr, ...)                                       \
-    do {                                                                    \
-        ZL__RetType _result = ZL_WRAP_ERROR_NO_FRAME(ZL_RES_error(expr));   \
-        if (ZL_UNLIKELY(ZL_RES_isError(_result))) {                         \
-            ZL_RES_error(_result) = ZL_E_ADDFRAME_PUBLIC(                   \
-                    &ZL__errorContext, ZL_RES_error(_result), __VA_ARGS__); \
-            return _result;                                                 \
-        }                                                                   \
+#define ZL_ERR_IF_ERR_IMPL(expr, ...)                                     \
+    do {                                                                  \
+        ZL__RetType _result = ZL_WRAP_ERROR_NO_FRAME(ZL_RES_error(expr)); \
+        if (ZL_UNLIKELY(ZL_RES_isError(_result))) {                       \
+            ZL_E_DECLARE_STATIC_ERROR_INFO(                               \
+                    __zl_static_error_info,                               \
+                    ZL_ErrorCode_GENERIC,                                 \
+                    "Forwarding error: " ZS_MACRO_1ST_ARG(__VA_ARGS__));  \
+            ZL_RES_error(_result) = ZL_E_ADDFRAME(                        \
+                    ZL_RES_error(_result),                                \
+                    ZL_EE_FROM_STATIC(__zl_static_error_info),            \
+                    __VA_ARGS__);                                         \
+            return _result;                                               \
+        }                                                                 \
     } while (0)
 
 #define ZL_ERR_IF_UNARY_IMPL(expr, errcode, ...)                               \

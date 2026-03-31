@@ -187,22 +187,15 @@ ZL_INLINE ZL_ErrorInfo ZL_EI_fromSt(const ZL_StaticErrorInfo* const st)
 
 #define ZL_E_INNER(err, ...) \
     ZL_E_CODE_INNER(ZL_EXPAND_ERRCODE(err), __VA_ARGS__)
-#define ZL_E_CODE_INNER(code, ...)  \
-    ZL_E_create(                    \
-            NULL,                   \
-            ZL_GET_SCOPE_CONTEXT(), \
-            __FILE__,               \
-            __func__,               \
-            __LINE__,               \
-            code,                   \
+#define ZL_E_CODE_INNER(code, ...) \
+    ZL_E_create(                   \
+            NULL,                  \
+            &ZL__errorContext,     \
+            __FILE__,              \
+            __func__,              \
+            __LINE__,              \
+            code,                  \
             __VA_ARGS__)
-
-#if ZL_ERROR_ENABLE_STATIC_ERROR_INFO
-#    define ZL_EE_FROM_STATIC(name) \
-        ZL_EI_fromSt(ZL_E_POINTER_TO_STATIC_ERROR_INFO(name))
-#else
-#    define ZL_EE_FROM_STATIC(name) ZL_EE_EMPTY
-#endif
 
 /////////////////
 // Destruction //
@@ -286,7 +279,6 @@ char const* ZL_E_str(ZL_Error err);
                    #expr,                                             \
                    req_str);                                          \
             ZL_LOG_IFNONEMPTY(ALWAYS, "Context: ", __VA_ARGS__);      \
-            ZL_E_ADDFRAME(&_error, ZL_EE_EMPTY, "");                  \
             ZL_E_log(_error, ZL_LOG_LVL_ALWAYS);                      \
             ZL_ABORT();                                               \
         }                                                             \
@@ -306,47 +298,6 @@ ZL_DynamicErrorInfo* ZL_E_dy(ZL_Error err);
 // Get the static error info in the error. Returns nullptr if the error doesn't
 // contain an error or doesn't point at a static error.
 const ZL_StaticErrorInfo* ZL_E_st(ZL_Error err);
-
-// Append the current frame to the stack in the rich error.
-#define ZL_E_ADDFRAME(e, backup, ...) \
-    ZL_E_addFrame(                    \
-            ZL_GET_SCOPE_CONTEXT(),   \
-            e,                        \
-            backup,                   \
-            __FILE__,                 \
-            __func__,                 \
-            __LINE__,                 \
-            __VA_ARGS__)
-
-#if ZL_ERROR_ENABLE_STACKS
-void ZL_E_addFrame(
-        ZL_ErrorContext const* scopeCtx,
-        ZL_Error* e,
-        ZL_ErrorInfo backup,
-        const char* file,
-        const char* func,
-        int line,
-        char const* fmt,
-        ...);
-#else
-ZL_INLINE void ZL_E_addFrame(
-        ZL_ErrorContext const* scopeCtx,
-        ZL_Error* e,
-        ZL_ErrorInfo backup,
-        const char* file,
-        const char* func,
-        int line,
-        char const* fmt,
-        ...)
-{
-    (void)scopeCtx;
-    (void)file;
-    (void)func;
-    (void)line;
-    (void)fmt;
-    return e;
-}
-#endif // ZS_ENABLE_ERROR_STACKS
 
 void ZL_E_changeErrorCode(ZL_Error* err, ZL_ErrorCode code);
 
@@ -374,9 +325,9 @@ void ZL_E_changeErrorCode(ZL_Error* err, ZL_ErrorCode code);
             ZL_ErrorContext _scope_ctx = { .opCtx = _op_ctx };               \
             /* adding a frame will also trigger static -> dynamic error info \
              * conversion */                                                 \
-            ZL_E_addFrame(                                                   \
+            _error = ZL_E_addFrame(                                          \
                     &_scope_ctx,                                             \
-                    &_error,                                                 \
+                    _error,                                                  \
                     ZL_EE_EMPTY,                                             \
                     __FILE__,                                                \
                     __func__,                                                \
@@ -628,33 +579,39 @@ void ZL_EE_log(ZL_ErrorInfo ei, int level);
  * user-provided output buffer. If an internal call produces it, that's a logic
  * error, so we coerce it.
  */
-#define ZL_ERR_IF_ERR_COERCE_IMPL(expr, ...)                                \
-    do {                                                                    \
-        ZL__RetType _result = ZL_WRAP_ERROR_NO_FRAME(ZL_RES_error(expr));   \
-        if (ZL_UNLIKELY(ZL_RES_isError(_result))) {                         \
-            ZL_ASSERT_NE(                                                   \
-                    (int)ZL_E_code(ZL_RES_error(_result)),                  \
-                    (int)ZL_ErrorCode_dstCapacity_tooSmall,                 \
-                    "A call inside the zstrong internals produced "         \
-                    "dstCapacity_tooSmall, which should only be used at "   \
-                    "the end when interacting with the user-provided "      \
-                    "output buffer.");                                      \
-            if (ZL_E_code(ZL_RES_error(_result))                            \
-                == ZL_ErrorCode_dstCapacity_tooSmall) {                     \
-                ZL_E_changeErrorCode(                                       \
-                        &ZL_RES_error(_result), ZL_ErrorCode_logicError);   \
-                ZL_E_appendToMessage(                                       \
-                        ZL_RES_error(_result),                              \
-                        "A call inside the zstrong internals produced "     \
-                        "dstCapacity_tooSmall, which should only be used "  \
-                        "at the end when interacting with the "             \
-                        "user-provided output buffer. "                     \
-                        "Coerced to logicError.\n\t");                      \
-            }                                                               \
-            ZL_RES_error(_result) = ZL_E_ADDFRAME_PUBLIC(                   \
-                    &ZL__errorContext, ZL_RES_error(_result), __VA_ARGS__); \
-            return _result;                                                 \
-        }                                                                   \
+#define ZL_ERR_IF_ERR_COERCE_IMPL(expr, ...)                               \
+    do {                                                                   \
+        ZL__RetType _result = ZL_WRAP_ERROR_NO_FRAME(ZL_RES_error(expr));  \
+        if (ZL_UNLIKELY(ZL_RES_isError(_result))) {                        \
+            ZL_ASSERT_NE(                                                  \
+                    (int)ZL_E_code(ZL_RES_error(_result)),                 \
+                    (int)ZL_ErrorCode_dstCapacity_tooSmall,                \
+                    "A call inside the zstrong internals produced "        \
+                    "dstCapacity_tooSmall, which should only be used at "  \
+                    "the end when interacting with the user-provided "     \
+                    "output buffer.");                                     \
+            if (ZL_E_code(ZL_RES_error(_result))                           \
+                == ZL_ErrorCode_dstCapacity_tooSmall) {                    \
+                ZL_E_changeErrorCode(                                      \
+                        &ZL_RES_error(_result), ZL_ErrorCode_logicError);  \
+                ZL_E_appendToMessage(                                      \
+                        ZL_RES_error(_result),                             \
+                        "A call inside the zstrong internals produced "    \
+                        "dstCapacity_tooSmall, which should only be used " \
+                        "at the end when interacting with the "            \
+                        "user-provided output buffer. "                    \
+                        "Coerced to logicError.\n\t");                     \
+            }                                                              \
+            ZL_E_DECLARE_STATIC_ERROR_INFO(                                \
+                    __zl_static_error_info,                                \
+                    ZL_ErrorCode_GENERIC,                                  \
+                    "Forwarding error: " ZS_MACRO_1ST_ARG(__VA_ARGS__));   \
+            ZL_RES_error(_result) = ZL_E_ADDFRAME(                         \
+                    ZL_RES_error(_result),                                 \
+                    ZL_EE_FROM_STATIC(__zl_static_error_info),             \
+                    __VA_ARGS__);                                          \
+            return _result;                                                \
+        }                                                                  \
     } while (0)
 
 /**

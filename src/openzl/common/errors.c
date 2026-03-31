@@ -853,9 +853,10 @@ static ZL_Error ZL_E_addFrame_va(
     const ZL_ErrorCode code      = e._code;
     const ZL_StaticErrorInfo* st = ZL_E_st(e);
     ZL_DynamicErrorInfo* dy      = ZL_E_dy(e);
-    if (dy == NULL && scopeCtx != NULL) {
+    if (dy == NULL && scopeCtx != NULL && scopeCtx->opCtx != NULL) {
         // Existing error is missing context, add it.
-        dy      = ZL_OC_setError(scopeCtx->opCtx);
+        dy = ZL_OC_setError(scopeCtx->opCtx);
+        // NOTE: dy may still be NULL
         e._info = ZL_EI_fromDy(dy);
         if (st == NULL) {
             ZL_DEE_fill(
@@ -891,7 +892,7 @@ static ZL_Error ZL_E_addFrame_va(
                 ZL_DEE_internPrintf(dy, "Forwarding error: ");
         ZL_DEE_appendToMessage_va(dy, fmt, args);
         ZL_DEE_addFrame(dy, scopeCtx, file, func, line, messageOffset);
-    } else if (dy == NULL && st == NULL && scopeCtx == NULL) {
+    } else if (dy == NULL && st == NULL) {
         const ZL_ErrorCode backupCode = ZL_EE_code(backup);
         if (backupCode != ZL_ErrorCode_no_error
             && backupCode != ZL_ErrorCode_GENERIC) {
@@ -928,28 +929,10 @@ static ZL_Error ZL_E_addFrame_va(
     return e;
 }
 
-void ZL_E_addFrame(
-        ZL_ErrorContext const* scopeCtx,
-        ZL_Error* e,
-        const ZL_ErrorInfo backup,
-        const char* file,
-        const char* func,
-        int line,
-        const char* fmt,
-        ...)
-{
-    if (e == NULL) {
-        return;
-    }
-    va_list args;
-    va_start(args, fmt);
-    *e = ZL_E_addFrame_va(scopeCtx, *e, backup, file, func, line, fmt, args);
-    va_end(args);
-}
-
-ZL_Error ZL_E_addFrame_public(
+ZL_Error ZL_E_addFrame(
         ZL_ErrorContext const* scopeCtx,
         ZL_Error e,
+        const ZL_ErrorInfo backup,
         const char* file,
         const char* func,
         int line,
@@ -961,21 +944,27 @@ ZL_Error ZL_E_addFrame_public(
     }
     va_list args;
     va_start(args, fmt);
-    e = ZL_E_addFrame_va(scopeCtx, e, ZL_EE_EMPTY, file, func, line, fmt, args);
+    e = ZL_E_addFrame_va(scopeCtx, e, backup, file, func, line, fmt, args);
     va_end(args);
     return e;
 }
 #else  // !ZL_ERROR_ENABLE_STACKS
-ZL_Error ZL_E_addFrame_public(
-        ZL_ErrorContext const*,
+ZL_Error ZL_E_addFrame(
+        ZL_ErrorContext const* scopeCtx,
         ZL_Error e,
-        const ZL_ErrorInfo,
-        const char*,
-        const char*,
-        int,
-        const char*,
+        const ZL_ErrorInfo backup,
+        const char* file,
+        const char* func,
+        int line,
+        const char* fmt,
         ...)
 {
+    (void)scopeCtx;
+    (void)backup;
+    (void)file;
+    (void)func;
+    (void)line;
+    (void)fmt;
     return e;
 }
 #endif // ZL_ERROR_ENABLE_STACKS
@@ -1018,6 +1007,7 @@ ZL_Report ZL_reportError(
 
 ZL_Report ZL_returnError(ZL_ErrorCode err)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     // TODO : should control that err is within bounds
     return ZL_REPORT_ERROR_CODE(err);
 }

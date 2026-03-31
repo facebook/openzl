@@ -252,6 +252,7 @@ TEST(CompressIntrospectionTest, EncoderSpecific)
     auto const encfn  = [](ZL_Encoder* eictx,
                           const ZL_Input* inputs[],
                           size_t) noexcept -> ZL_Report {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
         auto so = ZL_Encoder_createTypedStream(
                 eictx,
                 0,
