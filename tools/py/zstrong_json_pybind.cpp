@@ -13,7 +13,6 @@
 #include <folly/FileUtil.h>
 #include <folly/json.h>
 
-#include "openzl/common/scope_context.h"
 #include "openzl/common/stream.h"
 #include "openzl/zl_compress.h"
 #include "openzl/zl_ctransform.h"
@@ -312,7 +311,7 @@ class PyEncoderCtx : public PyEncoderCtxImpl<ZL_Encoder> {
             return ZL_Encoder_createTypedStream(eictx, idx, nbElts, eltWidth);
         };
         *report_ = fillFromObject(
-                eictx,
+                eictx_,
                 createStream,
                 (int)idx,
                 transform_->outputType(idx),
@@ -389,7 +388,7 @@ class PyDecoderCtx {
             return ZL_Decoder_createTypedStream(dictx, idx, nbElts, eltWidth);
         };
         *report_ = fillFromObject(
-                eictx, createStream, idx, transform_->inputType(idx), stream);
+                dictx_, createStream, idx, transform_->inputType(idx), stream);
     }
 
    private:

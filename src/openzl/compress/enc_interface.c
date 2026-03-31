@@ -7,7 +7,6 @@
 #include "openzl/common/introspection.h" // WAYPOINT, ZL_CompressIntrospectionHooks
 #include "openzl/common/limits.h"
 #include "openzl/common/operation_context.h"
-#include "openzl/common/scope_context.h"
 #include "openzl/compress/cctx.h" // CCTX_*
 #include "openzl/compress/cnode.h"
 #include "openzl/compress/localparams.h"
