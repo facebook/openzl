@@ -1557,7 +1557,7 @@ TEST_F(CompressorTest, BaseGraphDynamic)
 {
     const auto name       = "!tests.graph.dyn.stub";
     const auto graph_func = [](ZL_Graph*, ZL_Edge*[], size_t) noexcept {
-        ZL_RET_R_ERR(GENERIC, "Unimplemented! Can't actually run.");
+        return ZL_REPORT_ERROR(GENERIC, "Unimplemented! Can't actually run.");
     };
     const auto validate_func = [](const ZL_Compressor*,
                                   const ZL_FunctionGraphDesc*) noexcept {
@@ -1630,7 +1630,7 @@ TEST_F(CompressorTest, CannotReplaceName)
         .name = "testParameterized",
     };
     const auto graph_func = [](ZL_Graph*, ZL_Edge*[], size_t) noexcept {
-        ZL_RET_R_ERR(GENERIC, "Unimplemented! Can't actually run.");
+        return ZL_REPORT_ERROR(GENERIC, "Unimplemented! Can't actually run.");
     };
     ZL_FunctionGraphDesc desc = {
         .name    = "testBase",
@@ -1652,7 +1652,7 @@ TEST_F(CompressorTest, CannotReplaceWhenGraphIsNotParameterized)
                        .nbCustomGraphs = 1,
     };
     const auto graph_func = [](ZL_Graph*, ZL_Edge*[], size_t) noexcept {
-        ZL_RET_R_ERR(GENERIC, "Unimplemented! Can't actually run.");
+        return ZL_REPORT_ERROR(GENERIC, "Unimplemented! Can't actually run.");
     };
     ZL_FunctionGraphDesc desc = {
         .name    = "testBase",
@@ -1675,7 +1675,7 @@ TEST_F(CompressorTest, CannotReplaceWhenGraphIsNotParameterized)
 TEST_F(CompressorTest, ReplaceGraphParamsOnlyWhenParamExists)
 {
     const auto graph_func = [](ZL_Graph*, ZL_Edge*[], size_t) noexcept {
-        ZL_RET_R_ERR(GENERIC, "Unimplemented! Can't actually run.");
+        return ZL_REPORT_ERROR(GENERIC, "Unimplemented! Can't actually run.");
     };
     ZL_GraphID customGraphs[1] = { ZL_GRAPH_ZSTD };
     ZL_NodeID customNodes[1]   = { ZL_NODE_ZIGZAG };

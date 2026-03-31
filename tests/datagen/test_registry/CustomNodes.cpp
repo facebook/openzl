@@ -64,8 +64,9 @@ ZL_NodeID createCustomTokenizeNode(ZL_Compressor* cg)
 {
     auto tokenize = [](ZL_CustomTokenizeState* ctx,
                        ZL_Input const* input) -> ZL_Report {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
         if (ZL_Input_eltWidth(input) != 4) {
-            ZL_RET_R_ERR(node_invalid_input);
+            ZL_ERR(node_invalid_input);
         }
 
         std::unordered_map<uint32_t, uint32_t> valueToIndex;
@@ -75,7 +76,7 @@ ZL_NodeID createCustomTokenizeNode(ZL_Compressor* cg)
         uint32_t* indices =
                 (uint32_t*)ZL_CustomTokenizeState_createIndexOutput(ctx, 4);
         if (indices == nullptr) {
-            ZL_RET_R_ERR(allocation);
+            ZL_ERR(allocation);
         }
 
         for (size_t i = 0; i < srcSize; ++i) {
@@ -87,7 +88,7 @@ ZL_NodeID createCustomTokenizeNode(ZL_Compressor* cg)
                 (uint32_t*)ZL_CustomTokenizeState_createAlphabetOutput(
                         ctx, valueToIndex.size());
         if (alphabet == nullptr) {
-            ZL_RET_R_ERR(allocation);
+            ZL_ERR(allocation);
         }
 
         for (auto [value, index] : valueToIndex) {

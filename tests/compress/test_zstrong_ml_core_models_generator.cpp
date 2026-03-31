@@ -55,6 +55,7 @@ class ZstrongCoreBinaryMLTest : public Test {
             const ZL_Input* inputStream,
             VECTOR(LabeledFeature) * features)
     {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
         ZL_ASSERT_EQ((int)ZL_Input_type(inputStream), (int)ZL_Type_numeric);
 
         ZL_ASSERT_EQ(ZL_Input_eltWidth(inputStream), 4);
@@ -67,7 +68,7 @@ class ZstrongCoreBinaryMLTest : public Test {
         badAlloc |= !VECTOR_PUSHBACK(*features, aFeature);
         badAlloc |= !VECTOR_PUSHBACK(*features, bFeature);
 
-        ZL_RET_R_IF(allocation, badAlloc, "Failed to add features to vector");
+        ZL_ERR_IF(badAlloc, allocation, "Failed to add features to vector");
         return ZL_returnSuccess();
     }
 
@@ -88,6 +89,7 @@ class ZstrongCoreMultiMLTest : public Test {
             const ZL_Input* inputStream,
             VECTOR(LabeledFeature) * features)
     {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
         ZL_ASSERT_EQ((int)ZL_Input_type(inputStream), (int)ZL_Type_numeric);
 
         ZL_ASSERT_EQ(ZL_Input_eltWidth(inputStream), 4);
@@ -102,7 +104,7 @@ class ZstrongCoreMultiMLTest : public Test {
         badAlloc |= !VECTOR_PUSHBACK(*features, bFeature);
         badAlloc |= !VECTOR_PUSHBACK(*features, cFeature);
 
-        ZL_RET_R_IF(allocation, badAlloc, "Failed to add features to vector");
+        ZL_ERR_IF(badAlloc, allocation, "Failed to add features to vector");
         return ZL_returnSuccess();
     }
 
