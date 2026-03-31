@@ -60,6 +60,7 @@ static DispatchNBT_ExtParser_s const* getExtParser(ZL_Encoder const* eictx)
 static ZL_RESULT_OF(ZL_DispatchInstructions)
         getSplitInstructions(ZL_Encoder* eictx, const ZL_Input* in)
 {
+    ZL_RESULT_DECLARE_SCOPE(ZL_DispatchInstructions, eictx);
     ZL_DLOG(SEQ, "getSplitInstructions()");
 
     if (ZL_Input_numElts(in) == 0) {
@@ -79,25 +80,17 @@ static ZL_RESULT_OF(ZL_DispatchInstructions)
     ZL_DispatchState state = { eictx, NULL };
 
     DispatchNBT_ExtParser_s const* s = getExtParser(eictx);
-    ZL_RET_T_IF_NULL(
-            ZL_DispatchInstructions,
-            nodeParameter_invalid,
-            s,
-            "dispatchN parser not provided");
+    ZL_ERR_IF_NULL(s, nodeParameter_invalid, "dispatchN parser not provided");
     ZL_DispatchParserFn f      = s->f;
     ZL_DispatchInstructions si = f(&state, in);
     if (si.segmentSizes == NULL) {
         if (state.message != NULL) {
-            ZL_RET_T_ERR(
-                    ZL_DispatchInstructions,
-                    nodeParameter_invalid,
-                    "External dispatchN parser failed with message: %s",
-                    state.message);
+            ZL_ERR(nodeParameter_invalid,
+                   "External dispatchN parser failed with message: %s",
+                   state.message);
         } else {
-            ZL_RET_T_ERR(
-                    ZL_DispatchInstructions,
-                    nodeParameter_invalid,
-                    "external dispatchN parser failed to provide split instructions");
+            ZL_ERR(nodeParameter_invalid,
+                   "external dispatchN parser failed to provide split instructions");
         }
     }
     return ZL_RESULT_WRAP_VALUE(ZL_DispatchInstructions, si);
@@ -116,7 +109,7 @@ EI_dispatchN_byTag(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     ZL_ASSERT_EQ(ZL_Input_type(in), ZL_Type_serial);
     ZL_ASSERT_NN(eictx);
 
-    ZL_TRY_LET_CONST_T(
+    ZL_TRY_LET_CONST(
             ZL_DispatchInstructions, si, getSplitInstructions(eictx, in));
 
     ZL_DLOG(BLOCK,

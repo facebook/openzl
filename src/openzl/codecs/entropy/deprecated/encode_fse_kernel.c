@@ -67,6 +67,7 @@ ZL_Report ZS_fseContextEncode(
         ZL_RC* ctx,
         ZL_ContextClustering const* clustering)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     size_t const numClusters = clustering->numClusters;
     ZL_ASSERT_LE(numClusters, 256);
     ZL_ASSERT_EQ(ZL_RC_avail(ctx), ZL_RC_avail(src));
@@ -86,7 +87,7 @@ ZL_Report ZS_fseContextEncode(
     }
 
     //> Write the clustering
-    ZL_RET_R_IF_ERR(ZL_ContextClustering_encode(dst, clustering));
+    ZL_ERR_IF_ERR(ZL_ContextClustering_encode(dst, clustering));
 
     //> Initialize the FSE infos & write the NCounts
     ZS_FseClusterCStates* states;

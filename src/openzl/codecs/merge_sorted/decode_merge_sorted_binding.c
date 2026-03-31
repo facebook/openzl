@@ -26,7 +26,7 @@ static ZL_Report fillDstPtrsFromHeader(
     uint8_t const* hp       = hs;
     uint64_t dstSize        = 0;
     while (hp != he) {
-        ZL_TRY_LET_T(uint64_t, size, ZL_varintDecode(&hp, he));
+        ZL_TRY_LET(uint64_t, size, ZL_varintDecode(&hp, he));
         ZL_ERR_IF(
                 ZL_overflowAddU64(dstSize, size, &dstSize),
                 corruption,

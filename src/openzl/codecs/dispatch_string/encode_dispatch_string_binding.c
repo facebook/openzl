@@ -160,10 +160,10 @@ ZL_Edge_runDispatchStringNode(
         int nbOutputs,
         const uint16_t* indices)
 {
-    ZL_RET_T_IF(
-            ZL_EdgeList,
-            nodeParameter_invalid,
+    ZL_RESULT_DECLARE_SCOPE(ZL_EdgeList, sctx);
+    ZL_ERR_IF(
             nbOutputs < 0 || nbOutputs > ZL_DISPATCH_STRING_MAX_DISPATCHES,
+            nodeParameter_invalid,
             "dispatch_string: invalid number of outputs (%i)",
             nbOutputs);
 

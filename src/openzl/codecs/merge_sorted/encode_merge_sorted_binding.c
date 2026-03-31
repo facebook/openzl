@@ -22,6 +22,7 @@ static ZL_Report getSortedRuns(
         uint32_t const* srcs[64],
         uint32_t const* srcEnds[64])
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     size_t const kMaxNbSrcs    = 64;
     uint32_t const* ip         = (uint32_t const*)ZL_Input_ptr(in);
     uint32_t const* const iend = ip + ZL_Input_numElts(in);
@@ -34,7 +35,7 @@ static ZL_Report getSortedRuns(
         if (ip[0] <= ip[-1]) {
             srcEnds[nbSrcs] = ip;
             ++nbSrcs;
-            ZL_RET_R_IF_GE(node_invalid_input, nbSrcs, kMaxNbSrcs);
+            ZL_ERR_IF_GE(nbSrcs, kMaxNbSrcs, node_invalid_input);
             srcs[nbSrcs] = ip;
         }
     }
@@ -74,7 +75,7 @@ ZL_Report EI_mergeSorted(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     ZL_ERR_IF_NE(ZL_Input_eltWidth(in), 4, node_invalid_input);
     uint32_t const* srcs[64];
     uint32_t const* srcEnds[64];
-    ZL_TRY_LET_R(nbSrcs, getSortedRuns(in, srcs, srcEnds));
+    ZL_TRY_LET(size_t, nbSrcs, getSortedRuns(in, srcs, srcEnds));
 
     int const bitsetWidthLog = nbSrcs == 0 ? 1 : ZL_nextPow2((nbSrcs + 7) / 8);
     size_t const bitsetWidth = (size_t)1 << bitsetWidthLog;
