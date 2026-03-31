@@ -347,6 +347,9 @@ static size_t compressWithGraphID(
     // disable automatic store for small data to preserve wanted behavior
     VTI_FORWARD_IF_ERROR(
             ZL_CCtx_setParameter(cctx, ZL_CParam_minStreamSize, -1));
+    // disable anti-inflation guard to preserve wanted behavior
+    VTI_FORWARD_IF_ERROR(ZL_CCtx_setParameter(
+            cctx, ZL_CParam_storeOnExpansion, ZL_TernaryParam_disable));
     VTI_FORWARD_IF_ERROR(ZL_Compressor_selectStartingGraphID(cgraph, graphID));
     VTI_FORWARD_IF_ERROR(ZL_CCtx_refCompressor(cctx, cgraph));
     VTI_RETURN_REPORT(ZL_CCtx_compress(cctx, dst, dstCapacity, src, srcSize));

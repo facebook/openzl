@@ -31,7 +31,6 @@ ZL_Report RTGM_init(RTGraph* rtgm)
     return ZL_returnSuccess();
 }
 
-static void RTGM_clearRTStreamsFrom(RTGraph* rtgraph, unsigned rank);
 void RTGM_reset(RTGraph* rtgm)
 {
     VECTOR_CLEAR(rtgm->nodes);
@@ -507,7 +506,7 @@ void RTGM_clearRTStream(
 // Remove all buffers created after that rank id.
 // WARNING ! Very dangerous operation (stateful)
 // To be used _ONLY_ in specific circumstances
-static void RTGM_clearRTStreamsFrom(RTGraph* rtgraph, unsigned rank)
+void RTGM_clearRTStreamsFrom(RTGraph* rtgraph, unsigned rank)
 {
     size_t const nbStreams = VECTOR_SIZE(rtgraph->streams);
     if (rank == nbStreams)

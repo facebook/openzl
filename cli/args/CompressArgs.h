@@ -67,6 +67,12 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
                 0,
                 false,
                 "Enforce strict mode compression. Fail on errors instead of falling back to generic compression.");
+        parser.addCommandFlag(
+                cmd(),
+                kNoStoreOnExpansion,
+                0,
+                false,
+                "Disable anti-inflation guard (do not replace expanding chunks with STORE).");
     }
 
     explicit CompressArgs(const arg::ParsedArgs& parsed)
@@ -95,8 +101,9 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
             traceOutput = std::make_shared<tools::io::OutputFile>(path);
         }
 
-        traceStreamsDir = parsed.cmdFlag(cmd(), kTraceStreamsDir);
-        strict          = parsed.cmdHasFlag(cmd(), kStrict);
+        traceStreamsDir    = parsed.cmdFlag(cmd(), kTraceStreamsDir);
+        strict             = parsed.cmdHasFlag(cmd(), kStrict);
+        noStoreOnExpansion = parsed.cmdHasFlag(cmd(), kNoStoreOnExpansion);
     }
 
     static Cmd cmd()
@@ -112,7 +119,8 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
 
     std::shared_ptr<tools::io::Output> traceOutput;
     std::optional<std::string> traceStreamsDir;
-    bool strict = false;
+    bool strict             = false;
+    bool noStoreOnExpansion = false;
 
    private:
     inline static const std::string kInput      = "input";
@@ -128,6 +136,8 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
     inline static const std::string kTrace           = "trace";
     inline static const std::string kTraceStreamsDir = "trace-streams-dir";
     inline static const std::string kStrict          = "strict";
+    inline static const std::string kNoStoreOnExpansion =
+            "no-store-on-expansion";
 };
 
 } // namespace openzl::cli
