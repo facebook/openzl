@@ -3005,8 +3005,8 @@ ZL_SDDL_State_exec(
                 const ZL_SDDL_SourceLocationPrettyString pstr =
                         ZL_RES_value(pstr_res);
                 if (pstr.str.data != NULL) {
-                    ZL_E_ADDFRAME(
-                            &ZL_RES_error(result),
+                    ZL_RES_error(result) = ZL_E_ADDFRAME(
+                            ZL_RES_error(result),
                             ZL_EE_EMPTY,
                             "\nEncountered error at position %zu while processing:\n%.*s",
                             state->pos,

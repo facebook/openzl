@@ -422,6 +422,7 @@ TEST_F(FixedTest, CustomTokenize4)
     int x         = 42;
     auto tokenize = [](ZL_CustomTokenizeState* ctx,
                        const ZL_Input* input) -> ZL_Report {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
         EXPECT_EQ(
                 *(const int*)ZL_CustomTokenizeState_getOpaquePtr(ctx), int(42));
         EXPECT_EQ(ZL_Input_eltWidth(input), size_t(4));

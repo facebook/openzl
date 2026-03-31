@@ -1557,6 +1557,7 @@ TEST_F(CompressorTest, BaseGraphDynamic)
 {
     const auto name       = "!tests.graph.dyn.stub";
     const auto graph_func = [](ZL_Graph*, ZL_Edge*[], size_t) noexcept {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
         return ZL_REPORT_ERROR(GENERIC, "Unimplemented! Can't actually run.");
     };
     const auto validate_func = [](const ZL_Compressor*,
@@ -1630,6 +1631,7 @@ TEST_F(CompressorTest, CannotReplaceName)
         .name = "testParameterized",
     };
     const auto graph_func = [](ZL_Graph*, ZL_Edge*[], size_t) noexcept {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
         return ZL_REPORT_ERROR(GENERIC, "Unimplemented! Can't actually run.");
     };
     ZL_FunctionGraphDesc desc = {
@@ -1652,6 +1654,7 @@ TEST_F(CompressorTest, CannotReplaceWhenGraphIsNotParameterized)
                        .nbCustomGraphs = 1,
     };
     const auto graph_func = [](ZL_Graph*, ZL_Edge*[], size_t) noexcept {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
         return ZL_REPORT_ERROR(GENERIC, "Unimplemented! Can't actually run.");
     };
     ZL_FunctionGraphDesc desc = {
@@ -1675,6 +1678,7 @@ TEST_F(CompressorTest, CannotReplaceWhenGraphIsNotParameterized)
 TEST_F(CompressorTest, ReplaceGraphParamsOnlyWhenParamExists)
 {
     const auto graph_func = [](ZL_Graph*, ZL_Edge*[], size_t) noexcept {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
         return ZL_REPORT_ERROR(GENERIC, "Unimplemented! Can't actually run.");
     };
     ZL_GraphID customGraphs[1] = { ZL_GRAPH_ZSTD };

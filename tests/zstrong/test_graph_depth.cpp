@@ -94,6 +94,7 @@ TEST_F(GraphDepthTest, FunctionGraphDepthAtRoot)
                 [](ZL_Graph* graph,
                    ZL_Edge* edges[],
                    size_t numEdges) noexcept {
+                    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
                     unsigned depth = ZL_Graph_getDepth(graph);
                     ZL_REQUIRE_EQ(depth, 1);
                     for (size_t i = 0; i < numEdges; ++i) {
@@ -120,6 +121,7 @@ TEST_F(GraphDepthTest, FunctionGraphDepthNested)
                 [](ZL_Graph* graph,
                    ZL_Edge* edges[],
                    size_t numEdges) noexcept {
+                    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
                     unsigned depth = ZL_Graph_getDepth(graph);
                     ZL_REQUIRE_EQ(depth, 2);
                     for (size_t i = 0; i < numEdges; ++i) {

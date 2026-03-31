@@ -45,6 +45,7 @@ TEST(ErrorsTest, errorCodeToString)
 
 TEST(ErrorsTest, errorCreation)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
     auto report = ZL_REPORT_ERROR(allocation, "fail! %d", 12345);
     ZL_E_print(ZL_RES_error(report));
     EXPECT_TRUE(ZL_isError(report));
@@ -58,6 +59,7 @@ TEST(ErrorsTest, errorCreation)
 
 TEST(ErrorsTest, requireChokeOnError)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
     auto report = ZL_REPORT_ERROR(allocation, "fail! %d", 12345);
     EXPECT_TRUE(ZL_isError(report));
     EXPECT_DEATH(ZL_REQUIRE_SUCCESS(report, "oops!"), "");
@@ -67,18 +69,19 @@ TEST(ErrorsTest, retIfs)
 {
     {
         auto f = [](int path) {
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
             switch (path) {
                 case 0:
-                    ZL_RET_T_RES(Foo, ZL_RESULT_WRAP_VALUE(Foo, kFoo));
+                    return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
                     break;
                 case 1:
-                    ZL_RET_T_ERR(Foo, GENERIC, "fail! %d", 1234);
+                    ZL_ERR(GENERIC, "fail! %d", 1234);
                     break;
                 case 2:
-                    ZL_RET_T_ERR(Foo, GENERIC, "fail!");
+                    ZL_ERR(GENERIC, "fail!");
                     break;
                 case 3:
-                    ZL_RET_T_ERR(Foo, GENERIC);
+                    ZL_ERR(GENERIC);
                     break;
                 default:
                     throw std::runtime_error("!");
@@ -91,9 +94,10 @@ TEST(ErrorsTest, retIfs)
     }
     {
         auto f = [](bool succeed) {
-            ZL_RET_T_IF(Foo, GENERIC, !succeed, "foo %d", 1234);
-            ZL_RET_T_IF(Foo, GENERIC, !succeed, "foo");
-            ZL_RET_T_IF(Foo, GENERIC, !succeed);
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+            ZL_ERR_IF(!succeed, GENERIC, "foo %d", 1234);
+            ZL_ERR_IF(!succeed, GENERIC, "foo");
+            ZL_ERR_IF(!succeed, GENERIC);
             return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
         };
         EXPECT_FALSE(ZL_RES_isError(f(true)));
@@ -101,9 +105,10 @@ TEST(ErrorsTest, retIfs)
     }
     {
         auto f = [](bool succeed) {
-            ZL_RET_T_IF_NE(Foo, GENERIC, 1, 2 - (int)succeed, "foo %d", 1234);
-            ZL_RET_T_IF_NE(Foo, GENERIC, 1, 2 - (int)succeed, "foo");
-            ZL_RET_T_IF_NE(Foo, GENERIC, 1, 2 - (int)succeed);
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+            ZL_ERR_IF_NE(1, 2 - (int)succeed, GENERIC, "foo %d", 1234);
+            ZL_ERR_IF_NE(1, 2 - (int)succeed, GENERIC, "foo");
+            ZL_ERR_IF_NE(1, 2 - (int)succeed, GENERIC);
             return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
         };
         EXPECT_FALSE(ZL_RES_isError(f(true)));
@@ -111,9 +116,10 @@ TEST(ErrorsTest, retIfs)
     }
     {
         auto f = [](bool succeed) {
-            ZL_RET_T_IF_EQ(Foo, GENERIC, 1, 1 + (int)succeed, "foo %d", 1234);
-            ZL_RET_T_IF_EQ(Foo, GENERIC, 1, 1 + (int)succeed, "foo");
-            ZL_RET_T_IF_EQ(Foo, GENERIC, 1, 1 + (int)succeed);
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+            ZL_ERR_IF_EQ(1, 1 + (int)succeed, GENERIC, "foo %d", 1234);
+            ZL_ERR_IF_EQ(1, 1 + (int)succeed, GENERIC, "foo");
+            ZL_ERR_IF_EQ(1, 1 + (int)succeed, GENERIC);
             return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
         };
         EXPECT_FALSE(ZL_RES_isError(f(true)));
@@ -121,10 +127,10 @@ TEST(ErrorsTest, retIfs)
     }
     {
         auto f = [](bool succeed) {
-            ZL_RET_T_IF_GE(
-                    Foo, GENERIC, 2, 1 + (2 * (int)succeed), "foo %d", 1234);
-            ZL_RET_T_IF_GE(Foo, GENERIC, 2, 1 + (2 * (int)succeed), "foo");
-            ZL_RET_T_IF_GE(Foo, GENERIC, 2, 1 + (2 * (int)succeed));
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+            ZL_ERR_IF_GE(2, 1 + (2 * (int)succeed), GENERIC, "foo %d", 1234);
+            ZL_ERR_IF_GE(2, 1 + (2 * (int)succeed), GENERIC, "foo");
+            ZL_ERR_IF_GE(2, 1 + (2 * (int)succeed), GENERIC);
             return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
         };
         EXPECT_FALSE(ZL_RES_isError(f(true)));
@@ -132,10 +138,10 @@ TEST(ErrorsTest, retIfs)
     }
     {
         auto f = [](bool succeed) {
-            ZL_RET_T_IF_LE(
-                    Foo, GENERIC, 1 + (2 * (int)succeed), 2, "foo %d", 1234);
-            ZL_RET_T_IF_LE(Foo, GENERIC, 1 + (2 * (int)succeed), 2, "foo");
-            ZL_RET_T_IF_LE(Foo, GENERIC, 1 + (2 * (int)succeed), 2);
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+            ZL_ERR_IF_LE(1 + (2 * (int)succeed), 2, GENERIC, "foo %d", 1234);
+            ZL_ERR_IF_LE(1 + (2 * (int)succeed), 2, GENERIC, "foo");
+            ZL_ERR_IF_LE(1 + (2 * (int)succeed), 2, GENERIC);
             return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
         };
         EXPECT_FALSE(ZL_RES_isError(f(true)));
@@ -143,10 +149,10 @@ TEST(ErrorsTest, retIfs)
     }
     {
         auto f = [](bool succeed) {
-            ZL_RET_T_IF_GT(
-                    Foo, GENERIC, 2, 1 + (2 * (int)succeed), "foo %d", 1234);
-            ZL_RET_T_IF_GT(Foo, GENERIC, 2, 1 + (2 * (int)succeed), "foo");
-            ZL_RET_T_IF_GT(Foo, GENERIC, 2, 1 + (2 * (int)succeed));
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+            ZL_ERR_IF_GT(2, 1 + (2 * (int)succeed), GENERIC, "foo %d", 1234);
+            ZL_ERR_IF_GT(2, 1 + (2 * (int)succeed), GENERIC, "foo");
+            ZL_ERR_IF_GT(2, 1 + (2 * (int)succeed), GENERIC);
             return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
         };
         EXPECT_FALSE(ZL_RES_isError(f(true)));
@@ -154,9 +160,10 @@ TEST(ErrorsTest, retIfs)
     }
     {
         auto f = [](bool succeed) {
-            ZL_RET_T_IF_AND(Foo, GENERIC, true, !succeed, "foo %d", 1234);
-            ZL_RET_T_IF_AND(Foo, GENERIC, true, !succeed, "foo");
-            ZL_RET_T_IF_AND(Foo, GENERIC, true, !succeed);
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+            ZL_ERR_IF_AND(true, !succeed, GENERIC, "foo %d", 1234);
+            ZL_ERR_IF_AND(true, !succeed, GENERIC, "foo");
+            ZL_ERR_IF_AND(true, !succeed, GENERIC);
             return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
         };
         EXPECT_FALSE(ZL_RES_isError(f(true)));
@@ -164,9 +171,10 @@ TEST(ErrorsTest, retIfs)
     }
     {
         auto f = [](bool succeed) {
-            ZL_RET_T_IF_OR(Foo, GENERIC, false, !succeed, "foo %d", 1234);
-            ZL_RET_T_IF_OR(Foo, GENERIC, false, !succeed, "foo");
-            ZL_RET_T_IF_OR(Foo, GENERIC, false, !succeed);
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+            ZL_ERR_IF_OR(false, !succeed, GENERIC, "foo %d", 1234);
+            ZL_ERR_IF_OR(false, !succeed, GENERIC, "foo");
+            ZL_ERR_IF_OR(false, !succeed, GENERIC);
             return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
         };
         EXPECT_FALSE(ZL_RES_isError(f(true)));
@@ -175,17 +183,17 @@ TEST(ErrorsTest, retIfs)
     {
         ZL_OperationContext opCtx{};
         ZL_OC_init(&opCtx);
-        ZL_ScopeContext ZL__scopeContext{ &opCtx, {} };
-        auto f = [&ZL__scopeContext](bool succeed) mutable {
+        auto f = [&](bool succeed) mutable {
+            ZL_RESULT_DECLARE_SCOPE(Foo, &opCtx);
             ZL_Report report;
             if (succeed) {
                 report = ZL_returnValue(1234);
             } else {
                 report = ZL_REPORT_ERROR(corruption, "foo %d", 1234);
             }
-            ZL_RET_T_IF_ERR(Foo, report, "bar %d", 5678);
-            ZL_RET_T_IF_ERR(Foo, report, "bar");
-            ZL_RET_T_IF_ERR(Foo, report);
+            ZL_ERR_IF_ERR(report, "bar %d", 5678);
+            ZL_ERR_IF_ERR(report, "bar");
+            ZL_ERR_IF_ERR(report);
             return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
         };
         EXPECT_FALSE(ZL_RES_isError(f(true)));
@@ -200,10 +208,10 @@ TEST(ErrorsTest, retIfs)
     }
     {
         auto f = [](bool succeed) {
-            ZL_RET_T_IF_NULL(
-                    Foo, GENERIC, succeed ? "foo" : nullptr, "foo %d", 1234);
-            ZL_RET_T_IF_NULL(Foo, GENERIC, succeed ? "foo" : nullptr, "foo");
-            ZL_RET_T_IF_NULL(Foo, GENERIC, succeed ? "foo" : nullptr);
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+            ZL_ERR_IF_NULL(succeed ? "foo" : nullptr, GENERIC, "foo %d", 1234);
+            ZL_ERR_IF_NULL(succeed ? "foo" : nullptr, GENERIC, "foo");
+            ZL_ERR_IF_NULL(succeed ? "foo" : nullptr, GENERIC);
             return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
         };
         EXPECT_FALSE(ZL_RES_isError(f(true)));
@@ -211,10 +219,10 @@ TEST(ErrorsTest, retIfs)
     }
     {
         auto f = [](bool succeed) {
-            ZL_RET_T_IF_NN(
-                    Foo, GENERIC, !succeed ? "foo" : nullptr, "foo %d", 1234);
-            ZL_RET_T_IF_NN(Foo, GENERIC, !succeed ? "foo" : nullptr, "foo");
-            ZL_RET_T_IF_NN(Foo, GENERIC, !succeed ? "foo" : nullptr);
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+            ZL_ERR_IF_NN(!succeed ? "foo" : nullptr, GENERIC, "foo %d", 1234);
+            ZL_ERR_IF_NN(!succeed ? "foo" : nullptr, GENERIC, "foo");
+            ZL_ERR_IF_NN(!succeed ? "foo" : nullptr, GENERIC);
             return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
         };
         EXPECT_FALSE(ZL_RES_isError(f(true)));
@@ -229,20 +237,23 @@ TEST(ErrorsTest, errorForwardingTransportsSourceErrorInfo)
         ZL_OC_init(&opCtx);
 
         auto makeReportWithoutContext = []() {
+            ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
             return ZL_REPORT_ERROR(corruption, "foo %d", 1234);
         };
         auto makeReportWithStContext = []() mutable {
-            ZL_RET_R_ERR(corruption, "foo %d", 1234);
+            ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
+            ZL_ERR(corruption, "foo %d", 1234);
         };
         auto makeReportWithDyContext = [&opCtx]() mutable {
-            ZL_ScopeContext ZL__scopeContext{ &opCtx, {} };
+            ZL_RESULT_DECLARE_SCOPE_REPORT(&opCtx);
             return ZL_REPORT_ERROR(corruption, "foo %d", 1234);
         };
 
         auto addFrameWithoutContext =
                 [](auto result, std::string fmt, std::string msg) -> auto {
-            ZL_E_ADDFRAME(
-                    &ZL_RES_error(result),
+            ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
+            ZL_RES_error(result) = ZL_E_ADDFRAME(
+                    ZL_RES_error(result),
                     ZL_EE_EMPTY,
                     fmt.c_str(),
                     msg.c_str());
@@ -250,9 +261,9 @@ TEST(ErrorsTest, errorForwardingTransportsSourceErrorInfo)
         };
         auto addFrameWithContext =
                 [&](auto result, std::string fmt, std::string msg) -> auto {
-            ZL_ScopeContext ZL__scopeContext{ &opCtx, {} };
-            ZL_E_ADDFRAME(
-                    &ZL_RES_error(result),
+            ZL_RESULT_DECLARE_SCOPE_REPORT(&opCtx);
+            ZL_RES_error(result) = ZL_E_ADDFRAME(
+                    ZL_RES_error(result),
                     ZL_EE_EMPTY,
                     fmt.c_str(),
                     msg.c_str());
@@ -260,16 +271,17 @@ TEST(ErrorsTest, errorForwardingTransportsSourceErrorInfo)
         };
 
         auto retIfErrWithoutContext = [](ZL_Report report) {
-            ZL_RET_R_IF_ERR(report, "bar %d", 5678);
-            ZL_RET_R_IF_ERR(report, "bar");
-            ZL_RET_R_IF_ERR(report);
+            ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
+            ZL_ERR_IF_ERR(report, "bar %d", 5678);
+            ZL_ERR_IF_ERR(report, "bar");
+            ZL_ERR_IF_ERR(report);
             return ZL_returnValue(1234);
         };
         auto retIfErrWithContext = [&opCtx](ZL_Report report) mutable {
-            ZL_ScopeContext ZL__scopeContext{ &opCtx, {} };
-            ZL_RET_R_IF_ERR(report, "bar %d", 5678);
-            ZL_RET_R_IF_ERR(report, "bar");
-            ZL_RET_R_IF_ERR(report);
+            ZL_RESULT_DECLARE_SCOPE_REPORT(&opCtx);
+            ZL_ERR_IF_ERR(report, "bar %d", 5678);
+            ZL_ERR_IF_ERR(report, "bar");
+            ZL_ERR_IF_ERR(report);
             return ZL_returnValue(1234);
         };
 
@@ -569,7 +581,7 @@ TEST(ErrorsTest, ErrorInfoWorks)
     ZL_OperationContext opCtx{};
     ZL_OC_init(&opCtx);
     {
-        ZL_ScopeContext scopeCtx{ &opCtx, { .nodeID = { 5 } } };
+        ZL_ErrorContext scopeCtx{ &opCtx, { .nodeID = { 5 } } };
 
         // Create an error with a context
         auto error = ZL_E_create(
@@ -605,9 +617,9 @@ TEST(ErrorsTest, ErrorInfoWorks)
         scopeCtx.graphCtx.graphID.gid = 7;
         scopeCtx.graphCtx.transformID = 8;
 
-        ZL_E_addFrame(
+        error = ZL_E_addFrame(
                 &scopeCtx,
-                &error,
+                error,
                 {},
                 "MyFile2",
                 "MyFunc2",
@@ -685,9 +697,9 @@ TEST(ErrorsTest, ErrorInfoWorks)
         scopeCtx.graphCtx.graphID.gid = 0;
         scopeCtx.graphCtx.transformID = 0;
 
-        ZL_E_addFrame(
+        error = ZL_E_addFrame(
                 &scopeCtx,
-                &error,
+                error,
                 {},
                 "MyFile2",
                 "MyFile2",
@@ -717,19 +729,19 @@ TEST(ErrorsTest, ErrorInfoWorks)
         EXPECT_EQ(ZL_OC_numErrors(&opCtx), 0u);
 
         // Add a frame without a context
-        ZL_E_addFrame(
-                nullptr, &error, {}, "MyFile2", "MyFile2", 100, "MyFmtString2");
+        error = ZL_E_addFrame(
+                nullptr, error, {}, "MyFile2", "MyFile2", 100, "MyFmtString2");
 
         EXPECT_EQ(ZL_E_dy(error), nullptr);
         EXPECT_EQ(ZL_OC_numErrors(&opCtx), 0u);
 
         {
             // Add a frame with a context
-            ZL_ScopeContext scopeCtx{ &opCtx };
+            ZL_ErrorContext scopeCtx{ &opCtx };
 
-            // Add a frame without a context
-            ZL_E_addFrame(
-                    &scopeCtx, &error, {}, "MyFile3", "MyFile3", 300, "Fmt3");
+            // Add a frame with a context
+            error = ZL_E_addFrame(
+                    &scopeCtx, error, {}, "MyFile3", "MyFile3", 300, "Fmt3");
 
             EXPECT_NE(ZL_E_dy(error), nullptr);
             EXPECT_EQ(ZL_OC_numErrors(&opCtx), 1u);
@@ -744,7 +756,8 @@ TEST(ErrorsTest, ErrorInfoWorks)
         }
 
         // Add a frame without a context, but already in error
-        ZL_E_addFrame(nullptr, &error, {}, "MyFile4", "MyFile4", 400, "Fmt4");
+        error = ZL_E_addFrame(
+                nullptr, error, {}, "MyFile4", "MyFile4", 400, "Fmt4");
 
         EXPECT_NE(ZL_E_dy(error), nullptr);
         EXPECT_EQ(ZL_EE_code(error._info), ZL_ErrorCode_allocation);
@@ -789,10 +802,10 @@ static void testStaticErrorInfo(ZL_Error& e, const std::string& needle = "")
         ZL_OperationContext opCtx{};
         ZL_OC_init(&opCtx);
 
-        ZL_ScopeContext scopeCtx{ &opCtx, { .nodeID = { 5 } } };
+        ZL_ErrorContext scopeCtx{ &opCtx, { .nodeID = { 5 } } };
 
-        ZL_E_addFrame(
-                &scopeCtx, &e, {}, "MyFile", "MyFunc", 123, "MoarTxt %d", 1234);
+        e = ZL_E_addFrame(
+                &scopeCtx, e, {}, "MyFile", "MyFunc", 123, "MoarTxt %d", 1234);
 
         auto str = std::string(ZL_E_str(e));
         EXPECT_NE(str.find(needle), std::string::npos);
@@ -805,15 +818,16 @@ TEST(ErrorsTest, StaticErrorInfo)
 {
     {
         auto f = [](int path) {
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
             switch (path) {
                 case 0:
-                    ZL_RET_T_ERR(Foo, corruption);
+                    ZL_ERR(corruption);
                     break;
                 case 1:
-                    ZL_RET_T_ERR(Foo, corruption, "BeepBeep!");
+                    ZL_ERR(corruption, "BeepBeep!");
                     break;
                 case 2:
-                    ZL_RET_T_ERR(Foo, corruption, "BeepBeep %d", 1234);
+                    ZL_ERR(corruption, "BeepBeep %d", 1234);
                     break;
                 default:
                     throw std::runtime_error("!");
@@ -829,7 +843,8 @@ TEST(ErrorsTest, StaticErrorInfo)
     }
     {
         auto f = [](bool succeed) {
-            ZL_RET_T_IF(Foo, corruption, !succeed, "BeepBeep!");
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+            ZL_ERR_IF(!succeed, corruption, "BeepBeep!");
             return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
         };
 
@@ -840,20 +855,19 @@ TEST(ErrorsTest, StaticErrorInfo)
     }
     {
         auto f = [](int path) {
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
             const auto condition_expression = true;
             switch (path) {
                 case 0:
-                    ZL_RET_T_IF(Foo, corruption, condition_expression);
+                    ZL_ERR_IF(condition_expression, corruption);
                     break;
                 case 1:
-                    ZL_RET_T_IF(
-                            Foo, corruption, condition_expression, "BeepBeep!");
+                    ZL_ERR_IF(condition_expression, corruption, "BeepBeep!");
                     break;
                 case 2:
-                    ZL_RET_T_IF(
-                            Foo,
-                            corruption,
+                    ZL_ERR_IF(
                             condition_expression,
+                            corruption,
                             "BeepBeep %d",
                             1234);
                     break;
@@ -871,18 +885,18 @@ TEST(ErrorsTest, StaticErrorInfo)
     }
     {
         auto f = [](int path) {
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
             const auto val1 = 1;
             const auto val2 = 2;
             switch (path) {
                 case 0:
-                    ZL_RET_T_IF_NE(Foo, corruption, val1, val2);
+                    ZL_ERR_IF_NE(val1, val2, corruption);
                     break;
                 case 1:
-                    ZL_RET_T_IF_NE(Foo, corruption, val1, val2, "BeepBeep!");
+                    ZL_ERR_IF_NE(val1, val2, corruption, "BeepBeep!");
                     break;
                 case 2:
-                    ZL_RET_T_IF_NE(
-                            Foo, corruption, val1, val2, "BeepBeep %d", 1234);
+                    ZL_ERR_IF_NE(val1, val2, corruption, "BeepBeep %d", 1234);
                     break;
                 default:
                     throw std::runtime_error("!");
@@ -901,8 +915,9 @@ TEST(ErrorsTest, StaticErrorInfo)
 TEST(ErrorsTest, StaticInfoStringContainsPercentSymbol)
 {
     auto f = [](bool succeed) {
+        ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
         int x = !succeed;
-        ZL_RET_T_IF(Foo, corruption, x % 2);
+        ZL_ERR_IF(x % 2, corruption);
         return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
     };
 
@@ -919,9 +934,9 @@ TEST(ErrorsTest, StaticInfoStringContainsPercentSymbol)
 
     ZL_OperationContext opCtx{};
     ZL_OC_init(&opCtx);
-    ZL_ScopeContext scopeCtx{ &opCtx, {} };
+    ZL_ErrorContext scopeCtx{ &opCtx, {} };
 
-    ZL_E_addFrame(&scopeCtx, &e, {}, "a", "b", 123, "c %d", 1234);
+    e = ZL_E_addFrame(&scopeCtx, e, {}, "a", "b", 123, "c %d", 1234);
 
     {
         auto str = std::string(ZL_E_str(e));
@@ -935,11 +950,11 @@ TEST(ErrorsTest, DynamicInfoStringContainsPercentSymbol)
 {
     ZL_OperationContext opCtx{};
     ZL_OC_init(&opCtx);
-    ZL_ScopeContext ZL__scopeContext{ &opCtx, {} };
 
     auto f = [&](bool succeed) mutable {
+        ZL_RESULT_DECLARE_SCOPE(Foo, &opCtx);
         int x = !succeed;
-        ZL_RET_T_IF(Foo, corruption, x % 2);
+        ZL_ERR_IF(x % 2, corruption);
         return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
     };
 
@@ -959,12 +974,15 @@ TEST(ErrorsTest, CoerceInternalErrors)
 {
     ZL_OperationContext opCtx{};
     ZL_OC_init(&opCtx);
-    ZL_ScopeContext ZL__scopeContext{ &opCtx, {} };
 
-    auto f = [&]() mutable { ZL_RET_T_ERR(Foo, dstCapacity_tooSmall, "oops"); };
+    auto f = [&]() mutable {
+        ZL_RESULT_DECLARE_SCOPE(Foo, &opCtx);
+        ZL_ERR(dstCapacity_tooSmall, "oops");
+    };
 
     auto g = [&](ZL_RESULT_OF(Foo) & res) {
-        ZL_RET_T_IF_ERR_COERCE(Foo, res, "fail");
+        ZL_RESULT_DECLARE_SCOPE(Foo, &opCtx);
+        ZL_ERR_IF_ERR_COERCE(res, "fail");
         return res;
     };
 
@@ -986,7 +1004,10 @@ TEST(ErrorsTest, CoerceInternalErrors)
 
 TEST(ErrorsTest, LogicErrorGoesBoom)
 {
-    auto f = [&]() mutable { ZL_RET_T_ERR(Foo, logicError, "oops"); };
+    auto f = [&]() mutable {
+        ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+        ZL_ERR(logicError, "oops");
+    };
     ZL_RESULT_OF(Foo) r;
 #if ZL_ENABLE_ASSERT
     ASSERT_DEATH({ r = f(); }, "oops");
@@ -1002,10 +1023,9 @@ TEST(ErrorsTest, BinaryTestArgTypesDeducedInC)
 
     ZL_OperationContext opCtx{};
     ZL_OC_init(&opCtx);
-    ZL_ScopeContext scopeCtx{ &opCtx, {} };
 
     ZL_Report report =
-            ZS2_test_errors_binary_arg_types_deduced_in_c_inner(scopeCtx);
+            ZS2_test_errors_binary_arg_types_deduced_in_c_inner(&opCtx);
     if (ZL_RES_isError(report)) {
         ZL_E_print(ZL_RES_error(report));
     }
@@ -1018,21 +1038,23 @@ TEST(ErrorsTest, BinaryTestArgTypesDeducedInC)
 TEST(ErrorsTest, TrySet)
 {
     const auto inner = [](bool succeed) -> ZL_RESULT_OF(Foo) {
-        ZL_RET_T_IF(Foo, GENERIC, !succeed);
+        ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+        ZL_ERR_IF(!succeed, GENERIC);
         const Foo foo{
             .val = 1234,
         };
-        ZL_RET_T_VAL(Foo, foo);
+        return ZL_WRAP_VALUE(foo);
     };
 
     const auto outer = [&inner](bool succeed) -> ZL_RESULT_OF(Bar) {
+        ZL_RESULT_DECLARE_SCOPE(Bar, nullptr);
         Foo var;
-        ZL_TRY_SET_TT(Bar, Foo, var, inner(succeed));
+        ZL_TRY_SET(Foo, var, inner(succeed));
         EXPECT_TRUE(succeed);
         const Bar bar{
             .val = var.val,
         };
-        ZL_RET_T_VAL(Bar, bar);
+        return ZL_WRAP_VALUE(bar);
     };
 
     auto res = outer(false);
@@ -1046,21 +1068,23 @@ TEST(ErrorsTest, TrySet)
 TEST(ErrorsTest, TryLet)
 {
     const auto inner = [](bool succeed) -> ZL_RESULT_OF(Foo) {
-        ZL_RET_T_IF(Foo, GENERIC, !succeed);
+        ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+        ZL_ERR_IF(!succeed, GENERIC);
         const Foo foo{
             .val = 1234,
         };
-        ZL_RET_T_VAL(Foo, foo);
+        return ZL_WRAP_VALUE(foo);
     };
 
     const auto outer = [&inner](bool succeed) -> ZL_RESULT_OF(Bar) {
-        ZL_TRY_LET_TT(Bar, Foo, var, inner(succeed));
+        ZL_RESULT_DECLARE_SCOPE(Bar, nullptr);
+        ZL_TRY_LET(Foo, var, inner(succeed));
         EXPECT_TRUE(succeed);
         var.val++;
         const Bar bar{
             .val = var.val,
         };
-        ZL_RET_T_VAL(Bar, bar);
+        return ZL_WRAP_VALUE(bar);
     };
 
     auto res = outer(false);
@@ -1074,20 +1098,22 @@ TEST(ErrorsTest, TryLet)
 TEST(ErrorsTest, TryLetConst)
 {
     const auto inner = [](bool succeed) -> ZL_RESULT_OF(Foo) {
-        ZL_RET_T_IF(Foo, GENERIC, !succeed);
+        ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+        ZL_ERR_IF(!succeed, GENERIC);
         const Foo foo{
             .val = 1234,
         };
-        ZL_RET_T_VAL(Foo, foo);
+        return ZL_WRAP_VALUE(foo);
     };
 
     const auto outer = [&inner](bool succeed) -> ZL_RESULT_OF(Bar) {
-        ZL_TRY_LET_CONST_TT(Bar, Foo, var, inner(succeed));
+        ZL_RESULT_DECLARE_SCOPE(Bar, nullptr);
+        ZL_TRY_LET_CONST(Foo, var, inner(succeed));
         EXPECT_TRUE(succeed);
         const Bar bar{
             .val = var.val,
         };
-        ZL_RET_T_VAL(Bar, bar);
+        return ZL_WRAP_VALUE(bar);
     };
 
     auto res = outer(false);
@@ -1211,11 +1237,12 @@ TEST(ErrorsTest, EmptyDeclaredGetsDynInPassing)
 TEST(ErrorsTest, TrySetNew)
 {
     const auto inner = [](bool succeed) -> ZL_RESULT_OF(Foo) {
-        ZL_RET_T_IF(Foo, GENERIC, !succeed);
+        ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+        ZL_ERR_IF(!succeed, GENERIC);
         const Foo foo{
             .val = 1234,
         };
-        ZL_RET_T_VAL(Foo, foo);
+        return ZL_WRAP_VALUE(foo);
     };
 
     const auto outer = [&inner](bool succeed) -> ZL_RESULT_OF(Bar) {
@@ -1240,11 +1267,12 @@ TEST(ErrorsTest, TrySetNew)
 TEST(ErrorsTest, TryLetNew)
 {
     const auto inner = [](bool succeed) -> ZL_RESULT_OF(Foo) {
-        ZL_RET_T_IF(Foo, GENERIC, !succeed);
+        ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+        ZL_ERR_IF(!succeed, GENERIC);
         const Foo foo{
             .val = 1234,
         };
-        ZL_RET_T_VAL(Foo, foo);
+        return ZL_WRAP_VALUE(foo);
     };
 
     const auto outer = [&inner](bool succeed) -> ZL_RESULT_OF(Bar) {
@@ -1268,11 +1296,12 @@ TEST(ErrorsTest, TryLetNew)
 TEST(ErrorsTest, TryLetConstNew)
 {
     const auto inner = [](bool succeed) -> ZL_RESULT_OF(Foo) {
-        ZL_RET_T_IF(Foo, GENERIC, !succeed);
+        ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+        ZL_ERR_IF(!succeed, GENERIC);
         const Foo foo{
             .val = 1234,
         };
-        ZL_RET_T_VAL(Foo, foo);
+        return ZL_WRAP_VALUE(foo);
     };
 
     const auto outer = [&inner](bool succeed) -> ZL_RESULT_OF(Bar) {
