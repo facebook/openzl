@@ -24,10 +24,11 @@ constexpr ZL_TypedDecoderDesc kTransform = {
         .nbOutStreams = kOutStreamTypes.size(),
     },
     .transform_f = [](ZL_Decoder* dictx, ZL_Input const* ins[]) noexcept {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
         ZL_Output* out = ZL_Decoder_create1OutStream(dictx, ZL_Input_numElts(ins[0]), 1);
-        ZL_RET_R_IF_NULL(allocation, out);
+        ZL_ERR_IF_NULL(out, allocation);
         memcpy(ZL_Output_ptr(out), ZL_Input_ptr(ins[0]), ZL_Input_numElts(ins[0]));
-        ZL_RET_R_IF_ERR(ZL_Output_commit(out, ZL_Input_numElts(ins[0])));
+        ZL_ERR_IF_ERR(ZL_Output_commit(out, ZL_Input_numElts(ins[0])));
         return ZL_returnSuccess();
     },
 };

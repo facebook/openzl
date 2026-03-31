@@ -239,13 +239,14 @@ TEST_F(SelectorTest, TestSetSuccessorParams)
     const auto successorDgFn = [](ZL_Graph* gctx,
                                   ZL_Edge* inputs[],
                                   size_t nbIns) noexcept -> ZL_Report {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
         // verify passed params
         const auto p1 = ZL_Graph_getLocalIntParam(gctx, 1);
-        ZL_RET_R_IF_NE(GENERIC, p1.paramValue, 2);
+        ZL_ERR_IF_NE(p1.paramValue, 2, GENERIC);
         const auto p2 = ZL_Graph_getLocalIntParam(gctx, 2);
-        ZL_RET_R_IF_NE(GENERIC, p2.paramValue, 4);
+        ZL_ERR_IF_NE(p2.paramValue, 4, GENERIC);
         const auto p3 = ZL_Graph_getLocalIntParam(gctx, 3);
-        ZL_RET_R_IF_NE(GENERIC, p3.paramValue, 6);
+        ZL_ERR_IF_NE(p3.paramValue, 6, GENERIC);
         const auto p4 = ZL_Graph_getLocalRefParam(gctx, 4);
         if (std::string((const char*)p4.paramRef, 4) != std::string("I am")) {
             return ZL_returnError(ZL_ErrorCode_GENERIC);
@@ -254,7 +255,7 @@ TEST_F(SelectorTest, TestSetSuccessorParams)
         if (std::string((const char*)p5.paramRef, 4) != std::string(" the")) {
             return ZL_returnError(ZL_ErrorCode_GENERIC);
         }
-        ZL_RET_R_IF(graph_invalidNumInputs, nbIns != 1);
+        ZL_ERR_IF(nbIns != 1, graph_invalidNumInputs);
         ZL_Edge* input = inputs[0];
         ZL_REQUIRE_SUCCESS(ZL_Edge_setDestination(input, ZL_GRAPH_STORE));
         return ZL_returnSuccess();
