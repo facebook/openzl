@@ -41,18 +41,19 @@ TEST(PublicErrorsTest, retIfs)
 {
     {
         auto f = [](int path) {
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
             switch (path) {
                 case 0:
-                    ZL_RET_T_RES(Foo, ZL_RESULT_WRAP_VALUE(Foo, kFoo));
+                    return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
                     break;
                 case 1:
-                    ZL_RET_T_ERR(Foo, GENERIC, "fail! %d", 1234);
+                    ZL_ERR(GENERIC, "fail! %d", 1234);
                     break;
                 case 2:
-                    ZL_RET_T_ERR(Foo, GENERIC, "fail!");
+                    ZL_ERR(GENERIC, "fail!");
                     break;
                 case 3:
-                    ZL_RET_T_ERR(Foo, GENERIC);
+                    ZL_ERR(GENERIC);
                     break;
                 default:
                     throw std::runtime_error("!");
@@ -65,9 +66,10 @@ TEST(PublicErrorsTest, retIfs)
     }
     {
         auto f = [](bool succeed) {
-            ZL_RET_T_IF(Foo, GENERIC, !succeed, "foo %d", 1234);
-            ZL_RET_T_IF(Foo, GENERIC, !succeed, "foo");
-            ZL_RET_T_IF(Foo, GENERIC, !succeed);
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+            ZL_ERR_IF(!succeed, GENERIC, "foo %d", 1234);
+            ZL_ERR_IF(!succeed, GENERIC, "foo");
+            ZL_ERR_IF(!succeed, GENERIC);
             return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
         };
         EXPECT_FALSE(ZL_RES_isError(f(true)));
@@ -75,9 +77,10 @@ TEST(PublicErrorsTest, retIfs)
     }
     {
         auto f = [](bool succeed) {
-            ZL_RET_T_IF_NE(Foo, GENERIC, 1, 2 - (int)succeed, "foo %d", 1234);
-            ZL_RET_T_IF_NE(Foo, GENERIC, 1, 2 - (int)succeed, "foo");
-            ZL_RET_T_IF_NE(Foo, GENERIC, 1, 2 - (int)succeed);
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+            ZL_ERR_IF_NE(1, 2 - (int)succeed, GENERIC, "foo %d", 1234);
+            ZL_ERR_IF_NE(1, 2 - (int)succeed, GENERIC, "foo");
+            ZL_ERR_IF_NE(1, 2 - (int)succeed, GENERIC);
             return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
         };
         EXPECT_FALSE(ZL_RES_isError(f(true)));
@@ -85,9 +88,10 @@ TEST(PublicErrorsTest, retIfs)
     }
     {
         auto f = [](bool succeed) {
-            ZL_RET_T_IF_EQ(Foo, GENERIC, 1, 1 + (int)succeed, "foo %d", 1234);
-            ZL_RET_T_IF_EQ(Foo, GENERIC, 1, 1 + (int)succeed, "foo");
-            ZL_RET_T_IF_EQ(Foo, GENERIC, 1, 1 + (int)succeed);
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+            ZL_ERR_IF_EQ(1, 1 + (int)succeed, GENERIC, "foo %d", 1234);
+            ZL_ERR_IF_EQ(1, 1 + (int)succeed, GENERIC, "foo");
+            ZL_ERR_IF_EQ(1, 1 + (int)succeed, GENERIC);
             return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
         };
         EXPECT_FALSE(ZL_RES_isError(f(true)));
@@ -95,10 +99,10 @@ TEST(PublicErrorsTest, retIfs)
     }
     {
         auto f = [](bool succeed) {
-            ZL_RET_T_IF_GE(
-                    Foo, GENERIC, 2, 1 + (2 * (int)succeed), "foo %d", 1234);
-            ZL_RET_T_IF_GE(Foo, GENERIC, 2, 1 + (2 * (int)succeed), "foo");
-            ZL_RET_T_IF_GE(Foo, GENERIC, 2, 1 + (2 * (int)succeed));
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+            ZL_ERR_IF_GE(2, 1 + (2 * (int)succeed), GENERIC, "foo %d", 1234);
+            ZL_ERR_IF_GE(2, 1 + (2 * (int)succeed), GENERIC, "foo");
+            ZL_ERR_IF_GE(2, 1 + (2 * (int)succeed), GENERIC);
             return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
         };
         EXPECT_FALSE(ZL_RES_isError(f(true)));
@@ -106,10 +110,10 @@ TEST(PublicErrorsTest, retIfs)
     }
     {
         auto f = [](bool succeed) {
-            ZL_RET_T_IF_LE(
-                    Foo, GENERIC, 1 + (2 * (int)succeed), 2, "foo %d", 1234);
-            ZL_RET_T_IF_LE(Foo, GENERIC, 1 + (2 * (int)succeed), 2, "foo");
-            ZL_RET_T_IF_LE(Foo, GENERIC, 1 + (2 * (int)succeed), 2);
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+            ZL_ERR_IF_LE(1 + (2 * (int)succeed), 2, GENERIC, "foo %d", 1234);
+            ZL_ERR_IF_LE(1 + (2 * (int)succeed), 2, GENERIC, "foo");
+            ZL_ERR_IF_LE(1 + (2 * (int)succeed), 2, GENERIC);
             return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
         };
         EXPECT_FALSE(ZL_RES_isError(f(true)));
@@ -117,10 +121,10 @@ TEST(PublicErrorsTest, retIfs)
     }
     {
         auto f = [](bool succeed) {
-            ZL_RET_T_IF_GT(
-                    Foo, GENERIC, 2, 1 + (2 * (int)succeed), "foo %d", 1234);
-            ZL_RET_T_IF_GT(Foo, GENERIC, 2, 1 + (2 * (int)succeed), "foo");
-            ZL_RET_T_IF_GT(Foo, GENERIC, 2, 1 + (2 * (int)succeed));
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+            ZL_ERR_IF_GT(2, 1 + (2 * (int)succeed), GENERIC, "foo %d", 1234);
+            ZL_ERR_IF_GT(2, 1 + (2 * (int)succeed), GENERIC, "foo");
+            ZL_ERR_IF_GT(2, 1 + (2 * (int)succeed), GENERIC);
             return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
         };
         EXPECT_FALSE(ZL_RES_isError(f(true)));
@@ -128,9 +132,10 @@ TEST(PublicErrorsTest, retIfs)
     }
     {
         auto f = [](bool succeed) {
-            ZL_RET_T_IF_AND(Foo, GENERIC, true, !succeed, "foo %d", 1234);
-            ZL_RET_T_IF_AND(Foo, GENERIC, true, !succeed, "foo");
-            ZL_RET_T_IF_AND(Foo, GENERIC, true, !succeed);
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+            ZL_ERR_IF_AND(true, !succeed, GENERIC, "foo %d", 1234);
+            ZL_ERR_IF_AND(true, !succeed, GENERIC, "foo");
+            ZL_ERR_IF_AND(true, !succeed, GENERIC);
             return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
         };
         EXPECT_FALSE(ZL_RES_isError(f(true)));
@@ -138,9 +143,10 @@ TEST(PublicErrorsTest, retIfs)
     }
     {
         auto f = [](bool succeed) {
-            ZL_RET_T_IF_OR(Foo, GENERIC, false, !succeed, "foo %d", 1234);
-            ZL_RET_T_IF_OR(Foo, GENERIC, false, !succeed, "foo");
-            ZL_RET_T_IF_OR(Foo, GENERIC, false, !succeed);
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+            ZL_ERR_IF_OR(false, !succeed, GENERIC, "foo %d", 1234);
+            ZL_ERR_IF_OR(false, !succeed, GENERIC, "foo");
+            ZL_ERR_IF_OR(false, !succeed, GENERIC);
             return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
         };
         EXPECT_FALSE(ZL_RES_isError(f(true)));
@@ -148,15 +154,16 @@ TEST(PublicErrorsTest, retIfs)
     }
     {
         auto f = [](bool succeed) {
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
             ZL_Report report;
             if (succeed) {
                 report = ZL_returnValue(1234);
             } else {
                 report = ZL_REPORT_ERROR(corruption, "foo %d", 1234);
             }
-            ZL_RET_T_IF_ERR(Foo, report, "foo %d", 1234);
-            ZL_RET_T_IF_ERR(Foo, report, "foo");
-            ZL_RET_T_IF_ERR(Foo, report);
+            ZL_ERR_IF_ERR(report, "foo %d", 1234);
+            ZL_ERR_IF_ERR(report, "foo");
+            ZL_ERR_IF_ERR(report);
             return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
         };
         EXPECT_FALSE(ZL_RES_isError(f(true)));
@@ -164,10 +171,10 @@ TEST(PublicErrorsTest, retIfs)
     }
     {
         auto f = [](bool succeed) {
-            ZL_RET_T_IF_NULL(
-                    Foo, GENERIC, succeed ? "foo" : nullptr, "foo %d", 1234);
-            ZL_RET_T_IF_NULL(Foo, GENERIC, succeed ? "foo" : nullptr, "foo");
-            ZL_RET_T_IF_NULL(Foo, GENERIC, succeed ? "foo" : nullptr);
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+            ZL_ERR_IF_NULL(succeed ? "foo" : nullptr, GENERIC, "foo %d", 1234);
+            ZL_ERR_IF_NULL(succeed ? "foo" : nullptr, GENERIC, "foo");
+            ZL_ERR_IF_NULL(succeed ? "foo" : nullptr, GENERIC);
             return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
         };
         EXPECT_FALSE(ZL_RES_isError(f(true)));
@@ -175,10 +182,10 @@ TEST(PublicErrorsTest, retIfs)
     }
     {
         auto f = [](bool succeed) {
-            ZL_RET_T_IF_NN(
-                    Foo, GENERIC, !succeed ? "foo" : nullptr, "foo %d", 1234);
-            ZL_RET_T_IF_NN(Foo, GENERIC, !succeed ? "foo" : nullptr, "foo");
-            ZL_RET_T_IF_NN(Foo, GENERIC, !succeed ? "foo" : nullptr);
+            ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
+            ZL_ERR_IF_NN(!succeed ? "foo" : nullptr, GENERIC, "foo %d", 1234);
+            ZL_ERR_IF_NN(!succeed ? "foo" : nullptr, GENERIC, "foo");
+            ZL_ERR_IF_NN(!succeed ? "foo" : nullptr, GENERIC);
             return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
         };
         EXPECT_FALSE(ZL_RES_isError(f(true)));

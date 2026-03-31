@@ -756,7 +756,7 @@ ZL_Compressor_registerFunctionGraph2(
     ZL_DLOG(BLOCK,
             "ZL_Compressor_registerFunctionGraph '%s'",
             STR_REPLACE_NULL(desc->name));
-    ZL_ASSERT_NN(cgraph);
+    ZL_ASSERT_NN(compressor);
     if (desc->validate_f && !desc->validate_f(compressor, desc)) {
         ZL_OpaquePtr_free(desc->opaque);
         ZL_ERR(graph_invalid, "Validation failed");

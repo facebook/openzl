@@ -92,6 +92,7 @@ ZL_Error A1C_Error_convert(
         const ZL_ErrorContext* const error_context,
         A1C_Error a1c_err)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(error_context->opCtx);
     if (a1c_err.type == A1C_ErrorType_ok) {
         return ZL_E_EMPTY;
     }
@@ -104,7 +105,7 @@ ZL_Error A1C_Error_convert(
             A1C_Error_convertCode(a1c_err.type),
             "Encountered error in A1CBOR library with code \"%s\".",
             A1C_ErrorType_getString(a1c_err.type));
-    ZL_E_ADDFRAME(&zs_err, ZL_EE_EMPTY, "");
+    zs_err = ZL_E_ADDFRAME(zs_err, ZL_EE_EMPTY, "");
     return zs_err;
 }
 

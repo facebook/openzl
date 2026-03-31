@@ -191,6 +191,7 @@ TEST_F(OpaqueTest, ValidFunctionGraph)
                 [](ZL_Graph* graph,
                    ZL_Edge* edges[],
                    size_t numEdges) noexcept {
+                    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
                     const char* opaque =
                             (const char*)ZL_Graph_getOpaquePtr(graph);
                     ZL_REQUIRE_NN(opaque);
@@ -222,6 +223,7 @@ TEST_F(OpaqueTest, InvalidFunctionGraph)
                 [](ZL_Graph* graph,
                    ZL_Edge* edges[],
                    size_t numEdges) noexcept {
+                    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
                     const char* opaque =
                             (const char*)ZL_Graph_getOpaquePtr(graph);
                     ZL_REQUIRE_NN(opaque);
@@ -258,6 +260,7 @@ static ZL_NodeID registerTypedEncoder(ZL_Compressor* compressor_)
         .gd = graphDesc,
         .transform_f =
                 [](ZL_Encoder* encoder, const ZL_Input* input) noexcept {
+                    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
                     const char* opaque =
                             (const char*)ZL_Encoder_getOpaquePtr(encoder);
                     ZL_REQUIRE_NN(opaque);
@@ -297,6 +300,7 @@ static void registerTypedDecoder(ZL_DCtx* dctx_)
         .gd = graphDesc,
         .transform_f =
                 [](ZL_Decoder* decoder, const ZL_Input* inputs[]) noexcept {
+                    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
                     const ZL_Input* input = inputs[0];
                     const char* opaque =
                             (const char*)ZL_Decoder_getOpaquePtr(decoder);
@@ -352,6 +356,7 @@ static void registerVODecoder(ZL_DCtx* dctx_)
                    size_t,
                    const ZL_Input* inputs[],
                    size_t numInputs) noexcept {
+                    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
                     const ZL_Input* input = inputs[0];
                     const char* opaque =
                             (const char*)ZL_Decoder_getOpaquePtr(decoder);
@@ -390,6 +395,7 @@ TEST_F(OpaqueTest, VariableOutputCodec)
         .gd = graphDesc,
         .transform_f =
                 [](ZL_Encoder* encoder, const ZL_Input* input) noexcept {
+                    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
                     const char* opaque =
                             (const char*)ZL_Encoder_getOpaquePtr(encoder);
                     ZL_REQUIRE_NN(opaque);
@@ -442,6 +448,7 @@ static void registerMIDecoder(ZL_DCtx* dctx_)
                    size_t numInputs,
                    const ZL_Input*[],
                    size_t) noexcept {
+                    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
                     const ZL_Input* input = inputs[0];
                     const char* opaque =
                             (const char*)ZL_Decoder_getOpaquePtr(decoder);
@@ -483,6 +490,7 @@ TEST_F(OpaqueTest, MultiInputCodec)
                 [](ZL_Encoder* encoder,
                    const ZL_Input* inputs[],
                    size_t numInputs) noexcept {
+                    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
                     const ZL_Input* input = inputs[0];
                     const char* opaque =
                             (const char*)ZL_Encoder_getOpaquePtr(encoder);
