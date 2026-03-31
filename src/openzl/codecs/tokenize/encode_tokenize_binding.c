@@ -1,7 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "openzl/common/errors_internal.h"
-#include "openzl/common/scope_context.h"
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_opaque_types.h"
 
