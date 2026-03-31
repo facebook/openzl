@@ -4,7 +4,6 @@
 
 #include <gtest/gtest.h>
 
-#include "openzl/common/scope_context.h"
 #include "openzl/common/wire_format.h"
 #include "openzl/compress/private_nodes.h"
 #include "openzl/zl_compress.h"

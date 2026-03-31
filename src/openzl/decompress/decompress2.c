@@ -10,7 +10,6 @@
 #include "openzl/common/limits.h"
 #include "openzl/common/logging.h"
 #include "openzl/common/operation_context.h"
-#include "openzl/common/scope_context.h"
 #include "openzl/common/stream.h" // ZL_Data
 #include "openzl/common/vector.h"
 #include "openzl/common/wire_format.h"            // TransformType_e
