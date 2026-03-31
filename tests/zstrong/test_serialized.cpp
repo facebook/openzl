@@ -314,6 +314,7 @@ ZL_Report splitOptimizationBackendGraph(
         size_t nbInputs,
         std::mt19937& gen)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     std::array<std::vector<ZL_Edge*>, 2> concats;
     std::uniform_int_distribution<size_t> destDist(0, 2);
     std::uniform_int_distribution<size_t> flushDist(0, 4);
@@ -326,29 +327,27 @@ ZL_Report splitOptimizationBackendGraph(
         if (ZL_Input_numElts(data) % 8 == 0) {
             std::uniform_int_distribution<size_t> convertDist(0, 2);
             if (convertDist(gen) == 0) {
-                ZL_TRY_LET_T(
+                ZL_TRY_LET(
                         ZL_EdgeList,
                         successors,
                         ZL_Edge_runNode(edge, ZL_NODE_INTERPRET_AS_LE64));
                 edge = successors.edges[0];
                 if (std::uniform_int_distribution<size_t>(0, 1)(gen) == 0) {
-                    ZL_RET_R_IF_ERR(
-                            ZL_Edge_setDestination(edge, ZL_GRAPH_STORE));
+                    ZL_ERR_IF_ERR(ZL_Edge_setDestination(edge, ZL_GRAPH_STORE));
                 } else {
-                    ZL_RET_R_IF_ERR(
-                            ZL_Edge_setDestination(edge, ZL_GRAPH_ZSTD));
+                    ZL_ERR_IF_ERR(ZL_Edge_setDestination(edge, ZL_GRAPH_ZSTD));
                 }
                 return ZL_returnSuccess();
             }
         }
         auto graph = graphs.graphids[graphDist(gen)];
-        ZL_RET_R_IF_ERR(ZL_Edge_setDestination(edge, graph));
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(edge, graph));
         return ZL_returnSuccess();
     };
 
     auto flush = [&](std::vector<ZL_Edge*>& concat) -> ZL_Report {
         if (!concat.empty()) {
-            ZL_TRY_LET_T(
+            ZL_TRY_LET(
                     ZL_EdgeList,
                     successors,
                     ZL_Edge_runMultiInputNode(
@@ -356,9 +355,9 @@ ZL_Report splitOptimizationBackendGraph(
                             concat.size(),
                             ZL_NODE_CONCAT_SERIAL));
             ZL_ASSERT_EQ(successors.nbEdges, 2);
-            ZL_RET_R_IF_ERR(ZL_Edge_setDestination(
+            ZL_ERR_IF_ERR(ZL_Edge_setDestination(
                     successors.edges[0], ZL_GRAPH_FIELD_LZ));
-            ZL_RET_R_IF_ERR(finish(successors.edges[1]));
+            ZL_ERR_IF_ERR(finish(successors.edges[1]));
         }
         concat.clear();
         return ZL_returnSuccess();
@@ -373,15 +372,15 @@ ZL_Report splitOptimizationBackendGraph(
             concats[dest].push_back(input);
 
             if (flushDist(gen) == 0) {
-                ZL_RET_R_IF_ERR(flush(concats[dest]));
+                ZL_ERR_IF_ERR(flush(concats[dest]));
             }
         } else {
-            ZL_RET_R_IF_ERR(finish(input));
+            ZL_ERR_IF_ERR(finish(input));
         }
     }
 
     for (auto& concat : concats) {
-        ZL_RET_R_IF_ERR(flush(concat));
+        ZL_ERR_IF_ERR(flush(concat));
     }
 
     return ZL_returnSuccess();
@@ -392,6 +391,7 @@ ZL_Report splitOptimizationGraph(
         ZL_Edge* inputs[],
         size_t nbInputs) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     const ZL_IntParam seed = ZL_Graph_getLocalIntParam(gctx, 0);
     std::mt19937 gen(seed.paramValue);
 
@@ -411,7 +411,7 @@ ZL_Report splitOptimizationGraph(
                 segmentSizes.push_back(segmentDist(gen));
                 remaining -= segmentSizes.back();
             }
-            ZL_TRY_LET_T(
+            ZL_TRY_LET(
                     ZL_EdgeList,
                     splitSuccessors,
                     ZL_Edge_runSplitNode(

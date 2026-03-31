@@ -254,7 +254,7 @@ TEST_F(GraphTest,
 
         // Run first encoder node without custom params (uses registered local
         // params)
-        ZL_TRY_LET_T(ZL_EdgeList, edges1, ZL_Edge_runNode(inputs[0], encNode));
+        ZL_TRY_LET(ZL_EdgeList, edges1, ZL_Edge_runNode(inputs[0], encNode));
         ZL_ERR_IF_NE(edges1.nbEdges, 1, GENERIC);
 
         // Get the opaque pointer which contains the params for the second call
@@ -284,7 +284,7 @@ TEST_F(GraphTest,
         };
 
         // Run second encoder node with custom params (override)
-        ZL_TRY_LET_T(
+        ZL_TRY_LET(
                 ZL_EdgeList,
                 edges2,
                 ZL_Edge_runNode_withParams(edges1.edges[0], encNode, &lp2));
@@ -809,7 +809,7 @@ TEST_F(GraphTest,
         ZL_ERR_IF_NULL(input, GENERIC);
 
         // Try the graph with runtime parameters
-        ZL_TRY_LET_T(
+        ZL_TRY_LET(
                 ZL_GraphPerformance,
                 perf,
                 ZL_Graph_tryGraph(graph, input, exfiltratingGraph, &rgp));

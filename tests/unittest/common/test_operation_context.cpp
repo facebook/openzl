@@ -206,8 +206,10 @@ TEST(OperationContextTest, Warnings)
 
     {
         // Coerce static info and convert into dynamic
-        auto e4 = ZL_RES_error(
-                []() { ZL_RET_R_ERR(corruption, "qwerty %d", 1234); }());
+        auto e4 = ZL_RES_error([]() {
+            ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
+            ZL_ERR(corruption, "qwerty %d", 1234);
+        }());
 
         EXPECT_EQ(ZL_E_dy(e4), nullptr);
 

@@ -296,8 +296,9 @@ std::vector<std::string> RandomCompressorMultiBuilder::register_split_node()
 {
     const auto name = make_unique_name("!tests.rand_graph.nodes.split.");
     const auto transform =
-            [](ZL_Encoder*, size_t[], const void*, size_t) noexcept {
-                ZL_RET_R_ERR(GENERIC, "Unimplemented! Can't actually run.");
+            [](ZL_Encoder* eictx, size_t[], const void*, size_t) noexcept {
+                ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
+                ZL_ERR(GENERIC, "Unimplemented! Can't actually run.");
             };
     const auto lp   = get_params();
     const auto desc = (ZL_SplitEncoderDesc){
@@ -321,8 +322,9 @@ std::vector<std::string> RandomCompressorMultiBuilder::register_typed_node(
         const TypeSpec ts)
 {
     const auto name      = make_unique_name("!tests.rand_graph.nodes.typed.");
-    const auto transform = [](ZL_Encoder*, const ZL_Input*) noexcept {
-        ZL_RET_R_ERR(GENERIC, "Unimplemented! Can't actually run.");
+    const auto transform = [](ZL_Encoder* eictx, const ZL_Input*) noexcept {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
+        ZL_ERR(GENERIC, "Unimplemented! Can't actually run.");
     };
     const auto lp        = get_params();
     const auto state_mgr = (ZL_CodecStateManager){
@@ -358,8 +360,9 @@ std::vector<std::string> RandomCompressorMultiBuilder::register_vo_node(
         const TypeSpec ts)
 {
     const auto name      = make_unique_name("!tests.rand_graph.nodes.vo.");
-    const auto transform = [](ZL_Encoder*, const ZL_Input*) noexcept {
-        ZL_RET_R_ERR(GENERIC, "Unimplemented! Can't actually run.");
+    const auto transform = [](ZL_Encoder* eictx, const ZL_Input*) noexcept {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
+        ZL_ERR(GENERIC, "Unimplemented! Can't actually run.");
     };
     const auto lp        = get_params();
     const auto state_mgr = (ZL_CodecStateManager){
@@ -396,10 +399,12 @@ std::vector<std::string> RandomCompressorMultiBuilder::register_vo_node(
 
 std::vector<std::string> RandomCompressorMultiBuilder::register_mi_node()
 {
-    const auto name      = make_unique_name("!tests.rand_graph.nodes.mi.");
-    const auto transform = [](ZL_Encoder*, const ZL_Input*[], size_t) noexcept {
-        ZL_RET_R_ERR(GENERIC, "Unimplemented! Can't actually run.");
-    };
+    const auto name = make_unique_name("!tests.rand_graph.nodes.mi.");
+    const auto transform =
+            [](ZL_Encoder* eictx, const ZL_Input*[], size_t) noexcept {
+                ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
+                ZL_ERR(GENERIC, "Unimplemented! Can't actually run.");
+            };
     const auto lp        = get_params();
     const auto state_mgr = (ZL_CodecStateManager){
         .stateAlloc      = NULL, // TODO?
@@ -782,8 +787,9 @@ std::vector<std::string> RandomCompressorMultiBuilder::make_multi_input_graph(
         size_t depth)
 {
     const auto name       = make_unique_name("!tests.rand_graph.graphs.multi.");
-    const auto graph_func = [](ZL_Graph*, ZL_Edge*[], size_t) noexcept {
-        ZL_RET_R_ERR(GENERIC, "Unimplemented! Can't actually run.");
+    const auto graph_func = [](ZL_Graph* gctx, ZL_Edge*[], size_t) noexcept {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
+        ZL_ERR(GENERIC, "Unimplemented! Can't actually run.");
     };
     const auto validate_func = [](const ZL_Compressor*,
                                   const ZL_FunctionGraphDesc*) noexcept {

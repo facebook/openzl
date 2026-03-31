@@ -201,10 +201,11 @@ ZL_GraphID tokenSort64_splitIndices_graph(ZL_Compressor* cgraph)
 static ZL_Report
 splitByRange_concatAlpha_fn(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
     (void)nbInputs;
 
     /* Step 1: Split by range */
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             segments,
             ZL_Edge_runNode(inputs[0], ZL_NODE_SPLIT_BYRANGE));
@@ -219,31 +220,31 @@ splitByRange_concatAlpha_fn(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
             (ZL_Edge**)ZL_Graph_getScratchSpace(graph, N * sizeof(ZL_Edge*));
 
     for (size_t i = 0; i < N; i++) {
-        ZL_TRY_LET_T(
+        ZL_TRY_LET(
                 ZL_EdgeList,
                 tokenized,
                 ZL_Edge_runNode(segments.edges[i], tokenNode));
         /* tokenized.edges[0] = alphabet, tokenized.edges[1] = indices */
         alphabets[i] = tokenized.edges[0];
         /* Send indices to NUMERIC */
-        ZL_RET_R_IF_ERR(
+        ZL_ERR_IF_ERR(
                 ZL_Edge_setDestination(tokenized.edges[1], ZL_GRAPH_NUMERIC));
     }
 
     /* Step 3: Concat all alphabets into one stream */
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             concatResult,
             ZL_Edge_runMultiInputNode(alphabets, N, ZL_NODE_CONCAT_NUMERIC));
     /* concatResult.edges[0] = sizes, concatResult.edges[1] = merged data */
 
     /* Step 4: Send concat sizes to NUMERIC */
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZL_Edge_setDestination(concatResult.edges[0], ZL_GRAPH_NUMERIC));
 
     /* Step 5: Send merged alphabet to delta_int → NUMERIC */
     ZL_GraphIDList gids = ZL_Graph_getCustomGraphs(graph);
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZL_Edge_setDestination(concatResult.edges[1], gids.graphids[0]));
 
     return ZL_returnSuccess();

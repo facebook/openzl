@@ -369,6 +369,7 @@ class GBTBinaryModelTest : public Test {
         auto featureGen_binaryModelTest = [](const ZL_Input* inputStream,
                                              VECTOR(LabeledFeature)
                                                      * features) -> ZL_Report {
+            ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
             ZL_ASSERT(ZL_Input_type(inputStream) == ZL_Type_numeric);
 
             LabeledFeature meanFeature             = { "mean", 2.0f };
@@ -392,8 +393,7 @@ class GBTBinaryModelTest : public Test {
             badAlloc |= !VECTOR_PUSHBACK(*features, meanFeature);
             badAlloc |= !VECTOR_PUSHBACK(*features, varianceFeature);
 
-            ZL_RET_R_IF(
-                    allocation, badAlloc, "Failed to add features to vector");
+            ZL_ERR_IF(badAlloc, allocation, "Failed to add features to vector");
             return ZL_returnSuccess();
         };
 
@@ -488,6 +488,7 @@ class GBTMultiClassModelTest : public GBTMultiClassForestTest {
         auto featureGen_multiClassModelTest =
                 [](const ZL_Input* inputStream,
                    VECTOR(LabeledFeature) * features) -> ZL_Report {
+            ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
             ZL_ASSERT(ZL_Input_type(inputStream) == ZL_Type_numeric);
 
             LabeledFeature meanFeature             = { "mean", 5.0f };
@@ -511,8 +512,7 @@ class GBTMultiClassModelTest : public GBTMultiClassForestTest {
             badAlloc |= !VECTOR_PUSHBACK(*features, meanFeature);
             badAlloc |= !VECTOR_PUSHBACK(*features, varianceFeature);
 
-            ZL_RET_R_IF(
-                    allocation, badAlloc, "Failed to add features to vector");
+            ZL_ERR_IF(badAlloc, allocation, "Failed to add features to vector");
             return ZL_returnSuccess();
         };
         model = { .predictor        = multiClassPredictor.get(),

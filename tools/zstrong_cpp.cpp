@@ -1011,9 +1011,10 @@ ZL_Report CustomTransform::encode(ZL_Encoder* eictx, ZL_Input const* input)
     return encode(eictx, &input, 1);
 }
 
-ZL_Report CustomTransform::decode(ZL_Decoder*, ZL_Input const*[]) const
+ZL_Report CustomTransform::decode(ZL_Decoder* dictx, ZL_Input const*[]) const
 {
-    ZL_RET_R_ERR(logicError);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
+    ZL_ERR(logicError);
 }
 
 ZL_Report CustomTransform::decode(
