@@ -23,11 +23,11 @@ custom_unittest(
 )
 
 custom_unittest(
-    name = "csv_train_inline_test",
+    name = "u16_train_inline_test",
     command = [
         "$(location :integration_test_bin)",
         "$(location ..:zli)",
-        "CsvTrainInlineTest.test_train_inline",
+        "U16TrainInlineTest.test_train_inline",
     ],
     type = "simple",
     deps = [
