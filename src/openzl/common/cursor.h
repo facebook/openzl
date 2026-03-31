@@ -359,13 +359,14 @@ ZL_INLINE ZL_RESULT_OF(uint64_t) ZL_RC_popVarint(ZL_RC* rc)
 
 ZL_INLINE ZL_Report ZL_RC_popVarint32(ZL_RC* rc, uint32_t* valPtr)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT((ZL_OperationContext*)NULL);
     ZL_RESULT_OF(uint64_t) res = ZL_varintDecode(&rc->_cur, rc->_end);
     if (ZL_RES_isError(res)) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     uint64_t tmp = ZL_RES_value(res);
     if (tmp > UINT32_MAX) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     *valPtr = (uint32_t)tmp;
     return ZL_returnSuccess();

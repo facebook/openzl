@@ -199,6 +199,7 @@ ZL_INLINE void ZS_RolzTable_destroy(ZS_RolzTable* table)
 ZL_INLINE ZL_Report
 ZS_RolzTable_init(ZS_RolzTable* table, size_t contextLog, size_t chunkLog)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT((ZL_OperationContext*)NULL);
     uint32_t const nbBuckets = 1u << contextLog;
     uint32_t const nbChunks  = 1u << chunkLog;
     ZL_REQUIRE_UINT_FITS(nbBuckets - 1, uint16_t);
@@ -212,7 +213,7 @@ ZS_RolzTable_init(ZS_RolzTable* table, size_t contextLog, size_t chunkLog)
             (ZS_RolzTable_Chunk*)calloc(nbChunks, sizeof(ZS_RolzTable_Chunk));
     if (table->buckets == NULL || table->chunks == NULL) {
         ZS_RolzTable_destroy(table);
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     ZL_REQUIRE_EQ((uintptr_t)table->buckets & 64, 0);
     ZL_REQUIRE_EQ((uintptr_t)table->chunks & 64, 0);

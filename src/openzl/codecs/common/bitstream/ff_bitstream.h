@@ -92,9 +92,10 @@ ZL_INLINE ZS_BitCStreamFF ZS_BitCStreamFF_init(uint8_t* dst, size_t dstCapacity)
 
 ZL_INLINE ZL_Report ZS_BitCStreamFF_finish(ZS_BitCStreamFF* bits)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT((ZL_OperationContext*)NULL);
     size_t bytesToWrite = (bits->nbBits + 7) / 8;
     if (bits->end < bits->ptr + bytesToWrite)
-        ZL_RET_R_ERR(internalBuffer_tooSmall);
+        ZL_ERR(internalBuffer_tooSmall);
     if (bytesToWrite) {
         ZL_ASSERT_EQ(
                 bits->container,
@@ -154,8 +155,9 @@ ZS_BitDStreamFF_init(uint8_t const* src, size_t srcSize)
 
 ZL_INLINE ZL_Report ZS_BitDStreamFF_finish(ZS_BitDStreamFF const* bits)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT((ZL_OperationContext*)NULL);
     if (bits->nbBitsRead > ZS_BITSTREAM_READ_MAX_BITS) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     return ZL_returnSuccess();
 }

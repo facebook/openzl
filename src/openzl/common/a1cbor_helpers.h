@@ -86,21 +86,22 @@ ZL_RESULT_DECLARE_TYPE(A1C_PairPtr);
 /**
  * Helper function to try adding an item using a map builder. Converts the
  * failure paths to Zstrong errors. Mostly intended to be an implementation
- * detail of @ref A1C_MAP_TRY_ADD_R(), which is the easy way to consume the
+ * detail of @ref A1C_MAP_TRY_ADD(), which is the easy way to consume the
  * returned result.
  */
 ZL_INLINE ZL_RESULT_OF(A1C_PairPtr)
         A1C_MapBuilder_tryAdd(const A1C_MapBuilder builder)
 {
+    ZL_RESULT_DECLARE_SCOPE(A1C_PairPtr, (ZL_OperationContext*)NULL);
     A1C_Pair* const pair = A1C_MapBuilder_add(builder);
     if (pair == NULL) {
         if (builder.map == NULL) {
-            ZL_RET_T_IF_NULL(A1C_PairPtr, allocation, pair);
+            ZL_ERR_IF_NULL(pair, allocation);
         } else {
-            ZL_RET_T_IF_NULL(A1C_PairPtr, GENERIC, pair);
+            ZL_ERR_IF_NULL(pair, GENERIC);
         }
     }
-    return ZL_RESULT_WRAP_VALUE(A1C_PairPtr, pair);
+    return ZL_WRAP_VALUE(pair);
 }
 
 typedef A1C_Item* A1C_ItemPtr;
@@ -109,21 +110,22 @@ ZL_RESULT_DECLARE_TYPE(A1C_ItemPtr);
 /**
  * Helper function to try adding an item using an array builder. Converts the
  * failure paths to Zstrong errors. Mostly intended to be an implementation
- * detail of @ref A1C_ARRAY_TRY_ADD_R(), which is the easy way to consume the
+ * detail of @ref A1C_ARRAY_TRY_ADD(), which is the easy way to consume the
  * returned result.
  */
 ZL_INLINE ZL_RESULT_OF(A1C_ItemPtr)
         A1C_ArrayBuilder_tryAdd(const A1C_ArrayBuilder builder)
 {
+    ZL_RESULT_DECLARE_SCOPE(A1C_ItemPtr, (ZL_OperationContext*)NULL);
     A1C_Item* const item = A1C_ArrayBuilder_add(builder);
     if (item == NULL) {
         if (builder.array == NULL) {
-            ZL_RET_T_IF_NULL(A1C_ItemPtr, allocation, item);
+            ZL_ERR_IF_NULL(item, allocation);
         } else {
-            ZL_RET_T_IF_NULL(A1C_ItemPtr, GENERIC, item);
+            ZL_ERR_IF_NULL(item, GENERIC);
         }
     }
-    return ZL_RESULT_WRAP_VALUE(A1C_ItemPtr, item);
+    return ZL_WRAP_VALUE(item);
 }
 
 /**
@@ -154,25 +156,6 @@ ZL_INLINE ZL_RESULT_OF(A1C_ItemPtr)
     ZL_TRY_LET_CONST(A1C_PairPtr, _var, A1C_MapBuilder_tryAdd(_builder));
 #define A1C_ARRAY_TRY_ADD(_var, _builder) \
     ZL_TRY_LET_CONST(A1C_ItemPtr, _var, A1C_ArrayBuilder_tryAdd(_builder));
-
-/**
- * Deprecated versions using the old error type-passing pattern.
- */
-
-#define A1C_MAP_TRY_ADD_R(_var, _builder) \
-    A1C_MAP_TRY_ADD_T(size_t, _var, _builder)
-#define A1C_ARRAY_TRY_ADD_R(_var, _builder) \
-    A1C_ARRAY_TRY_ADD_T(size_t, _var, _builder)
-
-#define A1C_MAP_TRY_ADD_T(_return_type, _var, _builder) \
-    ZL_TRY_LET_CONST_TT(                                \
-            _return_type, A1C_PairPtr, _var, A1C_MapBuilder_tryAdd(_builder));
-#define A1C_ARRAY_TRY_ADD_T(_return_type, _var, _builder) \
-    ZL_TRY_LET_CONST_TT(                                  \
-            _return_type,                                 \
-            A1C_ItemPtr,                                  \
-            _var,                                         \
-            A1C_ArrayBuilder_tryAdd(_builder));
 
 /**
  * Helper macros to instantiate a new (const) variable with the contents of an
@@ -208,57 +191,6 @@ ZL_INLINE ZL_RESULT_OF(A1C_ItemPtr)
 #define A1C_TRY_EXTRACT_SIMPLE(_var, _expr) A1C_TRY_EXTRACT(Simple, _var, _expr)
 #define A1C_TRY_EXTRACT_TAG(_var, _expr) A1C_TRY_EXTRACT(Tag, _var, _expr)
 
-#define A1C_TRY_EXTRACT_T_BOOL(_return_type, _var, _expr) \
-    A1C_TRY_EXTRACT_TT(_return_type, Bool, _var, _expr)
-#define A1C_TRY_EXTRACT_T_INT64(_return_type, _var, _expr) \
-    A1C_TRY_EXTRACT_TT(_return_type, Int64, _var, _expr)
-#define A1C_TRY_EXTRACT_T_FLOAT16(_return_type, _var, _expr) \
-    A1C_TRY_EXTRACT_TT(_return_type, Float16, _var, _expr)
-#define A1C_TRY_EXTRACT_T_FLOAT32(_return_type, _var, _expr) \
-    A1C_TRY_EXTRACT_TT(_return_type, Float32, _var, _expr)
-#define A1C_TRY_EXTRACT_T_FLOAT64(_return_type, _var, _expr) \
-    A1C_TRY_EXTRACT_TT(_return_type, Float64, _var, _expr)
-#define A1C_TRY_EXTRACT_T_BYTES(_return_type, _var, _expr) \
-    A1C_TRY_EXTRACT_TT(_return_type, Bytes, _var, _expr)
-#define A1C_TRY_EXTRACT_T_STRING(_return_type, _var, _expr) \
-    A1C_TRY_EXTRACT_TT(_return_type, String, _var, _expr)
-#define A1C_TRY_EXTRACT_T_MAP(_return_type, _var, _expr) \
-    A1C_TRY_EXTRACT_TT(_return_type, Map, _var, _expr)
-#define A1C_TRY_EXTRACT_T_ARRAY(_return_type, _var, _expr) \
-    A1C_TRY_EXTRACT_TT(_return_type, Array, _var, _expr)
-#define A1C_TRY_EXTRACT_T_SIMPLE(_return_type, _var, _expr) \
-    A1C_TRY_EXTRACT_TT(_return_type, Simple, _var, _expr)
-#define A1C_TRY_EXTRACT_T_TAG(_return_type, _var, _expr) \
-    A1C_TRY_EXTRACT_TT(_return_type, Tag, _var, _expr)
-
-/**
- * Specializations of the above for when the enclosing scope has a return type
- * of `ZL_Report`.
- */
-
-#define A1C_TRY_EXTRACT_R_BOOL(_var, _expr) \
-    A1C_TRY_EXTRACT_T_BOOL(size_t, _var, _expr)
-#define A1C_TRY_EXTRACT_R_INT64(_var, _expr) \
-    A1C_TRY_EXTRACT_T_INT64(size_t, _var, _expr)
-#define A1C_TRY_EXTRACT_R_FLOAT16(_var, _expr) \
-    A1C_TRY_EXTRACT_T_FLOAT16(size_t, _var, _expr)
-#define A1C_TRY_EXTRACT_R_FLOAT32(_var, _expr) \
-    A1C_TRY_EXTRACT_T_FLOAT32(size_t, _var, _expr)
-#define A1C_TRY_EXTRACT_R_FLOAT64(_var, _expr) \
-    A1C_TRY_EXTRACT_T_FLOAT64(size_t, _var, _expr)
-#define A1C_TRY_EXTRACT_R_BYTES(_var, _expr) \
-    A1C_TRY_EXTRACT_T_BYTES(size_t, _var, _expr)
-#define A1C_TRY_EXTRACT_R_STRING(_var, _expr) \
-    A1C_TRY_EXTRACT_T_STRING(size_t, _var, _expr)
-#define A1C_TRY_EXTRACT_R_MAP(_var, _expr) \
-    A1C_TRY_EXTRACT_T_MAP(size_t, _var, _expr)
-#define A1C_TRY_EXTRACT_R_ARRAY(_var, _expr) \
-    A1C_TRY_EXTRACT_T_ARRAY(size_t, _var, _expr)
-#define A1C_TRY_EXTRACT_R_SIMPLE(_var, _expr) \
-    A1C_TRY_EXTRACT_T_SIMPLE(size_t, _var, _expr)
-#define A1C_TRY_EXTRACT_R_TAG(_var, _expr) \
-    A1C_TRY_EXTRACT_T_TAG(size_t, _var, _expr)
-
 #define A1C_DECLARE_TRY_GET_T(_type, _member)        \
     A1C_DECLARE_TRY_GET_T_INNER(                     \
             ZS_MACRO_CONCAT(A1C_Item_tryGet, _type), \
@@ -270,9 +202,10 @@ ZL_INLINE ZL_RESULT_OF(A1C_ItemPtr)
     ZL_RESULT_DECLARE_TYPE(_item_type);                                  \
     ZL_INLINE ZL_RESULT_OF(_item_type) _name(const A1C_Item* const item) \
     {                                                                    \
-        ZL_RET_T_IF_NULL(_item_type, corruption, item);                  \
-        ZL_RET_T_IF_NE(_item_type, corruption, item->type, _enum_type);  \
-        return ZL_RESULT_WRAP_VALUE(_item_type, item->_union_member);    \
+        ZL_RESULT_DECLARE_SCOPE(_item_type, (ZL_OperationContext*)NULL); \
+        ZL_ERR_IF_NULL(item, corruption);                                \
+        ZL_ERR_IF_NE(item->type, _enum_type, corruption);                \
+        return ZL_WRAP_VALUE(item->_union_member);                       \
     }
 
 /**
@@ -311,16 +244,6 @@ A1C_DECLARE_TRY_GET_T(Tag, tag)
     ZL_TRY_LET_CONST(                                  \
             ZS_MACRO_CONCAT(A1C_, _a1c_type_suffix),   \
             _var,                                      \
-            ZS_MACRO_CONCAT(A1C_Item_tryGet, _a1c_type_suffix)((_expr)))
-
-#define A1C_TRY_EXTRACT_T(_a1c_type_suffix, _var, _expr) \
-    A1C_TRY_EXTRACT_TT(size_t, _a1c_type_suffix, _var, _expr)
-
-#define A1C_TRY_EXTRACT_TT(_return_type, _a1c_type_suffix, _var, _expr) \
-    ZL_TRY_LET_CONST_TT(                                                \
-            _return_type,                                               \
-            ZS_MACRO_CONCAT(A1C_, _a1c_type_suffix),                    \
-            _var,                                                       \
             ZS_MACRO_CONCAT(A1C_Item_tryGet, _a1c_type_suffix)((_expr)))
 
 ZL_END_C_DECLS
