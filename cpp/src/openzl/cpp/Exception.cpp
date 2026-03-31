@@ -138,8 +138,7 @@ Exception ExceptionBuilder::build() && noexcept
 {
     poly::optional<ZL_ErrorCode> code;
     if (error_.has_value()) {
-        // TODO: when ZL_E_code() is public, use that.
-        code.emplace(ZL_RES_code(ZL_RESULT_WRAP_ERROR(size_t, error_.value())));
+        code.emplace(ZL_E_code(error_.value()));
     }
     return Exception(msg_, code, errorContext_, std::move(location_));
 }

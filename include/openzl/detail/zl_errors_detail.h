@@ -258,6 +258,18 @@ ZL_INLINE ZL_ErrorInfo ZL_EE_fromStaticErrorInfo(const ZL_StaticErrorInfo* st)
 // Returns the ZL_Error descriptor from a ZL_RESULT_OF(<T>) object.
 #define ZL_RES_error(res) ((res)._error)
 
+#define ZL_E_INNER(err, ...) \
+    ZL_E_CODE_INNER(ZL_EXPAND_ERRCODE(err), __VA_ARGS__)
+#define ZL_E_CODE_INNER(code, ...) \
+    ZL_E_create(                   \
+            NULL,                  \
+            &ZL__errorContext,     \
+            __FILE__,              \
+            __func__,              \
+            __LINE__,              \
+            code,                  \
+            __VA_ARGS__)
+
 #define ZL_E_DECLARE_WITH_STATIC_AND_CONTEXT(        \
         name, static_error, scope_context, err, ...) \
     ZL_Error const name = ZL_E_create(               \
@@ -410,11 +422,11 @@ typedef struct {
 #    define ZL_RESULT_DECLARE_INNER_TYPES(_value_type) /* nothing */
 #endif
 
-#define ZL_RESULT_MAKE_ERROR(type, err, ...) \
-    ZL_RESULT_MAKE_ERROR_CODE(type, ZL_EXPAND_ERRCODE(err), __VA_ARGS__)
+#define ZL_RESULT_MAKE_ERROR(type, ...) \
+    ZL_RESULT_WRAP_ERROR(type, ZL_E(__VA_ARGS__))
 
 #define ZL_RESULT_MAKE_ERROR_CODE(type, ...) \
-    ZS_MACRO_PAD4(ZL_RESULT_MAKE_ERROR_CODE_INNER, "", "", type, __VA_ARGS__)
+    ZL_RESULT_WRAP_ERROR(type, ZL_E_CODE(__VA_ARGS__))
 
 #if defined(__cplusplus)
 } // extern "C"
