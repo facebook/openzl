@@ -6,6 +6,7 @@
 
 ZL_Report SEGM_numeric(ZL_Segmenter* sctx)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(sctx);
     size_t const numInputs = ZL_Segmenter_numInputs(sctx);
     ZL_ASSERT_EQ(numInputs, 1);
     const ZL_Input* const input = ZL_Segmenter_getInput(sctx, 0);
@@ -24,12 +25,12 @@ ZL_Report SEGM_numeric(ZL_Segmenter* sctx)
 
     size_t numElts = ZL_Input_numElts(input);
     while (numElts > chunkEltSizeMax) {
-        ZL_RET_R_IF_ERR(ZL_Segmenter_processChunk(
+        ZL_ERR_IF_ERR(ZL_Segmenter_processChunk(
                 sctx, &chunkEltSizeMax, 1, headGraph, NULL));
         numElts -= chunkEltSizeMax;
     }
     ZL_ASSERT_LE(numElts, chunkEltSizeMax);
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZL_Segmenter_processChunk(sctx, &numElts, 1, headGraph, NULL));
 
     return ZL_returnSuccess();

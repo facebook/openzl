@@ -21,56 +21,47 @@ static ZL_RESULT_OF(uint64_t) getDivisor(
         uint64_t divisor,
         const void* src)
 {
+    ZL_RESULT_DECLARE_SCOPE(uint64_t, NULL);
     if (divisor == 0) {
         divisor = ZL_gcdVec(src, nbInts, intWidth);
         return ZL_RESULT_WRAP_VALUE(uint64_t, divisor);
     }
     switch (intWidth) {
         case 1:
-            ZL_RET_T_IF_GT(
-                    uint64_t,
-                    node_invalid_input,
+            ZL_ERR_IF_GT(
                     divisor,
                     UCHAR_MAX,
-                    "Divisor too large");
-            ZL_RET_T_IF_NE(
-                    uint64_t,
                     node_invalid_input,
+                    "Divisor too large");
+            ZL_ERR_IF_NE(
                     ZL_firstIndexNotDivisibleBy8(src, nbInts, divisor),
-                    nbInts);
+                    nbInts,
+                    node_invalid_input);
             break;
         case 2:
-            ZL_RET_T_IF_GT(
-                    uint64_t,
-                    node_invalid_input,
+            ZL_ERR_IF_GT(
                     divisor,
                     USHRT_MAX,
-                    "Divisor too large");
-            ZL_RET_T_IF_NE(
-                    uint64_t,
                     node_invalid_input,
+                    "Divisor too large");
+            ZL_ERR_IF_NE(
                     ZL_firstIndexNotDivisibleBy16(src, nbInts, divisor),
-                    nbInts);
+                    nbInts,
+                    node_invalid_input);
             break;
         case 4:
-            ZL_RET_T_IF_GT(
-                    uint64_t,
-                    node_invalid_input,
-                    divisor,
-                    UINT_MAX,
-                    "Divisor too large");
-            ZL_RET_T_IF_NE(
-                    uint64_t,
-                    node_invalid_input,
+            ZL_ERR_IF_GT(
+                    divisor, UINT_MAX, node_invalid_input, "Divisor too large");
+            ZL_ERR_IF_NE(
                     ZL_firstIndexNotDivisibleBy32(src, nbInts, divisor),
-                    nbInts);
+                    nbInts,
+                    node_invalid_input);
             break;
         case 8:
-            ZL_RET_T_IF_NE(
-                    uint64_t,
-                    node_invalid_input,
+            ZL_ERR_IF_NE(
                     ZL_firstIndexNotDivisibleBy64(src, nbInts, divisor),
-                    nbInts);
+                    nbInts,
+                    node_invalid_input);
             break;
         default:
             ZL_ASSERT_FAIL("Unsupported int width");
