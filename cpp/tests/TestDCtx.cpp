@@ -187,6 +187,7 @@ TEST_F(TestDCtx, decoderFailureHasCodecName)
                 .nbSOs = 1,
             },
             .transform_f = [](ZL_Decoder*, const ZL_Input**, size_t, const ZL_Input**, size_t) noexcept -> ZL_Report {
+                ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
                 return ZL_REPORT_ERROR(GENERIC, "my codec failed for some reason");
             },
             .name = name.get(),

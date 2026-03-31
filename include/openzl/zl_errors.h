@@ -7,8 +7,8 @@
  * and processing mechanisms.
  */
 
-#ifndef ZSTRONG_ZS2_ERRORS_H
-#define ZSTRONG_ZS2_ERRORS_H
+#ifndef ZSTRONG_ZL_ERRORS_H
+#define ZSTRONG_ZL_ERRORS_H
 
 #include <assert.h>
 #include <stddef.h> // size_t
@@ -29,17 +29,17 @@ extern "C" {
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 /**********************************
- * ZS2_Result Handling in Zstrong *
+ * ZL_Result Handling in Zstrong *
  **********************************/
 
 /**
- * Zstrong employs the `ZS2_Result` type as a primary method for error handling
- * and value returning. A `ZS2_Result` acts as a sum-type, encapsulating either
+ * Zstrong employs the `ZL_Result` type as a primary method for error handling
+ * and value returning. A `ZL_Result` acts as a sum-type, encapsulating either
  * an error or a successful value, ensuring that error checking is systematic
  * and robust across the library.
  *
  * Usage:
- * - A `ZS2_Result` must always be checked using `ZL_RES_isError` before
+ * - A `ZL_Result` must always be checked using `ZL_RES_isError` before
  * accessing the value.
  * - On success, the value can be retrieved using `ZL_RES_value`.
  * - On error, the error code is accessible through `ZL_RES_code`, the
@@ -72,7 +72,7 @@ extern "C" {
 /**
  * When an error occurs, Zstrong can provide a rich error message using the
  * context object where the error has ocurred. This message is a string that can
- * be retrieved using ZS2_{context}_getErrorContextString()  which contains the
+ * be retrieved using ZL_{context}_getErrorContextString()  which contains the
  * call stack of the error source. For example, @ref
  * ZL_CCtx_getErrorContextString is the variant that takes the compression
  * context as input. Below is an example of printing the rich error.
@@ -186,6 +186,9 @@ extern "C" {
 // Returns the error code, of type ZL_ErrorCode
 #define ZL_RES_code(res) ((res)._code)
 
+// Returns the ZL_Error descriptor from a ZL_RESULT_OF(<T>) object.
+#define ZL_RES_error(res) ((res)._error)
+
 /*-*********************************************
  *  Common Result types
  *-********************************************/
@@ -267,9 +270,6 @@ ZL_Report ZL_returnError(ZL_ErrorCode err);
 // Below API allows users to specify a formatted message when they
 // create and return an error.
 //
-// Note(@Cyan): What's the current status of this error message ? Is it
-// displayed in logs ? Is it tracked or registered in the Error object ?
-//
 // ZL_REPORT_ERROR() takes an error code suffix, e.g., `allocation`.
 // ZL_REPORT_ERROR_CODE() takes an error code variable, or a full enum name
 //
@@ -278,15 +278,6 @@ ZL_Report ZL_returnError(ZL_ErrorCode err);
 
 #define ZL_REPORT_ERROR_CODE(...) \
     ZS_MACRO_PAD2(ZL_RESULT_MAKE_ERROR_CODE, size_t, __VA_ARGS__)
-
-// Implementation detail (do not use directly)
-ZL_Report ZL_reportError(
-        const char* file,
-        const char* func,
-        int line,
-        ZL_ErrorCode err,
-        const char* fmt,
-        ...);
 
 /**
  * @returns `ZL_OperationContext*`, a possibly-`NULL` pointer to the
@@ -328,6 +319,54 @@ ZL_Report ZL_reportError(
  * It will return `NULL` if the provided @p context is `NULL`.
  */
 #define ZL_GET_DEFAULT_ERROR_CONTEXT(context) ZL_GET_ERROR_CONTEXT_IMPL(context)
+
+/**********************************
+ * ZL_E: ZL_Error
+ **********************************/
+
+//////////////////
+// Construction //
+//////////////////
+
+/**
+ * Using this macro API allows users to specify a formatted message when they
+ * create and return an error. Currently this message is discarded. But! We
+ * expect to soon have the capability to capture this message information into
+ * the error object, so this lets us start including that information that will
+ * later be useful now as we migrate things to returning errors rather than
+ * ASSERT-ing or REQUIRE-ing.
+ *
+ * ZL_E() takes an error code suffix, e.g., `allocation`, while ZL_E_CODE()
+ * takes the full name (or a variable or something!).
+ */
+#define ZL_E(...) ZS_MACRO_PAD1(ZL_E_INNER, __VA_ARGS__)
+#define ZL_E_CODE(...) ZS_MACRO_PAD1(ZL_E_CODE_INNER, __VA_ARGS__)
+
+/////////////////
+// Destruction //
+/////////////////
+
+// There is no destructor for ZS2_Errors! The memory is managed elsewhere and
+// therefore there's nothing to do to destroy an error.
+
+///////////////
+// Accessors //
+///////////////
+
+ZL_INLINE int ZL_E_isError(ZL_Error err)
+{
+    return err._code != ZL_ErrorCode_no_error;
+}
+
+ZL_INLINE ZL_ErrorCode ZL_E_code(ZL_Error err)
+{
+    return err._code;
+}
+
+ZL_INLINE const char* ZL_E_codeStr(ZL_Error err)
+{
+    return ZL_ErrorCode_toString(err._code);
+}
 
 /////////////////////////////////////////////
 // New and Improved Error Handling Macros! //
@@ -425,4 +464,4 @@ extern "C" {
 } // extern "C"
 #endif
 
-#endif // ZSTRONG_ZS2_ERRORS_H
+#endif // ZSTRONG_ZL_ERRORS_H

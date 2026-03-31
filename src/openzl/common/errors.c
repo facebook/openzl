@@ -989,22 +989,6 @@ void ZL_E_appendToMessage(ZL_Error err, const char* fmt, ...)
     va_end(args);
 }
 
-ZL_Report ZL_reportError(
-        const char* file,
-        const char* func,
-        const int line,
-        const ZL_ErrorCode err,
-        const char* fmt,
-        ...)
-{
-    va_list args;
-    va_start(args, fmt);
-    ZL_Error error =
-            ZL_E_create_va(NULL, NULL, file, func, line, err, fmt, args);
-    va_end(args);
-    return ZL_RESULT_WRAP_ERROR(size_t, error);
-}
-
 ZL_Report ZL_returnError(ZL_ErrorCode err)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);

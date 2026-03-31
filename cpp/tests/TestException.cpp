@@ -45,6 +45,7 @@ TEST_F(TestException, unwrapFoo)
 TEST_F(TestException, unwrapErrorNullCtx)
 {
     try {
+        ZL_RESULT_DECLARE_SCOPE(Foo, nullptr);
         unwrap(ZL_RESULT_MAKE_ERROR(Foo, corruption, "Beep boop!"),
                "Should throw!",
                nullptr);

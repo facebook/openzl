@@ -166,62 +166,6 @@ ZL_INLINE ZL_ErrorInfo ZL_EI_fromSt(const ZL_StaticErrorInfo* const st)
  * ZL_E: ZL_Error *
  ******************/
 
-//////////////////
-// Construction //
-//////////////////
-
-/**
- * Using this macro API allows users to specify a formatted message when they
- * create and return an error. Currently this message is discarded. But! We
- * expect to soon have the capability to capture this message information into
- * the error object, so this lets us start including that information that will
- * later be useful now as we migrate things to returning errors rather than
- * ASSERT-ing or REQUIRE-ing.
- *
- * ZL_E() takes an error code suffix, e.g., `allocation`, while ZL_E_CODE()
- * takes the full name (or a variable or something!).
- */
-#define ZL_E(...) ZS_MACRO_PAD1(ZL_E_INNER, __VA_ARGS__)
-#define ZL_E_CODE(...) ZS_MACRO_PAD1(ZL_E_CODE_INNER, __VA_ARGS__)
-
-#define ZL_E_INNER(err, ...) \
-    ZL_E_CODE_INNER(ZL_EXPAND_ERRCODE(err), __VA_ARGS__)
-#define ZL_E_CODE_INNER(code, ...) \
-    ZL_E_create(                   \
-            NULL,                  \
-            &ZL__errorContext,     \
-            __FILE__,              \
-            __func__,              \
-            __LINE__,              \
-            code,                  \
-            __VA_ARGS__)
-
-/////////////////
-// Destruction //
-/////////////////
-
-// There is no destructor for ZS2_Errors! The memory is managed elsewhere and
-// therefore there's nothing to do to destroy an error.
-
-///////////////
-// Accessors //
-///////////////
-
-ZL_INLINE int ZL_E_isError(ZL_Error err)
-{
-    return err._code != ZL_ErrorCode_no_error;
-}
-
-ZL_INLINE ZL_ErrorCode ZL_E_code(ZL_Error err)
-{
-    return err._code;
-}
-
-ZL_INLINE const char* ZL_E_codeStr(ZL_Error err)
-{
-    return ZL_ErrorCode_toString(err._code);
-}
-
 /// Logs ZL_E_str(err._info) if level <= ZL_g_logLevel.
 void ZL_E_log(ZL_Error err, int level);
 
@@ -407,18 +351,6 @@ void ZL_EE_log(ZL_ErrorInfo ei, int level);
 /*************
  * ZL_Result *
  *************/
-
-//////////////////
-// Construction //
-//////////////////
-
-#undef ZL_RESULT_MAKE_ERROR
-#define ZL_RESULT_MAKE_ERROR(type, ...) \
-    ZL_RESULT_WRAP_ERROR(type, ZL_E(__VA_ARGS__))
-
-#undef ZL_RESULT_MAKE_ERROR_CODE
-#define ZL_RESULT_MAKE_ERROR_CODE(type, ...) \
-    ZL_RESULT_WRAP_ERROR(type, ZL_E_CODE(__VA_ARGS__))
 
 ///////////////
 // Modifiers //
