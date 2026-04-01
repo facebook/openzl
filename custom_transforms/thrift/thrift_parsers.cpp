@@ -26,6 +26,9 @@
 #include <vector>
 
 namespace zstrong::thrift {
+
+static const int kClusterIndexMetadataID = 1;
+
 namespace {
 
 ZL_Output* createZstrongStream(
@@ -193,7 +196,8 @@ ZL_Output* copyFixedWidthLogicalClusterToEICtx(
         const LogicalCluster& cluster,
         const WriteStreamSet& wss,
         WriteStream& lengths,
-        unsigned int formatVersion)
+        unsigned int formatVersion,
+        int clusterIndex)
 {
     // Get cluster metadata
     const size_t clusterWidth = cluster.idList.size() == 0
@@ -249,6 +253,10 @@ ZL_Output* copyFixedWidthLogicalClusterToEICtx(
                 zStream, kDirectedSelectorMetadataID, cluster.successor))) {
         throw std::runtime_error{ "Failed to set directed selector metadata" };
     }
+    if (ZL_isError(ZL_Output_setIntMetadata(
+                zStream, kClusterIndexMetadataID, clusterIndex))) {
+        throw std::runtime_error{ "Failed to set cluster index metadata" };
+    }
 
     return zStream;
 }
@@ -258,7 +266,8 @@ ZL_Output* copyStringLogicalClusterToEICtx(
         ZL_Encoder* eictx,
         const LogicalCluster& cluster,
         const WriteStreamSet& wss,
-        WriteStream& clusterLengths)
+        WriteStream& clusterLengths,
+        int clusterIndex)
 {
     // Get cluster metadata
     const OutcomeInfo outcomeInfo = getOutcomeInfo(VariableOutcome::kVSF);
@@ -311,6 +320,10 @@ ZL_Output* copyStringLogicalClusterToEICtx(
     if (ZL_isError(ZL_Output_setIntMetadata(
                 zStream, kDirectedSelectorMetadataID, cluster.successor))) {
         throw std::runtime_error{ "Failed to set directed selector metadata" };
+    }
+    if (ZL_isError(ZL_Output_setIntMetadata(
+                zStream, kClusterIndexMetadataID, clusterIndex))) {
+        throw std::runtime_error{ "Failed to set cluster index metadata" };
     }
 
     return zStream;
@@ -400,6 +413,12 @@ ZL_Report configurableEncode(ZL_Encoder* eictx, const ZL_Input* in)
                     "Failed to set directed selector metadata"
                 };
             }
+            if (ZL_isError(ZL_Output_setIntMetadata(
+                        zs, kClusterIndexMetadataID, static_cast<int>(i)))) {
+                throw std::runtime_error{
+                    "Failed to set cluster index metadata"
+                };
+            }
         }
 
         // Create and commit unclustered logical streams
@@ -425,25 +444,44 @@ ZL_Report configurableEncode(ZL_Encoder* eictx, const ZL_Input* in)
                         "Failed to set directed selector metadata"
                     };
                 }
+                if (ZL_isError(ZL_Output_setIntMetadata(
+                            zs,
+                            kClusterIndexMetadataID,
+                            static_cast<int>(SingletonId::kNumSingletonIds)
+                                    + static_cast<int>(id)))) {
+                    throw std::runtime_error{
+                        "Failed to set cluster index metadata"
+                    };
+                }
             }
         }
 
         // Create and commit clustered streams
         WriteStream clusterLengths(TType::T_U32);
         clusterLengths.setWidth(sizeof(uint32_t));
-        for (const LogicalCluster& cluster : config.clusters()) {
+        const int clusterIndexBase =
+                static_cast<int>(SingletonId::kNumSingletonIds)
+                + static_cast<int>(config.getLogicalIds().size());
+        for (size_t ci = 0; ci < config.clusters().size(); ci++) {
+            const LogicalCluster& cluster = config.clusters()[ci];
+            const int clusterIndex = clusterIndexBase + static_cast<int>(ci);
             assert(formatVersion >= kMinFormatVersionEncodeClusters);
             if (getClusterType(cluster, dstStreamSet) == TType::T_STRING
                 && formatVersion >= kMinFormatVersionStringVSF) {
                 copyStringLogicalClusterToEICtx(
-                        eictx, cluster, dstStreamSet, clusterLengths);
+                        eictx,
+                        cluster,
+                        dstStreamSet,
+                        clusterLengths,
+                        clusterIndex);
             } else {
                 copyFixedWidthLogicalClusterToEICtx(
                         eictx,
                         cluster,
                         dstStreamSet,
                         clusterLengths,
-                        formatVersion);
+                        formatVersion,
+                        clusterIndex);
             }
         }
         clusterLengths.close();
