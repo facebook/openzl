@@ -19,6 +19,9 @@ extern "C" {
 // and erroneous manipulation of values.
 
 typedef unsigned int ZL_IDType;
+typedef struct {
+    unsigned char bytes[32];
+} ZL_UniqueID;
 
 // opaque => never use definition !!!
 typedef struct {
