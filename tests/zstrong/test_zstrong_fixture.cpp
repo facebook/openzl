@@ -48,6 +48,9 @@ void ZStrongTest::reset()
             cgraph_,
             ZL_CParam_formatVersion,
             (int)formatVersion_.value_or(ZL_MAX_FORMAT_VERSION)));
+    // disable anti-inflation guard for deterministic test behavior
+    ZL_REQUIRE_SUCCESS(ZL_Compressor_setParameter(
+            cgraph_, ZL_CParam_storeOnExpansion, ZL_TernaryParam_disable));
 }
 
 ZL_GraphID ZStrongTest::declareGraph(ZL_NodeID node, ZL_GraphID graph)

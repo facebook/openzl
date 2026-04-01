@@ -183,6 +183,11 @@ RTStreamID RTGM_getOutStreamID(const RTGraph* rtnm, RTNodeID rtnid, int outIdx);
 // To be used _ONLY_ in specific circumstances
 void RTGM_clearNodesFrom(RTGraph* rtgraph, unsigned nodeRank);
 
+// Remove all streams created after that rank id
+// WARNING ! Very dangerous operation (stateful)
+// To be used _ONLY_ in specific circumstances
+void RTGM_clearRTStreamsFrom(RTGraph* rtgraph, unsigned rank);
+
 /* =====   Methods associated to RTStreams   ===== */
 
 // RTGM_refInput() :

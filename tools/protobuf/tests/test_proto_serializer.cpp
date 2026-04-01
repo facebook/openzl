@@ -80,6 +80,9 @@ TEST(TestProtoSerializer, CustomCompressor)
 
     openzl::Compressor compressor;
     compressor.selectStartingGraph(ZL_GRAPH_COMPRESS_GENERIC);
+    // disable anti-inflation guard so compressed output differs from STORE
+    compressor.setParameter(
+            openzl::CParam::StoreOnExpansion, ZL_TernaryParam_disable);
     serializer.setCompressor(std::move(compressor));
     ProtoDeserializer deserializer;
 

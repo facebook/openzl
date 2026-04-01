@@ -411,6 +411,7 @@ TEST_F(TestCustomTransform, ZeroOutputTransform)
     compressor.selectStartingGraph(graph);
     compressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
     compressor.setParameter(CParam::MinStreamSize, -1);
+    compressor.setParameter(CParam::StoreOnExpansion, ZL_TernaryParam_disable);
 
     CCtx cctx;
     cctx.refCompressor(compressor);
