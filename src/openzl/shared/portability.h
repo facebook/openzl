@@ -104,6 +104,111 @@ ZL_BEGIN_C_DECLS
 #    define ZL_HAS_BUILTIN(x) 0
 #endif
 
+#ifdef __has_feature
+#    define ZL_HAS_FEATURE(x) __has_feature(x)
+#else
+#    define ZL_HAS_FEATURE(x) 0
+#endif
+
+#ifndef ZL_ADDRESS_SANITIZER
+#    if ZL_HAS_FEATURE(address_sanitizer)
+#        define ZL_ADDRESS_SANITIZER 1
+#    else
+#        define ZL_ADDRESS_SANITIZER 0
+#    endif
+#endif
+
+#if ZL_ADDRESS_SANITIZER
+/* Not all platforms that support asan provide sanitizers/asan_interface.h.
+ * We therefore declare the functions we need ourselves, rather than trying to
+ * include the header file... */
+
+/**
+ * Marks a memory region (<c>[addr, addr+size)</c>) as unaddressable.
+ *
+ * This memory must be previously allocated by your program. Instrumented
+ * code is forbidden from accessing addresses in this region until it is
+ * unpoisoned. This function is not guaranteed to poison the entire region -
+ * it could poison only a subregion of <c>[addr, addr+size)</c> due to ASan
+ * alignment restrictions.
+ *
+ * \note This function is not thread-safe because no two threads can poison or
+ * unpoison memory in the same memory region simultaneously.
+ *
+ * \param addr Start of memory region.
+ * \param size Size of memory region. */
+void __asan_poison_memory_region(void const volatile* addr, size_t size);
+
+/**
+ * Marks a memory region (<c>[addr, addr+size)</c>) as addressable.
+ *
+ * This memory must be previously allocated by your program. Accessing
+ * addresses in this region is allowed until this region is poisoned again.
+ * This function could unpoison a super-region of <c>[addr, addr+size)</c> due
+ * to ASan alignment restrictions.
+ *
+ * \note This function is not thread-safe because no two threads can
+ * poison or unpoison memory in the same memory region simultaneously.
+ *
+ * \param addr Start of memory region.
+ * \param size Size of memory region. */
+void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
+
+/**
+ * Checks if an address is poisoned.
+ *
+ *  Returns 1 if <c><i>addr</i></c> is poisoned (that is, 1-byte read/write
+ *  access to this address would result in an error report from ASan).
+ *  Otherwise returns 0.
+ *
+ *  \param addr Address to check.
+ *
+ *  \retval 1 Address is poisoned.
+ *  \retval 0 Address is not poisoned.
+ */
+int __asan_address_is_poisoned(void const volatile* addr);
+#endif
+
+#define ZL_POISON_SUPPORTED ZL_ADDRESS_SANITIZER
+
+ZL_INLINE void ZL_poisonMemory(const void* ptr, size_t size)
+{
+#if ZL_ADDRESS_SANITIZER
+    __asan_poison_memory_region(ptr, size);
+#else
+    (void)ptr;
+    (void)size;
+#endif
+}
+
+ZL_INLINE void ZL_unpoisonMemory(const void* ptr, size_t size)
+{
+#if ZL_ADDRESS_SANITIZER
+    __asan_unpoison_memory_region(ptr, size);
+#else
+    (void)ptr;
+    (void)size;
+#endif
+}
+
+ZL_INLINE bool ZL_addressIsPoisoned(const void* ptr)
+{
+#if ZL_ADDRESS_SANITIZER
+    return __asan_address_is_poisoned(ptr);
+#else
+    (void)ptr;
+    return false;
+#endif
+}
+
+#if ZL_POISON_SUPPORTED
+#    define ZL_POISON_MEMORY(ptr, size) ZL_poisonMemory(ptr, size)
+#    define ZL_UNPOISON_MEMORY(ptr, size) ZL_unpoisonMemory(ptr, size)
+#else
+#    define ZL_POISON_MEMORY(ptr, size)
+#    define ZL_UNPOISON_MEMORY(ptr, size)
+#endif
+
 #define ZL_ARCH_FLAG_X86 (1 << 0)
 #define ZL_ARCH_FLAG_X86_64 ((1 << 1) | ZL_ARCH_FLAG_X86)
 #define ZL_ARCH_FLAG_I386 ((1 << 2) | ZL_ARCH_FLAG_X86)
