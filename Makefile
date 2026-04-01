@@ -266,6 +266,7 @@ ALL_GTESTS_OBJS := \
 	tests/local_params_utils.o \
 	tests/ml_selector_utils.o \
 	tests/unittest/common/test_errors_in_c.o \
+	tests/unittest/common/sha_vec.o \
 	tests/compress/ml_selectors/test_zstrong_ml_core_models.o \
 	$(GTEST_OBJS) \
 	$(ZLCPP_TEST_OBJS) \
