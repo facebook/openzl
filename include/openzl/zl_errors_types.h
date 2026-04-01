@@ -89,6 +89,9 @@ typedef enum {
     ZL_ErrorCode_formatVersion_unsupported = 60,
     ZL_ErrorCode_formatVersion_notSet      = 61,
     ZL_ErrorCode_node_versionMismatch      = 62,
+    /* dictionary errors */
+    ZL_ErrorCode_dict_corruption      = 65,
+    ZL_ErrorCode_dict_materialization = 66,
     /* internal errors */
     ZL_ErrorCode_allocation              = 70,
     ZL_ErrorCode_internalBuffer_tooSmall = 71,

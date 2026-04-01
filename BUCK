@@ -145,11 +145,29 @@ zs_library(
 )
 
 zs_library(
+    name = "dict",
+    srcs = glob([
+        "src/openzl/dict/**/*.c",
+    ]),
+    headers = private_headers(glob([
+        "src/openzl/dict/**/*.h",
+    ])),
+    header_namespace = "",
+    deps = [
+        ":common",
+    ],
+    exported_deps = [
+        ":public_headers",
+    ],
+)
+
+zs_library(
     name = "zstronglib",
     exported_deps = [
         ":common",
         ":compress",
         ":decompress",
+        ":dict",
     ],
     exported_external_deps = [
         "zstd",
