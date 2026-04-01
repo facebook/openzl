@@ -330,11 +330,7 @@ ZL_Report ZL_returnError(ZL_ErrorCode err);
 
 /**
  * Using this macro API allows users to specify a formatted message when they
- * create and return an error. Currently this message is discarded. But! We
- * expect to soon have the capability to capture this message information into
- * the error object, so this lets us start including that information that will
- * later be useful now as we migrate things to returning errors rather than
- * ASSERT-ing or REQUIRE-ing.
+ * create and return an error.
  *
  * ZL_E() takes an error code suffix, e.g., `allocation`, while ZL_E_CODE()
  * takes the full name (or a variable or something!).
