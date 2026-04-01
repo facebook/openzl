@@ -33,6 +33,12 @@ EI_split_byrange(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
       .transform_f = EI_split_byrange, \
       .name        = "!zl.split_byrange" }
 
+/// Returns the minimum block size used by split_byrange for a given element
+/// width (in bytes: 1, 2, 4, or 8).  Block size is the granularity at which
+/// min/max statistics are computed.  Tests can use this to size segments
+/// appropriately.
+size_t ZL_splitByRange_minBlockSize(size_t eltWidth);
+
 ZL_END_C_DECLS
 
 #endif // OPENZL_CODECS_SPLITN_ENCODE_SPLIT_BYRANGE_BINDING_H

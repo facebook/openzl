@@ -18,26 +18,54 @@
  * A split is rejected if either side would have fewer elements.
  * This prevents false positives from noise within a single range
  * (e.g. a single extreme value at the start of a segment).
- * Can be overridden via ZL_SPLIT_BYRANGE_MIN_SEGMENT_SIZE_PID parameter. */
-#define DEFAULT_MIN_SEGMENT_SIZE 16
+ * Can be overridden via ZL_SPLIT_BYRANGE_MIN_SEGMENT_SIZE_PID parameter.
+ * Narrow types (u8) use a larger default for robust min/max statistics. */
+#define DEFAULT_MIN_SEGMENT_SIZE 32
+
+static inline size_t defaultMinSegSizeForWidth(size_t eltWidth)
+{
+    if (eltWidth <= 1)
+        return 4 * DEFAULT_MIN_SEGMENT_SIZE; /* u8: 128 */
+    if (eltWidth <= 2)
+        return 2 * DEFAULT_MIN_SEGMENT_SIZE; /* u16: 64 */
+    return DEFAULT_MIN_SEGMENT_SIZE;         /* u32/u64: 32 */
+}
 
 /* Number of blocks on each side of a candidate split that must show
- * non-overlapping, stable ranges. M=3 allows detecting segments as short
- * as 3*blockSize (12 elements for blockSize=4), while the stability +
- * monotonicity checks prevent false positives on overlapping/monotonic data.*/
-#define CONFIRMATION_WINDOW 3
+ * non-overlapping, stable ranges. */
+#define CONFIRMATION_WINDOW 7
 
-/* Window stability factor: a window of M blocks is "stable" (from same range)
- * if windowRange <= STABILITY_K * maxBlockRange. For monotonic data, blocks
- * stack up so windowRange = M * blockRange >> STABILITY_K * blockRange.
- * For uniform random from a fixed range, all blocks have similar ranges
- * so windowRange ≈ blockRange <= STABILITY_K * blockRange. */
-#define STABILITY_K 2
+/* Gap significance factor: after confirming non-overlap between left and right
+ * windows, the split is accepted only if the gap (or transition block
+ * amplitude) exceeds GAP_FACTOR × the typical block amplitude. This rejects
+ * splits within monotonic ramps (where gap ≈ blockRange) while accepting
+ * true range boundaries (where gap >> blockRange). */
+#define GAP_FACTOR 2
 
-/* Block size is minSegSize / BLOCK_DIVISOR, with a floor of MIN_BLOCK_SIZE.
- * Smaller blocks give better boundary resolution at the cost of more blocks. */
-#define BLOCK_DIVISOR 4
-#define MIN_BLOCK_SIZE 4
+/* Stationarity factor: a window of M blocks is "stationary" (all blocks from
+ * the same range) if windowRange <= STATIONARITY_MARGIN * maxBlockRange.
+ *
+ * For n uniform samples from [0, R], expected block range = R*(n-1)/(n+1).
+ * So the theoretical ratio windowRange/maxBlockRange → (n+1)/(n-1) ≈ 1.13
+ * for n=16. In practice the ratio is even closer to 1.0 (max of M blocks
+ * pushes maxBlockRange toward R). A linear ramp gives ratio ≈ M (=7).
+ *
+ * 1.3 provides margin above the theoretical 1.13 for noisy stationary data
+ * while staying well below M. A noisy ramp needs noise > 19× the per-block
+ * trend to fool this check — at that point the trend is negligible. */
+#define STATIONARITY_NUM 13 /* windowRange * 10 <= maxBlockRange * 13 */
+#define STATIONARITY_DEN 10 /* i.e. windowRange / maxBlockRange <= 1.3 */
+
+/* Each minimum-sized segment spans BLOCK_DIVISOR blocks, giving
+ * sub-segment resolution while keeping the block count low.
+ * blockSize = minSegSize / BLOCK_DIVISOR. */
+#define BLOCK_DIVISOR 2
+
+/* Expose min block size so tests can adapt segment sizes. */
+size_t ZL_splitByRange_minBlockSize(size_t eltWidth)
+{
+    return defaultMinSegSizeForWidth(eltWidth) / BLOCK_DIVISOR;
+}
 
 /* Read element at index as uint64_t regardless of element width.
  * When called with a compile-time constant eltWidth (via force-inlined
@@ -97,8 +125,13 @@ ZL_FORCE_INLINE void computeBlockStats(
  * A candidate split between blocks b and b+1 is confirmed when:
  *   - Left window [b-M+1 .. b] and right window [b+2 .. b+M+1]
  *     (skipping transition block b+1) have non-overlapping ranges.
- *   - Both windows are "stable": windowRange <= STABILITY_K * maxBlockRange.
- *     This rejects monotonic progressions where blocks stack up.
+ *   - The separation is significant (any of three signals):
+ *     1. Gap: gap > GAP_FACTOR × typAmp (large discrete jump).
+ *     2. TransAmp: transition block amplitude > GAP_FACTOR × typAmp
+ *        (boundary falls mid-block, spanning both ranges).
+ *     3. Stationarity: both windows have windowRange / maxBlockRange
+ *        <= 1.3 (neither side is trending → non-overlap is a real
+ *        range boundary, not a ramp artifact).
  *
  * After confirming a split at block b, set leftBound=b+2 and advance
  * b by 2 to skip the transition block. The leftBound prevents the
@@ -173,51 +206,44 @@ static size_t findConfirmedSplitBlocks(
         int nonOverlap = (leftMax < rightMin) || (rightMax < leftMin);
 
         if (nonOverlap) {
-            /* Stability check: window range must not grow much beyond
-             * individual block ranges. Monotonic data fails this because
-             * each block covers a different sub-range, making the window
-             * range grow linearly with M. Uniform random from a fixed range
-             * passes because all blocks have similar ranges. */
-            uint64_t leftRange  = leftMax - leftMin;
-            uint64_t rightRange = rightMax - rightMin;
-            int leftStable =
-                    (leftMaxBR == 0) || (leftRange <= STABILITY_K * leftMaxBR);
-            int rightStable = (rightMaxBR == 0)
-                    || (rightRange <= STABILITY_K * rightMaxBR);
+            /* Significance check: accept only if the separation is
+             * meaningful, using three independent signals.
+             *
+             * Signal 1 (gap): gap between ranges > GAP_FACTOR × typAmp.
+             *   Catches boundaries aligned with block edges.
+             * Signal 2 (transAmp): transition block amplitude > GAP_FACTOR ×
+             * typAmp. Catches boundaries that fall mid-block. Signal 3
+             * (stationarity): both windows are stationary (windowRange ≈
+             * blockRange, not trending). If neither side is a ramp, non-overlap
+             * proves a real range boundary. */
+            uint64_t typAmp = (leftMaxBR > rightMaxBR) ? leftMaxBR : rightMaxBR;
+            uint64_t gap    = (leftMax < rightMin) ? rightMin - leftMax
+                                                   : leftMin - rightMax;
+            uint64_t transAmp = blockMax[b + 1] - blockMin[b + 1];
 
-            /* When the ratio-based stability check fails, it may be a
-             * false negative: the window is from a single wide range but
-             * individual blocks happen to have small ranges (high variance
-             * with small blockSize). Override if the blocks are NOT
-             * monotonically ordered — i.e., consecutive blocks overlap,
-             * confirming they're from the same range, not stacked sub-ranges.
-             * For monotonic data, consecutive blocks don't overlap. */
-            if (!leftStable && lSize >= 2) {
-                size_t ordered = 0;
-                for (size_t i = lStart; i < b; i++) {
-                    if (blockMin[i + 1] > blockMax[i]
-                        || blockMax[i + 1] < blockMin[i])
-                        ordered++;
-                }
-                /* Override if at least one pair overlaps: blocks from the
-                 * same range almost always have some overlapping pairs.
-                 * Truly monotonic data has ALL pairs non-overlapping. */
-                if (ordered < lSize - 1)
-                    leftStable = 1;
-            }
-            if (!rightStable) {
-                size_t ordered = 0;
-                for (size_t i = rStart; i < rEnd; i++) {
-                    if (blockMin[i + 1] > blockMax[i]
-                        || blockMax[i + 1] < blockMin[i])
-                        ordered++;
-                }
-                size_t rSize = rEnd - rStart + 1;
-                if (ordered < rSize - 1)
-                    rightStable = 1;
+            int significant = (typAmp == 0) || (gap > GAP_FACTOR * typAmp)
+                    || (transAmp > GAP_FACTOR * typAmp);
+
+            if (!significant) {
+                /* Stationarity: windowRange * DEN <= maxBlockRange * NUM
+                 * i.e. windowRange / maxBlockRange <= 1.3.
+                 * Guard: windowRange <= UINT64_MAX / DEN avoids overflow
+                 * on both sides (maxBlockRange <= windowRange always). */
+                uint64_t leftRange  = leftMax - leftMin;
+                uint64_t rightRange = rightMax - rightMin;
+                int leftStationary  = (leftMaxBR == 0)
+                        || (leftRange <= UINT64_MAX / STATIONARITY_DEN
+                            && leftRange * STATIONARITY_DEN
+                                    <= STATIONARITY_NUM * leftMaxBR);
+                int rightStationary = (rightMaxBR == 0)
+                        || (rightRange <= UINT64_MAX / STATIONARITY_DEN
+                            && rightRange * STATIONARITY_DEN
+                                    <= STATIONARITY_NUM * rightMaxBR);
+                if (leftStationary && rightStationary)
+                    significant = 1;
             }
 
-            if (leftStable && rightStable) {
+            if (significant) {
                 splitBlocks[nbSplits++] = b;
                 leftBound = b + 2; /* next segment starts after transition */
                 b += 2;
@@ -350,21 +376,19 @@ ZL_FORCE_INLINE void detectBoundaries_internal(
         size_t* nbSegments,
         size_t maxSegments)
 {
-    size_t const blockSize = (minSegSize / BLOCK_DIVISOR > MIN_BLOCK_SIZE)
-            ? minSegSize / BLOCK_DIVISOR
-            : MIN_BLOCK_SIZE;
-    size_t const nbBlocks  = (nbElts + blockSize - 1) / blockSize;
-    size_t const M_raw     = (nbBlocks >= 3) ? (nbBlocks - 1) / 2 : 0;
+    size_t const blockSize =
+            (minSegSize / BLOCK_DIVISOR > 0) ? minSegSize / BLOCK_DIVISOR : 1;
+    size_t const nbBlocks = (nbElts + blockSize - 1) / blockSize;
+    size_t const M_raw    = (nbBlocks >= 3) ? (nbBlocks - 1) / 2 : 0;
     size_t const M =
             (M_raw < CONFIRMATION_WINDOW) ? M_raw : CONFIRMATION_WINDOW;
 
     /* Too few blocks for confirmation windows → use M=1 (no stability
      * check, just non-overlap). This is safe for small inputs where
      * there's little room for false positives.
-     * With default parameters (minSegSize=16, blockSize=4, M=3),
-     * this branch is unreachable since the caller already handles
-     * nbElts < 2*minSegSize (=32) as a single segment. It fires
-     * only with custom small minSegmentSize values. */
+     * With default parameters, this branch is unreachable since the
+     * caller already handles nbElts < 2*minSegSize as a single segment.
+     * It fires only with custom small minSegmentSize values. */
     size_t const Meff = (M >= 2 && nbBlocks >= 2 * M + 1) ? M : 1;
     if (nbBlocks < 3) {
         segmentSizes[0] = nbElts;
@@ -597,8 +621,8 @@ EI_split_byrange(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     size_t const eltWidth = ZL_Input_eltWidth(in);
     ZL_ASSERT(eltWidth == 1 || eltWidth == 2 || eltWidth == 4 || eltWidth == 8);
 
-    /* Read optional min segment size parameter, default to 16 */
-    size_t minSegSize = DEFAULT_MIN_SEGMENT_SIZE;
+    /* Read optional min segment size parameter, default is width-dependent */
+    size_t minSegSize = defaultMinSegSizeForWidth(eltWidth);
     {
         ZL_IntParam const mss = ZL_Encoder_getLocalIntParam(
                 eictx, ZL_SPLIT_BYRANGE_MIN_SEGMENT_SIZE_PID);
@@ -634,11 +658,10 @@ EI_split_byrange(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     }
 
     /* Compute block parameters */
-    size_t const blockSize = (minSegSize / BLOCK_DIVISOR > MIN_BLOCK_SIZE)
-            ? minSegSize / BLOCK_DIVISOR
-            : MIN_BLOCK_SIZE;
-    size_t const nbBlocks  = (nbElts + blockSize - 1) / blockSize;
-    size_t const maxZone   = 4 * blockSize + 1;
+    size_t const blockSize =
+            (minSegSize / BLOCK_DIVISOR > 0) ? minSegSize / BLOCK_DIVISOR : 1;
+    size_t const nbBlocks = (nbElts + blockSize - 1) / blockSize;
+    size_t const maxZone  = 4 * blockSize + 1;
 
     /* Allocate scratch for block algorithm:
      *   blockMin[nb] + blockMax[nb] + suffBuf[maxZone] + suffBufMax[maxZone]

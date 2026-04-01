@@ -144,12 +144,15 @@ TEST_F(SplitByRangeTest, MaxValues)
 
 TEST_F(SplitByRangeTest, Width8bit)
 {
+    // u8 uses large blocks (blockSize=64), so segments need many elements
+    // for reliable boundary detection with M=7.
     std::vector<uint8_t> input;
-    for (uint8_t i = 0; i < 100; i++) {
-        input.push_back(200 + (i % 50));
+    input.reserve(1200);
+    for (int i = 0; i < 600; i++) {
+        input.push_back(static_cast<uint8_t>(200 + (i % 50)));
     }
-    for (uint8_t i = 0; i < 100; i++) {
-        input.push_back(i % 50);
+    for (int i = 0; i < 600; i++) {
+        input.push_back(static_cast<uint8_t>(i % 50));
     }
     testSplitByRangeRoundTrip(input);
 }
