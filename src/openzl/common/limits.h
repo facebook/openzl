@@ -72,6 +72,10 @@ size_t ZL_transformOutStreamsLimit(unsigned formatVersion);
 /// Size limit for the variable sized comment field
 #define ZL_MAX_HEADER_COMMENT_SIZE_LIMIT 10000
 
+/// Registering more than this number of dictionaries on a single
+/// compressor/dctx will fail.
+#define ZL_DICTIONARY_LIMIT 1000
+
 ////////////////////////////////////////
 // Compressor Serialization Limits
 ////////////////////////////////////////
