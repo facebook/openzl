@@ -14,6 +14,10 @@ namespace openzl::visualizer {
 class DecompressTracer {
    public:
     DecompressTracer() = default;
+    explicit DecompressTracer(bool showStreamPreview)
+            : showStreamPreview_(showStreamPreview)
+    {
+    }
 
     TraceResult extractTrace();
 
@@ -56,6 +60,7 @@ class DecompressTracer {
     DecompressChunkTrace* currChunk_ =
             nullptr; // convenience pointer to the current chunk trace
     ZL_OperationContext* opCtx_ = nullptr;
+    bool showStreamPreview_     = true; // show stream preview data from trace
 
     TraceResult trace_;
 };

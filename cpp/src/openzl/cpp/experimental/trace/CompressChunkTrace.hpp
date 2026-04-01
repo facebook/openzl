@@ -21,7 +21,10 @@ namespace openzl::visualizer {
 class CompressChunkTrace {
    public:
     CompressChunkTrace() = delete;
-    explicit CompressChunkTrace(size_t chunkId) : chunkId_(chunkId) {}
+    explicit CompressChunkTrace(size_t chunkId, bool showStreamPreview)
+            : chunkId_(chunkId), showStreamPreview_(showStreamPreview)
+    {
+    }
 
     /**
      * Callback to record the first streams (aka user-input). They are never
@@ -127,6 +130,7 @@ class CompressChunkTrace {
     std::map<size_t, std::pair<std::string, std::string>> streamdump_;
     std::vector<Codec> codecInfo_;
     std::vector<Graph> graphInfo_;
+    bool showStreamPreview_     = true;  // show stream preview data from trace
     bool currEncompassingGraph_ = false; // if codecs are running within a graph
     std::optional<ConversionError> maybeConversionError_ = std::nullopt;
     void streamdump(const ZL_Output* createdStream);

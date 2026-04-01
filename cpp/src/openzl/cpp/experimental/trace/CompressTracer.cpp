@@ -61,7 +61,7 @@ void CompressTracer::on_ZL_Segmenter_processChunk_start(
         const ZL_RuntimeGraphParameters* rGraphParams)
 {
     auto chunkNum = graphRuns.size();
-    graphRuns.emplace_back(chunkNum);
+    graphRuns.emplace_back(chunkNum, showStreamPreview_);
     currChunk = &(graphRuns[chunkNum]);
     currChunk->on_ZL_Segmenter_processChunk_start(
             segCtx, numElts, numInputs, startingGraphID, rGraphParams);
@@ -169,7 +169,7 @@ void CompressTracer::on_ZL_CCtx_compressMultiTypedRef_start(
     frameVersion = ZL_CCtx_getParameter(cctx, ZL_CParam_formatVersion);
     opCtx_       = ZL_GET_OPERATION_CONTEXT(cctx);
     // The "main" trace is located at idx 0 of graphRuns
-    graphRuns.emplace_back(MAIN_TRACE_IDX);
+    graphRuns.emplace_back(MAIN_TRACE_IDX, showStreamPreview_);
     currChunk = &graphRuns[MAIN_TRACE_IDX];
 }
 

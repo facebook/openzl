@@ -17,7 +17,10 @@
 namespace openzl::visualizer {
 class CompressionTraceHooks : public openzl::CompressIntrospectionHooks {
    public:
-    CompressionTraceHooks()           = default;
+    explicit CompressionTraceHooks(bool showStreamPreview)
+            : showStreamPreview_(showStreamPreview)
+    {
+    }
     ~CompressionTraceHooks() override = default;
 
     std::pair<
@@ -117,6 +120,7 @@ class CompressionTraceHooks : public openzl::CompressIntrospectionHooks {
                                     // lengths (or ""))
     std::string latestTraceCache_;  // cache for latest trace
 
+    bool showStreamPreview_ = true;
     std::unique_ptr<CompressTracer>
             tracer_; // pointer to the actual class that does a trace
 };

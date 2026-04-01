@@ -19,13 +19,18 @@ namespace openzl::visualizer {
 class DecompressChunkTrace {
    public:
     DecompressChunkTrace() = delete;
-    explicit DecompressChunkTrace(size_t chunkId) : chunkId_(chunkId) {}
+    explicit DecompressChunkTrace(size_t chunkId, bool showStreamPreview)
+            : chunkId_(chunkId), showStreamPreview_(showStreamPreview)
+    {
+    }
 
     /**
      * Helper function to create a dummy chunk that just contains a segmenter
      * node, in cases where the trace is a multi-chunk run.
      */
-    static DecompressChunkTrace makeSegmenterChunk(size_t chunkId);
+    static DecompressChunkTrace makeSegmenterChunk(
+            size_t chunkId,
+            bool showStreamPreview);
     /**
      * Finalize the trace.
      * - On success, unsourced streams (decoded outputs) go to "zl.regen".
@@ -67,6 +72,7 @@ class DecompressChunkTrace {
     void streamdump(const ZL_Data* data);
 
     const size_t chunkId_;
+    bool showStreamPreview_     = true; // show stream preview data from trace
     size_t totalCompressedSize_ = 0;
     size_t currCodecNum_        = 0;
     std::map<ZL_DataID, Stream, ZL_DataIDCustomComparator> streamInfo_;

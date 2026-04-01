@@ -96,7 +96,7 @@ class CCtx {
             GraphID graph,
             const poly::optional<GraphParameters>& params = poly::nullopt);
 
-    void writeTraces(bool enabled);
+    void writeTraces(bool enabled, bool streamPreview = true);
 
     /**
      * @returns a pair of the latest trace, and a map from internal stream IDs

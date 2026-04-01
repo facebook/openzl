@@ -199,7 +199,7 @@ function formatStringPreview(strings: string[]): ReactNode {
 function formatPreview(edge: InternalEdge): ReactNode | null {
   const {type, eltWidth, streamPreview} = edge;
 
-  if (!streamPreview) {
+  if (!streamPreview || streamPreview.length === 0) {
     return null;
   }
 

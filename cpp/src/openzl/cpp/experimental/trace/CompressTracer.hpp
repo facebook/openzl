@@ -15,6 +15,10 @@ namespace openzl::visualizer {
 class CompressTracer {
    public:
     CompressTracer() = default;
+    explicit CompressTracer(bool showStreamPreview)
+            : showStreamPreview_(showStreamPreview)
+    {
+    }
 
     TraceResult extractTrace();
 
@@ -121,6 +125,7 @@ class CompressTracer {
             nullptr; // convenience pointer to the current chunk trace
     bool segmented              = false;
     ZL_OperationContext* opCtx_ = nullptr;
+    bool showStreamPreview_     = true; // show stream preview data from trace
 
     TraceResult trace;
 };

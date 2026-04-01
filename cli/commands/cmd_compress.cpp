@@ -138,7 +138,7 @@ int performCompression(const CompressArgs& args)
                 VERBOSE1,
                 "Tracing compression to ",
                 args.traceOutput->name().data());
-        cctx.writeTraces(true);
+        cctx.writeTraces(true, args.streamPreview);
     }
 
     auto& input  = *args.input;

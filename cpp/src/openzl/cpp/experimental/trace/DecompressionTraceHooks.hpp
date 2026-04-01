@@ -15,7 +15,10 @@ namespace openzl::visualizer {
 
 class DecompressionTraceHooks : public openzl::DecompressIntrospectionHooks {
    public:
-    DecompressionTraceHooks()           = default;
+    explicit DecompressionTraceHooks(bool showStreamPreview)
+            : showStreamPreview_(showStreamPreview)
+    {
+    }
     ~DecompressionTraceHooks() override = default;
 
     std::pair<
@@ -58,6 +61,7 @@ class DecompressionTraceHooks : public openzl::DecompressIntrospectionHooks {
     std::vector<std::vector<StreamdumpEntry>> latestStreamdumpCache_;
     std::string latestTraceCache_;
 
+    bool showStreamPreview_ = true;
     std::unique_ptr<DecompressTracer> tracer_;
 };
 

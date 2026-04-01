@@ -195,6 +195,20 @@ void ChunkTraceCore::finalizeUnconsumedStreams(
     }
 }
 
+StreamPreview ChunkTraceCore::emptyPreview(ZL_Type type)
+{
+    switch (type) {
+        case ZL_Type_string:
+            return std::vector<std::string>{};
+        case ZL_Type_numeric:
+            return std::vector<int64_t>{};
+        case ZL_Type_serial:
+        case ZL_Type_struct:
+        default:
+            return std::vector<uint8_t>{};
+    }
+}
+
 StreamPreview ChunkTraceCore::getStreamPreview(
         const void* data,
         ZL_Type type,

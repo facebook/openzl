@@ -44,7 +44,7 @@ void DecompressTracer::on_ZL_DCtx_decompressMultiTBuffer_start(
             ZL_validResult(ZL_getFormatVersionFromFrame(framePtr, frameSize)));
 
     // Create the main chunk at index 0
-    chunks_.emplace_back(MAIN_CHUNK_IDX);
+    chunks_.emplace_back(MAIN_CHUNK_IDX, showStreamPreview_);
     currChunk_ = &chunks_[MAIN_CHUNK_IDX];
     opCtx_     = ZL_GET_OPERATION_CONTEXT(dctx);
 }
@@ -60,8 +60,8 @@ void DecompressTracer::on_ZL_DCtx_decompressMultiTBuffer_end(
 
     // Create a dummy "main" chunk, if necessary
     if (chunks_.size() > 1) {
-        auto dummyChunk =
-                DecompressChunkTrace::makeSegmenterChunk(chunks_.size());
+        auto dummyChunk = DecompressChunkTrace::makeSegmenterChunk(
+                chunks_.size(), showStreamPreview_);
         std::vector<DecompressChunkTrace> newChunks = { std::move(dummyChunk) };
         for (auto& chunk : chunks_) {
             newChunks.push_back(std::move(chunk));
@@ -95,7 +95,7 @@ void DecompressTracer::on_decompressChunk_start(
 {
     if (chunkIndex > 0) {
         // Multi-chunk frame: create additional chunk traces
-        chunks_.emplace_back(chunkIndex);
+        chunks_.emplace_back(chunkIndex, showStreamPreview_);
         currChunk_ = &chunks_.back();
     }
 }
