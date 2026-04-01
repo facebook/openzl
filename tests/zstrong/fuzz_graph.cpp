@@ -186,14 +186,21 @@ FUZZ(GraphTest, FuzzGraphRoundTrip)
     size_t constexpr kMaxCompressedSize = kDefaultMaxInputLength * 10;
     std::string compressed(kMaxCompressedSize, '\0');
 
-    // Compress the input - it must succeed
+    // Compress the input - it must succeed, unless the destination buffer
+    // is too small. We can't bound the compressed size for arbitrary graphs,
+    // so just skip the round-trip test if the buffer is too small.
     auto const cSize = ZL_compress_usingCompressor(
             compressed.data(),
             compressed.size(),
             input.data(),
             input.size(),
             cgraph);
-    ZL_REQUIRE_SUCCESS(cSize);
+    if (ZL_isError(cSize)) {
+        auto code = ZL_errorCode(cSize);
+        ASSERT_EQ(code, ZL_ErrorCode_dstCapacity_tooSmall);
+        ZL_Compressor_free(cgraph);
+        return;
+    }
 
     // Decompress the data
     std::string roundTripped(input.size(), '\0');
