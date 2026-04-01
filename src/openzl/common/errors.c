@@ -118,6 +118,10 @@ const char* ZL_ErrorCode_toString(ZL_ErrorCode code)
             return ZL_ErrorCode_srcSize_tooLarge__desc_str;
         case ZL_ErrorCode_integerOverflow:
             return ZL_ErrorCode_integerOverflow__desc_str;
+        case ZL_ErrorCode_dict_corruption:
+            return ZL_ErrorCode_dict_corruption__desc_str;
+        case ZL_ErrorCode_dict_materialization:
+            return ZL_ErrorCode_dict_materialization__desc_str;
         case ZL_ErrorCode_maxCode:
         default:
             ZL_ASSERT_FAIL("Invalid error code!: %d", (int)code);
