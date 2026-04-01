@@ -81,7 +81,6 @@ typedef struct {
 struct ZL_DCtx_s {
     DTransforms_manager dtm;
     DFH_Struct dfh;
-    VECTOR_CONST_POINTERS(ZL_Data) transformInputStreams;
     ZL_DCtx_DataInfoArray dataInfo;
     ZL_Data** outputs;
     size_t nbOutputs;
@@ -133,9 +132,6 @@ ZL_DCtx* ZL_DCtx_create(void)
         return NULL;
     }
     DFH_init(&dctx->dfh);
-    VECTOR_INIT(
-            dctx->transformInputStreams,
-            ZL_transformOutStreamsLimit(ZL_MAX_FORMAT_VERSION));
     return dctx;
 }
 
@@ -179,7 +175,6 @@ void ZL_DCtx_free(ZL_DCtx* dctx)
 {
     if (dctx == NULL)
         return;
-    VECTOR_DESTROY(dctx->transformInputStreams);
     DCTX_freeStreams(dctx);
     DTM_destroy(&dctx->dtm);
     DFH_destroy(&dctx->dfh);
@@ -630,6 +625,75 @@ static ZL_Report ZL_AppendToOutputOptimization_newStreamHook(
     return ZL_returnValue(1);
 }
 
+/**
+ * Runs all node validation except checks that require the input and output
+ * streams to be materialized.
+ */
+static ZL_Report DCTX_validateNodeStatic(
+        ZL_DCtx* dctx,
+        const DTransform* dt,
+        const DFH_NodeInfo* nodeInfo)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
+
+    if (dctx->dfh.formatVersion < 9) {
+        ZL_ERR_IF_EQ(
+                nodeInfo->numInputStreams,
+                0,
+                formatVersion_unsupported,
+                "0 output streams not supported until format version 9");
+    }
+    ZL_ERR_IF_GT(
+            nodeInfo->numInputStreams,
+            ZL_transformOutStreamsLimit(dctx->dfh.formatVersion),
+            formatVersion_unsupported);
+
+    ZL_ERR_IF_EQ(
+            nodeInfo->nbRegens,
+            0,
+            corruption,
+            "Graph inconsistency: Transform has no regenerated streams");
+    // Validate that nb of regen streams is compatible
+    ZL_ERR_IF_NOT(
+            DT_isNbRegensCompatible(dt, nodeInfo->nbRegens),
+            nodeRegen_countIncorrect,
+            "Transform '%s'(%u) is assigned %u streams to regenerate, but its signature specifies %u streams",
+            DT_getTransformName(dt),
+            nodeInfo->trpid.trid,
+            nodeInfo->nbRegens,
+            dt->miGraphDesc.nbInputs);
+
+    // Validate that we only have variable output streams when we have a
+    // non-zero number of variable output stream types. This is required
+    // to ensure that all non-variable transforms get the right number
+    // of streams.
+    if (dt->miGraphDesc.nbVOs == 0) {
+        ZL_ERR_IF_NE(
+                nodeInfo->nbVOs,
+                0,
+                corruption,
+                "Transform id=%u isn't accepting VO streams, "
+                "but %zu VO streams are nonetheless assigned to it in this graph.",
+                dt->miGraphDesc.CTid,
+                nodeInfo->nbVOs);
+    }
+
+    // We already validated the input streams during decode frame header.
+    // Though they may not all be filled, so we have to check that.
+    const size_t inputStreamEndIdx =
+            nodeInfo->inputStreamBaseIdx + nodeInfo->numInputStreams;
+    ZL_ERR_IF_GT(inputStreamEndIdx, dctx->dataInfo.size, graph_invalid);
+    ZL_ASSERT_LE(inputStreamEndIdx, dctx->dataInfo.size);
+    // Check that output streams are not used as input streams
+    ZL_ERR_IF_GT(
+            inputStreamEndIdx,
+            dctx->dataInfo.size - dctx->nbOutputs,
+            graph_invalid,
+            "Graph inconsistency: Output stream depends on another output stream");
+
+    return ZL_returnSuccess();
+}
+
 /* Reference streams stored in the frame.
  * Allocate them at their position in the graph.
  * @return size read from input
@@ -708,10 +772,12 @@ static ZL_Report fillStoredStreams(
                 DTM_getTransform(
                         &dctx->dtm, node->trpid, dctx->dfh.formatVersion));
         const size_t nbTrIns = wrappedTr->miGraphDesc.nbSOs + node->nbVOs;
-        ZL_ERR_IF_GT(
-                nbTrIns,
-                ZL_transformOutStreamsLimit(dctx->dfh.formatVersion),
-                formatVersion_unsupported);
+
+        nodeInfo[transformIdx].inputStreamBaseIdx = (ZL_IDType)streamIdx;
+        nodeInfo[transformIdx].numInputStreams    = (ZL_IDType)nbTrIns;
+
+        // Run all validation that can be done at header decode time.
+        ZL_ERR_IF_ERR(DCTX_validateNodeStatic(dctx, wrappedTr, node));
 
         ZL_DLOG(BLOCK,
                 "node %i : transform %i needs %i processed inputs",
@@ -719,19 +785,6 @@ static ZL_Report fillStoredStreams(
                 node->trpid.trid,
                 nbTrIns);
         size_t const inputEndIdx = streamIdx + nbTrIns;
-        ZL_ERR_IF_GT(
-                inputEndIdx,
-                firstOutputIdx,
-                corruption,
-                "Graph inconsistency: Output stream depends on another output stream");
-        ZL_ERR_IF_EQ(
-                node->nbRegens,
-                0,
-                corruption,
-                "Graph inconsistency: Transform has no regenerated streams");
-
-        nodeInfo[transformIdx].inputStreamBaseIdx = (ZL_IDType)streamIdx;
-        nodeInfo[transformIdx].numInputStreams    = (ZL_IDType)nbTrIns;
 
         for (size_t n = 0; n < node->nbRegens; n++) {
             size_t const outputStreamIdx =
@@ -1057,75 +1110,164 @@ ZL_Data* DCTX_newStreamFromStreamRef(
     return info->data;
 }
 
-// @return : nb of streams processed
-static ZL_Report processStream(
+static const ZL_Data** DCTX_getNodeInputs(
         ZL_DCtx* dctx,
-        ZL_IDType streamID,
-        const DTransform* dt,
         const DFH_NodeInfo* nodeInfo)
 {
-    ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
-    ZL_ASSERT_NN(dctx);
-    const char* const trName = DT_getTransformName(dt);
-    ZL_RESULT_SCOPE_ADD_GRAPH_CONTEXT((ZL_GraphContext){
-            .transformID = dt->miGraphDesc.CTid, .name = trName });
-    size_t const nbInStreams = dt->miGraphDesc.nbSOs + nodeInfo->nbVOs;
-    ZL_DLOG(BLOCK,
-            "processStream streams [%u-%u] with transform '%s'(%u)",
-            streamID,
-            streamID + (ZL_IDType)nbInStreams - 1,
-            trName,
-            nodeInfo->trpid.trid);
-    if (dctx->dfh.formatVersion < 9) {
-        ZL_ERR_IF_EQ(
-                nbInStreams,
-                0,
-                formatVersion_unsupported,
-                "0 output streams not supported until format version 9");
+    const ZL_Data** inputs = ALLOC_Arena_malloc(
+            dctx->workspaceArena,
+            nodeInfo->numInputStreams * sizeof(const ZL_Data*));
+    if (inputs == NULL) {
+        return NULL;
     }
-    ZL_ERR_IF_GT(
-            nbInStreams,
-            ZL_transformOutStreamsLimit(dctx->dfh.formatVersion),
-            formatVersion_unsupported);
-    // Validate that nb of regen streams is compatible
-    ZL_ERR_IF_NOT(
-            DT_isNbRegensCompatible(dt, nodeInfo->nbRegens),
-            nodeRegen_countIncorrect,
-            "Transform '%s'(%u) is assigned %u streams to regenerate, but its signature specifies %u streams",
-            DT_getTransformName(dt),
-            nodeInfo->trpid.trid,
-            nodeInfo->nbRegens,
-            dt->miGraphDesc.nbInputs);
 
-    // Validate that we only have variable output streams when we have a
-    // non-zero number of variable output stream types. This is required
-    // to ensure that all non-variable transforms get the right number
-    // of streams.
-    if (dt->miGraphDesc.nbVOs == 0) {
-        ZL_ERR_IF_NE(
-                nodeInfo->nbVOs,
-                0,
-                corruption,
-                "Transform id=%u isn't accepting VO streams, "
-                "but %zu VO streams are nonetheless assigned to it in this graph.",
-                dt->miGraphDesc.CTid,
-                nodeInfo->nbVOs);
+    for (ZL_IDType n = 0; n < nodeInfo->numInputStreams; n++) {
+        ZL_IDType const snb = nodeInfo->inputStreamBaseIdx + n;
+        size_t const inb = nodeInfo->numInputStreams - 1 - n; // reverse order
+        inputs[inb]      = dctx->dataInfo.ptr[snb].data;
     }
+
+    return inputs;
+}
+
+static ZL_Report DCTX_validateNodeInputs(
+        ZL_DCtx* dctx,
+        const DTransform* dt,
+        const DFH_NodeInfo* nodeInfo,
+        const ZL_Data* const* inputs,
+        size_t numInputs)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
+    ZL_ASSERT_EQ(nodeInfo->numInputStreams, numInputs);
 
     ZL_Type allowedVOTypes = 0;
     for (size_t i = 0; i < dt->miGraphDesc.nbVOs; i++) {
         allowedVOTypes |= dt->miGraphDesc.voTypes[i];
     }
 
-    // We already validated the input streams during decode frame header.
-    // Though they may not all be filled, so we have to check that.
-    ZL_ASSERT_LE(streamID + nbInStreams, dctx->dataInfo.size);
-    // Check that output streams are not used as input streams
-    ZL_ERR_IF_GT(
-            streamID + nbInStreams,
-            dctx->dataInfo.size - dctx->nbOutputs,
-            graph_invalid);
+    // Validate input types
+    for (size_t i = 0; i < numInputs; ++i) {
+        ZL_ERR_IF_NULL(
+                inputs[i], graph_invalid, "Input stream %u not filled!", i);
 
+        // Validate the input type is correct
+        // (only for the compulsory output streams)
+        if (i < dt->miGraphDesc.nbSOs) {
+            // Compulsory range
+            if (ZL_Data_type(inputs[i]) != dt->miGraphDesc.soTypes[i]) {
+                ZL_ERR(graph_invalid,
+                       "Error processing stream transform %u: input stream %u has type %d, but we expected type %d",
+                       dt->miGraphDesc.CTid,
+                       (unsigned)i,
+                       ZL_Data_type(inputs[i]),
+                       dt->miGraphDesc.soTypes[i]);
+            }
+        } else {
+            // Validate that variable streams match one of the allowed types
+            // in the graph description. We can't validate more than that,
+            // the transform is responsible for everything else.
+            ZL_ERR_IF_NOT(
+                    ZL_Data_type(inputs[i]) & allowedVOTypes,
+                    graph_invalid,
+                    "Error processing transform %u: Variable input stream %u has type 0x%x, but we expected a type that matches the mask 0x%x",
+                    dt->miGraphDesc.CTid,
+                    (unsigned)(i - dt->miGraphDesc.nbSOs),
+                    ZL_Data_type(inputs[i]),
+                    allowedVOTypes);
+        }
+    }
+
+    return ZL_returnSuccess();
+}
+
+static const ZL_IDType* DCTX_getRegeneratedStreamIDs(
+        ZL_DCtx* dctx,
+        const DFH_NodeInfo* nodeInfo)
+{
+    ZL_IDType* const regensID = ALLOC_Arena_malloc(
+            dctx->workspaceArena, sizeof(ZL_IDType) * nodeInfo->nbRegens);
+    if (regensID == NULL) {
+        return NULL;
+    }
+
+    const ZL_IDType inputEndIdx =
+            nodeInfo->inputStreamBaseIdx + nodeInfo->numInputStreams;
+    for (size_t n = 0; n < nodeInfo->nbRegens; n++) {
+        regensID[n] = (ZL_IDType)(inputEndIdx + nodeInfo->regenDistances[n]);
+        ZL_ASSERT_LT(regensID[n], dctx->dataInfo.size);
+        ZL_ASSERT_NULL(
+                dctx->dataInfo.ptr[regensID[n]].data,
+                "Validated in frame header decoding");
+    }
+    return regensID;
+}
+
+static ZL_Report DCTX_validateNodeOutputs(
+        ZL_DCtx* dctx,
+        const ZL_IDType* regenStreamIDs,
+        size_t numRegens)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
+
+    for (size_t n = 0; n < numRegens; n++) {
+        ZL_Data* outStream = dctx->dataInfo.ptr[regenStreamIDs[n]].data;
+        ZL_ERR_IF_NULL(
+                outStream,
+                transform_executionFailure,
+                "Node didn't create expected regenerated stream!");
+        ZL_ASSERT(
+                STREAM_isCommitted(outStream),
+                "Decoding transform did not provide its output size");
+    }
+
+    return ZL_returnSuccess();
+}
+
+static void DCTX_freeDecoderInputStreams(
+        ZL_DCtx* dctx,
+        const DFH_NodeInfo* nodeInfo)
+{
+    if (!dctx->preserveStreams) {
+        for (ZL_IDType n = 0; n < nodeInfo->numInputStreams; n++) {
+            ZL_IDType const snb       = nodeInfo->inputStreamBaseIdx + n;
+            ZL_Data** const streamPtr = &dctx->dataInfo.ptr[snb].data;
+            STREAM_free(*streamPtr);
+            *streamPtr = NULL;
+        }
+    }
+}
+
+// @return : nb of streams processed
+static ZL_Report runDecoder(ZL_DCtx* dctx, const DFH_NodeInfo* nodeInfo)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
+    ZL_ASSERT_NN(dctx);
+    PublicTransformInfo const trid = nodeInfo->trpid;
+    ZL_TRY_LET(
+            DTrPtr,
+            dt,
+            DTM_getTransform(&dctx->dtm, trid, dctx->dfh.formatVersion));
+
+    const char* const trName = DT_getTransformName(dt);
+    ZL_RESULT_SCOPE_ADD_GRAPH_CONTEXT(
+            (ZL_GraphContext){ .transformID = trid.trid, .name = trName });
+
+    const ZL_IDType streamID = nodeInfo->inputStreamBaseIdx;
+    const size_t nbInStreams = nodeInfo->numInputStreams;
+
+    ZL_DLOG(BLOCK,
+            "transformID = %u '%s' (type:%u)",
+            trid.trid,
+            DTM_getTransformName(&dctx->dtm, trid, dctx->dfh.formatVersion),
+            trid.trt);
+    ZL_DLOG(BLOCK,
+            "runDecoder on input streams [%u-%u] with transform '%s'(%u)",
+            streamID,
+            streamID + (ZL_IDType)nbInStreams - 1,
+            trName,
+            nodeInfo->trpid.trid);
+
+    // Run append to output optimization
     if (nodeInfo->nbRegens == 1) {
         const size_t regenIdx =
                 streamID + nbInStreams + nodeInfo->regenDistances[0];
@@ -1154,73 +1296,24 @@ static ZL_Report processStream(
         }
     }
 
-    // Collect inputs and validate types
-    ZL_ERR_IF_NE(
-            nbInStreams,
-            VECTOR_RESIZE_UNINITIALIZED(
-                    dctx->transformInputStreams, nbInStreams),
-            allocation);
-    const ZL_Data** inputs = VECTOR_DATA(dctx->transformInputStreams);
-    for (ZL_IDType n = 0; n < nbInStreams; n++) {
-        ZL_IDType const snb = streamID + n;
-        size_t const inb    = nbInStreams - 1 - n; // reverse order
-        inputs[inb]         = dctx->dataInfo.ptr[snb].data;
+    // Collect input streams
+    const ZL_Data** inputs = DCTX_getNodeInputs(dctx, nodeInfo);
+    ZL_ERR_IF_NULL(inputs, allocation);
 
-        ZL_ERR_IF_NULL(
-                inputs[inb], graph_invalid, "Input stream %u not filled!", inb);
+    // Validate input types
+    ZL_ERR_IF_ERR(
+            DCTX_validateNodeInputs(dctx, dt, nodeInfo, inputs, nbInStreams));
 
-        // Validate the input type is correct
-        // (only for the compulsory output streams)
-        if (inb < dt->miGraphDesc.nbSOs) {
-            // Compulsory range
-            if (ZL_Data_type(inputs[inb]) != dt->miGraphDesc.soTypes[inb]) {
-                ZL_ERR(graph_invalid,
-                       "Error processing stream %u, transform %u: input stream %u has type %d, but we expected type %d",
-                       streamID,
-                       dt->miGraphDesc.CTid,
-                       (unsigned)inb,
-                       ZL_Data_type(inputs[inb]),
-                       dt->miGraphDesc.soTypes[inb]);
-            }
-        } else {
-            // Validate that variable streams match one of the allowed types
-            // in the graph description. We can't validate more than that,
-            // the transform is responsible for everything else.
-            ZL_ERR_IF_NOT(
-                    ZL_Data_type(inputs[inb]) & allowedVOTypes,
-                    graph_invalid,
-                    "Error processing stream %u, transform %u: Variable input stream %u has type 0x%x, but we expected a type that matches the mask 0x%x",
-                    streamID,
-                    dt->miGraphDesc.CTid,
-                    (unsigned)(inb - dt->miGraphDesc.nbSOs),
-                    ZL_Data_type(inputs[inb]),
-                    allowedVOTypes);
-        }
-    }
-
-    ZL_ASSERT_NN(dt->transformFn);
+    // Get the codec header
     ZL_TRY_LET(
             ZL_RBuffer,
             thContent,
             ZL_RBuffer_slice(
                     dctx->thstream, nodeInfo->trhStart, nodeInfo->trhSize));
 
-    // Determine regenerated streams slots (regensID)
-    ZL_IDType* const regensID = ALLOC_Arena_malloc(
-            dctx->workspaceArena, sizeof(ZL_IDType) * nodeInfo->nbRegens);
+    // Determine regenerated streams slots
+    const ZL_IDType* regensID = DCTX_getRegeneratedStreamIDs(dctx, nodeInfo);
     ZL_ERR_IF_NULL(regensID, allocation);
-    for (size_t n = 0; n < nodeInfo->nbRegens; n++) {
-        regensID[n] = (ZL_IDType)(streamID + nbInStreams
-                                  + nodeInfo->regenDistances[n]);
-    }
-    // Check that regenerated streams slots are not already filled
-    for (size_t n = 0; n < nodeInfo->nbRegens; n++) {
-        ZL_Data* outStream = dctx->dataInfo.ptr[regensID[n]].data;
-        ZL_ERR_IF_NN(
-                outStream,
-                graph_invalid,
-                "Regenerated stream slot already filled!");
-    }
 
     // Run the transform
     ZL_DLOG(SEQ,
@@ -1244,6 +1337,8 @@ static ZL_Report processStream(
             nodeInfo->trpid.trid);
 
     DWAYPOINT(on_codecDecode_start, &diState, inputs, nbInStreams);
+
+    ZL_ASSERT_NN(dt->transformFn);
     ZL_Report const report = dt->transformFn(&diState, dt, inputs, nbInStreams);
     if (ZL_isError(report)) {
         DWAYPOINT(on_codecDecode_end, &diState, NULL, 0, report);
@@ -1251,16 +1346,8 @@ static ZL_Report processStream(
     ZL_ERR_IF_ERR_COERCE(report);
 
     // Check transform's outcome
-    for (size_t n = 0; n < nodeInfo->nbRegens; n++) {
-        ZL_Data* outStream = dctx->dataInfo.ptr[regensID[n]].data;
-        ZL_ERR_IF_NULL(
-                outStream,
-                transform_executionFailure,
-                "Node didn't create expected regenerated stream!");
-        ZL_ASSERT(
-                STREAM_isCommitted(outStream),
-                "Decoding transform did not provide its output size");
-    }
+    ZL_ERR_IF_ERR(DCTX_validateNodeOutputs(dctx, regensID, nodeInfo->nbRegens));
+
     IF_DWAYPOINT_ENABLED(on_codecDecode_end, &diState)
     {
         VECTOR_CONST_POINTERS(ZL_Data) odata;
@@ -1282,23 +1369,18 @@ static ZL_Report processStream(
                 ZL_returnSuccess());
         VECTOR_DESTROY(odata);
     }
+
+    // Clear the workspace arena
     ALLOC_Arena_freeAll(dctx->workspaceArena);
+
+    // Free the input streams
+    DCTX_freeDecoderInputStreams(dctx, nodeInfo);
 
     ZL_DLOG(BLOCK,
             "decoder '%s' (id:%u) regenerated %zu streams",
             trName,
             dt->miGraphDesc.CTid,
             diState.nbRegens);
-
-    // Free the input streams
-    if (!dctx->preserveStreams) {
-        for (ZL_IDType n = 0; n < nbInStreams; n++) {
-            ZL_IDType const snb       = streamID + n;
-            ZL_Data** const streamPtr = &dctx->dataInfo.ptr[snb].data;
-            STREAM_free(*streamPtr);
-            *streamPtr = NULL;
-        }
-    }
 
     return ZL_returnValue(nbInStreams);
 }
@@ -1308,26 +1390,10 @@ static ZL_Report runDecoders(ZL_DCtx* dctx)
     ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
     ZL_DLOG(FRAME, "runDecoders (%zu stages)", dctx->dfh.nbDTransforms);
     ZL_ASSERT_NN(dctx);
-    for (size_t stage = 0, startingStream = 0; stage < dctx->dfh.nbDTransforms;
-         stage++) {
+    for (size_t stage = 0; stage < dctx->dfh.nbDTransforms; stage++) {
         ZL_DLOG(BLOCK, "decoding stage %zu", stage);
-        DFH_NodeInfo const* nodeInfo   = &VECTOR_AT(dctx->dfh.nodes, stage);
-        PublicTransformInfo const trid = nodeInfo->trpid;
-        ZL_DLOG(BLOCK,
-                "transformID = %u '%s' (type:%u)",
-                trid.trid,
-                DTM_getTransformName(&dctx->dtm, trid, dctx->dfh.formatVersion),
-                trid.trt);
-        ZL_RESULT_OF(DTrPtr)
-        const transform =
-                DTM_getTransform(&dctx->dtm, trid, dctx->dfh.formatVersion);
-        ZL_ERR_IF_ERR(transform);
-        DTrPtr const dt = ZL_RES_value(transform);
-        ZL_TRY_LET(
-                size_t,
-                nbps,
-                processStream(dctx, (ZL_IDType)startingStream, dt, nodeInfo));
-        startingStream += nbps;
+        DFH_NodeInfo const* nodeInfo = &VECTOR_AT(dctx->dfh.nodes, stage);
+        ZL_ERR_IF_ERR(runDecoder(dctx, nodeInfo));
     }
 
     return ZL_returnSuccess();
@@ -1348,15 +1414,7 @@ ZL_Report DCTX_runTransformID(ZL_DCtx* dctx, ZL_IDType transformID)
             continue;
         }
         ZL_DLOG(BLOCK, "transformID = %u (type:%u)", trid.trid, trid.trt);
-        ZL_RESULT_OF(DTrPtr)
-        const transform =
-                DTM_getTransform(&dctx->dtm, trid, dctx->dfh.formatVersion);
-        ZL_ERR_IF_ERR(transform);
-        DTrPtr const dt = ZL_RES_value(transform);
-        ZL_TRY_LET(
-                size_t,
-                nbps,
-                processStream(dctx, (ZL_IDType)startingStream, dt, node));
+        ZL_TRY_LET(size_t, nbps, runDecoder(dctx, node));
         startingStream += nbps;
         ZL_ERR_IF_NE(
                 node->nbRegens,
