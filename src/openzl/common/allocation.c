@@ -3,12 +3,20 @@
 #include "openzl/common/allocation.h"
 #include "openzl/common/assertion.h"
 #include "openzl/common/limits.h"
+#include "openzl/common/map.h"
 #include "openzl/shared/overflow.h"
 #include "openzl/shared/utils.h"
 
 #include <stdalign.h>
+#include <stddef.h>
 #include <stdlib.h> // malloc, free
 #include <string.h> // memset
+
+#if ZL_POISON_SUPPORTED
+#    define ZL_REDZONE_SIZE 128
+#else
+#    define ZL_REDZONE_SIZE 0
+#endif
 
 #ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 
@@ -125,6 +133,38 @@ size_t ALLOC_Arena_memUsed(const Arena* arena)
     return arena->memUsed(arena);
 }
 
+/*============================================================================
+ * RawAllocator: For internal allocator use for allocs that MUST NOT be part
+ * of the allocation failure injection mechanism.
+ *===========================================================================*/
+
+static void* raw_malloc(Arena* arena, size_t size)
+{
+    (void)arena;
+    return malloc(size);
+}
+static void* raw_calloc(Arena* arena, size_t size)
+{
+    (void)arena;
+    return calloc(1, size);
+}
+static void* raw_realloc(Arena* arena, void* ptr, size_t size)
+{
+    (void)arena;
+    return realloc(ptr, size);
+}
+static void raw_free(Arena* arena, void* ptr)
+{
+    (void)arena;
+    free(ptr);
+}
+static Arena kRawAllocator = {
+    .malloc  = raw_malloc,
+    .calloc  = raw_calloc,
+    .realloc = raw_realloc,
+    .free    = raw_free,
+};
+
 /*
  * ==============================================================
  * HeapArena:
@@ -134,6 +174,9 @@ size_t ALLOC_Arena_memUsed(const Arena* arena)
 typedef struct {
     size_t index;
     size_t size;
+#if ZL_POISON_SUPPORTED
+    uint8_t redzone[ZL_REDZONE_SIZE];
+#endif
 } HeapMeta;
 
 DECLARE_VECTOR_POINTERS_TYPE(HeapMeta)
@@ -159,6 +202,7 @@ ALLOC_HeapArena_allocImpl(HeapArena* arena, HeapMeta* meta, size_t size)
     ZL_ASSERT_EQ((uintptr_t)meta % alignof(HeapMeta), 0);
     meta->index = VECTOR_SIZE(arena->ptrs);
     meta->size  = size;
+    ZL_POISON_MEMORY(meta->redzone, sizeof(meta->redzone));
 
     if (!VECTOR_PUSHBACK(arena->ptrs, meta)) {
         ZL_LOG(ERROR, "Failed to push ptr into HeapArena");
@@ -166,8 +210,8 @@ ALLOC_HeapArena_allocImpl(HeapArena* arena, HeapMeta* meta, size_t size)
         return NULL;
     }
     ZL_STATIC_ASSERT(
-            sizeof(HeapMeta) == 16,
-            "sizeof(HeapMeta) must be 16 to guarantee alignment");
+            sizeof(HeapMeta) % 16 == 0,
+            "sizeof(HeapMeta) must be a multiple of 16 to guarantee alignment");
     return (void*)(meta + 1);
 }
 
@@ -203,11 +247,16 @@ static void* ALLOC_HeapArena_realloc(Arena* arena, void* ptr, size_t newSize)
     }
     HeapArena* heapArena    = ZL_CONTAINER_OF(arena, HeapArena, base);
     HeapMeta* const oldMeta = (HeapMeta*)ptr - 1;
-    HeapMeta* const newMeta = ZL_realloc(oldMeta, sizeof(HeapMeta) + newSize);
+    size_t allocSize;
+    if (ZL_overflowAddST(newSize, sizeof(HeapMeta), &allocSize)) {
+        return NULL;
+    }
+    HeapMeta* const newMeta = ZL_realloc(oldMeta, allocSize);
     if (newMeta == NULL) {
         return NULL;
     }
-    newMeta->size                              = newSize;
+    newMeta->size = newSize;
+    ZL_POISON_MEMORY(newMeta->redzone, sizeof(newMeta->redzone));
     VECTOR_AT(heapArena->ptrs, newMeta->index) = newMeta;
     return (void*)(newMeta + 1);
 }
@@ -338,6 +387,95 @@ Arena* ALLOC_HeapArena_create(void)
 
 typedef struct StackArena_s StackArena;
 
+#if ZL_POISON_SUPPORTED
+
+ZL_DECLARE_MAP_TYPE(AsanOnlySizeMap, uintptr_t, size_t);
+
+static void
+AsanOnlySizeMap_setPtrSize(AsanOnlySizeMap* map, void* ptr, size_t size)
+{
+    ZL_REQUIRE_NN(map);
+    ZL_REQUIRE_NN(ptr);
+    const AsanOnlySizeMap_Insert insert = AsanOnlySizeMap_insertVal(
+            map, (AsanOnlySizeMap_Entry){ (uintptr_t)ptr, size });
+    ZL_REQUIRE(insert.inserted, "ptr already exists in map");
+    ZL_REQUIRE(!insert.badAlloc);
+}
+
+static void AsanOnlySizeMap_erasePtrSize(AsanOnlySizeMap* map, void* ptr)
+{
+    ZL_REQUIRE_NN(map);
+    ZL_REQUIRE_NN(ptr);
+    const bool erased = AsanOnlySizeMap_eraseVal(map, (uintptr_t)ptr);
+    ZL_REQUIRE(erased, "ptr not found in map");
+}
+
+static size_t AsanOnlySizeMap_getPtrSize(AsanOnlySizeMap* map, void* ptr)
+{
+    ZL_REQUIRE_NN(map);
+    ZL_REQUIRE_NN(ptr);
+    const AsanOnlySizeMap_Entry* const entry =
+            AsanOnlySizeMap_findVal(map, (uintptr_t)ptr);
+    ZL_REQUIRE_NN(entry, "ptr not found in map");
+    return entry->val;
+}
+
+static void AsanOnlySizeMap_unpoisonAllPtrs(AsanOnlySizeMap* map)
+{
+    AsanOnlySizeMap_Iter iter = AsanOnlySizeMap_iter(map);
+    for (const AsanOnlySizeMap_Entry* entry;
+         (entry = AsanOnlySizeMap_Iter_next(&iter));) {
+        ZL_unpoisonMemory((const void*)entry->key, entry->val);
+    }
+}
+
+#else
+
+typedef int AsanOnlySizeMap;
+
+static void
+AsanOnlySizeMap_setPtrSize(AsanOnlySizeMap* map, void* ptr, size_t size)
+{
+    (void)map;
+    (void)ptr;
+    (void)size;
+}
+
+static void AsanOnlySizeMap_erasePtrSize(AsanOnlySizeMap* map, void* ptr)
+{
+    (void)map;
+    (void)ptr;
+}
+
+static void AsanOnlySizeMap_clear(AsanOnlySizeMap* map)
+{
+    (void)map;
+}
+
+static void AsanOnlySizeMap_destroy(AsanOnlySizeMap* map)
+{
+    (void)map;
+}
+
+static AsanOnlySizeMap AsanOnlySizeMap_createInArena(
+        Arena* arena,
+        uint32_t limit)
+{
+    (void)arena;
+    (void)limit;
+    return 0;
+}
+
+static void AsanOnlySizeMap_unpoisonAllPtrs(AsanOnlySizeMap* map)
+{
+    (void)map;
+}
+
+// Not defined if ASAN is not supported
+// static size_t AsanOnlySizeMap_getPtrSize(AsanOnlySizeMap* map, void* ptr);
+
+#endif
+
 struct StackArena_s {
     Arena base; // must be first member
     void* primaryBuffer;
@@ -350,15 +488,33 @@ struct StackArena_s {
     size_t wasted;          // pBuffCapacity * nbTimesUsedWastefully,
                             // to trigger a size-down event
     HeapArena heapBackup;
+    AsanOnlySizeMap asanOnlySizeMap;
 };
 
-static void* ALLOC_StackArena_malloc(Arena* arena, size_t size)
+// Track allocations in the primary buffer to poison memory
+static void
+ALLOC_StackArena_trackMalloc(StackArena* pba, void* ptr, size_t requestSize)
+{
+    AsanOnlySizeMap_setPtrSize(&pba->asanOnlySizeMap, ptr, requestSize);
+    ZL_unpoisonMemory(ptr, requestSize);
+}
+
+// Track frees in the primary buffer to poison memory
+static void ALLOC_StackArena_trackFree(StackArena* pba, void* ptr)
+{
+    ZL_POISON_MEMORY(
+            ptr, AsanOnlySizeMap_getPtrSize(&pba->asanOnlySizeMap, ptr));
+    AsanOnlySizeMap_erasePtrSize(&pba->asanOnlySizeMap, ptr);
+}
+
+static void* ALLOC_StackArena_malloc(Arena* arena, size_t requestSize)
 {
     ZL_ASSERT_NN(arena);
     StackArena* const pba = ZL_CONTAINER_OF(arena, StackArena, base);
     ZL_ASSERT_GE(pba->pBuffCapacity, pba->pBuffUsed);
     size_t pBuffAvailable         = pba->pBuffCapacity - pba->pBuffUsed;
     static const size_t alignment = 16; // could become a variable in the future
+    const size_t size             = requestSize + ZL_REDZONE_SIZE;
     size_t const neededSize       = size + (alignment - 1);
     pba->sessionUsage += neededSize;
 
@@ -385,6 +541,7 @@ static void* ALLOC_StackArena_malloc(Arena* arena, size_t size)
             pba->wouldHaveNeeded = ZL_MIN(pba->wouldHaveNeeded, pBuffSizeMax);
         }
         if (pba->primaryBuffer) {
+            ZL_poisonMemory(pba->primaryBuffer, toAllocate);
             pba->pBuffCapacity   = toAllocate;
             pba->pBuffUsed       = neededSize;
             pba->wouldHaveNeeded = toAllocate;
@@ -393,6 +550,7 @@ static void* ALLOC_StackArena_malloc(Arena* arena, size_t size)
                     0); /* note : this alignment method will have to change if
                            requested alignment is larger than base allocation of
                            primaryBuffer */
+            ALLOC_StackArena_trackMalloc(pba, pba->primaryBuffer, requestSize);
             return pba->primaryBuffer;
         }
         /* allocation failed */
@@ -417,6 +575,7 @@ static void* ALLOC_StackArena_malloc(Arena* arena, size_t size)
                        primaryBuffer */
         void* const r  = (char*)pba->primaryBuffer + start;
         pba->pBuffUsed = start + size;
+        ALLOC_StackArena_trackMalloc(pba, r, requestSize);
         return r;
     }
 
@@ -425,7 +584,7 @@ static void* ALLOC_StackArena_malloc(Arena* arena, size_t size)
      * and track necessary space, for next session */
     ZL_ASSERT_GE(pba->wouldHaveNeeded, pba->pBuffCapacity);
     pba->wouldHaveNeeded += neededSize;
-    return ALLOC_Arena_malloc(&pba->heapBackup.base, size);
+    return ALLOC_Arena_malloc(&pba->heapBackup.base, requestSize);
 }
 
 static void* ALLOC_StackArena_calloc(Arena* arena, size_t size)
@@ -469,7 +628,14 @@ static void* ALLOC_StackArena_realloc(Arena* arena, void* ptr, size_t newSize)
         ZL_ASSERT_NN(ptr);
         char* const pBuffEnd = (char*)pba->primaryBuffer + pba->pBuffCapacity;
         const size_t toCopy  = ZL_MIN((size_t)(pBuffEnd - (char*)ptr), newSize);
+
+        ZL_UNPOISON_MEMORY(pba->primaryBuffer, pba->pBuffCapacity);
         memcpy(newPtr, ptr, toCopy);
+        ZL_POISON_MEMORY(pba->primaryBuffer, pba->pBuffCapacity);
+        AsanOnlySizeMap_unpoisonAllPtrs(&pba->asanOnlySizeMap);
+
+        // Mark the old pointer as freed.
+        ALLOC_StackArena_trackFree(pba, ptr);
         return newPtr;
     } else {
         return ALLOC_HeapArena_realloc(&pba->heapBackup.base, ptr, newSize);
@@ -483,8 +649,9 @@ static void ALLOC_StackArena_freeSegment(Arena* arena, void* ptr)
     ZL_ASSERT_NN(arena);
     StackArena* const pba = ZL_CONTAINER_OF(arena, StackArena, base);
     if (ALLOC_StackArena_inPrimaryBuffer(pba, ptr)) {
-        /* this ptr owns a slice within primaryBuffer -> don't free anything
-         */
+        // This ptr owns a slice within primaryBuffer -> don't free anything
+        // Just mark it as freed in ASAN mode
+        ALLOC_StackArena_trackFree(pba, ptr);
         return;
     }
     /* this ptr is presumed tracked by heapBackup */
@@ -507,6 +674,13 @@ static void ALLOC_StackArena_freeAllSegments(Arena* arena)
     StackArena* const pba = ZL_CONTAINER_OF(arena, StackArena, base);
     pba->pBuffUsed        = 0;
     ALLOC_HeapArena_freeAllSegments(&pba->heapBackup.base);
+
+    // Reset ASAN size map & poison the primary buffer
+    AsanOnlySizeMap_clear(&pba->asanOnlySizeMap);
+    if (pba->primaryBuffer) {
+        ZL_poisonMemory(pba->primaryBuffer, pba->pBuffCapacity);
+    }
+
     if (pba->sessionUsage < PBUFF_USAGE_MIN(pba->pBuffCapacity)) {
         pba->wasted += pba->pBuffCapacity;
     } else {
@@ -520,6 +694,8 @@ static void ALLOC_StackArena_freeAllSegments(Arena* arena)
                 ZL_realloc(pba->primaryBuffer, pba->pBuffCapacity);
         if (newPBuffer != NULL) {
             pba->primaryBuffer = newPBuffer;
+            // Poison the new buffer
+            ZL_poisonMemory(pba->primaryBuffer, pba->pBuffCapacity);
         } else {
             // Failed realloc: Just give up the primary buffer
             ZL_free(pba->primaryBuffer);
@@ -540,6 +716,7 @@ static void ALLOC_StackArena_freeArena(Arena* arena)
     arena->freeAll(arena); /* note: freeAll doesn't free the primaryBuffer */
     StackArena* const pba = ZL_CONTAINER_OF(arena, StackArena, base);
     ALLOC_HeapArena_destroy(&pba->heapBackup);
+    AsanOnlySizeMap_destroy(&pba->asanOnlySizeMap);
     ZL_free(pba->primaryBuffer);
     ZL_free(pba);
 }
@@ -581,5 +758,7 @@ Arena* ALLOC_StackArena_create(void)
         return NULL;
     arena->base = kStackArena;
     ALLOC_HeapArena_init(&arena->heapBackup);
+    arena->asanOnlySizeMap = AsanOnlySizeMap_createInArena(
+            &kRawAllocator, ZL_CONTAINER_SIZE_LIMIT);
     return &arena->base;
 }
