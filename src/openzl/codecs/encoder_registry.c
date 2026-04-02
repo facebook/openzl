@@ -3,6 +3,7 @@
 #include "openzl/codecs/encoder_registry.h"
 
 #include "openzl/codecs/bitSplit/encode_bitSplit_binding.h"
+#include "openzl/codecs/bitSplit/encode_bitsplit_bf16_binding.h"
 #include "openzl/codecs/bitSplit/encode_bitsplit_fp_binding.h"
 #include "openzl/codecs/bitSplit/encode_bitsplit_top8_binding.h"
 #include "openzl/codecs/bitpack/encode_bitpack_binding.h"
@@ -112,6 +113,7 @@ const CNode ER_standardNodes[STANDARD_ENCODERS_NB] = {
     REGISTER_TRANSFORM(ZL_StandardNodeID_quantize_lengths, ZL_StandardTransformID_quantize_lengths, 3, EI_QUANTIZE_LENGTHS),
     REGISTER_TRANSFORM(ZL_StandardNodeID_bitsplit_top8, ZL_StandardTransformID_bitSplit, 24, EI_BITSPLIT_TOP8),
     REGISTER_TRANSFORM(ZL_StandardNodeID_bitsplit_fp, ZL_StandardTransformID_bitSplit, 24, EI_BITSPLIT_FP),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_bitsplit_bf16, ZL_StandardTransformID_bitSplit, 24, EI_BITSPLIT_BF16),
     REGISTER_TRANSFORM(ZL_StandardNodeID_partition, ZL_StandardTransformID_partition, 24, EI_PARTITION),
     REGISTER_TRANSFORM(ZL_StandardNodeID_split_byrange, ZL_StandardTransformID_splitn_num, 24, EI_SPLIT_BYRANGE),
 

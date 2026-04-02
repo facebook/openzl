@@ -385,6 +385,84 @@ class BitSplitFPComponent : public OpenZLComponent {
     }
 };
 
+class BitSplitBF16Component : public OpenZLComponent {
+   public:
+    std::string name() const override
+    {
+        return "BitSplitBF16";
+    }
+
+    int minFormatVersion() const override
+    {
+        return 24;
+    }
+
+    std::vector<NodeID> predefinedNodes(Compressor& compressor) const override
+    {
+        return { nodes::BitsplitBF16{}.parameterize(compressor) };
+    }
+
+    std::vector<std::unique_ptr<OpenZLInput>> predefinedInputs() const override
+    {
+        std::vector<std::unique_ptr<OpenZLInput>> inputs;
+        // bf16 values (all 2-byte elements)
+        inputs.push_back(U16OpenZLInput::make(std::vector<uint16_t>{}));
+        inputs.push_back(U16OpenZLInput::make(std::vector<uint16_t>{ 0x0000 }));
+        inputs.push_back(
+                U16OpenZLInput::make(
+                        std::vector<uint16_t>{ 0x7FC0 })); // quiet NaN
+        inputs.push_back(
+                U16OpenZLInput::make(
+                        std::vector<uint16_t>{ 0x7F80, 0xFF80 })); // +-Inf
+        inputs.push_back(
+                U16OpenZLInput::make(std::vector<uint16_t>{ 0x8000 })); // -0
+        inputs.push_back(
+                U16OpenZLInput::make(
+                        std::vector<uint16_t>{
+                                0x0080, 0x7F7F })); // min normal, max finite
+        inputs.push_back(
+                U16OpenZLInput::make(
+                        std::vector<uint16_t>{ 0x0001 })); // smallest subnormal
+        inputs.push_back(
+                U16OpenZLInput::make(
+                        std::vector<uint16_t>{ 0x3F80, 0xBF80 })); // +-1.0
+        inputs.push_back(
+                U16OpenZLInput::make(
+                        std::vector<uint16_t>{ 0x8001 })); // negative subnormal
+        inputs.push_back(
+                U16OpenZLInput::make(
+                        std::vector<uint16_t>{
+                                0x7F01,
+                                0xFF01,
+                                0xFFC0 })); // signaling & negative NaN
+        inputs.push_back(
+                U16OpenZLInput::make(
+                        std::vector<uint16_t>{ 0xFFFF })); // all bits set
+        inputs.push_back(
+                U16OpenZLInput::make(std::vector<uint16_t>{ 0x4049 })); // ~3.14
+
+        return inputs;
+    }
+
+    std::vector<std::unique_ptr<OpenZLInput>> generateInputs(
+            datagen::DataGen& gen,
+            size_t num,
+            size_t maxInputSize,
+            const Compressor&,
+            GraphID) const override
+    {
+        std::vector<std::unique_ptr<OpenZLInput>> inputs;
+        inputs.reserve(num);
+        for (size_t i = 0; i < num; ++i) {
+            // bf16 always uses 2-byte elements
+            auto data =
+                    gen.randStringWithQuantizedLength("data", maxInputSize, 2);
+            inputs.push_back(makeNumericInput(data, 2));
+        }
+        return inputs;
+    }
+};
+
 } // namespace
 
 std::unique_ptr<OpenZLComponent> makeBitSplitComponent()
@@ -400,6 +478,11 @@ std::unique_ptr<OpenZLComponent> makeBitSplitTop8Component()
 std::unique_ptr<OpenZLComponent> makeBitSplitFPComponent()
 {
     return std::make_unique<BitSplitFPComponent>();
+}
+
+std::unique_ptr<OpenZLComponent> makeBitSplitBF16Component()
+{
+    return std::make_unique<BitSplitBF16Component>();
 }
 
 } // namespace openzl::tests::components
