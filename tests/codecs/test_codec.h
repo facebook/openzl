@@ -124,6 +124,8 @@ class CodecTest : public testing::Test {
     {
         compressor_ = Compressor();
         compressor_.setParameter(CParam::MinStreamSize, -1);
+        compressor_.setParameter(
+                CParam::StoreOnExpansion, ZL_TernaryParam_disable);
 
         cctx_ = CCtx();
         dctx_ = DCtx();

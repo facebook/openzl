@@ -13,6 +13,7 @@ enum class CParam {
     PermissiveCompression = ZL_CParam_permissiveCompression,
     CompressedChecksum    = ZL_CParam_compressedChecksum,
     ContentChecksum       = ZL_CParam_contentChecksum,
+    StoreOnExpansion      = ZL_CParam_storeOnExpansion,
     MinStreamSize         = ZL_CParam_minStreamSize,
 };
 }

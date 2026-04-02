@@ -26,6 +26,8 @@ class OpenZLComponentTest : public ::testing::TestWithParam<int> {
         compressor_.setParameter(CParam::PermissiveCompression, 0);
         // Ensure that streams won't be replaced with store
         compressor_.setParameter(CParam::MinStreamSize, -1);
+        compressor_.setParameter(
+                CParam::StoreOnExpansion, ZL_TernaryParam_disable);
     }
 
     GraphID makeTrivialGraph(NodeID node)

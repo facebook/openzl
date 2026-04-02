@@ -62,6 +62,7 @@ void addToCorpora(
     Compressor compressor;
     component.registerComponent(compressor);
     compressor.setParameter(CParam::MinStreamSize, -1);
+    compressor.setParameter(CParam::StoreOnExpansion, ZL_TernaryParam_disable);
     compressor.setParameter(CParam::PermissiveCompression, 0);
     std::vector<GraphID> graphs;
     for (auto node : component.predefinedNodes(compressor)) {

@@ -6,6 +6,7 @@
 #include <iostream>
 
 #include "openzl/cpp/CCtx.hpp"
+#include "openzl/cpp/CParam.hpp"
 #include "openzl/zl_compress.h"
 
 #include "tools/io/InputSetStatic.h"
@@ -130,6 +131,28 @@ int performCompression(const CompressArgs& args)
     cctx.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
     if (!args.strict) {
         cctx.setParameter(CParam::PermissiveCompression, 1);
+    }
+    if (!args.storeOnExpansion) {
+        cctx.setParameter(CParam::StoreOnExpansion, ZL_TernaryParam_disable);
+    }
+    if (args.trainInline) {
+        // Train-inline compresses the file after training.
+        // The anti-inflation guard can mask differences between trained and
+        // untrained output by replacing both with STORE when they expand
+        // (common for small/incompressible inputs like
+        // csv/input_experiments.csv). Disabling it here ensures the trained
+        // compressor's output remains distinguishable, which is required by CLI
+        // integration tests (CsvTrainInlineTest) that verify trained !=
+        // untrained.
+        cctx.setParameter(CParam::StoreOnExpansion, ZL_TernaryParam_disable);
+    }
+    if (args.traceOutput) {
+        // When tracing, the user wants to inspect the full compression
+        // pipeline. The anti-inflation guard replaces expanded chunks with
+        // STORE, which discards all transforms — leaving decompression traces
+        // empty (zero codec decode steps = no stream trace data). Disable the
+        // guard so traces reflect the actual compression graph.
+        cctx.setParameter(CParam::StoreOnExpansion, ZL_TernaryParam_disable);
     }
     cctx.refCompressor(*args.compressor());
     if (args.traceOutput) {

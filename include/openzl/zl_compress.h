@@ -121,6 +121,12 @@ typedef enum {
     /// one must pass a negative threshold value.
     ZL_CParam_minStreamSize = 11,
 
+    /// Controls whether chunks that expand during compression
+    /// are automatically replaced with STORE (anti-inflation guard).
+    /// Valid values for this parameter use the ZS2_cv3_* format.
+    /// @default 0 currently means enabled, preserving existing behavior.
+    ZL_CParam_storeOnExpansion = 12,
+
     // Other possible parameters (ideas) :
     //  - Backup when a node errors out (continue with generic LZ, or error
     //  out)

@@ -73,6 +73,18 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
                 0,
                 false,
                 "Omit stream preview data from the trace CBOR output. Requires --trace.");
+        parser.addCommandFlag(
+                cmd(),
+                kStoreOnExpansion,
+                0,
+                false,
+                "Enable anti-inflation guard (replace expanding chunks with STORE). This is the default.");
+        parser.addCommandFlag(
+                cmd(),
+                kNoStoreOnExpansion,
+                0,
+                false,
+                "Disable anti-inflation guard (do not replace expanding chunks with STORE).");
     }
 
     explicit CompressArgs(const arg::ParsedArgs& parsed)
@@ -109,6 +121,11 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
             throw InvalidArgsException(
                     "--no-stream-preview requires --trace to be specified.");
         }
+        if (parsed.cmdHasFlag(cmd(), kNoStoreOnExpansion)) {
+            storeOnExpansion = false;
+        } else if (parsed.cmdHasFlag(cmd(), kStoreOnExpansion)) {
+            storeOnExpansion = true;
+        }
     }
 
     static Cmd cmd()
@@ -124,8 +141,9 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
 
     std::shared_ptr<tools::io::Output> traceOutput;
     std::optional<std::string> traceStreamsDir;
-    bool strict        = false;
-    bool streamPreview = true;
+    bool strict           = false;
+    bool streamPreview    = true;
+    bool storeOnExpansion = true;
 
    private:
     inline static const std::string kInput      = "input";
@@ -138,10 +156,13 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
     inline static const std::string kTrainInline = "train-inline";
     inline static const std::string kTrainInlineTestLimit =
             "train-inline-test-limit";
-    inline static const std::string kTrace           = "trace";
-    inline static const std::string kTraceStreamsDir = "trace-streams-dir";
-    inline static const std::string kStrict          = "strict";
-    inline static const std::string kNoStreamPreview = "no-stream-preview";
+    inline static const std::string kTrace            = "trace";
+    inline static const std::string kTraceStreamsDir  = "trace-streams-dir";
+    inline static const std::string kStrict           = "strict";
+    inline static const std::string kNoStreamPreview  = "no-stream-preview";
+    inline static const std::string kStoreOnExpansion = "store-on-expansion";
+    inline static const std::string kNoStoreOnExpansion =
+            "no-store-on-expansion";
 };
 
 } // namespace openzl::cli

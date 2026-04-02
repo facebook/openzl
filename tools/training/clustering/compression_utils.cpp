@@ -133,6 +133,9 @@ SizeTimePair CompressionUtils::compressSample(
     cctx.unwrap(ZL_CCtx_selectStartingGraphID(
             cctx.get(), compressor_, ZL_GRAPH_CLUSTERING, &runtimeParams));
     cctx.setParameter(openzl::CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+    // disable anti-inflation guard so training sees true compressed sizes
+    cctx.setParameter(
+            openzl::CParam::StoreOnExpansion, ZL_TernaryParam_disable);
     size_t compressBound = 0;
     std::vector<const ZL_Input*> constInputs;
     for (auto& input : *sample) {

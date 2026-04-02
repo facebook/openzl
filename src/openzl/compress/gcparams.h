@@ -61,6 +61,13 @@ typedef struct {
     /// Automatically disabled for format versions <= 3
     ZL_TernaryParam contentChecksum;
 
+    /// Controls whether chunks that expand during compression
+    /// are automatically replaced with STORE (anti-inflation guard).
+    /// ZL_TernaryParam_enable: Replace expanded chunks with STORE (default)
+    /// ZL_TernaryParam_disable: Keep compressed output even if it expanded
+    /// ZL_TernaryParam_auto: Resolves to enable via defaults
+    ZL_TernaryParam storeOnExpansion;
+
     /// Minimum stream size threshold for automatic storage without compression
     /// Streams smaller than this size are stored directly to avoid expansion
     /// Default: ZL_MINSTREAMSIZE_DEFAULT (10 bytes)
@@ -137,7 +144,8 @@ ZL_Report GCParams_resetStartingGraphID(GCParams* gcparams);
 /// @note stickyParameter is intentionally NOT overridden by defaults
 /// @note Applied parameters: compressionLevel, decompressionLevel,
 /// permissiveCompression,
-///       formatVersion, compressedChecksum, contentChecksum, minStreamSize
+///       formatVersion, compressedChecksum, contentChecksum,
+///       storeOnExpansion, minStreamSize
 void GCParams_applyDefaults(GCParams* dst, const GCParams* defaults);
 
 /// Finalizes and validates the parameters, resolving incompatibilities where
@@ -216,7 +224,7 @@ ZL_Report GCParams_forEachParam(
 /// @note Supported parameter names: "stickyParameters", "compressionLevel",
 /// "decompressionLevel",
 ///       "formatVersion", "permissiveCompression", "compressedChecksum",
-///       "contentChecksum", "minStreamSize"
+///       "contentChecksum", "storeOnExpansion", "minStreamSize"
 /// @note Use ZL_validResult() to extract the parameter ID from a successful
 /// result
 ZL_Report GCParams_strToParam(const char* param);

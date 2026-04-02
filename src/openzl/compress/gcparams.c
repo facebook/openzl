@@ -25,6 +25,7 @@ const GCParams GCParams_default = {
     // so we don't need to manage the case of `ZL_TernaryParam_auto`.
     .compressedChecksum = ZL_TernaryParam_enable,
     .contentChecksum    = ZL_TernaryParam_enable,
+    .storeOnExpansion   = ZL_TernaryParam_enable,
     .minStreamSize      = ZL_MINSTREAMSIZE_DEFAULT,
 };
 
@@ -53,6 +54,8 @@ const GCParamToName GCParams_kAllParams[] = {
     { ZL_CParam_compressedChecksum,
       { (const char*[]){ "compressedChecksum" }, 1 } },
     { ZL_CParam_contentChecksum, { (const char*[]){ "contentChecksum" }, 1 } },
+    { ZL_CParam_storeOnExpansion,
+      { (const char*[]){ "storeOnExpansion" }, 1 } },
     { ZL_CParam_minStreamSize, { (const char*[]){ "minStreamSize" }, 1 } }
 };
 
@@ -84,6 +87,9 @@ GCParams_setParameter(GCParams* gcparams, ZL_CParam paramId, int value)
         case ZL_CParam_contentChecksum:
             // TODO (@Cyan): provide bounds
             gcparams->contentChecksum = (ZL_TernaryParam)value;
+            break;
+        case ZL_CParam_storeOnExpansion:
+            gcparams->storeOnExpansion = (ZL_TernaryParam)value;
             break;
         case ZL_CParam_minStreamSize:
             // TODO (@Cyan): provide bounds
@@ -135,6 +141,7 @@ void GCParams_applyDefaults(GCParams* dst, const GCParams* defaults)
     SET_DEFAULT(dst, defaults, formatVersion);
     SET_DEFAULT(dst, defaults, compressedChecksum);
     SET_DEFAULT(dst, defaults, contentChecksum);
+    SET_DEFAULT(dst, defaults, storeOnExpansion);
     SET_DEFAULT(dst, defaults, minStreamSize);
 }
 #undef SET_DEFAULT
@@ -182,6 +189,8 @@ int GCParams_getParameter(const GCParams* gcparams, ZL_CParam paramId)
             return (int)gcparams->compressedChecksum;
         case ZL_CParam_contentChecksum:
             return (int)gcparams->contentChecksum;
+        case ZL_CParam_storeOnExpansion:
+            return (int)gcparams->storeOnExpansion;
         case ZL_CParam_minStreamSize:
             return (int)gcparams->minStreamSize;
         default:
