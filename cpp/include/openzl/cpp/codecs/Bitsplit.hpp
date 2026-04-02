@@ -32,5 +32,17 @@ struct BitsplitFP : public SimplePipeNode<BitsplitFP> {
         .description = "Split IEEE 754 floats into sign, exponent, and mantissa"
     };
 };
+
+struct BitsplitBF16 : public SimplePipeNode<BitsplitBF16> {
+   public:
+    static constexpr NodeID node = ZL_NODE_BITSPLIT_BF16;
+
+    static constexpr NodeMetadata<1, 0, 1> metadata = {
+        .inputs          = { InputMetadata{ .type = Type::Numeric } },
+        .variableOutputs = { OutputMetadata{ .type = Type::Numeric,
+                                             .name = "bit_ranges" } },
+        .description     = "Split bfloat16 into sign, exponent, and mantissa"
+    };
+};
 } // namespace nodes
 } // namespace openzl
