@@ -82,6 +82,7 @@ typedef enum {
 
     ZL_StandardNodeID_bitsplit_top8,
     ZL_StandardNodeID_bitsplit_fp,
+    ZL_StandardNodeID_bitsplit_bf16,
 
     ZL_StandardNodeID_partition,
 

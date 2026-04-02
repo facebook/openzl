@@ -19,9 +19,15 @@ extern "C" {
 
 // input  : 1 numeric stream (IEEE 754 widths: 2, 4, or 8 bytes)
 // output : 1 variable output stream of 3 outputs
-//          (sign, exponent, mantissa)
+//          (mantissa, exponent, sign)
 // Supports IEEE 754 fp16, fp32, fp64.
 #define ZL_NODE_BITSPLIT_FP ZL_MAKE_NODE_ID(ZL_StandardNodeID_bitsplit_fp)
+
+// input  : 1 numeric stream (2-byte bfloat16 elements)
+// output : 1 variable output stream of 3 outputs
+//          (mantissa, exponent, sign)
+// bfloat16: sign (1 bit), exponent (8 bits), mantissa (7 bits).
+#define ZL_NODE_BITSPLIT_BF16 ZL_MAKE_NODE_ID(ZL_StandardNodeID_bitsplit_bf16)
 
 #if defined(__cplusplus)
 }
