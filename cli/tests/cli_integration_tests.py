@@ -372,14 +372,14 @@ class ParquetTest(_TrainBaseTest):
         self.train_compress_decompress()
 
 
-class CsvTrainInlineTest(_TrainInlineBaseTest):
+class U16TrainInlineTest(_TrainInlineBaseTest):
     @property
     def input_file_name(self) -> str:
-        return "csv/input_experiments.csv"
+        return "u16/zigzag_1000.bin"
 
     @property
     def compressor_profile_name(self) -> str:
-        return "csv"
+        return "le-u16"
 
     def test_train_inline(self) -> None:
         self.train_inline()

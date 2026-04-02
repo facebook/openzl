@@ -135,17 +135,6 @@ int performCompression(const CompressArgs& args)
     if (!args.storeOnExpansion) {
         cctx.setParameter(CParam::StoreOnExpansion, ZL_TernaryParam_disable);
     }
-    if (args.trainInline) {
-        // Train-inline compresses the file after training.
-        // The anti-inflation guard can mask differences between trained and
-        // untrained output by replacing both with STORE when they expand
-        // (common for small/incompressible inputs like
-        // csv/input_experiments.csv). Disabling it here ensures the trained
-        // compressor's output remains distinguishable, which is required by CLI
-        // integration tests (CsvTrainInlineTest) that verify trained !=
-        // untrained.
-        cctx.setParameter(CParam::StoreOnExpansion, ZL_TernaryParam_disable);
-    }
     if (args.traceOutput) {
         // When tracing, the user wants to inspect the full compression
         // pipeline. The anti-inflation guard replaces expanded chunks with
