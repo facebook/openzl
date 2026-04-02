@@ -146,6 +146,9 @@ extern "C" {
 #define ZL_ErrorCode_srcSize_tooLarge__desc_str "Source size too large"
 #define ZL_ErrorCode_integerOverflow__desc_str "Integer overflow"
 #define ZL_ErrorCode_invalidName__desc_str "Invalid name of graph component"
+#define ZL_ErrorCode_dict_corruption__desc_str "Dictionary corruption detected"
+#define ZL_ErrorCode_dict_materialization__desc_str \
+    "Dictionary materialization failure"
 
 /**********************
  * ZL_StaticErrorInfo *

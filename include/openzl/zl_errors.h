@@ -16,6 +16,7 @@
 #include "openzl/zl_common_types.h"  // ZL_VoidPtr
 #include "openzl/zl_errors_types.h"  // ZL_ErrorCode
 #include "openzl/zl_macro_helpers.h" // ZS_MACRO_PAD1 and friends
+#include "openzl/zl_opaque_types.h"  // ZL_GraphID, ZL_NodeID
 #include "openzl/zl_portability.h"   // ZL_INLINE
 
 #include "openzl/detail/zl_errors_detail.h" // implementation details
@@ -200,7 +201,7 @@ ZL_RESULT_DECLARE_TYPE(ZL_VoidPtr);
 /*-*********************************************
  *  ZL_Report type
  *-*********************************************
- * ZL_Report is a priviledged Result type, which is employed everywhere within
+ * ZL_Report is a privileged Result type, which is employed everywhere within
  * zstrong. It is a Result of size_t, which means it represents either an error
  * or a size_t.
  *
