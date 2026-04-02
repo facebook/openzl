@@ -63,26 +63,54 @@ static ZL_GraphID registerNumericChunkSegmenter(
     return ZL_Compressor_registerSegmenter(compressor, &numericChunkSegmenter);
 }
 
-TEST(StreamdumpTest, VerifyStreamdump)
-{
+class StreamdumpTest : public ::testing::Test {
+   protected:
+    void SetUp() override
+    {
+        compressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+        compressor.selectStartingGraph(ZL_GRAPH_COMPRESS_GENERIC);
+    }
+
+    void generateAndCompressData(size_t sz = 1000, bool force_size = false)
+    {
+        auto dg = openzl::tests::datagen::DataGen();
+        data    = dg.template randVector<int64_t>("randVec", 0, 100, sz);
+        if (force_size) {
+            data.resize(sz);
+        }
+        auto input =
+                Input::refNumeric(data.data(), sizeof(int64_t), data.size());
+
+        compressData(input);
+    }
+
+    void compressData(Input& input)
+    {
+        cctx.refCompressor(compressor);
+        cctx.writeTraces(true, true);
+
+        auto compressed  = cctx.compressOne(input);
+        auto traceResult = cctx.getLatestTrace();
+
+        trace      = traceResult.first;
+        streamdump = traceResult.second;
+
+        EXPECT_FALSE(trace.empty());
+        EXPECT_FALSE(streamdump.empty());
+    }
+
+    std::string trace;
+    std::map<std::string, std::pair<poly::string_view, poly::string_view>>
+            streamdump;
+    std::vector<int64_t> data;
+
     Compressor compressor;
-    compressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
-    compressor.selectStartingGraph(ZL_GRAPH_COMPRESS_GENERIC);
-
-    auto dg         = openzl::tests::datagen::DataGen();
-    const auto data = dg.template randVector<int64_t>("randVec", 0, 100, 1000);
-
-    auto input = Input::refNumeric(data.data(), sizeof(int64_t), data.size());
     CCtx cctx;
-    cctx.refCompressor(compressor);
-    cctx.writeTraces(true);
+};
 
-    auto compressed = cctx.compressOne(input);
-
-    auto traceResult = cctx.getLatestTrace();
-    auto trace       = traceResult.first;
-    auto streamdump  = traceResult.second;
-
+TEST_F(StreamdumpTest, VerifyStreamdump)
+{
+    generateAndCompressData();
     EXPECT_FALSE(trace.empty());
     EXPECT_FALSE(streamdump.empty());
 
@@ -93,31 +121,11 @@ TEST(StreamdumpTest, VerifyStreamdump)
     }
 }
 
-TEST(StreamdumpTest, VerifyMultiChunkStreamdump)
+TEST_F(StreamdumpTest, VerifyMultiChunkStreamdump)
 {
-    Compressor compressor;
     ZL_GraphID segmenterId = registerNumericChunkSegmenter(compressor.get());
     compressor.selectStartingGraph(segmenterId);
-
-    auto dg   = openzl::tests::datagen::DataGen();
-    auto data = dg.template randVector<int64_t>("randVec", 0, 100, 1000);
-    data.resize(1000); // make sure we have 1000 elements to verify number
-                       // of chunks
-
-    auto input = Input::refNumeric(data.data(), sizeof(int64_t), data.size());
-    CCtx cctx;
-    cctx.refCompressor(compressor);
-    cctx.writeTraces(true);
-
-    auto compressed = cctx.compressOne(input);
-
-    auto traceResult = cctx.getLatestTrace();
-    auto trace       = traceResult.first;
-    auto streamdump  = traceResult.second;
-
-    EXPECT_FALSE(trace.empty());
-    EXPECT_FALSE(streamdump.empty());
-
+    generateAndCompressData(1000, true);
     int chunkSize = SMALL_CHUNK_SIZE / sizeof(int64_t);
     int numDataChunks =
             (data.size() + chunkSize - 1) / chunkSize; // ceiling division
@@ -151,5 +159,18 @@ TEST(StreamdumpTest, VerifyMultiChunkStreamdump)
                 << " streams, expected: " << expectedNumStreams;
     }
 }
+
+TEST_F(StreamdumpTest, TruncateStreamPreview)
+{
+    std::vector<int64_t> basicData(100000, 10);
+    auto input = Input::refNumeric(
+            basicData.data(), sizeof(int64_t), basicData.size());
+
+    compressData(input);
+
+    EXPECT_FALSE(trace.empty());
+    EXPECT_LE(trace.size(), 5000);
+}
+
 } // namespace openzl
 #endif // ZL_ALLOW_INTROSPECTION

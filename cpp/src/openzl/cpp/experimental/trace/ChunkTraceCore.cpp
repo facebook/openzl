@@ -12,36 +12,45 @@ namespace openzl::visualizer {
 
 namespace {
 
+// Preview limits: save only enough data for the frontend to display ~4 lines.
+static constexpr size_t MAX_PREVIEW_BYTES         = 32;
+static constexpr size_t MAX_PREVIEW_NUMERIC_ELTS  = 100;
+static constexpr size_t MAX_PREVIEW_STRINGS_LINES = 4;
+
+static int64_t readNumericData(size_t eltWidth, const uint8_t* bytes, size_t i)
+{
+    int64_t val = 0;
+    switch (eltWidth) {
+        case 1:
+            val = reinterpret_cast<const int8_t*>(bytes)[i];
+            break;
+        case 2:
+            val = reinterpret_cast<const int16_t*>(bytes)[i];
+            break;
+        case 4:
+            val = reinterpret_cast<const int32_t*>(bytes)[i];
+            break;
+        case 8:
+            val = reinterpret_cast<const int64_t*>(bytes)[i];
+            break;
+        default:
+            throw std::runtime_error("Unexpected numeric eltWidth!");
+    }
+    return val;
+}
 std::vector<int64_t>
 getNumericData(const void* data, size_t eltWidth, size_t numElts)
 {
     if (data == nullptr || numElts == 0) {
         return {};
     }
-
+    const auto* bytes        = reinterpret_cast<const uint8_t*>(data);
+    const size_t previewElts = std::min(numElts, MAX_PREVIEW_NUMERIC_ELTS);
     std::vector<int64_t> numericData;
-    numericData.reserve(numElts);
+    numericData.reserve(previewElts);
 
-    const auto* bytes = reinterpret_cast<const uint8_t*>(data);
-    for (size_t i = 0; i < numElts; ++i) {
-        int64_t val = 0;
-        switch (eltWidth) {
-            case 1:
-                val = reinterpret_cast<const int8_t*>(bytes)[i];
-                break;
-            case 2:
-                val = reinterpret_cast<const int16_t*>(bytes)[i];
-                break;
-            case 4:
-                val = reinterpret_cast<const int32_t*>(bytes)[i];
-                break;
-            case 8:
-                val = reinterpret_cast<const int64_t*>(bytes)[i];
-                break;
-            default:
-                throw std::runtime_error("Unexpected numeric eltWidth!");
-        }
-        numericData.push_back(val);
+    for (size_t i = 0; i < previewElts; ++i) {
+        numericData.push_back(readNumericData(eltWidth, bytes, i));
     }
 
     return numericData;
@@ -60,7 +69,9 @@ getStringData(const void* data, size_t numStrings, const uint32_t* stringLens)
     const auto* bytes = reinterpret_cast<const char*>(data);
     size_t offset     = 0;
 
-    for (size_t i = 0; i < numStrings; ++i) {
+    const size_t previewStrings =
+            std::min(numStrings, MAX_PREVIEW_STRINGS_LINES);
+    for (size_t i = 0; i < previewStrings; ++i) {
         uint32_t len          = stringLens[i];
         std::string rawStr    = std::string(bytes + offset, len);
         std::string parsedStr = "";
@@ -100,9 +111,10 @@ std::vector<uint8_t> getSerialData(const void* data, size_t numBytes)
         return {};
     }
 
+    const size_t previewBytes = std::min(numBytes, MAX_PREVIEW_BYTES);
     std::vector<uint8_t> bytes;
     const auto* rawBytes = reinterpret_cast<const uint8_t*>(data);
-    bytes.assign(rawBytes, rawBytes + numBytes);
+    bytes.assign(rawBytes, rawBytes + previewBytes);
 
     return bytes;
 }
