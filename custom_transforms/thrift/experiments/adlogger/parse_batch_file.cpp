@@ -29,22 +29,22 @@ int main(int argc, char* argv[])
     auto batchData = makeBatchAdsLogLineData(std::move(adsLogLineDataVec));
 
     folly::writeFile(
-            (**batchData.compressedFeatureIds_ref()).moveToFbString(),
+            (**batchData.compressedFeatureIds()).moveToFbString(),
             (std::string(filename) + ".featureIds").c_str());
 
     folly::writeFile(
-            (**batchData.compressedFloats_ref()).moveToFbString(),
+            (**batchData.compressedFloats()).moveToFbString(),
             (std::string(filename) + ".floats").c_str());
 
     folly::writeFile(
-            (**batchData.compressedSparseIds_ref()).moveToFbString(),
+            (**batchData.compressedSparseIds()).moveToFbString(),
             (std::string(filename) + ".sparseIds").c_str());
 
     folly::writeFile(
-            (**batchData.compressedLengths_ref()).moveToFbString(),
+            (**batchData.compressedLengths()).moveToFbString(),
             (std::string(filename) + ".lengths").c_str());
 
     folly::writeFile(
-            (**batchData.compressedMetadata_ref()).moveToFbString(),
+            (**batchData.compressedMetadata()).moveToFbString(),
             (std::string(filename) + ".metadata").c_str());
 }
