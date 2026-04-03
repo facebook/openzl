@@ -15,8 +15,8 @@ ZL_BEGIN_C_DECLS
 // ******************************************************************
 
 struct ZL_Materializer_s {
-    Arena* allocator;
-    Arena* matArena;
+    Arena* persistentArena;
+    Arena* scratchArena;
     const void* opaquePtr;
 } /* typedef'ed to ZL_Materializer in zl_opaque_types.h */;
 
