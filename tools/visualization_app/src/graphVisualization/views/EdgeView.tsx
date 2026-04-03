@@ -22,15 +22,15 @@ const MAX_STRING_LEN = 40;
 const HIGHLIGHT_COLOR = '#cfffafcb';
 
 // Format bytes as hex dump with highlighting for struct streams
-function formatSerialPreview(bytes: number[], eltWidth: number, isStruct: boolean): ReactNode {
+function formatSerialPreview(bytes: number[], eltWidth: number, isStruct: boolean, totalBytes: number): ReactNode {
   if (!bytes || bytes.length === 0) {
     return 'Stream Preview (0 bytes)';
   }
 
   const header = isStruct ? `Stream Preview (struct - eltWidth: ${eltWidth})` : 'Stream Preview (serial)';
 
-  const totalLines = Math.ceil(bytes.length / BYTES_PER_LINE);
-  const linesToShow = Math.min(MAX_LINES, totalLines);
+  const totalLines = Math.ceil(totalBytes / BYTES_PER_LINE);
+  const linesToShow = Math.min(MAX_LINES, Math.ceil(bytes.length / BYTES_PER_LINE));
 
   const lines: ReactNode[] = [];
 
@@ -130,51 +130,53 @@ function formatSerialPreview(bytes: number[], eltWidth: number, isStruct: boolea
 }
 
 // Format numeric values (for numeric streams)
-function formatNumericPreview(values: number[], eltWidth: number): ReactNode {
+function formatNumericPreview(values: number[], eltWidth: number, totalElts: number): ReactNode {
   if (!values || values.length === 0) {
     return 'Stream Preview (numeric - 0 elements)';
   }
 
-  let overflow = false;
   const lines: string[] = [];
   lines.push(`Stream Preview (numeric - eltWidth: ${eltWidth})`);
 
   let currentLine = '';
   let lineCount = 0;
-  // Store each line until max character length is reached, then start a new line
+  let shownElts = 0;
   for (let i = 0; i < values.length; i++) {
     currentLine += values[i] + ' ';
     if (currentLine.length >= MAX_STRING_LEN) {
       lines.push(currentLine);
       currentLine = '';
       lineCount++;
+      shownElts = i + 1;
     }
 
     if (lineCount >= MAX_LINES) {
-      const remaining = values.length - i - 1;
-      if (remaining > 0) {
-        lines.push('...(' + remaining + ' more numbers)');
-        overflow = true;
-      }
       break;
     }
   }
 
-  if (!overflow && currentLine.length !== 0) {
+  if (lineCount == 0 && currentLine.length !== 0) {
+    // Only show  partial lines if its the only line
     lines.push(currentLine);
+    shownElts = values.length;
+  }
+
+  const remaining = totalElts - shownElts;
+  if (remaining > 0) {
+    lines.push('...(' + remaining + ' more numbers)');
   }
 
   return <>{lines.join('\n')}</>;
 }
 
 // Format string values (for string streams)
-function formatStringPreview(strings: string[]): ReactNode {
+function formatStringPreview(strings: string[], totalElts: number): ReactNode {
   if (!strings || strings.length === 0) {
     return 'Stream Preview (string - empty)';
   }
 
   const lines: string[] = [];
-  lines.push(`Stream Preview (string - ${strings.length} elements)`);
+  lines.push(`Stream Preview (string - ${totalElts} elements)`);
 
   const stringsToShow = Math.min(MAX_LINES, strings.length);
 
@@ -188,8 +190,8 @@ function formatStringPreview(strings: string[]): ReactNode {
     lines.push(`[${i}]: "${currentLine}"`);
   }
 
-  if (strings.length > stringsToShow) {
-    lines.push(`... (${strings.length - stringsToShow} more strings)`);
+  if (totalElts > stringsToShow) {
+    lines.push(`... (${totalElts - stringsToShow} more strings)`);
   }
 
   return <>{lines.join('\n')}</>;
@@ -197,7 +199,7 @@ function formatStringPreview(strings: string[]): ReactNode {
 
 // Format preview based on stream type
 function formatPreview(edge: InternalEdge): ReactNode | null {
-  const {type, eltWidth, streamPreview} = edge;
+  const {type, eltWidth, numElts, streamPreview} = edge;
 
   if (!streamPreview || streamPreview.length === 0) {
     return null;
@@ -205,14 +207,14 @@ function formatPreview(edge: InternalEdge): ReactNode | null {
 
   switch (type) {
     case ZL_Type.ZL_Type_string:
-      return formatStringPreview(streamPreview as string[]);
+      return formatStringPreview(streamPreview as string[], numElts);
     case ZL_Type.ZL_Type_numeric:
-      return formatNumericPreview(streamPreview as number[], eltWidth);
+      return formatNumericPreview(streamPreview as number[], eltWidth, numElts);
     case ZL_Type.ZL_Type_struct:
-      return formatSerialPreview(streamPreview as number[], eltWidth, true);
+      return formatSerialPreview(streamPreview as number[], eltWidth, true, numElts);
     case ZL_Type.ZL_Type_serial:
     default:
-      return formatSerialPreview(streamPreview as number[], eltWidth, false);
+      return formatSerialPreview(streamPreview as number[], eltWidth, false, numElts);
   }
 }
 
