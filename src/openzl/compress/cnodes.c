@@ -3,7 +3,8 @@
 #include "openzl/compress/cnodes.h"
 #include "openzl/common/allocation.h" // ALLOC_*, ZL_zeroes
 #include "openzl/common/assertion.h"
-#include "openzl/common/limits.h" // ZL_ENCODER_CUSTOM_NODE_LIMIT
+#include "openzl/common/limits.h"    // ZL_ENCODER_CUSTOM_NODE_LIMIT
+#include "openzl/common/unique_id.h" // ZL_UniqueID_isValid
 #include "openzl/common/vector.h"
 #include "openzl/common/wire_format.h" // trt_standard
 #include "openzl/compress/cnode.h"
@@ -336,6 +337,12 @@ CTM_parameterizeNode(
     clonedCNode.baseNodeID = desc->node;
     if (desc->localParams) {
         clonedCNode.transformDesc.publicDesc.localParams = *desc->localParams;
+    }
+    {
+        const ZL_UniqueID* uid = &desc->dictID.id;
+        if (ZL_UniqueID_isValid(uid)) {
+            clonedCNode.transformDesc.publicDesc.dictID = desc->dictID;
+        }
     }
     if (desc->name == NULL) {
         const ZL_Name name = CNODE_getNameObj(srcCNode);

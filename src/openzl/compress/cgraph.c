@@ -414,6 +414,7 @@ ZL_Compressor_parameterizeNode(
         .name        = params->name,
         .node        = node,
         .localParams = params->localParams,
+        .dictID      = params->dictID,
     };
 
     return NM_parameterizeNode(&compressor->nmgr, &desc);
@@ -427,6 +428,7 @@ ZL_NodeID ZL_Compressor_registerParameterizedNode(
     ZL_NodeParameters params = {
         .name        = desc->name,
         .localParams = desc->localParams,
+        .dictID      = desc->dictID,
     };
     ZL_RESULT_OF(ZL_NodeID)
     nodeidResult =
@@ -1199,6 +1201,13 @@ char const* ZL_Compressor_Node_getName(
 bool ZL_Compressor_Node_isStandard(ZL_Compressor const* cgraph, ZL_NodeID node)
 {
     return CNODE_isTransformStandard(CGRAPH_getCNode(cgraph, node));
+}
+
+ZL_DictID ZL_Compressor_Node_getDictID(
+        ZL_Compressor const* cgraph,
+        ZL_NodeID node)
+{
+    return CNODE_getDictID(CGRAPH_getCNode(cgraph, node));
 }
 
 // ******************************************************************

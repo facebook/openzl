@@ -200,3 +200,10 @@ bool CNODE_isTransformStandard(CNode const* cnode)
 {
     return cnode->publicIDtype == trt_standard;
 }
+
+ZL_DictID CNODE_getDictID(CNode const* cnode)
+{
+    ZL_ASSERT_NN(cnode);
+    ZL_ASSERT_EQ(cnode->nodetype, node_internalTransform);
+    return cnode->transformDesc.publicDesc.dictID;
+}
