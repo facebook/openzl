@@ -207,7 +207,19 @@ FUZZ(OpenZLComponentFuzzer, FuzzRoundTrip)
             break;
         }
         for (const auto& input : inputs) {
-            fuzzRoundTrip(*component, compressor, *input, graph, formatVersion);
+            try {
+                fuzzRoundTrip(
+                        *component, compressor, *input, graph, formatVersion);
+            } catch (const Exception& e) {
+                // The format version and graph are selected independently by
+                // the fuzzer. A graph may exceed the runtime limits (nodes,
+                // streams, inputs) of an older format version. This is not an
+                // input validity issue, so we allow it.
+                if (e.code() != ZL_ErrorCode_formatVersion_unsupported) {
+                    throw;
+                }
+                return;
+            }
         }
     }
 }
