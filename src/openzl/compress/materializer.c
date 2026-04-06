@@ -16,9 +16,9 @@ ZL_Materializer* ZL_Materializer_create(
     if (mat == NULL) {
         return NULL;
     }
-    mat->allocator = allocator;
-    mat->matArena  = ALLOC_StackArena_create();
-    if (mat->matArena == NULL) {
+    mat->persistentArena = allocator;
+    mat->scratchArena    = ALLOC_StackArena_create();
+    if (mat->scratchArena == NULL) {
         ALLOC_Arena_free(allocator, mat);
         return NULL;
     }
@@ -31,24 +31,24 @@ void ZL_Materializer_free(ZL_Materializer* mat)
     if (mat == NULL) {
         return;
     }
-    ALLOC_Arena_freeArena(mat->matArena);
-    ALLOC_Arena_free(mat->allocator, mat);
+    ALLOC_Arena_freeArena(mat->scratchArena);
+    ALLOC_Arena_free(mat->persistentArena, mat);
 }
 
 void* ZL_Materializer_allocate(ZL_Materializer* mat, size_t size)
 {
-    if (mat == NULL || mat->allocator == NULL) {
+    if (mat == NULL || mat->persistentArena == NULL) {
         return NULL;
     }
-    return ALLOC_Arena_malloc(mat->allocator, size);
+    return ALLOC_Arena_malloc(mat->persistentArena, size);
 }
 
 void* ZL_Materializer_getScratchSpace(ZL_Materializer* mat, size_t size)
 {
-    if (mat == NULL || mat->matArena == NULL) {
+    if (mat == NULL || mat->scratchArena == NULL) {
         return NULL;
     }
-    return ALLOC_Arena_malloc(mat->matArena, size);
+    return ALLOC_Arena_malloc(mat->scratchArena, size);
 }
 
 void ZL_NOOP_DEMATERIALIZE(ZL_Materializer* matCtx, void* materialized)

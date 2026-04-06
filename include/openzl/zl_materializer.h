@@ -120,6 +120,74 @@ void* ZL_Materializer_allocate(ZL_Materializer* matCtx, size_t size);
  */
 void* ZL_Materializer_getScratchSpace(ZL_Materializer* matCtx, size_t size);
 
+// =================================================================
+// In-progress API
+// =================================================================
+/**
+ * @brief Descriptor for materializing and dematerializing dict objects.
+ *
+ * This structure defines functions to materialize an in-memory object from
+ * a raw source buffer and to dematerialize (free) that object.
+ */
+typedef struct {
+    /**
+     * Optionally an opaque pointer that can be queried with
+     * ZL_Materializer_getOpaquePtr().
+     * OpenZL unconditionally takes ownership of this pointer, even if
+     * registration fails, and it lives for the lifetime of the owning
+     * compressor/dict store.
+     */
+    ZL_OpaquePtr opaque;
+
+    /**
+     * @brief A custom function that materializes an in-memory object from a
+     * provided @p src buffer. Separate function interfaces are provided for
+     * compression-time and decompression-time materialization. These can be the
+     * same function or different functions, depending on the specific codec
+     * implementation.
+     *
+     * The generation MUST be deterministic and hermetic. Materialization shall
+     * not depend on variables other than the provided @p src buffer.
+     *
+     * Materialized object lifetimes will be managed by the @ref ZL_DictLoader
+     * or @ref ZL_Compressor on which the materialization scheme is registered.
+     *
+     * Do NOT rely on the materialization function being called at any specific
+     * time to do side-effect work. Doing so will result in undefined behavior.
+     *
+     * DO NOT attempt to modify the materialized object after creation, either
+     * directly or via API getters.
+     *
+     * @param matCtx A pointer to a materializer context object. The
+     * materialization function may use this to request managed memory as an
+     * alternative to managing allocations itself and via the dematerializeFn.
+     * @param src  A pointer to the buffer from which to materialize. The
+     * provided buffer has no lifetime guarantees past the invocation of this
+     * function. You may not hold references into @p src in the materialized
+     * object.
+     *
+     * @returns A ZL_RESULT containing a pointer to the materialized object on
+     * success, or an error. Returning NULL as a valid result (when there's
+     * nothing to materialize) should be wrapped in ZL_WRAP_VALUE(NULL). Ensure
+     * the function declares a result scope with ZL_RESULT_DECLARE_SCOPE or you
+     * will get a compiler error.
+     */
+    ZL_RESULT_OF(ZL_VoidPtr) (*materializeFn)(
+            ZL_Materializer* matCtx,
+            const void* src,
+            size_t srcSize)ZL_NOEXCEPT_FUNC_PTR;
+
+    /**
+     * @brief A custom function that destructs a materialized object.
+     *
+     * You should use this to deallocate all non-arena memory and free any held
+     * resources. As a convenience, if there are no resources or memory to free,
+     * you may use ZL_NOOP_DEMATERIALIZE as a placeholder.
+     */
+    void (*dematerializeFn)(ZL_Materializer* matCtx, void* materialized)
+            ZL_NOEXCEPT_FUNC_PTR;
+} ZL_MaterializerDesc2;
+
 #if defined(__cplusplus)
 } // extern "C"
 #endif
