@@ -18,6 +18,11 @@ typedef struct {
     // Set to ZL_MAX_FORMAT_VERSION unless the node is deprecated.
     unsigned maxFormatVersion;
     InternalTransform_Desc transformDesc;
+    /// If a dictionary is specified in the transformDesc, this field is
+    /// populated with the offset of that dict within the compressor's bundle.
+    /// The "default" value is updated when ZL_Compressor_validate() is called,
+    /// before compression starts.
+    size_t maybeDictOffset /* defaults to SIZE_MAX */;
     /// Standard nodes leave this empty, all other nodes set this.
     /// When set ZL_Name_unique(&maybeName) == transformDesc.publicDesc.name.
     ZL_Name maybeName;
@@ -128,5 +133,9 @@ CNODE_FormatInfo CNODE_getFormatInfo(CNode const* cnode);
 
 // @returns the transformation type of the cnode
 bool CNODE_isTransformStandard(CNode const* cnode);
+
+/// @returns the dict ID associated with the @p cnode
+/// @pre cnode->nodetype == node_internalTransform
+ZL_DictID CNODE_getDictID(CNode const* cnode);
 
 #endif // OPENZL_COMPRESS_CNODE_H

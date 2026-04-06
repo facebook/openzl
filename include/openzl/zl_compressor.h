@@ -340,6 +340,9 @@ typedef struct {
     /// Optionally the new local params, if NULL then the parameters are not
     /// updated.
     const ZL_LocalParams* localParams;
+    /// Optionally, a new dict ID. If set to ZL_ID_NULL, then the dict ID is not
+    /// updated.
+    ZL_DictID dictID;
 } ZL_NodeParameters;
 
 /**
@@ -364,6 +367,9 @@ typedef struct {
     /// Optionally the new local params, if NULL then the parameters are not
     /// updated.
     const ZL_LocalParams* localParams;
+    /// Optionally, a new dict ID. If set to ZL_ID_NULL, then the dict ID is not
+    /// updated.
+    ZL_DictID dictID;
 } ZL_ParameterizedNodeDesc;
 
 /**

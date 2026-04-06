@@ -2,15 +2,18 @@
 
 #include <gtest/gtest.h>
 
+#include <cstring>
+
 #include "openzl/cpp/CCtx.hpp"
 #include "openzl/cpp/CParam.hpp"
 #include "openzl/cpp/Compressor.hpp"
 #include "openzl/cpp/LocalParams.hpp"
 #include "openzl/cpp/poly/Span.hpp"
-#include "openzl/zl_compress.h"
+
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_ctransform.h"
 #include "openzl/zl_graph_api.h"
+#include "openzl/zl_reflection.h"
 #include "openzl/zl_segmenter.h"
 #include "openzl/zl_selector.h"
 
@@ -716,6 +719,197 @@ TEST_F(CompressorIntegrationTest,
 
     compressData();
     EXPECT_EQ(str, str2);
+}
+
+TEST_F(CompressorIntegrationTest,
+       GIVENaNodeRegisteredWithDictIDWHENqueriedTHENdictIDIsReturned)
+{
+    const auto passthroughFn =
+            [](ZL_Encoder* eictx, const ZL_Input* inputs[], size_t nbInputs)
+                    ZL_NOEXCEPT_FUNC_PTR -> ZL_Report {
+        return passthrough(eictx, inputs, nbInputs);
+    };
+
+    ZL_DictID dictID;
+    memset(&dictID, 0, sizeof(dictID));
+    dictID.id.bytes[0] = 42;
+    dictID.id.bytes[1] = 123;
+
+    static ZL_Type typetype = ZL_Type_serial;
+    ZL_MIGraphDesc graphDesc{
+        .CTid                = nextCtid_++,
+        .inputTypes          = &typetype,
+        .nbInputs            = 1,
+        .lastInputIsVariable = false,
+        .soTypes             = &typetype,
+        .nbSOs               = 1,
+        .voTypes             = nullptr,
+        .nbVOs               = 0,
+    };
+
+    ZL_MIEncoderDesc encoderDesc{
+        .gd          = graphDesc,
+        .transform_f = passthroughFn,
+        .localParams = {},
+        .name        = "test_encoder_with_dictID",
+        .dictID      = dictID,
+    };
+
+    auto nodeid = compressor_.registerCustomEncoder(encoderDesc);
+    ASSERT_NE(nodeid.nid, ZL_NODE_ILLEGAL.nid);
+
+    ZL_DictID retrieved =
+            ZL_Compressor_Node_getDictID(compressor_.get(), nodeid);
+    EXPECT_EQ(retrieved.id.bytes[0], 42u);
+    EXPECT_EQ(retrieved.id.bytes[1], 123u);
+    EXPECT_EQ(retrieved.id.bytes[2], 0u);
+    EXPECT_EQ(retrieved.id.bytes[3], 0u);
+}
+
+TEST_F(CompressorIntegrationTest,
+       GIVENaParameterizedNodeWHENqueriedTHENdictIDIsPreservedFromBaseNode)
+{
+    const auto passthroughFn =
+            [](ZL_Encoder* eictx, const ZL_Input* inputs[], size_t nbInputs)
+                    ZL_NOEXCEPT_FUNC_PTR -> ZL_Report {
+        return passthrough(eictx, inputs, nbInputs);
+    };
+
+    ZL_DictID dictID;
+    memset(&dictID, 0, sizeof(dictID));
+    dictID.id.bytes[0] = 99;
+    dictID.id.bytes[1] = 200;
+    dictID.id.bytes[2] = 44;
+    dictID.id.bytes[3] = 144;
+
+    static ZL_Type typetype = ZL_Type_serial;
+    ZL_MIGraphDesc graphDesc{
+        .CTid                = nextCtid_++,
+        .inputTypes          = &typetype,
+        .nbInputs            = 1,
+        .lastInputIsVariable = false,
+        .soTypes             = &typetype,
+        .nbSOs               = 1,
+        .voTypes             = nullptr,
+        .nbVOs               = 0,
+    };
+
+    ZL_MIEncoderDesc encoderDesc{
+        .gd          = graphDesc,
+        .transform_f = passthroughFn,
+        .localParams = {},
+        .name        = "test_encoder_parameterized_dictID",
+        .dictID      = dictID,
+    };
+
+    auto baseNode = compressor_.registerCustomEncoder(encoderDesc);
+    ASSERT_NE(baseNode.nid, ZL_NODE_ILLEGAL.nid);
+
+    // Parameterize the node with new local params but no dictID override
+    ZL_IntParam ip = {
+        .paramId    = 1,
+        .paramValue = 42,
+    };
+    ZL_LocalParams lp = {
+        .intParams = {
+            .intParams   = &ip,
+            .nbIntParams = 1,
+        },
+    };
+    ZL_ParameterizedNodeDesc desc = {
+        .name        = nullptr,
+        .node        = baseNode,
+        .localParams = &lp,
+    };
+    ZL_NodeID paramNode =
+            ZL_Compressor_registerParameterizedNode(compressor_.get(), &desc);
+    ASSERT_NE(paramNode.nid, ZL_NODE_ILLEGAL.nid);
+
+    // The dictID should be carried over from the base node
+    ZL_DictID retrieved =
+            ZL_Compressor_Node_getDictID(compressor_.get(), paramNode);
+    EXPECT_EQ(retrieved.id.bytes[0], 99u);
+    EXPECT_EQ(retrieved.id.bytes[1], 200u);
+    EXPECT_EQ(retrieved.id.bytes[2], 44u);
+    EXPECT_EQ(retrieved.id.bytes[3], 144u);
+}
+
+TEST_F(CompressorIntegrationTest,
+       GIVENaParameterizedNodeWithNewDictIDWHENqueriedTHENnewDictIDIsUsed)
+{
+    const auto passthroughFn =
+            [](ZL_Encoder* eictx, const ZL_Input* inputs[], size_t nbInputs)
+                    ZL_NOEXCEPT_FUNC_PTR -> ZL_Report {
+        return passthrough(eictx, inputs, nbInputs);
+    };
+
+    // Register base node with an initial dictID
+    ZL_DictID originalDictID;
+    memset(&originalDictID, 0, sizeof(originalDictID));
+    originalDictID.id.bytes[0] = 10;
+    originalDictID.id.bytes[1] = 20;
+
+    static ZL_Type typetype = ZL_Type_serial;
+    ZL_MIGraphDesc graphDesc{
+        .CTid                = nextCtid_++,
+        .inputTypes          = &typetype,
+        .nbInputs            = 1,
+        .lastInputIsVariable = false,
+        .soTypes             = &typetype,
+        .nbSOs               = 1,
+        .voTypes             = nullptr,
+        .nbVOs               = 0,
+    };
+
+    ZL_MIEncoderDesc encoderDesc{
+        .gd          = graphDesc,
+        .transform_f = passthroughFn,
+        .localParams = {},
+        .name        = "test_encoder_override_dictID",
+        .dictID      = originalDictID,
+    };
+
+    auto baseNode = compressor_.registerCustomEncoder(encoderDesc);
+    ASSERT_NE(baseNode.nid, ZL_NODE_ILLEGAL.nid);
+
+    // Verify base node has the original dictID
+    ZL_DictID baseRetrieved =
+            ZL_Compressor_Node_getDictID(compressor_.get(), baseNode);
+    EXPECT_EQ(baseRetrieved.id.bytes[0], 10u);
+    EXPECT_EQ(baseRetrieved.id.bytes[1], 20u);
+
+    // Parameterize the node with a new dictID
+    ZL_DictID newDictID;
+    memset(&newDictID, 0, sizeof(newDictID));
+    newDictID.id.bytes[0] = 77;
+    newDictID.id.bytes[1] = 88;
+    newDictID.id.bytes[2] = 99;
+    newDictID.id.bytes[3] = 111;
+
+    ZL_NodeParameters params = {
+        .name        = nullptr,
+        .localParams = nullptr,
+        .dictID      = newDictID,
+    };
+    ZL_RESULT_OF(ZL_NodeID)
+    result = ZL_Compressor_parameterizeNode(
+            compressor_.get(), baseNode, &params);
+    ASSERT_FALSE(ZL_RES_isError(result));
+    ZL_NodeID paramNode = ZL_RES_value(result);
+    ASSERT_NE(paramNode.nid, ZL_NODE_ILLEGAL.nid);
+
+    // The parameterized node should have the new dictID
+    ZL_DictID retrieved =
+            ZL_Compressor_Node_getDictID(compressor_.get(), paramNode);
+    EXPECT_EQ(retrieved.id.bytes[0], 77u);
+    EXPECT_EQ(retrieved.id.bytes[1], 88u);
+    EXPECT_EQ(retrieved.id.bytes[2], 99u);
+    EXPECT_EQ(retrieved.id.bytes[3], 111u);
+
+    // The base node should still have the original dictID
+    baseRetrieved = ZL_Compressor_Node_getDictID(compressor_.get(), baseNode);
+    EXPECT_EQ(baseRetrieved.id.bytes[0], 10u);
+    EXPECT_EQ(baseRetrieved.id.bytes[1], 20u);
 }
 
 } // namespace openzl

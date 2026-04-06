@@ -343,6 +343,21 @@ typedef struct {
      * will be used to create materialized objects from local params.
      */
     ZL_MaterializerDesc materializer;
+
+    // New API. In progress.
+    /**
+     * Optional materializer descriptor for materialized dicts.
+     * If both materializeFn and dematerializeFn are non-null, the materializer
+     * will be used to create materialized objects. Create a node with
+     * materialization using ZL_Compressor_parameterizeNode().
+     */
+    ZL_MaterializerDesc2 dictMat;
+    /**
+     * Optional dictionary ID associated with this encoder.
+     * When set, identifies the dictionary that this encoder requires.
+     * A zero-initialized (null) value means no dictionary is associated.
+     */
+    ZL_DictID dictID;
 } ZL_MIEncoderDesc;
 
 /**

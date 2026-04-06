@@ -312,6 +312,13 @@ char const* ZL_Compressor_Node_getName(
 bool ZL_Compressor_Node_isStandard(ZL_Compressor const* cgraph, ZL_NodeID node);
 
 /**
+ * @returns The dict ID associated with the @p node.
+ */
+ZL_DictID ZL_Compressor_Node_getDictID(
+        ZL_Compressor const* cgraph,
+        ZL_NodeID node);
+
+/**
  * Reflection API for introspecting a compressed frame.
  *
  * 1. Create a reflection context with ZL_ReflectionCtx_create().
