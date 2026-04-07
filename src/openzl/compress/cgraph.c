@@ -1301,6 +1301,16 @@ ZL_Report ZL_Compressor_Node_getDictIndex(
     return ZL_returnValue(index);
 }
 
+const void* CGRAPH_getDictObj(const ZL_Compressor* cgraph, size_t dictOffset)
+{
+    ZL_ASSERT_NN(cgraph);
+    const ZL_DictBundle* bundle = cgraph->dictMgr.bundle;
+    if (bundle == NULL)
+        return NULL;
+    ZL_ASSERT_LT(dictOffset, bundle->info.numDicts);
+    return bundle->dicts[dictOffset]->dictObj;
+}
+
 const ZL_BundleID* ZL_Compressor_getDictBundleID(
         const ZL_Compressor* compressor)
 {

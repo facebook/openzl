@@ -448,6 +448,12 @@ ZL_LocalIntParams ZL_Encoder_getLocalIntParams(const ZL_Encoder* eic);
  */
 const ZL_LocalParams* ZL_Encoder_getLocalParams(const ZL_Encoder* eic);
 
+/**
+ * @returns The materialized dictionary object associated with this node, if
+ * there is one. Otherwise NULL.
+ */
+const void* ZL_Encoder_getMaterializedDict(const ZL_Encoder* eictx);
+
 /* Scratch space allocation:
  * When the transform needs some buffer space for some local operation,
  * it can request such space from the Graph Engine. It is allowed to

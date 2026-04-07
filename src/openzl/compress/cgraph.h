@@ -74,6 +74,15 @@ ZL_NodeID CGraph_registerStandardMITransform(
         unsigned minFormatVersion,
         unsigned maxFormatVersion);
 
+/* =====   Dict accessors   ===== */
+
+/**
+ * @returns the materialized dictionary object at position @p dictOffset
+ * within the compressor's loaded bundle, or NULL if no bundle is loaded.
+ * @pre dictOffset < bundle->numDicts
+ */
+const void* CGRAPH_getDictObj(const ZL_Compressor* cgraph, size_t dictOffset);
+
 /* =====   Dict index resolution   ===== */
 
 /**

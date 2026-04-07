@@ -67,6 +67,7 @@ zs_unittest(
     supports_static_listing = False,
     deps = [
         "..:compress",
+        "..:dict",
         "../cpp:openzl_cpp",
         "datagen:datagen",
         "registry:openzl_components",
