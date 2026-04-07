@@ -3,6 +3,8 @@
 #ifndef OPENZL_TESTS_DICT_TEST_HELPERS_H
 #define OPENZL_TESTS_DICT_TEST_HELPERS_H
 
+#include <gtest/gtest.h>
+
 #include <cstring>
 #include <vector>
 
@@ -21,8 +23,8 @@ inline ZL_DictID makeNullDictID()
 inline ZL_DictID makeDictID(uint8_t seed)
 {
     ZL_DictID id;
-    for (size_t i = 0; i < 4; i++) {
-        id.id.bytes[i] = static_cast<uint64_t>(seed + i);
+    for (size_t i = 0; i < 32; i++) {
+        id.id.bytes[i] = static_cast<uint8_t>(seed + i);
     }
     return id;
 }
@@ -41,10 +43,8 @@ inline std::vector<uint8_t> buildPackedDict(
     MEM_writeLE32(p, ZL_DICT_MAGIC);
     p += 4;
 
-    for (int i = 0; i < 4; i++) {
-        MEM_writeLE64(p, dictID.id.bytes[i]);
-        p += 8;
-    }
+    memcpy(p, &dictID, ZL_UNIQUE_ID_SIZE);
+    p += ZL_UNIQUE_ID_SIZE;
 
     MEM_writeLE32(p, static_cast<uint32_t>(codec));
     p += 4;
@@ -91,6 +91,33 @@ inline std::vector<uint8_t> buildPackedBundleInfo(
         }
     }
 
+    return buf;
+}
+
+inline std::vector<uint8_t> packFatBundle(
+        const std::vector<std::vector<uint8_t>>& dicts)
+{
+    std::vector<const void*> dictPtrs;
+    std::vector<size_t> dictSizes;
+    size_t totalDictBytes = 0;
+    for (auto& d : dicts) {
+        dictPtrs.push_back(d.data());
+        dictSizes.push_back(d.size());
+        totalDictBytes += d.size();
+    }
+
+    size_t bufSize = ZL_BUNDLE_HEADER_SIZE + dicts.size() * ZL_UNIQUE_ID_SIZE
+            + totalDictBytes;
+    std::vector<uint8_t> buf(bufSize);
+
+    ZL_Report r = ZL_DictBundle_packFatBundle(
+            buf.data(),
+            buf.size(),
+            dicts.empty() ? nullptr : dictPtrs.data(),
+            dicts.empty() ? nullptr : dictSizes.data(),
+            dicts.size());
+    EXPECT_FALSE(ZL_isError(r));
+    buf.resize(ZL_validResult(r));
     return buf;
 }
 
