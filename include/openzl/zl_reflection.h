@@ -319,6 +319,15 @@ ZL_DictID ZL_Compressor_Node_getDictID(
         ZL_NodeID node);
 
 /**
+ * @returns The dict index within the compressor's bundle for the @p node.
+ * Returns an error if no dictionary is associated with this node.
+ * @note Only valid after ZL_Compressor_validate() has been called.
+ */
+ZL_Report ZL_Compressor_Node_getDictIndex(
+        ZL_Compressor const* cgraph,
+        ZL_NodeID node);
+
+/**
  * Reflection API for introspecting a compressed frame.
  *
  * 1. Create a reflection context with ZL_ReflectionCtx_create().

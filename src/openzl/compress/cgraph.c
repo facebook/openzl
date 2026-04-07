@@ -6,14 +6,17 @@
 #include "openzl/common/errors_internal.h" // ZS2_RET_IF_ERR
 #include "openzl/common/opaque.h"
 #include "openzl/common/operation_context.h"
+#include "openzl/common/unique_id.h"
 #include "openzl/compress/cctx.h"     // CCTX_setOutBufferSizes
 #include "openzl/compress/cdictmgr.h" // CDictMgr
 #include "openzl/compress/cnode.h"
+#include "openzl/compress/cnodes.h"         // CTM_setDictIndex
 #include "openzl/compress/enc_interface.h"  // ZL_Encoder definition
 #include "openzl/compress/gcparams.h"       // GCParams
 #include "openzl/compress/graph_registry.h" // GR_staticGraphWrapper
 #include "openzl/compress/graphmgr.h"       // Graphs_manager
 #include "openzl/compress/nodemgr.h"        // Nodes_manager
+#include "openzl/dict/dict_constants.h"     // ZL_DICT_INDEX_NONE
 #include "openzl/zl_compress.h"             // ZL_Compressor*
 #include "openzl/zl_compressor.h"           // ZS2_declare*_*
 #include "openzl/zl_ctransform.h"
@@ -36,7 +39,7 @@ struct ZL_Compressor_s {
     GCParams gcparams;
     ZL_OperationContext opCtx; // for error logging
     CDictMgr dictMgr;
-}; /* note typedef'd to ZL_Compressor in zs2_compress.h */
+}; /* note typedef'd to ZL_Compressor in zl_compress.h */
 
 ZL_Compressor* ZL_Compressor_create(void)
 {
@@ -121,6 +124,7 @@ ZL_Report ZL_Compressor_validate(
     ZL_ERR_IF_ERR(CGraph_validateGraphAtGid(cgraph, starting_graph));
     // Note (@Cyan): since zstrong supports Typed Inputs, there is no longer a
     // requirement for Starting Graph to support Serial Input.
+    ZL_ERR_IF_ERR(CGraph_resolveDictIndices(cgraph));
     return ZL_returnSuccess();
 }
 
@@ -1241,6 +1245,60 @@ ZL_DictID ZL_Compressor_Node_getDictID(
         ZL_NodeID node)
 {
     return CNODE_getDictID(CGRAPH_getCNode(cgraph, node));
+}
+
+ZL_Report CGraph_resolveDictIndices(ZL_Compressor* cgraph)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cgraph);
+    const ZL_DictBundle* bundle = cgraph->dictMgr.bundle;
+    CNodes_manager* ctm         = &cgraph->nmgr.ctm;
+    const ZL_IDType nbCNodes    = CTM_nbCNodes(ctm);
+
+    for (ZL_IDType i = 0; i < nbCNodes; ++i) {
+        CNodeID cnodeID    = { i };
+        const CNode* cnode = CTM_getCNode(ctm, cnodeID);
+        if (cnode == NULL)
+            continue;
+        if (cnode->nodetype != node_internalTransform)
+            continue;
+
+        const ZL_UniqueID* dictUID = &cnode->transformDesc.publicDesc.dictID.id;
+        if (!ZL_UniqueID_isValid(dictUID))
+            continue;
+
+        // This CNode requires a dictionary — resolve its bundle index
+        ZL_ERR_IF_NULL(
+                bundle,
+                dictNoRecord,
+                "Node '%s' requires a dictionary but no bundle is loaded",
+                CNODE_getName(cnode));
+
+        bool found = false;
+        for (size_t j = 0; j < bundle->info.numDicts; ++j) {
+            if (ZL_UniqueID_eq(dictUID, &bundle->info.dictIDs[j].id)) {
+                CTM_setDictIndex(ctm, cnodeID, j);
+                found = true;
+                break;
+            }
+        }
+        ZL_ERR_IF_NOT(
+                found,
+                dictNoRecord,
+                "Dictionary for node '%s' not found in bundle",
+                CNODE_getName(cnode));
+    }
+    return ZL_returnSuccess();
+}
+
+ZL_Report ZL_Compressor_Node_getDictIndex(
+        ZL_Compressor const* cgraph,
+        ZL_NodeID node)
+{
+    size_t index = CNODE_getDictIndex(CGRAPH_getCNode(cgraph, node));
+    if (index == ZL_DICT_INDEX_NONE) {
+        return ZL_returnError(ZL_ErrorCode_dictNoRecord);
+    }
+    return ZL_returnValue(index);
 }
 
 const ZL_BundleID* ZL_Compressor_getDictBundleID(

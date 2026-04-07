@@ -10,6 +10,7 @@
 #include "openzl/compress/cnode.h"
 #include "openzl/compress/localparams.h"
 #include "openzl/compress/materializer.h" // ZL_Materializer functions
+#include "openzl/dict/dict_constants.h"   // ZL_DICT_INDEX_NONE
 #include "openzl/shared/mem.h"            // ZL_memcpy
 #include "openzl/shared/xxhash.h"
 #include "openzl/zl_errors.h"
@@ -288,10 +289,11 @@ CTM_registerCustomTransform(
     ZL_DLOG(BLOCK, "CTM_registerCustomTransform");
     ZL_ERR_IF_ERR(ZL_OpaquePtrRegistry_register(
             &ctm->opaquePtrs, ctd->publicDesc.opaque));
-    CNode cnode      = { .nodetype      = node_internalTransform,
-                         .publicIDtype  = trt_custom,
-                         .transformDesc = *ctd,
-                         .baseNodeID    = ZL_NODE_ILLEGAL };
+    CNode cnode      = { .nodetype       = node_internalTransform,
+                         .publicIDtype   = trt_custom,
+                         .transformDesc  = *ctd,
+                         .maybeDictIndex = ZL_DICT_INDEX_NONE,
+                         .baseNodeID     = ZL_NODE_ILLEGAL };
     const char* name = ctd->publicDesc.name;
     // Registered => No need to free
     cnode.transformDesc.publicDesc.opaque.freeFn = NULL;
@@ -314,6 +316,7 @@ CTM_registerStandardTransform(
                          .minFormatVersion = minFormatVersion,
                          .maxFormatVersion = maxFormatVersion,
                          .transformDesc    = *ctd,
+                         .maybeDictIndex   = ZL_DICT_INDEX_NONE,
                          .baseNodeID       = ZL_NODE_ILLEGAL };
     const char* name = ctd->publicDesc.name;
     // Registered => No need to free
@@ -375,4 +378,11 @@ const CNode* CTM_getCNode(const CNodes_manager* ctm, CNodeID cnodeid)
 ZL_IDType CTM_nbCNodes(const CNodes_manager* ctm)
 {
     return (ZL_IDType)VECTOR_SIZE(ctm->cnodes);
+}
+
+void CTM_setDictIndex(CNodes_manager* ctm, CNodeID id, size_t index)
+{
+    ZL_ASSERT_NN(ctm);
+    ZL_ASSERT_LT(id.cnid, VECTOR_SIZE(ctm->cnodes));
+    VECTOR_AT(ctm->cnodes, id.cnid).maybeDictIndex = index;
 }
