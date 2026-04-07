@@ -3,6 +3,7 @@
 #include "openzl/compress/segmenters/segmenter_numeric.h"
 #include "openzl/common/assertion.h"
 #include "openzl/compress/private_nodes.h"
+#include "openzl/zl_selector.h" // ZL_LP_INVALID_PARAMID ...which is probably not where this constant should be
 
 ZL_Report SEGM_numeric(ZL_Segmenter* sctx)
 {
@@ -14,14 +15,23 @@ ZL_Report SEGM_numeric(ZL_Segmenter* sctx)
     size_t const width = ZL_Input_eltWidth(input);
     ZL_ASSERT(width == 1 || width == 2 || width == 4 || width == 8);
 
-    // Note: Currently, static chunk size.
-    // Tomorrow: global parameter, then local parameter.
-    size_t const chunkByteSizeMax = 16 << 20;
-    size_t const chunkEltSizeMax  = chunkByteSizeMax / width;
+    ZL_IntParam const chunkParam = ZL_Segmenter_getLocalIntParam(
+            sctx, ZL_SEGM_NUMERIC_CHUNK_BYTE_SIZE_MAX_PID);
+    size_t const chunkByteSizeMax =
+            (chunkParam.paramId != ZL_LP_INVALID_PARAMID)
+            ? (size_t)chunkParam.paramValue
+            : (16 << 20) /* default to 16MB */;
+    ZL_ERR_IF_LT(
+            chunkByteSizeMax,
+            width,
+            nodeParameter_invalid,
+            "chunk size must produce at least one element");
+    size_t const chunkEltSizeMax = chunkByteSizeMax / width;
 
-    // Note: Currently, static head graph.
-    // Tomorrow: selectable
-    ZL_GraphID const headGraph = ZL_GRAPH_NUMERIC_COMPRESS;
+    ZL_GraphIDList const customGraphs = ZL_Segmenter_getCustomGraphs(sctx);
+    ZL_GraphID const headGraph        = (customGraphs.nbGraphIDs >= 1)
+                   ? customGraphs.graphids[0]
+                   : ZL_GRAPH_NUMERIC_COMPRESS;
 
     size_t numElts = ZL_Input_numElts(input);
     while (numElts > chunkEltSizeMax) {

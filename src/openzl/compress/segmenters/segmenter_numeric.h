@@ -10,6 +10,8 @@ ZL_BEGIN_C_DECLS
 
 ZL_Report SEGM_numeric(ZL_Segmenter* sctx);
 
+#define ZL_SEGM_NUMERIC_CHUNK_BYTE_SIZE_MAX_PID 1
+
 #define SEGM_NUMERIC_DESC                                           \
     {                                                               \
         .name                = "!zl.segmenter_numeric",             \
