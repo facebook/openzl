@@ -15,7 +15,8 @@
 #include "openzl/common/wire_format.h"            // TransformType_e
 #include "openzl/decompress/dctx2.h"              // DCTX_* declarations
 #include "openzl/decompress/decode_frameheader.h" // DFH_*
-#include "openzl/decompress/dictx.h"              // struct ZL_Decoder_s
+#include "openzl/decompress/decoder_fusion.h"
+#include "openzl/decompress/dictx.h"       // struct ZL_Decoder_s
 #include "openzl/decompress/dtransforms.h" // DTransforms_manager, TransformID
 #include "openzl/decompress/gdparams.h"
 #include "openzl/shared/mem.h"    // ZL_readLE32, etc.
@@ -43,7 +44,7 @@
  * - The decoder produces the decoded stream by concatenating all the encoded
  *   streams.
  */
-typedef struct {
+typedef struct ZL_AppendToOutputOptimization_s {
     /// Pointer to the inputs array
     /// @note Inputs are listed in reverse order!
     struct ZL_DCtx_DataInfo* inputInfos;
@@ -63,16 +64,6 @@ typedef struct {
     uint8_t* outputTailPtr;
 } ZL_AppendToOutputOptimization;
 
-#define ZL_PRODUCER_STORE ((ZL_IDType)(-1))
-
-typedef struct ZL_DCtx_DataInfo {
-    ZL_Data* data;
-    ZL_AppendToOutputOptimization* appendOpt;
-    /// The index of the node that produced this stream or
-    /// ZL_PRODUCER_STORE if stored in the frame.
-    ZL_IDType producerNodeIdx;
-} ZL_DCtx_DataInfo;
-
 typedef struct {
     ZL_DCtx_DataInfo* ptr;
     size_t size;
@@ -89,7 +80,9 @@ struct ZL_DCtx_s {
     size_t streamEndPos;
     bool preserveStreams;
     Arena* chunkArena; ///< Lives for the lifetime of the chunk decompression
-    Arena* workspaceArena;
+    Arena* decoderWkspArena; ///< Lives for the lifetime of a single decoder
+    /// Lives for the lifetime of a single decoder fusion
+    Arena* fusionWkspArena;
     Arena* streamArena;
     ZL_OperationContext opCtx;
     GDParams requestedGDParams; // As user-selected at DCtx level
@@ -114,8 +107,13 @@ ZL_DCtx* ZL_DCtx_create(void)
         ZL_DCtx_free(dctx);
         return NULL;
     }
-    dctx->workspaceArena = ALLOC_StackArena_create();
-    if (!dctx->workspaceArena) {
+    dctx->decoderWkspArena = ALLOC_StackArena_create();
+    if (!dctx->decoderWkspArena) {
+        ZL_DCtx_free(dctx);
+        return NULL;
+    }
+    dctx->fusionWkspArena = ALLOC_StackArena_create();
+    if (!dctx->fusionWkspArena) {
         ZL_DCtx_free(dctx);
         return NULL;
     }
@@ -178,7 +176,8 @@ void ZL_DCtx_free(ZL_DCtx* dctx)
     DCTX_freeStreams(dctx);
     DTM_destroy(&dctx->dtm);
     DFH_destroy(&dctx->dfh);
-    ALLOC_Arena_freeArena(dctx->workspaceArena);
+    ALLOC_Arena_freeArena(dctx->decoderWkspArena);
+    ALLOC_Arena_freeArena(dctx->fusionWkspArena);
     ALLOC_Arena_freeArena(dctx->streamArena);
     ALLOC_Arena_freeArena(dctx->chunkArena);
     ZL_OC_destroy(&dctx->opCtx);
@@ -775,6 +774,7 @@ static ZL_Report fillStoredStreams(
 
         nodeInfo[transformIdx].inputStreamBaseIdx = (ZL_IDType)streamIdx;
         nodeInfo[transformIdx].numInputStreams    = (ZL_IDType)nbTrIns;
+        nodeInfo[transformIdx].fusion             = NULL;
 
         // Run all validation that can be done at header decode time.
         ZL_ERR_IF_ERR(DCTX_validateNodeStatic(dctx, wrappedTr, node));
@@ -1111,12 +1111,12 @@ ZL_Data* DCTX_newStreamFromStreamRef(
 }
 
 static const ZL_Data** DCTX_getNodeInputs(
-        ZL_DCtx* dctx,
-        const DFH_NodeInfo* nodeInfo)
+        const ZL_DCtx* dctx,
+        const DFH_NodeInfo* nodeInfo,
+        Arena* workspaceArena)
 {
     const ZL_Data** inputs = ALLOC_Arena_malloc(
-            dctx->workspaceArena,
-            nodeInfo->numInputStreams * sizeof(const ZL_Data*));
+            workspaceArena, nodeInfo->numInputStreams * sizeof(const ZL_Data*));
     if (inputs == NULL) {
         return NULL;
     }
@@ -1181,11 +1181,12 @@ static ZL_Report DCTX_validateNodeInputs(
 }
 
 static const ZL_IDType* DCTX_getRegeneratedStreamIDs(
-        ZL_DCtx* dctx,
-        const DFH_NodeInfo* nodeInfo)
+        const ZL_DCtx* dctx,
+        const DFH_NodeInfo* nodeInfo,
+        Arena* workspaceArena)
 {
     ZL_IDType* const regensID = ALLOC_Arena_malloc(
-            dctx->workspaceArena, sizeof(ZL_IDType) * nodeInfo->nbRegens);
+            workspaceArena, sizeof(ZL_IDType) * nodeInfo->nbRegens);
     if (regensID == NULL) {
         return NULL;
     }
@@ -1238,8 +1239,12 @@ static void DCTX_freeDecoderInputStreams(
 }
 
 // @return : nb of streams processed
-static ZL_Report runDecoder(ZL_DCtx* dctx, const DFH_NodeInfo* nodeInfo)
+ZL_Report DCTX_runDecoder(
+        ZL_DCtx* dctx,
+        const DFH_NodeInfo* nodeInfo,
+        bool withinFusedDecoder)
 {
+    (void)withinFusedDecoder; // Used in next diff
     ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
     ZL_ASSERT_NN(dctx);
     PublicTransformInfo const trid = nodeInfo->trpid;
@@ -1297,7 +1302,8 @@ static ZL_Report runDecoder(ZL_DCtx* dctx, const DFH_NodeInfo* nodeInfo)
     }
 
     // Collect input streams
-    const ZL_Data** inputs = DCTX_getNodeInputs(dctx, nodeInfo);
+    const ZL_Data** inputs =
+            DCTX_getNodeInputs(dctx, nodeInfo, dctx->decoderWkspArena);
     ZL_ERR_IF_NULL(inputs, allocation);
 
     // Validate input types
@@ -1312,7 +1318,8 @@ static ZL_Report runDecoder(ZL_DCtx* dctx, const DFH_NodeInfo* nodeInfo)
                     dctx->thstream, nodeInfo->trhStart, nodeInfo->trhSize));
 
     // Determine regenerated streams slots
-    const ZL_IDType* regensID = DCTX_getRegeneratedStreamIDs(dctx, nodeInfo);
+    const ZL_IDType* regensID = DCTX_getRegeneratedStreamIDs(
+            dctx, nodeInfo, dctx->decoderWkspArena);
     ZL_ERR_IF_NULL(regensID, allocation);
 
     // Run the transform
@@ -1325,7 +1332,7 @@ static ZL_Report runDecoder(ZL_DCtx* dctx, const DFH_NodeInfo* nodeInfo)
         .dctx           = dctx,
         .dt             = dt,
         .statePtr       = DTM_getStatePtr(&dctx->dtm, nodeInfo->trpid),
-        .workspaceArena = dctx->workspaceArena,
+        .workspaceArena = dctx->decoderWkspArena,
         .regensID       = regensID,
         .nbRegens       = nodeInfo->nbRegens,
         .thContent      = thContent,
@@ -1371,7 +1378,7 @@ static ZL_Report runDecoder(ZL_DCtx* dctx, const DFH_NodeInfo* nodeInfo)
     }
 
     // Clear the workspace arena
-    ALLOC_Arena_freeAll(dctx->workspaceArena);
+    ALLOC_Arena_freeAll(dctx->decoderWkspArena);
 
     // Free the input streams
     DCTX_freeDecoderInputStreams(dctx, nodeInfo);
@@ -1393,7 +1400,8 @@ static ZL_Report runDecoders(ZL_DCtx* dctx)
     for (size_t stage = 0; stage < dctx->dfh.nbDTransforms; stage++) {
         ZL_DLOG(BLOCK, "decoding stage %zu", stage);
         DFH_NodeInfo const* nodeInfo = &VECTOR_AT(dctx->dfh.nodes, stage);
-        ZL_ERR_IF_ERR(runDecoder(dctx, nodeInfo));
+        ZL_ERR_IF_ERR(DCTX_runDecoder(
+                dctx, nodeInfo, /* withinFusedDecoder */ false));
     }
 
     return ZL_returnSuccess();
@@ -1414,7 +1422,10 @@ ZL_Report DCTX_runTransformID(ZL_DCtx* dctx, ZL_IDType transformID)
             continue;
         }
         ZL_DLOG(BLOCK, "transformID = %u (type:%u)", trid.trid, trid.trt);
-        ZL_TRY_LET(size_t, nbps, runDecoder(dctx, node));
+        ZL_TRY_LET(
+                size_t,
+                nbps,
+                DCTX_runDecoder(dctx, node, /* inFusedDecoder */ false));
         startingStream += nbps;
         ZL_ERR_IF_NE(
                 node->nbRegens,
@@ -1533,7 +1544,8 @@ static void cleanChunkBuffers(ZL_DCtx* dctx)
 {
     DCTX_freeStreams(dctx);
     ALLOC_Arena_freeAll(dctx->streamArena);
-    ALLOC_Arena_freeAll(dctx->workspaceArena);
+    ALLOC_Arena_freeAll(dctx->decoderWkspArena);
+    ALLOC_Arena_freeAll(dctx->fusionWkspArena);
     ALLOC_Arena_freeAll(dctx->chunkArena);
     memset(&dctx->dataInfo, 0, sizeof(dctx->dataInfo));
 }
