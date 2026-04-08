@@ -34,18 +34,20 @@ nav:
     - Core Library Limitations: getting-started/library-limitations.md
   - SDDL:
       - Overview: sddl/index.md
-      - Introduction & Motivation: sddl/introduction.md
-      - Getting Started: sddl/getting-started.md
-      - Core Concepts: sddl/core-concepts.md
-      - Understanding Instant-Parse: sddl/instant-parse.md
-      - Arrays and Collections: sddl/arrays-collections.md
-      - Advanced Layout Control: sddl/alignment-padding.md
-      - Conditional & Variant Data: sddl/conditional-variant.md
-      - Variables and Expressions: sddl/variables-expressions.md
-      - Real-World Formats: sddl/real-formats.md
-      - Best Practices: sddl/best-practices.md
-      - Quick Reference: sddl/reference.md
-      - SDDL for LLMs: sddl/sddl-for-llm.md
+      - North Star (v0.6):
+        - Overview: sddl/north-star/index.md
+        - Introduction & Motivation: sddl/north-star/introduction.md
+        - Getting Started: sddl/north-star/getting-started.md
+        - Core Concepts: sddl/north-star/core-concepts.md
+        - Understanding Instant-Parse: sddl/north-star/instant-parse.md
+        - Arrays and Collections: sddl/north-star/arrays-collections.md
+        - Advanced Layout Control: sddl/north-star/alignment-padding.md
+        - Conditional & Variant Data: sddl/north-star/conditional-variant.md
+        - Variables and Expressions: sddl/north-star/variables-expressions.md
+        - Real-World Formats: sddl/north-star/real-formats.md
+        - Best Practices: sddl/north-star/best-practices.md
+        - Quick Reference: sddl/north-star/reference.md
+        - SDDL for LLMs: sddl/north-star/sddl-for-llm.md
   - API Reference:
     - C:
       - Compressor: api/c/compressor.md
