@@ -156,6 +156,16 @@ ZL_Report DCTX_runDecoder(
         const DFH_NodeInfo* nodeInfo,
         bool withinFusedDecoder);
 
+/// Register a decoder fusion with the decompression context.
+/// @see ZL_DecoderFusionState_registerFusion()
+ZL_Report DCTX_registerDecoderFusion(
+        ZL_DCtx* dctx,
+        const ZL_DecoderFusionDesc* fusion);
+
+/// Remove all registered decoder fusions from the decompression context.
+/// @see ZL_DecoderFusionState_clearFusions()
+void DCTX_clearDecoderFusions(ZL_DCtx* dctx);
+
 ZL_END_C_DECLS
 
 #endif // ZSTRONG_DECOMPRESS_DCTX2_H
