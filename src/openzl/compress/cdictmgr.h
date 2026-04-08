@@ -5,6 +5,7 @@
 
 #include "openzl/common/allocation.h" // Arena
 #include "openzl/common/map.h"        // ZL_DECLARE_CUSTOM_MAP_TYPE
+#include "openzl/common/vector.h"     // VECTOR, DECLARE_VECTOR_TYPE
 #include "openzl/compress/nodemgr.h"  // Nodes_manager
 #include "openzl/dict/bundle.h" // ZL_DictBundleConstPtr, ZL_Dict, ZL_UniqueID
 #include "openzl/dict/dict.h"   // ZL_Dict
@@ -33,9 +34,7 @@ typedef struct GraphsMgr_s GraphsMgr; // forward declaration
 typedef const ZL_Dict* CDictMgr_DictPtr;
 
 typedef struct {
-    ZL_UniqueID dictID;
-    ZL_IDType codecID;
-    TransformType_e codecType;
+    ZL_UniqueID id;
     ZL_MaterializerDesc2 matDesc;
 } CDictMgr_DictKey;
 
@@ -117,8 +116,6 @@ CDictMgr_loadDict(
 const ZL_Dict* CDictMgr_findDict(
         const CDictMgr* mgr,
         const ZL_DictID* id,
-        ZL_IDType codecID,
-        TransformType_e codecType,
         const ZL_MaterializerDesc2* matDesc);
 
 /**

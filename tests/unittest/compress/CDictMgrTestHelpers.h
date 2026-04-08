@@ -115,7 +115,7 @@ class MockNodesMgr {
         addDictNode(dictID, makeDefaultDictMaterializer());
     }
 
-    const Nodes_manager* nodesManager() const
+    Nodes_manager* nodesManager()
     {
         return &nmgr_;
     }

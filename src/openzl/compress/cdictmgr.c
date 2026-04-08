@@ -30,11 +30,8 @@ size_t CDictMgr_DictMap_hash(const CDictMgr_DictKey* key)
     XXH3_INITSTATE(&hs);
     XXH3_64bits_reset(&hs);
 
-    size_t idHash = ZL_UniqueID_hash(&key->dictID);
+    size_t idHash = ZL_UniqueID_hash(&key->id);
     XXH3_64bits_update(&hs, &idHash, sizeof(idHash));
-
-    XXH3_64bits_update(&hs, &key->codecID, sizeof(key->codecID));
-    XXH3_64bits_update(&hs, &key->codecType, sizeof(key->codecType));
 
     XXH3_64bits_update(
             &hs,
@@ -54,15 +51,7 @@ bool CDictMgr_DictMap_eq(
         const CDictMgr_DictKey* lhs,
         const CDictMgr_DictKey* rhs)
 {
-    if (!ZL_UniqueID_eq(&lhs->dictID, &rhs->dictID)) {
-        return false;
-    }
-
-    if (lhs->codecID != rhs->codecID) {
-        return false;
-    }
-
-    if (lhs->codecType != rhs->codecType) {
+    if (!ZL_UniqueID_eq(&lhs->id, &rhs->id)) {
         return false;
     }
 
@@ -160,10 +149,8 @@ static ZL_RESULT_OF(ZL_DictConstPtr) CDictMgr_cacheDict(
     ZL_ASSERT_NN(matDesc);
     ZL_ASSERT_NN(matDesc->materializeFn);
     CDictMgr_DictKey lookupKey = {
-        .dictID    = parsed->dictID.id,
-        .codecID   = parsed->materializingCodec,
-        .codecType = parsed->codecType,
-        .matDesc   = *matDesc,
+        .id      = parsed->dictID.id,
+        .matDesc = *matDesc,
     };
 
     const CDictMgr_DictMap_Entry* existing =
@@ -331,15 +318,11 @@ CDictMgr_loadDict(CDictMgr* mgr, const void* serialBuffer, size_t bufferMaxSize)
 const ZL_Dict* CDictMgr_findDict(
         const CDictMgr* mgr,
         const ZL_DictID* id,
-        ZL_IDType codecID,
-        TransformType_e codecType,
         const ZL_MaterializerDesc2* matDesc)
 {
     CDictMgr_DictKey lookupKey = {
-        .dictID    = id->id,
-        .codecID   = codecID,
-        .codecType = codecType,
-        .matDesc   = (matDesc != NULL) ? *matDesc : CDictMgr_zeroMatDesc(),
+        .id      = id->id,
+        .matDesc = (matDesc != NULL) ? *matDesc : CDictMgr_zeroMatDesc(),
     };
     const CDictMgr_DictMap_Entry* entry =
             CDictMgr_DictMap_find(&mgr->dictsByID, &lookupKey);

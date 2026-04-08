@@ -54,7 +54,7 @@ TEST_F(CDictMgrTest, LoadFatBundleSingleDict)
 
     ZL_DictID id             = makeDictID(1);
     ZL_MaterializerDesc2 mat = makeDefaultDictMaterializer();
-    const ZL_Dict* found = CDictMgr_findDict(&mgr_, &id, 100, trt_custom, &mat);
+    const ZL_Dict* found     = CDictMgr_findDict(&mgr_, &id, &mat);
     ASSERT_EQ(found, bundle->dicts[0]);
 }
 
@@ -77,18 +77,15 @@ TEST_F(CDictMgrTest, LoadFatBundleMultipleDicts)
 
     ZL_DictID id1            = makeDictID(1);
     ZL_MaterializerDesc2 mat = makeDefaultDictMaterializer();
-    const ZL_Dict* found1 =
-            CDictMgr_findDict(&mgr_, &id1, 100, trt_custom, &mat);
+    const ZL_Dict* found1    = CDictMgr_findDict(&mgr_, &id1, &mat);
     ASSERT_EQ(found1, bundle->dicts[0]);
 
-    ZL_DictID id2 = makeDictID(2);
-    const ZL_Dict* found2 =
-            CDictMgr_findDict(&mgr_, &id2, 200, trt_custom, &mat);
+    ZL_DictID id2         = makeDictID(2);
+    const ZL_Dict* found2 = CDictMgr_findDict(&mgr_, &id2, &mat);
     ASSERT_EQ(found2, bundle->dicts[1]);
 
-    ZL_DictID id3 = makeDictID(3);
-    const ZL_Dict* found3 =
-            CDictMgr_findDict(&mgr_, &id3, 300, trt_custom, &mat);
+    ZL_DictID id3         = makeDictID(3);
+    const ZL_Dict* found3 = CDictMgr_findDict(&mgr_, &id3, &mat);
     ASSERT_EQ(found3, bundle->dicts[2]);
 }
 
@@ -116,7 +113,7 @@ TEST_F(CDictMgrTest, LoadSingleDict)
 
     ZL_DictID id             = makeDictID(5);
     ZL_MaterializerDesc2 mat = makeDefaultDictMaterializer();
-    const ZL_Dict* found = CDictMgr_findDict(&mgr_, &id, 42, trt_custom, &mat);
+    const ZL_Dict* found     = CDictMgr_findDict(&mgr_, &id, &mat);
     ASSERT_NE(found, nullptr);
     EXPECT_EQ(found->materializingCodec, 42u);
 }
@@ -132,7 +129,7 @@ TEST_F(CDictMgrTest, LoadDictDuplicate)
 
     ZL_DictID id             = makeDictID(7);
     ZL_MaterializerDesc2 mat = makeDefaultDictMaterializer();
-    EXPECT_NE(CDictMgr_findDict(&mgr_, &id, 99, trt_custom, &mat), nullptr);
+    EXPECT_NE(CDictMgr_findDict(&mgr_, &id, &mat), nullptr);
 }
 
 // --- FindDict ---
@@ -140,8 +137,7 @@ TEST_F(CDictMgrTest, LoadDictDuplicate)
 TEST_F(CDictMgrTest, FindDictNotLoaded)
 {
     ZL_DictID unknownID = makeDictID(99);
-    EXPECT_EQ(
-            CDictMgr_findDict(&mgr_, &unknownID, 0, trt_custom, NULL), nullptr);
+    EXPECT_EQ(CDictMgr_findDict(&mgr_, &unknownID, NULL), nullptr);
 }
 
 TEST_F(CDictMgrTest, DictDeduplicationViaLoadDict)
@@ -190,28 +186,23 @@ TEST(CDictMgrStandaloneTest, DifferentMaterializerYieldsDifferentEntry)
 
     ZL_DictID id = makeDictID(1);
 
-    // Lookup with the same materializer that was used
-    const ZL_Dict* customDictA =
-            CDictMgr_findDict(&mgr, &id, 100, trt_custom, &matA);
-    ASSERT_EQ(customDictA, nullptr);
-    const ZL_Dict* standardDictA =
-            CDictMgr_findDict(&mgr, &id, 100, trt_standard, &matA);
-    ASSERT_NE(standardDictA, nullptr);
+    // Lookup by (id, matA) — standard dict was loaded with matA.
+    const ZL_Dict* dictA = CDictMgr_findDict(&mgr, &id, &matA);
+    ASSERT_NE(dictA, nullptr);
 
     // Lookup with a different materializer → different composite key → miss.
     ZL_MaterializerDesc2 matB = {};
-    const ZL_Dict* dictB = CDictMgr_findDict(&mgr, &id, 100, trt_custom, &matB);
+    const ZL_Dict* dictB      = CDictMgr_findDict(&mgr, &id, &matB);
     EXPECT_EQ(dictB, nullptr)
             << "different materializer should yield a different cache key";
 
-    // Try again with the new codec type
+    // Add custom CNode and load custom dict. Both use matA, so the cache
+    // key (id, matA) is the same — the second load is a dedup/no-op.
     mockNodes.addDictNode(makeDictID(1), matA, false /* custom node */);
     lr = CDictMgr_loadDict(&mgr, customDict.data(), customDict.size());
     ASSERT_FALSE(ZL_RES_isError(lr));
-    customDictA = CDictMgr_findDict(&mgr, &id, 100, trt_custom, &matA);
-    ASSERT_NE(customDictA, nullptr);
-    standardDictA = CDictMgr_findDict(&mgr, &id, 100, trt_standard, &matA);
-    ASSERT_NE(standardDictA, nullptr);
+    dictA = CDictMgr_findDict(&mgr, &id, &matA);
+    ASSERT_NE(dictA, nullptr);
 
     CDictMgr_destroy(&mgr);
 }
