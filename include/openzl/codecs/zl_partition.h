@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include "openzl/zl_errors.h"
+#include "openzl/zl_graphs.h"
 #include "openzl/zl_nodes.h"
 
 #if defined(__cplusplus)
@@ -73,6 +74,18 @@ ZL_Compressor_buildPartitionNode(
         uint64_t startValue,
         const uint64_t* partitionSizes,
         size_t numPartitions);
+
+/// If set to ZL_TernaryParam_auto, use default behavior
+/// If set to ZL_TernaryParam_enable, enable optimal mode (slower for slightly
+/// better compression)
+/// If set to ZL_TernaryParam_disable, disable optimal mode (much faster but
+/// slightly worse compression)
+#define ZL_GRAPH_PARTITION_BITPACK_OPTIMAL_PID 0
+
+/// Graph that computes partition boundaries for 16-bit numeric data,
+/// routing bucket IDs to ZL_GRAPH_BITPACK and offsets to ZL_GRAPH_STORE.
+#define ZL_GRAPH_PARTITION_BITPACK \
+    ZL_MAKE_GRAPH_ID(ZL_StandardGraphID_partition_bitpack)
 
 #if defined(__cplusplus)
 }
