@@ -125,6 +125,18 @@ typedef enum {
      */
     ZL_DParam_checkContentChecksum = 3,
 
+    /**
+     * @brief Enable codec fusion during decompression.
+     *
+     * Codec fusion combines multiple adjacent codec nodes into a single
+     * optimized decoder. Setting this to ZL_TernaryParam_disable causes each
+     * codec in the graph to be decoded individually, which can be useful for
+     * debugging or testing codec correctness without fusion.
+     *
+     * Valid values use the ZL_TernaryParam format defaulting to enabled.
+     */
+    ZL_DParam_enableCodecFusion = 4,
+
 } ZL_DParam;
 
 /**
