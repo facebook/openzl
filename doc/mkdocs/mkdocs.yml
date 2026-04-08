@@ -34,6 +34,13 @@ nav:
     - Core Library Limitations: getting-started/library-limitations.md
   - SDDL:
       - Overview: sddl/index.md
+      - Current Language:
+        - Getting Started: sddl/getting-started.md
+        - Core Concepts: sddl/core-concepts.md
+        - Conditional Fields: sddl/conditional-fields.md
+        - Validation: sddl/validation.md
+        - Examples: sddl/examples.md
+        - Quick Reference: sddl/reference.md
       - North Star (v0.6):
         - Overview: sddl/north-star/index.md
         - Introduction & Motivation: sddl/north-star/introduction.md

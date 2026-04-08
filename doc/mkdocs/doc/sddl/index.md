@@ -4,8 +4,16 @@ SDDL is a domain-specific language for describing binary file formats. It enable
 
 ## Documentation Sections
 
+### [Current Language](getting-started.md)
 
+Documentation for the **currently supported** SDDL syntax — what you can use today with the SDDL2 compiler. Start here if you want to write SDDL descriptions that work now.
 
+- [Getting Started](getting-started.md) — Your first SDDL description
+- [Core Concepts](core-concepts.md) — Types, records, arrays, variables, and expressions
+- [Conditional Fields](conditional-fields.md) — `when` blocks
+- [Validation](validation.md) — `expect` statements
+- [Examples](examples.md) — Complete format descriptions
+- [Quick Reference](reference.md) — Supported syntax at a glance
 
 ### [North Star (v0.6)](north-star/index.md)
 
