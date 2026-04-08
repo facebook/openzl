@@ -2,10 +2,12 @@
 
 #include "openzl/codecs/partition/common_partition.h"
 
+#include "openzl/codecs/common/bitstream/ff_bitstream.h"
 #include "openzl/codecs/zl_partition.h"
 #include "openzl/shared/bits.h"
 #include "openzl/shared/overflow.h"
 #include "openzl/shared/utils.h"
+#include "openzl/shared/varint.h"
 
 bool ZL_PartitionParams_validate(const ZL_PartitionParams* params)
 {
@@ -179,4 +181,81 @@ size_t ZL_PartitionParams_getNumTrailingZeros(const ZL_PartitionParams* params)
     }
     ZL_ASSERT_LT(numTrailingZeros, 64);
     return (size_t)numTrailingZeros;
+}
+
+ZL_Report ZL_PartitionParams_parseHeader(
+        ZL_PartitionParams* params,
+        size_t* width,
+        const uint8_t* header,
+        size_t headerSize,
+        uint64_t* partitionSizesBuffer)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+
+    ZL_ERR_IF_LT(headerSize, 1, corruption, "Empty header");
+    const uint8_t* hdr       = header;
+    const uint8_t* const end = hdr + headerSize;
+    const uint8_t flags      = *hdr++;
+
+    *width = 1u << (flags & 0x3);
+
+    if (flags & ZL_PARTITION_HEADER_IS_PRESET_BIT) {
+        const ZL_PartitionParamsPreset preset =
+                (ZL_PartitionParamsPreset)(flags >> 3);
+        ZL_PartitionParams const* const presetParams =
+                ZL_PartitionParams_getPreset(preset);
+        ZL_ERR_IF_NULL(presetParams, corruption);
+        *params = *presetParams;
+        return ZL_returnSuccess();
+    }
+
+    if (flags & ZL_PARTITION_HEADER_IS_FIRST_VALUE_ZERO_BIT) {
+        params->startValue = 0;
+    } else {
+        ZL_TRY_SET(uint64_t, params->startValue, ZL_varintDecode(&hdr, end));
+    }
+
+    if (flags & ZL_PARTITION_HEADER_IS_POW2_BIT) {
+        const size_t numBits = (size_t)(flags >> 6) + 3;
+        ZL_ERR_IF_EQ(hdr, end, corruption, "Missing partition sizes");
+        ZL_ERR_IF_EQ(
+                end[-1], 0, corruption, "Corrupted partition sizes bitstream");
+        const size_t unusedBits = 8 - (size_t)ZL_highbit32(end[-1]);
+        const size_t totalBits  = 8 * (size_t)(end - hdr) - unusedBits;
+        ZL_ERR_IF_NE(
+                totalBits % numBits,
+                0,
+                corruption,
+                "bitstream size not multiple of numBits");
+        params->numPartitions = totalBits / numBits;
+
+        ZL_ERR_IF_GT(
+                params->numPartitions, ZL_PARTITION_MAX_PARTITIONS, corruption);
+
+        ZS_BitDStreamFF bitstream =
+                ZS_BitDStreamFF_init(hdr, (size_t)(end - hdr));
+        for (size_t i = 0; i < params->numPartitions; ++i) {
+            uint64_t const log2Size = ZS_BitDStreamFF_read(&bitstream, numBits);
+            partitionSizesBuffer[i] = 1ULL << log2Size;
+            ZS_BitDStreamFF_reload(&bitstream);
+        }
+
+        ZL_ERR_IF_ERR(ZS_BitDStreamFF_finish(&bitstream));
+        params->partitionSizes = partitionSizesBuffer;
+    } else {
+        params->numPartitions = 0;
+        while (hdr < end) {
+            ZL_ERR_IF_GE(
+                    params->numPartitions,
+                    ZL_PARTITION_MAX_PARTITIONS,
+                    corruption);
+            ZL_TRY_SET(
+                    uint64_t,
+                    partitionSizesBuffer[params->numPartitions++],
+                    ZL_varintDecode(&hdr, end));
+        }
+        params->partitionSizes = partitionSizesBuffer;
+    }
+    ZL_ERR_IF_NOT(ZL_PartitionParams_validate(params), corruption);
+    return ZL_returnSuccess();
 }

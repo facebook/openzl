@@ -24,6 +24,7 @@
 #include "openzl/codecs/parse_int/decode_parse_int_binding.h"
 #include "openzl/codecs/parse_int/graph_parse_int.h"
 #include "openzl/codecs/partition/decode_partition_binding.h"
+#include "openzl/codecs/partition/decode_partition_bitpack_fusion.h"
 #include "openzl/codecs/prefix/decode_prefix_binding.h"
 #include "openzl/codecs/quantize/decode_quantize_binding.h"
 #include "openzl/codecs/range_pack/decode_range_pack_binding.h"
@@ -170,7 +171,20 @@ const StandardDTransform SDecoders_array[ZL_StandardTransformID_end] = {
     REGISTER_DEPRECATED_TTRANSFORM_G(ZL_StandardTransformID_huffman_fixed_deprecated, 3, 14, DI_HUFFMAN_FIXED, FIXED_ENTROPY_GRAPH),
 };
 
-const ZL_DecoderFusionDesc ZL_DecoderFusion_array[ZL_DecoderFusionID_end + 1] = {
-    { { 0 }, NULL },
+const ZL_DecoderFusionDesc ZL_DecoderFusion_array[ZL_DecoderFusionID_end] = {
+    [ZL_DecoderFusionID_partitionBitpack] = {
+        .pattern = {
+            .parentCodec = ZL_StandardTransformID_partition,
+            .numChildren = 1,
+            .children =     (const ZL_DecoderFusionChild[]){
+                {
+                    .codec         = ZL_StandardTransformID_bitpack_int,
+                    .numRegens     = 1,
+                    .parentIndices = (const uint32_t[]){ 0 },
+                }
+            },
+        },
+        .fusionFn = ZL_partitionBitpackFusedDecode,
+    },
 };
 // clang-format on
