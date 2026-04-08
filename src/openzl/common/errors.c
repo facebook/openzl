@@ -122,6 +122,10 @@ const char* ZL_ErrorCode_toString(ZL_ErrorCode code)
             return ZL_ErrorCode_dict_corruption__desc_str;
         case ZL_ErrorCode_dict_materialization:
             return ZL_ErrorCode_dict_materialization__desc_str;
+        case ZL_ErrorCode_noValidMaterialization:
+            return ZL_ErrorCode_noValidMaterialization__desc_str;
+        case ZL_ErrorCode_dictNoRecord:
+            return ZL_ErrorCode_dictNoRecord__desc_str;
         case ZL_ErrorCode_maxCode:
         default:
             ZL_ASSERT_FAIL("Invalid error code!: %d", (int)code);

@@ -141,6 +141,10 @@ ZL_BEGIN_C_DECLS
 #define ZL_ErrorCode_dict_corruption__desc_str "Dictionary corruption detected"
 #define ZL_ErrorCode_dict_materialization__desc_str \
     "Dictionary materialization failure"
+#define ZL_ErrorCode_noValidMaterialization__desc_str \
+    "No valid materializer registered for this dictionary"
+#define ZL_ErrorCode_dictNoRecord__desc_str \
+    "No node or graph in the compressor is associated with this dictionary"
 
 /***********************
  * ZL_EI: ZL_ErrorInfo *

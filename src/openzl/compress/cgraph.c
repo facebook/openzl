@@ -6,7 +6,8 @@
 #include "openzl/common/errors_internal.h" // ZS2_RET_IF_ERR
 #include "openzl/common/opaque.h"
 #include "openzl/common/operation_context.h"
-#include "openzl/compress/cctx.h" // CCTX_setOutBufferSizes
+#include "openzl/compress/cctx.h"     // CCTX_setOutBufferSizes
+#include "openzl/compress/cdictmgr.h" // CDictMgr
 #include "openzl/compress/cnode.h"
 #include "openzl/compress/enc_interface.h"  // ZL_Encoder definition
 #include "openzl/compress/gcparams.h"       // GCParams
@@ -34,6 +35,7 @@ struct ZL_Compressor_s {
     ZL_GraphID starting_graph;
     GCParams gcparams;
     ZL_OperationContext opCtx; // for error logging
+    CDictMgr dictMgr;
 }; /* note typedef'd to ZL_Compressor in zs2_compress.h */
 
 ZL_Compressor* ZL_Compressor_create(void)
@@ -53,6 +55,11 @@ ZL_Compressor* ZL_Compressor_create(void)
         return NULL;
     }
     cgraph->starting_graph = (ZL_GraphID){ .gid = 0 }; // default
+    if (ZL_isError(CDictMgr_init(
+                &cgraph->dictMgr, &cgraph->nmgr, cgraph->gm, &cgraph->opCtx))) {
+        ZL_Compressor_free(cgraph);
+        return NULL;
+    }
 
 #if ZL_ENABLE_ASSERT
     // In debug mode, runtime check on the configuration of the Standard Graphs
@@ -66,6 +73,7 @@ void ZL_Compressor_free(ZL_Compressor* cgraph)
 {
     if (!cgraph)
         return;
+    CDictMgr_destroy(&cgraph->dictMgr);
     ZL_OC_destroy(&cgraph->opCtx);
     GM_free(cgraph->gm);
     NM_destroy(&cgraph->nmgr);
@@ -1233,6 +1241,25 @@ ZL_DictID ZL_Compressor_Node_getDictID(
         ZL_NodeID node)
 {
     return CNODE_getDictID(CGRAPH_getCNode(cgraph, node));
+}
+
+const ZL_BundleID* ZL_Compressor_getDictBundleID(
+        const ZL_Compressor* compressor)
+{
+    return CDictMgr_getBundleID(&compressor->dictMgr);
+}
+
+ZL_Report ZL_Compressor_loadDictBundle(
+        ZL_Compressor* compressor,
+        const void* serializedDictBundle,
+        size_t serializedDictBundleSize)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(compressor);
+    ZL_ERR_IF_ERR(CDictMgr_loadFatBundle(
+            &compressor->dictMgr,
+            serializedDictBundle,
+            serializedDictBundleSize));
+    return ZL_returnSuccess();
 }
 
 // ******************************************************************
