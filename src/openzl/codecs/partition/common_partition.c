@@ -156,3 +156,27 @@ void ZL_PartitionParams_computeBasesU64(
         bases[i] = bases[i - 1] + params->partitionSizes[i - 1];
     }
 }
+
+uint64_t ZL_PartitionParams_getLargestPartitionSize(
+        const ZL_PartitionParams* params)
+{
+    uint64_t max = 0;
+    for (size_t i = 0; i < params->numPartitions; ++i) {
+        max = ZL_MAX(max, params->partitionSizes[i]);
+    }
+    return max;
+}
+
+size_t ZL_PartitionParams_getNumTrailingZeros(const ZL_PartitionParams* params)
+{
+    ZL_ASSERT(ZL_PartitionParams_validate(params));
+    int numTrailingZeros =
+            params->startValue == 0 ? 64 : ZL_ctz64(params->startValue);
+
+    for (size_t i = 0; i < params->numPartitions; ++i) {
+        numTrailingZeros =
+                ZL_MIN(numTrailingZeros, ZL_ctz64(params->partitionSizes[i]));
+    }
+    ZL_ASSERT_LT(numTrailingZeros, 64);
+    return (size_t)numTrailingZeros;
+}
