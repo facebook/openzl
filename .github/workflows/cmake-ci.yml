@@ -49,6 +49,10 @@ jobs:
             build_mode: dev
             extra_flags: "-Werror"
             parquet_tools: true
+          - name: "CMake Protobuf Tools"
+            os: ubuntu-latest
+            build_mode: dev
+            protobuf_tools: true
           - name: "CMake Linux (No Introspection)"
             os: ubuntu-latest
             build_mode: dev
@@ -98,6 +102,10 @@ jobs:
 
           if [ "${{ matrix.name }}" = "CMake Linux" ]; then
             CMAKE_ARGS="$CMAKE_ARGS -DOPENZL_BUILD_BENCHMARKS=ON"
+          fi
+
+          if [ "${{ matrix.protobuf_tools }}" = "true" ]; then
+            CMAKE_ARGS="$CMAKE_ARGS -DOPENZL_BUILD_PROTOBUF_TOOLS=ON"
           fi
 
           echo "Running: cmake $CMAKE_ARGS .."
