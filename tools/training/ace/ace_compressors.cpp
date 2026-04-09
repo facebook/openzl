@@ -162,6 +162,12 @@ std::vector<ACECompressor> makePrebuiltNumericCompressors()
             buildNode(nodes::BitsplitBF16{}), { entropy });
     ACECompressor fse(buildGraph(graphs::Fse{}));
     ACECompressor store(buildGraph(graphs::Store{}));
+    ACECompressor f32Decon(
+            buildNode(nodes::Float32Deconstruct{}), { store, entropy });
+    ACECompressor f16Decon(
+            buildNode(nodes::Float16Deconstruct{}), { store, entropy });
+    ACECompressor bf16Decon(
+            buildNode(nodes::BFloat16Deconstruct{}), { store, entropy });
     ACECompressor quantizeOffsets(
             buildNode(nodes::QuantizeOffsets{}), { fse, store });
     ACECompressor quantizeLengths(
@@ -181,6 +187,9 @@ std::vector<ACECompressor> makePrebuiltNumericCompressors()
         top8bitsEntropy,
         fpBitsEntropy,
         bf16BitsEntropy,
+        f32Decon,
+        f16Decon,
+        bf16Decon,
         quantizeOffsets,
         quantizeLengths,
     };
