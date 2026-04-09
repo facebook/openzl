@@ -1,6 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "openzl/codecs/zl_partition.h"
+#include "openzl/cpp/codecs/Partition.hpp"
 #include "tests/registry/OpenZLComponents.h"
 #include "tests/registry/OpenZLInput.h"
 
@@ -47,6 +48,17 @@ class PartitionBitpackComponent : public OpenZLComponent {
                     ZL_GRAPH_PARTITION_BITPACK,
                     { .localParams = std::move(params) }));
         }
+
+        // Custom 8 partitions: 3-bit bucket IDs
+        graphs.push_back(
+                nodes::Partition{ 0, { 2, 2, 4, 8, 16, 32, 64, 65408 } }(
+                        compressor, ZL_GRAPH_BITPACK, ZL_GRAPH_STORE));
+
+        // QuantizeLengths preset: 44 partitions, 6-bit bucket IDs
+        graphs.push_back(
+                nodes::Partition{ ZL_PartitionParamsPreset_quantizeLengths }(
+                        compressor, ZL_GRAPH_BITPACK, ZL_GRAPH_STORE));
+
         return graphs;
     }
 

@@ -7,6 +7,33 @@
 #include "openzl/zl_data.h"
 #include "openzl/zl_dtransform.h"
 
+ZL_Report ZL_BitpackHeader_parse(
+        ZL_BitpackHeader* parsed,
+        const void* headerData,
+        size_t headerSize,
+        size_t packedSize)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_LE(headerSize, 0, header_unknown, "Empty bitpack header");
+    ZL_ERR_IF_GT(headerSize, 2, header_unknown, "Bitpack header too large");
+
+    const uint8_t* header = (const uint8_t*)headerData;
+    parsed->eltWidth      = (size_t)1 << ((header[0] >> 6) & 0x3);
+    parsed->nbBits        = (size_t)(1 + (header[0] & 0x3F));
+    ZL_ERR_IF_GT(parsed->nbBits, parsed->eltWidth * 8, corruption);
+
+    size_t nbExtraElts = 0;
+    if (headerSize > 1) {
+        nbExtraElts = header[1];
+    }
+
+    const size_t maxNbElts = (packedSize * 8) / parsed->nbBits;
+    ZL_ERR_IF_GT(nbExtraElts, maxNbElts, corruption, "bitpack header corrupt");
+    parsed->numElts = maxNbElts - nbExtraElts;
+
+    return ZL_returnSuccess();
+}
+
 static ZL_Report
 DI_bitpack_typed(ZL_Decoder* dictx, const ZL_Input* ins[], ZL_Type type)
 {
@@ -21,39 +48,32 @@ DI_bitpack_typed(ZL_Decoder* dictx, const ZL_Input* ins[], ZL_Type type)
     size_t srcSize     = ZL_Input_numElts(in);
 
     ZL_RBuffer const headerBuffer = ZL_Decoder_getCodecHeader(dictx);
-    ZL_ERR_IF_GT(headerBuffer.size, 2, header_unknown);
-    ZL_ERR_IF_LE(headerBuffer.size, 0, header_unknown);
-    uint8_t const header     = *(uint8_t const*)headerBuffer.start;
-    bool const hasExtraSpace = headerBuffer.size > 1;
-    size_t const dstEltWidth = (size_t)1 << ((header >> 6) & 0x3);
-    int const nbBits         = 1 + (header & 0x3F);
-
-    ZL_ERR_IF_GT((size_t)nbBits, dstEltWidth * 8, internalBuffer_tooSmall);
-    ZL_ERR_IF_LE(nbBits, 0, header_unknown);
+    ZL_BitpackHeader bpHeader;
+    ZL_ERR_IF_ERR(ZL_BitpackHeader_parse(
+            &bpHeader, headerBuffer.start, headerBuffer.size, srcSize));
     if (type == ZL_Type_serial) {
-        ZL_ERR_IF_NE(dstEltWidth, 1, header_unknown, "Serialized has width 1!");
+        ZL_ERR_IF_NE(
+                bpHeader.eltWidth,
+                1,
+                header_unknown,
+                "Serialized has width 1!");
     }
 
-    size_t dstNbElts;
-    if (hasExtraSpace) {
-        size_t const maxNbElts    = (srcSize * 8) / (size_t)nbBits;
-        uint8_t const nbExtraElts = ((uint8_t const*)headerBuffer.start)[1];
-        ZL_ERR_IF_GT(
-                nbExtraElts, maxNbElts, corruption, "bitpack header corrupt");
-        dstNbElts = maxNbElts - nbExtraElts;
-    } else {
-        dstNbElts = (srcSize * 8) / (size_t)nbBits;
-    }
-    ZL_Output* const out =
-            ZL_Decoder_create1OutStream(dictx, dstNbElts, dstEltWidth);
+    ZL_Output* const out = ZL_Decoder_create1OutStream(
+            dictx, bpHeader.numElts, bpHeader.eltWidth);
     ZL_ERR_IF_NULL(out, allocation);
 
     size_t const srcConsumed = ZS_bitpackDecode(
-            ZL_Output_ptr(out), dstNbElts, dstEltWidth, src, srcSize, nbBits);
+            ZL_Output_ptr(out),
+            bpHeader.numElts,
+            bpHeader.eltWidth,
+            src,
+            srcSize,
+            (int)bpHeader.nbBits);
     ZL_ERR_IF_NE(
             srcConsumed, srcSize, corruption, "entire source not consumed");
 
-    ZL_ERR_IF_ERR(ZL_Output_commit(out, dstNbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, bpHeader.numElts));
 
     // Return the number of output streams.
     return ZL_returnValue(1);

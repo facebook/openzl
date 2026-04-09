@@ -75,6 +75,24 @@ typedef struct {
 /// Bit 5: all partition sizes are powers of 2.
 #define ZL_PARTITION_HEADER_IS_POW2_BIT 0x20
 
+/// Parse partition parameters from a codec header buffer.
+/// For presets, @p partitionSizesBuffer is unused and params->partitionSizes
+/// points to static data. For non-presets, @p partitionSizesBuffer must have
+/// at least ZL_PARTITION_MAX_PARTITIONS entries, and params->partitionSizes
+/// will point into it.
+/// @param[out] params Parsed partition parameters.
+/// @param[out] width Output element width in bytes (1, 2, 4, or 8).
+/// @param[in] header Pointer to the codec header bytes.
+/// @param[in] headerSize Size of the codec header in bytes.
+/// @param[out] partitionSizesBuffer Scratch buffer for non-preset partition
+///             sizes (at least ZL_PARTITION_MAX_PARTITIONS entries).
+ZL_Report ZL_PartitionParams_parseHeader(
+        ZL_PartitionParams* params,
+        size_t* width,
+        const uint8_t* header,
+        size_t headerSize,
+        uint64_t* partitionSizesBuffer);
+
 ZL_END_C_DECLS
 
 #endif
