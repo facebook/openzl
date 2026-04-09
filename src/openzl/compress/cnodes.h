@@ -74,6 +74,10 @@ CTM_registerStandardTransform(
         unsigned minFormatVersion,
         unsigned maxFormatVersion);
 
+/// Sets the dict index for a CNode. Used during validation to resolve
+/// the dict's position within the compressor's bundle.
+void CTM_setDictIndex(CNodes_manager* ctm, CNodeID id, size_t index);
+
 /**
  * Rolls back the registration of @p id
  * @warning This only works when @p id was the last node registered. If local
