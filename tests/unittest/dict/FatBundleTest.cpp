@@ -22,33 +22,6 @@ class FatBundleTest : public ::testing::Test {
         ALLOC_Arena_freeArena(arena_);
     }
 
-    std::vector<uint8_t> packFatBundle(
-            const std::vector<std::vector<uint8_t>>& dicts)
-    {
-        std::vector<const void*> dictPtrs;
-        std::vector<size_t> dictSizes;
-        size_t totalDictBytes = 0;
-        for (auto& d : dicts) {
-            dictPtrs.push_back(d.data());
-            dictSizes.push_back(d.size());
-            totalDictBytes += d.size();
-        }
-
-        size_t bufSize = ZL_BUNDLE_HEADER_SIZE
-                + dicts.size() * ZL_UNIQUE_ID_SIZE + totalDictBytes;
-        std::vector<uint8_t> buf(bufSize);
-
-        ZL_Report r = ZL_DictBundle_packFatBundle(
-                buf.data(),
-                buf.size(),
-                dicts.empty() ? nullptr : dictPtrs.data(),
-                dicts.empty() ? nullptr : dictSizes.data(),
-                dicts.size());
-        EXPECT_FALSE(ZL_isError(r));
-        buf.resize(ZL_validResult(r));
-        return buf;
-    }
-
     Arena* arena_ = nullptr;
 };
 
