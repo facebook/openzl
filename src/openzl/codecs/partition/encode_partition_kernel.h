@@ -31,7 +31,8 @@ ZL_Report ZL_partitionEncode(
         void const* src,
         size_t srcSize,
         size_t eltWidth,
-        ZL_PartitionParams const* params);
+        ZL_PartitionParams const* params,
+        ZL_PartitionScratchAlloc scratch);
 
 ZL_END_C_DECLS
 

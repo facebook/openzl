@@ -133,6 +133,16 @@ static ZL_Report ZL_PartitionParams_sendHeader(
     }
 }
 
+static void* scratchAlloc(void* opaque, size_t size)
+{
+    return ZL_Encoder_getScratchSpace((ZL_Encoder*)opaque, size);
+}
+
+static ZL_PartitionScratchAlloc makeScratchAlloc(ZL_Encoder* eictx)
+{
+    return (ZL_PartitionScratchAlloc){ .opaque = eictx, .alloc = scratchAlloc };
+}
+
 ZL_Report EI_partitionWithParams(
         ZL_Encoder* eictx,
         const ZL_Input* ins[],
@@ -171,7 +181,8 @@ ZL_Report EI_partitionWithParams(
                     ZL_Input_ptr(in),
                     numElts,
                     eltWidth,
-                    params));
+                    params,
+                    makeScratchAlloc(eictx)));
     ZL_ASSERT_LE(bitsSize, bitsCapacity);
 
     ZL_ERR_IF_ERR(ZL_PartitionParams_sendHeader(
