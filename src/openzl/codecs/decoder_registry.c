@@ -169,4 +169,8 @@ const StandardDTransform SDecoders_array[ZL_StandardTransformID_end] = {
     REGISTER_DEPRECATED_TTRANSFORM_G(ZL_StandardTransformID_huffman_deprecated, 3, 14, DI_HUFFMAN, PIPE_GRAPH),
     REGISTER_DEPRECATED_TTRANSFORM_G(ZL_StandardTransformID_huffman_fixed_deprecated, 3, 14, DI_HUFFMAN_FIXED, FIXED_ENTROPY_GRAPH),
 };
+
+const ZL_DecoderFusionDesc ZL_DecoderFusion_array[ZL_DecoderFusionID_end + 1] = {
+    { { 0 }, NULL },
+};
 // clang-format on

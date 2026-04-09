@@ -18,6 +18,7 @@ ZL_BEGIN_C_DECLS
 // ZL_Report ZL_getHeaderSize(const void* src, size_t srcSize)
 
 /* Non-public symbols exposed by this unit */
+typedef struct ZL_DecoderFusionDesc_s ZL_DecoderFusionDesc;
 
 typedef struct {
     PublicTransformInfo trpid;
@@ -39,6 +40,11 @@ typedef struct {
      * @note Set by the dctx after decoding the frame header.
      */
     uint32_t numInputStreams;
+    /**
+     * If this node is fused, a pointer to the fusion descriptor.
+     * @note Set by the dctx after decoding the frame header.
+     */
+    const ZL_DecoderFusionDesc* fusion;
 } DFH_NodeInfo;
 
 DECLARE_VECTOR_TYPE(DFH_NodeInfo)
