@@ -48,6 +48,7 @@ nav:
         - Best Practices: sddl/north-star/best-practices.md
         - Quick Reference: sddl/north-star/reference.md
         - SDDL for LLMs: sddl/north-star/sddl-for-llm.md
+      - Legacy (SDDL1): sddl/legacy/index.md
   - API Reference:
     - C:
       - Compressor: api/c/compressor.md

@@ -13,3 +13,7 @@ The **target specification** for SDDL — the full language design we're buildin
 
 - [Full Documentation](north-star/index.md)
 - [SDDL for LLMs](north-star/sddl-for-llm.md) — Complete v0.6 spec optimized for AI assistants
+
+### [Legacy (SDDL1)](legacy/index.md)
+
+Documentation for the **original SDDL language** (v1), which uses a different syntax and compiles to a CBOR-based runtime. This version is deprecated in favor of SDDL2.
