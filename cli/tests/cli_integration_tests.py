@@ -186,7 +186,7 @@ class CsvChunkedTest(_CsvBaseTest):
 
     @property
     def extra_args(self) -> str | None:
-        return "--chunk-size-mb 1"
+        return "--chunk-size 1M"
 
     def test_train_compress_decompress(self):
         """
