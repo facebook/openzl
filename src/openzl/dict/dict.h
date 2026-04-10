@@ -33,6 +33,8 @@ struct ZL_Dict_s {
     void* dictObj;
     size_t packedSize;
 };
+typedef const ZL_Dict* ZL_DictConstPtr;
+ZL_RESULT_DECLARE_TYPE(ZL_DictConstPtr);
 
 typedef struct {
     ZL_DictID dictID;

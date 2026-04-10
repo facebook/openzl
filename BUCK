@@ -106,6 +106,7 @@ zs_library(
     ],
     exported_deps = [
         ":common",
+        ":dict",
         ":fse",
     ],
     exported_external_deps = [
