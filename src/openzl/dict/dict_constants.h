@@ -24,4 +24,6 @@
 
 #define ZL_MAX_DICTS_PER_BUNDLE 0xFFFF /* 2^16 - 1 */
 
+#define ZL_DICT_INDEX_NONE (SIZE_MAX) /* no dict associated */
+
 #endif /* OPENZL_DICT_DICT_CONSTANTS_H */

@@ -207,3 +207,10 @@ ZL_DictID CNODE_getDictID(CNode const* cnode)
     ZL_ASSERT_EQ(cnode->nodetype, node_internalTransform);
     return cnode->transformDesc.publicDesc.dictID;
 }
+
+size_t CNODE_getDictIndex(CNode const* cnode)
+{
+    ZL_ASSERT_NN(cnode);
+    ZL_ASSERT_EQ(cnode->nodetype, node_internalTransform);
+    return cnode->maybeDictIndex;
+}
