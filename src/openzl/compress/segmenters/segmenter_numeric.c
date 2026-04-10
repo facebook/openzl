@@ -3,6 +3,7 @@
 #include "openzl/compress/segmenters/segmenter_numeric.h"
 #include "openzl/common/assertion.h"
 #include "openzl/compress/private_nodes.h"
+#include "openzl/zl_version.h"
 
 ZL_Report SEGM_numeric(ZL_Segmenter* sctx)
 {
@@ -18,12 +19,16 @@ ZL_Report SEGM_numeric(ZL_Segmenter* sctx)
     // Tomorrow: global parameter, then local parameter.
     size_t const chunkByteSizeMax = 16 << 20;
     size_t const chunkEltSizeMax  = chunkByteSizeMax / width;
-
-    // Note: Currently, static head graph.
-    // Tomorrow: selectable
-    ZL_GraphID const headGraph = ZL_GRAPH_NUMERIC_COMPRESS;
+    ZL_GraphID const headGraph    = ZL_GRAPH_NUMERIC_COMPRESS;
 
     size_t numElts = ZL_Input_numElts(input);
+    if (ZL_Segmenter_getCParam(sctx, ZL_CParam_formatVersion)
+        < ZL_CHUNK_VERSION_MIN) {
+        ZL_ERR_IF_ERR(
+                ZL_Segmenter_processChunk(sctx, &numElts, 1, headGraph, NULL));
+        return ZL_returnSuccess();
+    }
+
     while (numElts > chunkEltSizeMax) {
         ZL_ERR_IF_ERR(ZL_Segmenter_processChunk(
                 sctx, &chunkEltSizeMax, 1, headGraph, NULL));

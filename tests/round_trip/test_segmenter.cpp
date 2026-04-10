@@ -610,6 +610,107 @@ TEST(Segmenter, default_numeric_segmenter)
             "use the default numeric segmenter");
 }
 
+/* =======   Single-chunk fallback for old format versions   ======= */
+
+static ZL_GraphID numeric_segmenter_old_version(
+        ZL_Compressor* compressor) noexcept
+{
+    ZL_Report const setr = ZL_Compressor_setParameter(
+            compressor, ZL_CParam_formatVersion, ZL_CHUNK_VERSION_MIN - 1);
+    if (ZL_isError(setr))
+        abort();
+
+    return ZL_GRAPH_SEGMENT_NUMERIC;
+}
+
+TEST(Segmenter, singleChunkFallback_numeric)
+{
+    (void)roundTripGen(
+            ZL_Type_numeric,
+            numeric_segmenter_old_version,
+            "numeric segmenter with old format version (single-chunk fallback)");
+}
+
+/* =======   Runtime graph params survive old-format segmenters   ======= */
+
+#define RUNTIME_PARAM_SEGMENTER_TEST_PID 912
+
+static ZL_GraphID g_runtimeParamSuccessor = ZL_GRAPH_ILLEGAL;
+
+static ZL_Report requireRuntimeParam(
+        ZL_Graph* graph,
+        ZL_Edge* inputs[],
+        size_t nbInputs) ZL_NOEXCEPT_FUNC_PTR
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+    ZL_ERR_IF_NE(nbInputs, 1, graph_invalidNumInputs);
+
+    ZL_IntParam const param =
+            ZL_Graph_getLocalIntParam(graph, RUNTIME_PARAM_SEGMENTER_TEST_PID);
+    ZL_ERR_IF_NE(
+            param.paramId,
+            RUNTIME_PARAM_SEGMENTER_TEST_PID,
+            graphParameter_invalid);
+    ZL_ERR_IF_NE(param.paramValue, 7, graphParameter_invalid);
+
+    return ZL_Edge_setDestination(inputs[0], ZL_GRAPH_STORE);
+}
+
+static ZL_Report runtimeParamSegmenterFn(ZL_Segmenter* sctx)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(sctx);
+    ZL_ERR_IF_NE(ZL_Segmenter_numInputs(sctx), 1, node_invalid_input);
+
+    ZL_GraphIDList const customGraphs = ZL_Segmenter_getCustomGraphs(sctx);
+    ZL_ERR_IF_NE(customGraphs.nbGraphIDs, 1, graphParameter_invalid);
+
+    size_t const numElts    = ZL_Input_numElts(ZL_Segmenter_getInput(sctx, 0));
+    ZL_IntParam const param = { RUNTIME_PARAM_SEGMENTER_TEST_PID, 7 };
+    ZL_LocalParams const chunkParams    = { .intParams = { &param, 1 } };
+    ZL_RuntimeGraphParameters const rgp = { .localParams = &chunkParams };
+
+    return ZL_Segmenter_processChunk(
+            sctx, &numElts, 1, customGraphs.graphids[0], &rgp);
+}
+
+static ZL_SegmenterDesc const runtimeParamSegmenter = {
+    .name            = "Single Chunk Segmenter With Runtime Params",
+    .segmenterFn     = runtimeParamSegmenterFn,
+    .inputTypeMasks  = (const ZL_Type[]){ ZL_Type_serial },
+    .numInputs       = 1,
+    .customGraphs    = &g_runtimeParamSuccessor,
+    .numCustomGraphs = 1,
+};
+
+static ZL_GraphID registerSegmenterWithRuntimeChunkParams(
+        ZL_Compressor* compressor) noexcept
+{
+    ZL_Report const setr = ZL_Compressor_setParameter(
+            compressor, ZL_CParam_formatVersion, ZL_CHUNK_VERSION_MIN - 1);
+    if (ZL_isError(setr))
+        abort();
+
+    ZL_Type const inType                 = ZL_Type_serial;
+    ZL_FunctionGraphDesc const graphDesc = {
+        .name           = "Require runtime params",
+        .graph_f        = requireRuntimeParam,
+        .inputTypeMasks = &inType,
+        .nbInputs       = 1,
+    };
+
+    g_runtimeParamSuccessor =
+            ZL_Compressor_registerFunctionGraph(compressor, &graphDesc);
+    return ZL_Compressor_registerSegmenter(compressor, &runtimeParamSegmenter);
+}
+
+TEST(Segmenter, singleChunkFallback_preservesRuntimeGraphParams)
+{
+    (void)roundTripGen(
+            ZL_Type_serial,
+            registerSegmenterWithRuntimeChunkParams,
+            "single-chunk segmenter with runtime graph params on old format");
+}
+
 /* *********************************************** */
 /* =======   Expected clean failure tests ======== */
 /* *********************************************** */
