@@ -49,7 +49,7 @@ class TestMLSelectorGraph : public testing::Test {
             ZL_GraphID sgid,
             Compressor& compressor)
     {
-        auto compressBound = ZL_compressBound(input.size());
+        auto compressBound = ZL_compressBound(input.size() * sizeof(input[0]));
 
         // Compress using selected successor
         std::string cBuffer = std::string(compressBound, '\0');
@@ -69,7 +69,8 @@ class TestMLSelectorGraph : public testing::Test {
             Compressor& compressor)
     {
         // Compress using ml selector graph
-        std::string cBuffer = std::string(ZL_compressBound(input.size()), '\0');
+        std::string cBuffer = std::string(
+                ZL_compressBound(input.size() * sizeof(input[0])), '\0');
         auto compressedSize = compress(compressor, cBuffer, input, sgid);
         cBuffer.resize(compressedSize);
 

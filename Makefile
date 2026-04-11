@@ -242,7 +242,7 @@ GTEST_FILEO += $(filter %Test.o,$(CXX_FILE_OBJS))
 GTEST_FILTER_LIST := VersionTest.o NoIntrospectionTest.o
 GTEST_FILEO := $(filter-out $(GTEST_FILTER_LIST),$(GTEST_FILEO))
 
-ALL_TEST_OBJS := $(patsubst %.cpp,%.o,$(foreach dir,$(TESTSDIRS),$(wildcard $(dir)/*.cpp)))
+ALL_TEST_OBJS := $(patsubst %.cpp,%.o,$(foreach dir,$(TESTSDIRS) $(ML_SELECTOR_TESTS_DIR),$(wildcard $(dir)/*.cpp)))
 GTEST_OBJS := $(foreach name,$(GTEST_FILEO),$(filter %/$(name),$(ALL_TEST_OBJS)))
 
 # Other module objects used in gtests

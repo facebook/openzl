@@ -20,7 +20,7 @@ from command_utils import (
     execute_decompress,
     execute_train,
 )
-from file_utils import input_dir_path, profile_dir_path
+from file_utils import file_contents_match, input_dir_path, profile_dir_path
 
 
 class SerialTest(_CompressDecompressBaseTest):
@@ -501,7 +501,8 @@ class TraceTest(_CompressDecompressBaseTest):
 
     This test verifies that the --trace and --trace-streams-dir flags work
     correctly during compress and decompress without crashing, and that
-    trace output files are actually created.
+    trace output files are actually created. Tests that need full stream
+    traces must opt out of StoreOnExpansion explicitly.
     """
 
     @property
@@ -518,7 +519,8 @@ class TraceTest(_CompressDecompressBaseTest):
         and roundtrip correctly.
 
         This test:
-        1. Compresses a CSV sample with --trace and --trace-streams-dir
+        1. Compresses a CSV sample with --trace, --trace-streams-dir, and
+           --no-store-on-expansion
         2. Asserts the compress trace CBOR file exists and is non-empty
         3. Decompresses with --trace
         4. Asserts the decompress trace CBOR file exists and is non-empty
@@ -537,7 +539,11 @@ class TraceTest(_CompressDecompressBaseTest):
             file_to_compress_path=sample.orig_file_path,
             compressor_info=self.compressor_info,
             compressed_file_path=sample.compressed_file_path,
-            extra_args=f"--trace {compress_trace_path} --trace-streams-dir {streams_dir}",
+            extra_args=(
+                f"--trace {compress_trace_path} "
+                f"--trace-streams-dir {streams_dir} "
+                "--no-store-on-expansion"
+            ),
         )
 
         self.assertTrue(
@@ -588,6 +594,71 @@ class TraceTest(_CompressDecompressBaseTest):
         self.assertTrue(
             sample.original_matches_decompressed,
             f"Decompressed file does not match original: {sample.orig_file_path}",
+        )
+
+    def test_trace_does_not_change_compressed_output(self):
+        """
+        Test that compression tracing does not change the compressed bytes.
+
+        This uses a checked-in random sample that exercises StoreOnExpansion
+        for the serial profile. The traced output should match the default
+        output, not the --no-store-on-expansion output.
+        """
+        random_input_path = os.path.join(input_dir_path("u8"), "random_u8.bin")
+
+        compressor_info = CompressorInfo(
+            compressor_str="serial",
+            compressor_type=CompressorType.PROFILE,
+        )
+        plain_compressed_path = os.path.join(
+            self.output_dir_path, "plain_random_input.zl"
+        )
+        traced_compressed_path = os.path.join(
+            self.output_dir_path, "traced_random_input.zl"
+        )
+        no_store_compressed_path = os.path.join(
+            self.output_dir_path, "no_store_random_input.zl"
+        )
+        trace_path = os.path.join(self.output_dir_path, "random_trace.cbor")
+        streams_dir = os.path.join(self.output_dir_path, "random_trace_streams")
+        os.makedirs(streams_dir, exist_ok=True)
+
+        execute_compress(
+            file_to_compress_path=random_input_path,
+            compressor_info=compressor_info,
+            compressed_file_path=plain_compressed_path,
+            extra_args=None,
+        )
+        execute_compress(
+            file_to_compress_path=random_input_path,
+            compressor_info=compressor_info,
+            compressed_file_path=traced_compressed_path,
+            extra_args=f"--trace {trace_path} --trace-streams-dir {streams_dir}",
+        )
+        execute_compress(
+            file_to_compress_path=random_input_path,
+            compressor_info=compressor_info,
+            compressed_file_path=no_store_compressed_path,
+            extra_args="--no-store-on-expansion",
+        )
+
+        self.assertFalse(
+            file_contents_match(plain_compressed_path, no_store_compressed_path),
+            "Test input did not exercise StoreOnExpansion",
+        )
+
+        self.assertTrue(
+            file_contents_match(plain_compressed_path, traced_compressed_path),
+            "Compression tracing changed the compressed output",
+        )
+        self.assertTrue(
+            os.path.exists(trace_path),
+            "Compress trace file was not created",
+        )
+        self.assertGreater(
+            os.path.getsize(trace_path),
+            0,
+            "Compress trace file is empty",
         )
 
 

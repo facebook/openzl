@@ -8,6 +8,7 @@
 #include <gtest/gtest.h>
 
 #include "openzl/openzl.hpp"
+#include "tests/utils.h" // @manual
 
 namespace openzl {
 namespace tests {
@@ -215,7 +216,18 @@ class CodecTest : public testing::Test {
     std::string testRoundTrip(poly::span<const Input> input)
     {
         cctx_.refCompressor(compressor_);
-        auto compressed   = cctx_.compress(input);
+        // StoreOnExpansion is disabled in this fixture, so the tight
+        // ZL_compressBound() may be insufficient. Allocate manually
+        // with ZL_COMPRESSBOUND_UNGUARDED.
+        size_t inputSize = 0;
+        for (auto const& inp : input) {
+            inputSize += inp.contentSize();
+            if (inp.type() == Type::String) {
+                inputSize += inp.numElts() * sizeof(uint32_t);
+            }
+        }
+        std::string compressed(ZL_COMPRESSBOUND_UNGUARDED(inputSize), '\0');
+        compressed.resize(cctx_.compress(compressed, input));
         auto roundTripped = dctx_.decompress(compressed);
         EXPECT_EQ(roundTripped.size(), input.size());
         for (size_t i = 0; i < input.size(); ++i) {
