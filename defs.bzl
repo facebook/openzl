@@ -340,13 +340,18 @@ def zs_fuzzers(ftest_names, generator = None, **kwargs):
                 ],
             }
 
-            # Determine the binary target suffix based on fuzzer mode
-            # (libfuzzer uses _bin suffix, AFL uses _afl suffix)
-            fuzzer = native.read_config("lionhead", "fuzzer") or "libfuzzer"
-            if fuzzer == "afl":
-                fuzzer_binary_suffix = "_afl"
-            else:
+            # Determine the binary target suffix based on fuzzer mode.
+            # cpp_lionhead_harness delegates to cpp_generic_lionhead_harness,
+            # which calls get_bundle_build_rule() (configs.bzl).  That function
+            # defaults to AFL when afl is not disabled and lionhead.fuzzer is
+            # unset — so we must mirror its logic here.
+            # See also: D57974923 (original _bin), D95816404 (AFL fix),
+            #           configs.bzl:get_bundle_build_rule().
+            fuzzer = native.read_config("lionhead", "fuzzer")
+            if fuzzer == "libfuzzer":
                 fuzzer_binary_suffix = "_bin"
+            else:
+                fuzzer_binary_suffix = "_afl"
 
             generic_lionhead_harness(
                 name = name,

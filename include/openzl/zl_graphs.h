@@ -35,8 +35,11 @@ typedef enum {
     ZL_StandardGraphID_simple_data_description_language_v2,
 
     ZL_StandardGraphID_lz4,
-
     ZL_StandardGraphID_partition_bitpack,
+    ZL_StandardGraphID_segment_num8_from_serial,
+    ZL_StandardGraphID_segment_num16_from_serial,
+    ZL_StandardGraphID_segment_num32_from_serial,
+    ZL_StandardGraphID_segment_num64_from_serial,
 
     ZL_StandardGraphID_public_end // last id, used to detect end of public
                                   // range

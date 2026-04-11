@@ -992,7 +992,8 @@ static ZL_Report CCTX_runSegmenter(
             cctx->sessionArena,
             cctx->chunkArena);
     CWAYPOINT(on_segmenterEncode_start, segmenterCtx, /* placeholder */ NULL);
-    const ZL_Report r = SEGM_runSegmenter(segmenterCtx);
+    ZL_Report const r = SEGM_runSegmenter(segmenterCtx);
+
     CWAYPOINT(on_segmenterEncode_end, segmenterCtx, r);
 
     // Maybe clean up on-the-fly materialized params

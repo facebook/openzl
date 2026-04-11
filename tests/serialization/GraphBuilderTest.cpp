@@ -5,6 +5,7 @@
 #include "openzl/cpp/Compressor.hpp"
 #include "openzl/zl_reflection.h"
 #include "tests/datagen/DataGen.h"
+#include "tests/registry/OpenZLComponents.h"
 #include "tests/serialization/GraphBuilder.h"
 #include "tests/serialization/GraphBuilderUtils.h"
 
@@ -65,6 +66,23 @@ TEST_F(GraphBuilderTest, testGraphBuiltIsSerializable)
         // growing too large.
         auto builder = createGraphBuilder(compressor);
         builder.buildCompressor();
+        auto serialized = compressor.serialize();
+        Compressor deserializedCompressor;
+        deserializedCompressor.deserialize(serialized);
+    }
+}
+
+TEST_F(GraphBuilderTest, testSegmentNumFromSerialGeneratedGraphsAreSerializable)
+{
+    Compressor compressor;
+    auto component =
+            makeOpenZLComponent(OpenZLComponentID::SegmentNumFromSerial);
+
+    auto generatedGraphs = component->generateGraphs(compressor, *dataGen_, 3);
+    ASSERT_EQ(generatedGraphs.size(), 3);
+
+    for (auto graph : generatedGraphs) {
+        compressor.selectStartingGraph(graph);
         auto serialized = compressor.serialize();
         Compressor deserializedCompressor;
         deserializedCompressor.deserialize(serialized);

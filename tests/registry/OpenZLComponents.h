@@ -81,6 +81,8 @@ enum class OpenZLComponentID {
     SplitByRange,
     BitSplitBF16,
     PartitionBitpack,
+    SegmentNumeric,
+    SegmentNumFromSerial,
     // Must be last enum value
     NumComponents,
 };
@@ -148,6 +150,8 @@ std::unique_ptr<OpenZLComponent> makeBitSplitFPComponent();
 std::unique_ptr<OpenZLComponent> makeSplitByRangeComponent();
 std::unique_ptr<OpenZLComponent> makeBitSplitBF16Component();
 std::unique_ptr<OpenZLComponent> makePartitionBitpackComponent();
+std::unique_ptr<OpenZLComponent> makeSegmentNumericComponent();
+std::unique_ptr<OpenZLComponent> makeSegmentNumFromSerialComponent();
 
 } // namespace components
 
@@ -267,6 +271,10 @@ inline std::unique_ptr<OpenZLComponent> makeOpenZLComponent(
             return components::makeBitSplitBF16Component();
         case OpenZLComponentID::PartitionBitpack:
             return components::makePartitionBitpackComponent();
+        case OpenZLComponentID::SegmentNumeric:
+            return components::makeSegmentNumericComponent();
+        case OpenZLComponentID::SegmentNumFromSerial:
+            return components::makeSegmentNumFromSerialComponent();
         case OpenZLComponentID::NumComponents:
         default:
             throw std::runtime_error("Invalid component");
