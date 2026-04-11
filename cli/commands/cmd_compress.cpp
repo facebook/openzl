@@ -135,14 +135,6 @@ int performCompression(const CompressArgs& args)
     if (!args.storeOnExpansion) {
         cctx.setParameter(CParam::StoreOnExpansion, ZL_TernaryParam_disable);
     }
-    if (args.traceOutput) {
-        // When tracing, the user wants to inspect the full compression
-        // pipeline. The anti-inflation guard replaces expanded chunks with
-        // STORE, which discards all transforms — leaving decompression traces
-        // empty (zero codec decode steps = no stream trace data). Disable the
-        // guard so traces reflect the actual compression graph.
-        cctx.setParameter(CParam::StoreOnExpansion, ZL_TernaryParam_disable);
-    }
     cctx.refCompressor(*args.compressor());
     if (args.traceOutput) {
         args.traceOutput->open();
@@ -160,7 +152,14 @@ int performCompression(const CompressArgs& args)
     const auto inputSize = input.size().value();
     Logger::log(VERBOSE1, "Input size: ", inputSize);
 
-    std::string dstBuffer = std::string(ZL_compressBound(inputSize), '\0');
+    // When StoreOnExpansion is disabled (train-inline or explicit flag),
+    // compression may expand data beyond ZL_compressBound(), which assumes the
+    // anti-inflation guard limits output to input + overhead. Use a generous
+    // buffer in that case.
+    size_t const dstCapacity = (args.trainInline || !args.storeOnExpansion)
+            ? 2 * ZL_compressBound(inputSize) + 1024
+            : ZL_compressBound(inputSize);
+    std::string dstBuffer    = std::string(dstCapacity, '\0');
 
     // read the input
     const auto srcBuffer = input.contents();

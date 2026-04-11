@@ -9,6 +9,7 @@
 #include "openzl/zl_version.h"
 #include "tests/datagen/DataGen.h"
 #include "tests/registry/OpenZLInput.h"
+#include "tests/utils.h" // @manual
 
 namespace openzl::tests {
 
@@ -110,7 +111,7 @@ class OpenZLComponent {
             }
         }
         totalSrcSize += inputs.size() * 256;
-        return ZL_compressBound(totalSrcSize);
+        return ZL_COMPRESSBOUND_UNGUARDED(totalSrcSize);
     }
 
     /**

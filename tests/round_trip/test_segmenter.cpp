@@ -46,7 +46,6 @@ static size_t compress(
         ZL_Type inputType,
         ZL_GraphFn graphf)
 {
-    assert(dstCapacity >= ZL_compressBound(srcSize));
     size_t const nbItems    = srcSize / 4;
     ZL_TypedRef* input      = NULL;
     uint32_t* stringLengths = NULL;
@@ -140,8 +139,15 @@ static size_t roundTripTest(
     printf("\n=========================== \n");
     printf(" %s \n", name);
     printf("--------------------------- \n");
-    // Generate test input
-    size_t const compressedBound = ZL_compressBound(inputSize);
+    // For string inputs, total stored size includes string lengths array.
+    // Estimate numStrings from inputSize assuming 4-byte elements (as used
+    // by roundTripGen).
+    size_t totalInputSize = inputSize;
+    if (inputType == ZL_Type_string) {
+        size_t const nbItems = inputSize / 4;
+        totalInputSize += nbItems * sizeof(uint32_t);
+    }
+    size_t const compressedBound = ZL_compressBound(totalInputSize);
     void* const compressed       = malloc(compressedBound);
     assert(compressed);
 
@@ -807,7 +813,10 @@ TEST(Segmenter, stringVariableLengthChunks)
     assert(input);
 
     // Compress
-    size_t const compressedBound = ZL_compressBound(totalContentSize);
+    // For string inputs, total stored size includes string lengths array
+    size_t const totalInputSize =
+            totalContentSize + numStrings * sizeof(uint32_t);
+    size_t const compressedBound = ZL_compressBound(totalInputSize);
     void* const compressed       = malloc(compressedBound);
     assert(compressed);
 

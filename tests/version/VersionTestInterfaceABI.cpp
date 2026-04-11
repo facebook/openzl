@@ -21,6 +21,7 @@
 #include "openzl/zl_reflection.h"
 #include "tests/constants.h"
 #include "tests/datagen/test_registry/CustomNodes.h"
+#include "tests/utils.h" // @manual
 
 namespace {
 using namespace openzl::tests::datagen::test_registry;
@@ -234,7 +235,7 @@ extern "C" void VersionTestInterface_getAllGraphIDs(
 
 extern "C" size_t VersionTestInterface_compressBound(size_t srcSize)
 {
-    return 2 * ZL_compressBound(srcSize);
+    return ZL_COMPRESSBOUND_UNGUARDED(srcSize);
 }
 
 extern "C" bool VersionTestInterface_isError(size_t ret)

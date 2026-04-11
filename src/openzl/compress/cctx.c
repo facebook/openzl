@@ -1678,7 +1678,7 @@ CCTX_flushChunk(ZL_CCtx* cctx, const ZL_Data* inputs[], size_t nbInputs)
     ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
     ZL_DLOG(BLOCK, "CCTX_flushChunk (%zu inputs)", nbInputs);
 
-    GraphInfo gi;
+    GraphInfo gi = { 0 };
     ZL_ERR_IF_ERR(CCTX_getFinalGraph(cctx, &gi));
 
     // Write chunk header
@@ -1688,26 +1688,46 @@ CCTX_flushChunk(ZL_CCtx* cctx, const ZL_Data* inputs[], size_t nbInputs)
     size_t frameSize            = startFrameSize;
     ZL_ASSERT_LE(frameSize, capacity);
 
-    ZL_TRY_LET(
-            size_t,
-            chunkHeaderSize,
-            CCTX_writeChunkHeader(
-                    cctx,
-                    (char*)dst + startFrameSize,
-                    capacity - startFrameSize,
-                    &gi));
-    ZL_LOG(SEQ,
-           "wrote %zu chunk header bytes into buffer of capacity %zu",
-           chunkHeaderSize,
-           capacity - startFrameSize);
-    ZL_ASSERT_LE(chunkHeaderSize, capacity - startFrameSize);
+    ZL_TernaryParam const storeOnExpansion =
+            (ZL_TernaryParam)CCTX_getAppliedGParam(
+                    cctx, ZL_CParam_storeOnExpansion);
 
-    if (gi.nbTransforms > 0) { // if == 0, then chunk is already using STORE
+    size_t chunkHeaderSize = 0;
+    int useStore           = 0; // set to 1 when STORE fallback is needed
+
+    {
+        ZL_Report const headerReport = CCTX_writeChunkHeader(
+                cctx,
+                (char*)dst + startFrameSize,
+                capacity - startFrameSize,
+                &gi);
+
+        if (ZL_isError(headerReport)) {
+            // Compressed chunk header doesn't fit in dst.
+            // If storeOnExpansion is enabled and there are transforms,
+            // STORE may produce a smaller header — try it before giving up.
+            if (gi.nbTransforms > 0
+                && storeOnExpansion != ZL_TernaryParam_disable) {
+                ZL_DLOG(BLOCK,
+                        "Compressed chunk header too large for dst "
+                        "(capacity=%zu), trying STORE fallback",
+                        capacity - startFrameSize);
+                useStore = 1;
+            } else {
+                return headerReport; // genuine error
+            }
+        } else {
+            chunkHeaderSize = ZL_validResult(headerReport);
+            ZL_LOG(SEQ,
+                   "wrote %zu chunk header bytes into buffer of capacity %zu",
+                   chunkHeaderSize,
+                   capacity - startFrameSize);
+            ZL_ASSERT_LE(chunkHeaderSize, capacity - startFrameSize);
+        }
+    }
+
+    if (gi.nbTransforms > 0 && !useStore) {
         // Check if data has expanded, use STORE in that case
-        ZL_TernaryParam const storeOnExpansion =
-                (ZL_TernaryParam)CCTX_getAppliedGParam(
-                        cctx, ZL_CParam_storeOnExpansion);
-
         if (storeOnExpansion != ZL_TernaryParam_disable) {
             // Calculate total compressed size (data buffers)
             size_t totalCompressedSize = chunkHeaderSize; // Start with header
@@ -1733,31 +1753,33 @@ CCTX_flushChunk(ZL_CCtx* cctx, const ZL_Data* inputs[], size_t nbInputs)
                         totalCompressedSize,
                         chunkHeaderSize,
                         totalCompressedSize - chunkHeaderSize);
-
-                // Replace with STORE
-                ZL_ERR_IF_ERR(
-                        CCTX_replaceChunkWithStore(cctx, inputs, nbInputs));
-
-                // Re-get graph info
-                ZL_ERR_IF_ERR(CCTX_getFinalGraph(cctx, &gi));
-
-                // Recalculate header size with new STORE graph
-                ZL_TRY_LET(
-                        size_t,
-                        newHeaderSize,
-                        CCTX_writeChunkHeader(
-                                cctx,
-                                (char*)dst + startFrameSize,
-                                capacity - startFrameSize,
-                                &gi));
-
-                ZL_DLOG(SEQ,
-                        "After STORE: header=%zu (was %zu)",
-                        newHeaderSize,
-                        chunkHeaderSize);
-                chunkHeaderSize = newHeaderSize;
+                useStore = 1;
             }
         } // storeOnExpansion enabled
+    }
+
+    if (useStore) {
+        // Replace with STORE
+        ZL_ERR_IF_ERR(CCTX_replaceChunkWithStore(cctx, inputs, nbInputs));
+
+        // Re-get graph info
+        ZL_ERR_IF_ERR(CCTX_getFinalGraph(cctx, &gi));
+
+        // Write STORE chunk header (if this also fails, genuine error)
+        ZL_TRY_LET(
+                size_t,
+                storeHeaderSize,
+                CCTX_writeChunkHeader(
+                        cctx,
+                        (char*)dst + startFrameSize,
+                        capacity - startFrameSize,
+                        &gi));
+
+        ZL_DLOG(SEQ,
+                "After STORE: header=%zu (was %zu)",
+                storeHeaderSize,
+                chunkHeaderSize);
+        chunkHeaderSize = storeHeaderSize;
     }
 
     // Copy final buffers(s)

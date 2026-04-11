@@ -33,6 +33,7 @@ extern "C" {
 #include "openzl/zl_input.h"
 #include "openzl/zl_output.h"
 #include "openzl/zl_version.h"
+#include "tests/utils.h" // @manual
 
 namespace openzl::tests {
 namespace {
@@ -759,7 +760,7 @@ class CodecFusionTest : public ::testing::Test {
         ASSERT_FALSE(ZL_isError(
                 ZL_Compressor_selectStartingGraphID(compressor_.get(), graph)));
 
-        std::string compressed(ZL_compressBound(inputSize), '\0');
+        std::string compressed(ZL_COMPRESSBOUND_UNGUARDED(inputSize), '\0');
         CCtx cctx;
         setTestParams(cctx);
         ASSERT_FALSE(ZL_isError(
@@ -1859,7 +1860,7 @@ TEST_F(CodecFusionTest, EnableCodecFusionParam_EnabledAndDisabledMatch)
     ASSERT_FALSE(ZL_isError(
             ZL_Compressor_selectStartingGraphID(compressor_.get(), graph)));
     std::string compressed(
-            ZL_compressBound(data.size() * sizeof(uint32_t)), '\0');
+            ZL_COMPRESSBOUND_UNGUARDED(data.size() * sizeof(uint32_t)), '\0');
     CCtx cctx;
     setTestParams(cctx);
     ASSERT_FALSE(

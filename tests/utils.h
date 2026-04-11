@@ -14,10 +14,15 @@
 #include "openzl/common/cursor.h"
 #include "openzl/common/debug.h"
 #include "openzl/cpp/Input.hpp"
+#include "openzl/zl_compress.h"
 
 ////////////////////////////////////////
 // Macros to Adapt Zstrong Success or Failure to GTest Success or Failure
 ////////////////////////////////////////
+
+/// Generous compress bound for tests that violate ZL_compressBound() premises
+/// (multi-input, custom graphs, StoreOnExpansion disabled).
+#define ZL_COMPRESSBOUND_UNGUARDED(s) (2 * ZL_compressBound(s) + 1024)
 
 #define ASSERT_ZS_VALID(x) ASSERT_FALSE(ZL_RES_isError((x)))
 #define EXPECT_ZS_VALID(x) EXPECT_FALSE(ZL_RES_isError((x)))
