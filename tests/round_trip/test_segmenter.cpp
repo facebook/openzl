@@ -3,14 +3,21 @@
 #include <gtest/gtest.h>
 
 // standard C
-#include <stdio.h> // printf
+#include <limits.h> // INT_MAX
+#include <stdio.h>  // printf
 
 // OpenZL
 #include "openzl/codecs/zl_conversion.h"
 #include "openzl/codecs/zl_generic.h"
+#include "openzl/codecs/zl_segmenters.h"
+#include "openzl/compress/segmenters/segmenter_numeric.h"
+#include "openzl/cpp/CCtx.hpp"
+#include "openzl/cpp/CompressIntrospectionHooks.hpp"
 #include "openzl/cpp/Compressor.hpp"
+#include "openzl/cpp/DecompressIntrospectionHooks.hpp"
 #include "openzl/zl_compress.h" // ZL_CCtx_compress
 #include "openzl/zl_compressor.h"
+#include "openzl/zl_config.h" // ZL_ALLOW_INTROSPECTION
 #include "openzl/zl_data.h"
 #include "openzl/zl_decompress.h" // ZL_decompress
 #include "openzl/zl_errors.h"     // ZL_TRY_LET_T
@@ -419,6 +426,7 @@ static ZL_SegmenterDesc const serialSegmenter = {
 
 TEST(Segmenter, serial)
 {
+    // Custom segmenter without customGraphs: no single-chunk fallback
     if (g_testVersion < ZL_CHUNK_VERSION_MIN)
         return;
     g_segmenterDescPtr = &serialSegmenter;
@@ -443,6 +451,7 @@ static ZL_SegmenterDesc const structSegmenter = {
 
 TEST(Segmenter, struct)
 {
+    // Custom segmenter without customGraphs: no single-chunk fallback
     if (g_testVersion < ZL_CHUNK_VERSION_MIN)
         return;
     g_segmenterDescPtr = &structSegmenter;
@@ -467,6 +476,7 @@ static ZL_SegmenterDesc const numericSegmenter = {
 
 TEST(Segmenter, numeric)
 {
+    // Custom segmenter without customGraphs: no single-chunk fallback
     if (g_testVersion < ZL_CHUNK_VERSION_MIN)
         return;
     g_segmenterDescPtr = &numericSegmenter;
@@ -491,6 +501,7 @@ static ZL_SegmenterDesc const stringSegmenter = {
 
 TEST(Segmenter, string)
 {
+    // Custom segmenter without customGraphs: no single-chunk fallback
     if (g_testVersion < ZL_CHUNK_VERSION_MIN)
         return;
     g_segmenterDescPtr = &stringSegmenter;
@@ -538,6 +549,7 @@ static ZL_GraphID registerSelectorAndSegmenter(
 
 TEST(Segmenter, selectorThenSegmenter)
 {
+    // Custom segmenter without customGraphs: no single-chunk fallback
     if (g_testVersion < ZL_CHUNK_VERSION_MIN)
         return;
     g_segmenterDescPtr = &serialSegmenter;
@@ -588,6 +600,7 @@ static ZL_GraphID registerGraphAndSegmenter(ZL_Compressor* compressor) noexcept
 
 TEST(Segmenter, graphThenSegmenter)
 {
+    // Custom segmenter without customGraphs: no single-chunk fallback
     if (g_testVersion < ZL_CHUNK_VERSION_MIN)
         return;
     g_segmenterDescPtr = &serialSegmenter;
@@ -603,17 +616,117 @@ ZL_GraphID default_numeric_segmenter(ZL_Compressor* compressor) noexcept
     if (ZL_isError(setr))
         abort();
 
-    return ZL_GRAPH_SEGMENT_NUMERIC;
+    return ZL_SEGMENT_NUMERIC;
 }
 
 TEST(Segmenter, default_numeric_segmenter)
 {
-    if (g_testVersion < ZL_CHUNK_VERSION_MIN)
-        return;
     (void)roundTripGen(
             ZL_Type_numeric,
             default_numeric_segmenter,
             "use the default numeric segmenter");
+}
+
+/* =======   Single-chunk fallback for old format versions   ======= */
+
+static ZL_GraphID numeric_segmenter_old_version(
+        ZL_Compressor* compressor) noexcept
+{
+    ZL_Report const setr = ZL_Compressor_setParameter(
+            compressor, ZL_CParam_formatVersion, ZL_CHUNK_VERSION_MIN - 1);
+    if (ZL_isError(setr))
+        abort();
+
+    return ZL_SEGMENT_NUMERIC;
+}
+
+TEST(Segmenter, singleChunkFallback_numeric)
+{
+    (void)roundTripGen(
+            ZL_Type_numeric,
+            numeric_segmenter_old_version,
+            "numeric segmenter with old format version (single-chunk fallback)");
+}
+
+/* =======   Runtime graph params survive old-format segmenters   ======= */
+
+#define RUNTIME_PARAM_SEGMENTER_TEST_PID 912
+
+static ZL_GraphID g_runtimeParamSuccessor =
+        ZL_GRAPH_ILLEGAL; // NOLINT(facebook-avoid-non-const-global-variables)
+
+static ZL_Report requireRuntimeParam(
+        ZL_Graph* graph,
+        ZL_Edge* inputs[],
+        size_t nbInputs) ZL_NOEXCEPT_FUNC_PTR
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+    ZL_ERR_IF_NE(nbInputs, 1, graph_invalidNumInputs);
+
+    ZL_IntParam const param =
+            ZL_Graph_getLocalIntParam(graph, RUNTIME_PARAM_SEGMENTER_TEST_PID);
+    ZL_ERR_IF_NE(
+            param.paramId,
+            RUNTIME_PARAM_SEGMENTER_TEST_PID,
+            graphParameter_invalid);
+    ZL_ERR_IF_NE(param.paramValue, 7, graphParameter_invalid);
+
+    return ZL_Edge_setDestination(inputs[0], ZL_GRAPH_STORE);
+}
+
+static ZL_Report runtimeParamSegmenterFn(ZL_Segmenter* sctx)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(sctx);
+    ZL_ERR_IF_NE(ZL_Segmenter_numInputs(sctx), 1, node_invalid_input);
+
+    ZL_GraphIDList const customGraphs = ZL_Segmenter_getCustomGraphs(sctx);
+    ZL_ERR_IF_NE(customGraphs.nbGraphIDs, 1, graphParameter_invalid);
+
+    size_t const numElts    = ZL_Input_numElts(ZL_Segmenter_getInput(sctx, 0));
+    ZL_IntParam const param = { RUNTIME_PARAM_SEGMENTER_TEST_PID, 7 };
+    ZL_LocalParams const chunkParams    = { .intParams = { &param, 1 } };
+    ZL_RuntimeGraphParameters const rgp = { .localParams = &chunkParams };
+
+    return ZL_Segmenter_processChunk(
+            sctx, &numElts, 1, customGraphs.graphids[0], &rgp);
+}
+
+static ZL_SegmenterDesc const runtimeParamSegmenter = {
+    .name            = "Single Chunk Segmenter With Runtime Params",
+    .segmenterFn     = runtimeParamSegmenterFn,
+    .inputTypeMasks  = (const ZL_Type[]){ ZL_Type_serial },
+    .numInputs       = 1,
+    .customGraphs    = &g_runtimeParamSuccessor,
+    .numCustomGraphs = 1,
+};
+
+static ZL_GraphID registerSegmenterWithRuntimeChunkParams(
+        ZL_Compressor* compressor) noexcept
+{
+    ZL_Report const setr = ZL_Compressor_setParameter(
+            compressor, ZL_CParam_formatVersion, ZL_CHUNK_VERSION_MIN - 1);
+    if (ZL_isError(setr))
+        abort();
+
+    ZL_Type const inType                 = ZL_Type_serial;
+    ZL_FunctionGraphDesc const graphDesc = {
+        .name           = "Require runtime params",
+        .graph_f        = requireRuntimeParam,
+        .inputTypeMasks = &inType,
+        .nbInputs       = 1,
+    };
+
+    g_runtimeParamSuccessor =
+            ZL_Compressor_registerFunctionGraph(compressor, &graphDesc);
+    return ZL_Compressor_registerSegmenter(compressor, &runtimeParamSegmenter);
+}
+
+TEST(Segmenter, singleChunkFallback_preservesRuntimeGraphParams)
+{
+    (void)roundTripGen(
+            ZL_Type_serial,
+            registerSegmenterWithRuntimeChunkParams,
+            "single-chunk segmenter with runtime graph params on old format");
 }
 
 /* *********************************************** */
@@ -637,6 +750,7 @@ static ZL_SegmenterDesc const failingIncompleteSegmenter = {
 
 TEST(Segmenter, input_incomplete)
 {
+    // Custom segmenter without customGraphs: no single-chunk fallback
     if (g_testVersion < ZL_CHUNK_VERSION_MIN)
         return;
     g_segmenterDescPtr = &failingIncompleteSegmenter;
@@ -659,6 +773,7 @@ ZL_GraphID registerInvalidGraph(ZL_Compressor* compressor) noexcept
 
 TEST(Segmenter, codec_before_segmenter)
 {
+    // Uses serialSegmenter (no customGraphs): no single-chunk fallback
     if (g_testVersion < ZL_CHUNK_VERSION_MIN)
         return;
     (void)cFailTest(
@@ -721,6 +836,7 @@ ZL_GraphID registerParameterizedSegmenter(ZL_Compressor* compressor) noexcept
 
 TEST(Segmenter, parameterizedWithLocalParams)
 {
+    // Based on serialSegmenter (no customGraphs): no single-chunk fallback
     if (g_testVersion < ZL_CHUNK_VERSION_MIN)
         return;
     (void)roundTripGen(
@@ -783,6 +899,7 @@ static ZL_SegmenterDesc const halfSplitStringSegmenter = {
 
 TEST(Segmenter, stringVariableLengthChunks)
 {
+    // Custom segmenter without customGraphs: no single-chunk fallback
     if (g_testVersion < ZL_CHUNK_VERSION_MIN)
         return;
 
@@ -900,5 +1017,608 @@ TEST(Segmenter, singleChunkAllVersions)
         (void)roundTripGen(ZL_Type_serial, registerSingleChunkSegmenter, name);
     }
 }
+
+/* ============================================================ */
+/* =======   Serial-numeric segmenter (numFromSerial)   ======= */
+/* ============================================================ */
+
+/* Helper: create a graph that converts serial->numeric and compresses */
+static ZL_GraphID makeNumericGraph(ZL_Compressor* compressor, size_t bitWidth)
+{
+    ZL_NodeID const interpretNode = ZL_Node_interpretAsLE(bitWidth);
+    return ZL_Compressor_registerStaticGraph_fromNode1o(
+            compressor, interpretNode, ZL_GRAPH_FIELD_LZ);
+}
+
+/* --- Round-trip: single chunk (input < chunk size) --- */
+
+static ZL_GraphID registerNumFromSerial_u32_singleChunk(
+        ZL_Compressor* compressor) noexcept
+{
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+    ZL_GraphID graph = makeNumericGraph(compressor, 32);
+    /* 16 MB chunk, input is much smaller */
+    return ZL_Compressor_buildNumFromSerialSegmenter(
+            compressor, 4, 16 << 20, graph);
+}
+
+TEST(Segmenter, numFromSerial_u32_singleChunk)
+{
+    (void)roundTripGen(
+            ZL_Type_serial,
+            registerNumFromSerial_u32_singleChunk,
+            "numFromSerial u32, single chunk");
+}
+
+/* --- Old format: collapse to one chunk even if chunk size would split --- */
+
+static ZL_GraphID registerNumFromSerial_oldFormat(
+        ZL_Compressor* compressor) noexcept
+{
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, ZL_CHUNK_VERSION_MIN - 1)))
+        abort();
+    ZL_GraphID graph = makeNumericGraph(compressor, 32);
+    return ZL_Compressor_buildNumFromSerialSegmenter(compressor, 4, 512, graph);
+}
+
+TEST(Segmenter, numFromSerial_oldFormat_singleChunkFallback)
+{
+    (void)roundTripGen(
+            ZL_Type_serial,
+            registerNumFromSerial_oldFormat,
+            "numFromSerial u32, old format single-chunk fallback");
+}
+
+/* --- Round-trip: multiple chunks (input > chunk size) --- */
+
+static ZL_GraphID registerNumFromSerial_u64_multiChunk(
+        ZL_Compressor* compressor) noexcept
+{
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+    ZL_GraphID graph = makeNumericGraph(compressor, 64);
+    /* 512-byte chunk, input is 344*4 = 1376 bytes */
+    return ZL_Compressor_buildNumFromSerialSegmenter(compressor, 8, 512, graph);
+}
+
+TEST(Segmenter, numFromSerial_u64_multiChunk)
+{
+    (void)roundTripGen(
+            ZL_Type_serial,
+            registerNumFromSerial_u64_multiChunk,
+            "numFromSerial u64, multiple chunks (512-byte)");
+}
+
+/* --- Round-trip: u8 (element width 1, no alignment concern) --- */
+
+static ZL_GraphID registerNumFromSerial_u8(ZL_Compressor* compressor) noexcept
+{
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+    ZL_GraphID graph = makeNumericGraph(compressor, 8);
+    return ZL_Compressor_buildNumFromSerialSegmenter(compressor, 1, 256, graph);
+}
+
+TEST(Segmenter, numFromSerial_u8)
+{
+    (void)roundTripGen(
+            ZL_Type_serial,
+            registerNumFromSerial_u8,
+            "numFromSerial u8, 256-byte chunks");
+}
+
+/* --- Round-trip: u16 --- */
+
+static ZL_GraphID registerNumFromSerial_u16(ZL_Compressor* compressor) noexcept
+{
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+    ZL_GraphID graph = makeNumericGraph(compressor, 16);
+    return ZL_Compressor_buildNumFromSerialSegmenter(compressor, 2, 400, graph);
+}
+
+TEST(Segmenter, numFromSerial_u16)
+{
+    (void)roundTripGen(
+            ZL_Type_serial,
+            registerNumFromSerial_u16,
+            "numFromSerial u16, 400-byte chunks (aligned to 2)");
+}
+
+/* --- Input size exactly equal to chunk size --- */
+
+static ZL_GraphID registerNumFromSerial_exactChunk(
+        ZL_Compressor* compressor) noexcept
+{
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+    ZL_GraphID graph = makeNumericGraph(compressor, 32);
+    /* NB_INTS=344 ints * 4 bytes = 1376 bytes. Set chunk to exactly 1376. */
+    return ZL_Compressor_buildNumFromSerialSegmenter(
+            compressor, 4, 1376, graph);
+}
+
+TEST(Segmenter, numFromSerial_exactChunkSize)
+{
+    (void)roundTripGen(
+            ZL_Type_serial,
+            registerNumFromSerial_exactChunk,
+            "numFromSerial u32, input == chunk size");
+}
+
+/* --- Invalid element width returns ZL_GRAPH_ILLEGAL --- */
+
+TEST(Segmenter, numFromSerial_invalidWidth)
+{
+    ZL_Compressor* compressor = ZL_Compressor_create();
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+    ZL_GraphID graph = makeNumericGraph(compressor, 32);
+
+    ZL_GraphID result = ZL_Compressor_buildNumFromSerialSegmenter(
+            compressor, 3, 1024, graph);
+    EXPECT_FALSE(ZL_GraphID_isValid(result))
+            << "Element width 3 should be rejected";
+
+    result = ZL_Compressor_buildNumFromSerialSegmenter(
+            compressor, 0, 1024, graph);
+    EXPECT_FALSE(ZL_GraphID_isValid(result))
+            << "Element width 0 should be rejected";
+
+    ZL_Compressor_free(compressor);
+}
+
+static ZL_GraphID registerCorruptedNumFromSerialWidth(
+        ZL_Compressor* compressor) noexcept
+{
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+
+    ZL_GraphID const graph        = makeNumericGraph(compressor, 32);
+    ZL_IntParam const intParams[] = {
+        { .paramId = SEGM_NUM_FROM_SERIAL_ELT_WIDTH_ID, .paramValue = 3 },
+        { .paramId    = SEGM_NUM_FROM_SERIAL_CHUNK_BYTE_SIZE_ID,
+          .paramValue = 512 },
+    };
+    ZL_LocalParams const localParams = {
+        .intParams = { .intParams = intParams, .nbIntParams = 2 },
+    };
+    ZL_ParameterizedGraphDesc const desc = {
+        .graph          = ZL_SEGMENT_NUM8_FROM_SERIAL,
+        .customGraphs   = &graph,
+        .nbCustomGraphs = 1,
+        .localParams    = &localParams,
+    };
+    return ZL_Compressor_registerParameterizedGraph(compressor, &desc);
+}
+
+TEST(Segmenter, numFromSerial_corruptedSerializedGraph_invalidWidth)
+{
+    char const input[32] = { 0 };
+    char compressed[ZL_COMPRESSBOUND(sizeof(input))];
+
+    ZL_Report const compressionReport = ZL_compress_usingGraphFn(
+            compressed,
+            sizeof(compressed),
+            input,
+            sizeof(input),
+            registerCorruptedNumFromSerialWidth);
+    EXPECT_TRUE(ZL_isError(compressionReport));
+    EXPECT_EQ(ZL_errorCode(compressionReport), ZL_ErrorCode_parameter_invalid);
+}
+
+/* --- Invalid chunk size --- */
+
+TEST(Segmenter, numFromSerial_invalidChunkSize)
+{
+    ZL_Compressor* compressor = ZL_Compressor_create();
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+    ZL_GraphID graph = makeNumericGraph(compressor, 32);
+
+    ZL_GraphID result =
+            ZL_Compressor_buildNumFromSerialSegmenter(compressor, 4, 0, graph);
+    EXPECT_FALSE(ZL_GraphID_isValid(result))
+            << "Chunk size 0 should be rejected";
+
+    result = ZL_Compressor_buildNumFromSerialSegmenter(compressor, 4, 3, graph);
+    EXPECT_FALSE(ZL_GraphID_isValid(result))
+            << "Chunk size < eltByteWidth should be rejected";
+
+    result = ZL_Compressor_buildNumFromSerialSegmenter(compressor, 8, 7, graph);
+    EXPECT_FALSE(ZL_GraphID_isValid(result))
+            << "Chunk size 7 < eltByteWidth 8 should be rejected";
+
+    /* Chunk size > INT_MAX should be rejected (would truncate in ZL_IntParam)
+     */
+    result = ZL_Compressor_buildNumFromSerialSegmenter(
+            compressor, 4, (size_t)INT_MAX + 1, graph);
+    EXPECT_FALSE(ZL_GraphID_isValid(result))
+            << "Chunk size > INT_MAX should be rejected";
+
+    /* Chunk size == eltByteWidth should succeed */
+    result = ZL_Compressor_buildNumFromSerialSegmenter(compressor, 4, 4, graph);
+    EXPECT_TRUE(ZL_GraphID_isValid(result))
+            << "Chunk size == eltByteWidth should succeed";
+
+    ZL_Compressor_free(compressor);
+}
+
+/* --- buildNumFromSerialSegmenter2: error reporting variant --- */
+
+TEST(Segmenter, numFromSerial2_invalidWidth)
+{
+    ZL_Compressor* compressor = ZL_Compressor_create();
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+    ZL_GraphID graph = makeNumericGraph(compressor, 32);
+
+    ZL_RESULT_OF(ZL_GraphID)
+    res = ZL_Compressor_buildNumFromSerialSegmenter2(
+            compressor, 3, 1024, graph);
+    EXPECT_TRUE(ZL_RES_isError(res)) << "Element width 3 should be rejected";
+
+    res = ZL_Compressor_buildNumFromSerialSegmenter2(
+            compressor, 0, 1024, graph);
+    EXPECT_TRUE(ZL_RES_isError(res)) << "Element width 0 should be rejected";
+
+    ZL_Compressor_free(compressor);
+}
+
+static ZL_GraphID registerNumFromSerial2_u32(ZL_Compressor* compressor) noexcept
+{
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+    ZL_GraphID graph = makeNumericGraph(compressor, 32);
+    ZL_RESULT_OF(ZL_GraphID)
+    res = ZL_Compressor_buildNumFromSerialSegmenter2(
+            compressor, 4, 16 << 20, graph);
+    if (ZL_RES_isError(res))
+        abort();
+    return ZL_RES_value(res);
+}
+
+TEST(Segmenter, numFromSerial2_u32_roundTrip)
+{
+    (void)roundTripGen(
+            ZL_Type_serial,
+            registerNumFromSerial2_u32,
+            "numFromSerial2 u32, round trip");
+}
+
+/* --- Default successor (ZL_SEGMENTER_DEFAULT_SUCCESSOR) --- */
+
+static ZL_GraphID registerNumFromSerial_defaultSuccessor(
+        ZL_Compressor* compressor) noexcept
+{
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+    return ZL_Compressor_buildNumFromSerialSegmenter(
+            compressor, 4, 16 << 20, ZL_SEGMENTER_DEFAULT_SUCCESSOR);
+}
+
+TEST(Segmenter, numFromSerial_defaultSuccessor)
+{
+    (void)roundTripGen(
+            ZL_Type_serial,
+            registerNumFromSerial_defaultSuccessor,
+            "numFromSerial u32, default successor");
+}
+
+/* --- Large input with multiple widths --- */
+
+static void numFromSerial_largeRoundTrip(size_t bitWidth)
+{
+    /* Generate data larger than a small chunk */
+    size_t const eltByteWidth = bitWidth / 8;
+    size_t const numElts      = 8192;
+    size_t const inputSize    = numElts * eltByteWidth;
+    size_t const chunkSize    = 1024; /* small chunks to force many splits */
+    unsigned char* input      = (unsigned char*)malloc(inputSize);
+    assert(input);
+    for (size_t i = 0; i < inputSize; i++)
+        input[i] = (unsigned char)(i & 0xFF);
+
+    /* Set up compressor with serial-numeric segmenter */
+    ZL_Compressor* compressor = ZL_Compressor_create();
+    ZL_Report setr            = ZL_Compressor_setParameter(
+            compressor, ZL_CParam_formatVersion, g_testVersion);
+    ASSERT_FALSE(ZL_isError(setr));
+    ZL_GraphID graph     = makeNumericGraph(compressor, bitWidth);
+    ZL_GraphID segmenter = ZL_Compressor_buildNumFromSerialSegmenter(
+            compressor, eltByteWidth, chunkSize, graph);
+    ASSERT_TRUE(ZL_GraphID_isValid(segmenter));
+    ZL_Report selr = ZL_Compressor_selectStartingGraphID(compressor, segmenter);
+    ASSERT_FALSE(ZL_isError(selr));
+
+    /* Compress */
+    ZL_CCtx* cctx  = ZL_CCtx_create();
+    ZL_Report refr = ZL_CCtx_refCompressor(cctx, compressor);
+    ASSERT_FALSE(ZL_isError(refr));
+    size_t const compressedBound = ZL_compressBound(inputSize);
+    void* compressed             = malloc(compressedBound);
+    assert(compressed);
+    ZL_TypedRef* typedInput = ZL_TypedRef_createSerial(input, inputSize);
+    ZL_Report r             = ZL_CCtx_compressTypedRef(
+            cctx, compressed, compressedBound, typedInput);
+    ASSERT_FALSE(ZL_isError(r)) << "compression failed";
+    size_t const compressedSize = ZL_validResult(r);
+
+    /* Decompress */
+    void* decompressed = malloc(inputSize);
+    assert(decompressed);
+    size_t const decompressedSize =
+            decompress(decompressed, inputSize, compressed, compressedSize);
+
+    /* Verify */
+    EXPECT_EQ(decompressedSize, inputSize);
+    EXPECT_EQ(memcmp(input, decompressed, inputSize), 0);
+
+    free(decompressed);
+    free(compressed);
+    ZL_TypedRef_free(typedInput);
+    ZL_CCtx_free(cctx);
+    ZL_Compressor_free(compressor);
+    free(input);
+}
+
+TEST(Segmenter, numFromSerial_large_u8)
+{
+    numFromSerial_largeRoundTrip(8);
+}
+
+TEST(Segmenter, numFromSerial_large_u16)
+{
+    numFromSerial_largeRoundTrip(16);
+}
+
+TEST(Segmenter, numFromSerial_large_u32)
+{
+    numFromSerial_largeRoundTrip(32);
+}
+
+TEST(Segmenter, numFromSerial_large_u64)
+{
+    numFromSerial_largeRoundTrip(64);
+}
+
+/* ============================================================ */
+/* ===  Bare ZL_SEGMENT_NUM*_FROM_SERIAL macros (no param)  === */
+/* ============================================================ */
+
+/* These macros must work out of the box, without parameterization,
+ * falling back to default chunk size and default successor graph. */
+
+static ZL_GraphID bareNumFromSerial_u8(ZL_Compressor* compressor) noexcept
+{
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+    return ZL_SEGMENT_NUM8_FROM_SERIAL;
+}
+
+TEST(Segmenter, bareNumFromSerial_u8)
+{
+    (void)roundTripGen(
+            ZL_Type_serial,
+            bareNumFromSerial_u8,
+            "bare ZL_SEGMENT_NUM8_FROM_SERIAL");
+}
+
+static ZL_GraphID bareNumFromSerial_u16(ZL_Compressor* compressor) noexcept
+{
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+    return ZL_SEGMENT_NUM16_FROM_SERIAL;
+}
+
+TEST(Segmenter, bareNumFromSerial_u16)
+{
+    (void)roundTripGen(
+            ZL_Type_serial,
+            bareNumFromSerial_u16,
+            "bare ZL_SEGMENT_NUM16_FROM_SERIAL");
+}
+
+static ZL_GraphID bareNumFromSerial_u32(ZL_Compressor* compressor) noexcept
+{
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+    return ZL_SEGMENT_NUM32_FROM_SERIAL;
+}
+
+TEST(Segmenter, bareNumFromSerial_u32)
+{
+    (void)roundTripGen(
+            ZL_Type_serial,
+            bareNumFromSerial_u32,
+            "bare ZL_SEGMENT_NUM32_FROM_SERIAL");
+}
+
+static ZL_GraphID bareNumFromSerial_u64(ZL_Compressor* compressor) noexcept
+{
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+    return ZL_SEGMENT_NUM64_FROM_SERIAL;
+}
+
+TEST(Segmenter, bareNumFromSerial_u64)
+{
+    (void)roundTripGen(
+            ZL_Type_serial,
+            bareNumFromSerial_u64,
+            "bare ZL_SEGMENT_NUM64_FROM_SERIAL");
+}
+
+#if ZL_ALLOW_INTROSPECTION
+
+/* --- Verify chunk count using introspection hooks --- */
+
+class ChunkCounterHook : public openzl::CompressIntrospectionHooks {
+   public:
+    size_t chunkCount = 0;
+    void on_ZL_Segmenter_processChunk_start(
+            ZL_Segmenter*,
+            const size_t[],
+            size_t,
+            ZL_GraphID,
+            const ZL_RuntimeGraphParameters*) override
+    {
+        ++chunkCount;
+    }
+};
+
+class DecompressChunkCounterHook : public openzl::DecompressIntrospectionHooks {
+   public:
+    size_t chunkCount = 0;
+    void on_decompressChunk_start(ZL_DCtx*, size_t) override
+    {
+        ++chunkCount;
+    }
+};
+
+static void verifyChunkCount(
+        size_t bitWidth,
+        size_t chunkByteSize,
+        size_t inputSize,
+        size_t expectedChunks)
+{
+    size_t const eltByteWidth = bitWidth / 8;
+
+    /* Generate input data */
+    unsigned char* input = (unsigned char*)malloc(inputSize);
+    assert(input);
+    for (size_t i = 0; i < inputSize; i++)
+        input[i] = (unsigned char)(i & 0xFF);
+
+    /* Build compressor */
+    openzl::Compressor compressor;
+    compressor.setParameter(openzl::CParam::FormatVersion, g_testVersion);
+    ZL_GraphID graph     = makeNumericGraph(compressor.get(), bitWidth);
+    ZL_GraphID segmenter = ZL_Compressor_buildNumFromSerialSegmenter(
+            compressor.get(), eltByteWidth, chunkByteSize, graph);
+    ASSERT_TRUE(ZL_GraphID_isValid(segmenter));
+    compressor.selectStartingGraph(segmenter);
+
+    /* Compress with chunk counter */
+    ChunkCounterHook compressHook;
+    openzl::CCtx cctx;
+    cctx.refCompressor(compressor);
+    ZL_Report attachr = ZL_CCtx_attachIntrospectionHooks(
+            cctx.get(), compressHook.getRawHooks());
+    ASSERT_FALSE(ZL_isError(attachr));
+    auto compressed = cctx.compressSerial({ (const char*)input, inputSize });
+
+    EXPECT_EQ(compressHook.chunkCount, expectedChunks)
+            << "Compression: expected " << expectedChunks << " chunks for "
+            << inputSize << " bytes with " << chunkByteSize << " byte chunks";
+
+    /* Decompress with chunk counter */
+    DecompressChunkCounterHook decompressHook;
+    ZL_DCtx* rawDctx   = ZL_DCtx_create();
+    ZL_Report dattachr = ZL_DCtx_attachDecompressIntrospectionHooks(
+            rawDctx, decompressHook.getRawHooks());
+    ASSERT_FALSE(ZL_isError(dattachr));
+    ZL_TypedBuffer* tbuf = ZL_TypedBuffer_create();
+    ZL_Report dr         = ZL_DCtx_decompressTBuffer(
+            rawDctx, tbuf, compressed.data(), compressed.size());
+    ASSERT_FALSE(ZL_isError(dr));
+
+    EXPECT_EQ(decompressHook.chunkCount, expectedChunks)
+            << "Decompression: expected " << expectedChunks << " chunks";
+
+    /* Verify round-trip */
+    size_t decompressedSize = ZL_validResult(dr);
+    EXPECT_EQ(decompressedSize, inputSize);
+    EXPECT_EQ(memcmp(input, ZL_TypedBuffer_rPtr(tbuf), inputSize), 0);
+
+    ZL_TypedBuffer_free(tbuf);
+    ZL_DCtx_free(rawDctx);
+    free(input);
+}
+
+TEST(Segmenter, numFromSerial_chunkCount_singleChunk)
+{
+    // Chunk count verification requires actual chunking support
+    if (g_testVersion < ZL_CHUNK_VERSION_MIN)
+        return;
+    /* 1024 bytes of u32 data, 4096-byte chunk → 1 chunk */
+    verifyChunkCount(32, 4096, 1024, 1);
+}
+
+TEST(Segmenter, numFromSerial_chunkCount_exactSplit)
+{
+    // Chunk count verification requires actual chunking support
+    if (g_testVersion < ZL_CHUNK_VERSION_MIN)
+        return;
+    /* 2048 bytes of u32 data, 1024-byte chunk → exactly 2 chunks */
+    verifyChunkCount(32, 1024, 2048, 2);
+}
+
+TEST(Segmenter, numFromSerial_chunkCount_unevenSplit)
+{
+    // Chunk count verification requires actual chunking support
+    if (g_testVersion < ZL_CHUNK_VERSION_MIN)
+        return;
+    /* 3000 bytes of u8 data, 1024-byte chunk → 3 chunks (1024+1024+952) */
+    verifyChunkCount(8, 1024, 3000, 3);
+}
+
+TEST(Segmenter, numFromSerial_chunkCount_alignedDown)
+{
+    // Chunk count verification requires actual chunking support
+    if (g_testVersion < ZL_CHUNK_VERSION_MIN)
+        return;
+    /* 4096 bytes of u64 data, 1000-byte chunk (aligned to 8 → 992)
+     * → ceil(4096/992) = 5 chunks (992*4 + 128) */
+    verifyChunkCount(64, 1000, 4096, 5);
+}
+
+TEST(Segmenter, numFromSerial_chunkCount_u32_multiChunk)
+{
+    // Chunk count verification requires actual chunking support
+    if (g_testVersion < ZL_CHUNK_VERSION_MIN)
+        return;
+    /* 4096 bytes of u32 data, 1000-byte chunk (already aligned to 4)
+     * → 4 full (4000) + 96 remainder = 5 chunks */
+    verifyChunkCount(32, 1000, 4096, 5);
+}
+
+TEST(Segmenter, numFromSerial_chunkCount_u32_unalignedChunk)
+{
+    // Chunk count verification requires actual chunking support
+    if (g_testVersion < ZL_CHUNK_VERSION_MIN)
+        return;
+    /* 4096 bytes of u32 data, 1001-byte chunk → aligned to 1000
+     * → 4 full (4000) + 96 remainder = 5 chunks */
+    verifyChunkCount(32, 1001, 4096, 5);
+}
+
+TEST(Segmenter, numFromSerial_chunkCount_manyChunks)
+{
+    // Chunk count verification requires actual chunking support
+    if (g_testVersion < ZL_CHUNK_VERSION_MIN)
+        return;
+    /* 8192 bytes of u16 data, 512-byte chunk → 16 chunks */
+    verifyChunkCount(16, 512, 8192, 16);
+}
+
+#endif // ZL_ALLOW_INTROSPECTION
 
 } // namespace

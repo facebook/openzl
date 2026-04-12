@@ -662,6 +662,91 @@ class TraceTest(_CompressDecompressBaseTest):
         )
 
 
+class NumericSegmentationTest(unittest.TestCase):
+    """
+    Test case for numeric profile auto-segmentation via the CLI.
+
+    Generates binary numeric data, compresses with numeric profiles,
+    decompresses, and verifies round-trip correctness. Tests multiple
+    element widths and chunk sizes to exercise the segmenter.
+    """
+
+    def setUp(self) -> None:
+        import shutil
+        import struct
+        import tempfile
+
+        self.tmpdir = tempfile.mkdtemp()
+        self.addCleanup(lambda: shutil.rmtree(self.tmpdir, True))
+
+        # Generate ~2MB of data per profile so --chunk-size 1M triggers
+        # multi-chunk segmentation (2 chunks).
+        self.test_files: dict[str, dict] = {}
+        target_bytes = 2 * 1000 * 1000  # 2 MB
+        configs = [
+            ("u8", "B", 1, "u8"),
+            ("le-u16", "H", 2, "le-u16"),
+            ("le-i32", "i", 4, "le-i32"),
+            ("le-u64", "Q", 8, "le-u64"),
+        ]
+        for profile, fmt, elt_size, name in configs:
+            n = target_bytes // elt_size
+            max_val = 2 ** (elt_size * 8)
+            data = struct.pack(f"<{n}{fmt}", *[i % max_val for i in range(n)])
+            path = os.path.join(self.tmpdir, f"{name}.bin")
+            with open(path, "wb") as f:
+                f.write(data)
+            self.test_files[name] = {
+                "path": path,
+                "profile": profile,
+                "size": len(data),
+            }
+
+    def _round_trip(
+        self, profile: str, input_path: str, extra_args: str | None = None
+    ) -> None:
+        """Compress, decompress, and verify round-trip for a single file."""
+        compressed_path = input_path + ".zl"
+        decompressed_path = input_path + ".rt"
+
+        compressor_info = CompressorInfo(
+            compressor_str=profile,
+            compressor_type=CompressorType.PROFILE,
+        )
+        execute_compress(
+            file_to_compress_path=input_path,
+            compressor_info=compressor_info,
+            compressed_file_path=compressed_path,
+            extra_args=extra_args,
+        )
+        execute_decompress(
+            compressed_file_path=compressed_path,
+            decompressed_file_path=decompressed_path,
+        )
+        from file_utils import file_contents_match
+
+        self.assertTrue(
+            file_contents_match(input_path, decompressed_path),
+            f"Round-trip failed for profile {profile} on {input_path}",
+        )
+
+    def test_numeric_profiles_roundtrip(self) -> None:
+        """Test that all numeric profiles compress and decompress correctly."""
+        for name, info in self.test_files.items():
+            with self.subTest(profile=name):
+                self._round_trip(info["profile"], info["path"])
+
+    def test_numeric_profiles_with_chunk_size(self) -> None:
+        """Test numeric profiles with --chunk-size 1M on 2MB data (forces 2 chunks)."""
+        for name, info in self.test_files.items():
+            with self.subTest(profile=name):
+                self._round_trip(
+                    info["profile"],
+                    info["path"],
+                    extra_args="--chunk-size 1M",
+                )
+
+
 class StrictModeTest(_CompressDecompressBaseTest):
     """
     Test case for strict mode behavior.

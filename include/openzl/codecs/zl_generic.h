@@ -24,12 +24,6 @@ extern "C" {
 // best compression algorithm based on stream
 #define ZL_GRAPH_NUMERIC ZL_MAKE_GRAPH_ID(ZL_StandardGraphID_select_numeric)
 
-#define ZL_GRAPH_SEGMENT_NUMERIC           \
-    (ZL_GraphID)                           \
-    {                                      \
-        ZL_StandardGraphID_segment_numeric \
-    }
-
 #if defined(__cplusplus)
 }
 #endif

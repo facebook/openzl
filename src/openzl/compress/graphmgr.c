@@ -1019,6 +1019,8 @@ const void* GM_getPrivateParam(const GraphsMgr* gm, ZL_GraphID graphid)
 {
     if (GR_isStandardGraph(graphid)) {
         ZL_ASSERT(GR_isStandardGraph(graphid));
+        if (GR_standardGraphs[graphid.gid].type == GR_segmenter)
+            return NULL; /* segmenters have no private params */
         ZL_ASSERT_EQ(GR_standardGraphs[graphid.gid].type, GR_dynamicGraph);
         return GR_standardGraphs[graphid.gid].gdi.privateParam;
     }

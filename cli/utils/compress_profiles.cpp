@@ -7,6 +7,7 @@
 
 #include "openzl/codecs/zl_conversion.h"
 #include "openzl/codecs/zl_mlselector.h"
+#include "openzl/codecs/zl_segmenters.h"
 #include "openzl/cpp/Exception.hpp"
 #include "openzl/openzl.hpp"
 #include "openzl/zl_compressor.h"
@@ -108,6 +109,11 @@ ZL_GraphID saoProfile(Compressor& compressor)
             splitSizes.size());
 }
 
+struct IntProfileData {
+    size_t eltByteWidth;
+    bool isSigned;
+};
+
 static std::string makeProfileName(const std::string& signage, size_t bitWidth)
 {
     if (bitWidth == 8) {
@@ -125,6 +131,26 @@ static std::string makeProfileDescription(bool isSigned, size_t bitWidth)
             + std::to_string(bitWidth) + "-bit data";
 }
 
+constexpr size_t kDefaultChunkByteSize = 16 << 20; /* 16 MB */
+
+static ZL_GraphID
+buildIntProfile(ZL_Compressor* comp, void* opaque, const ProfileArgs& args)
+{
+    auto* d          = static_cast<IntProfileData*>(opaque);
+    size_t bitWidth  = d->eltByteWidth * 8;
+    ZL_GraphID graph = ZL_GRAPH_FIELD_LZ;
+    if (d->isSigned) {
+        graph = ZL_Compressor_registerStaticGraph_fromNode1o(
+                comp, ZL_NODE_ZIGZAG, graph);
+    }
+    graph = ZL_Compressor_buildACEGraphWithDefault(comp, graph);
+    graph = ZL_Compressor_registerStaticGraph_fromNode1o(
+            comp, ZL_Node_interpretAsLE(bitWidth), graph);
+    size_t chunkSize = args.chunkSize().value_or(kDefaultChunkByteSize);
+    return ZL_Compressor_buildNumFromSerialSegmenter(
+            comp, d->eltByteWidth, chunkSize, graph);
+}
+
 static void addIntProfile(
         std::map<std::string, std::shared_ptr<CompressProfile>>& mp,
         bool isSigned,
@@ -134,36 +160,11 @@ static void addIntProfile(
     std::string name        = makeProfileName(signage, bitWidth);
     std::string description = makeProfileDescription(isSigned, bitWidth);
 
-    auto interpretAsLEnode = ZL_Node_interpretAsLE(bitWidth);
-
-    std::shared_ptr<void> nodeid = std::shared_ptr<void>(
-            malloc(2 * sizeof(interpretAsLEnode)), [](void* p) { free(p); });
-    ((ZL_NodeID*)nodeid.get())[0] = interpretAsLEnode;
-    ((ZL_NodeID*)nodeid.get())[1] = ZL_NODE_ZIGZAG;
+    auto data = std::make_shared<IntProfileData>(
+            IntProfileData{ bitWidth / 8, isSigned });
 
     mp[name] = std::make_shared<CompressProfile>(
-            name,
-            description,
-            isSigned ? ([](ZL_Compressor* comp,
-                           void* opaque,
-                           const ProfileArgs&) {
-                const ZL_NodeID* nodes = (const ZL_NodeID*)opaque;
-                auto graph = ZL_Compressor_registerStaticGraph_fromNode1o(
-                        comp, nodes[1], ZL_GRAPH_FIELD_LZ);
-                graph = ZL_Compressor_buildACEGraphWithDefault(comp, graph);
-                return ZL_Compressor_registerStaticGraph_fromNode1o(
-                        comp, nodes[0], graph);
-            })
-                     : ([](ZL_Compressor* comp,
-                           void* opaque,
-                           const ProfileArgs&) {
-                           const ZL_NodeID* nodes = (const ZL_NodeID*)opaque;
-                           auto graph = ZL_Compressor_buildACEGraphWithDefault(
-                                   comp, ZL_GRAPH_FIELD_LZ);
-                           return ZL_Compressor_registerStaticGraph_fromNode1o(
-                                   comp, nodes[0], graph);
-                       }),
-            std::move(nodeid));
+            name, description, buildIntProfile, std::move(data));
 }
 } // namespace
 
