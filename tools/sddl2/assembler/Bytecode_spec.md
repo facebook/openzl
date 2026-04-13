@@ -37,7 +37,7 @@ The VM instruction set is organized into families:
 | **PUSH** | Push constants and values onto stack | `push.zero`, `push.u32`, `push.i64`, `push.tag`, `push.remaining` |
 | **MATH** | Arithmetic operations on I64 values | `math.add`, `math.sub`, `math.mul`, `math.div`, `math.mod` |
 | **CMP** | Comparison operations | `cmp.eq`, `cmp.ne`, `cmp.lt`, `cmp.le`, `cmp.gt`, `cmp.ge` |
-| **LOGIC** | Bitwise logical operations | `logic.and`, `logic.or`, `logic.xor`, `logic.not` |
+| **LOGIC** | Logical (boolean) operations | `logic.and`, `logic.or`, `logic.xor`, `logic.not` |
 | **CONTROL** | Control flow | `halt`, `expect_true`, `trace.start` |
 | **LOAD** | Load values from input buffer | `load.u8`, `load.i8`, `load.u16le`, `load.i32be`, etc. |
 | **STACK** | Stack manipulation | `stack.dup`, `stack.drop`, `stack.swap`, `stack.rot` |
