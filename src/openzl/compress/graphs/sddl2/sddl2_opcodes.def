@@ -75,6 +75,10 @@
   math.mod  0x0005          "Pop two I64 values, push their remainder (second % first)"
   math.abs  0x0006          "Pop I64 value, push its absolute value"
   math.neg  0x0007          "Pop I64 value, push its negation"
+  math.bit_and  0x0008      "Pop two I64 values, push their bitwise AND"
+  math.bit_or   0x0009      "Pop two I64 values, push their bitwise OR"
+  math.bit_xor  0x000A      "Pop two I64 values, push their bitwise XOR"
+  math.bit_not  0x000B      "Pop I64 value, push its bitwise NOT"
 
 @family CMP 0x0003 "Comparison operations on signed I64 values"
   cmp.eq    0x0001          "Pop two I64 values, push 1 if equal, 0 otherwise"

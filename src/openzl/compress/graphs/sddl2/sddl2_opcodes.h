@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
 // Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-// Generated at: 2026-03-11 19:40:34 UTC
+// Generated at: 2026-04-13 19:23:35 UTC
 // Generator: generate_c_headers.py
 //
 // To regenerate: python3 src/openzl/compress/graphs/sddl2/generate_c_headers.py
@@ -83,13 +83,17 @@ enum sddl2_opcode_push {
 
 /* MATH family (0x0002) - Arithmetic operations on I64 values */
 enum sddl2_opcode_math {
-    SDDL2_OP_MATH_ADD = 0x0001,
-    SDDL2_OP_MATH_SUB = 0x0002,
-    SDDL2_OP_MATH_MUL = 0x0003,
-    SDDL2_OP_MATH_DIV = 0x0004,
-    SDDL2_OP_MATH_MOD = 0x0005,
-    SDDL2_OP_MATH_ABS = 0x0006,
-    SDDL2_OP_MATH_NEG = 0x0007,
+    SDDL2_OP_MATH_ADD     = 0x0001,
+    SDDL2_OP_MATH_SUB     = 0x0002,
+    SDDL2_OP_MATH_MUL     = 0x0003,
+    SDDL2_OP_MATH_DIV     = 0x0004,
+    SDDL2_OP_MATH_MOD     = 0x0005,
+    SDDL2_OP_MATH_ABS     = 0x0006,
+    SDDL2_OP_MATH_NEG     = 0x0007,
+    SDDL2_OP_MATH_BIT_AND = 0x0008,
+    SDDL2_OP_MATH_BIT_OR  = 0x0009,
+    SDDL2_OP_MATH_BIT_XOR = 0x000A,
+    SDDL2_OP_MATH_BIT_NOT = 0x000B,
 };
 
 /* CMP family (0x0003) - Comparison operations on signed I64 values */

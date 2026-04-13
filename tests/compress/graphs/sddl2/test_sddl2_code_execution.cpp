@@ -671,6 +671,30 @@ TEST_F(SDDL2CodeExecutionTest, AssignRuntimeValue)
     expect_success(prog, input, expected_sizes);
 }
 
+// ============================================================================
+// Bitwise Operations
+// ============================================================================
+
+TEST_F(SDDL2CodeExecutionTest, BitwiseOperations)
+{
+    const std::vector<size_t> expected_sizes = { 4, 4 };
+    std::vector<uint8_t> input               = {
+        0xF0, 0x00, 0x00, 0x00, // a = 0x000000F0
+        0x0F, 0x00, 0x00, 0x00, // b = 0x0000000F
+    };
+
+    const auto prog = R"(
+        a: Int32LE
+        b: Int32LE
+        expect (a & b) == 0
+        expect (a | b) == 255
+        expect (a ^ b) == 255
+        expect (~0) == -1
+    )";
+
+    expect_success(prog, input, expected_sizes);
+}
+
 } // namespace testing
 } // namespace sddl2
 } // namespace openzl

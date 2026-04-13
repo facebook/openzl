@@ -34,14 +34,18 @@
     _func(SDDL2_OP_LOAD_I64LE, SDDL2_op_load_i64le) \
     _func(SDDL2_OP_LOAD_I64BE, SDDL2_op_load_i64be)
 
-#define FOR_EACH_MATH_OP(_func)              \
-    _func(SDDL2_OP_MATH_ADD, SDDL2_op_add)   \
-    _func(SDDL2_OP_MATH_SUB, SDDL2_op_sub)   \
-    _func(SDDL2_OP_MATH_MUL, SDDL2_op_mul)   \
-    _func(SDDL2_OP_MATH_DIV, SDDL2_op_div)   \
-    _func(SDDL2_OP_MATH_MOD, SDDL2_op_mod)   \
-    _func(SDDL2_OP_MATH_ABS, SDDL2_op_abs)   \
-    _func(SDDL2_OP_MATH_NEG, SDDL2_op_neg)
+#define FOR_EACH_MATH_OP(_func)                       \
+    _func(SDDL2_OP_MATH_ADD, SDDL2_op_add)            \
+    _func(SDDL2_OP_MATH_SUB, SDDL2_op_sub)            \
+    _func(SDDL2_OP_MATH_MUL, SDDL2_op_mul)            \
+    _func(SDDL2_OP_MATH_DIV, SDDL2_op_div)            \
+    _func(SDDL2_OP_MATH_MOD, SDDL2_op_mod)            \
+    _func(SDDL2_OP_MATH_ABS, SDDL2_op_abs)            \
+    _func(SDDL2_OP_MATH_NEG, SDDL2_op_neg)            \
+    _func(SDDL2_OP_MATH_BIT_AND, SDDL2_op_bit_and)    \
+    _func(SDDL2_OP_MATH_BIT_OR, SDDL2_op_bit_or)      \
+    _func(SDDL2_OP_MATH_BIT_XOR, SDDL2_op_bit_xor)    \
+    _func(SDDL2_OP_MATH_BIT_NOT, SDDL2_op_bit_not)
 
 #define FOR_EACH_CMP_OP(_func)             \
     _func(SDDL2_OP_CMP_EQ, SDDL2_op_eq)    \

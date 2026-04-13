@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
 // Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-// Generated at: 2026-03-11 19:40:34 UTC
+// Generated at: 2026-04-13 19:23:40 UTC
 // Generator: generate_opcodes.py
 //
 // To regenerate: python3 generate_opcodes.py

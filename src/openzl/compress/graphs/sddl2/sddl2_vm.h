@@ -610,6 +610,22 @@ SDDL2_Error
 SDDL2_op_abs(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // |a|
 SDDL2_Error
 SDDL2_op_neg(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // -a
+SDDL2_Error SDDL2_op_bit_and(
+        SDDL2_Stack* stack,
+        SDDL2_Trace_buffer* trace,
+        size_t pc); // a & b
+SDDL2_Error SDDL2_op_bit_or(
+        SDDL2_Stack* stack,
+        SDDL2_Trace_buffer* trace,
+        size_t pc); // a | b
+SDDL2_Error SDDL2_op_bit_xor(
+        SDDL2_Stack* stack,
+        SDDL2_Trace_buffer* trace,
+        size_t pc); // a ^ b
+SDDL2_Error SDDL2_op_bit_not(
+        SDDL2_Stack* stack,
+        SDDL2_Trace_buffer* trace,
+        size_t pc); // ~a
 
 /* ============================================================================
  * Comparison Operations (CMP Family)
@@ -638,18 +654,24 @@ SDDL2_op_ge(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a >= b
  *
  * Binary operations: Stack: a:I64 b:I64 -> result:I64
  * Unary operation:   Stack: a:I64 -> result:I64
- * All operations perform bitwise operations on I64 values.
+ * All operations perform boolean logical operations on I64 values.
+ * Values are treated as boolean: 0 is false, non-zero is true.
+ * Results are always 0 or 1.
  * Errors: TypeMismatch
  * ========================================================================= */
 
+SDDL2_Error SDDL2_op_and(
+        SDDL2_Stack* stack,
+        SDDL2_Trace_buffer* trace,
+        size_t pc); // a && b
 SDDL2_Error
-SDDL2_op_and(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a & b
+SDDL2_op_or(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a || b
+SDDL2_Error SDDL2_op_xor(
+        SDDL2_Stack* stack,
+        SDDL2_Trace_buffer* trace,
+        size_t pc); // a ^^ b
 SDDL2_Error
-SDDL2_op_or(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a | b
-SDDL2_Error
-SDDL2_op_xor(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // a ^ b
-SDDL2_Error
-SDDL2_op_not(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // ~a
+SDDL2_op_not(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc); // !a
 
 /* ============================================================================
  * Stack Manipulation Operations (STACK Family)
