@@ -77,12 +77,12 @@ Comparison operations on signed I64 values
 ### LOGIC (0x0004)
 Logical operations
 
-| Mnemonic    | Opcode   | Params | Description                                |
-| ----------- | -------- | ------ | ------------------------------------------ |
-| `logic.and` | `0x0001` | `-`    | Pop two I64 values, push their bitwise AND |
-| `logic.or`  | `0x0002` | `-`    | Pop two I64 values, push their bitwise OR  |
-| `logic.xor` | `0x0003` | `-`    | Pop two I64 values, push their bitwise XOR |
-| `logic.not` | `0x0004` | `-`    | Pop I64 value, push its bitwise NOT        |
+| Mnemonic    | Opcode   | Params | Description                                                                      |
+| ----------- | -------- | ------ | -------------------------------------------------------------------------------- |
+| `logic.and` | `0x0001` | `-`    | Pop two I64 values, push 1 if both non-zero, 0 otherwise (logical AND)           |
+| `logic.or`  | `0x0002` | `-`    | Pop two I64 values, push 1 if either non-zero, 0 otherwise (logical OR)          |
+| `logic.xor` | `0x0003` | `-`    | Pop two I64 values, push 1 if exactly one is non-zero, 0 otherwise (logical XOR) |
+| `logic.not` | `0x0004` | `-`    | Pop I64 value, push 1 if zero, 0 otherwise (logical NOT)                         |
 
 ### CONTROL (0x0005)
 Control flow operations

@@ -83,7 +83,7 @@ At the time of this wrting, the instruction set is organized into these families
 **CMP (0x0003)** - Comparison operations
 - `cmp.eq`, `cmp.ne`, `cmp.lt`, `cmp.le`, `cmp.gt`, `cmp.ge`
 
-**LOGIC (0x0004)** - Bitwise/logical operations
+**LOGIC (0x0004)** - Logical operations
 - `logic.and`, `logic.or`, `logic.xor`, `logic.not`
 
 **LOAD (0x0006)** - Load from input buffer
