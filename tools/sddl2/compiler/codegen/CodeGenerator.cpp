@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "tools/sddl2/compiler/Exception.h"
+#include "tools/sddl2/compiler/Syntax.h"
 #include "tools/sddl2/compiler/codegen/AssemblyOutput.h"
 #include "tools/sddl2/compiler/codegen/CodeGenerator.h"
 #include "tools/sddl2/compiler/codegen/RegisterAllocator.h"
@@ -207,7 +208,12 @@ class CodeGeneratorImpl {
                 return output;
             }
             case ConvertedNodeType::VAR: {
-                auto var = node->as_var();
+                auto var       = node->as_var();
+                auto intrinsic = find_intrinsic(var->name());
+                if (intrinsic) {
+                    output += generateIntrinsic(var->loc(), *intrinsic);
+                    return output;
+                }
                 output += "push.i64 "
                         + std::to_string(registers_.get(var->name()));
                 output += "var.load";
@@ -489,6 +495,18 @@ class CodeGeneratorImpl {
 
     const detail::Logger& log_;
     size_t tag_ = 1;
+
+    static std::string generateIntrinsic(
+            const SourceLocation& loc,
+            const Intrinsic& intrinsic)
+    {
+        switch (intrinsic) {
+            case Intrinsic::REM:
+                return "push.remaining";
+            default:
+                throw CodegenError(loc, "Unsupported intrinsic!");
+        }
+    }
 
     // Register allocation
     RegisterAllocator registers_;

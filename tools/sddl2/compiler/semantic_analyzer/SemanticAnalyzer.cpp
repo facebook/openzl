@@ -5,6 +5,7 @@
 #include <unordered_set>
 
 #include "tools/sddl2/compiler/Exception.h"
+#include "tools/sddl2/compiler/Syntax.h"
 #include "tools/sddl2/compiler/parser/AST.h"
 #include "tools/sddl2/compiler/semantic_analyzer/SemanticAnalyzer.h"
 
@@ -84,6 +85,8 @@ class SemanticAnalyzerImpl {
    public:
     explicit SemanticAnalyzerImpl(const detail::Logger& logger) : log_(logger)
     {
+        // Pre-register built-in intrinsic variables
+        var_types_["_rem"] = Type{ TypeKind::NUMERIC };
     }
 
     void analyze(const ASTVec& ast)
@@ -272,6 +275,12 @@ class SemanticAnalyzerImpl {
     Type analyzeAssign(const ASTOp& op)
     {
         auto var = someVar(op.args()[0]);
+        if (find_intrinsic(var->name())) {
+            throw SemanticError(
+                    var->loc(),
+                    "Cannot assign to built-in variable '" + var->name()
+                            + "'.");
+        }
         if (var_types_.count(var->name()) > 0) {
             throw SemanticError(
                     var->loc(),
@@ -289,6 +298,12 @@ class SemanticAnalyzerImpl {
 
         // Assign the var to the assumed type
         auto var = someVar(op.args()[0]);
+        if (find_intrinsic(var->name())) {
+            throw SemanticError(
+                    var->loc(),
+                    "Cannot assign to built-in variable '" + var->name()
+                            + "'.");
+        }
         if (var_types_.count(var->name()) > 0) {
             throw SemanticError(
                     var->loc(),

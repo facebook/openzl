@@ -671,6 +671,75 @@ TEST_F(SDDL2CodeExecutionTest, AssignRuntimeValue)
     expect_success(prog, input, expected_sizes);
 }
 
+// ============================================================================
+// Intrinsics
+// ============================================================================
+
+TEST_F(SDDL2CodeExecutionTest, RemIntrinsicReturnsInputSize)
+{
+    const std::vector<size_t> expected_sizes = {};
+    std::vector<uint8_t> input               = {
+        0x01, 0x02, 0x03, 0x04, 0x05,
+    };
+
+    const auto prog = R"(
+        expect _rem == 5
+    )";
+
+    expect_success(prog, input, expected_sizes);
+}
+
+TEST_F(SDDL2CodeExecutionTest, RemIntrinsicDecrementsAfterConsume)
+{
+    const std::vector<size_t> expected_sizes = { 4 };
+    std::vector<uint8_t> input               = {
+        0x01, 0x00, 0x00, 0x00, // x = 1
+        0x05, 0x06,             // 2 remaining bytes
+    };
+
+    const auto prog = R"(
+        expect _rem == 6
+        x: Int32LE
+        expect _rem == 2
+    )";
+
+    expect_success(prog, input, expected_sizes);
+}
+
+TEST_F(SDDL2CodeExecutionTest, RemIntrinsicUsedInArrayLength)
+{
+    const std::vector<size_t> expected_sizes = { 2, 4 };
+    std::vector<uint8_t> input               = {
+        0x01, 0x02,             // header
+        0x03, 0x04, 0x05, 0x06, // remaining data
+    };
+
+    const auto prog = R"(
+        : Bytes(2)
+        : Bytes(_rem)
+    )";
+
+    expect_success(prog, input, expected_sizes);
+}
+
+TEST_F(SDDL2CodeExecutionTest, RemIntrinsicInWhenCondition)
+{
+    const std::vector<size_t> expected_sizes = { 4, 4 };
+    std::vector<uint8_t> input               = {
+        0x01, 0x00, 0x00, 0x00, // first
+        0x02, 0x00, 0x00, 0x00, // second
+    };
+
+    const auto prog = R"(
+        : Int32LE
+        when _rem > 0 {
+            : Int32LE
+        }
+    )";
+
+    expect_success(prog, input, expected_sizes);
+}
+
 } // namespace testing
 } // namespace sddl2
 } // namespace openzl

@@ -5,6 +5,7 @@
 #include <map>
 #include <vector>
 
+#include "openzl/cpp/poly/Optional.hpp"
 #include "openzl/cpp/poly/StringView.hpp"
 
 namespace openzl::sddl2 {
@@ -95,6 +96,17 @@ enum class Symbol {
     // Control Flow
     WHEN
 };
+
+/**
+ * Built-in intrinsic variables. These are pre-defined, read-only numeric
+ * values available in SDDL2 programs.
+ */
+enum class Intrinsic {
+    REM, // _rem: number of bytes remaining in the input
+};
+
+/// Returns the Intrinsic if `name` is a built-in intrinsic, or nullopt.
+poly::optional<Intrinsic> find_intrinsic(poly::string_view name);
 
 /// @returns a name string for a symbol.
 /// (E.g., Symbol::ADD -> "ADD")

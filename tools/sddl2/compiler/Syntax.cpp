@@ -220,4 +220,19 @@ poly::string_view sym_to_repr_str(Symbol sym)
                 + std::string{ sym_to_debug_str(sym) } + ")");
     }
 }
+
+static const std::vector<std::pair<poly::string_view, Intrinsic>>
+        strs_to_intrinsics{
+            { "_rem", Intrinsic::REM },
+        };
+
+poly::optional<Intrinsic> find_intrinsic(poly::string_view name)
+{
+    for (const auto& [str, intrinsic] : strs_to_intrinsics) {
+        if (str == name) {
+            return intrinsic;
+        }
+    }
+    return poly::nullopt;
+}
 } // namespace openzl::sddl2

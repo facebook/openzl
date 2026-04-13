@@ -371,4 +371,28 @@ TEST_F(SemanticAnalyzerTest, MemberAccessOnNonConditionalField)
     expect_success(prog);
 }
 
+TEST_F(SemanticAnalyzerTest, IntrinsicRemIsNumeric)
+{
+    const auto prog = R"(
+        expect _rem >= 0
+    )";
+    expect_success(prog);
+}
+
+TEST_F(SemanticAnalyzerTest, IntrinsicRemCannotBeAssigned)
+{
+    const auto prog = R"(
+        _rem = 42
+    )";
+    expect_error(prog, "Cannot assign to built-in variable");
+}
+
+TEST_F(SemanticAnalyzerTest, IntrinsicRemCannotBeAssumed)
+{
+    const auto prog = R"(
+        _rem: Int32LE
+    )";
+    expect_error(prog, "Cannot assign to built-in variable");
+}
+
 } // namespace openzl::sddl2::tests
