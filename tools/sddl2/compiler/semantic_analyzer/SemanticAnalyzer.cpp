@@ -26,18 +26,18 @@ struct Type {
     const ASTNode* type_def = nullptr;
 };
 
-void expectNumeric(const Type& t)
+void expectNumeric(const SourceLocation& loc, const Type& t)
 {
     if (t.kind != TypeKind::NUMERIC) {
-        throw SemanticError("Expected a numeric expression.");
+        throw SemanticError(loc, "Expected a numeric expression.");
     }
 }
 
-void expectFieldType(const Type& t)
+void expectFieldType(const SourceLocation& loc, const Type& t)
 {
     if (!(t.kind == TypeKind::ARRAY || t.kind == TypeKind::RECORD
           || t.kind == TypeKind::BYTES || t.kind == TypeKind::BUILTIN_FIELD)) {
-        throw SemanticError("Expected a field type expression.");
+        throw SemanticError(loc, "Expected a field type expression.");
     }
 }
 
@@ -46,7 +46,7 @@ const ASTVar* someVar(const ASTPtr& node)
     if (auto var = node->as_var()) {
         return var;
     }
-    throw SemanticError("Expected a variable name.");
+    throw SemanticError(node->loc(), "Expected a variable name.");
 }
 
 bool hasLoadInstruction(Symbol sym)
@@ -125,7 +125,8 @@ class SemanticAnalyzerImpl {
             case ConvertedNodeType::OP:
                 return analyze(*node->as_op());
             default:
-                throw InvariantViolation("Unsupported AST node type.");
+                throw InvariantViolation(
+                        node->loc(), "Unsupported AST node type.");
         }
     }
 
@@ -141,15 +142,15 @@ class SemanticAnalyzerImpl {
 
     Type analyze(const ASTBytes& bytes)
     {
-        expectNumeric(analyzeNode(bytes.len()));
+        expectNumeric(bytes.loc(), analyzeNode(bytes.len()));
         return Type{ TypeKind::BYTES, &bytes };
     }
 
     Type analyze(const ASTArray& array)
     {
-        expectFieldType(analyzeNode(array.field()));
+        expectFieldType(array.field()->loc(), analyzeNode(array.field()));
         if (array.len()) {
-            expectNumeric(analyzeNode(array.len()));
+            expectNumeric(array.len()->loc(), analyzeNode(array.len()));
         }
         return Type{ TypeKind::ARRAY, &array };
     }
@@ -160,7 +161,7 @@ class SemanticAnalyzerImpl {
         if (!var) {
             throw SemanticError(field.loc(), "Field name must be a variable.");
         }
-        expectFieldType(analyzeNode(field.type()));
+        expectFieldType(field.type()->loc(), analyzeNode(field.type()));
         return Type{ TypeKind::NONE };
     }
 
@@ -214,7 +215,7 @@ class SemanticAnalyzerImpl {
 
         // Validate each argument is a numeric expression
         for (const auto& arg : call.args()) {
-            expectNumeric(analyzeNode(arg));
+            expectNumeric(arg->loc(), analyzeNode(arg));
         }
 
         return Type{ TypeKind::RECORD, target_type.type_def };
@@ -230,19 +231,19 @@ class SemanticAnalyzerImpl {
             case Op::MEMBER:
                 return analyzeMember(op);
             case Op::CONSUME:
-                expectFieldType(analyzeNode(op.args()[0]));
+                expectFieldType(op.args()[0]->loc(), analyzeNode(op.args()[0]));
                 return Type{ TypeKind::NONE };
             case Op::SIZEOF:
-                expectFieldType(analyzeNode(op.args()[0]));
+                expectFieldType(op.args()[0]->loc(), analyzeNode(op.args()[0]));
                 return Type{ TypeKind::NUMERIC };
             case Op::EXPECT:
-                expectNumeric(analyzeNode(op.args()[0]));
+                expectNumeric(op.args()[0]->loc(), analyzeNode(op.args()[0]));
                 return Type{ TypeKind::NONE };
             case Op::NEG:
             case Op::LOG_NOT:
             case Op::BIT_NOT:
             case Op::ABS:
-                expectNumeric(analyzeNode(op.args()[0]));
+                expectNumeric(op.args()[0]->loc(), analyzeNode(op.args()[0]));
                 return Type{ TypeKind::NUMERIC };
             case Op::ADD:
             case Op::SUB:
@@ -260,8 +261,8 @@ class SemanticAnalyzerImpl {
             case Op::BIT_XOR:
             case Op::LOG_AND:
             case Op::LOG_OR:
-                expectNumeric(analyzeNode(op.args()[0]));
-                expectNumeric(analyzeNode(op.args()[1]));
+                expectNumeric(op.args()[0]->loc(), analyzeNode(op.args()[0]));
+                expectNumeric(op.args()[1]->loc(), analyzeNode(op.args()[1]));
                 return Type{ TypeKind::NUMERIC };
             case Op::SEND:
             default:
@@ -285,7 +286,7 @@ class SemanticAnalyzerImpl {
     {
         // Check that the RHS is a valid field type
         auto field_type = analyzeNode(op.args()[1]);
-        expectFieldType(field_type);
+        expectFieldType(op.args()[1]->loc(), field_type);
 
         // Assign the var to the assumed type
         auto var = someVar(op.args()[0]);
@@ -353,7 +354,7 @@ class SemanticAnalyzerImpl {
 
     Type analyze(const ASTWhen& when)
     {
-        expectNumeric(analyzeNode(when.condition()));
+        expectNumeric(when.condition()->loc(), analyzeNode(when.condition()));
         for (const auto& stmt : when.body()) {
             analyzeNode(stmt);
         }
