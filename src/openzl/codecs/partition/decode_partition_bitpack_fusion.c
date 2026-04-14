@@ -400,6 +400,7 @@ ZL_Report ZL_partitionBitpackFusedDecode(ZL_DecoderFusion* state)
 
     // --- Fallback for non-uint16_t output ---
     if (outEltWidth != 2 || nbBits < 4 || nbBits > 5
+        || params.numPartitions > (1u << nbBits)
         || ZL_PartitionParams_getLargestPartitionSize(&params)
                 > ZL_PARTITION_MAX_PARTITION_SIZE_FOR_UNROLL4) {
         return ZL_partitionBitpackFusedDecode_fallback(state);
