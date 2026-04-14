@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
 // Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-// Generated at: 2026-03-11 19:40:34 UTC
+// Generated at: 2026-04-13 19:23:35 UTC
 // Generator: generate_c_headers.py
 //
 // To regenerate: python3 src/openzl/compress/graphs/sddl2/generate_c_headers.py
@@ -117,6 +117,14 @@ static inline const char* SDDL2_instruction_name_impl(
                     return "math.abs";
                 case SDDL2_OP_MATH_NEG:
                     return "math.neg";
+                case SDDL2_OP_MATH_BIT_AND:
+                    return "math.bit_and";
+                case SDDL2_OP_MATH_BIT_OR:
+                    return "math.bit_or";
+                case SDDL2_OP_MATH_BIT_XOR:
+                    return "math.bit_xor";
+                case SDDL2_OP_MATH_BIT_NOT:
+                    return "math.bit_not";
                 default:
                     return "math.?";
             }

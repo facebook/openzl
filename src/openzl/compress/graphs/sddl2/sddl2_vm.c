@@ -700,6 +700,57 @@ SDDL2_op_ge(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 }
 
 /* ============================================================================
+ * Bitwise Operations (MATH Family - bitwise subset)
+ *
+ * Implements bitwise operations on I64 values:
+ * - bit_and: Bitwise AND
+ * - bit_or: Bitwise OR
+ * - bit_xor: Bitwise XOR
+ * - bit_not: Bitwise NOT (one's complement)
+ * All operations work on the full 64-bit representation.
+ * ========================================================================= */
+
+SDDL2_Error
+SDDL2_op_bit_and(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+{
+    int64_t a, b;
+    SDDL2_TRY(pop_binary_i64(stack, &a, &b));
+    int64_t result = (a & b);
+    SDDL2_log_binary_op("math.bit_and", "&", a, b, result, trace, pc);
+    return push_i64(stack, result);
+}
+
+SDDL2_Error
+SDDL2_op_bit_or(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+{
+    int64_t a, b;
+    SDDL2_TRY(pop_binary_i64(stack, &a, &b));
+    int64_t result = (a | b);
+    SDDL2_log_binary_op("math.bit_or", "|", a, b, result, trace, pc);
+    return push_i64(stack, result);
+}
+
+SDDL2_Error
+SDDL2_op_bit_xor(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+{
+    int64_t a, b;
+    SDDL2_TRY(pop_binary_i64(stack, &a, &b));
+    int64_t result = (a ^ b);
+    SDDL2_log_binary_op("math.bit_xor", "^", a, b, result, trace, pc);
+    return push_i64(stack, result);
+}
+
+SDDL2_Error
+SDDL2_op_bit_not(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
+{
+    int64_t a;
+    SDDL2_TRY(pop_i64(stack, &a));
+    int64_t result = (~a);
+    SDDL2_log_unary_op("math.bit_not", "~", a, result, trace, pc);
+    return push_i64(stack, result);
+}
+
+/* ============================================================================
  * Logical Operations (LOGIC Family)
  *
  * Implements boolean/logical operations on I64 values:

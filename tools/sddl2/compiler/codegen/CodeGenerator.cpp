@@ -22,20 +22,28 @@ const std::map<Op, std::string> op_to_asm = {
 
     { Op::SIZEOF, "type.sizeof" },
 
-    { Op::ADD, "math.add" },       { Op::SUB, "math.sub" },
-    { Op::MUL, "math.mul" },       { Op::DIV, "math.div" },
-    { Op::MOD, "math.mod" },       { Op::NEG, "math.neg" },
+    { Op::ADD, "math.add" },
+    { Op::SUB, "math.sub" },
+    { Op::MUL, "math.mul" },
+    { Op::DIV, "math.div" },
+    { Op::MOD, "math.mod" },
+    { Op::NEG, "math.neg" },
     { Op::ABS, "math.abs" },
+    { Op::BIT_AND, "math.bit_and" },
+    { Op::BIT_OR, "math.bit_or" },
+    { Op::BIT_XOR, "math.bit_xor" },
+    { Op::BIT_NOT, "math.bit_not" },
 
-    { Op::EQ, "cmp.eq" },          { Op::NE, "cmp.ne" },
-    { Op::GT, "cmp.gt" },          { Op::GE, "cmp.ge" },
-    { Op::LT, "cmp.lt" },          { Op::LE, "cmp.le" },
+    { Op::EQ, "cmp.eq" },
+    { Op::NE, "cmp.ne" },
+    { Op::GT, "cmp.gt" },
+    { Op::GE, "cmp.ge" },
+    { Op::LT, "cmp.lt" },
+    { Op::LE, "cmp.le" },
 
-    { Op::LOG_AND, "logic.and" },  { Op::LOG_OR, "logic.or" },
+    { Op::LOG_AND, "logic.and" },
+    { Op::LOG_OR, "logic.or" },
     { Op::LOG_NOT, "logic.not" },
-
-    { Op::BIT_AND, "logic.and" },  { Op::BIT_OR, "logic.or" },
-    { Op::BIT_XOR, "logic.xor" },  { Op::BIT_NOT, "logic.not" },
 };
 
 /**

@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
 // Generated from: src/openzl/compress/graphs/sddl2/sddl2_opcodes.def
-// Generated at: 2026-03-11 19:40:34 UTC
+// Generated at: 2026-04-13 19:23:40 UTC
 // Generator: generate_opcodes.py
 //
 // To regenerate: python3 generate_opcodes.py
@@ -129,6 +129,14 @@ const std::unordered_map<std::string, Instruction> INSTRUCTIONS = {
       Instruction{ Family::MATH, 0x0006, std::vector<ParamType>{} } },
     { "math.neg",
       Instruction{ Family::MATH, 0x0007, std::vector<ParamType>{} } },
+    { "math.bit_and",
+      Instruction{ Family::MATH, 0x0008, std::vector<ParamType>{} } },
+    { "math.bit_or",
+      Instruction{ Family::MATH, 0x0009, std::vector<ParamType>{} } },
+    { "math.bit_xor",
+      Instruction{ Family::MATH, 0x000A, std::vector<ParamType>{} } },
+    { "math.bit_not",
+      Instruction{ Family::MATH, 0x000B, std::vector<ParamType>{} } },
 
     // CMP family (0x0003)
     { "cmp.eq", Instruction{ Family::CMP, 0x0001, std::vector<ParamType>{} } },

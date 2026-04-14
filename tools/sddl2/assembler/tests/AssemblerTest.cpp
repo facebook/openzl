@@ -379,6 +379,28 @@ TEST_F(AssemblerTest, LogicOps)
     )");
 }
 
+TEST_F(AssemblerTest, BitOps)
+{
+    expect_success(R"(
+        push.i32 0xFF00
+        push.i32 0x0FF0
+        math.bit_and
+        stack.drop
+        push.i32 0x00F0
+        push.i32 0x0F00
+        math.bit_or
+        stack.drop
+        push.i32 0xAAAA
+        push.i32 0x5555
+        math.bit_xor
+        stack.drop
+        push.i32 0x0F0F
+        math.bit_not
+        stack.drop
+        halt
+    )");
+}
+
 TEST_F(AssemblerTest, LoadOps)
 {
     expect_success("load.u8\n     halt");
