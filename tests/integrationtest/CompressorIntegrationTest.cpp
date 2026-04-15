@@ -3,6 +3,11 @@
 #include <gtest/gtest.h>
 
 #include <cstring>
+#include <vector>
+
+#include "openzl/dict/bundle.h"
+#include "openzl/dict/dict.h"
+#include "openzl/dict/dict_constants.h"
 
 #include "openzl/cpp/CCtx.hpp"
 #include "openzl/cpp/CParam.hpp"
@@ -719,6 +724,169 @@ TEST_F(CompressorIntegrationTest,
 
     compressData();
     EXPECT_EQ(str, str2);
+}
+
+static ZL_RESULT_OF(ZL_VoidPtr) copyDictMaterialize(
+        ZL_Materializer* matCtx,
+        const void* src,
+        size_t srcSize) ZL_NOEXCEPT_FUNC_PTR
+{
+    ZL_RESULT_DECLARE_SCOPE(ZL_VoidPtr, matCtx);
+    void* copy = ZL_Materializer_allocate(matCtx, srcSize);
+    ZL_ERR_IF_NULL(copy, allocation);
+    memcpy(copy, src, srcSize);
+    return ZL_WRAP_VALUE(copy);
+}
+
+TEST_F(CompressorIntegrationTest,
+       GIVENaFatBundleLoadedWHENencoderRunsTHENgetMaterializedDictReturnsDict)
+{
+    // -- Dict content that will be packed into the fat bundle --
+    const std::string dictContent = "test-dict-payload-12345";
+    ZL_DictID dictID;
+    memset(&dictID, 0, sizeof(dictID));
+    dictID.id.bytes[0] = 0xD1;
+    dictID.id.bytes[1] = 0xD2;
+
+    // -- Dict materializer (ZL_MaterializerDesc2): copies raw content --
+    ZL_MaterializerDesc2 dictMat{};
+    dictMat.materializeFn   = copyDictMaterialize;
+    dictMat.dematerializeFn = ZL_NOOP_DEMATERIALIZE;
+
+    // -- Register encoder first (CDictMgr needs the node to find materializer)
+    // --
+    const auto encoderCheckingDict =
+            [](ZL_Encoder* eictx, const ZL_Input* inputs[], size_t nbInputs)
+                    ZL_NOEXCEPT_FUNC_PTR -> ZL_Report {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
+
+        const void* dict = ZL_Encoder_getMaterializedDict(eictx);
+        ZL_ERR_IF_NULL(
+                dict,
+                GENERIC,
+                "Expected getMaterializedDict to return non-null");
+
+        // Verify content via ref param that holds expected size
+        auto rp = ZL_Encoder_getLocalParam(eictx, 1);
+        ZL_ERR_IF_NULL(rp.paramRef, GENERIC);
+        size_t expectedSize = *(const size_t*)rp.paramRef;
+
+        // The materialized dict should be a copy of the original content
+        ZL_ERR_IF_NE(
+                memcmp(dict,
+                       (const char*)rp.paramRef + sizeof(size_t),
+                       expectedSize),
+                0,
+                GENERIC,
+                "Dict content mismatch");
+
+        return passthrough(eictx, inputs, nbInputs);
+    };
+
+    const auto encoderNullDict =
+            [](ZL_Encoder* eictx, const ZL_Input* inputs[], size_t nbInputs)
+                    ZL_NOEXCEPT_FUNC_PTR -> ZL_Report {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
+
+        const void* dict = ZL_Encoder_getMaterializedDict(eictx);
+        ZL_ERR_IF_NN(
+                dict,
+                GENERIC,
+                "Expected getMaterializedDict to return NULL for node without dict");
+
+        return passthrough(eictx, inputs, nbInputs);
+    };
+
+    // Pack expected size + content into a buffer for the ref param
+    std::vector<uint8_t> verifyBuf(sizeof(size_t) + dictContent.size());
+    {
+        size_t sz = dictContent.size();
+        memcpy(verifyBuf.data(), &sz, sizeof(size_t));
+        memcpy(verifyBuf.data() + sizeof(size_t),
+               dictContent.data(),
+               dictContent.size());
+    }
+
+    ZL_RefParam rp = {
+        .paramId  = 1,
+        .paramRef = verifyBuf.data(),
+    };
+    ZL_LocalParams lp = {
+        .refParams = {
+            .refParams   = &rp,
+            .nbRefParams = 1,
+        },
+    };
+
+    static ZL_Type typetype = ZL_Type_serial;
+    ZL_MIGraphDesc graphDesc{
+        .CTid                = nextCtid_++,
+        .inputTypes          = &typetype,
+        .nbInputs            = 1,
+        .lastInputIsVariable = false,
+        .soTypes             = &typetype,
+        .nbSOs               = 1,
+        .voTypes             = nullptr,
+        .nbVOs               = 0,
+    };
+
+    ZL_MIEncoderDesc encoderDesc{
+        .gd          = graphDesc,
+        .transform_f = encoderCheckingDict,
+        .localParams = lp,
+        .name        = "test_encoder_getMaterializedDict",
+        .dictMat     = dictMat,
+        .dictID      = dictID,
+    };
+
+    auto nodeid = compressor_.registerCustomEncoder(encoderDesc);
+    ASSERT_NE(nodeid.nid, ZL_NODE_ILLEGAL.nid);
+
+    ZL_NodeID noDictNodeid =
+            registerNodeWithMaterialization(encoderNullDict, {}, nullptr);
+
+    // -- Build and load the fat bundle (after node registration) --
+    // Pack the dict wire buffer
+    std::vector<uint8_t> packedDict(
+            ZL_DICT_HEADER_SIZE + dictContent.size(), 0);
+    {
+        ZL_Report r = Dict_pack(
+                packedDict.data(),
+                packedDict.size(),
+                dictID,
+                /*materializingCodec=*/0,
+                trt_custom,
+                dictContent.data(),
+                dictContent.size());
+        ASSERT_FALSE(ZL_isError(r));
+        packedDict.resize(ZL_validResult(r));
+    }
+
+    // Pack into a fat bundle
+    const void* dictPtr = packedDict.data();
+    size_t dictSize     = packedDict.size();
+    size_t fatBufCapacity =
+            ZL_BUNDLE_HEADER_SIZE + sizeof(ZL_UniqueID) + packedDict.size();
+    std::vector<uint8_t> fatBuf(fatBufCapacity, 0);
+    {
+        ZL_Report r = ZL_DictBundle_packFatBundle(
+                fatBuf.data(), fatBuf.size(), &dictPtr, &dictSize, 1);
+        ASSERT_FALSE(ZL_isError(r));
+        fatBuf.resize(ZL_validResult(r));
+    }
+
+    // Load into compressor
+    {
+        ZL_Report r = ZL_Compressor_loadDictBundle(
+                compressor_.get(), fatBuf.data(), fatBuf.size());
+        ASSERT_FALSE(ZL_isError(r));
+    }
+
+    auto graphId1 = compressor_.buildStaticGraph(nodeid, { ZL_GRAPH_STORE });
+    auto graphId  = compressor_.buildStaticGraph(noDictNodeid, { graphId1 });
+    ASSERT_NE(graphId.gid, ZL_GRAPH_ILLEGAL.gid);
+    compressor_.selectStartingGraph(graphId);
+    compressData(); // will assert inside encoder if getMaterializedDict fails
 }
 
 TEST_F(CompressorIntegrationTest,

@@ -23,6 +23,7 @@ ZL_Materializer* ZL_Materializer_create(
         return NULL;
     }
     mat->opaquePtr = matDesc.opaque;
+    mat->opCtx     = NULL;
     return mat;
 }
 
@@ -33,6 +34,15 @@ void ZL_Materializer_free(ZL_Materializer* mat)
     }
     ALLOC_Arena_freeArena(mat->scratchArena);
     ALLOC_Arena_free(mat->persistentArena, mat);
+}
+
+ZL_CONST_FN
+ZL_OperationContext* ZL_Materializer_getOperationContext(ZL_Materializer* mat)
+{
+    if (mat == NULL) {
+        return NULL;
+    }
+    return mat->opCtx;
 }
 
 void* ZL_Materializer_allocate(ZL_Materializer* mat, size_t size)
