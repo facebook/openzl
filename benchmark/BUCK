@@ -1,5 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup")
 load("@fbsource//tools/build_defs:manifold.bzl", "manifold_get")
 load("../defs.bzl", "zs_cxxbinary")
@@ -28,9 +29,14 @@ zs_cxxbinary(
     srcs = [(
         src_file,
         SRC_FILE_FLAGS.get(src_file, []),
-    ) for src_file in glob([
-        "**/*.cpp",
-    ])],
+    ) for src_file in glob(
+        [
+            "**/*.cpp",
+        ],
+        exclude = [
+            "BenchmarkComponents.cpp",
+        ],
+    )],
     headers = glob([
         "**/*.h",
     ]),
@@ -54,6 +60,17 @@ zs_cxxbinary(
         "//folly:demangle",
         "//folly:dynamic",
         "//folly:json",
+    ],
+)
+
+cpp_binary(
+    # @autodeps-skip
+    name = "benchmark_components",
+    srcs = ["BenchmarkComponents.cpp"],
+    deps = [
+        "..:zstronglib",
+        "../tests/registry:openzl_components",
+        "fbsource//third-party/benchmark:benchmark",
     ],
 )
 

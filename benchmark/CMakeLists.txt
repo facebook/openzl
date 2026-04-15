@@ -25,6 +25,8 @@ file(
     "${CMAKE_CURRENT_LIST_DIR}/unitBench/**/*.c")
 list(FILTER openzl_benchmark_sources
      EXCLUDE REGEX "${CMAKE_CURRENT_LIST_DIR}/tools/.*$")
+list(FILTER openzl_benchmark_sources
+     EXCLUDE REGEX "${CMAKE_CURRENT_LIST_DIR}/BenchmarkComponents.cpp$")
 file(
     GLOB_RECURSE openzl_benchmark_headers
     CONFIGURE_DEPENDS
