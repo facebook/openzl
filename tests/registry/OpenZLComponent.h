@@ -211,6 +211,36 @@ class OpenZLComponent {
         return {};
     }
 
+    struct Benchmark {
+        std::string name;
+        GraphID graph;
+        std::vector<std::unique_ptr<OpenZLInput>> inputs;
+    };
+
+    /**
+     * @returns A list of benchmarks to run.
+     *
+     * These benchmarks will be run in two modes:
+     *
+     * - Overall mode: All the benchmarks will be combined into a single summary
+     *                 benchmark for the component.
+     * - Detailed Mode: Each benchmark will be run individually.
+     *
+     * It is recommended to make each benchmark approximately the same "weight"
+     * so that in summary mode they all contribute to the overall result. E.g.
+     * if one scenario processes 100 bytes, and another processes 1MB, the first
+     * scenario won't practically contribute to the summary result.
+     *
+     * These benchmarks should aim to be the minimal set that captures the
+     * interesting behavior of the component.
+     */
+    virtual std::vector<Benchmark> benchmarks(
+            Compressor& compressor,
+            datagen::DataGen& gen) const
+    {
+        return {};
+    }
+
     virtual ~OpenZLComponent() = default;
 
    private:

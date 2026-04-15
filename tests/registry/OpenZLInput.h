@@ -23,6 +23,9 @@ class OpenZLInput {
    public:
     virtual std::vector<Input> inputs() const = 0;
 
+    /// @returns the size of the input in bytes
+    virtual size_t sizeBytes() const = 0;
+
     std::string serialize() const;
     static std::string serialize(poly::span<const Input> inputs);
     static std::unique_ptr<OpenZLInput> deserialize(std::string_view data);
@@ -47,6 +50,11 @@ class SerialOpenZLInput : public OpenZLInput {
         std::vector<Input> result;
         result.push_back(Input::refSerial(str_));
         return result;
+    }
+
+    size_t sizeBytes() const override
+    {
+        return str_.size();
     }
 
     ~SerialOpenZLInput() override = default;
@@ -92,6 +100,11 @@ class NumericOpenZLInput : public OpenZLInput {
         std::vector<Input> result;
         result.push_back(Input::refNumeric(poly::span<const T>(vec_)));
         return result;
+    }
+
+    size_t sizeBytes() const override
+    {
+        return vec_.size() * sizeof(T);
     }
 
     ~NumericOpenZLInput() override = default;
@@ -156,6 +169,11 @@ class StructOpenZLInput : public OpenZLInput {
         return result;
     }
 
+    size_t sizeBytes() const override
+    {
+        return data_.size();
+    }
+
     ~StructOpenZLInput() override = default;
 
    private:
@@ -195,6 +213,11 @@ class StringOpenZLInput : public OpenZLInput {
         return result;
     }
 
+    size_t sizeBytes() const override
+    {
+        return data_.size() + lens_.size() * sizeof(uint32_t);
+    }
+
     ~StringOpenZLInput() override = default;
 
    private:
@@ -228,6 +251,15 @@ class MultiOpenZLInput : public OpenZLInput {
             ins.push_back(std::move(inner[0]));
         }
         return ins;
+    }
+
+    size_t sizeBytes() const override
+    {
+        size_t size = 0;
+        for (const auto& input : inputs_) {
+            size += input->sizeBytes();
+        }
+        return size;
     }
 
     ~MultiOpenZLInput() override = default;
