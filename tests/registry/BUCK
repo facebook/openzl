@@ -33,6 +33,7 @@ zs_cxxlibrary(
     ]),
     headers = ["OpenZLComponents.h"],
     deps = [
+        "../datagen:datagen",
         "fbsource//third-party/zstd:zstd",
     ],
     exported_deps = [

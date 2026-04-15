@@ -9,7 +9,10 @@ namespace openzl::tests::datagen {
 template <typename RetType>
 class ConstantDistribution : public Distribution<RetType> {
    public:
-    explicit ConstantDistribution(RetType value) : value_(value) {}
+    explicit ConstantDistribution(RetType value)
+            : Distribution<RetType>(nullptr), value_(value)
+    {
+    }
 
     RetType operator()(RandWrapper::NameType) override
     {
