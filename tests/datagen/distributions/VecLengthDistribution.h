@@ -16,7 +16,7 @@ class VecLengthDistribution : public Distribution<size_t> {
     explicit VecLengthDistribution(
             std::shared_ptr<RandWrapper> generator,
             size_t min,
-            size_t max = kMaxVecLength)
+            size_t max = ((size_t)1u << 17))
             : Distribution<size_t>(generator), min_(min), max_(max)
     {
         if (min > max) {
@@ -57,8 +57,6 @@ class VecLengthDistribution : public Distribution<size_t> {
     }
 
    private:
-    static constexpr size_t kMaxVecLength = (size_t)1u << 17;
-
     const size_t min_;
     const size_t max_;
 };
