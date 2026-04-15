@@ -42,6 +42,10 @@ typedef struct {
 
 typedef struct {
     ZL_UniqueID id;
+} ZL_MParamID;
+
+typedef struct {
+    ZL_UniqueID id;
 } ZL_BundleID;
 
 // Helper macros for creating IDs in a C++ compatible way
@@ -51,12 +55,14 @@ typedef struct {
 #    define ZL_MAKE_GRAPH_ID(id) (ZL_GraphID{ (id) })
 #    define ZL_DICT_ID_NULL (ZL_DictID{})
 #    define ZL_BUNDLE_ID_NULL (ZL_BundleID{})
+#    define ZL_MPARAM_ID_NULL (ZL_MParamID{})
 #else
 // C99 compound literals
 #    define ZL_MAKE_NODE_ID(id) ((ZL_NodeID){ .nid = (id) })
 #    define ZL_MAKE_GRAPH_ID(id) ((ZL_GraphID){ .gid = (id) })
 #    define ZL_DICT_ID_NULL ((ZL_DictID){ .id = { { 0 } } })
 #    define ZL_BUNDLE_ID_NULL ((ZL_BundleID){ .id = { { 0 } } })
+#    define ZL_MPARAM_ID_NULL ((ZL_MParamID){ .id = { { 0 } } })
 #endif
 
 // Incomplete types
