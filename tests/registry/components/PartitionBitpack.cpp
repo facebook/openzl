@@ -2,8 +2,14 @@
 
 #include "openzl/codecs/zl_partition.h"
 #include "openzl/cpp/codecs/Partition.hpp"
+#include "tests/datagen/distributions/ConstantDistribution.h"
+#include "tests/datagen/distributions/LogUniformDistribution.h"
+#include "tests/datagen/distributions/UniformDistribution.h"
+#include "tests/datagen/structures/VectorProducer.h"
 #include "tests/registry/OpenZLComponents.h"
 #include "tests/registry/OpenZLInput.h"
+
+#include "openzl/shared/bits.h"
 
 namespace openzl::tests::components {
 namespace {
@@ -103,6 +109,30 @@ class PartitionBitpackComponent : public OpenZLComponent {
         return inputs;
     }
 
+    std::unique_ptr<OpenZLInput> generateLogUniformInput(
+            datagen::DataGen& gen,
+            size_t inputSize) const
+    {
+        datagen::VectorProducer<uint16_t> dist(
+                std::make_unique<datagen::LogUniformDistribution<uint16_t>>(
+                        gen.getRandWrapper()),
+                std::make_unique<datagen::ConstantDistribution<size_t>>(
+                        inputSize));
+        return NumericOpenZLInput<uint16_t>::make(dist("vector"));
+    }
+
+    std::unique_ptr<OpenZLInput> generateUniformInput(
+            datagen::DataGen& gen,
+            size_t inputSize) const
+    {
+        datagen::VectorProducer<uint16_t> dist(
+                std::make_unique<datagen::UniformDistribution<uint16_t>>(
+                        gen.getRandWrapper()),
+                std::make_unique<datagen::ConstantDistribution<size_t>>(
+                        inputSize));
+        return NumericOpenZLInput<uint16_t>::make(dist("vector"));
+    }
+
     std::vector<std::unique_ptr<OpenZLInput>> generateInputs(
             datagen::DataGen& gen,
             size_t num,
@@ -113,14 +143,50 @@ class PartitionBitpackComponent : public OpenZLComponent {
         std::vector<std::unique_ptr<OpenZLInput>> inputs;
         inputs.reserve(num);
         for (size_t i = 0; i < num; ++i) {
-            auto maxElts = maxInputSize / sizeof(uint16_t);
-            auto minVal  = gen.u16_range("min_val", 0, UINT16_MAX);
-            auto maxVal  = gen.u16_range("max_val", minVal, UINT16_MAX);
-            inputs.push_back(
-                    U16OpenZLInput::make(gen.randVector<uint16_t>(
-                            "values", minVal, maxVal, maxElts)));
+            auto numElts = gen.usize_range(
+                    "num_elts", 0, maxInputSize / sizeof(uint16_t));
+            if (gen.coin("log_uniform", 0.5)) {
+                inputs.push_back(generateLogUniformInput(gen, numElts));
+            } else {
+                inputs.push_back(generateUniformInput(gen, numElts));
+            }
         }
         return inputs;
+    }
+
+    std::vector<Benchmark> benchmarks(
+            Compressor& compressor,
+            datagen::DataGen& gen) const override
+    {
+        struct BenchmarkParams {
+            size_t inputSize;
+            size_t numInputs;
+        };
+        // Tuned so that each benchmark takes approximately the same amount
+        // of compression time, so each scenario is approximately evenly
+        // weighted.
+        std::array<BenchmarkParams, 3> kParams = {
+            BenchmarkParams{ 1000, 20 },
+            BenchmarkParams{ 10000, 20 },
+            BenchmarkParams{ 100000, 10 },
+        };
+        std::vector<Benchmark> benchmarks;
+        benchmarks.reserve(kParams.size());
+        for (auto param : kParams) {
+            std::vector<std::unique_ptr<OpenZLInput>> inputs;
+            inputs.reserve(param.numInputs);
+            for (size_t i = 0; i < param.numInputs; ++i) {
+                inputs.push_back(generateLogUniformInput(gen, param.inputSize));
+            }
+            benchmarks.push_back(
+                    Benchmark{
+                            .name = "InputSize:"
+                                    + std::to_string(param.inputSize),
+                            .graph  = ZL_GRAPH_PARTITION_BITPACK,
+                            .inputs = std::move(inputs),
+                    });
+        }
+        return benchmarks;
     }
 };
 
