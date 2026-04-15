@@ -134,6 +134,18 @@ ExceptionBuilder&& ExceptionBuilder::addErrorContext<ZL_CompressorDeserializer>(
     }
 }
 
+template <>
+ExceptionBuilder&& ExceptionBuilder::addErrorContext<ZL_Graph>(
+        ZL_Graph const* const ctx) && noexcept
+{
+    if (ctx != nullptr && error_.has_value()) {
+        return std::move(*this).withErrorContext(
+                ZL_Graph_getErrorContextString_fromError(ctx, error_.value()));
+    } else {
+        return std::move(*this);
+    }
+}
+
 Exception ExceptionBuilder::build() && noexcept
 {
     poly::optional<ZL_ErrorCode> code;

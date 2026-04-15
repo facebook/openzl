@@ -18,6 +18,26 @@ ZL_RESULT_DECLARE_TYPE(Foo);
 class TestException : public testing::Test {
    public:
 };
+
+class ExceptionFunctionGraph : public FunctionGraph {
+   public:
+    FunctionGraphDescription functionGraphDescription() const override
+    {
+        return {
+            .name           = "unwrap_function_graph",
+            .inputTypeMasks = { TypeMask::Serial },
+        };
+    }
+
+    void graph(GraphState& state) const override
+    {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(state.get());
+
+        const char* bar = "bar";
+        auto result     = ZL_REPORT_ERROR(GENERIC, "foo%s", bar);
+        state.unwrap(result);
+    }
+};
 } // namespace
 
 TEST_F(TestException, unwrapSuccess)
@@ -93,6 +113,25 @@ TEST_F(TestException, unwrapErrorCCtx)
     }
 }
 
+TEST_F(TestException, unwrapForGraphState)
+{
+    Compressor compressor;
+    compressor.selectStartingGraph(compressor.registerFunctionGraph(
+            std::make_shared<ExceptionFunctionGraph>()));
+    compressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+    try {
+        CCtx cctx;
+        cctx.refCompressor(compressor);
+        cctx.compressSerial("hello world hello hello hello hello");
+        EXPECT_TRUE(false) << "should be unreachable";
+    } catch (const Exception& ex) {
+        const std::string what{ ex.what() };
+        EXPECT_NE(what.find("foobar"), std::string::npos) << what;
+    } catch (...) {
+        EXPECT_TRUE(false) << "shouldn't throw anything else!";
+    }
+}
+
 TEST_F(TestException, unwrapWithAllCtxTypes)
 {
     CCtx const* const cctx                                 = nullptr;
@@ -103,6 +142,7 @@ TEST_F(TestException, unwrapWithAllCtxTypes)
     ZL_Compressor const* const zl_compressor               = nullptr;
     ZL_CompressorSerializer const* const zl_serializer     = nullptr;
     ZL_CompressorDeserializer const* const zl_deserializer = nullptr;
+    ZL_Graph const* const zl_graph                         = nullptr;
 
     const auto result = ZL_RESULT_WRAP_VALUE(Foo, kFoo);
 
@@ -114,5 +154,6 @@ TEST_F(TestException, unwrapWithAllCtxTypes)
     unwrap(result, "", zl_compressor);
     unwrap(result, "", zl_serializer);
     unwrap(result, "", zl_deserializer);
+    unwrap(result, "", zl_graph);
 }
 } // namespace openzl::tests

@@ -481,3 +481,17 @@ ZL_Graph_tryGraph(
 {
     return ZL_Graph_tryMultiInputGraph(gctx, &input, 1, graphID, params);
 }
+
+const char* ZL_Graph_getErrorContextString(
+        const ZL_Graph* graph,
+        ZL_Report report)
+{
+    return ZL_CCtx_getErrorContextString(graph->cctx, report);
+}
+
+const char* ZL_Graph_getErrorContextString_fromError(
+        const ZL_Graph* graph,
+        ZL_Error error)
+{
+    return ZL_CCtx_getErrorContextString_fromError(graph->cctx, error);
+}
