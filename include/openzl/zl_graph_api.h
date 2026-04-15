@@ -174,6 +174,31 @@ unsigned ZL_Graph_getDepth(const ZL_Graph* gctx);
 /* access the content of an Edge */
 const ZL_Input* ZL_Edge_getData(const ZL_Edge* sctx);
 
+/**
+ * Gets the error context for a given ZL_Report. This context is useful for
+ * debugging and for submitting bug reports to Zstrong developers.
+ *
+ * @param report The report to get the error context for
+ *
+ * @returns A verbose error string containing context about the error that
+ * occurred.
+ *
+ * @note: This string is stored within the @p graph and may only be valid for
+ * the lifetime of the @p graph.
+ */
+const char* ZL_Graph_getErrorContextString(
+        const ZL_Graph* graph,
+        ZL_Report report);
+
+/**
+ * See ZL_Graph_getErrorContextString()
+ *
+ * @param error: The error to get the context for
+ */
+const char* ZL_Graph_getErrorContextString_fromError(
+        const ZL_Graph* graph,
+        ZL_Error error);
+
 /* Actions */
 /* ------- */
 

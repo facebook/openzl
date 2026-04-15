@@ -226,4 +226,9 @@ graphFn(ZL_Graph* graph, ZL_Edge* edges[], size_t nbEdges) noexcept
     return compressor.registerFunctionGraph(graphDesc);
 }
 
+poly::string_view GraphState::getErrorContextString(ZL_Error error) const
+{
+    return ZL_Graph_getErrorContextString_fromError(get(), error);
+}
+
 } // namespace openzl

@@ -145,6 +145,10 @@ template <>
 ExceptionBuilder&& ExceptionBuilder::addErrorContext(
         const ZL_CompressorDeserializer* deserializer) && noexcept;
 
+template <>
+ExceptionBuilder&& ExceptionBuilder::addErrorContext(
+        const ZL_Graph* graph) && noexcept;
+
 /**
  * Helper free function to (possibly) convert a result into an exception and
  * throw it.

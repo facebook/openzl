@@ -119,6 +119,25 @@ class GraphState {
             const poly::optional<GraphParameters>& params =
                     poly::nullopt) const;
 
+    poly::string_view getErrorContextString(ZL_Error error) const;
+
+    template <typename ResultType>
+    poly::string_view getErrorContextString(ResultType result) const
+    {
+        return getErrorContextString(ZL_RES_error(result));
+    }
+
+    template <typename ResultType>
+    typename ResultType::ValueType unwrap(
+            ResultType result,
+            poly::string_view msg = {},
+            poly::source_location location =
+                    poly::source_location::current()) const
+    {
+        return openzl::unwrap(
+                result, std::move(msg), this, std::move(location));
+    }
+
    private:
     ZL_Graph* graph_;
     std::vector<Edge> edges_;
