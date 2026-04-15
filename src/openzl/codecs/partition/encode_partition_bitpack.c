@@ -212,91 +212,174 @@ typedef struct {
     uint32_t* scratch;
 } PB_GreedyOpt;
 
+/// @returns The cost of a single partition [b, e) excluding the global
+/// bucketBits term (which is independent of the partition sizes).
+static uint32_t
+PB_singlePartitionCost(const uint32_t* cumHist, uint32_t b, uint32_t e)
+{
+    const uint32_t count   = cumHist[e] - cumHist[b];
+    const uint32_t offBits = (uint32_t)ZL_nextPow2(PB_bucketSize(b, e));
+    return PB_OVERHEAD_BITS + count * offBits;
+}
+
+/// @returns the end of partition @p i.
+static uint32_t PB_partitionEnd(
+        const uint32_t* partitions,
+        size_t numPartitions,
+        uint32_t histSize,
+        size_t i)
+{
+    return (i + 1 == numPartitions) ? histSize : partitions[i + 1];
+}
+
 /// @returns true iff the partition from [begin, end) is legal
 static bool PB_isLegalPartition(uint32_t begin, uint32_t end)
 {
     return begin < end && (end - begin) <= PB_idx2bucket(PB_MAX_BUCKET_SIZE);
 }
 
-/// @returns true iff the partitioning is legal
-static bool PB_isLegal(const PB_GreedyOpt* opt, const uint32_t* p, size_t n)
+/// Grows partition @p idx by doubling its size, and rounding all following
+/// partition sizes up to powers of two in @p out until a partition size is
+/// unchanged.
+/// @returns cascadeEnd: the first index NOT modified.
+static size_t PB_growPartitions(
+        const uint32_t* partitions,
+        size_t idx,
+        uint32_t* out,
+        size_t n)
 {
-    if (n == 0) {
-        return false;
-    }
-    if (p[n - 1] >= opt->histSize) {
-        return false;
-    }
-    for (size_t i = 0; i < n; ++i) {
-        const uint32_t begin = p[i];
-        const uint32_t end   = (i + 1 == n) ? opt->histSize : p[i + 1];
-        if (!PB_isLegalPartition(begin, end)) {
-            return false;
-        }
-    }
-    return true;
-}
-
-/// The cost of a partitioning, or UINT32_MAX if it is illegal
-static uint32_t PB_cost(const PB_GreedyOpt* opt, const uint32_t* p, size_t n)
-{
-    if (!PB_isLegal(opt, p, n)) {
-        return UINT32_MAX;
-    }
-    return PB_fixedBucketCost(
-            opt->cumHist, opt->histSize, p, n, opt->targetPartitions);
-}
-
-/// Grow the partition at @p n to the next power of two and fix up following
-/// partitions to all have power of two sizes.
-static void
-PB_growPartitions(PB_GreedyOpt* opt, size_t idx, uint32_t* out, size_t n)
-{
-    memcpy(out, opt->partitions, n * sizeof(uint32_t));
     if (idx + 1 == n) {
-        return;
+        return idx;
     }
-    uint32_t begin   = out[idx];
-    uint32_t end     = out[idx + 1];
+    uint32_t begin   = partitions[idx];
+    uint32_t end     = partitions[idx + 1];
     uint32_t sz      = end - begin;
     uint32_t newSize = 1u << ((unsigned)ZL_nextPow2(sz) + 1);
     out[idx + 1]     = begin + newSize;
 
     for (size_t j = idx + 1; j + 1 < n; ++j) {
-        begin        = out[j];
-        end          = out[j + 1];
-        sz           = end > begin ? end - begin : 1;
-        uint32_t alt = 1u << (unsigned)ZL_nextPow2(sz);
-        out[j + 1]   = begin + ZL_MAX(newSize, alt);
+        begin           = out[j];
+        end             = partitions[j + 1];
+        sz              = end > begin ? end - begin : 1;
+        uint32_t alt    = 1u << (unsigned)ZL_nextPow2(sz);
+        uint32_t newEnd = begin + ZL_MAX(newSize, alt);
+        if (newEnd == end) {
+            return j + 1;
+        }
+        out[j + 1] = newEnd;
     }
+    return n;
 }
 
-/// Shrink the partition at @p n to the previous power of two and fix up the
-/// following partitions to all have power of two sizes.
-static void
-PB_shrinkPartitions(PB_GreedyOpt* opt, size_t idx, uint32_t* out, size_t n)
+/// Shrinks partition @p idx by halving its size, and rounding all following
+/// partition sizes up to powers of two in @p out until a partition size is
+/// unchanged.
+/// @returns cascadeEnd: the first index NOT modified.
+static size_t PB_shrinkPartitions(
+        const uint32_t* partitions,
+        size_t idx,
+        uint32_t* out,
+        size_t n)
 {
-    memcpy(out, opt->partitions, n * sizeof(uint32_t));
     if (idx + 1 == n) {
-        return;
+        return idx;
     }
-    uint32_t begin = out[idx];
-    uint32_t end   = out[idx + 1];
+    uint32_t begin = partitions[idx];
+    uint32_t end   = partitions[idx + 1];
     uint32_t sz    = end - begin;
     if (sz <= 1) {
-        return;
+        return idx;
     }
     uint32_t newSize = 1u << ((unsigned)ZL_nextPow2(sz) - 1);
     out[idx + 1]     = begin + newSize;
 
     for (size_t j = idx + 1; j + 1 < n; ++j) {
         begin = out[j];
-        end   = out[j + 1];
+        end   = partitions[j + 1];
         sz    = end - begin;
         if (!ZL_isPow2(sz)) {
-            out[j + 1] = begin + (1u << ((unsigned)ZL_nextPow2(sz) - 1));
+            uint32_t newEnd = begin + (1u << ((unsigned)ZL_nextPow2(sz) - 1));
+            if (newEnd == end) {
+                return j + 1;
+            }
+            out[j + 1] = newEnd;
+        } else {
+            return j + 1;
         }
     }
+    return n;
+}
+
+/// Compute cost of modified partitions [from, to), where out contains the
+/// modified boundaries and partitions has the original values (used for the
+/// end of partition to-1 if to < n, and partition from's begin is unchanged).
+static uint32_t PB_modifiedRangeCost(
+        const uint32_t* cumHist,
+        const uint32_t* partitions,
+        const uint32_t* out,
+        size_t n,
+        uint32_t histSize,
+        size_t from,
+        size_t to)
+{
+    uint32_t cost = 0;
+    for (size_t i = from; i < to; ++i) {
+        const uint32_t b = (i == from) ? partitions[i] : out[i];
+        uint32_t e;
+        if (i + 1 == n) {
+            e = histSize;
+        } else if (i + 1 < to) {
+            e = out[i + 1];
+        } else {
+            e = partitions[i + 1];
+        }
+        if (e > histSize || !PB_isLegalPartition(b, e)) {
+            return UINT32_MAX;
+        }
+        cost += PB_singlePartitionCost(cumHist, b, e);
+    }
+    return cost;
+}
+
+/// Try applying a cascaded mutation from scratch and accept if it reduces cost.
+/// Returns true if the mutation was accepted.
+static bool PB_tryMutation(
+        PB_GreedyOpt* opt,
+        uint32_t* partCost,
+        uint32_t* currentCost,
+        size_t n,
+        size_t idx,
+        size_t cascadeEnd)
+{
+    uint32_t newRangeCost = PB_modifiedRangeCost(
+            opt->cumHist,
+            opt->partitions,
+            opt->scratch,
+            n,
+            opt->histSize,
+            idx,
+            cascadeEnd);
+    if (newRangeCost == UINT32_MAX) {
+        return false;
+    }
+    uint32_t oldRangeCost = 0;
+    for (size_t j = idx; j < cascadeEnd; ++j) {
+        oldRangeCost += partCost[j];
+    }
+    if (newRangeCost >= oldRangeCost) {
+        return false;
+    }
+    for (size_t j = idx + 1; j < cascadeEnd && j < n; ++j) {
+        opt->partitions[j] = opt->scratch[j];
+    }
+    *currentCost = *currentCost - oldRangeCost + newRangeCost;
+    for (size_t j = idx; j < cascadeEnd; ++j) {
+        const uint32_t b = opt->partitions[j];
+        const uint32_t e =
+                PB_partitionEnd(opt->partitions, n, opt->histSize, j);
+        partCost[j] = PB_singlePartitionCost(opt->cumHist, b, e);
+    }
+    return true;
 }
 
 /**
@@ -310,25 +393,37 @@ PB_shrinkPartitions(PB_GreedyOpt* opt, size_t idx, uint32_t* out, size_t n)
 static void PB_iterativeImprovement(PB_GreedyOpt* opt)
 {
     const size_t n = opt->numPartitions;
+    if (n < 2) {
+        return;
+    }
+
+    uint32_t partCost[PB_MAX_PARTITIONS];
+    uint32_t sumCost = 0;
+    for (size_t i = 0; i < n; ++i) {
+        const uint32_t b = opt->partitions[i];
+        const uint32_t e =
+                PB_partitionEnd(opt->partitions, n, opt->histSize, i);
+        partCost[i] = PB_singlePartitionCost(opt->cumHist, b, e);
+        sumCost += partCost[i];
+    }
+
+    const uint32_t totalCount = opt->cumHist[opt->histSize];
+    const uint32_t bucketBits = (uint32_t)ZL_nextPow2(opt->targetPartitions);
+    const uint32_t baseCost   = totalCount * bucketBits;
+    uint32_t currentCost      = baseCost + sumCost;
+
     for (;;) {
-        const uint32_t startCost = PB_cost(opt, opt->partitions, n);
-        uint32_t currentCost     = startCost;
-        for (size_t idx = 0; idx + 1 < n;) {
-            PB_growPartitions(opt, idx, opt->scratch, n);
-            uint32_t newCost = PB_cost(opt, opt->scratch, n);
-            if (newCost < currentCost) {
-                memcpy(opt->partitions, opt->scratch, n * sizeof(uint32_t));
-                currentCost = newCost;
-                break;
+        const uint32_t startCost = currentCost;
+        for (size_t idx = 0; idx + 1 < n; ++idx) {
+            size_t cascadeEnd =
+                    PB_growPartitions(opt->partitions, idx, opt->scratch, n);
+            if (PB_tryMutation(
+                        opt, partCost, &currentCost, n, idx, cascadeEnd)) {
+                continue;
             }
-            PB_shrinkPartitions(opt, idx, opt->scratch, n);
-            newCost = PB_cost(opt, opt->scratch, n);
-            if (newCost < currentCost) {
-                memcpy(opt->partitions, opt->scratch, n * sizeof(uint32_t));
-                currentCost = newCost;
-                break;
-            }
-            ++idx;
+            cascadeEnd =
+                    PB_shrinkPartitions(opt->partitions, idx, opt->scratch, n);
+            PB_tryMutation(opt, partCost, &currentCost, n, idx, cascadeEnd);
         }
         if (currentCost == startCost) {
             break;
@@ -343,9 +438,9 @@ static void PB_iterativeImprovement(PB_GreedyOpt* opt)
 static void
 PB_dividePartitionAt(const PB_GreedyOpt* opt, uint32_t* out, size_t i)
 {
-    const uint32_t begin   = opt->partitions[i];
-    const uint32_t end     = (i + 1 == opt->numPartitions) ? opt->histSize
-                                                           : opt->partitions[i + 1];
+    const uint32_t begin = opt->partitions[i];
+    const uint32_t end   = PB_partitionEnd(
+            opt->partitions, opt->numPartitions, opt->histSize, i);
     const uint32_t sz      = end - begin;
     const uint32_t newSize = 1u << ((unsigned)ZL_nextPow2(sz) - 1);
 
@@ -359,45 +454,88 @@ PB_dividePartitionAt(const PB_GreedyOpt* opt, uint32_t* out, size_t i)
     out[i + 1] = begin + newSize;
 }
 
-/**
- * Divide a single partition into two using PB_dividePartitionAt(). The selected
- * partition is either:
- * - The first illegal partition (if any)
- * - The partition with the highest gain from dividing it
- */
-static bool PB_dividePartition(PB_GreedyOpt* opt)
+/// @returns the gain from splitting partition [begin, end) into two where the
+/// first partition is the largest power of two smaller than the current size.
+static int32_t
+PB_splitGain(const uint32_t* cumHist, uint32_t begin, uint32_t end)
 {
-    const size_t n     = opt->numPartitions;
-    const size_t start = opt->prefixSize > 0 ? opt->prefixSize - 1 : 0;
-    uint32_t bestCost  = UINT32_MAX;
-    size_t bestIdx     = (size_t)-1;
+    assert(end - begin > 1);
+    assert(PB_isLegalPartition(begin, end));
+    const uint32_t oldCost   = PB_singlePartitionCost(cumHist, begin, end);
+    const uint32_t sz        = end - begin;
+    const uint32_t newSize   = 1u << ((unsigned)ZL_nextPow2(sz) - 1);
+    const uint32_t mid       = begin + newSize;
+    const uint32_t leftCost  = PB_singlePartitionCost(cumHist, begin, mid);
+    const uint32_t rightCost = PB_singlePartitionCost(cumHist, mid, end);
+    return (int32_t)oldCost - (int32_t)(leftCost + rightCost);
+}
 
-    for (size_t i = start; i < n; ++i) {
-        const uint32_t begin = opt->partitions[i];
-        const uint32_t end =
-                (i + 1 == n) ? opt->histSize : opt->partitions[i + 1];
-        if (end - begin == 1) {
-            continue;
+/**
+ * Greedily divide the partition that is either illegal or provides the biggest
+ * gain from division until we hit @p targetPartitions.
+ * Run in O(targetPartitions^2) time.
+ */
+static void PB_dividePartitions(PB_GreedyOpt* opt, size_t targetPartitions)
+{
+    // Cache split gains to avoid O(N^2) rescanning.
+    // gains[i] = gain from splitting partition i; INT32_MIN = unsplittable.
+    int32_t gains[PB_MAX_PARTITIONS];
+    {
+        const size_t n     = opt->numPartitions;
+        const size_t start = opt->prefixSize > 0 ? opt->prefixSize - 1 : 0;
+        for (size_t i = 0; i < start; ++i) {
+            gains[i] = INT32_MIN;
         }
-        if (!PB_isLegalPartition(begin, end)) {
-            // Prioritize fixing illegal partitions
-            PB_dividePartitionAt(opt, opt->partitions, i);
-            ++opt->numPartitions;
-            return true;
-        }
-        PB_dividePartitionAt(opt, opt->scratch, i);
-        const uint32_t cost = PB_cost(opt, opt->scratch, n + 1);
-        if (cost < bestCost) {
-            bestCost = cost;
-            bestIdx  = i;
+        for (size_t i = start; i < n; ++i) {
+            const uint32_t b = opt->partitions[i];
+            const uint32_t e =
+                    PB_partitionEnd(opt->partitions, n, opt->histSize, i);
+            gains[i] = (e - b <= 1) ? INT32_MIN
+                    : !PB_isLegalPartition(b, e)
+                    ? INT32_MAX
+                    : PB_splitGain(opt->cumHist, b, e);
         }
     }
-    if (bestIdx == (size_t)-1) {
-        return false;
+
+    while (opt->numPartitions < targetPartitions) {
+        const size_t n   = opt->numPartitions;
+        int32_t bestGain = INT32_MIN;
+        size_t bestIdx   = (size_t)-1;
+        for (size_t i = 0; i < n; ++i) {
+            if (gains[i] == INT32_MAX) {
+                // Illegal partition - must split immediately
+                bestIdx = i;
+                break;
+            }
+            if (gains[i] > bestGain) {
+                bestGain = gains[i];
+                bestIdx  = i;
+            }
+        }
+        if (bestIdx == (size_t)-1) {
+            break;
+        }
+
+        PB_dividePartitionAt(opt, opt->partitions, bestIdx);
+        ++opt->numPartitions;
+
+        // Shift gains right for indices after bestIdx
+        for (size_t j = opt->numPartitions - 1; j > bestIdx + 1; --j) {
+            gains[j] = gains[j - 1];
+        }
+
+        // Recompute gains for the two new partitions at bestIdx and bestIdx+1
+        for (size_t j = bestIdx; j <= bestIdx + 1 && j < opt->numPartitions;
+             ++j) {
+            const uint32_t b = opt->partitions[j];
+            const uint32_t e = PB_partitionEnd(
+                    opt->partitions, opt->numPartitions, opt->histSize, j);
+            gains[j] = (e - b <= 1) ? INT32_MIN
+                    : !PB_isLegalPartition(b, e)
+                    ? INT32_MAX
+                    : PB_splitGain(opt->cumHist, b, e);
+        }
     }
-    PB_dividePartitionAt(opt, opt->partitions, bestIdx);
-    ++opt->numPartitions;
-    return true;
 }
 
 /// Run the greedy optimizer.
@@ -436,17 +574,17 @@ static size_t PB_greedyOptimize(
         opt.prefixSize    = prefixSize;
     }
 
-    // Greedily sub-divide the partition that gets the most gain until we have
-    // enough partitions.
-    while (opt.numPartitions < targetPartitions) {
-        if (!PB_dividePartition(&opt)) {
-            break;
-        }
-    }
+    // Greedily divide the current partitions until we have targetPartitions or
+    // can't divide further.
+    PB_dividePartitions(&opt, targetPartitions);
 
-    // Iteratively improve the partition boundries one at a time until we reach
-    // a local minima.
-    PB_iterativeImprovement(&opt);
+    // If there are at least 10K elements in the histogram, run the iterative
+    // improvement pass. Otherwise, it is too expensive.
+    if (cumHist.cumHist[cumHist.histSize] >= 10000) {
+        // Iteratively improve the partition boundries one at a time until we
+        // reach a local minima.
+        PB_iterativeImprovement(&opt);
+    }
 
     return opt.numPartitions;
 }
