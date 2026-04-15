@@ -176,6 +176,7 @@ static ZL_RESULT_OF(ZL_DictConstPtr) CDictMgr_cacheDict(
         .persistentArena = mgr->arena,
         .scratchArena    = mgr->scratchArena,
         .opaquePtr       = matDesc->opaque.ptr,
+        .opCtx           = mgr->opCtx,
     };
 
     ZL_RESULT_OF(ZL_VoidPtr)
