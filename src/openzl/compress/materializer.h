@@ -18,6 +18,7 @@ struct ZL_Materializer_s {
     Arena* persistentArena;
     Arena* scratchArena;
     const void* opaquePtr;
+    ZL_OperationContext* opCtx;
 } /* typedef'ed to ZL_Materializer in zl_opaque_types.h */;
 
 ZL_Materializer* ZL_Materializer_create(

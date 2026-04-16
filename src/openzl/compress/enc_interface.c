@@ -7,11 +7,13 @@
 #include "openzl/common/introspection.h" // WAYPOINT, ZL_CompressIntrospectionHooks
 #include "openzl/common/limits.h"
 #include "openzl/common/operation_context.h"
-#include "openzl/compress/cctx.h" // CCTX_*
+#include "openzl/compress/cctx.h"   // CCTX_*
+#include "openzl/compress/cgraph.h" // CGRAPH_getDictObj
 #include "openzl/compress/cnode.h"
 #include "openzl/compress/localparams.h"
-#include "openzl/compress/trStates.h" // TRS_getState
-#include "openzl/zl_common_types.h"   // ZL_TernaryParam_disable
+#include "openzl/compress/trStates.h"   // TRS_getState
+#include "openzl/dict/dict_constants.h" // ZL_DICT_INDEX_NONE
+#include "openzl/zl_common_types.h"     // ZL_TernaryParam_disable
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_data.h"
 
@@ -86,6 +88,17 @@ const ZL_LocalParams* ZL_Encoder_getLocalParams(const ZL_Encoder* eic)
 {
     ZL_ASSERT_NN(eic);
     return eic->lparams;
+}
+
+const void* ZL_Encoder_getMaterializedDict(const ZL_Encoder* eictx)
+{
+    ZL_ASSERT_NN(eictx);
+    if (eictx->cnode == NULL)
+        return NULL;
+    size_t offset = CNODE_getDictIndex(eictx->cnode);
+    if (offset == ZL_DICT_INDEX_NONE)
+        return NULL;
+    return CGRAPH_getDictObj(CCTX_getCGraph(eictx->cctx), offset);
 }
 
 const void* ENC_getPrivateParam(const ZL_Encoder* eictx)
