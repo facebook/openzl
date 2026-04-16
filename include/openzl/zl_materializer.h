@@ -188,6 +188,13 @@ typedef struct {
             ZL_NOEXCEPT_FUNC_PTR;
 } ZL_MaterializerDesc2;
 
+// MParam structure
+typedef struct {
+    ZL_MParamID mparamID;
+    const void* content;
+    size_t size;
+} ZL_MParam;
+
 #if defined(__cplusplus)
 } // extern "C"
 #endif

@@ -65,6 +65,20 @@ bool CDictMgr_DictMap_eq(
 }
 
 /* ================================================================
+ * MParam map hash and equality
+ * ================================================================ */
+
+size_t CDictMgr_MParamMap_hash(const ZL_MParamID* key)
+{
+    return ZL_UniqueID_hash(&key->id);
+}
+
+bool CDictMgr_MParamMap_eq(const ZL_MParamID* lhs, const ZL_MParamID* rhs)
+{
+    return ZL_UniqueID_eq(&lhs->id, &rhs->id);
+}
+
+/* ================================================================
  * Lifecycle
  * ================================================================ */
 
@@ -89,6 +103,8 @@ ZL_Report CDictMgr_init(
     }
     mgr->dictsByID =
             CDictMgr_DictMap_createInArena(mgr->arena, ZL_MAX_DICTS_PER_BUNDLE);
+    mgr->mparamBlobs = CDictMgr_MParamMap_createInArena(
+            mgr->arena, ZL_MAX_DICTS_PER_BUNDLE);
     return ZL_returnSuccess();
 }
 
@@ -97,6 +113,7 @@ void CDictMgr_destroy(CDictMgr* mgr)
     if (mgr == NULL)
         return;
     CDictMgr_DictMap_destroy(&mgr->dictsByID);
+    CDictMgr_MParamMap_destroy(&mgr->mparamBlobs);
     if (mgr->scratchArena != NULL) {
         ALLOC_Arena_freeArena(mgr->scratchArena);
     }
@@ -167,10 +184,8 @@ static ZL_RESULT_OF(ZL_DictConstPtr) CDictMgr_cacheDict(
     dict->codecType          = parsed->codecType;
     dict->packedSize         = parsed->packedSize;
 
-    // Materialization required if not found in cache
-
     // We free all memory in the scratch allocator, so don't
-    // pass an arena that's already in use.
+    // pass an arena that's not cleared.
     ZL_ASSERT_EQ(ALLOC_Arena_memUsed(mgr->scratchArena), 0);
     ZL_Materializer matCtx = {
         .persistentArena = mgr->arena,
@@ -343,4 +358,46 @@ ZL_Report CDictMgr_setBundleID(CDictMgr* mgr, const ZL_BundleID* id)
 const ZL_BundleID* CDictMgr_getBundleID(const CDictMgr* mgr)
 {
     return ZL_UniqueID_isValid(&mgr->bundleID.id) ? &mgr->bundleID : NULL;
+}
+
+/**
+ * Store a raw MParam blob for later CBOR serialization. The blob data is
+ * copied into the CDictMgr's arena.
+ *
+ * @param id   The MParam ID to associate with this blob.
+ * @param data Raw serialized MParam blob (dict wire format).
+ * @param size Size of the blob in bytes.
+ */
+static ZL_Report CDictMgr_storeMParamBlob(
+        CDictMgr* mgr,
+        ZL_MParamID id,
+        const void* data,
+        size_t size)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(mgr->opCtx);
+    ZL_ERR_IF_NULL(data, GENERIC, "MParam blob data must not be null");
+    ZL_ERR_IF_EQ(size, 0, GENERIC, "MParam blob size must be > 0");
+
+    void* copy = ALLOC_Arena_malloc(mgr->arena, size);
+    ZL_ERR_IF_NULL(copy, allocation);
+    memcpy(copy, data, size);
+
+    ZL_MParam val = {
+        .mparamID = id,
+        .content  = copy,
+        .size     = size,
+    };
+    CDictMgr_MParamMap_Entry mapEntry = { .key = id, .val = val };
+    CDictMgr_MParamMap_Insert ins =
+            CDictMgr_MParamMap_insert(&mgr->mparamBlobs, &mapEntry);
+    ZL_ERR_IF(ins.badAlloc, allocation, "Failed to insert MParam blob");
+
+    return ZL_returnSuccess();
+}
+
+const ZL_MParam* CDictMgr_getMParam(const CDictMgr* mgr, ZL_MParamID id)
+{
+    const CDictMgr_MParamMap_Entry* entry =
+            CDictMgr_MParamMap_find(&mgr->mparamBlobs, &id);
+    return (entry != NULL) ? &entry->val : NULL;
 }

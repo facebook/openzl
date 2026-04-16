@@ -47,10 +47,18 @@ ZL_DECLARE_CUSTOM_MAP_TYPE(
         CDictMgr_DictKey,
         CDictMgr_DictPtr);
 
+size_t CDictMgr_MParamMap_hash(const ZL_MParamID* key);
+bool CDictMgr_MParamMap_eq(const ZL_MParamID* lhs, const ZL_MParamID* rhs);
+
+ZL_DECLARE_CUSTOM_MAP_TYPE(CDictMgr_MParamMap, ZL_MParamID, ZL_MParam);
+
 typedef struct {
     ZL_BundleID bundleID;
     CDictMgr_DictMap dictsByID;
     ZL_DictBundle* bundle;
+
+    // MParam raw blob storage (for CBOR serialization)
+    CDictMgr_MParamMap mparamBlobs;
 
     // internal state
     Arena* arena;
@@ -128,6 +136,16 @@ ZL_Report CDictMgr_setBundleID(CDictMgr* mgr, const ZL_BundleID* id);
  * no fat bundle has been loaded.
  */
 const ZL_BundleID* CDictMgr_getBundleID(const CDictMgr* mgr);
+
+/* ================================================================
+ * MParam raw blob storage
+ * ================================================================ */
+
+/**
+ * Returns an *unstable* pointer to the stored MParam, or NULL if no MParam with
+ * the given ID has been stored.
+ */
+const ZL_MParam* CDictMgr_getMParam(const CDictMgr* mgr, ZL_MParamID id);
 
 ZL_END_C_DECLS
 
