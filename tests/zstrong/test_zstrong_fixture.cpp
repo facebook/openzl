@@ -292,6 +292,7 @@ std::pair<ZL_Report, std::optional<std::string>> ZStrongTest::compressMI(
                 * compressBoundFactor_;
         constInputs.push_back(input.get());
     }
+    totalInputSize += inputs.size() * 256;
     size_t compressBound = ZL_COMPRESSBOUND_UNGUARDED(totalInputSize);
     std::string compressed(compressBound, 0);
     if (cctx_ != nullptr) {
