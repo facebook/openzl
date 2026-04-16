@@ -67,15 +67,16 @@ size_t CCtx::compress(poly::span<char> output, poly::span<const Input> inputs)
 
 std::string CCtx::compress(poly::span<const Input> inputs)
 {
-    size_t inputSize = 0;
+    size_t bound = 0;
     for (auto const& input : inputs) {
-        inputSize += input.contentSize();
+        size_t inputSize = input.contentSize();
         if (input.type() == Type::String) {
             inputSize += input.numElts() * sizeof(uint32_t);
         }
+        bound += compressBound(inputSize);
     }
     std::string output;
-    output.resize(compressBound(inputSize), '\0');
+    output.resize(bound, '\0');
     output.resize(compress(output, inputs));
     return output;
 }
