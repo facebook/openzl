@@ -10,10 +10,8 @@ Record CatalogHeader() = {
   STAR1: Int32LE,   # First star number in file
   STARN: Int32LE,   # Number of stars; <0 → coordinates J2000
   STNUM: Int32LE,   # ID scheme / name flag
-                    #   0..4 → standard codes
-                    #   <0   → object name of -STNUM chars at end of entry
   MPROP: Int32LE,   # Motion info: 0=none, 1=proper, 2=radial
-  NMAG:  Int32LE,   # Number of magnitudes (0–10); <0 → J2000 flag
+  NMAG:  Int32LE,   # Number of magnitudes (0–10)
   NBENT: Int32LE    # Bytes per star entry
 }
 
@@ -21,36 +19,37 @@ Record CatalogHeader() = {
 # Star entry definition
 # ------------------------------------------
 Record StarEntry(STNUM, MPROP, NMAG) = {
-  when STNUM >= 0 then XNO: Float32LE,     # Catalog number
+  when STNUM > 0 { XNO: Float32LE },               # Catalog number
 
-  SRA0:  Float64LE,                        # Right Ascension (radians)
-  SDEC0: Float64LE,                        # Declination (radians)
-  ISP:   Bytes(2) @ascii,                  # Spectral type
+  SRA0:  Float64LE,                                # Right Ascension (radians)
+  SDEC0: Float64LE,                                # Declination (radians)
+  ISP:   Bytes(2),                                 # Spectral type
 
-  when abs(NMAG) > 0 then MAG: Int16LE[abs(NMAG)],  # Magnitudes (0–10)
+  when abs(NMAG) > 0 { MAG: Int16LE[abs(NMAG)] },  # Magnitudes (0–10)
 
   when MPROP >= 1 {
-    XRPM: Float32LE,                       # R.A. proper motion
-    XDPM: Float32LE                        # Dec. proper motion
-  }
-  when MPROP == 2 then SVEL: Float64LE,    # Radial velocity
+    XRPM: Float32LE,                               # R.A. proper motion
+    XDPM: Float32LE                                # Dec. proper motion
+  },
 
-  when STNUM < 0 then NAME: Bytes(-STNUM) @ascii    # Object name
+  when MPROP == 2 { SVEL: Float64LE },             # Radial velocity
+
+  when STNUM < 0 { NAME: Bytes(-STNUM) }           # Object name
 }
+
 
 # ------------------------------------------
 # File structure
 # ------------------------------------------
 header: CatalogHeader
 
-var STNUM = header.STNUM
-var MPROP = header.MPROP
-var NMAG  = header.NMAG
-var NBENT = header.NBENT
-var STARN = header.STARN
-var record_count = abs(STARN)
+# Parse the header to get the number of stars and entry parameters
+STNUM = header.STNUM
+MPROP = header.MPROP
+NMAG  = header.NMAG
+NBENT = header.NBENT
+record_count = abs(header.STARN)
 
-# Hoistable validation: parameterized sizeof is known at layout time
 expect sizeof(StarEntry(STNUM, MPROP, NMAG)) == NBENT
 
 stars: StarEntry(STNUM, MPROP, NMAG)[record_count]
