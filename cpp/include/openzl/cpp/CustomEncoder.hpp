@@ -86,7 +86,7 @@ class CustomEncoder {
 
     static NodeID registerCustomEncoder(
             Compressor& compressor,
-            std::shared_ptr<CustomEncoder> encoder);
+            std::shared_ptr<const CustomEncoder> encoder);
 };
 
 } // namespace openzl

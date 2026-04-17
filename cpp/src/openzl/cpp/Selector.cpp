@@ -10,12 +10,13 @@ namespace openzl {
 
 /* static */ GraphID Selector::registerSelector(
         Compressor& compressor,
-        std::shared_ptr<Selector> selector)
+        std::shared_ptr<const Selector> selector)
 {
     return FunctionGraph::registerFunctionGraph(
             compressor,
-            std::shared_ptr<FunctionGraph>(
-                    selector, static_cast<FunctionGraph*>(selector.get())));
+            std::shared_ptr<const FunctionGraph>(
+                    selector,
+                    static_cast<const FunctionGraph*>(selector.get())));
 }
 
 void Selector::graph(GraphState& state) const

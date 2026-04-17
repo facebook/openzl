@@ -95,7 +95,7 @@ static ZL_Report encodeFn(
 
 /* static */ NodeID CustomEncoder::registerCustomEncoder(
         Compressor& compressor,
-        std::shared_ptr<CustomEncoder> encoder)
+        std::shared_ptr<const CustomEncoder> encoder)
 {
     const auto& desc               = encoder->multiInputDescription();
     auto inputTypes                = typesToCTypes(desc.inputTypes);

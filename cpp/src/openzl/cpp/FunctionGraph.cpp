@@ -204,7 +204,7 @@ graphFn(ZL_Graph* graph, ZL_Edge* edges[], size_t nbEdges) noexcept
 
 /* static */ GraphID FunctionGraph::registerFunctionGraph(
         Compressor& compressor,
-        std::shared_ptr<FunctionGraph> functionGraph)
+        std::shared_ptr<const FunctionGraph> functionGraph)
 {
     const auto& desc               = functionGraph->functionGraphDescription();
     auto inputTypeMasks            = typesMasksToCTypes(desc.inputTypeMasks);
