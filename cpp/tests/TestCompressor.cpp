@@ -106,6 +106,7 @@ TEST_F(TestCompressor, buildStaticGraph)
     auto graph = compressor_.buildStaticGraph(
             ZL_NODE_DELTA_INT, { ZL_GRAPH_CONSTANT });
     compressor_.selectStartingGraph(graph);
+    ASSERT_EQ(compressor_.getStartingGraph(), graph);
 
     auto compressed = testRoundTrip(
             compressor_, Input::refNumeric(poly::span<const int>(data)));
