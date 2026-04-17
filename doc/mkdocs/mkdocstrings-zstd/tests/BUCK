@@ -37,8 +37,12 @@ python_pytest(
         "test_doxygen.py",
         "test_handler.py",
     ],
+    env = {
+        "DOXYGEN_PATH": "$(location fbsource//third-party/doxygen:doxygen)",
+    },
     deps = [
         "../src:mkdocstrings-zstd",
+        "fbsource//third-party/doxygen:doxygen",  # @manual
         "fbsource//third-party/pypi/markdown:markdown",
         "fbsource//third-party/pypi/mkdocs:mkdocs",
         "fbsource//third-party/pypi/mkdocs-material:mkdocs-material",  # @manual
