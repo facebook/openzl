@@ -5,7 +5,6 @@
 #include "openzl/common/limits.h"
 #include "openzl/common/set.h"
 #include "openzl/decompress/dctx2.h"
-#include "openzl/decompress/dictx.h"
 #include "openzl/zl_input.h"
 #include "openzl/zl_output.h"
 
