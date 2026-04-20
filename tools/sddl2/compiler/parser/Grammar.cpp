@@ -561,13 +561,14 @@ class WhenRule : public GrammarRule {
     }
 };
 
-class AbsRule : public GrammarRule {
+class BuiltinFuncRule : public GrammarRule {
    public:
-    explicit AbsRule()
+    explicit BuiltinFuncRule(Symbol sym, Op result_op)
             : GrammarRule(
-                      Symbol::ABS,
+                      sym,
                       Precedence::ACCESS,
-                      std::vector<ArgType>({ ArgType::LIST_PAREN }))
+                      std::vector<ArgType>({ ArgType::LIST_PAREN })),
+              result_op_(result_op)
     {
     }
 
@@ -577,18 +578,25 @@ class AbsRule : public GrammarRule {
         auto& paren_list = args.at(0);
         const auto* list = some(paren_list).as_list();
         if (list == nullptr) {
-            throw ParseError(some(op).loc(), "abs() requires a paren list.");
+            throw ParseError(
+                    some(op).loc(),
+                    std::string{ sym_to_repr_str(this->sym()) }
+                            + "() requires a paren list.");
         }
 
         const auto& inner_args = list->nodes();
         if (inner_args.size() != 1) {
             throw ParseError(
-                    some(op).loc(), "abs() requires exactly 1 argument.");
+                    some(op).loc(),
+                    std::string{ sym_to_repr_str(this->sym()) }
+                            + "() requires exactly 1 argument.");
         }
 
         return std::make_shared<ASTOp>(
-                op->loc(), Op::ABS, ArgsVec{ inner_args.at(0) });
+                op->loc(), result_op_, ArgsVec{ inner_args.at(0) });
     }
+
+    const Op result_op_;
 };
 
 template <typename RuleT, typename... Args>
@@ -614,9 +622,9 @@ const std::vector<std::unique_ptr<const GrammarRule>> grammar_rules{ []() {
 
     // Ops
     add_rule<UnaryOpRule>(r, Symbol::EXPECT, Precedence::ASSIGNMENT);
-    add_rule<UnaryOpRule>(r, Symbol::SIZEOF);
+    add_rule<BuiltinFuncRule>(r, Symbol::SIZEOF, Op::SIZEOF);
     add_rule<WhenRule>(r);
-    add_rule<AbsRule>(r);
+    add_rule<BuiltinFuncRule>(r, Symbol::ABS, Op::ABS);
 
     add_rule<BinaryOpRule>(r, Symbol::ASSIGN, Precedence::ASSIGNMENT);
     add_rule<BinaryOpRule>(r, Symbol::ASSUME, Precedence::ASSIGNMENT);
