@@ -162,6 +162,6 @@ class FunctionGraph {
 
     static GraphID registerFunctionGraph(
             Compressor& compressor,
-            std::shared_ptr<FunctionGraph> functionGraph);
+            std::shared_ptr<const FunctionGraph> functionGraph);
 };
 } // namespace openzl

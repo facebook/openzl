@@ -65,7 +65,7 @@ class CustomDecoder {
 
     static void registerCustomDecoder(
             DCtx& dctx,
-            std::shared_ptr<CustomDecoder> decoder);
+            std::shared_ptr<const CustomDecoder> decoder);
 };
 
 } // namespace openzl

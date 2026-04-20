@@ -81,7 +81,7 @@ static ZL_Report decodeFn(
 
 /* static */ void CustomDecoder::registerCustomDecoder(
         DCtx& dctx,
-        std::shared_ptr<CustomDecoder> decoder)
+        std::shared_ptr<const CustomDecoder> decoder)
 {
     const auto& desc               = decoder->multiInputDescription();
     auto inputTypes                = typesToCTypes(desc.inputTypes);

@@ -92,7 +92,7 @@ class Selector : private FunctionGraph {
 
     static GraphID registerSelector(
             Compressor& compressor,
-            std::shared_ptr<Selector> selector);
+            std::shared_ptr<const Selector> selector);
 
    private:
     void graph(GraphState& state) const override;
