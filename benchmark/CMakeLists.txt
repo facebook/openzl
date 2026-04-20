@@ -1,7 +1,8 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-# The binary comes with an SAO corpus internally that isn't provided here
-set(BENCHMARK_ENABLE_GTEST_TESTS OFF)
+# Keep upstream benchmark self-tests out of our CTest runs.
+set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
+set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
     googlebenchmark # v1.6.1
     URL https://github.com/google/benchmark/archive/refs/tags/v1.6.1.zip
