@@ -5,22 +5,21 @@ name: Wheels
 on:
   workflow_dispatch:
 
+  # Only run on PRs that either touch the Python bindings or the CMake build system.
+  # This is an expensive workflow that almost always passes when Python isn't modified,
+  # so only run it when it's needed. The tests will still be run on commit for everything.
   pull_request:
-    paths: &wheel_paths
+    paths:
       - 'py/**'
-      - 'cpp/**'
-      - 'src/**'
-      - 'include/**'
-      - 'tools/sddl/**'
-      - 'tools/sddl2/**'
       - 'CMakeLists.txt'
       - 'build-scripts/**'
       - '.github/workflows/wheels.yml'
 
+  # Always run on commit to dev branch to ensure the test is consistently run.
+  # There are far fewer commits than PR versions, so this is relatively cheap.
   push:
     branches:
       - dev
-    paths: *wheel_paths
 
   release:
     types:
