@@ -175,7 +175,7 @@ Op        | Syntax        | Types         | Effect
 --------- | ------------- | ------------- | ------
 `expect`  | `expect <A>`  | I -> N        | Fails the run if `A` evaluates to 0.
 `consume` | `[L] : <R>`   | V?, FL -> IS? | Consumes the field provided as `R`, stores the result into an optional variable `L`. The expression as a whole also evaluates to that result value.
-`sizeof`  | `sizeof <A>`  | F -> I        | Evaluates to the size in bytes of the given field `A`. Fails the run if invoked on anything other than a static field.
+`sizeof`  | `sizeof(<A>)` | F -> I        | Evaluates to the size in bytes of the given field `A`. Fails the run if invoked on anything other than a static field.
 `assign`  | `<L> = <R>`   | V, * -> *     | Stores the resolved value of the expression in `R` and stores it in the variable `L`. The assignment expression also evaluates as a whole to that resolved value.
 `member`  | `<L>.<R>`     | S, V -> *     | Retrieves the value held by the variable `R` in the scope `L`. Cannot be used as the left-hand argument of assignment.
 `bind`    | `<L>(<R...>)` | L, T -> L     | Binds the first `n` args of function `L` to the `n` comma-separated args `R`, returning a new function with `n` fewer unbound arguments.
