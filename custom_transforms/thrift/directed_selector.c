@@ -3,6 +3,7 @@
 #include "custom_transforms/thrift/directed_selector.h" // @manual
 
 #include "openzl/zl_data.h"
+#include "openzl/zl_selector.h"
 
 static ZL_GraphID directed_selector_impl(
         const ZL_Selector* selCtx,
@@ -26,18 +27,36 @@ static ZL_GraphID directed_selector_impl(
     return customGraphs[idx];
 }
 
-ZL_SelectorDesc buildDirectedSelectorDesc(
-        ZL_Type type,
+ZL_GraphID registerDirectedSelectorBaseGraph(ZL_Compressor* compressor)
+{
+    ZL_GraphID baseGraph =
+            ZL_Compressor_getGraph(compressor, "zl_custom.directed_selector");
+    if (baseGraph.gid != ZL_GRAPH_ILLEGAL.gid) {
+        return baseGraph;
+    }
+
+    ZL_SelectorDesc const baseDesc = {
+        .selector_f     = directed_selector_impl,
+        .inStreamType   = ZL_Type_any,
+        .customGraphs   = NULL,
+        .nbCustomGraphs = 0,
+        .localParams    = {},
+        .name           = "!zl_custom.directed_selector",
+    };
+    return ZL_Compressor_registerSelectorGraph(compressor, &baseDesc);
+}
+
+ZL_GraphID registerDirectedSelectorGraph(
+        ZL_Compressor* compressor,
         const ZL_GraphID* successors,
         size_t nbSuccessors)
 {
-    return (ZL_SelectorDesc){
-        .selector_f     = directed_selector_impl,
-        .inStreamType   = type,
+    ZL_GraphID baseGraph = registerDirectedSelectorBaseGraph(compressor);
+
+    ZL_ParameterizedGraphDesc const paramDesc = {
+        .graph          = baseGraph,
         .customGraphs   = successors,
         .nbCustomGraphs = nbSuccessors,
-        .localParams = { .intParams  = { .intParams = NULL, .nbIntParams = 0 },
-                         .copyParams = { .copyParams   = NULL,
-                                         .nbCopyParams = 0 } },
     };
+    return ZL_Compressor_registerParameterizedGraph(compressor, &paramDesc);
 }

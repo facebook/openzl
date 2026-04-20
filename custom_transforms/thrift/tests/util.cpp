@@ -215,14 +215,11 @@ std::string thriftSplitCompress(
         const std::vector<ZL_GraphID> directedSelectorSuccessors{
             { ZL_GRAPH_STORE }
         };
-        const ZL_SelectorDesc directed_selector_desc =
-                buildDirectedSelectorDesc(
-                        type,
+        const ZL_GraphID directedSelectorGraphID =
+                registerDirectedSelectorGraph(
+                        cgraph.get(),
                         directedSelectorSuccessors.data(),
                         directedSelectorSuccessors.size());
-        const ZL_GraphID directedSelectorGraphID =
-                ZL_Compressor_registerSelectorGraph(
-                        cgraph.get(), &directed_selector_desc);
         assert(directedSelectorGraphID.gid != ZL_GRAPH_ILLEGAL.gid);
         const std::vector<ZL_GraphID> emptyInputSelectorSuccessors{
             { ZL_GRAPH_STORE, directedSelectorGraphID }

@@ -446,10 +446,9 @@ class DirectedSelector : public Selector {
             std::span<ZL_GraphID const> successors,
             ZL_LocalParams const& localParams) const override
     {
-        auto desc = buildDirectedSelectorDesc(
-                ZL_Type_any, successors.data(), successors.size());
-        desc.localParams = localParams;
-        return ZL_Compressor_registerSelectorGraph(&cgraph, &desc);
+        (void)localParams; // TODO: support localParams if needed
+        return registerDirectedSelectorGraph(
+                &cgraph, successors.data(), successors.size());
     }
 
     ZL_Type inputType() const override
