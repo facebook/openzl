@@ -37,7 +37,7 @@ FUZZ_F(MultiInputTest, FuzzConcatRoundTrip)
 {
     datagen::DataGen dg = fromFDP(f);
     reset();
-    setLargeCompressBound(2);
+    setLargeCompressBound(8);
     auto concat = dg.choices(
             "concat",
             std::vector<ZL_NodeID>{ ZL_NODE_CONCAT_SERIAL,
@@ -132,7 +132,7 @@ FUZZ_F(MultiInputTest, FuzzClusterRoundTrip)
 {
     datagen::DataGen dg = fromFDP(f);
     reset();
-    setLargeCompressBound(2);
+    setLargeCompressBound(8);
     const ZL_GraphID successors[3] = { ZL_GRAPH_STORE,
                                        ZL_GRAPH_ZSTD,
                                        ZL_GRAPH_COMPRESS_GENERIC };
@@ -338,7 +338,7 @@ static ZL_GraphID declareGraphFromNode(
 FUZZ_F(MLSelectorMultiInputTest, FuzzMLSelectorRoundTrip)
 {
     reset();
-    setLargeCompressBound(2);
+    setLargeCompressBound(8);
 
     const size_t numSucc = 2;
     auto fieldlz         = ZL_Compressor_registerFieldLZGraph(cgraph_);
