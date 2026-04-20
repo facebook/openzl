@@ -70,6 +70,18 @@ ZL_INLINE size_t ZL_isLegalIntegerWidth(size_t width)
     return width == 1 || width == 2 || width == 4 || width == 8;
 }
 
+/**
+ * @returns The maximum unsigned value for an element of @p width bytes.
+ */
+ZL_INLINE uint64_t ZL_maxValueForWidth(size_t width)
+{
+    ZL_ASSERT(ZL_isLegalIntegerWidth(width));
+    if (width == 8) {
+        return UINT64_MAX;
+    }
+    return ((uint64_t)1 << (width * 8)) - 1;
+}
+
 ZL_END_C_DECLS
 
 #endif // ZS_COMMON_UTILS_H

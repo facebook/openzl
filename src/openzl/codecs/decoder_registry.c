@@ -29,6 +29,7 @@
 #include "openzl/codecs/quantize/decode_quantize_binding.h"
 #include "openzl/codecs/range_pack/decode_range_pack_binding.h"
 #include "openzl/codecs/rolz/decode_rolz_binding.h"
+#include "openzl/codecs/sentinel/decode_sentinel_binding.h"
 #include "openzl/codecs/splitByStruct/decode_splitByStruct_binding.h"
 #include "openzl/codecs/splitN/decode_splitN_binding.h"
 #include "openzl/codecs/tokenize/decode_tokenize_binding.h"
@@ -130,6 +131,7 @@ const StandardDTransform SDecoders_array[ZL_StandardTransformID_end] = {
     REGISTER_TTRANSFORM(ZL_StandardTransformID_parse_int, 19, PARSE_INT),
     REGISTER_TTRANSFORM_G(ZL_StandardTransformID_lz4, 23, DI_LZ4, PIPE_GRAPH),
     REGISTER_TTRANSFORM_G(ZL_StandardTransformID_partition, 24, DI_PARTITION, PARTITION_GRAPH),
+    REGISTER_TTRANSFORM_G(ZL_StandardTransformID_sentinel, 24, DI_SENTINEL, SENTINEL_GRAPH),
 
     REGISTER_VOTRANSFORM_G(ZL_StandardTransformID_splitn, 9, DI_SPLITN, GRAPH_VO_SERIAL),
     REGISTER_VOTRANSFORM_G(ZL_StandardTransformID_splitn_struct, 14, DI_SPLITN_STRUCT, GRAPH_VO_STRUCT),

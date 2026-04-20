@@ -233,7 +233,8 @@ typedef enum {
     ZL_StandardTransformID_fse_deprecated           = 15,
     ZL_StandardTransformID_huffman_deprecated       = 16,
     ZL_StandardTransformID_huffman_fixed_deprecated = 17,
-    // 18-19 : available
+    ZL_StandardTransformID_sentinel                 = 18,
+    // 19 : available
     ZL_StandardTransformID_rolz       = 20,
     ZL_StandardTransformID_fastlz     = 21,
     ZL_StandardTransformID_zstd       = 22,
