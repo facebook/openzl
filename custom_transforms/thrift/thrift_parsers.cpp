@@ -663,25 +663,25 @@ ZL_VOGraphDesc const thriftBinaryConfigurableGd = {
 ZL_VOEncoderDesc const thriftCompactConfigurableSplitter = {
     .gd          = thriftCompactConfigurableGd,
     .transform_f = configurableEncodeCompact,
-    .name        = "Thrift Compact Encode",
+    .name        = "!zl_custom.thrift_compact_encode",
 };
 
 ZL_VODecoderDesc const thriftCompactConfigurableUnSplitter = {
     .gd          = thriftCompactConfigurableGd,
     .transform_f = configurableDecodeCompact,
-    .name        = "Thrift Compact Decode",
+    .name        = "zl_custom.thrift_compact_decode",
 };
 
 ZL_VOEncoderDesc const thriftBinaryConfigurableSplitter = {
     .gd          = thriftBinaryConfigurableGd,
     .transform_f = configurableEncodeBinary,
-    .name        = "Thrift Binary Encode",
+    .name        = "!zl_custom.thrift_binary_encode",
 };
 
 ZL_VODecoderDesc const thriftBinaryConfigurableUnSplitter = {
     .gd          = thriftBinaryConfigurableGd,
     .transform_f = configurableDecodeBinary,
-    .name        = "Thrift Binary Decode",
+    .name        = "zl_custom.thrift_binary_decode",
 };
 
 ZL_Report registerCustomTransforms(ZL_DCtx* dctx)
@@ -698,7 +698,12 @@ ZL_NodeID registerCompactTransform(ZL_Compressor* cgraph, ZL_IDType id)
 {
     auto desc    = thriftCompactConfigurableSplitter;
     desc.gd.CTid = id;
-    return ZL_Compressor_registerVOEncoder(cgraph, &desc);
+    auto compactEncode =
+            ZL_Compressor_getNode(cgraph, "zl_custom.thrift_compact_encode");
+    if (compactEncode.nid == ZL_NODE_ILLEGAL.nid) {
+        return ZL_Compressor_registerVOEncoder(cgraph, &desc);
+    }
+    return compactEncode;
 }
 
 ZL_Report registerCompactTransform(ZL_DCtx* dctx, ZL_IDType id)
@@ -712,7 +717,12 @@ ZL_NodeID registerBinaryTransform(ZL_Compressor* cgraph, ZL_IDType id)
 {
     auto desc    = thriftBinaryConfigurableSplitter;
     desc.gd.CTid = id;
-    return ZL_Compressor_registerVOEncoder(cgraph, &desc);
+    auto binaryEncode =
+            ZL_Compressor_getNode(cgraph, "zl_custom.thrift_binary_encode");
+    if (binaryEncode.nid == ZL_NODE_ILLEGAL.nid) {
+        return ZL_Compressor_registerVOEncoder(cgraph, &desc);
+    }
+    return binaryEncode;
 }
 
 ZL_Report registerBinaryTransform(ZL_DCtx* dctx, ZL_IDType id)
