@@ -85,6 +85,7 @@ enum class OpenZLComponentID {
     SegmentNumFromSerial,
     SentinelByte,
     SentinelNum,
+    CompressSmallLengths,
     // Must be last enum value
     NumComponents,
 };
@@ -156,6 +157,7 @@ std::unique_ptr<OpenZLComponent> makeSegmentNumericComponent();
 std::unique_ptr<OpenZLComponent> makeSegmentNumFromSerialComponent();
 std::unique_ptr<OpenZLComponent> makeSentinelByteComponent();
 std::unique_ptr<OpenZLComponent> makeSentinelNumComponent();
+std::unique_ptr<OpenZLComponent> makeCompressSmallLengthsComponent();
 
 } // namespace components
 
@@ -283,6 +285,8 @@ inline std::unique_ptr<OpenZLComponent> makeOpenZLComponent(
             return components::makeSentinelByteComponent();
         case OpenZLComponentID::SentinelNum:
             return components::makeSentinelNumComponent();
+        case OpenZLComponentID::CompressSmallLengths:
+            return components::makeCompressSmallLengthsComponent();
         case OpenZLComponentID::NumComponents:
         default:
             throw std::runtime_error("Invalid component");
