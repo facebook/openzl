@@ -215,6 +215,8 @@ typedef enum {
     ZL_PrivateStandardGraphID_interpret_num32_compress,
     ZL_PrivateStandardGraphID_interpret_num64_compress,
 
+    ZL_PrivateStandardGraphID_compress_small_lengths,
+
     ZL_PrivateStandardGraphID_end // last id, used to detect out-of-bound enum
                                   // values
 } ZL_PrivateStandardGraphID;
@@ -296,6 +298,12 @@ typedef enum {
 #define ZL_GRAPH_INTERPRET_NUM16_COMPRESS (ZL_GraphID){ZL_PrivateStandardGraphID_interpret_num16_compress}
 #define ZL_GRAPH_INTERPRET_NUM32_COMPRESS (ZL_GraphID){ZL_PrivateStandardGraphID_interpret_num32_compress}
 #define ZL_GRAPH_INTERPRET_NUM64_COMPRESS (ZL_GraphID){ZL_PrivateStandardGraphID_interpret_num64_compress}
+
+/**
+ * Specializes in compressing small lengths that are mostly < 255.
+ * For example: literal & match lengths from LZ.
+ */
+#define ZL_GRAPH_COMPRESS_SMALL_LENGTHS (ZL_GraphID){ZL_PrivateStandardGraphID_compress_small_lengths}
 
 /**
  * This graph selects between the merge sorted transform and a backup graph

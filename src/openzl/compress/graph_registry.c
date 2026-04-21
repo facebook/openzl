@@ -16,6 +16,7 @@
 #include "openzl/compress/graphs/generic_clustering_graph.h" // MIGRAPH_CLUSTERING
 #include "openzl/compress/graphs/sddl/simple_data_description_language.h" // ZL_SDDL_dynGraph
 #include "openzl/compress/graphs/sddl2/sddl2.h" // SDDL2_parse
+#include "openzl/compress/graphs/small_lengths_graph.h"
 #include "openzl/compress/graphs/split_graph.h" // ZL_splitFnGraph
 #include "openzl/compress/implicit_conversion.h" // ICONV_isCompatible for type checking
 #include "openzl/compress/private_nodes.h" // ZL_PrivateStandardGraphID_end, private node ID definitions
@@ -199,6 +200,8 @@ const InternalGraphDesc GR_standardGraphs[ZL_PrivateStandardGraphID_end] = {
     REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_split_string, "!zl.private.split_string", ZL_Type_string, ZL_splitFnGraph),
 
     REGISTER_MIGRAPH(ZL_PrivateStandardGraphID_n_to_n, MIGRAPH_N_TO_N),
+    
+    REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_compress_small_lengths, "!zl.compress_small_lengths", ZL_Type_numeric, ZL_compressSmallLengthsGraph),
 };
 // clang-format on
 
