@@ -119,6 +119,7 @@ const CNode ER_standardNodes[STANDARD_ENCODERS_NB] = {
     REGISTER_TRANSFORM(ZL_StandardNodeID_split_byrange, ZL_StandardTransformID_splitn_num, 24, EI_SPLIT_BYRANGE),
     REGISTER_TRANSFORM(ZL_StandardNodeID_sentinel_byte, ZL_StandardTransformID_sentinel, 24, EI_SENTINEL_BYTE),
     REGISTER_TRANSFORM(ZL_StandardNodeID_sentinel_num, ZL_StandardTransformID_sentinel, 24, EI_SENTINEL),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_lz, ZL_StandardTransformID_lz, 24, EI_LZ),
 
     // Private Nodes
     REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_set_string_lens,           ZL_StandardTransformID_convert_serial_string, 10, EI_SETSTRINGLENS),

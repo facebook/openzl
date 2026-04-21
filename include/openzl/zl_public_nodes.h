@@ -30,6 +30,7 @@
 #include "openzl/codecs/zl_generic.h"              // IWYU pragma: export
 #include "openzl/codecs/zl_illegal.h"              // IWYU pragma: export
 #include "openzl/codecs/zl_interleave.h"           // IWYU pragma: export
+#include "openzl/codecs/zl_lz.h"                   // IWYU pragma: export
 #include "openzl/codecs/zl_lz4.h"                  // IWYU pragma: export
 #include "openzl/codecs/zl_merge_sorted.h"         // IWYU pragma: export
 #include "openzl/codecs/zl_mlselector.h"           // IWYU pragma: export

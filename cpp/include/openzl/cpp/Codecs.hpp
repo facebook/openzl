@@ -20,6 +20,7 @@
 #include "openzl/cpp/codecs/Flatpack.hpp"         // IWYU pragma: export
 #include "openzl/cpp/codecs/FloatDeconstruct.hpp" // IWYU pragma: export
 #include "openzl/cpp/codecs/Illegal.hpp"          // IWYU pragma: export
+#include "openzl/cpp/codecs/Lz.hpp"               // IWYU pragma: export
 #include "openzl/cpp/codecs/Lz4.hpp"              // IWYU pragma: export
 #include "openzl/cpp/codecs/MergeSorted.hpp"      // IWYU pragma: export
 #include "openzl/cpp/codecs/ParseInt.hpp"         // IWYU pragma: export
