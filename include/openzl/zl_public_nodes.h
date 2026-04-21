@@ -38,6 +38,7 @@
 #include "openzl/codecs/zl_quantize.h"             // IWYU pragma: export
 #include "openzl/codecs/zl_range_pack.h"           // IWYU pragma: export
 #include "openzl/codecs/zl_sddl.h"                 // IWYU pragma: export
+#include "openzl/codecs/zl_sentinel.h"             // IWYU pragma: export
 #include "openzl/codecs/zl_split.h"                // IWYU pragma: export
 #include "openzl/codecs/zl_split_by_struct.h"      // IWYU pragma: export
 #include "openzl/codecs/zl_store.h"                // IWYU pragma: export
