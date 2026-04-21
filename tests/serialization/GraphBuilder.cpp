@@ -55,7 +55,10 @@ void GraphBuilder::buildCompressor()
         std::shuffle(nodes.begin(), nodes.end(), urbg);
         size_t numNodes = std::min(config_.numComponentsPerId, nodes.size());
         for (size_t i = 0; i < numNodes; i++) {
-            nodeIDs_.push_back(nodes[i]);
+            if (ZL_Compressor_Node_getNumInputs(compressor_.get(), nodes[i])
+                == 1) {
+                nodeIDs_.push_back(nodes[i]);
+            }
         }
 
         auto graphs          = component->predefinedGraphs(compressor_);
@@ -66,7 +69,10 @@ void GraphBuilder::buildCompressor()
         std::shuffle(graphs.begin(), graphs.end(), urbg);
         size_t numGraphs = std::min(config_.numComponentsPerId, graphs.size());
         for (size_t i = 0; i < numGraphs; i++) {
-            graphIDs_.push_back(graphs[i]);
+            if (ZL_Compressor_Graph_getNumInputs(compressor_.get(), graphs[i])
+                == 1) {
+                graphIDs_.push_back(graphs[i]);
+            }
         }
     }
 
@@ -94,8 +100,8 @@ GraphBuilder::buildGraph(size_t* nodesInGraph, ZL_Type inType, size_t maxDepth)
 
     ++*nodesInGraph;
 
-    // Random chance to stop with store. If out of bytes, coin would yield 0 and
-    // store would be chosen.
+    // Random chance to stop with store. If out of bytes, coin would yield 0
+    // and store would be chosen.
     if (gen_.coin("use_store", config_.stopProbability)) {
         return buildStoreGraph(inType);
     }
