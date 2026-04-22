@@ -33,8 +33,9 @@ ZL_Report SEGM_numFromSerial(ZL_Segmenter* sctx);
 #define SEGM_NUM_FROM_SERIAL_CHUNK_BYTE_SIZE_ID 300
 #define SEGM_NUM_FROM_SERIAL_ELT_WIDTH_ID 301
 
-/* Default chunk size: 16 MB */
-#define SEGM_NUM_FROM_SERIAL_DEFAULT_CHUNK_SIZE (16 << 20)
+/* Default chunk size: shared segmenter default */
+#define SEGM_NUM_FROM_SERIAL_DEFAULT_CHUNK_SIZE \
+    ZL_DEFAULT_SEGMENTER_CHUNK_BYTE_SIZE
 
 #define SEGM_NUM_FROM_SERIAL_DESC(eltWidth, widthBits, defaultGraphEnumID) \
     {                                                               \

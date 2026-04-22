@@ -51,12 +51,13 @@ ZL_GraphID sao_graph_sddl2(ZL_Compressor* cgraph)
         abort();
     }
 
-    // Register SDDL2_parse with STORE destination for benchmarking
-    ZL_GraphID sddl2_graph = ZL_Compressor_registerSDDL2Graph(
+    // Register the public auto-segmenting SDDL2 graph with STORE destination
+    ZL_GraphID sddl2_graph = ZL_Compressor_registerSDDL2Graph_advanced(
             cgraph,
             sao_sddl2_bytecode,
             sao_sddl2_bytecode_size,
-            ZL_GRAPH_STORE);
+            ZL_GRAPH_STORE,
+            0);
 
     if (!ZL_GraphID_isValid(sddl2_graph)) {
         abort();

@@ -1,16 +1,11 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 /**
- * Integration test for structure split-by-struct functionality.
+ * Integration test for structure split-by-struct metadata.
  *
- * This test verifies the full integration chain:
- * 1. SDDL2 bytecode creates segments with structure types
- * 2. SDDL2_parse() splits structures into field arrays
- * 3. Each field is properly type-converted
- * 4. Fields are routed to compression
- *
- * This test focuses on the VM/interpreter level - full round-trip
- * compression tests are in C++ integration tests.
+ * These checks validate the structure descriptions that drive the public
+ * `!zl.sddl2` graph's split-by-struct path. Full bytecode round-trip coverage
+ * lives in the SDDL2 graph tests.
  */
 
 #include <cstdlib>

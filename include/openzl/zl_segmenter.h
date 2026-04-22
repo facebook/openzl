@@ -67,6 +67,16 @@ extern "C" {
  * whatever data is left from Input.
  */
 
+/**
+ * Shared default target chunk size for segmenters that chunk large inputs into
+ * independently compressed pieces.
+ *
+ * This is a policy default, not a lower bound. Individual segmenters may
+ * expose their own local override parameters or choose a different default when
+ * there is a format-specific reason to do so.
+ */
+#define ZL_DEFAULT_SEGMENTER_CHUNK_BYTE_SIZE (16 << 20)
+
 typedef struct ZL_Segmenter_s ZL_Segmenter;
 typedef ZL_Report (*ZL_SegmenterFn)(ZL_Segmenter* sctx);
 

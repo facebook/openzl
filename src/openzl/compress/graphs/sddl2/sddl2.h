@@ -3,63 +3,62 @@
 #ifndef OPENZL_GRAPHS_SDDL_V2_H
 #define OPENZL_GRAPHS_SDDL_V2_H
 
+#include "openzl/codecs/zl_sddl2.h"
+#include "openzl/compress/graphs/sddl2/sddl2_vm.h"
 #include "openzl/zl_graph_api.h"
+#include "openzl/zl_segmenter.h"
 
-#define SDDL2_BYTECODE_PARAM 7685
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+#define SDDL2_REPLAY_SEGMENTS_PARAM 7687
+#define SDDL2_REPLAY_START_STREAM_ID_PARAM 7688
 
 /**
- * Standard graph macro for SDDL2 (Simple Data Description Language v2)
+ * Private chunk-replay descriptor passed from `SDDL2_segment()` to the
+ * `!zl.private.sddl2_chunk` helper graph.
  *
- * NOTE: SDDL2_parse requires bytecode as a parameter. Use
- * ZL_Compressor_registerSDDL2Graph() to register it with your bytecode.
+ * Replay operates on chunk-local byte slices that have already been cut out of
+ * the original input. It only needs each slice size to re-split the chunk
+ * input and the corresponding type metadata to replay conversion and routing.
  */
-#define ZL_GRAPH_SDDL2                                         \
-    (ZL_GraphID)                                               \
-    {                                                          \
-        ZL_StandardGraphID_simple_data_description_language_v2 \
+typedef struct {
+    size_t size_bytes;
+    SDDL2_Type type;
+} SDDL2_ReplaySegment;
+
+#define SEGM_SDDL2_DESC                                            \
+    {                                                              \
+        .name                = "!zl.sddl2",                        \
+        .segmenterFn         = SDDL2_segment,                      \
+        .inputTypeMasks      = &(const ZL_Type){ ZL_Type_serial }, \
+        .numInputs           = 1,                                  \
+        .lastInputIsVariable = false,                              \
     }
 
 /**
- * SDDL2 parse function - interprets SDDL2 bytecode to segment and route data.
+ * Private SDDL2 chunk replay entrypoint backing `!zl.private.sddl2_chunk`.
  *
- * This function graph executes SDDL2 bytecode to parse and segment input data.
- * It requires bytecode to be provided via local parameters
- * (SDDL2_BYTECODE_PARAM).
- *
- * Use ZL_Compressor_registerSDDL2Graph() for easier registration.
- *
- * @param graph Graph context for operations and error reporting
- * @param inputs Array of input edges (expects exactly 1 Serial edge)
- * @param nbInputs Number of input edges (must be 1)
- * @return ZL_Report indicating success or error
+ * The graph expects a slice of precomputed `SDDL2_ReplaySegment` values
+ * through `SDDL2_REPLAY_SEGMENTS_PARAM`, and may also receive an initial
+ * clustering stream id through `SDDL2_REPLAY_START_STREAM_ID_PARAM`.
  */
-ZL_Report SDDL2_parse(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
+ZL_Report SDDL2_replayChunk(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
         ZL_NOEXCEPT_FUNC_PTR;
 
 /**
- * Register SDDL2 parser as a parameterized graph with bytecode and destination.
+ * Public standard SDDL2 segmenter entrypoint.
  *
- * This creates a variant of the standard SDDL2 graph with specific bytecode
- * and a destination graph for non-structure segments. Structure segments are
- * always routed to COMPRESS_GENERIC internally.
- *
- * Example usage:
- *   ZL_GraphID sddl2_gid = ZL_Compressor_registerSDDL2Graph(
- *       cgraph, bytecode_array, bytecode_size, ZL_GRAPH_STORE);
- *   if (!ZL_GraphID_isValid(sddl2_gid)) {
- *       // handle error
- *   }
- *
- * @param compressor The compressor to register with
- * @param bytecode Pointer to SDDL2 bytecode
- * @param bytecode_size Size of bytecode in bytes
- * @param destination Destination graph for non-structure segments (required)
- * @return ZL_GraphID for the registered graph, or ZL_GRAPH_ILLEGAL on error
+ * This is the implementation behind the standard graph `!zl.sddl2`. It runs
+ * the SDDL2 VM once over the whole input, determines chunk boundaries on the
+ * emitted segment list, and dispatches chunk-local work to the private
+ * `!zl.private.sddl2_chunk` helper graph.
  */
-ZL_GraphID ZL_Compressor_registerSDDL2Graph(
-        ZL_Compressor* compressor,
-        const void* bytecode,
-        size_t bytecode_size,
-        ZL_GraphID destination);
+ZL_Report SDDL2_segment(ZL_Segmenter* sctx) ZL_NOEXCEPT_FUNC_PTR;
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif // OPENZL_GRAPHS_SDDL_V2_H

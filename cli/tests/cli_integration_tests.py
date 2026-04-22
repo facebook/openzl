@@ -1,7 +1,10 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import os
+import shutil
+import struct
 import sys
+import tempfile
 import unittest
 
 import command_utils
@@ -199,6 +202,104 @@ class CsvChunkedTest(_CsvBaseTest):
         4. Verifies that the decompressed files match the originals
         """
         self.train_compress_decompress()
+
+
+class Sddl2ChunkedTrainTest(unittest.TestCase):
+    k_blocks = 12
+    k_entries_per_block = 2048
+
+    def setUp(self) -> None:
+        self.output_dir_path = tempfile.mkdtemp()
+        self.addCleanup(lambda: shutil.rmtree(self.output_dir_path, True))
+
+        self.input_dir_path = os.path.join(self.output_dir_path, "input")
+        os.makedirs(self.input_dir_path)
+
+        self.description_path = os.path.join(
+            self.output_dir_path, "repeated_blocks.sddl"
+        )
+        self.sample_path = os.path.join(self.input_dir_path, "sample.bin")
+        self.trained_compressor_path = os.path.join(
+            self.output_dir_path, "trained_compressor.zlc"
+        )
+        self.compressed_path = os.path.join(self.output_dir_path, "sample.zl")
+        self.decompressed_path = os.path.join(self.output_dir_path, "sample.out")
+
+        with open(self.description_path, "w", encoding="utf-8") as handle:
+            handle.write(self._build_description())
+
+        with open(self.sample_path, "wb") as handle:
+            handle.write(self._build_sample())
+
+    def _build_description(self) -> str:
+        lines = [
+            "Record Header() = {",
+            "    magic: UInt32LE,",
+            "    flag: Byte,",
+            "}",
+            "",
+            "Record Entry(flag) = {",
+            "    id: UInt32LE,",
+            "    when flag {",
+            "        optional: UInt16LE,",
+            "    },",
+            "    required: UInt64LE,",
+            "}",
+            "",
+            "header: Header",
+            "expect header.magic == 0xdeadbeef",
+        ]
+
+        for block in range(self.k_blocks):
+            lines.append(
+                f"block{block}: Entry(header.flag)[{self.k_entries_per_block}]"
+            )
+
+        return "\n".join(lines) + "\n"
+
+    def _build_sample(self) -> bytes:
+        payload = bytearray()
+        payload += struct.pack("<I", 0xDEADBEEF)
+        payload.append(1)
+
+        for block in range(self.k_blocks):
+            for entry in range(self.k_entries_per_block):
+                value = block * self.k_entries_per_block + entry
+                payload += struct.pack("<I", value)
+                payload += struct.pack("<H", (value ^ 0x55AA) & 0xFFFF)
+                payload += struct.pack("<Q", value * 17 + 3)
+
+        return bytes(payload)
+
+    def test_train_compress_decompress(self):
+        training_compressor = CompressorInfo(
+            compressor_str="sddl2",
+            compressor_type=CompressorType.PROFILE,
+        )
+        trained_compressor = CompressorInfo(
+            compressor_str=self.trained_compressor_path,
+            compressor_type=CompressorType.FILE,
+        )
+        extra_args = f"--profile-arg {self.description_path} --chunk-size 256K"
+
+        execute_train(
+            compressor_info=training_compressor,
+            uncompressed_dir=self.input_dir_path,
+            trained_compressor_path=self.trained_compressor_path,
+            extra_args=extra_args,
+        )
+        execute_compress(
+            file_to_compress_path=self.sample_path,
+            compressor_info=trained_compressor,
+            compressed_file_path=self.compressed_path,
+            extra_args=None,
+        )
+        execute_decompress(
+            compressed_file_path=self.compressed_path,
+            decompressed_file_path=self.decompressed_path,
+        )
+
+        self.assertTrue(file_contents_match(self.sample_path, self.decompressed_path))
 
 
 class MLDynamicSuccessorTest(_MLBaseTest):

@@ -7,6 +7,7 @@
 #include "openzl/zl_errors.h"         // ZL_RESULT_OF
 #include "openzl/zl_graphs.h"
 #include "openzl/zl_opaque_types.h"
+#include "openzl/zl_segmenter.h"
 
 #include <stddef.h> // size_t
 

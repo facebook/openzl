@@ -21,9 +21,9 @@ ZL_Report SEGM_numeric(ZL_Segmenter* sctx)
     size_t const width = ZL_Input_eltWidth(input);
     ZL_ASSERT(width == 1 || width == 2 || width == 4 || width == 8);
 
-    // Note: Currently, static chunk size.
+    // Note: Currently, shared compile-time default chunk size.
     // Tomorrow: global parameter, then local parameter.
-    size_t const chunkByteSizeMax = 16 << 20;
+    size_t const chunkByteSizeMax = ZL_DEFAULT_SEGMENTER_CHUNK_BYTE_SIZE;
     size_t const chunkEltSizeMax  = chunkByteSizeMax / width;
     ZL_GraphID const headGraph    = ZL_GRAPH_NUMERIC_COMPRESS;
 

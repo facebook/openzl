@@ -31,7 +31,7 @@ class ProfileArgs {
                 kChunkSize,
                 0,
                 true,
-                "The chunk size for the input to be separated into (e.g. 20M, 500K, 1G). Supports suffixes: K/KB (10^3), M/MB (10^6), G/GB (10^9), T/TB (10^12), and binary KiB (2^10), MiB (2^20), GiB (2^30), TiB (2^40). Plain numbers are treated as bytes. Defaults to 20M if segmenter exists for profile.");
+                "The chunk size for the input to be separated into (e.g. 20M, 500K, 1G). Supports suffixes: K/KB (10^3), M/MB (10^6), G/GB (10^9), T/TB (10^12), and binary KiB (2^10), MiB (2^20), GiB (2^30), TiB (2^40). Plain numbers are treated as bytes. When omitted, profiles use their built-in default chunk size if they segment input.");
     }
 
     explicit ProfileArgs(const arg::ParsedArgs& parsed)
@@ -148,11 +148,13 @@ class CompressProfile {
             const std::string& name_,
             const std::string& description_,
             GenFunc gen_,
-            std::shared_ptr<void> opaque_ = nullptr)
+            std::shared_ptr<void> opaque_ = nullptr,
+            bool supportsChunkSize_       = false)
             : name(name_),
               description(description_),
               gen(std::move(gen_)),
-              opaque(opaque_)
+              opaque(opaque_),
+              supportsChunkSize(supportsChunkSize_)
     {
     }
 
@@ -163,6 +165,7 @@ class CompressProfile {
     GenFunc gen;
     std::shared_ptr<void> opaque; // an optional opaque helper pointer
                                   // that's passed to the gen function
+    bool supportsChunkSize = false;
 };
 
 const std::map<std::string, std::shared_ptr<CompressProfile>>&
