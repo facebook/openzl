@@ -178,9 +178,24 @@ extern "C" unsigned VersionTestInterface_getZStrongVersion(int versionType)
         return ZL_validResult(ret); \
     } while (0)
 
+std::vector<ZL_NodeID> getStandardNodes()
+{
+    std::vector<ZL_NodeID> nodes;
+    nodes.resize(ER_getNbStandardNodes());
+    ER_getAllStandardNodeIDs(nodes.data(), nodes.size());
+
+    auto cgraph = CGraphPtr(ZL_Compressor_create());
+    auto end    = std::remove_if(
+            nodes.begin(), nodes.end(), [&cgraph](ZL_NodeID nid) {
+                return ZL_Compressor_Node_getNumInputs(cgraph.get(), nid) != 1;
+            });
+    nodes.erase(end, nodes.end());
+    return nodes;
+}
+
 extern "C" size_t VersionTestInterface_getNbNodeIDs()
 {
-    return ER_getNbStandardNodes() + getCustomNodes().size();
+    return getStandardNodes().size() + getCustomNodes().size();
 }
 
 extern "C" void VersionTestInterface_getAllNodeIDs(
@@ -188,10 +203,9 @@ extern "C" void VersionTestInterface_getAllNodeIDs(
         int* transformIDs,
         size_t nodesCapacity)
 {
-    auto cgraph = CGraphPtr(ZL_Compressor_create());
-    std::vector<ZL_NodeID> nodes(nodesCapacity);
-    size_t nbNodes = ER_getNbStandardNodes();
-    ER_getAllStandardNodeIDs(nodes.data(), nbNodes);
+    auto cgraph      = CGraphPtr(ZL_Compressor_create());
+    const auto nodes = getStandardNodes();
+    auto nbNodes     = nodes.size();
     for (size_t i = 0; i < nbNodes; ++i) {
         nodeIDs[i] = (int)nodes[i].nid;
         ZL_REQUIRE_GE(nodeIDs[i], 0);
@@ -210,19 +224,32 @@ extern "C" void VersionTestInterface_getAllNodeIDs(
     }
 }
 
+std::vector<ZL_GraphID> getStandardGraphs()
+{
+    std::vector<ZL_GraphID> graphs;
+    graphs.resize(GR_getNbStandardGraphs());
+    GR_getAllStandardGraphIDs(graphs.data(), graphs.size());
+    auto cgraph = CGraphPtr(ZL_Compressor_create());
+    auto end    = std::remove_if(
+            graphs.begin(), graphs.end(), [&cgraph](ZL_GraphID gid) {
+                return ZL_Compressor_Graph_getNumInputs(cgraph.get(), gid) != 1;
+            });
+    graphs.erase(end, graphs.end());
+    return graphs;
+}
+
 extern "C" size_t VersionTestInterface_getNbGraphIDs()
 {
-    return GR_getNbStandardGraphs() + getCustomGraphs().size();
+    return getStandardGraphs().size() + getCustomGraphs().size();
 }
 
 extern "C" void VersionTestInterface_getAllGraphIDs(
         int* graphs,
         size_t graphsCapacity)
 {
-    auto cgraph = CGraphPtr(ZL_Compressor_create());
-    std::vector<ZL_GraphID> graphIDs(graphsCapacity);
-    GR_getAllStandardGraphIDs(graphIDs.data(), graphsCapacity);
-    size_t nbGraphs = GR_getNbStandardGraphs();
+    auto cgraph         = CGraphPtr(ZL_Compressor_create());
+    const auto graphIDs = getStandardGraphs();
+    size_t nbGraphs     = graphIDs.size();
     for (size_t i = 0; i < nbGraphs; ++i) {
         graphs[i] = (int)graphIDs[i].gid;
         ZL_REQUIRE_GE(graphs[i], 0);
