@@ -46,7 +46,8 @@ struct Arena_s {
     // Allocate a memory object initialized to zeroes associated to the arena
     void* (*calloc)(Arena* arena, size_t size)ZL_NOEXCEPT_FUNC_PTR;
     // Realloc
-    void* (*realloc)(Arena* arena, void* ptr, size_t newSize);
+    void* (*realloc)(Arena* arena, void* ptr, size_t newSize)
+            ZL_NOEXCEPT_FUNC_PTR;
     // Frees the memory object associated to the arena
     // Note: trying to free a memory object *not* associated to the arena is UB
     void (*free)(Arena* arena, void* ptr) ZL_NOEXCEPT_FUNC_PTR;
