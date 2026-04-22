@@ -58,6 +58,7 @@ ZL_RESULT_OF(ZL_ParsedDict) Dict_parse(const void* dictBuffer, size_t dictSize)
     result.contentSize = contentSize;
     result.packedSize  = ZL_DICT_HEADER_SIZE + (size_t)contentSize;
     result.dictContent = (const void*)p;
+    result.contentHash = ZL_UniqueID_computeSHA256(p, contentSize);
 
     return ZL_RESULT_WRAP_VALUE(ZL_ParsedDict, result);
 }
