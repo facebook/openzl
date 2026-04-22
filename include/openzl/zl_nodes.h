@@ -91,6 +91,8 @@ typedef enum {
     ZL_StandardNodeID_sentinel_byte,
     ZL_StandardNodeID_sentinel_num,
 
+    ZL_StandardNodeID_lz,
+
     ZL_StandardNodeID_public_end // last id, used to detect end of public range
 } ZL_StandardNodeID;
 

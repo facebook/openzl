@@ -2,21 +2,22 @@
 
 #include "openzl/codecs/lz/encode_lz_binding.h"
 
+#include "openzl/codecs/common/fast_table.h"
 #include "openzl/codecs/lz/common_field_lz.h"
 #include "openzl/codecs/lz/encode_field_lz_literals_selector.h"
-#include "openzl/compress/private_nodes.h"
+#include "openzl/codecs/lz/encode_lz_kernel.h"
+#include "openzl/codecs/zl_lz.h"
 #include "openzl/shared/utils.h"
 #include "openzl/shared/varint.h"
 #include "openzl/zl_ctransform.h"
 #include "openzl/zl_data.h"
 #include "openzl/zl_graph_api.h"
-#include "openzl/zl_reflection.h"
 
 /**
  * Set the maximum bytes to process to 4B to avoid overflow in the match finder.
  * It could likely be higher, but this is close enough to 2^32-1.
  */
-static const size_t kFieldLzContentSizeBytes = 4000000000u;
+static const size_t kLzContentSizeBytes = 4000000000u;
 
 static void* allocEICtx(void* opaque, size_t size)
 {
@@ -47,7 +48,7 @@ ZL_Report EI_fieldLz(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     }
     ZL_ERR_IF_GT(
             ZL_Input_contentSize(in),
-            kFieldLzContentSizeBytes,
+            kLzContentSizeBytes,
             temporaryLibraryLimitation,
             "FieldLZ only supports up to 4B of input due to 32-bit overflow in the match finder");
 
@@ -125,6 +126,75 @@ ZL_Report EI_fieldLz(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     ZL_LOG(TRANSFORM, "#extraMatchLengths = %zu", dst.nbExtraMatchLengths);
 
     return ZL_returnValue(5);
+}
+
+ZL_Report EI_lz(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
+
+    ZL_ASSERT_EQ(nbIns, 1);
+    ZL_ASSERT_NN(ins);
+    const ZL_Input* in   = ins[0];
+    size_t const srcSize = ZL_Input_numElts(in);
+
+    ZL_ASSERT_EQ(ZL_Input_type(in), ZL_Type_serial);
+    ZL_ERR_IF_GT(
+            srcSize,
+            kLzContentSizeBytes,
+            temporaryLibraryLimitation,
+            "LZ only supports up to 4B of input");
+
+    size_t const maxNumSeq = ZL_Lz_maxNumSequences(srcSize);
+
+    // Create output streams
+    size_t const literalsCapacity = srcSize + ZL_LZ_LIT_OVER_LENGTH;
+    ZL_Output* const literals =
+            ZL_Encoder_createTypedStream(eictx, 0, literalsCapacity, 1);
+    ZL_Output* const offsets =
+            ZL_Encoder_createTypedStream(eictx, 1, maxNumSeq, 2);
+    ZL_Output* const literalLengths =
+            ZL_Encoder_createTypedStream(eictx, 2, maxNumSeq, 2);
+    ZL_Output* const matchLengths =
+            ZL_Encoder_createTypedStream(eictx, 3, maxNumSeq, 2);
+
+    ZL_ERR_IF_NULL(literals, allocation);
+    ZL_ERR_IF_NULL(offsets, allocation);
+    ZL_ERR_IF_NULL(literalLengths, allocation);
+    ZL_ERR_IF_NULL(matchLengths, allocation);
+
+    // Allocate hash table from scratch space
+    size_t const hashTableSize = ZS_FastTable_tableSize(ZL_LZ_TABLE_LOG);
+    void* hashTableMem = ZL_Encoder_getScratchSpace(eictx, hashTableSize);
+    ZL_ERR_IF_NULL(hashTableMem, allocation);
+
+    ZL_Lz_OutSequences dst = {
+        .literals         = (uint8_t*)ZL_Output_ptr(literals),
+        .literalsCapacity = literalsCapacity,
+        .numLiterals      = 0,
+
+        .offsets           = (uint16_t*)ZL_Output_ptr(offsets),
+        .literalLengths    = (uint16_t*)ZL_Output_ptr(literalLengths),
+        .matchLengths      = (uint16_t*)ZL_Output_ptr(matchLengths),
+        .sequencesCapacity = maxNumSeq,
+        .numSequences      = 0,
+    };
+
+    ZL_Lz_encode(&dst, (const uint8_t*)ZL_Input_ptr(in), srcSize, hashTableMem);
+
+    // Write the original size as a varint codec header
+    uint8_t header[ZL_VARINT_LENGTH_64];
+    size_t const headerSize = ZL_varintEncode(srcSize, header);
+    ZL_Encoder_sendCodecHeader(eictx, header, headerSize);
+
+    ZL_ERR_IF_ERR(ZL_Output_commit(literals, dst.numLiterals));
+    ZL_ERR_IF_ERR(ZL_Output_commit(offsets, dst.numSequences));
+    ZL_ERR_IF_ERR(ZL_Output_commit(literalLengths, dst.numSequences));
+    ZL_ERR_IF_ERR(ZL_Output_commit(matchLengths, dst.numSequences));
+
+    ZL_ERR_IF_ERR(ZL_Output_setIntMetadata(
+            matchLengths, ZL_LZ_MIN_MATCH_LENGTH_METADATA_ID, ZL_LZ_MIN_MATCH));
+
+    return ZL_returnSuccess();
 }
 
 static ZL_Report tokensDynGraph(ZL_Graph* gctx, ZL_Edge* tokens)

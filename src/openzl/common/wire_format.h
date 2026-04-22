@@ -234,12 +234,12 @@ typedef enum {
     ZL_StandardTransformID_huffman_deprecated       = 16,
     ZL_StandardTransformID_huffman_fixed_deprecated = 17,
     ZL_StandardTransformID_sentinel                 = 18,
-    // 19 : available
-    ZL_StandardTransformID_rolz       = 20,
-    ZL_StandardTransformID_fastlz     = 21,
-    ZL_StandardTransformID_zstd       = 22,
-    ZL_StandardTransformID_zstd_fixed = 23,
-    ZL_StandardTransformID_field_lz   = 24,
+    ZL_StandardTransformID_lz                       = 19,
+    ZL_StandardTransformID_rolz                     = 20,
+    ZL_StandardTransformID_fastlz                   = 21,
+    ZL_StandardTransformID_zstd                     = 22,
+    ZL_StandardTransformID_zstd_fixed               = 23,
+    ZL_StandardTransformID_field_lz                 = 24,
 
     // TODO: Use local parameters to select quantization mode dynamically
     // instead of specialization for offsets / lengths.

@@ -3,6 +3,7 @@
 #include "openzl/codecs/lz/decode_lz_binding.h"
 
 #include "openzl/codecs/lz/common_field_lz.h"
+#include "openzl/codecs/lz/decode_lz_kernel.h"
 #include "openzl/common/assertion.h"
 #include "openzl/shared/utils.h"
 #include "openzl/shared/varint.h"
@@ -101,4 +102,60 @@ ZL_Report DI_fieldLz(ZL_Decoder* dictx, const ZL_Input* ins[])
     ZL_ERR_IF_ERR(ZL_Output_commit(dst, ZL_validResult(dstSize)));
 
     return ZL_returnValue(1);
+}
+
+ZL_Report DI_lz(ZL_Decoder* dictx, const ZL_Input* ins[])
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
+
+    ZL_Input const* const literals    = ins[0];
+    ZL_Input const* const offsets     = ins[1];
+    ZL_Input const* const literalLens = ins[2];
+    ZL_Input const* const matchLens   = ins[3];
+
+    size_t const offsetsEltWidth     = ZL_Input_eltWidth(offsets);
+    size_t const literalLensEltWidth = ZL_Input_eltWidth(literalLens);
+    size_t const matchLensEltWidth   = ZL_Input_eltWidth(matchLens);
+
+    size_t const numSequences = ZL_Input_numElts(offsets);
+    ZL_ERR_IF_NE(
+            numSequences,
+            ZL_Input_numElts(literalLens),
+            corruption,
+            "LZ: offsets and literal_lengths must have same count");
+    ZL_ERR_IF_NE(
+            numSequences,
+            ZL_Input_numElts(matchLens),
+            corruption,
+            "LZ: offsets and match_lengths must have same count");
+
+    ZL_RBuffer const header        = ZL_Decoder_getCodecHeader(dictx);
+    uint8_t const* headerStart     = (uint8_t const*)header.start;
+    uint8_t const* const headerEnd = headerStart + header.size;
+    ZL_TRY_LET_CONST(
+            uint64_t, dstSize, ZL_varintDecode(&headerStart, headerEnd));
+    ZL_ERR_IF_NE(
+            headerStart, headerEnd, corruption, "LZ: header leftover bytes");
+
+    ZL_Output* dst = ZL_Decoder_create1OutStream(dictx, dstSize, 1);
+    ZL_ERR_IF_NULL(dst, allocation);
+
+    ZL_Lz_InSequences const src = {
+        .literals               = (const uint8_t*)ZL_Input_ptr(literals),
+        .numLiterals            = ZL_Input_numElts(literals),
+        .offsets                = ZL_Input_ptr(offsets),
+        .offsetsEltWidth        = offsetsEltWidth,
+        .literalLengths         = ZL_Input_ptr(literalLens),
+        .literalLengthsEltWidth = literalLensEltWidth,
+        .matchLengths           = ZL_Input_ptr(matchLens),
+        .matchLengthsEltWidth   = matchLensEltWidth,
+        .numSequences           = numSequences,
+    };
+    ZL_LzError const err =
+            ZL_Lz_decode((uint8_t*)ZL_Output_ptr(dst), (size_t)dstSize, &src);
+    ZL_ERR_IF_NE(err, ZL_LzError_ok, corruption, "LZ decode failed");
+
+    ZL_ERR_IF_ERR(ZL_Output_commit(dst, (size_t)dstSize));
+
+    return ZL_returnSuccess();
 }

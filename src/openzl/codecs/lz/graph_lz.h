@@ -24,4 +24,22 @@
                 ZL_Type_numeric),                     \
     }
 
+/// Graph definition for the LZ codec.
+/// Input: 1 serial stream
+/// Output streams are:
+/// 1. Literals (serial)
+/// 2. Offsets (numeric)
+/// 3. Literal lengths (numeric)
+/// 4. Match lengths (numeric)
+#define LZ_GRAPH(id)                                     \
+    {                                                    \
+        .CTid       = id,                                \
+        .inputTypes = ZL_STREAMTYPELIST(ZL_Type_serial), \
+        .soTypes    = ZL_STREAMTYPELIST(                 \
+                ZL_Type_serial,                       \
+                ZL_Type_numeric,                      \
+                ZL_Type_numeric,                      \
+                ZL_Type_numeric),                     \
+    }
+
 #endif
