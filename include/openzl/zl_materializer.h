@@ -124,21 +124,17 @@ void* ZL_Materializer_getScratchSpace(ZL_Materializer* matCtx, size_t size);
 // In-progress API
 // =================================================================
 /**
- * @brief Descriptor for materializing and dematerializing dict objects.
+ * @brief Descriptor for materializing and dematerializing resource objects
+ * (dicts and MParams).
  *
- * This structure defines functions to materialize an in-memory object from
- * a raw source buffer and to dematerialize (free) that object.
+ * Defines functions to create an in-memory object from a raw source buffer
+ * (materializeFn) and to free that object (dematerializeFn). Used for both
+ * dictionary objects (required at compression and decompression) and MParam
+ * objects (compression-only). Note that the registration APIs allow for
+ * different materializers for compression-time and decompression-time dict
+ * materialization.
  */
 typedef struct {
-    /**
-     * Optionally an opaque pointer that can be queried with
-     * ZL_Materializer_getOpaquePtr().
-     * OpenZL unconditionally takes ownership of this pointer, even if
-     * registration fails, and it lives for the lifetime of the owning
-     * compressor/dict store.
-     */
-    ZL_OpaquePtr opaque;
-
     /**
      * @brief A custom function that materializes an in-memory object from a
      * provided @p src buffer. Separate function interfaces are provided for
@@ -186,13 +182,24 @@ typedef struct {
      */
     void (*dematerializeFn)(ZL_Materializer* matCtx, void* materialized)
             ZL_NOEXCEPT_FUNC_PTR;
+
+    /**
+     * Optionally an opaque pointer that can be queried with
+     * ZL_Materializer_getOpaquePtr().
+     * OpenZL unconditionally takes ownership of this pointer, even if
+     * registration fails, and it lives for the lifetime of the owning
+     * compressor/dict store.
+     */
+    ZL_OpaquePtr opaque;
 } ZL_MaterializerDesc2;
 
 // MParam structure
 typedef struct {
-    ZL_MParamID mparamID;
     const void* content;
     size_t size;
+    /// For advanced use cases, you can specify a custom ID for this MParam. If
+    /// unset, a default ID will be assigned.
+    ZL_MParamID mparamID;
 } ZL_MParam;
 
 #if defined(__cplusplus)

@@ -101,6 +101,14 @@ const void* ZL_Encoder_getMaterializedDict(const ZL_Encoder* eictx)
     return CGRAPH_getDictObj(CCTX_getCGraph(eictx->cctx), offset);
 }
 
+const void* ZL_Encoder_getMParam(const ZL_Encoder* eictx)
+{
+    ZL_ASSERT_NN(eictx);
+    if (eictx->cnode == NULL)
+        return NULL;
+    return CNODE_getMParamObj(eictx->cnode);
+}
+
 const void* ENC_getPrivateParam(const ZL_Encoder* eictx)
 {
     return eictx->privateParam;

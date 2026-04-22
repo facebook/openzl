@@ -16,7 +16,7 @@
 #include "openzl/zl_ctransform_legacy.h" // Pipe and Split transforms
 #include "openzl/zl_errors.h"            // ZL_Report
 #include "openzl/zl_input.h"
-#include "openzl/zl_materializer.h" // ZL_MaterializerDesc
+#include "openzl/zl_materializer.h" // ZL_MaterializerDesc, ZL_MParam
 #include "openzl/zl_opaque_types.h"
 #include "openzl/zl_output.h"
 #include "openzl/zl_portability.h" // ZL_NOEXCEPT_FUNC_PTR
@@ -355,9 +355,25 @@ typedef struct {
     /**
      * Optional dictionary ID associated with this encoder.
      * When set, identifies the dictionary that this encoder requires.
-     * A zero-initialized (null) value means no dictionary is associated.
+     * A zero-initialized value (ZL_DICT_ID_NULL) means no dictionary is
+     * associated.
      */
     ZL_DictID dictID;
+    /**
+     * Optional materializer for compression-only materialized parameters
+     *  (MParams). If materializeFn is non-null, it will be called during
+     *  compressor deserialization to create the materialized object from
+     *  the serialized MParam blob. Unlike dicts, MParams are NOT required
+     *  at decompression time.
+     */
+    ZL_MaterializerDesc2 mparamMat;
+    /**
+     * Optional MParam associated with this encoder. The provided content blob
+     * will be materialized as dictated by @p mparamMat . OpenZL will not take
+     * ownership of the content provided. The caller is free to free the buffer
+     * anytime after registering the MIEncoder.
+     */
+    ZL_MParam mparam;
 } ZL_MIEncoderDesc;
 
 /**
@@ -453,6 +469,13 @@ const ZL_LocalParams* ZL_Encoder_getLocalParams(const ZL_Encoder* eic);
  * there is one. Otherwise NULL.
  */
 const void* ZL_Encoder_getMaterializedDict(const ZL_Encoder* eictx);
+
+/**
+ * @returns The materialized MParam object associated with this node, if
+ * there is one. Otherwise NULL. MParams are compression-only resources
+ * that are not required at decompression time.
+ */
+const void* ZL_Encoder_getMParam(const ZL_Encoder* eictx);
 
 /* Scratch space allocation:
  * When the transform needs some buffer space for some local operation,
