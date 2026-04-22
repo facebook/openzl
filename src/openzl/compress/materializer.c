@@ -6,79 +6,6 @@
 #include "openzl/compress/localparams.h" // LP_getLocalRefParam, LP_getLocalIntParam
 
 // ******************************************************************
-// ZL_Materializer
-// ******************************************************************
-
-ZL_Materializer* ZL_Materializer_create(
-        Arena* allocator,
-        ZL_MaterializerDesc matDesc)
-{
-    ZL_Materializer* mat = ALLOC_Arena_malloc(allocator, sizeof(*mat));
-    if (mat == NULL) {
-        return NULL;
-    }
-    mat->persistentArena = allocator;
-    mat->scratchArena    = ALLOC_StackArena_create();
-    if (mat->scratchArena == NULL) {
-        ALLOC_Arena_free(allocator, mat);
-        return NULL;
-    }
-    mat->opaquePtr = matDesc.opaque;
-    mat->opCtx     = NULL;
-    return mat;
-}
-
-void ZL_Materializer_free(ZL_Materializer* mat)
-{
-    if (mat == NULL) {
-        return;
-    }
-    ALLOC_Arena_freeArena(mat->scratchArena);
-    ALLOC_Arena_free(mat->persistentArena, mat);
-}
-
-ZL_CONST_FN
-ZL_OperationContext* ZL_Materializer_getOperationContext(ZL_Materializer* mat)
-{
-    if (mat == NULL) {
-        return NULL;
-    }
-    return mat->opCtx;
-}
-
-void* ZL_Materializer_allocate(ZL_Materializer* mat, size_t size)
-{
-    if (mat == NULL || mat->persistentArena == NULL) {
-        return NULL;
-    }
-    return ALLOC_Arena_malloc(mat->persistentArena, size);
-}
-
-void* ZL_Materializer_getScratchSpace(ZL_Materializer* mat, size_t size)
-{
-    if (mat == NULL || mat->scratchArena == NULL) {
-        return NULL;
-    }
-    return ALLOC_Arena_malloc(mat->scratchArena, size);
-}
-
-void ZL_NOOP_DEMATERIALIZE(ZL_Materializer* matCtx, void* materialized)
-        ZL_NOEXCEPT_FUNC_PTR
-{
-    (void)matCtx;
-    (void)materialized;
-    return;
-}
-
-bool ZL_MParamID_hasValue(const ZL_MParamID* id)
-{
-    if (id == NULL) {
-        return false;
-    }
-    return ZL_UniqueID_isValid(&id->id);
-}
-
-// ******************************************************************
 // MaterializedParamMap
 // ******************************************************************
 
@@ -150,6 +77,7 @@ ZL_Report MPM_addMaterializedRefParam(
 
 ZL_Report MPM_addOrReuseMaterializedParam(
         Arena* allocator,
+        Arena* scratchAllocator,
         MaterializedParamMap* materializedParams,
         ZL_OperationContext* opCtx,
         ZL_LocalParams* lp,
@@ -183,10 +111,13 @@ ZL_Report MPM_addOrReuseMaterializedParam(
     }
 
     // Not found, create new materialized param
-    ZL_Materializer* mat = ZL_Materializer_create(allocator, *matDesc);
-    ZL_ERR_IF_NULL(mat, allocation);
-    ZL_RESULT_OF(ZL_VoidPtr) matResult = matDesc->materializeFn(mat, lp);
-    ZL_Materializer_free(mat);
+    ZL_Materializer mat = {
+        .persistentArena = allocator,
+        .scratchArena    = scratchAllocator,
+        .opaquePtr       = matDesc->opaque,
+    };
+    ZL_RESULT_OF(ZL_VoidPtr) matResult = matDesc->materializeFn(&mat, lp);
+    ALLOC_Arena_freeAll(scratchAllocator);
     ZL_ERR_IF_ERR(matResult);
 
     void* materialized = ZL_RES_value(matResult);
@@ -203,10 +134,13 @@ ZL_Report MPM_addOrReuseMaterializedParam(
     MaterializedParamMap_Insert insertResult =
             MaterializedParamMap_insert(materializedParams, &entryToInsert);
     if (insertResult.badAlloc) {
-        ZL_Materializer* mat2 = ZL_Materializer_create(allocator, *matDesc);
-        ZL_ERR_IF_NULL(mat2, allocation);
-        matDesc->dematerializeFn(mat2, materialized);
-        ZL_Materializer_free(mat2);
+        ZL_Materializer mat2 = {
+            // dematerializers aren't allowed to allocate
+            .persistentArena = NULL,
+            .scratchArena    = NULL,
+            .opaquePtr       = matDesc->opaque,
+        };
+        matDesc->dematerializeFn(&mat2, materialized);
         ZL_ERR(allocation, "Failed to insert materialized param into map");
     }
 
@@ -214,9 +148,7 @@ ZL_Report MPM_addOrReuseMaterializedParam(
             allocator, opCtx, lp, matDesc->paramId, materialized);
 }
 
-void MPM_dematerializeAllParams(
-        MaterializedParamMap* materializedParams,
-        Arena* allocator)
+void MPM_dematerializeAllParams(MaterializedParamMap* materializedParams)
 {
     MaterializedParamMap_Iter iter =
             MaterializedParamMap_iter(materializedParams);
@@ -224,14 +156,14 @@ void MPM_dematerializeAllParams(
     while ((entry = MaterializedParamMap_Iter_next(&iter)) != NULL) {
         if (entry->val.materializedParam != NULL) {
             ZL_ASSERT_NN(entry->key.matDesc.dematerializeFn);
-            ZL_Materializer* mat =
-                    ZL_Materializer_create(allocator, entry->key.matDesc);
-            if (mat == NULL) {
-                continue;
-            }
+            ZL_Materializer mat = {
+                // dematerializers aren't allowed to allocate
+                .persistentArena = NULL,
+                .scratchArena    = NULL,
+                .opaquePtr       = entry->key.matDesc.opaque,
+            };
             entry->key.matDesc.dematerializeFn(
-                    mat, entry->val.materializedParam);
-            ZL_Materializer_free(mat);
+                    &mat, entry->val.materializedParam);
         }
     }
 }
@@ -243,6 +175,7 @@ void MPM_dematerializeAllParams(
 ZL_RESULT_OF(OneshotMaterializationResult)
 MPM_materializeOneshot(
         Arena* allocator,
+        Arena* scratchAllocator,
         ZL_OperationContext* opCtx,
         const ZL_LocalParams* runtimeParams,
         const ZL_MaterializerDesc* matDesc)
@@ -262,11 +195,14 @@ MPM_materializeOneshot(
     ZL_ERR_IF_ERR(
             MPM_validateMaterializedParamId(runtimeParams, matDesc->paramId));
 
-    ZL_Materializer* mat = ZL_Materializer_create(allocator, *matDesc);
-    ZL_ERR_IF_NULL(mat, allocation);
+    ZL_Materializer mat = {
+        .persistentArena = allocator,
+        .scratchArena    = scratchAllocator,
+        .opaquePtr       = matDesc->opaque,
+    };
     ZL_RESULT_OF(ZL_VoidPtr)
-    matResult = matDesc->materializeFn(mat, runtimeParams);
-    ZL_Materializer_free(mat);
+    matResult = matDesc->materializeFn(&mat, runtimeParams);
+    ALLOC_Arena_freeAll(scratchAllocator);
     ZL_ERR_IF_ERR(matResult);
     void* materialized = ZL_RES_value(matResult);
 
@@ -285,11 +221,13 @@ MPM_materializeOneshot(
 
     if (ZL_isError(addResult)) {
         // Clean up materialized object
-        ZL_Materializer* mat2 = ZL_Materializer_create(allocator, *matDesc);
-        if (mat2 != NULL) {
-            matDesc->dematerializeFn(mat2, materialized);
-            ZL_Materializer_free(mat2);
-        }
+        ZL_Materializer mat2 = {
+            // dematerializers aren't allowed to allocate
+            .persistentArena = NULL,
+            .scratchArena    = NULL,
+            .opaquePtr       = matDesc->opaque,
+        };
+        matDesc->dematerializeFn(&mat2, materialized);
         ZL_ERR_IF_ERR(addResult);
     }
 
@@ -312,10 +250,11 @@ void MPM_dematerializeOneshot(
     // validity of the materializer in MPM_materializeOneshot
     ZL_ASSERT_NN(matResult->matDesc.dematerializeFn);
 
-    ZL_Materializer* mat =
-            ZL_Materializer_create(allocator, matResult->matDesc);
-    if (mat != NULL) {
-        matResult->matDesc.dematerializeFn(mat, matResult->materializedObj);
-        ZL_Materializer_free(mat);
-    }
+    ZL_Materializer mat = {
+        // dematerializers aren't allowed to allocate
+        .persistentArena = NULL,
+        .scratchArena    = NULL,
+        .opaquePtr       = matResult->matDesc.opaque,
+    };
+    matResult->matDesc.dematerializeFn(&mat, matResult->materializedObj);
 }

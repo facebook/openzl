@@ -25,6 +25,7 @@ typedef struct CNodes_manager_s {
     VECTOR(CNode) cnodes;
     ZL_OpaquePtrRegistry opaquePtrs;
     Arena* allocator;
+    Arena* scratchAllocator;
     struct CDictMgr_s* cdictMgr;
     MaterializedParamMap materializedParams;
     ZL_OperationContext* opCtx; // Non-owning pointer to error context

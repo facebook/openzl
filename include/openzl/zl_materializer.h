@@ -102,21 +102,25 @@ void ZL_NOOP_DEMATERIALIZE(ZL_Materializer* matCtx, void* materialized)
         ZL_NOEXCEPT_FUNC_PTR;
 
 /**
- * Managed space allocation:
+ * Managed space allocation (Materializers ONLY):
  * Materialization may request arena space to hold materialized objects. It is
  * allowed to request multiple buffers of any size. Returned buffers are not
  * initialized, and cannot be freed individually. All buffers are
- * automatically released at end of the owning @ref ZL_Compressor 's lifetime.
+ * automatically released at end of the owning @ref ZL_Compressor's lifetime.
+ *
+ * @note Always returns NULL during dematerialization.
  */
 void* ZL_Materializer_allocate(ZL_Materializer* matCtx, size_t size);
 
 /**
- * Scratch space allocation:
+ * Scratch space allocation (Materializers ONLY):
  * When the materializer needs some buffer space for some local operation,
  * it can request such space from the engine. It is allowed to
  * request multiple buffers of any size. Returned buffers are not
  * initialized, and cannot be freed individually. All scratch buffers are
  * automatically released at the end of the materializer's execution.
+ *
+ * @note Always returns NULL during dematerialization.
  */
 void* ZL_Materializer_getScratchSpace(ZL_Materializer* matCtx, size_t size);
 

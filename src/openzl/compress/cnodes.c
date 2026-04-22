@@ -76,6 +76,11 @@ ZL_Report CTM_init(CNodes_manager* ctm, ZL_OperationContext* opCtx)
     // Note 2: this is why this init function can fail
     ctm->allocator = ALLOC_HeapArena_create();
     ZL_ERR_IF_NULL(ctm->allocator, allocation);
+    ctm->scratchAllocator = ALLOC_StackArena_create();
+    if (ctm->scratchAllocator == NULL) {
+        ALLOC_Arena_freeArena(ctm->allocator);
+        ZL_ERR(allocation);
+    }
     return ZL_returnSuccess();
 }
 
@@ -85,10 +90,11 @@ void CTM_destroy(CNodes_manager* ctm)
     ZL_ASSERT_NN(ctm);
     // Dematerialize all materialized params before freeing any corresponding
     // CNodes
-    MPM_dematerializeAllParams(&ctm->materializedParams, ctm->allocator);
+    MPM_dematerializeAllParams(&ctm->materializedParams);
     MaterializedParamMap_destroy(&ctm->materializedParams);
     ZL_OpaquePtrRegistry_destroy(&ctm->opaquePtrs);
     VECTOR_DESTROY(ctm->cnodes);
+    ALLOC_Arena_freeArena(ctm->scratchAllocator);
     ALLOC_Arena_freeArena(ctm->allocator);
     ZL_zeroes(ctm, sizeof(*ctm));
 }
@@ -105,14 +111,14 @@ void CTM_reset(CNodes_manager* ctm)
     while ((entry = MaterializedParamMap_Iter_next(&iter)) != NULL) {
         if (entry->val.materializedParam != NULL
             && entry->key.matDesc.dematerializeFn != NULL) {
-            ZL_Materializer* mat =
-                    ZL_Materializer_create(ctm->allocator, entry->key.matDesc);
-            if (mat == NULL) {
-                continue;
-            }
+            ZL_Materializer mat = {
+                // dematerializers aren't allowed to allocate
+                .persistentArena = NULL,
+                .scratchArena    = NULL,
+                .opaquePtr       = entry->key.matDesc.opaque,
+            };
             entry->key.matDesc.dematerializeFn(
-                    mat, entry->val.materializedParam);
-            ZL_Materializer_free(mat);
+                    &mat, entry->val.materializedParam);
         }
     }
     MaterializedParamMap_clear(&ctm->materializedParams);
@@ -234,6 +240,7 @@ static ZL_RESULT_OF(CNodeID) CTM_registerCNode(
                 // Add the materialized object to refParams
                 ZL_ERR_IF_ERR(MPM_addOrReuseMaterializedParam(
                         ctm->allocator,
+                        ctm->scratchAllocator,
                         &ctm->materializedParams,
                         ctm->opCtx,
                         &trDesc->localParams,
