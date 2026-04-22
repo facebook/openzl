@@ -137,6 +137,7 @@ const InternalGraphDesc GR_standardGraphs[ZL_PrivateStandardGraphID_end] = {
     REGISTER_SELECTOR(ZL_StandardGraphID_bitpack, "!zl.bitpack", SI_selector_bitpack, ZL_Type_serial | ZL_Type_numeric),
     REGISTER_STATIC_GRAPH(ZL_StandardGraphID_flatpack, "!zl.flatpack", ZL_Type_serial, ZL_PrivateStandardNodeID_flatpack, _2_SUCCESSORS(ZL_PrivateStandardGraphID_serial_store, ZL_PrivateStandardGraphID_serial_store) ),
     REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_field_lz, "!zl.field_lz", ZL_Type_struct | ZL_Type_numeric, EI_fieldLzDynGraph),
+    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_lz, "!zl.lz", ZL_Type_serial, EI_lzDynGraph),
     REGISTER_MIGRAPH(ZL_StandardGraphID_compress_generic, MIGRAPH_COMPRESS),
     REGISTER_SELECTOR(ZL_StandardGraphID_select_generic_lz_backend, "!zl.select_generic_lz_backend", SI_selector_genericLZ, ZL_Type_serial),
     REGISTER_SEGMENTER(ZL_StandardGraphID_segment_numeric, SEGM_NUMERIC_DESC),
