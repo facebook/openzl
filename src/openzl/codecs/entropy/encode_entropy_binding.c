@@ -247,7 +247,7 @@ ZL_Report EI_huffman_v2(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     }
 
     // 2. Decide on 4x streams & send header
-    bool const x4 = srcSize > 1000;
+    bool const x4 = srcSize >= 256;
     {
         size_t const nbBytes = (size_t)(ZL_nextPow2(srcSize + 1) + 7) / 8;
         uint8_t header[sizeof(uint64_t) + 1];
