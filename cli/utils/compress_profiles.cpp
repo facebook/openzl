@@ -5,6 +5,8 @@
 
 #include <string.h>
 
+#include <limits>
+
 #include "openzl/codecs/zl_conversion.h"
 #include "openzl/codecs/zl_mlselector.h"
 #include "openzl/codecs/zl_sddl2.h"
@@ -333,13 +335,23 @@ compressProfiles()
         mp[kParquetName]         = std::make_shared<CompressProfile>(
                 kParquetName,
                 "Parquet in the canonical format (no compression, plain encoding)",
-                [](ZL_Compressor* comp, void*, const ProfileArgs&) {
+                [](ZL_Compressor* comp, void*, const ProfileArgs& args) {
                     auto clustering = ZS2_createGraph_genericClustering(comp);
-                    return ZL_Parquet_registerGraph_withChunkSize(
-                            comp,
-                            clustering,
+                    const size_t chunkSize = args.chunkSize().value_or(
                             custom_parsers::kDefaultChunkSize);
-                });
+                    if (chunkSize > static_cast<size_t>(
+                                std::numeric_limits<int>::max())) {
+                        throw InvalidArgsException(
+                                "--chunk-size for the parquet profile must be at most "
+                                + std::to_string(
+                                        std::numeric_limits<int>::max())
+                                + " bytes.");
+                    }
+                    return ZL_Parquet_registerGraph_withChunkSize(
+                            comp, clustering, static_cast<int>(chunkSize));
+                },
+                nullptr,
+                true);
 
         std::string kSDDLName = "sddl";
         mp[kSDDLName]         = std::make_shared<CompressProfile>(

@@ -473,6 +473,70 @@ class ParquetTest(_TrainBaseTest):
         self.train_compress_decompress()
 
 
+class ParquetChunkedTest(ParquetTest):
+    """
+    Verify that --chunk-size is wired through to the parquet profile.
+
+    Trains twice — once with the default chunk size and once with an explicit
+    --chunk-size 2M — then checks that the serialized compressors differ
+    (the chunk size is baked into the profile) and that both round-trip
+    correctly.
+    """
+
+    def test_chunk_size_affects_output(self):
+        profile = CompressorInfo(
+            compressor_str=self.compressor_profile_name,
+            compressor_type=CompressorType.PROFILE,
+        )
+
+        default_trained = os.path.join(self.output_dir_path, "default.zlc")
+        execute_train(
+            compressor_info=profile,
+            uncompressed_dir=input_dir_path(self.input_dir_name),
+            trained_compressor_path=default_trained,
+        )
+
+        chunked_trained = os.path.join(self.output_dir_path, "chunked.zlc")
+        execute_train(
+            compressor_info=profile,
+            uncompressed_dir=input_dir_path(self.input_dir_name),
+            trained_compressor_path=chunked_trained,
+            extra_args="--chunk-size 2M",
+        )
+
+        self.assertNotEqual(
+            os.path.getsize(default_trained),
+            os.path.getsize(chunked_trained),
+            "Trained compressors should differ when --chunk-size is changed",
+        )
+
+        sample = self.input_samples[0]
+        for trained_path, label in [
+            (default_trained, "default"),
+            (chunked_trained, "chunked"),
+        ]:
+            trained = CompressorInfo(
+                compressor_str=trained_path,
+                compressor_type=CompressorType.FILE,
+            )
+            compressed = sample.compressed_file_path + f".{label}"
+            execute_compress(
+                file_to_compress_path=sample.orig_file_path,
+                compressor_info=trained,
+                compressed_file_path=compressed,
+                extra_args=None,
+            )
+            decompressed = compressed + ".out"
+            execute_decompress(
+                compressed_file_path=compressed,
+                decompressed_file_path=decompressed,
+            )
+            self.assertTrue(
+                file_contents_match(sample.orig_file_path, decompressed),
+                f"Round-trip failed for {label} path",
+            )
+
+
 class U16TrainInlineTest(_TrainInlineBaseTest):
     @property
     def input_file_name(self) -> str:
