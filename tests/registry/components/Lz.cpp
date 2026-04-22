@@ -26,6 +26,12 @@ class LzComponent : public OpenZLComponent {
         return { ZL_NODE_LZ };
     }
 
+    std::vector<GraphID> predefinedGraphs(Compressor& compressor) const override
+    {
+        (void)compressor;
+        return { ZL_GRAPH_LZ };
+    }
+
     std::vector<std::unique_ptr<OpenZLInput>> predefinedInputs() const override
     {
         std::vector<std::unique_ptr<OpenZLInput>> inputs;
@@ -71,6 +77,42 @@ class LzComponent : public OpenZLComponent {
                     std::make_unique<SerialOpenZLInput>(producer("input")));
         }
         return inputs;
+    }
+
+    std::vector<Benchmark> benchmarks(
+            Compressor& compressor,
+            datagen::DataGen& gen) const override
+    {
+        struct Param {
+            size_t inputSize;
+            size_t numInputs;
+        };
+        constexpr std::array<Param, 3> kParams = {
+            Param{ 1000, 200 },
+            Param{ 10000, 50 },
+            Param{ 100000, 10 },
+        };
+
+        std::vector<Benchmark> benchmarks;
+        benchmarks.reserve(kParams.size());
+        for (const auto& param : kParams) {
+            datagen::CompressibleStringProducer producer(
+                    gen.getRandWrapper(), param.inputSize);
+            std::vector<std::unique_ptr<OpenZLInput>> inputs;
+            inputs.reserve(param.numInputs);
+            for (size_t i = 0; i < param.numInputs; ++i) {
+                inputs.push_back(
+                        std::make_unique<SerialOpenZLInput>(producer("input")));
+            }
+            benchmarks.push_back(
+                    Benchmark{
+                            .name = "InputSize:"
+                                    + std::to_string(param.inputSize),
+                            .graph  = ZL_GRAPH_LZ,
+                            .inputs = std::move(inputs),
+                    });
+        }
+        return benchmarks;
     }
 };
 } // namespace

@@ -19,6 +19,11 @@ ZL_Report EI_lz(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 ZL_Report EI_fieldLzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns);
 
 /**
+ * Standard function graph for LZ
+ */
+ZL_Report EI_lzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns);
+
+/**
  * Dynamic graph backing the default literals graph for Field LZ
  */
 ZL_Report
