@@ -73,6 +73,7 @@ typedef struct {
  * with ZL_RESULT_DECLARE_SCOPE
  */
 typedef void* ZL_VoidPtr;
+typedef const void* ZL_ConstVoidPtr;
 
 #if defined(__cplusplus)
 } // extern "C"

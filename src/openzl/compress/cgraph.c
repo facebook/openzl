@@ -38,7 +38,7 @@ struct ZL_Compressor_s {
     ZL_GraphID starting_graph;
     GCParams gcparams;
     ZL_OperationContext opCtx; // for error logging
-    CDictMgr dictMgr;
+    CDictMgr cdictMgr;
 }; /* note typedef'd to ZL_Compressor in zl_compress.h */
 
 ZL_Compressor* ZL_Compressor_create(void)
@@ -59,10 +59,15 @@ ZL_Compressor* ZL_Compressor_create(void)
     }
     cgraph->starting_graph = (ZL_GraphID){ .gid = 0 }; // default
     if (ZL_isError(CDictMgr_init(
-                &cgraph->dictMgr, &cgraph->nmgr, cgraph->gm, &cgraph->opCtx))) {
+                &cgraph->cdictMgr,
+                &cgraph->nmgr,
+                cgraph->gm,
+                &cgraph->opCtx))) {
         ZL_Compressor_free(cgraph);
         return NULL;
     }
+    // Back-populate CDictMgr pointers
+    cgraph->nmgr.ctm.cdictMgr = &cgraph->cdictMgr;
 
 #if ZL_ENABLE_ASSERT
     // In debug mode, runtime check on the configuration of the Standard Graphs
@@ -76,7 +81,7 @@ void ZL_Compressor_free(ZL_Compressor* cgraph)
 {
     if (!cgraph)
         return;
-    CDictMgr_destroy(&cgraph->dictMgr);
+    CDictMgr_destroy(&cgraph->cdictMgr);
     ZL_OC_destroy(&cgraph->opCtx);
     GM_free(cgraph->gm);
     NM_destroy(&cgraph->nmgr);
@@ -452,6 +457,7 @@ ZL_Compressor_parameterizeNode(
         .node        = node,
         .localParams = params->localParams,
         .dictID      = params->dictID,
+        .mparam      = params->mparam,
     };
 
     return NM_parameterizeNode(&compressor->nmgr, &desc);
@@ -466,6 +472,7 @@ ZL_NodeID ZL_Compressor_registerParameterizedNode(
         .name        = desc->name,
         .localParams = desc->localParams,
         .dictID      = desc->dictID,
+        .mparam      = desc->mparam,
     };
     ZL_RESULT_OF(ZL_NodeID)
     nodeidResult =
@@ -1247,10 +1254,25 @@ ZL_DictID ZL_Compressor_Node_getDictID(
     return CNODE_getDictID(CGRAPH_getCNode(cgraph, node));
 }
 
+ZL_MParamID ZL_Compressor_Node_getMParamID(
+        ZL_Compressor const* cgraph,
+        ZL_NodeID node)
+{
+    const ZL_MParamID* id = CNODE_getMParamID(CGRAPH_getCNode(cgraph, node));
+    return *id;
+}
+
+const void* ZL_Compressor_Node_getMParamObj(
+        ZL_Compressor const* cgraph,
+        ZL_NodeID node)
+{
+    return CNODE_getMParamObj(CGRAPH_getCNode(cgraph, node));
+}
+
 ZL_Report CGraph_resolveDictIndices(ZL_Compressor* cgraph)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(cgraph);
-    const ZL_DictBundle* bundle = cgraph->dictMgr.bundle;
+    const ZL_DictBundle* bundle = cgraph->cdictMgr.bundle;
     CNodes_manager* ctm         = &cgraph->nmgr.ctm;
     const ZL_IDType nbCNodes    = CTM_nbCNodes(ctm);
 
@@ -1304,7 +1326,7 @@ ZL_Report ZL_Compressor_Node_getDictIndex(
 const void* CGRAPH_getDictObj(const ZL_Compressor* cgraph, size_t dictOffset)
 {
     ZL_ASSERT_NN(cgraph);
-    const ZL_DictBundle* bundle = cgraph->dictMgr.bundle;
+    const ZL_DictBundle* bundle = cgraph->cdictMgr.bundle;
     if (bundle == NULL)
         return NULL;
     ZL_ASSERT_LT(dictOffset, bundle->info.numDicts);
@@ -1314,7 +1336,7 @@ const void* CGRAPH_getDictObj(const ZL_Compressor* cgraph, size_t dictOffset)
 const ZL_BundleID* ZL_Compressor_getDictBundleID(
         const ZL_Compressor* compressor)
 {
-    return CDictMgr_getBundleID(&compressor->dictMgr);
+    return CDictMgr_getBundleID(&compressor->cdictMgr);
 }
 
 ZL_Report ZL_Compressor_loadDictBundle(
@@ -1324,7 +1346,7 @@ ZL_Report ZL_Compressor_loadDictBundle(
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(compressor);
     ZL_ERR_IF_ERR(CDictMgr_loadFatBundle(
-            &compressor->dictMgr,
+            &compressor->cdictMgr,
             serializedDictBundle,
             serializedDictBundleSize));
     return ZL_returnSuccess();

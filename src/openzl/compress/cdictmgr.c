@@ -157,7 +157,7 @@ static const ZL_MaterializerDesc2* CDictMgr_findMaterializer(
     return NULL;
 }
 
-static ZL_RESULT_OF(ZL_DictConstPtr) CDictMgr_cacheDict(
+static ZL_RESULT_OF(ZL_DictConstPtr) CDictMgr_cacheInternal(
         CDictMgr* mgr,
         const ZL_ParsedDict* parsed,
         const ZL_MaterializerDesc2* matDesc)
@@ -165,6 +165,8 @@ static ZL_RESULT_OF(ZL_DictConstPtr) CDictMgr_cacheDict(
     ZL_RESULT_DECLARE_SCOPE(ZL_DictConstPtr, mgr->opCtx);
     ZL_ASSERT_NN(matDesc);
     ZL_ASSERT_NN(matDesc->materializeFn);
+
+    // try to search in the cache for existing entries
     CDictMgr_DictKey lookupKey = {
         .id      = parsed->dictID.id,
         .matDesc = *matDesc,
@@ -175,14 +177,6 @@ static ZL_RESULT_OF(ZL_DictConstPtr) CDictMgr_cacheDict(
     if (existing != NULL) {
         return ZL_WRAP_VALUE(existing->val);
     }
-
-    ZL_Dict* dict = (ZL_Dict*)ALLOC_Arena_calloc(mgr->arena, sizeof(ZL_Dict));
-    ZL_ERR_IF_NULL(dict, allocation);
-
-    dict->dictID             = parsed->dictID;
-    dict->materializingCodec = parsed->materializingCodec;
-    dict->codecType          = parsed->codecType;
-    dict->packedSize         = parsed->packedSize;
 
     // We free all memory in the scratch allocator, so don't
     // pass an arena that's not cleared.
@@ -200,7 +194,15 @@ static ZL_RESULT_OF(ZL_DictConstPtr) CDictMgr_cacheDict(
 
     ALLOC_Arena_freeAll(mgr->scratchArena);
     ZL_ERR_IF_ERR(obj);
-    dict->dictObj = ZL_RES_value(obj);
+
+    // cache
+    ZL_Dict* dict = (ZL_Dict*)ALLOC_Arena_calloc(mgr->arena, sizeof(ZL_Dict));
+    ZL_ERR_IF_NULL(dict, allocation);
+    dict->dictID             = parsed->dictID;
+    dict->materializingCodec = parsed->materializingCodec;
+    dict->codecType          = parsed->codecType;
+    dict->packedSize         = parsed->packedSize;
+    dict->dictObj            = ZL_RES_value(obj);
 
     CDictMgr_DictMap_Entry entry = { .key = lookupKey, .val = dict };
     CDictMgr_DictMap_Insert ins =
@@ -316,7 +318,7 @@ CDictMgr_loadDict(CDictMgr* mgr, const void* serialBuffer, size_t bufferMaxSize)
             matDesc, noValidMaterialization, "no materializer found for dict");
 
     ZL_RESULT_OF(ZL_DictConstPtr)
-    dictRes = CDictMgr_cacheDict(mgr, &parsed, matDesc);
+    dictRes = CDictMgr_cacheInternal(mgr, &parsed, matDesc);
     ZL_ERR_IF_ERR(dictRes);
 
     const ZL_Dict* dict = ZL_RES_value(dictRes);
@@ -362,7 +364,7 @@ const ZL_BundleID* CDictMgr_getBundleID(const CDictMgr* mgr)
 
 /**
  * Store a raw MParam blob for later CBOR serialization. The blob data is
- * copied into the CDictMgr's arena.
+ * copied into the CDictMgr's arena. Duplicate blobs are de-duped.
  *
  * @param id   The MParam ID to associate with this blob.
  * @param data Raw serialized MParam blob (dict wire format).
@@ -377,6 +379,10 @@ static ZL_Report CDictMgr_storeMParamBlob(
     ZL_RESULT_DECLARE_SCOPE_REPORT(mgr->opCtx);
     ZL_ERR_IF_NULL(data, GENERIC, "MParam blob data must not be null");
     ZL_ERR_IF_EQ(size, 0, GENERIC, "MParam blob size must be > 0");
+
+    if (CDictMgr_MParamMap_find(&mgr->mparamBlobs, &id) != NULL) {
+        return ZL_returnSuccess();
+    }
 
     void* copy = ALLOC_Arena_malloc(mgr->arena, size);
     ZL_ERR_IF_NULL(copy, allocation);
@@ -400,4 +406,39 @@ const ZL_MParam* CDictMgr_getMParam(const CDictMgr* mgr, ZL_MParamID id)
     const CDictMgr_MParamMap_Entry* entry =
             CDictMgr_MParamMap_find(&mgr->mparamBlobs, &id);
     return (entry != NULL) ? &entry->val : NULL;
+}
+
+/* ================================================================
+ * CDictMgr_materializeMParam
+ * ================================================================ */
+
+ZL_RESULT_OF(ZL_ConstVoidPtr)
+CDictMgr_materializeMParam(
+        CDictMgr* mgr,
+        ZL_MParam mparam,
+        const ZL_MaterializerDesc2* matDesc)
+{
+    ZL_RESULT_DECLARE_SCOPE(ZL_ConstVoidPtr, mgr->opCtx);
+    ZL_ASSERT_NN(matDesc);
+    ZL_ASSERT_NN(matDesc->materializeFn);
+    ZL_ASSERT_NN(mparam.content);
+
+    ZL_ParsedDict toCache = {
+        .dictID             = (ZL_DictID){ mparam.mparamID.id },
+        .materializingCodec = 0, // not used by mparams
+        .codecType          = 0, // not used by mparams
+        .dictContent        = mparam.content,
+        .contentSize        = mparam.size,
+        .packedSize         = mparam.size,
+    };
+
+    ZL_RESULT_OF(ZL_DictConstPtr)
+    dictRes = CDictMgr_cacheInternal(mgr, &toCache, matDesc);
+    ZL_ERR_IF_ERR(dictRes);
+
+    // Store raw blob for CBOR serialization
+    ZL_ERR_IF_ERR(CDictMgr_storeMParamBlob(
+            mgr, mparam.mparamID, mparam.content, mparam.size));
+
+    return ZL_WRAP_VALUE(ZL_RES_value(dictRes)->dictObj);
 }

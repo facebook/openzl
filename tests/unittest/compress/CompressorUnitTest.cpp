@@ -22,6 +22,7 @@
 #include "openzl/zl_reflection.h"
 #include "openzl/zl_selector.h"
 
+#include "tests/unittest/compress/CDictMgrTestHelpers.h"
 #include "tests/utils.h"
 
 using namespace ::testing;
@@ -417,6 +418,69 @@ class CompressorTest : public Test {
                 .nbIntParams = 1,
             },
         };
+    }
+
+    // ---- MParam sideloading helpers ----
+
+    static ZL_MParamID makeMParamID(uint8_t seed)
+    {
+        ZL_MParamID id = ZL_MPARAM_ID_NULL;
+        for (size_t i = 0; i < 32; i++) {
+            id.id.bytes[i] = static_cast<uint8_t>(seed + i);
+        }
+        return id;
+    }
+
+    static ZL_MaterializerDesc2 makeMParamMat()
+    {
+        return makeDefaultDictMaterializer();
+    }
+
+    ZL_NodeID registerNodeWithMParam(
+            ZL_MParamID mparamID,
+            ZL_MaterializerDesc2 mparamMat,
+            const void* content,
+            size_t contentSize)
+    {
+        static ZL_IDType nextMParamCtid = 5000;
+        static ZL_Type typetype         = ZL_Type_serial;
+        ZL_MIGraphDesc graphDesc{
+            .CTid                = nextMParamCtid++,
+            .inputTypes          = &typetype,
+            .nbInputs            = 1,
+            .lastInputIsVariable = false,
+            .soTypes             = &typetype,
+            .nbSOs               = 1,
+            .voTypes             = nullptr,
+            .nbVOs               = 0,
+        };
+
+        ZL_MParam mparam{
+            .content  = content,
+            .size     = contentSize,
+            .mparamID = mparamID,
+        };
+
+        ZL_MIEncoderDesc encoderDesc{
+            .gd          = graphDesc,
+            .transform_f = dummyEncoder,
+            .name        = "mparam_node",
+            .mparamMat   = mparamMat,
+            .mparam      = mparam,
+        };
+
+        return ZL_Compressor_registerMIEncoder(compressor_.get(), &encoderDesc);
+    }
+
+    ZL_NodeID parameterizeWithMParam(ZL_NodeID baseNode, ZL_MParam mparam)
+    {
+        ZL_ParameterizedNodeDesc paramDesc{
+            .name   = "mparam_param_node",
+            .node   = baseNode,
+            .mparam = mparam,
+        };
+        return ZL_Compressor_registerParameterizedNode(
+                compressor_.get(), &paramDesc);
     }
 
    protected:
@@ -1988,4 +2052,169 @@ TEST_F(CompressorTest,
     // Should not create a new materialized object for identical params
     EXPECT_EQ(materializeCount, 1)
             << "Should reuse materialized object when local params are identical";
+}
+
+// =============================================================================
+// MParam Registration Tests
+// =============================================================================
+
+TEST_F(CompressorTest, MParamRegistrationWithContent)
+{
+    auto mparamID  = makeMParamID(42);
+    auto mparamMat = makeMParamMat();
+    std::vector<uint8_t> rawContent(16, 0xCD);
+
+    auto node = registerNodeWithMParam(
+            mparamID, mparamMat, rawContent.data(), rawContent.size());
+    ASSERT_NE(node.nid, ZL_NODE_ILLEGAL.nid);
+
+    auto graphId = ZL_Compressor_registerStaticGraph_fromPipelineNodes1o(
+            compressor_.get(), &node, 1, ZL_GRAPH_STORE);
+    ASSERT_NE(graphId.gid, ZL_GRAPH_ILLEGAL.gid);
+
+    ASSERT_FALSE(
+            ZL_isError(ZL_Compressor_validate(compressor_.get(), graphId)));
+
+    ASSERT_NE(
+            ZL_Compressor_Node_getMParamObj(compressor_.get(), node), nullptr);
+}
+
+TEST_F(CompressorTest, MParamRegistrationMultipleMaterializations)
+{
+    auto mparamID   = makeMParamID(42);
+    auto mparamMat  = makeMParamMat();
+    auto mparamMat2 = mparamMat;
+    char dummy;
+    mparamMat2.opaque.ptr = (void*)&dummy;
+    std::vector<uint8_t> rawContent(16, 0xCD);
+
+    auto node1 = registerNodeWithMParam(
+            mparamID, mparamMat, rawContent.data(), rawContent.size());
+    ASSERT_NE(node1.nid, ZL_NODE_ILLEGAL.nid);
+
+    auto node2 = registerNodeWithMParam(
+            mparamID, mparamMat2, rawContent.data(), rawContent.size());
+    ASSERT_NE(node2.nid, ZL_NODE_ILLEGAL.nid);
+
+    auto graphId = ZL_Compressor_registerStaticGraph_fromPipelineNodes1o(
+            compressor_.get(), &node1, 1, ZL_GRAPH_STORE);
+    ASSERT_NE(graphId.gid, ZL_GRAPH_ILLEGAL.gid);
+
+    ASSERT_FALSE(
+            ZL_isError(ZL_Compressor_validate(compressor_.get(), graphId)));
+
+    ASSERT_NE(
+            ZL_Compressor_Node_getMParamObj(compressor_.get(), node1), nullptr);
+    ASSERT_NE(
+            ZL_Compressor_Node_getMParamObj(compressor_.get(), node2), nullptr);
+    // Different materializers should result in different materialized objects
+    ASSERT_NE(
+            ZL_Compressor_Node_getMParamObj(compressor_.get(), node1),
+            ZL_Compressor_Node_getMParamObj(compressor_.get(), node2));
+}
+
+TEST_F(CompressorTest, MParamRegistrationMultipleIDs)
+{
+    auto id1 = makeMParamID(10);
+    auto id2 = makeMParamID(20);
+    auto mat = makeMParamMat();
+    std::vector<uint8_t> content1(16, 0xAA);
+    std::vector<uint8_t> content2(16, 0xBB);
+
+    auto node1 =
+            registerNodeWithMParam(id1, mat, content1.data(), content1.size());
+    ASSERT_NE(node1.nid, ZL_NODE_ILLEGAL.nid);
+
+    auto node2 =
+            registerNodeWithMParam(id2, mat, content2.data(), content2.size());
+    ASSERT_NE(node2.nid, ZL_NODE_ILLEGAL.nid);
+
+    std::array<ZL_NodeID, 2> nodes = { node1, node2 };
+    auto graphId = ZL_Compressor_registerStaticGraph_fromPipelineNodes1o(
+            compressor_.get(), nodes.data(), nodes.size(), ZL_GRAPH_STORE);
+    ASSERT_NE(graphId.gid, ZL_GRAPH_ILLEGAL.gid);
+
+    ASSERT_FALSE(
+            ZL_isError(ZL_Compressor_validate(compressor_.get(), graphId)));
+
+    ASSERT_NE(
+            ZL_Compressor_Node_getMParamObj(compressor_.get(), node1), nullptr);
+    ASSERT_NE(
+            ZL_Compressor_Node_getMParamObj(compressor_.get(), node2), nullptr);
+    // Different IDs should result in different materialized objects
+    ASSERT_NE(
+            ZL_Compressor_Node_getMParamObj(compressor_.get(), node1),
+            ZL_Compressor_Node_getMParamObj(compressor_.get(), node2));
+}
+
+TEST_F(CompressorTest, WHENmparamRegisteredWithoutIDTHENoneIsAssigned)
+{
+    auto mat = makeMParamMat();
+    std::vector<uint8_t> content(16, 0xCD);
+
+    auto node = registerNodeWithMParam(
+            ZL_MPARAM_ID_NULL, mat, content.data(), content.size());
+    ASSERT_NE(node.nid, ZL_NODE_ILLEGAL.nid);
+
+    auto graphId = ZL_Compressor_registerStaticGraph_fromPipelineNodes1o(
+            compressor_.get(), &node, 1, ZL_GRAPH_STORE);
+    ASSERT_NE(graphId.gid, ZL_GRAPH_ILLEGAL.gid);
+
+    ASSERT_FALSE(
+            ZL_isError(ZL_Compressor_validate(compressor_.get(), graphId)));
+
+    ASSERT_NE(
+            ZL_Compressor_Node_getMParamObj(compressor_.get(), node), nullptr);
+    auto reflectedID = ZL_Compressor_Node_getMParamID(compressor_.get(), node);
+    ASSERT_TRUE(ZL_UniqueID_isValid(&reflectedID.id));
+}
+
+TEST_F(CompressorTest, WHENbadRegistrationTHENvalidationFails)
+{
+    auto idNeeded = makeMParamID(50);
+    auto mat      = makeMParamMat();
+    std::vector<uint8_t> content(16, 0xCD);
+
+    // Register with no content — validation should fail
+    auto node = registerNodeWithMParam(idNeeded, mat, nullptr, content.size());
+    ASSERT_EQ(node.nid, ZL_NODE_ILLEGAL.nid);
+
+    // Register with bad length - validation should fail
+    node = registerNodeWithMParam(idNeeded, mat, content.data(), 0);
+    ASSERT_EQ(node.nid, ZL_NODE_ILLEGAL.nid);
+
+    // Register without materializer — validation should fail
+    node = registerNodeWithMParam(idNeeded, {}, content.data(), content.size());
+    ASSERT_EQ(node.nid, ZL_NODE_ILLEGAL.nid);
+
+    // Register with bad materializer — validation should fail
+    auto badMat            = makeMParamMat();
+    badMat.dematerializeFn = nullptr;
+    node                   = registerNodeWithMParam(
+            idNeeded, badMat, content.data(), content.size());
+    ASSERT_EQ(node.nid, ZL_NODE_ILLEGAL.nid);
+}
+
+TEST_F(CompressorTest, MParamDedup)
+{
+    auto mparamID  = makeMParamID(42);
+    auto mparamMat = makeMParamMat();
+    std::vector<uint8_t> rawContent(16, 0xCD);
+
+    // Register two nodes with the same mparamID and same materializer
+    auto node1 = registerNodeWithMParam(
+            mparamID, mparamMat, rawContent.data(), rawContent.size());
+    ASSERT_NE(node1.nid, ZL_NODE_ILLEGAL.nid);
+
+    auto node2 = registerNodeWithMParam(
+            mparamID, mparamMat, rawContent.data(), rawContent.size());
+    ASSERT_NE(node2.nid, ZL_NODE_ILLEGAL.nid);
+
+    // Both should share the same materialized object (dedup by cache key)
+    const void* obj1 =
+            ZL_Compressor_Node_getMParamObj(compressor_.get(), node1);
+    const void* obj2 =
+            ZL_Compressor_Node_getMParamObj(compressor_.get(), node2);
+    ASSERT_NE(obj1, nullptr);
+    EXPECT_EQ(obj1, obj2) << "Same mparamID + same materializer should dedup";
 }

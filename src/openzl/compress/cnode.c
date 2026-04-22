@@ -214,3 +214,17 @@ size_t CNODE_getDictIndex(CNode const* cnode)
     ZL_ASSERT_EQ(cnode->nodetype, node_internalTransform);
     return cnode->maybeDictIndex;
 }
+
+const void* CNODE_getMParamObj(CNode const* cnode)
+{
+    ZL_ASSERT_NN(cnode);
+    ZL_ASSERT_EQ(cnode->nodetype, node_internalTransform);
+    return cnode->mparamObj;
+}
+
+const ZL_MParamID* CNODE_getMParamID(CNode const* cnode)
+{
+    ZL_ASSERT_NN(cnode);
+    ZL_ASSERT_EQ(cnode->nodetype, node_internalTransform);
+    return &cnode->transformDesc.publicDesc.mparam.mparamID;
+}
