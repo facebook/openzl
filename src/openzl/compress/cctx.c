@@ -139,10 +139,11 @@ struct ZL_CCtx_s {
     CCTX_TransformHeaders trHeaders;
     /* These Arenas presume single-thread execution.
      * For parallel execution, it will have to be replaced by Arena Pools */
-    Arena* codecArena;   // Codec lifetime
-    Arena* graphArena;   // Graph Lifetime
-    Arena* chunkArena;   // Chunk Lifetime
-    Arena* sessionArena; // Entire compression lifetime
+    Arena* codecArena;      // Codec lifetime
+    Arena* graphArena;      // Graph Lifetime
+    Arena* chunkArena;      // Chunk Lifetime
+    Arena* sessionArena;    // Entire compression lifetime
+    Arena* matScratchArena; // Scratch space for materializers
     const ZL_TypedRef** inputs;
     unsigned nbInputs;
     int numSegments;         // number of segments in the current frame
@@ -160,13 +161,15 @@ static ZL_Report CCTX_init(ZL_CCtx* cctx)
 
     ZL_OC_init(&cctx->opCtx);
 
-    cctx->codecArena   = ALLOC_StackArena_create();
-    cctx->graphArena   = ALLOC_StackArena_create();
-    cctx->chunkArena   = ALLOC_StackArena_create();
-    cctx->sessionArena = ALLOC_StackArena_create();
+    cctx->codecArena      = ALLOC_StackArena_create();
+    cctx->graphArena      = ALLOC_StackArena_create();
+    cctx->chunkArena      = ALLOC_StackArena_create();
+    cctx->sessionArena    = ALLOC_StackArena_create();
+    cctx->matScratchArena = ALLOC_StackArena_create();
     ZL_ERR_IF(
             cctx->graphArena == NULL || cctx->codecArena == NULL
-                    || cctx->chunkArena == NULL || cctx->sessionArena == NULL,
+                    || cctx->chunkArena == NULL || cctx->sessionArena == NULL
+                    || cctx->matScratchArena == NULL,
             allocation);
 
     ZL_ERR_IF_ERR(RTGM_init(&cctx->rtgraph));
@@ -219,6 +222,7 @@ void CCTX_free(ZL_CCtx* cctx)
     ALLOC_Arena_freeArena(cctx->codecArena);
     ALLOC_Arena_freeArena(cctx->graphArena);
     ALLOC_Arena_freeArena(cctx->chunkArena);
+    ALLOC_Arena_freeArena(cctx->matScratchArena);
     ALLOC_Arena_freeArena(cctx->sessionArena);
     ZL_OC_destroy(&cctx->opCtx);
     ZL_free(cctx);
@@ -504,6 +508,7 @@ static ZL_Report CCTX_runCNode_wParams(
             ZL_RESULT_OF(OneshotMaterializationResult)
             res = MPM_materializeOneshot(
                     cctx->sessionArena,
+                    cctx->matScratchArena,
                     ZL_CCtx_getOperationContext(cctx),
                     lparams,
                     &cnode->transformDesc.publicDesc.materializer);
@@ -967,6 +972,7 @@ static ZL_Report CCTX_runSegmenter(
                 ZL_RESULT_OF(OneshotMaterializationResult)
                 res = MPM_materializeOneshot(
                         cctx->sessionArena,
+                        cctx->matScratchArena,
                         ZL_CCtx_getOperationContext(cctx),
                         rgp->localParams,
                         &segDesc->materializer);
@@ -1151,6 +1157,7 @@ static ZL_Report CCTX_runSupervisedGraphID_internal(
                 ZL_RESULT_OF(OneshotMaterializationResult)
                 res = MPM_materializeOneshot(
                         cctx->sessionArena,
+                        cctx->matScratchArena,
                         ZL_CCtx_getOperationContext(cctx),
                         rgp->localParams,
                         &dstGd->materializer);

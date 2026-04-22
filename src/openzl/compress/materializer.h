@@ -5,27 +5,11 @@
 
 #include "openzl/common/allocation.h" // Arena
 #include "openzl/common/map.h"
+#include "openzl/dict/materializer_ctx.h" // struct ZL_Materializer_s
 #include "openzl/shared/portability.h"
 #include "openzl/zl_errors.h" // ZL_RESULT_DECLARE_TYPE_IMPL, ZL_RESULT_OF
 
 ZL_BEGIN_C_DECLS
-
-// ******************************************************************
-// ZL_Materializer
-// ******************************************************************
-
-struct ZL_Materializer_s {
-    Arena* persistentArena;
-    Arena* scratchArena;
-    const void* opaquePtr;
-    ZL_OperationContext* opCtx;
-} /* typedef'ed to ZL_Materializer in zl_opaque_types.h */;
-
-ZL_Materializer* ZL_Materializer_create(
-        Arena* allocator,
-        ZL_MaterializerDesc matDesc);
-
-void ZL_Materializer_free(ZL_Materializer* mat);
 
 // ******************************************************************
 // MaterializedParamMap
@@ -79,6 +63,7 @@ ZL_Report MPM_addMaterializedRefParam(
  */
 ZL_Report MPM_addOrReuseMaterializedParam(
         Arena* allocator,
+        Arena* scratchAllocator,
         MaterializedParamMap* materializedParams,
         ZL_OperationContext* opCtx,
         ZL_LocalParams* lp,
@@ -88,9 +73,7 @@ ZL_Report MPM_addOrReuseMaterializedParam(
  * Function called before MaterializedParamMap_destroy() to free all non-arena
  * memory allocated by materializers.
  */
-void MPM_dematerializeAllParams(
-        MaterializedParamMap* materializedParams,
-        Arena* allocator);
+void MPM_dematerializeAllParams(MaterializedParamMap* materializedParams);
 
 // ******************************************************************
 // MaterializedParamMap: Static functions
@@ -123,6 +106,7 @@ ZL_RESULT_DECLARE_TYPE(OneshotMaterializationResult);
 ZL_RESULT_OF(OneshotMaterializationResult)
 MPM_materializeOneshot(
         Arena* allocator,
+        Arena* scratchAllocator,
         ZL_OperationContext* opCtx,
         const ZL_LocalParams* runtimeParams,
         const ZL_MaterializerDesc* matDesc);

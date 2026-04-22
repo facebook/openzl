@@ -30,6 +30,7 @@ struct GraphsMgr_s {
     /// Contains a map from name -> graph for all standard & custom graphs
     GraphMap nameMap;
     Arena* allocator;
+    Arena* scratchAllocator;
     const Nodes_manager* nmgr;
     ZL_OpaquePtrRegistry opaquePtrs;
     MaterializedParamMap materializedParams;
@@ -72,6 +73,11 @@ GraphsMgr* GM_create(const Nodes_manager* nmgr)
         GM_free(gm);
         return NULL;
     }
+    gm->scratchAllocator = ALLOC_StackArena_create();
+    if (gm->scratchAllocator == NULL) {
+        GM_free(gm);
+        return NULL;
+    }
     gm->materializedParams =
             MaterializedParamMap_create(ZL_ENCODER_GRAPH_LIMIT);
     VECTOR_INIT(gm->gdv, ZL_ENCODER_GRAPH_LIMIT);
@@ -88,11 +94,12 @@ void GM_free(GraphsMgr* gm)
 {
     if (gm == NULL)
         return;
-    MPM_dematerializeAllParams(&gm->materializedParams, gm->allocator);
+    MPM_dematerializeAllParams(&gm->materializedParams);
     MaterializedParamMap_destroy(&gm->materializedParams);
     ZL_OpaquePtrRegistry_destroy(&gm->opaquePtrs);
     VECTOR_DESTROY(gm->gdv);
     GraphMap_destroy(&gm->nameMap);
+    ALLOC_Arena_freeArena(gm->scratchAllocator);
     ALLOC_Arena_freeArena(gm->allocator);
     ZL_free(gm);
 }
@@ -321,6 +328,7 @@ static ZL_RESULT_OF(ZL_GraphID) GM_registerInternalGraph(
         // Add the materialized object to refParams
         ZL_ERR_IF_ERR(MPM_addOrReuseMaterializedParam(
                 gm->allocator,
+                gm->scratchAllocator,
                 &gm->materializedParams,
                 gm->opCtx,
                 &gdi.migd.localParams,
@@ -719,6 +727,7 @@ static ZL_RESULT_OF(ZL_GraphID) GM_registerSegmenter_internal(
         // Add the materialized object to refParams
         ZL_ERR_IF_ERR(MPM_addOrReuseMaterializedParam(
                 gm->allocator,
+                gm->scratchAllocator,
                 &gm->materializedParams,
                 gm->opCtx,
                 &gdi.segDesc.localParams,
