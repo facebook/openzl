@@ -1262,11 +1262,44 @@ ZL_MParamID ZL_Compressor_Node_getMParamID(
     return *id;
 }
 
+const ZL_MParam* ZL_Compressor_Node_getMParam(
+        ZL_Compressor const* cgraph,
+        ZL_NodeID node)
+{
+    const CNode* cnode = CGRAPH_getCNode(cgraph, node);
+    if (cnode == NULL)
+        return NULL;
+    const ZL_MParam* mp = &cnode->transformDesc.publicDesc.mparam;
+    if (!ZL_UniqueID_isValid(&mp->mparamID.id))
+        return NULL;
+    return mp;
+}
+
 const void* ZL_Compressor_Node_getMParamObj(
         ZL_Compressor const* cgraph,
         ZL_NodeID node)
 {
     return CNODE_getMParamObj(CGRAPH_getCNode(cgraph, node));
+}
+
+size_t ZL_Compressor_numMParams(const ZL_Compressor* compressor)
+{
+    return CDictMgr_MParamMap_size(&compressor->cdictMgr.mparamBlobs);
+}
+
+ZL_Report ZL_Compressor_forEachMParam(
+        const ZL_Compressor* compressor,
+        ZL_Compressor_ForEachMParamCallback callback,
+        void* opaque)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    CDictMgr_MParamMap_Iter it =
+            CDictMgr_MParamMap_iter(&compressor->cdictMgr.mparamBlobs);
+    const CDictMgr_MParamMap_Entry* entry;
+    while ((entry = CDictMgr_MParamMap_Iter_next(&it)) != NULL) {
+        ZL_ERR_IF_ERR(callback(opaque, &entry->val));
+    }
+    return ZL_returnSuccess();
 }
 
 ZL_Report CGraph_resolveDictIndices(ZL_Compressor* cgraph)
