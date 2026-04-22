@@ -135,6 +135,20 @@ custom_unittest(
 )
 
 custom_unittest(
+    name = "parquet_chunked_test",
+    command = [
+        "$(location :integration_test_bin)",
+        "$(location ..:zli)",
+        "ParquetChunkedTest.test_chunk_size_affects_output",
+    ],
+    type = "simple",
+    deps = [
+        "..:zli",
+        ":integration_test_bin",
+    ],
+)
+
+custom_unittest(
     name = "parquet_test",
     command = [
         "$(location :integration_test_bin)",
