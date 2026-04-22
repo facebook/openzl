@@ -3,6 +3,7 @@
 #ifndef OPENZL_CODECS_LZ_H
 #define OPENZL_CODECS_LZ_H
 
+#include "openzl/zl_graphs.h"
 #include "openzl/zl_nodes.h"
 
 #if defined(__cplusplus)
@@ -18,6 +19,12 @@ extern "C" {
 // Output 3: Literal Lengths: A numeric stream of literal run lengths.
 // Output 4: Match Lengths: A numeric stream of match lengths.
 #define ZL_NODE_LZ ZL_MAKE_NODE_ID(ZL_StandardNodeID_lz)
+
+/// Standard function graph for LZ compression.
+/// Runs ZL_NODE_LZ with presets to offer performance similar to Zstd.
+/// In the future, it will be parameterizable to select different tradeoffs
+/// (like LZ4) and control the parameters like compression level.
+#define ZL_GRAPH_LZ ZL_MAKE_GRAPH_ID(ZL_StandardGraphID_lz)
 
 /// The LZ encoder sets the metadata on this ID to the minimum possible
 /// match length emitted by the encoder.

@@ -6,7 +6,10 @@
 #include "openzl/codecs/lz/common_field_lz.h"
 #include "openzl/codecs/lz/encode_field_lz_literals_selector.h"
 #include "openzl/codecs/lz/encode_lz_kernel.h"
+#include "openzl/codecs/zl_entropy.h"
 #include "openzl/codecs/zl_lz.h"
+#include "openzl/codecs/zl_mux_lengths.h"
+#include "openzl/codecs/zl_partition.h"
 #include "openzl/shared/utils.h"
 #include "openzl/shared/varint.h"
 #include "openzl/zl_ctransform.h"
@@ -394,6 +397,44 @@ ZL_GraphID SI_fieldLzLiteralsChannelSelector(
     ZS2_transposedLiteralStreamSelector_Successors const successors =
             ZS2_transposedLiteralStreamSelector_successors_init();
     return ZS2_transposedLiteralStreamSelector_impl(selCtx, input, &successors);
+}
+
+ZL_Report EI_lzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
+    ZL_ASSERT_EQ(nbIns, 1);
+    ZL_Edge* input = inputs[0];
+
+    // Run the LZ node
+    ZL_TRY_LET(ZL_EdgeList, streams, ZL_Edge_runNode(input, ZL_NODE_LZ));
+    ZL_ASSERT_EQ(streams.nbEdges, 4);
+
+    ZL_Edge* const literals       = streams.edges[0];
+    ZL_Edge* const offsets        = streams.edges[1];
+    ZL_Edge* const literalLengths = streams.edges[2];
+    ZL_Edge* const matchLengths   = streams.edges[3];
+
+    // Send literals to Huffman
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(literals, ZL_GRAPH_HUFFMAN));
+
+    // Send offsets to partition bitpack
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(offsets, ZL_GRAPH_PARTITION_BITPACK));
+
+    // Run mux_lengths node (auto-computes split point and min match length)
+    ZL_Edge* muxInputs[2] = { literalLengths, matchLengths };
+    ZL_TRY_LET(
+            ZL_EdgeList,
+            muxStreams,
+            ZL_Edge_runMultiInputNode(muxInputs, 2, ZL_NODE_MUX_LENGTHS));
+    ZL_ASSERT_EQ(muxStreams.nbEdges, 2);
+
+    // Route mux_lengths outputs: muxed bytes and overflow lengths to Huffman
+    ZL_ERR_IF_ERR(
+            ZL_Edge_setDestination(muxStreams.edges[0], ZL_GRAPH_HUFFMAN));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(
+            muxStreams.edges[1], ZL_GRAPH_COMPRESS_SMALL_LENGTHS));
+
+    return ZL_returnSuccess();
 }
 
 ZL_GraphID ZL_Compressor_registerFieldLZGraph_withLiteralsGraph(
