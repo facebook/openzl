@@ -204,6 +204,7 @@ typedef enum {
     ZL_PrivateStandardGraphID_split_struct,
     ZL_PrivateStandardGraphID_split_numeric,
     ZL_PrivateStandardGraphID_split_string,
+    ZL_PrivateStandardGraphID_sddl2_chunk,
 
     ZL_PrivateStandardGraphID_n_to_n,
 
@@ -242,6 +243,7 @@ typedef enum {
 
 #define ZL_GRAPH_BITPACK_SERIAL (ZL_GraphID){ZL_PrivateStandardGraphID_bitpack_serial}
 #define ZL_GRAPH_BITPACK_INT (ZL_GraphID){ZL_PrivateStandardGraphID_bitpack_int}
+#define ZL_GRAPH_SDDL2_CHUNK (ZL_GraphID){ZL_PrivateStandardGraphID_sddl2_chunk}
 
 /**
  * Create a tokenize delta field lz graph.

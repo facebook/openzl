@@ -97,9 +97,13 @@ This guide is for developers implementing compilers that target the SDDL2 VM byt
 // Production code (you don't write this)
 // The compression framework does:
 ZL_Compressor* compressor = ZL_Compressor_create();
-ZL_Compressor_registerSDDL2Graph(compressor, bytecode_data, bytecode_size, destination);
+ZL_Compressor_registerSDDL2Graph(
+    compressor, bytecode_data, bytecode_size);
 ZL_Compressor_compress(compressor, input_data, ...);
 ```
+
+Use `ZL_Compressor_registerSDDL2Graph_advanced()` if you need a custom
+successor graph or a non-default chunk-size hint.
 
 ---
 

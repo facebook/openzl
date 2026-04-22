@@ -281,18 +281,20 @@ void registerSDDL2Graph(nb::module_& g)
                     "__init__",
                     [](PyGraph<graphs::SDDL2>* obj,
                        std::string bytecode,
-                       GraphID successor) {
+                       GraphID successor,
+                       size_t chunkSize) {
                         // SDDL2 receives pre-compiled bytecode directly (no
                         // compilation)
                         auto bytecode_copy = std::make_shared<std::string>(
                                 std::move(bytecode));
                         new (obj) PyGraph<graphs::SDDL2>(
-                                *bytecode_copy, successor);
+                                *bytecode_copy, successor, chunkSize);
                         obj->stash(std::move(bytecode_copy));
                     },
                     nb::kw_only(),
                     nb::arg("bytecode"),
-                    nb::arg("successor"));
+                    nb::arg("successor"),
+                    nb::arg("chunk_size") = 0);
 }
 
 void registerStoreGraph(nb::module_& g)

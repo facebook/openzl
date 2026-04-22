@@ -1,3 +1,7 @@
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+
+#pragma once
+
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -5,10 +9,40 @@
 #include <random>
 
 #include "openzl/compress/graphs/sddl2/sddl2_vm.h"
+#include "openzl/cpp/CompressIntrospectionHooks.hpp"
+#include "openzl/cpp/DecompressIntrospectionHooks.hpp"
+#include "openzl/zl_config.h"
 
 namespace openzl {
 namespace sddl2 {
 namespace testing {
+
+#if ZL_ALLOW_INTROSPECTION
+class CompressChunkCounterHook : public openzl::CompressIntrospectionHooks {
+   public:
+    size_t chunkCount = 0;
+
+    void on_ZL_Segmenter_processChunk_start(
+            ZL_Segmenter*,
+            const size_t[],
+            size_t,
+            ZL_GraphID,
+            const ZL_RuntimeGraphParameters*) override
+    {
+        ++chunkCount;
+    }
+};
+
+class DecompressChunkCounterHook : public openzl::DecompressIntrospectionHooks {
+   public:
+    size_t chunkCount = 0;
+
+    void on_decompressChunk_start(ZL_DCtx*, size_t) override
+    {
+        ++chunkCount;
+    }
+};
+#endif
 
 class SDDL2TestBase : public ::testing::Test {
    protected:

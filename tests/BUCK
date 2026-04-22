@@ -81,7 +81,9 @@ zs_unittest(
         ["round_trip/**/*.cpp"],
         exclude = ["round_trip/test_mlselector.cpp"],
     ),
-    headers = glob(["round_trip/**/*.h"]),
+    headers = glob(["round_trip/**/*.h"]) + [
+        "compress/graphs/sddl2/utils.h",
+    ],
     labels = cross_platform_labels(),
     deps = [
         "..:compress",

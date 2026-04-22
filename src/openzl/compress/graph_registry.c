@@ -15,7 +15,7 @@
 #include "openzl/compress/dyngraph_interface.h" // ZL_Graph definition and graph context functions
 #include "openzl/compress/graphs/generic_clustering_graph.h" // MIGRAPH_CLUSTERING
 #include "openzl/compress/graphs/sddl/simple_data_description_language.h" // ZL_SDDL_dynGraph
-#include "openzl/compress/graphs/sddl2/sddl2.h" // SDDL2_parse
+#include "openzl/compress/graphs/sddl2/sddl2.h" // SDDL2_replayChunk, SDDL2_segment
 #include "openzl/compress/graphs/small_lengths_graph.h"
 #include "openzl/compress/graphs/split_graph.h" // ZL_splitFnGraph
 #include "openzl/compress/implicit_conversion.h" // ICONV_isCompatible for type checking
@@ -151,7 +151,7 @@ const InternalGraphDesc GR_standardGraphs[ZL_PrivateStandardGraphID_end] = {
     REGISTER_SELECTOR(ZL_StandardGraphID_select_numeric, "!zl.select_numeric", SI_selector_numeric, ZL_Type_numeric),
     REGISTER_MIGRAPH(ZL_StandardGraphID_clustering, MIGRAPH_CLUSTERING),
     REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_simple_data_description_language, "!zl.sddl", ZL_Type_serial, ZL_SDDL_dynGraph),
-    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_simple_data_description_language_v2, "!zl.sddl2", ZL_Type_serial, SDDL2_parse),
+    REGISTER_SEGMENTER(ZL_StandardGraphID_simple_data_description_language_v2, SEGM_SDDL2_DESC),
     REGISTER_MIGRAPH(ZL_StandardGraphID_try_parse_int, MIGRAPH_TRY_PARSE_INT),
     REGISTER_STATIC_GRAPH(ZL_StandardGraphID_lz4, "!zl.lz4", ZL_Type_serial, ZL_PrivateStandardNodeID_lz4, _1_SUCCESSOR(ZL_PrivateStandardGraphID_serial_store)),
     REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_partition_bitpack, "!zl.partition_bitpack", ZL_Type_numeric, EI_partitionBitpackDynGraph),
@@ -198,6 +198,7 @@ const InternalGraphDesc GR_standardGraphs[ZL_PrivateStandardGraphID_end] = {
     REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_split_struct, "!zl.private.split_struct", ZL_Type_struct, ZL_splitFnGraph),
     REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_split_numeric, "!zl.private.split_numeric", ZL_Type_numeric, ZL_splitFnGraph),
     REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_split_string, "!zl.private.split_string", ZL_Type_string, ZL_splitFnGraph),
+    REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_sddl2_chunk, "!zl.private.sddl2_chunk", ZL_Type_serial, SDDL2_replayChunk),
 
     REGISTER_MIGRAPH(ZL_PrivateStandardGraphID_n_to_n, MIGRAPH_N_TO_N),
     
