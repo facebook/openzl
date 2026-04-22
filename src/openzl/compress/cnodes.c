@@ -7,6 +7,7 @@
 #include "openzl/common/unique_id.h" // ZL_UniqueID_isValid
 #include "openzl/common/vector.h"
 #include "openzl/common/wire_format.h" // trt_standard
+#include "openzl/compress/cdictmgr.h"
 #include "openzl/compress/cnode.h"
 #include "openzl/compress/localparams.h"
 #include "openzl/compress/materializer.h" // ZL_Materializer functions
@@ -238,6 +239,49 @@ static ZL_RESULT_OF(CNodeID) CTM_registerCNode(
                         &trDesc->localParams,
                         &trDesc->materializer));
             }
+            // Materialize MParam if content and materializer are provided
+            if (trDesc->mparam.content != NULL || trDesc->mparam.size != 0) {
+                ZL_MParam mparam = trDesc->mparam;
+                // Ensure MParam is properly formed
+                ZL_ERR_IF_NULL(
+                        mparam.content,
+                        nodeParameter_invalid,
+                        "Passed MParam must have non-null content");
+                ZL_ERR_IF_EQ(
+                        mparam.size,
+                        0,
+                        nodeParameter_invalid,
+                        "Passed MParam must have non-zero size");
+
+                // Ensure there's a proper materializer
+                ZL_ERR_IF(
+                        trDesc->mparamMat.materializeFn == NULL
+                                && trDesc->mparamMat.dematerializeFn == NULL,
+                        nodeParameter_invalid,
+                        "MParam requested on a node without a materializer");
+                ZL_ERR_IF(
+                        trDesc->mparamMat.materializeFn == NULL
+                                || trDesc->mparamMat.dematerializeFn == NULL,
+                        nodeParameter_invalid,
+                        "MParam materializer must declare both a materialize and dematerialize function");
+
+                // If there's no ID, generate one
+                if (!ZL_UniqueID_isValid(&mparam.mparamID.id)) {
+                    mparam.mparamID.id = ZL_UniqueID_computeSHA256(
+                            mparam.content, mparam.size);
+                }
+
+                ZL_ASSERT_NN(ctm->cdictMgr);
+                ZL_RESULT_OF(ZL_ConstVoidPtr)
+                matRes = CDictMgr_materializeMParam(
+                        ctm->cdictMgr, mparam, &trDesc->mparamMat);
+                ZL_ERR_IF_ERR(matRes);
+                cnode->mparamObj = ZL_RES_value(matRes);
+                // Replace the CNode MParam with the cached version with
+                // guaranteed lifetime
+                trDesc->mparam =
+                        *CDictMgr_getMParam(ctm->cdictMgr, mparam.mparamID);
+            }
             // A valid transform must have at least one input
             ZL_ERR_IF_LT(
                     CNODE_getNbInputPorts(cnode),
@@ -293,6 +337,7 @@ CTM_registerCustomTransform(
                          .publicIDtype   = trt_custom,
                          .transformDesc  = *ctd,
                          .maybeDictIndex = ZL_DICT_INDEX_NONE,
+                         .mparamObj      = NULL,
                          .baseNodeID     = ZL_NODE_ILLEGAL };
     const char* name = ctd->publicDesc.name;
     // Registered => No need to free
@@ -341,11 +386,11 @@ CTM_parameterizeNode(
     if (desc->localParams) {
         clonedCNode.transformDesc.publicDesc.localParams = *desc->localParams;
     }
-    {
-        const ZL_UniqueID* uid = &desc->dictID.id;
-        if (ZL_UniqueID_isValid(uid)) {
-            clonedCNode.transformDesc.publicDesc.dictID = desc->dictID;
-        }
+    if (ZL_UniqueID_isValid(&desc->dictID.id)) {
+        clonedCNode.transformDesc.publicDesc.dictID = desc->dictID;
+    }
+    if (ZL_UniqueID_isValid(&desc->mparam.mparamID.id)) {
+        clonedCNode.transformDesc.publicDesc.mparam = desc->mparam;
     }
     if (desc->name == NULL) {
         const ZL_Name name = CNODE_getNameObj(srcCNode);

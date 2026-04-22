@@ -20,10 +20,12 @@ ZL_RESULT_DECLARE_TYPE(CNodeID);
 
 DECLARE_VECTOR_TYPE(CNode)
 
+struct CDictMgr_s; // forward declaration
 typedef struct CNodes_manager_s {
     VECTOR(CNode) cnodes;
     ZL_OpaquePtrRegistry opaquePtrs;
     Arena* allocator;
+    struct CDictMgr_s* cdictMgr;
     MaterializedParamMap materializedParams;
     ZL_OperationContext* opCtx; // Non-owning pointer to error context
 } CNodes_manager;

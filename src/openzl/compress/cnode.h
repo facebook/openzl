@@ -23,6 +23,11 @@ typedef struct {
     /// The "default" value is updated when ZL_Compressor_validate() is called,
     /// before compression starts.
     size_t maybeDictIndex /* defaults to ZL_DICT_INDEX_NONE */;
+    /// If an MParam is specified in the transformDesc, this field is populated
+    /// upon registration time with a pointer to the materialized object. The
+    /// CNode does not own the object, the ZL_Compressor owns it via the
+    /// CDictMgr.
+    const void* mparamObj;
     /// Standard nodes leave this empty, all other nodes set this.
     /// When set ZL_Name_unique(&maybeName) == transformDesc.publicDesc.name.
     ZL_Name maybeName;
@@ -142,5 +147,8 @@ ZL_DictID CNODE_getDictID(CNode const* cnode);
 /// or ZL_DICT_INDEX_NONE if no dictionary is associated.
 /// @pre cnode->nodetype == node_internalTransform
 size_t CNODE_getDictIndex(CNode const* cnode);
+
+const void* CNODE_getMParamObj(CNode const* cnode);
+const ZL_MParamID* CNODE_getMParamID(CNode const* cnode);
 
 #endif // OPENZL_COMPRESS_CNODE_H

@@ -13,7 +13,7 @@
 #include <assert.h>
 #include <stddef.h> // size_t
 
-#include "openzl/zl_common_types.h"  // ZL_VoidPtr
+#include "openzl/zl_common_types.h"  // ZL_VoidPtr, ZL_ConstVoidPtr
 #include "openzl/zl_errors_types.h"  // ZL_ErrorCode
 #include "openzl/zl_macro_helpers.h" // ZS_MACRO_PAD1 and friends
 #include "openzl/zl_opaque_types.h"  // ZL_GraphID, ZL_NodeID
@@ -197,6 +197,7 @@ extern "C" {
 ZL_RESULT_DECLARE_TYPE(ZL_GraphID);
 ZL_RESULT_DECLARE_TYPE(ZL_NodeID);
 ZL_RESULT_DECLARE_TYPE(ZL_VoidPtr);
+ZL_RESULT_DECLARE_TYPE(ZL_ConstVoidPtr);
 
 /*-*********************************************
  *  ZL_Report type

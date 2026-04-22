@@ -52,7 +52,7 @@ bool CDictMgr_MParamMap_eq(const ZL_MParamID* lhs, const ZL_MParamID* rhs);
 
 ZL_DECLARE_CUSTOM_MAP_TYPE(CDictMgr_MParamMap, ZL_MParamID, ZL_MParam);
 
-typedef struct {
+typedef struct CDictMgr_s {
     ZL_BundleID bundleID;
     CDictMgr_DictMap dictsByID;
     ZL_DictBundle* bundle;
@@ -146,6 +146,21 @@ const ZL_BundleID* CDictMgr_getBundleID(const CDictMgr* mgr);
  * the given ID has been stored.
  */
 const ZL_MParam* CDictMgr_getMParam(const CDictMgr* mgr, ZL_MParamID id);
+
+/**
+ * Materialize a raw MParam content buffer. The raw content is passed directly
+ * to the materializer (no Dict_parse). The result is cached by
+ * (mparamID, matDesc) for dedup, and the raw blob is stored for CBOR
+ * serialization.
+ *
+ * @returns The materialized object pointer on success, or an error if
+ * materialization fails for any reason.
+ */
+ZL_RESULT_OF(ZL_ConstVoidPtr)
+CDictMgr_materializeMParam(
+        CDictMgr* mgr,
+        ZL_MParam mparam,
+        const ZL_MaterializerDesc2* matDesc);
 
 ZL_END_C_DECLS
 

@@ -312,7 +312,8 @@ char const* ZL_Compressor_Node_getName(
 bool ZL_Compressor_Node_isStandard(ZL_Compressor const* cgraph, ZL_NodeID node);
 
 /**
- * @returns The dict ID associated with the @p node.
+ * @returns The dict ID associated with the @p node or ZL_DICT_ID_NULL if no
+ * dict is associated.
  */
 ZL_DictID ZL_Compressor_Node_getDictID(
         ZL_Compressor const* cgraph,
@@ -324,6 +325,22 @@ ZL_DictID ZL_Compressor_Node_getDictID(
  * @note Only valid after ZL_Compressor_validate() has been called.
  */
 ZL_Report ZL_Compressor_Node_getDictIndex(
+        ZL_Compressor const* cgraph,
+        ZL_NodeID node);
+
+/**
+ * @returns The MParam ID associated with the @p node or ZL_MPARAM_ID_NULL if no
+ * MParam is associated.
+ */
+ZL_MParamID ZL_Compressor_Node_getMParamID(
+        ZL_Compressor const* cgraph,
+        ZL_NodeID node);
+
+/**
+ * @returns The materialized Mparam object associated with the @p node or NULL
+ * if no MParam is associated.
+ */
+const void* ZL_Compressor_Node_getMParamObj(
         ZL_Compressor const* cgraph,
         ZL_NodeID node);
 
