@@ -34,6 +34,7 @@
 #include "openzl/codecs/zl_lz4.h"                  // IWYU pragma: export
 #include "openzl/codecs/zl_merge_sorted.h"         // IWYU pragma: export
 #include "openzl/codecs/zl_mlselector.h"           // IWYU pragma: export
+#include "openzl/codecs/zl_mux_lengths.h"          // IWYU pragma: export
 #include "openzl/codecs/zl_parse_int.h"            // IWYU pragma: export
 #include "openzl/codecs/zl_prefix.h"               // IWYU pragma: export
 #include "openzl/codecs/zl_quantize.h"             // IWYU pragma: export

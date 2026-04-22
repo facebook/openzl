@@ -21,6 +21,8 @@
 #include "openzl/codecs/lz/graph_lz.h"
 #include "openzl/codecs/lz4/decode_lz4_binding.h"
 #include "openzl/codecs/merge_sorted/decode_merge_sorted_binding.h"
+#include "openzl/codecs/mux_lengths/decode_mux_lengths_binding.h"
+#include "openzl/codecs/mux_lengths/graph_mux_lengths.h"
 #include "openzl/codecs/parse_int/decode_parse_int_binding.h"
 #include "openzl/codecs/parse_int/graph_parse_int.h"
 #include "openzl/codecs/partition/decode_partition_binding.h"
@@ -133,6 +135,7 @@ const StandardDTransform SDecoders_array[ZL_StandardTransformID_end] = {
     REGISTER_TTRANSFORM_G(ZL_StandardTransformID_partition, 24, DI_PARTITION, PARTITION_GRAPH),
     REGISTER_TTRANSFORM_G(ZL_StandardTransformID_sentinel, 24, DI_SENTINEL, SENTINEL_GRAPH),
     REGISTER_TTRANSFORM_G(ZL_StandardTransformID_lz, 24, DI_LZ, LZ_GRAPH),
+    REGISTER_TTRANSFORM_G(ZL_StandardTransformID_mux_lengths, 24, DI_MUX_LENGTHS, MUX_LENGTHS_GRAPH),
 
     REGISTER_VOTRANSFORM_G(ZL_StandardTransformID_splitn, 9, DI_SPLITN, GRAPH_VO_SERIAL),
     REGISTER_VOTRANSFORM_G(ZL_StandardTransformID_splitn_struct, 14, DI_SPLITN_STRUCT, GRAPH_VO_STRUCT),
