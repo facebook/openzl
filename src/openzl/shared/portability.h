@@ -296,12 +296,14 @@ typedef __m128i __m128i_u;
 
 #if defined(__SSSE3__)
 #    define ZL_HAS_SSSE3 1
+#    include <immintrin.h>
 #else
 #    define ZL_HAS_SSSE3 0
 #endif
 
 #if defined(__SSE4_2__)
 #    define ZL_HAS_SSE42 1
+#    include <immintrin.h>
 #else
 #    define ZL_HAS_SSE42 0
 #endif
