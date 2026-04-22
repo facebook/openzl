@@ -371,7 +371,8 @@ typedef struct {
      * Optional MParam associated with this encoder. The provided content blob
      * will be materialized as dictated by @p mparamMat . OpenZL will not take
      * ownership of the content provided. The caller is free to free the buffer
-     * anytime after registering the MIEncoder.
+     * anytime after registering the MIEncoder with
+     * ZL_Compressor_registerMIEncoder().
      */
     ZL_MParam mparam;
 } ZL_MIEncoderDesc;
