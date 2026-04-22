@@ -202,6 +202,11 @@ typedef struct {
     ZL_MParamID mparamID;
 } ZL_MParam;
 
+/**
+ * @returns true if @p id is non-NULL and not ZL_MPARAM_ID_NULL.
+ */
+bool ZL_MParamID_hasValue(const ZL_MParamID* id);
+
 #if defined(__cplusplus)
 } // extern "C"
 #endif

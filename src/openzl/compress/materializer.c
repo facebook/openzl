@@ -2,6 +2,7 @@
 
 #include "openzl/compress/materializer.h"
 #include "openzl/common/allocation.h" // ALLOC_*
+#include "openzl/common/unique_id.h"  // ZL_UniqueID_isValid
 #include "openzl/compress/localparams.h" // LP_getLocalRefParam, LP_getLocalIntParam
 
 // ******************************************************************
@@ -67,6 +68,14 @@ void ZL_NOOP_DEMATERIALIZE(ZL_Materializer* matCtx, void* materialized)
     (void)matCtx;
     (void)materialized;
     return;
+}
+
+bool ZL_MParamID_hasValue(const ZL_MParamID* id)
+{
+    if (id == NULL) {
+        return false;
+    }
+    return ZL_UniqueID_isValid(&id->id);
 }
 
 // ******************************************************************
