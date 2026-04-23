@@ -230,6 +230,15 @@ cpp_library(
     ],
 )
 
+cpp_library(
+    # @autodeps-skip
+    name = "openzl_training",
+    visibility = ["//openzl:openzl_training"],
+    exported_deps = [
+        "tools/training:train",  # @manual
+    ],
+)
+
 # Not intended to be widely used. A supported Python binding is coming.
 python_library(
     # @autodeps-skip
