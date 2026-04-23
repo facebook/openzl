@@ -16,6 +16,7 @@
 #include "openzl/cpp/poly/Span.hpp"
 
 #include "openzl/zl_compressor.h"
+#include "openzl/zl_compressor_serialization.h"
 #include "openzl/zl_ctransform.h"
 #include "openzl/zl_graph_api.h"
 #include "openzl/zl_reflection.h"
@@ -1078,6 +1079,282 @@ TEST_F(CompressorIntegrationTest,
     baseRetrieved = ZL_Compressor_Node_getDictID(compressor_.get(), baseNode);
     EXPECT_EQ(baseRetrieved.id.bytes[0], 10u);
     EXPECT_EQ(baseRetrieved.id.bytes[1], 20u);
+}
+
+// This test exercises MParams thoroughly
+// 1. Create materializers and encoders that take materialized params
+// 2. Register nodes onto compressor (MParams materialize at registration time)
+// 3. Compress
+// 4. Serialize + Deserialize
+// 5. Compress again (must match artifact in step 3)
+TEST_F(CompressorIntegrationTest,
+       GIVENmparamsLoadedWHENserializedAndDeserializedTHENcompressedOutputMatches)
+{
+    // --- MParam content blobs ---
+    const std::string mparam1_content = "mparam-blob-for-node-A-original";
+    const std::string mparam2_content = "mparam-blob-for-node-B-different-mat";
+    const std::string mparam3_content =
+            "mparam-blob-for-node-A-parameterized-1";
+    const std::string mparam4_content =
+            "mparam-blob-for-node-A-parameterized-2";
+
+    // --- MParam IDs ---
+    ZL_MParamID id1 = ZL_MPARAM_ID_NULL;
+    id1.id.bytes[0] = 0x01;
+    ZL_MParamID id2 = ZL_MPARAM_ID_NULL;
+    id2.id.bytes[0] = 0x02;
+    ZL_MParamID id3 = ZL_MPARAM_ID_NULL;
+    id3.id.bytes[0] = 0x03;
+    ZL_MParamID id4 = ZL_MPARAM_ID_NULL;
+    id4.id.bytes[0] = 0x04;
+
+    // --- Two different materializers ---
+    ZL_MaterializerDesc2 matA{};
+    matA.materializeFn   = copyDictMaterialize;
+    matA.dematerializeFn = ZL_NOOP_DEMATERIALIZE;
+
+    ZL_MaterializerDesc2 matB{};
+    matB.materializeFn   = copyDictMaterialize;
+    matB.dematerializeFn = ZL_NOOP_DEMATERIALIZE;
+    matB.opaque          = { .ptr = (void*)0xBEEF };
+
+    // --- Encoder that verifies MParam content against CopyParam ---
+    const auto encoderVerifyingMParam =
+            [](ZL_Encoder* eictx, const ZL_Input* inputs[], size_t nbInputs)
+                    ZL_NOEXCEPT_FUNC_PTR -> ZL_Report {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
+
+        const void* mparam = ZL_Encoder_getMParam(eictx);
+        ZL_ERR_IF_NULL(mparam, GENERIC, "Expected getMParam non-null");
+
+        auto cp = ZL_Encoder_getLocalCopyParam(eictx, 1);
+        ZL_ERR_IF_NULL(cp.paramPtr, GENERIC, "Expected CopyParam(1) non-null");
+        ZL_ERR_IF_NE(
+                memcmp(mparam, cp.paramPtr, cp.paramSize),
+                0,
+                GENERIC,
+                "MParam content mismatch with expected CopyParam");
+
+        return passthrough(eictx, inputs, nbInputs);
+    };
+
+    // --- Encoder that verifies MParam is NULL ---
+    const auto encoderNoMParam =
+            [](ZL_Encoder* eictx, const ZL_Input* inputs[], size_t nbInputs)
+                    ZL_NOEXCEPT_FUNC_PTR -> ZL_Report {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
+
+        const void* mparam = ZL_Encoder_getMParam(eictx);
+        ZL_ERR_IF_NN(
+                mparam,
+                GENERIC,
+                "Expected getMParam NULL for node without mparam");
+
+        return passthrough(eictx, inputs, nbInputs);
+    };
+
+    // --- Register nodes ---
+    static ZL_Type typetype = ZL_Type_serial;
+
+    auto makeGraphDesc = [&]() -> ZL_MIGraphDesc {
+        return ZL_MIGraphDesc{
+            .CTid                = nextCtid_++,
+            .inputTypes          = &typetype,
+            .nbInputs            = 1,
+            .lastInputIsVariable = false,
+            .soTypes             = &typetype,
+            .nbSOs               = 1,
+            .voTypes             = nullptr,
+            .nbVOs               = 0,
+        };
+    };
+
+    // Node A: matA + id1, CopyParam holds expected mparam1_content
+    ZL_CopyParam cpA = {
+        .paramId   = 1,
+        .paramPtr  = mparam1_content.data(),
+        .paramSize = mparam1_content.size(),
+    };
+    ZL_LocalParams lpA = {
+        .copyParams = {
+            .copyParams   = &cpA,
+            .nbCopyParams = 1,
+        },
+    };
+    ZL_MIEncoderDesc descA{
+        .gd          = makeGraphDesc(),
+        .transform_f = encoderVerifyingMParam,
+        .localParams = lpA,
+        .name        = "!encoder_mparam_A",
+        .mparamMat   = matA,
+        .mparam      = {
+            .content  = mparam1_content.data(),
+            .size     = mparam1_content.size(),
+            .mparamID = id1,
+        },
+    };
+    auto nodeA = compressor_.registerCustomEncoder(descA);
+    ASSERT_NE(nodeA.nid, ZL_NODE_ILLEGAL.nid);
+
+    // Node B: matB + id2 (different materializer)
+    ZL_CopyParam cpB = {
+        .paramId   = 1,
+        .paramPtr  = mparam2_content.data(),
+        .paramSize = mparam2_content.size(),
+    };
+    ZL_LocalParams lpB = {
+        .copyParams = {
+            .copyParams   = &cpB,
+            .nbCopyParams = 1,
+        },
+    };
+    ZL_MIEncoderDesc descB{
+        .gd          = makeGraphDesc(),
+        .transform_f = encoderVerifyingMParam,
+        .localParams = lpB,
+        .name        = "!encoder_mparam_B",
+        .mparamMat   = matB,
+        .mparam      = {
+            .content  = mparam2_content.data(),
+            .size     = mparam2_content.size(),
+            .mparamID = id2,
+        },
+    };
+    auto nodeB = compressor_.registerCustomEncoder(descB);
+    ASSERT_NE(nodeB.nid, ZL_NODE_ILLEGAL.nid);
+
+    // Node C: no mparam
+    ZL_MIEncoderDesc descC{
+        .gd          = makeGraphDesc(),
+        .transform_f = encoderNoMParam,
+        .name        = "!encoder_no_mparam",
+    };
+    auto nodeC = compressor_.registerCustomEncoder(descC);
+    ASSERT_NE(nodeC.nid, ZL_NODE_ILLEGAL.nid);
+
+    // Parameterize nodeA with id3 (same materializer, different MParam)
+    ZL_CopyParam cp3 = {
+        .paramId   = 1,
+        .paramPtr  = mparam3_content.data(),
+        .paramSize = mparam3_content.size(),
+    };
+    ZL_LocalParams lp3 = {
+        .copyParams = {
+            .copyParams   = &cp3,
+            .nbCopyParams = 1,
+        },
+    };
+    ZL_NodeParameters params3{
+        .localParams = &lp3,
+        .mparam      = {
+            .content  = mparam3_content.data(),
+            .size     = mparam3_content.size(),
+            .mparamID = id3,
+        },
+    };
+    auto result3 =
+            ZL_Compressor_parameterizeNode(compressor_.get(), nodeA, &params3);
+    ASSERT_FALSE(ZL_RES_isError(result3));
+    auto nodeA_param1 = ZL_RES_value(result3);
+
+    // Parameterize nodeA again with id4
+    ZL_CopyParam cp4 = {
+        .paramId   = 1,
+        .paramPtr  = mparam4_content.data(),
+        .paramSize = mparam4_content.size(),
+    };
+    ZL_LocalParams lp4 = {
+        .copyParams = {
+            .copyParams   = &cp4,
+            .nbCopyParams = 1,
+        },
+    };
+    ZL_NodeParameters params4{
+        .localParams = &lp4,
+        .mparam      = {
+            .content  = mparam4_content.data(),
+            .size     = mparam4_content.size(),
+            .mparamID = id4,
+        },
+    };
+    auto result4 =
+            ZL_Compressor_parameterizeNode(compressor_.get(), nodeA, &params4);
+    ASSERT_FALSE(ZL_RES_isError(result4));
+    auto nodeA_param2 = ZL_RES_value(result4);
+
+    // --- Build graph: nodeA → nodeB → nodeC → nodeA_param1 → nodeA_param2 →
+    // STORE ---
+    std::array<ZL_NodeID, 5> nodes = {
+        nodeA, nodeB, nodeC, nodeA_param1, nodeA_param2
+    };
+    auto graphId = ZL_Compressor_registerStaticGraph_fromPipelineNodes1o(
+            compressor_.get(), nodes.data(), nodes.size(), ZL_GRAPH_STORE);
+    ASSERT_NE(graphId.gid, ZL_GRAPH_ILLEGAL.gid);
+
+    compressor_.selectStartingGraph(graphId);
+
+    // --- First compress: verify MParam content ---
+    cctx_.refCompressor(compressor_);
+    cctx_.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+
+    std::string src =
+            "Let me think. That's just inherently very difficult. What are we doing?";
+    std::vector<char> dst(1000);
+    size_t compressedSize =
+            cctx_.compressSerial(poly::span<char>(dst.data(), dst.size()), src);
+    ASSERT_GT(compressedSize, 0u);
+
+    // --- Serialize the compressor ---
+    ZL_CompressorSerializer* serializer = ZL_CompressorSerializer_create();
+    ASSERT_NE(serializer, nullptr);
+
+    void* serialized      = nullptr;
+    size_t serializedSize = 0;
+    {
+        ZL_Report r = ZL_CompressorSerializer_serialize(
+                serializer, compressor_.get(), &serialized, &serializedSize);
+        ASSERT_FALSE(ZL_isError(r));
+    }
+
+    std::vector<uint8_t> serializedCopy(
+            (const uint8_t*)serialized,
+            (const uint8_t*)serialized + serializedSize);
+    ZL_CompressorSerializer_free(serializer);
+
+    // --- Deserialize into a new compressor ---
+    openzl::Compressor compressor2;
+
+    // Pre-register the same custom nodes
+    compressor2.registerCustomEncoder(descA);
+    compressor2.registerCustomEncoder(descB);
+    compressor2.registerCustomEncoder(descC);
+
+    // Deserialize — MParams should be auto-materialized from the CBOR
+    ZL_CompressorDeserializer* deserializer =
+            ZL_CompressorDeserializer_create();
+    ASSERT_NE(deserializer, nullptr);
+    {
+        ZL_Report r = ZL_CompressorDeserializer_deserialize(
+                deserializer,
+                compressor2.get(),
+                serializedCopy.data(),
+                serializedCopy.size());
+        ASSERT_FALSE(ZL_isError(r));
+    }
+    ZL_CompressorDeserializer_free(deserializer);
+
+    // --- Second compress with deserialized compressor ---
+    openzl::CCtx cctx2;
+    cctx2.refCompressor(compressor2);
+    cctx2.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+
+    std::vector<char> dst2(1000);
+    size_t compressedSize2 = cctx2.compressSerial(
+            poly::span<char>(dst2.data(), dst2.size()), src);
+    ASSERT_EQ(compressedSize, compressedSize2);
+    ASSERT_EQ(
+            std::string(dst.data(), compressedSize),
+            std::string(dst2.data(), compressedSize));
 }
 
 } // namespace openzl
