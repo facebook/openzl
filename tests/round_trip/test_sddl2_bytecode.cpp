@@ -407,7 +407,8 @@ static SDDL2_Struct_data* create_structure_data(
     struct_data->total_size_bytes = 0;
     for (size_t i = 0; i < member_count; ++i) {
         struct_data->members[i] = members[i];
-        struct_data->total_size_bytes += SDDL2_Type_size(members[i]);
+        struct_data->total_size_bytes +=
+                openzl::sddl2::testing::getTypeSize(members[i]);
     }
 
     return struct_data;

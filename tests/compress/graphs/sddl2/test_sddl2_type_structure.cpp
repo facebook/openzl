@@ -44,9 +44,9 @@ TEST_F(SDDL2TypeStructureTest, SimpleStructureCreation)
                                           .width       = 1,
                                           .struct_data = nullptr };
 
-    struct_data->total_size_bytes = SDDL2_Type_size(struct_data->members[0])
-            + SDDL2_Type_size(struct_data->members[1])
-            + SDDL2_Type_size(struct_data->members[2]);
+    struct_data->total_size_bytes = getTypeSize(struct_data->members[0])
+            + getTypeSize(struct_data->members[1])
+            + getTypeSize(struct_data->members[2]);
 
     EXPECT_EQ(struct_data->total_size_bytes, 7);
 
@@ -110,9 +110,9 @@ TEST_F(SDDL2TypeStructureTest, StructureWithArrayMembers)
                                             .width       = 1,
                                             .struct_data = nullptr };
 
-    struct_data->total_size_bytes = SDDL2_Type_size(struct_data->members[0])
-            + SDDL2_Type_size(struct_data->members[1])
-            + SDDL2_Type_size(struct_data->members[2]);
+    struct_data->total_size_bytes = getTypeSize(struct_data->members[0])
+            + getTypeSize(struct_data->members[1])
+            + getTypeSize(struct_data->members[2]);
 
     EXPECT_EQ(struct_data->total_size_bytes, 43);
 

@@ -64,7 +64,7 @@ TEST_F(SDDL2VmTypeStructureTest, SimpleStructure)
     EXPECT_EQ(struct_data->members[1].kind, SDDL2_TYPE_I16LE);
     EXPECT_EQ(struct_data->members[2].kind, SDDL2_TYPE_I32LE);
 
-    EXPECT_EQ(SDDL2_Type_size(result.value.as_type), 7u);
+    EXPECT_EQ(getTypeSize(result.value.as_type), 7u);
 }
 
 TEST_F(SDDL2VmTypeStructureTest, StructureWithArrays)
@@ -126,7 +126,7 @@ TEST_F(SDDL2VmTypeStructureTest, ArrayOfStructures)
     EXPECT_EQ(struct_data->total_size_bytes, 5u); // Size of one instance
 
     // Total size = 5 bytes × 10 = 50 bytes
-    EXPECT_EQ(SDDL2_Type_size(result.value.as_type), 50u);
+    EXPECT_EQ(getTypeSize(result.value.as_type), 50u);
 }
 
 TEST_F(SDDL2VmTypeStructureTest, ZeroMemberStructure)

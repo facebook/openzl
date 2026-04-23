@@ -264,16 +264,13 @@ static ZL_Report sddl2_flatten_field_sizes(
                     graph, type.struct_data->members[i], field_sizes, index));
         }
     } else {
-        // Primitive type: calculate size and append
-        size_t field_size = SDDL2_Type_size(type);
-
-        // Skip zero-sized fields (invalid types)
-        if (field_size == 0) {
-            ZL_DLOG(BLOCK,
-                    "Skipping field with zero size (type kind %d)",
-                    (int)type.kind);
-            return ZL_returnSuccess();
-        }
+        size_t field_size;
+        ZL_ERR_IF_NE(
+                SDDL2_Type_size(type, &field_size),
+                SDDL2_OK,
+                GENERIC,
+                "Failed to compute size for type kind %d",
+                (int)type.kind);
 
         field_sizes[(*index)++] = field_size;
     }
@@ -667,12 +664,12 @@ static ZL_Report sddl2_apply_type_conversion(
 
     // Determine primitive element size in bytes (not including width)
     // For array types, we convert the base element, not the full array
-    size_t element_size = SDDL2_kind_size(type.kind);
-    ZL_ERR_IF_EQ(
-            element_size,
-            0,
+    size_t element_size;
+    ZL_ERR_IF_NE(
+            SDDL2_kind_size(type.kind, &element_size),
+            SDDL2_OK,
             GENERIC,
-            "Invalid SDDL2 type kind %d for segment (unsupported or zero-sized type)",
+            "Invalid SDDL2 type kind %d for segment (unsupported type)",
             (int)type.kind);
 
     // Determine endianness
@@ -1154,10 +1151,10 @@ static ZL_Report sddl2_get_chunk_split_unit_size(
 
     // Primitive kinds, including BYTES, split on their element size.
     // BYTES intentionally uses 1-byte units so raw byte spans can chunk.
-    size_t const unitBytes = SDDL2_kind_size(type.kind);
-    ZL_ERR_IF_EQ(
-            unitBytes,
-            0,
+    size_t unitBytes;
+    ZL_ERR_IF_NE(
+            SDDL2_kind_size(type.kind, &unitBytes),
+            SDDL2_OK,
             GENERIC,
             "Failed to derive a split unit size for SDDL2 segment chunking");
     return ZL_returnValue(unitBytes);
