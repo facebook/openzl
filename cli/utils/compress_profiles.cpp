@@ -8,6 +8,7 @@
 #include <limits>
 
 #include "openzl/codecs/zl_conversion.h"
+#include "openzl/codecs/zl_lz.h"
 #include "openzl/codecs/zl_mlselector.h"
 #include "openzl/codecs/zl_sddl2.h"
 #include "openzl/codecs/zl_segmenters.h"
@@ -286,7 +287,7 @@ compressProfiles()
                 "Serial data (aka raw bytes)",
                 [](ZL_Compressor* compressor, void*, const ProfileArgs&) {
                     return ZL_Compressor_buildACEGraphWithDefault(
-                            compressor, ZL_GRAPH_ZSTD);
+                            compressor, ZL_GRAPH_LZ);
                 });
 
         std::string kPytorchName = "pytorch";
