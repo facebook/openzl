@@ -65,10 +65,12 @@ typedef enum {
     ZL_ErrorCode_outputNotReserved                    = 25,
     ZL_ErrorCode_segmenter_inputNotConsumed           = 26,
     /* graph stage errors */
-    ZL_ErrorCode_graph_invalid          = 30,
-    ZL_ErrorCode_graph_nonserializable  = 31,
-    ZL_ErrorCode_invalidTransform       = 32,
-    ZL_ErrorCode_graph_invalidNumInputs = 33,
+    ZL_ErrorCode_graph_invalid               = 30,
+    ZL_ErrorCode_graph_nonserializable       = 31,
+    ZL_ErrorCode_invalidTransform            = 32,
+    ZL_ErrorCode_graph_invalidNumInputs      = 33,
+    ZL_ErrorCode_graph_parser_malformedInput = 34,
+    ZL_ErrorCode_graph_parser_unhandledInput = 35,
     /* runtime compression errors */
     ZL_ErrorCode_successor_invalid          = 40,
     ZL_ErrorCode_successor_alreadySet       = 41,
