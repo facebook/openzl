@@ -54,6 +54,10 @@ const char* ZL_ErrorCode_toString(ZL_ErrorCode code)
             return ZL_ErrorCode_graph_nonserializable__desc_str;
         case ZL_ErrorCode_graph_invalidNumInputs:
             return ZL_ErrorCode_graph_invalidNumInputs__desc_str;
+        case ZL_ErrorCode_graph_parser_malformedInput:
+            return ZL_ErrorCode_graph_parser_malformedInput__desc_str;
+        case ZL_ErrorCode_graph_parser_unhandledInput:
+            return ZL_ErrorCode_graph_parser_unhandledInput__desc_str;
         case ZL_ErrorCode_successor_invalid:
             return ZL_ErrorCode_successor_invalid__desc_str;
         case ZL_ErrorCode_successor_alreadySet:

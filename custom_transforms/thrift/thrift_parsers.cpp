@@ -373,6 +373,10 @@ ZL_Report configurableEncode(ZL_Encoder* eictx, const ZL_Input* in)
         Parser parser{ config, srcStream, dstStreamSet, formatVersion };
         try {
             parser.parse();
+        } catch (const ThriftParserUserError& ex) {
+            ZL_ERR(graph_parser_malformedInput,
+                   "Thrift kernel failed inside core parser: %s",
+                   ex.what());
         } catch (const std::exception& ex) {
             ZL_ERR(GENERIC,
                    "Thrift kernel failed inside core parser: %s",

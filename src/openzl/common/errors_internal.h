@@ -81,6 +81,10 @@ ZL_BEGIN_C_DECLS
 #define ZL_ErrorCode_graph_nonserializable__desc_str \
     "Graph incompatible with serialization"
 #define ZL_ErrorCode_graph_invalidNumInputs__desc_str "Graph invalid nb inputs"
+#define ZL_ErrorCode_graph_parser_malformedInput__desc_str \
+    "Parser encountered malformed input"
+#define ZL_ErrorCode_graph_parser_unhandledInput__desc_str \
+    "Parser encountered unhandled input"
 #define ZL_ErrorCode_successor_invalid__desc_str \
     "Selected an invalid Successor Graph"
 #define ZL_ErrorCode_successor_alreadySet__desc_str \

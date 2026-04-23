@@ -6,6 +6,7 @@
 #include "custom_transforms/thrift/parse_config.h"   // @manual
 #include "custom_transforms/thrift/split_helpers.h"  // @manual
 #include "custom_transforms/thrift/splitter.h"       // @manual
+#include "custom_transforms/thrift/thrift_errors.h"  // @manual
 #include "custom_transforms/thrift/thrift_parsers.h" // @manual
 #include "custom_transforms/thrift/thrift_types.h"   // @manual
 
@@ -72,7 +73,7 @@ BinaryParser::parseListHeader(const BinaryParser::PT::Iterator& current)
 {
     const auto elemType = (TType)readValue<uint8_t>();
     if (elemType > TType::T_FLOAT) {
-        throw std::runtime_error("Illegal list element type!");
+        throw ThriftMalformedInputError("Illegal list element type!");
     }
     writeType(elemType);
 
@@ -88,7 +89,7 @@ DBinaryParser::unparseListHeader(const DBinaryParser::PT::Iterator& current)
 {
     const auto elemType = readType();
     if (elemType > TType::T_FLOAT) {
-        throw std::runtime_error("Illegal list element type!");
+        throw ThriftMalformedInputError("Illegal list element type!");
     }
     writeValue((uint8_t)elemType);
 
@@ -108,10 +109,10 @@ BinaryParser::parseMapHeader(const BinaryParser::PT::Iterator& current)
     const auto keyType   = (TType)readValue<uint8_t>();
     const auto valueType = (TType)readValue<uint8_t>();
     if (keyType > TType::T_FLOAT) {
-        throw std::runtime_error("Illegal map key type!");
+        throw ThriftMalformedInputError("Illegal map key type!");
     }
     if (valueType > TType::T_FLOAT) {
-        throw std::runtime_error("Illegal map value type!");
+        throw ThriftMalformedInputError("Illegal map value type!");
     }
     writeType(keyType);
     writeType(valueType);
@@ -134,10 +135,10 @@ DBinaryParser::unparseMapHeader(const DBinaryParser::PT::Iterator& current)
     const auto keyType   = readType();
     const auto valueType = readType();
     if (keyType > TType::T_FLOAT) {
-        throw std::runtime_error("Illegal map key type!");
+        throw ThriftMalformedInputError("Illegal map key type!");
     }
     if (valueType > TType::T_FLOAT) {
-        throw std::runtime_error("Illegal map value type!");
+        throw ThriftMalformedInputError("Illegal map value type!");
     }
     writeValue((uint8_t)keyType);
     writeValue((uint8_t)valueType);
@@ -158,7 +159,7 @@ ZL_FORCE_INLINE_ATTR BinaryParser::PT::Iterator BinaryParser::parseFieldHeader(
 {
     const auto type = (TType)readValue<uint8_t>();
     if (type > TType::T_FLOAT) {
-        throw std::runtime_error("Illegal type!");
+        throw ThriftMalformedInputError("Illegal type!");
     }
     writeType(type);
 
@@ -188,7 +189,7 @@ DBinaryParser::unparseFieldHeader(
     // Get the type
     const auto type = readType();
     if (type > TType::T_FLOAT) {
-        throw std::runtime_error("Illegal type!");
+        throw ThriftMalformedInputError("Illegal type!");
     }
     writeValue((uint8_t)type);
 
@@ -291,7 +292,7 @@ void BinaryParser::advance(const BinaryParser::PT::Iterator& current)
         case TType::T_UTF16:
         case TType::T_STREAM:
         default: {
-            throw std::runtime_error(
+            throw ThriftMalformedInputError(
                     "Unexpected thrift type: " + thriftTypeToString(type));
         }
     }
@@ -378,7 +379,7 @@ void DBinaryParser::advance(const DBinaryParser::PT::Iterator& current)
         case TType::T_UTF16:
         case TType::T_STREAM:
         default: {
-            throw std::runtime_error(
+            throw ThriftMalformedInputError(
                     "Unexpected thrift type: " + thriftTypeToString(type));
         }
     }
@@ -386,7 +387,7 @@ void DBinaryParser::advance(const DBinaryParser::PT::Iterator& current)
 
 void BinaryParser::parseTulipV2Header(const PT::Iterator&)
 {
-    throw std::runtime_error{
+    throw InvalidConfigError{
         "TulipV2 mode is not compatible with binary protocol!"
     };
 }

@@ -58,7 +58,7 @@ class PathTracker {
                   depth_(depth)
         {
             if (depth_ > kMaxThriftDepth) {
-                throw std::runtime_error(
+                throw ThriftUnhandledInputError(
                         "Exceeded maximum thrift recursion depth!");
             }
         }
