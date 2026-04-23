@@ -9,8 +9,6 @@
 #include "tests/registry/OpenZLComponents.h"
 #include "tests/registry/OpenZLInput.h"
 
-#include "openzl/shared/bits.h"
-
 namespace openzl::tests::components {
 namespace {
 
