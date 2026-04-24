@@ -48,14 +48,14 @@ Records group related fields into a named structure. They are the primary way to
 ### Basic Records
 
 ```sddl
-Record Header() = {
+record Header() {
   magic: UInt32LE,
   version: UInt16LE,
   flags: UInt16LE
 }
 ```
 
-- Declared with `Record Name() = { ... }`
+- Declared with `record Name() { ... }`
 - Fields are comma-separated `name: Type` pairs
 - Empty parentheses `()` are required even with no parameters
 
@@ -64,7 +64,7 @@ Record Header() = {
 Records can accept parameters that control their structure. This lets you define a single record that adapts to different variants of a format:
 
 ```sddl
-Record DataBlock(element_count) = {
+record DataBlock(element_count) {
   checksum: UInt32LE,
   data: UInt16LE[element_count]
 }
@@ -80,12 +80,12 @@ Parameters can be used in array lengths, `when` conditions, and expressions with
 Records can contain fields of other record types. Use dot notation to access nested fields:
 
 ```sddl
-Record Point() = {
+record Point() {
   x: Int16LE,
   y: Int16LE
 }
 
-Record Sprite() = {
+record Sprite() {
   id: UInt32LE,
   position: Point
 }
@@ -101,7 +101,7 @@ Chained access works to any depth: `outer.middle.inner.field`.
 When you need a one-off record structure without defining a named type, use an anonymous record:
 
 ```sddl
-: Record() {
+: record() {
   id: Int32LE,
   val: Int32LE
 }

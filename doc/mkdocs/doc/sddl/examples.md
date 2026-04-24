@@ -7,7 +7,7 @@ Complete SDDL descriptions for real binary formats.
 The [Silesia compression corpus](https://sun.aei.polsl.pl/~sdeor/index.php?page=silesia) includes a file from the SAO (Smithsonian Astronomical Observatory) star catalog. This simplified description treats every entry as having the same fixed layout — 28 bytes of coordinates, spectral type, magnitude, and proper motion:
 
 ```sddl
-Record StarEntry() = {
+record StarEntry() {
   SRA0:  Float64LE,     # Right Ascension (radians)
   SDEC0: Float64LE,     # Declination (radians)
   ISP:   Bytes(2),      # Spectral type

@@ -29,7 +29,7 @@ Single-byte types (`UInt8`, `Int8`) don't need endianness.
 Parameters make records reusable and maintain instant-parse status:
 
 ```sddl
-Record Packet(max_payload) = {
+record Packet(max_payload) {
   header: Bytes(12),
   payload: Bytes(max_payload)
 }
@@ -46,7 +46,7 @@ large_packet: Packet(1024)
 Use `where` for immediate field validation:
 
 ```sddl
-Record Header() = {
+record Header() {
   magic: Bytes(4) where (magic == "IMGF"),
   version: UInt16LE where (version >= 1 and version <= 5)
 }
@@ -55,7 +55,7 @@ Record Header() = {
 For more complex validation logic, use `expect` statements:
 
 ```sddl
-Record Header() = {
+record Header() {
   width: UInt32LE,
   height: UInt32LE,
 
@@ -68,12 +68,12 @@ Record Header() = {
 
 ```sddl
 # With validation: requires scan
-Record Validated() = {
+record Validated() {
   magic: Bytes(4) where (magic == "IMGF")
 }
 
 # Without validation: instant-parse
-Record Unvalidated() = {
+record Unvalidated() {
   magic: Bytes(4)
 } @instant_parse
 ```
@@ -87,7 +87,7 @@ The trade-off is between safety and instant-parse status.
 Include and track version information when available:
 
 ```sddl
-Record MyFormat() = {
+record MyFormat() {
   magic: Bytes(4),
   version: UInt16LE,
 
@@ -95,7 +95,7 @@ Record MyFormat() = {
   base_data: Bytes(100),
 }
 
-Record Data(version) = {
+record Data(version) {
   base: Int32LE,
   when version >= 2 { extended_data: ExtendedData },
 
@@ -114,14 +114,14 @@ Use descriptive names:
 
 ```sddl
 # GOOD
-Record ImageHeader() = {
+record ImageHeader() {
   width: UInt32LE,
   height: UInt32LE,
   bits_per_pixel: UInt8
 }
 
 # AVOID
-Record ImageHeader() = {
+record ImageHeader() {
   w: UInt32LE,  # Unclear
   h: UInt32LE,
   bpp: UInt8    # Non-obvious acronym
@@ -141,7 +141,7 @@ Add comments explaining format choices:
 
 ```sddl
 # PNG chunk structure as per RFC 2083
-Record PNGChunk() = {
+record PNGChunk() {
   length: UInt32BE,      # Byte count of data field only
   type: Bytes(4),        # ASCII chunk type code
   data: Bytes(length),
@@ -157,17 +157,17 @@ Break large formats into reusable components:
 
 ```sddl
 # Common components
-Record Timestamp() = {
+record Timestamp() {
   seconds: Int64LE,
   nanos: UInt32LE
 }
 
-Record UUID() = {
+record UUID() {
   bytes: Bytes(16)
 }
 
 # Compose them
-Record Event() = {
+record Event() {
   id: UUID,
   occurred_at: Timestamp,
   data: EventData
@@ -181,7 +181,7 @@ Record Event() = {
 **`pad_to n`:** Record must be exactly n bytes. Format error if naturally larger.
 
 ```sddl
-Record Fixed() = {
+record Fixed() {
   data: Bytes(10)
 } pad_to 16  # Always 16 bytes (or error if data > 16)
 ```
@@ -189,7 +189,7 @@ Record Fixed() = {
 **`pad_align n`:** Round size up to multiple of n bytes.
 
 ```sddl
-Record Aligned() = {
+record Aligned() {
   data: Bytes(10)
 } pad_align 8  # Rounds 10 up to 16 (next multiple of 8)
 ```
@@ -224,7 +224,7 @@ Union Good(type) = {
 You can reuse `_` for throwaway fields:
 
 ```sddl
-Record Data() = {
+record Data() {
   _: Bytes(4),     # Skip padding
   value: Int64LE,
   _: Bytes(4),     # Skip more padding (OK to reuse _)
@@ -240,7 +240,7 @@ Regular field names must be unique.
 If your format has alignment requirements, describe them explicitly:
 
 ```sddl
-Record Aligned() = {
+record Aligned() {
   id: UInt8,
   _: Bytes(7),                    # Explicit padding
   timestamp: align(8) Int64LE,    # Must be 8-byte aligned

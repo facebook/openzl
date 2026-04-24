@@ -17,7 +17,7 @@ SDDL provides two directives for controlling the total size of a record.
 `pad_to n` enforces that a record is exactly `n` bytes. If the record's natural size is less than `n`, padding is added. If it's greater, the compiler reports a format error.
 
 ```sddl
-Record Header() = {
+record Header() {
   magic: Bytes(4),
   version: UInt16LE,
   flags: UInt16LE
@@ -28,7 +28,7 @@ This `Header` is exactly 16 bytes. The natural size is 8 bytes, so 8 bytes of pa
 
 !!! danger "Format error example"
     ```sddl
-    Record TooBig() = {
+    record TooBig() {
       data: Bytes(20)
     } pad_to 16  # ERROR: Record is 20 bytes, cannot pad to 16
     ```
@@ -38,7 +38,7 @@ This `Header` is exactly 16 bytes. The natural size is 8 bytes, so 8 bytes of pa
 `pad_align n` rounds the record size up to the next multiple of `n` bytes.
 
 ```sddl
-Record Scanline(width) = {
+record Scanline(width) {
   pixels: UInt8[width]
 } pad_align 4
 ```
@@ -50,7 +50,7 @@ If `width` is 10, the natural size is 10 bytes. With `pad_align 4`, the record b
 When both are present, `pad_to` is applied first, then `pad_align`:
 
 ```sddl
-Record Block(datasize, blocksize) = {
+record Block(datasize, blocksize) {
   data: Bytes(datasize)
 } pad_to blocksize pad_align 8
 ```
@@ -66,7 +66,7 @@ For example, if `blocksize` is 50:
 Padding values can be parameters:
 
 ```sddl
-Record Container(min_size, align_to) = {
+record Container(min_size, align_to) {
   header: Bytes(16),
   payload: Bytes(100)
 } pad_to min_size pad_align align_to
@@ -79,7 +79,7 @@ The padding depends on parameters passed when the record is instantiated. This m
 Padding bytes are "don't care" values. SDDL doesn't specify what they contain, just that they exist:
 
 ```sddl
-Record Padded() = {
+record Padded() {
   value: UInt32LE
 } pad_to 16
 ```
@@ -94,7 +94,7 @@ The defined record Padded is 16 bytes: the padding bytes are included in the rec
 
 ```sddl
 # Structure matching hardware expectations
-Record DeviceRegister() = {
+record DeviceRegister() {
   control: UInt32LE,
   _: Bytes(4),                         # Explicit padding
   address: align(8) UInt64LE,          # 8-byte aligned pointer
@@ -108,7 +108,7 @@ This describes a structure where hardware requires specific alignment for direct
 
 ```sddl
 # Database records, all exactly 256 bytes
-Record DatabaseRecord() = {
+record DatabaseRecord() {
   id: UInt64LE,
   name: Bytes(64),
   email: Bytes(128),
@@ -123,7 +123,7 @@ The natural size is 8+64+128+8+4 = 212 bytes. `pad_to 256` adds 44 bytes of padd
 
 ```sddl
 # Each record aligned to 64-byte cache line
-Record CacheOptimized() = {
+record CacheOptimized() {
   hot_data: Bytes(32),    # Frequently accessed data
   cold_data: Bytes(16)    # Less frequently accessed
 } pad_align 64
@@ -134,7 +134,7 @@ The natural size is 48 bytes. `pad_align 64` rounds up to 64 bytes, ensuring eac
 ### Example 4: Format with Variable Header
 
 ```sddl
-Record File(header_size) = {
+record File(header_size) {
   header_data: Bytes(header_size)
 } pad_to header_size pad_align 512
 
@@ -147,7 +147,7 @@ The header is at least `header_size` bytes, rounded up to a 512-byte boundary (c
 ### Example 5: Array with Padding
 
 ```sddl
-Record Entry() = {
+record Entry() {
   timestamp: Int64LE,
   value: Float32LE
 } pad_align 16
@@ -179,7 +179,7 @@ see "Record Alignment" below.
 ### Basic Syntax
 
 ```sddl
-Record Data() = {
+record Data() {
   flags: UInt8,
   value: align(8) Int64LE  # Starts at 8-byte boundary, relative to beginning of Data
 }
@@ -197,7 +197,7 @@ If `flags` ends at byte 1, the `value` field will start at byte 8 (the next 8-by
 ### Field Alignment in Records
 
 ```sddl
-Record Header() = {
+record Header() {
   magic: Bytes(4),
   version: UInt16LE,
   _: Bytes(2),                    # Explicit padding to 8 bytes
@@ -213,7 +213,7 @@ The `align(8)` ensures `timestamp` starts at an 8-byte boundary, relative to the
 When a type has alignment requirements, arrays of that type include inter-element padding:
 
 ```sddl
-Record Entry() = {
+record Entry() {
   id: UInt8,
   value: align(8) Float64LE
 }
@@ -228,7 +228,7 @@ Each `Entry` in the array will have padding after `id` to ensure `value` is 8-by
 Alignment arguments must be constant or parameter-based for instant-parse:
 
 ```sddl
-Record Data(align_width) = {
+record Data(align_width) {
   header: Bytes(10),
   payload: align(align_width) Bytes(100)  # OK: depends on parameter
 } @instant_parse
@@ -238,7 +238,7 @@ If a local field must be read to determine alignment, it breaks instant-parse pr
 
 !!! warning "Breaks instant-parse"
     ```sddl
-    Record Data() = {
+    record Data() {
       align_req: UInt8,
       payload: align(align_req) Bytes(100)
     }
@@ -252,7 +252,7 @@ If a local field must be read to determine alignment, it breaks instant-parse pr
 Alignment can be specified at Record level:
 
 ```sddl
-Record FAligned8() = align(8) {
+record FAligned8() align(8) {
   value: Float64LE
 }
 ```
@@ -260,7 +260,7 @@ Record FAligned8() = align(8) {
 Any field later defined using this Record definition will automatically be aligned to 8 bytes (relative to the beginning of its enclosing scope).
 
 ```sddl
-Record someRecord() = {
+record someRecord() {
   flag: UInt8,
   value: FAligned8,  # Automatically aligned to 8 bytes, relative to beginning of someRecord
 }
