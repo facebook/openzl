@@ -513,7 +513,7 @@ TEST_F(SDDL2CodeExecutionTest, WhenBlockTrueCondition)
 
 TEST_F(SDDL2CodeExecutionTest, WhenBlockFalseCondition)
 {
-    const std::vector<size_t> expected_sizes = { 1 };
+    const std::vector<size_t> expected_sizes = { 1, 0 };
     std::vector<uint8_t> input               = {
         0x00, // flag = 0 (false)
     };
@@ -555,7 +555,7 @@ TEST_F(SDDL2CodeExecutionTest, NestedWhenBlocks)
 
 TEST_F(SDDL2CodeExecutionTest, NestedWhenBlocksOuterFalse)
 {
-    const std::vector<size_t> expected_sizes = { 1, 1 };
+    const std::vector<size_t> expected_sizes = { 1, 1, 0 };
     std::vector<uint8_t> input               = {
         0x00, // a = 0 (outer false)
         0x02, // b = 2
@@ -578,7 +578,7 @@ TEST_F(SDDL2CodeExecutionTest, NestedWhenBlocksOuterFalse)
 
 TEST_F(SDDL2CodeExecutionTest, NestedWhenBlocksInnerFalse)
 {
-    const std::vector<size_t> expected_sizes = { 1, 1 };
+    const std::vector<size_t> expected_sizes = { 1, 1, 0 };
     std::vector<uint8_t> input               = {
         0x01, // a = 1 (outer true)
         0x05, // b = 5 (inner false, not 2)
