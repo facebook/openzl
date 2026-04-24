@@ -25,7 +25,7 @@ SDDL2_Type createStructureType(SDDL2_Type* members, size_t member_count)
 {
     size_t total_size = 0;
     for (size_t i = 0; i < member_count; i++) {
-        total_size += SDDL2_Type_size(members[i]);
+        total_size += getTypeSize(members[i]);
     }
 
     size_t alloc_size =
@@ -78,9 +78,9 @@ TEST_F(SDDL2FieldExtractionTest, SimpleFlatStructure)
     EXPECT_EQ(data->member_count, 3u);
     EXPECT_EQ(data->total_size_bytes, 7u);
 
-    EXPECT_EQ(SDDL2_Type_size(data->members[0]), 1u);
-    EXPECT_EQ(SDDL2_Type_size(data->members[1]), 2u);
-    EXPECT_EQ(SDDL2_Type_size(data->members[2]), 4u);
+    EXPECT_EQ(getTypeSize(data->members[0]), 1u);
+    EXPECT_EQ(getTypeSize(data->members[1]), 2u);
+    EXPECT_EQ(getTypeSize(data->members[2]), 4u);
 
     free(data);
 }
@@ -101,9 +101,9 @@ TEST_F(SDDL2FieldExtractionTest, StructureWithArrayField)
     EXPECT_EQ(data->member_count, 3u);
     EXPECT_EQ(data->total_size_bytes, 43u);
 
-    EXPECT_EQ(SDDL2_Type_size(data->members[0]), 1u);
-    EXPECT_EQ(SDDL2_Type_size(data->members[1]), 40u);
-    EXPECT_EQ(SDDL2_Type_size(data->members[2]), 2u);
+    EXPECT_EQ(getTypeSize(data->members[0]), 1u);
+    EXPECT_EQ(getTypeSize(data->members[1]), 40u);
+    EXPECT_EQ(getTypeSize(data->members[2]), 2u);
 
     free(data);
 }
@@ -125,7 +125,7 @@ TEST_F(SDDL2FieldExtractionTest, AllPrimitiveTypes)
 
     size_t expected_sizes[] = { 1, 2, 4, 8 };
     for (size_t i = 0; i < 4; i++) {
-        EXPECT_EQ(SDDL2_Type_size(data->members[i]), expected_sizes[i]);
+        EXPECT_EQ(getTypeSize(data->members[i]), expected_sizes[i]);
     }
 
     free(data);
@@ -177,10 +177,10 @@ TEST_F(SDDL2FieldExtractionTest, TypeSizeFunction)
     };
 
     SDDL2_Type struct_type = createStructureType(members, 2);
-    EXPECT_EQ(SDDL2_Type_size(struct_type), 5u); // 1 + 4
+    EXPECT_EQ(getTypeSize(struct_type), 5u); // 1 + 4
 
     struct_type.width = 10;
-    EXPECT_EQ(SDDL2_Type_size(struct_type), 50u); // 5 × 10
+    EXPECT_EQ(getTypeSize(struct_type), 50u); // 5 × 10
 
     free(struct_type.struct_data);
 }
@@ -237,7 +237,7 @@ TEST_F(SDDL2FieldExtractionTest, NestedStructure3Levels)
     };
     SDDL2_Type level3 = createStructureType(level3_members, 2);
 
-    EXPECT_EQ(SDDL2_Type_size(level3), 15u);
+    EXPECT_EQ(getTypeSize(level3), 15u);
 
     free(level1.struct_data);
     free(level2.struct_data);
@@ -261,7 +261,7 @@ TEST_F(SDDL2FieldExtractionTest, NestedStructureWithArrays)
     };
     SDDL2_Type outer = createStructureType(outer_members, 3);
 
-    EXPECT_EQ(SDDL2_Type_size(outer), 31u);
+    EXPECT_EQ(getTypeSize(outer), 31u);
 
     free(inner.struct_data);
     free(outer.struct_data);
@@ -291,7 +291,7 @@ TEST_F(SDDL2FieldExtractionTest, MultipleNestedStructures)
     };
     SDDL2_Type outer = createStructureType(outer_members, 3);
 
-    EXPECT_EQ(SDDL2_Type_size(outer), 19u);
+    EXPECT_EQ(getTypeSize(outer), 19u);
 
     free(structA.struct_data);
     free(structB.struct_data);
@@ -405,7 +405,7 @@ TEST_F(SDDL2FieldExtractionTest, FieldTypesSizesAlignment)
     ASSERT_EQ(type_index, 4u);
     for (size_t i = 0; i < 4; i++) {
         EXPECT_EQ(field_types[i], expected_types[i]);
-        EXPECT_EQ(SDDL2_kind_size(field_types[i]), expected_sizes[i]);
+        EXPECT_EQ(getKindSize(field_types[i]), expected_sizes[i]);
     }
 
     free(inner.struct_data);
