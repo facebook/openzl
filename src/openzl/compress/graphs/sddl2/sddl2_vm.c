@@ -93,13 +93,15 @@ void sddl2_fallback_free(void* ptr)
  * Handles both primitive types and complex structures.
  * ========================================================================= */
 
-size_t SDDL2_kind_size(SDDL2_Type_kind kind)
+SDDL2_Error SDDL2_kind_size(SDDL2_Type_kind kind, size_t* out_size)
 {
+    *out_size = (size_t)-1; // Initialize to invalid value
     switch (kind) {
         case SDDL2_TYPE_U8:
         case SDDL2_TYPE_I8:
         case SDDL2_TYPE_F8:
-            return 1;
+            *out_size = 1;
+            return SDDL2_OK;
         case SDDL2_TYPE_U16LE:
         case SDDL2_TYPE_U16BE:
         case SDDL2_TYPE_I16LE:
@@ -108,51 +110,48 @@ size_t SDDL2_kind_size(SDDL2_Type_kind kind)
         case SDDL2_TYPE_F16BE:
         case SDDL2_TYPE_BF16LE:
         case SDDL2_TYPE_BF16BE:
-            return 2;
+            *out_size = 2;
+            return SDDL2_OK;
         case SDDL2_TYPE_U32LE:
         case SDDL2_TYPE_U32BE:
         case SDDL2_TYPE_I32LE:
         case SDDL2_TYPE_I32BE:
         case SDDL2_TYPE_F32LE:
         case SDDL2_TYPE_F32BE:
-            return 4;
+            *out_size = 4;
+            return SDDL2_OK;
         case SDDL2_TYPE_U64LE:
         case SDDL2_TYPE_U64BE:
         case SDDL2_TYPE_I64LE:
         case SDDL2_TYPE_I64BE:
         case SDDL2_TYPE_F64LE:
         case SDDL2_TYPE_F64BE:
-            return 8;
+            *out_size = 8;
+            return SDDL2_OK;
         case SDDL2_TYPE_BYTES:
-            return 1; // Raw bytes, unit size is 1 byte
+            *out_size = 1;
+            return SDDL2_OK;
         case SDDL2_TYPE_STRUCTURE:
-            return 0; // Structures don't have a fixed kind size (use
-                      // struct_data)
+            return SDDL2_TYPE_MISMATCH;
         default:
-            return 0; // Unknown type
+            return SDDL2_TYPE_MISMATCH;
     }
 }
 
-size_t SDDL2_Type_size(SDDL2_Type type)
+SDDL2_Error SDDL2_Type_size(SDDL2_Type type, size_t* out_size)
 {
-    // Handle structures specially
     if (type.kind == SDDL2_TYPE_STRUCTURE) {
-        assert(type.struct_data != NULL);
         if (type.struct_data == NULL) {
-            // Should not happen
-            return 0;
+            return SDDL2_TYPE_MISMATCH;
         }
-        return type.struct_data->total_size_bytes * type.width;
+        *out_size = type.struct_data->total_size_bytes * type.width;
+        return SDDL2_OK;
     }
 
-    // For primitives, use kind size
-    size_t kind_size = SDDL2_kind_size(type.kind);
-    assert(kind_size > 0);
-    if (kind_size == 0) {
-        // Unknown type kind: should not happen
-        return 0;
-    }
-    return kind_size * type.width;
+    size_t ks;
+    SDDL2_TRY(SDDL2_kind_size(type.kind, &ks));
+    *out_size = ks * type.width;
+    return SDDL2_OK;
 }
 
 /* ============================================================================
@@ -391,7 +390,12 @@ SDDL2_Error SDDL2_op_type_structure(
 
     // Compute total size by summing all member sizes
     for (size_t i = 0; i < member_count; i++) {
-        size_t member_size = SDDL2_Type_size(struct_data->members[i]);
+        size_t member_size;
+        if (SDDL2_Type_size(struct_data->members[i], &member_size)
+            != SDDL2_OK) {
+            sddl2_free(struct_data, alloc_fn);
+            return SDDL2_TYPE_MISMATCH;
+        }
 
         // Check for size overflow when adding member_size
         if (ZL_overflowAddST(
@@ -419,10 +423,8 @@ SDDL2_Error SDDL2_op_type_sizeof(SDDL2_Stack* stack)
     SDDL2_Type type;
     SDDL2_TRY(pop_type(stack, &type));
 
-    // Get the size of the type
-    size_t size = SDDL2_Type_size(type);
-
-    // Push the size as I64
+    size_t size;
+    SDDL2_TRY(SDDL2_Type_size(type, &size));
     return push_i64(stack, (int64_t)size);
 }
 
@@ -1322,10 +1324,8 @@ static SDDL2_Error segment_create_internal(
     // Calculate actual size in bytes
     // total_type_size = size of one instance of the type (including width)
     // segment_size = element_count × total_type_size
-    size_t total_type_size = SDDL2_Type_size(type);
-    if (total_type_size == 0) {
-        return SDDL2_TYPE_MISMATCH; // Unknown or invalid type
-    }
+    size_t total_type_size;
+    SDDL2_TRY(SDDL2_Type_size(type, &total_type_size));
 
     // Check for overflow in element_count * total_type_size multiplication
     size_t size_bytes;
