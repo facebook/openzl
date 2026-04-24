@@ -39,7 +39,7 @@ endif
 # dependencies
 ifneq (,$(filter Windows%,$(OS)))
 LIBZSTD_SO := deps/zstd/lib/dll/libzstd.dll
-LIBLZ4_SO := deps/lz4/lib/dll/liblz4.dll
+LIBLZ4_SO := deps/lz4/lib/liblz4.dll
 LIBXGBOOST_SO := deps/xgboost/lib/libxgboost.dll
 else ifeq ($(shell uname), Darwin)
 LIBZSTD_SO := deps/zstd/lib/libzstd.dylib
