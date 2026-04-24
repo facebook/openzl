@@ -1351,6 +1351,85 @@ TEST_F(SDDL2AssemblyExecutionTest, JumpIfLargerThanInstructions)
             SDDL2_INVALID_BYTECODE);
 }
 
+// ============================================================================
+// Zero-Size Tagged Segment Tests
+// ============================================================================
+
+TEST_F(SDDL2AssemblyExecutionTest, ZeroElementTaggedSegment)
+{
+    const std::string input = "Test";
+    ASSERT_EQ(
+            run(R"(
+                push.tag 100
+                push.type.u16le
+                push.i64 0
+                segment.create_tagged
+                halt
+            )",
+                input),
+            SDDL2_OK);
+    EXPECT_EQ(segments_.count, 1u);
+    EXPECT_EQ(segments_.items[0].tag, 100u);
+    EXPECT_EQ(segments_.items[0].start_pos, 0u);
+    EXPECT_EQ(segments_.items[0].size_bytes, 0u);
+    EXPECT_EQ(segments_.items[0].type.kind, SDDL2_TYPE_U16LE);
+    EXPECT_EQ(segments_.items[0].type.width, 1u);
+}
+
+TEST_F(SDDL2AssemblyExecutionTest, ZeroElementTaggedSegmentDoesNotAdvanceCursor)
+{
+    const std::string input({ 0x01, 0x00, 0x02, 0x00 });
+    ASSERT_EQ(
+            run(R"(
+                push.tag 100
+                push.type.u16le
+                push.i64 0
+                segment.create_tagged
+                push.tag 200
+                push.type.u16le
+                push.i64 2
+                segment.create_tagged
+                halt
+            )",
+                input),
+            SDDL2_OK);
+    EXPECT_EQ(segments_.count, 2u);
+    EXPECT_EQ(segments_.items[0].tag, 100u);
+    EXPECT_EQ(segments_.items[0].size_bytes, 0u);
+    EXPECT_EQ(segments_.items[0].start_pos, 0u);
+    EXPECT_EQ(segments_.items[1].tag, 200u);
+    EXPECT_EQ(segments_.items[1].size_bytes, 4u);
+    EXPECT_EQ(segments_.items[1].start_pos, 0u);
+}
+
+TEST_F(SDDL2AssemblyExecutionTest, ZeroWidthTypeInStructure)
+{
+    const std::string input({ 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00 });
+    ASSERT_EQ(
+            run(R"(
+                push.tag 100
+                push.type.i32le
+                push.type.u16le
+                push.i64 0
+                type.fixed_array
+                push.type.i32le
+                push.i64 3
+                type.structure
+                push.i64 1
+                segment.create_tagged
+                halt
+            )",
+                input),
+            SDDL2_OK);
+    EXPECT_EQ(segments_.count, 1u);
+    EXPECT_EQ(segments_.items[0].tag, 100u);
+    EXPECT_EQ(segments_.items[0].size_bytes, 8u);
+    EXPECT_EQ(segments_.items[0].type.kind, SDDL2_TYPE_STRUCTURE);
+    ASSERT_NE(segments_.items[0].type.struct_data, nullptr);
+    EXPECT_EQ(segments_.items[0].type.struct_data->member_count, 3u);
+    EXPECT_EQ(segments_.items[0].type.struct_data->total_size_bytes, 8u);
+}
+
 } // namespace testing
 } // namespace sddl2
 } // namespace openzl

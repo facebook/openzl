@@ -7,11 +7,16 @@
 #include <algorithm>
 #include <numeric>
 #include <random>
+#include <set>
+#include <vector>
 
+#include "openzl/codecs/zl_clustering.h"
 #include "openzl/compress/graphs/sddl2/sddl2_vm.h"
 #include "openzl/cpp/CompressIntrospectionHooks.hpp"
 #include "openzl/cpp/DecompressIntrospectionHooks.hpp"
 #include "openzl/zl_config.h"
+#include "openzl/zl_graph_api.h"
+#include "openzl/zl_input.h"
 
 namespace openzl {
 namespace sddl2 {
@@ -30,6 +35,31 @@ class CompressChunkCounterHook : public openzl::CompressIntrospectionHooks {
             const ZL_RuntimeGraphParameters*) override
     {
         ++chunkCount;
+    }
+};
+
+class ClusteringTagCaptureHook : public openzl::CompressIntrospectionHooks {
+   public:
+    std::set<int> tags;
+
+    void on_migraphEncode_start(
+            ZL_Graph*,
+            const ZL_Compressor*,
+            ZL_GraphID,
+            ZL_Edge* inputs[],
+            size_t nbInputs) override
+    {
+        for (size_t i = 0; i < nbInputs; ++i) {
+            const ZL_Input* input = ZL_Edge_getData(inputs[i]);
+            if (input == nullptr) {
+                continue;
+            }
+            ZL_IntMetadata meta = ZL_Input_getIntMetadata(
+                    input, ZL_CLUSTERING_TAG_METADATA_ID);
+            if (meta.isPresent) {
+                tags.insert(meta.mValue);
+            }
+        }
     }
 };
 
