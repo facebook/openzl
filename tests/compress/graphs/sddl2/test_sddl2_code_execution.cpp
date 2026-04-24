@@ -140,7 +140,7 @@ TEST_F(SDDL2CodeExecutionTest, ConsumeRecord)
 
     expect_success(
             R"(
-                : Record() {id : Int16LE, val: Int32LE}
+                : record() {id : Int16LE, val: Int32LE}
             )",
             input,
             expected_sizes);
@@ -153,9 +153,9 @@ TEST_F(SDDL2CodeExecutionTest, ConsumeArrayOfRecords)
 
     expect_success(
             R"(
-                : Record() {id : Int16LE}
-                : Record() {id : Int16LE, val: Int32LE}[2]
-                : Record() {id : Int16LE, val: Int32LE}[]
+                : record() {id : Int16LE}
+                : record() {id : Int16LE, val: Int32LE}[2]
+                : record() {id : Int16LE, val: Int32LE}[]
             )",
             input,
             expected_sizes);
@@ -188,7 +188,7 @@ TEST_F(SDDL2CodeExecutionTest, ConsumeSimpleAnonymous)
     expect_success(
             R"(
                 header : Bytes(28)
-                stars : Record() {
+                stars : record() {
                     SRA0 : Float64LE, # Right Ascension(radians)
                     SDEC0 : Float64LE, # Declination(radians)
                     ISP : Bytes(2), # Spectral type
@@ -211,7 +211,7 @@ TEST_F(SDDL2CodeExecutionTest, ConsumeSimpleSAO)
     expect_success(
             R"(
                 # Star catalog entry (28 bytes)
-                Record StarEntry() = {
+                record StarEntry() {
                     SRA0:  Float64LE,    # Right Ascension (radians)
                     SDEC0: Float64LE,    # Declination (radians)
                     ISP:   Bytes(2),     # Spectral type
@@ -254,7 +254,7 @@ TEST_F(SDDL2CodeExecutionTest, VarRecordType)
 
     expect_success(
             R"(
-                Entry = Record() { x: Int32LE, y: Int16LE }
+                Entry = record() { x: Int32LE, y: Int16LE }
                 : Entry
                 : Entry[3]
             )",
@@ -287,7 +287,7 @@ TEST_F(SDDL2CodeExecutionTest, AssumeRecord)
     };
 
     const auto prog = R"(
-        Record Foo() = {
+        record Foo() {
             x: Int32LE,
             y: Int16LE
         }
@@ -310,11 +310,11 @@ TEST_F(SDDL2CodeExecutionTest, AssumeNestedRecord)
     };
 
     const auto prog = R"(
-        Record Bar() = {
+        record Bar() {
             x : Int32LE,
             y : Int16LE,
         }
-        Record Foo() = {
+        record Foo() {
             bar : Bar,
             x : Byte,
         }
@@ -337,8 +337,8 @@ TEST_F(SDDL2CodeExecutionTest, AssumeAnonymousNestedRecord)
     };
 
     const auto prog = R"(
-        Record Foo() = {
-            bar : Record() { x : Int32LE, y : Int16LE },
+        record Foo() {
+            bar : record() { x : Int32LE, y : Int16LE },
             x : Byte,
         }
 
@@ -363,7 +363,7 @@ TEST_F(SDDL2CodeExecutionTest, AssumeRecordWithGlobalVariableReference)
 
     const auto prog = R"(
         len: Byte
-        Record Foo() = {
+        record Foo() {
             a : Bytes(len),
             b : Byte,
         }
@@ -384,7 +384,7 @@ TEST_F(SDDL2CodeExecutionTest, ConsumeParameterizedRecord)
     const auto input = gen<uint8_t>(sum(expected_sizes));
 
     const auto prog = R"(
-        Record Entry(N) = {
+        record Entry(N) {
             items: Int32LE[N]
         }
         : Entry(10)
@@ -399,7 +399,7 @@ TEST_F(SDDL2CodeExecutionTest, ConsumeParameterizedRecordMultipleParams)
     const auto input = gen<uint8_t>(sum(expected_sizes));
 
     const auto prog = R"(
-        Record Foo(A, B) = {
+        record Foo(A, B) {
             x: Int32LE[A],
             y: Int16LE[B]
         }
@@ -416,7 +416,7 @@ TEST_F(SDDL2CodeExecutionTest, ConsumeParameterizedRecordMultipleCalls)
     const auto input = gen<uint8_t>(sum(expected_sizes));
 
     const auto prog = R"(
-        Record Entry(N) = {
+        record Entry(N) {
             items: Int32LE[N]
         }
         : Entry(2)
@@ -432,7 +432,7 @@ TEST_F(SDDL2CodeExecutionTest, ConsumeArrayOfParameterizedRecord)
     const auto input = gen<uint8_t>(sum(expected_sizes));
 
     const auto prog = R"(
-        Record Entry(N) = {
+        record Entry(N) {
             items: Int32LE[N]
         }
         : Entry(5)[3]
@@ -449,7 +449,7 @@ TEST_F(SDDL2CodeExecutionTest, AssumeParameterizedRecord)
     input[21] = 3; // tag = 3
 
     const auto prog = R"(
-        Record Entry(N) = {
+        record Entry(N) {
             items: Int32LE[N],
             tag: Byte
         }
@@ -470,11 +470,11 @@ TEST_F(SDDL2CodeExecutionTest, AssumeNestedParameterizedRecord)
     input[10] = 5; // foo.tag = 5
 
     const auto prog = R"(
-        Record Bar(N) = {
+        record Bar(N) {
             items: Int32LE[N],
             tag: Byte
         }
-        Record Foo(M) = {
+        record Foo(M) {
             bar: Bar(M),
             tag: Byte
         }
@@ -609,7 +609,7 @@ TEST_F(SDDL2CodeExecutionTest, WhenBlockInParameterizedRecord)
     };
 
     const auto prog = R"(
-        Record Data(flag) = {
+        record Data(flag) {
             a: Int32LE,
             when flag {
                 optional: Int16LE
@@ -632,7 +632,7 @@ TEST_F(SDDL2CodeExecutionTest, WhenBlockInParameterizedRecordFalse)
     };
 
     const auto prog = R"(
-        Record Data(flag) = {
+        record Data(flag) {
             a: Int32LE,
             when flag {
                 optional: Int16LE

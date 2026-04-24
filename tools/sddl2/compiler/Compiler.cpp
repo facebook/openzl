@@ -25,7 +25,7 @@ Compiler::Compiler(Options options)
  * The compiler for SDDL is comprised of four passes:
  *
  * ```
- *   Record Entry() = {
+ *   record Entry() {
  *       id: Int32LE,
  *   }
  *   : Entry
@@ -40,8 +40,8 @@ Compiler::Compiler(Options options)
  *    ```
  *    [
  *      Symbol::RECORD, Word("Entry"), Symbol::PAREN_OPEN, Symbol::PAREN_CLOSE,
- *      Symbol: ASSIGN, Symbol::CURLY_OPEN, Symbol::NL, Word("id"),
- *      Symbol: ASSUME, Symbol: I32LE, Symbol::COMMA, Symbol::NL,
+ *      Symbol::CURLY_OPEN, Symbol::NL, Word("id"),
+ *      Symbol::ASSUME, Symbol::I32LE, Symbol::COMMA, Symbol::NL,
  *      Symbol::CURLY_CLOSE, Symbol::NL, Symbol::ASSUME,
  *      Word("Entry"), Symbol::NL
  *    ]
@@ -62,7 +62,7 @@ Compiler::Compiler(Options options)
  *    ```
  *    [
  *      Expr([
- *        Symbol::RECORD, Word("Entry"), List(PAREN, []), Symbol::ASSIGN,
+ *        Symbol::RECORD, Word("Entry"), List(PAREN, []),
  *        List(CURLY, [Expr([Word("id"), Symbol::ASSUME, Symbol::I32LE])]),
  *      ]),
  *      Expr([

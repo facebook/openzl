@@ -188,7 +188,8 @@ const std::vector<std::pair<poly::string_view, Symbol>> strs_to_syms{
     { "BFloat16LE", Symbol::BF16LE },
     { "BFloat16BE", Symbol::BF16BE },
     { "Bytes", Symbol::BYTES },
-    { "Record", Symbol::RECORD },
+
+    { "record", Symbol::RECORD },
     { "when", Symbol::WHEN },
 };
 

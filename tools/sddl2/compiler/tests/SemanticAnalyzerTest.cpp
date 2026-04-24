@@ -26,7 +26,7 @@ TEST_F(SemanticAnalyzerTest, UndefinedVarInExpression)
 TEST_F(SemanticAnalyzerTest, UndefinedRecordMemberVar)
 {
     const auto prog = R"(
-        Record Foo() = {
+        record Foo() {
             x: Int32LE
         }
         foo: Foo
@@ -106,7 +106,7 @@ TEST_F(SemanticAnalyzerTest, ExpectFieldType)
 TEST_F(SemanticAnalyzerTest, AssumeRecordAndMemberAccess)
 {
     const auto prog = R"(
-        entry: Record() { id: Int32LE }
+        entry: record() { id: Int32LE }
         expect entry.id == 0
     )";
 
@@ -125,7 +125,7 @@ TEST_F(SemanticAnalyzerTest, MemberAccessOnNonRecord)
 TEST_F(SemanticAnalyzerTest, MemberAccessUndefinedField)
 {
     const auto prog = R"(
-        entry: Record() { id: Int32LE }
+        entry: record() { id: Int32LE }
         expect entry.nonexistent == 0
     )";
     expect_error(prog, "not a valid record field");
@@ -142,7 +142,7 @@ TEST_F(SemanticAnalyzerTest, MemberAccessUndefinedVar)
 TEST_F(SemanticAnalyzerTest, AssumeRecordTypeAlias)
 {
     const auto prog = R"(
-        Record Entry() = {
+        record Entry() {
             id: Int32LE,
             val: Int32LE,
             bytes: Byte[4]
@@ -197,10 +197,10 @@ TEST_F(SemanticAnalyzerTest, AssumeChainedTypeAlias)
 TEST_F(SemanticAnalyzerTest, NestedMemberAccess)
 {
     const auto prog = R"(
-        Record Foo() = {
+        record Foo() {
             x: Int32LE
         }
-        Record Bar() = {
+        record Bar() {
             foo: Foo,
             y: Int16LE
         }
@@ -214,7 +214,7 @@ TEST_F(SemanticAnalyzerTest, NestedMemberAccess)
 TEST_F(SemanticAnalyzerTest, NestedMemberAccessOnNonRecordField)
 {
     const auto prog = R"(
-        Record Bar() = {
+        record Bar() {
             y: Int16LE
         }
         bar: Bar
@@ -226,7 +226,7 @@ TEST_F(SemanticAnalyzerTest, NestedMemberAccessOnNonRecordField)
 TEST_F(SemanticAnalyzerTest, ParameterizedRecordWrongArgCount)
 {
     const auto prog = R"(
-        Record Entry(N) = {
+        record Entry(N) {
             items: Int32LE[N]
         }
         : Entry(1, 2)
@@ -237,7 +237,7 @@ TEST_F(SemanticAnalyzerTest, ParameterizedRecordWrongArgCount)
 TEST_F(SemanticAnalyzerTest, ParameterizedRecordNonNumericArg)
 {
     const auto prog = R"(
-        Record Entry(N) = {
+        record Entry(N) {
             items: Int32LE[N]
         }
         : Entry(Int32LE)
@@ -292,7 +292,7 @@ TEST_F(SemanticAnalyzerTest, NestedWhenBlocks)
 TEST_F(SemanticAnalyzerTest, WhenBlockInRecord)
 {
     const auto prog = R"(
-        Record Data(flags) = {
+        record Data(flags) {
             base: UInt32LE,
             when flags == 1 {
                 optional: UInt16LE
@@ -307,7 +307,7 @@ TEST_F(SemanticAnalyzerTest, WhenBlockInRecord)
 TEST_F(SemanticAnalyzerTest, WhenBlockInRecordWithUndefinedParam)
 {
     const auto prog = R"(
-        Record Data(flags) = {
+        record Data(flags) {
             base: UInt32LE,
             when undefined_param == 1 {
                 optional: UInt16LE
@@ -321,7 +321,7 @@ TEST_F(SemanticAnalyzerTest, WhenBlockInRecordWithUndefinedParam)
 TEST_F(SemanticAnalyzerTest, WhenBlockInRecordWithFieldReference)
 {
     const auto prog = R"(
-        Record Data() = {
+        record Data() {
             flags: UInt8,
             when flags == 1 {
                 optional: UInt16LE
@@ -344,7 +344,7 @@ TEST_F(SemanticAnalyzerTest, AbsFieldType)
 TEST_F(SemanticAnalyzerTest, MemberAccessOnConditionalField)
 {
     const auto prog = R"(
-        Record Data(flags) = {
+        record Data(flags) {
             when flags {
                 optional: Int32LE
             }
@@ -358,7 +358,7 @@ TEST_F(SemanticAnalyzerTest, MemberAccessOnConditionalField)
 TEST_F(SemanticAnalyzerTest, MemberAccessOnNonConditionalField)
 {
     const auto prog = R"(
-        Record Data(flags) = {
+        record Data(flags) {
             when flags {
                 optional: Int32LE
             },

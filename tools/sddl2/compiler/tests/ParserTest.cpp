@@ -175,7 +175,7 @@ TEST_F(ParserTest, ArrayAST)
 TEST_F(ParserTest, RecordAST)
 {
     const auto prog = R"(
-        Record Entry() = {
+        record Entry() {
             id: Int32LE,
         }
         : Entry
@@ -197,7 +197,7 @@ TEST_F(ParserTest, RecordAST)
 TEST_F(ParserTest, AnonymousRecordAST)
 {
     const auto prog = R"(
-        : Record() {id: Int32LE, val: Int32LE}
+        : record() {id: Int32LE, val: Int32LE}
     )";
 
     const auto cg       = Codegen();
@@ -267,7 +267,7 @@ TEST_F(ParserTest, SimpleSaoAST)
 {
     const auto prog = R"(
         # Star catalog entry (28 bytes)
-        Record StarEntry() = {
+        record StarEntry() {
             SRA0:  Float64LE,    # Right Ascension (radians)
             SDEC0: Float64LE,    # Declination (radians)
             ISP:   Bytes(2),     # Spectral type
@@ -317,7 +317,7 @@ TEST_F(ParserTest, SimpleSaoAST)
 TEST_F(ParserTest, CallAST)
 {
     const auto prog = R"(
-        Record Foo(A, B) = {
+        record Foo(A, B) {
             x: Int32LE[A],
             y: Int16LE[B]
         }
@@ -371,7 +371,7 @@ TEST_F(ParserTest, WhenBlockAST)
 TEST_F(ParserTest, WhenBlockInRecordAST)
 {
     const auto prog = R"(
-        Record Data(flag) = {
+        record Data(flag) {
             base: UInt32LE,
             when flag {
                 optional: UInt16LE

@@ -449,7 +449,6 @@ class RecordRule : public GrammarRule {
                       Precedence::NULLARY,
                       std::vector<ArgType>({ ArgType::EXPR,
                                              ArgType::LIST_PAREN,
-                                             ArgType::SYM,
                                              ArgType::LIST_CURLY }))
     {
     }
@@ -459,14 +458,7 @@ class RecordRule : public GrammarRule {
     {
         auto& name   = args.at(0);
         auto& params = args.at(1);
-        auto& assign = args.at(2);
-        auto& fields = args.at(3);
-
-        if (some(assign) != Symbol::ASSIGN) {
-            throw InvariantViolation(
-                    some(op).loc(),
-                    "Expected assignment operator in record declaration!");
-        }
+        auto& fields = args.at(2);
 
         return Codegen{ some(op).loc() }.assign(
                 std::move(name),
