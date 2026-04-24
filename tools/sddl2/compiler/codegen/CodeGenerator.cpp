@@ -1,6 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <algorithm>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -181,23 +182,31 @@ class CodeGeneratorImpl {
      */
     AssemblyOutput generateWhen(const ASTWhen& when)
     {
+        auto saved_cond = cond_;
+
         AssemblyOutput output;
 
-        // Get code for body
-        auto body_asm = generateBlock(when.body());
-
-        // Push N (number of instructions in body)
-        output += "push.i64 " + std::to_string(body_asm.size());
-
-        // Evaluate condition
+        // Generate the condition
         output += generateValue(when.condition());
 
-        // Negate condition (cmp.eq with 0) so we skip the body when false
-        output += "push.zero";
-        output += "cmp.eq";
-        output += "jump_if";
+        // Handle nested whens
+        if (cond_.has_value()) {
+            output += "push.i64 " + std::to_string(cond_.value());
+            output += "var.load";
+            output += "logic.and";
+        }
 
-        output += std::move(body_asm);
+        // Save the current condition
+        cond_ = registers_.allocate();
+        output += "push.i64 " + std::to_string(cond_.value());
+        output += "var.store";
+
+        // Generate the body of the when.
+        output += generateBlock(when.body());
+
+        // Restore the condition
+        registers_.free(cond_.value());
+        cond_ = saved_cond;
 
         return output;
     }
@@ -252,6 +261,7 @@ class CodeGeneratorImpl {
     TypeResult generateType(const ASTPtr& type)
     {
         AssemblyOutput output;
+        ASTPtr output_type = type;
 
         switch (type->converted_node_type()) {
             case ConvertedNodeType::VAR: {
@@ -264,13 +274,14 @@ class CodeGeneratorImpl {
                 output += "push.i64 "
                         + std::to_string(registers_.get(var->name()));
                 output += "var.load";
-                return { std::move(output), it->second };
+                output_type = it->second;
+                break;
             }
             case ConvertedNodeType::BUILTIN_FIELD: {
                 output += "push.type."
                         + builtin_field_to_asm.at(
                                 type->as_builtin_field()->kw());
-                return { std::move(output), type };
+                break;
             }
             case ConvertedNodeType::RECORD: {
                 auto record = type->as_record();
@@ -292,20 +303,21 @@ class CodeGeneratorImpl {
                 output += "type.structure";
                 registers_.free(reg);
 
-                return { std::move(output), type };
+                break;
             }
             case ConvertedNodeType::RECORD_FIELD: {
                 auto field                   = type->as_record_field();
                 auto [field_asm, field_type] = generateType(field->type());
                 output += std::move(field_asm);
-                return { std::move(output), field_type };
+                output_type = field_type;
+                break;
             }
             case ConvertedNodeType::BYTES: {
                 auto bytes = type->as_bytes();
                 output += "push.type.bytes";
                 output += generateValue(bytes->len());
                 output += "type.fixed_array";
-                return { std::move(output), type };
+                break;
             }
             case ConvertedNodeType::ARRAY: {
                 auto array          = type->as_array();
@@ -322,7 +334,7 @@ class CodeGeneratorImpl {
                     output += "math.div";
                 }
                 output += "type.fixed_array";
-                return { std::move(output), type };
+                break;
             }
             case ConvertedNodeType::CALL: {
                 auto call               = type->as_call();
@@ -339,8 +351,7 @@ class CodeGeneratorImpl {
 
                 // Restore the registers
                 registers_ = std::move(saved_regs);
-
-                return { std::move(output), type };
+                break;
             }
             case ConvertedNodeType::NUM:
             case ConvertedNodeType::OP:
@@ -349,6 +360,17 @@ class CodeGeneratorImpl {
                 throw InvariantViolation(
                         type->loc(), "Expected a type, got a value.");
         }
+
+        // If the type is within a conditional block, convert it to a fixed
+        // array of either size 1 or 0 depending on the condition.
+        if (cond_.has_value()) {
+            output += "push.i64 " + std::to_string(cond_.value());
+            output += "var.load";
+            output += "push.zero";
+            output += "cmp.ne";
+            output += "type.fixed_array";
+        }
+        return { std::move(output), std::move(output_type) };
     }
 
     std::pair<const ASTVar&, std::vector<std::string>> flattenMember(
@@ -487,7 +509,7 @@ class CodeGeneratorImpl {
     AssemblyOutput generateConsume(TypeResult type_result)
     {
         AssemblyOutput output;
-        auto& [type_asm, _] = type_result;
+        auto& type_asm = type_result.first;
         output += "push.tag " + std::to_string(tag_++);
         output += std::move(type_asm);
         output += "push.i64 1";
@@ -500,6 +522,8 @@ class CodeGeneratorImpl {
 
     // Register allocation
     RegisterAllocator registers_;
+    // Condition register for when blocks
+    std::optional<size_t> cond_ = std::nullopt;
     std::unordered_map<std::string, ASTPtr> type_aliases_;
     std::unordered_map<std::string, ASTPtr> assumed_types_;
 };
