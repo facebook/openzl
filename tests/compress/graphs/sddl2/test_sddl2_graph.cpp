@@ -351,7 +351,7 @@ TEST_F(SDDL2GraphTest, CompressSimpleSAO)
     expect_success(
             R"(
                 header : Bytes(28)
-                stars : Record() {
+                stars : record() {
                     SRA0 : Float64LE, # Right Ascension (radians)
                     SDEC0 : Float64LE, # Declination (radians)
                     ISP : Bytes(2), # Spectral type
@@ -370,12 +370,12 @@ TEST_F(SDDL2GraphTest, CompressChunkedRepeatedBlocks)
     constexpr size_t kChunkSize       = 32 << 10;
 
     std::string code = R"(
-        Record Header() = {
+        record Header() {
             magic: UInt32LE,
             flag: Byte,
         }
 
-        Record Entry(flag) = {
+        record Entry(flag) {
             id: UInt32LE,
             when flag {
                 optional: UInt16LE,
@@ -441,7 +441,7 @@ TEST_F(SDDL2GraphTest, CompressChunkedSingleLargeStructureSegment)
 
     const auto input       = gen<uint8_t>(kNumRecords * kRecordSize);
     const std::string code = R"(
-                payload : Record() {
+                payload : record() {
                     a : Byte,
                     b : Int16LE,
                     c : Int32LE,
@@ -507,7 +507,7 @@ TEST_F(SDDL2GraphTest, ChunkCountDoesNotBackfillAcrossLargeSegmentBoundary)
 
     std::string code = R"(
                 header : Bytes(8)
-                records : Record() {
+                records : record() {
                     id : UInt32LE,
                     value : UInt16LE,
                 }[)";
@@ -612,7 +612,7 @@ TEST_F(SDDL2GraphTest, CompressWithExplicitZeroChunkLocalParam)
     expect_explicit_zero_chunk_param_success(
             R"(
                 header : Bytes(28)
-                stars : Record() {
+                stars : record() {
                     SRA0 : Float64LE, # Right Ascension (radians)
                     SDEC0 : Float64LE, # Declination (radians)
                     ISP : Bytes(2), # Spectral type
@@ -634,7 +634,7 @@ TEST_F(SDDL2GraphTest, CompressInputSizeNotMultipleOfRecordSize)
 
     expect_error(
             R"(
-                : Record() {
+                : record() {
                     a : Int32LE,
                     b : Int32LE,
                 }[]
@@ -651,7 +651,7 @@ TEST_F(SDDL2GraphTest, ChunkedCompressInputSizeNotMultipleOfRecordSize)
 
     expect_chunked_error(
             R"(
-                : Record() {
+                : record() {
                     a : Int32LE,
                     b : Int32LE,
                 }[]
@@ -780,7 +780,7 @@ TEST_F(SDDL2GraphTest, RecordWithConditionalFieldsClusteringTagsStable)
     };
 
     std::string prog = R"(
-        Record Data(COND) = {
+        record Data(COND) {
             a: Int32LE,
             when COND {
                 optional: Int16LE
@@ -826,7 +826,7 @@ TEST_F(SDDL2GraphTest, MultipleOptionalFieldsClusteringTagsStable)
 
     auto make_code = [&](int f1, int f2) {
         return std::string(R"(
-        Record Data(f1, f2) = {
+        record Data(f1, f2) {
             a: Int32LE,
             when f1 {
                 opt1: Int16LE
@@ -896,14 +896,14 @@ TEST_F(SDDL2GraphTest, RecordWithNestedConditionalFieldsClusteringTagsStable)
             };
 
     std::string code = R"(
-        Record Inner(COND) = {
+        record Inner(COND) {
             a: Int16LE, # 4
             when COND {
                 opt: Int32LE # 5
             },
             b: Int16LE # 6
         }
-        Record Outer(OUTER_COND, INNER_COND) = {
+        record Outer(OUTER_COND, INNER_COND) {
             header: Int32LE, # 3
             when OUTER_COND {
                 inner: Inner(INNER_COND)
