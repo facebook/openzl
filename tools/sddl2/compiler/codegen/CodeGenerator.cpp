@@ -79,7 +79,10 @@ const std::map<Symbol, std::string> builtin_field_to_load = {
     { Symbol::I64BE, "load.i64be" },
 };
 
-using TypeResult = std::pair<AssemblyOutput, ASTPtr>;
+struct TypeResult {
+    AssemblyOutput asm_;
+    ASTPtr type_;
+};
 
 /**
  * Takes an AST and generates assembly code.
@@ -485,7 +488,7 @@ class CodeGeneratorImpl {
         // Consume the type
         output += generateConsume(type_result);
 
-        auto type = type_result.second;
+        auto type = type_result.type_;
 
         if (const auto builtin = type->as_builtin_field()) {
             // If the type is a builtin field save the loaded value
@@ -509,7 +512,7 @@ class CodeGeneratorImpl {
     AssemblyOutput generateConsume(TypeResult type_result)
     {
         AssemblyOutput output;
-        auto& type_asm = type_result.first;
+        auto& type_asm = type_result.asm_;
         output += "push.tag " + std::to_string(tag_++);
         output += std::move(type_asm);
         output += "push.i64 1";
