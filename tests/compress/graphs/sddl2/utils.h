@@ -110,6 +110,20 @@ class SDDL2StackTestCustomCapacity : public SDDL2TestBase {
 
 using SDDL2StackTest = SDDL2StackTestCustomCapacity<100>;
 
+static size_t getKindSize(SDDL2_Type_kind kind)
+{
+    size_t out = 0;
+    EXPECT_EQ(SDDL2_kind_size(kind, &out), SDDL2_OK);
+    return out;
+}
+
+static size_t getTypeSize(SDDL2_Type type)
+{
+    size_t out = 0;
+    EXPECT_EQ(SDDL2_Type_size(type, &out), SDDL2_OK);
+    return out;
+}
+
 static void popAndVerifyI64(SDDL2_Stack* stack, int64_t expected)
 {
     SDDL2_Value result;

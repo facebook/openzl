@@ -999,7 +999,7 @@ TEST_F(SDDL2TaggedSegmentsLargeTest, SegmentListGrowthDifferentTypes)
     for (int i = 0; i < NUM_SEGMENTS; i++) {
         int type_idx = i % 4;
         size_t expected_bytes =
-                element_counts[type_idx] * SDDL2_kind_size(types[type_idx]);
+                element_counts[type_idx] * getKindSize(types[type_idx]);
 
         EXPECT_EQ(segments.items[i].tag, (uint32_t)(100 + i));
         EXPECT_EQ(segments.items[i].type.kind, types[type_idx]);
