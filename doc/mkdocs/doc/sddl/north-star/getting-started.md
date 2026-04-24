@@ -87,7 +87,7 @@ When a format has multiple occurrences of the same structure, define it as a `Re
 
 **File: `with_record.sddl`**
 ```sddl
-Record Point() = {
+record Point() {
   x: Float32LE,
   y: Float32LE,
   z: Float32LE
@@ -109,7 +109,7 @@ Records let you:
 ### Record Syntax
 
 ```sddl
-Record Name() = {
+record Name() {
   field1: Type1,
   field2: Type2,
   ...
@@ -132,7 +132,7 @@ Most binary formats contain arrays of data. SDDL supports both fixed-size and au
 
 **File: `fixed_array.sddl`**
 ```sddl
-Record Point() = {
+record Point() {
   x: Float32LE,
   y: Float32LE,
   z: Float32LE
@@ -149,10 +149,10 @@ The `[100]` syntax creates an array of exactly 100 `Point` structures.
 Parameters let you specify array sizes that depend on values read from the file:
 
 ```sddl
-Record Point(dimensions) = {
+record Point(dimensions) {
   coords: Float32LE[dimensions],
 }
-Record Polygon(dimensions, vertex_count) = {
+record Polygon(dimensions, vertex_count) {
   points: Point(dimensions)[vertex_count],
 }
 
@@ -165,7 +165,7 @@ triangles : Polygon(3, 3)[triangle_count]
 When you want to read "everything remaining in the file," use an array without a size:
 
 ```sddl
-Record Point() = {
+record Point() {
   x: Float32LE,
   y: Float32LE,
   z: Float32LE
@@ -186,7 +186,7 @@ Now that we understand records and arrays, let's revisit the SAO example from Ch
 
 ```sddl
 # Star catalog entry (28 bytes)
-Record StarEntry() = {
+record StarEntry() {
   SRA0:  Float64LE,    # Right Ascension (radians)
   SDEC0: Float64LE,    # Declination (radians)
   ISP:   Bytes(2),     # Spectral type
@@ -222,7 +222,7 @@ This is a complete, working SDDL specification for the Silesia SAO format.
 When you parse a field, SDDL creates a binding between the field name and its value. You can reference that field in later expressions using dot notation:
 
 ```sddl
-Record Header() = {
+record Header() {
   magic: Bytes(4),
   count: Int32LE
 }
@@ -249,7 +249,7 @@ header_count: Int32LE
 
 var num_items = header_count  # Extract the count value
 
-Record Item() = {
+record Item() {
   id: Int32LE,
   value: Float32LE
 }
@@ -272,7 +272,7 @@ Variables are covered in depth in [Language Elements Overview](core-concepts.md#
 Sometimes fields are optional or depend on flags. Use `when` conditions:
 
 ```sddl
-Record Packet(has_timestamp, has_checksum) = {
+record Packet(has_timestamp, has_checksum) {
   id: Int32LE,
 
   when has_timestamp { timestamp: Int64LE },
@@ -305,7 +305,7 @@ For more on conditional fields and other control flow elements, see the [Languag
 Many formats store a length followed by that many bytes:
 
 ```sddl
-Record Message(size) = {
+record Message(size) {
   data: Bytes(size)
 }
 
@@ -318,7 +318,7 @@ message: Message(message_length)
 Store the number of items, then the items themselves:
 
 ```sddl
-Record Item() = {
+record Item() {
   id: Int32LE,
   value: Float32LE
 }
@@ -332,13 +332,13 @@ items: Item[count]
 A fixed-size header followed by data sections:
 
 ```sddl
-Record Header() = {
+record Header() {
   magic: Bytes(4),
   version: Int16LE,
   num_sections: Int16LE
 }
 
-Record Section() = {
+record Section() {
   type: Int16LE,
   size: Int16LE,
   data: Bytes(size)
@@ -353,7 +353,7 @@ sections: Section[header.num_sections]
 Bit flags controlling optional features:
 
 ```sddl
-Record Data(flags) = {
+record Data(flags) {
   base: Int32LE,
   when (flags & 0x01) != 0 { extra1: Int32LE },
   when (flags & 0x02) != 0 { extra2: Int32LE },
@@ -378,12 +378,12 @@ Create a `.sddl` file describing your format:
 
 ```sddl
 # myformat.sddl
-Record Header() = {
+record Header() {
   magic: Bytes(4),
   count: Int32LE
 }
 
-Record DataPoint() = {
+record DataPoint() {
   value: Float64LE
 }
 
@@ -430,7 +430,7 @@ You may have noticed in Chapter 1 that SDDL distinguishes between "instant-parse
 ### Instant-Parse Example
 
 ```sddl
-Record Header(data_size) = {
+record Header(data_size) {
   magic: Bytes(4),
   payload: Bytes(data_size)  # Size is a parameter
 }
@@ -444,7 +444,7 @@ This is **instant-parse** because the size of `payload` comes from a parameter (
 ### Requires-Scan Example
 
 ```sddl
-Record Header() = {
+record Header() {
   magic: Bytes(4),
   size: Int32LE,
   payload: Bytes(size)  # Size depends on a local field
@@ -485,7 +485,7 @@ SDDL will reject any multi-byte type without explicit endianness.
 
 !!! danger "Wrong"
     ```sddl
-    Record Data() = {
+    record Data() {
       value: Int32LE,
       value: Float32LE  # ERROR: Duplicate field name
     }
@@ -493,7 +493,7 @@ SDDL will reject any multi-byte type without explicit endianness.
 
 **Right:**
 ```sddl
-Record Data() = {
+record Data() {
   int_value: Int32LE,
   float_value: Float32LE
 }
@@ -507,7 +507,7 @@ Each field name must be unique within a record (except `_`, which can repeat for
     ```sddl
     size: Int32LE
 
-    Record Container() = {
+    record Container() {
       data: SubRecord(size)  # ERROR: Can't use out-of-scope field as parameter
     }
 
@@ -516,7 +516,7 @@ Each field name must be unique within a record (except `_`, which can repeat for
 
 **Right - Pass as parameter:**
 ```sddl
-Record Container(size) = {
+record Container(size) {
   data: SubRecord(size)
 }
 
@@ -528,7 +528,7 @@ Parameters must come from the record's own scope or be passed in from above. You
 
 **Note:** Using a local field within the same record IS allowed:
 ```sddl
-Record Container() = {
+record Container() {
   size: Int32LE,
   data: SubRecord(size)  # OK: size is a local field
 }
@@ -540,7 +540,7 @@ This makes the record require scanning, but it's perfectly valid.
 
 !!! danger "Wrong"
     ```sddl
-    Record Point() = {
+    record Point() {
       x: Float32LE
       y: Float32LE  # ERROR: Missing comma after x
       z: Float32LE
@@ -549,7 +549,7 @@ This makes the record require scanning, but it's perfectly valid.
 
 **Right:**
 ```sddl
-Record Point() = {
+record Point() {
   x: Float32LE,
   y: Float32LE,
   z: Float32LE
@@ -567,7 +567,7 @@ Let's practice by building a complete, realistic format step by step.
 ### Version 1: Just the Header
 
 ```sddl
-Record Header() = {
+record Header() {
   magic: Bytes(4),      # Should be "MYFT"
   version: Int16LE,     # Format version
   num_records: Int32LE  # Number of data records
@@ -579,13 +579,13 @@ header: Header
 ### Version 2: Add Data Records
 
 ```sddl
-Record Header() = {
+record Header() {
   magic: Bytes(4),
   version: Int16LE,
   num_records: Int32LE
 }
 
-Record DataRecord() = {
+record DataRecord() {
   id: Int32LE,
   timestamp: Int64LE,
   value: Float64LE
@@ -598,20 +598,20 @@ records: DataRecord[header.num_records]
 ### Version 3: Add Optional Metadata
 
 ```sddl
-Record Header() = {
+record Header() {
   magic: Bytes(4),
   version: Int16LE,
   flags: Int16LE,       # Bit 0: has metadata
   num_records: Int32LE
 }
 
-Record DataRecord() = {
+record DataRecord() {
   id: Int32LE,
   timestamp: Int64LE,
   value: Float64LE
 }
 
-Record Metadata() = {
+record Metadata() {
   author: Bytes(32),
   created: Int64LE,
   description: Bytes(128)

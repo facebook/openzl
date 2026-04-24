@@ -46,7 +46,7 @@ This reference provides a quick lookup for SDDL syntax, types, operators, and fu
 ### Records
 
 ```sddl
-Record TypeName(param1, param2) = {
+record TypeName(param1, param2) {
   field1: Type1,
   field2: Type2(param1)
 } pad_to size pad_align boundary

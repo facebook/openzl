@@ -134,13 +134,13 @@ colors_used: UInt32LE
 colors_important: UInt32LE
 
 # Pixel Data Structures
-Record RGB() = {
+record RGB() {
   blue:  UInt8,
   green: UInt8,
   red:   UInt8
 }
 
-Record Scanline(width) = {
+record Scanline(width) {
   pixels: RGB[width]
 } pad_align 4  # Rows padded to 4-byte boundaries
 
@@ -176,19 +176,19 @@ This example combines enums and the `in` operator for dispatch, grouped `when { 
 enum WaveFormat { PCM = 1, IEEE_FLOAT = 3, EXTENSIBLE = 0xFFFE }
 
 # ---------- Fixed headers ----------
-Record RIFF_Header() = {
+record RIFF_Header() {
   ChunkID:   Bytes(4),
   ChunkSize: UInt32LE,                 # bytes after this field (file_size - 8)
   Format:    Bytes(4)
 }
 
-Record ChunkHeader() = {
+record ChunkHeader() {
   ID:   Bytes(4),                      # "fmt ", "data"
   Size: UInt32LE                       # payload byte count (excludes pad)
 }
 
 # ---------- 'fmt ' payload ----------
-Record FmtCore() = {
+record FmtCore() {
   AudioFormat:   UInt16LE,             # 1, 3, or 0xFFFE
   NumChannels:   UInt16LE,
   SampleRate:    UInt32LE,
@@ -198,20 +198,20 @@ Record FmtCore() = {
 }
 
 # Extra depends on cbSize → requires scanning
-Record FmtExtra(total_size) = {
+record FmtExtra(total_size) {
   cbSize:    UInt16LE,
   expect cbSize == total_size - 16,
   ExtraData: Bytes(cbSize)
 }
 
-Record FmtExtensibleTail() = {
+record FmtExtensibleTail() {
   ValidBitsPerSample: UInt16LE,
   ChannelMask:        UInt32LE,
   SubFormat:          Bytes(16)         # GUID
 }
 
 # Size-bounded scope via pad_to
-Record FmtPayload(total_size) = {
+record FmtPayload(total_size) {
   core: FmtCore,
 
   # Profile guards
@@ -270,12 +270,12 @@ Union SampleAtom(fmt_eff, bits) = {
 }
 
 # ---------- Interleaved frame ----------
-Record InterleavedFrame(fmt_eff, bits, channels) = {
+record InterleavedFrame(fmt_eff, bits, channels) {
   ch: SampleAtom(fmt_eff, bits)[channels]
 }
 
 # ---------- 'data' payload ----------
-Record DataPayload(fmt_eff, bits, channels, block_align, total_bytes) = {
+record DataPayload(fmt_eff, bits, channels, block_align, total_bytes) {
   var bps = ceil_div(bits, 8),
   expect block_align == channels * bps,
   expect total_bytes % block_align == 0,
@@ -284,12 +284,12 @@ Record DataPayload(fmt_eff, bits, channels, block_align, total_bytes) = {
 }
 
 # ---------- Chunk wrappers (size-bounded + even padding) ----------
-Record FmtChunk() = {
+record FmtChunk() {
   h: ChunkHeader where h.ID == "fmt ",
   body: FmtPayload(h.Size)
 } pad_align 2
 
-Record DataChunk(fmt_eff, bits, channels, block_align) = {
+record DataChunk(fmt_eff, bits, channels, block_align) {
   h: ChunkHeader where h.ID == "data",
   body: DataPayload(fmt_eff, bits, channels, block_align, h.Size)
 } pad_align 2
@@ -352,7 +352,7 @@ This example introduces several advanced patterns not shown in earlier examples:
 #
 # Per-record fixed header (32 bytes total, including block_size)
 #
-Record BamCore() = {
+record BamCore() {
   block_size: Int32LE,    # size of the rest of the record (after this field)
 
   refID: Int32LE,         # -1 for unmapped
@@ -374,7 +374,7 @@ Record BamCore() = {
 #
 # Reference sequence entry in the header
 #
-Record RefSeq() = {
+record RefSeq() {
   l_name: Int32LE where l_name > 0,  # length of name including trailing '\0'
 
   name:  Bytes(l_name),             # NUL-terminated C string
@@ -385,7 +385,7 @@ Record RefSeq() = {
 #
 # Auxiliary tag: TAG:TYPE:VALUE triplet
 #
-Record BamTag() = {
+record BamTag() {
   tag: Bytes(2),           # Two-character tag name (e.g., "NM", "MD", "AS")
   type_code: UInt8,        # Type code: 'A', 'c', 'C', 's', 'S', 'i', 'I', 'f', 'Z', 'H', 'B'
 
@@ -409,7 +409,7 @@ Record BamTag() = {
 #
 # Full BAM alignment record (one read / template)
 #
-Record BamRecord() = {
+record BamRecord() {
   core: BamCore,
 
   #
@@ -544,7 +544,7 @@ Union PCM_Sample(bits) = {
 Enforcing exact chunk sizes (Example 3):
 
 ```sddl
-Record FmtPayload(total_size) = {
+record FmtPayload(total_size) {
   # ... fields ...
 } pad_to total_size
 ```
@@ -554,7 +554,7 @@ Record FmtPayload(total_size) = {
 Even-byte boundaries for RIFF chunks (Example 3):
 
 ```sddl
-Record FmtChunk() = {
+record FmtChunk() {
   # ... fields ...
 } pad_align 2
 ```

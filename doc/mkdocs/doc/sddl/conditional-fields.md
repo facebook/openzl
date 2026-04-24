@@ -5,7 +5,7 @@
 Use `when` blocks to conditionally include fields based on a runtime value:
 
 ```sddl
-Record Entry(has_extras) = {
+record Entry(has_extras) {
   id: UInt32LE,
   value: Float64LE,
   when has_extras == 1 {
@@ -35,7 +35,7 @@ Multiple fields can appear inside a single `when` block.
 Conditions can use any combination of variables, parameters, comparisons, and logical operators:
 
 ```sddl
-Record FlexibleEntry(version, has_checksum) = {
+record FlexibleEntry(version, has_checksum) {
   id: UInt32LE,
   data: UInt16LE,
   when version >= 2 {

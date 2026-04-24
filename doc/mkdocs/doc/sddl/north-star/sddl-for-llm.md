@@ -52,12 +52,12 @@ Instant-parse is transitive: record/union/array is instant-parse only if all com
 **Enforcing:** `@instant_parse` annotation requires instant-parse. Compiler error if not provable.
 
 ```sddl
-Record Header(limit) = {
+record Header(limit) {
   expect limit <= 4096,
   version: Int16LE
 } @instant_parse  # OK: expect uses parameter
 
-Record Bad() = {
+record Bad() {
   length: Int32LE,
   data: Bytes(length)
 } @instant_parse  # ERROR: data depends on local field
@@ -75,13 +75,13 @@ Record Bad() = {
 ### **4.1 Fixed-Size Records**
 
 ```sddl
-Record Header() = {
+record Header() {
   magic: Bytes(4),
   version: Int32LE,
   flags: Int16LE,
 }
 
-Record Block(size) = {
+record Block(size) {
   header: Header,
   block_id: Int32LE,
   data: Bytes(size)
@@ -100,11 +100,11 @@ Record Block(size) = {
 * Padding bytes are "don't care."
 
 ```sddl
-Record VariableHeader(header_size) = {
+record VariableHeader(header_size) {
   base: Bytes(20)
 } pad_to header_size
 
-Record Scanline(width) = {
+record Scanline(width) {
   pixels: Pixel[width]
 } pad_align 4
 ```
@@ -152,7 +152,7 @@ Rules:
 **Single field form:**
 
 ```sddl
-Record Data(has_id, include_meta) = {
+record Data(has_id, include_meta) {
   base: Int32LE,
   when has_id > 0 { id: Int64LE },
   when include_meta { meta: Bytes(256) }
@@ -162,7 +162,7 @@ Record Data(has_id, include_meta) = {
 **Block form (multiple statements):**
 
 ```sddl
-Record Data(has_extended) = {
+record Data(has_extended) {
   base: Int32LE,
   when has_extended {
     ext_field1: Int32LE,
@@ -184,8 +184,8 @@ Conditions referencing local fields make the record non-instant-parse.
 Inline `Record` or `Union` constructs follow the same rules:
 
 ```sddl
-Record Packet(kind, size, crcWidth) = {
-  header: Record() { version: UInt8, flags: UInt16LE },
+record Packet(kind, size, crcWidth) {
+  header: record() { version: UInt8, flags: UInt16LE },
   payload: Union(kind, size) {
     case 1: Image(size),
     case 2: Audio(size)
@@ -230,7 +230,7 @@ scan TextRecord[]
 ### **5.3 Structure-of-Arrays Layout**
 
 ```sddl
-Record IndexAndData = { index: Int64LE, data: DataBlock }
+record IndexAndData { index: Int64LE, data: DataBlock }
 
 particles: soa IndexAndData[count]
 ```
@@ -376,7 +376,7 @@ Annotations may appear on types, fields, or statements.
 ## **12. Progressive Example**
 
 ```sddl
-Record Header() = {
+record Header() {
   magic: Bytes(4),
   version: Int16LE,
   packet_count: Int32LE,
@@ -390,7 +390,7 @@ expect between(1, header.version, 3)
 var pkt_count = header.packet_count
 var has_crc   = header.flags & 0x01
 
-Record Packet(include_crc) = {
+record Packet(include_crc) {
   id: Int32LE,
   size: Int16LE,
   when include_crc { checksum: Int32LE }
@@ -398,7 +398,7 @@ Record Packet(include_crc) = {
 
 packets: Packet(has_crc)[pkt_count] @instant_parse
 
-Record VariableBlock() = {
+record VariableBlock() {
   size: UInt16LE,
   data: Bytes(size)
 } # non-instant-parse

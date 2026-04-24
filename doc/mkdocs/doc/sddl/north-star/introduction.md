@@ -18,7 +18,7 @@ Consider the SAO (Smithsonian Astronomical Observatory) star catalog format used
 
 ```sddl
 # Star catalog entry (28 bytes)
-Record StarEntry() = {
+record StarEntry() {
   SRA0:  Float64LE,    # Right Ascension (radians)
   SDEC0: Float64LE,    # Declination (radians)
   ISP:   Bytes(2),     # Spectral type
@@ -102,7 +102,7 @@ SDDL's most distinctive feature is the **instant-parse model**—the ability to 
 
 **Instant-Parse Example:**
 ```sddl
-Record Header(size) = {
+record Header(size) {
   magic: Bytes(4),
   data: Bytes(size)   # size is a parameter - known upfront
 }
@@ -110,7 +110,7 @@ Record Header(size) = {
 
 **Requires-Scan Example:**
 ```sddl
-Record Header() = {
+record Header() {
   magic: Bytes(4),
   size: Int32LE,
   data: Bytes(size)   # size depends on parsed field - must scan
@@ -128,7 +128,7 @@ When a format is instant-parse, parsing becomes much faster (often 10x or more),
 Here's the full SAO format specification, showing SDDL's expressiveness:
 
 ```sddl
-Record CatalogHeader() = {
+record CatalogHeader() {
   STAR0: Int32LE,   # Subtract from star number to get sequence number
   STAR1: Int32LE,   # First star number in file
   STARN: Int32LE,   # Number of stars; <0 → coordinates J2000
@@ -138,7 +138,7 @@ Record CatalogHeader() = {
   NBENT: Int32LE    # Bytes per star entry
 }
 
-Record StarEntry(STNUM, MPROP, NMAG) = {
+record StarEntry(STNUM, MPROP, NMAG) {
   when STNUM >= 0 { XNO: Float32LE },     # Catalog number
 
   SRA0:  Float64LE,                        # Right Ascension
@@ -197,7 +197,7 @@ To understand the practical differences, let's compare how each language describ
 
 **SDDL (10 lines):**
 ```sddl
-Record StarEntry() = {
+record StarEntry() {
   SRA0:  Float64LE,
   SDEC0: Float64LE,
   ISP:   Bytes(2),

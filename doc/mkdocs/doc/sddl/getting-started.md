@@ -31,7 +31,7 @@ We'll use a real format for the rest of this guide: the [SAO Star Catalog](http:
 Each star entry is 28 bytes containing coordinates, spectral type, magnitude, and proper motion:
 
 ```sddl
-Record StarEntry() = {
+record StarEntry() {
   SRA0:  Float64LE,     # Right Ascension (radians, 8 bytes)
   SDEC0: Float64LE,     # Declination (radians, 8 bytes)
   ISP:   Bytes(2),      # Spectral type (2 bytes)
@@ -43,7 +43,7 @@ Record StarEntry() = {
 
 Key points:
 
-- **Records** are declared with `Record Name() = { ... }` and group related fields
+- **Records** are declared with `record Name() { ... }` and group related fields
 - Fields use `name: Type` syntax, separated by commas
 - **Endianness is always explicit** — `Float64LE` means 64-bit little-endian float, `Int16LE` means 16-bit little-endian signed integer
 - `Bytes(n)` consumes exactly `n` bytes as raw (untyped) data
@@ -54,7 +54,7 @@ Key points:
 The SAO file has a 28-byte header followed by star entries. For now, let's skip the header and just describe the repeating entries:
 
 ```sddl
-Record StarEntry() = {
+record StarEntry() {
   SRA0:  Float64LE,
   SDEC0: Float64LE,
   ISP:   Bytes(2),
@@ -77,7 +77,7 @@ This is already a working description — you could use it to compress the SAO f
 Instead of treating the header as raw bytes, let's define its structure:
 
 ```sddl
-Record CatalogHeader() = {
+record CatalogHeader() {
   STAR0: Int32LE,   # Subtract from star number to get sequence number
   STAR1: Int32LE,   # First star number in file
   STARN: Int32LE,   # Number of stars in the file
@@ -87,7 +87,7 @@ Record CatalogHeader() = {
   NBENT: Int32LE    # Bytes per star entry
 }
 
-Record StarEntry() = {
+record StarEntry() {
   SRA0:  Float64LE,
   SDEC0: Float64LE,
   ISP:   Bytes(2),
@@ -125,7 +125,7 @@ The simplified description above assumes every star entry has the same fixed lay
 SDDL handles this with **parameterized records** and **conditional fields**:
 
 ```sddl
-Record CatalogHeader() = {
+record CatalogHeader() {
   STAR0: Int32LE,   # Subtract from star number to get sequence number
   STAR1: Int32LE,   # First star number in file
   STARN: Int32LE,   # Number of stars; <0 → coordinates J2000
@@ -135,7 +135,7 @@ Record CatalogHeader() = {
   NBENT: Int32LE    # Bytes per star entry
 }
 
-Record StarEntry(STNUM, MPROP, NMAG) = {
+record StarEntry(STNUM, MPROP, NMAG) {
   when STNUM > 0 { XNO: Float32LE },               # Catalog number
   SRA0:  Float64LE,                                # Right Ascension
   SDEC0: Float64LE,                                # Declination

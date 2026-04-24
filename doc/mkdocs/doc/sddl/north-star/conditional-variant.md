@@ -17,7 +17,7 @@ The `when` keyword makes fields appear only when a condition is true.
 ### Basic Syntax
 
 ```sddl
-Record Packet(include_timestamp) = {
+record Packet(include_timestamp) {
   id: Int32LE,
   size: Int16LE,
   when include_timestamp { timestamp: Int64LE }
@@ -31,7 +31,7 @@ If `include_timestamp` is true, the record includes a timestamp. If false, it do
 Conditions based on parameters maintain instant-parse status:
 
 ```sddl
-Record Data(has_checksum, version) = {
+record Data(has_checksum, version) {
   payload: Bytes(100),
   when has_checksum { crc: UInt32LE },
   when version >= 2 { metadata: Bytes(64) }
@@ -45,7 +45,7 @@ The layout is fully determined by the parameters. This is instant-parse.
 Conditions referencing parsed fields require scanning:
 
 ```sddl
-Record Header() = {
+record Header() {
   flags: UInt8,
   when (flags & 0x01) != 0 { checksum: UInt32LE }  # Requires scan
 }
@@ -56,7 +56,7 @@ The parser must read `flags` before knowing whether `checksum` exists.
 ### Multiple Conditions
 
 ```sddl
-Record VersionedData(version) = {
+record VersionedData(version) {
   base: Int32LE,
   when version >= 1 { feature_v1: Int32LE },
   when version >= 2 { feature_v2: Int64LE },
@@ -71,7 +71,7 @@ Each condition is evaluated independently. Multiple can be true simultaneously.
 Use logical operators for more sophisticated conditions:
 
 ```sddl
-Record Data(mode, flags) = {
+record Data(mode, flags) {
   base: Int32LE,
   when mode == 1 or mode == 3 { option_a: Int32LE },
   when (flags & 0x80) != 0 and mode >= 2 { option_b: Int64LE }
@@ -83,7 +83,7 @@ Record Data(mode, flags) = {
 When you need multiple fields or statements under a condition, use braces instead of `then`:
 
 ```sddl
-Record ExtendedData(has_extension) = {
+record ExtendedData(has_extension) {
   base: BaseData,
   when has_extension {
     ext_field1: Int32LE,
@@ -121,7 +121,7 @@ Union Payload(type_code) = {
 ### Using Unions
 
 ```sddl
-Record Frame() = {
+record Frame() {
   type: UInt8,
   size: UInt32LE,
   payload: Union(type) {
@@ -212,7 +212,7 @@ A union is instant-parse only if:
 ### Instant-Parse Union
 
 ```sddl
-Record Packet(type, size) = {
+record Packet(type, size) {
   payload: Union(type) {    # type is parameter: instant-parse
     case 1: Image(size),    # size is parameter: instant-parse
     case 2: Audio(size),
@@ -224,7 +224,7 @@ Record Packet(type, size) = {
 ### Non-Instant-Parse Union
 
 ```sddl
-Record Packet() = {
+record Packet() {
   type: UInt8,            # Parsed field
   size: UInt32LE,
   payload: Union(type) {  # Depends on parsed 'type': requires scan
@@ -267,7 +267,7 @@ enum Flags {
 ### Using Enums in Unions
 
 ```sddl
-Record Message() = {
+record Message() {
   type: UInt8,
   payload: Union(type) {
     case MessageType.TEXT: TextPayload,
@@ -288,7 +288,7 @@ enum FileFlags {
   COMPRESSED   = 0x04
 }
 
-Record FileData(flags) = {
+record FileData(flags) {
   data: Bytes(100),
   when (flags & FileFlags.HAS_METADATA) != 0 { metadata: Metadata },
   when (flags & FileFlags.HAS_CHECKSUM) != 0 { checksum: UInt32LE }
@@ -306,7 +306,7 @@ enum WaveFormat {
   EXTENSIBLE = 0xFFFE
 }
 
-Record Audio() = {
+record Audio() {
   format: UInt16LE,
   expect format in WaveFormat,  # Requires format to be 1, 3, or 0xFFFE
 
@@ -325,8 +325,8 @@ The `in` operator checks if a value matches any of the enum's defined constants.
 Define anonymous record types directly where used:
 
 ```sddl
-Record Packet() = {
-  header: Record() {
+record Packet() {
+  header: record() {
     magic: Bytes(4),
     version: UInt16LE,
     flags: UInt16LE
@@ -340,7 +340,7 @@ Use inline records when the type is used only once and is simple.
 ### Inline Unions
 
 ```sddl
-Record Frame(type, size) = {
+record Frame(type, size) {
   id: UInt32LE,
   payload: Union(type, size) {
     case 1: Image(size),
@@ -354,8 +354,8 @@ Record Frame(type, size) = {
 
 **Named Types:**
 ```sddl
-Record Header() = { magic: Bytes(4), version: UInt16LE }
-Record Packet() = { header: Header, data: Bytes(256) }
+record Header() { magic: Bytes(4), version: UInt16LE }
+record Packet() { header: Header, data: Bytes(256) }
 ```
 
 - Reusable across multiple records
@@ -364,8 +364,8 @@ Record Packet() = { header: Header, data: Bytes(256) }
 
 **Inline Types:**
 ```sddl
-Record Packet() = {
-  header: Record() { magic: Bytes(4), version: UInt16LE },
+record Packet() {
+  header: record() { magic: Bytes(4), version: UInt16LE },
   data: Bytes(256)
 }
 ```
@@ -383,12 +383,12 @@ Record Packet() = {
 ```sddl
 enum VariantType { INT = 1, FLOAT = 2, STRING = 3 }
 
-Record Variant() = {
+record Variant() {
   tag: UInt8,
   value: Union(tag) {
     case VariantType.INT: Int64LE,
     case VariantType.FLOAT: Float64LE,
-    case VariantType.STRING: Record() {
+    case VariantType.STRING: record() {
       length: UInt32LE,
       text: Bytes(length)
     }
@@ -401,12 +401,12 @@ Note that when you using **anonymous `Record() { ... }`** in a Union case (witho
 ### Pattern: Version-Specific Fields
 
 ```sddl
-Record FileFormat() = {
+record FileFormat() {
   magic: Bytes(4),
   version: UInt16LE,
   data: Bytes(100),
 
-Record FileWithMetadata(version) = {
+record FileWithMetadata(version) {
   header: FileHeader,
   when version >= 2 { extended_header: ExtendedHeader },
 
@@ -425,7 +425,7 @@ enum Extensions {
   METADATA    = 0x04
 }
 
-Record Document() = {
+record Document() {
   flags: UInt8,
   core_data: Bytes(512),
 
@@ -449,7 +449,7 @@ enum CommandType {
   ERROR    = 3
 }
 
-Record NetworkMessage() = {
+record NetworkMessage() {
   message_id: UInt32LE,
   command_type: UInt8,
   payload_length: UInt32LE,
@@ -476,7 +476,7 @@ enum ChunkType {
   END     = 0x49454E44   # "IEND"
 }
 
-Record Chunk() = {
+record Chunk() {
   length: UInt32BE,
   type: UInt32BE,
 
@@ -497,13 +497,13 @@ Record Chunk() = {
 ```sddl
 enum ConfigVersion { V1 = 1, V2 = 2, V3 = 3 }
 
-Record Config() = {
+record Config() {
   version: UInt16LE,
 
   # V1 fields
   name_length: UInt16LE,
   name: Bytes(name_length),
-Record Config(version) = {
+record Config(version) {
   host: Bytes(256),
   port: UInt16LE,
   when version >= ConfigVersion.V2 { timeout: UInt32LE },
@@ -518,7 +518,7 @@ Record Config(version) = {
 ### Example 3: Format Migration
 
 ```sddl
-Record MultiVersionFile() = {
+record MultiVersionFile() {
   magic: Bytes(4),
   version: UInt16LE,
 
@@ -539,7 +539,7 @@ Record MultiVersionFile() = {
 
 !!! error "Instant-parse error example"
     ```sddl
-    Record Bad() = {
+    record Bad() {
       type: UInt8,
       payload: Union(type) {  # 'type' is parsed field
         case 1: Data1,

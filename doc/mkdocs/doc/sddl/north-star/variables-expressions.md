@@ -19,7 +19,7 @@ When SDDL parses a field from the binary data, it creates a binding between the 
 Every field you parse creates a name that can be referenced later:
 
 ```sddl
-Record Header() = {
+record Header() {
   magic: Bytes(4),
   version: Int16LE,
   count: Int32LE
@@ -45,7 +45,7 @@ The binding happens immediately after the field is parsed, making its value avai
 You can still **parse** any type—these restrictions only apply to using field values in expressions:
 
 ```sddl
-Record Data() = {
+record Data() {
   timestamp: UInt64LE,      # ✓ Can parse
   temperature: Float32LE,   # ✓ Can parse
 
@@ -71,13 +71,13 @@ You can reference fields that are in the same scope (same record or top-level), 
 ```sddl
 header_count: Int32LE
 
-Record Erroneous_Data() = {
+record Erroneous_Data() {
   # ERROR: Cannot reference top-level 'header_count' directly
   # items: Item[header_count]
 }
 
 # CORRECT: Pass it as a parameter
-Record Data(count) = {
+record Data(count) {
   items: Item[count]
 }
 
@@ -122,7 +122,7 @@ This ensures predictable behavior and simplifies analysis.
 Variables are scoped to the record or top-level context where they're defined:
 
 ```sddl
-Record Container() = {
+record Container() {
   size: UInt32LE,
   var payload_size = size - 8,  # Scoped to Container
   payload: Bytes(payload_size)
@@ -136,7 +136,7 @@ Record Container() = {
 Variables referencing parameters or constants are instant-parse safe:
 
 ```sddl
-Record Data(total_size) = {
+record Data(total_size) {
   var payload_size = total_size - 16,  # OK: depends on parameter
   header: Bytes(16),
   payload: Bytes(payload_size)
@@ -146,7 +146,7 @@ Record Data(total_size) = {
 Variables referencing parsed fields require scanning:
 
 ```sddl
-Record Data() = {
+record Data() {
   size: UInt32LE,
   var payload_size = size - 16,  # Requires scan: depends on parsed field
   payload: Bytes(payload_size)
@@ -245,7 +245,7 @@ Rules:
 Using with variables:
 
 ```sddl
-Record File() = {
+record File() {
   version: UInt16LE,
 
   var chunk_size = switch version {
@@ -298,7 +298,7 @@ SDDL provides two distinct ways to measure sizes, each serving different purpose
 Example:
 
 ```sddl
-Record Header(header_size) = {
+record Header(header_size) {
   magic: Bytes(4),
   version: Int16LE,
   extra: Bytes(header_size - 6)
@@ -308,7 +308,7 @@ Record Header(header_size) = {
 var my_header_size = sizeof(Header(total_size))  # Computed at runtime, no need for prior field instance
 
 # ERROR: Cannot use sizeof on scanned types
-Record Dynamic() = {
+record Dynamic() {
   length: UInt32LE,
   data: Bytes(length)  # Requires scan - depends on parsed field
 }
@@ -327,7 +327,7 @@ Example:
 
 ```sddl
 # RIFF-style chunks with padding
-Record Chunk() = {
+record Chunk() {
   size: UInt32LE,
   data: Bytes(size)
 } pad_align 2  # Even-byte alignment adds padding
@@ -359,7 +359,7 @@ Mostly useful for validation purposes:
 ### Example 1: Computing Array Sizes
 
 ```sddl
-Record Image() = {
+record Image() {
   width: UInt32LE,
   height: UInt32LE,
   channels: UInt8,
@@ -375,7 +375,7 @@ Record Image() = {
 ### Example 2: Flag Extraction
 
 ```sddl
-Record Header() = {
+record Header() {
   flags: UInt16LE,
 
   var has_checksum = (flags & 0x01) != 0,
@@ -392,7 +392,7 @@ when header.is_compressed { compression_info: CompressionHeader }
 ### Example 3: Version-Based Sizes
 
 ```sddl
-Record Config() = {
+record Config() {
   version: UInt16LE,
 
   var header_size = switch version {
@@ -412,7 +412,7 @@ Record Config() = {
 ### Example 4: Alignment Calculations
 
 ```sddl
-Record Block() = {
+record Block() {
   size: UInt32LE,
 
   var aligned_size = align_up(size, 16),
@@ -426,7 +426,7 @@ Record Block() = {
 ### Example 5: Conditional Payload Size
 
 ```sddl
-Record Packet() = {
+record Packet() {
   header: PacketHeader,
 
   var payload_size = header.total_size - sizeof(PacketHeader()),
@@ -439,7 +439,7 @@ Record Packet() = {
 ### Example 6: Bit Field Extraction
 
 ```sddl
-Record Descriptor() = {
+record Descriptor() {
   packed: UInt32LE,
 
   var type = packed & 0xFF,
