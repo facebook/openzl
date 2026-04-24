@@ -571,11 +571,22 @@ static ZL_Report sddl2_apply_structure_split(
             nb_fields,
             nb_field_types);
 
-    // Step 3: Create copy parameter for field sizes
+    // Step 3: Build non-zero sizes for split-by-struct
+    size_t* nonzero_sizes = (size_t*)ZL_Graph_getScratchSpace(
+            graph, nb_fields * sizeof(size_t));
+    ZL_ERR_IF_NULL(nonzero_sizes, allocation);
+
+    size_t nb_nonzero = 0;
+    for (size_t i = 0; i < nb_fields; i++) {
+        if (field_sizes[i] > 0) {
+            nonzero_sizes[nb_nonzero++] = field_sizes[i];
+        }
+    }
+
     ZL_CopyParam const fieldSizesParam = {
         .paramId   = ZL_SPLITBYSTRUCT_FIELDSIZES_PID,
-        .paramPtr  = field_sizes,
-        .paramSize = nb_fields * sizeof(size_t)
+        .paramPtr  = nonzero_sizes,
+        .paramSize = nb_nonzero * sizeof(size_t)
     };
 
     // Package into LocalParams structure
@@ -592,43 +603,40 @@ static ZL_Report sddl2_apply_structure_split(
     // Validate we got the expected number of output edges
     ZL_ERR_IF_NE(
             split_outputs.nbEdges,
-            nb_fields,
+            nb_nonzero,
             GENERIC,
             "Split-by-struct produced %zu edges, expected %zu",
             split_outputs.nbEdges,
-            nb_fields);
+            nb_nonzero);
 
-    ZL_DLOG(BLOCK, "Split-by-struct produced %zu field edges", nb_fields);
+    ZL_DLOG(BLOCK, "Split-by-struct produced %zu field edges", nb_nonzero);
 
-    // Step 5: Apply Struct→Numeric conversion to each field edge
-    for (size_t i = 0; i < split_outputs.nbEdges; i++) {
-        SDDL2_Type_kind field_type_kind = field_types[i];
-
-        // Skip BYTES type (shouldn't happen with structures, but check anyway)
-        if (field_type_kind == SDDL2_TYPE_BYTES) {
-            ZL_DLOG(BLOCK, "Field %zu: skipping BYTES type", i);
+    // Step 5: Convert, tag, and route each field; skip IDs for zero-size
+    size_t edge_idx = 0;
+    for (size_t i = 0; i < nb_fields; i++) {
+        // Skip zero-size fields but still increment stream ID
+        if (field_sizes[i] == 0) {
+            ZL_DLOG(BLOCK, "Field %zu: skipped (zero size)", i);
+            *next_stream_id += 1;
             continue;
         }
 
-        // Apply Struct→Numeric conversion (split-by-struct outputs Struct
-        // edges)
-        ZL_ERR_IF_ERR(sddl2_apply_struct_field_conversion(
-                graph,
-                split_outputs.edges[i],
-                field_type_kind,
-                &split_outputs.edges[i]));
+        ZL_Edge* field_edge             = split_outputs.edges[edge_idx++];
+        SDDL2_Type_kind field_type_kind = field_types[i];
+        if (field_types[i] != SDDL2_TYPE_BYTES) {
+            ZL_ERR_IF_ERR(sddl2_apply_struct_field_conversion(
+                    graph, field_edge, field_type_kind, &field_edge));
+        }
 
         ZL_DLOG(BLOCK,
                 "Field %zu: converted Struct→Numeric (type kind %d)",
                 i,
                 (int)field_type_kind);
-    }
 
-    // Step 6: Attach clustering tags and route all field edges to destination
-    for (size_t i = 0; i < split_outputs.nbEdges; i++) {
-        ZL_ERR_IF_ERR(sddl2_set_next_stream_tag(
-                graph, split_outputs.edges[i], next_stream_id));
-        ZL_ERR_IF_ERR(ZL_Edge_setDestination(split_outputs.edges[i], dest));
+        // Attach clustering tag and route to destination
+        ZL_ERR_IF_ERR(
+                sddl2_set_next_stream_tag(graph, field_edge, next_stream_id));
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(field_edge, dest));
     }
 
     ZL_DLOG(BLOCK,
@@ -957,11 +965,10 @@ static ZL_Report sddl2_replay_segments(
         ZL_Graph* graph,
         ZL_Edge* input,
         const SDDL2_ReplaySegment* segments,
-        size_t num_segments)
+        size_t nbSegments)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
-
-    if (num_segments == 0) {
+    if (nbSegments == 0) {
         ZL_ERR_IF_ERR(ZL_Edge_setDestination(input, ZL_GRAPH_STORE));
         return ZL_returnSuccess();
     }
@@ -971,24 +978,27 @@ static ZL_Report sddl2_replay_segments(
             "SDDL2 replay requires a non-null segment slice");
 
     size_t* segmentSizes = (size_t*)ZL_Graph_getScratchSpace(
-            graph, num_segments * sizeof(size_t));
+            graph, nbSegments * sizeof(size_t));
     ZL_ERR_IF_NULL(segmentSizes, allocation);
 
-    for (size_t i = 0; i < num_segments; i++) {
-        segmentSizes[i] = segments[i].size_bytes;
+    size_t nbNonZero = 0;
+    for (size_t i = 0; i < nbSegments; i++) {
+        if (segments[i].size_bytes > 0) {
+            segmentSizes[nbNonZero++] = segments[i].size_bytes;
+        }
     }
 
     ZL_TRY_LET(
             ZL_EdgeList,
             outputs,
-            ZL_Edge_runSplitNode(input, segmentSizes, num_segments));
+            ZL_Edge_runSplitNode(input, segmentSizes, nbNonZero));
     ZL_ERR_IF_NE(
             outputs.nbEdges,
-            num_segments,
+            nbNonZero,
             GENERIC,
             "SDDL2 replay split produced %zu edges for %zu segments",
             outputs.nbEdges,
-            num_segments);
+            nbNonZero);
 
     ZL_GraphID dest = ZL_GRAPH_COMPRESS_GENERIC;
     ZL_ERR_IF_ERR(sddl2_get_destination_graph(graph, &dest));
@@ -998,10 +1008,20 @@ static ZL_Report sddl2_replay_segments(
             sddl2_get_replay_start_stream_id(graph));
     ZL_IDType next_stream_id = (ZL_IDType)next_stream_id_value;
 
-    for (size_t i = 0; i < outputs.nbEdges; i++) {
+    size_t outputIdx = 0;
+    for (size_t i = 0; i < nbSegments; i++) {
+        if (segments[i].size_bytes == 0) {
+            // Skip zero-sized segments but still increment the stream id
+            ZL_TRY_LET(
+                    size_t,
+                    nbFields,
+                    sddl2_count_primitive_fields(graph, segments[i].type));
+            next_stream_id += (unsigned int)nbFields;
+            continue;
+        }
         ZL_ERR_IF_ERR(sddl2_process_segment(
                 graph,
-                outputs.edges[i],
+                outputs.edges[outputIdx++],
                 segments[i].type,
                 dest,
                 &next_stream_id));
