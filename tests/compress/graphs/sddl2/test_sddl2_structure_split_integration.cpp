@@ -60,9 +60,9 @@ TEST_F(SDDL2StructureSplitIntegrationTest, FlatStructureSplit)
     EXPECT_EQ(struct_data->member_count, 3u);
     EXPECT_EQ(struct_data->total_size_bytes, 7u);
 
-    EXPECT_EQ(SDDL2_Type_size(struct_data->members[0]), 1u); // U8
-    EXPECT_EQ(SDDL2_Type_size(struct_data->members[1]), 2u); // I16LE
-    EXPECT_EQ(SDDL2_Type_size(struct_data->members[2]), 4u); // I32LE
+    EXPECT_EQ(getTypeSize(struct_data->members[0]), 1u); // U8
+    EXPECT_EQ(getTypeSize(struct_data->members[1]), 2u); // I16LE
+    EXPECT_EQ(getTypeSize(struct_data->members[2]), 4u); // I32LE
 
     free(struct_data);
 }
@@ -161,9 +161,9 @@ TEST_F(SDDL2StructureSplitIntegrationTest, StructureWithArrayField)
     EXPECT_EQ(struct_data->member_count, 3u);
     EXPECT_EQ(struct_data->total_size_bytes, 23u);
 
-    EXPECT_EQ(SDDL2_Type_size(struct_data->members[0]), 1u);  // U8
-    EXPECT_EQ(SDDL2_Type_size(struct_data->members[1]), 20u); // I32LE × 5
-    EXPECT_EQ(SDDL2_Type_size(struct_data->members[2]), 2u);  // I16LE
+    EXPECT_EQ(getTypeSize(struct_data->members[0]), 1u);  // U8
+    EXPECT_EQ(getTypeSize(struct_data->members[1]), 20u); // I32LE × 5
+    EXPECT_EQ(getTypeSize(struct_data->members[2]), 2u);  // I16LE
 
     free(struct_data);
 }
@@ -231,9 +231,9 @@ TEST_F(SDDL2StructureSplitIntegrationTest, FieldSizeExtraction)
                                       .width       = 1,
                                       .struct_data = nullptr };
 
-    EXPECT_EQ(SDDL2_Type_size(struct_data->members[0]), 1u);
-    EXPECT_EQ(SDDL2_Type_size(struct_data->members[1]), 4u);
-    EXPECT_EQ(SDDL2_Type_size(struct_data->members[2]), 8u);
+    EXPECT_EQ(getTypeSize(struct_data->members[0]), 1u);
+    EXPECT_EQ(getTypeSize(struct_data->members[1]), 4u);
+    EXPECT_EQ(getTypeSize(struct_data->members[2]), 8u);
 
     free(struct_data);
 }

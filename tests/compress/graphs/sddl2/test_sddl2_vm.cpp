@@ -118,13 +118,13 @@ TEST_F(SDDL2VmTest, ValueKinds)
 
 TEST_F(SDDL2VmTest, TypeSizes)
 {
-    EXPECT_EQ(SDDL2_kind_size(SDDL2_TYPE_U8), 1u);
-    EXPECT_EQ(SDDL2_kind_size(SDDL2_TYPE_I8), 1u);
-    EXPECT_EQ(SDDL2_kind_size(SDDL2_TYPE_U16LE), 2u);
-    EXPECT_EQ(SDDL2_kind_size(SDDL2_TYPE_I16BE), 2u);
-    EXPECT_EQ(SDDL2_kind_size(SDDL2_TYPE_U32LE), 4u);
-    EXPECT_EQ(SDDL2_kind_size(SDDL2_TYPE_F32BE), 4u);
-    EXPECT_EQ(SDDL2_kind_size(SDDL2_TYPE_I64LE), 8u);
-    EXPECT_EQ(SDDL2_kind_size(SDDL2_TYPE_F64BE), 8u);
-    EXPECT_EQ(SDDL2_kind_size(SDDL2_TYPE_BYTES), 1u);
+    EXPECT_EQ(getKindSize(SDDL2_TYPE_U8), 1u);
+    EXPECT_EQ(getKindSize(SDDL2_TYPE_I8), 1u);
+    EXPECT_EQ(getKindSize(SDDL2_TYPE_U16LE), 2u);
+    EXPECT_EQ(getKindSize(SDDL2_TYPE_I16BE), 2u);
+    EXPECT_EQ(getKindSize(SDDL2_TYPE_U32LE), 4u);
+    EXPECT_EQ(getKindSize(SDDL2_TYPE_F32BE), 4u);
+    EXPECT_EQ(getKindSize(SDDL2_TYPE_I64LE), 8u);
+    EXPECT_EQ(getKindSize(SDDL2_TYPE_F64BE), 8u);
+    EXPECT_EQ(getKindSize(SDDL2_TYPE_BYTES), 1u);
 }
