@@ -465,7 +465,7 @@ $(GTEST_HEADERS):
 $(LIBGTEST_A) : MAKEOVERRIDES=
 $(LIBGTEST_A) : $(GTEST_HEADERS)
 	cd deps/googletest && cmake .
-	$(MAKE) -C deps/googletest
+	cmake --build deps/googletest
 
 # XGBoost
 XGBOOST_LIBDIR := deps/xgboost/lib

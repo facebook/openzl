@@ -167,24 +167,24 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           msystem: ${{ matrix.msystem }}
-          install: make diffutils cmake git python
+          install: make diffutils git python
           update: true
 
       - name: Install MinGW GCC (i686)
         if: ${{ matrix.msystem == 'MINGW32' && matrix.cc == 'gcc' }}
-        run: pacman --noconfirm -S mingw-w64-i686-gcc
+        run: pacman --noconfirm -S mingw-w64-i686-gcc mingw-w64-i686-cmake mingw-w64-i686-ninja
 
       - name: Install MinGW GCC (x86_64)
         if: ${{ matrix.msystem == 'MINGW64' && matrix.cc == 'gcc' }}
-        run: pacman --noconfirm -S mingw-w64-x86_64-gcc
+        run: pacman --noconfirm -S mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja
 
       - name: Install MinGW Clang (i686)
         if: ${{ matrix.msystem == 'MINGW32' && matrix.cc == 'clang' }}
-        run: pacman --noconfirm -S mingw-w64-i686-clang
+        run: pacman --noconfirm -S mingw-w64-i686-clang mingw-w64-i686-cmake mingw-w64-i686-ninja
 
       - name: Install MinGW Clang (x86_64)
         if: ${{ matrix.msystem == 'MINGW64' && matrix.cc == 'clang' }}
-        run: pacman --noconfirm -S mingw-w64-x86_64-clang
+        run: pacman --noconfirm -S mingw-w64-x86_64-clang mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja
 
       - name: Prepare build
         run: |
