@@ -206,7 +206,8 @@ jobs:
       - name: Build and test
         run: |
           echo "=== Testing $CC $CXX ${{ matrix.msystem }} ==="
-          CFLAGS=-Werror CXXFLAGS=-Werror make -j test V=1
+          CFLAGS=-Werror make lib V=1
+          CFLAGS=-Werror CXXFLAGS=-Werror make test V=1
           echo "=== Build and test completed successfully ==="
 
 
