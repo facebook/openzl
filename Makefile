@@ -1,8 +1,9 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 # first recipe is default recipe
-.PHONY: default
+.PHONY: default FORCE
 default : zli
+FORCE:
 
 # Common repository-wide definitions
 include build-scripts/make/zldefs.make
@@ -517,16 +518,18 @@ $(LIBXGBOOST_SO) : MAKEOVERRIDES=
 $(LIBXGBOOST_SO) : $(LIBXGBOOST_A)
 	$(MKDIR) -p $(XGBOOST_LIBDIR)
 	cd deps/xgboost && mkdir -p build-shared && cd build-shared && \
-		cmake .. $(XGBOOST_CMAKE_COMMON) $(XGBOOST_CMAKE_PLATFORM) && $(MAKE)
+		cmake .. $(XGBOOST_CMAKE_COMMON) $(XGBOOST_CMAKE_PLATFORM) && cmake --build .
 ifeq ($(shell uname),Darwin)
 	install_name_tool -id "$(abspath $(XGBOOST_LIBDIR))/libxgboost.dylib" \
 		"$(abspath $(XGBOOST_LIBDIR))/libxgboost.dylib" || true
 endif
 
 $(LIBXGBOOST_A) : MAKEOVERRIDES=
-$(LIBXGBOOST_A) : $(XGBOOST_HEADER)
+$(LIBXGBOOST_A) : FORCE $(XGBOOST_HEADER)
 	$(MKDIR) -p $(XGBOOST_LIBDIR)
-	cd deps/xgboost && mkdir -p build && cd build && cmake .. -DBUILD_STATIC_LIB=ON -DUSE_OPENMP=OFF -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=$(abspath $(XGBOOST_LIBDIR)) && $(MAKE)
+	cd deps/xgboost && mkdir -p build && cd build && cmake .. -DBUILD_STATIC_LIB=ON -DUSE_OPENMP=OFF -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=$(abspath $(XGBOOST_LIBDIR)) && cmake --build .
+	# MinGW CMake variants may emit xgboost.a instead of libxgboost.a.
+	if [ -f $(XGBOOST_LIBDIR)/xgboost.a ] && { [ ! -f $(LIBXGBOOST_A) ] || [ $(XGBOOST_LIBDIR)/xgboost.a -nt $(LIBXGBOOST_A) ]; }; then cp -p $(XGBOOST_LIBDIR)/xgboost.a $(LIBXGBOOST_A); fi
 
 # libdmlc.a is built as part of xgboost static build
 $(LIBDMLC_A): $(LIBXGBOOST_A)
