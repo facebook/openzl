@@ -32,10 +32,10 @@ inline ZL_DictID makeDictID(uint8_t seed)
 /// Build a packed dict wire buffer.
 inline std::vector<uint8_t> buildPackedDict(
         size_t contentSize,
-        ZL_DictID dictID          = makeNullDictID(),
-        ZL_IDType codec           = 0,
-        uint8_t contentByte       = 0xAB,
-        TransformType_e codecType = trt_standard)
+        ZL_DictID dictID    = makeNullDictID(),
+        ZL_IDType codec     = 0,
+        uint8_t contentByte = 0xAB,
+        bool isCustomCodec  = false)
 {
     std::vector<uint8_t> buf(ZL_DICT_HEADER_SIZE + contentSize, 0);
     uint8_t* p = buf.data();
@@ -49,7 +49,7 @@ inline std::vector<uint8_t> buildPackedDict(
     MEM_writeLE32(p, static_cast<uint32_t>(codec));
     p += 4;
 
-    *p = static_cast<uint8_t>(codecType);
+    *p = static_cast<uint8_t>(isCustomCodec);
     p += 1;
 
     MEM_writeLE32(p, static_cast<uint32_t>(contentSize));

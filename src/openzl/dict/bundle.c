@@ -256,7 +256,7 @@ ZL_DictBundle_parseFatBundle(
         ZL_ERR_IF_NULL(dict, allocation, "failed to allocate ZL_Dict[%zu]", i);
         dict->dictID             = parsed.dictID;
         dict->materializingCodec = parsed.materializingCodec;
-        dict->codecType          = parsed.codecType;
+        dict->isCustomCodec      = parsed.isCustomCodec;
         dict->packedSize         = parsed.packedSize;
 
         size_t allocSize = (parsed.contentSize == 0) ? 1 : parsed.contentSize;

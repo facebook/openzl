@@ -126,9 +126,9 @@ TEST_F(FatBundleTest, ParseLargeContentDict)
 
 TEST_F(FatBundleTest, RoundTripMultipleDicts)
 {
-    auto dict1 = buildPackedDict(0, makeDictID(1), 100, 0xAA, trt_standard);
-    auto dict2 = buildPackedDict(50, makeDictID(2), 200, 0xBB, trt_custom);
-    auto dict3 = buildPackedDict(10, makeDictID(3), 300, 0xCC, trt_standard);
+    auto dict1 = buildPackedDict(0, makeDictID(1), 100, 0xAA, false);
+    auto dict2 = buildPackedDict(50, makeDictID(2), 200, 0xBB, true);
+    auto dict3 = buildPackedDict(10, makeDictID(3), 300, 0xCC, false);
 
     auto fatBuf = packFatBundle({ dict1, dict2, dict3 });
 
@@ -146,9 +146,9 @@ TEST_F(FatBundleTest, RoundTripMultipleDicts)
     EXPECT_EQ(bundle->dicts[2]->materializingCodec, 300u);
 
     // Verify each dict was parsed with the correct codec type
-    EXPECT_EQ(bundle->dicts[0]->codecType, trt_standard);
-    EXPECT_EQ(bundle->dicts[1]->codecType, trt_custom);
-    EXPECT_EQ(bundle->dicts[2]->codecType, trt_standard);
+    EXPECT_EQ(bundle->dicts[0]->isCustomCodec, false);
+    EXPECT_EQ(bundle->dicts[1]->isCustomCodec, true);
+    EXPECT_EQ(bundle->dicts[2]->isCustomCodec, false);
 
     // Verify per-dict packedSize
     EXPECT_EQ(bundle->dicts[0]->packedSize, ZL_DICT_HEADER_SIZE + 0u);

@@ -85,7 +85,7 @@ static std::vector<uint8_t> buildPackedDict(
             buf.size(),
             dictID,
             codec,
-            trt_custom,
+            true,
             content.data(),
             content.size()));
     return buf;

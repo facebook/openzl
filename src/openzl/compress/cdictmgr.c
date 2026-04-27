@@ -134,7 +134,7 @@ void CDictMgr_destroy(CDictMgr* mgr)
 static const ZL_MaterializerDesc2* CDictMgr_findMaterializer(
         const CDictMgr* mgr,
         ZL_DictID dictID,
-        TransformType_e codecType)
+        bool isCustomCodec)
 {
     ZL_ASSERT_NN(mgr);
     const CNodes_manager* ctm = &mgr->nmgr->ctm;
@@ -146,7 +146,7 @@ static const ZL_MaterializerDesc2* CDictMgr_findMaterializer(
             continue;
         if (cnode->nodetype != node_internalTransform)
             continue;
-        if (cnode->publicIDtype != codecType)
+        if ((cnode->publicIDtype == trt_custom) != isCustomCodec)
             continue;
         if (ZL_UniqueID_eq(
                     &cnode->transformDesc.publicDesc.dictID.id, &dictID.id)
@@ -208,7 +208,7 @@ static ZL_RESULT_OF(ZL_DictConstPtr) CDictMgr_cacheInternal(
     dict->dictID             = parsed->dictID;
     dict->contentHash        = parsed->contentHash;
     dict->materializingCodec = parsed->materializingCodec;
-    dict->codecType          = parsed->codecType;
+    dict->isCustomCodec      = parsed->isCustomCodec;
     dict->packedSize         = parsed->packedSize;
     dict->dictObj            = ZL_RES_value(obj);
 
@@ -321,7 +321,7 @@ CDictMgr_loadDict(CDictMgr* mgr, const void* serialBuffer, size_t bufferMaxSize)
             dict_corruption,
             "dict packedSize exceeds remaining buffer");
     const ZL_MaterializerDesc2* matDesc =
-            CDictMgr_findMaterializer(mgr, parsed.dictID, parsed.codecType);
+            CDictMgr_findMaterializer(mgr, parsed.dictID, parsed.isCustomCodec);
     ZL_ERR_IF_NULL(
             matDesc, noValidMaterialization, "no materializer found for dict");
 
@@ -434,8 +434,8 @@ CDictMgr_materializeMParam(
     ZL_ParsedDict toCache = {
         .dictID      = (ZL_DictID){ mparam.mparamID.id },
         .contentHash = ZL_UniqueID_computeSHA256(mparam.content, mparam.size),
-        .materializingCodec = 0, // not used by mparams
-        .codecType          = 0, // not used by mparams
+        .materializingCodec = 0,     // not used by mparams
+        .isCustomCodec      = false, // not used by mparams
         .dictContent        = mparam.content,
         .contentSize        = mparam.size,
         .packedSize         = mparam.size,
