@@ -110,5 +110,5 @@ int main(int argc, char** argv)
         write_canonical_parquet_file(outPath.string(), table);
     }
 
-    return 1;
+    return 0;
 }
