@@ -31,6 +31,9 @@ std::vector<ZL_NodeID> getAllNodes(uint32_t formatVersion)
             cgraph, ZL_CParam_formatVersion, formatVersion));
     auto end = std::remove_if(
             nodes.begin(), nodes.end(), [cgraph](ZL_NodeID node) {
+                if (ZL_Compressor_Node_getNumInputs(cgraph, node) != 1) {
+                    return true;
+                }
                 size_t const nbSuccessors =
                         ZL_Compressor_Node_getNumOutcomes(cgraph, node);
                 std::vector<ZL_GraphID> dsts(nbSuccessors, ZL_GRAPH_STORE);
@@ -55,6 +58,9 @@ std::vector<ZL_GraphID> getAllGraphs(uint32_t formatVersion)
             cgraph, ZL_CParam_formatVersion, formatVersion));
     auto end = std::remove_if(
             graphs.begin(), graphs.end(), [cgraph](ZL_GraphID graph) {
+                if (ZL_Compressor_Graph_getNumInputs(cgraph, graph) != 1) {
+                    return true;
+                }
                 return !ZL_GraphID_isValid(graph);
             });
     ZL_Compressor_free(cgraph);
