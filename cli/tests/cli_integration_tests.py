@@ -233,12 +233,12 @@ class Sddl2ChunkedTrainTest(unittest.TestCase):
 
     def _build_description(self) -> str:
         lines = [
-            "Record Header() = {",
+            "record Header() {",
             "    magic: UInt32LE,",
             "    flag: Byte,",
             "}",
             "",
-            "Record Entry(flag) = {",
+            "record Entry(flag) {",
             "    id: UInt32LE,",
             "    when flag {",
             "        optional: UInt16LE,",

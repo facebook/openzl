@@ -130,7 +130,7 @@ TEST_F(OptimizerTest, ArrayAST)
 TEST_F(OptimizerTest, RecordAST)
 {
     const auto prog = R"(
-        Record Entry() = {
+        record Entry() {
             id: Int32LE,
         }
         : Entry
@@ -170,7 +170,7 @@ TEST_F(OptimizerTest, ModuloByZeroError)
 TEST_F(OptimizerTest, DeadRecordVarElimination)
 {
     const auto prog = R"(
-        entry: Record() { id: Int32LE }
+        entry: record() { id: Int32LE }
     )";
 
     const auto cg       = Codegen();
@@ -186,7 +186,7 @@ TEST_F(OptimizerTest, DeadRecordVarElimination)
 TEST_F(OptimizerTest, RecordMemberLastReference)
 {
     const auto prog = R"(
-        Record Foo() = {
+        record Foo() {
             x: Int32LE,
             y: Int16LE
         }
