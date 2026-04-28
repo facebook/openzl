@@ -16,7 +16,7 @@ An **instant-parse** type is one where all field offsets, sizes, and layout can 
 
 **Instant-Parse:**
 ```sddl
-Record Header(payload_size) = {
+record Header(payload_size) {
   magic: Bytes(4),
   version: Int16LE,
   payload: Bytes(payload_size)  # Size is a parameter - known upfront
@@ -34,7 +34,7 @@ No data needs to be read to know these offsets.
 
 **Requires-Scan:**
 ```sddl
-Record Message() = {
+record Message() {
   magic: Bytes(4),
   size: Int16LE,
   payload: Bytes(size)  # Size depends on parsed field - must scan
@@ -66,7 +66,7 @@ A construct requires scanning when any of these conditions hold:
 The most common case: a field or array size depends on another field referenced within the same scope.
 
 ```sddl
-Record Container() = {
+record Container() {
   count: UInt32LE,
   items: Item[count]  # Depends on local field: requires scan
 }
@@ -90,7 +90,7 @@ You cannot know the field size without scanning for the delimiter.
 Functions like `current_position()` depend on parsing state:
 
 ```sddl
-Record Dynamic() = {
+record Dynamic() {
   field1: Bytes(10),
   var offset = current_position(),  # Depends on parse state
   field2: Bytes(offset)
@@ -104,12 +104,12 @@ This makes the record require scanning.
 Instant-parse status is transitive. A construct is instant-parse only if all its components are instant-parse:
 
 ```sddl
-Record Inner() = {
+record Inner() {
   size: UInt16LE,
   data: Bytes(size)  # Requires scan
 }
 
-Record Outer() = {
+record Outer() {
   inner: Inner  # Also requires scan because Inner does
 }
 ```
@@ -125,7 +125,7 @@ You can enforce instant-parse status with the `@instant_parse` annotation.
 ### Basic Usage
 
 ```sddl
-Record Header(has_checksum) = {
+record Header(has_checksum) {
   magic: Bytes(4),
   version: UInt16LE,
   when (flags & 0x01) != 0 { checksum: UInt32LE }  # Requires scan
@@ -136,7 +136,7 @@ If this record were modified to break instant-parse guarantees, the compiler wou
 
 !!! danger "Compiler error"
     ```sddl
-    Record Header() = {
+    record Header() {
       magic: Bytes(4),
       version: Int16LE,
       size: Int16LE,
@@ -164,7 +164,7 @@ Use it when instant-parse is important to your format's design and you want the 
 You can also annotate individual fields:
 
 ```sddl
-Record Container(count) = {
+record Container(count) {
   header: Bytes(16),
   items: Item[count] @instant_parse  # Enforce that items array is instant-parse
 }
@@ -181,7 +181,7 @@ This verifies that `Item` is instant-parse and `count` is a parameter.
 A record is instant-parse when all its fields and their sizes depend only on parameters:
 
 ```sddl
-Record Packet(payload_size) = {
+record Packet(payload_size) {
   header: Bytes(12),
   payload: Bytes(payload_size)
 } @instant_parse
@@ -194,7 +194,7 @@ An array is instant-parse when:
 - Its size depends only on parameters or constants
 
 ```sddl
-Record Grid(width, height) = {
+record Grid(width, height) {
   cells: Cell[height][width]  # Instant-parse if Cell is instant-parse
 } @instant_parse
 ```
@@ -204,7 +204,7 @@ Record Grid(width, height) = {
 Conditional fields using parameters are instant-parse:
 
 ```sddl
-Record Packet(has_timestamp, has_checksum) = {
+record Packet(has_timestamp, has_checksum) {
   id: Int32LE,
   payload: Bytes(100),
   when has_timestamp { timestamp: Int64LE },
@@ -215,7 +215,7 @@ Record Packet(has_timestamp, has_checksum) = {
 Conditions referencing local fields require scanning:
 
 ```sddl
-Record Packet() = {
+record Packet() {
   id: Int32LE,
   flags: UInt8,
   when (flags & 0x01) != 0 { extra: Int32LE }  # Requires scan
@@ -245,7 +245,7 @@ payload: Payload(type, size) @instant_parse
 ### Example 1: Image Header (Instant-Parse)
 
 ```sddl
-Record ImageHeader() = {
+record ImageHeader() {
   magic: Bytes(4),      # "IMGF"
   width: UInt32LE,
   height: UInt32LE,
@@ -265,7 +265,7 @@ The header is fixed-size and instant-parse. All fields have known positions.
 
 ```sddl
 # Type-Length-Value format
-Record TLV() = {
+record TLV() {
   type: UInt8,
   length: UInt16LE,
   value: Bytes(length)  # Depends on local field: requires scan
@@ -285,7 +285,7 @@ When the compiler reports an instant-parse violation, it explains the dependency
 ### Example Diagnostic
 
 ```sddl
-Record Container() = {
+record Container() {
   count: UInt32LE,
   items: Item[count]
 } @instant_parse
@@ -314,16 +314,16 @@ The diagnostic shows:
 Complex violations may have long dependency chains:
 
 ```sddl
-Record A() = {
+record A() {
   size: UInt16LE,
   b: B(size)
 } @instant_parse
 
-Record B(n) = {
+record B(n) {
   c: C[n]
 }
 
-Record C() = {
+record C() {
   value: Int32LE
 }
 ```
@@ -350,7 +350,7 @@ The compiler traces through the entire chain to explain the violation.
 ### Count-Prefixed Array (Requires Scan)
 
 ```sddl
-Record Data() = {
+record Data() {
   count: UInt32LE,
   values: Int32LE[count]  # Not instant-parse: depends on local field
 }
@@ -359,7 +359,7 @@ Record Data() = {
 ### Count as Parameter (Instant-Parse)
 
 ```sddl
-Record Data(item_count) = {
+record Data(item_count) {
   values: Int32LE[item_count]  # Instant-parse: depends on parameter
 }
 
@@ -370,7 +370,7 @@ data: Data(count)
 ### Variable-Length Field (Requires Scan)
 
 ```sddl
-Record Entry() = {
+record Entry() {
   name_len: UInt8,
   name: Bytes(name_len)  # Requires scan
 }
@@ -381,7 +381,7 @@ entries: scan Entry[]
 ### Fixed-Length Field (Instant-Parse)
 
 ```sddl
-Record Entry() = {
+record Entry() {
   name: Bytes(32)  # Always 32 bytes, instant-parse
 }
 ```
@@ -389,7 +389,7 @@ Record Entry() = {
 ### Conditional on Local Field (Requires Scan)
 
 ```sddl
-Record Packet() = {
+record Packet() {
   flags: UInt8,
   data: Bytes(100),
   when (flags & 0x01) != 0 then checksum: UInt32LE  # Requires scan
@@ -399,7 +399,7 @@ Record Packet() = {
 ### Conditional on Parameter (Instant-Parse)
 
 ```sddl
-Record Packet(has_checksum) = {
+record Packet(has_checksum) {
   id: Int32LE,
   when has_checksum { checksum: UInt32LE }  # Instant-parse
 } @instant_parse

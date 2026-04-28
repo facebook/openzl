@@ -39,7 +39,7 @@ Use `Bytes(n)` when the data has unknown structure or when you need padding.
 Structured composite types that group fields together:
 
 ```sddl
-Record Point() = {
+record Point() {
   x: Float32LE,
   y: Float32LE,
   z: Float32LE
@@ -99,7 +99,7 @@ Enums make discriminators and bit flags more self-documenting.
 Local computed values that can be used in sizes, conditions, and validations:
 
 ```sddl
-Record Container() = {
+record Container() {
   total_size: UInt32LE,
   header_size: UInt32LE,
   var data_size = total_size - header_size,  # Computed value
@@ -114,7 +114,7 @@ Variables hold intermediate calculations and improve readability.
 Fields or blocks that appear only when conditions are met:
 
 ```sddl
-Record Packet(version) = {
+record Packet(version) {
   id: Int32LE,
   size: Int16LE,
   payload: Bytes(size),
@@ -129,7 +129,7 @@ The `when` keyword enables format versioning and optional sections.
 Assertions that ensure data meets expectations:
 
 ```sddl
-header: Record() {
+header: record() {
   magic: Bytes(4),
   version: UInt16LE where (version >= 1 and version <= 3)
 }
@@ -264,7 +264,7 @@ Records are SDDL's primary mechanism for organizing structure and reusing format
 A record definition has three parts: name, parameters, and body.
 
 ```sddl
-Record Name(param1, param2) = {
+record Name(param1, param2) {
   field1: Type1,
   field2: Type2
 }
@@ -281,7 +281,7 @@ Record Name(param1, param2) = {
 The simplest record has no parameters:
 
 ```sddl
-Record Point() = {
+record Point() {
   x: Float32LE,
   y: Float32LE,
   z: Float32LE
@@ -297,7 +297,7 @@ This defines a 3D point structure. When you write `origin: Point`, you're creati
 Parameters make records flexible:
 
 ```sddl
-Record FixedArray(count) = {
+record FixedArray(count) {
   values: Int32LE[count]
 }
 
@@ -318,11 +318,11 @@ The `count` parameter is passed when instantiating the record. Parameters can be
 Records can have multiple parameters:
 
 ```sddl
-Record Matrix(rows, cols) = {
+record Matrix(rows, cols) {
   data: Float32LE[rows * cols]
 }
 
-Record Container(width, height, depth) = {
+record Container(width, height, depth) {
   dimensions: Matrix(width, height),
   volume: Float32LE[depth]
 }
@@ -340,7 +340,7 @@ Parameters are positional. When calling `Container(w, h, d)`, `w` maps to `width
 Field names must be unique within a record, with one exception: the underscore `_` can be used multiple times for throwaway fields:
 
 ```sddl
-Record Data() = {
+record Data() {
   important: Int32LE,
   _        : Bytes(4),     # Some padding, ignored
   value    : Float32LE,
@@ -364,17 +364,17 @@ The field still exists in the record, it's just considered "unimportant", and no
 Records can contain other records:
 
 ```sddl
-Record Point() = {
+record Point() {
   x: Float32LE,
   y: Float32LE
 }
 
-Record Line() = {
+record Line() {
   start: Point,
   end: Point
 }
 
-Record Shape() = {
+record Shape() {
   boundary: Line,
   center: Point
 }
@@ -389,12 +389,12 @@ This creates a hierarchy: `Shape` contains a `Line` and a `Point`, and `Line` co
 You can define records inline without giving them a name:
 
 ```sddl
-header: Record() {
+header: record() {
   magic: Bytes(4),
   version: Int16LE
 }
 
-data: Record() {
+data: record() {
   count: Int32LE,
   values: Float32LE[10]
 }
@@ -421,7 +421,7 @@ SDDL provides two mechanisms for validating that binary data matches expectation
 `expect` statements assert that a condition must be true:
 
 ```sddl
-header: Record() {
+header: record() {
   magic: Bytes(4),
   version: Int16LE
 }
@@ -466,7 +466,7 @@ String literals are treated as byte sequences in expect statements.
 `where` is a shorthand for validating a field immediately after parsing it:
 
 ```sddl
-Record Data() = {
+record Data() {
   size: UInt16LE where (size <= 1024),
   data: Bytes(size)
 }
@@ -475,7 +475,7 @@ Record Data() = {
 This is equivalent to:
 
 ```sddl
-Record Data() = {
+record Data() {
   size: UInt16LE,
   expect size <= 1024,
   data: Bytes(size)
@@ -489,7 +489,7 @@ Use `where` when validation is tightly coupled to a single field. Use `expect` w
 When `expect` or `where` references only parameters or constants, it doesn't affect instant-parse status:
 
 ```sddl
-Record Block(size) = {
+record Block(size) {
   data: Bytes(size)  # ✓ OK: 'size' is a parameter
 } @instant_parse
 
@@ -499,7 +499,7 @@ block: Block(length)
 When validation references local fields, the record requires scanning:
 
 ```sddl
-Record Data() = {
+record Data() {
   size: UInt16LE,
   expect size <= 1024,  # This makes the record require scanning
   data: Bytes(size)
@@ -513,7 +513,7 @@ The distinction: parameters are known before parsing, local fields are discovere
 You can validate that a record's size matches an expected value using the `sizeof` function:
 
 ```sddl
-Record Header() = {
+record Header() {
   magic: Bytes(4),
   version: Int16LE,
   flags: Int16LE
@@ -544,7 +544,7 @@ magic: Bytes(4)  # This is an end-of-line comment
 Good SDDL specifications are self-documenting, but comments add valuable context:
 
 ```sddl
-Record Header() = {
+record Header() {
   # File identifier, must be "MYFT" for this format version
   magic: Bytes(4),
 
@@ -612,7 +612,7 @@ Your SDDL file IS the format documentation. Well-commented SDDL is often clearer
 # - 28-byte fixed header
 # - Variable-length star entries (28 bytes each in this version)
 
-Record StarEntry() = {
+record StarEntry() {
   SRA0:  Float64LE,  # Right Ascension at epoch 1950.0 (radians)
   SDEC0: Float64LE,  # Declination at epoch 1950.0 (radians)
   ISP:   Bytes(2),   # Spectral type and magnitude code
@@ -646,7 +646,7 @@ data: Int32LE[count]
 Inside blocks (`{}`, `()`, `[]`), items are comma-separated with optional trailing commas:
 
 ```sddl
-Record Point() = {
+record Point() {
   x: Float32LE,
   y: Float32LE,
   z: Float32LE,   # Trailing comma is OK
@@ -678,7 +678,7 @@ Let's apply these core concepts to a complete example:
 
 # ----- Types -----
 
-Record Header() = {
+record Header() {
   magic: Bytes(4),      # Must be "IMGF"
   version: UInt16LE,    # Format version (currently 1)
   width: UInt32LE,      # Image width in pixels
@@ -687,11 +687,11 @@ Record Header() = {
   bits_per_channel: UInt8  # Bits per channel (8 or 16)
 }
 
-Record Pixel8(num_channels) = {
+record Pixel8(num_channels) {
   data: UInt8[num_channels]
 }
 
-Record Pixel16(num_channels) = {
+record Pixel16(num_channels) {
   data: UInt16LE[num_channels]
 }
 

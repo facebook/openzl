@@ -34,7 +34,7 @@ The number in brackets specifies how many elements to parse. This can be:
 SDDL supports multi-dimensional arrays with multiple bracket pairs:
 
 ```sddl
-Record Image(width, height, channels) = {
+record Image(width, height, channels) {
   pixels: UInt8[height][width][channels]
 }
 ```
@@ -46,13 +46,13 @@ Layout is row-major: the rightmost index varies fastest. In the example above, t
 Arrays work with any type, including records:
 
 ```sddl
-Record Point() = {
+record Point() {
   x: Float32LE,
   y: Float32LE,
   z: Float32LE
 }
 
-Record PointCloud(num_points) = {
+record PointCloud(num_points) {
   points: Point[num_points]
 }
 
@@ -67,12 +67,12 @@ This creates an array of `Point` structures laid out sequentially in memory.
 Array elements can themselves be parameterized:
 
 ```sddl
-Record Block(size) = {
+record Block(size) {
   header: Bytes(4),
   data: Bytes(size - 4)
 }
 
-Record FileData(block_size, block_count) = {
+record FileData(block_size, block_count) {
   blocks: Block(block_size)[block_count]
 }
 ```
@@ -90,7 +90,7 @@ When the array size is not known nor declared in advance, one can use auto-sized
 An array without a size specification repeats until there's no more data:
 
 ```sddl
-Record Entry() = {
+record Entry() {
   id: Int32LE,
   value: Float64LE
 }
@@ -111,7 +111,7 @@ Scope depends on context:
 Example with explicit scope:
 
 ```sddl
-Record Container(payload_size) = {
+record Container(payload_size) {
   header: Bytes(16),
   entries: Entry[]                # Reads until payload_size is exhausted
 } pad_to payload_size
@@ -128,7 +128,7 @@ What happens when the remaining data in scope isn't evenly divisible by the elem
 When an auto-sized array appears at file level, **all remaining data must form complete elements**. Leftover bytes that don't constitute a full element cause a parse error.
 
 ```sddl
-Record Point() = {
+record Point() {
   x: Float32LE,  # 4 bytes
   y: Float32LE,  # 4 bytes
   z: Float32LE   # 4 bytes
@@ -148,7 +148,7 @@ The 4 leftover bytes are insufficient to form a complete `Point` structure.
 When an auto-sized array appears within a record that uses `pad_to` or `pad_align`, leftover bytes are **allowed and treated as padding**.
 
 ```sddl
-Record Container(payload_size) = {
+record Container(payload_size) {
   header: Bytes(16),
   entries: Entry[]  # Auto-sized array
 } pad_to payload_size
@@ -174,7 +174,7 @@ This allows the `Container` to meet its `pad_to` size requirement while the arra
 You can mix fixed and auto-sized dimensions:
 
 ```sddl
-Record Scanline(width) = {
+record Scanline(width) {
   pixels: RGB[width]
 }
 
@@ -190,7 +190,7 @@ The first dimension is auto-sized (unknown number of scanlines), the second is f
 When array elements require scanning (they're not instant-parse), you must use the `scan` keyword:
 
 ```sddl
-Record VariableEntry() = {
+record VariableEntry() {
   size: UInt16LE,
   data: Bytes(size)  # Size depends on local field: requires scan
 }
@@ -222,7 +222,7 @@ An array is instant-parse when:
 - Its size depends only on parameters or constants
 
 ```sddl
-Record Grid(width, height) = {
+record Grid(width, height) {
   cells: Cell[height][width]
 } @instant_parse
 ```
@@ -236,7 +236,7 @@ Arrays become non-instant-parse when:
 - The size depends on local fields
 
 ```sddl
-Record Data() = {
+record Data() {
   count: UInt32LE,
   values: Int32LE[count]  # Size depends on local field
 }
@@ -262,7 +262,7 @@ values: Int32LE[100]  # 400 bytes: 100 × 4 bytes, no padding
 If the element type has alignment requirements, padding may appear between elements:
 
 ```sddl
-Record Aligned() = {
+record Aligned() {
   value: UInt8,
   important: align(8) Int64LE  # Must start at 8-byte boundary
 }
@@ -277,7 +277,7 @@ Each `Aligned` record may include padding after `value` to ensure `important` st
 Records with `pad_align` or `pad_to` affect array layout:
 
 ```sddl
-Record Padded() = {
+record Padded() {
   data: Bytes(10)
 } pad_align 16  # Each record is a multiple of 16 bytes
 
@@ -295,7 +295,7 @@ The padding ensures consistent element sizes, which can improve cache performanc
 The most common array pattern: a count field followed by that many elements.
 
 ```sddl
-Record Item() = {
+record Item() {
   id: Int32LE,
   value: Float32LE
 }
@@ -309,7 +309,7 @@ items: Item[count]
 Different array types based on a flag or version:
 
 ```sddl
-Record Header() = {
+record Header() {
   version: UInt16LE,
   count: UInt32LE
 }
@@ -325,11 +325,11 @@ when header.version == 2 { data_v2: DataV2[header.count] }
 Arrays of arrays for grid or matrix data:
 
 ```sddl
-Record Row(width) = {
+record Row(width) {
   cells: Cell[width]
 }
 
-Record Grid(width, height) = {
+record Grid(width, height) {
   rows: Row(width)[height]
 }
 ```
@@ -339,7 +339,7 @@ Record Grid(width, height) = {
 Split data into fixed-size chunks:
 
 ```sddl
-Record Chunk() = {
+record Chunk() {
   data: Bytes(4096)
 }
 
@@ -354,13 +354,13 @@ Each chunk is exactly 4096 bytes, making the data easy to process in blocks.
 Combine fixed-size headers with variable-size payloads:
 
 ```sddl
-Record PacketHeader() = {
+record PacketHeader() {
   id: UInt32LE,
   payload_size: UInt16LE,
   flags: UInt16LE
 }
 
-Record Packet() = {
+record Packet() {
   header: PacketHeader,
   payload: Bytes(header.payload_size)
 }
@@ -377,7 +377,7 @@ By default, arrays store elements sequentially: all fields of element 0, then al
 ### Array-of-Structures (Default)
 
 ```sddl
-Record Particle() = {
+record Particle() {
   x: Float32LE,
   y: Float32LE,
   z: Float32LE,
@@ -401,7 +401,7 @@ Each particle's data is contiguous.
 Some binary formats store data in structure-of-arrays (SOA) layout.
 
 ```sddl
-Record Particle() = {
+record Particle() {
   x: Float32LE,
   y: Float32LE,
   z: Float32LE,
@@ -443,13 +443,13 @@ SOA layout only unwraps the first level of fields. If a field is itself a record
 it remains in array-of-structures (AOS) layout:
 
 ```sddl
-Record Color() = {
+record Color() {
   r: UInt8,
   g: UInt8,
   b: UInt8
 }
 
-Record Pixel() = {
+record Pixel() {
   position: Int16LE,
   color: Color       # Nested record
 }
@@ -471,7 +471,7 @@ This creates 2 arrays: one for `position` fields, one for `color` structures (ea
 If a record field is itself a fixed-size array, it remains as a contiguous block:
 
 ```sddl
-Record Item() = {
+record Item() {
   id: UInt32LE,
   values: Float32LE[3]  # Fixed-size array member
 }
@@ -497,7 +497,7 @@ the SOA layout can be parsed field-array by field-array.
 Simple instant-parse records (all fixed-size fields) always satisfy this requirement:
 
 ```sddl
-Record Point(dimension) = {
+record Point(dimension) {
   coords: Float32LE[dimension]
 }
 
@@ -507,7 +507,7 @@ points: soa Point(3)[1000]  # OK: instant-parse, simple structure
 Records with variable-size fields work if dependencies follow field order:
 
 ```sddl
-Record VariableItem() = {
+record VariableItem() {
   size: UInt16LE,        # Array 0
   data: Bytes(size)      # Array 1: depends on earlier field
 }
@@ -532,7 +532,7 @@ Auto-sized SOA requires the element type to be instant-parse (all fields must ha
 ### Example 1: Time Series Data
 
 ```sddl
-Record TimePoint() = {
+record TimePoint() {
   timestamp: Int64LE,
   temperature: Float32LE,
   humidity: Float32LE,
@@ -550,7 +550,7 @@ measurements: soa TimePoint[count]
 In this custom example, we'll imagine a format where each color plane, named a channel, is stored separately and contiguously, in SOA layout.
 
 ```sddl
-Record ImageHeader() = {
+record ImageHeader() {
   magic: Bytes(4),
   width: UInt32LE,
   height: UInt32LE,
@@ -559,12 +559,12 @@ Record ImageHeader() = {
 
 Union Pixel(channels) = {
   case 1: gray: UInt8,
-  case 3: Record() {
+  case 3: record() {
     r: UInt8,
     g: UInt8,
     b: UInt8
   },
-  case 4: Record() {
+  case 4: record() {
     r: UInt8,
     g: UInt8,
     b: UInt8,
@@ -585,22 +585,22 @@ Then, `soa` layout specifies that all red channel values are together, all green
 ### Example 3: Mixed-Format Records
 
 ```sddl
-Record RecordHeader() = {
+record RecordHeader() {
   type: UInt8,
   size: UInt16LE
 }
 
-Record TextRecord(size) = {
+record TextRecord(size) {
   text: Bytes(size)
 }
 
-Record BinaryRecord(size) = align(4) {
+record BinaryRecord(size) align(4) {
   expect size % 4 == 0
   data: Bytes(size)
 }
 
 # Variable-size, type-dispatched records
-Record Block(type, size) = {
+record Block(type, size) {
   header: BlockHeader,
   when header.type == 1 { text: TextRecord(header.size) },
   when header.type == 2 { binary: BinaryRecord(header.size) }
@@ -619,7 +619,7 @@ Instant-parse arrays can be parsed much faster:
 
 ```sddl
 # Fast: instant-parse
-Record Fixed(size) = {
+record Fixed(size) {
   data: Bytes(size)
 }
 count: UInt32LE
@@ -628,7 +628,7 @@ fixed: Fixed(100)[count]  # Size known from parameter
 
 ```sddl
 # Slower: requires scan
-Record Variable() = {
+record Variable() {
   size: UInt16LE,
   data: Bytes(size)  # Size from local field
 }

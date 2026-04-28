@@ -37,9 +37,9 @@ A concise reference for all syntax currently supported by the SDDL2 compiler.
 ### Records
 
 ```sddl
-Record Name() = { field: Type, ... }         # basic
-Record Name(PARAM1, PARAM2) = { ... }        # parameterized
-: Record() { field: Type, ... }              # anonymous/inline
+record Name() { field: Type, ... }         # basic
+record Name(PARAM1, PARAM2) { ... }        # parameterized
+: record() { field: Type, ... }              # anonymous/inline
 ```
 
 ### Arrays
@@ -68,7 +68,7 @@ name.inner.field            # chained member access
 ### Conditional Fields
 
 ```sddl
-Record Name(COND) = {
+record Name(COND) {
   when COND {
     field1: Type1,
     field2: Type2

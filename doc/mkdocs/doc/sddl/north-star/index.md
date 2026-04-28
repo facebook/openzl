@@ -21,7 +21,7 @@ SDDL provides a clear, readable way to describe complex binary formats while mai
 ## Quick Example
 
 ```sddl
-Record Header() = {
+record Header() {
   magic: Bytes(4),
   version: Int16LE,
   flags: Int16LE
