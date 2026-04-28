@@ -98,10 +98,12 @@ class SemanticAnalyzerImpl {
     // Data members
     const detail::Logger& log_;
     std::unordered_map<std::string, Type> var_types_;
+    bool auto_sized_consumed_ = false;
 
     // Analysis methods
     Type analyzeNode(const ASTPtr& node)
     {
+        checkAutoSizedConsumed(node->loc());
         switch (node->converted_node_type()) {
             case ConvertedNodeType::NUM:
                 return Type{ TypeKind::NUMERIC };
@@ -151,6 +153,8 @@ class SemanticAnalyzerImpl {
         expectFieldType(array.field()->loc(), analyzeNode(array.field()));
         if (array.len()) {
             expectNumeric(array.len()->loc(), analyzeNode(array.len()));
+        } else {
+            auto_sized_consumed_ = true;
         }
         return Type{ TypeKind::ARRAY, &array };
     }
@@ -359,6 +363,14 @@ class SemanticAnalyzerImpl {
             analyzeNode(stmt);
         }
         return Type{ TypeKind::NONE };
+    }
+
+    void checkAutoSizedConsumed(const SourceLocation& loc)
+    {
+        if (auto_sized_consumed_) {
+            throw SemanticError(
+                    loc, "Auto-sized array must be last statement.");
+        }
     }
 };
 

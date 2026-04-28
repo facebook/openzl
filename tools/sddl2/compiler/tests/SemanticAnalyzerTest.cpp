@@ -371,4 +371,67 @@ TEST_F(SemanticAnalyzerTest, MemberAccessOnNonConditionalField)
     expect_success(prog);
 }
 
+TEST_F(SemanticAnalyzerTest, AutoSizedArrayAsLastExpression)
+{
+    const auto prog = R"(
+        : Int32LE
+        : Int32LE[]
+    )";
+    expect_success(prog);
+}
+
+TEST_F(SemanticAnalyzerTest, AutoSizedConsumeNotLastExpression)
+{
+    const auto prog = R"(
+        : Int32LE[]
+        : Int32LE
+    )";
+    expect_error(prog, "Auto-sized array must be last statement");
+}
+
+TEST_F(SemanticAnalyzerTest, AutoSizedArrayAsLastRecordField)
+{
+    const auto prog = R"(
+        : record() {
+            field: Int32LE,
+            items: Int32LE[]
+        }
+    )";
+    expect_success(prog);
+}
+
+TEST_F(SemanticAnalyzerTest, AutoSizedArrayNotLastRecordField)
+{
+    const auto prog = R"(
+        : record() {
+            items: Int32LE[],
+            field: Int32LE
+        }
+    )";
+    expect_error(prog, "Auto-sized array must be last statement");
+}
+
+TEST_F(SemanticAnalyzerTest, ConsumeAfterRecordWithAutoSizedLastField)
+{
+    const auto prog = R"(
+        record Data() {
+            field: Int32LE,
+            items: Int32LE[]
+        }
+        : Data
+    )";
+    expect_error(prog, "Auto-sized array must be last statement");
+}
+
+TEST_F(SemanticAnalyzerTest, ConsumeAfterWhenBlockWithAutoSizedArray)
+{
+    const auto prog = R"(
+        flag: UInt8
+        when flag == 1 {
+            : Int32LE[]
+        }
+        : Int32LE
+    )";
+    expect_error(prog, "Auto-sized array must be last statement");
+}
 } // namespace openzl::sddl2::tests
