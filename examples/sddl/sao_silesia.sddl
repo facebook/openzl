@@ -7,7 +7,7 @@
 # ------------------------------------------
 # Star entry definition
 # ------------------------------------------
-Record StarEntry() = {
+record StarEntry() {
   SRA0:  Float64LE,     # Right Ascension (radians)
   SDEC0: Float64LE,     # Declination (radians)
   ISP:   Bytes(2),      # Spectral type

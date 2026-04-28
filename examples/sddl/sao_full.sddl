@@ -5,7 +5,7 @@
 # Using SDDL v0.6
 # ==========================================
 
-Record CatalogHeader() = {
+record CatalogHeader() {
   STAR0: Int32LE,   # Subtract from star number to get sequence number
   STAR1: Int32LE,   # First star number in file
   STARN: Int32LE,   # Number of stars; <0 → coordinates J2000
@@ -18,7 +18,7 @@ Record CatalogHeader() = {
 # ------------------------------------------
 # Star entry definition
 # ------------------------------------------
-Record StarEntry(STNUM, MPROP, NMAG) = {
+record StarEntry(STNUM, MPROP, NMAG) {
   when STNUM > 0 { XNO: Float32LE },               # Catalog number
 
   SRA0:  Float64LE,                                # Right Ascension (radians)
