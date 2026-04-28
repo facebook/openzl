@@ -175,6 +175,13 @@ static ZL_RESULT_OF(ZL_DictConstPtr) CDictMgr_cacheInternal(
     const CDictMgr_DictMap_Entry* existing =
             CDictMgr_DictMap_find(&mgr->dictsByID, &lookupKey);
     if (existing != NULL) {
+        // Verify we aren't trying to materialize a different buffer with the
+        // same ID
+        ZL_ERR_IF_NOT(
+                ZL_UniqueID_eq(
+                        &existing->val->contentHash, &parsed->contentHash),
+                nodeParameter_invalid,
+                "Two different materialized objects cannot have the same ID. IDs must be unique!");
         return ZL_WRAP_VALUE(existing->val);
     }
 
@@ -199,6 +206,7 @@ static ZL_RESULT_OF(ZL_DictConstPtr) CDictMgr_cacheInternal(
     ZL_Dict* dict = (ZL_Dict*)ALLOC_Arena_calloc(mgr->arena, sizeof(ZL_Dict));
     ZL_ERR_IF_NULL(dict, allocation);
     dict->dictID             = parsed->dictID;
+    dict->contentHash        = parsed->contentHash;
     dict->materializingCodec = parsed->materializingCodec;
     dict->codecType          = parsed->codecType;
     dict->packedSize         = parsed->packedSize;
@@ -424,7 +432,8 @@ CDictMgr_materializeMParam(
     ZL_ASSERT_NN(mparam.content);
 
     ZL_ParsedDict toCache = {
-        .dictID             = (ZL_DictID){ mparam.mparamID.id },
+        .dictID      = (ZL_DictID){ mparam.mparamID.id },
+        .contentHash = ZL_UniqueID_computeSHA256(mparam.content, mparam.size),
         .materializingCodec = 0, // not used by mparams
         .codecType          = 0, // not used by mparams
         .dictContent        = mparam.content,

@@ -28,6 +28,7 @@ extern "C" {
 
 struct ZL_Dict_s {
     ZL_DictID dictID;
+    ZL_UniqueID contentHash; // SHA-256 of raw dict content
     ZL_IDType materializingCodec;
     TransformType_e codecType;
     void* dictObj;
@@ -38,6 +39,7 @@ ZL_RESULT_DECLARE_TYPE(ZL_DictConstPtr);
 
 typedef struct {
     ZL_DictID dictID;
+    ZL_UniqueID contentHash; // SHA-256 of raw dict content
     ZL_IDType materializingCodec;
     TransformType_e codecType;
     const void* dictContent;
