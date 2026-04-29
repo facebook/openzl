@@ -10,6 +10,7 @@ import {Button} from '@chakra-ui/react/button';
 import {Flex} from '@chakra-ui/react/flex';
 
 import {OperationType} from '../../models/idTypes';
+import type {KeyboardNavControls} from '../controllers/useKeyboardShortcuts';
 
 const showExpansionButton = false;
 
@@ -29,6 +30,8 @@ interface StreamdumpGraphViewProps {
   areStandardGraphsCollapsed: boolean;
   versionInfo: VersionInfo;
   isTrackpadMode: boolean;
+  isKeyboardMode: boolean;
+  keyboardNav: KeyboardNavControls;
 }
 
 export function StreamdumpGraphView({
@@ -40,6 +43,8 @@ export function StreamdumpGraphView({
   areStandardGraphsCollapsed,
   versionInfo,
   isTrackpadMode,
+  isKeyboardMode,
+  keyboardNav,
 }: StreamdumpGraphViewProps) {
   const reactFlowInstance = useReactFlow();
 
@@ -47,11 +52,22 @@ export function StreamdumpGraphView({
   useEffect(() => {
     // The controller will use this instance for viewport manipulation, which is handled internally by React Flow
   }, [reactFlowInstance]);
+  const selectedNodeId = isKeyboardMode ? keyboardNav.selectedNodeId : null;
+
+  // TODO: Nice to have. Move DOM focus to the selected node and add ARIA attributes (e.g. aria-selected,
+  // aria-current) during arrow-key navigation so keyboard and screen-reader users have a
+  // programmatic indication of which node is currently selected.
   return (
     <Box
       w={'100%'}
       h={'100%'}
       className={versionInfo.operationType === OperationType.Decompress ? 'decompress-trace' : ''}>
+      {selectedNodeId && (
+        <style>{`[data-id="${selectedNodeId}"] .codec-node,
+          [data-id="${selectedNodeId}"] .graph-node {
+            box-shadow: 0 0 25px 5px #e7e43a;
+          }`}</style>
+      )}
       <ReactFlow
         nodes={nodes}
         edges={edges}
