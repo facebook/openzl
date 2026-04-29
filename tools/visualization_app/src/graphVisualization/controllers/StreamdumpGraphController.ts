@@ -4,7 +4,8 @@ import {useCallback, useState, useEffect, useMemo} from 'react';
 import {useNodesState, useEdgesState, useReactFlow} from '@xyflow/react';
 import type {Node, Edge} from '@xyflow/react';
 import {InteractiveStreamdumpGraph} from '../models/InteractiveStreamdumpGraph';
-import {applyLayout} from './LayoutController';
+import {useKeyboardNavigation} from './useKeyboardShortcuts';
+import {applyLayout, sortNavlinksByPosition} from './LayoutController';
 import type {NullableStreamdump} from '../../interfaces/NullableStreamdump';
 import {InternalCodecNode} from '../models/InternalCodecNode';
 import {InternalGraphNode} from '../models/InternalGraphNode';
@@ -28,19 +29,21 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
     (chunkNum: number) => {
       if (interactiveStreamdumpGraph) {
         interactiveStreamdumpGraph.setVisibleChunk(chunkNum);
+        interactiveStreamdumpGraph.buildAllNavlinks();
         const {dagOrderedNodes: visibleNodes, edges: visibleEdges} =
           interactiveStreamdumpGraph.getVisibleStreamdumpGraph();
         const {nodes: updatedNodes, edges: updatedEdges} = applyLayout(visibleNodes, visibleEdges);
+        sortNavlinksByPosition(updatedNodes);
         setNodes(updatedNodes);
         setEdges(updatedEdges);
         const maybeSegmenterNode = updatedNodes.find((n) => n.type === NodeType.Segmenter);
         if (!maybeSegmenterNode) {
           return;
         }
-        if (!(maybeSegmenterNode instanceof InternalSegmenterNode)) {
+        const segmenterInternalNode = maybeSegmenterNode.data?.internalNode as InternalSegmenterNode | undefined;
+        if (!segmenterInternalNode) {
           return;
         }
-        const segmenterNode = maybeSegmenterNode as InternalSegmenterNode;
         const newlyVisibleNodes = visibleNodes.map((n) => n.rfid as RF_nodeId);
 
         // Focus on newly visible nodes after a short delay to allow DOM to update
@@ -52,18 +55,20 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
               reactFlowInstance.fitView({
                 padding: 0.2,
                 includeHiddenNodes: false,
-                duration: 1600, // Longer animation to show the entire subgraph smoothly
+                duration: 1600,
+                maxZoom: 0.75,
                 nodes: updatedNodes.filter((n) => newlyVisibleNodes.includes(n.id as RF_nodeId)),
               });
 
               // Go back to node that was just expanded
               setTimeout(() => {
-                const expandedNode = updatedNodes.find((n) => n.id === segmenterNode.rfid);
+                const expandedNode = updatedNodes.find((n) => n.id === segmenterInternalNode.rfid);
                 if (expandedNode) {
                   reactFlowInstance.fitView({
                     padding: 0.2,
                     includeHiddenNodes: false,
                     duration: 800,
+                    maxZoom: 0.75,
                     nodes: [expandedNode],
                   });
                 }
@@ -74,6 +79,7 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
                 padding: 0.2,
                 includeHiddenNodes: false,
                 duration: 800,
+                maxZoom: 0.75,
                 nodes: updatedNodes.filter((n) => newlyVisibleNodes.includes(n.id as RF_nodeId)),
               });
             }
@@ -87,10 +93,11 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
   const handleNodeCollapse = useCallback(
     (node: InternalCodecNode) => {
       if (interactiveStreamdumpGraph) {
-        const newlyVisibleNodes = interactiveStreamdumpGraph.toggleSubgraphCollapse(node);
+        const {newlyVisibleNodes, rebuiltNavlinkNodes} = interactiveStreamdumpGraph.toggleSubgraphCollapse(node);
         const {dagOrderedNodes: visibleNodes, edges: visibleEdges} =
           interactiveStreamdumpGraph.getVisibleStreamdumpGraph();
         const {nodes: updatedNodes, edges: updatedEdges} = applyLayout(visibleNodes, visibleEdges);
+        sortNavlinksByPosition(updatedNodes, rebuiltNavlinkNodes);
         setNodes(updatedNodes);
         setEdges(updatedEdges);
 
@@ -98,11 +105,12 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
           if (newlyVisibleNodes && newlyVisibleNodes.length > 0) {
             // For large subgraphs, we can expand to show the entire subgraph, and then focus back onto the expanded node
             if (newlyVisibleNodes.length > 20) {
-              // Show newly expanded ndoes
+              // Show newly expanded nodes
               reactFlowInstance.fitView({
                 padding: 0.2,
                 includeHiddenNodes: false,
                 duration: 1600, // Longer animation to show the entire subgraph smoothly
+                maxZoom: 0.75,
                 nodes: updatedNodes.filter((n) => newlyVisibleNodes.includes(n.id as RF_nodeId)),
               });
 
@@ -114,6 +122,7 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
                     padding: 0.2,
                     includeHiddenNodes: false,
                     duration: 800,
+                    maxZoom: 0.75,
                     nodes: [expandedNode],
                   });
                 }
@@ -124,6 +133,7 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
                 padding: 0.2,
                 includeHiddenNodes: false,
                 duration: 800,
+                maxZoom: 0.75,
                 nodes: updatedNodes.filter((n) => newlyVisibleNodes.includes(n.id as RF_nodeId)),
               });
             }
@@ -138,10 +148,11 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
   const handleGraphCollapse = useCallback(
     (graph: InternalGraphNode) => {
       if (interactiveStreamdumpGraph) {
-        const newlyVisibleNodes = interactiveStreamdumpGraph.toggleGraphCollapse(graph);
+        const {newlyVisibleNodes, rebuiltNavlinkNodes} = interactiveStreamdumpGraph.toggleGraphCollapse(graph);
         const {dagOrderedNodes: visibleNodes, edges: visibleEdges} =
           interactiveStreamdumpGraph.getVisibleStreamdumpGraph();
         const {nodes: updatedNodes, edges: updatedEdges} = applyLayout(visibleNodes, visibleEdges);
+        sortNavlinksByPosition(updatedNodes, rebuiltNavlinkNodes);
         setNodes(updatedNodes);
         setEdges(updatedEdges);
 
@@ -155,6 +166,7 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
                 padding: 0.4,
                 includeHiddenNodes: false,
                 duration: 400,
+                maxZoom: 0.75,
               });
 
               // Then focus on the expanded graph with a smoother animation
@@ -165,6 +177,7 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
                     padding: 0.2,
                     includeHiddenNodes: false,
                     duration: 800,
+                    maxZoom: 0.75,
                     nodes: [expandedGraph],
                   });
                 }
@@ -175,6 +188,7 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
                 padding: 0.2,
                 includeHiddenNodes: false,
                 duration: 800,
+                maxZoom: 0.75,
                 nodes: updatedNodes.filter((n) => newlyVisibleNodes.includes(n.id as RF_nodeId)),
               });
             }
@@ -185,22 +199,34 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
     [interactiveStreamdumpGraph, setNodes, setEdges, reactFlowInstance],
   );
 
+  const getCodecChildren = useCallback(
+    (codec: InternalCodecNode) => {
+      return interactiveStreamdumpGraph ? interactiveStreamdumpGraph.getCodecChildren(codec) : [];
+    },
+    [interactiveStreamdumpGraph],
+  );
+
+  // Keyboard shortcuts
+  const keyboardNav = useKeyboardNavigation(nodes, handleGraphCollapse, handleNodeCollapse, getCodecChildren);
+
   const handleAllStandardGraphsCollapse = useCallback(() => {
     if (interactiveStreamdumpGraph) {
       interactiveStreamdumpGraph.toggleAllStandardGraphs(!areStandardGraphsCollapsed);
       const {dagOrderedNodes: visibleNodes, edges: visibleEdges} =
         interactiveStreamdumpGraph.getVisibleStreamdumpGraph();
       const {nodes: updatedNodes, edges: updatedEdges} = applyLayout(visibleNodes, visibleEdges);
+      sortNavlinksByPosition(updatedNodes);
       setNodes(updatedNodes);
       setEdges(updatedEdges);
       toggleStandardGraphsCollapsedFlag(!areStandardGraphsCollapsed);
 
-      // Move to fit the entire graph in the screen afer expanding/collapsing all standard graphs
+      // Move to fit the entire graph in the screen after expanding/collapsing all standard graphs
       setTimeout(() => {
         reactFlowInstance.fitView({
           padding: 0.2,
           includeHiddenNodes: false,
           duration: 800,
+          maxZoom: 0.75,
         });
       }, 50);
     }
@@ -209,10 +235,11 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
   const handleNodeExpandOneLevel = useCallback(
     (node: InternalCodecNode) => {
       if (interactiveStreamdumpGraph) {
-        const newlyVisibleNodes = interactiveStreamdumpGraph.expandOneLevel(node);
+        const {newlyVisibleNodes, rebuiltNavlinkNodes} = interactiveStreamdumpGraph.expandOneLevel(node);
         const {dagOrderedNodes: visibleNodes, edges: visibleEdges} =
           interactiveStreamdumpGraph.getVisibleStreamdumpGraph();
         const {nodes: updatedNodes, edges: updatedEdges} = applyLayout(visibleNodes, visibleEdges);
+        sortNavlinksByPosition(updatedNodes, rebuiltNavlinkNodes);
         setNodes(updatedNodes);
         setEdges(updatedEdges);
 
@@ -222,6 +249,7 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
             padding: 0.2,
             includeHiddenNodes: false,
             duration: 800,
+            maxZoom: 0.75,
             nodes: updatedNodes.filter((n) => newlyVisibleNodes.includes(n.id as RF_nodeId)),
           });
         }, 50);
@@ -231,6 +259,7 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
   );
 
   // Providing nodes with their proper collapse handlers
+  // Each node type gets its appropriate handler attached via data props
   const nodesWithCollapseHandler = useMemo(() => {
     return nodes.map((node) => {
       if (node.type === NodeType.Codec) {
@@ -267,10 +296,12 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
   const initializeGraph = useCallback(() => {
     if (data) {
       const newInteractiveStreamdumpGraph = new InteractiveStreamdumpGraph(data, STANDARD_GRAPHS_START_COLLAPSED);
+      newInteractiveStreamdumpGraph.buildAllNavlinks();
       setInteractiveStreamdumpGraph(newInteractiveStreamdumpGraph);
       const {dagOrderedNodes: visibleNodes, edges: visibleEdges} =
         newInteractiveStreamdumpGraph.getVisibleStreamdumpGraph();
       const {nodes: laidOutNodes, edges: laidOutEdges} = applyLayout(visibleNodes, visibleEdges);
+      sortNavlinksByPosition(laidOutNodes);
       setNodes(laidOutNodes);
       setEdges(laidOutEdges);
       toggleStandardGraphsCollapsedFlag(!areStandardGraphsCollapsed);
@@ -281,6 +312,7 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
           padding: 0.2,
           includeHiddenNodes: false,
           duration: 800,
+          maxZoom: 0.75,
         });
       }, 100);
     }
@@ -298,5 +330,6 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
     onEdgesChange,
     handleAllStandardGraphsCollapse,
     areStandardGraphsCollapsed,
+    keyboardNav,
   };
 }

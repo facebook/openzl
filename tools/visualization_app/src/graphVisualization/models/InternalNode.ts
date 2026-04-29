@@ -10,6 +10,10 @@ export class InternalNode {
   isCollapsed = false;
   isVisible = true;
   inLargestCompressionPath = false;
+  // Note the following properties are visual parents/children
+  // used for visualization , which can include collapsed graphs.
+  parents: RF_nodeId[] = [];
+  children: RF_nodeId[] = [];
 
   constructor(rfid: RF_nodeId, type: NodeType) {
     this.rfid = rfid;

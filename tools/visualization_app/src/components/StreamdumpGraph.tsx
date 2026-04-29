@@ -1,6 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import '@xyflow/react/dist/style.css';
+import {useEffect, useRef} from 'react';
 import type {NullableStreamdump} from '../interfaces/NullableStreamdump';
 import '../styles/streamdumpGraph.css';
 import {useStreamdumpGraphController} from '../graphVisualization/controllers/StreamdumpGraphController';
@@ -10,8 +11,8 @@ import {Box, Code, CodeBlock, Float, IconButton, Text, Tabs, useTabs, Heading, S
 
 interface StreamdumpGraphProps extends NullableStreamdump {
   isTrackpadMode: boolean;
-  toggleKeyboardNavRef?: React.RefObject<(() => void) | null>;
-  onKeyboardNavDeactivate?: () => void;
+  isKeyboardMode: boolean;
+  toggleKeyboardNavRef: React.RefObject<(() => void) | null>;
 }
 
 const cliInvocation = 'zli compress --trace /tmp/streamdump.cbor -p serial -o /dev/null myfile.txt';
@@ -178,9 +179,46 @@ function NoDataHelper() {
 }
 
 // Create a new component to use the hooks inside the provider
-function StreamdumpGraphContent({data, isTrackpadMode}: StreamdumpGraphProps) {
-  const {nodes, edges, onNodesChange, onEdgesChange, handleAllStandardGraphsCollapse, areStandardGraphsCollapsed} =
-    useStreamdumpGraphController({data});
+function StreamdumpGraphContent({data, isTrackpadMode, isKeyboardMode, toggleKeyboardNavRef}: StreamdumpGraphProps) {
+  const {
+    nodes,
+    edges,
+    onNodesChange,
+    onEdgesChange,
+    handleAllStandardGraphsCollapse,
+    areStandardGraphsCollapsed,
+    keyboardNav,
+  } = useStreamdumpGraphController({data});
+
+  // Update keyboard nav toggle ref
+  useEffect(() => {
+    if (toggleKeyboardNavRef) {
+      toggleKeyboardNavRef.current = () => {
+        if (isKeyboardMode) {
+          keyboardNav.deactivate();
+        } else {
+          keyboardNav.activate();
+        }
+      };
+    }
+    return () => {
+      if (toggleKeyboardNavRef) {
+        toggleKeyboardNavRef.current = null;
+      }
+    };
+  }, [isKeyboardMode, keyboardNav, toggleKeyboardNavRef]);
+
+  // Auto-activate keyboard nav when data changes (new file loaded) and keyboard mode is on
+  const activatedForDataRef = useRef<unknown>(null);
+  useEffect(() => {
+    if (data && isKeyboardMode && activatedForDataRef.current !== data) {
+      const timer = setTimeout(() => {
+        keyboardNav.activate();
+        activatedForDataRef.current = data;
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [data, isKeyboardMode, keyboardNav]);
 
   if (!data) {
     return <NoDataHelper />;
@@ -203,23 +241,20 @@ function StreamdumpGraphContent({data, isTrackpadMode}: StreamdumpGraphProps) {
       areStandardGraphsCollapsed={areStandardGraphsCollapsed}
       versionInfo={versionInfo}
       isTrackpadMode={isTrackpadMode}
+      isKeyboardMode={isKeyboardMode}
+      keyboardNav={keyboardNav}
     />
   );
 }
 
-export function StreamdumpGraph({
-  data,
-  isTrackpadMode,
-  toggleKeyboardNavRef,
-  onKeyboardNavDeactivate,
-}: StreamdumpGraphProps) {
+export function StreamdumpGraph({data, isTrackpadMode, isKeyboardMode, toggleKeyboardNavRef}: StreamdumpGraphProps) {
   return (
     <ReactFlowProvider>
       <StreamdumpGraphContent
         data={data}
         isTrackpadMode={isTrackpadMode}
+        isKeyboardMode={isKeyboardMode}
         toggleKeyboardNavRef={toggleKeyboardNavRef}
-        onKeyboardNavDeactivate={onKeyboardNavDeactivate}
       />
     </ReactFlowProvider>
   );

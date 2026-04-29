@@ -52,6 +52,10 @@ export default function App() {
   // Global key listeners for T and K shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) {
+        return;
+      }
       switch (e.key.toLowerCase()) {
         case 't':
           e.preventDefault();
@@ -124,8 +128,8 @@ export default function App() {
           <StreamdumpGraph
             data={cborData}
             isTrackpadMode={isTrackpadMode}
+            isKeyboardMode={isKeyboardMode}
             toggleKeyboardNavRef={toggleKeyboardNavRef}
-            onKeyboardNavDeactivate={() => setIsKeyboardMode(false)}
           />
         </Box>
       </div>
