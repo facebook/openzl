@@ -333,8 +333,10 @@
 
 #if ZL_ENABLE_STATIC_ASSERT
 #    if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-#        include <assert.h>
-#        define ZL_STATIC_ASSERT_IMPL(expr, msg) static_assert(expr, msg)
+/* Use the C11 _Static_assert keyword directly rather than the static_assert
+ * macro from <assert.h>, which is optional and missing on some platforms.
+ */
+#        define ZL_STATIC_ASSERT_IMPL(expr, msg) _Static_assert(expr, msg)
 #    else
 
 /* This fallback static assert idiom was copied from the following URL, where
