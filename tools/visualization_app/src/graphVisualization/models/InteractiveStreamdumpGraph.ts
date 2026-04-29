@@ -2,7 +2,7 @@
 
 import {InternalCodecNode} from './InternalCodecNode';
 import {InternalGraphNode} from './InternalGraphNode';
-import type {RF_nodeId} from './types';
+import {NodeType, type RF_nodeId} from './types';
 import type {SerializedStreamdumpV1} from '../../interfaces/SerializedStreamdump';
 import {InteractiveChunkGraph} from './InteractiveChunkGraph';
 import type {InternalNode} from './InternalNode';
@@ -102,6 +102,16 @@ export class InteractiveStreamdumpGraph {
     };
   }
 
+  getCodecChildren(codec: InternalCodecNode): InternalCodecNode[] {
+    if (this.chunkGraphs[0].contains(codec)) {
+      return this.chunkGraphs[0].getCodecChildren(codec);
+    }
+    if (this.visibleChunkIndex != null && this.chunkGraphs[this.visibleChunkIndex].contains(codec)) {
+      return this.chunkGraphs[this.visibleChunkIndex].getCodecChildren(codec);
+    }
+    return [];
+  }
+
   toggleSubgraphCollapse(codec: InternalCodecNode): RF_nodeId[] {
     if (this.chunkGraphs[0].contains(codec)) {
       return this.chunkGraphs[0].toggleSubgraphCollapse(codec);
@@ -154,6 +164,32 @@ export class InteractiveStreamdumpGraph {
   toggleAllStandardGraphs(isCollapsed: boolean): void {
     for (const chunkGraph of this.chunkGraphs) {
       chunkGraph.toggleAllStandardGraphs(isCollapsed);
+    }
+  }
+
+  buildAllNavlinks(): void {
+    const {dagOrderedNodes, edges} = this.getVisibleStreamdumpGraph();
+
+    for (const node of dagOrderedNodes) {
+      node.parents = [];
+      node.children = [];
+    }
+
+    // Only link nodes that are in the visible set (avoids dangling refs to omitted chunk start nodes)
+    const visibleRfids = new Set(dagOrderedNodes.map((n) => n.rfid));
+    const navigableTypes = new Set([NodeType.Codec, NodeType.Graph, NodeType.Segmenter]);
+    for (const edge of edges) {
+      const {source, target} = edge;
+      if (!navigableTypes.has(source.type) || !navigableTypes.has(target.type)) continue;
+      if (!visibleRfids.has(source.rfid) || !visibleRfids.has(target.rfid)) continue;
+      if (source instanceof InternalGraphNode && !source.isCollapsed) continue;
+      if (target instanceof InternalGraphNode && !target.isCollapsed) continue;
+      if (!target.parents.includes(source.rfid)) {
+        target.parents.push(source.rfid);
+      }
+      if (!source.children.includes(target.rfid)) {
+        source.children.push(target.rfid);
+      }
     }
   }
 }

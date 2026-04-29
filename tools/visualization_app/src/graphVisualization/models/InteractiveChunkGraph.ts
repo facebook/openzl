@@ -23,6 +23,8 @@ export class InteractiveChunkGraph {
   private streams: Stream[] = [];
   private graphs: InternalGraphNode[] = [];
   private codecDag: CodecDag | null = null;
+  private codecByRfid = new Map<RF_nodeId, InternalCodecNode>();
+  private graphByRfid = new Map<RF_nodeId, InternalGraphNode>();
 
   private edgeViewModels = new Map<RF_edgeId, InternalEdge>();
 
@@ -85,7 +87,9 @@ export class InteractiveChunkGraph {
       }
     }
 
-    // populate codecDag
+    // populate lookup maps and DAG
+    this.codecByRfid = new Map(this.codecs.map((c) => [c.rfid, c]));
+    this.graphByRfid = new Map(this.graphs.map((g) => [g.rfid, g]));
     this.codecDag = new CodecDag(this.codecs, this.streams);
 
     // Create the edges view models for codec -> codec edges
@@ -285,6 +289,99 @@ export class InteractiveChunkGraph {
     return {dagOrderedNodes: Array.from(visibleNodeSet), edges: Array.from(visibleEdgeSet)};
   }
 
+  getCodecChildren(codec: InternalCodecNode): InternalCodecNode[] {
+    return this.codecDag ? this.codecDag.getChildren(codec) : [];
+  }
+
+  // Given the visible node that represents a codec or graph, find its visible
+  // navigable neighbors using the DAG and link them via parents/children.
+  private rebuildNavlinksForCodec(codec: InternalCodecNode): void {
+    codec.parents = [];
+    codec.children = [];
+
+    // Link to visible DAG children (or their collapsed parent graph)
+    for (const child of this.codecDag!.getChildren(codec)) {
+      if (child.isVisible) {
+        this.addNavLink(codec, child);
+      } else if (child.parentGraph && child.parentGraph.isVisible && child.parentGraph.isCollapsed) {
+        this.addNavLink(codec, child.parentGraph);
+      }
+    }
+
+    // Link to visible DAG parents (or their collapsed parent graph)
+    for (const parent of this.codecDag!.getParents(codec)) {
+      if (parent.isVisible) {
+        this.addNavLink(parent, codec);
+      } else if (parent.parentGraph && parent.parentGraph.isVisible && parent.parentGraph.isCollapsed) {
+        this.addNavLink(parent.parentGraph, codec);
+      }
+    }
+  }
+
+  private rebuildNavlinksForGraph(graph: InternalGraphNode): void {
+    graph.parents = [];
+    graph.children = [];
+
+    for (const edge of graph.incomingEdges) {
+      if (!edge.source.isVisible) continue;
+      if (edge.source instanceof InternalGraphNode && !edge.source.isCollapsed) continue;
+      this.addNavLink(edge.source, graph);
+    }
+    for (const edge of graph.outgoingEdges) {
+      if (!edge.target.isVisible) continue;
+      if (edge.target instanceof InternalGraphNode && !edge.target.isCollapsed) continue;
+      this.addNavLink(graph, edge.target);
+    }
+  }
+
+  rebuildNavlinksFor(nodeIds: RF_nodeId[]): void {
+    const toRebuild = new Set<RF_nodeId>(nodeIds);
+
+    // Also rebuild parents of changed nodes so their children arrays stay correct
+    for (const rfid of nodeIds) {
+      const codec = this.codecByRfid.get(rfid);
+      if (codec) {
+        for (const parent of this.codecDag!.getParents(codec)) {
+          if (parent.isVisible) toRebuild.add(parent.rfid);
+          else if (parent.parentGraph?.isVisible) toRebuild.add(parent.parentGraph.rfid);
+        }
+        continue;
+      }
+      const graph = this.graphByRfid.get(rfid);
+      if (graph) {
+        // Rebuild parents of the graph's root codec
+        const rootCodec = graph.codecs[0];
+        if (rootCodec) {
+          for (const parent of this.codecDag!.getParents(rootCodec)) {
+            if (parent.isVisible) toRebuild.add(parent.rfid);
+            else if (parent.parentGraph?.isVisible) toRebuild.add(parent.parentGraph.rfid);
+          }
+        }
+      }
+    }
+
+    for (const rfid of toRebuild) {
+      const codec = this.codecByRfid.get(rfid);
+      if (codec) {
+        this.rebuildNavlinksForCodec(codec);
+        continue;
+      }
+      const graph = this.graphByRfid.get(rfid);
+      if (graph) {
+        this.rebuildNavlinksForGraph(graph);
+      }
+    }
+  }
+
+  private addNavLink(parent: InternalNode, child: InternalNode): void {
+    if (!parent.children.includes(child.rfid)) {
+      parent.children.push(child.rfid);
+    }
+    if (!child.parents.includes(parent.rfid)) {
+      child.parents.push(parent.rfid);
+    }
+  }
+
   // Function to get descendants of a codec under some defined recursion condition
   // Note: this is not tail-recursive. This may eventually become problematic for super deep graphs...
   private getDescendants(
@@ -361,11 +458,15 @@ export class InteractiveChunkGraph {
         if (graph != null) {
           if (graph.isCollapsed) {
             graph.isVisible = false;
+            graph.parents = [];
+            graph.children = [];
           } else {
             graphsToCheck.add(graph);
           }
         }
         childCodec.isVisible = false;
+        childCodec.parents = [];
+        childCodec.children = [];
       });
 
       // For function graphs that aren't collapsed, if all codecs within it are hidden, we want to hide the function graph as well
@@ -373,13 +474,15 @@ export class InteractiveChunkGraph {
         const allNodesHidden = graph.codecs.every((codec) => !codec.isVisible);
         if (allNodesHidden) {
           graph.isVisible = false;
+          graph.parents = [];
+          graph.children = [];
         }
       });
     }
 
+    this.rebuildNavlinksFor(newlyVisibleNodes);
     return newlyVisibleNodes;
   }
-
   // Function to support the feature of level-by-level expansion of the graph
   expandOneLevel(codec: InternalCodecNode): RF_nodeId[] {
     const newlyVisibleNodes: RF_nodeId[] = [];
@@ -404,6 +507,7 @@ export class InteractiveChunkGraph {
       }
     });
 
+    this.rebuildNavlinksFor(newlyVisibleNodes);
     return newlyVisibleNodes;
   }
 
@@ -432,6 +536,8 @@ export class InteractiveChunkGraph {
     // Expanding this function graph
     if (graph.isCollapsed) {
       graph.isCollapsed = false;
+      graph.parents = [];
+      graph.children = [];
       this.displayCodecsInGraph(graph.codecs[0], graph, new Set<InternalCodecNode>(), newlyVisibleNodes);
     }
     // Collapsing this function graph
@@ -440,11 +546,13 @@ export class InteractiveChunkGraph {
       // Hide all codecs within the function graph
       graph.codecs.forEach((codec) => {
         codec.isVisible = false;
+        codec.parents = [];
+        codec.children = [];
       });
       // Add the function graph itself as a newly visible node as we want the screen to focus on it
       newlyVisibleNodes.push(graph.rfid);
     }
-
+    this.rebuildNavlinksFor(newlyVisibleNodes);
     return newlyVisibleNodes;
   }
 
@@ -456,9 +564,15 @@ export class InteractiveChunkGraph {
       nodesToFocus.push(graph.rfid);
     } else {
       graph.isCollapsed = true;
+      graph.codecs.forEach((codec) => {
+        codec.isVisible = false;
+        codec.parents = [];
+        codec.children = [];
+      });
       nodesToFocus = [graph.rfid];
     }
     console.assert(graph.isVisible);
+    this.rebuildNavlinksFor(nodesToFocus);
     return nodesToFocus;
   }
 

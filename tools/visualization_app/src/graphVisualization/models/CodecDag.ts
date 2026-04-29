@@ -11,17 +11,23 @@ import type {Stream} from '../../models/Stream';
  */
 export class CodecDag {
   private readonly adjList: Map<CodecID, Set<CodecID>>;
+  private readonly reverseAdjList: Map<CodecID, Set<CodecID>>;
   private readonly codecList: InternalCodecNode[]; // list of codecs in ID order for lookup purposes
   private readonly dagOrderList: InternalCodecNode[];
 
   constructor(codecs: InternalCodecNode[], streams: Stream[]) {
     this.adjList = new Map();
+    this.reverseAdjList = new Map();
     this.codecList = codecs;
+    codecs.forEach((codec) => {
+      this.reverseAdjList.set(codec.id, new Set());
+    });
     codecs.forEach((codec) => {
       const childSet = new Set<CodecID>();
       for (const streamId of codec.outputStreams) {
         const targetCodecId = streams[streamId].targetCodec;
         childSet.add(targetCodecId);
+        this.reverseAdjList.get(targetCodecId)!.add(codec.id);
       }
       this.adjList.set(codec.id, childSet);
     });
@@ -41,6 +47,11 @@ export class CodecDag {
 
   getChildren(codec: InternalCodecNode): InternalCodecNode[] {
     const ids = Array.from(this.adjList.get(codec.id) ?? []);
+    return ids.map((id) => this.codecList[id]);
+  }
+
+  getParents(codec: InternalCodecNode): InternalCodecNode[] {
+    const ids = Array.from(this.reverseAdjList.get(codec.id) ?? []);
     return ids.map((id) => this.codecList[id]);
   }
 
