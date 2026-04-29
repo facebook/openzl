@@ -17,12 +17,14 @@ def version_fuzzer(name):
 
         cpp_lionhead_harness(
             name = name,
-            # Set 10 minute initialization timeout because the version fuzzers
-            # do heavy initialization work in the first iteration.
             default_harness_config = {
+                # Set 10 minute initialization timeout because the version fuzzers
+                # do heavy initialization work in the first iteration.
                 "environment": {
                     "AFL_FORKSRV_INIT_TMOUT": "600000",
                 },
+                # Set 1 minute timeout on inputs, rather than the 10 second default
+                "perInputTimeout": 60,
             },
             # Additional versions to run beyond the opt-asan default
             extra_variants = [

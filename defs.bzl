@@ -199,6 +199,11 @@ ZS_FUZZ_METADATA = Metadata(
     user_interaction_required = Interaction.ZERO_CLICK,
 )
 
+_DEFAULT_HARNESS_CONFIG = {
+    # Set 1 minute timeout on inputs, rather than the 10 second default
+    "perInputTimeout": 60,
+}
+
 def _zs_src_file_compiler_flags(src):
     flags = []
     if not is_string(src):
@@ -360,6 +365,7 @@ def zs_fuzzers(ftest_names, generator = None, **kwargs):
                     "remote_execution.linux": {},
                     "tw.lionhead": {},
                 },
+                default_harness_config = _DEFAULT_HARNESS_CONFIG,
                 harness_configs = {mode: generator_config for mode in ZS_HARNESS_MODES},
                 harness_default_modes = {
                     "coverage": "fbcode//security/lionhead/mode/opt-cov.v2",
@@ -379,6 +385,7 @@ def zs_fuzzers(ftest_names, generator = None, **kwargs):
             name = name if not generator else name + "_NoGenerator",
             metadata = ZS_FUZZ_METADATA,
             ftest_name = ftest_name,
+            default_harness_config = _DEFAULT_HARNESS_CONFIG,
             harness_configs = {mode: {} for mode in ZS_HARNESS_MODES},
             **kwargs
         )
