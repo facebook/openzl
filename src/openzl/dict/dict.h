@@ -3,7 +3,7 @@
 #ifndef OPENZL_DICT_DICT_H
 #define OPENZL_DICT_DICT_H
 
-#include "openzl/common/unique_id.h"
+#include "openzl/zl_dict.h"
 #include "openzl/zl_errors.h"
 
 #if defined(__cplusplus)
@@ -24,33 +24,6 @@ extern "C" {
  *
  *   Total packed size = 45 + dictSize
  */
-
-struct ZL_Dict_s {
-    ZL_DictID dictID;
-    ZL_UniqueID contentHash; // SHA-256 of raw dict content
-    ZL_IDType materializingCodec;
-    bool isCustomCodec;
-    void* dictObj;
-    size_t packedSize;
-};
-typedef const ZL_Dict* ZL_DictConstPtr;
-ZL_RESULT_DECLARE_TYPE(ZL_DictConstPtr);
-
-typedef struct {
-    ZL_DictID dictID;
-    ZL_UniqueID contentHash; // SHA-256 of raw dict content
-    ZL_IDType materializingCodec;
-    bool isCustomCodec;
-    const void* dictContent;
-    size_t contentSize;
-    size_t packedSize;
-} ZL_ParsedDict;
-
-ZL_RESULT_DECLARE_TYPE(ZL_ParsedDict);
-
-/// Warning: The produced ZL_ParsedDict is non-owning. The dictContent field is
-/// just a pointer to somewhere in the @p dictBuffer .
-ZL_RESULT_OF(ZL_ParsedDict) Dict_parse(const void* dictBuffer, size_t dictSize);
 
 /**
  * Packs dictionary content into a provided buffer.

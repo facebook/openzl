@@ -2,8 +2,8 @@
 
 #include "openzl/compress/materializer.h"
 #include "openzl/common/allocation.h" // ALLOC_*
-#include "openzl/common/unique_id.h"  // ZL_UniqueID_isValid
 #include "openzl/compress/localparams.h" // LP_getLocalRefParam, LP_getLocalIntParam
+#include "openzl/zl_unique_id.h"         // ZL_UniqueID_isValid
 
 // ******************************************************************
 // MaterializedParamMap

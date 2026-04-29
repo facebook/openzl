@@ -5,13 +5,13 @@
 #include <string.h>
 
 #include "openzl/common/allocation.h"
-#include "openzl/common/unique_id.h"
 #include "openzl/dict/bundle.h"
 #include "openzl/dict/dict.h"
 #include "openzl/dict/dict_constants.h"
 #include "openzl/shared/xxhash.h"
 #include "openzl/zl_errors.h"
 #include "openzl/zl_opaque_types.h"
+#include "openzl/zl_unique_id.h"
 
 /* ================================================================
  * Composite key hash and equality
@@ -204,7 +204,16 @@ static ZL_RESULT_OF(ZL_DictConstPtr) CDictMgr_cacheInternal(
 
     // cache
     ZL_Dict* dict = (ZL_Dict*)ALLOC_Arena_calloc(mgr->arena, sizeof(ZL_Dict));
-    ZL_ERR_IF_NULL(dict, allocation);
+    if (dict == NULL) {
+        ZL_Materializer dematCtx = {
+            .persistentArena = NULL,
+            .scratchArena    = NULL,
+            .opaquePtr       = matDesc->opaque.ptr,
+            .opCtx           = mgr->opCtx,
+        };
+        matDesc->dematerializeFn(&dematCtx, ZL_RES_value(obj));
+        ZL_ERR(allocation);
+    }
     dict->dictID             = parsed->dictID;
     dict->contentHash        = parsed->contentHash;
     dict->materializingCodec = parsed->materializingCodec;
@@ -215,7 +224,16 @@ static ZL_RESULT_OF(ZL_DictConstPtr) CDictMgr_cacheInternal(
     CDictMgr_DictMap_Entry entry = { .key = lookupKey, .val = dict };
     CDictMgr_DictMap_Insert ins =
             CDictMgr_DictMap_insert(&mgr->dictsByID, &entry);
-    ZL_ERR_IF(ins.badAlloc, allocation);
+    if (ins.badAlloc) {
+        ZL_Materializer dematCtx = {
+            .persistentArena = NULL,
+            .scratchArena    = NULL,
+            .opaquePtr       = matDesc->opaque.ptr,
+            .opCtx           = mgr->opCtx,
+        };
+        matDesc->dematerializeFn(&dematCtx, ZL_RES_value(obj));
+        ZL_ERR(allocation);
+    }
     return ZL_WRAP_VALUE(dict);
 }
 
@@ -238,12 +256,22 @@ CDictMgr_loadFatBundle(
             mgr->arena, sizeof(ZL_DictBundle));
     ZL_ERR_IF_NULL(bundle, allocation);
 
-    ZL_Report infoResult = BundleInfo_parse(
-            &bundle->info,
-            serializedFatBundle,
-            serializedFatBundleSize,
-            mgr->arena);
+    ZL_RESULT_OF(ZL_BundleInfo)
+    infoResult =
+            ZL_BundleInfo_parse(serializedFatBundle, serializedFatBundleSize);
     ZL_ERR_IF_ERR(infoResult);
+    ZL_BundleInfo info = ZL_RES_value(infoResult);
+
+    // Copy dictIDs into mgr->arena since the parsed view points into the
+    // (potentially temporary) serializedFatBundle input buffer.
+    if (info.numDicts > 0) {
+        ZL_DictID* arenaDictIDs = (ZL_DictID*)ALLOC_Arena_malloc(
+                mgr->arena, info.numDicts * sizeof(ZL_DictID));
+        ZL_ERR_IF_NULL(arenaDictIDs, allocation);
+        memcpy(arenaDictIDs, info.dictIDs, info.numDicts * sizeof(ZL_DictID));
+        info.dictIDs = arenaDictIDs;
+    }
+    bundle->info = info;
 
     // If we have pre-declared a bundle ID, it must match
     if (ZL_UniqueID_isValid(&mgr->bundleID.id)) {
@@ -273,7 +301,7 @@ CDictMgr_loadFatBundle(
         bundle->dicts = NULL;
     }
 
-    size_t totalConsumed = ZL_RES_value(infoResult);
+    size_t totalConsumed = bundle->info.packedSize;
     size_t remaining     = serializedFatBundleSize - totalConsumed;
     const unsigned char* p =
             (const unsigned char*)serializedFatBundle + totalConsumed;
@@ -311,7 +339,7 @@ CDictMgr_loadDict(CDictMgr* mgr, const void* serialBuffer, size_t bufferMaxSize)
 {
     ZL_RESULT_DECLARE_SCOPE(ZL_DictConstPtr, mgr->opCtx);
     ZL_RESULT_OF(ZL_ParsedDict)
-    dictResult = Dict_parse(serialBuffer, bufferMaxSize);
+    dictResult = ZL_Dict_parse(serialBuffer, bufferMaxSize);
     ZL_ERR_IF_ERR(dictResult);
 
     ZL_ParsedDict const parsed = ZL_RES_value(dictResult);

@@ -6,7 +6,6 @@
 #include "openzl/common/errors_internal.h" // ZS2_RET_IF_ERR
 #include "openzl/common/opaque.h"
 #include "openzl/common/operation_context.h"
-#include "openzl/common/unique_id.h"
 #include "openzl/compress/cctx.h"     // CCTX_setOutBufferSizes
 #include "openzl/compress/cdictmgr.h" // CDictMgr
 #include "openzl/compress/cnode.h"
@@ -27,6 +26,7 @@
 #include "openzl/zl_reflection.h"
 #include "openzl/zl_segmenter.h"
 #include "openzl/zl_selector.h"
+#include "openzl/zl_unique_id.h"
 
 // ******************************************************************
 // CGraph

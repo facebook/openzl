@@ -4,7 +4,7 @@
 
 #include <string>
 
-#include "openzl/common/unique_id.h"
+#include "openzl/zl_unique_id.h"
 
 #include "sha_vec.h"
 

@@ -6,9 +6,9 @@
 #include <string.h>
 
 #include "openzl/common/assertion.h"
-#include "openzl/common/unique_id.h"
 #include "openzl/dict/dict_constants.h"
 #include "openzl/fse/common/mem.h"
+#include "openzl/zl_unique_id.h"
 
 ZL_DictID Dict_extractID(const void* dictBuffer, size_t dictSize)
 {
@@ -19,7 +19,8 @@ ZL_DictID Dict_extractID(const void* dictBuffer, size_t dictSize)
     return dictID;
 }
 
-ZL_RESULT_OF(ZL_ParsedDict) Dict_parse(const void* dictBuffer, size_t dictSize)
+ZL_RESULT_OF(ZL_ParsedDict)
+ZL_Dict_parse(const void* dictBuffer, size_t dictSize)
 {
     ZL_RESULT_DECLARE_SCOPE(ZL_ParsedDict, NULL);
     ZL_ERR_IF_NULL(dictBuffer, dict_corruption, "dict buffer must not be null");

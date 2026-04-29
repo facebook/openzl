@@ -83,8 +83,7 @@ typedef struct ZL_Selector_s ZL_Selector;
 typedef struct ZL_Graph_s ZL_Graph;
 typedef struct ZL_Edge_s ZL_Edge;
 typedef struct ZL_Segmenter_s ZL_Segmenter;
-typedef struct ZL_Dict_s ZL_Dict;
-typedef struct ZL_DictBundle_s ZL_DictBundle;
+typedef struct ZL_DictLoader_s ZL_DictLoader;
 
 // Generic List construction macro (C99)
 #define ZL_LIST_SIZE(_type, ...) \

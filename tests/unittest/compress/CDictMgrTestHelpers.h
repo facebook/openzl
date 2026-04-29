@@ -38,7 +38,7 @@ inline ZL_RESULT_OF(ZL_VoidPtr) mockDictCopyMaterialize(
 }
 
 /// Build a default ZL_MaterializerDesc2 using the mock copy-materializer.
-inline ZL_MaterializerDesc2 makeDefaultDictMaterializer()
+inline ZL_MaterializerDesc2 makeDefaultDictMaterializer2()
 {
     ZL_MaterializerDesc2 desc{};
     desc.materializeFn   = mockDictCopyMaterialize;
@@ -72,7 +72,7 @@ class MockNodesMgr {
     MockNodesMgr(const MockNodesMgr&)            = delete;
     MockNodesMgr& operator=(const MockNodesMgr&) = delete;
 
-    /// Register a CNode with the given dictID and materializer descriptor.
+    /// Register a CNode with the given dictID and materializer (v2).
     void addDictNode(
             ZL_DictID dictID,
             ZL_MaterializerDesc2 matDesc,
@@ -109,10 +109,10 @@ class MockNodesMgr {
         }
     }
 
-    /// Convenience overload using the default mock copy-materializer.
+    /// Convenience overload using the default mock dict materializer (v2).
     void addDictNode(ZL_DictID dictID)
     {
-        addDictNode(dictID, makeDefaultDictMaterializer());
+        addDictNode(dictID, makeDefaultDictMaterializer2());
     }
 
     const Nodes_manager* nodesManager() const
