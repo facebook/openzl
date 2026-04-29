@@ -10,6 +10,16 @@ extern "C" {
 #endif
 
 /**
+ * The empty input selector implementation function.
+ * Routes to successors[0] if input is empty, successors[1] otherwise.
+ */
+ZL_GraphID empty_input_selector_impl(
+        const ZL_Selector* selCtx,
+        const ZL_Input* inputStream,
+        const ZL_GraphID* customGraphs,
+        size_t nbCustomGraphs);
+
+/**
  * A selector that behaves as follows:
  *
  *   if (input.empty()) {
