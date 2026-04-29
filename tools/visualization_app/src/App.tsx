@@ -1,20 +1,73 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-import {useState, useRef} from 'react';
+import {useState, useRef, useCallback, useEffect} from 'react';
 import './App.css';
 import {extractStreamdumpFromCborFile} from './utils/decodeCbor.ts';
 import {StreamdumpGraph} from './components/StreamdumpGraph.tsx';
 import {Streamdump} from './models/Streamdump.ts';
 import Toolbar from './components/Toolbar.tsx';
-import {Box} from '@chakra-ui/react';
+import {
+  Box,
+  createToaster,
+  ToastCloseTrigger,
+  ToastDescription,
+  Toaster,
+  ToastRoot,
+  ToastTitle,
+} from '@chakra-ui/react';
+
+export const toaster = createToaster({placement: 'bottom-end'});
 
 export default function App() {
   const [cborData, setCborData] = useState<Streamdump | null>(null);
-  // Values required to update input the visualization when uploading a file
+  const [isTrackpadMode, setIsTrackpadMode] = useState(false);
+  const [isKeyboardMode, setIsKeyboardMode] = useState(true);
+  const toggleKeyboardNavRef = useRef<(() => void) | null>(null);
+
   const [fileInputKey, setFileInputKey] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Invoke to decode and display a new file uploaded
+  const toggleTrackpadMode = useCallback(() => {
+    const next = !isTrackpadMode;
+    setIsTrackpadMode(next);
+    toaster.create({
+      title: next ? 'Trackpad mode enabled' : 'Mouse mode enabled',
+      type: 'info',
+      duration: 1500,
+    });
+  }, [isTrackpadMode]);
+
+  const toggleKeyboardNav = useCallback(() => {
+    toggleKeyboardNavRef.current?.();
+    const next = !isKeyboardMode;
+    setIsKeyboardMode(next);
+    toaster.create({
+      title: next ? 'Keyboard shortcuts activated' : 'Keyboard shortcuts deactivated',
+      description: next ? 'Please see the legend for details.' : '',
+      type: 'info',
+      duration: 1500,
+    });
+  }, [isKeyboardMode]);
+
+  // Global key listeners for T and K shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key.toLowerCase()) {
+        case 't':
+          e.preventDefault();
+          toggleTrackpadMode();
+          break;
+        case 'k':
+          e.preventDefault();
+          toggleKeyboardNav();
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [toggleTrackpadMode, toggleKeyboardNav]);
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) {
@@ -40,7 +93,22 @@ export default function App() {
 
   return (
     <div className="wrapper">
-      <Toolbar onUploadCborFile={handleFileButtonClick} />
+      <Toaster toaster={toaster} style={{zIndex: 10000} /*Bring toaster to front*/}>
+        {(toast) => (
+          <ToastRoot minWidth="350px" flexDirection="column" alignItems="left">
+            <ToastTitle>{toast.title as string}</ToastTitle>
+            <ToastDescription>{toast.description as string}</ToastDescription>
+            <ToastCloseTrigger />
+          </ToastRoot>
+        )}
+      </Toaster>
+      <Toolbar
+        onUploadCborFile={handleFileButtonClick}
+        onToggleTrackpadMode={toggleTrackpadMode}
+        onToggleKeyboardNav={toggleKeyboardNav}
+        isTrackpadMode={isTrackpadMode}
+        isKeyboardMode={isKeyboardMode}
+      />
 
       <div className="content">
         {/* Used to input a new file. This <input /> is needed, as a button in the toolbar invoke this input, to open file explorer and load new data once something is uploaded */}
@@ -53,7 +121,12 @@ export default function App() {
         />
 
         <Box h="100%" w="100%" paddingLeft={'5%'} paddingRight={'5%'} paddingTop={4} paddingBottom={4}>
-          <StreamdumpGraph data={cborData} />
+          <StreamdumpGraph
+            data={cborData}
+            isTrackpadMode={isTrackpadMode}
+            toggleKeyboardNavRef={toggleKeyboardNavRef}
+            onKeyboardNavDeactivate={() => setIsKeyboardMode(false)}
+          />
         </Box>
       </div>
     </div>
