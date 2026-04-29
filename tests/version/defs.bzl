@@ -17,6 +17,13 @@ def version_fuzzer(name):
 
         cpp_lionhead_harness(
             name = name,
+            # Set 10 minute initialization timeout because the version fuzzers
+            # do heavy initialization work in the first iteration.
+            default_harness_config = {
+                "environment": {
+                    "AFL_FORKSRV_INIT_TMOUT": "600000",
+                },
+            },
             # Additional versions to run beyond the opt-asan default
             extra_variants = [
                 "dbgo-asan",
