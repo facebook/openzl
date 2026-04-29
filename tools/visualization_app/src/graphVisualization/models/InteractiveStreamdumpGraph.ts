@@ -112,7 +112,7 @@ export class InteractiveStreamdumpGraph {
     return [];
   }
 
-  toggleSubgraphCollapse(codec: InternalCodecNode): RF_nodeId[] {
+  toggleSubgraphCollapse(codec: InternalCodecNode): {newlyVisibleNodes: RF_nodeId[], rebuiltNavlinkNodes: InternalNode[]} {
     if (this.chunkGraphs[0].contains(codec)) {
       return this.chunkGraphs[0].toggleSubgraphCollapse(codec);
     }
@@ -122,10 +122,9 @@ export class InteractiveStreamdumpGraph {
     throw new Error(
       `Could not find codec ${codec.id} in root chunk or currently selected chunk ${this.visibleChunkIndex}`,
     );
-    return this.chunkGraphs[0].toggleSubgraphCollapse(codec);
   }
 
-  expandOneLevel(codec: InternalCodecNode): RF_nodeId[] {
+  expandOneLevel(codec: InternalCodecNode): {newlyVisibleNodes: RF_nodeId[], rebuiltNavlinkNodes: InternalNode[]} {
     if (this.chunkGraphs[0].contains(codec)) {
       return this.chunkGraphs[0].expandOneLevel(codec);
     }
@@ -137,7 +136,7 @@ export class InteractiveStreamdumpGraph {
     );
   }
 
-  toggleGraphCollapse(graph: InternalGraphNode): RF_nodeId[] {
+  toggleGraphCollapse(graph: InternalGraphNode): {newlyVisibleNodes: RF_nodeId[], rebuiltNavlinkNodes: InternalNode[]} {
     if (this.chunkGraphs[0].contains(graph)) {
       return this.chunkGraphs[0].toggleGraphCollapse(graph);
     }
@@ -149,7 +148,7 @@ export class InteractiveStreamdumpGraph {
     );
   }
 
-  toggleGraphHide(graph: InternalGraphNode): RF_nodeId[] {
+  toggleGraphHide(graph: InternalGraphNode): {newlyVisibleNodes: RF_nodeId[], rebuiltNavlinkNodes: InternalNode[]} {
     if (this.chunkGraphs[0].contains(graph)) {
       return this.chunkGraphs[0].toggleGraphHide(graph);
     }

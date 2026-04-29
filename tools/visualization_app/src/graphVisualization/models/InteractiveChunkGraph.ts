@@ -352,7 +352,7 @@ export class InteractiveChunkGraph {
     });
   }
 
-  rebuildNavlinksFor(nodeIds: RF_nodeId[]): void {
+  rebuildNavlinksFor(nodeIds: RF_nodeId[]): InternalNode[] {
     const toRebuild = new Set<RF_nodeId>(nodeIds);
 
     // Also rebuild parents of changed nodes so their children arrays stay correct
@@ -378,17 +378,21 @@ export class InteractiveChunkGraph {
       }
     }
 
+    const rebuiltNodes: InternalNode[] = [];
     for (const rfid of toRebuild) {
       const codec = this.codecByRfid.get(rfid);
       if (codec) {
         this.rebuildNavlinksForCodec(codec);
+        rebuiltNodes.push(codec);
         continue;
       }
       const graph = this.graphByRfid.get(rfid);
       if (graph) {
         this.rebuildNavlinksForGraph(graph);
+        rebuiltNodes.push(graph);
       }
     }
+    return rebuiltNodes;
   }
 
   private getEdgeShare(source: InternalCodecNode, target: InternalCodecNode): number {
@@ -444,7 +448,7 @@ export class InteractiveChunkGraph {
     return this.getDescendants(codec, visitedDescendants, (_childCodecId) => true);
   }
 
-  toggleSubgraphCollapse(codec: InternalCodecNode): RF_nodeId[] {
+  toggleSubgraphCollapse(codec: InternalCodecNode): {newlyVisibleNodes: RF_nodeId[], rebuiltNavlinkNodes: InternalNode[]} {
     const newlyVisibleNodes: RF_nodeId[] = [];
 
     // Expanding this node's subgraph
@@ -512,11 +516,11 @@ export class InteractiveChunkGraph {
       });
     }
 
-    this.rebuildNavlinksFor(newlyVisibleNodes);
-    return newlyVisibleNodes;
+    const rebuiltNavlinkNodes = this.rebuildNavlinksFor(newlyVisibleNodes);
+    return {newlyVisibleNodes, rebuiltNavlinkNodes};
   }
   // Function to support the feature of level-by-level expansion of the graph
-  expandOneLevel(codec: InternalCodecNode): RF_nodeId[] {
+  expandOneLevel(codec: InternalCodecNode): {newlyVisibleNodes: RF_nodeId[], rebuiltNavlinkNodes: InternalNode[]} {
     const newlyVisibleNodes: RF_nodeId[] = [];
     codec.isCollapsed = false;
     newlyVisibleNodes.push(codec.rfid);
@@ -539,8 +543,8 @@ export class InteractiveChunkGraph {
       }
     });
 
-    this.rebuildNavlinksFor(newlyVisibleNodes);
-    return newlyVisibleNodes;
+    const rebuiltNavlinkNodes = this.rebuildNavlinksFor(newlyVisibleNodes);
+    return {newlyVisibleNodes, rebuiltNavlinkNodes};
   }
 
   // Helper function to display codecs in a function graph without overriding any collapsed odecs within the function graph
@@ -563,7 +567,7 @@ export class InteractiveChunkGraph {
   }
 
   // Function to support the feature of collapsing/expanding a function graph
-  toggleGraphCollapse(graph: InternalGraphNode): RF_nodeId[] {
+  toggleGraphCollapse(graph: InternalGraphNode): {newlyVisibleNodes: RF_nodeId[], rebuiltNavlinkNodes: InternalNode[]} {
     const newlyVisibleNodes: RF_nodeId[] = [];
     // Expanding this function graph
     if (graph.isCollapsed) {
@@ -586,13 +590,14 @@ export class InteractiveChunkGraph {
       // Add the function graph itself as a newly visible node as we want the screen to focus on it
       newlyVisibleNodes.push(graph.rfid);
     }
-    this.rebuildNavlinksFor(newlyVisibleNodes);
-    return newlyVisibleNodes;
+    const rebuiltNavlinkNodes = this.rebuildNavlinksFor(newlyVisibleNodes);
+    return {newlyVisibleNodes, rebuiltNavlinkNodes};
   }
 
   // collapses the graph component and all its successors into one node
-  toggleGraphHide(graph: InternalGraphNode): RF_nodeId[] {
-    let nodesToFocus = this.toggleSubgraphCollapse(graph.codecs[0]);
+  toggleGraphHide(graph: InternalGraphNode): {newlyVisibleNodes: RF_nodeId[], rebuiltNavlinkNodes: InternalNode[]} {
+    const {newlyVisibleNodes: subgraphNodes, rebuiltNavlinkNodes} = this.toggleSubgraphCollapse(graph.codecs[0]);
+    let nodesToFocus = subgraphNodes;
     if (graph.isCollapsed) {
       graph.isCollapsed = false;
       nodesToFocus.push(graph.rfid);
@@ -607,8 +612,9 @@ export class InteractiveChunkGraph {
       nodesToFocus = [graph.rfid];
     }
     console.assert(graph.isVisible);
-    this.rebuildNavlinksFor(nodesToFocus);
-    return nodesToFocus;
+    const moreRebuilt = this.rebuildNavlinksFor(nodesToFocus);
+    rebuiltNavlinkNodes.push(...moreRebuilt);
+    return {newlyVisibleNodes: nodesToFocus, rebuiltNavlinkNodes};
   }
 
   // Function to support the feature of collapsing/expanding all standard graphs
