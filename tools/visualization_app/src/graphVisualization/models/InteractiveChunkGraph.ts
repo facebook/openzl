@@ -298,13 +298,19 @@ export class InteractiveChunkGraph {
   private rebuildNavlinksForCodec(codec: InternalCodecNode): void {
     codec.parents = [];
     codec.children = [];
+    const childShareMap = new Map<RF_nodeId, number>();
 
     // Link to visible DAG children (or their collapsed parent graph)
     for (const child of this.codecDag!.getChildren(codec)) {
+      // Find the edge share from codec to child
+      const edgeShare = this.getEdgeShare(codec, child);
       if (child.isVisible) {
         this.addNavLink(codec, child);
+        childShareMap.set(child.rfid, edgeShare);
       } else if (child.parentGraph && child.parentGraph.isVisible && child.parentGraph.isCollapsed) {
         this.addNavLink(codec, child.parentGraph);
+        const existing = childShareMap.get(child.parentGraph.rfid) ?? 0;
+        childShareMap.set(child.parentGraph.rfid, Math.max(existing, edgeShare));
       }
     }
 
@@ -316,11 +322,17 @@ export class InteractiveChunkGraph {
         this.addNavLink(parent.parentGraph, codec);
       }
     }
+
+    // Sort children by descending edge share
+    codec.sortedChildren = [...codec.children].sort((a, b) => {
+      return (childShareMap.get(b) ?? 0) - (childShareMap.get(a) ?? 0);
+    });
   }
 
   private rebuildNavlinksForGraph(graph: InternalGraphNode): void {
     graph.parents = [];
     graph.children = [];
+    const childShareMap = new Map<RF_nodeId, number>();
 
     for (const edge of graph.incomingEdges) {
       if (!edge.source.isVisible) continue;
@@ -331,7 +343,13 @@ export class InteractiveChunkGraph {
       if (!edge.target.isVisible) continue;
       if (edge.target instanceof InternalGraphNode && !edge.target.isCollapsed) continue;
       this.addNavLink(graph, edge.target);
+      const existing = childShareMap.get(edge.target.rfid) ?? 0;
+      childShareMap.set(edge.target.rfid, Math.max(existing, edge.share));
     }
+
+    graph.sortedChildren = [...graph.children].sort((a, b) => {
+      return (childShareMap.get(b) ?? 0) - (childShareMap.get(a) ?? 0);
+    });
   }
 
   rebuildNavlinksFor(nodeIds: RF_nodeId[]): InternalNode[] {
@@ -383,6 +401,17 @@ export class InteractiveChunkGraph {
       }
     }
     return rebuiltNodes;
+  }
+
+  private getEdgeShare(source: InternalCodecNode, target: InternalCodecNode): number {
+    for (const streamId of source.outputStreams) {
+      const stream = this.streams[streamId];
+      if (stream.targetCodec === target.id) {
+        const edge = this.edgeViewModels.get(stream.rfId);
+        if (edge) return edge.share;
+      }
+    }
+    return 0;
   }
 
   private addNavLink(parent: InternalNode, child: InternalNode): void {
@@ -500,6 +529,7 @@ export class InteractiveChunkGraph {
             graph.isVisible = false;
             graph.parents = [];
             graph.children = [];
+            graph.sortedChildren = [];
           } else {
             graphsToCheck.add(graph);
           }
@@ -507,6 +537,7 @@ export class InteractiveChunkGraph {
         childCodec.isVisible = false;
         childCodec.parents = [];
         childCodec.children = [];
+        childCodec.sortedChildren = [];
       });
 
       // For function graphs that aren't collapsed, if all codecs within it are hidden, we want to hide the function graph as well
@@ -516,6 +547,7 @@ export class InteractiveChunkGraph {
           graph.isVisible = false;
           graph.parents = [];
           graph.children = [];
+          graph.sortedChildren = [];
         }
       });
     }
@@ -578,6 +610,7 @@ export class InteractiveChunkGraph {
       graph.isCollapsed = false;
       graph.parents = [];
       graph.children = [];
+      graph.sortedChildren = [];
       this.displayCodecsInGraph(graph.codecs[0], graph, new Set<InternalCodecNode>(), newlyVisibleNodes);
     }
     // Collapsing this function graph
@@ -588,6 +621,7 @@ export class InteractiveChunkGraph {
         codec.isVisible = false;
         codec.parents = [];
         codec.children = [];
+        codec.sortedChildren = [];
       });
       // Add the function graph itself as a newly visible node as we want the screen to focus on it
       newlyVisibleNodes.push(graph.rfid);
@@ -609,6 +643,7 @@ export class InteractiveChunkGraph {
         codec.isVisible = false;
         codec.parents = [];
         codec.children = [];
+        codec.sortedChildren = [];
       });
       nodesToFocus = [graph.rfid];
     }
