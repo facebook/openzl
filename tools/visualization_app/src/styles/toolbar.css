@@ -52,6 +52,10 @@
   text-decoration: 'none';
 }
 
+.toolbar-icons .toolbar-button {
+  margin: 0 1px;
+}
+
 .toolbar-divider {
   width: 1px;
   height: 30px;
