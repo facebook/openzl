@@ -64,6 +64,7 @@ typedef enum {
     ZL_ErrorCode_outputNotCommitted                   = 24,
     ZL_ErrorCode_outputNotReserved                    = 25,
     ZL_ErrorCode_segmenter_inputNotConsumed           = 26,
+    ZL_ErrorCode_segmenter_noSegments                 = 27,
     /* graph stage errors */
     ZL_ErrorCode_graph_invalid               = 30,
     ZL_ErrorCode_graph_nonserializable       = 31,

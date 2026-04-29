@@ -729,6 +729,61 @@ TEST(Segmenter, singleChunkFallback_preservesRuntimeGraphParams)
             "single-chunk segmenter with runtime graph params on old format");
 }
 
+/* =======   Zero segments must fail (issue #253)   ======== */
+
+ZL_Report zeroSegmentSegmenterFn(ZL_Segmenter* sctx)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(sctx);
+    const ZL_Input* const input = ZL_Segmenter_getInput(sctx, 0);
+    ZL_ERR_IF_NE(ZL_Input_numElts(input), 0, node_invalid_input);
+    return ZL_returnSuccess();
+}
+
+static ZL_SegmenterDesc const zeroSegmentSegmenter = {
+    .name           = "Zero Segment Segmenter",
+    .segmenterFn    = zeroSegmentSegmenterFn,
+    .inputTypeMasks = (const ZL_Type[]){ ZL_Type_serial },
+    .numInputs      = 1,
+};
+
+TEST(Segmenter, zeroSegments_mustFail)
+{
+    if (g_testVersion < ZL_CHUNK_VERSION_MIN)
+        return;
+
+    size_t const compressedBound = ZL_compressBound(0);
+    void* const compressed       = malloc(compressedBound);
+    ASSERT_NE(compressed, nullptr);
+
+    g_segmenterDescPtr = &zeroSegmentSegmenter;
+
+    ZL_CCtx* const cctx = ZL_CCtx_create();
+    ASSERT_NE(cctx, nullptr);
+    ZL_Compressor* const compressor = ZL_Compressor_create();
+    ASSERT_NE(compressor, nullptr);
+    ZL_Report gssr =
+            ZL_Compressor_initUsingGraphFn(compressor, registerSegmenter);
+    ASSERT_FALSE(ZL_isError(gssr));
+    ZL_Report rcgr = ZL_CCtx_refCompressor(cctx, compressor);
+    ASSERT_FALSE(ZL_isError(rcgr));
+
+    ZL_TypedRef* input = ZL_TypedRef_createSerial(NULL, 0);
+    ASSERT_NE(input, nullptr);
+    ZL_Report const r =
+            ZL_CCtx_compressTypedRef(cctx, compressed, compressedBound, input);
+    EXPECT_TRUE(ZL_isError(r))
+            << "Compression must fail when segmenter produces zero segments";
+
+    // The decompressor rejects frames with zero segments. We could change the
+    // decompressor to accept them, in which case we'd need to validate that
+    // round trips succeed here.
+
+    ZL_TypedRef_free(input);
+    ZL_Compressor_free(compressor);
+    ZL_CCtx_free(cctx);
+    free(compressed);
+}
+
 /* *********************************************** */
 /* =======   Expected clean failure tests ======== */
 /* *********************************************** */
