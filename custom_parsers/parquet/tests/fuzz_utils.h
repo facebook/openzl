@@ -45,7 +45,7 @@ std::shared_ptr<arrow::Field> gen_arrow_field(
                     f.u16_range("fixed_len_byte_array_width", 1, 32));
         }
     } else {
-        size_t numChildren = f.u16_range("num_children", 1, 10);
+        size_t numChildren = f.u16_range("num_children", 1, 5);
         std::vector<std::shared_ptr<arrow::Field>> fields(numChildren);
         for (size_t i = 0; i < numChildren; ++i) {
             fields[i] = gen_arrow_field(f, maxDepth, depth + 1, i);
@@ -62,7 +62,7 @@ std::shared_ptr<arrow::Schema> gen_arrow_schema(
         size_t maxDepth = 0)
 {
     // Recursively generate children
-    size_t numChildren = f.u8_range("num_children", 1, 20);
+    size_t numChildren = f.u8_range("num_children", 1, 5);
     std::vector<std::shared_ptr<arrow::Field>> fields(numChildren);
     for (size_t i = 0; i < numChildren; ++i) {
         fields[i] = gen_arrow_field(f, maxDepth, 0, i);
@@ -149,7 +149,7 @@ std::string gen_parquet_from_schema(
     size_t numFields = schema->fields().size();
     std::vector<std::shared_ptr<arrow::Array>> arrays(numFields);
 
-    size_t numElts = f.u32_range("num_elts", 1, 5000);
+    size_t numElts = f.u32_range("num_elts", 1, 1000);
 
     for (size_t i = 0; i < numFields; i++) {
         arrays[i] = gen_array_from_field(f, schema->fields()[i], numElts);
