@@ -4,9 +4,9 @@ import {useCallback, useEffect, useMemo, useReducer, useRef} from 'react';
 import {useReactFlow} from '@xyflow/react';
 import type {Node} from '@xyflow/react';
 import {toaster} from '../../App';
-import type {InternalNode} from '../models/InternalNode';
 import {InternalCodecNode} from '../models/InternalCodecNode';
 import {InternalGraphNode} from '../models/InternalGraphNode';
+import type {InternalNode} from '../models/InternalNode';
 import {NodeType, type RF_nodeId} from '../models/types';
 
 type KeyboardNavState = {
@@ -72,7 +72,6 @@ export function useKeyboardNavigation(
 
   const nodeMapRef = useRef(nodeMap);
   nodeMapRef.current = nodeMap;
-
   // Selectable nodes: codecs and collapsed graphs (pill-shaped).
   // Non-selectable: segmenters and expanded graphs (dotted containers).
   const isSelectable = (node: InternalNode): boolean => {
@@ -95,7 +94,7 @@ export function useKeyboardNavigation(
   );
 
   const findNeighbor = useCallback(
-    (direction: 'up' | 'down' | 'left' | 'right'): InternalNode | null => {
+    (direction: 'up' | 'down' | 'left' | 'right' | 'tab', modifier?: 'shift' | null): InternalNode | null => {
       const currentNode = state.selectedNode;
       if (!currentNode) return null;
 
@@ -106,13 +105,36 @@ export function useKeyboardNavigation(
       if (direction === 'up') {
         return resolveToSelectable(currentNode.parents[0], 'up');
       }
-
       // Left/Right: move among siblings (children of same parent)
       if (currentNode.parents.length === 0) return null;
       const parent = nodeMapRef.current.get(currentNode.parents[0]);
       if (!parent) return null;
 
+      // Tab: navigate siblings sorted by stream share
+      if (direction === 'tab') {
+        const sortedSiblings = parent.sortedChildren;
+        // if 0 or 1 sorted sibling this is trivial
+        if (sortedSiblings.length <= 1) return null;
+
+        const currentIndex = sortedSiblings.indexOf(currentNode.rfid);
+        if (currentIndex === -1) return null;
+
+        // tab = next smallest, shift+tab = next largest
+        let nextIndex = modifier === 'shift' ? currentIndex - 1 : currentIndex + 1;
+        if (nextIndex < 0) {
+          nextIndex = sortedSiblings.length - 1;
+        }
+        if (nextIndex >= sortedSiblings.length) {
+          nextIndex = 0;
+        }
+
+        return nodeMapRef.current.get(sortedSiblings[nextIndex]) ?? null;
+      }
+
+      // Left/Right: move among siblings (children of same parent)
       const siblings = parent.children;
+      if (siblings.length <= 1) return null;
+
       const currentIndex = siblings.indexOf(currentNode.rfid);
       if (currentIndex === -1) return null;
 
@@ -165,11 +187,12 @@ export function useKeyboardNavigation(
         return;
       }
 
-      const directionMap: Record<string, 'up' | 'down' | 'left' | 'right'> = {
+      const directionMap: Record<string, 'up' | 'down' | 'left' | 'right' | 'tab'> = {
         ArrowUp: 'up',
         ArrowDown: 'down',
         ArrowLeft: 'left',
         ArrowRight: 'right',
+        Tab: 'tab',
       };
 
       const direction = directionMap[e.key];
@@ -192,9 +215,10 @@ export function useKeyboardNavigation(
         }
       };
 
-      const neighbor = findNeighbor(direction);
+      const modifier: 'shift' | null = e.shiftKey ? 'shift' : null;
+      const neighbor = findNeighbor(direction, modifier);
 
-      if (!neighbor && direction === 'down' && state.selectedNode) {
+      if (!neighbor && direction === 'down' && state.selectedNode?.isCollapsed) {
         tryExpandDown();
       } else if (neighbor) {
         dispatch({type: 'SELECT_NODE', node: neighbor});

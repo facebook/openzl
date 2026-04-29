@@ -191,5 +191,23 @@ export class InteractiveStreamdumpGraph {
         source.children.push(target.rfid);
       }
     }
+
+    // Build a map from (source rfid, target rfid) to edge share for sorting
+    const edgeShareMap = new Map<string, number>();
+    for (const edge of edges) {
+      const key = `${edge.source.rfid}->${edge.target.rfid}`;
+      const existing = edgeShareMap.get(key);
+      if (existing == null || edge.share > existing) {
+        edgeShareMap.set(key, edge.share);
+      }
+    }
+
+    for (const node of dagOrderedNodes) {
+      node.sortedChildren = [...node.children].sort((a, b) => {
+        const shareA = edgeShareMap.get(`${node.rfid}->${a}`) ?? 0;
+        const shareB = edgeShareMap.get(`${node.rfid}->${b}`) ?? 0;
+        return shareB - shareA;
+      });
+    }
   }
 }
