@@ -8,6 +8,12 @@ import {StreamdumpGraphView} from '../graphVisualization/views/StreamdumpGraphVi
 import {ReactFlowProvider} from '@xyflow/react';
 import {Box, Code, CodeBlock, Float, IconButton, Text, Tabs, useTabs, Heading, Span} from '@chakra-ui/react';
 
+interface StreamdumpGraphProps extends NullableStreamdump {
+  isTrackpadMode: boolean;
+  toggleKeyboardNavRef?: React.RefObject<(() => void) | null>;
+  onKeyboardNavDeactivate?: () => void;
+}
+
 const cliInvocation = 'zli compress --trace /tmp/streamdump.cbor -p serial -o /dev/null myfile.txt';
 const cliDecompressInvocation = 'zli decompress --trace /tmp/decompress_trace.cbor -o myfile.txt myfile.txt.zl';
 const files = [
@@ -172,7 +178,7 @@ function NoDataHelper() {
 }
 
 // Create a new component to use the hooks inside the provider
-function StreamdumpGraphContent({data}: NullableStreamdump) {
+function StreamdumpGraphContent({data, isTrackpadMode}: StreamdumpGraphProps) {
   const {nodes, edges, onNodesChange, onEdgesChange, handleAllStandardGraphsCollapse, areStandardGraphsCollapsed} =
     useStreamdumpGraphController({data});
 
@@ -196,15 +202,25 @@ function StreamdumpGraphContent({data}: NullableStreamdump) {
       handleAllStandardGraphsCollapse={handleAllStandardGraphsCollapse}
       areStandardGraphsCollapsed={areStandardGraphsCollapsed}
       versionInfo={versionInfo}
+      isTrackpadMode={isTrackpadMode}
     />
   );
 }
 
-export function StreamdumpGraph({data}: NullableStreamdump) {
-  // Wrap everything in ReactFlowProvider
+export function StreamdumpGraph({
+  data,
+  isTrackpadMode,
+  toggleKeyboardNavRef,
+  onKeyboardNavDeactivate,
+}: StreamdumpGraphProps) {
   return (
     <ReactFlowProvider>
-      <StreamdumpGraphContent data={data} />
+      <StreamdumpGraphContent
+        data={data}
+        isTrackpadMode={isTrackpadMode}
+        toggleKeyboardNavRef={toggleKeyboardNavRef}
+        onKeyboardNavDeactivate={onKeyboardNavDeactivate}
+      />
     </ReactFlowProvider>
   );
 }
