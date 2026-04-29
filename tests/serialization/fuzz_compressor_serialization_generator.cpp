@@ -55,6 +55,9 @@ std::vector<std::string> generateFuzzDeserializeAndCompressSimpleCorpus()
             auto randomSeed = rw->u32("seed");
             auto openzlComponent =
                     makeOpenZLComponent((OpenZLComponentID)componentId);
+            if (!openzlComponent->supportsSerialization()) {
+                continue;
+            }
             openzl::Compressor compressor;
             std::vector<openzl::GraphID> graphs =
                     openzlComponent->predefinedGraphs(compressor);
