@@ -28,7 +28,8 @@ static ZL_Report computeFHBound(
         size_t numInputs,
         size_t nbTransforms,
         size_t nbBuffs,
-        size_t nbRegens)
+        size_t nbRegens,
+        size_t numStringInputs)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ERR_IF_GT(numInputs, ZL_ENCODER_INPUT_LIMIT, GENERIC);
@@ -49,7 +50,8 @@ static ZL_Report computeFHBound(
 
     const size_t bound = 4 + (numInputs * 5) + ZL_varintSize(nbTransforms)
             + ZL_varintSize(nbBuffs - 1) + (nbBuffs * 4) + (nbTransforms * 22)
-            + (nbRegens * 4) + 4 + 4;
+            + (nbRegens * 4) + 4 + 4
+            + (numStringInputs * ZL_VARINT_LENGTH_64);
     return ZL_returnValue(bound);
 }
 
@@ -96,6 +98,7 @@ static ZL_Report EFH_Workspace_init(
         size_t nbTransforms,
         size_t nbRegens,
         size_t nbStoredBuffs,
+        size_t numStringInputs,
         void* dst,
         size_t dstCapacity)
 {
@@ -103,7 +106,7 @@ static ZL_Report EFH_Workspace_init(
     ZL_TRY_LET(
             size_t,
             dstBound,
-            computeFHBound(numInputs, nbTransforms, nbStoredBuffs, nbRegens));
+            computeFHBound(numInputs, nbTransforms, nbStoredBuffs, nbRegens, numStringInputs));
     size_t const regenArr32 = sizeof(uint32_t) * nbRegens;
     size_t const trArrays =
             (2 * sizeof(uint32_t) + sizeof(uint8_t)) * nbTransforms;
@@ -441,6 +444,15 @@ static ZL_Report EFH_encodeInputSizes(
     return EFH_encodeInputSizes_v21(out, inDesc, numInputs);
 }
 
+static size_t countStringInputs(const InputDesc* inDesc, size_t numInputs)
+{
+    size_t count = 0;
+    for (size_t n = 0; n < numInputs; n++) {
+        count += (inDesc[n].type == ZL_Type_string);
+    }
+    return count;
+}
+
 // writeFrameHeader_internal() :
 // Note : @dstCapacity must be large enough to write the header,
 //        otherwise the function will return an error
@@ -452,7 +464,7 @@ static ZL_Report writeFrameHeader_internal(
         const EFH_FrameInfo* fip)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
-    ZL_TRY_LET(size_t, hsBound, computeFHBound(fip->numInputs, 0, 0, 0));
+    ZL_TRY_LET(size_t, hsBound, computeFHBound(fip->numInputs, 0, 0, 0, countStringInputs(fip->inputDescs, fip->numInputs)));
     // Add comment bytes relaxing header bound
     hsBound += fip->comment.size ? 4 + fip->comment.size : 0;
     ZL_DLOG(FRAME,
@@ -651,7 +663,7 @@ static ZL_Report writeFrameHeaderV3orMore(
     ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     EFH_Workspace wksp = { 0 };
     ZL_ERR_IF_ERR(EFH_Workspace_init(
-            &wksp, fip->numInputs, 0, 0, 0, dst, dstCapacity));
+            &wksp, fip->numInputs, 0, 0, 0, countStringInputs(fip->inputDescs, fip->numInputs), dst, dstCapacity));
     ZL_Report ret =
             writeFrameHeader_internal(encoder, wksp.dst, wksp.dstCapacity, fip);
     if (!ZL_isError(ret) && wksp.dst != dst) {
@@ -690,7 +702,8 @@ static ZL_Report writeChunkHeaderV8_internal(
                     gip->nbSessionInputs,
                     gip->nbTransforms,
                     gip->nbStoredBuffs,
-                    gip->nbDistances));
+                    gip->nbDistances,
+                    countStringInputs(gip->inputDescs, gip->nbSessionInputs)));
     ZL_DLOG(FRAME,
             "writeChunkHeaderV8_internal (nbInputs=%zu, maxBound=%zu bytes)",
             gip->nbSessionInputs,
@@ -864,6 +877,7 @@ static ZL_Report writeChunkHeaderV8orMore(
             gip->nbTransforms,
             gip->nbDistances,
             gip->nbStoredBuffs,
+            countStringInputs(gip->inputDescs, gip->nbSessionInputs),
             dst,
             dstCapacity));
     ZL_Report ret = writeChunkHeaderV8_internal(
