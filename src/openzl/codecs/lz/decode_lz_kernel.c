@@ -638,6 +638,13 @@ static ZL_LzError ZL_Lz_decode_u16(
             if (err != ZL_LzError_ok) {
                 return err;
             }
+            if (state.litPos > (ptrdiff_t)state.src.numLiterals) {
+                // This can happen when using the temporary literal buffer.
+                // But still guaranteed not to overflow the buffer.
+                assert(state.src.literals == litBuffer);
+                assert(state.litPos <= (ptrdiff_t)sizeof(litBuffer));
+                return ZL_LzError_notEnoughLiterals;
+            }
         }
 
         if (state.seq < numSeqs) {
