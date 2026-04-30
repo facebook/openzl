@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-import {useState, useEffect} from 'react';
+import {useEffect} from 'react';
 import {ReactFlow, Controls, Background, ConnectionLineType, Panel, useReactFlow} from '@xyflow/react';
 import type {Node, Edge, NodeChange, EdgeChange} from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -28,6 +28,7 @@ interface StreamdumpGraphViewProps {
   handleAllStandardGraphsCollapse: () => void;
   areStandardGraphsCollapsed: boolean;
   versionInfo: VersionInfo;
+  isTrackpadMode: boolean;
 }
 
 export function StreamdumpGraphView({
@@ -38,8 +39,8 @@ export function StreamdumpGraphView({
   handleAllStandardGraphsCollapse,
   areStandardGraphsCollapsed,
   versionInfo,
+  isTrackpadMode,
 }: StreamdumpGraphViewProps) {
-  const [isTrackpadMode, setIsTrackpadMode] = useState<boolean>(false);
   const reactFlowInstance = useReactFlow();
 
   // Make the React Flow instance available to the controller
@@ -66,16 +67,6 @@ export function StreamdumpGraphView({
         <Controls />
         <Panel style={{width: '100%'}}>
           <Flex justify="space-between">
-            <Button
-              variant="surface"
-              onClick={() => setIsTrackpadMode(!isTrackpadMode)}
-              title={
-                isTrackpadMode
-                  ? 'Pinch to zoom in/out, swipe or click and drag to move across graph'
-                  : 'Scroll to zoom in/out, click and drag to move across graph'
-              }>
-              {isTrackpadMode ? 'Switch to Mouse Controls' : 'Switch to Trackpad Controls'}
-            </Button>
             <div className="header-text">
               <p style={{fontWeight: 'bold'}}>
                 {versionInfo.operationType === OperationType.Decompress ? 'Decompression Trace' : 'Compression Trace'}
