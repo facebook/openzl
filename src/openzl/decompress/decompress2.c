@@ -490,7 +490,7 @@ static ZL_Report ZL_AppendToOutputOptimization_commitInput(
  * the output buffer, and all inputs starting from `tailInputIdx` by prepending
  * to the tail of the output buffer. Stops when an uncommitted input is reached.
  */
-static ZL_Report ZS2_AppendToOutputOptimization_commitInputs(
+static ZL_Report ZL_AppendToOutputOptimization_commitInputs(
         ZL_AppendToOutputOptimization* append)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
@@ -540,7 +540,7 @@ static ZL_Report ZL_AppendToOutputOptimization_preTransformHook(
     ZL_AppendToOutputOptimization* append = info->appendOpt;
     ZL_ASSERT_NN(append);
 
-    ZL_ERR_IF_ERR(ZS2_AppendToOutputOptimization_commitInputs(append));
+    ZL_ERR_IF_ERR(ZL_AppendToOutputOptimization_commitInputs(append));
 
     if (info == info->appendOpt->outputInfo) {
         ZL_ERR_IF_NE(
@@ -614,7 +614,7 @@ static ZL_Report ZL_AppendToOutputOptimization_newStreamHook(
         return ZL_returnValue(0);
     }
 
-    ZL_ERR_IF_ERR(ZS2_AppendToOutputOptimization_commitInputs(append));
+    ZL_ERR_IF_ERR(ZL_AppendToOutputOptimization_commitInputs(append));
 
     size_t bytesNeeded;
     ZL_ERR_IF(

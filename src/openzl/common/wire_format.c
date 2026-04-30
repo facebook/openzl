@@ -4,8 +4,8 @@
 
 #include "openzl/shared/mem.h"
 
-#define ZS2_MIN_MAGIC (ZSTRONG_MAGIC_NUMBER_BASE + ZL_MIN_FORMAT_VERSION)
-#define ZS2_MAX_MAGIC (ZSTRONG_MAGIC_NUMBER_BASE + ZL_MAX_FORMAT_VERSION)
+#define ZL_MIN_MAGIC (ZSTRONG_MAGIC_NUMBER_BASE + ZL_MIN_FORMAT_VERSION)
+#define ZL_MAX_MAGIC (ZSTRONG_MAGIC_NUMBER_BASE + ZL_MAX_FORMAT_VERSION)
 
 ZL_Report ZL_getFormatVersionFromFrame(void const* src, size_t srcSize)
 {
@@ -28,13 +28,13 @@ ZL_Report ZL_getFormatVersionFromMagic(uint32_t magic)
     // Detect invalid magic numbers - outside of the range of versions
     // we know about. Pad the top end of the range to handle versions added
     // after this library was shipped.
-    if (magic < ZSTRONG_MAGIC_NUMBER_BASE || magic > ZS2_MAX_MAGIC + 16)
+    if (magic < ZSTRONG_MAGIC_NUMBER_BASE || magic > ZL_MAX_MAGIC + 16)
         ZL_ERR(header_unknown);
 
     // Detect magic numbers we used for older versions that we no longer
     // support or newer versions we don't yet support.
-    ZL_ERR_IF_LT(magic, ZS2_MIN_MAGIC, formatVersion_unsupported);
-    ZL_ERR_IF_GT(magic, ZS2_MAX_MAGIC, formatVersion_unsupported);
+    ZL_ERR_IF_LT(magic, ZL_MIN_MAGIC, formatVersion_unsupported);
+    ZL_ERR_IF_GT(magic, ZL_MAX_MAGIC, formatVersion_unsupported);
 
     // Extract the supported version number.
     uint32_t const version = magic - ZSTRONG_MAGIC_NUMBER_BASE;
