@@ -106,6 +106,12 @@ class PRNGWrapper : public RandWrapper {
         return true;
     }
 
+    size_t num_remaining_bytes() const override
+    {
+        throw std::runtime_error(
+                "num_remaining_bytes() only available for fuzzers");
+    }
+
     std::vector<uint8_t> all_remaining_bytes() override
     {
         throw std::runtime_error(

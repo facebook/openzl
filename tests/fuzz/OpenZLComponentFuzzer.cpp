@@ -199,27 +199,21 @@ FUZZ(OpenZLComponentFuzzer, FuzzRoundTrip)
                 formatVersion);
     }
 
-    while (gen.has_more_data()) {
-        const size_t size = gen.usize_range("input_size", 1, 4096);
-        auto inputs =
-                component->generateInputs(gen, 1, size, compressor, graph);
-        if (inputs.empty()) {
-            break;
-        }
-        for (const auto& input : inputs) {
-            try {
-                fuzzRoundTrip(
-                        *component, compressor, *input, graph, formatVersion);
-            } catch (const Exception& e) {
-                // The format version and graph are selected independently by
-                // the fuzzer. A graph may exceed the runtime limits (nodes,
-                // streams, inputs) of an older format version. This is not an
-                // input validity issue, so we allow it.
-                if (e.code() != ZL_ErrorCode_formatVersion_unsupported) {
-                    throw;
-                }
-                return;
+    const size_t size = gen.usize_range(
+            "input_size", 1, std::max(size_t(1), gen.num_remaining_bytes()));
+    auto inputs = component->generateInputs(gen, 1, size, compressor, graph);
+    for (const auto& input : inputs) {
+        try {
+            fuzzRoundTrip(*component, compressor, *input, graph, formatVersion);
+        } catch (const Exception& e) {
+            // The format version and graph are selected independently by
+            // the fuzzer. A graph may exceed the runtime limits (nodes,
+            // streams, inputs) of an older format version. This is not an
+            // input validity issue, so we allow it.
+            if (e.code() != ZL_ErrorCode_formatVersion_unsupported) {
+                throw;
             }
+            return;
         }
     }
 }
@@ -256,15 +250,13 @@ FUZZ(OpenZLComponentFuzzer, FuzzCompress)
                 formatVersion);
     }
 
-    while (gen.has_more_data()) {
-        auto input = generateInput(gen, compressor, graph, formatVersion);
-        try {
-            // TODO: Permissive mode doesn't guarantee success when hitting
-            // runtime limits on the number of nodes or streams.
-            fuzzRoundTrip(*component, compressor, *input, graph, formatVersion);
-        } catch (...) {
-            // Raising exceptions is okay, just can't crash
-        }
+    auto input = generateInput(gen, compressor, graph, formatVersion);
+    try {
+        // TODO: Permissive mode doesn't guarantee success when hitting
+        // runtime limits on the number of nodes or streams.
+        fuzzRoundTrip(*component, compressor, *input, graph, formatVersion);
+    } catch (...) {
+        // Raising exceptions is okay, just can't crash
     }
 }
 

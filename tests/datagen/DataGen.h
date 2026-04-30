@@ -219,6 +219,11 @@ class DataGen {
         return rw_->has_more_data();
     }
 
+    size_t num_remaining_bytes() const
+    {
+        return rw_->num_remaining_bytes();
+    }
+
     std::vector<uint8_t> all_remaining_bytes()
     {
         return rw_->all_remaining_bytes();
