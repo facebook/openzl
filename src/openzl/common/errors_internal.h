@@ -77,6 +77,8 @@ ZL_BEGIN_C_DECLS
     "Compression parameter invalid"
 #define ZL_ErrorCode_segmenter_inputNotConsumed__desc_str \
     "Segmenter did not consume entirely all inputs"
+#define ZL_ErrorCode_segmenter_noSegments__desc_str \
+    "Segmenter did not produce any segments"
 #define ZL_ErrorCode_graph_invalid__desc_str "Graph invalid"
 #define ZL_ErrorCode_graph_nonserializable__desc_str \
     "Graph incompatible with serialization"

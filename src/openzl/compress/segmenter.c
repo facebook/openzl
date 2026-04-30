@@ -22,6 +22,7 @@ struct ZL_Segmenter_s {
     ZL_Data** inputs;
     size_t nbInputs;
     size_t* consumed;
+    size_t numChunks;
     Arena* sessionArena;
     Arena* chunkArena;
 };
@@ -57,6 +58,7 @@ ZL_Segmenter* SEGM_init(
     if (seg == NULL)
         return NULL;
     seg->segDesc      = segDesc;
+    seg->numChunks    = 0;
     seg->cctx         = cctx;
     seg->rtgm         = rtgm;
     seg->sessionArena = sessionArena;
@@ -100,20 +102,24 @@ ZL_Report SEGM_runSegmenter(ZL_Segmenter* segCtx)
     ZL_ASSERT_NN(segCtx);
     ZL_SegmenterFn const segfn = segCtx->segDesc->segmenterFn;
     ZL_ASSERT_NN(segfn);
-    ZL_Report const r = segfn(segCtx);
+    ZL_ERR_IF_ERR(segfn(segCtx), "Segmenter function failed");
 
-    // if successful, check that all inputs were consumed
-    if (!ZL_isError(r)) {
-        for (size_t n = 0; n < segCtx->nbInputs; n++) {
-            ZL_ERR_IF_LT(
-                    segCtx->consumed[n],
-                    ZL_Data_numElts(segCtx->inputs[n]),
-                    segmenter_inputNotConsumed,
-                    "input %zu wasn't entirely consumed",
-                    n);
-        }
+    // Check post-conditions
+    ZL_ERR_IF_EQ(
+            segCtx->numChunks,
+            (size_t)0,
+            segmenter_noSegments,
+            "segmenter must produce at least one segment");
+    for (size_t n = 0; n < segCtx->nbInputs; n++) {
+        ZL_ERR_IF_LT(
+                segCtx->consumed[n],
+                ZL_Data_numElts(segCtx->inputs[n]),
+                segmenter_inputNotConsumed,
+                "input %zu wasn't entirely consumed",
+                n);
     }
-    return r;
+
+    return ZL_returnSuccess();
 }
 
 /* ===   accessors   === */
@@ -325,6 +331,7 @@ ZL_Report ZL_Segmenter_processChunk(
             /* depth */ 1));
 
     ZL_Report r = CCTX_flushChunk(cctx, (void*)chunkInputs, numInputs);
+    segCtx->numChunks++;
 
     // clean and exit
     for (size_t n = 0; n < numInputs; n++) {

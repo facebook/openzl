@@ -48,6 +48,8 @@ const char* ZL_ErrorCode_toString(ZL_ErrorCode code)
             return ZL_ErrorCode_compressionParameter_invalid__desc_str;
         case ZL_ErrorCode_segmenter_inputNotConsumed:
             return ZL_ErrorCode_segmenter_inputNotConsumed__desc_str;
+        case ZL_ErrorCode_segmenter_noSegments:
+            return ZL_ErrorCode_segmenter_noSegments__desc_str;
         case ZL_ErrorCode_graph_invalid:
             return ZL_ErrorCode_graph_invalid__desc_str;
         case ZL_ErrorCode_graph_nonserializable:
