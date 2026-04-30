@@ -11,6 +11,7 @@
 #include "openzl/compress/gcparams.h"       // GCParams
 #include "openzl/shared/portability.h"
 #include "openzl/zl_compressor.h" // ZL_Compressor
+#include "openzl/zl_dict.h"       // ZL_Dict
 #include "openzl/zl_graph_api.h"  // ZL_FunctionGraphDesc
 #include "openzl/zl_opaque_types.h"
 #include "openzl/zl_segmenter.h"

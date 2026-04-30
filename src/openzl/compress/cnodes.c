@@ -3,8 +3,7 @@
 #include "openzl/compress/cnodes.h"
 #include "openzl/common/allocation.h" // ALLOC_*, ZL_zeroes
 #include "openzl/common/assertion.h"
-#include "openzl/common/limits.h"    // ZL_ENCODER_CUSTOM_NODE_LIMIT
-#include "openzl/common/unique_id.h" // ZL_UniqueID_isValid
+#include "openzl/common/limits.h" // ZL_ENCODER_CUSTOM_NODE_LIMIT
 #include "openzl/common/vector.h"
 #include "openzl/common/wire_format.h" // trt_standard
 #include "openzl/compress/cdictmgr.h"
@@ -15,6 +14,7 @@
 #include "openzl/shared/mem.h"            // ZL_memcpy
 #include "openzl/shared/xxhash.h"
 #include "openzl/zl_errors.h"
+#include "openzl/zl_unique_id.h" // ZL_UniqueID_isValid
 
 // ******************************************************************
 // CTM (CNodes manager)

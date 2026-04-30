@@ -433,7 +433,7 @@ class CompressorTest : public Test {
 
     static ZL_MaterializerDesc2 makeMParamMat()
     {
-        return makeDefaultDictMaterializer();
+        return makeDefaultDictMaterializer2();
     }
 
     ZL_NodeID registerNodeWithMParam(
@@ -2166,7 +2166,7 @@ TEST_F(CompressorTest, WHENmparamRegisteredWithoutIDTHENoneIsAssigned)
     ASSERT_NE(
             ZL_Compressor_Node_getMParamObj(compressor_.get(), node), nullptr);
     auto reflectedID = ZL_Compressor_Node_getMParamID(compressor_.get(), node);
-    ASSERT_TRUE(ZL_UniqueID_isValid(&reflectedID.id));
+    ASSERT_TRUE(ZL_MParamID_hasValue(&reflectedID));
 }
 
 TEST_F(CompressorTest, WHENbadRegistrationTHENvalidationFails)

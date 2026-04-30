@@ -1,9 +1,10 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#ifndef OPENZL_DICT_UNIQUE_ID_H
-#define OPENZL_DICT_UNIQUE_ID_H
+#ifndef OPENZL_ZL_UNIQUE_ID_H
+#define OPENZL_ZL_UNIQUE_ID_H
 
-#include <stdbool.h> // bool
+#include <stdbool.h>
+#include <stddef.h>
 
 #include "openzl/zl_opaque_types.h"
 
@@ -51,4 +52,4 @@ ZL_UniqueID ZL_UniqueID_computeSHA256(const void* data, size_t size);
 } // extern "C"
 #endif
 
-#endif // OPENZL_DICT_UNIQUE_ID_H
+#endif // OPENZL_ZL_UNIQUE_ID_H

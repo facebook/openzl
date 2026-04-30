@@ -5,11 +5,11 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "openzl/common/unique_id.h"
 #include "openzl/dict/dict.h"
 #include "openzl/dict/dict_constants.h"
 #include "openzl/fse/common/mem.h"
 #include "openzl/zl_opaque_types.h"
+#include "openzl/zl_unique_id.h"
 
 static size_t bundleInfoPackedSize(size_t numDicts)
 {
@@ -17,16 +17,13 @@ static size_t bundleInfoPackedSize(size_t numDicts)
 }
 
 /* ================================================================
- * BundleInfo_parse
+ * ZL_BundleInfo_parse
  * ================================================================ */
 
-ZL_Report BundleInfo_parse(
-        ZL_BundleInfo* dst,
-        const void* bundleContent,
-        size_t bundleSize,
-        Arena* allocator)
+ZL_RESULT_OF(ZL_BundleInfo)
+ZL_BundleInfo_parse(const void* bundleContent, size_t bundleSize)
 {
-    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_RESULT_DECLARE_SCOPE(ZL_BundleInfo, NULL);
     ZL_ERR_IF_NULL(
             bundleContent, dict_corruption, "bundle buffer must not be null");
     ZL_ERR_IF_LT(
@@ -67,27 +64,16 @@ ZL_Report BundleInfo_parse(
             ZL_BUNDLE_HEADER_SIZE + dictArraySize,
             dict_corruption,
             "bundle buffer truncated");
-    ZL_DictID* dictIDs;
 
-    if (numDicts > 0) {
-        dictIDs = (ZL_DictID*)ALLOC_Arena_malloc(
-                allocator, numDicts * sizeof(ZL_DictID));
-        ZL_ERR_IF_NULL(
-                dictIDs, allocation, "failed to allocate %u dictIDs", numDicts);
-        for (U32 i = 0; i < numDicts; i++) {
-            ZL_UniqueID_read(&dictIDs[i].id, p);
-            p += ZL_UNIQUE_ID_SIZE;
-        }
-    } else {
-        dictIDs = NULL;
-    }
+    ZL_BundleInfo result;
+    memset(&result, 0, sizeof(result));
+    result.bundleID.id = bundleUID;
+    result.isFatBundle = (bool)isFatBundle;
+    result.numDicts    = numDicts;
+    result.dictIDs     = (numDicts > 0) ? (const ZL_DictID*)p : NULL;
+    result.packedSize  = ZL_BUNDLE_HEADER_SIZE + dictArraySize;
 
-    dst->bundleID.id = bundleUID;
-    dst->isFatBundle = (bool)isFatBundle;
-    dst->numDicts    = numDicts;
-    dst->dictIDs     = dictIDs;
-
-    return ZL_returnValue(ZL_BUNDLE_HEADER_SIZE + dictArraySize);
+    return ZL_RESULT_WRAP_VALUE(ZL_BundleInfo, result);
 }
 
 /* ================================================================
@@ -209,9 +195,19 @@ ZL_DictBundle_parseFatBundle(
             allocator, sizeof(ZL_DictBundle));
     ZL_ERR_IF_NULL(bundle, allocation);
 
-    ZL_Report infoResult = BundleInfo_parse(
-            &bundle->info, bundleContent, bundleSize, allocator);
+    ZL_RESULT_OF(ZL_BundleInfo)
+    infoResult = ZL_BundleInfo_parse(bundleContent, bundleSize);
     ZL_ERR_IF_ERR(infoResult);
+    bundle->info = ZL_RES_value(infoResult);
+    if (bundle->info.numDicts != 0) {
+        ZL_DictID* dictIDs = (ZL_DictID*)ALLOC_Arena_malloc(
+                allocator, bundle->info.numDicts * sizeof(ZL_DictID));
+        ZL_ERR_IF_NULL(dictIDs, allocation);
+        memcpy(dictIDs,
+               bundle->info.dictIDs,
+               bundle->info.numDicts * sizeof(ZL_DictID));
+        bundle->info.dictIDs = dictIDs;
+    }
 
     ZL_ERR_IF_NE(
             (int)bundle->info.isFatBundle,
@@ -232,13 +228,13 @@ ZL_DictBundle_parseFatBundle(
         bundle->dicts = NULL;
     }
 
-    size_t totalConsumed = ZL_RES_value(infoResult);
+    size_t totalConsumed = bundle->info.packedSize;
     size_t remaining     = bundleSize - totalConsumed;
     const unsigned char* p =
             (const unsigned char*)bundleContent + totalConsumed;
 
     for (size_t i = 0; i < bundle->info.numDicts; i++) {
-        ZL_RESULT_OF(ZL_ParsedDict) dictResult = Dict_parse(p, remaining);
+        ZL_RESULT_OF(ZL_ParsedDict) dictResult = ZL_Dict_parse(p, remaining);
         ZL_ERR_IF_ERR(dictResult);
 
         ZL_ParsedDict const parsed = ZL_RES_value(dictResult);

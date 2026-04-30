@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "openzl/common/unique_id.h"
+#include "openzl/zl_unique_id.h"
 
 #include <string.h>
 

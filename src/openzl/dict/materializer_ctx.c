@@ -3,8 +3,8 @@
 #include "openzl/dict/materializer_ctx.h"
 
 #include "openzl/common/allocation.h"
-#include "openzl/common/unique_id.h"
 #include "openzl/zl_materializer.h"
+#include "openzl/zl_unique_id.h"
 
 ZL_CONST_FN
 ZL_OperationContext* ZL_Materializer_getOperationContext(ZL_Materializer* mat)

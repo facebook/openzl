@@ -5,10 +5,8 @@
 #include <cstring>
 #include <vector>
 
-#include "openzl/common/unique_id.h"
 #include "openzl/compress/cdictmgr.h"
-#include "openzl/dict/bundle.h"
-#include "openzl/dict/dict.h"
+#include "openzl/zl_unique_id.h"
 
 #include "tests/unittest/compress/CDictMgrTestHelpers.h"
 #include "tests/unittest/dict/DictTestHelpers.h"
@@ -53,7 +51,7 @@ TEST_F(CDictMgrTest, LoadFatBundleSingleDict)
     EXPECT_EQ(bundle->dicts[0]->materializingCodec, 100u);
 
     ZL_DictID id             = makeDictID(1);
-    ZL_MaterializerDesc2 mat = makeDefaultDictMaterializer();
+    ZL_MaterializerDesc2 mat = makeDefaultDictMaterializer2();
     const ZL_Dict* found     = CDictMgr_findDict(&mgr_, &id, &mat);
     ASSERT_EQ(found, bundle->dicts[0]);
 }
@@ -76,7 +74,7 @@ TEST_F(CDictMgrTest, LoadFatBundleMultipleDicts)
     EXPECT_EQ(bundle->dicts[2]->materializingCodec, 300u);
 
     ZL_DictID id1            = makeDictID(1);
-    ZL_MaterializerDesc2 mat = makeDefaultDictMaterializer();
+    ZL_MaterializerDesc2 mat = makeDefaultDictMaterializer2();
     const ZL_Dict* found1    = CDictMgr_findDict(&mgr_, &id1, &mat);
     ASSERT_EQ(found1, bundle->dicts[0]);
 
@@ -112,7 +110,7 @@ TEST_F(CDictMgrTest, LoadSingleDict)
     ASSERT_FALSE(ZL_RES_isError(r));
 
     ZL_DictID id             = makeDictID(5);
-    ZL_MaterializerDesc2 mat = makeDefaultDictMaterializer();
+    ZL_MaterializerDesc2 mat = makeDefaultDictMaterializer2();
     const ZL_Dict* found     = CDictMgr_findDict(&mgr_, &id, &mat);
     ASSERT_NE(found, nullptr);
     EXPECT_EQ(found->materializingCodec, 42u);
@@ -128,7 +126,7 @@ TEST_F(CDictMgrTest, LoadDictDuplicate)
     ASSERT_FALSE(ZL_RES_isError(r2));
 
     ZL_DictID id             = makeDictID(7);
-    ZL_MaterializerDesc2 mat = makeDefaultDictMaterializer();
+    ZL_MaterializerDesc2 mat = makeDefaultDictMaterializer2();
     EXPECT_NE(CDictMgr_findDict(&mgr_, &id, &mat), nullptr);
 }
 
@@ -164,7 +162,7 @@ TEST(CDictMgrStandaloneTest, DifferentMaterializerYieldsDifferentEntry)
 {
     // Set up mock nodes with dictID(1) and the default materializer.
     MockNodesMgr mockNodes;
-    ZL_MaterializerDesc2 matA = makeDefaultDictMaterializer();
+    ZL_MaterializerDesc2 matA = makeDefaultDictMaterializer2();
     mockNodes.addDictNode(makeDictID(1), matA, true /* standard node */);
 
     CDictMgr mgr{};
