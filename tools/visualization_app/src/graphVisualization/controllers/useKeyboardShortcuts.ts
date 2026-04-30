@@ -35,6 +35,7 @@ export interface KeyboardNavControls {
   selectedNodeId: RF_nodeId | null;
   activate: () => void;
   deactivate: () => void;
+  selectNode: (nodeId: RF_nodeId) => void;
 }
 
 export function useKeyboardNavigation(
@@ -183,6 +184,22 @@ export function useKeyboardNavigation(
       });
     }
   }, [reactFlow]);
+
+  const selectNode = useCallback(
+    (nodeId: RF_nodeId) => {
+      const node = nodeMapRef.current.get(nodeId);
+      if (!node || !isSelectable(node)) return;
+      if (!state.isActive) return;
+      dispatch({type: 'SELECT_NODE', node});
+      reactFlow.fitView({
+        nodes: [{id: nodeId}],
+        duration: 800,
+        padding: 0.2,
+        maxZoom: 0.75,
+      });
+    },
+    [state.isActive, reactFlow],
+  );
 
   useEffect(() => {
     if (!state.isActive) return;
@@ -338,7 +355,8 @@ export function useKeyboardNavigation(
       selectedNodeId: state.selectedNode?.rfid ?? null,
       activate,
       deactivate,
+      selectNode,
     }),
-    [state.selectedNode?.rfid, activate, deactivate],
+    [state.selectedNode?.rfid, activate, deactivate, selectNode],
   );
 }
