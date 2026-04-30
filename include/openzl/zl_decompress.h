@@ -7,6 +7,7 @@
 #include "openzl/zl_common_types.h"
 #include "openzl/zl_errors.h"        // ZL_Report, ZL_isError()
 #include "openzl/zl_introspection.h" // ZL_DecompressIntrospectionHooks
+#include "openzl/zl_opaque_types.h"  // ZL_DCtx
 #include "openzl/zl_output.h"
 
 #if defined(__cplusplus)
@@ -67,11 +68,6 @@ ZL_Report ZL_getCompressedSize(const void* compressed, size_t testedSize);
 // ------------------------------------------------
 // One-pass decompression with advanced parameters
 // ------------------------------------------------
-
-/**
- * @brief Decompression context for state management (incomplete type).
- */
-typedef struct ZL_DCtx_s ZL_DCtx;
 
 /**
  * @brief Creates a new decompression context.

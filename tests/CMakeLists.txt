@@ -13,6 +13,7 @@ function(add_zs_test TESTNAME)
 endfunction()
 
 add_subdirectory(datagen)
+add_subdirectory(compat)
 
 file(
     GLOB_RECURSE test_fixtures

@@ -44,7 +44,7 @@ extern "C" {
  * Any @return value > dstCapacity will be interpreted as an error.
  */
 
-typedef size_t (*ZL_PipeDstCapacityFn)(const void* src, size_t srcSize)
+typedef size_t (*ZL_DPipeDstCapacityFn)(const void* src, size_t srcSize)
         ZL_NOEXCEPT_FUNC_PTR;
 typedef size_t (*ZL_PipeDecoderFn)(
         void* dst,
@@ -54,7 +54,7 @@ typedef size_t (*ZL_PipeDecoderFn)(
 
 typedef struct {
     ZL_IDType CTid;
-    ZL_PipeDstCapacityFn dstBound_f;
+    ZL_DPipeDstCapacityFn dstBound_f;
     ZL_PipeDecoderFn transform_f;
     const char* name; // Optional display name, for debugging purposes. Allowed
                       // to be NULL.

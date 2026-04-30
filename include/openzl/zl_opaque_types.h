@@ -82,6 +82,7 @@ typedef struct ZL_Decoder_s ZL_Decoder;
 typedef struct ZL_Selector_s ZL_Selector;
 typedef struct ZL_Graph_s ZL_Graph;
 typedef struct ZL_Edge_s ZL_Edge;
+typedef struct ZL_GraphParameters_s ZL_RuntimeGraphParameters;
 typedef struct ZL_Segmenter_s ZL_Segmenter;
 typedef struct ZL_DictLoader_s ZL_DictLoader;
 
