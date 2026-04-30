@@ -83,7 +83,7 @@ function DrawerBody() {
             <Table.Root size="sm" variant="outline">
               <Table.Header>
                 <Table.Row>
-                  <Table.ColumnHeader>Shortcut</Table.ColumnHeader>
+                  <Table.ColumnHeader minW="125px">Shortcut</Table.ColumnHeader>
                   <Table.ColumnHeader>Action</Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
@@ -117,6 +117,18 @@ function DrawerBody() {
                     <Kbd>Ctrl</Kbd>+Click
                   </Table.Cell>
                   <Table.Cell>Jump to node</Table.Cell>
+                </Table.Row>
+                <Table.Row>
+                  <Table.Cell>
+                    <Kbd>Enter</Kbd>
+                  </Table.Cell>
+                  <Table.Cell>Expand a codec/graph</Table.Cell>
+                </Table.Row>
+                <Table.Row>
+                  <Table.Cell>
+                    <Kbd>Enter</Kbd>+<Kbd>Shift</Kbd>
+                  </Table.Cell>
+                  <Table.Cell>Collapse a codec/graph</Table.Cell>
                 </Table.Row>
                 <Table.Row>
                   <Table.Cell>

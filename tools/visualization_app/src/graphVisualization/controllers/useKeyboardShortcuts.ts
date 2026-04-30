@@ -99,54 +99,61 @@ export function useKeyboardNavigation(
   );
 
   const findNeighbor = useCallback(
-    (direction: 'up' | 'down' | 'left' | 'right' | 'tab', modifier?: 'shift' | null): InternalNode | null => {
+    (direction: 'up' | 'down' | 'left' | 'right' | 'tab' | 'enter', modifier?: 'shift' | null): InternalNode | null => {
       const currentNode = state.selectedNode;
       if (!currentNode) return null;
 
-      if (direction === 'down') {
-        return resolveToSelectable(currentNode.children[0], 'down');
-      }
+      switch (direction) {
+        case 'down':
+          return resolveToSelectable(currentNode.children[0], 'down');
+        case 'up':
+          return resolveToSelectable(currentNode.parents[0], 'up');
+        case 'tab': {
+          // Tab: navigate siblings sorted by stream share
+          if (currentNode.parents.length === 0) return null;
+          const parent = nodeMapRef.current.get(currentNode.parents[0]);
+          if (!parent) return null;
 
-      if (direction === 'up') {
-        return resolveToSelectable(currentNode.parents[0], 'up');
-      }
-      // Left/Right: move among siblings (children of same parent)
-      if (currentNode.parents.length === 0) return null;
-      const parent = nodeMapRef.current.get(currentNode.parents[0]);
-      if (!parent) return null;
+          const sortedSiblings = parent.sortedChildren;
+          // if 0 or 1 sorted sibling this is trivial
+          if (sortedSiblings.length <= 1) return null;
 
-      // Tab: navigate siblings sorted by stream share
-      if (direction === 'tab') {
-        const sortedSiblings = parent.sortedChildren;
-        // if 0 or 1 sorted sibling this is trivial
-        if (sortedSiblings.length <= 1) return null;
+          const currentIndex = sortedSiblings.indexOf(currentNode.rfid);
+          if (currentIndex === -1) return null;
 
-        const currentIndex = sortedSiblings.indexOf(currentNode.rfid);
-        if (currentIndex === -1) return null;
+          // tab = next smallest, shift+tab = next largest
+          let nextIndex = modifier === 'shift' ? currentIndex - 1 : currentIndex + 1;
+          if (nextIndex < 0) {
+            nextIndex = sortedSiblings.length - 1;
+          }
+          if (nextIndex >= sortedSiblings.length) {
+            nextIndex = 0;
+          }
 
-        // tab = next smallest, shift+tab = next largest
-        let nextIndex = modifier === 'shift' ? currentIndex - 1 : currentIndex + 1;
-        if (nextIndex < 0) {
-          nextIndex = sortedSiblings.length - 1;
+          return nodeMapRef.current.get(sortedSiblings[nextIndex]) ?? null;
         }
-        if (nextIndex >= sortedSiblings.length) {
-          nextIndex = 0;
+        case 'right':
+        case 'left': {
+          // Left/Right: move among siblings (children of same parent)
+          if (currentNode.parents.length === 0) return null;
+          const parent = nodeMapRef.current.get(currentNode.parents[0]);
+          if (!parent) return null;
+
+          const siblings = parent.children;
+          if (siblings.length <= 1) return null;
+
+          const currentIndex = siblings.indexOf(currentNode.rfid);
+          if (currentIndex === -1) return null;
+
+          const nextIndex = direction === 'right' ? currentIndex + 1 : currentIndex - 1;
+          if (nextIndex < 0 || nextIndex >= siblings.length) return null;
+
+          return nodeMapRef.current.get(siblings[nextIndex]) ?? null;
         }
-
-        return nodeMapRef.current.get(sortedSiblings[nextIndex]) ?? null;
+        case 'enter':
+        default:
+          return null;
       }
-
-      // Left/Right: move among siblings (children of same parent)
-      const siblings = parent.children;
-      if (siblings.length <= 1) return null;
-
-      const currentIndex = siblings.indexOf(currentNode.rfid);
-      if (currentIndex === -1) return null;
-
-      const nextIndex = direction === 'right' ? currentIndex + 1 : currentIndex - 1;
-      if (nextIndex < 0 || nextIndex >= siblings.length) return null;
-
-      return nodeMapRef.current.get(siblings[nextIndex]) ?? null;
     },
     [state.selectedNode, resolveToSelectable],
   );
@@ -192,40 +199,80 @@ export function useKeyboardNavigation(
         return;
       }
 
-      const directionMap: Record<string, 'up' | 'down' | 'left' | 'right' | 'tab'> = {
+      const directionMap: Record<string, 'up' | 'down' | 'left' | 'right' | 'tab' | 'enter'> = {
         ArrowUp: 'up',
         ArrowDown: 'down',
         ArrowLeft: 'left',
         ArrowRight: 'right',
         Tab: 'tab',
+        Enter: 'enter',
       };
 
       const direction = directionMap[e.key];
       if (!direction) return;
       e.preventDefault();
 
-      const tryExpandDown = () => {
+      const tryExpand = () => {
         const currentNode = state.selectedNode;
         if (!currentNode || !currentNode.isCollapsed) return;
 
-        keyboardDrivenChangeRef.current = true;
         if (currentNode instanceof InternalGraphNode) {
           const firstCodec = currentNode.codecs[0];
           // cannot expand collapsed graph node if there is no codec nodes in it
           if (firstCodec == null) return;
+          keyboardDrivenChangeRef.current = true;
           handleGraphCollapseRef.current(currentNode);
           // skip non-selectable expanded graph node
           if (firstCodec) dispatch({type: 'SELECT_NODE', node: firstCodec});
         } else if (currentNode instanceof InternalCodecNode) {
+          keyboardDrivenChangeRef.current = true;
           handleNodeCollapseRef.current(currentNode);
+        }
+      };
+
+      const tryCollapse = () => {
+        const currentNode = state.selectedNode;
+        if (!currentNode) return;
+
+        // Codec is expanded
+        if (!currentNode.isCollapsed) {
+          if (currentNode instanceof InternalCodecNode) {
+            keyboardDrivenChangeRef.current = true;
+            if (currentNode.parentGraph && !currentNode.parentGraph.isCollapsed) {
+              // Collapse the parent graph (symmetric with Enter expand, matches eye icon)
+              handleGraphCollapseRef.current(currentNode.parentGraph);
+              dispatch({type: 'SELECT_NODE', node: currentNode.parentGraph});
+            } else {
+              // No parent graph, collapse the subgraph
+              handleNodeCollapseRef.current(currentNode);
+            }
+          }
+          return;
+        }
+
+        // Node is already collapsed bubble up and collapse its parent graph,
+        // then move selection to the now-collapsed parent.
+        if (
+          currentNode instanceof InternalCodecNode &&
+          currentNode.parentGraph &&
+          !currentNode.parentGraph.isCollapsed
+        ) {
+          // This is because we cannot directly navigate to a expanded graph node so we will use any child of expanded graph to collapse it
+          keyboardDrivenChangeRef.current = true;
+          handleGraphCollapseRef.current(currentNode.parentGraph);
+          dispatch({type: 'SELECT_NODE', node: currentNode.parentGraph});
         }
       };
 
       const modifier: 'shift' | null = e.shiftKey ? 'shift' : null;
       const neighbor = findNeighbor(direction, modifier);
 
-      if (!neighbor && direction === 'down' && state.selectedNode?.isCollapsed) {
-        tryExpandDown();
+      if (direction === 'enter' && state.selectedNode && modifier === 'shift') {
+        tryCollapse();
+      } else if (direction === 'enter' && state.selectedNode) {
+        tryExpand();
+      } else if (!neighbor && direction === 'down' && state.selectedNode?.isCollapsed) {
+        tryExpand();
       } else if (neighbor) {
         dispatch({type: 'SELECT_NODE', node: neighbor});
         reactFlow.fitView({
