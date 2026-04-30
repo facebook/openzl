@@ -168,6 +168,12 @@ ZL_ErrorContext* ZL_OperationContext_getDefaultErrorContext(
 #define ZL_GET_ERROR_CONTEXT_IMPL(ctx) \
     (ZL_OperationContext_getDefaultErrorContext(ZL_GET_OPERATION_CONTEXT(ctx)))
 
+/// @returns true iff the provided rich error info in @p error is owned by this
+///          operation context and is still live.
+bool ZL_OperationContext_ownsError(
+        const ZL_OperationContext* opCtx,
+        ZL_Error error);
+
 #if defined(__cplusplus)
 }
 #endif

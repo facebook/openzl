@@ -11,8 +11,9 @@
 #ifndef ZSTRONG_ZS2_ERRORS_DETAIL_H
 #define ZSTRONG_ZS2_ERRORS_DETAIL_H
 
-#include <stddef.h> // size_t
-#include <string.h> // memset
+#include <stdbool.h> // bool
+#include <stddef.h>  // size_t
+#include <string.h>  // memset
 
 #include "openzl/detail/zl_error_context.h"
 #include "openzl/zl_errors_types.h"  // ZL_ErrorCode

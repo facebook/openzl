@@ -46,6 +46,63 @@ class Exception : public std::runtime_error {
         }
     }
 
+    template <typename Ctx>
+    ZL_Error toError(
+            Ctx* ctx,
+            poly::source_location this_location =
+                    poly::source_location::current()) const noexcept
+    {
+        if (!error_) {
+            return ZL_E_create(
+                    nullptr,
+                    ZL_GET_DEFAULT_ERROR_CONTEXT(ctx),
+                    location_.file_name(),
+                    location_.function_name(),
+                    location_.line(),
+                    ZL_ErrorCode_GENERIC,
+                    "C++ OpenZL Exception: %s",
+                    what());
+        }
+        auto e            = error_.value();
+        const auto* opCtx = ZL_GET_OPERATION_CONTEXT(ctx);
+        if (ZL_OperationContext_ownsError(opCtx, e)) {
+            e = ZL_E_addFrame(
+                    nullptr,
+                    e,
+                    ZL_EE_EMPTY,
+                    location_.file_name(),
+                    location_.function_name(),
+                    location_.line(),
+                    "Converting to C++ OpenZL Exception: %s",
+                    msg_.c_str());
+            e = ZL_E_addFrame(
+                    nullptr,
+                    e,
+                    ZL_EE_EMPTY,
+                    this_location.file_name(),
+                    this_location.function_name(),
+                    this_location.line(),
+                    "Converting back to ZL_Error");
+        }
+        return e;
+    }
+
+    template <typename Ctx>
+    ZL_Error toError(
+            Ctx& ctx,
+            poly::source_location this_location =
+                    poly::source_location::current()) const noexcept
+    {
+        return toError(ctx.get(), std::move(this_location));
+    }
+
+    ZL_Error toError(
+            poly::source_location this_location =
+                    poly::source_location::current()) const noexcept
+    {
+        return toError((ZL_CCtx*)nullptr, std::move(this_location));
+    }
+
     poly::string_view errorContext() const noexcept
     {
         return errorContext_;

@@ -2,6 +2,7 @@
 
 #include "openzl/common/operation_context.h"
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -184,6 +185,13 @@ const char* ZL_OC_getErrorContextString(
            "report into the context that created the error (ZL_CCtx for "
            "compression, ZL_DCtx for decompression, ZL_Compressor for graph "
            "creation)";
+}
+
+bool ZL_OperationContext_ownsError(
+        const ZL_OperationContext* opCtx,
+        ZL_Error error)
+{
+    return ZL_OC_findError(opCtx, error) != NULL;
 }
 
 ZL_ErrorContext const* ZL_OC_defaultScopeContext(

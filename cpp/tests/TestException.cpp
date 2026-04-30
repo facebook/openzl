@@ -156,4 +156,55 @@ TEST_F(TestException, unwrapWithAllCtxTypes)
     unwrap(result, "", zl_deserializer);
     unwrap(result, "", zl_graph);
 }
+
+TEST_F(TestException, backToCErrorWithoutContext)
+{
+    CCtx ctx;
+    auto result = ZL_CCtx_compress(ctx.get(), NULL, 0, "1234567890", 10);
+    ASSERT_TRUE(ZL_RES_isError(result));
+    const auto orig_code = ZL_E_code(ZL_RES_error(result));
+    const std::string orig_str{ ZL_CCtx_getErrorContextString_fromError(
+            ctx.get(), ZL_RES_error(result)) };
+    try {
+        unwrap(result, "Whoopsie!", ctx.get());
+        EXPECT_TRUE(false) << "should be unreachable!";
+    } catch (const Exception& ex) {
+        const auto e    = ex.toError();
+        const auto code = ZL_E_code(e);
+        EXPECT_NE(code, ZL_ErrorCode_no_error);
+        EXPECT_NE(code, ZL_ErrorCode_GENERIC);
+        EXPECT_EQ(code, orig_code);
+        const std::string str{ ZL_CCtx_getErrorContextString_fromError(
+                ctx.get(), e) };
+        EXPECT_NE(str.find(orig_str), std::string::npos) << str;
+    } catch (...) {
+        EXPECT_TRUE(false) << "shouldn't throw anything else!";
+    }
+}
+
+TEST_F(TestException, backToCErrorWithContext)
+{
+    CCtx ctx;
+    auto result = ZL_CCtx_compress(ctx.get(), NULL, 0, "1234567890", 10);
+    ASSERT_TRUE(ZL_RES_isError(result));
+    const auto orig_code = ZL_E_code(ZL_RES_error(result));
+    const std::string orig_str{ ZL_CCtx_getErrorContextString_fromError(
+            ctx.get(), ZL_RES_error(result)) };
+    try {
+        unwrap(result, "Whoopsie!", ctx.get());
+        EXPECT_TRUE(false) << "should be unreachable!";
+    } catch (const Exception& ex) {
+        const auto e    = ex.toError(ctx);
+        const auto code = ZL_E_code(e);
+        EXPECT_NE(code, ZL_ErrorCode_no_error);
+        EXPECT_NE(code, ZL_ErrorCode_GENERIC);
+        EXPECT_EQ(code, orig_code);
+        const std::string str{ ZL_CCtx_getErrorContextString_fromError(
+                ctx.get(), e) };
+        EXPECT_NE(str.find("Whoopsie!"), std::string::npos) << str;
+        EXPECT_NE(str.find(orig_str), std::string::npos) << str;
+    } catch (...) {
+        EXPECT_TRUE(false) << "shouldn't throw anything else!";
+    }
+}
 } // namespace openzl::tests
