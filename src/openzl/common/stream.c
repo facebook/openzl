@@ -1098,7 +1098,7 @@ ZL_Report STREAM_setIntMetadata(Stream* s, int mId, int mValue)
     return ZL_returnSuccess();
 }
 
-#define ZS2_INTMETADATA_NOT_PRESENT (-1)
+#define ZL_INTMETADATA_NOT_PRESENT (-1)
 ZL_IntMetadata STREAM_getIntMetadata(const Stream* s, int mId)
 {
     ZL_ASSERT_NN(s);
@@ -1106,7 +1106,7 @@ ZL_IntMetadata STREAM_getIntMetadata(const Stream* s, int mId)
     if (idx < 0)
         return (ZL_IntMetadata){
             .isPresent = 0,
-            .mValue    = ZS2_INTMETADATA_NOT_PRESENT,
+            .mValue    = ZL_INTMETADATA_NOT_PRESENT,
         };
     return (ZL_IntMetadata){
         .isPresent = 1,
