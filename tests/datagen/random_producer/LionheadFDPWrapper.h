@@ -30,7 +30,7 @@ class LionheadFDPWrapper : public RandWrapper {
     {
         return fdp_->has_more_data();
     }
-    size_t remaining_input_length()
+    size_t num_remaining_bytes() const override
     {
         return fdp_->remaining_input_length();
     }

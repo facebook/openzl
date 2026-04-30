@@ -48,6 +48,7 @@ class RandWrapper {
 
     // only applicable to fuzzers
     virtual bool has_more_data()                       = 0;
+    virtual size_t num_remaining_bytes() const         = 0;
     virtual std::vector<uint8_t> all_remaining_bytes() = 0;
 
     virtual bool boolean(NameType name)
