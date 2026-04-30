@@ -6,7 +6,7 @@ import {InternalCodecNode} from '../models/InternalCodecNode';
 import {InternalGraphNode} from '../models/InternalGraphNode';
 import {InternalEdge} from '../models/InternalEdge';
 import type {InternalNode} from '../models/InternalNode';
-import {NodeType} from '../models/types';
+import {NodeType, type RF_nodeId} from '../models/types';
 
 // Values useful for dagre laying out the graph.
 // IMPORTANT: These values are not the final values used for sizing of nodes, this happens from the css definitions
@@ -190,4 +190,27 @@ export function applyLayout(
   const positionedNodes = calculateLayout(reactFlowNodes, reactFlowEdges, direction);
 
   return {nodes: positionedNodes, edges: reactFlowEdges};
+}
+
+export function sortNavlinksByPosition(positionedNodes: Node[], changedNodes?: InternalNode[]): void {
+  const xPositions = new Map<string, number>();
+  for (const node of positionedNodes) {
+    xPositions.set(node.id, node.position.x);
+  }
+
+  const sortByX = (a: RF_nodeId, b: RF_nodeId) => (xPositions.get(a) ?? 0) - (xPositions.get(b) ?? 0);
+
+  if (changedNodes) {
+    for (const internal of changedNodes) {
+      internal.children.sort(sortByX);
+      internal.parents.sort(sortByX);
+    }
+  } else {
+    for (const node of positionedNodes) {
+      if (node.type !== NodeType.Codec && node.type !== NodeType.Graph && node.type !== NodeType.Segmenter) continue;
+      const internal = node.data.internalNode as InternalNode;
+      internal.children.sort(sortByX);
+      internal.parents.sort(sortByX);
+    }
+  }
 }
