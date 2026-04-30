@@ -134,7 +134,8 @@ class SentinelNumComponent : public OpenZLComponent {
             auto width     = gen.choices<size_t>("width", { 1, 2, 4, 8 });
             size_t maxElts = maxInputSize / width;
             if (maxElts < minElts) {
-                maxElts = minElts;
+                // Cannot generate a valid input
+                continue;
             }
             size_t numElts = gen.usize_range("numElts", minElts, maxElts);
 
