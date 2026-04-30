@@ -8,7 +8,7 @@
 
 using namespace ::testing;
 
-namespace zstrong::tests {
+namespace openzl::tests {
 namespace {
 class GraphsTest : public ZStrongTest {
    public:
@@ -116,4 +116,4 @@ TEST_F(GraphsTest, UndersizedDstBuffer)
 }
 
 } // namespace
-} // namespace zstrong::tests
+} // namespace openzl::tests

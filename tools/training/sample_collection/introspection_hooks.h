@@ -26,11 +26,11 @@ class UntrainedGraphHook : public openzl::CompressIntrospectionHooks {
             ZL_Edge* inputs[],
             size_t nbInputs) override;
 
-    const std::map<std::string, MultiInput>& getInputs() const;
+    const std::map<std::string, std::vector<MultiInput>>& getInputs() const;
 
    private:
     std::vector<std::string> targetGraphNames_;
-    std::map<std::string, MultiInput> inputs_{};
+    std::map<std::string, std::vector<MultiInput>> inputs_{};
     std::string errorMessage_{};
 };
 

@@ -76,6 +76,18 @@ ZL_FORCE_INLINE void ZS_FastTable_putT(
 /// Templated by minMatch.
 void ZS_FastTable_put(ZS_FastTable* table, uint8_t const* ptr, uint32_t pos);
 
+ZL_FORCE_INLINE void ZS_FastTable_conditionalPutT(
+        ZS_FastTable* table,
+        uint8_t const* ptr,
+        uint32_t pos,
+        uint32_t kMinMatch,
+        bool condition)
+{
+    ZL_ASSERT_EQ(kMinMatch, table->minMatch);
+    size_t const hash  = ZL_hashPtr(ptr, table->tableLog, kMinMatch);
+    table->table[hash] = condition ? pos : table->table[hash];
+}
+
 /// Get the value at ptr.
 /// Templated by minMatch.
 ZL_FORCE_INLINE uint32_t

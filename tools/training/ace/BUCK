@@ -1,6 +1,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("../../../defs.bzl", "relative_headers")
 
 oncall("data_compression")
 
@@ -9,13 +10,16 @@ cpp_library(
     name = "automated_compressor_explorer",
     srcs = [
         "ace.cpp",
+        "ace_combination.cpp",
         "ace_compressor.cpp",
         "ace_compressors.cpp",
         "ace_utils.cpp",
         "automated_compressor_explorer.cpp",
+        "crowding_distance_selector.cpp",
     ],
-    headers = [
+    headers = relative_headers([
         "ace.h",
+        "ace_combination.h",
         "ace_compressor.h",
         "ace_compressors.h",
         "ace_crossover.h",
@@ -23,18 +27,20 @@ cpp_library(
         "ace_sampling.h",
         "ace_utils.h",
         "automated_compressor_explorer.h",
-    ],
+        "crowding_distance_selector.h",
+    ]),
+    header_namespace = "",
     deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
+        "../../..:zstronglib",
     ],
     exported_deps = [
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
-        "//data_compression/experimental/zstrong/custom_parsers:custom_parsers",
-        "//data_compression/experimental/zstrong/tools:logger",
-        "//data_compression/experimental/zstrong/tools/training:train_common",
-        "//data_compression/experimental/zstrong/tools/training/graph_mutation:graph_mutation",
-        "//data_compression/experimental/zstrong/tools/training/sample_collection:sample_collection",
-        "//data_compression/experimental/zstrong/tools/training/utils:genetic_algorithm",
-        "//data_compression/experimental/zstrong/tools/training/utils:training_utils",
+        "..:train_common",
+        "../..:logger",
+        "../../../cpp:openzl_cpp",
+        "../../../custom_parsers:custom_parsers",
+        "../graph_mutation:graph_mutation",
+        "../sample_collection:sample_collection",
+        "../utils:genetic_algorithm",
+        "../utils:training_utils",
     ],
 )

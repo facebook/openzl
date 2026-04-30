@@ -6,7 +6,7 @@
 #include "openzl/shared/bits.h"
 #include "tests/utils.h"
 
-using namespace zstrong::tests;
+using namespace openzl::tests;
 
 namespace {
 

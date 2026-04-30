@@ -43,6 +43,7 @@ void printHexa(const void* p, size_t size)
 ZL_Report
 mit_copy(ZL_Encoder* eictx, const ZL_Input* inputs[], size_t nbInputs) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_EQ(nbInputs, 1);
     ZL_ASSERT_NN(inputs);
     const ZL_Input* in = inputs[0];
@@ -54,7 +55,7 @@ mit_copy(ZL_Encoder* eictx, const ZL_Input* inputs[], size_t nbInputs) noexcept
     ZL_ASSERT_NN(out);
 
     memcpy(ZL_Output_ptr(out), ZL_Input_ptr(in), size);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, size));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, size));
 
     return ZL_returnSuccess();
 }
@@ -81,6 +82,7 @@ ZL_Report mit_concat2(
         const ZL_Input* inputs[],
         size_t nbInputs) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_EQ(nbInputs, 2);
     ZL_ASSERT_NN(inputs);
     ZL_ASSERT_NN(inputs[0]);
@@ -103,7 +105,7 @@ ZL_Report mit_concat2(
 
     memcpy(op, ZL_Input_ptr(inputs[0]), size0);
     memcpy(op + size0, ZL_Input_ptr(inputs[1]), size1);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, totalSize));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, totalSize));
 
     return ZL_returnSuccess();
 }
@@ -202,6 +204,7 @@ ZL_Report mit_concat_serial(
         const ZL_Input* inputs[],
         size_t nbInputs) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_NN(inputs);
     for (size_t n = 0; n < nbInputs; n++) {
         ZL_ASSERT_NN(inputs[n]);
@@ -232,7 +235,7 @@ ZL_Report mit_concat_serial(
         memcpy(op, ZL_Input_ptr(inputs[n]), size);
         op += size;
     }
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, totalSize));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, totalSize));
 
     return ZL_returnSuccess();
 }
@@ -291,6 +294,7 @@ static ZL_Report dispatchToSimpleGraph1(
         ZL_Edge* inputs[],
         size_t nbInputs) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     ZL_GraphIDList gidl = ZL_Graph_getCustomGraphs(gctx);
     assert(gidl.nbGraphIDs == 1);
     assert(gidl.graphids != NULL);
@@ -299,7 +303,7 @@ static ZL_Report dispatchToSimpleGraph1(
     assert(inputs != NULL);
     for (size_t n = 0; n < nbInputs; n++) {
         ZL_Edge* const input = inputs[n];
-        ZL_RET_R_IF_ERR(ZL_Edge_setDestination(input, simpleGraph_withCopy));
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(input, simpleGraph_withCopy));
     }
     return ZL_returnSuccess();
 }
@@ -392,6 +396,7 @@ static ZL_GraphID dedupNum_graph(ZL_Compressor* cgraph) noexcept
 static ZL_Report
 dispatch5Inputs(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     ZL_NodeIDList nidl = ZL_Graph_getCustomNodes(gctx);
     assert(nidl.nbNodeIDs == 1);
     assert(nidl.nodeids != NULL);
@@ -399,19 +404,17 @@ dispatch5Inputs(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs) noexcept
     assert(nbInputs == 5);
     assert(inputs != NULL);
 
-    ZL_TRY_LET_T(
-            ZL_EdgeList, c1, ZL_Edge_runMultiInputNode(inputs, 2, concat2));
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(ZL_EdgeList, c1, ZL_Edge_runMultiInputNode(inputs, 2, concat2));
+    ZL_TRY_LET(
             ZL_EdgeList, c2, ZL_Edge_runMultiInputNode(inputs + 2, 2, concat2));
     assert(c1.nbEdges == 1);
     assert(c2.nbEdges == 1);
 
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZL_Edge_setDestination(c1.edges[0], ZL_GRAPH_COMPRESS_GENERIC));
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZL_Edge_setDestination(c2.edges[0], ZL_GRAPH_COMPRESS_GENERIC));
-    ZL_RET_R_IF_ERR(
-            ZL_Edge_setDestination(inputs[4], ZL_GRAPH_COMPRESS_GENERIC));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(inputs[4], ZL_GRAPH_COMPRESS_GENERIC));
 
     return ZL_returnSuccess();
 }
@@ -443,6 +446,7 @@ static ZL_GraphID register_dispatch5Inputs(ZL_Compressor* cgraph) noexcept
 static ZL_Report
 concat4_as2x2(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     ZL_NodeIDList nidl = ZL_Graph_getCustomNodes(gctx);
     assert(nidl.nbNodeIDs == 1);
     assert(nidl.nodeids != NULL);
@@ -450,9 +454,9 @@ concat4_as2x2(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs) noexcept
     assert(nbInputs == 4);
     assert(inputs != NULL);
 
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList, l1_0, ZL_Edge_runMultiInputNode(inputs, 2, concat2));
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             l1_1,
             ZL_Edge_runMultiInputNode(inputs + 2, 2, concat2));
@@ -461,10 +465,10 @@ concat4_as2x2(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs) noexcept
 
     ZL_Edge* l1s[2] = { l1_0.edges[0], l1_1.edges[0] };
 
-    ZL_TRY_LET_T(ZL_EdgeList, l2_0, ZL_Edge_runMultiInputNode(l1s, 2, concat2));
+    ZL_TRY_LET(ZL_EdgeList, l2_0, ZL_Edge_runMultiInputNode(l1s, 2, concat2));
     assert(l2_0.nbEdges == 1);
 
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZL_Edge_setDestination(l2_0.edges[0], ZL_GRAPH_COMPRESS_GENERIC));
 
     return ZL_returnSuccess();
@@ -676,6 +680,7 @@ static ZL_Report mit_copy_decoder(
         const ZL_Input* VOsrcs[],
         size_t nbVOSrcs) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     assert(nbO1Srcs == 0);
     assert(nbVOSrcs == 1);
     assert(VOsrcs != nullptr);
@@ -688,10 +693,10 @@ static ZL_Report mit_copy_decoder(
     size_t const dstSize = ZL_Input_contentSize(in);
 
     ZL_Output* const out = ZL_Decoder_createTypedStream(dictx, 0, dstSize, 1);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
 
     memcpy(ZL_Output_ptr(out), ZL_Input_ptr(in), dstSize);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, dstSize));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, dstSize));
 
     return ZL_returnSuccess();
 }
@@ -710,6 +715,7 @@ static ZL_Report mit_concat2_decoder(
         const ZL_Input* VOsrcs[],
         size_t nbVOSrcs) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     assert(nbO1Srcs == 1);
     assert(nbVOSrcs == 0);
     (void)VOsrcs;
@@ -729,14 +735,14 @@ static ZL_Report mit_concat2_decoder(
     size_t const dstSize1 = size - dstSize0;
 
     ZL_Output* const out0 = ZL_Decoder_createTypedStream(dictx, 0, dstSize0, 1);
-    ZL_RET_R_IF_NULL(allocation, out0);
+    ZL_ERR_IF_NULL(out0, allocation);
     ZL_Output* const out1 = ZL_Decoder_createTypedStream(dictx, 1, dstSize1, 1);
-    ZL_RET_R_IF_NULL(allocation, out1);
+    ZL_ERR_IF_NULL(out1, allocation);
 
     memcpy(ZL_Output_ptr(out0), ZL_Input_ptr(in), dstSize0);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out0, dstSize0));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out0, dstSize0));
     memcpy(ZL_Output_ptr(out1), ZL_Input_ptr(in), dstSize1);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out1, dstSize1));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out1, dstSize1));
 
     return ZL_returnSuccess();
 }
@@ -756,6 +762,7 @@ static ZL_Report mit_concatSerial_decoder(
         const ZL_Input* VOsrcs[],
         size_t nbVOSrcs) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     assert(nbO1Srcs == 1);
     assert(nbVOSrcs == 0);
     (void)VOsrcs;
@@ -787,10 +794,10 @@ static ZL_Report mit_concatSerial_decoder(
         size_t const dstSize = regenSizes[n];
         ZL_Output* const out =
                 ZL_Decoder_createTypedStream(dictx, (int)n, dstSize, 1);
-        ZL_RET_R_IF_NULL(allocation, out);
+        ZL_ERR_IF_NULL(out, allocation);
         memcpy(ZL_Output_ptr(out), ip, dstSize);
         ip += dstSize;
-        ZL_RET_R_IF_ERR(ZL_Output_commit(out, dstSize));
+        ZL_ERR_IF_ERR(ZL_Output_commit(out, dstSize));
     }
 
     return ZL_returnSuccess();
@@ -841,6 +848,7 @@ static ZL_Report mit_concat2_but_decl3regens_decoder(
         const ZL_Input* VOsrcs[],
         size_t nbVOSrcs) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     assert(nbO1Srcs == 1);
     assert(nbVOSrcs == 0);
     (void)VOsrcs;
@@ -860,17 +868,17 @@ static ZL_Report mit_concat2_but_decl3regens_decoder(
     size_t const dstSize1 = size - dstSize0;
 
     ZL_Output* const out0 = ZL_Decoder_createTypedStream(dictx, 0, dstSize0, 1);
-    ZL_RET_R_IF_NULL(allocation, out0);
+    ZL_ERR_IF_NULL(out0, allocation);
     ZL_Output* const out1 = ZL_Decoder_createTypedStream(dictx, 1, dstSize1, 1);
-    ZL_RET_R_IF_NULL(allocation, out1);
+    ZL_ERR_IF_NULL(out1, allocation);
     ZL_Output* const out2 = ZL_Decoder_createTypedStream(dictx, 2, dstSize0, 1);
     /* this should fail */
-    ZL_RET_R_IF_NULL(allocation, out2);
+    ZL_ERR_IF_NULL(out2, allocation);
 
     memcpy(ZL_Output_ptr(out0), ZL_Input_ptr(in), dstSize0);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out0, dstSize0));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out0, dstSize0));
     memcpy(ZL_Output_ptr(out1), ZL_Input_ptr(in), dstSize1);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out1, dstSize1));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out1, dstSize1));
 
     return ZL_returnSuccess();
 }
@@ -889,6 +897,7 @@ static ZL_Report mit_concat2_but_decl1regen_decoder(
         const ZL_Input* VOsrcs[],
         size_t nbVOSrcs) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     assert(nbO1Srcs == 1);
     assert(nbVOSrcs == 0);
     (void)VOsrcs;
@@ -908,10 +917,10 @@ static ZL_Report mit_concat2_but_decl1regen_decoder(
     (void)size;
 
     ZL_Output* const out0 = ZL_Decoder_createTypedStream(dictx, 0, dstSize0, 1);
-    ZL_RET_R_IF_NULL(allocation, out0);
+    ZL_ERR_IF_NULL(out0, allocation);
 
     memcpy(ZL_Output_ptr(out0), ZL_Input_ptr(in), dstSize0);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out0, dstSize0));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out0, dstSize0));
 
     // This is erroneous, and should be detected by the decompression engine
     return ZL_returnSuccess();

@@ -19,6 +19,9 @@ class EncoderState {
    public:
     EncoderState(ZL_Encoder* encoder, poly::span<const ZL_Input*> inputs);
 
+    EncoderState(const EncoderState&)            = delete;
+    EncoderState& operator=(const EncoderState&) = delete;
+
     ZL_Encoder* get()
     {
         return encoder_;
@@ -83,7 +86,7 @@ class CustomEncoder {
 
     static NodeID registerCustomEncoder(
             Compressor& compressor,
-            std::shared_ptr<CustomEncoder> encoder);
+            std::shared_ptr<const CustomEncoder> encoder);
 };
 
 } // namespace openzl

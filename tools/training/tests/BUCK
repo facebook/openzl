@@ -1,6 +1,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("../../../defs.bzl", "relative_headers")
 
 oncall("data_compression")
 
@@ -9,6 +10,7 @@ cpp_unittest(
     name = "test_training",
     srcs = [
         "test_ace.cpp",
+        "test_ace_combination.cpp",
         "test_clustering.cpp",
         "test_clustering_benchmarks.cpp",
         "test_clustering_config_builder.cpp",
@@ -17,20 +19,21 @@ cpp_unittest(
         "test_sample_limiter.cpp",
         "test_thread_pool.cpp",
     ],
-    headers = [
+    headers = relative_headers([
         "benchmark_files/ppmf_unit_segment.h",
-    ],
+    ]),
+    header_namespace = "",
     deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/custom_parsers:custom_parsers",
-        "//data_compression/experimental/zstrong/custom_parsers/csv:csv_parser",
-        "//data_compression/experimental/zstrong/tests/datagen:datagen",
-        "//data_compression/experimental/zstrong/tools/training:train",
-        "//data_compression/experimental/zstrong/tools/training/ace:automated_compressor_explorer",
-        "//data_compression/experimental/zstrong/tools/training/clustering:clustering_graph_trainer",
-        "//data_compression/experimental/zstrong/tools/training/clustering:train_api",
-        "//data_compression/experimental/zstrong/tools/training/clustering:training_clustering",
-        "//data_compression/experimental/zstrong/tools/training/utils:genetic_algorithm",
-        "//data_compression/experimental/zstrong/tools/training/utils:training_utils",
+        "..:train",
+        "../../..:zstronglib",
+        "../../../custom_parsers:custom_parsers",
+        "../../../custom_parsers/csv:csv_parser",
+        "../../../tests/datagen:datagen",
+        "../ace:automated_compressor_explorer",
+        "../clustering:clustering_graph_trainer",
+        "../clustering:train_api",
+        "../clustering:training_clustering",
+        "../utils:genetic_algorithm",
+        "../utils:training_utils",
     ],
 )

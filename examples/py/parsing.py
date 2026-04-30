@@ -5,7 +5,6 @@ import random
 import struct
 from typing import List
 
-import numpy as np
 import openzl.ext as zl
 
 # --8<-- [end:imports]
@@ -214,7 +213,7 @@ def decompress(compressed: bytes) -> bytes:
 
     # Decompress the compressed data.
     # OpenZL compressed data can decompress to multiple outputs of several types.
-    # Here, we expect to recieve a single output of serial data.
+    # Here, we expect to receive a single output of serial data.
     outputs = dctx.decompress(compressed)
     if len(outputs) != 1 or outputs[0].type != zl.Type.Serial:
         raise RuntimeError("Only one serial output supported")

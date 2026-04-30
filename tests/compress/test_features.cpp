@@ -23,7 +23,7 @@ void verifyIntegerFeatures(
         const std::map<std::string, double>& featureMap)
 {
     VECTOR(LabeledFeature) features = VECTOR_EMPTY(kDefaultVectorCapacity);
-    const ZL_Report report = FeatureGen_integer(stream, &features, nullptr);
+    const ZL_Report report          = FeatureGen_integer(stream, &features);
     ASSERT_FALSE(ZL_errorCode(report));
 
     for (size_t i = 0; i < VECTOR_SIZE(features); ++i) {
@@ -47,7 +47,7 @@ void generateStreamAndVerifyIntegerFeatures(
         const std::map<std::string, double>& featureMap)
 {
     ASSERT_TRUE(std::is_arithmetic<T>::value);
-    zstrong::tests::WrappedStream<T> stream(streamData, ZL_Type_numeric);
+    openzl::tests::WrappedStream<T> stream(streamData, ZL_Type_numeric);
 
     verifyIntegerFeatures(stream.getStream(), featureMap);
 }

@@ -23,6 +23,17 @@
 extern "C" {
 #endif
 
+// Zero-initialization syntax differs between C and C++.
+// C++ uses {} to avoid -Wmissing-braces with nested structs.
+// C uses { 0 } which is the standard zero-initialization idiom.
+#if defined(__cplusplus)
+#    define ZL_ZERO_INIT \
+        {                \
+        }
+#else
+#    define ZL_ZERO_INIT { 0 }
+#endif
+
 #ifndef ZL_ERROR_ENABLE_STATIC_ERROR_INFO
 #    define ZL_ERROR_ENABLE_STATIC_ERROR_INFO 1
 #endif
@@ -78,6 +89,10 @@ extern "C" {
 #define ZL_ErrorCode_graph_nonserializable__desc_str \
     "Graph incompatible with serialization"
 #define ZL_ErrorCode_graph_invalidNumInputs__desc_str "Graph invalid nb inputs"
+#define ZL_ErrorCode_graph_parser_malformedInput__desc_str \
+    "Parser encountered malformed input"
+#define ZL_ErrorCode_graph_parser_unhandledInput__desc_str \
+    "Parser encountered unhandled input"
 #define ZL_ErrorCode_successor_invalid__desc_str \
     "Selected an invalid Successor Graph"
 #define ZL_ErrorCode_successor_alreadySet__desc_str \
@@ -135,6 +150,9 @@ extern "C" {
 #define ZL_ErrorCode_srcSize_tooLarge__desc_str "Source size too large"
 #define ZL_ErrorCode_integerOverflow__desc_str "Integer overflow"
 #define ZL_ErrorCode_invalidName__desc_str "Invalid name of graph component"
+#define ZL_ErrorCode_dict_corruption__desc_str "Dictionary corruption detected"
+#define ZL_ErrorCode_dict_materialization__desc_str \
+    "Dictionary materialization failure"
 
 /**********************
  * ZL_StaticErrorInfo *
@@ -151,11 +169,16 @@ struct ZL_StaticErrorInfo_s {
 };
 
 #if ZL_ERROR_ENABLE_STATIC_ERROR_INFO
-#    define ZL_E_DECLARE_STATIC_ERROR_INFO(name, c, f)               \
-        static const ZL_StaticErrorInfo name = (ZL_StaticErrorInfo)  \
-        {                                                            \
-            .code = c, .fmt = f, .file = __FILE__, .func = __func__, \
-            .line = __LINE__                                         \
+// MSVC doesn't allow __func__ in static initializers (it's a variable, not a
+// constant) Use __FUNCTION__ instead for MSVC (it's a string literal constant)
+#    ifdef _MSC_VER
+#        define ZL_FUNC_NAME __FUNCTION__
+#    else
+#        define ZL_FUNC_NAME __func__
+#    endif
+#    define ZL_E_DECLARE_STATIC_ERROR_INFO(name, c, f) \
+        static const ZL_StaticErrorInfo name = {       \
+            c, (f), __FILE__, ZL_FUNC_NAME, __LINE__   \
         }
 #    define ZL_E_POINTER_TO_STATIC_ERROR_INFO(name) (&(name))
 #else
@@ -214,13 +237,45 @@ struct ZL_Error_s {
     ZL_ErrorInfo _info;
 };
 
-#define ZL_EE_EMPTY ((ZL_ErrorInfo){ ._st = NULL })
+#if defined(__cplusplus)
+// C++ compatible versions using constructor syntax
+#    define ZL_EE_EMPTY (ZL_ErrorInfo{ nullptr })
+#    define ZL_E_EMPTY (ZL_Error{ ZL_ErrorCode_no_error, ZL_EE_EMPTY })
+#else
+// C99 compound literals
+#    define ZL_EE_EMPTY ((ZL_ErrorInfo){ ._st = NULL })
+#    define ZL_E_EMPTY \
+        ((ZL_Error){ ._code = ZL_ErrorCode_no_error, ._info = ZL_EE_EMPTY })
+#endif
 
-#define ZL_E_EMPTY \
-    ((ZL_Error){ ._code = ZL_ErrorCode_no_error, ._info = ZL_EE_EMPTY })
+ZL_INLINE ZL_ErrorInfo ZL_EE_fromStaticErrorInfo(const ZL_StaticErrorInfo* st)
+{
+    ZL_ErrorInfo ei = ZL_EE_EMPTY;
+    ei._st          = st;
+    return ei;
+}
+
+#if ZL_ERROR_ENABLE_STATIC_ERROR_INFO
+#    define ZL_EE_FROM_STATIC(name) \
+        ZL_EE_fromStaticErrorInfo(ZL_E_POINTER_TO_STATIC_ERROR_INFO(name))
+#else
+#    define ZL_EE_FROM_STATIC(name) ZL_EE_EMPTY
+#endif
 
 // Returns the ZL_Error descriptor from a ZL_RESULT_OF(<T>) object.
 #define ZL_RES_error(res) ((res)._error)
+
+#define ZL_E_INNER(err, ...) \
+    ZL_E_CODE_INNER(ZL_EXPAND_ERRCODE(err), __VA_ARGS__)
+#define ZL_E_CODE_INNER(code, ...) \
+    ZL_E_create(                   \
+            NULL,                  \
+            &ZL__errorContext,     \
+            __FILE__,              \
+            __func__,              \
+            __LINE__,              \
+            code,                  \
+            __VA_ARGS__)
 
 #define ZL_E_DECLARE_WITH_STATIC_AND_CONTEXT(        \
         name, static_error, scope_context, err, ...) \
@@ -271,9 +326,9 @@ void ZL_E_appendToMessage(ZL_Error err, char const* fmt, ...);
  *
  * This function can be called directly, but is primarily used indirectly.
  * Firstly, if you want to invoke this function yourself, it's easier to use
- * @ref ZL_E_ADDFRAME_PUBLIC instead since it populates some of the arguments
+ * @ref ZL_E_ADDFRAME instead since it populates some of the arguments
  * for you. Secondly, this is an implementation detail mostly here to be used
- * by @ref ZL_RET_T_IF_ERR and friends, which call this to add more context to
+ * by @ref ZL_ERR_IF_ERR and friends, which call this to add more context to
  * the error as it passes by.
  *
  * @note OpenZL must have been compiled with ZL_ERROR_ENABLE_STACKS defined to
@@ -281,9 +336,10 @@ void ZL_E_appendToMessage(ZL_Error err, char const* fmt, ...);
  *
  * @returns the modified error.
  */
-ZL_Error ZL_E_addFrame_public(
+ZL_Error ZL_E_addFrame(
         ZL_ErrorContext const* ctx,
         ZL_Error error,
+        ZL_ErrorInfo backup,
         const char* file,
         const char* func,
         int line,
@@ -291,11 +347,18 @@ ZL_Error ZL_E_addFrame_public(
         ...);
 
 /**
- * Macro wrapper around @ref ZL_E_addFrame_public that automatically adds the
- * file, function, and line number macros to the args.
+ * Macro wrapper around @ref ZL_E_addFrame that automatically adds the
+ * scope context, file, function, and line number macros to the args.
  */
-#define ZL_E_ADDFRAME_PUBLIC(ctx, error, ...) \
-    ZL_E_addFrame_public(ctx, error, __FILE__, __func__, __LINE__, __VA_ARGS__)
+#define ZL_E_ADDFRAME(error, backup, ...) \
+    ZL_E_addFrame(                        \
+            &ZL__errorContext,            \
+            error,                        \
+            backup,                       \
+            __FILE__,                     \
+            __func__,                     \
+            __LINE__,                     \
+            __VA_ARGS__)
 
 /**
  * ZL_Error_Array: a const view into an array of errors, returned by some
@@ -347,8 +410,8 @@ typedef struct {
     {                                                                    \
         /* Avoids using the inactive members of the union. */            \
         if (ZL_RES_isError(result)) {                                    \
-            *error = result._error;                                      \
-            _value_type dummy_value;                                     \
+            *error                  = result._error;                     \
+            _value_type dummy_value = ZL_ZERO_INIT;                      \
             memset(&dummy_value, 0, sizeof(dummy_value));                \
             return dummy_value;                                          \
         } else {                                                         \
@@ -366,227 +429,72 @@ typedef struct {
 #    define ZL_RESULT_DECLARE_INNER_TYPES(_value_type) /* nothing */
 #endif
 
-#define ZL_RESULT_MAKE_ERROR(type, err, ...) \
-    ZL_RESULT_MAKE_ERROR_CODE(type, ZL_EXPAND_ERRCODE(err), __VA_ARGS__)
+#define ZL_RESULT_MAKE_ERROR(type, ...) \
+    ZL_RESULT_WRAP_ERROR(type, ZL_E(__VA_ARGS__))
 
 #define ZL_RESULT_MAKE_ERROR_CODE(type, ...) \
-    ZS_MACRO_PAD4(ZL_RESULT_MAKE_ERROR_CODE_INNER, "", "", type, __VA_ARGS__)
+    ZL_RESULT_WRAP_ERROR(type, ZL_E_CODE(__VA_ARGS__))
 
-#define ZL_RESULT_MAKE_ERROR_CODE_INNER(               \
-        __PLACEHOLDER1__, __PLACEHOLDER2__, type, ...) \
-    ((ZL_RESULT_OF(type)){                             \
-            ._error = ZL_E_create(                     \
-                    NULL, NULL, __FILE__, __func__, __LINE__, __VA_ARGS__) })
+#if defined(__cplusplus)
+} // extern "C"
 
-#define ZL_RESULT_WRAP_ERROR(type, err) \
-    ((ZL_RESULT_OF(type)){ ._error = (err) })
+// Helper functions for C++ to avoid compound literals
+// These must be outside extern "C" block
+namespace openzl::detail {
+template <typename T>
+inline T make_result_with_error(ZL_Error err)
+{
+    T result;
+    result._error = err;
+    return result;
+}
 
-#define ZL_RESULT_WRAP_VALUE(type, value) \
-    ((ZL_RESULT_OF(type)){                  \
-            ._value = {                      \
-              ._code = ZL_ErrorCode_no_error, \
-              ._value = (value),           \
-          },                               \
-  })
+template <typename T, typename V>
+inline T make_result_with_value(V value)
+{
+    T result;
+    result._value._code  = ZL_ErrorCode_no_error;
+    result._value._value = value;
+    return result;
+}
+} // namespace openzl::detail
 
-#define ZL_RET_IF_NOT_UNARY_IMPL(type, errcode, expr, ...) \
-    ZL_RET_IF_UNARY_IMPL(type, errcode, !(expr), __VA_ARGS__)
+// C++ compatible versions using helper functions
+#    define ZL_RESULT_MAKE_ERROR_CODE_INNER(               \
+            __PLACEHOLDER1__, __PLACEHOLDER2__, type, ...) \
+        (::openzl::detail::make_result_with_error<         \
+                ZL_RESULT_OF(type)>(ZL_E_create(           \
+                NULL, NULL, __FILE__, __func__, __LINE__, __VA_ARGS__)))
 
-#define ZL_RET_IF_NN_IMPL(type, errcode, expr, ...) \
-    ZL_RET_IF_BINARY_IMPL(                          \
-            type,                                   \
-            errcode,                                \
-            !=,                                     \
-            (const char*)(const void*)expr,         \
-            (const char*)0,                         \
-            __VA_ARGS__)
+#    define ZL_RESULT_WRAP_ERROR(type, err) \
+        (::openzl::detail::make_result_with_error<ZL_RESULT_OF(type)>(err))
 
-#define ZL_RET_IF_NULL_IMPL(type, errcode, expr, ...) \
-    ZL_RET_IF_BINARY_IMPL(                            \
-            type,                                     \
-            errcode,                                  \
-            ==,                                       \
-            (const char*)(const void*)expr,           \
-            (const char*)0,                           \
-            __VA_ARGS__)
+#    define ZL_RESULT_WRAP_VALUE(type, value) \
+        (::openzl::detail::make_result_with_value<ZL_RESULT_OF(type)>(value))
 
-#define ZL_RET_IMPL(type, res) \
-    do {                       \
-        return (res);          \
-    } while (0)
-
-#define ZL_RET_ERR_IMPL(type, errcode, ...)                                \
-    do {                                                                   \
-        ZL_E_DECLARE_STATIC_ERROR_INFO(                                    \
-                __zl_static_error_info,                                    \
-                ZL_EXPAND_ERRCODE(errcode),                                \
-                "Unconditional failure: " ZL_EXPAND_ERRCODE_DESC_STR(      \
-                        errcode) ": " ZS_MACRO_1ST_ARG(__VA_ARGS__));      \
-        ZL_RET_ERR_WITH_STATIC_AND_CONTEXT(                                \
-                type,                                                      \
-                ZL_E_POINTER_TO_STATIC_ERROR_INFO(__zl_static_error_info), \
-                NULL,                                                      \
-                errcode,                                                   \
-                __VA_ARGS__);                                              \
-    } while (0)
-
-#define ZL_RET_ERR_WITH_STATIC_AND_CONTEXT(                \
-        type, static_error, scope_context, errcode, ...)   \
-    do {                                                   \
-        ZL_E_DECLARE_WITH_STATIC_AND_CONTEXT(              \
-                __zl_tmp_error,                            \
-                static_error,                              \
-                scope_context,                             \
-                errcode,                                   \
-                "Unconditional failure: " __VA_ARGS__);    \
-        ZL_E_appendToMessage(__zl_tmp_error, "\n\t");      \
-        return ZL_RESULT_WRAP_ERROR(type, __zl_tmp_error); \
-    } while (0)
-
-#define ZL_RET_IF_ERR_IMPL(type, expr, ...)                       \
-    do {                                                          \
-        ZL_RESULT_OF(type)                                        \
-        _result = ZL_RESULT_WRAP_ERROR(type, ZL_RES_error(expr)); \
-        if (ZL_UNLIKELY(ZL_RES_isError(_result))) {               \
-            ZL_RES_error(_result) = ZL_E_ADDFRAME_PUBLIC(         \
-                    NULL, ZL_RES_error(_result), __VA_ARGS__);    \
-            return _result;                                       \
-        }                                                         \
-    } while (0)
-
-// undef'ed and replaced in the internal errors header
-#define ZL_RET_IF_UNARY_IMPL(type, errcode, expr, ...)                     \
-    do {                                                                   \
-        ZL_E_DECLARE_STATIC_ERROR_INFO(                                    \
-                __zl_static_error_info,                                    \
-                ZL_EXPAND_ERRCODE(errcode),                                \
-                "Check `" #expr "' failed: " ZL_EXPAND_ERRCODE_DESC_STR(   \
-                        errcode) ": " ZS_MACRO_1ST_ARG(__VA_ARGS__));      \
-        ZL_RET_IF_UNARY_IMPL_WITH_STATIC_AND_CONTEXT(                      \
-                type,                                                      \
-                ZL_E_POINTER_TO_STATIC_ERROR_INFO(__zl_static_error_info), \
-                NULL,                                                      \
-                errcode,                                                   \
-                expr,                                                      \
-                __VA_ARGS__);                                              \
-    } while (0)
-
-// undef'ed and replaced in the internal errors header
-#define ZL_RET_IF_BINARY_IMPL(type, errcode, op, lhs, rhs, ...)            \
-    do {                                                                   \
-        ZL_E_DECLARE_STATIC_ERROR_INFO(                                    \
-                __zl_static_error_info,                                    \
-                ZL_EXPAND_ERRCODE(errcode),                                \
-                "Check `" #lhs " " #op " " #rhs                            \
-                "' failed: " ZL_EXPAND_ERRCODE_DESC_STR(                   \
-                        errcode) ": " ZS_MACRO_1ST_ARG(__VA_ARGS__));      \
-        ZL_RET_IF_BINARY_IMPL_WITH_STATIC_AND_CONTEXT(                     \
-                type,                                                      \
-                ZL_E_POINTER_TO_STATIC_ERROR_INFO(__zl_static_error_info), \
-                NULL,                                                      \
-                errcode,                                                   \
-                op,                                                        \
-                lhs,                                                       \
-                rhs,                                                       \
-                __VA_ARGS__);                                              \
-    } while (0)
-
-#define ZL_RET_IF_UNARY_IMPL_WITH_STATIC_AND_CONTEXT(                 \
-        type, static_error, scope_context, errcode, expr, ...)        \
-    do {                                                              \
-        if (ZL_UNLIKELY(expr)) {                                      \
-            ZL_E_DECLARE_WITH_STATIC_AND_CONTEXT(                     \
-                    __zl_tmp_error,                                   \
-                    static_error,                                     \
-                    scope_context,                                    \
-                    errcode,                                          \
-                    "Check `%s' failed",                              \
-                    #expr);                                           \
-            ZL_E_appendToMessage(__zl_tmp_error, "\n\t" __VA_ARGS__); \
-            return ZL_RESULT_WRAP_ERROR(type, __zl_tmp_error);        \
-        }                                                             \
-    } while (0)
-
-// Controls whether to use the verbose non-standards-compliant binary assertion
-// implementation (if enabled) or the fallback standards-compliant version (if
-// disabled).
-#ifndef ZL_ENABLE_RET_IF_ARG_PRINTING
-#    if defined(__GNUC__)
-#        define ZL_ENABLE_RET_IF_ARG_PRINTING 1
-#    else
-#        define ZL_ENABLE_RET_IF_ARG_PRINTING 0
-#    endif
-#endif
-
-#if ZL_ENABLE_RET_IF_ARG_PRINTING
-/* We can only evaluate the lhs and rhs arguments once (they might have
- * side-effects). But we use their values twice. So we need to store the
- * results of their evaluation in temporary variables. But it's very difficult
- * to know what type those temporaries should have.
- *
- * So we do this weird typeof(...) dance to get temporaries that preserve or
- * exceed the signedness / precision / pointerness of the arguments. When the
- * the arguments are arithmetic types, the `L + (L - R)` construct resolves to
- * a suitably promoted type. When the arguments are pointers it just resoves to
- * the pointer type (`T* + (T* - T*)` becomes `T* + ptrdiff_t`, which is `T*`).
- *
- * Annoyingly, we can't use lhs and rhs directly in the typeof expression,
- * because clang has a warning (-Wnull-pointer-subtraction) that fires if one
- * of the arguments is a null pointer. So we use surrogate variables.
- */
-#    define ZL_RET_IF_BINARY_IMPL_WITH_STATIC_AND_CONTEXT(                                         \
-            type, static_error, scope_context, errcode, op, lhs, rhs, ...)                         \
-        do {                                                                                       \
-            const __typeof__(lhs) __dbg_lhs_type = (__typeof__(lhs))0;                             \
-            const __typeof__(rhs) __dbg_rhs_type = (__typeof__(rhs))0;                             \
-            const __typeof__((__dbg_lhs_type) + ((__dbg_lhs_type) - (__dbg_rhs_type))) __dbg_lhs = \
-                    (__typeof__((__dbg_lhs_type) + ((__dbg_lhs_type) - (__dbg_rhs_type))))(lhs);   \
-            const __typeof__((__dbg_lhs_type) + ((__dbg_lhs_type) - (__dbg_rhs_type))) __dbg_rhs = \
-                    (__typeof__((__dbg_lhs_type) + ((__dbg_lhs_type) - (__dbg_rhs_type))))(rhs);   \
-            if (0 && ((lhs)op(rhs))) /* enforce type comparability */ {                            \
-            }                                                                                      \
-            if (ZL_UNLIKELY(__dbg_lhs op __dbg_rhs)) {                                             \
-                ZL_E_DECLARE_WITH_STATIC_AND_CONTEXT(                                              \
-                        __zl_tmp_error,                                                            \
-                        static_error,                                                              \
-                        scope_context,                                                             \
-                        errcode,                                                                   \
-                        ZS_GENERIC_PRINTF_BUILD_FORMAT_2_ARG(                                      \
-                                __dbg_lhs,                                                         \
-                                "Check `%s %s %s' failed where:\n\tlhs = ",                        \
-                                "\n\trhs = ",                                                      \
-                                ""),                                                               \
-                        #lhs,                                                                      \
-                        #op,                                                                       \
-                        #rhs,                                                                      \
-                        ZS_GENERIC_PRINTF_CAST(__dbg_lhs),                                         \
-                        ZS_GENERIC_PRINTF_CAST(__dbg_rhs));                                        \
-                ZL_E_appendToMessage(__zl_tmp_error, "\n\t" __VA_ARGS__);                          \
-                return ZL_RESULT_WRAP_ERROR(type, __zl_tmp_error);                                 \
-            }                                                                                      \
-        } while (0)
+extern "C" {
 #else
-/* Otherwise, if we don't have typeof(), it's impossible to store the results
- * safely. So we just evaluate and use them directly in the comparison, and
- * give up the ability to print their values.
- */
-#    define ZL_RET_IF_BINARY_IMPL_WITH_STATIC_AND_CONTEXT(                 \
-            type, static_error, scope_context, errcode, op, lhs, rhs, ...) \
-        do {                                                               \
-            if (ZL_UNLIKELY((lhs)op(rhs))) {                               \
-                ZL_E_DECLARE_WITH_STATIC_AND_CONTEXT(                      \
-                        __zl_tmp_error,                                    \
-                        static_error,                                      \
-                        scope_context,                                     \
-                        errcode,                                           \
-                        "Check `%s %s %s' failed",                         \
-                        #lhs,                                              \
-                        #op,                                               \
-                        #rhs);                                             \
-                ZL_E_appendToMessage(__zl_tmp_error, "\n\t" __VA_ARGS__);  \
-                return ZL_RESULT_WRAP_ERROR(type, __zl_tmp_error);         \
-            }                                                              \
-        } while (0)
+// C99 compound literals
+#    define ZL_RESULT_MAKE_ERROR_CODE_INNER(               \
+            __PLACEHOLDER1__, __PLACEHOLDER2__, type, ...) \
+        ((ZL_RESULT_OF(type)){ ._error = ZL_E_create(      \
+                                       NULL,               \
+                                       NULL,               \
+                                       __FILE__,           \
+                                       __func__,           \
+                                       __LINE__,           \
+                                       __VA_ARGS__) })
+
+#    define ZL_RESULT_WRAP_ERROR(type, err) \
+        ((ZL_RESULT_OF(type)){ ._error = (err) })
+
+#    define ZL_RESULT_WRAP_VALUE(type, value) \
+        ((ZL_RESULT_OF(type)){                  \
+                ._value = {                     \
+                  ._code = ZL_ErrorCode_no_error, \
+                  ._value = (value),            \
+              },                                \
+      })
 #endif
 
 //////////////////////////////////////////////
@@ -594,8 +502,7 @@ typedef struct {
 //////////////////////////////////////////////
 
 #define ZL_WRAP_ERROR_ADD_FRAME(error) \
-    ZL_WRAP_ERROR_NO_FRAME(            \
-            ZL_E_ADDFRAME_PUBLIC(&ZL__errorContext, error, "Wrapping error."))
+    ZL_WRAP_ERROR_NO_FRAME(ZL_E_ADDFRAME(error, ZL_EE_EMPTY, "Wrapping error."))
 
 #define ZL_ERR_RET_IMPL(errcode, ...)                                      \
     do {                                                                   \
@@ -614,14 +521,20 @@ typedef struct {
         return ZL_WRAP_ERROR_NO_FRAME(__zl_tmp_error);                     \
     } while (0)
 
-#define ZL_ERR_IF_ERR_IMPL(expr, ...)                                       \
-    do {                                                                    \
-        ZL__RetType _result = ZL_WRAP_ERROR_NO_FRAME(ZL_RES_error(expr));   \
-        if (ZL_UNLIKELY(ZL_RES_isError(_result))) {                         \
-            ZL_RES_error(_result) = ZL_E_ADDFRAME_PUBLIC(                   \
-                    &ZL__errorContext, ZL_RES_error(_result), __VA_ARGS__); \
-            return _result;                                                 \
-        }                                                                   \
+#define ZL_ERR_IF_ERR_IMPL(expr, ...)                                     \
+    do {                                                                  \
+        ZL__RetType _result = ZL_WRAP_ERROR_NO_FRAME(ZL_RES_error(expr)); \
+        if (ZL_UNLIKELY(ZL_RES_isError(_result))) {                       \
+            ZL_E_DECLARE_STATIC_ERROR_INFO(                               \
+                    __zl_static_error_info,                               \
+                    ZL_ErrorCode_GENERIC,                                 \
+                    "Forwarding error: " ZS_MACRO_1ST_ARG(__VA_ARGS__));  \
+            ZL_RES_error(_result) = ZL_E_ADDFRAME(                        \
+                    ZL_RES_error(_result),                                \
+                    ZL_EE_FROM_STATIC(__zl_static_error_info),            \
+                    __VA_ARGS__);                                         \
+            return _result;                                               \
+        }                                                                 \
     } while (0)
 
 #define ZL_ERR_IF_UNARY_IMPL(expr, errcode, ...)                               \

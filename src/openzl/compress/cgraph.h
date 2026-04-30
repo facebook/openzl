@@ -74,6 +74,52 @@ ZL_NodeID CGraph_registerStandardMITransform(
         unsigned minFormatVersion,
         unsigned maxFormatVersion);
 
+/* =====   Dict accessors   ===== */
+
+/**
+ * @returns the materialized dictionary object at position @p dictOffset
+ * within the compressor's loaded bundle, or NULL if no bundle is loaded.
+ * @pre dictOffset < bundle->numDicts
+ */
+const void* CGRAPH_getDictObj(const ZL_Compressor* cgraph, size_t dictOffset);
+
+/* =====   Dict index resolution   ===== */
+
+/**
+ * For each CNode that declares a dictID, resolve its positional index within
+ * the compressor's loaded bundle and write it into CNode.maybeDictIndex.
+ * CNodes without a dictID keep maybeDictIndex == ZL_DICT_INDEX_NONE.
+ * @returns success, or an error if a required dict is missing from the bundle.
+ */
+ZL_Report CGraph_resolveDictIndices(ZL_Compressor* cgraph);
+
+/* =====   Private actions on Compressor   ===== */
+
+/**
+ * Warning: This is part of experimental API for compressor mutation.
+ *
+ * Requires that:
+ * @p graph is a parameterized graph registered in @p compressor
+ *
+ * Replaces the parameters of @p graph with @p gp.
+ * @note: This function does not validate there are no dependency cycles within
+ * the compressor.
+ */
+ZL_Report ZL_Compressor_overrideGraphParams(
+        ZL_Compressor* compressor,
+        ZL_GraphID graph,
+        const ZL_GraphParameters* gp);
+
+/**
+ * Look up a previously loaded dict by its ZL_DictID.
+ * @param matDesc must match the materializer used when the dict was loaded.
+ * @returns the dict, or NULL if no dict with this ID has been loaded.
+ */
+const ZL_Dict* CGRAPH_findDict(
+        const ZL_Compressor* cgraph,
+        const ZL_DictID* id,
+        const ZL_MaterializerDesc2* matDesc);
+
 ZL_END_C_DECLS
 
 #endif // ZSTRONG_COMPRESS_CGRAPH_H

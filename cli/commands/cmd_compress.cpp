@@ -6,13 +6,12 @@
 #include <iostream>
 
 #include "openzl/cpp/CCtx.hpp"
+#include "openzl/cpp/CParam.hpp"
 #include "openzl/zl_compress.h"
 
 #include "tools/io/InputSetStatic.h"
 #include "tools/io/OutputBuffer.h"
 #include "tools/logger/Logger.h"
-
-#include "custom_parsers/dependency_registration.h"
 
 #include "cli/args/TrainArgs.h"
 #include "cli/commands/cmd_compress.h"
@@ -24,7 +23,6 @@ using namespace logger;
 
 namespace openzl::cli {
 constexpr size_t BYTES_TO_MB = 1000 * 1000;
-constexpr size_t BYTES_TO_GB = BYTES_TO_MB * 1000;
 
 namespace {
 
@@ -64,11 +62,13 @@ int trainCompressorOnSampleFile(CompressArgs& args)
             std::make_shared<tools::io::OutputBuffer>(compressorData);
 
     // Construct args for training
-    TrainArgs trainArgs(args);
+    TrainArgs trainArgs(args, args.compressor());
     trainArgs.inputs =
             std::make_unique<tools::io::InputSetStatic>(std::move(inputVec));
-    trainArgs.output     = compressorOutput;
-    trainArgs.compressor = args.compressor;
+    trainArgs.output = compressorOutput;
+    if (args.trainInlineTestLimit) {
+        trainArgs.trainParams.maxTimeSecs = args.trainInlineTestLimit.value();
+    }
 
     // Train the compressor
     int result = cmdTrain(trainArgs);
@@ -77,8 +77,9 @@ int trainCompressorOnSampleFile(CompressArgs& args)
     }
 
     // Save the trained compressor
-    args.compressor = custom_parsers::createCompressorFromSerialized(
-            compressorOutput->to_input()->contents());
+    args.setCompressor(
+            custom_parsers::createCompressorFromSerialized(
+                    compressorOutput->to_input()->contents()));
 
     return result;
 }
@@ -96,7 +97,7 @@ void writeTrace(CCtx& cctx, const CompressArgs& args)
             throw InvalidArgsException(msg);
         }
         for (const auto& [id, stream] : trace.second) {
-            std::filesystem::path path = dir / (std::to_string(id) + ".sdd");
+            std::filesystem::path path = dir / (id + ".sdd");
             std::ofstream file{ path, std::ios::binary };
             if (!file.is_open()) {
                 Logger::log(
@@ -107,8 +108,7 @@ void writeTrace(CCtx& cctx, const CompressArgs& args)
             }
             file.write(stream.first.data(), stream.first.size());
             if (stream.second != "") {
-                std::filesystem::path strLensPath =
-                        dir / (std::to_string(id) + ".sdlens");
+                std::filesystem::path strLensPath = dir / (id + ".sdlens");
                 std::ofstream strLensFile{ strLensPath, std::ios::binary };
                 if (!strLensFile.is_open()) {
                     Logger::log(
@@ -129,14 +129,20 @@ int performCompression(const CompressArgs& args)
     // create compressor and context
     CCtx cctx;
     cctx.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
-    cctx.refCompressor(*args.compressor);
+    if (!args.strict) {
+        cctx.setParameter(CParam::PermissiveCompression, 1);
+    }
+    if (!args.storeOnExpansion) {
+        cctx.setParameter(CParam::StoreOnExpansion, ZL_TernaryParam_disable);
+    }
+    cctx.refCompressor(*args.compressor());
     if (args.traceOutput) {
         args.traceOutput->open();
         Logger::log(
                 VERBOSE1,
                 "Tracing compression to ",
                 args.traceOutput->name().data());
-        cctx.writeTraces(true);
+        cctx.writeTraces(true, args.streamPreview);
     }
 
     auto& input  = *args.input;
@@ -144,14 +150,16 @@ int performCompression(const CompressArgs& args)
 
     // ahead of time.
     const auto inputSize = input.size().value();
-    // TODO: Size limitations should be a library feature
-    if (inputSize > 2 * BYTES_TO_GB) {
-        throw std::runtime_error(
-                "Chunking support is required for compressing inputs larger than 2 GB. ");
-    }
     Logger::log(VERBOSE1, "Input size: ", inputSize);
 
-    std::string dstBuffer = std::string(ZL_compressBound(inputSize), '\0');
+    // When StoreOnExpansion is disabled (train-inline or explicit flag),
+    // compression may expand data beyond ZL_compressBound(), which assumes the
+    // anti-inflation guard limits output to input + overhead. Use a generous
+    // buffer in that case.
+    size_t const dstCapacity = (args.trainInline || !args.storeOnExpansion)
+            ? 2 * ZL_compressBound(inputSize) + 1024
+            : ZL_compressBound(inputSize);
+    std::string dstBuffer    = std::string(dstCapacity, '\0');
 
     // read the input
     const auto srcBuffer = input.contents();

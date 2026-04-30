@@ -3,8 +3,9 @@
 import type {ZL_IDType, StreamID} from '../models/idTypes';
 import type {SerializedLocalParamInfo} from './SerializedLocalParamInfo';
 
-export type SerializedCodec = {
+export interface SerializedCodec {
   name: string;
+  chunkId: number;
   cType: boolean;
   cID: ZL_IDType;
   cHeaderSize: number;
@@ -12,4 +13,4 @@ export type SerializedCodec = {
   cLocalParams: SerializedLocalParamInfo;
   inputStreams: StreamID[];
   outputStreams: StreamID[];
-};
+}

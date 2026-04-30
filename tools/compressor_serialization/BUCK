@@ -7,7 +7,8 @@ oncall("data_compression")
 python_binary(
     name = "to_cbor",
     srcs = ["to_cbor.py"],
-    main_module = "data_compression.experimental.zstrong.tools.compressor_serialization.to_cbor",
+    base_module = "openzl.tools.compressor_serialization",
+    main_module = "openzl.tools.compressor_serialization.to_cbor",
     deps = [
         "fbsource//third-party/pypi/cbor2:cbor2",
     ],

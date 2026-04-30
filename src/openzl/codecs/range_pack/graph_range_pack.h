@@ -10,10 +10,11 @@
 
 #include "openzl/zl_data.h" // st_*
 
-#define RANGE_PACK_GRAPH(id)                                          \
-    {                                                                 \
-        .CTid = id, .inputTypes = ZL_STREAMTYPELIST(ZL_Type_numeric), \
-        .soTypes = ZL_STREAMTYPELIST(ZL_Type_numeric),                \
+#define RANGE_PACK_GRAPH(id)                              \
+    {                                                     \
+        .CTid       = id,                                 \
+        .inputTypes = ZL_STREAMTYPELIST(ZL_Type_numeric), \
+        .soTypes    = ZL_STREAMTYPELIST(ZL_Type_numeric), \
     }
 
 #endif

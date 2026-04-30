@@ -2,7 +2,7 @@
 
 #include "tests/zstrong/test_multi_input_fixture.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 std::unique_ptr<ZL_TypedRef, ZS2_TypedRef_Deleter>
 MultiInputTest::getTypedInput(TypedInputDesc const& inputDesc)
@@ -38,4 +38,4 @@ MultiInputTest::getTypedInput(TypedInputDesc const& inputDesc)
     return std::unique_ptr<ZL_TypedRef, ZS2_TypedRef_Deleter>(tref);
 }
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

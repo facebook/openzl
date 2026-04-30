@@ -10,17 +10,18 @@
 namespace openzl {
 
 template <typename T>
-ZL_OpaquePtr moveToOpaquePtr(std::shared_ptr<T> ptr)
+ZL_OpaquePtr moveToOpaquePtr(std::shared_ptr<const T> ptr)
 {
     auto raw = ptr.get();
-    return ZL_OpaquePtr{ .ptr = raw,
+    return ZL_OpaquePtr{ .ptr = const_cast<void*>((const void*)raw),
                          .freeOpaquePtr =
-                                 new std::shared_ptr<T>(std::move(ptr)),
+                                 new std::shared_ptr<const T>(std::move(ptr)),
                          .freeFn = [](void* freeOpaquePtr,
                                       void* opaquePtr) noexcept {
                              assert(freeOpaquePtr != nullptr);
-                             auto sharedPtr = static_cast<std::shared_ptr<T>*>(
-                                     freeOpaquePtr);
+                             auto sharedPtr =
+                                     static_cast<std::shared_ptr<const T>*>(
+                                             freeOpaquePtr);
                              assert(sharedPtr->get() == opaquePtr);
                              sharedPtr->reset();
                              delete sharedPtr;

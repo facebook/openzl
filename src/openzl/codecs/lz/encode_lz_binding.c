@@ -2,21 +2,25 @@
 
 #include "openzl/codecs/lz/encode_lz_binding.h"
 
+#include "openzl/codecs/common/fast_table.h"
 #include "openzl/codecs/lz/common_field_lz.h"
 #include "openzl/codecs/lz/encode_field_lz_literals_selector.h"
-#include "openzl/compress/private_nodes.h"
+#include "openzl/codecs/lz/encode_lz_kernel.h"
+#include "openzl/codecs/zl_entropy.h"
+#include "openzl/codecs/zl_lz.h"
+#include "openzl/codecs/zl_mux_lengths.h"
+#include "openzl/codecs/zl_partition.h"
 #include "openzl/shared/utils.h"
 #include "openzl/shared/varint.h"
 #include "openzl/zl_ctransform.h"
 #include "openzl/zl_data.h"
 #include "openzl/zl_graph_api.h"
-#include "openzl/zl_reflection.h"
 
 /**
  * Set the maximum bytes to process to 4B to avoid overflow in the match finder.
  * It could likely be higher, but this is close enough to 2^32-1.
  */
-static const size_t kFieldLzContentSizeBytes = 4000000000u;
+static const size_t kLzContentSizeBytes = 4000000000u;
 
 static void* allocEICtx(void* opaque, size_t size)
 {
@@ -47,7 +51,7 @@ ZL_Report EI_fieldLz(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     }
     ZL_ERR_IF_GT(
             ZL_Input_contentSize(in),
-            kFieldLzContentSizeBytes,
+            kLzContentSizeBytes,
             temporaryLibraryLimitation,
             "FieldLZ only supports up to 4B of input due to 32-bit overflow in the match finder");
 
@@ -127,11 +131,81 @@ ZL_Report EI_fieldLz(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     return ZL_returnValue(5);
 }
 
+ZL_Report EI_lz(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
+
+    ZL_ASSERT_EQ(nbIns, 1);
+    ZL_ASSERT_NN(ins);
+    const ZL_Input* in   = ins[0];
+    size_t const srcSize = ZL_Input_numElts(in);
+
+    ZL_ASSERT_EQ(ZL_Input_type(in), ZL_Type_serial);
+    ZL_ERR_IF_GT(
+            srcSize,
+            kLzContentSizeBytes,
+            temporaryLibraryLimitation,
+            "LZ only supports up to 4B of input");
+
+    size_t const maxNumSeq = ZL_Lz_maxNumSequences(srcSize);
+
+    // Create output streams
+    size_t const literalsCapacity = srcSize + ZL_LZ_LIT_OVER_LENGTH;
+    ZL_Output* const literals =
+            ZL_Encoder_createTypedStream(eictx, 0, literalsCapacity, 1);
+    ZL_Output* const offsets =
+            ZL_Encoder_createTypedStream(eictx, 1, maxNumSeq, 2);
+    ZL_Output* const literalLengths =
+            ZL_Encoder_createTypedStream(eictx, 2, maxNumSeq, 2);
+    ZL_Output* const matchLengths =
+            ZL_Encoder_createTypedStream(eictx, 3, maxNumSeq, 2);
+
+    ZL_ERR_IF_NULL(literals, allocation);
+    ZL_ERR_IF_NULL(offsets, allocation);
+    ZL_ERR_IF_NULL(literalLengths, allocation);
+    ZL_ERR_IF_NULL(matchLengths, allocation);
+
+    // Allocate hash table from scratch space
+    size_t const hashTableSize = ZS_FastTable_tableSize(ZL_LZ_TABLE_LOG);
+    void* hashTableMem = ZL_Encoder_getScratchSpace(eictx, hashTableSize);
+    ZL_ERR_IF_NULL(hashTableMem, allocation);
+
+    ZL_Lz_OutSequences dst = {
+        .literals         = (uint8_t*)ZL_Output_ptr(literals),
+        .literalsCapacity = literalsCapacity,
+        .numLiterals      = 0,
+
+        .offsets           = (uint16_t*)ZL_Output_ptr(offsets),
+        .literalLengths    = (uint16_t*)ZL_Output_ptr(literalLengths),
+        .matchLengths      = (uint16_t*)ZL_Output_ptr(matchLengths),
+        .sequencesCapacity = maxNumSeq,
+        .numSequences      = 0,
+    };
+
+    ZL_Lz_encode(&dst, (const uint8_t*)ZL_Input_ptr(in), srcSize, hashTableMem);
+
+    // Write the original size as a varint codec header
+    uint8_t header[ZL_VARINT_LENGTH_64];
+    size_t const headerSize = ZL_varintEncode(srcSize, header);
+    ZL_Encoder_sendCodecHeader(eictx, header, headerSize);
+
+    ZL_ERR_IF_ERR(ZL_Output_commit(literals, dst.numLiterals));
+    ZL_ERR_IF_ERR(ZL_Output_commit(offsets, dst.numSequences));
+    ZL_ERR_IF_ERR(ZL_Output_commit(literalLengths, dst.numSequences));
+    ZL_ERR_IF_ERR(ZL_Output_commit(matchLengths, dst.numSequences));
+
+    ZL_ERR_IF_ERR(ZL_Output_setIntMetadata(
+            matchLengths, ZL_LZ_MIN_MATCH_LENGTH_METADATA_ID, ZL_LZ_MIN_MATCH));
+
+    return ZL_returnSuccess();
+}
+
 static ZL_Report tokensDynGraph(ZL_Graph* gctx, ZL_Edge* tokens)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     if (ZL_Graph_getCParam(gctx, ZL_CParam_decompressionLevel) <= 1
         || ZL_Input_numElts(ZL_Edge_getData(tokens)) <= 128) {
-        ZL_TRY_LET_T(
+        ZL_TRY_LET(
                 ZL_EdgeList,
                 streams,
                 ZL_Edge_runNode(tokens, ZL_NODE_INTERPRET_TOKEN_AS_LE));
@@ -145,7 +219,8 @@ static ZL_Report tokensDynGraph(ZL_Graph* gctx, ZL_Edge* tokens)
 static ZL_Report
 quantizeDynGraph(ZL_Graph* gctx, ZL_Edge* stream, ZL_NodeID quantizeNode)
 {
-    ZL_TRY_LET_T(ZL_EdgeList, streams, ZL_Edge_runNode(stream, quantizeNode));
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
+    ZL_TRY_LET(ZL_EdgeList, streams, ZL_Edge_runNode(stream, quantizeNode));
     ZL_ASSERT_EQ(streams.nbEdges, 2);
 
     ZL_Edge* const codes = streams.edges[0];
@@ -155,10 +230,10 @@ quantizeDynGraph(ZL_Graph* gctx, ZL_Edge* stream, ZL_NodeID quantizeNode)
     } else {
         codesGraph = ZL_GRAPH_FSE;
     }
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(codes, codesGraph));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(codes, codesGraph));
 
     ZL_Edge* const extraBits = streams.edges[1];
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(extraBits, ZL_GRAPH_STORE));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(extraBits, ZL_GRAPH_STORE));
 
     return ZL_returnSuccess();
 }
@@ -173,7 +248,8 @@ static size_t getMinStreamSize(ZL_Graph* gctx)
 
 ZL_Report EI_fieldLzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
 {
-    ZL_RET_R_IF(graph_invalidNumInputs, nbIns != 1);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
+    ZL_ERR_IF(nbIns != 1, graph_invalidNumInputs);
     ZL_Edge* input     = inputs[0];
     ZL_Input const* in = ZL_Edge_getData(input);
     ZL_ASSERT_NE(ZL_Input_type(in) & (ZL_Type_struct | ZL_Type_numeric), 0);
@@ -189,7 +265,7 @@ ZL_Report EI_fieldLzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
     // the input type is numeric.
     bool const inputIsNumeric = ZL_Input_type(in) == ZL_Type_numeric;
     if (inputIsNumeric) {
-        ZL_TRY_LET_T(
+        ZL_TRY_LET(
                 ZL_EdgeList,
                 streams,
                 ZL_Edge_runNode(input, ZL_NODE_CONVERT_NUM_TO_TOKEN));
@@ -211,7 +287,7 @@ ZL_Report EI_fieldLzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
         localParams.intParams.intParams   = &compressionLevelOverride;
         localParams.intParams.nbIntParams = 1;
     }
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             streams,
             ZL_Edge_runNode_withParams(input, ZL_NODE_FIELD_LZ, &localParams));
@@ -226,7 +302,7 @@ ZL_Report EI_fieldLzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
         size_t const streamSize =
                 ZL_Input_contentSize(ZL_Edge_getData(streams.edges[i]));
         if (streamSize < streamSizeLimit) {
-            ZL_RET_R_IF_ERR(
+            ZL_ERR_IF_ERR(
                     ZL_Edge_setDestination(streams.edges[i], ZL_GRAPH_STORE));
             successorSet[i] = 1;
             continue;
@@ -234,13 +310,13 @@ ZL_Report EI_fieldLzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
 
         ZL_IntParam const param = ZL_Graph_getLocalIntParam(gctx, i);
         if (param.paramId == i) {
-            ZL_RET_R_IF_LT(nodeParameter_invalid, param.paramValue, 0);
-            ZL_RET_R_IF_GT(
-                    nodeParameter_invalid,
+            ZL_ERR_IF_LT(param.paramValue, 0, nodeParameter_invalid);
+            ZL_ERR_IF_GE(
                     (size_t)param.paramValue,
-                    customGraphs.nbGraphIDs);
+                    customGraphs.nbGraphIDs,
+                    nodeParameter_invalid);
             ZL_GraphID const graph = customGraphs.graphids[param.paramValue];
-            ZL_RET_R_IF_ERR(ZL_Edge_setDestination(streams.edges[i], graph));
+            ZL_ERR_IF_ERR(ZL_Edge_setDestination(streams.edges[i], graph));
             successorSet[i] = 1;
         }
     }
@@ -256,22 +332,22 @@ ZL_Report EI_fieldLzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
 
     // Run the successors
     if (literals != NULL) {
-        ZL_RET_R_IF_ERR(
+        ZL_ERR_IF_ERR(
                 ZL_Edge_setDestination(literals, ZL_GRAPH_FIELD_LZ_LITERALS));
     }
     if (tokens != NULL) {
-        ZL_RET_R_IF_ERR(tokensDynGraph(gctx, tokens));
+        ZL_ERR_IF_ERR(tokensDynGraph(gctx, tokens));
     }
     if (offsets != NULL) {
-        ZL_RET_R_IF_ERR(
+        ZL_ERR_IF_ERR(
                 quantizeDynGraph(gctx, offsets, ZL_NODE_QUANTIZE_OFFSETS));
     }
     if (extraLiteralLengths != NULL) {
-        ZL_RET_R_IF_ERR(quantizeDynGraph(
+        ZL_ERR_IF_ERR(quantizeDynGraph(
                 gctx, extraLiteralLengths, ZL_NODE_QUANTIZE_LENGTHS));
     }
     if (extraMatchLengths != NULL) {
-        ZL_RET_R_IF_ERR(quantizeDynGraph(
+        ZL_ERR_IF_ERR(quantizeDynGraph(
                 gctx, extraMatchLengths, ZL_NODE_QUANTIZE_LENGTHS));
     }
 
@@ -281,27 +357,28 @@ ZL_Report EI_fieldLzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
 ZL_Report
 EI_fieldLzLiteralsDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     (void)gctx;
-    ZL_RET_R_IF(graph_invalidNumInputs, nbIns != 1);
+    ZL_ERR_IF(nbIns != 1, graph_invalidNumInputs);
     ZL_Edge* literals = inputs[0];
     // Transpose
     // TODO(terrelln): Determine if we should transpose at all.
     // E.g. if we have a small number of literals don't transpose.
     size_t const eltWidth = ZL_Input_eltWidth(ZL_Edge_getData(literals));
     if (eltWidth == 1) {
-        ZL_RET_R_IF_ERR(ZL_Edge_setDestination(
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(
                 literals, ZL_GRAPH_FIELD_LZ_LITERALS_CHANNEL));
         return ZL_returnSuccess();
     }
     ZL_NodeID const transpose = ZL_Graph_getTransposeSplitNode(gctx, eltWidth);
-    ZL_TRY_LET_T(ZL_EdgeList, streams, ZL_Edge_runNode(literals, transpose));
+    ZL_TRY_LET(ZL_EdgeList, streams, ZL_Edge_runNode(literals, transpose));
     ZL_ASSERT_EQ(streams.nbEdges, eltWidth);
 
     // TODO(terrelln): Share information between channels.
     // E.g. if stream i is uncompressible, then stream i+1 is likely to be
     // uncompressible, if we're compressing numeric data.
     for (size_t i = 0; i < streams.nbEdges; ++i) {
-        ZL_RET_R_IF_ERR(ZL_Edge_setDestination(
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(
                 streams.edges[i], ZL_GRAPH_FIELD_LZ_LITERALS_CHANNEL));
     }
 
@@ -320,6 +397,44 @@ ZL_GraphID SI_fieldLzLiteralsChannelSelector(
     ZS2_transposedLiteralStreamSelector_Successors const successors =
             ZS2_transposedLiteralStreamSelector_successors_init();
     return ZS2_transposedLiteralStreamSelector_impl(selCtx, input, &successors);
+}
+
+ZL_Report EI_lzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
+    ZL_ASSERT_EQ(nbIns, 1);
+    ZL_Edge* input = inputs[0];
+
+    // Run the LZ node
+    ZL_TRY_LET(ZL_EdgeList, streams, ZL_Edge_runNode(input, ZL_NODE_LZ));
+    ZL_ASSERT_EQ(streams.nbEdges, 4);
+
+    ZL_Edge* const literals       = streams.edges[0];
+    ZL_Edge* const offsets        = streams.edges[1];
+    ZL_Edge* const literalLengths = streams.edges[2];
+    ZL_Edge* const matchLengths   = streams.edges[3];
+
+    // Send literals to Huffman
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(literals, ZL_GRAPH_HUFFMAN));
+
+    // Send offsets to partition bitpack
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(offsets, ZL_GRAPH_PARTITION_BITPACK));
+
+    // Run mux_lengths node (auto-computes split point and min match length)
+    ZL_Edge* muxInputs[2] = { literalLengths, matchLengths };
+    ZL_TRY_LET(
+            ZL_EdgeList,
+            muxStreams,
+            ZL_Edge_runMultiInputNode(muxInputs, 2, ZL_NODE_MUX_LENGTHS));
+    ZL_ASSERT_EQ(muxStreams.nbEdges, 2);
+
+    // Route mux_lengths outputs: muxed bytes and overflow lengths to Huffman
+    ZL_ERR_IF_ERR(
+            ZL_Edge_setDestination(muxStreams.edges[0], ZL_GRAPH_HUFFMAN));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(
+            muxStreams.edges[1], ZL_GRAPH_COMPRESS_SMALL_LENGTHS));
+
+    return ZL_returnSuccess();
 }
 
 ZL_GraphID ZL_Compressor_registerFieldLZGraph_withLiteralsGraph(
@@ -356,8 +471,9 @@ ZL_GraphID ZL_Compressor_registerFieldLZGraph_withLevel(
         int compressionLevel)
 {
     ZL_LocalParams localParams = {
-        .intParams = ZL_INTPARAMS({ ZL_FIELD_LZ_COMPRESSION_LEVEL_OVERRIDE_PID,
-                                    compressionLevel })
+        .intParams = ZL_INTPARAMS(
+                { ZL_FIELD_LZ_COMPRESSION_LEVEL_OVERRIDE_PID,
+                  compressionLevel })
     };
 
     ZL_ParameterizedGraphDesc desc = {

@@ -1,18 +1,16 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include <algorithm>
-#include <random>
-
 #include <gtest/gtest.h>
 
 #include "openzl/common/debug.h" // ZL_REQUIRE
-#include "openzl/compress/selectors/ml/mlselector.h"
-#include "openzl/zl_compress.h"
-
 #include "openzl/compress/selectors/ml/gbt.h"
+#include "openzl/compress/selectors/ml/mlselector.h"
 #include "openzl/shared/mem.h" // For ZS2_read64
+#include "openzl/zl_compress.h"
 #include "openzl/zl_graph_api.h"
 #include "openzl/zl_selector.h" // ZL_SelectorDesc
+#include "tests/datagen/DataGen.h"
+#include "tests/ml_selector_utils.h"
 
 #define EXPECT_SUCCESS(r)                                          \
     EXPECT_FALSE(ZL_isError(r)) << "Zstrong failed with message: " \
@@ -21,14 +19,13 @@
 namespace {
 auto deltaFeatureGenerator(
         const ZL_Input* inputStream,
-        VECTOR(LabeledFeature) * features,
-        const void* featureContext)
+        VECTOR(LabeledFeature) * features)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
     // Calculates nbElts, eltWidth and hasConstDelta features. hasConstDelta
     // represents whether or not the stream is an arithmetic sequence, which
     // will always have a constant delta since the difference between each ith
     // and (i+1)th element is the same.
-    (void)featureContext;
 
     const void* data      = ZL_Input_ptr(inputStream);
     const size_t nbElts   = ZL_Input_numElts(inputStream);
@@ -63,7 +60,7 @@ auto deltaFeatureGenerator(
     badAlloc |= !VECTOR_PUSHBACK(*features, eltWidthFeature);
     badAlloc |= !VECTOR_PUSHBACK(*features, hasConstDeltaFeature);
 
-    ZL_RET_R_IF(allocation, badAlloc, "Failed to add features to vector");
+    ZL_ERR_IF(badAlloc, allocation, "Failed to add features to vector");
     return ZL_returnSuccess();
 }
 
@@ -72,7 +69,7 @@ auto deltaFeatureGenerator(
 // contains one forest with a single tree possessing three nodes. The root
 // node examines whether the stream has a const delta throughout
 // (hasConstDelta < 0.5), and if so, it returns the value of the left child
-// node (which is less than 0.5), effectively assigning the label class1.
+// node (which is less than 0), effectively assigning the label class1.
 
 const std::vector<GBTPredictor_Node> nodes = { { .featureIdx      = 0,
                                                  .value           = 0.5f,
@@ -80,7 +77,7 @@ const std::vector<GBTPredictor_Node> nodes = { { .featureIdx      = 0,
                                                  .rightChildIdx   = 2,
                                                  .missingChildIdx = 1 },
                                                { .featureIdx      = -1,
-                                                 .value           = 0.1f,
+                                                 .value           = -0.1f,
                                                  .leftChildIdx    = 0,
                                                  .rightChildIdx   = 0,
                                                  .missingChildIdx = 0 },
@@ -102,14 +99,13 @@ const std::vector<Label> featureLabels = {
     Label("nbElts"),
     Label("eltWidth"),
 };
-const std::vector<Label> classLabels = { Label("class1"), Label("class2") };
-const GBTModel gbtModel              = {
-                 .predictor        = &binaryClassPredictor,
-                 .featureGenerator = deltaFeatureGenerator,
-                 .nbLabels         = classLabels.size(),
-                 .classLabels      = classLabels.data(),
-                 .nbFeatures       = featureLabels.size(),
-                 .featureLabels    = featureLabels.data(),
+
+const GBTModel gbtModel = {
+    .predictor        = &binaryClassPredictor,
+    .featureGenerator = deltaFeatureGenerator,
+    .nbSuccessors     = 2,
+    .nbFeatures       = featureLabels.size(),
+    .featureLabels    = featureLabels.data(),
 };
 
 ZL_GraphID selectGBTModel(
@@ -124,46 +120,16 @@ ZL_GraphID selectGBTModel(
     // represents delta and the second graph represents tokenize, we return the
     // first graph when label is class1. If there is any errors,
     // the first graph is returned
-    ZL_RESULT_OF(Label) result     = GBTModel_predict(&gbtModel, in);
-    const std::string decodedLabel = ZL_RES_value(result);
-
-    if (ZL_RES_isError(result) || !strcmp(decodedLabel.c_str(), "class1")) {
+    ZL_RESULT_OF(size_t) result = GBTModel_predict(&gbtModel, in);
+    if (ZL_RES_isError(result)) {
         return graphs[0];
-    } else {
-        return graphs[1];
     }
+    return graphs[ZL_RES_value(result)];
 }
 } // namespace
 
-namespace zstrong::tests {
+namespace openzl::tests {
 namespace {
-std::vector<uint64_t> generateDeltaData(
-        size_t nbElts      = 10000,
-        uint64_t baseValue = 0,
-        uint64_t delta     = 0x12345)
-{
-    std::vector<uint64_t> data(nbElts);
-    uint64_t value = baseValue;
-    for (size_t i = 0; i < nbElts; ++i) {
-        data[i] = value;
-        value += delta;
-    }
-    return data;
-}
-
-std::vector<uint64_t> generateTokenizeData(
-        size_t nbElts = 10000,
-        uint64_t seed = 1337)
-{
-    std::vector<uint64_t> data;
-    data.resize(nbElts);
-    std::mt19937 mersenne_engine(seed);
-    std::uniform_int_distribution<uint64_t> dist(0, nbElts / 20);
-    auto gen = [&dist, &mersenne_engine]() { return dist(mersenne_engine); };
-
-    std::generate(data.begin(), data.end(), gen);
-    return data;
-}
 
 class MLSelectorTest : public ::testing::Test {
    protected:
@@ -218,8 +184,11 @@ class MLSelectorTest : public ::testing::Test {
                 cgraph_, ZL_Type_numeric, true, deltaGid_, ZL_GRAPH_ZSTD);
         // EXPECT_TRUE(ZL_GraphID_isValid(tokenizeGid_));
 
-        deltaData    = generateDeltaData();
-        tokenizeData = generateTokenizeData();
+        deltaData = generateDeltaData();
+        auto dg   = openzl::tests::datagen::DataGen();
+        // Generate data with repeated values
+        tokenizeData = dg.template randLongVector<uint64_t>(
+                "randLongVec", 0, 500, 10000, 10000);
 
         labeledGraphs.push_back({ .label = "class1", .graph = deltaGid_ });
         labeledGraphs.push_back({ .label = "class2", .graph = tokenizeGid_ });
@@ -356,4 +325,4 @@ TEST_F(MLSelectorTest, SimpleMLSelectorTokenize)
             compress(tokenizeData).size(),
             compress(tokenizeData, selectTokenize).size());
 }
-} // namespace zstrong::tests
+} // namespace openzl::tests

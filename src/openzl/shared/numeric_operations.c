@@ -47,6 +47,18 @@ size_t NUMOP_findMaxST(const size_t array[], size_t arraySize)
     return max;
 }
 
+uint8_t NUMOP_findMaxU8(const uint8_t array[], size_t arraySize)
+{
+    if (arraySize)
+        ZL_ASSERT_NN(array);
+    uint8_t max = 0;
+    for (size_t n = 0; n < arraySize; n++) {
+        if (max < array[n])
+            max = array[n];
+    }
+    return max;
+}
+
 uint32_t NUMOP_findMaxArr32(const uint32_t array32[], size_t arraySize)
 {
     if (arraySize)
@@ -269,12 +281,13 @@ convertArray_2to4(uint32_t* dst32, const uint16_t* src16, size_t size)
 static ZL_Report
 convertArray_8to4(uint32_t* dst32, const uint64_t* src64, size_t size)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     for (size_t n = 0; n < size; n++) {
         // Note : need better overflow control
-        ZL_RET_R_IF_GE(
-                integerOverflow,
+        ZL_ERR_IF_GE(
                 src64[n],
                 (uint64_t)1 << 32,
+                integerOverflow,
                 "uint64_t value is too large for uint32_t");
         dst32[n] = (uint32_t)src64[n];
     }
@@ -287,6 +300,7 @@ ZL_Report NUMOP_write32_fromNumerics(
         const void* srcNum,
         size_t numWidth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (!nbValues)
         return ZL_returnSuccess();
     ZL_ASSERT_NN(array);
@@ -303,7 +317,7 @@ ZL_Report NUMOP_write32_fromNumerics(
         case 8:
             return convertArray_8to4(array, (const uint64_t*)srcNum, nbValues);
         default:
-            ZL_RET_R_ERR(logicError, "only numeric width 1,2,4,8 are allowed");
+            ZL_ERR(logicError, "only numeric width 1,2,4,8 are allowed");
     }
 }
 

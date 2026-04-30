@@ -8,8 +8,9 @@ oncall("data_compression")
 python_binary(
     name = "tradeoff-plots",
     srcs = ["tradeoff-plots.py"],
+    base_module = "",
     labels = ["autodeps2_generated"],
-    main_function = "data_compression.experimental.zstrong.contrib.reproducibility.figures.tradeoff-plots.main",
+    main_function = "tradeoff-plots.main",
     deps = [
         "fbsource//third-party/pypi/kaleido:kaleido",  # @manual
         "fbsource//third-party/pypi/pandas:pandas",

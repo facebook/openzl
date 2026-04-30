@@ -32,8 +32,10 @@
 #if ZL_HAS_AVX2
 
 #    include <immintrin.h>
-#    include <popcntintrin.h>
-#    include <x86intrin.h>
+#    if !defined(_MSC_VER)
+#        include <popcntintrin.h>
+#        include <x86intrin.h>
+#    endif
 #    include <xmmintrin.h>
 
 #    define _ 9
@@ -591,7 +593,7 @@ static ZL_ALIGNED(32) uint32_t permute[256][8] = { // reverse binary bit order
 // clang-format on
 
 // Simulated gather.  This is sometimes faster as it can run on other ports.
-static inline __m256i
+static ZL_MAYBE_UNUSED_FUNCTION inline __m256i
 _mm256_i32gather_epi32x(void const* bv, __m256i idx, int size)
 {
     ZL_ALIGNED(32) int c[8];
@@ -648,7 +650,7 @@ _mm256_i32gather_epi32x(void const* bv, __m256i idx, int size)
 #        define LZ44_mm256_i32gather_epi32 _mm256_i32gather_epi32x
 #    endif
 
-static void dpr(char const* name, __m256i const vec32)
+static ZL_MAYBE_UNUSED_FUNCTION void dpr(char const* name, __m256i const vec32)
 {
     size_t n = 8;
     uint32_t data[8];
@@ -942,9 +944,9 @@ size_t ZS_HufAvx2_decode(
         stateV1                = _mm256_sllv_epi32(stateV1, nbitsV1);
         bitsV1                 = _mm256_add_epi32(bitsV1, nbitsV1);
         __m256i const reloadV1 = _mm256_cmpgt_epi32(bitsV1, thresholdV);
-        int const reloadM1     = _mm256_movemask_ps((__m256)reloadV1);
-        __m256i const permV1   = getPermute(reloadV1, reloadM1);
-        bitsV1                 = _mm256_sub_epi32(
+        int const reloadM1 = _mm256_movemask_ps(_mm256_castsi256_ps(reloadV1));
+        __m256i const permV1 = getPermute(reloadV1, reloadM1);
+        bitsV1               = _mm256_sub_epi32(
                 bitsV1, _mm256_and_si256(thresholdV, reloadV1));
 
         /// if (bits > 16) state |= ZL_readLE16(bs) << bits
@@ -972,7 +974,7 @@ size_t ZS_HufAvx2_decode(
         __m256i const reloadV2 = _mm256_cmpgt_epi32(bitsV2, thresholdV);
 
         /// if (bits > 16)
-        int const reloadM2   = _mm256_movemask_ps((__m256)reloadV2);
+        int const reloadM2 = _mm256_movemask_ps(_mm256_castsi256_ps(reloadV2));
         __m256i const permV2 = getPermute(reloadV2, reloadM2);
 
         /// if (bits > 16) bits -= 16
@@ -1028,9 +1030,9 @@ size_t ZS_HufAvx2_decode(
         bitsV3  = _mm256_add_epi32(bitsV3, nbitsV3);
 
         __m256i const reloadV3 = _mm256_cmpgt_epi32(bitsV3, thresholdV);
-        int const reloadM3     = _mm256_movemask_ps((__m256)reloadV3);
-        __m256i const permV3   = getPermute(reloadV3, reloadM3);
-        bitsV3                 = _mm256_sub_epi32(
+        int const reloadM3 = _mm256_movemask_ps(_mm256_castsi256_ps(reloadV3));
+        __m256i const permV3 = getPermute(reloadV3, reloadM3);
+        bitsV3               = _mm256_sub_epi32(
                 bitsV3, _mm256_and_si256(thresholdV, reloadV3));
 
         /// if (bits > 16) state |= ZL_readLE16(bs) << bits
@@ -1056,7 +1058,7 @@ size_t ZS_HufAvx2_decode(
         __m256i const reloadV4 = _mm256_cmpgt_epi32(bitsV4, thresholdV);
 
         /// if (bits > 16)
-        int const reloadM4   = _mm256_movemask_ps((__m256)reloadV4);
+        int const reloadM4 = _mm256_movemask_ps(_mm256_castsi256_ps(reloadV4));
         __m256i const permV4 = getPermute(reloadV4, reloadM4);
 
         /// if (bits > 16) bits -= 16
@@ -1358,9 +1360,9 @@ size_t ZS_Huf16Avx2_decode(
         stateV1                = _mm256_sllv_epi32(stateV1, nbitsV1);
         bitsV1                 = _mm256_add_epi32(bitsV1, nbitsV1);
         __m256i const reloadV1 = _mm256_cmpgt_epi32(bitsV1, thresholdV);
-        int const reloadM1     = _mm256_movemask_ps((__m256)reloadV1);
-        __m256i const permV1   = getPermute(reloadV1, reloadM1);
-        bitsV1                 = _mm256_sub_epi32(
+        int const reloadM1 = _mm256_movemask_ps(_mm256_castsi256_ps(reloadV1));
+        __m256i const permV1 = getPermute(reloadV1, reloadM1);
+        bitsV1               = _mm256_sub_epi32(
                 bitsV1, _mm256_and_si256(thresholdV, reloadV1));
 
         /// if (bits > 16) state |= ZL_readLE16(bs) << bits
@@ -1389,7 +1391,7 @@ size_t ZS_Huf16Avx2_decode(
         __m256i const reloadV2 = _mm256_cmpgt_epi32(bitsV2, thresholdV);
 
         /// if (bits > 16)
-        int const reloadM2   = _mm256_movemask_ps((__m256)reloadV2);
+        int const reloadM2 = _mm256_movemask_ps(_mm256_castsi256_ps(reloadV2));
         __m256i const permV2 = getPermute(reloadV2, reloadM2);
 
         /// if (bits > 16) bits -= 16
@@ -1446,9 +1448,9 @@ size_t ZS_Huf16Avx2_decode(
         bitsV3  = _mm256_add_epi32(bitsV3, nbitsV3);
 
         __m256i const reloadV3 = _mm256_cmpgt_epi32(bitsV3, thresholdV);
-        int const reloadM3     = _mm256_movemask_ps((__m256)reloadV3);
-        __m256i const permV3   = getPermute(reloadV3, reloadM3);
-        bitsV3                 = _mm256_sub_epi32(
+        int const reloadM3 = _mm256_movemask_ps(_mm256_castsi256_ps(reloadV3));
+        __m256i const permV3 = getPermute(reloadV3, reloadM3);
+        bitsV3               = _mm256_sub_epi32(
                 bitsV3, _mm256_and_si256(thresholdV, reloadV3));
 
         /// if (bits > 16) state |= ZL_readLE16(bs) << bits
@@ -1474,7 +1476,7 @@ size_t ZS_Huf16Avx2_decode(
         __m256i const reloadV4 = _mm256_cmpgt_epi32(bitsV4, thresholdV);
 
         /// if (bits > 16)
-        int const reloadM4   = _mm256_movemask_ps((__m256)reloadV4);
+        int const reloadM4 = _mm256_movemask_ps(_mm256_castsi256_ps(reloadV4));
         __m256i const permV4 = getPermute(reloadV4, reloadM4);
 
         /// if (bits > 16) bits -= 16

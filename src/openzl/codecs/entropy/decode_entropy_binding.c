@@ -63,38 +63,39 @@ buildFSEDTable(ZL_Decoder* dictx, int16_t const* norm, size_t nbSymbols)
 
 ZL_Report DI_fse_v2(ZL_Decoder* dictx, const ZL_Input* in[])
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_Input const* const normStream = in[0];
     ZL_Input const* const bitsStream = in[1];
 
     ZL_ASSERT_EQ(ZL_Input_type(normStream), ZL_Type_numeric);
     ZL_ASSERT_EQ(ZL_Input_type(bitsStream), ZL_Type_serial);
 
-    ZL_RET_R_IF_NE(corruption, ZL_Input_eltWidth(normStream), 2);
+    ZL_ERR_IF_NE(ZL_Input_eltWidth(normStream), 2, corruption);
 
     FSE_DTable const* dtable = buildFSEDTable(
             dictx,
             (int16_t const*)ZL_Input_ptr(normStream),
             ZL_Input_numElts(normStream));
-    ZL_RET_R_IF_NULL(corruption, dtable);
+    ZL_ERR_IF_NULL(dtable, corruption);
 
     unsigned nbStates;
     size_t dstSize;
     {
         ZL_RBuffer const header = ZL_Decoder_getCodecHeader(dictx);
-        ZL_RET_R_IF_LT(corruption, header.size, 2, "Min size = 2 bytes");
-        ZL_RET_R_IF_GT(corruption, header.size, 9, "Max size = 9 bytes");
+        ZL_ERR_IF_LT(header.size, 2, corruption, "Min size = 2 bytes");
+        ZL_ERR_IF_GT(header.size, 9, corruption, "Max size = 9 bytes");
         uint8_t const* ptr = (uint8_t const*)header.start;
         nbStates           = *ptr++;
-        ZL_RET_R_IF_NOT(
-                corruption,
+        ZL_ERR_IF_NOT(
                 nbStates == 2 || nbStates == 4,
+                corruption,
                 "Unsupported number of states");
         dstSize = ZL_readLE64_N(ptr, header.size - 1);
-        ZL_RET_R_IF_LT(corruption, dstSize, 2, "Must have at least 2 elements");
+        ZL_ERR_IF_LT(dstSize, 2, corruption, "Must have at least 2 elements");
     }
 
     ZL_Output* const outStream = ZL_Decoder_create1OutStream(dictx, dstSize, 1);
-    ZL_RET_R_IF_NULL(allocation, outStream);
+    ZL_ERR_IF_NULL(outStream, allocation);
 
     size_t const ret = FSE_decompress_usingDTable(
             ZL_Output_ptr(outStream),
@@ -103,25 +104,26 @@ ZL_Report DI_fse_v2(ZL_Decoder* dictx, const ZL_Input* in[])
             ZL_Input_numElts(bitsStream),
             dtable,
             nbStates);
-    ZL_RET_R_IF(
-            corruption,
+    ZL_ERR_IF(
             FSE_isError(ret),
+            corruption,
             "FSE decoding failed: %s",
             FSE_getErrorName(ret));
-    ZL_RET_R_IF_NE(corruption, ret, dstSize);
+    ZL_ERR_IF_NE(ret, dstSize, corruption);
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(outStream, dstSize));
+    ZL_ERR_IF_ERR(ZL_Output_commit(outStream, dstSize));
 
     return ZL_returnSuccess();
 }
 
 ZL_Report DI_fse_ncount(ZL_Decoder* dictx, const ZL_Input* in[])
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_Input const* const srcStream = in[0];
 
     ZL_Output* ncountStream =
             ZL_Decoder_create1OutStream(dictx, 256, sizeof(short));
-    ZL_RET_R_IF_NULL(allocation, ncountStream);
+    ZL_ERR_IF_NULL(ncountStream, allocation);
 
     unsigned maxSymbolValue = 255;
     unsigned tableLog       = FSE_MAX_TABLELOG;
@@ -131,14 +133,14 @@ ZL_Report DI_fse_ncount(ZL_Decoder* dictx, const ZL_Input* in[])
             &tableLog,
             ZL_Input_ptr(srcStream),
             ZL_Input_numElts(srcStream));
-    ZL_RET_R_IF(
-            corruption,
+    ZL_ERR_IF(
             FSE_isError(ncountSize),
+            corruption,
             "Failed to read nCount: %s",
             FSE_getErrorName(ncountSize));
-    ZL_RET_R_IF_NE(corruption, ncountSize, ZL_Input_numElts(srcStream));
+    ZL_ERR_IF_NE(ncountSize, ZL_Input_numElts(srcStream), corruption);
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(ncountStream, 1 + maxSymbolValue));
+    ZL_ERR_IF_ERR(ZL_Output_commit(ncountStream, 1 + maxSymbolValue));
 
     return ZL_returnSuccess();
 }
@@ -285,6 +287,7 @@ static HUF_DTable const* buildHUFDTable(
 
 ZL_Report DI_huffman_v2(ZL_Decoder* dictx, const ZL_Input* in[])
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_Input const* const weightsStream = in[0];
     ZL_Input const* const bitsStream    = in[1];
 
@@ -293,19 +296,19 @@ ZL_Report DI_huffman_v2(ZL_Decoder* dictx, const ZL_Input* in[])
     ZL_ASSERT_EQ(ZL_Input_type(weightsStream), ZL_Type_numeric);
     ZL_ASSERT_EQ(ZL_Input_type(bitsStream), ZL_Type_serial);
 
-    ZL_RET_R_IF_NE(corruption, ZL_Input_eltWidth(weightsStream), 1);
+    ZL_ERR_IF_NE(ZL_Input_eltWidth(weightsStream), 1, corruption);
 
     bool x4;
     size_t dstSize;
     {
         ZL_RBuffer const header = ZL_Decoder_getCodecHeader(dictx);
-        ZL_RET_R_IF_LT(corruption, header.size, 2, "Min size = 2 bytes");
-        ZL_RET_R_IF_GT(corruption, header.size, 9, "Max size = 9 bytes");
+        ZL_ERR_IF_LT(header.size, 2, corruption, "Min size = 2 bytes");
+        ZL_ERR_IF_GT(header.size, 9, corruption, "Max size = 9 bytes");
         uint8_t const* ptr = (uint8_t const*)header.start;
         x4                 = (*ptr & 0x1) != 0;
         ++ptr;
         dstSize = ZL_readLE64_N(ptr, header.size - 1);
-        ZL_RET_R_IF_LT(corruption, dstSize, 2, "Must have at least 2 elements");
+        ZL_ERR_IF_LT(dstSize, 2, corruption, "Must have at least 2 elements");
     }
 
     bool const x2 = x4
@@ -317,10 +320,10 @@ ZL_Report DI_huffman_v2(ZL_Decoder* dictx, const ZL_Input* in[])
             (uint8_t const*)ZL_Input_ptr(weightsStream),
             ZL_Input_numElts(weightsStream),
             x2);
-    ZL_RET_R_IF_NULL(corruption, dtable);
+    ZL_ERR_IF_NULL(dtable, corruption);
 
     ZL_Output* const outStream = ZL_Decoder_create1OutStream(dictx, dstSize, 1);
-    ZL_RET_R_IF_NULL(allocation, outStream);
+    ZL_ERR_IF_NULL(outStream, allocation);
 
     {
         void* dst            = ZL_Output_ptr(outStream);
@@ -333,15 +336,15 @@ ZL_Report DI_huffman_v2(ZL_Decoder* dictx, const ZL_Input* in[])
                 : HUF_decompress1X1_usingDTable;
         ZL_ASSERT_EQ(!x4 && x2, false);
         size_t const ret = decode(dst, dstSize, src, srcSize, dtable);
-        ZL_RET_R_IF(
-                corruption,
+        ZL_ERR_IF(
                 HUF_isError(ret),
+                corruption,
                 "HUF decoding failed: %s",
                 HUF_getErrorName(ret));
-        ZL_RET_R_IF_NE(corruption, ret, dstSize);
+        ZL_ERR_IF_NE(ret, dstSize, corruption);
     }
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(outStream, dstSize));
+    ZL_ERR_IF_ERR(ZL_Output_commit(outStream, dstSize));
 
     return ZL_returnSuccess();
 }
@@ -414,6 +417,7 @@ static ZS_Huf16DElt const* buildHUF16DTable(
 
 ZL_Report DI_huffman_struct_v2(ZL_Decoder* dictx, const ZL_Input* in[])
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_Input const* const weightsStream = in[0];
     ZL_Input const* const bitsStream    = in[1];
 
@@ -422,19 +426,19 @@ ZL_Report DI_huffman_struct_v2(ZL_Decoder* dictx, const ZL_Input* in[])
     ZL_ASSERT_EQ(ZL_Input_type(weightsStream), ZL_Type_numeric);
     ZL_ASSERT_EQ(ZL_Input_type(bitsStream), ZL_Type_serial);
 
-    ZL_RET_R_IF_NE(corruption, ZL_Input_eltWidth(weightsStream), 1);
+    ZL_ERR_IF_NE(ZL_Input_eltWidth(weightsStream), 1, corruption);
 
     bool x4;
     size_t dstSize;
     {
         ZL_RBuffer const header = ZL_Decoder_getCodecHeader(dictx);
-        ZL_RET_R_IF_LT(corruption, header.size, 2, "Min size = 2 bytes");
-        ZL_RET_R_IF_GT(corruption, header.size, 9, "Max size = 9 bytes");
+        ZL_ERR_IF_LT(header.size, 2, corruption, "Min size = 2 bytes");
+        ZL_ERR_IF_GT(header.size, 9, corruption, "Max size = 9 bytes");
         uint8_t const* ptr = (uint8_t const*)header.start;
         x4                 = (*ptr & 0x1) != 0;
         ++ptr;
         dstSize = ZL_readLE64_N(ptr, header.size - 1);
-        ZL_RET_R_IF_LT(corruption, dstSize, 2, "Must have at least 2 elements");
+        ZL_ERR_IF_LT(dstSize, 2, corruption, "Must have at least 2 elements");
     }
 
     int tableLog;
@@ -443,10 +447,10 @@ ZL_Report DI_huffman_struct_v2(ZL_Decoder* dictx, const ZL_Input* in[])
             (uint8_t const*)ZL_Input_ptr(weightsStream),
             ZL_Input_numElts(weightsStream),
             &tableLog);
-    ZL_RET_R_IF_NULL(corruption, dtable);
+    ZL_ERR_IF_NULL(dtable, corruption);
 
     ZL_Output* const outStream = ZL_Decoder_create1OutStream(dictx, dstSize, 2);
-    ZL_RET_R_IF_NULL(allocation, outStream);
+    ZL_ERR_IF_NULL(outStream, allocation);
 
     {
         ZL_RC src = ZL_RC_wrap(
@@ -456,12 +460,12 @@ ZL_Report DI_huffman_struct_v2(ZL_Decoder* dictx, const ZL_Input* in[])
                                         dst, dstSize, &src, dtable, tableLog)
                               : ZS_largeHuffmanDecodeUsingDTable(
                                         dst, dstSize, &src, dtable, tableLog);
-        ZL_RET_R_IF_ERR(report);
-        ZL_RET_R_IF_NE(corruption, ZL_validResult(report), dstSize);
-        ZL_RET_R_IF_NE(corruption, ZL_RC_avail(&src), 0);
+        ZL_ERR_IF_ERR(report);
+        ZL_ERR_IF_NE(ZL_validResult(report), dstSize, corruption);
+        ZL_ERR_IF_NE(ZL_RC_avail(&src), 0, corruption);
     }
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(outStream, dstSize));
+    ZL_ERR_IF_ERR(ZL_Output_commit(outStream, dstSize));
 
     return ZL_returnSuccess();
 }
@@ -469,13 +473,14 @@ ZL_Report DI_huffman_struct_v2(ZL_Decoder* dictx, const ZL_Input* in[])
 static ZL_Report
 DI_entropyDstBound(const void* src, size_t srcSize, size_t eltWidth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (srcSize == 0) {
         return ZL_returnValue(0);
     }
     ZL_Report const ret = ZS_Entropy_getDecodedSize(src, srcSize, eltWidth);
-    ZL_RET_R_IF(
-            GENERIC,
+    ZL_ERR_IF(
             ZL_isError(ret),
+            GENERIC,
             "corruption: ZS_Entropy_getDecodedSize failed");
     return ret;
 }
@@ -488,6 +493,7 @@ static ZL_Report DI_entropyDecode(
         size_t eltWidth,
         ZS_Entropy_DecodeParameters const* optionalParams)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (srcSize == 0) {
         return ZL_returnValue(0);
     }
@@ -500,8 +506,8 @@ static ZL_Report DI_entropyDecode(
             &rc,
             eltWidth,
             optionalParams ? optionalParams : &deafultParams);
-    ZL_RET_R_IF(corruption, ZL_isError(ret), "ZS_Entropy_decodeDefault failed");
-    ZL_RET_R_IF_NE(corruption, ZL_RC_avail(&rc), 0, "Not all input consumed");
+    ZL_ERR_IF(ZL_isError(ret), corruption, "ZS_Entropy_decodeDefault failed");
+    ZL_ERR_IF_NE(ZL_RC_avail(&rc), 0, corruption, "Not all input consumed");
     return ret;
 }
 
@@ -509,6 +515,7 @@ static ZL_Report DI_entropyDecode(
 static ZL_Report
 DI_huffman_typed(ZL_Decoder* dictx, const ZL_Input* ins[], bool hasHeader)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_ASSERT_NN(dictx);
     ZL_ASSERT_NN(ins);
     const ZL_Input* const in = ins[0];
@@ -533,50 +540,54 @@ DI_huffman_typed(ZL_Decoder* dictx, const ZL_Input* ins[], bool hasHeader)
         ZL_RBuffer const header = ZL_Decoder_getCodecHeader(dictx);
         uint8_t const* hdr      = (uint8_t const*)header.start;
         uint8_t const* hdrEnd   = hdr + header.size;
-        ZL_RET_R_IF_LT(header_unknown, header.size, 2);
+        ZL_ERR_IF_LT(header.size, 2, header_unknown);
 
         bool const isTransposed        = *hdr++ != 0;
         ZL_RESULT_OF(uint64_t) const r = ZL_varintDecode(&hdr, hdrEnd);
-        ZL_RET_R_IF(header_unknown, ZL_RES_isError(r));
-        ZL_RET_R_IF_NE(header_unknown, hdr, hdrEnd);
+        ZL_ERR_IF(ZL_RES_isError(r), header_unknown);
+        ZL_ERR_IF_NE(hdr, hdrEnd, header_unknown);
         uint64_t const eltWidth = ZL_RES_value(r);
 
-        ZL_RET_R_IF_EQ(header_unknown, eltWidth, 0, "Invalid element width!");
+        ZL_ERR_IF_EQ(eltWidth, 0, header_unknown, "Invalid element width!");
 
         entropyEltWidth = isTransposed ? 1 : eltWidth;
-        ZL_TRY_LET_R(nbElts, DI_entropyDstBound(src, srcSize, entropyEltWidth));
+        ZL_TRY_LET(
+                size_t,
+                nbElts,
+                DI_entropyDstBound(src, srcSize, entropyEltWidth));
         entropyNbElts = nbElts;
 
         dstEltWidth = eltWidth;
         dstNbElts   = entropyNbElts / (dstEltWidth / entropyEltWidth);
     } else {
         entropyEltWidth = 1;
-        ZL_TRY_LET_R(nbElts, DI_entropyDstBound(src, srcSize, 1));
+        ZL_TRY_LET(size_t, nbElts, DI_entropyDstBound(src, srcSize, 1));
         entropyNbElts = nbElts;
         dstEltWidth   = 1;
         dstNbElts     = entropyNbElts;
     }
-    ZL_RET_R_IF_NE(
-            header_unknown,
+    ZL_ERR_IF_NE(
             entropyNbElts * entropyEltWidth,
             dstNbElts * dstEltWidth,
+            header_unknown,
             "Overflow computing element widths");
 
     if (DI_getFrameFormatVersion(dictx) >= 11) {
-        ZL_RET_R_IF_GT(
-                corruption,
+        ZL_ERR_IF_GT(
                 dstEltWidth,
                 2,
+                corruption,
                 "eltWidth > 2 is not supported in version 11 or newer.");
     }
 
     //> Create the output stream.
     ZL_Output* const out =
             ZL_Decoder_create1OutStream(dictx, dstNbElts, dstEltWidth);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
 
     //> Decode & tell how much we wrote to the output buffer.
-    ZL_TRY_LET_R(
+    ZL_TRY_LET(
+            size_t,
             dSize,
             DI_entropyDecode(
                     ZL_Output_ptr(out),
@@ -585,8 +596,8 @@ DI_huffman_typed(ZL_Decoder* dictx, const ZL_Input* ins[], bool hasHeader)
                     srcSize,
                     entropyEltWidth,
                     NULL));
-    ZL_RET_R_IF_NE(corruption, dSize, entropyNbElts, "Entropy decoding failed");
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, dstNbElts));
+    ZL_ERR_IF_NE(dSize, entropyNbElts, corruption, "Entropy decoding failed");
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, dstNbElts));
 
     //> Return the number of output streams.
     return ZL_returnValue(1);
@@ -604,6 +615,7 @@ ZL_Report DI_huffman_fixed(ZL_Decoder* dictx, const ZL_Input* ins[])
 
 ZL_Report DI_fse_typed(ZL_Decoder* dictx, const ZL_Input* ins[])
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_ASSERT_NN(dictx);
     ZL_ASSERT_NN(ins);
     const ZL_Input* const in = ins[0];
@@ -620,37 +632,38 @@ ZL_Report DI_fse_typed(ZL_Decoder* dictx, const ZL_Input* ins[])
     if (header.size) {
         // Header should be only 1 bytes, anything else is probably a
         // corruption
-        ZL_RET_R_IF_NE(
-                corruption,
+        ZL_ERR_IF_NE(
                 header.size,
                 1,
+                corruption,
                 "FSE header size should be at most 1, got unexpected header size - %d",
                 header.size);
         nbStates = *(uint8_t const*)header.start;
         // We support only 2 or 4 states, anything else is probably a
         // corruption
-        ZL_RET_R_IF(
-                corruption,
+        ZL_ERR_IF(
                 nbStates != 2 && nbStates != 4,
+                corruption,
                 "FSE supports only 2 or 4 states, got unexpected number of states - %d",
                 nbStates);
     }
 
-    ZL_TRY_LET_R(nbElts, DI_entropyDstBound(src, srcSize, 1));
+    ZL_TRY_LET(size_t, nbElts, DI_entropyDstBound(src, srcSize, 1));
 
     // Create the output stream.
     ZL_Output* const out = ZL_Decoder_create1OutStream(dictx, nbElts, 1);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
 
     // Decode & tell how much we wrote to the output buffer.
     ZS_Entropy_DecodeParameters params = ZS_Entropy_DecodeParameters_default();
     params.fseNbStates                 = nbStates;
-    ZL_TRY_LET_R(
+    ZL_TRY_LET(
+            size_t,
             dSize,
             DI_entropyDecode(
                     ZL_Output_ptr(out), nbElts, src, srcSize, 1, &params));
-    ZL_RET_R_IF_NE(corruption, dSize, nbElts, "FSE decoding failed");
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, nbElts));
+    ZL_ERR_IF_NE(dSize, nbElts, corruption, "FSE decoding failed");
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, nbElts));
 
     // Return the number of output streams.
     return ZL_returnValue(1);

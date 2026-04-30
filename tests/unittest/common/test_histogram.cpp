@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 
 #include "openzl/shared/histogram.h"
+#include "tests/datagen/random_producer/compat_uniform_distribution.h"
 
 using namespace ::testing;
 
@@ -131,13 +132,15 @@ TYPED_TEST(HistogramTest, TwoValues)
 
 TYPED_TEST(HistogramTest, RandomHistogram)
 {
+    using compat_dist =
+            openzl::tests::datagen::compat_uniform_int_distribution<TypeParam>;
     std::mt19937 gen(0xdeadbeef);
     for (size_t i = 0; i < 100; ++i) {
         std::vector<TypeParam> vals;
-        auto max = std::uniform_int_distribution<TypeParam>{}(gen);
+        auto max = compat_dist{}(gen);
         auto const numVals =
                 std::uniform_int_distribution<size_t>{ 0, 1000 }(gen);
-        std::uniform_int_distribution<TypeParam> dist{ 0, max };
+        compat_dist dist{ 0, max };
         for (size_t j = 0; j < numVals; ++j) {
             vals.push_back(dist(gen));
         }

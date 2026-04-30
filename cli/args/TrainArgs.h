@@ -17,7 +17,7 @@
 
 namespace openzl::cli {
 
-class TrainArgs : public GlobalArgs {
+class TrainArgs : public GlobalArgs, public ProfileArgs {
    public:
     static void addArgs(arg::ArgParser& parser)
     {
@@ -27,14 +27,6 @@ class TrainArgs : public GlobalArgs {
         // Add the top-level flags
         parser.addCommandPositional(
                 cmd(), kSampleDir, "Directory containing samples to train on.");
-        parser.addCommandFlag(
-                cmd(), kProfile, 'p', true, "Train with the given profile.");
-        parser.addCommandFlag(
-                cmd(),
-                kProfileArg,
-                0,
-                true,
-                "Pass the given value as an argument to constructing the profile.");
         parser.addCommandFlag(
                 cmd(),
                 kCompressor,
@@ -117,12 +109,12 @@ class TrainArgs : public GlobalArgs {
                 "Enables pareto frontier training. This will output a directory containing all compressors in the pareto frontier.");
     }
 
-    explicit TrainArgs(const arg::ParsedArgs& parsed) : GlobalArgs(parsed)
+    explicit TrainArgs(const arg::ParsedArgs& parsed)
+            : GlobalArgs(parsed), ProfileArgs(parsed)
     {
-        compressor = createCompressorFromArgs(
-                parsed.cmdFlag(cmd(), kProfile),
-                parsed.cmdFlag(cmd(), kProfileArg),
-                parsed.cmdFlag(cmd(), kCompressor));
+        // Create the compressor
+        setCompressor(createCompressorFromArgs(
+                *this, parsed.cmdFlag(cmd(), kCompressor)));
         auto outputPath = parsed.cmdFlag(cmd(), kOutput);
         if (outputPath) {
             checkOutput(outputPath.value(), parsed.cmdHasFlag(cmd(), kForce));
@@ -193,7 +185,10 @@ class TrainArgs : public GlobalArgs {
                 custom_parsers::createCompressorFromSerialized;
     }
 
-    explicit TrainArgs(const GlobalArgs& globalArgs) : GlobalArgs(globalArgs)
+    explicit TrainArgs(
+            const GlobalArgs& globalArgs,
+            const std::shared_ptr<Compressor>& compressor)
+            : GlobalArgs(globalArgs), ProfileArgs(compressor)
     {
         trainParams.compressorGenFunc =
                 custom_parsers::createCompressorFromSerialized;
@@ -204,7 +199,6 @@ class TrainArgs : public GlobalArgs {
         return Cmd::TRAIN;
     }
 
-    std::shared_ptr<Compressor> compressor;
     std::shared_ptr<tools::io::InputSet> inputs;
     std::shared_ptr<tools::io::Output> output;
 
@@ -213,8 +207,6 @@ class TrainArgs : public GlobalArgs {
 
    private:
     inline static const std::string kSampleDir  = "sample-dir";
-    inline static const std::string kProfile    = "profile";
-    inline static const std::string kProfileArg = "profile-arg";
     inline static const std::string kCompressor = "compressor";
 
     inline static const std::string kOutput = "output";

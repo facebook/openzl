@@ -2,10 +2,14 @@
 
 #include <gtest/gtest.h>
 
+#include <iomanip>
+
 #include "openzl/zl_compressor_serialization.h"
 
 #include "openzl/common/a1cbor_helpers.h"
 #include "openzl/common/logging.h"
+#include "openzl/compress/private_nodes.h"
+#include "openzl/cpp/Exception.hpp"
 
 #include "tests/datagen/random_producer/PRNGWrapper.h"
 #include "tests/datagen/structures/CompressorProducer.h"
@@ -14,7 +18,7 @@
 
 using namespace ::testing;
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 
 namespace {
@@ -270,16 +274,25 @@ TEST_F(CompressorSerializationTest, Roundtrip)
                     },
         };
     };
-    auto lp     = make_lp();
-    auto cp_nid = ZL_Compressor_cloneNode(compressor, ZL_NODE_ZIGZAG, &lp);
+    auto lp                               = make_lp();
+    const ZL_ParameterizedNodeDesc pndesc = {
+        .node        = ZL_NODE_ZIGZAG,
+        .localParams = &lp,
+    };
+    auto cp_nid = ZL_Compressor_registerParameterizedNode(compressor, &pndesc);
     EXPECT_NE(cp_nid, ZL_NODE_ILLEGAL);
 
     ips.push_back((ZL_IntParam){
             .paramId    = 123,
             .paramValue = 5678,
     });
-    lp             = make_lp();
-    auto cp_cp_nid = ZL_Compressor_cloneNode(compressor, cp_nid, &lp);
+    lp                                     = make_lp();
+    const ZL_ParameterizedNodeDesc pndesc2 = {
+        .node        = cp_nid,
+        .localParams = &lp,
+    };
+    auto cp_cp_nid =
+            ZL_Compressor_registerParameterizedNode(compressor, &pndesc2);
     EXPECT_NE(cp_cp_nid, ZL_NODE_ILLEGAL);
 
     ZL_REQUIRE_SUCCESS(
@@ -339,5 +352,73 @@ TEST_F(CompressorSerializationTest, GetDepsWithCompressor)
     }
 }
 
+TEST_F(CompressorSerializationTest, RejectPrivateStoreAsParameterizedBase)
+{
+    //     openzl::Compressor compressor;
+    //     // Create a parameterize the private serial_store graph and register
+    //     it. const ZL_GraphID serialStoreGraph = {
+    //         ZL_PrivateStandardGraphID_serial_store
+    //     };
+    //     const ZL_ParameterizedGraphDesc desc = {
+    //         .name           = NULL,
+    //         .graph          = serialStoreGraph,
+    //         .customGraphs   = NULL,
+    //         .nbCustomGraphs = 0,
+    //         .customNodes    = NULL,
+    //         .nbCustomNodes  = 0,
+    //         .localParams    = NULL,
+    //     };
+    //     auto paramGid =
+    //             ZL_Compressor_registerParameterizedGraph(compressor.get(),
+    //             &desc);
+    //     ASSERT_NE(paramGid.gid, ZL_GRAPH_ILLEGAL.gid);
+    //     compressor.selectStartingGraph(paramGid);
+
+    // Deserializing a parameterized private graph should fail. The bytes come
+    // from a parameterized serial store graph if successfully executed.
+    const unsigned char serializedBytes[] = {
+        0xa6, 0x67, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x68, 0x66,
+        0x70, 0x61, 0x72, 0x61, 0x6d, 0x73, 0xa1, 0x70, 0x37, 0x34, 0x33, 0x64,
+        0x66, 0x39, 0x34, 0x65, 0x65, 0x34, 0x63, 0x37, 0x38, 0x61, 0x32, 0x61,
+        0xa2, 0x64, 0x69, 0x6e, 0x74, 0x73, 0xa0, 0x65, 0x62, 0x6c, 0x6f, 0x62,
+        0x73, 0xa0, 0x65, 0x6e, 0x6f, 0x64, 0x65, 0x73, 0xa0, 0x66, 0x67, 0x72,
+        0x61, 0x70, 0x68, 0x73, 0xa1, 0x78, 0x19, 0x7a, 0x6c, 0x2e, 0x70, 0x72,
+        0x69, 0x76, 0x61, 0x74, 0x65, 0x2e, 0x73, 0x65, 0x72, 0x69, 0x61, 0x6c,
+        0x5f, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x23, 0x30, 0xa5, 0x64, 0x74, 0x79,
+        0x70, 0x65, 0x6d, 0x70, 0x61, 0x72, 0x61, 0x6d, 0x65, 0x74, 0x65, 0x72,
+        0x69, 0x7a, 0x65, 0x64, 0x64, 0x62, 0x61, 0x73, 0x65, 0x77, 0x7a, 0x6c,
+        0x2e, 0x70, 0x72, 0x69, 0x76, 0x61, 0x74, 0x65, 0x2e, 0x73, 0x65, 0x72,
+        0x69, 0x61, 0x6c, 0x5f, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x66, 0x67, 0x72,
+        0x61, 0x70, 0x68, 0x73, 0x80, 0x65, 0x6e, 0x6f, 0x64, 0x65, 0x73, 0x80,
+        0x66, 0x70, 0x61, 0x72, 0x61, 0x6d, 0x73, 0x70, 0x37, 0x34, 0x33, 0x64,
+        0x66, 0x39, 0x34, 0x65, 0x65, 0x34, 0x63, 0x37, 0x38, 0x61, 0x32, 0x61,
+        0x65, 0x73, 0x74, 0x61, 0x72, 0x74, 0x78, 0x19, 0x7a, 0x6c, 0x2e, 0x70,
+        0x72, 0x69, 0x76, 0x61, 0x74, 0x65, 0x2e, 0x73, 0x65, 0x72, 0x69, 0x61,
+        0x6c, 0x5f, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x23, 0x30, 0x6d, 0x67, 0x6c,
+        0x6f, 0x62, 0x61, 0x6c, 0x5f, 0x70, 0x61, 0x72, 0x61, 0x6d, 0x73, 0x70,
+        0x37, 0x34, 0x33, 0x64, 0x66, 0x39, 0x34, 0x65, 0x65, 0x34, 0x63, 0x37,
+        0x38, 0x61, 0x32, 0x61
+    };
+    std::string serialized(
+            reinterpret_cast<const char*>(serializedBytes),
+            sizeof(serializedBytes));
+
+    openzl::Compressor deserializedCompressor;
+    EXPECT_THROW(
+            {
+                try {
+                    deserializedCompressor.deserialize(serialized);
+                } catch (const openzl::Exception& e) {
+                    std::string msg = e.what();
+                    EXPECT_NE(
+                            msg.find(
+                                    "The private store graph cannot be used as a base graph and parameterized"),
+                            std::string::npos);
+                    throw;
+                }
+            },
+            openzl::Exception);
+}
+
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

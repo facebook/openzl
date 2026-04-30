@@ -4,11 +4,12 @@
 
 #include "custom_transforms/thrift/constants.h" // @manual
 #include "custom_transforms/thrift/debug.h"
-#include "custom_transforms/thrift/parse_config.h" // @manual
-#include "custom_transforms/thrift/thrift_types.h" // @manual
-#include "openzl/codecs/common/copy.h"             // @manual
-#include "openzl/common/errors_internal.h"         // @manual
-#include "openzl/shared/varint.h"                  // @manual
+#include "custom_transforms/thrift/parse_config.h"  // @manual
+#include "custom_transforms/thrift/thrift_errors.h" // @manual
+#include "custom_transforms/thrift/thrift_types.h"  // @manual
+#include "openzl/codecs/common/copy.h"              // @manual
+#include "openzl/common/errors_internal.h"          // @manual
+#include "openzl/shared/varint.h"                   // @manual
 
 #include <folly/Portability.h>
 #include <folly/Range.h>
@@ -204,7 +205,9 @@ class WriteStream : public detail::BaseWriteStream<WriteStream> {
               type_(type)
     {
         if (width() == 0) {
-            throw std::runtime_error{ fmt::format(
+            // Note: It is not possible to create an EncoderConfig that throws
+            // here with the provided construction API.
+            throw InvalidConfigError{ fmt::format(
                     "Invalid WriteStream type {}", type_) };
         }
     }
@@ -244,7 +247,7 @@ class WriteStream : public detail::BaseWriteStream<WriteStream> {
     ZL_FORCE_INLINE_ATTR void writeValue(Value val)
     {
         static_assert(folly::kIsLittleEndian);
-        appender_.writeLE(val);
+        appender_.writeLE<Value>(val);
     }
 
     void copyTo(folly::MutableByteRange dst) const

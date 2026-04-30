@@ -11,8 +11,8 @@ python_unittest(
     name = "test_zstrong_json",
     srcs = ["test_zstrong_json.py"],
     deps = [
+        "..:zstrong_json",
         "fbsource//third-party/pypi/numpy:numpy",
-        "//data_compression/experimental/zstrong/tools/py:zstrong_json",
     ],
 )
 
@@ -21,8 +21,8 @@ python_unittest(
     name = "test_zstrong_ml",
     srcs = ["test_zstrong_ml.py"],
     deps = [
+        "..:zstrong_ml",
         "fbsource//third-party/pypi/numpy:numpy",
-        "//data_compression/experimental/zstrong/tools/py:zstrong_ml",
     ],
 )
 
@@ -30,7 +30,7 @@ cpp_unittest(
     name = "test_pybind_helpers",
     srcs = ["test_pybind_helpers.cpp"],
     deps = [
+        "..:pybind_helpers",
         "fbsource//third-party/pybind11:pybind11",
-        "//data_compression/experimental/zstrong/tools/py:pybind_helpers",
     ],
 )

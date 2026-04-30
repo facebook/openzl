@@ -1,26 +1,38 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-import type {SerializedStreamdump} from '../interfaces/SerializedStreamdump';
-import {Codec} from './Codec';
-import {Stream} from './Stream';
-import {Graph} from './Graph';
+import type {SerializedStreamdumpV1} from '../interfaces/SerializedStreamdump';
+import {Chunk} from './Chunk';
+import {OperationType} from './idTypes';
 
 export class Streamdump {
-  readonly streams: Stream[];
-  readonly codecs: Codec[];
-  readonly graphs: Graph[];
+  readonly libraryVersion: number;
+  readonly frameVersion: number;
+  readonly traceVersion: number;
+  readonly operationType: OperationType;
+  readonly chunks: Chunk[];
 
-  constructor(streams: Stream[], codecs: Codec[], graphs: Graph[]) {
-    this.streams = streams;
-    this.codecs = codecs;
-    this.graphs = graphs;
+  constructor(
+    libraryVersion: number,
+    frameVersion: number,
+    traceVersion: number,
+    operationType: OperationType,
+    chunks: Chunk[],
+  ) {
+    this.libraryVersion = libraryVersion;
+    this.frameVersion = frameVersion;
+    this.traceVersion = traceVersion;
+    this.operationType = operationType;
+    this.chunks = chunks;
   }
 
-  static fromObject(obj: SerializedStreamdump): Streamdump {
+  static fromObject(obj: SerializedStreamdumpV1): Streamdump {
+    const operationType = obj.operationType === 1 ? OperationType.Decompress : OperationType.Compress;
     return new Streamdump(
-      obj.streams.map((stream, streamId) => Stream.fromObject(stream, streamId)),
-      obj.codecs.map((codec, codecNum) => Codec.fromObject(codec, codecNum)),
-      obj.graphs.map((graph, graphNum) => Graph.fromObject(graph, graphNum)),
+      obj.libraryVersion,
+      obj.frameVersion,
+      obj.traceVersion,
+      operationType,
+      obj.chunks.map((chunk, chunkId) => Chunk.fromObject(chunk, chunkId)),
     );
   }
 }

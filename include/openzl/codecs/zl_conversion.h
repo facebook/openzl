@@ -6,12 +6,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "openzl/zl_data.h"
 #include "openzl/zl_graph_api.h"
 #include "openzl/zl_graphs.h"
 #include "openzl/zl_localParams.h"
 #include "openzl/zl_nodes.h"
 #include "openzl/zl_opaque_types.h"
-#include "openzl/zl_stream.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -319,22 +319,24 @@ ZL_Edge_runConvertSerialToStringNode(
 // The reverse operation, unbundling string, actually generates 2 output
 // streams: the first one (serialized) with the concatenation of all strings,
 // and the second one (numeric) for the array of string sizes.
-#define ZL_NODE_SEPARATE_STRING_COMPONENTS           \
-    (ZL_NodeID)                                      \
-    {                                                \
-        ZL_StandardNodeID_separate_string_components \
-    }
+#define ZL_NODE_SEPARATE_STRING_COMPONENTS \
+    ZL_MAKE_NODE_ID(ZL_StandardNodeID_separate_string_components)
 
 // Old names for nodes
 enum { ZL_trlip_tokenSize = 1 };
-#define ZL_CREATENODE_CONVERT_SERIAL_TO_TOKEN(g, l)                       \
-    ZL_Compressor_cloneNode(                                              \
-            g,                                                            \
-            ZL_NODE_CONVERT_SERIAL_TO_STRUCT,                             \
-            &(const ZL_LocalParams){                                      \
-                    { &(const ZL_IntParam){ ZL_trlip_tokenSize, l }, 1 }, \
-                    { NULL, 0 },                                          \
-                    { NULL, 0 } })
+#define ZL_CREATENODE_CONVERT_SERIAL_TO_TOKEN(g, l)                    \
+    ZL_Compressor_registerParameterizedNode(                           \
+            g,                                                         \
+            &(const ZL_ParameterizedNodeDesc){                         \
+                    .node = ZL_NODE_CONVERT_SERIAL_TO_STRUCT,          \
+                    .localParams =                                     \
+                            &(const ZL_LocalParams){                   \
+                                    { &(const ZL_IntParam){            \
+                                              ZL_trlip_tokenSize, l }, \
+                                      1 },                             \
+                                    { NULL, 0 },                       \
+                                    { NULL, 0 } },                     \
+            })
 
 #define ZL_NODE_CONVERT_SERIAL_TO_TOKENX ZL_NODE_CONVERT_SERIAL_TO_STRUCT
 #define ZL_NODE_CONVERT_SERIAL_TO_TOKEN2 ZL_NODE_CONVERT_SERIAL_TO_STRUCT2

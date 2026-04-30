@@ -5,7 +5,7 @@
 #include <memory>
 #include "tests/datagen/random_producer/RandWrapper.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 /**
  * A simple RNG interface around RandWrapper that implements the same methods as
@@ -46,8 +46,8 @@ class RNGEngine {
     }
 
    private:
-    zstrong::tests::datagen::RandWrapper* rw_;
+    RandWrapper* rw_;
     RandWrapper::NameType name_;
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

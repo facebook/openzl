@@ -7,10 +7,11 @@
 /// Graph definition for the tokenize transforms
 /// used by both the encoder and decoder side.
 
-#define TOKENIZE_GRAPH(id, inType)                             \
-    {                                                          \
-        .CTid = id, .inputTypes = ZL_STREAMTYPELIST(inType),   \
-        .soTypes = ZL_STREAMTYPELIST(inType, ZL_Type_numeric), \
+#define TOKENIZE_GRAPH(id, inType)                                \
+    {                                                             \
+        .CTid       = id,                                         \
+        .inputTypes = ZL_STREAMTYPELIST(inType),                  \
+        .soTypes    = ZL_STREAMTYPELIST(inType, ZL_Type_numeric), \
     }
 
 #endif

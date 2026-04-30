@@ -12,11 +12,10 @@ ZL_BEGIN_C_DECLS
 ZL_Report
 EI_divide_by_int(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 
-#define EI_DIVIDE_BY_INT(id)                                      \
-    {                                                             \
-        .gd = NUMPIPE_GRAPH(id), .transform_f = EI_divide_by_int, \
-        .name = "!zl.divide_by"                                   \
-    }
+#define EI_DIVIDE_BY_INT(id)            \
+    { .gd          = NUMPIPE_GRAPH(id), \
+      .transform_f = EI_divide_by_int,  \
+      .name        = "!zl.divide_by" }
 
 // Legacy
 ZL_Report EI_divide_by_int_as_typedTransform(

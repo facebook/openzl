@@ -83,7 +83,7 @@ static ZL_Report encodeFn(
                 (const CustomEncoder*)ZL_Encoder_getOpaquePtr(encoder);
         customEncoder->encode(state);
     } catch (const Exception& e) {
-        // TODO(terrelln): Beter wrap the error
+        // TODO(terrelln): Better wrap the error
         ZL_ERR(GENERIC, "C++ openzl::Exception: %s", e.what());
     } catch (const std::exception& e) {
         ZL_ERR(GENERIC, "C++ std::exception: %s", e.what());
@@ -95,7 +95,7 @@ static ZL_Report encodeFn(
 
 /* static */ NodeID CustomEncoder::registerCustomEncoder(
         Compressor& compressor,
-        std::shared_ptr<CustomEncoder> encoder)
+        std::shared_ptr<const CustomEncoder> encoder)
 {
     const auto& desc               = encoder->multiInputDescription();
     auto inputTypes                = typesToCTypes(desc.inputTypes);

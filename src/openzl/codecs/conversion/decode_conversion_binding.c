@@ -71,6 +71,7 @@ ZL_Report DI_revert_serial_to_num_be(ZL_Decoder* di, const ZL_Input* ins[])
 // Effectively, serial => intX
 ZL_Report DI_revert_num_to_serial_le(ZL_Decoder* di, const ZL_Input* ins[])
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(di);
     ZL_ASSERT_NN(di);
     ZL_ASSERT_NN(ins);
     const ZL_Input* const in = ins[0];
@@ -82,17 +83,15 @@ ZL_Report DI_revert_num_to_serial_le(ZL_Decoder* di, const ZL_Input* ins[])
                              // engine
 
     ZL_RBuffer const header = ZL_Decoder_getCodecHeader(di);
-    ZL_RET_R_IF_NE(header_unknown, header.size, 1, "Invalid transform header!");
+    ZL_ERR_IF_NE(header.size, 1, header_unknown, "Invalid transform header!");
+    size_t const intLog = ((const uint8_t*)header.start)[0];
+    ZL_ERR_IF_GT(intLog, 3, header_unknown, "Invalid intLog");
     size_t const intSize = (size_t)1 << (((const uint8_t*)header.start)[0]);
-    ZL_RET_R_IF(
-            header_unknown,
-            !(intSize == 1 || intSize == 2 || intSize == 4 || intSize == 8),
-            "header contains bad integer width");
     size_t const nbBytes = ZL_Input_contentSize(in);
-    ZL_RET_R_IF_NE(
-            corruption,
+    ZL_ERR_IF_NE(
             nbBytes % intSize,
             0,
+            corruption,
             "stream size must be a multiple of the integer size");
     size_t const nbInts = nbBytes / intSize;
 
@@ -104,14 +103,14 @@ ZL_Report DI_revert_num_to_serial_le(ZL_Decoder* di, const ZL_Input* ins[])
     if (MEM_isAlignedForNumericWidth(ZL_Input_ptr(in), intSize)) {
         ZL_Output* const out =
                 DI_reference1OutStream(di, in, 0, intSize, nbInts);
-        ZL_RET_R_IF_NULL(allocation, out);
+        ZL_ERR_IF_NULL(out, allocation);
     } else {
         // Not aligned : create new stream, copy into it
         ZL_Output* const out = ZL_Decoder_create1OutStream(di, nbInts, intSize);
-        ZL_RET_R_IF_NULL(allocation, out);
+        ZL_ERR_IF_NULL(out, allocation);
         ZL_ASSERT(MEM_isAlignedForNumericWidth(ZL_Output_ptr(out), intSize));
         size_t const byteSize = ZL_Input_contentSize(in);
-        ZL_RET_R_IF_ERR(STREAM_copyBytes(
+        ZL_ERR_IF_ERR(STREAM_copyBytes(
                 ZL_codemodOutputAsData(out),
                 ZL_codemodInputAsData(in),
                 byteSize));
@@ -123,13 +122,14 @@ ZL_Report DI_revert_num_to_serial_le(ZL_Decoder* di, const ZL_Input* ins[])
 // Effectively, token(anylength) => serial
 ZL_Report DI_revert_serial_to_struct(ZL_Decoder* di, const ZL_Input* ins[])
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(di);
     ZL_ASSERT_NN(di);
     ZL_ASSERT_NN(ins);
     const ZL_Input* const in = ins[0];
 
     ZL_Output* const out =
             DI_reference1OutStream(di, in, 0, 1, ZL_Input_contentSize(in));
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
 
     return ZL_returnValue(1);
 }
@@ -138,6 +138,7 @@ ZL_Report DI_revert_serial_to_struct(ZL_Decoder* di, const ZL_Input* ins[])
 // Effectively, serial => token
 ZL_Report DI_revert_struct_to_serial(ZL_Decoder* di, const ZL_Input* ins[])
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(di);
     ZL_ASSERT_NN(di);
     ZL_ASSERT_NN(ins);
     const ZL_Input* const in = ins[0];
@@ -152,24 +153,24 @@ ZL_Report DI_revert_struct_to_serial(ZL_Decoder* di, const ZL_Input* ins[])
     const uint8_t* ptr      = header.start;
     ZL_RESULT_OF(uint64_t)
     const r = ZL_varintDecode(&ptr, ptr + header.size);
-    ZL_RET_R_IF(srcSize_tooSmall, ZL_RES_isError(r));
+    ZL_ERR_IF(ZL_RES_isError(r), srcSize_tooSmall);
     uint64_t const eltSize = ZL_RES_value(r);
-    ZL_RET_R_IF_EQ(header_unknown, eltSize, 0, "eltSize must not be 0");
-    ZL_RET_R_IF_NE(
-            header_unknown,
+    ZL_ERR_IF_EQ(eltSize, 0, header_unknown, "eltSize must not be 0");
+    ZL_ERR_IF_NE(
             MEM_ptrDistance(header.start, ptr),
             header.size,
+            header_unknown,
             "Header size wrong");
     size_t const nbBytes = ZL_Input_contentSize(in);
-    ZL_RET_R_IF_NE(
-            corruption,
+    ZL_ERR_IF_NE(
             nbBytes % eltSize,
             0,
+            corruption,
             "stream size must be a multiple of the token size");
     size_t const nbTokens = nbBytes / eltSize;
 
     ZL_Output* const out = DI_reference1OutStream(di, in, 0, eltSize, nbTokens);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
 
     return ZL_returnValue(1);
 }
@@ -189,6 +190,7 @@ ZL_Report DI_revert_struct_to_num_be(ZL_Decoder* di, const ZL_Input* ins[])
 // Effectively, token => int
 ZL_Report DI_revert_num_to_struct_le(ZL_Decoder* di, const ZL_Input* ins[])
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(di);
     // TODO (@Cyan): support for big-endian systems,
     //               requires a swap operation
     ZL_REQUIRE(
@@ -203,22 +205,22 @@ ZL_Report DI_revert_num_to_struct_le(ZL_Decoder* di, const ZL_Input* ins[])
                              // engine
     size_t const eltWidth = ZL_Input_eltWidth(in);
     if (!(eltWidth == 1 || eltWidth == 2 || eltWidth == 4 || eltWidth == 8)) {
-        ZL_RET_R_ERR(streamParameter_invalid);
+        ZL_ERR(streamParameter_invalid);
     }
     size_t const nbElts = ZL_Input_numElts(in);
 
     if (MEM_isAlignedForNumericWidth(ZL_Input_ptr(in), eltWidth)) {
         ZL_Output* const out =
                 DI_reference1OutStream(di, in, 0, eltWidth, nbElts);
-        ZL_RET_R_IF_NULL(allocation, out);
+        ZL_ERR_IF_NULL(out, allocation);
     } else {
         // Not aligned : create new stream, copy into it
         ZL_Output* const out =
                 ZL_Decoder_create1OutStream(di, nbElts, eltWidth);
-        ZL_RET_R_IF_NULL(allocation, out);
+        ZL_ERR_IF_NULL(out, allocation);
         ZL_ASSERT(MEM_isAlignedForNumericWidth(ZL_Output_ptr(out), eltWidth));
         size_t const byteSize = ZL_Input_contentSize(in);
-        ZL_RET_R_IF_ERR(STREAM_copyBytes(
+        ZL_ERR_IF_ERR(STREAM_copyBytes(
                 ZL_codemodOutputAsData(out),
                 ZL_codemodInputAsData(in),
                 byteSize));
@@ -229,6 +231,7 @@ ZL_Report DI_revert_num_to_struct_le(ZL_Decoder* di, const ZL_Input* ins[])
 
 ZL_Report DI_revert_VSF_separation(ZL_Decoder* dictx, const ZL_Input* ins[])
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_ASSERT_NN(ins);
     const ZL_Input* const concatFields = ins[0];
     ZL_ASSERT_NN(concatFields);
@@ -240,14 +243,14 @@ ZL_Report DI_revert_VSF_separation(ZL_Decoder* dictx, const ZL_Input* ins[])
 
     ZL_Output* const vsfRegen =
             DI_reference1OutStream(dictx, concatFields, 0, 1, contentSize);
-    ZL_RET_R_IF_NULL(allocation, vsfRegen);
+    ZL_ERR_IF_NULL(vsfRegen, allocation);
 
     const size_t nbFields = ZL_Input_numElts(fieldSizes);
     // Note : allocation to be changed for local workspace when available
     uint32_t* const arr32 = ZL_Output_reserveStringLens(vsfRegen, nbFields);
-    ZL_RET_R_IF_NULL(allocation, arr32);
+    ZL_ERR_IF_NULL(arr32, allocation);
 
-    ZL_RET_R_IF_ERR(NUMOP_write32_fromNumerics(
+    ZL_ERR_IF_ERR(NUMOP_write32_fromNumerics(
             arr32,
             nbFields,
             ZL_Input_ptr(fieldSizes),
@@ -258,13 +261,13 @@ ZL_Report DI_revert_VSF_separation(ZL_Decoder* dictx, const ZL_Input* ins[])
             "Calculating totalSize=%llu, as sum of arr32 of %zu elts",
             totalSize,
             nbFields);
-    ZL_RET_R_IF_NE(
-            corruption,
+    ZL_ERR_IF_NE(
             totalSize,
             (uint64_t)contentSize,
+            corruption,
             "Incorrect sum of field sizes");
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(vsfRegen, nbFields));
+    ZL_ERR_IF_ERR(ZL_Output_commit(vsfRegen, nbFields));
     ZL_DLOG(SEQ,
             "Produced Stream: Type:%u, nbStrings:%u, eltWidth=%u",
             ZL_Output_type(vsfRegen),
@@ -278,6 +281,7 @@ ZL_Report DI_extract_concatenatedFields(
         ZL_Decoder* dictx,
         const ZL_Input* ins[])
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_ASSERT_NN(ins);
     const ZL_Input* const inVSF = ins[0];
     ZL_ASSERT_NN(inVSF);
@@ -285,6 +289,6 @@ ZL_Report DI_extract_concatenatedFields(
 
     ZL_Output* const serialExtract = DI_reference1OutStream(
             dictx, inVSF, 0, 1, ZL_Input_contentSize(inVSF));
-    ZL_RET_R_IF_NULL(allocation, serialExtract);
+    ZL_ERR_IF_NULL(serialExtract, allocation);
     return ZL_returnValue(1);
 }

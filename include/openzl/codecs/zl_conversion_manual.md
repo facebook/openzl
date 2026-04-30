@@ -14,7 +14,7 @@ An input of type serial, struct, numeric.
 A single output of the specified type that is compatible - serial, struct, numeric. The output contains the converted data in the output format. See the spec for more details on the typed format.
 
 ## SerialToString
-StringToSerial has 2 ouputs, one of type serial containing a serial representation of the string data, the second output contains a numeric output containing sizes of the strings in the input.
+StringToSerial has 2 outputs, one of type serial containing a serial representation of the string data, the second output contains a numeric output containing sizes of the strings in the input.
 
 ### Use Cases
 Used to invoke codecs with different underlying types from the received type. One common example is entropy codecs which only take serial inputs. When compressing numeric data, it is necessary to convert to serial then run the entropy codecs.

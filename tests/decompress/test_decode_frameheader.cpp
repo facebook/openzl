@@ -1,12 +1,14 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <gtest/gtest.h>
+#include <numeric>
 #include <random>
 
 #include "openzl/common/assertion.h"
 #include "openzl/common/errors_internal.h"
 #include "openzl/zl_compress.h"
 #include "openzl/zl_compressor.h"
+#include "tests/utils.h" // @manual
 
 using namespace ::testing;
 
@@ -39,10 +41,11 @@ static std::string randomCompress(size_t nbInputs, size_t inputSizeEach)
         constInputRefs.push_back(ref);
     }
 
-    size_t dstCap = ZL_compressBound(std::accumulate(
-            inputs.begin(), inputs.end(), 0ul, [](auto acc, auto s) {
+    size_t const totalInputSize = std::accumulate(
+            inputs.begin(), inputs.end(), 0ul, [](auto acc, const auto& s) {
                 return acc + s.size();
-            }));
+            });
+    size_t dstCap = ZL_COMPRESSBOUND_UNGUARDED(totalInputSize);
     std::string dst(dstCap, 0);
 
     ZL_CCtx* cctx = ZL_CCtx_create();

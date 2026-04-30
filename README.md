@@ -1,6 +1,6 @@
 # OpenZL
 
-OpenZL delivers high compression ratios _while preserving high speed_, a level of performance that is out of reach for generic compressors.
+OpenZL delivers high compression ratios _while preserving high speed_, a level of performance that is out of reach for generic compressors. **Check out the [blog post](https://engineering.fb.com/2025/10/06/developer-tools/openzl-open-source-format-aware-compression-framework/) and [whitepaper](https://arxiv.org/abs/2510.03203) for a breakdown of how it works.**
 
 OpenZL takes a description of your data and builds from it a specialized compressor optimized for your specific format. [Learn how it works →](https://facebook.github.io/openzl/getting-started/introduction/)
 
@@ -21,6 +21,9 @@ However, we intend to maintain some stability guarantees in the face of that evo
 Despite the big scary warnings above, we consider the core to have reached production-readiness, and OpenZL is used extensively in production at Meta.
 
 ## Building OpenZL
+
+### Prerequisites
+OpenZL requires a compiler that supports C11 and C++17. When building with `cmake`, `cmake 3.20.2` or newer is required. There is ongoing work to relax these restrictions. As that happens, this section will be updated.
 
 ### Build with `make`
 
@@ -153,13 +156,13 @@ Run our detection script to check available compilers and get recommendations:
 
 ```cmd
 # PowerShell
-./build/cmake/detect_windows_compiler.ps1
+./build-scripts/cmake/detect_windows_compiler.ps1
 
 # Command Prompt
-./build/cmake/detect_windows_compiler.bat
+./build-scripts/cmake/detect_windows_compiler.bat
 ```
 
-For detailed Windows build instructions, troubleshooting, and installation guides, see [build/cmake/WINDOWS_BUILD.md](build/cmake/WINDOWS_BUILD.md).
+For detailed Windows build instructions, troubleshooting, and installation guides, see [build-scripts/cmake/WINDOWS_BUILD.md](build-scripts/cmake/WINDOWS_BUILD.md).
 
 ## License
 

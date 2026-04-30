@@ -12,6 +12,7 @@
 
 ZL_Report DI_rangePack(ZL_Decoder* dictx, const ZL_Input* streams[])
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_ASSERT_NN(streams);
     const ZL_Input* in = streams[0];
     ZL_ASSERT(ZL_Input_type(in) == ZL_Type_numeric);
@@ -20,33 +21,31 @@ ZL_Report DI_rangePack(ZL_Decoder* dictx, const ZL_Input* streams[])
     const size_t nbElts   = ZL_Input_numElts(in);
 
     const ZL_RBuffer header = ZL_Decoder_getCodecHeader(dictx);
-    ZL_RET_R_IF_LT(
-            corruption, header.size, 1, "Range decoder expects a header");
+    ZL_ERR_IF_LT(header.size, 1, corruption, "Range decoder expects a header");
     uint8_t dstWidth = *(const uint8_t*)header.start;
-    ZL_RET_R_IF_LT(
-            corruption,
+    ZL_ERR_IF_LT(
             dstWidth,
             srcWidth,
-            "Range pack decoder expects dst to contain src");
-    ZL_RET_R_IF(
             corruption,
+            "Range pack decoder expects dst to contain src");
+    ZL_ERR_IF(
             !ZL_isLegalIntegerWidth(dstWidth),
+            corruption,
             "Range pack decoder got an illegal dstWidth (%zu)",
             dstWidth);
     uint64_t minValue = 0;
     if (header.size > 1) {
         if (header.size != (size_t)(dstWidth + 1)) {
-            ZL_RET_R_ERR(
-                    corruption,
-                    "Range pack decoder header should be either 1 or 1+dstWidth bytes");
+            ZL_ERR(corruption,
+                   "Range pack decoder header should be either 1 or 1+dstWidth bytes");
         }
         minValue = ZL_readLE64_N((const uint8_t*)header.start + 1, dstWidth);
     }
     ZL_Output* dstStream = ZL_Decoder_create1OutStream(dictx, nbElts, dstWidth);
-    ZL_RET_R_IF(allocation, !dstStream);
+    ZL_ERR_IF(!dstStream, allocation);
     void* dst = ZL_Output_ptr(dstStream);
     rangePackDecode(dst, dstWidth, src, srcWidth, nbElts, minValue);
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(dstStream, nbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(dstStream, nbElts));
     return ZL_returnValue(1);
 }

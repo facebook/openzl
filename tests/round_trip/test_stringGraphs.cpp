@@ -68,6 +68,7 @@ void swap_lastfirst_raw(
 // swap last element with the first one.
 static ZL_Report swap_lastfirst(ZL_Encoder* eictx, const ZL_Input* in) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     assert(in != nullptr);
     size_t const nbElts = ZL_Input_numElts(in);
     printf("swap_lastfirst transform (nb elts = %zu)\n", nbElts);
@@ -77,7 +78,7 @@ static ZL_Report swap_lastfirst(ZL_Encoder* eictx, const ZL_Input* in) noexcept
 
     ZL_Output* const outStream =
             ZL_Encoder_createTypedStream(eictx, 0, sumStringLens, 1);
-    ZL_RET_R_IF_NULL(allocation, outStream); // control allocation success
+    ZL_ERR_IF_NULL(outStream, allocation); // control allocation success
 
     uint32_t* const outStringLens =
             ZL_Output_reserveStringLens(outStream, nbElts);
@@ -91,19 +92,18 @@ static ZL_Report swap_lastfirst(ZL_Encoder* eictx, const ZL_Input* in) noexcept
             ZL_Input_stringLens(in),
             ZL_Input_ptr(in));
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(outStream, nbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(outStream, nbElts));
 
     return ZL_returnValue(1); // nb Out Streams
 }
 
 // Prefer a #define, to be used as initializer in static const declarations
 #define SWAP_LASTFIRST_GDESC                                          \
-    (ZL_TypedGraphDesc)                                               \
-    {                                                                 \
-        .CTid = CT_SWAP_LASTFIRST_ID, .inStreamType = ZL_Type_string, \
-        .outStreamTypes = (const ZL_Type[]){ ZL_Type_string },        \
-        .nbOutStreams   = 1                                           \
-    }
+    (ZL_TypedGraphDesc){ .CTid         = CT_SWAP_LASTFIRST_ID,        \
+                         .inStreamType = ZL_Type_string,              \
+                         .outStreamTypes =                            \
+                                 (const ZL_Type[]){ ZL_Type_string }, \
+                         .nbOutStreams = 1 }
 static ZL_TypedEncoderDesc const swap_lastfirst_CDesc = {
     .gd          = SWAP_LASTFIRST_GDESC,
     .transform_f = swap_lastfirst,
@@ -114,6 +114,7 @@ static ZL_Report swap_lastfirst_v2(
         ZL_Encoder* eictx,
         const ZL_Input* in) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     assert(in != nullptr);
     size_t const nbStrings = ZL_Input_numElts(in);
     printf("swap_lastfirst_v2 transform (nb strings = %zu)\n", nbStrings);
@@ -123,7 +124,7 @@ static ZL_Report swap_lastfirst_v2(
 
     ZL_Output* const outStream =
             ZL_Encoder_createStringStream(eictx, 0, nbStrings, sumStringLens);
-    ZL_RET_R_IF_NULL(allocation, outStream); // control allocation success
+    ZL_ERR_IF_NULL(outStream, allocation); // control allocation success
 
     swap_lastfirst_raw(
             ZL_Output_stringLens(outStream),
@@ -133,19 +134,18 @@ static ZL_Report swap_lastfirst_v2(
             ZL_Input_stringLens(in),
             ZL_Input_ptr(in));
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(outStream, nbStrings));
+    ZL_ERR_IF_ERR(ZL_Output_commit(outStream, nbStrings));
 
     return ZL_returnValue(1); // nb Out Streams
 }
 
 // Prefer a #define, to be used as initializer in static const declarations
-#define SWAP_LASTFIRST_V2_GDESC                                          \
-    (ZL_TypedGraphDesc)                                                  \
-    {                                                                    \
-        .CTid = CT_SWAP_LASTFIRST_V2_ID, .inStreamType = ZL_Type_string, \
-        .outStreamTypes = (const ZL_Type[]){ ZL_Type_string },           \
-        .nbOutStreams   = 1                                              \
-    }
+#define SWAP_LASTFIRST_V2_GDESC                                       \
+    (ZL_TypedGraphDesc){ .CTid         = CT_SWAP_LASTFIRST_V2_ID,     \
+                         .inStreamType = ZL_Type_string,              \
+                         .outStreamTypes =                            \
+                                 (const ZL_Type[]){ ZL_Type_string }, \
+                         .nbOutStreams = 1 }
 static ZL_TypedEncoderDesc const swap_lastfirst_v2_CDesc = {
     .gd          = SWAP_LASTFIRST_V2_GDESC,
     .transform_f = swap_lastfirst_v2,
@@ -157,22 +157,22 @@ static ZL_Report inString_justFail(
         ZL_Encoder* eictx,
         const ZL_Input* in) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     printf("Running inString_justFail custom transform \n");
     (void)eictx;
     assert(in != nullptr);
     assert(ZL_Input_type(in) == ZL_Type_string);
     (void)in;
-    ZL_RET_R_ERR(GENERIC);
+    ZL_ERR(GENERIC);
 }
 
 // Prefer a #define, to be used as initializer in static const declarations
-#define STRING_JUSTFAIL_GDESC                                          \
-    (ZL_TypedGraphDesc)                                                \
-    {                                                                  \
-        .CTid = CT_STRING_JUSTFAIL_ID, .inStreamType = ZL_Type_string, \
-        .outStreamTypes = (const ZL_Type[]){ ZL_Type_serial },         \
-        .nbOutStreams   = 1                                            \
-    }
+#define STRING_JUSTFAIL_GDESC                                         \
+    (ZL_TypedGraphDesc){ .CTid         = CT_STRING_JUSTFAIL_ID,       \
+                         .inStreamType = ZL_Type_string,              \
+                         .outStreamTypes =                            \
+                                 (const ZL_Type[]){ ZL_Type_serial }, \
+                         .nbOutStreams = 1 }
 static ZL_TypedEncoderDesc const string_justFail_CDesc = {
     .gd          = STRING_JUSTFAIL_GDESC,
     .transform_f = inString_justFail,
@@ -261,7 +261,8 @@ static ZL_Report DynGraph_serialTo3Strings(
         ZL_Edge* inputCtxs[],
         size_t nbIns) noexcept
 {
-    ZL_RET_R_IF(graph_invalidNumInputs, nbIns != 1);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
+    ZL_ERR_IF(nbIns != 1, graph_invalidNumInputs);
     ZL_Edge* inputCtx     = inputCtxs[0];
     const ZL_Input* input = ZL_Edge_getData(inputCtx);
     assert(ZL_Input_type(input) == ZL_Type_serial);
@@ -272,14 +273,14 @@ static ZL_Report DynGraph_serialTo3Strings(
     const uint32_t stringLens[] = { 11, (uint32_t)byteSize - 23, 12 };
 
     // Run newly created Node, collect outputs
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             so,
             ZL_Edge_runConvertSerialToStringNode(inputCtx, stringLens, 3));
     EXPECT_EQ((int)so.nbEdges, 1);
 
     // Assign dummy successor to output
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(so.edges[0], ZL_GRAPH_STORE));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(so.edges[0], ZL_GRAPH_STORE));
 
     return ZL_returnSuccess();
 }
@@ -415,6 +416,7 @@ static ZL_Report swap_lastfirst_decode_oldAPI(
         ZL_Decoder* dictx,
         const ZL_Input* ins[]) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     printf("swap_lastfirst decoder \n");
     assert(ins != nullptr);
     const ZL_Input* const in = ins[0];
@@ -427,11 +429,11 @@ static ZL_Report swap_lastfirst_decode_oldAPI(
 
     ZL_Output* const outStream =
             ZL_Decoder_create1OutStream(dictx, sumStringLens, 1);
-    ZL_RET_R_IF_NULL(allocation, outStream); // control allocation success
+    ZL_ERR_IF_NULL(outStream, allocation); // control allocation success
 
     uint32_t* const outStringLens =
             ZL_Output_reserveStringLens(outStream, nbStrings);
-    ZL_RET_R_IF_NULL(allocation, outStringLens); // control allocation success
+    ZL_ERR_IF_NULL(outStringLens, allocation); // control allocation success
 
     swap_lastfirst_raw(
             outStringLens,
@@ -441,7 +443,7 @@ static ZL_Report swap_lastfirst_decode_oldAPI(
             ZL_Input_stringLens(in),
             ZL_Input_ptr(in));
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(outStream, nbStrings));
+    ZL_ERR_IF_ERR(ZL_Output_commit(outStream, nbStrings));
     return ZL_returnValue(1); // nb Out Streams
 }
 
@@ -455,6 +457,7 @@ static ZL_Report swap_lastfirst_decode_newStringAPI(
         ZL_Decoder* dictx,
         const ZL_Input* ins[]) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     printf("swap_lastfirst decoder \n");
     assert(ins != nullptr);
     const ZL_Input* const in = ins[0];
@@ -467,7 +470,7 @@ static ZL_Report swap_lastfirst_decode_newStringAPI(
 
     ZL_Output* const outStream =
             ZL_Decoder_create1StringStream(dictx, nbStrings, sumStringLens);
-    ZL_RET_R_IF_NULL(allocation, outStream); // control allocation success
+    ZL_ERR_IF_NULL(outStream, allocation); // control allocation success
 
     swap_lastfirst_raw(
             ZL_Output_stringLens(outStream),
@@ -477,7 +480,7 @@ static ZL_Report swap_lastfirst_decode_newStringAPI(
             ZL_Input_stringLens(in),
             ZL_Input_ptr(in));
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(outStream, nbStrings));
+    ZL_ERR_IF_ERR(ZL_Output_commit(outStream, nbStrings));
     return ZL_returnValue(1); // nb Out Streams
 }
 

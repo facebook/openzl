@@ -12,10 +12,7 @@ ZL_BEGIN_C_DECLS
 // Ingests and generates a Numeric stream
 ZL_Report DI_delta_int(ZL_Decoder* dictx, const ZL_Input* in[]);
 
-#define DI_DELTA_INT(id)                             \
-    {                                                \
-        .transform_f = DI_delta_int, .name = "delta" \
-    }
+#define DI_DELTA_INT(id) { .transform_f = DI_delta_int, .name = "delta" }
 
 ZL_END_C_DECLS
 

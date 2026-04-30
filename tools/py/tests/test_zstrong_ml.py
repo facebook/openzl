@@ -6,7 +6,6 @@ import typing as t
 import unittest
 
 import numpy as np
-
 from zstrong_json import (
     compress,
     decompress,
@@ -18,7 +17,6 @@ from zstrong_json import (
     StreamType,
     transforms,
 )
-
 from zstrong_ml import (
     FeatureGenerator,
     GBTModel,

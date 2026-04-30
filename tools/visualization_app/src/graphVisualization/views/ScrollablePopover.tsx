@@ -3,10 +3,10 @@
 import {ScrollArea} from '@chakra-ui/react';
 import type {PropsWithChildren} from 'react';
 
-type ScrollablePopoverProps = {
+interface ScrollablePopoverProps {
   className: string;
   maxHeight: string;
-};
+}
 
 export const ScrollablePopover = (props: PropsWithChildren<ScrollablePopoverProps>) => {
   return (

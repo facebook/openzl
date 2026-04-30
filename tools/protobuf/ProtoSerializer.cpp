@@ -184,7 +184,19 @@ std::vector<Input> ProtoSerializer::getTrainingInputs(const Message& message)
 std::string ProtoSerializer::serialize(const Message& message)
 {
     auto [inputs, bufs] = getInputs(message);
-    return cctx_.compress(inputs);
+    // Multi-input compression may exceed ZL_compressBound()'s single-input
+    // contract due to per-stream overhead in chunk headers.
+    size_t inputSize = 0;
+    for (auto const& input : inputs) {
+        inputSize += input.contentSize();
+        if (input.type() == openzl::Type::String) {
+            inputSize += input.numElts() * sizeof(uint32_t);
+        }
+    }
+    std::string output;
+    output.resize(2 * ZL_compressBound(inputSize) + 1024, '\0');
+    output.resize(cctx_.compress(output, inputs));
+    return output;
 };
 } // namespace protobuf
 } // namespace openzl

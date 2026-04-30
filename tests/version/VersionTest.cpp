@@ -12,9 +12,9 @@
 
 #include "tools/cxx/Resources.h"
 
-#include "data_compression/experimental/zstrong/custom_transforms/thrift/kernels/tests/thrift_kernel_test_utils.h"
+#include "custom_transforms/thrift/kernels/tests/thrift_kernel_test_utils.h"
 
-namespace zstrong {
+namespace openzl {
 namespace {
 uint32_t hash4(uint32_t x)
 {
@@ -122,9 +122,9 @@ std::vector<std::string> generateData(Config config)
 }
 
 std::string_view constexpr kDevResourceName =
-        "data_compression/experimental/zstrong/tests/version/dev_version_test_interface.so";
+        "openzl/dev/tests/version/dev_version_test_interface.so";
 std::string_view constexpr kReleaseResourceName =
-        "data_compression/experimental/zstrong/tests/version/release_version_test_interface.so";
+        "openzl/dev/tests/version/release_version_test_interface.so";
 
 VersionTestInterface getVersionTestInterface(std::string_view resourceName)
 {
@@ -556,4 +556,4 @@ TEST_P(ReleaseGraphTest, BackwardCompatibility)
 }
 
 } // namespace
-} // namespace zstrong
+} // namespace openzl

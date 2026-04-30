@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "custom_transforms/thrift/thrift_errors.h" // @manual
+
 namespace zstrong::thrift {
 namespace detail {
 constexpr std::string_view kOldStyleVsfErrorMsg =
@@ -191,13 +193,14 @@ void PathTracker<StreamSetType>::Node::checkType(TType t) const
 {
     t = coerceType(t);
     if (t != type()) {
-        throw std::runtime_error(fmt::format(
-                "Node (id {}) has type {} ({}) but is being accessed with type {} ({})!",
-                id(),
-                thriftTypeToString(type()),
-                type(),
-                thriftTypeToString(t),
-                t));
+        throw ThriftParserUserError(
+                fmt::format(
+                        "Node (id {}) has type {} ({}) but is being accessed with type {} ({})!",
+                        id(),
+                        thriftTypeToString(type()),
+                        type(),
+                        thriftTypeToString(t),
+                        t));
     }
 }
 

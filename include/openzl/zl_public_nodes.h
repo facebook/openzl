@@ -13,6 +13,7 @@
 
 #include "openzl/codecs/zl_ace.h"                  // IWYU pragma: export
 #include "openzl/codecs/zl_bitpack.h"              // IWYU pragma: export
+#include "openzl/codecs/zl_bitsplit.h"             // IWYU pragma: export
 #include "openzl/codecs/zl_bitunpack.h"            // IWYU pragma: export
 #include "openzl/codecs/zl_brute_force_selector.h" // IWYU pragma: export
 #include "openzl/codecs/zl_concat.h"               // IWYU pragma: export
@@ -29,12 +30,17 @@
 #include "openzl/codecs/zl_generic.h"              // IWYU pragma: export
 #include "openzl/codecs/zl_illegal.h"              // IWYU pragma: export
 #include "openzl/codecs/zl_interleave.h"           // IWYU pragma: export
+#include "openzl/codecs/zl_lz.h"                   // IWYU pragma: export
+#include "openzl/codecs/zl_lz4.h"                  // IWYU pragma: export
 #include "openzl/codecs/zl_merge_sorted.h"         // IWYU pragma: export
+#include "openzl/codecs/zl_mlselector.h"           // IWYU pragma: export
+#include "openzl/codecs/zl_mux_lengths.h"          // IWYU pragma: export
 #include "openzl/codecs/zl_parse_int.h"            // IWYU pragma: export
 #include "openzl/codecs/zl_prefix.h"               // IWYU pragma: export
 #include "openzl/codecs/zl_quantize.h"             // IWYU pragma: export
 #include "openzl/codecs/zl_range_pack.h"           // IWYU pragma: export
 #include "openzl/codecs/zl_sddl.h"                 // IWYU pragma: export
+#include "openzl/codecs/zl_sentinel.h"             // IWYU pragma: export
 #include "openzl/codecs/zl_split.h"                // IWYU pragma: export
 #include "openzl/codecs/zl_split_by_struct.h"      // IWYU pragma: export
 #include "openzl/codecs/zl_store.h"                // IWYU pragma: export

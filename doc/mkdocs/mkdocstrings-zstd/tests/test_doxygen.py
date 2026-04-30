@@ -10,7 +10,6 @@ from mkdocstrings_handlers.zstd.doxygen import (
     DescriptionReturn,
     DescriptionText,
     Function,
-    Location,
     ObjectKind,
     Parameter,
     ParameterDirection,

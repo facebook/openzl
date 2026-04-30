@@ -4,14 +4,17 @@
 
 #include <errno.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "custom_parsers/csv/csv_lexer.h"
-#include "openzl/common/logging.h"
-#include "openzl/compress/graphs/generic_clustering_graph.h"
+#include "openzl/codecs/zl_clustering.h"
+#include "openzl/common/assertion.h"
+#include "openzl/shared/overflow.h"
 #include "openzl/zl_data.h"
 #include "openzl/zl_errors.h"
 #include "openzl/zl_graph_api.h"
+#include "openzl/zl_selector.h"
+
+ZL_RESULT_DECLARE_TYPE(ZL_RefParam);
 
 static void print(const void* ptr, size_t size, char* name)
 {
@@ -26,17 +29,75 @@ static void print(const void* ptr, size_t size, char* name)
     fclose(f);
 }
 
-static ZL_Report
-csvParserGraphFn(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
+static ZL_RESULT_OF(ZL_RefParam)
+        tryGetRefParam(ZL_Graph* gctx, int key, size_t structSize)
 {
-    ZL_RET_R_IF_NE(node_invalid_input, nbInputs, 1);
-    ZL_RET_R_IF_NULL(node_invalid_input, inputs[0]);
+    ZL_RESULT_DECLARE_SCOPE(ZL_RefParam, gctx);
+    ZL_RefParam refParam = ZL_Graph_getLocalRefParam(gctx, key);
+    ZL_ERR_IF_EQ(refParam.paramId, ZL_LP_INVALID_PARAMID, node_invalid_input);
+    ZL_ERR_IF_NE(refParam.paramSize % structSize, 0, node_invalid_input);
+    return ZL_RESULT_WRAP_VALUE(ZL_RefParam, refParam);
+}
+
+static ZL_Report tryGetIntParam(ZL_Graph* gctx, int key)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
+    ZL_IntParam intParam = ZL_Graph_getLocalIntParam(gctx, key);
+    ZL_ERR_IF_EQ(intParam.paramId, ZL_LP_INVALID_PARAMID, node_invalid_input);
+    return ZL_returnValue((size_t)intParam.paramValue);
+}
+
+/**
+ * Create dispatch indices for each token. Each field is sent to the output
+ * corresponding to its column number. Each delimiter, whitespace, and newline
+ * is sent to the `numCols` output. If @p hasHeader is true, the first line is
+ * sent to the `numCols + 1` output.
+ */
+static const uint16_t* createDispatchIndices(
+        ZL_Graph* gctx,
+        const ZL_CSV_TokenType* types,
+        const uint32_t* cols,
+        size_t numTokens,
+        size_t numCols,
+        bool hasHeader)
+{
+    size_t tokensSize;
+    if (ZL_overflowMulST(numTokens, sizeof(uint16_t), &tokensSize)) {
+        return NULL;
+    }
+    uint16_t* dispatchIndices = ZL_Graph_getScratchSpace(gctx, tokensSize);
+    if (dispatchIndices == NULL) {
+        return NULL;
+    }
+
+    size_t i = 0;
+    if (hasHeader && i < numTokens) {
+        do {
+            dispatchIndices[i] = (uint16_t)(numCols + 1);
+            ++i;
+        } while (i < numTokens && types[i] != ZL_CSV_TokenType_Newline);
+    }
+
+    for (; i < numTokens; ++i) {
+        dispatchIndices[i] =
+                (uint16_t)(types[i] == ZL_CSV_TokenType_Field ? cols[i]
+                                                              : numCols);
+    }
+    return dispatchIndices;
+}
+
+static ZL_Report
+csvParserGraphFn(ZL_Graph* gctx, ZL_Edge* inputs[], size_t numInputs)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
+
+    ZL_ASSERT_EQ(numInputs, 1);
+    ZL_ASSERT_NN(inputs[0]);
+
     /* TODO: The line end token is assumed to be '\n'. We should allow
      * multiple types of line end characters. */
     const ZL_Input* input = ZL_Edge_getData(inputs[0]);
-    ZL_RET_R_IF_NE(node_invalid_input, ZL_Input_type(input), ZL_Type_serial);
-    const size_t byteSize     = ZL_Input_contentSize(input);
-    const char* const content = (const char* const)ZL_Input_ptr(input);
+    ZL_ASSERT_EQ(ZL_Input_type(input), ZL_Type_serial);
 
     // Clustering graph is registered inside as a custom graph
     // Expecting 3 custom graphs right now: clustering, delimiters, header
@@ -44,105 +105,92 @@ csvParserGraphFn(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
     // Delimiters - ZL_GRAPH_COMPRESS_GENERIC
     // Header - ZL_GRAPH_COMPRESS_GENERIC
     ZL_GraphIDList customGraphs = ZL_Graph_getCustomGraphs(gctx);
-    ZL_RET_R_IF_NE(node_invalid_input, customGraphs.nbGraphIDs, 3);
+    ZL_ERR_IF_NE(customGraphs.nbGraphIDs, 3, node_invalid_input);
 
-    int hasHeader = ZL_Graph_getLocalIntParam(gctx, ZL_PARSER_HAS_HEADER_PID)
-                            .paramValue;
-    int intSep =
-            ZL_Graph_getLocalIntParam(gctx, ZL_PARSER_SEPARATOR_PID).paramValue;
-    ZL_RET_R_IF(
-            node_invalid_input,
-            (intSep > 255) || (intSep < 0),
-            "Separator must be a char value");
-    char sep = (char)intSep;
-    int useNullAwareParse =
-            ZL_Graph_getLocalIntParam(gctx, ZL_PARSER_USE_NULL_AWARE_PID)
-                    .paramValue;
-    ZL_RET_R_IF(
-            node_invalid_input,
-            (useNullAwareParse != 0) && (useNullAwareParse != 1),
-            "UseNullAware must be 0 or 1");
+    ZL_TRY_LET(
+            ZL_RefParam,
+            refParam,
+            tryGetRefParam(
+                    gctx, ZL_CSV_CHUNKED_TYPES_ID, sizeof(ZL_CSV_TokenType)));
+    const ZL_CSV_TokenType* tokens = (const ZL_CSV_TokenType*)refParam.paramRef;
+    const size_t numTokens = refParam.paramSize / sizeof(ZL_CSV_TokenType);
 
-    ZL_CSV_lexResult lexed = {};
-    ZL_Report lexRes       = (useNullAwareParse)
-                  ? ZL_CSV_lexNullAware(
-                      gctx, content, byteSize, hasHeader, sep, &lexed)
-                  : ZL_CSV_lex(gctx, content, byteSize, hasHeader, sep, &lexed);
-    ZL_RET_R_IF_ERR(lexRes);
+    ZL_TRY_SET(
+            ZL_RefParam,
+            refParam,
+            tryGetRefParam(gctx, ZL_CSV_CHUNKED_SIZES_ID, sizeof(uint32_t)));
+    const uint32_t* sizes = (const uint32_t*)refParam.paramRef;
+    ZL_ERR_IF_NE(
+            refParam.paramSize / sizeof(uint32_t),
+            numTokens,
+            node_invalid_input);
+
+    ZL_TRY_SET(
+            ZL_RefParam,
+            refParam,
+            tryGetRefParam(gctx, ZL_CSV_CHUNKED_COLS_ID, sizeof(uint32_t)));
+    const uint32_t* cols = (const uint32_t*)refParam.paramRef;
+    ZL_ERR_IF_NE(
+            refParam.paramSize / sizeof(uint32_t),
+            numTokens,
+            node_invalid_input);
+
+    ZL_TRY_LET(
+            size_t,
+            hasHeader,
+            tryGetIntParam(gctx, ZL_CSV_CHUNKED_HAS_HEADER_ID));
+    ZL_TRY_LET(
+            size_t, numCols, tryGetIntParam(gctx, ZL_CSV_CHUNKED_NUM_COLS_ID));
+
     // +1 for delimiters and newlines; +1 for header
-    size_t nbOutputs = lexed.nbColumns + 2;
+    const size_t numOutputs = numCols + 1 + (hasHeader ? 1 : 0);
 
     // Run newly created Node, collect outputs at intermediate output
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             io,
-            ZL_Edge_runConvertSerialToStringNode(
-                    inputs[0], lexed.stringLens, lexed.nbStrs));
+            ZL_Edge_runConvertSerialToStringNode(inputs[0], sizes, numTokens));
 
-    if (0) { // dump these streams for debugging
-        const ZL_Input* data = ZL_Edge_getData(io.edges[0]);
-        print(ZL_Input_ptr(data),
-              ZL_Input_contentSize(data),
-              "/tmp/sdd/psam.streans.txt");
-        print(ZL_Input_stringLens(data),
-              ZL_Input_numElts(data),
-              "/tmp/sdd/psam.streams.strLens");
-        print(lexed.dispatchIndices,
-              lexed.nbStrs,
-              "/tmp/sdd/psam.streams.dispatchIndices");
-    }
-    ZL_TRY_LET_T(
+    const uint16_t* dispatchIndices = createDispatchIndices(
+            gctx, tokens, cols, numTokens, numCols, hasHeader);
+    ZL_ERR_IF_NULL(dispatchIndices, allocation);
+
+    ZL_TRY_LET(
             ZL_EdgeList,
             so,
             ZL_Edge_runDispatchStringNode(
-                    io.edges[0], (int)nbOutputs, lexed.dispatchIndices));
+                    io.edges[0], (int)numOutputs, dispatchIndices));
+    ZL_ASSERT_EQ(so.nbEdges, numOutputs + 1);
 
     // Set edge tag metadata for identification for clustering to the column
-    for (size_t n = 0; n < lexed.nbColumns; n++) {
-        ZL_RET_R_IF_ERR(ZL_Edge_setIntMetadata(
+    for (size_t n = 0; n < numCols; n++) {
+        ZL_ERR_IF_ERR(ZL_Edge_setIntMetadata(
                 so.edges[n + 1], ZL_CLUSTERING_TAG_METADATA_ID, (int)n));
     }
     // Successor for dispatch indices
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZL_Edge_setDestination(so.edges[0], ZL_GRAPH_COMPRESS_GENERIC));
     // columns go to clustering
-    ZL_RET_R_IF_ERR(ZL_Edge_setParameterizedDestination(
-            so.edges + 1, lexed.nbColumns, customGraphs.graphids[0], NULL));
+    ZL_ERR_IF_ERR(ZL_Edge_setParameterizedDestination(
+            so.edges + 1, numCols, customGraphs.graphids[0], NULL));
     // Successor for delimiters, whitespace, and newlines
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(
-            so.edges[lexed.nbColumns + 1], customGraphs.graphids[1]));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(
+            so.edges[numCols + 1], customGraphs.graphids[1]));
     // Successor for header
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(
-            so.edges[lexed.nbColumns + 2], customGraphs.graphids[2]));
+    if (hasHeader) {
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(
+                so.edges[numCols + 2], customGraphs.graphids[2]));
+    }
     return ZL_returnSuccess();
 }
 
 ZL_GraphID ZL_CsvParser_registerGraph(
         ZL_Compressor* compressor,
-        bool hasHeader,
-        char sep,
-        bool useNullAware,
         const ZL_GraphID clusteringGraph)
 {
     ZL_GraphID* successors = (ZL_GraphID[]){ clusteringGraph,
                                              ZL_GRAPH_COMPRESS_GENERIC,
                                              ZL_GRAPH_COMPRESS_GENERIC };
-    ZL_IntParam* intParams =
-            (ZL_IntParam[]){ {
-                                     .paramId    = ZL_PARSER_HAS_HEADER_PID,
-                                     .paramValue = hasHeader,
-                             },
-                             {
-                                     .paramId    = ZL_PARSER_SEPARATOR_PID,
-                                     .paramValue = sep,
-                             },
-                             {
-                                     .paramId    = ZL_PARSER_USE_NULL_AWARE_PID,
-                                     .paramValue = useNullAware,
-                             } };
-    ZL_LocalParams csvParams = (ZL_LocalParams){
-        .intParams = { .intParams = intParams, .nbIntParams = 3 },
-    };
 
     ZL_GraphID csvParserGraph =
             ZL_Compressor_getGraph(compressor, "CSV Parser");
@@ -164,7 +212,6 @@ ZL_GraphID ZL_CsvParser_registerGraph(
         .graph          = csvParserGraph,
         .customGraphs   = successors,
         .nbCustomGraphs = 3,
-        .localParams    = &csvParams,
     };
     return ZL_Compressor_registerParameterizedGraph(
             compressor, &csvParserGraphDesc);

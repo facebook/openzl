@@ -41,6 +41,7 @@ enum { param_size_max = 3 };
 
 static ZL_Report send_paramX(ZL_Encoder* eictx, const ZL_Input* in, size_t n)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     printf("send_param%zu \n", n);
     ZL_REQUIRE_NN(in);
     ZL_REQUIRE(ZL_Input_type(in) == ZL_Type_serial);
@@ -52,7 +53,7 @@ static ZL_Report send_paramX(ZL_Encoder* eictx, const ZL_Input* in, size_t n)
     void* const dst       = ZL_Output_ptr(out);
     memcpy(dst, src, size);
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, size));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, size));
 
     const unsigned char trheader[param_size_max] = { param1_value,
                                                      param2_value,
@@ -67,13 +68,12 @@ static ZL_Report send_param1(ZL_Encoder* eictx, const ZL_Input* in) noexcept
 {
     return send_paramX(eictx, in, 1);
 }
-#define PARAM1_GDESC                                           \
-    (ZL_TypedGraphDesc)                                        \
-    {                                                          \
-        .CTid = CT_param1_ID, .inStreamType = ZL_Type_serial,  \
-        .outStreamTypes = (const ZL_Type[]){ ZL_Type_serial }, \
-        .nbOutStreams   = 1                                    \
-    }
+#define PARAM1_GDESC                                                  \
+    (ZL_TypedGraphDesc){ .CTid         = CT_param1_ID,                \
+                         .inStreamType = ZL_Type_serial,              \
+                         .outStreamTypes =                            \
+                                 (const ZL_Type[]){ ZL_Type_serial }, \
+                         .nbOutStreams = 1 }
 static ZL_TypedEncoderDesc const param1_CDesc = {
     .gd          = PARAM1_GDESC,
     .transform_f = send_param1,
@@ -83,13 +83,12 @@ static ZL_Report send_param2(ZL_Encoder* eictx, const ZL_Input* in) noexcept
 {
     return send_paramX(eictx, in, 2);
 }
-#define PARAM2_GDESC                                           \
-    (ZL_TypedGraphDesc)                                        \
-    {                                                          \
-        .CTid = CT_param2_ID, .inStreamType = ZL_Type_serial,  \
-        .outStreamTypes = (const ZL_Type[]){ ZL_Type_serial }, \
-        .nbOutStreams   = 1                                    \
-    }
+#define PARAM2_GDESC                                                  \
+    (ZL_TypedGraphDesc){ .CTid         = CT_param2_ID,                \
+                         .inStreamType = ZL_Type_serial,              \
+                         .outStreamTypes =                            \
+                                 (const ZL_Type[]){ ZL_Type_serial }, \
+                         .nbOutStreams = 1 }
 static ZL_TypedEncoderDesc const param2_CDesc = {
     .gd          = PARAM2_GDESC,
     .transform_f = send_param2,
@@ -99,13 +98,12 @@ static ZL_Report send_param3(ZL_Encoder* eictx, const ZL_Input* in) noexcept
 {
     return send_paramX(eictx, in, 3);
 }
-#define PARAM3_GDESC                                           \
-    (ZL_TypedGraphDesc)                                        \
-    {                                                          \
-        .CTid = CT_param3_ID, .inStreamType = ZL_Type_serial,  \
-        .outStreamTypes = (const ZL_Type[]){ ZL_Type_serial }, \
-        .nbOutStreams   = 1                                    \
-    }
+#define PARAM3_GDESC                                                  \
+    (ZL_TypedGraphDesc){ .CTid         = CT_param3_ID,                \
+                         .inStreamType = ZL_Type_serial,              \
+                         .outStreamTypes =                            \
+                                 (const ZL_Type[]){ ZL_Type_serial }, \
+                         .nbOutStreams = 1 }
 static ZL_TypedEncoderDesc const param3_CDesc = {
     .gd          = PARAM3_GDESC,
     .transform_f = send_param3,
@@ -117,6 +115,7 @@ static ZL_Report split3(
         const void* src,
         size_t srcSize) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(ctx);
     printf("processing `split3` on %zu bytes \n", srcSize);
     ZL_REQUIRE_NN(ctx);
     ZL_REQUIRE_NN(src);
@@ -216,6 +215,7 @@ static size_t compress(
 
 static ZL_Report readParamX(ZL_Decoder* dictx, const ZL_Input* ins[], int n)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     printf("processing `readParam%i` \n", n);
     ZL_REQUIRE_NN(ins);
     const ZL_Input* const in = ins[0];
@@ -229,7 +229,7 @@ static ZL_Report readParamX(ZL_Decoder* dictx, const ZL_Input* ins[], int n)
     void* const dst       = ZL_Output_ptr(out);
     memcpy(dst, src, nbBytes);
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, nbBytes));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, nbBytes));
 
     // Check that the correct param value is received
     ZL_RBuffer const lip = ZL_Decoder_getCodecHeader(dictx);

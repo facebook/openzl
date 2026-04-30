@@ -11,11 +11,10 @@ ZL_BEGIN_C_DECLS
 
 ZL_Report EI_bitunpack(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 
-#define EI_BITUNPACK(id)                                        \
-    {                                                           \
-        .gd = BITUNPACK_GRAPH(id), .transform_f = EI_bitunpack, \
-        .name = "!zl.bitunpack"                                 \
-    }
+#define EI_BITUNPACK(id)                  \
+    { .gd          = BITUNPACK_GRAPH(id), \
+      .transform_f = EI_bitunpack,        \
+      .name        = "!zl.bitunpack" }
 
 ZL_END_C_DECLS
 

@@ -64,15 +64,16 @@ class Buffer {
     /// Commit a variable size stream
     ZL_Report commit(std::vector<uint32_t> const& fieldSizes)
     {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
         uint32_t* const out =
                 ZL_Output_reserveStringLens(stream_, fieldSizes.size());
-        ZL_RET_R_IF_NULL(allocation, out);
+        ZL_ERR_IF_NULL(out, allocation);
         if (fieldSizes.size() > 0) {
             memcpy(out,
                    fieldSizes.data(),
                    sizeof(uint32_t) * fieldSizes.size());
         }
-        ZL_RET_R_IF_ERR(ZL_Output_commit(stream_, fieldSizes.size()));
+        ZL_ERR_IF_ERR(ZL_Output_commit(stream_, fieldSizes.size()));
         return ZL_returnSuccess();
     }
 
@@ -142,10 +143,11 @@ class Extracted {
 
     ZL_Report commit()
     {
-        ZL_RET_R_IF_ERR(json_.commit());
-        ZL_RET_R_IF_ERR(ints_.commit(intLengths_));
-        ZL_RET_R_IF_ERR(floats_.commit(floatLengths_));
-        ZL_RET_R_IF_ERR(strs_.commit(strLengths_));
+        ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
+        ZL_ERR_IF_ERR(json_.commit());
+        ZL_ERR_IF_ERR(ints_.commit(intLengths_));
+        ZL_ERR_IF_ERR(floats_.commit(floatLengths_));
+        ZL_ERR_IF_ERR(strs_.commit(strLengths_));
         return ZL_returnSuccess();
     }
 
@@ -468,6 +470,7 @@ void validateExtraction(Extracted const& extracted)
 
 ZL_Report jsonExtractEncode(ZL_Encoder* eictx, const ZL_Input* input) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     std::string_view src{ (char const*)ZL_Input_ptr(input),
                           ZL_Input_numElts(input) };
 
@@ -480,7 +483,7 @@ ZL_Report jsonExtractEncode(ZL_Encoder* eictx, const ZL_Input* input) noexcept
     }
     validateExtraction(extracted);
 
-    ZL_RET_R_IF_ERR(extracted.commit());
+    ZL_ERR_IF_ERR(extracted.commit());
 
     return ZL_returnSuccess();
 }

@@ -13,13 +13,14 @@
 static ZL_Report
 LP_transferBuffer(Arena* alloc, void const** bufferPtr, size_t nbytes)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_NN(bufferPtr);
     if (nbytes == 0) {
         *bufferPtr = NULL;
     } else {
         ZL_ASSERT_NN(alloc);
         void* const dst = ALLOC_Arena_malloc(alloc, nbytes);
-        ZL_RET_R_IF_NULL(allocation, dst);
+        ZL_ERR_IF_NULL(dst, allocation);
         ZL_ASSERT_NN(*bufferPtr);
         ZL_memcpy(dst, *bufferPtr, nbytes);
         *bufferPtr = dst;
@@ -36,11 +37,12 @@ static ZL_Report LP_transferLocalIntParams(Arena* alloc, ZL_LocalIntParams* lip)
 {
     ZL_ASSERT_NN(alloc);
     ZL_ASSERT_NN(lip);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     size_t const nbIntParams = lip->nbIntParams;
     ZL_DLOG(TRANSFORM, "LP_transferLocalIntParams: nb=%zu", nbIntParams);
 
     void const* buffer = lip->intParams;
-    ZL_RET_R_IF_ERR(LP_transferBuffer(
+    ZL_ERR_IF_ERR(LP_transferBuffer(
             alloc, &buffer, nbIntParams * sizeof(lip->intParams[0])));
     lip->intParams = buffer;
     return ZL_returnSuccess();
@@ -55,11 +57,12 @@ static ZL_Report LP_transferLocalRefParams(Arena* alloc, ZL_LocalRefParams* lrp)
 {
     ZL_ASSERT_NN(alloc);
     ZL_ASSERT_NN(lrp);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     size_t const nbRefParams = lrp->nbRefParams;
     ZL_DLOG(TRANSFORM, "LP_transferLocalRefParams: nb=%zu", nbRefParams);
 
     void const* buffer = lrp->refParams;
-    ZL_RET_R_IF_ERR(LP_transferBuffer(
+    ZL_ERR_IF_ERR(LP_transferBuffer(
             alloc, &buffer, nbRefParams * sizeof(lrp->refParams[0])));
     lrp->refParams = buffer;
     return ZL_returnSuccess();
@@ -71,19 +74,20 @@ static ZL_Report LP_transferLocalFlatParams(
 {
     ZL_ASSERT_NN(alloc);
     ZL_ASSERT_NN(lgp);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     size_t const nbCopyParams = lgp->nbCopyParams;
     ZL_DLOG(TRANSFORM, "LP_transferLocalGenParams: nb=%zu", nbCopyParams);
 
     ZL_CopyParam* dstParams =
             ALLOC_Arena_malloc(alloc, nbCopyParams * sizeof(ZL_CopyParam));
-    ZL_RET_R_IF_NULL(allocation, dstParams);
+    ZL_ERR_IF_NULL(dstParams, allocation);
 
     // transfer generic parameter's content into local storage
     // to not depend on origin's lifetime
     for (size_t n = 0; n < nbCopyParams; n++) {
         size_t const size   = lgp->genParams[n].paramSize;
         void const* content = lgp->genParams[n].paramPtr;
-        ZL_RET_R_IF_ERR(LP_transferBuffer(alloc, &content, size));
+        ZL_ERR_IF_ERR(LP_transferBuffer(alloc, &content, size));
         ZL_CopyParam const gp = {
             .paramId   = lgp->genParams[n].paramId,
             .paramPtr  = content,
@@ -97,9 +101,10 @@ static ZL_Report LP_transferLocalFlatParams(
 
 ZL_Report LP_transferLocalParams(Arena* alloc, ZL_LocalParams* lp)
 {
-    ZL_RET_R_IF_ERR(LP_transferLocalIntParams(alloc, &lp->intParams));
-    ZL_RET_R_IF_ERR(LP_transferLocalFlatParams(alloc, &lp->copyParams));
-    ZL_RET_R_IF_ERR(LP_transferLocalRefParams(alloc, &lp->refParams));
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_ERR(LP_transferLocalIntParams(alloc, &lp->intParams));
+    ZL_ERR_IF_ERR(LP_transferLocalFlatParams(alloc, &lp->copyParams));
+    ZL_ERR_IF_ERR(LP_transferLocalRefParams(alloc, &lp->refParams));
     return ZL_returnSuccess();
 }
 

@@ -12,7 +12,7 @@
 
 #include <gflags/gflags.h>
 
-namespace zstrong {
+namespace openzl {
 
 VersionTestInterface::VersionTestInterface(
         char const* libVersionTestInterfaceSO)
@@ -186,19 +186,21 @@ std::vector<Config> getValidConfigs(
         }
         if (!hasAnyConfigs) {
             for (auto const eltWidth : eltWidths) {
-                configs.push_back(Config{ version,
-                                          eltWidth,
-                                          true,
-                                          UseCustomData::Disable,
-                                          true });
+                configs.push_back(
+                        Config{ version,
+                                eltWidth,
+                                true,
+                                UseCustomData::Disable,
+                                true });
             }
             if (!customData.empty()) {
                 for (auto const eltWidth : customEltWidths) {
-                    configs.push_back(Config{ version,
-                                              eltWidth,
-                                              true,
-                                              UseCustomData::Enable,
-                                              true });
+                    configs.push_back(
+                            Config{ version,
+                                    eltWidth,
+                                    true,
+                                    UseCustomData::Enable,
+                                    true });
                 }
             }
         }
@@ -374,4 +376,4 @@ std::string VersionTestInterface::decompress(std::string_view source) const
     out.resize(ret);
     return out;
 }
-} // namespace zstrong
+} // namespace openzl

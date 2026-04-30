@@ -1,6 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_library")
+load("../../defs.bzl", "zs_library")
 
 oncall("data_compression")
 
@@ -14,10 +14,10 @@ zs_library(
         "*.h",
     ]),
     deps = [
-        "//data_compression/experimental/zstrong/custom_parsers/shared_components:clustering",
-        "//data_compression/experimental/zstrong/tools/sddl/compiler:lib",
+        "../../tools/sddl/compiler:lib",
+        "../shared_components:clustering",
     ],
     exported_deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
+        "../..:zstronglib",
     ],
 )

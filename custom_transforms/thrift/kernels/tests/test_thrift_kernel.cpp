@@ -64,8 +64,9 @@ TEST(ThriftKernelTest, ArrayI64)
     testRoundTrip({ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 });
     testRoundTrip(
             { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, -1 });
-    testRoundTrip({ std::numeric_limits<int64_t>::max(),
-                    std::numeric_limits<int64_t>::min() });
+    testRoundTrip(
+            { std::numeric_limits<int64_t>::max(),
+              std::numeric_limits<int64_t>::min() });
     std::vector<int64_t> array;
     for (size_t i = 0; i < 20000; ++i) {
         array.push_back(int64_t(i));
@@ -106,8 +107,9 @@ TEST(ThriftKernelTest, ArrayI32)
     testRoundTrip({ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 });
     testRoundTrip(
             { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, -1 });
-    testRoundTrip({ std::numeric_limits<int32_t>::max(),
-                    std::numeric_limits<int32_t>::min() });
+    testRoundTrip(
+            { std::numeric_limits<int32_t>::max(),
+              std::numeric_limits<int32_t>::min() });
     std::vector<int32_t> array;
     for (size_t i = 0; i < 20000; ++i) {
         array.push_back(int32_t(i));
@@ -144,18 +146,19 @@ TEST(ThriftKernelTest, ArrayFloat)
 
     testRoundTrip({});
     testRoundTrip({ 0.0 });
-    testRoundTrip({ -1.5,
-                    0.0,
-                    2.5,
-                    std::numeric_limits<float>::quiet_NaN(),
-                    std::numeric_limits<float>::signaling_NaN(),
-                    std::numeric_limits<float>::lowest(),
-                    std::numeric_limits<float>::denorm_min(),
-                    std::numeric_limits<float>::epsilon(),
-                    std::numeric_limits<float>::round_error(),
-                    std::numeric_limits<float>::infinity(),
-                    -std::numeric_limits<float>::infinity(),
-                    std::numeric_limits<float>::max() });
+    testRoundTrip(
+            { -1.5,
+              0.0,
+              2.5,
+              std::numeric_limits<float>::quiet_NaN(),
+              std::numeric_limits<float>::signaling_NaN(),
+              std::numeric_limits<float>::lowest(),
+              std::numeric_limits<float>::denorm_min(),
+              std::numeric_limits<float>::epsilon(),
+              std::numeric_limits<float>::round_error(),
+              std::numeric_limits<float>::infinity(),
+              -std::numeric_limits<float>::infinity(),
+              std::numeric_limits<float>::max() });
     testRoundTrip({ -0.0,  0.0, 0.1, 0.01, 0.001,     0.2,   0.3,
                     0.4,   0.5, 0.6, 0.7,  0.8,       0.9,   0.99,
                     0.999, 1.0, 1.1, 1.2,  1000000.0, 10e10, -10e10 });
@@ -207,11 +210,12 @@ TEST(ThriftKernelTest, MapI32Float)
     };
 
     testRoundTrip({});
-    testRoundTrip({ { 0, 0.0 },
-                    { 1, -0.0 },
-                    { -1, -50.0 },
-                    { std::numeric_limits<int32_t>::min(), 5.0 },
-                    { std::numeric_limits<int32_t>::max(), -5.0 } });
+    testRoundTrip(
+            { { 0, 0.0 },
+              { 1, -0.0 },
+              { -1, -50.0 },
+              { std::numeric_limits<int32_t>::min(), 5.0 },
+              { std::numeric_limits<int32_t>::max(), -5.0 } });
     std::unordered_map<int32_t, float> map;
     for (size_t i = 0; i < 20000; ++i) {
         map.emplace(int32_t(i), float(i));
@@ -278,12 +282,13 @@ TEST(ThriftKernelTest, MapI32ArrayFloat)
 
     testRoundTrip({});
     testRoundTrip({ { 0, { 0.0, 0.1 } } });
-    testRoundTrip({ { 0, { 0.0, 0.1 } },
-                    { 1, { -0.0 } },
-                    { -1, {} },
-                    { std::numeric_limits<int32_t>::min(), { 5.0 } },
-                    { std::numeric_limits<int32_t>::max(), { -5.0 } },
-                    { 2, std::vector<float>(1000, 0.5) } });
+    testRoundTrip(
+            { { 0, { 0.0, 0.1 } },
+              { 1, { -0.0 } },
+              { -1, {} },
+              { std::numeric_limits<int32_t>::min(), { 5.0 } },
+              { std::numeric_limits<int32_t>::max(), { -5.0 } },
+              { 2, std::vector<float>(1000, 0.5) } });
     std::unordered_map<int32_t, std::vector<float>> map;
     for (size_t i = 0; i < 20000; ++i) {
         map.emplace(int32_t(i), std::vector<float>(1, float(i)));
@@ -351,12 +356,13 @@ TEST(ThriftKernelTest, MapI32ArrayI64)
 
     testRoundTrip({});
     testRoundTrip({ { 0, { -1, 1 } } });
-    testRoundTrip({ { 0, { 0, 10 } },
-                    { 1, { -10 } },
-                    { -1, {} },
-                    { std::numeric_limits<int32_t>::min(), { 50000 } },
-                    { std::numeric_limits<int32_t>::max(), { -50000 } },
-                    { 2, std::vector<int64_t>(1000, 5) } });
+    testRoundTrip(
+            { { 0, { 0, 10 } },
+              { 1, { -10 } },
+              { -1, {} },
+              { std::numeric_limits<int32_t>::min(), { 50000 } },
+              { std::numeric_limits<int32_t>::max(), { -50000 } },
+              { 2, std::vector<int64_t>(1000, 5) } });
     std::unordered_map<int32_t, std::vector<int64_t>> map;
     for (size_t i = 0; i < 20000; ++i) {
         map.emplace(int32_t(i), std::vector<int64_t>(1, int64_t(i)));
@@ -446,10 +452,11 @@ TEST(ThriftKernelTest, MapI32ArrayArrayI64)
     testRoundTrip({ { 0, { {}, {} } } });
     testRoundTrip({ { 0, std::vector<std::vector<int64_t>>(10000) } });
     testRoundTrip({ { 0, { std::vector<int64_t>(10000) } } });
-    testRoundTrip({ { 0, { { 0, 1 }, {}, { 2 }, { 3, 4, 5 } } },
-                    { -1, { { 0, 1 }, { 2, 3, 4 } } },
-                    { 1, {} },
-                    { 2, { {}, { 3, 4, 5 } } } });
+    testRoundTrip(
+            { { 0, { { 0, 1 }, {}, { 2 }, { 3, 4, 5 } } },
+              { -1, { { 0, 1 }, { 2, 3, 4 } } },
+              { 1, {} },
+              { 2, { {}, { 3, 4, 5 } } } });
     std::unordered_map<int32_t, std::vector<std::vector<int64_t>>> map;
     for (size_t i = 0; i < 20000; ++i) {
         map.emplace(
@@ -534,12 +541,13 @@ TEST(ThriftKernelTest, MapI32MapI64Float)
             };
 
     testRoundTrip({});
-    testRoundTrip({ { 0, { { -1, 0.0 }, { 1, 0.1 } } },
-                    { 1, {} },
-                    { -1, { { 0, 5.0 } } },
-                    { 2,
-                      { { std::numeric_limits<int64_t>::min(), -0.5 },
-                        { std::numeric_limits<int64_t>::max(), -0.0 } } } });
+    testRoundTrip(
+            { { 0, { { -1, 0.0 }, { 1, 0.1 } } },
+              { 1, {} },
+              { -1, { { 0, 5.0 } } },
+              { 2,
+                { { std::numeric_limits<int64_t>::min(), -0.5 },
+                  { std::numeric_limits<int64_t>::max(), -0.0 } } } });
     std::unordered_map<int32_t, std::unordered_map<int64_t, float>> map;
     for (size_t i = 0; i < 20000; ++i) {
         std::unordered_map<int64_t, float> innerMap;

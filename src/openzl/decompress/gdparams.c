@@ -10,11 +10,13 @@ const GDParams GDParams_default = {
     .stickyParameters        = 0,
     .checkCompressedChecksum = ZL_TernaryParam_enable,
     .checkContentChecksum    = ZL_TernaryParam_enable,
+    .enableCodecFusion       = ZL_TernaryParam_enable,
 };
 
 ZL_Report
 GDParams_setParameter(GDParams* gdparams, ZL_DParam paramId, int value)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_NN(gdparams);
     switch (paramId) {
         case ZL_DParam_stickyParameters:
@@ -26,8 +28,11 @@ GDParams_setParameter(GDParams* gdparams, ZL_DParam paramId, int value)
         case ZL_DParam_checkContentChecksum:
             gdparams->checkContentChecksum = (ZL_TernaryParam)value;
             break;
+        case ZL_DParam_enableCodecFusion:
+            gdparams->enableCodecFusion = (ZL_TernaryParam)value;
+            break;
         default:
-            ZL_RET_R_ERR(compressionParameter_invalid);
+            ZL_ERR(compressionParameter_invalid);
     }
     return ZL_returnSuccess();
 }
@@ -41,6 +46,7 @@ void GDParams_applyDefaults(GDParams* dst, const GDParams* defaults)
     // Note: stickyParameters aren't overridden by defaults
     SET_DEFAULT(dst, defaults, checkCompressedChecksum);
     SET_DEFAULT(dst, defaults, checkContentChecksum);
+    SET_DEFAULT(dst, defaults, enableCodecFusion);
 }
 #undef SET_DEFAULT
 
@@ -56,13 +62,12 @@ int GDParams_getParameter(const GDParams* gdparams, ZL_DParam paramId)
     switch (paramId) {
         case ZL_DParam_stickyParameters:
             return gdparams->stickyParameters;
-            break;
         case ZL_DParam_checkCompressedChecksum:
             return (int)gdparams->checkCompressedChecksum;
-            break;
         case ZL_DParam_checkContentChecksum:
             return (int)gdparams->checkContentChecksum;
-            break;
+        case ZL_DParam_enableCodecFusion:
+            return (int)gdparams->enableCodecFusion;
         default:
             return 0;
     }

@@ -18,6 +18,7 @@ size_t ZL_DispatchString_maxDispatches(void)
 ZL_Report
 EI_dispatch_string(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
     const ZL_Input* const in = ins[0];
@@ -30,14 +31,14 @@ EI_dispatch_string(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
                                      eictx, ZL_DISPATCH_STRING_NUM_OUTPUTS_PID)
                                      .paramValue;
     const size_t nbOutputs = (size_t)nbOutputsInt;
-    ZL_RET_R_IF_GT(
-            streamParameter_invalid,
+    ZL_ERR_IF_GT(
             nbOutputs,
             ZL_DISPATCH_STRING_MAX_DISPATCHES,
-            "dispatch_string: invalid number of outputs");
-    ZL_RET_R_IF(
             streamParameter_invalid,
+            "dispatch_string: invalid number of outputs");
+    ZL_ERR_IF(
             nbElts > 0 && nbOutputs == 0,
+            streamParameter_invalid,
             "dispatch_string: ill-formed degenerate case (%u, %i)",
             nbElts,
             nbOutputsInt);
@@ -45,9 +46,9 @@ EI_dispatch_string(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     const uint16_t* indices = (const uint16_t*)ZL_Encoder_getLocalParam(
                                       eictx, ZL_DISPATCH_STRING_INDICES_PID)
                                       .paramRef;
-    ZL_RET_R_IF_NULL(
-            streamParameter_invalid,
+    ZL_ERR_IF_NULL(
             indices,
+            streamParameter_invalid,
             "dispatch_string: indices pointer is null");
 
     // validate indices stream and calculate output sizes
@@ -57,21 +58,21 @@ EI_dispatch_string(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
         indicesValid &= (indices[i] < nbOutputs);
     }
 
-    ZL_RET_R_IF_NOT(
-            streamParameter_invalid,
+    ZL_ERR_IF_NOT(
             indicesValid == 1,
+            streamParameter_invalid,
             "Dispatch index out of bounds. Expected all to be in range [0,%u)",
             nbOutputs);
 
     size_t* outputSizes =
             ZL_Encoder_getScratchSpace(eictx, nbOutputs * sizeof(size_t));
-    ZL_RET_R_IF_NULL(allocation, outputSizes);
+    ZL_ERR_IF_NULL(outputSizes, allocation);
     memset(outputSizes, 0, nbOutputs * sizeof(size_t));
     for (size_t i = 0; i < nbElts; ++i) {
         outputSizes[indices[i]] += srcStrLens[i];
     }
 
-    ZL_DLOG(DEBUG,
+    ZL_DLOG(TRANSFORM,
             "EI_dispatch_string: splitting %u strings into %i outputs",
             nbElts,
             nbOutputs);
@@ -79,24 +80,24 @@ EI_dispatch_string(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     // create streams for outputs
     ZL_Output* indices_out =
             ZL_Encoder_createTypedStream(eictx, 0, nbElts, sizeof(uint16_t));
-    ZL_RET_R_IF_NULL(allocation, indices_out);
+    ZL_ERR_IF_NULL(indices_out, allocation);
 
     // allocate space for output streams and raw handles
     ZL_Output** outs =
             ZL_Encoder_getScratchSpace(eictx, nbOutputs * sizeof(ZL_Output*));
-    ZL_RET_R_IF_NULL(allocation, outs);
+    ZL_ERR_IF_NULL(outs, allocation);
 
     void** dstBuffers =
             ZL_Encoder_getScratchSpace(eictx, nbOutputs * sizeof(void*));
-    ZL_RET_R_IF_NULL(allocation, dstBuffers);
+    ZL_ERR_IF_NULL(dstBuffers, allocation);
 
     uint32_t** dstStrLens =
             ZL_Encoder_getScratchSpace(eictx, nbOutputs * sizeof(uint32_t*));
-    ZL_RET_R_IF_NULL(allocation, dstStrLens);
+    ZL_ERR_IF_NULL(dstStrLens, allocation);
 
     size_t* dstNbStrs =
             ZL_Encoder_getScratchSpace(eictx, nbOutputs * sizeof(size_t));
-    ZL_RET_R_IF_NULL(allocation, dstNbStrs);
+    ZL_ERR_IF_NULL(dstNbStrs, allocation);
     if (nbElts > 0) {
         for (int i = 0; i < (int)nbOutputs; ++i) {
             ZL_Output* out = ZL_Encoder_createStringStream(
@@ -104,7 +105,7 @@ EI_dispatch_string(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
                     1,
                     nbElts,
                     outputSizes[i] + ZL_DISPATCH_STRING_BLK_SIZE);
-            ZL_RET_R_IF_NULL(allocation, out);
+            ZL_ERR_IF_NULL(out, allocation);
             outs[i]       = out;
             dstBuffers[i] = ZL_Output_ptr(out);
             dstStrLens[i] = ZL_Output_stringLens(out);
@@ -121,7 +122,7 @@ EI_dispatch_string(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
                 indices);
 
         for (size_t i = 0u; i < nbOutputs; ++i) {
-            ZL_RET_R_IF_ERR(ZL_Output_commit(outs[i], dstNbStrs[i]));
+            ZL_ERR_IF_ERR(ZL_Output_commit(outs[i], dstNbStrs[i]));
         }
     }
 
@@ -129,7 +130,7 @@ EI_dispatch_string(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     if (nbElts > 0) {
         memcpy(ZL_Output_ptr(indices_out), indices, nbElts * sizeof(uint16_t));
     }
-    ZL_RET_R_IF_ERR(ZL_Output_commit(indices_out, nbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(indices_out, nbElts));
 
     return ZL_returnSuccess();
 }
@@ -145,8 +146,12 @@ ZL_NodeID ZL_Compressor_registerDispatchStringNode(
         .refParams = ZL_REFPARAMS(
                 { ZL_DISPATCH_STRING_INDICES_PID, dispatchIndicesParam }),
     };
-    return ZL_Compressor_cloneNode(
-            cgraph, ZL_NODE_DISPATCH_STRING, &localParams);
+    return ZL_Compressor_registerParameterizedNode(
+            cgraph,
+            &(const ZL_ParameterizedNodeDesc){
+                    .node        = ZL_NODE_DISPATCH_STRING,
+                    .localParams = &localParams,
+            });
 }
 
 ZL_RESULT_OF(ZL_EdgeList)
@@ -155,10 +160,10 @@ ZL_Edge_runDispatchStringNode(
         int nbOutputs,
         const uint16_t* indices)
 {
-    ZL_RET_T_IF(
-            ZL_EdgeList,
-            nodeParameter_invalid,
+    ZL_RESULT_DECLARE_SCOPE(ZL_EdgeList, sctx);
+    ZL_ERR_IF(
             nbOutputs < 0 || nbOutputs > ZL_DISPATCH_STRING_MAX_DISPATCHES,
+            nodeParameter_invalid,
             "dispatch_string: invalid number of outputs (%i)",
             nbOutputs);
 

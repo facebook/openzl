@@ -10,7 +10,7 @@
 #include "tests/datagen/DataProducer.h"
 #include "tests/datagen/random_producer/RandWrapper.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 struct FixedWidthData {
     template <typename T>
@@ -45,4 +45,4 @@ class FixedWidthDataProducer : public DataProducer<FixedWidthData> {
     std::shared_ptr<RandWrapper> rw_;
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

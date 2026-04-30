@@ -206,6 +206,7 @@ ZL_Report parseDecodeIntFillFieldSizes(
         uint32_t const* exSizes,
         uint32_t* fieldSizes)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
     ZL_ASSERT_LE(nbNums, nbElts);
     auto const numsEnd = nums + nbNums;
     auto exIdxsEnd     = exIdxs + (nbElts - nbNums);
@@ -216,14 +217,14 @@ ZL_Report parseDecodeIntFillFieldSizes(
             ++exIdxs;
             fieldSize = *exSizes++;
         } else {
-            ZL_RET_R_IF_EQ(srcSize_tooSmall, nums, numsEnd);
+            ZL_ERR_IF_EQ(nums, numsEnd, srcSize_tooSmall);
             fieldSize = numberStringLength(*(nums++));
         }
         fieldSizes[i] = fieldSize;
         outSize += fieldSize;
     }
-    ZL_RET_R_IF_NE(corruption, nums, numsEnd);
-    ZL_RET_R_IF_NE(corruption, exIdxs, exIdxsEnd);
+    ZL_ERR_IF_NE(nums, numsEnd, corruption);
+    ZL_ERR_IF_NE(exIdxs, exIdxsEnd, corruption);
     return ZL_returnValue(outSize);
 }
 
@@ -314,16 +315,17 @@ namespace {
 template <typename T>
 ZL_Report parseDecodeInt(ZL_Decoder* dictx, ZL_Input const* inputs[]) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_Input const* numbers          = inputs[0];
     ZL_Input const* exceptionIndices = inputs[1];
     ZL_Input const* exceptions       = inputs[2];
 
-    ZL_RET_R_IF_NE(
-            corruption,
+    ZL_ERR_IF_NE(
             ZL_Input_numElts(exceptionIndices),
-            ZL_Input_numElts(exceptions));
-    ZL_RET_R_IF_NE(corruption, ZL_Input_eltWidth(exceptionIndices), 4);
-    ZL_RET_R_IF_NE(corruption, ZL_Input_eltWidth(numbers), sizeof(T));
+            ZL_Input_numElts(exceptions),
+            corruption);
+    ZL_ERR_IF_NE(ZL_Input_eltWidth(exceptionIndices), 4, corruption);
+    ZL_ERR_IF_NE(ZL_Input_eltWidth(numbers), sizeof(T), corruption);
 
     // Note: we calculate the maximal outbound and allocate a matching outstream
     // this is inefficient as before we need the actual out stream we calculate
@@ -334,13 +336,13 @@ ZL_Report parseDecodeInt(ZL_Decoder* dictx, ZL_Input const* inputs[]) noexcept
     size_t const outBound = ZL_Input_contentSize(exceptions)
             + ZL_Input_numElts(numbers) * maxStrLen(T{});
     ZL_Output* outStream = ZL_Decoder_create1OutStream(dictx, outBound, 1);
-    ZL_RET_R_IF_NULL(allocation, outStream);
+    ZL_ERR_IF_NULL(outStream, allocation);
 
     size_t const nbElts =
             ZL_Input_numElts(numbers) + ZL_Input_numElts(exceptions);
 
     uint32_t* fieldSizes = ZL_Output_reserveStringLens(outStream, nbElts);
-    ZL_RET_R_IF_NULL(allocation, fieldSizes);
+    ZL_ERR_IF_NULL(fieldSizes, allocation);
 
     auto nums   = (T const*)ZL_Input_ptr(numbers);
     auto nbNums = ZL_Input_numElts(numbers);
@@ -350,7 +352,8 @@ ZL_Report parseDecodeInt(ZL_Decoder* dictx, ZL_Input const* inputs[]) noexcept
     auto exSizes    = ZL_Input_stringLens(exceptions);
     auto exDataSize = ZL_Input_contentSize(exceptions);
 
-    ZL_TRY_LET_R(
+    ZL_TRY_LET(
+            size_t,
             outSize,
             parseDecodeIntFillFieldSizes(
                     nbElts, nums, nbNums, exIdxs, exSizes, fieldSizes));
@@ -366,7 +369,7 @@ ZL_Report parseDecodeInt(ZL_Decoder* dictx, ZL_Input const* inputs[]) noexcept
             fieldSizes,
             outSize,
             (uint8_t*)ZL_Output_ptr(outStream));
-    ZL_RET_R_IF_ERR(ZL_Output_commit(outStream, nbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(outStream, nbElts));
 
     return ZL_returnSuccess();
 }

@@ -1,6 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_cxxlibrary")
+load("../../../defs.bzl", "zs_cxxlibrary")
 
 oncall("data_compression")
 
@@ -15,11 +15,11 @@ zs_cxxlibrary(
         "utils.h",
     ],
     exported_deps = [
-        "//data_compression/experimental/zstrong:common",
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
-        "//data_compression/experimental/zstrong/tools:io",
-        "//data_compression/experimental/zstrong/tools:logger",
+        "../..:io",
+        "../..:logger",
+        "../../..:common",
+        "../../..:zstronglib",
+        "../../../cpp:openzl_cpp",
     ],
 )
 
@@ -32,6 +32,6 @@ zs_cxxlibrary(
         "genetic_algorithm.h",
     ],
     exported_deps = [
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
+        "../../../cpp:openzl_cpp",
     ],
 )

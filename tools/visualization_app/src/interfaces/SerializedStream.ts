@@ -2,7 +2,10 @@
 
 import {ZL_Type} from '../models/idTypes';
 
-export type SerializedStream = {
+export type StreamPreviewData = string[] | number[];
+
+export interface SerializedStream {
+  chunkId: number;
   type: ZL_Type;
   outputIdx: number;
   eltWidth: number;
@@ -10,4 +13,5 @@ export type SerializedStream = {
   cSize: number;
   share: number;
   contentSize: number;
-};
+  streamPreview?: StreamPreviewData;
+}

@@ -107,8 +107,12 @@ inline ZL_GraphID addConversionFromSerial(
     if (inputType & ZL_Type_struct) {
         ZL_IntParam intParams = { ZL_trlip_tokenSize, (int)eltWidth };
         ZL_LocalParams params = { .intParams = { &intParams, 1 } };
-        auto const node       = ZL_Compressor_cloneNode(
-                cgraph, ZL_NODE_CONVERT_SERIAL_TO_TOKENX, &params);
+        const ZL_ParameterizedNodeDesc desc = {
+            .node        = ZL_NODE_CONVERT_SERIAL_TO_TOKENX,
+            .localParams = &params,
+        };
+        auto const node =
+                ZL_Compressor_registerParameterizedNode(cgraph, &desc);
         return ZL_Compressor_registerStaticGraph_fromNode1o(
                 cgraph, node, graph);
     }

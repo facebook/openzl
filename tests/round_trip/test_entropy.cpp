@@ -10,6 +10,7 @@
 #include "openzl/common/cursor.h"
 #include "openzl/common/speed.h"
 #include "openzl/zl_errors.h"
+#include "tests/datagen/random_producer/compat_uniform_distribution.h"
 #include "tests/utils.h"
 
 namespace {
@@ -139,7 +140,8 @@ void testRoundTripHuf(bool allowNonHuf, bool allowAvx2Huffman)
 {
     size_t const maxSymbol =
             std::min<size_t>(std::numeric_limits<Int>::max(), (1u << 12) - 1);
-    std::binomial_distribution<Int> dist(maxSymbol, 0.5);
+    openzl::tests::datagen::compat_binomial_distribution<Int> dist(
+            (Int)maxSymbol, 0.5);
     std::mt19937 gen(42);
     std::vector<Int> data;
     size_t const minSize = allowNonHuf ? 0 : 1000;
@@ -171,7 +173,7 @@ void testRoundTripHuf(bool allowNonHuf, bool allowAvx2Huffman)
 template <typename Int>
 void testRoundTripFse(bool allowNonFse, uint8_t nbstates)
 {
-    std::geometric_distribution<Int> dist;
+    openzl::tests::datagen::compat_geometric_distribution<Int> dist;
     std::mt19937 gen(42);
     std::vector<Int> data;
     size_t const minSize = allowNonFse ? 0 : 1000;
@@ -207,7 +209,8 @@ void testRoundTripBit(bool allowNonBit)
     std::mt19937 gen(42);
     size_t const size = 100000;
     for (size_t numBits = 1; numBits < sizeof(Int) * 8; ++numBits) {
-        std::uniform_int_distribution<Int> dist(0, (Int)((1 << numBits) - 1));
+        openzl::tests::datagen::compat_uniform_int_distribution<Int> dist(
+                0, (Int)((1 << numBits) - 1));
         std::vector<Int> data;
         data.reserve(size);
         while (data.size() < size) {
@@ -274,7 +277,7 @@ TEST(EntropyTest, HufOnlyRoundTrip)
 
 TEST(EntropyTest, HufAvx2RoundTrip)
 {
-    std::binomial_distribution<uint8_t> dist;
+    openzl::tests::datagen::compat_binomial_distribution<uint8_t> dist;
     std::mt19937 gen(42);
     std::vector<uint8_t> data;
     size_t const size = ZS_HUF_MAX_BLOCK_SIZE;

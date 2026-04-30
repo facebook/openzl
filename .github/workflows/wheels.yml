@@ -4,13 +4,27 @@ name: Wheels
 
 on:
   workflow_dispatch:
+
+  # Only run on PRs that either touch the Python bindings or the CMake build system.
+  # This is an expensive workflow that almost always passes when Python isn't modified,
+  # so only run it when it's needed. The tests will still be run on commit for everything.
   pull_request:
+    paths:
+      - 'py/**'
+      - 'CMakeLists.txt'
+      - 'build-scripts/**'
+      - '.github/workflows/wheels.yml'
+
+  # Always run on commit to dev branch to ensure the test is consistently run.
+  # There are far fewer commits than PR versions, so this is relatively cheap.
   push:
     branches:
-     - dev
+      - dev
+
   release:
     types:
       - published
+
 
 jobs:
   build_sdist:
@@ -42,7 +56,7 @@ jobs:
         # Once MSVC is supported we can build Windows packages as well by adding windows-latest
         # Once we're public we can build on ubuntu-24.04-arm & windows-11-arm.
         # They are not supported for private repos.
-        os: [ubuntu-latest, macos-13, macos-latest]
+        os: [ubuntu-latest, macos-latest]
 
     steps:
     - uses: actions/checkout@v4
@@ -65,21 +79,21 @@ jobs:
 
   # This can be uncommented to support automatic uploads to PyPI on release
   # once OpenZL is publicly available.
-  # upload_all:
-  #   name: Upload if release
-  #   needs: [build_wheels, build_sdist]
-  #   runs-on: ubuntu-latest
-  #   if: github.event_name == 'release' && github.event.action == 'published'
+  upload_all:
+    name: Upload if release
+    needs: [build_wheels, build_sdist]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'published'
 
-  #   steps:
-  #   - uses: actions/setup-python@v5
-  #   - uses: actions/download-artifact@v4
-  #     with:
-  #       path: dist
-  #       pattern: dist-*
-  #       merge-multiple: true
+    steps:
+    - uses: actions/setup-python@v5
+    - uses: actions/download-artifact@v4
+      with:
+        path: dist
+        pattern: dist-*
+        merge-multiple: true
 
-  #   - uses: pypa/gh-action-pypi-publish@release/v1
-  #     with:
-  #       user: __token__
-  #       password: ${{ secrets.pypi_password }}
+    - uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        user: __token__
+        password: ${{ secrets.pypi_password }}

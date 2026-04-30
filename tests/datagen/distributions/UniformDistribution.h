@@ -4,7 +4,7 @@
 
 #include "tests/datagen/distributions/Distribution.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 template <typename RetType>
 class UniformDistribution : public Distribution<RetType> {
@@ -49,6 +49,9 @@ class UniformDistribution : public Distribution<RetType> {
         if constexpr (std::is_same_v<RetType, double>) {
             return this->rw_->range("UniformDistribution:f64", min_, max_);
         }
+        if constexpr (std::is_same_v<RetType, size_t>) {
+            return this->rw_->range("UniformDistribution:usize", min_, max_);
+        }
         throw std::runtime_error("Unsupported type");
     }
 
@@ -62,4 +65,4 @@ class UniformDistribution : public Distribution<RetType> {
     RetType max_;
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

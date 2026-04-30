@@ -77,12 +77,13 @@ ZL_INLINE void ZS_BitCStreamBF_flush(ZS_BitCStreamBF* bits)
 
 ZL_INLINE ZL_Report ZS_BitCStreamBF_finish(ZS_BitCStreamBF* bits)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT((ZL_OperationContext*)NULL);
     ZS_BitCStreamBF_flush(bits);
     size_t extraBits = 8 - (bits->nbBits % 8);
     ZS_BitCStreamBF_write(bits, 1 << (extraBits - 1), extraBits);
     ZL_ASSERT_EQ(bits->nbBits % 8, 0);
     ZS_BitCStreamBF_flush(bits);
-    ZL_RET_R_IF(dstCapacity_tooSmall, bits->nbBits);
+    ZL_ERR_IF(bits->nbBits, dstCapacity_tooSmall);
     return ZL_returnValue((size_t)(bits->end - bits->ptr));
 }
 

@@ -2,9 +2,9 @@
 
 #include "benchmark/e2e/e2e_thrift.h"
 #include <random>
-#include "openzl/zl_config.h"
+#include "openzl/zl_version.h"
 
-#if ZL_HAVE_FBCODE
+#if ZL_IS_FBCODE
 
 #    include <sstream>
 #    include <typeinfo>
@@ -13,10 +13,8 @@
 
 #    include "benchmark/benchmark_data.h"
 #    include "benchmark/benchmark_data_utils.h"
-#    include "benchmark/benchmark_testcase.h"
 #    include "benchmark/e2e/e2e_bench.h"
 #    include "benchmark/e2e/e2e_compressor.h"
-#    include "benchmark/e2e/e2e_zstrong_utils.h"
 #    include "custom_transforms/thrift/parse_config.h"
 #    include "custom_transforms/thrift/tests/util.h"
 #    include "custom_transforms/thrift/thrift_parsers.h"
@@ -152,7 +150,7 @@ std::vector<T> buildRandomList(size_t size)
     std::vector<T> result;
     std::mt19937 gen(0xdeadbeef);
     for (size_t i = 0; i < size; ++i) {
-        result.push_back(::zstrong::thrift::tests::generate<T>(gen));
+        result.push_back(::openzl::thrift::tests::generate<T>(gen));
     }
     return result;
 }
@@ -319,10 +317,10 @@ std::vector<ThriftTestCase> buildTestCases()
         size_t binaryBytes  = 0;
         while (true) {
             std::string const str_compact =
-                    ::zstrong::thrift::tests::generateRandomThrift<
+                    ::openzl::thrift::tests::generateRandomThrift<
                             apache::thrift::CompactSerializer>(genCompact);
             std::string const str_binary =
-                    ::zstrong::thrift::tests::generateRandomThrift<
+                    ::openzl::thrift::tests::generateRandomThrift<
                             apache::thrift::BinarySerializer>(genBinary);
 
             ss_compact << str_compact;
@@ -418,8 +416,9 @@ std::vector<ThriftTestCase> buildTestCases()
                 buildManySmallMapsTestCase<int64_t, int32_t>(targetSizeBytes));
         testCases.push_back(
                 buildManySmallMapsTestCase<int64_t, int64_t>(targetSizeBytes));
-        testCases.push_back(buildManySmallMapsTestCase<int64_t, std::string>(
-                targetSizeBytes));
+        testCases.push_back(
+                buildManySmallMapsTestCase<int64_t, std::string>(
+                        targetSizeBytes));
     }
 
     return testCases;

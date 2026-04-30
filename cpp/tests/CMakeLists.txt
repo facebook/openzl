@@ -10,6 +10,7 @@ if (OPENZL_BUILD_TESTS)
         test_openzl_cpp
         PRIVATE
             openzl_cpp
+            datagen
             GTest::gtest_main
     )
     apply_openzl_compile_options_to_target(test_openzl_cpp)

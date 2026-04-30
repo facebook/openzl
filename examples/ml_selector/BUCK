@@ -1,7 +1,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_cxxbinary")
+load("../../defs.bzl", "zs_cxxbinary")
 
 oncall("data_compression")
 
@@ -15,9 +15,9 @@ zs_cxxbinary(
         "core_model.h",
     ],
     deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/tools:fileio",
-        "//data_compression/experimental/zstrong/tools:zstrong_ml",
+        "../..:zstronglib",
+        "../../tools:fileio",
+        "../../tools:zstrong_ml",
     ],
 )
 
@@ -26,10 +26,10 @@ zs_cxxbinary(
     srcs = ["zs2_mlselector.cpp"],
     headers = ["model.h"],
     deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/tools:fileio",
-        "//data_compression/experimental/zstrong/tools:zstrong_cpp",
-        "//data_compression/experimental/zstrong/tools:zstrong_ml",
+        "../..:zstronglib",
+        "../../tools:fileio",
+        "../../tools:zstrong_cpp",
+        "../../tools:zstrong_ml",
     ],
     external_deps = [
         "CLI11",
@@ -37,16 +37,17 @@ zs_cxxbinary(
 )
 
 python_binary(
+    # @autodeps-skip
     name = "train_model",
     main_function = ".train_model.main",
     main_src = "train_model.py",
     deps = [
+        "../../tools/py:zstrong_ml",  # @manual
         "fbsource//third-party/pypi/click:click",
         "fbsource//third-party/pypi/numpy:numpy",
         "fbsource//third-party/pypi/pandas:pandas",
         "fbsource//third-party/pypi/scikit-learn:scikit-learn",
         "fbsource//third-party/pypi/xgboost:xgboost",
-        "//data_compression/experimental/zstrong/tools/py:zstrong_ml",
     ],
 )
 

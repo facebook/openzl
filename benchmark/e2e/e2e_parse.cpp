@@ -10,19 +10,16 @@
 #include "benchmark/e2e/e2e_fieldlz.h"
 #include "custom_transforms/parse/decode_parse.h"
 #include "custom_transforms/parse/encode_parse.h"
-#include "openzl/zl_config.h"
-#include "openzl/zl_ctransform.h"
-#include "openzl/zl_dtransform.h"
 #include "openzl/zl_opaque_types.h"
 
-#if ZL_HAVE_FBCODE
+#if ZL_IS_FBCODE
 
 #    include "custom_transforms/parse/tests/parse_test_data.h"
 
 namespace zstrong::bench::e2e::parse {
 
 namespace {
-using tests::parse::Type;
+using openzl::tests::parse::Type;
 
 class ParseCompressor : public ZstrongStringCompressor {
    public:
@@ -59,8 +56,8 @@ class ParseCompressor : public ZstrongStringCompressor {
 
 void registerBenchmark(size_t size, Type type)
 {
-    auto data                  = tests::parse::genData(size, type);
-    auto [content, fieldSizes] = tests::parse::flatten(data);
+    auto data                  = openzl::tests::parse::genData(size, type);
+    auto [content, fieldSizes] = openzl::tests::parse::flatten(data);
     auto corpus                = std::make_shared<ArbitraryStringData>(
             std::move(content), std::move(fieldSizes));
     auto compressor =

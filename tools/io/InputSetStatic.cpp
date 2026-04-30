@@ -2,6 +2,8 @@
 
 #include "tools/io/InputSetStatic.h"
 
+#include <stdexcept>
+
 namespace openzl::tools::io {
 
 class InputSetStatic::IteratorStateStatic : public InputSet::IteratorState {

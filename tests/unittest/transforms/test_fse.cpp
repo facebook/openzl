@@ -7,9 +7,10 @@
 #include "openzl/codecs/entropy/deprecated/common_entropy.h"
 #include "openzl/codecs/entropy/deprecated/decode_fse_kernel.h"
 #include "openzl/codecs/entropy/deprecated/encode_fse_kernel.h"
+#include "tests/datagen/random_producer/compat_uniform_distribution.h"
 #include "tests/utils.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 namespace {
 
@@ -211,7 +212,7 @@ TEST(FSEContextTest, testUncompressibleRoundTrip)
     std::string input;
     input.resize(10000);
     std::mt19937 gen(42);
-    std::uniform_int_distribution<int8_t> dist;
+    datagen::compat_uniform_int_distribution<int8_t> dist;
     for (size_t i = 0; i < input.size(); i++) {
         input[i] = dist(gen);
     }
@@ -223,7 +224,7 @@ TEST(FSEContextTest, testUniformCompressibleRoundTrip)
     std::string input;
     input.resize(10000);
     std::mt19937 gen(42);
-    std::uniform_int_distribution<int8_t> dist(0, 15);
+    datagen::compat_uniform_int_distribution<int8_t> dist(0, 15);
     for (size_t i = 0; i < input.size(); i++) {
         input[i] = dist(gen);
     }
@@ -232,4 +233,4 @@ TEST(FSEContextTest, testUniformCompressibleRoundTrip)
 
 } // namespace
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

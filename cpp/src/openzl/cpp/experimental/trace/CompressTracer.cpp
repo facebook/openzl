@@ -1,0 +1,273 @@
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+
+#include "openzl/cpp/experimental/trace/CompressTracer.hpp"
+
+#include "openzl/common/a1cbor_helpers.h"
+#include "openzl/common/logging.h"
+#include "openzl/cpp/experimental/trace/CborHelpers.hpp"
+#include "openzl/zl_compress.h"
+#include "openzl/zl_data.h"
+#include "openzl/zl_errors.h"
+#include "openzl/zl_opaque_types.h"
+
+#include <cstdlib>
+#include <map>
+#include <utility>
+#include <vector>
+
+namespace openzl::visualizer {
+
+static constexpr size_t MAIN_TRACE_IDX = 0;
+
+TraceResult CompressTracer::extractTrace()
+{
+    // Aggregate streamdump from all chunks
+    trace.streamdump.reserve(graphRuns.size());
+    for (auto& chunk : graphRuns) {
+        auto streamdump                  = chunk.getStreamdump();
+        std::vector<StreamdumpEntry> tmp = {};
+        tmp.reserve(streamdump.size());
+        for (auto& [k, v] : streamdump) {
+            tmp.push_back(
+                    StreamdumpEntry{
+                            k, std::move(v.first), std::move(v.second) });
+        }
+        trace.streamdump.push_back(std::move(tmp));
+    }
+    return std::move(trace);
+}
+
+void CompressTracer::on_segmenterEncode_start(ZL_Segmenter* segCtx)
+{
+    if (graphRuns.size() != 1) {
+        throw std::runtime_error(
+                "Compression tracing does not support multiple segmenters within the same compression");
+    }
+    segmented = true;
+    graphRuns[MAIN_TRACE_IDX].on_segmenterEncode_start(segCtx);
+}
+
+void CompressTracer::on_segmenterEncode_end(ZL_Segmenter* segCtx, ZL_Report r)
+{
+    currChunk = &graphRuns[MAIN_TRACE_IDX];
+    currChunk->on_segmenterEncode_end(segCtx, r);
+}
+
+void CompressTracer::on_ZL_Segmenter_processChunk_start(
+        ZL_Segmenter* segCtx,
+        const size_t numElts[],
+        size_t numInputs,
+        ZL_GraphID startingGraphID,
+        const ZL_RuntimeGraphParameters* rGraphParams)
+{
+    auto chunkNum = graphRuns.size();
+    graphRuns.emplace_back(chunkNum, showStreamPreview_);
+    currChunk = &(graphRuns[chunkNum]);
+    currChunk->on_ZL_Segmenter_processChunk_start(
+            segCtx, numElts, numInputs, startingGraphID, rGraphParams);
+}
+
+void CompressTracer::on_ZL_Segmenter_processChunk_end(
+        ZL_Segmenter* segCtx,
+        ZL_Report r)
+{
+    currChunk->on_ZL_Segmenter_processChunk_end(segCtx, r);
+}
+
+void CompressTracer::on_codecEncode_start(
+        ZL_Encoder* encoder,
+        const ZL_Compressor* compressor,
+        ZL_NodeID nid,
+        const ZL_Input* inStreams[],
+        size_t nbInStreams)
+{
+    currChunk->on_codecEncode_start(
+            encoder, compressor, nid, inStreams, nbInStreams);
+}
+
+void CompressTracer::on_codecEncode_end(
+        ZL_Encoder* encoder,
+        const ZL_Output* outStreams[],
+        size_t nbOutputs,
+        ZL_Report codecExecResult)
+{
+    currChunk->on_codecEncode_end(
+            encoder, outStreams, nbOutputs, codecExecResult);
+}
+
+void CompressTracer::on_ZL_Encoder_getScratchSpace(ZL_Encoder* ei, size_t size)
+{
+    currChunk->on_ZL_Encoder_getScratchSpace(ei, size);
+}
+
+void CompressTracer::on_ZL_Encoder_sendCodecHeader(
+        ZL_Encoder* encoder,
+        const void* trh,
+        size_t trhSize)
+{
+    currChunk->on_ZL_Encoder_sendCodecHeader(encoder, trh, trhSize);
+}
+
+void CompressTracer::on_ZL_Encoder_createTypedStream(
+        ZL_Encoder*,
+        int,
+        size_t,
+        size_t,
+        ZL_Output*)
+{
+}
+
+void CompressTracer::on_migraphEncode_start(
+        ZL_Graph* graph,
+        const ZL_Compressor* compressor,
+        ZL_GraphID gid,
+        ZL_Edge* edges[],
+        size_t nbEdges)
+{
+    currChunk->on_migraphEncode_start(graph, compressor, gid, edges, nbEdges);
+}
+
+void CompressTracer::on_migraphEncode_end(
+        ZL_Graph* graph,
+        ZL_GraphID successorGraphs[],
+        size_t nbSuccessors,
+        ZL_Report graphExecResult)
+{
+    currChunk->on_migraphEncode_end(
+            graph, successorGraphs, nbSuccessors, graphExecResult);
+}
+
+void CompressTracer::on_cctx_convertOneInput(
+        const ZL_CCtx* const cctx,
+        const ZL_Data* const input,
+        const ZL_Type inType,
+        const ZL_Type portTypeMask,
+        const ZL_Report conversionResult)
+{
+    currChunk->on_cctx_convertOneInput(
+            cctx, input, inType, portTypeMask, conversionResult);
+}
+
+void CompressTracer::on_ZL_Graph_getScratchSpace(ZL_Graph*, size_t) {}
+
+void CompressTracer::on_ZL_Edge_setMultiInputDestination_wParams(
+        ZL_Graph*,
+        ZL_Edge*[],
+        size_t,
+        ZL_GraphID,
+        const ZL_LocalParams*)
+{
+}
+
+void CompressTracer::on_ZL_CCtx_compressMultiTypedRef_start(
+        ZL_CCtx* cctx,
+        void const* const,
+        size_t const,
+        ZL_TypedRef const* const[],
+        size_t const)
+{
+    frameVersion = ZL_CCtx_getParameter(cctx, ZL_CParam_formatVersion);
+    opCtx_       = ZL_GET_OPERATION_CONTEXT(cctx);
+    // The "main" trace is located at idx 0 of graphRuns
+    graphRuns.emplace_back(MAIN_TRACE_IDX, showStreamPreview_);
+    currChunk = &graphRuns[MAIN_TRACE_IDX];
+}
+
+void CompressTracer::on_ZL_CCtx_compressMultiTypedRef_end(
+        ZL_CCtx const* const cctx,
+        ZL_Report const result)
+{
+    // If the compression is successful, we can assume all the streams
+    // without targets go to STORE
+    graphRuns[MAIN_TRACE_IDX].finalizeTrace(result);
+
+    // Resolve error strings while the CCtx is still alive
+    for (auto& graphRun : graphRuns) {
+        graphRun.resolveErrorStrings(cctx);
+    }
+
+    // convert compression data into a1c_items to write to a CBOR file
+    Arena* arena        = ALLOC_HeapArena_create();
+    A1C_Arena a1c_arena = A1C_Arena_wrap(arena);
+    std::vector<uint8_t> buffer;
+    // Serialize the streamdump content in CBOR format
+    auto res = serializeStreamdumpToCbor(&a1c_arena, buffer);
+    if (ZL_isError(res)) {
+        ZL_LOG(ERROR, "Failed to serialize streamdump content!");
+        throw std::runtime_error("Failed to serialize streamdump content.");
+    }
+    ALLOC_Arena_freeArena(arena);
+    // Write the serialized streamdump content to a string
+    if (ZL_isError(
+                ChunkTraceCore::writeSerializedStreamdump(
+                        buffer, trace.trace))) {
+        ZL_LOG(ERROR,
+               "Failed to write serialized streamdump content to a file!");
+        throw std::runtime_error(
+                "Failed to write serialize streamdump content into a CBOR file.");
+    }
+}
+
+void CompressTracer::setCompressedSize(size_t compressionResultSize)
+{
+    compressedSize_ = compressionResultSize;
+}
+
+ZL_Report CompressTracer::serializeStreamdumpToCbor(
+        A1C_Arena* a1c_arena,
+        std::vector<uint8_t>& buffer)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(opCtx_);
+    A1C_Item* root = A1C_Item_root(a1c_arena);
+    ZL_ERR_IF_NULL(root, allocation);
+    /* want 3 inner maps:
+     * 1. streams and their associated metadata
+     * 2. codecs and their associated metadata, and their in/out edges
+     * 3. graph info, specifically, which codecs and edges are within a
+     * graph
+     */
+    A1C_MapBuilder rootBuilder = A1C_Item_map_builder(root, 5, a1c_arena);
+
+    ZL_ERR_IF_NULL(rootBuilder.map, allocation);
+
+    ZL_ERR_IF_ERR(
+            addIntValue(rootBuilder, "libraryVersion", libraryVersion, opCtx_));
+    ZL_ERR_IF_ERR(
+            addIntValue(rootBuilder, "frameVersion", frameVersion, opCtx_));
+    ZL_ERR_IF_ERR(
+            addIntValue(rootBuilder, "traceVersion", traceVersion, opCtx_));
+    ZL_ERR_IF_ERR(addIntValue(rootBuilder, "operationType", 0, opCtx_));
+
+    // Wrap streams, codecs, and graphs in a "chunks" array
+    // Non-segmented runs will have 1 chunk in idx 0.
+    // Segmented runs will contain the "main" trace in idx 0 and individual
+    // chunks in idx 1+. By the "main" trace we mean the trace that includes the
+    // start of the compression, up to the segmenter but not including child
+    // chunk traces.
+    A1C_MAP_TRY_ADD(chunksPair, rootBuilder);
+    A1C_Item_string_refCStr(&chunksPair->key, "chunks");
+    A1C_ArrayBuilder chunksBuilder = A1C_Item_array_builder(
+            &chunksPair->val, 1 + graphRuns.size(), a1c_arena);
+    ZL_ERR_IF_NULL(chunksBuilder.array, allocation);
+
+    // Add additional chunks from graphRuns
+    for (auto& graphRun : graphRuns) {
+        ZL_ERR_IF_ERR(
+                graphRun.serializeToCBOR(a1c_arena, &chunksBuilder, opCtx_));
+    }
+
+    // encode + write data to a buffer
+    size_t encodedSize = A1C_Item_encodedSize(root);
+    buffer.resize(encodedSize);
+    A1C_Error error;
+    size_t bytesWritten =
+            A1C_Item_encode(root, buffer.data(), encodedSize, &error);
+    if (bytesWritten == 0) {
+        return ZL_WRAP_ERROR(A1C_Error_convert(NULL, error));
+    }
+    ZL_ERR_IF_NE(bytesWritten, encodedSize, allocation);
+
+    return ZL_returnSuccess();
+}
+
+} // namespace openzl::visualizer

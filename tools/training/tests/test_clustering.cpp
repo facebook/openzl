@@ -139,7 +139,7 @@ class TestTraining : public testing::Test {
     std::vector<ZL_NodeID> clusteringCodecs_;
     A1C_Arena a1cArena_{};
     Arena* backingArena_{};
-    zstrong::tests::datagen::DataGen dataGen_;
+    openzl::tests::datagen::DataGen dataGen_;
 };
 
 TEST_F(TestTraining, TestTrainingBasic)
@@ -341,6 +341,50 @@ TEST_F(TestTraining, TestTrainingCustomParserRegistrationWorks)
     };
     auto serialized = training::train(inputs, compressor_, trainParams);
     EXPECT_GT(serialized.size(), 0);
+}
+
+TEST_F(TestTraining, TestTrainingDifferentTypeSameTag)
+{
+    std::vector<training::MultiInput> samples;
+
+    auto sample1                  = training::MultiInput();
+    std::vector<uint64_t> numVec1 = { 0, 1, 2, 1, 1 };
+    sample1.add(createNumericData(numVec1, 0));
+
+    std::vector<uint64_t> numVec2 = { 1, 2, 3, 2, 2 };
+    sample1.add(createNumericData(numVec2, 1));
+
+    std::string strs1              = "aaabaababaaaaaaaaaaaaaa";
+    std::vector<uint32_t> strLens1 = { 2, 5, 6, 4, 6 };
+    sample1.add(createStringData(strs1, strLens1, 0));
+
+    std::string strs2              = "bbabaababaaaaaaaaaaaaaa";
+    std::vector<uint32_t> strLens2 = { 2, 4, 7, 4, 6 };
+    sample1.add(createStringData(strs1, strLens1, 1));
+
+    samples.emplace_back(std::move(sample1));
+
+    std::map<std::pair<ZL_Type, size_t>, size_t> typeToDefaultSuccessorIdxMap;
+    typeToDefaultSuccessorIdxMap[{ ZL_Type_serial, 1 }]  = 1;
+    typeToDefaultSuccessorIdxMap[{ ZL_Type_numeric, 8 }] = 2;
+    typeToDefaultSuccessorIdxMap[{ ZL_Type_string, 0 }]  = 3;
+
+    training::TrainParams trainParams = {
+        .clusteringTrainer = training::ClusteringTrainer::Greedy
+    };
+
+    auto trainedGraphId = openzl::training::train_cluster(
+            compressor_.get(),
+            *backingArena_,
+            samples,
+            successors_,
+            clusteringCodecs_,
+            typeToDefaultSuccessorIdxMap,
+            trainParams);
+    auto lparam = ZL_Compressor_Graph_getLocalParams(
+            compressor_.get(), trainedGraphId);
+    auto r = deserializeToClusteringConfig(lparam);
+    EXPECT_TRUE(!ZL_RES_isError(r));
 }
 
 } // namespace

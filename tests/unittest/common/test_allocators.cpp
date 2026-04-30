@@ -288,6 +288,182 @@ TEST_P(AllocatorTest, mallocAndReallocWithSeveralIterations)
     freeArena(arena);
 }
 
+TEST_P(AllocatorTest, redzoneIsPoisonedWithMallocAndFree)
+{
+    if (!ZL_POISON_SUPPORTED) {
+        return;
+    }
+
+    Arena* arena = createArena();
+
+    for (size_t i = 0; i < 5; ++i) {
+        for (size_t j = 0; j < 5; ++j) {
+            // Allocate a buffer
+            char* ptr = (char*)ALLOC_Arena_malloc(arena, 100);
+            ASSERT_NE(ptr, nullptr);
+
+            ASSERT_FALSE(ZL_addressIsPoisoned(ptr));
+            ASSERT_FALSE(ZL_addressIsPoisoned(ptr + 99));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr + 100));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr - 1));
+
+            // Free the buffer
+            ALLOC_Arena_free(arena, ptr);
+
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr + 99));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr + 100));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr - 1));
+        }
+
+        ALLOC_Arena_freeAll(arena);
+    }
+
+    freeArena(arena);
+}
+
+TEST_P(AllocatorTest, redzoneIsPoisonedWithMallocThenFreeAll)
+{
+    if (!ZL_POISON_SUPPORTED) {
+        return;
+    }
+
+    Arena* arena = createArena();
+
+    for (size_t i = 0; i < 5; ++i) {
+        std::array<char*, 5> ptrs;
+        for (size_t j = 0; j < 5; ++j) {
+            // Allocate a buffer
+            char* ptr = (char*)ALLOC_Arena_malloc(arena, 100);
+            ASSERT_NE(ptr, nullptr);
+
+            ASSERT_FALSE(ZL_addressIsPoisoned(ptr));
+            ASSERT_FALSE(ZL_addressIsPoisoned(ptr + 99));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr + 100));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr - 1));
+
+            ptrs[j] = ptr;
+        }
+
+        ALLOC_Arena_freeAll(arena);
+
+        for (char* ptr : ptrs) {
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr + 99));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr + 100));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr - 1));
+        }
+    }
+
+    freeArena(arena);
+}
+
+TEST_P(AllocatorTest, redzoneIsPoisonedWithMallocThenRealloc)
+{
+    if (!ZL_POISON_SUPPORTED) {
+        return;
+    }
+
+    Arena* arena = createArena();
+
+    for (size_t i = 0; i < 5; ++i) {
+        for (size_t j = 0; j < 5; ++j) {
+            // Allocate a buffer with realloc
+            char* ptr = (char*)ALLOC_Arena_malloc(arena, 100);
+            ASSERT_NE(ptr, nullptr);
+
+            ASSERT_FALSE(ZL_addressIsPoisoned(ptr));
+            ASSERT_FALSE(ZL_addressIsPoisoned(ptr + 99));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr + 100));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr - 1));
+
+            // Resize the buffer larger
+            ptr = (char*)ALLOC_Arena_realloc(arena, ptr, 200);
+            ASSERT_NE(ptr, nullptr);
+
+            ASSERT_FALSE(ZL_addressIsPoisoned(ptr));
+            ASSERT_FALSE(ZL_addressIsPoisoned(ptr + 199));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr + 200));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr - 1));
+
+            // Resize the buffer smaller
+            ptr = (char*)ALLOC_Arena_realloc(arena, ptr, 50);
+            ASSERT_NE(ptr, nullptr);
+
+            ASSERT_FALSE(ZL_addressIsPoisoned(ptr));
+            ASSERT_FALSE(ZL_addressIsPoisoned(ptr + 49));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr + 50));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr - 1));
+
+            // Free the buffer
+            ALLOC_Arena_free(arena, ptr);
+
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr + 49));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr + 99));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr + 199));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr + 200));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr - 1));
+        }
+        ALLOC_Arena_freeAll(arena);
+    }
+
+    freeArena(arena);
+}
+
+TEST_P(AllocatorTest, redzoneIsPoisonedWithReallocThenRealloc)
+{
+    if (!ZL_POISON_SUPPORTED) {
+        return;
+    }
+
+    Arena* arena = createArena();
+
+    for (size_t i = 0; i < 5; ++i) {
+        for (size_t j = 0; j < 5; ++j) {
+            // Allocate a buffer with realloc
+            char* ptr = (char*)ALLOC_Arena_realloc(arena, nullptr, 100);
+            ASSERT_NE(ptr, nullptr);
+
+            ASSERT_FALSE(ZL_addressIsPoisoned(ptr));
+            ASSERT_FALSE(ZL_addressIsPoisoned(ptr + 99));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr + 100));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr - 1));
+
+            // Resize the buffer larger
+            ptr = (char*)ALLOC_Arena_realloc(arena, ptr, 200);
+            ASSERT_NE(ptr, nullptr);
+
+            ASSERT_FALSE(ZL_addressIsPoisoned(ptr));
+            ASSERT_FALSE(ZL_addressIsPoisoned(ptr + 199));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr + 200));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr - 1));
+
+            // Resize the buffer smaller
+            ptr = (char*)ALLOC_Arena_realloc(arena, ptr, 50);
+            ASSERT_NE(ptr, nullptr);
+
+            ASSERT_FALSE(ZL_addressIsPoisoned(ptr));
+            ASSERT_FALSE(ZL_addressIsPoisoned(ptr + 49));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr + 50));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr - 1));
+
+            // Free the buffer
+            ALLOC_Arena_free(arena, ptr);
+
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr + 49));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr + 99));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr + 199));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr + 200));
+            ASSERT_TRUE(ZL_addressIsPoisoned(ptr - 1));
+        }
+        ALLOC_Arena_freeAll(arena);
+    }
+
+    freeArena(arena);
+}
+
 // Instantiate tests for HeapArena
 
 class HeapArenaImplementation : public ArenaImplementation {

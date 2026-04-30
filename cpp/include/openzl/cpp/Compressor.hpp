@@ -127,6 +127,8 @@ class Compressor {
 
     void selectStartingGraph(GraphID graph);
 
+    GraphID getStartingGraph() const;
+
     /// @returns a serialized representation of this compressor.
     ///
     /// @note consult zl_compressor_serialization.h for discussion of the

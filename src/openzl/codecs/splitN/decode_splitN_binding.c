@@ -20,6 +20,7 @@ ZL_Report DI_splitN(
         const ZL_Input* ins[],
         size_t nbInVariable)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_DLOG(BLOCK, "DI_splitN (%zu inputs to join)", nbInVariable);
     ZL_ASSERT_NN(dictx);
     ZL_ASSERT_EQ(nbInFixed, 0);
@@ -33,7 +34,7 @@ ZL_Report DI_splitN(
         ZL_RBuffer header = ZL_Decoder_getCodecHeader(dictx);
         if (header.size != 0) {
             uint8_t const* ptr = (uint8_t const*)header.start;
-            ZL_TRY_LET_T(
+            ZL_TRY_LET(
                     uint64_t,
                     eltWidth64,
                     ZL_varintDecode(&ptr, ptr + header.size));
@@ -50,21 +51,21 @@ ZL_Report DI_splitN(
     size_t totalElts = 0;
     for (size_t n = 0; n < nbInVariable; n++) {
         ZL_ASSERT_NN(ins[n]);
-        ZL_RET_R_IF_NE(
-                node_unexpected_input_type,
+        ZL_ERR_IF_NE(
                 ZL_Input_type(ins[n]),
                 type,
-                "SplitN types must be homogenous");
-        ZL_RET_R_IF_NE(
                 node_unexpected_input_type,
+                "SplitN types must be homogenous");
+        ZL_ERR_IF_NE(
                 ZL_Input_eltWidth(ins[n]),
                 eltWidth,
+                node_unexpected_input_type,
                 "SplitN widths must be homogenous");
         totalElts += ZL_Input_numElts(ins[n]);
     }
     ZL_Output* const out =
             ZL_Decoder_create1OutStream(dictx, totalElts, eltWidth);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
 
     size_t pos       = 0;
     char* const wptr = ZL_Output_ptr(out);
@@ -76,7 +77,7 @@ ZL_Report DI_splitN(
     }
     ZL_ASSERT_EQ(pos, totalElts * eltWidth);
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, totalElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, totalElts));
 
     return ZL_returnSuccess();
 }

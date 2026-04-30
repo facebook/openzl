@@ -14,13 +14,15 @@
 #include "custom_transforms/tulip_v2/tests/tulip_v2_data_utils.h"
 
 namespace {
-using namespace zstrong::tulip_v2::tests;
+using namespace openzl::tulip_v2::tests;
 namespace fs = std::filesystem;
 
 std::vector<std::string> generateFuzzCompressCorpus()
 {
+    std::random_device rd;
     std::vector<std::string> examples;
-    std::mt19937 gen(0xdeadbeef);
+    std::mt19937 gen(rd());
+    examples.reserve(100);
     for (size_t n = 0; n < 100; ++n) {
         examples.push_back(generateTulipV2(n % 5, gen));
     }

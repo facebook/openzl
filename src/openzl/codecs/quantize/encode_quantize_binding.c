@@ -12,8 +12,9 @@ static ZL_Report EI_quantize(
         const ZL_Input* in,
         ZL_Quantize32Params const* params)
 {
-    ZL_RET_R_IF_NE(GENERIC, ZL_Input_type(in), ZL_Type_numeric);
-    ZL_RET_R_IF_NE(GENERIC, ZL_Input_eltWidth(in), 4);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
+    ZL_ERR_IF_NE(ZL_Input_type(in), ZL_Type_numeric, GENERIC);
+    ZL_ERR_IF_NE(ZL_Input_eltWidth(in), 4, GENERIC);
 
     size_t const nbElts = ZL_Input_numElts(in);
 
@@ -22,8 +23,8 @@ static ZL_Report EI_quantize(
     size_t const bitsCapacity = 4 * nbElts + 9;
     ZL_Output* bits = ZL_Encoder_createTypedStream(eictx, 1, bitsCapacity, 1);
 
-    ZL_RET_R_IF_NULL(allocation, codes);
-    ZL_RET_R_IF_NULL(allocation, bits);
+    ZL_ERR_IF_NULL(codes, allocation);
+    ZL_ERR_IF_NULL(bits, allocation);
 
     ZL_Report const bitsSize = ZS2_quantize32Encode(
             (uint8_t*)ZL_Output_ptr(bits),
@@ -32,10 +33,10 @@ static ZL_Report EI_quantize(
             (uint32_t const*)ZL_Input_ptr(in),
             nbElts,
             params);
-    ZL_RET_R_IF_ERR(bitsSize);
+    ZL_ERR_IF_ERR(bitsSize);
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(codes, nbElts));
-    ZL_RET_R_IF_ERR(ZL_Output_commit(bits, ZL_validResult(bitsSize)));
+    ZL_ERR_IF_ERR(ZL_Output_commit(codes, nbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(bits, ZL_validResult(bitsSize)));
 
     return ZL_returnValue(2);
 }

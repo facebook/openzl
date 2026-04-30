@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <cassert>
 #include <iostream>
 #include <random>
 
@@ -9,7 +10,7 @@
 #include "tests/datagen/structures/StringProducer.h"
 #include "tests/datagen/structures/VectorProducer.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 class DataGen {
    public:
@@ -26,6 +27,16 @@ class DataGen {
         return rw_;
     }
 
+    size_t randLength(
+            RandWrapper::NameType name,
+            size_t maxLength,
+            size_t quantizationBytes = 1)
+    {
+        StringLengthDistribution lengthDist(rw_, maxLength);
+        auto len = lengthDist(name);
+        return (len / quantizationBytes) * quantizationBytes;
+    }
+
     std::string randString(RandWrapper::NameType name)
     {
         return randStringWithQuantizedLength(name, 1);
@@ -36,6 +47,29 @@ class DataGen {
             size_t quantizationBytes)
     {
         return (StringProducer(rw_))(name, quantizationBytes);
+    }
+
+    std::string randString(RandWrapper::NameType name, size_t maxLength)
+    {
+        return randStringWithQuantizedLength(name, maxLength, 1);
+    }
+
+    std::string randStringWithQuantizedLength(
+            RandWrapper::NameType name,
+            size_t maxLength,
+            size_t quantizationBytes)
+    {
+        return (StringProducer(rw_, maxLength))(name, quantizationBytes);
+    }
+
+    std::string randStringWithLength(RandWrapper::NameType name, size_t length)
+    {
+        std::string res;
+        res.reserve(length);
+        for (size_t i = 0; i < length; ++i) {
+            res.push_back(rw_->u8("char"));
+        }
+        return res;
     }
 
     template <class Res>
@@ -179,8 +213,19 @@ class DataGen {
         return UniformDistribution<double>(rw_, min, max)(name);
     }
 
+    // convenience functions for fuzzer inputs
+    bool has_more_data()
+    {
+        return rw_->has_more_data();
+    }
+
+    std::vector<uint8_t> all_remaining_bytes()
+    {
+        return rw_->all_remaining_bytes();
+    }
+
    private:
     std::shared_ptr<RandWrapper> rw_;
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

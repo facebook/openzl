@@ -312,15 +312,24 @@ TEST_F(TestClusteringConfigBuilder, TestBuildSoloSplit)
     EXPECT_EQ(config->nbTypeDefaults, 0);
     EXPECT_EQ(config->nbClusters, 4);
     configBuilder = configBuilder.buildConfigClusterSoloSplit(
-            columnMetadata_, *cUtils_, 0);
+            columnMetadata_,
+            *cUtils_,
+            (training::ColumnInfo){
+                    .tag = 0, .type = ZL_Type_numeric, .width = 1 });
     config = configBuilder.build();
     EXPECT_EQ(config->nbClusters, 5);
     configBuilder = configBuilder.buildConfigClusterSoloSplit(
-            columnMetadata_, *cUtils_, 1);
+            columnMetadata_,
+            *cUtils_,
+            (training::ColumnInfo){
+                    .tag = 1, .type = ZL_Type_numeric, .width = 1 });
     config = configBuilder.build();
     EXPECT_EQ(config->nbClusters, 6);
     configBuilder = configBuilder.buildConfigClusterSoloSplit(
-            columnMetadata_, *cUtils_, 2);
+            columnMetadata_,
+            *cUtils_,
+            (training::ColumnInfo){
+                    .tag = 2, .type = ZL_Type_numeric, .width = 1 });
     config = configBuilder.build();
     EXPECT_EQ(config->nbClusters, 7);
     // Expect tags 0-2 are separated into their own clusters
@@ -350,11 +359,21 @@ TEST_F(TestClusteringConfigBuilder, TestBuildPairSplit)
     EXPECT_EQ(config->nbTypeDefaults, 0);
     EXPECT_EQ(config->nbClusters, 4);
     configBuilder = configBuilder.buildConfigClusterPairSplit(
-            columnMetadata_, *cUtils_, 0, 1);
+            columnMetadata_,
+            *cUtils_,
+            (training::ColumnInfo){
+                    .tag = 0, .type = ZL_Type_numeric, .width = 1 },
+            (training::ColumnInfo){
+                    .tag = 1, .type = ZL_Type_numeric, .width = 1 });
     config = configBuilder.build();
     EXPECT_EQ(config->nbClusters, 5);
     configBuilder = configBuilder.buildConfigClusterPairSplit(
-            columnMetadata_, *cUtils_, 2, 3);
+            columnMetadata_,
+            *cUtils_,
+            (training::ColumnInfo){
+                    .tag = 2, .type = ZL_Type_numeric, .width = 1 },
+            (training::ColumnInfo){
+                    .tag = 3, .type = ZL_Type_numeric, .width = 1 });
     config = configBuilder.build();
     EXPECT_EQ(config->nbClusters, 6);
     // Expect tags {0,1} and {2,3} are separate tag sets in clusters

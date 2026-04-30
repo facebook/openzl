@@ -8,7 +8,7 @@
 
 namespace openzl {
 namespace {
-std::string format(
+std::string formatMsg(
         std::string_view msg,
         const poly::optional<ZL_ErrorCode>& code,
         poly::string_view errorContext,
@@ -63,7 +63,7 @@ Exception::Exception(
         poly::optional<ZL_ErrorCode> code,
         poly::string_view errorContext,
         poly::source_location location)
-        : std::runtime_error(format(msg, code, errorContext, location)),
+        : std::runtime_error(formatMsg(msg, code, errorContext, location)),
           msg_(msg),
           code_(std::move(code)),
           errorContext_(errorContext),
@@ -134,12 +134,23 @@ ExceptionBuilder&& ExceptionBuilder::addErrorContext<ZL_CompressorDeserializer>(
     }
 }
 
+template <>
+ExceptionBuilder&& ExceptionBuilder::addErrorContext<ZL_Graph>(
+        ZL_Graph const* const ctx) && noexcept
+{
+    if (ctx != nullptr && error_.has_value()) {
+        return std::move(*this).withErrorContext(
+                ZL_Graph_getErrorContextString_fromError(ctx, error_.value()));
+    } else {
+        return std::move(*this);
+    }
+}
+
 Exception ExceptionBuilder::build() && noexcept
 {
     poly::optional<ZL_ErrorCode> code;
     if (error_.has_value()) {
-        // TODO: when ZL_E_code() is public, use that.
-        code.emplace(ZL_RES_code(ZL_RESULT_WRAP_ERROR(size_t, error_.value())));
+        code.emplace(ZL_E_code(error_.value()));
     }
     return Exception(msg_, code, errorContext_, std::move(location_));
 }

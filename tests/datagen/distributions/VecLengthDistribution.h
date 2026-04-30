@@ -4,7 +4,7 @@
 
 #include "tests/datagen/distributions/Distribution.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 /**
  * @brief Distribution for generating vector lengths, skewed towards shorter
@@ -16,12 +16,9 @@ class VecLengthDistribution : public Distribution<size_t> {
     explicit VecLengthDistribution(
             std::shared_ptr<RandWrapper> generator,
             size_t min,
-            size_t max = kMaxVecLength)
+            size_t max = ((size_t)1u << 17))
             : Distribution<size_t>(generator), min_(min), max_(max)
     {
-        if (max > kMaxVecLength) {
-            throw std::runtime_error("VecLengthDistribution: max is too large");
-        }
         if (min > max) {
             throw std::runtime_error("VecLengthDistribution: min > max");
         }
@@ -51,7 +48,7 @@ class VecLengthDistribution : public Distribution<size_t> {
         if (op < 0b11111111) {
             return std::max(len_val % std::min(size_t(4096), max_), min_);
         }
-        return std::max(len_val % max_, min_);
+        return std::max(len_val % (max_ + 1), min_);
     }
 
     void print(std::ostream& os) const override
@@ -60,10 +57,8 @@ class VecLengthDistribution : public Distribution<size_t> {
     }
 
    private:
-    static constexpr size_t kMaxVecLength = (size_t)1u << 17;
-
     const size_t min_;
     const size_t max_;
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

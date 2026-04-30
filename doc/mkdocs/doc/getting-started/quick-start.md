@@ -13,21 +13,24 @@ This 15 minute exercise will teach you:
 ## Clone OpenZL
 
 ```sh
-git clone --depth 1 https://github.com/facebook/openzl.git
+git clone --depth 1 -b release https://github.com/facebook/openzl.git
 cd openzl
-git checkout release
 ```
 
 ## Building the OpenZL CLI
 
 OpenZL consists of a core library and a set of tools, each of which can be compiled independently. However, for usage simplicity, many of them are bundled into a CLI called `zli`.
-Compile it; it will be your main tool for the next sections.
+It will be your main tool for the next sections.
+
+???+ important "System requirements"
+    OpenZL uses modern C11 and C++17 features. Ensure your compiler has full support. GCC 9+ and Clang 13+ are known to be supported.
 
 ```sh
 make zli
 ```
 
 ??? note "Alternative: Using cmake instead of make"
+    Use CMake 3.20.2+ when generating:
     ```bash
     mkdir -p cmakebuild
     cmake -S . -B cmakebuild
@@ -148,7 +151,6 @@ Now train a compressor using the `sra0` sample:
     limit the training time. It currently limits the time spent in each step of
     training, not the total time. But, the trained result may be worse given less
     time to train.
-
 
 The training session will generate some messages on the consoles.
 The last lines should look something like that:

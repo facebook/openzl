@@ -6,11 +6,10 @@ import os
 import typing as t
 
 import click
-
 import numpy as np
 import pandas as pd
 import xgboost as xgb
-import zstrong_ml  # @manual=//data_compression/experimental/zstrong/tools/py:zstrong_ml
+import zstrong_ml  # @manual
 from sklearn.model_selection import train_test_split
 
 # Ugly fix for old XGBoost version using deprecated Pandas features
@@ -43,7 +42,8 @@ def train_model(path: str) -> t.Tuple[xgb.XGBClassifier, pd.DataFrame]:
 
     # Process the samples into dataframes
     df_features, df_results = zstrong_ml.process_training_samples(
-        samples, None  # , choice_function
+        samples,
+        None,  # , choice_function
     )
 
     choice_breakdown = (
@@ -61,42 +61,68 @@ def train_model(path: str) -> t.Tuple[xgb.XGBClassifier, pd.DataFrame]:
     X_test = X_test.loc[test_mask].copy()
     y_test = y_test.loc[test_mask].copy()
 
-    params = {
+    params: dict[str, float | int | str] = {
         "learning_rate": 0.1,
-        "n_estimators": 30,
-        "n_jobs": 1,
+        "nthread": 1,
         "min_child_weight": 0.0,
         "subsample": 0.7,
         "colsample_bynode": 0.8,
     }
+
+    # Use binary:logistic for 2 classes, multi:softmax otherwise
+    unordered_labels = list(samples[0].targets.keys())
+    num_successors = len(unordered_labels)
+    if num_successors == 2:
+        params["objective"] = "binary:logistic"
+    else:
+        params["objective"] = "multi:softmax"
+        params["num_class"] = num_successors
+
     logger.info("Training model")
-    booster = xgb.sklearn.XGBClassifier(**params)
-    _ = booster.fit(
-        X_train,
-        y_train["choice"],
-        eval_set=[(X_train, y_train["choice"]), (X_test, y_test["choice"])],
-        # eval_metric="mae",
+
+    # Create DMatrix for native XGBoost
+    dtrain = xgb.DMatrix(X_train, label=y_train["choice"])
+    dtest = xgb.DMatrix(X_test, label=y_test["choice"])
+
+    # Train with early stopping
+    evals = [(dtrain, "train"), (dtest, "test")]
+    booster = xgb.train(
+        params,
+        dtrain,
+        num_boost_round=30,
+        evals=evals,
         early_stopping_rounds=10,
-        verbose=False,
+        verbose_eval=False,
     )
 
     logger.info("Model trained")
 
-    # pyre-ignore
-    params["n_estimators"] = booster.best_iteration + 1
-    booster = xgb.sklearn.XGBClassifier(**params)
-    _ = booster.fit(
-        df_features,
-        df_results["choice"],
-        verbose=False,
+    # Retrain on all data with optimal number of rounds
+    best_iteration = booster.best_iteration + 1
+    dfull = xgb.DMatrix(df_features, label=df_results["choice"])
+    booster = xgb.train(
+        params,
+        dfull,
+        num_boost_round=best_iteration,
+        verbose_eval=False,
     )
 
-    prediction = booster.predict(X_test)
+    prediction = booster.predict(xgb.DMatrix(X_test))
 
     prediction_breakdown = (
         pd.DataFrame(pd.Series(prediction).value_counts()).reset_index().to_string()
     )
     logger.info(f"Breakdown of predictions for test data:\n{prediction_breakdown}")
+
+    if len(prediction) > 0 and not isinstance(prediction[0], str):
+        idx_to_label = {samples[0].targets[k]["idx"]: k for k in unordered_labels}
+        successor_labels = [idx_to_label[i] for i in range(len(idx_to_label))]
+
+        prediction = np.array([idx_to_label[int(p)] for p in prediction])
+
+        booster.successor_labels_ = successor_labels
+    else:
+        booster.successor_labels_ = list(booster.classes_)
 
     prediction_size = sum(
         [sum(y_test[p].values[prediction == p]) for p in np.unique(prediction)]
@@ -104,7 +130,7 @@ def train_model(path: str) -> t.Tuple[xgb.XGBClassifier, pd.DataFrame]:
     prediction_best_size = sum(y_test.best_size)
     prediction_ratio = prediction_size / prediction_best_size
     logger.info(
-        f"Using our model on the training + test data we will get {100 * (prediction_ratio-1):.02}% worse compression ratio than optimum (predicted size = {prediction_size:.02}, best size = {prediction_best_size:.02})"
+        f"Using our model on the training + test data we will get {100 * (prediction_ratio - 1):.02}% worse compression ratio than optimum (predicted size = {prediction_size:.02}, best size = {prediction_best_size:.02})"
     )
     return (booster, df_features)
 
@@ -116,7 +142,7 @@ def get_trained_serialized_model(path: str):
     # so we add another even if there's only one class.
     # TODO: fix GBT predictors, consider using forced_successor
     # pyre-ignore
-    classes = list(booster.classes_)
+    classes = list(booster.successor_labels_)
     if len(classes) == 1:
         classes.append(classes[0])
 
@@ -132,7 +158,7 @@ def get_trained_core_model(path: str, prefix: str) -> zstrong_ml.CoreModel:
 
     (booster, df_features) = train_model(path)
     # Fix as mentioned in the get_trained_serialized_model
-    classes = list(booster.classes_)
+    classes = list(booster.successor_labels_)
     if len(classes) == 1:
         classes.append(classes[0])
 
@@ -186,7 +212,7 @@ def write_core_files(path: str, model_strings: t.Dict[str, zstrong_ml.CoreModel]
 #ifndef {path.replace("/", "_").replace(".", "_").upper()}
 #define {path.replace("/", "_").replace(".", "_").upper()}
 
-#include "zstrong/compress/selectors/ml/gbt.h"
+#include "openzl/compress/selectors/ml/gbt.h"
 
 #ifdef __cplusplus
 extern "C" {{
@@ -262,10 +288,11 @@ def main(training_samples: str, out: str, model_name: str, core: bool):
         print("Please do not include file extension in the path")
         return
 
-    if not os.getcwd().endswith("data_compression/experimental/zstrong"):
+    if not (os.getcwd().endswith("openzl/dev") or os.getcwd().endswith("openzl/prod")):
         print("Please run this file from zstrong root director")
         return
 
+    print("XGBoost version:" + xgb.__version__)
     if not core:
         write_header(out, {model_name: get_trained_serialized_model(training_samples)})
     else:

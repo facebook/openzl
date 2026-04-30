@@ -5,7 +5,7 @@
 
 #include "openzl/codecs/zl_clustering.h"
 #include "openzl/shared/a1cbor.h"
-#include "openzl/zl_cgraph.h"
+#include "openzl/zl_compressor.h"
 #include "openzl/zl_data.h"
 
 #if defined(__cplusplus)
@@ -13,7 +13,6 @@ extern "C" {
 #endif
 
 #define ZL_GENERIC_CLUSTERING_CONFIG_ID 315
-#define ZL_GENERIC_CLUSTERING_CONFIG_SIZE_ID 316
 
 #define ZL_GENERIC_CLUSTERING_GRAPH_MIN_FORMAT_VERSION 18
 
@@ -65,12 +64,12 @@ ZL_Clustering_deserializeClusteringConfig(
 ZL_Report
 graph_compressClustered(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs);
 
-#define MIGRAPH_CLUSTERING                                                 \
-    {                                                                      \
-        .name = "!zl.cluster", .graph_f = graph_compressClustered,         \
-        .inputTypeMasks = (const ZL_Type[]){ ZL_Type_any }, .nbInputs = 1, \
-        .lastInputIsVariable = 1                                           \
-    }
+#define MIGRAPH_CLUSTERING                                     \
+    { .name                = "!zl.cluster",                    \
+      .graph_f             = graph_compressClustered,          \
+      .inputTypeMasks      = (const ZL_Type[]){ ZL_Type_any }, \
+      .nbInputs            = 1,                                \
+      .lastInputIsVariable = 1 }
 
 #if defined(__cplusplus)
 } // extern "C"

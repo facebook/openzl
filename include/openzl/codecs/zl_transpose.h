@@ -6,6 +6,7 @@
 #include <stddef.h>
 
 #include "openzl/zl_graph_api.h"
+#include "openzl/zl_graphs.h"
 #include "openzl/zl_nodes.h"
 #include "openzl/zl_opaque_types.h"
 
@@ -21,11 +22,8 @@ extern "C" {
 // Example : 1 2 3 4 5 6 7 8 as 2 fields of size 4
 //           => transposed into 4 streams as 2 fields of size 1
 //           => (1, 5), (2, 6), (3, 7), (4, 8)
-#define ZL_NODE_TRANSPOSE_SPLIT           \
-    (ZL_NodeID)                           \
-    {                                     \
-        ZL_StandardNodeID_transpose_split \
-    }
+#define ZL_NODE_TRANSPOSE_SPLIT \
+    ZL_MAKE_NODE_ID(ZL_StandardNodeID_transpose_split)
 
 /**
  * Helper function to create a graph for ZL_NODE_TRANSPOSE_SPLIT.

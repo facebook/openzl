@@ -3,12 +3,20 @@
 #include "tools/arg/parsed_args.h"
 
 #include <algorithm>
-#include <stdexcept>
 
 #include "tools/arg/ParseException.h"
 #include "tools/arg/arg_parser.h"
 
 namespace openzl::arg {
+namespace {
+std::optional<std::string> vecToOptional(const std::vector<std::string>& vec)
+{
+    if (vec.size() == 1) {
+        return vec[0];
+    }
+    return std::nullopt;
+}
+} // namespace
 
 int ParsedArgs::chosenCmd() const
 {
@@ -68,7 +76,7 @@ std::optional<std::string> ParsedArgs::globalFlag(const std::string& name) const
     if (mp.find(name) == mp.end()) {
         return std::nullopt;
     }
-    return mp.at(name);
+    return vecToOptional(mp.at(name));
 }
 
 std::string ParsedArgs::globalRequiredFlag(const std::string& name) const
@@ -76,13 +84,25 @@ std::string ParsedArgs::globalRequiredFlag(const std::string& name) const
     return cmdRequiredFlag(ArgParser::CMD_UNSPECIFIED, name);
 }
 
-std::string ParsedArgs::cmdPositional(int cmd, const std::string& name) const
+std::vector<std::string> ParsedArgs::cmdPositionals(
+        int cmd,
+        const std::string& name) const
 {
     auto mp = cmdVals_.at(cmd);
     if (mp.find(name) == mp.end()) {
         throw ParseException("No positional arg with name " + name);
     }
-    return mp.at(name).value();
+    return mp.at(name);
+}
+
+std::string ParsedArgs::cmdPositional(int cmd, const std::string& name) const
+{
+    auto pos = vecToOptional(cmdPositionals(cmd, name));
+    if (!pos.has_value()) {
+        throw ParseException(
+                "Need exactly one positional arg with name " + name);
+    }
+    return pos.value();
 }
 
 bool ParsedArgs::cmdHasFlag(int cmd, const std::string& name) const
@@ -101,7 +121,7 @@ std::optional<std::string> ParsedArgs::cmdFlag(int cmd, const std::string& name)
     if (mp.find(name) == mp.end()) {
         return std::nullopt;
     }
-    return mp.at(name);
+    return vecToOptional(mp.at(name));
 }
 
 std::string ParsedArgs::cmdRequiredFlag(int cmd, const std::string& name) const

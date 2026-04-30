@@ -7,28 +7,32 @@
 
 #define CONCAT_SERIAL_GRAPH(id)                                        \
     {                                                                  \
-        .CTid = id, .inputTypes = ZL_STREAMTYPELIST(ZL_Type_serial),   \
+        .CTid                = id,                                     \
+        .inputTypes          = ZL_STREAMTYPELIST(ZL_Type_serial),      \
         .lastInputIsVariable = 1,                                      \
         .soTypes = ZL_STREAMTYPELIST(ZL_Type_numeric, ZL_Type_serial), \
     }
 
 #define CONCAT_NUM_GRAPH(id)                                            \
     {                                                                   \
-        .CTid = id, .inputTypes = ZL_STREAMTYPELIST(ZL_Type_numeric),   \
+        .CTid                = id,                                      \
+        .inputTypes          = ZL_STREAMTYPELIST(ZL_Type_numeric),      \
         .lastInputIsVariable = 1,                                       \
         .soTypes = ZL_STREAMTYPELIST(ZL_Type_numeric, ZL_Type_numeric), \
     }
 
 #define CONCAT_STRUCT_GRAPH(id)                                        \
     {                                                                  \
-        .CTid = id, .inputTypes = ZL_STREAMTYPELIST(ZL_Type_struct),   \
+        .CTid                = id,                                     \
+        .inputTypes          = ZL_STREAMTYPELIST(ZL_Type_struct),      \
         .lastInputIsVariable = 1,                                      \
         .soTypes = ZL_STREAMTYPELIST(ZL_Type_numeric, ZL_Type_struct), \
     }
 
 #define CONCAT_STRING_GRAPH(id)                                        \
     {                                                                  \
-        .CTid = id, .inputTypes = ZL_STREAMTYPELIST(ZL_Type_string),   \
+        .CTid                = id,                                     \
+        .inputTypes          = ZL_STREAMTYPELIST(ZL_Type_string),      \
         .lastInputIsVariable = 1,                                      \
         .soTypes = ZL_STREAMTYPELIST(ZL_Type_numeric, ZL_Type_string), \
     }

@@ -1,12 +1,14 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "custom_transforms/thrift/tests/test_prob_selector_fixture.h"
+
+#include "custom_transforms/thrift/constants.h" // @manual
 #include "custom_transforms/thrift/probabilistic_selector.h"
 
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_decompress.h"
 
-namespace zstrong::thrift::tests {
+namespace openzl::thrift::tests {
 
 ZL_Report ProbSelectorTest::compress(
         ZL_Compressor* const cgraph,
@@ -16,12 +18,13 @@ ZL_Report ProbSelectorTest::compress(
         size_t srcSize,
         ZL_GraphID graphid)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cgraph);
     ZL_CCtx* const cctx = ZL_CCtx_create();
 
-    ZL_RET_R_IF_ERR(ZL_Compressor_setParameter(
+    ZL_ERR_IF_ERR(ZL_Compressor_setParameter(
             cgraph, ZL_CParam_formatVersion, ZL_MAX_FORMAT_VERSION));
-    ZL_RET_R_IF_ERR(ZL_Compressor_selectStartingGraphID(cgraph, graphid));
-    ZL_RET_R_IF_ERR(ZL_CCtx_refCompressor(cctx, cgraph));
+    ZL_ERR_IF_ERR(ZL_Compressor_selectStartingGraphID(cgraph, graphid));
+    ZL_ERR_IF_ERR(ZL_CCtx_refCompressor(cctx, cgraph));
 
     ZL_Report result =
             ZL_CCtx_compress(cctx, dstBuff, dstCapacity, src, srcSize);
@@ -134,4 +137,4 @@ size_t ProbSelectorTest::compressWithGid(
     free(dstBuff);
     return ZL_validResult(result);
 }
-} // namespace zstrong::thrift::tests
+} // namespace openzl::thrift::tests

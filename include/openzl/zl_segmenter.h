@@ -10,6 +10,7 @@
 #include "openzl/zl_compress.h"     // ZL_CParam
 #include "openzl/zl_graph_api.h"    // ZL_RuntimeGraphParameters
 #include "openzl/zl_localParams.h"  // ZL_LocalParams
+#include "openzl/zl_materializer.h" // ZL_MaterializerDesc
 #include "openzl/zl_opaque_types.h" // ZL_GraphID
 
 #if defined(__cplusplus)
@@ -66,6 +67,16 @@ extern "C" {
  * whatever data is left from Input.
  */
 
+/**
+ * Shared default target chunk size for segmenters that chunk large inputs into
+ * independently compressed pieces.
+ *
+ * This is a policy default, not a lower bound. Individual segmenters may
+ * expose their own local override parameters or choose a different default when
+ * there is a format-specific reason to do so.
+ */
+#define ZL_DEFAULT_SEGMENTER_CHUNK_BYTE_SIZE (16 << 20)
+
 typedef struct ZL_Segmenter_s ZL_Segmenter;
 typedef ZL_Report (*ZL_SegmenterFn)(ZL_Segmenter* sctx);
 
@@ -81,6 +92,12 @@ typedef struct {
     const ZL_GraphID* customGraphs; // can be NULL when none employed
     size_t numCustomGraphs;         // Must be zero when customGraphs==NULL
     ZL_LocalParams localParams;
+    /**
+     * Optional materializer descriptor for materialized local params.
+     * If both materializeFn and dematerializeFn are non-null, the materializer
+     * will be used to create materialized objects from local params.
+     */
+    ZL_MaterializerDesc materializer;
     /**
      * Optionally an opaque pointer that can be queried with
      * ZL_Graph_getOpaquePtr().
@@ -139,6 +156,14 @@ const void* ZL_Segmenter_getOpaquePtr(const ZL_Segmenter* segCtx);
  * @return The parameter value. If the parameter does not exist, returns 0.
  */
 int ZL_Segmenter_getCParam(const ZL_Segmenter* segCtx, ZL_CParam gparam);
+
+/**
+ * @brief Retrieves all local params for the segmenter.
+ *
+ * A convenience function equivalent to calling ZL_Segmenter_getLocalIntParam()
+ * and ZL_Segmenter_getLocalRefParam() on each int and ref param.
+ */
+const ZL_LocalParams* ZL_Segmenter_getLocalParams(const ZL_Segmenter* segCtx);
 
 /**
  * @brief Retrieve a local integer parameter value.

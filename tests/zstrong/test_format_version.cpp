@@ -4,7 +4,6 @@
 
 #include <gtest/gtest.h>
 
-#include "openzl/common/scope_context.h"
 #include "openzl/common/wire_format.h"
 #include "openzl/compress/private_nodes.h"
 #include "openzl/zl_compress.h"
@@ -16,7 +15,7 @@
 #include "tests/utils.h"
 #include "tests/zstrong/test_zstrong_fixture.h"
 
-namespace zstrong::tests {
+namespace openzl::tests {
 namespace {
 class FormatVersionTest : public ZStrongTest {
    public:
@@ -150,4 +149,4 @@ TEST_F(FormatVersionTest, MaxFormatVersionWorksFailsCompression)
 }
 
 } // namespace
-} // namespace zstrong::tests
+} // namespace openzl::tests

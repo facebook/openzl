@@ -20,16 +20,14 @@
 
 // TODO: Not sure if there is a better way to do this
 #if ZL_FBCODE_IS_RELEASE
-#    include "openzl/versions/release/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_fatal_types.h"
-#    include "openzl/versions/release/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_types.h"
-#    include "openzl/versions/release/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_visitation.h"
+#    include "openzl/prod/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_types.h"
+#    include "openzl/prod/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_visitation.h"
 #else
-#    include "data_compression/experimental/zstrong/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_fatal_types.h"
-#    include "data_compression/experimental/zstrong/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_types.h"
-#    include "data_compression/experimental/zstrong/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_visitation.h"
+#    include "openzl/dev/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_types.h"
+#    include "openzl/dev/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_visitation.h"
 #endif
 
-namespace zstrong::thrift::tests {
+namespace openzl::thrift::tests {
 template <typename T>
 std::string serialize(const T& value)
 {
@@ -205,17 +203,17 @@ T generate(RNG&& gen)
 }
 
 template <typename T>
-class ThriftProducer : public zstrong::tests::datagen::FixedWidthDataProducer {
+class ThriftProducer : public openzl::tests::datagen::FixedWidthDataProducer {
    public:
     explicit ThriftProducer(
-            std::shared_ptr<zstrong::tests::datagen::RandWrapper> rw,
+            std::shared_ptr<openzl::tests::datagen::RandWrapper> rw,
             size_t maxSamples = 10)
             : FixedWidthDataProducer(rw, 1), dist_(std::move(rw), 5, maxSamples)
     {
     }
 
-    ::zstrong::tests::datagen::FixedWidthData operator()(
-            zstrong::tests::datagen::RandWrapper::NameType name) override
+    ::openzl::tests::datagen::FixedWidthData operator()(
+            openzl::tests::datagen::RandWrapper::NameType name) override
     {
         std::string datum;
         const size_t n = dist_(name);
@@ -223,8 +221,8 @@ class ThriftProducer : public zstrong::tests::datagen::FixedWidthDataProducer {
             // todo: Thrift is important enough we should migrate generate<>()
             // to get structured randomness from randwrapper instead of just
             // using it as an rng. For e.g. fuzzing
-            T value = zstrong::thrift::tests::generate<T>(
-                    zstrong::tests::datagen::RNGEngine<uint64_t>(
+            T value = openzl::thrift::tests::generate<T>(
+                    openzl::tests::datagen::RNGEngine<uint64_t>(
                             rw_.get(),
                             "ThriftProducer::RNGEngine::operator()"));
             apache::thrift::CompactSerializer::serialize(value, &datum);
@@ -238,7 +236,7 @@ class ThriftProducer : public zstrong::tests::datagen::FixedWidthDataProducer {
     }
 
    private:
-    zstrong::tests::datagen::VecLengthDistribution dist_;
+    openzl::tests::datagen::VecLengthDistribution dist_;
 };
 
-} // namespace zstrong::thrift::tests
+} // namespace openzl::thrift::tests

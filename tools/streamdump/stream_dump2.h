@@ -3,11 +3,11 @@
 #ifndef ZSTRONG_STREAM_DUMP2_H
 #define ZSTRONG_STREAM_DUMP2_H
 
-#include "openzl/zl_decompress.h"
-
 #if defined(__cplusplus)
 extern "C" {
 #endif
+
+typedef struct ZL_DCtx_s ZL_DCtx;
 
 // You must provide an implementation of this function to register any custom
 // decoders needed to understand the frame. A no-op implementation is provided

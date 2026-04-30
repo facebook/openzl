@@ -4,7 +4,9 @@
 #define ZSTRONG_ZS2_DECOMPRESS_H
 
 // basic definitions
-#include "openzl/zl_errors.h" // ZL_Report, ZL_isError()
+#include "openzl/zl_common_types.h"
+#include "openzl/zl_errors.h"        // ZL_Report, ZL_isError()
+#include "openzl/zl_introspection.h" // ZL_DecompressIntrospectionHooks
 #include "openzl/zl_output.h"
 
 #if defined(__cplusplus)
@@ -122,6 +124,18 @@ typedef enum {
      * future
      */
     ZL_DParam_checkContentChecksum = 3,
+
+    /**
+     * @brief Enable codec fusion during decompression.
+     *
+     * Codec fusion combines multiple adjacent codec nodes into a single
+     * optimized decoder. Setting this to ZL_TernaryParam_disable causes each
+     * codec in the graph to be decoded individually, which can be useful for
+     * debugging or testing codec correctness without fusion.
+     *
+     * Valid values use the ZL_TernaryParam format defaulting to enabled.
+     */
+    ZL_DParam_enableCodecFusion = 4,
 
 } ZL_DParam;
 
@@ -339,6 +353,16 @@ ZL_Report ZL_FrameInfo_getDecompressedSize(
  * @return Number of elements in specified output, or error code
  */
 ZL_Report ZL_FrameInfo_getNumElts(const ZL_FrameInfo* fi, int outputID);
+
+ZL_RESULT_DECLARE_TYPE(ZL_Comment);
+
+/**
+ * @brief Gets the comment stored in the FrameInfo.
+ *
+ * @returns The comment or an error. If no comment is present it
+ * returns a comment with `size == 0`. The buffer returned is owned by @p zfi
+ */
+ZL_RESULT_OF(ZL_Comment) ZL_FrameInfo_getComment(const ZL_FrameInfo* zfi);
 
 // ----------------------------------------------------
 // Decompression of Typed content
@@ -604,6 +628,29 @@ const uint32_t* ZL_TypedBuffer_rStringLens(const ZL_TypedBuffer* tbuffer);
  * versions
  */
 ZL_Report ZL_getHeaderSize(const void* src, size_t srcSize);
+
+// -----------------------------
+// Decompression Introspection
+// -----------------------------
+
+/**
+ * Attach introspection hooks to the DCtx. Hooks allow code to run at specific
+ * DWAYPOINTs during decompression. A hook set to NULL will simply be skipped.
+ * There can only be one set of hooks attached at a time; calling this again
+ * will overwrite the previous hooks. The caller is responsible for maintaining
+ * the lifetime of the objects referenced by the hooks.
+ *
+ * @note This will only do something if the library is compiled with the
+ * ALLOW_INTROSPECTION option. Otherwise, all the hooks will be no-ops.
+ */
+ZL_Report ZL_DCtx_attachDecompressIntrospectionHooks(
+        ZL_DCtx* dctx,
+        const ZL_DecompressIntrospectionHooks* hooks);
+
+/**
+ * Detach any decompression introspection hooks currently attached to the DCtx.
+ */
+ZL_Report ZL_DCtx_detachAllDecompressIntrospectionHooks(ZL_DCtx* dctx);
 
 #if defined(__cplusplus)
 } // extern "C"

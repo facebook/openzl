@@ -5,11 +5,11 @@ load("@fbsource//xplat/security/lionhead:defs.bzl", "ALL_EMPLOYEES", "Metadata",
 load("//security/lionhead/harnesses:defs.bzl", "cpp_lionhead_harness")
 
 def dev_only_unittest(**kwargs):
-    if not native.package_name().startswith("openzl/versions/release"):
+    if not native.package_name().startswith("openzl/prod"):
         cpp_unittest(**kwargs)
 
 def version_fuzzer(name):
-    if not native.package_name().startswith("openzl/versions/release"):
+    if not native.package_name().startswith("openzl/prod"):
         # Derive the ftest_name from the name of the rule
         prefix = "ZStrong_VersionTest_"
         if not name.startswith(prefix):
@@ -17,6 +17,15 @@ def version_fuzzer(name):
 
         cpp_lionhead_harness(
             name = name,
+            default_harness_config = {
+                # Set 10 minute initialization timeout because the version fuzzers
+                # do heavy initialization work in the first iteration.
+                "environment": {
+                    "AFL_FORKSRV_INIT_TMOUT": "600000",
+                },
+                # Set 1 minute timeout on inputs, rather than the 10 second default
+                "perInputTimeout": 60,
+            },
             # Additional versions to run beyond the opt-asan default
             extra_variants = [
                 "dbgo-asan",
@@ -40,7 +49,7 @@ def version_fuzzer(name):
             # NOTE: This cannot depend on ZStrong!
             deps = [
                 "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
-                "//data_compression/experimental/zstrong/tests:fuzz_utils",
+                "..:fuzz_utils",
                 "fbsource//xplat/tools/cxx:resourcesFbcode",
                 ":version_test_interface",
             ],

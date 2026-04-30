@@ -2,6 +2,7 @@
 
 #include "openzl/codecs/float_deconstruct/encode_float_deconstruct_kernel.h"
 #include "openzl/shared/mem.h"
+#include "openzl/shared/utils.h"
 
 #if ZL_HAS_AVX2
 #    include <immintrin.h>
@@ -226,7 +227,7 @@ static void bfloat16_deconstruct_encode_AVX2(
 }
 #endif
 
-static void float16_deconstruct_encode_scalar(
+static ZL_MAYBE_UNUSED_FUNCTION void float16_deconstruct_encode_scalar(
         uint16_t const* __restrict const src16,
         uint8_t* __restrict const exponent,
         uint8_t* __restrict const signFrac,
@@ -250,7 +251,7 @@ static void float16_deconstruct_encode_AVX2(
         size_t const nbElts)
 {
 // TODO(embg): support recent GCC
-#    ifdef __clang__
+#    if defined(__clang__) && defined(NDEBUG)
 // Adding this pragma helps clang generate optimal code when AVX2
 // instructions are available. The generated code is 20% faster, thanks to
 // better instructions for byte-packing.

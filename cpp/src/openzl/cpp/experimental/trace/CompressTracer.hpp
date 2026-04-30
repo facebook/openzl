@@ -1,0 +1,133 @@
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+
+#pragma once
+
+#include <map>
+#include <optional>
+
+#include "openzl/cpp/experimental/trace/Codec.hpp"
+#include "openzl/cpp/experimental/trace/CompressChunkTrace.hpp"
+#include "openzl/cpp/experimental/trace/Graph.hpp"
+#include "openzl/cpp/experimental/trace/StreamVisualizer.hpp"
+
+namespace openzl::visualizer {
+
+class CompressTracer {
+   public:
+    CompressTracer() = default;
+    explicit CompressTracer(bool showStreamPreview)
+            : showStreamPreview_(showStreamPreview)
+    {
+    }
+
+    TraceResult extractTrace();
+
+    void on_segmenterEncode_start(ZL_Segmenter* segCtx);
+    void on_segmenterEncode_end(ZL_Segmenter* segCtx, ZL_Report r);
+    void on_ZL_Segmenter_processChunk_start(
+            ZL_Segmenter* segCtx,
+            const size_t numElts[],
+            size_t numInputs,
+            ZL_GraphID startingGraphID,
+            const ZL_RuntimeGraphParameters* rGraphParams);
+    void on_ZL_Segmenter_processChunk_end(ZL_Segmenter* segCtx, ZL_Report r);
+
+    // Trampolined functions from CompressionTraceHooks
+    void on_codecEncode_start(
+            ZL_Encoder* encoder,
+            const ZL_Compressor* compressor,
+            ZL_NodeID nid,
+            const ZL_Input* inStreams[],
+            size_t nbInStreams);
+
+    void on_codecEncode_end(
+            ZL_Encoder*,
+            const ZL_Output* outStreams[],
+            size_t nbOutputs,
+            ZL_Report codecExecResult);
+
+    void on_ZL_Encoder_getScratchSpace(ZL_Encoder* ei, size_t size);
+
+    void on_ZL_Encoder_sendCodecHeader(
+            ZL_Encoder* encoder,
+            const void* trh,
+            size_t trhSize);
+
+    void on_ZL_Encoder_createTypedStream(
+            ZL_Encoder* encoder,
+            int outStreamIndex,
+            size_t eltsCapacity,
+            size_t eltWidth,
+            ZL_Output* createdStream);
+
+    void on_migraphEncode_start(
+            ZL_Graph* graph,
+            const ZL_Compressor* compressor,
+            ZL_GraphID gid,
+            ZL_Edge* inputs[],
+            size_t nbInputs);
+
+    void on_migraphEncode_end(
+            ZL_Graph*,
+            ZL_GraphID successorGraphs[],
+            size_t nbSuccessors,
+            ZL_Report graphExecResult);
+
+    void on_cctx_convertOneInput(
+            const ZL_CCtx* const cctx,
+            const ZL_Data* const,
+            const ZL_Type inType,
+            const ZL_Type portTypeMask,
+            const ZL_Report conversionResult);
+
+    void on_ZL_Graph_getScratchSpace(ZL_Graph* graph, size_t size);
+
+    void on_ZL_Edge_setMultiInputDestination_wParams(
+            ZL_Graph* graph,
+            ZL_Edge* inputs[],
+            size_t nbInputs,
+            ZL_GraphID gid,
+            const ZL_LocalParams* lparams);
+
+    void on_ZL_CCtx_compressMultiTypedRef_start(
+            ZL_CCtx* cctx,
+            void const* const dst,
+            size_t const dstCapacity,
+            ZL_TypedRef const* const inputs[],
+            size_t const nbInputs);
+    void on_ZL_CCtx_compressMultiTypedRef_end(
+            ZL_CCtx const* const cctx,
+            ZL_Report const result);
+
+   private:
+    void printStreamMetadata();
+    void printCodecMetadata();
+
+    ZL_Report serializeStreamdumpToCbor(
+            A1C_Arena* a1c_arena,
+            std::vector<uint8_t>& buffer);
+
+    void setCompressedSize(size_t compressionResultSize);
+    size_t fillCSize(std::vector<size_t>& cSize, const ZL_DataID streamID);
+
+    struct ConversionError {
+        ZL_DataID streamId;
+        ZL_Report failureReport;
+    };
+
+    static constexpr uint32_t libraryVersion = ZL_LIBRARY_VERSION_NUMBER;
+    uint32_t frameVersion;
+    static constexpr uint32_t traceVersion = 1;
+    size_t compressedSize_{};
+
+    std::vector<CompressChunkTrace> graphRuns;
+    CompressChunkTrace* currChunk =
+            nullptr; // convenience pointer to the current chunk trace
+    bool segmented              = false;
+    ZL_OperationContext* opCtx_ = nullptr;
+    bool showStreamPreview_     = true; // show stream preview data from trace
+
+    TraceResult trace;
+};
+
+} // namespace openzl::visualizer

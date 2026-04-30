@@ -5,6 +5,7 @@
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_compressor_serialization.h"
 #include "openzl/zl_ctransform.h"
+#include "openzl/zl_reflection.h"
 
 #include "openzl/cpp/CustomEncoder.hpp"
 #include "openzl/cpp/FunctionGraph.hpp"
@@ -162,6 +163,13 @@ poly::optional<GraphID> Compressor::getGraph(const char* name) const
 void Compressor::selectStartingGraph(GraphID graph)
 {
     unwrap(ZL_Compressor_selectStartingGraphID(get(), graph));
+}
+
+GraphID Compressor::getStartingGraph() const
+{
+    GraphID gid;
+    ZL_Compressor_getStartingGraphID(get(), &gid);
+    return gid;
 }
 
 std::string Compressor::serialize() const

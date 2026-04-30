@@ -2,6 +2,10 @@
 
 #include "openzl/codecs/encoder_registry.h"
 
+#include "openzl/codecs/bitSplit/encode_bitSplit_binding.h"
+#include "openzl/codecs/bitSplit/encode_bitsplit_bf16_binding.h"
+#include "openzl/codecs/bitSplit/encode_bitsplit_fp_binding.h"
+#include "openzl/codecs/bitSplit/encode_bitsplit_top8_binding.h"
 #include "openzl/codecs/bitpack/encode_bitpack_binding.h"
 #include "openzl/codecs/bitunpack/encode_bitunpack_binding.h"
 #include "openzl/codecs/concat/encode_concat_binding.h"
@@ -17,24 +21,25 @@
 #include "openzl/codecs/float_deconstruct/encode_float_deconstruct_binding.h"
 #include "openzl/codecs/interleave/encode_interleave_binding.h"
 #include "openzl/codecs/lz/encode_lz_binding.h"
+#include "openzl/codecs/lz4/encode_lz4_binding.h"
 #include "openzl/codecs/merge_sorted/encode_merge_sorted_binding.h"
+#include "openzl/codecs/mux_lengths/encode_mux_lengths_binding.h"
 #include "openzl/codecs/parse_int/encode_parse_int_binding.h"
+#include "openzl/codecs/partition/encode_partition_binding.h"
 #include "openzl/codecs/prefix/encode_prefix_binding.h"
 #include "openzl/codecs/quantize/encode_quantize_binding.h"
 #include "openzl/codecs/range_pack/encode_range_pack_binding.h"
 #include "openzl/codecs/rolz/encode_rolz_binding.h"
+#include "openzl/codecs/sentinel/encode_sentinel_binding.h"
 #include "openzl/codecs/splitByStruct/encode_splitByStruct_binding.h"
 #include "openzl/codecs/splitN/encode_splitN_binding.h"
+#include "openzl/codecs/splitN/encode_split_byrange_binding.h"
 #include "openzl/codecs/tokenize/encode_tokenize_binding.h"
 #include "openzl/codecs/transpose/encode_transpose_binding.h"
 #include "openzl/codecs/zigzag/encode_zigzag_binding.h"
 #include "openzl/codecs/zstd/encode_zstd_binding.h"
 #include "openzl/common/assertion.h"
 #include "openzl/compress/private_nodes.h"
-#include "openzl/compress/selectors/selector_compress.h"
-#include "openzl/compress/selectors/selector_constant.h"
-#include "openzl/compress/selectors/selector_genericLZ.h"
-#include "openzl/compress/selectors/selector_store.h"
 #include "openzl/shared/utils.h"
 #include "openzl/zl_version.h"
 
@@ -108,6 +113,15 @@ const CNode ER_standardNodes[STANDARD_ENCODERS_NB] = {
     REGISTER_TRANSFORM(ZL_StandardNodeID_tokenize_string, ZL_StandardTransformID_tokenize_string, 11, EI_TOKENIZE_STRING),
     REGISTER_TRANSFORM(ZL_StandardNodeID_quantize_offsets, ZL_StandardTransformID_quantize_offsets, 3, EI_QUANTIZE_OFFSETS),
     REGISTER_TRANSFORM(ZL_StandardNodeID_quantize_lengths, ZL_StandardTransformID_quantize_lengths, 3, EI_QUANTIZE_LENGTHS),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_bitsplit_top8, ZL_StandardTransformID_bitSplit, 24, EI_BITSPLIT_TOP8),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_bitsplit_fp, ZL_StandardTransformID_bitSplit, 24, EI_BITSPLIT_FP),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_bitsplit_bf16, ZL_StandardTransformID_bitSplit, 24, EI_BITSPLIT_BF16),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_partition, ZL_StandardTransformID_partition, 24, EI_PARTITION),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_split_byrange, ZL_StandardTransformID_splitn_num, 24, EI_SPLIT_BYRANGE),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_sentinel_byte, ZL_StandardTransformID_sentinel, 24, EI_SENTINEL_BYTE),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_sentinel_num, ZL_StandardTransformID_sentinel, 24, EI_SENTINEL),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_lz, ZL_StandardTransformID_lz, 24, EI_LZ),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_mux_lengths, ZL_StandardTransformID_mux_lengths, 24, EI_MUX_LENGTHS),
 
     // Private Nodes
     REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_set_string_lens,           ZL_StandardTransformID_convert_serial_string, 10, EI_SETSTRINGLENS),
@@ -128,6 +142,8 @@ const CNode ER_standardNodes[STANDARD_ENCODERS_NB] = {
     REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_tokenize_sorted, ZL_StandardTransformID_tokenize_numeric, 8, EI_TOKENIZE_SORTED),
     REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_tokenize_string_sorted, ZL_StandardTransformID_tokenize_string, 11, EI_TOKENIZE_VSF_SORTED),
     REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_dedup_num_trusted, ZL_StandardTransformID_dedup_num, 16, EI_DEDUP_NUM_TRUSTED),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_lz4, ZL_StandardTransformID_lz4, 23, EI_LZ4),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_bitSplit, ZL_StandardTransformID_bitSplit, 24, EI_BITSPLIT),
 
     // Deprecated Nodes
     REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_rolz_deprecated, ZL_StandardTransformID_rolz, 3, 12, EI_ROLZ),
@@ -171,9 +187,10 @@ void ER_getAllStandardNodeIDs(ZL_NodeID* nodes, size_t nodesSize)
 
 ZL_Report ER_forEachStandardNode(ER_StandardNodesCallback cb, void* opaque)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     for (ZL_IDType nid = 0; nid < ZL_ARRAY_SIZE(ER_standardNodes); ++nid) {
         if (ER_standardNodes[nid].nodetype == node_internalTransform) {
-            ZL_RET_R_IF_ERR(
+            ZL_ERR_IF_ERR(
                     cb(opaque, (ZL_NodeID){ nid }, &ER_standardNodes[nid]));
         }
     }

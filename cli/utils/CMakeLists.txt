@@ -22,6 +22,8 @@ target_link_libraries(utils
     csv_parser
     sddl_profile
     sddl_compiler_lib
+    sddl2_compiler_lib
+    sddl2_assembler_lib
     pytorch_model_parser
     parquet_graph
     shared_components
@@ -35,6 +37,8 @@ add_dependencies(utils
     csv_parser
     sddl_profile
     sddl_compiler_lib
+    sddl2_compiler_lib
+    sddl2_assembler_lib
     pytorch_model_parser
     parquet_graph
     shared_components

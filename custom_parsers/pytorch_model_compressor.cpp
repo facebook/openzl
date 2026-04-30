@@ -16,12 +16,14 @@ constexpr size_t kRepeats = 10;
 int main(int argc, char** argv)
 {
     auto init = folly::Init(&argc, &argv);
-    if (argc < 2 || argc > 3) {
+    if (argc < 3 || argc > 4) {
         return 1;
     }
 
+    const unsigned formatVersion = std::stoul(argv[1]);
+
     std::string src;
-    if (!folly::readFile(argv[1], src)) {
+    if (!folly::readFile(argv[2], src)) {
         fprintf(stderr, "Failed to read input file: %s\n", argv[2]);
         return 1;
     }
@@ -36,7 +38,7 @@ int main(int argc, char** argv)
     std::string compressed(ZL_compressBound(src.size()), '\0');
     try {
         cgraph.unwrap(ZL_Compressor_setParameter(
-                cgraph.get(), ZL_CParam_formatVersion, 14));
+                cgraph.get(), ZL_CParam_formatVersion, formatVersion));
         cgraph.unwrap(
                 ZL_Compressor_selectStartingGraphID(cgraph.get(), graphID));
         cctx.unwrap(ZL_CCtx_refCompressor(cctx.get(), cgraph.get()));
@@ -71,7 +73,7 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    std::string outFile = argc == 3 ? argv[2] : (std::string(argv[1]) + ".zs");
+    std::string outFile = argc == 4 ? argv[3] : (std::string(argv[2]) + ".zs");
     if (!folly::writeFile(compressed, outFile.c_str())) {
         fprintf(stderr, "Failed to write output file: %s\n", outFile.c_str());
         return 1;

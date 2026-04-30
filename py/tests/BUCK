@@ -5,13 +5,14 @@ load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
 oncall("data_compression")
 
 python_unittest(
+    # @autodeps-skip
     name = "test_openzl_sys",
     srcs = [
         "__init__.py",
         "test_openzl_sys.py",
     ],
     deps = [
+        "..:openzl",
         "fbsource//third-party/pypi/numpy:numpy",
-        "//data_compression/experimental/zstrong/py:openzl",
     ],
 )

@@ -1,6 +1,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("../../defs.bzl", "relative_headers")
 
 oncall("data_compression")
 
@@ -12,14 +13,15 @@ cpp_library(
         "decode_parse_int.cpp",
         "encode_parse.cpp",
     ],
-    headers = [
+    headers = relative_headers([
         "decode_parse.h",
         "encode_parse.h",
-    ],
+    ]),
+    header_namespace = "",
     deps = [
         "//folly:conv",
     ],
     exported_deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
+        "../..:zstronglib",
     ],
 )

@@ -275,7 +275,7 @@ class VariableSizeData : public BenchmarkData {
     std::string name() override
     {
         return fmt::format(
-                "{}Variable(nbBytes={}, nbSegments={}, minSegLenth={}, maxSegLenth={}, alphabetSize={})",
+                "{}Variable(nbBytes={}, nbSegments={}, minSegLength={}, maxSegLength={}, alphabetSize={})",
                 sorted_ ? "Sorted" : "Unsorted",
                 data_.size(),
                 fieldSizes_.size(),
@@ -319,11 +319,13 @@ class UniformDistributionData : public BenchmarkData {
         if (cardinality.has_value()) {
             auto alphabet = utils::generateRandomAlphabet<T>(
                     cardinality.value(), seed, minValue, maxValue);
-            data_ = utils::toUint8Vector(utils::generateUniformRandomVector<T>(
-                    size, seed, alphabet));
+            data_ = utils::toUint8Vector(
+                    utils::generateUniformRandomVector<T>(
+                            size, seed, alphabet));
         } else {
-            data_ = utils::toUint8Vector(utils::generateUniformRandomVector<T>(
-                    size, seed, minValue, maxValue));
+            data_ = utils::toUint8Vector(
+                    utils::generateUniformRandomVector<T>(
+                            size, seed, minValue, maxValue));
         }
     }
     std::string_view data() override
@@ -437,11 +439,12 @@ class NormalDistributionData : public BenchmarkData {
               stddev_(stddev),
               size_(size),
               seed_(seed),
-              data_(utils::toUint8Vector(utils::generateNormalRandomVector<T>(
-                      size,
-                      seed,
-                      mean,
-                      stddev)))
+              data_(utils::toUint8Vector(
+                      utils::generateNormalRandomVector<T>(
+                              size,
+                              seed,
+                              mean,
+                              stddev)))
     {
     }
     std::string_view data() override
@@ -527,7 +530,7 @@ class CustomDistributionData : public BenchmarkData {
 class FixedWidthDataProducerData : public BenchmarkData {
    public:
     explicit FixedWidthDataProducerData(
-            zstrong::tests::datagen::FixedWidthDataProducer& producer)
+            openzl::tests::datagen::FixedWidthDataProducer& producer)
             : data_(producer("FixedWidthDataProducerData"))
     {
         std::ostringstream oss;
@@ -549,7 +552,7 @@ class FixedWidthDataProducerData : public BenchmarkData {
     }
 
    private:
-    zstrong::tests::datagen::FixedWidthData data_;
+    openzl::tests::datagen::FixedWidthData data_;
     std::string name_;
 };
 

@@ -4,6 +4,7 @@
 
 // standard C
 #include <stdio.h> // printf
+#include <array>
 
 // Zstrong
 #include <zstd.h> // ZSTD_c_* parameters
@@ -45,11 +46,12 @@ void printHexa(const void* p, size_t size)
 /* --------   define custom graphs   -------- */
 
 static ZL_Report
-justGoToZstd(ZL_Graph*, ZL_Edge* inputs[], size_t nbInputs) noexcept
+justGoToZstd(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbInputs == 1);
     // send input to successor (which must be a Graph)
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(inputs[0], ZL_GRAPH_ZSTD));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(inputs[0], ZL_GRAPH_ZSTD));
     return ZL_returnSuccess();
 }
 
@@ -65,24 +67,25 @@ static ZL_FunctionGraphDesc const justGoToZstd_dgd = {
 static ZL_Report
 dg_zstd_wLevel(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbIns == 1);
     ZL_Edge* input = inputs[0];
     // Require presence of compression level parameter
     ZL_IntParam const param_lvl =
             ZL_Graph_getLocalIntParam(gctx, ZSTD_c_compressionLevel);
-    ZL_RET_R_IF_NE(
-            graphParameter_invalid,
+    ZL_ERR_IF_NE(
             param_lvl.paramId,
-            (int)ZSTD_c_compressionLevel);
+            (int)ZSTD_c_compressionLevel,
+            graphParameter_invalid);
     // Run zstd Node with runtime parameters
     ZL_LocalParams const lps = { .intParams = { &param_lvl, 1 } };
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             out,
             ZL_Edge_runNode_withParams(input, ZL_NODE_ZSTD, &lps));
     assert(out.nbEdges == 1);
     // store output
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(out.edges[0], ZL_GRAPH_STORE));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(out.edges[0], ZL_GRAPH_STORE));
     return ZL_returnSuccess();
 }
 
@@ -101,6 +104,7 @@ static ZL_Report runZstdGraph_withParameters(
         ZL_Edge* inputs[],
         size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbIns == 1);
     ZL_Edge* input = inputs[0];
     ZL_IntParam const param_lvl =
@@ -116,7 +120,7 @@ static ZL_Report runZstdGraph_withParameters(
 
     // Set Successor (zstd Graph) with runtime parameters
     // Note that it's fine to use the stack for the parameters.
-    ZL_RET_R_IF_ERR(ZL_Edge_setParameterizedDestination(
+    ZL_ERR_IF_ERR(ZL_Edge_setParameterizedDestination(
             &input, 1, g_zstd_wLevel_graphid, &rgp));
 
     return ZL_returnSuccess();
@@ -152,6 +156,7 @@ static ZL_Report runStandardZstdGraph_withParameters(
         ZL_Edge* inputs[],
         size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbIns == 1);
     ZL_Edge* input = inputs[0];
     ZL_IntParam const param_lvl =
@@ -167,7 +172,7 @@ static ZL_Report runStandardZstdGraph_withParameters(
 
     // Set Successor (zstd Graph) with runtime parameters
     // Note that it's fine to use the stack for the parameters.
-    ZL_RET_R_IF_ERR(ZL_Edge_setParameterizedDestination(
+    ZL_ERR_IF_ERR(ZL_Edge_setParameterizedDestination(
             &input, 1, ZL_GRAPH_ZSTD, &rgp));
 
     return ZL_returnSuccess();
@@ -213,6 +218,7 @@ static ZL_Report selectFirstValidCustomGraph(
         ZL_Edge* inputs[],
         size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbIns == 1);
     ZL_Edge* input             = inputs[0];
     ZL_GraphIDList const glist = ZL_Graph_getCustomGraphs(gctx);
@@ -225,7 +231,7 @@ static ZL_Report selectFirstValidCustomGraph(
         const ZL_GraphID gid = glist.graphids[n];
         if (ZL_GraphID_isValid(gid)) {
             // input's successor is the defined custom Graph 0
-            ZL_RET_R_IF_ERR(ZL_Edge_setDestination(input, gid));
+            ZL_ERR_IF_ERR(ZL_Edge_setDestination(input, gid));
             break;
         }
     }
@@ -256,6 +262,7 @@ static ZL_Report selectFirstValidCustomNode(
         ZL_Edge* inputs[],
         size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbIns == 1);
     ZL_Edge* input            = inputs[0];
     ZL_NodeIDList const nlist = ZL_Graph_getCustomNodes(gctx);
@@ -267,9 +274,9 @@ static ZL_Report selectFirstValidCustomNode(
     for (size_t n = 0; n < nlist.nbNodeIDs; n++) {
         const ZL_NodeID nid = nlist.nodeids[n];
         if (ZL_Graph_isNodeSupported(gctx, nid)) {
-            ZL_TRY_LET_T(ZL_EdgeList, successors, ZL_Edge_runNode(input, nid));
+            ZL_TRY_LET(ZL_EdgeList, successors, ZL_Edge_runNode(input, nid));
             for (size_t i = 0; i < successors.nbEdges; ++i) {
-                ZL_RET_R_IF_ERR(ZL_Edge_setDestination(
+                ZL_ERR_IF_ERR(ZL_Edge_setDestination(
                         successors.edges[i], ZL_GRAPH_STORE));
             }
             break;
@@ -294,6 +301,7 @@ static ZL_FunctionGraphDesc const selectFirstValidCustomNode_dgd = {
 static ZL_Report
 createRuntimeNode(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbIns == 1);
     ZL_Edge* input = inputs[0];
     (void)gctx;
@@ -304,15 +312,15 @@ createRuntimeNode(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns) noexcept
     const size_t segSizes[] = { seg1Size, 0 /* all the rest */ };
 
     // Run Node with runtime parameters, collect outputs
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             so,
             ZL_Edge_runSplitNode(input, segSizes, ARRAY_SIZE(segSizes)));
     EXPECT_EQ((int)so.nbEdges, 2);
 
     // Assign dummy successors to each output stream, for a valid graph
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(so.edges[0], ZL_GRAPH_STORE));
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(so.edges[1], ZL_GRAPH_STORE));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(so.edges[0], ZL_GRAPH_STORE));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(so.edges[1], ZL_GRAPH_STORE));
 
     return ZL_returnSuccess();
 }
@@ -330,6 +338,7 @@ static ZL_Report runZstdNode_withParameters(
         ZL_Edge* inputs[],
         size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbIns == 1);
     ZL_Edge* input = inputs[0];
     (void)gctx;
@@ -347,14 +356,14 @@ static ZL_Report runZstdNode_withParameters(
                                                         ARRAY_SIZE(zstd_cparams) } };
 
     // Run zstd Node with runtime parameters
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             so,
             ZL_Edge_runNode_withParams(input, ZL_NODE_ZSTD, &lps));
 
     // Assign successor to collected output stream
     EXPECT_EQ((int)so.nbEdges, 1);
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(so.edges[0], ZL_GRAPH_STORE));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(so.edges[0], ZL_GRAPH_STORE));
 
     return ZL_returnSuccess();
 }
@@ -380,6 +389,7 @@ static ZL_FunctionGraphDesc const runZstdNode_withParameters_lvl19_dgd = {
 static ZL_Report
 invalidNodeVersion(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbIns == 1);
     ZL_Edge* input = inputs[0];
     (void)gctx;
@@ -387,13 +397,13 @@ invalidNodeVersion(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns) noexcept
     // This does not respect the Graph Description, which states
     // supporting up to ZL_MAX_FORMAT_VERSION.
     // Such a mismatch will nonetheless be caught at runtime
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             co,
             ZL_Edge_runNode(input, ZL_NODE_CONVERT_SERIAL_TO_TOKEN4));
     EXPECT_EQ((int)co.nbEdges, 1);
 
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             zo,
             ZL_Edge_runNode(co.edges[0], ZL_NODE_ZSTD_FIXED_DEPRECATED));
@@ -408,7 +418,7 @@ invalidNodeVersion(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns) noexcept
             ZL_Graph_isNodeSupported(gctx, ZL_NODE_CONVERT_SERIAL_TO_TOKEN4));
 
     // Finish with dummy successor
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(zo.edges[0], ZL_GRAPH_STORE));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(zo.edges[0], ZL_GRAPH_STORE));
 
     return ZL_returnSuccess();
 }
@@ -424,11 +434,12 @@ static ZL_FunctionGraphDesc const invalidNodeVersion_dgd = {
 static ZL_Report
 illegalSuccessor(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbIns == 1);
     ZL_Edge* input = inputs[0];
     (void)gctx; // not used in this example
     EXPECT_FALSE(ZL_GraphID_isValid(ZL_GRAPH_ILLEGAL));
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(input, ZL_GRAPH_ILLEGAL));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(input, ZL_GRAPH_ILLEGAL));
     return ZL_returnSuccess();
 }
 
@@ -443,12 +454,13 @@ static ZL_FunctionGraphDesc const illegalSuccessor_dgd = {
 static ZL_Report
 invalidSuccessor(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbIns == 1);
     ZL_Edge* input = inputs[0];
     (void)gctx; // not used in this example
     // create a completely bogus successor
     ZL_GraphID const invalidSuccessor = { .gid = 999 };
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(input, invalidSuccessor));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(input, invalidSuccessor));
     return ZL_returnSuccess();
 }
 
@@ -491,6 +503,7 @@ static const int k_fp2[] = { 18, 51, 72, 89 };
 static ZL_Report
 readCParams(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbIns == 1);
     ZL_Edge* input = inputs[0];
     printf("Function Graph reading compression parameters \n");
@@ -512,7 +525,7 @@ readCParams(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns) noexcept
     EXPECT_EQ(memcmp(k_fp2, rp2.paramRef, sizeof(k_fp2)), 0);
 
     // mock action to correctly complete
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(input, ZL_GRAPH_ZSTD));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(input, ZL_GRAPH_ZSTD));
     return ZL_returnSuccess();
 }
 
@@ -558,21 +571,22 @@ static ZL_FunctionGraphDesc const readLocalParams_dgd = {
 static ZL_Report
 intPipelineDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbIns == 1);
     ZL_Edge* input = inputs[0];
     (void)gctx; // unused
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             sl1,
             ZL_Edge_runNode(input, ZL_NODE_INTERPRET_AS_LE32));
     EXPECT_EQ((int)sl1.nbEdges, 1);
 
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList, sl2, ZL_Edge_runNode(sl1.edges[0], ZL_NODE_DELTA_INT));
     EXPECT_EQ((int)sl2.nbEdges, 1);
 
     // send final stream to successor Graph
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(sl2.edges[0], ZL_GRAPH_ZSTD));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(sl2.edges[0], ZL_GRAPH_ZSTD));
     return ZL_returnSuccess();
 }
 
@@ -588,26 +602,27 @@ static ZL_FunctionGraphDesc const intPipelineDynGraph_dgd = {
 static ZL_Report
 dynGraphTree(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbIns == 1);
     ZL_Edge* input = inputs[0];
     (void)gctx; // unused
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             sl1,
             ZL_Edge_runNode(input, ZL_NODE_CONVERT_SERIAL_TO_TOKEN4));
     EXPECT_EQ((int)sl1.nbEdges, 1);
 
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             sl2,
             ZL_Edge_runNode(sl1.edges[0], ZL_NODE_TRANSPOSE_SPLIT));
     EXPECT_EQ((int)sl2.nbEdges, 4);
 
     // send final edges to successor Graph
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(sl2.edges[0], ZL_GRAPH_ZSTD));
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(sl2.edges[1], ZL_GRAPH_ZSTD));
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(sl2.edges[2], ZL_GRAPH_ZSTD));
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(sl2.edges[3], ZL_GRAPH_ZSTD));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(sl2.edges[0], ZL_GRAPH_ZSTD));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(sl2.edges[1], ZL_GRAPH_ZSTD));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(sl2.edges[2], ZL_GRAPH_ZSTD));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(sl2.edges[3], ZL_GRAPH_ZSTD));
     return ZL_returnSuccess();
 }
 
@@ -623,16 +638,17 @@ static ZL_FunctionGraphDesc const dynGraphTree_dgd = {
 static ZL_Report
 unfinishedPipeline(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbIns == 1);
     ZL_Edge* input = inputs[0];
     (void)gctx; // unused
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             sl1,
             ZL_Edge_runNode(input, ZL_NODE_INTERPRET_AS_LE32));
     EXPECT_EQ((int)sl1.nbEdges, 1);
 
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList, sl2, ZL_Edge_runNode(sl1.edges[0], ZL_NODE_DELTA_INT));
     EXPECT_EQ((int)sl2.nbEdges, 1);
 
@@ -652,28 +668,29 @@ static ZL_FunctionGraphDesc const unfinishedPipeline_dgd = {
 static ZL_Report
 doubleProcessed(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbIns == 1);
     ZL_Edge* input = inputs[0];
     (void)gctx; // unused
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             sl1,
             ZL_Edge_runNode(input, ZL_NODE_INTERPRET_AS_LE32));
     EXPECT_EQ((int)sl1.nbEdges, 1);
 
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList, sl2, ZL_Edge_runNode(sl1.edges[0], ZL_NODE_DELTA_INT));
     EXPECT_EQ((int)sl2.nbEdges, 1);
 
     // Trying to process sl1 stream twice -> should error out
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList, sl3, ZL_Edge_runNode(sl1.edges[0], ZL_NODE_DELTA_INT));
     EXPECT_EQ((int)sl2.nbEdges, 1);
 
     // send final streams to successor Graph
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(sl2.edges[0], ZL_GRAPH_ZSTD));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(sl2.edges[0], ZL_GRAPH_ZSTD));
     // send final streams to successor Graph
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(sl3.edges[0], ZL_GRAPH_ZSTD));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(sl3.edges[0], ZL_GRAPH_ZSTD));
     return ZL_returnSuccess();
 }
 
@@ -690,16 +707,17 @@ static ZL_FunctionGraphDesc const doubleProcessed_dgd = {
 static ZL_Report
 noCheckSuccessor(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbIns == 1);
     ZL_Edge* input = inputs[0];
     (void)gctx; // unused
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             sl1,
             ZL_Edge_runNode(input, ZL_NODE_INTERPRET_AS_LE32));
     EXPECT_EQ((int)sl1.nbEdges, 1);
 
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList, sl2, ZL_Edge_runNode(sl1.edges[0], ZL_NODE_DELTA_INT));
     EXPECT_EQ((int)sl2.nbEdges, 1);
 
@@ -725,24 +743,25 @@ static ZL_FunctionGraphDesc const noCheckSuccessor_dgd = {
 static ZL_Report
 has2Inputs(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     printf("Running Multi-Inputs Graph 'has2Inputs' \n");
     (void)gctx;
     EXPECT_EQ((int)nbInputs, 2);
     EXPECT_TRUE(inputs);
     EXPECT_TRUE(inputs[0]);
     EXPECT_EQ(ZL_Input_type(ZL_Edge_getData(inputs[0])), ZL_Type_serial);
-    ZL_RET_R_IF_NE(
-            GENERIC,
+    ZL_ERR_IF_NE(
             (int)ZL_Input_type(ZL_Edge_getData(inputs[0])),
-            (int)ZL_Type_serial);
+            (int)ZL_Type_serial,
+            GENERIC);
     EXPECT_TRUE(inputs[1]);
     EXPECT_EQ(ZL_Input_type(ZL_Edge_getData(inputs[1])), ZL_Type_serial);
-    ZL_RET_R_IF_NE(
-            GENERIC,
+    ZL_ERR_IF_NE(
             (int)ZL_Input_type(ZL_Edge_getData(inputs[1])),
-            (int)ZL_Type_serial);
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(inputs[0], ZL_GRAPH_ZSTD));
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(inputs[1], ZL_GRAPH_ZSTD));
+            (int)ZL_Type_serial,
+            GENERIC);
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(inputs[0], ZL_GRAPH_ZSTD));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(inputs[1], ZL_GRAPH_ZSTD));
     return ZL_returnSuccess();
 }
 
@@ -757,13 +776,14 @@ static ZL_FunctionGraphDesc const has2Inputs_migd = {
 static ZL_Report
 has1PlusInputs(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     printf("Running Multi-Inputs Graph 'has2Inputs' \n");
     (void)gctx;
     EXPECT_GE((int)nbInputs, 1);
     EXPECT_TRUE(inputs);
     for (size_t n = 0; n < nbInputs; n++) {
         EXPECT_TRUE(inputs[n]);
-        ZL_RET_R_IF_ERR(ZL_Edge_setDestination(inputs[n], ZL_GRAPH_ZSTD));
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(inputs[n], ZL_GRAPH_ZSTD));
     }
     return ZL_returnSuccess();
 }
@@ -787,12 +807,13 @@ ZL_GraphID g_has1PlusInputs_graphid = ZL_GRAPH_ILLEGAL;
 static ZL_Report
 split_then2Inputs(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbIns == 1);
     ZL_Edge* input = inputs[0];
     printf("Running DynGraph 'split_then2Inputs' \n");
     (void)gctx; // unused
 
-    ZL_TRY_LET_T(ZL_EdgeList, sl, ZL_Edge_runNode(input, g_split2_nodeid));
+    ZL_TRY_LET(ZL_EdgeList, sl, ZL_Edge_runNode(input, g_split2_nodeid));
     EXPECT_EQ((int)sl.nbEdges, 2);
 
     return ZL_Edge_setParameterizedDestination(
@@ -813,15 +834,16 @@ static ZL_FunctionGraphDesc const split_then2Inputs_dgd = {
 static ZL_Report
 conversion2Inputs(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbIns == 1);
     ZL_Edge* input = inputs[0];
     printf("Running DynGraph 'split_then2Inputs' \n");
     (void)gctx; // unused
 
-    ZL_TRY_LET_T(ZL_EdgeList, sl, ZL_Edge_runNode(input, g_split2_nodeid));
+    ZL_TRY_LET(ZL_EdgeList, sl, ZL_Edge_runNode(input, g_split2_nodeid));
     EXPECT_EQ((int)sl.nbEdges, 2);
 
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             convert,
             ZL_Edge_runNode(sl.edges[0], ZL_NODE_CONVERT_SERIAL_TO_TOKEN4));
@@ -846,12 +868,13 @@ static ZL_FunctionGraphDesc const conversion2Inputs_dgd = {
 static ZL_Report
 variableInputs(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbIns == 1);
     ZL_Edge* input = inputs[0];
     printf("Running DynGraph 'variableInputs' \n");
     (void)gctx; // unused
 
-    ZL_TRY_LET_T(ZL_EdgeList, sl, ZL_Edge_runNode(input, g_split3_nodeid));
+    ZL_TRY_LET(ZL_EdgeList, sl, ZL_Edge_runNode(input, g_split3_nodeid));
     EXPECT_EQ((int)sl.nbEdges, 3);
 
     return ZL_Edge_setParameterizedDestination(
@@ -872,12 +895,13 @@ static ZL_FunctionGraphDesc const variableInputs_dgd = {
 static ZL_Report
 invalid_tooManyInputs(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbIns == 1);
     ZL_Edge* input = inputs[0];
     printf("Running DynGraph 'invalid_tooManyInputs' \n");
     (void)gctx; // unused
 
-    ZL_TRY_LET_T(ZL_EdgeList, sl, ZL_Edge_runNode(input, g_split3_nodeid));
+    ZL_TRY_LET(ZL_EdgeList, sl, ZL_Edge_runNode(input, g_split3_nodeid));
     EXPECT_EQ((int)sl.nbEdges, 3);
 
     return ZL_Edge_setParameterizedDestination(
@@ -900,6 +924,7 @@ static ZL_Report invalid_notEnoughInputs(
         ZL_Edge* inputs[],
         size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbIns == 1);
     ZL_Edge* input = inputs[0];
     printf("Running DynGraph 'invalid_notEnoughInputs' \n");
@@ -928,25 +953,26 @@ static ZL_Report dyngraph_failDeep_stage2(
         ZL_Edge* inputs[],
         size_t nbInputs) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     printf("Running 'dyngraph_failDeep_stage2' \n");
     (void)gctx; // unused
     assert(nbInputs == 1);
     ZL_Edge* input = inputs[0];
 
     // This operation ensures the created Stream is not a reference to @input
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             node2Result,
             ZL_Edge_runNode(input, ZL_NODE_DELTA_INT));
     assert(node2Result.nbEdges == 1);
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             node3Result,
             ZL_Edge_runNode(
                     node2Result.edges[0], ZL_NODE_CONVERT_NUM_TO_SERIAL));
     assert(node3Result.nbEdges == 1);
     // This operation should fail (wrong type)
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             node4Result,
             ZL_Edge_runNode(node3Result.edges[0], ZL_NODE_DELTA_INT));
@@ -961,6 +987,27 @@ static ZL_FunctionGraphDesc const dyngraph_failDeep_dgd = {
     .name    = "Function Graph failing have passing a first few Transforms",
     .graph_f = dyngraph_failDeep_stage2,
     .inputTypeMasks      = &dyngraph_failDeep_inputType,
+    .nbInputs            = 1,
+    .lastInputIsVariable = false,
+};
+
+/* ------ self-loop: graph that always routes back to itself ------ */
+
+static ZL_GraphID g_selfLoop_graphid = ZL_GRAPH_ILLEGAL;
+
+static ZL_Report
+selfLoopGraphFn(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns) noexcept
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
+    assert(nbIns == 1);
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(inputs[0], g_selfLoop_graphid));
+    return ZL_returnSuccess();
+}
+
+static ZL_FunctionGraphDesc const selfLoop_dgd = {
+    .name                = "self-loop function graph (infinite recursion)",
+    .graph_f             = selfLoopGraphFn,
+    .inputTypeMasks      = &serialInputType,
     .nbInputs            = 1,
     .lastInputIsVariable = false,
 };
@@ -1018,6 +1065,17 @@ static ZL_GraphID registerDynGraph_deep(ZL_Compressor* cgraph) noexcept
             transforms,
             2,
             ZL_Compressor_registerFunctionGraph(cgraph, g_dynGraph_dgdPtr));
+}
+
+static ZL_GraphID registerSelfLoopGraph(ZL_Compressor* cgraph) noexcept
+{
+    ZL_Report const setr = ZL_Compressor_setParameter(
+            cgraph, ZL_CParam_formatVersion, ZL_MAX_FORMAT_VERSION);
+    if (ZL_isError(setr))
+        abort();
+    g_selfLoop_graphid =
+            ZL_Compressor_registerFunctionGraph(cgraph, &selfLoop_dgd);
+    return g_selfLoop_graphid;
 }
 
 /* ------   compress, using provided graph function   -------- */
@@ -1375,6 +1433,13 @@ TEST(DynGraphs, graphFailure_deep)
     cFailTest(registerDynGraph_deep, g_dynGraph_dgdPtr->name);
 }
 
+TEST(DynGraphs, graphDepthLimitExceeded)
+{
+    cFailTest(
+            registerSelfLoopGraph,
+            "self-loop function graph triggers ZL_MAX_GRAPH_DEPTH limit");
+}
+
 TEST(DynGraphs, invalidNodeVersion_permissive)
 {
     g_dynGraph_dgdPtr = &invalidNodeVersion_dgd;
@@ -1447,6 +1512,13 @@ TEST(DynGraphs, graphFailure_deep_permissive)
     permissiveTest(registerDynGraph_deep, g_dynGraph_dgdPtr->name);
 }
 
+TEST(DynGraphs, graphDepthLimitExceeded_permissive)
+{
+    permissiveTest(
+            registerSelfLoopGraph,
+            "self-loop function graph triggers ZL_MAX_GRAPH_DEPTH limit (permissive)");
+}
+
 // ---------------------------------------------
 // Testing ZL_Edge_setParameterizedDestination()
 // ---------------------------------------------
@@ -1456,13 +1528,14 @@ static ZL_Report dg_change_static_graph_output(
         ZL_Edge* inputs[],
         size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     (void)gctx;
     assert(nbIns == 1);
     assert(inputs != NULL);
     ZL_Edge* input = inputs[0];
     assert(input != NULL);
     // convert to integer
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             sl1,
             ZL_Edge_runNode(input, ZL_NODE_INTERPRET_AS_LE32));
@@ -1477,7 +1550,7 @@ static ZL_Report dg_change_static_graph_output(
         .customGraphs   = &store,
         .nbCustomGraphs = 1,
     };
-    ZL_RET_R_IF_ERR(ZL_Edge_setParameterizedDestination(
+    ZL_ERR_IF_ERR(ZL_Edge_setParameterizedDestination(
             sl1.edges, 1, targetGraph, &rgp));
     store = ZL_GRAPH_ILLEGAL; // Check that the parameterized Graph doesn't keep
                               // a pointer to origin array.
@@ -1511,6 +1584,7 @@ static ZL_Report fgraph_checkCustomNodes(
         ZL_Edge* inputs[],
         size_t nbIns) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     assert(nbIns == 1);
     ZL_Edge* const input = inputs[0];
     assert(input != NULL);
@@ -1526,7 +1600,7 @@ static ZL_Report fgraph_checkCustomNodes(
     }
 
     // Send input to basic successor
-    ZL_RET_R_IF_ERR(ZL_Edge_setDestination(input, ZL_GRAPH_COMPRESS_GENERIC));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(input, ZL_GRAPH_COMPRESS_GENERIC));
 
     return ZL_returnSuccess();
 }

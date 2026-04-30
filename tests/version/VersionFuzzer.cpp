@@ -7,14 +7,23 @@
 
 #include "tests/version/VersionTestInterface.h"
 
-namespace zstrong {
+extern "C" int LLVMFuzzerTestOneInput(uint8_t const* data, size_t size);
+
+extern "C" void FtestFuzzerSetup()
+{
+    // Run once during global setup so we are fully initialized before fuzzing
+    uint8_t c = 0;
+    LLVMFuzzerTestOneInput(&c, 1);
+}
+
+namespace openzl {
 namespace tests {
 namespace {
 
 std::string_view constexpr kDevResourceName =
-        "data_compression/experimental/zstrong/tests/version/dev_version_test_interface.so";
+        "openzl/dev/tests/version/dev_version_test_interface.so";
 std::string_view constexpr kReleaseResourceName =
-        "data_compression/experimental/zstrong/tests/version/release_version_test_interface.so";
+        "openzl/dev/tests/version/release_version_test_interface.so";
 
 VersionTestInterface getVersionTestInterface(std::string_view resourceName)
 {
@@ -217,4 +226,4 @@ FUZZ(VersionTest, FuzzRandomGraphBackwardCompatible)
 
 } // namespace
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

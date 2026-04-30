@@ -7,7 +7,7 @@
 #include "tests/datagen/DataProducer.h"
 #include "tests/datagen/random_producer/RandWrapper.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 /**
  * @brief The base class for all random distributions that uses a random source
@@ -22,4 +22,4 @@ class Distribution : public DataProducer<RetType> {
     std::shared_ptr<RandWrapper> rw_;
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

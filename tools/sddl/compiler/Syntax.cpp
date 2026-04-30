@@ -63,6 +63,8 @@ static const std::map<Symbol, SymbolType> sym_types{
 
     { Symbol::DIE, SymbolType::OPERATOR },
     { Symbol::EXPECT, SymbolType::OPERATOR },
+    { Symbol::LOG, SymbolType::OPERATOR },
+
     { Symbol::CONSUME, SymbolType::OPERATOR },
     { Symbol::SIZEOF, SymbolType::OPERATOR },
     { Symbol::SEND, SymbolType::OPERATOR },
@@ -84,6 +86,15 @@ static const std::map<Symbol, SymbolType> sym_types{
     { Symbol::MUL, SymbolType::OPERATOR },
     { Symbol::DIV, SymbolType::OPERATOR },
     { Symbol::MOD, SymbolType::OPERATOR },
+
+    { Symbol::BIT_AND, SymbolType::OPERATOR },
+    { Symbol::BIT_OR, SymbolType::OPERATOR },
+    { Symbol::BIT_XOR, SymbolType::OPERATOR },
+    { Symbol::BIT_NOT, SymbolType::OPERATOR },
+
+    { Symbol::LOG_AND, SymbolType::OPERATOR },
+    { Symbol::LOG_OR, SymbolType::OPERATOR },
+    { Symbol::LOG_NOT, SymbolType::OPERATOR },
 
     { Symbol::BYTE, SymbolType::KEYWORD },
     { Symbol::U8, SymbolType::KEYWORD },
@@ -148,6 +159,8 @@ static const std::map<Symbol, poly::string_view> syms_to_debug_strs{
 
     { Symbol::DIE, "DIE" },
     { Symbol::EXPECT, "EXPECT" },
+    { Symbol::LOG, "LOG" },
+
     { Symbol::CONSUME, "CONSUME" },
     { Symbol::SIZEOF, "SIZEOF" },
     { Symbol::SEND, "SEND" },
@@ -170,6 +183,15 @@ static const std::map<Symbol, poly::string_view> syms_to_debug_strs{
     { Symbol::MUL, "MUL" },
     { Symbol::DIV, "DIV" },
     { Symbol::MOD, "MOD" },
+
+    { Symbol::BIT_AND, "BIT_AND" },
+    { Symbol::BIT_OR, "BIT_OR" },
+    { Symbol::BIT_XOR, "BIT_XOR" },
+    { Symbol::BIT_NOT, "BIT_NOT" },
+
+    { Symbol::LOG_AND, "LOG_AND" },
+    { Symbol::LOG_OR, "LOG_OR" },
+    { Symbol::LOG_NOT, "LOG_NOT" },
 
     { Symbol::BYTE, "BYTE" },
     { Symbol::U8, "U8" },
@@ -243,10 +265,18 @@ const std::vector<std::pair<poly::string_view, Symbol>> strs_to_syms{
     { "*", Symbol::MUL },
     { "/", Symbol::DIV },
     { "%", Symbol::MOD },
+    { "&&", Symbol::LOG_AND },
+    { "||", Symbol::LOG_OR },
+    { "!", Symbol::LOG_NOT },
+    { "&", Symbol::BIT_AND },
+    { "|", Symbol::BIT_OR },
+    { "^", Symbol::BIT_XOR },
+    { "~", Symbol::BIT_NOT },
     { ":", Symbol::ASSUME },
     { ".", Symbol::MEMBER },
     { "die", Symbol::DIE },
     { "expect", Symbol::EXPECT },
+    { "log", Symbol::LOG },
     { "consume", Symbol::CONSUME },
     { "sizeof", Symbol::SIZEOF },
     { "sendto", Symbol::SEND },
@@ -321,7 +351,15 @@ static const std::map<Symbol, poly::string_view> syms_to_ser_strs{
     { Symbol::MUL, "mul" },         { Symbol::DIV, "div" },
     { Symbol::MOD, "mod" },
 
+    { Symbol::BIT_AND, "bit_and" }, { Symbol::BIT_OR, "bit_or" },
+    { Symbol::BIT_XOR, "bit_xor" }, { Symbol::BIT_NOT, "bit_not" },
+
+    { Symbol::LOG_AND, "log_and" }, { Symbol::LOG_OR, "log_or" },
+    { Symbol::LOG_NOT, "log_not" },
+
     { Symbol::DIE, "die" },         { Symbol::EXPECT, "expect" },
+    { Symbol::LOG, "log" },
+
     { Symbol::CONSUME, "consume" }, { Symbol::SIZEOF, "sizeof" },
     { Symbol::SEND, "send" },       { Symbol::ASSIGN, "assign" },
     { Symbol::ASSUME, "assume" },   { Symbol::MEMBER, "member" },

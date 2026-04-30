@@ -2,11 +2,13 @@
 
 #include <gtest/gtest.h>
 #include <cmath>
+#include <numeric>
 #include <random>
 #include <vector>
 
 #include "openzl/common/stream.h" // For stream usage in hardcoded feature generators
 #include "openzl/compress/selectors/ml/gbt.h"
+#include "tests/datagen/random_producer/compat_uniform_distribution.h"
 #include "tests/zstrong/test_zstrong_fixture.h"
 
 using namespace ::testing;
@@ -33,7 +35,8 @@ GBTPredictor_Tree generateTree(
         bool forceRight         = false)
 {
     std::mt19937_64 mt(kRandomSeed);
-    std::uniform_int_distribution<uint8_t> dist(0, 100);
+    openzl::tests::datagen::compat_uniform_int_distribution<uint8_t> dist(
+            0, 100);
 
     for (size_t i = 0; i < sz; ++i) {
         // Update necessary variables if node is leaf node
@@ -45,13 +48,14 @@ GBTPredictor_Tree generateTree(
                 (forceRight || dist(mt) % 2) ? rightChildIdx : leftChildIdx;
         const float value = (float)(i + 1) + valueOffset;
 
-        nodes.push_back({
-                .featureIdx      = featureIdx,
-                .value           = value,
-                .leftChildIdx    = leftChildIdx,
-                .rightChildIdx   = rightChildIdx,
-                .missingChildIdx = missingChildIdx,
-        });
+        nodes.push_back(
+                {
+                        .featureIdx      = featureIdx,
+                        .value           = value,
+                        .leftChildIdx    = leftChildIdx,
+                        .rightChildIdx   = rightChildIdx,
+                        .missingChildIdx = missingChildIdx,
+                });
     }
     GBTPredictor_Tree tree = { .numNodes = nodes.size(),
                                .nodes    = nodes.data() };
@@ -228,11 +232,14 @@ class GBTBinaryForestTest : public Test {
     void SetUp() override
     {
         const size_t kTreeNb = 5;
-        nodes                = { { .featureIdx      = -1,
-                                   .value           = 0.2f,
-                                   .leftChildIdx    = 0,
-                                   .rightChildIdx   = 0,
-                                   .missingChildIdx = 0 } };
+        GBTPredictor_Node node;
+        node.featureIdx      = -1;
+        node.value           = 0.2f;
+        node.leftChildIdx    = 0;
+        node.rightChildIdx   = 0;
+        node.missingChildIdx = 0;
+        nodes.clear();
+        nodes.push_back(node);
         for (size_t i = 0; i < kTreeNb; i++) {
             trees.push_back(
                     { .numNodes = nodes.size(), .nodes = nodes.data() });
@@ -245,7 +252,7 @@ class GBTBinaryForestTest : public Test {
 TEST_F(GBTBinaryForestTest, binaryClassification)
 {
     /* Result should be 1, since each tree in the 5 forests have value of 0.2.
-     * The resulting sum is greater than 0.5, so the predicted label is 1.
+     * The resulting sum is greater than 0, so the predicted label is 1.
      */
     const GBTPredictor predictor = { .numForests = binaryForest.size(),
                                      .forests    = binaryForest.data() };
@@ -327,8 +334,7 @@ class GBTBinaryModelTest : public Test {
     const size_t sz = 7;
 
     const std::vector<int> streamData = { 0, 1, 2, 3, 4 };
-
-    const std::vector<Label> classLabels = { Label("zero"), Label("one") };
+    const size_t nbSuccessors         = 2;
 
     // Feature values hardcoded in featureGen_binaryModelTest lambda
     const std::vector<Label> featureLabels = {
@@ -355,17 +361,15 @@ class GBTBinaryModelTest : public Test {
 
     GBTModel model;
 
-    std::unique_ptr<zstrong::tests::WrappedStream<int>> stream;
+    std::unique_ptr<openzl::tests::WrappedStream<int>> stream;
 
     void SetUp() override
     {
         // Lambda for generating hardcoded features
-        auto featureGen_binaryModelTest =
-                [](const ZL_Input* inputStream,
-                   VECTOR(LabeledFeature) * features,
-                   const void* featureContext) -> ZL_Report {
-            (void)featureContext;
-
+        auto featureGen_binaryModelTest = [](const ZL_Input* inputStream,
+                                             VECTOR(LabeledFeature)
+                                                     * features) -> ZL_Report {
+            ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
             ZL_ASSERT(ZL_Input_type(inputStream) == ZL_Type_numeric);
 
             LabeledFeature meanFeature             = { "mean", 2.0f };
@@ -389,20 +393,17 @@ class GBTBinaryModelTest : public Test {
             badAlloc |= !VECTOR_PUSHBACK(*features, meanFeature);
             badAlloc |= !VECTOR_PUSHBACK(*features, varianceFeature);
 
-            ZL_RET_R_IF(
-                    allocation, badAlloc, "Failed to add features to vector");
+            ZL_ERR_IF(badAlloc, allocation, "Failed to add features to vector");
             return ZL_returnSuccess();
         };
 
         model = { .predictor        = &binaryClassPredictor,
                   .featureGenerator = featureGen_binaryModelTest,
-                  .featureContext   = nullptr,
-                  .nbLabels         = classLabels.size(),
-                  .classLabels      = classLabels.data(),
+                  .nbSuccessors     = nbSuccessors,
                   .nbFeatures       = featureLabels.size(),
                   .featureLabels    = featureLabels.data() };
 
-        stream = std::make_unique<zstrong::tests::WrappedStream<int>>(
+        stream = std::make_unique<openzl::tests::WrappedStream<int>>(
                 streamData, ZL_Type_numeric);
     }
 
@@ -422,27 +423,29 @@ TEST_F(GBTBinaryModelTest, labeledBinaryClass)
              /            \                  //            \
      (card = 5, 4) (card_u = 5, 5)    (card_l = 5, 6) (range = 4, 7)
 
-     The final result depends on the 5th node of this tree, since 6 > 0.5 the
+     The final result depends on the 5th node of this tree, since 6 > 0 the
      resulting binary classification is 1.
    */
-    ZL_RESULT_OF(Label) result = GBTModel_predict(&model, stream->getStream());
+    ZL_RESULT_OF(size_t)
+    result = GBTModel_predict(&model, stream->getStream());
     ASSERT_FALSE(ZL_RES_isError(result));
-    const std::string decodedLabel = ZL_RES_value(result);
-    EXPECT_EQ(decodedLabel, "one");
+    const size_t decodedLabel = ZL_RES_value(result);
+    EXPECT_EQ(decodedLabel, 1);
 }
 
 TEST_F(GBTBinaryModelTest, swappedLabeledBinaryClass)
 {
     /* From the above test, we know that the result depends on the 5th node of
      * the tree, we want to make sure that if we change the value of this node
-     * that the resulting classification changes too. Set the value to 0.45, and
-     * verify that the classification is now 0 since 0.45f < 0.5.
+     * that the resulting classification changes too. Set the value to -0.45,
+     * and verify that the classification is now 0 since -0.45f < 0.
      */
-    nodes[5].value             = 0.45f;
-    ZL_RESULT_OF(Label) result = GBTModel_predict(&model, stream->getStream());
+    nodes[5].value = -0.45f;
+    ZL_RESULT_OF(size_t)
+    result = GBTModel_predict(&model, stream->getStream());
     ASSERT_FALSE(ZL_RES_isError(result));
-    const std::string decodedLabel = ZL_RES_value(result);
-    EXPECT_EQ(decodedLabel, "zero");
+    const size_t decodedLabel = ZL_RES_value(result);
+    EXPECT_EQ(decodedLabel, 0);
 }
 
 class GBTMultiClassModelTest : public GBTMultiClassForestTest {
@@ -456,9 +459,7 @@ class GBTMultiClassModelTest : public GBTMultiClassForestTest {
     const size_t testNodeIdx          = 2;
     const std::vector<int> streamData = { 0, 2, 4, 6, 8, 10 };
 
-    const std::vector<Label> classLabels = { Label("class1"),
-                                             Label("class2"),
-                                             Label("class3") };
+    const size_t nbSuccessors = 3;
 
     const std::vector<Label> featureLabels = {
         Label("mean"),              // 5
@@ -475,7 +476,7 @@ class GBTMultiClassModelTest : public GBTMultiClassForestTest {
     std::unique_ptr<GBTPredictor> multiClassPredictor;
     GBTModel model;
 
-    std::unique_ptr<zstrong::tests::WrappedStream<int>> stream;
+    std::unique_ptr<openzl::tests::WrappedStream<int>> stream;
 
     void SetUp() override
     {
@@ -486,10 +487,8 @@ class GBTMultiClassModelTest : public GBTMultiClassForestTest {
 
         auto featureGen_multiClassModelTest =
                 [](const ZL_Input* inputStream,
-                   VECTOR(LabeledFeature) * features,
-                   const void* featureContext) -> ZL_Report {
-            (void)featureContext;
-
+                   VECTOR(LabeledFeature) * features) -> ZL_Report {
+            ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
             ZL_ASSERT(ZL_Input_type(inputStream) == ZL_Type_numeric);
 
             LabeledFeature meanFeature             = { "mean", 5.0f };
@@ -513,19 +512,16 @@ class GBTMultiClassModelTest : public GBTMultiClassForestTest {
             badAlloc |= !VECTOR_PUSHBACK(*features, meanFeature);
             badAlloc |= !VECTOR_PUSHBACK(*features, varianceFeature);
 
-            ZL_RET_R_IF(
-                    allocation, badAlloc, "Failed to add features to vector");
+            ZL_ERR_IF(badAlloc, allocation, "Failed to add features to vector");
             return ZL_returnSuccess();
         };
         model = { .predictor        = multiClassPredictor.get(),
                   .featureGenerator = featureGen_multiClassModelTest,
-                  .featureContext   = nullptr,
-                  .nbLabels         = classLabels.size(),
-                  .classLabels      = classLabels.data(),
+                  .nbSuccessors     = nbSuccessors,
                   .nbFeatures       = featureLabels.size(),
                   .featureLabels    = featureLabels.data() };
 
-        stream = std::make_unique<zstrong::tests::WrappedStream<int>>(
+        stream = std::make_unique<openzl::tests::WrappedStream<int>>(
                 streamData, ZL_Type_numeric);
     }
 
@@ -546,21 +542,22 @@ TEST_F(GBTMultiClassModelTest, labeledMultiClass)
      * always select the forest containing largeTree. Verify that result is the
      * label corresponding to the largeTree.
      */
-    ZL_RESULT_OF(Label) result = GBTModel_predict(&model, stream->getStream());
+    ZL_RESULT_OF(size_t)
+    result = GBTModel_predict(&model, stream->getStream());
     ASSERT_FALSE(ZL_RES_isError(result));
-    const std::string decodedLabel = ZL_RES_value(result);
-    EXPECT_EQ(decodedLabel, "class2");
+    const size_t decodedLabel = ZL_RES_value(result);
+    EXPECT_EQ(decodedLabel, 1);
 }
 
-TEST_F(GBTMultiClassModelTest, IncorrectNumClassLabels)
+TEST_F(GBTMultiClassModelTest, IncorrectNumSuccessors)
 {
     /*
      * Verify that if the number of class labels is less than the number of
      * forests, we get an error.
      */
-    model.nbLabels             = 0;
-    model.classLabels          = {};
-    ZL_RESULT_OF(Label) result = GBTModel_predict(&model, stream->getStream());
+    model.nbSuccessors = 0;
+    ZL_RESULT_OF(size_t)
+    result = GBTModel_predict(&model, stream->getStream());
     ASSERT_TRUE(ZL_RES_isError(result));
 }
 
@@ -611,8 +608,7 @@ class GBTValidModelTest : public GBTMultiClassModelTest {
     {
         GBTModel tmp_model = { .predictor        = predictor,
                                .featureGenerator = FeatureGen_integer,
-                               .nbLabels         = classLabels.size(),
-                               .classLabels      = classLabels.data(),
+                               .nbSuccessors     = nbSuccessors,
                                .nbFeatures       = featureLabels.size(),
                                .featureLabels    = featureLabels.data() };
 
@@ -625,14 +621,6 @@ TEST_F(GBTValidModelTest, verifyGBTModelNullPredictor)
 {
     // Verify that we get errors when predictor is null
     model.predictor        = nullptr;
-    const ZL_Report report = GBTModel_validate(&model);
-    ASSERT_TRUE(ZL_isError(report));
-}
-
-TEST_F(GBTValidModelTest, verifyGBTModelNullClassLabels)
-{
-    // Verify that we get errors when classLabels is null
-    model.classLabels      = nullptr;
     const ZL_Report report = GBTModel_validate(&model);
     ASSERT_TRUE(ZL_isError(report));
 }

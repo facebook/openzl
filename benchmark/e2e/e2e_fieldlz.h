@@ -91,11 +91,11 @@ inline void registerFieldLzBenchmarks()
     // Create instances of the benchmark corpora.
     // We want to benchmark multiple different distributions with
     // different integer sizes.
-    zstrong::tests::datagen::VectorOfTokensParameters params{};
+    openzl::tests::datagen::VectorOfTokensParameters params{};
     params.numTokens = 100000;
-    auto rand        = std::make_shared<tests::datagen::PRNGWrapper>(
+    auto rand        = std::make_shared<openzl::tests::datagen::PRNGWrapper>(
             std::make_shared<std::mt19937>(0xdeadbeef));
-    zstrong::tests::datagen::VectorOfTokensProducer producer(rand, params);
+    openzl::tests::datagen::VectorOfTokensProducer producer(rand, params);
     std::vector<std::shared_ptr<BenchmarkData>> corpora = {
         // 10K 16bit values with cardinality of 100
         std::make_shared<UniformDistributionData<uint16_t>>(10240, 100),

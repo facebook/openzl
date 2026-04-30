@@ -192,7 +192,7 @@ graphFn(ZL_Graph* graph, ZL_Edge* edges[], size_t nbEdges) noexcept
                 (const FunctionGraph*)ZL_Graph_getOpaquePtr(graph);
         functionGraph->graph(state);
     } catch (const Exception& e) {
-        // TODO(terrelln): Beter wrap the error
+        // TODO(terrelln): Better wrap the error
         ZL_ERR(GENERIC, "C++ openzl::Exception: %s", e.what());
     } catch (const std::exception& e) {
         ZL_ERR(GENERIC, "C++ std::exception: %s", e.what());
@@ -204,7 +204,7 @@ graphFn(ZL_Graph* graph, ZL_Edge* edges[], size_t nbEdges) noexcept
 
 /* static */ GraphID FunctionGraph::registerFunctionGraph(
         Compressor& compressor,
-        std::shared_ptr<FunctionGraph> functionGraph)
+        std::shared_ptr<const FunctionGraph> functionGraph)
 {
     const auto& desc               = functionGraph->functionGraphDescription();
     auto inputTypeMasks            = typesMasksToCTypes(desc.inputTypeMasks);
@@ -224,6 +224,11 @@ graphFn(ZL_Graph* graph, ZL_Edge* edges[], size_t nbEdges) noexcept
         graphDesc.localParams = **desc.localParams;
     }
     return compressor.registerFunctionGraph(graphDesc);
+}
+
+poly::string_view GraphState::getErrorContextString(ZL_Error error) const
+{
+    return ZL_Graph_getErrorContextString_fromError(get(), error);
 }
 
 } // namespace openzl

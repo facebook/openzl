@@ -11,11 +11,12 @@
 static ZL_Report
 NM_fillStandardNodesCallback(void* opaque, ZL_NodeID node, const CNode* cnode)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     Nodes_manager* nmgr = opaque;
     const ZL_Name name  = CNODE_getNameObj(cnode);
     NodeMap_Insert insert =
             NodeMap_insertVal(&nmgr->nameMap, (NodeMap_Entry){ name, node });
-    ZL_RET_R_IF(allocation, insert.badAlloc);
+    ZL_ERR_IF(insert.badAlloc, allocation);
     ZL_ASSERT_EQ(insert.ptr->val.nid, node.nid);
     return ZL_returnSuccess();
 }
@@ -27,7 +28,8 @@ static ZL_Report NM_fillStandardNodes(Nodes_manager* nmgr)
 
 ZL_Report NM_init(Nodes_manager* nmgr, ZL_OperationContext* opCtx)
 {
-    ZL_RET_R_IF_ERR(CTM_init(&nmgr->ctm));
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_ERR(CTM_init(&nmgr->ctm, opCtx));
     nmgr->nameMap = NodeMap_create(ZL_ENCODER_GRAPH_LIMIT);
     nmgr->opCtx   = opCtx;
     return NM_fillStandardNodes(nmgr);
@@ -66,6 +68,7 @@ static CNodeID NM_CNodeID_fromNodeID(ZL_NodeID nodeid)
 
 static ZL_Report NM_registerName(Nodes_manager* nmgr, ZL_NodeID node)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     const CNode* cnode = CTM_getCNode(&nmgr->ctm, NM_CNodeID_fromNodeID(node));
     ZL_ASSERT_NN(cnode);
 
@@ -76,12 +79,11 @@ static ZL_Report NM_registerName(Nodes_manager* nmgr, ZL_NodeID node)
     if (insert.badAlloc || !insert.inserted) {
         CTM_rollback(
                 &nmgr->ctm, NM_CNodeID_fromNodeID(node)); // Rollback the state
-        ZL_RET_R_IF(allocation, insert.badAlloc);
+        ZL_ERR_IF(insert.badAlloc, allocation);
         ZL_ASSERT(name.isAnchor, "Non-anchor is guaranteed to be unique");
-        ZL_RET_R_ERR(
-                invalidName,
-                "Node anchor name \"%s\" is not unique!",
-                ZL_Name_unique(&name));
+        ZL_ERR(invalidName,
+               "Node anchor name \"%s\" is not unique!",
+               ZL_Name_unique(&name));
     }
     return ZL_returnSuccess();
 }
@@ -91,6 +93,7 @@ NM_registerCustomTransform(
         Nodes_manager* nmgr,
         const InternalTransform_Desc* ctd)
 {
+    ZL_RESULT_DECLARE_SCOPE(ZL_NodeID, NULL);
     ZL_ASSERT_NN(ctd);
     ZL_DLOG(BLOCK,
             "NM_registerCustomTransform '%s'",
@@ -99,13 +102,13 @@ NM_registerCustomTransform(
     // WARNING: Must not fail before this line otherwise opaque will be leaked
     ZL_RESULT_OF(CNodeID)
     cnodeidResult = CTM_registerCustomTransform(&nmgr->ctm, ctd);
-    ZL_RET_T_IF_ERR(ZL_NodeID, cnodeidResult);
+    ZL_ERR_IF_ERR(cnodeidResult);
     ZL_NodeID gnid = NM_NodeID_fromCNodeID(ZL_RES_value(cnodeidResult));
     ZL_DLOG(SEQ,
             "Transform '%s' gets session ID %u",
             STR_REPLACE_NULL(ctd->publicDesc.name),
             gnid);
-    ZL_RET_T_IF_ERR(ZL_NodeID, NM_registerName(nmgr, gnid));
+    ZL_ERR_IF_ERR(NM_registerName(nmgr, gnid));
     return ZL_RESULT_WRAP_VALUE(ZL_NodeID, gnid);
 }
 
@@ -117,6 +120,7 @@ NM_registerStandardTransform(
         unsigned minFormatVersion,
         unsigned maxFormatVersion)
 {
+    ZL_RESULT_DECLARE_SCOPE(ZL_NodeID, NULL);
     ZL_DLOG(BLOCK, "NM_registerStandardTransform");
     ZL_ASSERT_NN(nmgr);
     ZL_ASSERT_NULL(ctd->publicDesc.opaque.freeFn);
@@ -124,9 +128,9 @@ NM_registerStandardTransform(
     ZL_RESULT_OF(CNodeID)
     cnodeidResult = CTM_registerStandardTransform(
             &nmgr->ctm, ctd, minFormatVersion, maxFormatVersion);
-    ZL_RET_T_IF_ERR(ZL_NodeID, cnodeidResult);
+    ZL_ERR_IF_ERR(cnodeidResult);
     ZL_NodeID gnid = NM_NodeID_fromCNodeID(ZL_RES_value(cnodeidResult));
-    ZL_RET_T_IF_ERR(ZL_NodeID, NM_registerName(nmgr, gnid));
+    ZL_ERR_IF_ERR(NM_registerName(nmgr, gnid));
     return ZL_RESULT_WRAP_VALUE(
             ZL_NodeID, NM_NodeID_fromCNodeID(ZL_RES_value(cnodeidResult)));
 }
@@ -134,6 +138,7 @@ NM_registerStandardTransform(
 ZL_RESULT_OF(ZL_NodeID)
 NM_parameterizeNode(Nodes_manager* nmgr, const ZL_ParameterizedNodeDesc* desc)
 {
+    ZL_RESULT_DECLARE_SCOPE(ZL_NodeID, NULL);
     ZL_DLOG(BLOCK, "NM_parameterizeNode");
     const ZL_NodeID nodeid      = desc->node;
     const CNode* const srcCNode = NM_getCNode(nmgr, nodeid);
@@ -141,9 +146,9 @@ NM_parameterizeNode(Nodes_manager* nmgr, const ZL_ParameterizedNodeDesc* desc)
     ZL_ASSERT_NN(nmgr);
     ZL_RESULT_OF(CNodeID)
     cnodeidResult = CTM_parameterizeNode(&nmgr->ctm, srcCNode, desc);
-    ZL_RET_T_IF_ERR(ZL_NodeID, cnodeidResult);
+    ZL_ERR_IF_ERR(cnodeidResult);
     ZL_NodeID gnid = NM_NodeID_fromCNodeID(ZL_RES_value(cnodeidResult));
-    ZL_RET_T_IF_ERR(ZL_NodeID, NM_registerName(nmgr, gnid));
+    ZL_ERR_IF_ERR(NM_registerName(nmgr, gnid));
     return ZL_RESULT_WRAP_VALUE(
             ZL_NodeID, NM_NodeID_fromCNodeID(ZL_RES_value(cnodeidResult)));
 }
@@ -159,6 +164,10 @@ const CNode* NM_getCNode(const Nodes_manager* nmgr, ZL_NodeID nodeid)
 
 ZL_NodeID NM_getNodeByName(const Nodes_manager* nmgr, const char* node)
 {
+    // Lookup should not be done using anchor names
+    if (node == NULL || ZL_keyIsAnchor(node)) {
+        return ZL_NODE_ILLEGAL;
+    }
     const ZL_Name key          = ZL_Name_wrapKey(node);
     const NodeMap_Entry* entry = NodeMap_find(&nmgr->nameMap, &key);
     if (entry != NULL) {
@@ -174,11 +183,12 @@ ZL_Report NM_forEachNode(
         void* opaque,
         const ZL_Compressor* compressor)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     const size_t nbCNodes = CTM_nbCNodes(&nmgr->ctm);
     for (ZL_IDType id = 0; id < nbCNodes; ++id) {
         CNodeID cnodeID  = { id };
         ZL_NodeID nodeID = NM_NodeID_fromCNodeID(cnodeID);
-        ZL_RET_R_IF_ERR(callback(opaque, compressor, nodeID));
+        ZL_ERR_IF_ERR(callback(opaque, compressor, nodeID));
     }
     return ZL_returnSuccess();
 }

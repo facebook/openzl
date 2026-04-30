@@ -14,8 +14,9 @@
 #include "openzl/zl_opaque_types.h"
 #include "openzl/zl_reflection.h"
 #include "openzl/zl_selector.h"
+#include "tests/utils.h" // @manual
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 
 ZStrongTest::~ZStrongTest()
@@ -42,12 +43,15 @@ void ZStrongTest::reset()
     inType_                 = std::nullopt;
     vsfFieldSizesInstructs_ = {};
 
-    // Default the format version to the max format verison.
+    // Default the format version to the max format version.
     // Set it in the cgraph because these parameters have lower priority.
     ZL_REQUIRE_SUCCESS(ZL_Compressor_setParameter(
             cgraph_,
             ZL_CParam_formatVersion,
             (int)formatVersion_.value_or(ZL_MAX_FORMAT_VERSION)));
+    // disable anti-inflation guard for deterministic test behavior
+    ZL_REQUIRE_SUCCESS(ZL_Compressor_setParameter(
+            cgraph_, ZL_CParam_storeOnExpansion, ZL_TernaryParam_disable));
 }
 
 ZL_GraphID ZStrongTest::declareGraph(ZL_NodeID node, ZL_GraphID graph)
@@ -127,7 +131,11 @@ ZL_NodeID ZStrongTest::createParameterizedNode(
         ZL_NodeID node,
         const ZL_LocalParams& localParams)
 {
-    return ZL_Compressor_cloneNode(cgraph_, node, &localParams);
+    const ZL_ParameterizedNodeDesc pndesc = {
+        .node        = node,
+        .localParams = &localParams,
+    };
+    return ZL_Compressor_registerParameterizedNode(cgraph_, &pndesc);
 }
 
 ZL_GraphID ZStrongTest::convertSerializedToType(
@@ -164,8 +172,12 @@ ZL_GraphID ZStrongTest::convertSerializedToType(
         ZL_LocalParams const params = {
             .intParams = { .intParams = &param, .nbIntParams = 1 },
         };
-        ZL_NodeID const convert = ZL_Compressor_cloneNode(
-                cgraph_, ZL_NODE_CONVERT_SERIAL_TO_TOKENX, &params);
+        const ZL_ParameterizedNodeDesc pndesc2 = {
+            .node        = ZL_NODE_CONVERT_SERIAL_TO_TOKENX,
+            .localParams = &params,
+        };
+        ZL_NodeID const convert =
+                ZL_Compressor_registerParameterizedNode(cgraph_, &pndesc2);
         return declareGraph(convert, graph);
     } else if (type & ZL_Type_string) {
         ZL_SetStringLensParserFn parser =
@@ -236,7 +248,7 @@ void ZStrongTest::setLevels(int compressionLevel, int decompressionLevel)
 
 size_t ZStrongTest::compressBounds(std::string_view data)
 {
-    return ZL_compressBound(compressBoundFactor_ * data.size());
+    return ZL_COMPRESSBOUND_UNGUARDED(compressBoundFactor_ * data.size());
 }
 
 void ZStrongTest::setLargeCompressBound(size_t factor)
@@ -272,15 +284,16 @@ std::pair<ZL_Report, std::optional<std::string>> ZStrongTest::compress(
 std::pair<ZL_Report, std::optional<std::string>> ZStrongTest::compressMI(
         std::vector<std::unique_ptr<ZL_TypedRef, ZS2_TypedRef_Deleter>>& inputs)
 {
-    size_t compressBound = 0;
+    size_t totalInputSize = 0;
     std::vector<const ZL_TypedRef*> constInputs;
     for (auto& input : inputs) {
-        compressBound += ZL_compressBound(
-                (ZL_Input_contentSize(input.get())
-                 + ZL_Input_numElts(input.get()) * 4)
-                * compressBoundFactor_);
+        totalInputSize += (ZL_Input_contentSize(input.get())
+                           + ZL_Input_numElts(input.get()) * 4)
+                * compressBoundFactor_;
         constInputs.push_back(input.get());
     }
+    totalInputSize += inputs.size() * 256;
+    size_t compressBound = ZL_COMPRESSBOUND_UNGUARDED(totalInputSize);
     std::string compressed(compressBound, 0);
     if (cctx_ != nullptr) {
         ZL_CCtx_free(cctx_);
@@ -384,7 +397,7 @@ std::pair<ZL_Report, std::optional<std::string>> ZStrongTest::compressTyped(
         ZL_TypedRef* typedRef)
 {
     std::string compressed(
-            ZL_compressBound(
+            ZL_COMPRESSBOUND_UNGUARDED(
                     ZL_Input_contentSize(typedRef) * compressBoundFactor_),
             0);
     if (cctx_ != nullptr) {
@@ -496,4 +509,4 @@ void ZStrongTest::testRoundTripMIImpl(
 }
 
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

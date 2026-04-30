@@ -15,11 +15,7 @@ extern "C" {
 // Result : this transform stores the first value "raw",
 //          and then each value is a delta from previous value.
 //          Negative values are stored using 2-complement convention.
-#define ZL_NODE_DELTA_INT           \
-    (ZL_NodeID)                     \
-    {                               \
-        ZL_StandardNodeID_delta_int \
-    }
+#define ZL_NODE_DELTA_INT ZL_MAKE_NODE_ID(ZL_StandardNodeID_delta_int)
 
 #if defined(__cplusplus)
 }

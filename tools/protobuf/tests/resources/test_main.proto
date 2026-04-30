@@ -1,0 +1,11 @@
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+syntax = "proto3";
+package test;
+import "test_imported.proto";
+
+message MainMessage
+{
+    string id                    = 1;
+    ImportedMessage imported     = 2;
+    repeated ImportedEnum status = 3;
+}

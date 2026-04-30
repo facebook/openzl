@@ -2,12 +2,12 @@
 
 #include "openzl/codecs/transpose/encode_transpose_binding.h"
 #include "openzl/codecs/transpose/encode_transpose_kernel.h" // ZS_transposeEncode
+#include "openzl/codecs/zl_transpose.h" // ZL_GRAPH_TRANSPOSE_SPLIT
 #include "openzl/common/assertion.h"
 #include "openzl/common/errors_internal.h"
 #include "openzl/compress/private_nodes.h"
 #include "openzl/zl_data.h"
 #include "openzl/zl_graph_api.h"
-#include "openzl/zl_selector_declare_helper.h"
 
 // EI_transpose design notes:
 // - Accepts a single stream of type ZL_Type_struct
@@ -15,6 +15,7 @@
 // - An N x W input stream becomes a W x N output stream
 ZL_Report EI_transpose(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_NN(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
@@ -29,19 +30,20 @@ ZL_Report EI_transpose(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     size_t const newNbFields = nbFields ? fieldWidth : 0;
     ZL_Output* const out =
             ZL_Encoder_createTypedStream(eictx, 0, newNbFields, newFieldWidth);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
     const void* const src = ZL_Input_ptr(in);
     void* const dst       = ZL_Output_ptr(out);
     // TODO(@Cyan) : optimize with a reference when newFieldWidth==1, or
     // nbFields<=1
     ZS_transposeEncode(dst, src, nbFields, fieldWidth);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, newNbFields));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, newNbFields));
     return ZL_returnValue(1);
 }
 
 ZL_Report
 EI_transpose_split(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_NN(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
@@ -59,19 +61,19 @@ EI_transpose_split(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 
     uint8_t** const outPtrs =
             ZL_Encoder_getScratchSpace(eictx, nbOutStreams * sizeof(uint8_t*));
-    ZL_RET_R_IF_NULL(allocation, outPtrs);
+    ZL_ERR_IF_NULL(outPtrs, allocation);
     for (size_t i = 0; i < nbOutStreams; i++) {
         ZL_Output* const out =
                 ZL_Encoder_createTypedStream(eictx, 0, dstNbElts, 1);
-        ZL_RET_R_IF_NULL(
-                allocation,
+        ZL_ERR_IF_NULL(
                 out,
+                allocation,
                 "allocation error in transposeVO while trying to create output stream %zu of size %zu",
                 i,
                 dstNbElts);
 
         outPtrs[i] = (uint8_t*)ZL_Output_ptr(out);
-        ZL_RET_R_IF_ERR(ZL_Output_commit(out, dstNbElts));
+        ZL_ERR_IF_ERR(ZL_Output_commit(out, dstNbElts));
     }
 
     ZS_splitTransposeEncode(outPtrs, src, nbElts, eltWidth);
@@ -90,26 +92,27 @@ static ZL_Report EI_transpose_serial_typed(
         const ZL_Input* in,
         size_t eltWidth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_NN(eictx);
     ZL_ASSERT_NN(in);
     ZL_ASSERT_EQ(ZL_Input_type(in), ZL_Type_serial);
     ZL_ASSERT_EQ(ZL_Input_eltWidth(in), 1);
     size_t const srcSize = ZL_Input_numElts(in);
-    ZL_RET_R_IF_NE(
-            GENERIC,
+    ZL_ERR_IF_NE(
             srcSize % eltWidth,
             0,
+            GENERIC,
             "source size is not a multiple of transpose width");
     size_t const dstCapacity = srcSize;
     ZL_Output* const out =
             ZL_Encoder_createTypedStream(eictx, 0, dstCapacity, 1);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
     // Note : we should also check alignment here,
     // but since this interface will disappear in the near future,
     // this is a disappearing concern too
     ZS_transposeEncode(
             ZL_Output_ptr(out), ZL_Input_ptr(in), srcSize / eltWidth, eltWidth);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, srcSize));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, srcSize));
     return ZL_returnValue(1);
 }
 
@@ -204,10 +207,11 @@ size_t EI_transpose_8bytes(
 static ZL_Report
 EI_transpose_split_bytes(ZL_Encoder* eictx, const ZL_Input* in, size_t eltWidth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_NN(eictx);
     ZL_ASSERT_NN(in);
     ZL_ASSERT_EQ(ZL_Input_type(in), ZL_Type_struct);
-    ZL_RET_R_IF_NE(GENERIC, ZL_Input_eltWidth(in), eltWidth);
+    ZL_ERR_IF_NE(ZL_Input_eltWidth(in), eltWidth, GENERIC);
 
     // Create one output buffer per elt byte
     size_t const nbElts = ZL_Input_numElts(in);
@@ -215,7 +219,7 @@ EI_transpose_split_bytes(ZL_Encoder* eictx, const ZL_Input* in, size_t eltWidth)
     uint8_t* dst[8];
     for (size_t i = 0; i < eltWidth; ++i) {
         out[i] = ZL_Encoder_createTypedStream(eictx, (int)i, nbElts, 1);
-        ZL_RET_R_IF_NULL(allocation, out[i]);
+        ZL_ERR_IF_NULL(out[i], allocation);
         dst[i] = (uint8_t*)ZL_Output_ptr(out[i]);
     }
 
@@ -224,7 +228,7 @@ EI_transpose_split_bytes(ZL_Encoder* eictx, const ZL_Input* in, size_t eltWidth)
     ZS_splitTransposeEncode(dst, src, nbElts, eltWidth);
 
     for (size_t i = 0; i < eltWidth; ++i) {
-        ZL_RET_R_IF_ERR(ZL_Output_commit(out[i], nbElts));
+        ZL_ERR_IF_ERR(ZL_Output_commit(out[i], nbElts));
     }
     return ZL_returnValue(eltWidth);
 }
@@ -256,36 +260,51 @@ EI_transpose_split8bytes(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     return EI_transpose_split_bytes(eictx, in, 8);
 }
 
-ZL_DECLARE_SELECTOR(
-        ZL_splitTransposeSelector,
-        ZL_Type_struct,
-        SUCCESSOR(transposeSplit1),
-        SUCCESSOR(transposeSplit2),
-        SUCCESSOR(transposeSplit4),
-        SUCCESSOR(transposeSplit8),
-        SUCCESSOR(transposeSplit))
-
-ZL_GraphID ZL_splitTransposeSelector_impl(
-        const ZL_Selector* selCtx,
-        ZL_Input const* input,
-        ZL_splitTransposeSelector_Successors const* successors)
+ZL_Report transposeSplitSelectorFnGraph(
+        ZL_Graph* graph,
+        ZL_Edge* inputs[],
+        size_t nbInputs)
 {
-    if (ZL_Selector_isTransposeSplitSupported(selCtx)) {
-        return successors->transposeSplit;
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+    ZL_ASSERT_EQ(nbInputs, 1);
+    ZL_Edge* input = inputs[0];
+
+    ZL_GraphIDList const customGraphs = ZL_Graph_getCustomGraphs(graph);
+    ZL_ERR_IF_NE(customGraphs.nbGraphIDs, 5, graphParameter_invalid);
+    ZL_GraphID const transposeSplit1 = customGraphs.graphids[0];
+    ZL_GraphID const transposeSplit2 = customGraphs.graphids[1];
+    ZL_GraphID const transposeSplit4 = customGraphs.graphids[2];
+    ZL_GraphID const transposeSplit8 = customGraphs.graphids[3];
+    ZL_GraphID const transposeSplit  = customGraphs.graphids[4];
+
+    const ZL_Input* in = ZL_Edge_getData(input);
+    ZL_ASSERT_NN(in);
+
+    if (ZL_Graph_isTransposeSplitSupported(graph)) {
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(input, transposeSplit));
+        return ZL_returnSuccess();
     }
 
-    switch (ZL_Input_eltWidth(input)) {
+    switch (ZL_Input_eltWidth(in)) {
         case 1:
-            return successors->transposeSplit1;
+            ZL_ERR_IF_ERR(ZL_Edge_setDestination(input, transposeSplit1));
+            break;
         case 2:
-            return successors->transposeSplit2;
+            ZL_ERR_IF_ERR(ZL_Edge_setDestination(input, transposeSplit2));
+            break;
         case 4:
-            return successors->transposeSplit4;
+            ZL_ERR_IF_ERR(ZL_Edge_setDestination(input, transposeSplit4));
+            break;
         case 8:
-            return successors->transposeSplit8;
+            ZL_ERR_IF_ERR(ZL_Edge_setDestination(input, transposeSplit8));
+            break;
         default:
-            return ZL_GRAPH_ILLEGAL;
+            ZL_ERR(GENERIC,
+                   "Invalid input element width: %zu",
+                   ZL_Input_eltWidth(in));
     }
+
+    return ZL_returnSuccess();
 }
 
 ZL_NodeID ZL_Graph_getTransposeSplitNode(const ZL_Graph* gctx, size_t eltWidth)
@@ -337,14 +356,21 @@ ZL_GraphID ZL_Compressor_registerTransposeSplitGraph(
             ZL_Compressor_registerStaticGraph_fromNode(
                     cgraph, ZL_NODE_TRANSPOSE_SPLIT, ZL_GRAPHLIST(successor));
 
-    return ZL_splitTransposeSelector_declareGraph(
-            cgraph,
-            ZL_splitTransposeSelector_successors_init(
-                    transpose1,
-                    transpose2,
-                    transpose4,
-                    transpose8,
-                    transposeSplit));
+    ZL_GraphID const successors[] = {
+        transpose1, transpose2, transpose4, transpose8, transposeSplit
+    };
+    ZL_GraphParameters const params = {
+        .customGraphs   = successors,
+        .nbCustomGraphs = 5,
+    };
+
+    ZL_RESULT_OF(ZL_GraphID)
+    const result = ZL_Compressor_parameterizeGraph(
+            cgraph, ZL_GRAPH_TRANSPOSE_SPLIT, &params);
+    if (ZL_RES_isError(result)) {
+        return ZL_GRAPH_ILLEGAL;
+    }
+    return ZL_RES_value(result);
 }
 
 ZL_RESULT_OF(ZL_EdgeList)

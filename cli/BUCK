@@ -1,6 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_cxxbinary", "zs_cxxlibrary")
+load("../defs.bzl", "zs_cxxbinary", "zs_cxxlibrary")
 
 oncall("data_compression")
 
@@ -13,13 +13,13 @@ zs_cxxbinary(
     name = "zli",  # placeholder name for now
     srcs = ["zli.cpp"],
     deps = [
-        "//data_compression/experimental/zstrong/cli:cmd",
-        "//data_compression/experimental/zstrong/cli/args:args",
-        "//data_compression/experimental/zstrong/cli/commands:commands",
-        "//data_compression/experimental/zstrong/cli/utils:utils",
-        "//data_compression/experimental/zstrong/tools:arg",
-        "//data_compression/experimental/zstrong/tools:io",
-        "//data_compression/experimental/zstrong/tools:logger",
-        "//data_compression/experimental/zstrong/tools/training:train_common",
+        "../tools:arg",
+        "../tools:io",
+        "../tools:logger",
+        "../tools/training:train_common",
+        "args:args",
+        "commands:commands",
+        "utils:utils",
+        ":cmd",
     ],
 )

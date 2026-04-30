@@ -1,0 +1,739 @@
+# Core Concepts
+
+*Chapter 3 - The fundamental building blocks*
+
+This chapter provides a comprehensive look at SDDL's core features: types, records, validation, and the lexical structure of the language. While Chapter 2 introduced these concepts through examples, this chapter explores them in detail.
+
+---
+
+## Language Elements Overview
+
+Before diving into specifics, it's helpful to understand the taxonomy of elements you can work with in SDDL. The language provides several categories of types and constructs for describing binary data:
+
+### 1. Primitive Types
+
+Atomic numeric types with fixed sizes and explicit byte order:
+
+```sddl
+count: UInt32LE        # 32-bit unsigned integer, little-endian
+temperature: Float64BE # 64-bit float, big-endian
+flag: UInt8            # Single byte (no endianness)
+```
+
+These include signed/unsigned integers (8, 16, 32, 64-bit) and IEEE 754 floating-point types, all with explicit endianness for multi-byte values.
+
+### 2. Byte Sequences
+
+Raw binary data with no imposed structure:
+
+```sddl
+magic: Bytes(4)        # 4 bytes of data
+header: Bytes(128)     # 128-byte header
+data: Bytes(size)      # Variable size determined by 'size'
+```
+
+Use `Bytes(n)` when the data has unknown structure or when you need padding.
+
+### 3. Records
+
+Structured composite types that group fields together:
+
+```sddl
+record Point() {
+  x: Float32LE,
+  y: Float32LE,
+  z: Float32LE
+}
+
+origin: Point          # Instance of the Point record
+```
+
+Records can be named (for reuse) or inline (for one-off structures), and can accept parameters for flexible definitions.
+
+### 4. Arrays
+
+Sequences of repeated elements:
+
+```sddl
+values: Int32LE[100]        # Fixed-size array
+points: Point[count]        # Dynamic size from field/parameter
+matrix: Float32LE[rows][cols]  # Multi-dimensional
+```
+
+Arrays can contain primitive types, records, or other complex structures.
+
+### 5. Unions
+
+Variant types representing "exactly one of several alternatives" based on a selector:
+
+```sddl
+Union Payload(type_code) = {
+  case 1: ImageData,
+  case 2: AudioData,
+  case 3: VideoData,
+  default: RawBytes
+}
+```
+
+Only one case is active, determined by the selector value.
+
+### 6. Enumerations
+
+Named integer constants for improved readability:
+
+```sddl
+enum MessageType {
+  TEXT = 1,
+  IMAGE = 2,
+  AUDIO = 3
+}
+
+type: UInt8
+expect type == MessageType.TEXT
+```
+
+Enums make discriminators and bit flags more self-documenting.
+
+### 7. Variables and Expressions
+
+Local computed values that can be used in sizes, conditions, and validations:
+
+```sddl
+record Container() {
+  total_size: UInt32LE,
+  header_size: UInt32LE,
+  var data_size = total_size - header_size,  # Computed value
+  data: Bytes(data_size)
+}
+```
+
+Variables hold intermediate calculations and improve readability.
+
+### 8. Conditional Constructs
+
+Fields or blocks that appear only when conditions are met:
+
+```sddl
+record Packet(version) {
+  id: Int32LE,
+  size: Int16LE,
+  payload: Bytes(size),
+  when version >= 2 { timestamp: Int64LE }  # Optional field
+}
+```
+
+The `when` keyword enables format versioning and optional sections.
+
+### 9. Validation
+
+Assertions that ensure data meets expectations:
+
+```sddl
+header: record() {
+  magic: Bytes(4),
+  version: UInt16LE where (version >= 1 and version <= 3)
+}
+
+expect header.magic == "MYFT"
+```
+
+Use `expect` statements and `where` clauses to validate data integrity.
+
+### How These Fit Together
+
+SDDL specifications compose these elements hierarchically. Primitive types and byte sequences form the leaves. Records, arrays, and unions combine these into more complex structures. Variables compute intermediate values. Conditionals and validation ensure correctness. Together, they describe binary formats precisely and unambiguously.
+
+The rest of this chapter explores each category in detail, starting with the primitive type system.
+
+---
+
+## Types and Endianness
+
+SDDL provides a small set of primitive types for describing binary data. Every type is designed to have clear, unambiguous semantics.
+
+### Integer Types
+
+SDDL supports signed and unsigned integers in multiple sizes:
+
+**Signed Integers:**
+
+- `Int8` - 8-bit signed integer (-128 to 127)
+- `Int16LE` / `Int16BE` - 16-bit signed integer, little/big-endian
+- `Int32LE` / `Int32BE` - 32-bit signed integer, little/big-endian
+- `Int64LE` / `Int64BE` - 64-bit signed integer, little/big-endian
+
+**Unsigned Integers:**
+
+- `UInt8` - 8-bit unsigned integer (0 to 255)
+- `UInt16LE` / `UInt16BE` - 16-bit unsigned integer, little/big-endian
+- `UInt32LE` / `UInt32BE` - 32-bit unsigned integer, little/big-endian
+- `UInt64LE` / `UInt64BE` - 64-bit unsigned integer, little/big-endian
+
+**Example:**
+```sddl
+count: UInt32LE      # Unsigned 32-bit integer, little-endian
+offset: Int64BE      # Signed 64-bit integer, big-endian
+flags: UInt8         # 8-bit unsigned (no endianness needed)
+```
+
+### Floating-Point Types
+
+SDDL supports IEEE 754 floating-point types and Google's bfloat16:
+
+**IEEE 754 Standard:**
+- `Float16LE` / `Float16BE` - 16-bit IEEE 754 half-precision
+- `Float32LE` / `Float32BE` - 32-bit IEEE 754 single-precision
+- `Float64LE` / `Float64BE` - 64-bit IEEE 754 double-precision
+
+**Google bfloat16:**
+- `BFloat16LE` / `BFloat16BE` - 16-bit brain floating-point format
+
+**Example:**
+```sddl
+temperature: Float32LE    # Single-precision, little-endian
+position: Float64BE       # Double-precision, big-endian
+ml_weight: BFloat16LE     # Brain float, commonly used in ML
+```
+
+### The Bytes Type
+
+For untyped data or data with unknown structure, use `Bytes(n)`:
+
+```sddl
+magic: Bytes(4)           # 4 bytes of data
+header: Bytes(128)        # 128-byte header
+padding: Bytes(16)        # 16 bytes of padding
+```
+
+The argument to `Bytes` specifies the number of bytes. It can be:
+- A constant: `Bytes(100)`
+- A parameter: `Bytes(size)` where `size` is a record parameter
+- An expression: `Bytes(header.length - 4)`
+
+### Why Explicit Endianness?
+
+SDDL requires every multi-byte type to declare its byte order. This design decision prevents a common class of bugs:
+
+```sddl
+# This is an ERROR - no endianness specified
+value: Int32  # Compiler rejects this
+```
+
+```sddl
+# This is correct - endianness is explicit
+value: Int32LE  # Little-endian
+```
+
+This design prevents endianness bugs, which are common and frustrating in binary format work. You can't accidentally read big-endian data as little-endian because the type system won't let you forget to specify byte order. The byte order is visible right at each field—you don't need to look elsewhere for a global setting or guess from context. Every field documents its own intent clearly.
+
+### Single-Byte Types
+
+`Int8` and `UInt8` don't have endianness suffixes because single bytes have no byte order:
+
+```sddl
+byte_value: UInt8     # No LE/BE needed
+signed_byte: Int8     # No LE/BE needed
+```
+
+### Type Summary Table
+
+| Type | Size | Endian |
+|------|------|--------|
+| `Int8` | 1 byte | N/A |
+| `UInt8` | 1 byte | N/A |
+| `Int16LE/BE` | 2 bytes | Yes |
+| `UInt16LE/BE` | 2 bytes | Yes |
+| `Int32LE/BE` | 4 bytes | Yes |
+| `UInt32LE/BE` | 4 bytes | Yes |
+| `Int64LE/BE` | 8 bytes | Yes |
+| `UInt64LE/BE` | 8 bytes | Yes |
+| `Float16LE/BE` | 2 bytes | Yes |
+| `Float32LE/BE` | 4 bytes | Yes |
+| `Float64LE/BE` | 8 bytes | Yes |
+| `BFloat16LE/BE` | 2 bytes | Yes |
+| `Bytes(n)` | n bytes | N/A |
+
+---
+
+## Records
+
+Records are SDDL's primary mechanism for organizing structure and reusing format definitions.
+
+### Defining Records
+
+A record definition has three parts: name, parameters, and body.
+
+```sddl
+record Name(param1, param2) {
+  field1: Type1,
+  field2: Type2
+}
+```
+
+**Name:** Starts with a capital letter by convention (but not required). Should be descriptive.
+
+**Parameters:** Optional. Values passed in when the record is instantiated.
+
+**Body:** A sequence of field declarations, comma-separated.
+
+### Simple Records
+
+The simplest record has no parameters:
+
+```sddl
+record Point() {
+  x: Float32LE,
+  y: Float32LE,
+  z: Float32LE
+}
+
+origin: Point
+```
+
+This defines a 3D point structure. When you write `origin: Point`, you're creating an instance of the `Point` record.
+
+### Parameterized Records
+
+Parameters make records flexible:
+
+```sddl
+record FixedArray(count) {
+  values: Int32LE[count]
+}
+
+size: UInt32LE
+data: FixedArray(size)
+```
+
+The `count` parameter is passed when instantiating the record. Parameters can be:
+
+- Used in array sizes: `values: Int32LE[count]`
+- Used in `Bytes` sizes: `data: Bytes(count)`
+- Used in expressions: `data: Bytes(count * 2)`
+- Passed to nested records: `nested: SubRecord(count)`
+- Used in conditions: `when count > 0 { ... }`
+
+### Multiple Parameters
+
+Records can have multiple parameters:
+
+```sddl
+record Matrix(rows, cols) {
+  data: Float32LE[rows * cols]
+}
+
+record Container(width, height, depth) {
+  dimensions: Matrix(width, height),
+  volume: Float32LE[depth]
+}
+
+w: UInt32LE
+h: UInt32LE
+d: UInt32LE
+container: Container(w, h, d)
+```
+
+Parameters are positional. When calling `Container(w, h, d)`, `w` maps to `width`, `h` to `height`, and `d` to `depth`.
+
+### Fields and Field Names
+
+Field names must be unique within a record, with one exception: the underscore `_` can be used multiple times for throwaway fields:
+
+```sddl
+record Data() {
+  important: Int32LE,
+  _        : Bytes(4),     # Some padding, ignored
+  value    : Float32LE,
+  _        : Bytes(4),     # More padding, also ignored
+  count    : Int32LE
+}
+```
+
+Use `_` when a field exists in the binary format but there is no need to reference it later.
+The field still exists in the record, it's just considered "unimportant", and no handle to access its content is provided.
+
+**Field name rules:**
+
+- Must start with a letter or underscore
+- Can contain letters, numbers, and underscores
+- Are case-sensitive (`count` and `Count` are different)
+- Should be descriptive (`temperature` is better than `val`)
+
+### Nested Records
+
+Records can contain other records:
+
+```sddl
+record Point() {
+  x: Float32LE,
+  y: Float32LE
+}
+
+record Line() {
+  start: Point,
+  end: Point
+}
+
+record Shape() {
+  boundary: Line,
+  center: Point
+}
+
+shape: Shape
+```
+
+This creates a hierarchy: `Shape` contains a `Line` and a `Point`, and `Line` contains two `Point`s.
+
+### Inline Records
+
+You can define records inline without giving them a name:
+
+```sddl
+header: record() {
+  magic: Bytes(4),
+  version: Int16LE
+}
+
+data: record() {
+  count: Int32LE,
+  values: Float32LE[10]
+}
+```
+
+Note that inline records require `()` just like named records, even when they take no parameters. This keeps the syntax consistent across all record definitions.
+
+Inline records are useful for one-off structures that won't be reused.
+
+### Record Scope
+
+Records create a scope for their fields and any `var` declarations. Field names and variables defined within a record are local to that record and cannot be referenced from outside.
+
+For complete coverage of variables, expressions, and scoping rules, see [Variables and Expressions](variables-expressions.md).
+
+---
+
+## Validation
+
+SDDL provides two mechanisms for validating that binary data matches expectations: `expect` statements and `where` clauses.
+
+### The `expect` Statement
+
+`expect` statements assert that a condition must be true:
+
+```sddl
+header: record() {
+  magic: Bytes(4),
+  version: Int16LE
+}
+
+expect header.magic == "MYFT"
+expect header.version >= 1
+expect header.version <= 3
+```
+
+When the SDDL interpreter encounters an `expect` statement, it evaluates the condition. If the condition is false, parsing fails with a data error.
+
+### Compound Conditions
+
+You can combine conditions with logical operators:
+
+```sddl
+expect header.version >= 1 and header.version <= 3
+expect header.magic == "MYFT" or header.magic == "MYMT"
+expect !(header.flags & 0x80)  # High bit must not be set
+```
+
+### Comparing with Byte Arrays
+
+Magic numbers and identifiers are often byte sequences:
+
+```sddl
+magic: Bytes(4)
+expect magic == [0x50, 0x4B, 0x03, 0x04]  # ZIP file signature
+```
+
+You can also use string literals for ASCII:
+
+```sddl
+magic: Bytes(4)
+expect magic == "RIFF"  # RIFF file format
+```
+
+String literals are treated as byte sequences in expect statements.
+
+### The `where` Clause
+
+`where` is a shorthand for validating a field immediately after parsing it:
+
+```sddl
+record Data() {
+  size: UInt16LE where (size <= 1024),
+  data: Bytes(size)
+}
+```
+
+This is equivalent to:
+
+```sddl
+record Data() {
+  size: UInt16LE,
+  expect size <= 1024,
+  data: Bytes(size)
+}
+```
+
+Use `where` when validation is tightly coupled to a single field. Use `expect` when validation involves multiple fields or complex logic.
+
+### Validation and Instant-Parse
+
+When `expect` or `where` references only parameters or constants, it doesn't affect instant-parse status:
+
+```sddl
+record Block(size) {
+  data: Bytes(size)  # ✓ OK: 'size' is a parameter
+} @instant_parse
+
+length: Int32LE
+block: Block(length)
+
+When validation references local fields, the record requires scanning:
+
+```sddl
+record Data() {
+  size: UInt16LE,
+  expect size <= 1024,  # This makes the record require scanning
+  data: Bytes(size)
+}
+```
+
+The distinction: parameters are known before parsing, local fields are discovered during parsing.
+
+### Validating Structure Sizes
+
+You can validate that a record's size matches an expected value using the `sizeof` function:
+
+```sddl
+record Header() {
+  magic: Bytes(4),
+  version: Int16LE,
+  flags: Int16LE
+}
+
+expect sizeof(Header()) == 8
+```
+
+This is useful when format specifications include size fields that must match the actual structure size. For details on `sizeof` and other functions, see [Variables and Expressions](variables-expressions.md#size-and-position-functions).
+
+### Error Messages
+
+SDDL doesn't currently support custom error messages in `expect` statements (this may change). When validation fails, the interpreter reports which expect statement failed and what values were involved.
+
+---
+
+## Comments and Documentation
+
+Comments in SDDL start with `#` and continue to the end of the line:
+
+```sddl
+# This is a full-line comment
+magic: Bytes(4)  # This is an end-of-line comment
+```
+
+### Documenting Your Format
+
+Good SDDL specifications are self-documenting, but comments add valuable context:
+
+```sddl
+record Header() {
+  # File identifier, must be "MYFT" for this format version
+  magic: Bytes(4),
+
+  # Format version number
+  # Version 1: Basic format
+  # Version 2: Added compression support
+  # Version 3: Added metadata section
+  version: Int16LE,
+
+  # Bit flags controlling optional features
+  # Bit 0: Has metadata section
+  # Bit 1: Data is compressed
+  # Bit 2: Has checksum
+  flags: Int16LE
+}
+```
+
+### Comment Style Guidelines
+
+**Field documentation:**
+```sddl
+temperature: Float32LE  # In degrees Celsius
+count: UInt32LE         # Number of data points
+offset: Int64LE         # Byte offset from start of file
+```
+
+**Section separation:**
+```sddl
+# ===== Header Section =====
+magic: Bytes(4)
+version: Int16LE
+
+# ===== Data Section =====
+count: UInt32LE
+data: Int32LE[count]
+```
+
+**Explaining complex logic:**
+```sddl
+var has_metadata = (header.flags & 0x01) != 0
+when has_metadata { metadata: Metadata }
+var is_compressed = (header.flags & 0x02) != 0
+
+# Metadata is optional based on flag bit 0
+when has_metadata then metadata: Metadata
+
+# If compressed, read compressed size first
+when is_compressed {
+  compressed_size: UInt32LE,
+  data: Bytes(compressed_size)
+}
+```
+
+### Comments as Format Documentation
+
+Your SDDL file IS the format documentation. Well-commented SDDL is often clearer than separate documentation because it shows the exact structure:
+
+```sddl
+# SAO Star Catalog Format
+#
+# The Smithsonian Astrophysical Observatory (SAO) star catalog
+# is a binary format containing astronomical data for stars.
+#
+# File structure:
+# - 28-byte fixed header
+# - Variable-length star entries (28 bytes each in this version)
+
+record StarEntry() {
+  SRA0:  Float64LE,  # Right Ascension at epoch 1950.0 (radians)
+  SDEC0: Float64LE,  # Declination at epoch 1950.0 (radians)
+  ISP:   Bytes(2),   # Spectral type and magnitude code
+  MAG:   Int16LE,    # Visual magnitude * 100
+  XRPM:  Float32LE,  # Proper motion in RA (arcsec/century)
+  XDPM:  Float32LE   # Proper motion in Dec (arcsec/century)
+}
+
+header: Bytes(28)
+stars: StarEntry[]
+```
+
+---
+
+## Lexical Rules
+
+### Comments
+
+Comments start with `#` and continue to the end of the line. For comment style guidelines and documentation best practices, see [Comments and Documentation](#comments-and-documentation).
+
+### Statement Structure
+
+At the top level, statements are newline-terminated:
+
+```sddl
+header: Header
+count: Int32LE
+data: Int32LE[count]
+```
+
+Inside blocks (`{}`, `()`, `[]`), items are comma-separated with optional trailing commas:
+
+```sddl
+record Point() {
+  x: Float32LE,
+  y: Float32LE,
+  z: Float32LE,   # Trailing comma is OK
+}
+```
+
+### Whitespace
+
+Whitespace (spaces, tabs, newlines) is generally insignificant except:
+- Newlines terminate top-level statements
+- Indentation is not significant (unlike Python)
+
+Use whitespace for clarity and readability.
+
+### Additional References
+
+- For identifier naming rules, see [Fields and Field Names](#fields-and-field-names)
+- For the complete list of reserved keywords, see [Quick Reference](reference.md#keywords)
+
+---
+
+## Putting It Together
+
+Let's apply these core concepts to a complete example:
+
+```sddl
+# Image file format specification
+# Version 1.0
+
+# ----- Types -----
+
+record Header() {
+  magic: Bytes(4),      # Must be "IMGF"
+  version: UInt16LE,    # Format version (currently 1)
+  width: UInt32LE,      # Image width in pixels
+  height: UInt32LE,     # Image height in pixels
+  channels: UInt8,      # Number of color channels (1, 3, or 4)
+  bits_per_channel: UInt8  # Bits per channel (8 or 16)
+}
+
+record Pixel8(num_channels) {
+  data: UInt8[num_channels]
+}
+
+record Pixel16(num_channels) {
+  data: UInt16LE[num_channels]
+}
+
+# ----- Validation -----
+
+header: Header
+
+expect header.magic == "IMGF"
+expect header.version == 1
+expect header.channels >= 1 and header.channels <= 4
+expect header.bits_per_channel == 8 or header.bits_per_channel == 16
+
+# ----- Variables -----
+
+var num_pixels = header.width * header.height
+var num_channels = header.channels
+var bits_per_channel = header.bits_per_channel
+
+# ----- Data -----
+
+when bits_per_channel == 8 { pixels_8: Pixel8(num_channels)[num_pixels] }
+when bits_per_channel == 16 { pixels_16: Pixel16(num_channels)[num_pixels] }
+```
+
+This example demonstrates:
+- Clear type definitions with explicit endianness
+- Parameterized records
+- Validation with `expect`
+- Variables for computed values
+- Conditional fields based on format characteristics
+- Comments documenting the format
+
+---
+
+## Summary
+
+This chapter defined SDDL's building blocks: primitive and byte types with explicit endianness, records (with parameters and nesting), validation constructs (`expect`/`where`), and the lexical rules that make SDDL readable. With these pieces you can describe fixed structures and enforce invariants before moving on to layout determinism and advanced constructs.
+
+---
+
+## Where to Go Next
+
+- **[Understanding Instant-Parse](instant-parse.md)** to see how layout determinism affects parsing.
+- **[Arrays and Collections](arrays-collections.md)** for handling repeated data once you know the basics.
+- **[Alignment and Padding](alignment-padding.md)** when you need explicit layout control.

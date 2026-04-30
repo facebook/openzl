@@ -57,6 +57,24 @@ typedef struct {
     size_t nbNodeIDs;
 } ZL_NodeIDList;
 
+/**
+ * @brief Data layout for comment contained in the frame header.
+ */
+typedef struct {
+    const void* data;
+    size_t size;
+} ZL_Comment;
+
+/**
+ * @brief Typedef for void pointer to satisfy ZL_RESULT_OF requirements.
+ *
+ * ZL_RESULT_OF requires a bare type name, so we need a typedef for void*. You
+ * should use ZL_RESULT_OF(VoidPtr) instead of ZL_RESULT_OF(void*) and similarly
+ * with ZL_RESULT_DECLARE_SCOPE
+ */
+typedef void* ZL_VoidPtr;
+typedef const void* ZL_ConstVoidPtr;
+
 #if defined(__cplusplus)
 } // extern "C"
 #endif

@@ -8,7 +8,7 @@
 
 #include "openzl/compress/localparams.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 
 ZL_INLINE bool matches(const ZL_IntParam& lhs, const ZL_IntParam& rhs)
@@ -134,4 +134,4 @@ std::ostream& operator<<(std::ostream& os, const LocalParams& lp)
 }
 
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

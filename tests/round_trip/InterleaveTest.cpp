@@ -10,12 +10,12 @@ using namespace ::testing;
 
 namespace openzl::tests {
 
-using zstrong::tests::datagen::openzl::PreStringInput;
-using zstrong::tests::datagen::openzl::StringInputProducer;
+using openzl::tests::datagen::openzl::PreStringInput;
+using openzl::tests::datagen::openzl::StringInputProducer;
 
 TEST_F(InterleaveTest, MultipleInputs)
 {
-    auto dg         = zstrong::tests::datagen::DataGen();
+    auto dg         = openzl::tests::datagen::DataGen();
     size_t nbInputs = dg.randVal("nbInputs", 5, 100);
     uint32_t nbStrs = dg.u32_range("nbStrs", 100, 200);
 
@@ -33,16 +33,17 @@ TEST_F(InterleaveTest, MultipleInputs)
             continue;
         }
         preInputs.push_back(std::move(stringInput));
-        zlInputs.push_back(Input::refString(
-                preInputs[preInputs.size() - 1].first,
-                preInputs[preInputs.size() - 1].second));
+        zlInputs.push_back(
+                Input::refString(
+                        preInputs[preInputs.size() - 1].first,
+                        preInputs[preInputs.size() - 1].second));
     }
     roundtrip(zlInputs);
 }
 
 TEST_F(InterleaveTest, SingleInput)
 {
-    auto dg         = zstrong::tests::datagen::DataGen();
+    auto dg         = openzl::tests::datagen::DataGen();
     size_t nbInputs = 1;
     uint32_t nbStrs = dg.u32_range("nbStrs", 100, 200);
 
@@ -64,7 +65,7 @@ TEST_F(InterleaveTest, SingleInput)
 
 TEST_F(InterleaveTest, MultipleDegenerateInputs)
 {
-    auto dg         = zstrong::tests::datagen::DataGen();
+    auto dg         = openzl::tests::datagen::DataGen();
     size_t nbInputs = dg.randVal("nbInputs", 5, 100);
     uint32_t nbStrs = dg.u32_range("nbStrs", 100, 200);
 

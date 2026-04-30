@@ -2,18 +2,18 @@
 
 #include <algorithm>
 #include <array>
-#include <numeric>
 #include <random>
 #include <vector>
 
 #include <gtest/gtest.h>
 
 #include "openzl/compress/private_nodes.h" // ZS2_NODE_*
+#include "openzl/zl_errors.h"
 #include "openzl/zl_opaque_types.h"
 #include "tests/utils.h"
 #include "tests/zstrong/test_serialized_fixture.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 TEST_F(SerializedTest, InterpretAsLEU64)
 {
@@ -71,6 +71,33 @@ TEST_F(SerializedTest, HuffmanNode)
 TEST_F(SerializedTest, HuffmanGraph)
 {
     testGraph(ZL_GRAPH_HUFFMAN);
+}
+
+TEST_F(SerializedTest, LZ4)
+{
+    // Test default level
+    testGraph(ZL_GRAPH_LZ4);
+
+    // Test with HC
+    reset();
+    auto res = ZL_Compressor_buildLZ4Graph(cgraph_, 9);
+    ASSERT_TRUE(!ZL_RES_isError(res));
+    finalizeGraph(ZL_RES_value(res), 1);
+    test();
+
+    // Test with default level
+    reset();
+    res = ZL_Compressor_buildLZ4Graph(cgraph_, 1);
+    ASSERT_TRUE(!ZL_RES_isError(res));
+    finalizeGraph(ZL_RES_value(res), 1);
+    test();
+
+    // Test with negative level
+    reset();
+    res = ZL_Compressor_buildLZ4Graph(cgraph_, -5);
+    ASSERT_TRUE(!ZL_RES_isError(res));
+    finalizeGraph(ZL_RES_value(res), 1);
+    test();
 }
 
 TEST_F(SerializedTest, Zstd)
@@ -171,6 +198,28 @@ TEST_F(SerializedTest, Constant)
     }
 }
 
+TEST_F(SerializedTest, ConstantZeroRanges)
+{
+    const std::vector<size_t> sizes = { 1, 10, 100, 1000, 10000, 50000 };
+    for (size_t size : sizes) {
+        std::string zeroData(size, '\0');
+        testGraphOnInput(ZL_GRAPH_CONSTANT, zeroData);
+        testNodeOnInput(ZL_NODE_CONSTANT_SERIAL, zeroData);
+    }
+}
+
+TEST_F(SerializedTest, ConstantSingleBytePatterns)
+{
+    const std::vector<size_t> sizes  = { 1, 10, 100, 1000, 10000 };
+    const std::vector<char> patterns = { '\x00', '\xFF', '\x55', '\xAA' };
+    for (char pattern : patterns) {
+        for (size_t size : sizes) {
+            std::string patternData(size, pattern);
+            testGraphOnInput(ZL_GRAPH_CONSTANT, patternData);
+        }
+    }
+}
+
 TEST_F(SerializedTest, SplitN)
 {
     reset();
@@ -265,6 +314,7 @@ ZL_Report splitOptimizationBackendGraph(
         size_t nbInputs,
         std::mt19937& gen)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     std::array<std::vector<ZL_Edge*>, 2> concats;
     std::uniform_int_distribution<size_t> destDist(0, 2);
     std::uniform_int_distribution<size_t> flushDist(0, 4);
@@ -277,29 +327,27 @@ ZL_Report splitOptimizationBackendGraph(
         if (ZL_Input_numElts(data) % 8 == 0) {
             std::uniform_int_distribution<size_t> convertDist(0, 2);
             if (convertDist(gen) == 0) {
-                ZL_TRY_LET_T(
+                ZL_TRY_LET(
                         ZL_EdgeList,
                         successors,
                         ZL_Edge_runNode(edge, ZL_NODE_INTERPRET_AS_LE64));
                 edge = successors.edges[0];
                 if (std::uniform_int_distribution<size_t>(0, 1)(gen) == 0) {
-                    ZL_RET_R_IF_ERR(
-                            ZL_Edge_setDestination(edge, ZL_GRAPH_STORE));
+                    ZL_ERR_IF_ERR(ZL_Edge_setDestination(edge, ZL_GRAPH_STORE));
                 } else {
-                    ZL_RET_R_IF_ERR(
-                            ZL_Edge_setDestination(edge, ZL_GRAPH_ZSTD));
+                    ZL_ERR_IF_ERR(ZL_Edge_setDestination(edge, ZL_GRAPH_ZSTD));
                 }
                 return ZL_returnSuccess();
             }
         }
         auto graph = graphs.graphids[graphDist(gen)];
-        ZL_RET_R_IF_ERR(ZL_Edge_setDestination(edge, graph));
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(edge, graph));
         return ZL_returnSuccess();
     };
 
     auto flush = [&](std::vector<ZL_Edge*>& concat) -> ZL_Report {
         if (!concat.empty()) {
-            ZL_TRY_LET_T(
+            ZL_TRY_LET(
                     ZL_EdgeList,
                     successors,
                     ZL_Edge_runMultiInputNode(
@@ -307,9 +355,9 @@ ZL_Report splitOptimizationBackendGraph(
                             concat.size(),
                             ZL_NODE_CONCAT_SERIAL));
             ZL_ASSERT_EQ(successors.nbEdges, 2);
-            ZL_RET_R_IF_ERR(ZL_Edge_setDestination(
+            ZL_ERR_IF_ERR(ZL_Edge_setDestination(
                     successors.edges[0], ZL_GRAPH_FIELD_LZ));
-            ZL_RET_R_IF_ERR(finish(successors.edges[1]));
+            ZL_ERR_IF_ERR(finish(successors.edges[1]));
         }
         concat.clear();
         return ZL_returnSuccess();
@@ -324,15 +372,15 @@ ZL_Report splitOptimizationBackendGraph(
             concats[dest].push_back(input);
 
             if (flushDist(gen) == 0) {
-                ZL_RET_R_IF_ERR(flush(concats[dest]));
+                ZL_ERR_IF_ERR(flush(concats[dest]));
             }
         } else {
-            ZL_RET_R_IF_ERR(finish(input));
+            ZL_ERR_IF_ERR(finish(input));
         }
     }
 
     for (auto& concat : concats) {
-        ZL_RET_R_IF_ERR(flush(concat));
+        ZL_ERR_IF_ERR(flush(concat));
     }
 
     return ZL_returnSuccess();
@@ -343,6 +391,7 @@ ZL_Report splitOptimizationGraph(
         ZL_Edge* inputs[],
         size_t nbInputs) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     const ZL_IntParam seed = ZL_Graph_getLocalIntParam(gctx, 0);
     std::mt19937 gen(seed.paramValue);
 
@@ -362,7 +411,7 @@ ZL_Report splitOptimizationGraph(
                 segmentSizes.push_back(segmentDist(gen));
                 remaining -= segmentSizes.back();
             }
-            ZL_TRY_LET_T(
+            ZL_TRY_LET(
                     ZL_EdgeList,
                     splitSuccessors,
                     ZL_Edge_runSplitNode(
@@ -504,4 +553,4 @@ TEST_F(SerializedTest, SplitOptimizationInMultiInputGraph)
 }
 
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

@@ -29,6 +29,12 @@ size_t ZL_runtimeNodeInputLimit(unsigned formatVersion);
 /// impacting the format version.
 #define ZL_ENCODER_GRAPH_LIMIT 131072
 
+/// Maximum depth of a compression graph. Graphs deeper than this are
+/// rejected, as excessive depth typically indicates an infinite loop.
+/// NOTE: This limit is encoder only, so it can be increased any time without
+/// impacting the format version.
+#define ZL_MAX_GRAPH_DEPTH 1024
+
 /// ZStrong will refuse to encode/decode graphs that contain more transforms
 /// than this.
 size_t ZL_runtimeNodeLimit(unsigned formatVersion);
@@ -62,6 +68,9 @@ size_t ZL_transformOutStreamsLimit(unsigned formatVersion);
 /// Carefully consider all use-cases and increase ZL_MIN_FORMAT_VERSION if
 /// there's any risk.
 #define ZL_CONTAINER_SIZE_LIMIT (1024 * 1024)
+
+/// Size limit for the variable sized comment field
+#define ZL_MAX_HEADER_COMMENT_SIZE_LIMIT 10000
 
 ////////////////////////////////////////
 // Compressor Serialization Limits

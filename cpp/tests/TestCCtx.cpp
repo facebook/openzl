@@ -71,8 +71,9 @@ TEST_F(TestCCtx, compress)
     data[50]                      = 50;
     inputs.push_back(Input::refStruct(poly::span<const int64_t>(data)));
     inputs.push_back(Input::refNumeric(poly::span<const int64_t>(data)));
-    inputs.push_back(Input::refSerial(
-            "hello world this is some test input hello hello hello world hello test input"));
+    inputs.push_back(
+            Input::refSerial(
+                    "hello world this is some test input hello hello hello world hello test input"));
     std::array<uint32_t, 5> lengths = { 1, 3, 2, 1, 2 };
     inputs.push_back(Input::refString("133322122", lengths));
     auto compressed = cctx.compress(inputs);
@@ -163,7 +164,7 @@ TEST_F(TestCCtx, writeMultipleTraces)
     auto numeric = Input::refNumeric(poly::span<const int64_t>(data));
     std::vector<std::pair<
             std::string,
-            std::map<size_t, std::pair<std::string, std::string>>>>
+            std::map<std::string, std::pair<std::string, std::string>>>>
             traces;
     // convenience function to copy the trace internals, since we get returned
     // string_views
@@ -171,12 +172,14 @@ TEST_F(TestCCtx, writeMultipleTraces)
             [](const std::pair<
                     poly::string_view,
                     std::map<
-                            size_t,
+                            std::string,
                             std::pair<poly::string_view, poly::string_view>>>&
                        trace) {
                 std::pair<
                         std::string,
-                        std::map<size_t, std::pair<std::string, std::string>>>
+                        std::map<
+                                std::string,
+                                std::pair<std::string, std::string>>>
                         copy;
                 copy.first = trace.first;
                 for (const auto& [k, v] : trace.second) {

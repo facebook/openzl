@@ -2,6 +2,7 @@
 
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("../../defs.bzl", "relative_headers")
 
 oncall("data_compression")
 
@@ -12,14 +13,15 @@ cpp_library(
         "decode_tulip_v2.cpp",
         "encode_tulip_v2.cpp",
     ],
-    headers = [
+    headers = relative_headers([
         "decode_tulip_v2.h",
         "encode_tulip_v2.h",
-    ],
+    ]),
+    header_namespace = "",
     exported_deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/custom_transforms/thrift/kernels:decode_thrift_binding",
-        "//data_compression/experimental/zstrong/custom_transforms/thrift/kernels:encode_thrift_binding",
+        "../..:zstronglib",
+        "../thrift/kernels:decode_thrift_binding",
+        "../thrift/kernels:encode_thrift_binding",
         "//folly:range",
         "//folly:scope_guard",
         "//folly/io:iobuf",
@@ -32,9 +34,9 @@ cpp_binary(
     name = "main",
     srcs = ["main.cpp"],
     deps = [
+        "../..:zstronglib",
+        "../../tools:zstrong_cpp",
         ":tulip_v2",
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/tools:zstrong_cpp",
         "//folly:file_util",
         "//folly/init:init",
     ],

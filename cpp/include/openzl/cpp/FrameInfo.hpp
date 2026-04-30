@@ -26,18 +26,21 @@ class FrameInfo {
         return info_.get();
     }
 
+    size_t formatVersion() const;
     size_t numOutputs() const;
     Type outputType(size_t index) const;
     size_t outputContentSize(size_t index) const;
+    poly::string_view comment() const;
 
-    size_t unwrap(
-            ZL_Report report,
+    template <typename ResultType>
+    typename ResultType::ValueType unwrap(
+            ResultType result,
             poly::string_view msg = {},
             poly::source_location location =
                     poly::source_location::current()) const
     {
         return openzl::unwrap(
-                report, std::move(msg), nullptr, std::move(location));
+                result, std::move(msg), nullptr, std::move(location));
     }
 
    private:

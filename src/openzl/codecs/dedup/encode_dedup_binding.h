@@ -15,11 +15,10 @@ ZL_BEGIN_C_DECLS
  */
 ZL_Report EI_dedup_num(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 
-#define EI_DEDUP_NUM(id)                                        \
-    {                                                           \
-        .gd = DEDUP_NUM_GRAPH(id), .transform_f = EI_dedup_num, \
-        .name = "!zl.dedup_num"                                 \
-    }
+#define EI_DEDUP_NUM(id)                  \
+    { .gd          = DEDUP_NUM_GRAPH(id), \
+      .transform_f = EI_dedup_num,        \
+      .name        = "!zl.dedup_num" }
 
 // Integer parameter, set to 1 to state that inputs are trusted to be identical
 // Note(@Cyan): not part of the public API yet
@@ -33,11 +32,10 @@ ZL_Report EI_dedup_num(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 ZL_Report
 EI_dedup_num_trusted(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 
-#define EI_DEDUP_NUM_TRUSTED(id)                                        \
-    {                                                                   \
-        .gd = DEDUP_NUM_GRAPH(id), .transform_f = EI_dedup_num_trusted, \
-        .name = "!zl.private.dedup_num_trusted"                         \
-    }
+#define EI_DEDUP_NUM_TRUSTED(id)           \
+    { .gd          = DEDUP_NUM_GRAPH(id),  \
+      .transform_f = EI_dedup_num_trusted, \
+      .name        = "!zl.private.dedup_num_trusted" }
 
 ZL_END_C_DECLS
 

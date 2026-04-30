@@ -64,11 +64,14 @@ typedef enum {
     ZL_ErrorCode_outputNotCommitted                   = 24,
     ZL_ErrorCode_outputNotReserved                    = 25,
     ZL_ErrorCode_segmenter_inputNotConsumed           = 26,
+    ZL_ErrorCode_segmenter_noSegments                 = 27,
     /* graph stage errors */
-    ZL_ErrorCode_graph_invalid          = 30,
-    ZL_ErrorCode_graph_nonserializable  = 31,
-    ZL_ErrorCode_invalidTransform       = 32,
-    ZL_ErrorCode_graph_invalidNumInputs = 33,
+    ZL_ErrorCode_graph_invalid               = 30,
+    ZL_ErrorCode_graph_nonserializable       = 31,
+    ZL_ErrorCode_invalidTransform            = 32,
+    ZL_ErrorCode_graph_invalidNumInputs      = 33,
+    ZL_ErrorCode_graph_parser_malformedInput = 34,
+    ZL_ErrorCode_graph_parser_unhandledInput = 35,
     /* runtime compression errors */
     ZL_ErrorCode_successor_invalid          = 40,
     ZL_ErrorCode_successor_alreadySet       = 41,
@@ -89,6 +92,11 @@ typedef enum {
     ZL_ErrorCode_formatVersion_unsupported = 60,
     ZL_ErrorCode_formatVersion_notSet      = 61,
     ZL_ErrorCode_node_versionMismatch      = 62,
+    /* dictionary errors */
+    ZL_ErrorCode_dict_corruption        = 65,
+    ZL_ErrorCode_dict_materialization   = 66,
+    ZL_ErrorCode_noValidMaterialization = 67,
+    ZL_ErrorCode_dictNoRecord           = 68,
     /* internal errors */
     ZL_ErrorCode_allocation              = 70,
     ZL_ErrorCode_internalBuffer_tooSmall = 71,

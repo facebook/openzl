@@ -1,26 +1,40 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_library")
+load("../../defs.bzl", "zs_cxxlibrary")
 
 oncall("data_compression")
 
-zs_library(
-    name = "ml_selector_graph",
-    srcs = ["ml_selector_graph.c"],
-    headers = ["ml_selector_graph.h"],
+zs_cxxlibrary(
+    name = "ml_selector_trainer",
+    srcs = ["ml_selector_trainer.cpp"],
+    headers = ["ml_selector_trainer.h"],
+    compiler_flags = [
+        "-Wno-unused-exception-parameter",  # For XGBoost warnings
+    ],
     deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
+        "../..:zstronglib",
+        "../../cpp:openzl_cpp",
+        "../../tests/datagen:datagen",  # @manual
+        "../training:train_common",
+        "../training/graph_mutation:graph_mutation",
+        "../training/sample_collection:sample_collection",
+        "../training/utils:training_utils",
+        ":ml_features",
+    ],
+    exported_external_deps = [
+        ("xgboost", None, "xgboost-cpp"),
+        ("xgboost", None, "dmlc"),
     ],
 )
 
-cpp_unittest(
-    name = "test_ml_selector_graph",
-    srcs = ["test_mlSelectorGraph.cpp"],
+zs_cxxlibrary(
+    name = "ml_features",
+    srcs = ["ml_features.cpp"],
+    headers = ["ml_features.h"],
     deps = [
-        ":ml_selector_graph",
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
-        "//data_compression/experimental/zstrong/tests:utils",
+        "..:logger",
+        "../..:zstronglib",
+        "../../cpp:openzl_cpp",
+        "../training/utils:training_utils",
     ],
 )

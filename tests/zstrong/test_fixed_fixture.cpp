@@ -6,10 +6,11 @@
 #include <gtest/gtest.h>
 
 #include "openzl/zl_opaque_types.h"
+#include "tests/datagen/random_producer/compat_uniform_distribution.h"
 #include "tests/utils.h"
 #include "tests/zstrong/test_fixed_fixture.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 void FixedTest::setAlphabetMask(const std::string& mask)
 {
@@ -25,7 +26,7 @@ std::string FixedTest::generatedData(size_t nbElts, size_t cardinality)
     std::mt19937 gen(42);
     std::string alphabet(cardinality * eltWidth_, 0);
     {
-        std::uniform_int_distribution<int8_t> dist;
+        datagen::compat_uniform_int_distribution<int8_t> dist;
         for (size_t i = 0; i < alphabet.size(); ++i) {
             alphabet[i] = dist(gen);
             if (i < alphabetMask_.size()) {
@@ -130,4 +131,4 @@ void FixedTest::testGraphOnInput(
     testRoundTrip(input);
 }
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

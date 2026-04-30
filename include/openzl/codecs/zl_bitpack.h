@@ -11,11 +11,7 @@ extern "C" {
 
 // These Graphs essentially call their namesake Node and then STORE the result
 // into the frame
-#define ZL_GRAPH_BITPACK           \
-    (ZL_GraphID)                   \
-    {                              \
-        ZL_StandardGraphID_bitpack \
-    }
+#define ZL_GRAPH_BITPACK ZL_MAKE_GRAPH_ID(ZL_StandardGraphID_bitpack)
 
 #if defined(__cplusplus)
 }

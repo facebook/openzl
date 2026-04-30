@@ -4,17 +4,62 @@
 #include "cli/utils/util.h"
 
 #include <chrono>
+#include <filesystem>
+#include <fstream>
 
 #include "tools/logger/Logger.h"
 
 #include "openzl/cpp/DCtx.hpp"
 #include "openzl/cpp/Exception.hpp"
-#include "openzl/zl_decompress.h"
 
 namespace openzl::cli {
 constexpr size_t BYTES_TO_MB = 1000 * 1000;
 
 using namespace tools::logger;
+
+namespace {
+
+void writeTrace(DCtx& dctx, const DecompressArgs& args)
+{
+    const auto trace = dctx.getLatestTrace();
+    args.traceOutput->write(trace.first);
+    args.traceOutput->close();
+    if (args.traceStreamsDir) {
+        std::filesystem::path dir{ *args.traceStreamsDir };
+        if (!std::filesystem::is_directory(dir)) {
+            std::string msg = "Streamdump trace directory does not exist: "
+                    + dir.string();
+            throw InvalidArgsException(msg);
+        }
+        for (const auto& [id, stream] : trace.second) {
+            std::filesystem::path path = dir / (id + ".sdd");
+            std::ofstream file{ path, std::ios::binary };
+            if (!file.is_open()) {
+                Logger::log(
+                        ERRORS,
+                        "Failed to open streamdump file: ",
+                        path.string().c_str());
+                continue;
+            }
+            file.write(stream.first.data(), stream.first.size());
+            if (stream.second != "") {
+                std::filesystem::path strLensPath = dir / (id + ".sdlens");
+                std::ofstream strLensFile{ strLensPath, std::ios::binary };
+                if (!strLensFile.is_open()) {
+                    Logger::log(
+                            ERRORS,
+                            "Failed to open streamdump strlens file: ",
+                            strLensPath.string().c_str());
+                    continue;
+                }
+                strLensFile.write(stream.second.data(), stream.second.size());
+            }
+            file.close();
+        }
+    }
+}
+
+} // anonymous namespace
 
 int cmdDecompress(const DecompressArgs& args)
 {
@@ -41,8 +86,26 @@ int cmdDecompress(const DecompressArgs& args)
 
     DCtx dctx;
 
+    if (args.traceOutput) {
+        args.traceOutput->open();
+        Logger::log(
+                VERBOSE1,
+                "Tracing decompression to ",
+                args.traceOutput->name().data());
+        dctx.writeTraces(true, args.streamPreview);
+    }
+
     // decompress
-    std::string dstBuffer = dctx.decompressSerial(srcBuffer);
+    std::string dstBuffer;
+    try {
+        dstBuffer = dctx.decompressSerial(srcBuffer);
+    } catch (const openzl::Exception&) {
+        // if tracing, write the error trace to the output file
+        if (args.traceOutput) {
+            writeTrace(dctx, args);
+        }
+        throw;
+    }
 
     util::logWarnings(dctx);
 
@@ -64,6 +127,11 @@ int cmdDecompress(const DecompressArgs& args)
             compressionSpeed);
     output.write(std::move(dstBuffer));
     output.close();
+
+    // if tracing, write the trace to the output file
+    if (args.traceOutput) {
+        writeTrace(dctx, args);
+    }
     return 0;
 }
 

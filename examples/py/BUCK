@@ -5,23 +5,27 @@ load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 oncall("data_compression")
 
 python_binary(
+    # @autodeps-skip
     name = "quick_start",
     srcs = ["quick_start.py"],
+    base_module = "openzl.examples.py",
     labels = ["autodeps2_generated"],
-    main_module = "data_compression.experimental.zstrong.examples.py.quick_start",
+    main_module = "openzl.examples.py.quick_start",
     deps = [
+        "../../py:openzl",
         "fbsource//third-party/pypi/numpy:numpy",
-        "//data_compression/experimental/zstrong/py:openzl",
     ],
 )
 
 python_binary(
+    # @autodeps-skip
     name = "parsing",
     srcs = ["parsing.py"],
+    base_module = "openzl.examples.py",
     labels = ["autodeps2_generated"],
-    main_module = "data_compression.experimental.zstrong.examples.py.parsing",
+    main_module = "openzl.examples.py.parsing",
     deps = [
+        "../../py:openzl",
         "fbsource//third-party/pypi/numpy:numpy",
-        "//data_compression/experimental/zstrong/py:openzl",
     ],
 )

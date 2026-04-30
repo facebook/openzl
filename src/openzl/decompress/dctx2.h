@@ -125,6 +125,47 @@ ZL_Report DCtx_setAppliedParameters(ZL_DCtx* dctx);
 
 int DCtx_getAppliedGParam(const ZL_DCtx* dctx, ZL_DParam gdparam);
 
+/// Sentinel value indicating a stream is stored in the frame rather than
+/// produced by a decoder node.
+#define ZL_PRODUCER_STORE ((ZL_IDType)(-1))
+
+typedef struct ZL_AppendToOutputOptimization_s ZL_AppendToOutputOptimization;
+
+typedef struct ZL_DecoderFusionDesc_s ZL_DecoderFusionDesc;
+
+/// Metadata about a single data stream in the decompression context.
+typedef struct ZL_DCtx_DataInfo {
+    ZL_Data* data;
+    ZL_AppendToOutputOptimization* appendOpt;
+    /// The index of the node that produced this stream or
+    /// ZL_PRODUCER_STORE if stored in the frame.
+    ZL_IDType producerNodeIdx;
+} ZL_DCtx_DataInfo;
+
+/**
+ * Run the decoder for a single node.
+ *
+ * @param nodeInfo The node to run.
+ * @param withinFusedDecoder If true, this function is being called from within
+ * a currently executing decoder fusion via ZL_DecoderFusion_runCodec(), so do
+ * not search for decoder fusions as the caller is explicitly asking for the
+ * codec to be executed.
+ */
+ZL_Report DCTX_runDecoder(
+        ZL_DCtx* dctx,
+        const DFH_NodeInfo* nodeInfo,
+        bool withinFusedDecoder);
+
+/// Register a decoder fusion with the decompression context.
+/// @see ZL_DecoderFusionState_registerFusion()
+ZL_Report DCTX_registerDecoderFusion(
+        ZL_DCtx* dctx,
+        const ZL_DecoderFusionDesc* fusion);
+
+/// Remove all registered decoder fusions from the decompression context.
+/// @see ZL_DecoderFusionState_clearFusions()
+void DCTX_clearDecoderFusions(ZL_DCtx* dctx);
+
 ZL_END_C_DECLS
 
 #endif // ZSTRONG_DECOMPRESS_DCTX2_H

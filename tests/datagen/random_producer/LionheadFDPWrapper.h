@@ -9,7 +9,7 @@
 #include "tests/datagen/random_producer/RNGEngine.h"
 #include "tests/datagen/random_producer/RandWrapper.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 // A non-templated wrapper around StructuredFDP that provides a consistent
 // interface for downstream distributions to use.
@@ -34,7 +34,7 @@ class LionheadFDPWrapper : public RandWrapper {
     {
         return fdp_->remaining_input_length();
     }
-    std::vector<uint8_t> all_remaining_bytes()
+    std::vector<uint8_t> all_remaining_bytes() override
     {
         return fdp_->all_remaining_bytes();
     }
@@ -123,4 +123,4 @@ class LionheadFDPWrapper : public RandWrapper {
     FDP* fdp_;
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

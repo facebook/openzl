@@ -5,7 +5,7 @@
 #include "openzl/common/buffer.h"
 #include "tests/utils.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 namespace {
 
@@ -122,4 +122,4 @@ TEST(BufferTest, testMove)
 
 } // namespace
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

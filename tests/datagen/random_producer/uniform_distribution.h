@@ -8,7 +8,7 @@
 
 #include "openzl/shared/bits.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 //===----------------------------------------------------------------------===//
 //
@@ -539,4 +539,4 @@ inline std::basic_istream<_CharT, _Traits>& operator>>(
 
 // end LLVM project
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

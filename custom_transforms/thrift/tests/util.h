@@ -17,13 +17,11 @@
 #include "tools/zstrong_cpp.h"
 
 #if ZL_FBCODE_IS_RELEASE
-#    include "openzl/versions/release/custom_transforms/thrift/tests/gen-cpp2/test_schema_fatal_types.h"
-#    include "openzl/versions/release/custom_transforms/thrift/tests/gen-cpp2/test_schema_types.h"
-#    include "openzl/versions/release/custom_transforms/thrift/tests/gen-cpp2/test_schema_visitation.h"
+#    include "openzl/prod/custom_transforms/thrift/tests/gen-cpp2/test_schema_types.h"
+#    include "openzl/prod/custom_transforms/thrift/tests/gen-cpp2/test_schema_visitation.h"
 #else
-#    include "data_compression/experimental/zstrong/custom_transforms/thrift/tests/gen-cpp2/test_schema_fatal_types.h"
-#    include "data_compression/experimental/zstrong/custom_transforms/thrift/tests/gen-cpp2/test_schema_types.h"
-#    include "data_compression/experimental/zstrong/custom_transforms/thrift/tests/gen-cpp2/test_schema_visitation.h"
+#    include "openzl/dev/custom_transforms/thrift/tests/gen-cpp2/test_schema_types.h"
+#    include "openzl/dev/custom_transforms/thrift/tests/gen-cpp2/test_schema_visitation.h"
 #endif
 
 #include <folly/Range.h>
@@ -32,7 +30,9 @@
 
 #pragma once
 
-namespace zstrong::thrift::tests {
+namespace openzl::thrift::tests {
+
+using namespace zstrong::thrift;
 
 // Works for any ZL_VOEncoderDesc which takes Thrift splitter localParams.
 // In other words, this function works equally well for TCompact and TBinary.
@@ -108,7 +108,8 @@ std::string buildValidEncoderConfig(
 template <typename Serializer, typename RNG>
 std::string generateRandomThrift(RNG&& gen)
 {
-    const auto testStruct = generate<cpp2::TestStruct>(std::forward<RNG>(gen));
+    const auto testStruct = generate<zstrong::thrift::tests::cpp2::TestStruct>(
+            std::forward<RNG>(gen));
     return Serializer::template serialize<std::string>(testStruct);
 }
 
@@ -119,20 +120,20 @@ inline size_t thriftSplitCompressBound(size_t srcSize, size_t configSize)
 
 template <typename Serializer>
 class ConfigurableThriftProducer
-        : public zstrong::tests::datagen::FixedWidthDataProducer {
+        : public openzl::tests::datagen::FixedWidthDataProducer {
    public:
     explicit ConfigurableThriftProducer(
-            std::shared_ptr<zstrong::tests::datagen::RandWrapper> rw)
+            std::shared_ptr<openzl::tests::datagen::RandWrapper> rw)
             : FixedWidthDataProducer(std::move(rw), 1)
     {
     }
 
-    ::zstrong::tests::datagen::FixedWidthData operator()(
-            zstrong::tests::datagen::RandWrapper::NameType) override
+    ::openzl::tests::datagen::FixedWidthData operator()(
+            openzl::tests::datagen::RandWrapper::NameType) override
     {
         return {
             generateRandomThrift<Serializer>(
-                    zstrong::tests::datagen::RNGEngine<uint32_t>(
+                    openzl::tests::datagen::RNGEngine<uint32_t>(
                             this->rw_.get(),
                             "ConfigurableThriftProducer::RNG::operator()")),
             1
@@ -145,4 +146,4 @@ class ConfigurableThriftProducer
     }
 };
 
-} // namespace zstrong::thrift::tests
+} // namespace openzl::thrift::tests

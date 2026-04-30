@@ -1,40 +1,45 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "openzl/compress/graph_registry.h"
+#include "openzl/compress/graph_registry.h" // InternalGraphDesc, GR_standardGraphs declarations
 #include "openzl/codecs/bitpack/encode_bitpack_binding.h" // SI_selector_bitpack
-#include "openzl/codecs/encoder_registry.h"               // ER_standardNodes
-#include "openzl/codecs/entropy/encode_entropy_binding.h"
-#include "openzl/codecs/lz/encode_lz_binding.h"
+#include "openzl/codecs/encoder_registry.h" // ER_standardNodes, CNode definitions
+#include "openzl/codecs/entropy/encode_entropy_binding.h" // EI_fseDynamicGraph, EI_huffmanDynamicGraph, EI_entropyDynamicGraph
+#include "openzl/codecs/lz/encode_lz_binding.h" // EI_fieldLzDynGraph, EI_fieldLzLiteralsDynGraph, SI_fieldLzLiteralsChannelSelector
+#include "openzl/codecs/merge_sorted/encode_merge_sorted_binding.h" // MIGRAPH_MERGE_SORTED
 #include "openzl/codecs/parse_int/encode_parse_int_binding.h" // MIGRAPH_TRY_PARSE_INT
-#include "openzl/common/assertion.h"
-#include "openzl/common/logging.h"
-#include "openzl/compress/compress_types.h"
-#include "openzl/compress/dyngraph_interface.h" // ZL_Graph definition
-#include "openzl/compress/graphs/generic_clustering_graph.h" // graph_compressClustered
-#include "openzl/compress/graphs/simple_data_description_language.h"
-#include "openzl/compress/graphs/split_graph.h"
-#include "openzl/compress/implicit_conversion.h" // ICONV_*
-#include "openzl/compress/private_nodes.h" // ZL_PrivateStandardGraphID_end
-#include "openzl/compress/selector.h"      // SelectorCtx
-#include "openzl/compress/selectors/selector_compress.h"
-#include "openzl/compress/selectors/selector_constant.h"
-#include "openzl/compress/selectors/selector_genericLZ.h"
-#include "openzl/compress/selectors/selector_numeric.h"
-#include "openzl/compress/selectors/selector_store.h"
-#include "openzl/shared/utils.h" // ZL_ARRAY_SIZE
-#include "openzl/zl_data.h"
-#include "openzl/zl_errors.h"    // ZL_TRY_LET_T
-#include "openzl/zl_graph_api.h" // ZS2_Graph_*
-#include "openzl/zl_localParams.h"
-#include "openzl/zl_opaque_types.h"
+#include "openzl/codecs/partition/encode_partition_bitpack.h" // EI_partitionBitpackDynGraph
+#include "openzl/codecs/transpose/encode_transpose_binding.h" // MIGRAPH_TRANSPOSE_SPLIT
+#include "openzl/common/assertion.h" // ZL_ASSERT_* macros for runtime checks
+#include "openzl/common/logging.h"   // STR_REPLACE_NULL, logging utilities
+#include "openzl/compress/compress_types.h" // Compression-related type definitions
+#include "openzl/compress/dyngraph_interface.h" // ZL_Graph definition and graph context functions
+#include "openzl/compress/graphs/generic_clustering_graph.h" // MIGRAPH_CLUSTERING
+#include "openzl/compress/graphs/sddl/simple_data_description_language.h" // ZL_SDDL_dynGraph
+#include "openzl/compress/graphs/sddl2/sddl2.h" // SDDL2_replayChunk, SDDL2_segment
+#include "openzl/compress/graphs/small_lengths_graph.h"
+#include "openzl/compress/graphs/split_graph.h" // ZL_splitFnGraph
+#include "openzl/compress/implicit_conversion.h" // ICONV_isCompatible for type checking
+#include "openzl/compress/private_nodes.h" // ZL_PrivateStandardGraphID_end, private node ID definitions
+#include "openzl/compress/segmenters/segmenter_numeric.h" // SEGM_numeric_desc
+#include "openzl/compress/selector.h" // SelectorCtx, ZL_SelectorFn, SelCtx_* functions
+#include "openzl/compress/selectors/ml/ml_selector_graph.h" // ZL_MLSel_dynGraph
+#include "openzl/compress/selectors/selector_compress.h" // SI_selector_compress, SI_selector_compress_* functions
+#include "openzl/compress/selectors/selector_constant.h" // SI_selector_constant
+#include "openzl/compress/selectors/selector_genericLZ.h" // SI_selector_genericLZ
+#include "openzl/compress/selectors/selector_numeric.h"   // SI_selector_numeric
+#include "openzl/compress/selectors/selector_store.h" // SI_selector_store, MIGRAPH_STORE
+#include "openzl/shared/utils.h"                      // ZL_ARRAY_SIZE macro
+#include "openzl/zl_data.h"   // ZL_Type definitions and data structures
+#include "openzl/zl_errors.h" // ZL_TRY_LET, ZL_ERR_IF_* error handling macros
+#include "openzl/zl_graph_api.h"    // ZL_Graph_*, ZL_Edge_* API functions
+#include "openzl/zl_localParams.h"  // ZL_LocalParams structure and functions
+#include "openzl/zl_opaque_types.h" // Opaque type definitions used by the API
 
 #define _1_SUCCESSOR(s) (const ZL_GraphID[]){ { s } }, 1
 #define _2_SUCCESSORS(s1, s2) (const ZL_GraphID[]){ { s1 }, { s2 } }, 2
 
 // Pay attention to match the following conditions:
 // - intype => input type of the Graph, hence of the Head Node
-// - minv => highest minimum version of Head Node and all Successor Graphs
-// - maxv => lowest maximum version of Head Node and all Successor Graphs
 // These values must be manually determined and provided,
 // they can't be extracted from ER_standardNodes nor GR_standardGraphs,
 // because these sources are not considered "constant" by the C standard.
@@ -95,6 +100,15 @@
         },                                    \
     }
 
+#define REGISTER_SEGMENTER(id, _sdesc) \
+    [id] = {                                 \
+        .type = GR_segmenter,                \
+        .gdi  = {                            \
+            .segDesc = _sdesc,               \
+            .baseGraphID = ZL_GRAPH_ILLEGAL, \
+        },                                   \
+    }
+
 #define REGISTER_SPECIAL(id, _name, _type) \
     [id] = {                                                              \
         .type = _type,                                                    \
@@ -118,17 +132,33 @@ const InternalGraphDesc GR_standardGraphs[ZL_PrivateStandardGraphID_end] = {
     REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_fse, "!zl.fse", ZL_Type_serial, EI_fseDynamicGraph),
     REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_huffman, "!zl.huffman", ZL_Type_serial | ZL_Type_struct | ZL_Type_numeric, EI_huffmanDynamicGraph),
     REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_entropy, "!zl.entropy", ZL_Type_serial | ZL_Type_struct | ZL_Type_numeric, EI_entropyDynamicGraph),
-    REGISTER_SELECTOR(ZL_StandardGraphID_constant, "!zl.constant", SI_selector_constant, ZL_Type_serial | ZL_Type_struct),
+    REGISTER_SELECTOR(ZL_StandardGraphID_constant, "!zl.constant", SI_selector_constant, ZL_Type_serial | ZL_Type_struct | ZL_Type_numeric),
     REGISTER_STATIC_GRAPH(ZL_StandardGraphID_zstd, "!zl.zstd", ZL_Type_serial, ZL_PrivateStandardNodeID_zstd, _1_SUCCESSOR(ZL_PrivateStandardGraphID_serial_store) ),
     REGISTER_SELECTOR(ZL_StandardGraphID_bitpack, "!zl.bitpack", SI_selector_bitpack, ZL_Type_serial | ZL_Type_numeric),
     REGISTER_STATIC_GRAPH(ZL_StandardGraphID_flatpack, "!zl.flatpack", ZL_Type_serial, ZL_PrivateStandardNodeID_flatpack, _2_SUCCESSORS(ZL_PrivateStandardGraphID_serial_store, ZL_PrivateStandardGraphID_serial_store) ),
     REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_field_lz, "!zl.field_lz", ZL_Type_struct | ZL_Type_numeric, EI_fieldLzDynGraph),
+    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_lz, "!zl.lz", ZL_Type_serial, EI_lzDynGraph),
     REGISTER_MIGRAPH(ZL_StandardGraphID_compress_generic, MIGRAPH_COMPRESS),
     REGISTER_SELECTOR(ZL_StandardGraphID_select_generic_lz_backend, "!zl.select_generic_lz_backend", SI_selector_genericLZ, ZL_Type_serial),
+    REGISTER_SEGMENTER(ZL_StandardGraphID_segment_numeric, SEGM_NUMERIC_DESC),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_interpret_num8_compress,  "!zl.private.interpret_num8_compress",  ZL_Type_serial, ZL_StandardNodeID_convert_serial_to_num8,     _1_SUCCESSOR(ZL_PrivateStandardGraphID_numeric_compress)),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_interpret_num16_compress, "!zl.private.interpret_num16_compress", ZL_Type_serial, ZL_StandardNodeID_convert_serial_to_num_le16, _1_SUCCESSOR(ZL_PrivateStandardGraphID_numeric_compress)),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_interpret_num32_compress, "!zl.private.interpret_num32_compress", ZL_Type_serial, ZL_StandardNodeID_convert_serial_to_num_le32, _1_SUCCESSOR(ZL_PrivateStandardGraphID_numeric_compress)),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_interpret_num64_compress, "!zl.private.interpret_num64_compress", ZL_Type_serial, ZL_StandardNodeID_convert_serial_to_num_le64, _1_SUCCESSOR(ZL_PrivateStandardGraphID_numeric_compress)),
+    REGISTER_SEGMENTER(ZL_StandardGraphID_segment_num8_from_serial,  SEGM_NUM_FROM_SERIAL_DESC(1, 8,  ZL_PrivateStandardGraphID_interpret_num8_compress)),
+    REGISTER_SEGMENTER(ZL_StandardGraphID_segment_num16_from_serial, SEGM_NUM_FROM_SERIAL_DESC(2, 16, ZL_PrivateStandardGraphID_interpret_num16_compress)),
+    REGISTER_SEGMENTER(ZL_StandardGraphID_segment_num32_from_serial, SEGM_NUM_FROM_SERIAL_DESC(4, 32, ZL_PrivateStandardGraphID_interpret_num32_compress)),
+    REGISTER_SEGMENTER(ZL_StandardGraphID_segment_num64_from_serial, SEGM_NUM_FROM_SERIAL_DESC(8, 64, ZL_PrivateStandardGraphID_interpret_num64_compress)),
     REGISTER_SELECTOR(ZL_StandardGraphID_select_numeric, "!zl.select_numeric", SI_selector_numeric, ZL_Type_numeric),
     REGISTER_MIGRAPH(ZL_StandardGraphID_clustering, MIGRAPH_CLUSTERING),
     REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_simple_data_description_language, "!zl.sddl", ZL_Type_serial, ZL_SDDL_dynGraph),
+    REGISTER_SEGMENTER(ZL_StandardGraphID_simple_data_description_language_v2, SEGM_SDDL2_DESC),
     REGISTER_MIGRAPH(ZL_StandardGraphID_try_parse_int, MIGRAPH_TRY_PARSE_INT),
+    REGISTER_STATIC_GRAPH(ZL_StandardGraphID_lz4, "!zl.lz4", ZL_Type_serial, ZL_PrivateStandardNodeID_lz4, _1_SUCCESSOR(ZL_PrivateStandardGraphID_serial_store)),
+    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_partition_bitpack, "!zl.partition_bitpack", ZL_Type_numeric, EI_partitionBitpackDynGraph),
+    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_ml_selector,"!zl.ml_selector", ZL_Type_numeric, ZL_MLSel_dynGraph),
+    REGISTER_MIGRAPH(ZL_PrivateStandardGraphID_merge_sorted, MIGRAPH_MERGE_SORTED),
+    REGISTER_MIGRAPH(ZL_PrivateStandardGraphID_transpose_split, MIGRAPH_TRANSPOSE_SPLIT),
 
     // Private graphs
     REGISTER_SELECTOR(ZL_PrivateStandardGraphID_store1, "!zl.private.store1", SI_selector_store, ZL_Type_any),
@@ -164,11 +194,16 @@ const InternalGraphDesc GR_standardGraphs[ZL_PrivateStandardGraphID_end] = {
     REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_range_pack, "!zl.private.range_pack", ZL_Type_numeric, ZL_StandardNodeID_range_pack, _1_SUCCESSOR(ZL_StandardGraphID_field_lz) ),
     REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_range_pack_zstd, "!zl.private.range_pack_zstd", ZL_Type_numeric, ZL_StandardNodeID_range_pack, _1_SUCCESSOR(ZL_StandardGraphID_zstd) ),
     REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_tokenize_delta_field_lz, "!zl.private.tokenize_delta_field_lz", ZL_Type_numeric, ZL_PrivateStandardNodeID_tokenize_sorted, _2_SUCCESSORS(ZL_PrivateStandardGraphID_delta_field_lz, ZL_StandardGraphID_field_lz) ),
-    
+
     REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_split_serial, "!zl.private.split_serial", ZL_Type_serial, ZL_splitFnGraph),
     REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_split_struct, "!zl.private.split_struct", ZL_Type_struct, ZL_splitFnGraph),
     REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_split_numeric, "!zl.private.split_numeric", ZL_Type_numeric, ZL_splitFnGraph),
     REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_split_string, "!zl.private.split_string", ZL_Type_string, ZL_splitFnGraph),
+    REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_sddl2_chunk, "!zl.private.sddl2_chunk", ZL_Type_serial, SDDL2_replayChunk),
+
+    REGISTER_MIGRAPH(ZL_PrivateStandardGraphID_n_to_n, MIGRAPH_N_TO_N),
+    
+    REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_compress_small_lengths, "!zl.compress_small_lengths", ZL_Type_numeric, ZL_compressSmallLengthsGraph),
 };
 // clang-format on
 
@@ -180,6 +215,7 @@ int GR_isStandardGraph(ZL_GraphID gid)
 static ZL_Report GR_validateStaticGraph(ZL_IDType sgid)
 {
     ZL_ASSERT_LT(sgid, ZL_PrivateStandardGraphID_end);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_FunctionGraphDesc const migd = GR_standardGraphs[sgid].gdi.migd;
     ZL_ASSERT_EQ(migd.nbCustomNodes, 1);
     const CNode* const cnode = &ER_standardNodes[migd.customNodes[0].nid];
@@ -194,47 +230,47 @@ static ZL_Report GR_validateStaticGraph(ZL_IDType sgid)
 
     // Check compatibility with Head Node
     size_t const nbOutputs = mitgd->nbSOs;
-    ZL_RET_R_IF_NE(
-            logicError,
+    ZL_ERR_IF_NE(
             mitgd->nbInputs,
             1,
+            logicError,
             "Node %s has too many inputs",
             gname);
-    ZL_RET_R_IF_NE(
-            logicError,
+    ZL_ERR_IF_NE(
             migd.inputTypeMasks[0],
             mitgd->inputTypes[0],
+            logicError,
             "Incorrect input type for Graph %s",
             gname);
 
     // Ensure that Successors are valid
-    ZL_RET_R_IF_NE(
-            logicError,
+    ZL_ERR_IF_NE(
             nbOutputs,
             nbSuccessors,
+            logicError,
             "incorrect nb of successors for graph %s",
             gname);
 
     for (size_t n = 0; n < nbSuccessors; n++) {
-        ZL_RET_R_IF_NOT(
-                logicError,
+        ZL_ERR_IF_NOT(
                 GR_isStandardGraph(successors[n]),
+                logicError,
                 "all successors of Graph %s must be standard Graphs",
                 gname);
         const ZL_FunctionGraphDesc* succDesc =
                 &GR_standardGraphs[successors[n].gid].gdi.migd;
 
-        ZL_RET_R_IF_NE(
-                logicError,
+        ZL_ERR_IF_NE(
                 succDesc->nbInputs,
                 1,
+                logicError,
                 "Successor graph must take exactly one input");
         // check type mismatch
         ZL_Type const origType = mitgd->soTypes[n];
         ZL_Type const dstTypes = succDesc->inputTypeMasks[0];
-        ZL_RET_R_IF_NOT(
-                logicError,
+        ZL_ERR_IF_NOT(
                 ICONV_isCompatible(origType, dstTypes),
+                logicError,
                 "one of the successors of graph %s requires an incompatible stream type (orig:%x != %x:dst)",
                 gname,
                 origType,
@@ -269,6 +305,7 @@ void GR_validate(void)
 ZL_Report
 GR_staticGraphWrapper(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     ZL_ASSERT_NN(gctx);
     ZL_ASSERT_NN(inputs);
     ZL_NodeIDList const headNode_l = ZL_Graph_getCustomNodes(gctx);
@@ -281,7 +318,7 @@ GR_staticGraphWrapper(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
         // no local parameter passed
         lparams = NULL;
     }
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             outputList,
             ZL_Edge_runMultiInputNode_withParams(
@@ -291,7 +328,7 @@ GR_staticGraphWrapper(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
     // Note: this version only supports TypedTransform as HeadNode
     ZL_ASSERT_EQ(gidl.nbGraphIDs, nbOutputs);
     for (size_t n = 0; n < nbOutputs; n++) {
-        ZL_RET_R_IF_ERR(
+        ZL_ERR_IF_ERR(
                 ZL_Edge_setDestination(outputList.edges[n], gidl.graphids[n]));
     }
     return ZL_returnSuccess();
@@ -303,6 +340,7 @@ GR_staticGraphWrapper(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
 //       it might be more readable to keep them separated.
 ZL_Report GR_VOGraphWrapper(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     ZL_ASSERT_NN(gctx);
     ZL_ASSERT_EQ(nbInputs, 1);
     ZL_ASSERT_NN(inputs);
@@ -316,7 +354,7 @@ ZL_Report GR_VOGraphWrapper(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
         // no local parameter passed
         lparams = NULL;
     }
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             outputList,
             ZL_Edge_runMultiInputNode_withParams(
@@ -327,10 +365,10 @@ ZL_Report GR_VOGraphWrapper(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
     const void* const pp = GCTX_getPrivateParam(gctx);
     ZL_ASSERT_NN(pp);
     unsigned const nbSingletons = ((const unsigned*)pp)[0];
-    ZL_RET_R_IF_LT(
-            nodeExecution_invalidOutputs,
+    ZL_ERR_IF_LT(
             nbOutputs,
             (size_t)nbSingletons,
+            nodeExecution_invalidOutputs,
             "the head VO Node has not generated enough outputs according to its definition ");
 
     // Register and check that all singular outputs receive one successor.
@@ -341,27 +379,27 @@ ZL_Report GR_VOGraphWrapper(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
         ZL_IDType const outcomeID = StreamCtx_getOutcomeID(sctx);
         if (n < nbSingletons) {
             /* Singular output */
-            ZL_RET_R_IF_NE(
-                    nodeExecution_invalidOutputs,
+            ZL_ERR_IF_NE(
                     outcomeID,
                     n,
+                    nodeExecution_invalidOutputs,
                     "a Singular output has not received a Successor");
         } else {
             /* Variable outputs */
-            ZL_RET_R_IF_LT(
-                    nodeExecution_invalidOutputs,
+            ZL_ERR_IF_LT(
                     outcomeID,
                     nbSingletons,
-                    "overloading Singular output");
-            ZL_RET_R_IF_GE(
                     nodeExecution_invalidOutputs,
+                    "overloading Singular output");
+            ZL_ERR_IF_GE(
                     outcomeID,
                     outcomeList.nbGraphIDs,
+                    nodeExecution_invalidOutputs,
                     "Variable Output ID is out of range");
         }
         // assign successor
         ZL_GraphID const next_gid = outcomeList.graphids[outcomeID];
-        ZL_RET_R_IF_ERR(ZL_Edge_setDestination(sctx, next_gid));
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(sctx, next_gid));
     }
 
     return ZL_returnSuccess();
@@ -370,6 +408,7 @@ ZL_Report GR_VOGraphWrapper(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
 ZL_Report
 GR_selectorWrapper(ZL_Graph* gctx, ZL_Edge* inputCtxs[], size_t nbInputs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     ZL_ASSERT_NN(gctx);
     ZL_ASSERT_EQ(nbInputs, 1);
     ZL_Edge* const inputCtx             = inputCtxs[0];
@@ -388,13 +427,14 @@ GR_selectorWrapper(ZL_Graph* gctx, ZL_Edge* inputCtxs[], size_t nbInputs)
             SelectorSuccessorParams, successorParams, 1, gctx->graphArena);
     successorParams->params = NULL; // init to NULL, will be set by selector if
                                     // there are params to be sent
-    ZL_RET_R_IF_ERR(SelCtx_initSelectorCtx(
+    ZL_ERR_IF_ERR(SelCtx_initSelectorCtx(
             &siState,
             gctx->cctx,
             gctx->graphArena,
             lparams,
             successorParams,
-            ZL_Graph_getOpaquePtr(gctx)));
+            ZL_Graph_getOpaquePtr(gctx),
+            gctx->depth));
     ZL_ASSERT_NN(selector_f);
     ZL_GraphID selectedSuccessor = selector_f(
             &siState,
@@ -404,7 +444,7 @@ GR_selectorWrapper(ZL_Graph* gctx, ZL_Edge* inputCtxs[], size_t nbInputs)
 
     ZL_RuntimeGraphParameters const rgp = { .localParams =
                                                     successorParams->params };
-    ZL_RET_R_IF_ERR(ZL_Edge_setParameterizedDestination(
+    ZL_ERR_IF_ERR(ZL_Edge_setParameterizedDestination(
             inputCtxs, nbInputs, selectedSuccessor, &rgp));
     SelCtx_destroySelectorCtx(&siState);
 
@@ -443,9 +483,10 @@ void GR_getAllStandardGraphIDs(ZL_GraphID* graphs, size_t graphsSize)
 
 ZL_Report GR_forEachStandardGraph(GR_StandardGraphsCallback cb, void* opaque)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     for (ZL_IDType gid = 0; gid < ZL_ARRAY_SIZE(GR_standardGraphs); ++gid) {
         if (GR_standardGraphs[gid].type != GR_illegal) {
-            ZL_RET_R_IF_ERR(
+            ZL_ERR_IF_ERR(
                     cb(opaque, (ZL_GraphID){ gid }, &GR_standardGraphs[gid]));
         }
     }

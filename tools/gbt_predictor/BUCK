@@ -1,6 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_cxxlibrary")
+load("../../defs.bzl", "zs_cxxlibrary")
 
 oncall("data_compression")
 
@@ -11,7 +11,8 @@ zs_cxxlibrary(
     compiler_flags = ["-Wno-float-equal"],
     strict_conversions = False,
     deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
+        "../..:zstronglib",
         "//folly:dynamic",
     ],
+    exported_deps = ["//folly:dynamic"],
 )

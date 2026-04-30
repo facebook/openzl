@@ -4,89 +4,350 @@
 
 #include "custom_parsers/csv/csv_lexer.h"
 #include "openzl/zl_errors.h"
+#include "tests/utils.h"
 
 using namespace ::testing;
 
-TEST(LexTest, test)
-{
-    constexpr std::string_view str =
-            R"(H,2019GQ0000088,6,02600,3,01,1195583,1207712,0,1,3,,,,,,,,,,,,,1,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-H,2019GQ0000096,6,00700,3,01,1195583,1207712,0,1,2,,,,,,,,,,,,,2,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-H,2019GQ0000153,6,00800,3,01,1195583,1207712,0,1,3,,,,,,,,,,,,,2,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-)";
+class LexTest : public ::testing::Test {
+   public:
+    std::vector<ZL_CSV_Token>
+    lex(std::string_view csv, char sep = ',', bool isNullAware = false)
+    {
+        std::vector<ZL_CSV_Token> tokens;
+        ZL_CSV_Lexer lexer;
+        ZL_CSV_Lexer_init(
+                &lexer, NULL, csv.data(), csv.size(), sep, isNullAware);
+        while (!ZL_CSV_Lexer_finished(&lexer)) {
+            ZL_CSV_Token tok;
+            auto report = ZL_CSV_Lexer_lex(
+                    &lexer, &tok.type, &tok.size, &tok.col, 1, 0);
+            ZL_REQUIRE_SUCCESS(report);
+            EXPECT_EQ(ZL_validResult(report), 1);
+            tokens.push_back(tok);
+        }
 
-    // clang-format off
-    constexpr std::array<uint32_t, 558> expectedStrLens = {
-    // row 1
-    1, 1, 13, 1, 1, 1, 5, 1, 1, 1, 2, 1, 7, 1, 7, 1, 1, 1, 1, 1, 1, 13, 1, 91, 1, 43, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    // row 2
-    1, 1, 13, 1, 1, 1, 5, 1, 1, 1, 2, 1, 7, 1, 7, 1, 1, 1, 1, 1, 1, 13, 1, 91, 1, 43, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    // row 3
-    1, 1, 13, 1, 1, 1, 5, 1, 1, 1, 2, 1, 7, 1, 7, 1, 1, 1, 1, 1, 1, 13, 1, 91, 1, 43, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    };
+        // Validate that lexing in one go produces exactly the same result
+        {
+            std::vector<ZL_CSV_TokenType> types(tokens.size());
+            std::vector<uint32_t> sizes(tokens.size());
+            std::vector<uint32_t> cols(tokens.size());
+            ZL_CSV_Lexer_init(
+                    &lexer, NULL, csv.data(), csv.size(), sep, isNullAware);
+            auto report = ZL_CSV_Lexer_lex(
+                    &lexer,
+                    types.data(),
+                    sizes.data(),
+                    cols.data(),
+                    tokens.size(),
+                    size_t(-1));
+            ZL_REQUIRE_SUCCESS(report);
+            EXPECT_EQ(ZL_validResult(report), tokens.size());
+            for (size_t i = 0; i < tokens.size(); ++i) {
+                EXPECT_EQ(tokens[i].type, types[i]);
+                EXPECT_EQ(tokens[i].size, sizes[i]);
+                EXPECT_EQ(tokens[i].col, cols[i]);
+            }
+        }
 
-    constexpr std::array<uint16_t, 558> expectedDispatchIndices = {
-    0, 237, 1, 237, 2, 237, 3, 237, 4, 237, 5, 237, 6, 237, 7, 237, 8, 237, 9, 237, 10, 237, 23, 237, 114, 237, 157, 237, 158, 237, 159, 237, 160, 237, 161, 237, 162, 237, 163, 237, 164, 237, 165, 237, 166, 237, 167, 237, 168, 237, 169, 237, 170, 237, 171, 237, 172, 237, 173, 237, 174, 237, 175, 237, 176, 237, 177, 237, 178, 237, 179, 237, 180, 237, 181, 237, 182, 237, 183, 237, 184, 237, 185, 237, 186, 237, 187, 237, 188, 237, 189, 237, 190, 237, 191, 237, 192, 237, 193, 237, 194, 237, 195, 237, 196, 237, 197, 237, 198, 237, 199, 237, 200, 237, 201, 237, 202, 237, 203, 237, 204, 237, 205, 237, 206, 237, 207, 237, 208, 237, 209, 237, 210, 237, 211, 237, 212, 237, 213, 237, 214, 237, 215, 237, 216, 237, 217, 237, 218, 237, 219, 237, 220, 237, 221, 237, 222, 237, 223, 237, 224, 237, 225, 237, 226, 237, 227, 237, 228, 237, 229, 237, 230, 237, 231, 237, 232, 237, 233, 237, 234, 237, 235, 237, 236, 237,
-    0, 237, 1, 237, 2, 237, 3, 237, 4, 237, 5, 237, 6, 237, 7, 237, 8, 237, 9, 237, 10, 237, 23, 237, 114, 237, 157, 237, 158, 237, 159, 237, 160, 237, 161, 237, 162, 237, 163, 237, 164, 237, 165, 237, 166, 237, 167, 237, 168, 237, 169, 237, 170, 237, 171, 237, 172, 237, 173, 237, 174, 237, 175, 237, 176, 237, 177, 237, 178, 237, 179, 237, 180, 237, 181, 237, 182, 237, 183, 237, 184, 237, 185, 237, 186, 237, 187, 237, 188, 237, 189, 237, 190, 237, 191, 237, 192, 237, 193, 237, 194, 237, 195, 237, 196, 237, 197, 237, 198, 237, 199, 237, 200, 237, 201, 237, 202, 237, 203, 237, 204, 237, 205, 237, 206, 237, 207, 237, 208, 237, 209, 237, 210, 237, 211, 237, 212, 237, 213, 237, 214, 237, 215, 237, 216, 237, 217, 237, 218, 237, 219, 237, 220, 237, 221, 237, 222, 237, 223, 237, 224, 237, 225, 237, 226, 237, 227, 237, 228, 237, 229, 237, 230, 237, 231, 237, 232, 237, 233, 237, 234, 237, 235, 237, 236, 237,
-    0, 237, 1, 237, 2, 237, 3, 237, 4, 237, 5, 237, 6, 237, 7, 237, 8, 237, 9, 237, 10, 237, 23, 237, 114, 237, 157, 237, 158, 237, 159, 237, 160, 237, 161, 237, 162, 237, 163, 237, 164, 237, 165, 237, 166, 237, 167, 237, 168, 237, 169, 237, 170, 237, 171, 237, 172, 237, 173, 237, 174, 237, 175, 237, 176, 237, 177, 237, 178, 237, 179, 237, 180, 237, 181, 237, 182, 237, 183, 237, 184, 237, 185, 237, 186, 237, 187, 237, 188, 237, 189, 237, 190, 237, 191, 237, 192, 237, 193, 237, 194, 237, 195, 237, 196, 237, 197, 237, 198, 237, 199, 237, 200, 237, 201, 237, 202, 237, 203, 237, 204, 237, 205, 237, 206, 237, 207, 237, 208, 237, 209, 237, 210, 237, 211, 237, 212, 237, 213, 237, 214, 237, 215, 237, 216, 237, 217, 237, 218, 237, 219, 237, 220, 237, 221, 237, 222, 237, 223, 237, 224, 237, 225, 237, 226, 237, 227, 237, 228, 237, 229, 237, 230, 237, 231, 237, 232, 237, 233, 237, 234, 237, 235, 237, 236, 237,
-    };
-
-    // clang-format on
-    std::vector<uint32_t> stringLens(1100, 0);
-    std::vector<uint16_t> dispatchIndices(1100, 0);
-    uint8_t nbColumns = 237;
-    char sep          = ',';
-
-    auto e = createNullAwareLexAndDispatch(
-            stringLens.data(),
-            dispatchIndices.data(),
-            str.data(),
-            str.length(),
-            nbColumns,
-            sep);
-    EXPECT_FALSE(ZL_isError(e));
-    size_t nbStrs = ZL_validResult(e);
-    EXPECT_EQ(nbStrs, expectedStrLens.size());
-    for (size_t i = 0; i < nbStrs; ++i) {
-        EXPECT_EQ(expectedStrLens[i], stringLens[i]);
+        return tokens;
     }
-    for (size_t i = 0; i < nbStrs; ++i) {
-        EXPECT_EQ(expectedDispatchIndices[i], dispatchIndices[i]);
+
+    bool
+    lexSucceeds(std::string_view csv, char sep = ',', bool isNullAware = false)
+    {
+        ZL_CSV_Lexer lexer;
+        ZL_CSV_Lexer_init(
+                &lexer, NULL, csv.data(), csv.size(), sep, isNullAware);
+        while (!ZL_CSV_Lexer_finished(&lexer)) {
+            ZL_CSV_Token tok;
+            auto report = ZL_CSV_Lexer_lex(
+                    &lexer, &tok.type, &tok.size, &tok.col, 1, 0);
+            if (ZL_isError(report)) {
+                return false;
+            }
+            EXPECT_EQ(ZL_validResult(report), 1);
+        }
+        return true;
+    }
+};
+
+TEST_F(LexTest, Empty)
+{
+    auto tokens = lex("");
+    ASSERT_EQ(tokens.size(), 0);
+}
+
+TEST_F(LexTest, SingleRowAndCol)
+{
+    auto tokens = lex("a");
+    ASSERT_EQ(tokens.size(), 1);
+    EXPECT_EQ(tokens[0].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[0].size, 1);
+    EXPECT_EQ(tokens[0].col, 0);
+}
+
+TEST_F(LexTest, SingleRowAndColWithNewline)
+{
+    auto tokens = lex("a\n");
+    ASSERT_EQ(tokens.size(), 2);
+    EXPECT_EQ(tokens[0].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[0].size, 1);
+    EXPECT_EQ(tokens[0].col, 0);
+    EXPECT_EQ(tokens[1].type, ZL_CSV_TokenType_Newline);
+    EXPECT_EQ(tokens[1].size, 1);
+    EXPECT_EQ(tokens[1].col, 0);
+
+    tokens = lex("a");
+    ASSERT_EQ(tokens.size(), 1);
+    EXPECT_EQ(tokens[0].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[0].size, 1);
+    EXPECT_EQ(tokens[0].col, 0);
+}
+
+TEST_F(LexTest, SingleColumn)
+{
+    auto tokens = lex("a\nbb\n");
+    ASSERT_EQ(tokens.size(), 4);
+    EXPECT_EQ(tokens[0].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[0].size, 1);
+    EXPECT_EQ(tokens[0].col, 0);
+    EXPECT_EQ(tokens[1].type, ZL_CSV_TokenType_Newline);
+    EXPECT_EQ(tokens[1].size, 1);
+    EXPECT_EQ(tokens[1].col, 0);
+    EXPECT_EQ(tokens[2].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[2].size, 2);
+    EXPECT_EQ(tokens[2].col, 0);
+    EXPECT_EQ(tokens[3].type, ZL_CSV_TokenType_Newline);
+    EXPECT_EQ(tokens[3].size, 1);
+    EXPECT_EQ(tokens[3].col, 0);
+}
+
+TEST_F(LexTest, UnterminatedQuotedString)
+{
+    EXPECT_FALSE(lexSucceeds("\"a\nbb\n"));
+}
+
+TEST_F(LexTest, QuotedString)
+{
+    auto tokens = lex("\"field,with,commas\",\"field\nwith\nnewline\"\n");
+    ASSERT_EQ(tokens.size(), 4);
+    EXPECT_EQ(tokens[0].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[0].size, 19);
+    EXPECT_EQ(tokens[0].col, 0);
+    EXPECT_EQ(tokens[1].type, ZL_CSV_TokenType_Sep);
+    EXPECT_EQ(tokens[1].size, 1);
+    EXPECT_EQ(tokens[1].col, 0);
+    EXPECT_EQ(tokens[2].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[2].size, 20);
+    EXPECT_EQ(tokens[2].col, 1);
+    EXPECT_EQ(tokens[3].type, ZL_CSV_TokenType_Newline);
+    EXPECT_EQ(tokens[3].size, 1);
+    EXPECT_EQ(tokens[3].col, 0);
+}
+
+TEST_F(LexTest, ConsecutiveSeparatorsNullAware)
+{
+    auto tokens = lex("a,,,,b\n", ',', true);
+    ASSERT_EQ(tokens.size(), 4);
+    EXPECT_EQ(tokens[0].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[0].size, 1);
+    EXPECT_EQ(tokens[0].col, 0);
+    EXPECT_EQ(tokens[1].type, ZL_CSV_TokenType_Sep);
+    EXPECT_EQ(tokens[1].size, 4);
+    EXPECT_EQ(tokens[1].col, 0);
+    EXPECT_EQ(tokens[2].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[2].size, 1);
+    EXPECT_EQ(tokens[2].col, 4);
+    EXPECT_EQ(tokens[3].type, ZL_CSV_TokenType_Newline);
+    EXPECT_EQ(tokens[3].size, 1);
+    EXPECT_EQ(tokens[3].col, 0);
+}
+
+TEST_F(LexTest, InconsistentColumnCounts)
+{
+    EXPECT_FALSE(lexSucceeds("a,b,c\nd,e\n"));
+    EXPECT_FALSE(lexSucceeds("a\nb,c\n"));
+}
+
+TEST_F(LexTest, EmptyFieldsAtVariousPositions)
+{
+    auto tokens = lex(",b,c\n");
+    ASSERT_EQ(tokens.size(), 6);
+    EXPECT_EQ(tokens[0].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[0].size, 0);
+    EXPECT_EQ(tokens[0].col, 0);
+    EXPECT_EQ(tokens[1].type, ZL_CSV_TokenType_Sep);
+    EXPECT_EQ(tokens[2].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[2].size, 1);
+    EXPECT_EQ(tokens[2].col, 1);
+    EXPECT_EQ(tokens[3].type, ZL_CSV_TokenType_Sep);
+    EXPECT_EQ(tokens[4].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[4].size, 1);
+    EXPECT_EQ(tokens[4].col, 2);
+    EXPECT_EQ(tokens[5].type, ZL_CSV_TokenType_Newline);
+
+    tokens = lex("a,,c\n");
+    ASSERT_EQ(tokens.size(), 6);
+    EXPECT_EQ(tokens[0].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[0].size, 1);
+    EXPECT_EQ(tokens[0].col, 0);
+    EXPECT_EQ(tokens[1].type, ZL_CSV_TokenType_Sep);
+    EXPECT_EQ(tokens[2].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[2].size, 0);
+    EXPECT_EQ(tokens[2].col, 1);
+    EXPECT_EQ(tokens[3].type, ZL_CSV_TokenType_Sep);
+    EXPECT_EQ(tokens[4].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[4].size, 1);
+    EXPECT_EQ(tokens[4].col, 2);
+    EXPECT_EQ(tokens[5].type, ZL_CSV_TokenType_Newline);
+
+    tokens = lex("a,b,\n");
+    ASSERT_EQ(tokens.size(), 6);
+    EXPECT_EQ(tokens[0].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[0].size, 1);
+    EXPECT_EQ(tokens[0].col, 0);
+    EXPECT_EQ(tokens[1].type, ZL_CSV_TokenType_Sep);
+    EXPECT_EQ(tokens[2].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[2].size, 1);
+    EXPECT_EQ(tokens[2].col, 1);
+    EXPECT_EQ(tokens[3].type, ZL_CSV_TokenType_Sep);
+    EXPECT_EQ(tokens[4].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[4].size, 0);
+    EXPECT_EQ(tokens[4].col, 2);
+    EXPECT_EQ(tokens[5].type, ZL_CSV_TokenType_Newline);
+}
+
+TEST_F(LexTest, AlternativeSeparators)
+{
+    auto tokens = lex("a,\t|\"|\"\n", '|');
+    ASSERT_EQ(tokens.size(), 4);
+    EXPECT_EQ(tokens[0].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[0].size, 3);
+    EXPECT_EQ(tokens[0].col, 0);
+    EXPECT_EQ(tokens[1].type, ZL_CSV_TokenType_Sep);
+    EXPECT_EQ(tokens[1].size, 1);
+    EXPECT_EQ(tokens[1].col, 0);
+    EXPECT_EQ(tokens[2].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[2].size, 3);
+    EXPECT_EQ(tokens[2].col, 1);
+    EXPECT_EQ(tokens[3].type, ZL_CSV_TokenType_Newline);
+    EXPECT_EQ(tokens[3].size, 1);
+    EXPECT_EQ(tokens[3].col, 0);
+
+    tokens = lex("a,|\t\"\t\"\n", '\t');
+    ASSERT_EQ(tokens.size(), 4);
+    EXPECT_EQ(tokens[0].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[0].size, 3);
+    EXPECT_EQ(tokens[0].col, 0);
+    EXPECT_EQ(tokens[1].type, ZL_CSV_TokenType_Sep);
+    EXPECT_EQ(tokens[1].size, 1);
+    EXPECT_EQ(tokens[1].col, 0);
+    EXPECT_EQ(tokens[2].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[2].size, 3);
+    EXPECT_EQ(tokens[2].col, 1);
+    EXPECT_EQ(tokens[3].type, ZL_CSV_TokenType_Newline);
+    EXPECT_EQ(tokens[3].size, 1);
+    EXPECT_EQ(tokens[3].col, 0);
+}
+
+TEST_F(LexTest, SrcSizeLimitBoundaryConditions)
+{
+    std::string_view csv = "a,b\nc,d\ne,f\n";
+
+    ZL_CSV_Lexer lexer;
+    ZL_CSV_Lexer_init(&lexer, NULL, csv.data(), csv.size(), ',', false);
+
+    ZL_CSV_TokenType types[10];
+    uint32_t sizes[10];
+    uint32_t cols[10];
+
+    auto report = ZL_CSV_Lexer_lex(&lexer, types, sizes, cols, 10, 3);
+    ZL_REQUIRE_SUCCESS(report);
+    EXPECT_EQ(ZL_validResult(report), 4);
+    EXPECT_EQ(types[0], ZL_CSV_TokenType_Field);
+    EXPECT_EQ(types[1], ZL_CSV_TokenType_Sep);
+    EXPECT_EQ(types[2], ZL_CSV_TokenType_Field);
+    EXPECT_EQ(types[3], ZL_CSV_TokenType_Newline);
+
+    EXPECT_FALSE(ZL_CSV_Lexer_finished(&lexer));
+
+    report = ZL_CSV_Lexer_lex(&lexer, types, sizes, cols, 10, SIZE_MAX);
+    ZL_REQUIRE_SUCCESS(report);
+    EXPECT_GT(ZL_validResult(report), 0);
+    EXPECT_TRUE(ZL_CSV_Lexer_finished(&lexer));
+}
+
+TEST_F(LexTest, BatchedLexingConsistency)
+{
+    auto tokens = lex("a,b,c\nd,e,f\n");
+    ASSERT_EQ(tokens.size(), 12);
+    EXPECT_EQ(tokens[0].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[1].type, ZL_CSV_TokenType_Sep);
+    EXPECT_EQ(tokens[2].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[3].type, ZL_CSV_TokenType_Sep);
+    EXPECT_EQ(tokens[4].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[5].type, ZL_CSV_TokenType_Newline);
+    EXPECT_EQ(tokens[6].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[7].type, ZL_CSV_TokenType_Sep);
+    EXPECT_EQ(tokens[8].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[9].type, ZL_CSV_TokenType_Sep);
+    EXPECT_EQ(tokens[10].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[11].type, ZL_CSV_TokenType_Newline);
+}
+
+TEST_F(LexTest, FilesWithoutTrailingNewline)
+{
+    auto tokensWithNewline    = lex("a,b,c\n");
+    auto tokensWithoutNewline = lex("a,b,c");
+
+    ASSERT_EQ(tokensWithNewline.size(), 6);
+    ASSERT_EQ(tokensWithoutNewline.size(), 5);
+
+    for (size_t i = 0; i < tokensWithoutNewline.size(); ++i) {
+        EXPECT_EQ(tokensWithoutNewline[i].type, tokensWithNewline[i].type);
+        EXPECT_EQ(tokensWithoutNewline[i].size, tokensWithNewline[i].size);
+        EXPECT_EQ(tokensWithoutNewline[i].col, tokensWithNewline[i].col);
     }
 }
 
-TEST(LexTest, singleLine)
+TEST_F(LexTest, EmptyRowsAndSingleColumnEdgeCases)
 {
-    std::string inputNoNewline                     = "aaa,bb,c,\"d\"";
-    std::string input                              = inputNoNewline + "\n";
-    std::vector<uint32_t> expectedStringLens       = { 3, 1, 2, 1, 1, 1, 3, 1 };
-    std::vector<uint16_t> expectedDispatchIndicess = { 0, 4, 1, 4, 2, 4, 3, 4 };
-    std::vector<uint32_t> stringLens(100, 0);
-    std::vector<uint16_t> dispatchIndices(100, 0);
+    auto tokens = lex("\n");
+    ASSERT_EQ(tokens.size(), 2);
+    EXPECT_EQ(tokens[0].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[0].size, 0);
+    EXPECT_EQ(tokens[1].type, ZL_CSV_TokenType_Newline);
 
-    auto e = createNullAwareLexAndDispatch(
-            stringLens.data(),
-            dispatchIndices.data(),
-            inputNoNewline.data(),
-            inputNoNewline.size(),
-            4,
-            ',');
-    EXPECT_TRUE(ZL_isError(e));
+    tokens = lex(",\n");
+    ASSERT_EQ(tokens.size(), 4);
+    EXPECT_EQ(tokens[0].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[0].size, 0);
+    EXPECT_EQ(tokens[1].type, ZL_CSV_TokenType_Sep);
+    EXPECT_EQ(tokens[2].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[2].size, 0);
+    EXPECT_EQ(tokens[3].type, ZL_CSV_TokenType_Newline);
+}
 
-    e = createNullAwareLexAndDispatch(
-            stringLens.data(),
-            dispatchIndices.data(),
-            input.data(),
-            input.size(),
-            4,
-            ',');
-    EXPECT_FALSE(ZL_isError(e));
-    size_t nbStrs = ZL_validResult(e);
-    EXPECT_EQ(nbStrs, expectedStringLens.size());
-    for (size_t i = 0; i < nbStrs; ++i) {
-        EXPECT_EQ(expectedStringLens[i], stringLens[i]);
-    }
-    for (size_t i = 0; i < nbStrs; ++i) {
-        EXPECT_EQ(expectedDispatchIndicess[i], dispatchIndices[i]);
-    }
+TEST_F(LexTest, EscapedQuotesWithinQuotedFields)
+{
+    auto tokens = lex("\"He said \"\"Hello\"\" to me\"\n");
+    ASSERT_EQ(tokens.size(), 2);
+    EXPECT_EQ(tokens[0].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[0].size, 25);
+    EXPECT_EQ(tokens[0].col, 0);
+    EXPECT_EQ(tokens[1].type, ZL_CSV_TokenType_Newline);
+    EXPECT_EQ(tokens[1].size, 1);
+    EXPECT_EQ(tokens[1].col, 0);
+}
+
+TEST_F(LexTest, EscapedQuotesInMiddleOfUnquotedField)
+{
+    auto tokens = lex("x\"y\"z\"a\"\"b\"\"c\"d\n");
+    ASSERT_EQ(tokens.size(), 2);
+    EXPECT_EQ(tokens[0].type, ZL_CSV_TokenType_Field);
+    EXPECT_EQ(tokens[0].size, 15);
+    EXPECT_EQ(tokens[0].col, 0);
+    EXPECT_EQ(tokens[1].type, ZL_CSV_TokenType_Newline);
+    EXPECT_EQ(tokens[1].size, 1);
+    EXPECT_EQ(tokens[1].col, 0);
 }

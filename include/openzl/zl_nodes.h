@@ -25,7 +25,7 @@ typedef enum {
 
     ZL_StandardNodeID_field_lz,
 
-    // Autoamtic down-conversion nodes
+    // Automatic down-conversion nodes
     ZL_StandardNodeID_convert_struct_to_serial,
     ZL_StandardNodeID_convert_num_to_struct_le,
     ZL_StandardNodeID_convert_num_to_serial_le,
@@ -79,6 +79,21 @@ typedef enum {
 
     ZL_StandardNodeID_quantize_offsets,
     ZL_StandardNodeID_quantize_lengths,
+
+    ZL_StandardNodeID_bitsplit_top8,
+    ZL_StandardNodeID_bitsplit_fp,
+    ZL_StandardNodeID_bitsplit_bf16,
+
+    ZL_StandardNodeID_partition,
+
+    ZL_StandardNodeID_split_byrange,
+
+    ZL_StandardNodeID_sentinel_byte,
+    ZL_StandardNodeID_sentinel_num,
+
+    ZL_StandardNodeID_lz,
+
+    ZL_StandardNodeID_mux_lengths,
 
     ZL_StandardNodeID_public_end // last id, used to detect end of public range
 } ZL_StandardNodeID;

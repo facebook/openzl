@@ -1,0 +1,21 @@
+# ==========================================
+# Star Catalog
+# File `sao` part of the silesia compression corpus
+# Using SDDL1 last syntax (undocumented)
+# ==========================================
+
+# Star entry definition (Record with 6 fields)
+StarEntry = {
+  Float64LE
+  Float64LE
+  Byte
+  Byte
+  Int16LE
+  Float32LE
+  Float32LE
+}
+
+# File structure
+: Byte[28]
+num_stars = _rem / sizeof StarEntry
+: StarEntry[num_stars]

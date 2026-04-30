@@ -12,9 +12,9 @@ ZL_Report
 MultiInputGraph_compress(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs)
 {
     ZL_DLOG(SEQ, "MultiInputGraph_compress: %zu inputs", nbInputs);
-    (void)gctx;
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     for (size_t n = 0; n < nbInputs; n++) {
-        ZL_RET_R_IF_ERR(ZL_Edge_setDestination(inputs[n], ZL_GRAPH_COMPRESS1));
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(inputs[n], ZL_GRAPH_COMPRESS1));
     }
     return ZL_returnSuccess();
 }

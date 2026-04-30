@@ -29,6 +29,7 @@ ZL_Report fillVSFStream(
         size_t idx,
         std::vector<std::string_view> const& elts)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     size_t totalSize = 0;
     for (auto const& elt : elts) {
         totalSize += elt.size();
@@ -36,10 +37,10 @@ ZL_Report fillVSFStream(
 
     ZL_Output* const stream =
             ZL_Encoder_createTypedStream(eictx, idx, totalSize, 1);
-    ZL_RET_R_IF_NULL(allocation, stream);
+    ZL_ERR_IF_NULL(stream, allocation);
 
     auto* const sizes = ZL_Output_reserveStringLens(stream, elts.size());
-    ZL_RET_R_IF_NULL(allocation, sizes);
+    ZL_ERR_IF_NULL(sizes, allocation);
 
     auto content = (char*)ZL_Output_ptr(stream);
 
@@ -49,7 +50,7 @@ ZL_Report fillVSFStream(
         sizes[i] = elts[i].size();
     }
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(stream, elts.size()));
+    ZL_ERR_IF_ERR(ZL_Output_commit(stream, elts.size()));
 
     return ZL_returnSuccess();
 }
@@ -315,6 +316,7 @@ size_t parseEncodeKernel(
 template <typename T>
 ZL_Report parseEncode(ZL_Encoder* eictx, ZL_Input const* input) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     std::vector<std::string_view> exceptions;
     std::vector<uint32_t> exceptionIndices;
 
@@ -324,28 +326,28 @@ ZL_Report parseEncode(ZL_Encoder* eictx, ZL_Input const* input) noexcept
 
     ZL_Output* numbers =
             ZL_Encoder_createTypedStream(eictx, 0, nbElts, sizeof(T));
-    ZL_RET_R_IF_NULL(allocation, numbers);
+    ZL_ERR_IF_NULL(numbers, allocation);
 
     T* const nums = (T*)ZL_Output_ptr(numbers);
 
     size_t const numNums = parseEncodeKernel<T>(
             nums, exceptions, exceptionIndices, data, sizes, nbElts);
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(numbers, numNums));
+    ZL_ERR_IF_ERR(ZL_Output_commit(numbers, numNums));
 
     ZL_Output* exceptionIndicesStream =
             ZL_Encoder_createTypedStream(eictx, 1, exceptionIndices.size(), 4);
-    ZL_RET_R_IF_NULL(allocation, exceptionIndicesStream);
+    ZL_ERR_IF_NULL(exceptionIndicesStream, allocation);
 
     if (exceptionIndices.size() > 0)
         memcpy(ZL_Output_ptr(exceptionIndicesStream),
                exceptionIndices.data(),
                exceptionIndices.size() * 4);
 
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZL_Output_commit(exceptionIndicesStream, exceptionIndices.size()));
 
-    ZL_RET_R_IF_ERR(fillVSFStream(eictx, 2, exceptions));
+    ZL_ERR_IF_ERR(fillVSFStream(eictx, 2, exceptions));
 
     return ZL_returnSuccess();
 }

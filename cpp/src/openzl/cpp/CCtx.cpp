@@ -67,15 +67,16 @@ size_t CCtx::compress(poly::span<char> output, poly::span<const Input> inputs)
 
 std::string CCtx::compress(poly::span<const Input> inputs)
 {
-    size_t inputSize = 0;
+    size_t bound = 0;
     for (auto const& input : inputs) {
-        inputSize += input.contentSize();
+        size_t inputSize = input.contentSize();
         if (input.type() == Type::String) {
             inputSize += input.numElts() * sizeof(uint32_t);
         }
+        bound += compressBound(inputSize);
     }
     std::string output;
-    output.resize(compressBound(inputSize), '\0');
+    output.resize(bound, '\0');
     output.resize(compress(output, inputs));
     return output;
 }
@@ -149,29 +150,32 @@ void CCtx::selectStartingGraph(
     selectStartingGraphImpl(*this, compressor.get(), graph, params);
 }
 
-void CCtx::writeTraces(bool enabled)
+void CCtx::writeTraces(bool enabled, bool streamPreview)
 {
-    if ((bool)hooks_ == enabled) {
+    if ((bool)visHooks_ == enabled) {
         return; // no need to re-create or re-destroy the hooks
     }
     if (enabled) {
-        hooks_ = std::make_unique<visualizer::CompressionTraceHooks>();
-        unwrap(ZL_CCtx_attachIntrospectionHooks(get(), hooks_->getRawHooks()));
+        visHooks_ = std::make_unique<visualizer::CompressionTraceHooks>(
+                streamPreview);
+        unwrap(ZL_CCtx_attachIntrospectionHooks(
+                get(), visHooks_->getRawHooks()));
     } else {
         unwrap(ZL_CCtx_detachAllIntrospectionHooks(get()));
-        hooks_.reset();
+        visHooks_.reset();
     }
 }
 
 std::pair<
         poly::string_view,
-        std::map<size_t, std::pair<poly::string_view, poly::string_view>>>
+        std::map<std::string, std::pair<poly::string_view, poly::string_view>>>
 CCtx::getLatestTrace()
 {
-    if (!hooks_) {
+    if (!visHooks_) {
         throw Exception("Tracing is not enabled");
     }
-    return hooks_->getLatestTrace();
+    return (static_cast<visualizer::CompressionTraceHooks*>(visHooks_.get()))
+            ->getLatestTrace();
 }
 
 } // namespace openzl

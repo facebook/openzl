@@ -6,7 +6,7 @@
 #include <map>
 #include <sstream>
 #include <vector>
-#include "custom_parsers/csv/csv_parser.h"
+#include "custom_parsers/csv/csv_segmenter.h"
 #include "custom_parsers/shared_components/numeric_graphs.h"
 #include "custom_parsers/shared_components/string_graphs.h"
 #include "custom_parsers/tests/DebugIntrospectionHooks.h"
@@ -16,9 +16,8 @@
 #include "openzl/compress/graphs/generic_clustering_graph.h"
 #include "openzl/compress/private_nodes.h"
 #include "openzl/zl_compress.h"
-#include "openzl/zl_reflection.h"
 
-namespace zstrong::tests {
+namespace openzl::tests {
 namespace {
 
 enum CsvSuccessorIdx : size_t {
@@ -102,8 +101,8 @@ class TPC_H_lineitem : public Config {
                 &clusteringConfig,
                 successors.data(),
                 successors.size());
-        return ZL_CsvParser_registerGraph(
-                compressor, true, '|', false, clusteringGraph);
+        return ZL_RES_value(ZL_CsvSegmenter_registerSegmenterNoChunks(
+                compressor, true, '|', false, clusteringGraph));
     }
 };
 
@@ -390,8 +389,8 @@ class PsamH01 : public Config {
                 &clusteringConfig,
                 successors.data(),
                 successors.size());
-        auto ee = ZL_CsvParser_registerGraph(
-                compressor, true, ',', UseNullAware, clusteringGraph);
+        auto ee = ZL_RES_value(ZL_CsvSegmenter_registerSegmenterNoChunks(
+                compressor, true, ',', UseNullAware, clusteringGraph));
         if (ee.gid == ZL_GRAPH_ILLEGAL.gid) {
             std::cerr << "illegal graph!" << std::endl;
             exit(1);
@@ -530,8 +529,8 @@ class PPMF_Unit : public Config {
                 &clusteringConfig,
                 successors.data(),
                 successors.size());
-        auto ee = ZL_CsvParser_registerGraph(
-                compressor, true, ',', false, clusteringGraph);
+        auto ee = ZL_RES_value(ZL_CsvSegmenter_registerSegmenterNoChunks(
+                compressor, true, ',', false, clusteringGraph));
         if (ee.gid == ZL_GRAPH_ILLEGAL.gid) {
             std::cerr << "illegal graph!" << std::endl;
             exit(1);
@@ -662,8 +661,8 @@ class PPMF_Person : public Config {
                 &clusteringConfig,
                 successors.data(),
                 successors.size());
-        auto ee = ZL_CsvParser_registerGraph(
-                compressor, true, ',', false, clusteringGraph);
+        auto ee = ZL_RES_value(ZL_CsvSegmenter_registerSegmenterNoChunks(
+                compressor, true, ',', false, clusteringGraph));
         if (ee.gid == ZL_GRAPH_ILLEGAL.gid) {
             std::cerr << "illegal graph!" << std::endl;
             exit(1);
@@ -782,6 +781,7 @@ class TestCsv {
 
 ZL_Report TestCsv::run(const std::string& csvFile)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
     SetUp();
     ZL_g_logLevel = ZL_LOG_LVL_DEBUG;
 
@@ -816,14 +816,14 @@ ZL_Report TestCsv::run(const std::string& csvFile)
 
     for (auto clevel : { 1, 6 }) {
         for (ZL_GraphID csvParserGid : toTest) {
-            ZL_RET_R_IF_ERR(ZL_CCtx_setParameter(
+            ZL_ERR_IF_ERR(ZL_CCtx_setParameter(
                     cctx, ZL_CParam_formatVersion, ZL_MAX_FORMAT_VERSION));
-            ZL_RET_R_IF_ERR(ZL_CCtx_refCompressor(cctx, compressor_));
-            ZL_RET_R_IF_ERR(ZL_CCtx_setParameter(
+            ZL_ERR_IF_ERR(ZL_CCtx_refCompressor(cctx, compressor_));
+            ZL_ERR_IF_ERR(ZL_CCtx_setParameter(
                     cctx, ZL_CParam_compressionLevel, clevel));
             auto gssr = ZL_Compressor_selectStartingGraphID(
                     compressor_, csvParserGid);
-            ZL_RET_R_IF_ERR(gssr);
+            ZL_ERR_IF_ERR(gssr);
             std::string dst(src.size() * 2, 0);
 
             auto start = std::chrono::high_resolution_clock::now();
@@ -876,7 +876,7 @@ ZL_Report TestCsv::run(const std::string& csvFile)
 }
 
 } // namespace
-} // namespace zstrong::tests
+} // namespace openzl::tests
 
 int main(int argc, char** argv)
 {
@@ -885,7 +885,7 @@ int main(int argc, char** argv)
         return 1;
     }
     std::string csvFile = argv[1];
-    auto report         = zstrong::tests::TestCsv().run(csvFile);
+    auto report         = openzl::tests::TestCsv().run(csvFile);
     if (ZL_isError(report)) {
         std::cerr << ZL_ErrorCode_toString(ZL_errorCode(report));
     }

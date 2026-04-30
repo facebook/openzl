@@ -5,12 +5,14 @@
 #include "custom_transforms/thrift/thrift_parsers.h" // @manual
 
 #if ZL_FBCODE_IS_RELEASE
-#    include "openzl/versions/release/custom_transforms/thrift/gen-cpp2/parse_config_types.h" // @manual
+#    include "openzl/prod/custom_transforms/thrift/gen-cpp2/parse_config_types.h" // @manual
 #else
-#    include "data_compression/experimental/zstrong/custom_transforms/thrift/gen-cpp2/parse_config_types.h" // @manual
+#    include "openzl/dev/custom_transforms/thrift/gen-cpp2/parse_config_types.h" // @manual
 #endif
 
-namespace zstrong::thrift::tests {
+namespace openzl::thrift::tests {
+
+using namespace zstrong::thrift;
 
 TEST(ConfigSerializationTest, RoundTrip)
 {
@@ -369,4 +371,4 @@ TEST(ConfigSerializationTest, RejectIllegalListLengthsSplit)
     EXPECT_NO_THROW(builder.finalize());
 }
 
-} // namespace zstrong::thrift::tests
+} // namespace openzl::thrift::tests

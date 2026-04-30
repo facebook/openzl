@@ -12,6 +12,7 @@
 
 ZL_Report DI_float_deconstruct(ZL_Decoder* dictx, const ZL_Input* ins[])
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_Input const* const signFracStream = ins[0];
     ZL_Input const* const exponentStream = ins[1];
 
@@ -19,27 +20,25 @@ ZL_Report DI_float_deconstruct(ZL_Decoder* dictx, const ZL_Input* ins[])
     ZL_ASSERT_EQ(ZL_Input_type(signFracStream), ZL_Type_struct);
 
     size_t const nbElts = ZL_Input_numElts(exponentStream);
-    ZL_RET_R_IF_NE(corruption, nbElts, ZL_Input_numElts(signFracStream));
+    ZL_ERR_IF_NE(nbElts, ZL_Input_numElts(signFracStream), corruption);
 
     FLTDECON_ElementType_e eltType = FLTDECON_ElementType_float32;
     if (DI_getFrameFormatVersion(dictx) >= 5) {
         ZL_RBuffer const header = ZL_Decoder_getCodecHeader(dictx);
-        ZL_RET_R_IF_NE(corruption, header.size, 1);
+        ZL_ERR_IF_NE(header.size, 1, corruption);
         uint8_t const* const hdr = (uint8_t const*)header.start;
-        ZL_RET_R_IF_GT(corruption, *hdr, FLTDECON_ElementTypeEnumMaxValue);
+        ZL_ERR_IF_GT(*hdr, FLTDECON_ElementTypeEnumMaxValue, corruption);
         eltType = (FLTDECON_ElementType_e)(*hdr);
     }
 
-    ZL_TRY_LET_R(signFracWidth, FLTDECON_SignFracWidth(eltType));
-    ZL_TRY_LET_R(exponentWidth, FLTDECON_ExponentWidth(eltType));
-    ZL_RET_R_IF_NE(
-            corruption, ZL_Input_eltWidth(signFracStream), signFracWidth);
-    ZL_RET_R_IF_NE(
-            corruption, ZL_Input_eltWidth(exponentStream), exponentWidth);
+    ZL_TRY_LET(size_t, signFracWidth, FLTDECON_SignFracWidth(eltType));
+    ZL_TRY_LET(size_t, exponentWidth, FLTDECON_ExponentWidth(eltType));
+    ZL_ERR_IF_NE(ZL_Input_eltWidth(signFracStream), signFracWidth, corruption);
+    ZL_ERR_IF_NE(ZL_Input_eltWidth(exponentStream), exponentWidth, corruption);
 
-    ZL_TRY_LET_R(eltWidth, FLTDECON_ElementWidth(eltType));
+    ZL_TRY_LET(size_t, eltWidth, FLTDECON_ElementWidth(eltType));
     ZL_Output* const out = ZL_Decoder_create1OutStream(dictx, nbElts, eltWidth);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
 
     uint8_t const* const exponent =
             (uint8_t const*)ZL_Input_ptr(exponentStream);
@@ -63,6 +62,6 @@ ZL_Report DI_float_deconstruct(ZL_Decoder* dictx, const ZL_Input* ins[])
             break;
     }
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, nbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, nbElts));
     return ZL_returnValue(1);
 }

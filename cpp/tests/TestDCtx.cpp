@@ -69,8 +69,10 @@ class TestDCtx : public testing::Test {
                 Input::refNumeric(poly::span<const int>(numericInput_)));
         inputs_.push_back(
                 Input::refStruct(poly::span<const int>(numericInput_)));
-        inputs_.push_back(Input::refString(
-                poly::string_view(serialInput_).substr(0, 2222), lengths_));
+        inputs_.push_back(
+                Input::refString(
+                        poly::string_view(serialInput_).substr(0, 2222),
+                        lengths_));
     }
 
     std::string serialInput_;
@@ -153,9 +155,10 @@ TEST_F(TestDCtx, decoderFailureHasCodecName)
                 .nbSOs = 1,
             },
             .transform_f = [](ZL_Encoder* encoder, const ZL_Input** inputs, size_t numInputs) noexcept -> ZL_Report {
+                ZL_RESULT_DECLARE_SCOPE_REPORT(encoder);
                 auto input = inputs[0];
                 auto output = ZL_Encoder_createTypedStream(encoder, 0, ZL_Input_numElts(input), ZL_Input_eltWidth(input));
-                ZL_RET_R_IF_NULL(allocation, output);
+                ZL_ERR_IF_NULL(output, allocation);
                 memcpy(ZL_Output_ptr(output), ZL_Input_ptr(input), ZL_Input_contentSize(input));
                 return ZL_Output_commit(output, ZL_Input_numElts(input));
             },
@@ -183,8 +186,9 @@ TEST_F(TestDCtx, decoderFailureHasCodecName)
                 .soTypes =  &type,
                 .nbSOs = 1,
             },
-            .transform_f = [](ZL_Decoder* , const ZL_Input**, size_t, const ZL_Input**, size_t) noexcept -> ZL_Report {
-                ZL_RET_R_ERR(GENERIC, "my codec failed for some reason");
+            .transform_f = [](ZL_Decoder*, const ZL_Input**, size_t, const ZL_Input**, size_t) noexcept -> ZL_Report {
+                ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
+                return ZL_REPORT_ERROR(GENERIC, "my codec failed for some reason");
             },
             .name = name.get(),
         };

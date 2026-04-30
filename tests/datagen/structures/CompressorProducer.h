@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <ostream>
+#include <unordered_set>
 
 #include "openzl/zl_compressor.h"
 
@@ -13,7 +14,7 @@
 #include "tests/datagen/random_producer/RandWrapper.h"
 #include "tests/datagen/structures/LocalParamsProducer.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 /**
  * This is a work in progress class. The motivation was originally to provide
@@ -195,7 +196,7 @@ class RandomCompressorMultiBuilder {
         bool multi_{ false };
     };
 
-    std::string make_name(const std::string& prefix);
+    std::string make_unique_name(const std::string& prefix);
 
     ZL_IDType make_ctid();
 
@@ -284,6 +285,8 @@ class RandomCompressorMultiBuilder {
         }
         return results;
     }
+    // An set that tracks names of components to ensure reuse does not happen.
+    std::unordered_set<std::string> names_;
 
     std::shared_ptr<RandWrapper> rw_;
 
@@ -316,4 +319,4 @@ class RandomCompressorMultiBuilder {
     ZL_IDType next_ctid_{ 1 };
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

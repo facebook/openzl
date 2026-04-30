@@ -5,8 +5,6 @@
 #include "openzl/codecs/bitpack/common_bitpack_kernel.h"
 #include "openzl/common/assertion.h"
 #include "openzl/common/errors_internal.h"
-#include "openzl/shared/bits.h"
-#include "openzl/shared/utils.h"
 #include "openzl/zl_ctransform.h"
 #include "openzl/zl_data.h"
 #include "openzl/zl_errors.h"
@@ -14,13 +12,13 @@
 
 static ZL_Report getNbBits(ZL_Encoder* eictx)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_IntParam const nbBits =
             ZL_Encoder_getLocalIntParam(eictx, ZL_Bitunpack_numBits);
     // Parameter **must** be set.
-    ZL_RET_R_IF_EQ(
-            nodeParameter_invalid, nbBits.paramId, ZL_LP_INVALID_PARAMID);
+    ZL_ERR_IF_EQ(nbBits.paramId, ZL_LP_INVALID_PARAMID, nodeParameter_invalid);
     if (nbBits.paramValue <= 0 || nbBits.paramValue > 64) {
-        ZL_RET_R_ERR(nodeParameter_invalidValue);
+        ZL_ERR(nodeParameter_invalidValue);
     }
     return ZL_returnValue((size_t)nbBits.paramValue);
 }
@@ -41,31 +39,32 @@ static size_t getEltWidth(const size_t nbBits)
 
 ZL_Report EI_bitunpack(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
     const ZL_Input* in = ins[0];
     ZL_ASSERT_NN(eictx);
     ZL_ASSERT_NN(in);
     ZL_ASSERT(ZL_Input_type(in) == ZL_Type_serial);
-    ZL_TRY_LET_R(nbBits, getNbBits(eictx));
+    ZL_TRY_LET(size_t, nbBits, getNbBits(eictx));
     const void* const src = ZL_Input_ptr(in);
     size_t const srcSize  = ZL_Input_numElts(in);
 
     size_t const nbElts = srcSize * 8 / nbBits;
 
     // Make sure we fit well, and that remaining bits are zero
-    ZL_RET_R_IF_NE(GENERIC, (nbElts * nbBits + 7) / 8, srcSize);
+    ZL_ERR_IF_NE((nbElts * nbBits + 7) / 8, srcSize, GENERIC);
 
     size_t const eltWidth = getEltWidth(nbBits);
     ZL_Output* const out =
             ZL_Encoder_createTypedStream(eictx, 0, nbElts, eltWidth);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
 
     const size_t bytesRead = ZS_bitpackDecode(
             ZL_Output_ptr(out), nbElts, eltWidth, src, srcSize, (int)nbBits);
-    ZL_RET_R_IF_NE(logicError, bytesRead, srcSize);
+    ZL_ERR_IF_NE(bytesRead, srcSize, logicError);
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, nbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, nbElts));
 
     // Header's structure:
     // Byte 1 - nbBits
@@ -83,9 +82,8 @@ ZL_Report EI_bitunpack(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
                 header[1] = remBits;
                 headerSize += 1;
             } else {
-                ZL_RET_R_ERR(
-                        GENERIC,
-                        "Bitunpack support non-zero trailing bits starting at format version 7");
+                ZL_ERR(GENERIC,
+                       "Bitunpack support non-zero trailing bits starting at format version 7");
             }
         }
     }

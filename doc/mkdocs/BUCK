@@ -6,10 +6,13 @@ load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 
 oncall("data_compression")
 
+BRANCH_NAME = read_package_value("directory_branching.branch_name")  # Gets "dev" or "prod" from the path
+
 python_binary(
     name = "static_docs_build_script",
     srcs = ["static_docs_build_script.py"],
-    main_module = "data_compression.experimental.zstrong.doc.mkdocs.static_docs_build_script",
+    base_module = "openzl.doc.mkdocs",
+    main_module = "openzl.doc.mkdocs.static_docs_build_script",
     par_style = "xar",
     resources = {
         ":mkdocs": "mkdocs",
@@ -31,7 +34,7 @@ buck_genrule(
             "SCRIPT=\\$(readlink -f $0)",
             "SCRIPTPATH=\\$(dirname $SCRIPT)",
             "cd $SCRIPTPATH",
-            "$(location :static_docs_build_script) --pwd \\$(hg root)/fbcode/data_compression/experimental/zstrong/doc/mkdocs --use-system-python-extension --test",
+            "$(location :static_docs_build_script) --pwd \\$(hg root)/fbcode/openzl/{}/doc/mkdocs --use-system-python-extension --test".format(BRANCH_NAME),
         ])))
     ),
 )
@@ -39,36 +42,46 @@ buck_genrule(
 # Test the internal website builds successfully
 buck_sh_test(
     name = "static_docs_test",
+    env = {
+        "DOXYGEN_PATH": "$(location fbsource//third-party/doxygen:doxygen)",
+        # Skip building the trace visualizer in tests since it requires external network access
+        # to fetch npm packages, which is not available in remote execution
+        "OPENZL_SKIP_VISUALIZER_BUILD": "1",
+    },
     test = ":static_docs",
     deps = [
         ":static_docs_build_script",
         # Depend on all files under doc/ to ensure the test triggers on changes to the docs
         ":doc_srcs",
         # Inject fake dependencies to ensure the test triggers on changes to the library and visualization app
-        "//data_compression/experimental/zstrong:zstronglib",  # @manual
-        "//data_compression/experimental/zstrong/tools/visualization_app:app_srcs",  # @manual
+        "../..:zstronglib",  # @manual
+        "../../tools/visualization_app:app_srcs",  # @manual
+        # Doxygen binary must be explicitly declared as a dependency to be materialized in remote execution
+        "fbsource//third-party/doxygen:doxygen",  # @manual
     ],
 )
 
 python_binary(
+    # @autodeps-skip
     name = "mkdocs",
     main_function = "mkdocs.__main__.cli",
     par_style = "xar",
     py_version = "3.12",
     deps = [
+        "../../py:openzl",  # @manual
         "fbsource//third-party/pypi/mkdocs:mkdocs",
         "fbsource//third-party/pypi/mkdocs-material:mkdocs-material",  # @manual
         "fbsource//third-party/pypi/mkdocstrings:mkdocstrings",  # @manual
         "fbsource//third-party/pypi/mkdocstrings-python:mkdocstrings-python",  # @manual
-        "//data_compression/experimental/zstrong/doc/mkdocs/mkdocs-openzl/src:mkdocs_openzl",  # @manual
-        "//data_compression/experimental/zstrong/doc/mkdocs/mkdocstrings-zstd/src:mkdocstrings-zstd",  # @manual
-        "//data_compression/experimental/zstrong/py:openzl",  # @manual
+        "mkdocs-openzl/src:mkdocs_openzl",  # @manual
+        "mkdocstrings-zstd/src:mkdocstrings-zstd",  # @manual
     ],
 )
 
 python_binary(
     name = "import_mkdocstrings_zstd",
     srcs = ["import_mkdocstrings_zstd.py"],
+    base_module = "openzl.doc.mkdocs",
     labels = ["autodeps2_generated"],
-    main_module = "data_compression.experimental.zstrong.doc.mkdocs.import_mkdocstrings_zstd",
+    main_module = "openzl.doc.mkdocs.import_mkdocstrings_zstd",
 )

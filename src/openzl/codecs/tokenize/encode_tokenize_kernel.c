@@ -13,10 +13,11 @@ ZL_Report ZS_buildTokenizeVsfAlphabet(
         const uint32_t* fieldSizes,
         size_t nbElts)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     // Reserve map space
-    ZL_RET_R_IF_NOT(
-            allocation,
-            MapVSF_reserve(tokToIdx, (uint32_t)ZL_MIN(256, nbElts), false));
+    ZL_ERR_IF_NOT(
+            MapVSF_reserve(tokToIdx, (uint32_t)ZL_MIN(256, nbElts), false),
+            allocation);
 
     // Build alphabet map
     *alphabetFieldSizesSum = 0;
@@ -33,7 +34,7 @@ ZL_Report ZS_buildTokenizeVsfAlphabet(
         }
         currElt += fieldSizes[i];
     }
-    ZL_RET_R_IF(allocation, badAlloc);
+    ZL_ERR_IF(badAlloc, allocation);
     return ZL_returnSuccess();
 }
 
@@ -98,12 +99,13 @@ ZL_Report ZS_tokenizeVSFEncode(
         size_t const idxWidth,
         bool sort)
 {
-    ZL_RET_R_IF_GT(
-            temporaryLibraryLimitation,
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_GT(
             alphabetSize,
             UINT32_MAX,
+            temporaryLibraryLimitation,
             "Only 4 byte indices supported... But why do you want this?");
-    ZL_RET_R_IF_EQ(logicError, idxWidth, 0);
+    ZL_ERR_IF_EQ(idxWidth, 0, logicError);
 
     // Build buffer to get insertion order of map entries
     MapVSF_Iter iter = MapVSF_iter(tokToIdx);

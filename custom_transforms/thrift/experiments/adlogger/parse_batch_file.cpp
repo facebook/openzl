@@ -1,5 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+#include "admarket/adlogger/parser/if/BatchAdsLogLineData.h"
 #include "admarket/adlogger/parser/if/gen-cpp2/adlogger_parser_types.h"
 #include "admarket/training_data/feature_store/common/FeatureStoreSerialization.h"
 #include "folly/FileUtil.h"
@@ -9,6 +10,7 @@
 using facebook::adlogger::parser::AdsLogLineData;
 using facebook::adlogger::parser::AdsLogLineDataBatch;
 using facebook::adlogger::parser::BatchAdsLogLineData;
+using facebook::adlogger::parser::makeBatchAdsLogLineData;
 using facebook::training_data::feature_store::FeatureStoreSerialization;
 
 int main(int argc, char* argv[])
@@ -24,25 +26,25 @@ int main(int argc, char* argv[])
     std::vector<AdsLogLineData> adsLogLineDataVec =
             FeatureStoreSerialization::deserializeBatch(
                     folly::IOBuf::wrapBuffer(folly::ByteRange(buffer)));
-    auto batchData = BatchAdsLogLineData(std::move(adsLogLineDataVec));
+    auto batchData = makeBatchAdsLogLineData(std::move(adsLogLineDataVec));
 
     folly::writeFile(
-            (**batchData.compressedFeatureIds_ref()).moveToFbString(),
+            (**batchData.compressedFeatureIds()).moveToFbString(),
             (std::string(filename) + ".featureIds").c_str());
 
     folly::writeFile(
-            (**batchData.compressedFloats_ref()).moveToFbString(),
+            (**batchData.compressedFloats()).moveToFbString(),
             (std::string(filename) + ".floats").c_str());
 
     folly::writeFile(
-            (**batchData.compressedSparseIds_ref()).moveToFbString(),
+            (**batchData.compressedSparseIds()).moveToFbString(),
             (std::string(filename) + ".sparseIds").c_str());
 
     folly::writeFile(
-            (**batchData.compressedLengths_ref()).moveToFbString(),
+            (**batchData.compressedLengths()).moveToFbString(),
             (std::string(filename) + ".lengths").c_str());
 
     folly::writeFile(
-            (**batchData.compressedMetadata_ref()).moveToFbString(),
+            (**batchData.compressedMetadata()).moveToFbString(),
             (std::string(filename) + ".metadata").c_str());
 }

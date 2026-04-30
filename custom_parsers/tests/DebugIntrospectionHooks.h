@@ -7,7 +7,7 @@
 #include "openzl/cpp/CompressIntrospectionHooks.hpp"
 #include "openzl/zl_reflection.h"
 
-namespace zstrong {
+namespace openzl {
 
 // until errors are propagated fully all the time, this is an alternative way to
 // bubble the transform trace to the user
@@ -46,4 +46,4 @@ class DebugIntrospectionHooks : public openzl::CompressIntrospectionHooks {
     }
 };
 
-} // namespace zstrong
+} // namespace openzl

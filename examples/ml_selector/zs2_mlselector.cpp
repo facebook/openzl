@@ -106,6 +106,7 @@ generateSuccessors(ZL_Compressor* cgraph)
     ZL_GraphID tokenize_delta_fieldlz = ZL_Compressor_registerTokenizeGraph(
             cgraph, ZL_Type_numeric, /* sort */ true, delta_fieldlz, fieldlz);
 
+    // Successors are in alphabetical order
     std::map<std::string, ZL_GraphID> successors = {
         { "fieldlz", fieldlz },
         { "range_pack", range_pack },

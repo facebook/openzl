@@ -1,5 +1,7 @@
 /* Copyright (c) Meta Platforms, Inc. and affiliates. */
 
+@import '../index.css';
+
 /* Usage hints for when no data is provided */
 .no-data-helper {
   text-align: left;
@@ -13,6 +15,12 @@
 }
 .no-data-helper-text {
   color: var(--text-primary);
+}
+
+.header-text {
+  color: var(--text-primary);
+  padding-right: 15px;
+  font-size: 12px;
 }
 
 /* For codec nodes - pill shaped (rounded rectangle) */
@@ -41,7 +49,7 @@
   box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
 }
 
-.codec-node.store-node {
+.codec-node.special-node {
   background-color: #dadee2ad;
   border: 3px solid #a5a5a5;
 }
@@ -51,6 +59,24 @@
   background-color: #ffb7b7; /* Color of a node with a collapsed subgraph */
   border: 7px solid #ff0000;
   box-shadow: 0 4px 10px rgba(219, 52, 52, 0.3);
+}
+
+.segmenter-node {
+  padding: 10px;
+  border-radius: 25px;
+  background-color: #f2d0e5; /* Default color */
+  border: 2px solid #db3490;
+  min-width: 300px;
+  max-width: 600px;
+  height: fit-content;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  color: #000;
+  text-align: center;
+  overflow: visible;
+  z-index: 2;
+  display: inline-block;
+  word-break: break-word; /* Break long words instead of overflowing */
+  transition: all 0.3s ease; /* Smooth transition for color changes */
 }
 
 .node-header {
@@ -82,17 +108,6 @@
   height: 8px;
   background-color: #555;
   border: 1px solid #fff;
-}
-
-.edge-label {
-  position: absolute;
-  color: black;
-  background-color: white;
-  font-size: 20px;
-  white-space: pre-line; /* Allow line breaks for multi-line labels */
-  text-align: center;
-  z-index: 3;
-  font-weight: bold;
 }
 
 /* Custom styling for graph's control buttons */
@@ -133,6 +148,7 @@
 }
 
 .graph-node.collapsed {
+  pointer-events: auto;
   background-color: rgba(255, 0, 30, 0.25);
   border: 3px solid #ff9800;
   box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
@@ -282,4 +298,25 @@
   z-index: 5;
   min-width: 400px;
   max-width: 600px;
+}
+
+/* Decompress trace theme: teal/cyan accent instead of blue */
+.decompress-trace .codec-node {
+  background-color: #d0f2e8;
+  border-color: #2b9e8f;
+}
+
+.decompress-trace .codec-node.collapsed {
+  background-color: #e0f0ff;
+  border-color: #4a90d9;
+}
+
+.decompress-trace .codec-node.special-node {
+  background-color: #dadee2ad;
+  border-color: #a5a5a5;
+}
+
+.ctrl-held .codec-node,
+.ctrl-held .graph-node {
+  cursor: pointer;
 }

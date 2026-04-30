@@ -17,7 +17,6 @@
 #include "openzl/common/assertion.h"
 #include "openzl/common/logging.h"
 #include "openzl/common/operation_context.h"
-#include "openzl/common/scope_context.h"
 #include "openzl/shared/portability.h" // ZL_BEGIN_C_DECLS, ZL_END_C_DECLS
 #include "openzl/zl_errors.h"          // ZL_Report
 
@@ -78,10 +77,16 @@ ZL_BEGIN_C_DECLS
     "Compression parameter invalid"
 #define ZL_ErrorCode_segmenter_inputNotConsumed__desc_str \
     "Segmenter did not consume entirely all inputs"
+#define ZL_ErrorCode_segmenter_noSegments__desc_str \
+    "Segmenter did not produce any segments"
 #define ZL_ErrorCode_graph_invalid__desc_str "Graph invalid"
 #define ZL_ErrorCode_graph_nonserializable__desc_str \
     "Graph incompatible with serialization"
 #define ZL_ErrorCode_graph_invalidNumInputs__desc_str "Graph invalid nb inputs"
+#define ZL_ErrorCode_graph_parser_malformedInput__desc_str \
+    "Parser encountered malformed input"
+#define ZL_ErrorCode_graph_parser_unhandledInput__desc_str \
+    "Parser encountered unhandled input"
 #define ZL_ErrorCode_successor_invalid__desc_str \
     "Selected an invalid Successor Graph"
 #define ZL_ErrorCode_successor_alreadySet__desc_str \
@@ -139,6 +144,13 @@ ZL_BEGIN_C_DECLS
 #define ZL_ErrorCode_srcSize_tooLarge__desc_str "Source size too large"
 #define ZL_ErrorCode_integerOverflow__desc_str "Integer overflow"
 #define ZL_ErrorCode_invalidName__desc_str "Invalid name of graph component"
+#define ZL_ErrorCode_dict_corruption__desc_str "Dictionary corruption detected"
+#define ZL_ErrorCode_dict_materialization__desc_str \
+    "Dictionary materialization failure"
+#define ZL_ErrorCode_noValidMaterialization__desc_str \
+    "No valid materializer registered for this dictionary"
+#define ZL_ErrorCode_dictNoRecord__desc_str \
+    "No node or graph in the compressor is associated with this dictionary"
 
 /***********************
  * ZL_EI: ZL_ErrorInfo *
@@ -166,69 +178,6 @@ ZL_INLINE ZL_ErrorInfo ZL_EI_fromSt(const ZL_StaticErrorInfo* const st)
 /******************
  * ZL_E: ZL_Error *
  ******************/
-
-//////////////////
-// Construction //
-//////////////////
-
-/**
- * Using this macro API allows users to specify a formatted message when they
- * create and return an error. Currently this message is discarded. But! We
- * expect to soon have the capability to capture this message information into
- * the error object, so this lets us start including that information that will
- * later be useful now as we migrate things to returning errors rather than
- * ASSERT-ing or REQUIRE-ing.
- *
- * ZL_E() takes an error code suffix, e.g., `allocation`, while ZL_E_CODE()
- * takes the full name (or a variable or something!).
- */
-#define ZL_E(...) ZS_MACRO_PAD1(ZL_E_INNER, __VA_ARGS__)
-#define ZL_E_CODE(...) ZS_MACRO_PAD1(ZL_E_CODE_INNER, __VA_ARGS__)
-
-#define ZL_E_INNER(err, ...) \
-    ZL_E_CODE_INNER(ZL_EXPAND_ERRCODE(err), __VA_ARGS__)
-#define ZL_E_CODE_INNER(code, ...)  \
-    ZL_E_create(                    \
-            NULL,                   \
-            ZL_GET_SCOPE_CONTEXT(), \
-            __FILE__,               \
-            __func__,               \
-            __LINE__,               \
-            code,                   \
-            __VA_ARGS__)
-
-#if ZL_ERROR_ENABLE_STATIC_ERROR_INFO
-#    define ZL_EE_FROM_STATIC(name) \
-        ZL_EI_fromSt(ZL_E_POINTER_TO_STATIC_ERROR_INFO(name))
-#else
-#    define ZL_EE_FROM_STATIC(name) ZL_EE_EMPTY
-#endif
-
-/////////////////
-// Destruction //
-/////////////////
-
-// There is no destructor for ZS2_Errors! The memory is managed elsewhere and
-// therefore there's nothing to do to destroy an error.
-
-///////////////
-// Accessors //
-///////////////
-
-ZL_INLINE int ZL_E_isError(ZL_Error err)
-{
-    return err._code != ZL_ErrorCode_no_error;
-}
-
-ZL_INLINE ZL_ErrorCode ZL_E_code(ZL_Error err)
-{
-    return err._code;
-}
-
-ZL_INLINE const char* ZL_E_codeStr(ZL_Error err)
-{
-    return ZL_ErrorCode_toString(err._code);
-}
 
 /// Logs ZL_E_str(err._info) if level <= ZL_g_logLevel.
 void ZL_E_log(ZL_Error err, int level);
@@ -286,7 +235,6 @@ char const* ZL_E_str(ZL_Error err);
                    #expr,                                             \
                    req_str);                                          \
             ZL_LOG_IFNONEMPTY(ALWAYS, "Context: ", __VA_ARGS__);      \
-            ZL_E_ADDFRAME(&_error, ZL_EE_EMPTY, "");                  \
             ZL_E_log(_error, ZL_LOG_LVL_ALWAYS);                      \
             ZL_ABORT();                                               \
         }                                                             \
@@ -306,47 +254,6 @@ ZL_DynamicErrorInfo* ZL_E_dy(ZL_Error err);
 // Get the static error info in the error. Returns nullptr if the error doesn't
 // contain an error or doesn't point at a static error.
 const ZL_StaticErrorInfo* ZL_E_st(ZL_Error err);
-
-// Append the current frame to the stack in the rich error.
-#define ZL_E_ADDFRAME(e, backup, ...) \
-    ZL_E_addFrame(                    \
-            ZL_GET_SCOPE_CONTEXT(),   \
-            e,                        \
-            backup,                   \
-            __FILE__,                 \
-            __func__,                 \
-            __LINE__,                 \
-            __VA_ARGS__)
-
-#if ZL_ERROR_ENABLE_STACKS
-void ZL_E_addFrame(
-        ZL_ErrorContext const* scopeCtx,
-        ZL_Error* e,
-        ZL_ErrorInfo backup,
-        const char* file,
-        const char* func,
-        int line,
-        char const* fmt,
-        ...);
-#else
-ZL_INLINE void ZL_E_addFrame(
-        ZL_ErrorContext const* scopeCtx,
-        ZL_Error* e,
-        ZL_ErrorInfo backup,
-        const char* file,
-        const char* func,
-        int line,
-        char const* fmt,
-        ...)
-{
-    (void)scopeCtx;
-    (void)file;
-    (void)func;
-    (void)line;
-    (void)fmt;
-    return e;
-}
-#endif // ZS_ENABLE_ERROR_STACKS
 
 void ZL_E_changeErrorCode(ZL_Error* err, ZL_ErrorCode code);
 
@@ -374,9 +281,9 @@ void ZL_E_changeErrorCode(ZL_Error* err, ZL_ErrorCode code);
             ZL_ErrorContext _scope_ctx = { .opCtx = _op_ctx };               \
             /* adding a frame will also trigger static -> dynamic error info \
              * conversion */                                                 \
-            ZL_E_addFrame(                                                   \
+            _error = ZL_E_addFrame(                                          \
                     &_scope_ctx,                                             \
-                    &_error,                                                 \
+                    _error,                                                  \
                     ZL_EE_EMPTY,                                             \
                     __FILE__,                                                \
                     __func__,                                                \
@@ -458,18 +365,6 @@ void ZL_EE_log(ZL_ErrorInfo ei, int level);
  * ZL_Result *
  *************/
 
-//////////////////
-// Construction //
-//////////////////
-
-#undef ZL_RESULT_MAKE_ERROR
-#define ZL_RESULT_MAKE_ERROR(type, ...) \
-    ZL_RESULT_WRAP_ERROR(type, ZL_E(__VA_ARGS__))
-
-#undef ZL_RESULT_MAKE_ERROR_CODE
-#define ZL_RESULT_MAKE_ERROR_CODE(type, ...) \
-    ZL_RESULT_WRAP_ERROR(type, ZL_E_CODE(__VA_ARGS__))
-
 ///////////////
 // Modifiers //
 ///////////////
@@ -487,128 +382,67 @@ void ZL_EE_log(ZL_ErrorInfo ei, int level);
 /////////////////////
 
 /**
- * Like ZL_RET_T_IF_ERR(), but checks that the error is one that is allowed
+ * Like ZL_ERR_IF_ERR(), but checks that the error is one that is allowed
  * to be generated by the zstrong internals, and coerces it to a logicError if
- * not. See ZL_RET_IF_ERR_COERCE_IMPL() for details/motivation.
+ * not. See ZL_ERR_IF_ERR_COERCE_IMPL() for details/motivation.
  */
-#define ZL_RET_T_IF_ERR_COERCE(type, ...) \
-    ZS_MACRO_PAD2(ZL_RET_IF_ERR_COERCE_IMPL, type, __VA_ARGS__)
-
-/**
- * Like ZL_RET_R_IF_ERR(), but checks that the error is one that is allowed
- * to be generated by the zstrong internals, and coerces it to a logicError if
- * not. See ZL_RET_IF_ERR_COERCE_IMPL() for details/motivation.
- */
-#define ZL_RET_R_IF_ERR_COERCE(...) ZL_RET_T_IF_ERR_COERCE(size_t, __VA_ARGS__)
+#define ZL_ERR_IF_ERR_COERCE(...) \
+    ZS_MACRO_PAD1(ZL_ERR_IF_ERR_COERCE_IMPL, __VA_ARGS__)
 
 ////////////////////////////
 // Implementation Details //
 ////////////////////////////
 
-#undef ZL_RET_IMPL
-#define ZL_RET_IMPL(type, res)                                        \
-    do {                                                              \
-        ZL_RESULT_OF(type) __tmp_res = (res);                         \
-        if (ZL_RES_isError(__tmp_res)) {                              \
-            ZL_E_ADDFRAME(&ZL_RES_error(__tmp_res), ZL_EE_EMPTY, ""); \
-        }                                                             \
-        return __tmp_res;                                             \
-    } while (0)
-
-// TODO: only difference with public API here is now that these find the scope
-// ctx
-#undef ZL_RET_ERR_IMPL
-#define ZL_RET_ERR_IMPL(type, errcode, ...)                                \
+/**
+ * Like ZL_ERR_IF_ERR_IMPL(), but checks that the error is one that is allowed
+ * to be generated by the zstrong internals, and coerces it to a logicError if
+ * not.
+ *
+ * dstCapacity_tooSmall should only be produced at the boundary with the
+ * user-provided output buffer. If an internal call produces it, that's a logic
+ * error, so we coerce it.
+ */
+#define ZL_ERR_IF_ERR_COERCE_IMPL(expr, ...)                               \
     do {                                                                   \
-        ZL_E_DECLARE_STATIC_ERROR_INFO(                                    \
-                __zl_static_error_info,                                    \
-                ZL_EXPAND_ERRCODE(errcode),                                \
-                "Unconditional failure: " ZL_EXPAND_ERRCODE_DESC_STR(      \
-                        errcode) ": " ZS_MACRO_1ST_ARG(__VA_ARGS__));      \
-        ZL_RET_ERR_WITH_STATIC_AND_CONTEXT(                                \
-                type,                                                      \
-                ZL_E_POINTER_TO_STATIC_ERROR_INFO(__zl_static_error_info), \
-                ZL_GET_SCOPE_CONTEXT(),                                    \
-                errcode,                                                   \
-                __VA_ARGS__);                                              \
-    } while (0)
-
-#undef ZL_RET_IF_UNARY_IMPL
-#define ZL_RET_IF_UNARY_IMPL(type, errcode, expr, ...)                     \
-    do {                                                                   \
-        ZL_E_DECLARE_STATIC_ERROR_INFO(                                    \
-                __zl_static_error_info,                                    \
-                ZL_EXPAND_ERRCODE(errcode),                                \
-                "Check `" #expr "' failed: " ZL_EXPAND_ERRCODE_DESC_STR(   \
-                        errcode) ": " ZS_MACRO_1ST_ARG(__VA_ARGS__));      \
-        ZL_RET_IF_UNARY_IMPL_WITH_STATIC_AND_CONTEXT(                      \
-                type,                                                      \
-                ZL_E_POINTER_TO_STATIC_ERROR_INFO(__zl_static_error_info), \
-                ZL_GET_SCOPE_CONTEXT(),                                    \
-                errcode,                                                   \
-                expr,                                                      \
-                __VA_ARGS__);                                              \
-    } while (0)
-
-#undef ZL_RET_IF_BINARY_IMPL
-#define ZL_RET_IF_BINARY_IMPL(type, errcode, op, lhs, rhs, ...)            \
-    do {                                                                   \
-        ZL_E_DECLARE_STATIC_ERROR_INFO(                                    \
-                __zl_static_error_info,                                    \
-                ZL_EXPAND_ERRCODE(errcode),                                \
-                "Check `" #lhs " " #op " " #rhs                            \
-                "' failed: " ZL_EXPAND_ERRCODE_DESC_STR(                   \
-                        errcode) ": " ZS_MACRO_1ST_ARG(__VA_ARGS__));      \
-        ZL_RET_IF_BINARY_IMPL_WITH_STATIC_AND_CONTEXT(                     \
-                type,                                                      \
-                ZL_E_POINTER_TO_STATIC_ERROR_INFO(__zl_static_error_info), \
-                ZL_GET_SCOPE_CONTEXT(),                                    \
-                errcode,                                                   \
-                op,                                                        \
-                lhs,                                                       \
-                rhs,                                                       \
-                __VA_ARGS__);                                              \
-    } while (0)
-
-#undef ZL_RET_IF_ERR_IMPL
-#define ZL_RET_IF_ERR_IMPL(type, expr, ...)                              \
-    do {                                                                 \
-        ZL_RESULT_OF(type)                                               \
-        _result = ZL_RESULT_WRAP_ERROR(type, ZL_RES_error(expr));        \
-        if (ZL_UNLIKELY(ZL_RES_isError(_result))) {                      \
-            ZL_E_DECLARE_STATIC_ERROR_INFO(                              \
-                    __zl_static_error_info,                              \
-                    ZL_ErrorCode_GENERIC,                                \
-                    "Forwarding error: " ZS_MACRO_1ST_ARG(__VA_ARGS__)); \
-            ZL_E_ADDFRAME(                                               \
-                    &ZL_RES_error(_result),                              \
-                    ZL_EE_FROM_STATIC(__zl_static_error_info),           \
-                    __VA_ARGS__);                                        \
-            return _result;                                              \
-        }                                                                \
+        ZL__RetType _result = ZL_WRAP_ERROR_NO_FRAME(ZL_RES_error(expr));  \
+        if (ZL_UNLIKELY(ZL_RES_isError(_result))) {                        \
+            ZL_ASSERT_NE(                                                  \
+                    (int)ZL_E_code(ZL_RES_error(_result)),                 \
+                    (int)ZL_ErrorCode_dstCapacity_tooSmall,                \
+                    "A call inside the zstrong internals produced "        \
+                    "dstCapacity_tooSmall, which should only be used at "  \
+                    "the end when interacting with the user-provided "     \
+                    "output buffer.");                                     \
+            if (ZL_E_code(ZL_RES_error(_result))                           \
+                == ZL_ErrorCode_dstCapacity_tooSmall) {                    \
+                ZL_E_changeErrorCode(                                      \
+                        &ZL_RES_error(_result), ZL_ErrorCode_logicError);  \
+                ZL_E_appendToMessage(                                      \
+                        ZL_RES_error(_result),                             \
+                        "A call inside the zstrong internals produced "    \
+                        "dstCapacity_tooSmall, which should only be used " \
+                        "at the end when interacting with the "            \
+                        "user-provided output buffer. "                    \
+                        "Coerced to logicError.\n\t");                     \
+            }                                                              \
+            ZL_E_DECLARE_STATIC_ERROR_INFO(                                \
+                    __zl_static_error_info,                                \
+                    ZL_ErrorCode_GENERIC,                                  \
+                    "Forwarding error: " ZS_MACRO_1ST_ARG(__VA_ARGS__));   \
+            ZL_RES_error(_result) = ZL_E_ADDFRAME(                         \
+                    ZL_RES_error(_result),                                 \
+                    ZL_EE_FROM_STATIC(__zl_static_error_info),             \
+                    __VA_ARGS__);                                          \
+            return _result;                                                \
+        }                                                                  \
     } while (0)
 
 /**
- * Some errors have special meaning, and
+ * Adds a ZL_GraphContext to the error scope
  */
-#define ZL_RET_IF_ERR_COERCE_IMPL(type, res, ...)                                                                                                                                                                     \
-    do {                                                                                                                                                                                                              \
-        ZL_RESULT_OF(type) _res = (res);                                                                                                                                                                              \
-        if (ZL_RES_isError(_res)) {                                                                                                                                                                                   \
-            ZL_ASSERT_NE(                                                                                                                                                                                             \
-                    (int)ZL_E_code(ZL_RES_error(_res)),                                                                                                                                                               \
-                    (int)ZL_ErrorCode_dstCapacity_tooSmall,                                                                                                                                                           \
-                    "A call inside the zstrong internals produced dstCapacity_tooSmall, which should only be used at the end when interacting with the user-provided output buffer.");                                \
-            if (ZL_E_code(ZL_RES_error(_res))                                                                                                                                                                         \
-                == ZL_ErrorCode_dstCapacity_tooSmall) {                                                                                                                                                               \
-                ZL_E_changeErrorCode(                                                                                                                                                                                 \
-                        &ZL_RES_error(_res), ZL_ErrorCode_logicError);                                                                                                                                                \
-                ZL_E_appendToMessage(                                                                                                                                                                                 \
-                        ZL_RES_error(_res),                                                                                                                                                                           \
-                        "A call inside the zstrong internals produced dstCapacity_tooSmall, which should only be used at the end when interacting with the user-provided output buffer. Coerced to logicError.\n\t"); \
-            }                                                                                                                                                                                                         \
-        }                                                                                                                                                                                                             \
-        ZL_RET_IF_ERR_IMPL(type, _res, __VA_ARGS__);                                                                                                                                                                  \
+#define ZL_RESULT_SCOPE_ADD_GRAPH_CONTEXT(...)   \
+    do {                                         \
+        ZL__errorContext.graphCtx = __VA_ARGS__; \
     } while (0)
 
 ZL_END_C_DECLS

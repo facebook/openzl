@@ -9,7 +9,7 @@
 
 #include "tests/utils.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 namespace datagen {
 
@@ -267,4 +267,4 @@ LocalParams LocalParamsProducer::mutateParamsPerturbingEquality(
 
 } // namespace datagen
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

@@ -9,7 +9,6 @@
 
 #include "openzl/codecs/entropy/deprecated/common_entropy.h"
 #include "openzl/codecs/entropy/deprecated/encode_fse_kernel.h"
-#include "openzl/codecs/entropy/encode_huffman_kernel.h"
 #include "openzl/codecs/rolz/common_markov.h"
 #include "openzl/codecs/rolz/encode_encoder.h"
 #include "openzl/common/cursor.h"

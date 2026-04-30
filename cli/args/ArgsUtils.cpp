@@ -7,8 +7,6 @@
 
 #include "custom_parsers/dependency_registration.h"
 
-#include "openzl/codecs/zl_ace.h"
-
 #include "tools/io/InputFile.h"
 #include "tools/logger/Logger.h"
 
@@ -36,20 +34,25 @@ void checkOutput(const std::string& path, bool force)
 }
 
 std::unique_ptr<Compressor> createCompressorFromArgs(
-        const std::optional<std::string>& profileName,
-        const std::optional<std::string>& profileArg,
+        const ProfileArgs& profileArgs,
         const std::optional<std::string>& compressorPath)
 {
-    if (profileName && compressorPath) {
+    if (profileArgs.name() && compressorPath) {
         throw InvalidArgsException(
                 "Both compressor profile and serialized compressor specified. Please provide only one.");
     }
 
-    if (profileName) {
-        ProfileArgs profileArgs;
-        profileArgs.name = profileName.value();
-        if (profileArg) {
-            profileArgs.argmap.emplace("TBD", profileArg.value());
+    if (profileArgs.name()) {
+        if (profileArgs.chunkSize()) {
+            const auto profileName = profileArgs.name().value();
+            const auto profile     = compressProfiles().find(profileName);
+            if (profile != compressProfiles().end()
+                && !profile->second->supportsChunkSize) {
+                Logger::log(
+                        INFO,
+                        "Profile '" + profileName
+                                + "' does not support --chunk-size; ignoring the flag.");
+            }
         }
         return util::createCompressorFromProfile(profileArgs);
     }

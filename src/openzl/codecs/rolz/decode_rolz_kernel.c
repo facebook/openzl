@@ -12,15 +12,16 @@ ZL_Report ZL_rolzDecompress(
         void const* src,
         size_t srcSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZS_decoderCtx* const ctx = ZS_rolzDecoder->ctx_create();
     if (ctx == NULL) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     ZL_Report const dstSize = ZS_rolzDecoder->decompress(
             ctx, (uint8_t*)dst, dstCapacity, (uint8_t const*)src, srcSize);
     ZS_rolzDecoder->ctx_release(ctx);
     if (ZL_isError(dstSize))
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     return dstSize;
 }
 
@@ -30,15 +31,16 @@ ZL_Report ZS_fastLzDecompress(
         void const* src,
         size_t srcSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZS_decoderCtx* const ctx = ZS_fastLzDecoder->ctx_create();
     if (ctx == NULL) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     ZL_Report const dstSize = ZS_fastLzDecoder->decompress(
             ctx, (uint8_t*)dst, dstCapacity, (uint8_t const*)src, srcSize);
     ZS_fastLzDecoder->ctx_release(ctx);
     if (ZL_isError(dstSize))
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     return dstSize;
 }
 
@@ -154,6 +156,7 @@ ZL_Report ZS_RolzDTable2_init(
         uint32_t minLength,
         bool predictMatchLength)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     table->contextDepth       = contextDepth;
     table->contextLog         = contextLog;
     table->rowLog             = rowLog;
@@ -163,7 +166,7 @@ ZL_Report ZS_RolzDTable2_init(
     size_t const tableSize    = sizeof(*table->table) << (contextLog + rowLog);
     table->table              = (ZS_RolzDEntry2*)ZL_calloc(tableSize);
     if (table->table == NULL)
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     return ZL_returnSuccess();
 }
 

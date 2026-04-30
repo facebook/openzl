@@ -71,6 +71,7 @@ static const std::vector<uint16_t> genDispatchIndices(
 static ZL_Report
 oneToManyDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     EXPECT_EQ(nbInputs, 1);
     ZL_Edge* input = inputs[0];
     const int nbOutputs =
@@ -83,7 +84,7 @@ oneToManyDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs) noexcept
         indices[i] = i % nbOutputs;
     }
 
-    ZL_TRY_LET_T(
+    ZL_TRY_LET(
             ZL_EdgeList,
             so,
             ZL_Edge_runDispatchStringNode(input, nbOutputs, indices));
@@ -93,7 +94,7 @@ oneToManyDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs) noexcept
             (size_t)(nbVariableOutputs + 1)); // +1 for the indices stream
 
     for (size_t i = 0; i < so.nbEdges; ++i) {
-        ZL_RET_R_IF_ERR(ZL_Edge_setDestination(so.edges[i], ZL_GRAPH_STORE));
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(so.edges[i], ZL_GRAPH_STORE));
     }
 
     free(indices);
@@ -134,12 +135,15 @@ class DispatchStringGraphTest : public ::testing::Test {
             int numDispatches,
             bool useDynGraph)
     {
-        ZL_REQUIRE_GE(dstCapacity, ZL_compressBound(src.size()));
-        ZL_CCtx* cctx = ZL_CCtx_create();
-        ZL_REQUIRE_NN(cctx);
-
         // massage input
-        const auto strLens  = genStrLens(src);
+        const auto strLens = genStrLens(src);
+
+        // For string inputs, total stored size includes both content and
+        // string lengths array
+        size_t const totalInputSize =
+                src.size() + strLens.size() * sizeof(uint32_t);
+        ZL_REQUIRE_GE(dstCapacity, ZL_compressBound(totalInputSize));
+        ZL_CCtx* cctx       = ZL_CCtx_create();
         ZL_TypedRef* strRef = ZL_TypedRef_createString(
                 src.data(), src.size(), strLens.data(), strLens.size());
         ZL_REQUIRE_NN(strRef);
@@ -216,7 +220,11 @@ class DispatchStringGraphTest : public ::testing::Test {
         const std::string_view src = (numDispatches == 0) ? "" : text;
         const size_t srcSize       = (numDispatches == 0) ? 0 : text.size();
 
-        size_t const compressedBound = ZL_compressBound(srcSize);
+        // For string inputs, total stored size includes string lengths array
+        const auto strLens = genStrLens(src);
+        size_t const totalInputSize =
+                srcSize + strLens.size() * sizeof(uint32_t);
+        size_t const compressedBound = ZL_compressBound(totalInputSize);
         void* const compressed       = malloc(compressedBound);
         ZL_REQUIRE_NN(compressed);
 

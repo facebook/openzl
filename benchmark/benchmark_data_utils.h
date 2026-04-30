@@ -13,8 +13,9 @@
 
 #include "openzl/shared/mem.h"
 #include "openzl/zl_config.h"
+#include "openzl/zl_version.h"
 
-#if ZL_HAVE_FBCODE
+#if ZL_IS_FBCODE
 #    include "tools/cxx/Resources.h"
 #endif
 
@@ -278,18 +279,9 @@ inline std::string readCorpus(const std::filesystem::path& name)
                 return envPath;
             }
         }
-#if ZL_HAVE_FBCODE
-        {
-            // Try looking for a buck resource, we have two possible paths one
-            // for dev and one for release
-            const std::vector<std::string> paths = {
-                "data_compression/experimental/zstrong/benchmark/corpus",
-                "openzl/versions/release/benchmark/corpus"
-            };
-            for (auto path : paths) {
-                if (build::doesResourceExist(path))
-                    return build::getResourcePath(path).string();
-            }
+#if ZL_IS_FBCODE
+        if (build::doesResourceExist("corpus")) {
+            return build::getResourcePath("corpus").string();
         }
 #endif
         // We failed finding a path

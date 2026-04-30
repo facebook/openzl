@@ -7,6 +7,7 @@ on:
     branches: [dev]
   pull_request:
     branches: [dev, master, actionsTest]
+  workflow_dispatch: {}
 
 env:
   # Common environment variables
@@ -39,9 +40,9 @@ jobs:
           echo "=== Testing Windows Compiler Detection Script ==="
           echo "This validates our Windows setup script works correctly in CI"
           echo "Testing help functionality..."
-          powershell -ExecutionPolicy Bypass -File build/cmake/detect_windows_compiler.ps1 -Help
+          powershell -ExecutionPolicy Bypass -File build-scripts/cmake/detect_windows_compiler.ps1 -Help
           echo "Testing detection functionality (without builds)..."
-          powershell -ExecutionPolicy Bypass -File build/cmake/detect_windows_compiler.ps1 -DetectOnly
+          powershell -ExecutionPolicy Bypass -File build-scripts/cmake/detect_windows_compiler.ps1 -DetectOnly
           echo "=== Script functionality tests completed successfully ==="
         shell: cmd
 
@@ -78,7 +79,7 @@ jobs:
         run: |
           echo "=== Running Windows Compiler Detection Script ==="
           echo "This will detect available compilers and verify clang-cl setup"
-          powershell -ExecutionPolicy Bypass -File build/cmake/detect_windows_compiler.ps1 -DetectOnly
+          powershell -ExecutionPolicy Bypass -File build-scripts/cmake/detect_windows_compiler.ps1 -DetectOnly
           echo "=== Manual verification ==="
           where clang-cl
           clang-cl --version
@@ -166,7 +167,7 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           msystem: ${{ matrix.msystem }}
-          install: make diffutils cmake git
+          install: make diffutils cmake git python
           update: true
 
       - name: Install MinGW GCC (i686)
@@ -205,7 +206,8 @@ jobs:
       - name: Build and test
         run: |
           echo "=== Testing $CC $CXX ${{ matrix.msystem }} ==="
-          CFLAGS=-Werror CXXFLAGS=-Werror make -j test V=1
+          CFLAGS=-Werror make lib V=1
+          CFLAGS=-Werror CXXFLAGS=-Werror make test V=1
           echo "=== Build and test completed successfully ==="
 
 

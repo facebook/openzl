@@ -4,7 +4,6 @@
 
 #include "openzl/common/errors_internal.h"
 #include "openzl/common/operation_context.h"
-#include "openzl/common/scope_context.h"
 #include "openzl/zl_compress.h"
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_compressor_serialization.h"
@@ -68,7 +67,7 @@ TEST(OperationContextTest, BasicUsage)
     ZL_OperationContext opCtx{};
     ZL_OC_init(&opCtx);
 
-    ZL_ScopeContext scopeCtx = { &opCtx };
+    ZL_ErrorContext scopeCtx = { &opCtx };
 
     EXPECT_EQ(ZL_OC_numErrors(&opCtx), 0u);
     EXPECT_EQ(ZL_OC_getError(&opCtx, ZL_ErrorCode_no_error), nullptr);
@@ -119,7 +118,7 @@ TEST(OperationContextTest, Warnings)
     ZL_OperationContext opCtx{};
     ZL_OC_init(&opCtx);
 
-    ZL_ScopeContext scopeCtx = { &opCtx };
+    ZL_ErrorContext scopeCtx = { &opCtx };
 
     EXPECT_EQ(ZL_OC_numErrors(&opCtx), 0u);
     EXPECT_EQ(ZL_OC_numWarnings(&opCtx), 0u);
@@ -206,8 +205,10 @@ TEST(OperationContextTest, Warnings)
 
     {
         // Coerce static info and convert into dynamic
-        auto e4 = ZL_RES_error(
-                []() { ZL_RET_R_ERR(corruption, "qwerty %d", 1234); }());
+        auto e4 = ZL_RES_error([]() {
+            ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
+            ZL_ERR(corruption, "qwerty %d", 1234);
+        }());
 
         EXPECT_EQ(ZL_E_dy(e4), nullptr);
 

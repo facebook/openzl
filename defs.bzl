@@ -4,12 +4,44 @@ load("@fbcode//fbpkg:fbpkg.bzl", "fbpkg")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs:selects.bzl", "selects")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_string")
+load("@fbsource//tools/build_defs/windows:windows_flag_map.bzl", "windows_convert_gcc_clang_flags")
+load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
 load("@fbsource//xplat/security/lionhead:defs.bzl", "ALL_EMPLOYEES", "Interaction", "Metadata", "Priv", "Reachability", "Severity")
 load("@fbsource//xplat/security/lionhead/build_defs:generic_harness.bzl", "generic_lionhead_harness")
 load("//security/lionhead/harnesses:defs.bzl", "cpp_lionhead_harness")
 
-ZS_HEADER_INCLUDE_PATH = "-Idata_compression/experimental/zstrong"
+# Labels that should be added to tests that pass cross-platform
+def cross_platform_labels():
+    return ci.labels(
+        ci.mac(ci.mode("fbsource//arvr/mode/mac-arm/opt")),
+        ci.mac(ci.mode("fbsource//arvr/mode/mac-arm/dev")),
+        ci.linux(ci.mode("fbsource//arvr/mode/fb-linux-nh/opt")),
+        ci.linux(ci.mode("fbsource//arvr/mode/fb-linux-nh/dev-asan")),
+    )
+
+_ZL_PROD_PREFIXES = [
+    "openzl/prod",
+]
+
+_ZL_DEV_PREFIXES = [
+    "openzl/dev",
+]
+
+_ZL_PREFIXES = _ZL_PROD_PREFIXES + _ZL_DEV_PREFIXES
+
+def _is_release():
+    for prefix in _ZL_PROD_PREFIXES:
+        if native.package_name().startswith(prefix):
+            return True
+    return False
+
+def zl_fbcode_is_release_pp_flag():
+    if _is_release():
+        return "-DZL_FBCODE_IS_RELEASE=1"
+    else:
+        return "-DZL_FBCODE_IS_RELEASE=0"
 
 def _strip_prefix(headers, prefix):
     header_map = {}
@@ -26,11 +58,36 @@ def public_headers(headers):
 def private_headers(headers):
     return _strip_prefix(headers, "src/")
 
-_ZS_COMPILER_FLAGS = [
+def _zl_repo_prefix():
+    for prefix in _ZL_PREFIXES:
+        if native.package_name().startswith(prefix):
+            return prefix
+    fail("Unknown package name: " + native.package_name())
+
+def relative_headers(headers):
+    """
+    Returns a map of headers relative to the OpenZL repo root.
+    This must not be used in OpenZL core, and is meant only for targets that
+    don't escape the repo.
+    """
+    root = _zl_repo_prefix()
+    package = native.package_name()
+    prefix = package[len(root) + 1:]
+
+    header_map = {}
+    for header in headers:
+        name = prefix + "/" + header
+        header_map[name] = header
+
+    return header_map
+
+# Base compiler flags for all builds (GCC/Clang syntax)
+_ZS_COMPILER_FLAGS_CLANG = [
     "-fno-sanitize=pointer-overflow",
 ]
 
-_ZS_DEV_COMPILER_FLAGS = [
+# Dev compiler flags (GCC/Clang syntax)
+_ZS_DEV_COMPILER_FLAGS_CLANG = [
     "-Wall",
     "-Wcast-qual",
     "-Wcast-align",
@@ -52,13 +109,15 @@ _ZS_DEV_COMPILER_FLAGS = [
     # "-DZS_ERROR_ENABLE_LEAKY_ALLOCATIONS=1", # set this to always create verbose errors
 ]
 
-_ZS_DEV_C_COMPILER_FLAGS = [
+# Dev C-specific compiler flags (GCC/Clang syntax)
+_ZS_DEV_C_COMPILER_FLAGS_CLANG = [
     "-Wextra",
     "-Wconversion",
     "-Wno-missing-field-initializers",  # Allow missing fields in designated initializers
 ]
 
-_ZS_SRC_FILE_COMPILER_FLAGS = {
+# File-specific compiler flags (GCC/Clang syntax)
+_ZS_SRC_FILE_COMPILER_FLAGS_CLANG = {
     "src/openzl/common/errors.c": [
         "-Wno-format-nonliteral",
     ],
@@ -73,18 +132,48 @@ _ZS_SRC_FILE_COMPILER_FLAGS = {
     ],
 }
 
-_ZS_PROPAGATED_PP_FLAGS = [
-    ZS_HEADER_INCLUDE_PATH,
-]
+# Convert flags for MSVC when needed
+_ZS_COMPILER_FLAGS = select({
+    "DEFAULT": _ZS_COMPILER_FLAGS_CLANG,
+    "ovr_config//compiler:msvc": windows_convert_gcc_clang_flags(_ZS_COMPILER_FLAGS_CLANG),
+})
 
-_ZS_C_COMPILER_FLAGS = [
+_ZS_DEV_COMPILER_FLAGS = select({
+    "DEFAULT": _ZS_DEV_COMPILER_FLAGS_CLANG,
+    "ovr_config//compiler:msvc": windows_convert_gcc_clang_flags(_ZS_DEV_COMPILER_FLAGS_CLANG),
+})
+
+_ZS_DEV_C_COMPILER_FLAGS = select({
+    "DEFAULT": _ZS_DEV_C_COMPILER_FLAGS_CLANG,
+    "ovr_config//compiler:msvc": windows_convert_gcc_clang_flags(_ZS_DEV_C_COMPILER_FLAGS_CLANG),
+})
+
+_ZS_SRC_FILE_COMPILER_FLAGS = {
+    src: select({
+        "DEFAULT": flags,
+        "ovr_config//compiler:msvc": windows_convert_gcc_clang_flags(flags),
+    })
+    for src, flags in _ZS_SRC_FILE_COMPILER_FLAGS_CLANG.items()
+}
+
+_ZS_C_COMPILER_FLAGS_CLANG = [
     "-std=c11",
 ]
 
-_ZS_CXX_COMPILER_FLAGS = [
+_ZS_C_COMPILER_FLAGS = select({
+    "DEFAULT": _ZS_C_COMPILER_FLAGS_CLANG,
+    "ovr_config//compiler:msvc": windows_convert_gcc_clang_flags(_ZS_C_COMPILER_FLAGS_CLANG),
+})
+
+_ZS_CXX_COMPILER_FLAGS_CLANG = [
     "-Wno-c99-extensions",  # permit use of C99 features from C++ (i.e., tests)
     "-Wno-language-extension-token",
 ]
+
+_ZS_CXX_COMPILER_FLAGS = select({
+    "DEFAULT": _ZS_CXX_COMPILER_FLAGS_CLANG,
+    "ovr_config//compiler:msvc": windows_convert_gcc_clang_flags(_ZS_CXX_COMPILER_FLAGS_CLANG),
+})
 
 ZS_HARNESS_MODES = [
     "fbcode//security/lionhead/mode/dbgo-asan-libfuzzer",
@@ -106,12 +195,14 @@ ZS_FUZZ_METADATA = Metadata(
     privilege_required = Priv.PRE_AUTH,
     # Not reachable through network
     reachability = Reachability.LOCAL,
-    # no clicks neede by user
+    # no clicks needed by user
     user_interaction_required = Interaction.ZERO_CLICK,
 )
 
-def _is_release():
-    return native.package_name().startswith("openzl/versions/release")
+_DEFAULT_HARNESS_CONFIG = {
+    # Set 1 minute timeout on inputs, rather than the 10 second default
+    "perInputTimeout": 60,
+}
 
 def _zs_src_file_compiler_flags(src):
     flags = []
@@ -131,31 +222,50 @@ def _zs_src_file_compiler_flags(src):
     return (src, flags)
 
 def _add_zs_compiler_flags(kwargs, strict_conversions = True, float_equal = True):
-    # Add common compiler flags
-    compiler_flags = list(_ZS_COMPILER_FLAGS)
+    # Start with base compiler flags (already converted for MSVC via select)
+    compiler_flags = _ZS_COMPILER_FLAGS
 
-    # Add dev or release compiler flags
+    # Add dev or release compiler flags (already converted for MSVC via select)
     if not _is_release():
         compiler_flags += _ZS_DEV_COMPILER_FLAGS
 
-    # Add the original compiler flags
+    # Add the original compiler flags from kwargs
     compiler_flags += kwargs.get("compiler_flags", [])
 
-    # Remove strict conversions
+    # Handle strict_conversions and float_equal filtering
+    # Note: These filters work on GCC/Clang flags. For MSVC, the flags are already
+    # converted and these specific flags won't be present, so filtering is safe.
     if not strict_conversions:
-        compiler_flags = [x for x in compiler_flags if x != "-Wconversion"]
+        compiler_flags = selects.apply(compiler_flags, lambda flags: [x for x in flags if x != "-Wconversion"])
 
-    # Remove float equal
     if not float_equal:
-        compiler_flags = [x for x in compiler_flags if x != "-Wfloat-equal"]
+        compiler_flags = selects.apply(compiler_flags, lambda flags: [x for x in flags if x != "-Wfloat-equal"])
 
     kwargs["compiler_flags"] = compiler_flags
 
     # add file-specific compiler flags
-    kwargs["srcs"] = [
-        _zs_src_file_compiler_flags(src)
-        for src in kwargs.get("srcs", [])
-    ]
+    # Use selects.apply to handle cases where srcs might contain select() expressions
+    srcs = kwargs.get("srcs", [])
+    if srcs:
+        kwargs["srcs"] = selects.apply(
+            srcs,
+            lambda src_list: [_zs_src_file_compiler_flags(src) for src in src_list],
+        )
+
+    # Set empty header namespace
+    kwargs["header_namespace"] = ""
+    headers = kwargs.get("headers", None)
+
+    if isinstance(headers, list):
+        # Unless we already have a header map, default to headers
+        # being relative to the OpenZL repo root.
+        kwargs["headers"] = relative_headers(headers)
+
+    private_headers = kwargs.get("private_headers", None)
+    if isinstance(private_headers, list):
+        # Unless we already have a header map, default to headers
+        # being relative to the OpenZL repo root.
+        kwargs["private_headers"] = relative_headers(private_headers)
 
 def zs_library(**kwargs):
     _add_zs_compiler_flags(kwargs)
@@ -166,9 +276,6 @@ def zs_cxxlibrary(strict_conversions = True, float_equal = True, **kwargs):
     _zs_library(**kwargs)
 
 def _zs_library(**kwargs):
-    propagated_pp_flags = kwargs.get("propagated_pp_flags", [])
-    kwargs["propagated_pp_flags"] = _ZS_PROPAGATED_PP_FLAGS + propagated_pp_flags
-
     cpp_library(
         **kwargs
     )
@@ -212,7 +319,7 @@ def zs_fuzzers(ftest_names, generator = None, **kwargs):
         Each should have a matching FUZZ(test_suite, test_case) in the source file.
 
         generator: Optionally a binary target that accepts three parameters:
-        test_suite, test_case, and output_directory. It should generate an appropiate
+        test_suite, test_case, and output_directory. It should generate an appropriate
         seed corpus for the given ftest in the output_directory. This is used to seed
         the fuzzer during corpus expansion. This allows us to e.g. dynamically generate
         relevant Zstrong compressed frame with interesting transforms for decompression
@@ -228,16 +335,7 @@ def zs_fuzzers(ftest_names, generator = None, **kwargs):
 
     for ftest_name in ftest_names:
         name = prefix + "_".join(ftest_name)
-        cpp_lionhead_harness(
-            name = name,
-            metadata = ZS_FUZZ_METADATA,
-            ftest_name = ftest_name,
-            harness_configs = {mode: {} for mode in ZS_HARNESS_MODES},
-            **kwargs
-        )
-
         if generator:
-            generator_name = name + "_Generator"
             generator_config = {
                 "seed_generator_command": [
                     "./generator",
@@ -246,13 +344,28 @@ def zs_fuzzers(ftest_names, generator = None, **kwargs):
                     "@out_seed_folder@",
                 ],
             }
+
+            # Determine the binary target suffix based on fuzzer mode.
+            # cpp_lionhead_harness delegates to cpp_generic_lionhead_harness,
+            # which calls get_bundle_build_rule() (configs.bzl).  That function
+            # defaults to AFL when afl is not disabled and lionhead.fuzzer is
+            # unset — so we must mirror its logic here.
+            # See also: D57974923 (original _bin), D95816404 (AFL fix),
+            #           configs.bzl:get_bundle_build_rule().
+            fuzzer = native.read_config("lionhead", "fuzzer")
+            if fuzzer == "libfuzzer":
+                fuzzer_binary_suffix = "_bin"
+            else:
+                fuzzer_binary_suffix = "_afl"
+
             generic_lionhead_harness(
-                name = generator_name,
+                name = name,
                 bundle_spec_version = 1,
                 environment_constraints = {
                     "remote_execution.linux": {},
                     "tw.lionhead": {},
                 },
+                default_harness_config = _DEFAULT_HARNESS_CONFIG,
                 harness_configs = {mode: generator_config for mode in ZS_HARNESS_MODES},
                 harness_default_modes = {
                     "coverage": "fbcode//security/lionhead/mode/opt-cov.v2",
@@ -263,10 +376,19 @@ def zs_fuzzers(ftest_names, generator = None, **kwargs):
                     "fuzz": "fbsource//xplat/security/lionhead/utils/runners/libfuzzer:fuzz",
                     "fuzz_utils.py": "fbsource//xplat/security/lionhead/utils/runners:fuzz_utils",
                     "generator": generator,
-                    generator_name: ":" + name + "_bin",
+                    name: ":" + name + "_NoGenerator" + fuzzer_binary_suffix,
                 },
                 metadata = ZS_FUZZ_METADATA,
             )
+
+        cpp_lionhead_harness(
+            name = name if not generator else name + "_NoGenerator",
+            metadata = ZS_FUZZ_METADATA,
+            ftest_name = ftest_name,
+            default_harness_config = _DEFAULT_HARNESS_CONFIG,
+            harness_configs = {mode: {} for mode in ZS_HARNESS_MODES},
+            **kwargs
+        )
 
 def zs_raw_fuzzer(name, **kwargs):
     if _is_release():

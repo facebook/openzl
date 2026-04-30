@@ -195,14 +195,17 @@ ZL_Output* bufferToStream(
         ZL_ASSERT(streamType == ZL_Type_numeric);
         auto expectedItemSize = pybind::getNativeIntegerSize(buffer.format);
         if (!expectedItemSize.has_value()) {
-            throw std::runtime_error(fmt::format(
-                    "numeric stream has unexpected format {} (itemsize={})",
-                    buffer.format,
-                    (unsigned)buffer.itemsize));
+            throw std::runtime_error(
+                    fmt::format(
+                            "numeric stream has unexpected format {} (itemsize={})",
+                            buffer.format,
+                            (unsigned)buffer.itemsize));
         }
         if ((size_t)buffer.itemsize != *expectedItemSize) {
-            throw std::runtime_error(fmt::format(
-                    "Unexpected item size for format {}", buffer.format));
+            throw std::runtime_error(
+                    fmt::format(
+                            "Unexpected item size for format {}",
+                            buffer.format));
         }
 
         nbElts   = (size_t)buffer.shape[0];

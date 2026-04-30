@@ -129,6 +129,16 @@ ZL_Report GM_forEachGraph(
         void* opaque,
         const ZL_Compressor* compressor);
 
+// Warning: This is part of experimental API for graph mutation on the
+// compressor.
+//
+// Replaces all the parameters of the target graph with @p gp. If there is a
+// cycle in the graph as a result of this operation, it is UB.
+ZL_Report GM_overrideGraphParams(
+        GraphsMgr* const gm,
+        ZL_GraphID targetGraph,
+        const ZL_GraphParameters* gp);
+
 ZL_END_C_DECLS
 
 #endif // ZSTRONG_COMPRESS_GRAPHMGR_H

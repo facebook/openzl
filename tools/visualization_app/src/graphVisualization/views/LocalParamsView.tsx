@@ -5,9 +5,9 @@ import {useState} from 'react';
 import {useFloating, autoUpdate} from '@floating-ui/react';
 import {CiCircleMore} from '../../icons/TablerIcons';
 
-type LocalParamsPopoverProps = {
+interface LocalParamsPopoverProps {
   localParams: LocalParamInfo;
-};
+}
 
 // Display local params
 export function renderLocalParams(localParams: LocalParamInfo) {

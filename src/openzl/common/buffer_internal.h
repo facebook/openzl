@@ -59,11 +59,12 @@ ZL_INLINE ZL_RBuffer ZL_RBuffer_fromVector(VECTOR(uint8_t) const* vec)
  */
 ZL_INLINE ZL_Report ZL_WCursor_write(ZL_WCursor* wcp, ZL_RBuffer src)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT((ZL_OperationContext*)NULL);
     ZL_ASSERT_NN(wcp);
     if (src.size)
         ZL_ASSERT_NN(src.start);
     if (wcp->pos + src.size > wcp->wb.capacity) {
-        ZL_RET_R_ERR(internalBuffer_tooSmall);
+        ZL_ERR(internalBuffer_tooSmall);
     }
     if (src.size) {
         ZL_memcpy((char*)wcp->wb.start + wcp->pos, src.start, src.size);
@@ -88,18 +89,16 @@ ZL_INLINE const void* ZL_RCursor_RPtr(ZL_RCursor rc)
 ZL_INLINE ZL_RESULT_OF(ZL_RBuffer)
         ZL_RBuffer_slice(ZL_RBuffer rb, size_t startPos, size_t length)
 {
-    ZL_RET_T_IF_LT(
-            ZL_RBuffer,
-            corruption,
-            startPos + length,
-            startPos); // ensure no overflow
-    ZL_RET_T_IF_GT(ZL_RBuffer, corruption, startPos + length, rb.size);
+    ZL_RESULT_DECLARE_SCOPE(ZL_RBuffer, (ZL_OperationContext*)NULL);
+    ZL_ERR_IF_LT(startPos + length, startPos,
+                 corruption); // ensure no overflow
+    ZL_ERR_IF_GT(startPos + length, rb.size, corruption);
     if (rb.start == NULL)
         ZL_ASSERT_EQ(startPos, 0);
     const void* const newStart =
             startPos ? (const char*)rb.start + startPos : rb.start;
     ZL_RBuffer ret = (ZL_RBuffer){ newStart, length };
-    return ZL_RESULT_WRAP_VALUE(ZL_RBuffer, ret);
+    return ZL_WRAP_VALUE(ret);
 }
 
 ZL_END_C_DECLS

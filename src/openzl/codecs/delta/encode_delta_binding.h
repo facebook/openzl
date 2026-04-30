@@ -12,11 +12,10 @@ ZL_BEGIN_C_DECLS
 // Use and generate Integer streams
 ZL_Report EI_delta_int(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 
-#define EI_DELTA_INT(id)                                      \
-    {                                                         \
-        .gd = NUMPIPE_GRAPH(id), .transform_f = EI_delta_int, \
-        .name = "!zl.delta_int"                               \
-    }
+#define EI_DELTA_INT(id)                \
+    { .gd          = NUMPIPE_GRAPH(id), \
+      .transform_f = EI_delta_int,      \
+      .name        = "!zl.delta_int" }
 
 ZL_END_C_DECLS
 

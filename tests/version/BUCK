@@ -1,8 +1,11 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
+load("@fbcode//scm/directory_branching:defs.bzl", "directory_branch_visibility")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load(":defs.bzl", "dev_only_unittest", "version_fuzzer")
+load("../../defs.bzl", "relative_headers")
+load("defs.bzl", "dev_only_unittest", "version_fuzzer")
+
 # @noautodeps
 
 oncall("data_compression")
@@ -10,12 +13,17 @@ oncall("data_compression")
 cpp_binary(
     name = "version_test_interface.so",
     srcs = ["VersionTestInterfaceABI.cpp"],
-    headers = ["VersionTestInterfaceABI.h"],
+    headers = relative_headers(["VersionTestInterfaceABI.h"]),
+    header_namespace = "",
     dlopen_enabled = True,
+    visibility = [
+        directory_branch_visibility(),
+        "//openzl:release_version_test_interface.so",
+    ],
     deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/tests:constants",
-        "//data_compression/experimental/zstrong/tests/datagen:custom_nodes",
+        "..:constants",
+        "../..:zstronglib",
+        "../datagen:custom_nodes",
     ],
 )
 
@@ -26,10 +34,11 @@ cpp_binary(
 cpp_library(
     name = "version_test_interface",
     srcs = ["VersionTestInterface.cpp"],
-    headers = [
+    headers = relative_headers([
         "VersionTestInterface.h",
         "VersionTestInterfaceABI.h",
-    ],
+    ]),
+    header_namespace = "",
     external_deps = [
         "gflags",
     ],
@@ -48,9 +57,9 @@ dev_only_unittest(
     },
     supports_static_listing = False,
     deps = [
+        "../../custom_transforms/thrift/kernels/tests:thrift_kernel_test_utils",
         "fbsource//xplat/tools/cxx:resourcesFbcode",
         ":version_test_interface",
-        "//data_compression/experimental/zstrong/custom_transforms/thrift/kernels/tests:thrift_kernel_test_utils",
     ],
 )
 

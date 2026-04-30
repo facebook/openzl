@@ -21,56 +21,47 @@ static ZL_RESULT_OF(uint64_t) getDivisor(
         uint64_t divisor,
         const void* src)
 {
+    ZL_RESULT_DECLARE_SCOPE(uint64_t, NULL);
     if (divisor == 0) {
         divisor = ZL_gcdVec(src, nbInts, intWidth);
         return ZL_RESULT_WRAP_VALUE(uint64_t, divisor);
     }
     switch (intWidth) {
         case 1:
-            ZL_RET_T_IF_GT(
-                    uint64_t,
-                    node_invalid_input,
+            ZL_ERR_IF_GT(
                     divisor,
                     UCHAR_MAX,
-                    "Divisor too large");
-            ZL_RET_T_IF_NE(
-                    uint64_t,
                     node_invalid_input,
+                    "Divisor too large");
+            ZL_ERR_IF_NE(
                     ZL_firstIndexNotDivisibleBy8(src, nbInts, divisor),
-                    nbInts);
+                    nbInts,
+                    node_invalid_input);
             break;
         case 2:
-            ZL_RET_T_IF_GT(
-                    uint64_t,
-                    node_invalid_input,
+            ZL_ERR_IF_GT(
                     divisor,
                     USHRT_MAX,
-                    "Divisor too large");
-            ZL_RET_T_IF_NE(
-                    uint64_t,
                     node_invalid_input,
+                    "Divisor too large");
+            ZL_ERR_IF_NE(
                     ZL_firstIndexNotDivisibleBy16(src, nbInts, divisor),
-                    nbInts);
+                    nbInts,
+                    node_invalid_input);
             break;
         case 4:
-            ZL_RET_T_IF_GT(
-                    uint64_t,
-                    node_invalid_input,
-                    divisor,
-                    UINT_MAX,
-                    "Divisor too large");
-            ZL_RET_T_IF_NE(
-                    uint64_t,
-                    node_invalid_input,
+            ZL_ERR_IF_GT(
+                    divisor, UINT_MAX, node_invalid_input, "Divisor too large");
+            ZL_ERR_IF_NE(
                     ZL_firstIndexNotDivisibleBy32(src, nbInts, divisor),
-                    nbInts);
+                    nbInts,
+                    node_invalid_input);
             break;
         case 8:
-            ZL_RET_T_IF_NE(
-                    uint64_t,
-                    node_invalid_input,
+            ZL_ERR_IF_NE(
                     ZL_firstIndexNotDivisibleBy64(src, nbInts, divisor),
-                    nbInts);
+                    nbInts,
+                    node_invalid_input);
             break;
         default:
             ZL_ASSERT_FAIL("Unsupported int width");
@@ -81,6 +72,7 @@ static ZL_RESULT_OF(uint64_t) getDivisor(
 ZL_Report
 EI_divide_by_int(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
     const ZL_Input* in = ins[0];
@@ -92,24 +84,25 @@ EI_divide_by_int(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     size_t const nbInts = ZL_Input_numElts(in);
     ZL_Output* const out =
             ZL_Encoder_createTypedStream(eictx, 0, nbInts, intWidth);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
     const void* src = ZL_Input_ptr(in);
     void* dst       = ZL_Output_ptr(out);
 
     uint8_t header[ZL_VARINT_LENGTH_64];
-    ZL_RefParam div = ZL_Encoder_getLocalParam(eictx, ZL_DIVIDE_BY_PID);
-    ZL_RESULT_OF(uint64_t)
-    divisor = getDivisor(
-            intWidth,
-            nbInts,
-            div.paramRef ? *(const uint64_t*)div.paramRef : 0,
-            src);
-    ZL_RET_R_IF_ERR(divisor);
-    uint64_t divisorValue = ZL_RES_value(divisor);
+    ZL_RefParam div   = ZL_Encoder_getLocalParam(eictx, ZL_DIVIDE_BY_PID);
+    uint64_t divParam = 0;
+    if (div.paramRef != NULL) {
+        ZL_ERR_IF_NE(div.paramSize, sizeof(uint64_t), graphParameter_invalid);
+        divParam = *(const uint64_t*)div.paramRef;
+    }
+    ZL_TRY_LET(
+            uint64_t,
+            divisorValue,
+            getDivisor(intWidth, nbInts, divParam, src));
     ZS_divideByEncode(dst, src, nbInts, divisorValue, intWidth);
     size_t encodeSize = ZL_varintEncode64Fast(divisorValue, header);
     ZL_Encoder_sendCodecHeader(eictx, header, encodeSize);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, nbInts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, nbInts));
 
     return ZL_returnSuccess();
 }
@@ -124,8 +117,12 @@ ZL_NodeID ZL_Compressor_registerDivideByNode(
     ZL_LocalCopyParams copyParams = { .copyParams   = &copyParam,
                                       .nbCopyParams = 1 };
     ZL_LocalParams localParams    = { .copyParams = copyParams };
-    ZL_NodeID const node_divideBy =
-            ZL_Compressor_cloneNode(cgraph, ZL_NODE_DIVIDE_BY, &localParams);
+    ZL_NodeID const node_divideBy = ZL_Compressor_registerParameterizedNode(
+            cgraph,
+            &(const ZL_ParameterizedNodeDesc){
+                    .node        = ZL_NODE_DIVIDE_BY,
+                    .localParams = &localParams,
+            });
     return node_divideBy;
 }
 

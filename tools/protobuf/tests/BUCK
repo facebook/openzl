@@ -1,9 +1,20 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 load("@fbcode_macros//build_defs:protobuf_library.bzl", "protobuf_library")
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_fuzzers", "zs_unittest")
+load("../../../defs.bzl", "zs_cxxlibrary", "zs_fuzzers", "zs_unittest")
 
 oncall("data_compression")
+
+zs_cxxlibrary(
+    name = "utils",
+    srcs = ["utils.cpp"],
+    headers = ["utils.h"],
+    resources = glob(["resources/*"]),
+    exported_deps = [
+        "../../..:zstronglib",
+        "fbsource//xplat/tools/cxx:resources",
+    ],
+)
 
 zs_unittest(
     name = "test_proto_serializer",
@@ -13,24 +24,42 @@ zs_unittest(
         "-Wno-cast-qual",
     ],
     deps = [
+        "..:serializer",
+        "../../..:zstronglib",
         ":test_schema-cpp",
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/tools/protobuf:serializer",
     ],
+    external_deps = ["protobuf"],
 )
 
 zs_unittest(
     name = "test_proto_utils",
     srcs = ["test_proto_utils.cpp"],
     deps = [
-        "//data_compression/experimental/zstrong/tools/protobuf:utils",
+        "..:utils",
+    ],
+)
+
+zs_unittest(
+    name = "test_descriptor_loader",
+    srcs = ["test_descriptor_loader.cpp"],
+    deps = [
+        "..:utils",
+        ":utils",
+    ],
+)
+
+zs_unittest(
+    name = "test_dynamic_messages",
+    srcs = ["test_dynamic_messages.cpp"],
+    deps = [
+        "..:utils",
+        ":utils",
     ],
 )
 
 protobuf_library(
     name = "test_schema",
     srcs = ["test_schema.proto"],
-    base_path = "data_compression/experimental/zstrong/tools/protobuf/tests",
     langs = [
         "cpp",
     ],
@@ -44,10 +73,10 @@ zs_fuzzers(
         ("ProtobufSerializerTest", "FuzzRandomInput"),
     ],
     deps = [
+        "..:serializer",
+        "../../..:zstronglib",
         "fbsource//third-party/protobuf:libprotobuf",
         "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
         ":test_schema-cpp",
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/tools/protobuf:serializer",
     ],
 )

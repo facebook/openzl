@@ -9,11 +9,9 @@
 #include "benchmark/e2e/e2e_compressor.h"
 #include "custom_transforms/json_extract/decode_json_extract.h"
 #include "custom_transforms/json_extract/encode_json_extract.h"
-#include "openzl/zl_config.h"
-#include "openzl/zl_ctransform.h"
-#include "openzl/zl_dtransform.h"
+#include "openzl/zl_version.h"
 
-#if ZL_HAVE_FBCODE
+#if ZL_IS_FBCODE
 
 #    include "custom_transforms/json_extract/tests/json_extract_test_data.h"
 
@@ -44,7 +42,7 @@ class JsonExtractCompressor : public ZstrongCompressor {
 void registerBenchmark(size_t size)
 {
     auto corpus = std::make_shared<ArbitrarySerializedData>(
-            tests::genJsonLikeData(size));
+            openzl::tests::genJsonLikeData(size));
     auto compressor = std::make_shared<JsonExtractCompressor>();
     E2EBenchmarkTestcase(compressor, corpus).registerBenchmarks();
 }

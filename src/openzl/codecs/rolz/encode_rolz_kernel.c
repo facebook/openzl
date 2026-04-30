@@ -96,6 +96,7 @@ static ZS_EncoderParameters ZS_encoderParams(
 ZL_Report
 ZS_rolzCompress(void* dst, size_t dstCapacity, void const* src, size_t srcSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_Report ret;
     // Initialization
     int error = 0;
@@ -136,6 +137,7 @@ ZL_Report ZS_fastLzCompress(
         void const* src,
         size_t srcSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_Report ret;
     // Initialization
     int error = 0;

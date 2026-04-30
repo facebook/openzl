@@ -1,14 +1,4 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
-
-set(OPENZL_BUILD_IO_TOOLS OFF)
-
-if(OPENZL_BUILD_TOOLS)
-  set(OPENZL_BUILD_IO_TOOLS ON)
-endif()
-if(OPENZL_BUILD_CLI)
-  set(OPENZL_BUILD_IO_TOOLS ON)
-endif()
-
 if (OPENZL_BUILD_IO_TOOLS)
     file(
         GLOB tools_io_sources
@@ -19,6 +9,7 @@ if (OPENZL_BUILD_IO_TOOLS)
     add_library(tools_io STATIC
         ${tools_io_sources}
     )
+    set_property(TARGET tools_io PROPERTY POSITION_INDEPENDENT_CODE ON)
     target_include_directories(tools_io
         PRIVATE ${PROJECT_BINARY_DIR}/include
         ${PROJECT_SOURCE_DIR}/include

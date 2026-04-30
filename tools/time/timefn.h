@@ -20,10 +20,7 @@ typedef uint64_t Duration_ns; /* Precise Time */
 typedef struct {
     Duration_ns t;
 } TIME_t;
-#define TIME_INITIALIZER \
-    {                    \
-        0                \
-    }
+#define TIME_INITIALIZER { 0 }
 
 /*-****************************************
  *  Time functions

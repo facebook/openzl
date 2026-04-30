@@ -117,8 +117,9 @@ class EveryOtherTransform : public CustomTransform {
             ZL_Input const* inputs[],
             size_t nbInputs) const override
     {
-        ZL_RET_R_IF_NE(node_invalid_input, nbInputs, 1);
-        ZL_RET_R_IF_NULL(node_invalid_input, inputs);
+        ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
+        ZL_ERR_IF_NE(nbInputs, 1, node_invalid_input);
+        ZL_ERR_IF_NULL(inputs, node_invalid_input);
         const auto* input   = inputs[0];
         size_t const nbElts = ZL_Input_numElts(input);
         ZL_Output* output0 =
@@ -137,14 +138,15 @@ class EveryOtherTransform : public CustomTransform {
             *out[i % 2]++ = in[i];
         }
 
-        ZL_RET_R_IF_ERR(ZL_Output_commit(output0, (nbElts + 1) / 2));
-        ZL_RET_R_IF_ERR(ZL_Output_commit(output1, nbElts / 2));
+        ZL_ERR_IF_ERR(ZL_Output_commit(output0, (nbElts + 1) / 2));
+        ZL_ERR_IF_ERR(ZL_Output_commit(output1, nbElts / 2));
 
         return ZL_returnValue(2);
     }
 
     ZL_Report decode(ZL_Decoder* dictx, ZL_Input const* inputs[]) const override
     {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
         size_t const nbElts0 = ZL_Input_numElts(inputs[0]);
         size_t const nbElts1 = ZL_Input_numElts(inputs[1]);
         uint8_t const* in0   = (uint8_t const*)ZL_Input_ptr(inputs[0]);
@@ -166,7 +168,7 @@ class EveryOtherTransform : public CustomTransform {
             out[i] = *ins[i % 2]++;
         }
 
-        ZL_RET_R_IF_ERR(ZL_Output_commit(output, nbElts));
+        ZL_ERR_IF_ERR(ZL_Output_commit(output, nbElts));
 
         return ZL_returnValue(1);
     }
@@ -208,8 +210,9 @@ class DelayedDecodeTransfom : public CustomTransform {
             ZL_Input const* inputs[],
             size_t nbInputs) const override
     {
-        ZL_RET_R_IF_NE(node_invalid_input, nbInputs, 1);
-        ZL_RET_R_IF_NULL(node_invalid_input, inputs);
+        ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
+        ZL_ERR_IF_NE(nbInputs, 1, node_invalid_input);
+        ZL_ERR_IF_NULL(inputs, node_invalid_input);
         const auto* input   = inputs[0];
         size_t const nbElts = ZL_Input_numElts(input);
         ZL_Output* output   = ZL_Encoder_createTypedStream(eictx, 0, nbElts, 1);
@@ -222,13 +225,14 @@ class DelayedDecodeTransfom : public CustomTransform {
         uint8_t* out      = (uint8_t*)ZL_Output_ptr(output);
         memcpy(out, in, nbElts);
 
-        ZL_RET_R_IF_ERR(ZL_Output_commit(output, nbElts));
+        ZL_ERR_IF_ERR(ZL_Output_commit(output, nbElts));
 
         return ZL_returnValue(1);
     }
 
     ZL_Report decode(ZL_Decoder* dictx, ZL_Input const* inputs[]) const override
     {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
         size_t const nbElts = ZL_Input_numElts(inputs[0]);
         uint8_t const* in   = (uint8_t const*)ZL_Input_ptr(inputs[0]);
 
@@ -240,7 +244,7 @@ class DelayedDecodeTransfom : public CustomTransform {
         uint8_t* out = (uint8_t*)ZL_Output_ptr(output);
         memcpy(out, in, nbElts);
 
-        ZL_RET_R_IF_ERR(ZL_Output_commit(output, nbElts));
+        ZL_ERR_IF_ERR(ZL_Output_commit(output, nbElts));
 
         std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds_));
 
@@ -394,15 +398,15 @@ TEST(ZstrongJsonTest, CustomGraphGraph)
             folly::dynamic::object()(kNameKey, "numeric");
     folly::dynamic const fixed  = folly::dynamic::object()(kNameKey, "fixed");
     folly::dynamic const serial = folly::dynamic::object()(kNameKey, "serial");
-    auto graph =
-            bruteForce({ serial,
-                         convertSerialToToken(2, fixed),
-                         interpretAsIntLE(2, numeric),
-                         convertSerialToToken(
-                                 2,
-                                 tokenize(
-                                         bruteForce({ serial, fixed }),
-                                         bruteForce({ serial, numeric }))) });
+    auto graph                  = bruteForce(
+            { serial,
+                               convertSerialToToken(2, fixed),
+                               interpretAsIntLE(2, numeric),
+                               convertSerialToToken(
+                      2,
+                      tokenize(
+                              bruteForce({ serial, fixed }),
+                              bruteForce({ serial, numeric }))) });
     testRoundTrip(
             "0a0a0a0a0a0a0a0b0b0b0b0c0d0c0c0c0f0f0f0e0e0e0e0efffffffffefefefe",
             graph,

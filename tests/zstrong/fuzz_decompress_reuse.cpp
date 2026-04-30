@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <memory>
 
-#include "security/lionhead/utils/lib_ftest/ftest.h"
+#include "tests/datagen/DataGen.h"
 #include "tests/fuzz_utils.h"
 
 #include "openzl/common/assertion.h"
@@ -24,10 +24,11 @@ constexpr ZL_TypedDecoderDesc kTransform = {
         .nbOutStreams = kOutStreamTypes.size(),
     },
     .transform_f = [](ZL_Decoder* dictx, ZL_Input const* ins[]) noexcept {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
         ZL_Output* out = ZL_Decoder_create1OutStream(dictx, ZL_Input_numElts(ins[0]), 1);
-        ZL_RET_R_IF_NULL(allocation, out);
+        ZL_ERR_IF_NULL(out, allocation);
         memcpy(ZL_Output_ptr(out), ZL_Input_ptr(ins[0]), ZL_Input_numElts(ins[0]));
-        ZL_RET_R_IF_ERR(ZL_Output_commit(out, ZL_Input_numElts(ins[0])));
+        ZL_ERR_IF_ERR(ZL_Output_commit(out, ZL_Input_numElts(ins[0])));
         return ZL_returnSuccess();
     },
 };
@@ -35,12 +36,12 @@ constexpr ZL_TypedDecoderDesc kTransform = {
 
 FUZZ(DecompressTest, ReuseDCtx)
 {
-    ZL_g_logLevel       = ZL_LOG_LVL_ALWAYS;
-    ZL_DCtx* const dctx = ZL_DCtx_create();
+    openzl::tests::datagen::DataGen dg = openzl::tests::fromFDP(f);
+    ZL_g_logLevel                      = ZL_LOG_LVL_ALWAYS;
+    ZL_DCtx* const dctx                = ZL_DCtx_create();
     ZL_REQUIRE_NN(dctx);
-    while (f.has_more_data()) {
-        std::string input =
-                gen_str(f, "input_data", zstrong::tests::InputLengthInBytes(1));
+    while (dg.has_more_data()) {
+        std::string input      = dg.randString("input_data");
         const char* const data = input.c_str();
         size_t const size      = input.length();
         ZL_REQUIRE_SUCCESS(ZL_DCtx_registerTypedDecoder(dctx, &kTransform));

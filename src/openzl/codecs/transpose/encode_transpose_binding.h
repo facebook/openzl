@@ -12,6 +12,19 @@
 
 ZL_BEGIN_C_DECLS
 
+ZL_Report transposeSplitSelectorFnGraph(
+        ZL_Graph* graph,
+        ZL_Edge* edges[],
+        size_t nbEdges);
+
+#define MIGRAPH_TRANSPOSE_SPLIT                                   \
+    {                                                             \
+        .name           = "!zl.private.transpose_split_selector", \
+        .graph_f        = transposeSplitSelectorFnGraph,          \
+        .inputTypeMasks = (ZL_Type[]){ ZL_Type_struct },          \
+        .nbInputs       = 1,                                      \
+    }
+
 // New Transpose operation,
 // which automatically adjusts to token's size.
 // Accepts and generates `ZL_Type_struct` stream type.
@@ -19,17 +32,15 @@ ZL_Report EI_transpose(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 ZL_Report
 EI_transpose_split(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 
-#define EI_TRANSPOSE(id)                                        \
-    {                                                           \
-        .gd = TRANSPOSE_GRAPH(id), .transform_f = EI_transpose, \
-        .name = "!zl.private.transpose_deprecated"              \
-    }
+#define EI_TRANSPOSE(id)                  \
+    { .gd          = TRANSPOSE_GRAPH(id), \
+      .transform_f = EI_transpose,        \
+      .name        = "!zl.private.transpose_deprecated" }
 
-#define EI_TRANSPOSE_SPLIT(id)                                              \
-    {                                                                       \
-        .gd = TRANSPOSE_GRAPH_SPLIT(id), .transform_f = EI_transpose_split, \
-        .name = "!zl.transpose_split"                                       \
-    }
+#define EI_TRANSPOSE_SPLIT(id)                  \
+    { .gd          = TRANSPOSE_GRAPH_SPLIT(id), \
+      .transform_f = EI_transpose_split,        \
+      .name        = "!zl.transpose_split" }
 
 ZL_INLINE bool ZL_Selector_isTransposeSplitSupported(
         const ZL_Selector* selector)
@@ -85,44 +96,35 @@ ZL_Report EI_transpose_split8bytes(
         const ZL_Input* ins[],
         size_t nbIns);
 
-#define EI_TRANSPOSE_2(id)                                              \
-    {                                                                   \
-        .gd = PIPE_GRAPH(id), .transform_f = EI_transpose_2bytes_typed, \
-        .name = "!zl.private.transpose2_deprecated"                     \
-    }
+#define EI_TRANSPOSE_2(id)                      \
+    { .gd          = PIPE_GRAPH(id),            \
+      .transform_f = EI_transpose_2bytes_typed, \
+      .name        = "!zl.private.transpose2_deprecated" }
 
-#define EI_TRANSPOSE_4(id)                                              \
-    {                                                                   \
-        .gd = PIPE_GRAPH(id), .transform_f = EI_transpose_4bytes_typed, \
-        .name = "!zl.private.transpose4_deprecated"                     \
-    }
+#define EI_TRANSPOSE_4(id)                      \
+    { .gd          = PIPE_GRAPH(id),            \
+      .transform_f = EI_transpose_4bytes_typed, \
+      .name        = "!zl.private.transpose4_deprecated" }
 
-#define EI_TRANSPOSE_8(id)                                              \
-    {                                                                   \
-        .gd = PIPE_GRAPH(id), .transform_f = EI_transpose_8bytes_typed, \
-        .name = "!zl.private.transpose8_deprecated"                     \
-    }
+#define EI_TRANSPOSE_8(id)                      \
+    { .gd          = PIPE_GRAPH(id),            \
+      .transform_f = EI_transpose_8bytes_typed, \
+      .name        = "!zl.private.transpose8_deprecated" }
 
-#define EI_TRANSPOSE_SPLIT2(id)                                  \
-    {                                                            \
-        .gd          = TRANSPOSE_GRAPH_SPLIT2(id),               \
-        .transform_f = EI_transpose_split2bytes,                 \
-        .name        = "!zl.private.transpose_split2_deprecated" \
-    }
+#define EI_TRANSPOSE_SPLIT2(id)                  \
+    { .gd          = TRANSPOSE_GRAPH_SPLIT2(id), \
+      .transform_f = EI_transpose_split2bytes,   \
+      .name        = "!zl.private.transpose_split2_deprecated" }
 
-#define EI_TRANSPOSE_SPLIT4(id)                                  \
-    {                                                            \
-        .gd          = TRANSPOSE_GRAPH_SPLIT4(id),               \
-        .transform_f = EI_transpose_split4bytes,                 \
-        .name        = "!zl.private.transpose_split4_deprecated" \
-    }
+#define EI_TRANSPOSE_SPLIT4(id)                  \
+    { .gd          = TRANSPOSE_GRAPH_SPLIT4(id), \
+      .transform_f = EI_transpose_split4bytes,   \
+      .name        = "!zl.private.transpose_split4_deprecated" }
 
-#define EI_TRANSPOSE_SPLIT8(id)                                  \
-    {                                                            \
-        .gd          = TRANSPOSE_GRAPH_SPLIT8(id),               \
-        .transform_f = EI_transpose_split8bytes,                 \
-        .name        = "!zl.private.transpose_split8_deprecated" \
-    }
+#define EI_TRANSPOSE_SPLIT8(id)                  \
+    { .gd          = TRANSPOSE_GRAPH_SPLIT8(id), \
+      .transform_f = EI_transpose_split8bytes,   \
+      .name        = "!zl.private.transpose_split8_deprecated" }
 
 /* old methods, suitable for PipeTransform,
  * no longer used, just for reference */

@@ -22,18 +22,21 @@ TEST(TestFrameInfo, basic)
     data[50]                      = 50;
     inputs.push_back(Input::refStruct(poly::span<const int64_t>(data)));
     inputs.push_back(Input::refNumeric(poly::span<const int64_t>(data)));
-    inputs.push_back(Input::refSerial(
-            "hello world this is some test input hello hello hello world hello test input"));
+    inputs.push_back(
+            Input::refSerial(
+                    "hello world this is some test input hello hello hello world hello test input"));
     std::array<uint32_t, 5> lengths = { 1, 3, 2, 1, 2 };
     inputs.push_back(Input::refString("133322122", lengths));
     auto compressed = cctx.compress(inputs);
 
     FrameInfo info(compressed);
+    ASSERT_EQ(info.formatVersion(), ZL_MAX_FORMAT_VERSION);
     ASSERT_EQ(info.numOutputs(), inputs.size());
     for (size_t i = 0; i < inputs.size(); ++i) {
         ASSERT_EQ(info.outputType(i), inputs[i].type());
         ASSERT_EQ(info.outputContentSize(i), inputs[i].contentSize());
     }
+    ASSERT_EQ(info.comment(), "");
 }
 
 TEST(TestFrameInfo, HelpfulExceptionOnCorruption)
@@ -44,5 +47,24 @@ TEST(TestFrameInfo, HelpfulExceptionOnCorruption)
         ASSERT_EQ(e.code(), ZL_ErrorCode_corruption);
         ASSERT_NE(e.msg().find("Corrupt"), poly::string_view::npos);
     }
+}
+
+TEST(TestFrameInfo, comment)
+{
+    Compressor compressor;
+    compressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+    compressor.unwrap(ZL_Compressor_selectStartingGraphID(
+            compressor.get(), ZL_GRAPH_COMPRESS_GENERIC));
+    std::vector<Input> inputs;
+    CCtx cctx;
+    cctx.refCompressor(compressor);
+    const std::string_view comment{ "fo\0o", 4 };
+    cctx.unwrap(ZL_CCtx_addHeaderComment(
+            cctx.get(), comment.data(), comment.size()));
+    auto compressed = cctx.compressSerial(
+            "hello world this is some test input hello hello hello world hello test input");
+
+    FrameInfo info(compressed);
+    ASSERT_EQ(info.comment(), comment);
 }
 } // namespace openzl::tests

@@ -312,6 +312,66 @@ char const* ZL_Compressor_Node_getName(
 bool ZL_Compressor_Node_isStandard(ZL_Compressor const* cgraph, ZL_NodeID node);
 
 /**
+ * @returns The dict ID associated with the @p node or ZL_DICT_ID_NULL if no
+ * dict is associated.
+ */
+ZL_DictID ZL_Compressor_Node_getDictID(
+        ZL_Compressor const* cgraph,
+        ZL_NodeID node);
+
+/**
+ * @returns The dict index within the compressor's bundle for the @p node.
+ * Returns an error if no dictionary is associated with this node.
+ * @note Only valid after ZL_Compressor_validate() has been called.
+ */
+ZL_Report ZL_Compressor_Node_getDictIndex(
+        ZL_Compressor const* cgraph,
+        ZL_NodeID node);
+
+/**
+ * @returns The MParam ID associated with the @p node or ZL_MPARAM_ID_NULL if no
+ * MParam is associated.
+ */
+ZL_MParamID ZL_Compressor_Node_getMParamID(
+        ZL_Compressor const* cgraph,
+        ZL_NodeID node);
+
+/**
+ * @returns A pointer to the *unmaterialized* MParam associated with the @p
+ * node, or NULL if no MParam is associated.
+ */
+const ZL_MParam* ZL_Compressor_Node_getMParam(
+        ZL_Compressor const* cgraph,
+        ZL_NodeID node);
+
+/**
+ * @returns The *materialized* Mparam object associated with the @p node or NULL
+ * if no MParam is associated.
+ */
+const void* ZL_Compressor_Node_getMParamObj(
+        ZL_Compressor const* cgraph,
+        ZL_NodeID node);
+
+/**
+ * @returns The number of unique MParam blobs stored in the @p compressor.
+ */
+size_t ZL_Compressor_numMParams(const ZL_Compressor* compressor);
+
+typedef ZL_Report (*ZL_Compressor_ForEachMParamCallback)(
+        void* opaque,
+        const ZL_MParam* mparam) ZL_NOEXCEPT_FUNC_PTR;
+
+/**
+ * Calls @p callback on every unique MParam stored in the @p compressor.
+ * If @p callback returns an error, short-circuit and return that error.
+ * @returns Success if all callbacks succeed, or the first error.
+ */
+ZL_Report ZL_Compressor_forEachMParam(
+        const ZL_Compressor* compressor,
+        ZL_Compressor_ForEachMParamCallback callback,
+        void* opaque);
+
+/**
  * Reflection API for introspecting a compressed frame.
  *
  * 1. Create a reflection context with ZL_ReflectionCtx_create().

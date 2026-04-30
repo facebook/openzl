@@ -2,7 +2,6 @@
 
 #include "tools/sddl/compiler/Tokenizer.h"
 
-#include <algorithm>
 #include <cctype>
 #include <cstdint>
 
@@ -15,6 +14,58 @@ using namespace openzl::sddl::detail;
 namespace openzl::sddl {
 
 namespace {
+
+/**
+ * @returns true if the first character of the input is the valid first
+ * character of a word.
+ */
+bool is_first_word_char(const poly::string_view& input)
+{
+    if (input.empty()) {
+        return false;
+    }
+    const uint8_t c = input[0];
+    return std::isalpha(c) || c == '_';
+}
+
+/**
+ * @returns true if the first character of the input is a valid word character.
+ */
+bool is_word_char(const poly::string_view& input)
+{
+    if (input.empty()) {
+        return false;
+    }
+    const uint8_t c = input[0];
+    return std::isalnum(c) || c == '_';
+}
+
+/**
+ * @returns true if the first character of the input is a valid numeric
+ * character.
+ */
+bool is_num_char(const poly::string_view& input)
+{
+    if (input.empty()) {
+        return false;
+    }
+    const uint8_t c = input[0];
+    return std::isalnum(c) || c == '.' || c == '_';
+}
+
+/**
+ * @brief Consume a comment from the input string (if any).
+ */
+void consume_comment(poly::string_view& input)
+{
+    if (input.empty() || input[0] != '#') {
+        return;
+    }
+    while (!input.empty() && input[0] != '\n') {
+        input.remove_prefix(1);
+    }
+}
+
 class TokenizerImpl {
    public:
     explicit TokenizerImpl(const Source& source, const Logger& logger)
@@ -28,7 +79,7 @@ class TokenizerImpl {
         return source_.location(token);
     }
 
-    poly::optional<Token> consume_ws(poly::string_view& input) const
+    poly::optional<Token> consume_whitespace(poly::string_view& input) const
     {
         poly::string_view nl{};
         while (!input.empty()) {
@@ -43,44 +94,11 @@ class TokenizerImpl {
                 break;
             }
         }
+        // If we found a newline, return it as a token
         if (!nl.empty()) {
             return Token{ loc(nl), Symbol::NL };
         }
         return poly::nullopt;
-    }
-
-    void consume_comment(poly::string_view& input) const
-    {
-        while (!input.empty() && input[0] != '\n') {
-            input.remove_prefix(1);
-        }
-    }
-
-    bool is_first_word_char(const poly::string_view& input) const
-    {
-        if (input.empty()) {
-            return false;
-        }
-        const uint8_t c = input[0];
-        return std::isalpha(c) || c == '_';
-    }
-
-    bool is_word_char(const poly::string_view& input) const
-    {
-        if (input.empty()) {
-            return false;
-        }
-        const uint8_t c = input[0];
-        return std::isalnum(c) || c == '_';
-    }
-
-    bool is_num_char(const poly::string_view& input) const
-    {
-        if (input.empty()) {
-            return false;
-        }
-        const uint8_t c = input[0];
-        return std::isalnum(c) || c == '.' || c == '_';
     }
 
     poly::optional<Token> match_symbol(const poly::string_view word) const
@@ -172,7 +190,7 @@ class TokenizerImpl {
         auto source = source_.contents();
         std::vector<Token> tokens;
         while (true) {
-            auto maybe_ws_token = consume_ws(source);
+            auto maybe_ws_token = consume_whitespace(source);
             if (maybe_ws_token.has_value()) {
                 tokens.push_back(*maybe_ws_token);
             }

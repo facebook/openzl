@@ -8,10 +8,34 @@
 #include "openzl/zl_localParams.h"
 #include "openzl/zl_opaque_types.h"
 
+// Forward declaration to avoid circular dependency with zl_graph_api.h
+typedef struct ZL_GraphParameters_s ZL_RuntimeGraphParameters;
+
 // Introspection hooks for compress
 typedef struct ZL_CompressIntrospectionHooks_s {
     void* opaque; // an opaque pointer, passed as-is to all the hooks as the
     // first argument
+
+    /* ******** Segmenter API methods ******** */
+    void (*on_segmenterEncode_start)(
+            void* opaque,
+            ZL_Segmenter* segCtx,
+            void* placeholder) ZL_NOEXCEPT_FUNC_PTR;
+    void (*on_segmenterEncode_end)(
+            void* opaque,
+            ZL_Segmenter* segCtx,
+            ZL_Report r) ZL_NOEXCEPT_FUNC_PTR;
+    void (*on_ZL_Segmenter_processChunk_start)(
+            void* opaque,
+            ZL_Segmenter* segCtx,
+            const size_t numElts[],
+            size_t numInputs,
+            ZL_GraphID startingGraphID,
+            const ZL_RuntimeGraphParameters* rGraphParams) ZL_NOEXCEPT_FUNC_PTR;
+    void (*on_ZL_Segmenter_processChunk_end)(
+            void* opaque,
+            ZL_Segmenter* segCtx,
+            ZL_Report r) ZL_NOEXCEPT_FUNC_PTR;
 
     /* ******** Encoder API methods ******** */
     void (*on_ZL_Encoder_getScratchSpace)(
@@ -82,7 +106,7 @@ typedef struct ZL_CompressIntrospectionHooks_s {
     /* ******** CCtx entrypoint ******** */
     void (*on_ZL_CCtx_compressMultiTypedRef_start)(
             void* opaque,
-            ZL_CCtx const* const cctx,
+            ZL_CCtx* cctx,
             void const* const dst,
             size_t const dstCapacity,
             ZL_TypedRef const* const inputs[],
@@ -90,7 +114,55 @@ typedef struct ZL_CompressIntrospectionHooks_s {
     void (*on_ZL_CCtx_compressMultiTypedRef_end)(
             void* opaque,
             ZL_CCtx const* const cctx,
-            ZL_Report const result);
+            ZL_Report const result) ZL_NOEXCEPT_FUNC_PTR;
 } ZL_CompressIntrospectionHooks;
+
+// Introspection hooks for decompress
+typedef struct ZL_DecompressIntrospectionHooks_s {
+    void* opaque; // an opaque pointer, passed as-is to all the hooks as the
+    // first argument
+
+    /* ******** DCtx entrypoint ******** */
+    void (*on_ZL_DCtx_decompressMultiTBuffer_start)(
+            void* opaque,
+            ZL_DCtx* dctx,
+            size_t nbOutputs,
+            const void* framePtr,
+            size_t frameSize) ZL_NOEXCEPT_FUNC_PTR;
+    void (*on_ZL_DCtx_decompressMultiTBuffer_end)(
+            void* opaque,
+            ZL_DCtx* dctx,
+            ZL_Report result) ZL_NOEXCEPT_FUNC_PTR;
+
+    /* ******** Per-chunk ******** */
+    void (*on_decompressChunk_start)(
+            void* opaque,
+            ZL_DCtx* dctx,
+            size_t chunkIndex) ZL_NOEXCEPT_FUNC_PTR;
+    void (*on_decompressChunk_end)(
+            void* opaque,
+            ZL_DCtx* dctx,
+            ZL_Report result) ZL_NOEXCEPT_FUNC_PTR;
+
+    /* ******** Decoder API methods ******** */
+    void (*on_ZL_Decoder_getCodecHeader)(
+            void* opaque,
+            const ZL_Decoder* dictx,
+            const void* trh,
+            size_t trhSize) ZL_NOEXCEPT_FUNC_PTR;
+
+    /* ******** Per-codec/transform execution ******** */
+    void (*on_codecDecode_start)(
+            void* opaque,
+            ZL_Decoder* dictx,
+            const ZL_Data* const* inStreams,
+            size_t nbInStreams) ZL_NOEXCEPT_FUNC_PTR;
+    void (*on_codecDecode_end)(
+            void* opaque,
+            ZL_Decoder* dictx,
+            const ZL_Data* const* outStreams,
+            size_t nbOutStreams,
+            ZL_Report result) ZL_NOEXCEPT_FUNC_PTR;
+} ZL_DecompressIntrospectionHooks;
 
 #endif // OPENZL_ZL_INTROSPECTION_H

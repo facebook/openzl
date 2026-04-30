@@ -18,6 +18,11 @@ typedef struct {
 } LabeledFeature;
 DECLARE_VECTOR_TYPE(LabeledFeature)
 
+typedef enum {
+    FeatureGenId_Int,
+    FeatureGenId_Invalid = -1,
+} FeatureGenId;
+
 /**
  * Calculates the basic features for numeric data, assuming that the data is
  * unsigned integers.
@@ -28,8 +33,7 @@ DECLARE_VECTOR_TYPE(LabeledFeature)
  */
 ZL_Report FeatureGen_integer(
         const ZL_Input* inputStream,
-        VECTOR(LabeledFeature) * features,
-        const void* featureContext);
+        VECTOR(LabeledFeature) * features);
 
 /**
  * Defines type Feature Generator, which takes a stream and generates various
@@ -39,9 +43,20 @@ ZL_Report FeatureGen_integer(
  */
 typedef ZL_Report (*FeatureGenerator)(
         const ZL_Input* inputStream,
-        VECTOR(LabeledFeature) * features,
-        const void* featureContext);
+        VECTOR(LabeledFeature) * features);
 
+ZL_RESULT_DECLARE_TYPE(FeatureGenerator);
+
+/**
+ * @returns FeatureGenerator corresponding to the @p id
+ */
+ZL_RESULT_OF(FeatureGenerator)
+FeatureGen_getFeatureGen(FeatureGenId id);
+
+/**
+ * @returns FeatureGenerators enum corresponding to @p featureGenerator
+ */
+FeatureGenId FeatureGen_getId(FeatureGenerator featureGenerator);
 ZL_END_C_DECLS
 
 #endif

@@ -178,6 +178,7 @@ static ZL_Report ZS_RawAndConstant_writeHeader(
         size_t srcSize,
         ZS_Entropy_Type_e type)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_LT(type, 0x8);
     int const needVarint = srcSize > 0xF ? 1 : 0;
     int const hdr        = (int)type      /* type: bits [0, 3) */
@@ -186,7 +187,7 @@ static ZL_Report ZS_RawAndConstant_writeHeader(
     size_t const varintSize = needVarint ? ZL_varintSize(srcSize >> 4) : 0;
     size_t const hdrSize    = 1 + varintSize;
     if (ZL_WC_avail(dst) < hdrSize) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     ZL_WC_push(dst, (uint8_t)hdr);
     if (needVarint) {
@@ -207,20 +208,21 @@ static ZL_Report ZS_Entropy_encodeFastest(
         size_t elementSize,
         ZS_Entropy_EncodeParameters const* params)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DLOG(V7, "Fastest");
     // TODO: Could enable block splitting for LZ4 decoding speeds (not fastest)
     if (ZS_Entropy_useConstant(src, srcSize, elementSize, params)) {
-        ZL_RET_R_IF_ERR(ZS_RawAndConstant_writeHeader(
+        ZL_ERR_IF_ERR(ZS_RawAndConstant_writeHeader(
                 dst, srcSize, ZS_Entropy_Type_constant));
         return ZS_Constant_encode(dst, src, elementSize);
     }
     ZL_DLOG(V7, "dst avail = %zu", ZL_WC_avail(dst));
     if (params->allowedTypes & ZS_Entropy_TypeMask_raw) {
-        ZL_RET_R_IF_ERR(ZS_RawAndConstant_writeHeader(
+        ZL_ERR_IF_ERR(ZS_RawAndConstant_writeHeader(
                 dst, srcSize, ZS_Entropy_Type_raw));
         return ZS_Raw_encode(dst, src, srcSize, elementSize);
     }
-    ZL_RET_R_ERR(GENERIC);
+    ZL_ERR(GENERIC);
 }
 
 static size_t ZS_HufAndFse_headerSize(size_t srcSize, size_t maxDstSize)
@@ -283,11 +285,12 @@ static ZL_Report ZS_Entropy_encodeLAHuf(
         size_t elementSize,
         ZS_Entropy_EncodeParameters const* params)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DLOG(V7, "LA Huf (srcSize = %zu)", srcSize);
     uint16_t const* src16 = (uint16_t const*)src;
     ZL_ASSERT_EQ(elementSize, 2);
     if (!ZL_uintFits(params->maxValueUpperBound, sizeof(uint16_t))) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     uint16_t maxSymbolValue = (uint16_t)params->maxValueUpperBound;
     size_t maxSymbolCount   = 0;
@@ -313,7 +316,7 @@ static ZL_Report ZS_Entropy_encodeLAHuf(
                 srcSize, elementSize, maxSymbolValue, params->allowedTypes);
         size_t const headerSize = ZS_HufAndFse_headerSize(srcSize, maxDstSize);
         if (ZL_WC_avail(&dst2) < headerSize) {
-            ZL_RET_R_ERR(GENERIC);
+            ZL_ERR(GENERIC);
         }
         uint8_t* const header = ZL_WC_ptr(&dst2);
         ZL_WC_advance(&dst2, headerSize);
@@ -340,7 +343,7 @@ static ZL_Report ZS_Entropy_encodeLAHuf(
         size_t const hufCSize   = totalCSize - headerSize;
         if (!error && totalCSize < maxDstSize) {
             *dst = dst2;
-            ZL_RET_R_IF_ERR(ZS_HufAndFse_writeHeader(
+            ZL_ERR_IF_ERR(ZS_HufAndFse_writeHeader(
                     header,
                     headerSize,
                     srcSize,
@@ -467,13 +470,14 @@ static ZS_Entropy_Type_e ZS_Entropy_selectType(
 
 static ZL_Report ZS_Multi_writeHeader(ZL_WC* dst, size_t numBlocks)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     int const needVarint = numBlocks > 0xF ? 1 : 0;
     int const hdr        = (int)ZS_Entropy_Type_multi /* type: bits [0, 3) */
             | (((int)numBlocks & 0xF) << 3) /* decoded size: bits [0, 7) */
             | (needVarint << 7) /* more varint: bits [7, 8) */;
     size_t const hdrSize = 1 + ZL_varintSize(numBlocks >> 4);
     if (ZL_WC_avail(dst) < hdrSize) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     ZL_WC_push(dst, (uint8_t)hdr);
     ZL_DLOG(V7, "MULTI HEADER = %zu", numBlocks);
@@ -491,6 +495,7 @@ static ZL_Report ZS_Entropy_encodeBlockSplit(
         size_t elementSize,
         ZS_Entropy_EncodeParameters const* params)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_WC dstOriginal = *dst;
     ZL_ASSERT_NN(params->blockSplits);
     ZS_Entropy_EncodeParameters paramsCopy = *params;
@@ -498,7 +503,7 @@ static ZL_Report ZS_Entropy_encodeBlockSplit(
     size_t const nbSplits                  = params->blockSplits->nbSplits;
     size_t const nbBlocks                  = nbSplits + 1;
     ZL_DLOG(V7, "SPLIT %zu into %zu blocks", srcSize, nbBlocks);
-    ZL_RET_R_IF_ERR(ZS_Multi_writeHeader(dst, nbBlocks));
+    ZL_ERR_IF_ERR(ZS_Multi_writeHeader(dst, nbBlocks));
     for (size_t b = 0; b < nbBlocks; ++b) {
         size_t const begin = b == 0 ? 0 : params->blockSplits->splits[b - 1];
         size_t const end =
@@ -538,19 +543,20 @@ static ZL_Report ZS_Entropy_encodeMulti(
         size_t elementSize,
         ZS_Entropy_EncodeParameters const* params)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZS_Entropy_EncodeParameters paramsCopy = *params;
     paramsCopy.allowedTypes &= ~ZS_Entropy_TypeMask_multi;
     size_t const numBlocks = (srcSize + ZS_ENTROPY_BLOCK_SPLIT_FIXED_SIZE - 1)
             / ZS_ENTROPY_BLOCK_SPLIT_FIXED_SIZE;
     ZL_DLOG(V7, "MULTI %zu - %zu", srcSize, numBlocks);
-    ZL_RET_R_IF_ERR(ZS_Multi_writeHeader(dst, numBlocks));
+    ZL_ERR_IF_ERR(ZS_Multi_writeHeader(dst, numBlocks));
     // TODO: Add smarter block splitting here...
     while (srcSize > 0) {
         size_t const blockSize =
                 ZL_MIN(srcSize, ZS_ENTROPY_BLOCK_SPLIT_FIXED_SIZE);
         size_t const avail1 = ZL_WC_avail(dst);
         ZL_DLOG(V7, "Encoding block...");
-        ZL_RET_R_IF_ERR(ZS_Entropy_encode(
+        ZL_ERR_IF_ERR(ZS_Entropy_encode(
                 dst, src, blockSize, elementSize, &paramsCopy));
         size_t const avail2 = ZL_WC_avail(dst);
         ZL_DLOG(V7, "block size = %zu", avail1 - avail2);
@@ -570,6 +576,7 @@ static ZL_Report ZS_Entropy_encodeHufImpl(
         uint64_t maxSymbol,
         ZS_Entropy_EncodeParameters const* params)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DLOG(V7, "HUF");
     ZL_WC dst2 = *dst;
     ZL_ASSERT_GE(srcSize, 2);
@@ -584,7 +591,7 @@ static ZL_Report ZS_Entropy_encodeHufImpl(
 
     if (srcSize > ZS_HUF_MAX_BLOCK_SIZE) {
         ZL_DLOG(ERROR, "Multi must be supported for large sources...");
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
 
     uint32_t const maxTableLog = ZL_MIN(HUF_TABLELOG_MAX, params->maxTableLog);
@@ -623,12 +630,13 @@ static ZL_Report ZS_Entropy_encodeFseImpl(
         uint64_t maxSymbol,
         ZS_Entropy_EncodeParameters const* params)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DLOG(V7, "FSE");
     ZL_WC dst2 = *dst;
     ZL_ASSERT_EQ(elementSize, 1);
     size_t const headerSize = ZS_HufAndFse_headerSize(srcSize, srcSize);
     if (ZL_WC_avail(dst) < headerSize) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     uint8_t* const header = ZL_WC_ptr(dst);
     ZL_WC_advance(dst, headerSize);
@@ -645,7 +653,7 @@ static ZL_Report ZS_Entropy_encodeFseImpl(
     size_t const maxDstSize = ZS_Entropy_entropySizeBound(
             srcSize, elementSize, (uint32_t)maxSymbol, params->allowedTypes);
     if (fseCSize >= maxDstSize || fseCSize <= 1
-        || fseCSize == (size_t) - (int)ZSTD_error_dstSize_tooSmall) {
+        || fseCSize == (size_t)-(int)ZSTD_error_dstSize_tooSmall) {
         *dst = dst2;
         if (maxSymbol < 128
             && (params->allowedTypes & ZS_Entropy_TypeMask_bit)) {
@@ -655,7 +663,7 @@ static ZL_Report ZS_Entropy_encodeFseImpl(
         return ZS_Entropy_encodeFastest(dst, src, srcSize, elementSize, params);
     }
     if (FSE_isError(fseCSize)) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     ZL_WC_advance(dst, fseCSize);
     return ZS_HufAndFse_writeHeader(
@@ -670,13 +678,14 @@ static ZL_Report ZS_Entropy_encodeFseImpl(
 
 static ZL_Report ZS_Bit_writeHeader(ZL_WC* dst, size_t srcSize, size_t numBits)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_LT(numBits, 32);
     int const hdr = (int)ZS_Entropy_Type_bit /* type: bits [0, 3) */
             | ((int)numBits << 3) /* num bits: bits [3, 8) */;
     size_t const varintSize = ZL_varintSize(srcSize);
     size_t const hdrSize    = 1 + varintSize;
     if (ZL_WC_avail(dst) < hdrSize) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     ZL_WC_push(dst, (uint8_t)hdr);
     ZL_WC_pushVarint(dst, srcSize);
@@ -695,10 +704,11 @@ static ZL_Report ZS_Entropy_encodeBit(
         uint64_t maxSymbolValue,
         ZS_Entropy_EncodeParameters const* params)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DLOG(V7, "Bit encoding...");
     ZL_WC dst2 = *dst;
     if (elementSize > 2) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     size_t const numBits = 1
             + (size_t)(maxSymbolValue == 0
@@ -799,9 +809,10 @@ ZL_Report ZS_Entropy_encode(
 
 ZL_Report ZS_Constant_encode(ZL_WC* dst, void const* src, size_t elementSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DLOG(V7, "Constant");
     if (ZL_WC_avail(dst) < elementSize) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     switch (elementSize) {
         case 1:
@@ -817,7 +828,7 @@ ZL_Report ZS_Constant_encode(ZL_WC* dst, void const* src, size_t elementSize)
             ZL_WC_pushCE64(dst, ZL_read64(src));
             break;
         default:
-            ZL_RET_R_ERR(GENERIC);
+            ZL_ERR(GENERIC);
     }
     return ZL_returnSuccess();
 }
@@ -825,6 +836,7 @@ ZL_Report ZS_Constant_encode(ZL_WC* dst, void const* src, size_t elementSize)
 ZL_Report
 ZS_Raw_encode(ZL_WC* dst, void const* src, size_t srcSize, size_t elementSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DLOG(V7, "RAW");
     if (srcSize == 0) {
         return ZL_returnSuccess();
@@ -832,7 +844,7 @@ ZS_Raw_encode(ZL_WC* dst, void const* src, size_t srcSize, size_t elementSize)
     size_t const dstSize = srcSize * elementSize;
     ZL_DLOG(V7, "avail = %zu | dstSize = %zu", ZL_WC_avail(dst), dstSize);
     if (ZL_WC_avail(dst) < dstSize) {
-        ZL_RET_R_ERR(GENERIC);
+        ZL_ERR(GENERIC);
     }
     ZL_RC srcRC    = ZL_RC_wrap(src, srcSize * elementSize);
     size_t const a = ZL_WC_avail(dst);

@@ -4,370 +4,167 @@
 
 #include <stdint.h>
 
-#include "openzl/codecs/zl_dispatch.h"
-#include "openzl/common/logging.h"
-#include "openzl/zl_graph_api.h"
+#include "openzl/shared/utils.h"
+#include "openzl/zl_errors.h"
 
-// Parses the CSV file to get the number of columns, separated by @p sep, and
-// the length of the first row, including the ending `\n`.
-static ZL_Report parseFirstRow(
-        const char* content,
-        const size_t length,
+void ZL_CSV_Lexer_init(
+        ZL_CSV_Lexer* lexer,
+        ZL_OperationContext* opCtx,
+        const char* src,
+        size_t srcSize,
         char sep,
-        size_t* nbColumns,
-        size_t* firstRowLen)
+        bool isNullAware)
 {
-    *nbColumns = 0;
-    for (size_t i = 0; i < length; i++) {
-        if (content[i] == '"') {
+    lexer->opCtx       = opCtx;
+    lexer->start       = src;
+    lexer->src         = src;
+    lexer->end         = src + srcSize;
+    lexer->isNullAware = isNullAware;
+    lexer->sep         = sep;
+
+    lexer->numCols     = 0;
+    lexer->col         = 0;
+    lexer->row         = 0;
+    lexer->isFieldNext = true;
+}
+
+ZL_Report ZL_CSV_Lexer_lex(
+        ZL_CSV_Lexer* lexer,
+        ZL_CSV_TokenType* types,
+        uint32_t* sizes,
+        uint32_t* cols,
+        size_t maxNumTokens,
+        size_t srcSizeLimit)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(lexer->opCtx);
+
+    const char* const limit = lexer->src
+            + ZL_MIN((size_t)(lexer->end - lexer->src), srcSizeLimit);
+    size_t out = 0;
+
+    // Local lexer constants
+    const char sep         = lexer->sep;
+    const bool isNullAware = lexer->isNullAware;
+    const char* const end  = lexer->end;
+
+    // Local lexer state
+    // Keep in local variables for two reasons:
+    // 1. When an error occurs, guarantee the state is unmodified
+    // 2. Make the compilers job easier
+    const char* src  = lexer->src;
+    size_t row       = lexer->row;
+    uint32_t col     = lexer->col;
+    uint32_t numCols = lexer->numCols;
+
+    if (!lexer->isFieldNext || isNullAware) {
+        // If we expect a separator or newline next, skip the field parsing
+        // Null aware parsing always goes here, because if it is a field it will
+        // just go back to the top of the loop.
+        goto _lexSeparator;
+    }
+
+    while (src < end && out < maxNumTokens) {
+        // Lex field
+        // This always creates a token, even if the field is empty.
+        {
+            size_t size = 0;
             do {
-                i++;
-            } while (i < length && content[i] != '"');
-            if (i >= length) {
-                ZL_RET_R_ERR(
-                        node_invalid_input,
-                        "CSV file is not well formed. Open quote is not closed");
-            }
-            i++;
-            if (i >= length) {
-                ZL_RET_R_ERR(
-                        node_invalid_input,
-                        "CSV file is not well formed. No newline character found anywhere in the file");
-            }
-        }
-        if (content[i] == '\n') {
-            *firstRowLen = i + 1;
-            (*nbColumns)++;
-            ZL_RET_R_IF_GT(
-                    node_invalid_input,
-                    *nbColumns,
-                    ZL_DispatchString_maxDispatches() - 2,
-                    "CSV file has more columns than supported by dispatchString");
-            return ZL_returnSuccess();
-        }
-        if (content[i] == sep) {
-            (*nbColumns)++;
-        }
-    }
-    ZL_RET_R_ERR(
-            node_invalid_input,
-            "CSV file not well formed. No newline character found anywhere in the file");
-}
-
-static size_t countNbNewlines(const char* content, const size_t length)
-{
-    size_t nbNewlines = 0;
-    for (uint32_t i = 0; i < length; i++) {
-        nbNewlines += (content[i] == '\n');
-    }
-    return nbNewlines;
-}
-
-/**
- * Creates dispatch indices for each string.
- * Given N columns, there are N + 2 dispatches:
- *   - Columns 0 through N - 1 to to dispatches 0 through N - 1
- *   - Delimiters, whitespace, and newlines to dispatch N
- *   - Header to dispatch N + 1
- */
-// TODO: refactor this and the parsing fn to return an error if the assumption
-// of equal-sized rows is violated
-static ZL_Report createCsvDispatchIndices(
-        uint16_t* dispatchIndices,
-        size_t nbContentRows,
-        size_t nbColumns,
-        const uint32_t* stringLens)
-{
-    (void)stringLens;
-    size_t maxDispatches = ZL_DispatchString_maxDispatches();
-    ZL_RET_R_IF_GT(
-            temporaryLibraryLimitation,
-            nbColumns,
-            maxDispatches - 2,
-            "Dispatch only supports up to %i dispatches - 2 aux outputs = %i columns",
-            maxDispatches,
-            maxDispatches - 2);
-    // We separate strings to follow the pattern of 'header',
-    // 'content', 'separator', 'content', ..., therefore even indices are
-    // separators.
-    if (nbContentRows != 0) {
-        size_t columnNumber = 0;
-        for (size_t i = 0; i < 2 * nbColumns; i += 2) {
-            dispatchIndices[i]     = (uint16_t)nbColumns;
-            dispatchIndices[i + 1] = (uint16_t)columnNumber++;
-        }
-        dispatchIndices[2 * nbColumns] = (uint16_t)nbColumns;
-        // memcpy in a loop! memcpy in a loop! memcpy in a loop!
-        // (this can probably be faster)
-        for (size_t row = 1; row < nbContentRows; ++row) {
-            memcpy(dispatchIndices + 1 + row * (2 * nbColumns),
-                   dispatchIndices + 1,
-                   2 * nbColumns * sizeof(dispatchIndices[0]));
-        }
-    }
-    // Header goes to a separate cluster
-    dispatchIndices[0] = (uint16_t)(nbColumns + 1);
-    return ZL_returnSuccess();
-}
-
-static ZL_Report createParsedCsv(
-        uint32_t* stringLens,
-        const char* content,
-        const size_t length,
-        char sep,
-        size_t nbColumns)
-{
-    uint32_t fieldStart = 0;
-    size_t nbStrs       = 0;
-    size_t col          = 1;
-
-    for (uint32_t i = 0; i < length; ++i) {
-        // skip past all quoted strings
-        if (content[i] == '"') {
-            do {
-                ++i;
-            } while (i < length && content[i] != '"');
-            if (i >= length) {
-                ZL_RET_R_ERR(
-                        node_invalid_input,
-                        "CSV file is not well formed. Open quote is not closed");
-            }
-            ++i;
-            if (i >= length) {
-                ZL_RET_R_ERR(
-                        node_invalid_input,
-                        "CSV file is not well formed. No newline character at the end of the last line");
-            }
-        }
-        if (content[i] == sep || content[i] == '\n') {
-            // check for unexpected or missing columns
-            if (content[i] == sep) {
-                if (col >= nbColumns) {
-                    ZL_RET_R_ERR(
+                const char c = src[size];
+                if (c == '"') {
+                    // Handle quotes
+                    do {
+                        ++size;
+                    } while (src + size < end && src[size] != '"');
+                    ZL_ERR_IF_GE(
+                            src + size,
+                            end,
                             node_invalid_input,
-                            "CSV file is not well formed. Header expects %i columns, but found %i (or more) columns",
-                            nbColumns,
-                            col);
+                            "CSV file is not well formed: Unterminated quoted string");
+                    ++size;
+                } else if (c == '\n' || c == sep) {
+                    break;
+                } else {
+                    ++size;
                 }
-                ++col;
-            } else { // content[i] == '\n'
-                if (col != nbColumns) {
-                    ZL_RET_R_ERR(
-                            node_invalid_input,
-                            "CSV file is not well formed. Header expects %i columns, but only found %i columns",
-                            nbColumns,
-                            col);
-                }
-                col = 1;
-            }
+            } while (src + size < end);
 
-            stringLens[nbStrs] = i - fieldStart;
-            ++nbStrs;
-            stringLens[nbStrs] = 1;
-            ++nbStrs;
-            fieldStart = i + 1;
+            types[out] = ZL_CSV_TokenType_Field;
+            sizes[out] = (uint32_t)size;
+            cols[out]  = col;
+
+            src += size;
+            ++out;
         }
-    }
-    ZL_RET_R_IF_NE(
-            node_invalid_input,
-            col,
-            1,
-            "CSV file may be truncated. Header expects %i columns, but only found %i columns in the last line",
-            nbColumns,
-            col - 1);
-    ZL_RET_R_IF_NE(
-            node_invalid_input,
-            fieldStart,
-            length,
-            "CSV file not well formed. No newline character at the end of the last line");
-    ZL_LOG(V, "createParsedCsv nbStrs: %zu", nbStrs);
-    return ZL_returnValue(nbStrs);
-}
 
-// returns number of strings processed
-ZL_Report createNullAwareLexAndDispatch(
-        uint32_t* stringLens,
-        uint16_t* dispatchIndices,
-        const char* content,
-        const size_t length,
-        uint8_t nbColumns,
-        char sep)
-{
-    uint32_t fieldStart = 0;
-    uint8_t colIdx      = 0;
-    size_t nbStrs       = 0;
-
-    for (uint32_t i = 0; i < length;) {
-        // skip past all quoted strings
-        if (content[i] == '"') {
-            do {
-                ++i;
-            } while (i < length && content[i] != '"');
-            if (i >= length) {
-                ZL_RET_R_ERR(
+    _lexSeparator:
+        // If present, lex a separator or newline
+        if (src < end && out < maxNumTokens) {
+            const char c = *src;
+            if (c == '\n') {
+                if (row == 0) {
+                    numCols = col + 1;
+                }
+                // Check that the number of columns is consistent
+                ZL_ERR_IF_NE(
+                        col + 1,
+                        numCols,
                         node_invalid_input,
-                        "CSV file is not well formed. Open quote is not closed");
+                        "CSV file is not well formed: Uneven number of columns");
+
+                types[out] = ZL_CSV_TokenType_Newline;
+                sizes[out] = 1;
+                cols[out]  = 0;
+
+                col = 0;
+                ++row;
+                ++src;
+                ++out;
+
+                if (src >= limit) {
+                    // Stop on the first newline at or after the limit
+                    break;
+                }
+
+                if (isNullAware) {
+                    // If the first field is null we need to skip it rather than
+                    // create an empty token. If it is non-null, this will just
+                    // push us back to the top of the loop.
+                    goto _lexSeparator;
+                }
+            } else if (c == sep) {
+                types[out] = ZL_CSV_TokenType_Sep;
+                cols[out]  = 0;
+
+                size_t size = 1;
+                if (isNullAware) {
+                    // Handle multiple null fields
+                    while (src + size < end && src[size] == sep) {
+                        ++size;
+                    }
+                }
+                sizes[out] = (uint32_t)size;
+                col += (uint32_t)size;
+                src += size;
+                ++out;
             }
-            ++i;
         }
-        if (content[i] == sep) {
-            stringLens[nbStrs]      = i - fieldStart;
-            dispatchIndices[nbStrs] = colIdx;
-            ++nbStrs;
-            fieldStart = i;
-            // coalesce all contiguous separators, e.g. ',,,,,,'
-            while (i < length && content[i] == sep) {
-                ++colIdx;
-                ++i;
-            }
-            stringLens[nbStrs]      = i - fieldStart;
-            dispatchIndices[nbStrs] = nbColumns;
-            ++nbStrs;
-            fieldStart = i;
-            continue;
-        }
-        if (content[i] == '\n') {
-            stringLens[nbStrs]      = i - fieldStart;
-            dispatchIndices[nbStrs] = colIdx;
-            ++nbStrs;
-            stringLens[nbStrs]      = 1;
-            dispatchIndices[nbStrs] = nbColumns;
-            ++nbStrs;
-            fieldStart = i + 1;
-            colIdx     = 0;
-        }
-        ++i;
     }
-    ZL_RET_R_IF_NE(
-            node_invalid_input,
-            fieldStart,
-            length,
-            "CSV file not well formed. No newline character at the end of the last line");
-    ZL_LOG(V, "createParsedCsv nbStrs: %zu", nbStrs);
-    return ZL_returnValue(nbStrs);
+    ZL_ASSERT_LE(src, end);
+    ZL_ASSERT_LE(out, maxNumTokens);
+
+    // Update lexer state
+    lexer->src     = src;
+    lexer->row     = row;
+    lexer->col     = col;
+    lexer->numCols = numCols;
+    if (out > 0) {
+        lexer->isFieldNext = (types[out - 1] != ZL_CSV_TokenType_Field);
+    }
+
+    return ZL_returnValue(out);
 }
 
-ZL_Report ZL_CSV_lex(
-        ZL_Graph* gctx,
-        const char* const content,
-        size_t byteSize,
-        bool hasHeader,
-        char sep,
-        ZL_CSV_lexResult* retLexResult)
+bool ZL_CSV_Lexer_finished(const ZL_CSV_Lexer* lexer)
 {
-    // TODO: can we use a vector to avoid this double iteration? would it be
-    // faster?
-    // pre-processing for rows, columns before parsing
-    const char* rowsStart;
-    size_t rowsByteSize;
-    size_t nbColumns;
-    {
-        size_t firstRowLen =
-                0; // dummy initialization, to avoid -Wmaybe-uninitialized
-        ZL_RET_R_IF_ERR(parseFirstRow(
-                content, byteSize, sep, &nbColumns, &firstRowLen));
-        if (hasHeader) {
-            rowsStart    = content + firstRowLen;
-            rowsByteSize = byteSize - firstRowLen;
-        } else {
-            rowsStart    = content;
-            rowsByteSize = byteSize;
-        }
-    }
-    const size_t maxNbRows = countNbNewlines(rowsStart, rowsByteSize);
-
-    // Given 'n' columns, there are 'n' content strings and 'n' separator
-    // strings per row. This is because we count the newline separator as well
-    // as all the column separators. We add 1 for the header. Overcounting
-    // extraneous quoted newlines is possible.
-    const size_t maxNbStrings = 2 * nbColumns * maxNbRows + 1;
-
-    uint32_t* stringLens =
-            ZL_Graph_getScratchSpace(gctx, maxNbStrings * sizeof(uint32_t));
-    ZL_RET_R_IF_NULL(allocation, stringLens);
-    stringLens[0] = (uint32_t)(rowsStart - content); // 0 if there is no header
-    ZL_Report rep = createParsedCsv(
-            stringLens + 1, rowsStart, rowsByteSize, sep, nbColumns);
-    ZL_RET_R_IF_ERR(rep);
-    size_t actualNbStrs = ZL_validResult(rep);
-    size_t actualNbRows = actualNbStrs / (2 * nbColumns);
-    actualNbStrs += 1; // +1 for header
-
-    uint16_t* dispatchIndices =
-            ZL_Graph_getScratchSpace(gctx, actualNbStrs * sizeof(uint16_t));
-    ZL_RET_R_IF_NULL(allocation, dispatchIndices);
-    ZL_RET_R_IF_ERR(createCsvDispatchIndices(
-            dispatchIndices, actualNbRows, nbColumns, stringLens));
-
-    // return
-    retLexResult->stringLens      = stringLens;
-    retLexResult->dispatchIndices = dispatchIndices;
-    retLexResult->nbStrs          = actualNbStrs;
-    retLexResult->nbColumns       = nbColumns;
-
-    return ZL_returnSuccess();
-}
-
-ZL_Report ZL_CSV_lexNullAware(
-        ZL_Graph* gctx,
-        const char* const content,
-        size_t byteSize,
-        bool hasHeader,
-        char sep,
-        ZL_CSV_lexResult* retLexResult)
-{
-    // TODO: can we use a vector to avoid this double iteration? would it be
-    // faster?
-    // pre-processing for rows, columns before parsing
-    const char* rowsStart;
-    size_t rowsByteSize;
-    size_t nbColumns;
-    {
-        size_t firstRowLen =
-                0; // dummy initialization, to avoid -Wmaybe-uninitialized
-        ZL_RET_R_IF_ERR(parseFirstRow(
-                content, byteSize, sep, &nbColumns, &firstRowLen));
-        if (hasHeader) {
-            rowsStart    = content + firstRowLen;
-            rowsByteSize = byteSize - firstRowLen;
-        } else {
-            rowsStart    = content;
-            rowsByteSize = byteSize;
-        }
-    }
-    const size_t maxNbRows = countNbNewlines(rowsStart, rowsByteSize);
-
-    // Given 'n' columns, there are up to 'n' content strings and 'n' separator
-    // strings per row. This is because we count the newline separator as well
-    // as all the column separators. We add 1 for the header. Overcounting
-    // extraneous quoted newlines is possible.
-    const size_t maxNbStrings = 2 * nbColumns * maxNbRows + 1;
-
-    uint32_t* stringLens =
-            ZL_Graph_getScratchSpace(gctx, maxNbStrings * sizeof(uint32_t));
-    ZL_RET_R_IF_NULL(allocation, stringLens);
-    uint16_t* dispatchIndices =
-            ZL_Graph_getScratchSpace(gctx, maxNbStrings * sizeof(uint16_t));
-    ZL_RET_R_IF_NULL(allocation, dispatchIndices);
-    stringLens[0] = (uint32_t)(rowsStart - content); // 0 if there is no header
-
-    ZL_Report rep = createNullAwareLexAndDispatch(
-            stringLens + 1,
-            dispatchIndices + 1,
-            rowsStart,
-            rowsByteSize,
-            (uint8_t)nbColumns,
-            sep);
-    ZL_RET_R_IF_ERR(rep);
-    size_t actualNbStrs = ZL_validResult(rep);
-    actualNbStrs += 1;                            // +1 for header
-    dispatchIndices[0] = (uint16_t)nbColumns + 1; // header
-
-    // return
-    retLexResult->stringLens      = stringLens;
-    retLexResult->dispatchIndices = dispatchIndices;
-    retLexResult->nbStrs          = actualNbStrs;
-    retLexResult->nbColumns       = nbColumns;
-
-    return ZL_returnSuccess();
+    return lexer->src == lexer->end;
 }

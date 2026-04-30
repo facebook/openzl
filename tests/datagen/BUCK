@@ -3,7 +3,7 @@
 # @noautodeps
 
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_cxxlibrary", "zs_unittest")
+load("../../defs.bzl", "relative_headers", "zs_cxxlibrary", "zs_unittest")
 
 oncall("data_compression")
 
@@ -24,10 +24,10 @@ zs_cxxlibrary(
         ],
     ),
     exported_deps = [
-        "//data_compression/experimental/zstrong:common",
-        "//data_compression/experimental/zstrong:compress",
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
-        "//data_compression/experimental/zstrong/tests:utils",
+        "..:utils",
+        "../..:common",
+        "../..:compress",
+        "../../cpp:openzl_cpp",
     ],
 )
 
@@ -49,22 +49,23 @@ zs_unittest(
 cpp_library(
     name = "custom_nodes",
     srcs = glob(["test_registry/*.cpp"]),
-    headers = glob(["test_registry/*.h"]),
+    headers = relative_headers(glob(["test_registry/*.h"])),
+    header_namespace = "",
     # NOTE: Must only be used by version_test_interface.so because it depends on Zstrong
     # Must NOT be used by version_test_interface or version_test targets.
     visibility = [
-        "//data_compression/experimental/zstrong/tests:",
-        "//data_compression/experimental/zstrong/tests/version:version_test_interface.so",
+        "..:",
+        "../version:version_test_interface.so",
     ],
     exported_deps = [
+        "../..:zstronglib",
+        "../../custom_transforms/thrift:thrift_lib",
+        "../../custom_transforms/thrift/kernels:decode_thrift_binding",
+        "../../custom_transforms/thrift/kernels:encode_thrift_binding",
+        "../../custom_transforms/thrift/kernels/tests:thrift_kernel_test_utils",
+        "../../custom_transforms/thrift/tests:thrift_test_utils",
+        "../../custom_transforms/tulip_v2:tulip_v2",
+        "../../custom_transforms/tulip_v2/tests:tulip_v2_data_utils",
         ":datagen",
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/custom_transforms/thrift:thrift_lib",
-        "//data_compression/experimental/zstrong/custom_transforms/thrift/kernels:decode_thrift_binding",
-        "//data_compression/experimental/zstrong/custom_transforms/thrift/kernels:encode_thrift_binding",
-        "//data_compression/experimental/zstrong/custom_transforms/thrift/kernels/tests:thrift_kernel_test_utils",
-        "//data_compression/experimental/zstrong/custom_transforms/thrift/tests:thrift_test_utils",
-        "//data_compression/experimental/zstrong/custom_transforms/tulip_v2:tulip_v2",
-        "//data_compression/experimental/zstrong/custom_transforms/tulip_v2/tests:tulip_v2_data_utils",
     ],
 )

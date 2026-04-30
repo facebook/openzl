@@ -11,11 +11,10 @@ ZL_BEGIN_C_DECLS
 
 ZL_Report EI_rangePack(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 
-#define EI_RANGE_PACK(id)                                        \
-    {                                                            \
-        .gd = RANGE_PACK_GRAPH(id), .transform_f = EI_rangePack, \
-        .name = "!zl.range_pack"                                 \
-    }
+#define EI_RANGE_PACK(id)                  \
+    { .gd          = RANGE_PACK_GRAPH(id), \
+      .transform_f = EI_rangePack,         \
+      .name        = "!zl.range_pack" }
 
 ZL_END_C_DECLS
 

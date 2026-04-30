@@ -57,7 +57,7 @@ ZL_FORCE_NOINLINE std::string_view buildBitmask(
 {
     std::fill(bitmask, bitmask + kBitmaskSize, 0);
     size_t blockSize = 0;
-#if __AVX2__
+#if defined(__AVX2__)
     blockSize = alignDown(std::min(src.size(), kBlockSize), 32);
 
     uint32_t* bitmask32 = (uint32_t*)bitmask;
@@ -139,6 +139,7 @@ ZL_Report replaceTokens(
         InStream& floats,
         InStream& strs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     size_t idx           = 0;
     uint64_t mask        = bitmask[idx];
     uint32_t skipped     = 0;
@@ -183,13 +184,13 @@ ZL_Report replaceTokens(
 
         // Replace the token
         if (token[0] == char(Token::INT)) {
-            ZL_RET_R_IF_EQ(corruption, ints.remaining(), 0);
+            ZL_ERR_IF_EQ(ints.remaining(), 0, corruption);
             out = ints.read(out);
         } else if (token[0] == char(Token::FLOAT)) {
-            ZL_RET_R_IF_EQ(corruption, floats.remaining(), 0);
+            ZL_ERR_IF_EQ(floats.remaining(), 0, corruption);
             out = floats.read(out);
         } else if (token[0] == char(Token::STR)) {
-            ZL_RET_R_IF_EQ(corruption, strs.remaining(), 0);
+            ZL_ERR_IF_EQ(strs.remaining(), 0, corruption);
             out = strs.read(out);
         } else if (token[0] == char(Token::TRUE)) {
             memcpy(out, "true", 4);
@@ -216,6 +217,7 @@ ZL_Report jsonExtractDecode(
         ZL_Decoder* dictx,
         ZL_Input const* inputs[]) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_Input const* jsonStream = inputs[0];
     InStream ints{ inputs[1] };
     InStream floats{ inputs[2] };
@@ -231,18 +233,18 @@ ZL_Report jsonExtractDecode(
             + ZL_Input_contentSize(inputs[1]) + ZL_Input_contentSize(inputs[2])
             + ZL_Input_contentSize(inputs[3]) + ZS_WILDCOPY_OVERLENGTH;
     ZL_Output* outStream = ZL_Decoder_create1OutStream(dictx, outBound, 1);
-    ZL_RET_R_IF_NULL(allocation, outStream);
+    ZL_ERR_IF_NULL(outStream, allocation);
 
     std::array<uint64_t, kBitmaskSize> bitmask;
     char* out = (char*)ZL_Output_ptr(outStream);
     while (!json.empty()) {
         auto const block = buildBitmask(bitmask.data(), json);
-        ZL_RET_R_IF_ERR(replaceTokens(
+        ZL_ERR_IF_ERR(replaceTokens(
                 dictx, out, bitmask.data(), block, ints, floats, strs));
     }
 
     size_t const size = size_t(out - (char*)ZL_Output_ptr(outStream));
-    ZL_RET_R_IF_ERR(ZL_Output_commit(outStream, size));
+    ZL_ERR_IF_ERR(ZL_Output_commit(outStream, size));
 
     return ZL_returnSuccess();
 }

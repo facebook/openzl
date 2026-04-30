@@ -13,7 +13,11 @@
 #include "openzl/zl_data.h"
 #include "tools/zstrong_cpp.h" // @manual
 
-namespace zstrong::thrift::tests {
+namespace openzl::thrift::tests {
+
+using namespace zstrong::thrift;
+namespace cpp2 = zstrong::thrift::tests::cpp2;
+
 namespace {
 // TODO(T190725275) Hard-coding the list of paths is brittle: for example, if we
 // add a new special ThriftNodeId, we'd need to update the list manually. The
@@ -24,39 +28,72 @@ namespace {
 // For the short term, as long as we check this list against the TestStruct
 // schema in code review, our coverage should be fine. The schema can be found
 // at https://fburl.com/code/chgygv3s.
-std::vector<std::pair<ThriftPath, TType>> getAllPaths()
+std::vector<std::pair<zstrong::thrift::ThriftPath, zstrong::thrift::TType>>
+getAllPaths()
 {
-    std::vector<std::pair<ThriftPath, TType>> suffixes = {
-        { { ThriftNodeId(-1) }, TType::T_BYTE },
-        { { ThriftNodeId(-2) }, TType::T_BOOL },
-        { { ThriftNodeId(1) }, TType::T_I16 },
-        { { ThriftNodeId(42) }, TType::T_I32 },
-        { { ThriftNodeId(2) }, TType::T_I64 },
-        { { ThriftNodeId(3) }, TType::T_FLOAT },
-        { { ThriftNodeId(4) }, TType::T_DOUBLE },
-        { { ThriftNodeId(5) }, TType::T_STRING },
-        { { ThriftNodeId(5), ThriftNodeId::kLength }, TType::T_U32 },
-        { { ThriftNodeId(6), ThriftNodeId::kListElem }, TType::T_BOOL },
-        { { ThriftNodeId(6), ThriftNodeId::kLength }, TType::T_U32 },
-        { { ThriftNodeId(7), ThriftNodeId::kMapKey }, TType::T_STRING },
-        { { ThriftNodeId(7), ThriftNodeId::kMapValue }, TType::T_BOOL },
-        { { ThriftNodeId(7), ThriftNodeId::kLength }, TType::T_U32 },
-        { { ThriftNodeId(7), ThriftNodeId::kMapKey, ThriftNodeId::kLength },
-          TType::T_U32 },
-        { { ThriftNodeId(8), ThriftNodeId::kListElem }, TType::T_I32 },
-        { { ThriftNodeId(8), ThriftNodeId::kLength }, TType::T_U32 },
-        { { ThriftNodeId(-123) }, TType::T_FLOAT }, // include a fake path
+    std::vector<std::pair<zstrong::thrift::ThriftPath, zstrong::thrift::TType>>
+            suffixes = {
+                { { zstrong::thrift::ThriftNodeId(-1) },
+                  zstrong::thrift::TType::T_BYTE },
+                { { zstrong::thrift::ThriftNodeId(-2) },
+                  zstrong::thrift::TType::T_BOOL },
+                { { zstrong::thrift::ThriftNodeId(1) },
+                  zstrong::thrift::TType::T_I16 },
+                { { zstrong::thrift::ThriftNodeId(42) },
+                  zstrong::thrift::TType::T_I32 },
+                { { zstrong::thrift::ThriftNodeId(2) },
+                  zstrong::thrift::TType::T_I64 },
+                { { zstrong::thrift::ThriftNodeId(3) },
+                  zstrong::thrift::TType::T_FLOAT },
+                { { zstrong::thrift::ThriftNodeId(4) },
+                  zstrong::thrift::TType::T_DOUBLE },
+                { { zstrong::thrift::ThriftNodeId(5) },
+                  zstrong::thrift::TType::T_STRING },
+                { { zstrong::thrift::ThriftNodeId(5),
+                    zstrong::thrift::ThriftNodeId::kLength },
+                  zstrong::thrift::TType::T_U32 },
+                { { zstrong::thrift::ThriftNodeId(6),
+                    zstrong::thrift::ThriftNodeId::kListElem },
+                  zstrong::thrift::TType::T_BOOL },
+                { { zstrong::thrift::ThriftNodeId(6),
+                    zstrong::thrift::ThriftNodeId::kLength },
+                  zstrong::thrift::TType::T_U32 },
+                { { zstrong::thrift::ThriftNodeId(7),
+                    zstrong::thrift::ThriftNodeId::kMapKey },
+                  zstrong::thrift::TType::T_STRING },
+                { { zstrong::thrift::ThriftNodeId(7),
+                    zstrong::thrift::ThriftNodeId::kMapValue },
+                  zstrong::thrift::TType::T_BOOL },
+                { { zstrong::thrift::ThriftNodeId(7),
+                    zstrong::thrift::ThriftNodeId::kLength },
+                  zstrong::thrift::TType::T_U32 },
+                { { zstrong::thrift::ThriftNodeId(7),
+                    zstrong::thrift::ThriftNodeId::kMapKey,
+                    zstrong::thrift::ThriftNodeId::kLength },
+                  zstrong::thrift::TType::T_U32 },
+                { { zstrong::thrift::ThriftNodeId(8),
+                    zstrong::thrift::ThriftNodeId::kListElem },
+                  zstrong::thrift::TType::T_I32 },
+                { { zstrong::thrift::ThriftNodeId(8),
+                    zstrong::thrift::ThriftNodeId::kLength },
+                  zstrong::thrift::TType::T_U32 },
+                { { zstrong::thrift::ThriftNodeId(-123) },
+                  zstrong::thrift::TType::T_FLOAT }, // include a fake path
+            };
+
+    std::vector<zstrong::thrift::ThriftPath> prefixes = {
+        { zstrong::thrift::ThriftNodeId(4) },
+        { zstrong::thrift::ThriftNodeId(3) },
+        { zstrong::thrift::ThriftNodeId(2),
+          zstrong::thrift::ThriftNodeId::kListElem },
+        { zstrong::thrift::ThriftNodeId(1),
+          zstrong::thrift::ThriftNodeId::kMapKey },
+        { zstrong::thrift::ThriftNodeId(1),
+          zstrong::thrift::ThriftNodeId::kMapValue },
     };
 
-    std::vector<ThriftPath> prefixes = {
-        { ThriftNodeId(4) },
-        { ThriftNodeId(3) },
-        { ThriftNodeId(2), ThriftNodeId::kListElem },
-        { ThriftNodeId(1), ThriftNodeId::kMapKey },
-        { ThriftNodeId(1), ThriftNodeId::kMapValue },
-    };
-
-    std::vector<std::pair<ThriftPath, TType>> result;
+    std::vector<std::pair<zstrong::thrift::ThriftPath, zstrong::thrift::TType>>
+            result;
     result.reserve(prefixes.size() * suffixes.size());
     for (const auto& prefix : prefixes) {
         for (const auto& [innerPath, innerType] : suffixes) {
@@ -70,13 +107,17 @@ std::vector<std::pair<ThriftPath, TType>> getAllPaths()
 }
 
 // Work around the annoying kLength bug
-std::vector<std::pair<ThriftPath, TType>> purgeLengthOnlySplits(
-        const std::vector<std::pair<ThriftPath, TType>>& paths)
+std::vector<std::pair<zstrong::thrift::ThriftPath, zstrong::thrift::TType>>
+purgeLengthOnlySplits(
+        const std::vector<
+                std::pair<zstrong::thrift::ThriftPath, zstrong::thrift::TType>>&
+                paths)
 {
-    std::set<ThriftPath> dataPrefixes;
+    std::set<zstrong::thrift::ThriftPath> dataPrefixes;
     for (auto& [path, _] : paths) {
-        if (!path.empty() && path.back() != ThriftNodeId::kLength) {
-            ThriftPath prefix(path.begin(), path.end() - 1);
+        if (!path.empty()
+            && path.back() != zstrong::thrift::ThriftNodeId::kLength) {
+            zstrong::thrift::ThriftPath prefix(path.begin(), path.end() - 1);
             dataPrefixes.insert(std::move(prefix));
             dataPrefixes.insert(path);
         }
@@ -88,8 +129,9 @@ std::vector<std::pair<ThriftPath, TType>> purgeLengthOnlySplits(
         if (path.empty()) {
             continue;
         }
-        if (path.back() == ThriftNodeId::kLength) {
-            const ThriftPath prefix(path.begin(), path.end() - 1);
+        if (path.back() == zstrong::thrift::ThriftNodeId::kLength) {
+            const zstrong::thrift::ThriftPath prefix(
+                    path.begin(), path.end() - 1);
             if (!dataPrefixes.contains(prefix)) {
                 // It's illegal to split lengths without data
                 continue;
@@ -101,12 +143,15 @@ std::vector<std::pair<ThriftPath, TType>> purgeLengthOnlySplits(
 }
 
 // Support for string length paths is removed in format version 14
-std::vector<std::pair<ThriftPath, TType>> purgeStringLengthPaths(
-        const std::vector<std::pair<ThriftPath, TType>>& paths)
+std::vector<std::pair<zstrong::thrift::ThriftPath, zstrong::thrift::TType>>
+purgeStringLengthPaths(
+        const std::vector<
+                std::pair<zstrong::thrift::ThriftPath, zstrong::thrift::TType>>&
+                paths)
 {
-    std::set<ThriftPath> stringVsfPaths;
+    std::set<zstrong::thrift::ThriftPath> stringVsfPaths;
     for (auto& [path, type] : paths) {
-        if (type == TType::T_STRING) {
+        if (type == zstrong::thrift::TType::T_STRING) {
             stringVsfPaths.insert(path);
         }
     }
@@ -117,8 +162,9 @@ std::vector<std::pair<ThriftPath, TType>> purgeStringLengthPaths(
         if (path.empty()) {
             continue;
         }
-        if (path.back() == ThriftNodeId::kLength) {
-            const ThriftPath prefix(path.begin(), path.end() - 1);
+        if (path.back() == zstrong::thrift::ThriftNodeId::kLength) {
+            const zstrong::thrift::ThriftPath prefix(
+                    path.begin(), path.end() - 1);
             if (stringVsfPaths.contains(prefix)) {
                 // Lengths are already covered by the corresponding VSF path
                 continue;
@@ -152,8 +198,12 @@ std::string thriftSplitCompress(
                                                          .nbCopyParams = 1 } };
     const ZL_NodeID nodeWithoutParams =
             ZL_Compressor_registerVOEncoder(cgraph.get(), &compress);
-    const ZL_NodeID nodeWithParams = ZL_Compressor_cloneNode(
-            cgraph.get(), nodeWithoutParams, &localParams);
+    const ZL_ParameterizedNodeDesc desc = {
+        .node        = nodeWithoutParams,
+        .localParams = &localParams,
+    };
+    const ZL_NodeID nodeWithParams =
+            ZL_Compressor_registerParameterizedNode(cgraph.get(), &desc);
 
     std::vector<ZL_GraphID> thriftSuccessors;
     for (size_t i = 0; i < compress.gd.nbSingletons; i++) {
@@ -165,14 +215,11 @@ std::string thriftSplitCompress(
         const std::vector<ZL_GraphID> directedSelectorSuccessors{
             { ZL_GRAPH_STORE }
         };
-        const ZL_SelectorDesc directed_selector_desc =
-                buildDirectedSelectorDesc(
-                        type,
+        const ZL_GraphID directedSelectorGraphID =
+                registerDirectedSelectorGraph(
+                        cgraph.get(),
                         directedSelectorSuccessors.data(),
                         directedSelectorSuccessors.size());
-        const ZL_GraphID directedSelectorGraphID =
-                ZL_Compressor_registerSelectorGraph(
-                        cgraph.get(), &directed_selector_desc);
         assert(directedSelectorGraphID.gid != ZL_GRAPH_ILLEGAL.gid);
         const std::vector<ZL_GraphID> emptyInputSelectorSuccessors{
             { ZL_GRAPH_STORE, directedSelectorGraphID }
@@ -270,7 +317,7 @@ std::string buildValidEncoderConfig(
         int maxFormatVersion)
 {
     std::mt19937 gen(seed);
-    EncoderConfigBuilder builder;
+    zstrong::thrift::EncoderConfigBuilder builder;
 
     // Add a random subset of possible paths to the config
     {
@@ -281,7 +328,7 @@ std::string buildValidEncoderConfig(
                 : std::uniform_real_distribution<double>(0.0, 1.0)(gen);
         paths.resize(size_t(fractionOfPathsToUse * paths.size()));
         paths = purgeLengthOnlySplits(paths);
-        if (maxFormatVersion >= kMinFormatVersionStringVSF) {
+        if (maxFormatVersion >= zstrong::thrift::kMinFormatVersionStringVSF) {
             paths = purgeStringLengthPaths(paths);
         }
         for (const auto& [path, type] : paths) {
@@ -290,10 +337,10 @@ std::string buildValidEncoderConfig(
     }
 
     // Cluster a random subset of paths
-    std::set<ThriftPath> clusteredPaths{};
-    if (minFormatVersion >= kMinFormatVersionEncodeClusters) {
-        folly::F14FastMap<TType, size_t> clusterIndices;
-        clusterIndices.reserve(size_t(TType::T_FLOAT));
+    std::set<zstrong::thrift::ThriftPath> clusteredPaths{};
+    if (minFormatVersion >= zstrong::thrift::kMinFormatVersionEncodeClusters) {
+        folly::F14FastMap<zstrong::thrift::TType, size_t> clusterIndices;
+        clusterIndices.reserve(size_t(zstrong::thrift::TType::T_FLOAT));
         for (const auto& [_, pathInfo] : builder.pathMap()) {
             if (!clusterIndices.contains(pathInfo.type)) {
                 clusterIndices.emplace(
@@ -334,11 +381,12 @@ std::string buildValidEncoderConfig(
     if (seed == kDefaultConfigSeed && mode == ConfigGenMode::kMoreCoverage) {
         assert(builder.pathMap().size() >= 20);
 
-        if (minFormatVersion >= kMinFormatVersionEncodeClusters) {
+        if (minFormatVersion
+            >= zstrong::thrift::kMinFormatVersionEncodeClusters) {
             assert(!builder.clusters().empty());
             assert(builder.clusters().front().idList.size() >= 2);
 
-            folly::F14FastSet<TType> clusteredTypes;
+            folly::F14FastSet<zstrong::thrift::TType> clusteredTypes;
             for (int i = 0; i < builder.clusters().size(); ++i) {
                 clusteredTypes.insert(builder.getClusterType(i));
             }
@@ -349,4 +397,4 @@ std::string buildValidEncoderConfig(
     return result;
 }; // namespace
 
-} // namespace zstrong::thrift::tests
+} // namespace openzl::thrift::tests

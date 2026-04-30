@@ -2,7 +2,6 @@
 
 import os
 import subprocess
-
 from dataclasses import dataclass
 from enum import Enum
 
@@ -146,6 +145,7 @@ def execute_compress(
 def execute_decompress(
     compressed_file_path: str,
     decompressed_file_path: str,
+    extra_args: str | None = None,
 ) -> None:
     """
     Execute the decompress command to decompress a file.
@@ -160,13 +160,12 @@ def execute_decompress(
     Args:
         compressed_file_path: Path to the compressed file
         decompressed_file_path: Path where the decompressed file will be saved
+        extra_args: Additional arguments to pass to the decompress command (optional)
 
     Raises:
         ValueError: If the decompression fails or the decompressed file is not created
     """
-    decompress_args = (
-        f"decompress {str(compressed_file_path)} -o {str(decompressed_file_path)}"
-    )
+    decompress_args = f"decompress {str(compressed_file_path)} -o {str(decompressed_file_path)} {extra_args or ''}"
 
     if execute_command(decompress_args) != 0:
         raise ValueError("Executing decompress command failed")
@@ -182,6 +181,7 @@ def execute_train(
     uncompressed_dir: str,
     trained_compressor_path: str,
     trainer_name: str | None = None,
+    extra_args: str | None = None,
 ):
     """
     Execute the train command to train a compressor on sample files.
@@ -203,6 +203,8 @@ def execute_train(
             - "greedy": Makes locally optimal choices at each step
             - "full-split": Analyzes the entire dataset before making decisions
             If None, the default trainer for the profile will be used.
+        extra_args: Additional arguments to pass to the train command (optional).
+            For example: "--profile-arg /path/to/folder"
 
     Raises:
         ValueError: If the training fails or the trained compressor is not created
@@ -210,9 +212,11 @@ def execute_train(
     cstr = compressor_info.compressor_str
     cflag = compressor_info.compressor_type.value
 
-    train_args = f"train --{cflag} {cstr} {str(uncompressed_dir)} -o {str(trained_compressor_path)}"
+    train_args = f"train --max-time-secs 1 --{cflag} {cstr} {str(uncompressed_dir)} -o {str(trained_compressor_path)}"
     if trainer_name:
         train_args += f" -t {trainer_name}"
+    if extra_args:
+        train_args += f" {extra_args}"
 
     if execute_command(train_args) != 0:
         raise ValueError("Executing train command failed")
@@ -233,7 +237,7 @@ def execute_train_inline(
     cstr = compressor_info.compressor_str
     cflag = compressor_info.compressor_type.value
 
-    train_args = f"compress --train-inline --{cflag} {cstr} {str(uncompressed_file)} -o {str(compressed_file_path)}"
+    train_args = f"compress --train-inline --train-inline-test-limit 1 --{cflag} {cstr} {str(uncompressed_file)} -o {str(compressed_file_path)}"
 
     if execute_command(train_args) != 0:
         raise ValueError("Executing train command failed")

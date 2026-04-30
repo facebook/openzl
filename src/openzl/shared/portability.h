@@ -33,7 +33,7 @@ ZL_BEGIN_C_DECLS
 #endif
 
 /// Attributes
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 #    define ZL_FORCE_INLINE_ATTR __forceinline
 #    define ZL_FORCE_NOINLINE_ATTR __declspec(noinline)
 #    define ZL_FLATTEN_ATTR // MSVC doesn't have equivalent to flatten
@@ -104,6 +104,111 @@ ZL_BEGIN_C_DECLS
 #    define ZL_HAS_BUILTIN(x) 0
 #endif
 
+#ifdef __has_feature
+#    define ZL_HAS_FEATURE(x) __has_feature(x)
+#else
+#    define ZL_HAS_FEATURE(x) 0
+#endif
+
+#ifndef ZL_ADDRESS_SANITIZER
+#    if ZL_HAS_FEATURE(address_sanitizer)
+#        define ZL_ADDRESS_SANITIZER 1
+#    else
+#        define ZL_ADDRESS_SANITIZER 0
+#    endif
+#endif
+
+#if ZL_ADDRESS_SANITIZER
+/* Not all platforms that support asan provide sanitizers/asan_interface.h.
+ * We therefore declare the functions we need ourselves, rather than trying to
+ * include the header file... */
+
+/**
+ * Marks a memory region (<c>[addr, addr+size)</c>) as unaddressable.
+ *
+ * This memory must be previously allocated by your program. Instrumented
+ * code is forbidden from accessing addresses in this region until it is
+ * unpoisoned. This function is not guaranteed to poison the entire region -
+ * it could poison only a subregion of <c>[addr, addr+size)</c> due to ASan
+ * alignment restrictions.
+ *
+ * \note This function is not thread-safe because no two threads can poison or
+ * unpoison memory in the same memory region simultaneously.
+ *
+ * \param addr Start of memory region.
+ * \param size Size of memory region. */
+void __asan_poison_memory_region(void const volatile* addr, size_t size);
+
+/**
+ * Marks a memory region (<c>[addr, addr+size)</c>) as addressable.
+ *
+ * This memory must be previously allocated by your program. Accessing
+ * addresses in this region is allowed until this region is poisoned again.
+ * This function could unpoison a super-region of <c>[addr, addr+size)</c> due
+ * to ASan alignment restrictions.
+ *
+ * \note This function is not thread-safe because no two threads can
+ * poison or unpoison memory in the same memory region simultaneously.
+ *
+ * \param addr Start of memory region.
+ * \param size Size of memory region. */
+void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
+
+/**
+ * Checks if an address is poisoned.
+ *
+ *  Returns 1 if <c><i>addr</i></c> is poisoned (that is, 1-byte read/write
+ *  access to this address would result in an error report from ASan).
+ *  Otherwise returns 0.
+ *
+ *  \param addr Address to check.
+ *
+ *  \retval 1 Address is poisoned.
+ *  \retval 0 Address is not poisoned.
+ */
+int __asan_address_is_poisoned(void const volatile* addr);
+#endif
+
+#define ZL_POISON_SUPPORTED ZL_ADDRESS_SANITIZER
+
+ZL_INLINE void ZL_poisonMemory(const void* ptr, size_t size)
+{
+#if ZL_ADDRESS_SANITIZER
+    __asan_poison_memory_region(ptr, size);
+#else
+    (void)ptr;
+    (void)size;
+#endif
+}
+
+ZL_INLINE void ZL_unpoisonMemory(const void* ptr, size_t size)
+{
+#if ZL_ADDRESS_SANITIZER
+    __asan_unpoison_memory_region(ptr, size);
+#else
+    (void)ptr;
+    (void)size;
+#endif
+}
+
+ZL_INLINE bool ZL_addressIsPoisoned(const void* ptr)
+{
+#if ZL_ADDRESS_SANITIZER
+    return __asan_address_is_poisoned(ptr);
+#else
+    (void)ptr;
+    return false;
+#endif
+}
+
+#if ZL_POISON_SUPPORTED
+#    define ZL_POISON_MEMORY(ptr, size) ZL_poisonMemory(ptr, size)
+#    define ZL_UNPOISON_MEMORY(ptr, size) ZL_unpoisonMemory(ptr, size)
+#else
+#    define ZL_POISON_MEMORY(ptr, size)
+#    define ZL_UNPOISON_MEMORY(ptr, size)
+#endif
+
 #define ZL_ARCH_FLAG_X86 (1 << 0)
 #define ZL_ARCH_FLAG_X86_64 ((1 << 1) | ZL_ARCH_FLAG_X86)
 #define ZL_ARCH_FLAG_I386 ((1 << 2) | ZL_ARCH_FLAG_X86)
@@ -126,7 +231,7 @@ ZL_BEGIN_C_DECLS
 #elif defined(__aarch64__) || defined(__arm64__)
 #    define ZL_ARCH_FLAGS ZL_ARCH_FLAG_ARM64
 #elif defined(__arm__)
-#    define ZL_ARCH_FLAG ZL_ARCH_FLAG_ARM32
+#    define ZL_ARCH_FLAGS ZL_ARCH_FLAG_ARM32
 #elif defined(__powerpc64__) || defined(__ppc64__) || defined(_ARCH_PPC64)
 #    if defined(_LITTLE_ENDIAN) || defined(__LITTLE_ENDIAN__) \
             || (defined(__BYTE_ORDER__)                       \
@@ -149,6 +254,12 @@ ZL_BEGIN_C_DECLS
 #define ZL_ARCH_PPC64 ((ZL_ARCH_FLAGS & ZL_ARCH_FLAG_PPC64) != 0)
 #define ZL_ARCH_PPC64LE ((ZL_ARCH_FLAGS & ZL_ARCH_FLAG_PPC64LE) != 0)
 #define ZL_ARCH_PPC64BE ((ZL_ARCH_FLAGS & ZL_ARCH_FLAG_PPC64BE) != 0)
+
+// Enforce 64-bit compilation
+#if (ZL_ARCH_FLAGS == ZL_ARCH_FLAG_I386) \
+        || (ZL_ARCH_FLAGS == ZL_ARCH_FLAG_ARM32)
+#    error "This codebase requires a 64-bit platform. 32-bit compilation is not supported yet."
+#endif
 
 // Error on unknown architectures for now.
 // TODO: This should probably be removed before open source.
@@ -173,6 +284,11 @@ ZL_BEGIN_C_DECLS
 #    endif
 #    if defined(_MSC_VER)
 #        include <intrin.h>
+// MSVC doesn't define __m256i_u and __m128i_u types like GCC/Clang do.
+// These types are used for unaligned SIMD loads/stores. In MSVC, we just
+// use the regular __m256i and __m128i types for both aligned and unaligned.
+typedef __m256i __m256i_u;
+typedef __m128i __m128i_u;
 #    endif
 #else
 #    define ZL_HAS_AVX2 0
@@ -180,12 +296,14 @@ ZL_BEGIN_C_DECLS
 
 #if defined(__SSSE3__)
 #    define ZL_HAS_SSSE3 1
+#    include <immintrin.h>
 #else
 #    define ZL_HAS_SSSE3 0
 #endif
 
 #if defined(__SSE4_2__)
 #    define ZL_HAS_SSE42 1
+#    include <immintrin.h>
 #else
 #    define ZL_HAS_SSE42 0
 #endif
@@ -211,10 +329,11 @@ ZL_BEGIN_C_DECLS
 // Detect IEEE 754 floating point support.
 // Apple doesn't define __STDC_IEC_559__, but supports IEEE 754.
 // MinGW doesn't define __STDC_IEC_559__, but supports IEEE 754.
+// MSVC on x86/x64 supports IEEE 754.
 #if (defined(__STDC_IEC_559__) && __STDC_IEC_559__) \
         || (defined(__STDC_IEC_60559_BFP__)         \
             && __STDC_IEC_60559_BFP__ >= 202311L)   \
-        || defined(__APPLE__) || defined(__MINGW32__)
+        || defined(__APPLE__) || defined(__MINGW32__) || defined(_MSC_VER)
 #    define ZL_HAS_IEEE_754 1
 #else
 #    define ZL_HAS_IEEE_754 0

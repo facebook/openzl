@@ -5,7 +5,7 @@
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:thrift_library.bzl", "thrift_library")
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_fuzzers")
+load("../../../../defs.bzl", "relative_headers", "zs_fuzzers")
 
 oncall("data_compression")
 
@@ -20,13 +20,13 @@ thrift_library(
 
 cpp_library(
     name = "thrift_kernel_test_utils",
-    headers = ["thrift_kernel_test_utils.h"],
+    headers = relative_headers(["thrift_kernel_test_utils.h"]),
+    header_namespace = "",
     exported_deps = [
-        ":fuzz_data-cpp2-reflection",
+        "../../../..:zstronglib",
+        "../../../../tests/datagen:datagen",
         ":fuzz_data-cpp2-types",
         ":fuzz_data-cpp2-visitation",
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/tests/datagen:datagen",
         "//folly:overload",
         "//folly:range",
         "//folly/io:iobuf",
@@ -38,10 +38,10 @@ cpp_unittest(
     name = "test_thrift_kernel",
     srcs = ["test_thrift_kernel.cpp"],
     deps = [
-        "//data_compression/experimental/zstrong:common",
-        "//data_compression/experimental/zstrong/custom_transforms/thrift/kernels:decode_thrift_kernel",
-        "//data_compression/experimental/zstrong/custom_transforms/thrift/kernels:encode_thrift_kernel",
-        "//data_compression/experimental/zstrong/custom_transforms/thrift/kernels:thrift_kernel_utils",
+        "..:decode_thrift_kernel",
+        "..:encode_thrift_kernel",
+        "..:thrift_kernel_utils",
+        "../../../..:common",
         "//folly:range",
         "//folly/io:iobuf",
         "//thrift/lib/cpp2/protocol:protocol",
@@ -56,13 +56,13 @@ zs_fuzzers(
         ("ThriftKernelTest", "FuzzDecompress"),
     ],
     deps = [
+        "..:decode_thrift_binding",
+        "..:encode_thrift_binding",
+        "../../../..:common",
+        "../../../../tests:fuzz_utils",
+        "../../../../tests:test_zstrong_fixtures",
         "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
         ":thrift_kernel_test_utils",
-        "//data_compression/experimental/zstrong:common",
-        "//data_compression/experimental/zstrong/custom_transforms/thrift/kernels:decode_thrift_binding",
-        "//data_compression/experimental/zstrong/custom_transforms/thrift/kernels:encode_thrift_binding",
-        "//data_compression/experimental/zstrong/tests:fuzz_utils",
-        "//data_compression/experimental/zstrong/tests:test_zstrong_fixtures",
         "//folly:range",
         "//folly/io:iobuf",
         "//thrift/lib/cpp2/protocol:protocol",

@@ -45,23 +45,20 @@ ZL_GraphID ZL_Compressor_registerSplitGraph(
  */
 ZL_Report EI_splitN(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 
-#define EI_SPLITN(id)                                        \
-    {                                                        \
-        .gd = GRAPH_VO_SERIAL(id), .transform_f = EI_splitN, \
-        .name = "!zl.private.splitN"                         \
-    }
+#define EI_SPLITN(id)                     \
+    { .gd          = GRAPH_VO_SERIAL(id), \
+      .transform_f = EI_splitN,           \
+      .name        = "!zl.private.splitN" }
 
-#define EI_SPLITN_STRUCT(id)                                 \
-    {                                                        \
-        .gd = GRAPH_VO_STRUCT(id), .transform_f = EI_splitN, \
-        .name = "!zl.private.splitN_struct"                  \
-    }
+#define EI_SPLITN_STRUCT(id)              \
+    { .gd          = GRAPH_VO_STRUCT(id), \
+      .transform_f = EI_splitN,           \
+      .name        = "!zl.private.splitN_struct" }
 
-#define EI_SPLITN_NUM(id)                                 \
-    {                                                     \
-        .gd = GRAPH_VO_NUM(id), .transform_f = EI_splitN, \
-        .name = "!zl.private.splitN_num"                  \
-    }
+#define EI_SPLITN_NUM(id)              \
+    { .gd          = GRAPH_VO_NUM(id), \
+      .transform_f = EI_splitN,        \
+      .name        = "!zl.private.splitN_num" }
 
 ZL_END_C_DECLS
 

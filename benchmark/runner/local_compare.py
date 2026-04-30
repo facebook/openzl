@@ -11,12 +11,10 @@ import subprocess
 import typing as t
 
 import click
-
 from scm.hgrepo import HgCommit, HgRepository
 
 from .phabricator_utils import PHAB_ACCESS_TYPE, PhabricatorUtils
 from .quiet_cpu_utils import QuietCPUManager
-
 from .zstrong_gbenchmarks import (
     ZstrongGoogleBenchmarkResults,
     ZstrongGoogleBenchmarkRunner,
@@ -28,7 +26,7 @@ logging.basicConfig(
 log = logging.getLogger("BenchmarkRunner")
 
 
-DEAFULT_BUCK_TAGET = "//data_compression/experimental/zstrong/benchmark:benchmark"
+DEAFULT_BUCK_TAGET = "//openzl/dev/benchmark:benchmark"
 DEFAULT_REPETITIONS = 10
 DEFAULT_MIN_TIME = 0.1
 
@@ -470,7 +468,7 @@ def compare_versions(
             *additional_args,
         ]
         replication_args = " ".join([a for a in replication_args if a])
-        replication_command_line = f"$ buck2 run //data_compression/experimental/zstrong/benchmark/runner:local_compare -- {replication_args} \n\n"
+        replication_command_line = f"$ buck2 run //openzl/dev/benchmark/runner:local_compare -- {replication_args} \n\n"
         update_diff_test_plan(replication_command_line + formatted, commit)
 
 

@@ -1,0 +1,142 @@
+# OpenZL VM Instruction Set Definition
+#
+# Single source of truth for SDDL2 VM opcodes - used by:
+# - C11 VM (via generated sddl2_opcodes.h)
+# - Python assembler (via generated opcodes_generated.py)
+# - C++ compiler (via generated sddl2_opcodes.h)
+#
+# Instruction Format (32-bit word, little-endian):
+#   - Bits 31-16 (high): Family ID (16 bits)
+#   - Bits 15-0  (low):  Opcode within family (16 bits)
+#   - Encoding: instruction = (family_id << 16) | opcode_id
+#
+# Definition Format:
+#   @family NAME ID "Description"
+#     full.mnemonic  opcode  [params]  "Description"
+#
+# Note: Mnemonics should include the full name as used in assembly code.
+#       Most use family.opcode format (e.g., "push.zero"), but some
+#       exceptions exist (e.g., "halt" instead of "control.halt").
+#
+# Parameter types: u32, i32, i64
+#
+# To regenerate C headers: python3 src/openzl/compress/graphs/sddl2/generate_c_headers.py
+# To regenerate Python:    python3 tools/sddl2/assembler/generate_opcodes.py
+
+# ============================================================================
+# OPCODE FAMILIES & INSTRUCTIONS
+# ============================================================================
+
+@family PUSH 0x0001 "Push constants and values onto stack"
+  push.zero         0x0001          "Push constant value 0 onto stack"
+  push.u32          0x0002  u32     "Push unsigned 32-bit immediate value onto stack"
+  push.i32          0x0003  i32     "Push signed 32-bit immediate value onto stack"
+  push.i64          0x0004  i64     "Push signed 64-bit immediate value onto stack"
+  push.tag          0x0005  u32     "Push Tag value onto stack"
+  # VM variables
+  push.current_pos  0x0080          "Push current input cursor position onto stack as I64"
+  push.remaining    0x0081          "Push remaining bytes in input buffer onto stack as I64"
+  push.stack_depth  0x0082          "Push current stack depth (number of elements) onto stack as I64"
+  # Type opcodes: organized by category with gaps for future expansion
+  # 0x0100: Base type (raw bytes)
+  push.type.bytes  0x0100          "Push Type{BYTES, 1} onto stack"
+  # 0x0110-0x011F: Integer types (16 slots, 14 used, 2 reserved)
+  push.type.u8     0x0110          "Push Type{U8, 1} onto stack"
+  push.type.i8     0x0111          "Push Type{I8, 1} onto stack"
+  push.type.u16le  0x0112          "Push Type{U16LE, 1} onto stack"
+  push.type.u16be  0x0113          "Push Type{U16BE, 1} onto stack"
+  push.type.i16le  0x0114          "Push Type{I16LE, 1} onto stack"
+  push.type.i16be  0x0115          "Push Type{I16BE, 1} onto stack"
+  push.type.u32le  0x0116          "Push Type{U32LE, 1} onto stack"
+  push.type.u32be  0x0117          "Push Type{U32BE, 1} onto stack"
+  push.type.i32le  0x0118          "Push Type{I32LE, 1} onto stack"
+  push.type.i32be  0x0119          "Push Type{I32BE, 1} onto stack"
+  push.type.u64le  0x011A          "Push Type{U64LE, 1} onto stack"
+  push.type.u64be  0x011B          "Push Type{U64BE, 1} onto stack"
+  push.type.i64le  0x011C          "Push Type{I64LE, 1} onto stack"
+  push.type.i64be  0x011D          "Push Type{I64BE, 1} onto stack"
+  # 0x0120-0x012F: Reserved for future integer types (16 slots)
+  # 0x0130-0x013F: Floating point types (16 slots, 9 used, 7 reserved)
+  push.type.f8     0x0130          "Push Type{F8, 1} onto stack"
+  push.type.f16le  0x0131          "Push Type{F16LE, 1} onto stack"
+  push.type.f16be  0x0132          "Push Type{F16BE, 1} onto stack"
+  push.type.bf16le 0x0133          "Push Type{BF16LE, 1} onto stack"
+  push.type.bf16be 0x0134          "Push Type{BF16BE, 1} onto stack"
+  push.type.f32le  0x0135          "Push Type{F32LE, 1} onto stack"
+  push.type.f32be  0x0136          "Push Type{F32BE, 1} onto stack"
+  push.type.f64le  0x0137          "Push Type{F64LE, 1} onto stack"
+  push.type.f64be  0x0138          "Push Type{F64BE, 1} onto stack"
+
+@family MATH 0x0002 "Arithmetic operations on I64 values"
+  math.add  0x0001          "Pop two I64 values, push their sum"
+  math.sub  0x0002          "Pop two I64 values, push their difference (second - first)"
+  math.mul  0x0003          "Pop two I64 values, push their product"
+  math.div  0x0004          "Pop two I64 values, push their quotient (second / first)"
+  math.mod  0x0005          "Pop two I64 values, push their remainder (second % first)"
+  math.abs  0x0006          "Pop I64 value, push its absolute value"
+  math.neg  0x0007          "Pop I64 value, push its negation"
+  math.bit_and  0x0008      "Pop two I64 values, push their bitwise AND"
+  math.bit_or   0x0009      "Pop two I64 values, push their bitwise OR"
+  math.bit_xor  0x000A      "Pop two I64 values, push their bitwise XOR"
+  math.bit_not  0x000B      "Pop I64 value, push its bitwise NOT"
+
+@family CMP 0x0003 "Comparison operations on signed I64 values"
+  cmp.eq    0x0001          "Pop two I64 values, push 1 if equal, 0 otherwise"
+  cmp.ne    0x0002          "Pop two I64 values, push 1 if not equal, 0 otherwise"
+  cmp.lt    0x0003          "Pop two I64 values, push 1 if second < first, 0 otherwise"
+  cmp.le    0x0004          "Pop two I64 values, push 1 if second <= first, 0 otherwise"
+  cmp.gt    0x0005          "Pop two I64 values, push 1 if second > first, 0 otherwise"
+  cmp.ge    0x0006          "Pop two I64 values, push 1 if second >= first, 0 otherwise"
+
+@family LOGIC 0x0004 "Logical operations"
+  logic.and  0x0001          "Pop two I64 values, push 1 if both non-zero, 0 otherwise (logical AND)"
+  logic.or   0x0002          "Pop two I64 values, push 1 if either non-zero, 0 otherwise (logical OR)"
+  logic.xor  0x0003          "Pop two I64 values, push 1 if exactly one is non-zero, 0 otherwise (logical XOR)"
+  logic.not  0x0004          "Pop I64 value, push 1 if zero, 0 otherwise (logical NOT)"
+
+@family CONTROL 0x0005 "Control flow operations"
+  halt         0x0001          "Stop VM execution"
+  expect_true  0x0002          "Pop I64 value, error if value is 0 (false)"
+  jump_if      0x0003          "Pop I64 value, pop I64 N, skip next N instructions (advance PC by N*4 bytes) if value is not 0 (true)"
+  trace.start  0x0004          "Begin collecting execution traces for validation debugging"
+
+@family LOAD 0x0006 "Load operations"
+  # 8-bit loads (endianness-independent)
+  load.u8       0x0001          "Load unsigned 8-bit value from buffer[TOS] and push as I64"
+  load.i8       0x0002          "Load signed 8-bit value from buffer[TOS] and push as I64"
+  # Little-endian loads: 0x00__
+  load.u16le    0x0010          "Load unsigned 16-bit LE value from buffer[TOS] and push as I64"
+  load.i16le    0x0011          "Load signed 16-bit LE value from buffer[TOS] and push as I64"
+  load.u32le    0x0020          "Load unsigned 32-bit LE value from buffer[TOS] and push as I64"
+  load.i32le    0x0021          "Load signed 32-bit LE value from buffer[TOS] and push as I64"
+  load.i64le    0x0030          "Load signed 64-bit LE value from buffer[TOS] and push as I64"
+  # Big-endian loads: 0x01__
+  load.u16be    0x0110          "Load unsigned 16-bit BE value from buffer[TOS] and push as I64"
+  load.i16be    0x0111          "Load signed 16-bit BE value from buffer[TOS] and push as I64"
+  load.u32be    0x0120          "Load unsigned 32-bit BE value from buffer[TOS] and push as I64"
+  load.i32be    0x0121          "Load signed 32-bit BE value from buffer[TOS] and push as I64"
+  load.i64be    0x0130          "Load signed 64-bit BE value from buffer[TOS] and push as I64"
+
+@family STACK 0x0007 "Stack manipulation operations"
+  stack.dup  0x0001         "Duplicate top stack value"
+  stack.over 0x0002         "Copy second stack value to top"
+  stack.drop 0x0003         "Remove top stack value"
+  stack.swap 0x0004         "Swap top two stack values"
+  stack.rot  0x0005         "Rotate top three stack values"
+  # Conditional operations: 0x0010+
+  stack.drop_if  0x0010   "Pop I64 condition, then pop and discard top value if condition is non-zero (true)"
+
+@family TYPE 0x0008 "Type operations"
+  type.fixed_array  0x0001  "Pop I64 (count), pop Type, push Type with width multiplied by count"
+  type.structure    0x0002  "Pop I64 (member_count), pop member_count Types, push composite structure Type"
+  type.sizeof       0x0010  "Pop Type, push its total size in bytes as I64"
+
+@family VAR 0x0009 "Variable operations"
+  var.store 0x0001  "Pop Value, pop I64 (register), store Value in register"
+  var.load  0x0002  "Pop I64 (register), push Value stored in register"
+
+@family CALL 0x000B "Function call operations"
+
+@family SEGMENT 0x000C "Segment creation operations"
+  segment.create_unspecified  0x0001  "Pop I64 (size_bytes), create unspecified segment"
+  segment.create_tagged       0x0002  "Pop I64 (element_count), pop Type, pop Tag, create typed segment"

@@ -7,12 +7,13 @@
 #include "openzl/common/introspection.h" // WAYPOINT, ZL_CompressIntrospectionHooks
 #include "openzl/common/limits.h"
 #include "openzl/common/operation_context.h"
-#include "openzl/common/scope_context.h"
-#include "openzl/compress/cctx.h" // CCTX_*
+#include "openzl/compress/cctx.h"   // CCTX_*
+#include "openzl/compress/cgraph.h" // CGRAPH_getDictObj
 #include "openzl/compress/cnode.h"
 #include "openzl/compress/localparams.h"
-#include "openzl/compress/trStates.h" // TRS_getState
-#include "openzl/zl_common_types.h"   // ZL_TernaryParam_disable
+#include "openzl/compress/trStates.h"   // TRS_getState
+#include "openzl/dict/dict_constants.h" // ZL_DICT_INDEX_NONE
+#include "openzl/zl_common_types.h"     // ZL_TernaryParam_disable
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_data.h"
 
@@ -89,6 +90,25 @@ const ZL_LocalParams* ZL_Encoder_getLocalParams(const ZL_Encoder* eic)
     return eic->lparams;
 }
 
+const void* ZL_Encoder_getMaterializedDict(const ZL_Encoder* eictx)
+{
+    ZL_ASSERT_NN(eictx);
+    if (eictx->cnode == NULL)
+        return NULL;
+    size_t offset = CNODE_getDictIndex(eictx->cnode);
+    if (offset == ZL_DICT_INDEX_NONE)
+        return NULL;
+    return CGRAPH_getDictObj(CCTX_getCGraph(eictx->cctx), offset);
+}
+
+const void* ZL_Encoder_getMParam(const ZL_Encoder* eictx)
+{
+    ZL_ASSERT_NN(eictx);
+    if (eictx->cnode == NULL)
+        return NULL;
+    return CNODE_getMParamObj(eictx->cnode);
+}
+
 const void* ENC_getPrivateParam(const ZL_Encoder* eictx)
 {
     return eictx->privateParam;
@@ -103,8 +123,9 @@ void ZL_Encoder_sendCodecHeader(
         const void* trh,
         size_t trhSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_DLOG(SEQ, "ZL_Encoder_sendCodecHeader (%zu bytes)", trhSize);
-    WAYPOINT(on_ZL_Encoder_sendCodecHeader, eictx, trh, trhSize);
+    CWAYPOINT(on_ZL_Encoder_sendCodecHeader, eictx, trh, trhSize);
     ZL_ASSERT_NN(eictx);
     if (trhSize)
         ZL_ASSERT_NN(trh);
@@ -126,6 +147,8 @@ ZL_Report ZL_Encoder_createAllOutBuffers(
         const size_t buffSizes[],
         size_t nbBuffs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eic);
+
     /* General idea :
      *
      * 1) Access the definition of the node in the immutable cgraph,
@@ -164,10 +187,10 @@ ZL_Report ZL_Encoder_createAllOutBuffers(
     for (int n = 0; n < (int)nbBuffs; n++) {
         ZL_Output* const data =
                 ZL_Encoder_createTypedStream(eic, n, buffSizes[n], 1);
-        ZL_RET_R_IF_NULL(allocation, data);
+        ZL_ERR_IF_NULL(data, allocation);
         buffStarts[n] = ZL_Output_ptr(data);
         if (buffSizes[n] > 0 && buffStarts[n] == NULL)
-            ZL_RET_R_ERR(allocation);
+            ZL_ERR(allocation);
     }
     return ZL_returnSuccess();
 }
@@ -181,7 +204,7 @@ ZL_Output* ZL_Encoder_createTypedStream(
     ZL_ASSERT_NN(eic);
     ZL_Data* ret = CCTX_getNewStream(
             eic->cctx, eic->rtnodeid, outStreamIndex, eltWidth, eltsCapacity);
-    WAYPOINT(
+    CWAYPOINT(
             on_ZL_Encoder_createTypedStream,
             eic,
             outStreamIndex,
@@ -240,15 +263,15 @@ static ZL_Report ENC_runTransform_internal(
         const ZL_Data* inStreams[],
         size_t nbInStreams)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_DLOG(BLOCK,
             "ENC_runTransform_internal (%s, nodeid=%zu, nbInputs=%zu)",
             CT_getTrName(trDesc),
             nodeid.nid,
             nbInStreams);
-    ZL_SCOPE_GRAPH_CONTEXT(
-            eictx,
-            { .transformID = trDesc->publicDesc.gd.CTid,
-              .name        = trDesc->publicDesc.name });
+    ZL_RESULT_SCOPE_ADD_GRAPH_CONTEXT(
+            (ZL_GraphContext){ .transformID = trDesc->publicDesc.gd.CTid,
+                               .name        = trDesc->publicDesc.name });
 
     eictx->privateParam             = trDesc->privateParam;
     eictx->opaquePtr                = trDesc->publicDesc.opaque.ptr;
@@ -256,9 +279,9 @@ static ZL_Report ENC_runTransform_internal(
 
     // Run transform
     ZL_ASSERT_NN(trDesc->publicDesc.transform_f);
-    IF_WAYPOINT_ENABLED(on_codecEncode_start, eictx)
+    IF_CWAYPOINT_ENABLED(on_codecEncode_start, eictx)
     {
-        WAYPOINT(
+        CWAYPOINT(
                 on_codecEncode_start,
                 eictx,
                 CCTX_getCGraph(eictx->cctx),
@@ -269,13 +292,13 @@ static ZL_Report ENC_runTransform_internal(
     ZL_Report codecExecResult = (trDesc->publicDesc.transform_f(
             eictx, ZL_codemodDatasAsInputs(inStreams), nbInStreams));
     if (ZL_isError(codecExecResult)) {
-        WAYPOINT(on_codecEncode_end, eictx, NULL, 0, codecExecResult);
-        ZL_RET_R_IF_ERR_COERCE(
+        CWAYPOINT(on_codecEncode_end, eictx, NULL, 0, codecExecResult);
+        ZL_ERR_IF_ERR_COERCE(
                 codecExecResult, "transform %s failed", CT_getTrName(trDesc));
     }
     const RTGraph* rtgm       = CCTX_getRTGraph(eictx->cctx);
     const size_t nbOutStreams = RTGM_getNbOutStreams(rtgm, eictx->rtnodeid);
-    IF_WAYPOINT_ENABLED(on_codecEncode_end, eictx)
+    IF_CWAYPOINT_ENABLED(on_codecEncode_end, eictx)
     {
         DECLARE_VECTOR_CONST_POINTERS_TYPE(ZL_Data);
         VECTOR_CONST_POINTERS(ZL_Data) odata;
@@ -285,12 +308,13 @@ static ZL_Report ENC_runTransform_internal(
                     RTGM_getOutStreamID(rtgm, eictx->rtnodeid, (int)i);
             const ZL_Data* d     = RTGM_getRStream(rtgm, rtsid);
             bool pushbackSuccess = VECTOR_PUSHBACK(odata, d);
-            ZL_RET_R_IF_NOT(
-                    allocation,
-                    pushbackSuccess,
-                    "Unable to append to the waypoint odata vector");
+            if (!pushbackSuccess) {
+                VECTOR_DESTROY(odata);
+                ZL_ERR(allocation,
+                       "Unable to append to the waypoint odata vector");
+            }
         }
-        WAYPOINT(
+        CWAYPOINT(
                 on_codecEncode_end,
                 eictx,
                 ZL_codemodConstDatasAsOutputs(VECTOR_DATA(odata)),
@@ -300,7 +324,7 @@ static ZL_Report ENC_runTransform_internal(
     }
 
     // Check that we didn't encounter an error sending the transform header.
-    ZL_RET_R_IF_ERR(eictx->sendTransformHeaderError);
+    ZL_ERR_IF_ERR(eictx->sendTransformHeaderError);
 
     // Check that the transform has generated
     // at least as many output streams as compulsory singleton outputs.
@@ -309,23 +333,23 @@ static ZL_Report ENC_runTransform_internal(
     //        This can't be done with a simple counter though,
     //        and would require contribution from the RTGraph Manager.
     size_t const nbOut1 = trDesc->publicDesc.gd.nbSOs;
-    ZL_RET_R_IF_LT(transform_executionFailure, nbOutStreams, nbOut1);
+    ZL_ERR_IF_LT(nbOutStreams, nbOut1, transform_executionFailure);
 
     unsigned const formatVersion =
             (unsigned)ZL_Encoder_getCParam(eictx, ZL_CParam_formatVersion);
     if (formatVersion < 9) {
         // Format versions less than 9 don't support 0 output streams.
-        ZL_RET_R_IF_EQ(
-                formatVersion_unsupported,
+        ZL_ERR_IF_EQ(
                 nbOutStreams,
                 0,
+                formatVersion_unsupported,
                 "Not supported until format version 9");
     }
 
-    ZL_RET_R_IF_GT(
-            formatVersion_unsupported,
+    ZL_ERR_IF_GT(
             nbOutStreams,
-            ZL_transformOutStreamsLimit(formatVersion));
+            ZL_transformOutStreamsLimit(formatVersion),
+            formatVersion_unsupported);
 
     return ZL_returnValue(nbOutStreams);
 }
@@ -342,6 +366,7 @@ ZL_Report ENC_runTransform(
         Arena* wkspArena,
         CachedStates* trstates)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
     ZL_ASSERT_NN(trDesc);
     ZL_DLOG(BLOCK,
             "ENC_runTransform on Transform '%s' (%u) (lparams=%p)",
@@ -351,7 +376,7 @@ ZL_Report ENC_runTransform(
     if (lparams == NULL)
         lparams = CNODE_getLocalParams(cnode);
     ZL_Encoder eiState;
-    ZL_RET_R_IF_ERR(ENC_initEICtx(
+    ZL_ERR_IF_ERR(ENC_initEICtx(
             &eiState, cctx, wkspArena, &rtnodeid, cnode, lparams, trstates));
     ZL_Report const transformRes = ENC_runTransform_internal(
             &eiState, nodeid, trDesc, inputs, nbInputs);
@@ -361,7 +386,7 @@ ZL_Report ENC_runTransform(
 
 void* ZL_Encoder_getScratchSpace(ZL_Encoder* ei, size_t size)
 {
-    WAYPOINT(on_ZL_Encoder_getScratchSpace, ei, size);
+    CWAYPOINT(on_ZL_Encoder_getScratchSpace, ei, size);
     return ALLOC_Arena_malloc(ei->wkspArena, size);
 }
 

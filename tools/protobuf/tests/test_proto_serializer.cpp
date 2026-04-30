@@ -2,7 +2,11 @@
 
 #include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
-#include "data_compression/experimental/zstrong/tools/protobuf/tests/test_schema.pb.h"
+#if ZL_FBCODE_IS_RELEASE
+#    include "openzl/prod/tools/protobuf/tests/test_schema.pb.h"
+#else
+#    include "openzl/dev/tools/protobuf/tests/test_schema.pb.h"
+#endif
 #include "openzl/cpp/Compressor.hpp"
 #include "tools/protobuf/ProtoDeserializer.h"
 #include "tools/protobuf/ProtoSerializer.h"
@@ -65,8 +69,9 @@ TEST(TestProtoSerializer, BasicRoundTrip)
     auto deserialized = deserializer.deserialize<TestSchema>(serialized);
 
     // Check Round Trip
-    EXPECT_TRUE(google::protobuf::util::MessageDifferencer::Equivalent(
-            obj, deserialized));
+    EXPECT_TRUE(
+            google::protobuf::util::MessageDifferencer::Equivalent(
+                    obj, deserialized));
 }
 
 TEST(TestProtoSerializer, CustomCompressor)
@@ -75,6 +80,9 @@ TEST(TestProtoSerializer, CustomCompressor)
 
     openzl::Compressor compressor;
     compressor.selectStartingGraph(ZL_GRAPH_COMPRESS_GENERIC);
+    // disable anti-inflation guard so compressed output differs from STORE
+    compressor.setParameter(
+            openzl::CParam::StoreOnExpansion, ZL_TernaryParam_disable);
     serializer.setCompressor(std::move(compressor));
     ProtoDeserializer deserializer;
 
@@ -82,8 +90,9 @@ TEST(TestProtoSerializer, CustomCompressor)
     auto serialized   = serializer.serialize(obj);
     auto deserialized = deserializer.deserialize<TestSchema>(serialized);
 
-    EXPECT_TRUE(google::protobuf::util::MessageDifferencer::Equivalent(
-            obj, deserialized));
+    EXPECT_TRUE(
+            google::protobuf::util::MessageDifferencer::Equivalent(
+                    obj, deserialized));
 
     openzl::Compressor store;
     store.selectStartingGraph(ZL_GRAPH_STORE);
@@ -91,7 +100,8 @@ TEST(TestProtoSerializer, CustomCompressor)
     auto stored   = serializer.serialize(obj);
     auto destored = deserializer.deserialize<TestSchema>(serialized);
 
-    EXPECT_TRUE(google::protobuf::util::MessageDifferencer::Equivalent(
-            obj, destored));
+    EXPECT_TRUE(
+            google::protobuf::util::MessageDifferencer::Equivalent(
+                    obj, destored));
     EXPECT_NE(stored.size(), serialized.size());
 }

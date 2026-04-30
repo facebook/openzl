@@ -18,6 +18,7 @@ typedef struct {
     int stickyParameters;
     ZL_TernaryParam checkCompressedChecksum;
     ZL_TernaryParam checkContentChecksum;
+    ZL_TernaryParam enableCodecFusion;
 } GDParams;
 
 // All defaults for Global parameters

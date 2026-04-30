@@ -51,9 +51,10 @@ static ZL_Report decodeLiterals(uint8_t* lits, size_t litCapacity, ZL_RC* src)
 
 static ZL_Report isRaw(ZL_RC src)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_Report type = ZS_Entropy_getType(ZL_RC_ptr(&src), ZL_RC_avail(&src));
-    ZL_RET_R_IF_ERR(type);
-    return ZL_returnValue(ZL_RES_value(type) == ZS_Entropy_Type_raw);
+    ZL_ERR_IF_ERR(type);
+    return ZL_WRAP_VALUE(ZL_RES_value(type) == ZS_Entropy_Type_raw);
 }
 
 static ZL_Report getDecodedSize(ZL_RC src, size_t elementSize)
@@ -101,7 +102,7 @@ static ZL_Report decodeCodes16(uint16_t* codes, size_t numSequences, ZL_RC* src)
 
 #if ZL_HAS_AVX2
 
-static void dpr(char const* name, __m128i const vec32)
+static ZL_MAYBE_UNUSED_FUNCTION void dpr(char const* name, __m128i const vec32)
 {
     size_t n = 4;
     uint32_t data[4];
@@ -115,7 +116,9 @@ static void dpr(char const* name, __m128i const vec32)
     fprintf(stderr, "]\n");
 }
 
-static void dpr16(char const* name, __m128i const vec32)
+static ZL_MAYBE_UNUSED_FUNCTION void dpr16(
+        char const* name,
+        __m128i const vec32)
 {
     size_t n = 8;
     uint16_t data[8];
@@ -144,7 +147,7 @@ static uint8_t const ZL_ALIGNED(16) ZL_UNUSED shuffle[8][16] = {
 
 #undef _
 #define _ 9
-static int32_t const shuffle7[128][8] __attribute((aligned(32),unused)) = {
+static ZL_ALIGNED(32) int32_t const shuffle7[128][8] ZL_UNUSED  = {
   { 0, 0, 0, 0, 0, 0, 0, _ }, // 0000000
   { 1, 1, 1, 1, 1, 1, 1, _ }, // 1000000
   { 0, 1, 1, 1, 1, 1, 1, _ }, // 0100000
@@ -1049,9 +1052,10 @@ ZL_FORCE_INLINE bool isFast(uint16_t const* tokens)
 
 static ZL_Report getBitstream(ZS_BitDStreamFF* bitstream, ZL_RC* in)
 {
-    ZL_TRY_LET_CONST_T(uint64_t, offbitsSize, ZL_RC_popVarint(in));
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_TRY_LET_CONST(uint64_t, offbitsSize, ZL_RC_popVarint(in));
     uint8_t const* const offbitsBuffer = ZL_RC_ptr(in);
-    ZL_RET_R_IF_GT(srcSize_tooSmall, offbitsSize, ZL_RC_avail(in));
+    ZL_ERR_IF_GT(offbitsSize, ZL_RC_avail(in), srcSize_tooSmall);
     ZL_RC_advance(in, offbitsSize);
     ZS_BitDStreamFF offbits = ZS_BitDStreamFF_init(offbitsBuffer, offbitsSize);
     ZL_DLOG(V9, "OBITS stream size = %u", (unsigned)offbitsSize);
@@ -1066,9 +1070,10 @@ static ZL_UNUSED_ATTR ZL_Report decodeOffbits(
         size_t numOffsets,
         ZL_RC* in)
 {
-    if (0) {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    if ((0)) {
         ZS_BitDStreamFF offbits;
-        ZL_RET_R_IF_ERR(getBitstream(&offbits, in));
+        ZL_ERR_IF_ERR(getBitstream(&offbits, in));
         uint32_t* const offsets1 = offsets;
         for (size_t o = 0; o < numOffsets; o += 3) {
             for (size_t u = 0; u < 3; ++u) {
@@ -1085,8 +1090,8 @@ static ZL_UNUSED_ATTR ZL_Report decodeOffbits(
     } else {
         ZS_BitDStreamFF offbits0;
         ZS_BitDStreamFF offbits1;
-        ZL_RET_R_IF_ERR(getBitstream(&offbits0, in));
-        ZL_RET_R_IF_ERR(getBitstream(&offbits1, in));
+        ZL_ERR_IF_ERR(getBitstream(&offbits0, in));
+        ZL_ERR_IF_ERR(getBitstream(&offbits1, in));
         // ZS_BitDStreamFF offbits2 = getBitstream(in);
         // ZS_BitDStreamFF offbits3 = getBitstream(in);
         for (size_t o = 0; o < numOffsets; o += 4) {
@@ -1255,6 +1260,7 @@ static ZL_Report ZS_fastDecoder_decompress(
         uint8_t const* const src,
         size_t size)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     (void)ctx;
     uint8_t* const ostart = dst;
     uint8_t* op           = ostart;
@@ -1270,19 +1276,19 @@ static ZL_Report ZS_fastDecoder_decompress(
     // Bounds checks
     ZS_window window;
     uint32_t rep = kMinOffset;
-    ZL_RET_R_IF(GENERIC, ZS_window_init(&window, (uint32_t)(oend - ostart), 8));
+    ZL_ERR_IF(ZS_window_init(&window, (uint32_t)(oend - ostart), 8), GENERIC);
 
-    ZL_TRY_LET_R(numLiterals, getDecodedSize(in, 1));
-    ZL_RET_R_IF_GE(GENERIC, numLiterals, (1 << 30), "too many literals");
+    ZL_TRY_LET(size_t, numLiterals, getDecodedSize(in, 1));
+    ZL_ERR_IF_GE(numLiterals, (1 << 30), GENERIC, "too many literals");
     uint8_t const* litsBuffer;
-    ZL_TRY_LET_R(rawLits, isRaw(in));
+    ZL_TRY_LET(size_t, rawLits, isRaw(in));
     if (rawLits) {
         litsBuffer = getRawBuffer(&in, 1);
-        ZL_RET_R_IF_NULL(GENERIC, litsBuffer);
+        ZL_ERR_IF_NULL(litsBuffer, GENERIC);
     } else {
         litsBufferMalloc =
                 (uint8_t*)ZL_malloc(numLiterals + ZS_WILDCOPY_OVERLENGTH);
-        ZL_RET_R_IF_NULL(allocation, litsBufferMalloc);
+        ZL_ERR_IF_NULL(litsBufferMalloc, allocation);
         ZL_GOTO_IF_ERR(
                 _error,
                 decodeLiterals(
@@ -1394,7 +1400,7 @@ static ZL_Report ZS_fastDecoder_decompress(
     do {                                                               \
         uint32_t off    = ofs[k & 3];                                  \
         len_t const tok = ZL_read16(&tks[k]);                          \
-        ZL_ASSERT_NE(tok&(size_t)~3, 0);                               \
+        ZL_ASSERT_NE(tok & (size_t)~3, 0);                             \
         len_t const llen = (tok >> kTokenOFBits) & kTokenLLMask;       \
         len_t const mlen =                                             \
                 (tok >> (kTokenOFBits + kTokenLLBits)) & kTokenMLMask; \
@@ -1743,12 +1749,12 @@ static ZL_Report ZS_fastDecoder_decompress(
     ZL_free(tokensBufferMalloc);
     ZL_free(litsBufferMalloc);
 
-    return ZL_returnValue((size_t)(op - ostart));
+    return ZL_WRAP_VALUE((size_t)(op - ostart));
 
 _error:
     ZL_free(tokensBufferMalloc);
     ZL_free(litsBufferMalloc);
-    ZL_RET_R_ERR(GENERIC);
+    ZL_ERR(GENERIC);
 }
 
 const ZS_decoder ZS_fastDecoder = {

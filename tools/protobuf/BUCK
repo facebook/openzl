@@ -1,7 +1,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 load("@fbcode_macros//build_defs:protobuf_library.bzl", "protobuf_library")
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_cxxbinary", "zs_cxxlibrary")
+load("../../defs.bzl", "zs_cxxbinary", "zs_cxxlibrary")
 
 oncall("data_compression")
 
@@ -15,14 +15,21 @@ protobuf_library(
 
 zs_cxxlibrary(
     name = "utils",
-    srcs = ["StringWriter.cpp"],
+    srcs = [
+        "DescriptorLoader.cpp",
+        "DynamicMessageHelper.cpp",
+        "StringWriter.cpp",
+    ],
     headers = [
+        "DescriptorLoader.h",
+        "DynamicMessageHelper.h",
         "StringReader.h",
         "StringWriter.h",
         "mem.h",
     ],
     exported_deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
+        "../..:zstronglib",
+        "fbsource//third-party/protobuf:libprotobuf",
     ],
 )
 
@@ -33,17 +40,16 @@ zs_cxxbinary(
         "-Wno-switch-enum",
         "-Wno-cast-qual",
     ],
-    preprocessor_flags = [
-        "-DOPENZL_BUCK_BUILD",
-    ],
     deps = [
-        "fbsource//third-party/protobuf:libprotobuf",
+        "..:arg",
+        "..:io",
+        "../../custom_parsers:custom_parsers",
+        "../training:train",
         ":schema-cpp",
+        ":serialization_utils",
         ":serializer",
-        "//data_compression/experimental/zstrong/tools:arg",
-        "//data_compression/experimental/zstrong/tools:io",
-        "//data_compression/experimental/zstrong/tools/training:train",
     ],
+    external_deps = ["protobuf"],
 )
 
 zs_cxxlibrary(
@@ -62,13 +68,27 @@ zs_cxxlibrary(
         "-Wno-cast-qual",
     ],
     deps = [
-        "fbsource//third-party/protobuf:libprotobuf",
-        "//data_compression/experimental/zstrong:zstronglib",
+        "../..:zstronglib",
     ],
     exported_deps = [
+        "../../cpp:openzl_cpp",
+        "fbsource//third-party/protobuf:libprotobuf",
         ":proto_graph",
         ":utils",
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
+    ],
+    exported_external_deps = ["protobuf"],
+)
+
+zs_cxxlibrary(
+    name = "serialization_utils",
+    srcs = [
+        "serialization_utils.cpp",
+    ],
+    headers = [
+        "serialization_utils.h",
+    ],
+    exported_deps = [
+        ":serializer",
     ],
 )
 
@@ -85,6 +105,6 @@ zs_cxxlibrary(
         "-Wno-cast-qual",
     ],
     deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
+        "../..:zstronglib",
     ],
 )

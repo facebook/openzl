@@ -9,11 +9,7 @@
 extern "C" {
 #endif
 
-#define ZL_GRAPH_FLATPACK           \
-    (ZL_GraphID)                    \
-    {                               \
-        ZL_StandardGraphID_flatpack \
-    }
+#define ZL_GRAPH_FLATPACK ZL_MAKE_GRAPH_ID(ZL_StandardGraphID_flatpack)
 
 #if defined(__cplusplus)
 }

@@ -6,7 +6,7 @@
 
 using namespace ::testing;
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 TEST(RegistryTest, Test)
 {
@@ -18,4 +18,4 @@ TEST(RegistryTest, Test)
     EXPECT_EQ(record.size(), 2);
 }
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

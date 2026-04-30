@@ -3,12 +3,14 @@
 #pragma once
 
 #include <stddef.h>
+
 #include "security/lionhead/utils/lib_ftest/fdp/fdp/fdp_impl.h"
+#include "security/lionhead/utils/lib_ftest/ftest.h" // FUZZ_F
 
 #include "tests/datagen/DataGen.h"
 #include "tests/datagen/random_producer/LionheadFDPWrapper.h"
 
-namespace zstrong::tests {
+namespace openzl::tests {
 using namespace facebook::security::lionhead::fdp;
 
 template <class HarnessMode>
@@ -216,4 +218,4 @@ std::vector<size_t> getSplitNSegments(
     return segmentSizes;
 }
 
-} // namespace zstrong::tests
+} // namespace openzl::tests

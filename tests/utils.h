@@ -13,10 +13,16 @@
 
 #include "openzl/common/cursor.h"
 #include "openzl/common/debug.h"
+#include "openzl/cpp/Input.hpp"
+#include "openzl/zl_compress.h"
 
 ////////////////////////////////////////
 // Macros to Adapt Zstrong Success or Failure to GTest Success or Failure
 ////////////////////////////////////////
+
+/// Generous compress bound for tests that violate ZL_compressBound() premises
+/// (multi-input, custom graphs, StoreOnExpansion disabled).
+#define ZL_COMPRESSBOUND_UNGUARDED(s) (2 * ZL_compressBound(s) + 1024)
 
 #define ASSERT_ZS_VALID(x) ASSERT_FALSE(ZL_RES_isError((x)))
 #define EXPECT_ZS_VALID(x) EXPECT_FALSE(ZL_RES_isError((x)))
@@ -35,7 +41,7 @@
 #    define ZS_CHECK_REQUIRE_FIRES(expr) expr
 #endif
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 
 extern const std::string kEmptyTestInput;
@@ -103,5 +109,37 @@ ZL_GraphID addConversionToGraph(
  */
 ZL_GraphID buildTrivialGraph(ZL_Compressor* cgraph, ZL_NodeID node);
 
+/**
+ * Tests that round tripping @p inputs works using the given @p graph.
+ * NOTE: This function handles format versions older than 15 that don't
+ * accept multiple typed inputs.
+ *
+ * @param compressed The buffer to compress into. It must already be
+ *                   sized to be large enough.
+ * @param compressor The compressor to use. This function will add one
+ *                   node and one graph to this compressor once, but
+ *                   subsequent calls will reuse that node/graph.
+ * @param cctx The cctx to use. It should be configured as needed.
+ *             This function will call cctx.refCompressor().
+ * @param dctx The dctx to use. It should be configured as needed.
+ * @param graph The graphID to test. cctx.selectStartingGraph() will be
+ *              called (though it may not be this GraphID).
+ * @param formatVersion The format version to use. This parameter will
+ *                      be set on the @p cctx.
+ * @param inputs The inputs to test.
+ *
+ * @returns The compressed size.
+ *
+ * @throws An exception if the inputs do not round trip successfully.
+ */
+size_t testRoundTrip(
+        poly::span<char> compressed,
+        Compressor& compressor,
+        CCtx& cctx,
+        DCtx& dctx,
+        GraphID graph,
+        int formatVersion,
+        poly::span<const Input> inputs);
+
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

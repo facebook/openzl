@@ -8,7 +8,6 @@ import typing as t
 import unittest
 
 import numpy as np
-
 from zstrong_json import (
     compress,
     compress_multi,

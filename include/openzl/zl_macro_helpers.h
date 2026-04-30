@@ -16,42 +16,45 @@
 #define ZS_MACRO_QUOTE_INNER(a) #a
 #define ZS_MACRO_QUOTE(a) ZS_MACRO_QUOTE_INNER(a)
 
-#define ZS_MACRO_PAD_SELECT_33RD( \
-        _1,                       \
-        _2,                       \
-        _3,                       \
-        _4,                       \
-        _5,                       \
-        _6,                       \
-        _7,                       \
-        _8,                       \
-        _9,                       \
-        _10,                      \
-        _11,                      \
-        _12,                      \
-        _13,                      \
-        _14,                      \
-        _15,                      \
-        _16,                      \
-        _17,                      \
-        _18,                      \
-        _19,                      \
-        _20,                      \
-        _21,                      \
-        _22,                      \
-        _23,                      \
-        _24,                      \
-        _25,                      \
-        _26,                      \
-        _27,                      \
-        _28,                      \
-        _29,                      \
-        _30,                      \
-        _31,                      \
-        _32,                      \
-        _33,                      \
-        ...)                      \
+#define ZS_MACRO_EXPAND(...) __VA_ARGS__
+#define ZS_MACRO_PAD_SELECT_33RD_INNER( \
+        _1,                             \
+        _2,                             \
+        _3,                             \
+        _4,                             \
+        _5,                             \
+        _6,                             \
+        _7,                             \
+        _8,                             \
+        _9,                             \
+        _10,                            \
+        _11,                            \
+        _12,                            \
+        _13,                            \
+        _14,                            \
+        _15,                            \
+        _16,                            \
+        _17,                            \
+        _18,                            \
+        _19,                            \
+        _20,                            \
+        _21,                            \
+        _22,                            \
+        _23,                            \
+        _24,                            \
+        _25,                            \
+        _26,                            \
+        _27,                            \
+        _28,                            \
+        _29,                            \
+        _30,                            \
+        _31,                            \
+        _32,                            \
+        _33,                            \
+        ...)                            \
     _33
+#define ZS_MACRO_PAD_SELECT_33RD(...) \
+    ZS_MACRO_EXPAND(ZS_MACRO_PAD_SELECT_33RD_INNER(__VA_ARGS__))
 #define ZS_MACRO_PAD1_SUFFIX(...) \
     ZS_MACRO_PAD_SELECT_33RD(     \
             __VA_ARGS__,          \
@@ -266,11 +269,11 @@
 #define ZS_MACRO_PAD5_ARGS(...) \
     ZS_MACRO_CONCAT(ZS_MACRO_PAD, ZS_MACRO_PAD5_SUFFIX(__VA_ARGS__))
 
-#define ZS_MACRO_PAD1_INNER(macro, ...) macro(__VA_ARGS__)
-#define ZS_MACRO_PAD2_INNER(macro, ...) macro(__VA_ARGS__)
-#define ZS_MACRO_PAD3_INNER(macro, ...) macro(__VA_ARGS__)
-#define ZS_MACRO_PAD4_INNER(macro, ...) macro(__VA_ARGS__)
-#define ZS_MACRO_PAD5_INNER(macro, ...) macro(__VA_ARGS__)
+#define ZS_MACRO_PAD1_INNER(macro, ...) ZS_MACRO_EXPAND(macro(__VA_ARGS__))
+#define ZS_MACRO_PAD2_INNER(macro, ...) ZS_MACRO_EXPAND(macro(__VA_ARGS__))
+#define ZS_MACRO_PAD3_INNER(macro, ...) ZS_MACRO_EXPAND(macro(__VA_ARGS__))
+#define ZS_MACRO_PAD4_INNER(macro, ...) ZS_MACRO_EXPAND(macro(__VA_ARGS__))
+#define ZS_MACRO_PAD5_INNER(macro, ...) ZS_MACRO_EXPAND(macro(__VA_ARGS__))
 
 /**
  * These macros are designed to handle the case where, after N required

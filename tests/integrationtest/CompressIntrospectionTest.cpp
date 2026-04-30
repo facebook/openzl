@@ -19,7 +19,7 @@
 
 using namespace ::testing;
 
-namespace zstrong::tests {
+namespace openzl::tests {
 
 namespace {
 
@@ -28,7 +28,7 @@ static int ctr = 0;
 class IncrementingHooks : public openzl::CompressIntrospectionHooks {
    public:
     void on_ZL_CCtx_compressMultiTypedRef_start(
-            const ZL_CCtx* const,
+            ZL_CCtx*,
             const void* const,
             const size_t,
             const ZL_TypedRef* const*,
@@ -97,7 +97,7 @@ TEST(CompressIntrospectionTest, IFnoHooksTHENnoop)
 // code snippet containing a waypoint
 static int func(ZL_CCtx* cctx)
 {
-    IF_WAYPOINT_ENABLED(on_codecEncode_start, cctx)
+    IF_CWAYPOINT_ENABLED(on_codecEncode_start, cctx)
     {
         return 1;
     }
@@ -252,6 +252,7 @@ TEST(CompressIntrospectionTest, EncoderSpecific)
     auto const encfn  = [](ZL_Encoder* eictx,
                           const ZL_Input* inputs[],
                           size_t) noexcept -> ZL_Report {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
         auto so = ZL_Encoder_createTypedStream(
                 eictx,
                 0,
@@ -336,4 +337,4 @@ TEST(CompressIntrospectionTest, EncoderSpecific)
     ZL_CCtx_free(mcctx);
 }
 
-} // namespace zstrong::tests
+} // namespace openzl::tests

@@ -22,7 +22,7 @@
 using apache::thrift::BinarySerializer;
 using apache::thrift::CompactSerializer;
 
-namespace zstrong::tests::datagen::test_registry {
+namespace openzl::tests::datagen::test_registry {
 namespace {
 
 ZL_NodeID createSplitByStructNode(ZL_Compressor* cgraph)
@@ -64,8 +64,9 @@ ZL_NodeID createCustomTokenizeNode(ZL_Compressor* cg)
 {
     auto tokenize = [](ZL_CustomTokenizeState* ctx,
                        ZL_Input const* input) -> ZL_Report {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
         if (ZL_Input_eltWidth(input) != 4) {
-            ZL_RET_R_ERR(node_invalid_input);
+            ZL_ERR(node_invalid_input);
         }
 
         std::unordered_map<uint32_t, uint32_t> valueToIndex;
@@ -75,7 +76,7 @@ ZL_NodeID createCustomTokenizeNode(ZL_Compressor* cg)
         uint32_t* indices =
                 (uint32_t*)ZL_CustomTokenizeState_createIndexOutput(ctx, 4);
         if (indices == nullptr) {
-            ZL_RET_R_ERR(allocation);
+            ZL_ERR(allocation);
         }
 
         for (size_t i = 0; i < srcSize; ++i) {
@@ -87,7 +88,7 @@ ZL_NodeID createCustomTokenizeNode(ZL_Compressor* cg)
                 (uint32_t*)ZL_CustomTokenizeState_createAlphabetOutput(
                         ctx, valueToIndex.size());
         if (alphabet == nullptr) {
-            ZL_RET_R_ERR(allocation);
+            ZL_ERR(allocation);
         }
 
         for (auto [value, index] : valueToIndex) {
@@ -214,32 +215,34 @@ void registerAdditionalThriftNodes(
             customNodes,
             tidCompact,
             [=](ZL_Compressor* cgraph) {
-                ZL_NodeID node = thrift::registerCompactTransform(
+                ZL_NodeID node = ::zstrong::thrift::registerCompactTransform(
                         cgraph, commonIdCompact);
-                return thrift::cloneThriftNodeWithLocalParams(
+                return ::zstrong::thrift::cloneThriftNodeWithLocalParams(
                         cgraph,
                         node,
-                        thrift::tests::buildValidEncoderConfig(
+                        ::openzl::thrift::tests::buildValidEncoderConfig(
                                 minFormatVersion));
             },
 
-            std::make_unique<thrift::tests::ConfigurableThriftProducer<
-                    CompactSerializer>>(rw));
+            std::make_unique<
+                    ::openzl::thrift::tests::ConfigurableThriftProducer<
+                            CompactSerializer>>(rw));
 
     registerCustomParser(
             customNodes,
             tidBinary,
             [=](ZL_Compressor* cgraph) {
-                ZL_NodeID node =
-                        thrift::registerBinaryTransform(cgraph, commonIdBinary);
-                return thrift::cloneThriftNodeWithLocalParams(
+                ZL_NodeID node = ::zstrong::thrift::registerBinaryTransform(
+                        cgraph, commonIdBinary);
+                return ::zstrong::thrift::cloneThriftNodeWithLocalParams(
                         cgraph,
                         node,
-                        thrift::tests::buildValidEncoderConfig(
+                        ::openzl::thrift::tests::buildValidEncoderConfig(
                                 minFormatVersion));
             },
-            std::make_unique<thrift::tests::ConfigurableThriftProducer<
-                    BinarySerializer>>(rw));
+            std::make_unique<
+                    ::openzl::thrift::tests::ConfigurableThriftProducer<
+                            BinarySerializer>>(rw));
 }
 
 std::unordered_map<TransformID, CustomNode> makeCustomNodes()
@@ -254,13 +257,14 @@ std::unordered_map<TransformID, CustomNode> makeCustomNodes()
     std::unordered_map<TransformID, CustomNode> customNodes;
     auto rw = std::make_shared<PRNGWrapper>(std::make_shared<std::mt19937>());
 
-#define ZS2_REGISTER_THRIFT_KERNEL(kernel)               \
-    registerCustomTransform(                             \
-            customNodes,                                 \
-            TransformID::ThriftKernel##kernel,           \
-            ZS2_ThriftKernel_registerCTransform##kernel, \
-            ZS2_ThriftKernel_registerDTransform##kernel, \
-            std::make_unique<thrift::tests::ThriftProducer<kernel>>(rw))
+#define ZS2_REGISTER_THRIFT_KERNEL(kernel)                                     \
+    registerCustomTransform(                                                   \
+            customNodes,                                                       \
+            TransformID::ThriftKernel##kernel,                                 \
+            ZS2_ThriftKernel_registerCTransform##kernel,                       \
+            ZS2_ThriftKernel_registerDTransform##kernel,                       \
+            std::make_unique<::openzl::thrift::tests::ThriftProducer<kernel>>( \
+                    rw))
 
     using MapI32Float      = std::map<int32_t, float>;
     using MapI32ArrayFloat = std::map<int32_t, std::vector<float>>;
@@ -286,8 +290,8 @@ std::unordered_map<TransformID, CustomNode> makeCustomNodes()
     registerCustomParser(
             customNodes,
             TransformID::TulipV2,
-            tulip_v2::createTulipV2Node,
-            std::make_unique<tulip_v2::tests::TulipV2Producer>(rw));
+            ::zstrong::tulip_v2::createTulipV2Node,
+            std::make_unique<::openzl::tulip_v2::tests::TulipV2Producer>(rw));
 
     registerCustomParser(
             customNodes, TransformID::SplitByStruct, createSplitByStructNode);
@@ -320,31 +324,35 @@ std::unordered_map<TransformID, CustomNode> makeCustomNodes()
             customNodes,
             TransformID::ThriftCompact,
             [](ZL_Compressor* cgraph, ZL_IDType id) {
-                ZL_NodeID node = thrift::registerCompactTransform(cgraph, id);
-                return thrift::cloneThriftNodeWithLocalParams(
+                ZL_NodeID node =
+                        ::zstrong::thrift::registerCompactTransform(cgraph, id);
+                return ::zstrong::thrift::cloneThriftNodeWithLocalParams(
                         cgraph,
                         node,
-                        thrift::tests::buildValidEncoderConfig(
+                        ::openzl::thrift::tests::buildValidEncoderConfig(
                                 ::zstrong::thrift::kMinFormatVersionEncode));
             },
-            thrift::registerCompactTransform,
-            std::make_unique<thrift::tests::ConfigurableThriftProducer<
-                    CompactSerializer>>(rw));
+            ::zstrong::thrift::registerCompactTransform,
+            std::make_unique<
+                    ::openzl::thrift::tests::ConfigurableThriftProducer<
+                            CompactSerializer>>(rw));
 
     registerCustomTransform(
             customNodes,
             TransformID::ThriftBinary,
             [](ZL_Compressor* cgraph, ZL_IDType id) {
-                ZL_NodeID node = thrift::registerBinaryTransform(cgraph, id);
-                return thrift::cloneThriftNodeWithLocalParams(
+                ZL_NodeID node =
+                        ::zstrong::thrift::registerBinaryTransform(cgraph, id);
+                return ::zstrong::thrift::cloneThriftNodeWithLocalParams(
                         cgraph,
                         node,
-                        thrift::tests::buildValidEncoderConfig(
+                        ::openzl::thrift::tests::buildValidEncoderConfig(
                                 ::zstrong::thrift::kMinFormatVersionEncode));
             },
-            thrift::registerBinaryTransform,
-            std::make_unique<thrift::tests::ConfigurableThriftProducer<
-                    BinarySerializer>>(rw));
+            ::zstrong::thrift::registerBinaryTransform,
+            std::make_unique<
+                    ::openzl::thrift::tests::ConfigurableThriftProducer<
+                            BinarySerializer>>(rw));
 
     // We want to test the Thrift custom node with the highest format version
     // shared between dev and release. A higher format version means more
@@ -433,4 +441,4 @@ std::unordered_map<TransformID, CustomGraph> const& getCustomGraphs()
     return *customGraphsPtr;
 }
 
-} // namespace zstrong::tests::datagen::test_registry
+} // namespace openzl::tests::datagen::test_registry

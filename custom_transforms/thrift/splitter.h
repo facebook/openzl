@@ -5,6 +5,7 @@
 #include "custom_transforms/thrift/parse_config.h"
 #include "custom_transforms/thrift/path_tracker.h"
 #include "custom_transforms/thrift/split_helpers.h"
+#include "custom_transforms/thrift/thrift_errors.h"
 #include "openzl/zl_errors.h"
 
 #include <type_traits>
@@ -61,6 +62,11 @@ class BaseParser {
                     // Note: parser.advance() always makes forward progress
                     break;
                 }
+            } catch (const ThriftParserUserError& ex) {
+                throw ThriftParserUserError{ fmt::format(
+                        "Thrift parser failed at position {}: {}",
+                        rs_.pos(),
+                        ex.what()) };
             } catch (const std::exception& ex) {
                 throw std::runtime_error{ fmt::format(
                         "Thrift parser failed at position {}: {}",
@@ -318,6 +324,11 @@ class DBaseParser {
                     break;
                 }
                 assert(ws_.nbytes() <= kMaxExpansionFactor * rss_.nbytes());
+            } catch (const ThriftParserUserError& ex) {
+                throw ThriftParserUserError{ fmt::format(
+                        "Thrift parser failed at position {}: {}",
+                        ws_.nbytes(),
+                        ex.what()) };
             } catch (const std::exception& ex) {
                 throw std::runtime_error{ fmt::format(
                         "Thrift parser failed at position {}: {}",

@@ -37,14 +37,19 @@ libzl.a
 libzl.so
 libopenzl.a
 libopenzl.so
+sddl_compiler
+sddl2_arithmetic_test
+sddl2_input_test
+sddl2_segments_test
+sddl2_tagged_segments_test
+sddl2_type_size_test
+sddl2_vm_test
 
 # dependencies
 /deps/*
-!/deps/nci-short
-!/deps/sao-short
-!/deps/json_examples.json
 
 # Build system temporary objects
+build/
 build-*/
 __pycache__/
 .cache/
@@ -64,6 +69,7 @@ cmake-build/
 # environment
 .venv
 .DS_Store
+*.dSYM/
 
 # corpus download
 /_corpus/
@@ -78,3 +84,6 @@ vrs_index_*
 *.zs.streams.*
 benchresult.bin*
 tmp*
+
+# CTest artifacts
+Testing/

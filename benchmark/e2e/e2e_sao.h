@@ -13,7 +13,7 @@
 #include "benchmark/e2e/e2e_bench.h"
 #include "benchmark/e2e/e2e_compressor.h"
 #include "benchmark/e2e/e2e_zstrong_utils.h"
-#include "benchmark/unitBench/saoGraph.h"
+#include "benchmark/unitBench/scenarios/sao_graph.h"
 #include "openzl/compress/private_nodes.h"
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_public_nodes.h"

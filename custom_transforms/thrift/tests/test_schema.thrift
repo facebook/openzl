@@ -1,5 +1,10 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+include "thrift/annotation/thrift.thrift"
+
+@thrift.AllowLegacyMissingUris
+package;
+
 namespace cpp2 zstrong.thrift.tests.cpp2
 
 struct InnerTestStruct {
@@ -20,7 +25,9 @@ struct InnerTestStruct {
 struct TestStruct {
   4: InnerTestStruct struct1;
   3: InnerTestStruct struct2;
+  @thrift.AllowUnsafeNonSealedKeyType
   2: set<InnerTestStruct> set1;
+  @thrift.AllowUnsafeNonSealedKeyType
   1: map<InnerTestStruct, InnerTestStruct> map1;
 
   # Ensure test coverage for structure-optimized kernels

@@ -12,7 +12,7 @@ import {ZL_Type, ZL_GraphType} from '../src/models/idTypes';
 export function createTestStream(
   id: number,
   type: ZL_Type = ZL_Type.ZL_Type_numeric,
-  eltWidth: number = 4,
+  eltWidth = 4,
   numElts: number,
   cSize: number,
   share: number,
@@ -24,9 +24,9 @@ export function createTestStream(
 export function createTestCodec(
   id: number,
   name: string,
-  cType: boolean = true,
-  headerSize: number = 1,
-  localParamsSize: number = 16,
+  cType = true,
+  headerSize = 1,
+  localParamsSize = 16,
   localParams: LocalParamInfo = new LocalParamInfo([], [], []),
   inputStreams: number[] = [],
   outputStreams: number[] = [],
@@ -46,7 +46,7 @@ export function createTestGraph(
 }
 
 // Create a simple tree with a graph: A->B->C->D where B and C are in a graph
-export function createSimpleTreeWithGraph(isDefaultCollapsed: boolean = false) {
+export function createSimpleTreeWithGraph(isDefaultCollapsed = false) {
   const emptyLocalParams = new LocalParamInfo([], [], []);
 
   // Create streams
@@ -70,7 +70,7 @@ export function createSimpleTreeWithGraph(isDefaultCollapsed: boolean = false) {
 }
 
 // Create a branching tree with two paths: A->B->C/D and A->E->F
-export function createBranchingTreeWithGraph(isDefaultCollapsed: boolean = false) {
+export function createBranchingTreeWithGraph(isDefaultCollapsed = false) {
   const emptyLocalParams = new LocalParamInfo([], [], []);
 
   // Create streams

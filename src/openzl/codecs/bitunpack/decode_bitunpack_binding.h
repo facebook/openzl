@@ -11,10 +11,7 @@ ZL_BEGIN_C_DECLS
 
 ZL_Report DI_bitunpack(ZL_Decoder* dictx, const ZL_Input* ins[]);
 
-#define DI_BITUNPACK(id)                                 \
-    {                                                    \
-        .transform_f = DI_bitunpack, .name = "bitunpack" \
-    }
+#define DI_BITUNPACK(id) { .transform_f = DI_bitunpack, .name = "bitunpack" }
 
 ZL_END_C_DECLS
 

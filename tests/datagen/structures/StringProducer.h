@@ -5,7 +5,7 @@
 #include "tests/datagen/DataProducer.h"
 #include "tests/datagen/distributions/StringLengthDistribution.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 class StringProducer : public DataProducer<std::string> {
    public:
@@ -13,6 +13,13 @@ class StringProducer : public DataProducer<std::string> {
             : DataProducer<std::string>(),
               rw_(generator),
               lengthDist_(generator)
+    {
+    }
+
+    StringProducer(std::shared_ptr<RandWrapper> generator, size_t maxLength)
+            : DataProducer<std::string>(),
+              rw_(generator),
+              lengthDist_(generator, maxLength)
     {
     }
 
@@ -46,4 +53,4 @@ class StringProducer : public DataProducer<std::string> {
     StringLengthDistribution lengthDist_;
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

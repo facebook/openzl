@@ -22,7 +22,8 @@ struct ZL_Segmenter_s {
     ZL_Data** inputs;
     size_t nbInputs;
     size_t* consumed;
-    Arena* arena;
+    size_t numChunks;
+    Arena* sessionArena;
     Arena* chunkArena;
 };
 
@@ -49,30 +50,31 @@ ZL_Segmenter* SEGM_init(
         size_t nbInputs,
         ZL_CCtx* cctx,
         RTGraph* rtgm,
-        Arena* arena,
+        Arena* sessionArena,
         Arena* chunkArena)
 {
     ZL_DLOG(BLOCK, "SEGM_init");
-    ZL_Segmenter* seg = ALLOC_Arena_malloc(arena, sizeof(ZL_Segmenter));
+    ZL_Segmenter* seg = ALLOC_Arena_malloc(sessionArena, sizeof(ZL_Segmenter));
     if (seg == NULL)
         return NULL;
-    seg->segDesc    = segDesc;
-    seg->cctx       = cctx;
-    seg->rtgm       = rtgm;
-    seg->arena      = arena;
-    seg->chunkArena = chunkArena;
+    seg->segDesc      = segDesc;
+    seg->numChunks    = 0;
+    seg->cctx         = cctx;
+    seg->rtgm         = rtgm;
+    seg->sessionArena = sessionArena;
+    seg->chunkArena   = chunkArena;
     ZL_ASSERT_EQ(nbInputs, VECTOR_SIZE(rtgm->streams));
     seg->nbInputs = nbInputs;
-    seg->inputs   = ALLOC_Arena_malloc(arena, nbInputs * sizeof(ZL_Data*));
+    seg->inputs = ALLOC_Arena_malloc(sessionArena, nbInputs * sizeof(ZL_Data*));
     if (seg->inputs == NULL)
         return NULL;
-    seg->consumed = ALLOC_Arena_calloc(arena, nbInputs * sizeof(size_t));
+    seg->consumed = ALLOC_Arena_calloc(sessionArena, nbInputs * sizeof(size_t));
     if (seg->consumed == NULL)
         return NULL;
     for (size_t n = 0; n < nbInputs; n++) {
         seg->inputs[n] =
-                STREAM_createInArena(arena, (ZL_DataID){ (ZL_IDType)n });
-        ZL_Report ref = STREAM_refStreamWithoutRefcount(
+                STREAM_createInArena(sessionArena, (ZL_DataID){ (ZL_IDType)n });
+        ZL_Report ref = STREAM_refStreamWithoutRefCount(
                 seg->inputs[n], VECTOR_AT(rtgm->streams, n).stream);
         if (ZL_isError(ref))
             return NULL;
@@ -89,35 +91,35 @@ ZL_Segmenter* SEGM_init(
 /* ===   internal actions   === */
 
 /**
- * Implementation Notes for SEGM_runSegmenter():
- *
- * Delegation Strategy: This function acts as a thin wrapper around the
- * user-provided segmenter function, handling validation and error checking
- * while delegating the actual chunking logic to the registered callback.
- *
- * Consumption Validation: Only accets complete input consumption on
- * successful execution.
- *
- * Error Propagation: Preserves the original error from the segmenter function.
- * This ensures the root cause of failures is visible to callers.
+ * SEGM_runSegmenter(): acts as a thin wrapper around the user-provided
+ * segmenter callback. User code is in charge of actual chunking logic. The
+ * wrapper just checks that all conditions are correctly respected. In current
+ * implementation, it enforces that input is entirely consumed.
  */
 ZL_Report SEGM_runSegmenter(ZL_Segmenter* segCtx)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(segCtx);
     ZL_ASSERT_NN(segCtx);
     ZL_SegmenterFn const segfn = segCtx->segDesc->segmenterFn;
     ZL_ASSERT_NN(segfn);
-    ZL_Report const r = segfn(segCtx);
-    if (!ZL_isError(r)) {
-        for (size_t n = 0; n < segCtx->nbInputs; n++) {
-            ZL_RET_R_IF_LT(
-                    segmenter_inputNotConsumed,
-                    segCtx->consumed[n],
-                    ZL_Data_numElts(segCtx->inputs[n]),
-                    "input %zu wasn't entirely consumed",
-                    n);
-        }
+    ZL_ERR_IF_ERR(segfn(segCtx), "Segmenter function failed");
+
+    // Check post-conditions
+    ZL_ERR_IF_EQ(
+            segCtx->numChunks,
+            (size_t)0,
+            segmenter_noSegments,
+            "segmenter must produce at least one segment");
+    for (size_t n = 0; n < segCtx->nbInputs; n++) {
+        ZL_ERR_IF_LT(
+                segCtx->consumed[n],
+                ZL_Data_numElts(segCtx->inputs[n]),
+                segmenter_inputNotConsumed,
+                "input %zu wasn't entirely consumed",
+                n);
     }
-    return r;
+
+    return ZL_returnSuccess();
 }
 
 /* ===   accessors   === */
@@ -150,6 +152,12 @@ ZL_RefParam ZL_Segmenter_getLocalRefParam(
 {
     ZL_ASSERT_NN(segCtx);
     return LP_getLocalRefParam(&segCtx->segDesc->localParams, refParamId);
+}
+
+const ZL_LocalParams* ZL_Segmenter_getLocalParams(const ZL_Segmenter* segCtx)
+{
+    ZL_ASSERT_NN(segCtx);
+    return &segCtx->segDesc->localParams;
 }
 
 /* Consultation request for Custom Successor Graphs */
@@ -197,7 +205,7 @@ const ZL_Input* ZL_Segmenter_getInput(
     if (alreadyConsumed > ZL_Data_numElts(sessionInput))
         return NULL;
     ZL_Data* const chunkInput = STREAM_createInArena(
-            segCtx->arena, (ZL_DataID){ (ZL_IDType)inputID });
+            segCtx->sessionArena, (ZL_DataID){ (ZL_IDType)inputID });
     if (chunkInput == NULL)
         return NULL;
     ZL_Report r = STREAM_refEndStreamWithoutRefCount(
@@ -233,7 +241,7 @@ ZL_Report ZL_Segmenter_getNumElts(
  * */
 void* ZL_Segmenter_getScratchSpace(ZL_Segmenter* segCtx, size_t size)
 {
-    return ALLOC_Arena_malloc(segCtx->arena, size);
+    return ALLOC_Arena_malloc(segCtx->sessionArena, size);
 }
 
 /**
@@ -265,6 +273,14 @@ ZL_Report ZL_Segmenter_processChunk(
         ZL_GraphID startingGraphID,
         const ZL_RuntimeGraphParameters* rGraphParams)
 {
+    CWAYPOINT(
+            on_ZL_Segmenter_processChunk_start,
+            segCtx,
+            numElts,
+            numInputs,
+            startingGraphID,
+            rGraphParams);
+
     ZL_ASSERT_NN(segCtx);
     ZL_CCtx* const cctx = segCtx->cctx;
     ZL_ASSERT_NN(cctx);
@@ -283,7 +299,7 @@ ZL_Report ZL_Segmenter_processChunk(
                 ZL_Data_numElts(segCtx->inputs[n]),
                 parameter_invalid);
         chunkInputs[n] = STREAM_createInArena(
-                segCtx->arena, (ZL_DataID){ (ZL_IDType)n });
+                segCtx->chunkArena, (ZL_DataID){ (ZL_IDType)n });
         ZL_ERR_IF_NULL(chunkInputs[n], allocation);
         ZL_ERR_IF_ERR(STREAM_refStreamSliceWithoutRefCount(
                 chunkInputs[n],
@@ -315,6 +331,7 @@ ZL_Report ZL_Segmenter_processChunk(
             /* depth */ 1));
 
     ZL_Report r = CCTX_flushChunk(cctx, (void*)chunkInputs, numInputs);
+    segCtx->numChunks++;
 
     // clean and exit
     for (size_t n = 0; n < numInputs; n++) {
@@ -323,5 +340,16 @@ ZL_Report ZL_Segmenter_processChunk(
         STREAM_free(chunkInputs[n]);
     }
     CCTX_cleanChunk(cctx);
+
+    CWAYPOINT(on_ZL_Segmenter_processChunk_end, segCtx, r);
     return r;
+}
+
+ZL_CONST_FN
+ZL_OperationContext* ZL_Segmenter_getOperationContext(ZL_Segmenter* sctx)
+{
+    if (sctx == NULL) {
+        return NULL;
+    }
+    return ZL_CCtx_getOperationContext(sctx->cctx);
 }

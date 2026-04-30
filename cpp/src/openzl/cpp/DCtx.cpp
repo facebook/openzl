@@ -3,12 +3,17 @@
 #include "openzl/cpp/DCtx.hpp"
 
 #include "openzl/cpp/CustomDecoder.hpp"
+#include "openzl/cpp/Exception.hpp"
 #include "openzl/cpp/FrameInfo.hpp"
 #include "openzl/cpp/Output.hpp"
+#include "openzl/cpp/experimental/trace/DecompressionTraceHooks.hpp"
 #include "openzl/zl_decompress.h"
 
 namespace openzl {
 DCtx::DCtx() : DCtx(ZL_DCtx_create(), ZL_DCtx_free) {}
+DCtx::DCtx(DCtx&&) noexcept            = default;
+DCtx& DCtx::operator=(DCtx&&) noexcept = default;
+DCtx::~DCtx()                          = default;
 
 void DCtx::setParameter(DParam param, int value)
 {
@@ -95,4 +100,33 @@ poly::string_view DCtx::getErrorContextString(ZL_Error error) const
 {
     return ZL_DCtx_getErrorContextString_fromError(get(), error);
 }
+
+void DCtx::writeTraces(bool enabled, bool streamPreview)
+{
+    if ((bool)visHooks_ == enabled) {
+        return; // no need to re-create or re-destroy the hooks
+    }
+    if (enabled) {
+        visHooks_ = std::make_unique<visualizer::DecompressionTraceHooks>(
+                streamPreview);
+        unwrap(ZL_DCtx_attachDecompressIntrospectionHooks(
+                get(), visHooks_->getRawHooks()));
+    } else {
+        unwrap(ZL_DCtx_detachAllDecompressIntrospectionHooks(get()));
+        visHooks_.reset();
+    }
+}
+
+std::pair<
+        poly::string_view,
+        std::map<std::string, std::pair<poly::string_view, poly::string_view>>>
+DCtx::getLatestTrace()
+{
+    if (!visHooks_) {
+        throw Exception("Tracing is not enabled");
+    }
+    return (static_cast<visualizer::DecompressionTraceHooks*>(visHooks_.get()))
+            ->getLatestTrace();
+}
+
 } // namespace openzl

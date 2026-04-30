@@ -20,6 +20,7 @@
  * - v21+: Frame property flags: 1 byte
  *   + bit0: checksum of decoded data
  *   + bit1: checksum of encoded data (also control frame header checksum)
+ *   + bit2: presence of a comment field
  * - Input Type :
  *   + v13-: 0-byte , 1 Input assumed to be Serial
  *   + v14 : 1-byte, single Input, selectable type
@@ -41,6 +42,9 @@
  *              Organized as a single large BM-bytes Little Endian number
  *              scanned from its lowest bits (shift >> 2 for each Input).
  *              Note: Format 1 stores the first 2 types in 1st byte.
+ *  + v22+: VarInt format: Number of bytes of comment field
+ *          Length x 1-byte: Arbitrary buffer of up to 10000 bytes (defined in
+ *                           limits.h) containing a comment.
  *
  * Size of Inputs
  * v20-: NbInputs x LE_U32: decompressed size of each input, in bytes
@@ -183,9 +187,13 @@ uint32_t ZL_getMagicNumber(uint32_t version);
 #define FRAME_HEADER_SIZE_MIN \
     (4 /*magic*/ + 4 /*dec.Size*/ + 1 /*eof marker*/) // Just core elts
 
+/// Minimum wire format version required to support extra comment field
+#define ZL_COMMENT_VERSION_MIN (22)
+
 typedef struct {
     bool hasContentChecksum;
     bool hasCompressedChecksum;
+    bool hasComment;
 } ZL_FrameProperties;
 
 typedef enum { trt_standard, trt_custom } TransformType_e;
@@ -225,12 +233,13 @@ typedef enum {
     ZL_StandardTransformID_fse_deprecated           = 15,
     ZL_StandardTransformID_huffman_deprecated       = 16,
     ZL_StandardTransformID_huffman_fixed_deprecated = 17,
-    // 18-19 : available
-    ZL_StandardTransformID_rolz       = 20,
-    ZL_StandardTransformID_fastlz     = 21,
-    ZL_StandardTransformID_zstd       = 22,
-    ZL_StandardTransformID_zstd_fixed = 23,
-    ZL_StandardTransformID_field_lz   = 24,
+    ZL_StandardTransformID_sentinel                 = 18,
+    ZL_StandardTransformID_lz                       = 19,
+    ZL_StandardTransformID_rolz                     = 20,
+    ZL_StandardTransformID_fastlz                   = 21,
+    ZL_StandardTransformID_zstd                     = 22,
+    ZL_StandardTransformID_zstd_fixed               = 23,
+    ZL_StandardTransformID_field_lz                 = 24,
 
     // TODO: Use local parameters to select quantization mode dynamically
     // instead of specialization for offsets / lengths.
@@ -290,11 +299,25 @@ typedef enum {
 
     ZL_StandardTransformID_interleave_string = 61,
 
+    ZL_StandardTransformID_lz4 = 62,
+
+    ZL_StandardTransformID_bitSplit = 63,
+
+    ZL_StandardTransformID_partition = 64,
+
+    ZL_StandardTransformID_mux_lengths = 65,
+
     ZL_StandardTransformID_end =
-            63 // last id, used to detect end of ID range (impacts
-               // header encoding) give some room to be able to add new
-               // transforms without breaking encoder / decoder
+            128 // last id, used to detect end of ID range (impacts
+                // header encoding) give some room to be able to add new
+                // transforms without breaking encoder / decoder
 } ZL_StandardTransformID;
+
+/**
+ * @returns The number of bits required to encode standard transform IDs
+ * in the given format version.
+ */
+int ZL_StandardTransformID_numBits(unsigned formatVersion);
 
 // Min version of standard transforms is published
 // for standard transforms which can be dynamically defined at runtime.

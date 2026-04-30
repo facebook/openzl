@@ -22,8 +22,13 @@ std::string to_canonical_parquet(
                          ->disable_write_page_index()
                          ->encoding(::parquet::Encoding::PLAIN)
                          ->build();
-    PARQUET_THROW_NOT_OK(::parquet::arrow::WriteTable(
-            *table, arrow::default_memory_pool(), out, group_size, props));
+    PARQUET_THROW_NOT_OK(
+            ::parquet::arrow::WriteTable(
+                    *table,
+                    arrow::default_memory_pool(),
+                    out,
+                    group_size,
+                    props));
     PARQUET_ASSIGN_OR_THROW(auto buffer, out->Finish());
     return buffer->ToString();
 }

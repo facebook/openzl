@@ -18,6 +18,16 @@ typedef struct {
     // Set to ZL_MAX_FORMAT_VERSION unless the node is deprecated.
     unsigned maxFormatVersion;
     InternalTransform_Desc transformDesc;
+    /// If a dictionary is specified in the transformDesc, this field is
+    /// populated with the index of that dict within the compressor's bundle.
+    /// The "default" value is updated when ZL_Compressor_validate() is called,
+    /// before compression starts.
+    size_t maybeDictIndex /* defaults to ZL_DICT_INDEX_NONE */;
+    /// If an MParam is specified in the transformDesc, this field is populated
+    /// upon registration time with a pointer to the materialized object. The
+    /// CNode does not own the object, the ZL_Compressor owns it via the
+    /// CDictMgr.
+    const void* mparamObj;
     /// Standard nodes leave this empty, all other nodes set this.
     /// When set ZL_Name_unique(&maybeName) == transformDesc.publicDesc.name.
     ZL_Name maybeName;
@@ -128,5 +138,17 @@ CNODE_FormatInfo CNODE_getFormatInfo(CNode const* cnode);
 
 // @returns the transformation type of the cnode
 bool CNODE_isTransformStandard(CNode const* cnode);
+
+/// @returns the dict ID associated with the @p cnode
+/// @pre cnode->nodetype == node_internalTransform
+ZL_DictID CNODE_getDictID(CNode const* cnode);
+
+/// @returns the dict index within the compressor's bundle for the @p cnode,
+/// or ZL_DICT_INDEX_NONE if no dictionary is associated.
+/// @pre cnode->nodetype == node_internalTransform
+size_t CNODE_getDictIndex(CNode const* cnode);
+
+const void* CNODE_getMParamObj(CNode const* cnode);
+const ZL_MParamID* CNODE_getMParamID(CNode const* cnode);
 
 #endif // OPENZL_COMPRESS_CNODE_H

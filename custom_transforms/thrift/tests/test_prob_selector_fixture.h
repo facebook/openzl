@@ -9,11 +9,11 @@
 
 #pragma once
 
-namespace zstrong::thrift::tests {
+namespace openzl::thrift::tests {
 
 class ProbSelectorTest : public ::testing::Test {
    public:
-    ::zstrong::tests::datagen::DataGen dataGen_;
+    ::openzl::tests::datagen::DataGen dataGen_;
 
     void testRoundTrip(
             ZL_GraphID* selGraphs,
@@ -45,4 +45,4 @@ class ProbSelectorTest : public ::testing::Test {
             const void* compressed,
             size_t cSize);
 };
-} // namespace zstrong::thrift::tests
+} // namespace openzl::thrift::tests

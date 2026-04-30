@@ -116,8 +116,9 @@ void ZL_ReflectionCtx_registerMIDecoder(
 static ZL_Report
 copyStream(ZL_ReflectionCtx* rctx, const ZL_Data** dstPtr, const ZL_Data* src)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(rctx->dctx);
     ZL_Data* dst = STREAM_createInArena(rctx->arena, ZL_Data_id(src));
-    ZL_RET_R_IF_ERR(STREAM_copy(dst, src));
+    ZL_ERR_IF_ERR(STREAM_copy(dst, src));
     *dstPtr = dst;
     return ZL_returnSuccess();
 }
@@ -129,8 +130,9 @@ static ZL_Report fillStreamAndTransformInfo(
         ZL_ReflectionCtx* rctx,
         const char* src)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(rctx->dctx);
     DFH_Struct const* dfh = DCtx_getFrameHeader(rctx->dctx);
-    ZL_RET_R_IF_NULL(GENERIC, dfh);
+    ZL_ERR_IF_NULL(dfh, GENERIC);
     const size_t nbStreams    = ZL_DCtx_getNumStreams(rctx->dctx);
     const size_t nbTransforms = dfh->nbDTransforms;
 
@@ -143,7 +145,7 @@ static ZL_Report fillStreamAndTransformInfo(
         info->index       = streamIdx;
         // Must copy out of the dctx, because the streams may reference the
         // source buffer.
-        ZL_RET_R_IF_ERR(copyStream(
+        ZL_ERR_IF_ERR(copyStream(
                 rctx,
                 &info->stream,
                 ZL_DCtx_getConstStream(rctx->dctx, (ZL_IDType)streamIdx)));
@@ -161,7 +163,8 @@ static ZL_Report fillStreamAndTransformInfo(
         // inputs  = regenerated streams of decoder
         const DFH_NodeInfo* node = &VECTOR_AT(dfh->nodes, transformIdx);
         const size_t nbInputs    = node->nbRegens;
-        ZL_TRY_LET_R(
+        ZL_TRY_LET(
+                size_t,
                 nbOutputs,
                 DCtx_getNbInputStreams(rctx->dctx, (ZL_IDType)transformIdx));
 
@@ -216,6 +219,7 @@ static ZL_Report fillExtraStreamInfo(
         ZL_ReflectionCtx* rctx,
         size_t nbInputStreams)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(rctx->dctx);
     const DFH_Struct* dfh        = DCtx_getFrameHeader(rctx->dctx);
     const size_t nbStoredStreams = dfh->nbStoredStreams;
 
@@ -256,8 +260,9 @@ static ZL_Report fillExtraStreamInfo(
 static ZL_Report
 fillFrameInfo(ZL_ReflectionCtx* rctx, const void* src, size_t srcSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(rctx->dctx);
     DFH_Struct const* dfh = DCtx_getFrameHeader(rctx->dctx);
-    ZL_TRY_LET_R(frameHeaderSize, ZL_getHeaderSize(src, srcSize));
+    ZL_TRY_LET(size_t, frameHeaderSize, ZL_getHeaderSize(src, srcSize));
     rctx->frameFormatVersion       = dfh->formatVersion;
     rctx->frameHeaderSize          = frameHeaderSize;
     rctx->totalTransformHeaderSize = dfh->totalTHSize;
@@ -277,10 +282,11 @@ static ZL_Report ZL_ReflectionCtx_setCompressedFrame_impl(
         const void* src,
         size_t srcSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(rctx->dctx);
     // Create the output stream storage in our arena.
     // We reference these streams, so they must live for the lifetime of the
     // ZL_ReflectionCtx.
-    ZL_TRY_LET_R(nbOutputs, ZL_FrameInfo_getNumOutputs(fi));
+    ZL_TRY_LET(size_t, nbOutputs, ZL_FrameInfo_getNumOutputs(fi));
     ALLOC_ARENA_CALLOC_CHECKED(
             ZL_TypedBuffer*, outputs, nbOutputs, rctx->arena);
     for (size_t i = 0; i < nbOutputs; ++i) {
@@ -290,12 +296,12 @@ static ZL_Report ZL_ReflectionCtx_setCompressedFrame_impl(
 
     // Run decompression
     DCTX_preserveStreams(rctx->dctx);
-    ZL_RET_R_IF_ERR(ZL_DCtx_decompressMultiTBuffer(
+    ZL_ERR_IF_ERR(ZL_DCtx_decompressMultiTBuffer(
             rctx->dctx, outputs, nbOutputs, src, srcSize));
 
-    ZL_RET_R_IF_ERR(fillFrameInfo(rctx, src, srcSize));
-    ZL_RET_R_IF_ERR(fillStreamAndTransformInfo(rctx, src));
-    ZL_RET_R_IF_ERR(fillExtraStreamInfo(rctx, nbOutputs));
+    ZL_ERR_IF_ERR(fillFrameInfo(rctx, src, srcSize));
+    ZL_ERR_IF_ERR(fillStreamAndTransformInfo(rctx, src));
+    ZL_ERR_IF_ERR(fillExtraStreamInfo(rctx, nbOutputs));
 
     return ZL_returnSuccess();
 }
@@ -305,13 +311,14 @@ ZL_Report ZL_ReflectionCtx_setCompressedFrame(
         void const* src,
         size_t srcSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(rctx->dctx);
     ZL_REQUIRE(
             !rctx->inputHasBeenSet,
             "Each reflection ctx can only be used for one input");
     rctx->inputHasBeenSet = true;
 
     ZL_FrameInfo* fi = ZL_FrameInfo_create(src, srcSize);
-    ZL_RET_R_IF_NULL(allocation, fi);
+    ZL_ERR_IF_NULL(fi, allocation);
     ZL_Report report =
             ZL_ReflectionCtx_setCompressedFrame_impl(rctx, fi, src, srcSize);
     ZL_FrameInfo_free(fi);

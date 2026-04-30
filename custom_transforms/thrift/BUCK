@@ -4,7 +4,7 @@
 
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:thrift_library.bzl", "thrift_library")
-load("//data_compression/experimental/zstrong:defs.bzl", "ZS_HEADER_INCLUDE_PATH")
+load("../../defs.bzl", "relative_headers")
 
 oncall("data_compression")
 
@@ -14,11 +14,13 @@ cpp_library(
         "*.cpp",
         "*.c",
     ]),
-    headers = glob(["*.h"]),
+    headers = relative_headers(
+        glob(["*.h"]),
+    ),
+    header_namespace = "",
     compiler_flags = [
         "-DUSE_FOLLY",
         "-DUSE_BOOST",
-        ZS_HEADER_INCLUDE_PATH,
         "-Werror=switch",
     ],
     deps = [
@@ -28,8 +30,8 @@ cpp_library(
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
+        "../..:zstronglib",
         ":thrift_parse_config_schema-cpp2-types",
-        "//data_compression/experimental/zstrong:zstronglib",
         "//folly:range",
         "//folly:scope_guard",
         "//folly/io:iobuf",

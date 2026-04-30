@@ -7,6 +7,18 @@
 
 ZL_BEGIN_C_DECLS
 
+#if defined(__GNUC__) || defined(__clang__)
+#    define ZL_MAYBE_UNUSED_FUNCTION __attribute__((__unused__))
+#elif defined(_MSC_VER)
+// MSVC does not have a direct equivalent for marking an entire function as
+// "unused" to suppress a warning if it is defined but not called.
+// Usually, this warning is handled by linker settings, or by ensuring
+// the function has internal linkage (static).
+#    define ZL_MAYBE_UNUSED_FUNCTION
+#else
+#    define ZL_MAYBE_UNUSED_FUNCTION
+#endif
+
 /**
  * This should only be for small helper functions that don't belong in any
  * grouping.
@@ -56,6 +68,18 @@ ZL_INLINE bool ZL_uintFits(uint64_t val, int bytes)
 ZL_INLINE size_t ZL_isLegalIntegerWidth(size_t width)
 {
     return width == 1 || width == 2 || width == 4 || width == 8;
+}
+
+/**
+ * @returns The maximum unsigned value for an element of @p width bytes.
+ */
+ZL_INLINE uint64_t ZL_maxValueForWidth(size_t width)
+{
+    ZL_ASSERT(ZL_isLegalIntegerWidth(width));
+    if (width == 8) {
+        return UINT64_MAX;
+    }
+    return ((uint64_t)1 << (width * 8)) - 1;
 }
 
 ZL_END_C_DECLS

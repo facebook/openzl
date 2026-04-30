@@ -3,13 +3,14 @@
 # @noautodeps
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_fuzzers")
+load("../../../defs.bzl", "relative_headers", "zs_fuzzers")
 
 oncall("data_compression")
 
 cpp_library(
     name = "json_extract_test_data",
-    headers = ["json_extract_test_data.h"],
+    headers = relative_headers(["json_extract_test_data.h"]),
+    header_namespace = "",
     exported_deps = [
         "//folly:dynamic",
         "//folly:json",
@@ -20,10 +21,10 @@ cpp_unittest(
     name = "test_json_extract",
     srcs = ["test_json_extract.cpp"],
     deps = [
+        "..:json_extract",
+        "../../..:zstronglib",
+        "../../../tools:zstrong_cpp",
         ":json_extract_test_data",
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/custom_transforms/json_extract:json_extract",
-        "//data_compression/experimental/zstrong/tools:zstrong_cpp",
     ],
 )
 
@@ -36,10 +37,10 @@ zs_fuzzers(
         ("JsonExtractTest", "FuzzDecompress"),
     ],
     deps = [
+        "..:json_extract",
+        "../../../tests:fuzz_utils",
+        "../../../tools:zstrong_cpp",
         "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
         ":json_extract_test_data",
-        "//data_compression/experimental/zstrong/custom_transforms/json_extract:json_extract",
-        "//data_compression/experimental/zstrong/tests:fuzz_utils",
-        "//data_compression/experimental/zstrong/tools:zstrong_cpp",
     ],
 )

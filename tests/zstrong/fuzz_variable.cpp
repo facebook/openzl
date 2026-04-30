@@ -1,18 +1,18 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <algorithm>
-#include "security/lionhead/utils/lib_ftest/ftest.h"
 
 #include "openzl/codecs/zl_parse_int.h"
 #include "openzl/compress/private_nodes.h"
 #include "openzl/zl_data.h"
+#include "tests/datagen/DataGen.h"
 #include "tests/datagen/random_producer/LionheadFDPWrapper.h"
 #include "tests/datagen/random_producer/RandWrapper.h"
 #include "tests/datagen/structures/IntegerStringProducer.h"
 #include "tests/fuzz_utils.h"
 #include "tests/zstrong/test_variable_fixture.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 namespace {
 
@@ -48,7 +48,8 @@ std::vector<size_t> getSegments(
 
 FUZZ_F(VariableTest, FuzzPrefixRoundTrip)
 {
-    std::string input = gen_str(f, "input_str", InputLengthInBytes(1));
+    datagen::DataGen dg = fromFDP(f);
+    std::string input   = dg.randString("input_str");
 
     StructuredFDP<HarnessMode>* fPtr = &f;
 
@@ -85,7 +86,8 @@ FUZZ_F(VariableTest, FuzzPrefixRoundTrip)
 
 FUZZ_F(VariableTest, FuzzTokenizeRoundTrip)
 {
-    std::string input = gen_str(f, "input_str", InputLengthInBytes(1));
+    datagen::DataGen dg = fromFDP(f);
+    std::string input   = dg.randString("input_str");
 
     StructuredFDP<HarnessMode>* fPtr = &f;
 
@@ -123,7 +125,8 @@ FUZZ_F(VariableTest, FuzzTokenizeRoundTrip)
 
 FUZZ_F(VariableTest, FuzzTokenizeSortedRoundTrip)
 {
-    std::string input = gen_str(f, "input_str", InputLengthInBytes(1));
+    datagen::DataGen dg = fromFDP(f);
+    std::string input   = dg.randString("input_str");
 
     StructuredFDP<HarnessMode>* fPtr = &f;
 
@@ -161,14 +164,15 @@ FUZZ_F(VariableTest, FuzzTokenizeSortedRoundTrip)
 
 FUZZ_F(VariableTest, FuzzDispatchStringRoundTrip)
 {
-    std::string input = gen_str(f, "inputStr", InputLengthInBytes(1));
+    datagen::DataGen dg = fromFDP(f);
+    std::string input   = dg.randString("inputStr");
 
     reset();
 
     const auto tmpSegments = getSegments(f, input.size(), false);
     const std::vector<uint32_t> segments(
             tmpSegments.begin(), tmpSegments.end());
-    uint16_t nbOutputs = f.u16_range("nbOutputs", 0, 2048);
+    uint16_t nbOutputs = dg.u16_range("nbOutputs", 0, 2048);
     const auto indices = VecDistribution<Range<uint16_t>, Const<size_t>>(
                                  Range<uint16_t>(0, nbOutputs),
                                  Const<size_t>(segments.size()))
@@ -196,7 +200,7 @@ FUZZ_F(VariableTest, FuzzDispatchStringRoundTrip)
             cgraph_, nbOutputs, indices.data());
     ZL_GraphID dispatchGraph = declareGraph(dispatchStringNode);
     finalizeGraph(dispatchGraph, 1);
-    setLargeCompressBound(1024);
+    setLargeCompressBound(4096);
 
     bool compressionShouldSucceed =
             std::all_of(indices.begin(), indices.end(), [nbOutputs](auto i) {
@@ -219,7 +223,7 @@ FUZZ_F(VariableTest, FuzzParseIntRoundTrip)
 
     reset();
     auto const [input, fieldSizes] =
-            zstrong::tests::datagen::IntegerStringProducer::flatten(data);
+            openzl::tests::datagen::IntegerStringProducer::flatten(data);
 
     std::vector<std::unique_ptr<ZL_TypedRef, ZS2_TypedRef_Deleter>> inputs;
     std::vector<TypedInputDesc> inputDescs;
@@ -240,7 +244,8 @@ FUZZ_F(VariableTest, FuzzParseIntRoundTrip)
 
 FUZZ_F(VariableTest, FuzzParseIntSafeRoundTrip)
 {
-    std::string input = gen_str(f, "inputStr", InputLengthInBytes(1));
+    datagen::DataGen dg = fromFDP(f);
+    std::string input   = dg.randString("inputStr");
 
     reset();
     const auto tmpSegments = getSegments(f, input.size(), false);
@@ -267,4 +272,4 @@ FUZZ_F(VariableTest, FuzzParseIntSafeRoundTrip)
 
 } // namespace
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

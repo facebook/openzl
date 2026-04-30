@@ -3,16 +3,14 @@
 # @noautodeps
 
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
-load("//data_compression/experimental/zstrong:defs.bzl", "ZS_HEADER_INCLUDE_PATH")
 
 oncall("data_compression")
 
 cpp_binary(
     name = "thrift_config_builder",
     srcs = ["thrift_config_builder.cpp"],
-    preprocessor_flags = [ZS_HEADER_INCLUDE_PATH],
     deps = [
-        "//data_compression/experimental/zstrong/custom_transforms/thrift:thrift_lib",
+        "../../custom_transforms/thrift:thrift_lib",
         "//folly:base64",
     ],
 )

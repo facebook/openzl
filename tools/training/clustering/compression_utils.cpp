@@ -10,9 +10,11 @@
 
 #include "openzl/common/operation_context.h"
 #include "openzl/cpp/CCtx.hpp"
-#include "openzl/zl_input.h"
 #include "openzl/zl_reflection.h"
+#include "tools/logger/Logger.h"
 #include "tools/training/clustering/clustering_config_builder.h"
+
+using namespace openzl::tools::logger;
 
 namespace openzl::training {
 namespace {
@@ -112,17 +114,12 @@ SizeTimePair CompressionUtils::compressSample(
             ZL_Clustering_serializeClusteringConfig(
                     errCtx, &dst, &dstSize, config.get(), &a1cArena),
             "Failed to serialize clustering config");
-    ZL_IntParam sizeParam = (ZL_IntParam){
-        .paramId    = ZL_GENERIC_CLUSTERING_CONFIG_SIZE_ID,
-        .paramValue = (int)dstSize,
-    };
     ZL_CopyParam configParam = (ZL_CopyParam){
         .paramId   = ZL_GENERIC_CLUSTERING_CONFIG_ID,
         .paramPtr  = dst,
         .paramSize = dstSize,
     };
     ZL_LocalParams clusteringParams = (ZL_LocalParams){
-        .intParams  = { .intParams = &sizeParam, .nbIntParams = 1 },
         .copyParams = { .copyParams = &configParam, .nbCopyParams = 1 },
     };
     ZL_RuntimeGraphParameters runtimeParams = (ZL_RuntimeGraphParameters){
@@ -136,6 +133,9 @@ SizeTimePair CompressionUtils::compressSample(
     cctx.unwrap(ZL_CCtx_selectStartingGraphID(
             cctx.get(), compressor_, ZL_GRAPH_CLUSTERING, &runtimeParams));
     cctx.setParameter(openzl::CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+    // disable anti-inflation guard so training sees true compressed sizes
+    cctx.setParameter(
+            openzl::CParam::StoreOnExpansion, ZL_TernaryParam_disable);
     size_t compressBound = 0;
     std::vector<const ZL_Input*> constInputs;
     for (auto& input : *sample) {
@@ -168,8 +168,9 @@ SizeTimePair CompressionUtils::compressSample(
         static std::atomic<bool> errorLogged{ false };
         if (!errorLogged.exchange(true)) {
             // Only log the first occurrence of this error
-            ZL_LOG(ERROR,
-                   "Selected a successor that fails to compress on input, treating this as a candidate with a large compression cost. Suppressing future logs for this error.");
+            Logger::log(
+                    ERRORS,
+                    "Selected a successor that fails to compress on input, treating this as a candidate with a large compression cost. Suppressing future logs for this error.");
         }
         return SizeTimePair{ std::numeric_limits<uint32_t>::max(),
                              std::numeric_limits<uint32_t>::max() };

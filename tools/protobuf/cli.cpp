@@ -5,6 +5,7 @@
 #include <google/protobuf/util/message_differencer.h>
 #include <filesystem>
 #include <iomanip>
+#include "custom_parsers/dependency_registration.h"
 #include "openzl/common/assertion.h"
 #include "openzl/common/logging.h"
 #include "tools/arg/arg_parser.h"
@@ -12,10 +13,17 @@
 #include "tools/io/InputSet.h"
 #include "tools/io/InputSetBuilder.h"
 #include "tools/io/OutputFile.h"
+#include "tools/protobuf/DescriptorLoader.h"
+#include "tools/protobuf/DynamicMessageHelper.h"
 #include "tools/protobuf/ProtoDeserializer.h"
 #include "tools/protobuf/ProtoSerializer.h"
-#ifdef OPENZL_BUCK_BUILD
-#    include "data_compression/experimental/zstrong/tools/protobuf/schema.pb.h"
+#include "tools/protobuf/serialization_utils.h"
+#if defined(ZL_IS_FBCODE) && (ZL_IS_FBCODE == 1)
+#    if ZL_FBCODE_IS_RELEASE
+#        include "openzl/prod/tools/protobuf/schema.pb.h"
+#    else
+#        include "openzl/dev/tools/protobuf/schema.pb.h"
+#    endif
 #else
 #    include "tools/protobuf/schema.pb.h"
 #endif
@@ -30,25 +38,23 @@ using JsonPrintOptions   = google::protobuf::util::JsonPrintOptions;
 using JsonParseOptions   = google::protobuf::util::JsonParseOptions;
 using nano               = std::chrono::nanoseconds;
 
-std::string kInput      = "input";
-std::string kOutput     = "output";
-std::string kInputType  = "input-protocol";
-std::string kOutputType = "output-protocol";
-std::string kCheck      = "check";
-std::string kNumIters   = "num-iters";
-std::string kCompressor = "compressor";
+std::string kInput       = "input";
+std::string kOutput      = "output";
+std::string kInputType   = "input-protocol";
+std::string kOutputType  = "output-protocol";
+std::string kCheck       = "check";
+std::string kNumIters    = "num-iters";
+std::string kCompressor  = "compressor";
+std::string kProto       = "proto";
+std::string kDescriptor  = "descriptor";
+std::string kProtoPath   = "proto-path";
+std::string kMessageType = "message-type";
 
 enum Cmd : int {
     UNSPECIFIED = 0,
     SERIALIZE   = 1,
     BENCHMARK   = 2,
     TRAIN       = 3,
-};
-
-enum Protocol {
-    Proto = 0,
-    ZL    = 1,
-    JSON  = 2,
 };
 
 Protocol parseProtocol(const std::string& protocol)
@@ -90,43 +96,6 @@ std::string ext(Protocol protocol)
     throw std::runtime_error("Invalid protocol!");
 }
 
-std::string
-serialize(const Schema& obj, Protocol protocol, ProtoSerializer& serializer)
-{
-    std::string serialized;
-    if (protocol == Protocol::Proto) {
-        serialized = obj.SerializeAsString();
-    } else if (protocol == Protocol::ZL) {
-        serialized = serializer.serialize(obj);
-    } else if (protocol == Protocol::JSON) {
-        auto status = google::protobuf::util::MessageToJsonString(
-                obj, &serialized, JsonPrintOptions());
-        ZL_REQUIRE(
-                status.ok(),
-                "Failed to serialize to JSON: %s",
-                status.message());
-    }
-    return serialized;
-}
-
-Schema deserialize(
-        const std::string& serialized,
-        Protocol protocol,
-        ProtoDeserializer& deserializer)
-{
-    Schema obj;
-    if (protocol == Protocol::Proto) {
-        obj.ParseFromString(serialized);
-    } else if (protocol == Protocol::ZL) {
-        deserializer.deserialize(serialized, obj);
-    } else if (protocol == Protocol::JSON) {
-        auto status = google::protobuf::util::JsonStringToMessage(
-                serialized, &obj, JsonParseOptions());
-        ZL_REQUIRE(status.ok(), "Failed to parse JSON: %s", status.message());
-    }
-    return obj;
-}
-
 /**
  * @brief This class is used to store the global arguments passed to the CLI
  * tool.
@@ -147,12 +116,70 @@ class Args {
             compressor.deserialize(file->contents());
             serializer.setCompressor(std::move(compressor));
         }
+
+        // See if user wants to use a dynamic schema
+        bool has_proto      = args.globalHasFlag(kProto);
+        bool has_descriptor = args.globalHasFlag(kDescriptor);
+
+        if (has_proto || has_descriptor) {
+            use_dynamic = true;
+
+            if (has_proto && has_descriptor) {
+                throw std::runtime_error(
+                        "Cannot specify both --proto and --descriptor");
+            }
+
+            if (!args.globalHasFlag(kMessageType)) {
+                throw std::runtime_error(
+                        "--message-type is required when using --proto or --descriptor");
+            }
+
+            message_type = args.globalRequiredFlag(kMessageType);
+
+            auto loader = std::make_unique<DescriptorLoader>();
+            if (args.globalHasFlag(kProtoPath)) {
+                loader->addProtoPath(args.globalRequiredFlag(kProtoPath));
+            }
+
+            if (has_proto) {
+                descriptor_pool =
+                        loader->loadProtoFile(args.globalRequiredFlag(kProto));
+            } else {
+                descriptor_pool = loader->loadDescriptorFile(
+                        args.globalRequiredFlag(kDescriptor));
+            }
+
+            if (!descriptor_pool) {
+                throw std::runtime_error("Failed to load protobuf schema");
+            }
+
+            message_helper = std::make_unique<DynamicMessageHelper>(
+                    descriptor_pool.get());
+        } else {
+            // We will use the schema compiled with CLI source code
+            use_dynamic = false;
+        }
     };
+
+    std::unique_ptr<google::protobuf::Message> newMessage() const
+    {
+        if (use_dynamic) {
+            return message_helper->newMessage(message_type);
+        } else {
+            return std::make_unique<Schema>();
+        }
+    }
 
     std::unique_ptr<tools::io::InputSet> inputs;
     Protocol inputType;
     ProtoSerializer serializer;
     ProtoDeserializer deserializer;
+
+    // Dynamic schema members
+    bool use_dynamic = false;
+    std::string message_type;
+    std::shared_ptr<const google::protobuf::DescriptorPool> descriptor_pool;
+    std::unique_ptr<DynamicMessageHelper> message_helper;
 };
 
 class BenchmarkArgs : public Args {
@@ -175,11 +202,13 @@ class SerializeArgs : public Args {
         outputType = parseProtocol(
                 args.cmdFlag(Cmd::SERIALIZE, kOutputType).value_or("zl"));
 
-        check = args.cmdHasFlag(Cmd::SERIALIZE, kCheck);
+        check  = args.cmdHasFlag(Cmd::SERIALIZE, kCheck);
+        output = args.cmdFlag(Cmd::SERIALIZE, kOutput);
     }
 
     Protocol outputType;
     bool check;
+    std::optional<std::string> output;
 };
 
 class TrainArgs : public Args {
@@ -200,16 +229,17 @@ void updateResults(
 {
     constexpr size_t BYTES_TO_MiB = 1024 * 1024;
 
-    const auto uncompressed_size = serialized_size[Protocol::Proto];
+    const auto uncompressed_size =
+            serialized_size[static_cast<int>(Protocol::Proto)];
 
     for (auto protocol : { Protocol::Proto, Protocol::ZL }) {
         const auto ratio = static_cast<double>(uncompressed_size)
-                / serialized_size[protocol];
+                / serialized_size[static_cast<int>(protocol)];
 
-        const auto cmicros =
-                std::chrono::duration<double, std::micro>(cdur[protocol]);
-        const auto dmicros =
-                std::chrono::duration<double, std::micro>(ddur[protocol]);
+        const auto cmicros = std::chrono::duration<double, std::micro>(
+                cdur[static_cast<int>(protocol)]);
+        const auto dmicros = std::chrono::duration<double, std::micro>(
+                ddur[static_cast<int>(protocol)]);
 
         const auto cmibps = (uncompressed_size * iter_count * 1000 * 1000.0)
                 / (cmicros.count() * BYTES_TO_MiB);
@@ -217,9 +247,9 @@ void updateResults(
                 / (dmicros.count() * BYTES_TO_MiB);
 
         std::cout << toString(protocol) << ": " << uncompressed_size << " -> "
-                  << serialized_size[protocol] << " (" << std::setprecision(2)
-                  << std::fixed << ratio << "),  " << cmibps << " MiB/s  "
-                  << dmibps << " MiB/s\n";
+                  << serialized_size[static_cast<int>(protocol)] << " ("
+                  << std::setprecision(2) << std::fixed << ratio << "),  "
+                  << cmibps << " MiB/s  " << dmibps << " MiB/s\n";
     }
     std::cout << std::flush;
 }
@@ -235,33 +265,37 @@ int handleBenchmark(BenchmarkArgs args)
         total_inputs++;
         // Deserialize object with the input protocol
         const auto contents = std::string(input->contents());
-        auto obj = deserialize(contents, args.inputType, args.deserializer);
+        auto obj            = args.newMessage();
+        deserialize(contents, args.inputType, args.deserializer, *obj);
         for (auto protocol : { Protocol::Proto, Protocol::ZL }) {
             // Get the serialized size of the object with the chosen
             // protocol
-            auto serialized = serialize(obj, protocol, args.serializer);
-            auto deserialized =
-                    deserialize(serialized, protocol, args.deserializer);
-            serialized_size[protocol] += serialized.size();
+            auto serialized   = serialize(*obj, protocol, args.serializer);
+            auto deserialized = args.newMessage();
+            deserialize(serialized, protocol, args.deserializer, *deserialized);
+            serialized_size[static_cast<int>(protocol)] += serialized.size();
 
             // Check if the round trip is correct
             ZL_REQUIRE(
-                    MessageDifferencer::Equivalent(obj, deserialized),
+                    MessageDifferencer::Equivalent(*obj, *deserialized),
                     "Round trip check failed!");
 
             // Benchmark serialization and deserialization speeds
             const auto serialization_start = std::chrono::steady_clock::now();
             for (size_t n = 0; n < args.numIters; ++n) {
-                auto val = serialize(deserialized, protocol, args.serializer);
+                auto val = serialize(*deserialized, protocol, args.serializer);
             }
             const auto serialization_end     = std::chrono::steady_clock::now();
             const auto deserialization_start = std::chrono::steady_clock::now();
             for (size_t n = 0; n < args.numIters; ++n) {
-                auto val = deserialize(serialized, protocol, args.deserializer);
+                auto temp = args.newMessage();
+                deserialize(serialized, protocol, args.deserializer, *temp);
             }
             const auto deserialization_end = std::chrono::steady_clock::now();
-            cdur[protocol] += serialization_end - serialization_start;
-            ddur[protocol] += deserialization_end - deserialization_start;
+            cdur[static_cast<int>(protocol)] +=
+                    serialization_end - serialization_start;
+            ddur[static_cast<int>(protocol)] +=
+                    deserialization_end - deserialization_start;
         }
         updateResults(args.numIters, serialized_size, cdur, ddur);
     }
@@ -280,23 +314,33 @@ int handleSerialize(SerializeArgs args)
 
         // Deserialize and serialize the protobuf object with the chosen
         // protocol
-        auto obj = deserialize(contents, args.inputType, args.deserializer);
-        auto serialized = serialize(obj, args.outputType, args.serializer);
+        auto obj = args.newMessage();
+        deserialize(contents, args.inputType, args.deserializer, *obj);
+        auto serialized = serialize(*obj, args.outputType, args.serializer);
         ZL_LOG(ALWAYS, "Serialized to %d bytes!", serialized.size());
 
         // Check if the round trip is correct
         if (args.check) {
-            auto deserialized =
-                    deserialize(serialized, args.outputType, args.deserializer);
+            auto deserialized = args.newMessage();
+            deserialize(
+                    serialized,
+                    args.outputType,
+                    args.deserializer,
+                    *deserialized);
             ZL_REQUIRE(
-                    MessageDifferencer::Equivalent(obj, deserialized),
+                    MessageDifferencer::Equivalent(*obj, *deserialized),
                     "Round trip check failed!");
             ZL_LOG(ALWAYS, "Round trip check passed!");
         };
 
         // Write the serialized object to a file
-        auto path = std::filesystem::path(input->name());
-        path.replace_extension(ext(args.outputType));
+        std::filesystem::path path;
+        if (!args.output) {
+            path = std::filesystem::path(input->name());
+            path.replace_extension(ext(args.outputType));
+        } else {
+            path = std::filesystem::path(args.output.value());
+        }
         std::make_unique<tools::io::OutputFile>(path)->write(serialized);
     }
     return 0;
@@ -304,22 +348,25 @@ int handleSerialize(SerializeArgs args)
 
 int handleTrain(TrainArgs args)
 {
-    std::vector<Schema> schemas;
+    std::vector<std::unique_ptr<google::protobuf::Message>> messages;
     for (auto& input : *args.inputs) {
         const auto contents = std::string(input->contents());
-        schemas.emplace_back(
-                deserialize(contents, args.inputType, args.deserializer));
+        auto message        = args.newMessage();
+        deserialize(contents, args.inputType, args.deserializer, *message);
+        messages.push_back(std::move(message));
     }
 
-    std::vector<training::MultiInput> samples(schemas.size());
-    for (size_t i = 0; i < schemas.size(); i++) {
+    std::vector<training::MultiInput> samples(messages.size());
+    for (size_t i = 0; i < messages.size(); i++) {
         samples[i] = training::MultiInput(
-                args.serializer.getTrainingInputs(schemas[i]));
+                args.serializer.getTrainingInputs(*messages[i]));
     }
 
     auto compressor = args.serializer.getCompressor();
 
     auto params = training::TrainParams();
+    params.compressorGenFunc =
+            openzl::custom_parsers::createCompressorFromSerialized;
 
     auto serialized = training::train(samples, *compressor, params)[0];
 
@@ -355,6 +402,30 @@ int main(int argc, char** argv)
             'c',
             true,
             "An optional compressor to use for the ZL protocol.");
+
+    // Dynamic schema arguments: Use these flags to work with protobuf schemas
+    // that are not compiled into the binary. You can either provide a .proto
+    // source file (--proto) or a pre-compiled descriptor file (--descriptor).
+    // When using dynamic schemas, you must also specify the message type name
+    // with --message-type. Optionally, use --proto-path to add import search
+    // directories for .proto files.
+    parser.addGlobalFlag(
+            kProto,
+            0,
+            true,
+            "Load schema from .proto file (for dynamic schemas)");
+    parser.addGlobalFlag(
+            kDescriptor,
+            0,
+            true,
+            "Load schema from .desc file (for dynamic schemas)");
+    parser.addGlobalFlag(
+            kProtoPath, 0, true, "Directory to search for .proto imports");
+    parser.addGlobalFlag(
+            kMessageType,
+            0,
+            true,
+            "Fully qualified message type name (required with --proto or --descriptor)");
 
     // serialize
     parser.addCommand(Cmd::SERIALIZE, "serialize", 's');

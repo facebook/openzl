@@ -336,8 +336,8 @@ typedef struct {
 
 typedef bool (*GenericTable_OutlinedReserve)(GenericTable*, uint32_t);
 
-#define ZL_TABLE_NEXT_BUCKET_EMPTY ((uint32_t) - 1)
-#define ZL_TABLE_NEXT_CHAIN_EMPTY ((uint32_t) - 2)
+#define ZL_TABLE_NEXT_BUCKET_EMPTY ((uint32_t)-1)
+#define ZL_TABLE_NEXT_CHAIN_EMPTY ((uint32_t)-2)
 
 ZL_TABLE_INLINE uint8_t*
 GenericTable_reallocMem(GenericTable* table, uint8_t* ptr, size_t newSize)

@@ -125,6 +125,7 @@ ZL_RESULT_DECLARE_TYPE(uint64_t);
 ZL_INLINE ZL_RESULT_OF(uint64_t)
         ZL_varintDecode(const uint8_t** src, const uint8_t* end)
 {
+    ZL_RESULT_DECLARE_SCOPE(uint64_t, (ZL_OperationContext*)NULL);
     int8_t const* ptr  = (int8_t const*)*src;
     int8_t const* endi = (int8_t const*)end;
     uint64_t val       = 0;
@@ -181,7 +182,7 @@ ZL_INLINE ZL_RESULT_OF(uint64_t)
             if (b >= 0) {
                 break;
             }
-            ZL_RET_T_ERR(uint64_t, GENERIC);
+            ZL_ERR(GENERIC);
         } while (false);
     } else {
         int shift = 0;
@@ -190,12 +191,12 @@ ZL_INLINE ZL_RESULT_OF(uint64_t)
             shift += 7;
         }
         if (ptr == endi) {
-            ZL_RET_T_ERR(uint64_t, GENERIC);
+            ZL_ERR(GENERIC);
         }
         val |= (uint64_t)(*ptr++) << shift;
     }
     *src = (uint8_t const*)ptr;
-    return ZL_RESULT_WRAP_VALUE(uint64_t, val);
+    return ZL_WRAP_VALUE(val);
 }
 
 ZL_INLINE ZL_RESULT_OF(uint64_t) ZL_varintDecodeStrictImpl(
@@ -203,6 +204,7 @@ ZL_INLINE ZL_RESULT_OF(uint64_t) ZL_varintDecodeStrictImpl(
         const uint8_t* end,
         size_t kWidth)
 {
+    ZL_RESULT_DECLARE_SCOPE(uint64_t, (ZL_OperationContext*)NULL);
     int8_t const* ptr  = (int8_t const*)*src;
     int8_t const* endi = (int8_t const*)end;
     uint64_t val       = 0;
@@ -237,13 +239,12 @@ ZL_INLINE ZL_RESULT_OF(uint64_t) ZL_varintDecodeStrictImpl(
             val |= (uint64_t)(b & 0x7f) << 28;
             if (b >= 0) {
                 if (kWidth == 4 && (b & ~0xF) != 0) {
-                    ZL_RET_T_ERR(
-                            uint64_t, GENERIC, "Varint32 has too many bits!");
+                    ZL_ERR(GENERIC, "Varint32 has too many bits!");
                 }
                 break;
             }
             if (kWidth == 4) {
-                ZL_RET_T_ERR(uint64_t, GENERIC, "Varint32 has too many bytes!");
+                ZL_ERR(GENERIC, "Varint32 has too many bytes!");
             }
             b = *ptr++;
             val |= (uint64_t)(b & 0x7f) << 35;
@@ -269,17 +270,16 @@ ZL_INLINE ZL_RESULT_OF(uint64_t) ZL_varintDecodeStrictImpl(
             val |= (uint64_t)(b & 0x01) << 63;
             if (b >= 0) {
                 if ((b & ~0x01) != 0) {
-                    ZL_RET_T_ERR(
-                            uint64_t, GENERIC, "Varint64 has too many bits!");
+                    ZL_ERR(GENERIC, "Varint64 has too many bits!");
                 }
                 break;
             }
-            ZL_RET_T_ERR(uint64_t, GENERIC, "Varint64 has too many bytes!");
+            ZL_ERR(GENERIC, "Varint64 has too many bytes!");
         } while (false);
         // The last byte was zero means that the varint was encoded
         // inefficiently
         if (!zeroAllowed && b == 0x00) {
-            ZL_RET_T_ERR(uint64_t, GENERIC, "Varint has trailing 0x00 bytes");
+            ZL_ERR(GENERIC, "Varint has trailing 0x00 bytes");
         }
     } else {
         int iter = 0;
@@ -292,20 +292,20 @@ ZL_INLINE ZL_RESULT_OF(uint64_t) ZL_varintDecodeStrictImpl(
             ZL_ASSERT(!(kWidth == 8 && iter >= ZL_VARINT_LENGTH_64));
         }
         if (ptr == endi) {
-            ZL_RET_T_ERR(uint64_t, GENERIC, "Varint not finished!");
+            ZL_ERR(GENERIC, "Varint not finished!");
         }
         // Impossible because either the src is too small, or we would've
         // taken the other path.
         ZL_ASSERT(!(kWidth == 4 && iter >= ZL_VARINT_LENGTH_32 - 1));
         ZL_ASSERT(!(kWidth == 8 && iter >= ZL_VARINT_LENGTH_64 - 1));
         if (iter > 0 && *ptr == 0) {
-            ZL_RET_T_ERR(uint64_t, GENERIC, "Varint has trailing 0x00 bytes");
+            ZL_ERR(GENERIC, "Varint has trailing 0x00 bytes");
         }
 
         val |= (uint64_t)(*ptr++) << (iter * 7);
     }
     *src = (uint8_t const*)ptr;
-    return ZL_RESULT_WRAP_VALUE(uint64_t, val);
+    return ZL_WRAP_VALUE(val);
 }
 
 /**

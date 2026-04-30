@@ -11,10 +11,7 @@ ZL_BEGIN_C_DECLS
 
 ZL_Report DI_rangePack(ZL_Decoder* dictx, const ZL_Input* ins[]);
 
-#define DI_RANGE_PACK(id)                                 \
-    {                                                     \
-        .transform_f = DI_rangePack, .name = "range pack" \
-    }
+#define DI_RANGE_PACK(id) { .transform_f = DI_rangePack, .name = "range pack" }
 
 ZL_END_C_DECLS
 

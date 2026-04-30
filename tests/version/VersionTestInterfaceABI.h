@@ -7,7 +7,7 @@
 #include <memory>
 #include <vector>
 
-namespace zstrong::detail {
+namespace openzl::detail {
 enum class VersionType {
     MAJOR = 0,
     MINOR = 1,
@@ -16,7 +16,7 @@ enum class VersionType {
     MIN_FORMAT = 4,
     MAX_FORMAT = 5,
 };
-} // namespace zstrong::detail
+} // namespace openzl::detail
 
 extern "C" unsigned VersionTestInterface_getZStrongVersion(int versionType);
 

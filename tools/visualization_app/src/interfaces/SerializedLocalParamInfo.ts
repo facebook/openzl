@@ -4,8 +4,8 @@ import type {SerializedIntParamInfo} from './SerializedIntParamInfo';
 import type {SerializedCopyParamInfo} from './SerializedCopyParamInfo';
 import type {SerializedRefParamInfo} from './SerializedRefParamInfo';
 
-export type SerializedLocalParamInfo = {
+export interface SerializedLocalParamInfo {
   intParams: SerializedIntParamInfo[];
   copyParams: SerializedCopyParamInfo[];
   refParams: SerializedRefParamInfo[];
-};
+}

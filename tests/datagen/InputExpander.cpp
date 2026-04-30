@@ -5,7 +5,7 @@
 #include <cstring>
 #include <stdexcept>
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 namespace {
 
@@ -117,4 +117,4 @@ InputExpander::expandStringWithMutation(
     return std::make_pair(result, newSizes);
 }
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

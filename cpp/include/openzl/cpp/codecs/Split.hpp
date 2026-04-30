@@ -79,6 +79,41 @@ class SplitString : public Split {
 
     using Split::Split;
 };
+class SplitByRange : public SimplePipeNode<SplitByRange> {
+   public:
+    static constexpr NodeID node = ZL_NODE_SPLIT_BYRANGE;
+
+    static constexpr NodeMetadata<1, 0, 1> metadata = {
+        .inputs          = { InputMetadata{ .type = Type::Numeric } },
+        .variableOutputs = { OutputMetadata{ .type = Type::Numeric,
+                                             .name = "range_segments" } },
+        .description =
+                "Split numeric input into segments at detected range boundaries"
+    };
+
+    SplitByRange() = default;
+    explicit SplitByRange(int minSegmentSize) : minSegmentSize_(minSegmentSize)
+    {
+    }
+
+    poly::optional<NodeParameters> parameters() const override
+    {
+        if (minSegmentSize_.has_value()) {
+            LocalParams params;
+            params.addIntParam(
+                    ZL_SPLIT_BYRANGE_MIN_SEGMENT_SIZE_PID,
+                    minSegmentSize_.value());
+            return NodeParameters{ .localParams = std::move(params) };
+        }
+        return poly::nullopt;
+    }
+
+    ~SplitByRange() override = default;
+
+   private:
+    poly::optional<int> minSegmentSize_;
+};
+
 } // namespace nodes
 namespace graphs {
 struct Split {

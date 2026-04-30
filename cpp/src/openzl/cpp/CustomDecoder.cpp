@@ -69,7 +69,7 @@ static ZL_Report decodeFn(
                 (const CustomDecoder*)ZL_Decoder_getOpaquePtr(decoder);
         customDecoder->decode(state);
     } catch (const Exception& e) {
-        // TODO(terrelln): Beter wrap the error
+        // TODO(terrelln): Better wrap the error
         ZL_ERR(GENERIC, "C++ openzl::Exception: %s", e.what());
     } catch (const std::exception& e) {
         ZL_ERR(GENERIC, "C++ std::exception: %s", e.what());
@@ -81,7 +81,7 @@ static ZL_Report decodeFn(
 
 /* static */ void CustomDecoder::registerCustomDecoder(
         DCtx& dctx,
-        std::shared_ptr<CustomDecoder> decoder)
+        std::shared_ptr<const CustomDecoder> decoder)
 {
     const auto& desc               = decoder->multiInputDescription();
     auto inputTypes                = typesToCTypes(desc.inputTypes);

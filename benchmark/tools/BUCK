@@ -1,0 +1,30 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("../../defs.bzl", "zs_binary")
+
+oncall("data_compression")
+
+zs_binary(
+    name = "bench_input_gen",
+    srcs = [
+        "input_gen.cpp",
+    ],
+)
+
+zs_binary(
+    name = "gen_split_byrange_data",
+    srcs = [
+        "gen_split_byrange_data.cpp",
+    ],
+)
+
+zs_binary(
+    name = "inspect_split_byrange",
+    srcs = [
+        "inspect_split_byrange.c",
+    ],
+    deps = [
+        "../..:zstronglib",
+        "../../tools:fileio",
+    ],
+)

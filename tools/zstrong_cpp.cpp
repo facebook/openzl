@@ -104,7 +104,11 @@ class StandardTransform : public ParameterizedTransform {
             // parameters that were already set on the standard node.
             // TODO: Standard nodes probably shouldn't "internally" use
             // parameters like convert_serial_to_token2 does.
-            node = ZL_Compressor_cloneNode(&cgraph, node_, &params);
+            const ZL_ParameterizedNodeDesc desc = {
+                .node        = node_,
+                .localParams = &params,
+            };
+            node = ZL_Compressor_registerParameterizedNode(&cgraph, &desc);
         }
         return ZL_Compressor_registerStaticGraph_fromNode(
                 &cgraph, node, successors.data(), successors.size());
@@ -300,8 +304,12 @@ class ThriftTransform : public StandardFnTransform {
                                       &cgraph,
                                       thrift::kThriftBinaryConfigurable);
                           }
-                          node = ZL_Compressor_cloneNode(
-                                  &cgraph, node, &params);
+                          const ZL_ParameterizedNodeDesc desc = {
+                              .node        = node,
+                              .localParams = &params,
+                          };
+                          node = ZL_Compressor_registerParameterizedNode(
+                                  &cgraph, &desc);
                           return ZL_Compressor_registerStaticGraph_fromNode(
                                   &cgraph,
                                   node,
@@ -438,10 +446,9 @@ class DirectedSelector : public Selector {
             std::span<ZL_GraphID const> successors,
             ZL_LocalParams const& localParams) const override
     {
-        auto desc = buildDirectedSelectorDesc(
-                ZL_Type_any, successors.data(), successors.size());
-        desc.localParams = localParams;
-        return ZL_Compressor_registerSelectorGraph(&cgraph, &desc);
+        (void)localParams; // TODO: support localParams if needed
+        return registerDirectedSelectorGraph(
+                &cgraph, successors.data(), successors.size());
     }
 
     ZL_Type inputType() const override
@@ -750,7 +757,7 @@ ParameterizedTransformMap const& getStandardTransforms()
                                                       | ZL_Type_numeric),
                                               ZL_Type_numeric },
                         "Tokenizes the input into an alphabet stream and an indicies stream. "
-                        "The alphabet is either sorted in ascending order, or in occurence order.",
+                        "The alphabet is either sorted in ascending order, or in occurrence order.",
                         std::vector<std::string>{ "alphabet", "indices" },
                         std::vector<ParamInfo>{
                                 { 0, "stream_type", "The input stream type" },
@@ -771,7 +778,7 @@ ParameterizedTransformMap const& getStandardTransforms()
                         std::vector<ZL_Type>{ ZL_Type_struct },
                         "Compresses a fixed-size stream using LZ compression "
                         "that matches entire fields, with a custom literals "
-                        "grap.",
+                        "graph.",
                         std::vector<std::string>{ "literals" }));
         // TODO(terrelln): These don't belong here, but lets get this up and
         // working first...
@@ -1003,9 +1010,10 @@ ZL_Report CustomTransform::encode(ZL_Encoder* eictx, ZL_Input const* input)
     return encode(eictx, &input, 1);
 }
 
-ZL_Report CustomTransform::decode(ZL_Decoder*, ZL_Input const*[]) const
+ZL_Report CustomTransform::decode(ZL_Decoder* dictx, ZL_Input const*[]) const
 {
-    ZL_RET_R_ERR(logicError);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
+    ZL_ERR(logicError);
 }
 
 ZL_Report CustomTransform::decode(
@@ -1015,13 +1023,14 @@ ZL_Report CustomTransform::decode(
         ZL_Input const*[],
         size_t nbVO) const
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     assert(nbFixed == nbFixedSuccessors());
     (void)nbFixed;
     if (nbVariableSuccessors() == 0) {
-        ZL_RET_R_IF_NE(node_invalid_input, nbVO, 0);
+        ZL_ERR_IF_NE(nbVO, 0, node_invalid_input);
         return this->decode(dictx, fixedInputs);
     }
-    ZL_RET_R_ERR(logicError);
+    ZL_ERR(logicError);
 }
 
 ZL_GraphID CustomSelector::registerSelector(
@@ -1244,10 +1253,12 @@ std::vector<std::string> decompressMulti(
     DCtx dctx;
     // TODO(terrelln): Get rid of this hack by properly registering thrift as a
     // custom transform. We don't currently support custom C++ transforms.
-    dctx.unwrap(thrift::registerCompactTransform(
-            dctx.get(), thrift::kThriftCompactConfigurable));
-    dctx.unwrap(thrift::registerBinaryTransform(
-            dctx.get(), thrift::kThriftBinaryConfigurable));
+    dctx.unwrap(
+            thrift::registerCompactTransform(
+                    dctx.get(), thrift::kThriftCompactConfigurable));
+    dctx.unwrap(
+            thrift::registerBinaryTransform(
+                    dctx.get(), thrift::kThriftBinaryConfigurable));
     dctx.unwrap(
             ZS2_DCtx_registerJsonExtract(dctx.get(), kJsonExtractTransformID));
     dctx.unwrap(

@@ -1,6 +1,8 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load(":defs.bzl", "private_headers", "public_headers", "zs_library")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
+load(":defs.bzl", "private_headers", "public_headers", "zl_fbcode_is_release_pp_flag", "zs_library")
 
 oncall("data_compression")
 
@@ -30,6 +32,10 @@ zs_library(
         ],
     )),
     header_namespace = "",
+    propagated_pp_flags = [
+        zl_fbcode_is_release_pp_flag(),
+        "-DZL_IS_FBCODE=1",
+    ],
     exported_deps = [
         ":config",
     ],
@@ -95,8 +101,12 @@ zs_library(
         # "-mavx2",
         "-DUSE_FOLLY",
     ],
+    deps = [
+        "fbsource//third-party/lz4:lz4",
+    ],
     exported_deps = [
         ":common",
+        ":dict",
         ":fse",
     ],
     exported_external_deps = [
@@ -123,6 +133,9 @@ zs_library(
         "src/zstrong/transforms/decoder_registry.h",
     ])),
     header_namespace = "",
+    deps = [
+        "fbsource//third-party/lz4:lz4",
+    ],
     exported_deps = [
         ":common",
         ":fse",
@@ -133,11 +146,29 @@ zs_library(
 )
 
 zs_library(
+    name = "dict",
+    srcs = glob([
+        "src/openzl/dict/**/*.c",
+    ]),
+    headers = private_headers(glob([
+        "src/openzl/dict/**/*.h",
+    ])),
+    header_namespace = "",
+    deps = [
+        ":common",
+    ],
+    exported_deps = [
+        ":public_headers",
+    ],
+)
+
+zs_library(
     name = "zstronglib",
     exported_deps = [
         ":common",
         ":compress",
         ":decompress",
+        ":dict",
     ],
     exported_external_deps = [
         "zstd",
@@ -149,10 +180,14 @@ zs_library(
     name = "fse",
     srcs = glob([
         "src/openzl/fse/**/*.c",
-        "src/openzl/fse/**/*.S",
         "src/zstrong/fse/**/*.c",
-        "src/zstrong/fse/**/*.S",
-    ]),
+    ]) + select({
+        "DEFAULT": glob([
+            "src/openzl/fse/**/*.S",
+            "src/zstrong/fse/**/*.S",
+        ]),
+        "ovr_config//compiler:msvc": [],
+    }),
     headers = private_headers(glob([
         "src/openzl/fse/**/*.h",
         "src/zstrong/fse/**/*.h",
@@ -161,5 +196,84 @@ zs_library(
     exported_deps = [
         "fbsource//xplat/secure_lib:secure_string",
         ":config",
+    ],
+)
+
+cpp_library(
+    # @autodeps-skip
+    name = "openzl_fbcode",
+    visibility = ["//openzl:openzl"],
+    exported_deps = [
+        "custom_parsers:pytorch_model_parser",  # @manual
+        "custom_parsers:zip_lexer",  # @manual
+        "custom_transforms/json_extract:json_extract",  # @manual
+        "custom_transforms/parse:parse",  # @manual
+        "custom_transforms/thrift:thrift_lib",  # @manual
+        "custom_transforms/thrift:thrift_parse_config_schema-cpp2-types",  # @manual
+        "custom_transforms/thrift/kernels:decode_thrift_binding",  # @manual
+        "custom_transforms/thrift/kernels:encode_thrift_binding",  # @manual
+        "custom_transforms/tulip_v2:tulip_v2",  # @manual
+        "tools:zstrong_cpp",  # @manual
+        "tools:zstrong_json",  # @manual
+        "tools:zstrong_ml",  # @manual
+        ":openzl_core",  # @manual
+    ],
+)
+
+# This target exposes the standalone OpenZL core library that only has zstd as an external dependency.
+cpp_library(
+    # @autodeps-skip
+    name = "openzl_core",
+    visibility = ["//openzl:openzl_core"],
+    exported_deps = [
+        "cpp:openzl_cpp",  # @manual
+    ],
+)
+
+cpp_library(
+    # @autodeps-skip
+    name = "openzl_training",
+    visibility = ["//openzl:openzl_training"],
+    exported_deps = [
+        "tools/training:train",  # @manual
+    ],
+)
+
+# Not intended to be widely used. A supported Python binding is coming.
+python_library(
+    # @autodeps-skip
+    name = "openzl_py_deprecated",
+    visibility = ["//openzl:openzl_py_deprecated"],
+    deps = [
+        "custom_transforms/thrift:thrift_parse_config_schema-py3-types",  # @manual
+        "custom_transforms/thrift:thrift_parse_config_schema-python-types",  # @manual
+        "tools/py:zstrong_json",  # @manual
+        "tools/py:zstrong_ml",  # @manual
+    ],
+)
+
+# Do not use in production builds.
+cpp_library(
+    # @autodeps-skip
+    name = "openzl_test_utils",
+    visibility = ["//openzl:openzl_test_utils"],
+    exported_deps = [
+        "custom_transforms/thrift/tests:thrift_test_utils",  # @manual
+        "custom_transforms/tulip_v2/tests:tulip_v2_data_utils",  # @manual
+        "tests:fuzz_utils",  # @manual
+        "tests:selector_optimization",  # @manual
+        "tests:test_zstrong_fixtures",  # @manual
+        "tests/datagen:datagen",
+        "tools:fileio",  # @manual
+        "tools/streamdump:stream_dump2_headers",  # @manual
+    ],
+)
+
+python_library(
+    # @autodeps-skip
+    name = "openzl_py",
+    visibility = ["//openzl:openzl_py"],
+    deps = [
+        "py:openzl",
     ],
 )

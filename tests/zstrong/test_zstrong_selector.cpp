@@ -12,10 +12,11 @@
 #include "openzl/zl_errors.h"
 #include "openzl/zl_selector.h"
 #include "openzl/zl_version.h"
+#include "tests/datagen/random_producer/compat_uniform_distribution.h"
 #include "tests/utils.h"
 #include "tests/zstrong/test_zstrong_fixture.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 
 template <size_t seed>
@@ -27,7 +28,8 @@ static size_t xorRandTransform(
 {
     EXPECT_GE(dstCapacity, srcSize);
     std::mt19937_64 generator(seed);
-    std::uniform_int_distribution<unsigned char> distribution(0, 255);
+    datagen::compat_uniform_int_distribution<unsigned char> distribution(
+            0, 255);
     const unsigned char* const src8 = (const unsigned char*)src;
     unsigned char* const dst8       = (unsigned char*)dst;
     for (unsigned int i = 0; i < srcSize; i++) {
@@ -237,13 +239,14 @@ TEST_F(SelectorTest, TestSetSuccessorParams)
     const auto successorDgFn = [](ZL_Graph* gctx,
                                   ZL_Edge* inputs[],
                                   size_t nbIns) noexcept -> ZL_Report {
+        ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
         // verify passed params
         const auto p1 = ZL_Graph_getLocalIntParam(gctx, 1);
-        ZL_RET_R_IF_NE(GENERIC, p1.paramValue, 2);
+        ZL_ERR_IF_NE(p1.paramValue, 2, GENERIC);
         const auto p2 = ZL_Graph_getLocalIntParam(gctx, 2);
-        ZL_RET_R_IF_NE(GENERIC, p2.paramValue, 4);
+        ZL_ERR_IF_NE(p2.paramValue, 4, GENERIC);
         const auto p3 = ZL_Graph_getLocalIntParam(gctx, 3);
-        ZL_RET_R_IF_NE(GENERIC, p3.paramValue, 6);
+        ZL_ERR_IF_NE(p3.paramValue, 6, GENERIC);
         const auto p4 = ZL_Graph_getLocalRefParam(gctx, 4);
         if (std::string((const char*)p4.paramRef, 4) != std::string("I am")) {
             return ZL_returnError(ZL_ErrorCode_GENERIC);
@@ -252,7 +255,7 @@ TEST_F(SelectorTest, TestSetSuccessorParams)
         if (std::string((const char*)p5.paramRef, 4) != std::string(" the")) {
             return ZL_returnError(ZL_ErrorCode_GENERIC);
         }
-        ZL_RET_R_IF(graph_invalidNumInputs, nbIns != 1);
+        ZL_ERR_IF(nbIns != 1, graph_invalidNumInputs);
         ZL_Edge* input = inputs[0];
         ZL_REQUIRE_SUCCESS(ZL_Edge_setDestination(input, ZL_GRAPH_STORE));
         return ZL_returnSuccess();
@@ -403,4 +406,4 @@ TEST_F(SelectorTest, StreamTypeSerializedSuccess)
 }
 
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

@@ -10,11 +10,10 @@
 ZL_BEGIN_C_DECLS
 
 ZL_Report DI_fieldLz(ZL_Decoder* dictx, const ZL_Input* ins[]);
+ZL_Report DI_lz(ZL_Decoder* dictx, const ZL_Input* ins[]);
 
-#define DI_FIELD_LZ(id)                               \
-    {                                                 \
-        .transform_f = DI_fieldLz, .name = "field lz" \
-    }
+#define DI_FIELD_LZ(id) { .transform_f = DI_fieldLz, .name = "field lz" }
+#define DI_LZ(id) { .transform_f = DI_lz, .name = "!zl.lz" }
 
 ZL_END_C_DECLS
 

@@ -8,7 +8,7 @@
 #include "openzl/zl_decompress.h"
 #include "tests/zstrong/test_zstrong_fixture.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 
 class FixedTest : public ZStrongTest {
@@ -42,4 +42,4 @@ class FixedTest : public ZStrongTest {
 };
 
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

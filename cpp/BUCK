@@ -3,7 +3,7 @@
 # @noautodeps
 
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("//data_compression/experimental/zstrong:defs.bzl", "private_headers", "public_headers")
+load("../defs.bzl", "private_headers", "public_headers")
 
 oncall("data_compression")
 
@@ -20,6 +20,6 @@ cpp_library(
         "src/**/*.hpp",
     ])),
     exported_deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
+        "..:zstronglib",
     ],
 )

@@ -1,0 +1,62 @@
+[
+    {
+        "algorithm": "lz4",
+        "level": 1
+    },
+    {
+        "algorithm": "openzl",
+        "params": {
+            "CompressionLevel": 1
+        },
+        "compressor_name": "lz-lz4"
+    },
+    {
+        "algorithm": "openzl",
+        "params": {
+            "CompressionLevel": 1
+        },
+        "compressor_name": "lz-lz4-huf"
+    },
+    {
+        "algorithm": "zstd",
+        "level": 1
+    },
+    {
+        "algorithm": "zstd",
+        "level": 1,
+        "params": {
+            "windowLog": 16,
+            "hashLog": 12
+        }
+    },
+    {
+        "algorithm": "openzl",
+        "params": {
+            "CompressionLevel": 1
+        },
+        "compressor_name": "lz-zstd-slow",
+        "trace": "/tmp/trace.cbor",
+        "trace_streams": "/tmp/trace-streams"
+    },
+    {
+        "algorithm": "openzl",
+        "params": {
+            "CompressionLevel": 1
+        },
+        "compressor_name": "lz-zstd-fast"
+    },
+    {
+        "algorithm": "openzl",
+        "params": {
+            "CompressionLevel": 1
+        },
+        "compressor_name": "lz-zstd-iso"
+    },
+    {
+        "algorithm": "openzl",
+        "params": {
+            "CompressionLevel": 1
+        },
+        "compressor_name": "lz-zstd-buc"
+    }
+]

@@ -2,6 +2,7 @@
 
 # @noautodeps
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("../../defs.bzl", "cross_platform_labels", "relative_headers")
 
 oncall("data_compression")
 
@@ -10,10 +11,13 @@ cpp_unittest(
     srcs = glob([
         "**/*.cpp",
     ]),
-    headers = glob([
+    headers = relative_headers(glob([
         "**/*.hpp",
-    ]),
+    ])),
+    header_namespace = "",
+    labels = cross_platform_labels(),
     deps = [
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
+        "..:openzl_cpp",
+        "../../tests/datagen:datagen",
     ],
 )

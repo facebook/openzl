@@ -1,7 +1,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_binary", "zs_cxxbinary", "zs_library")
+load("../defs.bzl", "zs_binary", "zs_cxxbinary", "zs_library")
 
 oncall("data_compression")
 
@@ -9,7 +9,7 @@ zs_binary(
     name = "compress",
     srcs = ["compress_app.cpp"],
     deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
+        "..:zstronglib",
     ],
 )
 
@@ -17,8 +17,8 @@ zs_binary(
     name = "zs2_pipeline",
     srcs = ["zs2_pipeline.c"],
     deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/tools:fileio",
+        "..:zstronglib",
+        "../tools:fileio",
     ],
 )
 
@@ -26,8 +26,8 @@ zs_binary(
     name = "zs2_trygraph",
     srcs = ["zs2_trygraph.c"],
     deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/tools:fileio",
+        "..:zstronglib",
+        "../tools:fileio",
     ],
 )
 
@@ -35,8 +35,8 @@ zs_binary(
     name = "zs2_selector",
     srcs = ["zs2_selector.c"],
     deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/tools:fileio",
+        "..:zstronglib",
+        "../tools:fileio",
     ],
 )
 
@@ -45,8 +45,8 @@ zs_library(
     srcs = ["example_utils.cpp"],
     headers = ["example_utils.h"],
     deps = [
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/tools:fileio",
+        "..:zstronglib",
+        "../tools:fileio",
     ],
 )
 
@@ -54,8 +54,8 @@ zs_cxxbinary(
     name = "numeric_array",
     srcs = ["numeric_array.cpp"],
     deps = [
+        "..:zstronglib",
         ":example_utils",
-        "//data_compression/experimental/zstrong:zstronglib",
     ],
 )
 
@@ -63,21 +63,15 @@ zs_cxxbinary(
     name = "training",
     srcs = ["training.cpp"],
     deps = [
+        "..:zstronglib",
+        "../cpp:openzl_cpp",
+        "../custom_parsers/shared_components:numeric_graphs",
+        "../tools:io",
+        "../tools/training:train",
+        "../tools/training:train_common",
+        "../tools/training/clustering:clustering_graph_trainer",
         ":example_utils",
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
-        "//data_compression/experimental/zstrong/custom_parsers/shared_components:numeric_graphs",
-        "//data_compression/experimental/zstrong/tools:io",
-        "//data_compression/experimental/zstrong/tools/training:train",
-        "//data_compression/experimental/zstrong/tools/training:train_common",
-        "//data_compression/experimental/zstrong/tools/training/clustering:clustering_graph_trainer",
     ],
-)
-
-python_library(
-    name = "parsing_data_generator",
-    srcs = ["parsing_data_generator.py"],
-    labels = ["autodeps2_generated"],
 )
 
 python_library(

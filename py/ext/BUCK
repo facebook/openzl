@@ -25,10 +25,10 @@ cpp_python_extension_with_type_stubs(
         "graphs",
     ],
     deps = [
+        "../..:zstronglib",
+        "../../cpp:openzl_cpp",
+        "../../tools/sddl/compiler:lib",  # @manual
         "fbsource//third-party/nanobind:nanobind",
         "fbsource//third-party/pypi/numpy:numpy",  # @manual
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/cpp:openzl_cpp",
-        "//data_compression/experimental/zstrong/tools/sddl/compiler:lib",  # @manual
     ],
 )

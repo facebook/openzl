@@ -10,16 +10,18 @@
 
 #include "openzl/zl_data.h" // st_*
 
-#define INTEGER_BITPACK_GRAPH(id)                                     \
-    {                                                                 \
-        .CTid = id, .inputTypes = ZL_STREAMTYPELIST(ZL_Type_numeric), \
-        .soTypes = ZL_STREAMTYPELIST(ZL_Type_serial),                 \
+#define INTEGER_BITPACK_GRAPH(id)                         \
+    {                                                     \
+        .CTid       = id,                                 \
+        .inputTypes = ZL_STREAMTYPELIST(ZL_Type_numeric), \
+        .soTypes    = ZL_STREAMTYPELIST(ZL_Type_serial),  \
     }
 
-#define SERIALIZED_BITPACK_GRAPH(id)                                 \
-    {                                                                \
-        .CTid = id, .inputTypes = ZL_STREAMTYPELIST(ZL_Type_serial), \
-        .soTypes = ZL_STREAMTYPELIST(ZL_Type_serial),                \
+#define SERIALIZED_BITPACK_GRAPH(id)                     \
+    {                                                    \
+        .CTid       = id,                                \
+        .inputTypes = ZL_STREAMTYPELIST(ZL_Type_serial), \
+        .soTypes    = ZL_STREAMTYPELIST(ZL_Type_serial), \
     }
 
 #endif

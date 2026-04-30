@@ -10,7 +10,7 @@
 #include "tests/utils.h"
 #include "tests/zstrong/test_integer_fixture.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 std::string IntegerTest::generatedData(size_t nbElts, uint64_t cardinality)
 {
@@ -95,4 +95,4 @@ void IntegerTest::testGraph(ZL_GraphID graph, size_t eltWidth)
 }
 
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

@@ -6,6 +6,8 @@
 #include "openzl/zl_reflection.h"
 #include "tools/training/ace/ace_sampling.h"
 
+#include "openzl/cpp/codecs/Bitsplit.hpp"
+
 namespace openzl {
 namespace training {
 namespace {
@@ -88,6 +90,9 @@ std::vector<ACENode> makeAllNodes()
     n.push_back(buildNode(nodes::QuantizeOffsets{}));
     n.push_back(buildNode(nodes::QuantizeLengths{}));
     n.push_back(buildNode(nodes::TransposeSplit{}));
+    n.push_back(buildNode(nodes::BitsplitFP{}));
+    n.push_back(buildNode(nodes::BitsplitBF16{}));
+    n.push_back(buildNode(nodes::BitsplitTop8{}));
     n.push_back(buildNode(nodes::Zigzag{}));
     n.push_back(buildNode(nodes::ConvertSerialToNum8{}));
     n.push_back(buildNode(nodes::ConvertSerialToNumLE16{}));
@@ -149,8 +154,20 @@ std::vector<ACECompressor> makePrebuiltNumericCompressors()
     ACECompressor rangePackFieldLz(buildNode(nodes::RangePack{}), { fieldLz });
     ACECompressor rangePackDeltaFieldLz(
             buildNode(nodes::RangePack{}), { deltaFieldLz });
+    ACECompressor entropy(buildGraph(graphs::Entropy{}));
+    ACECompressor top8bitsEntropy(
+            buildNode(nodes::BitsplitTop8{}), { entropy });
+    ACECompressor fpBitsEntropy(buildNode(nodes::BitsplitFP{}), { entropy });
+    ACECompressor bf16BitsEntropy(
+            buildNode(nodes::BitsplitBF16{}), { entropy });
     ACECompressor fse(buildGraph(graphs::Fse{}));
     ACECompressor store(buildGraph(graphs::Store{}));
+    ACECompressor f32Decon(
+            buildNode(nodes::Float32Deconstruct{}), { store, entropy });
+    ACECompressor f16Decon(
+            buildNode(nodes::Float16Deconstruct{}), { store, entropy });
+    ACECompressor bf16Decon(
+            buildNode(nodes::BFloat16Deconstruct{}), { store, entropy });
     ACECompressor quantizeOffsets(
             buildNode(nodes::QuantizeOffsets{}), { fse, store });
     ACECompressor quantizeLengths(
@@ -167,6 +184,12 @@ std::vector<ACECompressor> makePrebuiltNumericCompressors()
         deltaZigzagFieldLz,
         rangePackFieldLz,
         rangePackDeltaFieldLz,
+        top8bitsEntropy,
+        fpBitsEntropy,
+        bf16BitsEntropy,
+        f32Decon,
+        f16Decon,
+        bf16Decon,
         quantizeOffsets,
         quantizeLengths,
     };
@@ -355,8 +378,9 @@ buildRandomNodeCompressor(std::mt19937_64& rng, Type inputType, size_t maxDepth)
     std::vector<std::unique_ptr<ACECompressor>> successors;
     successors.reserve(node.outputTypes.size());
     for (size_t i = 0; i < node.outputTypes.size(); ++i) {
-        successors.push_back(std::make_unique<ACECompressor>(
-                buildRandomCompressor(rng, node.outputTypes[i], maxDepth - 1)));
+        successors.push_back(
+                std::make_unique<ACECompressor>(buildRandomCompressor(
+                        rng, node.outputTypes[i], maxDepth - 1)));
     }
     return ACENodeCompressor(std::move(node), std::move(successors));
 }

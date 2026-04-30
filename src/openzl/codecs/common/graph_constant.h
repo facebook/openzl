@@ -10,16 +10,18 @@
 
 #include "openzl/zl_data.h"
 
-#define SERIALIZED_CONSTANT_GRAPH(id)                                \
-    {                                                                \
-        .CTid = id, .inputTypes = ZL_STREAMTYPELIST(ZL_Type_serial), \
-        .soTypes = ZL_STREAMTYPELIST(ZL_Type_serial),                \
+#define SERIALIZED_CONSTANT_GRAPH(id)                    \
+    {                                                    \
+        .CTid       = id,                                \
+        .inputTypes = ZL_STREAMTYPELIST(ZL_Type_serial), \
+        .soTypes    = ZL_STREAMTYPELIST(ZL_Type_serial), \
     }
 
-#define FIXED_SIZE_CONSTANT_GRAPH(id)                                \
-    {                                                                \
-        .CTid = id, .inputTypes = ZL_STREAMTYPELIST(ZL_Type_struct), \
-        .soTypes = ZL_STREAMTYPELIST(ZL_Type_struct),                \
+#define FIXED_SIZE_CONSTANT_GRAPH(id)                    \
+    {                                                    \
+        .CTid       = id,                                \
+        .inputTypes = ZL_STREAMTYPELIST(ZL_Type_struct), \
+        .soTypes    = ZL_STREAMTYPELIST(ZL_Type_struct), \
     }
 
 #endif

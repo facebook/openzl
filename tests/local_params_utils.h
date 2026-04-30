@@ -8,7 +8,7 @@
 
 #include "openzl/zl_localParams.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 
 /**
@@ -184,4 +184,4 @@ void LocalParams_check_eq(const LocalParams& lhs, const LocalParams& rhs);
 void LocalParams_check_ne(const LocalParams& lhs, const LocalParams& rhs);
 
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl

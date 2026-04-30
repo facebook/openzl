@@ -10,17 +10,21 @@
 #include "openzl/codecs/tokenize/encode_tokenize4to2_kernel.h"
 #include "openzl/codecs/tokenize/encode_tokenizeVarto4_kernel.h"
 
-namespace zstrong::tests {
+namespace openzl::tests {
 
 namespace {
 void roundtrip2to1(const std::vector<uint16_t>& input)
 {
     std::vector<uint8_t> indexes(input.size());
-    indexes.reserve(1); /* ensure buffer is not NULL */
+    if (input.size() == 0) {
+        indexes.reserve(1); // force a non-null pointer
+    }
     assert(indexes.data() != NULL);
     std::vector<uint16_t> alphabet(256);
     std::vector<uint16_t> regenerated(input.size());
-    regenerated.reserve(1); /* ensure buffer is not NULL */
+    if (input.size() == 0) {
+        regenerated.reserve(1); // force a non-null pointer
+    }
     assert(regenerated.data() != NULL);
 
     size_t const alphabetSize = ZS_tokenize2to1_encode(
@@ -202,4 +206,4 @@ TEST(TokenizeKernelTest, RoundTripVarTo4)
             maxLength /* because content is all the same char */);
 }
 
-} // namespace zstrong::tests
+} // namespace openzl::tests

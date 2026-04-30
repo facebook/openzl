@@ -75,8 +75,8 @@ ZL_Report ZL_Output_numElts(const ZL_Output* output);
 /**
  * @returns The content size in bytes that has been committed to @p output.
  * For non-string types, this is the eltWidth * numElts. For string types, this
- * is the sum of the lengths of each stream. If @p output has not been commited,
- * it returns an error.
+ * is the sum of the lengths of each stream. If @p output has not been
+ * committed, it returns an error.
  */
 ZL_Report ZL_Output_contentSize(const ZL_Output* output);
 
@@ -234,7 +234,7 @@ ZL_INLINE ZL_Report ZL_Output_commit(ZL_Output* output, size_t numElts)
  * there is no known scenario (yet) where this makes sense.
  */
 
-/* Simple "enum"-like Medata :
+/* Simple "enum"-like Metadata :
  * =========================
  *
  * This is intended for some simple "tag" scenarios

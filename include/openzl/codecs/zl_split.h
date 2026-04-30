@@ -5,13 +5,38 @@
 
 #include <stddef.h>
 
+#include "openzl/zl_data.h"
 #include "openzl/zl_graph_api.h"
+#include "openzl/zl_nodes.h"
 #include "openzl/zl_opaque_types.h"
-#include "openzl/zl_stream.h"
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
+
+// split_byrange
+// Input: 1 numeric stream (all widths: 1, 2, 4, 8 bytes)
+// Output: variable number of numeric streams, one per detected range segment.
+// Automatically detects boundaries where values belong to non-overlapping
+// ranges, and splits the input at those boundaries.
+// Built on top of splitN: shares the same wire format and decoder.
+//
+// Limitation: each segment must have at least minSegmentSize elements
+// (default 16) for the boundary to be detected. Ranges that alternate
+// at finer granularity (e.g. element-level [low, high, low, high])
+// will not be split.
+//
+// Optional parameter:
+//   ZL_SPLIT_BYRANGE_MIN_SEGMENT_SIZE_PID (int):
+//     Minimum number of elements per segment. A split is rejected if either
+//     side would have fewer elements. Higher values reduce false positives
+//     from noise; lower values allow detecting shorter segments.
+//     Default is width-dependent: larger for narrow types (u8).
+#define ZL_NODE_SPLIT_BYRANGE ZL_MAKE_NODE_ID(ZL_StandardNodeID_split_byrange)
+
+/// Optional int param: minimum segment size for split_byrange.
+/// If unset, uses a width-dependent default (larger for narrow types).
+#define ZL_SPLIT_BYRANGE_MIN_SEGMENT_SIZE_PID 324
 
 // SplitN
 // Input: 1 stream, of type either Serial, Numeric of Struct.
@@ -34,7 +59,9 @@ extern "C" {
 //     };
 // ZL_LocalCopyParams lcp = { &ssp, 1 };
 // ZL_LocalParams lParams = { .copyParams = lcp };
-// ZL_NodeID nid = ZL_Compressor_cloneNode(cgraph, ZS2_NODE_SPLITN, &lParams);
+// ZL_NodeID nid = ZL_Compressor_registerParameterizedNode(cgraph,
+//     &(const ZL_ParameterizedNodeDesc){ .node = ZS2_NODE_SPLITN, .localParams
+//     = &lParams });
 //
 // The whole declaration logic is abstracted behind a public function
 // ZL_Compressor_registerSplitNode_withParams(), which achieves the same thing

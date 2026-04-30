@@ -13,7 +13,7 @@
 #include "openzl/zl_errors.h"
 #include "tests/utils.h"
 
-namespace zstrong {
+namespace openzl {
 namespace tests {
 namespace {
 
@@ -583,7 +583,7 @@ void benchmark(int argc, char** argv)
 
 } // namespace
 } // namespace tests
-} // namespace zstrong
+} // namespace openzl
 
 #ifdef BENCHMARK_BITSTREAM
 int main(int argc, char** argv)
@@ -593,6 +593,6 @@ int main(int argc, char** argv)
     if (ret != 0) {
         return ret;
     }
-    zstrong::tests::benchmark(argc, argv);
+    openzl::tests::benchmark(argc, argv);
 }
 #endif

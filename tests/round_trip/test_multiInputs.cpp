@@ -858,12 +858,13 @@ template <size_t N = 1>
 static ZL_Report
 runStoreGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbInputs) noexcept
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     for (size_t n = 0; n < nbInputs; n++) {
         auto sctx = inputs[n];
         if (n % N == 0) {
-            ZL_RET_R_IF_ERR(ZL_Edge_setDestination(sctx, ZL_GRAPH_STORE));
+            ZL_ERR_IF_ERR(ZL_Edge_setDestination(sctx, ZL_GRAPH_STORE));
         } else {
-            ZL_RET_R_IF_ERR(
+            ZL_ERR_IF_ERR(
                     ZL_Edge_setDestination(sctx, ZL_GRAPH_COMPRESS_GENERIC));
         }
     }

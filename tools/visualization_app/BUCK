@@ -1,9 +1,11 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 load("@bazel_skylib//lib:shell.bzl", "shell")
-load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup", "buck_genrule", "buck_sh_binary", "buck_sh_test")
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup", "buck_genrule", "buck_sh_binary")
 
 oncall("data_compression")
+
+BRANCH_NAME = read_package_value("directory_branching.branch_name")  # Gets "dev" or "prod" from the path
 
 buck_filegroup(
     name = "app_srcs",
@@ -17,7 +19,7 @@ buck_genrule(
         "echo -e {0} > $OUT && chmod +x $OUT"
             .format(shell.quote("\n".join([
             "#!/bin/sh",
-            "pushd \\$(hg root)/fbcode/data_compression/experimental/zstrong/tools/visualization_app",
+            "pushd \\$(hg root)/fbcode/openzl/{}/tools/visualization_app".format(BRANCH_NAME),
             "yarn build",
             "popd",
         ])))
@@ -37,14 +39,16 @@ buck_genrule(
             .format(shell.quote("\n".join([
             "#!/bin/sh",
             "cd \\$(dirname \\$0)",
-            "cd \\$(hg root)/fbcode/data_compression/experimental/zstrong/tools/visualization_app",
+            "cd \\$(hg root)/fbcode/openzl/{}/tools/visualization_app".format(BRANCH_NAME),
             "yarn install",
             "yarn test:run",
         ])))
     ),
 )
 
-buck_sh_test(
-    name = "visualization-app-tests",
-    test = ":yarn-test",
-)
+# disabled for now. vitest 3.2.4 has a security vulnerability that prevents us from using it.
+# vitest 4.0.0 is in beta. This test will be re-enabled when it becomes generally available.
+# buck_sh_test(
+#     name = "visualization-app-tests",
+#     test = ":yarn-test",
+# )

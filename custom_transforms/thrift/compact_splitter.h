@@ -6,6 +6,7 @@
 #include "custom_transforms/thrift/parse_config.h"   // @manual
 #include "custom_transforms/thrift/split_helpers.h"  // @manual
 #include "custom_transforms/thrift/splitter.h"       // @manual
+#include "custom_transforms/thrift/thrift_errors.h"  // @manual
 #include "custom_transforms/thrift/thrift_parsers.h" // @manual
 #include "custom_transforms/thrift/thrift_types.h"   // @manual
 
@@ -87,7 +88,7 @@ ZL_FORCE_INLINE_ATTR constexpr uint8_t CompactParser::parseBool(uint8_t byte)
     if (byte == trueVal || byte == falseVal) {
         return byte == trueVal;
     }
-    throw std::runtime_error{ "Invalid boolean value!" };
+    throw ThriftMalformedInputError{ "Invalid boolean value!" };
 }
 
 ZL_FORCE_INLINE_ATTR constexpr uint8_t DCompactParser::unparseBool(uint8_t byte)
@@ -96,7 +97,7 @@ ZL_FORCE_INLINE_ATTR constexpr uint8_t DCompactParser::unparseBool(uint8_t byte)
         return (uint8_t)(byte == 1 ? CType::CT_BOOLEAN_TRUE
                                    : CType::CT_BOOLEAN_FALSE);
     }
-    throw std::runtime_error{ "Invalid boolean value!" };
+    throw ThriftMalformedInputError{ "Invalid boolean value!" };
 }
 
 ZL_FORCE_INLINE_ATTR constexpr TType CompactParser::parseType(
@@ -106,13 +107,13 @@ ZL_FORCE_INLINE_ATTR constexpr TType CompactParser::parseType(
     if (interp == TypeParse::kForCollection
         && rawType == 2 /* CT_BOOL_FALSE */) {
         // Reject non-canonical Thrift
-        throw std::runtime_error{
+        throw ThriftUnhandledInputError{
             "CT_BOOL_FALSE is not expected in collection headers"
         };
     }
     TType const type = CTypeToTType.at(rawType);
     if (type == TType::T_VOID) {
-        throw std::runtime_error{ "T_VOID is not a valid wire value!" };
+        throw ThriftMalformedInputError{ "T_VOID is not a valid wire value!" };
     }
     return type;
 }
@@ -123,7 +124,7 @@ ZL_FORCE_INLINE_ATTR constexpr uint8_t DCompactParser::unparseType(TType type)
     static_assert(sizeof(CType) == sizeof(uint8_t));
     const CType rawType = TTypeToCType.at(static_cast<uint8_t>(type));
     if (rawType == CType::CT_VOID) {
-        throw std::runtime_error{ fmt::format(
+        throw ThriftMalformedInputError{ fmt::format(
                 "Type value {} from the wire doesn't map to CType enum!",
                 static_cast<uint8_t>(type)) };
     }
@@ -178,7 +179,7 @@ CompactParser::parseListHeader(const CompactParser::PT::Iterator& current)
         size = readValue<uint32_t>();
         if (size < 15) {
             // Reject non-canonical Thrift
-            throw std::runtime_error{
+            throw ThriftUnhandledInputError{
                 "Invalid list header: size < 15 but varint is present"
             };
         }
@@ -291,7 +292,7 @@ CompactParser::parseFieldHeader(
     if (type == TType::T_STOP) {
         if (byte != 0) {
             // Reject non-canonical Thrift
-            throw std::runtime_error{
+            throw ThriftUnhandledInputError{
                 "Invalid field header: non-zero stop byte"
             };
         }
@@ -319,7 +320,7 @@ CompactParser::parseFieldHeader(
 
     // Reject non-canonical Thrift
     if (rawIdDelta >= 1 && rawIdDelta <= 15 && deltaNibble == 0) {
-        throw std::runtime_error{
+        throw ThriftUnhandledInputError{
             "Invalid field header: delta is small but varint is present"
         };
     }
@@ -466,7 +467,7 @@ void CompactParser::advance(const CompactParser::PT::Iterator& current)
         case TType::T_UTF16:
         case TType::T_STREAM:
         default: {
-            throw std::runtime_error(
+            throw ThriftMalformedInputError(
                     "Unexpected thrift type: " + thriftTypeToString(type));
         }
     }
@@ -543,7 +544,7 @@ bool DCompactParser::advanceIfTrivial(
         case TType::T_UTF16:
         case TType::T_STREAM:
         default: {
-            throw std::runtime_error(
+            throw ThriftMalformedInputError(
                     "Unexpected thrift type: " + thriftTypeToString(type));
         }
     }
@@ -633,7 +634,7 @@ void CompactParser::parseTulipV2Header(const PT::Iterator& current)
     headerSize++;
 
     if (byte0 != uint8_t(0x80) || byte1 != uint8_t(0x00)) {
-        throw std::runtime_error("Bad TulipV2 header");
+        throw ThriftMalformedInputError("Bad TulipV2 header");
     }
 
     writeValue<uint32_t>(it.lengths(), folly::to<uint32_t>(headerSize));

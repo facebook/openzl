@@ -181,7 +181,7 @@ ZL_FORCE_INLINE ZS_RolzMatch ZS_rolz_findBestMatch2(
     size_t nbSearches = rolz->nbSearches;
     {
         ZL_VecMask matches;
-        if (1) {
+        if ((1)) {
             if (rolz->rowLog <= 4) {
                 ZL_Vec128 const hashes =
                         ZL_Vec128_read(rowStart + kRolzHashOffset);
@@ -1605,7 +1605,7 @@ ZL_FORCE_INLINE bool search(
     }
 
     //> Rolz match
-    if (rolzEnabled && (1 || ip - anchor < contextDepth)) {
+    if (rolzEnabled && ((1) || ip - anchor < contextDepth)) {
         ZS_RolzMatch const m = ZS_rolz_findBestMatch2(
                 rolz,
                 window,

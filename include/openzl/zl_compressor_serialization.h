@@ -81,7 +81,7 @@ extern "C" {
  *     contents of the buffer `ZL_CopyParam` will be provided to the
  *     corresponding component on the destination compressor, which might be
  *     in a different process which doesn't have access to things pointed-to
- *     outside of that bufer.
+ *     outside of that buffer.
  *
  *   - Note however that a copy or modification of a non-serializable object
  *     which does not modify any of the non-serializable attributes is generally
@@ -90,7 +90,7 @@ extern "C" {
  *     component, produced by modifying or composing the original
  *     non-serializable component, via, e.g.:
  *
- *     - ZL_Compressor_cloneNode (see note)
+ *     - ZL_Compressor_registerParameterizedNode (see note)
  *
  *     - ZL_Compressor_registerStaticGraph_fromNode1o
  *     - ZL_Compressor_registerStaticGraph_fromPipelineNodes1o

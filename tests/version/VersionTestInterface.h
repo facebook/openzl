@@ -8,7 +8,7 @@
 #include <memory>
 #include <vector>
 
-namespace zstrong {
+namespace openzl {
 enum class UseCustomData : bool { Enable = true, Disable = false };
 
 struct CustomData {
@@ -269,4 +269,4 @@ class VersionTestInterface {
     std::map<GraphID, std::vector<CustomData>> graphCustomDataCache_;
 };
 
-} // namespace zstrong
+} // namespace openzl

@@ -36,20 +36,57 @@ extern "C" {
 //         size_t srcSize,
 //         int compressionLevel);
 
-#define ZL_COMPRESSBOUND(s) (((s) * 2) + 512 + 8)
+/**
+ * Assumed minimum chunk size for segmented compression.
+ * ZL_compressBound() relies on this assumption to bound per-chunk overhead.
+ * Segmenters producing chunks smaller than this value may cause the output
+ * to exceed ZL_compressBound(). This is a documented assumption, not enforced.
+ * Matches the default block size of the entropy layer.
+ */
+#define ZL_MIN_CHUNK_SIZE (32768)
+
+/**
+ * Maximum per-chunk overhead in bytes (STORE chunk header + both checksums).
+ * Generous overestimate: actual overhead is ~13 bytes for a 32 KB chunk.
+ * Breakdown: chunk header varints (~3-7 bytes) + content checksum (4 bytes)
+ *          + compressed checksum (4 bytes).
+ */
+#define ZL_CHUNK_OVERHEAD_MAX (16)
+
+/**
+ * Maximum frame-level overhead in bytes (frame header + EOF marker).
+ * Generous overestimate: actual overhead is ~9-17 bytes.
+ * Breakdown: magic (4) + flags (1) + input type (1) + input size varint (<=9)
+ *          + header checksum (1) + EOF marker (1).
+ */
+#define ZL_FRAME_OVERHEAD_MAX (32)
+
+#define ZL_COMPRESSBOUND(s)      \
+    ((s) + ZL_FRAME_OVERHEAD_MAX \
+     + (((s) / ZL_MIN_CHUNK_SIZE) + 1) * ZL_CHUNK_OVERHEAD_MAX)
+
 /**
  * Provides the upper bound for the compressed size needed to ensure
- * that compressing @p totalSrcSize is successful. When compressing
- * multiple inputs, @p totalSrcSize must be the sum of the size of each input.
+ * that compressing @p totalSrcSize bytes is successful.
  *
- * @param totalSrcSize The sum of all input sizes
- * @returns The upper bound of the compressed size
+ * This bound is valid for a single serial input compressed with the default
+ * pipeline (default segmenter, StoreOnExpansion enabled). For other scenarios,
+ * callers should allocate a larger buffer:
  *
- * @note This is a very large over-estimation, to be tightened later
+ * @param totalSrcSizeInBytes The total input size in bytes (not element count)
+ * @returns The upper bound of the compressed size, in bytes
+ *
+ * @pre Single serial input. Multi-input or multi-typed compression (e.g. via
+ *      ZL_CCtx_compressMultiTypedRef) may produce additional per-stream
+ *      overhead in chunk headers that exceeds this bound.
+ * @pre StoreOnExpansion is enabled (default). When disabled, compressed output
+ *      may exceed this bound.
+ * @pre Segmented compression uses chunks of at least ZL_MIN_CHUNK_SIZE bytes,
+ *      except for the last chunk which may be smaller (remainder).
  */
-ZL_INLINE size_t ZL_compressBound(size_t totalSrcSize)
+ZL_INLINE size_t ZL_compressBound(size_t totalSrcSizeInBytes)
 {
-    return ZL_COMPRESSBOUND(totalSrcSize);
+    return ZL_COMPRESSBOUND(totalSrcSizeInBytes);
 }
 
 // ----------------------------------------------------
@@ -120,6 +157,12 @@ typedef enum {
     /// feature,
     /// one must pass a negative threshold value.
     ZL_CParam_minStreamSize = 11,
+
+    /// Controls whether chunks that expand during compression
+    /// are automatically replaced with STORE (anti-inflation guard).
+    /// Valid values for this parameter use the ZS2_cv3_* format.
+    /// @default 0 currently means enabled, preserving existing behavior.
+    ZL_CParam_storeOnExpansion = 12,
 
     // Other possible parameters (ideas) :
     //  - Backup when a node errors out (continue with generic LZ, or error
@@ -367,6 +410,22 @@ ZL_TypedRef* ZL_TypedRef_createString(
         size_t bufferSize,
         const uint32_t* strLens,
         size_t nbStrings);
+
+/**
+ * Adds header comment to the compressed frame for the following compression.
+ * The message will be overridden if added a second time. The message is erased
+ * from the cctx at the end of each compression.
+ *
+ * @note A comment of size 0 clears the comment field.
+ *
+ * @param comment The comment to add. The comment is copied and stored in the
+ * cctx.
+ * @param commentSize The size of the comment or 0 to clear the comment.
+ */
+ZL_Report ZL_CCtx_addHeaderComment(
+        ZL_CCtx* cctx,
+        const void* comment,
+        size_t commentSize);
 
 /**
  * Frees the given `ZL_TypedRef`.

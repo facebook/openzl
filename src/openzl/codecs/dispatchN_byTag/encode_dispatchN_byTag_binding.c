@@ -60,6 +60,7 @@ static DispatchNBT_ExtParser_s const* getExtParser(ZL_Encoder const* eictx)
 static ZL_RESULT_OF(ZL_DispatchInstructions)
         getSplitInstructions(ZL_Encoder* eictx, const ZL_Input* in)
 {
+    ZL_RESULT_DECLARE_SCOPE(ZL_DispatchInstructions, eictx);
     ZL_DLOG(SEQ, "getSplitInstructions()");
 
     if (ZL_Input_numElts(in) == 0) {
@@ -79,25 +80,17 @@ static ZL_RESULT_OF(ZL_DispatchInstructions)
     ZL_DispatchState state = { eictx, NULL };
 
     DispatchNBT_ExtParser_s const* s = getExtParser(eictx);
-    ZL_RET_T_IF_NULL(
-            ZL_DispatchInstructions,
-            nodeParameter_invalid,
-            s,
-            "dispatchN parser not provided");
+    ZL_ERR_IF_NULL(s, nodeParameter_invalid, "dispatchN parser not provided");
     ZL_DispatchParserFn f      = s->f;
     ZL_DispatchInstructions si = f(&state, in);
     if (si.segmentSizes == NULL) {
         if (state.message != NULL) {
-            ZL_RET_T_ERR(
-                    ZL_DispatchInstructions,
-                    nodeParameter_invalid,
-                    "External dispatchN parser failed with message: %s",
-                    state.message);
+            ZL_ERR(nodeParameter_invalid,
+                   "External dispatchN parser failed with message: %s",
+                   state.message);
         } else {
-            ZL_RET_T_ERR(
-                    ZL_DispatchInstructions,
-                    nodeParameter_invalid,
-                    "external dispatchN parser failed to provide split instructions");
+            ZL_ERR(nodeParameter_invalid,
+                   "external dispatchN parser failed to provide split instructions");
         }
     }
     return ZL_RESULT_WRAP_VALUE(ZL_DispatchInstructions, si);
@@ -106,6 +99,7 @@ static ZL_RESULT_OF(ZL_DispatchInstructions)
 ZL_Report
 EI_dispatchN_byTag(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
     const ZL_Input* in = ins[0];
@@ -115,7 +109,8 @@ EI_dispatchN_byTag(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     ZL_ASSERT_EQ(ZL_Input_type(in), ZL_Type_serial);
     ZL_ASSERT_NN(eictx);
 
-    ZL_TRY_LET_T(ZL_DispatchInstructions, si, getSplitInstructions(eictx, in));
+    ZL_TRY_LET_CONST(
+            ZL_DispatchInstructions, si, getSplitInstructions(eictx, in));
 
     ZL_DLOG(BLOCK,
             "EI_dispatchN_byTag: splitting %zu segments into %zu streams",
@@ -127,26 +122,26 @@ EI_dispatchN_byTag(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
             NUMOP_findMaxST(si.segmentSizes, si.nbSegments);
     // Must check too see if any are too large to guard against overflow
     if (ZL_Encoder_getCParam(eictx, ZL_CParam_formatVersion) < 20) {
-        ZL_RET_R_IF_GE(temporaryLibraryLimitation, si.nbTags, 256);
+        ZL_ERR_IF_GE(si.nbTags, 256, temporaryLibraryLimitation);
     } else {
-        ZL_RET_R_IF_GE(temporaryLibraryLimitation, si.nbTags, 1 << 16);
+        ZL_ERR_IF_GE(si.nbTags, 1 << 16, temporaryLibraryLimitation);
     }
-    ZL_RET_R_IF_GT(
-            nodeParameter_invalidValue,
+    ZL_ERR_IF_GT(
             maxSegmentSize,
             inputSize,
+            nodeParameter_invalidValue,
             "EI_dispatchN_byTag: One of the segment sizes is bigger than the input size");
     size_t const parserTotalSize =
             NUMOP_sumArrayST(si.segmentSizes, si.nbSegments);
-    ZL_RET_R_IF_NE(
-            nodeParameter_invalidValue,
+    ZL_ERR_IF_NE(
             parserTotalSize,
             inputSize,
+            nodeParameter_invalidValue,
             "EI_dispatchN_byTag: the external parser provides invalid total size");
 
-    ZL_RET_R_IF(
-            nodeParameter_invalidValue,
+    ZL_ERR_IF(
             !NUMOP_underLimit(si.tags, si.nbSegments, si.nbTags),
+            nodeParameter_invalidValue,
             "EI_dispatchN_byTag: external parser returns invalid tags!");
 
     // Dimension and allocate output streams
@@ -157,27 +152,27 @@ EI_dispatchN_byTag(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 
     ZL_Output* const outTags = ZL_Encoder_createTypedStream(
             eictx, dnbt_tags, si.nbSegments, tagsWidth);
-    ZL_RET_R_IF_NULL(allocation, outTags);
+    ZL_ERR_IF_NULL(outTags, allocation);
     NUMOP_writeNumerics_fromU32(
             ZL_Output_ptr(outTags), tagsWidth, si.tags, si.nbSegments);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(outTags, si.nbSegments));
+    ZL_ERR_IF_ERR(ZL_Output_commit(outTags, si.nbSegments));
 
     ZL_Output* const segSizes = ZL_Encoder_createTypedStream(
             eictx, dnbt_segSizes, si.nbSegments, segSizesWidth);
-    ZL_RET_R_IF_NULL(allocation, segSizes);
+    ZL_ERR_IF_NULL(segSizes, allocation);
     NUMOP_writeNumerics_fromST(
             ZL_Output_ptr(segSizes),
             segSizesWidth,
             si.segmentSizes,
             si.nbSegments);
-    ZL_RET_R_IF_ERR(ZL_Output_commit(segSizes, si.nbSegments));
+    ZL_ERR_IF_ERR(ZL_Output_commit(segSizes, si.nbSegments));
 
     ZL_STATIC_ASSERT(
             sizeof(size_t) == sizeof(void*),
             "not necessarily true, will revisit if a platform that doesn't respect this assumption is needed");
     size_t const workSize = 2 * si.nbTags * sizeof(size_t);
     void* const workspace = ZL_Encoder_getScratchSpace(eictx, workSize);
-    ZL_RET_R_IF_NULL(allocation, workspace);
+    ZL_ERR_IF_NULL(workspace, allocation);
     ZL_ASSERT((size_t)workspace % sizeof(size_t) == 0);
     size_t* const outSizes  = workspace;
     void** const outBuffers = ((void**)workspace) + si.nbTags;
@@ -187,10 +182,10 @@ EI_dispatchN_byTag(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     for (size_t n = 0; n < si.nbTags; n++) {
         ZL_Output* const out = ZL_Encoder_createTypedStream(
                 eictx, dnbt_segments, outSizes[n], 1);
-        ZL_RET_R_IF_NULL(allocation, out);
+        ZL_ERR_IF_NULL(out, allocation);
         outBuffers[n] = ZL_Output_ptr(out);
-        ZL_RET_R_IF_ERR(ZL_Output_commit(out, outSizes[n]));
-        ZL_RET_R_IF_ERR(
+        ZL_ERR_IF_ERR(ZL_Output_commit(out, outSizes[n]));
+        ZL_ERR_IF_ERR(
                 ZL_Output_setIntMetadata(out, ZL_DISPATCH_CHANNEL_ID, (int)n));
     }
 
@@ -218,7 +213,12 @@ ZL_NodeID ZL_Compressor_registerDispatchNode(
 
     ZL_LocalCopyParams const lgp = { &ssp, 1 };
     ZL_LocalParams const lParams = { .copyParams = lgp };
-    return ZL_Compressor_cloneNode(cgraph, ZL_NODE_DISPATCH, &lParams);
+    return ZL_Compressor_registerParameterizedNode(
+            cgraph,
+            &(const ZL_ParameterizedNodeDesc){
+                    .node        = ZL_NODE_DISPATCH,
+                    .localParams = &lParams,
+            });
 }
 
 void* ZL_DispatchState_malloc(ZL_DispatchState* state, size_t size)

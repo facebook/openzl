@@ -11,8 +11,9 @@
 
 using namespace ::testing;
 
-namespace zstrong::tulip_v2::tests {
-using namespace zstrong::tests;
+namespace openzl::tulip_v2::tests {
+using namespace openzl::tests;
+using zstrong::tulip_v2::TulipV2Successors;
 
 namespace {
 template <typename FDP>
@@ -97,4 +98,4 @@ FUZZ(TulipV2Test, FuzzDecompress)
     }
 }
 
-} // namespace zstrong::tulip_v2::tests
+} // namespace openzl::tulip_v2::tests

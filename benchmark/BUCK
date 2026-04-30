@@ -1,8 +1,9 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup")
 load("@fbsource//tools/build_defs:manifold.bzl", "manifold_get")
-load("//data_compression/experimental/zstrong:defs.bzl", "zs_cxxbinary")
+load("../defs.bzl", "zs_cxxbinary")
 
 oncall("data_compression")
 
@@ -28,9 +29,14 @@ zs_cxxbinary(
     srcs = [(
         src_file,
         SRC_FILE_FLAGS.get(src_file, []),
-    ) for src_file in glob([
-        "**/*.cpp",
-    ])],
+    ) for src_file in glob(
+        [
+            "**/*.cpp",
+        ],
+        exclude = [
+            "BenchmarkComponents.cpp",
+        ],
+    )],
     headers = glob([
         "**/*.h",
     ]),
@@ -38,22 +44,33 @@ zs_cxxbinary(
         "corpus": ":benchmark_corpora",
     },
     deps = [
+        "..:zstronglib",
+        "../custom_transforms/json_extract:json_extract",
+        "../custom_transforms/json_extract/tests:json_extract_test_data",
+        "../custom_transforms/parse:parse",
+        "../custom_transforms/parse/tests:parse_test_data",
+        "../custom_transforms/thrift:thrift_lib",
+        "../custom_transforms/thrift/tests:thrift_test_utils",
+        "../tests/datagen:datagen",
+        "../tools:zstrong_ml",
         "fbsource//third-party/benchmark:benchmark",
         "fbsource//third-party/fmt:fmt",
         "fbsource//xplat/tools/cxx:resources",
-        "//data_compression/experimental/zstrong:zstronglib",
-        "//data_compression/experimental/zstrong/benchmark/unitBench:sao_graph",
-        "//data_compression/experimental/zstrong/custom_transforms/json_extract:json_extract",
-        "//data_compression/experimental/zstrong/custom_transforms/json_extract/tests:json_extract_test_data",
-        "//data_compression/experimental/zstrong/custom_transforms/parse:parse",
-        "//data_compression/experimental/zstrong/custom_transforms/parse/tests:parse_test_data",
-        "//data_compression/experimental/zstrong/custom_transforms/thrift:thrift_lib",
-        "//data_compression/experimental/zstrong/custom_transforms/thrift/tests:thrift_test_utils",
-        "//data_compression/experimental/zstrong/tests/datagen:datagen",
-        "//data_compression/experimental/zstrong/tools:zstrong_ml",
+        "unitBench:sao_graph",
         "//folly:demangle",
         "//folly:dynamic",
         "//folly:json",
+    ],
+)
+
+cpp_binary(
+    # @autodeps-skip
+    name = "benchmark_components",
+    srcs = ["BenchmarkComponents.cpp"],
+    deps = [
+        "..:zstronglib",
+        "../tests/registry:openzl_components",
+        "fbsource//third-party/benchmark:benchmark",
     ],
 )
 

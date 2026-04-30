@@ -1,0 +1,5 @@
+universe,experiment_id,segment_id_list
+universe_1,1,"[1,2]"
+universe_1,2,"[3]"
+universe_2,2,"[1]"
+universe_2,3,"[2,3,4]"

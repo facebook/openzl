@@ -20,6 +20,8 @@
 #include "openzl/compress/enc_interface.h"      // ENC_*
 #include "openzl/compress/gcparams.h"           // GCParams
 #include "openzl/compress/implicit_conversion.h" // ICONV_implicitConversionNodeID
+#include "openzl/compress/localparams.h"         // LP_getLocalRefParam
+#include "openzl/compress/materializer.h"        // OnTheFlyMaterialization
 #include "openzl/compress/private_nodes.h"       // ZL_GRAPH_SERIAL_STORE
 #include "openzl/compress/rtgraphs.h"            // RTGraph, RTStreamID
 #include "openzl/compress/segmenter.h"           // SEGM_*
@@ -36,8 +38,6 @@
 #include "openzl/zl_opaque_types.h"
 #include "openzl/zl_reflection.h"
 
-#include "openzl/common/logging.h" // ZL_LOG
-
 // --------------------------
 // Transform's private header
 // --------------------------
@@ -49,17 +49,18 @@ typedef struct {
 
 static ZL_Report appendToVector(VECTOR(uint8_t) * vector, ZL_RBuffer buffer)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     size_t const originalSize   = VECTOR_SIZE(*vector);
     size_t const neededCapacity = originalSize + buffer.size;
-    ZL_RET_R_IF_GT(
-            allocation,
+    ZL_ERR_IF_GT(
             neededCapacity,
             ZL_ENCODER_TRANSFORM_HEADER_SIZE_LIMIT,
-            "Refusing to allocate more header space");
-    ZL_RET_R_IF_LT(
             allocation,
+            "Refusing to allocate more header space");
+    ZL_ERR_IF_LT(
             VECTOR_RESIZE_UNINITIALIZED(*vector, neededCapacity),
-            neededCapacity);
+            neededCapacity,
+            allocation);
     if (buffer.size > 0) {
         memcpy(VECTOR_DATA(*vector) + originalSize, buffer.start, buffer.size);
     }
@@ -133,16 +134,19 @@ struct ZL_CCtx_s {
     GCParams requestedGCParams;     // User selection, at CCtx level
     GCParams appliedGCParams;       // Employed at compression time;
                                     // CCtx > Compressor > default
+    /// Comment to be added to the header. Is not added when size is 0.
+    ZL_Comment comment;
     CCTX_TransformHeaders trHeaders;
     /* These Arenas presume single-thread execution.
      * For parallel execution, it will have to be replaced by Arena Pools */
-    Arena* codecArena;   // Codec lifetime
-    Arena* graphArena;   // Graph Lifetime
-    Arena* chunkArena;   // Chunk Lifetime
-    Arena* sessionArena; // Entire compression lifetime
+    Arena* codecArena;      // Codec lifetime
+    Arena* graphArena;      // Graph Lifetime
+    Arena* chunkArena;      // Chunk Lifetime
+    Arena* sessionArena;    // Entire compression lifetime
+    Arena* matScratchArena; // Scratch space for materializers
     const ZL_TypedRef** inputs;
     unsigned nbInputs;
-    int segmenterStarted;
+    int numSegments;         // number of segments in the current frame
     void* dstBuffer;         // where to write chunks
     size_t dstCapacity;      // capacity of dstBuffer
     size_t currentFrameSize; // already written into dstBuffer
@@ -152,22 +156,25 @@ struct ZL_CCtx_s {
 
 static ZL_Report CCTX_init(ZL_CCtx* cctx)
 {
-    ZL_ASSERT_NN(cctx);
     ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
+    ZL_ASSERT_NN(cctx);
 
-    cctx->codecArena   = ALLOC_StackArena_create();
-    cctx->graphArena   = ALLOC_StackArena_create();
-    cctx->chunkArena   = ALLOC_StackArena_create();
-    cctx->sessionArena = ALLOC_StackArena_create();
+    ZL_OC_init(&cctx->opCtx);
+
+    cctx->codecArena      = ALLOC_StackArena_create();
+    cctx->graphArena      = ALLOC_StackArena_create();
+    cctx->chunkArena      = ALLOC_StackArena_create();
+    cctx->sessionArena    = ALLOC_StackArena_create();
+    cctx->matScratchArena = ALLOC_StackArena_create();
     ZL_ERR_IF(
             cctx->graphArena == NULL || cctx->codecArena == NULL
-                    || cctx->chunkArena == NULL || cctx->sessionArena == NULL,
+                    || cctx->chunkArena == NULL || cctx->sessionArena == NULL
+                    || cctx->matScratchArena == NULL,
             allocation);
 
     ZL_ERR_IF_ERR(RTGM_init(&cctx->rtgraph));
     TRS_init(&cctx->cachedCodecStates);
     CCTX_TransformHeaders_init(&cctx->trHeaders);
-    ZL_OC_init(&cctx->opCtx);
 
     return ZL_returnSuccess();
 }
@@ -197,6 +204,8 @@ void CCTX_clean(ZL_CCtx* cctx)
 {
     CCTX_cleanChunk(cctx);
     ALLOC_Arena_freeAll(cctx->sessionArena);
+    cctx->comment.size = 0;
+    cctx->comment.data = NULL;
     ZL_ASSERT_EQ(ALLOC_Arena_memUsed(cctx->codecArena), 0);
     ZL_ASSERT_EQ(ALLOC_Arena_memUsed(cctx->graphArena), 0);
     ZL_ASSERT_EQ(ALLOC_Arena_memUsed(cctx->chunkArena), 0);
@@ -213,6 +222,7 @@ void CCTX_free(ZL_CCtx* cctx)
     ALLOC_Arena_freeArena(cctx->codecArena);
     ALLOC_Arena_freeArena(cctx->graphArena);
     ALLOC_Arena_freeArena(cctx->chunkArena);
+    ALLOC_Arena_freeArena(cctx->matScratchArena);
     ALLOC_Arena_freeArena(cctx->sessionArena);
     ZL_OC_destroy(&cctx->opCtx);
     ZL_free(cctx);
@@ -232,12 +242,13 @@ ZL_Report ZL_CCtx_attachIntrospectionHooks(
         ZL_CCtx* cctx,
         const ZL_CompressIntrospectionHooks* hooks)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
     ZL_ASSERT_NN(cctx);
-    ZL_RET_R_IF_NULL(allocation, hooks);
+    ZL_ERR_IF_NULL(hooks, allocation);
     ZL_OperationContext* oc = ZL_CCtx_getOperationContext(cctx);
     ZL_ASSERT_NN(oc);
-    oc->introspectionHooks    = *hooks;
-    oc->hasIntrospectionHooks = true;
+    oc->compressIntrospectionHooks = *hooks;
+    oc->hasCompressionHooks        = true;
     return ZL_returnSuccess();
 }
 
@@ -246,8 +257,10 @@ ZL_Report ZL_CCtx_detachAllIntrospectionHooks(ZL_CCtx* cctx)
     ZL_ASSERT_NN(cctx);
     ZL_OperationContext* oc = ZL_CCtx_getOperationContext(cctx);
     ZL_ASSERT_NN(oc);
-    ZL_zeroes(&oc->introspectionHooks, sizeof(oc->introspectionHooks));
-    oc->hasIntrospectionHooks = false;
+    ZL_zeroes(
+            &oc->compressIntrospectionHooks,
+            sizeof(oc->compressIntrospectionHooks));
+    oc->hasCompressionHooks = false;
     return ZL_returnSuccess();
 }
 
@@ -269,9 +282,10 @@ ZL_Report ZL_CCtx_selectStartingGraphID(
         ZL_GraphID graphID,
         const ZL_RuntimeGraphParameters* rgp)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
     ZL_ASSERT_NN(cctx);
     if (compressor)
-        ZL_RET_R_IF_ERR(ZL_CCtx_refCompressor(cctx, compressor));
+        ZL_ERR_IF_ERR(ZL_CCtx_refCompressor(cctx, compressor));
     return GCParams_setStartingGraphID(
             &cctx->requestedGCParams, graphID, rgp, cctx->sessionArena);
 }
@@ -301,7 +315,9 @@ ZL_Report ZL_CCtx_resetParameters(ZL_CCtx* cctx)
     // something else. In `zstd`, there are different levels of reset
     // (parameters, session, or both). Maybe the same would be needed here ?
     ZL_zeroes(&cctx->requestedGCParams, sizeof(cctx->requestedGCParams));
-    cctx->cgraph = NULL;
+    cctx->cgraph       = NULL;
+    cctx->comment.size = 0;
+    cctx->comment.data = NULL;
     ZL_Compressor_free(cctx->internal_cgraph);
     cctx->internal_cgraph = NULL;
     return ZL_returnSuccess();
@@ -311,11 +327,12 @@ ZL_Report ZL_CCtx_resetParameters(ZL_CCtx* cctx)
 //        when using only standard Graphs.
 ZL_Report ZL_CCtx_refCompressor(ZL_CCtx* cctx, const ZL_Compressor* compressor)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
     ZL_ASSERT_NN(cctx);
-    ZL_RET_R_IF_EQ(
-            graph_invalid,
+    ZL_ERR_IF_EQ(
             CGRAPH_getStartingGraphID(compressor).gid,
             0,
+            graph_invalid,
             "The cgraph's starting graph ID is not set, it must be set via "
             "ZL_Compressor_selectStartingGraphID() before it can be used.");
     cctx->cgraph = compressor;
@@ -327,14 +344,15 @@ ZL_Report CCTX_setLocalCGraph_usingGraph2Desc(
         ZL_CCtx* cctx,
         ZL_Graph2Desc graphDesc)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
     ZL_LOG(FRAME, "CCTX_setLocalCGraph_usingGraph2Desc");
     ZL_ASSERT_NN(cctx);
     ZL_Compressor_free(cctx->internal_cgraph); // compatible with NULL
     cctx->internal_cgraph = ZL_Compressor_create();
-    ZL_RET_R_IF_NULL(allocation, cctx->internal_cgraph);
+    ZL_ERR_IF_NULL(cctx->internal_cgraph, allocation);
     ZL_GraphID const startingNode =
             graphDesc.f(cctx->internal_cgraph, graphDesc.customParams);
-    ZL_RET_R_IF_ERR(ZL_Compressor_selectStartingGraphID(
+    ZL_ERR_IF_ERR(ZL_Compressor_selectStartingGraphID(
             cctx->internal_cgraph, startingNode));
     // Creation is all fine, let's finalize the reference
     return ZL_CCtx_refCompressor(cctx, cctx->internal_cgraph);
@@ -385,8 +403,12 @@ static const ZL_Data* CCTX_getRStream(const ZL_CCtx* cctx, RTStreamID rtsid)
 
 ZL_Report CCTX_sendTrHeader(ZL_CCtx* cctx, RTNodeID rtnodeid, ZL_RBuffer trh)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_NN(cctx);
-    ZL_TRY_LET_R(headerPos, CCTX_TransformHeaders_stage(&cctx->trHeaders, trh));
+    ZL_TRY_LET(
+            size_t,
+            headerPos,
+            CCTX_TransformHeaders_stage(&cctx->trHeaders, trh));
     RTGM_setNodeHeaderSegment(
             &cctx->rtgraph,
             rtnodeid,
@@ -410,6 +432,8 @@ static ZL_Report CCTX_runCNode_wParams(
         const CNode* cnode,
         const ZL_LocalParams* lparams)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
+
     ZL_DLOG(TRANSFORM,
             "CCTX_runCNode_wParams (nbInputs=%u, lparams=%p)",
             nbInputs,
@@ -419,31 +443,31 @@ static ZL_Report CCTX_runCNode_wParams(
     ZL_ASSERT_EQ(cnode->nodetype, node_internalTransform);
 
     // Check inputs
-    ZL_RET_R_IF_NOT(
-            node_invalid_input, CNODE_isNbInputsCompatible(cnode, nbInputs));
+    ZL_ERR_IF_NOT(
+            CNODE_isNbInputsCompatible(cnode, nbInputs), node_invalid_input);
     // This check also takes care of versions<=15, which only support 1 input.
-    ZL_RET_R_IF_GT(
-            node_versionMismatch,
+    ZL_ERR_IF_GT(
             nbInputs,
             ZL_runtimeNodeInputLimit(cctx->appliedGCParams.formatVersion),
+            node_versionMismatch,
             "Too many inputs (%u) for format version %u (max=%u)",
             nbInputs,
             cctx->appliedGCParams.formatVersion,
             ZL_runtimeNodeInputLimit(cctx->appliedGCParams.formatVersion));
     ZL_ASSERT_NN(inputs);
     for (ZL_IDType n = 0; n < nbInputs; n++) {
-        ZL_RET_R_IF_NE(
-                node_unexpected_input_type,
+        ZL_ERR_IF_NE(
                 ZL_Data_type(inputs[n]),
-                CNODE_getInputType(cnode, n));
+                CNODE_getInputType(cnode, n),
+                node_unexpected_input_type);
     }
 
     CNODE_FormatInfo const cnfi = CNODE_getFormatInfo(cnode);
     int const reqFormat = CCTX_getAppliedGParam(cctx, ZL_CParam_formatVersion);
-    ZL_RET_R_IF(
-            node_versionMismatch,
+    ZL_ERR_IF(
             reqFormat < (int)cnfi.minFormatVersion
                     || (int)cnfi.maxFormatVersion < reqFormat,
+            node_versionMismatch,
             "Node %s (versions[%u-%u]) is incompatible with requested format version (%i)",
             CNODE_getName(cnode),
             cnfi.minFormatVersion,
@@ -453,32 +477,71 @@ static ZL_Report CCTX_runCNode_wParams(
     // Note: this action registers @cnode without its (optional) new @lparams,
     // but it's fine, since local parameters won't be requested again from there
     {
-        ZL_TRY_LET_T(
+        ZL_TRY_LET(
                 RTNodeID,
                 tmp,
                 RTGM_createNode(&cctx->rtgraph, cnode, irtsids, nbInputs));
         *rtnid = tmp;
     }
 
-    ZL_Report const nbOuts = ENC_runTransform(
+    // Perform on-the-fly materialization if needed
+    // Skip if params already contain the materialized param (already
+    // materialized at registration time)
+    OneshotMaterializationResult matRes = {
+        .materializedObj = NULL,
+    };
+    if (lparams != NULL) {
+        matRes.modifiedParams = *lparams;
+        if (cnode->transformDesc.publicDesc.materializer.materializeFn
+            != NULL) {
+            // Check if the materialized param already exists
+            ZL_RefParam existingParam = LP_getLocalRefParam(
+                    lparams,
+                    cnode->transformDesc.publicDesc.materializer.paramId);
+            ZL_ERR_IF_NE(
+                    existingParam.paramId,
+                    ZL_LP_INVALID_PARAMID,
+                    node_invalid_input,
+                    "Node runtime params cannot use the materialized param ID");
+
+            // Param doesn't exist, perform on-the-fly materialization
+            ZL_RESULT_OF(OneshotMaterializationResult)
+            res = MPM_materializeOneshot(
+                    cctx->sessionArena,
+                    cctx->matScratchArena,
+                    ZL_CCtx_getOperationContext(cctx),
+                    lparams,
+                    &cnode->transformDesc.publicDesc.materializer);
+            ZL_ERR_IF_ERR(res);
+            matRes  = ZL_RES_value(res);
+            lparams = &matRes.modifiedParams;
+        }
+    }
+
+    ZL_Report nbOuts;
+    nbOuts = ENC_runTransform(
             &cnode->transformDesc,
             inputs,
             nbInputs,
             nodeid,
             *rtnid,
             cnode,
-            lparams,
+            lparams, // potentially modified by materialization
             cctx,
             cctx->codecArena,
             &cctx->cachedCodecStates);
 
-    ZL_RET_R_IF_ERR(
+    // Clean up on-the-fly materialized params (must happen before error
+    // check)
+    MPM_dematerializeOneshot(cctx->sessionArena, &matRes);
+
+    ZL_ERR_IF_ERR(
             nbOuts,
             "Node '%s' failed: %s(%u)",
             CNODE_getName(cnode),
             ZL_ErrorCode_toString(ZL_errorCode(nbOuts)),
             ZL_errorCode(nbOuts));
-    ZL_RET_R_IF_ERR(CCTX_checkOutputCommitted(cctx, *rtnid));
+    ZL_ERR_IF_ERR(CCTX_checkOutputCommitted(cctx, *rtnid));
 
     // Free input streams _if allowed_, since they have been processed.
     // This is typically possible for internal outputs of internal Transforms
@@ -505,13 +568,14 @@ ZL_Report CCTX_runNodeID_wParams(
         ZL_NodeID nodeid,
         const ZL_LocalParams* lparams)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
+
     ZL_DLOG(BLOCK, "CCTX_runNodeID_wParams (nbInputs=%u)", nbInputs);
-    ZL_RET_R_IF_EQ(
-            node_invalid, ZL_NODE_ILLEGAL.nid, nodeid.nid, "Node is illegal");
+    ZL_ERR_IF_EQ(
+            ZL_NODE_ILLEGAL.nid, nodeid.nid, node_invalid, "Node is illegal");
     ZL_ASSERT_NN(cctx);
     const CNode* const cnode = CGRAPH_getCNode(cctx->cgraph, nodeid);
-    ZL_RET_R_IF_NULL(
-            node_invalid, cnode, "NodeID %u does not exist", nodeid.nid);
+    ZL_ERR_IF_NULL(cnode, node_invalid, "NodeID %u does not exist", nodeid.nid);
     ZL_ASSERT_EQ(cnode->nodetype, node_internalTransform);
     return CCTX_runCNode_wParams(
             cctx, nodeid, rtnid, inputs, irtsids, nbInputs, cnode, lparams);
@@ -534,16 +598,17 @@ static ZL_Report CCTX_convertInputs_internal(
         ZL_Type const inType,
         ZL_Type const portTypeMask)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
     ZL_NodeID conversion = ICONV_implicitConversionNodeID(inType, portTypeMask);
-    ZL_RET_R_IF_NOT(
-            inputType_unsupported,
+    ZL_ERR_IF_NOT(
             ZL_NodeID_isValid(conversion),
+            inputType_unsupported,
             "cannot find an implicit conversion (%x => %x)",
             inType,
             portTypeMask);
 
     RTNodeID rtnodeid;
-    ZL_RET_R_IF_ERR(CCTX_runNodeID_wParams(
+    ZL_ERR_IF_ERR(CCTX_runNodeID_wParams(
             cctx, &rtnodeid, &input, rtsid, 1, conversion, NULL));
     // Implicit conversions are currently single-output only
     ZL_ASSERT_EQ(RTGM_getNbOutStreams(&cctx->rtgraph, rtnodeid), 1);
@@ -563,6 +628,7 @@ static ZL_Report CCTX_convertInputs(
         const ZL_Type* dstPortMasks,
         size_t nbPorts)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
     ZL_ASSERT_GE(nbInputs, 1);
     for (size_t n = 0; n < nbInputs; n++) {
         const ZL_Data* input = CCTX_getRStream(cctx, orig_rtsids[n]);
@@ -586,14 +652,14 @@ static ZL_Report CCTX_convertInputs(
                 input,
                 inType,
                 portTypeMask);
-        WAYPOINT(
+        CWAYPOINT(
                 on_cctx_convertOneInput,
                 cctx,
                 input,
                 inType,
                 portTypeMask,
                 res);
-        ZL_RET_R_IF_ERR(res);
+        ZL_ERR_IF_ERR(res);
     }
     return ZL_returnSuccess();
 }
@@ -609,7 +675,7 @@ static ZL_Report GCTX_checkSuccessors(ZL_Graph* gctx)
                     (ZL_TernaryParam)CCTX_getAppliedGParam(
                             gctx->cctx, ZL_CParam_permissiveCompression);
             if (backupMode != ZL_TernaryParam_enable) {
-                ZL_RET_R_ERR(successor_invalid);
+                ZL_ERR(successor_invalid);
             }
         }
     }
@@ -701,10 +767,11 @@ static ZL_Report CCTX_runSuccessors(
         size_t nbSuccessors,
         unsigned depth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
     ZL_DLOG(SEQ, "CCTX_runSuccessors on %zu successors", nbSuccessors);
     for (size_t n = 0; n < nbSuccessors; n++) {
         const SuccessorInfo* const si = successorArray + n;
-        ZL_RET_R_IF_ERR(CCTX_runSuccessor(
+        ZL_ERR_IF_ERR(CCTX_runSuccessor(
                 cctx,
                 si->graphID,
                 si->rgp,
@@ -728,10 +795,12 @@ static ZL_Report CCTX_runGraph_internal(
         size_t nbInputs,
         unsigned depth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
+
     (void)graphid; // required only for waypoints
     // All streams created after this index will be created by the dynamic
     // graph
-    WAYPOINT(
+    CWAYPOINT(
             on_migraphEncode_start,
             gctx,
             CCTX_getCGraph(cctx),
@@ -740,24 +809,25 @@ static ZL_Report CCTX_runGraph_internal(
             nbInputs);
     ZL_Report const graphExecutionReport =
             GCTX_runMultiInputGraph(gctx, inputs, nbInputs);
-    IF_WAYPOINT_ENABLED(on_migraphEncode_end, gctx)
+    IF_CWAYPOINT_ENABLED(on_migraphEncode_end, gctx)
     {
         if (ZL_isError(graphExecutionReport)) {
-            WAYPOINT(on_migraphEncode_end, gctx, NULL, 0, graphExecutionReport);
+            CWAYPOINT(
+                    on_migraphEncode_end, gctx, NULL, 0, graphExecutionReport);
         } else {
             size_t nbSuccs = VECTOR_SIZE(gctx->dstGraphDescs);
             DECLARE_VECTOR_TYPE(ZL_GraphID);
-            VECTOR(ZL_GraphID) succGids;
+            VECTOR(ZL_GraphID) succGids = { 0 };
             VECTOR_INIT(succGids, nbSuccs);
             for (size_t i = 0; i < nbSuccs; i++) {
                 bool pushbackSuccess = VECTOR_PUSHBACK(
                         succGids, VECTOR_AT(gctx->dstGraphDescs, i).destGid);
-                ZL_RET_R_IF_NOT(
-                        allocation,
+                ZL_ERR_IF_NOT(
                         pushbackSuccess,
+                        allocation,
                         "Unable to append to the waypoint succGids vector");
             }
-            WAYPOINT(
+            CWAYPOINT(
                     on_migraphEncode_end,
                     gctx,
                     VECTOR_DATA(succGids),
@@ -767,16 +837,16 @@ static ZL_Report CCTX_runGraph_internal(
         }
     }
     ALLOC_Arena_freeAll(cctx->graphArena);
-    ZL_RET_R_IF_ERR(graphExecutionReport);
+    ZL_ERR_IF_ERR(graphExecutionReport);
 
     // If an error happened during Dynamic Graph, but was not checked and
     // then not reported by the Dynamic Graph function, it's caught here.
     ZL_ASSERT_NN(gctx);
-    ZL_RET_R_IF_ERR(gctx->status);
+    ZL_ERR_IF_ERR(gctx->status);
 
     // Check if some streams have no Successors
     // Error out, or set them to default backup if permissive mode
-    ZL_RET_R_IF_ERR(GCTX_checkSuccessors(gctx));
+    ZL_ERR_IF_ERR(GCTX_checkSuccessors(gctx));
     // After that point, if there are unassigned Streams but the check was
     // successful, it means that permissive mode is enabled. Consequently,
     // permissive mode is considered active for the rest of the function.
@@ -791,7 +861,7 @@ static ZL_Report CCTX_runGraph_internal(
     // used is low.
     SuccessorInfo* const successors =
             ZL_malloc(nbSuccessors * sizeof(successors[0]));
-    ZL_RET_R_IF_NULL(allocation, successors);
+    ZL_ERR_IF_NULL(successors, allocation);
     GCTX_getSuccessors(gctx, successors, nbSuccessors);
 
     // Run successors
@@ -842,6 +912,8 @@ static ZL_Report CCTX_runSegmenter(
         const RTStreamID* rtsids,
         size_t nbInputs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
+
     ZL_ASSERT_NN(cctx);
     ZL_ASSERT_NN(cctx->cgraph);
     ZL_ASSERT_EQ(CGRAPH_graphType(cctx->cgraph, graphid), gt_segmenter);
@@ -854,18 +926,9 @@ static ZL_Report CCTX_runSegmenter(
         ZL_DLOG(SEQ, "RTStreamID: %u", rtsids[n].rtsid);
     }
 
-    // Check version
-    ZL_RET_R_IF_LT(
-            formatVersion_unsupported,
-            cctx->appliedGCParams.formatVersion,
-            ZL_CHUNK_VERSION_MIN,
-            "Segmenter is supported starting wire format version %u > %u (requested)",
-            ZL_CHUNK_VERSION_MIN,
-            cctx->appliedGCParams.formatVersion);
-
     // Check Input Types
     ALLOC_ARENA_MALLOC_CHECKED(ZL_Type, inTypes, nbInputs, cctx->sessionArena);
-    ZL_RET_R_IF_NULL(allocation, inTypes);
+    ZL_ERR_IF_NULL(inTypes, allocation);
     const ZL_SegmenterDesc* segDesc =
             CGRAPH_getSegmenterDesc(cctx->cgraph, graphid);
     size_t const nbPorts = segDesc->numInputs;
@@ -878,20 +941,48 @@ static ZL_Report CCTX_runSegmenter(
         needConversion |= !(inTypes[n] & outTypeMask);
     }
 
-    ZL_RET_R_IF(
-            temporaryLibraryLimitation,
+    ZL_ERR_IF(
             needConversion,
+            temporaryLibraryLimitation,
             "Conversion of Input types not supported by Segmenters");
     // @note not strictly impossible, but requires some attention:
     // we don't want to create Nodes in front of the Segmenter.
 
     // Insert runtime parameters if needed
+    OneshotMaterializationResult segMatRes = {
+        .materializedObj = NULL,
+    };
     if (rgp) {
         ALLOC_ARENA_MALLOC_CHECKED(
                 ZL_SegmenterDesc, migd, 1, cctx->sessionArena);
         *migd = *segDesc;
-        if (rgp->localParams)
-            migd->localParams = *rgp->localParams;
+        if (rgp->localParams) {
+            // Perform on-the-fly materialization if needed
+            if (segDesc->materializer.materializeFn != NULL) {
+                // Check if the materialized param already exists
+                ZL_RefParam existingParam = LP_getLocalRefParam(
+                        rgp->localParams, segDesc->materializer.paramId);
+                ZL_ERR_IF_NE(
+                        existingParam.paramId,
+                        ZL_LP_INVALID_PARAMID,
+                        node_invalid_input,
+                        "Segmenter runtime params cannot use the materialized param ID");
+
+                // Param doesn't exist, perform on-the-fly materialization
+                ZL_RESULT_OF(OneshotMaterializationResult)
+                res = MPM_materializeOneshot(
+                        cctx->sessionArena,
+                        cctx->matScratchArena,
+                        ZL_CCtx_getOperationContext(cctx),
+                        rgp->localParams,
+                        &segDesc->materializer);
+                ZL_ERR_IF_ERR(res);
+                segMatRes         = ZL_RES_value(res);
+                migd->localParams = segMatRes.modifiedParams;
+            } else {
+                migd->localParams = *rgp->localParams;
+            }
+        }
         if (rgp->customGraphs) {
             migd->customGraphs    = rgp->customGraphs;
             migd->numCustomGraphs = rgp->nbCustomGraphs;
@@ -899,7 +990,6 @@ static ZL_Report CCTX_runSegmenter(
         segDesc = migd;
     }
 
-    cctx->segmenterStarted           = 1;
     ZL_Segmenter* const segmenterCtx = SEGM_init(
             segDesc,
             nbInputs,
@@ -907,7 +997,15 @@ static ZL_Report CCTX_runSegmenter(
             &cctx->rtgraph,
             cctx->sessionArena,
             cctx->chunkArena);
-    return SEGM_runSegmenter(segmenterCtx);
+    CWAYPOINT(on_segmenterEncode_start, segmenterCtx, /* placeholder */ NULL);
+    ZL_Report const r = SEGM_runSegmenter(segmenterCtx);
+
+    CWAYPOINT(on_segmenterEncode_end, segmenterCtx, r);
+
+    // Maybe clean up on-the-fly materialized params
+    MPM_dematerializeOneshot(cctx->sessionArena, &segMatRes);
+
+    return r;
 }
 
 /* Invoked from: CCTX_runSupervisedGraph, CCTX_implicitConvert
@@ -922,6 +1020,7 @@ static ZL_Report CCTX_runGraphDesc(
         size_t nbInputs,
         unsigned depth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
     ZL_ASSERT_NN(cctx);
     ZL_DLOG(BLOCK,
             "CCTX_runGraphDesc on graph '%s(%zu)' with %zu inputs",
@@ -939,6 +1038,7 @@ static ZL_Report CCTX_runGraphDesc(
 
     ZL_Graph graphCtx     = GCTX_init(cctx, migd);
     graphCtx.privateParam = privateParam;
+    graphCtx.depth        = depth;
 
     for (unsigned n = 0; n < nbInputs; n++) {
         const ZL_Report ret =
@@ -946,7 +1046,7 @@ static ZL_Report CCTX_runGraphDesc(
         if (ZL_isError(ret)) {
             ZL_free(inputsArray);
             GCTX_destroy(&graphCtx);
-            ZL_RET_R(ret);
+            return ret;
         }
         inputsPtrs[n] = inputsArray + n;
     }
@@ -978,11 +1078,13 @@ static ZL_Report CCTX_runSupervisedGraphID_internal(
         size_t nbInputs,
         unsigned depth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
+
     // Ensure the graph exists
     ZL_ASSERT_NN(cctx);
-    ZL_RET_R_IF_NOT(
-            graph_invalid,
+    ZL_ERR_IF_NOT(
             CGRAPH_checkGraphIDExists(cctx->cgraph, graphid),
+            graph_invalid,
             "GraphID %u doesn't exist",
             graphid.gid);
     ZL_DLOG(BLOCK,
@@ -996,7 +1098,7 @@ static ZL_Report CCTX_runSupervisedGraphID_internal(
 
     // Check Input Types
     ALLOC_ARENA_MALLOC_CHECKED(ZL_Type, inTypes, nbInputs, cctx->graphArena);
-    ZL_RET_R_IF_NULL(allocation, inTypes);
+    ZL_ERR_IF_NULL(inTypes, allocation);
     const ZL_FunctionGraphDesc* dstGd =
             CGRAPH_getMultiInputGraphDesc(cctx->cgraph, graphid);
     size_t const nbPorts = dstGd->nbInputs;
@@ -1015,7 +1117,7 @@ static ZL_Report CCTX_runSupervisedGraphID_internal(
                         ZL_Compressor_Graph_getName(cctx->cgraph, graphid)));
         ALLOC_ARENA_MALLOC_CHECKED(
                 RTStreamID, newrtsids, nbInputs, cctx->graphArena);
-        ZL_RET_R_IF_ERR(CCTX_convertInputs(
+        ZL_ERR_IF_ERR(CCTX_convertInputs(
                 cctx,
                 newrtsids,
                 rtsids,
@@ -1032,12 +1134,40 @@ static ZL_Report CCTX_runSupervisedGraphID_internal(
 
     // Now run the selected Graph, inserting runtime parameters if needed
     ZL_ASSERT_EQ(CGRAPH_graphType(cctx->cgraph, graphid), gt_miGraph);
+    OneshotMaterializationResult graphMatRes = {
+        .materializedObj = NULL,
+    };
     if (rgp) {
         ALLOC_ARENA_MALLOC_CHECKED(
                 ZL_FunctionGraphDesc, migd, 1, cctx->graphArena);
         *migd = *dstGd;
-        if (rgp->localParams)
-            migd->localParams = *rgp->localParams;
+        if (rgp->localParams) {
+            // Perform on-the-fly materialization if needed
+            if (dstGd->materializer.materializeFn != NULL) {
+                // Check if the materialized param already exists
+                ZL_RefParam existingParam = LP_getLocalRefParam(
+                        rgp->localParams, dstGd->materializer.paramId);
+                ZL_ERR_IF_NE(
+                        existingParam.paramId,
+                        ZL_LP_INVALID_PARAMID,
+                        node_invalid_input,
+                        "Graph runtime params cannot use the materialized param ID");
+
+                // Param doesn't exist, perform on-the-fly materialization
+                ZL_RESULT_OF(OneshotMaterializationResult)
+                res = MPM_materializeOneshot(
+                        cctx->sessionArena,
+                        cctx->matScratchArena,
+                        ZL_CCtx_getOperationContext(cctx),
+                        rgp->localParams,
+                        &dstGd->materializer);
+                ZL_ERR_IF_ERR(res);
+                graphMatRes       = ZL_RES_value(res);
+                migd->localParams = graphMatRes.modifiedParams;
+            } else {
+                migd->localParams = *rgp->localParams;
+            }
+        }
         if (rgp->customGraphs) {
             migd->customGraphs   = rgp->customGraphs;
             migd->nbCustomGraphs = rgp->nbCustomGraphs;
@@ -1048,7 +1178,7 @@ static ZL_Report CCTX_runSupervisedGraphID_internal(
         }
         dstGd = migd;
     }
-    return CCTX_runGraphDesc(
+    ZL_Report const graphResult = CCTX_runGraphDesc(
             cctx,
             dstGd,
             graphid,
@@ -1056,6 +1186,11 @@ static ZL_Report CCTX_runSupervisedGraphID_internal(
             rtsids,
             nbInputs,
             depth);
+
+    // Maybe clean up on-the-fly materialized params
+    MPM_dematerializeOneshot(cctx->sessionArena, &graphMatRes);
+
+    return graphResult;
 }
 
 /* Invoked from: CCTX_runSuccessor(), CCTX_triggerBackupMode()
@@ -1083,12 +1218,14 @@ static ZL_Report CCTX_triggerBackupMode(
         size_t nbInputs,
         unsigned depth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
+
     ZL_DLOG(BLOCK, "CCTX_triggerBackupMode (nbInputs==%u)", nbInputs);
     ZL_ASSERT_EQ(cctx->inBackupMode, 0, "Recursive backup shouldn't happen");
-    ZL_RET_R_IF_NE(
-            logicError,
+    ZL_ERR_IF_NE(
             cctx->inBackupMode,
             0,
+            logicError,
             "Recursive backup shouldn't happen");
     cctx->inBackupMode = 1;
     ZL_Report outcome  = CCTX_runSupervisedGraphID(
@@ -1100,9 +1237,10 @@ static ZL_Report CCTX_triggerBackupMode(
 }
 
 /* Implementation note:
- * CCTX_runSuccessor_internal(), invoked by CCTX_runSuccessor(), features
- * multiple exit points. This 2-stages design ensures that Stream cleaning
- * cannot be skipped.
+ * CCTX_runSuccessor_internal(), invoked by CCTX_runSuccessor().
+ * This 2-stages design ensures that Stream cleaning cannot be skipped despite
+ * multiple exit points. Will invoke CCTX_runSupervisedGraph(). Is also in
+ * charge of Permissive (backup) mode.
  */
 static ZL_Report CCTX_runSuccessor_internal(
         ZL_CCtx* cctx,
@@ -1112,8 +1250,10 @@ static ZL_Report CCTX_runSuccessor_internal(
         size_t nbInputs,
         unsigned depth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
+    ZL_RESULT_SCOPE_ADD_GRAPH_CONTEXT((ZL_GraphContext){ .graphID = graphid });
+
     ZL_ASSERT_NN(cctx);
-    ZL_SCOPE_GRAPH_CONTEXT(cctx, { .graphID = graphid });
 
     // Special: Single small Input get STORED immediately
     ZL_ASSERT_GT(nbInputs, 0);
@@ -1145,7 +1285,7 @@ static ZL_Report CCTX_runSuccessor_internal(
             cctx, ZL_CParam_permissiveCompression);
     ZL_DLOG(BLOCK, "node just failed : permissiveMode = %u", backupMode);
     if (backupMode != ZL_TernaryParam_enable || cctx->inBackupMode) {
-        ZL_RET_R(outcome);
+        return outcome;
     }
 
     ZL_E_log(ZL_RES_error(outcome), ZL_LOG_LVL_V);
@@ -1172,8 +1312,9 @@ static ZL_Report CCTX_runSuccessor_internal(
 }
 
 /* Invoked from: CCTX_startGraph(), CCTX_runSuccessors()
- * Upper echelon, will invoke CCTX_runSupervisedGraph(),
- * is also in charge of Permissive (backup) mode */
+ * Upper echelon, acts as a graph type dispatcher,
+ * routing between segmenter and normal graphs.
+ * Is also in charge of Stream cleaning */
 ZL_Report CCTX_runSuccessor(
         ZL_CCtx* cctx,
         ZL_GraphID graphid,
@@ -1183,20 +1324,30 @@ ZL_Report CCTX_runSuccessor(
         unsigned depth)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
+    /* Depth limit: catch runaway recursion in user-defined graphs.
+     * Skipped in backup mode, where the library runs its own fallback graph
+     * (currently ZL_GRAPH_COMPRESS_GENERIC). This is safe as long as the
+     * backup graph has deterministic bounded depth (no dynamic decisions
+     * that could loop). If the backup graph ever gains dynamic routing,
+     * this assumption must be revisited — e.g. by introducing a dedicated
+     * ZL_GRAPH_COMPRESS_BACKUP with static-only decisions. */
+    if (depth >= ZL_MAX_GRAPH_DEPTH && !cctx->inBackupMode) {
+        ZL_ERR(temporaryLibraryLimitation,
+               "Graph depth limit exceeded (depth=%u)",
+               depth);
+    }
     ZL_DLOG(BLOCK, "CCTX_runSuccessor (graphid=%u)", graphid.gid);
-    if (rtInputs[0].rtsid == 0 && nbInputs == cctx->nbInputs
-        && !cctx->segmenterStarted) {
-        // Original input
-        if (CGRAPH_graphType(cctx->cgraph, graphid) == gt_segmenter) {
+    int const isSegmentable =
+            (rtInputs[0].rtsid == 0 && nbInputs == cctx->nbInputs
+             && cctx->numSegments == 0);
+
+    // Segmenter
+    if (CGRAPH_graphType(cctx->cgraph, graphid) == gt_segmenter) {
+        if (isSegmentable) {
             return CCTX_runSegmenter(cctx, graphid, rgp, rtInputs, nbInputs);
         }
+        ZL_ERR(graph_invalid, "Segmenter can only be used on full input");
     }
-
-    ZL_ERR_IF_EQ(
-            CGRAPH_graphType(cctx->cgraph, graphid),
-            gt_segmenter,
-            GENERIC,
-            "Invalid usage of Segmenter: can only be employed on full input");
 
     // Normal Graph
     for (size_t n = 0; n < nbInputs; n++) {
@@ -1204,8 +1355,10 @@ ZL_Report CCTX_runSuccessor(
     }
     ZL_Report const r = CCTX_runSuccessor_internal(
             cctx, graphid, rgp, rtInputs, nbInputs, depth);
-    for (size_t n = 0; n < nbInputs; n++) {
-        RTGM_clearRTStream(&cctx->rtgraph, rtInputs[n], depth);
+    if (!isSegmentable) {
+        for (size_t n = 0; n < nbInputs; n++) {
+            RTGM_clearRTStream(&cctx->rtgraph, rtInputs[n], depth);
+        }
     }
     return r;
 }
@@ -1218,13 +1371,13 @@ ZL_Report CCTX_runSuccessor(
 ZL_Report
 CCTX_startCompression(ZL_CCtx* cctx, const ZL_Data* inputs[], size_t nbInputs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
     ZL_DLOG(FRAME,
             "CCTX_startCompression (%zu inputs; input[0].size = %zu)",
             nbInputs,
             ZL_Data_contentSize(inputs[0]));
     ZL_ASSERT_NN(cctx);
     ZL_ASSERT_NN(inputs);
-    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
 
     /* Current library limitation :
      * Compression requires attaching a Compressor.
@@ -1250,8 +1403,8 @@ CCTX_startCompression(ZL_CCtx* cctx, const ZL_Data* inputs[], size_t nbInputs)
     cctx->inputs = ZL_codemodDatasAsInputs(inputs);
     ZL_ERR_IF_LT(nbInputs, 1, successor_invalidNumInputs);
     ZL_ASSERT_LT(nbInputs, INT_MAX);
-    cctx->nbInputs         = (unsigned)nbInputs;
-    cctx->segmenterStarted = 0;
+    cctx->nbInputs    = (unsigned)nbInputs;
+    cctx->numSegments = 0;
     ALLOC_ARENA_MALLOC_CHECKED(
             RTStreamID, rtsids, nbInputs, cctx->sessionArena);
     for (size_t n = 0; n < nbInputs; n++) {
@@ -1279,7 +1432,7 @@ CCTX_startCompression(ZL_CCtx* cctx, const ZL_Data* inputs[], size_t nbInputs)
             nbInputs,
             /* depth */ 1));
 
-    if (cctx->segmenterStarted == 0) {
+    if (cctx->numSegments == 0) {
         /* no segmenter -> only one chunk */
         ZL_ERR_IF_ERR(CCTX_flushChunk(cctx, inputs, nbInputs));
     }
@@ -1391,6 +1544,7 @@ ZL_Report CCTX_setOutBufferSizes(
         const size_t writtenSizes[],
         size_t nbOutStreams)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
     ZL_DLOG(BLOCK,
             "CCTX_setOutBufferSizes (node id %u => %zu buffs)",
             rtnodeid.rtnid,
@@ -1401,7 +1555,7 @@ ZL_Report CCTX_setOutBufferSizes(
     for (int n = 0; n < (int)nbOutStreams; n++) {
         RTStreamID const rtstreamid =
                 RTGM_getOutStreamID(&cctx->rtgraph, rtnodeid, n);
-        ZL_RET_R_IF_ERR(ZL_Data_commit(
+        ZL_ERR_IF_ERR(ZL_Data_commit(
                 RTGM_getWStream(&cctx->rtgraph, rtstreamid), writtenSizes[n]));
     }
     return ZL_returnSuccess();
@@ -1409,6 +1563,7 @@ ZL_Report CCTX_setOutBufferSizes(
 
 ZL_Report CCTX_checkOutputCommitted(const ZL_CCtx* cctx, RTNodeID rtnodeid)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_NN(cctx);
     size_t const nbOutStreams = RTGM_getNbOutStreams(&cctx->rtgraph, rtnodeid);
     ZL_DLOG(BLOCK,
@@ -1420,15 +1575,13 @@ ZL_Report CCTX_checkOutputCommitted(const ZL_CCtx* cctx, RTNodeID rtnodeid)
         RTStreamID const rtstreamid =
                 RTGM_getOutStreamID(&cctx->rtgraph, rtnodeid, n);
         if (!STREAM_isCommitted(CCTX_getRStream(cctx, rtstreamid))) {
-            ZL_RET_R_ERR(
-                    transform_executionFailure,
-                    "Error from Transform '%s'(%u): output stream %i/%zu was not committed",
-                    CNODE_getName(RTGM_getCNode(&cctx->rtgraph, rtnodeid)),
-                    CNODE_getTransformID(
-                            RTGM_getCNode(&cctx->rtgraph, rtnodeid))
-                            .trid,
-                    n,
-                    nbOutStreams);
+            ZL_ERR(transform_executionFailure,
+                   "Error from Transform '%s'(%u): output stream %i/%zu was not committed",
+                   CNODE_getName(RTGM_getCNode(&cctx->rtgraph, rtnodeid)),
+                   CNODE_getTransformID(RTGM_getCNode(&cctx->rtgraph, rtnodeid))
+                           .trid,
+                   n,
+                   nbOutStreams);
         };
     }
     return ZL_returnSuccess();
@@ -1439,13 +1592,15 @@ ZL_Report CCTX_listBuffersToStore(
         ZL_RBuffer* rba,
         size_t rbaCapacity)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_NN(cctx);
     ZL_ASSERT_NN(rba);
     // start by Transforms' header stream
     ZL_ASSERT_GT(rbaCapacity, 1);
     rba[0] = ZL_RBuffer_fromVector(&cctx->trHeaders.sentHeaderStream);
     rbaCapacity--;
-    ZL_TRY_LET_R(
+    ZL_TRY_LET(
+            size_t,
             nbStreams,
             RTGM_listBuffersToStore(&cctx->rtgraph, rba + 1, rbaCapacity));
     ZL_ASSERT_LE(nbStreams, rbaCapacity);
@@ -1478,16 +1633,60 @@ static ZL_Report CCTX_writeChunkHeader(
     return EFH_writeChunkHeader(dst, dstCapacity, &info, gi, formatVersion);
 }
 
+static ZL_Report CCTX_replaceChunkWithStore(
+        ZL_CCtx* cctx,
+        const ZL_Data* inputs[],
+        size_t nbInputs)
+{
+    ZL_DLOG(BLOCK, "CCTX_replaceChunkWithStore (%zu inputs)", nbInputs);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
+
+    // Verify we're in a valid state
+    ZL_ASSERT_NN(cctx);
+    ZL_ASSERT_NN(inputs);
+    ZL_ASSERT_GT(nbInputs, 0);
+
+    // clearing
+    RTGM_clearNodesFrom(&cctx->rtgraph, 0);
+    RTGM_clearRTStreamsFrom(&cctx->rtgraph, 0);
+    CCTX_TransformHeaders_reset(&cctx->trHeaders);
+
+    // Always recreate input streams
+    for (size_t n = 0; n < nbInputs; n++) {
+        ZL_TRY_LET(RTStreamID, rtsid, RTGM_refInput(&cctx->rtgraph, inputs[n]));
+        ZL_ERR_IF_NE(
+                rtsid.rtsid,
+                n,
+                corruption,
+                "Expected stream at index %zu, got %u",
+                n,
+                rtsid.rtsid);
+    }
+
+    // After clearing, run STORE graph
+    ALLOC_ARENA_MALLOC_CHECKED(
+            RTStreamID, inputRtsids, nbInputs, cctx->chunkArena);
+    for (size_t n = 0; n < nbInputs; n++) {
+        inputRtsids[n] = (RTStreamID){ (ZL_IDType)n };
+    }
+
+    ZL_DLOG(SEQ, "Running STORE graph on %zu inputs", nbInputs);
+    ZL_ERR_IF_ERR(CCTX_runSupervisedGraphID(
+            cctx, ZL_GRAPH_STORE, NULL, inputRtsids, nbInputs, 1));
+
+    return ZL_returnSuccess();
+}
+
 /**
  * @return amount of data written into dst, or an error
  */
 ZL_Report
 CCTX_flushChunk(ZL_CCtx* cctx, const ZL_Data* inputs[], size_t nbInputs)
 {
-    ZL_DLOG(BLOCK, "CCTX_flushChunk (%zu inputs)", nbInputs);
     ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
+    ZL_DLOG(BLOCK, "CCTX_flushChunk (%zu inputs)", nbInputs);
 
-    GraphInfo gi;
+    GraphInfo gi = { 0 };
     ZL_ERR_IF_ERR(CCTX_getFinalGraph(cctx, &gi));
 
     // Write chunk header
@@ -1497,24 +1696,102 @@ CCTX_flushChunk(ZL_CCtx* cctx, const ZL_Data* inputs[], size_t nbInputs)
     size_t frameSize            = startFrameSize;
     ZL_ASSERT_LE(frameSize, capacity);
 
+    ZL_TernaryParam const storeOnExpansion =
+            (ZL_TernaryParam)CCTX_getAppliedGParam(
+                    cctx, ZL_CParam_storeOnExpansion);
+
+    size_t chunkHeaderSize = 0;
+    int useStore           = 0; // set to 1 when STORE fallback is needed
+
     {
+        ZL_Report const headerReport = CCTX_writeChunkHeader(
+                cctx,
+                (char*)dst + startFrameSize,
+                capacity - startFrameSize,
+                &gi);
+
+        if (ZL_isError(headerReport)) {
+            // Compressed chunk header doesn't fit in dst.
+            // If storeOnExpansion is enabled and there are transforms,
+            // STORE may produce a smaller header — try it before giving up.
+            if (gi.nbTransforms > 0
+                && storeOnExpansion != ZL_TernaryParam_disable) {
+                ZL_DLOG(BLOCK,
+                        "Compressed chunk header too large for dst "
+                        "(capacity=%zu), trying STORE fallback",
+                        capacity - startFrameSize);
+                useStore = 1;
+            } else {
+                return headerReport; // genuine error
+            }
+        } else {
+            chunkHeaderSize = ZL_validResult(headerReport);
+            ZL_LOG(SEQ,
+                   "wrote %zu chunk header bytes into buffer of capacity %zu",
+                   chunkHeaderSize,
+                   capacity - startFrameSize);
+            ZL_ASSERT_LE(chunkHeaderSize, capacity - startFrameSize);
+        }
+    }
+
+    if (gi.nbTransforms > 0 && !useStore) {
+        // Check if data has expanded, use STORE in that case
+        if (storeOnExpansion != ZL_TernaryParam_disable) {
+            // Calculate total compressed size (data buffers)
+            size_t totalCompressedSize = chunkHeaderSize; // Start with header
+            for (size_t n = 0; n < gi.nbStoredBuffs; n++) {
+                totalCompressedSize += gi.storedBuffs[n].size;
+            }
+
+            // Calculate total input size
+            size_t totalInputSize = 0;
+            for (size_t n = 0; n < nbInputs; n++) {
+                totalInputSize += ZL_Data_contentSize(inputs[n]);
+                if (ZL_Data_type(inputs[n]) == ZL_Type_string) {
+                    totalInputSize +=
+                            ZL_Data_numElts(inputs[n]) * sizeof(uint32_t);
+                }
+            }
+
+            if (totalCompressedSize >= totalInputSize) {
+                ZL_DLOG(BLOCK,
+                        "Inflation detected: input=%zu <= compressed=%zu "
+                        "(header=%zu, data=%zu)",
+                        totalInputSize,
+                        totalCompressedSize,
+                        chunkHeaderSize,
+                        totalCompressedSize - chunkHeaderSize);
+                useStore = 1;
+            }
+        } // storeOnExpansion enabled
+    }
+
+    if (useStore) {
+        // Replace with STORE
+        ZL_ERR_IF_ERR(CCTX_replaceChunkWithStore(cctx, inputs, nbInputs));
+
+        // Re-get graph info
+        ZL_ERR_IF_ERR(CCTX_getFinalGraph(cctx, &gi));
+
+        // Write STORE chunk header (if this also fails, genuine error)
         ZL_TRY_LET(
                 size_t,
-                chhSize,
+                storeHeaderSize,
                 CCTX_writeChunkHeader(
                         cctx,
                         (char*)dst + startFrameSize,
                         capacity - startFrameSize,
                         &gi));
-        ZL_LOG(SEQ,
-               "wrote %zu chunk header bytes into buffer of capacity %zu",
-               chhSize,
-               capacity - startFrameSize);
-        ZL_ASSERT_LE(chhSize, capacity - startFrameSize);
-        frameSize += chhSize;
+
+        ZL_DLOG(SEQ,
+                "After STORE: header=%zu (was %zu)",
+                storeHeaderSize,
+                chunkHeaderSize);
+        chunkHeaderSize = storeHeaderSize;
     }
 
     // Copy final buffers(s)
+    frameSize += chunkHeaderSize;
     size_t const nbStoredBuffs = gi.nbStoredBuffs;
     for (size_t n = 0; n < nbStoredBuffs; n++) {
         size_t const lbsize = gi.storedBuffs[n].size;
@@ -1535,7 +1812,7 @@ CCTX_flushChunk(ZL_CCtx* cctx, const ZL_Data* inputs[], size_t nbInputs)
         ZL_ASSERT_EQ(
                 CCTX_getAppliedGParam(cctx, ZL_CParam_contentChecksum),
                 ZL_TernaryParam_enable);
-        ZL_RET_R_IF_LT(dstCapacity_tooSmall, capacity - frameSize, 4);
+        ZL_ERR_IF_LT(capacity - frameSize, 4, dstCapacity_tooSmall);
         uint32_t const formatVersion =
                 (uint32_t)CCTX_getAppliedGParam(cctx, ZL_CParam_formatVersion);
         ZL_TRY_LET(
@@ -1554,7 +1831,7 @@ CCTX_flushChunk(ZL_CCtx* cctx, const ZL_Data* inputs[], size_t nbInputs)
         ZL_ASSERT_EQ(
                 CCTX_getAppliedGParam(cctx, ZL_CParam_compressedChecksum),
                 ZL_TernaryParam_enable);
-        ZL_RET_R_IF_LT(dstCapacity_tooSmall, capacity - frameSize, 4);
+        ZL_ERR_IF_LT(capacity - frameSize, 4, dstCapacity_tooSmall);
         size_t startHashPosition = startFrameSize;
         if (CCTX_getAppliedGParam(cctx, ZL_CParam_formatVersion)
             < ZL_CHUNK_VERSION_MIN) {
@@ -1576,12 +1853,15 @@ CCTX_flushChunk(ZL_CCtx* cctx, const ZL_Data* inputs[], size_t nbInputs)
 
     // Update dest buffer info
     cctx->currentFrameSize = frameSize;
+    ++cctx->numSegments;
 
     return ZL_returnValue(frameSize - startFrameSize);
 }
 
 ZL_Report CCTX_getFinalGraph(ZL_CCtx* cctx, GraphInfo* gip)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
+
     ZL_ASSERT_NN(cctx);
     unsigned const formatVersion =
             (unsigned)CCTX_getAppliedGParam(cctx, ZL_CParam_formatVersion);
@@ -1596,18 +1876,18 @@ ZL_Report CCTX_getFinalGraph(ZL_CCtx* cctx, GraphInfo* gip)
     ZL_ASSERT_NN(gip);
 
     // Check format limitations
-    ZL_RET_R_IF_GE(
-            formatVersion_unsupported,
+    ZL_ERR_IF_GE(
             nbTransforms,
-            ZL_runtimeNodeLimit(formatVersion));
-    ZL_RET_R_IF_GE(
-            formatVersion_unsupported,
+            ZL_runtimeNodeLimit(formatVersion),
+            formatVersion_unsupported);
+    ZL_ERR_IF_GE(
             nbStreamsMax,
-            ZL_runtimeStreamLimit(formatVersion));
-    ZL_RET_R_IF_GT(
-            formatVersion_unsupported,
+            ZL_runtimeStreamLimit(formatVersion),
+            formatVersion_unsupported);
+    ZL_ERR_IF_GT(
             nbInputs,
-            ZL_runtimeInputLimit(formatVersion));
+            ZL_runtimeInputLimit(formatVersion),
+            formatVersion_unsupported);
 
     // Allocation
     ALLOC_ARENA_MALLOC_CHECKED(
@@ -1648,10 +1928,10 @@ ZL_Report CCTX_getFinalGraph(ZL_CCtx* cctx, GraphInfo* gip)
         const NodeHeaderSegment nhs =
                 RTGM_nodeHeaderSegment(&cctx->rtgraph, rtnid);
         trHSizes[n] = nhs.len;
-        ZL_RET_R_IF_LT(
-                corruption,
+        ZL_ERR_IF_LT(
                 RTGM_getNbOutStreams(&cctx->rtgraph, rtnid),
-                CNODE_getNbOut1s(cnode));
+                CNODE_getNbOut1s(cnode),
+                corruption);
         nbVOs[n] = RTGM_getNbOutStreams(&cctx->rtgraph, rtnid)
                 - CNODE_getNbOut1s(cnode);
         nbTrInputs[n] = RTGM_getNbInStreams(&cctx->rtgraph, rtnid);
@@ -1662,7 +1942,7 @@ ZL_Report CCTX_getFinalGraph(ZL_CCtx* cctx, GraphInfo* gip)
                 gip->trInfo[n].trid);
         // Copy header into final Transform's Header stream
         // in the order they will be consumed by the decoder.
-        ZL_TRY_LET_T(
+        ZL_TRY_LET(
                 ZL_RBuffer,
                 buffer_slice,
                 ZL_RBuffer_slice(
@@ -1670,7 +1950,7 @@ ZL_Report CCTX_getFinalGraph(ZL_CCtx* cctx, GraphInfo* gip)
                                 &cctx->trHeaders.stagingHeaderStream),
                         nhs.startPos,
                         nhs.len));
-        ZL_RET_R_IF_ERR(
+        ZL_ERR_IF_ERR(
                 CCTX_TransformHeaders_send(&cctx->trHeaders, buffer_slice));
     }
     ZL_ASSERT_GE(nbDistances, nbTransforms);
@@ -1699,7 +1979,8 @@ ZL_Report CCTX_getFinalGraph(ZL_CCtx* cctx, GraphInfo* gip)
 
     // List Stored buffers
     size_t const nbBuffsMax = nbStreamsMax;
-    ZL_TRY_LET_R(nbBuffs, CCTX_listBuffersToStore(cctx, buffs, nbBuffsMax));
+    ZL_TRY_LET(
+            size_t, nbBuffs, CCTX_listBuffersToStore(cctx, buffs, nbBuffsMax));
     ZL_ASSERT_LE(nbBuffs, nbBuffsMax);
     gip->nbStoredBuffs = nbBuffs;
 
@@ -1850,4 +2131,26 @@ CCTX_tryGraph(
     CCTX_free(cctx);
 
     return result;
+}
+
+ZL_Report
+CCTX_setHeaderComment(ZL_CCtx* cctx, const void* comment, size_t commentSize)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
+    ZL_ASSERT_NN(cctx);
+    if (commentSize == 0) {
+        cctx->comment.size = 0;
+        return ZL_returnSuccess();
+    }
+    void* buff = ALLOC_Arena_malloc(cctx->sessionArena, commentSize);
+    ZL_ERR_IF_NULL(buff, allocation);
+    cctx->comment.size = commentSize;
+    memcpy(buff, comment, commentSize);
+    cctx->comment.data = buff;
+    return ZL_returnSuccess();
+}
+
+ZL_Comment CCTX_getHeaderComment(const ZL_CCtx* cctx)
+{
+    return cctx->comment;
 }

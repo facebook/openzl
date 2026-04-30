@@ -3,14 +3,14 @@
 #ifndef ZSTRONG_CUSTOM_TRANSFORMS_THRIFT_KERNELS_ENCODE_THRIFT_KERNEL_H
 #define ZSTRONG_CUSTOM_TRANSFORMS_THRIFT_KERNELS_ENCODE_THRIFT_KERNEL_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stddef.h>
 #include <stdint.h>
 
 #include "openzl/zl_errors.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * All of these functions require knowing the containers size ahead of time.

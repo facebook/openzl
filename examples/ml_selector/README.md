@@ -1,7 +1,7 @@
 # ML Selector Tutorial
 
 This tutorial would walk you through the steps needed to train and test an ML
-selector in Zstrong. Currently only compiles in fbsource environment.
+selector. Currently only compiles in fbsource environment.
 
 The example follows 4 steps:
 
@@ -9,6 +9,8 @@ The example follows 4 steps:
 2. Extract features using training selector
 3. Model training
 4. Testing
+
+**Important**: The ordering of successors must not change between training and inference. Since the model uses numeric indices to represent successors, any change in successor ordering would cause predictions to map to incorrect compression strategies.
 
 ## Quick start
 
@@ -18,15 +20,15 @@ The example follows 4 steps:
    divided into a train and test directory):
 
    ```
-   buck2 run @//mode/opt //data_compression/experimental/zstrong/examples/ml_selector:generate_data -- /tmp/ml_train_samples
-   buck2 run @//mode/opt //data_compression/experimental/zstrong/examples/ml_selector:generate_data -- /tmp/ml_test_samples
+   buck2 run @//mode/opt examples/ml_selector:generate_data -- /tmp/ml_train_samples
+   buck2 run @//mode/opt examples/ml_selector:generate_data -- /tmp/ml_test_samples
    ```
 
    Before going forward, check current model's inference results (the starter
    model always selects FieldLz as a successor):
 
    ```
-   buck2 run @//mode/opt //data_compression/experimental/zstrong/examples/ml_selector:zs2_mlselector  -- infer -i /tmp/ml_test_samples/
+   buck2 run @//mode/opt examples/ml_selector:zs2_mlselector  -- infer -i /tmp/ml_test_samples/
    ```
 
    Example output:
@@ -38,20 +40,20 @@ The example follows 4 steps:
 2. Run feature extraction:
 
    ```
-   buck2 run @//mode/opt //data_compression/experimental/zstrong/examples/ml_selector:zs2_mlselector  -- train -i /tmp/ml_train_samples/ -o /tmp/ml_features
+   buck2 run @//mode/opt examples/ml_selector:zs2_mlselector  -- train -i /tmp/ml_train_samples/ -o /tmp/ml_features
    ```
 
 3. Train a model and save it as the inference's new model (make sure to run this
-   command from zstrong root directory):
+   command from openzl/dev or openzl/prod):
 
    ```
-   buck2 run @//mode/opt //data_compression/experimental/zstrong/examples/ml_selector:train_model -- /tmp/ml_features -o examples/ml_selector/model -m EXAMPLE_MODEL
+   buck2 run @//mode/opt examples/ml_selector:train_model -- /tmp/ml_features -o examples/ml_selector/model -m EXAMPLE_MODEL
    ```
 
 4. Test the generated model inference on the test data:
 
    ```
-   buck2 run @//mode/opt //data_compression/experimental/zstrong/examples/ml_selector:zs2_mlselector  -- infer -i /tmp/ml_test_samples/
+   buck2 run @//mode/opt examples/ml_selector:zs2_mlselector  -- infer -i /tmp/ml_test_samples/
    ```
 
    Example output:
@@ -65,15 +67,15 @@ The example follows 4 steps:
 1. Generate test data (as alternative you can use your own data):
 
    ```
-   buck2 run @//mode/opt //data_compression/experimental/zstrong/examples/ml_selector:generate_data -- /tmp/ml_train_samples
-   buck2 run @//mode/opt //data_compression/experimental/zstrong/examples/ml_selector:generate_data -- /tmp/ml_test_samples
+   buck2 run @//mode/opt examples/ml_selector:generate_data -- /tmp/ml_train_samples
+   buck2 run @//mode/opt examples/ml_selector:generate_data -- /tmp/ml_test_samples
    ```
 
    Before going forward, check current model's inference results (the starter
    model always selects FieldLz as a successor):
 
    ```
-   buck2 run @//mode/lldb //data_compression/experimental/zstrong/examples/ml_selector:zs2_core_mlselector /tmp/ml_test_samples/
+   buck2 run @//mode/lldb examples/ml_selector:zs2_core_mlselector /tmp/ml_test_samples/
    ```
 
    Example output:
@@ -86,7 +88,7 @@ The example follows 4 steps:
    result should be better than the starter model's results.
 
    ```
-   buck2 run @//mode/lldb //data_compression/experimental/zstrong/examples/ml_selector:zs2_core_mlselector /tmp/ml_test_samples/ -g
+   buck2 run @//mode/lldb examples/ml_selector:zs2_core_mlselector /tmp/ml_test_samples/ -g
    ```
 
    Example output:
@@ -99,20 +101,20 @@ The example follows 4 steps:
 2. Run feature extraction:
 
    ```
-   buck2 run @//mode/opt //data_compression/experimental/zstrong/examples/ml_selector:zs2_mlselector  -- train -i /tmp/ml_train_samples/ -o /tmp/ml_features
+   buck2 run @//mode/opt examples/ml_selector:zs2_mlselector  -- train -i /tmp/ml_train_samples/ -o /tmp/ml_features
    ```
 
 3. Train a model and save it as the inference's new model (make sure to run this
-   command from zstrong root directory):
+   command from openzl/dev or openzl/prod):
 
    ```
-   buck2 run @//mode/opt //data_compression/experimental/zstrong/examples/ml_selector:train_model -- -c /tmp/ml_features -o examples/ml_selector/core_model -m EXAMPLE_CORE_MODEL
+   buck2 run @//mode/opt examples/ml_selector:train_model -- -c /tmp/ml_features -o examples/ml_selector/core_model -m EXAMPLE_CORE_MODEL
    ```
 
 4. Test the generated model inference on the test data:
 
    ```
-   buck2 run @//mode/lldb //data_compression/experimental/zstrong/examples/ml_selector:zs2_core_mlselector /tmp/ml_test_samples/
+   buck2 run @//mode/lldb examples/ml_selector:zs2_core_mlselector /tmp/ml_test_samples/
    ```
 
    Example output:
@@ -161,7 +163,7 @@ successors to the training selector.
 
 The `train_model` script takes a features files and generates a model based on
 it with XGBoost. The script would then serialize the model into a format
-digestible by Zstrong. The path to the output file is given with the `-o`
+digestible by openzl. The path to the output file is given with the `-o`
 parameter. The `-m` parameter controls the name of the string representing the
 model in the header file. For this example we use `EXAMPLE_MODEL`. At the end of
 the run the script would apply the model to all of the data from the feature

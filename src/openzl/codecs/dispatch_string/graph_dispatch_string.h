@@ -5,11 +5,12 @@
 
 #include "openzl/zl_data.h" // st_*
 
-#define GRAPH_DISPATCH_STRING(id)                                    \
-    {                                                                \
-        .CTid = id, .inputTypes = ZL_STREAMTYPELIST(ZL_Type_string), \
-        .soTypes = ZL_STREAMTYPELIST(ZL_Type_numeric),               \
-        .voTypes = ZL_STREAMTYPELIST(ZL_Type_string),                \
+#define GRAPH_DISPATCH_STRING(id)                         \
+    {                                                     \
+        .CTid       = id,                                 \
+        .inputTypes = ZL_STREAMTYPELIST(ZL_Type_string),  \
+        .soTypes    = ZL_STREAMTYPELIST(ZL_Type_numeric), \
+        .voTypes    = ZL_STREAMTYPELIST(ZL_Type_string),  \
     }
 
 #endif

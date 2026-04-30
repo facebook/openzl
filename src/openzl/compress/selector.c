@@ -4,7 +4,6 @@
 #include "openzl/compress/cctx.h"     // CCTX_*
 #include "openzl/compress/graphmgr.h" // GM_*
 #include "openzl/compress/localparams.h"
-#include "openzl/zl_common_types.h" // ZL_TernaryParam_disable
 #include "openzl/zl_data.h"
 #include "openzl/zl_reflection.h" // ZL_Compressor_Graph_getInput0Mask
 #include "openzl/zl_selector.h"   // ZL_GraphReport, ZL_Selector_tryGraph def
@@ -15,7 +14,8 @@ ZL_Report SelCtx_initSelectorCtx(
         Arena* wkspArena,
         const ZL_LocalParams* lparams,
         SelectorSuccessorParams* successorLParams,
-        const void* opaque)
+        const void* opaque,
+        unsigned depth)
 {
     ZL_ASSERT_NN(selCtx);
     ZL_ASSERT_NN(wkspArena);
@@ -23,7 +23,8 @@ ZL_Report SelCtx_initSelectorCtx(
                              .wkspArena        = wkspArena,
                              .lparams          = lparams,
                              .successorLParams = successorLParams,
-                             .opaque           = opaque };
+                             .opaque           = opaque,
+                             .depth            = depth };
     return ZL_returnSuccess();
 }
 
@@ -65,11 +66,12 @@ ZL_Report ZL_Selector_setSuccessorParams(
         const ZL_Selector* selCtx,
         const ZL_LocalParams* lparams)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(selCtx->cctx);
     if (lparams) {
         ALLOC_ARENA_MALLOC_CHECKED(
                 ZL_LocalParams, lparamsCopy, 1, selCtx->wkspArena);
         *lparamsCopy = *lparams;
-        ZL_RET_R_IF_ERR(LP_transferLocalParams(selCtx->wkspArena, lparamsCopy));
+        ZL_ERR_IF_ERR(LP_transferLocalParams(selCtx->wkspArena, lparamsCopy));
         SelectorSuccessorParams* p = selCtx->successorLParams;
         p->params                  = lparamsCopy;
     }
@@ -126,4 +128,11 @@ void* ZL_Selector_getScratchSpace(const ZL_Selector* selCtx, size_t size)
 const void* ZL_Selector_getOpaquePtr(const ZL_Selector* selector)
 {
     return selector->opaque;
+}
+
+unsigned ZL_Selector_getGraphDepth(const ZL_Selector* selCtx)
+{
+    ZL_ASSERT_NN(selCtx);
+    ZL_ASSERT_GE(selCtx->depth, 1);
+    return selCtx->depth;
 }

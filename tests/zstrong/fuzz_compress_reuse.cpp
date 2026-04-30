@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "security/lionhead/utils/lib_ftest/ftest.h"
+#include "tests/datagen/DataGen.h"
 #include "tests/fuzz_utils.h"
 
 #include "openzl/common/assertion.h"
@@ -29,13 +29,14 @@ constexpr ZL_TypedEncoderDesc kCTransform = {
     .gd = kGraphDesc,
     .transform_f =
             [](ZL_Encoder* eictx, ZL_Input const* in) noexcept {
+                ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
                 ZL_Output* out = ZL_Encoder_createTypedStream(
                         eictx, 0, ZL_Input_numElts(in), 1);
-                ZL_RET_R_IF_NULL(allocation, out);
+                ZL_ERR_IF_NULL(out, allocation);
                 memcpy(ZL_Output_ptr(out),
                        ZL_Input_ptr(in),
                        ZL_Input_numElts(in));
-                ZL_RET_R_IF_ERR(ZL_Output_commit(out, ZL_Input_numElts(in)));
+                ZL_ERR_IF_ERR(ZL_Output_commit(out, ZL_Input_numElts(in)));
                 return ZL_returnSuccess();
             },
 };
@@ -44,14 +45,14 @@ constexpr ZL_TypedDecoderDesc kDTransform = {
     .gd = kGraphDesc,
     .transform_f =
             [](ZL_Decoder* dictx, ZL_Input const* ins[]) noexcept {
+                ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
                 ZL_Output* out = ZL_Decoder_create1OutStream(
                         dictx, 0, ZL_Input_numElts(ins[0]));
-                ZL_RET_R_IF_NULL(allocation, out);
+                ZL_ERR_IF_NULL(out, allocation);
                 memcpy(ZL_Output_ptr(out),
                        ZL_Input_ptr(ins[0]),
                        ZL_Input_numElts(ins[0]));
-                ZL_RET_R_IF_ERR(
-                        ZL_Output_commit(out, ZL_Input_numElts(ins[0])));
+                ZL_ERR_IF_ERR(ZL_Output_commit(out, ZL_Input_numElts(ins[0])));
                 return ZL_returnSuccess();
             },
 };
@@ -106,8 +107,9 @@ ZL_GraphID setCopyGraph(ZL_Compressor* cgraph)
 
 FUZZ(CompressTest, ReuseCCtx)
 {
-    ZL_g_logLevel       = ZL_LOG_LVL_ALWAYS;
-    ZL_CCtx* const cctx = ZL_CCtx_create();
+    openzl::tests::datagen::DataGen dg = openzl::tests::fromFDP(f);
+    ZL_g_logLevel                      = ZL_LOG_LVL_ALWAYS;
+    ZL_CCtx* const cctx                = ZL_CCtx_create();
     ZL_REQUIRE_NN(cctx);
     ZL_Compressor* const cgraph1 = ZL_Compressor_create();
     ZL_REQUIRE_NN(cgraph1);
@@ -133,15 +135,16 @@ FUZZ(CompressTest, ReuseCCtx)
                 ZL_Compressor_selectStartingGraphID(cgraph3, sgid);
         EXPECT_EQ(ZL_isError(gssr), 0) << "setting cgraph3 failed\n";
     }
-    while (f.has_more_data()) {
-        std::string input =
-                gen_str(f, "input_data", zstrong::tests::InputLengthInBytes(1));
+
+    while (dg.has_more_data()) {
+        std::string input        = dg.randString("input_data");
         const char* const data   = input.c_str();
         size_t const isize       = input.length();
         size_t const dstCapacity = ZL_compressBound(isize);
         auto dst                 = std::make_unique<uint8_t[]>(dstCapacity);
-        const ZL_Compressor* const cgraph =
-                f.choices("cgraph", { cgraph1, cgraph2, cgraph3 });
+        const ZL_Compressor* const cgraph = dg.choices(
+                "cgraph",
+                std::vector<const ZL_Compressor*>{ cgraph1, cgraph2, cgraph3 });
         ZL_Report const cgr = ZL_CCtx_refCompressor(cctx, cgraph);
         EXPECT_EQ(ZL_isError(cgr), 0) << "CGraph reference failed\n";
         ZL_Report const creport =

@@ -7,26 +7,26 @@ namespace openzl::training {
 ClusteringConfigBuilder ClusteringConfigBuilder::buildConfigClusterSoloSplit(
         const ColumnMetadata& metadata,
         const CompressionUtils& cUtils,
-        int tag) const
+        ColumnInfo tag) const
 {
     ClusteringConfigBuilder soloSplitCandidate(*this);
-    ZL_Type type    = ZL_Type_any;
-    size_t eltWidth = 0;
     for (auto& cluster : soloSplitCandidate.clusters_) {
-        if (cluster.memberTags.find(tag) != cluster.memberTags.end()) {
-            cluster.memberTags.erase(tag);
-            type     = cluster.typeSuccessor.type;
-            eltWidth = cluster.typeSuccessor.eltWidth;
+        if (cluster.typeSuccessor.type != tag.type
+            || cluster.typeSuccessor.eltWidth != tag.width) {
+            continue;
+        }
+        if (cluster.memberTags.find(tag.tag) != cluster.memberTags.end()) {
+            cluster.memberTags.erase(tag.tag);
             break;
         }
     }
     Cluster newCluster;
-    newCluster.typeSuccessor.type     = type;
-    newCluster.typeSuccessor.eltWidth = eltWidth;
-    newCluster.memberTags.insert(tag);
+    newCluster.typeSuccessor.type     = tag.type;
+    newCluster.typeSuccessor.eltWidth = tag.width;
+    newCluster.memberTags.insert(tag.tag);
     // Pick a successor for the cluster
-    auto clusterInfo =
-            cUtils.getBestClusterInfo({ tag }, type, eltWidth, metadata);
+    auto clusterInfo = cUtils.getBestClusterInfo(
+            { tag.tag }, tag.type, tag.width, metadata);
     newCluster.typeSuccessor.successorIdx = clusterInfo.successorIdx;
     newCluster.typeSuccessor.clusteringCodecIdx =
             clusterInfo.clusteringCodecIdx;
@@ -37,24 +37,24 @@ ClusteringConfigBuilder ClusteringConfigBuilder::buildConfigClusterSoloSplit(
 ClusteringConfigBuilder ClusteringConfigBuilder::buildConfigClusterPairSplit(
         const ColumnMetadata& metadata,
         const CompressionUtils& cUtils,
-        int tag1,
-        int tag2) const
+        ColumnInfo tag1,
+        ColumnInfo tag2) const
 {
-    ZL_Type type1    = ZL_Type_any;
-    size_t eltWidth1 = 0;
-    ZL_Type type2    = ZL_Type_any;
-    size_t eltWidth2 = 0;
+    ZL_Type type1    = tag1.type;
+    size_t eltWidth1 = tag1.width;
+    ZL_Type type2    = tag2.type;
+    size_t eltWidth2 = tag2.width;
     ClusteringConfigBuilder pairSplitCandidate(*this);
     for (auto& cluster : pairSplitCandidate.clusters_) {
-        if (cluster.memberTags.find(tag1) != cluster.memberTags.end()) {
-            cluster.memberTags.erase(tag1);
-            type1     = cluster.typeSuccessor.type;
-            eltWidth1 = cluster.typeSuccessor.eltWidth;
+        if (cluster.typeSuccessor.type == tag1.type
+            && cluster.typeSuccessor.eltWidth == tag1.width
+            && cluster.memberTags.find(tag1.tag) != cluster.memberTags.end()) {
+            cluster.memberTags.erase(tag1.tag);
         }
-        if (cluster.memberTags.find(tag2) != cluster.memberTags.end()) {
-            cluster.memberTags.erase(tag2);
-            type2     = cluster.typeSuccessor.type;
-            eltWidth2 = cluster.typeSuccessor.eltWidth;
+        if (cluster.typeSuccessor.type == tag2.type
+            && cluster.typeSuccessor.eltWidth == tag2.width
+            && cluster.memberTags.find(tag2.tag) != cluster.memberTags.end()) {
+            cluster.memberTags.erase(tag2.tag);
         }
     }
     if (type1 != type2 || eltWidth1 != eltWidth2) {
@@ -64,10 +64,10 @@ ClusteringConfigBuilder ClusteringConfigBuilder::buildConfigClusterPairSplit(
     Cluster newCluster;
     newCluster.typeSuccessor.type     = type1;
     newCluster.typeSuccessor.eltWidth = eltWidth1;
-    newCluster.memberTags.insert(tag1);
-    newCluster.memberTags.insert(tag2);
+    newCluster.memberTags.insert(tag1.tag);
+    newCluster.memberTags.insert(tag2.tag);
     auto clusterInfo = cUtils.getBestClusterInfo(
-            { tag1, tag2 }, type1, eltWidth1, metadata);
+            { tag1.tag, tag2.tag }, type1, eltWidth1, metadata);
     newCluster.typeSuccessor.successorIdx = clusterInfo.successorIdx;
     newCluster.typeSuccessor.clusteringCodecIdx =
             clusterInfo.clusteringCodecIdx;
@@ -86,7 +86,7 @@ ClusteringConfigBuilder ClusteringConfigBuilder::buildConfigAddInputToCluster(
         if (cluster.memberTags.find(tag) != cluster.memberTags.end()) {
             if (type != cluster.typeSuccessor.type
                 || eltWidth != cluster.typeSuccessor.eltWidth) {
-                throw Exception("Incompatible types");
+                continue;
             }
             cluster.memberTags.erase(tag);
             break;

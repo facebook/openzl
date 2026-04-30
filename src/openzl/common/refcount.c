@@ -6,7 +6,7 @@
 #include "openzl/common/allocation.h"
 #include "openzl/zl_errors.h"
 
-struct ZS2_Refcount_Control {
+struct ZL_Refcount_Control {
     void* ptr;
     ZL_Refcount_FreeFn freeFn;
     void* freeState;
@@ -22,6 +22,7 @@ ZL_Report ZL_Refcount_init(
         ZL_Refcount_FreeFn freeFn,
         void* opaque)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (ctrlAlloc == NULL) {
         // just a reference, no ownership
         rc->_ref = NULL;
@@ -29,9 +30,9 @@ ZL_Report ZL_Refcount_init(
         // managed reference => free MUST be defined
         ZL_ASSERT_NN(freeFn);
         ZL_ASSERT_NN(ctrlAlloc->sfree);
-        struct ZS2_Refcount_Control* const ctrl =
+        struct ZL_Refcount_Control* const ctrl =
                 ctrlAlloc->malloc(ctrlAlloc->opaque, sizeof(*ctrl));
-        ZL_RET_R_IF_NULL(allocation, ctrl);
+        ZL_ERR_IF_NULL(ctrl, allocation);
 
         ctrl->ptr           = ptr;
         ctrl->count         = 1;
@@ -60,7 +61,7 @@ static void* mallocFn(void* opaque, size_t s)
     return ZL_malloc(s);
 }
 
-static const ALLOC_CustomAllocation ZS2_Refcount_defaultAllocation = {
+static const ALLOC_CustomAllocation ZL_Refcount_defaultAllocation = {
     .malloc = mallocFn,
     .sfree  = freeFn,
     .opaque = NULL
@@ -69,14 +70,15 @@ static const ALLOC_CustomAllocation ZS2_Refcount_defaultAllocation = {
 ZL_Report ZL_Refcount_initMalloc(ZL_Refcount* rc, void* ptr)
 {
     return ZL_Refcount_init(
-            rc, ptr, &ZS2_Refcount_defaultAllocation, freeFn, NULL);
+            rc, ptr, &ZL_Refcount_defaultAllocation, freeFn, NULL);
 }
 
 ZL_Report ZL_Refcount_initConstRef(ZL_Refcount* rc, const void* ptr)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     void* ptrMut;
     memcpy(&ptrMut, &ptr, sizeof(ptr));
-    ZL_RET_R_IF_ERR(ZL_Refcount_init(rc, ptrMut, NULL, NULL, NULL));
+    ZL_ERR_IF_ERR(ZL_Refcount_init(rc, ptrMut, NULL, NULL, NULL));
     rc->_mutable = false;
     ZL_ASSERT(!ZL_Refcount_mutable(rc));
     return ZL_returnSuccess();
@@ -84,18 +86,19 @@ ZL_Report ZL_Refcount_initConstRef(ZL_Refcount* rc, const void* ptr)
 
 ZL_Report ZL_Refcount_initMutRef(ZL_Refcount* rc, void* ptr)
 {
-    ZL_RET_R_IF_ERR(ZL_Refcount_init(rc, ptr, NULL, NULL, NULL));
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_ERR(ZL_Refcount_init(rc, ptr, NULL, NULL, NULL));
     rc->_mutable = true;
     ZL_ASSERT(ZL_Refcount_mutable(rc));
     return ZL_returnSuccess();
 }
 
 // simple redirectors, just for type matching
-static void* ZS2_Refcount_arenaMalloc(void* arena, size_t s)
+static void* ZL_Refcount_arenaMalloc(void* arena, size_t s)
 {
     return ALLOC_Arena_malloc(arena, s);
 }
-static void ZS2_Refcount_arenaFree(void* arena, void* p)
+static void ZL_Refcount_arenaFree(void* arena, void* p)
 {
     ALLOC_Arena_free(arena, p);
 }
@@ -110,11 +113,11 @@ void* ZL_Refcount_inArena(ZL_Refcount* rc, Arena* arena, size_t s)
                 s);
         return NULL;
     }
-    const ALLOC_CustomAllocation ca = { ZS2_Refcount_arenaMalloc,
-                                        ZS2_Refcount_arenaFree,
+    const ALLOC_CustomAllocation ca = { ZL_Refcount_arenaMalloc,
+                                        ZL_Refcount_arenaFree,
                                         arena };
     ZL_Report const rcir =
-            ZL_Refcount_init(rc, buffer, &ca, ZS2_Refcount_arenaFree, arena);
+            ZL_Refcount_init(rc, buffer, &ca, ZL_Refcount_arenaFree, arena);
     if (ZL_isError(rcir)) {
         // Note(@Cyan): could be worth passing to some error context
         ZL_DLOG(ERROR,

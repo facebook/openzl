@@ -143,6 +143,7 @@ ZL_FORCE_INLINE ZL_Report ZL_FieldLz_decompress_impl2(
         size_t const kShortLLCode,
         size_t const kShortMLCode)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     uint32_t const minMatch = kMinMatch(1 << kEltBits);
 
     uint8_t* const outStart = (uint8_t*)dst;
@@ -175,8 +176,10 @@ ZL_FORCE_INLINE ZL_Report ZL_FieldLz_decompress_impl2(
     ZL_ASSERT(kShortLL % 16 == 0 || kShortLLCode == kMaxLitLengthCode - 1);
     ZL_ASSERT(kShortML % 16 == 0 || kShortMLCode == kMaxMatchLengthCode - 1);
 
-    uint8_t const* const outLimit   = outEnd - kUnroll * (kTokenLL + kTokenML);
-    uint8_t const* const litsLimit  = litsEnd - kUnroll * kTokenLL;
+    uint8_t const* const outLimit =
+            outEnd - kUnroll * (kTokenLL + kTokenML) - ZS_WILDCOPY_OVERLENGTH;
+    uint8_t const* const litsLimit =
+            litsEnd - kUnroll * kTokenLL - ZS_WILDCOPY_OVERLENGTH;
     uint16_t const* const toksLimit = toksEnd - kUnroll + 1;
     uint32_t const* const offsLimit = offsEnd - kUnroll + 1;
 
@@ -227,10 +230,10 @@ ZL_FORCE_INLINE ZL_Report ZL_FieldLz_decompress_impl2(
                     out += llen;
                     lits += llen;
                     if (ZL_UNLIKELY(llCode == kMaxLitLengthCode)) {
-                        ZL_RET_R_IF_EQ(
-                                srcSize_tooSmall,
+                        ZL_ERR_IF_EQ(
                                 ells,
                                 ellsEnd,
+                                srcSize_tooSmall,
                                 "Not enough extra literal lengths");
                         uint32_t const extra = *ells++ << kEltBits;
                         if (ZL_UNLIKELY(
@@ -257,7 +260,7 @@ ZL_FORCE_INLINE ZL_Report ZL_FieldLz_decompress_impl2(
                             "Corruption: offset too large: %u vs %u",
                             offset,
                             (unsigned)(out - outStart));
-                    ZL_RET_R_ERR(GENERIC);
+                    ZL_ERR(GENERIC);
                 }
                 uint8_t const* match = out - offset;
 
@@ -276,17 +279,17 @@ ZL_FORCE_INLINE ZL_Report ZL_FieldLz_decompress_impl2(
                         out += mlen;
                         match += mlen;
                         if (ZL_UNLIKELY(mlCode == kMaxMatchLengthCode)) {
-                            ZL_RET_R_IF_EQ(
-                                    srcSize_tooSmall,
+                            ZL_ERR_IF_EQ(
                                     emls,
                                     emlsEnd,
+                                    srcSize_tooSmall,
                                     "Not enough extra match lengths");
                             uint32_t const extra = *emls++ << kEltBits;
                             if (ZL_UNLIKELY(out + extra >= outLimit)) {
-                                ZL_RET_R_IF_GT(
-                                        internalBuffer_tooSmall,
+                                ZL_ERR_IF_GT(
                                         out + extra,
                                         outEnd,
+                                        internalBuffer_tooSmall,
                                         "Match too long");
                                 ZS_safecopy(
                                         out,
@@ -306,18 +309,18 @@ ZL_FORCE_INLINE ZL_Report ZL_FieldLz_decompress_impl2(
                     // TODO: Optimize this
                     uint32_t plen = mlen;
                     if (ZL_UNLIKELY(mlCode == kMaxMatchLengthCode)) {
-                        ZL_RET_R_IF_EQ(
-                                srcSize_tooSmall,
+                        ZL_ERR_IF_EQ(
                                 emls,
                                 emlsEnd,
+                                srcSize_tooSmall,
                                 "Not enough extra match lengths");
                         uint32_t const extra = *emls++ << kEltBits;
                         plen += extra;
                         if (ZL_UNLIKELY(out + plen >= outLimit)) {
-                            ZL_RET_R_IF_GT(
-                                    internalBuffer_tooSmall,
+                            ZL_ERR_IF_GT(
                                     out + plen,
                                     outEnd,
+                                    internalBuffer_tooSmall,
                                     "Match too long");
                             ZS_safecopy(out, match, plen, ZS_wo_src_before_dst);
                             out += plen;
@@ -341,35 +344,35 @@ ZL_FORCE_INLINE ZL_Report ZL_FieldLz_decompress_impl2(
             uint32_t mlen = (mlCode + minMatch) << kEltBits;
 
             if (ZL_UNLIKELY(llCode == kMaxLitLengthCode)) {
-                ZL_RET_R_IF_EQ(
-                        srcSize_tooSmall,
+                ZL_ERR_IF_EQ(
                         ells,
                         ellsEnd,
+                        srcSize_tooSmall,
                         "Not enough extra lit lengths");
                 uint32_t const extra = *ells++;
                 llen += extra << kEltBits;
             }
 
             if (ZL_UNLIKELY(mlCode == kMaxMatchLengthCode)) {
-                ZL_RET_R_IF_EQ(
-                        srcSize_tooSmall,
+                ZL_ERR_IF_EQ(
                         emls,
                         emlsEnd,
+                        srcSize_tooSmall,
                         "Not enough extra match lengths");
                 uint32_t const extra = *emls++;
                 mlen += extra << kEltBits;
             }
 
             //> Ensure we have output space
-            ZL_RET_R_IF_GT(
-                    internalBuffer_tooSmall,
+            ZL_ERR_IF_GT(
                     out + llen + mlen,
                     outEnd,
+                    internalBuffer_tooSmall,
                     "Output buffer too small");
 
             //> Copy literals
-            ZL_RET_R_IF_GT(
-                    srcSize_tooSmall, lits + llen, litsEnd, "Too few literals");
+            ZL_ERR_IF_GT(
+                    lits + llen, litsEnd, srcSize_tooSmall, "Too few literals");
 
             ZS_safecopy(out, lits, llen, ZS_wo_no_overlap);
             lits += llen;
@@ -383,7 +386,7 @@ ZL_FORCE_INLINE ZL_Report ZL_FieldLz_decompress_impl2(
                         "Corruption: offset too large: %u vs %u",
                         offset,
                         (unsigned)(out - outStart));
-                ZL_RET_R_ERR(GENERIC);
+                ZL_ERR(GENERIC);
             }
 
             //> Copy match
@@ -406,7 +409,7 @@ ZL_FORCE_INLINE ZL_Report ZL_FieldLz_decompress_impl2(
         //> Decode offset
         uint32_t offset;
         if (ofCode == 3) {
-            ZL_RET_R_IF_EQ(srcSize_tooSmall, offs, offsEnd, "Too few offsets");
+            ZL_ERR_IF_EQ(offs, offsEnd, srcSize_tooSmall, "Too few offsets");
             offset  = *offs++ << kEltBits;
             reps[2] = reps[1];
             reps[1] = reps[0];
@@ -430,8 +433,8 @@ ZL_FORCE_INLINE ZL_Report ZL_FieldLz_decompress_impl2(
         //> Decode literal length
         uint32_t literalLength = llCode;
         if (ZL_UNLIKELY(llCode == kMaxLitLengthCode)) {
-            ZL_RET_R_IF_EQ(
-                    srcSize_tooSmall, ells, ellsEnd, "Too few extra llens");
+            ZL_ERR_IF_EQ(
+                    ells, ellsEnd, srcSize_tooSmall, "Too few extra llens");
             uint32_t const extra = *ells++;
             literalLength += extra;
         }
@@ -440,33 +443,32 @@ ZL_FORCE_INLINE ZL_Report ZL_FieldLz_decompress_impl2(
         //> Decode match length
         uint32_t matchLength = mlCode + minMatch;
         if (ZL_UNLIKELY(mlCode == kMaxMatchLengthCode)) {
-            ZL_RET_R_IF_EQ(
-                    srcSize_tooSmall, emls, emlsEnd, "Too few extra mlens");
+            ZL_ERR_IF_EQ(
+                    emls, emlsEnd, srcSize_tooSmall, "Too few extra mlens");
             uint32_t const extra = *emls++;
             matchLength += extra;
         }
         matchLength <<= kEltBits;
 
         //> Ensure we have output space
-        ZL_RET_R_IF_GT(
-                internalBuffer_tooSmall,
+        ZL_ERR_IF_GT(
                 (uint64_t)literalLength + (uint64_t)matchLength,
                 (uint64_t)(outEnd - out),
+                internalBuffer_tooSmall,
                 "Output size too small");
 
         //> Copy literals
-        ZL_RET_R_IF_GT(
-                srcSize_tooSmall,
+        ZL_ERR_IF_GT(
                 literalLength,
                 (litsEnd - lits),
+                srcSize_tooSmall,
                 "Too few literals");
         ZS_safecopy(out, lits, literalLength, ZS_wo_no_overlap);
         lits += literalLength;
         out += literalLength;
 
         //> Validate offset
-        ZL_RET_R_IF_GT(
-                corruption, offset, (out - outStart), "Offset too large");
+        ZL_ERR_IF_GT(offset, (out - outStart), corruption, "Offset too large");
 
         //> Copy match
         uint8_t const* const match = out - offset;
@@ -475,19 +477,19 @@ ZL_FORCE_INLINE ZL_Report ZL_FieldLz_decompress_impl2(
     }
     if (lits != litsEnd) {
         size_t const lastLiterals = (size_t)(litsEnd - lits);
-        ZL_RET_R_IF_GT(
-                internalBuffer_tooSmall,
+        ZL_ERR_IF_GT(
                 lastLiterals,
                 (size_t)(outEnd - out),
+                internalBuffer_tooSmall,
                 "Output size too small for last lits");
         memcpy(out, lits, lastLiterals);
         lits += lastLiterals;
         out += lastLiterals;
     }
 
-    ZL_RET_R_IF_NE(corruption, offs, offsEnd, "too many offsets");
-    ZL_RET_R_IF_NE(corruption, ells, ellsEnd, "too many extra llens");
-    ZL_RET_R_IF_NE(corruption, emls, emlsEnd, "too many extra mlens");
+    ZL_ERR_IF_NE(offs, offsEnd, corruption, "too many offsets");
+    ZL_ERR_IF_NE(ells, ellsEnd, corruption, "too many extra llens");
+    ZL_ERR_IF_NE(emls, emlsEnd, corruption, "too many extra mlens");
 
     ZL_ASSERT_EQ((out - outStart) % (1 << kEltBits), 0);
 
@@ -586,7 +588,7 @@ ZL_selectDecompressor(unsigned eltBits, uint16_t const* tokens, size_t nbTokens)
         return ZL_FIELD_LZ_DECOMPRESS_FN(0, 14, 14);
     }
 
-    if (0) {
+    if ((0)) {
         if (eltBits == 1) {
             shortLLCode = shortMLCode = 14;
         }
@@ -753,15 +755,16 @@ ZL_Report ZS2_FieldLz_decompress(
         size_t eltWidth,
         ZL_FieldLz_InSequences const* src)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     if (src->nbTokens == 0) {
-        ZL_RET_R_IF_GT(
-                internalBuffer_tooSmall, src->nbLiteralElts, dstEltCapacity);
+        ZL_ERR_IF_GT(
+                src->nbLiteralElts, dstEltCapacity, internalBuffer_tooSmall);
         memcpy(dst, src->literalElts, src->nbLiteralElts * eltWidth);
         return ZL_returnValue(src->nbLiteralElts);
     }
     if (!ZL_isPow2(eltWidth)) {
         ZL_LOG(ERROR, "eltWidth %u is not a power of 2", (unsigned)eltWidth);
-        ZL_RET_R_ERR(compressionParameter_invalid);
+        ZL_ERR(compressionParameter_invalid);
     }
 #ifndef NDEBUG
     tokenStats(src->tokens, src->nbTokens);

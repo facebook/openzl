@@ -142,14 +142,16 @@ TEST(GeneticAlgorithmTest, FastNonDominatedSort)
 TEST(GeneticAlgorithmTest, TournamentSelector)
 {
     // Always picks the best candidate
-    TournamentSelector selector(TournamentSelector::Parameters{
-            .torunamentSelectionProbability = 1.0 });
+    TournamentSelector selector(
+            TournamentSelector::Parameters{ .torunamentSelectionProbability =
+                                                    1.0 });
     ASSERT_EQ(1u, selector.select({ { 1, 0 } }, { { 10, 0 } }));
     ASSERT_EQ(0u, selector.select({ { 0, 0 } }, { { 10, 0 } }));
 
     // Always picks the worst candidate
-    selector = TournamentSelector(TournamentSelector::Parameters{
-            .torunamentSelectionProbability = 0.0 });
+    selector = TournamentSelector(
+            TournamentSelector::Parameters{ .torunamentSelectionProbability =
+                                                    0.0 });
     ASSERT_EQ(0u, selector.select({ { 1, 0 } }, { { 10, 0 } }));
     ASSERT_EQ(1u, selector.select({ { 0, 0 } }, { { 10, 0 } }));
 }

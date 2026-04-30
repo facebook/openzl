@@ -12,11 +12,22 @@
 extern "C" {
 #endif
 
+typedef enum {
+    GBT_BINARY_CORE_ZERO = 0,
+    GBT_BINARY_CORE_ONE = 1,
+} GbtBinaryCoreLabelEnum;
+
 // GENERATED GBT_BINARY_CORE MODEL GETTER FUNCTION
-extern GBTModel  getGbtBinaryCoreGbtModel(FeatureGenerator featureGenerator);
+extern GBTModel getGbtBinaryCoreGbtModel(FeatureGenerator featureGenerator);
+
+typedef enum {
+    GBT_MULTICLASS_CORE_ZERO = 0,
+    GBT_MULTICLASS_CORE_ONE = 1,
+    GBT_MULTICLASS_CORE_TWO = 2,
+} GbtMulticlassCoreLabelEnum;
 
 // GENERATED GBT_MULTICLASS_CORE MODEL GETTER FUNCTION
-extern GBTModel  getGbtMulticlassCoreGbtModel(FeatureGenerator featureGenerator);
+extern GBTModel getGbtMulticlassCoreGbtModel(FeatureGenerator featureGenerator);
 
 #ifdef __cplusplus
 }

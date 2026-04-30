@@ -1,0 +1,569 @@
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+
+#include <iostream>
+
+#include "tools/sddl2/compiler/Exception.h"
+#include "tools/sddl2/compiler/Syntax.h"
+#include "tools/sddl2/compiler/Utils.h"
+#include "tools/sddl2/compiler/parser/AST.h"
+
+using namespace openzl::sddl2::detail;
+
+namespace openzl::sddl2 {
+ASTNode::ASTNode(SourceLocation loc) : loc_(std::move(loc)) {}
+
+const SourceLocation& ASTNode::loc() const
+{
+    return loc_;
+}
+
+const ASTSym* ASTNode::as_sym() const
+{
+    return nullptr;
+}
+
+const ASTList* ASTNode::as_list() const
+{
+    return nullptr;
+}
+
+const ASTNum* ASTNode::as_num() const
+{
+    return nullptr;
+}
+
+const ASTVar* ASTNode::as_var() const
+{
+    return nullptr;
+}
+
+const ASTBuiltinField* ASTNode::as_builtin_field() const
+{
+    return nullptr;
+}
+
+const ASTBytes* ASTNode::as_bytes() const
+{
+    return nullptr;
+}
+
+const ASTArray* ASTNode::as_array() const
+{
+    return nullptr;
+}
+
+const ASTRecord* ASTNode::as_record() const
+{
+    return nullptr;
+}
+
+const ASTCall* ASTNode::as_call() const
+{
+    return nullptr;
+}
+
+const ASTWhen* ASTNode::as_when() const
+{
+    return nullptr;
+}
+
+const ASTOp* ASTNode::as_op() const
+{
+    return nullptr;
+}
+
+const ASTRecordField* ASTNode::as_record_field() const
+{
+    return nullptr;
+}
+
+bool ASTNode::operator==(const Symbol& sym) const
+{
+    const auto* tok = as_sym();
+    if (tok == nullptr) {
+        return false;
+    }
+    return **tok == sym;
+}
+
+bool ASTNode::operator!=(const Symbol& sym) const
+{
+    return !(*this == sym);
+}
+
+ASTSym::ASTSym(const Token& token)
+        : ASTUnconverted(token.loc()), sym_(token.sym())
+{
+}
+
+const ASTSym* ASTSym::as_sym() const
+{
+    return this;
+}
+
+const Symbol& ASTSym::operator*() const
+{
+    return sym_;
+}
+
+void ASTSym::print(std::ostream& os, size_t indent) const
+{
+    os << std::string(indent, ' ') << "Symbol: " << sym_to_debug_str(sym_)
+       << std::endl;
+}
+
+ASTList::ASTList(
+        ListType type,
+        const ASTPtr& open,
+        const ASTPtr& close,
+        ASTVec nodes)
+        : ASTUnconverted(
+                  join_locs(nodes) + some(open).loc() + some(close).loc()),
+          type_(type),
+          nodes_(unwrap_parens(std::move(nodes)))
+{
+}
+
+const ASTList* ASTList::as_list() const
+{
+    return this;
+}
+
+ListType ASTList::list_type() const
+{
+    return type_;
+}
+
+const ASTVec& ASTList::nodes() const
+{
+    return nodes_;
+}
+
+void ASTList::print(std::ostream& os, size_t indent) const
+{
+    os << std::string(indent, ' ') << "List:" << std::endl;
+    os << std::string(indent + 2, ' ')
+       << "Type: " << list_type_to_debug_str(list_type()) << std::endl;
+    for (const auto& ptr : nodes_) {
+        ptr->print(os, indent + 2);
+    }
+}
+
+ASTPtr unwrap_parens(ASTPtr arg_ptr)
+{
+    while (true) {
+        const auto& arg  = some(arg_ptr);
+        const auto* list = arg.as_list();
+        if (list == nullptr) {
+            return arg_ptr;
+        }
+        if (list->list_type() != ListType::PAREN) {
+            return arg_ptr;
+        }
+        const auto inner_nodes = list->nodes();
+        if (inner_nodes.size() != 1) {
+            return arg_ptr;
+        }
+        arg_ptr = inner_nodes[0];
+    }
+}
+
+ASTVec unwrap_parens(ASTVec nodes)
+{
+    for (auto& node : nodes) {
+        node = unwrap_parens(std::move(node));
+    }
+    return nodes;
+}
+
+const ASTVec& unwrap_square(const ASTPtr& arg_ptr)
+{
+    const auto& arg  = some(arg_ptr);
+    const auto* list = arg.as_list();
+    if (list == nullptr) {
+        throw InvariantViolation(arg.loc(), "Expected square-braced list.");
+    }
+    if (list->list_type() != ListType::SQUARE) {
+        throw InvariantViolation(arg.loc(), "Expected square-braced list.");
+    }
+    return list->nodes();
+}
+
+const ASTVec& unwrap_curly(const ASTPtr& arg_ptr)
+{
+    const auto& arg  = some(arg_ptr);
+    const auto* list = arg.as_list();
+    if (list == nullptr) {
+        throw InvariantViolation(arg.loc(), "Expected curly-braced list.");
+    }
+    if (list->list_type() != ListType::CURLY) {
+        throw InvariantViolation(arg.loc(), "Expected curly-braced list.");
+    }
+    return list->nodes();
+}
+
+ASTNum::ASTNum(const Token& token)
+        : ASTConverted(token.loc()), val_(token.num())
+{
+}
+
+const ASTNum* ASTNum::as_num() const
+{
+    return this;
+}
+
+void ASTNum::print(std::ostream& os, size_t indent) const
+{
+    os << std::string(indent, ' ') << "Num: " << val_ << std::endl;
+}
+
+int64_t ASTNum::val() const
+{
+    return val_;
+}
+
+ASTVar::ASTVar(const Token& token, bool is_last_reference)
+        : ASTConverted(token.loc()),
+          name_(token.word()),
+          is_last_reference_(is_last_reference)
+{
+}
+
+const ASTVar* ASTVar::as_var() const
+{
+    return this;
+}
+
+void ASTVar::print(std::ostream& os, size_t indent) const
+{
+    os << std::string(indent, ' ') << "Var: " << name_;
+    if (is_last_reference_) {
+        os << " (last ref)";
+    }
+    os << std::endl;
+}
+
+const std::string& ASTVar::name() const
+{
+    return name_;
+}
+
+bool ASTVar::is_last_reference() const
+{
+    return is_last_reference_;
+}
+
+ASTBuiltinField::ASTBuiltinField(const SourceLocation& loc, const Symbol& sym)
+        : ASTField(loc), kw_(sym)
+{
+}
+
+const ASTBuiltinField* ASTBuiltinField::as_builtin_field() const
+{
+    return this;
+}
+
+void ASTBuiltinField::print(std::ostream& os, size_t indent) const
+{
+    os << std::string(indent, ' ') << "Field: " << sym_to_debug_str(kw_)
+       << std::endl;
+}
+
+const Symbol& ASTBuiltinField::kw() const
+{
+    return kw_;
+}
+
+ASTBytes::ASTBytes(const SourceLocation& loc, const ASTPtr& len)
+        : ASTField(loc + some(len).loc()), len_(extract_len(len))
+{
+}
+
+const ASTBytes* ASTBytes::as_bytes() const
+{
+    return this;
+}
+
+void ASTBytes::print(std::ostream& os, size_t indent) const
+{
+    os << std::string(indent, ' ') << "Field: BYTES:" << std::endl;
+    os << std::string(indent + 2, ' ') << "Len: " << std::endl;
+    len_->print(os, indent + 4);
+}
+
+const ASTPtr& ASTBytes::len() const
+{
+    return len_;
+}
+
+ASTPtr ASTBytes::extract_len(const ASTPtr& paren_ptr)
+{
+    const auto* list = paren_ptr->as_list();
+    if (list == nullptr) {
+        throw InvariantViolation(
+                paren_ptr->loc(),
+                "Bytes declaration must be given a list of params.");
+    }
+    if (list->list_type() != ListType::PAREN) {
+        throw InvariantViolation(
+                paren_ptr->loc(),
+                "Bytes declaration params list must be parens.");
+    }
+    if (list->nodes().size() != 1) {
+        throw InvariantViolation(
+                paren_ptr->loc(),
+                "Bytes declaration must be given a single param.");
+    }
+    return list->nodes()[0];
+}
+
+ASTRecord::ASTRecord(const ASTPtr& params, const ASTPtr& fields)
+        : ASTField(params->loc() + fields->loc()),
+          params_(extract_params(loc(), params)),
+          fields_(extract_fields(loc(), fields))
+
+{
+}
+
+const ASTRecord* ASTRecord::as_record() const
+{
+    return this;
+}
+
+void ASTRecord::print(std::ostream& os, size_t indent) const
+{
+    os << std::string(indent, ' ') << "Field: RECORD:" << std::endl;
+    os << std::string(indent + 2, ' ') << "Captures: " << std::endl;
+    for (const auto& capture : params_) {
+        capture->print(os, indent + 4);
+    }
+    os << std::string(indent + 2, ' ') << "Fields: " << std::endl;
+    for (const auto& field : fields_) {
+        field->print(os, indent + 4);
+    }
+}
+
+const ASTVec& ASTRecord::params() const
+{
+    return params_;
+}
+
+const ASTVec& ASTRecord::fields() const
+{
+    return fields_;
+}
+
+/**
+ * Converts a list of ASTNodes into a list of ASTRecordFields. This is used
+ * when parsing the fields of a record.
+ */
+static ASTVec toRecordFields(const ASTVec& nodes)
+{
+    ASTVec fields;
+    for (const auto& node : nodes) {
+        if (node->as_record_field()) {
+            fields.push_back(node);
+        } else if (auto when = node->as_when()) {
+            fields.push_back(
+                    std::make_shared<ASTWhen>(
+                            when->condition(), toRecordFields(when->body())));
+        } else if (auto op = node->as_op()) {
+            if (op->op() != Op::ASSUME) {
+                throw ParseError(
+                        node->loc(), "Record field must be an assume op.");
+            };
+            fields.push_back(
+                    std::make_shared<ASTRecordField>(
+                            op->args()[0], op->args()[1]));
+        } else {
+            throw ParseError(
+                    node->loc(), "Record field must be an op or when.");
+        }
+    }
+    return fields;
+}
+
+ASTVec ASTRecord::extract_fields(const SourceLocation&, const ASTPtr& paren_ptr)
+{
+    return toRecordFields(unwrap_curly(paren_ptr));
+}
+
+ASTVec ASTRecord::extract_params(
+        const SourceLocation& loc,
+        const ASTPtr& paren_ptr)
+{
+    const auto* list = paren_ptr->as_list();
+    if (list == nullptr) {
+        throw InvariantViolation(
+                loc, "Record declaration must be given a list of params.");
+    }
+    if (list->list_type() != ListType::PAREN) {
+        throw InvariantViolation(
+                loc, "Record declaration params list must be parens.");
+    }
+    return unwrap_parens(list->nodes());
+}
+
+ASTCall::ASTCall(ASTPtr target, ASTVec args)
+        : ASTField(some(target).loc() + join_locs(args)),
+          target_(std::move(target)),
+          args_(std::move(args))
+{
+}
+
+const ASTCall* ASTCall::as_call() const
+{
+    return this;
+}
+
+void ASTCall::print(std::ostream& os, size_t indent) const
+{
+    os << std::string(indent, ' ') << "Field: CALL:" << std::endl;
+    os << std::string(indent + 2, ' ') << "Target: " << std::endl;
+    target_->print(os, indent + 4);
+    os << std::string(indent + 2, ' ') << "Args: " << std::endl;
+    for (const auto& arg : args_) {
+        arg->print(os, indent + 4);
+    }
+}
+
+const ASTPtr& ASTCall::target() const
+{
+    return target_;
+}
+
+const ASTVec& ASTCall::args() const
+{
+    return args_;
+}
+
+ASTWhen::ASTWhen(ASTPtr condition, ASTVec body)
+        : ASTConverted(some(condition).loc() + join_locs(body)),
+          condition_(std::move(condition)),
+          body_(std::move(body))
+{
+}
+
+const ASTWhen* ASTWhen::as_when() const
+{
+    return this;
+}
+
+void ASTWhen::print(std::ostream& os, size_t indent) const
+{
+    os << std::string(indent, ' ') << "When:" << std::endl;
+    os << std::string(indent + 2, ' ') << "Condition:" << std::endl;
+    condition_->print(os, indent + 4);
+    os << std::string(indent + 2, ' ') << "Body:" << std::endl;
+    for (const auto& stmt : body_) {
+        stmt->print(os, indent + 4);
+    }
+}
+
+const ASTPtr& ASTWhen::condition() const
+{
+    return condition_;
+}
+
+const ASTVec& ASTWhen::body() const
+{
+    return body_;
+}
+
+ASTArray::ASTArray(const ASTPtr& field, const ASTPtr& len)
+        : ASTField(some(field).loc() + some(len).loc()),
+          field_(field),
+          len_(len)
+{
+}
+
+ASTArray::ASTArray(const ASTPtr& field)
+        : ASTField(some(field).loc()), field_(field)
+{
+}
+
+const ASTArray* ASTArray::as_array() const
+{
+    return this;
+}
+
+void ASTArray::print(std::ostream& os, size_t indent) const
+{
+    os << std::string(indent, ' ') << "Field: ARRAY:" << std::endl;
+    field_->print(os, indent + 2);
+    if (len_) {
+        len_->print(os, indent + 2);
+    }
+}
+
+const ASTPtr& ASTArray::field() const
+{
+    return field_;
+}
+
+const ASTPtr& ASTArray::len() const
+{
+    return len_;
+}
+
+ASTOp::ASTOp(const SourceLocation& loc, const Op& op, ASTVec args)
+        : ASTConverted(loc + join_locs(args)), op_(op), args_(std::move(args))
+{
+}
+
+const ASTOp* ASTOp::as_op() const
+{
+    return this;
+}
+
+void ASTOp::print(std::ostream& os, size_t indent) const
+{
+    os << std::string(indent, ' ') << "Op: " << op_to_debug_str(op_)
+       << std::endl;
+    for (const auto& arg : args_) {
+        arg->print(os, indent + 2);
+    }
+}
+
+const Op& ASTOp::op() const
+{
+    return op_;
+}
+
+const ASTVec& ASTOp::args() const
+{
+    return args_;
+}
+
+ASTRecordField::ASTRecordField(ASTPtr name, ASTPtr type)
+        : ASTConverted(some(name).loc() + some(type).loc()),
+          name_(std::move(name)),
+          type_(std::move(type))
+{
+}
+
+const ASTRecordField* ASTRecordField::as_record_field() const
+{
+    return this;
+}
+
+void ASTRecordField::print(std::ostream& os, size_t indent) const
+{
+    os << std::string(indent, ' ') << "RecordField:" << std::endl;
+    os << std::string(indent + 2, ' ') << "Name:" << std::endl;
+    name_->print(os, indent + 4);
+    os << std::string(indent + 2, ' ') << "Type:" << std::endl;
+    type_->print(os, indent + 4);
+}
+
+const ASTPtr& ASTRecordField::name() const
+{
+    return name_;
+}
+
+const ASTPtr& ASTRecordField::type() const
+{
+    return type_;
+}
+
+} // namespace openzl::sddl2

@@ -11,8 +11,6 @@
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_data.h"
 
-#include "custom_parsers/dependency_registration.h"
-
 namespace openzl::training {
 
 using namespace openzl::tools::logger;

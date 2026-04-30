@@ -15,6 +15,7 @@ ZL_Report DI_dispatch_string(
         const ZL_Input* variableSrcs[],
         size_t nbVariableSrcs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
     ZL_ASSERT_NN(dictx);
     ZL_ASSERT_EQ(nbCompulsorySrcs, 1);
     ZL_ASSERT_NN(compulsorySrcs);
@@ -28,22 +29,22 @@ ZL_Report DI_dispatch_string(
     }
 
     if (is16bitDispatch) {
-        ZL_RET_R_IF_NE(
-                node_invalid_input,
+        ZL_ERR_IF_NE(
                 ZL_Input_eltWidth(compulsorySrcs[0]),
-                2); // dispatch indices are 16-bit
-        ZL_RET_R_IF_GT(
-                node_invalid,
+                2,
+                node_invalid_input); // dispatch indices are 16-bit
+        ZL_ERR_IF_GT(
                 nbVariableSrcs,
                 ZL_DISPATCH_STRING_MAX_DISPATCHES,
+                node_invalid,
                 "Invalid number of streams");
     } else {
-        ZL_RET_R_IF_NE(
-                node_invalid_input, ZL_Input_eltWidth(compulsorySrcs[0]), 1);
-        ZL_RET_R_IF_GT(
-                node_invalid,
+        ZL_ERR_IF_NE(
+                ZL_Input_eltWidth(compulsorySrcs[0]), 1, node_invalid_input);
+        ZL_ERR_IF_GT(
                 nbVariableSrcs,
                 ZL_DISPATCH_STRING_MAX_DISPATCHES_V20,
+                node_invalid,
                 "Invalid number of streams");
     }
     ZL_ASSERT_NN(variableSrcs);
@@ -55,9 +56,9 @@ ZL_Report DI_dispatch_string(
     // validate index, src streams + build total buffer size
     const size_t nbStrs = ZL_Input_numElts(compulsorySrcs[0]);
 
-    ZL_RET_R_IF(
-            node_invalid_input,
+    ZL_ERR_IF(
             (nbStrs != 0) && (nbVariableSrcs == 0),
+            node_invalid_input,
             "Number of indices incompatible with number of streams");
 
     size_t totalSize = 0;
@@ -70,10 +71,10 @@ ZL_Report DI_dispatch_string(
                     ZL_Decoder_getScratchSpace(dictx, sizeof(ZL_Histogram16));
             ZL_Histogram_init(histogram, ZL_DISPATCH_STRING_MAX_DISPATCHES);
             ZL_Histogram_build(histogram, inputIndices, nbStrs, 2);
-            ZL_RET_R_IF_GE(
-                    node_invalid_input,
+            ZL_ERR_IF_GE(
                     histogram->maxSymbol,
                     nbVariableSrcs,
+                    node_invalid_input,
                     "Invalid index stream");
         } else {
             const uint8_t* inputIndices = ZL_Input_ptr(compulsorySrcs[0]);
@@ -82,18 +83,18 @@ ZL_Report DI_dispatch_string(
                     ZL_Decoder_getScratchSpace(dictx, sizeof(ZL_Histogram8));
             ZL_Histogram_init(histogram, 255);
             ZL_Histogram_build(histogram, inputIndices, nbStrs, 1);
-            ZL_RET_R_IF_GE(
-                    node_invalid_input,
+            ZL_ERR_IF_GE(
                     histogram->maxSymbol,
                     nbVariableSrcs,
+                    node_invalid_input,
                     "Invalid index stream");
         }
         for (size_t i = 0; i < nbVariableSrcs; i++) {
             totalSize += ZL_Input_contentSize(variableSrcs[i]);
-            ZL_RET_R_IF_NE(
-                    node_invalid_input,
+            ZL_ERR_IF_NE(
                     ZL_Input_numElts(variableSrcs[i]),
                     histogram->count[i],
+                    node_invalid_input,
                     "Index stream requires different input length than provided src[%u]",
                     i);
         }
@@ -102,13 +103,13 @@ ZL_Report DI_dispatch_string(
     // input stream massaging
     const char** srcBuffers =
             ZL_Decoder_getScratchSpace(dictx, nbVariableSrcs * sizeof(void*));
-    ZL_RET_R_IF_NULL(allocation, srcBuffers);
+    ZL_ERR_IF_NULL(srcBuffers, allocation);
     const uint32_t** srcStrLens = ZL_Decoder_getScratchSpace(
             dictx, nbVariableSrcs * sizeof(uint32_t*));
-    ZL_RET_R_IF_NULL(allocation, srcStrLens);
+    ZL_ERR_IF_NULL(srcStrLens, allocation);
     size_t* srcNbStrs =
             ZL_Decoder_getScratchSpace(dictx, nbVariableSrcs * sizeof(size_t));
-    ZL_RET_R_IF_NULL(allocation, srcNbStrs);
+    ZL_ERR_IF_NULL(srcNbStrs, allocation);
     for (size_t i = 0; i < nbVariableSrcs; i++) {
         srcBuffers[i] = ZL_Input_ptr(variableSrcs[i]);
         srcStrLens[i] = ZL_Input_stringLens(variableSrcs[i]);
@@ -117,7 +118,7 @@ ZL_Report DI_dispatch_string(
 
     ZL_Output* const dst = ZL_Decoder_create1StringStream(
             dictx, nbStrs, totalSize + ZL_DISPATCH_STRING_BLK_SIZE);
-    ZL_RET_R_IF_NULL(allocation, dst);
+    ZL_ERR_IF_NULL(dst, allocation);
 
     if (is16bitDispatch) {
         ZL_DispatchString_decode16(
@@ -140,7 +141,7 @@ ZL_Report DI_dispatch_string(
                 srcNbStrs,
                 ZL_Input_ptr(compulsorySrcs[0]));
     }
-    ZL_RET_R_IF_ERR(ZL_Output_commit(dst, nbStrs));
+    ZL_ERR_IF_ERR(ZL_Output_commit(dst, nbStrs));
 
     return ZL_returnSuccess();
 }

@@ -6,7 +6,7 @@
 
 #include "tests/datagen/DataProducer.h"
 
-namespace zstrong::tests::datagen {
+namespace openzl::tests::datagen {
 
 /**
  * Base class for hardcoded pre-prepared inputs.
@@ -18,4 +18,4 @@ class RegistryRecord : public DataProducer<std::string> {
     virtual size_t size() const = 0;
 };
 
-} // namespace zstrong::tests::datagen
+} // namespace openzl::tests::datagen

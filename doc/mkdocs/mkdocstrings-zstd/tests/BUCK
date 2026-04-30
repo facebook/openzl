@@ -13,35 +13,41 @@ buck_filegroup(
 )
 
 python_library(
+    # @autodeps-skip
     name = "helpers",
     srcs = ["helpers.py"],
     resources = {
-        "//data_compression/experimental/zstrong/doc/mkdocs/mkdocstrings-zstd/src:templates": "",
+        "../src:templates": "",
         ":src": "",
     },
     deps = [
+        "../src:mkdocstrings-zstd",
         "fbsource//third-party/pypi/markdown:markdown",
         "fbsource//third-party/pypi/mkdocs:mkdocs",
         "fbsource//third-party/pypi/mkdocstrings:mkdocstrings",
         "fbsource//third-party/pypi/pytest:pytest",
-        "//data_compression/experimental/zstrong/doc/mkdocs/mkdocstrings-zstd/src:mkdocstrings-zstd",
     ],
 )
 
 python_pytest(
+    # @autodeps-skip
     name = "test_mkdocstrings_zstd",
     srcs = [
         "conftest.py",
         "test_doxygen.py",
         "test_handler.py",
     ],
+    env = {
+        "DOXYGEN_PATH": "$(location fbsource//third-party/doxygen:doxygen)",
+    },
     deps = [
+        "../src:mkdocstrings-zstd",
+        "fbsource//third-party/doxygen:doxygen",  # @manual
         "fbsource//third-party/pypi/markdown:markdown",
         "fbsource//third-party/pypi/mkdocs:mkdocs",
         "fbsource//third-party/pypi/mkdocs-material:mkdocs-material",  # @manual
         "fbsource//third-party/pypi/mkdocstrings:mkdocstrings",
         "fbsource//third-party/pypi/pytest:pytest",
         ":helpers",
-        "//data_compression/experimental/zstrong/doc/mkdocs/mkdocstrings-zstd/src:mkdocstrings-zstd",
     ],
 )

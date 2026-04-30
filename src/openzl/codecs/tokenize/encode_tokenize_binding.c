@@ -1,7 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "openzl/common/errors_internal.h"
-#include "openzl/common/scope_context.h"
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_opaque_types.h"
 
@@ -107,11 +106,12 @@ ZL_FORCE_INLINE ZL_Report writeIndicesImpl(
         size_t eltWidth,
         size_t idxWidth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     void const* const input = ZL_Input_ptr(in);
     size_t const nbElts     = ZL_Input_numElts(in);
 
     ZL_Output* out = ZL_Encoder_createTypedStream(eictx, 1, nbElts, idxWidth);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
     void* const indices = ZL_Output_ptr(out);
 
     for (size_t i = 0; i < nbElts; ++i) {
@@ -119,7 +119,7 @@ ZL_FORCE_INLINE ZL_Report writeIndicesImpl(
         size_t const index   = Map8_findVal(alphabet, token)->val;
         writeIndexAt(index, indices, i, idxWidth);
     }
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, nbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, nbElts));
 
     return ZL_returnSuccess();
 }
@@ -131,6 +131,7 @@ ZL_FORCE_INLINE ZL_Report tokenizeImpl(
         bool sort,
         size_t eltWidth)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_EQ(eltWidth, ZL_Input_eltWidth(in));
 
     void const* const input = ZL_Input_ptr(in);
@@ -138,7 +139,7 @@ ZL_FORCE_INLINE ZL_Report tokenizeImpl(
 
     // Reserve up to 256 entries to skip past the small growth stage.
     if (!Map8_reserve(tokToIdx, ZL_MIN(256, (uint32_t)nbElts), false)) {
-        ZL_RET_R_ERR(allocation);
+        ZL_ERR(allocation);
     }
 
     // Build the alphabet map.
@@ -162,13 +163,13 @@ ZL_FORCE_INLINE ZL_Report tokenizeImpl(
         }
     }
 
-    ZL_RET_R_IF(allocation, badAlloc);
+    ZL_ERR_IF(badAlloc, allocation);
 
     size_t const alphabetSize = Map8_size(tokToIdx);
 
     ZL_Output* out =
             ZL_Encoder_createTypedStream(eictx, 0, alphabetSize, eltWidth);
-    ZL_RET_R_IF_NULL(allocation, out);
+    ZL_ERR_IF_NULL(out, allocation);
 
     // Write the alphabet
     // TODO(terrelln): Right now we have to write the alphabet out after the
@@ -193,12 +194,12 @@ ZL_FORCE_INLINE ZL_Report tokenizeImpl(
         }
     }
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(out, alphabetSize));
+    ZL_ERR_IF_ERR(ZL_Output_commit(out, alphabetSize));
 
-    ZL_RET_R_IF_GT(
-            temporaryLibraryLimitation,
+    ZL_ERR_IF_GT(
             alphabetSize,
             UINT32_MAX,
+            temporaryLibraryLimitation,
             "Only 4 byte indices supported... But why do you want this?");
 
     // Write the indices in the smallest output possible
@@ -212,7 +213,7 @@ ZL_FORCE_INLINE ZL_Report tokenizeImpl(
         return writeIndicesImpl(eictx, in, tokToIdx, eltWidth, 4);
     }
 
-    ZL_RET_R_ERR(logicError, "Impossible");
+    ZL_ERR(logicError, "Impossible");
 }
 
 #define GEN_TOKENIZE(eltWidth)                                                \
@@ -239,6 +240,7 @@ static ZL_Report tokenize2_shell(
         Map8* alphabet,
         bool sort)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_NN(in);
     ZL_ASSERT_EQ(ZL_Input_eltWidth(in), 2);
 
@@ -278,7 +280,7 @@ static ZL_Report tokenize2_shell(
 
     void* const workspace =
             ZL_Encoder_getScratchSpace(eictx, TOK2_CARDINALITY_MAX);
-    ZL_RET_R_IF_NULL(allocation, workspace);
+    ZL_ERR_IF_NULL(workspace, allocation);
 
     size_t const alphabetSize =
             TOK2_numSort_cardinality(workspace, srcPtr, nbSymbols);
@@ -292,11 +294,11 @@ static ZL_Report tokenize2_shell(
     ZL_DLOG(SEQ, "tokenize2_shell: alphabetSize: %zu", alphabetSize);
     ZL_Output* const alphabetStream =
             ZL_Encoder_createTypedStream(eictx, 0, alphabetSize, 2);
-    ZL_RET_R_IF_NULL(allocation, alphabetStream);
+    ZL_ERR_IF_NULL(alphabetStream, allocation);
 
     ZL_Output* const indexStream =
             ZL_Encoder_createTypedStream(eictx, 1, nbSymbols, 1);
-    ZL_RET_R_IF_NULL(allocation, indexStream);
+    ZL_ERR_IF_NULL(indexStream, allocation);
 
     TOK2_numSort_encode_into1(
             ZL_Output_ptr(indexStream),
@@ -307,8 +309,8 @@ static ZL_Report tokenize2_shell(
             nbSymbols,
             workspace);
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(alphabetStream, alphabetSize));
-    ZL_RET_R_IF_ERR(ZL_Output_commit(indexStream, nbSymbols));
+    ZL_ERR_IF_ERR(ZL_Output_commit(alphabetStream, alphabetSize));
+    ZL_ERR_IF_ERR(ZL_Output_commit(indexStream, nbSymbols));
 
     return ZL_returnSuccess();
 }
@@ -316,18 +318,19 @@ static ZL_Report tokenize2_shell(
 ZL_FORCE_INLINE ZL_Report
 tokenize1(ZL_Encoder* eictx, ZL_Input const* in, bool sort)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_EQ(1, ZL_Input_eltWidth(in));
     const uint8_t* input = (const uint8_t*)ZL_Input_ptr(in);
     const size_t nbElts  = ZL_Input_numElts(in);
 
     size_t alphabetSize;
     ZL_Output* alphabetStream = ZL_Encoder_createTypedStream(eictx, 0, 256, 1);
-    ZL_RET_R_IF_NULL(allocation, alphabetStream);
+    ZL_ERR_IF_NULL(alphabetStream, allocation);
     uint8_t* alphabet = (uint8_t*)ZL_Output_ptr(alphabetStream);
 
     ZL_Output* indicesStream =
             ZL_Encoder_createTypedStream(eictx, 1, nbElts, 1);
-    ZL_RET_R_IF_NULL(allocation, indicesStream);
+    ZL_ERR_IF_NULL(indicesStream, allocation);
     uint8_t* indices = (uint8_t*)ZL_Output_ptr(indicesStream);
 
     if (sort) {
@@ -363,14 +366,15 @@ tokenize1(ZL_Encoder* eictx, ZL_Input const* in, bool sort)
         }
     }
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(alphabetStream, alphabetSize));
-    ZL_RET_R_IF_ERR(ZL_Output_commit(indicesStream, nbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(alphabetStream, alphabetSize));
+    ZL_ERR_IF_ERR(ZL_Output_commit(indicesStream, nbElts));
     return ZL_returnSuccess();
 }
 
 static ZL_Report
 tokenize(ZL_Encoder* eictx, Map8* alphabet, const ZL_Input* in, bool sort)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_NN(in);
     switch (ZL_Input_eltWidth(in)) {
         case 1:
@@ -382,11 +386,10 @@ tokenize(ZL_Encoder* eictx, Map8* alphabet, const ZL_Input* in, bool sort)
         case 8:
             return tokenize8(eictx, in, alphabet, sort);
         default:
-            ZL_RET_R_ERR(
-                    temporaryLibraryLimitation,
-                    "Elt width %u not supported yet! But decoder the decoder "
-                    "supports all width, so you only need to extend the encoder",
-                    (unsigned)ZL_Input_eltWidth(in));
+            ZL_ERR(temporaryLibraryLimitation,
+                   "Elt width %u not supported yet! But decoder the decoder "
+                   "supports all width, so you only need to extend the encoder",
+                   (unsigned)ZL_Input_eltWidth(in));
     }
 }
 
@@ -422,6 +425,7 @@ static bool EI_tokenizeShouldSort(const ZL_Encoder* encoder)
 
 ZL_Report EI_tokenize(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_ASSERT_NN(ins);
     const ZL_Input* in = ins[0];
@@ -435,8 +439,8 @@ ZL_Report EI_tokenize(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
             .opaque = param.opaque,
             .input  = in,
         };
-        ZL_Report const report = (param.customTokenizeFn)(&ctx, in);
-        ZL_RET_R(report);
+        ZL_ERR_IF_ERR((param.customTokenizeFn)(&ctx, in));
+        return ZL_returnSuccess();
     }
     return EI_tokenizeImpl(eictx, in, EI_tokenizeShouldSort(eictx));
 }
@@ -458,6 +462,7 @@ static ZL_Report EI_tokenizeVSFImpl(
         const ZL_Input* in,
         bool sort)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
     ZL_ASSERT_NN(eictx);
     ZL_ASSERT_NN(in);
     ZL_ASSERT_EQ(ZL_Input_type(in), ZL_Type_string);
@@ -468,31 +473,31 @@ static ZL_Report EI_tokenizeVSFImpl(
 
     // Build alphabet of input stream
     size_t alphabetFieldSizesSum;
-    ZL_RET_R_IF_ERR(ZS_buildTokenizeVsfAlphabet(
+    ZL_ERR_IF_ERR(ZS_buildTokenizeVsfAlphabet(
             tokToIdx, &alphabetFieldSizesSum, src, fieldSizes, nbElts));
     size_t const alphabetSize = MapVSF_size(tokToIdx);
 
     // Create alphabet stream
     ZL_Output* const alphabet =
             ZL_Encoder_createTypedStream(eictx, 0, alphabetFieldSizesSum, 1);
-    ZL_RET_R_IF_NULL(allocation, alphabet);
+    ZL_ERR_IF_NULL(alphabet, allocation);
 
     uint32_t* const alphabetFieldSizes =
             ZL_Output_reserveStringLens(alphabet, alphabetSize);
-    ZL_RET_R_IF_NULL(allocation, alphabetFieldSizes);
+    ZL_ERR_IF_NULL(alphabetFieldSizes, allocation);
 
     // Create indices stream
     size_t const idxWidth = getMinIdxSpace(alphabetSize);
     ZL_Output* const indices =
             ZL_Encoder_createTypedStream(eictx, 1, nbElts, idxWidth);
-    ZL_RET_R_IF_NULL(allocation, indices);
+    ZL_ERR_IF_NULL(indices, allocation);
 
     // Allocate buffer for key manipulation
     VSFKey* const keysBuffer =
             ZL_Encoder_getScratchSpace(eictx, alphabetSize * sizeof(VSFKey));
-    ZL_RET_R_IF_NULL(allocation, keysBuffer);
+    ZL_ERR_IF_NULL(keysBuffer, allocation);
 
-    ZL_RET_R_IF_ERR(ZS_tokenizeVSFEncode(
+    ZL_ERR_IF_ERR(ZS_tokenizeVSFEncode(
             ZL_Output_ptr(alphabet),
             alphabetFieldSizes,
             alphabetSize,
@@ -505,8 +510,8 @@ static ZL_Report EI_tokenizeVSFImpl(
             idxWidth,
             sort));
 
-    ZL_RET_R_IF_ERR(ZL_Output_commit(alphabet, alphabetSize));
-    ZL_RET_R_IF_ERR(ZL_Output_commit(indices, nbElts));
+    ZL_ERR_IF_ERR(ZL_Output_commit(alphabet, alphabetSize));
+    ZL_ERR_IF_ERR(ZL_Output_commit(indices, nbElts));
 
     return ZL_returnSuccess();
 }
@@ -616,7 +621,12 @@ ZL_NodeID ZS2_createNode_customTokenize(
                     .paramId   = ZL_TOKENIZE_TOKENIZER_PID,
                     .paramPtr  = &param,
                     .paramSize = sizeof(param));
-    return ZL_Compressor_cloneNode(cgraph, ZL_NODE_TOKENIZE, &lParams);
+    return ZL_Compressor_registerParameterizedNode(
+            cgraph,
+            &(const ZL_ParameterizedNodeDesc){
+                    .node        = ZL_NODE_TOKENIZE,
+                    .localParams = &lParams,
+            });
 }
 
 ZL_GraphID ZL_Compressor_registerCustomTokenizeGraph(

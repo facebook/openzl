@@ -1,7 +1,8 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-# The binary comes with an SAO corpus internally that isn't provided here
-set(BENCHMARK_ENABLE_GTEST_TESTS OFF)
+# Keep upstream benchmark self-tests out of our CTest runs.
+set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
+set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
     googlebenchmark # v1.6.1
     URL https://github.com/google/benchmark/archive/refs/tags/v1.6.1.zip
@@ -21,14 +22,17 @@ find_package(fmt REQUIRED)
 file(
     GLOB_RECURSE openzl_benchmark_sources
     CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_LIST_DIR}/*.cpp")
-list(APPEND openzl_benchmark_sources "${CMAKE_CURRENT_LIST_DIR}/unitBench/saoGraph.c")
-list(FILTER openzl_benchmark_sources EXCLUDE REGEX "${CMAKE_CURRENT_LIST_DIR}/unitBench/tools/.*$")
+    "${CMAKE_CURRENT_LIST_DIR}/*.cpp"
+    "${CMAKE_CURRENT_LIST_DIR}/unitBench/**/*.c")
+list(FILTER openzl_benchmark_sources
+     EXCLUDE REGEX "${CMAKE_CURRENT_LIST_DIR}/tools/.*$")
+list(FILTER openzl_benchmark_sources
+     EXCLUDE REGEX "${CMAKE_CURRENT_LIST_DIR}/BenchmarkComponents.cpp$")
 file(
     GLOB_RECURSE openzl_benchmark_headers
     CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_LIST_DIR}/*.h")
-list(APPEND openzl_benchmark_headers "${CMAKE_CURRENT_LIST_DIR}/unitBench/saoGraph.h")
+    "${CMAKE_CURRENT_LIST_DIR}/*.h"
+    "${CMAKE_CURRENT_LIST_DIR}/unitBench/**/*.h")
 
 add_executable(openzl_benchmark
     ${openzl_benchmark_sources}

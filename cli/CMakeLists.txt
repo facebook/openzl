@@ -37,6 +37,7 @@ add_dependencies(zli
     commands
     utils
     logger
+    xgboost_external
 )
 
 apply_openzl_compile_options_to_target(zli)

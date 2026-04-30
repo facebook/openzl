@@ -374,57 +374,57 @@ ZS_BITPACK_ENCODE_8_T(uint64_t, convert16U64ToU8, ZS_bitpackEncode64_generic)
 
 #    define ZS_BITPACK_ENCODE_16_T_FN(type) ZS_bitpackEncode16_##type##_bmi2
 
-#    define ZS_BITPACK_ENCODE_16_T(type, convert8Fn, leftoversFn)           \
-        ZL_FORCE_NOINLINE size_t ZS_BITPACK_ENCODE_16_T_FN(type)(           \
-                uint8_t * op, type const* ip, size_t nbElts, size_t nbBits) \
-        {                                                                   \
-            ZL_ASSERT_LE(nbBits, 16);                                       \
-            size_t const dstSize          = (nbElts * nbBits + 7) / 8;      \
-            size_t const bytesPerLoop     = nbBits;                         \
-            size_t const halfBytesPerLoop = bytesPerLoop / 2;               \
-            type const* const iend        = ip + nbElts;                    \
-            uint8_t* const oend           = op + dstSize;                   \
-            uint8_t* olimit =                                               \
-                    oend - ZL_MAX(halfBytesPerLoop + 7, bytesPerLoop);      \
-            if (nbBits % 2 == 0) {                                          \
-                uint64_t const mask =                                       \
-                        ((1ull << nbBits) - 1) * 0x0001000100010001ULL;     \
-                while (op < olimit) {                                       \
-                    uint16_t ints[8];                                       \
-                    convert8Fn(ints, ip);                                   \
-                    ip += 8;                                                \
-                    for (size_t i = 0; i < 8; i += 4) {                     \
-                        uint64_t const bytes = ZL_read64(ints + i);         \
-                        uint64_t const bits  = _pext_u64(bytes, mask);      \
-                        ZS_write64(op, bits);                               \
-                        op += halfBytesPerLoop;                             \
-                    }                                                       \
-                }                                                           \
-            } else {                                                        \
-                uint64_t const mask =                                       \
-                        ((1ull << nbBits) - 1) * 0x0001000100010001ULL;     \
-                size_t const shift0 = nbBits * 4 - 4;                       \
-                size_t const shift1 = 4;                                    \
-                while (op < olimit) {                                       \
-                    uint16_t ints[8];                                       \
-                    convert8Fn(ints, ip);                                   \
-                    ip += 8;                                                \
-                    uint64_t const bytes0 = ZL_read64(ints + 0);            \
-                    uint64_t const bits0  = _pext_u64(bytes0, mask);        \
-                    ZS_write64(op, bits0);                                  \
-                    uint64_t const bytes1 = ZL_read64(ints + 4);            \
-                    uint64_t const bits1  = _pext_u64(bytes1, mask);        \
-                    ZL_ASSERT_EQ((bits0 >> shift0) & (size_t)~0xf, 0);      \
-                    ZS_write64(                                             \
-                            op + halfBytesPerLoop,                          \
-                            (bits0 >> shift0) | (bits1 << shift1));         \
-                    op += bytesPerLoop;                                     \
-                }                                                           \
-            }                                                               \
-            ZL_ASSERT_LE(ip, iend);                                         \
-            op += leftoversFn(op, ip, (size_t)(iend - ip), nbBits);         \
-            ZL_ASSERT_EQ(op, oend);                                         \
-            return dstSize;                                                 \
+#    define ZS_BITPACK_ENCODE_16_T(type, convert8Fn, leftoversFn)          \
+        ZL_FORCE_NOINLINE size_t ZS_BITPACK_ENCODE_16_T_FN(type)(          \
+                uint8_t* op, type const* ip, size_t nbElts, size_t nbBits) \
+        {                                                                  \
+            ZL_ASSERT_LE(nbBits, 16);                                      \
+            size_t const dstSize          = (nbElts * nbBits + 7) / 8;     \
+            size_t const bytesPerLoop     = nbBits;                        \
+            size_t const halfBytesPerLoop = bytesPerLoop / 2;              \
+            type const* const iend        = ip + nbElts;                   \
+            uint8_t* const oend           = op + dstSize;                  \
+            uint8_t* olimit =                                              \
+                    oend - ZL_MAX(halfBytesPerLoop + 7, bytesPerLoop);     \
+            if (nbBits % 2 == 0) {                                         \
+                uint64_t const mask =                                      \
+                        ((1ull << nbBits) - 1) * 0x0001000100010001ULL;    \
+                while (op < olimit) {                                      \
+                    uint16_t ints[8];                                      \
+                    convert8Fn(ints, ip);                                  \
+                    ip += 8;                                               \
+                    for (size_t i = 0; i < 8; i += 4) {                    \
+                        uint64_t const bytes = ZL_read64(ints + i);        \
+                        uint64_t const bits  = _pext_u64(bytes, mask);     \
+                        ZS_write64(op, bits);                              \
+                        op += halfBytesPerLoop;                            \
+                    }                                                      \
+                }                                                          \
+            } else {                                                       \
+                uint64_t const mask =                                      \
+                        ((1ull << nbBits) - 1) * 0x0001000100010001ULL;    \
+                size_t const shift0 = nbBits * 4 - 4;                      \
+                size_t const shift1 = 4;                                   \
+                while (op < olimit) {                                      \
+                    uint16_t ints[8];                                      \
+                    convert8Fn(ints, ip);                                  \
+                    ip += 8;                                               \
+                    uint64_t const bytes0 = ZL_read64(ints + 0);           \
+                    uint64_t const bits0  = _pext_u64(bytes0, mask);       \
+                    ZS_write64(op, bits0);                                 \
+                    uint64_t const bytes1 = ZL_read64(ints + 4);           \
+                    uint64_t const bits1  = _pext_u64(bytes1, mask);       \
+                    ZL_ASSERT_EQ((bits0 >> shift0) & (size_t)~0xf, 0);     \
+                    ZS_write64(                                            \
+                            op + halfBytesPerLoop,                         \
+                            (bits0 >> shift0) | (bits1 << shift1));        \
+                    op += bytesPerLoop;                                    \
+                }                                                          \
+            }                                                              \
+            ZL_ASSERT_LE(ip, iend);                                        \
+            op += leftoversFn(op, ip, (size_t)(iend - ip), nbBits);        \
+            ZL_ASSERT_EQ(op, oend);                                        \
+            return dstSize;                                                \
         }
 
 static void convert8U16ToU16(uint16_t* dst, uint16_t const* src)
@@ -951,7 +951,7 @@ static size_t ZS_bitpackDecode8_generic(
 
 #if ZS_HAS_FAST_BITPACK
 
-static size_t ZS_bitpackDecode16_bmi2(
+static ZL_MAYBE_UNUSED_FUNCTION size_t ZS_bitpackDecode16_bmi2(
         uint16_t* op,
         size_t nbElts,
         uint8_t const* ip,

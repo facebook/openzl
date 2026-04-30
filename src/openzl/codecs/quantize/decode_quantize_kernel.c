@@ -36,6 +36,7 @@ ZL_FORCE_INLINE ZL_Report ZL_quantize32Decode_impl(
         ZL_Quantize32Params const* params,
         size_t const kUnroll)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZS_BitDStreamFF bitstream  = ZS_BitDStreamFF_init(extraBits, extraBitsSize);
     uint32_t const* const base = params->base;
     uint8_t const* const bits  = params->bits;
@@ -60,7 +61,7 @@ ZL_FORCE_INLINE ZL_Report ZL_quantize32Decode_impl(
     }
 
     ZL_Report const ret = ZS_BitDStreamFF_finish(&bitstream);
-    ZL_RET_R_IF(srcSize_tooSmall, ZL_isError(ret));
+    ZL_ERR_IF(ZL_isError(ret), srcSize_tooSmall);
 
     return ZL_returnSuccess();
 }
@@ -80,6 +81,7 @@ ZL_FORCE_INLINE ZL_Report ZL_quantize32DecodePow2_impl(
         size_t extraBitsSize,
         size_t const kUnroll)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZS_BitDStreamFF bitstream = ZS_BitDStreamFF_init(extraBits, extraBitsSize);
 
     size_t const preamble = nbCodes % kUnroll;
@@ -102,7 +104,7 @@ ZL_FORCE_INLINE ZL_Report ZL_quantize32DecodePow2_impl(
     }
 
     ZL_Report const ret = ZS_BitDStreamFF_finish(&bitstream);
-    ZL_RET_R_IF(srcSize_tooSmall, ZL_isError(ret));
+    ZL_ERR_IF(ZL_isError(ret), srcSize_tooSmall);
 
     return ZL_returnSuccess();
 }
@@ -168,7 +170,8 @@ ZL_Report ZS2_quantize32Decode(
         size_t bitsSize,
         ZL_Quantize32Params const* params)
 {
-    ZL_RET_R_IF_GE(corruption, maxCode, params->nbCodes);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_GE(maxCode, params->nbCodes, corruption);
 
     size_t const maxNbBits = params->bits[maxCode];
 

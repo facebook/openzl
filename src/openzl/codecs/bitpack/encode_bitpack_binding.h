@@ -13,17 +13,15 @@ ZL_BEGIN_C_DECLS
 ZL_Report
 EI_bitpack_typed(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 
-#define EI_BITPACK_INTEGER(id)                                            \
-    {                                                                     \
-        .gd = INTEGER_BITPACK_GRAPH(id), .transform_f = EI_bitpack_typed, \
-        .name = "!zl.private.bitpack_int"                                 \
-    }
+#define EI_BITPACK_INTEGER(id)                  \
+    { .gd          = INTEGER_BITPACK_GRAPH(id), \
+      .transform_f = EI_bitpack_typed,          \
+      .name        = "!zl.private.bitpack_int" }
 
-#define EI_BITPACK_SERIALIZED(id)                                            \
-    {                                                                        \
-        .gd = SERIALIZED_BITPACK_GRAPH(id), .transform_f = EI_bitpack_typed, \
-        .name = "!zl.private.bitpack_serial"                                 \
-    }
+#define EI_BITPACK_SERIALIZED(id)                  \
+    { .gd          = SERIALIZED_BITPACK_GRAPH(id), \
+      .transform_f = EI_bitpack_typed,             \
+      .name        = "!zl.private.bitpack_serial" }
 
 // Trivial redirector based on input type
 // .selector_f   = SI_selector_bitpack,

@@ -23,13 +23,14 @@ static ZL_Report ZS2_ThriftKernel_validateContainerSize(
         size_t numValues,
         size_t srcSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     // All thrift types in an array / map take at least 1 byte, no matter the
     // type. So an upper bound on the number of possible elements is srcSize
     size_t const numElts = numKeys + numValues;
-    ZL_RET_R_IF_GT(
-            node_invalid_input,
+    ZL_ERR_IF_GT(
             numElts,
             srcSize,
+            node_invalid_input,
             "Container size is larger than the remaining source size allows!");
     return ZL_returnSuccess();
 }
@@ -40,16 +41,17 @@ static ZL_Report ZS2_ThriftKernel_decodeMapHeader(
         uint8_t expectedKeyType,
         uint8_t expectedValueType)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_RESULT_OF(uint64_t) size = ZL_varintDecode32Strict(ip, iend);
-    ZL_RET_R_IF_ERR(size);
+    ZL_ERR_IF_ERR(size);
     if (ZL_RES_value(size) > 0) {
-        ZL_RET_R_IF_EQ(srcSize_tooSmall, *ip, iend);
+        ZL_ERR_IF_EQ(*ip, iend, srcSize_tooSmall);
         uint8_t const keyType   = **ip >> 4;
         uint8_t const valueType = **ip & 0xF;
         if (expectedKeyType != 0x0)
-            ZL_RET_R_IF_NE(node_invalid_input, keyType, expectedKeyType);
+            ZL_ERR_IF_NE(keyType, expectedKeyType, node_invalid_input);
         if (expectedValueType != 0x0)
-            ZL_RET_R_IF_NE(node_invalid_input, valueType, expectedValueType);
+            ZL_ERR_IF_NE(valueType, expectedValueType, node_invalid_input);
         ++*ip;
     }
     return ZL_returnValue((size_t)ZL_RES_value(size));
@@ -62,10 +64,11 @@ static ZL_Report ZS2_ThriftKernel_validateMapHeader(
         uint8_t expectedValueType,
         size_t expectedSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_Report const size = ZS2_ThriftKernel_decodeMapHeader(
             ip, iend, expectedKeyType, expectedValueType);
-    ZL_RET_R_IF_ERR(size);
-    ZL_RET_R_IF_NE(node_invalid_input, ZL_RES_value(size), expectedSize);
+    ZL_ERR_IF_ERR(size);
+    ZL_ERR_IF_NE(ZL_RES_value(size), expectedSize, node_invalid_input);
     return ZL_returnSuccess();
 }
 
@@ -73,16 +76,18 @@ static ZL_Report ZS2_ThriftKernel_decodeI32(
         uint8_t const** ip,
         uint8_t const* iend)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_RESULT_OF(uint64_t) ret = ZL_varintDecode32Strict(ip, iend);
-    ZL_RET_R_IF_ERR(ret);
+    ZL_ERR_IF_ERR(ret);
     return ZL_returnValue(ZS2_zigZagDecode32((uint32_t)ZL_RES_value(ret)));
 }
 
 static ZL_RESULT_OF(uint64_t)
         ZS2_ThriftKernel_decodeI64(uint8_t const** ip, uint8_t const* iend)
 {
+    ZL_RESULT_DECLARE_SCOPE(uint64_t, NULL);
     ZL_RESULT_OF(uint64_t) ret = ZL_varintDecode64Strict(ip, iend);
-    ZL_RET_T_IF_ERR(uint64_t, ret);
+    ZL_ERR_IF_ERR(ret);
     ZL_RES_value(ret) = ZS2_zigZagDecode64(ZL_RES_value(ret));
     return ret;
 }
@@ -92,17 +97,18 @@ static ZL_Report ZS2_ThriftKernel_decodeArrayHeader(
         uint8_t const* iend,
         uint8_t expectedType)
 {
-    ZL_RET_R_IF_EQ(srcSize_tooSmall, *ip, iend);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_EQ(*ip, iend, srcSize_tooSmall);
     uint8_t const type = **ip & 0xF;
     if (expectedType != 0x0)
-        ZL_RET_R_IF_NE(node_invalid_input, type, expectedType);
+        ZL_ERR_IF_NE(type, expectedType, node_invalid_input);
     size_t size = **ip >> 4;
     ++*ip;
     if (size == 0xF) {
         ZL_RESULT_OF(uint64_t) ret = ZL_varintDecode32Strict(ip, iend);
-        ZL_RET_R_IF_ERR(ret);
+        ZL_ERR_IF_ERR(ret);
         size = ZL_RES_value(ret);
-        ZL_RET_R_IF_LT(node_invalid_input, size, 15);
+        ZL_ERR_IF_LT(size, 15, node_invalid_input);
     }
     return ZL_returnValue(size);
 }
@@ -113,9 +119,10 @@ static ZL_Report ZS2_ThriftKernel_validateArrayHeader(
         uint8_t expectedType,
         size_t expectedSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_Report size = ZS2_ThriftKernel_decodeArrayHeader(ip, iend, expectedType);
-    ZL_RET_R_IF_ERR(size);
-    ZL_RET_R_IF_NE(node_invalid_input, ZL_RES_value(size), expectedSize);
+    ZL_ERR_IF_ERR(size);
+    ZL_ERR_IF_NE(ZL_RES_value(size), expectedSize, node_invalid_input);
     return ZL_returnSuccess();
 }
 
@@ -125,9 +132,10 @@ static ZL_Report ZS2_ThriftKernel_deserializeVarints64(
         uint8_t const* iend,
         size_t nbValues)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     for (size_t i = 0; i < nbValues; ++i) {
         ZL_RESULT_OF(uint64_t) ret = ZS2_ThriftKernel_decodeI64(ip, iend);
-        ZL_RET_R_IF_ERR(ret);
+        ZL_ERR_IF_ERR(ret);
         values[i] = ZL_RES_value(ret);
     }
     return ZL_returnSuccess();
@@ -140,11 +148,12 @@ ZL_Report ZS2_ThriftKernel_deserializeMapI32Float(
         size_t srcSize,
         size_t mapSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     uint8_t const* const istart = (uint8_t const*)src;
     uint8_t const* const iend   = istart + srcSize;
     uint8_t const* ip           = istart;
 
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZS2_ThriftKernel_validateMapHeader(&ip, iend, 0x5, 0xD, mapSize));
 
     // Optimization: Run for ((iend - ip) / 9) iters without bounds checks, then
@@ -153,9 +162,9 @@ ZL_Report ZS2_ThriftKernel_deserializeMapI32Float(
     // length, expect sorted keys
     for (size_t i = 0; i < mapSize; ++i) {
         ZL_Report const key = ZS2_ThriftKernel_decodeI32(&ip, iend);
-        ZL_RET_R_IF_ERR(key);
+        ZL_ERR_IF_ERR(key);
         keys[i] = (uint32_t)ZL_RES_value(key);
-        ZL_RET_R_IF_GT(srcSize_tooSmall, 4, (size_t)(iend - ip));
+        ZL_ERR_IF_GT(4, (size_t)(iend - ip), srcSize_tooSmall);
         floats[i] = ZL_readBE32(ip);
         ip += 4;
     }
@@ -175,29 +184,30 @@ ZL_Report ZS2_ThriftKernel_deserializeMapI32ArrayFloat(
         size_t srcSize,
         size_t mapSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     uint8_t const* const istart = (uint8_t const*)src;
     uint8_t const* const iend   = istart + srcSize;
     uint8_t const* ip           = istart;
 
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZS2_ThriftKernel_validateMapHeader(&ip, iend, 0x5, 0x9, mapSize));
 
     ZS2_ThriftKernel_Slice32 values = { NULL, NULL };
     for (size_t i = 0; i < mapSize; ++i) {
         ZL_RESULT_OF(uint64_t) ret = ZL_varintDecode32Strict(&ip, iend);
-        ZL_RET_R_IF_ERR(ret);
+        ZL_ERR_IF_ERR(ret);
         keys[i] = ZS2_zigZagDecode32((uint32_t)ZL_RES_value(ret));
 
         // Decode array
         ZL_Report const arraySize =
                 ZS2_ThriftKernel_decodeArrayHeader(&ip, iend, 0xD);
-        ZL_RET_R_IF_ERR(arraySize);
+        ZL_ERR_IF_ERR(arraySize);
         // TODO: This could be better
-        ZL_RET_R_IF_NOT(
-                node_invalid_input, ZL_uintFits(ZL_RES_value(arraySize), 4));
+        ZL_ERR_IF_NOT(
+                ZL_uintFits(ZL_RES_value(arraySize), 4), node_invalid_input);
         lengths[i] = (uint32_t)ZL_RES_value(arraySize);
 
-        ZL_RET_R_IF_GT(srcSize_tooSmall, 4 * lengths[i], (size_t)(iend - ip));
+        ZL_ERR_IF_GT(lengths[i], (size_t)(iend - ip) / 4, srcSize_tooSmall);
 
         for (uint32_t pos = 0, end = lengths[i]; pos < end;) {
             if (values.ptr == values.end) {
@@ -229,12 +239,12 @@ static ZL_Report ZS2_ThriftKernel_deserializeInnerArrayI64(
         uint8_t const** ip,
         uint8_t const* iend)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_Report const arraySize =
             ZS2_ThriftKernel_decodeArrayHeader(ip, iend, 0x6);
-    ZL_RET_R_IF_ERR(arraySize);
+    ZL_ERR_IF_ERR(arraySize);
     // TODO: This could be better...
-    ZL_RET_R_IF_NOT(
-            node_invalid_input, ZL_uintFits(ZL_RES_value(arraySize), 4));
+    ZL_ERR_IF_NOT(ZL_uintFits(ZL_RES_value(arraySize), 4), node_invalid_input);
     *length = (uint32_t)ZL_RES_value(arraySize);
 
     for (size_t pos = 0, end = *length; pos < end;) {
@@ -243,7 +253,7 @@ static ZL_Report ZS2_ThriftKernel_deserializeInnerArrayI64(
         }
         size_t const toCopy =
                 ZL_MIN(end - pos, (size_t)(values->end - values->ptr));
-        ZL_RET_R_IF_ERR(ZS2_ThriftKernel_deserializeVarints64(
+        ZL_ERR_IF_ERR(ZS2_ThriftKernel_deserializeVarints64(
                 values->ptr, ip, iend, toCopy));
         values->ptr += toCopy;
         pos += toCopy;
@@ -259,20 +269,21 @@ ZL_Report ZS2_ThriftKernel_deserializeMapI32ArrayI64(
         size_t srcSize,
         size_t mapSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     uint8_t const* const istart = (uint8_t const*)src;
     uint8_t const* const iend   = istart + srcSize;
     uint8_t const* ip           = istart;
 
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZS2_ThriftKernel_validateMapHeader(&ip, iend, 0x5, 0x9, mapSize));
 
     ZS2_ThriftKernel_Slice64 values = { NULL, NULL };
     for (size_t i = 0; i < mapSize; ++i) {
         ZL_RESULT_OF(uint64_t) ret = ZL_varintDecode32Strict(&ip, iend);
-        ZL_RET_R_IF_ERR(ret);
+        ZL_ERR_IF_ERR(ret);
         keys[i] = ZS2_zigZagDecode32((uint32_t)ZL_RES_value(ret));
 
-        ZL_RET_R_IF_ERR(ZS2_ThriftKernel_deserializeInnerArrayI64(
+        ZL_ERR_IF_ERR(ZS2_ThriftKernel_deserializeInnerArrayI64(
                 innerValues, &values, &lengths[i], i, mapSize, &ip, iend));
     }
     innerValues.finish(innerValues.opaque, values.ptr);
@@ -292,26 +303,27 @@ ZL_Report ZS2_ThriftKernel_deserializeMapI32ArrayArrayI64(
         size_t srcSize,
         size_t mapSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     uint8_t const* const istart = (uint8_t const*)src;
     uint8_t const* const iend   = istart + srcSize;
     uint8_t const* ip           = istart;
 
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZS2_ThriftKernel_validateMapHeader(&ip, iend, 0x5, 0x9, mapSize));
 
     ZS2_ThriftKernel_Slice64 valuesSlice  = { NULL, NULL };
     ZS2_ThriftKernel_Slice32 lengthsSlice = { NULL, NULL };
     for (size_t i = 0; i < mapSize; ++i) {
         ZL_RESULT_OF(uint64_t) ret = ZL_varintDecode32Strict(&ip, iend);
-        ZL_RET_R_IF_ERR(ret);
+        ZL_ERR_IF_ERR(ret);
         keys[i] = ZS2_zigZagDecode32((uint32_t)ZL_RES_value(ret));
 
         ZL_Report const arraySize =
                 ZS2_ThriftKernel_decodeArrayHeader(&ip, iend, 0x9);
-        ZL_RET_R_IF_ERR(arraySize);
+        ZL_ERR_IF_ERR(arraySize);
         // TODO: This could be better...
-        ZL_RET_R_IF_NOT(
-                node_invalid_input, ZL_uintFits(ZL_RES_value(arraySize), 4));
+        ZL_ERR_IF_NOT(
+                ZL_uintFits(ZL_RES_value(arraySize), 4), node_invalid_input);
         lengths[i] = (uint32_t)ZL_RES_value(arraySize);
 
         for (size_t j = 0, end = lengths[i]; j < end; ++j) {
@@ -319,7 +331,7 @@ ZL_Report ZS2_ThriftKernel_deserializeMapI32ArrayArrayI64(
                 lengthsSlice =
                         innerLengths.next(innerLengths.opaque, i, mapSize);
             }
-            ZL_RET_R_IF_ERR(ZS2_ThriftKernel_deserializeInnerArrayI64(
+            ZL_ERR_IF_ERR(ZS2_ThriftKernel_deserializeInnerArrayI64(
                     innerInnerValues,
                     &valuesSlice,
                     lengthsSlice.ptr,
@@ -348,26 +360,27 @@ ZL_Report ZS2_ThriftKernel_deserializeMapI32MapI64Float(
         size_t srcSize,
         size_t mapSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     uint8_t const* const istart = (uint8_t const*)src;
     uint8_t const* const iend   = istart + srcSize;
     uint8_t const* ip           = istart;
 
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZS2_ThriftKernel_validateMapHeader(&ip, iend, 0x5, 0xB, mapSize));
 
     ZS2_ThriftKernel_Slice64 keysSlice   = { NULL, NULL };
     ZS2_ThriftKernel_Slice32 valuesSlice = { NULL, NULL };
     for (size_t i = 0; i < mapSize; ++i) {
         ZL_RESULT_OF(uint64_t) ret = ZL_varintDecode32Strict(&ip, iend);
-        ZL_RET_R_IF_ERR(ret);
+        ZL_ERR_IF_ERR(ret);
         keys[i] = ZS2_zigZagDecode32((uint32_t)ZL_RES_value(ret));
 
         ZL_Report const innerMapSize =
                 ZS2_ThriftKernel_decodeMapHeader(&ip, iend, 0x6, 0xD);
-        ZL_RET_R_IF_ERR(innerMapSize);
+        ZL_ERR_IF_ERR(innerMapSize);
         // TODO: This could be better
-        ZL_RET_R_IF_NOT(
-                node_invalid_input, ZL_uintFits(ZL_RES_value(innerMapSize), 4));
+        ZL_ERR_IF_NOT(
+                ZL_uintFits(ZL_RES_value(innerMapSize), 4), node_invalid_input);
         lengths[i] = (uint32_t)ZL_RES_value(innerMapSize);
 
         for (size_t j = 0, end = ZL_RES_value(innerMapSize); j < end; ++j) {
@@ -379,10 +392,10 @@ ZL_Report ZS2_ThriftKernel_deserializeMapI32MapI64Float(
             }
 
             ret = ZL_varintDecode64Strict(&ip, iend);
-            ZL_RET_R_IF_ERR(ret);
+            ZL_ERR_IF_ERR(ret);
             *keysSlice.ptr++ = ZS2_zigZagDecode64(ZL_RES_value(ret));
 
-            ZL_RET_R_IF_GT(srcSize_tooSmall, 4, (size_t)(iend - ip));
+            ZL_ERR_IF_GT(4, (size_t)(iend - ip), srcSize_tooSmall);
             *valuesSlice.ptr++ = ZL_readBE32(ip);
             ip += 4;
         }
@@ -402,13 +415,14 @@ ZL_Report ZS2_ThriftKernel_deserializeArrayI64(
         size_t srcSize,
         size_t arraySize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     uint8_t const* const istart = (uint8_t const*)src;
     uint8_t const* const iend   = istart + srcSize;
     uint8_t const* ip           = istart;
 
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZS2_ThriftKernel_validateArrayHeader(&ip, iend, 0x6, arraySize));
-    ZL_RET_R_IF_ERR(ZS2_ThriftKernel_deserializeVarints64(
+    ZL_ERR_IF_ERR(ZS2_ThriftKernel_deserializeVarints64(
             values, &ip, iend, arraySize));
 
     ZL_ASSERT_SUCCESS(
@@ -423,15 +437,16 @@ ZL_Report ZS2_ThriftKernel_deserializeArrayI32(
         size_t srcSize,
         size_t arraySize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     uint8_t const* const istart = (uint8_t const*)src;
     uint8_t const* const iend   = istart + srcSize;
     uint8_t const* ip           = istart;
 
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZS2_ThriftKernel_validateArrayHeader(&ip, iend, 0x5, arraySize));
     for (size_t i = 0; i < arraySize; ++i) {
         ZL_Report ret = ZS2_ThriftKernel_decodeI32(&ip, iend);
-        ZL_RET_R_IF_ERR(ret);
+        ZL_ERR_IF_ERR(ret);
         values[i] = (uint32_t)ZL_RES_value(ret);
     }
 
@@ -447,16 +462,17 @@ ZL_Report ZS2_ThriftKernel_deserializeArrayFloat(
         size_t srcSize,
         size_t arraySize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     uint8_t const* const istart = (uint8_t const*)src;
     uint8_t const* const iend   = istart + srcSize;
     uint8_t const* ip           = istart;
 
     // Validate the array header
-    ZL_RET_R_IF_ERR(
+    ZL_ERR_IF_ERR(
             ZS2_ThriftKernel_validateArrayHeader(&ip, iend, 0xD, arraySize));
 
     // Copy the floats
-    ZL_RET_R_IF_GT(srcSize_tooSmall, arraySize * 4, (size_t)(iend - ip));
+    ZL_ERR_IF_GT(arraySize, (size_t)(iend - ip) / 4, srcSize_tooSmall);
     for (size_t i = 0; i < arraySize; ++i) {
         ZL_write32(values + i, ZL_readBE32(ip + 4 * i));
     }
@@ -471,6 +487,7 @@ ZL_Report ZS2_ThriftKernel_deserializeArrayFloat(
 
 ZL_Report ZS2_ThriftKernel_getMapSize(void const* src, size_t srcSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     uint8_t const* const istart = (uint8_t const*)src;
     uint8_t const* const iend   = istart + srcSize;
     uint8_t const* ip           = istart;
@@ -478,9 +495,9 @@ ZL_Report ZS2_ThriftKernel_getMapSize(void const* src, size_t srcSize)
     // Read the size from the header
     ZL_Report const size =
             ZS2_ThriftKernel_decodeMapHeader(&ip, iend, 0x0, 0x0);
-    ZL_RET_R_IF_ERR(size);
+    ZL_ERR_IF_ERR(size);
     // Validate the size against an upper bound
-    ZL_RET_R_IF_ERR(ZS2_ThriftKernel_validateContainerSize(
+    ZL_ERR_IF_ERR(ZS2_ThriftKernel_validateContainerSize(
             ZL_validResult(size), ZL_validResult(size), srcSize));
 
     return size;
@@ -488,15 +505,16 @@ ZL_Report ZS2_ThriftKernel_getMapSize(void const* src, size_t srcSize)
 
 ZL_Report ZS2_ThriftKernel_getArraySize(void const* src, size_t srcSize)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     uint8_t const* const istart = (uint8_t const*)src;
     uint8_t const* const iend   = istart + srcSize;
     uint8_t const* ip           = istart;
 
     // Validate the array header
     ZL_Report const size = ZS2_ThriftKernel_decodeArrayHeader(&ip, iend, 0x0);
-    ZL_RET_R_IF_ERR(size);
+    ZL_ERR_IF_ERR(size);
     // Validate the size against an upper bound
-    ZL_RET_R_IF_ERR(ZS2_ThriftKernel_validateContainerSize(
+    ZL_ERR_IF_ERR(ZS2_ThriftKernel_validateContainerSize(
             0, ZL_validResult(size), srcSize));
 
     return size;

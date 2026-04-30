@@ -12,11 +12,14 @@
 #include <gtest/gtest.h>
 
 #include "openzl/shared/estimate.h"
+#include "tests/datagen/random_producer/compat_uniform_distribution.h"
 
 namespace {
 template <typename Int>
 std::vector<Int> generateFixedData(size_t cardinality)
 {
+    using compat_dist =
+            openzl::tests::datagen::compat_uniform_int_distribution<Int>;
     std::mt19937 gen(42);
     std::unordered_set<Int> tokens;
     if (cardinality > (size_t)std::numeric_limits<Int>::max()) {
@@ -24,7 +27,7 @@ std::vector<Int> generateFixedData(size_t cardinality)
             tokens.insert(Int(i));
         }
     } else {
-        std::uniform_int_distribution<Int> dis;
+        compat_dist dis;
         while (tokens.size() < cardinality) {
             tokens.insert(dis(gen));
         }
@@ -48,7 +51,7 @@ VariableData generateVariableData(size_t cardinality, size_t size)
     std::mt19937 gen(42);
     std::unordered_set<std::string> tokens;
     std::uniform_int_distribution<size_t> len(0, 100);
-    std::uniform_int_distribution<int8_t> chr;
+    openzl::tests::datagen::compat_uniform_int_distribution<int8_t> chr;
 
     while (tokens.size() < cardinality) {
         std::string x;
@@ -64,9 +67,9 @@ VariableData generateVariableData(size_t cardinality, size_t size)
     }
     std::shuffle(values.begin(), values.end(), gen);
     VariableData data;
-    data.data = std::move(values);
     data.ptrs.reserve(values.size());
     data.sizes.reserve(values.size());
+    data.data = std::move(values);
     for (auto const& s : data.data) {
         data.ptrs.push_back(s.data());
         data.sizes.push_back(s.size());
@@ -131,15 +134,17 @@ void testEstimateVariable()
 template <typename Int>
 void testComputeUnsignedRange()
 {
+    using compat_dist =
+            openzl::tests::datagen::compat_uniform_int_distribution<Int>;
     std::mt19937 gen(42);
-    std::uniform_int_distribution<Int> bounds(
+    compat_dist bounds(
             std::numeric_limits<Int>::min(), std::numeric_limits<Int>::max());
     for (size_t i = 0; i < 1000; ++i) {
         auto const bound1 = bounds(gen);
         auto const bound2 = bounds(gen);
         auto const min    = std::min(bound1, bound2);
         auto const max    = std::max(bound1, bound2);
-        std::uniform_int_distribution<Int> value(min, max);
+        compat_dist value(min, max);
         std::vector<Int> values;
         values.reserve(100);
         for (size_t j = 0; j < 100; ++j) {
@@ -157,8 +162,10 @@ void testComputeUnsignedRange()
 template <typename Int>
 std::vector<Int> genStridedData(int stride)
 {
+    using compat_dist =
+            openzl::tests::datagen::compat_uniform_int_distribution<Int>;
     std::mt19937 gen(42);
-    std::uniform_int_distribution<Int> dist;
+    compat_dist dist;
     std::bernoulli_distribution match(0.5);
     std::bernoulli_distribution copyStride(0.9);
     std::poisson_distribution<int> offset(1.5);
@@ -305,7 +312,7 @@ TEST(Estimate, GuessFloatWidth)
     ASSERT_EQ(ZL_guessFloatWidth(data8.data(), data8.size()), 1u);
     ASSERT_EQ(ZL_guessFloatWidth(data16.data(), data16.size() * 2), 1u);
 
-    std::uniform_int_distribution<uint8_t> dist8;
+    openzl::tests::datagen::compat_uniform_int_distribution<uint8_t> dist8;
     for (size_t i = 0; i < 8192; ++i) {
         data8[i] = dist8(gen);
     }

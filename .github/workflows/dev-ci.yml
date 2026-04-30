@@ -7,6 +7,7 @@ on:
     branches: [dev]
   pull_request:
     branches: [dev, master, actionsTest]
+  workflow_dispatch: {}
 
 env:
   # Common environment variables
@@ -130,6 +131,10 @@ jobs:
             flags: "-Werror -Wgnu-anonymous-struct -DZS_ENABLE_CLANG_PRAGMA -Wno-implicit-fallthrough"
     steps:
       - uses: actions/checkout@v4
+      - name: Install GCC-9
+        if: ${{ matrix.cc == 'gcc-9' }}
+        run: |
+          sudo apt install gcc-9 g++-9
       - name: Build
         env:
           CC: ${{ matrix.cc }}
@@ -183,6 +188,19 @@ jobs:
       - name: Run tests
         run: make test
 
+  # CLI integration testing
+  test-cli:
+    name: CLI Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run CLI integration tests
+        run: make cli_test
+
   # Sanitizer testing
   test-sanitizers:
     name: ${{ matrix.name }}
@@ -216,18 +234,32 @@ jobs:
           CC: ${{ matrix.cc || 'cc' }}
         run: make test
 
-  # Code quality checks
+  # # Code quality checks
   test-quality:
     name: Code Quality (clang-format)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Run clang-format style check
-        uses: jidicula/clang-format-action@1ca6f2218b4d8a56817f3654c4a7f47d34117251 # v4.8.0
+        uses: jidicula/clang-format-action@6cd220de46c89139a0365edae93eee8eb30ca8fe # v4.16.0
         with:
-          clang-format-version: '18'
+          clang-format-version: '21'
           check-path: '.'
-          exclude-regex: '.*/fbcode_builder/.*'
+
+  # Python formatting check
+  test-python-format:
+    name: Code Quality (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install ruff
+        run: pip install ruff==0.15.0
+      - name: Check Python formatting with ruff
+        run: make check-python-format
 
   # Static analysis
   test-static-analysis:
@@ -241,7 +273,7 @@ jobs:
           sudo apt-get install -y clang-tools
       - name: Run scan-build
         continue-on-error: true
-        run: CFLAGS="-Og -g" scan-build --status-bugs -v make -j unitBench V=1
+        run: CFLAGS="-Og -g" scan-build --status-bugs -v make -j2 unitBench V=1
 
   # =============================================================================
   # FUTURE WORK / DISABLED JOBS

@@ -142,8 +142,9 @@ size_t readMessage(
             msg << "Field type mismatch for field_id " << field_id << " name "
                 << field->name() << " in " << desc->name() << ": expected "
                 << static_cast<uint32_t>(expected_type) << "("
-                << field->CppTypeName(static_cast<FieldDescriptor::CppType>(
-                           expected_type));
+                << field->CppTypeName(
+                           static_cast<FieldDescriptor::CppType>(
+                                   expected_type));
             throw std::runtime_error(msg.str());
         }
 

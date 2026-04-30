@@ -30,11 +30,12 @@ static ZL_Report computeFHBound(
         size_t nbBuffs,
         size_t nbRegens)
 {
-    ZL_RET_R_IF_GT(GENERIC, numInputs, ZL_ENCODER_INPUT_LIMIT);
-    ZL_RET_R_IF_GT(
-            GENERIC, nbTransforms, ZL_runtimeNodeLimit(ZL_MAX_FORMAT_VERSION));
-    ZL_RET_R_IF_GT(
-            GENERIC, nbBuffs, ZL_runtimeStreamLimit(ZL_MAX_FORMAT_VERSION));
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_GT(numInputs, ZL_ENCODER_INPUT_LIMIT, GENERIC);
+    ZL_ERR_IF_GT(
+            nbTransforms, ZL_runtimeNodeLimit(ZL_MAX_FORMAT_VERSION), GENERIC);
+    ZL_ERR_IF_GT(
+            nbBuffs, ZL_runtimeStreamLimit(ZL_MAX_FORMAT_VERSION), GENERIC);
 
     // Validate that this bound cannot overflow
     ZL_ASSERT_LT(
@@ -98,7 +99,9 @@ static ZL_Report EFH_Workspace_init(
         void* dst,
         size_t dstCapacity)
 {
-    ZL_TRY_LET_R(
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_TRY_LET(
+            size_t,
             dstBound,
             computeFHBound(numInputs, nbTransforms, nbStoredBuffs, nbRegens));
     size_t const regenArr32 = sizeof(uint32_t) * nbRegens;
@@ -109,7 +112,7 @@ static ZL_Report EFH_Workspace_init(
     size_t const allocationSize = buffSize + regenArr32 + trArrays + dstSize;
 
     uint32_t* const alloc = ZL_malloc(allocationSize);
-    ZL_RET_R_IF_NULL(allocation, alloc);
+    ZL_ERR_IF_NULL(alloc, allocation);
 
     wksp->buffScratch0 = alloc;
     wksp->scratch0     = wksp->buffScratch0 + nbStoredBuffs;
@@ -161,7 +164,8 @@ static void compressTrID(
         size_t nbTransforms,
         const uint8_t ctrFlags[],
         uint32_t* snodeidsScratch,
-        uint32_t* cnodeidsScratch)
+        uint32_t* cnodeidsScratch,
+        unsigned formatVersion)
 {
     if (!nbTransforms)
         return;
@@ -179,7 +183,7 @@ static void compressTrID(
     size_t const nbCNodeIds =
             MEM_ptrDistance(cnodeids, niPtr[1]) / sizeof(uint32_t);
     // use bitPacking for standard nodes
-    int const nbBits = ZL_nextPow2(ZL_StandardTransformID_end);
+    int const nbBits = ZL_StandardTransformID_numBits(formatVersion);
     ZL_ASSERT_GE(ZL_WC_avail(out), ((nbTransforms * (size_t)nbBits) + 7) / 8);
 
     ZL_WC_bitpackEncode32(out, snodeids, nbSNodeIds, nbBits);
@@ -384,9 +388,10 @@ static uint8_t encodeType(ZL_Type type)
 static ZL_Report
 EFH_encodeInputSizes_v20(ZL_WC* out, const InputDesc* inDesc, size_t numInputs)
 {
-    ZL_RET_R_IF_LT(dstCapacity_tooSmall, ZL_WC_avail(out), numInputs * 4);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_LT(ZL_WC_avail(out), numInputs * 4, dstCapacity_tooSmall);
     for (size_t n = 0; n < numInputs; n++) {
-        ZL_RET_R_IF_GE(srcSize_tooLarge, inDesc[n].byteSize, UINT_MAX);
+        ZL_ERR_IF_GE(inDesc[n].byteSize, UINT_MAX, srcSize_tooLarge);
         ZL_WC_pushLE32(out, (uint32_t)inDesc[n].byteSize);
     }
     return ZL_returnValue(numInputs * 4);
@@ -394,10 +399,11 @@ EFH_encodeInputSizes_v20(ZL_WC* out, const InputDesc* inDesc, size_t numInputs)
 
 static ZL_Report EFH_writeVarint(ZL_WC* out, uint64_t num)
 {
-    ZL_RET_R_IF_LT(
-            dstCapacity_tooSmall,
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_LT(
             ZL_WC_avail(out),
-            ZL_VARINT_FAST_OVERWRITE_64);
+            ZL_VARINT_FAST_OVERWRITE_64,
+            dstCapacity_tooSmall);
     size_t sWritten = ZL_varintEncode64Fast(num, ZL_WC_ptr(out));
     ZL_WC_ASSERT_HAS(out, sWritten);
     ZL_WC_advance(out, sWritten);
@@ -407,14 +413,15 @@ static ZL_Report EFH_writeVarint(ZL_WC* out, uint64_t num)
 static ZL_Report
 EFH_encodeInputSizes_v21(ZL_WC* out, const InputDesc* inDesc, size_t numInputs)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     size_t start = ZL_WC_size(out);
     for (size_t n = 0; n < numInputs; n++) {
-        ZL_RET_R_IF_ERR(EFH_writeVarint(out, (uint64_t)inDesc[n].byteSize + 1));
+        ZL_ERR_IF_ERR(EFH_writeVarint(out, (uint64_t)inDesc[n].byteSize + 1));
     }
     // add nbStrings
     for (size_t n = 0; n < numInputs; n++) {
         if (inDesc[n].type == ZL_Type_string) {
-            ZL_RET_R_IF_ERR(EFH_writeVarint(out, inDesc[n].numElts));
+            ZL_ERR_IF_ERR(EFH_writeVarint(out, inDesc[n].numElts));
         }
     }
 
@@ -444,12 +451,15 @@ static ZL_Report writeFrameHeader_internal(
         size_t dstCapacity,
         const EFH_FrameInfo* fip)
 {
-    ZL_TRY_LET_R(hsBound, computeFHBound(fip->numInputs, 0, 0, 0));
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_TRY_LET(size_t, hsBound, computeFHBound(fip->numInputs, 0, 0, 0));
+    // Add comment bytes relaxing header bound
+    hsBound += fip->comment.size ? 4 + fip->comment.size : 0;
     ZL_DLOG(FRAME,
             "writeFrameHeader_internal (nbInputs=%zu, maxBound=%zu bytes)",
             fip->numInputs,
             hsBound);
-    ZL_RET_R_IF_LT(internalBuffer_tooSmall, dstCapacity, hsBound);
+    ZL_ERR_IF_LT(dstCapacity, hsBound, dstCapacity_tooSmall);
 
     ZL_WC out = ZL_WC_wrap(dst, dstCapacity);
 
@@ -465,6 +475,9 @@ static ZL_Report writeFrameHeader_internal(
             flags |= 1 << 0;
         if (fip->fprop->hasCompressedChecksum)
             flags |= 1 << 1;
+        if (encoder->formatVersion >= ZL_COMMENT_VERSION_MIN
+            && fip->fprop->hasComment)
+            flags |= 1 << 2;
         ZL_WC_push(&out, flags);
     }
 
@@ -553,10 +566,10 @@ static ZL_Report writeFrameHeader_internal(
             ZL_WC_push(&out, token3);
         }
         if (fip->numInputs > 273) {
-            ZL_RET_R_IF_GT(
-                    userBuffers_invalidNum,
+            ZL_ERR_IF_GT(
                     fip->numInputs,
-                    ZL_ENCODER_INPUT_LIMIT);
+                    ZL_ENCODER_INPUT_LIMIT,
+                    userBuffers_invalidNum);
             ZL_WC_pushLE16(&out, (uint16_t)(fip->numInputs - 274));
         }
         if (fip->numInputs > 5) {
@@ -578,32 +591,43 @@ static ZL_Report writeFrameHeader_internal(
         }
     } else if (encoder->formatVersion == 14) {
         // Support for Single Typed Input
-        ZL_RET_R_IF_GT(
-                graph_invalidNumInputs,
+        ZL_ERR_IF_GT(
                 fip->numInputs,
                 1,
+                graph_invalidNumInputs,
                 "Format version 14 only supports 1 Typed Input");
         ZL_WC_push(&out, encodeType(fip->inputDescs[0].type));
     } else {
         // formatVersion <= 13 : single serial input, no type header
-        ZL_RET_R_IF_GT(
-                graph_invalidNumInputs,
+        ZL_ERR_IF_GT(
                 fip->numInputs,
                 1,
+                graph_invalidNumInputs,
                 "Format version %u only supports 1 Serial Input",
                 encoder->formatVersion);
-        ZL_RET_R_IF_NE(
-                streamType_incorrect,
+        ZL_ERR_IF_NE(
                 encodeType(fip->inputDescs[0].type),
                 0,
+                streamType_incorrect,
                 "Format version %u only supports 1 Serial Input",
                 encoder->formatVersion);
     }
 
     // Store Sizes of Inputs
     // @note (@cyan): currently, input size is presumed always known
-    ZL_RET_R_IF_ERR(EFH_encodeInputSizes(
+    ZL_ERR_IF_ERR(EFH_encodeInputSizes(
             &out, fip->inputDescs, fip->numInputs, encoder->formatVersion));
+
+    // Store variable-length comment
+    if (encoder->formatVersion >= ZL_COMMENT_VERSION_MIN
+        && fip->fprop->hasComment) {
+        ZL_ERR_IF_GT(
+                fip->comment.size,
+                ZL_MAX_HEADER_COMMENT_SIZE_LIMIT,
+                graph_invalid);
+        ZL_WC_pushVarint(&out, fip->comment.size);
+        ZL_WC_shove(&out, (const uint8_t*)fip->comment.data, fip->comment.size);
+    }
 
     if ((encoder->formatVersion >= ZL_CHUNK_VERSION_MIN)
         && fip->fprop->hasCompressedChecksum) {
@@ -624,8 +648,9 @@ static ZL_Report writeFrameHeaderV3orMore(
         size_t dstCapacity,
         const EFH_FrameInfo* fip)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     EFH_Workspace wksp = { 0 };
-    ZL_RET_R_IF_ERR(EFH_Workspace_init(
+    ZL_ERR_IF_ERR(EFH_Workspace_init(
             &wksp, fip->numInputs, 0, 0, 0, dst, dstCapacity));
     ZL_Report ret =
             writeFrameHeader_internal(encoder, wksp.dst, wksp.dstCapacity, fip);
@@ -656,8 +681,10 @@ static ZL_Report writeChunkHeaderV8_internal(
         const GraphInfo* gip,
         EFH_Workspace* wksp)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     /* @note (@cyan): the bound could be tightened a bit */
-    ZL_TRY_LET_R(
+    ZL_TRY_LET(
+            size_t,
             hsBound,
             computeFHBound(
                     gip->nbSessionInputs,
@@ -668,7 +695,7 @@ static ZL_Report writeChunkHeaderV8_internal(
             "writeChunkHeaderV8_internal (nbInputs=%zu, maxBound=%zu bytes)",
             gip->nbSessionInputs,
             hsBound);
-    ZL_RET_R_IF_LT(internalBuffer_tooSmall, dstCapacity, hsBound);
+    ZL_ERR_IF_LT(dstCapacity, hsBound, internalBuffer_tooSmall);
     ZL_ASSERT_GE(encoder->formatVersion, 8);
 
     ZL_WC out = ZL_WC_wrap(dst, dstCapacity);
@@ -677,13 +704,13 @@ static ZL_Report writeChunkHeaderV8_internal(
     size_t const nbBuffs  = gip->nbStoredBuffs;
 
     ZL_ASSERT_GE(nbBuffs, 1);
-    ZL_RET_R_IF_GE(
-            corruption, nbCodecs, ZL_runtimeNodeLimit(encoder->formatVersion));
-    ZL_RET_R_IF_GE(
-            corruption,
+    ZL_ERR_IF_GE(
+            nbCodecs, ZL_runtimeNodeLimit(encoder->formatVersion), corruption);
+    ZL_ERR_IF_GE(
             nbBuffs - 1,
-            ZL_runtimeStreamLimit(encoder->formatVersion));
-    ZL_RET_R_IF_EQ(corruption, nbBuffs, 0);
+            ZL_runtimeStreamLimit(encoder->formatVersion),
+            corruption);
+    ZL_ERR_IF_EQ(nbBuffs, 0, corruption);
 
     if (encoder->formatVersion < 9) {
         ZL_ASSERT_LT(nbCodecs, 256);
@@ -731,7 +758,13 @@ static ZL_Report writeChunkHeaderV8_internal(
             array32[u] = (uint32_t)gip->trInfo[u].trid;
         }
         compressTrID(
-                &out, array32, nbCodecs, trt, wksp->scratch1, wksp->scratch2);
+                &out,
+                array32,
+                nbCodecs,
+                trt,
+                wksp->scratch1,
+                wksp->scratch2,
+                encoder->formatVersion);
     }
 
     /* Encode Transform's private header's sizes */
@@ -777,10 +810,10 @@ static ZL_Report writeChunkHeaderV8_internal(
         // v15-: MI Transform's input count must be always 1
         totalNbRegens = nbCodecs;
         for (size_t u = 0; u < nbCodecs; u++) {
-            ZL_RET_R_IF_NE(
-                    node_versionMismatch,
+            ZL_ERR_IF_NE(
                     gip->nbTrInputs[u],
                     1,
+                    node_versionMismatch,
                     "Version %u encoding format does not support Transforms featuring 2+ inputs",
                     encoder->formatVersion);
         }
@@ -822,9 +855,10 @@ static ZL_Report writeChunkHeaderV8orMore(
         const ZL_FrameProperties* info,
         const GraphInfo* gip)
 {
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DLOG(SEQ, "writeChunkHeaderV8orMore");
     EFH_Workspace wksp = { 0 };
-    ZL_RET_R_IF_ERR(EFH_Workspace_init(
+    ZL_ERR_IF_ERR(EFH_Workspace_init(
             &wksp,
             gip->nbSessionInputs,
             gip->nbTransforms,
@@ -846,7 +880,9 @@ static ZL_Report writeChunkHeaderV8orMore(
         }
     }
     EFH_Workspace_destroy(&wksp);
-    ZL_DLOG(SEQ, "ZL_isError(ret) = %i", ZL_isError(ret));
+    if (ZL_isError(ret)) {
+        ZL_DLOG(ERROR, "writeChunkHeaderV8orMore() error");
+    }
     return ret;
 }
 

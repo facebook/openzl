@@ -20,6 +20,16 @@ class SelectorState {
    public:
     explicit SelectorState(GraphState& state) : state_(&state) {}
 
+    ZL_Graph* get()
+    {
+        return state_->get();
+    }
+
+    const ZL_Graph* get() const
+    {
+        return state_->get();
+    }
+
     poly::span<const GraphID> customGraphs() const
     {
         return state_->customGraphs();
@@ -82,7 +92,7 @@ class Selector : private FunctionGraph {
 
     static GraphID registerSelector(
             Compressor& compressor,
-            std::shared_ptr<Selector> selector);
+            std::shared_ptr<const Selector> selector);
 
    private:
     void graph(GraphState& state) const override;
