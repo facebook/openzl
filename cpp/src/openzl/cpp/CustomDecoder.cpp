@@ -59,7 +59,7 @@ static ZL_Report decodeFn(
         const ZL_Input* variableInputs[],
         size_t numVariableInputs) noexcept
 {
-    ZL_RESULT_DECLARE_SCOPE(size_t, decoder);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(decoder);
     try {
         DecoderState state(
                 decoder,
@@ -69,8 +69,7 @@ static ZL_Report decodeFn(
                 (const CustomDecoder*)ZL_Decoder_getOpaquePtr(decoder);
         customDecoder->decode(state);
     } catch (const Exception& e) {
-        // TODO(terrelln): Better wrap the error
-        ZL_ERR(GENERIC, "C++ openzl::Exception: %s", e.what());
+        return ZL_WRAP_ERROR_NO_FRAME(e.toError(decoder));
     } catch (const std::exception& e) {
         ZL_ERR(GENERIC, "C++ std::exception: %s", e.what());
     } catch (...) {

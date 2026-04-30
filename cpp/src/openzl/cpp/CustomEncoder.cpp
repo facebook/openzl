@@ -76,15 +76,14 @@ static ZL_Report encodeFn(
         const ZL_Input* inputs[],
         size_t numInputs) noexcept
 {
-    ZL_RESULT_DECLARE_SCOPE(size_t, encoder);
+    ZL_RESULT_DECLARE_SCOPE_REPORT(encoder);
     try {
         EncoderState state(encoder, { inputs, numInputs });
         const CustomEncoder* customEncoder =
                 (const CustomEncoder*)ZL_Encoder_getOpaquePtr(encoder);
         customEncoder->encode(state);
     } catch (const Exception& e) {
-        // TODO(terrelln): Better wrap the error
-        ZL_ERR(GENERIC, "C++ openzl::Exception: %s", e.what());
+        return ZL_WRAP_ERROR_NO_FRAME(e.toError(encoder));
     } catch (const std::exception& e) {
         ZL_ERR(GENERIC, "C++ std::exception: %s", e.what());
     } catch (...) {
