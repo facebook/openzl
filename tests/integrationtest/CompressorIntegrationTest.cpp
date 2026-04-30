@@ -856,7 +856,7 @@ TEST_F(CompressorIntegrationTest,
                 packedDict.size(),
                 dictID,
                 /*materializingCodec=*/0,
-                trt_custom,
+                true,
                 dictContent.data(),
                 dictContent.size());
         ASSERT_FALSE(ZL_isError(r));
