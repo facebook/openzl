@@ -14,6 +14,7 @@ export class InternalNode {
   // used for visualization , which can include collapsed graphs.
   parents: RF_nodeId[] = [];
   children: RF_nodeId[] = [];
+  sortedChildren: RF_nodeId[] = [];
 
   constructor(rfid: RF_nodeId, type: NodeType) {
     this.rfid = rfid;

@@ -122,13 +122,13 @@ function DrawerBody() {
                   <Table.Cell>
                     <Kbd>Tab</Kbd>
                   </Table.Cell>
-                  <Table.Cell>Navigate to siblings with next largest stream share</Table.Cell>
+                  <Table.Cell>Navigate to siblings with next smallest stream share</Table.Cell>
                 </Table.Row>
                 <Table.Row>
                   <Table.Cell>
                     <Kbd>Tab</Kbd>+<Kbd>Shift</Kbd>
                   </Table.Cell>
-                  <Table.Cell>Navigate to siblings with next smallest stream share</Table.Cell>
+                  <Table.Cell>Navigate to siblings with next largest stream share</Table.Cell>
                 </Table.Row>
               </Table.Body>
             </Table.Root>
