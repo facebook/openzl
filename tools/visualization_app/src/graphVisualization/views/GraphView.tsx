@@ -1,6 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import {InternalGraphNode} from '../models/InternalGraphNode';
+import type {RF_nodeId} from '../models/types';
 import {Handle, Position} from '@xyflow/react';
 import {LocalParamsPopover} from './LocalParamsView';
 import {IconButton} from '@chakra-ui/react/button';
@@ -14,6 +15,7 @@ interface GraphViewProps {
   data: {
     internalNode: InternalGraphNode;
     onToggleGraphCollapse: (graph: InternalGraphNode) => void;
+    onCtrlClick?: (nodeId: RF_nodeId) => void;
   };
 }
 
@@ -55,7 +57,13 @@ export function GraphNodeView({data}: GraphViewProps) {
   return (
     <div
       className={`graph-node ${graph.isCollapsed ? 'collapsed' : ''}`}
-      style={graph.inLargestCompressionPath ? {border: '7px solid #2ed78b'} : {}}>
+      style={graph.inLargestCompressionPath ? {border: '7px solid #2ed78b'} : {}}
+      onClick={(e) => {
+        if ((e.ctrlKey || e.metaKey) && data.onCtrlClick) {
+          e.stopPropagation();
+          data.onCtrlClick(graph.rfid);
+        }
+      }}>
       {/* Add handles for when graph is collapsed */}
       {graph.isCollapsed && (
         <>

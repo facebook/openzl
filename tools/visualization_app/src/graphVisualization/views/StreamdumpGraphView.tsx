@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-import {useEffect} from 'react';
-import {ReactFlow, Controls, Background, ConnectionLineType, Panel, useReactFlow} from '@xyflow/react';
+import {useEffect, useState} from 'react';
+import {ReactFlow, Controls, Background, ConnectionLineType, Panel} from '@xyflow/react';
 import type {Node, Edge, NodeChange, EdgeChange} from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {nodeTypes} from './NodeView';
@@ -46,12 +46,26 @@ export function StreamdumpGraphView({
   isKeyboardMode,
   keyboardNav,
 }: StreamdumpGraphViewProps) {
-  const reactFlowInstance = useReactFlow();
+  const [isCtrlHeld, setIsCtrlHeld] = useState(false);
 
-  // Make the React Flow instance available to the controller
+  // Track when ctrl is held down to enable pointer mouse for clarity that node is clickable
   useEffect(() => {
-    // The controller will use this instance for viewport manipulation, which is handled internally by React Flow
-  }, [reactFlowInstance]);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) setIsCtrlHeld(true);
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (!e.ctrlKey && !e.metaKey) setIsCtrlHeld(false);
+    };
+    const handleBlur = () => setIsCtrlHeld(false);
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
   const selectedNodeId = isKeyboardMode ? keyboardNav.selectedNodeId : null;
 
   // TODO: Nice to have. Move DOM focus to the selected node and add ARIA attributes (e.g. aria-selected,
@@ -61,7 +75,7 @@ export function StreamdumpGraphView({
     <Box
       w={'100%'}
       h={'100%'}
-      className={versionInfo.operationType === OperationType.Decompress ? 'decompress-trace' : ''}>
+      className={`${versionInfo.operationType === OperationType.Decompress ? 'decompress-trace' : ''} ${isCtrlHeld && isKeyboardMode ? 'ctrl-held' : ''}`}>
       {selectedNodeId && (
         <style>{`[data-id="${selectedNodeId}"] .codec-node,
           [data-id="${selectedNodeId}"] .graph-node {

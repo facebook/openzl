@@ -269,6 +269,7 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
             ...node.data,
             onToggleCollapse: handleNodeCollapse,
             expandOneLevel: handleNodeExpandOneLevel,
+            onCtrlClick: keyboardNav.selectNode,
           },
         };
       } else if (node.type === NodeType.Graph) {
@@ -277,6 +278,7 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
           data: {
             ...node.data,
             onToggleGraphCollapse: handleGraphCollapse,
+            onCtrlClick: keyboardNav.selectNode,
           },
         };
       } else if (node.type === NodeType.Segmenter) {
@@ -290,7 +292,7 @@ export function useStreamdumpGraphController({data}: NullableStreamdump) {
       }
       return node;
     });
-  }, [nodes, handleNodeCollapse, handleGraphCollapse, handleNodeExpandOneLevel, handleSetVisibleChunk]);
+  }, [nodes, handleNodeCollapse, handleGraphCollapse, handleNodeExpandOneLevel, handleSetVisibleChunk, keyboardNav.selectNode]);
 
   // When a streamdump file is uploaded and the graph option is selected to visualize it
   const initializeGraph = useCallback(() => {

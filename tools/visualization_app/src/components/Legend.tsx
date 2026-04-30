@@ -114,7 +114,7 @@ function DrawerBody() {
                 </Table.Row>
                 <Table.Row>
                   <Table.Cell>
-                    <Kbd>Ctrl</Kbd>+Click
+                    <Kbd>{navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}</Kbd>+Click
                   </Table.Cell>
                   <Table.Cell>Jump to node</Table.Cell>
                 </Table.Row>
