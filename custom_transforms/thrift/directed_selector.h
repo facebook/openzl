@@ -3,6 +3,7 @@
 #pragma once
 
 #include "openzl/zl_compressor.h"
+#include "openzl/zl_selector.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -13,6 +14,17 @@ extern "C" {
  * to use.
  */
 static const int kDirectedSelectorMetadataID = 0;
+
+/**
+ * The directed selector implementation function.
+ * Selects a successor graph based on integer metadata at
+ * kDirectedSelectorMetadataID.
+ */
+ZL_GraphID directed_selector_impl(
+        const ZL_Selector* selCtx,
+        const ZL_Input* inputStream,
+        const ZL_GraphID* customGraphs,
+        size_t nbCustomGraphs);
 
 /**
  * Registers the base directed selector graph if not already registered.

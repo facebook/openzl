@@ -4,7 +4,7 @@
 
 #include "openzl/zl_data.h"
 
-static ZL_GraphID empty_input_selector_impl(
+ZL_GraphID empty_input_selector_impl(
         const ZL_Selector* selCtx,
         const ZL_Input* inputStream,
         const ZL_GraphID* customGraphs,

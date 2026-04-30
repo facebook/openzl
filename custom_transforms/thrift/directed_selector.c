@@ -5,7 +5,7 @@
 #include "openzl/zl_data.h"
 #include "openzl/zl_selector.h"
 
-static ZL_GraphID directed_selector_impl(
+ZL_GraphID directed_selector_impl(
         const ZL_Selector* selCtx,
         const ZL_Input* inputStream,
         const ZL_GraphID* customGraphs,
