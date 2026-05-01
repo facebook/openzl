@@ -7,6 +7,7 @@
 #include "openzl/common/a1cbor_helpers.h"
 #include "openzl/common/allocation.h"
 #include "openzl/cpp/Compressor.hpp"
+#include "openzl/zl_reflection.h"
 
 #include "tools/logger/Logger.h"
 #include "tools/training/graph_mutation/graph_mutation_utils.h"
@@ -16,6 +17,35 @@ namespace openzl::training::graph_mutation {
 using namespace tools::logger;
 
 namespace {
+
+template <typename Fn>
+std::vector<GraphID> findGraphsWhere(const Compressor& compressor, Fn&& fn)
+{
+    struct State {
+        Fn& fn;
+        std::vector<GraphID> result{};
+    };
+    State state{ fn };
+
+    auto callback = [](void* opaque,
+                       const ZL_Compressor* c,
+                       ZL_GraphID graph) noexcept {
+        const CompressorRef cref(const_cast<ZL_Compressor*>(c));
+        auto& s = *static_cast<State*>(opaque);
+        try {
+            if (s.fn(cref, graph)) {
+                s.result.push_back(graph);
+            }
+        } catch (...) {
+            return ZL_returnError(ZL_ErrorCode_GENERIC);
+        }
+        return ZL_returnSuccess();
+    };
+
+    compressor.unwrap(
+            ZL_Compressor_forEachGraph(compressor.get(), callback, &state));
+    return state.result;
+}
 
 /*
  * @brief A wrapper class for a CBOR data bundle.
@@ -54,65 +84,6 @@ std::string getStartGraphName(const A1C_Item* root)
     }
 
     return std::string(startField->string.data, startField->string.size);
-}
-
-/**
- * @brief Replaces all references to a graph name in other graphs' dependency
- * arrays.
- *
- * Scans through all graphs in the compressor and updates any references to the
- * old graph name found in their "graphs" arrays (dependency lists). This
- * function only updates references - it does not modify the original graph
- * definition key, the start graph field, or base graph references.
- *
- * @param graphsItem The CBOR item containing all graphs map
- * @param oldName The old graph name to find and replace in references
- * @param newName The new graph name to substitute in references
- * @param arena The memory arena for CBOR string operations
- */
-void replaceGraphNameReferences(
-        A1C_Item* graphsItem,
-        std::string_view oldName,
-        std::string_view newName,
-        A1C_Arena* arena)
-{
-    // Update all references to the old graph name in all graphs
-    for (size_t i = 0; i < graphsItem->map.size; ++i) {
-        A1C_Pair* pair = &graphsItem->map.items[i];
-        if (pair->val.type == A1C_ItemType_map) {
-            // Update references in graphs arrays
-            A1C_Item* graphsArray = A1C_Map_get_cstr(&pair->val.map, "graphs");
-            if (graphsArray && graphsArray->type == A1C_ItemType_array) {
-                for (size_t j = 0; j < graphsArray->array.size; ++j) {
-                    A1C_Item* graphRef = A1C_Array_get(&graphsArray->array, j);
-                    if (graphRef && graphRef->type == A1C_ItemType_string) {
-                        StringView refView =
-                                StringView_initFromA1C(graphRef->string);
-                        std::string_view refName(refView.data, refView.size);
-                        if (refName == oldName) {
-                            if (!A1C_Item_string_copy(
-                                        graphRef,
-                                        newName.data(),
-                                        newName.length(),
-                                        arena)) {
-                                throw Exception(
-                                        "Failed to update graph reference");
-                            }
-                            Logger::log_c(
-                                    VERBOSE2,
-                                    "Updated graph reference from %.*s to %.*s in graph %.*s",
-                                    (int)oldName.size(),
-                                    oldName.data(),
-                                    (int)newName.size(),
-                                    newName.data(),
-                                    (int)pair->key.string.size,
-                                    pair->key.string.data);
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 enum class GraphFindStrategy {
@@ -205,27 +176,6 @@ A1C_Item* extractGraphsFromCbor(std::shared_ptr<const A1C_Item> root)
     return graphsItem;
 }
 
-const A1C_Item* findGraphByPrefix(
-        const std::string_view& serializedCompressor,
-        std::string_view targetGraphPrefix)
-{
-    auto [root, arena] =
-            decodeSerializedCompressorIntoCbor(serializedCompressor);
-    auto graphsItem = extractGraphsFromCbor(root);
-
-    auto result = findGraphInMap(
-            graphsItem, targetGraphPrefix, GraphFindStrategy::Prefix);
-
-    if (result.names.empty()) {
-        return nullptr;
-    }
-
-    auto exactResult = findGraphInMap(
-            graphsItem, result.names[0], GraphFindStrategy::Exact);
-
-    return exactResult.pair ? &exactResult.pair->val : nullptr;
-}
-
 } // anonymous namespace
 
 std::shared_ptr<const std::string_view> encodeCborAsSerialized(
@@ -315,98 +265,7 @@ bool hasTargetGraph(
             "In hasTargetGraph. targetGraphPrefix: %.*s",
             (int)targetGraphPrefix.size(),
             targetGraphPrefix.data());
-    const std::string serializedData = compressor.serialize();
-    return findGraphByPrefix(serializedData, targetGraphPrefix) != nullptr;
-}
-
-std::vector<std::string> extractSuccessorsFromCbor(
-        const std::string_view& cborStr,
-        const std::string& graphName)
-{
-    // Decode once and keep the arena alive
-    auto [root, arena] = decodeSerializedCompressorIntoCbor(cborStr);
-    auto graphsItem    = extractGraphsFromCbor(root);
-
-    // Find the exact graph using the same decoded data
-    auto exactResult =
-            findGraphInMap(graphsItem, graphName, GraphFindStrategy::Exact);
-
-    if (!exactResult.pair) {
-        throw Exception("Could not find exact graph named '" + graphName + "'");
-    }
-
-    const A1C_Item* targetGraph = &exactResult.pair->val;
-
-    // Get the "graphs" array from the target graph (contains successor graph
-    // names)
-    A1C_Item const* const graphsArray =
-            A1C_Map_get_cstr(&targetGraph->map, "graphs");
-    if (!graphsArray || graphsArray->type != A1C_ItemType_array) {
-        throw Exception(
-                "'" + graphName
-                + "' does not contain 'graphs' key or it's not an array");
-    }
-
-    std::vector<std::string> successorsFromSerialization;
-    for (size_t i = 0; i < graphsArray->array.size; ++i) {
-        A1C_Item const* const item = A1C_Array_get(&graphsArray->array, i);
-        if (item && item->type == A1C_ItemType_string) {
-            StringView successorView = StringView_initFromA1C(item->string);
-            successorsFromSerialization.emplace_back(
-                    successorView.data, successorView.size);
-        }
-    }
-    return successorsFromSerialization;
-}
-
-std::vector<std::string> extractNodesFromCbor(
-        const std::string_view& cborStr,
-        const std::string& targetGraphPrefix)
-{
-    // Decode once and keep the arena alive
-    auto [root, arena] = decodeSerializedCompressorIntoCbor(cborStr);
-    auto graphsItem    = extractGraphsFromCbor(root);
-
-    // Find all graphs with the prefix
-    auto result = findGraphInMap(
-            graphsItem, targetGraphPrefix, GraphFindStrategy::Prefix);
-
-    if (result.names.empty()) {
-        throw Exception(
-                "JSON does not contain any graph with name starting with '"
-                + targetGraphPrefix + "'");
-    }
-
-    // Find the exact graph using the same decoded data
-    auto exactResult = findGraphInMap(
-            graphsItem, result.names[0], GraphFindStrategy::Exact);
-
-    if (!exactResult.pair) {
-        throw Exception(
-                "Could not find exact graph for prefix '" + targetGraphPrefix
-                + "'");
-    }
-
-    const A1C_Item* targetGraph = &exactResult.pair->val;
-
-    // Get the "nodes" array from the target graph
-    A1C_Item const* const nodesArray =
-            A1C_Map_get_cstr(&targetGraph->map, "nodes");
-    if (!nodesArray || nodesArray->type != A1C_ItemType_array) {
-        throw Exception(
-                "'" + targetGraphPrefix
-                + "' does not contain 'nodes' key or it's not an array");
-    }
-
-    std::vector<std::string> nodesFromSerialization;
-    for (size_t i = 0; i < nodesArray->array.size; ++i) {
-        A1C_Item const* const item = A1C_Array_get(&nodesArray->array, i);
-        if (item && item->type == A1C_ItemType_string) {
-            StringView nodeView = StringView_initFromA1C(item->string);
-            nodesFromSerialization.emplace_back(nodeView.data, nodeView.size);
-        }
-    }
-    return nodesFromSerialization;
+    return !findAllGraphsWithPrefix(compressor, targetGraphPrefix).empty();
 }
 
 std::shared_ptr<const std::string_view> createSharedStringView(std::string str)
@@ -426,55 +285,30 @@ std::vector<std::string> findAllGraphsWithPrefix(
     return result.names;
 }
 
-std::string renameGraphInCompressor(
-        const std::string_view serializedCompressor,
-        std::string_view oldGraphName,
-        std::string_view newGraphName)
+std::vector<GraphID> findAllGraphsWithPrefix(
+        const Compressor& compressor,
+        poly::string_view prefix)
 {
-    auto [root, arena] =
-            decodeSerializedCompressorIntoCbor(serializedCompressor);
-    auto graphsItem = extractGraphsFromCbor(root);
+    return findGraphsWhere(
+            compressor, [&prefix](const Compressor& c, GraphID g) {
+                auto graphName = ZL_Compressor_Graph_getName(c.get(), g);
+                return getGraphBasePrefix(graphName) == prefix;
+            });
+}
 
-    // Verify the old graph exists
-    auto targetGraph =
-            findGraphInMap(graphsItem, oldGraphName, GraphFindStrategy::Exact);
-    if (!targetGraph.pair) {
-        throw Exception(
-                "Could not find target graph '" + std::string(oldGraphName)
-                + "' in the graphs map");
-    }
+std::vector<GraphID> getCustomGraphs(
+        const Compressor& compressor,
+        GraphID graph)
+{
+    auto graphs = ZL_Compressor_Graph_getCustomGraphs(compressor.get(), graph);
+    return { graphs.graphids, graphs.graphids + graphs.nbGraphIDs };
+}
 
-    A1C_Arena a1cArena = A1C_Arena_wrap(arena.get());
-    replaceGraphNameReferences(
-            graphsItem, oldGraphName, newGraphName, &a1cArena);
-
-    // Update the "start" field if it points to the old graph name
-    A1C_Item* startField = A1C_Map_get_cstr(&root->map, "start");
-    if (startField && startField->type == A1C_ItemType_string) {
-        StringView currentStartView =
-                StringView_initFromA1C(startField->string);
-        std::string_view currentStart(
-                currentStartView.data, currentStartView.size);
-        if (currentStart == oldGraphName) {
-            if (!A1C_Item_string_copy(
-                        startField,
-                        newGraphName.data(),
-                        newGraphName.length(),
-                        &a1cArena)) {
-                throw Exception("Failed to update start field");
-            }
-            Logger::log_c(
-                    VERBOSE2,
-                    "Updated start field from '%.*s' to '%.*s'",
-                    (int)oldGraphName.size(),
-                    oldGraphName.data(),
-                    (int)newGraphName.size(),
-                    newGraphName.data());
-        }
-    }
-
-    auto serializedResult = encodeCborAsSerialized(root.get());
-    return std::string(*serializedResult);
+/// @returns The custom nodes of @p graphid
+std::vector<NodeID> getCustomNodes(const Compressor& compressor, GraphID graph)
+{
+    auto nodes = ZL_Compressor_Graph_getCustomNodes(compressor.get(), graph);
+    return { nodes.nodeids, nodes.nodeids + nodes.nbNodeIDs };
 }
 
 std::string replaceBaseGraphInCompressor(
@@ -536,55 +370,6 @@ std::string replaceBaseGraphInCompressor(
 
     auto serializedResult = encodeCborAsSerialized(root.get());
     return std::string(*serializedResult);
-}
-
-/**
- * @brief Gets the maximum ID from all graphs with '#' in the name.
- *
- * Serialized graph definions are stored in the format {name}#{id}, where
- * {name} is the graph name and {id} is a positive integer. The IDs are unique
- * across all graphs of all names. {name} can be empty.
-
- * This function iterates through all graphs, extracts the suffix after the
- * '#' and returns the maximum value found. Graphs without '#' are skipped.
- *
- * @param serializedCompressor The serialized compressor containing the graphs
- * @return int The maximum ID found, or 0 if no graphs with '#' exist
- */
-int getMaximumIdFromSerialized(std::string_view serializedCompressor)
-{
-    auto [root, arena] =
-            decodeSerializedCompressorIntoCbor(serializedCompressor);
-    auto graphsItem = extractGraphsFromCbor(root);
-
-    auto extractId = [](const A1C_Pair& pair) -> int {
-        if (pair.key.type != A1C_ItemType_string) {
-            return 0;
-        }
-
-        std::string graphName(pair.key.string.data, pair.key.string.size);
-        size_t hashPos = graphName.find('#');
-        if (hashPos != std::string::npos && hashPos + 1 < graphName.length()) {
-            std::string suffix = graphName.substr(hashPos + 1);
-            try {
-                return std::stoi(suffix);
-            } catch (const std::exception&) {
-                // Skip invalid suffixes
-                return 0;
-            }
-        }
-        return 0;
-    };
-
-    A1C_Pair* items = graphsItem->map.items;
-    size_t size     = graphsItem->map.size;
-    auto maxElement = std::max_element(
-            items,
-            items + size,
-            [&extractId](const A1C_Pair& a, const A1C_Pair& b) {
-                return extractId(a) < extractId(b);
-            });
-    return (maxElement != items + size) ? extractId(*maxElement) : 0;
 }
 
 } // namespace openzl::training::graph_mutation

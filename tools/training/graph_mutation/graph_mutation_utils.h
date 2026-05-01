@@ -29,81 +29,11 @@ namespace openzl::training::graph_mutation {
 std::shared_ptr<const std::string_view> createSharedStringView(std::string str);
 
 /**
- * @brief Extracts successor graph names from a CBOR string for a specified
- * graph.
- *
- * @param cborStr The CBOR string to parse.
- * @param graphName The exact name of the graph whose successors
- * to extract.
- * @return A vector of successor graph names.
- */
-std::vector<std::string> extractSuccessorsFromCbor(
-        const std::string_view& cborStr,
-        const std::string& graphName);
-
-/**
- * @brief Extracts node names from a CBOR string for a specified
- * graph.
- *
- * @param cborStr The CBOR string to parse.
- * @param targetGraphPrefix The base name of the graph whose successors
- * to extract.
- * @return A vector of successor graph names.
- */
-std::vector<std::string> extractNodesFromCbor(
-        const std::string_view& cborStr,
-        const std::string& targetGraphPrefix);
-
-/**
- * @brief Replaces a graph's parameters in a compressor with new local
- * parameters.
- *
- * This function modifies the compressor by updating the specified graph with
- * new local parameters. It serializes the compressor, modifies the CBOR
- * representation, and then returns the serialized modified compressor.
- *
- * @param serializedCompressor The serialized compressor to modify.
- * @param localParams The new local parameters to apply.
- * @param graphName The name of the graph to modify.
- * @return std::shared_ptr<const std::string_view> The serialized modified
- * compressor as CBOR data.
- */
-std::shared_ptr<const std::string_view> replaceGraphInCompressor(
-        std::string_view serializedCompressor,
-        const ZL_LocalParams& localParams,
-        const std::string& graphName);
-
-/**
  * @brief Checks if a compressor contains a graph with a specific prefix.
  */
 bool hasTargetGraph(
         const Compressor& compressor,
         poly::string_view targetGraphPrefix);
-
-/**
- * @brief Renames a graph throughout the compressor by updating all references
- * and the start field.
- *
- * This function performs a comprehensive rename of a graph by:
- * 1. Updating all references to the old graph name in other graphs' dependency
- * arrays
- * 2. Updating the compressor's start field if it points to the old graph name
- *
- * Note: This function does not rename the actual graph definition key - it
- * assumes the graph has already been renamed at the definition level and only
- * updates references.
- *
- * @param serializedCompressor The serialized compressor data to modify
- * @param oldGraphName The current name of the graph to rename references from
- * @param newGraphName The new name to use in all references
- * @return std::string The updated serialized compressor with renamed references
- * @throws std::runtime_error If the old graph cannot be found or update
- * operations fail
- */
-std::string renameGraphInCompressor(
-        const std::string_view serializedCompressor,
-        std::string_view oldGraphName,
-        std::string_view newGraphName);
 
 /**
  * @brief Replaces the base graph of a specific parameterized graph.
@@ -162,29 +92,26 @@ std::shared_ptr<const std::string_view> encodeCborAsSerialized(
  * matches the given prefix. A serialized compressor is a CBOR-encoded data
  * structure containing compression graph definitions.
  *
- * @param serializedCompressor The serialized compressor containing the CBOR
- * data.
+ * @param compressor The compressor to search.
  * @param prefix The prefix to search for in graph names.
  * @return std::vector<std::string> A vector of graph names that match the
  * prefix.
  */
+std::vector<GraphID> findAllGraphsWithPrefix(
+        const Compressor& compressor,
+        poly::string_view prefix);
+
+// Will be deleted by a future diff once all usage is migrated
 std::vector<std::string> findAllGraphsWithPrefix(
         std::string_view serializedCompressor,
         const std::string& prefix);
 
-/**
- * @brief Gets the maximum ID from all graphs with '#' suffix in a serialized
- * compressor.
- *
- * This function decodes the serialized compressor into a CBOR structure and
- * finds the maximum ID from all graphs that have a '#' suffix. The ID is
- * extracted from the suffix after the '#' character, which is guaranteed to
- * be a positive integer. Graphs without '#' are skipped.
- *
- * @param serializedCompressor The serialized compressor containing the CBOR
- * data.
- * @return int The maximum ID found, or 0 if no graphs with '#' suffix exist.
- */
-int getMaximumIdFromSerialized(std::string_view serializedCompressor);
+/// @returns the custom graphs of @p graphid
+std::vector<GraphID> getCustomGraphs(
+        const Compressor& compressor,
+        GraphID graph);
+
+/// @returns The custom nodes of @p graphid
+std::vector<NodeID> getCustomNodes(const Compressor& compressor, GraphID graph);
 
 } // namespace openzl::training::graph_mutation
