@@ -8,10 +8,9 @@
 
 #include "openzl/zl_common_types.h" // ZL_OpaquePtr
 #include "openzl/zl_compress.h"     // ZL_CParam
-#include "openzl/zl_graph_api.h"    // ZL_RuntimeGraphParameters
 #include "openzl/zl_localParams.h"  // ZL_LocalParams
 #include "openzl/zl_materializer.h" // ZL_MaterializerDesc
-#include "openzl/zl_opaque_types.h" // ZL_GraphID
+#include "openzl/zl_opaque_types.h" // ZL_GraphID, ZL_RuntimeGraphParameters, ZL_Segmenter
 
 #if defined(__cplusplus)
 extern "C" {
@@ -77,7 +76,6 @@ extern "C" {
  */
 #define ZL_DEFAULT_SEGMENTER_CHUNK_BYTE_SIZE (16 << 20)
 
-typedef struct ZL_Segmenter_s ZL_Segmenter;
 typedef ZL_Report (*ZL_SegmenterFn)(ZL_Segmenter* sctx);
 
 typedef struct {

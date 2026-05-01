@@ -20,7 +20,7 @@
 #include "openzl/zl_compress.h"     // ZL_CCtx
 #include "openzl/zl_errors.h"       // ZL_Report, ZL_ErrorCode
 #include "openzl/zl_localParams.h"  // ZL_LocalParams
-#include "openzl/zl_opaque_types.h" // ZL_GraphID
+#include "openzl/zl_opaque_types.h" // ZL_GraphID, ZL_Compressor
 #include "openzl/zl_portability.h"  // ZL_NOEXCEPT_FUNC_PTR
 #include "openzl/zl_public_nodes.h"
 
@@ -56,8 +56,6 @@ extern "C" {
  *
  * @{
  */
-
-typedef struct ZL_Compressor_s ZL_Compressor;
 
 /**
  * @brief Create a new @ref ZL_Compressor.

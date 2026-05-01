@@ -188,6 +188,15 @@ jobs:
       - name: Run tests
         run: make test
 
+  # Header compatibility tests (compile-only)
+  test-c99-compat:
+    name: C99 Compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify public headers compile under strict C99
+        run: CC=clang make c99_compat
+
   # CLI integration testing
   test-cli:
     name: CLI Integration Tests

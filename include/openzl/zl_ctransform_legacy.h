@@ -50,7 +50,7 @@ extern "C" {
  * though this API does not define any specific list of error codes.
  **/
 
-typedef size_t (*ZL_PipeDstCapacityFn)(const void* src, size_t srcSize)
+typedef size_t (*ZL_CPipeDstCapacityFn)(const void* src, size_t srcSize)
         ZL_NOEXCEPT_FUNC_PTR;
 typedef size_t (*ZL_PipeEncoderFn)(
         void* dst,
@@ -61,7 +61,7 @@ typedef size_t (*ZL_PipeEncoderFn)(
 typedef struct {
     ZL_IDType CTid;
     ZL_PipeEncoderFn transform_f;
-    ZL_PipeDstCapacityFn dstBound_f;
+    ZL_CPipeDstCapacityFn dstBound_f;
     const char* name; // Optional display name, for debugging purposes. Allowed
                       // to be NULL.
 } ZL_PipeEncoderDesc;

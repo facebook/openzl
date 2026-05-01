@@ -18,6 +18,7 @@
 #include "openzl/zl_decompress.h" // ZL_DCtx
 #include "openzl/zl_dtransform_legacy.h" // Pipe and Split transforms
 #include "openzl/zl_errors.h"            // ZL_Report, ZL_isError()
+#include "openzl/zl_opaque_types.h"      // ZL_Decoder
 #include "openzl/zl_portability.h"       // ZL_NOEXCEPT_FUNC_PTR
 
 #if defined(__cplusplus)
@@ -67,8 +68,6 @@ extern "C" {
  * with both encoder and decoder working approximately the same way.
  * Consistency is what tilted the balance in favor of current design.
  **/
-
-typedef struct ZL_Decoder_s ZL_Decoder; // incomplete type
 
 typedef ZL_Report (*ZL_TypedDecoderFn)(ZL_Decoder* dictx, const ZL_Input* src[])
         ZL_NOEXCEPT_FUNC_PTR;

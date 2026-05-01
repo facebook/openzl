@@ -8,9 +8,6 @@
 #include "openzl/zl_localParams.h"
 #include "openzl/zl_opaque_types.h"
 
-// Forward declaration to avoid circular dependency with zl_graph_api.h
-typedef struct ZL_GraphParameters_s ZL_RuntimeGraphParameters;
-
 // Introspection hooks for compress
 typedef struct ZL_CompressIntrospectionHooks_s {
     void* opaque; // an opaque pointer, passed as-is to all the hooks as the

@@ -79,7 +79,7 @@ EI_fastlz_typed(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
  * ===============================================
  */
 
-// ZL_PipeDstCapacityFn
+// ZL_CPipeDstCapacityFn
 size_t EI_rolz_dstBound(const void* src, size_t srcSize)
 {
     (void)src;
@@ -108,7 +108,7 @@ size_t EI_rolz(void* dst, size_t dstCapacity, const void* src, size_t srcSize)
     return ZL_validResult(r) + 4;
 }
 
-// ZL_PipeDstCapacityFn
+// ZL_CPipeDstCapacityFn
 size_t EI_fastlz_dstBound(const void* src, size_t srcSize)
 {
     (void)src;

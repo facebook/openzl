@@ -320,6 +320,14 @@ $(eval $(call c_program_shared_o,zs2_selector,examples/zs2_selector.o tools/file
 zs2_round_trip:
 $(eval $(call cxx_program_shared_o,zs2_round_trip,tests/round_trip.o tools/fileio/fileio.o $(SHARED_COMPONENTS_CXXOBJS) $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
 
+# ********     Compatibility tests     ********
+
+# Compile-only check that public headers remain usable from a strict C99 TU.
+.PHONY: c99_compat
+c99_compat:
+	$(CC) -std=c99 -Werror -Wall -Wextra -Iinclude \
+	    -c tests/compat/c99_compat.c -o /dev/null
+
 # ********     Cleaning     ********
 
 .PHONY: clean
