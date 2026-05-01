@@ -2,6 +2,7 @@
 
 #include "parquet_metadata.h"
 
+#include <stack>
 #include <stdexcept>
 #include <tuple>
 
@@ -271,12 +272,35 @@ uint32_t readDataPageHeader(ThriftCompactReader& reader, PageHeader& header)
     return read;
 }
 
+enum class RepetitionType : uint32_t {
+    REQUIRED = 0,
+    OPTIONAL = 1,
+    REPEATED = 2,
+};
+
+RepetitionType getRepetitionType(int32_t val)
+{
+    switch (val) {
+        case 0:
+            return RepetitionType::REQUIRED;
+        case 1:
+            return RepetitionType::OPTIONAL;
+        case 2:
+            return RepetitionType::REPEATED;
+        default:
+            throw std::runtime_error("Invalid Parquet Repetition Type!");
+    }
+}
+
 struct SchemaElement {
     std::string name;
     bool isLeaf = false;
     /// Populated for leaf nodes
     DataType type;
     int32_t typeWidth = 0;
+    /// Repetition type of this element. Defaults to REQUIRED, which is the
+    /// default for the root element in the parquet schema.
+    RepetitionType repetitionType = RepetitionType::REQUIRED;
 
     // Populated for non-leaf nodes
     int32_t numChildren = 0;
@@ -309,6 +333,13 @@ uint32_t readSchemaElement(ThriftCompactReader& reader, SchemaElement& e)
                 read += reader.readI32(e.typeWidth);
                 break;
             }
+            case 3: /* Repetition Type */ {
+                throwIfTTypeNE(type, TType::T_I32);
+                int32_t reptype;
+                read += reader.readI32(reptype);
+                e.repetitionType = getRepetitionType(reptype);
+                break;
+            }
             case 4: /* Name */ {
                 throwIfTTypeNE(type, TType::T_STRING);
                 read += reader.readString(e.name);
@@ -335,31 +366,40 @@ void populateSchemaMetadata(
     if (schemaElements.empty()) {
         return;
     }
-    std::stack<std::tuple<int32_t, SchemaPath>> paths(
-            { std::tuple(schemaElements.front().numChildren, SchemaPath()) });
+    // Stack tuple: remaining children under this parent, the parent's path,
+    // and whether any ancestor on this path is OPTIONAL/REPEATED (definition
+    // levels) or REPEATED (repetition levels).
+    std::stack<std::tuple<int32_t, SchemaPath, bool, bool>> paths;
+    paths.emplace(
+            schemaElements.front().numChildren, SchemaPath(), false, false);
     schemaElements.erase(schemaElements.begin());
 
     for (auto& e : schemaElements) {
         if (paths.empty()) {
             throw std::runtime_error("Invalid schema!");
         }
-        auto& [numChildren, parentPath] = paths.top();
-        auto path                       = parentPath;
+        auto& [numChildren, parentPath, parentHasDef, parentHasRep] =
+                paths.top();
+        auto path = parentPath;
         path.push_back(e.name);
-        numChildren -= 1;
-
-        if (numChildren == 0) {
-            paths.pop();
+        bool hasDef =
+                parentHasDef || (e.repetitionType != RepetitionType::REQUIRED);
+        bool hasRep =
+                parentHasRep || (e.repetitionType == RepetitionType::REPEATED);
+        if (--numChildren == 0) {
+            paths.pop(); // invalidates parent* references above
         }
 
         if (!e.isLeaf) {
-            paths.emplace(e.numChildren, path);
+            paths.emplace(e.numChildren, path, hasDef, hasRep);
             continue;
         }
 
         SchemaMetadata m = {
-            .type      = e.type,
-            .typeWidth = (uint32_t)e.typeWidth,
+            .type                = e.type,
+            .typeWidth           = (uint32_t)e.typeWidth,
+            .hasDefinitionLevels = hasDef,
+            .hasRepetitionLevels = hasRep,
         };
 
         auto it = schemaMetadata.emplace(SchemaPath(path), m);

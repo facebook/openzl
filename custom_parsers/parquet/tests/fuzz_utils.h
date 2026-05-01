@@ -53,7 +53,7 @@ std::shared_ptr<arrow::Field> gen_arrow_field(
         type = arrow::struct_(fields);
     }
 
-    return arrow::field(std::move(name), std::move(type));
+    return arrow::field(std::move(name), std::move(type), f.coin("nullable"));
 };
 
 template <typename Mode>
@@ -71,12 +71,15 @@ std::shared_ptr<arrow::Schema> gen_arrow_schema(
 };
 
 template <typename Mode, typename T>
-std::vector<std::optional<T>>
-gen_vec(StructuredFDP<Mode>& f, std::string& name, size_t numElts)
+std::vector<std::optional<T>> gen_vec(
+        StructuredFDP<Mode>& f,
+        std::string& name,
+        size_t numElts,
+        bool nullable)
 {
     std::vector<std::optional<T>> vec(numElts);
     for (size_t i = 0; i < numElts; ++i) {
-        if (!f.has_more_data() || f.coin("null")) {
+        if (nullable && (!f.has_more_data() || f.coin("null"))) {
             vec[i] = std::nullopt;
         } else {
             vec[i] = Uniform<T>().gen(name, f);
@@ -90,11 +93,12 @@ std::vector<std::optional<std::string>> gen_str_vec(
         StructuredFDP<Mode>& f,
         std::string& name,
         size_t numElts,
-        LenDist lenDist)
+        LenDist lenDist,
+        bool nullable)
 {
     std::vector<std::optional<std::string>> vec(numElts);
     for (size_t i = 0; i < numElts; ++i) {
-        if (!f.has_more_data() || f.coin("null")) {
+        if (nullable && (!f.has_more_data() || f.coin("null"))) {
             vec[i] = std::nullopt;
         } else {
             vec[i] = openzl::tests::gen_str(f, name, lenDist);
@@ -111,24 +115,32 @@ std::shared_ptr<arrow::Array> gen_array_from_field(
 {
     auto type     = field->type();
     auto typeName = type->name();
+    bool nullable = field->nullable();
 
     if (typeName == "bool") {
-        return to_arrow_array(gen_vec<Mode, bool>(f, typeName, numElts));
-    } else if (typeName == "int32") {
-        return to_arrow_array(gen_vec<Mode, int32_t>(f, typeName, numElts));
-    } else if (typeName == "int64") {
-        return to_arrow_array(gen_vec<Mode, int64_t>(f, typeName, numElts));
-    } else if (typeName == "float") {
-        return to_arrow_array(gen_vec<Mode, float>(f, typeName, numElts));
-    } else if (typeName == "double") {
-        return to_arrow_array(gen_vec<Mode, double>(f, typeName, numElts));
-    } else if (typeName == "utf8") {
         return to_arrow_array(
-                gen_str_vec(f, typeName, numElts, Range<size_t>(1, 100)));
+                gen_vec<Mode, bool>(f, typeName, numElts, nullable));
+    } else if (typeName == "int32") {
+        return to_arrow_array(
+                gen_vec<Mode, int32_t>(f, typeName, numElts, nullable));
+    } else if (typeName == "int64") {
+        return to_arrow_array(
+                gen_vec<Mode, int64_t>(f, typeName, numElts, nullable));
+    } else if (typeName == "float") {
+        return to_arrow_array(
+                gen_vec<Mode, float>(f, typeName, numElts, nullable));
+    } else if (typeName == "double") {
+        return to_arrow_array(
+                gen_vec<Mode, double>(f, typeName, numElts, nullable));
+    } else if (typeName == "utf8") {
+        return to_arrow_array(gen_str_vec(
+                f, typeName, numElts, Range<size_t>(1, 100), nullable));
     } else if (typeName == "fixed_size_binary") {
         auto width = type->byte_width();
         return to_arrow_array(
-                gen_str_vec(f, typeName, numElts, Const<size_t>(width)), width);
+                gen_str_vec(
+                        f, typeName, numElts, Const<size_t>(width), nullable),
+                width);
     } else if (typeName == "struct") {
         std::vector<std::shared_ptr<arrow::Array>> arrays;
         for (const auto& childField : field->type()->fields()) {

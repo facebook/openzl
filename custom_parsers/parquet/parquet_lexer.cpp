@@ -95,6 +95,30 @@ lexFooter(ZL_ParquetLexer* lexer, ZL_ParquetToken* out, ZL_ErrorContext* errCtx)
     return ZL_returnSuccess();
 }
 
+/// Consume one RLE-encoded level block (4-byte LE size prefix + data) from the
+/// current lexer position and shrink the page's remaining value-byte budget
+/// accordingly.
+ZL_Report consumeLevelData(
+        ZL_ParquetLexer* lexer,
+        ZL_ParquetToken* out,
+        Encoding encoding,
+        ZL_ErrorContext* errCtx)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(errCtx);
+    ZL_ERR_IF_NE((int)encoding, (int)Encoding::RLE, node_invalid_input);
+    ZL_ERR_IF_LT(getRemaining(lexer), 4, node_invalid_input);
+    auto size = ZL_readLE32(lexer->currPtr);
+    lexer->currPtr += 4;
+    out->size += 4;
+    ZL_ERR_IF_LT(getRemaining(lexer), size, node_invalid_input);
+    lexer->currPtr += size;
+    out->size += size;
+    ZL_ERR_IF_LT(
+            (size_t)lexer->pageHeader->numBytes, size + 4, node_invalid_input);
+    lexer->pageHeader->numBytes -= size + 4;
+    return ZL_returnSuccess();
+}
+
 ZL_Report lexPageHeader(
         ZL_ParquetLexer* lexer,
         ZL_ParquetToken* out,
@@ -119,30 +143,20 @@ ZL_Report lexPageHeader(
     }
 
     // If we are in a data page, include the repetition and definition levels in
-    // the header
+    // the header (if present).
     if (lexer->pageHeader->pageType == PageType::DATA_PAGE) {
-        ZL_ERR_IF_NE(
-                (int)lexer->pageHeader->rl_encoding,
-                (int)Encoding::RLE,
-                node_invalid_input);
-        ZL_ERR_IF_NE(
-                (int)lexer->pageHeader->dl_encoding,
-                (int)Encoding::RLE,
-                node_invalid_input);
-        // Repetition and Definition levels
-        ZL_ERR_IF_LT(getRemaining(lexer), 4, node_invalid_input);
-        auto size = ZL_readLE32(lexer->currPtr);
-        advance(4);
-        ZL_ERR_IF_LT(getRemaining(lexer), size, node_invalid_input);
-        advance(size);
+        auto& chunkMeta = getChunkMeta(lexer);
+        auto schemaMeta = getSchemaMeta(lexer, chunkMeta.path_in_schema);
+        ZL_ERR_IF_NULL(schemaMeta, GENERIC, "Unknown schema path");
 
-        // Adjust the expected data page bytes
-        ZL_ERR_IF_LT(
-
-                (size_t)lexer->pageHeader->numBytes,
-                size + 4,
-                node_invalid_input);
-        lexer->pageHeader->numBytes -= size + 4;
+        if (schemaMeta->hasRepetitionLevels) {
+            ZL_ERR_IF_ERR(consumeLevelData(
+                    lexer, out, lexer->pageHeader->rl_encoding, errCtx));
+        }
+        if (schemaMeta->hasDefinitionLevels) {
+            ZL_ERR_IF_ERR(consumeLevelData(
+                    lexer, out, lexer->pageHeader->dl_encoding, errCtx));
+        }
     }
 
     lexer->chunkLexed += out->size;

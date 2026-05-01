@@ -36,6 +36,12 @@ struct SchemaMetadata {
     DataType type = (DataType)-1;
     /// The size of the data type in bytes
     uint32_t typeWidth = 0;
+    /// True when this leaf has any OPTIONAL or REPEATED ancestor; data pages
+    /// for the column then contain a definition-level block.
+    bool hasDefinitionLevels = false;
+    /// True when this leaf has any REPEATED ancestor; data pages for the
+    /// column then contain a repetition-level block.
+    bool hasRepetitionLevels = false;
 };
 
 struct FileMetadata {

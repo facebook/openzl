@@ -19,15 +19,15 @@ namespace parquet {
 namespace testing {
 
 namespace {
-std::shared_ptr<arrow::Table> generate_table()
+std::shared_ptr<arrow::Table> generate_table(bool nullable = true)
 {
     auto i64array = to_arrow_array<int64_t>({ 100, 200, 300, 400, 500 });
     auto strarray = to_arrow_array<std::string>(
             { "hello", "world", "my", "name", "is" });
 
     std::shared_ptr<arrow::Schema> schema = arrow::schema(
-            { arrow::field("int", arrow::int64()),
-              arrow::field("str", arrow::utf8()) });
+            { arrow::field("int", arrow::int64(), nullable),
+              arrow::field("str", arrow::utf8(), nullable) });
 
     return arrow::Table::Make(schema, { i64array, strarray });
 }
@@ -172,6 +172,34 @@ TEST(ParquetLexerTest, TestLexValidParquet)
     EXPECT_NE(lexer, nullptr);
 
     auto input = to_canonical_parquet(generate_table(), 3);
+
+    ZL_REQUIRE_SUCCESS(
+            ZL_ParquetLexer_init(lexer, input.data(), input.size(), nullptr));
+
+    auto tokens = std::vector<ZL_ParquetToken>(15);
+
+    auto const res =
+            ZL_ParquetLexer_lex(lexer, tokens.data(), tokens.size(), nullptr);
+    EXPECT_FALSE(ZL_isError(res));
+    EXPECT_TRUE(ZL_ParquetLexer_finished(lexer));
+    auto const numTokens = ZL_validResult(res);
+    EXPECT_LT(numTokens, tokens.size());
+    tokens.resize(numTokens);
+
+    std::vector<Column> columns = { { { "int" }, ZL_Type_numeric, 8 },
+                                    { { "str" }, ZL_Type_serial, 1 } };
+
+    validateTokens(tokens, input, columns, 2);
+
+    ZL_ParquetLexer_free(lexer);
+}
+
+TEST(ParquetLexerTest, TestLexRequiredParquet)
+{
+    auto lexer = ZL_ParquetLexer_create();
+    EXPECT_NE(lexer, nullptr);
+
+    auto input = to_canonical_parquet(generate_table(false /* nullable */), 3);
 
     ZL_REQUIRE_SUCCESS(
             ZL_ParquetLexer_init(lexer, input.data(), input.size(), nullptr));
