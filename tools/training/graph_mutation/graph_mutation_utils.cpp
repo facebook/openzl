@@ -273,18 +273,6 @@ std::shared_ptr<const std::string_view> createSharedStringView(std::string str)
     return CborDataBundle::create(std::move(str));
 }
 
-std::vector<std::string> findAllGraphsWithPrefix(
-        std::string_view serializedCompressor,
-        const std::string& prefix)
-{
-    auto [root, arena] =
-            decodeSerializedCompressorIntoCbor(serializedCompressor);
-    auto graphsItem = extractGraphsFromCbor(root);
-
-    auto result = findGraphInMap(graphsItem, prefix, GraphFindStrategy::Prefix);
-    return result.names;
-}
-
 std::vector<GraphID> findAllGraphsWithPrefix(
         const Compressor& compressor,
         poly::string_view prefix)

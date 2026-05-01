@@ -557,10 +557,10 @@ std::shared_ptr<const std::string_view> trainMLSelectorGraph(
     (void)trainParams;
 
     // Find the ML selector graph by prefix
-    auto mlSelectorGraphNames = graph_mutation::findAllGraphsWithPrefix(
-            compressor.serialize(), ML_SELECTOR_GRAPH_NAME);
+    auto mlSelectorGraphs = graph_mutation::findAllGraphsWithPrefix(
+            compressor, ML_SELECTOR_GRAPH_NAME);
 
-    if (mlSelectorGraphNames.empty()) {
+    if (mlSelectorGraphs.empty()) {
         throw std::runtime_error(
                 "Error finding ML selector graph with prefix '"
                 + ML_SELECTOR_GRAPH_NAME + "'");
@@ -577,11 +577,13 @@ std::shared_ptr<const std::string_view> trainMLSelectorGraph(
      * outputs become inputs for downstream selectors, which can then be
      * trained in subsequent passes.
      */
-    while (trainedMlSelectors.size() < mlSelectorGraphNames.size()
+    while (trainedMlSelectors.size() < mlSelectorGraphs.size()
            && trainedAnyThisPass) {
         trainedAnyThisPass = false;
 
-        for (auto& mlSelectorGraphName : mlSelectorGraphNames) {
+        for (auto mlSelectorGraph : mlSelectorGraphs) {
+            std::string mlSelectorGraphName = ZL_Compressor_Graph_getName(
+                    compressor.get(), mlSelectorGraph);
             if (trainedMlSelectors.count(mlSelectorGraphName) > 0) {
                 continue;
             }
@@ -595,9 +597,6 @@ std::shared_ptr<const std::string_view> trainMLSelectorGraph(
             if (mlSelectorInputs.empty()) {
                 continue;
             }
-
-            const ZL_GraphID mlSelectorGraph =
-                    compressor.getGraph(mlSelectorGraphName).value();
 
             const auto successors = ZL_Compressor_Graph_getCustomGraphs(
                     compressor.get(), mlSelectorGraph);
@@ -640,11 +639,11 @@ std::shared_ptr<const std::string_view> trainMLSelectorGraph(
     }
 
     // Warn if some mlSelectors were left untrained
-    if (trainedMlSelectors.size() < mlSelectorGraphNames.size()) {
+    if (trainedMlSelectors.size() < mlSelectorGraphs.size()) {
         Logger::log(
                 WARNINGS,
                 "Warning: ",
-                mlSelectorGraphNames.size() - trainedMlSelectors.size(),
+                mlSelectorGraphs.size() - trainedMlSelectors.size(),
                 " mlSelector(s) could not be trained - no inputs captured.");
     }
 
