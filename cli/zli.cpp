@@ -51,7 +51,19 @@ int impl(int argc, char** argv)
     auto usage = [&](const Cmd& cmd) -> std::string {
         auto help = cmd == Cmd::UNSPECIFIED ? argParser.help()
                                             : argParser.help(cmd);
-        return "Demo CLI for OpenZL. NO VERSION STABILITY IS IMPLIED!!\n"
+
+        // version string
+        char version[32] = {};
+        snprintf(
+                version,
+                31,
+                "%d.%d.%d",
+                ZL_LIBRARY_VERSION_MAJOR,
+                ZL_LIBRARY_VERSION_MINOR,
+                ZL_LIBRARY_VERSION_PATCH);
+
+        return "Demo CLI for OpenZL. Version " + std::string(version) +
+                "\nNO VERSION STABILITY IS IMPLIED!!\n"
                 "\n"
                 "Usage: " + std::string(argv[0]) + " <command> [options] <args>\n"
                 "\n"
