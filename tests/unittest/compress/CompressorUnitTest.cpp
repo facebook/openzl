@@ -1784,6 +1784,127 @@ TEST_F(CompressorTest, ReplaceGraphParamsOnlyWhenParamExists)
 }
 
 // =============================================================================
+// Base Graph Replacement Tests
+// =============================================================================
+
+TEST_F(CompressorTest, OverrideBaseGraph)
+{
+    auto baseGraph = ZL_Compressor_registerStaticGraph_fromNode1o(
+            compressor_.get(), ZL_NODE_DELTA_INT, ZL_GRAPH_ZSTD);
+    ZL_GraphID customGraphs[1]          = { ZL_GRAPH_ZSTD };
+    ZL_NodeID customNodes[1]            = { ZL_NODE_ZIGZAG };
+    ZL_ParameterizedGraphDesc paramDesc = {
+        .graph          = baseGraph,
+        .customGraphs   = customGraphs,
+        .nbCustomGraphs = 1,
+        .customNodes    = customNodes,
+        .nbCustomNodes  = 1,
+        .localParams    = &localParams_,
+    };
+    auto paramGraph = ZL_Compressor_registerParameterizedGraph(
+            compressor_.get(), &paramDesc);
+    ASSERT_NE(paramGraph, ZL_GRAPH_ILLEGAL);
+
+    // Verify initial state
+    EXPECT_EQ(
+            ZL_Compressor_Graph_getBaseGraphID(compressor_.get(), paramGraph),
+            baseGraph);
+    EXPECT_EQ(
+            ZL_Compressor_Graph_getCustomGraphs(compressor_.get(), paramGraph)
+                    .nbGraphIDs,
+            1u);
+    EXPECT_EQ(
+            ZL_Compressor_Graph_getCustomNodes(compressor_.get(), paramGraph)
+                    .nbNodeIDs,
+            1u);
+
+    // Override with a new base graph
+    auto newBaseGraph = ZL_Compressor_registerStaticGraph_fromNode1o(
+            compressor_.get(), ZL_NODE_ZIGZAG, ZL_GRAPH_ZSTD);
+    EXPECT_ZS_VALID(ZL_Compressor_overrideBaseGraph(
+            compressor_.get(), paramGraph, newBaseGraph));
+
+    // Base graph should be updated
+    EXPECT_EQ(
+            ZL_Compressor_Graph_getBaseGraphID(compressor_.get(), paramGraph),
+            newBaseGraph);
+
+    // Custom graphs, custom nodes, and local params should be cleared
+    EXPECT_EQ(
+            ZL_Compressor_Graph_getCustomGraphs(compressor_.get(), paramGraph)
+                    .nbGraphIDs,
+            0u);
+    EXPECT_EQ(
+            ZL_Compressor_Graph_getCustomNodes(compressor_.get(), paramGraph)
+                    .nbNodeIDs,
+            0u);
+    expectParamsEmpty(
+            ZL_Compressor_Graph_getLocalParams(compressor_.get(), paramGraph));
+
+    // Graph type should still be parameterized
+    EXPECT_EQ(
+            ZL_GraphType_parameterized,
+            ZL_Compressor_getGraphType(compressor_.get(), paramGraph));
+}
+
+TEST_F(CompressorTest, OverrideBaseGraphRejectsStandardGraph)
+{
+    EXPECT_ZS_ERROR(ZL_Compressor_overrideBaseGraph(
+            compressor_.get(), ZL_GRAPH_FIELD_LZ, ZL_GRAPH_ZSTD));
+}
+
+TEST_F(CompressorTest, OverrideBaseGraphRejectsNonParameterizedGraph)
+{
+    auto staticGraph = ZL_Compressor_registerStaticGraph_fromNode1o(
+            compressor_.get(), ZL_NODE_DELTA_INT, ZL_GRAPH_ZSTD);
+    auto newBaseGraph = ZL_Compressor_registerStaticGraph_fromNode1o(
+            compressor_.get(), ZL_NODE_ZIGZAG, ZL_GRAPH_ZSTD);
+    EXPECT_ZS_ERROR(ZL_Compressor_overrideBaseGraph(
+            compressor_.get(), staticGraph, newBaseGraph));
+}
+
+TEST_F(CompressorTest, OverrideBaseGraphRejectsInvalidGraph)
+{
+    auto baseGraph = ZL_Compressor_registerStaticGraph_fromNode1o(
+            compressor_.get(), ZL_NODE_DELTA_INT, ZL_GRAPH_ZSTD);
+    auto paramGraph = makeParameterizedGraph();
+
+    EXPECT_ZS_ERROR(ZL_Compressor_overrideBaseGraph(
+            compressor_.get(), ZL_GRAPH_ILLEGAL, baseGraph));
+    EXPECT_ZS_ERROR(ZL_Compressor_overrideBaseGraph(
+            compressor_.get(), paramGraph, ZL_GRAPH_ILLEGAL));
+}
+
+TEST_F(CompressorTest, OverrideBaseGraphRejectsInfiniteLoop)
+{
+    auto paramGraph1 = makeParameterizedGraph();
+    auto paramGraph2 = compressor_.parameterizeGraph(
+            paramGraph1, openzl::GraphParameters{});
+    ASSERT_NE(paramGraph2, ZL_GRAPH_ILLEGAL);
+
+    // paramGraph2's base is paramGraph1. Setting paramGraph1's base to
+    // paramGraph2 would create a cycle.
+    EXPECT_ZS_ERROR(ZL_Compressor_overrideBaseGraph(
+            compressor_.get(), paramGraph1, paramGraph2));
+}
+
+TEST_F(CompressorTest, OverrideBaseGraphRejectsSelfLoop)
+{
+    auto paramGraph = makeParameterizedGraph();
+    EXPECT_ZS_ERROR(ZL_Compressor_overrideBaseGraph(
+            compressor_.get(), paramGraph, paramGraph));
+}
+
+TEST_F(CompressorTest, OverrideBaseGraphRejectsIncompatibleInputTypes)
+{
+    auto paramGraph = makeParameterizedGraph();
+    auto multiInput = makeMultiInputGraph(false);
+
+    EXPECT_ZS_ERROR(ZL_Compressor_overrideBaseGraph(
+            compressor_.get(), paramGraph, multiInput));
+}
+
+// =============================================================================
 // Materialization Tests
 // =============================================================================
 

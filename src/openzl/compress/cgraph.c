@@ -858,6 +858,16 @@ ZL_Report ZL_Compressor_overrideGraphParams(
     return ZL_returnSuccess();
 }
 
+ZL_Report ZL_Compressor_overrideBaseGraph(
+        ZL_Compressor* compressor,
+        ZL_GraphID graph,
+        ZL_GraphID newBaseGraph)
+{
+    ZL_RESULT_DECLARE_SCOPE(size_t, compressor);
+    ZL_ERR_IF_ERR(GM_overrideBaseGraph(compressor->gm, graph, newBaseGraph));
+    return ZL_returnSuccess();
+}
+
 ZL_GraphID ZL_Compressor_registerParameterizedGraph(
         ZL_Compressor* compressor,
         const ZL_ParameterizedGraphDesc* desc)

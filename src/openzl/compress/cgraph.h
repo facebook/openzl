@@ -112,6 +112,27 @@ ZL_Report ZL_Compressor_overrideGraphParams(
         const ZL_GraphParameters* gp);
 
 /**
+ * Warning: This is part of experimental API for compressor mutation.
+ *
+ * Requires that:
+ * @p graph is a parameterized graph registered in @p compressor
+ * @p newBaseGraph is a static graph registered in @p compressor
+ * @p newBaseGraph is not a parameterization of @p graph
+ *
+ * Replaces the base graph of the parameterized graph @p graph with @p
+ * newBaseGraph and clears the custom nodes, custom graphs, and local params.
+ *
+ * @warning All parameterizations are cleared because they applied to the old
+ * base graph and do not apply to @p newBaseGraph.
+ *
+ * @returns success, or an error if the requirements are not met.
+ */
+ZL_Report ZL_Compressor_overrideBaseGraph(
+        ZL_Compressor* compressor,
+        ZL_GraphID graph,
+        ZL_GraphID newBaseGraph);
+
+/**
  * Look up a previously loaded dict by its ZL_DictID.
  * @param matDesc must match the materializer used when the dict was loaded.
  * @returns the dict, or NULL if no dict with this ID has been loaded.

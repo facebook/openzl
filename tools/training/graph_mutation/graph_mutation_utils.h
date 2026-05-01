@@ -36,26 +36,6 @@ bool hasTargetGraph(
         poly::string_view targetGraphPrefix);
 
 /**
- * @brief Replaces the base graph of a specific parameterized graph.
- *
- * This function updates the "base" field of a specific parameterized graph
- * to point to a new base graph. Unlike replaceGraphInCompressor2, this only
- * modifies the base field of the specified graph and does not update other
- * references throughout the compressor. It also clears the other fields of
- * the parameterized graph.
- *
- * @param serializedCompressor The serialized compressor to modify.
- * @param parameterizedGraphName The name of the parameterized graph whose
- * base should be updated.
- * @param newBaseGraphName The name of the new base graph to reference.
- * @return The serialized modified compressor as CBOR data.
- */
-std::string replaceBaseGraphInCompressor(
-        const std::string_view serializedCompressor,
-        const std::string& parameterizedGraphName,
-        const std::string& newBaseGraphName);
-
-/**
  * @brief Extracts the base name of a graph by splitting at '#'
  * character.
  *
@@ -63,26 +43,6 @@ std::string replaceBaseGraphInCompressor(
  * @return The base name (prefix before '#')
  */
 std::string_view getGraphBasePrefix(std::string_view graphName);
-
-/**
- * @brief Decodes a serialized compressor into a CBOR structure.
- *
- * @param serialized The serialized compressor to decode.
- * @return A tuple containing the root CBOR item and the arena used to decode
- */
-std::tuple<std::shared_ptr<const A1C_Item>, std::shared_ptr<Arena>>
-decodeSerializedCompressorIntoCbor(const std::string_view serialized);
-
-/**
- * @brief Encodes a CBOR item into serialized binary data.
- *
- * @param root The CBOR item to encode
- * @return std::shared_ptr<const std::string_view> A shared pointer to a string
- * view containing the serialized binary data
- * @throws std::runtime_error If encoding fails
- */
-std::shared_ptr<const std::string_view> encodeCborAsSerialized(
-        const A1C_Item* root);
 
 /**
  * @brief Finds all graphs with a specific prefix in a serialized compressor.
