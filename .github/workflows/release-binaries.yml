@@ -25,10 +25,37 @@ permissions:
 
 jobs:
   # =============================================================================#
+  # VALIDATE VERSION TAG MATCHES SOURCE
+  # =============================================================================#
+  validate-version:
+    name: Validate release tag matches source version
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check version consistency
+        run: |
+          MAJOR=$(grep '#define ZL_LIBRARY_VERSION_MAJOR' include/openzl/zl_version.h | awk '{print $3}')
+          MINOR=$(grep '#define ZL_LIBRARY_VERSION_MINOR' include/openzl/zl_version.h | awk '{print $3}')
+          PATCH=$(grep '#define ZL_LIBRARY_VERSION_PATCH' include/openzl/zl_version.h | awk '{print $3}')
+          SOURCE_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          TAG="${{ github.event.release.tag_name }}"
+          echo "Source version: $SOURCE_VERSION"
+          echo "Release tag:    $TAG"
+          if [ "$SOURCE_VERSION" != "$TAG" ]; then
+            echo "::error::Version mismatch! zl_version.h says $SOURCE_VERSION but release tag is $TAG. Please update zl_version.h to match the release tag."
+            exit 1
+          fi
+
+  # =============================================================================#
   # WINDOWS X64 BINARY
   # =============================================================================#
   build-windows-x64:
     name: Windows X64 CLI Binary
+    needs: validate-version
+    if: always() && (needs.validate-version.result == 'success' || needs.validate-version.result == 'skipped')
     runs-on: windows-latest
     defaults:
       run:
