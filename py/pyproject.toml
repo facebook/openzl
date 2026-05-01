@@ -38,10 +38,8 @@ regex = '''(?sx)
 \#define \s+ ZL_LIBRARY_VERSION_MAJOR \s+ (?P<major>\d+) .*?
 \#define \s+ ZL_LIBRARY_VERSION_MINOR \s+ (?P<minor>\d+) .*?
 \#define \s+ ZL_LIBRARY_VERSION_PATCH \s+ (?P<patch>\d+) .*?
-\#define \s+ ZL_FBCODE_IS_RELEASE \s+ (?P<dev>\d+) .*?
 '''
-result = "{major}.{minor}.{patch}dev{dev}"
-remove = "dev1"
+result = "{major}.{minor}.{patch}"
 
 [tool.scikit-build.cmake.define]
 # Build the Python extension, but don't install OpenZL.
