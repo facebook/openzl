@@ -282,10 +282,16 @@ std::vector<std::shared_ptr<const std::string_view>> getCombinedCompressors(
     auto compressor = makeCompressor();
     auto cctx       = refCCtxForTraining(compressor);
     auto serialized = compressor.serialize();
-    /// Get the ACECompressor for each backend graph from the
-    /// trainedSerializedCompressor
-    const std::vector<std::string> autoBackendGraphs =
-            findAllGraphsWithPrefix(serialized, ACE_GRAPH_NAME);
+
+    /// Get the ACECompressor for each backend graph from the compressor
+    const std::vector<GraphID> autoBackendGraphIDs =
+            findAllGraphsWithPrefix(compressor, ACE_GRAPH_NAME);
+    std::vector<std::string> autoBackendGraphs;
+    autoBackendGraphs.reserve(autoBackendGraphIDs.size());
+    for (const auto& graphID : autoBackendGraphIDs) {
+        autoBackendGraphs.emplace_back(
+                ZL_Compressor_Graph_getName(compressor.get(), graphID));
+    }
 
     // Note this is done a second time (is it worth caching the flattened
     // samples)
