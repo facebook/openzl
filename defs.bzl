@@ -200,6 +200,11 @@ ZS_FUZZ_METADATA = Metadata(
 )
 
 _DEFAULT_HARNESS_CONFIG = {
+    # Set 10 minute initialization timeout to avoid AFL initialization
+    # timeouts.
+    "environment": {
+        "AFL_FORKSRV_INIT_TMOUT": "600000",
+    },
     # Set 1 minute timeout on inputs, rather than the 10 second default
     "perInputTimeout": 60,
 }
