@@ -83,7 +83,7 @@ static ZL_Report writeFrameHeader(
     ZL_Report const r =
             EFH_writeFrameHeader(dst, dstCapacity, &fi, formatVersion);
 
-    free(inputDescs);
+    ZL_free(inputDescs);
     return r;
 }
 
