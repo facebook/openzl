@@ -13,6 +13,7 @@
 
 #include "cli/args/ArgsUtils.h"
 #include "cli/args/GlobalArgs.h"
+#include "cli/utils/util.h"
 #include "tools/io/InputFile.h"
 #include "tools/io/OutputFile.h"
 
@@ -104,7 +105,7 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
 
         trainInline = parsed.cmdHasFlag(cmd(), kTrainInline);
         if (parsed.cmdHasFlag(cmd(), kTrainInlineTestLimit)) {
-            trainInlineTestLimit = std::stoul(
+            trainInlineTestLimit = util::checkedstoul(
                     parsed.cmdFlag(cmd(), kTrainInlineTestLimit).value());
         }
 

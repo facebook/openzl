@@ -14,6 +14,7 @@
 
 #include "cli/args/ArgsUtils.h"
 #include "cli/args/GlobalArgs.h"
+#include "cli/utils/util.h"
 
 namespace openzl::cli {
 
@@ -75,11 +76,11 @@ struct BenchmarkArgs : public GlobalArgs, public ProfileArgs {
         }
         auto levelArg = parsed.cmdFlag(cmd(), kLevel);
         if (levelArg) {
-            level = std::stoi(levelArg.value());
+            level = util::checkedstoi(levelArg.value());
         }
         auto numItersArg = parsed.cmdFlag(cmd(), kNumIters);
         if (numItersArg) {
-            numIters = std::stoi(numItersArg.value());
+            numIters = util::checkedstoi(numItersArg.value());
         }
         strict = parsed.cmdHasFlag(Cmd::BENCHMARK, kStrict);
     }

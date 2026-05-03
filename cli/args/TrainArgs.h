@@ -14,6 +14,7 @@
 
 #include "cli/args/ArgsUtils.h"
 #include "cli/args/GlobalArgs.h"
+#include "cli/utils/util.h"
 
 namespace openzl::cli {
 
@@ -153,24 +154,26 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
 
         auto threads = parsed.cmdFlag(cmd(), kThreads);
         if (threads) {
-            trainParams.threads = std::stoul(threads.value());
+            trainParams.threads = util::checkedstoul(threads.value());
         }
         auto numSamples = parsed.cmdFlag(cmd(), kNumSamples);
         if (numSamples) {
-            trainParams.numSamples = std::stoul(numSamples.value());
+            trainParams.numSamples = util::checkedstoul(numSamples.value());
         }
         auto maxTimeSecs = parsed.cmdFlag(cmd(), kMaxTimeSecs);
         if (maxTimeSecs) {
-            trainParams.maxTimeSecs = std::stoul(maxTimeSecs.value());
+            trainParams.maxTimeSecs = util::checkedstoul(maxTimeSecs.value());
         }
         useAllSamples      = parsed.cmdHasFlag(cmd(), kUseAllSamples);
         auto maxFileSizeMb = parsed.cmdFlag(cmd(), kMaxFileSizeMb);
         if (maxFileSizeMb) {
-            trainParams.maxFileSizeMb = std::stoul(maxFileSizeMb.value());
+            trainParams.maxFileSizeMb =
+                    util::checkedstoul(maxFileSizeMb.value());
         }
         auto maxTotalSizeMb = parsed.cmdFlag(cmd(), kMaxTotalSizeMb);
         if (maxTotalSizeMb) {
-            trainParams.maxTotalSizeMb = std::stoul(maxTotalSizeMb.value());
+            trainParams.maxTotalSizeMb =
+                    util::checkedstoul(maxTotalSizeMb.value());
         }
 
         if (parsed.cmdHasFlag(cmd(), kParetoFrontier)) {
