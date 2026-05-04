@@ -1,0 +1,65 @@
+# =============================================================================
+# Star Catalog (SAO) parser using SDDL1 syntax only.
+#
+# Mirrors the dynamic capabilities of the SDDL2 version by leveraging features
+# of SDDL1 that aren't documented in Syntax.md but are visible in
+# tools/sddl/compiler/Grammar.cpp:
+#
+#   * Lambdas / parameterized records: `Name = (a, b) { ...body... }`
+#   * Conditional fields are emulated with the array-length trick.
+#   * abs(x) is emulated arithmetically
+#
+# NOTE: SDDL1 lambdas do NOT capture surrounding-scope variables. Anything a
+# lambda body uses must be defined inside the body or passed as a parameter.
+# =============================================================================
+
+# ---- Header ----
+# STARN can be negative (encodes J2000 vs B1950), so use Int32LE.
+Header = {
+  STAR0: Int32LE  # Subtract from star number to get sequence number
+  STAR1: Int32LE  # First star number in file
+  STARN: Int32LE  # Number of stars; <0 -> J2000 coordinates
+  STNUM: Int32LE  # ID scheme / name flag
+  MPROP: Int32LE  # Motion info: 0=none, 1=proper, 2=radial
+  NMAG : Int32LE  # Number of magnitudes (negative allowed)
+  NBENT: Int32LE  # Bytes per star entry
+}
+
+# ---- abs() helper ----
+abs = (val) {
+  _ret = val * (2 * (val >= 0) - 1)
+}
+
+# ---- Star entry as a parameterized lambda ----
+StarEntryLambda = (abs, STNUM, MPROP, NMAG) {
+  XnoSub = { XNO: Float32LE }  # when STNUM > 0
+  PmSub  = {                   # when MPROP >= 1
+    XRPM: Float32LE
+    XDPM: Float32LE
+  }
+  RvSub  = { SVEL: Float64LE } # when MPROP == 2
+
+  : XnoSub[STNUM > 0]          # Optional catalog number
+
+  SRA0 : Float64LE             # Right ascension (radians)
+  SDEC0: Float64LE             # Declination (radians)
+  ISP  : Byte[2]               # Spectral type
+
+  : Int16LE[(:abs(NMAG))._ret] # |NMAG| magnitudes
+
+  : PmSub[MPROP >= 1]          # Proper motion (R.A., Dec.)
+  : RvSub[MPROP == 2]          # Radial velocity
+
+  : Byte[STNUM > 0 * -STNUM]   # Object name, length |STNUM| if STNUM<0
+}
+
+# ---- File structure ----
+header: Header
+
+STNUM = header.STNUM
+MPROP = header.MPROP
+NMAG  = header.NMAG
+STARN = header.STARN
+
+StarEntry = StarEntryLambda(abs, STNUM, MPROP, NMAG)
+: StarEntry[STARN]
