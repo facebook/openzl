@@ -79,6 +79,7 @@ ZL_Report CTM_init(CNodes_manager* ctm, ZL_OperationContext* opCtx)
     ctm->scratchAllocator = ALLOC_StackArena_create();
     if (ctm->scratchAllocator == NULL) {
         ALLOC_Arena_freeArena(ctm->allocator);
+        ctm->allocator = NULL;
         ZL_ERR(allocation);
     }
     return ZL_returnSuccess();
