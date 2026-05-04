@@ -78,7 +78,7 @@ class SentinelByteComponent : public OpenZLComponent {
     std::vector<std::unique_ptr<OpenZLInput>> generateInputs(
             datagen::DataGen& gen,
             size_t num,
-            size_t maxInputSize,
+            size_t maxInputSizeBytes,
             const Compressor&,
             GraphID) const override
     {
@@ -88,7 +88,9 @@ class SentinelByteComponent : public OpenZLComponent {
             // Only widths >= 2 (sentinel_byte rejects 1-byte inputs)
             const auto widthChoice = gen.usize_range("width", 0, 2);
             const auto smallProb   = gen.f32_range("small_prob", 0.0, 1.0);
-            auto inputSize = gen.usize_range("input_size", 0, maxInputSize);
+            // Divide by element width to get the max number of elements
+            auto maxInputSize = maxInputSizeBytes / (2u << widthChoice);
+            auto inputSize    = gen.usize_range("input_size", 0, maxInputSize);
             switch (widthChoice) {
                 case 0:
                     inputs.push_back(
