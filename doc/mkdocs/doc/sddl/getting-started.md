@@ -191,6 +191,14 @@ for f in $(ls input_dir/); do
 done
 ```
 
+## Syntax Highlighting
+
+SDDL files use the `.sddl` extension. For the best editing experience, syntax highlighting is available for VS Code.
+
+### VS Code
+
+The OpenZL repository includes a VS Code extension for SDDL syntax highlighting. See `contrib/sddl-syntax-highlighting/README.md` for installation instructions.
+
 ## Next Steps
 
 - [Core Concepts](core-concepts.md) — detailed explanation of types, records, arrays, variables, and expressions
