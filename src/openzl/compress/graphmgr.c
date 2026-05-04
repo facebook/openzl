@@ -583,6 +583,130 @@ ZL_Report GM_overrideGraphParams(
     return ZL_returnSuccess();
 }
 
+/// @returns An error if the graph @p haystack recursively depends on @p needle
+///          through parameterization.
+/// @pre both are valid graphs
+static ZL_Report GM_checkDoesNotDependOn(
+        const GraphsMgr* gm,
+        ZL_GraphID needle,
+        ZL_GraphID haystack)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gm->opCtx);
+
+    ZL_ASSERT(GM_isValidGraphID(gm, haystack));
+    ZL_ASSERT(GM_isValidGraphID(gm, needle));
+
+    size_t count = 0;
+    for (;;) {
+        // Check if haystack (recursively) depends on needle.
+        ZL_ERR_IF_EQ(
+                haystack.gid,
+                needle.gid,
+                graph_invalid,
+                "Would introduce infinite loop");
+
+        // There are at most ZL_ENCODER_GRAPH_LIMIT graphs in a compressor. If
+        // this limit is surpassed, we must be in some sort of infinite loop.
+        // This is unexpected, because it means the graph was already invalid.
+        ZL_ERR_IF_GT(
+                count++,
+                ZL_ENCODER_GRAPH_LIMIT,
+                graph_invalid,
+                "Would introuce infinite loop");
+
+        if (GR_isStandardGraph(haystack)) {
+            // Standard graphs aren't parameterized graphs
+            break;
+        }
+        const Graph_Desc_internal* desc =
+                &VECTOR_AT(gm->gdv, GM_GraphID_to_lgid(haystack));
+        if (desc->originalGraphType != ZL_GraphType_parameterized) {
+            // Not a parameterized graph
+            break;
+        }
+
+        // Iteratively check the base graph of the parameterized graph
+        haystack = desc->baseGraphID;
+    }
+
+    return ZL_returnSuccess();
+}
+
+/// @returns an error if @p graph1 is not compatible with @p graph0.
+/// @note Cannot catch all possible incompatibilities, but will catch
+/// if it is statically incompatible. Other incompatibilities will be
+/// caught at runtime.
+static ZL_Report GM_checkInputTypesAreCompatible(
+        const GraphsMgr* gm,
+        ZL_GraphID graph0,
+        ZL_GraphID graph1)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gm->opCtx);
+
+    GM_GraphMetadata meta0 = GM_getGraphMetadata(gm, graph0);
+    GM_GraphMetadata meta1 = GM_getGraphMetadata(gm, graph1);
+
+    ZL_ERR_IF_NE(
+            meta0.nbInputs,
+            meta1.nbInputs,
+            graph_invalid,
+            "Graphs have different number of inputs");
+    for (size_t i = 0; i < meta0.nbInputs; ++i) {
+        ZL_ERR_IF_EQ(
+                meta0.inputTypeMasks[i] & meta1.inputTypeMasks[i],
+                0,
+                graph_invalid,
+                "Input %zu types are not compatible",
+                i);
+    }
+
+    return ZL_returnSuccess();
+}
+
+ZL_Report
+GM_overrideBaseGraph(GraphsMgr* gm, ZL_GraphID graph, ZL_GraphID newBaseGraph)
+{
+    ZL_ASSERT_NN(gm);
+    ZL_RESULT_DECLARE_SCOPE(size_t, gm->opCtx);
+
+    ZL_ERR_IF(
+            GR_isStandardGraph(graph),
+            graph_invalid,
+            "Cannot replace standard graph");
+    ZL_ERR_IF_NOT(
+            GM_isValidGraphID(gm, graph), graph_invalid, "Graph is invalid");
+    ZL_ERR_IF_NOT(
+            GM_isValidGraphID(gm, newBaseGraph),
+            graph_invalid,
+            "New base graph is invalid");
+
+    ZL_ERR_IF_ERR(GM_checkInputTypesAreCompatible(gm, graph, newBaseGraph));
+
+    ZL_IDType const lid = GM_GraphID_to_lgid(graph);
+    // Check that the graphs is a parameterized graph
+    ZL_ERR_IF_NE(
+            VECTOR_AT(gm->gdv, lid).originalGraphType,
+            ZL_GraphType_parameterized,
+            graph_invalid,
+            "Graph is not parameterized");
+
+    // Validate that newBaseGraph does not depend on graph
+    ZL_ERR_IF_ERR(GM_checkDoesNotDependOn(
+            gm, /* needle */ graph, /* haystack */ newBaseGraph));
+    // Set the new base graph and check for infinite loops
+    VECTOR_AT(gm->gdv, lid).baseGraphID = newBaseGraph;
+
+    // Clear the custom graphs, custom nodes, and local params
+    VECTOR_AT(gm->gdv, lid).migd.customGraphs   = NULL;
+    VECTOR_AT(gm->gdv, lid).migd.nbCustomGraphs = 0;
+    VECTOR_AT(gm->gdv, lid).migd.customNodes    = NULL;
+    VECTOR_AT(gm->gdv, lid).migd.nbCustomNodes  = 0;
+    ZL_LocalParams* localParams = &VECTOR_AT(gm->gdv, lid).migd.localParams;
+    memset(localParams, 0, sizeof(*localParams));
+
+    return ZL_returnSuccess();
+}
+
 ZL_RESULT_OF(ZL_GraphID)
 GM_registerParameterizedGraph(
         GraphsMgr* gm,
@@ -648,8 +772,8 @@ GM_registerParameterizedGraph(
     if (desc->name != NULL) {
         miDesc.name = desc->name;
     } else {
-        // Use the name prefix rather than the unique name, because this graph
-        // needs a new non-anchor name.
+        // Use the name prefix rather than the unique name, because this
+        // graph needs a new non-anchor name.
         ZL_Name name = GM_getGraphMetadata(gm, desc->graph).name;
         miDesc.name  = ZL_Name_prefix(&name);
     }
@@ -720,8 +844,8 @@ static ZL_RESULT_OF(ZL_GraphID) GM_registerSegmenter_internal(
     ZL_ERR_IF_ERR(GM_transferLocalParameters(gm, &gdi.segDesc.localParams));
     // Materialize params if materializer is provided (with deduplication)
     if (segDesc->materializer.materializeFn != NULL) {
-        // Validate provided params don't contain the paramId reserved for the
-        // materializer
+        // Validate provided params don't contain the paramId reserved for
+        // the materializer
         ZL_ERR_IF_ERR(MPM_validateMaterializedParamId(
                 &gdi.segDesc.localParams, segDesc->materializer.paramId));
         // Add the materialized object to refParams
@@ -772,9 +896,9 @@ ZL_GraphID GM_getLastRegisteredGraph(const GraphsMgr* gm)
             VECTOR_SIZE(gm->gdv));
     ZL_ASSERT_NN(gm);
     if (VECTOR_SIZE(gm->gdv) == 0) {
-        // Note(@Cyan): this scenario only happens when no custom graph has been
-        // registered yet. Another option here could be to return the most
-        // generic standard graph instead.
+        // Note(@Cyan): this scenario only happens when no custom graph has
+        // been registered yet. Another option here could be to return the
+        // most generic standard graph instead.
         return ZL_GRAPH_ILLEGAL;
     }
     // The last registered graph is the last element in the vector

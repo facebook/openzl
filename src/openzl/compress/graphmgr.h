@@ -139,6 +139,10 @@ ZL_Report GM_overrideGraphParams(
         ZL_GraphID targetGraph,
         const ZL_GraphParameters* gp);
 
+/// @see ZL_Compressor_overrideBaseGraph
+ZL_Report
+GM_overrideBaseGraph(GraphsMgr* gm, ZL_GraphID graph, ZL_GraphID newBaseGraph);
+
 ZL_END_C_DECLS
 
 #endif // ZSTRONG_COMPRESS_GRAPHMGR_H

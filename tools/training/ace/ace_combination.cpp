@@ -1,5 +1,6 @@
 #include <set>
 
+#include "openzl/compress/cgraph.h"
 #include "openzl/zl_reflection.h"
 #include "tools/logger/Logger.h"
 #include "tools/training/ace/ace_combination.h"
@@ -37,21 +38,17 @@ std::shared_ptr<const std::string_view> runReplacements(
     }
 
     // Replace each backend graph with the new GraphID
-    std::string serializedForReplacements = compressor.serialize();
     for (const auto& [backendGraph, newGraphId] : newGraphIds) {
-        auto result = replaceBaseGraphInCompressor(
-                serializedForReplacements,
-                backendGraph,
-                ZL_Compressor_Graph_getName(compressor.get(), newGraphId));
-
-        serializedForReplacements = std::string(result.begin(), result.end());
+        auto backendGraphId = compressor.getGraph(backendGraph);
+        compressor.unwrap(ZL_Compressor_overrideBaseGraph(
+                compressor.get(), backendGraphId.value(), newGraphId));
     }
 
-    auto json = Compressor::convertSerializedToJson(serializedForReplacements);
+    auto serialized = compressor.serialize();
+    auto json       = Compressor::convertSerializedToJson(serialized);
     Logger::log(VERBOSE3, "Graph with trained ACE successors: ", json);
 
-    return graph_mutation::createSharedStringView(
-            std::move(serializedForReplacements));
+    return graph_mutation::createSharedStringView(std::move(serialized));
 }
 
 /**
