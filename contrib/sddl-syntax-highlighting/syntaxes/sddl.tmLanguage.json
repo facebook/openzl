@@ -1,0 +1,147 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "SDDL",
+  "scopeName": "source.sddl",
+  "fileTypes": ["sddl"],
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#numbers" },
+    { "include": "#keywords" },
+    { "include": "#builtin-functions" },
+    { "include": "#builtin-types" },
+    { "include": "#operators" },
+    { "include": "#punctuation" },
+    { "include": "#user-types" },
+    { "include": "#identifiers" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.number-sign.sddl",
+          "begin": "#",
+          "end": "$",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.comment.sddl" }
+          }
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.hex.sddl",
+          "match": "\\b0[xX][0-9a-fA-F]+\\b"
+        },
+        {
+          "name": "constant.numeric.octal.sddl",
+          "match": "\\b0[0-7]+\\b"
+        },
+        {
+          "name": "constant.numeric.decimal.sddl",
+          "match": "\\b(0|[1-9][0-9]*)\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "storage.type.record.sddl",
+          "match": "\\brecord\\b"
+        },
+        {
+          "name": "keyword.control.conditional.sddl",
+          "match": "\\bwhen\\b"
+        },
+        {
+          "name": "keyword.control.sddl",
+          "match": "\\bexpect\\b"
+        }
+      ]
+    },
+    "builtin-functions": {
+      "patterns": [
+        {
+          "name": "support.function.builtin.sddl",
+          "match": "\\b(sizeof|abs)\\b"
+        }
+      ]
+    },
+    "builtin-types": {
+      "patterns": [
+        {
+          "name": "support.type.builtin.sddl",
+          "match": "\\b(Byte|Bytes|Int8|UInt8|Int16LE|Int16BE|UInt16LE|UInt16BE|Int32LE|Int32BE|UInt32LE|UInt32BE|Int64LE|Int64BE|UInt64LE|UInt64BE|Float16LE|Float16BE|Float32LE|Float32BE|Float64LE|Float64BE|BFloat16LE|BFloat16BE)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.comparison.sddl",
+          "match": "==|!=|<=|>=|<|>"
+        },
+        {
+          "name": "keyword.operator.logical.sddl",
+          "match": "&&|\\|\\||!(?!=)"
+        },
+        {
+          "name": "keyword.operator.bitwise.sddl",
+          "match": "(?<!&)&(?!&)|(?<!\\|)\\|(?!\\|)|\\^|~"
+        },
+        {
+          "name": "keyword.operator.arithmetic.sddl",
+          "match": "\\+|-|\\*|/|%"
+        },
+        {
+          "name": "keyword.operator.assignment.sddl",
+          "match": "="
+        },
+        {
+          "name": "keyword.operator.assignment.consume.sddl",
+          "match": ":"
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "name": "punctuation.accessor.sddl",
+          "match": "\\."
+        },
+        {
+          "name": "punctuation.separator.comma.sddl",
+          "match": ","
+        },
+        {
+          "name": "punctuation.section.braces.sddl",
+          "match": "[{}]"
+        },
+        {
+          "name": "punctuation.section.brackets.sddl",
+          "match": "[\\[\\]]"
+        },
+        {
+          "name": "punctuation.section.parens.sddl",
+          "match": "[()]"
+        }
+      ]
+    },
+    "user-types": {
+      "patterns": [
+        {
+          "name": "support.type.sddl",
+          "match": "\\b[A-Z][A-Za-z0-9_]*[a-z][A-Za-z0-9_]*\\b"
+        }
+      ]
+    },
+    "identifiers": {
+      "patterns": [
+        {
+          "name": "variable.other.sddl",
+          "match": "\\b[A-Za-z_][A-Za-z0-9_]*\\b"
+        }
+      ]
+    }
+  }
+}

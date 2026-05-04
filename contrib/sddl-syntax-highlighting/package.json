@@ -1,0 +1,35 @@
+{
+  "name": "sddl-syntax",
+  "displayName": "SDDL Syntax Highlighting",
+  "description": "Syntax highlighting for OpenZL SDDL2 (Simple Data Description Language) files.",
+  "version": "0.1.0",
+  "publisher": "openzl",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "sddl",
+        "aliases": [
+          "SDDL",
+          "sddl"
+        ],
+        "extensions": [
+          ".sddl"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "sddl",
+        "scopeName": "source.sddl",
+        "path": "./syntaxes/sddl.tmLanguage.json"
+      }
+    ]
+  }
+}
