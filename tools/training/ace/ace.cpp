@@ -86,17 +86,13 @@ std::vector<std::shared_ptr<const std::string_view>> ACETrainer::train(
     auto compressor = makeCompressor();
     auto cctx       = refCCtxForTraining(compressor);
 
-    // We need to create a new serialized compressor because compressor
-    // will have different graph IDs from serializedCompressorInput
-    std::string serializedUntrainedCompressor        = compressor.serialize();
-    const std::vector<std::string> autoBackendGraphs = findAllGraphsWithPrefix(
-            serializedUntrainedCompressor, ACE_GRAPH_NAME);
-
-    if (makeCompressor().serialize() != serializedUntrainedCompressor) {
-        // HACK: This is not a strong guarantee that the library provides, so
-        // make sure to check it. Ultimately we need the ability to clone
-        // compressors.
-        throw std::logic_error("Deserialization is not determinsitic!");
+    const std::vector<GraphID> autoBackendGraphIDs =
+            findAllGraphsWithPrefix(compressor, ACE_GRAPH_NAME);
+    std::vector<std::string> autoBackendGraphs;
+    autoBackendGraphs.reserve(autoBackendGraphIDs.size());
+    for (const auto& graphID : autoBackendGraphIDs) {
+        autoBackendGraphs.emplace_back(
+                ZL_Compressor_Graph_getName(compressor.get(), graphID));
     }
 
     Logger::log(

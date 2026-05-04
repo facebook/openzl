@@ -101,11 +101,6 @@ std::vector<GraphID> findAllGraphsWithPrefix(
         const Compressor& compressor,
         poly::string_view prefix);
 
-// Will be deleted by a future diff once all usage is migrated
-std::vector<std::string> findAllGraphsWithPrefix(
-        std::string_view serializedCompressor,
-        const std::string& prefix);
-
 /// @returns the custom graphs of @p graphid
 std::vector<GraphID> getCustomGraphs(
         const Compressor& compressor,

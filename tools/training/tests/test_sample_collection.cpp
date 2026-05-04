@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include "openzl/codecs/zl_clustering.h"
+#include "openzl/zl_reflection.h"
 #include "tools/training/graph_mutation/graph_mutation_utils.h"
 #include "tools/training/sample_collection/training_sample_collector.h"
 
@@ -60,10 +61,11 @@ TEST_F(TestSampleCollection, BasicSampleCollection)
     std::vector<MultiInput> mi_samples            = getMISamples(samples);
 
     // Get all the clustering instances (we expect 1)
-    auto serialized = compressor_.serialize();
-    auto names =
-            graph_mutation::findAllGraphsWithPrefix(serialized, "zl.cluster");
-    ASSERT_EQ(names.size(), 1);
+    auto graphs =
+            graph_mutation::findAllGraphsWithPrefix(compressor_, "zl.cluster");
+    ASSERT_EQ(graphs.size(), 1);
+    std::vector<std::string> names = { ZL_Compressor_Graph_getName(
+            compressor_.get(), graphs[0]) };
 
     // Collect the input streams for the clustering instance
     auto inputs = collectInputStreamsForGraphs(mi_samples, names, cctx_);
