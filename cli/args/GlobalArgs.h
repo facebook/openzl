@@ -38,7 +38,8 @@ class GlobalArgs {
 
     explicit GlobalArgs(const arg::ParsedArgs& parsed)
     {
-        verbosity = std::stoi(parsed.globalFlag(kVerbose).value_or("3"));
+        verbosity =
+                util::checkedstoi(parsed.globalFlag(kVerbose).value_or("3"));
         recursive = parsed.globalHasFlag(kRecursive);
 
         if (parsed.immediate().has_value()) {

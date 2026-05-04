@@ -984,6 +984,52 @@ class StrictModeTest(_CompressDecompressBaseTest):
         )
 
 
+class ChunkSizeBinarySuffixTest(_CompressDecompressBaseTest):
+    """
+    Test that --chunk-size accepts binary suffixes (KiB, MiB, etc.)
+    through the checked integer parsing.
+    """
+
+    @property
+    def input_dir_name(self) -> str:
+        return "serial"
+
+    @property
+    def compressor_profile_name(self) -> str:
+        return "serial"
+
+    @property
+    def extra_args(self) -> str | None:
+        return "--chunk-size 512KiB"
+
+    def test_compress_decompress(self):
+        self.compress_and_decompress_samples()
+
+
+class InvalidChunkSizeTest(unittest.TestCase):
+    """
+    Test that --chunk-size with an invalid suffix is rejected by the CLI.
+    """
+
+    def setUp(self) -> None:
+        self.tmpdir = tempfile.mkdtemp()
+        self.addCleanup(lambda: shutil.rmtree(self.tmpdir, True))
+
+    def test_invalid_suffix_rejected(self):
+        sample_dir = os.path.join(self.tmpdir, "input")
+        os.makedirs(sample_dir)
+        sample_path = os.path.join(sample_dir, "dummy.bin")
+        with open(sample_path, "wb") as f:
+            f.write(b"\x00" * 1024)
+
+        compressed_path = os.path.join(self.tmpdir, "out.zl")
+        result = command_utils.execute_command(
+            f"compress {sample_path} --profile serial "
+            f"-o {compressed_path} --chunk-size 1XYZ"
+        )
+        self.assertNotEqual(result, 0, "CLI should reject invalid suffix 'XYZ'")
+
+
 class SDDL2TrainTest(_TrainBaseTest):
     """
     Test case for SDDL2 compression, decompression, and training using the clustering trainer.

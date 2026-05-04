@@ -19,38 +19,9 @@ namespace openzl::cli {
 
 class ProfileArgs {
    public:
-    static void addArgs(arg::ArgParser& parser)
-    {
-        parser.addGlobalFlag(kProfile, 'p', true, "Select the given profile.");
-        parser.addGlobalFlag(
-                kProfileArg,
-                0,
-                true,
-                "Pass the given value as an argument to constructing the profile.");
-        parser.addGlobalFlag(
-                kChunkSize,
-                0,
-                true,
-                "The chunk size for the input to be separated into (e.g. 20M, 500K, 1G). Supports suffixes: K/KB (10^3), M/MB (10^6), G/GB (10^9), T/TB (10^12), and binary KiB (2^10), MiB (2^20), GiB (2^30), TiB (2^40). Plain numbers are treated as bytes. When omitted, profiles use their built-in default chunk size if they segment input.");
-    }
+    static void addArgs(arg::ArgParser& parser);
 
-    explicit ProfileArgs(const arg::ParsedArgs& parsed)
-    {
-        auto chunkSize = parsed.globalFlag(kChunkSize);
-        if (chunkSize.has_value()) {
-            chunkSize_ = parseSize(chunkSize.value());
-        } else {
-            chunkSize_ = poly::nullopt;
-        }
-        auto profileArg = parsed.globalFlag(kProfileArg);
-        if (profileArg) {
-            argmap_.emplace("TBD", profileArg.value());
-        }
-        auto profile = parsed.globalFlag(kProfile);
-        if (profile) {
-            name_ = std::move(profile);
-        }
-    }
+    explicit ProfileArgs(const arg::ParsedArgs& parsed);
 
     explicit ProfileArgs(const std::shared_ptr<Compressor>& compressor)
             : compressor_(compressor)
@@ -88,49 +59,6 @@ class ProfileArgs {
     inline static const std::string kProfileArg = "profile-arg";
     inline static const std::string kChunkSize  = "chunk-size";
     inline static const std::string kProfile    = "profile";
-
-    static size_t suffixToMultiplier(const std::string& suffix)
-    {
-        if (suffix == "K" || suffix == "KB") {
-            return 1000ULL;
-        } else if (suffix == "M" || suffix == "MB") {
-            return 1000ULL * 1000;
-        } else if (suffix == "G" || suffix == "GB") {
-            return 1000ULL * 1000 * 1000;
-        } else if (suffix == "T" || suffix == "TB") {
-            return 1000ULL * 1000 * 1000 * 1000;
-        } else if (suffix == "KiB") {
-            return 1ULL << 10;
-        } else if (suffix == "MiB") {
-            return 1ULL << 20;
-        } else if (suffix == "GiB") {
-            return 1ULL << 30;
-        } else if (suffix == "TiB") {
-            return 1ULL << 40;
-        }
-        throw std::invalid_argument(
-                "Unknown size suffix '" + suffix
-                + "'. Use K/KB/KiB, M/MB/MiB, G/GB/GiB, or T/TB/TiB.");
-    }
-
-    static size_t parseSize(const std::string& str)
-    {
-        if (str.empty()) {
-            throw std::invalid_argument("Size string must not be empty.");
-        }
-        size_t pos   = 0;
-        size_t value = std::stoull(str, &pos);
-        if (pos < str.size()) {
-            std::string suffix = str.substr(pos);
-            size_t multiplier  = suffixToMultiplier(suffix);
-            if (value > SIZE_MAX / multiplier) {
-                throw std::overflow_error(
-                        "Size value overflows: '" + str + "'.");
-            }
-            value *= multiplier;
-        }
-        return value;
-    }
 
     poly::optional<std::string> name_;
     poly::optional<size_t> chunkSize_;

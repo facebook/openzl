@@ -10,8 +10,7 @@ add_subdirectory(args)
 add_subdirectory(commands)
 add_subdirectory(utils)
 
-if (BUILD_TESTS AND BUILD_PYTHON_EXT)
-    message(STATUS "adding python tests")
+if (BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 

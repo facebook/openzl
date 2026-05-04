@@ -3,10 +3,21 @@
 load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
+load("../../defs.bzl", "zs_unittest")
 
 oncall("data_compression")
 
 # @autodeps-skip
+
+zs_unittest(
+    name = "util_test",
+    srcs = ["unittest/UtilTest.cpp"],
+    deps = [
+        "../../cpp:openzl_cpp",
+        "../../tools:logger",
+        "../utils:utils",
+    ],
+)
 
 custom_unittest(
     name = "serial_test",
@@ -279,6 +290,34 @@ custom_unittest(
     command = [
         "$(location :integration_test_bin)",
         "$(location ..:zli)",
+    ],
+    type = "simple",
+    deps = [
+        "..:zli",
+        ":integration_test_bin",
+    ],
+)
+
+custom_unittest(
+    name = "chunk_size_binary_suffix_test",
+    command = [
+        "$(location :integration_test_bin)",
+        "$(location ..:zli)",
+        "ChunkSizeBinarySuffixTest.test_compress_decompress",
+    ],
+    type = "simple",
+    deps = [
+        "..:zli",
+        ":integration_test_bin",
+    ],
+)
+
+custom_unittest(
+    name = "invalid_chunk_size_test",
+    command = [
+        "$(location :integration_test_bin)",
+        "$(location ..:zli)",
+        "InvalidChunkSizeTest.test_invalid_suffix_rejected",
     ],
     type = "simple",
     deps = [

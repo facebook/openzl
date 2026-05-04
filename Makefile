@@ -256,7 +256,7 @@ SERIALIZATION_TEST_OBJS := \
 	tests/serialization/GraphBuilderUtils.o
 TEST_REGISTRY_SRCS = $(wildcard $(addsuffix /*.cpp, $(TEST_REGISTRY_DIRS)))
 TEST_REGISTRY_OBJS = $(patsubst %.cpp,%.o,$(TEST_REGISTRY_SRCS))
-CLI_TEST_OBJS := $(filter-out test_%.o,$(notdir $(foreach DIR,$(CLI_TEST_DIRS),$(call cxx_objs,$(DIR)))))
+CLI_TEST_OBJS := $(filter-out %/test_%.o test_%.o,$(foreach DIR,$(CLI_TEST_DIRS),$(call cxx_objs,$(DIR))))
 ZLCPP_TEST_OBJS := $(call cxx_objs,$(ZLCPP_TEST_DIR))
 
 ALL_GTESTS_OBJS := \
@@ -272,6 +272,7 @@ ALL_GTESTS_OBJS := \
 	$(ZLCPP_TEST_OBJS) \
 	$(CLI_CXXOBJS) \
 	$(CLI_TEST_OBJS) \
+	$(ARG_CXXOBJS) \
 	$(LOGGER_CXXOBJS) \
 	$(CUSTOM_PARSERS_COBJS) \
 	$(CUSTOM_PARSERS_CXXOBJS) \

@@ -11,8 +11,11 @@
 #include "openzl/cpp/DCtx.hpp"
 #include "openzl/cpp/Exception.hpp"
 
-#include "cli/utils/compress_profiles.h"
 #include "tools/logger/Logger.h"
+
+namespace openzl::cli {
+class ProfileArgs;
+} // namespace openzl::cli
 
 namespace openzl::cli {
 
@@ -45,7 +48,23 @@ struct CompressorSerializerDeleter {
 
 void setVerbosity(int level);
 
+/**
+ * Print a human-readable size string.
+ * E.g. 1024 -> "1.02 KB"
+ */
 std::string sizeString(size_t sz);
+
+/**
+ * Convert a string to an integer. Supports trailing size suffixes (e.g. "1K" ->
+ * 1000). Checks that the value is well-formed and any suffixes are valid.
+ * @throws InvalidArgsException if the string is invalid, has an unknown suffix,
+ * or the result overflows the return type.
+ */
+int checkedstoi(const std::string& str);
+long checkedstol(const std::string& str);
+unsigned long checkedstoul(const std::string& str);
+long long checkedstoll(const std::string& str);
+unsigned long long checkedstoull(const std::string& str);
 
 /**
  * Creates a compressor based on the provided profile.
