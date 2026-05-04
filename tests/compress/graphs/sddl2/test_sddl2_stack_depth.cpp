@@ -80,8 +80,8 @@ TEST_F(SDDL2StackDepthTest, PushStackDepthAfterPop)
     }
 
     SDDL2_Value val;
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &val), SDDL2_OK);
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &val), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &val), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &val), SDDL2_OK);
 
     ASSERT_EQ(SDDL2_op_push_stack_depth(stack_), SDDL2_OK);
     popAndVerifyI64(stack_, 3);

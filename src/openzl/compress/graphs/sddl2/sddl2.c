@@ -264,13 +264,13 @@ static ZL_Report sddl2_flatten_field_sizes(
                     graph, type.struct_data->members[i], field_sizes, index));
         }
     } else {
-        size_t field_size;
-        ZL_ERR_IF_NE(
-                SDDL2_Type_size(type, &field_size),
-                SDDL2_OK,
+        SDDL2_RESULT_OF(size_t) const field_size_report = SDDL2_Type_size(type);
+        ZL_ERR_IF(
+                SDDL2_isError(field_size_report),
                 GENERIC,
                 "Failed to compute size for type kind %d",
                 (int)type.kind);
+        size_t const field_size = SDDL2_value(field_size_report);
 
         field_sizes[(*index)++] = field_size;
     }
@@ -672,13 +672,14 @@ static ZL_Report sddl2_apply_type_conversion(
 
     // Determine primitive element size in bytes (not including width)
     // For array types, we convert the base element, not the full array
-    size_t element_size;
-    ZL_ERR_IF_NE(
-            SDDL2_kind_size(type.kind, &element_size),
-            SDDL2_OK,
+    SDDL2_RESULT_OF(size_t)
+    const element_size_report = SDDL2_kind_size(type.kind);
+    ZL_ERR_IF(
+            SDDL2_isError(element_size_report),
             GENERIC,
             "Invalid SDDL2 type kind %d for segment (unsupported type)",
             (int)type.kind);
+    size_t const element_size = SDDL2_value(element_size_report);
 
     // Determine endianness
     bool is_little_endian;
@@ -1171,13 +1172,12 @@ static ZL_Report sddl2_get_chunk_split_unit_size(
 
     // Primitive kinds, including BYTES, split on their element size.
     // BYTES intentionally uses 1-byte units so raw byte spans can chunk.
-    size_t unitBytes;
-    ZL_ERR_IF_NE(
-            SDDL2_kind_size(type.kind, &unitBytes),
-            SDDL2_OK,
+    SDDL2_RESULT_OF(size_t) const unitBytes_report = SDDL2_kind_size(type.kind);
+    ZL_ERR_IF(
+            SDDL2_isError(unitBytes_report),
             GENERIC,
             "Failed to derive a split unit size for SDDL2 segment chunking");
-    return ZL_returnValue(unitBytes);
+    return ZL_returnValue(SDDL2_value(unitBytes_report));
 }
 
 typedef struct {

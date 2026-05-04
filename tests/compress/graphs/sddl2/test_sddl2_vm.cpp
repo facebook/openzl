@@ -39,13 +39,13 @@ TEST_F(SDDL2VmTest, StackPushPop)
 
     // Pop and verify Tag
     SDDL2_Value popped;
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &popped), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &popped), SDDL2_OK);
     EXPECT_EQ(popped.kind, SDDL2_VALUE_TAG);
     EXPECT_EQ(popped.value.as_tag, 100u);
     EXPECT_EQ(SDDL2_Stack_depth(stack_), 1u);
 
     // Pop and verify I64
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &popped), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &popped), SDDL2_OK);
     EXPECT_EQ(popped.kind, SDDL2_VALUE_I64);
     EXPECT_EQ(popped.value.as_i64, 42);
     EXPECT_EQ(SDDL2_Stack_depth(stack_), 0u);
@@ -54,7 +54,7 @@ TEST_F(SDDL2VmTest, StackPushPop)
 TEST_F(SDDL2VmTest, StackUnderflow)
 {
     SDDL2_Value v;
-    EXPECT_EQ(SDDL2_Stack_pop(stack_, &v), SDDL2_STACK_UNDERFLOW);
+    EXPECT_EQ(popValue(stack_, &v), SDDL2_STACK_UNDERFLOW);
     EXPECT_EQ(SDDL2_Stack_peek(stack_, &v), SDDL2_STACK_UNDERFLOW);
 }
 

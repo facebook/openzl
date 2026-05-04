@@ -56,7 +56,7 @@ TEST_F(SDDL2StructureSegmentTest, SingleStructureSegment)
 
     // Pop the structure type, then push tag/type/size for segment creation
     SDDL2_Value struct_val;
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &struct_val), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &struct_val), SDDL2_OK);
 
     ASSERT_EQ(SDDL2_Stack_push(stack_, SDDL2_Value_tag(100)), SDDL2_OK);
     ASSERT_EQ(SDDL2_Stack_push(stack_, struct_val), SDDL2_OK);
@@ -109,7 +109,7 @@ TEST_F(SDDL2StructureSegmentTest, ArrayOfStructuresSegment)
     ASSERT_EQ(SDDL2_op_type_fixed_array(stack_), SDDL2_OK);
 
     SDDL2_Value array_val;
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &array_val), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &array_val), SDDL2_OK);
     ASSERT_EQ(array_val.value.as_type.width, 10u);
 
     // Push tag/type/size for segment creation
@@ -159,7 +159,7 @@ TEST_F(SDDL2StructureSegmentTest, MultipleStructureSegments)
     ASSERT_EQ(SDDL2_op_type_structure(stack_, alloc_fn, alloc_ctx_), SDDL2_OK);
 
     SDDL2_Value struct1_val;
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &struct1_val), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &struct1_val), SDDL2_OK);
 
     ASSERT_EQ(SDDL2_Stack_push(stack_, SDDL2_Value_tag(100)), SDDL2_OK);
     ASSERT_EQ(SDDL2_Stack_push(stack_, struct1_val), SDDL2_OK);
@@ -177,7 +177,7 @@ TEST_F(SDDL2StructureSegmentTest, MultipleStructureSegments)
     ASSERT_EQ(SDDL2_op_type_structure(stack_, alloc_fn, alloc_ctx_), SDDL2_OK);
 
     SDDL2_Value struct2_val;
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &struct2_val), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &struct2_val), SDDL2_OK);
 
     ASSERT_EQ(SDDL2_Stack_push(stack_, SDDL2_Value_tag(200)), SDDL2_OK);
     ASSERT_EQ(SDDL2_Stack_push(stack_, struct2_val), SDDL2_OK);
@@ -230,7 +230,7 @@ TEST_F(SDDL2StructureSegmentTest, SegmentMergingSameStructure)
     ASSERT_EQ(SDDL2_op_type_structure(stack_, alloc_fn, alloc_ctx_), SDDL2_OK);
 
     SDDL2_Value struct_val;
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &struct_val), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &struct_val), SDDL2_OK);
 
     // First segment: tag=100, 5 instances = 15 bytes
     ASSERT_EQ(SDDL2_Stack_push(stack_, SDDL2_Value_tag(100)), SDDL2_OK);

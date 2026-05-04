@@ -140,24 +140,38 @@ class SDDL2StackTestCustomCapacity : public SDDL2TestBase {
 
 using SDDL2StackTest = SDDL2StackTestCustomCapacity<100>;
 
-static size_t getKindSize(SDDL2_Type_kind kind)
+inline size_t getKindSize(SDDL2_Type_kind kind)
 {
-    size_t out = 0;
-    EXPECT_EQ(SDDL2_kind_size(kind, &out), SDDL2_OK);
-    return out;
+    SDDL2_RESULT_OF(size_t) result = SDDL2_kind_size(kind);
+    EXPECT_FALSE(SDDL2_isError(result));
+    return SDDL2_value(result);
 }
 
-static size_t getTypeSize(SDDL2_Type type)
+inline size_t getTypeSize(SDDL2_Type type)
 {
-    size_t out = 0;
-    EXPECT_EQ(SDDL2_Type_size(type, &out), SDDL2_OK);
-    return out;
+    SDDL2_RESULT_OF(size_t) result = SDDL2_Type_size(type);
+    EXPECT_FALSE(SDDL2_isError(result));
+    return SDDL2_value(result);
+}
+
+/**
+ * Pop helper that extracts value into out parameter.
+ * Provides compatibility with old API for tests.
+ */
+inline SDDL2_Error popValue(SDDL2_Stack* stack, SDDL2_Value* out)
+{
+    SDDL2_RESULT_OF(SDDL2_Value) result = SDDL2_Stack_pop(stack);
+    if (SDDL2_isError(result)) {
+        return SDDL2_error(result);
+    }
+    *out = SDDL2_value(result);
+    return SDDL2_OK;
 }
 
 static void popAndVerifyI64(SDDL2_Stack* stack, int64_t expected)
 {
     SDDL2_Value result;
-    ASSERT_EQ(SDDL2_Stack_pop(stack, &result), SDDL2_OK);
+    ASSERT_EQ(popValue(stack, &result), SDDL2_OK);
     EXPECT_EQ(result.kind, SDDL2_VALUE_I64);
     EXPECT_EQ(result.value.as_i64, expected);
 }

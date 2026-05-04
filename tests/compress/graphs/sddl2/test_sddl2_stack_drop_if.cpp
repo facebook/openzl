@@ -47,7 +47,7 @@ TEST_F(SDDL2StackDropIfTest, DropIfFalseBasic)
     EXPECT_EQ(stack_->top, 1u);
 
     SDDL2_Value result;
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &result), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &result), SDDL2_OK);
     EXPECT_EQ(result.kind, SDDL2_VALUE_I64);
     EXPECT_EQ(result.value.as_i64, 42);
 }
@@ -107,7 +107,7 @@ TEST_F(SDDL2StackDropIfTest, DropIfPreservesValueType)
 
     // Verify Tag value is preserved
     SDDL2_Value result;
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &result), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &result), SDDL2_OK);
     EXPECT_EQ(result.kind, SDDL2_VALUE_TAG);
     EXPECT_EQ(result.value.as_tag, 999u);
 }
@@ -159,8 +159,8 @@ TEST_F(SDDL2StackDropIfTest, DropIfMultipleValuesOnStack)
     EXPECT_EQ(stack_->top, 2u);
 
     SDDL2_Value v1, v2;
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &v1), SDDL2_OK);
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &v2), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &v1), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &v2), SDDL2_OK);
     EXPECT_EQ(v1.value.as_i64, 20);
     EXPECT_EQ(v2.value.as_i64, 10);
 }
@@ -180,9 +180,9 @@ TEST_F(SDDL2StackDropIfTest, DropIfLeavesStackUnchangedWhenFalse)
     EXPECT_EQ(stack_->top, 3u);
 
     SDDL2_Value v1, v2, v3;
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &v1), SDDL2_OK);
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &v2), SDDL2_OK);
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &v3), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &v1), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &v2), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &v3), SDDL2_OK);
     EXPECT_EQ(v1.value.as_i64, 30);
     EXPECT_EQ(v2.value.as_i64, 20);
     EXPECT_EQ(v3.value.as_i64, 10);
