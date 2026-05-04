@@ -199,8 +199,10 @@ FUZZ(OpenZLComponentFuzzer, FuzzRoundTrip)
                 formatVersion);
     }
 
-    const size_t size = gen.usize_range(
-            "input_size", 1, std::max(size_t(1), gen.num_remaining_bytes()));
+    // Assume 4 bytes required per input byte
+    const size_t maxInputSize =
+            std::max<size_t>(1, gen.num_remaining_bytes() / 4);
+    const size_t size = gen.usize_range("input_size", 1, maxInputSize);
     auto inputs = component->generateInputs(gen, 1, size, compressor, graph);
     for (const auto& input : inputs) {
         try {

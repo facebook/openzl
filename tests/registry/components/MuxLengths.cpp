@@ -192,7 +192,7 @@ class MuxLengthsComponent : public OpenZLComponent {
     std::vector<std::unique_ptr<OpenZLInput>> generateInputs(
             datagen::DataGen& gen,
             size_t num,
-            size_t maxInputSize,
+            size_t maxInputSizeBytes,
             const Compressor& compressor,
             GraphID graphID) const override
     {
@@ -202,9 +202,12 @@ class MuxLengthsComponent : public OpenZLComponent {
         inputs.reserve(num);
         for (size_t i = 0; i < num; ++i) {
             auto widthChoice = gen.usize_range("width", 0, 3);
-            auto inputSize   = gen.usize_range("inputSize", 0, maxInputSize);
-            auto llSmallProb = gen.f32_range("llSmallProb", 0, 1);
-            auto mlSmallProb = gen.f32_range("mlSmallProb", 0, 1);
+            // Divide by element width to get the max number of elements.
+            // Note that there are two input streams to mux lengths.
+            auto maxInputSize = maxInputSizeBytes / (2 * (1u << widthChoice));
+            auto inputSize    = gen.usize_range("inputSize", 0, maxInputSize);
+            auto llSmallProb  = gen.f32_range("llSmallProb", 0, 1);
+            auto mlSmallProb  = gen.f32_range("mlSmallProb", 0, 1);
             switch (widthChoice) {
                 case 0:
                     inputs.push_back(
