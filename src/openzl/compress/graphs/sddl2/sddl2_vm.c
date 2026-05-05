@@ -93,15 +93,13 @@ void sddl2_fallback_free(void* ptr)
  * Handles both primitive types and complex structures.
  * ========================================================================= */
 
-SDDL2_Error SDDL2_kind_size(SDDL2_Type_kind kind, size_t* out_size)
+SDDL2_RESULT_OF(size_t) SDDL2_kind_size(SDDL2_Type_kind kind)
 {
-    *out_size = (size_t)-1; // Initialize to invalid value
     switch (kind) {
         case SDDL2_TYPE_U8:
         case SDDL2_TYPE_I8:
         case SDDL2_TYPE_F8:
-            *out_size = 1;
-            return SDDL2_OK;
+            return SDDL2_success(size_t, 1);
         case SDDL2_TYPE_U16LE:
         case SDDL2_TYPE_U16BE:
         case SDDL2_TYPE_I16LE:
@@ -110,48 +108,44 @@ SDDL2_Error SDDL2_kind_size(SDDL2_Type_kind kind, size_t* out_size)
         case SDDL2_TYPE_F16BE:
         case SDDL2_TYPE_BF16LE:
         case SDDL2_TYPE_BF16BE:
-            *out_size = 2;
-            return SDDL2_OK;
+            return SDDL2_success(size_t, 2);
         case SDDL2_TYPE_U32LE:
         case SDDL2_TYPE_U32BE:
         case SDDL2_TYPE_I32LE:
         case SDDL2_TYPE_I32BE:
         case SDDL2_TYPE_F32LE:
         case SDDL2_TYPE_F32BE:
-            *out_size = 4;
-            return SDDL2_OK;
+            return SDDL2_success(size_t, 4);
         case SDDL2_TYPE_U64LE:
         case SDDL2_TYPE_U64BE:
         case SDDL2_TYPE_I64LE:
         case SDDL2_TYPE_I64BE:
         case SDDL2_TYPE_F64LE:
         case SDDL2_TYPE_F64BE:
-            *out_size = 8;
-            return SDDL2_OK;
+            return SDDL2_success(size_t, 8);
         case SDDL2_TYPE_BYTES:
-            *out_size = 1;
-            return SDDL2_OK;
+            return SDDL2_success(size_t, 1);
         case SDDL2_TYPE_STRUCTURE:
-            return SDDL2_TYPE_MISMATCH;
         default:
-            return SDDL2_TYPE_MISMATCH;
+            return SDDL2_failure(size_t, SDDL2_TYPE_MISMATCH);
     }
 }
 
-SDDL2_Error SDDL2_Type_size(SDDL2_Type type, size_t* out_size)
+SDDL2_RESULT_OF(size_t) SDDL2_Type_size(SDDL2_Type type)
 {
     if (type.kind == SDDL2_TYPE_STRUCTURE) {
         if (type.struct_data == NULL) {
-            return SDDL2_TYPE_MISMATCH;
+            return SDDL2_failure(size_t, SDDL2_TYPE_MISMATCH);
         }
-        *out_size = type.struct_data->total_size_bytes * type.width;
-        return SDDL2_OK;
+        return SDDL2_success(
+                size_t, type.struct_data->total_size_bytes* type.width);
     }
 
-    size_t ks;
-    SDDL2_TRY(SDDL2_kind_size(type.kind, &ks));
-    *out_size = ks * type.width;
-    return SDDL2_OK;
+    SDDL2_RESULT_OF(size_t) ks = SDDL2_kind_size(type.kind);
+    if (SDDL2_isError(ks)) {
+        return ks;
+    }
+    return SDDL2_success(size_t, SDDL2_value(ks) * type.width);
 }
 
 /* ============================================================================
@@ -204,27 +198,30 @@ SDDL2_Value SDDL2_Value_type(SDDL2_Type type)
  * Internal helper functions that encapsulate common stack operation patterns:
  * - pop_i64(): Pop and validate I64 value
  * - pop_positive_i64(): Pop and validate positive I64, convert to size_t
- * - pop_binary_i64(): Pop two I64 values for binary operations
  * - pop_tag(), pop_type(): Type-specific pop operations
  * - push_i64(): Push I64 result
  * These reduce boilerplate and ensure consistent type checking.
  * ========================================================================= */
 
+/* Result types for internal use (not in public header) */
+SDDL2_RESULT_DECLARE_TYPE(int64_t);
+SDDL2_RESULT_DECLARE_TYPE(uint32_t);
+SDDL2_RESULT_DECLARE_TYPE(SDDL2_Type);
+
 /**
  * Pop a single I64 value from stack with type checking.
  * Common pattern for unary operations and address calculations.
  */
-static inline SDDL2_Error pop_i64(SDDL2_Stack* stack, int64_t* out)
+static inline SDDL2_RESULT_OF(int64_t) pop_i64(SDDL2_Stack* stack)
 {
-    SDDL2_Value val;
-    SDDL2_TRY(SDDL2_Stack_pop(stack, &val));
-
-    if (val.kind != SDDL2_VALUE_I64) {
-        return SDDL2_TYPE_MISMATCH;
+    SDDL2_RESULT_OF(SDDL2_Value) r = SDDL2_Stack_pop(stack);
+    if (SDDL2_isError(r)) {
+        return SDDL2_failure(int64_t, SDDL2_error(r));
     }
-
-    *out = val.value.as_i64;
-    return SDDL2_OK;
+    if (SDDL2_value(r).kind != SDDL2_VALUE_I64) {
+        return SDDL2_failure(int64_t, SDDL2_TYPE_MISMATCH);
+    }
+    return SDDL2_success(int64_t, SDDL2_value(r).value.as_i64);
 }
 
 /**
@@ -232,72 +229,46 @@ static inline SDDL2_Error pop_i64(SDDL2_Stack* stack, int64_t* out)
  * Common pattern for count/size operations (>= 0).
  * Used by type.fixed_array and type.structure for element/member counts.
  */
-static inline SDDL2_Error pop_positive_i64(SDDL2_Stack* stack, size_t* out)
+static inline SDDL2_RESULT_OF(size_t) pop_positive_i64(SDDL2_Stack* stack)
 {
-    SDDL2_Value val;
-    SDDL2_TRY(SDDL2_Stack_pop(stack, &val));
-
-    if (val.kind != SDDL2_VALUE_I64) {
-        return SDDL2_TYPE_MISMATCH;
+    SDDL2_RESULT_OF(int64_t) r = pop_i64(stack);
+    if (SDDL2_isError(r)) {
+        return SDDL2_failure(size_t, SDDL2_error(r));
     }
-
-    if (val.value.as_i64 < 0) {
-        return SDDL2_TYPE_MISMATCH;
+    if (SDDL2_value(r) < 0) {
+        return SDDL2_failure(size_t, SDDL2_TYPE_MISMATCH);
     }
-
-    *out = (size_t)val.value.as_i64;
-    return SDDL2_OK;
-}
-
-/**
- * Pop two I64 values from stack with type checking (b first, then a).
- * Common pattern for binary arithmetic operations.
- * Stack order: ... a b [top] → pops b, then a
- */
-static inline SDDL2_Error
-pop_binary_i64(SDDL2_Stack* stack, int64_t* a_out, int64_t* b_out)
-{
-    int64_t b, a;
-
-    // Pop in reverse order: b (top), then a
-    SDDL2_TRY(pop_i64(stack, &b));
-    SDDL2_TRY(pop_i64(stack, &a));
-
-    *a_out = a;
-    *b_out = b;
-    return SDDL2_OK;
+    return SDDL2_success(size_t, (size_t)SDDL2_value(r));
 }
 
 /**
  * Pop a Tag value from stack with type checking.
  */
-static inline SDDL2_Error pop_tag(SDDL2_Stack* stack, uint32_t* out)
+static inline SDDL2_RESULT_OF(uint32_t) pop_tag(SDDL2_Stack* stack)
 {
-    SDDL2_Value val;
-    SDDL2_TRY(SDDL2_Stack_pop(stack, &val));
-
-    if (val.kind != SDDL2_VALUE_TAG) {
-        return SDDL2_TYPE_MISMATCH;
+    SDDL2_RESULT_OF(SDDL2_Value) r = SDDL2_Stack_pop(stack);
+    if (SDDL2_isError(r)) {
+        return SDDL2_failure(uint32_t, SDDL2_error(r));
     }
-
-    *out = val.value.as_tag;
-    return SDDL2_OK;
+    if (SDDL2_value(r).kind != SDDL2_VALUE_TAG) {
+        return SDDL2_failure(uint32_t, SDDL2_TYPE_MISMATCH);
+    }
+    return SDDL2_success(uint32_t, SDDL2_value(r).value.as_tag);
 }
 
 /**
  * Pop a Type value from stack with type checking.
  */
-static inline SDDL2_Error pop_type(SDDL2_Stack* stack, SDDL2_Type* out)
+static inline SDDL2_RESULT_OF(SDDL2_Type) pop_type(SDDL2_Stack* stack)
 {
-    SDDL2_Value val;
-    SDDL2_TRY(SDDL2_Stack_pop(stack, &val));
-
-    if (val.kind != SDDL2_VALUE_TYPE) {
-        return SDDL2_TYPE_MISMATCH;
+    SDDL2_RESULT_OF(SDDL2_Value) r = SDDL2_Stack_pop(stack);
+    if (SDDL2_isError(r)) {
+        return SDDL2_failure(SDDL2_Type, SDDL2_error(r));
     }
-
-    *out = val.value.as_type;
-    return SDDL2_OK;
+    if (SDDL2_value(r).kind != SDDL2_VALUE_TYPE) {
+        return SDDL2_failure(SDDL2_Type, SDDL2_TYPE_MISMATCH);
+    }
+    return SDDL2_success(SDDL2_Type, SDDL2_value(r).value.as_type);
 }
 
 /**
@@ -321,12 +292,10 @@ static inline SDDL2_Error push_i64(SDDL2_Stack* stack, int64_t value)
 SDDL2_Error SDDL2_op_type_fixed_array(SDDL2_Stack* stack)
 {
     // Pop array count (must be positive)
-    size_t array_count;
-    SDDL2_TRY(pop_positive_i64(stack, &array_count));
+    SDDL2_TRY_LET(size_t, array_count, pop_positive_i64(stack));
 
     // Pop the base type from stack
-    SDDL2_Type base_type;
-    SDDL2_TRY(pop_type(stack, &base_type));
+    SDDL2_TRY_LET(SDDL2_Type, base_type, pop_type(stack));
 
     // Create new type with multiplied width
     SDDL2_Type array_type = base_type;
@@ -349,8 +318,7 @@ SDDL2_Error SDDL2_op_type_structure(
         void* alloc_ctx)
 {
     // Pop member count (must be positive)
-    size_t member_count;
-    SDDL2_TRY(pop_positive_i64(stack, &member_count));
+    SDDL2_TRY_LET(size_t, member_count, pop_positive_i64(stack));
 
     // Calculate allocation size for structure data
     // size = sizeof(header) + member_count * sizeof(SDDL2_Type)
@@ -379,23 +347,25 @@ SDDL2_Error SDDL2_op_type_structure(
     for (size_t i = 0; i < member_count; i++) {
         size_t index = member_count - 1 - i; // Reverse index
 
-        SDDL2_Error err = pop_type(stack, &struct_data->members[index]);
-        if (err != SDDL2_OK) {
+        SDDL2_RESULT_OF(SDDL2_Type) type_result = pop_type(stack);
+        if (SDDL2_isError(type_result)) {
             // When *not* in arena mode (i.e. during tests),
             // it's necessary to free() here to avoid memory leaks
             sddl2_free(struct_data, alloc_fn);
-            return err;
+            return SDDL2_error(type_result);
         }
+        struct_data->members[index] = SDDL2_value(type_result);
     }
 
     // Compute total size by summing all member sizes
     for (size_t i = 0; i < member_count; i++) {
-        size_t member_size;
-        if (SDDL2_Type_size(struct_data->members[i], &member_size)
-            != SDDL2_OK) {
+        SDDL2_RESULT_OF(size_t)
+        const member_size_report = SDDL2_Type_size(struct_data->members[i]);
+        if (SDDL2_isError(member_size_report)) {
             sddl2_free(struct_data, alloc_fn);
-            return SDDL2_TYPE_MISMATCH;
+            return SDDL2_error(member_size_report);
         }
+        size_t const member_size = SDDL2_value(member_size_report);
 
         // Check for size overflow when adding member_size
         if (ZL_overflowAddST(
@@ -420,11 +390,8 @@ SDDL2_Error SDDL2_op_type_structure(
 SDDL2_Error SDDL2_op_type_sizeof(SDDL2_Stack* stack)
 {
     // Pop the type
-    SDDL2_Type type;
-    SDDL2_TRY(pop_type(stack, &type));
-
-    size_t size;
-    SDDL2_TRY(SDDL2_Type_size(type, &size));
+    SDDL2_TRY_LET(SDDL2_Type, type, pop_type(stack));
+    SDDL2_TRY_LET(size_t, size, SDDL2_Type_size(type));
     return push_i64(stack, (int64_t)size);
 }
 
@@ -500,8 +467,8 @@ SDDL2_op_add(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
     (void)trace;
     (void)pc;
 
-    int64_t a, b;
-    SDDL2_TRY(pop_binary_i64(stack, &a, &b));
+    SDDL2_TRY_LET(int64_t, b, pop_i64(stack));
+    SDDL2_TRY_LET(int64_t, a, pop_i64(stack));
 
     if (add_would_overflow(a, b)) {
         return SDDL2_MATH_OVERFLOW;
@@ -516,8 +483,8 @@ SDDL2_op_sub(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
     (void)trace;
     (void)pc;
 
-    int64_t a, b;
-    SDDL2_TRY(pop_binary_i64(stack, &a, &b));
+    SDDL2_TRY_LET(int64_t, b, pop_i64(stack));
+    SDDL2_TRY_LET(int64_t, a, pop_i64(stack));
 
     if (sub_would_overflow(a, b)) {
         return SDDL2_MATH_OVERFLOW;
@@ -532,8 +499,8 @@ SDDL2_op_mul(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
     (void)trace;
     (void)pc;
 
-    int64_t a, b;
-    SDDL2_TRY(pop_binary_i64(stack, &a, &b));
+    SDDL2_TRY_LET(int64_t, b, pop_i64(stack));
+    SDDL2_TRY_LET(int64_t, a, pop_i64(stack));
 
     if (mul_would_overflow(a, b)) {
         return SDDL2_MATH_OVERFLOW;
@@ -548,8 +515,8 @@ SDDL2_op_div(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
     (void)trace;
     (void)pc;
 
-    int64_t a, b;
-    SDDL2_TRY(pop_binary_i64(stack, &a, &b));
+    SDDL2_TRY_LET(int64_t, b, pop_i64(stack));
+    SDDL2_TRY_LET(int64_t, a, pop_i64(stack));
 
     // Divide by zero check
     if (b == 0) {
@@ -570,8 +537,8 @@ SDDL2_op_mod(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
     (void)trace;
     (void)pc;
 
-    int64_t a, b;
-    SDDL2_TRY(pop_binary_i64(stack, &a, &b));
+    SDDL2_TRY_LET(int64_t, b, pop_i64(stack));
+    SDDL2_TRY_LET(int64_t, a, pop_i64(stack));
 
     // Divide by zero check
     if (b == 0) {
@@ -587,8 +554,7 @@ SDDL2_op_abs(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
     (void)trace;
     (void)pc;
 
-    int64_t a;
-    SDDL2_TRY(pop_i64(stack, &a));
+    SDDL2_TRY_LET(int64_t, a, pop_i64(stack));
 
     // Check for INT64_MIN (abs(INT64_MIN) overflows)
     if (a == INT64_MIN) {
@@ -604,8 +570,7 @@ SDDL2_op_neg(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
     (void)trace;
     (void)pc;
 
-    int64_t a;
-    SDDL2_TRY(pop_i64(stack, &a));
+    SDDL2_TRY_LET(int64_t, a, pop_i64(stack));
 
     // Check for INT64_MIN (negation overflows)
     if (a == INT64_MIN) {
@@ -644,8 +609,8 @@ static void SDDL2_log_unary_op(
 SDDL2_Error
 SDDL2_op_eq(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
-    int64_t a, b;
-    SDDL2_TRY(pop_binary_i64(stack, &a, &b));
+    SDDL2_TRY_LET(int64_t, b, pop_i64(stack));
+    SDDL2_TRY_LET(int64_t, a, pop_i64(stack));
     int64_t result = (a == b);
     SDDL2_log_binary_op("cmp.eq", "==", a, b, result, trace, pc);
     return push_i64(stack, result);
@@ -654,8 +619,8 @@ SDDL2_op_eq(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 SDDL2_Error
 SDDL2_op_ne(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
-    int64_t a, b;
-    SDDL2_TRY(pop_binary_i64(stack, &a, &b));
+    SDDL2_TRY_LET(int64_t, b, pop_i64(stack));
+    SDDL2_TRY_LET(int64_t, a, pop_i64(stack));
     int64_t result = (a != b);
     SDDL2_log_binary_op("cmp.ne", "!=", a, b, result, trace, pc);
     return push_i64(stack, result);
@@ -664,8 +629,8 @@ SDDL2_op_ne(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 SDDL2_Error
 SDDL2_op_lt(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
-    int64_t a, b;
-    SDDL2_TRY(pop_binary_i64(stack, &a, &b));
+    SDDL2_TRY_LET(int64_t, b, pop_i64(stack));
+    SDDL2_TRY_LET(int64_t, a, pop_i64(stack));
     int64_t result = (a < b);
     SDDL2_log_binary_op("cmp.lt", "<", a, b, result, trace, pc);
     return push_i64(stack, result);
@@ -674,8 +639,8 @@ SDDL2_op_lt(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 SDDL2_Error
 SDDL2_op_le(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
-    int64_t a, b;
-    SDDL2_TRY(pop_binary_i64(stack, &a, &b));
+    SDDL2_TRY_LET(int64_t, b, pop_i64(stack));
+    SDDL2_TRY_LET(int64_t, a, pop_i64(stack));
     int64_t result = (a <= b);
     SDDL2_log_binary_op("cmp.le", "<=", a, b, result, trace, pc);
     return push_i64(stack, result);
@@ -684,8 +649,8 @@ SDDL2_op_le(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 SDDL2_Error
 SDDL2_op_gt(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
-    int64_t a, b;
-    SDDL2_TRY(pop_binary_i64(stack, &a, &b));
+    SDDL2_TRY_LET(int64_t, b, pop_i64(stack));
+    SDDL2_TRY_LET(int64_t, a, pop_i64(stack));
     int64_t result = (a > b);
     SDDL2_log_binary_op("cmp.gt", ">", a, b, result, trace, pc);
     return push_i64(stack, result);
@@ -694,8 +659,8 @@ SDDL2_op_gt(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 SDDL2_Error
 SDDL2_op_ge(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
-    int64_t a, b;
-    SDDL2_TRY(pop_binary_i64(stack, &a, &b));
+    SDDL2_TRY_LET(int64_t, b, pop_i64(stack));
+    SDDL2_TRY_LET(int64_t, a, pop_i64(stack));
     int64_t result = (a >= b);
     SDDL2_log_binary_op("cmp.ge", ">=", a, b, result, trace, pc);
     return push_i64(stack, result);
@@ -715,8 +680,8 @@ SDDL2_op_ge(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 SDDL2_Error
 SDDL2_op_bit_and(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
-    int64_t a, b;
-    SDDL2_TRY(pop_binary_i64(stack, &a, &b));
+    SDDL2_TRY_LET(int64_t, b, pop_i64(stack));
+    SDDL2_TRY_LET(int64_t, a, pop_i64(stack));
     int64_t result = (a & b);
     SDDL2_log_binary_op("math.bit_and", "&", a, b, result, trace, pc);
     return push_i64(stack, result);
@@ -725,8 +690,8 @@ SDDL2_op_bit_and(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 SDDL2_Error
 SDDL2_op_bit_or(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
-    int64_t a, b;
-    SDDL2_TRY(pop_binary_i64(stack, &a, &b));
+    SDDL2_TRY_LET(int64_t, b, pop_i64(stack));
+    SDDL2_TRY_LET(int64_t, a, pop_i64(stack));
     int64_t result = (a | b);
     SDDL2_log_binary_op("math.bit_or", "|", a, b, result, trace, pc);
     return push_i64(stack, result);
@@ -735,8 +700,8 @@ SDDL2_op_bit_or(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 SDDL2_Error
 SDDL2_op_bit_xor(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
-    int64_t a, b;
-    SDDL2_TRY(pop_binary_i64(stack, &a, &b));
+    SDDL2_TRY_LET(int64_t, b, pop_i64(stack));
+    SDDL2_TRY_LET(int64_t, a, pop_i64(stack));
     int64_t result = (a ^ b);
     SDDL2_log_binary_op("math.bit_xor", "^", a, b, result, trace, pc);
     return push_i64(stack, result);
@@ -745,8 +710,7 @@ SDDL2_op_bit_xor(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 SDDL2_Error
 SDDL2_op_bit_not(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
-    int64_t a;
-    SDDL2_TRY(pop_i64(stack, &a));
+    SDDL2_TRY_LET(int64_t, a, pop_i64(stack));
     int64_t result = (~a);
     SDDL2_log_unary_op("math.bit_not", "~", a, result, trace, pc);
     return push_i64(stack, result);
@@ -766,8 +730,8 @@ SDDL2_op_bit_not(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 SDDL2_Error
 SDDL2_op_and(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
-    int64_t a, b;
-    SDDL2_TRY(pop_binary_i64(stack, &a, &b));
+    SDDL2_TRY_LET(int64_t, b, pop_i64(stack));
+    SDDL2_TRY_LET(int64_t, a, pop_i64(stack));
     int64_t result = (a && b);
     SDDL2_log_binary_op("logic.and", "&&", a, b, result, trace, pc);
     return push_i64(stack, result);
@@ -776,8 +740,8 @@ SDDL2_op_and(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 SDDL2_Error
 SDDL2_op_or(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
-    int64_t a, b;
-    SDDL2_TRY(pop_binary_i64(stack, &a, &b));
+    SDDL2_TRY_LET(int64_t, b, pop_i64(stack));
+    SDDL2_TRY_LET(int64_t, a, pop_i64(stack));
     int64_t result = (a || b);
     SDDL2_log_binary_op("logic.or", "||", a, b, result, trace, pc);
     return push_i64(stack, result);
@@ -786,8 +750,8 @@ SDDL2_op_or(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 SDDL2_Error
 SDDL2_op_xor(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
-    int64_t a, b;
-    SDDL2_TRY(pop_binary_i64(stack, &a, &b));
+    SDDL2_TRY_LET(int64_t, b, pop_i64(stack));
+    SDDL2_TRY_LET(int64_t, a, pop_i64(stack));
     int64_t result = ((a && !b) || (!a && b));
     SDDL2_log_binary_op("logic.xor", "^^", a, b, result, trace, pc);
     return push_i64(stack, result);
@@ -796,8 +760,7 @@ SDDL2_op_xor(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 SDDL2_Error
 SDDL2_op_not(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 {
-    int64_t a;
-    SDDL2_TRY(pop_i64(stack, &a));
+    SDDL2_TRY_LET(int64_t, a, pop_i64(stack));
     int64_t result = (!a);
     SDDL2_log_unary_op("logic.not", "!", a, result, trace, pc);
     return push_i64(stack, result);
@@ -819,8 +782,7 @@ SDDL2_op_drop(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
     (void)trace;
     (void)pc;
 
-    SDDL2_Value val;
-    return SDDL2_Stack_pop(stack, &val);
+    return SDDL2_error(SDDL2_Stack_pop(stack));
 }
 
 SDDL2_Error
@@ -829,12 +791,10 @@ SDDL2_op_stack_drop_if(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
     (void)trace;
     (void)pc;
 
-    int64_t condition;
-    SDDL2_TRY(pop_i64(stack, &condition));
+    SDDL2_TRY_LET(int64_t, condition, pop_i64(stack));
 
     if (condition != 0) {
-        SDDL2_Value val;
-        return SDDL2_Stack_pop(stack, &val);
+        return SDDL2_error(SDDL2_Stack_pop(stack));
     }
 
     return SDDL2_OK;
@@ -842,11 +802,8 @@ SDDL2_op_stack_drop_if(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace, size_t pc)
 
 SDDL2_Error SDDL2_op_jump_if(SDDL2_Stack* stack, size_t* out_skip_count)
 {
-    int64_t condition;
-    SDDL2_TRY(pop_i64(stack, &condition));
-
-    size_t n;
-    SDDL2_TRY(pop_positive_i64(stack, &n));
+    SDDL2_TRY_LET(int64_t, condition, pop_i64(stack));
+    SDDL2_TRY_LET(size_t, n, pop_positive_i64(stack));
 
     if (condition != 0) {
         *out_skip_count = n;
@@ -911,15 +868,13 @@ SDDL2_Error SDDL2_op_var_store(
     (void)trace;
     (void)pc;
 
-    int64_t reg_index;
-    SDDL2_TRY(pop_i64(stack, &reg_index));
+    SDDL2_TRY_LET(int64_t, reg_index, pop_i64(stack));
 
     if (reg_index < 0 || reg_index >= SDDL2_VAR_REGISTER_COUNT) {
         return SDDL2_LOAD_BOUNDS;
     }
 
-    SDDL2_Value val;
-    SDDL2_TRY(SDDL2_Stack_pop(stack, &val));
+    SDDL2_TRY_LET(SDDL2_Value, val, SDDL2_Stack_pop(stack));
 
     regs->values[reg_index]   = val;
     regs->occupied[reg_index] = 1;
@@ -936,8 +891,7 @@ SDDL2_Error SDDL2_op_var_load(
     (void)trace;
     (void)pc;
 
-    int64_t reg_index;
-    SDDL2_TRY(pop_i64(stack, &reg_index));
+    SDDL2_TRY_LET(int64_t, reg_index, pop_i64(stack));
 
     if (reg_index < 0 || reg_index >= SDDL2_VAR_REGISTER_COUNT) {
         return SDDL2_LOAD_BOUNDS;
@@ -966,8 +920,7 @@ static void SDDL2_log_expect_true_failure(
 
 SDDL2_Error SDDL2_op_expect_true(SDDL2_Stack* stack, SDDL2_Trace_buffer* trace)
 {
-    int64_t value;
-    SDDL2_TRY(pop_i64(stack, &value));
+    SDDL2_TRY_LET(int64_t, value, pop_i64(stack));
 
     if (value == 0) {
         SDDL2_log_expect_true_failure(trace, stack);
@@ -1050,8 +1003,7 @@ static void SDDL2_log_load(const char* op_name, int64_t addr, int64_t value);
     SDDL2_Error SDDL2_op_load_##name(                             \
             SDDL2_Stack* stack, const SDDL2_Input_cursor* buffer) \
     {                                                             \
-        int64_t addr;                                             \
-        SDDL2_TRY(pop_i64(stack, &addr));                         \
+        SDDL2_TRY_LET(int64_t, addr, pop_i64(stack));             \
         SDDL2_TRY(check_load_bounds(buffer, addr, size));         \
         const uint8_t* bytes = (const uint8_t*)buffer->data;      \
         int64_t value        = (int64_t)(read_expr);              \
@@ -1324,8 +1276,7 @@ static SDDL2_Error segment_create_internal(
     // Calculate actual size in bytes
     // total_type_size = size of one instance of the type (including width)
     // segment_size = element_count × total_type_size
-    size_t total_type_size;
-    SDDL2_TRY(SDDL2_Type_size(type, &total_type_size));
+    SDDL2_TRY_LET(size_t, total_type_size, SDDL2_Type_size(type));
 
     // Check for overflow in element_count * total_type_size multiplication
     size_t size_bytes;
@@ -1397,8 +1348,7 @@ SDDL2_Error SDDL2_op_segment_create_unspecified(
         SDDL2_Segment_list* segments)
 {
     // Pop size from stack
-    int64_t size_i64;
-    SDDL2_TRY(pop_i64(stack, &size_i64));
+    SDDL2_TRY_LET(int64_t, size_i64, pop_i64(stack));
 
     // Validate size (must be non-negative)
     if (size_i64 < 0) {
@@ -1672,15 +1622,10 @@ SDDL2_Error SDDL2_op_segment_create_tagged(
         SDDL2_Segment_list* segments,
         SDDL2_Tag_registry* registry)
 {
-    // Pop size, type, and tag from stack (size on top, type middle, tag bottom)
-    int64_t size_i64;
-    SDDL2_Type type;
-    uint32_t tag;
-
     // Pop in reverse order: size (top), type, tag (bottom)
-    SDDL2_TRY(pop_i64(stack, &size_i64));
-    SDDL2_TRY(pop_type(stack, &type));
-    SDDL2_TRY(pop_tag(stack, &tag));
+    SDDL2_TRY_LET(int64_t, size_i64, pop_i64(stack));
+    SDDL2_TRY_LET(SDDL2_Type, type, pop_type(stack));
+    SDDL2_TRY_LET(uint32_t, tag, pop_tag(stack));
 
     // Validate size (must be non-negative)
     if (size_i64 < 0) {

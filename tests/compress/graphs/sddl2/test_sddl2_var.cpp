@@ -122,7 +122,7 @@ TEST_F(SDDL2VarTest, LoadTag)
     ASSERT_EQ(SDDL2_Stack_push(stack_, SDDL2_Value_i64(5)), SDDL2_OK);
     ASSERT_EQ(SDDL2_op_var_load(stack_, NULL, 0, &regs_), SDDL2_OK);
     SDDL2_Value result;
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &result), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &result), SDDL2_OK);
     EXPECT_EQ(result.kind, SDDL2_VALUE_TAG);
     EXPECT_EQ(result.value.as_tag, 100u);
 }
@@ -137,7 +137,7 @@ TEST_F(SDDL2VarTest, LoadType)
     ASSERT_EQ(SDDL2_Stack_push(stack_, SDDL2_Value_i64(10)), SDDL2_OK);
     ASSERT_EQ(SDDL2_op_var_load(stack_, NULL, 0, &regs_), SDDL2_OK);
     SDDL2_Value result;
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &result), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &result), SDDL2_OK);
     EXPECT_EQ(result.kind, SDDL2_VALUE_TYPE);
     EXPECT_EQ(result.value.as_type.kind, SDDL2_TYPE_I32LE);
     EXPECT_EQ(result.value.as_type.width, 1u);

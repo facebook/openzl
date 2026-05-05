@@ -62,7 +62,7 @@ TEST_F(SDDL2TypeSizeofTest, VariousPrimitives)
         ASSERT_EQ(SDDL2_op_type_sizeof(stack_), SDDL2_OK);
 
         SDDL2_Value result;
-        ASSERT_EQ(SDDL2_Stack_pop(stack_, &result), SDDL2_OK);
+        ASSERT_EQ(popValue(stack_, &result), SDDL2_OK);
         EXPECT_EQ(result.kind, SDDL2_VALUE_I64);
         EXPECT_EQ(result.value.as_i64, tc.expected_size) << "kind=" << tc.kind;
     }

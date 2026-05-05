@@ -80,12 +80,14 @@ TEST(SDDL2KindSizeTest, EightByteTypes)
 
 TEST(SDDL2KindSizeTest, InvalidTypeReturnsError)
 {
-    size_t out;
-    EXPECT_NE(SDDL2_kind_size(SDDL2_Type_kind(9999), &out), SDDL2_OK);
+    SDDL2_RESULT_OF(size_t) result = SDDL2_kind_size(SDDL2_Type_kind(9999));
+    EXPECT_TRUE(SDDL2_isError(result));
+    EXPECT_EQ(SDDL2_error(result), SDDL2_TYPE_MISMATCH);
 }
 
 TEST(SDDL2KindSizeTest, StructReturnsError)
 {
-    size_t out;
-    EXPECT_NE(SDDL2_kind_size(SDDL2_TYPE_STRUCTURE, &out), SDDL2_OK);
+    SDDL2_RESULT_OF(size_t) result = SDDL2_kind_size(SDDL2_TYPE_STRUCTURE);
+    EXPECT_TRUE(SDDL2_isError(result));
+    EXPECT_EQ(SDDL2_error(result), SDDL2_TYPE_MISMATCH);
 }

@@ -25,7 +25,7 @@ TEST_F(SDDL2TypeFixedArrayTest, BasicArrayType)
     EXPECT_EQ(SDDL2_Stack_depth(stack_), 1);
 
     SDDL2_Value result;
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &result), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &result), SDDL2_OK);
     EXPECT_EQ(result.kind, SDDL2_VALUE_TYPE);
     EXPECT_EQ(result.value.as_type.kind, SDDL2_TYPE_U32LE);
     EXPECT_EQ(result.value.as_type.width, 10);
@@ -46,7 +46,7 @@ TEST_F(SDDL2TypeFixedArrayTest, NestedArrays)
     ASSERT_EQ(SDDL2_op_type_fixed_array(stack_), SDDL2_OK);
 
     SDDL2_Value result;
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &result), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &result), SDDL2_OK);
     EXPECT_EQ(result.kind, SDDL2_VALUE_TYPE);
     EXPECT_EQ(result.value.as_type.kind, SDDL2_TYPE_I16LE);
     EXPECT_EQ(result.value.as_type.width, 15); // 5 * 3
@@ -62,7 +62,7 @@ TEST_F(SDDL2TypeFixedArrayTest, ArrayCountOne)
     ASSERT_EQ(SDDL2_op_type_fixed_array(stack_), SDDL2_OK);
 
     SDDL2_Value result;
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &result), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &result), SDDL2_OK);
     EXPECT_EQ(result.kind, SDDL2_VALUE_TYPE);
     EXPECT_EQ(result.value.as_type.kind, SDDL2_TYPE_F32BE);
     EXPECT_EQ(result.value.as_type.width, 7); // 7 * 1
@@ -77,7 +77,7 @@ TEST_F(SDDL2TypeFixedArrayTest, ZeroWidthArray)
     ASSERT_EQ(SDDL2_op_type_fixed_array(stack_), SDDL2_OK);
 
     SDDL2_Value result;
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &result), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &result), SDDL2_OK);
     EXPECT_EQ(result.kind, SDDL2_VALUE_TYPE);
     EXPECT_EQ(result.value.as_type.kind, SDDL2_TYPE_U8);
     EXPECT_EQ(result.value.as_type.width, 0);
@@ -94,7 +94,7 @@ TEST_F(SDDL2TypeFixedArrayTest, MaxSafeValue)
     ASSERT_EQ(SDDL2_op_type_fixed_array(stack_), SDDL2_OK);
 
     SDDL2_Value result;
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &result), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &result), SDDL2_OK);
     EXPECT_EQ(result.value.as_type.width, UINT32_MAX);
 }
 
@@ -117,7 +117,7 @@ TEST_F(SDDL2TypeFixedArrayTest, AllTypeKinds)
         ASSERT_EQ(SDDL2_op_type_fixed_array(stack_), SDDL2_OK);
 
         SDDL2_Value result;
-        ASSERT_EQ(SDDL2_Stack_pop(stack_, &result), SDDL2_OK);
+        ASSERT_EQ(popValue(stack_, &result), SDDL2_OK);
         EXPECT_EQ(result.value.as_type.kind, types[i]);
         EXPECT_EQ(result.value.as_type.width, 10); // 2 * 5
     }

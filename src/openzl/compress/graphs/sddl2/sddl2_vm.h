@@ -133,6 +133,9 @@ typedef struct {
     } value;
 } SDDL2_Value;
 
+/* Declare Result type for SDDL2_Value */
+SDDL2_RESULT_DECLARE_TYPE(SDDL2_Value);
+
 /* ============================================================================
  * Stack Structure
  * ========================================================================= */
@@ -441,13 +444,12 @@ static inline SDDL2_Error SDDL2_Stack_push(
  * NOTE: Kept as inline for performance - this is on the hot path,
  * called for every VM instruction that consumes a value.
  */
-static inline SDDL2_Error SDDL2_Stack_pop(SDDL2_Stack* stack, SDDL2_Value* out)
+static inline SDDL2_RESULT_OF(SDDL2_Value) SDDL2_Stack_pop(SDDL2_Stack* stack)
 {
     if (stack->top == 0) {
-        return SDDL2_STACK_UNDERFLOW;
+        return SDDL2_failure(SDDL2_Value, SDDL2_STACK_UNDERFLOW);
     }
-    *out = stack->items[--stack->top];
-    return SDDL2_OK;
+    return SDDL2_success(SDDL2_Value, stack->items[--stack->top]);
 }
 
 /**
@@ -479,18 +481,16 @@ SDDL2_Value SDDL2_Value_type(SDDL2_Type type);
  * ========================================================================= */
 
 /**
- * Get the size in bytes of a single element of the given type kind (primitive
- * size). Returns 1 for BYTES (raw bytes with no known interpretation).
- * Returns SDDL2_TYPE_MISMATCH for unknown/invalid type kinds and for STRUCTURE.
+ * Get the size in bytes of a single element of the given type kind.
+ * Returns SDDL2_TYPE_MISMATCH for unknown/invalid kinds and STRUCTURE.
  */
-SDDL2_Error SDDL2_kind_size(SDDL2_Type_kind kind, size_t* out_size);
+SDDL2_RESULT_OF(size_t) SDDL2_kind_size(SDDL2_Type_kind kind);
 
 /**
- * Get the total size in bytes of a type (including width).
- * Calculates: element_size × type.width
+ * Get the total size in bytes of a type (element_size × width).
  * Returns SDDL2_TYPE_MISMATCH for invalid types.
  */
-SDDL2_Error SDDL2_Type_size(SDDL2_Type type, size_t* out_size);
+SDDL2_RESULT_OF(size_t) SDDL2_Type_size(SDDL2_Type type);
 
 /* ============================================================================
  * Type Operations

@@ -50,7 +50,7 @@ TEST_F(SDDL2VmTypeStructureTest, SimpleStructure)
     EXPECT_EQ(SDDL2_Stack_depth(stack_), 1u);
 
     SDDL2_Value result{};
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &result), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &result), SDDL2_OK);
     EXPECT_EQ(result.kind, SDDL2_VALUE_TYPE);
     EXPECT_EQ(result.value.as_type.kind, SDDL2_TYPE_STRUCTURE);
     EXPECT_EQ(result.value.as_type.width, 1u);
@@ -90,7 +90,7 @@ TEST_F(SDDL2VmTypeStructureTest, StructureWithArrays)
     ASSERT_EQ(SDDL2_op_type_structure(stack_, alloc_fn, alloc_ctx_), SDDL2_OK);
 
     SDDL2_Value result{};
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &result), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &result), SDDL2_OK);
 
     SDDL2_Struct_data* struct_data = result.value.as_type.struct_data;
     EXPECT_EQ(struct_data->total_size_bytes, 43u);
@@ -118,7 +118,7 @@ TEST_F(SDDL2VmTypeStructureTest, ArrayOfStructures)
     ASSERT_EQ(SDDL2_op_type_fixed_array(stack_), SDDL2_OK);
 
     SDDL2_Value result{};
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &result), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &result), SDDL2_OK);
     EXPECT_EQ(result.value.as_type.kind, SDDL2_TYPE_STRUCTURE);
     EXPECT_EQ(result.value.as_type.width, 10u);
 
@@ -136,7 +136,7 @@ TEST_F(SDDL2VmTypeStructureTest, ZeroMemberStructure)
     ASSERT_EQ(SDDL2_op_type_structure(stack_, alloc_fn, alloc_ctx_), SDDL2_OK);
 
     SDDL2_Value result{};
-    ASSERT_EQ(SDDL2_Stack_pop(stack_, &result), SDDL2_OK);
+    ASSERT_EQ(popValue(stack_, &result), SDDL2_OK);
     EXPECT_EQ(result.kind, SDDL2_VALUE_TYPE);
     EXPECT_EQ(result.value.as_type.kind, SDDL2_TYPE_STRUCTURE);
     EXPECT_EQ(result.value.as_type.width, 1u);
