@@ -272,6 +272,10 @@ lexOne(ZL_ParquetLexer* lexer, ZL_ParquetToken* out, ZL_ErrorContext* errCtx)
     ZL_ERR_IF_LT(chunkRemaining, 0, node_invalid_input);
     ZL_ERR_IF_LT(
             getRemaining(lexer), (size_t)chunkRemaining, node_invalid_input);
+    ZL_ERR_IF_GE(
+            lexer->chunkIdx,
+            lexer->fileMetadata->columnChunks.size(),
+            node_invalid_input);
 
     if (!lexer->pageHeader) {
         return lexPageHeader(lexer, out, errCtx);
