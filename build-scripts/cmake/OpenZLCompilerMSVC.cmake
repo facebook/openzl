@@ -2,6 +2,9 @@
 
 # MSVC and clang-cl compiler configuration for OpenZL
 
+# Use static CRT (/MT) to match xgboost and other static dependencies
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
 # Detect ClangCL toolset (the standard way)
 set(USING_CLANG_CL FALSE)
 if (CMAKE_GENERATOR_TOOLSET STREQUAL "ClangCL")
@@ -23,7 +26,10 @@ set(OPENZL_CXX_COMPILE_DEFINITIONS ${OPENZL_COMMON_COMPILE_DEFINITIONS})
 # Define compile options for MSVC
 set(OPENZL_COMMON_COMPILE_OPTIONS)
 set(OPENZL_C_COMPILE_OPTIONS ${OPENZL_COMMON_COMPILE_OPTIONS})
-set(OPENZL_CXX_COMPILE_OPTIONS ${OPENZL_COMMON_COMPILE_OPTIONS})
+set(OPENZL_CXX_COMPILE_OPTIONS ${OPENZL_COMMON_COMPILE_OPTIONS} )
+
+# Add /Ehsc to enable excpetion handling (clang-cl disables by default)
+add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/EHsc>)
 
 # Define warning options for MSVC
 set(OPENZL_COMMON_COMPILE_WARNINGS)

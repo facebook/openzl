@@ -12,6 +12,7 @@
 
 #include <cstdlib>
 #include <map>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 

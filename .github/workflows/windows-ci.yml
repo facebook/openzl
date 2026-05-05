@@ -129,11 +129,20 @@ jobs:
           )
         shell: cmd
 
-      - name: Build
+      - name: Build openzl
         working-directory: ${{github.workspace}}/build
         run: |
-          echo "=== Building with clang-cl ==="
+          echo "=== Building openzl with clang-cl ==="
           cmake --build . --config ${{ matrix.config }} --target openzl --verbose
+          echo "=== Build completed ==="
+        shell: cmd
+
+      - name: Build all targets
+        if: matrix.arch == 'x64' && matrix.config == 'Release'
+        working-directory: ${{github.workspace}}/build
+        run: |
+          echo "=== Building all targets with clang-cl ==="
+          cmake --build . --config Release --verbose
           echo "=== Build completed ==="
         shell: cmd
 
@@ -211,7 +220,6 @@ jobs:
           echo "=== Building with make -j ==="
           make -j V=1
           echo "=== Build and test completed successfully ==="
-
 
 # =============================================================================
 # CHOCOLATEY MinGW-w64 (pure Windows, no MSYS2) — build with `make`

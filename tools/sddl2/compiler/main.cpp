@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
         if (!output_file) {
             std::filesystem::path path{ std::string(input_file->name()) };
             output_file = std::make_shared<tools::io::OutputFile>(
-                    path.replace_extension("asm"));
+                    path.replace_extension("asm").string());
         }
         const auto compiler =
                 Compiler{ Compiler::Options{}.with_verbosity(verbosity) };
