@@ -113,10 +113,11 @@ static ZL_Report SEGM_csv(ZL_Segmenter* sctx)
             useNullAwareParse,
             tryGetIntParam(sctx, ZL_PARSER_USE_NULL_AWARE_PID));
 
-    const size_t maxNumTokens = ZL_MIN(byteSize, chunkByteSizeMax);
-    ZL_ERR_IF_GE(
-            maxNumTokens, 1u << 30, node_invalid_input, "chunk size too big");
-    ZL_CSV_TokenType* types = ZL_Segmenter_getScratchSpace(
+    const size_t chunkSize = ZL_MIN(byteSize, chunkByteSizeMax);
+    ZL_ERR_IF_GE(chunkSize, 1u << 30, node_invalid_input, "chunk size too big");
+    // Each byte can produce up to 2 tokens (empty field + separator/newline).
+    const size_t maxNumTokens = 2 * chunkSize + 1;
+    ZL_CSV_TokenType* types   = ZL_Segmenter_getScratchSpace(
             sctx, maxNumTokens * sizeof(ZL_CSV_TokenType));
     ZL_ERR_IF_NULL(types, allocation);
     uint32_t* sizes =
@@ -153,11 +154,18 @@ static ZL_Report SEGM_csv(ZL_Segmenter* sctx)
                 node_invalid_input,
                 "CSV is not well formed: No newline found");
         const char* const end = lexer.src;
-        ZL_ERR_IF_EQ(numTokens, 0, logicError);
+        ZL_ERR_IF_EQ(numTokens, 0, logicError, "CSV lexer produced no tokens");
         if (end != lexer.end) {
-            ZL_ERR_IF_LT((size_t)(end - begin), chunkByteSizeMax, logicError);
+            ZL_ERR_IF_LT(
+                    (size_t)(end - begin),
+                    chunkByteSizeMax,
+                    logicError,
+                    "CSV chunk consumed fewer bytes than expected");
             ZL_ERR_IF_NE(
-                    types[numTokens - 1], ZL_CSV_TokenType_Newline, logicError);
+                    types[numTokens - 1],
+                    ZL_CSV_TokenType_Newline,
+                    logicError,
+                    "CSV chunk does not end with a newline");
         }
         ZL_ERR_IF_ERR(SEGM_csvProcessChunk(
                 sctx,
