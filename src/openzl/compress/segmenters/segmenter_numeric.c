@@ -4,6 +4,7 @@
 #include "openzl/codecs/zl_segmenters.h" // ZL_SEGMENT_NUM*_FROM_SERIAL
 #include "openzl/common/assertion.h"
 #include "openzl/compress/private_nodes.h"
+#include "openzl/zl_compress.h" // ZL_MIN_CHUNK_SIZE
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_input.h"
 #include "openzl/zl_selector.h" // ZL_LP_INVALID_PARAMID
@@ -80,9 +81,10 @@ ZL_Report SEGM_numFromSerial(ZL_Segmenter* sctx)
             chunkByteSizeMax - (chunkByteSizeMax % width);
     ZL_ERR_IF_NOT(chunkByteSizeAligned > 0, parameter_invalid);
 
-    /* retrieve successor graph */
+    /* retrieve successor graph (release-mode-checked: a corrupted compressor
+     * could parameterize to nbCustomGraphs == 0 and cause an OOB read) */
     ZL_GraphIDList const customGraphs = ZL_Segmenter_getCustomGraphs(sctx);
-    ZL_ASSERT(customGraphs.nbGraphIDs >= 1);
+    ZL_ERR_IF_LT(customGraphs.nbGraphIDs, 1, parameter_invalid);
     ZL_GraphID const headGraph = customGraphs.graphids[0];
 
     size_t totalBytes = ZL_Input_contentSize(input);
@@ -147,9 +149,17 @@ ZL_Compressor_buildNumFromSerialSegmenter2(
         successorGraph = defaultSuccessor;
     }
 
-    /* Chunk size must be at least one element wide and fit in int
-     * (ZL_IntParam::paramValue is int) */
-    ZL_ERR_IF_NOT(chunkByteSize >= eltByteWidth, parameter_invalid);
+    /* chunkByteSize == 0 means "use the segmenter's built-in default"
+     * (uniform convention across the ZL_Compressor_build*Segmenter family). */
+    if (chunkByteSize == 0) {
+        chunkByteSize = ZL_DEFAULT_SEGMENTER_CHUNK_BYTE_SIZE;
+    }
+    /* Enforce ZL_MIN_CHUNK_SIZE: ZL_compressBound() assumes chunks of at
+     * least this size; smaller chunks may produce output exceeding the
+     * bound. The previous "must be at least one element wide" requirement
+     * is implied (ZL_MIN_CHUNK_SIZE >= 8 >= max eltByteWidth). */
+    ZL_ERR_IF_LT(chunkByteSize, ZL_MIN_CHUNK_SIZE, parameter_invalid);
+    /* Must fit in int (ZL_IntParam::paramValue is int) */
     ZL_ERR_IF_NOT(chunkByteSize <= (size_t)INT_MAX, parameter_invalid);
 
     /* Parameterize with element width, chunk size, and successor graph.

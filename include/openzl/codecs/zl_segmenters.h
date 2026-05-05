@@ -51,7 +51,11 @@ extern "C" {
  * @param compressor The compressor to register with
  * @param eltByteWidth Element width in bytes (1, 2, 4, or 8)
  * @param chunkByteSize Maximum chunk size in bytes (will be aligned down
- *        to element width)
+ *        to element width). Pass 0 to use the built-in default
+ *        (ZL_DEFAULT_SEGMENTER_CHUNK_BYTE_SIZE). Otherwise must be in
+ *        [ZL_MIN_CHUNK_SIZE, INT_MAX]; smaller positive values are rejected
+ *        because ZL_compressBound() assumes chunks of at least
+ *        ZL_MIN_CHUNK_SIZE bytes.
  * @param successorGraph The graph to process each chunk, or
  *        ZL_SEGMENTER_DEFAULT_SUCCESSOR to use the built-in default
  *        interpret+compress pipeline
