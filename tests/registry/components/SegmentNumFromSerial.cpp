@@ -3,6 +3,7 @@
 #include "openzl/codecs/zl_conversion.h"
 #include "openzl/codecs/zl_field_lz.h"
 #include "openzl/codecs/zl_segmenters.h"
+#include "openzl/zl_compress.h" // ZL_MIN_CHUNK_SIZE
 #include "tests/datagen/structures/CompressibleStringProducer.h"
 #include "tests/registry/OpenZLComponents.h"
 #include "tests/registry/OpenZLInput.h"
@@ -20,10 +21,12 @@ GraphID makeNumFromSerialSuccessorGraph(
 
 size_t generateChunkSizeBytes(datagen::DataGen& gen, size_t eltWidthBytes)
 {
-    // Keep generated chunks large enough that component round-trip coverage
-    // stays tractable while still varying width and alignment behavior.
-    size_t const numEltsPerChunk =
-            gen.usize_range("chunk_num_elts", 1024, 8192);
+    // Chunk sizes must be >= ZL_MIN_CHUNK_SIZE (the public builder rejects
+    // smaller positive values). Pick a number of elements that yields
+    // chunkBytes in [ZL_MIN_CHUNK_SIZE, 8 * ZL_MIN_CHUNK_SIZE].
+    size_t const minNumEltsPerChunk = ZL_MIN_CHUNK_SIZE / eltWidthBytes;
+    size_t const numEltsPerChunk    = gen.usize_range(
+            "chunk_num_elts", minNumEltsPerChunk, 8 * minNumEltsPerChunk);
     // Widths above 1 can add a tail byte count to exercise alignment-down.
     size_t const extraBytes = eltWidthBytes == 1
             ? 0
