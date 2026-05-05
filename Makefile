@@ -491,8 +491,9 @@ XGBOOST_CMAKE_PLATFORM :=
 XGBOOST_LDFLAGS :=
 XGBOOST_LDLIBS :=
 ifneq (,$(filter $(SMALL_CMD_LINE),$(UNAME)))
-    # MinGW/MSYS: Link ws2_32 for Windows socket functions
-    XGBOOST_CMAKE_PLATFORM := -DCMAKE_CXX_STANDARD_LIBRARIES="-lws2_32" \
+    # MinGW/MSYS: Use Unix Makefiles generator and link ws2_32 for Windows socket functions
+    XGBOOST_CMAKE_PLATFORM := -G "Unix Makefiles" \
+        -DCMAKE_CXX_STANDARD_LIBRARIES="-lws2_32" \
         -DCMAKE_SHARED_LINKER_FLAGS="-lws2_32"
     XGBOOST_LDFLAGS += -L$(abspath $(XGBOOST_LIBDIR))
     XGBOOST_LDLIBS += -lws2_32
@@ -535,7 +536,11 @@ endif
 $(LIBXGBOOST_A) : MAKEOVERRIDES=
 $(LIBXGBOOST_A) : $(XGBOOST_HEADER)
 	$(MKDIR) -p $(XGBOOST_LIBDIR)
-	cd deps/xgboost && mkdir -p build && cd build && cmake .. -DBUILD_STATIC_LIB=ON -DUSE_OPENMP=OFF -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=$(abspath $(XGBOOST_LIBDIR)) && $(MAKE)
+	cd deps/xgboost && mkdir -p build && cd build && cmake .. -DBUILD_STATIC_LIB=ON -DUSE_OPENMP=OFF -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=$(abspath $(XGBOOST_LIBDIR)) $(XGBOOST_CMAKE_PLATFORM) && $(MAKE)
+	# xgboost's CMakeLists.txt strips the 'lib' prefix on Windows; rename to match expected name
+	@if [ -f $(XGBOOST_LIBDIR)/xgboost.a ] && [ ! -f $(XGBOOST_LIBDIR)/libxgboost.a ]; then \
+		mv $(XGBOOST_LIBDIR)/xgboost.a $(XGBOOST_LIBDIR)/libxgboost.a; \
+	fi
 
 # libdmlc.a is built as part of xgboost static build
 $(LIBDMLC_A): $(LIBXGBOOST_A)
