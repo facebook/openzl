@@ -1094,7 +1094,7 @@ static ZL_GraphID registerNumFromSerial_u32_singleChunk(
                 compressor, ZL_CParam_formatVersion, g_testVersion)))
         abort();
     ZL_GraphID graph = makeNumericGraph(compressor, 32);
-    /* 16 MB chunk, input is much smaller */
+    /* 16 MiB chunk, input is much smaller */
     return ZL_Compressor_buildNumFromSerialSegmenter(
             compressor, 4, 16 << 20, graph);
 }
@@ -1707,6 +1707,407 @@ TEST(Segmenter, numFromSerial_chunkCount_manyChunks)
         return;
     /* 16x ZL_MIN_CHUNK_SIZE bytes of u16 data → 16 chunks */
     verifyChunkCount(16, ZL_MIN_CHUNK_SIZE, 16 * ZL_MIN_CHUNK_SIZE, 16);
+}
+
+#endif // ZL_ALLOW_INTROSPECTION
+
+/* ============================================================ */
+/* =======   Pure serial segmenter (ZL_SEGMENT_SERIAL)   ====== */
+/* ============================================================ */
+
+/* Helper: a simple serial-input compression graph */
+static ZL_GraphID makeSerialGraph(ZL_Compressor*)
+{
+    return ZL_GRAPH_COMPRESS_GENERIC;
+}
+
+/* --- Round-trip: single chunk (input < chunk size) --- */
+
+static ZL_GraphID registerSerial_singleChunk(ZL_Compressor* compressor) noexcept
+{
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+    /* 16 MiB chunk, input is much smaller */
+    return ZL_Compressor_buildSerialSegmenter(
+            compressor, 16 << 20, makeSerialGraph(compressor));
+}
+
+TEST(Segmenter, serial_singleChunk)
+{
+    (void)roundTripGen(
+            ZL_Type_serial, registerSerial_singleChunk, "serial, single chunk");
+}
+
+/* --- Round-trip with the smallest accepted chunk size ---
+ * roundTripGen feeds 1376-byte input; with chunkByteSize=ZL_MIN_CHUNK_SIZE
+ * this is a single-chunk smoke test. Multi-chunk coverage lives in the
+ * chunkCount_* introspection tests below. */
+
+static ZL_GraphID registerSerial_minChunk(ZL_Compressor* compressor) noexcept
+{
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+    return ZL_Compressor_buildSerialSegmenter(
+            compressor, ZL_MIN_CHUNK_SIZE, makeSerialGraph(compressor));
+}
+
+TEST(Segmenter, serial_minChunkSize)
+{
+    (void)roundTripGen(
+            ZL_Type_serial,
+            registerSerial_minChunk,
+            "serial, chunk == ZL_MIN_CHUNK_SIZE (smallest accepted)");
+}
+
+/* --- Old format: collapse to one chunk regardless of chunk size --- */
+
+static ZL_GraphID registerSerial_oldFormat(ZL_Compressor* compressor) noexcept
+{
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, ZL_CHUNK_VERSION_MIN - 1)))
+        abort();
+    return ZL_Compressor_buildSerialSegmenter(
+            compressor, ZL_MIN_CHUNK_SIZE, makeSerialGraph(compressor));
+}
+
+TEST(Segmenter, serial_oldFormat_singleChunkFallback)
+{
+    (void)roundTripGen(
+            ZL_Type_serial,
+            registerSerial_oldFormat,
+            "serial, old format single-chunk fallback");
+}
+
+/* --- Invalid chunk size --- */
+
+TEST(Segmenter, serial_invalidChunkSize)
+{
+    ZL_Compressor* compressor = ZL_Compressor_create();
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+    ZL_GraphID graph = makeSerialGraph(compressor);
+
+    /* Chunk size 0 means "use default" (matches SDDL2 + C++ wrapper) */
+    ZL_GraphID result =
+            ZL_Compressor_buildSerialSegmenter(compressor, 0, graph);
+    EXPECT_TRUE(ZL_GraphID_isValid(result))
+            << "Chunk size 0 should be accepted as 'use default'";
+
+    /* Sub-ZL_MIN_CHUNK_SIZE positive values are rejected (would invalidate
+     * ZL_compressBound). */
+    result = ZL_Compressor_buildSerialSegmenter(compressor, 1, graph);
+    EXPECT_FALSE(ZL_GraphID_isValid(result))
+            << "Chunk size below ZL_MIN_CHUNK_SIZE should be rejected";
+
+    result = ZL_Compressor_buildSerialSegmenter(
+            compressor, ZL_MIN_CHUNK_SIZE - 1, graph);
+    EXPECT_FALSE(ZL_GraphID_isValid(result))
+            << "Chunk size ZL_MIN_CHUNK_SIZE - 1 should be rejected";
+
+    /* Chunk size > INT_MAX should be rejected (would truncate in ZL_IntParam)
+     */
+    result = ZL_Compressor_buildSerialSegmenter(
+            compressor, (size_t)INT_MAX + 1, graph);
+    EXPECT_FALSE(ZL_GraphID_isValid(result))
+            << "Chunk size > INT_MAX should be rejected";
+
+    /* Chunk size == ZL_MIN_CHUNK_SIZE is the smallest accepted positive
+     * value */
+    result = ZL_Compressor_buildSerialSegmenter(
+            compressor, ZL_MIN_CHUNK_SIZE, graph);
+    EXPECT_TRUE(ZL_GraphID_isValid(result))
+            << "Chunk size == ZL_MIN_CHUNK_SIZE should succeed";
+
+    ZL_Compressor_free(compressor);
+}
+
+/* --- buildSerialSegmenter2: error reporting variant --- */
+
+TEST(Segmenter, serial2_invalidChunkSize)
+{
+    ZL_Compressor* compressor = ZL_Compressor_create();
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+    ZL_GraphID graph = makeSerialGraph(compressor);
+
+    /* Chunk size 0 means "use default", not an error. */
+    ZL_RESULT_OF(ZL_GraphID)
+    res = ZL_Compressor_buildSerialSegmenter2(compressor, 0, graph);
+    EXPECT_FALSE(ZL_RES_isError(res))
+            << "Chunk size 0 should be accepted as 'use default'";
+
+    res = ZL_Compressor_buildSerialSegmenter2(
+            compressor, ZL_MIN_CHUNK_SIZE - 1, graph);
+    EXPECT_TRUE(ZL_RES_isError(res))
+            << "Chunk size below ZL_MIN_CHUNK_SIZE should be rejected";
+    EXPECT_EQ(ZL_RES_code(res), ZL_ErrorCode_parameter_invalid);
+
+    res = ZL_Compressor_buildSerialSegmenter2(
+            compressor, (size_t)INT_MAX + 1, graph);
+    EXPECT_TRUE(ZL_RES_isError(res))
+            << "Chunk size > INT_MAX should be rejected";
+    EXPECT_EQ(ZL_RES_code(res), ZL_ErrorCode_parameter_invalid);
+
+    ZL_Compressor_free(compressor);
+}
+
+/* --- chunkByteSize == 0 round-trips through builder default path --- */
+
+static ZL_GraphID registerSerial_zeroChunkSize(
+        ZL_Compressor* compressor) noexcept
+{
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+    return ZL_Compressor_buildSerialSegmenter(
+            compressor, 0, makeSerialGraph(compressor));
+}
+
+TEST(Segmenter, serial_zeroChunkSizeUsesDefault)
+{
+    (void)roundTripGen(
+            ZL_Type_serial,
+            registerSerial_zeroChunkSize,
+            "serial, chunkByteSize=0 substitutes default");
+}
+
+/* --- Corrupted serialized graph: negative chunk size param value --- */
+
+static ZL_GraphID registerCorruptedSerial_negativeChunkSize(
+        ZL_Compressor* compressor) noexcept
+{
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+
+    ZL_GraphID const graph        = makeSerialGraph(compressor);
+    ZL_IntParam const intParams[] = {
+        { .paramId    = ZL_SEGMENT_SERIAL_CHUNK_BYTE_SIZE_PARAM,
+          .paramValue = -1 },
+    };
+    ZL_LocalParams const localParams = {
+        .intParams = { .intParams = intParams, .nbIntParams = 1 },
+    };
+    ZL_ParameterizedGraphDesc const desc = {
+        .graph          = ZL_SEGMENT_SERIAL,
+        .customGraphs   = &graph,
+        .nbCustomGraphs = 1,
+        .localParams    = &localParams,
+    };
+    return ZL_Compressor_registerParameterizedGraph(compressor, &desc);
+}
+
+TEST(Segmenter, serial_corruptedSerializedGraph_negativeChunkSize)
+{
+    char const input[32] = { 0 };
+    char compressed[ZL_COMPRESSBOUND(sizeof(input))];
+
+    ZL_Report const compressionReport = ZL_compress_usingGraphFn(
+            compressed,
+            sizeof(compressed),
+            input,
+            sizeof(input),
+            registerCorruptedSerial_negativeChunkSize);
+    EXPECT_TRUE(ZL_isError(compressionReport));
+    EXPECT_EQ(ZL_errorCode(compressionReport), ZL_ErrorCode_parameter_invalid);
+}
+
+static ZL_GraphID registerSerial2(ZL_Compressor* compressor) noexcept
+{
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+    ZL_RESULT_OF(ZL_GraphID)
+    res = ZL_Compressor_buildSerialSegmenter2(
+            compressor, 16 << 20, makeSerialGraph(compressor));
+    if (ZL_RES_isError(res))
+        abort();
+    return ZL_RES_value(res);
+}
+
+TEST(Segmenter, serial2_roundTrip)
+{
+    (void)roundTripGen(
+            ZL_Type_serial, registerSerial2, "serial2, error-result variant");
+}
+
+/* --- Default successor (ZL_SEGMENTER_DEFAULT_SUCCESSOR) --- */
+
+static ZL_GraphID registerSerial_defaultSuccessor(
+        ZL_Compressor* compressor) noexcept
+{
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+    return ZL_Compressor_buildSerialSegmenter(
+            compressor, 16 << 20, ZL_SEGMENTER_DEFAULT_SUCCESSOR);
+}
+
+TEST(Segmenter, serial_defaultSuccessor)
+{
+    (void)roundTripGen(
+            ZL_Type_serial,
+            registerSerial_defaultSuccessor,
+            "serial, default successor (ZL_GRAPH_COMPRESS_GENERIC)");
+}
+
+/* --- Bare ZL_SEGMENT_SERIAL: no parameterization, default chunk + successor */
+
+static ZL_GraphID registerSerial_bare(ZL_Compressor* compressor) noexcept
+{
+    if (ZL_isError(ZL_Compressor_setParameter(
+                compressor, ZL_CParam_formatVersion, g_testVersion)))
+        abort();
+    return ZL_SEGMENT_SERIAL;
+}
+
+TEST(Segmenter, serial_bare)
+{
+    (void)roundTripGen(
+            ZL_Type_serial, registerSerial_bare, "bare ZL_SEGMENT_SERIAL");
+}
+
+/* --- Empty serial input round-trip ---
+ * Empty input is fed through processChunk(size=0) on both format-version
+ * paths in SEGM_serial. Both must produce valid compressed output that
+ * decompresses to 0 bytes. Pinning down both paths so a future change to
+ * either branch can't silently break empty-input handling. */
+
+static void verifySerial_emptyInputRoundTrip(int formatVersion)
+{
+    openzl::Compressor compressor;
+    compressor.setParameter(openzl::CParam::FormatVersion, formatVersion);
+    ZL_GraphID const graph     = makeSerialGraph(compressor.get());
+    ZL_GraphID const segmenter = ZL_Compressor_buildSerialSegmenter(
+            compressor.get(), ZL_MIN_CHUNK_SIZE, graph);
+    ASSERT_TRUE(ZL_GraphID_isValid(segmenter));
+    compressor.selectStartingGraph(segmenter);
+
+    openzl::CCtx cctx;
+    cctx.refCompressor(compressor);
+    auto compressed = cctx.compressSerial({});
+
+    ZL_DCtx* const rawDctx     = ZL_DCtx_create();
+    ZL_TypedBuffer* const tbuf = ZL_TypedBuffer_create();
+    ZL_Report const dr         = ZL_DCtx_decompressTBuffer(
+            rawDctx, tbuf, compressed.data(), compressed.size());
+    EXPECT_FALSE(ZL_isError(dr));
+    EXPECT_EQ(ZL_validResult(dr), 0u);
+
+    ZL_TypedBuffer_free(tbuf);
+    ZL_DCtx_free(rawDctx);
+}
+
+TEST(Segmenter, serial_emptyInput_newFormat)
+{
+    if (g_testVersion < ZL_CHUNK_VERSION_MIN)
+        return;
+    verifySerial_emptyInputRoundTrip(g_testVersion);
+}
+
+TEST(Segmenter, serial_emptyInput_oldFormat)
+{
+    /* Exercises the formatVersion < ZL_CHUNK_VERSION_MIN branch in
+     * SEGM_serial, which calls processChunk(size=0) directly without
+     * entering the chunk loop. */
+    verifySerial_emptyInputRoundTrip(ZL_CHUNK_VERSION_MIN - 1);
+}
+
+#if ZL_ALLOW_INTROSPECTION
+
+/* --- Verify chunk count using introspection hooks --- */
+
+static void verifySerialChunkCount(
+        size_t chunkByteSize,
+        size_t inputSize,
+        size_t expectedChunks)
+{
+    /* Generate input data */
+    unsigned char* input = (unsigned char*)malloc(inputSize);
+    assert(input);
+    for (size_t i = 0; i < inputSize; i++)
+        input[i] = (unsigned char)(i & 0xFF);
+
+    /* Build compressor */
+    openzl::Compressor compressor;
+    compressor.setParameter(openzl::CParam::FormatVersion, g_testVersion);
+    ZL_GraphID graph     = makeSerialGraph(compressor.get());
+    ZL_GraphID segmenter = ZL_Compressor_buildSerialSegmenter(
+            compressor.get(), chunkByteSize, graph);
+    ASSERT_TRUE(ZL_GraphID_isValid(segmenter));
+    compressor.selectStartingGraph(segmenter);
+
+    /* Compress with chunk counter */
+    ChunkCounterHook compressHook;
+    openzl::CCtx cctx;
+    cctx.refCompressor(compressor);
+    ZL_Report attachr = ZL_CCtx_attachIntrospectionHooks(
+            cctx.get(), compressHook.getRawHooks());
+    ASSERT_FALSE(ZL_isError(attachr));
+    auto compressed = cctx.compressSerial({ (const char*)input, inputSize });
+
+    EXPECT_EQ(compressHook.chunkCount, expectedChunks)
+            << "Compression: expected " << expectedChunks << " chunks for "
+            << inputSize << " bytes with " << chunkByteSize << " byte chunks";
+
+    /* Decompress with chunk counter */
+    DecompressChunkCounterHook decompressHook;
+    ZL_DCtx* rawDctx   = ZL_DCtx_create();
+    ZL_Report dattachr = ZL_DCtx_attachDecompressIntrospectionHooks(
+            rawDctx, decompressHook.getRawHooks());
+    ASSERT_FALSE(ZL_isError(dattachr));
+    ZL_TypedBuffer* tbuf = ZL_TypedBuffer_create();
+    ZL_Report dr         = ZL_DCtx_decompressTBuffer(
+            rawDctx, tbuf, compressed.data(), compressed.size());
+    ASSERT_FALSE(ZL_isError(dr));
+
+    EXPECT_EQ(decompressHook.chunkCount, expectedChunks)
+            << "Decompression: expected " << expectedChunks << " chunks";
+
+    /* Verify round-trip */
+    size_t decompressedSize = ZL_validResult(dr);
+    EXPECT_EQ(decompressedSize, inputSize);
+    EXPECT_EQ(memcmp(input, ZL_TypedBuffer_rPtr(tbuf), inputSize), 0);
+
+    ZL_TypedBuffer_free(tbuf);
+    ZL_DCtx_free(rawDctx);
+    free(input);
+}
+
+TEST(Segmenter, serial_chunkCount_singleChunk)
+{
+    if (g_testVersion < ZL_CHUNK_VERSION_MIN)
+        return;
+    /* Half-chunk-size of input → 1 chunk */
+    verifySerialChunkCount(ZL_MIN_CHUNK_SIZE, ZL_MIN_CHUNK_SIZE / 2, 1);
+}
+
+TEST(Segmenter, serial_chunkCount_exactSplit)
+{
+    if (g_testVersion < ZL_CHUNK_VERSION_MIN)
+        return;
+    /* 2x ZL_MIN_CHUNK_SIZE bytes → exactly 2 chunks */
+    verifySerialChunkCount(ZL_MIN_CHUNK_SIZE, 2 * ZL_MIN_CHUNK_SIZE, 2);
+}
+
+TEST(Segmenter, serial_chunkCount_unevenSplit)
+{
+    if (g_testVersion < ZL_CHUNK_VERSION_MIN)
+        return;
+    /* 2x chunk + 100 bytes → 3 chunks (chunk + chunk + 100-byte remainder) */
+    verifySerialChunkCount(ZL_MIN_CHUNK_SIZE, 2 * ZL_MIN_CHUNK_SIZE + 100, 3);
+}
+
+TEST(Segmenter, serial_chunkCount_manyChunks)
+{
+    if (g_testVersion < ZL_CHUNK_VERSION_MIN)
+        return;
+    /* 16x ZL_MIN_CHUNK_SIZE bytes → 16 chunks */
+    verifySerialChunkCount(ZL_MIN_CHUNK_SIZE, 16 * ZL_MIN_CHUNK_SIZE, 16);
 }
 
 #endif // ZL_ALLOW_INTROSPECTION
