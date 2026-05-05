@@ -28,7 +28,8 @@ namespace {
  */
 std::shared_ptr<const std::string_view> runReplacements(
         Compressor& compressor,
-        const std::unordered_map<std::string, ACECompressor>& replacements)
+        const std::unordered_map<std::string, ACECompressor>& replacements,
+        bool saveAceState)
 {
     // Add each graph to the compressor
     std::unordered_map<std::string, ZL_GraphID> newGraphIds;
@@ -40,8 +41,17 @@ std::shared_ptr<const std::string_view> runReplacements(
     // Replace each backend graph with the new GraphID
     for (const auto& [backendGraph, newGraphId] : newGraphIds) {
         auto backendGraphId = compressor.getGraph(backendGraph);
+        auto localParams    = LocalParams(ZL_Compressor_Graph_getLocalParams(
+                compressor.get(), backendGraphId.value()));
         compressor.unwrap(ZL_Compressor_overrideBaseGraph(
                 compressor.get(), backendGraphId.value(), newGraphId));
+        if (saveAceState) {
+            auto gp = ZL_GraphParameters{ .localParams = localParams.get() };
+            compressor.unwrap(
+                    ZL_Compressor_overrideGraphParams(
+                            compressor.get(), backendGraphId.value(), &gp),
+                    "Graph replacement failed");
+        }
     }
 
     auto serialized = compressor.serialize();
@@ -85,7 +95,8 @@ std::shared_ptr<const std::string_view> getSmallestCandidate(
         const std::unordered_map<
                 std::string,
                 std::vector<std::pair<ACECompressor, ACECompressionResult>>>&
-                allCandidates)
+                allCandidates,
+        bool saveAceState)
 {
     auto compressor = makeCompressor();
     std::unordered_map<std::string, ACECompressor> replacements;
@@ -93,7 +104,7 @@ std::shared_ptr<const std::string_view> getSmallestCandidate(
     for (const auto& [backendGraph, candidates] : allCandidates) {
         replacements.emplace(backendGraph, candidates[0].first);
     }
-    return runReplacements(compressor, replacements);
+    return runReplacements(compressor, replacements, saveAceState);
 }
 
 /**
@@ -127,7 +138,8 @@ std::shared_ptr<const std::string_view> makeCombinedCompressor(
         const std::unordered_map<
                 std::string,
                 std::vector<std::pair<ACECompressor, ACECompressionResult>>>&
-                allCandidates)
+                allCandidates,
+        bool saveAceState)
 {
     const auto& choices = candidate.choices();
     if (allCandidates.size() != choices.size()) {
@@ -143,7 +155,7 @@ std::shared_ptr<const std::string_view> makeCombinedCompressor(
         replacements.emplace(name, compressor);
     }
     auto compressor = makeCompressor();
-    return runReplacements(compressor, replacements);
+    return runReplacements(compressor, replacements, saveAceState);
 }
 
 std::vector<std::pair<ACECompressor, ACECompressionResult>> benchmarkAce(
@@ -276,6 +288,7 @@ std::vector<std::shared_ptr<const std::string_view>> getCombinedCompressors(
         return std::move(
                 *trainParams.compressorGenFunc(*trainedSerializedCompressor));
     };
+
     auto compressor = makeCompressor();
     auto cctx       = refCCtxForTraining(compressor);
     auto serialized = compressor.serialize();
@@ -333,7 +346,8 @@ std::vector<std::shared_ptr<const std::string_view>> getCombinedCompressors(
     }
 
     if (!trainParams.paretoFrontier) {
-        return { getSmallestCandidate(makeCompressor, allCandidates) };
+        return { getSmallestCandidate(
+                makeCompressor, allCandidates, trainParams.saveAceState) };
     }
     std::vector<std::vector<CandidateSelection>> candidates;
     candidates.reserve(allCandidates.size());
@@ -347,7 +361,10 @@ std::vector<std::shared_ptr<const std::string_view>> getCombinedCompressors(
     paretoOptimalResults.reserve(frontier.size());
     for (auto& candidate : frontier) {
         paretoOptimalResults.push_back(makeCombinedCompressor(
-                candidate, makeCompressor, allCandidates));
+                candidate,
+                makeCompressor,
+                allCandidates,
+                trainParams.saveAceState));
     }
     return paretoOptimalResults;
 }
