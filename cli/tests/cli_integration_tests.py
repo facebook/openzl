@@ -118,6 +118,24 @@ class CsvGreedyTest(_CsvBaseTest):
         self.train_compress_decompress()
 
 
+class CsvSaveAceStateTest(_CsvBaseTest):
+    """
+    Test case for CSV training with --save-ace-state flag.
+
+    Verifies that training with --save-ace-state produces a compressor
+    that correctly compresses and decompresses files.
+    """
+
+    def test_train_compress_decompress(self):
+        execute_train(
+            compressor_info=self.training_compressor_info,
+            uncompressed_dir=input_dir_path(self.input_dir_name),
+            trained_compressor_path=self.compressor_info.compressor_str,
+            extra_args="--save-ace-state",
+        )
+        self.compress_and_decompress_samples()
+
+
 class CsvFullSplitTest(_CsvBaseTest):
     """
     Test case for CSV training and compression using the full-split trainer.

@@ -440,3 +440,17 @@ custom_unittest(
         ":integration_test_bin",
     ],
 )
+
+custom_unittest(
+    name = "csv_save_ace_state_test",
+    command = [
+        "$(location :integration_test_bin)",
+        "$(location ..:zli)",
+        "CsvSaveAceStateTest.test_train_compress_decompress",
+    ],
+    type = "simple",
+    deps = [
+        "..:zli",
+        ":integration_test_bin",
+    ],
+)

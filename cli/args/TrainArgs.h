@@ -108,6 +108,12 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
                 0,
                 false,
                 "Enables pareto frontier training. This will output a directory containing all compressors in the pareto frontier.");
+        parser.addCommandFlag(
+                cmd(),
+                kSaveAceState,
+                0,
+                false,
+                "Save the ACE state as a local parameter in the trained compressor.");
     }
 
     explicit TrainArgs(const arg::ParsedArgs& parsed)
@@ -184,6 +190,7 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
                 parsed.cmdHasFlag(cmd(), kNoAceSuccessors);
 
         trainParams.noClustering = parsed.cmdHasFlag(cmd(), kNoClustering);
+        trainParams.saveAceState = parsed.cmdHasFlag(cmd(), kSaveAceState);
         trainParams.compressorGenFunc =
                 custom_parsers::createCompressorFromSerialized;
     }
@@ -226,6 +233,7 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
     inline static const std::string kMaxFileSizeMb   = "max-file-size-mb";
     inline static const std::string kMaxTotalSizeMb  = "max-total-size-mb";
     inline static const std::string kParetoFrontier  = "pareto-frontier";
+    inline static const std::string kSaveAceState    = "save-ace-state";
 };
 
 } // namespace openzl::cli

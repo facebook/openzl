@@ -2,6 +2,10 @@
 
 #include <gtest/gtest.h>
 #include <random>
+#include "custom_parsers/dependency_registration.h"
+#include "openzl/cpp/CCtx.hpp"
+#include "openzl/cpp/codecs/ACE.hpp"
+#include "tools/training/ace/ace.h"
 #include "tools/training/ace/ace_combination.h"
 
 namespace openzl {
@@ -140,6 +144,103 @@ TEST_F(ACECombinationTest, ProducesParetoOptimalCombination)
     setUpRandomFitnessCandidates(10, 40);
     auto frontier = combineCandidates(candidates_, params_);
     EXPECT_TRUE(isPareto(frontier));
+}
+
+TEST_F(ACECombinationTest, NoSaveAceStateProducesSmallerCompressor)
+{
+    // Create sample data: triple delta pattern compresses well with ACE
+    std::vector<uint64_t> data(1000, 1);
+    for (size_t i = 1; i < data.size(); ++i) {
+        data[i] += data[i - 1];
+    }
+    for (size_t i = 1; i < data.size(); ++i) {
+        data[i] += data[i - 1];
+    }
+    for (size_t i = 1; i < data.size(); ++i) {
+        data[i] += data[i - 1];
+    }
+    auto input = Input::refSerial(data.data(), data.size() * sizeof(data[0]));
+    std::vector<Input> inputsVec;
+    inputsVec.push_back(std::move(input));
+    std::vector<training::MultiInput> multiInputs;
+    multiInputs.emplace_back(std::move(inputsVec));
+
+    auto compressorGenFunc = [](poly::string_view serialized) {
+        auto compressor = std::make_unique<Compressor>();
+        compressor->deserialize(serialized);
+        return compressor;
+    };
+
+    // Train with saveAceState = true
+    std::shared_ptr<const std::string_view> resultWithAceState;
+    {
+        Compressor compressor;
+        compressor.selectStartingGraph(graphs::ACE()(compressor));
+        compressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+        training::TrainParams trainParams = {
+            .compressorGenFunc = compressorGenFunc,
+            .threads           = 1,
+            .saveAceState      = true,
+        };
+        ACETrainer trainer;
+        auto results =
+                trainer.train(multiInputs, compressor.serialize(), trainParams);
+        ASSERT_FALSE(results.empty());
+        resultWithAceState = results[0];
+    }
+
+    // Train with saveAceState = false (default)
+    std::shared_ptr<const std::string_view> resultWithoutAceState;
+    {
+        Compressor compressor;
+        compressor.selectStartingGraph(graphs::ACE()(compressor));
+        compressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+        training::TrainParams trainParams = {
+            .compressorGenFunc = compressorGenFunc,
+            .threads           = 1,
+            .saveAceState      = false,
+        };
+        ACETrainer trainer;
+        auto results =
+                trainer.train(multiInputs, compressor.serialize(), trainParams);
+        ASSERT_FALSE(results.empty());
+        resultWithoutAceState = results[0];
+    }
+
+    auto sizeWithAceState    = resultWithAceState->size();
+    auto sizeWithoutAceState = resultWithoutAceState->size();
+
+    // Serialized compressor without ACE state should be significantly smaller
+    EXPECT_GT(sizeWithAceState, 0);
+    EXPECT_GT(sizeWithoutAceState, 0);
+    EXPECT_LE(sizeWithoutAceState, sizeWithAceState / 2)
+            << "Serialized compressor without ACE state ("
+            << sizeWithoutAceState
+            << " bytes) should be at most half the size of one with ACE state ("
+            << sizeWithAceState << " bytes)";
+
+    // Compress data with both trained compressors and verify identical output
+    auto compressWithResult =
+            [&](const std::string_view& serializedCompressor) {
+                auto comp = compressorGenFunc(serializedCompressor);
+                CCtx cctx;
+                cctx.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+                cctx.refCompressor(*comp);
+                auto inputForCompress = Input::refSerial(
+                        data.data(), data.size() * sizeof(data[0]));
+                return cctx.compressOne(inputForCompress);
+            };
+    auto compressedWith    = compressWithResult(*resultWithAceState);
+    auto compressedWithout = compressWithResult(*resultWithoutAceState);
+
+    // Compressed output should be nearly identical — the small difference
+    // is due to ACE training being non-deterministic across independent runs.
+    // Allow up to 10% tolerance.
+    auto maxSize = std::max(compressedWith.size(), compressedWithout.size());
+    auto minSize = std::min(compressedWith.size(), compressedWithout.size());
+    EXPECT_LE(maxSize - minSize, maxSize / 10)
+            << "Compressed data sizes should be within 10%: "
+            << compressedWith.size() << " vs " << compressedWithout.size();
 }
 
 } // namespace tests
