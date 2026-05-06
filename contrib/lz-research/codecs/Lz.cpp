@@ -1085,7 +1085,13 @@ class Transform {
         ZS_FastTable_init(&largeT, largeMem.get(), 17, kLargeMatch);
         uint8_t const* anchor       = istart;
         uint8_t const* ip           = istart + 1;
-        uint8_t const* const ilimit = iend - kLargeMatch;
+        uint8_t const* const ilimit = iend - std::max<size_t>(kLargeMatch, 16);
+
+        const size_t numElts = iend - istart;
+        lits.resize(0);
+        offsets.resize(0);
+        litLens.reserve((numElts + kMinMatch) / kMinMatch);
+        matchLens.reserve((numElts + kMinMatch) / kMinMatch);
 
         auto emitMatch = [&](uint8_t const* match, uint8_t const* ptr) {
             uint32_t ml = matchLength(match, ptr, iend);
@@ -1121,7 +1127,6 @@ class Transform {
                 }
                 litLens.push_back(ll);
             }
-            litLens.push_back(ll);
             offsets.push_back(offset);
             matchLens.push_back(ml);
             //   ZS_FastTable_putT(&largeT, ip + 1, ip + 1 - istart,

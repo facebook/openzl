@@ -702,6 +702,7 @@ void OpenZLCompressor::configure(openzl::CCtx& cctx) const
 void OpenZLCompressor::configure(openzl::DCtx& dctx) const
 {
     lz::registerCustomCodecs(dctx);
+    dctx.unwrap(ZL_DCtx_setStreamArena(dctx.get(), ZL_DataArenaType_stack));
 }
 
 size_t OpenZLCompressor::compressBound(std::string_view data) const
