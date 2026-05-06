@@ -522,9 +522,19 @@ class ParquetChunkedTest(ParquetTest):
             extra_args="--chunk-size 2M",
         )
 
+        # Compare bytewise rather than by file size: ACE training has
+        # structural non-determinism that can produce two trained compressors
+        # of identical byte count even when their contents differ. The
+        # invariant we actually care about is that the chunk-size parameter
+        # was baked into the serialized compressor — which guarantees the
+        # *bytes* differ, but not the size.
+        with open(default_trained, "rb") as f:
+            default_bytes = f.read()
+        with open(chunked_trained, "rb") as f:
+            chunked_bytes = f.read()
         self.assertNotEqual(
-            os.path.getsize(default_trained),
-            os.path.getsize(chunked_trained),
+            default_bytes,
+            chunked_bytes,
             "Trained compressors should differ when --chunk-size is changed",
         )
 
