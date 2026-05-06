@@ -161,11 +161,14 @@ static ZL_Report SEGM_csv(ZL_Segmenter* sctx)
                     chunkByteSizeMax,
                     logicError,
                     "CSV chunk consumed fewer bytes than expected");
+            // CSV lexer did not find a newline after maxNumTokens tokens have
+            // been parsed in a single chunk. We therefore judge this as a bad
+            // input and do not handle this case.
             ZL_ERR_IF_NE(
                     types[numTokens - 1],
                     ZL_CSV_TokenType_Newline,
-                    logicError,
-                    "CSV chunk does not end with a newline");
+                    graph_parser_unhandledInput,
+                    "CSV input cannot be chunked to the targeted chunk size");
         }
         ZL_ERR_IF_ERR(SEGM_csvProcessChunk(
                 sctx,
