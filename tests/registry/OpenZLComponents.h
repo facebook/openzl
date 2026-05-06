@@ -83,6 +83,7 @@ enum class OpenZLComponentID {
     PartitionBitpack,
     SegmentNumeric,
     SegmentNumFromSerial,
+    SegmentSerial,
     SentinelByte,
     SentinelNum,
     CompressSmallLengths,
@@ -157,6 +158,7 @@ std::unique_ptr<OpenZLComponent> makeBitSplitBF16Component();
 std::unique_ptr<OpenZLComponent> makePartitionBitpackComponent();
 std::unique_ptr<OpenZLComponent> makeSegmentNumericComponent();
 std::unique_ptr<OpenZLComponent> makeSegmentNumFromSerialComponent();
+std::unique_ptr<OpenZLComponent> makeSegmentSerialComponent();
 std::unique_ptr<OpenZLComponent> makeSentinelByteComponent();
 std::unique_ptr<OpenZLComponent> makeSentinelNumComponent();
 std::unique_ptr<OpenZLComponent> makeCompressSmallLengthsComponent();
@@ -285,6 +287,8 @@ inline std::unique_ptr<OpenZLComponent> makeOpenZLComponent(
             return components::makeSegmentNumericComponent();
         case OpenZLComponentID::SegmentNumFromSerial:
             return components::makeSegmentNumFromSerialComponent();
+        case OpenZLComponentID::SegmentSerial:
+            return components::makeSegmentSerialComponent();
         case OpenZLComponentID::SentinelByte:
             return components::makeSentinelByteComponent();
         case OpenZLComponentID::SentinelNum:

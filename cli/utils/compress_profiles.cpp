@@ -319,10 +319,16 @@ compressProfiles()
         mp[kSerialName]         = std::make_shared<CompressProfile>(
                 kSerialName,
                 "Serial data (aka raw bytes)",
-                [](ZL_Compressor* compressor, void*, const ProfileArgs&) {
-                    return ZL_Compressor_buildACEGraphWithDefault(
+                [](ZL_Compressor* compressor, void*, const ProfileArgs& args) {
+                    ZL_GraphID inner = ZL_Compressor_buildACEGraphWithDefault(
                             compressor, ZL_GRAPH_LZ);
-                });
+                    size_t chunkSize = args.chunkSize().value_or(
+                            ZL_DEFAULT_SEGMENTER_CHUNK_BYTE_SIZE);
+                    return ZL_Compressor_buildSerialSegmenter(
+                            compressor, chunkSize, inner);
+                },
+                nullptr,
+                true);
 
         std::string kPytorchName = "pytorch";
         mp[kPytorchName]         = std::make_shared<CompressProfile>(

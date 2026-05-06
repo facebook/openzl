@@ -230,6 +230,34 @@ custom_unittest(
 )
 
 custom_unittest(
+    name = "serial_segmentation_default_test",
+    command = [
+        "$(location :integration_test_bin)",
+        "$(location ..:zli)",
+        "SerialSegmentationTest.test_serial_default_chunk_size",
+    ],
+    type = "simple",
+    deps = [
+        "..:zli",
+        ":integration_test_bin",
+    ],
+)
+
+custom_unittest(
+    name = "serial_segmentation_chunk_size_test",
+    command = [
+        "$(location :integration_test_bin)",
+        "$(location ..:zli)",
+        "SerialSegmentationTest.test_serial_with_chunk_size",
+    ],
+    type = "simple",
+    deps = [
+        "..:zli",
+        ":integration_test_bin",
+    ],
+)
+
+custom_unittest(
     name = "strict_mode_permissive_test",
     command = [
         "$(location :integration_test_bin)",
