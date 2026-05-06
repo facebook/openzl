@@ -34,6 +34,7 @@ nav:
     - Core Library Limitations: getting-started/library-limitations.md
   - SDDL:
       - Overview: sddl/index.md
+      - SDDL2 Announcement: sddl/sddl2-announcement.md
       - Current Language:
         - Getting Started: sddl/getting-started.md
         - Core Concepts: sddl/core-concepts.md
