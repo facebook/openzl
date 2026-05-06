@@ -79,7 +79,9 @@ std::vector<std::optional<T>> gen_vec(
 {
     std::vector<std::optional<T>> vec(numElts);
     for (size_t i = 0; i < numElts; ++i) {
-        if (nullable && (!f.has_more_data() || f.coin("null"))) {
+        if (!f.has_more_data()) {
+            vec[i] = nullable ? std::optional<T>{} : std::optional<T>(T{});
+        } else if (nullable && f.coin("null")) {
             vec[i] = std::nullopt;
         } else {
             vec[i] = Uniform<T>().gen(name, f);
@@ -97,8 +99,13 @@ std::vector<std::optional<std::string>> gen_str_vec(
         bool nullable)
 {
     std::vector<std::optional<std::string>> vec(numElts);
+    // Default value for non-nullable elements once the FDP is exhausted.
+    std::string defaultStr(lenDist.gen(name, f), '\0');
     for (size_t i = 0; i < numElts; ++i) {
-        if (nullable && (!f.has_more_data() || f.coin("null"))) {
+        if (!f.has_more_data()) {
+            vec[i] = nullable ? std::optional<std::string>{}
+                              : std::optional<std::string>(defaultStr);
+        } else if (nullable && f.coin("null")) {
             vec[i] = std::nullopt;
         } else {
             vec[i] = openzl::tests::gen_str(f, name, lenDist);
