@@ -11,9 +11,26 @@ if(OPENZL_BUILD_ML_SELECTOR)
     file(MAKE_DIRECTORY ${XGBOOST_INSTALL_DIR}/include)
     file(MAKE_DIRECTORY ${XGBOOST_LIB_DIR})
 
-    # Add XGBoost as external project due to vs build issues
-    # Turn logs on to prevent polluting stdout when building xgboost
-    # Disable DMLC stack trace to avoid dependency on execinfo.h
+    # On Windows/MSVC, static libraries don't have a "lib" prefix
+    if(MSVC)
+        set(XGBOOST_LIB_NAME "xgboost${CMAKE_STATIC_LIBRARY_SUFFIX}")
+        set(DMLC_LIB_NAME "dmlc${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    else()
+        set(XGBOOST_LIB_NAME "libxgboost${CMAKE_STATIC_LIBRARY_SUFFIX}")
+        set(DMLC_LIB_NAME "libdmlc${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    endif()
+
+    # Enable C++ exceptions for ClangCL.
+    if(MSVC)
+        set(XGBOOST_CXX_FLAGS
+            "-DDMLC_LOG_STACK_TRACE=0 /EHsc")
+    else()
+        set(XGBOOST_CXX_FLAGS
+            "-DDMLC_LOG_STACK_TRACE=0")
+    endif()
+
+    # Add XGBoost as external project
+    # Disable DMLC stack trace to avoid execinfo.h
     ExternalProject_Add(xgboost_external
         GIT_REPOSITORY https://github.com/dmlc/xgboost.git
         GIT_TAG        ccb511768e13d1670c10be07dea89d0edca138f3 # v3.1.0
@@ -24,17 +41,20 @@ if(OPENZL_BUILD_ML_SELECTOR)
             -DCMAKE_INSTALL_LIBDIR=lib
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
             -DUSE_OPENMP=OFF
-            -DBUILD_TESTING=OFF
             -DUSE_CUDA=OFF
             -DUSE_NCCL=OFF
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
             -DBUILD_STATIC_LIB=ON
-            "-DCMAKE_C_FLAGS=-DDMLC_LOG_STACK_TRACE=0"
-            "-DCMAKE_CXX_FLAGS=-DDMLC_LOG_STACK_TRACE=0"
             ${XGBOOST_EXTRA_CMAKE_ARGS}
+        CMAKE_CACHE_ARGS
+            "-DCMAKE_C_FLAGS:STRING=-DDMLC_LOG_STACK_TRACE=0"
+            "-DCMAKE_CXX_FLAGS:STRING=${XGBOOST_CXX_FLAGS}"
+            "-DBUILD_TESTING:BOOL=OFF"
+            "-DCMAKE_POLICY_DEFAULT_CMP0091:STRING=NEW"
+            "-DCMAKE_MSVC_RUNTIME_LIBRARY:STRING=${CMAKE_MSVC_RUNTIME_LIBRARY}"
         BUILD_BYPRODUCTS
-            ${XGBOOST_LIB_DIR}/libxgboost${CMAKE_STATIC_LIBRARY_SUFFIX}
-            ${XGBOOST_LIB_DIR}/libdmlc${CMAKE_STATIC_LIBRARY_SUFFIX}
+            ${XGBOOST_LIB_DIR}/${XGBOOST_LIB_NAME}
+            ${XGBOOST_LIB_DIR}/${DMLC_LIB_NAME}
         LOG_DOWNLOAD ON
         LOG_CONFIGURE ON
         LOG_BUILD ON
@@ -45,7 +65,7 @@ if(OPENZL_BUILD_ML_SELECTOR)
     add_library(xgboost STATIC IMPORTED GLOBAL)
     set_target_properties(xgboost PROPERTIES
         IMPORTED_LOCATION
-            ${XGBOOST_LIB_DIR}/libxgboost${CMAKE_STATIC_LIBRARY_SUFFIX}
+            ${XGBOOST_LIB_DIR}/${XGBOOST_LIB_NAME}
         INTERFACE_INCLUDE_DIRECTORIES ${XGBOOST_INSTALL_DIR}/include
     )
     add_dependencies(xgboost xgboost_external)
@@ -58,7 +78,7 @@ if(OPENZL_BUILD_ML_SELECTOR)
     add_library(dmlc STATIC IMPORTED GLOBAL)
     set_target_properties(dmlc PROPERTIES
         IMPORTED_LOCATION
-            ${XGBOOST_LIB_DIR}/libdmlc${CMAKE_STATIC_LIBRARY_SUFFIX}
+            ${XGBOOST_LIB_DIR}/${DMLC_LIB_NAME}
         INTERFACE_INCLUDE_DIRECTORIES ${XGBOOST_INSTALL_DIR}/include
     )
     add_dependencies(dmlc xgboost_external)

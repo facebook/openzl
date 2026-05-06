@@ -93,6 +93,12 @@ endif()
 message(STATUS "zstd dependency resolved successfully")
 
 # Set zstd build options before making it available
+# Disable zstd shared library on MSVC-frontend compilers (MSVC and ClangCL).
+# ClangCL: rc.exe cannot find Clang's internal headers (e.g. __stddef_ptrdiff_t.h).
+# Plain MSVC: static CRT (/MT) is incompatible with a dynamically-linked zstd DLL.
+if(CMAKE_C_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+    set(ZSTD_BUILD_SHARED OFF CACHE BOOL "")
+endif()
 set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "")
 set(ZSTD_BUILD_CONTRIB OFF CACHE BOOL "")
 set(ZSTD_BUILD_TESTS OFF CACHE BOOL "")

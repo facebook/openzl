@@ -97,7 +97,7 @@ int main(int argc, char* argv[])
         if (!output && !input->name().empty()) {
             std::filesystem::path path{ std::string(input->name()) };
             output = std::make_shared<tools::io::OutputFile>(
-                    path.replace_extension("bin"));
+                    path.replace_extension("bin").string());
         }
         const auto assembler = sddl2::Assembler();
         const auto bytecode  = assembler.assemble(input->contents());
