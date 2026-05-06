@@ -196,6 +196,10 @@ typedef struct {
 static void*
 ALLOC_HeapArena_allocImpl(HeapArena* arena, HeapMeta* meta, size_t size)
 {
+    ZL_STATIC_ASSERT(
+            sizeof(size_t) == 8,
+            "OpenZL currently only supports 64-bit platforms");
+
     if (meta == NULL) {
         return NULL;
     }
