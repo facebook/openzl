@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "openzl/shared/base64.h"
+
 #include "./utils.h"
 
 ////////////////////////////////////////
@@ -146,52 +148,6 @@ static uint64_t A1C_bigEndian64(uint64_t value)
             return 0;       \
         }                   \
     } while (0)
-
-const char A1C_kBase64Map[] = {
-    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
-    'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
-    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-    'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'
-};
-
-static ZL_MAYBE_UNUSED_FUNCTION size_t A1C_base64EncodedSize(size_t srcSize)
-{
-    size_t encodedSize = (srcSize / 3) * 4;
-    if (srcSize % 3 != 0) {
-        encodedSize += 4;
-    }
-    return encodedSize;
-}
-
-static size_t A1C_base64Encode(char* dst, const uint8_t* src, size_t srcSize)
-{
-    const char* const dstBegin  = dst;
-    const uint8_t* const srcEnd = src + srcSize;
-    for (; (srcEnd - src) >= 3; src += 3, dst += 4) {
-        dst[0] = A1C_kBase64Map[src[0] >> 2];
-        dst[1] = A1C_kBase64Map[((src[0] & 0x03) << 4) + ((src[1] >> 4))];
-        dst[2] = A1C_kBase64Map[((src[1] & 0x0f) << 2) + ((src[2] >> 6))];
-        dst[3] = A1C_kBase64Map[src[2] & 0x3f];
-    }
-
-    if (src < srcEnd) {
-        assert(src + 1 == srcEnd || src + 2 == srcEnd);
-        dst[0] = A1C_kBase64Map[src[0] >> 2];
-        if (src + 1 == srcEnd) {
-            dst[1] = A1C_kBase64Map[(src[0] & 0x03) << 4];
-            dst[2] = '=';
-        } else {
-            dst[1] = A1C_kBase64Map[((src[0] & 0x03) << 4) + (src[1] >> 4)];
-            dst[2] = A1C_kBase64Map[(src[1] & 0x0f) << 2];
-        }
-        dst[3] = '=';
-        dst += 4;
-    }
-    const size_t dstSize = (size_t)(dst - dstBegin);
-    assert(dstSize == A1C_base64EncodedSize(srcSize));
-    return dstSize;
-}
 
 ////////////////////////////////////////
 // Errors
@@ -1719,8 +1675,13 @@ A1C_Encoder_jsonBytes(A1C_Encoder* encoder, const A1C_Item* item)
             if (toEncode > 192) {
                 toEncode = 192;
             }
-            assert(A1C_base64EncodedSize(toEncode) <= sizeof(buffer));
-            const size_t base64Size = A1C_base64Encode(buffer, data, toEncode);
+            assert(ZL_base64EncodedSize(toEncode) <= sizeof(buffer));
+            ZL_Report b64Report =
+                    ZL_base64Encode(buffer, sizeof(buffer), data, toEncode);
+            if (ZL_isError(b64Report)) {
+                return false;
+            }
+            const size_t base64Size = ZL_validResult(b64Report);
             A1C_RET_IF_ERR(A1C_Encoder_write(encoder, buffer, base64Size));
             data += toEncode;
         }
