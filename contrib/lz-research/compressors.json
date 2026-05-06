@@ -1,26 +1,5 @@
 [
     {
-        "algorithm": "lz4",
-        "level": 1
-    },
-    {
-        "algorithm": "lz4like"
-    },
-    {
-        "algorithm": "openzl",
-        "params": {
-            "CompressionLevel": 1
-        },
-        "compressor_name": "lz-lz4"
-    },
-    {
-        "algorithm": "openzl",
-        "params": {
-            "CompressionLevel": 1
-        },
-        "compressor_name": "lz-lz4-huf"
-    },
-    {
         "algorithm": "zstd",
         "level": 1
     },
@@ -51,13 +30,6 @@
         "params": {
             "CompressionLevel": 1
         },
-        "compressor_name": "lz-zstd-iso"
-    },
-    {
-        "algorithm": "openzl",
-        "params": {
-            "CompressionLevel": 1
-        },
-        "compressor_name": "lz-zstd-buc"
+        "compressor_name": "lz-std-slow"
     }
 ]

@@ -8,6 +8,9 @@
 #include "codecs/Lz.hpp"
 #include "codecs/SmallInt.hpp"
 #include "codecs/VarByte.hpp"
+#include "openzl/codecs/zl_lz.h"
+#include "openzl/codecs/zl_partition.h"
+#include "openzl/compress/private_nodes.h"
 
 namespace openzl::lz {
 namespace {
@@ -110,6 +113,7 @@ lzZstdCompressor(int llBits, bool slow, bool iso = false, bool bucket = false)
     if (bucket) {
         offsets = bucket16Graph(compressor);
     }
+    offsets        = ZL_GRAPH_PARTITION_BITPACK;
     auto extraLens = smallIntGraph(
             compressor,
             slow ? huf : store,
@@ -117,6 +121,24 @@ lzZstdCompressor(int llBits, bool slow, bool iso = false, bool bucket = false)
     auto graph = compressor.buildStaticGraph(
             lzNode, { lits, tokens, offsets, extraLens });
     compressor.selectStartingGraph(graph);
+    return compressor.serialize();
+}
+
+std::string lzStdCompressor(bool slow)
+{
+    openzl::Compressor compressor;
+    registerGraphComponents(compressor);
+    auto lzNode = ZL_NODE_LZ;
+    auto store  = graphs::Store{}();
+    auto huf    = graphs::Huffman{}();
+    auto lits   = huf;
+    // auto tokens    = huf;
+    auto offsets = slow ? ZL_GRAPH_PARTITION_BITPACK : store;
+    auto lens    = slow ? ZL_GRAPH_COMPRESS_SMALL_LENGTHS : store;
+    auto graph =
+            compressor.buildStaticGraph(lzNode, { lits, offsets, lens, lens });
+    (void)graph;
+    compressor.selectStartingGraph(ZL_GRAPH_LZ);
     return compressor.serialize();
 }
 
@@ -155,7 +177,9 @@ std::string smallIntCompressor(int width, bool slow)
     auto quantize =
             nodes::QuantizeLengths{}(compressor, graphs::Fse{}(), store);
     auto graph = smallIntGraph(
-            compressor, slow ? huf : store, width == 2 ? store : quantize);
+            compressor,
+            slow ? huf : store,
+            width == 2 ? ZL_GRAPH_PARTITION_BITPACK : quantize);
     graph = nodes::ConvertSerialToNumLE{ width }(compressor, graph);
     compressor.selectStartingGraph(graph);
     return compressor.serialize();
@@ -167,6 +191,26 @@ std::string bucket16Compressor()
     registerGraphComponents(compressor);
     auto graph = bucket16Graph(compressor);
     graph      = nodes::ConvertSerialToNumLE{ 2 }(compressor, graph);
+    compressor.selectStartingGraph(graph);
+    return compressor.serialize();
+}
+
+std::string partitionOffsetsCompressor()
+{
+    openzl::Compressor compressor;
+    registerGraphComponents(compressor);
+    auto graph = ZL_GRAPH_PARTITION_BITPACK;
+    graph      = nodes::ConvertSerialToNumLE{ 2 }(compressor, graph);
+    compressor.selectStartingGraph(graph);
+    return compressor.serialize();
+}
+
+std::string huff16Compressor()
+{
+    openzl::Compressor compressor;
+    registerGraphComponents(compressor);
+    auto graph = ZL_GRAPH_HUFFMAN;
+    graph      = nodes::ConvertSerialToStruct{ 2 }(compressor, graph);
     compressor.selectStartingGraph(graph);
     return compressor.serialize();
 }
@@ -216,6 +260,14 @@ std::string getSerializedCompressor(std::string_view name)
         return smallIntCompressor(4, true);
     } else if (name == "bucket16") {
         return bucket16Compressor();
+    } else if (name == "partition-offsets") {
+        return partitionOffsetsCompressor();
+    } else if (name == "lz-std-fast") {
+        return lzStdCompressor(false);
+    } else if (name == "lz-std-slow") {
+        return lzStdCompressor(true);
+    } else if (name == "huff16") {
+        return huff16Compressor();
     }
     throw std::runtime_error("Unknown compressor: " + std::string(name));
 }
