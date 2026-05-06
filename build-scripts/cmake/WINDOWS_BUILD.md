@@ -56,6 +56,7 @@ cmake --build build --config Release
 ### MinGW-w64
 
 - Via MSYS2: `pacman -S mingw-w64-x86_64-gcc`
+  - For `zli` and test targets: also install `mingw-w64-x86_64-cmake`
 - Via w64devkit: Download from <https://github.com/skeeto/w64devkit>
 
 ## Examples

@@ -208,6 +208,8 @@ jobs:
           echo "=== Testing $CC $CXX ${{ matrix.msystem }} ==="
           CFLAGS=-Werror make lib V=1
           CFLAGS=-Werror CXXFLAGS=-Werror make test V=1
+          echo "=== Building with make -j ==="
+          make -j V=1
           echo "=== Build and test completed successfully ==="
 
 
