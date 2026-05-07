@@ -52,6 +52,10 @@ typedef struct {
     /// This field records that reference to the graph from which this graph
     /// was created. Set to ZL_GRAPH_ILLEGAL when there is no such graph.
     ZL_GraphID baseGraphID;
+    /// The minimum library version required for compressor deserializers to
+    /// recognize this graph and use this component for compression in the
+    /// expected manner.
+    unsigned minLibraryVersion;
 } Graph_Desc_internal;
 
 typedef struct {

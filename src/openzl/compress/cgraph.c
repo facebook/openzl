@@ -1,7 +1,8 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "openzl/compress/cgraph.h"
-#include "openzl/common/allocation.h" // ZL_malloc, ZL_free
+#include "openzl/codecs/encoder_registry.h" // ER_standardNodes, STANDARD_ENCODERS_NB
+#include "openzl/common/allocation.h"       // ZL_malloc, ZL_free
 #include "openzl/common/assertion.h"
 #include "openzl/common/errors_internal.h" // ZS2_RET_IF_ERR
 #include "openzl/common/opaque.h"
@@ -1364,6 +1365,38 @@ ZL_Report ZL_Compressor_Node_getDictIndex(
         return ZL_returnError(ZL_ErrorCode_dictNoRecord);
     }
     return ZL_returnValue(index);
+}
+
+ZL_Report ZL_Compressor_Node_getMinLibraryVersion(
+        const ZL_Compressor* compressor,
+        ZL_NodeID node)
+{
+    (void)compressor;
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_GE(
+            node.nid,
+            STANDARD_ENCODERS_NB,
+            parameter_invalid,
+            "node ID out of bounds");
+    ZL_ERR_IF(
+            ER_standardNodes[node.nid].nodetype == node_illegal,
+            node_invalid,
+            "node is not a valid standard node");
+    return ZL_returnValue(ER_standardNodes[node.nid].minLibraryVersion);
+}
+
+ZL_Report ZL_Compressor_Graph_getMinLibraryVersion(
+        const ZL_Compressor* compressor,
+        ZL_GraphID gid)
+{
+    (void)compressor;
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_GE(
+            gid.gid,
+            ZL_PrivateStandardGraphID_end,
+            parameter_invalid,
+            "graph ID out of bounds");
+    return ZL_returnValue(GR_standardGraphs[gid.gid].gdi.minLibraryVersion);
 }
 
 const void* CGRAPH_getDictObj(const ZL_Compressor* cgraph, size_t dictOffset)

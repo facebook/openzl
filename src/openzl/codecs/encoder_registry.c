@@ -45,20 +45,32 @@
 
 // Set _minFormatVersion to the value of ZL_MAX_FORMAT_VERSION
 // at the time you add the transform.
-#define REGISTER_TRANSFORM(_nid, _strid, _minFormatVersion, _macro) \
-    REGISTER_DEPRECATED_TRANSFORM(                                  \
-            _nid, _strid, _minFormatVersion, ZL_MAX_FORMAT_VERSION, _macro)
+#define REGISTER_TRANSFORM(                                      \
+        _nid, _strid, _minFormatVersion, _reqLibVersion, _macro) \
+    REGISTER_DEPRECATED_TRANSFORM(                               \
+            _nid,                                                \
+            _strid,                                              \
+            _minFormatVersion,                                   \
+            ZL_MAX_FORMAT_VERSION,                               \
+            _reqLibVersion,                                      \
+            _macro)
 
 /// Registers deprecated transforms that are no longer allowed to be used.
 /// Formats in the range [_minFormatVerison, _maxFormatVersion] support the
 /// transform.
-#define REGISTER_DEPRECATED_TRANSFORM(                              \
-        _nid, _strid, _minFormatVersion, _maxFormatVersion, _macro) \
+#define REGISTER_DEPRECATED_TRANSFORM( \
+        _nid,                          \
+        _strid,                        \
+        _minFormatVersion,             \
+        _maxFormatVersion,             \
+        _reqLibVersion,                \
+        _macro)                        \
     [_nid] = {                                                      \
     .nodetype = node_internalTransform,                             \
     .publicIDtype = trt_standard,                                   \
     .minFormatVersion = (_minFormatVersion),                        \
     .maxFormatVersion = (_maxFormatVersion),                        \
+    .minLibraryVersion = (_reqLibVersion),                          \
     .transformDesc = {                                              \
         .publicDesc = _macro(_strid),                               \
     },                                                              \
@@ -66,96 +78,96 @@
 
 // clang-format off
 const CNode ER_standardNodes[STANDARD_ENCODERS_NB] = {
-    [ZL_StandardNodeID_illegal] = { .nodetype = node_illegal, .minFormatVersion=ZL_MIN_FORMAT_VERSION, .maxFormatVersion=ZL_MAX_FORMAT_VERSION },
-    REGISTER_TRANSFORM(ZL_StandardNodeID_delta_int, ZL_StandardTransformID_delta_int, 3, EI_DELTA_INT),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_transpose_split, ZL_StandardTransformID_transpose_split, 11, EI_TRANSPOSE_SPLIT),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_zigzag, ZL_StandardTransformID_zigzag, 3, EI_ZIGZAG_NUM),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_dispatchN_byTag, ZL_StandardTransformID_dispatchN_byTag, 9, EI_DISPATCHNBYTAG),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_float32_deconstruct, ZL_StandardTransformID_float_deconstruct, 4, EI_FLOAT32_DECONSTRUCT),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_bfloat16_deconstruct, ZL_StandardTransformID_float_deconstruct, 5, EI_BFLOAT16_DECONSTRUCT),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_float16_deconstruct, ZL_StandardTransformID_float_deconstruct, 5, EI_FLOAT16_DECONSTRUCT),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_field_lz, ZL_StandardTransformID_field_lz, 3, EI_FIELD_LZ),
+    [ZL_StandardNodeID_illegal] = { .nodetype = node_illegal, .minFormatVersion=ZL_MIN_FORMAT_VERSION, .maxFormatVersion=ZL_MAX_FORMAT_VERSION, .minLibraryVersion=200 },
+    REGISTER_TRANSFORM(ZL_StandardNodeID_delta_int, ZL_StandardTransformID_delta_int, 3, 200, EI_DELTA_INT),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_transpose_split, ZL_StandardTransformID_transpose_split, 11, 200, EI_TRANSPOSE_SPLIT),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_zigzag, ZL_StandardTransformID_zigzag, 3, 200, EI_ZIGZAG_NUM),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_dispatchN_byTag, ZL_StandardTransformID_dispatchN_byTag, 9, 200, EI_DISPATCHNBYTAG),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_float32_deconstruct, ZL_StandardTransformID_float_deconstruct, 4, 200, EI_FLOAT32_DECONSTRUCT),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_bfloat16_deconstruct, ZL_StandardTransformID_float_deconstruct, 5, 200, EI_BFLOAT16_DECONSTRUCT),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_float16_deconstruct, ZL_StandardTransformID_float_deconstruct, 5, 200, EI_FLOAT16_DECONSTRUCT),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_field_lz, ZL_StandardTransformID_field_lz, 3, 200, EI_FIELD_LZ),
 
     // Conversion operations
-    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_serial_to_struct, ZL_StandardTransformID_convert_serial_to_struct, 3, EI_CONVERT_SERIAL_TO_STRUCT),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_serial_to_struct2, ZL_StandardTransformID_convert_serial_to_struct, 3, EI_CONVERT_SERIAL_TO_STRUCT2),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_serial_to_struct4, ZL_StandardTransformID_convert_serial_to_struct, 3, EI_CONVERT_SERIAL_TO_STRUCT4),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_serial_to_struct8, ZL_StandardTransformID_convert_serial_to_struct, 3, EI_CONVERT_SERIAL_TO_STRUCT8),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_struct_to_serial,  ZL_StandardTransformID_convert_struct_to_serial, 3, EI_CONVERT_STRUCT_TO_SERIAL),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_struct_to_num_le, ZL_StandardTransformID_convert_struct_to_num_le, 3, EI_CONVERT_STRUCT_TO_NUM_LE),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_struct_to_num_be, ZL_StandardTransformID_convert_struct_to_num_be, 21, EI_CONVERT_STRUCT_TO_NUM_BE),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_num_to_struct_le, ZL_StandardTransformID_convert_num_to_struct_le, 3, EI_CONVERT_NUM_TO_STRUCT_LE),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_serial_to_num8,  ZL_StandardTransformID_convert_serial_to_num_le, 3, EI_CONVERT_SERIAL_TO_NUM8),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_serial_to_num_le16, ZL_StandardTransformID_convert_serial_to_num_le, 3, EI_CONVERT_SERIAL_TO_NUM_LE16),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_serial_to_num_le32, ZL_StandardTransformID_convert_serial_to_num_le, 3, EI_CONVERT_SERIAL_TO_NUM_LE32),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_serial_to_num_le64, ZL_StandardTransformID_convert_serial_to_num_le, 3, EI_CONVERT_SERIAL_TO_NUM_LE64),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_serial_to_num_be16, ZL_StandardTransformID_convert_serial_to_num_be, 21, EI_CONVERT_SERIAL_TO_NUM_BE16),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_serial_to_num_be32, ZL_StandardTransformID_convert_serial_to_num_be, 21, EI_CONVERT_SERIAL_TO_NUM_BE32),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_serial_to_num_be64, ZL_StandardTransformID_convert_serial_to_num_be, 21, EI_CONVERT_SERIAL_TO_NUM_BE64),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_num_to_serial_le,   ZL_StandardTransformID_convert_num_to_serial_le, 3, EI_CONVERT_NUM_TO_SERIAL_LE),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_separate_string_components, ZL_StandardTransformID_separate_string_components, 10, EI_SEPARATE_VSF_COMPONENTS),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_parse_int, ZL_StandardTransformID_parse_int, 19, EI_PARSE_INT),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_serial_to_struct, ZL_StandardTransformID_convert_serial_to_struct, 3, 200, EI_CONVERT_SERIAL_TO_STRUCT),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_serial_to_struct2, ZL_StandardTransformID_convert_serial_to_struct, 3, 200, EI_CONVERT_SERIAL_TO_STRUCT2),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_serial_to_struct4, ZL_StandardTransformID_convert_serial_to_struct, 3, 200, EI_CONVERT_SERIAL_TO_STRUCT4),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_serial_to_struct8, ZL_StandardTransformID_convert_serial_to_struct, 3, 200, EI_CONVERT_SERIAL_TO_STRUCT8),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_struct_to_serial,  ZL_StandardTransformID_convert_struct_to_serial, 3, 200, EI_CONVERT_STRUCT_TO_SERIAL),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_struct_to_num_le, ZL_StandardTransformID_convert_struct_to_num_le, 3, 200, EI_CONVERT_STRUCT_TO_NUM_LE),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_struct_to_num_be, ZL_StandardTransformID_convert_struct_to_num_be, 21, 200, EI_CONVERT_STRUCT_TO_NUM_BE),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_num_to_struct_le, ZL_StandardTransformID_convert_num_to_struct_le, 3, 200, EI_CONVERT_NUM_TO_STRUCT_LE),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_serial_to_num8,  ZL_StandardTransformID_convert_serial_to_num_le, 3, 200, EI_CONVERT_SERIAL_TO_NUM8),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_serial_to_num_le16, ZL_StandardTransformID_convert_serial_to_num_le, 3, 200, EI_CONVERT_SERIAL_TO_NUM_LE16),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_serial_to_num_le32, ZL_StandardTransformID_convert_serial_to_num_le, 3, 200, EI_CONVERT_SERIAL_TO_NUM_LE32),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_serial_to_num_le64, ZL_StandardTransformID_convert_serial_to_num_le, 3, 200, EI_CONVERT_SERIAL_TO_NUM_LE64),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_serial_to_num_be16, ZL_StandardTransformID_convert_serial_to_num_be, 21, 200, EI_CONVERT_SERIAL_TO_NUM_BE16),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_serial_to_num_be32, ZL_StandardTransformID_convert_serial_to_num_be, 21, 200, EI_CONVERT_SERIAL_TO_NUM_BE32),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_serial_to_num_be64, ZL_StandardTransformID_convert_serial_to_num_be, 21, 200, EI_CONVERT_SERIAL_TO_NUM_BE64),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_convert_num_to_serial_le,   ZL_StandardTransformID_convert_num_to_serial_le, 3, 200, EI_CONVERT_NUM_TO_SERIAL_LE),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_separate_string_components, ZL_StandardTransformID_separate_string_components, 10, 200, EI_SEPARATE_VSF_COMPONENTS),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_parse_int, ZL_StandardTransformID_parse_int, 19, 200, EI_PARSE_INT),
 
-    REGISTER_TRANSFORM(ZL_StandardNodeID_bitunpack, ZL_StandardTransformID_bitunpack, 6, EI_BITUNPACK),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_range_pack, ZL_StandardTransformID_range_pack, 8, EI_RANGE_PACK),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_merge_sorted, ZL_StandardTransformID_merge_sorted, 9, EI_MERGE_SORTED),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_prefix, ZL_StandardTransformID_prefix, 11, EI_PREFIX),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_divide_by, ZL_StandardTransformID_divide_by, 16, EI_DIVIDE_BY_INT),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_dispatch_string, ZL_StandardTransformID_dispatch_string, 16, EI_DISPATCH_STRING),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_concat_serial, ZL_StandardTransformID_concat_serial, 16, EI_CONCAT_SERIAL),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_concat_num, ZL_StandardTransformID_concat_num, 17, EI_CONCAT_NUM),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_concat_struct, ZL_StandardTransformID_concat_struct, 17, EI_CONCAT_STRUCT),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_concat_string, ZL_StandardTransformID_concat_string, 18, EI_CONCAT_STRING),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_dedup_num, ZL_StandardTransformID_dedup_num, 16, EI_DEDUP_NUM),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_interleave_string, ZL_StandardTransformID_interleave_string, 20, EI_INTERLEAVE_STRING),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_tokenize_struct, ZL_StandardTransformID_tokenize_fixed, 8, EI_TOKENIZE_STRUCT),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_tokenize_numeric, ZL_StandardTransformID_tokenize_numeric, 8, EI_TOKENIZE_NUMERIC),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_tokenize_string, ZL_StandardTransformID_tokenize_string, 11, EI_TOKENIZE_STRING),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_quantize_offsets, ZL_StandardTransformID_quantize_offsets, 3, EI_QUANTIZE_OFFSETS),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_quantize_lengths, ZL_StandardTransformID_quantize_lengths, 3, EI_QUANTIZE_LENGTHS),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_bitsplit_top8, ZL_StandardTransformID_bitSplit, 24, EI_BITSPLIT_TOP8),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_bitsplit_fp, ZL_StandardTransformID_bitSplit, 24, EI_BITSPLIT_FP),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_bitsplit_bf16, ZL_StandardTransformID_bitSplit, 24, EI_BITSPLIT_BF16),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_partition, ZL_StandardTransformID_partition, 24, EI_PARTITION),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_split_byrange, ZL_StandardTransformID_splitn_num, 24, EI_SPLIT_BYRANGE),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_sentinel_byte, ZL_StandardTransformID_sentinel, 24, EI_SENTINEL_BYTE),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_sentinel_num, ZL_StandardTransformID_sentinel, 24, EI_SENTINEL),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_lz, ZL_StandardTransformID_lz, 24, EI_LZ),
-    REGISTER_TRANSFORM(ZL_StandardNodeID_mux_lengths, ZL_StandardTransformID_mux_lengths, 24, EI_MUX_LENGTHS),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_bitunpack, ZL_StandardTransformID_bitunpack, 6, 200, EI_BITUNPACK),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_range_pack, ZL_StandardTransformID_range_pack, 8, 200, EI_RANGE_PACK),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_merge_sorted, ZL_StandardTransformID_merge_sorted, 9, 200, EI_MERGE_SORTED),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_prefix, ZL_StandardTransformID_prefix, 11, 200, EI_PREFIX),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_divide_by, ZL_StandardTransformID_divide_by, 16, 200, EI_DIVIDE_BY_INT),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_dispatch_string, ZL_StandardTransformID_dispatch_string, 16, 200, EI_DISPATCH_STRING),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_concat_serial, ZL_StandardTransformID_concat_serial, 16, 200, EI_CONCAT_SERIAL),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_concat_num, ZL_StandardTransformID_concat_num, 17, 200, EI_CONCAT_NUM),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_concat_struct, ZL_StandardTransformID_concat_struct, 17, 200, EI_CONCAT_STRUCT),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_concat_string, ZL_StandardTransformID_concat_string, 18, 200, EI_CONCAT_STRING),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_dedup_num, ZL_StandardTransformID_dedup_num, 16, 200, EI_DEDUP_NUM),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_interleave_string, ZL_StandardTransformID_interleave_string, 20, 200, EI_INTERLEAVE_STRING),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_tokenize_struct, ZL_StandardTransformID_tokenize_fixed, 8, 200, EI_TOKENIZE_STRUCT),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_tokenize_numeric, ZL_StandardTransformID_tokenize_numeric, 8, 200, EI_TOKENIZE_NUMERIC),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_tokenize_string, ZL_StandardTransformID_tokenize_string, 11, 200, EI_TOKENIZE_STRING),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_quantize_offsets, ZL_StandardTransformID_quantize_offsets, 3, 200, EI_QUANTIZE_OFFSETS),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_quantize_lengths, ZL_StandardTransformID_quantize_lengths, 3, 200, EI_QUANTIZE_LENGTHS),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_bitsplit_top8, ZL_StandardTransformID_bitSplit, 24, 200, EI_BITSPLIT_TOP8),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_bitsplit_fp, ZL_StandardTransformID_bitSplit, 24, 200, EI_BITSPLIT_FP),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_bitsplit_bf16, ZL_StandardTransformID_bitSplit, 24, 200, EI_BITSPLIT_BF16),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_partition, ZL_StandardTransformID_partition, 24, 200, EI_PARTITION),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_split_byrange, ZL_StandardTransformID_splitn_num, 24, 200, EI_SPLIT_BYRANGE),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_sentinel_byte, ZL_StandardTransformID_sentinel, 24, 200, EI_SENTINEL_BYTE),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_sentinel_num, ZL_StandardTransformID_sentinel, 24, 200, EI_SENTINEL),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_lz, ZL_StandardTransformID_lz, 24, 200, EI_LZ),
+    REGISTER_TRANSFORM(ZL_StandardNodeID_mux_lengths, ZL_StandardTransformID_mux_lengths, 24, 200, EI_MUX_LENGTHS),
 
     // Private Nodes
-    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_set_string_lens,           ZL_StandardTransformID_convert_serial_string, 10, EI_SETSTRINGLENS),
-    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_fse_v2, ZL_StandardTransformID_fse_v2, 15, EI_FSE_V2),
-    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_huffman_v2, ZL_StandardTransformID_huffman_v2, 15, EI_HUFFMAN_V2),
-    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_huffman_struct_v2, ZL_StandardTransformID_huffman_struct_v2, 15, EI_HUFFMAN_STRUCT_V2),
-    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_fse_ncount, ZL_StandardTransformID_fse_ncount, 15, EI_FSE_NCOUNT),
-    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_zstd, ZL_StandardTransformID_zstd, 3, EI_ZSTD),
-    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_bitpack_serial, ZL_StandardTransformID_bitpack_serial, 3, EI_BITPACK_SERIALIZED),
-    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_bitpack_int, ZL_StandardTransformID_bitpack_int, 3, EI_BITPACK_INTEGER),
-    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_flatpack, ZL_StandardTransformID_flatpack, 3, EI_FLATPACK),
-    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_splitN, ZL_StandardTransformID_splitn, 9, EI_SPLITN),
-    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_splitN_struct, ZL_StandardTransformID_splitn_struct, 15, EI_SPLITN_STRUCT),
-    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_splitN_num, ZL_StandardTransformID_splitn_num, 15, EI_SPLITN_NUM),
-    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_split_by_struct, ZL_StandardTransformID_splitByStruct, ZL_StandardTransformMinVersion_splitByStruct, EI_SPLITBYSTRUCT),
-    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_constant_serial, ZL_StandardTransformID_constant_serial, 11, EI_CONSTANT_SERIALIZED),
-    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_constant_fixed, ZL_StandardTransformID_constant_fixed, 11, EI_CONSTANT_FIXED),
-    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_tokenize_sorted, ZL_StandardTransformID_tokenize_numeric, 8, EI_TOKENIZE_SORTED),
-    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_tokenize_string_sorted, ZL_StandardTransformID_tokenize_string, 11, EI_TOKENIZE_VSF_SORTED),
-    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_dedup_num_trusted, ZL_StandardTransformID_dedup_num, 16, EI_DEDUP_NUM_TRUSTED),
-    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_lz4, ZL_StandardTransformID_lz4, 23, EI_LZ4),
-    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_bitSplit, ZL_StandardTransformID_bitSplit, 24, EI_BITSPLIT),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_set_string_lens,           ZL_StandardTransformID_convert_serial_string, 10, 200, EI_SETSTRINGLENS),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_fse_v2, ZL_StandardTransformID_fse_v2, 15, 200, EI_FSE_V2),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_huffman_v2, ZL_StandardTransformID_huffman_v2, 15, 200, EI_HUFFMAN_V2),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_huffman_struct_v2, ZL_StandardTransformID_huffman_struct_v2, 15, 200, EI_HUFFMAN_STRUCT_V2),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_fse_ncount, ZL_StandardTransformID_fse_ncount, 15, 200, EI_FSE_NCOUNT),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_zstd, ZL_StandardTransformID_zstd, 3, 200, EI_ZSTD),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_bitpack_serial, ZL_StandardTransformID_bitpack_serial, 3, 200, EI_BITPACK_SERIALIZED),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_bitpack_int, ZL_StandardTransformID_bitpack_int, 3, 200, EI_BITPACK_INTEGER),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_flatpack, ZL_StandardTransformID_flatpack, 3, 200, EI_FLATPACK),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_splitN, ZL_StandardTransformID_splitn, 9, 200, EI_SPLITN),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_splitN_struct, ZL_StandardTransformID_splitn_struct, 15, 200, EI_SPLITN_STRUCT),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_splitN_num, ZL_StandardTransformID_splitn_num, 15, 200, EI_SPLITN_NUM),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_split_by_struct, ZL_StandardTransformID_splitByStruct, ZL_StandardTransformMinVersion_splitByStruct, 200, EI_SPLITBYSTRUCT),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_constant_serial, ZL_StandardTransformID_constant_serial, 11, 200, EI_CONSTANT_SERIALIZED),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_constant_fixed, ZL_StandardTransformID_constant_fixed, 11, 200, EI_CONSTANT_FIXED),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_tokenize_sorted, ZL_StandardTransformID_tokenize_numeric, 8, 200, EI_TOKENIZE_SORTED),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_tokenize_string_sorted, ZL_StandardTransformID_tokenize_string, 11, 200, EI_TOKENIZE_VSF_SORTED),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_dedup_num_trusted, ZL_StandardTransformID_dedup_num, 16, 200, EI_DEDUP_NUM_TRUSTED),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_lz4, ZL_StandardTransformID_lz4, 23, 200, EI_LZ4),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_bitSplit, ZL_StandardTransformID_bitSplit, 24, 200, EI_BITSPLIT),
 
     // Deprecated Nodes
-    REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_rolz_deprecated, ZL_StandardTransformID_rolz, 3, 12, EI_ROLZ),
-    REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_fastlz_deprecated, ZL_StandardTransformID_fastlz, 3, 12, EI_FASTLZ),
-    REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_fse_deprecated, ZL_StandardTransformID_fse_deprecated, 3, 14, EI_FSE),
-    REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_huffman_deprecated, ZL_StandardTransformID_huffman_deprecated, 3, 14, EI_HUFFMAN),
-    REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_huffman_fixed_deprecated, ZL_StandardTransformID_huffman_fixed_deprecated, 3, 14, EI_HUFFMAN_FIXED),
-    REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_zstd_fixed_deprecated, ZL_StandardTransformID_zstd_fixed, 3, 10, EI_ZSTD_FIXED),
-    REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_transpose_deprecated, ZL_StandardTransformID_transpose, 3, 10, EI_TRANSPOSE),
-    REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_transpose_split2_deprecated, ZL_StandardTransformID_transpose_split2, 3, 10, EI_TRANSPOSE_SPLIT2),
-    REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_transpose_split4_deprecated, ZL_StandardTransformID_transpose_split4, 3, 10, EI_TRANSPOSE_SPLIT4),
-    REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_transpose_split8_deprecated, ZL_StandardTransformID_transpose_split8, 3, 10, EI_TRANSPOSE_SPLIT8),
+    REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_rolz_deprecated, ZL_StandardTransformID_rolz, 3, 12, 200, EI_ROLZ),
+    REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_fastlz_deprecated, ZL_StandardTransformID_fastlz, 3, 12, 200, EI_FASTLZ),
+    REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_fse_deprecated, ZL_StandardTransformID_fse_deprecated, 3, 14, 200, EI_FSE),
+    REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_huffman_deprecated, ZL_StandardTransformID_huffman_deprecated, 3, 14, 200, EI_HUFFMAN),
+    REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_huffman_fixed_deprecated, ZL_StandardTransformID_huffman_fixed_deprecated, 3, 14, 200, EI_HUFFMAN_FIXED),
+    REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_zstd_fixed_deprecated, ZL_StandardTransformID_zstd_fixed, 3, 10, 200, EI_ZSTD_FIXED),
+    REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_transpose_deprecated, ZL_StandardTransformID_transpose, 3, 10, 200, EI_TRANSPOSE),
+    REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_transpose_split2_deprecated, ZL_StandardTransformID_transpose_split2, 3, 10, 200, EI_TRANSPOSE_SPLIT2),
+    REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_transpose_split4_deprecated, ZL_StandardTransformID_transpose_split4, 3, 10, 200, EI_TRANSPOSE_SPLIT4),
+    REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_transpose_split8_deprecated, ZL_StandardTransformID_transpose_split8, 3, 10, 200, EI_TRANSPOSE_SPLIT8),
 };
 // clang-format on
 
