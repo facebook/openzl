@@ -51,7 +51,7 @@ set(CMAKE_MODULE_PATH
 # ---- Package Information ----
 if (NOT DEFINED PACKAGE_VERSION)
     # TODO: How do we set the package version based on our headers?
-    set(PACKAGE_VERSION "0.0.0-dev")
+    set(PACKAGE_VERSION "0.2.0")
 endif()
 set(PACKAGE_STRING "${PACKAGE_NAME} ${PACKAGE_VERSION}")
 set(PACKAGE_TARNAME "${PACKAGE_NAME}-${PACKAGE_VERSION}")
