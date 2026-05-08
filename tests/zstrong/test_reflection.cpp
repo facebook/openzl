@@ -2,9 +2,16 @@
 
 #include <gtest/gtest.h>
 
+#include "openzl/codecs/encoder_registry.h"
+#include "openzl/codecs/zl_delta.h"
+#include "openzl/codecs/zl_field_lz.h"
+#include "openzl/codecs/zl_store.h"
+#include "openzl/codecs/zl_zstd.h"
 #include "openzl/common/assertion.h"
 #include "openzl/common/errors_internal.h"
 #include "openzl/common/wire_format.h"
+#include "openzl/compress/graph_registry.h"
+#include "openzl/compress/private_nodes.h"
 #include "openzl/zl_compress.h"
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_reflection.h"
@@ -142,4 +149,60 @@ TEST_F(ReflectionTest, Conversion)
     const auto storedStream =
             ZL_ReflectionCtx_getStoredOutput_lastChunk(rctx_, 0u);
     ASSERT_EQ(streamContent(storedStream), "01234567");
+}
+
+TEST(VersionGetterTest, GraphVersionSucceedsForAllStandardGraphs)
+{
+    size_t nbGraphs = GR_getNbStandardGraphs();
+    std::vector<ZL_GraphID> graphs(nbGraphs);
+    GR_getAllStandardGraphIDs(graphs.data(), graphs.size());
+
+    for (const auto& gid : graphs) {
+        ZL_Report report =
+                ZL_Compressor_Graph_getMinLibraryVersion(nullptr, gid);
+        EXPECT_FALSE(ZL_isError(report))
+                << "Expected success for standard graph ID " << gid.gid;
+    }
+}
+
+TEST(VersionGetterTest,
+     GraphVersionReturnsParameterInvalidForOutOfBoundsGraphID)
+{
+    ZL_GraphID invalid = { .gid = 99999 };
+    ZL_Report report =
+            ZL_Compressor_Graph_getMinLibraryVersion(nullptr, invalid);
+    EXPECT_TRUE(ZL_isError(report));
+    EXPECT_EQ(ZL_errorCode(report), ZL_ErrorCode_parameter_invalid);
+}
+
+TEST(VersionGetterTest, NodeVersionSucceedsForAllStandardNodes)
+{
+    size_t nbNodes = ER_getNbStandardNodes();
+    std::vector<ZL_NodeID> nodes(nbNodes);
+    ER_getAllStandardNodeIDs(nodes.data(), nodes.size());
+
+    for (const auto& nid : nodes) {
+        ZL_Report report =
+                ZL_Compressor_Node_getMinLibraryVersion(nullptr, nid);
+        EXPECT_FALSE(ZL_isError(report))
+                << "Expected success for standard node ID " << nid.nid;
+    }
+}
+
+TEST(VersionGetterTest, NodeVersionReturnsParameterInvalidForOutOfBoundsID)
+{
+    ZL_NodeID invalid = { .nid = 99999 };
+    ZL_Report report =
+            ZL_Compressor_Node_getMinLibraryVersion(nullptr, invalid);
+    EXPECT_TRUE(ZL_isError(report));
+    EXPECT_EQ(ZL_errorCode(report), ZL_ErrorCode_parameter_invalid);
+}
+
+TEST(VersionGetterTest, NodeVersionReturnsNodeInvalidForIllegalNode)
+{
+    ZL_NodeID illegal = ZL_NODE_ILLEGAL;
+    ZL_Report report =
+            ZL_Compressor_Node_getMinLibraryVersion(nullptr, illegal);
+    EXPECT_TRUE(ZL_isError(report));
+    EXPECT_EQ(ZL_errorCode(report), ZL_ErrorCode_node_invalid);
 }

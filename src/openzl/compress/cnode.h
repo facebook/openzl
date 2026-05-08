@@ -46,6 +46,10 @@ typedef struct {
     /// This field records that reference to the node from which this node was
     /// created. Set to ZL_NODE_ILLEGAL when there is no such base node.
     ZL_NodeID baseNodeID;
+    /// The minimum library version required for compressor deserializers to
+    /// recognize this node and use this component for compression in the
+    /// expected manner.
+    unsigned minLibraryVersion;
 } CNode;
 
 /// @returns the local parameters for the @p cnode
