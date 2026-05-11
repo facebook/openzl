@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "openzl/shared/clustering.h"
-#include "openzl/shared/portability.h" // ZL_UNUSED
+#include "openzl/shared/portability.h" // ZL_UNUSED_ATTR
 
 #define kDumpGraph 1
 #define kGraphFile "clustering.dot"
@@ -182,7 +182,7 @@ static int64_t ZS_combineLoss(
     return combinedCost - separateCost;
 }
 
-static ZL_UNUSED void
+static ZL_UNUSED_ATTR void
 ZS_Histogram_compute(ZL_Histogram* hist, uint32_t maxSymbol, ZL_RC src)
 {
     uint8_t const* const ip = ZL_RC_ptr(&src);
