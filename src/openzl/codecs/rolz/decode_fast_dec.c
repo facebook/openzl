@@ -134,7 +134,7 @@ static ZL_MAYBE_UNUSED_FUNCTION void dpr16(
 
 #    define _ 0xFF
 // clang-format off
-static uint8_t const ZL_ALIGNED(16) ZL_UNUSED shuffle[8][16] = {
+static uint8_t const ZL_ALIGNED(16) ZL_UNUSED_ATTR shuffle[8][16] = {
   { 0x00, 0x01, 0x02, 0x03, 0x00, 0x01, 0x02, 0x03, 0x00, 0x01, 0x02, 0x03, _, _, _, _ }, // 000
   { 0x04, 0x05, 0x06, 0x07, 0x04, 0x05, 0x06, 0x07, 0x04, 0x05, 0x06, 0x07, _, _, _, _ }, // 001
   { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x04, 0x05, 0x06, 0x07, _, _, _, _ }, // 010
@@ -147,7 +147,7 @@ static uint8_t const ZL_ALIGNED(16) ZL_UNUSED shuffle[8][16] = {
 
 #undef _
 #define _ 9
-static ZL_ALIGNED(32) int32_t const shuffle7[128][8] ZL_UNUSED  = {
+static ZL_ALIGNED(32) int32_t const shuffle7[128][8] ZL_UNUSED_ATTR  = {
   { 0, 0, 0, 0, 0, 0, 0, _ }, // 0000000
   { 1, 1, 1, 1, 1, 1, 1, _ }, // 1000000
   { 0, 1, 1, 1, 1, 1, 1, _ }, // 0100000

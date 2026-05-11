@@ -17,6 +17,7 @@
 #include "openzl/zl_config.h"
 #include "openzl/zl_graph_api.h"
 #include "openzl/zl_input.h"
+#include "openzl/zl_portability.h"
 
 namespace openzl {
 namespace sddl2 {
@@ -168,7 +169,7 @@ inline SDDL2_Error popValue(SDDL2_Stack* stack, SDDL2_Value* out)
     return SDDL2_OK;
 }
 
-static void popAndVerifyI64(SDDL2_Stack* stack, int64_t expected)
+ZL_UNUSED_ATTR static void popAndVerifyI64(SDDL2_Stack* stack, int64_t expected)
 {
     SDDL2_Value result;
     ASSERT_EQ(popValue(stack, &result), SDDL2_OK);

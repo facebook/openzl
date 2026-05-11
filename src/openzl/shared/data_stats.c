@@ -5,7 +5,7 @@
 #include "openzl/shared/bits.h"
 #include "openzl/shared/data_stats.h"
 #include "openzl/shared/histogram.h"
-#include "openzl/shared/portability.h" // ZL_UNUSED
+#include "openzl/shared/portability.h" // ZL_UNUSED_ATTR
 #include "openzl/shared/utils.h"
 #include "openzl/shared/varint.h"
 
@@ -209,7 +209,7 @@ unsigned int const* DataStatsU8_getHistogram(DataStatsU8* stats)
     RETURN_OR_CALC_LAZY(stats, histogram, DataStatsU8_calcHistogram(stats));
 }
 
-static ZL_UNUSED void DataStatsU8_calcDeltaHistogram(DataStatsU8* stats)
+static ZL_UNUSED_ATTR void DataStatsU8_calcDeltaHistogram(DataStatsU8* stats)
 {
     if (!stats->histogramInitialized) {
         DataStatsU8_calcHistograms(stats);
