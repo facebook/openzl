@@ -170,7 +170,7 @@ class ZstrongGoogleBenchmarkResults:
         df[base_dimensions()].fillna("N/A")
         for m in base_metrics():
             if m not in df:
-                df[m] = np.NaN
+                df[m] = np.nan
         df = df[base_dimensions() + base_metrics()].copy()
         return cls(df)
 
@@ -198,7 +198,7 @@ class ZstrongGoogleBenchmarkResults:
                 f"Scuba table {table}/{subset} has duplciated columns, see https://www.internalfb.com/intern/qa/4589/how-to-solve-scuba-warning-duplicate-backend-colum"
             )
         for metric in base_metrics():
-            query_results[metric] = query_results[metric].replace("null", np.NaN)
+            query_results[metric] = query_results[metric].replace("null", np.nan)
             query_results[metric] = query_results[metric].astype(float)
         if len(query_results) == 0:
             raise RuntimeError("Couldn't find results in scuba")
@@ -265,9 +265,9 @@ class ZstrongGoogleBenchmarkResults:
         for metric, desc in key_metrics().items():
             log.debug(f"Processing metric {metric} {desc}")
             if metric not in self.results:
-                self.results[metric] = np.NaN
+                self.results[metric] = np.nan
                 continue
-            self.results[metric].fillna(np.NaN)
+            self.results[metric].fillna(np.nan)
 
             def top_values(arr, n):
                 if desc.deterministic or n == 0:
