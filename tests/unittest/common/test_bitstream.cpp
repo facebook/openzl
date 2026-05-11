@@ -11,6 +11,7 @@
 #include "openzl/codecs/common/bitstream/ff_bitstream.h"
 #include "openzl/fse/bitstream.h"
 #include "openzl/zl_errors.h"
+#include "openzl/zl_portability.h"
 #include "tests/utils.h"
 
 namespace openzl {
@@ -547,7 +548,7 @@ void printResults(std::string name, std::function<BenchmarkResult()> bm)
     fprintf(stderr, "\n");
 }
 
-void benchmark(int argc, char** argv)
+ZL_UNUSED_ATTR void benchmark(int argc, char** argv)
 {
     (void)argc, (void)argv;
     auto zsBm = [](size_t maxBits) {

@@ -24,6 +24,7 @@
 #include "openzl/zl_graph_api.h"  // ZL_FunctionGraphDesc
 #include "openzl/zl_input.h"
 #include "openzl/zl_opaque_types.h"
+#include "openzl/zl_portability.h"
 #include "openzl/zl_segmenter.h"
 #include "openzl/zl_selector.h"
 #include "openzl/zl_version.h" // ZL_MIN_FORMAT_VERSION
@@ -239,7 +240,9 @@ static ZL_GraphID permissiveGraph_asGraphF(ZL_Compressor* cgraph) noexcept
     return permissiveGraph(cgraph, g_failingGraph_forPermissive);
 }
 
-static size_t permissiveTest(ZL_GraphFn graphf, const char* testName)
+ZL_UNUSED_ATTR static size_t permissiveTest(
+        ZL_GraphFn graphf,
+        const char* testName)
 {
     printf("\n=========================== \n");
     printf(" Testing Permissive Mode \n");
@@ -347,7 +350,8 @@ PARSER_Result PARSER_analyzeChunk(PARSER_State* ps, const ZL_Input* input)
  * in this case it justs check that it received the expected value.
  * Input: Same as Segmenter ==> 1 Serial stream
  */
-ZL_Report test_PrivateGraphFn(ZL_Graph* graph, const void* payload)
+ZL_UNUSED_ATTR ZL_Report
+test_PrivateGraphFn(ZL_Graph* graph, const void* payload)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
     PARSER_State ps = *(const PARSER_State*)payload;

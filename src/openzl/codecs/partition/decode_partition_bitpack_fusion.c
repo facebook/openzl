@@ -11,13 +11,16 @@
 #include "openzl/shared/numeric_operations.h"
 #include "openzl/zl_input.h"
 #include "openzl/zl_output.h"
+#include "openzl/zl_portability.h"
 
 // ---------------------------------------------------------------------------
 // LUT builders: expand per-bucket base/mask arrays into packed 2-element LUTs
 // ---------------------------------------------------------------------------
 
 /// Build expanded LUT for nbBits=4: 2^4=16 raw entries -> 2^8=256 expanded.
-static void expandLUT4(const uint16_t* LUTx1, uint32_t LUTx2[256])
+ZL_UNUSED_ATTR static void expandLUT4(
+        const uint16_t* LUTx1,
+        uint32_t LUTx2[256])
 {
     for (size_t idx = 0; idx < 256; ++idx) {
         const size_t lo = idx & 0xF;
@@ -27,7 +30,9 @@ static void expandLUT4(const uint16_t* LUTx1, uint32_t LUTx2[256])
 }
 
 /// Build expanded LUT for nbBits=5: 2^5=32 raw entries -> 2^10=1024 expanded.
-static void expandLUT5(const uint16_t* LUTx1, uint32_t LUTx2[1024])
+ZL_UNUSED_ATTR static void expandLUT5(
+        const uint16_t* LUTx1,
+        uint32_t LUTx2[1024])
 {
     for (size_t idx = 0; idx < 1024; ++idx) {
         const size_t lo = idx & 31;
