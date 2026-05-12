@@ -43,7 +43,7 @@ zs_cxxlibrary(
     headers = ["zstrong_ml.h"],
     compiler_flags = ["-Wno-float-equal"],
     strict_conversions = False,
-    deps = ["//folly:base64"],
+    deps = [],
     exported_deps = [
         "gbt_predictor:zstrong_gbt_predictor",
         ":zstrong_cpp",

@@ -540,8 +540,7 @@ folly::dynamic MLTrainingSample::toDynamic() const
 std::string MLTrainingSample::toJson() const
 {
     folly::json::serialization_opts opts;
-    opts.dtoa_flags = folly::DtoaFlags::EMIT_TRAILING_DECIMAL_POINT
-            | folly::DtoaFlags::EMIT_TRAILING_ZERO_AFTER_POINT;
+    opts.float_format = folly::json::FloatFormat::SHORTEST_TRAILING_DOT_ZERO;
 
     return folly::json::serialize(toDynamic(), opts);
 }
@@ -568,8 +567,7 @@ std::string MLTrainingSamplesToJson(
     }
 
     folly::json::serialization_opts opts;
-    opts.dtoa_flags = folly::DtoaFlags::EMIT_TRAILING_DECIMAL_POINT
-            | folly::DtoaFlags::EMIT_TRAILING_ZERO_AFTER_POINT;
+    opts.float_format = folly::json::FloatFormat::SHORTEST_TRAILING_DOT_ZERO;
     return folly::json::serialize(array, opts);
 }
 
