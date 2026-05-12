@@ -13,11 +13,13 @@
 #include "openzl/common/limits.h"
 #include "openzl/common/logging.h"     // ZL_LOG
 #include "openzl/common/wire_format.h" // ZSTRONG_MAGIC_NUMBER, ZL_FrameProperties
-#include "openzl/shared/mem.h"         // writeLE32
-#include "openzl/shared/varint.h"      // ZL_varintEncode
-#include "openzl/shared/xxhash.h"      // XXH3_64bits
-#include "openzl/zl_data.h"            // ZL_Type
+#include "openzl/dict/dict_constants.h" // ZL_DICT_INDEX_NONE, ZL_UNIQUE_ID_SIZE
+#include "openzl/shared/mem.h"          // writeLE32
+#include "openzl/shared/varint.h"       // ZL_varintEncode
+#include "openzl/shared/xxhash.h"       // XXH3_64bits
+#include "openzl/zl_data.h"             // ZL_Type
 #include "openzl/zl_errors.h"
+#include "openzl/zl_unique_id.h" // ZL_UniqueID_significantBytes
 #include "openzl/zl_version.h"
 
 // computeFHsize() :
@@ -49,7 +51,8 @@ static ZL_Report computeFHBound(
 
     const size_t bound = 4 + (numInputs * 5) + ZL_varintSize(nbTransforms)
             + ZL_varintSize(nbBuffs - 1) + (nbBuffs * 4) + (nbTransforms * 22)
-            + (nbRegens * 4) + 4 + 4;
+            + (nbRegens * 4) + 4 + 4 + ((nbTransforms + 7) / 8) + 1
+            + (nbTransforms * 3);
     return ZL_returnValue(bound);
 }
 
@@ -323,6 +326,44 @@ static void compressNumInputs(
     }
 }
 
+// Compress per-codec dict bundle offsets (v24+)
+// - Bitmap encode has-dict flags (1 = has dict, 0 = no dict)
+// - Bitpack encode raw dict indices for has-dict entries
+static void compressDictIdxs(
+        ZL_WC* out,
+        const uint32_t dictIdxs[],
+        size_t nbCodecs,
+        uint32_t* wksp0,
+        uint32_t* wksp1)
+{
+    // Build bitmap and collect non-zero values
+    size_t nbNonZero = 0;
+    for (size_t n = 0; n < nbCodecs; n++) {
+        if (dictIdxs[n] != ZL_DICT_INDEX_NONE) {
+            wksp0[n]           = 1;
+            wksp1[nbNonZero++] = dictIdxs[n];
+        } else {
+            wksp0[n] = 0;
+        }
+    }
+
+    // bitpack has-dict flags
+    ZL_WC_bitpackEncode32(out, wksp0, nbCodecs, 1);
+
+    // bitpack non-empty values
+    if (nbNonZero > 0) {
+        uint32_t maxVal = 0;
+        for (size_t u = 0; u < nbNonZero; u++) {
+            if (wksp1[u] > maxVal)
+                maxVal = wksp1[u];
+        }
+        int const nbBits = ZL_nextPow2(maxVal + 1);
+        ZL_ASSERT_LE(nbBits, 16);
+        ZL_WC_push(out, (uint8_t)nbBits);
+        ZL_WC_bitpackEncode32(out, wksp1, nbNonZero, nbBits);
+    }
+}
+
 // Compress Stream Distances information
 // Values are bitpacked. nbBits is determined by Graph's size (bound)
 // Ideas for the future (@Cyan):
@@ -455,6 +496,11 @@ static ZL_Report writeFrameHeader_internal(
     ZL_TRY_LET(size_t, hsBound, computeFHBound(fip->numInputs, 0, 0, 0));
     // Add comment bytes relaxing header bound
     hsBound += fip->comment.size ? 4 + fip->comment.size : 0;
+    // Add bundleID bytes (v24+): 1 size byte + up to 32 ID bytes
+    if (encoder->formatVersion >= ZL_MATERIALIZED_DICT_VERSION_MIN
+        && fip->fprop->hasBundleID) {
+        hsBound += 1 + ZL_UNIQUE_ID_SIZE;
+    }
     ZL_DLOG(FRAME,
             "writeFrameHeader_internal (nbInputs=%zu, maxBound=%zu bytes)",
             fip->numInputs,
@@ -478,7 +524,23 @@ static ZL_Report writeFrameHeader_internal(
         if (encoder->formatVersion >= ZL_COMMENT_VERSION_MIN
             && fip->fprop->hasComment)
             flags |= 1 << 2;
+        if (encoder->formatVersion >= ZL_MATERIALIZED_DICT_VERSION_MIN
+            && fip->fprop->hasBundleID)
+            flags |= 1 << 3;
         ZL_WC_push(&out, flags);
+    }
+
+    // Store dict bundle ID (v24+): 1-byte size + variable-length ID
+    if (encoder->formatVersion >= ZL_MATERIALIZED_DICT_VERSION_MIN
+        && fip->fprop->hasBundleID) {
+        ZL_ASSERT_NN(fip->bundleID);
+        size_t const sigBytes =
+                ZL_UniqueID_significantBytes(&fip->bundleID->id);
+        ZL_ERR_IF_EQ(
+                sigBytes, 0, nodeParameter_invalid, "invalid (zero) bundle ID");
+        uint8_t const encLen = (uint8_t)sigBytes;
+        ZL_WC_push(&out, encLen);
+        ZL_WC_shove(&out, fip->bundleID->id.bytes, encLen);
     }
 
     // Nb of Inputs and their types
@@ -817,6 +879,14 @@ static ZL_Report writeChunkHeaderV8_internal(
                     "Version %u encoding format does not support Transforms featuring 2+ inputs",
                     encoder->formatVersion);
         }
+    }
+
+    /* Encode per-codec dict indices (v24+ only, when bundle is present)
+     */
+    if (encoder->formatVersion >= ZL_MATERIALIZED_DICT_VERSION_MIN
+        && fprop->hasBundleID) {
+        compressDictIdxs(
+                &out, gip->dictIdxs, nbCodecs, wksp->scratch0, wksp->scratch1);
     }
 
     /* Encode Regen Distances */

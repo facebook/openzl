@@ -60,3 +60,13 @@ ZL_UniqueID ZL_UniqueID_computeSHA256(const void* data, size_t size)
     ZL_sha256(data, size, result.bytes);
     return result;
 }
+
+size_t ZL_UniqueID_significantBytes(const ZL_UniqueID* id)
+{
+    for (size_t i = sizeof(id->bytes); i > 0; i--) {
+        if (id->bytes[i - 1] != 0) {
+            return i;
+        }
+    }
+    return 0;
+}

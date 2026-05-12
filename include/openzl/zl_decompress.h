@@ -369,6 +369,14 @@ ZL_RESULT_DECLARE_TYPE(ZL_Comment);
  */
 ZL_RESULT_OF(ZL_Comment) ZL_FrameInfo_getComment(const ZL_FrameInfo* zfi);
 
+/**
+ * @brief Gets the dict bundle ID referenced by the frame, if any.
+ *
+ * @returns A pointer to the bundle ID stored in @p zfi, or NULL if the frame
+ * does not reference a dict bundle.
+ */
+const ZL_BundleID* ZL_FrameInfo_getBundleID(const ZL_FrameInfo* zfi);
+
 // ----------------------------------------------------
 // Decompression of Typed content
 // ----------------------------------------------------

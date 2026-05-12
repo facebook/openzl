@@ -21,6 +21,9 @@
  *   + bit0: checksum of decoded data
  *   + bit1: checksum of encoded data (also control frame header checksum)
  *   + bit2: presence of a comment field
+ *   + bit3: v24+: presence of a dict bundle ID
+ * - v24+: if bit3 set: 1-byte ID size + variable-length dict bundle ID (up to
+ * 32 bytes)
  * - Input Type :
  *   + v13-: 0-byte , 1 Input assumed to be Serial
  *   + v14 : 1-byte, single Input, selectable type
@@ -102,6 +105,11 @@
  * - V16+ : Array of nbRegens
  *   + bit-packed flags separate 1-regen decoders from 2+ ones
  *   + 2+ regens values are shifted (-2) then varint encoded
+ * - V24+ : Array of dictIdx (dict bundle offsets)
+ *   + has-dict flags are bit-packed (1 = has dict, 0 = no dict)
+ *   + if any has-dict flag is set:
+ *     1-byte nbBits = ceil(log2(maxDictIdx + 1))
+ *     non-zero dict indices are bitpacked using nbBits bits each
  * - Array of streamID distances is bitpacked,
  *   with nbBits depending on graph's size.
  *   There is 1 distance per regenerated stream.
@@ -194,6 +202,7 @@ typedef struct {
     bool hasContentChecksum;
     bool hasCompressedChecksum;
     bool hasComment;
+    bool hasBundleID;
 } ZL_FrameProperties;
 
 typedef enum { trt_standard, trt_custom } TransformType_e;
