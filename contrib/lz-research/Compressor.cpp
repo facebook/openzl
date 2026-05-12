@@ -814,7 +814,8 @@ nlohmann::json OpenZLCompressor::train(
 
     nlohmann::json out = nlohmann::json::array();
     for (size_t idx = 0; idx < compressors.size(); ++idx) {
-        out.push_back(makeConfig(std::to_string(idx), *compressors[idx]));
+        out.push_back(makeConfig(
+                std::to_string(idx), compressors[idx].serializedCompressor));
     }
 
     return out;
