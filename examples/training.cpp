@@ -307,7 +307,8 @@ static void train_example(
     // --8<-- [start:compress]
     openzl::CCtx cctx;
     std::string out;
-    auto testCompressor = createCompressorFromSerialized(*serialized);
+    auto testCompressor =
+            createCompressorFromSerialized(serialized.serializedCompressor);
     // Try compressing every file provided
     for (const auto& inputPtr : *inputs) {
         cctx.setParameter(openzl::CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
@@ -326,7 +327,7 @@ static void train_example(
         std::cerr << "Error opening file for writing: " << outputPath
                   << std::endl;
     }
-    output << *serialized;
+    output << serialized.serializedCompressor;
     output.close();
 }
 

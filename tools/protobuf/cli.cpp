@@ -373,7 +373,7 @@ int handleTrain(TrainArgs args)
     ZL_LOG(ALWAYS,
            "Writing trained compressor to %s",
            std::string(args.output->name()).c_str());
-    args.output->write(*serialized);
+    args.output->write(serialized.serializedCompressor);
 
     return 0;
 }
