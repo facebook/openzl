@@ -3,11 +3,13 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <string_view>
 #include "openzl/cpp/Compressor.hpp"
 #include "tools/training/train_params.h"
+#include "tools/training/utils/serialized_compressor_internal.h"
 #include "tools/training/utils/utils.h"
 
 namespace openzl::training {
@@ -35,7 +37,7 @@ class ACETrainer {
      *         single compressor. Otherwise, it will contain a Pareto frontier
      *         of compressors.
      */
-    std::vector<std::shared_ptr<const std::string_view>> train(
+    std::vector<SerializedCompressorInternal> train(
             const std::vector<MultiInput>& inputs,
             std::string_view serializedCompressorInput,
             const TrainParams& trainParams);
@@ -45,13 +47,13 @@ class ACETrainer {
      * checkpoint is a serialization of the ace states containing the pareto
      * frontier produced during training.
      */
-    std::shared_ptr<const std::string_view> aceCheckpoint()
+    const std::optional<SerializedCompressorInternal>& aceCheckpoint()
     {
         return checkPoint_;
     }
 
    private:
-    std::shared_ptr<const std::string_view> checkPoint_;
+    std::optional<SerializedCompressorInternal> checkPoint_;
 };
 
 } // namespace openzl::training

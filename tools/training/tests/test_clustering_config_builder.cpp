@@ -34,9 +34,9 @@ class TestClusteringConfigBuilder : public testing::Test {
         typeToClusteringCodecIdxsMap_[ZL_Type_numeric] = { 2 };
         typeToClusteringCodecIdxsMap_[ZL_Type_string]  = { 3, 4 };
         // Set up compressor utils
-        auto samples    = setUpCompressSamples();
-        auto threadPool = std::make_shared<training::ThreadPool>(1);
-        cUtils_         = std::make_unique<training::CompressionUtils>(
+        auto samples = setUpCompressSamples();
+        training::ThreadPool threadPool(1);
+        cUtils_ = std::make_unique<training::CompressionUtils>(
                 compressor_.get(),
                 samples,
                 successors_,

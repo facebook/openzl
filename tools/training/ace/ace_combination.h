@@ -12,6 +12,7 @@
 
 #include "tools/training/ace/ace_compressor.h"
 #include "tools/training/train_params.h"
+#include "tools/training/utils/serialized_compressor_internal.h"
 #include "tools/training/utils/thread_pool.h"
 
 namespace openzl::training {
@@ -104,9 +105,9 @@ class CandidateSelection {
  * @param trainedSerializedCompressor The compressor obtained from ace training.
  * @param trainParams The training parameters to use for the algorithm.
  */
-std::vector<std::shared_ptr<const std::string_view>> getCombinedCompressors(
+std::vector<SerializedCompressorInternal> getCombinedCompressors(
         const std::vector<MultiInput>& inputs,
-        std::shared_ptr<const std::string_view> trainedSerializedCompressor,
+        const SerializedCompressorInternal& trainedSerializedCompressor,
         const TrainParams& trainParams);
 
 /**

@@ -1,12 +1,14 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <gtest/gtest.h>
+#include <optional>
 #include <random>
 #include "custom_parsers/dependency_registration.h"
 #include "openzl/cpp/CCtx.hpp"
 #include "openzl/cpp/codecs/ACE.hpp"
 #include "tools/training/ace/ace.h"
 #include "tools/training/ace/ace_combination.h"
+#include "tools/training/utils/serialized_compressor_internal.h"
 
 namespace openzl {
 namespace training {
@@ -172,7 +174,7 @@ TEST_F(ACECombinationTest, NoSaveAceStateProducesSmallerCompressor)
     };
 
     // Train with saveAceState = true
-    std::shared_ptr<const std::string_view> resultWithAceState;
+    std::optional<SerializedCompressorInternal> resultWithAceState;
     {
         Compressor compressor;
         compressor.selectStartingGraph(graphs::ACE()(compressor));
@@ -186,11 +188,11 @@ TEST_F(ACECombinationTest, NoSaveAceStateProducesSmallerCompressor)
         auto results =
                 trainer.train(multiInputs, compressor.serialize(), trainParams);
         ASSERT_FALSE(results.empty());
-        resultWithAceState = results[0];
+        resultWithAceState.emplace(std::move(results[0]));
     }
 
     // Train with saveAceState = false (default)
-    std::shared_ptr<const std::string_view> resultWithoutAceState;
+    std::optional<SerializedCompressorInternal> resultWithoutAceState;
     {
         Compressor compressor;
         compressor.selectStartingGraph(graphs::ACE()(compressor));
@@ -204,11 +206,11 @@ TEST_F(ACECombinationTest, NoSaveAceStateProducesSmallerCompressor)
         auto results =
                 trainer.train(multiInputs, compressor.serialize(), trainParams);
         ASSERT_FALSE(results.empty());
-        resultWithoutAceState = results[0];
+        resultWithoutAceState.emplace(std::move(results[0]));
     }
 
-    auto sizeWithAceState    = resultWithAceState->size();
-    auto sizeWithoutAceState = resultWithoutAceState->size();
+    auto sizeWithAceState    = (**resultWithAceState).size();
+    auto sizeWithoutAceState = (**resultWithoutAceState).size();
 
     // Serialized compressor without ACE state should be significantly smaller
     EXPECT_GT(sizeWithAceState, 0);
@@ -230,8 +232,8 @@ TEST_F(ACECombinationTest, NoSaveAceStateProducesSmallerCompressor)
                         data.data(), data.size() * sizeof(data[0]));
                 return cctx.compressOne(inputForCompress);
             };
-    auto compressedWith    = compressWithResult(*resultWithAceState);
-    auto compressedWithout = compressWithResult(*resultWithoutAceState);
+    auto compressedWith    = compressWithResult(**resultWithAceState);
+    auto compressedWithout = compressWithResult(**resultWithoutAceState);
 
     // Compressed output should be nearly identical — the small difference
     // is due to ACE training being non-deterministic across independent runs.

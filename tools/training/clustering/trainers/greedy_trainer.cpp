@@ -240,7 +240,7 @@ void GreedyTrainer::initSimilarInputs(
                         / (marginalCosts_[column1] + marginalCosts_[column2]);
                 return std::make_pair(contextualSimilarity, column2);
             };
-            futures.emplace_back(threadPool_->run(task));
+            futures.emplace_back(threadPool_.run(task));
         }
         similarityScoreColumns.reserve(futures.size());
         for (auto& future : futures) {

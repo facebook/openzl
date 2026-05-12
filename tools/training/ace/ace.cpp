@@ -14,6 +14,7 @@
 #include "tools/training/ace/automated_compressor_explorer.h"
 #include "tools/training/graph_mutation/graph_mutation_utils.h"
 #include "tools/training/sample_collection/training_sample_collector.h"
+#include "tools/training/utils/serialized_compressor_internal.h"
 #include "tools/training/utils/utils.h"
 
 namespace openzl::training {
@@ -74,7 +75,7 @@ std::string trainBackend(
 
 } // namespace
 
-std::vector<std::shared_ptr<const std::string_view>> ACETrainer::train(
+std::vector<SerializedCompressorInternal> ACETrainer::train(
         const std::vector<MultiInput>& inputs,
         std::string_view serializedCompressorInput,
         const TrainParams& trainParams)
@@ -153,8 +154,7 @@ std::vector<std::shared_ptr<const std::string_view>> ACETrainer::train(
                         compressor.get(), backendGraphID, &gp),
                 "Graph replacement failed");
     }
-    checkPoint_ =
-            graph_mutation::createSharedStringView(compressor.serialize());
-    return getCombinedCompressors(inputs, checkPoint_, trainParams);
+    checkPoint_.emplace(compressor.serialize());
+    return getCombinedCompressors(inputs, *checkPoint_, trainParams);
 }
 } // namespace openzl::training
