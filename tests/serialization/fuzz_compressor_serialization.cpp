@@ -99,86 +99,82 @@ FUZZ(CompressorSerializationTest, FuzzDeserializeAndCompressSimpleRestricted)
 
     datagen::DataGen gen = fromFDP(f);
     // Use openzl components to additionally produce a corpus
-    auto openzlComponents = getAllOpenZLComponents();
-    while (gen.has_more_data()) {
-        size_t componentIdx = gen.usize_range(
-                "component_idx", 0, openzlComponents.size() - 1);
-        auto& openzlComponent = openzlComponents[componentIdx];
-        if (!openzlComponent->supportsSerialization()) {
+    auto componentIdx = (OpenZLComponentID)gen.usize_range(
+            "component_idx", 0, (size_t)OpenZLComponentID::NumComponents - 1);
+    auto openzlComponent = makeOpenZLComponent(componentIdx);
+    if (!openzlComponent->supportsSerialization()) {
+        return;
+    }
+    Compressor compressor;
+    std::vector<GraphID> graphs = openzlComponent->predefinedGraphs(compressor);
+    for (auto graph : openzlComponent->generateGraphs(compressor, gen, 1)) {
+        graphs.push_back(graph);
+    }
+
+    for (auto node : openzlComponent->predefinedNodes(compressor)) {
+        graphs.push_back(buildTrivialGraph(compressor.get(), node));
+    }
+    for (auto node : openzlComponent->generateNodes(compressor, gen, 1)) {
+        graphs.push_back(buildTrivialGraph(compressor.get(), node));
+    }
+    if (graphs.empty()) {
+        return;
+    }
+    std::shuffle(graphs.begin(), graphs.end(), seededGen);
+    // Reuse cctx and dctx for each component
+    CCtx cctx;
+    DCtx dctx;
+    openzlComponent->registerComponent(dctx);
+    // Test all graphs in list
+    for (auto graph : graphs) {
+        if (!gen.has_more_data()) {
+            break;
+        }
+        compressor.selectStartingGraph(graph);
+        auto serialized = compressor.serialize();
+
+        // Deserialize the graph
+        Compressor deserializedCompressor;
+        // Register the component in case it is non-standard
+        openzlComponent->registerComponent(deserializedCompressor);
+        try {
+            deserializedCompressor.deserialize(serialized);
+        } catch (const std::exception&) {
+            throw std::runtime_error(
+                    "Deserialization failed for component: "
+                    + openzlComponent->name());
+        }
+        ZL_GraphID startingGraph{ ZL_GRAPH_ILLEGAL };
+        ZL_Compressor_getStartingGraphID(
+                deserializedCompressor.get(), &startingGraph);
+
+        // Compress with the deserialized graph using generated
+        // inputs and predefined inputs
+        const size_t inputSize = gen.usize_range("input_size", 1, 4096);
+        auto openzlInputs      = openzlComponent->generateInputs(
+                gen, 1, inputSize, deserializedCompressor, startingGraph);
+        for (auto& predfinedInput : openzlComponent->predefinedInputs()) {
+            openzlInputs.push_back(std::move(predfinedInput));
+        }
+        if (openzlInputs.empty()) {
             continue;
         }
-        Compressor compressor;
-        std::vector<GraphID> graphs =
-                openzlComponent->predefinedGraphs(compressor);
-        for (auto graph : openzlComponent->generateGraphs(compressor, gen, 1)) {
-            graphs.push_back(graph);
-        }
-
-        for (auto node : openzlComponent->predefinedNodes(compressor)) {
-            graphs.push_back(buildTrivialGraph(compressor.get(), node));
-        }
-        for (auto node : openzlComponent->generateNodes(compressor, gen, 1)) {
-            graphs.push_back(buildTrivialGraph(compressor.get(), node));
-        }
-        if (graphs.empty()) {
-            continue;
-        }
-        std::shuffle(graphs.begin(), graphs.end(), seededGen);
-        // Reuse cctx and dctx for each component
-        CCtx cctx;
-        DCtx dctx;
-        openzlComponent->registerComponent(dctx);
-        // Test all graphs in list
-        for (auto graph : graphs) {
-            if (!gen.has_more_data()) {
-                break;
-            }
-            compressor.selectStartingGraph(graph);
-            auto serialized = compressor.serialize();
-
-            // Deserialize the graph
-            Compressor deserializedCompressor;
-            // Register the component in case it is non-standard
-            openzlComponent->registerComponent(deserializedCompressor);
-            try {
-                deserializedCompressor.deserialize(serialized);
-            } catch (const std::exception&) {
-                throw std::runtime_error(
-                        "Deserialization failed for component: "
-                        + openzlComponent->name());
-            }
-            ZL_GraphID startingGraph{ ZL_GRAPH_ILLEGAL };
-            ZL_Compressor_getStartingGraphID(
-                    deserializedCompressor.get(), &startingGraph);
-
-            // Compress with the deserialized graph using generated
-            // inputs and predefined inputs
-            const size_t inputSize = gen.usize_range("input_size", 1, 4096);
-            auto openzlInputs      = openzlComponent->generateInputs(
-                    gen, 1, inputSize, deserializedCompressor, startingGraph);
-            for (auto& predfinedInput : openzlComponent->predefinedInputs()) {
-                openzlInputs.push_back(std::move(predfinedInput));
-            }
-            if (openzlInputs.empty()) {
+        for (const auto& input : openzlInputs) {
+            auto inputs = input->inputs();
+            if (inputs.empty()) {
                 continue;
             }
-            for (const auto& input : openzlInputs) {
-                auto inputs = input->inputs();
-                if (inputs.empty()) {
-                    continue;
-                }
-                std::string compressed;
-                compressed.resize(openzlComponent->compressBound(inputs));
+            std::string compressed;
+            compressed.resize(openzlComponent->compressBound(inputs));
 
-                testRoundTrip(
-                        compressed,
-                        deserializedCompressor,
-                        cctx,
-                        dctx,
-                        startingGraph,
-                        ZL_MAX_FORMAT_VERSION,
-                        inputs);
-            }
+            testRoundTrip(
+                    compressed,
+                    deserializedCompressor,
+                    cctx,
+                    dctx,
+                    startingGraph,
+                    ZL_MAX_FORMAT_VERSION,
+                    inputs);
         }
     }
 }
