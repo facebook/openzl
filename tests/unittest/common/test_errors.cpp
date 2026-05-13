@@ -73,16 +73,12 @@ TEST(ErrorsTest, retIfs)
             switch (path) {
                 case 0:
                     return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
-                    break;
                 case 1:
                     ZL_ERR(GENERIC, "fail! %d", 1234);
-                    break;
                 case 2:
                     ZL_ERR(GENERIC, "fail!");
-                    break;
                 case 3:
                     ZL_ERR(GENERIC);
-                    break;
                 default:
                     throw std::runtime_error("!");
             }
@@ -822,13 +818,10 @@ TEST(ErrorsTest, StaticErrorInfo)
             switch (path) {
                 case 0:
                     ZL_ERR(corruption);
-                    break;
                 case 1:
                     ZL_ERR(corruption, "BeepBeep!");
-                    break;
                 case 2:
                     ZL_ERR(corruption, "BeepBeep %d", 1234);
-                    break;
                 default:
                     throw std::runtime_error("!");
             }
