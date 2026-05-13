@@ -313,7 +313,7 @@ static ZL_RESULT_OF(CompressorSerializer_ParamSet)
                 const ZL_LocalParams* const lp)
 {
     ZL_RESULT_DECLARE_SCOPE(CompressorSerializer_ParamSet, opCtx);
-    CompressorSerializer_ParamSet ps;
+    CompressorSerializer_ParamSet ps = { 0 };
     CompressorSerializer_ParamSet_init(&ps);
 
     ZL_Report result =
@@ -687,8 +687,8 @@ static ZL_Report CompressorSerializer_serializeGraph_cb(
 
     CompressorSerializer_Graph* info;
     {
-        CompressorSerializer_GraphMap_Entry entry;
-        entry.key = name_sv;
+        CompressorSerializer_GraphMap_Entry entry = { 0 };
+        entry.key                                 = name_sv;
         CompressorSerializer_GraphMap_Insert insert =
                 CompressorSerializer_GraphMap_insert(&state->graphs, &entry);
         ZL_ERR_IF(

@@ -301,7 +301,7 @@ static ZL_Report ENC_runTransform_internal(
     IF_CWAYPOINT_ENABLED(on_codecEncode_end, eictx)
     {
         DECLARE_VECTOR_CONST_POINTERS_TYPE(ZL_Data);
-        VECTOR_CONST_POINTERS(ZL_Data) odata;
+        VECTOR_CONST_POINTERS(ZL_Data) odata = { 0 };
         VECTOR_INIT(odata, nbOutStreams);
         for (size_t i = 0; i < nbOutStreams; ++i) {
             RTStreamID rtsid =

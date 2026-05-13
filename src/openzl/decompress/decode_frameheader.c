@@ -1295,7 +1295,7 @@ static ZL_Report getCompressedSizeV3orMore(
         size_t srcSize)
 {
     ZL_DLOG(SEQ, "getCompressedSizeV3orMore (srcSize=%zu)", srcSize);
-    DFH_Struct dfh;
+    DFH_Struct dfh = { 0 };
     DFH_init(&dfh);
     ZL_Report report =
             getCompressedSizeV3orMore_inner(decoder, src, srcSize, &dfh);
@@ -1308,7 +1308,7 @@ static ZL_Report getHeaderSizeV3orV4(
         const void* src,
         size_t srcSize)
 {
-    DFH_Struct dfh_unused;
+    DFH_Struct dfh_unused = { 0 };
     DFH_init(&dfh_unused);
     ZL_Report ret = decoder->decodeFrameHeader(
             &dfh_unused, src, srcSize, decoder->formatVersion);
