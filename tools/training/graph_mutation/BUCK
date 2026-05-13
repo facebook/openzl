@@ -15,5 +15,6 @@ zs_cxxlibrary(
     exported_deps = [
         "../..:logger",
         "../../../cpp:openzl_cpp",
+        "../utils:training_utils",
     ],
 )

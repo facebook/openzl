@@ -44,25 +44,6 @@ std::vector<GraphID> findGraphsWhere(const Compressor& compressor, Fn&& fn)
     return state.result;
 }
 
-/**
- * @brief A wrapper class for a CBOR data bundle.
- */
-struct CborDataBundle {
-    std::string buffer;
-    std::string_view view;
-
-    explicit CborDataBundle(std::string buf)
-            : buffer(std::move(buf)), view(buffer)
-    {
-    }
-
-    static std::shared_ptr<const std::string_view> create(std::string buffer)
-    {
-        auto bundle = std::make_shared<CborDataBundle>(std::move(buffer));
-        return std::shared_ptr<const std::string_view>(bundle, &bundle->view);
-    }
-};
-
 } // anonymous namespace
 
 /**
@@ -90,11 +71,6 @@ bool hasTargetGraph(
             (int)targetGraphPrefix.size(),
             targetGraphPrefix.data());
     return !findAllGraphsWithPrefix(compressor, targetGraphPrefix).empty();
-}
-
-std::shared_ptr<const std::string_view> createSharedStringView(std::string str)
-{
-    return CborDataBundle::create(std::move(str));
 }
 
 std::vector<GraphID> findAllGraphsWithPrefix(

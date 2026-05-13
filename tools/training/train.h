@@ -4,6 +4,7 @@
 
 #include "openzl/cpp/Compressor.hpp"
 #include "tools/training/train_params.h"
+#include "tools/training/utils/serialized_compressor_internal.h"
 #include "tools/training/utils/utils.h"
 
 namespace openzl::training {

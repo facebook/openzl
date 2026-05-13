@@ -11,6 +11,7 @@
 #include "tools/ml_selector/ml_selector_trainer.h"
 #include "tools/training/train.h"
 #include "tools/training/train_params.h"
+#include "tools/training/utils/serialized_compressor_internal.h"
 #include "tools/training/utils/utils.h"
 
 namespace openzl::tests {
@@ -399,11 +400,13 @@ TEST_F(TestMLSelectorTrainer, TrainRoundTrip)
 {
     multiSuccessors_ = setUpCompressor(trainedCompressor_, true);
 
-    auto serializedCompressor = openzl::training::train(
-            multiInputs_, trainedCompressor_, trainParams_);
+    auto serializedCompressor =
+            openzl::training::train(
+                    multiInputs_, trainedCompressor_, trainParams_)
+                    .front();
 
-    Compressor mlCompressor = deserializeCompressor(
-            serializedCompressor.front().serializedCompressor);
+    Compressor mlCompressor =
+            deserializeCompressor(serializedCompressor.serializedCompressor);
 
     testRoundTrip(testData_.front(), mlCompressor);
 }

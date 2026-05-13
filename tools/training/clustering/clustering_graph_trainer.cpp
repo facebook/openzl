@@ -15,6 +15,7 @@
 #include "tools/training/clustering/train_api.h"
 #include "tools/training/graph_mutation/graph_mutation_utils.h"
 #include "tools/training/sample_collection/training_sample_collector.h"
+#include "tools/training/utils/serialized_compressor_internal.h"
 #include "tools/training/utils/utils.h"
 
 using namespace openzl::training::graph_mutation;
@@ -160,7 +161,7 @@ void overrideClusteringGraphParams(
 
 } // namespace
 
-std::shared_ptr<const std::string_view> trainClusteringGraph(
+SerializedCompressorInternal trainClusteringGraph(
         const std::vector<MultiInput>& inputs,
         Compressor& compressor,
         const TrainParams& trainParams)
@@ -192,7 +193,7 @@ std::shared_ptr<const std::string_view> trainClusteringGraph(
             clusteringGraphUniqueIDUntrained,
             trainedClusteringGraphID);
 
-    return createSharedStringView(compressor.serialize());
+    return SerializedCompressorInternal(compressor.serialize());
 }
 
 } // namespace openzl::training

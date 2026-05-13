@@ -10,6 +10,7 @@
 #include "tools/training/graph_mutation/graph_mutation_utils.h"
 #include "tools/training/sample_collection/training_sample_collector.h"
 #include "tools/training/utils/genetic_algorithm.h"
+#include "tools/training/utils/serialized_compressor_internal.h"
 
 namespace openzl::training {
 
@@ -26,7 +27,7 @@ namespace {
  * @returns A serialized compressor of @p compressor where each backend graph is
  * replaced by the given `ACECompressor`.
  */
-std::shared_ptr<const std::string_view> runReplacements(
+SerializedCompressorInternal runReplacements(
         Compressor& compressor,
         const std::unordered_map<std::string, ACECompressor>& replacements,
         bool saveAceState)
@@ -58,7 +59,7 @@ std::shared_ptr<const std::string_view> runReplacements(
     auto json       = Compressor::convertSerializedToJson(serialized);
     Logger::log(VERBOSE3, "Graph with trained ACE successors: ", json);
 
-    return graph_mutation::createSharedStringView(std::move(serialized));
+    return SerializedCompressorInternal(std::move(serialized));
 }
 
 /**
@@ -90,7 +91,7 @@ std::vector<CandidateSelection> mergeParetoFrontier(
  * @returns The compressor for each backend graph that has the best ratio, which
  * is just the first compressor because they are sorted by compressed size.
  */
-std::shared_ptr<const std::string_view> getSmallestCandidate(
+SerializedCompressorInternal getSmallestCandidate(
         const std::function<Compressor()>& makeCompressor,
         const std::unordered_map<
                 std::string,
@@ -132,7 +133,7 @@ std::vector<CandidateSelection> candidatesFromVec(
  * @returns the overall serialized compressor from the choices with ACE
  * graphs replaced of @param candidate.
  */
-std::shared_ptr<const std::string_view> makeCombinedCompressor(
+SerializedCompressorInternal makeCombinedCompressor(
         const CandidateSelection& candidate,
         const std::function<Compressor()>& makeCompressor,
         const std::unordered_map<
@@ -279,9 +280,9 @@ std::vector<CandidateSelection> combineCandidates(
     return currentFrontier;
 }
 
-std::vector<std::shared_ptr<const std::string_view>> getCombinedCompressors(
+std::vector<SerializedCompressorInternal> getCombinedCompressors(
         const std::vector<MultiInput>& inputs,
-        std::shared_ptr<const std::string_view> trainedSerializedCompressor,
+        const SerializedCompressorInternal& trainedSerializedCompressor,
         const TrainParams& trainParams)
 {
     auto makeCompressor = [&trainedSerializedCompressor, &trainParams] {
@@ -346,8 +347,10 @@ std::vector<std::shared_ptr<const std::string_view>> getCombinedCompressors(
     }
 
     if (!trainParams.paretoFrontier) {
-        return { getSmallestCandidate(
-                makeCompressor, allCandidates, trainParams.saveAceState) };
+        std::vector<SerializedCompressorInternal> result;
+        result.push_back(getSmallestCandidate(
+                makeCompressor, allCandidates, trainParams.saveAceState));
+        return result;
     }
     std::vector<std::vector<CandidateSelection>> candidates;
     candidates.reserve(allCandidates.size());
@@ -357,7 +360,7 @@ std::vector<std::shared_ptr<const std::string_view>> getCombinedCompressors(
     auto frontier = combineCandidates(candidates, trainParams);
     frontier = pruneCandidates(std::move(frontier), kNumFinalParetoCandidates);
     std::sort(frontier.begin(), frontier.end());
-    std::vector<std::shared_ptr<const std::string_view>> paretoOptimalResults;
+    std::vector<SerializedCompressorInternal> paretoOptimalResults;
     paretoOptimalResults.reserve(frontier.size());
     for (auto& candidate : frontier) {
         paretoOptimalResults.push_back(makeCombinedCompressor(

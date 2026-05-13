@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -13,20 +13,6 @@
 #include "openzl/zl_localParams.h"
 
 namespace openzl::training::graph_mutation {
-
-/**
- * @brief Creates a shared_ptr to a string_view from a string.
- *
- * This utility function creates a shared_ptr to a string_view that references
- * the provided string. The string is stored in a bundle object that is managed
- * by the shared_ptr, ensuring that the string_view remains valid as long as
- * the shared_ptr exists.
- *
- * @param str The string to create a string_view from.
- * @return std::shared_ptr<const std::string_view> A shared_ptr to a string_view
- * that references the provided string.
- */
-std::shared_ptr<const std::string_view> createSharedStringView(std::string str);
 
 /**
  * @brief Checks if a compressor contains a graph with a specific prefix.

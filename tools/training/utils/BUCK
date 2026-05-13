@@ -7,10 +7,12 @@ oncall("data_compression")
 zs_cxxlibrary(
     name = "training_utils",
     srcs = [
+        "serialized_compressor_internal.cpp",
         "thread_pool.cpp",
         "utils.cpp",
     ],
     headers = [
+        "serialized_compressor_internal.h",
         "thread_pool.h",
         "utils.h",
     ],

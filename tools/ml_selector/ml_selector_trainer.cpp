@@ -14,6 +14,7 @@
 #include "tools/logger/Logger.h"
 #include "tools/training/graph_mutation/graph_mutation_utils.h"
 #include "tools/training/sample_collection/training_sample_collector.h"
+#include "tools/training/utils/serialized_compressor_internal.h"
 
 // Suppress warnings for XGBoost headers
 #pragma GCC diagnostic push
@@ -549,7 +550,7 @@ static void updateCompressor(
     }
 }
 
-std::shared_ptr<const std::string_view> trainMLSelectorGraph(
+SerializedCompressorInternal trainMLSelectorGraph(
         const std::vector<MultiInput>& inputs,
         Compressor& compressor,
         const TrainParams& trainParams)
@@ -647,6 +648,6 @@ std::shared_ptr<const std::string_view> trainMLSelectorGraph(
                 " mlSelector(s) could not be trained - no inputs captured.");
     }
 
-    return graph_mutation::createSharedStringView(compressor.serialize());
+    return SerializedCompressorInternal(compressor.serialize());
 }
 } // namespace openzl::training
