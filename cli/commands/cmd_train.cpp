@@ -86,9 +86,8 @@ int cmdTrain(const TrainArgs& args)
     Logger::log(INFO, "Benchmarking untrained compressor...");
     auto untrainedBenchmark = runCompressionBenchmarks(benchmarkArgs);
 
-    std::vector<std::shared_ptr<const std::string_view>>
-            serializedTrainedCompressors = openzl::training::train(
-                    benchmarkArgs.inputs, *args.compressor(), args.trainParams);
+    auto serializedTrainedCompressors = openzl::training::train(
+            benchmarkArgs.inputs, *args.compressor(), args.trainParams);
 
     poly::optional<tools::io::OutputFile> resultsCsv;
     if (args.trainParams.paretoFrontier) {
@@ -111,7 +110,7 @@ int cmdTrain(const TrainArgs& args)
         // Benchmark the trained compressor
         benchmarkArgs.setCompressor(
                 custom_parsers::createCompressorFromSerialized(
-                        *serializedTrainedCompressor));
+                        serializedTrainedCompressor.serializedCompressor));
         if (!args.trainParams.paretoFrontier) {
             Logger::log(INFO, "Benchmarking trained compressor...");
         }
@@ -142,14 +141,15 @@ int cmdTrain(const TrainArgs& args)
                     + std::to_string(i) + ".zc";
             auto output = tools::io::OutputFile(std::move(outputFilename));
             output.open();
-            output.write(*serializedTrainedCompressor);
+            output.write(serializedTrainedCompressor.serializedCompressor);
             output.close();
         } else {
             if (i != 0) {
                 throw std::logic_error("Must only have one trained compressor");
             }
             // Output file is already open
-            args.output->write(*serializedTrainedCompressor);
+            args.output->write(
+                    serializedTrainedCompressor.serializedCompressor);
             args.output->close();
         }
     }

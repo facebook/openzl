@@ -15,7 +15,7 @@ using namespace openzl::tools::logger;
 
 namespace openzl::training {
 
-std::vector<std::shared_ptr<const std::string_view>> train(
+std::vector<TrainedCandidate> train(
         const std::vector<MultiInput>& inputs,
         Compressor& compressor,
         const TrainParams& trainParams)
@@ -68,6 +68,14 @@ std::vector<std::shared_ptr<const std::string_view>> train(
                     Compressor::convertSerializedToJson(
                             *serializedTrainedCompressors[0]))
                     .c_str());
-    return serializedTrainedCompressors;
+
+    std::vector<TrainedCandidate> retval;
+    retval.reserve(serializedTrainedCompressors.size());
+    for (auto& trainedCompressor : serializedTrainedCompressors) {
+        retval.emplace_back(
+                TrainedCandidate{ .serializedCompressor =
+                                          std::string(*trainedCompressor) });
+    }
+    return retval;
 }
 } // namespace openzl::training

@@ -58,8 +58,8 @@ std::vector<nb::bytes> train(
     result.reserve(trainedCompressors.size());
     for (const auto& trainedCompressor : trainedCompressors) {
         result.emplace_back(
-                (const uint8_t*)trainedCompressor->data(),
-                trainedCompressor->size());
+                (const uint8_t*)trainedCompressor.serializedCompressor.data(),
+                trainedCompressor.serializedCompressor.size());
     }
     return result;
 }
