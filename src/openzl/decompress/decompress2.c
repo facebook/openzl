@@ -1542,7 +1542,7 @@ ZL_Report DCTX_runDecoder(
 
     IF_DWAYPOINT_ENABLED(on_codecDecode_end, &diState)
     {
-        VECTOR_CONST_POINTERS(ZL_Data) odata;
+        VECTOR_CONST_POINTERS(ZL_Data) odata = { 0 };
         VECTOR_INIT(odata, nodeInfo->nbRegens);
         for (size_t n = 0; n < nodeInfo->nbRegens; n++) {
             const ZL_Data* d     = dctx->dataInfo.ptr[regensID[n]].data;
