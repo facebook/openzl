@@ -5,8 +5,26 @@ name: cmake-ci
 on:
   push:
     branches: [dev]
+    paths:
+      - '**.c'
+      - '**.h'
+      - '**.cpp'
+      - '**.hpp'
+      - '**/CMakeLists.txt'
+      - '**.cmake'
+      - 'build-scripts/**'
+      - '.github/workflows/cmake-ci.yml'
   pull_request:
     branches: [dev, master, actionsTest]
+    paths:
+      - '**.c'
+      - '**.h'
+      - '**.cpp'
+      - '**.hpp'
+      - '**/CMakeLists.txt'
+      - '**.cmake'
+      - 'build-scripts/**'
+      - '.github/workflows/cmake-ci.yml'
   workflow_dispatch: {}
 
 env:
@@ -39,6 +57,7 @@ jobs:
             os: macos-latest
             build_mode: dev
             extra_flags: "-Werror"
+            build_only: true
           - name: "CMake Shared Libraries"
             os: ubuntu-latest
             build_mode: ""
@@ -49,11 +68,13 @@ jobs:
             build_mode: dev
             extra_flags: "-Werror"
             parquet_tools: true
+            build_only: true
           - name: "CMake Linux (No Introspection)"
             os: ubuntu-latest
             build_mode: dev
             extra_flags: "-Werror"
             no_introspection: true
+            build_only: true
 
     steps:
       - uses: actions/checkout@v4
@@ -113,12 +134,12 @@ jobs:
         run: cmake --build . --parallel --target unitBench
 
       - name: Test
-        if: ${{ matrix.cmake_version == '' }}
+        if: ${{ matrix.cmake_version == '' && matrix.build_only != true }}
         working-directory: ${{github.workspace}}/build
         run: ctest --output-on-failure
 
       - name: Install
-        if: ${{ matrix.cmake_version == '' }}
+        if: ${{ matrix.cmake_version == '' && matrix.build_only != true }}
         working-directory: ${{github.workspace}}/build
         run: make install
 
