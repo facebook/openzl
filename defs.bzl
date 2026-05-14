@@ -48,7 +48,7 @@ def _strip_prefix(headers, prefix):
     for header in headers:
         if not header.startswith(prefix):
             fail("Header {} does not start with {}".format(header, prefix))
-        name = header[len(prefix):]
+        name = header[len(prefix) :]
         header_map[name] = header
     return header_map
 
@@ -72,7 +72,7 @@ def relative_headers(headers):
     """
     root = _zl_repo_prefix()
     package = native.package_name()
-    prefix = package[len(root) + 1:]
+    prefix = package[len(root) + 1 :]
 
     header_map = {}
     for header in headers:
@@ -281,9 +281,7 @@ def zs_cxxlibrary(strict_conversions = True, float_equal = True, **kwargs):
     _zs_library(**kwargs)
 
 def _zs_library(**kwargs):
-    cpp_library(
-        **kwargs
-    )
+    cpp_library(**kwargs)
 
 def zs_binary(**kwargs):
     _add_zs_compiler_flags(kwargs)
@@ -392,16 +390,11 @@ def zs_fuzzers(ftest_names, generator = None, **kwargs):
             ftest_name = ftest_name,
             default_harness_config = _DEFAULT_HARNESS_CONFIG,
             harness_configs = {mode: {} for mode in ZS_HARNESS_MODES},
-            **kwargs
+            **kwargs,
         )
 
 def zs_raw_fuzzer(name, **kwargs):
     if _is_release():
         # Give release fuzzers a different name
         name = "Release_" + name
-    cpp_lionhead_harness(
-        name = name,
-        metadata = ZS_FUZZ_METADATA,
-        harness_configs = {mode: {} for mode in ZS_HARNESS_MODES},
-        **kwargs
-    )
+    cpp_lionhead_harness(name = name, metadata = ZS_FUZZ_METADATA, harness_configs = {mode: {} for mode in ZS_HARNESS_MODES}, **kwargs)
