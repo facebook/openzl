@@ -1,0 +1,22 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+name: weekly-static-analysis
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Every Monday at 06:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  static-analysis:
+    name: Static Analysis (scan-build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install scan-build
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-tools
+      - name: Run scan-build
+        continue-on-error: true
+        run: CFLAGS="-Og -g" scan-build --status-bugs -v make -j2 unitBench V=1

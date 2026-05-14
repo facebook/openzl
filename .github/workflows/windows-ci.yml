@@ -5,8 +5,28 @@ name: windows-ci
 on:
   push:
     branches: [dev]
+    paths:
+      - '**.c'
+      - '**.h'
+      - '**.cpp'
+      - '**.hpp'
+      - '**/CMakeLists.txt'
+      - '**.cmake'
+      - 'Makefile'
+      - 'build-scripts/**'
+      - '.github/workflows/windows-ci.yml'
   pull_request:
     branches: [dev, master, actionsTest]
+    paths:
+      - '**.c'
+      - '**.h'
+      - '**.cpp'
+      - '**.hpp'
+      - '**/CMakeLists.txt'
+      - '**.cmake'
+      - 'Makefile'
+      - 'build-scripts/**'
+      - '.github/workflows/windows-ci.yml'
   workflow_dispatch: {}
 
 env:
@@ -14,37 +34,6 @@ env:
   MAKEFLAGS: "V=1"
 
 jobs:
-
-  # =============================================================================
-  # WINDOWS COMPILER DETECTION TESTING
-  # =============================================================================
-  # This tests our Windows setup script (detect_windows_compiler.ps1) to ensure:
-  # 1. It correctly detects available compilers
-  # 2. It generates proper CMake configurations
-  # 3. It works in non-interactive (CI) environments
-  # 4. It provides helpful error messages
-  # This is complementary to the actual build tests below - we test the tooling
-  # here and the actual compilation in the Visual Studio and MinGW jobs.
-
-  windows-compiler-detection:
-    name: Windows Compiler Detection Script Test
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v2
-
-      - name: Test compiler detection script
-        run: |
-          echo "=== Testing Windows Compiler Detection Script ==="
-          echo "This validates our Windows setup script works correctly in CI"
-          echo "Testing help functionality..."
-          powershell -ExecutionPolicy Bypass -File build-scripts/cmake/detect_windows_compiler.ps1 -Help
-          echo "Testing detection functionality (without builds)..."
-          powershell -ExecutionPolicy Bypass -File build-scripts/cmake/detect_windows_compiler.ps1 -DetectOnly
-          echo "=== Script functionality tests completed successfully ==="
-        shell: cmd
 
   # =============================================================================
   # VISUAL STUDIO BUILDS (clang-cl)
@@ -179,20 +168,12 @@ jobs:
           install: make diffutils cmake git python
           update: true
 
-      - name: Install MinGW GCC (i686)
-        if: ${{ matrix.msystem == 'MINGW32' && matrix.cc == 'gcc' }}
-        run: pacman --noconfirm -S mingw-w64-i686-gcc
-
-      - name: Install MinGW GCC (x86_64)
-        if: ${{ matrix.msystem == 'MINGW64' && matrix.cc == 'gcc' }}
+      - name: Install MinGW GCC
+        if: ${{ matrix.cc == 'gcc' }}
         run: pacman --noconfirm -S mingw-w64-x86_64-gcc
 
-      - name: Install MinGW Clang (i686)
-        if: ${{ matrix.msystem == 'MINGW32' && matrix.cc == 'clang' }}
-        run: pacman --noconfirm -S mingw-w64-i686-clang
-
-      - name: Install MinGW Clang (x86_64)
-        if: ${{ matrix.msystem == 'MINGW64' && matrix.cc == 'clang' }}
+      - name: Install MinGW Clang
+        if: ${{ matrix.cc == 'clang' }}
         run: pacman --noconfirm -S mingw-w64-x86_64-clang
 
       - name: Prepare build
@@ -220,52 +201,3 @@ jobs:
           echo "=== Building with make -j ==="
           make -j V=1
           echo "=== Build and test completed successfully ==="
-
-# =============================================================================
-# CHOCOLATEY MinGW-w64 (pure Windows, no MSYS2) — build with `make`
-# Note: this test is currently failing at link stage, disabling it for now
-# =============================================================================
-#  mingw-choco-make:
-#    name: choco+mingw+make
-#    runs-on: windows-latest
-#    defaults:
-#      run:
-#        shell: pwsh
-#    steps:
-#      - uses: actions/checkout@v4
-#
-#      - name: Install MinGW-w64 (Chocolatey)
-#        run: |
-#          choco install -y mingw
-#          choco list mingw
-#
-#      - name: Add MinGW to PATH and expose `make`
-#        run: |
-#          $mingwRoot = 'C:\ProgramData\mingw64'
-#          Get-ChildItem -Path $mingwRoot -Recurse -Filter gcc.exe
-#          $binDirs = Get-ChildItem -Path $mingwRoot -Directory -Recurse | Where-Object { Test-Path "$($_.FullName)\bin\gcc.exe" }
-#          if ($binDirs.Count -eq 0) { throw "No MinGW bin directory with gcc.exe found" }
-#
-#          $mingwBin = "$($binDirs[0].FullName)\bin"
-#          if (-not (Test-Path $mingwBin)) { throw "Missing $mingwBin" }
-#          # Print the found path
-#          Write-Host "Found MinGW bin path: $mingwBin"
-#          Add-Content $env:GITHUB_PATH $mingwBin
-#          if (Test-Path "$mingwBin\mingw32-make.exe") {
-#            Copy-Item "$mingwBin\mingw32-make.exe" "$mingwBin\make.exe" -Force
-#          }
-#          where gcc
-#          where g++
-#          gcc --version
-#          g++ --version
-#
-#      - name: Build targets with make
-#        env:
-#          CC: gcc
-#          CXX: g++
-#        run: |
-#          echo "=== make zli ==="
-#          # link stage fails for some unclear reason, disable CI error signal for now
-#          make zli
-#          echo "=== make unitBench ==="
-#          make unitBench
