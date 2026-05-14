@@ -88,6 +88,7 @@ struct ZL_DCtx_s {
     ZL_OperationContext opCtx;
     GDParams requestedGDParams; // As user-selected at DCtx level
     GDParams appliedGDParams;   // Used at decompression time; DCtx > default
+    ZL_DictLoader* dictLoader;  // Referenced, not owned
 }; // typedef'd to ZL_DCtx within zs2_decompress.h
 
 // --------------------------
@@ -200,6 +201,12 @@ ZL_Report DCTX_registerDecoderFusion(
 void DCTX_clearDecoderFusions(ZL_DCtx* dctx)
 {
     ZL_DecoderFusionState_clearFusions(&dctx->fusion);
+}
+
+void ZL_DCtx_refDictLoader(ZL_DCtx* dctx, ZL_DictLoader* loader)
+{
+    ZL_ASSERT_NN(dctx);
+    dctx->dictLoader = loader;
 }
 
 ZL_Report ZL_DCtx_setParameter(ZL_DCtx* dctx, ZL_DParam gdparam, int value)
