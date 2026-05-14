@@ -8,6 +8,7 @@
 #include "openzl/zl_errors.h"        // ZL_Report, ZL_isError()
 #include "openzl/zl_introspection.h" // ZL_DecompressIntrospectionHooks
 #include "openzl/zl_opaque_types.h"  // ZL_DCtx
+#include "openzl/zl_opaque_types.h"  // ZL_DictLoader, ZL_FatBundleDictLoader
 #include "openzl/zl_output.h"
 
 #if defined(__cplusplus)
@@ -82,6 +83,14 @@ ZL_DCtx* ZL_DCtx_create(void);
  * @param dctx Decompression context to free
  */
 void ZL_DCtx_free(ZL_DCtx* dctx);
+
+/**
+ * @brief Attach a dict loader to the decompression context.
+ *
+ * The dict loader is referenced (not owned) by the DCtx. The caller must
+ * ensure the dict loader outlives the DCtx.
+ */
+void ZL_DCtx_refDictLoader(ZL_DCtx* dctx, ZL_DictLoader* loader);
 
 /**
  * @brief Global decompression parameters.
