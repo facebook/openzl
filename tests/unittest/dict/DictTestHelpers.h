@@ -23,8 +23,9 @@ inline ZL_DictID makeNullDictID()
 inline ZL_DictID makeDictID(uint8_t seed)
 {
     ZL_DictID id;
-    for (size_t i = 0; i < 32; i++) {
-        id.id.bytes[i] = static_cast<uint8_t>(seed + i);
+    std::memset(&id, 0, sizeof(id));
+    for (size_t i = 0; i < sizeof(id.id.bytes); i++) {
+        id.id.bytes[i] = static_cast<unsigned char>(seed + i);
     }
     return id;
 }
@@ -43,8 +44,8 @@ inline std::vector<uint8_t> buildPackedDict(
     MEM_writeLE32(p, ZL_DICT_MAGIC);
     p += 4;
 
-    memcpy(p, &dictID, ZL_UNIQUE_ID_SIZE);
-    p += ZL_UNIQUE_ID_SIZE;
+    std::memcpy(p, dictID.id.bytes, sizeof(dictID.id.bytes));
+    p += sizeof(dictID.id.bytes);
 
     MEM_writeLE32(p, static_cast<uint32_t>(codec));
     p += 4;
@@ -73,9 +74,12 @@ inline std::vector<uint8_t> buildPackedBundleInfo(
     MEM_writeLE32(p, ZL_BUNDLEINFO_MAGIC);
     p += 4;
 
-    for (int i = 0; i < 4; i++) {
-        MEM_writeLE64(p, static_cast<uint64_t>(bundleIDSeed + i));
-        p += 8;
+    {
+        ZL_UniqueID bundleUID = {};
+        for (int i = 0; i < sizeof(bundleUID.bytes); i++)
+            bundleUID.bytes[i] = static_cast<unsigned char>(bundleIDSeed + i);
+        std::memcpy(p, bundleUID.bytes, sizeof(bundleUID.bytes));
+        p += sizeof(bundleUID.bytes);
     }
 
     *p = isFatBundle ? 1 : 0;
@@ -85,10 +89,11 @@ inline std::vector<uint8_t> buildPackedBundleInfo(
     p += 4;
 
     for (size_t i = 0; i < numDicts; i++) {
-        for (int j = 0; j < 4; j++) {
-            MEM_writeLE64(p, static_cast<uint64_t>((i + 1) * 10 + j));
-            p += 8;
-        }
+        ZL_UniqueID dictUID = {};
+        for (int j = 0; j < sizeof(dictUID.bytes); j++)
+            dictUID.bytes[j] = static_cast<unsigned char>((i + 1) * 10 + j);
+        std::memcpy(p, dictUID.bytes, sizeof(dictUID.bytes));
+        p += sizeof(dictUID.bytes);
     }
 
     return buf;

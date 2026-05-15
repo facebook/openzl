@@ -55,6 +55,19 @@ passthrough(ZL_Encoder* eictx, const ZL_Input* inputs[], size_t nbInputs)
     return ZL_returnSuccess();
 }
 
+static ZL_Report passthroughNoexcept(
+        ZL_Encoder* eictx,
+        const ZL_Input* inputs[],
+        size_t nbInputs) ZL_NOEXCEPT_FUNC_PTR
+{
+    return passthrough(eictx, inputs, nbInputs);
+}
+
+static ZL_RESULT_OF(ZL_VoidPtr) copyDictMaterialize(
+        ZL_Materializer* matCtx,
+        const void* src,
+        size_t srcSize) ZL_NOEXCEPT_FUNC_PTR;
+
 class CompressorIntegrationTest : public Test {
    protected:
     void SetUp() override
@@ -134,6 +147,88 @@ class CompressorIntegrationTest : public Test {
         size_t compressedSize = cctx_.compressSerial(
                 poly::span<char>(dst.data(), dst.size()), src);
         (void)compressedSize; // Suppress unused variable warning
+    }
+
+    static ZL_DictID makeDictID(uint8_t seed)
+    {
+        ZL_DictID dictID;
+        memset(&dictID, 0, sizeof(dictID));
+        for (size_t i = 0; i < sizeof(dictID.id.bytes); ++i) {
+            dictID.id.bytes[i] = static_cast<uint8_t>(seed + i);
+        }
+        return dictID;
+    }
+
+    static std::vector<uint8_t> buildPackedDict(
+            ZL_DictID dictID,
+            ZL_IDType codecID,
+            const std::vector<uint8_t>& content)
+    {
+        std::vector<uint8_t> packed(ZL_DICT_HEADER_SIZE + content.size(), 0);
+        ZL_Report report = Dict_pack(
+                packed.data(),
+                packed.size(),
+                dictID,
+                codecID,
+                true,
+                content.data(),
+                content.size());
+        EXPECT_FALSE(ZL_isError(report));
+        packed.resize(ZL_validResult(report));
+        return packed;
+    }
+
+    static std::vector<uint8_t> packFatBundle(
+            const std::vector<std::vector<uint8_t>>& packedDicts)
+    {
+        std::vector<const void*> dictPtrs;
+        std::vector<size_t> dictSizes;
+        size_t totalDictBytes = 0;
+        for (const auto& packedDict : packedDicts) {
+            dictPtrs.push_back(packedDict.data());
+            dictSizes.push_back(packedDict.size());
+            totalDictBytes += packedDict.size();
+        }
+
+        size_t const bundleCapacity = ZL_BUNDLE_HEADER_SIZE
+                + packedDicts.size() * ZL_UNIQUE_ID_SIZE + totalDictBytes;
+        std::vector<uint8_t> fatBundle(bundleCapacity, 0);
+        ZL_Report report = ZL_DictBundle_packFatBundle(
+                fatBundle.data(),
+                fatBundle.size(),
+                packedDicts.empty() ? nullptr : dictPtrs.data(),
+                packedDicts.empty() ? nullptr : dictSizes.data(),
+                packedDicts.size());
+        EXPECT_FALSE(ZL_isError(report));
+        fatBundle.resize(ZL_validResult(report));
+        return fatBundle;
+    }
+
+    ZL_RESULT_OF(ZL_NodeID)
+    registerDictBackedNode(const char* name, ZL_DictID dictID)
+    {
+        static ZL_Type typetype = ZL_Type_serial;
+        ZL_MIEncoderDesc encoderDesc{
+            .gd =
+                    {
+                            .CTid                = nextCtid_++,
+                            .inputTypes          = &typetype,
+                            .nbInputs            = 1,
+                            .lastInputIsVariable = false,
+                            .soTypes             = &typetype,
+                            .nbSOs               = 1,
+                            .voTypes             = nullptr,
+                            .nbVOs               = 0,
+                    },
+            .transform_f = passthroughNoexcept,
+            .localParams = {},
+            .name        = name,
+            .dictMat     = { .materializeFn   = copyDictMaterialize,
+                             .dematerializeFn = ZL_NOOP_DEMATERIALIZE },
+            .dictID      = dictID,
+        };
+        return ZL_Compressor_registerMIEncoder2(
+                compressor_.get(), &encoderDesc);
     }
 
     static ZL_RESULT_OF(ZL_VoidPtr) materializeDictionary(
@@ -740,325 +835,127 @@ static ZL_RESULT_OF(ZL_VoidPtr) copyDictMaterialize(
 }
 
 TEST_F(CompressorIntegrationTest,
-       GIVENaFatBundleLoadedWHENencoderRunsTHENgetMaterializedDictReturnsDict)
+       GIVENaDictBackedNodeWHENNoBundleIsLoadedTHENSelectingGraphFailsWithDictNoRecord)
 {
-    // -- Dict content that will be packed into the fat bundle --
-    const std::string dictContent = "test-dict-payload-12345";
-    ZL_DictID dictID;
-    memset(&dictID, 0, sizeof(dictID));
-    dictID.id.bytes[0] = 0xD1;
-    dictID.id.bytes[1] = 0xD2;
+    ZL_DictID dictID = makeDictID(0xD1);
+    ZL_RESULT_OF(ZL_NodeID)
+    nodeResult = registerDictBackedNode(
+            "test_encoder_missing_bundle_failure", dictID);
+    ASSERT_FALSE(ZL_RES_isError(nodeResult));
+    ZL_NodeID nodeID = ZL_RES_value(nodeResult);
 
-    // -- Dict materializer (ZL_MaterializerDesc2): copies raw content --
-    ZL_MaterializerDesc2 dictMat{};
-    dictMat.materializeFn   = copyDictMaterialize;
-    dictMat.dematerializeFn = ZL_NOOP_DEMATERIALIZE;
-
-    // -- Register encoder first (CDictMgr needs the node to find materializer)
-    // --
-    const auto encoderCheckingDict =
-            [](ZL_Encoder* eictx, const ZL_Input* inputs[], size_t nbInputs)
-                    ZL_NOEXCEPT_FUNC_PTR -> ZL_Report {
-        ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
-
-        const void* dict = ZL_Encoder_getMaterializedDict(eictx);
-        ZL_ERR_IF_NULL(
-                dict,
-                GENERIC,
-                "Expected getMaterializedDict to return non-null");
-
-        // Verify content via ref param that holds expected size
-        auto rp = ZL_Encoder_getLocalParam(eictx, 1);
-        ZL_ERR_IF_NULL(rp.paramRef, GENERIC);
-        size_t expectedSize = *(const size_t*)rp.paramRef;
-
-        // The materialized dict should be a copy of the original content
-        ZL_ERR_IF_NE(
-                memcmp(dict,
-                       (const char*)rp.paramRef + sizeof(size_t),
-                       expectedSize),
-                0,
-                GENERIC,
-                "Dict content mismatch");
-
-        return passthrough(eictx, inputs, nbInputs);
-    };
-
-    const auto encoderNullDict =
-            [](ZL_Encoder* eictx, const ZL_Input* inputs[], size_t nbInputs)
-                    ZL_NOEXCEPT_FUNC_PTR -> ZL_Report {
-        ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
-
-        const void* dict = ZL_Encoder_getMaterializedDict(eictx);
-        ZL_ERR_IF_NN(
-                dict,
-                GENERIC,
-                "Expected getMaterializedDict to return NULL for node without dict");
-
-        return passthrough(eictx, inputs, nbInputs);
-    };
-
-    // Pack expected size + content into a buffer for the ref param
-    std::vector<uint8_t> verifyBuf(sizeof(size_t) + dictContent.size());
-    {
-        size_t sz = dictContent.size();
-        memcpy(verifyBuf.data(), &sz, sizeof(size_t));
-        memcpy(verifyBuf.data() + sizeof(size_t),
-               dictContent.data(),
-               dictContent.size());
-    }
-
-    ZL_RefParam rp = {
-        .paramId  = 1,
-        .paramRef = verifyBuf.data(),
-    };
-    ZL_LocalParams lp = {
-        .refParams = {
-            .refParams   = &rp,
-            .nbRefParams = 1,
-        },
-    };
-
-    static ZL_Type typetype = ZL_Type_serial;
-    ZL_MIGraphDesc graphDesc{
-        .CTid                = nextCtid_++,
-        .inputTypes          = &typetype,
-        .nbInputs            = 1,
-        .lastInputIsVariable = false,
-        .soTypes             = &typetype,
-        .nbSOs               = 1,
-        .voTypes             = nullptr,
-        .nbVOs               = 0,
-    };
-
-    ZL_MIEncoderDesc encoderDesc{
-        .gd          = graphDesc,
-        .transform_f = encoderCheckingDict,
-        .localParams = lp,
-        .name        = "test_encoder_getMaterializedDict",
-        .dictMat     = dictMat,
-        .dictID      = dictID,
-    };
-
-    auto nodeid = compressor_.registerCustomEncoder(encoderDesc);
-    ASSERT_NE(nodeid.nid, ZL_NODE_ILLEGAL.nid);
-
-    ZL_NodeID noDictNodeid =
-            registerNodeWithMaterialization(encoderNullDict, {}, nullptr);
-
-    // -- Build and load the fat bundle (after node registration) --
-    // Pack the dict wire buffer
-    std::vector<uint8_t> packedDict(
-            ZL_DICT_HEADER_SIZE + dictContent.size(), 0);
-    {
-        ZL_Report r = Dict_pack(
-                packedDict.data(),
-                packedDict.size(),
-                dictID,
-                /*materializingCodec=*/0,
-                true,
-                dictContent.data(),
-                dictContent.size());
-        ASSERT_FALSE(ZL_isError(r));
-        packedDict.resize(ZL_validResult(r));
-    }
-
-    // Pack into a fat bundle
-    const void* dictPtr = packedDict.data();
-    size_t dictSize     = packedDict.size();
-    size_t fatBufCapacity =
-            ZL_BUNDLE_HEADER_SIZE + sizeof(ZL_UniqueID) + packedDict.size();
-    std::vector<uint8_t> fatBuf(fatBufCapacity, 0);
-    {
-        ZL_Report r = ZL_DictBundle_packFatBundle(
-                fatBuf.data(), fatBuf.size(), &dictPtr, &dictSize, 1);
-        ASSERT_FALSE(ZL_isError(r));
-        fatBuf.resize(ZL_validResult(r));
-    }
-
-    // Load into compressor
-    {
-        ZL_Report r = ZL_Compressor_loadDictBundle(
-                compressor_.get(), fatBuf.data(), fatBuf.size());
-        ASSERT_FALSE(ZL_isError(r));
-    }
-
-    auto graphId1 = compressor_.buildStaticGraph(nodeid, { ZL_GRAPH_STORE });
-    auto graphId  = compressor_.buildStaticGraph(noDictNodeid, { graphId1 });
+    auto graphId = compressor_.buildStaticGraph(nodeID, { ZL_GRAPH_STORE });
     ASSERT_NE(graphId.gid, ZL_GRAPH_ILLEGAL.gid);
-    compressor_.selectStartingGraph(graphId);
-    compressData(); // will assert inside encoder if getMaterializedDict fails
+
+    ZL_Report report =
+            ZL_Compressor_selectStartingGraphID(compressor_.get(), graphId);
+    EXPECT_TRUE(ZL_isError(report));
+    EXPECT_EQ(ZL_RES_code(report), ZL_ErrorCode_dictNoRecord);
+
+    std::string errorContext =
+            ZL_Compressor_getErrorContextString(compressor_.get(), report);
+    EXPECT_NE(
+            errorContext.find("requires a dictionary but no bundle is loaded"),
+            std::string::npos);
+}
+
+TEST_F(CompressorIntegrationTest,
+       GIVENaDictBackedNodeWHENLoadingBundleWithoutRequiredDictTHENItFailsWithNoValidMaterialization)
+{
+    ZL_DictID requiredDictID = makeDictID(0xD1);
+    ZL_DictID wrongDictID    = makeDictID(0xE1);
+
+    ZL_RESULT_OF(ZL_NodeID)
+    nodeResult = registerDictBackedNode(
+            "test_encoder_wrong_bundle_failure", requiredDictID);
+    ASSERT_FALSE(ZL_RES_isError(nodeResult));
+    ZL_NodeID nodeID = ZL_RES_value(nodeResult);
+
+    ZL_DictID registeredDictID =
+            ZL_Compressor_Node_getDictID(compressor_.get(), nodeID);
+    EXPECT_EQ(
+            memcmp(&registeredDictID,
+                   &requiredDictID,
+                   sizeof(registeredDictID)),
+            0);
+
+    std::vector<uint8_t> wrongBundle = packFatBundle(
+            { buildPackedDict(
+                    wrongDictID,
+                    nextCtid_ - 1,
+                    std::vector<uint8_t>{ 0x11, 0x22, 0x33 }) });
+    ZL_Report report = ZL_Compressor_loadDictBundle(
+            compressor_.get(), wrongBundle.data(), wrongBundle.size());
+    EXPECT_TRUE(ZL_isError(report));
+    EXPECT_EQ(ZL_RES_code(report), ZL_ErrorCode_noValidMaterialization);
+
+    std::string errorContext =
+            ZL_Compressor_getErrorContextString(compressor_.get(), report);
+    EXPECT_NE(
+            errorContext.find("no materializer found for dict"),
+            std::string::npos);
 }
 
 TEST_F(CompressorIntegrationTest,
        GIVENaNodeRegisteredWithDictIDWHENqueriedTHENdictIDIsReturned)
 {
-    const auto passthroughFn =
-            [](ZL_Encoder* eictx, const ZL_Input* inputs[], size_t nbInputs)
-                    ZL_NOEXCEPT_FUNC_PTR -> ZL_Report {
-        return passthrough(eictx, inputs, nbInputs);
-    };
-
-    ZL_DictID dictID;
-    memset(&dictID, 0, sizeof(dictID));
-    dictID.id.bytes[0] = 42;
-    dictID.id.bytes[1] = 123;
-
-    static ZL_Type typetype = ZL_Type_serial;
-    ZL_MIGraphDesc graphDesc{
-        .CTid                = nextCtid_++,
-        .inputTypes          = &typetype,
-        .nbInputs            = 1,
-        .lastInputIsVariable = false,
-        .soTypes             = &typetype,
-        .nbSOs               = 1,
-        .voTypes             = nullptr,
-        .nbVOs               = 0,
-    };
-
-    ZL_MIEncoderDesc encoderDesc{
-        .gd          = graphDesc,
-        .transform_f = passthroughFn,
-        .localParams = {},
-        .name        = "test_encoder_with_dictID",
-        .dictID      = dictID,
-    };
-
-    auto nodeid = compressor_.registerCustomEncoder(encoderDesc);
-    ASSERT_NE(nodeid.nid, ZL_NODE_ILLEGAL.nid);
+    ZL_DictID dictID = makeDictID(42);
+    ZL_RESULT_OF(ZL_NodeID)
+    nodeResult = registerDictBackedNode("test_encoder_with_dictID", dictID);
+    ASSERT_FALSE(ZL_RES_isError(nodeResult));
+    ZL_NodeID nodeID = ZL_RES_value(nodeResult);
 
     ZL_DictID retrieved =
-            ZL_Compressor_Node_getDictID(compressor_.get(), nodeid);
-    EXPECT_EQ(retrieved.id.bytes[0], 42u);
-    EXPECT_EQ(retrieved.id.bytes[1], 123u);
-    EXPECT_EQ(retrieved.id.bytes[2], 0u);
-    EXPECT_EQ(retrieved.id.bytes[3], 0u);
+            ZL_Compressor_Node_getDictID(compressor_.get(), nodeID);
+    EXPECT_EQ(memcmp(&retrieved, &dictID, sizeof(retrieved)), 0);
 }
 
 TEST_F(CompressorIntegrationTest,
        GIVENaParameterizedNodeWHENqueriedTHENdictIDIsPreservedFromBaseNode)
 {
-    const auto passthroughFn =
-            [](ZL_Encoder* eictx, const ZL_Input* inputs[], size_t nbInputs)
-                    ZL_NOEXCEPT_FUNC_PTR -> ZL_Report {
-        return passthrough(eictx, inputs, nbInputs);
-    };
+    ZL_DictID dictID = makeDictID(99);
+    ZL_RESULT_OF(ZL_NodeID)
+    baseResult =
+            registerDictBackedNode("test_encoder_parameterized_dictID", dictID);
+    ASSERT_FALSE(ZL_RES_isError(baseResult));
+    ZL_NodeID baseNode = ZL_RES_value(baseResult);
 
-    ZL_DictID dictID;
-    memset(&dictID, 0, sizeof(dictID));
-    dictID.id.bytes[0] = 99;
-    dictID.id.bytes[1] = 200;
-    dictID.id.bytes[2] = 44;
-    dictID.id.bytes[3] = 144;
-
-    static ZL_Type typetype = ZL_Type_serial;
-    ZL_MIGraphDesc graphDesc{
-        .CTid                = nextCtid_++,
-        .inputTypes          = &typetype,
-        .nbInputs            = 1,
-        .lastInputIsVariable = false,
-        .soTypes             = &typetype,
-        .nbSOs               = 1,
-        .voTypes             = nullptr,
-        .nbVOs               = 0,
-    };
-
-    ZL_MIEncoderDesc encoderDesc{
-        .gd          = graphDesc,
-        .transform_f = passthroughFn,
-        .localParams = {},
-        .name        = "test_encoder_parameterized_dictID",
-        .dictID      = dictID,
-    };
-
-    auto baseNode = compressor_.registerCustomEncoder(encoderDesc);
-    ASSERT_NE(baseNode.nid, ZL_NODE_ILLEGAL.nid);
-
-    // Parameterize the node with new local params but no dictID override
-    ZL_IntParam ip = {
+    ZL_IntParam intParam = {
         .paramId    = 1,
         .paramValue = 42,
     };
-    ZL_LocalParams lp = {
+    ZL_LocalParams localParams = {
         .intParams = {
-            .intParams   = &ip,
+            .intParams   = &intParam,
             .nbIntParams = 1,
         },
     };
     ZL_ParameterizedNodeDesc desc = {
-        .name        = nullptr,
         .node        = baseNode,
-        .localParams = &lp,
+        .localParams = &localParams,
     };
     ZL_NodeID paramNode =
             ZL_Compressor_registerParameterizedNode(compressor_.get(), &desc);
     ASSERT_NE(paramNode.nid, ZL_NODE_ILLEGAL.nid);
 
-    // The dictID should be carried over from the base node
     ZL_DictID retrieved =
             ZL_Compressor_Node_getDictID(compressor_.get(), paramNode);
-    EXPECT_EQ(retrieved.id.bytes[0], 99u);
-    EXPECT_EQ(retrieved.id.bytes[1], 200u);
-    EXPECT_EQ(retrieved.id.bytes[2], 44u);
-    EXPECT_EQ(retrieved.id.bytes[3], 144u);
+    EXPECT_EQ(memcmp(&retrieved, &dictID, sizeof(retrieved)), 0);
 }
 
 TEST_F(CompressorIntegrationTest,
        GIVENaParameterizedNodeWithNewDictIDWHENqueriedTHENnewDictIDIsUsed)
 {
-    const auto passthroughFn =
-            [](ZL_Encoder* eictx, const ZL_Input* inputs[], size_t nbInputs)
-                    ZL_NOEXCEPT_FUNC_PTR -> ZL_Report {
-        return passthrough(eictx, inputs, nbInputs);
-    };
+    ZL_DictID originalDictID = makeDictID(10);
+    ZL_RESULT_OF(ZL_NodeID)
+    baseResult = registerDictBackedNode(
+            "test_encoder_override_dictID", originalDictID);
+    ASSERT_FALSE(ZL_RES_isError(baseResult));
+    ZL_NodeID baseNode = ZL_RES_value(baseResult);
 
-    // Register base node with an initial dictID
-    ZL_DictID originalDictID;
-    memset(&originalDictID, 0, sizeof(originalDictID));
-    originalDictID.id.bytes[0] = 10;
-    originalDictID.id.bytes[1] = 20;
-
-    static ZL_Type typetype = ZL_Type_serial;
-    ZL_MIGraphDesc graphDesc{
-        .CTid                = nextCtid_++,
-        .inputTypes          = &typetype,
-        .nbInputs            = 1,
-        .lastInputIsVariable = false,
-        .soTypes             = &typetype,
-        .nbSOs               = 1,
-        .voTypes             = nullptr,
-        .nbVOs               = 0,
-    };
-
-    ZL_MIEncoderDesc encoderDesc{
-        .gd          = graphDesc,
-        .transform_f = passthroughFn,
-        .localParams = {},
-        .name        = "test_encoder_override_dictID",
-        .dictID      = originalDictID,
-    };
-
-    auto baseNode = compressor_.registerCustomEncoder(encoderDesc);
-    ASSERT_NE(baseNode.nid, ZL_NODE_ILLEGAL.nid);
-
-    // Verify base node has the original dictID
-    ZL_DictID baseRetrieved =
-            ZL_Compressor_Node_getDictID(compressor_.get(), baseNode);
-    EXPECT_EQ(baseRetrieved.id.bytes[0], 10u);
-    EXPECT_EQ(baseRetrieved.id.bytes[1], 20u);
-
-    // Parameterize the node with a new dictID
-    ZL_DictID newDictID;
-    memset(&newDictID, 0, sizeof(newDictID));
-    newDictID.id.bytes[0] = 77;
-    newDictID.id.bytes[1] = 88;
-    newDictID.id.bytes[2] = 99;
-    newDictID.id.bytes[3] = 111;
-
+    ZL_DictID newDictID      = makeDictID(77);
     ZL_NodeParameters params = {
-        .name        = nullptr,
-        .localParams = nullptr,
-        .dictID      = newDictID,
+        .dictID = newDictID,
     };
     ZL_RESULT_OF(ZL_NodeID)
     result = ZL_Compressor_parameterizeNode(
@@ -1067,18 +964,14 @@ TEST_F(CompressorIntegrationTest,
     ZL_NodeID paramNode = ZL_RES_value(result);
     ASSERT_NE(paramNode.nid, ZL_NODE_ILLEGAL.nid);
 
-    // The parameterized node should have the new dictID
     ZL_DictID retrieved =
             ZL_Compressor_Node_getDictID(compressor_.get(), paramNode);
-    EXPECT_EQ(retrieved.id.bytes[0], 77u);
-    EXPECT_EQ(retrieved.id.bytes[1], 88u);
-    EXPECT_EQ(retrieved.id.bytes[2], 99u);
-    EXPECT_EQ(retrieved.id.bytes[3], 111u);
+    EXPECT_EQ(memcmp(&retrieved, &newDictID, sizeof(retrieved)), 0);
 
-    // The base node should still have the original dictID
-    baseRetrieved = ZL_Compressor_Node_getDictID(compressor_.get(), baseNode);
-    EXPECT_EQ(baseRetrieved.id.bytes[0], 10u);
-    EXPECT_EQ(baseRetrieved.id.bytes[1], 20u);
+    ZL_DictID baseRetrieved =
+            ZL_Compressor_Node_getDictID(compressor_.get(), baseNode);
+    EXPECT_EQ(
+            memcmp(&baseRetrieved, &originalDictID, sizeof(baseRetrieved)), 0);
 }
 
 // This test exercises MParams thoroughly
