@@ -3,7 +3,6 @@
 #ifndef ZSTRONG_DECOMPRESS_DCTX2_H
 #define ZSTRONG_DECOMPRESS_DCTX2_H
 
-#include "openzl/common/wire_format.h"            // PublicTransformInfo
 #include "openzl/decompress/decode_frameheader.h" // DFH_Struct
 #include "openzl/shared/portability.h"
 #include "openzl/zl_data.h"         // ZL_Type

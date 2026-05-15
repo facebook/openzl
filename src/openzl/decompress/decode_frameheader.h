@@ -41,6 +41,10 @@ typedef struct {
      */
     uint32_t numInputStreams;
     /**
+     * Dict bundle offset from chunk header (ZL_DICT_INDEX_NONE if unset)
+     */
+    uint32_t dictIdx;
+    /**
      * If this node is fused, a pointer to the fusion descriptor.
      * @note Set by the dctx after decoding the frame header.
      */

@@ -433,7 +433,7 @@ ZL_IDType CTM_nbCNodes(const CNodes_manager* ctm)
     return (ZL_IDType)VECTOR_SIZE(ctm->cnodes);
 }
 
-void CTM_setDictIndex(CNodes_manager* ctm, CNodeID id, size_t index)
+void CTM_setDictIndex(CNodes_manager* ctm, CNodeID id, uint32_t index)
 {
     ZL_ASSERT_NN(ctm);
     ZL_ASSERT_LT(id.cnid, VECTOR_SIZE(ctm->cnodes));

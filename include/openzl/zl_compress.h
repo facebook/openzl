@@ -55,11 +55,11 @@ extern "C" {
 
 /**
  * Maximum frame-level overhead in bytes (frame header + EOF marker).
- * Generous overestimate: actual overhead is ~9-17 bytes.
+ * Generous overestimate: actual overhead is ~9-17 bytes without dict bundle.
  * Breakdown: magic (4) + flags (1) + input type (1) + input size varint (<=9)
- *          + header checksum (1) + EOF marker (1).
+ *          + bundleID (<=33) + header checksum (1) + EOF marker (1).
  */
-#define ZL_FRAME_OVERHEAD_MAX (32)
+#define ZL_FRAME_OVERHEAD_MAX (64)
 
 #define ZL_COMPRESSBOUND(s)      \
     ((s) + ZL_FRAME_OVERHEAD_MAX \

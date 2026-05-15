@@ -3,7 +3,7 @@
 #ifndef OPENZL_DICT_DICT_CONSTANTS_H
 #define OPENZL_DICT_DICT_CONSTANTS_H
 
-#include <stddef.h> /* size_t */
+#include <stdint.h> /* uint32_t */
 
 /**
  * Shared wire-format constants for dict and bundle serialization.
@@ -26,6 +26,6 @@
 
 #define ZL_MAX_BUNDLES_PER_FATBUNDLE_LOADER 128
 
-#define ZL_DICT_INDEX_NONE (SIZE_MAX) /* no dict associated */
+#define ZL_DICT_INDEX_NONE (UINT32_MAX) /* no dict associated */
 
 #endif /* OPENZL_DICT_DICT_CONSTANTS_H */

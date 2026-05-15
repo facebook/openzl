@@ -1329,8 +1329,10 @@ ZL_Report CGraph_resolveDictIndices(ZL_Compressor* cgraph)
             continue;
 
         const ZL_UniqueID* dictUID = &cnode->transformDesc.publicDesc.dictID.id;
-        if (!ZL_UniqueID_isValid(dictUID))
+        if (!ZL_UniqueID_isValid(dictUID)) {
+            CTM_setDictIndex(ctm, cnodeID, ZL_DICT_INDEX_NONE);
             continue;
+        }
 
         // This CNode requires a dictionary — resolve its bundle index
         ZL_ERR_IF_NULL(
@@ -1340,7 +1342,7 @@ ZL_Report CGraph_resolveDictIndices(ZL_Compressor* cgraph)
                 CNODE_getName(cnode));
 
         bool found = false;
-        for (size_t j = 0; j < bundle->info.numDicts; ++j) {
+        for (uint32_t j = 0; j < bundle->info.numDicts; ++j) {
             if (ZL_UniqueID_eq(dictUID, &bundle->info.dictIDs[j].id)) {
                 CTM_setDictIndex(ctm, cnodeID, j);
                 found = true;
@@ -1360,7 +1362,7 @@ ZL_Report ZL_Compressor_Node_getDictIndex(
         ZL_Compressor const* cgraph,
         ZL_NodeID node)
 {
-    size_t index = CNODE_getDictIndex(CGRAPH_getCNode(cgraph, node));
+    uint32_t index = CNODE_getDictIndex(CGRAPH_getCNode(cgraph, node));
     if (index == ZL_DICT_INDEX_NONE) {
         return ZL_returnError(ZL_ErrorCode_dictNoRecord);
     }

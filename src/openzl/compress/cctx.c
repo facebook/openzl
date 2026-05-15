@@ -26,6 +26,7 @@
 #include "openzl/compress/rtgraphs.h"            // RTGraph, RTStreamID
 #include "openzl/compress/segmenter.h"           // SEGM_*
 #include "openzl/compress/trStates.h"            // TrStates
+#include "openzl/dict/dict_constants.h"          // ZL_DICT_INDEX_NONE
 #include "openzl/zl_buffer.h"                    // ZL_RBuffer
 #include "openzl/zl_compress.h"
 #include "openzl/zl_compressor.h"
@@ -1629,6 +1630,11 @@ static ZL_Report CCTX_writeChunkHeader(
         .hasCompressedChecksum =
                 CCTX_getAppliedGParam(cctx, ZL_CParam_compressedChecksum)
                 != ZL_TernaryParam_disable,
+        .hasBundleID =
+                (formatVersion >= ZL_MATERIALIZED_DICT_VERSION_MIN
+                 && CCTX_getCGraph(cctx) != NULL
+                 && ZL_Compressor_getDictBundleID(CCTX_getCGraph(cctx))
+                         != NULL),
     };
     return EFH_writeChunkHeader(dst, dstCapacity, &info, gi, formatVersion);
 }
@@ -1897,6 +1903,8 @@ ZL_Report CCTX_getFinalGraph(ZL_CCtx* cctx, GraphInfo* gip)
     ALLOC_ARENA_MALLOC_CHECKED(size_t, nbVOs, nbTransforms, cctx->chunkArena);
     ALLOC_ARENA_MALLOC_CHECKED(
             size_t, nbTrInputs, nbTransforms, cctx->chunkArena);
+    ALLOC_ARENA_MALLOC_CHECKED(
+            uint32_t, dictIdxs, nbTransforms, cctx->chunkArena);
     ALLOC_ARENA_CALLOC_CHECKED(
             ZL_RBuffer, buffs, nbStreamsMax, cctx->chunkArena);
     ALLOC_ARENA_MALLOC_CHECKED(
@@ -1906,6 +1914,7 @@ ZL_Report CCTX_getFinalGraph(ZL_CCtx* cctx, GraphInfo* gip)
     gip->trHSizes    = trHSizes;
     gip->nbVOs       = nbVOs;
     gip->nbTrInputs  = nbTrInputs;
+    gip->dictIdxs    = dictIdxs;
     gip->storedBuffs = buffs;
     gip->inputDescs  = inputDescs;
 
@@ -1935,6 +1944,7 @@ ZL_Report CCTX_getFinalGraph(ZL_CCtx* cctx, GraphInfo* gip)
         nbVOs[n] = RTGM_getNbOutStreams(&cctx->rtgraph, rtnid)
                 - CNODE_getNbOut1s(cnode);
         nbTrInputs[n] = RTGM_getNbInStreams(&cctx->rtgraph, rtnid);
+        dictIdxs[n]   = CNODE_getDictIndex(cnode);
         nbDistances += nbTrInputs[n];
         ZL_DLOG(BLOCK,
                 "CCTX_getFinalGraph: stage %u uses Transform ID %u ",

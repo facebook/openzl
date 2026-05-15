@@ -74,8 +74,9 @@ void* ZL_DictLoader_getOpaque(const ZL_DictLoader* loader);
  * serialization.
  *
  * Codecs that support dictionaries may fetch the materialized object (if any)
- * at both compression time and decompression time using ZL_Encoder_getDict()
- * and ZL_Decoder_getDict() respectively.
+ * at both compression time and decompression time using
+ * ZL_Encoder_getMaterializedDict() and
+ * ZL_Decoder_getMaterializedDict() respectively.
  *
  * The loader takes unconditional ownership of the materializer opaque pointer
  * and will free it upon destruction or failed registrations.

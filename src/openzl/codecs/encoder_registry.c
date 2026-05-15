@@ -40,6 +40,7 @@
 #include "openzl/codecs/zstd/encode_zstd_binding.h"
 #include "openzl/common/assertion.h"
 #include "openzl/compress/private_nodes.h"
+#include "openzl/dict/dict_constants.h"
 #include "openzl/shared/utils.h"
 #include "openzl/zl_version.h"
 
@@ -71,6 +72,7 @@
     .minFormatVersion = (_minFormatVersion),                        \
     .maxFormatVersion = (_maxFormatVersion),                        \
     .minLibraryVersion = (_reqLibVersion),                          \
+    .maybeDictIndex = ZL_DICT_INDEX_NONE,                           \
     .transformDesc = {                                              \
         .publicDesc = _macro(_strid),                               \
     },                                                              \

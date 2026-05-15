@@ -12,15 +12,17 @@
 #include "openzl/common/assertion.h"  // ZS_ASSERT_*
 #include "openzl/common/cursor.h"     // ZL_RC
 #include "openzl/common/limits.h"
-#include "openzl/common/wire_format.h" // ZL_StandardTransformID_numBits
-#include "openzl/fse/fse.h"            // FSE_getErrorName
-#include "openzl/fse/hist.h"           // HIST_count_simple
+#include "openzl/common/wire_format.h"  // ZL_StandardTransformID_numBits
+#include "openzl/dict/dict_constants.h" // ZL_MAX_DICTS_PER_BUNDLE
+#include "openzl/fse/fse.h"             // FSE_getErrorName
+#include "openzl/fse/hist.h"            // HIST_count_simple
 #include "openzl/shared/bits.h"
 #include "openzl/shared/mem.h"    // ZL_readLE32, etc.
 #include "openzl/shared/xxhash.h" // XXH3_64bits
 #include "openzl/zl_data.h"
 #include "openzl/zl_decompress.h" // ZS2_* public methods
 #include "openzl/zl_errors.h"     // ZL_Report
+#include "openzl/zl_unique_id.h"
 #include "openzl/zl_version.h"
 
 // -------------------------------------------------
@@ -36,6 +38,7 @@ struct ZL_FrameInfo {
     size_t frameHeaderSize;
     void* comment;
     size_t commentSize;
+    ZL_BundleID bundleID; // v24+: dict bundle ID
 };
 
 static ZL_Type decodeType(uint8_t et)
@@ -151,7 +154,8 @@ static ZL_Report DFH_decoderOutputTypes(
         size_t done = 0;
         if (nbOutputs <= 14) {
             // First 2 output types stored in first byte
-            uint8_t const token1 = ((const uint8_t*)cSrc)[5];
+            // (the same byte that DFH_decodeNbOutputs already consumed)
+            uint8_t const token1 = ((const uint8_t*)cSrc)[*consumedPtr - 1];
             size_t const max     = ZL_MIN(2, nbOutputs);
             for (size_t n = 0; n < max; n++) {
                 size_t const shift = n * 2 + 4;
@@ -290,6 +294,29 @@ static ZL_Report DFH_FrameInfo_decodeFrameHeader(
         zfi->properties.hasContentChecksum    = ((flags & (1 << 0)) != 0);
         zfi->properties.hasCompressedChecksum = ((flags & (1 << 1)) != 0);
         zfi->properties.hasComment            = ((flags & (1 << 2)) != 0);
+        zfi->properties.hasBundleID =
+                (formatVersion >= ZL_MATERIALIZED_DICT_VERSION_MIN)
+                && ((flags & (1 << 3)) != 0);
+    }
+
+    // Decode dict bundle ID (v24+): 1-byte size + variable-length ID
+    if (zfi->properties.hasBundleID) {
+        ZL_ERR_IF_LE(cSize, consumed, corruption);
+        uint8_t const encLen = ptr[consumed++];
+        ZL_ERR_IF_EQ(
+                encLen,
+                0,
+                corruption,
+                "bundleID size byte is 0 but flag is set");
+        ZL_ERR_IF_GT(
+                encLen,
+                ZL_UNIQUE_ID_SIZE,
+                corruption,
+                "bundleID size too large");
+        ZL_ERR_IF_LT(cSize, consumed + encLen, corruption);
+        memset(zfi->bundleID.id.bytes, 0, ZL_UNIQUE_ID_SIZE);
+        memcpy(zfi->bundleID.id.bytes, ptr + consumed, encLen);
+        consumed += encLen;
     }
 
     /* nb of outputs */
@@ -499,6 +526,12 @@ ZL_RESULT_OF(ZL_Comment) ZL_FrameInfo_getComment(const ZL_FrameInfo* zfi)
     return ZL_WRAP_VALUE(comment);
 }
 
+const ZL_BundleID* ZL_FrameInfo_getBundleID(const ZL_FrameInfo* zfi)
+{
+    ZL_ASSERT_NN(zfi);
+    return ZL_UniqueID_isValid(&zfi->bundleID.id) ? &zfi->bundleID : NULL;
+}
+
 // --------------------------
 // Header parsing
 // --------------------------
@@ -607,7 +640,19 @@ ZL_Report ZL_getOutputType(ZL_Type* typePtr, const void* cSrc, size_t cSize)
         *typePtr = decodeType(typeEncoded);
     } else { // formatVersion >= ZL_CHUNK_VERSION_MIN
         ZL_ERR_IF_LT(cSize, 6, srcSize_tooSmall);
-        uint8_t const typeEncoded = ((const uint8_t*)cSrc)[5];
+        uint8_t const flags = ((const uint8_t*)cSrc)[4];
+        int const hasBundleID =
+                (formatVersion >= ZL_MATERIALIZED_DICT_VERSION_MIN)
+                && ((flags & (1 << 3)) != 0);
+        // Skip: flags(1) + [sizebyte(1) + bundleID(sizeByte)] if present
+        size_t bundleIDFieldLen = 0;
+        if (hasBundleID) {
+            uint8_t const idLen = ((const uint8_t*)cSrc)[5];
+            bundleIDFieldLen    = 1 + idLen;
+        }
+        size_t const tokenOffset = 5 + bundleIDFieldLen;
+        ZL_ERR_IF_LT(cSize, tokenOffset + 1, srcSize_tooSmall);
+        uint8_t const typeEncoded = ((const uint8_t*)cSrc)[tokenOffset];
         ZL_ERR_IF_NE(typeEncoded & 15, 1, invalidRequest_singleOutputFrameOnly);
         *typePtr = decodeType((typeEncoded >> 4) & 3);
     }
@@ -845,6 +890,60 @@ static ZL_Report decompressNbRegens(
                     corruption);
         } else {
             nbRegens[u] = 1;
+        }
+    }
+
+    return ZL_returnSuccess();
+}
+
+// Decompress per-codec dict bundle offsets
+// (v24+)
+// has-dict flags are bitpacked
+// non-zero dict indices are bitpacked
+static ZL_Report decompressDictIdxs(
+        uint32_t dictIdxs[],
+        size_t nbTransforms,
+        ZL_RC* src,
+        uint32_t* valuesWksp)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    // Decode bitmap into dictIdxs (0 = no dict, 1 = has dict)
+    ZL_ERR_IF_ERR(checkedBitpackDecode32(dictIdxs, nbTransforms, src, 1));
+
+    // Count non-zero entries
+    size_t nbNonZero = 0;
+    for (size_t u = 0; u < nbTransforms; u++) {
+        if (dictIdxs[u] != 0)
+            nbNonZero++;
+    }
+
+    if (nbNonZero > 0) {
+        // Read nbBits
+        ZL_ERR_IF_LT(ZL_RC_avail(src), 1, srcSize_tooSmall);
+        uint8_t const nbBits = ZL_RC_pop(src);
+        ZL_ERR_IF_GT(nbBits, 16, corruption, "dictIdx nbBits too large");
+
+        // Decode bitpacked values into separate workspace
+        ZL_ERR_IF_ERR(
+                checkedBitpackDecode32(valuesWksp, nbNonZero, src, nbBits));
+
+        // Merge: walk forward, overwriting bitmap flags with actual values
+        size_t idx = 0;
+        for (size_t u = 0; u < nbTransforms; u++) {
+            if (dictIdxs[u]) {
+                ZL_ERR_IF_GT(
+                        valuesWksp[idx],
+                        ZL_MAX_DICTS_PER_BUNDLE,
+                        corruption,
+                        "dictIdx value above allowed range");
+                dictIdxs[u] = valuesWksp[idx++];
+            } else {
+                dictIdxs[u] = ZL_DICT_INDEX_NONE;
+            }
+        }
+    } else {
+        for (size_t u = 0; u < nbTransforms; u++) {
+            dictIdxs[u] = ZL_DICT_INDEX_NONE;
         }
     }
 
@@ -1119,6 +1218,22 @@ static ZL_Report decodeChunkHeader_internal(
         totalNbRegens = nbDecoders;
     }
 
+    // Decode per-codec dict indices if a bundle is declared
+    // (v24+ only)
+    if (decoder->formatVersion >= ZL_MATERIALIZED_DICT_VERSION_MIN
+        && dfh->frameinfo->properties.hasBundleID) {
+        uint32_t* const dictIdxs = wksp.scratch0;
+        ZL_ERR_IF_ERR(
+                decompressDictIdxs(dictIdxs, nbDecoders, &in, wksp.scratch1));
+        for (unsigned u = 0; u < nbDecoders; u++) {
+            nodes[u].dictIdx = dictIdxs[u];
+        }
+    } else {
+        for (unsigned u = 0; u < nbDecoders; u++) {
+            nodes[u].dictIdx = ZL_DICT_INDEX_NONE;
+        }
+    }
+
     // Decode regen stream id distance (1 per Transform)
     ZL_DLOG(SEQ, "totalNbRegens = %zu", totalNbRegens);
     ZL_ERR_IF_NE(
@@ -1188,12 +1303,25 @@ static ZL_Report getDecompressedSizeV3orMore(
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_DLOG(FRAME, "getDecompressedSizeV3orMore (from srcSize=%zu)", srcSize);
+    ZL_ERR_IF_LT(srcSize, 5, srcSize_tooSmall);
+    uint8_t const flags = ((const uint8_t*)src)[4];
+    int const hasBundleID =
+            (decoder->formatVersion >= ZL_MATERIALIZED_DICT_VERSION_MIN)
+            && ((flags & (1 << 3)) != 0);
+    size_t bundleIDFieldLen = 0;
+    if (hasBundleID) {
+        ZL_ERR_IF_LT(srcSize, 6, srcSize_tooSmall);
+        uint8_t const idLen = ((const uint8_t*)src)[5];
+        bundleIDFieldLen    = 1 + idLen;
+    }
     size_t const hSize = (size_t)4 + (decoder->formatVersion > 13)
-            + (decoder->formatVersion >= ZL_CHUNK_VERSION_MIN);
+            + (decoder->formatVersion >= ZL_CHUNK_VERSION_MIN)
+            + bundleIDFieldLen;
     ZL_ERR_IF_LT(srcSize, hSize + 4, srcSize_tooSmall);
     if (decoder->formatVersion > 14) {
         uint8_t token1 = ((const uint8_t*)src)
-                [4 + (decoder->formatVersion >= ZL_CHUNK_VERSION_MIN)];
+                [4ul + (decoder->formatVersion >= ZL_CHUNK_VERSION_MIN)
+                 + bundleIDFieldLen];
         ZL_ERR_IF_GE(
                 token1,
                 64,
