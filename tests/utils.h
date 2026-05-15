@@ -112,7 +112,8 @@ ZL_GraphID buildTrivialGraph(ZL_Compressor* cgraph, ZL_NodeID node);
 /**
  * Tests that round tripping @p inputs works using the given @p graph.
  * NOTE: This function handles format versions older than 15 that don't
- * accept multiple typed inputs.
+ * accept multiple typed inputs. It throws an exception if compression
+ * fails, and crashes if decompression fails or does not round trip.
  *
  * @param compressed The buffer to compress into. It must already be
  *                   sized to be large enough.
@@ -130,7 +131,7 @@ ZL_GraphID buildTrivialGraph(ZL_Compressor* cgraph, ZL_NodeID node);
  *
  * @returns The compressed size.
  *
- * @throws An exception if the inputs do not round trip successfully.
+ * @throws An exception if compression fails.
  */
 size_t testRoundTrip(
         poly::span<char> compressed,
