@@ -65,12 +65,6 @@ jobs:
             extra_flags: "-Werror"
             shared_libs: true
             build_only: true
-          - name: "CMake Parquet Tools"
-            os: ubuntu-latest
-            build_mode: dev
-            extra_flags: "-Werror"
-            parquet_tools: true
-            build_only: true
           - name: "CMake Linux (No Introspection)"
             os: ubuntu-latest
             build_mode: dev
@@ -111,16 +105,13 @@ jobs:
             CMAKE_ARGS="$CMAKE_ARGS -DOPENZL_BUILD_SHARED_LIBS=ON"
           fi
 
-          if [ "${{ matrix.parquet_tools }}" = "true" ]; then
-            CMAKE_ARGS="$CMAKE_ARGS -DOPENZL_BUILD_PARQUET_TOOLS=ON"
-          fi
-
           if [ "${{ matrix.no_introspection }}" = "true" ]; then
             CMAKE_ARGS="$CMAKE_ARGS -DOPENZL_ALLOW_INTROSPECTION=OFF"
           fi
 
           if [ "${{ matrix.name }}" = "CMake Linux" ]; then
             CMAKE_ARGS="$CMAKE_ARGS -DOPENZL_BUILD_BENCHMARKS=ON"
+            CMAKE_ARGS="$CMAKE_ARGS -DOPENZL_BUILD_PARQUET_TOOLS=ON"
           fi
 
           echo "Running: cmake $CMAKE_ARGS .."
