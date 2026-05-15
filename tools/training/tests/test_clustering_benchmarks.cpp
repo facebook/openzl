@@ -56,10 +56,11 @@ TEST_F(TestClusteringBenchmarks, benchmarkPpmfUnit)
     // Clustering quality depends on schema structure; fewer rows still
     // catches regressions from a known baseline.
     std::string csvData = ppmfCsvString;
-    size_t pos = 0;
-    for (int i = 0; i < 176 && pos < csvData.size(); ++i) {  // header + 175 rows
+    size_t pos          = 0;
+    for (int i = 0; i < 176 && pos < csvData.size(); ++i) { // header + 175 rows
         pos = csvData.find('\n', pos);
-        if (pos == std::string::npos) break;
+        if (pos == std::string::npos)
+            break;
         ++pos;
     }
     csvData.resize(pos);
