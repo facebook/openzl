@@ -176,6 +176,17 @@ zs_library(
     ],
 )
 
+# C-only OpenZL core (no C++ wrapper). For consumers that only need the C API
+# and need to build on platforms where the C++ wrapper is not available (e.g. Android).
+cpp_library(
+    # @autodeps-skip
+    name = "openzl_c_core",
+    visibility = ["//openzl:openzl_c_core"],
+    exported_deps = [
+        ":zstronglib",  # @manual
+    ],
+)
+
 # TODO: Fix FSE: Split into compress and decompress pieces.
 zs_library(
     name = "fse",
@@ -183,11 +194,14 @@ zs_library(
         "src/openzl/fse/**/*.c",
         "src/zstrong/fse/**/*.c",
     ]) + select({
-        "DEFAULT": glob([
-            "src/openzl/fse/**/*.S",
-            "src/zstrong/fse/**/*.S",
-        ]),
-        "ovr_config//compiler:msvc": [],
+        "DEFAULT": [],
+        "ovr_config//cpu:x86_64": select({
+            "DEFAULT": glob([
+                "src/openzl/fse/**/*.S",
+                "src/zstrong/fse/**/*.S",
+            ]),
+            "ovr_config//compiler:msvc": [],
+        }),
     }),
     headers = private_headers(glob([
         "src/openzl/fse/**/*.h",
