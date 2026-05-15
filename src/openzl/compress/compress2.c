@@ -15,7 +15,8 @@
 #include "openzl/shared/mem.h"                  // writeLE32
 #include "openzl/shared/xxhash.h"               // XXH3_64bits
 #include "openzl/zl_common_types.h" // ZL_TernaryParam_enable, ZL_TernaryParam_disable
-#include "openzl/zl_compress.h" // ZS2_compress_*
+#include "openzl/zl_compress.h"   // ZS2_compress_*
+#include "openzl/zl_compressor.h" // ZL_Compressor_getDictBundleID
 #include "openzl/zl_data.h"
 #include "openzl/zl_errors.h"
 
@@ -61,7 +62,11 @@ static ZL_Report writeFrameHeader(
         inputDescs[n].numElts  = ZL_Data_numElts(inputs[n]);
     }
 
-    ZL_Comment comment = CCTX_getHeaderComment(cctx);
+    ZL_Comment comment          = CCTX_getHeaderComment(cctx);
+    const ZL_BundleID* bundleID = CCTX_getCGraph(cctx)
+            ? ZL_Compressor_getDictBundleID(CCTX_getCGraph(cctx))
+            : NULL;
+
     // Requested frame properties (checksum)
     ZL_FrameProperties const fprop = {
         .hasContentChecksum =
@@ -71,6 +76,9 @@ static ZL_Report writeFrameHeader(
                 CCTX_getAppliedGParam(cctx, ZL_CParam_compressedChecksum)
                 != ZL_TernaryParam_disable,
         .hasComment = (comment.size != 0),
+        .hasBundleID =
+                (formatVersion >= ZL_MATERIALIZED_DICT_VERSION_MIN
+                 && bundleID != NULL),
     };
 
     EFH_FrameInfo const fi = {
@@ -78,6 +86,7 @@ static ZL_Report writeFrameHeader(
         .numInputs  = numInputs,
         .fprop      = &fprop,
         .comment    = comment,
+        .bundleID   = bundleID,
     };
 
     ZL_Report const r =

@@ -62,6 +62,9 @@ extern "C" {
 /// Minimum wire format version required to support typed input.
 #define ZL_TYPED_INPUT_VERSION_MIN (14)
 
+/// Minimum wire format version required to expose per-node materialized dicts.
+#define ZL_MATERIALIZED_DICT_VERSION_MIN (24)
+
 /**
  * @returns The current encoding version number.
  * This version number is used when the version

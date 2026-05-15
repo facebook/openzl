@@ -467,7 +467,8 @@ const ZL_LocalParams* ZL_Encoder_getLocalParams(const ZL_Encoder* eic);
 
 /**
  * @returns The materialized dictionary object associated with this node, if
- * there is one. Otherwise NULL.
+ * there is one. Returns NULL if there is no dict or if the frame format is
+ * less than ZL_MATERIALIZED_DICT_VERSION_MIN.
  */
 const void* ZL_Encoder_getMaterializedDict(const ZL_Encoder* eictx);
 

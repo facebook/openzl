@@ -16,6 +16,7 @@
 #include "openzl/zl_common_types.h"     // ZL_TernaryParam_disable
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_data.h"
+#include "openzl/zl_version.h"
 
 ZL_Report ENC_initEICtx(
         ZL_Encoder* eictx,
@@ -95,7 +96,12 @@ const void* ZL_Encoder_getMaterializedDict(const ZL_Encoder* eictx)
     ZL_ASSERT_NN(eictx);
     if (eictx->cnode == NULL)
         return NULL;
-    size_t offset = CNODE_getDictIndex(eictx->cnode);
+    if ((unsigned)CCTX_getAppliedGParam(eictx->cctx, ZL_CParam_formatVersion)
+        < ZL_MATERIALIZED_DICT_VERSION_MIN) {
+        ZL_ASSERT_EQ(CNODE_getDictIndex(eictx->cnode), ZL_DICT_INDEX_NONE);
+        return NULL;
+    }
+    uint32_t offset = CNODE_getDictIndex(eictx->cnode);
     if (offset == ZL_DICT_INDEX_NONE)
         return NULL;
     return CGRAPH_getDictObj(CCTX_getCGraph(eictx->cctx), offset);
@@ -375,6 +381,17 @@ ZL_Report ENC_runTransform(
             lparams);
     if (lparams == NULL)
         lparams = CNODE_getLocalParams(cnode);
+    if (cnode->maybeDictIndex != ZL_DICT_INDEX_NONE
+        && CCTX_getAppliedGParam(cctx, ZL_CParam_formatVersion)
+                < ZL_MATERIALIZED_DICT_VERSION_MIN) {
+        char const* const nodeName = CNODE_getName(cnode);
+        ZL_ERR(formatVersion_unsupported,
+               "Frame format version %u does not support dict-backed transforms. "
+               "Node `%s` requires a dictionary; use format version >= %u.",
+               CCTX_getAppliedGParam(cctx, ZL_CParam_formatVersion),
+               nodeName == NULL ? "<unnamed>" : nodeName,
+               ZL_MATERIALIZED_DICT_VERSION_MIN);
+    }
     ZL_Encoder eiState;
     ZL_ERR_IF_ERR(ENC_initEICtx(
             &eiState, cctx, wkspArena, &rtnodeid, cnode, lparams, trstates));
