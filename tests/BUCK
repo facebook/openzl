@@ -67,6 +67,7 @@ zs_unittest(
     supports_static_listing = False,
     deps = [
         "..:compress",
+        "..:decompress",
         "..:dict",
         "../cpp:openzl_cpp",
         "datagen:datagen",
@@ -88,6 +89,7 @@ zs_unittest(
     deps = [
         "..:compress",
         "..:decompress",
+        "..:dict",
         "../cpp:openzl_cpp",
         "datagen:datagen",
         "fbsource//third-party/zstd:zstd",
