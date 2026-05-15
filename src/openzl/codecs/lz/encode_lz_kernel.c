@@ -53,9 +53,6 @@ static ptrdiff_t matchLength(
             return totalLength + length;
         }
         totalLength += 16;
-        if (ZL_UNLIKELY(totalLength > ZL_LZ_MAX_LENGTH)) {
-            return ZL_LZ_MAX_LENGTH;
-        }
     }
 
     while (inPos + totalLength < inEnd
@@ -70,9 +67,10 @@ size_t ZL_Lz_maxNumSequences(size_t srcSize)
     if (srcSize == 0) {
         return 0;
     }
-    // Each real match sequence consumes at least MIN_MATCH bytes.
-    // Each overflow no-op sequence consumes ZL_LZ_MAX_LENGTH literal bytes.
-    // Add 2 for the trailing literal sequence and rounding.
+    // Each real match sequence consumes at least MIN_MATCH bytes on average.
+    // Overflow matches may emit shorter sequences, but average to >=
+    // UINT16_MAX/2. Each overflow no-op sequence consumes ZL_LZ_MAX_LENGTH
+    // literal bytes. Add 2 for the trailing literal sequence and rounding.
     return srcSize / ZL_LZ_MIN_MATCH + srcSize / ZL_LZ_MAX_LENGTH + 2;
 }
 
@@ -138,11 +136,6 @@ void ZL_Lz_encode(
                 ++ml;
             }
 
-            // Truncate match to fit in a uint16_t
-            if (ZL_UNLIKELY(ml > ZL_LZ_MAX_LENGTH)) {
-                ml = ZL_LZ_MAX_LENGTH;
-            }
-
             // Copy literals
             size_t ll = (size_t)(inPos - inLitStart);
             assert(inPos + ZL_LZ_LIT_OVER_LENGTH <= (ptrdiff_t)srcSize);
@@ -169,9 +162,27 @@ void ZL_Lz_encode(
                 }
                 litLens[seq] = (uint16_t)ll;
             }
-            matchLens[seq] = (uint16_t)ml;
-            offsets[seq]   = (uint16_t)distance;
-            ++seq;
+            if (ZL_LIKELY(ml <= ZL_LZ_MAX_LENGTH)) {
+                matchLens[seq] = (uint16_t)ml;
+                offsets[seq]   = (uint16_t)distance;
+                ++seq;
+            } else {
+                // If the match length is too large, split it into multiple
+                // sequences. The final match length may be < ZL_LZ_MIN_MATCH
+                // but that is okay.
+                ptrdiff_t remainingMatchLength = ml;
+                while (remainingMatchLength > 0) {
+                    ptrdiff_t const bounded =
+                            ZL_MIN(remainingMatchLength, ZL_LZ_MAX_LENGTH);
+                    // litlens[seq] is already set
+                    matchLens[seq] = (uint16_t)bounded;
+                    offsets[seq]   = (uint16_t)distance;
+                    ++seq;
+
+                    remainingMatchLength -= bounded;
+                    litLens[seq] = 0;
+                }
+            }
 
             // Update the hash table with positions at the start and end of the
             // match.

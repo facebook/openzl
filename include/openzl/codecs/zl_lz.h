@@ -26,8 +26,12 @@ extern "C" {
 /// (like LZ4) and control the parameters like compression level.
 #define ZL_GRAPH_LZ ZL_MAKE_GRAPH_ID(ZL_StandardGraphID_lz)
 
-/// The LZ encoder sets the metadata on this ID to the minimum possible
-/// match length emitted by the encoder.
+/// The LZ encoder sets the metadata on this ID to the minimum expected
+/// match length emitted by the encoder. There may be edge cases where
+/// the match length is shorter, but it will be extremely rare. The
+/// current cases are:
+/// - The literal length is >= 2^16, and a match length of 0 is emitted.
+/// - The match length is >= 2^16 and (ml % 2^16 < min_match_length)
 #define ZL_LZ_MIN_MATCH_LENGTH_METADATA_ID 77
 
 #if defined(__cplusplus)
