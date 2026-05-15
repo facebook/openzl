@@ -84,7 +84,8 @@ void ZL_Lz_encode(
         ZL_Lz_OutSequences* dst,
         const uint8_t* const src,
         size_t srcSize,
-        void* hashTableMem)
+        void* hashTableMem,
+        int acceleration)
 {
     if (srcSize == 0) {
         dst->numLiterals  = 0;
@@ -116,7 +117,8 @@ void ZL_Lz_encode(
     size_t seq = 0;
 
     const ptrdiff_t kStepIncr = 1 << ZL_LZ_SEARCH_STRENGTH;
-    ptrdiff_t step            = 1;
+    const ptrdiff_t firstStep = ZL_MAX(acceleration, 1);
+    ptrdiff_t step            = firstStep;
     ptrdiff_t nextStep        = inPos + kStepIncr;
 
     while (inPos <= inLimit) {
@@ -201,7 +203,7 @@ void ZL_Lz_encode(
                         ZL_LZ_HASH_LEN);
             }
             inLitStart = inPos;
-            step       = 1;
+            step       = firstStep;
             nextStep   = inPos + kStepIncr;
         } else {
             inPos += step;

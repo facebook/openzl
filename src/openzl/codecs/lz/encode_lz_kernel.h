@@ -47,6 +47,7 @@ void ZL_Lz_encode(
         ZL_Lz_OutSequences* dst,
         const uint8_t* src,
         size_t srcSize,
-        void* hashTableMem);
+        void* hashTableMem,
+        int acceleration);
 
 #endif

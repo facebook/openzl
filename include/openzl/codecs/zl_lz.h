@@ -34,6 +34,32 @@ extern "C" {
 /// - The match length is >= 2^16 and (ml % 2^16 < min_match_length)
 #define ZL_LZ_MIN_MATCH_LENGTH_METADATA_ID 77
 
+/**
+ * Parameters that control the behavior of ZL_NODE_LZ and ZL_GRAPH_LZ.
+ */
+typedef enum {
+    /**
+     * If set, it overrides the ZL_GCParam_compressionLevel, otherwise
+     * it defaults to the global compression level.
+     *
+     * The compression level controls the default parameters and successor
+     * graphs. If compression level has no effect on parameters or successor
+     * graphs that are explicitly overridden.
+     */
+    ZL_LzParam_compressionLevel = 1,
+
+    /**
+     * The acceleration parameter controls how quickly the match finder
+     * skips over the input. Only one in every `acceleration` bytes of
+     * the input is checked for matches. The default value is derived
+     * from the compression level. If the compression level is >= 0,
+     * then it defaults to 1. Otherwise it defaults to -compression_level.
+     *
+     * @note This parameter is clamped to 1 if set to a lower value.
+     */
+    ZL_LzParam_acceleration = 100,
+} ZL_LzParam;
+
 #if defined(__cplusplus)
 }
 #endif

@@ -10,6 +10,7 @@
 #include "openzl/codecs/zl_lz.h"
 #include "openzl/codecs/zl_mux_lengths.h"
 #include "openzl/codecs/zl_partition.h"
+#include "openzl/compress/dyngraph_interface.h"
 #include "openzl/shared/utils.h"
 #include "openzl/shared/varint.h"
 #include "openzl/zl_ctransform.h"
@@ -131,6 +132,29 @@ ZL_Report EI_fieldLz(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     return ZL_returnValue(5);
 }
 
+static int getCompressionLevelEncoder(const ZL_Encoder* eictx)
+{
+    const ZL_IntParam compressionLevel =
+            ZL_Encoder_getLocalIntParam(eictx, ZL_LzParam_compressionLevel);
+    if (compressionLevel.paramId == ZL_LP_INVALID_PARAMID) {
+        return ZL_Encoder_getCParam(eictx, ZL_CParam_compressionLevel);
+    } else {
+        return compressionLevel.paramValue;
+    }
+}
+
+static int getAcceleration(const ZL_Encoder* eictx)
+{
+    const ZL_IntParam acceleration =
+            ZL_Encoder_getLocalIntParam(eictx, ZL_LzParam_acceleration);
+    if (acceleration.paramId == ZL_LP_INVALID_PARAMID) {
+        const int compressionLevel = getCompressionLevelEncoder(eictx);
+        return compressionLevel < 0 ? -compressionLevel : 1;
+    } else {
+        return ZL_MAX(acceleration.paramValue, 1);
+    }
+}
+
 ZL_Report EI_lz(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
@@ -182,7 +206,12 @@ ZL_Report EI_lz(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
         .numSequences      = 0,
     };
 
-    ZL_Lz_encode(&dst, (const uint8_t*)ZL_Input_ptr(in), srcSize, hashTableMem);
+    ZL_Lz_encode(
+            &dst,
+            (const uint8_t*)ZL_Input_ptr(in),
+            srcSize,
+            hashTableMem,
+            getAcceleration(eictx));
 
     // Write the original size as a varint codec header
     uint8_t header[ZL_VARINT_LENGTH_64];
@@ -399,14 +428,30 @@ ZL_GraphID SI_fieldLzLiteralsChannelSelector(
     return ZS2_transposedLiteralStreamSelector_impl(selCtx, input, &successors);
 }
 
+static int getCompressionLevelGraph(const ZL_Graph* graph)
+{
+    const ZL_IntParam compressionLevel =
+            ZL_Graph_getLocalIntParam(graph, ZL_LzParam_compressionLevel);
+    if (compressionLevel.paramId == ZL_LP_INVALID_PARAMID) {
+        return ZL_Graph_getCParam(graph, ZL_CParam_compressionLevel);
+    } else {
+        return compressionLevel.paramValue;
+    }
+}
+
 ZL_Report EI_lzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     ZL_ASSERT_EQ(nbIns, 1);
     ZL_Edge* input = inputs[0];
 
-    // Run the LZ node
-    ZL_TRY_LET(ZL_EdgeList, streams, ZL_Edge_runNode(input, ZL_NODE_LZ));
+    const ZL_LocalParams* localParams = GCTX_getAllLocalParams(gctx);
+
+    // Run the LZ node & forward the graph's parameters
+    ZL_TRY_LET(
+            ZL_EdgeList,
+            streams,
+            ZL_Edge_runNode_withParams(input, ZL_NODE_LZ, localParams));
     ZL_ASSERT_EQ(streams.nbEdges, 4);
 
     ZL_Edge* const literals       = streams.edges[0];
@@ -414,8 +459,14 @@ ZL_Report EI_lzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
     ZL_Edge* const literalLengths = streams.edges[2];
     ZL_Edge* const matchLengths   = streams.edges[3];
 
+    const int compressionLevel = getCompressionLevelGraph(gctx);
+
     // Send literals to Huffman
-    ZL_ERR_IF_ERR(ZL_Edge_setDestination(literals, ZL_GRAPH_HUFFMAN));
+    if (compressionLevel >= 0) {
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(literals, ZL_GRAPH_HUFFMAN));
+    } else {
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(literals, ZL_GRAPH_STORE));
+    }
 
     // Send offsets to partition bitpack
     ZL_ERR_IF_ERR(ZL_Edge_setDestination(offsets, ZL_GRAPH_PARTITION_BITPACK));
@@ -429,8 +480,13 @@ ZL_Report EI_lzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
     ZL_ASSERT_EQ(muxStreams.nbEdges, 2);
 
     // Route mux_lengths outputs: muxed bytes and overflow lengths to Huffman
-    ZL_ERR_IF_ERR(
-            ZL_Edge_setDestination(muxStreams.edges[0], ZL_GRAPH_HUFFMAN));
+    if (compressionLevel >= 0) {
+        ZL_ERR_IF_ERR(
+                ZL_Edge_setDestination(muxStreams.edges[0], ZL_GRAPH_HUFFMAN));
+    } else {
+        ZL_ERR_IF_ERR(
+                ZL_Edge_setDestination(muxStreams.edges[0], ZL_GRAPH_STORE));
+    }
     ZL_ERR_IF_ERR(ZL_Edge_setDestination(
             muxStreams.edges[1], ZL_GRAPH_COMPRESS_SMALL_LENGTHS));
 
