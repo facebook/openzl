@@ -6,6 +6,13 @@ file(GLOB utils_sources
 file(GLOB utils_headers
     CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
 
+# Lightweight parsing utilities (no heavy dependencies)
+add_library(cli_util parse.cpp)
+target_include_directories(cli_util
+    PUBLIC ${PROJECT_SOURCE_DIR})
+apply_openzl_compile_options_to_target(cli_util)
+
+# Full utils library (heavy dependencies)
 add_library(utils ${utils_sources})
 
 target_include_directories(utils
@@ -17,6 +24,7 @@ target_include_directories(utils
 
 target_link_libraries(utils
     PUBLIC
+    cli_util
     openzl
     openzl_cpp
     csv_parser

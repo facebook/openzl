@@ -13,11 +13,8 @@ enable_testing()
 
 if (OPENZL_BUILD_TESTS)
     add_zs_test(cli_util_test unittest/UtilTest.cpp)
-    target_link_libraries(cli_util_test PRIVATE utils)
+    target_link_libraries(cli_util_test PRIVATE cli_util)
     target_include_directories(cli_util_test PRIVATE
-        ${PROJECT_BINARY_DIR}/include
-        ${PROJECT_SOURCE_DIR}/include
-        ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_SOURCE_DIR})
     apply_openzl_compile_options_to_target(cli_util_test)
 
