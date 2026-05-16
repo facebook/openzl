@@ -21,7 +21,7 @@ class GlobalArgs {
         // Immediates
         parser.addGlobalImmediate(
                 kHelp, 'h', false, "Display this help message.");
-        parser.addGlobalImmediate(kVersion, 0, false, "Display version.");
+        parser.addGlobalImmediate(kVersion, 'V', false, "Display version.");
 
         // Flags
         parser.addGlobalFlag(
