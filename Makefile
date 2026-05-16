@@ -206,6 +206,10 @@ python-bindings:
 test-cli: zli
 	cd cli/tests && python3 cli_integration_tests.py ../../zli
 
+.PHONY: test-train
+test-train: zli
+	cd cli/tests && python3 cli_train_tests.py ../../zli
+
 .PHONY: check-python-format
 check-python-format:
 	@./scripts/check_python_format.sh
