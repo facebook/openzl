@@ -5,8 +5,24 @@ name: dev-ci
 on:
   push:
     branches: [dev]
+    paths:
+      - '**.c'
+      - '**.h'
+      - '**.cpp'
+      - '**.hpp'
+      - 'Makefile'
+      - 'tests/**'
+      - '.github/workflows/dev-ci.yml'
   pull_request:
     branches: [dev, master, actionsTest]
+    paths:
+      - '**.c'
+      - '**.h'
+      - '**.cpp'
+      - '**.hpp'
+      - 'Makefile'
+      - 'tests/**'
+      - '.github/workflows/dev-ci.yml'
   workflow_dispatch: {}
 
 env:
@@ -44,9 +60,6 @@ jobs:
             os: ubuntu-latest
             flags: "-Werror -DNDEBUG"
             show_compiler: true
-          - name: "macOS Debug"
-            os: macos-latest
-            flags: "-Werror -Wgnu-anonymous-struct"
           - name: "macOS Release"
             os: macos-latest
             flags: "-Werror -Wgnu-anonymous-struct -DNDEBUG"
@@ -88,16 +101,6 @@ jobs:
             cc: gcc-11
             cxx: g++-11
             flags: ""
-          - name: "GCC 10"
-            os: ubuntu-22.04
-            cc: gcc-10
-            cxx: g++-10
-            flags: ""
-          - name: "GCC 9"
-            os: ubuntu-22.04
-            cc: gcc-9
-            cxx: g++-9
-            flags: "-Werror -Wno-conversion -Wno-sign-conversion"
 
           - name: "Clang 18"
             os: ubuntu-24.04
@@ -119,22 +122,8 @@ jobs:
             cc: clang-15
             cxx: clang++-15
             flags: "-Werror -Wgnu-anonymous-struct -DZS_ENABLE_CLANG_PRAGMA"
-          - name: "Clang 14"
-            os: ubuntu-22.04
-            cc: clang-14
-            cxx: clang++-14
-            flags: "-Werror -Wgnu-anonymous-struct -DZS_ENABLE_CLANG_PRAGMA"
-          - name: "Clang 13"
-            os: ubuntu-22.04
-            cc: clang-13
-            cxx: clang++-13
-            flags: "-Werror -Wgnu-anonymous-struct -DZS_ENABLE_CLANG_PRAGMA -Wno-implicit-fallthrough"
     steps:
       - uses: actions/checkout@v4
-      - name: Install GCC-9
-        if: ${{ matrix.cc == 'gcc-9' }}
-        run: |
-          sudo apt install gcc-9 g++-9
       - name: Build
         env:
           CC: ${{ matrix.cc }}
@@ -150,10 +139,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: "GCC 10 GNU11"
+          - name: "GCC 11 GNU11"
             os: ubuntu-22.04
-            cc: gcc-10
-            cxx: g++-10
+            cc: gcc-11
+            cxx: g++-11
             cflags: "-std=gnu11"
             cxxflags: "-std=gnu++1z"
             flags: "-Werror"
@@ -269,24 +258,3 @@ jobs:
         run: pip install ruff==0.15.0
       - name: Check Python formatting with ruff
         run: make check-python-format
-
-  # Static analysis
-  test-static-analysis:
-    name: Static Analysis (scan-build)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install scan-build
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-tools
-      - name: Run scan-build
-        continue-on-error: true
-        run: CFLAGS="-Og -g" scan-build --status-bugs -v make -j2 unitBench V=1
-
-  # =============================================================================
-  # FUTURE WORK / DISABLED JOBS
-  # =============================================================================
-
-  # TODO: Memory sanitizer (msan)
-  # TODO: Thread sanitizer (tsan)

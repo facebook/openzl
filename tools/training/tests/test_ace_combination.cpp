@@ -173,44 +173,29 @@ TEST_F(ACECombinationTest, NoSaveAceStateProducesSmallerCompressor)
         return compressor;
     };
 
-    // Train with saveAceState = true
-    std::optional<SerializedCompressorInternal> resultWithAceState;
-    {
-        Compressor compressor;
-        compressor.selectStartingGraph(graphs::ACE()(compressor));
-        compressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
-        training::TrainParams trainParams = {
-            .compressorGenFunc = compressorGenFunc,
-            .threads           = 1,
-            .saveAceState      = true,
-        };
-        ACETrainer trainer;
-        auto results =
-                trainer.train(multiInputs, compressor.serialize(), trainParams);
-        ASSERT_FALSE(results.empty());
-        resultWithAceState.emplace(std::move(results[0]));
-    }
+    // Train once with saveAceState = true
+    ACETrainer trainer;
+    Compressor compressor;
+    compressor.selectStartingGraph(graphs::ACE()(compressor));
+    compressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+    training::TrainParams trainParams = {
+        .compressorGenFunc = compressorGenFunc,
+        .threads           = 1,
+        .maxTimeSecs       = 5,
+        .saveAceState      = true,
+    };
+    auto resultsWithState =
+            trainer.train(multiInputs, compressor.serialize(), trainParams);
+    ASSERT_FALSE(resultsWithState.empty());
 
-    // Train with saveAceState = false (default)
-    std::optional<SerializedCompressorInternal> resultWithoutAceState;
-    {
-        Compressor compressor;
-        compressor.selectStartingGraph(graphs::ACE()(compressor));
-        compressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
-        training::TrainParams trainParams = {
-            .compressorGenFunc = compressorGenFunc,
-            .threads           = 1,
-            .saveAceState      = false,
-        };
-        ACETrainer trainer;
-        auto results =
-                trainer.train(multiInputs, compressor.serialize(), trainParams);
-        ASSERT_FALSE(results.empty());
-        resultWithoutAceState.emplace(std::move(results[0]));
-    }
+    // Re-serialize the same checkpoint without ACE state
+    trainParams.saveAceState = false;
+    auto resultsWithoutState = getCombinedCompressors(
+            multiInputs, *trainer.aceCheckpoint(), trainParams);
+    ASSERT_FALSE(resultsWithoutState.empty());
 
-    auto sizeWithAceState    = (**resultWithAceState).size();
-    auto sizeWithoutAceState = (**resultWithoutAceState).size();
+    auto sizeWithAceState    = (*resultsWithState[0]).size();
+    auto sizeWithoutAceState = (*resultsWithoutState[0]).size();
 
     // Serialized compressor without ACE state should be significantly smaller
     EXPECT_GT(sizeWithAceState, 0);
@@ -221,7 +206,7 @@ TEST_F(ACECombinationTest, NoSaveAceStateProducesSmallerCompressor)
             << " bytes) should be at most half the size of one with ACE state ("
             << sizeWithAceState << " bytes)";
 
-    // Compress data with both trained compressors and verify identical output
+    // Compress data with both and verify identical output (same training run)
     auto compressWithResult =
             [&](const std::string_view& serializedCompressor) {
                 auto comp = compressorGenFunc(serializedCompressor);
@@ -232,16 +217,13 @@ TEST_F(ACECombinationTest, NoSaveAceStateProducesSmallerCompressor)
                         data.data(), data.size() * sizeof(data[0]));
                 return cctx.compressOne(inputForCompress);
             };
-    auto compressedWith    = compressWithResult(**resultWithAceState);
-    auto compressedWithout = compressWithResult(**resultWithoutAceState);
+    auto compressedWith    = compressWithResult(*resultsWithState[0]);
+    auto compressedWithout = compressWithResult(*resultsWithoutState[0]);
 
-    // Compressed output should be nearly identical — the small difference
-    // is due to ACE training being non-deterministic across independent runs.
-    // Allow up to 10% tolerance.
-    auto maxSize = std::max(compressedWith.size(), compressedWithout.size());
-    auto minSize = std::min(compressedWith.size(), compressedWithout.size());
-    EXPECT_LE(maxSize - minSize, maxSize / 10)
-            << "Compressed data sizes should be within 10%: "
+    // Same training run → compressed output must be identical
+    EXPECT_EQ(compressedWith.size(), compressedWithout.size())
+            << "Compressed data sizes should be identical since both come from "
+               "the same training run: "
             << compressedWith.size() << " vs " << compressedWithout.size();
 }
 
