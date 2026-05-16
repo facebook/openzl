@@ -11,6 +11,7 @@ import command_utils
 from abstract_compression_test import (
     _BenchmarkBaseTest,
     _CompressDecompressBaseTest,
+    _TrainBaseTest,
 )
 from command_utils import (
     CompressorInfo,
@@ -88,6 +89,29 @@ class U8Test(_CompressDecompressBaseTest):
         3. Verifies that the decompressed files match the originals
         """
         self.compress_and_decompress_samples()
+
+
+class U8QuickTrainTest(_TrainBaseTest):
+    """
+    Quick sanity check that the train command works.
+
+    Uses tiny u8 sample files (~2.6KB total) so training completes almost
+    instantly. This is not about training quality — just that the train →
+    compress → decompress pipeline doesn't crash.
+
+    For in-depth training tests, see cli_train_tests.py (run via `make test-train`).
+    """
+
+    @property
+    def input_dir_name(self) -> str:
+        return "u8"
+
+    @property
+    def compressor_profile_name(self) -> str:
+        return "u8"
+
+    def test_train_compress_decompress(self):
+        self.train_compress_decompress()
 
 
 class BenchmarkCsvCompressionTest(_BenchmarkBaseTest):
