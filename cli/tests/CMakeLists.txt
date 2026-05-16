@@ -11,7 +11,7 @@ endif()
 
 enable_testing()
 
-if (BUILD_TESTS)
+if (OPENZL_BUILD_TESTS)
     add_zs_test(cli_util_test unittest/UtilTest.cpp)
     target_link_libraries(cli_util_test PRIVATE utils)
     target_include_directories(cli_util_test PRIVATE
