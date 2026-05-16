@@ -186,9 +186,9 @@ jobs:
       - name: Verify public headers compile under strict C99
         run: CC=clang make c99_compat
 
-  # CLI training tests (comprehensive, slow)
+  # CLI training and format tests (comprehensive, slow)
   test-train:
-    name: CLI Training Tests
+    name: CLI Training & Format Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -198,6 +198,8 @@ jobs:
           python-version: '3.12'
       - name: Run CLI training tests
         run: make test-train
+      - name: Run CLI format tests
+        run: make test-formats
 
   # Sanitizer testing
   test-sanitizers:

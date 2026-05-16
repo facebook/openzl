@@ -210,6 +210,10 @@ test-cli: zli
 test-train: zli
 	cd cli/tests && python3 cli_train_tests.py ../../zli
 
+.PHONY: test-formats
+test-formats: zli
+	cd cli/tests && python3 cli_formats_tests.py ../../zli
+
 .PHONY: check-python-format
 check-python-format:
 	@./scripts/check_python_format.sh

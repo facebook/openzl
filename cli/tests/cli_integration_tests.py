@@ -11,7 +11,6 @@ import command_utils
 from abstract_compression_test import (
     _BenchmarkBaseTest,
     _CompressDecompressBaseTest,
-    _CsvBaseTest,
 )
 from command_utils import (
     CompressorInfo,
@@ -59,50 +58,6 @@ class SerialTest(_CompressDecompressBaseTest):
         2. Decompresses the compressed files
         3. Verifies that the decompressed files match the originals
         """
-        self.compress_and_decompress_samples()
-
-
-class CsvTest(_CsvBaseTest):
-    """
-    Test case for CSV training and compression using the default trainer.
-
-    This test demonstrates the train-compress-decompress workflow for CSV files
-    using the default training algorithm.
-    Sample files are located in cli/tests/sample_files/csv/
-    Output files are stored in a temporary directory
-    """
-
-    def test_train_compress_decompress(self):
-        """
-        Test the train, compress, and decompress workflow for CSV files using the default trainer.
-
-        This test:
-        1. Trains a compressor on the CSV files in cli/tests/sample_files/csv/ using the default trainer
-        2. Saves the trained compressor to {output_dir_path}/trained_compressor.zlc
-        3. Uses the trained compressor to compress and decompress the CSV files
-        4. Verifies that the decompressed files match the originals
-        """
-        self.train_compress_decompress()
-
-
-class CsvAlternativeSeparatorTest(_CompressDecompressBaseTest):
-    """
-    Test case for CSV compression and decompression with an alternate separator.
-    """
-
-    @property
-    def input_dir_name(self) -> str:
-        return "tbl"
-
-    @property
-    def compressor_profile_name(self) -> str:
-        return "csv"
-
-    @property
-    def extra_args(self) -> str | None:
-        return "--profile-arg '|'"
-
-    def test_compress_decompress(self):
         self.compress_and_decompress_samples()
 
 
