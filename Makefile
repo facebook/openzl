@@ -75,7 +75,7 @@ ifndef SKIP_BUILDDEPS_CHECK
   endif
 
   # Check if xgboost headers are being built
-  XGBOOST_TARGETS := zli gtests test all cli_test
+  XGBOOST_TARGETS := zli gtests test all test-cli
   BUILDING_XGBOOST_TARGETS := $(filter $(XGBOOST_TARGETS),$(MAKECMDGOALS))
   ifeq ($(MAKECMDGOALS),)
     # If no targets are specified, assume we're building everything
@@ -193,7 +193,7 @@ $(eval $(call cxx_program,zli, \
 examples: zs2_pipeline zs2_trygraph zs2_selector zs2_struct zs2_round_trip
 
 .PHONY: test
-test : gtests zs2_test cli_test
+test : gtests test-zs2 test-cli
 	$(EXEC_PREFIX) ./gtests
 
 # Python bindings for openzl.ext module (required for ML tests)
@@ -202,8 +202,8 @@ python-bindings:
 	@echo "Building and installing openzl Python bindings..."
 	pip install --quiet py/
 
-.PHONY: cli_test
-cli_test: zli
+.PHONY: test-cli
+test-cli: zli
 	cd cli/tests && python3 cli_integration_tests.py ../../zli
 
 .PHONY: check-python-format
@@ -214,8 +214,8 @@ check-python-format:
 fix-python-format:
 	@./scripts/check_python_format.sh --fix
 
-.PHONY: zs2_test
-zs2_test : examples
+.PHONY: test-zs2
+test-zs2 : examples
 	$(EXEC_PREFIX) ./zs2_pipeline
 	$(EXEC_PREFIX) ./zs2_trygraph
 
