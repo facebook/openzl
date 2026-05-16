@@ -48,21 +48,23 @@ int impl(int argc, char** argv)
     InspectArgs::addArgs(argParser);
     ListProfilesArgs::addArgs(argParser);
 
+    // version string
+    char version[32] = {};
+    snprintf(
+            version,
+            31,
+            "%d.%d.%d",
+            ZL_LIBRARY_VERSION_MAJOR,
+            ZL_LIBRARY_VERSION_MINOR,
+            ZL_LIBRARY_VERSION_PATCH);
+    const std::string versionLine =
+            "Demo CLI for OpenZL. Version " + std::string(version);
+
     auto usage = [&](const Cmd& cmd) -> std::string {
         auto help = cmd == Cmd::UNSPECIFIED ? argParser.help()
                                             : argParser.help(cmd);
 
-        // version string
-        char version[32] = {};
-        snprintf(
-                version,
-                31,
-                "%d.%d.%d",
-                ZL_LIBRARY_VERSION_MAJOR,
-                ZL_LIBRARY_VERSION_MINOR,
-                ZL_LIBRARY_VERSION_PATCH);
-
-        return "Demo CLI for OpenZL. Version " + std::string(version) +
+        return versionLine +
                 "\nNO VERSION STABILITY IS IMPLIED!!\n"
                 "\n"
                 "Usage: " + std::string(argv[0]) + " <command> [options] <args>\n"
@@ -89,7 +91,7 @@ int impl(int argc, char** argv)
                 return 0;
             }
             case GlobalImmediate::VERSION: {
-                Logger::log(INFO, "zstrong-cli version 0.1");
+                Logger::log(INFO, versionLine);
                 return 0;
             }
         }
