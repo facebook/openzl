@@ -186,9 +186,9 @@ jobs:
       - name: Verify public headers compile under strict C99
         run: CC=clang make c99_compat
 
-  # CLI integration testing
-  test-cli:
-    name: CLI Integration Tests
+  # CLI training tests (comprehensive, slow)
+  test-train:
+    name: CLI Training Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -196,8 +196,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Run CLI integration tests
-        run: make cli_test
+      - name: Run CLI training tests
+        run: make test-train
 
   # Sanitizer testing
   test-sanitizers:
