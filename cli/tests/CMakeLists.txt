@@ -20,4 +20,15 @@ if (BUILD_TESTS)
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_SOURCE_DIR})
     apply_openzl_compile_options_to_target(cli_util_test)
+
+    find_package(Python3 COMPONENTS Interpreter)
+    if (Python3_FOUND)
+        add_test(
+            NAME cli_integration_tests
+            COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_CURRENT_SOURCE_DIR}/cli_integration_tests.py
+                $<TARGET_FILE:zli>
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        )
+    endif()
 endif()

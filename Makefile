@@ -193,7 +193,7 @@ $(eval $(call cxx_program,zli, \
 examples: zs2_pipeline zs2_trygraph zs2_selector zs2_struct zs2_round_trip
 
 .PHONY: test
-test : gtests zs2_test
+test : gtests zs2_test cli_test
 	$(EXEC_PREFIX) ./gtests
 
 # Python bindings for openzl.ext module (required for ML tests)
@@ -203,7 +203,7 @@ python-bindings:
 	pip install --quiet py/
 
 .PHONY: cli_test
-cli_test: zli python-bindings
+cli_test: zli
 	cd cli/tests && python3 cli_integration_tests.py ../../zli
 
 .PHONY: check-python-format

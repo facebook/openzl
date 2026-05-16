@@ -15,6 +15,7 @@ from abstract_compression_test import (
     _MLBaseTest,
     _TrainBaseTest,
     _TrainInlineBaseTest,
+    HAS_OPENZL_EXT,
 )
 from command_utils import (
     CompressorInfo,
@@ -320,6 +321,7 @@ class Sddl2ChunkedTrainTest(unittest.TestCase):
         self.assertTrue(file_contents_match(self.sample_path, self.decompressed_path))
 
 
+@unittest.skipUnless(HAS_OPENZL_EXT, "requires openzl.ext module")
 class MLDynamicSuccessorTest(_MLBaseTest):
     """
     Test case for ml selector with dynamic successors created from folder of serialized compressors.
@@ -430,6 +432,7 @@ class MLDynamicSuccessorTest(_MLBaseTest):
         print("Compressed files are identical between static and dynamic successors.")
 
 
+@unittest.skipUnless(HAS_OPENZL_EXT, "requires openzl.ext module")
 class MLSelectorTest(_MLBaseTest):
     """
     Test case for ml selector and compression using the trainer.
@@ -1145,6 +1148,29 @@ class SDDL2TrainTest(_TrainBaseTest):
         Test the train, compress, and decompress workflow for files decribed by SDDL2.
         """
         self.train_compress_decompress()
+
+
+class VersionTest(unittest.TestCase):
+    """Test that --version and -V flags work correctly."""
+
+    def test_version_exits_zero(self):
+        result = command_utils.execute_command("--version")
+        self.assertEqual(result, 0)
+
+    def test_short_version_exits_zero(self):
+        result = command_utils.execute_command("-V")
+        self.assertEqual(result, 0)
+
+    def test_version_and_short_version_are_identical(self):
+        import subprocess
+
+        version_out = subprocess.check_output(
+            f"{command_utils.CLI_CPP} --version", shell=True
+        ).decode()
+        short_out = subprocess.check_output(
+            f"{command_utils.CLI_CPP} -V", shell=True
+        ).decode()
+        self.assertEqual(version_out, short_out)
 
 
 def main():
