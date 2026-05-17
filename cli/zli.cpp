@@ -1,5 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+#include <iostream>
 #include <string>
 
 #include "cli/args/BenchmarkArgs.h"
@@ -91,7 +92,7 @@ int impl(int argc, char** argv)
                 return 0;
             }
             case GlobalImmediate::VERSION: {
-                Logger::log(INFO, versionLine);
+                std::cout << versionLine << std::endl;
                 return 0;
             }
         }
