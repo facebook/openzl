@@ -22,7 +22,7 @@ from file_utils import (
 )
 
 try:
-    import openzl.ext as _zl
+    import openzl.ext as _zl  # noqa: F401
 
     HAS_OPENZL_EXT = True
 except ImportError:

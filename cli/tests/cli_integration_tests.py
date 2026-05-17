@@ -2,7 +2,6 @@
 
 import os
 import shutil
-import struct
 import sys
 import tempfile
 import unittest
@@ -19,7 +18,7 @@ from command_utils import (
     execute_compress,
     execute_decompress,
 )
-from file_utils import file_contents_match, input_dir_path, profile_dir_path
+from file_utils import file_contents_match, input_dir_path
 
 
 class SerialTest(_CompressDecompressBaseTest):
