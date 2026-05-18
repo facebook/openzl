@@ -224,6 +224,9 @@ class PartitionComponent : public OpenZLComponent {
             GraphID graphID) const
     {
         auto node = ZL_Compressor_Graph_getHeadNode(compressor.get(), graphID);
+        if (node == ZL_NODE_ILLEGAL) {
+            throw std::runtime_error("Invalid graph ID");
+        }
         auto localParams =
                 ZL_Compressor_Node_getLocalParams(compressor.get(), node);
         ZL_PartitionParams params;
