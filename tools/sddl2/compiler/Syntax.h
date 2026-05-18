@@ -46,6 +46,7 @@ enum class Symbol {
     DIV,
     MOD,
     ABS,
+    BETWEEN,
 
     // Bitwise Operators
     BIT_AND,
