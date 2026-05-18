@@ -153,6 +153,8 @@ struct ZL_CCtx_s {
     size_t currentFrameSize; // already written into dstBuffer
     ZL_OperationContext opCtx;
     int inBackupMode; // tracks when graph is in backup mode, to avoid looping
+    int inSegmenter;  // tracks when a segmenter is active, to disallow
+                      // segmenters run after segmenters
 };
 
 static ZL_Report CCTX_init(ZL_CCtx* cctx)
@@ -207,6 +209,7 @@ void CCTX_clean(ZL_CCtx* cctx)
     ALLOC_Arena_freeAll(cctx->sessionArena);
     cctx->comment.size = 0;
     cctx->comment.data = NULL;
+    cctx->inSegmenter  = 0;
     ZL_ASSERT_EQ(ALLOC_Arena_memUsed(cctx->codecArena), 0);
     ZL_ASSERT_EQ(ALLOC_Arena_memUsed(cctx->graphArena), 0);
     ZL_ASSERT_EQ(ALLOC_Arena_memUsed(cctx->chunkArena), 0);
@@ -999,6 +1002,7 @@ static ZL_Report CCTX_runSegmenter(
             cctx->sessionArena,
             cctx->chunkArena);
     CWAYPOINT(on_segmenterEncode_start, segmenterCtx, /* placeholder */ NULL);
+    cctx->inSegmenter = 1;
     ZL_Report const r = SEGM_runSegmenter(segmenterCtx);
 
     CWAYPOINT(on_segmenterEncode_end, segmenterCtx, r);
@@ -1338,9 +1342,12 @@ ZL_Report CCTX_runSuccessor(
                depth);
     }
     ZL_DLOG(BLOCK, "CCTX_runSuccessor (graphid=%u)", graphid.gid);
+    // A segmenter is allowed if it is not run inside a segmenter, and not run
+    // after nodes are executed.
     int const isSegmentable =
             (rtInputs[0].rtsid == 0 && nbInputs == cctx->nbInputs
-             && cctx->numSegments == 0);
+             && cctx->numSegments == 0 && !cctx->inSegmenter
+             && RTGM_getNbNodes(&cctx->rtgraph) == 0);
 
     // Segmenter
     if (CGRAPH_graphType(cctx->cgraph, graphid) == gt_segmenter) {
@@ -1406,6 +1413,7 @@ CCTX_startCompression(ZL_CCtx* cctx, const ZL_Data* inputs[], size_t nbInputs)
     ZL_ASSERT_LT(nbInputs, INT_MAX);
     cctx->nbInputs    = (unsigned)nbInputs;
     cctx->numSegments = 0;
+    cctx->inSegmenter = 0;
     ALLOC_ARENA_MALLOC_CHECKED(
             RTStreamID, rtsids, nbInputs, cctx->sessionArena);
     for (size_t n = 0; n < nbInputs; n++) {
