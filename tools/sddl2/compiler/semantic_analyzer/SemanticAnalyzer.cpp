@@ -80,6 +80,13 @@ Type assumedType(const Type& field_type)
     return Type{ TypeKind::NONE };
 }
 
+// Per-scope analyzer state. Saved/restored at scope boundaries (record
+// bodies, member-access lookups).
+struct ScopeContext {
+    // Symbol table: every name currently in scope mapped to its type.
+    std::unordered_map<std::string, Type> var_types;
+};
+
 class SemanticAnalyzerImpl {
    public:
     explicit SemanticAnalyzerImpl(const detail::Logger& logger) : log_(logger)
@@ -97,7 +104,9 @@ class SemanticAnalyzerImpl {
    private:
     // Data members
     const detail::Logger& log_;
-    std::unordered_map<std::string, Type> var_types_;
+    ScopeContext scope_;
+    // Tracks across the entire AST (not per-scope), so it lives outside
+    // ScopeContext.
     bool auto_sized_consumed_ = false;
 
     // Analysis methods
@@ -134,8 +143,8 @@ class SemanticAnalyzerImpl {
 
     Type analyze(const ASTVar& var)
     {
-        auto it = var_types_.find(var.name());
-        if (it == var_types_.end()) {
+        auto it = scope_.var_types.find(var.name());
+        if (it == scope_.var_types.end()) {
             throw SemanticError(
                     var.loc(), "Undefined variable: '" + var.name() + "'");
         }
@@ -172,7 +181,7 @@ class SemanticAnalyzerImpl {
     Type analyze(const ASTRecord& record)
     {
         // Validate params are variable names and introduce them as NUMERIC
-        auto saved_vars = var_types_;
+        auto saved = scope_;
         for (const auto& param : record.params()) {
             const auto* var = param->as_var();
             if (!var) {
@@ -180,7 +189,7 @@ class SemanticAnalyzerImpl {
                         param->loc(),
                         "Record parameter must be a variable name.");
             }
-            var_types_[var->name()] = Type{ TypeKind::NUMERIC };
+            scope_.var_types[var->name()] = Type{ TypeKind::NUMERIC };
         }
 
         // Validate all fields
@@ -188,7 +197,7 @@ class SemanticAnalyzerImpl {
             analyzeNode(field);
         }
 
-        var_types_ = std::move(saved_vars);
+        scope_ = std::move(saved);
 
         return Type{ TypeKind::RECORD, &record };
     }
@@ -277,12 +286,12 @@ class SemanticAnalyzerImpl {
     Type analyzeAssign(const ASTOp& op)
     {
         auto var = someVar(op.args()[0]);
-        if (var_types_.count(var->name()) > 0) {
+        if (scope_.var_types.count(var->name()) > 0) {
             throw SemanticError(
                     var->loc(),
                     "Variable '" + var->name() + "' already defined.");
         }
-        var_types_[var->name()] = analyzeNode(op.args()[1]);
+        scope_.var_types[var->name()] = analyzeNode(op.args()[1]);
         return Type{ TypeKind::NONE };
     }
 
@@ -294,12 +303,12 @@ class SemanticAnalyzerImpl {
 
         // Assign the var to the assumed type
         auto var = someVar(op.args()[0]);
-        if (var_types_.count(var->name()) > 0) {
+        if (scope_.var_types.count(var->name()) > 0) {
             throw SemanticError(
                     var->loc(),
                     "Variable '" + var->name() + "' already defined.");
         }
-        var_types_[var->name()] = assumedType(field_type);
+        scope_.var_types[var->name()] = assumedType(field_type);
 
         return Type{ TypeKind::NONE };
     }
@@ -327,7 +336,7 @@ class SemanticAnalyzerImpl {
 
     Type analyzeMember(const ASTOp& op)
     {
-        auto saved_vars = var_types_;
+        auto saved = scope_;
         // Check that the LHS is a consumed record
         auto lhs_type = analyzeNode(op.args()[0]);
         if (lhs_type.kind != TypeKind::CONSUMED_RECORD) {
@@ -342,7 +351,8 @@ class SemanticAnalyzerImpl {
 
         // Add the record params to scope
         for (const auto& param : record->params()) {
-            var_types_[param->as_var()->name()] = Type{ TypeKind::NUMERIC };
+            scope_.var_types[param->as_var()->name()] =
+                    Type{ TypeKind::NUMERIC };
         }
 
         // Find the field
@@ -352,7 +362,7 @@ class SemanticAnalyzerImpl {
                     op.args()[1]->loc(),
                     "Field '" + field_name + "' not a valid record field.");
         }
-        var_types_ = std::move(saved_vars);
+        scope_ = std::move(saved);
         return *found_type;
     }
 
