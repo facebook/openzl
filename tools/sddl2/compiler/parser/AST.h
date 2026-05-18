@@ -426,6 +426,14 @@ class Codegen {
         return op(Op::ABS, std::move(arg));
     }
 
+    ASTPtr between(ASTPtr low, ASTPtr val, ASTPtr high) const
+    {
+        auto low_op  = op(Op::LE, std::move(low), val);
+        auto high_op = op(Op::LE, std::move(val), std::move(high));
+
+        return op(Op::LOG_AND, std::move(low_op), std::move(high_op));
+    }
+
     ASTPtr assign(ASTPtr lhs, ASTPtr rhs) const
     {
         return op(Op::ASSIGN, std::move(lhs), std::move(rhs));

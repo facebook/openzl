@@ -553,6 +553,36 @@ class WhenRule : public GrammarRule {
     }
 };
 
+/**
+ * Helper: parses the inner argument list of a builtin function call and
+ * verifies the expected arity. Returns the inner args. Throws ParseError on
+ * shape mismatch.
+ */
+const ASTVec& expect_builtin_func_args(
+        const ASTPtr& op,
+        Symbol sym,
+        const ASTPtr& paren_list,
+        size_t expected_arity)
+{
+    const auto* list = some(paren_list).as_list();
+    if (list == nullptr) {
+        throw ParseError(
+                some(op).loc(),
+                std::string{ sym_to_repr_str(sym) }
+                        + "() requires a paren list.");
+    }
+
+    const auto& inner_args = list->nodes();
+    if (inner_args.size() != expected_arity) {
+        throw ParseError(
+                some(op).loc(),
+                std::string{ sym_to_repr_str(sym) } + "() requires exactly "
+                        + std::to_string(expected_arity) + " argument"
+                        + (expected_arity == 1 ? "" : "s") + ".");
+    }
+    return inner_args;
+}
+
 class BuiltinFuncRule : public GrammarRule {
    public:
     explicit BuiltinFuncRule(Symbol sym, Op result_op)
@@ -567,28 +597,37 @@ class BuiltinFuncRule : public GrammarRule {
    private:
     ASTPtr do_gen(ASTPtr op, ArgsVec args) const override
     {
-        auto& paren_list = args.at(0);
-        const auto* list = some(paren_list).as_list();
-        if (list == nullptr) {
-            throw ParseError(
-                    some(op).loc(),
-                    std::string{ sym_to_repr_str(this->sym()) }
-                            + "() requires a paren list.");
-        }
-
-        const auto& inner_args = list->nodes();
-        if (inner_args.size() != 1) {
-            throw ParseError(
-                    some(op).loc(),
-                    std::string{ sym_to_repr_str(this->sym()) }
-                            + "() requires exactly 1 argument.");
-        }
-
+        const auto& inner_args =
+                expect_builtin_func_args(op, this->sym(), args.at(0), 1);
         return std::make_shared<ASTOp>(
                 op->loc(), result_op_, ArgsVec{ inner_args.at(0) });
     }
 
     const Op result_op_;
+};
+
+class BetweenRule : public GrammarRule {
+   public:
+    BetweenRule()
+            : GrammarRule(
+                      Symbol::BETWEEN,
+                      Precedence::ACCESS,
+                      std::vector<ArgType>({ ArgType::LIST_PAREN }))
+    {
+    }
+
+   private:
+    ASTPtr do_gen(ASTPtr op, ArgsVec args) const override
+    {
+        const auto& inner_args =
+                expect_builtin_func_args(op, this->sym(), args.at(0), 3);
+        const auto& loc   = op->loc();
+        const auto& low   = inner_args[0];
+        const auto& value = inner_args[1];
+        const auto& high  = inner_args[2];
+
+        return Codegen{ loc }.between(low, value, high);
+    }
 };
 
 template <typename RuleT, typename... Args>
@@ -617,6 +656,7 @@ const std::vector<std::unique_ptr<const GrammarRule>> grammar_rules{ []() {
     add_rule<BuiltinFuncRule>(r, Symbol::SIZEOF, Op::SIZEOF);
     add_rule<WhenRule>(r);
     add_rule<BuiltinFuncRule>(r, Symbol::ABS, Op::ABS);
+    add_rule<BetweenRule>(r);
 
     add_rule<BinaryOpRule>(r, Symbol::ASSIGN, Precedence::ASSIGNMENT);
     add_rule<BinaryOpRule>(r, Symbol::ASSUME, Precedence::ASSIGNMENT);

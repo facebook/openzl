@@ -175,7 +175,7 @@ row_bytes = 4 * ((width + 3) / 4)
 
 ## Built-in Functions
 
-SDDL provides two built-in functions:
+SDDL provides three built-in functions:
 
 **`sizeof`** returns the size in bytes of a type. Only works on types with statically known sizes:
 
@@ -189,6 +189,13 @@ expect sizeof(StarEntry(STNUM, MPROP, NMAG)) == header.NBENT
 ```sddl
 count = abs(header.signed_count)
 magnitudes: Int16LE[abs(NMAG)]
+```
+
+**`between(l, x, h)`** returns `1` if `l <= x <= h` and `0` otherwise. Useful inside `expect` for range checks:
+
+```sddl
+expect between(1, header.version, 3)
+expect between(0, count, max_count)
 ```
 
 ## Comments

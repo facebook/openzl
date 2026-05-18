@@ -113,6 +113,7 @@ expect condition
 |----------|-------------|
 | `sizeof(Type)` | Size in bytes (static types only) |
 | `abs(expr)` | Absolute value |
+| `between(l, x, h)` | `1` if `l <= x <= h`, else `0` |
 
 ## Comments
 
