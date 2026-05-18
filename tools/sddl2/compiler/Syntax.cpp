@@ -78,6 +78,7 @@ static const std::map<Symbol, poly::string_view> syms_to_debug_strs{
     { Symbol::DIV, "DIV" },
     { Symbol::MOD, "MOD" },
     { Symbol::ABS, "ABS" },
+    { Symbol::BETWEEN, "BETWEEN" },
 
     { Symbol::BIT_AND, "BIT_AND" },
     { Symbol::BIT_OR, "BIT_OR" },
@@ -152,6 +153,7 @@ const std::vector<std::pair<poly::string_view, Symbol>> strs_to_syms{
     { "/", Symbol::DIV },
     { "%", Symbol::MOD },
     { "abs", Symbol::ABS },
+    { "between", Symbol::BETWEEN },
     { "&&", Symbol::LOG_AND },
     { "||", Symbol::LOG_OR },
     { "!", Symbol::LOG_NOT },

@@ -341,6 +341,13 @@ TEST_F(SemanticAnalyzerTest, AbsFieldType)
     expect_error(prog, "numeric");
 }
 
+TEST_F(SemanticAnalyzerTest, BetweenFieldType)
+{
+    expect_error("tmp = between(Int32LE, 0, 10)\n", "numeric");
+    expect_error("tmp = between(0, Int32LE, 10)\n", "numeric");
+    expect_error("tmp = between(0, 5, Int32LE)\n", "numeric");
+}
+
 TEST_F(SemanticAnalyzerTest, MemberAccessOnConditionalField)
 {
     const auto prog = R"(

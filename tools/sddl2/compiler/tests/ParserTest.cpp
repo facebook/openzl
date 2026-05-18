@@ -368,6 +368,28 @@ TEST_F(ParserTest, WhenBlockAST)
     expect_ast(prog, expected);
 }
 
+TEST_F(ParserTest, BetweenAST)
+{
+    const auto prog = R"(
+        expect between(1, 2, 3)
+    )";
+
+    const auto cg       = Codegen();
+    const auto expected = std::vector<ASTPtr>({
+            cg.expect(cg.between(cg.num(1), cg.num(2), cg.num(3))),
+    });
+    expect_ast(prog, expected);
+}
+
+TEST_F(ParserTest, BetweenWrongArity)
+{
+    expect_error(
+            "expect between(1, 2)\n", "between() requires exactly 3 arguments");
+    expect_error(
+            "expect between(1, 2, 3, 4)\n",
+            "between() requires exactly 3 arguments");
+}
+
 TEST_F(ParserTest, WhenBlockInRecordAST)
 {
     const auto prog = R"(
