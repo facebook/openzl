@@ -44,6 +44,8 @@ class LzComponent : public OpenZLComponent {
         // Repeated bytes (should produce matches)
         inputs.push_back(
                 std::make_unique<SerialOpenZLInput>(std::string(1000, 'x')));
+        inputs.push_back(
+                std::make_unique<SerialOpenZLInput>(std::string(100000, 'x')));
         // Input with repeating pattern (good for LZ matching)
         {
             std::string pattern;
