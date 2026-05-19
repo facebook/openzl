@@ -10,7 +10,7 @@ add_subdirectory(args)
 add_subdirectory(commands)
 add_subdirectory(utils)
 
-if (BUILD_TESTS)
+if (OPENZL_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 

@@ -21,6 +21,13 @@ from file_utils import (
     SampleFile,
 )
 
+try:
+    import openzl.ext as _zl  # noqa: F401
+
+    HAS_OPENZL_EXT = True
+except ImportError:
+    HAS_OPENZL_EXT = False
+
 
 class _CompressDecompressBaseTest(unittest.TestCase):
     """

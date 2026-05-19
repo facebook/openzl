@@ -5,6 +5,16 @@ load("../../defs.bzl", "zs_cxxlibrary")
 oncall("data_compression")
 
 zs_cxxlibrary(
+    name = "cli_util",
+    srcs = [
+        "parse.cpp",
+    ],
+    headers = [
+        "parse.h",
+    ],
+)
+
+zs_cxxlibrary(
     name = "utils",
     srcs = [
         "compress_profiles.cpp",
@@ -30,5 +40,8 @@ zs_cxxlibrary(
         "../../tools/sddl2/assembler:lib",
         "../../tools/sddl2/compiler:lib",
         "../../tools/training/ace:automated_compressor_explorer",
+    ],
+    exported_deps = [
+        ":cli_util",
     ],
 )

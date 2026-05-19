@@ -36,154 +36,154 @@ custom_unittest(
 custom_unittest(
     name = "u16_train_inline_test",
     command = [
-        "$(location :integration_test_bin)",
+        "$(location :train_test_bin)",
         "$(location ..:zli)",
         "U16TrainInlineTest.test_train_inline",
     ],
     type = "simple",
     deps = [
         "..:zli",
-        ":integration_test_bin",
+        ":train_test_bin",
     ],
 )
 
 custom_unittest(
     name = "ace_train_inline_test",
     command = [
-        "$(location :integration_test_bin)",
+        "$(location :train_test_bin)",
         "$(location ..:zli)",
         "AceTrainInlineTest.test_train_inline",
     ],
     type = "simple",
     deps = [
         "..:zli",
-        ":integration_test_bin",
+        ":train_test_bin",
     ],
 )
 
 custom_unittest(
     name = "csv_default_test",
     command = [
-        "$(location :integration_test_bin)",
+        "$(location :formats_test_bin)",
         "$(location ..:zli)",
         "CsvTest.test_train_compress_decompress",
     ],
     type = "simple",
     deps = [
         "..:zli",
-        ":integration_test_bin",
+        ":formats_test_bin",
     ],
 )
 
 custom_unittest(
     name = "csv_greedy_test",
     command = [
-        "$(location :integration_test_bin)",
+        "$(location :formats_test_bin)",
         "$(location ..:zli)",
         "CsvGreedyTest.test_train_compress_decompress",
     ],
     type = "simple",
     deps = [
         "..:zli",
-        ":integration_test_bin",
+        ":formats_test_bin",
     ],
 )
 
 custom_unittest(
     name = "csv_full_split_test",
     command = [
-        "$(location :integration_test_bin)",
+        "$(location :formats_test_bin)",
         "$(location ..:zli)",
         "CsvFullSplitTest.test_train_compress_decompress",
     ],
     type = "simple",
     deps = [
         "..:zli",
-        ":integration_test_bin",
+        ":formats_test_bin",
     ],
 )
 
 custom_unittest(
     name = "csv_bottom_up_test",
     command = [
-        "$(location :integration_test_bin)",
+        "$(location :formats_test_bin)",
         "$(location ..:zli)",
         "CsvBottomUpTest.test_train_compress_decompress",
     ],
     type = "simple",
     deps = [
         "..:zli",
-        ":integration_test_bin",
+        ":formats_test_bin",
     ],
 )
 
 custom_unittest(
     name = "csv_chunked_test",
     command = [
-        "$(location :integration_test_bin)",
+        "$(location :formats_test_bin)",
         "$(location ..:zli)",
         "CsvChunkedTest.test_train_compress_decompress",
     ],
     type = "simple",
     deps = [
         "..:zli",
-        ":integration_test_bin",
+        ":formats_test_bin",
     ],
 )
 
 custom_unittest(
     name = "sddl2_chunked_train_test",
     command = [
-        "$(location :integration_test_bin)",
+        "$(location :train_test_bin)",
         "$(location ..:zli)",
         "Sddl2ChunkedTrainTest.test_train_compress_decompress",
     ],
     type = "simple",
     deps = [
         "..:zli",
-        ":integration_test_bin",
+        ":train_test_bin",
     ],
 )
 
 custom_unittest(
     name = "parquet_chunked_test",
     command = [
-        "$(location :integration_test_bin)",
+        "$(location :formats_test_bin)",
         "$(location ..:zli)",
         "ParquetChunkedTest.test_chunk_size_affects_output",
     ],
     type = "simple",
     deps = [
         "..:zli",
-        ":integration_test_bin",
+        ":formats_test_bin",
     ],
 )
 
 custom_unittest(
     name = "parquet_test",
     command = [
-        "$(location :integration_test_bin)",
+        "$(location :formats_test_bin)",
         "$(location ..:zli)",
         "ParquetTest.test_train_compress_decompress",
     ],
     type = "simple",
     deps = [
         "..:zli",
-        ":integration_test_bin",
+        ":formats_test_bin",
     ],
 )
 
 custom_unittest(
     name = "csv_alternative_separator_test",
     command = [
-        "$(location :integration_test_bin)",
+        "$(location :formats_test_bin)",
         "$(location ..:zli)",
         "CsvAlternativeSeparatorTest.test_compress_decompress",
     ],
     type = "simple",
     deps = [
         "..:zli",
-        ":integration_test_bin",
+        ":formats_test_bin",
     ],
 )
 
@@ -302,14 +302,14 @@ custom_unittest(
 custom_unittest(
     name = "u8_train_test",
     command = [
-        "$(location :integration_test_bin)",
+        "$(location :train_test_bin)",
         "$(location ..:zli)",
         "U8TrainTest.test_train_compress_decompress",
     ],
     type = "simple",
     deps = [
         "..:zli",
-        ":integration_test_bin",
+        ":train_test_bin",
     ],
 )
 
@@ -359,6 +359,30 @@ python_binary(
     srcs = ["cli_integration_tests.py"],
     base_module = "",
     main_function = "cli_integration_tests.main",
+    deps = [
+        ":abstract_compression_test",
+        ":command_utils",
+        ":file_utils",
+    ],
+)
+
+python_binary(
+    name = "formats_test_bin",
+    srcs = ["cli_formats_tests.py"],
+    base_module = "",
+    main_function = "cli_formats_tests.main",
+    deps = [
+        ":abstract_compression_test",
+        ":command_utils",
+        ":file_utils",
+    ],
+)
+
+python_binary(
+    name = "train_test_bin",
+    srcs = ["cli_train_tests.py"],
+    base_module = "",
+    main_function = "cli_train_tests.main",
     deps = [
         ":abstract_compression_test",
         ":command_utils",
@@ -416,69 +440,69 @@ custom_unittest(
 custom_unittest(
     name = "ml_selector_test",
     command = [
-        "$(location :integration_test_bin)",
+        "$(location :train_test_bin)",
         "$(location ..:zli)",
         "MLSelectorTest.test_train_compress_decompress",
     ],
     type = "simple",
     deps = [
         "..:zli",
-        ":integration_test_bin",
+        ":train_test_bin",
     ],
 )
 
 custom_unittest(
     name = "ml_dynamic_successor_test",
     command = [
-        "$(location :integration_test_bin)",
+        "$(location :train_test_bin)",
         "$(location ..:zli)",
         "MLDynamicSuccessorTest.test_dynamic_ml_successors",
     ],
     type = "simple",
     deps = [
         "..:zli",
-        ":integration_test_bin",
+        ":train_test_bin",
     ],
 )
 
 custom_unittest(
     name = "ml_dynamic_successor_compression_ratio_test",
     command = [
-        "$(location :integration_test_bin)",
+        "$(location :train_test_bin)",
         "$(location ..:zli)",
         "MLDynamicSuccessorTest.test_compression_ratios",
     ],
     type = "simple",
     deps = [
         "..:zli",
-        ":integration_test_bin",
+        ":train_test_bin",
     ],
 )
 
 custom_unittest(
     name = "sddl2_test",
     command = [
-        "$(location :integration_test_bin)",
+        "$(location :train_test_bin)",
         "$(location ..:zli)",
         "SDDL2TrainTest.test_train_compress_decompress",
     ],
     type = "simple",
     deps = [
         "..:zli",
-        ":integration_test_bin",
+        ":train_test_bin",
     ],
 )
 
 custom_unittest(
     name = "csv_save_ace_state_test",
     command = [
-        "$(location :integration_test_bin)",
+        "$(location :formats_test_bin)",
         "$(location ..:zli)",
         "CsvSaveAceStateTest.test_train_compress_decompress",
     ],
     type = "simple",
     deps = [
         "..:zli",
-        ":integration_test_bin",
+        ":formats_test_bin",
     ],
 )

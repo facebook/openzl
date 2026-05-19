@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 
-#include "cli/utils/util.h"
+#include "cli/utils/parse.h"
 
 using namespace openzl::cli::util;
 using openzl::cli::InvalidArgsException;

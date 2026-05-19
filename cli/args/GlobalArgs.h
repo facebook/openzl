@@ -5,7 +5,7 @@
 #include <sstream>
 
 #include "cli/cmd.h"
-#include "cli/utils/util.h"
+#include "cli/utils/parse.h"
 
 #include "tools/arg/arg_parser.h"
 #include "tools/arg/parsed_args.h"
@@ -21,7 +21,7 @@ class GlobalArgs {
         // Immediates
         parser.addGlobalImmediate(
                 kHelp, 'h', false, "Display this help message.");
-        parser.addGlobalImmediate(kVersion, 0, false, "Display version.");
+        parser.addGlobalImmediate(kVersion, 'V', false, "Display version.");
 
         // Flags
         parser.addGlobalFlag(
