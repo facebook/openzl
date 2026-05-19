@@ -38,7 +38,7 @@ struct ZL_FrameInfo {
     size_t frameHeaderSize;
     void* comment;
     size_t commentSize;
-    ZL_BundleID bundleID; // v24+: dict bundle ID
+    ZL_BundleID bundleID; // v25+: dict bundle ID
 };
 
 static ZL_Type decodeType(uint8_t et)
@@ -299,7 +299,7 @@ static ZL_Report DFH_FrameInfo_decodeFrameHeader(
                 && ((flags & (1 << 3)) != 0);
     }
 
-    // Decode dict bundle ID (v24+): 1-byte size + variable-length ID
+    // Decode dict bundle ID (v25+): 1-byte size + variable-length ID
     if (zfi->properties.hasBundleID) {
         ZL_ERR_IF_LE(cSize, consumed, corruption);
         uint8_t const encLen = ptr[consumed++];
@@ -897,7 +897,7 @@ static ZL_Report decompressNbRegens(
 }
 
 // Decompress per-codec dict bundle offsets
-// (v24+)
+// (v25+)
 // has-dict flags are bitpacked
 // non-zero dict indices are bitpacked
 static ZL_Report decompressDictIdxs(
@@ -1219,7 +1219,7 @@ static ZL_Report decodeChunkHeader_internal(
     }
 
     // Decode per-codec dict indices if a bundle is declared
-    // (v24+ only)
+    // (v25+ only)
     if (decoder->formatVersion >= ZL_MATERIALIZED_DICT_VERSION_MIN
         && dfh->frameinfo->properties.hasBundleID) {
         uint32_t* const dictIdxs = wksp.scratch0;
