@@ -326,7 +326,7 @@ static void compressNumInputs(
     }
 }
 
-// Compress per-codec dict bundle offsets (v24+)
+// Compress per-codec dict bundle offsets (v25+)
 // - Bitmap encode has-dict flags (1 = has dict, 0 = no dict)
 // - Bitpack encode raw dict indices for has-dict entries
 static void compressDictIdxs(
@@ -496,7 +496,7 @@ static ZL_Report writeFrameHeader_internal(
     ZL_TRY_LET(size_t, hsBound, computeFHBound(fip->numInputs, 0, 0, 0));
     // Add comment bytes relaxing header bound
     hsBound += fip->comment.size ? 4 + fip->comment.size : 0;
-    // Add bundleID bytes (v24+): 1 size byte + up to 32 ID bytes
+    // Add bundleID bytes (v25+): 1 size byte + up to 32 ID bytes
     if (encoder->formatVersion >= ZL_MATERIALIZED_DICT_VERSION_MIN
         && fip->fprop->hasBundleID) {
         hsBound += 1 + ZL_UNIQUE_ID_SIZE;
@@ -530,7 +530,7 @@ static ZL_Report writeFrameHeader_internal(
         ZL_WC_push(&out, flags);
     }
 
-    // Store dict bundle ID (v24+): 1-byte size + variable-length ID
+    // Store dict bundle ID (v25+): 1-byte size + variable-length ID
     if (encoder->formatVersion >= ZL_MATERIALIZED_DICT_VERSION_MIN
         && fip->fprop->hasBundleID) {
         ZL_ASSERT_NN(fip->bundleID);
@@ -881,7 +881,7 @@ static ZL_Report writeChunkHeaderV8_internal(
         }
     }
 
-    /* Encode per-codec dict indices (v24+ only, when bundle is present)
+    /* Encode per-codec dict indices (v25+ only, when bundle is present)
      */
     if (encoder->formatVersion >= ZL_MATERIALIZED_DICT_VERSION_MIN
         && fprop->hasBundleID) {

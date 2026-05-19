@@ -543,7 +543,7 @@ TEST_F(DictIntegrationTest, FullRoundTrip)
     EXPECT_EQ(decompress(compressed, input.size(), dctx.get()), input);
 }
 
-TEST_F(DictIntegrationTest, PreV24FrameOmitsBundleIDEvenWhenBundleIsLoaded)
+TEST_F(DictIntegrationTest, PreV25FrameOmitsBundleIDEvenWhenBundleIsLoaded)
 {
     DictCodecSpec unusedDict = makeDictSpec(11, 0x31);
     ZL_NodeID unusedDictNode = registerDictNode(

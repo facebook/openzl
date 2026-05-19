@@ -21,8 +21,8 @@
  *   + bit0: checksum of decoded data
  *   + bit1: checksum of encoded data (also control frame header checksum)
  *   + bit2: presence of a comment field
- *   + bit3: v24+: presence of a dict bundle ID
- * - v24+: if bit3 set: 1-byte ID size + variable-length dict bundle ID (up to
+ *   + bit3: v25+: presence of a dict bundle ID
+ * - v25+: if bit3 set: 1-byte ID size + variable-length dict bundle ID (up to
  * 32 bytes)
  * - Input Type :
  *   + v13-: 0-byte , 1 Input assumed to be Serial
@@ -105,7 +105,7 @@
  * - V16+ : Array of nbRegens
  *   + bit-packed flags separate 1-regen decoders from 2+ ones
  *   + 2+ regens values are shifted (-2) then varint encoded
- * - V24+ : Array of dictIdx (dict bundle offsets)
+ * - V25+ : Array of dictIdx (dict bundle offsets)
  *   + has-dict flags are bit-packed (1 = has dict, 0 = no dict)
  *   + if any has-dict flag is set:
  *     1-byte nbBits = ceil(log2(maxDictIdx + 1))
