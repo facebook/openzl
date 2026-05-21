@@ -203,6 +203,14 @@ ZL_Report CCTX_setAppliedParameters(ZL_CCtx* cctx);
 int CCTX_getAppliedGParam(const ZL_CCtx* cctx, ZL_CParam gcparam);
 
 /**
+ * @brief Get the depth at which the active segmenter started.
+ *
+ * @return 0 if no segmenter has started in the current compression session,
+ * otherwise the graph execution depth of the active segmenter.
+ */
+unsigned CCTX_getSegmenterDepth(const ZL_CCtx* cctx);
+
+/**
  * @brief Add transform header data to the compression context.
  *
  * This function adds header information for a specific transform to the

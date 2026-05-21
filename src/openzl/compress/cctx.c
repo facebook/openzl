@@ -153,8 +153,7 @@ struct ZL_CCtx_s {
     size_t currentFrameSize; // already written into dstBuffer
     ZL_OperationContext opCtx;
     int inBackupMode; // tracks when graph is in backup mode, to avoid looping
-    int inSegmenter;  // tracks when a segmenter is active, to disallow
-                      // segmenters run after segmenters
+    unsigned segmenterDepth; // 0 until a segmenter starts, then its depth
 };
 
 static ZL_Report CCTX_init(ZL_CCtx* cctx)
@@ -207,9 +206,9 @@ void CCTX_clean(ZL_CCtx* cctx)
 {
     CCTX_cleanChunk(cctx);
     ALLOC_Arena_freeAll(cctx->sessionArena);
-    cctx->comment.size = 0;
-    cctx->comment.data = NULL;
-    cctx->inSegmenter  = 0;
+    cctx->comment.size   = 0;
+    cctx->comment.data   = NULL;
+    cctx->segmenterDepth = 0;
     ZL_ASSERT_EQ(ALLOC_Arena_memUsed(cctx->codecArena), 0);
     ZL_ASSERT_EQ(ALLOC_Arena_memUsed(cctx->graphArena), 0);
     ZL_ASSERT_EQ(ALLOC_Arena_memUsed(cctx->chunkArena), 0);
@@ -298,6 +297,12 @@ int CCTX_getAppliedGParam(const ZL_CCtx* cctx, ZL_CParam gcparam)
 {
     ZL_ASSERT_NN(cctx);
     return GCParams_getParameter(&cctx->appliedGCParams, gcparam);
+}
+
+unsigned CCTX_getSegmenterDepth(const ZL_CCtx* cctx)
+{
+    ZL_ASSERT_NN(cctx);
+    return cctx->segmenterDepth;
 }
 
 int CCTX_isGraphSet(const ZL_CCtx* cctx)
@@ -914,7 +919,8 @@ static ZL_Report CCTX_runSegmenter(
         ZL_GraphID graphid,
         const ZL_RuntimeGraphParameters* rgp,
         const RTStreamID* rtsids,
-        size_t nbInputs)
+        size_t nbInputs,
+        unsigned depth)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
 
@@ -1002,8 +1008,8 @@ static ZL_Report CCTX_runSegmenter(
             cctx->sessionArena,
             cctx->chunkArena);
     CWAYPOINT(on_segmenterEncode_start, segmenterCtx, /* placeholder */ NULL);
-    cctx->inSegmenter = 1;
-    ZL_Report const r = SEGM_runSegmenter(segmenterCtx);
+    cctx->segmenterDepth = depth;
+    ZL_Report const r    = SEGM_runSegmenter(segmenterCtx);
 
     CWAYPOINT(on_segmenterEncode_end, segmenterCtx, r);
 
@@ -1292,6 +1298,18 @@ static ZL_Report CCTX_runSuccessor_internal(
     if (backupMode != ZL_TernaryParam_enable || cctx->inBackupMode) {
         return outcome;
     }
+    if (cctx->segmenterDepth != 0 && depth <= cctx->segmenterDepth) {
+        /* Permissive fallback above a Segmenter is not currently supported:
+         * fallback graphs currently do not Segment,
+         * and we can't take the risk to attempt compressing a huge Segment.
+         */
+        ZL_ERR_IF_ERR(
+                outcome,
+                "Permissive fallback above a Segmenter is not supported "
+                "(depth=%u, segmenterDepth=%u)",
+                depth,
+                cctx->segmenterDepth);
+    }
 
     ZL_E_log(ZL_RES_error(outcome), ZL_LOG_LVL_V);
     // Report the error as a warning
@@ -1346,13 +1364,14 @@ ZL_Report CCTX_runSuccessor(
     // after nodes are executed.
     int const isSegmentable =
             (rtInputs[0].rtsid == 0 && nbInputs == cctx->nbInputs
-             && cctx->numSegments == 0 && !cctx->inSegmenter
+             && cctx->numSegments == 0 && cctx->segmenterDepth == 0
              && RTGM_getNbNodes(&cctx->rtgraph) == 0);
 
     // Segmenter
     if (CGRAPH_graphType(cctx->cgraph, graphid) == gt_segmenter) {
         if (isSegmentable) {
-            return CCTX_runSegmenter(cctx, graphid, rgp, rtInputs, nbInputs);
+            return CCTX_runSegmenter(
+                    cctx, graphid, rgp, rtInputs, nbInputs, depth);
         }
         ZL_ERR(graph_invalid, "Segmenter can only be used on full input");
     }
@@ -1411,9 +1430,9 @@ CCTX_startCompression(ZL_CCtx* cctx, const ZL_Data* inputs[], size_t nbInputs)
     cctx->inputs = ZL_codemodDatasAsInputs(inputs);
     ZL_ERR_IF_LT(nbInputs, 1, successor_invalidNumInputs);
     ZL_ASSERT_LT(nbInputs, INT_MAX);
-    cctx->nbInputs    = (unsigned)nbInputs;
-    cctx->numSegments = 0;
-    cctx->inSegmenter = 0;
+    cctx->nbInputs       = (unsigned)nbInputs;
+    cctx->numSegments    = 0;
+    cctx->segmenterDepth = 0;
     ALLOC_ARENA_MALLOC_CHECKED(
             RTStreamID, rtsids, nbInputs, cctx->sessionArena);
     for (size_t n = 0; n < nbInputs; n++) {
