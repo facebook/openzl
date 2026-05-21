@@ -22,14 +22,61 @@ class LzComponent : public OpenZLComponent {
 
     std::vector<NodeID> predefinedNodes(Compressor& compressor) const override
     {
-        (void)compressor;
-        return { ZL_NODE_LZ };
+        std::vector<NodeID> nodes;
+        nodes.push_back(ZL_NODE_LZ);
+        LocalParams params;
+        params.addIntParam(ZL_LzParam_compressionLevel, -2);
+        nodes.push_back(compressor.parameterizeNode(
+                ZL_NODE_LZ,
+                NodeParameters{ .localParams = std::move(params) }));
+        return nodes;
+    }
+
+    static GraphID lzWithLevel(Compressor& compressor, int level)
+    {
+        LocalParams params;
+        params.addIntParam(ZL_LzParam_compressionLevel, level);
+        return compressor.parameterizeGraph(
+                ZL_GRAPH_LZ,
+                GraphParameters{ .localParams = std::move(params) });
     }
 
     std::vector<GraphID> predefinedGraphs(Compressor& compressor) const override
     {
-        (void)compressor;
-        return { ZL_GRAPH_LZ };
+        std::vector<GraphID> graphs;
+        graphs.push_back(ZL_GRAPH_LZ);
+        graphs.push_back(lzWithLevel(compressor, -2));
+        return graphs;
+    }
+
+    static void maybeSetParam(
+            LocalParams& params,
+            datagen::DataGen& gen,
+            int param,
+            int min,
+            int max)
+    {
+        if (gen.u8_range("set_param", 0, 1) == 1) {
+            params.addIntParam(param, gen.i32_range("param", min, max));
+        }
+    }
+
+    std::vector<GraphID> generateGraphs(
+            Compressor& compressor,
+            datagen::DataGen& gen,
+            size_t num) const override
+    {
+        std::vector<GraphID> graphs;
+        graphs.reserve(num);
+        for (size_t i = 0; i < num; ++i) {
+            LocalParams params;
+            maybeSetParam(params, gen, ZL_LzParam_compressionLevel, -10, 10);
+            maybeSetParam(params, gen, ZL_LzParam_acceleration, -10, 100);
+            graphs.push_back(compressor.parameterizeGraph(
+                    ZL_GRAPH_LZ,
+                    GraphParameters{ .localParams = std::move(params) }));
+        }
+        return graphs;
     }
 
     std::vector<std::unique_ptr<OpenZLInput>> predefinedInputs() const override
@@ -88,11 +135,12 @@ class LzComponent : public OpenZLComponent {
         struct Param {
             size_t inputSize;
             size_t numInputs;
+            int compressionLevel;
         };
-        constexpr std::array<Param, 3> kParams = {
-            Param{ 1000, 200 },
-            Param{ 10000, 50 },
-            Param{ 100000, 10 },
+        constexpr std::array<Param, 6> kParams = {
+            Param{ 1000, 200, 1 },  Param{ 10000, 50, 1 },
+            Param{ 100000, 10, 1 }, Param{ 1000, 200, -1 },
+            Param{ 10000, 50, -1 }, Param{ 100000, 10, -1 },
         };
 
         std::vector<Benchmark> benchmarks;
@@ -109,8 +157,11 @@ class LzComponent : public OpenZLComponent {
             benchmarks.push_back(
                     Benchmark{
                             .name = "InputSize:"
-                                    + std::to_string(param.inputSize),
-                            .graph  = ZL_GRAPH_LZ,
+                                    + std::to_string(param.inputSize)
+                                    + "/CompressionLevel:"
+                                    + std::to_string(param.compressionLevel),
+                            .graph = lzWithLevel(
+                                    compressor, param.compressionLevel),
                             .inputs = std::move(inputs),
                     });
         }

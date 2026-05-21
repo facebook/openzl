@@ -1,10 +1,6 @@
 [
     {
         "algorithm": "zstd",
-        "level": 1
-    },
-    {
-        "algorithm": "zstd",
         "level": 1,
         "params": {
             "windowLog": 16,
@@ -16,19 +12,20 @@
         "params": {
             "CompressionLevel": 1
         },
-        "compressor_name": "lz-zstd-slow"
+        "compressor_name": "lz-std-slow"
+    },
+    {
+        "algorithm": "zstd",
+        "level": -1,
+        "params": {
+            "windowLog": 16,
+            "hashLog": 12
+        }
     },
     {
         "algorithm": "openzl",
         "params": {
-            "CompressionLevel": 1
-        },
-        "compressor_name": "lz-zstd-fast"
-    },
-    {
-        "algorithm": "openzl",
-        "params": {
-            "CompressionLevel": 1
+            "CompressionLevel": -1
         },
         "compressor_name": "lz-std-slow"
     }
