@@ -112,7 +112,9 @@ class SentinelNumComponent : public OpenZLComponent {
                 auto* data   = static_cast<const size_t*>(cp.paramPtr);
                 size_t count = cp.paramSize / sizeof(size_t);
                 indices.assign(data, data + count);
-            } else if (cp.paramId == ZL_SENTINEL_VALUE_PID) {
+            } else if (
+                    cp.paramId == ZL_SENTINEL_VALUE_PID
+                    && cp.paramSize == sizeof(uint64_t)) {
                 sentinel = *static_cast<const uint64_t*>(cp.paramPtr);
             }
         }
