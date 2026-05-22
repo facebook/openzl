@@ -706,10 +706,13 @@ typedef struct {
     size_t numPartitions;
     uint64_t bitCost;
     uint64_t maxSymbolValue;
+    size_t bitpackBits;
+    size_t bitpackCost;
 } PB_PartitionResult;
 
 static bool PB_buildCumHist(
         PB_CumHist* out,
+        uint32_t* maxSeenSymbolValue,
         const void* data,
         size_t numElts,
         size_t eltWidth,
@@ -753,10 +756,7 @@ static bool PB_buildCumHist(
         hist[maxBucket] += (hist[maxBucket] == 0);
     }
 
-    uint32_t histSize = histCapacity;
-    while (histSize > 0 && hist[histSize - 1] == 0) {
-        --histSize;
-    }
+    const uint32_t histSize = maxBucket + 1;
 
     // Build cumulative histogram
     uint32_t sum = 0;
@@ -776,29 +776,45 @@ static bool PB_buildCumHist(
             ? ZL_PARTITION_MAX_PARTITION_SIZE_FOR_UNROLL4
             : ZL_PARTITION_MAX_PARTITION_SIZE_FOR_UNROLL2;
 
+    *maxSeenSymbolValue = (uint32_t)(cumBases[histSize] - 1);
+
     return true;
 }
 
 static bool PB_buildCumHistU16(
         PB_CumHist* out,
+        uint32_t* maxSeenSymbolValue,
         const void* data,
         size_t numElts,
         bool optimal,
         ZL_Graph* graph)
 {
     return PB_buildCumHist(
-            out, data, numElts, sizeof(uint16_t), optimal, graph);
+            out,
+            maxSeenSymbolValue,
+            data,
+            numElts,
+            sizeof(uint16_t),
+            optimal,
+            graph);
 }
 
 static bool PB_buildCumHistU32(
         PB_CumHist* out,
+        uint32_t* maxSeenSymbolValue,
         const void* data,
         size_t numElts,
         bool optimal,
         ZL_Graph* graph)
 {
     return PB_buildCumHist(
-            out, data, numElts, sizeof(uint32_t), optimal, graph);
+            out,
+            maxSeenSymbolValue,
+            data,
+            numElts,
+            sizeof(uint32_t),
+            optimal,
+            graph);
 }
 
 /// Compute optimal partition boundaries for numeric data.
@@ -810,19 +826,35 @@ static PB_PartitionResult PB_fixedPartition(
         bool optimal,
         ZL_Graph* graph)
 {
-    PB_PartitionResult result = { NULL, 0, 0, 0 };
+    PB_PartitionResult result = { NULL, 0, 0, 0, 0, 0 };
 
     PB_CumHist cumHist;
+    uint32_t maxSeenSymbolValue;
     if (eltWidth == 2) {
-        if (!PB_buildCumHistU16(&cumHist, data, numElts, optimal, graph)) {
+        if (!PB_buildCumHistU16(
+                    &cumHist,
+                    &maxSeenSymbolValue,
+                    data,
+                    numElts,
+                    optimal,
+                    graph)) {
             return result;
         }
     } else {
         assert(eltWidth == 4);
-        if (!PB_buildCumHistU32(&cumHist, data, numElts, optimal, graph)) {
+        if (!PB_buildCumHistU32(
+                    &cumHist,
+                    &maxSeenSymbolValue,
+                    data,
+                    numElts,
+                    optimal,
+                    graph)) {
             return result;
         }
     }
+
+    result.bitpackBits = (size_t)ZL_nextPow2((uint64_t)maxSeenSymbolValue + 1);
+    result.bitpackCost = result.bitpackBits * cumHist.cumHist[cumHist.histSize];
 
     // Try 16 and 32 partitions, keep best
     uint32_t bestBuf[PB_MAX_PARTITIONS];
@@ -902,7 +934,7 @@ EI_partitionBitpackDynGraph(ZL_Graph* graph, ZL_Edge** inputs, size_t numInputs)
             (optimalParam.paramId == ZL_GRAPH_PARTITION_BITPACK_OPTIMAL_PID
              && optimalParam.paramValue == ZL_TernaryParam_enable);
 
-    // Fallback to store for small inputs
+    // Fallback to store for tiny inputs
     if (numElts < 10) {
         ZL_ERR_IF_ERR(ZL_Edge_setDestination(inputEdge, ZL_GRAPH_STORE));
         return ZL_returnSuccess();
@@ -918,29 +950,13 @@ EI_partitionBitpackDynGraph(ZL_Graph* graph, ZL_Edge** inputs, size_t numInputs)
         return ZL_returnSuccess();
     }
 
-    // Fallback to bitpack for single partition
-    if (pr.numPartitions == 1) {
-        ZL_ERR_IF_ERR(ZL_Edge_setDestination(inputEdge, ZL_GRAPH_BITPACK));
+    // Fallback to bitpack if not enough gain
+    if (pr.numPartitions == 1 || pr.bitCost >= pr.bitpackCost) {
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(
+                inputEdge,
+                pr.bitpackBits < (8 * eltWidth) ? ZL_GRAPH_BITPACK
+                                                : ZL_GRAPH_STORE));
         return ZL_returnSuccess();
-    }
-
-    // Fallback to bitpack for all-size-1 partitions
-    {
-        bool allOne = true;
-        for (size_t i = 0; i < pr.numPartitions; ++i) {
-            const uint64_t begin = pr.partitions[i];
-            const uint64_t end   = (i + 1 == pr.numPartitions)
-                      ? (pr.maxSymbolValue + 1)
-                      : pr.partitions[i + 1];
-            if (begin + 1 != end) {
-                allOne = false;
-                break;
-            }
-        }
-        if (allOne) {
-            ZL_ERR_IF_ERR(ZL_Edge_setDestination(inputEdge, ZL_GRAPH_BITPACK));
-            return ZL_returnSuccess();
-        }
     }
 
     // Fallback to store if not enough gain

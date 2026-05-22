@@ -533,11 +533,16 @@ ZL_Report EI_lzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
     const ZL_GraphID huffOrStore =
             compressionLevel >= 0 ? ZL_GRAPH_HUFFMAN : ZL_GRAPH_STORE;
 
+    // Heuristic: Send offsets that take up to 13 bits directly to bitpack.
+    // After this size, the loss becomes too large to justify the boost to
+    // compression speed.
+    // TODO(T264603483): Take compression level into account here
     const ZL_GraphID offsetsGraph = getGraph(
             gctx,
             customGraphs,
             ZL_LzParam_offsetsGraphIdx,
-            ZL_GRAPH_PARTITION_BITPACK);
+            inputSize <= (1u << 13) ? ZL_GRAPH_BITPACK
+                                    : ZL_GRAPH_PARTITION_BITPACK);
     const ZL_GraphID muxLengthsGraph = getGraph(
             gctx,
             customGraphs,
