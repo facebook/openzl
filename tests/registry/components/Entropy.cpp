@@ -8,6 +8,43 @@
 
 namespace openzl::tests::components {
 namespace {
+std::vector<OpenZLComponent::Benchmark>
+entropyBenchmarks(Compressor& compressor, datagen::DataGen& gen, GraphID graph)
+{
+    std::vector<OpenZLComponent::Benchmark> benchmarks;
+
+    struct Params {
+        size_t inputSize;
+        size_t numInputs;
+    };
+    // Sizes tuned to provide approximately equal weight to each benchmark in
+    // compression speed.
+    constexpr std::array<Params, 4> kParams = {
+        Params{ 100, 600 },
+        Params{ 1000, 500 },
+        Params{ 10000, 150 },
+        Params{ 100000, 20 },
+    };
+
+    benchmarks.reserve(kParams.size());
+    for (const auto& params : kParams) {
+        std::vector<std::unique_ptr<OpenZLInput>> inputs;
+        inputs.reserve(params.numInputs);
+        datagen::CompressibleStringProducer producer(
+                gen.getRandWrapper(), params.inputSize, 0.1);
+        for (size_t i = 0; i < params.numInputs; ++i) {
+            inputs.push_back(SerialOpenZLInput::make(producer("input")));
+        }
+        OpenZLComponent::Benchmark benchmark = {
+            .name   = "InputSize:" + std::to_string(params.inputSize),
+            .graph  = graph,
+            .inputs = std::move(inputs),
+        };
+        benchmarks.push_back(std::move(benchmark));
+    }
+
+    return benchmarks;
+}
 
 // ---- Fse ----
 
@@ -73,6 +110,13 @@ class FseComponent : public OpenZLComponent {
             inputs.push_back(SerialOpenZLInput::make(producer("input")));
         }
         return inputs;
+    }
+
+    std::vector<Benchmark> benchmarks(
+            Compressor& compressor,
+            datagen::DataGen& gen) const override
+    {
+        return entropyBenchmarks(compressor, gen, ZL_GRAPH_FSE);
     }
 };
 
@@ -155,7 +199,8 @@ class HuffmanComponent : public OpenZLComponent {
                     break;
                 }
                 case 2: {
-                    // Huffman supports u8 (eltWidth 1) and u16 (eltWidth 2)
+                    // Huffman supports u8 (eltWidth 1) and u16
+                    // (eltWidth 2)
                     if (gen.boolean("use_u8")) {
                         auto maxElts = std::min(
                                 maxInputSize / sizeof(uint8_t), size_t(131072));
@@ -173,6 +218,13 @@ class HuffmanComponent : public OpenZLComponent {
             }
         }
         return inputs;
+    }
+
+    std::vector<Benchmark> benchmarks(
+            Compressor& compressor,
+            datagen::DataGen& gen) const override
+    {
+        return entropyBenchmarks(compressor, gen, ZL_GRAPH_HUFFMAN);
     }
 };
 
@@ -264,6 +316,13 @@ class EntropyComponent : public OpenZLComponent {
             }
         }
         return inputs;
+    }
+
+    std::vector<Benchmark> benchmarks(
+            Compressor& compressor,
+            datagen::DataGen& gen) const override
+    {
+        return entropyBenchmarks(compressor, gen, ZL_GRAPH_ENTROPY);
     }
 };
 
