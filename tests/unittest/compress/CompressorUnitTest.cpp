@@ -78,16 +78,6 @@ static ZL_Report dummyEncoder(
     return ZL_returnSuccess();
 }
 
-static ZL_Report dummyDecoder(
-        ZL_Decoder* dictx,
-        const ZL_Input* compulsorySrcs[],
-        size_t nbCompulsorySrcs,
-        const ZL_Input* variableSrcs[],
-        size_t nbVariableSrcs) ZL_NOEXCEPT_FUNC_PTR
-{
-    return ZL_returnSuccess();
-}
-
 } // namespace
 
 // =============================================================================
