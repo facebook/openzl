@@ -72,6 +72,45 @@ typedef enum {
      * is subject to change.
      */
     ZL_LzParam_windowLog = 101,
+
+    /**
+     * If set, the customGraph at this index is used to compress the literals,
+     * rather than sending them to the default graph.
+     */
+    ZL_LzParam_literalsGraphIdx = 1000,
+
+    /**
+     * If set, the customGraph at this index is used to compress the offsets,
+     * rather than sending them to the default graph.
+     */
+    ZL_LzParam_offsetsGraphIdx = 1001,
+
+    /**
+     * If set, the customGraph at this index is used to compress the muxed
+     * bytes (first output of ZL_NODE_MUX_LENGTHS), rather than sending them to
+     * the default graph.
+     *
+     * @note Not used if ZL_LzParam_muxLengthsGraphIdx is set.
+     */
+    ZL_LzParam_muxedBytesGraphIdx = 1002,
+
+    /**
+     * If set, the customGraph at this index is used to compress the overflow
+     * lengths (second output of ZL_NODE_MUX_LENGTHS), rather than sending them
+     * to the default graph.
+     *
+     * @note Not used if ZL_LzParam_muxLengthsGraphIdx is set.
+     */
+    ZL_LzParam_overflowLengthsGraphIdx = 1003,
+
+    /**
+     * If set, the custom graph at this index is used to compress the literal
+     * lengths and match lengths, rather than sending them to
+     * ZL_NODE_MUX_LENGTHS.
+     *
+     * @note Must be a multi-input graph that accepts two 16-bit numeric inputs.
+     */
+    ZL_LzParam_muxLengthsGraphIdx = 1004,
 } ZL_LzParam;
 
 #if defined(__cplusplus)

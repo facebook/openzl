@@ -465,6 +465,22 @@ static int getCompressionLevelGraph(const ZL_Graph* graph)
     }
 }
 
+static ZL_GraphID getGraph(
+        const ZL_Graph* gctx,
+        ZL_GraphIDList customGraphs,
+        int overrideParam,
+        ZL_GraphID defaultGraph)
+{
+    const ZL_IntParam param = ZL_Graph_getLocalIntParam(gctx, overrideParam);
+    if (param.paramId == ZL_LP_INVALID_PARAMID) {
+        return defaultGraph;
+    } else if ((size_t)param.paramValue >= customGraphs.nbGraphIDs) {
+        return ZL_GRAPH_ILLEGAL;
+    } else {
+        return customGraphs.graphids[param.paramValue];
+    }
+}
+
 ZL_Report EI_lzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
@@ -485,36 +501,54 @@ ZL_Report EI_lzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
     ZL_Edge* const literalLengths = streams.edges[2];
     ZL_Edge* const matchLengths   = streams.edges[3];
 
-    const int compressionLevel = getCompressionLevelGraph(gctx);
+    const int compressionLevel        = getCompressionLevelGraph(gctx);
+    const ZL_GraphIDList customGraphs = ZL_Graph_getCustomGraphs(gctx);
 
-    // Send literals to Huffman
-    if (compressionLevel >= 0) {
-        ZL_ERR_IF_ERR(ZL_Edge_setDestination(literals, ZL_GRAPH_HUFFMAN));
-    } else {
-        ZL_ERR_IF_ERR(ZL_Edge_setDestination(literals, ZL_GRAPH_STORE));
-    }
+    const ZL_GraphID huffOrStore =
+            compressionLevel >= 0 ? ZL_GRAPH_HUFFMAN : ZL_GRAPH_STORE;
 
-    // Send offsets to partition bitpack
-    ZL_ERR_IF_ERR(ZL_Edge_setDestination(offsets, ZL_GRAPH_PARTITION_BITPACK));
+    const ZL_GraphID literalsGraph = getGraph(
+            gctx, customGraphs, ZL_LzParam_literalsGraphIdx, huffOrStore);
+    const ZL_GraphID offsetsGraph = getGraph(
+            gctx,
+            customGraphs,
+            ZL_LzParam_offsetsGraphIdx,
+            ZL_GRAPH_PARTITION_BITPACK);
+    const ZL_GraphID muxLengthsGraph = getGraph(
+            gctx,
+            customGraphs,
+            ZL_LzParam_muxLengthsGraphIdx,
+            ZL_GRAPH_ILLEGAL);
 
-    // Run mux_lengths node (auto-computes split point and min match length)
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(literals, literalsGraph));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(offsets, offsetsGraph));
+
     ZL_Edge* muxInputs[2] = { literalLengths, matchLengths };
-    ZL_TRY_LET(
-            ZL_EdgeList,
-            muxStreams,
-            ZL_Edge_runMultiInputNode(muxInputs, 2, ZL_NODE_MUX_LENGTHS));
-    ZL_ASSERT_EQ(muxStreams.nbEdges, 2);
 
-    // Route mux_lengths outputs: muxed bytes and overflow lengths to Huffman
-    if (compressionLevel >= 0) {
-        ZL_ERR_IF_ERR(
-                ZL_Edge_setDestination(muxStreams.edges[0], ZL_GRAPH_HUFFMAN));
+    if (muxLengthsGraph.gid != ZL_GRAPH_ILLEGAL.gid) {
+        ZL_ERR_IF_ERR(ZL_Edge_setParameterizedDestination(
+                muxInputs, 2, muxLengthsGraph, NULL));
     } else {
+        // Run mux_lengths node (auto-computes split point and min match length)
+        ZL_TRY_LET(
+                ZL_EdgeList,
+                muxStreams,
+                ZL_Edge_runMultiInputNode(muxInputs, 2, ZL_NODE_MUX_LENGTHS));
+        ZL_ASSERT_EQ(muxStreams.nbEdges, 2);
+
+        const ZL_GraphID muxedBytesGraph = getGraph(
+                gctx, customGraphs, ZL_LzParam_muxedBytesGraphIdx, huffOrStore);
+        const ZL_GraphID overflowLengthsGraph = getGraph(
+                gctx,
+                customGraphs,
+                ZL_LzParam_overflowLengthsGraphIdx,
+                ZL_GRAPH_COMPRESS_SMALL_LENGTHS);
+
         ZL_ERR_IF_ERR(
-                ZL_Edge_setDestination(muxStreams.edges[0], ZL_GRAPH_STORE));
+                ZL_Edge_setDestination(muxStreams.edges[0], muxedBytesGraph));
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(
+                muxStreams.edges[1], overflowLengthsGraph));
     }
-    ZL_ERR_IF_ERR(ZL_Edge_setDestination(
-            muxStreams.edges[1], ZL_GRAPH_COMPRESS_SMALL_LENGTHS));
 
     return ZL_returnSuccess();
 }
