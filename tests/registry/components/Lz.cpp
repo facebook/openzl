@@ -61,6 +61,18 @@ class LzComponent : public OpenZLComponent {
         }
     }
 
+    static void maybeOverrideSuccessor(
+            LocalParams& params,
+            std::vector<GraphID>& successors,
+            datagen::DataGen& gen,
+            int overrideParam)
+    {
+        if (gen.u8_range("override_successor", 0, 1) == 1) {
+            params.addIntParam(overrideParam, successors.size());
+            successors.push_back(ZL_GRAPH_STORE);
+        }
+    }
+
     std::vector<GraphID> generateGraphs(
             Compressor& compressor,
             datagen::DataGen& gen,
@@ -70,12 +82,30 @@ class LzComponent : public OpenZLComponent {
         graphs.reserve(num);
         for (size_t i = 0; i < num; ++i) {
             LocalParams params;
+            std::vector<GraphID> successors;
             maybeSetParam(params, gen, ZL_LzParam_compressionLevel, -10, 10);
             maybeSetParam(params, gen, ZL_LzParam_acceleration, -10, 100);
             maybeSetParam(params, gen, ZL_LzParam_windowLog, 10, 28);
+
+            maybeOverrideSuccessor(
+                    params, successors, gen, ZL_LzParam_literalsGraphIdx);
+            maybeOverrideSuccessor(
+                    params, successors, gen, ZL_LzParam_offsetsGraphIdx);
+            maybeOverrideSuccessor(
+                    params, successors, gen, ZL_LzParam_muxedBytesGraphIdx);
+            maybeOverrideSuccessor(
+                    params,
+                    successors,
+                    gen,
+                    ZL_LzParam_overflowLengthsGraphIdx);
+            maybeOverrideSuccessor(
+                    params, successors, gen, ZL_LzParam_muxLengthsGraphIdx);
             graphs.push_back(compressor.parameterizeGraph(
                     ZL_GRAPH_LZ,
-                    GraphParameters{ .localParams = std::move(params) }));
+                    GraphParameters{
+                            .customGraphs = std::move(successors),
+                            .localParams  = std::move(params),
+                    }));
         }
         return graphs;
     }
