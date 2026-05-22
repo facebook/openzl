@@ -181,11 +181,9 @@ HUF_decompress4X1_usingDTable_internal_bmi2_asm_loop:
     movq 8(%rsp), %rdx
     movq 0(%rsp), %rbx
 
-    /* If (op3 + 20 > olimit) */
-    movq %op3, %rax    /* rax = op3 */
-    addq $20,  %rax    /* rax = op3 + 20 */
-    cmpq %rax, %olimit /* op3 + 20 > olimit */
-    jb .L_4X1_exit
+    /* If (op3 >= olimit) */
+    cmpq %op3, %olimit /* op3 >= olimit */
+    jbe .L_4X1_exit
 
     /* If (ip1 < ip0) go to exit */
     cmpq %ip0, %ip1
@@ -464,11 +462,9 @@ HUF_decompress4X2_usingDTable_internal_bmi2_asm_loop:
 
     movq 0(%rsp), %rdx
 
-    /* If (op3 + 10 > olimit) */
-    movq %op3, %rax    /* rax = op3 */
-    addq $10,  %rax    /* rax = op3 + 10 */
-    cmpq %rax, %olimit /* op3 + 10 > olimit */
-    jb .L_4X2_exit
+    /* If (op3 >= olimit) */
+    cmpq %op3, %olimit /* op3 >= olimit */
+    jbe .L_4X2_exit
 
     /* If (ip1 < ip0) go to exit */
     cmpq %ip0, %ip1
