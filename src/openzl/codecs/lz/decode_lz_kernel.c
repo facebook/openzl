@@ -373,6 +373,7 @@ static ZL_LzError ZL_Lz_decode_sequence(
     assert((size_t)*outPos <= dstSize);
     assert(*litPos <= numLiterals);
 
+    // Must handle integer overflow for these values
     ptrdiff_t const litLen = (ptrdiff_t)ZL_readN(
             (const uint8_t*)literalLengths + seq * literalLengthsEltWidth,
             (size_t)literalLengthsEltWidth);
@@ -384,10 +385,10 @@ static ZL_LzError ZL_Lz_decode_sequence(
             (size_t)matchLengthsEltWidth);
 
     // Copy literals
-    if (*litPos + litLen > numLiterals) {
+    if (litLen > numLiterals - *litPos) {
         return ZL_LzError_notEnoughLiterals;
     }
-    if (*outPos + litLen > (ptrdiff_t)dstSize) {
+    if (litLen < 0 || litLen > (ptrdiff_t)dstSize - *outPos) {
         return ZL_LzError_literalLengthTooLarge;
     }
     if (litLen > 0) {
@@ -400,12 +401,12 @@ static ZL_LzError ZL_Lz_decode_sequence(
     if (offset == 0) {
         return ZL_LzError_offsetZero;
     }
-    if (offset > *outPos) {
+    if (offset > *outPos || offset < 0) {
         return ZL_LzError_offsetTooLarge;
     }
 
     // Copy match (byte-by-byte to handle overlapping matches)
-    if (*outPos + matchLen > (ptrdiff_t)dstSize) {
+    if (matchLen < 0 || matchLen > (ptrdiff_t)dstSize - *outPos) {
         return ZL_LzError_matchLengthTooLarge;
     }
     for (ptrdiff_t i = 0; i < matchLen; ++i) {
@@ -531,9 +532,15 @@ ZL_FORCE_NOINLINE ZL_LzError ZL_Lz_decode_u16Loop(
             assert((size_t)litPos <= state->src.numLiterals);
             assert((size_t)outPos <= dstSize);
 
+            // These values are capped at 64K
+            // We validated the source size is <= PTRDIFF_MAX - 2 * UINT16_MAX
+            // before calling this loop to guarantee no overflow when adding
+            // to outPos.
             const ptrdiff_t litLen   = litLens[seq];
             const ptrdiff_t matchLen = matchLens[seq];
             const ptrdiff_t offset   = offs[seq];
+            assert(sizeof(ptrdiff_t) >= 4);
+            assert(litLen >= 0 && matchLen >= 0 && offset >= 0);
 
             const ptrdiff_t outMatch = outPos + litLen;
             const ptrdiff_t outNext  = outMatch + matchLen;
@@ -678,9 +685,11 @@ static ZL_LzError ZL_Lz_decode_u16(
 ZL_LzError
 ZL_Lz_decode(uint8_t* dst, size_t dstSize, const ZL_Lz_InSequences* src)
 {
+    const size_t maxSeqLenU16 = 2 * UINT16_MAX;
     // Optimize for cases that the encoder actually produces
     if (src->offsetsEltWidth == 2 && src->literalLengthsEltWidth == 2
-        && src->matchLengthsEltWidth == 2) {
+        && src->matchLengthsEltWidth == 2
+        && dstSize <= PTRDIFF_MAX - maxSeqLenU16 /* no overflow in outPos */) {
         return ZL_Lz_decode_u16(dst, dstSize, src);
     }
 
