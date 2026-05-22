@@ -124,21 +124,16 @@ lzZstdCompressor(int llBits, bool slow, bool iso = false, bool bucket = false)
     return compressor.serialize();
 }
 
-std::string lzStdCompressor(bool slow)
+std::string lzStdCompressor(bool u16Offset)
 {
     openzl::Compressor compressor;
     registerGraphComponents(compressor);
-    auto lzNode = ZL_NODE_LZ;
-    auto store  = graphs::Store{}();
-    auto huf    = graphs::Huffman{}();
-    auto lits   = huf;
-    // auto tokens    = huf;
-    auto offsets = slow ? ZL_GRAPH_PARTITION_BITPACK : store;
-    auto lens    = slow ? ZL_GRAPH_COMPRESS_SMALL_LENGTHS : store;
-    auto graph =
-            compressor.buildStaticGraph(lzNode, { lits, offsets, lens, lens });
-    (void)graph;
-    compressor.selectStartingGraph(ZL_GRAPH_LZ);
+    openzl::LocalParams params;
+    params.addIntParam(ZL_LzParam_windowLog, u16Offset ? 16 : 32);
+    auto graph = compressor.parameterizeGraph(
+            ZL_GRAPH_LZ,
+            openzl::GraphParameters{ .localParams = std::move(params) });
+    compressor.selectStartingGraph(graph);
     return compressor.serialize();
 }
 
@@ -262,10 +257,10 @@ std::string getSerializedCompressor(std::string_view name)
         return bucket16Compressor();
     } else if (name == "partition-offsets") {
         return partitionOffsetsCompressor();
-    } else if (name == "lz-std-fast") {
-        return lzStdCompressor(false);
-    } else if (name == "lz-std-slow") {
+    } else if (name == "lz-std-16") {
         return lzStdCompressor(true);
+    } else if (name == "lz-std-32") {
+        return lzStdCompressor(false);
     } else if (name == "huff16") {
         return huff16Compressor();
     }
