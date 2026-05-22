@@ -109,15 +109,6 @@ TEST_F(FormatVersionTest, MinFormatVersionNotAccidentallyIncreased)
             << "to fix this test";
 }
 
-static ZL_NodeID nodeWithNewerTransform(ZL_Compressor* cgraph)
-{
-    const auto node = ZL_NODE_MERGE_SORTED;
-    ZL_REQUIRE_GT(
-            ZL_Compressor_Node_getMinVersion(cgraph, node),
-            ZL_MIN_FORMAT_VERSION);
-    return node;
-}
-
 TEST_F(FormatVersionTest, MaxFormatVersionSucceedsOnSupportedVersion)
 {
     reset();
