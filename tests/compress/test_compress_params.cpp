@@ -109,6 +109,53 @@ TEST_F(CompressParamsTest, strToParam)
     ASSERT_TRUE(ZL_isError(GCParams_strToParam("")));
 }
 
+TEST_F(CompressParamsTest, setTernaryParam_validValues)
+{
+    const ZL_CParam ternaryParams[] = {
+        ZL_CParam_permissiveCompression,
+        ZL_CParam_compressedChecksum,
+        ZL_CParam_contentChecksum,
+        ZL_CParam_storeOnExpansion,
+    };
+    const int validValues[] = {
+        ZL_TernaryParam_auto,
+        ZL_TernaryParam_enable,
+        ZL_TernaryParam_disable,
+    };
+
+    for (auto param : ternaryParams) {
+        GCParams gcparams = GCParams_default;
+        for (auto value : validValues) {
+            EXPECT_FALSE(
+                    ZL_isError(GCParams_setParameter(&gcparams, param, value)))
+                    << "param=" << GCParams_paramToStr(param)
+                    << " value=" << value;
+            EXPECT_EQ(GCParams_getParameter(&gcparams, param), value);
+        }
+    }
+}
+
+TEST_F(CompressParamsTest, setTernaryParam_invalidValues)
+{
+    const ZL_CParam ternaryParams[] = {
+        ZL_CParam_permissiveCompression,
+        ZL_CParam_compressedChecksum,
+        ZL_CParam_contentChecksum,
+        ZL_CParam_storeOnExpansion,
+    };
+    const int invalidValues[] = { 3, -1, 42 };
+
+    for (auto param : ternaryParams) {
+        for (auto value : invalidValues) {
+            GCParams gcparams = GCParams_default;
+            EXPECT_TRUE(
+                    ZL_isError(GCParams_setParameter(&gcparams, param, value)))
+                    << "param=" << GCParams_paramToStr(param)
+                    << " value=" << value;
+        }
+    }
+}
+
 TEST_F(CompressParamsTest, paramToStr)
 {
     ASSERT_EQ(
