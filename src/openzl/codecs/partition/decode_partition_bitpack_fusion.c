@@ -41,6 +41,26 @@ ZL_UNUSED_ATTR static void expandLUT5(
     }
 }
 
+/// Pack two u32 LUT entries into one u64, indexed by a pair of 4-bit bucket
+/// IDs. This lets the fast loop decode two u32 values with a single PDEP+add.
+static void expandLUT4_u32(const uint32_t* LUTx1, uint64_t LUTx2[256])
+{
+    for (size_t idx = 0; idx < 256; ++idx) {
+        const size_t lo = idx & 0xF;
+        const size_t hi = idx >> 4;
+        LUTx2[idx]      = (uint64_t)LUTx1[lo] | ((uint64_t)LUTx1[hi] << 32);
+    }
+}
+
+static void expandLUT5_u32(const uint32_t* LUTx1, uint64_t LUTx2[1024])
+{
+    for (size_t idx = 0; idx < 1024; ++idx) {
+        const size_t lo = idx & 31;
+        const size_t hi = idx >> 5;
+        LUTx2[idx]      = (uint64_t)LUTx1[lo] | ((uint64_t)LUTx1[hi] << 32);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // computeLimit: safe iteration bound for fast-path loops
 // ---------------------------------------------------------------------------
@@ -121,7 +141,8 @@ static size_t computeLimit(
 // DecodeTail: Decode the tail of the stream with a scalar safe path.
 // ---------------------------------------------------------------------------
 static ZL_Report decodeTail(
-        uint16_t* out,
+        void* out,
+        size_t eltWidth,
         size_t i,
         size_t numElts,
         const uint8_t* fixed,
@@ -146,7 +167,12 @@ static ZL_Report decodeTail(
         ZL_ERR_IF_GE(bucket, numPartitions, corruption, "Bucket ID OOB");
         uint64_t offset = ZS_BitDStreamFF_read(&varBits, bits[bucket]);
         ZS_BitDStreamFF_reload(&varBits);
-        out[i] = (uint16_t)(bases[bucket] + offset);
+        const uint64_t value = bases[bucket] + offset;
+        if (eltWidth == 4) {
+            ((uint32_t*)out)[i] = (uint32_t)value;
+        } else {
+            ((uint16_t*)out)[i] = (uint16_t)value;
+        }
     }
     ZL_ERR_IF_ERR(ZS_BitDStreamFF_finish(&fixedBits));
     ZL_ERR_IF_ERR(ZS_BitDStreamFF_finish(&varBits));
@@ -282,7 +308,7 @@ static ZL_Report decodePartitionBitpack4(
 
                 const uint64_t vData  = ZL_readLE64(v) >> bitsConsumed;
                 const uint64_t offset = ZL_bitDeposit64(vData, mask);
-                ZL_writeLE64(o, base + offset);
+                ZS_write64(o, base + offset);
                 o += 4;
                 bitsConsumed += (size_t)ZL_popcount64(mask);
                 v += bitsConsumed >> 3;
@@ -297,7 +323,7 @@ static ZL_Report decodePartitionBitpack4(
                 f += 2;
                 const uint64_t vData  = ZL_readLE64(v) >> bitsConsumed;
                 const uint64_t offset = ZL_bitDeposit64(vData, mask);
-                ZL_writeLE64(o, base + offset);
+                ZS_write64(o, base + offset);
                 o += 4;
                 bitsConsumed += (size_t)ZL_popcount64(mask);
                 v += bitsConsumed >> 3;
@@ -309,6 +335,7 @@ static ZL_Report decodePartitionBitpack4(
 
     return decodeTail(
             out,
+            sizeof(uint16_t),
             i,
             numElts,
             f,
@@ -491,7 +518,7 @@ static ZL_Report decodePartitionBitpack5(
 
                 const uint64_t vData  = ZL_readLE64(v) >> bitsConsumed;
                 const uint64_t offset = ZL_bitDeposit64(vData, mask);
-                ZL_writeLE64(o, base + offset);
+                ZS_write64(o, base + offset);
                 o += 4;
                 bitsConsumed += (size_t)ZL_popcount64(mask);
                 v += bitsConsumed >> 3;
@@ -514,7 +541,7 @@ static ZL_Report decodePartitionBitpack5(
                             | ((uint64_t)maskLUTx2[fs[k + 1]] << 32);
                     const uint64_t vData  = ZL_readLE64(v) >> bitsConsumed;
                     const uint64_t offset = ZL_bitDeposit64(vData, mask);
-                    ZL_writeLE64(o, base + offset);
+                    ZS_write64(o, base + offset);
                     o += 4;
                     bitsConsumed += (size_t)ZL_popcount64(mask);
                     v += bitsConsumed >> 3;
@@ -527,6 +554,178 @@ static ZL_Report decodePartitionBitpack5(
 
     return decodeTail(
             out,
+            sizeof(uint16_t),
+            i,
+            numElts,
+            f,
+            fEnd,
+            5,
+            v,
+            vEnd,
+            bitsConsumed,
+            bases,
+            bits,
+            numPartitions);
+}
+
+static ZL_Report decodePartitionBitpack4_u32(
+        uint32_t* out,
+        size_t numElts,
+        const uint8_t* fixed,
+        size_t fixedSize,
+        const uint8_t* var,
+        size_t varSize,
+        const uint64_t* bases,
+        const uint8_t* bits,
+        size_t numPartitions,
+        size_t maxVarBits,
+        uint64_t baseLUTx2[256],
+        uint64_t maskLUTx2[256])
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ASSERT_LE(numPartitions, 16);
+
+    uint32_t baseLUTx1[16] = { 0 };
+    uint32_t maskLUTx1[16] = { 0 };
+    for (size_t p = 0; p < numPartitions; ++p) {
+        baseLUTx1[p] = (uint32_t)bases[p];
+        maskLUTx1[p] = (uint32_t)((1ULL << bits[p]) - 1);
+    }
+    expandLUT4_u32(baseLUTx1, baseLUTx2);
+    expandLUT4_u32(maskLUTx1, maskLUTx2);
+
+    uint32_t* o                  = out;
+    const uint8_t* f             = fixed;
+    const uint8_t* const fEnd    = fixed + fixedSize;
+    const uint8_t* v             = var;
+    const uint8_t* const vEnd    = var + varSize;
+    const size_t kEltsPerIter    = 8;
+    const size_t kFixedBytesIter = 4; // 8 elts * 4 bits / 8 = 4 bytes
+    size_t i                     = 0;
+    size_t bitsConsumed          = 0;
+
+    for (;;) {
+        const size_t limit = computeLimit(
+                i,
+                numElts,
+                kEltsPerIter,
+                maxVarBits,
+                v,
+                vEnd,
+                f,
+                fEnd,
+                kFixedBytesIter);
+        if (i >= limit) {
+            break;
+        }
+        for (; i < limit; i += kEltsPerIter) {
+            for (size_t u = 0; u < kEltsPerIter; u += 2) {
+                const uint64_t base = baseLUTx2[*f];
+                const uint64_t mask = maskLUTx2[*f];
+                ++f;
+                const uint64_t vData  = ZL_readLE64(v) >> bitsConsumed;
+                const uint64_t offset = ZL_bitDeposit64(vData, mask);
+                ZS_write64(o, base + offset);
+                o += 2;
+                bitsConsumed += (size_t)ZL_popcount64(mask);
+                v += bitsConsumed >> 3;
+                bitsConsumed &= 7;
+            }
+        }
+    }
+
+    return decodeTail(
+            out,
+            sizeof(uint32_t),
+            i,
+            numElts,
+            f,
+            fEnd,
+            4,
+            v,
+            vEnd,
+            bitsConsumed,
+            bases,
+            bits,
+            numPartitions);
+}
+
+static ZL_Report decodePartitionBitpack5_u32(
+        uint32_t* out,
+        size_t numElts,
+        const uint8_t* fixed,
+        size_t fixedSize,
+        const uint8_t* var,
+        size_t varSize,
+        const uint64_t* bases,
+        const uint8_t* bits,
+        size_t numPartitions,
+        size_t maxVarBits,
+        uint64_t baseLUTx2[1024],
+        uint64_t maskLUTx2[1024])
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ASSERT_LE(numPartitions, 32);
+
+    uint32_t baseLUTx1[32] = { 0 };
+    uint32_t maskLUTx1[32] = { 0 };
+    for (size_t p = 0; p < numPartitions; ++p) {
+        baseLUTx1[p] = (uint32_t)bases[p];
+        maskLUTx1[p] = (uint32_t)((1ULL << bits[p]) - 1);
+    }
+    expandLUT5_u32(baseLUTx1, baseLUTx2);
+    expandLUT5_u32(maskLUTx1, maskLUTx2);
+
+    uint32_t* o                  = out;
+    const uint8_t* f             = fixed;
+    const uint8_t* const fEnd    = fixed + fixedSize;
+    const uint8_t* v             = var;
+    const uint8_t* const vEnd    = var + varSize;
+    const size_t kEltsPerIter    = 8;
+    const size_t kFixedBytesIter = 5; // 8 elts * 5 bits / 8 = 5 bytes
+    size_t i                     = 0;
+    size_t bitsConsumed          = 0;
+
+    for (;;) {
+        const size_t limit = computeLimit(
+                i,
+                numElts,
+                kEltsPerIter,
+                maxVarBits,
+                v,
+                vEnd,
+                f,
+                fEnd,
+                kFixedBytesIter);
+        if (i >= limit) {
+            break;
+        }
+        for (; i < limit; i += kEltsPerIter) {
+            const uint64_t F     = ZL_readLE64(f);
+            const uint64_t fs[4] = {
+                (F >> 0) & 1023,
+                (F >> 10) & 1023,
+                (F >> 20) & 1023,
+                (F >> 30) & 1023,
+            };
+            f += 5;
+            for (size_t k = 0; k < 4; ++k) {
+                const uint64_t base   = baseLUTx2[fs[k]];
+                const uint64_t mask   = maskLUTx2[fs[k]];
+                const uint64_t vData  = ZL_readLE64(v) >> bitsConsumed;
+                const uint64_t offset = ZL_bitDeposit64(vData, mask);
+                ZS_write64(o, base + offset);
+                o += 2;
+                bitsConsumed += (size_t)ZL_popcount64(mask);
+                v += bitsConsumed >> 3;
+                bitsConsumed &= 7;
+            }
+        }
+    }
+
+    return decodeTail(
+            out,
+            sizeof(uint32_t),
             i,
             numElts,
             f,
@@ -606,11 +805,17 @@ ZL_Report ZL_partitionBitpackFusedDecode(ZL_DecoderFusion* state)
             partHeader.size,
             partitionSizesBuffer));
 
-    // --- Fallback for non-uint16_t output ---
-    if (outEltWidth != 2 || nbBits < 4 || nbBits > 5
-        || params.numPartitions > (1u << nbBits)
-        || ZL_PartitionParams_getLargestPartitionSize(&params)
-                > ZL_PARTITION_MAX_PARTITION_SIZE_FOR_UNROLL4) {
+    const uint64_t largestPartitionSize =
+            ZL_PartitionParams_getLargestPartitionSize(&params);
+    const bool useU16FastPath = outEltWidth == 2 && nbBits >= 4 && nbBits <= 5
+            && params.numPartitions <= (1u << nbBits)
+            && largestPartitionSize
+                    <= ZL_PARTITION_MAX_PARTITION_SIZE_FOR_UNROLL4;
+    const bool useU32FastPath = outEltWidth == 4 && nbBits >= 4 && nbBits <= 5
+            && params.numPartitions <= (1u << nbBits)
+            && largestPartitionSize
+                    <= ZL_PARTITION_MAX_PARTITION_SIZE_FOR_UNROLL2;
+    if (!useU16FastPath && !useU32FastPath) {
         return ZL_partitionBitpackFusedDecode_fallback(state);
     }
 
@@ -627,7 +832,7 @@ ZL_Report ZL_partitionBitpackFusedDecode(ZL_DecoderFusion* state)
     const uint8_t* offsetsData = (const uint8_t*)ZL_Input_ptr(offsetsIn);
     const size_t offsetsSize   = ZL_Input_numElts(offsetsIn);
 
-    // --- Fast path: uint16_t output ---
+    // --- Fast path: uint16_t or uint32_t output ---
     const size_t numPartitions = params.numPartitions;
 
     // Compute uint16_t bases and uint8_t bits
@@ -641,66 +846,117 @@ ZL_Report ZL_partitionBitpackFusedDecode(ZL_DecoderFusion* state)
     ZL_PartitionParams_computeBits(&params, varBits);
 
     const size_t maxVarBits = NUMOP_findMaxU8(varBits, numPartitions);
-    ZL_ASSERT_LE(maxVarBits, 14, "Already validated");
-
-#if ZL_HAS_SSSE3
-    // SSSE3 variants don't use these LUTs
-    uint32_t* baseLUTx2 = NULL;
-    uint32_t* maskLUTx2 = NULL;
-#else
-    // Allocate LUT scratch space (decodePartitionBitpack5 needs 1024 entries,
-    // decodePartitionBitpack4 needs 256)
-    const size_t lutSize = (nbBits == 5) ? 1024 : 256;
-    uint32_t* baseLUTx2  = (uint32_t*)ZL_DecoderFusion_getScratchSpace(
-            state, sizeof(uint32_t) * lutSize);
-    ZL_ERR_IF_NULL(baseLUTx2, allocation);
-    uint32_t* maskLUTx2 = (uint32_t*)ZL_DecoderFusion_getScratchSpace(
-            state, sizeof(uint32_t) * lutSize);
-    ZL_ERR_IF_NULL(maskLUTx2, allocation);
-#endif
 
     // Create output stream
     ZL_Output* const out =
             ZL_DecoderFusion_createTypedStream(state, 0, numElts, outEltWidth);
     ZL_ERR_IF_NULL(out, allocation);
-    uint16_t* outPtr = (uint16_t*)ZL_Output_ptr(out);
 
     // Dispatch to specialized decoder
     ZL_Report ret;
-    switch (nbBits) {
-        case 4:
-            ret = decodePartitionBitpack4(
-                    outPtr,
-                    numElts,
-                    packedData,
-                    packedSize,
-                    offsetsData,
-                    offsetsSize,
-                    basesU64,
-                    varBits,
-                    numPartitions,
-                    maxVarBits,
-                    baseLUTx2,
-                    maskLUTx2);
-            break;
-        case 5:
-            ret = decodePartitionBitpack5(
-                    outPtr,
-                    numElts,
-                    packedData,
-                    packedSize,
-                    offsetsData,
-                    offsetsSize,
-                    basesU64,
-                    varBits,
-                    numPartitions,
-                    maxVarBits,
-                    baseLUTx2,
-                    maskLUTx2);
-            break;
-        default:
-            ZL_ASSERT_FAIL("Unreachable");
-            break;
+    if (useU16FastPath) {
+        ZL_ASSERT_LE(maxVarBits, 14, "Already validated");
+
+#if ZL_HAS_SSSE3
+        // SSSE3 variants don't use these LUTs
+        uint32_t* baseLUTx2 = NULL;
+        uint32_t* maskLUTx2 = NULL;
+#else
+        // Allocate LUT scratch space (decodePartitionBitpack5 needs 1024
+        // entries, decodePartitionBitpack4 needs 256).
+        const size_t lutSize = (nbBits == 5) ? 1024 : 256;
+        uint32_t* baseLUTx2  = (uint32_t*)ZL_DecoderFusion_getScratchSpace(
+                state, sizeof(uint32_t) * lutSize);
+        ZL_ERR_IF_NULL(baseLUTx2, allocation);
+        uint32_t* maskLUTx2 = (uint32_t*)ZL_DecoderFusion_getScratchSpace(
+                state, sizeof(uint32_t) * lutSize);
+        ZL_ERR_IF_NULL(maskLUTx2, allocation);
+#endif
+
+        uint16_t* outPtr = (uint16_t*)ZL_Output_ptr(out);
+        switch (nbBits) {
+            case 4:
+                ret = decodePartitionBitpack4(
+                        outPtr,
+                        numElts,
+                        packedData,
+                        packedSize,
+                        offsetsData,
+                        offsetsSize,
+                        basesU64,
+                        varBits,
+                        numPartitions,
+                        maxVarBits,
+                        baseLUTx2,
+                        maskLUTx2);
+                break;
+            case 5:
+                ret = decodePartitionBitpack5(
+                        outPtr,
+                        numElts,
+                        packedData,
+                        packedSize,
+                        offsetsData,
+                        offsetsSize,
+                        basesU64,
+                        varBits,
+                        numPartitions,
+                        maxVarBits,
+                        baseLUTx2,
+                        maskLUTx2);
+                break;
+            default:
+                ZL_ASSERT_FAIL("Unreachable");
+                break;
+        }
+    } else {
+        ZL_ASSERT(useU32FastPath);
+        ZL_ASSERT_LE(maxVarBits, 28, "Already validated");
+
+        const size_t lutSize   = (nbBits == 5) ? 1024 : 256;
+        uint64_t* baseLUTx2U32 = (uint64_t*)ZL_DecoderFusion_getScratchSpace(
+                state, sizeof(uint64_t) * lutSize);
+        ZL_ERR_IF_NULL(baseLUTx2U32, allocation);
+        uint64_t* maskLUTx2U32 = (uint64_t*)ZL_DecoderFusion_getScratchSpace(
+                state, sizeof(uint64_t) * lutSize);
+        ZL_ERR_IF_NULL(maskLUTx2U32, allocation);
+
+        uint32_t* outPtr = (uint32_t*)ZL_Output_ptr(out);
+        switch (nbBits) {
+            case 4:
+                ret = decodePartitionBitpack4_u32(
+                        outPtr,
+                        numElts,
+                        packedData,
+                        packedSize,
+                        offsetsData,
+                        offsetsSize,
+                        basesU64,
+                        varBits,
+                        numPartitions,
+                        maxVarBits,
+                        baseLUTx2U32,
+                        maskLUTx2U32);
+                break;
+            case 5:
+                ret = decodePartitionBitpack5_u32(
+                        outPtr,
+                        numElts,
+                        packedData,
+                        packedSize,
+                        offsetsData,
+                        offsetsSize,
+                        basesU64,
+                        varBits,
+                        numPartitions,
+                        maxVarBits,
+                        baseLUTx2U32,
+                        maskLUTx2U32);
+                break;
+            default:
+                ZL_ASSERT_FAIL("Unreachable");
+                break;
+        }
     }
     ZL_ERR_IF_ERR(ret);
 
