@@ -72,6 +72,7 @@ class LzComponent : public OpenZLComponent {
             LocalParams params;
             maybeSetParam(params, gen, ZL_LzParam_compressionLevel, -10, 10);
             maybeSetParam(params, gen, ZL_LzParam_acceleration, -10, 100);
+            maybeSetParam(params, gen, ZL_LzParam_windowLog, 10, 28);
             graphs.push_back(compressor.parameterizeGraph(
                     ZL_GRAPH_LZ,
                     GraphParameters{ .localParams = std::move(params) }));

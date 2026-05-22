@@ -20,9 +20,15 @@
 #endif
 
 #define ZL_LZ_HASH_LEN 7
+#define ZL_LZ_DEFAULT_TABLE_LOG 14
 
 #define ZL_LZ_MATCH_OVER_LENGTH 16
 #define ZL_LZ_SEARCH_STRENGTH 8
+
+uint32_t ZL_Lz_tableLog(uint32_t windowLog)
+{
+    return ZL_MIN(windowLog + 1, ZL_LZ_DEFAULT_TABLE_LOG);
+}
 
 static ptrdiff_t matchLength(
         uint8_t const* const in,
@@ -74,6 +80,28 @@ size_t ZL_Lz_maxNumSequences(size_t srcSize)
     return srcSize / ZL_LZ_MIN_MATCH + srcSize / ZL_LZ_MAX_LENGTH + 2;
 }
 
+static void
+storeOffset(void* offsets, size_t offsetWidth, size_t seq, ptrdiff_t offset)
+{
+    ZL_ASSERT_GT(offset, 0);
+    if (offsetWidth == sizeof(uint16_t)) {
+        ZL_ASSERT_LE(offset, UINT16_MAX);
+        ((uint16_t*)offsets)[seq] = (uint16_t)offset;
+    } else {
+        ZL_ASSERT_EQ(offsetWidth, sizeof(uint32_t));
+        ZL_ASSERT_LE(offset, UINT32_MAX);
+        ((uint32_t*)offsets)[seq] = (uint32_t)offset;
+    }
+}
+
+static ptrdiff_t getMaxOffset(size_t offsetWidth, uint32_t windowLog)
+{
+    ptrdiff_t maxOffset = offsetWidth == sizeof(uint32_t)
+            ? (ptrdiff_t)ZL_LZ_MAX_OFFSET_U32
+            : (ptrdiff_t)ZL_LZ_MAX_OFFSET_U16;
+    return ZL_MIN(maxOffset, (ptrdiff_t)(1u << windowLog));
+}
+
 /**
  * Match finding algorithm that runs the equivalent of the ZSTD_fast strategy.
  *
@@ -85,6 +113,7 @@ void ZL_Lz_encode(
         const uint8_t* const src,
         size_t srcSize,
         void* hashTableMem,
+        uint32_t windowLog,
         int acceleration)
 {
     if (srcSize == 0) {
@@ -95,9 +124,12 @@ void ZL_Lz_encode(
 
     assert(dst->literalsCapacity >= srcSize + ZL_LZ_LIT_OVER_LENGTH);
     assert(dst->sequencesCapacity >= ZL_Lz_maxNumSequences(srcSize));
+    assert(dst->offsetWidth == sizeof(uint16_t)
+           || dst->offsetWidth == sizeof(uint32_t));
 
-    ZS_FastTable table = { 0, 0, 0 };
-    ZS_FastTable_init(&table, hashTableMem, ZL_LZ_TABLE_LOG, ZL_LZ_HASH_LEN);
+    const uint32_t tableLog = ZL_Lz_tableLog(windowLog);
+    ZS_FastTable table      = { 0, 0, 0 };
+    ZS_FastTable_init(&table, hashTableMem, tableLog, ZL_LZ_HASH_LEN);
 
     const ptrdiff_t kSrcOverLength =
             ZL_MAX(ZL_LZ_LIT_OVER_LENGTH, ZL_LZ_MATCH_OVER_LENGTH);
@@ -112,7 +144,9 @@ void ZL_Lz_encode(
     uint8_t* lits             = dst->literals;
     uint16_t* const litLens   = dst->literalLengths;
     uint16_t* const matchLens = dst->matchLengths;
-    uint16_t* const offsets   = dst->offsets;
+    void* const offsets       = dst->offsets;
+    const size_t offsetWidth  = dst->offsetWidth;
+    const ptrdiff_t maxOffset = getMaxOffset(offsetWidth, windowLog);
 
     size_t seq = 0;
 
@@ -126,8 +160,7 @@ void ZL_Lz_encode(
         ptrdiff_t match            = ZS_FastTable_getAndUpdateT(
                 &table, inPtr, (uint32_t)inPos, ZL_LZ_HASH_LEN);
         const ptrdiff_t distance = inPos - match;
-        if (ZL_read32(in + match) == ZL_read32(inPtr)
-            && distance <= ZL_LZ_MAX_OFFSET) {
+        if (ZL_read32(in + match) == ZL_read32(inPtr) && distance < maxOffset) {
             ptrdiff_t ml = 4 + matchLength(in, inPos + 4, match + 4, inEnd);
 
             // Walk the match backwards
@@ -158,7 +191,7 @@ void ZL_Lz_encode(
                 while (ll > ZL_LZ_MAX_LENGTH) {
                     litLens[seq]   = ZL_LZ_MAX_LENGTH;
                     matchLens[seq] = 0;
-                    offsets[seq]   = 1;
+                    storeOffset(offsets, offsetWidth, seq, 1);
                     ++seq;
                     ll -= ZL_LZ_MAX_LENGTH;
                 }
@@ -166,7 +199,7 @@ void ZL_Lz_encode(
             }
             if (ZL_LIKELY(ml <= ZL_LZ_MAX_LENGTH)) {
                 matchLens[seq] = (uint16_t)ml;
-                offsets[seq]   = (uint16_t)distance;
+                storeOffset(offsets, offsetWidth, seq, distance);
                 ++seq;
             } else {
                 // If the match length is too large, split it into multiple
@@ -178,7 +211,7 @@ void ZL_Lz_encode(
                             ZL_MIN(remainingMatchLength, ZL_LZ_MAX_LENGTH);
                     // litlens[seq] is already set
                     matchLens[seq] = (uint16_t)bounded;
-                    offsets[seq]   = (uint16_t)distance;
+                    storeOffset(offsets, offsetWidth, seq, distance);
                     ++seq;
 
                     remainingMatchLength -= bounded;
