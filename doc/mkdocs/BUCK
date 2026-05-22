@@ -28,14 +28,19 @@ buck_genrule(
     name = "static_docs",
     out = "static_docs.sh",
     cmd = (
-        "echo -e {0} > $OUT && chmod +x $OUT"
-            .format(shell.quote("\n".join([
-            "#!/bin/bash",
-            "SCRIPT=\\$(readlink -f $0)",
-            "SCRIPTPATH=\\$(dirname $SCRIPT)",
-            "cd $SCRIPTPATH",
-            "$(location :static_docs_build_script) --pwd \\$(hg root)/fbcode/openzl/{}/doc/mkdocs --use-system-python-extension --test".format(BRANCH_NAME),
-        ])))
+        "echo -e {0} > $OUT && chmod +x $OUT".format(
+            shell.quote(
+                "\n".join([
+                    "#!/bin/bash",
+                    "SCRIPT=\\$(readlink -f $0)",
+                    "SCRIPTPATH=\\$(dirname $SCRIPT)",
+                    "cd $SCRIPTPATH",
+                    "$(location :static_docs_build_script) --pwd \\$(hg root)/fbcode/openzl/{}/doc/mkdocs --use-system-python-extension --test".format(
+                        BRANCH_NAME
+                    ),
+                ])
+            )
+        )
     ),
 )
 
