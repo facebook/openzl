@@ -10,8 +10,6 @@
 #include "openzl/codecs/entropy/encode_entropy_selector.h"
 #include "openzl/codecs/entropy/encode_huffman_kernel.h"
 #include "openzl/common/assertion.h"
-#include "openzl/common/errors_internal.h" // ZS2_RET_IF*
-#include "openzl/compress/enc_interface.h"
 #include "openzl/compress/private_nodes.h"
 #include "openzl/fse/fse.h"
 #include "openzl/fse/huf.h"
@@ -25,6 +23,11 @@
 #include "openzl/zl_graph_api.h"
 
 #define ENTROPY_HISTORAM_PID 246
+
+#define ENTROPY_HUF_CTABLE_PID 247
+
+typedef const HUF_CElt* HufCTable;
+ZL_RESULT_DECLARE_TYPE(HufCTable);
 
 static ZL_Histogram const* getHistogram(ZL_Encoder* eictx, const ZL_Input* in)
 {
@@ -46,6 +49,68 @@ static ZL_Histogram const* getHistogram(ZL_Encoder* eictx, const ZL_Input* in)
     ZL_Histogram_build(
             histogram, ZL_Input_ptr(in), ZL_Input_numElts(in), eltWidth);
     return histogram;
+}
+
+static ZL_Report buildHufCTable(HUF_CElt* ctable, const ZL_Histogram* histogram)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ASSERT_NE(histogram->maxSymbol, 0, "Must've already ruled out constant");
+    size_t tableLog = HUF_optimalTableLog(
+            HUF_TABLELOG_DEFAULT, histogram->total, histogram->maxSymbol);
+    tableLog = HUF_buildCTable(
+            ctable, histogram->count, histogram->maxSymbol, (unsigned)tableLog);
+    ZL_ERR_IF(HUF_isError(tableLog), GENERIC);
+    return ZL_returnSuccess();
+}
+
+static ZL_RESULT_OF(HufCTable)
+        getHufCTable(ZL_Encoder* encoder, const ZL_Histogram* histogram)
+{
+    ZL_RESULT_DECLARE_SCOPE(HufCTable, encoder);
+    ZL_RefParam param =
+            ZL_Encoder_getLocalParam(encoder, ENTROPY_HUF_CTABLE_PID);
+    if (param.paramRef != NULL) {
+        return ZL_RESULT_WRAP_VALUE(HufCTable, param.paramRef);
+    }
+
+    HUF_CElt* ctable = ZL_Encoder_getScratchSpace(
+            encoder, HUF_CTABLE_SIZE(histogram->maxSymbol));
+    ZL_ERR_IF_NULL(ctable, allocation);
+    ZL_ERR_IF_ERR(buildHufCTable(ctable, histogram));
+
+    return ZL_RESULT_WRAP_VALUE(HufCTable, ctable);
+}
+
+static size_t estimateHuffmanSize(
+        HufCTable ctable,
+        const ZL_Histogram* histogram)
+{
+    const size_t symbolsSize = ZS_HUF_estimateCompressedSize(
+            ctable, histogram->count, histogram->maxSymbol);
+
+    // Account for Huffman header + jump table in X4 mode.
+    size_t const headerSize = 1
+            + (size_t)(ZL_nextPow2(histogram->total + 1) + 7) / 8
+            + (histogram->total >= 256 ? 6 : 0);
+
+    // Estimate the table size as the min of 5-bits per non-zero symbol, or
+    // 4-bits per symbol.
+    const size_t tableBitsC = 5u * histogram->cardinality;
+    const size_t tableBitsM = 4u * (histogram->maxSymbol + 1u);
+    const size_t tableSize  = (ZL_MIN(tableBitsC, tableBitsM) + 7u) / 8u;
+    return headerSize + tableSize + symbolsSize;
+}
+
+static size_t estimateFseSize(DataStatsU8* stats)
+{
+    const double entropy = DataStatsU8_getEntropy(stats);
+    const size_t symbolBits =
+            (size_t)(entropy * (double)DataStatsU8_totalElements(stats));
+
+    // Estimate header as 10-bits per non-zero symbol
+    const size_t headerBits = 10 * DataStatsU8_getCardinality(stats);
+
+    return (headerBits + symbolBits + 7) / 8;
 }
 
 ZL_Report EI_fse_v2(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
@@ -213,25 +278,14 @@ ZL_Report EI_huffman_v2(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
             "Must not use Huffman on constant data (should be impossible for users to trigger)");
 
     // 1. Build table
-    HUF_CElt* ctable;
+    ZL_TRY_LET(HufCTable, ctable, getHufCTable(eictx, histogram));
     {
         size_t const weightsSize = histogram->maxSymbol + 1;
         ZL_Output* const weightsStream =
                 ZL_Encoder_createTypedStream(eictx, 0, weightsSize, 1);
         ZL_ERR_IF_NULL(weightsStream, allocation);
         uint8_t* const weights = ZL_Output_ptr(weightsStream);
-
-        size_t tableLog = HUF_optimalTableLog(
-                HUF_TABLELOG_DEFAULT, srcSize, histogram->maxSymbol);
-        ctable = ZL_Encoder_getScratchSpace(
-                eictx, HUF_CTABLE_SIZE(histogram->maxSymbol));
-        ZL_ERR_IF_NULL(ctable, allocation);
-        tableLog = HUF_buildCTable(
-                ctable,
-                histogram->count,
-                histogram->maxSymbol,
-                (unsigned)tableLog);
-        ZL_ERR_IF(HUF_isError(tableLog), GENERIC);
+        const size_t tableLog  = (size_t)ctable[0];
 
         HUF_CElt const* ct = ctable + 1;
         for (size_t i = 0; i < weightsSize; ++i) {
@@ -528,45 +582,92 @@ static ZL_RESULT_OF(ZL_EdgeList)
 typedef enum {
     EBM_huf,
     EBM_fse,
+    EBM_store,
     EBM_any,
 } EntropyBackendMode;
 
-static EntropyBackendMode resolveMode(
+/// Resolves EBM_any to a concrete mode and returns the entropy compressed
+/// size
+static size_t resolveMode(
         DataStatsU8* stats,
-        EntropyBackendMode mode)
+        const ZL_Histogram* histogram,
+        HufCTable hufCTable,
+        size_t minGain,
+        EntropyBackendMode* mode)
 {
     // TODO: Better selection between Huffman & FSE
     // Take decompression speed into account
-    if (mode == EBM_any) {
-        size_t const nbElts = DataStatsU8_totalElements(stats);
-        size_t const fseSize =
-                (size_t)(DataStatsU8_getEntropy(stats) * (double)nbElts + 7)
-                / 8;
-        size_t const hufSize =
-                DataStatsU8_estimateHuffmanSizeFast(stats, /* delta */ false);
-        size_t const minGain = nbElts / 32;
-        if (fseSize + minGain < hufSize) {
-            return EBM_fse;
-        } else {
-            return EBM_huf;
-        }
+    const size_t nbElts = histogram->total;
+
+    if (nbElts <= 64) {
+        // Don't even attempt entropy compression on tiny inputs
+        *mode = EBM_store;
+        return nbElts;
     }
-    return mode;
+
+    if (*mode == EBM_any) {
+        ZL_ASSERT_NN(hufCTable);
+        const size_t hufSize    = estimateHuffmanSize(hufCTable, histogram);
+        const size_t fseSize    = estimateFseSize(stats);
+        const size_t minFseGain = nbElts / 100;
+        size_t entropySize;
+        if (fseSize + minFseGain <= hufSize) {
+            *mode       = EBM_fse;
+            entropySize = fseSize;
+        } else {
+            *mode       = EBM_huf;
+            entropySize = hufSize;
+        }
+        if (entropySize + minGain <= nbElts) {
+            return entropySize;
+        } else {
+            *mode = EBM_store;
+            return nbElts;
+        }
+    } else if (*mode == EBM_huf) {
+        ZL_ASSERT_NN(hufCTable);
+        const size_t hufSize = estimateHuffmanSize(hufCTable, histogram);
+        if (hufSize + minGain <= nbElts) {
+            return hufSize;
+        } else {
+            *mode = EBM_store;
+            return nbElts;
+        }
+    } else if (*mode == EBM_fse) {
+        ZL_ASSERT_NULL(hufCTable);
+        const size_t fseSize = estimateFseSize(stats);
+        if (fseSize + minGain <= nbElts) {
+            return fseSize;
+        } else {
+            *mode = EBM_store;
+            return nbElts;
+        }
+    } else {
+        ZL_ASSERT_EQ(*mode, EBM_store);
+        return nbElts;
+    }
 }
 
-static ZL_RESULT_OF(ZL_EdgeList) runNode_wHistogram(
+static ZL_RESULT_OF(ZL_EdgeList) runNode_withParams(
         ZL_Edge* sctx,
         ZL_NodeID node,
-        ZL_Histogram const* histogram)
+        ZL_Histogram const* histogram,
+        HufCTable ctable)
 {
-    ZL_RefParam const param = {
-        .paramId  = ENTROPY_HISTORAM_PID,
-        .paramRef = histogram,
+    ZL_RefParam const refParams[2] = {
+        {
+                .paramId  = ENTROPY_HISTORAM_PID,
+                .paramRef = histogram,
+        },
+        {
+                .paramId  = ENTROPY_HUF_CTABLE_PID,
+                .paramRef = ctable,
+        },
     };
     ZL_LocalParams params = {
         .refParams = {
-                .refParams = &param,
-                .nbRefParams = 1,
+                .refParams = refParams,
+                .nbRefParams = 2,
         },
     };
     return ZL_Edge_runNode_withParams(sctx, node, &params);
@@ -576,6 +677,9 @@ static ZL_Histogram* getHistogram8(ZL_Graph* gctx, DataStatsU8* stats)
 {
     ZL_Histogram* histogram = (ZL_Histogram*)ZL_Graph_getScratchSpace(
             gctx, sizeof(ZL_Histogram8));
+    if (histogram == NULL) {
+        return NULL;
+    }
     memcpy(histogram->count,
            DataStatsU8_getHistogram(stats),
            256 * sizeof(uint32_t));
@@ -583,6 +687,7 @@ static ZL_Histogram* getHistogram8(ZL_Graph* gctx, DataStatsU8* stats)
     histogram->maxSymbol    = DataStatsU8_getMaxElt(stats);
     histogram->elementSize  = 1;
     histogram->largestCount = 0;
+    histogram->cardinality  = (unsigned)DataStatsU8_getCardinality(stats);
     for (size_t i = 0; i < histogram->maxSymbol + 1; ++i) {
         histogram->largestCount =
                 ZL_MAX(histogram->count[i], histogram->largestCount);
@@ -602,12 +707,36 @@ static ZL_Report runBitpack(ZL_Edge* input)
     return ZL_returnSuccess();
 }
 
+static size_t getMinGainBytes(const ZL_Graph* graph, size_t contentSize)
+{
+    const size_t kDefaultMinGainBytes = 32;
+    const size_t kDefaultMinGainPct   = 1;
+
+    ZL_IntParam param =
+            ZL_Graph_getLocalIntParam(graph, ZL_ENTROPY_MIN_GAIN_BYTES_PID);
+    size_t minGainBytes = kDefaultMinGainBytes;
+    if (param.paramId != ZL_LP_INVALID_PARAMID) {
+        minGainBytes = (size_t)ZL_MAX(param.paramValue, 0);
+    }
+
+    param = ZL_Graph_getLocalIntParam(graph, ZL_ENTROPY_MIN_GAIN_PCT_PID);
+    size_t minGainPct = kDefaultMinGainPct;
+    if (param.paramId != ZL_LP_INVALID_PARAMID) {
+        minGainPct = (size_t)ZL_MIN(ZL_MAX(param.paramValue, 0), 100);
+    }
+
+    return ZL_MAX(minGainBytes, (contentSize / 100) * minGainPct);
+}
+
 /**
  * Entropy compresses a single chunk by selecting the most efficient backend
  * allowed by the mode.
  */
-static ZL_Report
-entropyCompressChunk(ZL_Graph* gctx, ZL_Edge* chunk, EntropyBackendMode mode)
+static ZL_Report entropyCompressChunk(
+        ZL_Graph* gctx,
+        ZL_Edge* chunk,
+        EntropyBackendMode mode,
+        size_t minGainBytes)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     ZL_Input const* input = ZL_Edge_getData(chunk);
@@ -647,12 +776,13 @@ entropyCompressChunk(ZL_Graph* gctx, ZL_Edge* chunk, EntropyBackendMode mode)
         size_t const nbBits = (size_t)ZL_nextPow2(histogram->maxSymbol + 1);
         size_t const bitpackSize = ((nbElts * nbBits + 7) / 8) + /* header */ 2;
 
-        if (bitpackSize <= huffSize && bitpackSize < storeSize) {
+        if (bitpackSize <= huffSize
+            && bitpackSize + minGainBytes <= storeSize) {
             return runBitpack(chunk);
         }
 
         // Check if we can simply store the data
-        if (entropy > 15 || huffSize >= storeSize) {
+        if (entropy > 15 || huffSize + minGainBytes > storeSize) {
             return ZL_Edge_setDestination(chunk, ZL_GRAPH_STORE);
         }
 
@@ -678,11 +808,12 @@ entropyCompressChunk(ZL_Graph* gctx, ZL_Edge* chunk, EntropyBackendMode mode)
         ZL_TRY_LET(
                 ZL_EdgeList,
                 streams,
-                runNode_wHistogram(
+                runNode_withParams(
                         chunk,
                         (ZL_NodeID){
                                 ZL_PrivateStandardNodeID_huffman_struct_v2 },
-                        histogram));
+                        histogram,
+                        NULL));
         ZL_ASSERT_EQ(streams.nbEdges, 2);
         ZL_ERR_IF_ERR(ZL_Edge_setDestination(streams.edges[0], ZL_GRAPH_FSE));
         ZL_ERR_IF_ERR(ZL_Edge_setDestination(streams.edges[1], ZL_GRAPH_STORE));
@@ -691,70 +822,82 @@ entropyCompressChunk(ZL_Graph* gctx, ZL_Edge* chunk, EntropyBackendMode mode)
 
     DataStatsU8 stats;
     DataStatsU8_init(&stats, ZL_Input_ptr(input), nbElts);
+    ZL_Histogram* const histogram = getHistogram8(gctx, &stats);
+    ZL_ERR_IF_NULL(histogram, allocation);
+
+    if (mode == EBM_huf) {
+        // Short-circuit for uncompressible data (taken from FSE's Huffman)
+        if (histogram->largestCount <= (histogram->total >> 7) + 4) {
+            mode = EBM_store;
+        }
+    }
 
     if (DataStatsU8_getCardinality(&stats) == 1) {
         ZL_ASSERT(ZL_Graph_isConstantSupported(gctx));
         return ZL_Edge_setDestination(chunk, ZL_GRAPH_CONSTANT);
     }
 
-    // TODO: At higher compression levels use a better estimate
-    size_t const entropySize = mode == EBM_huf
-            ? DataStatsU8_estimateHuffmanSizeFast(&stats, /* delta */ false)
-            : (size_t)(DataStatsU8_getEntropy(&stats) * (double)nbElts + 7) / 8;
+    // Build the Huffman table if Huffman is allowed. This allows an accurate
+    // estimate of the Huffman compressed size. If Huffman is chosen the CTable
+    // will be passed down to the Huffman node.
+    HUF_CElt* hufCTable = NULL;
+    if (mode == EBM_huf || mode == EBM_any) {
+        hufCTable = ZL_Graph_getScratchSpace(
+                gctx, HUF_CTABLE_SIZE(histogram->maxSymbol));
+        ZL_ERR_IF_NULL(hufCTable, allocation);
+        ZL_ERR_IF_ERR(buildHufCTable(hufCTable, histogram));
+    }
 
-    size_t const headerSizeEstimate =
-            ZL_MAX(10, DataStatsU8_getCardinality(&stats) / 4);
-
-    size_t const baselineSize =
-            ZL_MIN(entropySize + headerSizeEstimate, nbElts);
+    const size_t entropySize =
+            resolveMode(&stats, histogram, hufCTable, minGainBytes, &mode);
+    ZL_ASSERT_LE(entropySize, nbElts);
 
     size_t const flatpackedSize = DataStatsU8_getFlatpackedSize(&stats);
     size_t const bitpackedSize  = DataStatsU8_getBitpackedSize(&stats);
 
     if (flatpackedSize < bitpackedSize) {
-        if (flatpackedSize < baselineSize) {
+        if (flatpackedSize < entropySize
+            && flatpackedSize + minGainBytes <= nbElts) {
             return ZL_Edge_setDestination(chunk, ZL_GRAPH_FLATPACK);
         }
     } else {
-        if (bitpackedSize < baselineSize) {
+        if (bitpackedSize <= entropySize
+            && bitpackedSize + minGainBytes <= nbElts) {
             return ZL_Edge_setDestination(chunk, ZL_GRAPH_BITPACK);
         }
     }
 
-    if (nbElts <= baselineSize) {
-        return ZL_Edge_setDestination(chunk, ZL_GRAPH_STORE);
-    }
-
-    // Select between FSE & Huffman
-    mode = resolveMode(&stats, mode);
-
-    ZL_Histogram* histogram = getHistogram8(gctx, &stats);
     if (mode == EBM_huf) {
         ZL_TRY_LET(
                 ZL_EdgeList,
                 streams,
-                runNode_wHistogram(
+                runNode_withParams(
                         chunk,
                         (ZL_NodeID){ ZL_PrivateStandardNodeID_huffman_v2 },
-                        histogram));
+                        histogram,
+                        hufCTable));
         ZL_ASSERT_EQ(streams.nbEdges, 2);
         ZL_ERR_IF_ERR(ZL_Edge_setDestination(streams.edges[0], ZL_GRAPH_FSE));
         ZL_ERR_IF_ERR(ZL_Edge_setDestination(streams.edges[1], ZL_GRAPH_STORE));
         return ZL_returnSuccess();
-    } else {
+    } else if (mode == EBM_fse) {
         ZL_TRY_LET(
                 ZL_EdgeList,
                 streams,
-                runNode_wHistogram(
+                runNode_withParams(
                         chunk,
                         (ZL_NodeID){ ZL_PrivateStandardNodeID_fse_v2 },
-                        histogram));
+                        histogram,
+                        hufCTable));
         ZL_ASSERT_EQ(streams.nbEdges, 2);
         ZL_ERR_IF_ERR(ZL_Edge_setDestination(
                 streams.edges[0],
                 (ZL_GraphID){ ZL_PrivateStandardGraphID_fse_ncount }));
         ZL_ERR_IF_ERR(ZL_Edge_setDestination(streams.edges[1], ZL_GRAPH_STORE));
         return ZL_returnSuccess();
+    } else {
+        ZL_ASSERT_EQ(mode, EBM_store);
+        return ZL_Edge_setDestination(chunk, ZL_GRAPH_STORE);
     }
 }
 
@@ -762,9 +905,24 @@ static ZL_Report
 entropyDynamicGraph(ZL_Graph* gctx, ZL_Edge* sctx, EntropyBackendMode mode)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
+
+    const size_t contentSize = ZL_Input_contentSize(ZL_Edge_getData(sctx));
+
+    if (contentSize <= 1) {
+        return ZL_Edge_setDestination(sctx, ZL_GRAPH_STORE);
+    }
+
+    const size_t minGainBytes = getMinGainBytes(gctx, contentSize);
+
     ZL_TRY_LET(ZL_EdgeList, chunks, chunkInputStream(gctx, &sctx));
     for (size_t i = 0; i < chunks.nbEdges; ++i) {
-        ZL_ERR_IF_ERR(entropyCompressChunk(gctx, chunks.edges[i], mode));
+        // Scale minGainBytes to divide evenly among the chunks
+        const size_t chunkSize =
+                ZL_Input_contentSize(ZL_Edge_getData(chunks.edges[i]));
+        const size_t scaledMinGainBytes =
+                (minGainBytes * chunkSize) / contentSize;
+        ZL_ERR_IF_ERR(entropyCompressChunk(
+                gctx, chunks.edges[i], mode, scaledMinGainBytes));
     }
     return ZL_returnSuccess();
 }
@@ -875,4 +1033,27 @@ EI_entropyDynamicGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
         return ZL_Edge_setDestination(input, graph);
     }
     return entropyDynamicGraph(gctx, input, EBM_any);
+}
+
+ZL_Report ZL_Edge_setEntropyDestination(
+        ZL_Edge* edge,
+        ZL_GraphID entropyGraph,
+        int minGainBytes,
+        int minGainPct)
+{
+    ZL_IntParam intParams[2];
+    size_t numIntParams = 0;
+    if (minGainBytes >= 0) {
+        intParams[numIntParams++] =
+                (ZL_IntParam){ ZL_ENTROPY_MIN_GAIN_BYTES_PID, minGainBytes };
+    }
+    if (minGainPct >= 0) {
+        intParams[numIntParams++] =
+                (ZL_IntParam){ ZL_ENTROPY_MIN_GAIN_PCT_PID, minGainPct };
+    }
+    ZL_LocalParams lp = { .intParams = { intParams, numIntParams } };
+    ZL_RuntimeGraphParameters params = {
+        .localParams = &lp,
+    };
+    return ZL_Edge_setParameterizedDestination(&edge, 1, entropyGraph, &params);
 }

@@ -146,6 +146,12 @@ int ZL_Graph_getCParam(const ZL_Graph* gctx, ZL_CParam gparam);
 /* Consultation requests for Local parameters */
 ZL_IntParam ZL_Graph_getLocalIntParam(const ZL_Graph* gctx, int intParamId);
 ZL_RefParam ZL_Graph_getLocalRefParam(const ZL_Graph* gctx, int refParamId);
+/**
+ * Bulk consultation request of *all* Local Parameters. This can be useful when
+ * one is trying to access all the Local Parameters at once for a codec using
+ * the encoder.
+ */
+const ZL_LocalParams* ZL_Graph_getLocalParams(const ZL_Graph* gctx);
 
 /**
  * Determines whether @nodeid is supported given the applied global parameters

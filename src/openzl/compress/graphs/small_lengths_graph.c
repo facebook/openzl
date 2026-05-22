@@ -9,6 +9,7 @@
 #include "openzl/codecs/zl_sentinel.h"
 #include "openzl/codecs/zl_store.h"
 #include "openzl/common/assertion.h"
+#include "openzl/zl_compressor.h"
 
 static const size_t kInputStoreThreshold = 50;
 static const size_t kLargeStoreThreshold = 100;
@@ -20,7 +21,7 @@ ZL_Report ZL_compressSmallLengthsGraph(
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
     ZL_ASSERT_EQ(numInputs, 1);
-    ZL_Edge* const edge         = inputs[0];
+    ZL_Edge* edge               = inputs[0];
     const ZL_Input* const input = ZL_Edge_getData(edge);
 
     if (ZL_Input_numElts(input) < kInputStoreThreshold) {
@@ -29,7 +30,11 @@ ZL_Report ZL_compressSmallLengthsGraph(
 
     if (ZL_Input_eltWidth(input) == 1) {
         // 1-byte values go directly to Huffman
-        return ZL_Edge_setDestination(edge, ZL_GRAPH_HUFFMAN);
+        ZL_RuntimeGraphParameters params = {
+            .localParams = ZL_Graph_getLocalParams(graph),
+        };
+        return ZL_Edge_setParameterizedDestination(
+                &edge, 1, ZL_GRAPH_HUFFMAN, &params);
     }
 
     if (!ZL_Graph_isNodeSupported(graph, ZL_NODE_SENTINEL_BYTE)) {
@@ -43,11 +48,15 @@ ZL_Report ZL_compressSmallLengthsGraph(
             ZL_EdgeList, edges, ZL_Edge_runNode(edge, ZL_NODE_SENTINEL_BYTE));
     ZL_ASSERT_EQ(edges.nbEdges, 2);
 
-    ZL_Edge* const smallEdge = edges.edges[0];
-    ZL_Edge* const largeEdge = edges.edges[1];
+    ZL_Edge* smallEdge = edges.edges[0];
+    ZL_Edge* largeEdge = edges.edges[1];
 
     // Small values go to Huffman (they are U8)
-    ZL_ERR_IF_ERR(ZL_Edge_setDestination(smallEdge, ZL_GRAPH_HUFFMAN));
+    ZL_RuntimeGraphParameters params = {
+        .localParams = ZL_Graph_getLocalParams(graph),
+    };
+    ZL_ERR_IF_ERR(ZL_Edge_setParameterizedDestination(
+            &smallEdge, 1, ZL_GRAPH_HUFFMAN, &params));
 
     const ZL_Input* const largeInput = ZL_Edge_getData(largeEdge);
 
