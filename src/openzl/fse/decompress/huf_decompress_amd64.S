@@ -23,7 +23,7 @@
 /* Calling convention:
  *
  * %rdi contains the first argument: HUF_DecompressAsmArgs*.
- * %rbp isn't maintained (no frame pointer).
+ * %rbp is maintained as the frame pointer.
  * %rsp contains the stack pointer that grows down.
  *      No red-zone is assumed, only addresses >= %rsp are used.
  * All register contents are preserved.
@@ -42,8 +42,9 @@ ZSTD_HIDE_ASM_FUNCTION(_HUF_decompress4X1_usingDTable_internal_bmi2_asm_loop)
 .text
 
 /* Sets up register mappings for clarity.
- * op[], bits[], dtable & ip[0] each get their own register.
- * ip[1,2,3] & olimit alias var[].
+ * op[], bits[], dtable each get their own register.
+ * ip[0] is stored on the stack & loaded into r15 for RELOAD_BITS.
+ * ip[0,1,2,3] & olimit alias var[].
  * %rax is a scratch register.
  */
 
@@ -52,19 +53,22 @@ ZSTD_HIDE_ASM_FUNCTION(_HUF_decompress4X1_usingDTable_internal_bmi2_asm_loop)
 #define op2    rcx
 #define op3    rdi
 
-#define ip0    r8
+/* ip0 is stored on the stack, loaded into r15 for RELOAD_BITS.
+ * It aliases olimit & var0, which are not live during RELOAD_BITS(0).
+ */
+#define ip0    r15
 #define ip1    r9
 #define ip2    r10
 #define ip3    r11
 
-#define bits0  rbp
+#define bits0  r8
 #define bits1  rdx
 #define bits2  r12
 #define bits3  r13
 #define dtable r14
 #define olimit r15
 
-/* var[] aliases ip[1,2,3] & olimit
+/* var[] aliases ip[0,1,2,3] & olimit
  * ip[1,2,3] are saved every iteration.
  * olimit is only used in compute_olimit.
  */
@@ -98,12 +102,14 @@ ZSTD_HIDE_ASM_FUNCTION(_HUF_decompress4X1_usingDTable_internal_bmi2_asm_loop)
  */
 _HUF_decompress4X1_usingDTable_internal_bmi2_asm_loop:
 HUF_decompress4X1_usingDTable_internal_bmi2_asm_loop:
+    /* Set up the frame pointer */
+    push %rbp
+    movq %rsp, %rbp
     /* Save all registers - even if they are callee saved for simplicity. */
     push %rax
     push %rbx
     push %rcx
     push %rdx
-    push %rbp
     push %rsi
     push %rdi
     push %r8
@@ -133,20 +139,24 @@ HUF_decompress4X1_usingDTable_internal_bmi2_asm_loop:
     push %rax      /* argument */
     push 104(%rax) /* ilimit */
     push 112(%rax) /* oend */
-    push %olimit   /* olimit space */
+    push 0(%rax)   /* ip0 */
 
-    subq $24, %rsp
+    /* 0(%rsp)  = ip1 / rbx */
+    /* 8(%rsp)  = ip2 / rdx */
+    /* 16(%rsp) = ip3 */
+    /* 24(%rsp) = olimit */
+    subq $32, %rsp
 
 .L_4X1_compute_olimit:
     /* Computes how many iterations we can do safely
      * %r15, %rax may be clobbered
      * rbx, rdx must be saved
-     * op3 & ip0 mustn't be clobbered
+     * op3 mustn't be clobbered
      */
     movq %rbx, 0(%rsp)
     movq %rdx, 8(%rsp)
 
-    movq 32(%rsp), %rax /* rax = oend */
+    movq 40(%rsp), %rax /* rax = oend */
     subq %op3,    %rax  /* rax = oend - op3 */
 
     /* r15 = (oend - op3) / 5 */
@@ -155,8 +165,8 @@ HUF_decompress4X1_usingDTable_internal_bmi2_asm_loop:
     movq %rdx, %r15
     shrq $2, %r15
 
-    movq %ip0,     %rax /* rax = ip0 */
-    movq 40(%rsp), %rdx /* rdx = ilimit */
+    movq 32(%rsp), %rax /* rax = ip0 */
+    movq 48(%rsp), %rdx /* rdx = ilimit */
     subq %rdx,     %rax /* rax = ip0 - ilimit */
     movq %rax,     %rbx /* rbx = ip0 - ilimit */
 
@@ -186,7 +196,7 @@ HUF_decompress4X1_usingDTable_internal_bmi2_asm_loop:
     jbe .L_4X1_exit
 
     /* If (ip1 < ip0) go to exit */
-    cmpq %ip0, %ip1
+    cmpq 32(%rsp), %ip1
     jb .L_4X1_exit
 
     /* If (ip2 < ip1) go to exit */
@@ -277,7 +287,10 @@ HUF_decompress4X1_usingDTable_internal_bmi2_asm_loop:
     /* Reload each stream & fetch the next table entry
      * to prepare for the next iteration
      */
+    movq 32(%rsp), %ip0       /* load ip0 from stack */
     RELOAD_BITS(0)
+    movq %ip0, 32(%rsp)       /* store ip0 to stack */
+
     GET_NEXT_DELT(0)
 
     RELOAD_BITS(1)
@@ -309,10 +322,12 @@ HUF_decompress4X1_usingDTable_internal_bmi2_asm_loop:
 #undef DECODE
 #undef RELOAD_BITS
 .L_4X1_exit:
-    addq $24, %rsp
+    /* Load ip0 from stack before cleanup */
+    movq 32(%rsp), %ip0
+    addq $32, %rsp
 
-    /* Restore stack (oend & olimit) */
-    pop %rax /* olimit */
+    /* Restore stack (ip0, oend, ilimit, arg) */
+    pop %rax /* ip0 */
     pop %rax /* oend */
     pop %rax /* ilimit */
     pop %rax /* arg */
@@ -342,21 +357,23 @@ HUF_decompress4X1_usingDTable_internal_bmi2_asm_loop:
     pop %r8
     pop %rdi
     pop %rsi
-    pop %rbp
     pop %rdx
     pop %rcx
     pop %rbx
     pop %rax
+    pop %rbp
     ret
 
 _HUF_decompress4X2_usingDTable_internal_bmi2_asm_loop:
 HUF_decompress4X2_usingDTable_internal_bmi2_asm_loop:
+    /* Set up the frame pointer */
+    push %rbp
+    movq %rsp, %rbp
     /* Save all registers - even if they are callee saved for simplicity. */
     push %rax
     push %rbx
     push %rcx
     push %rdx
-    push %rbp
     push %rsi
     push %rdi
     push %r8
@@ -389,14 +406,11 @@ HUF_decompress4X2_usingDTable_internal_bmi2_asm_loop:
     movq 112(%rax), %rax
     push %rax /* oend3 */
 
-    movq %op3, %rax
-    push %rax /* oend2 */
+    push %op3 /* oend2 */
+    push %op2 /* oend1 */
+    push %op1 /* oend0 */
 
-    movq %op2, %rax
-    push %rax /* oend1 */
-
-    movq %op1, %rax
-    push %rax /* oend0 */
+    push %ip0
 
     /* Scratch space */
     subq $8, %rsp
@@ -405,13 +419,13 @@ HUF_decompress4X2_usingDTable_internal_bmi2_asm_loop:
     /* Computes how many iterations we can do safely
      * %r15, %rax may be clobbered
      * rdx must be saved
-     * op[1,2,3,4] & ip0 mustn't be clobbered
+     * op[1,2,3,4] mustn't be clobbered
      */
     movq %rdx, 0(%rsp)
 
     /* We can consume up to 7 input bytes each iteration. */
-    movq %ip0,     %rax  /* rax = ip0 */
-    movq 40(%rsp), %rdx  /* rdx = ilimit */
+    movq 8(%rsp),  %rax  /* rax = ip0 */
+    movq 48(%rsp), %rdx  /* rdx = ilimit */
     subq %rdx,     %rax  /* rax = ip0 - ilimit */
     movq %rax,    %r15   /* r15 = ip0 - ilimit */
 
@@ -427,21 +441,21 @@ HUF_decompress4X2_usingDTable_internal_bmi2_asm_loop:
     movq %rdx, %r15
 
     /* r15 = min(r15, min(oend0 - op0, oend1 - op1, oend2 - op2, oend3 - op3) / 10) */
-    movq 8(%rsp),  %rax /* rax = oend0 */
+    movq 16(%rsp), %rax /* rax = oend0 */
     subq %op0,     %rax /* rax = oend0 - op0 */
-    movq 16(%rsp), %rdx /* rdx = oend1 */
+    movq 24(%rsp), %rdx /* rdx = oend1 */
     subq %op1,     %rdx /* rdx = oend1 - op1 */
 
     cmpq  %rax,    %rdx
     cmova %rax,    %rdx /* rdx = min(%rdx, %rax) */
 
-    movq 24(%rsp), %rax /* rax = oend2 */
+    movq 32(%rsp), %rax /* rax = oend2 */
     subq %op2,     %rax /* rax = oend2 - op2 */
 
     cmpq  %rax,    %rdx
     cmova %rax,    %rdx /* rdx = min(%rdx, %rax) */
 
-    movq 32(%rsp), %rax /* rax = oend3 */
+    movq 40(%rsp), %rax /* rax = oend3 */
     subq %op3,     %rax /* rax = oend3 - op3 */
 
     cmpq  %rax,    %rdx
@@ -467,7 +481,7 @@ HUF_decompress4X2_usingDTable_internal_bmi2_asm_loop:
     jbe .L_4X2_exit
 
     /* If (ip1 < ip0) go to exit */
-    cmpq %ip0, %ip1
+    cmpq 8(%rsp), %ip1
     jb .L_4X2_exit
 
     /* If (ip2 < ip1) go to exit */
@@ -481,10 +495,10 @@ HUF_decompress4X2_usingDTable_internal_bmi2_asm_loop:
 #define DECODE(n, idx)              \
     movq %bits##n, %rax;            \
     shrq $53, %rax;                 \
-    movzwl 0(%dtable,%rax,4),%r8d;  \
+    movzwl 0(%dtable,%rax,4),%r15d; \
+    movw %r15w, (%op##n);           \
     movzbl 2(%dtable,%rax,4),%r15d; \
     movzbl 3(%dtable,%rax,4),%eax;  \
-    movw %r8w, (%op##n);            \
     shlxq %r15, %bits##n, %bits##n; \
     addq %rax, %op##n
 
@@ -499,14 +513,11 @@ HUF_decompress4X2_usingDTable_internal_bmi2_asm_loop:
     shlxq %rax, %bits##n, %bits##n
 
 
-    movq %olimit, 48(%rsp)
+    movq %olimit, 56(%rsp)
 
     .p2align 6
 
 .L_4X2_loop_body:
-    /* We clobber r8, so store it on the stack */
-    movq %r8, 0(%rsp)
-
     /* Decode 5 symbols from each of the 4 streams (20 symbols total). */
     FOR_EACH_STREAM_WITH_INDEX(DECODE, 0)
     FOR_EACH_STREAM_WITH_INDEX(DECODE, 1)
@@ -514,12 +525,15 @@ HUF_decompress4X2_usingDTable_internal_bmi2_asm_loop:
     FOR_EACH_STREAM_WITH_INDEX(DECODE, 3)
     FOR_EACH_STREAM_WITH_INDEX(DECODE, 4)
 
-    /* Reload r8 */
-    movq 0(%rsp), %r8
+    movq 8(%rsp), %ip0        /* load ip0 from stack */
+    RELOAD_BITS(0)
+    movq %ip0, 8(%rsp)        /* store ip0 to stack */
 
-    FOR_EACH_STREAM(RELOAD_BITS)
+    RELOAD_BITS(1)
+    RELOAD_BITS(2)
+    RELOAD_BITS(3)
 
-    cmp %op3, 48(%rsp)
+    cmp %op3, 56(%rsp)
     ja .L_4X2_loop_body
     jmp .L_4X2_compute_olimit
 
@@ -527,7 +541,8 @@ HUF_decompress4X2_usingDTable_internal_bmi2_asm_loop:
 #undef RELOAD_BITS
 .L_4X2_exit:
     addq $8, %rsp
-    /* Restore stack (oend & olimit) */
+    /* Restore stack (ip0, oend0-3, ilimit, olimit, arg) */
+    pop %ip0 /* ip0 */
     pop %rax /* oend0 */
     pop %rax /* oend1 */
     pop %rax /* oend2 */
@@ -561,11 +576,11 @@ HUF_decompress4X2_usingDTable_internal_bmi2_asm_loop:
     pop %r8
     pop %rdi
     pop %rsi
-    pop %rbp
     pop %rdx
     pop %rcx
     pop %rbx
     pop %rax
+    pop %rbp
     ret
 
 #endif
