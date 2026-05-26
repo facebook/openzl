@@ -6,17 +6,21 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "openzl/codecs/partition/common_partition.h"
+
 #define ZL_LZ_LIT_OVER_LENGTH 32
 #define ZL_LZ_MIN_MATCH 4
-#define ZL_LZ_TABLE_LOG 14
-#define ZL_LZ_MAX_OFFSET UINT16_MAX
+// All offsets must be strictly less than this.
+#define ZL_LZ_MAX_OFFSET_U16 (1u << 16)
+#define ZL_LZ_MAX_OFFSET_U32 ZL_PARTITION_MAX_PARTITION_SIZE_FOR_UNROLL2
 
 typedef struct {
     uint8_t* literals;
     size_t literalsCapacity;
     size_t numLiterals;
 
-    uint16_t* offsets;
+    void* offsets;
+    size_t offsetWidth;
     uint16_t* literalLengths;
     uint16_t* matchLengths;
     size_t sequencesCapacity;
@@ -28,6 +32,9 @@ typedef struct {
  * for an input of srcSize bytes.
  */
 size_t ZL_Lz_maxNumSequences(size_t srcSize);
+
+/// @returns The table log for the given window log.
+uint32_t ZL_Lz_tableLog(uint32_t windowLog);
 
 /**
  * Encodes src[0..srcSize) into LZ sequences.
@@ -48,6 +55,7 @@ void ZL_Lz_encode(
         const uint8_t* src,
         size_t srcSize,
         void* hashTableMem,
+        uint32_t windowLog,
         int acceleration);
 
 #endif
