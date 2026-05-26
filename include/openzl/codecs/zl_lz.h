@@ -58,6 +58,20 @@ typedef enum {
      * @note This parameter is clamped to 1 if set to a lower value.
      */
     ZL_LzParam_acceleration = 100,
+
+    /**
+     * The log2 of the maximum lookback window in LZ match finding.
+     * windowSize = 1u << windowLog.
+     *
+     * The default value is set depending on the compression level and source
+     * size, and is capped at the source size.
+     *
+     * @note If the window size is <= 64K, then LZ will use 16-bit offsets
+     * rather than 32-bit offsets.
+     * @note currently, this value will be clamped between 10 and 28, but this
+     * is subject to change.
+     */
+    ZL_LzParam_windowLog = 101,
 } ZL_LzParam;
 
 #if defined(__cplusplus)

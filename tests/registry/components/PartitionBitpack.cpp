@@ -12,6 +12,19 @@
 namespace openzl::tests::components {
 namespace {
 
+// Cap u32 test values so most land in the linear histogram region, giving the
+// partition optimizer enough density to find non-trivial partitions.
+constexpr uint64_t kMaxGeneratedU32 = 1u << 23;
+
+template <typename T>
+T maxValue()
+{
+    if constexpr (std::is_same_v<T, uint32_t>) {
+        return kMaxGeneratedU32;
+    }
+    return std::numeric_limits<T>::max();
+}
+
 class PartitionBitpackComponent : public OpenZLComponent {
    public:
     std::string name() const override
@@ -55,7 +68,15 @@ class PartitionBitpackComponent : public OpenZLComponent {
 
         // Custom 8 partitions: 3-bit bucket IDs
         graphs.push_back(
-                nodes::Partition{ 0, { 2, 2, 4, 8, 16, 32, 64, 65408 } }(
+                nodes::Partition{ 0,
+                                  { 2,
+                                    2,
+                                    4,
+                                    8,
+                                    16,
+                                    32,
+                                    64,
+                                    kMaxGeneratedU32 + 1 - 128 } }(
                         compressor, ZL_GRAPH_BITPACK, ZL_GRAPH_STORE));
 
         // QuantizeLengths preset: 44 partitions, 6-bit bucket IDs
@@ -107,28 +128,57 @@ class PartitionBitpackComponent : public OpenZLComponent {
         return inputs;
     }
 
+    template <typename T>
     std::unique_ptr<OpenZLInput> generateLogUniformInput(
             datagen::DataGen& gen,
             size_t inputSize) const
     {
-        datagen::VectorProducer<uint16_t> dist(
-                std::make_unique<datagen::LogUniformDistribution<uint16_t>>(
-                        gen.getRandWrapper()),
+        datagen::VectorProducer<T> dist(
+                std::make_unique<datagen::LogUniformDistribution<T>>(
+                        gen.getRandWrapper(), 1, maxValue<T>()),
                 std::make_unique<datagen::ConstantDistribution<size_t>>(
                         inputSize));
-        return NumericOpenZLInput<uint16_t>::make(dist("vector"));
+        return NumericOpenZLInput<T>::make(dist("vector"));
     }
 
+    template <typename T>
     std::unique_ptr<OpenZLInput> generateUniformInput(
             datagen::DataGen& gen,
             size_t inputSize) const
     {
-        datagen::VectorProducer<uint16_t> dist(
-                std::make_unique<datagen::UniformDistribution<uint16_t>>(
-                        gen.getRandWrapper()),
+        datagen::VectorProducer<T> dist(
+                std::make_unique<datagen::UniformDistribution<T>>(
+                        gen.getRandWrapper(), 1, maxValue<T>()),
                 std::make_unique<datagen::ConstantDistribution<size_t>>(
                         inputSize));
-        return NumericOpenZLInput<uint16_t>::make(dist("vector"));
+        return NumericOpenZLInput<T>::make(dist("vector"));
+    }
+
+    template <typename T>
+    std::unique_ptr<OpenZLInput> generateInput(
+            datagen::DataGen& gen,
+            size_t maxInputSize) const
+    {
+        auto inputSize =
+                gen.usize_range("num_elts", 0, maxInputSize / sizeof(T));
+        if (gen.coin("log_uniform", 0.5)) {
+            return generateLogUniformInput<T>(gen, inputSize);
+        } else {
+            return generateUniformInput<T>(gen, inputSize);
+        }
+    }
+
+    std::unique_ptr<OpenZLInput> generateInput(
+            datagen::DataGen& gen,
+            size_t maxInputSize,
+            size_t eltWidth) const
+    {
+        if (eltWidth == 2) {
+            return generateInput<uint16_t>(gen, maxInputSize);
+        } else {
+            assert(eltWidth == 4);
+            return generateInput<uint32_t>(gen, maxInputSize);
+        }
     }
 
     std::vector<std::unique_ptr<OpenZLInput>> generateInputs(
@@ -141,13 +191,8 @@ class PartitionBitpackComponent : public OpenZLComponent {
         std::vector<std::unique_ptr<OpenZLInput>> inputs;
         inputs.reserve(num);
         for (size_t i = 0; i < num; ++i) {
-            auto numElts = gen.usize_range(
-                    "num_elts", 0, maxInputSize / sizeof(uint16_t));
-            if (gen.coin("log_uniform", 0.5)) {
-                inputs.push_back(generateLogUniformInput(gen, numElts));
-            } else {
-                inputs.push_back(generateUniformInput(gen, numElts));
-            }
+            auto eltWidth = gen.coin("elt_width_4", 0.5) ? 4 : 2;
+            inputs.push_back(generateInput(gen, maxInputSize, eltWidth));
         }
         return inputs;
     }
@@ -159,14 +204,15 @@ class PartitionBitpackComponent : public OpenZLComponent {
         struct BenchmarkParams {
             size_t inputSize;
             size_t numInputs;
+            size_t width;
         };
         // Tuned so that each benchmark takes approximately the same amount
         // of compression time, so each scenario is approximately evenly
         // weighted.
-        std::array<BenchmarkParams, 3> kParams = {
-            BenchmarkParams{ 1000, 20 },
-            BenchmarkParams{ 10000, 20 },
-            BenchmarkParams{ 100000, 10 },
+        std::array<BenchmarkParams, 6> kParams = {
+            BenchmarkParams{ 1000, 20, 2 },   BenchmarkParams{ 10000, 20, 2 },
+            BenchmarkParams{ 100000, 10, 2 }, BenchmarkParams{ 1000, 20, 4 },
+            BenchmarkParams{ 10000, 20, 4 },  BenchmarkParams{ 100000, 10, 4 },
         };
         std::vector<Benchmark> benchmarks;
         benchmarks.reserve(kParams.size());
@@ -174,12 +220,23 @@ class PartitionBitpackComponent : public OpenZLComponent {
             std::vector<std::unique_ptr<OpenZLInput>> inputs;
             inputs.reserve(param.numInputs);
             for (size_t i = 0; i < param.numInputs; ++i) {
-                inputs.push_back(generateLogUniformInput(gen, param.inputSize));
+                if (param.width == 2) {
+                    inputs.push_back(
+                            generateLogUniformInput<uint16_t>(
+                                    gen, param.inputSize));
+                } else {
+                    assert(param.width == 4);
+                    inputs.push_back(
+                            generateLogUniformInput<uint32_t>(
+                                    gen, param.inputSize));
+                }
             }
             benchmarks.push_back(
                     Benchmark{
                             .name = "InputSize:"
-                                    + std::to_string(param.inputSize),
+                                    + std::to_string(param.inputSize)
+                                    + "/EltWidth:"
+                                    + std::to_string(param.width),
                             .graph  = ZL_GRAPH_PARTITION_BITPACK,
                             .inputs = std::move(inputs),
                     });
