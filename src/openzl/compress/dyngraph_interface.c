@@ -104,6 +104,12 @@ ZL_RefParam ZL_Graph_getLocalRefParam(const ZL_Graph* gctx, int refParamId)
     return LP_getLocalRefParam(&gctx->dgd->localParams, refParamId);
 }
 
+const ZL_LocalParams* ZL_Graph_getLocalParams(const ZL_Graph* gctx)
+{
+    ZL_ASSERT_NN(gctx);
+    return &gctx->dgd->localParams;
+}
+
 const ZL_LocalParams* GCTX_getAllLocalParams(const ZL_Graph* gctx)
 {
     ZL_ASSERT_NN(gctx);
