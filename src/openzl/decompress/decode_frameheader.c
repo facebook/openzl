@@ -317,6 +317,10 @@ static ZL_Report DFH_FrameInfo_decodeFrameHeader(
         memset(zfi->bundleID.id.bytes, 0, ZL_UNIQUE_ID_SIZE);
         memcpy(zfi->bundleID.id.bytes, ptr + consumed, encLen);
         consumed += encLen;
+        ZL_ERR_IF_NOT(
+                ZL_UniqueID_isValid(&zfi->bundleID.id),
+                corruption,
+                "bundleID flag is set but decoded bundleID is invalid (all zero)");
     }
 
     /* nb of outputs */
