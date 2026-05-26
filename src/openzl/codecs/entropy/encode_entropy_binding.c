@@ -93,11 +93,12 @@ static size_t estimateHuffmanSize(
             + (size_t)(ZL_nextPow2(histogram->total + 1) + 7) / 8
             + (histogram->total >= 256 ? 6 : 0);
 
-    // Estimate the table size as the min of 5-bits per non-zero symbol, or
-    // 4-bits per symbol.
-    const size_t tableBitsC = 5u * histogram->cardinality;
-    const size_t tableBitsM = 4u * (histogram->maxSymbol + 1u);
-    const size_t tableSize  = (ZL_MIN(tableBitsC, tableBitsM) + 7u) / 8u;
+    // TODO(T267366720): Update this code to match the new header cost when
+    // switching away from bitpack. The old estimate was the minimum of
+    // 4-bits per symbol or 5-bits per non-zero symbol. With bitpack it is
+    // just 4-bits per symbol.
+    const size_t tableBits = 4u * (histogram->maxSymbol + 1u);
+    const size_t tableSize = (tableBits + 7u) / 8u;
     return headerSize + tableSize + symbolsSize;
 }
 
@@ -877,7 +878,11 @@ static ZL_Report entropyCompressChunk(
                         histogram,
                         hufCTable));
         ZL_ASSERT_EQ(streams.nbEdges, 2);
-        ZL_ERR_IF_ERR(ZL_Edge_setDestination(streams.edges[0], ZL_GRAPH_FSE));
+        // TODO(T267366720): Improve Huffman header encoding.
+        // Bitpack is fast but leaves a lot on the table, however FSE is too
+        // slow on small inputs to be worthwhile.
+        ZL_ERR_IF_ERR(
+                ZL_Edge_setDestination(streams.edges[0], ZL_GRAPH_BITPACK_INT));
         ZL_ERR_IF_ERR(ZL_Edge_setDestination(streams.edges[1], ZL_GRAPH_STORE));
         return ZL_returnSuccess();
     } else if (mode == EBM_fse) {
