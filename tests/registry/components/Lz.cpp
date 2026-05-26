@@ -68,7 +68,7 @@ class LzComponent : public OpenZLComponent {
             int overrideParam)
     {
         if (gen.u8_range("override_successor", 0, 1) == 1) {
-            params.addIntParam(overrideParam, successors.size());
+            params.addIntParam(overrideParam, (int)successors.size());
             successors.push_back(ZL_GRAPH_STORE);
         }
     }
