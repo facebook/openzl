@@ -102,8 +102,12 @@ size_t DataStatsU8_getHuffmanSize(DataStatsU8* stats);
 size_t DataStatsU8_getDeltaHuffmanSize(DataStatsU8* stats);
 
 /* DataStatsU8_estimateHuffmanSizeFast::
- * Uses entropy estimation to estimate size of huffman encoding, this is a rough
- * estimation the doesn't include headers. */
+ * Uses entropy estimation to estimate size of huffman encoding.
+ * Does not calculate the loss from Huffman compared to optimal entropy coding,
+ * but does include the header size.
+ *
+ * NOTE: Consider not using this in new code, it is not a good estimate.
+ */
 size_t DataStatsU8_estimateHuffmanSizeFast(DataStatsU8* stats, bool delta);
 
 /* DataStatsU8_getBitpackedSize::
