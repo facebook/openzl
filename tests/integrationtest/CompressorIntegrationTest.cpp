@@ -1231,7 +1231,9 @@ TEST_F(CompressorIntegrationTest,
                 deserializer,
                 compressor2.get(),
                 serializedCopy.data(),
-                serializedCopy.size());
+                serializedCopy.size(),
+                nullptr,
+                0);
         ASSERT_FALSE(ZL_isError(r));
     }
     ZL_CompressorDeserializer_free(deserializer);

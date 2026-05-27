@@ -215,7 +215,9 @@ std::string Compressor::serializeToJson() const
     return json;
 }
 
-void Compressor::deserialize(poly::string_view serialized)
+void Compressor::deserialize(
+        poly::string_view serialized,
+        poly::string_view fatBundle)
 {
     const auto deserializer = make_deserializer();
 
@@ -224,7 +226,9 @@ void Compressor::deserialize(poly::string_view serialized)
                     deserializer.get(),
                     get(),
                     serialized.data(),
-                    serialized.size()),
+                    serialized.size(),
+                    fatBundle.empty() ? nullptr : fatBundle.data(),
+                    fatBundle.size()),
             "Call to ZL_CompressorDeserializer_deserialize() failed.",
             deserializer.get());
 }
@@ -249,6 +253,9 @@ Compressor::UnmetDependencies Compressor::getUnmetDependencies(
     }
     for (size_t i = 0; i < raw_deps.num_nodes; i++) {
         deps.nodeNames.emplace_back(raw_deps.node_names[i]);
+    }
+    if (ZL_UniqueID_isValid(&raw_deps.bundle_id.id)) {
+        deps.bundleID = raw_deps.bundle_id;
     }
     return deps;
 }

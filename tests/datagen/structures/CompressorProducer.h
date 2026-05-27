@@ -34,6 +34,12 @@ class CompressorProducer : public DataProducer<std::shared_ptr<ZL_Compressor>> {
    public:
     using Compressor = std::shared_ptr<ZL_Compressor>;
 
+    struct MultiResult {
+        std::vector<Compressor> full;
+        std::vector<Compressor> base;
+        std::vector<uint8_t> fatBundle;
+    };
+
    public:
     explicit CompressorProducer(std::shared_ptr<RandWrapper> generator)
             : DataProducer<Compressor>(), rw_(std::move(generator))
@@ -69,7 +75,7 @@ class CompressorProducer : public DataProducer<std::shared_ptr<ZL_Compressor>> {
      * version of a full compressor. When that's done, the result should be
      * logically identical to the full compressor.
      */
-    std::pair<std::vector<Compressor>, std::vector<Compressor>> make_multi(
+    MultiResult make_multi(
             size_t num_full_compressors,
             size_t num_base_compressors);
 
@@ -84,9 +90,8 @@ class CompressorProducer : public DataProducer<std::shared_ptr<ZL_Compressor>> {
  */
 class RandomCompressorMultiBuilder {
    public:
-    using Compressor = std::shared_ptr<ZL_Compressor>;
-
-   public:
+    using Compressor  = std::shared_ptr<ZL_Compressor>;
+    using MultiResult = CompressorProducer::MultiResult;
     explicit RandomCompressorMultiBuilder(std::shared_ptr<RandWrapper> rw)
             : rw_(std::move(rw)), lpp_(rw_)
     {
@@ -108,7 +113,7 @@ class RandomCompressorMultiBuilder {
      * version of a full compressor. When that's done, the result should be
      * logically identical to the full compressor.
      */
-    std::pair<std::vector<Compressor>, std::vector<Compressor>> make_multi(
+    MultiResult make_multi(
             size_t num_full_compressors,
             size_t num_base_compressors) &&;
 
@@ -215,6 +220,7 @@ class RandomCompressorMultiBuilder {
     NameVec register_typed_node(TypeSpec ts = TypeSpec::all());
     NameVec register_vo_node(TypeSpec ts = TypeSpec::all());
     NameVec register_mi_node();
+    NameVec register_dict_node();
     NameVec register_node(TypeSpec ts = TypeSpec::all());
     std::optional<NameVec> try_pick_node(TypeSpec ts = TypeSpec::all());
     NameVec clone_node(const NameVec& base_nodes);
@@ -317,6 +323,10 @@ class RandomCompressorMultiBuilder {
     std::vector<LocalParams> params_;
 
     ZL_IDType next_ctid_{ 1 };
+
+    // Dict node tracking: packed dicts produced by register_dict_node()
+    std::vector<std::vector<uint8_t>> packed_dicts_;
+    ZL_IDType dict_codec_id_{ 0 };
 };
 
 } // namespace openzl::tests::datagen

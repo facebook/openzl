@@ -313,14 +313,19 @@ void ZL_CompressorDeserializer_free(ZL_CompressorDeserializer* deserializer);
 
 /**
  * Reads the serialized compressor represented by @p serialized and pushes
- * the graph structure and configuration it describes into @p compressor.
+ * the graph structure and configuration it describes into @p compressor. If the
+ * compressor requires a dict bundle, it should be passed as a "fat" bundle via
+ * @p fatBundle (if no bundle is required, pass NULL). See @ref
+ * ZL_Compressor_loadDictBundle() for more details.
  *
  * In order for materialization to succeed, the @p compressor must already have
  * all of the custom transforms, graph functions, selectors, etc. registered
  * that were available when the compressor was serialized. You can use @ref
  * ZL_CompressorDeserializer_getDependencies() to determine what non-serialized
  * graph components are needed on the destination compressor. You can then set
- * those components up before invoking this operation on that compressor.
+ * those components up before invoking this operation on that compressor. @ref
+ * ZL_CompressorDeserializer_getDependencies() should also be used to determine
+ * if a bundle is required.
  *
  * See the documentation above for a more thorough discussion of these
  * requirements and how best to structure a compressor to meet them.
@@ -333,7 +338,9 @@ ZL_Report ZL_CompressorDeserializer_deserialize(
         ZL_CompressorDeserializer* deserializer,
         ZL_Compressor* compressor,
         const void* serialized,
-        size_t serializedSize);
+        size_t serializedSize,
+        const void* fatBundle,
+        size_t fatBundleSize);
 
 /**
  * Doesn't own any memory.
@@ -344,6 +351,8 @@ typedef struct {
 
     const char* const* node_names;
     size_t num_nodes;
+
+    ZL_BundleID bundle_id; // ZL_BUNDLE_ID_NULL if no bundle is required
 } ZL_CompressorDeserializer_Dependencies;
 
 ZL_RESULT_DECLARE_TYPE(ZL_CompressorDeserializer_Dependencies);

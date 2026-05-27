@@ -280,12 +280,16 @@ FUZZ(CompressorSerializationTest, FuzzDeserialization)
 FUZZ(CompressorSerializationTest, FuzzRandomCompressorDeserializesSuccessfully)
 {
     datagen::DataGen dg = fromFDP(f);
-    auto rw             = dg.getRandWrapper();
-    auto producer       = datagen::CompressorProducer(rw);
-    auto zlCompressor   = producer.make();
-    CompressorRef compressor(zlCompressor.get());
+    auto producer       = datagen::CompressorProducer(dg.getRandWrapper());
+    auto result         = producer.make_multi(1, 1);
+    CompressorRef compressor(result.full[0].get());
     auto serialized = compressor.serialize();
-    compressor.deserialize(serialized);
+    CompressorRef deserializedCompressor(result.base[0].get());
+    deserializedCompressor.deserialize(
+            serialized,
+            poly::string_view(
+                    reinterpret_cast<const char*>(result.fatBundle.data()),
+                    result.fatBundle.size()));
 }
 } // namespace
 } // namespace openzl::tests

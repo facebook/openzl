@@ -2,12 +2,20 @@
 
 #include "tests/datagen/structures/CompressorProducer.h"
 
+#include <cstring>
 #include <set>
 
+#include "openzl/zl_ctransform.h"
 #include "openzl/zl_graph_api.h"
 #include "openzl/zl_graphs.h"
+#include "openzl/zl_materializer.h"
 #include "openzl/zl_reflection.h"
 #include "openzl/zl_selector.h"
+#include "openzl/zl_unique_id.h"
+
+#include "openzl/dict/bundle.h"
+#include "openzl/dict/dict.h"
+#include "openzl/dict/dict_constants.h"
 
 #include "tests/utils.h"
 
@@ -22,6 +30,24 @@ struct ZS2_Compressor_Deleter {
         ZL_Compressor_free(compressor);
     }
 };
+
+static ZL_RESULT_OF(ZL_VoidPtr) dictCopyMaterialize(
+        ZL_Materializer* matCtx,
+        const void* src,
+        size_t srcSize) ZL_NOEXCEPT_FUNC_PTR
+{
+    ZL_RESULT_DECLARE_SCOPE(ZL_VoidPtr, nullptr);
+    void* copy = ZL_Materializer_allocate(matCtx, srcSize);
+    ZL_ERR_IF_NULL(copy, allocation);
+    std::memcpy(copy, src, srcSize);
+    return ZL_WRAP_VALUE(copy);
+}
+
+static const ZL_MaterializerDesc2 kDictCopyMaterializer = {
+    .materializeFn   = dictCopyMaterialize,
+    .dematerializeFn = ZL_NOOP_DEMATERIALIZE,
+};
+
 } // anonymous namespace
 
 CompressorProducer::Compressor CompressorProducer::make()
@@ -30,10 +56,7 @@ CompressorProducer::Compressor CompressorProducer::make()
     return std::move(rcmb).make();
 }
 
-std::pair<
-        std::vector<CompressorProducer::Compressor>,
-        std::vector<CompressorProducer::Compressor>>
-CompressorProducer::make_multi(
+CompressorProducer::MultiResult CompressorProducer::make_multi(
         const size_t num_full_compressors,
         const size_t num_base_compressors)
 {
@@ -441,6 +464,73 @@ std::vector<std::string> RandomCompressorMultiBuilder::register_mi_node()
     return names;
 }
 
+std::vector<std::string> RandomCompressorMultiBuilder::register_dict_node()
+{
+    const auto name = make_unique_name("!tests.rand_graph.nodes.dict.");
+
+    ZL_DictID dictID;
+    for (size_t b = 0; b < sizeof(dictID.id.bytes); b++) {
+        dictID.id.bytes[b] =
+                static_cast<uint8_t>(rw_->range("dict_id_byte", 0u, 255u));
+    }
+    if (!ZL_UniqueID_isValid(&dictID.id)) {
+        dictID.id.bytes[0] = 1;
+    }
+
+    if (dict_codec_id_ == 0) {
+        dict_codec_id_ = make_ctid();
+    }
+
+    const auto transform =
+            [](ZL_Encoder* eictx, const ZL_Input*[], size_t) noexcept {
+                ZL_RESULT_DECLARE_SCOPE_REPORT(eictx);
+                ZL_ERR(GENERIC, "Unimplemented! Can't actually run.");
+            };
+    const ZL_Type in_type  = ZL_Type_serial;
+    const ZL_Type out_type = ZL_Type_serial;
+    const auto gd          = (ZL_MIGraphDesc){
+                 .CTid                = dict_codec_id_,
+                 .inputTypes          = &in_type,
+                 .nbInputs            = 1,
+                 .lastInputIsVariable = false,
+                 .soTypes             = &out_type,
+                 .nbSOs               = 1,
+                 .voTypes             = nullptr,
+                 .nbVOs               = 0,
+    };
+    const auto desc = (ZL_MIEncoderDesc){
+        .gd          = gd,
+        .transform_f = transform,
+        .localParams = {},
+        .name        = name.c_str(),
+        .trStateMgr  = {},
+        .dictMat     = kDictCopyMaterializer,
+        .dictID      = dictID,
+    };
+
+    auto names =
+            for_all_compressors([&](ZL_Compressor* const c) -> std::string {
+                const auto nid = ZL_Compressor_registerMIEncoder(c, &desc);
+                ZL_ASSERT(ZL_NodeID_isValid(nid));
+                return ZL_Compressor_Node_getName(c, nid);
+            });
+    record_node(names);
+
+    uint8_t dictContent = static_cast<uint8_t>(dictID.id.bytes[0] ^ 0xAB);
+    std::vector<uint8_t> packed(ZL_DICT_HEADER_SIZE + 1, 0);
+    ZL_REQUIRE_SUCCESS(Dict_pack(
+            packed.data(),
+            packed.size(),
+            dictID,
+            dict_codec_id_,
+            true,
+            &dictContent,
+            1));
+    packed_dicts_.push_back(std::move(packed));
+
+    return names;
+}
+
 std::vector<std::string> RandomCompressorMultiBuilder::register_node(
         const TypeSpec ts)
 {
@@ -462,7 +552,7 @@ std::vector<std::string> RandomCompressorMultiBuilder::register_node(
         }
     }
 
-    switch (rw_->range("kind_of_node_to_register", 0, 4)) {
+    switch (rw_->range("kind_of_node_to_register", 0, 5)) {
         case 0:
             return register_pipe_node();
         case 1:
@@ -473,6 +563,8 @@ std::vector<std::string> RandomCompressorMultiBuilder::register_node(
             return register_vo_node(ts);
         case 4:
             return register_mi_node();
+        case 5:
+            return register_dict_node();
     }
     ZL_REQUIRE_FAIL("Unreachable!");
 }
@@ -529,6 +621,36 @@ std::vector<std::string> RandomCompressorMultiBuilder::clone_node(
         ZL_REQUIRE_FAIL("Unreachable!");
     };
 
+    // If cloning a dict node, generate a fresh dictID for the clone.
+    ZL_DictID newDictID = ZL_DICT_ID_NULL;
+    if (!full_compressors_.empty()) {
+        ZL_Compressor* c0    = full_compressors_[0].get();
+        const auto base_nid0 = ZL_Compressor_getNode(c0, base_names[0].c_str());
+        const ZL_DictID baseDictID =
+                ZL_Compressor_Node_getDictID(c0, base_nid0);
+        if (ZL_UniqueID_isValid(&baseDictID.id)) {
+            for (size_t b = 0; b < sizeof(newDictID.id.bytes); b++) {
+                newDictID.id.bytes[b] = static_cast<uint8_t>(
+                        rw_->range("clone_dict_id_byte", 0u, 255u));
+            }
+            if (!ZL_UniqueID_isValid(&newDictID.id)) {
+                newDictID.id.bytes[0] = 1;
+            }
+            uint8_t dictContent =
+                    static_cast<uint8_t>(newDictID.id.bytes[0] ^ 0xAB);
+            std::vector<uint8_t> packed(ZL_DICT_HEADER_SIZE + 1, 0);
+            ZL_REQUIRE_SUCCESS(Dict_pack(
+                    packed.data(),
+                    packed.size(),
+                    newDictID,
+                    dict_codec_id_,
+                    true,
+                    &dictContent,
+                    1));
+            packed_dicts_.push_back(std::move(packed));
+        }
+    }
+
     std::vector<std::string> names;
     for (size_t i = 0; i < full_compressors_.size(); i++) {
         ZL_Compressor* c      = full_compressors_[i].get();
@@ -538,11 +660,13 @@ std::vector<std::string> RandomCompressorMultiBuilder::clone_node(
                 ZL_Compressor_Node_getLocalParams(c, base_nid);
         const auto new_params =
                 transform_localparams(LocalParams{ base_localparams });
-        auto new_localparams                  = *new_params;
-        new_localparams.refParams             = base_localparams.refParams;
+        auto new_localparams      = *new_params;
+        new_localparams.refParams = base_localparams.refParams;
+
         const ZL_ParameterizedNodeDesc pndesc = {
             .node        = base_nid,
             .localParams = &new_localparams,
+            .dictID      = newDictID,
         };
         const auto new_nid =
                 ZL_Compressor_registerParameterizedNode(c, &pndesc);
@@ -1007,10 +1131,7 @@ std::vector<std::string> RandomCompressorMultiBuilder::build_graph(
     return make_graph(ts, depth);
 }
 
-std::pair<
-        std::vector<RandomCompressorMultiBuilder::Compressor>,
-        std::vector<RandomCompressorMultiBuilder::Compressor>>
-RandomCompressorMultiBuilder::make_multi(
+CompressorProducer::MultiResult RandomCompressorMultiBuilder::make_multi(
         size_t num_full_compressors,
         size_t num_base_compressors) &&
 {
@@ -1048,6 +1169,36 @@ RandomCompressorMultiBuilder::make_multi(
         }
     }
 
+    // Build and load fat bundle before validation so dict indices resolve.
+    std::vector<uint8_t> resultFatBundle;
+    if (!packed_dicts_.empty()) {
+        std::vector<const void*> dictPtrs;
+        std::vector<size_t> dictSizes;
+        size_t totalBytes = 0;
+        for (const auto& d : packed_dicts_) {
+            dictPtrs.push_back(d.data());
+            dictSizes.push_back(d.size());
+            totalBytes += d.size();
+        }
+        const size_t bundleCap = ZL_BUNDLE_HEADER_SIZE
+                + packed_dicts_.size() * ZL_UNIQUE_ID_SIZE + totalBytes;
+        resultFatBundle.resize(bundleCap, 0);
+        ZL_Report fbr = ZL_DictBundle_packFatBundle(
+                resultFatBundle.data(),
+                resultFatBundle.size(),
+                dictPtrs.data(),
+                dictSizes.data(),
+                packed_dicts_.size());
+        ZL_REQUIRE_SUCCESS(fbr);
+        resultFatBundle.resize(ZL_validResult(fbr));
+        for (size_t i = 0; i < full_compressors_.size(); i++) {
+            ZL_REQUIRE_SUCCESS(ZL_Compressor_loadDictBundle(
+                    full_compressors_[i].get(),
+                    resultFatBundle.data(),
+                    resultFatBundle.size()));
+        }
+    }
+
     for (size_t i = 0; i < full_compressors_.size(); i++) {
         auto* const c = full_compressors_[i].get();
         const auto gid =
@@ -1056,13 +1207,15 @@ RandomCompressorMultiBuilder::make_multi(
         ZL_REQUIRE_SUCCESS(ZL_Compressor_selectStartingGraphID(c, gid));
     }
 
-    return { std::move(full_compressors_), std::move(base_compressors_) };
+    return { std::move(full_compressors_),
+             std::move(base_compressors_),
+             std::move(resultFatBundle) };
 }
 
 RandomCompressorMultiBuilder::Compressor RandomCompressorMultiBuilder::make() &&
 {
-    auto compressors = std::move(*this).make_multi(1, 0);
-    return std::move(compressors.first[0]);
+    auto result = std::move(*this).make_multi(1, 0);
+    return std::move(result.full[0]);
 }
 
 } // namespace datagen
