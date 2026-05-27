@@ -86,6 +86,7 @@ static size_t out_identical(const void* src, size_t srcSize)
 #include "benchmark/unitBench/scenarios/codecs/flatpack.h"
 #include "benchmark/unitBench/scenarios/codecs/huffman.h"
 #include "benchmark/unitBench/scenarios/codecs/rolz.h"
+#include "benchmark/unitBench/scenarios/codecs/sparse_num.h"
 #include "benchmark/unitBench/scenarios/codecs/tokenize.h"
 #include "benchmark/unitBench/scenarios/codecs/transpose.h"
 
@@ -489,6 +490,14 @@ Bench_Entry const scenarioList[] = {
     { "sao_sddl2", .graphF=sao_graph_sddl2 },
     { "saoIngest", saoIngest_wrapper },
     { "saoIngestCompiled", saoIngestCompiled_wrapper },
+    { "sparseNumDecode8_d8", sparseNumDecode8_d8_wrapper, .outSize = sparseNumDecode8_d8_outSize, .display = decoderResult },
+    { "sparseNumDecode16_d8", sparseNumDecode16_d8_wrapper, .outSize = sparseNumDecode16_d8_outSize, .display = decoderResult },
+    { "sparseNumDecode32_d8", sparseNumDecode32_d8_wrapper, .outSize = sparseNumDecode32_d8_outSize, .display = decoderResult },
+    { "sparseNumDecode64_d8", sparseNumDecode64_d8_wrapper, .outSize = sparseNumDecode64_d8_outSize, .display = decoderResult },
+    { "sparseNumEncode8", sparseNumEncode8_wrapper, .outSize = sparseNumEncode8_outSize },
+    { "sparseNumEncode16", sparseNumEncode16_wrapper, .outSize = sparseNumEncode16_outSize },
+    { "sparseNumEncode32", sparseNumEncode32_wrapper, .outSize = sparseNumEncode32_outSize },
+    { "sparseNumEncode64", sparseNumEncode64_wrapper, .outSize = sparseNumEncode64_outSize },
     { "splitBy4", splitBy4_wrapper, .prep = splitBy4_preparation },
     { "splitBy8", splitBy8_wrapper, .prep = splitBy8_preparation },
     { "splitByRange8", .graphF = splitByRange8_graph },
