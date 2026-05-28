@@ -32,6 +32,28 @@ extern ZL_VODecoderDesc const thriftCompactConfigurableUnSplitter;
 extern ZL_VOEncoderDesc const thriftBinaryConfigurableSplitter;
 extern ZL_VODecoderDesc const thriftBinaryConfigurableUnSplitter;
 
+/**
+ * The configurable Thrift encoder/decoder implementation functions.
+ */
+ZL_Report configurableEncodeCompact(
+        ZL_Encoder* eictx,
+        const ZL_Input* in) noexcept;
+ZL_Report configurableEncodeBinary(
+        ZL_Encoder* eictx,
+        const ZL_Input* in) noexcept;
+ZL_Report configurableDecodeCompact(
+        ZL_Decoder* dictx,
+        const ZL_Input* compulsorySrcs[],
+        size_t nbCompulsorySrcs,
+        const ZL_Input* variableSrcs[],
+        size_t nbVariableSrcs) noexcept;
+ZL_Report configurableDecodeBinary(
+        ZL_Decoder* dictx,
+        const ZL_Input* compulsorySrcs[],
+        size_t nbCompulsorySrcs,
+        const ZL_Input* variableSrcs[],
+        size_t nbVariableSrcs) noexcept;
+
 ZL_Report registerCustomTransforms(ZL_DCtx* dctx);
 
 ZL_NodeID registerCompactTransform(ZL_Compressor* cgraph, ZL_IDType id);
