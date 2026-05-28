@@ -1,7 +1,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 load("@bazel_skylib//lib:shell.bzl", "shell")
-load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup", "buck_genrule", "buck_sh_binary")
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup", "buck_genrule", "buck_sh_binary", "buck_sh_test")
 
 oncall("data_compression")
 
@@ -46,9 +46,8 @@ buck_genrule(
     ),
 )
 
-# disabled for now. vitest 3.2.4 has a security vulnerability that prevents us from using it.
-# vitest 4.0.0 is in beta. This test will be re-enabled when it becomes generally available.
-# buck_sh_test(
-#     name = "visualization-app-tests",
-#     test = ":yarn-test",
-# )
+# Runs `yarn test:run` (Vitest) inside the visualization_app directory.
+buck_sh_test(
+    name = "visualization-app-tests",
+    test = ":yarn-test",
+)
