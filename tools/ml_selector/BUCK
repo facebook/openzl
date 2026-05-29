@@ -11,6 +11,10 @@ zs_cxxlibrary(
     compiler_flags = [
         "-Wno-unused-exception-parameter",  # For XGBoost warnings
     ],
+    visibility = [
+        "fbcode//common/managed_compression/...",
+        "//openzl/...",
+    ],
     deps = [
         "../..:zstronglib",
         "../../cpp:openzl_cpp",

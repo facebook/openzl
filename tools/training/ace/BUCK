@@ -30,6 +30,10 @@ cpp_library(
         "crowding_distance_selector.h",
     ]),
     header_namespace = "",
+    visibility = [
+        "fbcode//common/managed_compression/...",
+        "//openzl/...",
+    ],
     deps = [
         "../../..:zstronglib",
     ],
