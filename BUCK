@@ -75,6 +75,7 @@ zs_library(
     ],
     exported_external_deps = [
         ("xxHash", None, "xxhash"),
+        "zstd",
     ],
 )
 

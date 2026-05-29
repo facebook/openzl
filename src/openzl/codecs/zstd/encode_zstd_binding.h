@@ -6,6 +6,7 @@
 #include "openzl/codecs/entropy/graph_entropy.h"
 #include "openzl/shared/portability.h"
 #include "openzl/zl_ctransform.h"
+#include "openzl/zl_materializer.h"
 
 ZL_BEGIN_C_DECLS
 
@@ -21,13 +22,23 @@ ZL_Report EI_zstd(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 void* EIZSTD_createCCtx(void);
 void EIZSTD_freeCCtx(void* state);
 
-#define EI_ZSTD(id)                                  \
-    {                                                \
-        .gd                    = PIPE_GRAPH(id),     \
-        .transform_f           = EI_zstd,            \
-        .name                  = "!zl.private.zstd", \
-        .trStateMgr.stateAlloc = EIZSTD_createCCtx,  \
-        .trStateMgr.stateFree  = EIZSTD_freeCCtx,    \
+/* CDict materializer for dict-backed zstd compression */
+ZL_RESULT_OF(ZL_VoidPtr)
+EIZSTD_materializeCDict(
+        ZL_Materializer* matCtx,
+        const void* src,
+        size_t srcSize);
+void EIZSTD_dematerializeCDict(ZL_Materializer* matCtx, void* materialized);
+
+#define EI_ZSTD(id)                                           \
+    {                                                         \
+        .gd                      = PIPE_GRAPH(id),            \
+        .transform_f             = EI_zstd,                   \
+        .name                    = "!zl.private.zstd",        \
+        .trStateMgr.stateAlloc   = EIZSTD_createCCtx,         \
+        .trStateMgr.stateFree    = EIZSTD_freeCCtx,           \
+        .dictMat.materializeFn   = EIZSTD_materializeCDict,   \
+        .dictMat.dematerializeFn = EIZSTD_dematerializeCDict, \
     }
 
 #define EI_ZSTD_FIXED(id)                                             \

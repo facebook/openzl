@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#ifndef OPENZL_DICT_MATERIALIZER_CTX_H
-#define OPENZL_DICT_MATERIALIZER_CTX_H
+#ifndef OPENZL_COMMON_MATERIALIZER_CTX_H
+#define OPENZL_COMMON_MATERIALIZER_CTX_H
 
 #include "openzl/common/allocation.h"       // Arena
 #include "openzl/detail/zl_error_context.h" // ZL_OperationContext
@@ -26,4 +26,4 @@ struct ZL_Materializer_s {
 } // extern "C"
 #endif
 
-#endif // OPENZL_DICT_MATERIALIZER_CTX_H
+#endif // OPENZL_COMMON_MATERIALIZER_CTX_H
