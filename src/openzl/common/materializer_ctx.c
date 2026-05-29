@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "openzl/dict/materializer_ctx.h"
+#include "openzl/common/materializer_ctx.h"
 
 #include "openzl/common/allocation.h"
 #include "openzl/zl_materializer.h"
