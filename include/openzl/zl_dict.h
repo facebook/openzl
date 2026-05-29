@@ -71,6 +71,18 @@ ZL_RESULT_DECLARE_TYPE(ZL_BundleInfo);
 /// the buffer.
 ZL_RESULT_OF(ZL_BundleInfo) ZL_BundleInfo_parse(const void* buf, size_t size);
 
+/**
+ * Generate a canonical bundle ID for a set of dictionary IDs. This is the same
+ * function used by fat bundle packing.
+ *
+ * If @p numDicts is 0, this returns the bundle ID for an empty dictionary set.
+ * In that case, @p dictIDs may be NULL. Otherwise, @p dictIDs must be non-NULL
+ * and point to an array of @p numDicts dictionary IDs.
+ */
+ZL_BundleID ZL_DictBundle_genBundleID(
+        const ZL_DictID* dictIDs,
+        size_t numDicts);
+
 // ============================================================================
 // ZL_DictBundle - A bundle of dictionaries
 // ============================================================================

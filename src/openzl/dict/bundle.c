@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "openzl/common/assertion.h"
 #include "openzl/dict/dict.h"
 #include "openzl/dict/dict_constants.h"
 #include "openzl/fse/common/mem.h"
@@ -112,6 +113,15 @@ BundleInfo_pack(void* dst, size_t dstCapacity, const ZL_BundleInfo* info)
     return ZL_returnValue(packedSize);
 }
 
+ZL_BundleID ZL_DictBundle_genBundleID(const ZL_DictID* dictIDs, size_t numDicts)
+{
+    ZL_ASSERT(dictIDs != NULL || numDicts == 0);
+    ZL_BundleID result;
+    result.id =
+            ZL_UniqueID_computeSHA256(dictIDs, numDicts * ZL_UNIQUE_ID_SIZE);
+    return result;
+}
+
 /* ================================================================
  * ZL_DictBundle_packFatBundle
  * ================================================================ */
@@ -165,10 +175,11 @@ ZL_Report ZL_DictBundle_packFatBundle(
     }
 
     /* Generate bundleID as SHA256 of the dictID array */
-    unsigned char* const dictIDArray = bundleIDSlot + ZL_UNIQUE_ID_SIZE + 1 + 4;
-    ZL_UniqueID const bundleHash     = ZL_UniqueID_computeSHA256(
-            dictIDArray, numDicts * ZL_UNIQUE_ID_SIZE);
-    ZL_UniqueID_write(bundleIDSlot, &bundleHash);
+    ZL_DictID* const dictIDArray =
+            (ZL_DictID*)(bundleIDSlot + ZL_UNIQUE_ID_SIZE + 1 + 4);
+    ZL_BundleID const bundleHash =
+            ZL_DictBundle_genBundleID(dictIDArray, numDicts);
+    ZL_UniqueID_write(bundleIDSlot, &bundleHash.id);
 
     /* Append each packed dict blob */
     for (size_t i = 0; i < numDicts; i++) {
