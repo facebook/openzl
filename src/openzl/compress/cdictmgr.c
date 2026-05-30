@@ -112,6 +112,23 @@ void CDictMgr_destroy(CDictMgr* mgr)
 {
     if (mgr == NULL)
         return;
+    // Dematerialize all cached dicts
+    {
+        CDictMgr_DictMap_Iter iter = CDictMgr_DictMap_iter(&mgr->dictsByID);
+        const CDictMgr_DictMap_Entry* entry;
+        for (; (entry = CDictMgr_DictMap_Iter_next(&iter));) {
+            if (entry->val != NULL && entry->val->dictObj != NULL) {
+                ZL_Materializer dematCtx = {
+                    .persistentArena = NULL,
+                    .scratchArena    = NULL,
+                    .opaquePtr       = entry->key.matDesc.opaque.ptr,
+                    .opCtx           = mgr->opCtx,
+                };
+                entry->key.matDesc.dematerializeFn(
+                        &dematCtx, entry->val->dictObj);
+            }
+        }
+    }
     CDictMgr_DictMap_destroy(&mgr->dictsByID);
     CDictMgr_MParamMap_destroy(&mgr->mparamBlobs);
     if (mgr->scratchArena != NULL) {
