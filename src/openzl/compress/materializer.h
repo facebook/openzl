@@ -5,7 +5,7 @@
 
 #include "openzl/common/allocation.h" // Arena
 #include "openzl/common/map.h"
-#include "openzl/dict/materializer_ctx.h" // struct ZL_Materializer_s
+#include "openzl/common/materializer_ctx.h" // struct ZL_Materializer_s
 #include "openzl/shared/portability.h"
 #include "openzl/zl_errors.h" // ZL_RESULT_DECLARE_TYPE_IMPL, ZL_RESULT_OF
 

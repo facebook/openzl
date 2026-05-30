@@ -4,10 +4,11 @@
 
 #include <stdlib.h>
 
+#include "openzl/codecs/zstd/common_zstd.h"
 #include "openzl/common/allocation.h"
 #include "openzl/common/assertion.h"
+#include "openzl/common/materializer_ctx.h"
 #include "openzl/dict/dict_constants.h"
-#include "openzl/dict/materializer_ctx.h"
 #include "openzl/zl_errors.h"
 
 static void DictLoader_freeOpaquePtr(const ZL_OpaquePtr* opaque)
@@ -167,7 +168,7 @@ const ZL_MaterializerDesc2* DictLoader_getMaterializer(
 static ZL_Report DictLoader_registerStandardMaterializer(
         ZL_DictLoader* loader,
         ZL_NodeID codecID,
-        ZL_MaterializerDesc2* mat)
+        const ZL_MaterializerDesc2* mat)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_NN(loader);
@@ -275,11 +276,10 @@ ZL_Report DictLoader_registerStandardMaterializers(ZL_DictLoader* loader)
     ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ERR_IF_NULL(loader, GENERIC);
 
-    // TODO: register standard codec materializers (e.g. zstd)
-    // ZL_ERR_IF_ERR(DictLoader_registerStandardMaterializer(
-    //         loader,
-    //         ZL_MAKE_NODE_ID(ZL_PrivateStandardNodeID_zstd),
-    //         ZL_Zstd_materializer));
+    ZL_ERR_IF_ERR(DictLoader_registerStandardMaterializer(
+            loader,
+            (ZL_NodeID){ ZL_StandardTransformID_zstd },
+            &ZL_Zstd_ddict_materializer));
 
     return ZL_returnSuccess();
 }
