@@ -11,9 +11,11 @@ cpp_unittest(
     srcs = glob([
         "**/*.cpp",
     ]),
-    headers = relative_headers(glob([
-        "**/*.hpp",
-    ])),
+    headers = relative_headers(
+        glob([
+            "**/*.hpp",
+        ])
+    ),
     header_namespace = "",
     labels = cross_platform_labels(),
     deps = [

@@ -16,13 +16,16 @@ buck_genrule(
     name = "yarn-build",
     out = "yarn-build.sh",
     cmd = (
-        "echo -e {0} > $OUT && chmod +x $OUT"
-            .format(shell.quote("\n".join([
-            "#!/bin/sh",
-            "pushd \\$(hg root)/fbcode/openzl/{}/tools/visualization_app".format(BRANCH_NAME),
-            "yarn build",
-            "popd",
-        ])))
+        "echo -e {0} > $OUT && chmod +x $OUT".format(
+            shell.quote(
+                "\n".join([
+                    "#!/bin/sh",
+                    "pushd \\$(hg root)/fbcode/openzl/{}/tools/visualization_app".format(BRANCH_NAME),
+                    "yarn build",
+                    "popd",
+                ])
+            )
+        )
     ),
 )
 
@@ -35,14 +38,17 @@ buck_genrule(
     name = "yarn-test",
     out = "yarn-test.sh",
     cmd = (
-        "echo -e {0} > $OUT && chmod +x $OUT"
-            .format(shell.quote("\n".join([
-            "#!/bin/sh",
-            "cd \\$(dirname \\$0)",
-            "cd \\$(hg root)/fbcode/openzl/{}/tools/visualization_app".format(BRANCH_NAME),
-            "yarn install",
-            "yarn test:run",
-        ])))
+        "echo -e {0} > $OUT && chmod +x $OUT".format(
+            shell.quote(
+                "\n".join([
+                    "#!/bin/sh",
+                    "cd \\$(dirname \\$0)",
+                    "cd \\$(hg root)/fbcode/openzl/{}/tools/visualization_app".format(BRANCH_NAME),
+                    "yarn install",
+                    "yarn test:run",
+                ])
+            )
+        )
     ),
 )
 

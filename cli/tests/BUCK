@@ -419,8 +419,7 @@ python_library(
     base_module = "",
     resources = glob(["sample_files/**/*"]) + glob(["profile_files/**/*"]),
     typing = True,
-    deps = [
-    ],
+    deps = [],
 )
 
 custom_unittest(

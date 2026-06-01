@@ -6,14 +6,12 @@ oncall("data_compression")
 
 zs_cxxlibrary(
     name = "train",
-    srcs =
-        [
-            "train.cpp",
-        ],
-    headers =
-        [
-            "train.h",
-        ],
+    srcs = [
+        "train.cpp",
+    ],
+    headers = [
+        "train.h",
+    ],
     deps = [
         "../../custom_parsers:custom_parsers",
         "../ml_selector:ml_selector_trainer",
@@ -31,10 +29,9 @@ zs_cxxlibrary(
 # TODO: Clean up the BUCK rules in this directory
 zs_cxxlibrary(
     name = "train_common",
-    headers =
-        [
-            "train_params.h",
-        ],
+    headers = [
+        "train_params.h",
+    ],
     deps = [
         "../../cpp:openzl_cpp",
     ],

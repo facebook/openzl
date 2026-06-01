@@ -26,17 +26,20 @@ SRC_FILE_FLAGS = {
 
 zs_cxxbinary(
     name = "benchmark",
-    srcs = [(
-        src_file,
-        SRC_FILE_FLAGS.get(src_file, []),
-    ) for src_file in glob(
-        [
-            "**/*.cpp",
-        ],
-        exclude = [
-            "BenchmarkComponents.cpp",
-        ],
-    )],
+    srcs = [
+        (
+            src_file,
+            SRC_FILE_FLAGS.get(src_file, []),
+        )
+        for src_file in glob(
+            [
+                "**/*.cpp",
+            ],
+            exclude = [
+                "BenchmarkComponents.cpp",
+            ],
+        )
+    ],
     headers = glob([
         "**/*.h",
     ]),
