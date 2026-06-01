@@ -29,8 +29,12 @@ zs_cxxlibrary(
 # TODO: Clean up the BUCK rules in this directory
 zs_cxxlibrary(
     name = "train_common",
+    srcs = [
+        "trained_candidate.cpp",
+    ],
     headers = [
         "train_params.h",
+        "trained_candidate.h",
     ],
     deps = [
         "../../cpp:openzl_cpp",
