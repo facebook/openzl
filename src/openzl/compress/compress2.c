@@ -12,7 +12,6 @@
 #include "openzl/compress/cctx.h"               // createCCtx, GraphInfo
 #include "openzl/compress/encode_frameheader.h" // EFH_writeFrameHeader
 #include "openzl/compress/private_nodes.h"      // ZS2_GRAPH_xxx
-#include "openzl/shared/mem.h"                  // writeLE32
 #include "openzl/shared/xxhash.h"               // XXH3_64bits
 #include "openzl/zl_common_types.h" // ZL_TernaryParam_enable, ZL_TernaryParam_disable
 #include "openzl/zl_compress.h"   // ZS2_compress_*
