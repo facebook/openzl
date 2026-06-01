@@ -228,6 +228,7 @@ class ZstrongGoogleBenchmarkResults:
         return cls.from_scuba("zstrong_benchmarks", "raw", filters={"run_id": run_id})
 
     def to_markdown(self) -> str:
+        # pyrefly: ignore [missing-attribute]
         md = self.results.to_markdown(showindex=False).replace("|:--", "|---")
         if md is None:
             raise RuntimeError("Unable to create markdown, tabulate might be missing")
@@ -462,5 +463,7 @@ class ZstrongGoogleBenchmarkRunner:
                 result = result.append(curr_result)
             else:
                 result = curr_result
+        # pyrefly: ignore [missing-attribute]
         result.set_timestamp()
+        # pyrefly: ignore [bad-return]
         return result
