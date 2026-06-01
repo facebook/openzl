@@ -4,19 +4,10 @@
 
 #include "openzl/cpp/Compressor.hpp"
 #include "tools/training/train_params.h"
-#include "tools/training/utils/serialized_compressor_internal.h"
+#include "tools/training/trained_candidate.h"
 #include "tools/training/utils/utils.h"
 
 namespace openzl::training {
-
-/// Represents a trained compressor candidate produced by the training
-/// pipeline. Contains the serialized compressor bytes that can be
-/// deserialized into a full Compressor object. The serialized data is
-/// self-contained and safe to outlive the source Compressor.
-struct TrainedCandidate {
-    /// Owned serialized compressor bytes (CBOR-encoded).
-    std::string serializedCompressor;
-};
 
 /**
  * This function trains compressor graphs (clustering and/or ACE graphs).
