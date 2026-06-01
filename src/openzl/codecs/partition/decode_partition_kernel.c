@@ -3,7 +3,6 @@
 #include "openzl/codecs/partition/decode_partition_kernel.h"
 
 #include "openzl/codecs/common/bitstream/ff_bitstream.h"
-#include "openzl/shared/bits.h"
 #include "openzl/shared/mem.h"
 #include "openzl/zl_errors.h"
 
