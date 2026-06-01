@@ -1,7 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 #include "openzl/codecs/merge_sorted/decode_merge_sorted_kernel.h"
 
-#include "openzl/common/assertion.h"
 #include "openzl/shared/mem.h"
 
 ZL_FORCE_INLINE bool ZL_MergeSorted_split(
