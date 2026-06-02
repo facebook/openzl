@@ -502,6 +502,22 @@ static ZL_Report setEntropyDestinationOrOverride(
     return ZL_returnSuccess();
 }
 
+/**
+ * Rough estimate of the compressed size of muxed lengths for fast compression
+ * levels.
+ */
+static size_t guessMuxedEntropySize(size_t numSequences)
+{
+    // Estimate the encoded size optimistically at 60% compressibility.
+    // This is lower than the typical encoded size for muxed lengths.
+    const size_t encodedSize = (6 * numSequences) / 10;
+    // Estimate the header size with a slight over-estimate. This favors
+    // skipping Huffman more aggressively on smaller inputs, and attempting it
+    // more on larger inputs.
+    const size_t headerSize = 75;
+    return headerSize + encodedSize;
+}
+
 ZL_Report EI_lzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
@@ -571,12 +587,22 @@ ZL_Report EI_lzDynGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
                 ZL_Edge_runMultiInputNode(muxInputs, 2, ZL_NODE_MUX_LENGTHS));
         ZL_ASSERT_EQ(muxStreams.nbEdges, 2);
 
+        const size_t muxedStoreSize =
+                ZL_Input_contentSize(ZL_Edge_getData(muxStreams.edges[0]));
+        const size_t muxedSizeGuess = guessMuxedEntropySize(muxedStoreSize);
+        // Guess the compressibility of the muxed lengths. When Huffman is
+        // likely to not provide enough benefit, don't even try it. This is
+        // mainly important for small inputs, where the cost of evaluating
+        // Huffman performance can be high.
+        // TODO(T264603483): Take compression level into account here
         ZL_ERR_IF_ERR(setEntropyDestinationOrOverride(
                 gctx,
                 muxStreams.edges[0],
                 customGraphs,
                 ZL_LzParam_muxedBytesGraphIdx,
-                huffOrStore,
+                muxedSizeGuess + (size_t)minGainForHuffmanBytes < muxedStoreSize
+                        ? huffOrStore
+                        : ZL_GRAPH_STORE,
                 minGainForHuffmanBytes));
 
         ZL_ERR_IF_ERR(setEntropyDestinationOrOverride(
