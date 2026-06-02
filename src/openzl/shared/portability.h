@@ -110,6 +110,12 @@ ZL_BEGIN_C_DECLS
 #    define ZL_HAS_FEATURE(x) 0
 #endif
 
+#ifdef __has_include
+#    define ZL_HAS_INCLUDE(x) __has_include(x)
+#else
+#    define ZL_HAS_INCLUDE(x) 0
+#endif
+
 #ifndef ZL_ADDRESS_SANITIZER
 #    if ZL_HAS_FEATURE(address_sanitizer)
 #        define ZL_ADDRESS_SANITIZER 1
@@ -275,6 +281,13 @@ ZL_INLINE bool ZL_addressIsPoisoned(const void* ptr)
 #    define ZL_HAS_BMI2 1
 #else
 #    define ZL_HAS_BMI2 0
+#endif
+
+#if defined(__aarch64__) && defined(__ARM_FEATURE_SVE) \
+        && defined(__ARM_FEATURE_SVE2_BITPERM) && ZL_HAS_INCLUDE(<arm_sve.h>)
+#    define ZL_HAS_SVE2_BITPERM 1
+#else
+#    define ZL_HAS_SVE2_BITPERM 0
 #endif
 
 #if defined(__AVX2__)
