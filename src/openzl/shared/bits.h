@@ -16,6 +16,10 @@
 #    include <immintrin.h>
 #endif
 
+#if ZL_HAS_SVE2_BITPERM
+#    include <arm_sve.h>
+#endif
+
 ZL_BEGIN_C_DECLS
 
 ZL_INLINE bool ZL_32bits(void)
@@ -510,6 +514,11 @@ ZL_INLINE uint64_t ZL_bitDeposit64(uint64_t src, uint64_t mask)
 {
 #if ZL_HAS_BMI2
     return _pdep_u64(src, mask);
+#elif ZL_HAS_SVE2_BITPERM
+    // This is not as terse as the BMI2 instruction because SVE2 BDEP is a
+    // vector instruction
+    return svlastb_u64(
+            svptrue_b64(), svbdep_u64(svdup_n_u64(src), svdup_n_u64(mask)));
 #else
     return ZL_bitDeposit64_fallback(src, mask);
 #endif
@@ -524,6 +533,9 @@ ZL_INLINE uint32_t ZL_bitDeposit32(uint32_t src, uint32_t mask)
 {
 #if ZL_HAS_BMI2
     return _pdep_u32(src, mask);
+#elif ZL_HAS_SVE2_BITPERM
+    return (uint32_t)svlastb_u32(
+            svptrue_b32(), svbdep_u32(svdup_n_u32(src), svdup_n_u32(mask)));
 #else
     return ZL_bitDeposit32_fallback(src, mask);
 #endif
