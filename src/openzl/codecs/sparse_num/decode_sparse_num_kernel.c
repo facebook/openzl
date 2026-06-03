@@ -6,6 +6,11 @@
 #include <stdint.h>
 #include <string.h>
 
+/*
+ * Distances are numeric stream elements, so the binding guarantees alignment
+ * for their element width. Use typed loads instead of byte copies to keep the
+ * kernel dependency-free and to match the numeric-stream host-endian contract.
+ */
 static uint32_t
 ZL_sparseNumReadDistance(const void* src, size_t index, size_t width)
 {
@@ -24,33 +29,38 @@ ZL_sparseNumReadDistance(const void* src, size_t index, size_t width)
     }
 }
 
+/*
+ * Most builds use 64-bit size_t. In that case, when both stream counts fit in
+ * 32 bits, summing all 32-bit distances plus all literals cannot overflow.
+ * This avoids a branch inside the common output-count loop while keeping a
+ * checked fallback for 32-bit platforms and oversized counts.
+ */
 static inline bool ZL_sparseNumDecodeCanUseUncheckedOutputCountSum(
         size_t numDistances,
-        size_t numValues)
+        size_t numLiterals)
 {
-    /*
-     * If size_t is at least 64-bit and both stream counts fit in 32 bits, the
-     * output count cannot overflow size_t:
-     * UINT32_MAX values + UINT32_MAX distances each worth UINT32_MAX zeros
-     * is 2^64 - 2^32, which is still below SIZE_MAX.
-     */
     if (sizeof(size_t) < 8) {
         return false;
     }
-    return numDistances <= UINT32_MAX && numValues <= UINT32_MAX;
+    return numDistances <= UINT32_MAX && numLiterals <= UINT32_MAX;
 }
 
+/*
+ * Compute the reconstructed element count before allocation. The public error
+ * value is SIZE_MAX, so the checked path rejects both real overflow and the
+ * otherwise-valid SIZE_MAX count, keeping the API a single-value return.
+ */
 size_t ZL_sparseNumDecodeOutputCount(
         const void* distances,
         size_t numDistances,
         size_t distanceWidth,
-        size_t numValues)
+        size_t numLiterals)
 {
     assert(ZL_sparseNumValidDistanceWidth(distanceWidth));
 
-    size_t count = numValues;
+    size_t count = numLiterals;
     if (ZL_sparseNumDecodeCanUseUncheckedOutputCountSum(
-                numDistances, numValues)) {
+                numDistances, numLiterals)) {
         for (size_t i = 0; i < numDistances; ++i) {
             count += ZL_sparseNumReadDistance(distances, i, distanceWidth);
         }
@@ -75,6 +85,12 @@ size_t ZL_sparseNumDecodeOutputCount(
     return count;
 }
 
+/*
+ * Debug-only write accounting helper. The binding allocates the destination
+ * from ZL_sparseNumDecodeOutputCount(), so the kernel does not perform runtime
+ * bounds recovery. These predicates exist to assert, in debug builds, that the
+ * write plan still matches the caller-computed destination size.
+ */
 static inline bool ZL_sparseNumDecodeWriteInBounds(
         size_t expectedDstSize,
         size_t producedBytes,
@@ -89,6 +105,12 @@ static inline bool ZL_sparseNumDecodeWriteInBounds(
     return true;
 }
 
+/*
+ * Account for every planned output write. The produced byte counter advances
+ * unconditionally, not inside assert(), so release builds keep the same control
+ * flow and future missing accounting remains visible to the final completeness
+ * assertion in debug builds.
+ */
 static inline void ZL_sparseNumDecodeTrackWrite(
         size_t expectedDstSize,
         size_t* producedBytes,
@@ -101,6 +123,11 @@ static inline void ZL_sparseNumDecodeTrackWrite(
     *producedBytes += writeBytes;
 }
 
+/*
+ * Completeness check paired with ZL_sparseNumDecodeTrackWrite(). It catches
+ * both under-writing and over-writing in debug builds when a future edit
+ * changes the decode loop's write structure.
+ */
 static inline bool ZL_sparseNumDecodeComplete(
         size_t expectedDstSize,
         size_t producedBytes)
@@ -108,12 +135,73 @@ static inline bool ZL_sparseNumDecodeComplete(
     return producedBytes == expectedDstSize;
 }
 
+/*
+ * Emit one run before a literal, or the optional final run. Dominant value 0 is
+ * the sparse-zero mode and maps directly to memset(0), preserving the common
+ * case.
+ */
+static inline void ZL_sparseNumDecodeWriteRun(
+        void* dst,
+        uint64_t dominant,
+        uint32_t distance,
+        size_t runBytes,
+        size_t valueWidth)
+{
+    if (dominant == 0) {
+        memset(dst, 0, runBytes);
+        return;
+    }
+
+    assert(dst != NULL);
+    assert(ZL_sparseNumIsAlignedForWidth(dst, valueWidth));
+
+    switch (valueWidth) {
+        case 1: {
+            memset(dst, (uint8_t)dominant, distance);
+            return;
+        }
+        case 2: {
+            uint16_t* const out  = (uint16_t*)dst;
+            uint16_t const value = (uint16_t)dominant;
+            for (uint32_t i = 0; i < distance; ++i) {
+                out[i] = value;
+            }
+            return;
+        }
+        case 4: {
+            uint32_t* const out  = (uint32_t*)dst;
+            uint32_t const value = (uint32_t)dominant;
+            for (uint32_t i = 0; i < distance; ++i) {
+                out[i] = value;
+            }
+            return;
+        }
+        case 8: {
+            uint64_t* const out = (uint64_t*)dst;
+            for (uint32_t i = 0; i < distance; ++i) {
+                out[i] = dominant;
+            }
+            return;
+        }
+        default:
+            assert(false);
+            return;
+    }
+}
+
+/*
+ * Shared decode loop. Each distance describes how many dominant symbols precede
+ * the next literal; an optional final distance describes the trailing dominant
+ * run. Keeping zero and non-zero dominant modes in one body avoids duplicating
+ * the distance/literal/write-accounting logic.
+ */
 static inline void ZL_sparseNumDecodeBody(
         void* dst,
         size_t expectedDstSize,
         const void* distances,
         size_t numDistances,
         size_t distanceWidth,
+        uint64_t dominant,
         const void* values,
         size_t numValues,
         size_t valueWidth)
@@ -128,11 +216,11 @@ static inline void ZL_sparseNumDecodeBody(
         uint32_t const distance =
                 ZL_sparseNumReadDistance(distances, i, distanceWidth);
         assert((size_t)distance <= SIZE_MAX / valueWidth);
-        size_t const zeroBytes = (size_t)distance * valueWidth;
-        ZL_sparseNumDecodeTrackWrite(
-                expectedDstSize, &producedBytes, zeroBytes);
-        memset(out, 0, zeroBytes);
-        out += zeroBytes;
+        size_t const runBytes = (size_t)distance * valueWidth;
+        ZL_sparseNumDecodeTrackWrite(expectedDstSize, &producedBytes, runBytes);
+        ZL_sparseNumDecodeWriteRun(
+                out, dominant, distance, runBytes, valueWidth);
+        out += runBytes;
 
         ZL_sparseNumDecodeTrackWrite(
                 expectedDstSize, &producedBytes, valueWidth);
@@ -144,15 +232,21 @@ static inline void ZL_sparseNumDecodeBody(
         uint32_t const distance =
                 ZL_sparseNumReadDistance(distances, numValues, distanceWidth);
         assert((size_t)distance <= SIZE_MAX / valueWidth);
-        size_t const zeroBytes = (size_t)distance * valueWidth;
-        ZL_sparseNumDecodeTrackWrite(
-                expectedDstSize, &producedBytes, zeroBytes);
-        memset(out, 0, zeroBytes);
+        size_t const runBytes = (size_t)distance * valueWidth;
+        ZL_sparseNumDecodeTrackWrite(expectedDstSize, &producedBytes, runBytes);
+        ZL_sparseNumDecodeWriteRun(
+                out, dominant, distance, runBytes, valueWidth);
     }
 
     assert(ZL_sparseNumDecodeComplete(expectedDstSize, producedBytes));
 }
 
+/*
+ * D8 is the expected distance width for normal sparse_num data. These shells
+ * force both distance width and value width to compile-time constants in the
+ * zero-dominant hot path, while leaving uncommon wider distances on the generic
+ * body.
+ */
 static inline void ZL_sparseNumDecodeD8V1(
         void* dst,
         size_t expectedDstSize,
@@ -167,6 +261,7 @@ static inline void ZL_sparseNumDecodeD8V1(
             distances,
             numDistances,
             1,
+            0,
             values,
             numValues,
             1);
@@ -186,6 +281,7 @@ static inline void ZL_sparseNumDecodeD8V2(
             distances,
             numDistances,
             1,
+            0,
             values,
             numValues,
             2);
@@ -205,6 +301,7 @@ static inline void ZL_sparseNumDecodeD8V4(
             distances,
             numDistances,
             1,
+            0,
             values,
             numValues,
             4);
@@ -224,17 +321,23 @@ static inline void ZL_sparseNumDecodeD8V8(
             distances,
             numDistances,
             1,
+            0,
             values,
             numValues,
             8);
 }
 
+/*
+ * Public kernel entry point. Dominant value 0 keeps the specialized sparse-zero
+ * dispatch; non-zero dominant values use the generic shared body.
+ */
 void ZL_sparseNumDecode(
         void* dst,
         size_t expectedDstSize,
         const void* distances,
         size_t numDistances,
         size_t distanceWidth,
+        uint64_t dominant,
         const void* values,
         size_t numValues,
         size_t valueWidth)
@@ -244,7 +347,7 @@ void ZL_sparseNumDecode(
     assert(numDistances == numValues
            || (numValues < SIZE_MAX && numDistances == numValues + 1));
 
-    if (distanceWidth == 1) {
+    if (dominant == 0 && distanceWidth == 1) {
         switch (valueWidth) {
             case 1:
                 ZL_sparseNumDecodeD8V1(
@@ -294,6 +397,7 @@ void ZL_sparseNumDecode(
             distances,
             numDistances,
             distanceWidth,
+            dominant,
             values,
             numValues,
             valueWidth);

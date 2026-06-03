@@ -10,11 +10,18 @@
 ZL_BEGIN_C_DECLS
 
 ZL_Report EI_sparse_num(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
+ZL_Report
+EI_sparse_num_auto(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 
 #define EI_SPARSE_NUM(id)                  \
     { .gd          = SPARSE_NUM_GRAPH(id), \
       .transform_f = EI_sparse_num,        \
       .name        = "!zl.sparse_num" }
+
+#define EI_SPARSE_NUM_AUTO(id)             \
+    { .gd          = SPARSE_NUM_GRAPH(id), \
+      .transform_f = EI_sparse_num_auto,   \
+      .name        = "!zl.sparse_num_auto" }
 
 ZL_END_C_DECLS
 

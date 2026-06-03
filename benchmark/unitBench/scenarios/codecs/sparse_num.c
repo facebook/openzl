@@ -28,7 +28,7 @@ static size_t sparseNumEncode(
 {
     size_t const numElts = srcSize / valueWidth;
     ZL_SparseNumEncodeInfo const info =
-            ZL_sparseNumComputeEncodeInfo(src, numElts, valueWidth);
+            ZL_sparseNumComputeEncodeInfo(src, numElts, valueWidth, 0);
 
     size_t const distanceBytes = info.numDistances * info.distanceWidth;
     size_t const valueBytes    = info.numValues * valueWidth;
@@ -50,7 +50,8 @@ static size_t sparseNumEncode(
             src,
             numElts,
             valueWidth,
-            info.distanceWidth);
+            info.distanceWidth,
+            0);
 
     return distanceBytes + valueBytes;
 }
@@ -147,6 +148,7 @@ static size_t sparseNumDecode(
             distances,
             numDistances,
             distanceWidth,
+            0,
             values,
             numValues,
             valueWidth);

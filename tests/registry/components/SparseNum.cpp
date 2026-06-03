@@ -38,7 +38,7 @@ class SparseNumComponent : public OpenZLComponent {
 
     int minFormatVersion() const override
     {
-        return 25;
+        return 26;
     }
 
     size_t compressBound(poly::span<const Input> inputs) const override
@@ -48,7 +48,9 @@ class SparseNumComponent : public OpenZLComponent {
 
     std::vector<NodeID> predefinedNodes(Compressor& compressor) const override
     {
-        return { nodes::SparseNum{}.parameterize(compressor) };
+        return { nodes::SparseNum{}.parameterize(compressor),
+                 nodes::SparseNumAuto{}.parameterize(compressor),
+                 nodes::SparseNumAuto{ 7 }.parameterize(compressor) };
     }
 
     std::vector<std::unique_ptr<OpenZLInput>> predefinedInputs() const override
@@ -63,8 +65,14 @@ class SparseNumComponent : public OpenZLComponent {
                 U8OpenZLInput::make(
                         std::vector<uint8_t>{ 0, 1, 0, 0, 2, 0, 3, 0 }));
         inputs.push_back(
+                U8OpenZLInput::make(
+                        std::vector<uint8_t>{ 7, 7, 1, 7, 2, 7, 7 }));
+        inputs.push_back(
                 U16OpenZLInput::make(
                         std::vector<uint16_t>{ 0, 1024, 0, 0, 65535 }));
+        inputs.push_back(
+                U16OpenZLInput::make(
+                        std::vector<uint16_t>{ 1024, 5, 1024, 1024, 6 }));
         inputs.push_back(
                 U32OpenZLInput::make(
                         std::vector<uint32_t>{ 0, 0, 1, 0, UINT32_MAX, 0 }));
