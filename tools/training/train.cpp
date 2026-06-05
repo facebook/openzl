@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <chrono>
-#include <stdexcept>
+#include <vector>
 
 #include "tools/logger/Logger.h"
 #include "tools/ml_selector/ml_selector_trainer.h"
@@ -73,7 +73,7 @@ std::vector<TrainedCandidate> train(
     std::vector<TrainedCandidate> retval;
     retval.reserve(serializedTrainedCompressors.size());
     for (auto& trainedCompressor : serializedTrainedCompressors) {
-        retval.emplace_back(
+        retval.push_back(
                 TrainedCandidate{ .serializedCompressor =
                                           std::string(*trainedCompressor) });
     }

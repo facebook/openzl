@@ -14,99 +14,90 @@ namespace openzl::training {
 
 using namespace tools::logger;
 
-namespace {
-
-/**
- * Sets up introspection hooks for capturing inputs to an untrained graph node.
- *
- * @param cctx Compression context to attach hooks to
- * @param untrainedGraphName Name of the untrained graph node
- * @return A hook object that can be used to retrieve captured inputs
- */
-UntrainedGraphHook setupIntrospectionHooks(
-        CCtx& cctx,
-        const std::vector<std::string>& untrainedGraphNames)
+std::map<std::string, std::vector<MultiInput>> collectInputStreams(
+        const std::vector<MultiInput>& inputs,
+        const std::vector<std::string>& graphNames,
+        const std::vector<std::string>& nodeNames,
+        CCtx& cctx)
 {
-    UntrainedGraphHook hooks(untrainedGraphNames);
-    ZL_CompressIntrospectionHooks* rawHooks = hooks.getRawHooks();
-    openzl::unwrap(
-            ZL_CCtx_attachIntrospectionHooks(cctx.get(), rawHooks),
-            "Failed to attach introspection hooks",
-            cctx.get());
-    return hooks;
-}
+    if (graphNames.empty() && nodeNames.empty()) {
+        return {};
+    }
 
-/**
- * Processes a single multi-input sample and updates the input streams map.
- *
- * @param input Multi-input sample to process
- * @param cctx Compression context to use
- * @param hooks Hook object to capture inputs from
- * @param inputStreamsPerSampleFilePerGraph Map to update with captured inputs
- */
-void captureInputs(
-        const MultiInput& input,
-        CCtx& cctx,
-        UntrainedGraphHook& hooks,
-        std::map<std::string, std::vector<MultiInput>>& samplesPerGraph)
-{
-    cctx.compress(*input);
-    const auto& captured = hooks.getInputs();
-
-    for (const auto& [graphName, samples] : captured) {
-        auto [it, _] =
-                samplesPerGraph.emplace(graphName, std::vector<MultiInput>());
-        for (auto& sample : samples) {
-            it->second.push_back(sample);
+    // double-check for duplicates
+    {
+        std::unordered_set<std::string> names;
+        for (const auto& graphName : graphNames) {
+            if (names.find(graphName) != names.end()) {
+                throw Exception("Duplicate graph name: " + graphName);
+            }
+            names.insert(graphName);
+        }
+        for (const auto& nodeName : nodeNames) {
+            if (names.find(nodeName) != names.end()) {
+                throw Exception("Duplicate node name: " + nodeName);
+            }
+            names.insert(nodeName);
         }
     }
-}
 
-} // anonymous namespace
+    Logger::log_c(
+            VERBOSE1,
+            "Collecting input streams for %zu graphs and %zu nodes",
+            graphNames.size(),
+            nodeNames.size());
+
+    std::map<std::string, std::vector<MultiInput>> result;
+
+    for (const auto& mi : inputs) {
+        SampleCollectionHook hooks(graphNames, nodeNames);
+        openzl::unwrap(
+                ZL_CCtx_attachIntrospectionHooks(
+                        cctx.get(), hooks.getRawHooks()),
+                "Failed to attach introspection hooks",
+                cctx.get());
+
+        cctx.compress(*mi);
+
+        for (const auto& [name, samples] : hooks.getInputs()) {
+            for (auto& sample : samples) {
+                result[name].push_back(sample);
+            }
+        }
+
+        openzl::unwrap(
+                ZL_CCtx_detachAllIntrospectionHooks(cctx.get()),
+                "Failed to detach introspection hooks",
+                cctx.get());
+    }
+
+    return result;
+}
 
 std::vector<MultiInput> collectInputStreamsForGraph(
         const std::vector<MultiInput>& inputs,
         const std::string& untrainedGraphName,
         CCtx& cctx)
 {
-    auto map =
-            collectInputStreamsForGraphs(inputs, { untrainedGraphName }, cctx);
+    auto map = collectInputStreams(inputs, { untrainedGraphName }, {}, cctx);
     return std::move(map[untrainedGraphName]);
 }
-
-/**
- * Collects input streams from multi-input samples for training multiple
- * unconfigured nodes.
- *
- * @param inputs Set of multi-input samples to process
- * @param untrainedGraphNames Names of the unconfigured graph nodes to train
- * @param cctx Compression context to use for processing samples
- * @return Map from graph name to vector of streams per sample
- */
 
 std::map<std::string, std::vector<MultiInput>> collectInputStreamsForGraphs(
         const std::vector<MultiInput>& inputs,
         const std::vector<std::string>& untrainedGraphNames,
         CCtx& cctx)
 {
-    Logger::log_c(
-            VERBOSE1,
-            "Collecting input streams for %zu graphs",
-            untrainedGraphNames.size());
+    return collectInputStreams(inputs, untrainedGraphNames, {}, cctx);
+}
 
-    std::map<std::string, std::vector<MultiInput>> samplesPerGraph;
-
-    for (const auto& mi : inputs) {
-        auto hooks = setupIntrospectionHooks(cctx, untrainedGraphNames);
-        captureInputs(mi, cctx, hooks, samplesPerGraph);
-    }
-
-    openzl::unwrap(
-            ZL_CCtx_detachAllIntrospectionHooks(cctx.get()),
-            "Failed to detach introspection hooks",
-            cctx.get());
-
-    return samplesPerGraph;
+std::vector<MultiInput> collectInputStreamsForNode(
+        const std::vector<MultiInput>& inputs,
+        const std::string& nodeName,
+        CCtx& cctx)
+{
+    auto map = collectInputStreams(inputs, {}, { nodeName }, cctx);
+    return std::move(map[nodeName]);
 }
 
 } // namespace openzl::training
