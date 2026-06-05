@@ -13,6 +13,11 @@
 #include "openzl/zl_output.h"
 #include "openzl/zl_portability.h"
 
+#if ZL_HAS_SVE2_BITPERM
+#    include <arm_neon.h>
+#    include <arm_neon_sve_bridge.h>
+#endif
+
 // ---------------------------------------------------------------------------
 // LUT builders: expand per-bucket base/mask arrays into packed 2-element LUTs
 // ---------------------------------------------------------------------------
@@ -226,6 +231,43 @@ static ZL_Report decodePartitionBitpack4(
         maskLUT[1] = _mm_loadu_si128((__m128i const*)maskHi);
     }
     const __m128i nibbleMask = _mm_set1_epi8(0x0F);
+#elif ZL_HAS_SVE2_BITPERM
+    // Build uint16_t LUTs for svtbl2: each 16-entry table spans two SVE
+    // registers (8 entries each at VL=128). svtbl2_u16 looks up directly at
+    // uint16_t granularity, avoiding the byte-split + zip pattern.
+    const svbool_t pg8u16 = svptrue_pat_b16(SV_VL8);
+    const svbool_t pg16   = svptrue_pat_b8(SV_VL16);
+    svuint16x2_t baseLUT16, maskLUT16;
+    svuint8_t bitsLUT;
+    {
+        uint16_t baseArr[16]  = { 0 };
+        uint16_t maskArr[16]  = { 0 };
+        uint8_t bitsArr[16]   = { 0 };
+        const svbool_t pg_u16 = svptrue_pat_b16(SV_VL8);
+        for (size_t p = 0; p < numPartitions; ++p) {
+            baseArr[p] = (uint16_t)bases[p];
+            maskArr[p] = (uint16_t)((1u << bits[p]) - 1);
+            bitsArr[p] = bits[p];
+        }
+        baseLUT16 = svcreate2_u16(
+                svld1_u16(pg_u16, baseArr), svld1_u16(pg_u16, baseArr + 8));
+        maskLUT16 = svcreate2_u16(
+                svld1_u16(pg_u16, maskArr), svld1_u16(pg_u16, maskArr + 8));
+        bitsLUT = svld1_u8(pg16, bitsArr);
+    }
+
+    // Also need to build LUTs for VL=256+ fallback paths
+    {
+        // Need to copy bases to local storage for when numPartitions < 16.
+        uint16_t baseLUTx1[16] = { 0 };
+        uint16_t maskLUTx1[16] = { 0 };
+        for (size_t p = 0; p < numPartitions; ++p) {
+            baseLUTx1[p] = (uint16_t)bases[p];
+            maskLUTx1[p] = (uint16_t)((1u << bits[p]) - 1);
+        }
+        expandLUT4(baseLUTx1, baseLUTx2);
+        expandLUT4(maskLUTx1, maskLUTx2);
+    }
 #else
     {
         // Need to copy bases to local storage for when numPartitions < 16.
@@ -315,19 +357,114 @@ static ZL_Report decodePartitionBitpack4(
                 bitsConsumed &= 7;
             }
 #else
-            for (size_t u = 0; u < kEltsPerIter; u += 4) {
-                const uint64_t base = (uint64_t)baseLUTx2[f[0]]
-                        | ((uint64_t)baseLUTx2[f[1]] << 32);
-                const uint64_t mask = (uint64_t)maskLUTx2[f[0]]
-                        | ((uint64_t)maskLUTx2[f[1]] << 32);
-                f += 2;
-                const uint64_t vData  = ZL_readLE64(v) >> bitsConsumed;
-                const uint64_t offset = ZL_bitDeposit64(vData, mask);
-                ZS_write64(o, base + offset);
-                o += 4;
-                bitsConsumed += (size_t)ZL_popcount64(mask);
-                v += bitsConsumed >> 3;
-                bitsConsumed &= 7;
+#    if ZL_HAS_SVE2_BITPERM
+            const bool useSVE2 = svcntb() == 16;
+            if (useSVE2) { // special case for 128-bit SVE vectors
+                // Load 8 bytes containing 16 x 4-bit bucket indices
+                const svuint16_t packed = svld1ub_u16(pg8u16, f);
+                f += 8;
+
+                // Unpack nibbles: lane-wise SLI -> mask directly isolates each
+                // nibble. Only the first 16 bytes are used downstream.
+                const svuint16_t sliResult = svsli_n_u16(packed, packed, 4);
+                const svuint8_t nibbles    = svreinterpret_u8_u16(
+                        svand_n_u16_z(pg8u16, sliResult, 0x0F0F));
+
+                // Widen indices from u8 to u16 for direct uint16_t table
+                // lookup.
+                const svuint16_t idx_lo = svunpklo_u16(nibbles);
+                const svuint16_t idx_hi = svunpkhi_u16(nibbles);
+
+                // svtbl2 looks up base and mask as uint16_t directly.
+                // Each call processes 8 elements from a 16-entry table.
+                const svuint16_t baseVlo = svtbl2_u16(baseLUT16, idx_lo);
+                const svuint16_t baseVhi = svtbl2_u16(baseLUT16, idx_hi);
+                const svuint16_t maskVlo = svtbl2_u16(maskLUT16, idx_lo);
+                const svuint16_t maskVhi = svtbl2_u16(maskLUT16, idx_hi);
+
+                // Each register holds two 64-bit lanes:
+                //   *SVE01 lane[0] = group 0, lane[1] = group 1
+                //   *SVE23 lane[0] = group 2, lane[1] = group 3
+                const svuint64_t baseSVE01 = svreinterpret_u64_u16(baseVlo);
+                const svuint64_t baseSVE23 = svreinterpret_u64_u16(baseVhi);
+                const svuint64_t maskSVE01 = svreinterpret_u64_u16(maskVlo);
+                const svuint64_t maskSVE23 = svreinterpret_u64_u16(maskVhi);
+
+                // Precompute per-group bit count sums via TBL + pairwise adds.
+                // This breaks the serial bitsConsumed dependency: all 4
+                // variable-stream positions are known up front, so groups
+                // can issue loads and bdep independently.
+                const svuint8_t bitCounts = svtbl_u8(bitsLUT, nibbles);
+                const uint8x16_t bcNeon   = svget_neonq_u8(bitCounts);
+                const uint16x8_t bc16     = vpaddlq_u8(bcNeon);
+                const uint32x4_t bc32     = vpaddlq_u16(bc16);
+
+                const size_t gs0  = vgetq_lane_u32(bc32, 0);
+                const size_t gs1  = vgetq_lane_u32(bc32, 1);
+                const size_t gs2  = vgetq_lane_u32(bc32, 2);
+                const size_t pos0 = bitsConsumed;
+                const size_t pos1 = pos0 + gs0;
+                const size_t pos2 = pos1 + gs1;
+                const size_t pos3 = pos2 + gs2;
+
+                // Groups 0+1: paired bdep processes both lanes in parallel.
+                // Two vData values are packed into one SVE register; the
+                // mask vector already has the right masks per lane from zip.
+                {
+                    const uint64_t vData0 =
+                            ZL_readLE64(v + (pos0 >> 3)) >> (pos0 & 7);
+                    const uint64_t vData1 =
+                            ZL_readLE64(v + (pos1 >> 3)) >> (pos1 & 7);
+                    const uint64x2_t src01Neon = { vData0, vData1 };
+                    const svuint64_t src01 =
+                            svset_neonq_u64(svundef_u64(), src01Neon);
+                    const svuint64_t res01 = svbdep_u64(src01, maskSVE01);
+                    const uint64x2_t out01 = vaddq_u64(
+                            svget_neonq_u64(res01), svget_neonq_u64(baseSVE01));
+                    vst1q_u64((uint64_t*)(void*)o, out01);
+                }
+
+                // Groups 2+3: same paired bdep pattern.
+                {
+                    const uint64_t vData2 =
+                            ZL_readLE64(v + (pos2 >> 3)) >> (pos2 & 7);
+                    const uint64_t vData3 =
+                            ZL_readLE64(v + (pos3 >> 3)) >> (pos3 & 7);
+                    const uint64x2_t src23Neon = { vData2, vData3 };
+                    const svuint64_t src23 =
+                            svset_neonq_u64(svundef_u64(), src23Neon);
+                    const svuint64_t res23 = svbdep_u64(src23, maskSVE23);
+                    const uint64x2_t out23 = vaddq_u64(
+                            svget_neonq_u64(res23), svget_neonq_u64(baseSVE23));
+                    vst1q_u64((uint64_t*)(void*)(o + 8), out23);
+                }
+
+                o += 16;
+                {
+                    const size_t gs3v         = vgetq_lane_u32(bc32, 3);
+                    const size_t newBitsTotal = pos3 + gs3v;
+                    v += newBitsTotal >> 3;
+                    bitsConsumed = newBitsTotal & 7;
+                }
+            }
+#    else
+            const bool useSVE2 = false;
+#    endif
+            if (!useSVE2) {
+                for (size_t u = 0; u < kEltsPerIter; u += 4) {
+                    const uint64_t base = (uint64_t)baseLUTx2[f[0]]
+                            | ((uint64_t)baseLUTx2[f[1]] << 32);
+                    const uint64_t mask = (uint64_t)maskLUTx2[f[0]]
+                            | ((uint64_t)maskLUTx2[f[1]] << 32);
+                    f += 2;
+                    const uint64_t vData  = ZL_readLE64(v) >> bitsConsumed;
+                    const uint64_t offset = ZL_bitDeposit64(vData, mask);
+                    ZS_write64(o, base + offset);
+                    o += 4;
+                    bitsConsumed += (size_t)ZL_popcount64(mask);
+                    v += bitsConsumed >> 3;
+                    bitsConsumed &= 7;
+                }
             }
 #endif
         }
@@ -473,7 +610,8 @@ static ZL_Report decodePartitionBitpack5(
                 idxVec = _mm_packus_epi16(elts0, elts1);
             }
 
-            // Lower 4 bits for vpshufb index (selects within a 16-entry half).
+            // Lower 4 bits for vpshufb index (selects within a 16-entry
+            // half).
             const __m128i idx_low4 = _mm_and_si128(idxVec, nibbleMask);
             // pshufb zeros bytes where the index has bit 7 set. OR the
             // ge16/lt16 mask into the index so the wrong partition half
@@ -755,7 +893,8 @@ ZL_Report ZL_partitionBitpackFusedDecode(ZL_DecoderFusion* state)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(state->dctx);
 
-    // Codec index 0 = child (bitpack_int), codec index 1 = parent (partition)
+    // Codec index 0 = child (bitpack_int), codec index 1 = parent
+    // (partition)
     const size_t bitpackIdx   = 0;
     const size_t partitionIdx = 1;
 
