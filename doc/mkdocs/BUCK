@@ -36,10 +36,10 @@ buck_genrule(
                     "SCRIPTPATH=\\$(dirname $SCRIPT)",
                     "cd $SCRIPTPATH",
                     "$(location :static_docs_build_script) --pwd \\$(hg root)/fbcode/openzl/{}/doc/mkdocs --use-system-python-extension --test".format(
-                        BRANCH_NAME
+                        BRANCH_NAME,
                     ),
-                ])
-            )
+                ]),
+            ),
         )
     ),
 )
@@ -71,7 +71,6 @@ python_binary(
     name = "mkdocs",
     main_function = "mkdocs.__main__.cli",
     par_style = "xar",
-    py_version = "3.12",
     deps = [
         "../../py:openzl",  # @manual
         "fbsource//third-party/pypi/mkdocs:mkdocs",
