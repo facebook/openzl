@@ -565,6 +565,11 @@ ZL_INLINE uint64_t ZL_bitExtract64(uint64_t src, uint64_t mask)
 {
 #if ZL_HAS_BMI2
     return _pext_u64(src, mask);
+#elif ZL_HAS_SVE2_BITPERM
+    // This is not as terse as the BMI2 instruction because SVE2 BEXT is a
+    // vector instruction
+    return svlastb_u64(
+            svptrue_b64(), svbext_u64(svdup_n_u64(src), svdup_n_u64(mask)));
 #else
     return ZL_bitExtract64_fallback(src, mask);
 #endif
@@ -579,6 +584,9 @@ ZL_INLINE uint32_t ZL_bitExtract32(uint32_t src, uint32_t mask)
 {
 #if ZL_HAS_BMI2
     return _pext_u32(src, mask);
+#elif ZL_HAS_SVE2_BITPERM
+    return svlastb_u32(
+            svptrue_b32(), svbext_u32(svdup_n_u32(src), svdup_n_u32(mask)));
 #else
     return ZL_bitExtract32_fallback(src, mask);
 #endif
