@@ -553,6 +553,79 @@ static ZL_Report decodePartitionBitpack5(
             _mm_setr_epi8(0, 1, 0, 1, 1, 2, 1, 2, 2, 3, 3, 4, 3, 4, 4, 5);
     const __m128i multipliers5 =
             _mm_setr_epi16(2048, 64, 512, 16, 128, 1024, 32, 256);
+#elif ZL_HAS_SVE2_BITPERM
+    (void)baseLUTx2;
+    (void)maskLUTx2;
+
+    // Tuned for 128-bit SVE (see decodePartitionBitpack4 comment).
+    if (svcntb() != 16) {
+        return decodeTail(
+                out,
+                sizeof(uint16_t),
+                0,
+                numElts,
+                fixed,
+                fixed + fixedSize,
+                5,
+                var,
+                var + varSize,
+                0,
+                bases,
+                bits,
+                numPartitions);
+    }
+
+    const svbool_t pg16 = svptrue_pat_b8(SV_VL16);
+
+    // 32-entry LUTs as SVE2 two-register tables for svtbl2.
+    // svtbl2 looks up from a 32-byte concatenated {Zn1,Zn2} table in
+    // one instruction, replacing the two-pass tbl + orr pattern.
+    svuint8x2_t baseLoLUT5, baseHiLUT5, maskLoLUT5, maskHiLUT5, bitsLUT5;
+    {
+        uint8_t baseLo0[16] = { 0 }, baseHi0[16] = { 0 };
+        uint8_t maskLo0[16] = { 0 }, maskHi0[16] = { 0 };
+        uint8_t bitsArr0[16] = { 0 };
+        uint8_t baseLo1[16] = { 0 }, baseHi1[16] = { 0 };
+        uint8_t maskLo1[16] = { 0 }, maskHi1[16] = { 0 };
+        uint8_t bitsArr1[16] = { 0 };
+        for (size_t p = 0; p < numPartitions; ++p) {
+            const uint16_t b = (uint16_t)bases[p];
+            const uint16_t m = (uint16_t)((1u << bits[p]) - 1);
+            uint8_t* bLo     = (p < 16) ? baseLo0 : baseLo1;
+            uint8_t* bHi     = (p < 16) ? baseHi0 : baseHi1;
+            uint8_t* mLo     = (p < 16) ? maskLo0 : maskLo1;
+            uint8_t* mHi     = (p < 16) ? maskHi0 : maskHi1;
+            uint8_t* bi      = (p < 16) ? bitsArr0 : bitsArr1;
+            const size_t idx = p & 15;
+            bLo[idx]         = (uint8_t)b;
+            bHi[idx]         = (uint8_t)(b >> 8);
+            mLo[idx]         = (uint8_t)m;
+            mHi[idx]         = (uint8_t)(m >> 8);
+            bi[idx]          = bits[p];
+        }
+        baseLoLUT5 =
+                svcreate2_u8(svld1_u8(pg16, baseLo0), svld1_u8(pg16, baseLo1));
+        baseHiLUT5 =
+                svcreate2_u8(svld1_u8(pg16, baseHi0), svld1_u8(pg16, baseHi1));
+        maskLoLUT5 =
+                svcreate2_u8(svld1_u8(pg16, maskLo0), svld1_u8(pg16, maskLo1));
+        maskHiLUT5 =
+                svcreate2_u8(svld1_u8(pg16, maskHi0), svld1_u8(pg16, maskHi1));
+        bitsLUT5 = svcreate2_u8(
+                svld1_u8(pg16, bitsArr0), svld1_u8(pg16, bitsArr1));
+    }
+
+    // Constants for 5-bit field extraction (same logic as SSSE3 path):
+    // arrange byte pairs into 16-bit lanes, variable-shift via multiply
+    // to align each 5-bit field to bits [15:11], then right-shift by 11.
+    const uint8_t shufLoArr[16] = { 0, 1, 0, 1, 1, 2, 1, 2,
+                                    2, 3, 3, 4, 3, 4, 4, 5 };
+    const uint8_t shufHiArr[16] = { 5, 6, 5, 6, 6, 7, 6, 7,
+                                    7, 8, 8, 9, 8, 9, 9, 10 };
+    const uint16_t mulArr5[8]   = { 2048, 64, 512, 16, 128, 1024, 32, 256 };
+    const svuint8_t shufIdxLo   = svld1_u8(pg16, shufLoArr);
+    const svuint8_t shufIdxHi   = svld1_u8(pg16, shufHiArr);
+    const svuint16_t mul5       = svld1_u16(svptrue_pat_b16(SV_VL8), mulArr5);
 #else
     {
         // Need to copy bases to local storage for when numPartitions < 32.
@@ -661,6 +734,101 @@ static ZL_Report decodePartitionBitpack5(
                 bitsConsumed += (size_t)ZL_popcount64(mask);
                 v += bitsConsumed >> 3;
                 bitsConsumed &= 7;
+            }
+#elif ZL_HAS_SVE2_BITPERM
+            // Extract 16 x 5-bit bucket indices from 10 bytes.
+            // Two groups of 8: bytes 0-4 and bytes 5-9, each unpacked
+            // with byte-pair shuffle + multiply + right-shift.
+            const svuint8_t raw = svld1_u8(pg16, f);
+            f += 10;
+            const svuint16_t elts0 = svlsr_n_u16_x(
+                    svptrue_b16(),
+                    svmul_u16_x(
+                            svptrue_b16(),
+                            svreinterpret_u16_u8(svtbl_u8(raw, shufIdxLo)),
+                            mul5),
+                    11);
+            const svuint16_t elts1 = svlsr_n_u16_x(
+                    svptrue_b16(),
+                    svmul_u16_x(
+                            svptrue_b16(),
+                            svreinterpret_u16_u8(svtbl_u8(raw, shufIdxHi)),
+                            mul5),
+                    11);
+            // Narrow to 16 x uint8_t indices (values 0..31).
+            const svuint8_t indices = svuzp1_u8(
+                    svreinterpret_u8_u16(elts0), svreinterpret_u8_u16(elts1));
+
+            // svtbl2: single-instruction 32-entry lookup (replaces
+            // two-pass tbl + sub + orr for each LUT).
+            const svuint8_t bLoV = svtbl2_u8(baseLoLUT5, indices);
+            const svuint8_t bHiV = svtbl2_u8(baseHiLUT5, indices);
+            const svuint8_t mLoV = svtbl2_u8(maskLoLUT5, indices);
+            const svuint8_t mHiV = svtbl2_u8(maskHiLUT5, indices);
+
+            // Interleave lo/hi bytes to uint16_t.
+            // Bases bridge to NEON, masks stay in SVE for paired bdep.
+            const uint64x2_t baseV[2] = {
+                vreinterpretq_u64_u8(svget_neonq_u8(svzip1_u8(bLoV, bHiV))),
+                vreinterpretq_u64_u8(svget_neonq_u8(svzip2_u8(bLoV, bHiV))),
+            };
+            const svuint64_t maskSVE01 =
+                    svreinterpret_u64_u8(svzip1_u8(mLoV, mHiV));
+            const svuint64_t maskSVE23 =
+                    svreinterpret_u64_u8(svzip2_u8(mLoV, mHiV));
+
+            // Precompute per-group bit count sums via TBL + pairwise adds.
+            const svuint8_t bitCounts = svtbl2_u8(bitsLUT5, indices);
+            const uint8x16_t bcNeon   = svget_neonq_u8(bitCounts);
+            const uint16x8_t bc16     = vpaddlq_u8(bcNeon);
+            const uint32x4_t bc32     = vpaddlq_u16(bc16);
+
+            const size_t gs0  = vgetq_lane_u32(bc32, 0);
+            const size_t gs1  = vgetq_lane_u32(bc32, 1);
+            const size_t gs2  = vgetq_lane_u32(bc32, 2);
+            const size_t pos0 = bitsConsumed;
+            const size_t pos1 = pos0 + gs0;
+            const size_t pos2 = pos1 + gs1;
+            const size_t pos3 = pos2 + gs2;
+
+            // Groups 0+1: paired bdep.
+            {
+                const uint64_t vData0 =
+                        ZL_readLE64(v + (pos0 >> 3)) >> (pos0 & 7);
+                const uint64_t vData1 =
+                        ZL_readLE64(v + (pos1 >> 3)) >> (pos1 & 7);
+                const svuint64_t src01 = svset_neonq_u64(
+                        svundef_u64(),
+                        vcombine_u64(vcreate_u64(vData0), vcreate_u64(vData1)));
+                const uint64x2_t res01 =
+                        svget_neonq_u64(svbdep_u64(src01, maskSVE01));
+                const uint64x2_t out01 = vaddq_u64(res01, baseV[0]);
+                ZL_writeLE64(o, vgetq_lane_u64(out01, 0));
+                ZL_writeLE64(o + 4, vgetq_lane_u64(out01, 1));
+            }
+
+            // Groups 2+3: paired bdep.
+            {
+                const uint64_t vData2 =
+                        ZL_readLE64(v + (pos2 >> 3)) >> (pos2 & 7);
+                const uint64_t vData3 =
+                        ZL_readLE64(v + (pos3 >> 3)) >> (pos3 & 7);
+                const svuint64_t src23 = svset_neonq_u64(
+                        svundef_u64(),
+                        vcombine_u64(vcreate_u64(vData2), vcreate_u64(vData3)));
+                const uint64x2_t res23 =
+                        svget_neonq_u64(svbdep_u64(src23, maskSVE23));
+                const uint64x2_t out23 = vaddq_u64(res23, baseV[1]);
+                ZL_writeLE64(o + 8, vgetq_lane_u64(out23, 0));
+                ZL_writeLE64(o + 12, vgetq_lane_u64(out23, 1));
+            }
+
+            o += 16;
+            {
+                const size_t gs3v         = vgetq_lane_u32(bc32, 3);
+                const size_t newBitsTotal = pos3 + gs3v;
+                v += newBitsTotal >> 3;
+                bitsConsumed = newBitsTotal & 7;
             }
 #else
             for (size_t u = 0; u < kEltsPerIter; u += 8) {
