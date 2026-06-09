@@ -12,6 +12,12 @@
 
 #if ZL_ARCH_X86_64
 #    include <emmintrin.h>
+#elif ZL_ARCH_ARM64
+#    include <arm_neon.h>
+#    if ZL_HAS_SVE2_BITPERM
+#        include <arm_neon_sve_bridge.h>
+#        include <arm_sve.h>
+#    endif
 #endif
 #ifdef __AVX2__
 #    include <immintrin.h>
@@ -106,6 +112,56 @@ ZL_INLINE ZL_Vec128 ZL_Vec128_and(ZL_Vec128 x, ZL_Vec128 y)
 ZL_INLINE ZL_VecMask ZL_Vec128_mask8(ZL_Vec128 v)
 {
     return (ZL_VecMask)_mm_movemask_epi8(v);
+}
+
+#elif ZL_ARCH_ARM64
+
+typedef uint8x16_t ZL_Vec128;
+
+ZL_INLINE ZL_Vec128 ZL_Vec128_read(void const* ptr)
+{
+    return vld1q_u8((uint8_t const*)ptr);
+}
+
+ZL_INLINE void ZL_Vec128_write(void* ptr, ZL_Vec128 v)
+{
+    vst1q_u8((uint8_t*)ptr, v);
+}
+
+ZL_INLINE ZL_Vec128 ZL_Vec128_set8(uint8_t val)
+{
+    return vdupq_n_u8(val);
+}
+
+ZL_INLINE ZL_Vec128 ZL_Vec128_cmp8(ZL_Vec128 x, ZL_Vec128 y)
+{
+    return vceqq_u8(x, y);
+}
+
+ZL_INLINE ZL_Vec128 ZL_Vec128_and(ZL_Vec128 x, ZL_Vec128 y)
+{
+    return vandq_u8(x, y);
+}
+
+ZL_INLINE ZL_VecMask ZL_Vec128_mask8(ZL_Vec128 v)
+{
+#    if ZL_HAS_SVE2_BITPERM
+    uint64x2_t const neon64 = vreinterpretq_u64_u8(v);
+    svuint64_t const sve64  = svset_neonq_u64(svundef_u64(), neon64);
+    svuint64_t const mask64 =
+            svbext_u64(sve64, svdup_n_u64(0x8080808080808080ULL));
+    uint64x2_t const out64 = svget_neonq_u64(mask64);
+    return (ZL_VecMask)vgetq_lane_u64(out64, 0)
+            | ((ZL_VecMask)vgetq_lane_u64(out64, 1) << 8);
+#    else
+    static uint8_t const weights[16] = { 1, 2, 4, 8, 16, 32, 64, 128,
+                                         1, 2, 4, 8, 16, 32, 64, 128 };
+    uint8x16_t const highBits        = vshrq_n_u8(v, 7);
+    uint8x16_t const weighted        = vmulq_u8(highBits, vld1q_u8(weights));
+    uint8_t const loAcc              = vaddv_u8(vget_low_u8(weighted));
+    uint8_t const hiAcc              = vaddv_u8(vget_high_u8(weighted));
+    return (ZL_VecMask)loAcc | ((ZL_VecMask)hiAcc << 8);
+#    endif
 }
 
 #else
