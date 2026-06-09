@@ -26,8 +26,16 @@ ZL_Report EI_bitSplit_withWidths(
     ZL_ASSERT_NN(in);
     ZL_ASSERT_EQ(ZL_Input_type(in), ZL_Type_numeric);
     ZL_ASSERT_NN(bitWidths);
-    ZL_ASSERT_GT(nbWidths, 0);
-    ZL_ASSERT_LE(nbWidths, 64);
+    ZL_ERR_IF_EQ(
+            nbWidths,
+            0,
+            nodeParameter_invalid,
+            "bitSplit requires at least one bit width");
+    ZL_ERR_IF_GT(
+            nbWidths,
+            64,
+            nodeParameter_invalid,
+            "bitSplit supports at most 64 bit widths");
 
     size_t const inputEltWidth = ZL_Input_eltWidth(in);
     ZL_ASSERT(
@@ -136,6 +144,11 @@ ZL_Report EI_bitSplit(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
             0,
             nodeParameter_invalid,
             "bitSplit requires at least one bit width parameter");
+    ZL_ERR_IF_GT(
+            nbWidths,
+            64,
+            nodeParameter_invalid,
+            "bitSplit supports at most 64 bit widths");
 
     return EI_bitSplit_withWidths(eictx, in, bitWidths, nbWidths);
 }
