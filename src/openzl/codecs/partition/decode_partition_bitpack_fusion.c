@@ -5,7 +5,6 @@
 #include "openzl/codecs/bitpack/decode_bitpack_binding.h"
 #include "openzl/codecs/common/bitstream/ff_bitstream.h"
 #include "openzl/codecs/partition/common_partition.h"
-#include "openzl/common/wire_format.h"
 #include "openzl/shared/bits.h"
 #include "openzl/shared/mem.h"
 #include "openzl/shared/numeric_operations.h"
