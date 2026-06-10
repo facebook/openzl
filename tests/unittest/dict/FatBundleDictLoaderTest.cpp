@@ -5,7 +5,7 @@
 #include "openzl/zl_dictloader.h"
 #include "openzl/zl_materializer.h"
 
-#include "openzl/dict/dictloader.h" // DictLoader_getDictBundle
+#include "openzl/dict/dictloader.h" // ZL_RES_value(ZL_DictLoader_fetchDictBundl)e
 #include "tests/unittest/dict/DictTestHelpers.h"
 
 namespace {
@@ -208,8 +208,9 @@ TEST_F(FatBundleDictLoaderTest, LoadEmptyBundle)
     ASSERT_FALSE(ZL_isError(ZL_FatBundleDictLoader_loadFatBundle(
             loader, fatBuf.data(), fatBuf.size())));
 
-    ZL_BundleID bid             = extractBundleID(fatBuf);
-    const ZL_DictBundle* bundle = DictLoader_getDictBundle(baseLoader, &bid);
+    ZL_BundleID bid = extractBundleID(fatBuf);
+    const ZL_DictBundle* bundle =
+            ZL_RES_value(ZL_DictLoader_fetchDictBundle(baseLoader, &bid));
     ASSERT_NE(bundle, nullptr);
     EXPECT_EQ(bundle->info.numDicts, 0u);
     EXPECT_EQ(bundle->dicts, nullptr);
@@ -223,8 +224,9 @@ TEST_F(FatBundleDictLoaderTest, LoadLargeContentDict)
     ASSERT_FALSE(ZL_isError(ZL_FatBundleDictLoader_loadFatBundle(
             loader, fatBuf.data(), fatBuf.size())));
 
-    ZL_BundleID bid             = extractBundleID(fatBuf);
-    const ZL_DictBundle* bundle = DictLoader_getDictBundle(baseLoader, &bid);
+    ZL_BundleID bid = extractBundleID(fatBuf);
+    const ZL_DictBundle* bundle =
+            ZL_RES_value(ZL_DictLoader_fetchDictBundle(baseLoader, &bid));
     ASSERT_NE(bundle, nullptr);
     EXPECT_EQ(bundle->info.numDicts, 1u);
     ASSERT_NE(bundle->dicts, nullptr);
@@ -244,8 +246,9 @@ TEST_F(FatBundleDictLoaderTest, RoundTripMultipleDicts)
     ASSERT_FALSE(ZL_isError(ZL_FatBundleDictLoader_loadFatBundle(
             loader, fatBuf.data(), fatBuf.size())));
 
-    ZL_BundleID bid             = extractBundleID(fatBuf);
-    const ZL_DictBundle* bundle = DictLoader_getDictBundle(baseLoader, &bid);
+    ZL_BundleID bid = extractBundleID(fatBuf);
+    const ZL_DictBundle* bundle =
+            ZL_RES_value(ZL_DictLoader_fetchDictBundle(baseLoader, &bid));
     ASSERT_NE(bundle, nullptr);
     EXPECT_EQ(bundle->info.numDicts, 3u);
     ASSERT_NE(bundle->dicts, nullptr);
@@ -289,11 +292,13 @@ TEST_F(FatBundleDictLoaderTest, DuplicateBundleIsIdempotent)
     // Loading the same bundle twice should succeed (idempotent)
     EXPECT_FALSE(ZL_isError(ZL_FatBundleDictLoader_loadFatBundle(
             loader, fatBuf.data(), fatBuf.size())));
-    const ZL_DictBundle* bundle1 = DictLoader_getDictBundle(baseLoader, &bid);
+    const ZL_DictBundle* bundle1 =
+            ZL_RES_value(ZL_DictLoader_fetchDictBundle(baseLoader, &bid));
 
     EXPECT_FALSE(ZL_isError(ZL_FatBundleDictLoader_loadFatBundle(
             loader, fatBuf.data(), fatBuf.size())));
-    const ZL_DictBundle* bundle2 = DictLoader_getDictBundle(baseLoader, &bid);
+    const ZL_DictBundle* bundle2 =
+            ZL_RES_value(ZL_DictLoader_fetchDictBundle(baseLoader, &bid));
 
     // The two calls should point to the same bundle
     ASSERT_EQ(bundle1, bundle2);
@@ -317,8 +322,10 @@ TEST_F(FatBundleDictLoaderTest, DictDedupAcrossBundles)
     ZL_BundleID bid1 = extractBundleID(fatBuf1);
     ZL_BundleID bid2 = extractBundleID(fatBuf2);
 
-    const ZL_DictBundle* bundle1 = DictLoader_getDictBundle(baseLoader, &bid1);
-    const ZL_DictBundle* bundle2 = DictLoader_getDictBundle(baseLoader, &bid2);
+    const ZL_DictBundle* bundle1 =
+            ZL_RES_value(ZL_DictLoader_fetchDictBundle(baseLoader, &bid1));
+    const ZL_DictBundle* bundle2 =
+            ZL_RES_value(ZL_DictLoader_fetchDictBundle(baseLoader, &bid2));
     ASSERT_NE(bundle1, nullptr);
     ASSERT_NE(bundle2, nullptr);
     ASSERT_EQ(bundle1->info.numDicts, 2u);

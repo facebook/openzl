@@ -20,17 +20,16 @@
 #include "openzl/decompress/dtransforms.h" // DTransforms_manager, TransformID
 #include "openzl/decompress/gdparams.h"
 #include "openzl/dict/dict_constants.h" // ZL_DICT_INDEX_NONE
-#include "openzl/dict/dictloader.h"     // struct ZL_DictLoader_s
 #include "openzl/shared/mem.h"          // ZL_readLE32, etc.
 #include "openzl/shared/xxhash.h"       // XXH3_64bits
 #include "openzl/zl_buffer.h"           // ZL_RBuffer
 #include "openzl/zl_data.h"
 #include "openzl/zl_decompress.h" // ZL_TypedDecoderDesc
 #include "openzl/zl_dict.h"       // ZL_Dict, ZL_DictBundle
+#include "openzl/zl_dictloader.h" // ZL_DictLoader_fetchDictBundle
 #include "openzl/zl_dtransform.h" //
 #include "openzl/zl_errors.h"
 #include "openzl/zl_opaque_types.h" // ZL_IDType
-#include "openzl/zl_unique_id.h"
 #include "openzl/zl_version.h"
 
 // --------------------------
@@ -1966,11 +1965,13 @@ ZL_Report ZL_DCtx_decompressMultiTBuffer(
                     dctx->dictLoader,
                     dictNoRecord,
                     "Frame references a dict bundle but no dict loader is attached");
-            dctx->bundle = DictLoader_getDictBundle(dctx->dictLoader, bundleID);
-            ZL_ERR_IF_NULL(
-                    dctx->bundle,
-                    dictNoRecord,
+            ZL_RESULT_OF(ZL_DictBundleConstPtr)
+            bundleRes =
+                    ZL_DictLoader_fetchDictBundle(dctx->dictLoader, bundleID);
+            ZL_ERR_IF_ERR(
+                    bundleRes,
                     "Could not fetch dict bundle required by the frame");
+            dctx->bundle = ZL_RES_value(bundleRes);
         }
     }
 

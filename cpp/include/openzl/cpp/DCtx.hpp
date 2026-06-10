@@ -18,6 +18,7 @@
 
 namespace openzl {
 class CustomDecoder;
+class DictLoader;
 
 namespace visualizer {
 class DecompressionTraceHooks; // forward declaration
@@ -73,6 +74,8 @@ class DCtx {
 
     void registerCustomDecoder(const ZL_MIDecoderDesc& desc);
     void registerCustomDecoder(std::shared_ptr<CustomDecoder> decoder);
+
+    void refDictLoader(DictLoader& loader);
 
     void writeTraces(bool enabled, bool streamPreview = true);
 
