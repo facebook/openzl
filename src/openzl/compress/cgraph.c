@@ -859,6 +859,21 @@ ZL_Report ZL_Compressor_overrideGraphParams(
     return ZL_returnSuccess();
 }
 
+ZL_Report ZL_Compressor_overrideNodeParams(
+        ZL_Compressor* compressor,
+        ZL_NodeID node,
+        const ZL_NodeParameters* np)
+{
+    ZL_RESULT_DECLARE_SCOPE(size_t, compressor);
+    ZL_ERR_IF_NULL(
+            NM_getCNode(&compressor->nmgr, node),
+            node_invalid,
+            "Node must be registered in compressor");
+
+    ZL_ERR_IF_ERR(NM_overrideNodeParams(&compressor->nmgr, node, np));
+    return ZL_returnSuccess();
+}
+
 ZL_Report ZL_Compressor_overrideBaseGraph(
         ZL_Compressor* compressor,
         ZL_GraphID graph,
