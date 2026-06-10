@@ -7,6 +7,7 @@
 #include "tools/ml_selector/ml_selector_trainer.h"
 #include "tools/training/ace/ace.h"
 #include "tools/training/clustering/clustering_graph_trainer.h"
+#include "tools/training/dict/base_dict_trainer.h"
 #include "tools/training/graph_mutation/graph_mutation_utils.h"
 #include "tools/training/train.h"
 #include "tools/training/utils/serialized_compressor_internal.h"

@@ -17,6 +17,7 @@ zs_cxxlibrary(
         "../ml_selector:ml_selector_trainer",
         "ace:automated_compressor_explorer",
         "clustering:clustering_graph_trainer",
+        "dict:base_dict_trainer",
         "graph_mutation:graph_mutation",
     ],
     exported_deps = [

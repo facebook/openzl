@@ -81,6 +81,11 @@ CTM_registerStandardTransform(
 /// the dict's position within the compressor's bundle.
 void CTM_setDictIndex(CNodes_manager* ctm, CNodeID id, uint32_t index);
 
+ZL_Report CTM_overrideNodeParams(
+        CNodes_manager* ctm,
+        CNodeID id,
+        const ZL_NodeParameters* np);
+
 /**
  * Rolls back the registration of @p id
  * @warning This only works when @p id was the last node registered. If local

@@ -22,6 +22,7 @@ if (OPENZL_BUILD_TRAINING_TOOLS)
   set_property(TARGET tools_training PROPERTY POSITION_INDEPENDENT_CODE ON)
 
   target_include_directories(tools_training PUBLIC ${PROJECT_SOURCE_DIR})
+  target_compile_definitions(tools_training PUBLIC ZDICT_STATIC_LINKING_ONLY)
   apply_openzl_compile_options_to_target(tools_training)
     target_link_libraries(
         tools_training

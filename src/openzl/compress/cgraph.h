@@ -133,6 +133,22 @@ ZL_Report ZL_Compressor_overrideBaseGraph(
         ZL_GraphID newBaseGraph);
 
 /**
+ * Warning: This is part of experimental API for compressor mutation.
+ *
+ * Requires that:
+ * @p node is a parameterized node registered in @p compressor
+ *
+ * Replaces the parameters of @p node with @p np.
+ * @note: This function does not do any additional work typically associated
+ * with ZL_Compressor_registerParameterizedNode(), including dictionary
+ * unpacking.
+ */
+ZL_Report ZL_Compressor_overrideNodeParams(
+        ZL_Compressor* compressor,
+        ZL_NodeID node,
+        const ZL_NodeParameters* np);
+
+/**
  * Look up a previously loaded dict by its ZL_DictID.
  * @param matDesc must match the materializer used when the dict was loaded.
  * @returns the dict, or NULL if no dict with this ID has been loaded.
