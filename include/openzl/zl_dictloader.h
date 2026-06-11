@@ -66,6 +66,12 @@ void ZL_DictLoader_free(ZL_DictLoader* loader);
 void* ZL_DictLoader_getOpaque(const ZL_DictLoader* loader);
 
 /**
+ * A trampoline to the underlying ZL_DictLoaderDesc.
+ */
+ZL_RESULT_OF(ZL_DictBundleConstPtr)
+ZL_DictLoader_fetchDictBundle(ZL_DictLoader* loader, const ZL_BundleID* id);
+
+/**
  * Registers a dict materialization function for a particular custom codec. By
  * "materialization", we mean a function to turn a serialized string into an
  * in-memory object. By "dematerialization" we mean a function to free the

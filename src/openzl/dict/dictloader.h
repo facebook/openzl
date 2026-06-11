@@ -44,12 +44,6 @@ const ZL_MaterializerDesc2* DictLoader_getMaterializer(
         const ZL_DictLoader* loader,
         ZL_IDType codecID,
         bool isCustomCodec);
-/**
- * Trampoline to the underlying ZL_DictLoaderDesc.
- */
-const ZL_DictBundle* DictLoader_getDictBundle(
-        ZL_DictLoader* loader,
-        const ZL_BundleID* id);
 
 #if defined(__cplusplus)
 } // extern "C"

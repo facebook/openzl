@@ -196,19 +196,12 @@ static ZL_Report DictLoader_registerStandardMaterializer(
     return ZL_returnSuccess();
 }
 
-const ZL_DictBundle* DictLoader_getDictBundle(
-        ZL_DictLoader* loader,
-        const ZL_BundleID* id)
+ZL_RESULT_OF(ZL_DictBundleConstPtr)
+ZL_DictLoader_fetchDictBundle(ZL_DictLoader* loader, const ZL_BundleID* id)
 {
     ZL_ASSERT_NN(loader);
     ZL_ASSERT_NN(id);
-
-    ZL_RESULT_OF(ZL_DictBundleConstPtr)
-    res = loader->desc.fetchDictBundle(loader, id);
-    if (ZL_RES_isError(res)) {
-        return NULL;
-    }
-    return ZL_RES_value(res);
+    return loader->desc.fetchDictBundle(loader, id);
 }
 
 ZL_RESULT_OF(ZL_VoidPtr)
