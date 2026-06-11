@@ -1,0 +1,174 @@
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+
+#include "tools/training/dict/base_dict_trainer.h"
+
+#include <vector>
+
+#include "openzl/compress/cgraph.h"
+#include "openzl/dict/dict.h"
+#include "openzl/dict/dict_constants.h"
+#include "openzl/zl_compressor.h"
+#include "openzl/zl_reflection.h"
+
+#include "tools/logger/Logger.h"
+#include "tools/training/dict/zstd_dict_trainer.h"
+#include "tools/training/sample_collection/training_sample_collector.h"
+
+using namespace openzl::tools::logger;
+
+namespace openzl::training {
+
+namespace {
+
+/// Build the list of all registered DictTrainer instances.
+std::vector<std::unique_ptr<DictTrainer>> createAllTrainers()
+{
+    std::vector<std::unique_ptr<DictTrainer>> trainers;
+    trainers.push_back(std::make_unique<ZstdDictTrainer>());
+    return trainers;
+}
+
+} // anonymous namespace
+
+TrainedCandidate trainDictsForCandidate(
+        const std::vector<MultiInput>& inputs,
+        Compressor& compressor,
+        const TrainParams& trainParams)
+{
+    (void)trainParams;
+
+    TrainedCandidate candidate;
+    candidate.serializedCompressor = compressor.serialize();
+
+    // Ask each registered trainer to find its dict-requiring nodes.
+    auto trainers = createAllTrainers();
+
+    struct TrainerWork {
+        DictTrainer* trainer;
+        DictNodeInfo node;
+    };
+    std::vector<TrainerWork> work;
+    std::vector<std::string> nodeNames;
+
+    for (auto& trainer : trainers) {
+        auto nodes = trainer->findDictNodes(compressor);
+        for (auto& node : nodes) {
+            nodeNames.push_back(node.nodeName);
+            work.push_back(
+                    TrainerWork{
+                            .trainer = trainer.get(),
+                            .node    = std::move(node),
+                    });
+        }
+    }
+
+    if (work.empty()) {
+        return candidate;
+    }
+
+    Logger::log_c(
+            VERBOSE1,
+            "Dict training: found %zu nodes requiring dictionaries",
+            work.size());
+
+    // Use introspection hooks to collect the actual data flowing into
+    // each dict-requiring codec node.
+    auto cctx           = refCCtxForTraining(compressor);
+    auto samplesPerNode = collectInputStreams(inputs, {}, nodeNames, cctx);
+
+    for (auto& [trainer, node] : work) {
+        auto it = samplesPerNode.find(node.nodeName);
+        if (it == samplesPerNode.end() || it->second.empty()) {
+            Logger::log_c(
+                    VERBOSE1,
+                    "No samples collected for node %s, skipping",
+                    node.nodeName.c_str());
+            continue;
+        }
+
+        const auto& nodeSamples = it->second;
+        Logger::log_c(
+                VERBOSE1,
+                "Training dict for node %u (codec %u, name %s) "
+                "with %zu samples",
+                node.nodeID.nid,
+                node.codecID,
+                node.nodeName.c_str(),
+                nodeSamples.size());
+
+        // trainDict returns packed dict content ready for Dict_pack.
+        ZL_LocalParams localParams = ZL_Compressor_Node_getLocalParams(
+                compressor.get(), node.nodeID);
+        auto dictContent =
+                trainer->trainDict(nodeSamples, compressor, localParams);
+        if (!dictContent.has_value()) {
+            Logger::log_c(
+                    VERBOSE1,
+                    "Trainer declined to train dict for node %s, skipping",
+                    node.nodeName.c_str());
+            continue;
+        }
+
+        // Pack into the generic ZL_Dict wire format.
+        std::string packedDict(ZL_DICT_HEADER_SIZE + dictContent->size(), '\0');
+        ZL_Report report = Dict_pack(
+                packedDict.data(),
+                packedDict.size(),
+                ZL_DICT_ID_NULL,
+                node.codecID,
+                false,
+                dictContent->data(),
+                dictContent->size());
+        if (ZL_isError(report)) {
+            throw Exception("Dict_pack failed");
+        }
+        packedDict.resize(ZL_validResult(report));
+
+        ZL_DictID generatedDictID =
+                Dict_extractID(packedDict.data(), packedDict.size());
+
+        ZL_NodeParameters nodeParams = {
+            .dictID = generatedDictID,
+        };
+        compressor.unwrap(ZL_Compressor_overrideNodeParams(
+                compressor.get(), node.nodeID, &nodeParams));
+
+        candidate.dicts.push_back(
+                TrainedCandidate::DictEntry{
+                        .dictID     = generatedDictID,
+                        .packedDict = std::move(packedDict),
+                });
+
+        Logger::log_c(
+                VERBOSE1,
+                "Trained dict: %zu bytes content",
+                dictContent->size());
+    }
+
+    if (candidate.dicts.empty()) {
+        return candidate;
+    }
+
+    std::vector<ZL_DictID> allDictIDs;
+    allDictIDs.reserve(candidate.dicts.size());
+    for (auto& dict : candidate.dicts) {
+        allDictIDs.push_back(dict.dictID);
+    }
+    // Compute bundleID
+    auto bundleID =
+            ZL_DictBundle_genBundleID(allDictIDs.data(), allDictIDs.size());
+
+    candidate.serializedCompressor = compressor.serialize();
+
+    // Set bundle ID on the candidate and patch dict_bundle_id in the CBOR.
+    candidate.replaceBundleID(bundleID);
+
+    Logger::log_c(
+            VERBOSE1,
+            "Dict training complete: %zu dicts, CBOR patched with bundleID",
+            candidate.dicts.size());
+
+    return candidate;
+}
+
+} // namespace openzl::training

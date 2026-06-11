@@ -439,3 +439,29 @@ void CTM_setDictIndex(CNodes_manager* ctm, CNodeID id, uint32_t index)
     ZL_ASSERT_LT(id.cnid, VECTOR_SIZE(ctm->cnodes));
     VECTOR_AT(ctm->cnodes, id.cnid).maybeDictIndex = index;
 }
+
+ZL_Report CTM_overrideNodeParams(
+        CNodes_manager* ctm,
+        CNodeID id,
+        const ZL_NodeParameters* np)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(ctm->opCtx);
+    ZL_ASSERT_NN(ctm);
+    ZL_ASSERT_NN(np);
+    ZL_ASSERT_LT(id.cnid, VECTOR_SIZE(ctm->cnodes));
+
+    if (ZL_UniqueID_isValid(&np->mparam.mparamID.id)) {
+        ZL_ERR(GENERIC, "MParam override not supported");
+    }
+
+    CNode* const cnode             = &VECTOR_AT(ctm->cnodes, id.cnid);
+    ZL_MIEncoderDesc* const trDesc = &cnode->transformDesc.publicDesc;
+    if (np->localParams) {
+        trDesc->localParams = *np->localParams;
+        ZL_ERR_IF_ERR(CTM_transferLocalParams(ctm, &trDesc->localParams));
+    }
+    if (ZL_UniqueID_isValid(&np->dictID.id)) {
+        trDesc->dictID = np->dictID;
+    }
+    return ZL_returnSuccess();
+}

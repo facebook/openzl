@@ -46,6 +46,11 @@ NM_registerStandardTransform(
 ZL_RESULT_OF(ZL_NodeID)
 NM_parameterizeNode(Nodes_manager* nmgr, const ZL_ParameterizedNodeDesc* desc);
 
+ZL_Report NM_overrideNodeParams(
+        Nodes_manager* nmgr,
+        ZL_NodeID node,
+        const ZL_NodeParameters* np);
+
 // Read Accessors
 
 /*
