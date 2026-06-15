@@ -10,6 +10,7 @@
 #include "openzl/cpp/CCtx.hpp"
 #include "openzl/cpp/DCtx.hpp"
 #include "openzl/cpp/Exception.hpp"
+#include "openzl/cpp/FatBundleDictLoader.hpp"
 #include "openzl/zl_compress.h"
 
 #include "cli/utils/util.h"
@@ -101,6 +102,14 @@ BenchmarkResult runCompressionBenchmarks(const BenchmarkArgs& args)
     auto cctx = createCompressionContext(
             *args.compressor(), args.level, args.strict);
     DCtx dctx;
+
+    // Load dict bundle into DCtx if available
+    std::optional<FatBundleDictLoader> fatBundleLoader;
+    if (!args.dictBundleData.empty()) {
+        fatBundleLoader.emplace();
+        fatBundleLoader->loadFatBundle(args.dictBundleData);
+        dctx.refDictLoader(*fatBundleLoader);
+    }
 
     // if output is not specified, don't write csv-formatted summary statistics
     tools::io::OutputNull devnull{};

@@ -30,7 +30,8 @@ class TestMLSelectorTrainer : public testing::Test {
 
         trainParams_ = {
             .compressorGenFunc =
-                    [](std::string_view serialized) {
+                    [](std::string_view serialized,
+                       std::string_view /* bundle */) {
                         auto compressor =
                                 std::make_unique<openzl::Compressor>();
                         compressor->deserialize(serialized);

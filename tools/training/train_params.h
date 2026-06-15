@@ -15,7 +15,8 @@ enum ClusteringTrainer {
 };
 
 struct TrainParams {
-    std::function<std::unique_ptr<Compressor>(poly::string_view)>
+    std::function<
+            std::unique_ptr<Compressor>(poly::string_view, poly::string_view)>
             compressorGenFunc; /* The function the trainer uses to create the
                                   compressor. Must handle
                                   dependency registration. This function must be
@@ -25,6 +26,7 @@ struct TrainParams {
     poly::optional<size_t> numSamples;
     bool noAceSuccessors{ false };
     bool noClustering{ false };
+    bool dictTraining{ false };
     poly::optional<size_t> maxTimeSecs;
     poly::optional<size_t> maxFileSizeMb;
     poly::optional<size_t> maxTotalSizeMb;

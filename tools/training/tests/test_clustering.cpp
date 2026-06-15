@@ -66,11 +66,12 @@ static ZL_GraphID registerTrivialParseClusterGraph(
 }
 
 static std::unique_ptr<Compressor> createCompressorFromSerialized(
-        poly::string_view serialized)
+        poly::string_view serialized,
+        poly::string_view fatBundle = "")
 {
     auto compressor = std::make_unique<Compressor>();
     registerTrivialParseClusterGraph(*compressor);
-    compressor->deserialize(serialized);
+    compressor->deserialize(serialized, fatBundle);
     return compressor;
 }
 

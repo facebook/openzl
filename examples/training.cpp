@@ -270,11 +270,12 @@ static ZL_GraphID registerGraph_ParsingCompressor(
 
 // --8<-- [start:compressor-creation]
 static std::unique_ptr<openzl::Compressor> createCompressorFromSerialized(
-        openzl::poly::string_view serialized)
+        openzl::poly::string_view serialized,
+        openzl::poly::string_view fatBundle)
 {
     auto compressor = std::make_unique<openzl::Compressor>();
     registerGraph_ParsingCompressor(*compressor);
-    compressor->deserialize(serialized);
+    compressor->deserialize(serialized, fatBundle);
     return compressor;
 }
 // --8<-- [end:compressor-creation]
@@ -307,8 +308,9 @@ static void train_example(
     // --8<-- [start:compress]
     openzl::CCtx cctx;
     std::string out;
-    auto testCompressor =
-            createCompressorFromSerialized(serialized.serializedCompressor);
+    auto testCompressor = createCompressorFromSerialized(
+            serialized.serializedCompressor,
+            {} /* No dict bundle in this example */);
     // Try compressing every file provided
     for (const auto& inputPtr : *inputs) {
         cctx.setParameter(openzl::CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);

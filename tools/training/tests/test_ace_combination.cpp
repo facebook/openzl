@@ -167,9 +167,10 @@ TEST_F(ACECombinationTest, NoSaveAceStateProducesSmallerCompressor)
     std::vector<training::MultiInput> multiInputs;
     multiInputs.emplace_back(std::move(inputsVec));
 
-    auto compressorGenFunc = [](poly::string_view serialized) {
+    auto compressorGenFunc = [](poly::string_view serialized,
+                                poly::string_view bundle = "") {
         auto compressor = std::make_unique<Compressor>();
-        compressor->deserialize(serialized);
+        compressor->deserialize(serialized, bundle);
         return compressor;
     };
 

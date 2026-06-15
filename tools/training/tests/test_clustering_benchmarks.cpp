@@ -32,7 +32,7 @@ class TestClusteringBenchmarks : public testing::Test {
         CCtx cctx;
         cctx.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
         auto newCompressor = custom_parsers::createCompressorFromSerialized(
-                serialized[0].serializedCompressor);
+                serialized[0].serializedCompressor, "");
         cctx.refCompressor(*newCompressor);
         size_t compressedSize   = 0;
         size_t uncompressedSize = 0;
