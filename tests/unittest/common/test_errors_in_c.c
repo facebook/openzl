@@ -6,7 +6,6 @@
 
 #include "openzl/common/assertion.h"
 #include "openzl/common/errors_internal.h"
-#include "openzl/common/operation_context.h"
 #include "openzl/zl_errors.h"
 
 #include "tests/unittest/common/test_errors_in_c.h"
