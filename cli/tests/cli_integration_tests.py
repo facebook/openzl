@@ -580,6 +580,38 @@ class VersionTest(unittest.TestCase):
         self.assertEqual(version_out, short_out)
 
 
+class ZstdDictTrainingTest(_TrainBaseTest):
+    """
+    Test case for zstd dict training via the CLI.
+
+    This test verifies that the zstd profile can be trained using dict
+    training (no clustering/ACE required) and that the trained compressor
+    produces valid compressed output that decompresses correctly.
+    Sample files are located in cli/tests/sample_files/zstd_dict/
+    """
+
+    @property
+    def input_dir_name(self) -> str:
+        return "zstd_dict"
+
+    @property
+    def compressor_profile_name(self) -> str:
+        return "zstd"
+
+    def test_train_compress_decompress(self):
+        """
+        Test the train, compress, and decompress workflow for the zstd profile.
+
+        This test:
+        1. Trains a compressor on files in cli/tests/sample_files/zstd_dict/
+           using the zstd profile (dict training only, no clustering)
+        2. Saves the trained compressor + dict bundle to output dir
+        3. Uses the trained compressor to compress and decompress the files
+        4. Verifies that the decompressed files match the originals
+        """
+        self.train_dict_compress_decompress()
+
+
 def main():
     """
     Run the test suite with proper command line arguments.
