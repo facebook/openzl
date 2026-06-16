@@ -157,11 +157,11 @@ XGBOOST_INCLUDE_PATHS := -Ideps/xgboost/include -Ideps/xgboost/dmlc-core/include
 
 # Add flags for cross platform compatibility for Windows
 zli: LDFLAGS += $(XGBOOST_LDFLAGS)
-zli: CPPFLAGS += $(XGBOOST_INCLUDE_PATHS)
+zli: CPPFLAGS += $(XGBOOST_INCLUDE_PATHS) -DZDICT_STATIC_LINKING_ONLY
 zli: LDLIBS += $(XGBOOST_LDLIBS)
 
 gtests: LDFLAGS += $(XGBOOST_LDFLAGS)
-gtests: CPPFLAGS += $(XGBOOST_INCLUDE_PATHS)
+gtests: CPPFLAGS += $(XGBOOST_INCLUDE_PATHS) -DZDICT_STATIC_LINKING_ONLY
 gtests: LDLIBS += $(XGBOOST_LDLIBS)
 
 $(eval $(call cxx_program,zli, \

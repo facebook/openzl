@@ -330,6 +330,17 @@ compressProfiles()
                 nullptr,
                 true);
 
+        std::string kZstd = "zstd";
+        mp[kZstd]         = std::make_shared<CompressProfile>(
+                kZstd,
+                "Use this profile to train a Zstd dict",
+                [](ZL_Compressor* compressor, void*, const ProfileArgs&) {
+                    return ZL_RES_value(
+                            ZL_Compressor_buildTrainableZstdGraph(compressor));
+                },
+                nullptr,
+                false);
+
         std::string kPytorchName = "pytorch";
         mp[kPytorchName]         = std::make_shared<CompressProfile>(
                 kPytorchName,

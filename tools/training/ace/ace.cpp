@@ -82,7 +82,7 @@ std::vector<SerializedCompressorInternal> ACETrainer::train(
 {
     auto makeCompressor = [&serializedCompressorInput, &trainParams] {
         return std::move(
-                *trainParams.compressorGenFunc(serializedCompressorInput));
+                *trainParams.compressorGenFunc(serializedCompressorInput, ""));
     };
     auto compressor = makeCompressor();
     auto cctx       = refCCtxForTraining(compressor);

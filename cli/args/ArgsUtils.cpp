@@ -35,7 +35,8 @@ void checkOutput(const std::string& path, bool force)
 
 std::unique_ptr<Compressor> createCompressorFromArgs(
         const ProfileArgs& profileArgs,
-        const std::optional<std::string>& compressorPath)
+        const std::optional<std::string>& compressorPath,
+        poly::string_view bundleData)
 {
     if (profileArgs.name() && compressorPath) {
         throw InvalidArgsException(
@@ -61,7 +62,7 @@ std::unique_ptr<Compressor> createCompressorFromArgs(
         auto compressorInput =
                 std::make_shared<tools::io::InputFile>(compressorPath.value());
         return custom_parsers::createCompressorFromSerialized(
-                compressorInput->contents());
+                compressorInput->contents(), bundleData);
     }
 
     throw InvalidArgsException(
