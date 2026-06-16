@@ -214,11 +214,12 @@ class _TrainBaseTest(_CompressDecompressBaseTest):
 
     def train_compress_decompress(self) -> None:
         """
-        Test the full workflow of training, compressing, and decompressing.
+        Test the full workflow of training, compressing, and decompressing
+        without dict bundles.
 
         This method:
         1. Trains a compressor on the sample files using the specified trainer (self.trainer_name)
-        2. Saves the trained compressor to {output_dir_path}/trained_compressor.zlc
+        2. Asserts that no dict bundle (.zd) was produced
         3. Uses the trained compressor to compress and decompress the sample files
         4. Verifies that the decompressed files match the originals
 
@@ -238,8 +239,73 @@ class _TrainBaseTest(_CompressDecompressBaseTest):
             extra_args=self.extra_args,
         )
 
+        trained_path = self.compressor_info.compressor_str
+        dict_bundle_path = os.path.splitext(trained_path)[0] + ".zd"
+        assert not os.path.exists(dict_bundle_path), (
+            f"Expected no dict bundle but found {dict_bundle_path}"
+        )
+
         # Compress and decompress using the trained compressor
         self.compress_and_decompress_samples()
+
+    def train_dict_compress_decompress(self) -> None:
+        """
+        Test the full workflow of training with dict bundles, compressing,
+        and decompressing.
+
+        This method:
+        1. Trains a compressor on the sample files using the specified trainer (self.trainer_name)
+        2. Asserts that a dict bundle (.zd) was produced
+        3. Uses the trained compressor and dict bundle to compress and decompress the sample files
+        4. Verifies that the decompressed files match the originals
+
+        The trainer_name property determines which training algorithm is used (e.g., "greedy", "full-split").
+
+        Raises:
+            ValueError: If no input samples are found or if decompression fails
+        """
+        if not self.input_samples:
+            raise ValueError("No input samples found for training")
+
+        dict_bundle_path = (
+            os.path.splitext(self.compressor_info.compressor_str)[0] + ".zd"
+        )
+        execute_train(
+            compressor_info=self.training_compressor_info,
+            uncompressed_dir=input_dir_path(self.input_dir_name),
+            trained_compressor_path=self.compressor_info.compressor_str,
+            trainer_name=self.trainer_name,
+            extra_args=" ".join(
+                [self.extra_args or "", "--dict-bundle-output", dict_bundle_path]
+            ),
+        )
+        assert os.path.exists(dict_bundle_path), (
+            f"Expected dict bundle at {dict_bundle_path} but it was not produced"
+        )
+        bundle_extra = f"--dict-bundle {dict_bundle_path}"
+
+        # Compress and decompress using the trained compressor
+        for sample in self.input_samples:
+            compress_extra = (
+                " ".join(filter(None, [self.extra_args, bundle_extra])) or None
+            )
+            execute_compress(
+                file_to_compress_path=sample.orig_file_path,
+                compressor_info=self.compressor_info,
+                compressed_file_path=sample.compressed_file_path,
+                extra_args=compress_extra,
+            )
+
+            execute_decompress(
+                compressed_file_path=sample.compressed_file_path,
+                decompressed_file_path=sample.decompressed_file_path,
+                extra_args=bundle_extra,
+            )
+
+            if not sample.original_matches_decompressed:
+                raise ValueError(
+                    f"Decompressed file does not match original file: {sample.orig_file_path}"
+                )
 
 
 class _MLBaseTest(_TrainBaseTest):

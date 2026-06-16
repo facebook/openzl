@@ -505,3 +505,17 @@ custom_unittest(
         ":formats_test_bin",
     ],
 )
+
+custom_unittest(
+    name = "zstd_dict_training_test",
+    command = [
+        "$(location :integration_test_bin)",
+        "$(location ..:zli)",
+        "ZstdDictTrainingTest.test_train_compress_decompress",
+    ],
+    type = "simple",
+    deps = [
+        "..:zli",
+        ":integration_test_bin",
+    ],
+)
