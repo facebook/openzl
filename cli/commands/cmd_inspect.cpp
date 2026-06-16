@@ -20,7 +20,7 @@ int cmdInspect(const InspectArgs& args)
 
     // Load compressor from serialized file
     const auto compressor = custom_parsers::createCompressorFromSerialized(
-            args.input->contents());
+            args.input->contents(), "");
 
     // Convert to json
     const auto json = compressor->serializeToJson();

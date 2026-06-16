@@ -286,8 +286,8 @@ std::vector<SerializedCompressorInternal> getCombinedCompressors(
         const TrainParams& trainParams)
 {
     auto makeCompressor = [&trainedSerializedCompressor, &trainParams] {
-        return std::move(
-                *trainParams.compressorGenFunc(*trainedSerializedCompressor));
+        return std::move(*trainParams.compressorGenFunc(
+                *trainedSerializedCompressor, ""));
     };
 
     auto compressor = makeCompressor();

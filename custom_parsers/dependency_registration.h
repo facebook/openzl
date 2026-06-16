@@ -22,6 +22,7 @@ void processDependencies(Compressor& compressor, poly::string_view serialized);
  * non-standard graphs or codecs.
  */
 std::unique_ptr<Compressor> createCompressorFromSerialized(
-        poly::string_view serialized);
+        poly::string_view serialized,
+        poly::string_view fatBundle);
 
 } // namespace openzl::custom_parsers

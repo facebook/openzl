@@ -79,7 +79,7 @@ int trainCompressorOnSampleFile(CompressArgs& args)
     // Save the trained compressor
     args.setCompressor(
             custom_parsers::createCompressorFromSerialized(
-                    compressorOutput->to_input()->contents()));
+                    compressorOutput->to_input()->contents(), ""));
 
     return result;
 }

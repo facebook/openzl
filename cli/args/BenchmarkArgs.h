@@ -8,6 +8,7 @@
 
 #include "openzl/cpp/Compressor.hpp"
 
+#include "tools/io/InputFile.h"
 #include "tools/io/InputSetBuilder.h"
 #include "tools/io/OutputFile.h"
 #include "tools/training/utils/utils.h"
@@ -53,14 +54,25 @@ struct BenchmarkArgs : public GlobalArgs, public ProfileArgs {
                 0,
                 false,
                 "Enforce strict mode compression. This will fail the compression in cases of errors, instead of falling back.");
+        parser.addCommandFlag(
+                cmd(),
+                kDictBundle,
+                'D',
+                true,
+                "Path to a fat dict bundle (.zd) file to load for benchmarking.");
     }
 
     explicit BenchmarkArgs(const arg::ParsedArgs& parsed)
             : GlobalArgs(parsed), ProfileArgs(parsed)
     {
         // Create the compressor
+        auto dictBundlePath = parsed.cmdFlag(cmd(), kDictBundle);
+        if (dictBundlePath) {
+            tools::io::InputFile bundleInput(dictBundlePath.value());
+            dictBundleData = bundleInput.contents();
+        }
         setCompressor(createCompressorFromArgs(
-                *this, parsed.cmdFlag(cmd(), kCompressor)));
+                *this, parsed.cmdFlag(cmd(), kCompressor), dictBundleData));
         auto inputPath = parsed.cmdPositional(Cmd::BENCHMARK, kInput);
 
         auto input_set = tools::io::InputSetBuilder(recursive)
@@ -105,14 +117,17 @@ struct BenchmarkArgs : public GlobalArgs, public ProfileArgs {
     size_t numIters = 10;
     bool strict     = false;
 
+    std::string dictBundleData;
+
    private:
     inline static const std::string kInput      = "input";
     inline static const std::string kOutputCsv  = "output-csv";
     inline static const std::string kCompressor = "compressor";
 
-    inline static const std::string kLevel    = "level";
-    inline static const std::string kStrict   = "strict";
-    inline static const std::string kNumIters = "num-iters";
+    inline static const std::string kLevel      = "level";
+    inline static const std::string kStrict     = "strict";
+    inline static const std::string kNumIters   = "num-iters";
+    inline static const std::string kDictBundle = "dict-bundle";
 };
 
 } // namespace openzl::cli

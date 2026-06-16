@@ -32,8 +32,8 @@ std::vector<TrainedCandidate> train(
         serializedTrainedCompressors.clear();
         serializedTrainedCompressors.push_back(
                 trainClusteringGraph(inputs, compressor, trainParams));
-        auto newCompressor =
-                trainParams.compressorGenFunc(*serializedTrainedCompressors[0]);
+        auto newCompressor = trainParams.compressorGenFunc(
+                *serializedTrainedCompressors[0], "");
         compressor = std::move(*newCompressor);
     }
 
@@ -51,33 +51,53 @@ std::vector<TrainedCandidate> train(
                 trainMLSelectorGraph(inputs, compressor, trainParams));
     }
 
-    if (serializedTrainedCompressors.empty()) {
+    // Dict training: for each serialized candidate, deserialize, train
+    // dicts, re-serialize with bundleID + dictIDs in CBOR.
+    std::vector<TrainedCandidate> dictTrainedCandidates;
+    if (!serializedTrainedCompressors.empty()) {
+        for (auto& sc : serializedTrainedCompressors) {
+            if (trainParams.dictTraining) {
+                auto candidateCompressor =
+                        trainParams.compressorGenFunc(*sc, "");
+                dictTrainedCandidates.push_back(trainDictsForCandidate(
+                        inputs, *candidateCompressor, trainParams));
+            } else {
+                TrainedCandidate candidate;
+                candidate.serializedCompressor = std::string(*sc);
+                dictTrainedCandidates.push_back(std::move(candidate));
+            }
+        }
+    } else if (trainParams.dictTraining) {
+        // No clustering/ACE/ML graph — run dict training directly on
+        // the input compressor if it has dict-requiring nodes.
+        auto candidate =
+                trainDictsForCandidate(inputs, compressor, trainParams);
+        if (!candidate.dicts.empty()) {
+            dictTrainedCandidates.push_back(std::move(candidate));
+        }
+    }
+
+    if (dictTrainedCandidates.empty()) {
         throw Exception("No trainable graph found in compressor.");
     }
 
     auto endTime = std::chrono::steady_clock::now();
     Logger::log_c(
             INFO,
-            "Trained %d compressors in %lf minutes (wall time).",
-            serializedTrainedCompressors.size(),
+            "Trained %zu compressors in %lf minutes (wall time).",
+            dictTrainedCandidates.size(),
             std::chrono::duration<double, std::ratio<60>>(endTime - startTime)
                     .count());
     // TODO pretty print just the graphs (exclude params etc)
     Logger::log(
-            VERBOSE3,
+            INFO,
             "Smallest trained graph:",
             std::string(
                     Compressor::convertSerializedToJson(
-                            *serializedTrainedCompressors[0]))
+                            dictTrainedCandidates[0].serializedCompressor))
                     .c_str());
 
-    std::vector<TrainedCandidate> retval;
-    retval.reserve(serializedTrainedCompressors.size());
-    for (auto& trainedCompressor : serializedTrainedCompressors) {
-        retval.push_back(
-                TrainedCandidate{ .serializedCompressor =
-                                          std::string(*trainedCompressor) });
-    }
-    return retval;
+    return dictTrainedCandidates;
 }
+
 } // namespace openzl::training

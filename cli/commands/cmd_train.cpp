@@ -27,6 +27,10 @@ int cmdTrain(const TrainArgs& args)
     if (args.trainParams.paretoFrontier) {
         // Create the output directory first so it fails early
         std::filesystem::create_directories(args.output->name());
+        if (args.dictBundleOutput) {
+            // In Pareto mode the dict bundle output is also a directory.
+            std::filesystem::create_directories(args.dictBundleOutput->name());
+        }
     } else {
         // Try to open the output file so it fails early
         args.output->open();
@@ -106,19 +110,29 @@ int cmdTrain(const TrainArgs& args)
     }
 
     for (size_t i = 0; i < serializedTrainedCompressors.size(); ++i) {
-        auto& serializedTrainedCompressor = serializedTrainedCompressors[i];
+        auto& candidate = serializedTrainedCompressors[i];
+
+        std::string fatBundle;
+        if (!candidate.dicts.empty()) {
+            fatBundle = candidate.packFatBundle();
+        }
+
         // Benchmark the trained compressor
         benchmarkArgs.setCompressor(
                 custom_parsers::createCompressorFromSerialized(
-                        serializedTrainedCompressor.serializedCompressor));
+                        candidate.serializedCompressor, fatBundle));
+        benchmarkArgs.dictBundleData = fatBundle;
+
         if (!args.trainParams.paretoFrontier) {
             Logger::log(INFO, "Benchmarking trained compressor...");
         }
-        auto trainedBenchmark = runCompressionBenchmarks(benchmarkArgs);
-        auto improvedRatio    = (trainedBenchmark.compressionRatio
-                                      / untrainedBenchmark.compressionRatio
-                              - 1)
-                * 100;
+        BenchmarkResult trainedBenchmark =
+                runCompressionBenchmarks(benchmarkArgs);
+        auto improvedRatio = untrainedBenchmark.compressionRatio > 0
+                ? (trainedBenchmark.compressionRatio
+                           / untrainedBenchmark.compressionRatio
+                   - 1) * 100
+                : 0.0;
         if (!args.trainParams.paretoFrontier) {
             Logger::log_c(
                     INFO,
@@ -141,16 +155,34 @@ int cmdTrain(const TrainArgs& args)
                     + std::to_string(i) + ".zc";
             auto output = tools::io::OutputFile(std::move(outputFilename));
             output.open();
-            output.write(serializedTrainedCompressor.serializedCompressor);
+            output.write(candidate.serializedCompressor);
             output.close();
+
+            if (!fatBundle.empty()) {
+                auto bundleFilename = std::string(args.dictBundleOutput->name())
+                        + "/" + std::to_string(i) + ".zd";
+                auto bundleOutput =
+                        tools::io::OutputFile(std::move(bundleFilename));
+                bundleOutput.open();
+                bundleOutput.write(fatBundle);
+                bundleOutput.close();
+            }
         } else {
             if (i != 0) {
                 throw std::logic_error("Must only have one trained compressor");
             }
             // Output file is already open
-            args.output->write(
-                    serializedTrainedCompressor.serializedCompressor);
+            args.output->write(candidate.serializedCompressor);
             args.output->close();
+
+            if (!fatBundle.empty()) {
+                // Dictionary training only runs when the user opted in with
+                // --dict-bundle-output, so the bundle output is always set
+                // here.
+                args.dictBundleOutput->open();
+                args.dictBundleOutput->write(fatBundle);
+                args.dictBundleOutput->close();
+            }
         }
     }
 

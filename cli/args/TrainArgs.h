@@ -84,6 +84,17 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
                 "Skip clustering during training.");
         parser.addCommandFlag(
                 cmd(),
+                kDictBundleOutput,
+                'O',
+                true,
+                "Path to write the trained dictionary bundle (.zd) to. Providing "
+                "this flag opts in to dictionary training: the trained compressor "
+                "will reference dictionaries stored in this bundle. Without it, no "
+                "dictionary is trained and a standalone compressor is produced. "
+                "With --pareto-frontier this is treated as a directory, one "
+                "<i>.zd per candidate.");
+        parser.addCommandFlag(
+                cmd(),
                 kMaxTimeSecs,
                 0,
                 true,
@@ -127,6 +138,14 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
             checkOutput(outputPath.value(), parsed.cmdHasFlag(cmd(), kForce));
             output = std::make_unique<tools::io::OutputFile>(
                     std::move(outputPath).value());
+        }
+        auto dictBundleOutputPath = parsed.cmdFlag(cmd(), kDictBundleOutput);
+        if (dictBundleOutputPath) {
+            checkOutput(
+                    dictBundleOutputPath.value(),
+                    parsed.cmdHasFlag(cmd(), kForce));
+            dictBundleOutput = std::make_shared<tools::io::OutputFile>(
+                    std::move(dictBundleOutputPath).value());
         }
         auto sampleDir = parsed.cmdFlag(cmd(), kSampleDir);
         inputs         = tools::io::InputSetBuilder(recursive)
@@ -191,6 +210,12 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
 
         trainParams.noClustering = parsed.cmdHasFlag(cmd(), kNoClustering);
         trainParams.saveAceState = parsed.cmdHasFlag(cmd(), kSaveAceState);
+
+        // Dictionary training is opt-in: it runs only when the user explicitly
+        // requests a bundle output path, so we never produce a surprise .zd
+        // file. In Pareto mode the bundle output is treated as a directory
+        // (one <i>.zd per candidate), mirroring the compressor output.
+        trainParams.dictTraining = (dictBundleOutput != nullptr);
         trainParams.compressorGenFunc =
                 custom_parsers::createCompressorFromSerialized;
     }
@@ -200,6 +225,10 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
             const std::shared_ptr<Compressor>& compressor)
             : GlobalArgs(globalArgs), ProfileArgs(compressor)
     {
+        // Inline training (e.g. `compress --train-inline`) produces a
+        // standalone compressor only; dictionary training is opt-in via
+        // --dict-bundle-output.
+        trainParams.dictTraining = false;
         trainParams.compressorGenFunc =
                 custom_parsers::createCompressorFromSerialized;
     }
@@ -211,6 +240,7 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
 
     std::shared_ptr<tools::io::InputSet> inputs;
     std::shared_ptr<tools::io::Output> output;
+    std::shared_ptr<tools::io::Output> dictBundleOutput;
 
     bool useAllSamples{};
     training::TrainParams trainParams;
@@ -219,8 +249,9 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
     inline static const std::string kSampleDir  = "sample-dir";
     inline static const std::string kCompressor = "compressor";
 
-    inline static const std::string kOutput = "output";
-    inline static const std::string kForce  = "force";
+    inline static const std::string kOutput           = "output";
+    inline static const std::string kForce            = "force";
+    inline static const std::string kDictBundleOutput = "dict-bundle-output";
 
     // Train Params
     inline static const std::string kTrainer         = "trainer";
