@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "openzl/common/sha256.h"
+#include "openzl/shared/mem.h" // ZL_writeLE16, ZL_writeLE32, ZL_writeLE64
 #include "openzl/shared/xxhash.h"
 
 void ZL_UniqueID_write(void* dst, const ZL_UniqueID* id)
@@ -69,4 +70,61 @@ size_t ZL_UniqueID_significantBytes(const ZL_UniqueID* id)
         }
     }
     return 0;
+}
+
+ZL_UniqueID ZL_UniqueID_fromU16(uint16_t value)
+{
+    ZL_UniqueID id;
+    memset(id.bytes, 0, sizeof(id.bytes));
+    ZL_writeLE16(id.bytes, value);
+    return id;
+}
+
+ZL_UniqueID ZL_UniqueID_fromU32(uint32_t value)
+{
+    ZL_UniqueID id;
+    memset(id.bytes, 0, sizeof(id.bytes));
+    ZL_writeLE32(id.bytes, value);
+    return id;
+}
+
+ZL_UniqueID ZL_UniqueID_fromU64(uint64_t value)
+{
+    ZL_UniqueID id;
+    memset(id.bytes, 0, sizeof(id.bytes));
+    ZL_writeLE64(id.bytes, value);
+    return id;
+}
+
+ZL_RESULT_OF(uint16_t) ZL_UniqueID_toU16(const ZL_UniqueID* id)
+{
+    ZL_RESULT_DECLARE_SCOPE(uint16_t, NULL);
+    ZL_ERR_IF_GT(
+            ZL_UniqueID_significantBytes(id),
+            sizeof(uint16_t),
+            GENERIC,
+            "ZL_UniqueID_toU16: id is not a 16-bit value");
+    return ZL_WRAP_VALUE(ZL_readLE16(id->bytes));
+}
+
+ZL_RESULT_OF(uint32_t) ZL_UniqueID_toU32(const ZL_UniqueID* id)
+{
+    ZL_RESULT_DECLARE_SCOPE(uint32_t, NULL);
+    ZL_ERR_IF_GT(
+            ZL_UniqueID_significantBytes(id),
+            sizeof(uint32_t),
+            GENERIC,
+            "ZL_UniqueID_toU32: id is not a 32-bit value");
+    return ZL_WRAP_VALUE(ZL_readLE32(id->bytes));
+}
+
+ZL_RESULT_OF(uint64_t) ZL_UniqueID_toU64(const ZL_UniqueID* id)
+{
+    ZL_RESULT_DECLARE_SCOPE(uint64_t, NULL);
+    ZL_ERR_IF_GT(
+            ZL_UniqueID_significantBytes(id),
+            sizeof(uint64_t),
+            GENERIC,
+            "ZL_UniqueID_toU64: id is not a 64-bit value");
+    return ZL_WRAP_VALUE(ZL_readLE64(id->bytes));
 }
