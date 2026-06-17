@@ -120,8 +120,6 @@ ZL_FORCE_INLINE size_t ZL_varintEncode64Fast(uint64_t value, uint8_t* const dst)
 #endif
 }
 
-ZL_RESULT_DECLARE_TYPE(uint64_t);
-
 ZL_INLINE ZL_RESULT_OF(uint64_t)
         ZL_varintDecode(const uint8_t** src, const uint8_t* end)
 {
