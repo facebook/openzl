@@ -69,8 +69,24 @@ VersionTestInterface::VersionTestInterface(
 
     nodeCustomDataCache_  = {};
     graphCustomDataCache_ = {};
-    nodes_                = getAllNodes();
-    graphs_               = getAllGraphs();
+}
+
+std::vector<Node> const& VersionTestInterface::nodes()
+{
+    if (!nodesInitialized_) {
+        nodes_            = getAllNodes();
+        nodesInitialized_ = true;
+    }
+    return nodes_;
+}
+
+std::vector<Graph> const& VersionTestInterface::graphs()
+{
+    if (!graphsInitialized_) {
+        graphs_            = getAllGraphs();
+        graphsInitialized_ = true;
+    }
+    return graphs_;
 }
 
 unsigned VersionTestInterface::majorVersion() const
