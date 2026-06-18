@@ -12,15 +12,7 @@ import {
   createMultiChunkGraph,
 } from './utils/createTestModels';
 import {InternalGraphNode} from '../src/graphVisualization/models/InternalGraphNode';
-import {InternalCodecNode} from '../src/graphVisualization/models/InternalCodecNode';
-import type {InteractiveStreamdumpGraph} from '../src/graphVisualization/models/InteractiveStreamdumpGraph';
-
-function getInteractiveGraphDetails(interactiveGraph: InteractiveStreamdumpGraph) {
-  const {dagOrderedNodes, edges} = interactiveGraph.getVisibleStreamdumpGraph();
-  const codecs = dagOrderedNodes.filter((n): n is InternalCodecNode => n instanceof InternalCodecNode);
-  const graphs = dagOrderedNodes.filter((n): n is InternalGraphNode => n instanceof InternalGraphNode);
-  return {codecs, graphs, edges, nodes: dagOrderedNodes};
-}
+import {getGraphDetails as getInteractiveGraphDetails} from './utils/createTestModels';
 
 describe('Test interactive streamdump graph creation', () => {
   it('Should initialize with a chain of codecs A->B->C->D where B and C are in a graph', () => {
