@@ -22,7 +22,7 @@ interface Props {
 
 const Links = [
   {name: 'HOME', link: '/#'},
-  {name: 'API REFERENCE', link: '/api/compressor'},
+  {name: 'API REFERENCE', link: '/api/c/compressor/'},
   {
     name: 'GETTING STARTED',
     link: '/getting-started/quick-start/',
