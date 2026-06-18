@@ -30,6 +30,31 @@ uint32_t ZL_Lz_tableLog(uint32_t windowLog)
     return ZL_MIN(windowLog + 1, ZL_LZ_DEFAULT_TABLE_LOG);
 }
 
+// Returns the number of leading equal bytes (0..16) between the two 16-byte
+// windows starting at `ip` and `match`. A result of 16 means all 16 bytes
+// matched and the caller should keep scanning.
+//
+// NOTE: For performance optimization, this scalar loop is likely *faster* than
+// any vectorized implementation. Indeed, this current loop replaces a
+// vectorized implementation that was neutral to slower. More details are in
+// D109051308.
+ZL_FORCE_INLINE uint32_t
+matchLength16(uint8_t const* const ip, uint8_t const* const match)
+{
+    const uint64_t match0 = ZL_readLE64(match);
+    const uint64_t ip0    = ZL_readLE64(ip);
+    const uint64_t mask0  = match0 ^ ip0;
+    if (mask0 != 0) {
+        return (uint32_t)ZL_ctz64(mask0) >> 3;
+    }
+    const uint64_t match1 = ZL_readLE64(match + 8);
+    const uint64_t ip1    = ZL_readLE64(ip + 8);
+    const uint64_t mask1  = match1 ^ ip1;
+    if (mask1 != 0) {
+        return 8 + ((uint32_t)ZL_ctz64(mask1) >> 3);
+    }
+    return 16;
+}
 static ptrdiff_t matchLength(
         uint8_t const* const in,
         ptrdiff_t inPos,
@@ -38,11 +63,7 @@ static ptrdiff_t matchLength(
 {
     {
         ZL_ASSERT_LE(inPos + 16, inEnd);
-        const ZL_Vec128 matchVec = ZL_Vec128_read(in + matchPos);
-        const ZL_Vec128 ipVec    = ZL_Vec128_read(in + inPos);
-        const ZL_Vec128 maskVec  = ZL_Vec128_cmp8(matchVec, ipVec);
-        const uint32_t mask      = ZL_Vec128_mask8(maskVec);
-        const uint32_t len       = (uint32_t)ZL_ctz32(~mask);
+        const uint32_t len = matchLength16(in + inPos, in + matchPos);
         if (ZL_LIKELY(len < 16)) {
             return len;
         }
@@ -50,11 +71,8 @@ static ptrdiff_t matchLength(
     ptrdiff_t totalLength   = 16;
     const ptrdiff_t inLimit = inEnd - 16;
     while (inPos + totalLength < inLimit) {
-        const ZL_Vec128 matchVec = ZL_Vec128_read(in + matchPos + totalLength);
-        const ZL_Vec128 ipVec    = ZL_Vec128_read(in + inPos + totalLength);
-        const ZL_Vec128 maskVec  = ZL_Vec128_cmp8(matchVec, ipVec);
-        const uint32_t mask      = ZL_Vec128_mask8(maskVec);
-        const uint32_t length    = (uint32_t)ZL_ctz32(~mask);
+        const uint32_t length = matchLength16(
+                in + inPos + totalLength, in + matchPos + totalLength);
         if (length < 16) {
             return totalLength + length;
         }
