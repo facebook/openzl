@@ -69,4 +69,12 @@ TrainedCandidate trainDictsForCandidate(
         Compressor& compressor,
         const TrainParams& trainParams);
 
+/// For testing. Inject a custom set of dict trainers instead of using the
+/// default
+TrainedCandidate trainDictsForCandidate(
+        const std::vector<MultiInput>& inputs,
+        Compressor& compressor,
+        const TrainParams& trainParams,
+        const std::vector<std::unique_ptr<DictTrainer>>& trainers);
+
 } // namespace openzl::training

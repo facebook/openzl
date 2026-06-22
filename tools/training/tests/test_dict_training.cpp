@@ -3,7 +3,10 @@
 #include <gtest/gtest.h>
 
 #include <cstring>
+#include <exception>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "openzl/codecs/zl_zstd.h"
@@ -64,6 +67,89 @@ static std::vector<MultiInput> toMultiInputs(
         inputs.push_back(std::move(mi));
     }
     return inputs;
+}
+
+// A custom trainer that overrides the Zstd trainer by returning (incrementally)
+// from a fixed set of return strings
+class FakeZstdTrainer : public ZstdDictTrainer {
+   public:
+    explicit FakeZstdTrainer(std::vector<std::string> rets)
+            : rets_(std::move(rets))
+    {
+    }
+
+    poly::optional<std::string> trainDict(
+            const std::vector<MultiInput>& /* inputs */,
+            const Compressor& /* compressor */,
+            ZL_LocalParams /* localParams */) override
+    {
+        if (idx_ >= rets_.size()) {
+            std::string exc = "too many dicts! too many dicts!";
+            throw std::runtime_error(exc);
+        }
+        return rets_[idx_++];
+    }
+
+   private:
+    std::vector<std::string> rets_;
+    size_t idx_{ 0 };
+};
+
+// -------------------------------------------------------
+// Unit tests for BaseDictTrainer class
+// -------------------------------------------------------
+TEST(BaseDictTrainer, DuplicateDictsAreDeduped)
+{
+    auto sampleData = generateSampleData(
+            2, 4096); // not really used, we inject a custom trainer
+    auto inputs = toMultiInputs(sampleData);
+
+    // Generate a compressor that splits an input into 3, and sends each to a
+    // trainable zstd node
+    Compressor compressor;
+    {
+        constexpr size_t kNumSegments                = 3;
+        constexpr size_t kSegmentSizes[kNumSegments] = { 1024, 1024, 0 };
+        // Build one trainable zstd graph per segment so training produces a
+        // separate dictionary for each.
+        std::vector<ZL_GraphID> successors;
+        successors.reserve(kNumSegments);
+        for (size_t i = 0; i < kNumSegments; ++i) {
+            successors.push_back(compressor.unwrap(
+                    ZL_Compressor_buildTrainableZstdGraph(compressor.get()),
+                    "Failed to build trainable zstd graph"));
+        }
+
+        auto gid = ZL_Compressor_registerSplitGraph(
+                compressor.get(),
+                ZL_Type_serial,
+                kSegmentSizes,
+                successors.data(),
+                kNumSegments);
+        compressor.selectStartingGraph(gid);
+    }
+
+    // Train with a FakeZstdTrainer that returns identical dict content for the
+    // first two nodes and different content for the third. The two identical
+    // dicts hash to the same ID and must be deduplicated, leaving two dicts.
+    std::vector<std::unique_ptr<DictTrainer>> trainers;
+    trainers.push_back(
+            std::make_unique<FakeZstdTrainer>(std::vector<std::string>{
+                    "duplicate_dict_content_AAAAAAAAAAAAAAAA",
+                    "duplicate_dict_content_AAAAAAAAAAAAAAAA",
+                    "unique_dict_content_BBBBBBBBBBBBBBBB",
+            }));
+
+    TrainParams params{};
+    auto candidate =
+            trainDictsForCandidate(inputs, compressor, params, trainers);
+
+    // Three nodes were trained, but two produced identical dicts, so only two
+    // unique dicts should remain in the candidate.
+    ASSERT_EQ(candidate.dicts.size(), 2u);
+    EXPECT_FALSE(ZL_UniqueID_eq(
+            &candidate.dicts[0].dictID.id, &candidate.dicts[1].dictID.id));
+    EXPECT_NE(candidate.dicts[0].packedDict, candidate.dicts[1].packedDict);
 }
 
 // -------------------------------------------------------

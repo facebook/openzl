@@ -198,6 +198,36 @@ void TrainedCandidate::replaceDictID(
     ALLOC_Arena_freeArena(arena);
 }
 
+std::string TrainedCandidate::packBundleInfo() const
+{
+    if (dicts.empty()) {
+        throw Exception("packBundleInfo: no dicts in candidate");
+    }
+
+    std::vector<ZL_DictID> dictIDs;
+    dictIDs.reserve(dicts.size());
+    for (const auto& entry : dicts) {
+        dictIDs.push_back(entry.dictID);
+    }
+
+    ZL_BundleInfo info;
+    std::memset(&info, 0, sizeof(info));
+    info.bundleID    = bundleID;
+    info.isFatBundle = false;
+    info.numDicts    = dictIDs.size();
+    info.dictIDs     = dictIDs.data();
+
+    std::string result(
+            ZL_BUNDLE_HEADER_SIZE + dicts.size() * ZL_UNIQUE_ID_SIZE, '\0');
+    ZL_Report report = BundleInfo_pack(result.data(), result.size(), &info);
+    if (ZL_isError(report)) {
+        throw Exception("packBundleInfo: BundleInfo_pack failed");
+    }
+
+    result.resize(ZL_validResult(report));
+    return result;
+}
+
 std::string TrainedCandidate::packFatBundle() const
 {
     if (dicts.empty()) {

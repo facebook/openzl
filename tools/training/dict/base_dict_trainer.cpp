@@ -2,6 +2,8 @@
 
 #include "tools/training/dict/base_dict_trainer.h"
 
+#include <cstring>
+#include <set>
 #include <vector>
 
 #include "openzl/compress/cgraph.h"
@@ -28,6 +30,16 @@ std::vector<std::unique_ptr<DictTrainer>> createAllTrainers()
     return trainers;
 }
 
+/// ZL_DictID is a plain C struct with no operator<, so std::set needs an
+/// explicit comparator. The ID is a fixed 32-byte value; compare it bytewise.
+struct DictIDCmp {
+    bool operator()(const ZL_DictID& lhs, const ZL_DictID& rhs) const noexcept
+    {
+        return std::memcmp(lhs.id.bytes, rhs.id.bytes, sizeof(lhs.id.bytes))
+                < 0;
+    }
+};
+
 } // anonymous namespace
 
 TrainedCandidate trainDictsForCandidate(
@@ -35,14 +47,22 @@ TrainedCandidate trainDictsForCandidate(
         Compressor& compressor,
         const TrainParams& trainParams)
 {
+    auto trainers = createAllTrainers();
+    return trainDictsForCandidate(inputs, compressor, trainParams, trainers);
+}
+
+TrainedCandidate trainDictsForCandidate(
+        const std::vector<MultiInput>& inputs,
+        Compressor& compressor,
+        const TrainParams& trainParams,
+        const std::vector<std::unique_ptr<DictTrainer>>& trainers)
+{
     (void)trainParams;
 
     TrainedCandidate candidate;
     candidate.serializedCompressor = compressor.serialize();
 
     // Ask each registered trainer to find its dict-requiring nodes.
-    auto trainers = createAllTrainers();
-
     struct TrainerWork {
         DictTrainer* trainer;
         DictNodeInfo node;
@@ -76,6 +96,7 @@ TrainedCandidate trainDictsForCandidate(
     auto cctx           = refCCtxForTraining(compressor);
     auto samplesPerNode = collectInputStreams(inputs, {}, nodeNames, cctx);
 
+    std::set<ZL_DictID, DictIDCmp> uniqueDictIDs;
     for (auto& [trainer, node] : work) {
         auto it = samplesPerNode.find(node.nodeName);
         if (it == samplesPerNode.end() || it->second.empty()) {
@@ -109,7 +130,7 @@ TrainedCandidate trainDictsForCandidate(
             continue;
         }
 
-        // Pack into the generic ZL_Dict wire format.
+        // Pack into the generic ZL_Dict wire format, with an auto-generated ID.
         std::string packedDict(ZL_DICT_HEADER_SIZE + dictContent->size(), '\0');
         ZL_Report report = Dict_pack(
                 packedDict.data(),
@@ -133,6 +154,14 @@ TrainedCandidate trainDictsForCandidate(
         compressor.unwrap(ZL_Compressor_overrideNodeParams(
                 compressor.get(), node.nodeID, &nodeParams));
 
+        if (uniqueDictIDs.find(generatedDictID) != uniqueDictIDs.end()) {
+            // This dict is a duplicate of a previously trained dict. No need to
+            // add it to the candidate. OpenZL dict loading will materialize
+            // properly.
+            continue;
+        }
+
+        uniqueDictIDs.insert(generatedDictID);
         candidate.dicts.push_back(
                 TrainedCandidate::DictEntry{
                         .dictID     = generatedDictID,
