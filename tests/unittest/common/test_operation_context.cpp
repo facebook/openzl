@@ -70,45 +70,37 @@ TEST(OperationContextTest, BasicUsage)
     ZL_ErrorContext scopeCtx = { &opCtx };
 
     EXPECT_EQ(ZL_OC_numErrors(&opCtx), 0u);
-    EXPECT_EQ(ZL_OC_getError(&opCtx, ZL_ErrorCode_no_error), nullptr);
-    EXPECT_EQ(ZL_OC_getError(&opCtx, ZL_ErrorCode_corruption), nullptr);
+    EXPECT_EQ(ZL_OC_getLastError(&opCtx), nullptr);
 
     ZL_OC_startOperation(&opCtx, ZL_Operation_compress);
 
     EXPECT_EQ(ZL_OC_numErrors(&opCtx), 0u);
-    EXPECT_EQ(ZL_OC_getError(&opCtx, ZL_ErrorCode_no_error), nullptr);
-    EXPECT_EQ(ZL_OC_getError(&opCtx, ZL_ErrorCode_corruption), nullptr);
+    EXPECT_EQ(ZL_OC_getLastError(&opCtx), nullptr);
 
     ZL_E_create(nullptr, &scopeCtx, "", "", 0, ZL_ErrorCode_corruption, "");
 
     EXPECT_EQ(ZL_OC_numErrors(&opCtx), 1u);
-    EXPECT_EQ(ZL_OC_getError(&opCtx, ZL_ErrorCode_no_error), nullptr);
-    EXPECT_NE(ZL_OC_getError(&opCtx, ZL_ErrorCode_corruption), nullptr);
-    EXPECT_NE(ZL_OC_getError(&opCtx, ZL_ErrorCode_GENERIC), nullptr);
-    EXPECT_EQ(
-            ZL_OC_getError(&opCtx, ZL_ErrorCode_corruption),
-            ZL_OC_getError(&opCtx, ZL_ErrorCode_corruption));
+    EXPECT_NE(ZL_OC_getLastError(&opCtx), nullptr);
 
     ZL_OC_clearErrors(&opCtx);
 
     EXPECT_EQ(ZL_OC_numErrors(&opCtx), 0u);
-    EXPECT_EQ(ZL_OC_getError(&opCtx, ZL_ErrorCode_no_error), nullptr);
-    EXPECT_EQ(ZL_OC_getError(&opCtx, ZL_ErrorCode_corruption), nullptr);
+    EXPECT_EQ(ZL_OC_getLastError(&opCtx), nullptr);
 
     ZL_E_create(nullptr, &scopeCtx, "", "", 0, ZL_ErrorCode_corruption, "");
 
     EXPECT_EQ(ZL_OC_numErrors(&opCtx), 1u);
-    EXPECT_NE(ZL_OC_getError(&opCtx, ZL_ErrorCode_corruption), nullptr);
+    EXPECT_NE(ZL_OC_getLastError(&opCtx), nullptr);
 
     ZL_E_create(nullptr, &scopeCtx, "", "", 0, ZL_ErrorCode_allocation, "");
 
     EXPECT_EQ(ZL_OC_numErrors(&opCtx), 2u);
-    EXPECT_NE(ZL_OC_getError(&opCtx, ZL_ErrorCode_allocation), nullptr);
+    EXPECT_NE(ZL_OC_getLastError(&opCtx), nullptr);
 
     ZL_OC_startOperation(&opCtx, ZL_Operation_compress);
 
     EXPECT_EQ(ZL_OC_numErrors(&opCtx), 0u);
-    EXPECT_EQ(ZL_OC_getError(&opCtx, ZL_ErrorCode_corruption), nullptr);
+    EXPECT_EQ(ZL_OC_getLastError(&opCtx), nullptr);
 
     ZL_OC_destroy(&opCtx);
 }
@@ -141,7 +133,7 @@ TEST(OperationContextTest, Warnings)
 
         auto dy1 = ZL_E_dy(e1);
         EXPECT_NE(dy1, nullptr);
-        EXPECT_EQ(dy1, ZL_OC_getError(&opCtx, ZL_ErrorCode_corruption));
+        EXPECT_EQ(dy1, ZL_OC_getLastError(&opCtx));
 
         ZL_OC_markAsWarning(&opCtx, e1);
 
@@ -167,7 +159,7 @@ TEST(OperationContextTest, Warnings)
 
         auto dy2 = ZL_E_dy(e2);
         EXPECT_NE(dy2, nullptr);
-        EXPECT_EQ(dy2, ZL_OC_getError(&opCtx, ZL_ErrorCode_corruption));
+        EXPECT_EQ(dy2, ZL_OC_getLastError(&opCtx));
 
         ZL_OC_markAsWarning(&opCtx, e2);
 
