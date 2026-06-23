@@ -11,8 +11,9 @@
 #ifndef ZSTRONG_ZS2_ERRORS_DETAIL_H
 #define ZSTRONG_ZS2_ERRORS_DETAIL_H
 
-#include <stddef.h> // size_t
-#include <string.h> // memset
+#include <stdbool.h> // bool
+#include <stddef.h>  // size_t
+#include <string.h>  // memset
 
 #include "openzl/detail/zl_error_context.h"
 #include "openzl/zl_errors_types.h"  // ZL_ErrorCode
@@ -373,8 +374,14 @@ typedef struct {
 // Destruction //
 /////////////////
 
-// There is no destructor for ZS2_Errors! The memory is managed elsewhere and
+// There is no destructor for ZL_Errors! The memory is managed elsewhere and
 // therefore there's nothing to do to destroy an error.
+
+/**
+ * You can however clear out the error info pointer to help avoid errors when
+ * the context object has been freed.
+ */
+void ZL_E_clearInfo(ZL_Error* err);
 
 /**************
  * ZS2_Result *
