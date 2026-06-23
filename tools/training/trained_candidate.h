@@ -50,6 +50,10 @@ struct TrainedCandidate {
     /// ZL_DictBundle_packFatBundle().
     /// @returns The packed fat bundle bytes.
     std::string packFatBundle() const;
+
+    /// Pack the current bundle metadata without appending dict contents.
+    /// @returns The packed standalone BundleInfo bytes.
+    std::string packBundleInfo() const;
 };
 
 } // namespace openzl::training

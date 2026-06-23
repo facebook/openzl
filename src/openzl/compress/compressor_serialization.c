@@ -2431,9 +2431,21 @@ static ZL_Report ZL_CompressorDeserializer_tryBuildNode(
         dictID                          = decoded_dict_id;
     }
 
+    // Preserve the node's registered name prefix (e.g. "zl.trainable.zstd")
+    // across the round-trip. Without an explicit name the framework would
+    // derive the name from the base node's prefix, dropping any custom name
+    // the node carried (which downstream consumers, such as dict training,
+    // rely on to identify nodes). The serialized key is the node's unique
+    // name ("prefix#id"); strip the "#id" fragment to recover the prefix.
+    ZL_TRY_LET_CONST(
+            StringView,
+            node_name_prefix,
+            mk_sv_strip_name_fragment(state->arena, ser_name_unterm));
+
     const ZL_NodeID node_id = ZL_Compressor_registerParameterizedNode(
             compressor,
             &(const ZL_ParameterizedNodeDesc){
+                    .name        = node_name_prefix.data,
                     .node        = base_nid,
                     .localParams = &local_params,
                     .dictID      = dictID,
