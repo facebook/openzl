@@ -90,9 +90,8 @@ size_t ZL_OC_numErrors(const ZL_OperationContext* opCtx);
 size_t ZL_OC_numWarnings(const ZL_OperationContext* opCtx);
 
 /// @returns The current error info or NULL if there is no error.
-ZL_DynamicErrorInfo const* ZL_OC_getError(
-        ZL_OperationContext const* opCtx,
-        ZL_ErrorCode opCode);
+/// Mostly for tests...
+ZL_DynamicErrorInfo const* ZL_OC_getLastError(ZL_OperationContext const* opCtx);
 
 /// @returns The idx'th warning stored in the context.
 ZL_Error ZL_OC_getWarning(ZL_OperationContext const* opCtx, size_t idx);
