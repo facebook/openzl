@@ -118,13 +118,9 @@ size_t ZL_OC_numWarnings(const ZL_OperationContext* opCtx)
     return VECTOR_SIZE(opCtx->warnings);
 }
 
-ZL_DynamicErrorInfo const* ZL_OC_getError(
-        ZL_OperationContext const* opCtx,
-        ZL_ErrorCode opCode)
+ZL_DynamicErrorInfo const* ZL_OC_getLastError(ZL_OperationContext const* opCtx)
 {
     if (opCtx == NULL)
-        return NULL;
-    if (opCode == ZL_ErrorCode_no_error)
         return NULL;
     if (VECTOR_SIZE(opCtx->errorInfos) == 0)
         return NULL;
