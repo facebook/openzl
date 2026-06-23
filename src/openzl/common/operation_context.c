@@ -151,7 +151,7 @@ ZL_Error_Array ZL_OC_getWarnings(ZL_OperationContext const* opCtx)
                              .size = size };
 }
 
-const char* ZL_OC_getErrorContextString(
+ZL_DynamicErrorInfo const* ZL_OC_findError(
         const ZL_OperationContext* opCtx,
         ZL_Error error)
 {
@@ -159,18 +159,27 @@ const char* ZL_OC_getErrorContextString(
         return NULL;
     }
     ZL_DynamicErrorInfo* const dy = ZL_E_dy(error);
-
-    // Ensure that the info points into this object or to NULL, we can't trust
-    // the user.
+    if (dy == NULL) {
+        return NULL;
+    }
     for (size_t i = 0; i < VECTOR_SIZE(opCtx->errorInfos); i++) {
         if (dy == VECTOR_AT(opCtx->errorInfos, i)) {
-            return ZL_E_str(error);
+            return dy;
         }
     }
+    return NULL;
+}
+
+const char* ZL_OC_getErrorContextString(
+        const ZL_OperationContext* opCtx,
+        ZL_Error error)
+{
+    const ZL_DynamicErrorInfo* const dy = ZL_OC_findError(opCtx, error);
+    if (dy != NULL) {
+        return ZL_E_str(error);
+    }
+
     // TODO: handle static infos?
-    ZL_LOG(ERROR,
-           "User passed in a ZL_Report that doesn't belong to this context");
-    ZL_E_clearInfo(&error);
     return "Error does not belong to this context object, you must pass this "
            "report into the context that created the error (ZL_CCtx for "
            "compression, ZL_DCtx for decompression, ZL_Compressor for graph "
