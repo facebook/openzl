@@ -28,7 +28,7 @@ class Exception : public std::runtime_error {
     /// @see ExceptionBuilder
     Exception(
             poly::string_view msg,
-            poly::optional<ZL_ErrorCode> code,
+            poly::optional<ZL_Error> error,
             poly::string_view errorContext,
             poly::source_location location);
 
@@ -37,9 +37,13 @@ class Exception : public std::runtime_error {
         return msg_;
     }
 
-    const poly::optional<ZL_ErrorCode>& code() const noexcept
+    poly::optional<ZL_ErrorCode> code() const noexcept
     {
-        return code_;
+        if (error_) {
+            return ZL_E_code(error_.value());
+        } else {
+            return {};
+        }
     }
 
     poly::string_view errorContext() const noexcept
@@ -54,7 +58,7 @@ class Exception : public std::runtime_error {
 
    private:
     std::string msg_;
-    poly::optional<ZL_ErrorCode> code_;
+    poly::optional<ZL_Error> error_;
     std::string errorContext_;
     poly::source_location location_;
 };
