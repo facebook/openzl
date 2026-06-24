@@ -75,13 +75,11 @@ zs_library(
     ),
     header_namespace = "",
     exported_deps = [
+        "fbsource//third-party/xxHash:xxhash",
+        "fbsource//third-party/zstd:zstd",
         ":config",
         ":fse",
         ":public_headers",
-    ],
-    exported_external_deps = [
-        ("xxHash", None, "xxhash"),
-        "zstd",
     ],
 )
 
@@ -114,12 +112,10 @@ zs_library(
         "fbsource//third-party/lz4:lz4",
     ],
     exported_deps = [
+        "fbsource//third-party/zstd:zstd",
         ":common",
         ":dict",
         ":fse",
-    ],
-    exported_external_deps = [
-        "zstd",
     ],
 )
 
@@ -148,12 +144,10 @@ zs_library(
         "fbsource//third-party/lz4:lz4",
     ],
     exported_deps = [
+        "fbsource//third-party/zstd:zstd",
         ":common",
         ":dict",
         ":fse",
-    ],
-    exported_external_deps = [
-        "zstd",
     ],
 )
 
@@ -179,13 +173,11 @@ zs_library(
 zs_library(
     name = "zstronglib",
     exported_deps = [
+        "fbsource//third-party/zstd:zstd",
         ":common",
         ":compress",
         ":decompress",
         ":dict",
-    ],
-    exported_external_deps = [
-        "zstd",
     ],
 )
 
