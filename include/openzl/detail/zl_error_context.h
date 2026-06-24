@@ -7,6 +7,8 @@
 #    include <cstddef> // nullptr_t
 #endif
 
+#include <stdbool.h>
+
 #include "openzl/zl_errors_types.h"
 #include "openzl/zl_opaque_types.h"
 #include "openzl/zl_portability.h"
