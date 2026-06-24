@@ -9,7 +9,16 @@ BRANCH_NAME = read_package_value("directory_branching.branch_name")  # Gets "dev
 
 buck_filegroup(
     name = "app_srcs",
-    srcs = glob(["**/*"]),
+    # Exclude installed deps / build output so they don't bloat the test target's
+    # input graph (node_modules is also gitignored).
+    srcs = glob(
+        ["**/*"],
+        exclude = [
+            "node_modules/**",
+            "dist/**",
+            "dist-ssr/**",
+        ],
+    ),
 )
 
 buck_genrule(
@@ -36,6 +45,10 @@ buck_sh_binary(
 
 buck_genrule(
     name = "yarn-test",
+    # Declares the app sources as inputs so target determination schedules
+    # this test when any src/test file changes. The script reads them at
+    # runtime via `yarn test:run`, which Buck's graph cannot infer on its own.
+    srcs = [":app_srcs"],
     out = "yarn-test.sh",
     cmd = (
         "echo -e {0} > $OUT && chmod +x $OUT".format(
