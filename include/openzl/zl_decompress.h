@@ -8,7 +8,6 @@
 #include "openzl/zl_errors.h"        // ZL_Report, ZL_isError()
 #include "openzl/zl_introspection.h" // ZL_DecompressIntrospectionHooks
 #include "openzl/zl_opaque_types.h"  // ZL_DCtx
-#include "openzl/zl_opaque_types.h"  // ZL_DictLoader, ZL_FatBundleDictLoader
 #include "openzl/zl_output.h"
 
 #if defined(__cplusplus)
