@@ -128,7 +128,7 @@ static inline void ZL_sparseNumDecodeTrackWrite(
  * both under-writing and over-writing in debug builds when a future edit
  * changes the decode loop's write structure.
  */
-static inline bool ZL_sparseNumDecodeComplete(
+static inline ZL_UNUSED bool ZL_sparseNumDecodeComplete(
         size_t expectedDstSize,
         size_t producedBytes)
 {
