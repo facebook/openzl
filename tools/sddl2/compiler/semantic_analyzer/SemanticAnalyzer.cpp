@@ -22,8 +22,8 @@ enum class TypeKind {
 };
 
 struct Type {
-    TypeKind kind           = TypeKind::NONE;
-    const ASTNode* type_def = nullptr;
+    TypeKind kind            = TypeKind::NONE;
+    const ASTField* type_def = nullptr;
 };
 
 void expectNumeric(const SourceLocation& loc, const Type& t)
@@ -85,6 +85,17 @@ Type assumedType(const Type& field_type)
 struct ScopeContext {
     // Symbol table: every name currently in scope mapped to its type.
     std::unordered_map<std::string, Type> var_types;
+
+    // Set of names of fields in the current record. Used to detect scan
+    // records.
+    std::unordered_set<std::string> current_record_fields;
+    bool requires_scan = false;
+
+    void clear()
+    {
+        current_record_fields.clear();
+        requires_scan = false;
+    }
 };
 
 class SemanticAnalyzerImpl {
@@ -148,6 +159,9 @@ class SemanticAnalyzerImpl {
             throw SemanticError(
                     var.loc(), "Undefined variable: '" + var.name() + "'");
         }
+        if (scope_.current_record_fields.count(var.name()) > 0) {
+            scope_.requires_scan = true;
+        };
         return it->second;
     }
 
@@ -159,7 +173,11 @@ class SemanticAnalyzerImpl {
 
     Type analyze(const ASTArray& array)
     {
-        expectFieldType(array.field()->loc(), analyzeNode(array.field()));
+        auto element_type = analyzeNode(array.field());
+        expectFieldType(array.field()->loc(), element_type);
+        if (element_type.type_def->annotations().requires_scan) {
+            scope_.requires_scan = true;
+        }
         if (array.len()) {
             expectNumeric(array.len()->loc(), analyzeNode(array.len()));
         } else {
@@ -174,14 +192,25 @@ class SemanticAnalyzerImpl {
         if (!var) {
             throw SemanticError(field.loc(), "Field name must be a variable.");
         }
-        expectFieldType(field.type()->loc(), analyzeNode(field.type()));
+        auto t = analyzeNode(field.type());
+        expectFieldType(field.type()->loc(), t);
+        scope_.current_record_fields.insert(var->name());
+        scope_.var_types[var->name()] = assumedType(t);
+
+        // Transitivity: a field whose type is itself a requires-scan
+        // record or array makes the enclosing record requires-scan too.
+        if (t.type_def->annotations().requires_scan) {
+            scope_.requires_scan = true;
+        }
         return Type{ TypeKind::NONE };
     }
 
     Type analyze(const ASTRecord& record)
     {
-        // Validate params are variable names and introduce them as NUMERIC
         auto saved = scope_;
+        scope_.clear();
+
+        // Validate params are variable names and introduce them as NUMERIC
         for (const auto& param : record.params()) {
             const auto* var = param->as_var();
             if (!var) {
@@ -197,7 +226,8 @@ class SemanticAnalyzerImpl {
             analyzeNode(field);
         }
 
-        scope_ = std::move(saved);
+        record.annotations().requires_scan = scope_.requires_scan;
+        scope_                             = std::move(saved);
 
         return Type{ TypeKind::RECORD, &record };
     }
