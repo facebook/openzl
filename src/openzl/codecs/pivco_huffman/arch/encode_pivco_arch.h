@@ -121,6 +121,7 @@ const ZL_PivCoHuffmanEncode* ZL_PivCoHuffmanEncode_select(
         const ZL_cpuid_t* cpuid);
 
 extern const ZL_PivCoHuffmanEncode ZL_PivCoHuffmanEncode_generic;
+extern const ZL_PivCoHuffmanEncode ZL_PivCoHuffmanEncode_avx512;
 
 ZL_END_C_DECLS
 
