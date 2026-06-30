@@ -288,6 +288,10 @@ class CodeGeneratorImpl {
             }
             case ConvertedNodeType::RECORD: {
                 auto record = type->as_record();
+                if (record->annotations().requires_scan) {
+                    throw CodegenError(
+                            type->loc(), "Scan records are not yet supported.");
+                }
                 // Save the current stack depth
                 auto reg = registers_.allocate();
                 output += "push.stack_depth";
