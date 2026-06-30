@@ -397,6 +397,51 @@ TEST_F(SemanticAnalyzerTest, MemberAccessOnNonConditionalField)
     expect_success(prog);
 }
 
+TEST_F(SemanticAnalyzerTest, MemberAccessOnScanRecord)
+{
+    const auto prog = R"(
+        record Data() {
+            n: Int32LE,
+            data: Bytes(n + 1)
+        }
+        d: Data
+        expect d.n == 0
+    )";
+    expect_error(prog, "Member access not supported on scan records");
+}
+
+TEST_F(SemanticAnalyzerTest, MemberAccessOnFieldConditionalScanRecord)
+{
+    const auto prog = R"(
+        record Data() {
+            flags: UInt8,
+            when flags == 1 {
+                optional: Int32LE
+            }
+        }
+        d: Data
+        expect d.flags == 0
+    )";
+    expect_error(prog, "Member access not supported on scan records");
+}
+
+TEST_F(SemanticAnalyzerTest, MemberAccessOnNestedScanRecord)
+{
+    const auto prog = R"(
+        record Inner() {
+            n: Int32LE,
+            data: Bytes(n)
+        }
+        record Outer() {
+            head: Int32LE,
+            inner: Inner
+        }
+        o: Outer
+        expect o.head == 0
+    )";
+    expect_error(prog, "Member access not supported on scan records");
+}
+
 TEST_F(SemanticAnalyzerTest, AutoSizedArrayAsLastExpression)
 {
     const auto prog = R"(

@@ -375,8 +375,14 @@ class SemanticAnalyzerImpl {
                     "LHS of member access is not a record.");
         }
 
-        // Check that the RHS is a valid field name return the consumed type
-        auto* record           = lhs_type.type_def->as_record();
+        auto* record = lhs_type.type_def->as_record();
+        if (record->annotations().requires_scan) {
+            throw SemanticError(
+                    op.args()[0]->loc(),
+                    "Member access not supported on scan records.");
+        }
+
+        // Check that the RHS is a valid field name and return the consumed type
         const auto& field_name = someVar(op.args()[1])->name();
 
         // Add the record params to scope
