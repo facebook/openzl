@@ -520,30 +520,44 @@ class Codegen {
         return std::make_shared<ASTBuiltinField>(loc_, sym);
     }
 
-    ASTPtr array(ASTPtr field, ASTPtr len) const
+    ASTPtr array(ASTPtr field, ASTPtr len, Annotations annotations = {}) const
     {
-        return std::make_shared<ASTArray>(std::move(field), std::move(len));
+        auto node =
+                std::make_shared<ASTArray>(std::move(field), std::move(len));
+        node->annotations() = annotations;
+        return node;
     }
 
-    ASTPtr array(ASTPtr field) const
+    ASTPtr array(ASTPtr field, Annotations annotations = {}) const
     {
-        return std::make_shared<ASTArray>(std::move(field));
+        auto node           = std::make_shared<ASTArray>(std::move(field));
+        node->annotations() = annotations;
+        return node;
     }
 
-    ASTPtr bytes(ASTPtr len) const
+    ASTPtr bytes(ASTPtr len, Annotations annotations = {}) const
     {
-        return std::make_shared<ASTBytes>(loc_, paren_list({ std::move(len) }));
+        auto node = std::make_shared<ASTBytes>(
+                loc_, paren_list({ std::move(len) }));
+        node->annotations() = annotations;
+        return node;
     }
 
-    ASTPtr record(ASTVec params, ASTVec fields) const
+    ASTPtr record(ASTVec params, ASTVec fields, Annotations annotations = {})
+            const
     {
-        return std::make_shared<ASTRecord>(
+        auto node = std::make_shared<ASTRecord>(
                 paren_list(std::move(params)), curly_list(std::move(fields)));
+        node->annotations() = annotations;
+        return node;
     }
 
-    ASTPtr call(ASTPtr target, ASTVec args) const
+    ASTPtr call(ASTPtr target, ASTVec args, Annotations annotations = {}) const
     {
-        return std::make_shared<ASTCall>(std::move(target), std::move(args));
+        auto node =
+                std::make_shared<ASTCall>(std::move(target), std::move(args));
+        node->annotations() = annotations;
+        return node;
     }
 
     ASTPtr when(ASTPtr condition, ASTVec body) const
