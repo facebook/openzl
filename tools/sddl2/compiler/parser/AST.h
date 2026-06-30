@@ -199,9 +199,28 @@ class ASTVar : public ASTConverted {
     bool is_last_reference_ = false;
 };
 
+/**
+ * Annotations populated by post-parse passes (semantic analyzer, etc.) and
+ * read by later passes (codegen). Attached to every ASTConverted node via
+ * `annotations()`. Add new fields here rather than to individual node
+ * subclasses so passes can share annotation state without changing AST
+ * shape.
+ */
+struct Annotations {
+    bool requires_scan = false;
+};
+
 class ASTField : public ASTConverted {
    public:
     using ASTConverted::ASTConverted;
+
+    Annotations& annotations() const
+    {
+        return annotations_;
+    }
+
+   private:
+    mutable Annotations annotations_;
 };
 
 class ASTBuiltinField : public ASTField {
