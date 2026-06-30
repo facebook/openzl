@@ -72,22 +72,28 @@ class ConstFoldImpl {
 
     ASTPtr optimizeBytes(const ASTBytes& bytes)
     {
-        return Codegen(bytes.loc()).bytes(optimizeNode(bytes.len()));
+        return Codegen(bytes.loc())
+                .bytes(optimizeNode(bytes.len()), bytes.annotations());
     }
 
     ASTPtr optimizeArray(const ASTArray& array)
     {
         if (!array.len()) {
-            return Codegen(array.loc()).array(optimizeNode(array.field()));
+            return Codegen(array.loc())
+                    .array(optimizeNode(array.field()), array.annotations());
         }
         return Codegen(array.loc())
-                .array(optimizeNode(array.field()), optimizeNode(array.len()));
+                .array(optimizeNode(array.field()),
+                       optimizeNode(array.len()),
+                       array.annotations());
     }
 
     ASTPtr optimizeCall(const ASTCall& call)
     {
         return Codegen(call.loc())
-                .call(optimizeNode(call.target()), optimizeVec(call.args()));
+                .call(optimizeNode(call.target()),
+                      optimizeVec(call.args()),
+                      call.annotations());
     }
 
     ASTPtr optimizeRecord(const ASTRecord& record)
@@ -96,7 +102,9 @@ class ConstFoldImpl {
         ASTVec new_fields = optimizeVec(record.fields());
         const_vars_       = std::move(saved_vars);
         return Codegen(record.loc())
-                .record(record.params(), std::move(new_fields));
+                .record(record.params(),
+                        std::move(new_fields),
+                        record.annotations());
     }
 
     ASTVec optimizeWhen(const ASTWhen& when)
@@ -201,8 +209,7 @@ class ConstFoldImpl {
             case Op::MEMBER:
             case Op::SEND:
             default:
-                return std::make_shared<ASTOp>(
-                        op.loc(), op.op(), std::move(new_args));
+                return Codegen(op.loc()).op(op.op(), std::move(new_args));
         }
     }
 
