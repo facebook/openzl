@@ -1,0 +1,56 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
+
+oncall("data_compression")
+
+# Mints valid OpenZL frames with fully-controlled codec content (frame_factory)
+# and verifies their codec lists via the real reflection API (frame_verifier).
+# For building GPU-decoder test fixtures.
+cpp_library(
+    # @autodeps-skip
+    name = "testkit",
+    srcs = [
+        "frame_factory.cpp",
+        "frame_verifier.cpp",
+        "multichunk_frame.cpp",
+    ],
+    headers = [
+        "frame_factory.h",
+        "frame_verifier.h",
+        "multichunk_frame.h",
+    ],
+    exported_deps = [
+        "../../..:zstronglib",
+        "../../../cpp:openzl_cpp",
+        "../../../tests:utils",
+    ],
+)
+
+cpp_unittest(
+    # @autodeps-skip
+    name = "frame_factory_test",
+    srcs = ["tests/FrameFactoryTest.cpp"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "../../..:zstronglib",
+        "../../../cpp:openzl_cpp",
+        "fbsource//third-party/googletest:gtest",
+        ":testkit",
+    ],
+)
+
+cpp_unittest(
+    # @autodeps-skip
+    name = "multichunk_frame_test",
+    srcs = ["tests/MultiChunkFrameTest.cpp"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "../../..:zstronglib",
+        "../../../cpp:openzl_cpp",
+        "fbsource//third-party/googletest:gtest",
+        ":testkit",
+    ],
+)
