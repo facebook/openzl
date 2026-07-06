@@ -1,6 +1,9 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import {InteractiveStreamdumpGraph} from '../../src/graphVisualization/models/InteractiveStreamdumpGraph';
+import {applyLayout} from '../../src/graphVisualization/controllers/LayoutController';
+import {InternalCodecNode} from '../../src/graphVisualization/models/InternalCodecNode';
+import {InternalGraphNode} from '../../src/graphVisualization/models/InternalGraphNode';
 import {Streamdump} from '../../src/models/Streamdump';
 import {Stream} from '../../src/models/Stream';
 import {Codec} from '../../src/models/Codec';
@@ -99,8 +102,8 @@ export function createTestGraph(
   return new Graph(id as GraphID, chunkId, type, name, gFailureString, localParams, codecIDs as CodecID[]);
 }
 
-// Create a simple tree with a graph: A->B->C->D where B and C are in a graph
-export function createSimpleTreeWithGraph(isDefaultCollapsed = false) {
+// Base: simple tree A->B->C->D where B and C are grouped in a standard graph.
+export function createSimpleTree(): Chunk[] {
   // Create streams (every codec has at most one output, so outputIdx defaults to 0)
   const stream0 = createTestStream(0, ZL_Type.ZL_Type_numeric, 4, 100, 400, 33.3);
   const stream1 = createTestStream(1, ZL_Type.ZL_Type_numeric, 4, 80, 320, 33.3);
@@ -115,12 +118,18 @@ export function createSimpleTreeWithGraph(isDefaultCollapsed = false) {
   // Create graph
   const graph = createTestGraph(0, ZL_GraphType.ZL_GraphType_standard, 'GraphBC', EMPTY_LOCAL_PARAMS, [1, 2]);
 
-  // Create streamdump (single chunk)
-  const streamdump = new Streamdump(LIBRARY_VERSION, FRAME_VERSION, TRACE_VERSION, OperationType.Compress, [
-    new Chunk(CHUNK_ID, [stream0, stream1, stream2], [codecA, codecB, codecC, codecD], [graph]),
-  ]);
+  return [new Chunk(CHUNK_ID, [stream0, stream1, stream2], [codecA, codecB, codecC, codecD], [graph])];
+}
 
-  return new InteractiveStreamdumpGraph(streamdump, isDefaultCollapsed);
+// Streamdump form of the simple tree (for consumers that take a raw Streamdump,
+// e.g. the controller hook).
+export function createSimpleTreeStreamdump(): Streamdump {
+  return new Streamdump(LIBRARY_VERSION, FRAME_VERSION, TRACE_VERSION, OperationType.Compress, createSimpleTree());
+}
+
+// Create a simple tree with a graph: A->B->C->D where B and C are in a graph
+export function createSimpleTreeWithGraph(isDefaultCollapsed = false) {
+  return new InteractiveStreamdumpGraph(createSimpleTreeStreamdump(), isDefaultCollapsed);
 }
 
 // Create a single node graph with no edges
@@ -154,15 +163,20 @@ function buildDiamondFixture() {
   };
 }
 
+// Base: diamond Root -> Left/Right -> Merge, no graphs.
+export function createDiamond(): Chunk[] {
+  const {streams, codecs} = buildDiamondFixture();
+  return [new Chunk(CHUNK_ID, streams, codecs, [])];
+}
+
+// Streamdump form of the diamond.
+export function createDiamondStreamdump(): Streamdump {
+  return new Streamdump(LIBRARY_VERSION, FRAME_VERSION, TRACE_VERSION, OperationType.Compress, createDiamond());
+}
+
 // Create a diamond shaped graph
 export function createDiamondGraph(isDefaultCollapsed = false) {
-  const {streams, codecs} = buildDiamondFixture();
-
-  const streamdump = new Streamdump(LIBRARY_VERSION, FRAME_VERSION, TRACE_VERSION, OperationType.Compress, [
-    new Chunk(CHUNK_ID, streams, codecs, []),
-  ]);
-
-  return new InteractiveStreamdumpGraph(streamdump, isDefaultCollapsed);
+  return new InteractiveStreamdumpGraph(createDiamondStreamdump(), isDefaultCollapsed);
 }
 
 // Create diamond shaped graph that is collapsable (specifically can collapse output of root node)
@@ -178,8 +192,9 @@ export function createCollapsableDiamondGraph(isDefaultCollapsed = false) {
   return new InteractiveStreamdumpGraph(streamdump, isDefaultCollapsed);
 }
 
-// Create multi-chunk streamdump with segmenter
-export function createMultiChunkGraph(isDefaultCollapsed = false) {
+// Base: multi-chunk with segmenter. Chunk 0 (segmenter -> A) and chunk 1
+// (zl.#start -> B -> C).
+export function createMultiChunk(): Chunk[] {
   // Chunk 0: segmenter -> A
   const stream0_0 = createTestStream(
     0,
@@ -229,12 +244,17 @@ export function createMultiChunkGraph(isDefaultCollapsed = false) {
 
   const chunk1 = new Chunk(1 as ChunkID, [stream1_0, stream1_1], [startCodec, codecB1, codecC1], []);
 
-  const streamdump = new Streamdump(LIBRARY_VERSION, FRAME_VERSION, TRACE_VERSION, OperationType.Compress, [
-    chunk0,
-    chunk1,
-  ]);
+  return [chunk0, chunk1];
+}
 
-  return new InteractiveStreamdumpGraph(streamdump, isDefaultCollapsed);
+// Streamdump form of the multi-chunk fixture.
+export function createMultiChunkStreamdump(): Streamdump {
+  return new Streamdump(LIBRARY_VERSION, FRAME_VERSION, TRACE_VERSION, OperationType.Compress, createMultiChunk());
+}
+
+// Create multi-chunk streamdump with segmenter
+export function createMultiChunkGraph(isDefaultCollapsed = false) {
+  return new InteractiveStreamdumpGraph(createMultiChunkStreamdump(), isDefaultCollapsed);
 }
 
 // Create a branching tree with two paths: A->B->C/D and A->E->F
@@ -287,4 +307,18 @@ export function createBranchingTreeWithGraph(isDefaultCollapsed = false) {
   ]);
 
   return new InteractiveStreamdumpGraph(streamdump, isDefaultCollapsed);
+}
+
+// Pull the visible internal graph apart into its nodes, edges, codecs, and graphs.
+export function getGraphDetails(interactiveGraph: InteractiveStreamdumpGraph) {
+  const {dagOrderedNodes, edges} = interactiveGraph.getVisibleStreamdumpGraph();
+  const codecs = dagOrderedNodes.filter((n): n is InternalCodecNode => n instanceof InternalCodecNode);
+  const graphs = dagOrderedNodes.filter((n): n is InternalGraphNode => n instanceof InternalGraphNode);
+  return {nodes: dagOrderedNodes, edges, codecs, graphs};
+}
+
+// Convenience wrapper: get the visible graph and run it through the layout engine.
+export function layoutGraph(interactiveGraph: InteractiveStreamdumpGraph) {
+  const {nodes, edges} = getGraphDetails(interactiveGraph);
+  return applyLayout(nodes, edges);
 }

@@ -4,5 +4,5 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo",
     "types": ["vitest/globals", "node"]
   },
-  "include": ["tests"]
+  "include": ["tests", "src/vite-env.d.ts"]
 }
