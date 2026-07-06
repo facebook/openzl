@@ -590,9 +590,16 @@ export class InteractiveChunkGraph {
     visited: Set<InternalCodecNode>,
     newlyVisibleNodes: RF_nodeId[],
   ) {
+    // Skip codecs already shown so a codec reachable via multiple in-graph
+    // paths (e.g. a diamond inside the graph) isn't traversed or pushed twice.
+    if (visited.has(codec)) {
+      return;
+    }
+    visited.add(codec);
     codec.isVisible = true;
     newlyVisibleNodes.push(codec.rfid);
-    if (codec.isCollapsed || visited.has(codec)) {
+    // A collapsed codec is shown but its children stay hidden.
+    if (codec.isCollapsed) {
       return;
     }
     this.codecDag!.getChildren(codec).forEach((childCodec) => {
@@ -611,7 +618,14 @@ export class InteractiveChunkGraph {
       graph.parents = [];
       graph.children = [];
       graph.sortedChildren = [];
-      this.displayCodecsInGraph(graph.codecs[0], graph, new Set<InternalCodecNode>(), newlyVisibleNodes);
+      // Ensure that we account for all root nodes (if a node has multiple parents) and display correct codecs
+      const visited = new Set<InternalCodecNode>();
+      graph.codecs.forEach((codec) => {
+        const isGraphEntry = !this.codecDag!.getParents(codec).some((parent) => parent.parentGraph === graph);
+        if (isGraphEntry) {
+          this.displayCodecsInGraph(codec, graph, visited, newlyVisibleNodes);
+        }
+      });
     }
     // Collapsing this function graph
     else {

@@ -3,7 +3,14 @@
 // /data/users/agandevia/fbsource/fbcode/data_compression/experimental/sd3/streamdump/visualization-app/tests/sample.test.ts
 
 import {describe, it, expect} from 'vitest';
-import {createSimpleTreeWithGraph, createBranchingTreeWithGraph} from './createTestModels';
+import {
+  createSimpleTreeWithGraph,
+  createBranchingTreeWithGraph,
+  createSingleNodeGraph,
+  createDiamondGraph,
+  createCollapsableDiamondGraph,
+  createMultiChunkGraph,
+} from './utils/createTestModels';
 import {InternalGraphNode} from '../src/graphVisualization/models/InternalGraphNode';
 import {InternalCodecNode} from '../src/graphVisualization/models/InternalCodecNode';
 import type {InteractiveStreamdumpGraph} from '../src/graphVisualization/models/InteractiveStreamdumpGraph';
@@ -40,7 +47,7 @@ describe('Test interactive streamdump graph creation', () => {
 
     // Test collapsing the graph
     interactiveGraph.toggleGraphCollapse(graphs[0]);
-    const {dagOrderedNodes: collapsedNodes, edges: _} = interactiveGraph.getVisibleStreamdumpGraph();
+    const {dagOrderedNodes: collapsedNodes} = interactiveGraph.getVisibleStreamdumpGraph();
     const collapsedGraphs = collapsedNodes.filter(
       (node): node is InternalGraphNode => node instanceof InternalGraphNode,
     );
@@ -292,5 +299,88 @@ describe('Test the largest compression path', () => {
     expect(codecByName('LeftLeaf2').inLargestCompressionPath).toBe(false); // D
     expect(codecByName('RightBranch').inLargestCompressionPath).toBe(false); // E
     expect(codecByName('RightLeaf').inLargestCompressionPath).toBe(false); // F
+  });
+});
+
+describe('Test multi-chunk segmenter merging', () => {
+  it('should merge chunk 0 segmenter with chunk 1', () => {
+    const interactiveGraph = createMultiChunkGraph();
+    // Initially only chunk 0 visible: segmenter -> CodecA0
+    let {nodes, edges, codecs} = getInteractiveGraphDetails(interactiveGraph);
+    expect(nodes.length).toBe(2);
+    expect(edges.length).toBe(1);
+
+    // Set visible chunk to 1: segmenter merges into chunk 1, zl.#start omitted
+    interactiveGraph.setVisibleChunk(1);
+    ({nodes, edges, codecs} = getInteractiveGraphDetails(interactiveGraph));
+    expect(nodes.length).toBe(4); // segmenter, CodecA0, CodecB1, CodecC1
+    expect(codecs.map((c) => c.name)).not.toContain('zl.#start'); // omitted
+    expect(edges.length).toBe(3);
+    // segmenter (C0-T0) replaces zl.#start as CodecB1's (C1-T1) parent
+    expect(edges.some((e) => e.source.rfid === 'C0-T0' && e.target.rfid === 'C1-T1')).toBe(true);
+
+    // Set back to null (only chunk 0)
+    interactiveGraph.setVisibleChunk(null);
+    ({nodes, edges} = getInteractiveGraphDetails(interactiveGraph));
+    expect(nodes.length).toBe(2);
+    expect(edges.length).toBe(1);
+  });
+});
+
+describe('Diamond topology tests', () => {
+  it('diamond graph has correct topological order and child ordering', () => {
+    const interactiveGraph = createDiamondGraph();
+    const {codecs, edges, nodes} = getInteractiveGraphDetails(interactiveGraph);
+
+    expect(nodes.length).toBe(4);
+    expect(edges.length).toBe(4);
+
+    // Topological order: Root first, Merge last, Left/Right in between
+    const names = codecs.map((c) => c.name);
+    expect(names[0]).toBe('Root');
+    expect(names[3]).toBe('Merge');
+    expect(new Set(names.slice(1, 3))).toEqual(new Set(['Left', 'Right']));
+
+    interactiveGraph.buildAllNavlinks();
+    const root = codecs.find((c) => c.name === 'Root')!;
+
+    // sortedChildren orders by share: Left (60%) before Right (40%)
+    const sortedChildNames = root.sortedChildren.map((rfid) => codecs.find((c) => c.rfid === rfid)?.name);
+    expect(sortedChildNames).toEqual(['Left', 'Right']);
+  });
+
+  it('diamond with graph collapses to proxy edges', () => {
+    const interactiveGraph = createCollapsableDiamondGraph();
+    const {graphs} = getInteractiveGraphDetails(interactiveGraph);
+    expect(graphs.length).toBe(1);
+    // Graph contains Left (C0-T1) and Right (C0-T2), rfid = C0-G0
+    expect(graphs[0].rfid).toBe('C0-G0');
+
+    interactiveGraph.toggleGraphCollapse(graphs[0]);
+    let {nodes, edges, graphs: collapsedGraphs} = getInteractiveGraphDetails(interactiveGraph);
+    expect(collapsedGraphs[0].isCollapsed).toBe(true);
+    expect(nodes.length).toBe(3); // Root, collapsed graph, Merge
+    expect(edges.length).toBe(2);
+
+    // Verify proxy edges replace internal codecs: Root -> graph -> Merge
+    expect(edges.some((e) => e.source.rfid === 'C0-T0' && e.target.rfid === 'C0-G0')).toBe(true); // Root -> graph
+    expect(edges.some((e) => e.source.rfid === 'C0-G0' && e.target.rfid === 'C0-T3')).toBe(true); // graph -> Merge
+
+    // Expand back
+    interactiveGraph.toggleGraphCollapse(collapsedGraphs[0]);
+    ({nodes, edges, graphs: collapsedGraphs} = getInteractiveGraphDetails(interactiveGraph));
+    expect(collapsedGraphs[0].isCollapsed).toBe(false);
+    expect(nodes.length).toBe(5); // Root, Left, Right, Merge, graph node
+    expect(edges.length).toBe(4);
+  });
+});
+
+describe('Single node edge case', () => {
+  it('single node graph renders with no edges', () => {
+    const interactiveGraph = createSingleNodeGraph();
+    const {nodes, edges, codecs} = getInteractiveGraphDetails(interactiveGraph);
+    expect(nodes.length).toBe(1);
+    expect(edges.length).toBe(0);
+    expect(codecs[0].name).toBe('SingleNode');
   });
 });
