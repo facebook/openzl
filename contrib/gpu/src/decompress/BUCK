@@ -1,0 +1,12 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("data_compression")
+
+cpp_library(
+    name = "decompress",
+    srcs = ["gpu_decompress.cpp"],
+    headers = ["gpu_decompress.h"],
+    exported_deps = ["../../../..:zstronglib"],
+)
