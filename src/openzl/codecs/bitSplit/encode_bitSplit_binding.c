@@ -10,7 +10,6 @@
 #include "openzl/compress/private_nodes.h"
 #include "openzl/shared/mem.h" // ZL_memcpy
 #include "openzl/zl_data.h"
-#include "openzl/zl_graph_api.h"
 
 // Parameter IDs for bitSplit
 #define ZL_BITSPLIT_WIDTHS_PID 701
