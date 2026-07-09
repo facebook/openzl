@@ -11,7 +11,6 @@
 #include "openzl/compress/private_nodes.h"
 #include "openzl/cpp/Compressor.hpp"
 #include "openzl/cpp/Exception.hpp"
-#include "openzl/dict/dict_constants.h"
 
 #include "tests/datagen/random_producer/PRNGWrapper.h"
 #include "tests/datagen/structures/CompressorProducer.h"
