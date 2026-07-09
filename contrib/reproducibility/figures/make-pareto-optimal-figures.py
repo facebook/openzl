@@ -51,7 +51,7 @@ def copy_subset(files: [str], output: str, n: int | None) -> None:
 
     subset = random.sample(files, min(n, len(files))) if n is not None else files
 
-    with open(f"{output}.txt", "w") as f:
+    with open(os.path.realpath(f"{output}.txt"), "w") as f:
         for idx, file in enumerate(subset):
             shutil.copy(file, os.path.join(output, f"{idx}"))
             f.write(f"{file}\n")
@@ -177,6 +177,7 @@ def main():
 
     args = parser.parse_args()
 
+    args.output = os.path.realpath(args.output)
     os.makedirs(os.path.join(args.output, "bin"), exist_ok=True)
     shutil.copy(args.lzbench, os.path.join(args.output, "bin"))
     if args.zli is None:
