@@ -4,7 +4,6 @@
 
 #include "openzl/shared/mem.h"
 #include "openzl/shared/utils.h"
-#include "openzl/shared/varint.h"
 
 static const uint16_t kZip64InfoID                           = 0x0001;
 static const uint16_t kDataDescriptorMask                    = (1 << 3);

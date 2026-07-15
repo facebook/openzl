@@ -5,7 +5,6 @@
 #include "openzl/zl_dictloader.h"
 #include "openzl/zl_materializer.h"
 
-#include "openzl/dict/dictloader.h" // ZL_RES_value(ZL_DictLoader_fetchDictBundl)e
 #include "tests/unittest/dict/DictTestHelpers.h"
 
 namespace {

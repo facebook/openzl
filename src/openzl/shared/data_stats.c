@@ -5,7 +5,6 @@
 #include "openzl/shared/bits.h"
 #include "openzl/shared/data_stats.h"
 #include "openzl/shared/histogram.h"
-#include "openzl/shared/portability.h" // ZL_UNUSED_ATTR
 #include "openzl/shared/utils.h"
 #include "openzl/shared/varint.h"
 

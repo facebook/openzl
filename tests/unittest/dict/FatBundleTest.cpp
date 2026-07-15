@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "openzl/dict/bundle.h"
-#include "openzl/dict/dict.h"
 
 #include "DictTestHelpers.h"
 
