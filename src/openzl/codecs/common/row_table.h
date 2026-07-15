@@ -292,14 +292,20 @@ ZL_FORCE_INLINE ZS_RowTable_Match ZS_RowTable_getBestMatchAndUpdateT(
 
     assert(ptr + bestLength < end);
 
+    // ZS_countBack is clamped to (ptr - anchor), so this bounds the backward
+    // length of any candidate.
+    size_t const maxBackLength = (size_t)(ptr - anchor);
     for (size_t m = 0; m < nbMatches; ++m) {
         uint8_t const* const match = base + matches[m];
 
+        size_t const matchLength = ZS_count(ptr, match, end) & ~kFieldMask;
+        if (matchLength < minLength
+            || matchLength + maxBackLength <= backLength + bestLength) {
+            continue;
+        }
         size_t const bLen =
                 ZS_countBack(ptr, match, anchor, base + lowLimit) & ~kFieldMask;
-        size_t const matchLength = ZS_count(ptr, match, end) & ~kFieldMask;
-        if (matchLength >= minLength
-            && bLen + matchLength > backLength + bestLength) {
+        if (bLen + matchLength > backLength + bestLength) {
             bestMatch  = matches[m];
             bestLength = matchLength;
             backLength = bLen;
