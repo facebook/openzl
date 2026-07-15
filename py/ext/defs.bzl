@@ -12,7 +12,7 @@ def _gen_module_type_stubs(name_prefix, stubgen_name, base_module, module_name):
     buck_genrule(
         name = rule_name,
         out = rule_name,
-        cmd = "$(location :{}) -m {} -o $OUT".format(stubgen_name, module_name),
+        cmd = "$(exe :{}) -m {} -o $OUT".format(stubgen_name, module_name),
     )
     return (":" + rule_name), file_name
 

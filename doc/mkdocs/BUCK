@@ -3,6 +3,7 @@
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup", "buck_genrule", "buck_sh_test")
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
+load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
 
 oncall("data_compression")
 
@@ -53,6 +54,7 @@ buck_sh_test(
         # to fetch npm packages, which is not available in remote execution
         "OPENZL_SKIP_VISUALIZER_BUILD": "1",
     },
+    labels = ci.labels(ci.remove(ci.aarch64())),
     test = ":static_docs",
     deps = [
         ":static_docs_build_script",
