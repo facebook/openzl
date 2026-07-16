@@ -54,7 +54,7 @@ extern "C" {
 /// format changes. But note that once a library with
 /// max format version X is released, we must support X
 /// through our support window.
-#define ZL_MAX_FORMAT_VERSION (26)
+#define ZL_MAX_FORMAT_VERSION (27)
 
 /// Minimum wire format version required to support chunking.
 #define ZL_CHUNK_VERSION_MIN (21)

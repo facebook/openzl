@@ -26,6 +26,7 @@
 #include "openzl/codecs/mux_lengths/encode_mux_lengths_binding.h"
 #include "openzl/codecs/parse_int/encode_parse_int_binding.h"
 #include "openzl/codecs/partition/encode_partition_binding.h"
+#include "openzl/codecs/pivco_huffman/encode_pivco_binding.h"
 #include "openzl/codecs/prefix/encode_prefix_binding.h"
 #include "openzl/codecs/quantize/encode_quantize_binding.h"
 #include "openzl/codecs/range_pack/encode_range_pack_binding.h"
@@ -161,6 +162,7 @@ const CNode ER_standardNodes[STANDARD_ENCODERS_NB] = {
     REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_dedup_num_trusted, ZL_StandardTransformID_dedup_num, 16, 200, EI_DEDUP_NUM_TRUSTED),
     REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_lz4, ZL_StandardTransformID_lz4, 23, 200, EI_LZ4),
     REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_bitSplit, ZL_StandardTransformID_bitSplit, 24, 200, EI_BITSPLIT),
+    REGISTER_TRANSFORM(ZL_PrivateStandardNodeID_pivco_huffman, ZL_StandardTransformID_pivco_huffman, 27, 203, EI_PIVCO_HUFFMAN),
 
     // Deprecated Nodes
     REGISTER_DEPRECATED_TRANSFORM(ZL_PrivateStandardNodeID_rolz_deprecated, ZL_StandardTransformID_rolz, 3, 12, 200, EI_ROLZ),

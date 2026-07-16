@@ -318,6 +318,8 @@ typedef enum {
 
     ZL_StandardTransformID_sparse_num = 66,
 
+    ZL_StandardTransformID_pivco_huffman = 67,
+
     ZL_StandardTransformID_end =
             128 // last id, used to detect end of ID range (impacts
                 // header encoding) give some room to be able to add new

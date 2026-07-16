@@ -96,6 +96,12 @@ extern "C" {
 
 #define ZL_NODE_SPLIT_BY_STRUCT (ZL_NodeID){ZL_PrivateStandardNodeID_split_by_struct}
 
+// pivco_huffman
+// Input  : 1 serial stream
+// Outputs: 2 streams -- the numeric zstd-style Huffman weights and the serial
+//          pivco-coded bitstream (see codecs/pivco_huffman/spec.md)
+#define ZL_NODE_PIVCO_HUFFMAN ZL_MAKE_NODE_ID(ZL_PrivateStandardNodeID_pivco_huffman)
+
 #define ZL_GRAPH_FIELD_LZ_LITERALS         (ZL_GraphID){ ZL_PrivateStandardGraphID_field_lz_literals }
 #define ZL_GRAPH_FIELD_LZ_LITERALS_CHANNEL (ZL_GraphID){ ZL_PrivateStandardGraphID_field_lz_literals_channel }
 
@@ -155,6 +161,7 @@ typedef enum {
     ZL_PrivateStandardNodeID_transpose_split8_deprecated,
 
     ZL_PrivateStandardNodeID_lz4,
+    ZL_PrivateStandardNodeID_pivco_huffman,
 
     ZL_PrivateStandardNodeID_end // last id, used to detect out-of-bound enum
                                  // values
