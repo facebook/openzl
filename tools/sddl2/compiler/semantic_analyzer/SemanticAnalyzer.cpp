@@ -175,7 +175,7 @@ class SemanticAnalyzerImpl {
     {
         auto element_type = analyzeNode(array.field());
         expectFieldType(array.field()->loc(), element_type);
-        if (element_type.type_def->annotations().requires_scan) {
+        if (element_type.type_def->inferred_annotations().requires_scan) {
             scope_.requires_scan = true;
         }
         if (array.len()) {
@@ -199,7 +199,7 @@ class SemanticAnalyzerImpl {
 
         // Transitivity: a field whose type is itself a requires-scan
         // record or array makes the enclosing record requires-scan too.
-        if (t.type_def->annotations().requires_scan) {
+        if (t.type_def->inferred_annotations().requires_scan) {
             scope_.requires_scan = true;
         }
         return Type{ TypeKind::NONE };
@@ -226,8 +226,8 @@ class SemanticAnalyzerImpl {
             analyzeNode(field);
         }
 
-        record.annotations().requires_scan = scope_.requires_scan;
-        scope_                             = std::move(saved);
+        record.inferred_annotations().requires_scan = scope_.requires_scan;
+        scope_                                      = std::move(saved);
 
         return Type{ TypeKind::RECORD, &record };
     }
@@ -376,7 +376,7 @@ class SemanticAnalyzerImpl {
         }
 
         auto* record = lhs_type.type_def->as_record();
-        if (record->annotations().requires_scan) {
+        if (record->inferred_annotations().requires_scan) {
             throw SemanticError(
                     op.args()[0]->loc(),
                     "Member access not supported on scan records.");
