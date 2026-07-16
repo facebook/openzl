@@ -11,6 +11,7 @@
 
 #include <folly/Overload.h>
 #include <folly/io/IOBuf.h>
+#include <thrift/lib/cpp2/op/Get.h>
 #include <thrift/lib/cpp2/protocol/Serializer.h>
 
 #include "openzl/zl_version.h"
@@ -21,10 +22,8 @@
 // TODO: Not sure if there is a better way to do this
 #if ZL_FBCODE_IS_RELEASE
 #    include "openzl/prod/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_types.h"
-#    include "openzl/prod/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_visitation.h"
 #else
 #    include "openzl/dev/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_types.h"
-#    include "openzl/dev/custom_transforms/thrift/kernels/tests/gen-cpp2/fuzz_data_visitation.h"
 #endif
 
 namespace openzl::thrift::tests {
@@ -167,7 +166,8 @@ template <typename T, typename RNG>
 void fillThrift(T& thrift, RNG&& gen)
 {
     std::bernoulli_distribution shouldFill(0.5);
-    apache::thrift::for_each_field(thrift, [&](const auto&, auto&& field_ref) {
+    apache::thrift::op::for_each_field_id<T>([&]<class Id>(Id) {
+        auto&& field_ref = apache::thrift::op::get<Id>(thrift);
         if (!shouldFill(gen)) {
             return;
         }

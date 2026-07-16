@@ -5,6 +5,7 @@
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:thrift_library.bzl", "thrift_library")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
 load("../../../../defs.bzl", "relative_headers", "zs_fuzzers")
 
 oncall("data_compression")
@@ -14,7 +15,6 @@ thrift_library(
     languages = [
         "cpp2",
     ],
-    thrift_cpp2_options = "reflection",
     thrift_srcs = {"fuzz_data.thrift": []},
 )
 
@@ -26,10 +26,10 @@ cpp_library(
         "../../../..:zstronglib",
         "../../../../tests/datagen:datagen",
         ":fuzz_data-cpp2-types",
-        ":fuzz_data-cpp2-visitation",
         "//folly:overload",
         "//folly:range",
         "//folly/io:iobuf",
+        "//thrift/lib/cpp2/op:get",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
 )
@@ -37,6 +37,7 @@ cpp_library(
 cpp_unittest(
     name = "test_thrift_kernel",
     srcs = ["test_thrift_kernel.cpp"],
+    network_access = network_access_utils.none(),
     deps = [
         "..:decode_thrift_kernel",
         "..:encode_thrift_kernel",
@@ -65,6 +66,7 @@ zs_fuzzers(
         ":thrift_kernel_test_utils",
         "//folly:range",
         "//folly/io:iobuf",
+        "//thrift/lib/cpp2/op:get",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
 )

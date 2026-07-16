@@ -4,6 +4,7 @@
 
 #include <folly/Range.h>
 #include <folly/io/IOBuf.h>
+#include <thrift/lib/cpp2/op/Get.h>
 #include <thrift/lib/cpp2/protocol/Serializer.h>
 
 #include "security/lionhead/utils/lib_ftest/enable_sfdp_thrift.h"
@@ -137,10 +138,10 @@ class ThriftKernelTest : public ZStrongTest {
 
     void testRoundTrip(ThriftKernelData const& data)
     {
-        apache::thrift::visit_union(
-                data, [this](const auto&, const auto& value) {
-                    testRoundTrip(value);
-                });
+        apache::thrift::op::visit_union_with_tag(
+                data,
+                [this](auto, const auto& value) { testRoundTrip(value); },
+                [] {});
     }
 
     using ZStrongTest::testRoundTrip;
