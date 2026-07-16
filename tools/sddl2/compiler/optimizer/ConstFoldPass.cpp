@@ -73,19 +73,20 @@ class ConstFoldImpl {
     ASTPtr optimizeBytes(const ASTBytes& bytes)
     {
         return Codegen(bytes.loc())
-                .bytes(optimizeNode(bytes.len()), bytes.annotations());
+                .bytes(optimizeNode(bytes.len()), bytes.inferred_annotations());
     }
 
     ASTPtr optimizeArray(const ASTArray& array)
     {
         if (!array.len()) {
             return Codegen(array.loc())
-                    .array(optimizeNode(array.field()), array.annotations());
+                    .array(optimizeNode(array.field()),
+                           array.inferred_annotations());
         }
         return Codegen(array.loc())
                 .array(optimizeNode(array.field()),
                        optimizeNode(array.len()),
-                       array.annotations());
+                       array.inferred_annotations());
     }
 
     ASTPtr optimizeCall(const ASTCall& call)
@@ -93,7 +94,7 @@ class ConstFoldImpl {
         return Codegen(call.loc())
                 .call(optimizeNode(call.target()),
                       optimizeVec(call.args()),
-                      call.annotations());
+                      call.inferred_annotations());
     }
 
     ASTPtr optimizeRecord(const ASTRecord& record)
@@ -104,7 +105,7 @@ class ConstFoldImpl {
         return Codegen(record.loc())
                 .record(record.params(),
                         std::move(new_fields),
-                        record.annotations());
+                        record.inferred_annotations());
     }
 
     ASTVec optimizeWhen(const ASTWhen& when)

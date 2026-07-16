@@ -288,7 +288,7 @@ class CodeGeneratorImpl {
             }
             case ConvertedNodeType::RECORD: {
                 auto record = type->as_record();
-                if (record->annotations().requires_scan) {
+                if (record->inferred_annotations().requires_scan) {
                     throw CodegenError(
                             type->loc(), "Scan records are not yet supported.");
                 }

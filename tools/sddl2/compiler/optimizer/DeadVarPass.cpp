@@ -140,19 +140,21 @@ class DeadVarImpl {
     ASTPtr optimizeBytes(const ASTBytes* bytes)
     {
         return Codegen(bytes->loc())
-                .bytes(optimizeNode(bytes->len()), bytes->annotations());
+                .bytes(optimizeNode(bytes->len()),
+                       bytes->inferred_annotations());
     }
 
     ASTPtr optimizeArray(const ASTArray* arr)
     {
         if (!arr->len()) {
             return Codegen(arr->loc())
-                    .array(optimizeNode(arr->field()), arr->annotations());
+                    .array(optimizeNode(arr->field()),
+                           arr->inferred_annotations());
         }
         return Codegen(arr->loc())
                 .array(optimizeNode(arr->field()),
                        optimizeNode(arr->len()),
-                       arr->annotations());
+                       arr->inferred_annotations());
     }
 
     ASTPtr optimizeCall(const ASTCall* call)
@@ -160,7 +162,7 @@ class DeadVarImpl {
         return Codegen(call->loc())
                 .call(optimizeNode(call->target()),
                       optimizeVec(call->args()),
-                      call->annotations());
+                      call->inferred_annotations());
     }
 
     ASTPtr optimizeOp(const ASTOp* op)

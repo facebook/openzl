@@ -200,13 +200,12 @@ class ASTVar : public ASTConverted {
 };
 
 /**
- * Annotations populated by post-parse passes (semantic analyzer, etc.) and
- * read by later passes (codegen). Attached to every ASTConverted node via
- * `annotations()`. Add new fields here rather than to individual node
- * subclasses so passes can share annotation state without changing AST
- * shape.
+ * Facts inferred by post-parse passes (semantic analyzer, etc.) and read by
+ * later passes (codegen). Attached to every ASTField via
+ * `inferred_annotations()`. Add new fields here rather than to individual node
+ * subclasses so passes can share state without changing AST shape.
  */
-struct Annotations {
+struct InferredAnnotations {
     bool requires_scan = false;
 };
 
@@ -214,13 +213,13 @@ class ASTField : public ASTConverted {
    public:
     using ASTConverted::ASTConverted;
 
-    Annotations& annotations() const
+    InferredAnnotations& inferred_annotations() const
     {
-        return annotations_;
+        return inferred_annotations_;
     }
 
    private:
-    mutable Annotations annotations_;
+    mutable InferredAnnotations inferred_annotations_;
 };
 
 class ASTBuiltinField : public ASTField {
@@ -520,43 +519,47 @@ class Codegen {
         return std::make_shared<ASTBuiltinField>(loc_, sym);
     }
 
-    ASTPtr array(ASTPtr field, ASTPtr len, Annotations annotations = {}) const
+    ASTPtr array(ASTPtr field, ASTPtr len, InferredAnnotations inferred = {})
+            const
     {
         auto node =
                 std::make_shared<ASTArray>(std::move(field), std::move(len));
-        node->annotations() = annotations;
+        node->inferred_annotations() = inferred;
         return node;
     }
 
-    ASTPtr array(ASTPtr field, Annotations annotations = {}) const
+    ASTPtr array(ASTPtr field, InferredAnnotations inferred = {}) const
     {
-        auto node           = std::make_shared<ASTArray>(std::move(field));
-        node->annotations() = annotations;
+        auto node = std::make_shared<ASTArray>(std::move(field));
+        node->inferred_annotations() = inferred;
         return node;
     }
 
-    ASTPtr bytes(ASTPtr len, Annotations annotations = {}) const
+    ASTPtr bytes(ASTPtr len, InferredAnnotations inferred = {}) const
     {
         auto node = std::make_shared<ASTBytes>(
                 loc_, paren_list({ std::move(len) }));
-        node->annotations() = annotations;
+        node->inferred_annotations() = inferred;
         return node;
     }
 
-    ASTPtr record(ASTVec params, ASTVec fields, Annotations annotations = {})
-            const
+    ASTPtr record(
+            ASTVec params,
+            ASTVec fields,
+            InferredAnnotations inferred = {}) const
     {
         auto node = std::make_shared<ASTRecord>(
                 paren_list(std::move(params)), curly_list(std::move(fields)));
-        node->annotations() = annotations;
+        node->inferred_annotations() = inferred;
         return node;
     }
 
-    ASTPtr call(ASTPtr target, ASTVec args, Annotations annotations = {}) const
+    ASTPtr call(ASTPtr target, ASTVec args, InferredAnnotations inferred = {})
+            const
     {
         auto node =
                 std::make_shared<ASTCall>(std::move(target), std::move(args));
-        node->annotations() = annotations;
+        node->inferred_annotations() = inferred;
         return node;
     }
 
