@@ -360,19 +360,23 @@ static ZL_Report decodePartitionBitpack4(
             const bool useSVE2 = svcntb() == 16;
             if (useSVE2) { // special case for 128-bit SVE vectors
                 // Load 8 bytes containing 16 x 4-bit bucket indices
-                const svuint16_t packed = svld1ub_u16(pg8u16, f);
+
+                const svuint32_t packedLo = svld1ub_vnum_u32(pg8u16, f, 0);
+                const svuint32_t packedHi = svld1ub_vnum_u32(pg8u16, f, 1);
                 f += 8;
 
                 // Unpack nibbles: lane-wise SLI -> mask directly isolates each
                 // nibble. Only the first 16 bytes are used downstream.
-                const svuint16_t sliResult = svsli_n_u16(packed, packed, 4);
-                const svuint8_t nibbles    = svreinterpret_u8_u16(
-                        svand_n_u16_z(pg8u16, sliResult, 0x0F0F));
+                const svuint32_t sliResultLo =
+                        svsli_n_u32(packedLo, packedLo, 12);
+                const svuint32_t sliResultHi =
+                        svsli_n_u32(packedHi, packedHi, 12);
 
-                // Widen indices from u8 to u16 for direct uint16_t table
-                // lookup.
-                const svuint16_t idx_lo = svunpklo_u16(nibbles);
-                const svuint16_t idx_hi = svunpkhi_u16(nibbles);
+                const svuint16_t idx_lo = svand_n_u16_x(
+                        pg8u16, svreinterpret_u16_u32(sliResultLo), 0xF);
+
+                const svuint16_t idx_hi = svand_n_u16_x(
+                        pg8u16, svreinterpret_u16_u32(sliResultHi), 0xF);
 
                 // svtbl2 looks up base and mask as uint16_t directly.
                 // Each call processes 8 elements from a 16-entry table.
@@ -393,10 +397,15 @@ static ZL_Report decodePartitionBitpack4(
                 // This breaks the serial bitsConsumed dependency: all 4
                 // variable-stream positions are known up front, so groups
                 // can issue loads and bdep independently.
-                const svuint8_t bitCounts = svtbl_u8(bitsLUT, nibbles);
-                const uint8x16_t bcNeon   = svget_neonq_u8(bitCounts);
-                const uint16x8_t bc16     = vpaddlq_u8(bcNeon);
-                const uint32x4_t bc32     = vpaddlq_u16(bc16);
+
+                const uint8x16_t nibbles = vmovn_high_u16(
+                        vmovn_u16(svget_neonq(idx_lo)), svget_neonq(idx_hi));
+
+                const svuint8_t bitCounts =
+                        svtbl_u8(bitsLUT, svset_neonq(svundef_u8(), nibbles));
+                const uint8x16_t bcNeon = svget_neonq_u8(bitCounts);
+                const uint16x8_t bc16   = vpaddlq_u8(bcNeon);
+                const uint32x4_t bc32   = vpaddlq_u16(bc16);
 
                 const size_t gs0  = vgetq_lane_u32(bc32, 0);
                 const size_t gs1  = vgetq_lane_u32(bc32, 1);
