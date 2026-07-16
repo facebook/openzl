@@ -61,5 +61,6 @@ class MiscMicroBenchmarkTestcase : public BenchmarkTestcase {
  * Generates and registers all micro benchmark cases.
  */
 void registerMicroBenchmarks();
+void registerPivCoHuffmanBenchmarks();
 
 } // namespace zstrong::bench::micro
