@@ -94,7 +94,10 @@ enum class Symbol {
     RECORD,
 
     // Control Flow
-    WHEN
+    WHEN,
+
+    // Annotations
+    AT // '@', introduces a record annotation (e.g., @instant_parse)
 };
 
 /// @returns a name string for a symbol.

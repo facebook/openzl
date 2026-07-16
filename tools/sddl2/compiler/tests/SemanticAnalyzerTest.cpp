@@ -633,4 +633,42 @@ TEST_F(SemanticAnalyzerTest, TypeCheckReferencedFields)
     )";
     expect_error(prog, "numeric");
 }
+
+// ---------------------------------------------------------------------------
+// Grammar annotations (@name)
+// ---------------------------------------------------------------------------
+
+TEST_F(SemanticAnalyzerTest, GrammarAnnotationAttached)
+{
+    const auto prog = R"(
+        record Foo() {
+            x: Int32LE
+        } @some_annotation
+    )";
+    auto ast        = compiler_->compile_ast(prog, "[local_input]");
+    const auto* foo = find_record(ast, "Foo");
+    EXPECT_TRUE(foo->annotations().has("some_annotation"));
+}
+
+TEST_F(SemanticAnalyzerTest, MultipleGrammarAnnotationsOnOneRecord)
+{
+    const auto prog = R"(
+        record Foo() {
+            x: Int32LE
+        } @first @second
+    )";
+    auto ast        = compiler_->compile_ast(prog, "[local_input]");
+    const auto* foo = find_record(ast, "Foo");
+    EXPECT_TRUE(foo->annotations().has("first"));
+    EXPECT_TRUE(foo->annotations().has("second"));
+}
+
+TEST_F(SemanticAnalyzerTest, GrammarAnnotationOnAnonymousRecord)
+{
+    const auto prog = R"(
+        entry: record() { id: Int32LE } @some_annotation
+        expect entry.id == 0
+    )";
+    expect_success(prog);
+}
 } // namespace openzl::sddl2::tests

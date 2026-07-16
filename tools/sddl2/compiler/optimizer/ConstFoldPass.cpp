@@ -105,6 +105,7 @@ class ConstFoldImpl {
         return Codegen(record.loc())
                 .record(record.params(),
                         std::move(new_fields),
+                        record.annotations(),
                         record.inferred_annotations());
     }
 

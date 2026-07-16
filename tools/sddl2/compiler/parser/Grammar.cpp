@@ -489,6 +489,64 @@ class AnonymousRecordRule : public GrammarRule {
     }
 };
 
+/**
+ * Parses a general `<expr> @ <name>` annotation postfix, attaching the named
+ * annotation to the annotated node. Multiple annotations may be chained onto a
+ * single record. Currently annotations may only be applied to records.
+ */
+class AnnotationRule : public GrammarRule {
+   public:
+    explicit AnnotationRule()
+            : GrammarRule(
+                      Symbol::AT,
+                      Precedence::ACCESS,
+                      std::vector<ArgType>({ ArgType::EXPR, ArgType::EXPR }),
+                      /* has_lhs_arg */ true)
+    {
+    }
+
+   private:
+    ASTPtr do_gen(ASTPtr op, ArgsVec args) const override
+    {
+        auto& annotated = args.at(0);
+        auto& name_node = args.at(1);
+
+        const auto* name_var = name_node->as_var();
+        if (name_var == nullptr) {
+            throw ParseError(
+                    some(op).loc(), "Annotation name must be an identifier.");
+        }
+        const auto& name = name_var->name();
+
+        // The annotated expression is either a bare record (anonymous record)
+        // or an ASSIGN(name, record) produced by RecordRule (named record).
+        const auto* assign  = annotated->as_op();
+        const bool is_named = assign != nullptr && assign->op() == Op::ASSIGN;
+        const ASTRecord* record = is_named ? assign->args().at(1)->as_record()
+                                           : annotated->as_record();
+        if (record == nullptr) {
+            throw ParseError(
+                    some(op).loc(),
+                    "Annotation '@" + name
+                            + "' can only be applied to a record.");
+        }
+
+        // Rebuild the record with the annotation added, keeping the AST
+        // immutable (grammar annotations are known at parse time). Chained
+        // annotations accumulate: copy the existing set and add this name.
+        GrammarAnnotations annotations = record->annotations();
+        annotations.names.insert(name);
+        auto new_record = Codegen{ record->loc() }.record(
+                record->params(), record->fields(), std::move(annotations));
+
+        if (is_named) {
+            return Codegen{ annotated->loc() }.assign(
+                    assign->args().at(0), std::move(new_record));
+        }
+        return new_record;
+    }
+};
+
 class CallRule : public GrammarRule {
    public:
     explicit CallRule()
@@ -650,6 +708,9 @@ const std::vector<std::unique_ptr<const GrammarRule>> grammar_rules{ []() {
     add_rule<RecordRule>(r);
     add_rule<AnonymousRecordRule>(r);
     add_rule<BytesRule>(r);
+
+    // Annotations
+    add_rule<AnnotationRule>(r);
 
     // Ops
     add_rule<UnaryOpRule>(r, Symbol::EXPECT, Precedence::ASSIGNMENT);

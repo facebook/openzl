@@ -317,10 +317,14 @@ ASTPtr ASTBytes::extract_len(const ASTPtr& paren_ptr)
     return list->nodes()[0];
 }
 
-ASTRecord::ASTRecord(const ASTPtr& params, const ASTPtr& fields)
+ASTRecord::ASTRecord(
+        const ASTPtr& params,
+        const ASTPtr& fields,
+        GrammarAnnotations annotations)
         : ASTField(params->loc() + fields->loc()),
           params_(extract_params(loc(), params)),
-          fields_(extract_fields(loc(), fields))
+          fields_(extract_fields(loc(), fields)),
+          annotations_(std::move(annotations))
 
 {
 }
