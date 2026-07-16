@@ -1,9 +1,13 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <chrono>
+#include <cstdint>
+#include <cstring>
 #include <functional>
 #include <random>
 #include <stdexcept>
+#include <utility>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -257,7 +261,13 @@ class RoundTripTest {
             ZS_BitDStreamFF_reload(&bits);
         }
 
-        return !ZL_isError(ZS_BitDStreamFF_finish(&bits));
+        ZL_Report const report = ZS_BitDStreamFF_finish(&bits);
+        if (ZL_isError(report)) {
+            return false;
+        }
+        // finish() reports the exact number of bytes consumed, which must equal
+        // the encoded size regardless of any extra trailing capacity.
+        return ZL_validResult(report) == bitSize;
     }
 
     template <size_t kNbUnrolls>
@@ -439,6 +449,165 @@ INSTANTIATE_TEST_SUITE_P(
                 BitstreamImpl::FSE,
                 BitstreamImpl::ZS,
                 BitstreamImpl::ZS_BF));
+
+// Mask of the low @p nbBits bits.
+size_t lowMask(size_t nbBits)
+{
+    if (nbBits == 0)
+        return 0;
+    if (nbBits >= sizeof(size_t) * 8)
+        return ~(size_t)0;
+    return ((size_t)1 << nbBits) - 1;
+}
+
+// Round-trips `leading` bits, a byte-aligned raw region holding `region` bits,
+// then `trailing` bits. The region is written with the reserve/commit aligned
+// API and read back with ZS_BitDStreamFF_popAlignedBits, mirroring how the
+// PivCo-Huffman kernels embed raw bitmaps in the stream. Verifies every bit
+// and the raw region survive. When `extra` is set the decoder gets slack
+// capacity past the encoded size (the large-stream path); otherwise it sees the
+// exact end, exercising the near-end and short-stream paths in popAlignedBits.
+//
+// `reload` reloads the window after every field read. The kernels do not do
+// this (popAlignedBits refills the window itself), but it must still be a valid
+// thing to do: popAlignedBits has to recover the exact bit position from any
+// reloaded stream state, including a short stream whose reload ran past the
+// end.
+void roundTripAlignedField(
+        const std::vector<std::pair<size_t, size_t>>& leading,
+        const std::vector<bool>& region,
+        const std::vector<std::pair<size_t, size_t>>& trailing,
+        bool extra,
+        bool reload)
+{
+    size_t const regionBytes = (region.size() + 7) / 8;
+    size_t totalBits         = 0;
+    for (auto const& w : leading)
+        totalBits += w.second;
+    for (auto const& w : trailing)
+        totalBits += w.second;
+    std::vector<uint8_t> buf(totalBits / 8 + regionBytes + 64, 0);
+
+    ZS_BitCStreamFF writer = ZS_BitCStreamFF_init(buf.data(), buf.size());
+    for (auto const& [value, nbBits] : leading) {
+        ZS_BitCStreamFF_write(&writer, value, nbBits);
+        ZS_BitCStreamFF_flush(&writer);
+    }
+    uint8_t* const slot =
+            ZS_BitCStreamFF_reserveAlignedBits(&writer, region.size());
+    ASSERT_NE(slot, nullptr);
+    std::memset(slot, 0, regionBytes);
+    for (size_t i = 0; i < region.size(); ++i) {
+        if (region[i])
+            slot[i / 8] |= (uint8_t)(1u << (i & 7));
+    }
+    ZS_BitCStreamFF_commitReservedBits(&writer);
+    for (auto const& [value, nbBits] : trailing) {
+        ZS_BitCStreamFF_write(&writer, value, nbBits);
+        ZS_BitCStreamFF_flush(&writer);
+    }
+    ZL_Report const report = ZS_BitCStreamFF_finish(&writer);
+    ASSERT_ZS_VALID(report);
+    size_t const encodedSize = ZL_validResult(report);
+
+    ZS_BitDStreamFF reader =
+            ZS_BitDStreamFF_init(buf.data(), extra ? buf.size() : encodedSize);
+    for (auto const& [value, nbBits] : leading) {
+        EXPECT_EQ(
+                ZS_BitDStreamFF_read(&reader, nbBits), value & lowMask(nbBits));
+        if (reload)
+            ZS_BitDStreamFF_reload(&reader);
+    }
+    uint8_t const* const popped =
+            ZS_BitDStreamFF_popAlignedBits(&reader, region.size());
+    ASSERT_NE(popped, nullptr);
+    for (size_t i = 0; i < region.size(); ++i) {
+        EXPECT_EQ((popped[i / 8] >> (i & 7)) & 1u, region[i] ? 1u : 0u)
+                << "region bit " << i;
+    }
+    for (auto const& [value, nbBits] : trailing) {
+        EXPECT_EQ(
+                ZS_BitDStreamFF_read(&reader, nbBits), value & lowMask(nbBits));
+        if (reload)
+            ZS_BitDStreamFF_reload(&reader);
+    }
+    ASSERT_ZS_VALID(ZS_BitDStreamFF_finish(&reader));
+}
+
+std::vector<bool> makeRegionBits(size_t nbBits)
+{
+    std::vector<bool> bits(nbBits);
+    for (size_t i = 0; i < nbBits; ++i)
+        bits[i] = (((i * 7) + 3) % 5) < 2;
+    return bits;
+}
+
+TEST(BitstreamAlignedBitsTest, ReserveCommitPopRoundTrip)
+{
+    using BitWrites          = std::vector<std::pair<size_t, size_t>>;
+    BitWrites const someBits = {
+        { 0x1, 1 }, { 0x2, 3 }, { 0xABCD, 13 }, { 0x7F, 7 }
+    };
+
+    struct Scenario {
+        const char* name;
+        BitWrites leading;
+        size_t regionBits;
+        BitWrites trailing;
+    };
+    std::vector<Scenario> const scenarios = {
+        // Region alone, with nothing around it.
+        { "empty_region", {}, 0, {} },
+        { "byte_region_only", {}, 8, {} },
+        { "aligned_region_only", {}, 64, {} },
+        // Region followed by bits (window stays mid-stream).
+        { "region_then_bits", {}, 24, someBits },
+        // Bits then a region that ends the stream (window lands at the end).
+        { "bits_then_region", someBits, 40, {} },
+        // Region surrounded on both sides.
+        { "bits_region_bits", someBits, 32, someBits },
+        // Unaligned leading bits force the region past padding.
+        { "unaligned_leading", { { 0x5, 3 } }, 16, { { 0x9, 5 } } },
+        // Region whose bit count is not a multiple of 8 (partial trailing
+        // byte).
+        { "partial_region", someBits, 19, someBits },
+        { "partial_region_at_end", someBits, 13, {} },
+        // Tiny total so the exact-capacity decode hits the short-stream path.
+        { "tiny_small_stream", { { 0x1, 2 } }, 8, {} },
+        // Large region exercises the steady-state window refill.
+        { "large_region", someBits, 1000, someBits },
+    };
+
+    for (auto const& s : scenarios) {
+        for (bool extra : { true, false }) {
+            for (bool reload : { false, true }) {
+                SCOPED_TRACE(
+                        std::string(s.name) + (extra ? " extra" : " exact")
+                        + (reload ? " reload" : " noreload"));
+                roundTripAlignedField(
+                        s.leading,
+                        makeRegionBits(s.regionBits),
+                        s.trailing,
+                        extra,
+                        reload);
+            }
+        }
+    }
+}
+
+TEST(BitstreamAlignedBitsTest, ReserveReturnsNullWhenBufferTooSmall)
+{
+    std::vector<uint8_t> buf(4, 0);
+    ZS_BitCStreamFF writer = ZS_BitCStreamFF_init(buf.data(), buf.size());
+    EXPECT_EQ(ZS_BitCStreamFF_reserveAlignedBits(&writer, 8 * 64), nullptr);
+}
+
+TEST(BitstreamAlignedBitsTest, PopReturnsNullPastEndOfStream)
+{
+    std::vector<uint8_t> buf(8, 0xAB);
+    ZS_BitDStreamFF reader = ZS_BitDStreamFF_init(buf.data(), buf.size());
+    EXPECT_EQ(ZS_BitDStreamFF_popAlignedBits(&reader, 8 * 64), nullptr);
+}
 
 struct BenchmarkResult {
     int64_t encodeNs{ 0 };
