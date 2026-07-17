@@ -380,6 +380,7 @@ typedef struct {
     VECTOR(StringView) successor_graphs;
 
     StringView param_set_name;
+    StringView mparam_id;
 } CompressorSerializer_Graph;
 
 static void CompressorSerializer_Graph_destroy(CompressorSerializer_Graph* g)
@@ -859,6 +860,27 @@ static ZL_Report CompressorSerializer_serializeGraph_cb(
         info->param_set_name = StringView_init(NULL, 0);
     }
 
+    {
+        const ZL_MParam* const mparam = ZL_Compressor_Graph_getMParam(c, gid);
+        if (mparam != NULL && ZL_MParamID_hasValue(&mparam->mparamID)) {
+            ZL_TRY_LET_CONST(
+                    StringView,
+                    mparam_id_sv,
+                    cs_hexEncodeUniqueID(state->arena, &mparam->mparamID.id));
+            ZL_ERR_IF_NULL(
+                    CompressorSerializer_MParamMap_find(
+                            &state->mparams, &mparam_id_sv),
+                    logicError,
+                    "Graph '%.*s' references mparam ID '%.*s' which was not "
+                    "recorded in the mparams map",
+                    (int)info->graph_name.size,
+                    info->graph_name.data,
+                    (int)mparam_id_sv.size,
+                    mparam_id_sv.data);
+            info->mparam_id = mparam_id_sv;
+        }
+    }
+
     return ZL_returnSuccess();
 }
 
@@ -1209,6 +1231,9 @@ static ZL_Report ZL_CompressorSerializer_encodeGraph(
                    "Invalid graph type for graph \"%s\"!",
                    info->graph_name);
     }
+    if (info->mparam_id.size > 0) {
+        num_pairs += 1; // mparam_id
+    }
 
     A1C_Item_string_refStringView(key, entry->key);
     const A1C_MapBuilder builder =
@@ -1303,6 +1328,12 @@ static ZL_Report ZL_CompressorSerializer_encodeGraph(
         } else {
             A1C_Item_null(&pair->val);
         }
+    }
+
+    if (info->mparam_id.size > 0) {
+        A1C_MAP_TRY_ADD(pair, builder);
+        A1C_Item_string_refCStr(&pair->key, "mparam_id");
+        A1C_Item_string_refStringView(&pair->val, info->mparam_id);
     }
 
     ZL_ERR_IF_NE(val->map.size, num_pairs, logicError);
@@ -2748,6 +2779,26 @@ static ZL_Report ZL_CompressorDeserializer_tryBuildGraph(
                 graphs[i] = gid;
             }
 
+            // Read optional "mparam_id" field (hex string key) and look up the
+            // corresponding entry from the pre-parsed mparams map.
+            ZL_MParam mparam = { .mparamID = ZL_MPARAM_ID_NULL };
+            const A1C_Item* mparam_item =
+                    A1C_Map_get_cstr(&val_map, "mparam_id");
+            if (mparam_item != NULL) {
+                A1C_TRY_EXTRACT_STRING(mparam_key_str, mparam_item);
+                const StringView mparam_key_sv =
+                        StringView_initFromA1C(mparam_key_str);
+
+                const CompressorDeserializer_MParamMap_Entry* const mp_entry =
+                        CompressorDeserializer_MParamMap_find(
+                                &state->mparams_map, &mparam_key_sv);
+                ZL_ERR_IF_NULL(
+                        mp_entry,
+                        corruption,
+                        "Graph references mparam ID not found in mparams section");
+                mparam = mp_entry->val;
+            }
+
             const ZL_ParameterizedGraphDesc graph_desc =
                     (ZL_ParameterizedGraphDesc){
                         .name           = new_graph_name_base.data,
@@ -2757,6 +2808,7 @@ static ZL_Report ZL_CompressorDeserializer_tryBuildGraph(
                         .customNodes    = nodes,
                         .nbCustomNodes  = num_nodes,
                         .localParams    = &local_params,
+                        .mparam         = mparam,
                     };
             const ZL_GraphID gid = ZL_Compressor_registerParameterizedGraph(
                     compressor, &graph_desc);

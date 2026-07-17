@@ -14,9 +14,16 @@
 ZL_BEGIN_C_DECLS
 
 typedef struct GraphsMgr_s GraphsMgr;
+typedef struct CDictMgr_s CDictMgr; // forward declaration
 // note: may need an update to support custom allocator
 GraphsMgr* GM_create(const Nodes_manager* nmgr);
 void GM_free(GraphsMgr* gm);
+
+/**
+ * Populate the graph manager with a pointer to the compressor's CDictMgr,
+ * for management of MParam objects.
+ */
+void GM_setCDictMgr(GraphsMgr* gm, CDictMgr* cdictMgr);
 
 /*   registration actions   */
 
@@ -119,6 +126,13 @@ const ZL_FunctionGraphDesc* GM_getMultiInputGraphDesc(
 const ZL_SegmenterDesc* GM_getSegmenterDesc(
         const GraphsMgr* compressor,
         ZL_GraphID graphid);
+
+/**
+ * @returns The materialized MParam object associated with @graphid (a function
+ * graph or segmenter), or NULL when there is none. Standard graphs always
+ * return NULL.
+ */
+const void* GM_getGraphMParamObj(const GraphsMgr* gm, ZL_GraphID graphid);
 
 const void* GM_getPrivateParam(const GraphsMgr* gmgr, ZL_GraphID graphid);
 
