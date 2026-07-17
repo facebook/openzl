@@ -206,7 +206,6 @@ zs_cxxbinary(
     name = "benchmark_bitstream",
     srcs = ["unittest/common/test_bitstream.cpp"],
     compiler_flags = [
-        "-mbmi2",
         "-DBENCHMARK_BITSTREAM",
     ],
     deps = [
