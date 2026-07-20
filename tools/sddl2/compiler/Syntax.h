@@ -3,6 +3,7 @@
 #pragma once
 
 #include <map>
+#include <string>
 #include <vector>
 
 #include "openzl/cpp/poly/StringView.hpp"
@@ -99,6 +100,11 @@ enum class Symbol {
     // Annotations
     AT // '@', introduces a record annotation (e.g., @instant_parse)
 };
+
+/**
+ * Recognized Annotations
+ */
+constexpr std::string_view kInstantParse = "instant_parse";
 
 /// @returns a name string for a symbol.
 /// (E.g., Symbol::ADD -> "ADD")

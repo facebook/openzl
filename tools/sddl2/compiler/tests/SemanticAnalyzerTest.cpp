@@ -671,4 +671,81 @@ TEST_F(SemanticAnalyzerTest, GrammarAnnotationOnAnonymousRecord)
     )";
     expect_success(prog);
 }
+
+// ---------------------------------------------------------------------------
+// @instant_parse annotation
+// ---------------------------------------------------------------------------
+
+TEST_F(SemanticAnalyzerTest, InstantParseAnnotationAccepted)
+{
+    const auto prog = R"(
+        record Foo() {
+            x: Int32LE,
+            y: Int16LE
+        } @instant_parse
+    )";
+    expect_success(prog);
+}
+
+TEST_F(SemanticAnalyzerTest, InstantParseAnnotationConditionalOnParamAccepted)
+{
+    const auto prog = R"(
+        record Foo(flag) {
+            x: Int32LE,
+            when flag == 1 {
+                y: UInt16LE
+            }
+        } @instant_parse
+    )";
+    expect_success(prog);
+}
+
+TEST_F(SemanticAnalyzerTest, InstantParseAnnotationRejectsScanRecord)
+{
+    const auto prog = R"(
+        record Foo() {
+            n: Int32LE,
+            data: Bytes(n)
+        } @instant_parse
+    )";
+    expect_error(prog, "not instant-parse");
+}
+
+TEST_F(SemanticAnalyzerTest, InstantParseAnnotationRejectsConditionalScan)
+{
+    const auto prog = R"(
+        record Foo() {
+            flags: UInt8,
+            when flags == 1 {
+                optional: UInt16LE
+            }
+        } @instant_parse
+    )";
+    expect_error(prog, "not instant-parse");
+}
+
+TEST_F(SemanticAnalyzerTest, InstantParseAnnotationRejectsTransitiveScan)
+{
+    const auto prog = R"(
+        record Inner() {
+            n: Int32LE,
+            data: Bytes(n)
+        }
+        record Outer() {
+            inner: Inner[5]
+        } @instant_parse
+    )";
+    expect_error(prog, "not instant-parse");
+}
+
+TEST_F(SemanticAnalyzerTest, InstantParseAnnotationOnAnonymousScanRecord)
+{
+    const auto prog = R"(
+        : record() {
+            n: Int32LE,
+            data: Bytes(n)
+        } @instant_parse
+    )";
+    expect_error(prog, "not instant-parse");
+}
 } // namespace openzl::sddl2::tests

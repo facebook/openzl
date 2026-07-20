@@ -229,6 +229,14 @@ class SemanticAnalyzerImpl {
         record.inferred_annotations().requires_scan = scope_.requires_scan;
         scope_                                      = std::move(saved);
 
+        if (record.annotations().has(kInstantParse)
+            && record.inferred_annotations().requires_scan) {
+            throw SemanticError(
+                    record.loc(),
+                    "Record is annotated @instant_parse but is not instant-parse "
+                    "(its layout depends on parsed data).");
+        }
+
         return Type{ TypeKind::RECORD, &record };
     }
 
