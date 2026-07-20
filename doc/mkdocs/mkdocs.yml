@@ -40,6 +40,7 @@ nav:
         - Core Concepts: sddl/core-concepts.md
         - Conditional Fields: sddl/conditional-fields.md
         - Validation: sddl/validation.md
+        - Instant-Parse: sddl/instant-parse.md
         - Examples: sddl/examples.md
         - Quick Reference: sddl/reference.md
       - North Star (v0.6):

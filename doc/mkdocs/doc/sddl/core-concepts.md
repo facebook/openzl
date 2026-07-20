@@ -109,6 +109,29 @@ When you need a one-off record structure without defining a named type, use an a
 
 This is useful for simple groupings where a named record would add unnecessary boilerplate.
 
+### Annotations
+
+A record can be annotated with `@name` after its closing brace; multiple annotations may be chained.
+
+```sddl
+record Header(payload_size) {
+  magic: Bytes(4),
+  payload: Bytes(payload_size)
+} @first @second
+```
+
+
+The `@instant_parse` annotation makes the compiler verify that the record's layout is computable from parameters and constants alone:
+
+```sddl
+record Header(payload_size) {
+  magic: Bytes(4),
+  payload: Bytes(payload_size)
+} @instant_parse
+```
+
+See [Instant-Parse](instant-parse.md) for details.
+
 ## Arrays
 
 ### Fixed-Size Arrays
