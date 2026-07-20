@@ -6,6 +6,7 @@
 #include "openzl/common/stream.h" // STREAM_*
 #include "openzl/common/vector.h"
 #include "openzl/compress/cctx.h"        // CCTX_*
+#include "openzl/compress/cgraph.h"      // CGRAPH_getGraphMParamObj
 #include "openzl/compress/localparams.h" // LP_*
 #include "openzl/compress/rtgraphs.h"
 #include "openzl/zl_data.h"   // ZL_Data, ZL_Type
@@ -25,6 +26,7 @@ struct ZL_Segmenter_s {
     size_t numChunks;
     Arena* sessionArena;
     Arena* chunkArena;
+    ZL_GraphID graphid;
 };
 
 /**
@@ -51,7 +53,8 @@ ZL_Segmenter* SEGM_init(
         ZL_CCtx* cctx,
         RTGraph* rtgm,
         Arena* sessionArena,
-        Arena* chunkArena)
+        Arena* chunkArena,
+        ZL_GraphID graphid)
 {
     ZL_DLOG(BLOCK, "SEGM_init");
     ZL_Segmenter* seg = ALLOC_Arena_malloc(sessionArena, sizeof(ZL_Segmenter));
@@ -63,6 +66,7 @@ ZL_Segmenter* SEGM_init(
     seg->rtgm         = rtgm;
     seg->sessionArena = sessionArena;
     seg->chunkArena   = chunkArena;
+    seg->graphid      = graphid;
     ZL_ASSERT_EQ(nbInputs, VECTOR_SIZE(rtgm->streams));
     seg->nbInputs = nbInputs;
     seg->inputs = ALLOC_Arena_malloc(sessionArena, nbInputs * sizeof(ZL_Data*));
@@ -158,6 +162,13 @@ const ZL_LocalParams* ZL_Segmenter_getLocalParams(const ZL_Segmenter* segCtx)
 {
     ZL_ASSERT_NN(segCtx);
     return &segCtx->segDesc->localParams;
+}
+
+const void* ZL_Segmenter_getMParam(const ZL_Segmenter* segCtx)
+{
+    ZL_ASSERT_NN(segCtx);
+    return CGRAPH_getGraphMParamObj(
+            CCTX_getCGraph(segCtx->cctx), segCtx->graphid);
 }
 
 /* Consultation request for Custom Successor Graphs */

@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include <cstring>
+#include <map>
 #include <vector>
 
 #include "openzl/dict/bundle.h"
@@ -22,6 +23,8 @@
 #include "openzl/zl_reflection.h"
 #include "openzl/zl_segmenter.h"
 #include "openzl/zl_selector.h"
+
+#include "openzl/compress/cgraph.h" // ZL_Compressor_overrideGraphParams (internal)
 
 using namespace ::testing;
 
@@ -1250,6 +1253,612 @@ TEST_F(CompressorIntegrationTest,
     ASSERT_EQ(
             std::string(dst.data(), compressedSize),
             std::string(dst2.data(), compressedSize));
+}
+
+// ============================================================================
+// MParam (compression-only materialized param) tests for graphs & segmenters.
+// These exercise ZL_Graph_getMParam / ZL_Segmenter_getMParam, mirroring the
+// codec-side ZL_Encoder_getMParam. The materializer (copyDictMaterialize)
+// produces a copy of the raw blob, so the runtime object equals the content.
+// ============================================================================
+
+// Graph function that reads its MParam and copies it into a ref-param output
+// buffer, so the test can verify the materialized content.
+static ZL_Report graphVerifyMParamFn(
+        ZL_Graph* graph,
+        ZL_Edge* inputs[],
+        size_t nbInputs) ZL_NOEXCEPT_FUNC_PTR
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+    ZL_ERR_IF_NE(nbInputs, 1, GENERIC);
+
+    const void* mparam = ZL_Graph_getMParam(graph);
+    ZL_ERR_IF_NULL(mparam, GENERIC, "Expected getMParam non-null");
+
+    const int size = ZL_Graph_getLocalIntParam(graph, 1).paramValue;
+    void* out = const_cast<void*>(ZL_Graph_getLocalRefParam(graph, 3).paramRef);
+    ZL_ERR_IF_NULL(out, GENERIC, "Expected output ref param non-null");
+    memcpy(out, mparam, (size_t)size);
+
+    return ZL_Edge_setDestination(inputs[0], ZL_GRAPH_STORE);
+}
+
+// Graph function asserting that getMParam is NULL when no MParam is registered.
+static ZL_Report graphExpectNoMParamFn(
+        ZL_Graph* graph,
+        ZL_Edge* inputs[],
+        size_t nbInputs) ZL_NOEXCEPT_FUNC_PTR
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+    ZL_ERR_IF_NE(nbInputs, 1, GENERIC);
+    ZL_ERR_IF_NN(
+            ZL_Graph_getMParam(graph),
+            GENERIC,
+            "Expected getMParam NULL for graph without an MParam");
+    return ZL_Edge_setDestination(inputs[0], ZL_GRAPH_STORE);
+}
+
+TEST_F(CompressorIntegrationTest,
+       GIVENaFunctionGraphWithMParamWHENinvokedTHENitIsAccessible)
+{
+    std::string mparamContent = "function-graph-mparam-blob";
+    std::string out(mparamContent.size(), 0);
+
+    ZL_IntParam ip = { .paramId = 1, .paramValue = (int)mparamContent.size() };
+    ZL_RefParam rp = { .paramId = 3, .paramRef = out.data() };
+    ZL_LocalParams lp = {
+        .intParams = { .intParams = &ip, .nbIntParams = 1 },
+        .refParams = { .refParams = &rp, .nbRefParams = 1 },
+    };
+
+    ZL_MaterializerDesc2 mparamMat{};
+    mparamMat.materializeFn   = copyDictMaterialize;
+    mparamMat.dematerializeFn = ZL_NOOP_DEMATERIALIZE;
+
+    static ZL_Type inputType = ZL_Type_serial;
+    ZL_FunctionGraphDesc graphDesc = {
+        .name           = "test_graph_getmparam",
+        .graph_f        = graphVerifyMParamFn,
+        .inputTypeMasks = &inputType,
+        .nbInputs       = 1,
+        .localParams    = lp,
+        .mparamMat      = mparamMat,
+        .mparam         = {
+            .content = mparamContent.data(),
+            .size    = mparamContent.size(),
+        },
+    };
+
+    auto graphId = compressor_.registerFunctionGraph(graphDesc);
+    ASSERT_NE(graphId.gid, ZL_GRAPH_ILLEGAL.gid);
+    compressor_.selectStartingGraph(graphId);
+
+    compressData();
+    EXPECT_EQ(mparamContent, out);
+    EXPECT_EQ(ZL_Compressor_numMParams(compressor_.get()), 1u);
+
+    // Reflection getters expose the same MParam blob + materialized object.
+    const ZL_MParam* reflected =
+            ZL_Compressor_Graph_getMParam(compressor_.get(), graphId);
+    ASSERT_NE(reflected, nullptr);
+    EXPECT_EQ(
+            std::string(
+                    static_cast<const char*>(reflected->content),
+                    reflected->size),
+            mparamContent);
+    const void* reflectedObj =
+            ZL_Compressor_Graph_getMParamObj(compressor_.get(), graphId);
+    ASSERT_NE(reflectedObj, nullptr);
+    EXPECT_EQ(
+            std::string(
+                    static_cast<const char*>(reflectedObj),
+                    mparamContent.size()),
+            mparamContent);
+}
+
+TEST_F(CompressorIntegrationTest,
+       GIVENaFunctionGraphWithoutMParamWHENinvokedTHENgetMParamReturnsNull)
+{
+    static ZL_Type inputType       = ZL_Type_serial;
+    ZL_FunctionGraphDesc graphDesc = {
+        .name           = "test_graph_no_mparam",
+        .graph_f        = graphExpectNoMParamFn,
+        .inputTypeMasks = &inputType,
+        .nbInputs       = 1,
+    };
+
+    auto graphId = compressor_.registerFunctionGraph(graphDesc);
+    ASSERT_NE(graphId.gid, ZL_GRAPH_ILLEGAL.gid);
+    compressor_.selectStartingGraph(graphId);
+
+    compressData();
+    EXPECT_EQ(ZL_Compressor_numMParams(compressor_.get()), 0u);
+
+    // Reflection getters report no MParam for a graph without one.
+    EXPECT_EQ(
+            ZL_Compressor_Graph_getMParam(compressor_.get(), graphId), nullptr);
+    EXPECT_EQ(
+            ZL_Compressor_Graph_getMParamObj(compressor_.get(), graphId),
+            nullptr);
+}
+
+// Segmenter function that reads its MParam and copies it into a ref-param
+// output buffer.
+static ZL_Report segmenterVerifyMParamFn(ZL_Segmenter* segmenter)
+        ZL_NOEXCEPT_FUNC_PTR
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(segmenter);
+
+    const void* mparam = ZL_Segmenter_getMParam(segmenter);
+    ZL_ERR_IF_NULL(mparam, GENERIC, "Expected getMParam non-null");
+
+    const int size = ZL_Segmenter_getLocalIntParam(segmenter, 1).paramValue;
+    void* out      = const_cast<void*>(
+            ZL_Segmenter_getLocalRefParam(segmenter, 3).paramRef);
+    ZL_ERR_IF_NULL(out, GENERIC, "Expected output ref param non-null");
+    memcpy(out, mparam, (size_t)size);
+
+    // Forward the whole input as a single chunk to STORE.
+    size_t numInputs = ZL_Segmenter_numInputs(segmenter);
+    size_t* numElts  = (size_t*)ZL_Segmenter_getScratchSpace(
+            segmenter, numInputs * sizeof(size_t));
+    ZL_ERR_IF_NULL(numElts, allocation);
+    ZL_ERR_IF_ERR(ZL_Segmenter_getNumElts(segmenter, numElts, numInputs));
+    ZL_ERR_IF_ERR(ZL_Segmenter_processChunk(
+            segmenter, numElts, numInputs, ZL_GRAPH_STORE, nullptr));
+    return ZL_returnSuccess();
+}
+
+TEST_F(CompressorIntegrationTest,
+       GIVENaSegmenterWithMParamWHENinvokedTHENitIsAccessible)
+{
+    std::string mparamContent = "segmenter-mparam-blob";
+    std::string out(mparamContent.size(), 0);
+
+    ZL_IntParam ip = { .paramId = 1, .paramValue = (int)mparamContent.size() };
+    ZL_RefParam rp = { .paramId = 3, .paramRef = out.data() };
+    ZL_LocalParams lp = {
+        .intParams = { .intParams = &ip, .nbIntParams = 1 },
+        .refParams = { .refParams = &rp, .nbRefParams = 1 },
+    };
+
+    ZL_MaterializerDesc2 mparamMat{};
+    mparamMat.materializeFn   = copyDictMaterialize;
+    mparamMat.dematerializeFn = ZL_NOOP_DEMATERIALIZE;
+
+    static ZL_Type inputType = ZL_Type_serial;
+    ZL_SegmenterDesc segDesc = {
+        .name                = "test_segmenter_getmparam",
+        .segmenterFn         = segmenterVerifyMParamFn,
+        .inputTypeMasks      = &inputType,
+        .numInputs           = 1,
+        .lastInputIsVariable = false,
+        .localParams         = lp,
+        .mparamMat           = mparamMat,
+        .mparam              = {
+            .content = mparamContent.data(),
+            .size    = mparamContent.size(),
+        },
+    };
+
+    auto graphId = ZL_Compressor_registerSegmenter(compressor_.get(), &segDesc);
+    ASSERT_NE(graphId.gid, ZL_GRAPH_ILLEGAL.gid);
+    compressor_.selectStartingGraph(graphId);
+
+    compressData();
+    EXPECT_EQ(mparamContent, out);
+    EXPECT_EQ(ZL_Compressor_numMParams(compressor_.get()), 1u);
+
+    // Reflection getters resolve the MParam through the segmenter union member.
+    const ZL_MParam* reflected =
+            ZL_Compressor_Graph_getMParam(compressor_.get(), graphId);
+    ASSERT_NE(reflected, nullptr);
+    EXPECT_EQ(
+            std::string(
+                    static_cast<const char*>(reflected->content),
+                    reflected->size),
+            mparamContent);
+    const void* reflectedObj =
+            ZL_Compressor_Graph_getMParamObj(compressor_.get(), graphId);
+    ASSERT_NE(reflectedObj, nullptr);
+    EXPECT_EQ(
+            std::string(
+                    static_cast<const char*>(reflectedObj),
+                    mparamContent.size()),
+            mparamContent);
+}
+
+// Collects a compressor's MParams (id -> content) so two compressors' MParam
+// sets can be compared for equality.
+static ZL_Report collectMParamsCb(void* opaque, const ZL_MParam* mparam)
+        ZL_NOEXCEPT_FUNC_PTR
+{
+    auto* out = static_cast<std::map<std::string, std::string>*>(opaque);
+    std::string id(
+            reinterpret_cast<const char*>(mparam->mparamID.id.bytes),
+            sizeof(mparam->mparamID.id.bytes));
+    std::string content(
+            static_cast<const char*>(mparam->content), mparam->size);
+    (*out)[id] = content;
+    return ZL_returnSuccess();
+}
+
+TEST_F(CompressorIntegrationTest,
+       GIVENaFunctionGraphWithMParamWHENserializedTHENitRoundTrips)
+{
+    std::string mparamContent = "function-graph-mparam-serialize";
+    std::string out(mparamContent.size(), 0);
+
+    ZL_IntParam ip = { .paramId = 1, .paramValue = (int)mparamContent.size() };
+    ZL_RefParam rp = { .paramId = 3, .paramRef = out.data() };
+    ZL_LocalParams lp = {
+        .intParams = { .intParams = &ip, .nbIntParams = 1 },
+        .refParams = { .refParams = &rp, .nbRefParams = 1 },
+    };
+
+    ZL_MaterializerDesc2 mparamMat{};
+    mparamMat.materializeFn   = copyDictMaterialize;
+    mparamMat.dematerializeFn = ZL_NOOP_DEMATERIALIZE;
+
+    static ZL_Type inputType = ZL_Type_serial;
+    auto makeGraphDesc       = [&]() -> ZL_FunctionGraphDesc {
+        return ZL_FunctionGraphDesc{
+            .name           = "test_graph_mparam_serialize",
+            .graph_f        = graphVerifyMParamFn,
+            .inputTypeMasks = &inputType,
+            .nbInputs       = 1,
+            .localParams    = lp,
+            .mparamMat      = mparamMat,
+            .mparam         = {
+                    .content = mparamContent.data(),
+                    .size    = mparamContent.size(),
+            },
+        };
+    };
+
+    ZL_FunctionGraphDesc graphDesc = makeGraphDesc();
+    auto graphId = compressor_.registerFunctionGraph(graphDesc);
+    ASSERT_NE(graphId.gid, ZL_GRAPH_ILLEGAL.gid);
+    compressor_.selectStartingGraph(graphId);
+    ASSERT_EQ(ZL_Compressor_numMParams(compressor_.get()), 1u);
+
+    // First compress.
+    cctx_.refCompressor(compressor_);
+    cctx_.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+    std::string src =
+            "Let me think. That's just inherently very difficult. What are we doing?";
+    std::vector<char> dst(1000);
+    size_t compressedSize =
+            cctx_.compressSerial(poly::span<char>(dst.data(), dst.size()), src);
+    ASSERT_GT(compressedSize, 0u);
+
+    // Serialize the compressor.
+    ZL_CompressorSerializer* serializer = ZL_CompressorSerializer_create();
+    ASSERT_NE(serializer, nullptr);
+    void* serialized      = nullptr;
+    size_t serializedSize = 0;
+    {
+        ZL_Report r = ZL_CompressorSerializer_serialize(
+                serializer, compressor_.get(), &serialized, &serializedSize);
+        ASSERT_FALSE(ZL_isError(r));
+    }
+    std::vector<uint8_t> serializedCopy(
+            (const uint8_t*)serialized,
+            (const uint8_t*)serialized + serializedSize);
+    ZL_CompressorSerializer_free(serializer);
+
+    // The MParam blob must actually be embedded in the serialized form, not
+    // merely present via pre-registration on the destination compressor.
+    EXPECT_NE(
+            std::string(serializedCopy.begin(), serializedCopy.end())
+                    .find(mparamContent),
+            std::string::npos);
+
+    // Deserialize into a new compressor. The function graph (which carries the
+    // materializer) must be pre-registered under the same name, exactly as for
+    // custom nodes; the MParam blob is round-tripped in the serialized form.
+    openzl::Compressor compressor2;
+    std::string out2(mparamContent.size(), 0);
+    // Re-point the output ref param at compressor2's own buffer.
+    rp.paramRef                     = out2.data();
+    ZL_FunctionGraphDesc graphDesc2 = makeGraphDesc();
+    compressor2.registerFunctionGraph(graphDesc2);
+    ASSERT_EQ(ZL_Compressor_numMParams(compressor2.get()), 1u);
+
+    ZL_CompressorDeserializer* deserializer =
+            ZL_CompressorDeserializer_create();
+    ASSERT_NE(deserializer, nullptr);
+    {
+        ZL_Report r = ZL_CompressorDeserializer_deserialize(
+                deserializer,
+                compressor2.get(),
+                serializedCopy.data(),
+                serializedCopy.size(),
+                nullptr,
+                0);
+        ASSERT_FALSE(ZL_isError(r));
+    }
+    ZL_CompressorDeserializer_free(deserializer);
+
+    // The deserialized compressor must expose an MParam set identical to the
+    // original compressor's (same ids and blob contents).
+    std::map<std::string, std::string> originalMParams;
+    std::map<std::string, std::string> deserializedMParams;
+    ASSERT_FALSE(ZL_isError(ZL_Compressor_forEachMParam(
+            compressor_.get(), collectMParamsCb, &originalMParams)));
+    ASSERT_FALSE(ZL_isError(ZL_Compressor_forEachMParam(
+            compressor2.get(), collectMParamsCb, &deserializedMParams)));
+    EXPECT_EQ(
+            ZL_Compressor_numMParams(compressor2.get()),
+            ZL_Compressor_numMParams(compressor_.get()));
+    EXPECT_FALSE(originalMParams.empty());
+    EXPECT_EQ(deserializedMParams, originalMParams);
+
+    // Second compress with the deserialized compressor must match, and the
+    // graph must observe its MParam again.
+    openzl::CCtx cctx2;
+    cctx2.refCompressor(compressor2);
+    cctx2.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+    std::vector<char> dst2(1000);
+    size_t compressedSize2 = cctx2.compressSerial(
+            poly::span<char>(dst2.data(), dst2.size()), src);
+    ASSERT_EQ(compressedSize, compressedSize2);
+    ASSERT_EQ(
+            std::string(dst.data(), compressedSize),
+            std::string(dst2.data(), compressedSize2));
+    EXPECT_EQ(mparamContent, out2);
+}
+
+// ============================================================================
+// Parameterized-graph MParam tests. A parameterized graph inherits its base
+// graph's materializer (mparamMat) and carries its own per-instance MParam blob
+// via ZL_ParameterizedGraphDesc.mparam / ZL_GraphParameters.mparam. These
+// exercise the register, override (re-materialize), and serialize round-trip
+// paths that complete the graph MParam API to parity with nodes.
+// ============================================================================
+
+// Graph function that only asserts its MParam is present and routes to STORE.
+// It uses no ref params, so a graph parameterized from it stays serializable.
+static ZL_Report graphRequireMParamFn(
+        ZL_Graph* graph,
+        ZL_Edge* inputs[],
+        size_t nbInputs) ZL_NOEXCEPT_FUNC_PTR
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+    ZL_ERR_IF_NE(nbInputs, 1, GENERIC);
+    ZL_ERR_IF_NULL(
+            ZL_Graph_getMParam(graph),
+            GENERIC,
+            "Expected getMParam non-null on parameterized graph");
+    return ZL_Edge_setDestination(inputs[0], ZL_GRAPH_STORE);
+}
+
+TEST_F(CompressorIntegrationTest,
+       GIVENaParameterizedGraphWithMParamWHENinvokedTHENitIsAccessible)
+{
+    const std::string mparamContent = "parameterized-graph-mparam-blob";
+    std::string out(mparamContent.size(), 0);
+
+    ZL_IntParam ip = { .paramId = 1, .paramValue = (int)mparamContent.size() };
+    ZL_RefParam rp = { .paramId = 3, .paramRef = out.data() };
+    ZL_LocalParams lp = {
+        .intParams = { .intParams = &ip, .nbIntParams = 1 },
+        .refParams = { .refParams = &rp, .nbRefParams = 1 },
+    };
+
+    ZL_MaterializerDesc2 mparamMat{};
+    mparamMat.materializeFn   = copyDictMaterialize;
+    mparamMat.dematerializeFn = ZL_NOOP_DEMATERIALIZE;
+
+    static ZL_Type inputType = ZL_Type_serial;
+    // Base function graph carries the materializer but no MParam of its own.
+    ZL_FunctionGraphDesc baseDesc = {
+        .name           = "test_param_base",
+        .graph_f        = graphVerifyMParamFn,
+        .inputTypeMasks = &inputType,
+        .nbInputs       = 1,
+        .localParams    = lp,
+        .mparamMat      = mparamMat,
+    };
+    auto baseId = compressor_.registerFunctionGraph(baseDesc);
+    ASSERT_NE(baseId.gid, ZL_GRAPH_ILLEGAL.gid);
+    EXPECT_EQ(ZL_Compressor_numMParams(compressor_.get()), 0u);
+
+    // Parameterize the base, attaching the per-instance MParam blob.
+    const ZL_ParameterizedGraphDesc paramDesc = {
+        .graph  = baseId,
+        .mparam = { .content = mparamContent.data(),
+                    .size    = mparamContent.size() },
+    };
+    const ZL_GraphID paramId = ZL_Compressor_registerParameterizedGraph(
+            compressor_.get(), &paramDesc);
+    ASSERT_NE(paramId.gid, ZL_GRAPH_ILLEGAL.gid);
+    EXPECT_EQ(ZL_Compressor_numMParams(compressor_.get()), 1u);
+
+    ASSERT_FALSE(ZL_isError(
+            ZL_Compressor_selectStartingGraphID(compressor_.get(), paramId)));
+    compressData();
+    EXPECT_EQ(mparamContent, out);
+
+    // Reflection getters expose the per-instance blob + materialized object.
+    const ZL_MParam* reflected =
+            ZL_Compressor_Graph_getMParam(compressor_.get(), paramId);
+    ASSERT_NE(reflected, nullptr);
+    EXPECT_EQ(
+            std::string(
+                    static_cast<const char*>(reflected->content),
+                    reflected->size),
+            mparamContent);
+    const void* reflectedObj =
+            ZL_Compressor_Graph_getMParamObj(compressor_.get(), paramId);
+    ASSERT_NE(reflectedObj, nullptr);
+    EXPECT_EQ(
+            std::string(
+                    static_cast<const char*>(reflectedObj),
+                    mparamContent.size()),
+            mparamContent);
+}
+
+TEST_F(CompressorIntegrationTest,
+       GIVENaParameterizedGraphMParamWHENoverriddenTHENitIsReMaterialized)
+{
+    // Two equal-length blobs so the graph's size int-param stays valid.
+    const std::string mparamContent1 = "parameterized-graph-mparam-AAAAA";
+    const std::string mparamContent2 = "parameterized-graph-mparam-BBBBB";
+    ASSERT_EQ(mparamContent1.size(), mparamContent2.size());
+    std::string out(mparamContent1.size(), 0);
+
+    ZL_IntParam ip = { .paramId = 1, .paramValue = (int)mparamContent1.size() };
+    ZL_RefParam rp = { .paramId = 3, .paramRef = out.data() };
+    ZL_LocalParams lp = {
+        .intParams = { .intParams = &ip, .nbIntParams = 1 },
+        .refParams = { .refParams = &rp, .nbRefParams = 1 },
+    };
+
+    ZL_MaterializerDesc2 mparamMat{};
+    mparamMat.materializeFn   = copyDictMaterialize;
+    mparamMat.dematerializeFn = ZL_NOOP_DEMATERIALIZE;
+
+    static ZL_Type inputType      = ZL_Type_serial;
+    ZL_FunctionGraphDesc baseDesc = {
+        .name           = "test_param_override_base",
+        .graph_f        = graphVerifyMParamFn,
+        .inputTypeMasks = &inputType,
+        .nbInputs       = 1,
+        .localParams    = lp,
+        .mparamMat      = mparamMat,
+    };
+    auto baseId = compressor_.registerFunctionGraph(baseDesc);
+    ASSERT_NE(baseId.gid, ZL_GRAPH_ILLEGAL.gid);
+
+    const ZL_ParameterizedGraphDesc paramDesc = {
+        .graph  = baseId,
+        .mparam = { .content = mparamContent1.data(),
+                    .size    = mparamContent1.size() },
+    };
+    const ZL_GraphID paramId = ZL_Compressor_registerParameterizedGraph(
+            compressor_.get(), &paramDesc);
+    ASSERT_NE(paramId.gid, ZL_GRAPH_ILLEGAL.gid);
+    ASSERT_FALSE(ZL_isError(
+            ZL_Compressor_selectStartingGraphID(compressor_.get(), paramId)));
+
+    compressData();
+    EXPECT_EQ(mparamContent1, out);
+
+    // Override with a new MParam blob; it must be re-materialized in place.
+    const ZL_GraphParameters overrideParams = {
+        .mparam = { .content = mparamContent2.data(),
+                    .size    = mparamContent2.size() },
+    };
+    ASSERT_FALSE(ZL_isError(ZL_Compressor_overrideGraphParams(
+            compressor_.get(), paramId, &overrideParams)));
+
+    out.assign(out.size(), 0);
+    compressData();
+    EXPECT_EQ(mparamContent2, out);
+
+    const ZL_MParam* reflected =
+            ZL_Compressor_Graph_getMParam(compressor_.get(), paramId);
+    ASSERT_NE(reflected, nullptr);
+    EXPECT_EQ(
+            std::string(
+                    static_cast<const char*>(reflected->content),
+                    reflected->size),
+            mparamContent2);
+}
+
+TEST_F(CompressorIntegrationTest,
+       GIVENaParameterizedGraphWithMParamWHENserializedTHENitRoundTrips)
+{
+    const std::string mparamContent = "parameterized-graph-mparam-serialize";
+
+    ZL_MaterializerDesc2 mparamMat{};
+    mparamMat.materializeFn   = copyDictMaterialize;
+    mparamMat.dematerializeFn = ZL_NOOP_DEMATERIALIZE;
+
+    static ZL_Type inputType = ZL_Type_serial;
+    // Base function graph provides the materializer. Like a custom node backing
+    // a serialized parameterized node, it is non-serializable and must be
+    // pre-registered on the deserialization target under the same name.
+    auto makeBaseDesc = [&]() -> ZL_FunctionGraphDesc {
+        return ZL_FunctionGraphDesc{
+            .name           = "test_param_serialize_base",
+            .graph_f        = graphRequireMParamFn,
+            .inputTypeMasks = &inputType,
+            .nbInputs       = 1,
+            .mparamMat      = mparamMat,
+        };
+    };
+
+    ZL_FunctionGraphDesc baseDesc = makeBaseDesc();
+    auto baseId                   = compressor_.registerFunctionGraph(baseDesc);
+    ASSERT_NE(baseId.gid, ZL_GRAPH_ILLEGAL.gid);
+
+    const ZL_ParameterizedGraphDesc paramDesc = {
+        .name   = "test_param_serialize_instance",
+        .graph  = baseId,
+        .mparam = { .content = mparamContent.data(),
+                    .size    = mparamContent.size() },
+    };
+    const ZL_GraphID paramId = ZL_Compressor_registerParameterizedGraph(
+            compressor_.get(), &paramDesc);
+    ASSERT_NE(paramId.gid, ZL_GRAPH_ILLEGAL.gid);
+    ASSERT_FALSE(ZL_isError(
+            ZL_Compressor_selectStartingGraphID(compressor_.get(), paramId)));
+    ASSERT_EQ(ZL_Compressor_numMParams(compressor_.get()), 1u);
+
+    // First compress.
+    cctx_.refCompressor(compressor_);
+    cctx_.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+    const std::string src =
+            "Let me think. That's just inherently very difficult. What are we doing?";
+    std::vector<char> dst(1000);
+    const size_t compressedSize =
+            cctx_.compressSerial(poly::span<char>(dst.data(), dst.size()), src);
+    ASSERT_GT(compressedSize, 0u);
+
+    // Serialize; the blob must be embedded, not merely referenced.
+    const std::string serialized = compressor_.serialize();
+    EXPECT_NE(serialized.find(mparamContent), std::string::npos);
+
+    // Deserialize into a fresh compressor with only the base pre-registered.
+    openzl::Compressor compressor2;
+    ZL_FunctionGraphDesc baseDesc2 = makeBaseDesc();
+    compressor2.registerFunctionGraph(baseDesc2);
+    compressor2.deserialize(serialized);
+
+    // MParam sets must match (same ids and blob contents).
+    std::map<std::string, std::string> originalMParams;
+    std::map<std::string, std::string> deserializedMParams;
+    ASSERT_FALSE(ZL_isError(ZL_Compressor_forEachMParam(
+            compressor_.get(), collectMParamsCb, &originalMParams)));
+    ASSERT_FALSE(ZL_isError(ZL_Compressor_forEachMParam(
+            compressor2.get(), collectMParamsCb, &deserializedMParams)));
+    EXPECT_FALSE(originalMParams.empty());
+    EXPECT_EQ(deserializedMParams, originalMParams);
+
+    // The deserialized parameterized graph must expose the same blob.
+    const ZL_GraphID startGid = compressor2.getStartingGraph();
+    const ZL_MParam* reflected =
+            ZL_Compressor_Graph_getMParam(compressor2.get(), startGid);
+    ASSERT_NE(reflected, nullptr);
+    EXPECT_EQ(
+            std::string(
+                    static_cast<const char*>(reflected->content),
+                    reflected->size),
+            mparamContent);
+
+    // Second compress with the deserialized compressor must match.
+    openzl::CCtx cctx2;
+    cctx2.refCompressor(compressor2);
+    cctx2.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+    std::vector<char> dst2(1000);
+    const size_t compressedSize2 = cctx2.compressSerial(
+            poly::span<char>(dst2.data(), dst2.size()), src);
+    ASSERT_EQ(compressedSize, compressedSize2);
+    ASSERT_EQ(
+            std::string(dst.data(), compressedSize),
+            std::string(dst2.data(), compressedSize2));
 }
 
 } // namespace openzl

@@ -99,6 +99,21 @@ struct ZL_FunctionGraphDesc {
      * registration fails, and it lives for the lifetime of the compressor.
      */
     ZL_OpaquePtr opaque;
+    /**
+     * Optional materializer for compression-only materialized parameters
+     * (MParams). If materializeFn is non-null, it will be called during
+     * compressor deserialization to create the materialized object from
+     * the serialized MParam blob. Unlike dicts, MParams are NOT required
+     * at decompression time.
+     */
+    ZL_MaterializerDesc2 mparamMat;
+    /**
+     * Optional MParam associated with this graph. The provided content blob
+     * will be materialized as dictated by @p mparamMat . OpenZL will not take
+     * ownership of the content provided. The caller is free to free the buffer
+     * anytime after registering the graph.
+     */
+    ZL_MParam mparam;
 };
 
 /**
@@ -152,6 +167,13 @@ ZL_RefParam ZL_Graph_getLocalRefParam(const ZL_Graph* gctx, int refParamId);
  * the encoder.
  */
 const ZL_LocalParams* ZL_Graph_getLocalParams(const ZL_Graph* gctx);
+
+/**
+ * @returns The materialized MParam object associated with this graph, if
+ * there is one. Otherwise NULL. MParams are compression-only resources
+ * that are not required at decompression time.
+ */
+const void* ZL_Graph_getMParam(const ZL_Graph* gctx);
 
 /**
  * Determines whether @nodeid is supported given the applied global parameters

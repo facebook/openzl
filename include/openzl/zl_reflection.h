@@ -369,6 +369,22 @@ const void* ZL_Compressor_Node_getMParamObj(
         ZL_NodeID node);
 
 /**
+ * @returns A pointer to the *unmaterialized* MParam associated with the @p
+ * graph, or NULL if no MParam is associated.
+ */
+const ZL_MParam* ZL_Compressor_Graph_getMParam(
+        ZL_Compressor const* cgraph,
+        ZL_GraphID graph);
+
+/**
+ * @returns The *materialized* Mparam object associated with the @p graph or
+ * NULL if no MParam is associated.
+ */
+const void* ZL_Compressor_Graph_getMParamObj(
+        ZL_Compressor const* cgraph,
+        ZL_GraphID graph);
+
+/**
  * @returns The number of unique MParam blobs stored in the @p compressor.
  */
 size_t ZL_Compressor_numMParams(const ZL_Compressor* compressor);
