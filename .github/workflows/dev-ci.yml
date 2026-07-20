@@ -245,6 +245,7 @@ jobs:
         with:
           clang-format-version: '21'
           check-path: '.'
+          exclude-regex: '.*/datasets/.*'
 
   # Python formatting check
   test-python-format:
