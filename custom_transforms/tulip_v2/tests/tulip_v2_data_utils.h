@@ -23,10 +23,8 @@
 // TODO: Not sure if there is a better way to do this
 #if ZL_FBCODE_IS_RELEASE
 #    include "openzl/prod/custom_transforms/tulip_v2/tests/gen-cpp2/tulip_v2_data_types.h"
-#    include "openzl/prod/custom_transforms/tulip_v2/tests/gen-cpp2/tulip_v2_data_visitation.h"
 #else
 #    include "openzl/dev/custom_transforms/tulip_v2/tests/gen-cpp2/tulip_v2_data_types.h"
-#    include "openzl/dev/custom_transforms/tulip_v2/tests/gen-cpp2/tulip_v2_data_visitation.h"
 #endif
 
 namespace openzl::tulip_v2::tests {
