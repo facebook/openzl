@@ -210,9 +210,9 @@ class ASTVar : public ASTConverted {
 struct GrammarAnnotations {
     std::set<std::string> names;
 
-    bool has(const std::string& name) const
+    bool has(const std::string_view& name) const
     {
-        return names.count(name) > 0;
+        return names.count(std::string(name)) > 0;
     }
 };
 
