@@ -95,7 +95,7 @@ ZL_DictLoader_fetchDictBundle(ZL_DictLoader* loader, const ZL_BundleID* id);
 ZL_Report ZL_DictLoader_registerMaterializer(
         ZL_DictLoader* loader,
         ZL_IDType codecID,
-        const ZL_MaterializerDesc2* materializer);
+        const ZL_MaterializerDesc* materializer);
 
 /**
  * Materializes a raw dict blob using the materializer registered for

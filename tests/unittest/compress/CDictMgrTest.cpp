@@ -50,9 +50,9 @@ TEST_F(CDictMgrTest, LoadFatBundleSingleDict)
     EXPECT_EQ(bundle->info.numDicts, 1u);
     EXPECT_EQ(bundle->dicts[0]->materializingCodec, 100u);
 
-    ZL_DictID id             = makeDictID(1);
-    ZL_MaterializerDesc2 mat = makeDefaultDictMaterializer2();
-    const ZL_Dict* found     = CDictMgr_findDict(&mgr_, &id, &mat);
+    ZL_DictID id            = makeDictID(1);
+    ZL_MaterializerDesc mat = makeDefaultDictMaterializer();
+    const ZL_Dict* found    = CDictMgr_findDict(&mgr_, &id, &mat);
     ASSERT_EQ(found, bundle->dicts[0]);
 }
 
@@ -73,9 +73,9 @@ TEST_F(CDictMgrTest, LoadFatBundleMultipleDicts)
     EXPECT_EQ(bundle->dicts[1]->materializingCodec, 200u);
     EXPECT_EQ(bundle->dicts[2]->materializingCodec, 300u);
 
-    ZL_DictID id1            = makeDictID(1);
-    ZL_MaterializerDesc2 mat = makeDefaultDictMaterializer2();
-    const ZL_Dict* found1    = CDictMgr_findDict(&mgr_, &id1, &mat);
+    ZL_DictID id1           = makeDictID(1);
+    ZL_MaterializerDesc mat = makeDefaultDictMaterializer();
+    const ZL_Dict* found1   = CDictMgr_findDict(&mgr_, &id1, &mat);
     ASSERT_EQ(found1, bundle->dicts[0]);
 
     ZL_DictID id2         = makeDictID(2);
@@ -109,9 +109,9 @@ TEST_F(CDictMgrTest, LoadSingleDict)
     auto r = CDictMgr_loadDict(&mgr_, dict.data(), dict.size());
     ASSERT_FALSE(ZL_RES_isError(r));
 
-    ZL_DictID id             = makeDictID(5);
-    ZL_MaterializerDesc2 mat = makeDefaultDictMaterializer2();
-    const ZL_Dict* found     = CDictMgr_findDict(&mgr_, &id, &mat);
+    ZL_DictID id            = makeDictID(5);
+    ZL_MaterializerDesc mat = makeDefaultDictMaterializer();
+    const ZL_Dict* found    = CDictMgr_findDict(&mgr_, &id, &mat);
     ASSERT_NE(found, nullptr);
     EXPECT_EQ(found->materializingCodec, 42u);
 }
@@ -125,8 +125,8 @@ TEST_F(CDictMgrTest, LoadDictDuplicate)
     auto r2 = CDictMgr_loadDict(&mgr_, dict.data(), dict.size());
     ASSERT_FALSE(ZL_RES_isError(r2));
 
-    ZL_DictID id             = makeDictID(7);
-    ZL_MaterializerDesc2 mat = makeDefaultDictMaterializer2();
+    ZL_DictID id            = makeDictID(7);
+    ZL_MaterializerDesc mat = makeDefaultDictMaterializer();
     EXPECT_NE(CDictMgr_findDict(&mgr_, &id, &mat), nullptr);
 }
 
@@ -162,7 +162,7 @@ TEST(CDictMgrStandaloneTest, DifferentMaterializerYieldsDifferentEntry)
 {
     // Set up mock nodes with dictID(1) and the default materializer.
     MockNodesMgr mockNodes;
-    ZL_MaterializerDesc2 matA = makeDefaultDictMaterializer2();
+    ZL_MaterializerDesc matA = makeDefaultDictMaterializer();
     mockNodes.addDictNode(makeDictID(1), matA, true /* standard node */);
 
     CDictMgr mgr{};
@@ -188,8 +188,8 @@ TEST(CDictMgrStandaloneTest, DifferentMaterializerYieldsDifferentEntry)
     ASSERT_NE(dictA, nullptr);
 
     // Lookup with a different materializer → different composite key → miss.
-    ZL_MaterializerDesc2 matB = {};
-    const ZL_Dict* dictB      = CDictMgr_findDict(&mgr, &id, &matB);
+    ZL_MaterializerDesc matB = {};
+    const ZL_Dict* dictB     = CDictMgr_findDict(&mgr, &id, &matB);
     EXPECT_EQ(dictB, nullptr)
             << "different materializer should yield a different cache key";
 

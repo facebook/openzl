@@ -337,21 +337,14 @@ typedef struct {
      * registration fails, and it lives for the lifetime of the compressor.
      */
     ZL_OpaquePtr opaque;
-    /**
-     * Optional materializer descriptor for materialized local params.
-     * If both materializeFn and dematerializeFn are non-null, the materializer
-     * will be used to create materialized objects from local params.
-     */
-    ZL_MaterializerDesc materializer;
 
-    // New API. In progress.
     /**
      * Optional materializer descriptor for materialized dicts.
      * If both materializeFn and dematerializeFn are non-null, the materializer
      * will be used to create materialized objects. Create a node with
      * materialization using ZL_Compressor_parameterizeNode().
      */
-    ZL_MaterializerDesc2 dictMat;
+    ZL_MaterializerDesc dictMat;
     /**
      * Optional dictionary ID associated with this encoder.
      * When set, identifies the dictionary that this encoder requires.
@@ -366,7 +359,7 @@ typedef struct {
      *  the serialized MParam blob. Unlike dicts, MParams are NOT required
      *  at decompression time.
      */
-    ZL_MaterializerDesc2 mparamMat;
+    ZL_MaterializerDesc mparamMat;
     /**
      * Optional MParam associated with this encoder. The provided content blob
      * will be materialized as dictated by @p mparamMat . OpenZL will not take

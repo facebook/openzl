@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "openzl/common/allocation.h"
+#include "openzl/common/materializer_ctx.h" // struct ZL_Materializer_s
 #include "openzl/dict/bundle.h"
 #include "openzl/dict/dict.h"
 #include "openzl/dict/dict_constants.h"
@@ -17,9 +18,9 @@
  * Composite key hash and equality
  * ================================================================ */
 
-static ZL_MaterializerDesc2 CDictMgr_zeroMatDesc(void)
+static ZL_MaterializerDesc CDictMgr_zeroMatDesc(void)
 {
-    ZL_MaterializerDesc2 desc;
+    ZL_MaterializerDesc desc;
     memset(&desc, 0, sizeof(desc));
     return desc;
 }
@@ -148,7 +149,7 @@ void CDictMgr_destroy(CDictMgr* mgr)
 // Note: This performs a linear scan over all CNodes O(numCNodes) on every call,
 // making fat-bundle loading O(numDicts × numCNodes). If this becomes a problem,
 // consider a more clever solution.
-static const ZL_MaterializerDesc2* CDictMgr_findMaterializer(
+static const ZL_MaterializerDesc* CDictMgr_findMaterializer(
         const CDictMgr* mgr,
         ZL_DictID dictID,
         bool isCustomCodec)
@@ -177,7 +178,7 @@ static const ZL_MaterializerDesc2* CDictMgr_findMaterializer(
 static ZL_RESULT_OF(ZL_DictConstPtr) CDictMgr_cacheInternal(
         CDictMgr* mgr,
         const ZL_ParsedDict* parsed,
-        const ZL_MaterializerDesc2* matDesc)
+        const ZL_MaterializerDesc* matDesc)
 {
     ZL_RESULT_DECLARE_SCOPE(ZL_DictConstPtr, mgr->opCtx);
     ZL_ASSERT_NN(matDesc);
@@ -365,7 +366,7 @@ CDictMgr_loadDict(CDictMgr* mgr, const void* serialBuffer, size_t bufferMaxSize)
             bufferMaxSize,
             dict_corruption,
             "dict packedSize exceeds remaining buffer");
-    const ZL_MaterializerDesc2* matDesc =
+    const ZL_MaterializerDesc* matDesc =
             CDictMgr_findMaterializer(mgr, parsed.dictID, parsed.isCustomCodec);
     ZL_ERR_IF_NULL(
             matDesc, noValidMaterialization, "no materializer found for dict");
@@ -386,7 +387,7 @@ CDictMgr_loadDict(CDictMgr* mgr, const void* serialBuffer, size_t bufferMaxSize)
 const ZL_Dict* CDictMgr_findDict(
         const CDictMgr* mgr,
         const ZL_DictID* id,
-        const ZL_MaterializerDesc2* matDesc)
+        const ZL_MaterializerDesc* matDesc)
 {
     CDictMgr_DictKey lookupKey = {
         .id      = id->id,
@@ -469,7 +470,7 @@ ZL_RESULT_OF(ZL_ConstVoidPtr)
 CDictMgr_materializeMParam(
         CDictMgr* mgr,
         ZL_MParam mparam,
-        const ZL_MaterializerDesc2* matDesc)
+        const ZL_MaterializerDesc* matDesc)
 {
     ZL_RESULT_DECLARE_SCOPE(ZL_ConstVoidPtr, mgr->opCtx);
     ZL_ASSERT_NN(matDesc);

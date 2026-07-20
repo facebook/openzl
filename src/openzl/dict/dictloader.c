@@ -105,7 +105,7 @@ void* ZL_DictLoader_getOpaque(const ZL_DictLoader* loader)
 static ZL_Report DictLoader_registerMaterializer_inner(
         ZL_DictLoader* loader,
         ZL_IDType codecID,
-        const ZL_MaterializerDesc2* materializer)
+        const ZL_MaterializerDesc* materializer)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ERR_IF_NULL(loader, GENERIC);
@@ -137,7 +137,7 @@ static ZL_Report DictLoader_registerMaterializer_inner(
 ZL_Report ZL_DictLoader_registerMaterializer(
         ZL_DictLoader* loader,
         ZL_IDType codecID,
-        const ZL_MaterializerDesc2* materializer)
+        const ZL_MaterializerDesc* materializer)
 {
     ZL_Report report = DictLoader_registerMaterializer_inner(
             loader, codecID, materializer);
@@ -147,7 +147,7 @@ ZL_Report ZL_DictLoader_registerMaterializer(
     return report;
 }
 
-const ZL_MaterializerDesc2* DictLoader_getMaterializer(
+const ZL_MaterializerDesc* DictLoader_getMaterializer(
         const ZL_DictLoader* loader,
         ZL_IDType codecID,
         bool isCustomCodec)
@@ -168,7 +168,7 @@ const ZL_MaterializerDesc2* DictLoader_getMaterializer(
 static ZL_Report DictLoader_registerStandardMaterializer(
         ZL_DictLoader* loader,
         ZL_NodeID codecID,
-        const ZL_MaterializerDesc2* mat)
+        const ZL_MaterializerDesc* mat)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
     ZL_ASSERT_NN(loader);
@@ -216,7 +216,7 @@ ZL_DictLoader_materialize(
     ZL_ERR_IF_NULL(loader, GENERIC);
     ZL_ERR_IF_NULL(src, GENERIC);
 
-    const ZL_MaterializerDesc2* matDesc =
+    const ZL_MaterializerDesc* matDesc =
             DictLoader_getMaterializer(loader, codecID, isCustomCodec);
     ZL_ERR_IF_NULL(
             matDesc,
@@ -249,7 +249,7 @@ void ZL_DictLoader_dematerialize(
         return;
     }
 
-    const ZL_MaterializerDesc2* matDesc =
+    const ZL_MaterializerDesc* matDesc =
             DictLoader_getMaterializer(loader, codecID, isCustomCodec);
     if (matDesc == NULL) {
         return;

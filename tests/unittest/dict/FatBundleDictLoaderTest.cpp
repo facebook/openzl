@@ -50,19 +50,19 @@ static ZL_RESULT_OF(ZL_VoidPtr) badMaterialize(
     ZL_ERR(allocation);
 }
 
-static ZL_MaterializerDesc2 mockMat()
+static ZL_MaterializerDesc mockMat()
 {
-    ZL_MaterializerDesc2 mat = {};
-    mat.materializeFn        = mockMaterialize;
-    mat.dematerializeFn      = mockDematerialize;
+    ZL_MaterializerDesc mat = {};
+    mat.materializeFn       = mockMaterialize;
+    mat.dematerializeFn     = mockDematerialize;
     return mat;
 }
 
-static ZL_MaterializerDesc2 badMat()
+static ZL_MaterializerDesc badMat()
 {
-    ZL_MaterializerDesc2 mat = {};
-    mat.materializeFn        = badMaterialize;
-    mat.dematerializeFn      = ZL_NOOP_DEMATERIALIZE;
+    ZL_MaterializerDesc mat = {};
+    mat.materializeFn       = badMaterialize;
+    mat.dematerializeFn     = ZL_NOOP_DEMATERIALIZE;
     return mat;
 }
 
@@ -91,14 +91,14 @@ class FatBundleDictLoaderTest : public ::testing::Test {
         baseLoader = ZL_FatBundleDictLoader_getDictLoader(loader);
 
         // Register mock materializers for all codecs used by tests
-        ZL_MaterializerDesc2 mock = mockMat();
+        ZL_MaterializerDesc mock = mockMat();
         for (int id : { 0, 100, 200, 300 }) {
             ASSERT_FALSE(ZL_isError(
                     ZL_DictLoader_registerMaterializer(baseLoader, id, &mock)));
         }
 
         // Register a materializer that always fails
-        ZL_MaterializerDesc2 bad = badMat();
+        ZL_MaterializerDesc bad = badMat();
         ASSERT_FALSE(ZL_isError(ZL_DictLoader_registerMaterializer(
                 baseLoader, kBadMatCodecID, &bad)));
     }
@@ -121,7 +121,7 @@ TEST_F(FatBundleDictLoaderTest, FreeNullIsSafe)
 TEST_F(FatBundleDictLoaderTest, DoubleRegisterMaterializerIsError)
 {
     // Codec 100 is already registered in SetUp; re-registering should fail
-    ZL_MaterializerDesc2 mat = mockMat();
+    ZL_MaterializerDesc mat = mockMat();
     EXPECT_TRUE(ZL_isError(
             ZL_DictLoader_registerMaterializer(baseLoader, 100, &mat)));
 }

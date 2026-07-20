@@ -181,12 +181,6 @@ typedef struct {
     size_t nbCustomGraphs; // Must be zero when customGraphs==NULL
     ZL_LocalParams localParams;
     /**
-     * Optional materializer descriptor for materialized local params.
-     * If both materializeFn and dematerializeFn are non-null, the materializer
-     * will be used to create materialized objects from local params.
-     */
-    ZL_MaterializerDesc materializer;
-    /**
      * Optional, the name of the graph rooted by the selector.
      */
     const char* name;

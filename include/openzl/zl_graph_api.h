@@ -87,12 +87,6 @@ struct ZL_FunctionGraphDesc {
     size_t nbCustomNodes;           // Must be zero when customNodes==NULL
     ZL_LocalParams localParams;
     /**
-     * Optional materializer descriptor for materialized local params.
-     * If both materializeFn and dematerializeFn are non-null, the materializer
-     * will be used to create materialized objects from local params.
-     */
-    ZL_MaterializerDesc materializer;
-    /**
      * Optionally an opaque pointer that can be queried with
      * ZL_Graph_getOpaquePtr().
      * OpenZL unconditionally takes ownership of this pointer, even if
@@ -106,7 +100,7 @@ struct ZL_FunctionGraphDesc {
      * the serialized MParam blob. Unlike dicts, MParams are NOT required
      * at decompression time.
      */
-    ZL_MaterializerDesc2 mparamMat;
+    ZL_MaterializerDesc mparamMat;
     /**
      * Optional MParam associated with this graph. The provided content blob
      * will be materialized as dictated by @p mparamMat . OpenZL will not take

@@ -124,7 +124,7 @@ copyMaterialize(ZL_Materializer* matCtx, const void* src, size_t srcSize)
     return ZL_WRAP_VALUE(copy);
 }
 
-ZL_MaterializerDesc2 const kCopyDictMaterializer = {
+ZL_MaterializerDesc const kCopyDictMaterializer = {
     .materializeFn   = copyMaterialize,
     .dematerializeFn = ZL_NOOP_DEMATERIALIZE,
 };
