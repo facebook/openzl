@@ -5,6 +5,8 @@
 #include <stdexcept>
 #include <string>
 
+#include "openzl/dev/contrib/gpu/source/common/cuda_error.cuh"
+
 namespace openzl::gpu {
 
 namespace {
@@ -34,12 +36,13 @@ __global__ void decodeChunksKernel(
 uint32_t fillGpuGrid(const void* kernel)
 {
     int maxBlocksPerSM = 0;
-    cudaOccupancyMaxActiveBlocksPerMultiprocessor(
-            &maxBlocksPerSM, kernel, kThreads, 0);
+    ZL_CUDA_CHECK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+            &maxBlocksPerSM, kernel, kThreads, 0));
     int dev    = 0;
     int numSMs = 0;
-    cudaGetDevice(&dev);
-    cudaDeviceGetAttribute(&numSMs, cudaDevAttrMultiProcessorCount, dev);
+    ZL_CUDA_CHECK(cudaGetDevice(&dev));
+    ZL_CUDA_CHECK(cudaDeviceGetAttribute(
+            &numSMs, cudaDevAttrMultiProcessorCount, dev));
     const uint32_t grid = (uint32_t)maxBlocksPerSM * (uint32_t)numSMs;
     return grid == 0 ? 1 : grid;
 }
@@ -66,16 +69,17 @@ void bf16DeconDecode(
     const uint32_t blocksPerChunk = (target + numInBatch - 1) / numInBatch;
     const dim3 grid(blocksPerChunk, numInBatch);
     decodeChunksKernel<<<grid, kThreads, 0, stream>>>(chunks_d, numInBatch);
+    ZL_CUDA_CHECK_LAST();
 }
 
 KernelLaunchInfo bf16DeconDecodeLaunchInfo()
 {
     int maxActiveBlocksPerSM = 0;
-    cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+    ZL_CUDA_CHECK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
             &maxActiveBlocksPerSM,
             (const void*)decodeChunksKernel,
             kThreads,
-            0);
+            0));
     return { kThreads, maxActiveBlocksPerSM };
 }
 
