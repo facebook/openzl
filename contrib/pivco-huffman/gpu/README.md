@@ -1,7 +1,9 @@
 # PivCo-Huffman GPU POC
 
-This directory contains an independent CUDA proof of concept for PivCo-Huffman
-block encode and decode. It does not change the production OpenZL codec under
+This directory contains an independent CUDA proof of concept for [PivCo-Huffman](https://github.com/MarcinZukowski/pivco-huffman/)
+block encode and decode. It uses the wire-format of [OpenZL's implementation of PivCo-Huffman](https://github.com/facebook/openzl/tree/dev/src/openzl/codecs/pivco_huffman).
+
+It does not change the production OpenZL codec under
 `src/openzl/`; callers still supply Huffman weights from the host, while the
 per-block PivCo work runs on the GPU.
 
@@ -10,6 +12,67 @@ The public API is in `pivco_gpu.h`. Callers create an immutable
 workspace, then call `pivcoGpuEncode()` or `pivcoGpuDecode()`. The blocking
 wrappers launch internal async kernels, copy device status/results back, and
 synchronize the supplied CUDA stream before returning a `ZL_Report`.
+
+## Benchmark Results
+
+Ran on **NVIDIA A100 (SM 8.0, 80 GB)**.
+
+256 MiB expanded input, 64 KiB blocks, 15 iterations. Decode is timed with CUDA
+events over the decompressed bytes; bulk H2D/D2H transfers are excluded. Figures
+are the median decode throughput over the 15 iterations (GPU-clock variance is
+~±15% run-to-run).
+
+To reproduce, clone the upstream pivco-huffman repo for the real datasets
+(`extras/datasets`) and point `--dataset-dir` at that directory:
+
+```bash
+git clone https://github.com/MarcinZukowski/pivco-huffman
+buck2 build @fbcode//mode/opt fbcode//openzl/dev/contrib/pivco-huffman/gpu:pivco_gpu_bench
+buck2 run @fbcode//mode/opt fbcode//openzl/dev/contrib/pivco-huffman/gpu:pivco_gpu_bench -- \
+    --size=268435456 --iterations=15 --dataset-dir=pivco-huffman/extras/datasets
+```
+
+Single dataset: append `-- --dataset=json_api.json`.
+
+### Real datasets
+
+| dataset          | ratio | decode GiB/s (median) |
+|:-----------------|------:|----------------------:|
+| gzip_random.gz   | 1.000 |                 654.5 |
+| calgary_pic      | 0.209 |                 194.7 |
+| dna_fasta.fa     | 0.283 |                 193.9 |
+| cat-image.jpg    | 0.990 |                 152.7 |
+| csv_numeric.csv  | 0.418 |                 145.4 |
+| log_apache.log   | 0.692 |                 118.3 |
+| chinese_text.txt | 0.731 |                 114.2 |
+| source_c.c       | 0.623 |                 112.5 |
+| cat-wiki.html    | 0.691 |                 105.6 |
+| pride.txt        | 0.573 |                 105.5 |
+| json_api.json    | 0.654 |                 102.7 |
+
+### Synthetic datasets
+
+| dataset       | ratio | decode GiB/s (median) |
+|:--------------|------:|----------------------:|
+| two_sym_eq    | 0.125 |                 935.4 |
+| two_sym_90/10 | 0.125 |                 931.8 |
+| sparse_4      | 0.250 |                 884.6 |
+| flat_M3       | 0.375 |                 827.6 |
+| sparse_16     | 0.500 |                 790.1 |
+| flat_M5       | 0.625 |                 722.3 |
+| flat_M6       | 0.750 |                 682.0 |
+| flat_M7       | 0.875 |                 652.8 |
+| uniform       | 1.000 |                 626.0 |
+| proba80       | 0.156 |                 408.9 |
+| proba50       | 0.250 |                 227.1 |
+| bell_s80      | 0.995 |                 191.6 |
+| geometric     | 0.265 |                 185.2 |
+| english       | 0.530 |                 155.9 |
+| bell_s10      | 0.685 |                 124.8 |
+| proba14       | 0.527 |                 119.9 |
+| zipfian       | 0.783 |                 112.2 |
+| bell_s30      | 0.877 |                 106.8 |
+| proba02       | 0.891 |                 101.4 |
 
 ## Current Performance Status
 
