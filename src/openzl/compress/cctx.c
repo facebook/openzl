@@ -20,8 +20,6 @@
 #include "openzl/compress/enc_interface.h"      // ENC_*
 #include "openzl/compress/gcparams.h"           // GCParams
 #include "openzl/compress/implicit_conversion.h" // ICONV_implicitConversionNodeID
-#include "openzl/compress/localparams.h"         // LP_getLocalRefParam
-#include "openzl/compress/materializer.h"        // OnTheFlyMaterialization
 #include "openzl/compress/private_nodes.h"       // ZL_GRAPH_SERIAL_STORE
 #include "openzl/compress/rtgraphs.h"            // RTGraph, RTStreamID
 #include "openzl/compress/segmenter.h"           // SEGM_*
@@ -140,11 +138,10 @@ struct ZL_CCtx_s {
     CCTX_TransformHeaders trHeaders;
     /* These Arenas presume single-thread execution.
      * For parallel execution, it will have to be replaced by Arena Pools */
-    Arena* codecArena;      // Codec lifetime
-    Arena* graphArena;      // Graph Lifetime
-    Arena* chunkArena;      // Chunk Lifetime
-    Arena* sessionArena;    // Entire compression lifetime
-    Arena* matScratchArena; // Scratch space for materializers
+    Arena* codecArena;   // Codec lifetime
+    Arena* graphArena;   // Graph Lifetime
+    Arena* chunkArena;   // Chunk Lifetime
+    Arena* sessionArena; // Entire compression lifetime
     const ZL_TypedRef** inputs;
     unsigned nbInputs;
     int numSegments;         // number of segments in the current frame
@@ -163,15 +160,13 @@ static ZL_Report CCTX_init(ZL_CCtx* cctx)
 
     ZL_OC_init(&cctx->opCtx);
 
-    cctx->codecArena      = ALLOC_StackArena_create();
-    cctx->graphArena      = ALLOC_StackArena_create();
-    cctx->chunkArena      = ALLOC_StackArena_create();
-    cctx->sessionArena    = ALLOC_StackArena_create();
-    cctx->matScratchArena = ALLOC_StackArena_create();
+    cctx->codecArena   = ALLOC_StackArena_create();
+    cctx->graphArena   = ALLOC_StackArena_create();
+    cctx->chunkArena   = ALLOC_StackArena_create();
+    cctx->sessionArena = ALLOC_StackArena_create();
     ZL_ERR_IF(
             cctx->graphArena == NULL || cctx->codecArena == NULL
-                    || cctx->chunkArena == NULL || cctx->sessionArena == NULL
-                    || cctx->matScratchArena == NULL,
+                    || cctx->chunkArena == NULL || cctx->sessionArena == NULL,
             allocation);
 
     ZL_ERR_IF_ERR(RTGM_init(&cctx->rtgraph));
@@ -225,7 +220,6 @@ void CCTX_free(ZL_CCtx* cctx)
     ALLOC_Arena_freeArena(cctx->codecArena);
     ALLOC_Arena_freeArena(cctx->graphArena);
     ALLOC_Arena_freeArena(cctx->chunkArena);
-    ALLOC_Arena_freeArena(cctx->matScratchArena);
     ALLOC_Arena_freeArena(cctx->sessionArena);
     ZL_OC_destroy(&cctx->opCtx);
     ZL_free(cctx);
@@ -493,40 +487,6 @@ static ZL_Report CCTX_runCNode_wParams(
         *rtnid = tmp;
     }
 
-    // Perform on-the-fly materialization if needed
-    // Skip if params already contain the materialized param (already
-    // materialized at registration time)
-    OneshotMaterializationResult matRes = {
-        .materializedObj = NULL,
-    };
-    if (lparams != NULL) {
-        matRes.modifiedParams = *lparams;
-        if (cnode->transformDesc.publicDesc.materializer.materializeFn
-            != NULL) {
-            // Check if the materialized param already exists
-            ZL_RefParam existingParam = LP_getLocalRefParam(
-                    lparams,
-                    cnode->transformDesc.publicDesc.materializer.paramId);
-            ZL_ERR_IF_NE(
-                    existingParam.paramId,
-                    ZL_LP_INVALID_PARAMID,
-                    node_invalid_input,
-                    "Node runtime params cannot use the materialized param ID");
-
-            // Param doesn't exist, perform on-the-fly materialization
-            ZL_RESULT_OF(OneshotMaterializationResult)
-            res = MPM_materializeOneshot(
-                    cctx->sessionArena,
-                    cctx->matScratchArena,
-                    ZL_CCtx_getOperationContext(cctx),
-                    lparams,
-                    &cnode->transformDesc.publicDesc.materializer);
-            ZL_ERR_IF_ERR(res);
-            matRes  = ZL_RES_value(res);
-            lparams = &matRes.modifiedParams;
-        }
-    }
-
     ZL_Report nbOuts;
     nbOuts = ENC_runTransform(
             &cnode->transformDesc,
@@ -535,14 +495,10 @@ static ZL_Report CCTX_runCNode_wParams(
             nodeid,
             *rtnid,
             cnode,
-            lparams, // potentially modified by materialization
+            lparams,
             cctx,
             cctx->codecArena,
             &cctx->cachedCodecStates);
-
-    // Clean up on-the-fly materialized params (must happen before error
-    // check)
-    MPM_dematerializeOneshot(cctx->sessionArena, &matRes);
 
     ZL_ERR_IF_ERR(
             nbOuts,
@@ -960,39 +916,12 @@ static ZL_Report CCTX_runSegmenter(
     // we don't want to create Nodes in front of the Segmenter.
 
     // Insert runtime parameters if needed
-    OneshotMaterializationResult segMatRes = {
-        .materializedObj = NULL,
-    };
     if (rgp) {
         ALLOC_ARENA_MALLOC_CHECKED(
                 ZL_SegmenterDesc, migd, 1, cctx->sessionArena);
         *migd = *segDesc;
         if (rgp->localParams) {
-            // Perform on-the-fly materialization if needed
-            if (segDesc->materializer.materializeFn != NULL) {
-                // Check if the materialized param already exists
-                ZL_RefParam existingParam = LP_getLocalRefParam(
-                        rgp->localParams, segDesc->materializer.paramId);
-                ZL_ERR_IF_NE(
-                        existingParam.paramId,
-                        ZL_LP_INVALID_PARAMID,
-                        node_invalid_input,
-                        "Segmenter runtime params cannot use the materialized param ID");
-
-                // Param doesn't exist, perform on-the-fly materialization
-                ZL_RESULT_OF(OneshotMaterializationResult)
-                res = MPM_materializeOneshot(
-                        cctx->sessionArena,
-                        cctx->matScratchArena,
-                        ZL_CCtx_getOperationContext(cctx),
-                        rgp->localParams,
-                        &segDesc->materializer);
-                ZL_ERR_IF_ERR(res);
-                segMatRes         = ZL_RES_value(res);
-                migd->localParams = segMatRes.modifiedParams;
-            } else {
-                migd->localParams = *rgp->localParams;
-            }
+            migd->localParams = *rgp->localParams;
         }
         if (rgp->customGraphs) {
             migd->customGraphs    = rgp->customGraphs;
@@ -1014,9 +943,6 @@ static ZL_Report CCTX_runSegmenter(
     ZL_Report const r    = SEGM_runSegmenter(segmenterCtx);
 
     CWAYPOINT(on_segmenterEncode_end, segmenterCtx, r);
-
-    // Maybe clean up on-the-fly materialized params
-    MPM_dematerializeOneshot(cctx->sessionArena, &segMatRes);
 
     return r;
 }
@@ -1148,39 +1074,12 @@ static ZL_Report CCTX_runSupervisedGraphID_internal(
 
     // Now run the selected Graph, inserting runtime parameters if needed
     ZL_ASSERT_EQ(CGRAPH_graphType(cctx->cgraph, graphid), gt_miGraph);
-    OneshotMaterializationResult graphMatRes = {
-        .materializedObj = NULL,
-    };
     if (rgp) {
         ALLOC_ARENA_MALLOC_CHECKED(
                 ZL_FunctionGraphDesc, migd, 1, cctx->graphArena);
         *migd = *dstGd;
         if (rgp->localParams) {
-            // Perform on-the-fly materialization if needed
-            if (dstGd->materializer.materializeFn != NULL) {
-                // Check if the materialized param already exists
-                ZL_RefParam existingParam = LP_getLocalRefParam(
-                        rgp->localParams, dstGd->materializer.paramId);
-                ZL_ERR_IF_NE(
-                        existingParam.paramId,
-                        ZL_LP_INVALID_PARAMID,
-                        node_invalid_input,
-                        "Graph runtime params cannot use the materialized param ID");
-
-                // Param doesn't exist, perform on-the-fly materialization
-                ZL_RESULT_OF(OneshotMaterializationResult)
-                res = MPM_materializeOneshot(
-                        cctx->sessionArena,
-                        cctx->matScratchArena,
-                        ZL_CCtx_getOperationContext(cctx),
-                        rgp->localParams,
-                        &dstGd->materializer);
-                ZL_ERR_IF_ERR(res);
-                graphMatRes       = ZL_RES_value(res);
-                migd->localParams = graphMatRes.modifiedParams;
-            } else {
-                migd->localParams = *rgp->localParams;
-            }
+            migd->localParams = *rgp->localParams;
         }
         if (rgp->customGraphs) {
             migd->customGraphs   = rgp->customGraphs;
@@ -1200,9 +1099,6 @@ static ZL_Report CCTX_runSupervisedGraphID_internal(
             rtsids,
             nbInputs,
             depth);
-
-    // Maybe clean up on-the-fly materialized params
-    MPM_dematerializeOneshot(cctx->sessionArena, &graphMatRes);
 
     return graphResult;
 }

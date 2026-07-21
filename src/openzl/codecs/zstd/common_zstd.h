@@ -71,7 +71,7 @@ void ZL_Zstd_materializerFree(void* opaque, void* address);
 
 /// DDict materializer for decompression-side zstd dict support.
 /// Defined in common_zstd.c, registered in DictLoader.
-extern const ZL_MaterializerDesc2 ZL_Zstd_ddict_materializer;
+extern const ZL_MaterializerDesc ZL_Zstd_ddict_materializer;
 
 ZL_END_C_DECLS
 

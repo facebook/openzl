@@ -103,7 +103,7 @@ static void DIZSTD_dematerializeDDict(
     }
 }
 
-const ZL_MaterializerDesc2 ZL_Zstd_ddict_materializer = {
+const ZL_MaterializerDesc ZL_Zstd_ddict_materializer = {
     .materializeFn   = DIZSTD_materializeDDict,
     .dematerializeFn = DIZSTD_dematerializeDDict,
 };

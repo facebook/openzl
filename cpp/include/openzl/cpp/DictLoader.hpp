@@ -51,7 +51,7 @@ class DictLoader {
      */
     void registerMaterializer(
             ZL_IDType codecID,
-            const ZL_MaterializerDesc2* materializer);
+            const ZL_MaterializerDesc* materializer);
 
     /**
      * Materialize a raw dict blob using the materializer registered for

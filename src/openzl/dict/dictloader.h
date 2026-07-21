@@ -12,15 +12,12 @@
 extern "C" {
 #endif
 
-// Map: PublicTransformInfo -> ZL_MaterializerDesc2
+// Map: PublicTransformInfo -> ZL_MaterializerDesc
 size_t DL_MatMap_hash(const PublicTransformInfo* key);
 bool DL_MatMap_eq(
         const PublicTransformInfo* lhs,
         const PublicTransformInfo* rhs);
-ZL_DECLARE_CUSTOM_MAP_TYPE(
-        DL_MatMap,
-        PublicTransformInfo,
-        ZL_MaterializerDesc2);
+ZL_DECLARE_CUSTOM_MAP_TYPE(DL_MatMap, PublicTransformInfo, ZL_MaterializerDesc);
 
 struct ZL_DictLoader_s {
     ZL_DictLoaderDesc desc;
@@ -37,10 +34,10 @@ struct ZL_DictLoader_s {
 ZL_Report DictLoader_registerStandardMaterializers(ZL_DictLoader* loader);
 
 /**
- * @returns the ZL_MaterializerDesc2 registered with @p codecID or NULL if no
+ * @returns the ZL_MaterializerDesc registered with @p codecID or NULL if no
  * materializer has been registered with that ID.
  */
-const ZL_MaterializerDesc2* DictLoader_getMaterializer(
+const ZL_MaterializerDesc* DictLoader_getMaterializer(
         const ZL_DictLoader* loader,
         ZL_IDType codecID,
         bool isCustomCodec);

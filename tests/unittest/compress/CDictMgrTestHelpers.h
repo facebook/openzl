@@ -37,10 +37,10 @@ inline ZL_RESULT_OF(ZL_VoidPtr) mockDictCopyMaterialize(
     return ZL_WRAP_VALUE(copy);
 }
 
-/// Build a default ZL_MaterializerDesc2 using the mock copy-materializer.
-inline ZL_MaterializerDesc2 makeDefaultDictMaterializer2()
+/// Build a default ZL_MaterializerDesc using the mock copy-materializer.
+inline ZL_MaterializerDesc makeDefaultDictMaterializer()
 {
-    ZL_MaterializerDesc2 desc{};
+    ZL_MaterializerDesc desc{};
     desc.materializeFn   = mockDictCopyMaterialize;
     desc.dematerializeFn = ZL_NOOP_DEMATERIALIZE;
     return desc;
@@ -72,10 +72,10 @@ class MockNodesMgr {
     MockNodesMgr(const MockNodesMgr&)            = delete;
     MockNodesMgr& operator=(const MockNodesMgr&) = delete;
 
-    /// Register a CNode with the given dictID and materializer (v2).
+    /// Register a CNode with the given dictID and materializer.
     void addDictNode(
             ZL_DictID dictID,
-            ZL_MaterializerDesc2 matDesc,
+            ZL_MaterializerDesc matDesc,
             bool isStandard = false)
     {
         ZL_Type inputType  = ZL_Type_serial;
@@ -109,10 +109,10 @@ class MockNodesMgr {
         }
     }
 
-    /// Convenience overload using the default mock dict materializer (v2).
+    /// Convenience overload using the default mock dict materializer.
     void addDictNode(ZL_DictID dictID)
     {
-        addDictNode(dictID, makeDefaultDictMaterializer2());
+        addDictNode(dictID, makeDefaultDictMaterializer());
     }
 
     const Nodes_manager* nodesManager() const

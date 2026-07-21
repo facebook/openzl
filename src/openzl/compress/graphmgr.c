@@ -6,13 +6,13 @@
 #include "openzl/common/limits.h"    // ZL_ENCODER_GRAPH_LIMIT constant
 #include "openzl/common/logging.h" // ZL_DLOG, STR_REPLACE_NULL for logging and debugging
 #include "openzl/common/map.h" // ZL_DECLARE_PREDEF_MAP_TYPE, GraphMap for name-to-GraphID mapping
+#include "openzl/common/materializer_ctx.h" // struct ZL_Materializer_s
 #include "openzl/common/opaque.h" // ZL_OpaquePtrRegistry for managing opaque pointers
 #include "openzl/compress/cdictmgr.h" // CDictMgr, CDictMgr_materializeMParam, CDictMgr_getMParam
 #include "openzl/compress/cgraph.h" // CNODE_getName, CNode definitions, graph context functions
 #include "openzl/compress/graph_registry.h" // ZL_PrivateStandardGraphID_end, GR_standardGraphs, InternalGraphDesc
 #include "openzl/compress/implicit_conversion.h" // ICONV_isCompatible for type checking
 #include "openzl/compress/localparams.h" // LP_transferLocalParams for parameter management
-#include "openzl/compress/materializer.h" // MPM_* functions for materializer operations
 #include "openzl/compress/name.h" // ZL_Name_*, ZS2_Name_* for graph name handling
 #include "openzl/shared/mem.h" // ZL_malloc, ZL_free, ZL_memcpy memory utilities
 #include "openzl/shared/overflow.h" // ZL_overflowMulST for integer overflow checks
@@ -35,7 +35,6 @@ struct GraphsMgr_s {
     Arena* scratchAllocator;
     const Nodes_manager* nmgr;
     ZL_OpaquePtrRegistry opaquePtrs;
-    MaterializedParamMap materializedParams;
     ZL_OperationContext* opCtx;
     /// Non-owning pointer to the compressor's CDictMgr, used to materialize and
     /// cache MParam objects at registration. Set via GM_setCDictMgr().
@@ -83,8 +82,6 @@ GraphsMgr* GM_create(const Nodes_manager* nmgr)
         GM_free(gm);
         return NULL;
     }
-    gm->materializedParams =
-            MaterializedParamMap_create(ZL_ENCODER_GRAPH_LIMIT);
     VECTOR_INIT(gm->gdv, ZL_ENCODER_GRAPH_LIMIT);
     gm->nameMap = GraphMap_create(ZL_ENCODER_GRAPH_LIMIT);
     if (ZL_isError(GM_fillStandardGraphs(gm))) {
@@ -99,8 +96,6 @@ void GM_free(GraphsMgr* gm)
 {
     if (gm == NULL)
         return;
-    MPM_dematerializeAllParams(&gm->materializedParams);
-    MaterializedParamMap_destroy(&gm->materializedParams);
     ZL_OpaquePtrRegistry_destroy(&gm->opaquePtrs);
     VECTOR_DESTROY(gm->gdv);
     GraphMap_destroy(&gm->nameMap);
@@ -125,7 +120,7 @@ void GM_setCDictMgr(GraphsMgr* gm, CDictMgr* cdictMgr)
 static ZL_Report GM_materializeMParam(
         GraphsMgr* gm,
         ZL_MParam* mparam,
-        const ZL_MaterializerDesc2* mparamMat,
+        const ZL_MaterializerDesc* mparamMat,
         const void** mparamObj)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(gm->opCtx);
@@ -384,21 +379,6 @@ static ZL_RESULT_OF(ZL_GraphID) GM_registerInternalGraph(
 
     // do materialization here
     ZL_ERR_IF_ERR(GM_transferLocalParameters(gm, &gdi.migd.localParams));
-    // Materialize params if materializer is provided (with deduplication)
-    if (migd->materializer.materializeFn != NULL) {
-        // Validate provided params don't contain the paramId reserved for the
-        // materializer
-        ZL_ERR_IF_ERR(MPM_validateMaterializedParamId(
-                &gdi.migd.localParams, migd->materializer.paramId));
-        // Add the materialized object to refParams
-        ZL_ERR_IF_ERR(MPM_addOrReuseMaterializedParam(
-                gm->allocator,
-                gm->scratchAllocator,
-                &gm->materializedParams,
-                gm->opCtx,
-                &gdi.migd.localParams,
-                &migd->materializer));
-    }
     // Materialize the compression-only MParam blob (if any) via CDictMgr.
     ZL_ERR_IF_ERR(GM_materializeMParam(
             gm, &gdi.migd.mparam, &gdi.migd.mparamMat, &gdi.mparamObj));
@@ -476,7 +456,6 @@ GM_registerTypedSelectorGraph(GraphsMgr* gm, const ZL_SelectorDesc* tsd)
         .customGraphs   = tsd->customGraphs,
         .nbCustomGraphs = tsd->nbCustomGraphs,
         .localParams    = tsd->localParams,
-        .materializer   = tsd->materializer,
         .opaque         = { .ptr = tsd->opaque.ptr },
     };
     return GM_registerInternalGraph(
@@ -927,21 +906,6 @@ static ZL_RESULT_OF(ZL_GraphID) GM_registerSegmenter_internal(
             &gdi.segDesc.customGraphs));
 
     ZL_ERR_IF_ERR(GM_transferLocalParameters(gm, &gdi.segDesc.localParams));
-    // Materialize params if materializer is provided (with deduplication)
-    if (segDesc->materializer.materializeFn != NULL) {
-        // Validate provided params don't contain the paramId reserved for
-        // the materializer
-        ZL_ERR_IF_ERR(MPM_validateMaterializedParamId(
-                &gdi.segDesc.localParams, segDesc->materializer.paramId));
-        // Add the materialized object to refParams
-        ZL_ERR_IF_ERR(MPM_addOrReuseMaterializedParam(
-                gm->allocator,
-                gm->scratchAllocator,
-                &gm->materializedParams,
-                gm->opCtx,
-                &gdi.segDesc.localParams,
-                &segDesc->materializer));
-    }
     // Materialize the compression-only MParam blob (if any) via CDictMgr.
     ZL_ERR_IF_ERR(GM_materializeMParam(
             gm, &gdi.segDesc.mparam, &gdi.segDesc.mparamMat, &gdi.mparamObj));

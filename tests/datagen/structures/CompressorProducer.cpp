@@ -43,7 +43,7 @@ static ZL_RESULT_OF(ZL_VoidPtr) dictCopyMaterialize(
     return ZL_WRAP_VALUE(copy);
 }
 
-static const ZL_MaterializerDesc2 kDictCopyMaterializer = {
+static const ZL_MaterializerDesc kDictCopyMaterializer = {
     .materializeFn   = dictCopyMaterialize,
     .dematerializeFn = ZL_NOOP_DEMATERIALIZE,
 };

@@ -59,7 +59,7 @@ DictLoader::~DictLoader() = default;
 
 void DictLoader::registerMaterializer(
         ZL_IDType codecID,
-        const ZL_MaterializerDesc2* materializer)
+        const ZL_MaterializerDesc* materializer)
 {
     unwrap(ZL_DictLoader_registerMaterializer(
                    loader_.get(), codecID, materializer),
