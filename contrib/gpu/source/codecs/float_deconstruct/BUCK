@@ -2,6 +2,10 @@
 
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbcode_macros//build_defs/lib:re_test_utils.bzl", "re_test_utils")
+load("@fbsource//tools/build_defs:testpilot_defs.bzl", "tpx_labels")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
 load("//tools/build/buck:nvcc_flags.bzl", "get_nvcc_arch_args")
 
 oncall("data_compression")
@@ -38,6 +42,30 @@ cpp_binary(
         "../../../../..:zstronglib",
         "../../bench:gpu_bench",
         "../../common:cuda_error",
+        ":decode_float_deconstruct_bf16",
+        ":gpu_chunk_harness",
+    ],
+    external_deps = [("cuda", None, "cuda-lazy")],
+)
+
+# Differential correctness test: GPU decode vs OpenZL's own decoder, over real
+# frames minted + reflected by contrib/gpu/testkit.
+cpp_unittest(
+    name = "decode_bf16_test",
+    srcs = ["tests/DecodeBf16Test.cu"],
+    labels = [tpx_labels.serialize],
+    network_access = network_access_utils.none(),
+    nvcc_flags = get_nvcc_arch_args() + ["-lineinfo"],
+    remote_execution = re_test_utils.remote_execution(
+        platform = "gpu-remote-execution",
+        use_case = "tpx-default",
+    ),
+    deps = [
+        "../../../../..:zstronglib",
+        "../../../../../cpp:openzl_cpp",
+        "../../../testkit:testkit",
+        "../../common:cuda_error",
+        "fbsource//third-party/googletest:gtest",
         ":decode_float_deconstruct_bf16",
         ":gpu_chunk_harness",
     ],
