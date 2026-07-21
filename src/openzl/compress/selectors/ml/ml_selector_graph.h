@@ -8,12 +8,11 @@
 #include "openzl/shared/a1cbor.h"
 #include "openzl/zl_errors.h"
 #include "openzl/zl_graph_api.h"
+#include "openzl/zl_materializer.h"
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
-
-#define ZL_GENERIC_ML_SELECTOR_CONFIG_ID 555
 
 typedef enum {
     ZL_GBT,
@@ -104,6 +103,25 @@ ZL_MLSelector_registerGraph(
  */
 ZL_Report
 ZL_MLSel_dynGraph(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs);
+
+/** @brief Materializes the ML selector config once, at graph registration.
+ *
+ * Decodes the serialized CBOR config carried as the graph's MParam blob
+ * (@p src / @p srcSize) into an in-memory ZL_MLSelectorConfig allocated in
+ * memory owned by the compressor. The decoded object is retrieved at execution
+ * time via ZL_Graph_getMParam() so that ZL_MLSel_dynGraph can reuse it on every
+ * compression rather than re-decoding the CBOR each time.
+ *
+ * @param matCtx  Materializer context, used to request compressor-managed
+ * memory.
+ * @param src      Pointer to the serialized config blob.
+ * @param srcSize  Size of the serialized config blob.
+ * @return The decoded ZL_MLSelectorConfig (as a void*), or an error if the
+ * config blob is malformed.
+ */
+ZL_RESULT_OF(ZL_VoidPtr)
+ZL_MLSel_materialize(ZL_Materializer* matCtx, const void* src, size_t srcSize)
+        ZL_NOEXCEPT_FUNC_PTR;
 
 #if defined(__cplusplus)
 }

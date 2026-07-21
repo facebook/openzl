@@ -523,17 +523,11 @@ static void updateCompressor(
     ZL_SerializedMLConfig serializedConfig = unwrap(
             MLSelector_serializeMLSelectorConfig(nullptr, &config, &a1cArena));
 
-    ZL_CopyParam configParam = {
-        .paramId   = ZL_GENERIC_ML_SELECTOR_CONFIG_ID,
-        .paramPtr  = serializedConfig.data,
-        .paramSize = serializedConfig.size,
-    };
-
-    ZL_LocalParams localParams = { .copyParams = { .genParams    = &configParam,
-                                                   .nbCopyParams = 1 } };
-
     ZL_GraphParameters newParams = {
-        .localParams = &localParams,
+        .mparam = {
+            .content = serializedConfig.data,
+            .size    = serializedConfig.size,
+        },
     };
 
     ZL_GraphID existingMlSelectorGraphId =

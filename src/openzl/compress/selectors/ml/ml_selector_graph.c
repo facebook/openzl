@@ -7,6 +7,7 @@
 #include "openzl/shared/a1cbor.h"
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_errors.h"
+#include "openzl/zl_materializer.h" // ZL_Materializer_allocate
 
 /**
  * Declare types in order to use ZL_RESULT_OF, this allows function to return
@@ -18,39 +19,57 @@ ZL_RESULT_DECLARE_TYPE(GBTPredictor_Forest);
 ZL_RESULT_DECLARE_TYPE(GBTPredictor_Tree);
 ZL_RESULT_DECLARE_TYPE(GBTPredictor_Node);
 
-static void* MLSel_arenaCalloc(void* opaque, size_t size)
+static void* MLSel_materializerCalloc(void* opaque, size_t size)
 {
-    void* buffer = ZL_Graph_getScratchSpace((ZL_Graph*)opaque, size);
+    // ZL_Materializer_allocate returns compressor-managed, uninitialized
+    // memory; A1C arenas require zeroed allocations.
+    void* buffer = ZL_Materializer_allocate((ZL_Materializer*)opaque, size);
     if (buffer != NULL) {
         memset(buffer, 0, size);
     }
     return buffer;
 }
 
-static A1C_Arena MLSel_wrapArena(ZL_Graph* graph)
+static A1C_Arena MLSel_wrapMaterializerArena(ZL_Materializer* mat)
 {
     A1C_Arena arena;
-    arena.calloc = MLSel_arenaCalloc;
-    arena.opaque = graph;
+    arena.calloc = MLSel_materializerCalloc;
+    arena.opaque = mat;
     return arena;
+}
+
+ZL_RESULT_OF(ZL_VoidPtr)
+ZL_MLSel_materialize(ZL_Materializer* matCtx, const void* src, size_t srcSize)
+{
+    ZL_RESULT_DECLARE_SCOPE(ZL_VoidPtr, matCtx);
+    A1C_Arena a1cArena = MLSel_wrapMaterializerArena(matCtx);
+    // Decode the cbor of the serialized ml selector. Allocations are done with
+    // the materializer's arena.
+    ZL_TRY_LET(
+            ZL_MLSelectorConfig,
+            config,
+            MLSelector_deserializeMLSelectorConfig(
+                    ZL_ERR_CTX_PTR, (const char*)src, srcSize, &a1cArena));
+
+    ZL_MLSelectorConfig* const materialized =
+            (ZL_MLSelectorConfig*)ZL_Materializer_allocate(
+                    matCtx, sizeof(ZL_MLSelectorConfig));
+    ZL_ERR_IF_NULL(materialized, allocation);
+    // Copy config into the materialized object
+    *materialized = config;
+
+    return ZL_WRAP_VALUE(materialized);
 }
 
 static ZL_RESULT_OF(ZL_MLSelectorConfig) MLSel_getConfig(ZL_Graph* graph)
 {
-    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+    ZL_RESULT_DECLARE_SCOPE(ZL_MLSelectorConfig, graph);
+    const ZL_MLSelectorConfig* const config =
+            (const ZL_MLSelectorConfig*)ZL_Graph_getMParam(graph);
+    ZL_ERR_IF_NULL(
+            config, graph_invalid, "ML selector config was not materialized");
 
-    ZL_RefParam configInfo =
-            ZL_Graph_getLocalRefParam(graph, ZL_GENERIC_ML_SELECTOR_CONFIG_ID);
-    const char* serializedConfig = configInfo.paramRef;
-
-    size_t configSize = configInfo.paramSize;
-    /**
-     * a1cArena is used to decode config, memory is automatically freed
-     *  since we are using scratch space from ZL_Graph_getScratchSpace
-     */
-    A1C_Arena a1cArena = MLSel_wrapArena(graph);
-    return MLSelector_deserializeMLSelectorConfig(
-            ZL_ERR_CTX_PTR, serializedConfig, configSize, &a1cArena);
+    return ZL_WRAP_VALUE(*config);
 }
 
 ZL_Report ZL_MLSel_dynGraph(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
@@ -627,21 +646,14 @@ ZL_MLSelector_registerGraph(
 
     ZL_SerializedMLConfig serializedConfig = ZL_RES_value(serializedResult);
 
-    ZL_CopyParam configParam = (ZL_CopyParam){
-        .paramId   = ZL_GENERIC_ML_SELECTOR_CONFIG_ID,
-        .paramPtr  = serializedConfig.data,
-        .paramSize = serializedConfig.size,
-    };
-
-    ZL_LocalParams params =
-            (ZL_LocalParams){ .copyParams = { .copyParams   = &configParam,
-                                              .nbCopyParams = 1 } };
-
     ZL_ParameterizedGraphDesc const graphDesc = {
         .graph          = ZL_GRAPH_ML_SELECTOR,
         .customGraphs   = successors,
         .nbCustomGraphs = nbSuccessors,
-        .localParams    = &params,
+        .mparam         = {
+            .content = serializedConfig.data,
+            .size    = serializedConfig.size,
+        },
     };
 
     const ZL_GraphID graph =
@@ -649,9 +661,9 @@ ZL_MLSelector_registerGraph(
 
     /**
      * By freeing the arena, we are freeing all the memory used by
-     * a1c_arena. We can free arena here because we make a copy param of the
-     * serialized config, so the lifetime of the serialized config is tied
-     * to the graph.
+     * a1c_arena. We can free arena here because the MParam blob is copied and
+     * owned by the compressor's CDictMgr at registration, so the lifetime of
+     * the serialized config is tied to the graph.
      */
     ALLOC_Arena_freeArena(arena);
     return ZL_RESULT_WRAP_VALUE(ZL_GraphID, graph);

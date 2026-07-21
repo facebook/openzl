@@ -54,6 +54,7 @@ zs_cxxbinary(
         "../custom_transforms/parse/tests:parse_test_data",
         "../custom_transforms/thrift:thrift_lib",
         "../custom_transforms/thrift/tests:thrift_test_utils",
+        "../tests:ml_selector_utils",
         "../tests/datagen:datagen",
         "../tools:zstrong_ml",
         "fbsource//third-party/benchmark:benchmark",

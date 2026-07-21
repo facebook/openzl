@@ -23,7 +23,7 @@
 #include "openzl/compress/segmenters/segmenter_numeric.h" // SEGM_numeric_desc
 #include "openzl/compress/segmenters/segmenter_serial.h"  // SEGM_serial_desc
 #include "openzl/compress/selector.h" // SelectorCtx, ZL_SelectorFn, SelCtx_* functions
-#include "openzl/compress/selectors/ml/ml_selector_graph.h" // ZL_MLSel_dynGraph
+#include "openzl/compress/selectors/ml/ml_selector_graph.h" // ZL_MLSel_dynGraph, ZL_MLSel_materialize
 #include "openzl/compress/selectors/selector_compress.h" // SI_selector_compress, SI_selector_compress_* functions
 #include "openzl/compress/selectors/selector_constant.h" // SI_selector_constant
 #include "openzl/compress/selectors/selector_genericLZ.h" // SI_selector_genericLZ
@@ -34,6 +34,7 @@
 #include "openzl/zl_errors.h" // ZL_TRY_LET, ZL_ERR_IF_* error handling macros
 #include "openzl/zl_graph_api.h"    // ZL_Graph_*, ZL_Edge_* API functions
 #include "openzl/zl_localParams.h"  // ZL_LocalParams structure and functions
+#include "openzl/zl_materializer.h" // ZL_NOOP_DEMATERIALIZE, ZL_MaterializerDesc
 #include "openzl/zl_opaque_types.h" // Opaque type definitions used by the API
 
 #define _1_SUCCESSOR(s) (const ZL_GraphID[]){ { s } }, 1
@@ -90,6 +91,26 @@
                 .graph_f          = (_graph_f),                             \
                 .inputTypeMasks   = (const ZL_Type[]){ _intype },           \
                 .nbInputs         = 1,                                      \
+            },                                                              \
+            .baseGraphID = ZL_GRAPH_ILLEGAL,                                \
+            .minLibraryVersion = (_reqLibVersion),                           \
+        },                                                                  \
+    }
+
+#define REGISTER_DYNAMIC_GRAPH_WITH_MATERIALIZER(                        \
+        id, _gname, _intype, _graph_f, _matFn, _dematFn, _reqLibVersion) \
+    [id] = {                                                                \
+        .type = GR_dynamicGraph,                                            \
+        .gdi  = {                                                           \
+            .migd = {                                                       \
+                .name             = (_gname),                               \
+                .graph_f          = (_graph_f),                             \
+                .inputTypeMasks   = (const ZL_Type[]){ _intype },           \
+                .nbInputs         = 1,                                      \
+                .mparamMat        = {                                       \
+                    .materializeFn   = (_matFn),                            \
+                    .dematerializeFn = (_dematFn),                          \
+                },                                                          \
             },                                                              \
             .baseGraphID = ZL_GRAPH_ILLEGAL,                                \
             .minLibraryVersion = (_reqLibVersion),                           \
@@ -165,7 +186,7 @@ const InternalGraphDesc GR_standardGraphs[ZL_PrivateStandardGraphID_end] = {
     REGISTER_MIGRAPH(ZL_StandardGraphID_try_parse_int, MIGRAPH_TRY_PARSE_INT, 200),
     REGISTER_STATIC_GRAPH(ZL_StandardGraphID_lz4, "!zl.lz4", ZL_Type_serial, ZL_PrivateStandardNodeID_lz4, _1_SUCCESSOR(ZL_PrivateStandardGraphID_serial_store), 200),
     REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_partition_bitpack, "!zl.partition_bitpack", ZL_Type_numeric, EI_partitionBitpackDynGraph, 200),
-    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_ml_selector,"!zl.ml_selector", ZL_Type_numeric, ZL_MLSel_dynGraph, 200),
+    REGISTER_DYNAMIC_GRAPH_WITH_MATERIALIZER(ZL_StandardGraphID_ml_selector,"!zl.ml_selector", ZL_Type_numeric, ZL_MLSel_dynGraph, ZL_MLSel_materialize, ZL_NOOP_DEMATERIALIZE, 203),
     REGISTER_MIGRAPH(ZL_PrivateStandardGraphID_merge_sorted, MIGRAPH_MERGE_SORTED, 200),
     REGISTER_MIGRAPH(ZL_PrivateStandardGraphID_transpose_split, MIGRAPH_TRANSPOSE_SPLIT, 200),
 
