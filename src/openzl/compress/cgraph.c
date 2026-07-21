@@ -69,6 +69,7 @@ ZL_Compressor* ZL_Compressor_create(void)
     }
     // Back-populate CDictMgr pointers
     cgraph->nmgr.ctm.cdictMgr = &cgraph->cdictMgr;
+    GM_setCDictMgr(cgraph->gm, &cgraph->cdictMgr);
 
 #if ZL_ENABLE_ASSERT
     // In debug mode, runtime check on the configuration of the Standard Graphs
@@ -840,6 +841,7 @@ ZL_Compressor_parameterizeGraph(
         .customNodes    = params->customNodes,
         .nbCustomNodes  = params->nbCustomNodes,
         .localParams    = params->localParams,
+        .mparam         = params->mparam,
     };
     return GM_registerParameterizedGraph(compressor->gm, &desc);
 }
@@ -895,6 +897,7 @@ ZL_GraphID ZL_Compressor_registerParameterizedGraph(
         .customNodes    = desc->customNodes,
         .nbCustomNodes  = desc->nbCustomNodes,
         .localParams    = desc->localParams,
+        .mparam         = desc->mparam,
     };
     ZL_RESULT_OF(ZL_GraphID)
     graphidResult =
@@ -1012,6 +1015,14 @@ const ZL_SegmenterDesc* CGRAPH_getSegmenterDesc(
 {
     ZL_ASSERT_NN(compressor);
     return GM_getSegmenterDesc(compressor->gm, graphid);
+}
+
+const void* CGRAPH_getGraphMParamObj(
+        const ZL_Compressor* compressor,
+        ZL_GraphID graphid)
+{
+    ZL_ASSERT_NN(compressor);
+    return GM_getGraphMParamObj(compressor->gm, graphid);
 }
 
 const void* CGRAPH_graphPrivateParam(
@@ -1169,6 +1180,40 @@ ZL_LocalParams ZL_Compressor_Graph_getLocalParams(
         ZL_GraphID graphid)
 {
     return GM_getGraphMetadata(compressor->gm, graphid).localParams;
+}
+
+// Returns a pointer to the graph's MParam descriptor (blob + id), handling both
+// function graphs and segmenters, or NULL when the graph is invalid. Mirrors
+// reading cnode->transformDesc.publicDesc.mparam on the node side.
+static const ZL_MParam* getGraphMParamPtr(
+        const ZL_Compressor* cgraph,
+        ZL_GraphID graph)
+{
+    const ZL_FunctionGraphDesc* migd =
+            CGRAPH_getMultiInputGraphDesc(cgraph, graph);
+    if (migd != NULL)
+        return &migd->mparam;
+    const ZL_SegmenterDesc* segDesc = CGRAPH_getSegmenterDesc(cgraph, graph);
+    if (segDesc != NULL)
+        return &segDesc->mparam;
+    return NULL;
+}
+
+const ZL_MParam* ZL_Compressor_Graph_getMParam(
+        ZL_Compressor const* cgraph,
+        ZL_GraphID graph)
+{
+    const ZL_MParam* mp = getGraphMParamPtr(cgraph, graph);
+    if (mp == NULL || !ZL_UniqueID_isValid(&mp->mparamID.id))
+        return NULL;
+    return mp;
+}
+
+const void* ZL_Compressor_Graph_getMParamObj(
+        ZL_Compressor const* cgraph,
+        ZL_GraphID graph)
+{
+    return CGRAPH_getGraphMParamObj(cgraph, graph);
 }
 
 size_t ZL_Compressor_Node_getNumInputs(

@@ -45,6 +45,10 @@ const ZL_SegmenterDesc* CGRAPH_getSegmenterDesc(
         const ZL_Compressor* compressor,
         ZL_GraphID graphid);
 
+const void* CGRAPH_getGraphMParamObj(
+        const ZL_Compressor* compressor,
+        ZL_GraphID graphid);
+
 const void* CGRAPH_graphPrivateParam(
         const ZL_Compressor* cgraph,
         ZL_GraphID graphid);

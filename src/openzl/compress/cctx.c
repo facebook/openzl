@@ -890,6 +890,7 @@ static ZL_Graph GCTX_init(ZL_CCtx* cctx, const ZL_FunctionGraphDesc* dgd)
         .rtsids        = VECTOR_EMPTY(ZL_ENCODER_GRAPH_LIMIT),
         .status        = ZL_returnSuccess(),
         .dgd           = dgd,
+        .graphid       = ZL_GRAPH_ILLEGAL,
         .graphArena    = cctx->graphArena,
         .chunkArena    = cctx->chunkArena,
     };
@@ -1006,7 +1007,8 @@ static ZL_Report CCTX_runSegmenter(
             cctx,
             &cctx->rtgraph,
             cctx->sessionArena,
-            cctx->chunkArena);
+            cctx->chunkArena,
+            graphid);
     CWAYPOINT(on_segmenterEncode_start, segmenterCtx, /* placeholder */ NULL);
     cctx->segmenterDepth = depth;
     ZL_Report const r    = SEGM_runSegmenter(segmenterCtx);
@@ -1050,6 +1052,7 @@ static ZL_Report CCTX_runGraphDesc(
     ZL_Graph graphCtx     = GCTX_init(cctx, migd);
     graphCtx.privateParam = privateParam;
     graphCtx.depth        = depth;
+    graphCtx.graphid      = graphid;
 
     for (unsigned n = 0; n < nbInputs; n++) {
         const ZL_Report ret =
