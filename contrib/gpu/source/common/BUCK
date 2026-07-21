@@ -1,0 +1,12 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("data_compression")
+
+# Shared CUDA error-check macros for GPU host code.
+cpp_library(
+    name = "cuda_error",
+    headers = ["cuda_error.cuh"],
+    exported_external_deps = [("cuda", None, "cuda-lazy")],
+)
