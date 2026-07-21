@@ -10,3 +10,12 @@ cpp_library(
     headers = ["cuda_error.cuh"],
     exported_external_deps = [("cuda", None, "cuda-lazy")],
 )
+
+# Generic CUDA RAII helpers (owning device pointers, timing events) shared by
+# the device-staging harness and the benchmark driver.
+cpp_library(
+    name = "cuda_raii",
+    headers = ["cuda_raii.cuh"],
+    exported_deps = [":cuda_error"],
+    exported_external_deps = [("cuda", None, "cuda-lazy")],
+)

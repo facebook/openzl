@@ -1,0 +1,18 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("data_compression")
+
+# Kernel-agnostic GPU benchmark driver: times a list of KernelCase variants over
+# their own on-device workload and reports latency, bandwidth, %peak, and
+# occupancy. Codec-agnostic; shared by any GPU decode benchmark.
+cpp_library(
+    name = "gpu_bench",
+    headers = ["gpu_bench.cuh"],
+    exported_deps = [
+        "../common:cuda_error",
+        "../common:cuda_raii",
+    ],
+    exported_external_deps = [("cuda", None, "cuda-lazy")],
+)

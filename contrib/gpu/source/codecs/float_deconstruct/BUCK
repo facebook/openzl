@@ -13,3 +13,17 @@ cpp_library(
     nvcc_flags = get_nvcc_arch_args() + ["-lineinfo"],
     exported_external_deps = [("cuda", None, "cuda-lazy")],
 )
+
+# Header-only float_deconstruct-specific device staging shared by the benchmark
+# and the differential test. The generic benchmark driver lives in
+# ../../bench:gpu_bench.
+cpp_library(
+    name = "gpu_chunk_harness",
+    headers = ["gpu_chunk_harness.cuh"],
+    exported_deps = [
+        "../../common:cuda_error",
+        "../../common:cuda_raii",
+        ":decode_float_deconstruct_bf16",
+    ],
+    exported_external_deps = [("cuda", None, "cuda-lazy")],
+)
