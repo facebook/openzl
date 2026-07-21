@@ -1,5 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("//tools/build/buck:nvcc_flags.bzl", "get_nvcc_arch_args")
 
@@ -26,4 +27,19 @@ cpp_library(
         ":decode_float_deconstruct_bf16",
     ],
     exported_external_deps = [("cuda", None, "cuda-lazy")],
+)
+
+# Kernel-only throughput benchmark (bandwidth, %peak, latency, occupancy).
+cpp_binary(
+    name = "bench_decode_bf16",
+    srcs = ["bench/bench_decode_bf16.cu"],
+    nvcc_flags = get_nvcc_arch_args() + ["-lineinfo"],
+    deps = [
+        "../../../../..:zstronglib",
+        "../../bench:gpu_bench",
+        "../../common:cuda_error",
+        ":decode_float_deconstruct_bf16",
+        ":gpu_chunk_harness",
+    ],
+    external_deps = [("cuda", None, "cuda-lazy")],
 )
