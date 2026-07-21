@@ -1,0 +1,15 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("//tools/build/buck:nvcc_flags.bzl", "get_nvcc_arch_args")
+
+oncall("data_compression")
+
+# GPU decode kernel for the bfloat16 float_deconstruct codec.
+cpp_library(
+    name = "decode_float_deconstruct_bf16",
+    srcs = ["decode_float_deconstruct_bf16.cu"],
+    headers = ["decode_float_deconstruct_bf16.cuh"],
+    nvcc_flags = get_nvcc_arch_args() + ["-lineinfo"],
+    exported_external_deps = [("cuda", None, "cuda-lazy")],
+)
