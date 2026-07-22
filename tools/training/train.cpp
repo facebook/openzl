@@ -78,7 +78,7 @@ std::vector<TrainedCandidate> train(
     }
 
     if (dictTrainedCandidates.empty()) {
-        throw Exception("No trainable graph found in compressor.");
+        throw NoTrainableGraphError("No trainable graph found in compressor.");
     }
 
     auto endTime = std::chrono::steady_clock::now();

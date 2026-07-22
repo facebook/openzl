@@ -3,11 +3,18 @@
 #pragma once
 
 #include "openzl/cpp/Compressor.hpp"
+#include "openzl/cpp/Exception.hpp"
 #include "tools/training/train_params.h"
 #include "tools/training/trained_candidate.h"
 #include "tools/training/utils/utils.h"
 
 namespace openzl::training {
+
+/** Thrown when a compressor has no graph that can be trained. */
+class NoTrainableGraphError : public Exception {
+   public:
+    using Exception::Exception;
+};
 
 /**
  * This function trains compressor graphs (clustering and/or ACE graphs).
