@@ -70,31 +70,6 @@ typedef struct {
             size_t rhsSize);
 
     /**
-     * Merges @p lhs and @p rhs into @p out based on the bits in @p bitmap,
-     * where @p rhs is a constant.
-     *
-     * @param outCapacity    Must be at least `lhsSize + rhsSize` bytes, but may
-     *                       be larger to indicate that over-writes are okay.
-     * @param bitmapCapacity Must be at least `(lhsSize + rhsSize + 7) / 8`
-     *                       bytes, but may be larger to indicate that
-     *                       over-reads are okay.
-     * @param lhs            Must be at least `lhsSize + SLOP` bytes,
-     *                       where the first @p lhsSize bytes are valid.
-     *
-     * @returns The number of ones in the bitmap. If this is not equal to
-     * @p rhsSize then the data was corrupt, and the output is unspecified.
-     */
-    size_t (*mergeVectorConstant)(
-            uint8_t* out,
-            size_t outCapacity,
-            const uint8_t* bitmap,
-            size_t bitmapCapacity,
-            const uint8_t* lhs,
-            size_t lhsSize,
-            uint8_t rhs,
-            size_t rhsSize);
-
-    /**
      * Reads @p outSize packed indices of @p depth bits each from @p bitmap and
      * fills @p out with `symbols[idx]` for each packed index.
      *

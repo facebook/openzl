@@ -93,17 +93,9 @@ static bool mergeDecodeResults(
                 lhsSize,
                 rhs->output,
                 rhsSize);
-    } else if (rhs->isConstant) {
-        ones = kernels->mergeVectorConstant(
-                output,
-                outputCapacity,
-                bitmap,
-                bitmapBytes,
-                lhs->output,
-                lhsSize,
-                rhs->symbol,
-                rhsSize);
     } else {
+        // rhs cannot be constant in canonical Huffman codes.
+        assert(!rhs->isConstant);
         ones = kernels->mergeVectorVector(
                 output,
                 outputCapacity,

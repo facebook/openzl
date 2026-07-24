@@ -143,25 +143,6 @@ static size_t mergeConstantVector(
             vectorSource(rhs, rhsSize));
 }
 
-static size_t mergeVectorConstant(
-        uint8_t* out,
-        size_t outCapacity,
-        const uint8_t* bitmap,
-        size_t bitmapCapacity,
-        const uint8_t* lhs,
-        size_t lhsSize,
-        uint8_t rhs,
-        size_t rhsSize)
-{
-    return mergeGeneric(
-            out,
-            outCapacity,
-            bitmap,
-            bitmapCapacity,
-            vectorSource(lhs, lhsSize),
-            constantSource(rhs, rhsSize));
-}
-
 // Expands a flat leaf: reads one @p depth-bit index per output and looks it up
 // in @p symbols (which has 2^depth entries).
 static void mergeFlatDepth(
@@ -199,6 +180,5 @@ const ZL_PivCoHuffmanDecode ZL_PivCoHuffmanDecode_generic = {
     .supported           = supported,
     .mergeVectorVector   = mergeVectorVector,
     .mergeConstantVector = mergeConstantVector,
-    .mergeVectorConstant = mergeVectorConstant,
     .mergeFlatDepth      = mergeFlatDepth,
 };

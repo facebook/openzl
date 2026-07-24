@@ -43,26 +43,6 @@ typedef struct {
             uint8_t rightRank);
 
     /**
-     * Partitions @p ranks into @p lhs based on @p rightRank. If the rank is
-     * below @p rightRank, then it goes to @p lhs. The partition decision is for
-     * each rank is written as a bit in @p bitmap, 0 for left and 1 for
-     * right.
-     *
-     * @param bitmap Must be `(numRanks + 7) / 8 + SLOP` bytes
-     * @param lhs    Must be `numRanks + SLOP` elements large
-     * @param ranks  Must be `numRanks + SLOP` elements large,
-     *               where the first @p numRanks elements are valid.
-     *
-     * @returns the number of ones in the bitmap
-     */
-    size_t (*partitionLeft)(
-            uint8_t* bitmap,
-            uint8_t* lhs,
-            const uint8_t* ranks,
-            size_t numRanks,
-            uint8_t rightRank);
-
-    /**
      * Partitions @p ranks into @p rhs based on @p rightRank. If the rank is
      * at least @p rightRank, then it goes to @p rhs. The partition decision is
      * for each rank is written as a bit in @p bitmap, 0 for left and 1 for

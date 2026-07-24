@@ -174,10 +174,9 @@ static bool encodeNode(
     } else if (lhsIsConstant) {
         numOnes = kernels->partitionRight(
                 bitmap, rhsRanks, nodeRanks, numRanks, (uint8_t)splitRank);
-    } else if (rhsIsConstant) {
-        numOnes = kernels->partitionLeft(
-                bitmap, lhsRanks, nodeRanks, numRanks, (uint8_t)splitRank);
     } else {
+        // rhs cannot be constant in canonical Huffman codes.
+        assert(!rhsIsConstant);
         numOnes = kernels->partitionFull(
                 bitmap,
                 lhsRanks,

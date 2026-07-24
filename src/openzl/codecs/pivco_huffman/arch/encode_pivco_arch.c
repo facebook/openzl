@@ -76,16 +76,6 @@ static size_t partitionGeneric(
     return ones;
 }
 
-static size_t partitionLeft(
-        uint8_t* bitmap,
-        uint8_t* lhs,
-        const uint8_t* ranks,
-        size_t numRanks,
-        uint8_t rightRank)
-{
-    return partitionGeneric(bitmap, lhs, NULL, ranks, numRanks, rightRank);
-}
-
 static size_t partitionRight(
         uint8_t* bitmap,
         uint8_t* rhs,
@@ -140,7 +130,6 @@ static bool supported(const ZL_cpuid_t* cpuid)
 const ZL_PivCoHuffmanEncode ZL_PivCoHuffmanEncode_generic = {
     .supported      = supported,
     .partitionFull  = partitionGeneric,
-    .partitionLeft  = partitionLeft,
     .partitionRight = partitionRight,
     .partitionNone  = partitionNone,
     .packFlatDepth  = packFlatDepth,

@@ -216,30 +216,6 @@ void verifyPartitionFull(const EncodeArch& arch, const PartitionData& data)
     requireEqualPrefix(rhs, expectedRhs, expectedOnes);
 }
 
-void verifyPartitionLeft(const EncodeArch& arch, const PartitionData& data)
-{
-    std::vector<uint8_t> expectedBitmap(data.bitmap.size());
-    std::vector<uint8_t> expectedLhs(data.lhs.size());
-    size_t const expectedOnes = ZL_PivCoHuffmanEncode_generic.partitionLeft(
-            expectedBitmap.data(),
-            expectedLhs.data(),
-            data.ranks.data(),
-            data.size,
-            data.rightRank);
-
-    std::vector<uint8_t> bitmap(data.bitmap.size());
-    std::vector<uint8_t> lhs(data.lhs.size());
-    size_t const ones = arch.kernels->partitionLeft(
-            bitmap.data(),
-            lhs.data(),
-            data.ranks.data(),
-            data.size,
-            data.rightRank);
-    ZL_REQUIRE_EQ(ones, expectedOnes);
-    requireEqualPrefix(bitmap, expectedBitmap, bitmapBytes(data.size));
-    requireEqualPrefix(lhs, expectedLhs, data.size - expectedOnes);
-}
-
 void verifyPartitionRight(const EncodeArch& arch, const PartitionData& data)
 {
     std::vector<uint8_t> expectedBitmap(data.bitmap.size());
@@ -356,35 +332,6 @@ void verifyMergeConstantVector(const DecodeArch& arch, const MergeData& data)
     requireEqualPrefix(out, expectedOut, data.totalSize);
 }
 
-void verifyMergeVectorConstant(const DecodeArch& arch, const MergeData& data)
-{
-    std::vector<uint8_t> expectedOut(data.out.size());
-    uint8_t const rhs = 0xC3;
-    size_t const expectedOnes =
-            ZL_PivCoHuffmanDecode_generic.mergeVectorConstant(
-                    expectedOut.data(),
-                    expectedOut.size(),
-                    data.bitmap.data(),
-                    data.bitmap.size(),
-                    data.lhs.data(),
-                    data.lhsSize,
-                    rhs,
-                    data.rhsSize);
-
-    std::vector<uint8_t> out(data.out.size());
-    size_t const ones = arch.kernels->mergeVectorConstant(
-            out.data(),
-            out.size(),
-            data.bitmap.data(),
-            data.bitmap.size(),
-            data.lhs.data(),
-            data.lhsSize,
-            rhs,
-            data.rhsSize);
-    ZL_REQUIRE_EQ(ones, expectedOnes);
-    requireEqualPrefix(out, expectedOut, data.totalSize);
-}
-
 void verifyMergeFlatDepth(const DecodeArch& arch, const FlatData& data)
 {
     std::vector<uint8_t> expectedOut(data.out.size());
@@ -427,28 +374,6 @@ void registerPartitionFullBenchmark(EncodeArch arch)
                             data->bitmap.data(),
                             data->lhs.data(),
                             data->rhs.data(),
-                            data->ranks.data(),
-                            data->size,
-                            data->rightRank);
-                }
-                benchmark::DoNotOptimize(ones);
-                state.SetBytesProcessed(
-                        (int64_t)data->size * (int64_t)state.iterations());
-            });
-}
-
-void registerPartitionLeftBenchmark(EncodeArch arch)
-{
-    auto data = std::make_shared<PartitionData>(64 * 1024);
-    verifyPartitionLeft(arch, *data);
-    RegisterBenchmark(
-            benchName(arch.name, "partitionLeft"),
-            [arch, data](benchmark::State& state) {
-                size_t ones = 0;
-                for (auto _ : state) {
-                    ones += arch.kernels->partitionLeft(
-                            data->bitmap.data(),
-                            data->lhs.data(),
                             data->ranks.data(),
                             data->size,
                             data->rightRank);
@@ -574,32 +499,6 @@ void registerMergeConstantVectorBenchmark(DecodeArch arch)
             });
 }
 
-void registerMergeVectorConstantBenchmark(DecodeArch arch)
-{
-    auto data = std::make_shared<MergeData>(64 * 1024);
-    verifyMergeVectorConstant(arch, *data);
-    RegisterBenchmark(
-            benchName(arch.name, "mergeVectorConstant"),
-            [arch, data](benchmark::State& state) {
-                size_t ones       = 0;
-                uint8_t const rhs = 0xC3;
-                for (auto _ : state) {
-                    ones += arch.kernels->mergeVectorConstant(
-                            data->out.data(),
-                            data->out.size(),
-                            data->bitmap.data(),
-                            data->bitmap.size(),
-                            data->lhs.data(),
-                            data->lhsSize,
-                            rhs,
-                            data->rhsSize);
-                }
-                benchmark::DoNotOptimize(ones);
-                state.SetBytesProcessed(
-                        (int64_t)data->totalSize * (int64_t)state.iterations());
-            });
-}
-
 void registerMergeFlatDepthBenchmark(DecodeArch arch, size_t depth)
 {
     auto data = std::make_shared<FlatData>(64 * 1024, depth);
@@ -628,12 +527,10 @@ void registerMergeFlatDepthBenchmark(DecodeArch arch, size_t depth)
 void registerEncodeBenchmarks(EncodeArch arch)
 {
     ZL_REQUIRE_NN(arch.kernels->partitionFull);
-    ZL_REQUIRE_NN(arch.kernels->partitionLeft);
     ZL_REQUIRE_NN(arch.kernels->partitionRight);
     ZL_REQUIRE_NN(arch.kernels->partitionNone);
     ZL_REQUIRE_NN(arch.kernels->packFlatDepth);
     registerPartitionFullBenchmark(arch);
-    registerPartitionLeftBenchmark(arch);
     registerPartitionRightBenchmark(arch);
     registerPartitionNoneBenchmark(arch);
     for (size_t depth = 1; depth <= 8; ++depth) {
@@ -645,11 +542,9 @@ void registerDecodeBenchmarks(DecodeArch arch)
 {
     ZL_REQUIRE_NN(arch.kernels->mergeVectorVector);
     ZL_REQUIRE_NN(arch.kernels->mergeConstantVector);
-    ZL_REQUIRE_NN(arch.kernels->mergeVectorConstant);
     ZL_REQUIRE_NN(arch.kernels->mergeFlatDepth);
     registerMergeVectorVectorBenchmark(arch);
     registerMergeConstantVectorBenchmark(arch);
-    registerMergeVectorConstantBenchmark(arch);
     for (size_t depth = 1; depth <= 8; ++depth) {
         registerMergeFlatDepthBenchmark(arch, depth);
     }

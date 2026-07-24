@@ -431,7 +431,6 @@ TEST(PivCoHuffmanArchTest, PartitionKernelsMatchReference)
 {
     for (auto const& arch : supportedEncodeArchs()) {
         ASSERT_NE(arch.kernels->partitionFull, nullptr) << arch.name;
-        ASSERT_NE(arch.kernels->partitionLeft, nullptr) << arch.name;
         ASSERT_NE(arch.kernels->partitionRight, nullptr) << arch.name;
         ASSERT_NE(arch.kernels->partitionNone, nullptr) << arch.name;
 
@@ -462,19 +461,6 @@ TEST(PivCoHuffmanArchTest, PartitionKernelsMatchReference)
                 expectBitmapPrefix(bitmap, ref.bitmap);
                 EXPECT_EQ(firstN(lhs, ref.lhs.size()), ref.lhs);
                 EXPECT_EQ(firstN(rhs, ref.rhs.size()), ref.rhs);
-
-                std::fill(bitmap.begin(), bitmap.end(), 0xCC);
-                std::fill(lhs.begin(), lhs.end(), 0xEE);
-                EXPECT_EQ(
-                        arch.kernels->partitionLeft(
-                                bitmap.data(),
-                                lhs.data(),
-                                ranks.data(),
-                                size,
-                                rightRank),
-                        ref.rhs.size());
-                expectBitmapPrefix(bitmap, ref.bitmap);
-                EXPECT_EQ(firstN(lhs, ref.lhs.size()), ref.lhs);
 
                 std::fill(bitmap.begin(), bitmap.end(), 0xCC);
                 std::fill(rhs.begin(), rhs.end(), 0xDD);
@@ -609,7 +595,6 @@ TEST(PivCoHuffmanArchTest, MergeKernelsMatchReference)
     for (auto const& arch : supportedDecodeArchs()) {
         ASSERT_NE(arch.kernels->mergeVectorVector, nullptr) << arch.name;
         ASSERT_NE(arch.kernels->mergeConstantVector, nullptr) << arch.name;
-        ASSERT_NE(arch.kernels->mergeVectorConstant, nullptr) << arch.name;
 
         for (TopBitPattern pattern : { TopBitPattern::AllZero,
                                        TopBitPattern::AllOne,
@@ -621,14 +606,10 @@ TEST(PivCoHuffmanArchTest, MergeKernelsMatchReference)
                 // The expected outputs depend only on `bits`/`inputs`, so build
                 // them once here rather than inside the capacity loops below.
                 uint8_t const lhsConstant = 0x3C;
-                uint8_t const rhsConstant = 0xC3;
                 std::vector<uint8_t> expectedConstantVector(size);
-                std::vector<uint8_t> expectedVectorConstant(size);
-                for (size_t i = 0, lhsPos = 0, rhsPos = 0; i < size; ++i) {
+                for (size_t i = 0, rhsPos = 0; i < size; ++i) {
                     expectedConstantVector[i] =
                             bits[i] ? inputs.rhs[rhsPos++] : lhsConstant;
-                    expectedVectorConstant[i] =
-                            bits[i] ? rhsConstant : inputs.lhs[lhsPos++];
                 }
 
                 for (size_t outExtra :
@@ -673,22 +654,6 @@ TEST(PivCoHuffmanArchTest, MergeKernelsMatchReference)
                                                 - ZL_PIVCO_HUFFMAN_SLOP),
                                 inputs.ones);
                         EXPECT_EQ(firstN(out, size), expectedConstantVector);
-
-                        std::fill(out.begin(), out.end(), 0xCC);
-                        EXPECT_EQ(
-                                arch.kernels->mergeVectorConstant(
-                                        out.data(),
-                                        out.size(),
-                                        bitmap.data(),
-                                        bitmap.size(),
-                                        inputs.lhs.data(),
-                                        inputs.lhs.size()
-                                                - ZL_PIVCO_HUFFMAN_SLOP,
-                                        rhsConstant,
-                                        inputs.rhs.size()
-                                                - ZL_PIVCO_HUFFMAN_SLOP),
-                                inputs.ones);
-                        EXPECT_EQ(firstN(out, size), expectedVectorConstant);
                     }
                 }
             }
