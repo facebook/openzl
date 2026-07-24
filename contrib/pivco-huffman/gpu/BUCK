@@ -5,6 +5,7 @@ load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:gpu_cpp_unittest.bzl", "gpu_cpp_unittest")
 load("@fbcode_macros//build_defs/lib:re_test_utils.bzl", "re_test_utils")
 load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
+load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
 
 oncall("data_compression")
 
@@ -59,6 +60,12 @@ cpp_unittest(
 gpu_cpp_unittest(
     name = "pivco_gpu_test",
     srcs = ["PivCoGpuTest.cpp"],
+    # protect_shadow_gap=0: under ASAN the shadow-gap reservation collides with
+    # the CUDA driver's address-space reservation, making cudaMalloc fail with
+    # "out of memory" (error 2) on the very first allocation.
+    env = {
+        "ASAN_OPTIONS": "protect_shadow_gap=0",
+    },
     # The hipified host translation unit includes <hip/hip_runtime.h>, which only
     # declares the host runtime APIs (hipMalloc/hipFree/hipMemcpy/...) once a HIP
     # platform macro is defined. gpu_cpp_unittest already injects the amdhip64
@@ -66,6 +73,7 @@ gpu_cpp_unittest(
     # the hipified test resolves those symbols.
     hip_preprocessor_flags = ["-D__HIP_PLATFORM_AMD__=1"],
     keep_gpu_sections = True,
+    labels = ci.labels(ci.remove(ci.aarch64())),
     network_access = network_access_utils.none(),
     nvcc_flags = nvcc_flags,
     remote_execution = re_test_utils.remote_execution(
