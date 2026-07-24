@@ -23,7 +23,15 @@
 const ZL_PivCoHuffmanDecode* ZL_PivCoHuffmanDecode_select(
         const ZL_cpuid_t* cpuid)
 {
-    (void)cpuid;
+    ZL_cpuid_t localCpuid;
+    if (cpuid == NULL) {
+        localCpuid = ZL_cpuid();
+        cpuid      = &localCpuid;
+    }
+
+    if (ZL_PivCoHuffmanDecode_avx512.supported(cpuid)) {
+        return &ZL_PivCoHuffmanDecode_avx512;
+    }
     return &ZL_PivCoHuffmanDecode_generic;
 }
 

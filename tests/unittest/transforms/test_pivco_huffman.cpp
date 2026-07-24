@@ -36,6 +36,7 @@ std::vector<EncodeArch> supportedEncodeArchs()
     std::vector<EncodeArch> out;
     std::vector<EncodeArch> const archs = {
         { "generic", &ZL_PivCoHuffmanEncode_generic },
+        { "avx512", &ZL_PivCoHuffmanEncode_avx512 },
     };
     for (auto const& arch : archs) {
         if (arch.kernels->supported(&cpuid)) {
@@ -51,6 +52,7 @@ std::vector<DecodeArch> supportedDecodeArchs()
     std::vector<DecodeArch> out;
     std::vector<DecodeArch> const archs = {
         { "generic", &ZL_PivCoHuffmanDecode_generic },
+        { "avx512", &ZL_PivCoHuffmanDecode_avx512 },
     };
     for (auto const& arch : archs) {
         if (arch.kernels->supported(&cpuid)) {
@@ -413,6 +415,32 @@ void expectBitmapPrefix(
     EXPECT_EQ(firstN(actual, expected.size()), expected);
 }
 
+// Compares the first @p numBits bits of @p actual against @p expected. The full
+// bytes must match exactly; the last partial byte compares only its valid low
+// bits, since a flat-depth pack kernel may leave garbage in the unused high
+// bits of that byte (the bitmap region is byte-aligned, so those bits are never
+// read).
+void expectPackedBitsPrefix(
+        const std::vector<uint8_t>& actual,
+        const std::vector<uint8_t>& expected,
+        size_t numBits)
+{
+    size_t const numBytes = (numBits + 7) / 8;
+    ASSERT_EQ(expected.size(), numBytes);
+    ASSERT_LE(numBytes, actual.size());
+
+    size_t const fullBytes = numBits / 8;
+    EXPECT_EQ(firstN(actual, fullBytes), firstN(expected, fullBytes));
+
+    size_t const tailBits = numBits % 8;
+    if (tailBits != 0) {
+        uint8_t const mask = (uint8_t)((1u << tailBits) - 1u);
+        EXPECT_EQ(
+                (uint8_t)(actual[fullBytes] & mask),
+                (uint8_t)(expected[fullBytes] & mask));
+    }
+}
+
 void expectBytesAfterPrefix(
         const std::vector<uint8_t>& actual,
         size_t prefixSize,
@@ -565,7 +593,7 @@ TEST(PivCoHuffmanArchTest, FlatDepthPackAndMergeMatchReference)
                         guardOffset + ZL_PIVCO_HUFFMAN_SLOP, 0xCC);
                 arch.kernels->packFlatDepth(
                         bitmap.data(), depth, ranks.data(), size, rankBegin);
-                expectBitmapPrefix(bitmap, packed);
+                expectPackedBitsPrefix(bitmap, packed, size * depth);
                 expectBytesAfterPrefix(bitmap, guardOffset, 0xCC);
             }
 

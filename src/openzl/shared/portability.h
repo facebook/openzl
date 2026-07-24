@@ -92,7 +92,7 @@ ZL_BEGIN_C_DECLS
 #    define ZL_PREFETCH_L2(ptr) ((void)(ptr))
 #endif
 
-#if defined(__GNUC__) || defined(__ICCARM__)
+#if defined(__GNUC__) || defined(__ICCARM__) || ZL_HAS_ATTRIBUTE(__target__)
 #    define ZL_TARGET_ATTRIBUTE(target) __attribute__((__target__(target)))
 #else
 #    define ZL_TARGET_ATTRIBUTE(target)
@@ -102,6 +102,12 @@ ZL_BEGIN_C_DECLS
 #    define ZL_HAS_BUILTIN(x) __has_builtin(x)
 #else
 #    define ZL_HAS_BUILTIN(x) 0
+#endif
+
+#ifdef __has_attribute
+#    define ZL_HAS_ATTRIBUTE(x) __has_attribute(x)
+#else
+#    define ZL_HAS_ATTRIBUTE(x) 0
 #endif
 
 #ifdef __has_feature

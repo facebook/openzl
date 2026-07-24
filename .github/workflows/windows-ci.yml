@@ -40,8 +40,8 @@ jobs:
   # =============================================================================
 
   visual-studio-builds:
-    name: VS2022 clang-cl ${{ matrix.arch }} (${{ matrix.config }})
-    runs-on: windows-2022
+    name: VS2026 clang-cl ${{ matrix.arch }} (${{ matrix.config }})
+    runs-on: windows-2025
     strategy:
       fail-fast: false
       matrix:
@@ -85,7 +85,7 @@ jobs:
           cd ${{github.workspace}}/build
           echo "=== Configuring with ClangCL toolset ==="
 
-          cmake -G "Visual Studio 17 2022" ^
+          cmake -G "Visual Studio 18 2026" ^
                 -A ${{ matrix.cmake_arch }} ^
                 -T ClangCL ^
                 -DCMAKE_BUILD_TYPE=${{ matrix.config }} ^
