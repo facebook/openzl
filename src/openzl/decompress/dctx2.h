@@ -165,6 +165,12 @@ ZL_Report DCTX_registerDecoderFusion(
 /// @see ZL_DecoderFusionState_clearFusions()
 void DCTX_clearDecoderFusions(ZL_DCtx* dctx);
 
+/**
+ * Initializes a newly created decompression context from frame metadata.
+ * The context owns an independent copy of @p frameInfo.
+ */
+ZL_Report DCTX_initFromFrameInfo(ZL_DCtx* dctx, const ZL_FrameInfo* frameInfo);
+
 ZL_END_C_DECLS
 
 #endif // ZSTRONG_DECOMPRESS_DCTX2_H

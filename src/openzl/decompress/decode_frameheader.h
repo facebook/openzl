@@ -80,6 +80,17 @@ void DFH_init(DFH_Struct* dfh);
 void DFH_destroy(DFH_Struct* dfh);
 
 /**
+ * Deep-copies @p frameInfo into @p dfh.
+ *
+ * @p dfh must have been initialized with DFH_init().
+ * @p opCtx receives any error details generated while copying.
+ */
+ZL_Report DFH_setFrameInfo(
+        DFH_Struct* dfh,
+        const ZL_FrameInfo* frameInfo,
+        ZL_OperationContext* opCtx);
+
+/**
  * Decode the frame header starting at @src
  * and fill @p dfh with corresponding information.
  *

@@ -2374,3 +2374,14 @@ ZL_Report ZL_DCtx_detachAllDecompressIntrospectionHooks(ZL_DCtx* dctx)
     oc->hasDecompressionHooks = false;
     return ZL_returnSuccess();
 }
+
+ZL_Report DCTX_initFromFrameInfo(ZL_DCtx* dctx, const ZL_FrameInfo* frameInfo)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
+    ZL_ASSERT_NN(dctx);
+    ZL_TRY_LET(size_t, nbOutputs, ZL_FrameInfo_getNumOutputs(frameInfo));
+    ZL_ERR_IF_ERR(DFH_setFrameInfo(
+            &dctx->dfh, frameInfo, ZL_DCtx_getOperationContext(dctx)));
+    dctx->nbOutputs = nbOutputs;
+    return DCtx_setAppliedParameters(dctx);
+}

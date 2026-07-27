@@ -514,6 +514,66 @@ ZL_Report ZL_FrameInfo_getNumElts(const ZL_FrameInfo* zfi, int outputID)
     return ZL_returnValue(zfi->numElts[outputID]);
 }
 
+static ZL_FrameInfo* FrameInfo_clone(const ZL_FrameInfo* src)
+{
+    ZL_FrameInfo* const copy = ZL_malloc(sizeof(*copy));
+    if (copy == NULL)
+        return NULL;
+
+    *copy                   = *src;
+    copy->types             = NULL;
+    copy->decompressedSizes = NULL;
+    copy->numElts           = NULL;
+    copy->comment           = NULL;
+
+    copy->types = ZL_malloc(src->nbOutputs * sizeof(*copy->types));
+    copy->decompressedSizes =
+            ZL_malloc(src->nbOutputs * sizeof(*copy->decompressedSizes));
+    copy->numElts = ZL_malloc(src->nbOutputs * sizeof(*copy->numElts));
+    if (copy->types == NULL || copy->decompressedSizes == NULL
+        || copy->numElts == NULL) {
+        ZL_FrameInfo_free(copy);
+        return NULL;
+    }
+
+    memcpy(copy->types, src->types, src->nbOutputs * sizeof(*copy->types));
+    memcpy(copy->decompressedSizes,
+           src->decompressedSizes,
+           src->nbOutputs * sizeof(*copy->decompressedSizes));
+    memcpy(copy->numElts,
+           src->numElts,
+           src->nbOutputs * sizeof(*copy->numElts));
+
+    if (src->commentSize != 0) {
+        copy->comment = ZL_malloc(src->commentSize);
+        if (copy->comment == NULL) {
+            ZL_FrameInfo_free(copy);
+            return NULL;
+        }
+        memcpy(copy->comment, src->comment, src->commentSize);
+    }
+
+    return copy;
+}
+
+ZL_Report DFH_setFrameInfo(
+        DFH_Struct* dfh,
+        const ZL_FrameInfo* frameInfo,
+        ZL_OperationContext* opCtx)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(opCtx);
+    ZL_ASSERT_NN(dfh);
+    ZL_ASSERT_NN(frameInfo);
+
+    ZL_FrameInfo* const copy = FrameInfo_clone(frameInfo);
+    ZL_ERR_IF_NULL(copy, allocation);
+
+    ZL_FrameInfo_free(dfh->frameinfo);
+    dfh->frameinfo     = copy;
+    dfh->formatVersion = (uint32_t)copy->formatVersion;
+    return ZL_returnSuccess();
+}
+
 ZL_RESULT_OF(ZL_Comment) ZL_FrameInfo_getComment(const ZL_FrameInfo* zfi)
 {
     ZL_RESULT_DECLARE_SCOPE(ZL_Comment, NULL);
