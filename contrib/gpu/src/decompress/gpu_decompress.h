@@ -22,6 +22,8 @@ extern "C" {
  * are device pointers; the decode is enqueued on @p stream and may run
  * asynchronously with respect to the host.
  *
+ * @note Only frame format version 21 and newer is supported.
+ *
  * @param dst_d Device buffer that receives the decompressed output.
  * @param dstCapacity Capacity of @p dst_d in bytes; at least the frame's
  * decompressed size.
