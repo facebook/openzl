@@ -12,6 +12,7 @@
 #include "openzl/cpp/DCtx.hpp"
 #include "openzl/cpp/FrameInfo.hpp"
 #include "openzl/decompress/dctx2.h"
+#include "openzl/shared/overflow.h"
 #include "openzl/zl_decompress.h"
 #include "openzl/zl_version.h"
 
@@ -29,14 +30,146 @@ std::string_view asStringView(std::span<const std::byte> bytes)
 
 } // namespace
 
+namespace {
+
+struct StagedChunkHeader {
+    std::span<const std::byte> bytes_h;
+    size_t frameHeaderIdx;
+};
+
+struct StagedHeaders {
+    // TODO(maxmandina): Explore context-owned pinned staging if header-copy
+    // latency becomes worth amortizing.
+    std::vector<std::byte> storage_h;
+    std::vector<std::span<const std::byte>> frameHeaders_h;
+    std::vector<StagedChunkHeader> chunkHeaders_h;
+};
+
+ZL_Report copyHeadersToHost(
+        std::span<const GPUFrameHeaderForChunks> frameHeaders,
+        std::span<const GPUChunk> chunks,
+        ZL_GPU_Stream stream,
+        StagedHeaders& stagedHeaders)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
+
+    size_t stagingSize = 0;
+    for (const GPUFrameHeaderForChunks& frameHeader : frameHeaders) {
+        ZL_ERR_IF(
+                frameHeader.frameHeader_d == nullptr
+                        || frameHeader.frameHeaderSize == 0,
+                parameter_invalid);
+        ZL_ERR_IF(
+                ZL_overflowAddST(
+                        stagingSize, frameHeader.frameHeaderSize, &stagingSize),
+                allocation);
+    }
+    for (const GPUChunk& chunk : chunks) {
+        ZL_ERR_IF(
+                chunk.frameHeaderIdx >= frameHeaders.size()
+                        || chunk.chunk_d == nullptr
+                        || chunk.chunkHeaderSize == 0
+                        || chunk.chunkHeaderSize > chunk.chunkSize,
+                parameter_invalid);
+        ZL_ERR_IF(
+                ZL_overflowAddST(
+                        stagingSize, chunk.chunkHeaderSize, &stagingSize),
+                allocation);
+    }
+
+    stagedHeaders.frameHeaders_h.reserve(frameHeaders.size());
+    stagedHeaders.chunkHeaders_h.reserve(chunks.size());
+
+    // Allocate the host buffer before starting copies or creating views into
+    // it, so its address cannot move.
+    stagedHeaders.storage_h.resize(stagingSize);
+
+    size_t dstOffset  = 0;
+    bool copyEnqueued = false;
+    for (const GPUFrameHeaderForChunks& frameHeader : frameHeaders) {
+        cudaError_t const result = cudaMemcpyAsync(
+                stagedHeaders.storage_h.data() + dstOffset,
+                frameHeader.frameHeader_d,
+                frameHeader.frameHeaderSize,
+                cudaMemcpyDeviceToHost,
+                stream);
+        if (result != cudaSuccess) {
+            if (copyEnqueued) {
+                // The destination buffer must outlive any queued D2H copies.
+                (void)cudaStreamSynchronize(stream);
+            }
+            ZL_ERR(GENERIC,
+                   "cudaMemcpyAsync failed: %s",
+                   cudaGetErrorString(result));
+        }
+        copyEnqueued = true;
+        dstOffset += frameHeader.frameHeaderSize;
+    }
+    for (const GPUChunk& chunk : chunks) {
+        cudaError_t const result = cudaMemcpyAsync(
+                stagedHeaders.storage_h.data() + dstOffset,
+                chunk.chunk_d,
+                chunk.chunkHeaderSize,
+                cudaMemcpyDeviceToHost,
+                stream);
+        if (result != cudaSuccess) {
+            if (copyEnqueued) {
+                // The destination buffer must outlive any queued D2H copies.
+                (void)cudaStreamSynchronize(stream);
+            }
+            ZL_ERR(GENERIC,
+                   "cudaMemcpyAsync failed: %s",
+                   cudaGetErrorString(result));
+        }
+        copyEnqueued = true;
+        dstOffset += chunk.chunkHeaderSize;
+    }
+    if (copyEnqueued) {
+        cudaError_t const result = cudaStreamSynchronize(stream);
+        ZL_ERR_IF_NE(result, cudaSuccess, GENERIC);
+    }
+
+    // Preserve frame-header order so each chunk index also identifies the
+    // corresponding staged header.
+    size_t headerOffset = 0;
+    for (const GPUFrameHeaderForChunks& frameHeader : frameHeaders) {
+        stagedHeaders.frameHeaders_h.emplace_back(
+                stagedHeaders.storage_h.data() + headerOffset,
+                frameHeader.frameHeaderSize);
+        headerOffset += frameHeader.frameHeaderSize;
+    }
+    for (const GPUChunk& chunk : chunks) {
+        std::span<const std::byte> const headerBytes_h{
+            stagedHeaders.storage_h.data() + headerOffset,
+            chunk.chunkHeaderSize,
+        };
+        stagedHeaders.chunkHeaders_h.push_back(
+                {
+                        .bytes_h        = headerBytes_h,
+                        .frameHeaderIdx = chunk.frameHeaderIdx,
+                });
+        headerOffset += chunk.chunkHeaderSize;
+    }
+
+    return ZL_returnSuccess();
+}
+
+} // namespace
+
 ZL_Report decompressChunks(
         void*,
         size_t,
-        std::span<const GPUFrameHeaderForChunks>,
-        std::span<const GPUChunk>,
-        ZL_GPU_Stream)
+        std::span<const GPUFrameHeaderForChunks> frameHeaders,
+        std::span<const GPUChunk> chunks,
+        ZL_GPU_Stream stream)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
+    StagedHeaders stagedHeaders;
+    ZL_Report const copyResult =
+            copyHeadersToHost(frameHeaders, chunks, stream, stagedHeaders);
+    if (ZL_isError(copyResult)) {
+        return copyResult;
+    }
     ZL_ERR(GENERIC, "GPU decompression is not implemented");
 }
 

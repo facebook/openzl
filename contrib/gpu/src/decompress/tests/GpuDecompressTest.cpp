@@ -141,6 +141,32 @@ TEST(GPUDecompressTest, CollectGPUChunksFromFrameAppendsToExistingBatch)
     EXPECT_EQ(chunks[2].chunk_d, secondDeviceFrame.data() + frameHeaderSize);
 }
 
+TEST(GPUDecompressTest, DecompressChunksRejectsUnknownFrameHeader)
+{
+    // This test verifies that every chunk names a supplied frame header; it
+    // fails if an out-of-range index reaches device-to-host staging.
+    std::byte sentinel{};
+    const std::vector<gpu::GPUFrameHeaderForChunks> frameHeaders{
+        {
+                .frameHeader_d   = &sentinel,
+                .frameHeaderSize = 1,
+        },
+    };
+    const std::vector<gpu::GPUChunk> chunks{
+        {
+                .frameHeaderIdx  = frameHeaders.size(),
+                .chunk_d         = &sentinel,
+                .chunkSize       = 1,
+                .chunkHeaderSize = 1,
+        },
+    };
+
+    ZL_Report const result =
+            gpu::decompressChunks(nullptr, 0, frameHeaders, chunks, nullptr);
+
+    EXPECT_EQ(ZL_errorCode(result), ZL_ErrorCode_parameter_invalid);
+}
+
 TEST(GPUDecompressTest, CApiRejectsImpossibleSourceSize)
 {
     // This test verifies that a source size no host allocation can represent
