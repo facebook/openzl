@@ -171,6 +171,41 @@ void DCTX_clearDecoderFusions(ZL_DCtx* dctx);
  */
 ZL_Report DCTX_initFromFrameInfo(ZL_DCtx* dctx, const ZL_FrameInfo* frameInfo);
 
+typedef struct {
+    size_t chunkHeaderSize;
+    size_t chunkSize;
+} DCTX_FrameChunkInfo;
+ZL_RESULT_DECLARE_TYPE(DCTX_FrameChunkInfo);
+
+/**
+ * Prepares one chunk without running its decoders.
+ *
+ * @p dctx must first be initialized.
+ * @returns The prepared chunk metadata, or an error.
+ */
+ZL_RESULT_OF(DCTX_FrameChunkInfo)
+DCTX_prepareFrameChunk(
+        ZL_DCtx* dctx,
+        const void* framePtr,
+        size_t frameSize,
+        size_t chunkOffset);
+
+/**
+ * Prepares one chunk from a separately readable formal chunk header.
+ *
+ * Stream references are bound against @p chunkRef, whose contents are not
+ * accessed. Payload and checksum validation are left to the caller.
+ * @p dctx must first be initialized.
+ * @returns Success, or an errors if the stream layout exceeds @p chunkSize
+ * or an error from decoding the header.
+ */
+ZL_Report DCTX_prepareFrameChunkFromHeader(
+        ZL_DCtx* dctx,
+        const void* chunkHeader,
+        size_t chunkHeaderSize,
+        const void* chunkRef,
+        size_t chunkSize);
+
 ZL_END_C_DECLS
 
 #endif // ZSTRONG_DECOMPRESS_DCTX2_H
