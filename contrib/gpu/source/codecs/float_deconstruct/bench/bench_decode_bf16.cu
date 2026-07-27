@@ -208,6 +208,16 @@ void runShape(
                     openzl::gpu::bf16DeconDecodeLaunchInfo(),
                     hd,
                     dev));
+    cases.push_back(
+            std::make_unique<Bf16DecodeCase>(
+                    "tiled",
+                    [&dev](cudaStream_t s) {
+                        openzl::gpu::bf16DeconDecodeV2(
+                                dev.numInBatch(), dev.deviceChunks(), s);
+                    },
+                    openzl::gpu::bf16DeconDecodeV2LaunchInfo(),
+                    hd,
+                    dev));
 
     const std::vector<openzl::gpu::bench::BenchResult> results =
             runKernelBench(cases);

@@ -48,4 +48,12 @@ struct KernelLaunchInfo {
 };
 KernelLaunchInfo bf16DeconDecodeLaunchInfo();
 
+// v2 decode: tiled and load-balanced across chunks (fixes the jagged case).
+// Same contract as bf16DeconDecode.
+void bf16DeconDecodeV2(
+        uint32_t numInBatch,
+        const FloatDeconChunk* chunks_d,
+        cudaStream_t stream);
+KernelLaunchInfo bf16DeconDecodeV2LaunchInfo();
+
 } // namespace openzl::gpu
