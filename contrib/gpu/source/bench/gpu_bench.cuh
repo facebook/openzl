@@ -3,6 +3,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -35,9 +36,31 @@ constexpr int kBitsPerByte             = 8;
 constexpr double kFallbackPeakGBs =
         2039.0; // A100 80GB, if clock/bus unavailable
 
-constexpr int kDefaultWarmup          = 3;
-constexpr int kDefaultIters           = 20;
-constexpr size_t kDefaultL2FlushBytes = 64ull * 1024 * 1024;
+constexpr int kDefaultWarmup         = 3;
+constexpr int kDefaultMinSamples     = 10;
+constexpr int kDefaultMaxSamples     = 200;
+constexpr double kDefaultMaxSeconds  = 0.5;
+constexpr double kDefaultTargetNoise = 0.005; // relative stddev of the mean
+
+// Flush buffer is sized to 1.5x the device L2 so reads miss cache; this is the
+// floor used when the L2 size is unavailable.
+constexpr size_t kMinL2FlushBytes = 64ull * 1024 * 1024;
+
+// Population mean and relative stddev of the mean ("noise") from the running
+// sums of n timing samples. noise is a fraction; callers scale to percent.
+struct NoiseStats {
+    double mean  = 0.0;
+    double noise = 0.0;
+};
+inline NoiseStats computeNoise(double sum, double sumSq, int n)
+{
+    const double mean   = sum / n;
+    const double var    = sumSq / n - mean * mean;
+    const double stddev = var > 0.0 ? std::sqrt(var) : 0.0;
+    const double noise =
+            mean > 0.0 ? stddev / std::sqrt((double)n) / mean : 0.0;
+    return { mean, noise };
+}
 } // namespace detail
 
 // Workload size, used to turn a time into throughput numbers
@@ -77,15 +100,21 @@ class KernelCase {
 
 struct BenchConfig {
     int warmup          = detail::kDefaultWarmup;
-    int iters           = detail::kDefaultIters;
-    size_t l2FlushBytes = detail::kDefaultL2FlushBytes;
+    int minSamples      = detail::kDefaultMinSamples;
+    int maxSamples      = detail::kDefaultMaxSamples;
+    double maxSeconds   = detail::kDefaultMaxSeconds;
+    double targetNoise  = detail::kDefaultTargetNoise;
+    size_t l2FlushBytes = 0; // 0 sizes the flush from the device L2 cache
 };
 
 struct BenchResult {
     std::string name;
     bool correct        = true;
-    double medianMs     = 0.0;
-    double gbps         = 0.0;
+    double minMs        = 0.0;
+    double meanMs       = 0.0;
+    double noisePct     = 0.0; // relative stddev of the mean, percent
+    int samples         = 0;
+    double gbps         = 0.0; // computed from minMs (best observed)
     double pctPeak      = 0.0;
     double gElemPerS    = 0.0;
     double occupancyPct = 0.0; // 0 if occupancy inputs not provided
@@ -121,17 +150,40 @@ inline double occupancyPct(int blockSize, int maxActiveBlocksPerSM)
             / (double)maxThreadsPerSM;
 }
 
-// Times one kernel: warmup, then `iters` timed launches each preceded by an L2
-// flush (so reads hit HBM), taking the median. Returns 0 if timing is disabled.
-inline double medianKernelMs(KernelCase& kc, const BenchConfig& cfg)
+// Flush buffer size: 1.5x the device L2 cache, or the floor if unavailable
+inline size_t l2FlushBytes(const BenchConfig& cfg)
 {
-    if (cfg.iters <= 0) {
-        return 0.0;
+    if (cfg.l2FlushBytes != 0) {
+        return cfg.l2FlushBytes;
+    }
+    int dev = 0;
+    ZL_CUDA_CHECK(cudaGetDevice(&dev));
+    int l2 = 0;
+    ZL_CUDA_CHECK(cudaDeviceGetAttribute(&l2, cudaDevAttrL2CacheSize, dev));
+    const size_t sized = (size_t)(l2 > 0 ? l2 : 0) * 3 / 2;
+    return sized > detail::kMinL2FlushBytes ? sized : detail::kMinL2FlushBytes;
+}
+
+struct SampleStats {
+    double minMs    = 0.0;
+    double meanMs   = 0.0;
+    double noisePct = 0.0;
+    int samples     = 0;
+};
+
+// Cold-cache adaptive timing: warm up, then time one launch per sample (each
+// preceded by an L2 flush) until the relative stddev of the mean drops below
+// cfg.targetNoise, or the sample-count or accumulated-time cap is hit.
+inline SampleStats sampleKernel(KernelCase& kc, const BenchConfig& cfg)
+{
+    SampleStats st;
+    if (cfg.maxSamples <= 0) {
+        return st;
     }
     const cudaStream_t stream = 0;
-
-    uint8_t* flushRaw = nullptr;
-    ZL_CUDA_CHECK(cudaMalloc(&flushRaw, cfg.l2FlushBytes));
+    const size_t flushBytes   = l2FlushBytes(cfg);
+    uint8_t* flushRaw         = nullptr;
+    ZL_CUDA_CHECK(cudaMalloc(&flushRaw, flushBytes));
     std::unique_ptr<uint8_t, CudaFreeDeleter> flush(flushRaw);
 
     for (int i = 0; i < cfg.warmup; ++i) {
@@ -140,22 +192,39 @@ inline double medianKernelMs(KernelCase& kc, const BenchConfig& cfg)
     ZL_CUDA_CHECK(cudaGetLastError());
     ZL_CUDA_CHECK(cudaDeviceSynchronize());
 
-    std::vector<CudaEvent> starts(cfg.iters), stops(cfg.iters);
-    for (int i = 0; i < cfg.iters; ++i) {
-        ZL_CUDA_CHECK(
-                cudaMemsetAsync(flush.get(), 0, cfg.l2FlushBytes, stream));
-        starts[i].record(stream);
+    std::vector<double> ms;
+    ms.reserve(cfg.maxSamples);
+    double sum      = 0.0;
+    double sumSq    = 0.0;
+    double elapsedS = 0.0;
+    for (int i = 0; i < cfg.maxSamples; ++i) {
+        CudaEvent start, stop;
+        ZL_CUDA_CHECK(cudaMemsetAsync(flush.get(), 0, flushBytes, stream));
+        start.record(stream);
         kc.launch(stream);
-        stops[i].record(stream);
-    }
-    ZL_CUDA_CHECK(cudaDeviceSynchronize());
+        stop.record(stream);
+        ZL_CUDA_CHECK(cudaDeviceSynchronize());
+        const double t = stop.elapsedMsSince(start);
+        ms.push_back(t);
+        sum += t;
+        sumSq += t * t;
+        elapsedS += t / detail::kKilo;
 
-    std::vector<double> ms(cfg.iters);
-    for (int i = 0; i < cfg.iters; ++i) {
-        ms[i] = stops[i].elapsedMsSince(starts[i]);
+        const int n = (int)ms.size();
+        if (n >= cfg.minSamples) {
+            const double noise = detail::computeNoise(sum, sumSq, n).noise;
+            if (noise < cfg.targetNoise || elapsedS > cfg.maxSeconds) {
+                break;
+            }
+        }
     }
-    std::sort(ms.begin(), ms.end());
-    return ms[cfg.iters / 2];
+
+    st.samples                  = (int)ms.size();
+    st.minMs                    = *std::min_element(ms.begin(), ms.end());
+    const detail::NoiseStats ns = detail::computeNoise(sum, sumSq, st.samples);
+    st.meanMs                   = ns.mean;
+    st.noisePct                 = ns.noise * detail::kPercent;
+    return st;
 }
 
 // Runs every case over its own workload; one result per case. Each case is set
@@ -181,10 +250,16 @@ inline std::vector<BenchResult> runKernelBench(
 
         const Workload work = kc->workload();
         BenchResult r;
-        r.name         = kc->name();
-        r.correct      = kc->verify();
-        r.medianMs     = medianKernelMs(*kc, cfg);
-        const double s = r.medianMs / detail::kKilo;
+        r.name    = kc->name();
+        r.correct = kc->verify();
+
+        const SampleStats st = sampleKernel(*kc, cfg);
+        r.minMs              = st.minMs;
+        r.meanMs             = st.meanMs;
+        r.noisePct           = st.noisePct;
+        r.samples            = st.samples;
+
+        const double s = r.minMs / detail::kKilo;
         r.gbps = s > 0.0 ? (double)work.bytesMoved / s / detail::kGiga : 0.0;
         r.gElemPerS = s > 0.0 ? (double)work.numElts / s / detail::kGiga : 0.0;
         r.pctPeak   = peak > 0.0 ? detail::kPercent * r.gbps / peak : 0.0;
@@ -202,17 +277,19 @@ inline std::vector<BenchResult> runKernelBench(
 inline void printResults(const char* label, const std::vector<BenchResult>& rs)
 {
     for (const BenchResult& r : rs) {
-        printf("%-10s | %-18s | %s | %8.3f ms | %7.1f GB/s (%5.1f%% peak) |"
-               " %6.1f G-elem/s | occ %5.1f%% (%d blk/SM)\n",
+        printf("%-10s | %-12s | %s | min %8.3f ms | mean %8.3f ms |"
+               " noise %4.1f%% | n=%-4d | %7.1f GB/s (%5.1f%% peak) |"
+               " occ %5.1f%%\n",
                label,
                r.name.c_str(),
                r.correct ? "OK  " : "FAIL",
-               r.medianMs,
+               r.minMs,
+               r.meanMs,
+               r.noisePct,
+               r.samples,
                r.gbps,
                r.pctPeak,
-               r.gElemPerS,
-               r.occupancyPct,
-               r.maxActiveBlocks);
+               r.occupancyPct);
     }
 }
 
