@@ -2,8 +2,12 @@
 
 #include "decode_float_deconstruct_bf16.cuh"
 
+#include <algorithm>
+#include <cassert>
+#include <limits>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "openzl/dev/contrib/gpu/source/common/cuda_error.cuh"
 
@@ -13,7 +17,8 @@ namespace {
 
 constexpr int kThreads       = 256;
 constexpr int kEltsPerThread = 8; // v2 tile = kThreads * kEltsPerThread elts
-constexpr int kVec = 4; // v3 elements per thread (uchar4 in/ushort4 out)
+constexpr int kVec    = 4; // v3 elements per thread (uchar4 in/ushort4 out)
+constexpr int kUnroll = 2; // independent uchar4 loads/stream in flight (MLP)
 
 // chunk = blockIdx.y; each block's threads grid-stride over that chunk along x.
 // One chunk is just numInBatch == 1, so this handles single and multi chunk.
@@ -34,11 +39,67 @@ __global__ void decodeChunksKernel(
     }
 }
 
-// v3 decode: same chunk = blockIdx.y mapping as the naive kernel, but each
-// thread processes kVec elements with vectorized transactions (uchar4 in,
-// ushort4 out) instead of one byte at a time, so both input streams and the
-// output move in wide, fully-coalesced transactions. A scalar tail handles the
-// last nbElts % kVec elements. This raises throughput on the single/uniform
+// Reassembles one uchar4 of exponent + one uchar4 of signFrac into a ushort4.
+__device__ __forceinline__ ushort4 joinVec4(uchar4 e, uchar4 s)
+{
+    ushort4 out;
+    out.x = decodeBf16Elt(e.x, s.x);
+    out.y = decodeBf16Elt(e.y, s.y);
+    out.z = decodeBf16Elt(e.z, s.z);
+    out.w = decodeBf16Elt(e.w, s.w);
+    return out;
+}
+
+// Vectorized decode of one chunk: the threads [start, start+stride, ...) cover
+// the chunk, each handling kVec elements per step via wide transactions (uchar4
+// in, ushort4 out) so both input streams and the output move in wide, fully-
+// coalesced transactions. The main loop is unrolled by kUnroll so several
+// independent loads from each stream are in flight before the stores, hiding
+// DRAM latency (memory-level parallelism). A remainder loop and then a scalar
+// tail (last nbElts % kVec) finish the chunk. Shared by the v3 and unified
+// kernels. Requires exponent/signFrac/dst 4-aligned (true for real chunks and
+// for unified segments by construction; see bf16DeconDecodeUnified).
+__device__ __forceinline__ void
+decodeChunkVec(const FloatDeconChunk& c, size_t start, size_t stride)
+{
+    // The vectorized loads/stores below require these base pointers aligned to
+    // their vector types; misalignment is UB on CUDA. Real chunks (cudaMalloc)
+    // and unified segments (starts at multiples of maxSegElts % kVec) satisfy
+    // it.
+    assert(reinterpret_cast<uintptr_t>(c.exponent) % alignof(uchar4) == 0);
+    assert(reinterpret_cast<uintptr_t>(c.signFrac) % alignof(uchar4) == 0);
+    assert(reinterpret_cast<uintptr_t>(c.dst) % alignof(ushort4) == 0);
+    const size_t nVec = c.nbElts / kVec;
+    size_t v          = start;
+    for (; v + (size_t)(kUnroll - 1) * stride < nVec;
+         v += (size_t)kUnroll * stride) {
+        uchar4 e[kUnroll];
+        uchar4 s[kUnroll];
+#pragma unroll
+        for (int u = 0; u < kUnroll; ++u) {
+            const size_t base = (v + (size_t)u * stride) * kVec;
+            e[u] = *reinterpret_cast<const uchar4*>(c.exponent + base);
+            s[u] = *reinterpret_cast<const uchar4*>(c.signFrac + base);
+        }
+#pragma unroll
+        for (int u = 0; u < kUnroll; ++u) {
+            const size_t base = (v + (size_t)u * stride) * kVec;
+            *reinterpret_cast<ushort4*>(c.dst + base) = joinVec4(e[u], s[u]);
+        }
+    }
+    for (; v < nVec; v += stride) {
+        const size_t base = v * kVec;
+        const uchar4 e    = *reinterpret_cast<const uchar4*>(c.exponent + base);
+        const uchar4 s    = *reinterpret_cast<const uchar4*>(c.signFrac + base);
+        *reinterpret_cast<ushort4*>(c.dst + base) = joinVec4(e, s);
+    }
+    for (size_t i = nVec * kVec + start; i < c.nbElts; i += stride) {
+        c.dst[i] = decodeBf16Elt(c.exponent[i], c.signFrac[i]);
+    }
+}
+
+// v3 decode: same chunk = blockIdx.y mapping as the naive kernel, but
+// vectorized via decodeChunkVec. This raises throughput on the single/uniform
 // shapes; jagged still starves like the naive kernel, so use v2 there.
 __global__ void decodeChunksVecKernel(
         const FloatDeconChunk* __restrict__ chunks,
@@ -48,25 +109,9 @@ __global__ void decodeChunksVecKernel(
     if (b >= numInBatch) {
         return;
     }
-    const FloatDeconChunk c = chunks[b];
-    const size_t nVec       = c.nbElts / kVec;
-    const size_t stride     = (size_t)gridDim.x * blockDim.x;
-    const size_t start      = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
-    for (size_t v = start; v < nVec; v += stride) {
-        const size_t base = v * kVec;
-        const uchar4 e    = *reinterpret_cast<const uchar4*>(c.exponent + base);
-        const uchar4 s    = *reinterpret_cast<const uchar4*>(c.signFrac + base);
-        ushort4 out;
-        out.x                                     = decodeBf16Elt(e.x, s.x);
-        out.y                                     = decodeBf16Elt(e.y, s.y);
-        out.z                                     = decodeBf16Elt(e.z, s.z);
-        out.w                                     = decodeBf16Elt(e.w, s.w);
-        *reinterpret_cast<ushort4*>(c.dst + base) = out;
-    }
-    // Scalar tail: the last nbElts % kVec elements.
-    for (size_t i = nVec * kVec + start; i < c.nbElts; i += stride) {
-        c.dst[i] = decodeBf16Elt(c.exponent[i], c.signFrac[i]);
-    }
+    const size_t stride = (size_t)gridDim.x * blockDim.x;
+    const size_t start  = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+    decodeChunkVec(chunks[b], start, stride);
 }
 
 // Largest c in [0, numInBatch) with offsets[c] <= g (upper_bound - 1).
@@ -140,6 +185,20 @@ __global__ void decodeTiledKernel(
     }
 }
 
+// Unified decode: element-balanced like v2 and vectorized like v3. The host has
+// already split the input into equal-sized segments (each a contiguous run of
+// one chunk); one block owns a segment and grid-strides over the segment array,
+// so equal segments balance the work. A 1D grid means numSegs is not bound by
+// the gridDim.y cap the naive/v3 kernels hit.
+__global__ void decodeSegmentsKernel(
+        const FloatDeconChunk* __restrict__ segments,
+        uint32_t numSegs)
+{
+    for (uint32_t s = blockIdx.x; s < numSegs; s += gridDim.x) {
+        decodeChunkVec(segments[s], threadIdx.x, blockDim.x);
+    }
+}
+
 // 1D grid size that fills the GPU for a given kernel at kThreads.
 uint32_t fillGpuGrid(const void* kernel)
 {
@@ -153,6 +212,99 @@ uint32_t fillGpuGrid(const void* kernel)
             &numSMs, cudaDevAttrMultiProcessorCount, dev));
     const uint32_t grid = (uint32_t)maxBlocksPerSM * (uint32_t)numSMs;
     return grid == 0 ? 1 : grid;
+}
+
+// Host-side. Peels the first min(n, c.nbElts) elements off c as a new segment
+// and advances c past them. Only advances device pointers, so the segment
+// aliases the original device buffers, no data is copied.
+FloatDeconChunk peel(FloatDeconChunk& c, size_t n)
+{
+    n                   = std::min(n, c.nbElts);
+    FloatDeconChunk seg = c;
+    seg.nbElts          = n;
+    c.exponent += n;
+    c.signFrac += n;
+    c.dst += n;
+    c.nbElts -= n;
+    return seg;
+}
+
+// Host-side. Splits each chunk into segments of at most maxSegElts, so all
+// segments carry roughly equal work regardless of the input shape.
+std::vector<FloatDeconChunk>
+rechunk(const FloatDeconChunk* chunks_h, uint32_t numInBatch, size_t maxSegElts)
+{
+    size_t numSegs = 0;
+    for (uint32_t c = 0; c < numInBatch; ++c) {
+        const size_t nb = chunks_h[c].nbElts;
+        numSegs += (nb + maxSegElts - 1) / maxSegElts;
+    }
+    if (numSegs > std::numeric_limits<uint32_t>::max()) {
+        throw std::runtime_error(
+                "bf16 unified decode: segment count " + std::to_string(numSegs)
+                + " exceeds uint32_t limit; use a larger maxSegElts");
+    }
+    std::vector<FloatDeconChunk> out;
+    out.reserve(numSegs);
+    for (uint32_t c = 0; c < numInBatch; ++c) {
+        FloatDeconChunk cur = chunks_h[c];
+        while (cur.nbElts > 0) {
+            out.push_back(peel(cur, maxSegElts));
+        }
+    }
+    return out;
+}
+
+// Stream-ordered device scratch: frees on the same stream at scope exit, so an
+// exception between allocation and launch cannot leak it.
+template <typename T>
+class StreamScratch {
+   public:
+    StreamScratch(size_t n, cudaStream_t stream) : stream_(stream)
+    {
+        ZL_CUDA_CHECK(cudaMallocAsync(&p_, n * sizeof(T), stream));
+    }
+    ~StreamScratch()
+    {
+        if (p_) {
+            cudaFreeAsync(p_, stream_);
+        }
+    }
+    StreamScratch(const StreamScratch&)            = delete;
+    StreamScratch& operator=(const StreamScratch&) = delete;
+
+    T* get() const
+    {
+        return p_;
+    }
+
+   private:
+    T* p_ = nullptr;
+    cudaStream_t stream_;
+};
+
+// Throws unless maxSegElts is a positive multiple of kVec (the alignment
+// invariant the vectorized loads/stores rely on).
+void validateMaxSegElts(size_t maxSegElts)
+{
+    if (maxSegElts == 0 || maxSegElts % kVec != 0) {
+        throw std::runtime_error(
+                "bf16 unified decode: maxSegElts " + std::to_string(maxSegElts)
+                + " must be a positive multiple of " + std::to_string(kVec));
+    }
+}
+
+// Sizes a 1D grid that fills the GPU (capped at numSegs) and launches the
+// unified kernel over the staged segment array.
+void launchSegments(
+        const FloatDeconChunk* segs_d,
+        uint32_t numSegs,
+        cudaStream_t stream)
+{
+    const uint32_t target = fillGpuGrid((const void*)decodeSegmentsKernel);
+    const uint32_t grid   = (uint32_t)std::min<size_t>(numSegs, target);
+    decodeSegmentsKernel<<<grid, kThreads, 0, stream>>>(segs_d, numSegs);
+    ZL_CUDA_CHECK_LAST();
 }
 
 } // namespace
@@ -238,11 +390,8 @@ void bf16DeconDecodeVec(
                 + " exceeds kMaxNumInBatch " + std::to_string(kMaxNumInBatch)
                 + " (gridDim.y limit); split the batch across calls");
     }
-    const uint32_t target   = fillGpuGrid((const void*)decodeChunksVecKernel);
-    uint32_t blocksPerChunk = (target + numInBatch - 1) / numInBatch;
-    if (blocksPerChunk == 0) {
-        blocksPerChunk = 1;
-    }
+    const uint32_t target = fillGpuGrid((const void*)decodeChunksVecKernel);
+    const uint32_t blocksPerChunk = (target + numInBatch - 1) / numInBatch;
     const dim3 grid(blocksPerChunk, numInBatch);
     decodeChunksVecKernel<<<grid, kThreads, 0, stream>>>(chunks_d, numInBatch);
     ZL_CUDA_CHECK_LAST();
@@ -254,6 +403,82 @@ KernelLaunchInfo bf16DeconDecodeVecLaunchInfo()
     ZL_CUDA_CHECK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
             &maxActiveBlocksPerSM,
             (const void*)decodeChunksVecKernel,
+            kThreads,
+            0));
+    return { kThreads, maxActiveBlocksPerSM };
+}
+
+UnifiedDecodePlan::UnifiedDecodePlan(
+        const FloatDeconChunk* chunks_h,
+        uint32_t numInBatch,
+        size_t maxSegElts)
+{
+    if (numInBatch == 0) {
+        return;
+    }
+    validateMaxSegElts(maxSegElts);
+
+    // Split on the host into equal-sized segments (device pointers advanced, no
+    // copy) and stage the segment descriptors once. Segment starts land at
+    // multiples of maxSegElts from cudaMalloc-aligned bases, so with maxSegElts
+    // % kVec == 0 every segment start is 4/8-aligned for the vectorized
+    // loads/stores.
+    const std::vector<FloatDeconChunk> segs =
+            rechunk(chunks_h, numInBatch, maxSegElts);
+    if (segs.empty()) {
+        return;
+    }
+    numSegs_ = (uint32_t)segs.size();
+    segs_d_  = deviceAlloc<FloatDeconChunk>(numSegs_);
+    ZL_CUDA_CHECK(cudaMemcpy(
+            segs_d_.get(),
+            segs.data(),
+            (size_t)numSegs_ * sizeof(FloatDeconChunk),
+            cudaMemcpyHostToDevice));
+}
+
+void UnifiedDecodePlan::launch(cudaStream_t stream) const
+{
+    if (numSegs_ == 0) {
+        return;
+    }
+    launchSegments(segs_d_.get(), numSegs_, stream);
+}
+
+void bf16DeconDecodeUnified(
+        const FloatDeconChunk* chunks_h,
+        uint32_t numInBatch,
+        size_t maxSegElts,
+        cudaStream_t stream)
+{
+    if (numInBatch == 0) {
+        return;
+    }
+    validateMaxSegElts(maxSegElts);
+    const std::vector<FloatDeconChunk> segs =
+            rechunk(chunks_h, numInBatch, maxSegElts);
+    if (segs.empty()) {
+        return;
+    }
+    const uint32_t numSegs = (uint32_t)segs.size();
+
+    // Stream-ordered scratch so the one-shot path stays async and leak-free.
+    StreamScratch<FloatDeconChunk> segs_d(numSegs, stream);
+    ZL_CUDA_CHECK(cudaMemcpyAsync(
+            segs_d.get(),
+            segs.data(),
+            (size_t)numSegs * sizeof(FloatDeconChunk),
+            cudaMemcpyHostToDevice,
+            stream));
+    launchSegments(segs_d.get(), numSegs, stream);
+}
+
+KernelLaunchInfo bf16DeconDecodeUnifiedLaunchInfo()
+{
+    int maxActiveBlocksPerSM = 0;
+    ZL_CUDA_CHECK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+            &maxActiveBlocksPerSM,
+            (const void*)decodeSegmentsKernel,
             kThreads,
             0));
     return { kThreads, maxActiveBlocksPerSM };

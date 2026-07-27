@@ -173,6 +173,62 @@ class Bf16DecodeCase : public KernelCase {
     const DeviceChunkSet& dev_;
 };
 
+// Unified-kernel case. Builds the segment plan once in setup() (host split +
+// descriptor upload) so only the kernel launch is timed, then launches it per
+// iteration. Shares the DeviceChunkSet fixture like Bf16DecodeCase.
+class UnifiedDecodeCase : public KernelCase {
+   public:
+    UnifiedDecodeCase(
+            std::string name,
+            size_t maxSegElts,
+            const HostData& hd,
+            const DeviceChunkSet& dev)
+            : name_(std::move(name)),
+              maxSegElts_(maxSegElts),
+              hd_(hd),
+              dev_(dev)
+    {
+    }
+
+    std::string name() const override
+    {
+        return name_;
+    }
+    void setup() override
+    {
+        plan_ = std::make_unique<openzl::gpu::UnifiedDecodePlan>(
+                dev_.hostChunks().data(), dev_.numInBatch(), maxSegElts_);
+    }
+    void launch(cudaStream_t stream) override
+    {
+        plan_->launch(stream);
+    }
+    Workload workload() const override
+    {
+        return { kBytesPerElt * hd_.totalElts, hd_.totalElts };
+    }
+    bool verify() override
+    {
+        return countMismatches(hd_, dev_) == 0;
+    }
+    int blockSize() const override
+    {
+        return openzl::gpu::bf16DeconDecodeUnifiedLaunchInfo().blockSize;
+    }
+    int maxActiveBlocksPerSM() const override
+    {
+        return openzl::gpu::bf16DeconDecodeUnifiedLaunchInfo()
+                .maxActiveBlocksPerSM;
+    }
+
+   private:
+    std::string name_;
+    size_t maxSegElts_;
+    const HostData& hd_;
+    const DeviceChunkSet& dev_;
+    std::unique_ptr<openzl::gpu::UnifiedDecodePlan> plan_;
+};
+
 std::vector<size_t> jaggedShape(
         std::mt19937& rng,
         size_t bigElts,
@@ -226,6 +282,16 @@ void runShape(
                                 dev.numInBatch(), dev.deviceChunks(), s);
                     },
                     openzl::gpu::bf16DeconDecodeVecLaunchInfo(),
+                    hd,
+                    dev));
+    // Unified kernel at the production default segment size: element-balanced
+    // and vectorized, so it tracks the best specialist on every shape. The plan
+    // is built in setup(), so only the kernel launch is timed (the host peel
+    // and descriptor upload are one-time and excluded).
+    cases.push_back(
+            std::make_unique<UnifiedDecodeCase>(
+                    "unified",
+                    openzl::gpu::kUnifiedDefaultMaxSegElts,
                     hd,
                     dev));
 

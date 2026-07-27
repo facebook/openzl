@@ -68,7 +68,7 @@ class DeviceChunkSet {
         dSf_.resize(numInBatch_);
         dDst_.resize(numInBatch_);
 
-        std::vector<FloatDeconChunk> host(numInBatch_);
+        hostChunks_.resize(numInBatch_);
         for (uint32_t c = 0; c < numInBatch_; ++c) {
             const size_t nb = chunks[c].nbElts;
             sizes_[c]       = nb;
@@ -87,13 +87,15 @@ class DeviceChunkSet {
                         nb,
                         cudaMemcpyHostToDevice));
             }
-            host[c] = { dExp_[c].get(), dSf_[c].get(), dDst_[c].get(), nb };
+            hostChunks_[c] = {
+                dExp_[c].get(), dSf_[c].get(), dDst_[c].get(), nb
+            };
         }
         if (numInBatch_) {
             dChunks_ = deviceAlloc<FloatDeconChunk>(numInBatch_);
             ZL_CUDA_CHECK(cudaMemcpy(
                     dChunks_.get(),
-                    host.data(),
+                    hostChunks_.data(),
                     numInBatch_ * sizeof(FloatDeconChunk),
                     cudaMemcpyHostToDevice));
         }
@@ -111,6 +113,13 @@ class DeviceChunkSet {
     const FloatDeconChunk* deviceChunks() const
     {
         return dChunks_.get();
+    }
+
+    // Host-side descriptor array (device pointers + sizes), for launchers that
+    // partition on the host such as bf16DeconDecodeUnified.
+    const std::vector<FloatDeconChunk>& hostChunks() const
+    {
+        return hostChunks_;
     }
 
     // Copies chunk c's decoded output back to host. The caller must have
@@ -134,6 +143,7 @@ class DeviceChunkSet {
     std::vector<size_t> sizes_;
     std::vector<DevicePtr<uint8_t>> dExp_, dSf_;
     std::vector<DevicePtr<uint16_t>> dDst_;
+    std::vector<FloatDeconChunk> hostChunks_;
     DevicePtr<FloatDeconChunk> dChunks_;
 };
 

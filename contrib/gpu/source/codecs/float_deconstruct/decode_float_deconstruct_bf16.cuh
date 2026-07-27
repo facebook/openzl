@@ -7,10 +7,14 @@
 
 #include <cuda_runtime.h>
 
+#include "openzl/dev/contrib/gpu/source/common/cuda_raii.cuh"
+
 namespace openzl::gpu {
 
 // Describes one bf16 float-deconstruct chunk. All pointers are device pointers.
-// bf16DeconDecodeVec needs them aligned (see its comment).
+// The vectorized paths (bf16DeconDecodeVec and the unified decode) require
+// exponent and signFrac 4-byte aligned and dst 8-byte aligned; cudaMalloc'd
+// buffers and unified segment starts satisfy this by construction.
 struct FloatDeconChunk {
     const uint8_t* exponent;
     const uint8_t* signFrac;
@@ -66,5 +70,57 @@ void bf16DeconDecodeVec(
         const FloatDeconChunk* chunks_d,
         cudaStream_t stream);
 KernelLaunchInfo bf16DeconDecodeVecLaunchInfo();
+
+// Default segment size for the unified decode, in elements. From the
+// benchmark's granularity sweep, kernel throughput keeps improving down to
+// ~4Ki-element segments; 16Ki stays within a few percent of that peak on every
+// shape while producing 4x fewer segments (less descriptor upload for the
+// one-shot path). Tunable; must be a positive multiple of 4 (see the alignment
+// note below).
+constexpr size_t kUnifiedDefaultMaxSegElts = 16384;
+
+// Prepared unified decode: element-balanced (like v2) AND vectorized (like v3),
+// good across oneLarge/batched/jagged from one kernel. Construction splits
+// every chunk into segments of at most maxSegElts on the host (advancing device
+// pointers, zero copy) and stages the segment descriptors on the device once;
+// launch() then runs a 1D-grid vectorized kernel over them. Equal-sized
+// segments balance the work and the wide transactions recover bandwidth.
+// Splitting once and launching repeatedly keeps the host split and the
+// descriptor upload out of the per-launch cost.
+//
+// Takes HOST-side descriptors `chunks_h` (device pointers + sizes), since the
+// split runs on the host. Uses a 1D grid, so there is NO kMaxNumInBatch cap.
+// maxSegElts must be a positive multiple of 4 (segment starts are then
+// 4/8-aligned by construction); the constructor throws otherwise.
+class UnifiedDecodePlan {
+   public:
+    UnifiedDecodePlan(
+            const FloatDeconChunk* chunks_h,
+            uint32_t numInBatch,
+            size_t maxSegElts);
+
+    // Launches the decode on `stream`. This object must stay alive until the
+    // stream work completes (it owns the device segment descriptors).
+    void launch(cudaStream_t stream) const;
+
+    uint32_t numSegments() const
+    {
+        return numSegs_;
+    }
+
+   private:
+    DevicePtr<FloatDeconChunk> segs_d_;
+    uint32_t numSegs_ = 0;
+};
+
+// One-shot convenience: prepare a UnifiedDecodePlan and launch it on `stream`.
+// Prefer UnifiedDecodePlan directly when decoding the same shape repeatedly.
+void bf16DeconDecodeUnified(
+        const FloatDeconChunk* chunks_h,
+        uint32_t numInBatch,
+        size_t maxSegElts,
+        cudaStream_t stream);
+
+KernelLaunchInfo bf16DeconDecodeUnifiedLaunchInfo();
 
 } // namespace openzl::gpu
