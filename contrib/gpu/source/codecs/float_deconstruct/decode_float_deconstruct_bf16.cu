@@ -13,6 +13,7 @@ namespace {
 
 constexpr int kThreads       = 256;
 constexpr int kEltsPerThread = 8; // v2 tile = kThreads * kEltsPerThread elts
+constexpr int kVec = 4; // v3 elements per thread (uchar4 in/ushort4 out)
 
 // chunk = blockIdx.y; each block's threads grid-stride over that chunk along x.
 // One chunk is just numInBatch == 1, so this handles single and multi chunk.
@@ -29,6 +30,41 @@ __global__ void decodeChunksKernel(
     const size_t stride     = (size_t)gridDim.x * blockDim.x;
     for (size_t i = (size_t)blockIdx.x * blockDim.x + threadIdx.x; i < c.nbElts;
          i += stride) {
+        c.dst[i] = decodeBf16Elt(c.exponent[i], c.signFrac[i]);
+    }
+}
+
+// v3 decode: same chunk = blockIdx.y mapping as the naive kernel, but each
+// thread processes kVec elements with vectorized transactions (uchar4 in,
+// ushort4 out) instead of one byte at a time, so both input streams and the
+// output move in wide, fully-coalesced transactions. A scalar tail handles the
+// last nbElts % kVec elements. This raises throughput on the single/uniform
+// shapes; jagged still starves like the naive kernel, so use v2 there.
+__global__ void decodeChunksVecKernel(
+        const FloatDeconChunk* __restrict__ chunks,
+        uint32_t numInBatch)
+{
+    const uint32_t b = blockIdx.y;
+    if (b >= numInBatch) {
+        return;
+    }
+    const FloatDeconChunk c = chunks[b];
+    const size_t nVec       = c.nbElts / kVec;
+    const size_t stride     = (size_t)gridDim.x * blockDim.x;
+    const size_t start      = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+    for (size_t v = start; v < nVec; v += stride) {
+        const size_t base = v * kVec;
+        const uchar4 e    = *reinterpret_cast<const uchar4*>(c.exponent + base);
+        const uchar4 s    = *reinterpret_cast<const uchar4*>(c.signFrac + base);
+        ushort4 out;
+        out.x                                     = decodeBf16Elt(e.x, s.x);
+        out.y                                     = decodeBf16Elt(e.y, s.y);
+        out.z                                     = decodeBf16Elt(e.z, s.z);
+        out.w                                     = decodeBf16Elt(e.w, s.w);
+        *reinterpret_cast<ushort4*>(c.dst + base) = out;
+    }
+    // Scalar tail: the last nbElts % kVec elements.
+    for (size_t i = nVec * kVec + start; i < c.nbElts; i += stride) {
         c.dst[i] = decodeBf16Elt(c.exponent[i], c.signFrac[i]);
     }
 }
@@ -183,6 +219,41 @@ KernelLaunchInfo bf16DeconDecodeV2LaunchInfo()
     ZL_CUDA_CHECK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
             &maxActiveBlocksPerSM,
             (const void*)decodeTiledKernel,
+            kThreads,
+            0));
+    return { kThreads, maxActiveBlocksPerSM };
+}
+
+void bf16DeconDecodeVec(
+        uint32_t numInBatch,
+        const FloatDeconChunk* chunks_d,
+        cudaStream_t stream)
+{
+    if (numInBatch == 0) {
+        return;
+    }
+    if (numInBatch > kMaxNumInBatch) {
+        throw std::runtime_error(
+                "bf16DeconDecodeVec: numInBatch " + std::to_string(numInBatch)
+                + " exceeds kMaxNumInBatch " + std::to_string(kMaxNumInBatch)
+                + " (gridDim.y limit); split the batch across calls");
+    }
+    const uint32_t target   = fillGpuGrid((const void*)decodeChunksVecKernel);
+    uint32_t blocksPerChunk = (target + numInBatch - 1) / numInBatch;
+    if (blocksPerChunk == 0) {
+        blocksPerChunk = 1;
+    }
+    const dim3 grid(blocksPerChunk, numInBatch);
+    decodeChunksVecKernel<<<grid, kThreads, 0, stream>>>(chunks_d, numInBatch);
+    ZL_CUDA_CHECK_LAST();
+}
+
+KernelLaunchInfo bf16DeconDecodeVecLaunchInfo()
+{
+    int maxActiveBlocksPerSM = 0;
+    ZL_CUDA_CHECK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+            &maxActiveBlocksPerSM,
+            (const void*)decodeChunksVecKernel,
             kThreads,
             0));
     return { kThreads, maxActiveBlocksPerSM };

@@ -9,7 +9,8 @@
 
 namespace openzl::gpu {
 
-// Describes one bf16 float-deconstruct chunk. All pointers are device pointers
+// Describes one bf16 float-deconstruct chunk. All pointers are device pointers.
+// bf16DeconDecodeVec needs them aligned (see its comment).
 struct FloatDeconChunk {
     const uint8_t* exponent;
     const uint8_t* signFrac;
@@ -55,5 +56,15 @@ void bf16DeconDecodeV2(
         const FloatDeconChunk* chunks_d,
         cudaStream_t stream);
 KernelLaunchInfo bf16DeconDecodeV2LaunchInfo();
+
+// v3 decode: vectorized per-chunk (uchar4 in, ushort4 out). Faster on the
+// single/uniform shapes; use v2 for jagged. This reads exponent/signFrac as
+// uchar4 and writes dst as ushort4, so exponent/signFrac must be 4-byte aligned
+// and dst 8-byte aligned. cudaMalloc'd buffers already are.
+void bf16DeconDecodeVec(
+        uint32_t numInBatch,
+        const FloatDeconChunk* chunks_d,
+        cudaStream_t stream);
+KernelLaunchInfo bf16DeconDecodeVecLaunchInfo();
 
 } // namespace openzl::gpu
