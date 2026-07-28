@@ -11,8 +11,8 @@
 
 #include <cuda_runtime.h>
 
-#include "contrib/gpu/source/common/cuda_error.cuh"
-#include "contrib/gpu/source/common/cuda_raii.cuh"
+#include "contrib/gpu/src/common/cuda_error.cuh"
+#include "contrib/gpu/src/common/cuda_raii.cuh"
 
 // Splits a batch of chunks into equal-work segments on the host (advancing
 // device pointers only, no copy) and stages the segment descriptors on the

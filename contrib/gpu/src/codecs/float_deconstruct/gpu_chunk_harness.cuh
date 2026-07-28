@@ -9,9 +9,9 @@
 
 #include <cuda_runtime.h>
 
-#include "contrib/gpu/source/codecs/float_deconstruct/decode_float_deconstruct_bf16.cuh"
-#include "contrib/gpu/source/common/cuda_error.cuh"
-#include "contrib/gpu/source/common/cuda_raii.cuh"
+#include "contrib/gpu/src/codecs/float_deconstruct/decode_float_deconstruct_bf16.cuh"
+#include "contrib/gpu/src/common/cuda_error.cuh"
+#include "contrib/gpu/src/common/cuda_raii.cuh"
 
 // float_deconstruct-specific host-side staging for driving bf16DeconDecode from
 // the benchmark and the differential test: stages a chunk batch on the device

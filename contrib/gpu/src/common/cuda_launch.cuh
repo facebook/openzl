@@ -6,7 +6,7 @@
 
 #include <cuda_runtime.h>
 
-#include "contrib/gpu/source/common/cuda_error.cuh"
+#include "contrib/gpu/src/common/cuda_error.cuh"
 
 // Grid sizing and occupancy metadata for GPU kernel launches.
 
