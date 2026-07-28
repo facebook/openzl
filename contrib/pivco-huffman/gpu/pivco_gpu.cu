@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "openzl/dev/contrib/pivco-huffman/gpu/pivco_gpu.cuh"
+#include "contrib/pivco-huffman/gpu/pivco_gpu.cuh"
 
 #include <cstddef>
 #include <cstdint>
@@ -9,7 +9,7 @@
 
 #include <cuda_runtime.h>
 
-#include "openzl/dev/contrib/pivco-huffman/gpu/pivco_gpu_tree.h"
+#include "contrib/pivco-huffman/gpu/pivco_gpu_tree.h"
 
 namespace {
 

@@ -7,7 +7,7 @@
 
 #include <cuda_runtime.h>
 
-#include "openzl/dev/contrib/pivco-huffman/gpu/pivco_gpu.h"
+#include "contrib/pivco-huffman/gpu/pivco_gpu.h"
 
 struct PivCoGpuStatus {
     unsigned code;

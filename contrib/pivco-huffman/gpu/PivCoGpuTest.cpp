@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "openzl/dev/contrib/pivco-huffman/gpu/pivco_gpu.h"
+#include "contrib/pivco-huffman/gpu/pivco_gpu.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -10,11 +10,11 @@
 #include <cuda_runtime.h>
 #include <gtest/gtest.h>
 
+#include "contrib/pivco-huffman/gpu/pivco_block_index.h"
+#include "contrib/pivco-huffman/gpu/pivco_gpu_tree.h"
 #include "openzl/codecs/pivco_huffman/common_pivco_kernel.h"
 #include "openzl/codecs/pivco_huffman/decode_pivco_kernel.h"
 #include "openzl/codecs/pivco_huffman/encode_pivco_kernel.h"
-#include "openzl/dev/contrib/pivco-huffman/gpu/pivco_block_index.h"
-#include "openzl/dev/contrib/pivco-huffman/gpu/pivco_gpu_tree.h"
 #include "openzl/zl_errors.h"
 
 namespace {

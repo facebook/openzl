@@ -2,7 +2,7 @@
 
 #define HUF_STATIC_LINKING_ONLY
 
-#include "openzl/dev/contrib/pivco-huffman/gpu/pivco_gpu.cuh"
+#include "contrib/pivco-huffman/gpu/pivco_gpu.cuh"
 
 #include <dirent.h>
 #include <sys/stat.h>
@@ -23,10 +23,10 @@
 
 #include <cuda_runtime.h>
 
+#include "contrib/pivco-huffman/gpu/pivco_block_index.h"
 #include "openzl/codecs/pivco_huffman/common_pivco_kernel.h"
 #include "openzl/codecs/pivco_huffman/decode_pivco_kernel.h"
 #include "openzl/codecs/pivco_huffman/encode_pivco_kernel.h"
-#include "openzl/dev/contrib/pivco-huffman/gpu/pivco_block_index.h"
 #include "openzl/fse/huf.h"
 #include "openzl/shared/histogram.h"
 #include "openzl/zl_errors.h"

@@ -1,14 +1,14 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "openzl/dev/contrib/pivco-huffman/gpu/pivco_gpu.h"
+#include "contrib/pivco-huffman/gpu/pivco_gpu.h"
 
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <new>
 
+#include "contrib/pivco-huffman/gpu/pivco_gpu_tree.h"
 #include "openzl/codecs/pivco_huffman/common_pivco_kernel.h"
-#include "openzl/dev/contrib/pivco-huffman/gpu/pivco_gpu_tree.h"
 
 namespace {
 

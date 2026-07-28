@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "openzl/dev/contrib/pivco-huffman/gpu/pivco_block_index.h"
+#include "contrib/pivco-huffman/gpu/pivco_block_index.h"
 
 #include <algorithm>
 #include <cstddef>

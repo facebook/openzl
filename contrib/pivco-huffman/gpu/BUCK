@@ -6,6 +6,7 @@ load("@fbcode_macros//build_defs:gpu_cpp_unittest.bzl", "gpu_cpp_unittest")
 load("@fbcode_macros//build_defs/lib:re_test_utils.bzl", "re_test_utils")
 load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
 load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
+load("../../../defs.bzl", "relative_headers")
 
 oncall("data_compression")
 
@@ -14,25 +15,29 @@ nvcc_flags = get_nvcc_arch_args() + [
 ]
 
 cpp_library(
+    # @autodeps-skip
     name = "pivco_gpu_cpu_index",
     srcs = ["pivco_block_index.cpp"],
-    headers = ["pivco_block_index.h"],
+    headers = relative_headers(["pivco_block_index.h"]),
+    header_namespace = "",
     deps = [
         "../../..:common",
     ],
 )
 
 cpp_library(
+    # @autodeps-skip
     name = "pivco_gpu",
     srcs = [
         "pivco_gpu.cu",
         "pivco_gpu_context.cpp",
     ],
-    headers = [
+    headers = relative_headers([
         "pivco_gpu.cuh",
         "pivco_gpu.h",
         "pivco_gpu_tree.h",
-    ],
+    ]),
+    header_namespace = "",
     keep_gpu_sections = True,
     nvcc_flags = nvcc_flags,
     deps = [
@@ -47,6 +52,7 @@ cpp_library(
 )
 
 cpp_unittest(
+    # @autodeps-skip
     name = "pivco_block_index_test",
     srcs = ["PivCoBlockIndexTest.cpp"],
     network_access = network_access_utils.none(),
@@ -58,6 +64,7 @@ cpp_unittest(
 )
 
 gpu_cpp_unittest(
+    # @autodeps-skip
     name = "pivco_gpu_test",
     srcs = ["PivCoGpuTest.cpp"],
     # protect_shadow_gap=0: under ASAN the shadow-gap reservation collides with
@@ -92,6 +99,7 @@ gpu_cpp_unittest(
 )
 
 cpp_binary(
+    # @autodeps-skip
     name = "pivco_gpu_bench",
     srcs = ["PivCoGpuBench.cpp"],
     keep_gpu_sections = True,
