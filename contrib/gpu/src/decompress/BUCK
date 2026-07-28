@@ -63,8 +63,8 @@ cpp_unittest(
         yes = ["ovr_config//:none"],
     ),
     deps = [
-        "../../source/common:cuda_raii",
         "../../testkit:testkit",
+        "../common:cuda_raii",
         "fbsource//third-party/googletest:gtest",
         ":decompress",
     ],

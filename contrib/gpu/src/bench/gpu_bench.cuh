@@ -13,8 +13,8 @@
 
 #include <cuda_runtime.h>
 
-#include "contrib/gpu/source/common/cuda_error.cuh"
-#include "contrib/gpu/source/common/cuda_raii.cuh"
+#include "contrib/gpu/src/common/cuda_error.cuh"
+#include "contrib/gpu/src/common/cuda_raii.cuh"
 
 // Kernel-agnostic GPU decompression benchmark driver: time a list of kernel
 // variants over their own on-device workload and report execution time,

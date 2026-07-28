@@ -7,7 +7,7 @@
 
 #include <cuda_runtime.h>
 
-#include "contrib/gpu/source/common/cuda_error.cuh"
+#include "contrib/gpu/src/common/cuda_error.cuh"
 
 // Generic CUDA RAII helpers for GPU host code: owning device allocations, a
 // timing event, and stream-ordered scratch. Header-only, codec-agnostic; shared

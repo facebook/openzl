@@ -7,8 +7,8 @@
 
 #include <cuda_runtime.h>
 
-#include "contrib/gpu/source/common/cuda_launch.cuh"
-#include "contrib/gpu/source/common/segment_plan.cuh"
+#include "contrib/gpu/src/common/cuda_launch.cuh"
+#include "contrib/gpu/src/common/segment_plan.cuh"
 
 namespace openzl::gpu {
 
