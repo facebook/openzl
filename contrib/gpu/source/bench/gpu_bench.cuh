@@ -13,8 +13,8 @@
 
 #include <cuda_runtime.h>
 
-#include "openzl/dev/contrib/gpu/source/common/cuda_error.cuh"
-#include "openzl/dev/contrib/gpu/source/common/cuda_raii.cuh"
+#include "contrib/gpu/source/common/cuda_error.cuh"
+#include "contrib/gpu/source/common/cuda_raii.cuh"
 
 // Kernel-agnostic GPU decompression benchmark driver: time a list of kernel
 // variants over their own on-device workload and report execution time,
@@ -180,11 +180,9 @@ inline SampleStats sampleKernel(KernelCase& kc, const BenchConfig& cfg)
     if (cfg.maxSamples <= 0) {
         return st;
     }
-    const cudaStream_t stream = 0;
-    const size_t flushBytes   = l2FlushBytes(cfg);
-    uint8_t* flushRaw         = nullptr;
-    ZL_CUDA_CHECK(cudaMalloc(&flushRaw, flushBytes));
-    std::unique_ptr<uint8_t, CudaFreeDeleter> flush(flushRaw);
+    const cudaStream_t stream      = 0;
+    const size_t flushBytes        = l2FlushBytes(cfg);
+    const DevicePtr<uint8_t> flush = deviceAlloc<uint8_t>(flushBytes);
 
     for (int i = 0; i < cfg.warmup; ++i) {
         kc.launch(stream);

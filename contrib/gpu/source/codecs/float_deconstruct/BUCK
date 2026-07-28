@@ -17,7 +17,10 @@ cpp_library(
     headers = ["decode_float_deconstruct_bf16.cuh"],
     nvcc_flags = get_nvcc_arch_args() + ["-lineinfo"],
     deps = ["../../common:cuda_error"],
-    exported_deps = ["../../common:cuda_raii"],
+    exported_deps = [
+        "../../common:cuda_launch",
+        "../../common:cuda_raii",
+    ],
     exported_external_deps = [("cuda", None, "cuda-lazy")],
 )
 
