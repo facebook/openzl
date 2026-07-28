@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -12,6 +11,7 @@
 #include "contrib/gpu/source/common/cuda_error.cuh"
 #include "contrib/gpu/source/common/cuda_launch.cuh"
 #include "contrib/gpu/source/common/cuda_raii.cuh"
+#include "contrib/gpu/source/common/segment_plan.cuh"
 
 namespace openzl::gpu {
 
@@ -201,47 +201,6 @@ __global__ void decodeSegmentsKernel(
     }
 }
 
-// Host-side. Peels the first min(n, c.nbElts) elements off c as a new segment
-// and advances c past them. Only advances device pointers, so the segment
-// aliases the original device buffers, no data is copied.
-FloatDeconChunk peel(FloatDeconChunk& c, size_t n)
-{
-    n                   = std::min(n, c.nbElts);
-    FloatDeconChunk seg = c;
-    seg.nbElts          = n;
-    c.exponent += n;
-    c.signFrac += n;
-    c.dst += n;
-    c.nbElts -= n;
-    return seg;
-}
-
-// Host-side. Splits each chunk into segments of at most maxSegElts, so all
-// segments carry roughly equal work regardless of the input shape.
-std::vector<FloatDeconChunk>
-rechunk(const FloatDeconChunk* chunks_h, uint32_t numInBatch, size_t maxSegElts)
-{
-    size_t numSegs = 0;
-    for (uint32_t c = 0; c < numInBatch; ++c) {
-        const size_t nb = chunks_h[c].nbElts;
-        numSegs += (nb + maxSegElts - 1) / maxSegElts;
-    }
-    if (numSegs > std::numeric_limits<uint32_t>::max()) {
-        throw std::runtime_error(
-                "bf16 unified decode: segment count " + std::to_string(numSegs)
-                + " exceeds uint32_t limit; use a larger maxSegElts");
-    }
-    std::vector<FloatDeconChunk> out;
-    out.reserve(numSegs);
-    for (uint32_t c = 0; c < numInBatch; ++c) {
-        FloatDeconChunk cur = chunks_h[c];
-        while (cur.nbElts > 0) {
-            out.push_back(peel(cur, maxSegElts));
-        }
-    }
-    return out;
-}
-
 // Throws unless maxSegElts is a positive multiple of kVec (the alignment
 // invariant the vectorized loads/stores rely on).
 void validateMaxSegElts(size_t maxSegElts)
@@ -350,41 +309,22 @@ KernelLaunchInfo bf16DeconDecodeVecLaunchInfo()
     return launchInfoFor((const void*)decodeChunksVecKernel, kThreads);
 }
 
+// segAlignElts = kVec keeps every segment start aligned for the vectorized
+// loads/stores.
 UnifiedDecodePlan::UnifiedDecodePlan(
         const FloatDeconChunk* chunks_h,
         uint32_t numInBatch,
         size_t maxSegElts)
+        : plan_(chunks_h, numInBatch, maxSegElts, kVec)
 {
-    if (numInBatch == 0) {
-        return;
-    }
-    validateMaxSegElts(maxSegElts);
-
-    // Split on the host into equal-sized segments (device pointers advanced, no
-    // copy) and stage the segment descriptors once. Segment starts land at
-    // multiples of maxSegElts from cudaMalloc-aligned bases, so with maxSegElts
-    // % kVec == 0 every segment start is 4/8-aligned for the vectorized
-    // loads/stores.
-    const std::vector<FloatDeconChunk> segs =
-            rechunk(chunks_h, numInBatch, maxSegElts);
-    if (segs.empty()) {
-        return;
-    }
-    numSegs_ = (uint32_t)segs.size();
-    segs_d_  = deviceAlloc<FloatDeconChunk>(numSegs_);
-    ZL_CUDA_CHECK(cudaMemcpy(
-            segs_d_.get(),
-            segs.data(),
-            (size_t)numSegs_ * sizeof(FloatDeconChunk),
-            cudaMemcpyHostToDevice));
 }
 
 void UnifiedDecodePlan::launch(cudaStream_t stream) const
 {
-    if (numSegs_ == 0) {
+    if (plan_.numSegs() == 0) {
         return;
     }
-    launchSegments(segs_d_.get(), numSegs_, stream);
+    launchSegments(plan_.deviceSegments(), plan_.numSegs(), stream);
 }
 
 void bf16DeconDecodeUnified(
