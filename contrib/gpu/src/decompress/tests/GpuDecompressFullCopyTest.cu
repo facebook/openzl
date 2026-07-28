@@ -10,9 +10,9 @@
 
 #include <cuda_runtime.h>
 
+#include "contrib/gpu/source/common/cuda_error.cuh"
+#include "contrib/gpu/source/common/cuda_raii.cuh"
 #include "contrib/gpu/src/decompress/gpu_decompress.hpp"
-#include "openzl/dev/contrib/gpu/source/common/cuda_error.cuh"
-#include "openzl/dev/contrib/gpu/source/common/cuda_raii.cuh"
 #include "openzl/dev/contrib/gpu/testkit/multichunk_frame.h"
 #include "openzl/openzl.hpp"
 
