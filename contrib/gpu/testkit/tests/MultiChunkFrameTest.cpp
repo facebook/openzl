@@ -7,9 +7,9 @@
 #include <string>
 #include <vector>
 
-#include "openzl/dev/contrib/gpu/testkit/frame_factory.h"
-#include "openzl/dev/contrib/gpu/testkit/frame_verifier.h"
-#include "openzl/dev/contrib/gpu/testkit/multichunk_frame.h"
+#include "contrib/gpu/testkit/frame_factory.h"
+#include "contrib/gpu/testkit/frame_verifier.h"
+#include "contrib/gpu/testkit/multichunk_frame.h"
 #include "openzl/openzl.hpp"
 
 // These tests mint real OpenZL frames that contain MULTIPLE chunks, each with a

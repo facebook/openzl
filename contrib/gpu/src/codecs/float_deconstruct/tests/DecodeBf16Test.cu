@@ -26,7 +26,7 @@
 #include "contrib/gpu/src/codecs/float_deconstruct/decode_float_deconstruct_bf16.cuh"
 #include "contrib/gpu/src/codecs/float_deconstruct/gpu_chunk_harness.cuh"
 #include "contrib/gpu/src/common/cuda_error.cuh"
-#include "openzl/dev/contrib/gpu/testkit/frame_factory.h"
+#include "contrib/gpu/testkit/frame_factory.h"
 
 namespace openzl::gpu {
 namespace {

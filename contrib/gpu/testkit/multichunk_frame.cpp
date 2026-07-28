@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "openzl/dev/contrib/gpu/testkit/multichunk_frame.h"
+#include "contrib/gpu/testkit/multichunk_frame.h"
 
 #include <cstdint>
 #include <vector>

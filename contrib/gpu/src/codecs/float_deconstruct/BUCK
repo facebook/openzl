@@ -13,6 +13,7 @@ oncall("data_compression")
 
 # GPU decode kernel for the bfloat16 float_deconstruct codec.
 cpp_library(
+    # @autodeps-skip
     name = "decode_float_deconstruct_bf16",
     srcs = ["decode_float_deconstruct_bf16.cu"],
     headers = relative_headers(["decode_float_deconstruct_bf16.cuh"]),
@@ -33,6 +34,7 @@ cpp_library(
 # and the differential test. The generic benchmark driver lives in
 # ../../bench:gpu_bench.
 cpp_library(
+    # @autodeps-skip
     name = "gpu_chunk_harness",
     headers = relative_headers(["gpu_chunk_harness.cuh"]),
     header_namespace = "",
@@ -46,6 +48,7 @@ cpp_library(
 
 # Kernel-only throughput benchmark (bandwidth, %peak, latency, occupancy).
 cpp_binary(
+    # @autodeps-skip
     name = "bench_decode_bf16",
     srcs = ["bench/bench_decode_bf16.cu"],
     nvcc_flags = get_nvcc_arch_args() + ["-lineinfo"],
@@ -62,6 +65,7 @@ cpp_binary(
 # Differential correctness test: GPU decode vs OpenZL's own decoder, over real
 # frames minted + reflected by contrib/gpu/testkit.
 cpp_unittest(
+    # @autodeps-skip
     name = "decode_bf16_test",
     srcs = ["tests/DecodeBf16Test.cu"],
     labels = [tpx_labels.serialize],

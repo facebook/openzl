@@ -3,6 +3,7 @@
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
+load("../../../defs.bzl", "relative_headers")
 
 oncall("data_compression")
 
@@ -17,11 +18,12 @@ cpp_library(
         "frame_verifier.cpp",
         "multichunk_frame.cpp",
     ],
-    headers = [
+    headers = relative_headers([
         "frame_factory.h",
         "frame_verifier.h",
         "multichunk_frame.h",
-    ],
+    ]),
+    header_namespace = "",
     exported_deps = [
         "../../..:zstronglib",
         "../../../cpp:openzl_cpp",

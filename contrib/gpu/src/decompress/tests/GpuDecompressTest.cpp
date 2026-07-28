@@ -10,8 +10,8 @@
 #include <vector>
 
 #include "contrib/gpu/src/decompress/gpu_decompress.hpp"
-#include "openzl/dev/contrib/gpu/testkit/frame_verifier.h"
-#include "openzl/dev/contrib/gpu/testkit/multichunk_frame.h"
+#include "contrib/gpu/testkit/frame_verifier.h"
+#include "contrib/gpu/testkit/multichunk_frame.h"
 #include "openzl/openzl.hpp"
 #include "openzl/zl_decompress.h"
 #include "openzl/zl_version.h"

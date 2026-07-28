@@ -7,9 +7,9 @@
 #include <string>
 #include <vector>
 
+#include "contrib/gpu/testkit/frame_factory.h"
+#include "contrib/gpu/testkit/frame_verifier.h"
 #include "openzl/codecs/bitSplit/encode_bitSplit_binding.h"
-#include "openzl/dev/contrib/gpu/testkit/frame_factory.h"
-#include "openzl/dev/contrib/gpu/testkit/frame_verifier.h"
 #include "openzl/openzl.hpp"
 
 // These tests mint real OpenZL frames with hand-picked codec graphs and then

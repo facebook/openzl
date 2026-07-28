@@ -9,6 +9,7 @@ oncall("data_compression")
 # their own on-device workload and reports latency, bandwidth, %peak, and
 # occupancy. Codec-agnostic; shared by any GPU decode benchmark.
 cpp_library(
+    # @autodeps-skip
     name = "gpu_bench",
     headers = relative_headers(["gpu_bench.cuh"]),
     header_namespace = "",

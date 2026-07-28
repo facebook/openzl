@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "openzl/dev/contrib/gpu/testkit/frame_verifier.h"
+#include "contrib/gpu/testkit/frame_verifier.h"
 
 #include <algorithm>
 #include <memory>
