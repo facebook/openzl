@@ -25,10 +25,10 @@
 
 #include <cuda_runtime.h>
 
+#include "contrib/gpu/source/bench/gpu_bench.cuh"
+#include "contrib/gpu/source/codecs/float_deconstruct/decode_float_deconstruct_bf16.cuh"
+#include "contrib/gpu/source/codecs/float_deconstruct/gpu_chunk_harness.cuh"
 #include "contrib/gpu/source/common/cuda_error.cuh"
-#include "openzl/dev/contrib/gpu/source/bench/gpu_bench.cuh"
-#include "openzl/dev/contrib/gpu/source/codecs/float_deconstruct/decode_float_deconstruct_bf16.cuh"
-#include "openzl/dev/contrib/gpu/source/codecs/float_deconstruct/gpu_chunk_harness.cuh"
 
 // Forward-declared instead of including its header, which pulls in SIMD
 // intrinsics nvcc cannot compile; linked from //openzl/dev:zstronglib.
