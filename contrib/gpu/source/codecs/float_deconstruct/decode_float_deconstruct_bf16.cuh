@@ -7,7 +7,8 @@
 
 #include <cuda_runtime.h>
 
-#include "openzl/dev/contrib/gpu/source/common/cuda_raii.cuh"
+#include "contrib/gpu/source/common/cuda_launch.cuh"
+#include "contrib/gpu/source/common/cuda_raii.cuh"
 
 namespace openzl::gpu {
 
@@ -46,11 +47,8 @@ void bf16DeconDecode(
         cudaStream_t stream);
 
 // Occupancy/launch metadata for the main decode kernel, so a benchmark harness
-// can report theoretical occupancy without seeing the kernel internals
-struct KernelLaunchInfo {
-    int blockSize;
-    int maxActiveBlocksPerSM;
-};
+// can report theoretical occupancy without seeing the kernel internals.
+// KernelLaunchInfo is the shared descriptor from common/cuda_launch.cuh.
 KernelLaunchInfo bf16DeconDecodeLaunchInfo();
 
 // v2 decode: tiled and load-balanced across chunks (fixes the jagged case).

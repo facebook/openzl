@@ -7,11 +7,11 @@
 
 #include <cuda_runtime.h>
 
-#include "openzl/dev/contrib/gpu/source/common/cuda_error.cuh"
+#include "contrib/gpu/source/common/cuda_error.cuh"
 
-// Generic CUDA RAII helpers for GPU host code: owning device allocations and a
-// timing event. Header-only, codec-agnostic; shared by the device-staging
-// harness and the benchmark driver.
+// Generic CUDA RAII helpers for GPU host code: owning device allocations, a
+// timing event, and stream-ordered scratch. Header-only, codec-agnostic; shared
+// by the device-staging harness, the benchmark driver, and the decode kernels.
 
 namespace openzl::gpu {
 
@@ -67,6 +67,34 @@ class CudaEvent {
 
    private:
     cudaEvent_t ev_{};
+};
+
+// Stream-ordered device scratch: frees on the same stream at scope exit, so an
+// exception between allocation and launch cannot leak it.
+template <typename T>
+class StreamScratch {
+   public:
+    StreamScratch(size_t n, cudaStream_t stream) : stream_(stream)
+    {
+        ZL_CUDA_CHECK(cudaMallocAsync(&p_, n * sizeof(T), stream));
+    }
+    ~StreamScratch()
+    {
+        if (p_) {
+            cudaFreeAsync(p_, stream_);
+        }
+    }
+    StreamScratch(const StreamScratch&)            = delete;
+    StreamScratch& operator=(const StreamScratch&) = delete;
+
+    T* get() const
+    {
+        return p_;
+    }
+
+   private:
+    T* p_ = nullptr;
+    cudaStream_t stream_;
 };
 
 } // namespace openzl::gpu
