@@ -23,9 +23,9 @@
 #include "openzl/openzl.hpp"
 #include "openzl/zl_reflection.h"
 
+#include "contrib/gpu/source/codecs/float_deconstruct/decode_float_deconstruct_bf16.cuh"
+#include "contrib/gpu/source/codecs/float_deconstruct/gpu_chunk_harness.cuh"
 #include "contrib/gpu/source/common/cuda_error.cuh"
-#include "openzl/dev/contrib/gpu/source/codecs/float_deconstruct/decode_float_deconstruct_bf16.cuh"
-#include "openzl/dev/contrib/gpu/source/codecs/float_deconstruct/gpu_chunk_harness.cuh"
 #include "openzl/dev/contrib/gpu/testkit/frame_factory.h"
 
 namespace openzl::gpu {

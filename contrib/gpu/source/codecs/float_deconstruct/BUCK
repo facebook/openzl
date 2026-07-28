@@ -7,6 +7,7 @@ load("@fbcode_macros//build_defs/lib:re_test_utils.bzl", "re_test_utils")
 load("@fbsource//tools/build_defs:testpilot_defs.bzl", "tpx_labels")
 load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
 load("//tools/build/buck:nvcc_flags.bzl", "get_nvcc_arch_args")
+load("../../../../../defs.bzl", "relative_headers")
 
 oncall("data_compression")
 
@@ -14,7 +15,8 @@ oncall("data_compression")
 cpp_library(
     name = "decode_float_deconstruct_bf16",
     srcs = ["decode_float_deconstruct_bf16.cu"],
-    headers = ["decode_float_deconstruct_bf16.cuh"],
+    headers = relative_headers(["decode_float_deconstruct_bf16.cuh"]),
+    header_namespace = "",
     nvcc_flags = get_nvcc_arch_args() + ["-lineinfo"],
     deps = [
         "../../common:cuda_error",
@@ -32,7 +34,8 @@ cpp_library(
 # ../../bench:gpu_bench.
 cpp_library(
     name = "gpu_chunk_harness",
-    headers = ["gpu_chunk_harness.cuh"],
+    headers = relative_headers(["gpu_chunk_harness.cuh"]),
+    header_namespace = "",
     exported_deps = [
         "../../common:cuda_error",
         "../../common:cuda_raii",
