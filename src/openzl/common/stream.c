@@ -15,12 +15,7 @@
 #include "openzl/zl_data.h"                   // ZL_DataID
 #include "openzl/zl_errors.h"                 // ZL_Report
 
-typedef struct {
-    int mId;
-    int mValue;
-} IntMeta;
-
-DECLARE_VECTOR_TYPE(IntMeta)
+DECLARE_VECTOR_TYPE(Stream_IntMetadata)
 
 struct Stream_s { // exposed publicly as ZL_Data
     ZL_Refcount buffer;
@@ -33,8 +28,8 @@ struct Stream_s { // exposed publicly as ZL_Data
     size_t bufferUsed;      // in bytes
     ZL_Refcount stringLens; // ZL_Type_string only.
     int writeCommitted;
-    size_t lastCommmited;     // tracks the eltCount of most recent commit
-    VECTOR(IntMeta) intMetas; // Metadata (arbitrary ID+Ints)
+    size_t lastCommmited; // tracks the eltCount of most recent commit
+    VECTOR(Stream_IntMetadata) intMetas; // Metadata (arbitrary ID+Ints)
     Arena* alloc;
 };
 
@@ -417,7 +412,7 @@ ZL_Report STREAM_refStreamWithoutRefCount(Stream* s, const Stream* ref)
         return ZL_REPORT_ERROR(allocation, "Failed to reserve metadata");
     }
     for (size_t pos = 0; pos < meta_size; pos++) {
-        IntMeta e = VECTOR_AT(ref->intMetas, pos);
+        Stream_IntMetadata e = VECTOR_AT(ref->intMetas, pos);
         if (!VECTOR_PUSHBACK(s->intMetas, e)) {
             return ZL_REPORT_ERROR(allocation, "Failed to copy metadata");
         }
@@ -1011,7 +1006,7 @@ static ZL_Report STREAM_copyIntMetas(Stream* dst, const Stream* src)
             VECTOR_RESERVE(dst->intMetas, meta_size), meta_size, allocation);
 
     for (size_t pos = 0; pos < meta_size; pos++) {
-        IntMeta e = VECTOR_AT(src->intMetas, pos);
+        Stream_IntMetadata e = VECTOR_AT(src->intMetas, pos);
         ZL_ERR_IF_NOT(VECTOR_PUSHBACK(dst->intMetas, e), allocation);
     }
 
@@ -1070,12 +1065,12 @@ ZL_Report STREAM_consume(Stream* data, size_t eltCount)
 // findIntMeta() :
 // @return index of the Int Metadata of provided @id
 // @return -1 if not found
-static int findIntMeta(VECTOR(IntMeta) m, int id)
+static int findIntMeta(VECTOR(Stream_IntMetadata) m, int id)
 {
     size_t const nbIntMetas = VECTOR_SIZE(m);
     // Scan backward, find latest .id if multiple present
     for (int pos = (int)nbIntMetas - 1; pos >= 0; pos--) {
-        if (VECTOR_DATA(m)[pos].mId == id)
+        if (VECTOR_DATA(m)[pos].id == id)
             return pos;
     }
     // not found
@@ -1093,7 +1088,9 @@ ZL_Report STREAM_setIntMetadata(Stream* s, int mId, int mValue)
             streamParameter_invalid,
             "Int Metadata ID already present");
     ZL_ERR_IF_NOT(
-            VECTOR_PUSHBACK(s->intMetas, ((IntMeta){ mId, mValue })),
+            VECTOR_PUSHBACK(
+                    s->intMetas,
+                    ((Stream_IntMetadata){ .id = mId, .value = mValue })),
             allocation);
     return ZL_returnSuccess();
 }
@@ -1110,8 +1107,39 @@ ZL_IntMetadata STREAM_getIntMetadata(const Stream* s, int mId)
         };
     return (ZL_IntMetadata){
         .isPresent = 1,
-        .mValue    = VECTOR_DATA(s->intMetas)[idx].mValue,
+        .mValue    = VECTOR_DATA(s->intMetas)[idx].value,
     };
+}
+
+size_t STREAM_numIntMetadata(const Stream* s)
+{
+    ZL_ASSERT_NN(s);
+    return VECTOR_SIZE(s->intMetas);
+}
+
+ZL_Report STREAM_copyIntMetadata(
+        Stream_IntMetadata* dst,
+        const Stream* src,
+        size_t nbEntries)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ASSERT_NN(src);
+    ZL_ERR_IF_NE(
+            nbEntries,
+            VECTOR_SIZE(src->intMetas),
+            streamParameter_invalid,
+            "Metadata entry count does not match the stream");
+    if (nbEntries == 0) {
+        return ZL_returnSuccess();
+    }
+    ZL_ERR_IF_NULL(
+            dst,
+            streamParameter_invalid,
+            "Metadata destination is NULL for a non-empty stream");
+    for (size_t i = 0; i < nbEntries; ++i) {
+        dst[i] = VECTOR_AT(src->intMetas, i);
+    }
+    return ZL_returnSuccess();
 }
 
 int STREAM_hasBuffer(const Stream* s)

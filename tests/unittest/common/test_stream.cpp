@@ -29,7 +29,30 @@ TEST(Stream, intMetadata)
     // test what happens when requesting a non-present metadata id
     ASSERT_EQ(ZL_Data_getIntMetadata(s, 3).isPresent, 0);
 
+    ASSERT_EQ(STREAM_numIntMetadata(s), 2u);
+    Stream_IntMetadata metadata[2];
+    ASSERT_ZS_VALID(STREAM_copyIntMetadata(metadata, s, 2));
+    EXPECT_EQ(metadata[0].id, 1);
+    EXPECT_EQ(metadata[0].value, 1001);
+    EXPECT_EQ(metadata[1].id, 2);
+    EXPECT_EQ(metadata[1].value, 2002);
+
+    const Stream_IntMetadata sentinel = { 7, 7007 };
+    Stream_IntMetadata rejected       = sentinel;
+    EXPECT_TRUE(ZL_isError(STREAM_copyIntMetadata(&rejected, s, 1)));
+    EXPECT_EQ(rejected.id, sentinel.id);
+    EXPECT_EQ(rejected.value, sentinel.value);
+    EXPECT_TRUE(ZL_isError(STREAM_copyIntMetadata(&rejected, s, 3)));
+    EXPECT_EQ(rejected.id, sentinel.id);
+    EXPECT_EQ(rejected.value, sentinel.value);
+    EXPECT_TRUE(ZL_isError(STREAM_copyIntMetadata(nullptr, s, 2)));
+
     STREAM_free(s);
+
+    ZL_Data* const empty = STREAM_create(kZeroID);
+    ASSERT_NE(empty, nullptr);
+    EXPECT_ZS_VALID(STREAM_copyIntMetadata(nullptr, empty, 0));
+    STREAM_free(empty);
 }
 
 // check byteSize function
