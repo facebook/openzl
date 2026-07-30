@@ -88,14 +88,6 @@ std::vector<TrainedCandidate> train(
             dictTrainedCandidates.size(),
             std::chrono::duration<double, std::ratio<60>>(endTime - startTime)
                     .count());
-    // TODO pretty print just the graphs (exclude params etc)
-    Logger::log(
-            INFO,
-            "Smallest trained graph:",
-            std::string(
-                    Compressor::convertSerializedToJson(
-                            dictTrainedCandidates[0].serializedCompressor))
-                    .c_str());
 
     return dictTrainedCandidates;
 }
