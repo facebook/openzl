@@ -104,6 +104,7 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
             tools::io::InputFile bundleInput(bundlePath.value());
             bundleData = bundleInput.contents();
         }
+        setVerbosityLevel(verbosity);
         setCompressor(createCompressorFromArgs(
                 *this, parsed.cmdFlag(cmd(), kCompressor), bundleData));
 
