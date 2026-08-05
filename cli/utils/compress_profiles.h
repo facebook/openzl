@@ -43,6 +43,19 @@ class ProfileArgs {
         return argmap_;
     }
 
+    // CLI log level (0=NOTHING .. 3=INFO (default) .. 7=EVERYTHING), mirroring
+    // GlobalArgs::verbosity. Profiles that drive a sub-tool with its own log
+    // level (e.g. the SDDL2 compiler) map this onto that tool's scale.
+    int verbosityLevel() const
+    {
+        return verbosityLevel_;
+    }
+
+    void setVerbosityLevel(int verbosityLevel)
+    {
+        verbosityLevel_ = verbosityLevel;
+    }
+
     const std::shared_ptr<Compressor>& compressor() const
     {
         return compressor_;
@@ -62,6 +75,7 @@ class ProfileArgs {
 
     poly::optional<std::string> name_;
     poly::optional<size_t> chunkSize_;
+    int verbosityLevel_{ 3 };
     // Arbitrary (K,V) arguments provided on the command line.
     std::map<std::string, std::string> argmap_;
 };
