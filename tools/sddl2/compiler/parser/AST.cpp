@@ -253,6 +253,15 @@ bool ASTVar::is_last_reference() const
     return is_last_reference_;
 }
 
+void ASTField::print_inferred_annotations(std::ostream& os, size_t indent) const
+{
+    const auto& ann = inferred_annotations_;
+    if (ann.requires_scan) {
+        os << std::string(indent, ' ') << "Inferred: requires_scan"
+           << std::endl;
+    }
+}
+
 ASTBuiltinField::ASTBuiltinField(const SourceLocation& loc, const Symbol& sym)
         : ASTField(loc), kw_(sym)
 {
@@ -267,6 +276,7 @@ void ASTBuiltinField::print(std::ostream& os, size_t indent) const
 {
     os << std::string(indent, ' ') << "Field: " << sym_to_debug_str(kw_)
        << std::endl;
+    print_inferred_annotations(os, indent + 2);
 }
 
 const Symbol& ASTBuiltinField::kw() const
@@ -287,6 +297,7 @@ const ASTBytes* ASTBytes::as_bytes() const
 void ASTBytes::print(std::ostream& os, size_t indent) const
 {
     os << std::string(indent, ' ') << "Field: BYTES:" << std::endl;
+    print_inferred_annotations(os, indent + 2);
     os << std::string(indent + 2, ' ') << "Len: " << std::endl;
     len_->print(os, indent + 4);
 }
@@ -337,6 +348,14 @@ const ASTRecord* ASTRecord::as_record() const
 void ASTRecord::print(std::ostream& os, size_t indent) const
 {
     os << std::string(indent, ' ') << "Field: RECORD:" << std::endl;
+    print_inferred_annotations(os, indent + 2);
+    if (!annotations_.names.empty()) {
+        os << std::string(indent + 2, ' ') << "Annotations:";
+        for (const auto& name : annotations_.names) {
+            os << " @" << name;
+        }
+        os << std::endl;
+    }
     os << std::string(indent + 2, ' ') << "Captures: " << std::endl;
     for (const auto& capture : params_) {
         capture->print(os, indent + 4);
@@ -423,6 +442,7 @@ const ASTCall* ASTCall::as_call() const
 void ASTCall::print(std::ostream& os, size_t indent) const
 {
     os << std::string(indent, ' ') << "Field: CALL:" << std::endl;
+    print_inferred_annotations(os, indent + 2);
     os << std::string(indent + 2, ' ') << "Target: " << std::endl;
     target_->print(os, indent + 4);
     os << std::string(indent + 2, ' ') << "Args: " << std::endl;
@@ -494,6 +514,7 @@ const ASTArray* ASTArray::as_array() const
 void ASTArray::print(std::ostream& os, size_t indent) const
 {
     os << std::string(indent, ' ') << "Field: ARRAY:" << std::endl;
+    print_inferred_annotations(os, indent + 2);
     field_->print(os, indent + 2);
     if (len_) {
         len_->print(os, indent + 2);

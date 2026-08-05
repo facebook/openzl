@@ -235,6 +235,11 @@ class ASTField : public ASTConverted {
         return inferred_annotations_;
     }
 
+   protected:
+    // Prints any set inferred annotations, one labeled line per set flag.
+    // No-op when nothing is set, so callers can invoke it unconditionally.
+    void print_inferred_annotations(std::ostream& os, size_t indent) const;
+
    private:
     mutable InferredAnnotations inferred_annotations_;
 };
