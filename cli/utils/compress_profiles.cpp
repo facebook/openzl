@@ -438,8 +438,17 @@ compressProfiles()
                                 "The Simple Data Description Language v2 profile requires a data description file. Pass a path to the description file with --profile-arg.");
                     }
                     auto description = tools::io::InputFile(it->second);
-                    auto compiled    = sddl2::Compiler{}.compile(
-                            description.contents(), description.name());
+                    // Map the CLI log level onto the compiler's scale: INFO
+                    // (the default) keeps the compiler quiet, and each -v above
+                    // INFO raises compiler verbosity by one.
+                    auto compiled =
+                            sddl2::Compiler{
+                                sddl2::Compiler::Options{}.with_verbosity(
+                                        args.verbosityLevel() - 3)
+                            }
+                                    .compile(
+                                            description.contents(),
+                                            description.name());
                     auto bytecode   = sddl2::Assembler{}.assemble(compiled);
                     auto clustering = ZS2_createGraph_genericClustering(comp);
                     auto graph      = ZL_Compressor_registerSDDL2Graph_advanced(
