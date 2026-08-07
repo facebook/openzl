@@ -9,6 +9,8 @@
 #include <vector>
 
 #include "contrib/gpu/src/decompress/gpu_decompress.hpp"
+#include "contrib/gpu/src/planning/decode_planner.hpp"
+#include "openzl/common/errors_internal.h"
 #include "openzl/cpp/DCtx.hpp"
 #include "openzl/cpp/FrameInfo.hpp"
 #include "openzl/decompress/dctx2.h"
@@ -336,6 +338,20 @@ ZL_Report decompressChunks(
             frameHeaders, chunks, preparedChunks, stream);
     if (ZL_isError(prepareResult)) {
         return prepareResult;
+    }
+    std::vector<PreparedGpuChunkView> chunkViews;
+    chunkViews.reserve(preparedChunks.size());
+    for (PreparedGPUChunk& prepared : preparedChunks) {
+        chunkViews.push_back(
+                {
+                        .dctx               = prepared.dctx.get(),
+                        .transformHeaders_h = prepared.transformHeaders_h,
+                });
+    }
+    DecodePlan plan;
+    ZL_Report const planResult = planDecode(chunkViews, plan);
+    if (ZL_isError(planResult)) {
+        return planResult;
     }
     ZL_ERR(GENERIC, "GPU decompression is not implemented");
 }

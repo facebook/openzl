@@ -21,6 +21,9 @@ cpp_library(
         "gpu_decompress.hpp",
     ]),
     header_namespace = "",
+    deps = [
+        "../planning:decode_planner",
+    ],
     exported_deps = [
         "../../../..:zstronglib",
         "../../../../cpp:openzl_cpp",
