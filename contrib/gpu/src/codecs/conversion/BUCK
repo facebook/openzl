@@ -1,0 +1,29 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
+load("../../../../../defs.bzl", "relative_headers")
+
+oncall("data_compression")
+
+cpp_library(
+    # @autodeps-skip
+    name = "plan_conversion_output",
+    srcs = ["plan_conversion_output.cpp"],
+    headers = relative_headers(["plan_conversion_output.hpp"]),
+    header_namespace = "",
+    deps = ["../../../../..:zstronglib"],
+    exported_deps = ["../../common:codec_decode_planning"],
+)
+
+cpp_unittest(
+    # @autodeps-skip
+    name = "plan_conversion_output_test",
+    srcs = ["tests/PlanConversionOutputTest.cpp"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        ":plan_conversion_output",
+    ],
+)
