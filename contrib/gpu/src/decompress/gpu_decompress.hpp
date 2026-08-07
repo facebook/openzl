@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "contrib/gpu/src/decompress/gpu_decompress.h"
+#include "openzl/cpp/DCtx.hpp"
 #include "openzl/zl_errors.h"
 
 namespace openzl::gpu {
@@ -37,6 +38,26 @@ struct GPUChunk {
     /// Number of bytes in the formal chunk header.
     size_t chunkHeaderSize;
 };
+
+/** One device chunk prepared for GPU decode planning. */
+struct PreparedGPUChunk {
+    GPUChunk chunk;
+    DCtx dctx;
+    /// Concatenated private transform headers copied from the device chunk.
+    std::vector<std::byte> transformHeaders_h;
+};
+
+/**
+ * Copies frame, formal chunk, and transform headers to host and prepares one
+ * DCTX per chunk.
+ * Stored-stream references remain bound to the device addresses in @p chunks.
+ * @p preparedChunks is cleared before preparation and populated on success.
+ */
+ZL_Report prepareChunksForPlanning(
+        std::span<const GPUFrameHeaderForChunks> frameHeaders,
+        std::span<const GPUChunk> chunks,
+        std::vector<PreparedGPUChunk>& preparedChunks,
+        ZL_GPU_Stream stream);
 
 /**
  * Enumerates the chunks in one host-readable frame. A temporary solution until

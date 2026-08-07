@@ -70,3 +70,32 @@ cpp_unittest(
     ],
     external_deps = [("cuda", None, "cuda-lazy")],
 )
+
+cpp_unittest(
+    # @autodeps-skip
+    name = "gpu_decompress_preparation_test",
+    srcs = ["tests/GpuDecompressPreparationTest.cpp"],
+    keep_gpu_sections = True,
+    labels = [tpx_labels.serialize]
+    + ci.labels(
+        ci.replace({ci.linux(ci.dev()): ci.linux(ci.mode("fbcode//mode/dev-nosan"))}),
+        ci.remove(ci.linux(ci.coverage(ci.mode("fbcode//mode/dev-cov")))),
+    ),
+    network_access = network_access_utils.none(),
+    nvcc_flags = get_nvcc_arch_args() + ["-lineinfo"],
+    remote_execution = re_test_utils.remote_execution(
+        platform = "gpu-remote-execution",
+        use_case = "tpx-default",
+    ),
+    target_compatible_with = sanitizers.sanitizer_enabled(
+        no = [],
+        yes = ["ovr_config//:none"],
+    ),
+    deps = [
+        "../../testkit:testkit_relative_headers",
+        "../common:cuda_raii_relative_headers",
+        "fbsource//third-party/googletest:gtest",
+        ":decompress",
+    ],
+    external_deps = [("cuda", None, "cuda-lazy")],
+)

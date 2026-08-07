@@ -22,7 +22,6 @@ cpp_library(
     exported_deps = [":cuda_error"],
     exported_external_deps = [("cuda", None, "cuda-lazy")],
 )
-
 # Kernel launch/occupancy helpers (grid sizing, occupancy metadata) for GPU host
 # code; kernel-agnostic.
 cpp_library(
@@ -41,6 +40,25 @@ cpp_library(
     header_namespace = "",
     exported_deps = [
         ":cuda_error",
+        ":cuda_raii",
+    ],
+    exported_external_deps = [("cuda", None, "cuda-lazy")],
+)
+
+cpp_library(
+    name = "cuda_error_relative_headers",
+    headers = relative_headers(["cuda_error.cuh"]),
+    header_namespace = "",
+    exported_deps = [],
+    exported_external_deps = [("cuda", None, "cuda-lazy")],
+)
+
+cpp_library(
+    name = "cuda_raii_relative_headers",
+    headers = relative_headers(["cuda_raii.cuh"]),
+    header_namespace = "",
+    exported_deps = [
+        ":cuda_error_relative_headers",
         ":cuda_raii",
     ],
     exported_external_deps = [("cuda", None, "cuda-lazy")],
