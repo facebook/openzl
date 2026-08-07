@@ -91,7 +91,7 @@ struct CodecDecodeOutputPlan {
  * Immutable wire metadata for planning one codec node in a prepared chunk.
  *
  * The codec header is a non-owning host span. Its backing storage must remain
- * valid for the planning call and for any plan that retains the span.
+ * valid for the planning call.
  */
 struct CodecDecodePlanningContext {
     /// Exact transform namespace and ID decoded from the frame node.
