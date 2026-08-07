@@ -28,6 +28,56 @@ std::string_view asStringView(std::span<const std::byte> bytes)
     };
 }
 
+struct DeviceToHostCopy {
+    std::span<std::byte> dst_h;
+    const std::byte* src_d;
+};
+
+ZL_Report copyDeviceToHostAndSynchronize(
+        std::span<const DeviceToHostCopy> copies,
+        ZL_GPU_Stream stream,
+        ZL_OperationContext* opCtx)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(opCtx);
+
+    for (const DeviceToHostCopy& copy : copies) {
+        if (copy.dst_h.empty()) {
+            continue;
+        }
+        ZL_ERR_IF_NULL(copy.dst_h.data(), parameter_invalid);
+        ZL_ERR_IF_NULL(copy.src_d, parameter_invalid);
+    }
+
+    bool copyEnqueued = false;
+    for (const DeviceToHostCopy& copy : copies) {
+        if (copy.dst_h.empty()) {
+            continue;
+        }
+        cudaError_t const result = cudaMemcpyAsync(
+                copy.dst_h.data(),
+                copy.src_d,
+                copy.dst_h.size(),
+                cudaMemcpyDeviceToHost,
+                stream);
+        if (result != cudaSuccess) {
+            if (copyEnqueued) {
+                // Destinations must outlive any copies queued before failure.
+                (void)cudaStreamSynchronize(stream);
+            }
+            ZL_ERR(GENERIC,
+                   "cudaMemcpyAsync failed: %s",
+                   cudaGetErrorString(result));
+        }
+        copyEnqueued = true;
+    }
+    if (copyEnqueued) {
+        cudaError_t const result = cudaStreamSynchronize(stream);
+        ZL_ERR_IF_NE(result, cudaSuccess, GENERIC);
+    }
+
+    return ZL_returnSuccess();
+}
+
 } // namespace
 
 namespace {
@@ -84,50 +134,33 @@ ZL_Report copyHeadersToHost(
     // it, so its address cannot move.
     stagedHeaders.storage_h.resize(stagingSize);
 
-    size_t dstOffset  = 0;
-    bool copyEnqueued = false;
+    std::vector<DeviceToHostCopy> copies;
+    copies.reserve(frameHeaders.size() + chunks.size());
+    size_t dstOffset = 0;
     for (const GPUFrameHeaderForChunks& frameHeader : frameHeaders) {
-        cudaError_t const result = cudaMemcpyAsync(
-                stagedHeaders.storage_h.data() + dstOffset,
-                frameHeader.frameHeader_d,
-                frameHeader.frameHeaderSize,
-                cudaMemcpyDeviceToHost,
-                stream);
-        if (result != cudaSuccess) {
-            if (copyEnqueued) {
-                // The destination buffer must outlive any queued D2H copies.
-                (void)cudaStreamSynchronize(stream);
-            }
-            ZL_ERR(GENERIC,
-                   "cudaMemcpyAsync failed: %s",
-                   cudaGetErrorString(result));
-        }
-        copyEnqueued = true;
+        copies.push_back(
+                {
+                        .dst_h = std::span<std::byte>{ stagedHeaders.storage_h }
+                                         .subspan(
+                                                 dstOffset,
+                                                 frameHeader.frameHeaderSize),
+                        .src_d = static_cast<const std::byte*>(
+                                frameHeader.frameHeader_d),
+                });
         dstOffset += frameHeader.frameHeaderSize;
     }
     for (const GPUChunk& chunk : chunks) {
-        cudaError_t const result = cudaMemcpyAsync(
-                stagedHeaders.storage_h.data() + dstOffset,
-                chunk.chunk_d,
-                chunk.chunkHeaderSize,
-                cudaMemcpyDeviceToHost,
-                stream);
-        if (result != cudaSuccess) {
-            if (copyEnqueued) {
-                // The destination buffer must outlive any queued D2H copies.
-                (void)cudaStreamSynchronize(stream);
-            }
-            ZL_ERR(GENERIC,
-                   "cudaMemcpyAsync failed: %s",
-                   cudaGetErrorString(result));
-        }
-        copyEnqueued = true;
+        copies.push_back(
+                {
+                        .dst_h = std::span<std::byte>{ stagedHeaders.storage_h }
+                                         .subspan(
+                                                 dstOffset,
+                                                 chunk.chunkHeaderSize),
+                        .src_d = static_cast<const std::byte*>(chunk.chunk_d),
+                });
         dstOffset += chunk.chunkHeaderSize;
     }
-    if (copyEnqueued) {
-        cudaError_t const result = cudaStreamSynchronize(stream);
-        ZL_ERR_IF_NE(result, cudaSuccess, GENERIC);
-    }
+    ZL_ERR_IF_ERR(copyDeviceToHostAndSynchronize(copies, stream, nullptr));
 
     // Preserve frame-header order so each chunk index also identifies the
     // corresponding staged header.
@@ -154,7 +187,141 @@ ZL_Report copyHeadersToHost(
     return ZL_returnSuccess();
 }
 
+ZL_Report createDctxsForChunks(
+        const StagedHeaders& stagedHeaders,
+        std::span<const GPUChunk> chunks,
+        std::vector<PreparedGPUChunk>& preparedChunks)
+{
+    // No shared DCTX exists until each per-chunk context is created.
+    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
+
+    std::vector<FrameInfo> frameInfos;
+    frameInfos.reserve(stagedHeaders.frameHeaders_h.size());
+    for (std::span<const std::byte> frameHeader_h :
+         stagedHeaders.frameHeaders_h) {
+        frameInfos.emplace_back(asStringView(frameHeader_h));
+    }
+
+    ZL_ERR_IF_NE(stagedHeaders.chunkHeaders_h.size(), chunks.size(), GENERIC);
+    std::vector<PreparedGPUChunk> result;
+    result.reserve(chunks.size());
+    auto chunkHeaderIt = stagedHeaders.chunkHeaders_h.begin();
+    for (const GPUChunk& chunk : chunks) {
+        const StagedChunkHeader& chunkHeader = *chunkHeaderIt++;
+        DCtx dctx;
+
+        ZL_Report const setParameterResult = ZL_DCtx_setParameter(
+                dctx.get(),
+                ZL_DParam_enableCodecFusion,
+                ZL_TernaryParam_disable);
+        if (ZL_isError(setParameterResult)) {
+            return setParameterResult;
+        }
+
+        ZL_ERR_IF_GE(
+                chunkHeader.frameHeaderIdx,
+                frameInfos.size(),
+                parameter_invalid);
+        ZL_Report const initResult = DCTX_initFromFrameInfo(
+                dctx.get(), frameInfos.at(chunkHeader.frameHeaderIdx).get());
+        if (ZL_isError(initResult)) {
+            return initResult;
+        }
+
+        ZL_Report const prepareResult = DCTX_prepareFrameChunkFromHeader(
+                dctx.get(),
+                chunkHeader.bytes_h.data(),
+                chunkHeader.bytes_h.size(),
+                chunk.chunk_d,
+                chunk.chunkSize);
+        if (ZL_isError(prepareResult)) {
+            return prepareResult;
+        }
+
+        result.push_back(
+                {
+                        .chunk = chunk,
+                        .dctx  = std::move(dctx),
+                });
+    }
+
+    preparedChunks = std::move(result);
+    return ZL_returnSuccess();
+}
+
+ZL_Report copyTransformHeadersToHost(
+        std::span<PreparedGPUChunk> preparedChunks,
+        ZL_GPU_Stream stream)
+{
+    ZL_DCtx* const dctx = preparedChunks.empty()
+            ? nullptr
+            : preparedChunks.front().dctx.get();
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
+
+    for (PreparedGPUChunk& prepared : preparedChunks) {
+        const DFH_Struct* const frameHeader =
+                DCtx_getFrameHeader(prepared.dctx.get());
+        ZL_ERR_IF_NULL(frameHeader, logicError);
+        ZL_ERR_IF_GT(
+                prepared.chunk.chunkHeaderSize,
+                prepared.chunk.chunkSize,
+                parameter_invalid);
+        ZL_ERR_IF_GT(
+                frameHeader->totalTHSize,
+                prepared.chunk.chunkSize - prepared.chunk.chunkHeaderSize,
+                srcSize_tooSmall);
+        prepared.transformHeaders_h.resize(frameHeader->totalTHSize);
+    }
+
+    std::vector<DeviceToHostCopy> copies;
+    copies.reserve(preparedChunks.size());
+    for (PreparedGPUChunk& prepared : preparedChunks) {
+        if (prepared.transformHeaders_h.empty()) {
+            continue;
+        }
+        const auto* const transformHeaders_d =
+                static_cast<const std::byte*>(prepared.chunk.chunk_d)
+                + prepared.chunk.chunkHeaderSize;
+        copies.push_back(
+                {
+                        .dst_h = prepared.transformHeaders_h,
+                        .src_d = transformHeaders_d,
+                });
+    }
+    return copyDeviceToHostAndSynchronize(
+            copies, stream, ZL_GET_OPERATION_CONTEXT(dctx));
+}
+
 } // namespace
+
+ZL_Report prepareChunksForPlanning(
+        std::span<const GPUFrameHeaderForChunks> frameHeaders,
+        std::span<const GPUChunk> chunks,
+        std::vector<PreparedGPUChunk>& preparedChunks,
+        ZL_GPU_Stream stream)
+{
+    preparedChunks.clear();
+    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
+    StagedHeaders stagedHeaders;
+    ZL_Report const copyResult =
+            copyHeadersToHost(frameHeaders, chunks, stream, stagedHeaders);
+    if (ZL_isError(copyResult)) {
+        return copyResult;
+    }
+    std::vector<PreparedGPUChunk> result;
+    ZL_Report const createResult =
+            createDctxsForChunks(stagedHeaders, chunks, result);
+    if (ZL_isError(createResult)) {
+        return createResult;
+    }
+    ZL_Report const copyTransformHeadersResult =
+            copyTransformHeadersToHost(result, stream);
+    if (ZL_isError(copyTransformHeadersResult)) {
+        return copyTransformHeadersResult;
+    }
+    preparedChunks = std::move(result);
+    return ZL_returnSuccess();
+}
 
 ZL_Report decompressChunks(
         void*,
@@ -164,11 +331,11 @@ ZL_Report decompressChunks(
         ZL_GPU_Stream stream)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
-    StagedHeaders stagedHeaders;
-    ZL_Report const copyResult =
-            copyHeadersToHost(frameHeaders, chunks, stream, stagedHeaders);
-    if (ZL_isError(copyResult)) {
-        return copyResult;
+    std::vector<PreparedGPUChunk> preparedChunks;
+    ZL_Report const prepareResult = prepareChunksForPlanning(
+            frameHeaders, chunks, preparedChunks, stream);
+    if (ZL_isError(prepareResult)) {
+        return prepareResult;
     }
     ZL_ERR(GENERIC, "GPU decompression is not implemented");
 }
@@ -260,15 +427,12 @@ ZL_Report collectGPUChunksFromFullCopy(
     ZL_ERR_IF_GT(src_d.size(), src_h.max_size(), srcSize_tooLarge);
     src_h.resize(src_d.size());
 
-    cudaError_t cudaResult = cudaMemcpyAsync(
-            src_h.data(),
-            src_d.data(),
-            src_d.size(),
-            cudaMemcpyDeviceToHost,
-            stream);
-    ZL_ERR_IF_NE(cudaResult, cudaSuccess, GENERIC);
-    cudaResult = cudaStreamSynchronize(stream);
-    ZL_ERR_IF_NE(cudaResult, cudaSuccess, GENERIC);
+    const DeviceToHostCopy copy{
+        .dst_h = src_h,
+        .src_d = src_d.data(),
+    };
+    ZL_ERR_IF_ERR(copyDeviceToHostAndSynchronize(
+            std::span<const DeviceToHostCopy>{ &copy, 1 }, stream, nullptr));
 
     return collectGPUChunksFromFrame(src_d.data(), src_h, chunks, frameHeaders);
 }

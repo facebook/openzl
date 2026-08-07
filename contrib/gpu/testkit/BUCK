@@ -31,6 +31,17 @@ cpp_library(
     ],
 )
 
+cpp_library(
+    name = "testkit_relative_headers",
+    headers = relative_headers([
+        "frame_factory.h",
+        "frame_verifier.h",
+        "multichunk_frame.h",
+    ]),
+    header_namespace = "",
+    exported_deps = [":testkit"],
+)
+
 cpp_unittest(
     # @autodeps-skip
     name = "frame_factory_test",
