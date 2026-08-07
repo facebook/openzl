@@ -22,6 +22,7 @@ cpp_library(
     exported_deps = [":cuda_error"],
     exported_external_deps = [("cuda", None, "cuda-lazy")],
 )
+
 # Kernel launch/occupancy helpers (grid sizing, occupancy metadata) for GPU host
 # code; kernel-agnostic.
 cpp_library(
@@ -62,4 +63,13 @@ cpp_library(
         ":cuda_raii",
     ],
     exported_external_deps = [("cuda", None, "cuda-lazy")],
+)
+
+# CPU metadata contract shared by codec planners and the decode scheduler.
+cpp_library(
+    # @autodeps-skip
+    name = "codec_decode_planning",
+    headers = relative_headers(["codec_decode_planning.hpp"]),
+    header_namespace = "",
+    exported_deps = ["../../../..:zstronglib"],
 )

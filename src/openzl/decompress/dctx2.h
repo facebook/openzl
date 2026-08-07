@@ -58,6 +58,15 @@ size_t ZL_DCtx_getNumStreams(const ZL_DCtx* dctx);
 const ZL_Data* ZL_DCtx_getConstStream(const ZL_DCtx* dctx, ZL_IDType streamID);
 
 /**
+ * @returns The decoder node that produces @p streamID, or ZL_PRODUCER_STORE
+ * when the stream is stored in the frame.
+ * @pre @p streamID is less than ZL_DCtx_getNumStreams(@p dctx).
+ */
+ZL_IDType DCTX_getStreamProducerNodeIdx(
+        const ZL_DCtx* dctx,
+        ZL_IDType streamID);
+
+/**
  * @pre Can only be called during an active decompression,
  * after the frame header has been decoded.
  * @returns The ZStrong format version of the frame which
