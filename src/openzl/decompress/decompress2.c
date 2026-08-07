@@ -272,6 +272,15 @@ const ZL_Data* ZL_DCtx_getConstStream(const ZL_DCtx* dctx, ZL_IDType streamID)
     return dctx->dataInfo.ptr[streamID].data;
 }
 
+ZL_IDType DCTX_getStreamProducerNodeIdx(const ZL_DCtx* dctx, ZL_IDType streamID)
+{
+    if (dctx == NULL || dctx->dataInfo.ptr == NULL
+        || streamID >= dctx->dataInfo.size) {
+        return ZL_PRODUCER_STORE;
+    }
+    return dctx->dataInfo.ptr[streamID].producerNodeIdx;
+}
+
 ZL_Report ZL_DCtx_registerPipeDecoder(
         ZL_DCtx* dctx,
         const ZL_PipeDecoderDesc* ctd)

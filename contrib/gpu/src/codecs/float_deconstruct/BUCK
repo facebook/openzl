@@ -86,3 +86,25 @@ cpp_unittest(
     ],
     external_deps = [("cuda", None, "cuda-lazy")],
 )
+
+# CPU output sizing for every float_deconstruct wire variant.
+cpp_library(
+    # @autodeps-skip
+    name = "plan_float_deconstruct_output",
+    srcs = ["plan_float_deconstruct_output.cpp"],
+    headers = relative_headers(["plan_float_deconstruct_output.hpp"]),
+    header_namespace = "",
+    deps = ["../../../../..:zstronglib"],
+    exported_deps = ["../../common:codec_decode_planning"],
+)
+
+cpp_unittest(
+    # @autodeps-skip
+    name = "plan_float_deconstruct_output_test",
+    srcs = ["tests/PlanFloatDeconstructOutputTest.cpp"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        ":plan_float_deconstruct_output",
+    ],
+)
