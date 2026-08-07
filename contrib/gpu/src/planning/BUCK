@@ -1,0 +1,58 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
+load("../../../../defs.bzl", "relative_headers")
+
+oncall("data_compression")
+
+cpp_library(
+    # @autodeps-skip
+    name = "decode_plan",
+    headers = relative_headers(["decode_plan.hpp"]),
+    header_namespace = "",
+    exported_deps = ["../common:codec_decode_planning"],
+)
+
+cpp_library(
+    # @autodeps-skip
+    name = "codec_decode_registry",
+    srcs = ["codec_decode_registry.cpp"],
+    headers = relative_headers(["codec_decode_registry.hpp"]),
+    header_namespace = "",
+    deps = [
+        "../../../..:zstronglib",
+        "../codecs/constant:plan_constant_output",
+        "../codecs/conversion:plan_conversion_output",
+        "../codecs/float_deconstruct:plan_float_deconstruct_output",
+    ],
+    exported_deps = ["../common:codec_decode_planning"],
+)
+
+cpp_library(
+    # @autodeps-skip
+    name = "decode_planner",
+    srcs = ["decode_planner.cpp"],
+    headers = relative_headers(["decode_planner.hpp"]),
+    header_namespace = "",
+    deps = [
+        "../../../..:zstronglib",
+        ":codec_decode_registry",
+    ],
+    exported_deps = [":decode_plan"],
+)
+
+cpp_unittest(
+    # @autodeps-skip
+    name = "decode_planner_test",
+    srcs = ["tests/DecodePlannerTest.cpp"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "../../../..:zstronglib",
+        "../../../../cpp:openzl_cpp",
+        "../../testkit:testkit",
+        "fbsource//third-party/googletest:gtest",
+        ":decode_planner",
+    ],
+)
