@@ -11,7 +11,6 @@
 #include "openzl/common/errors_internal.h"
 #include "openzl/common/wire_format.h"
 #include "openzl/compress/graph_registry.h"
-#include "openzl/compress/private_nodes.h"
 #include "openzl/zl_compress.h"
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_reflection.h"
