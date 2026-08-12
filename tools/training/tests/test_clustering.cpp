@@ -5,15 +5,18 @@
 #include <thread>
 
 #include "openzl/codecs/zl_clustering.h"
+#include "openzl/codecs/zl_lz.h"
 #include "openzl/common/a1cbor_helpers.h"
 #include "openzl/common/allocation.h"
 #include "openzl/cpp/Input.hpp"
 #include "openzl/zl_reflection.h"
 #include "src/openzl/compress/graphs/generic_clustering_graph.h"
 #include "tests/datagen/DataGen.h"
+#include "tools/training/clustering/clustering_graph_trainer.h"
 #include "tools/training/clustering/train_api.h"
 #include "tools/training/clustering/utils.h"
 #include "tools/training/train.h"
+#include "tools/training/train_exceptions.h"
 #include "tools/training/utils/utils.h"
 
 namespace openzl::tests {
@@ -89,6 +92,7 @@ class TestTraining : public testing::Test {
     {
         // Register the base clustering graph as the starting graph
         compressor_.selectStartingGraph(ZL_GRAPH_CLUSTERING);
+        compressor_.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
 
         successors_.push_back(ZL_GRAPH_STORE);
         successors_.push_back(ZL_GRAPH_FIELD_LZ);
@@ -386,6 +390,38 @@ TEST_F(TestTraining, TestTrainingDifferentTypeSameTag)
             compressor_.get(), trainedGraphId);
     auto r = deserializeToClusteringConfig(lparam);
     EXPECT_TRUE(!ZL_RES_isError(r));
+}
+
+TEST(ClusteringTrainerFormatVersionTest, ThrowsWhenNoSuccessorSupportsVersion)
+{
+    // ZL_GRAPH_LZ is unavailable before format version 24, so targeting an
+    // earlier version (still above the clustering minimum) filters out every
+    // successor and leaves the clustering trainer with nothing to train.
+    constexpr uint32_t kLzFormatVersion       = 24;
+    constexpr uint32_t kFormatVersionBeforeLz = kLzFormatVersion - 1;
+
+    Compressor compressor;
+    compressor.setParameter(CParam::FormatVersion, kFormatVersionBeforeLz);
+    std::vector<ZL_GraphID> successors = { ZL_GRAPH_LZ };
+    ZL_ClusteringConfig config = { .nbClusters = 0, .nbTypeDefaults = 0 };
+    auto clusteringGraph       = ZL_Clustering_registerGraph(
+            compressor.get(), &config, successors.data(), successors.size());
+    compressor.selectStartingGraph(clusteringGraph);
+
+    const training::TrainParams trainParams = {
+        .clusteringTrainer = training::ClusteringTrainer::Greedy,
+    };
+
+    std::vector<uint8_t> data(1024);
+    for (size_t i = 0; i < data.size(); ++i) {
+        data[i] = static_cast<uint8_t>(i);
+    }
+    training::MultiInput input;
+    input.add(Input::refSerial(data.data(), data.size()));
+    const std::vector<training::MultiInput> inputs = { std::move(input) };
+    EXPECT_THROW(
+            training::trainClusteringGraph(inputs, compressor, trainParams),
+            training::FormatVersionUnsupportedError);
 }
 
 } // namespace

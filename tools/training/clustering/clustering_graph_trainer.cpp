@@ -15,6 +15,7 @@
 #include "tools/training/clustering/train_api.h"
 #include "tools/training/graph_mutation/graph_mutation_utils.h"
 #include "tools/training/sample_collection/training_sample_collector.h"
+#include "tools/training/train_exceptions.h"
 #include "tools/training/utils/serialized_compressor_internal.h"
 #include "tools/training/utils/utils.h"
 
@@ -26,6 +27,10 @@ namespace openzl::training {
 const std::string CLUSTERING_GRAPH_NAME = "zl.cluster";
 
 namespace {
+
+// Minimum format version at which all concat codecs required by clustering are
+// available (CONCAT_SERIAL=16, _NUMERIC/_STRUCT=17, _STRING=18).
+constexpr int kMinClusteringFormatVersion = 18;
 
 /**
  * Add a new parameterized version of the clustering graph to the compressor
@@ -69,15 +74,33 @@ ZL_GraphID clusterSuccessors(
         const TrainParams& trainParams,
         GraphID clusteringGraphUniqueIDUntrained)
 {
+    const auto formatVersion = compressor.getParameter(CParam::FormatVersion);
+    // Clustering relies on concat codecs; if any required clustering codec is
+    // missing at this format version, training is unsupported.
+    if (formatVersion < kMinClusteringFormatVersion) {
+        throw FormatVersionUnsupportedError(
+                "clustering requires concat codecs unavailable at format version "
+                + std::to_string(formatVersion));
+    }
+
     auto cctx = refCCtxForTraining(compressor);
 
     const std::string clusteringGraphUniqueNameUntrained =
             ZL_Compressor_Graph_getName(
                     compressor.get(), clusteringGraphUniqueIDUntrained);
 
-    // Get successors for training
-    const auto successorsVec =
-            getCustomGraphs(compressor, clusteringGraphUniqueIDUntrained);
+    // Get successors for training, dropping any that cannot compress at the
+    // target format version.
+    const auto successorsVec = filterGraphsByFormatVersion(
+            compressor,
+            getCustomGraphs(compressor, clusteringGraphUniqueIDUntrained),
+            inputs);
+
+    if (successorsVec.size() == 0) {
+        throw FormatVersionUnsupportedError(
+                "No compatible successors chosen in clustering graph at format version "
+                + std::to_string(formatVersion));
+    }
 
     // Get clustering codecs for training
     std::vector<ZL_NodeID> clusteringCodecs =

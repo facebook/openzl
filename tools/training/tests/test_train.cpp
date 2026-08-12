@@ -15,6 +15,7 @@ TEST(TrainTest, ThrowsTypedErrorWithoutTrainableGraph)
 {
     const std::vector<training::MultiInput> inputs;
     Compressor compressor;
+    compressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
     compressor.selectStartingGraph(ZL_GRAPH_STORE);
     const training::TrainParams trainParams = {
         .compressorGenFunc =
@@ -28,6 +29,26 @@ TEST(TrainTest, ThrowsTypedErrorWithoutTrainableGraph)
     EXPECT_THROW(
             training::train(inputs, compressor, trainParams),
             training::NoTrainableGraphError);
+}
+
+TEST(TrainTest, ThrowsWhenCompressorFormatVersionIsNotSet)
+{
+    const std::vector<training::MultiInput> inputs;
+    Compressor compressor;
+    compressor.selectStartingGraph(ZL_GRAPH_STORE);
+    const training::TrainParams trainParams = {
+        .compressorGenFunc =
+                [](poly::string_view, poly::string_view) {
+                    return std::make_unique<Compressor>();
+                },
+    };
+
+    try {
+        training::train(inputs, compressor, trainParams);
+        FAIL() << "Expected unset compressor format version to throw";
+    } catch (const training::FormatVersionUnsupportedError& e) {
+        EXPECT_EQ(e.msg(), "Compressor format version is not set.");
+    }
 }
 
 } // namespace
