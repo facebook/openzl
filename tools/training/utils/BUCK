@@ -17,6 +17,7 @@ zs_cxxlibrary(
         "utils.h",
     ],
     exported_deps = [
+        "..:train_common",
         "../..:io",
         "../..:logger",
         "../../..:common",

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <functional>
 #include "openzl/cpp/Compressor.hpp"
+#include "openzl/cpp/Exception.hpp"
 #include "openzl/cpp/poly/Optional.hpp"
 
 namespace openzl::training {

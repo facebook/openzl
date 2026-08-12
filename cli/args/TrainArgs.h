@@ -126,6 +126,13 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
                 0,
                 false,
                 "Save the ACE state as a local parameter in the trained compressor.");
+        parser.addCommandFlag(
+                cmd(),
+                kFormatVersion,
+                0,
+                true,
+                "Target format version for training. If not provided, defaults "
+                "to the maximum supported format version.");
     }
 
     explicit TrainArgs(const arg::ParsedArgs& parsed)
@@ -134,7 +141,14 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
         // Create the compressor
         setCompressor(createCompressorFromArgs(
                 *this, parsed.cmdFlag(cmd(), kCompressor)));
-        applyDefaultFormatVersion();
+        auto formatVersion = parsed.cmdFlag(cmd(), kFormatVersion);
+        if (formatVersion) {
+            compressor()->setParameter(
+                    CParam::FormatVersion,
+                    util::checkedstoi(formatVersion.value()));
+        } else {
+            applyDefaultFormatVersion();
+        }
         auto outputPath = parsed.cmdFlag(cmd(), kOutput);
         if (outputPath) {
             checkOutput(outputPath.value(), parsed.cmdHasFlag(cmd(), kForce));
@@ -254,10 +268,8 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
     // version when the compressor does not already specify one.
     void applyDefaultFormatVersion()
     {
-        if (compressor()->getParameter(CParam::FormatVersion) == 0) {
-            compressor()->setParameter(
-                    CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
-        }
+        compressor()->setParameter(
+                CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
     }
 
     inline static const std::string kSampleDir  = "sample-dir";
@@ -279,6 +291,7 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
     inline static const std::string kMaxTotalSizeMb  = "max-total-size-mb";
     inline static const std::string kParetoFrontier  = "pareto-frontier";
     inline static const std::string kSaveAceState    = "save-ace-state";
+    inline static const std::string kFormatVersion   = "format-version";
 };
 
 } // namespace openzl::cli

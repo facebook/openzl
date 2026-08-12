@@ -34,6 +34,7 @@ zs_cxxlibrary(
         "trained_candidate.cpp",
     ],
     headers = [
+        "train_exceptions.h",
         "train_params.h",
         "trained_candidate.h",
     ],

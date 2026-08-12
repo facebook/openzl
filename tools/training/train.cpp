@@ -28,6 +28,22 @@ std::vector<TrainedCandidate> train(
         throw Exception("Compressor generator function is not set.");
     }
 
+    const auto formatVersion = compressor.getParameter(CParam::FormatVersion);
+    if (formatVersion == 0) {
+        throw FormatVersionUnsupportedError(
+                "Compressor format version is not set.");
+    }
+
+    // Try compressing with the base graph to train. This is not exhaustive
+    // because function graphs may select different nodes for other inputs.
+    if (!compressorIsFormatCompatible(compressor, inputs)) {
+        throw FormatVersionUnsupportedError(
+                "Base graph failed to compress at format version "
+                + std::to_string(formatVersion)
+                + "; the format version is unsupported for the graph "
+                  "getting trained.");
+    }
+
     if (graph_mutation::hasTargetGraph(compressor, CLUSTERING_GRAPH_NAME)) {
         serializedTrainedCompressors.clear();
         serializedTrainedCompressors.push_back(
