@@ -26,6 +26,7 @@ class TestClusteringBenchmarks : public testing::Test {
     {
         // Register the graph to train in the compressor
         trainingGraphFn(compressor.get());
+        compressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
         // Train the compressor and serialize it
         auto serialized = training::train(inputs_, compressor, params_);
         // Compress the data using the trained compressor
