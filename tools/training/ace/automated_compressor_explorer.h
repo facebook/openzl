@@ -54,6 +54,9 @@ class AutomatedCompressorExplorer : public GeneticAlgorithm<ACECompressor> {
 
     struct Parameters : public Base::Parameters {
         size_t numThreads{ std::thread::hardware_concurrency() / 2 };
+        /// Target format version. Must be set explicitly; a value of 0 is
+        /// rejected at construction.
+        uint32_t formatVersion{ 0 };
     };
 
     /**
@@ -78,10 +81,14 @@ class AutomatedCompressorExplorer : public GeneticAlgorithm<ACECompressor> {
             const Parameters& params)
             : Base(params),
               inputs_(std::move(inputs)),
+              formatVersion_(params.formatVersion),
               threadPool_(params.numThreads),
-              crossover_(rng(), inputType()),
-              mutate_(rng(), inputType())
+              crossover_(rng(), inputType(), formatVersion_),
+              mutate_(rng(), inputType(), formatVersion_)
     {
+        if (formatVersion_ == 0) {
+            throw Exception("Format version must be set in the parameters");
+        }
         for (auto const& input : inputs_) {
             if (input.type() != inputType()) {
                 throw Exception("All inputs must have the same type");
@@ -89,10 +96,18 @@ class AutomatedCompressorExplorer : public GeneticAlgorithm<ACECompressor> {
         }
     }
 
-    explicit AutomatedCompressorExplorer(
+    AutomatedCompressorExplorer(
             poly::span<const Input> inputs,
             poly::string_view snapshot)
-            : AutomatedCompressorExplorer(inputs, Parameters{})
+            : AutomatedCompressorExplorer(inputs, snapshot, Parameters{})
+    {
+    }
+
+    AutomatedCompressorExplorer(
+            poly::span<const Input> inputs,
+            poly::string_view snapshot,
+            const Parameters& params)
+            : AutomatedCompressorExplorer(inputs, params)
     {
         loadPopulation(snapshot);
     }
@@ -108,6 +123,11 @@ class AutomatedCompressorExplorer : public GeneticAlgorithm<ACECompressor> {
     poly::span<const Input> inputs() const
     {
         return inputs_;
+    }
+
+    uint32_t formatVersion() const
+    {
+        return formatVersion_;
     }
 
     /**
@@ -152,9 +172,11 @@ class AutomatedCompressorExplorer : public GeneticAlgorithm<ACECompressor> {
    private:
     static std::vector<float> computeFitness(
             const ACECompressor& compressor,
-            poly::span<const Input> inputs);
+            poly::span<const Input> inputs,
+            uint32_t formatVersion);
 
     poly::span<const Input> inputs_;
+    uint32_t formatVersion_;
     ThreadPool threadPool_;
     ACECrossover crossover_;
     ACEMutate mutate_;

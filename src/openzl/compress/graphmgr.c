@@ -709,9 +709,9 @@ static ZL_Report GM_checkInputTypesAreCompatible(
             graph_invalid,
             "Graphs have different number of inputs");
     for (size_t i = 0; i < meta0.nbInputs; ++i) {
-        ZL_ERR_IF_EQ(
-                meta0.inputTypeMasks[i] & meta1.inputTypeMasks[i],
-                0,
+        ZL_ERR_IF_NOT(
+                ICONV_isCompatible(
+                        meta0.inputTypeMasks[i], meta1.inputTypeMasks[i]),
                 graph_invalid,
                 "Input %zu types are not compatible",
                 i);

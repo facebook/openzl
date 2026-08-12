@@ -32,7 +32,8 @@ std::string trainBackend(
         std::vector<MultiInput>& samples,
         const TrainParams& trainParams,
         size_t graphIdx,
-        size_t numGraphs)
+        size_t numGraphs,
+        uint32_t formatVersion)
 {
     if (samples.empty()) {
         throw Exception(
@@ -55,7 +56,8 @@ std::string trainBackend(
                 ? trainParams.threads.value()
                 : std::thread::hardware_concurrency() / 2,
     };
-    params.maxTime = maxTime;
+    params.maxTime       = maxTime;
+    params.formatVersion = formatVersion;
     AutomatedCompressorExplorer ace(flattened, params);
     for (;;) {
         Logger::logProgress(
@@ -131,8 +133,14 @@ std::vector<SerializedCompressorInternal> ACETrainer::train(
                     "): no training samples");
             continue;
         }
+        const auto formatVersion = static_cast<uint32_t>(
+                compressor.getParameter(CParam::FormatVersion));
         auto aceState = trainBackend(
-                samples[backendGraph], trainParams, graphIdx, numGraphs);
+                samples[backendGraph],
+                trainParams,
+                graphIdx,
+                numGraphs,
+                formatVersion);
         auto localParams = LocalParams();
         localParams.addCopyParam(
                 AutomatedCompressorExplorer::kAceStateParamId,

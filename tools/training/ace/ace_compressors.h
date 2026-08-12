@@ -2,7 +2,9 @@
 
 #pragma once
 
+#include <cstdint>
 #include <random>
+#include <vector>
 
 #include "openzl/cpp/poly/Span.hpp"
 #include "tools/training/ace/ace_compressor.h"
@@ -20,8 +22,11 @@ poly::span<const ACENode> getAllNodes();
 poly::span<const ACEGraph> getAllGraphs();
 
 /// @returns the subset of `getAllNodes()` that are compatible with the given
-/// @p inputType
-poly::span<const ACENode> getNodesComptabileWith(Type inputType);
+/// @p inputType and usable at @p formatVersion (nodes whose minFormatVersion is
+/// 0 are treated as unconstrained).
+std::vector<ACENode> getNodesComptabileWith(
+        Type inputType,
+        uint32_t formatVersion);
 /// @returns the subset of `getAllGraphs()` that are compatible with the given
 /// @p inputType
 poly::span<const ACEGraph> getGraphsComptabileWith(Type inputType);
@@ -37,16 +42,20 @@ poly::span<const ACECompressor> getPrebuiltCompressors(Type inputType);
 ACECompressor buildRandomGraphCompressor(std::mt19937_64& rng, Type inputType);
 
 /// @returns A random compressor that is compatible with the given @p inputType
-/// that is a single node followed by ACECompressor successors.
+/// that is a single node followed by ACECompressor successors. Only nodes
+/// usable at @p formatVersion are considered.
 ACECompressor buildRandomNodeCompressor(
         std::mt19937_64& rng,
         Type inputType,
+        uint32_t formatVersion,
         size_t maxDepth = kDefaultMaxDepth);
 
 /// @returns A random compressor that is compatible with the given @p inputType.
+/// Only nodes usable at @p formatVersion are considered.
 ACECompressor buildRandomCompressor(
         std::mt19937_64& rng,
         Type inputType,
+        uint32_t formatVersion,
         size_t maxDepth = kDefaultMaxDepth);
 
 ACECompressor buildStoreCompressor();

@@ -1718,6 +1718,17 @@ TEST_F(CompressorTest, OverrideBaseGraph)
             ZL_Compressor_getGraphType(compressor_.get(), paramGraph));
 }
 
+TEST_F(CompressorTest, OverrideBaseGraphAllowsImplicitInputConversion)
+{
+    auto paramGraph = makeParameterizedGraph();
+
+    EXPECT_ZS_VALID(ZL_Compressor_overrideBaseGraph(
+            compressor_.get(), paramGraph, ZL_GRAPH_ZSTD));
+    EXPECT_EQ(
+            ZL_Compressor_Graph_getBaseGraphID(compressor_.get(), paramGraph),
+            ZL_GRAPH_ZSTD);
+}
+
 TEST_F(CompressorTest, OverrideBaseGraphRejectsStandardGraph)
 {
     EXPECT_ZS_ERROR(ZL_Compressor_overrideBaseGraph(

@@ -18,6 +18,8 @@ struct ACENode {
     poly::optional<NodeParameters> params;
     Type inputType;
     std::vector<Type> outputTypes;
+    /// Minimum format version this node requires; 0 means unconstrained.
+    unsigned minFormatVersion{ 0 };
 };
 
 struct ACEGraph {
@@ -271,9 +273,11 @@ class ACECompressor {
     }
 
     /// @returns The benchmark result of the compressor on the @p inputs or
-    /// poly::nullopt if the compressor fails to compress.
+    /// poly::nullopt if the compressor fails to compress (including when it
+    /// requires a newer format version than @p formatVersion).
     poly::optional<ACECompressionResult> benchmark(
-            poly::span<const Input> inputs) const;
+            poly::span<const Input> inputs,
+            uint32_t formatVersion) const;
 
    private:
     uint64_t computeHash() const;

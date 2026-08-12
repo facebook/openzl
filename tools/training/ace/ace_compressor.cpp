@@ -692,7 +692,6 @@ poly::optional<ACECompressionResult> benchmark(
         auto cStart = std::chrono::steady_clock::now();
         try {
             cctx.refCompressor(compressor);
-            cctx.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
             compressed = cctx.compress(input);
         } catch (const Exception&) {
             return poly::nullopt;
@@ -744,11 +743,16 @@ poly::optional<ACECompressionResult> benchmark(
 }
 
 poly::optional<ACECompressionResult> ACECompressor::benchmark(
-        poly::span<const Input> inputs) const
+        poly::span<const Input> inputs,
+        uint32_t formatVersion) const
 {
     Compressor compressor;
     // TODO(terrelln): Allow parameterization
     compressor.selectStartingGraph(build(compressor));
+    // Format version is carried on the compressor, however benchmark builds the
+    // compressor from an empty compressor. So the format version must be set
+    // here.
+    compressor.setParameter(CParam::FormatVersion, formatVersion);
     return openzl::training::benchmark(compressor, inputs);
 }
 } // namespace training

@@ -21,7 +21,8 @@ std::vector<ACECompressor> AutomatedCompressorExplorer::initialPopulation()
 
     // Use populationSize() random compressors
     for (size_t i = 0; i < populationSize(); ++i) {
-        population.push_back(buildRandomCompressor(rng(), inputType()));
+        population.push_back(
+                buildRandomCompressor(rng(), inputType(), formatVersion_));
     }
     return population;
 }
@@ -43,9 +44,10 @@ void adjustResults(const ACECompressor& gene, std::vector<float>& results)
 
 /* static */ std::vector<float> AutomatedCompressorExplorer::computeFitness(
         const ACECompressor& gene,
-        poly::span<const Input> inputs)
+        poly::span<const Input> inputs,
+        uint32_t formatVersion)
 {
-    auto result = gene.benchmark(inputs);
+    auto result = gene.benchmark(inputs, formatVersion);
     std::vector<float> fitness(3, std::numeric_limits<float>::infinity());
     if (result.has_value()) {
         fitness[0] = result->compressedSize;
@@ -59,7 +61,7 @@ void adjustResults(const ACECompressor& gene, std::vector<float>& results)
 std::vector<float> AutomatedCompressorExplorer::computeFitness(
         const ACECompressor& gene)
 {
-    return computeFitness(gene, inputs_);
+    return computeFitness(gene, inputs_, formatVersion_);
 }
 
 std::vector<std::vector<float>> AutomatedCompressorExplorer::computeFitness(
@@ -78,9 +80,10 @@ std::vector<std::vector<float>> AutomatedCompressorExplorer::computeFitness(
                 continue;
             }
         }
-        futures.emplace_back(threadPool_.run([&inputs = inputs_, &gene] {
-            return computeFitness(gene, inputs);
-        }));
+        futures.emplace_back(threadPool_.run(
+                [&inputs = inputs_, &gene, formatVersion = formatVersion_] {
+                    return computeFitness(gene, inputs, formatVersion);
+                }));
     }
 
     std::vector<std::vector<float>> results;

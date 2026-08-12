@@ -173,8 +173,12 @@ std::vector<std::pair<ACECompressor, ACECompressionResult>> benchmarkAce(
     auto inputs = ace.inputs();
     std::vector<std::pair<ACECompressor, ACECompressionResult>> result;
     for (auto&& [candidate, _] : solutions) {
-        auto benchmark = *candidate.benchmark(inputs);
-        result.emplace_back(std::move(candidate), std::move(benchmark));
+        auto benchmark = candidate.benchmark(inputs, ace.formatVersion());
+        // Do not add nullopt to list of benchmark results
+        if (!benchmark.has_value()) {
+            continue;
+        }
+        result.emplace_back(std::move(candidate), std::move(*benchmark));
         if (!trainParams.paretoFrontier) {
             break;
         }
@@ -183,8 +187,13 @@ std::vector<std::pair<ACECompressor, ACECompressionResult>> benchmarkAce(
         Logger::log(
                 WARNINGS,
                 "No solution found that meets speed constraints: Falling back to store");
-        auto store = buildStoreCompressor();
-        return { { store, *store.benchmark(inputs) } };
+        auto store          = buildStoreCompressor();
+        auto storeBenchmark = store.benchmark(inputs, ace.formatVersion());
+        if (!storeBenchmark.has_value()) {
+            throw Exception(
+                    "Store compressor failed to compress at the target format version");
+        }
+        return { { store, std::move(*storeBenchmark) } };
     }
 
     // Register the new graph on the compressor and return the new graph ID
@@ -290,7 +299,9 @@ std::vector<SerializedCompressorInternal> getCombinedCompressors(
                 *trainedSerializedCompressor, ""));
     };
 
-    auto compressor = makeCompressor();
+    auto compressor          = makeCompressor();
+    const auto formatVersion = static_cast<uint32_t>(
+            compressor.getParameter(CParam::FormatVersion));
     auto cctx       = refCCtxForTraining(compressor);
     auto serialized = compressor.serialize();
 
@@ -341,7 +352,10 @@ std::vector<SerializedCompressorInternal> getCombinedCompressors(
         }
         auto aceState = std::string(
                 (const char*)copyParam->paramPtr, copyParam->paramSize);
-        AutomatedCompressorExplorer ace(flattened, aceState);
+        AutomatedCompressorExplorer::Parameters aceParams;
+        // ACE snapshots contain the population, but not the run configuration.
+        aceParams.formatVersion = formatVersion;
+        AutomatedCompressorExplorer ace(flattened, aceState, aceParams);
         auto benchmarks = benchmarkAce(ace, trainParams);
         allCandidates.emplace(backendGraph, std::move(benchmarks));
     }
