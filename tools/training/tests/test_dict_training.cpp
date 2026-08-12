@@ -107,6 +107,7 @@ TEST(BaseDictTrainer, DuplicateDictsAreDeduped)
     // Generate a compressor that splits an input into 3, and sends each to a
     // trainable zstd node
     Compressor compressor;
+    compressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
     {
         constexpr size_t kNumSegments                = 3;
         constexpr size_t kSegmentSizes[kNumSegments] = { 1024, 1024, 0 };

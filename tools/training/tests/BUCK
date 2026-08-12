@@ -21,6 +21,7 @@ cpp_unittest(
         "test_sample_limiter.cpp",
         "test_thread_pool.cpp",
         "test_train.cpp",
+        "test_utils.cpp",
     ],
     headers = relative_headers([
         "benchmark_files/ppmf_unit_segment.h",
