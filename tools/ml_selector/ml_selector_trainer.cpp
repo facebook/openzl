@@ -14,7 +14,9 @@
 #include "tools/logger/Logger.h"
 #include "tools/training/graph_mutation/graph_mutation_utils.h"
 #include "tools/training/sample_collection/training_sample_collector.h"
+#include "tools/training/train_exceptions.h"
 #include "tools/training/utils/serialized_compressor_internal.h"
+#include "tools/training/utils/utils.h"
 
 // Suppress warnings for XGBoost headers
 #pragma GCC diagnostic push
@@ -515,15 +517,22 @@ static GBTPredictorWrapper trainXGBoostModel(
 static void updateCompressor(
         Compressor& compressor,
         ZL_MLSelectorConfig& config,
-        std::string& mlSelectorGraphName)
+        std::string& mlSelectorGraphName,
+        const std::vector<ZL_GraphID>& successorGraphs)
 {
-    Arena* arena       = ALLOC_HeapArena_create();
-    A1C_Arena a1cArena = A1C_Arena_wrap(arena);
+    const auto arena = detail::NonNullUniqueCPtr<Arena>(
+            ALLOC_HeapArena_create(), ALLOC_Arena_freeArena);
+    A1C_Arena a1cArena = A1C_Arena_wrap(arena.get());
 
     ZL_SerializedMLConfig serializedConfig = unwrap(
             MLSelector_serializeMLSelectorConfig(nullptr, &config, &a1cArena));
 
+    // Override the successor list alongside the trained model so the graph
+    // offers exactly the successors the model was trained over, keeping the
+    // model's dense class indices aligned with the graph at inference time.
     ZL_GraphParameters newParams = {
+        .customGraphs   = successorGraphs.data(),
+        .nbCustomGraphs = successorGraphs.size(),
         .mparam = {
             .content = serializedConfig.data,
             .size    = serializedConfig.size,
@@ -537,8 +546,6 @@ static void updateCompressor(
     auto result = ZL_Compressor_overrideGraphParams(
             compressor.get(), existingMlSelectorGraphId, &newParams);
 
-    ALLOC_Arena_freeArena(arena);
-
     if (ZL_isError(result)) {
         throw std::runtime_error("Error overriding graph params");
     }
@@ -550,6 +557,7 @@ SerializedCompressorInternal trainMLSelectorGraph(
         const TrainParams& trainParams)
 {
     (void)trainParams;
+    const auto formatVersion = compressor.getParameter(CParam::FormatVersion);
 
     // Find the ML selector graph by prefix
     auto mlSelectorGraphs = graph_mutation::findAllGraphsWithPrefix(
@@ -585,9 +593,20 @@ SerializedCompressorInternal trainMLSelectorGraph(
 
             auto cctx = refCCtxForTraining(compressor);
 
-            // Collect inputs for mlSelector graph
+            // Collect the input streams that reach the selector using a CCtx
+            // pinned to the maximum format version. Input collection only
+            // records what flows INTO the selector, but it compresses the whole
+            // (still untrained) graph, and the untrained selector routes every
+            // input to its first successor. Collecting at the target version
+            // would fail here if that successor cannot encode at the target
+            // version, before we get the chance to filter it out below. The
+            // successors are still trained/benchmarked at the target version
+            // via `cctx`, which carries the compressor's format version.
+            auto collectionCctx = refCCtxForTraining(compressor);
+            collectionCctx.setParameter(
+                    CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
             auto mlSelectorInputs = collectInputStreamsForGraph(
-                    inputs, mlSelectorGraphName, cctx);
+                    inputs, mlSelectorGraphName, collectionCctx);
 
             if (mlSelectorInputs.empty()) {
                 continue;
@@ -602,19 +621,30 @@ SerializedCompressorInternal trainMLSelectorGraph(
                 successorGraphs.push_back(successors.graphids[i]);
             }
 
+            // Filter out only successors supported by specified format version.
+            // Note that since the custom graphs are filtered, the set of custom
+            // graphs must be modified later to be the filtered list.
+            const auto supportedSuccessors = filterGraphsByFormatVersion(
+                    compressor, successorGraphs, mlSelectorInputs);
+            if (supportedSuccessors.empty()) {
+                throw FormatVersionUnsupportedError(
+                        "no ML selector successor supports format version "
+                        + std::to_string(formatVersion));
+            }
+
             ProcessedMLTrainingSamples trainingSample = extractMLFeatures(
-                    mlSelectorInputs, compressor, cctx, successorGraphs);
+                    mlSelectorInputs, compressor, cctx, supportedSuccessors);
 
             TestTrainData splitData = trainTestSplit(
                     trainingSample.features, trainingSample.numericLabels);
 
             GBTPredictorWrapper gbtPred =
-                    trainXGBoostModel(splitData, successors.nbGraphIDs);
+                    trainXGBoostModel(splitData, supportedSuccessors.size());
 
             GBTModel coreModel = {
                 .predictor        = gbtPred.core_predictor_.get(),
                 .featureGenerator = FeatureGen_integer,
-                .nbSuccessors     = successors.nbGraphIDs,
+                .nbSuccessors     = supportedSuccessors.size(),
                 .nbFeatures       = trainingSample.featurePtrNames.size(),
                 .featureLabels    = trainingSample.featurePtrNames.data(),
             };
@@ -622,8 +652,12 @@ SerializedCompressorInternal trainMLSelectorGraph(
             ZL_MLSelectorConfig config = { .model         = ZL_GBT,
                                            .runtimeConfig = &coreModel };
 
-            // Update compressor with new trained config
-            updateCompressor(compressor, config, mlSelectorGraphName);
+            // Update compressor with the trained config and filtered successors
+            updateCompressor(
+                    compressor,
+                    config,
+                    mlSelectorGraphName,
+                    supportedSuccessors);
             trainedAnyThisPass = true;
             trainedMlSelectors.insert(mlSelectorGraphName);
         }
