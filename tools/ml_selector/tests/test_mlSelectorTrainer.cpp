@@ -1,15 +1,20 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <gtest/gtest.h>
+#include "openzl/codecs/zl_conversion.h"
+#include "openzl/codecs/zl_lz.h"
 #include "openzl/codecs/zl_mlselector.h"
 #include "openzl/cpp/CCtx.hpp"
 #include "openzl/cpp/Compressor.hpp"
 #include "openzl/cpp/DCtx.hpp"
+#include "openzl/zl_reflection.h"
 #include "tests/datagen/DataGen.h"
 #include "tests/ml_selector_utils.h"
 #include "tools/ml_selector/ml_features.h"
 #include "tools/ml_selector/ml_selector_trainer.h"
+#include "tools/training/graph_mutation/graph_mutation_utils.h"
 #include "tools/training/train.h"
+#include "tools/training/train_exceptions.h"
 #include "tools/training/train_params.h"
 #include "tools/training/utils/serialized_compressor_internal.h"
 #include "tools/training/utils/utils.h"
@@ -91,6 +96,44 @@ class TestMLSelectorTrainer : public testing::Test {
         EXPECT_TRUE(!ZL_RES_isError(sgid));
         compressor.selectStartingGraph(ZL_RES_value(sgid));
 
+        return successorGraphs;
+    }
+
+    // Mirrors setUpCompressor() but appends a version-gated successor and
+    // reports the ml selector graph's name so its trained successor list can be
+    // inspected after training.
+    std::vector<ZL_GraphID> setUpCompressorWithGatedSuccessor(
+            Compressor& compressor)
+    {
+        std::vector<ZL_GraphID> successorGraphs;
+        // Register LZ Graph as an additional potential successor - which
+        // requires v24 format version
+        successorGraphs.push_back(ZL_Compressor_registerStaticGraph_fromNode1o(
+                compressor.get(),
+                ZL_NODE_CONVERT_NUM_TO_SERIAL_LE,
+                ZL_GRAPH_LZ));
+        // Add normal successors afterwards to ensure removing intermediate
+        // successor is not problematic
+        for (auto& successor : registerSuccessors(compressor, true)) {
+            successorGraphs.push_back(successor);
+        }
+
+        auto mlSelectorGraphId = ZL_Compressor_buildUntrainedMLSelector(
+                compressor.get(),
+                successorGraphs.data(),
+                successorGraphs.size());
+        EXPECT_TRUE(!ZL_RES_isError(mlSelectorGraphId));
+        ZL_GraphID mlSelectorGid = ZL_RES_value(mlSelectorGraphId);
+
+        ZL_GraphID staticGraph = ZL_Compressor_registerStaticGraph_fromNode1o(
+                compressor.get(),
+                ZL_NODE_CONVERT_SERIAL_TO_NUM_LE64,
+                mlSelectorGid);
+        ZL_GraphParameters const wrapperDesc = {};
+        auto sgid                            = ZL_Compressor_parameterizeGraph(
+                compressor.get(), staticGraph, &wrapperDesc);
+        EXPECT_TRUE(!ZL_RES_isError(sgid));
+        compressor.selectStartingGraph(ZL_RES_value(sgid));
         return successorGraphs;
     }
 
@@ -297,6 +340,44 @@ class TestMLSelectorTrainer : public testing::Test {
         return mlCompressor;
     }
 
+    // Number of successors the (trained) ML selector graph currently offers.
+    // Uses the same prefix-based lookup as the trainer so it works on a
+    // deserialized compressor regardless of the graph's auto-generated name.
+    size_t mlSelectorSuccessorCount(const Compressor& compressor)
+    {
+        auto graphs = training::graph_mutation::findAllGraphsWithPrefix(
+                compressor, training::ML_SELECTOR_GRAPH_NAME);
+        EXPECT_EQ(graphs.size(), 1u);
+        if (graphs.empty()) {
+            return 0;
+        }
+        return training::graph_mutation::getCustomGraphs(
+                       compressor, graphs.front())
+                .size();
+    }
+
+    // Attempts to compress input at the given format version, returning whether
+    // compression succeeded.
+    bool compressesAtVersion(
+            Compressor& compressor,
+            const std::vector<uint64_t>& input,
+            uint32_t formatVersion)
+    {
+        compressor.setParameter(CParam::FormatVersion, formatVersion);
+        CCtx cctx;
+        cctx.refCompressor(compressor);
+        auto sInput =
+                Input::refSerial(input.data(), input.size() * sizeof(uint64_t));
+        std::string dst(
+                ZL_compressBound(input.size() * sizeof(uint64_t)), '\0');
+        try {
+            cctx.compressOne(dst, sInput);
+        } catch (const openzl::Exception&) {
+            return false;
+        }
+        return true;
+    }
+
    protected:
     Compressor compressor_;
     Compressor trainedCompressor_;
@@ -410,6 +491,107 @@ TEST_F(TestMLSelectorTrainer, TrainRoundTrip)
             deserializeCompressor(serializedCompressor.serializedCompressor);
 
     testRoundTrip(testData_.front(), mlCompressor);
+}
+
+// When a successor cannot encode at the target format version, the selector
+// should be trained on the successors that survive filtering rather than
+// failing the whole selector. The trained selector must then offer exactly the
+// surviving successors so its class indices stay aligned at inference.
+TEST_F(TestMLSelectorTrainer,
+       TrainsAndCompressesOnSuccessorsSupportedAtFormatVersion)
+{
+    // Below ZL_GRAPH_LZ's floor (24), so the LZ-backed successor is dropped.
+    constexpr uint32_t kReducedFormatVersion = 23;
+
+    auto successors = setUpCompressorWithGatedSuccessor(trainedCompressor_);
+
+    trainedCompressor_.setParameter(
+            CParam::FormatVersion, kReducedFormatVersion);
+
+    // Trains on compressor setup to target format version. The v24-only LZ
+    // successor is filtered out and the selector is trained on the survivors
+    // instead of failing.
+    auto serializedWithFormatTarget = openzl::training::trainMLSelectorGraph(
+            multiInputs_, trainedCompressor_, trainParams_);
+    Compressor filtered = deserializeCompressor(*serializedWithFormatTarget);
+
+    // The trained selector offers exactly the surviving successors (LZ dropped)
+    // so its class indices stay aligned with the graph at inference.
+    EXPECT_EQ(mlSelectorSuccessorCount(filtered), successors.size() - 1);
+
+    // The trained compressor compresses successfully at the target format
+    // version, since no surviving successor requires a newer version.
+    for (const auto& input : testData_) {
+        EXPECT_TRUE(
+                compressesAtVersion(filtered, input, kReducedFormatVersion));
+    }
+
+    // Training at the (higher) max format version keeps the LZ successor.
+    Compressor fullCompressor;
+    fullCompressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+    auto fullSuccessors = setUpCompressorWithGatedSuccessor(fullCompressor);
+    auto serializedWithoutFormatTarget = openzl::training::trainMLSelectorGraph(
+            multiInputs_, fullCompressor, trainParams_);
+    Compressor full = deserializeCompressor(*serializedWithoutFormatTarget);
+    EXPECT_EQ(mlSelectorSuccessorCount(full), fullSuccessors.size());
+
+    // The retained LZ successor requires v24, so a graph that reaches it does
+    // not compress at the reduced version, but does at the max version.
+    auto lzGraph = fullCompressor.buildStaticGraph(
+            ZL_NODE_CONVERT_SERIAL_TO_NUM_LE64, { fullSuccessors.front() });
+    fullCompressor.selectStartingGraph(lzGraph);
+    for (const auto& input : testData_) {
+        EXPECT_FALSE(compressesAtVersion(
+                fullCompressor, input, kReducedFormatVersion));
+        EXPECT_TRUE(compressesAtVersion(
+                fullCompressor, input, ZL_MAX_FORMAT_VERSION));
+    }
+}
+
+// When no successor can encode at the target format version, the selector
+// cannot be trained on any survivor and the trainer throws so the orchestrator
+// can fall the selector back to zstd.
+TEST_F(TestMLSelectorTrainer,
+       TrainerThrowsWhenNoSupportedFormatVersionSuccessorsExist)
+{
+    constexpr uint32_t kReducedFormatVersion = 23;
+
+    // Build a selector whose only successors run ZL_GRAPH_LZ (v24+), so nothing
+    // survives filtering at v23. Two successors are the minimum the untrained
+    // selector accepts (a single-forest model requires exactly two successors).
+    std::vector<ZL_GraphID> gatedSuccessors = {
+        ZL_Compressor_registerStaticGraph_fromNode1o(
+                trainedCompressor_.get(),
+                ZL_NODE_CONVERT_NUM_TO_SERIAL_LE,
+                ZL_GRAPH_LZ),
+        ZL_Compressor_registerStaticGraph_fromNode1o(
+                trainedCompressor_.get(),
+                ZL_NODE_CONVERT_NUM_TO_SERIAL_LE,
+                ZL_GRAPH_LZ),
+    };
+    auto mlSelectorGraphId = ZL_Compressor_buildUntrainedMLSelector(
+            trainedCompressor_.get(),
+            gatedSuccessors.data(),
+            gatedSuccessors.size());
+    ASSERT_FALSE(ZL_RES_isError(mlSelectorGraphId));
+
+    ZL_GraphID staticGraph = ZL_Compressor_registerStaticGraph_fromNode1o(
+            trainedCompressor_.get(),
+            ZL_NODE_CONVERT_SERIAL_TO_NUM_LE64,
+            ZL_RES_value(mlSelectorGraphId));
+    ZL_GraphParameters const wrapperDesc = {};
+    auto sgid                            = ZL_Compressor_parameterizeGraph(
+            trainedCompressor_.get(), staticGraph, &wrapperDesc);
+    ASSERT_FALSE(ZL_RES_isError(sgid));
+    trainedCompressor_.selectStartingGraph(ZL_RES_value(sgid));
+
+    trainedCompressor_.setParameter(
+            CParam::FormatVersion, kReducedFormatVersion);
+
+    EXPECT_THROW(
+            openzl::training::trainMLSelectorGraph(
+                    multiInputs_, trainedCompressor_, trainParams_),
+            openzl::training::FormatVersionUnsupportedError);
 }
 
 TEST_F(TestMLSelectorTrainer, TestFeatureExtraction)
