@@ -11,10 +11,12 @@
 #include "openzl/dict/dict_constants.h"
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_reflection.h"
+#include "openzl/zl_version.h"
 
 #include "tools/logger/Logger.h"
 #include "tools/training/dict/zstd_dict_trainer.h"
 #include "tools/training/sample_collection/training_sample_collector.h"
+#include "tools/training/train_exceptions.h"
 
 using namespace openzl::tools::logger;
 
@@ -86,13 +88,31 @@ TrainedCandidate trainDictsForCandidate(
         return candidate;
     }
 
+    const auto formatVersion = compressor.getParameter(CParam::FormatVersion);
+    if (formatVersion == 0) {
+        throw FormatVersionUnsupportedError(
+                "Compressor format version is not set.");
+    }
+
+    // Materialized dictionaries are only representable at
+    // ZL_MATERIALIZED_DICT_VERSION_MIN and above. Below that the encoder cannot
+    // back a node with a dict, so signal the orchestrator to use its fallback
+    // instead of emitting an unusable candidate.
+    if (formatVersion < ZL_MATERIALIZED_DICT_VERSION_MIN) {
+        throw FormatVersionUnsupportedError(
+                "dictionary training requires format version >= "
+                + std::to_string(ZL_MATERIALIZED_DICT_VERSION_MIN)
+                + "; target version " + std::to_string(formatVersion)
+                + " is unsupported");
+    }
+
     Logger::log_c(
             VERBOSE1,
             "Dict training: found %zu nodes requiring dictionaries",
             work.size());
 
     // Use introspection hooks to collect the actual data flowing into
-    // each dict-requiring codec node.
+    // each dict-requiring codec node, at the resolved target format version.
     auto cctx           = refCCtxForTraining(compressor);
     auto samplesPerNode = collectInputStreams(inputs, {}, nodeNames, cctx);
 

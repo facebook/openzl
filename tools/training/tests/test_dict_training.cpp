@@ -21,11 +21,13 @@
 #include "openzl/zl_localParams.h"
 #include "openzl/zl_reflection.h"
 #include "openzl/zl_unique_id.h"
+#include "openzl/zl_version.h"
 
 #include <zstd.h>
 
 #include "tools/training/dict/base_dict_trainer.h"
 #include "tools/training/dict/zstd_dict_trainer.h"
+#include "tools/training/train_exceptions.h"
 #include "tools/training/trained_candidate.h"
 #include "tools/training/utils/utils.h"
 
@@ -151,6 +153,55 @@ TEST(BaseDictTrainer, DuplicateDictsAreDeduped)
     EXPECT_FALSE(ZL_UniqueID_eq(
             &candidate.dicts[0].dictID.id, &candidate.dicts[1].dictID.id));
     EXPECT_NE(candidate.dicts[0].packedDict, candidate.dicts[1].packedDict);
+}
+
+// Below ZL_MATERIALIZED_DICT_VERSION_MIN, materialized dicts cannot be encoded,
+// so dict training reports the unsupported target version by throwing
+// FormatVersionUnsupportedError (letting the orchestrator fall back to zstd).
+TEST(BaseDictTrainer, ThrowsWhenFormatVersionCannotEncodeDicts)
+{
+    auto sampleData = generateSampleData(2, 4096);
+    auto inputs     = toMultiInputs(sampleData);
+
+    // Compressor with a trainable zstd node that would otherwise be trained.
+    Compressor compressor;
+    ZL_GraphID g1 = openzl::unwrap(
+            ZL_Compressor_buildTrainableZstdGraph(compressor.get()));
+    const size_t segmentSizes[2]   = { 1024, 0 };
+    const ZL_GraphID successors[2] = { g1, ZL_GRAPH_ZSTD };
+    ZL_GraphID gHead               = ZL_Compressor_registerSplitGraph(
+            compressor.get(), ZL_Type_serial, segmentSizes, successors, 2);
+    compressor.selectStartingGraph(gHead);
+    compressor.setParameter(
+            CParam::FormatVersion, ZL_MATERIALIZED_DICT_VERSION_MIN - 1);
+
+    // A trainer that would produce a dict if it were ever invoked.
+    std::vector<std::unique_ptr<DictTrainer>> trainers;
+    trainers.push_back(
+            std::make_unique<FakeZstdTrainer>(std::vector<std::string>{
+                    "dict_content_that_should_never_be_used",
+            }));
+
+    TrainParams params{};
+
+    EXPECT_THROW(
+            trainDictsForCandidate(inputs, compressor, params, trainers),
+            FormatVersionUnsupportedError);
+}
+
+TEST(BaseDictTrainer, NoDictNodesRemainNoOpAtUnsupportedVersion)
+{
+    auto sampleData = generateSampleData(1, 256);
+    auto inputs     = toMultiInputs(sampleData);
+
+    Compressor compressor;
+    compressor.selectStartingGraph(ZL_GRAPH_STORE);
+    compressor.setParameter(
+            CParam::FormatVersion, ZL_MATERIALIZED_DICT_VERSION_MIN - 1);
+
+    TrainParams params{};
+    const auto candidate = trainDictsForCandidate(inputs, compressor, params);
+    EXPECT_TRUE(candidate.dicts.empty());
 }
 
 // -------------------------------------------------------
