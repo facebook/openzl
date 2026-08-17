@@ -15,9 +15,9 @@ namespace openzl::training {
 using namespace tools::logger;
 
 std::map<std::string, std::vector<MultiInput>> collectInputStreams(
-        const std::vector<MultiInput>& inputs,
-        const std::vector<std::string>& graphNames,
-        const std::vector<std::string>& nodeNames,
+        poly::span<const MultiInput> inputs,
+        poly::span<const std::string> graphNames,
+        poly::span<const std::string> nodeNames,
         CCtx& cctx)
 {
     if (graphNames.empty() && nodeNames.empty()) {
@@ -75,28 +75,29 @@ std::map<std::string, std::vector<MultiInput>> collectInputStreams(
 }
 
 std::vector<MultiInput> collectInputStreamsForGraph(
-        const std::vector<MultiInput>& inputs,
+        poly::span<const MultiInput> inputs,
         const std::string& untrainedGraphName,
         CCtx& cctx)
 {
-    auto map = collectInputStreams(inputs, { untrainedGraphName }, {}, cctx);
+    auto map =
+            collectInputStreams(inputs, { &untrainedGraphName, 1 }, {}, cctx);
     return std::move(map[untrainedGraphName]);
 }
 
 std::map<std::string, std::vector<MultiInput>> collectInputStreamsForGraphs(
-        const std::vector<MultiInput>& inputs,
-        const std::vector<std::string>& untrainedGraphNames,
+        poly::span<const MultiInput> inputs,
+        poly::span<const std::string> untrainedGraphNames,
         CCtx& cctx)
 {
     return collectInputStreams(inputs, untrainedGraphNames, {}, cctx);
 }
 
 std::vector<MultiInput> collectInputStreamsForNode(
-        const std::vector<MultiInput>& inputs,
+        poly::span<const MultiInput> inputs,
         const std::string& nodeName,
         CCtx& cctx)
 {
-    auto map = collectInputStreams(inputs, {}, { nodeName }, cctx);
+    auto map = collectInputStreams(inputs, {}, { &nodeName, 1 }, cctx);
     return std::move(map[nodeName]);
 }
 

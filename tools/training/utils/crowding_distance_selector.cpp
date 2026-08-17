@@ -1,8 +1,9 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "tools/training/ace/crowding_distance_selector.h"
+#include "tools/training/utils/crowding_distance_selector.h"
 #include "openzl/cpp/Exception.hpp"
 
+#include <cmath>
 #include <set>
 
 namespace openzl::training {
@@ -27,14 +28,21 @@ class CrowdingDistanceSelector {
             // increased by removing it
             for (size_t n = 0; n < nDims_; n++) {
                 auto fitnessDim = indexToInfo_[index].fitness[n];
-                auto adjFitness = getAdjacentFitness(index, n);
-                for (auto adj : adjFitness) {
-                    auto delta =
-                            std::abs(adj.first - fitnessDim) / dimRanges_[n];
-                    updateCrowdingDistance(
-                            indexToInfo_[adj.second].crowdingDistance,
-                            adj.second,
-                            delta);
+                // A dimension with no range to normalize by contributes
+                // nothing to the crowding distance, which is how
+                // crowdingDistance() computes it too. Dividing by it would
+                // produce NaN, and a NaN key has no ordering, which corrupts
+                // the sets below.
+                if (std::isnormal(dimRanges_[n])) {
+                    auto adjFitness = getAdjacentFitness(index, n);
+                    for (auto adj : adjFitness) {
+                        auto delta = std::abs(adj.first - fitnessDim)
+                                / dimRanges_[n];
+                        updateCrowdingDistance(
+                                indexToInfo_[adj.second].crowdingDistance,
+                                adj.second,
+                                delta);
+                    }
                 }
                 // Erase after updating crowding distances
                 dimIndexSets_[n].erase({ fitnessDim, index });

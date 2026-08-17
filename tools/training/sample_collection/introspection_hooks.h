@@ -34,8 +34,8 @@ class InputCopy : public Input {
 class SampleCollectionHook : public openzl::CompressIntrospectionHooks {
    public:
     SampleCollectionHook(
-            std::vector<std::string> targetGraphNames,
-            std::vector<std::string> targetNodeNames)
+            poly::span<const std::string> targetGraphNames,
+            poly::span<const std::string> targetNodeNames)
             : CompressIntrospectionHooks(),
               targetGraphNames_(std::move(targetGraphNames)),
               targetNodeNames_(std::move(targetNodeNames))
@@ -59,8 +59,8 @@ class SampleCollectionHook : public openzl::CompressIntrospectionHooks {
     const std::map<std::string, std::vector<MultiInput>>& getInputs() const;
 
    private:
-    std::vector<std::string> targetGraphNames_;
-    std::vector<std::string> targetNodeNames_;
+    poly::span<const std::string> targetGraphNames_;
+    poly::span<const std::string> targetNodeNames_;
     std::map<std::string, std::vector<MultiInput>> inputs_{};
     std::string errorMessage_{};
 };

@@ -25,11 +25,15 @@ using GraphID = ZL_GraphID;
 struct StaticGraphParameters {
     poly::optional<std::string> name;
     poly::optional<LocalParams> localParams;
+
+    ZL_StaticGraphParameters toC() const;
 };
 
 struct NodeParameters {
     poly::optional<std::string> name;
     poly::optional<LocalParams> localParams;
+
+    ZL_NodeParameters toC() const;
 };
 
 struct GraphParameters {
@@ -37,6 +41,8 @@ struct GraphParameters {
     poly::optional<std::vector<GraphID>> customGraphs;
     poly::optional<std::vector<NodeID>> customNodes;
     poly::optional<LocalParams> localParams;
+
+    ZL_GraphParameters toC() const;
 };
 
 class Compressor {
