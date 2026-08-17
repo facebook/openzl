@@ -750,16 +750,37 @@ GM_overrideBaseGraph(GraphsMgr* gm, ZL_GraphID graph, ZL_GraphID newBaseGraph)
     // Validate that newBaseGraph does not depend on graph
     ZL_ERR_IF_ERR(GM_checkDoesNotDependOn(
             gm, /* needle */ graph, /* haystack */ newBaseGraph));
-    // Set the new base graph and check for infinite loops
-    VECTOR_AT(gm->gdv, lid).baseGraphID = newBaseGraph;
 
-    // Clear the custom graphs, custom nodes, and local params
-    VECTOR_AT(gm->gdv, lid).migd.customGraphs   = NULL;
-    VECTOR_AT(gm->gdv, lid).migd.nbCustomGraphs = 0;
-    VECTOR_AT(gm->gdv, lid).migd.customNodes    = NULL;
-    VECTOR_AT(gm->gdv, lid).migd.nbCustomNodes  = 0;
-    ZL_LocalParams* localParams = &VECTOR_AT(gm->gdv, lid).migd.localParams;
-    memset(localParams, 0, sizeof(*localParams));
+    // A parameterized graph is registered with its own copy of the description
+    // it was created from, and that copy is what runs at compression time.
+    // Adopt the new base's description, otherwise the override would only be
+    // visible to serialization, which rebuilds the graph from baseGraphID.
+    const ZL_FunctionGraphDesc* const newBaseDesc =
+            GM_getMultiInputGraphDesc(gm, newBaseGraph);
+    ZL_ERR_IF_NULL(
+            newBaseDesc,
+            graph_invalid,
+            "New base graph is not a function graph");
+
+    // The graph keeps only its own name. Everything else now comes from the
+    // new base, including its custom graphs, custom nodes and local params,
+    // which it may need to run: a static graph, for example, is driven by its
+    // custom nodes. This matches what deserialization rebuilds, since
+    // GM_registerParameterizedGraph keeps the base's when no override is given.
+    // The new base is already registered, so everything its description points
+    // at is owned by this manager's arena or is static, and outlives it. There
+    // is nothing to transfer.
+    ZL_FunctionGraphDesc migd = *newBaseDesc;
+    migd.name                 = VECTOR_AT(gm->gdv, lid).migd.name;
+    const void* mparamObj     = NULL;
+    ZL_ERR_IF_ERR(GM_materializeMParam(
+            gm, &migd.mparam, &migd.mparamMat, &mparamObj));
+
+    // Commit only once everything that can fail has succeeded
+    VECTOR_AT(gm->gdv, lid).migd         = migd;
+    VECTOR_AT(gm->gdv, lid).mparamObj    = mparamObj;
+    VECTOR_AT(gm->gdv, lid).privateParam = GM_getPrivateParam(gm, newBaseGraph);
+    VECTOR_AT(gm->gdv, lid).baseGraphID  = newBaseGraph;
 
     return ZL_returnSuccess();
 }
@@ -1217,9 +1238,10 @@ const void* GM_getPrivateParam(const GraphsMgr* gm, ZL_GraphID graphid)
 {
     if (GR_isStandardGraph(graphid)) {
         ZL_ASSERT(GR_isStandardGraph(graphid));
-        if (GR_standardGraphs[graphid.gid].type == GR_segmenter)
-            return NULL; /* segmenters have no private params */
-        ZL_ASSERT_EQ(GR_standardGraphs[graphid.gid].type, GR_dynamicGraph);
+        if (GR_standardGraphs[graphid.gid].type != GR_dynamicGraph) {
+            /* store & segmenters have no private params */
+            return NULL;
+        }
         return GR_standardGraphs[graphid.gid].gdi.privateParam;
     }
     ZL_ASSERT_NN(gm);
