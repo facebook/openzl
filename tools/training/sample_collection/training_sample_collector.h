@@ -30,26 +30,26 @@ namespace openzl::training {
  * @return Map from target name (graph or node) to captured samples.
  */
 std::map<std::string, std::vector<MultiInput>> collectInputStreams(
-        const std::vector<MultiInput>& inputs,
-        const std::vector<std::string>& graphNames,
-        const std::vector<std::string>& nodeNames,
+        poly::span<const MultiInput> inputs,
+        poly::span<const std::string> graphNames,
+        poly::span<const std::string> nodeNames,
         CCtx& cctx);
 
 /// Convenience: collect input streams for a single graph.
 std::vector<MultiInput> collectInputStreamsForGraph(
-        const std::vector<MultiInput>& inputs,
+        poly::span<const MultiInput> inputs,
         const std::string& untrainedGraphName,
         CCtx& cctx);
 
 /// Convenience: collect input streams for multiple graphs.
 std::map<std::string, std::vector<MultiInput>> collectInputStreamsForGraphs(
-        const std::vector<MultiInput>& inputs,
-        const std::vector<std::string>& untrainedGraphNames,
+        poly::span<const MultiInput> inputs,
+        poly::span<const std::string> untrainedGraphNames,
         CCtx& cctx);
 
 /// Convenience: collect input streams for a single codec node.
 std::vector<MultiInput> collectInputStreamsForNode(
-        const std::vector<MultiInput>& inputs,
+        poly::span<const MultiInput> inputs,
         const std::string& nodeName,
         CCtx& cctx);
 

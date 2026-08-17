@@ -15,13 +15,15 @@ enum ClusteringTrainer {
     FullSplit,
 };
 
+using CompressorGenFn = std::function<
+        std::unique_ptr<Compressor>(poly::string_view, poly::string_view)>;
+
 struct TrainParams {
-    std::function<
-            std::unique_ptr<Compressor>(poly::string_view, poly::string_view)>
-            compressorGenFunc; /* The function the trainer uses to create the
-                                  compressor. Must handle
-                                  dependency registration. This function must be
-                                  defined. */
+    /**
+     * The function the trainer uses to create the compressor. Must handle
+     * dependency registration. This function must be defined.
+     */
+    CompressorGenFn compressorGenFunc;
     poly::optional<uint32_t> threads;
     poly::optional<ClusteringTrainer> clusteringTrainer;
     poly::optional<size_t> numSamples;

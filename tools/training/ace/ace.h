@@ -22,11 +22,21 @@ class ACETrainer {
      * This class trains a compressor that contains any number of ACE graphs.
      * It can be run on untrained ACE compressor or re-run on an already-trained
      * ACE compressor.
+     *
+     * @param skipTraining Don't run the genetic algorithm, and only select
+     * between the compressors in the ACE state already saved on each backend
+     * graph. Backend graphs without an ACE state are left alone. Exposed for
+     * testing.
      */
-    ACETrainer() {}
+    explicit ACETrainer(bool skipTraining = false) : skipTraining_(skipTraining)
+    {
+    }
 
     /**
      * Runs ACE training and returns the results.
+     *
+     * Backend graphs which already have an ACE state saved on them resume
+     * training from it, rather than starting from a fresh population.
      *
      * @param inputs The inputs to train on
      * @param serializedCompressorInput The serialized compressor input
@@ -53,6 +63,7 @@ class ACETrainer {
     }
 
    private:
+    bool skipTraining_;
     std::optional<SerializedCompressorInternal> checkPoint_;
 };
 

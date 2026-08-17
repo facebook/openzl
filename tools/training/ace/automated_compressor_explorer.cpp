@@ -48,13 +48,11 @@ void adjustResults(const ACECompressor& gene, std::vector<float>& results)
         uint32_t formatVersion)
 {
     auto result = gene.benchmark(inputs, formatVersion);
-    std::vector<float> fitness(3, std::numeric_limits<float>::infinity());
-    if (result.has_value()) {
-        fitness[0] = result->compressedSize;
-        fitness[1] = result->compressionTime.count();
-        fitness[2] = result->decompressionTime.count();
-        adjustResults(gene, fitness);
+    if (!result.has_value()) {
+        return std::vector<float>(3, std::numeric_limits<float>::infinity());
     }
+    auto fitness = result->asFloatVector();
+    adjustResults(gene, fitness);
     return fitness;
 }
 

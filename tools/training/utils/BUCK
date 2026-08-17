@@ -1,6 +1,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("../../../defs.bzl", "zs_cxxlibrary")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("../../../defs.bzl", "relative_headers", "zs_cxxlibrary")
 
 oncall("data_compression")
 
@@ -17,7 +18,6 @@ zs_cxxlibrary(
         "utils.h",
     ],
     exported_deps = [
-        "..:train_common",
         "../..:io",
         "../..:logger",
         "../../..:common",
@@ -36,5 +36,62 @@ zs_cxxlibrary(
     ],
     exported_deps = [
         "../../../cpp:openzl_cpp",
+    ],
+)
+
+cpp_library(
+    # @autodeps-skip
+    name = "crowding_distance_selector",
+    srcs = ["crowding_distance_selector.cpp"],
+    headers = relative_headers(["crowding_distance_selector.h"]),
+    header_namespace = "",
+    exported_deps = [
+        "../../../cpp:openzl_cpp",
+    ],
+)
+
+cpp_library(
+    # @autodeps-skip
+    name = "benchmark",
+    srcs = ["benchmark.cpp"],
+    headers = relative_headers(["benchmark.h"]),
+    header_namespace = "",
+    labels = ["autodeps2_generated"],
+    exported_deps = [
+        "../../../cpp:openzl_cpp",
+        ":training_utils",
+    ],
+)
+
+cpp_library(
+    # @autodeps-skip
+    name = "mutation",
+    srcs = ["mutation.cpp"],
+    headers = relative_headers(["mutation.h"]),
+    header_namespace = "",
+    labels = ["autodeps2_generated"],
+    exported_deps = [
+        "..:train_common",
+        "../../../cpp:openzl_cpp",
+        "../sample_collection:sample_collection",
+        ":benchmark",
+    ],
+)
+
+cpp_library(
+    # @autodeps-skip
+    name = "pareto_combination",
+    srcs = ["pareto_combination.cpp"],
+    headers = relative_headers(["pareto_combination.h"]),
+    header_namespace = "",
+    exported_deps = [
+        "../..:logger",
+        "../../../cpp:openzl_cpp",
+        "../sample_collection:sample_collection",
+        ":benchmark",
+        ":crowding_distance_selector",
+        ":genetic_algorithm",
+        ":mutation",
+        ":training_utils",
     ],
 )
