@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "openzl/codecs/zl_lz4.h"
 #include "openzl/common/assertion.h"
 #include "openzl/common/errors_internal.h"
 #include "openzl/compress/cgraph.h"
@@ -1700,17 +1701,23 @@ TEST_F(CompressorTest, OverrideBaseGraph)
             ZL_Compressor_Graph_getBaseGraphID(compressor_.get(), paramGraph),
             newBaseGraph);
 
-    // Custom graphs, custom nodes, and local params should be cleared
-    EXPECT_EQ(
-            ZL_Compressor_Graph_getCustomGraphs(compressor_.get(), paramGraph)
-                    .nbGraphIDs,
-            0u);
-    EXPECT_EQ(
-            ZL_Compressor_Graph_getCustomNodes(compressor_.get(), paramGraph)
-                    .nbNodeIDs,
-            0u);
-    expectParamsEmpty(
-            ZL_Compressor_Graph_getLocalParams(compressor_.get(), paramGraph));
+    // The parameterization's custom graphs, custom nodes and local params are
+    // replaced by the new base's, which is what the graph now runs as. Here
+    // the new base is a static graph, so it brings its own head node and
+    // successor and has no local params.
+    const auto newCustomGraphs =
+            ZL_Compressor_Graph_getCustomGraphs(compressor_.get(), paramGraph);
+    ASSERT_EQ(newCustomGraphs.nbGraphIDs, 1u);
+    EXPECT_EQ(newCustomGraphs.graphids[0], ZL_GRAPH_ZSTD);
+    const auto newCustomNodes =
+            ZL_Compressor_Graph_getCustomNodes(compressor_.get(), paramGraph);
+    ASSERT_EQ(newCustomNodes.nbNodeIDs, 1u);
+    EXPECT_EQ(newCustomNodes.nodeids[0], ZL_NODE_ZIGZAG);
+    const auto newLocalParams =
+            ZL_Compressor_Graph_getLocalParams(compressor_.get(), paramGraph);
+    EXPECT_EQ(newLocalParams.intParams.nbIntParams, 0u);
+    EXPECT_EQ(newLocalParams.copyParams.nbCopyParams, 0u);
+    EXPECT_EQ(newLocalParams.refParams.nbRefParams, 0u);
 
     // Graph type should still be parameterized
     EXPECT_EQ(
@@ -1775,6 +1782,74 @@ TEST_F(CompressorTest, OverrideBaseGraphRejectsSelfLoop)
     auto paramGraph = makeParameterizedGraph();
     EXPECT_ZS_ERROR(ZL_Compressor_overrideBaseGraph(
             compressor_.get(), paramGraph, paramGraph));
+}
+
+TEST_F(CompressorTest, OverrideBaseGraphTakesEffectImmediately)
+{
+    // A parameterized graph holds its own copy of the description it was
+    // created from, and that copy is what runs at compression time. Overriding
+    // the base graph must update it, rather than only changing what a
+    // serialized copy of the compressor would rebuild.
+    const auto paramGraph = compressor_.parameterizeGraph(
+            ZL_GRAPH_COMPRESS_GENERIC, openzl::GraphParameters{});
+    compressor_.selectStartingGraph(paramGraph);
+
+    const std::string data(10000, 'a');
+    const auto compressedSize = [&]() {
+        cctx_.refCompressor(compressor_);
+        auto input = openzl::Input::refSerial(data);
+        return cctx_.compressOne(input).size();
+    };
+    ASSERT_LT(compressedSize(), data.size() / 2);
+
+    EXPECT_ZS_VALID(ZL_Compressor_overrideBaseGraph(
+            compressor_.get(), paramGraph, ZL_GRAPH_STORE));
+
+    // Storing cannot compress, so the override must be visible right away
+    EXPECT_GE(compressedSize(), data.size());
+}
+
+TEST_F(CompressorTest, OverrideBaseGraphWithStaticGraph)
+{
+    // A static graph runs off its own custom nodes & successors, so adopting
+    // it as a base must bring those along.
+    const auto paramGraph = compressor_.parameterizeGraph(
+            ZL_GRAPH_COMPRESS_GENERIC, openzl::GraphParameters{});
+    compressor_.selectStartingGraph(paramGraph);
+    // lz4 is a standard static graph over serial input
+    EXPECT_ZS_VALID(ZL_Compressor_overrideBaseGraph(
+            compressor_.get(), paramGraph, ZL_GRAPH_LZ4));
+
+    const std::string data(10000, 'a');
+    auto input = openzl::Input::refSerial(data);
+    cctx_.refCompressor(compressor_);
+    const auto inMemory = cctx_.compressOne(input).size();
+
+    openzl::Compressor roundTripped;
+    roundTripped.deserialize(compressor_.serialize());
+    cctx_.refCompressor(roundTripped);
+    EXPECT_EQ(cctx_.compressOne(input).size(), inMemory);
+}
+
+TEST_F(CompressorTest, OverrideBaseGraphMatchesSerializedBehavior)
+{
+    // Whatever the override does in memory, a serialized round trip of the
+    // compressor must do the same.
+    const auto paramGraph = compressor_.parameterizeGraph(
+            ZL_GRAPH_COMPRESS_GENERIC, openzl::GraphParameters{});
+    compressor_.selectStartingGraph(paramGraph);
+    EXPECT_ZS_VALID(ZL_Compressor_overrideBaseGraph(
+            compressor_.get(), paramGraph, ZL_GRAPH_STORE));
+
+    const std::string data(10000, 'a');
+    auto input = openzl::Input::refSerial(data);
+    cctx_.refCompressor(compressor_);
+    const auto inMemory = cctx_.compressOne(input).size();
+
+    openzl::Compressor roundTripped;
+    roundTripped.deserialize(compressor_.serialize());
+    cctx_.refCompressor(roundTripped);
+    EXPECT_EQ(cctx_.compressOne(input).size(), inMemory);
 }
 
 TEST_F(CompressorTest, OverrideBaseGraphRejectsIncompatibleInputTypes)
