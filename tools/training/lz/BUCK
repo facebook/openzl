@@ -1,0 +1,24 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("../../../defs.bzl", "relative_headers")
+
+oncall("data_compression")
+
+cpp_library(
+    # @autodeps-skip
+    name = "lz_trainer",
+    srcs = ["lz_trainer.cpp"],
+    headers = relative_headers(["lz_trainer.h"]),
+    header_namespace = "",
+    deps = [
+        "../../..:zstronglib",
+    ],
+    exported_deps = [
+        "..:train_common",
+        "../..:logger",
+        "../../../cpp:openzl_cpp",
+        "../graph_mutation:graph_mutation",
+        "../utils:mutation",
+        "../utils:pareto_combination",
+        "../utils:training_utils",
+    ],
+)

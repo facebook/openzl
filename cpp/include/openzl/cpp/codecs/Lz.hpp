@@ -149,9 +149,9 @@ class Lz : public Graph {
     poly::optional<GraphParameters> parameters() const override
     {
         if (!params_.has_value()) {
-            return poly::nullopt;
+            // Still parameterize the graph to get a trainable graph
+            return GraphParameters{};
         }
-
         LocalParams lp;
         ::openzl::detail::addLzLocalParams(lp, params_->nodeParams);
 

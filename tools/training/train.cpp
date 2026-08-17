@@ -9,6 +9,7 @@
 #include "tools/training/clustering/clustering_graph_trainer.h"
 #include "tools/training/dict/base_dict_trainer.h"
 #include "tools/training/graph_mutation/graph_mutation_utils.h"
+#include "tools/training/lz/lz_trainer.h"
 #include "tools/training/train.h"
 #include "tools/training/utils/serialized_compressor_internal.h"
 
@@ -53,12 +54,41 @@ std::vector<TrainedCandidate> train(
         compressor = std::move(*newCompressor);
     }
 
+    if (graph_mutation::hasTargetGraph(compressor, LZ_GRAPH_NAME)) {
+        LzTrainer lzTrainer;
+        lzTrainer.train(inputs, compressor.serialize(), trainParams);
+        // TODO: Allow multiple trainers to produce candidates
+        serializedTrainedCompressors.clear();
+        for (auto&& c : lzTrainer.paretoFrontier()) {
+            serializedTrainedCompressors.push_back(std::move(c));
+            if (!trainParams.paretoFrontier) {
+                // Only push first compressor
+                auto newCompressor = trainParams.compressorGenFunc(
+                        *serializedTrainedCompressors[0], "");
+                compressor = std::move(*newCompressor);
+                break;
+            }
+        }
+    }
+
     if (graph_mutation::hasTargetGraph(compressor, ACE_GRAPH_NAME)) {
         // TODO: The ace trainer supports checkpointing now but we need to
         // add flags to utilize it
         ACETrainer aceTrainer;
-        serializedTrainedCompressors =
+        auto aceCompressors =
                 aceTrainer.train(inputs, compressor.serialize(), trainParams);
+        // TODO: Allow multiple trainers to produce candidates
+        serializedTrainedCompressors.clear();
+        for (auto&& c : aceCompressors) {
+            serializedTrainedCompressors.push_back(std::move(c));
+            if (!trainParams.paretoFrontier) {
+                // Only push first compressor
+                auto newCompressor = trainParams.compressorGenFunc(
+                        *serializedTrainedCompressors[0], "");
+                compressor = std::move(*newCompressor);
+                break;
+            }
+        }
     }
 
     if (graph_mutation::hasTargetGraph(compressor, ML_SELECTOR_GRAPH_NAME)) {

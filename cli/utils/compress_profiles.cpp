@@ -330,6 +330,21 @@ compressProfiles()
                 nullptr,
                 true);
 
+        const std::string kLz = "lz";
+        mp[kLz]               = std::make_shared<CompressProfile>(
+                kLz,
+                "Trainable LZ compressor",
+                [](ZL_Compressor* compressor, void*, const ProfileArgs& args) {
+                    CompressorRef c(compressor);
+                    ZL_GraphID inner = graphs::Lz{}(c);
+                    size_t chunkSize = args.chunkSize().value_or(
+                            ZL_DEFAULT_SEGMENTER_CHUNK_BYTE_SIZE);
+                    return ZL_Compressor_buildSerialSegmenter(
+                            compressor, chunkSize, inner);
+                },
+                nullptr,
+                true);
+
         std::string kZstd = "zstd";
         mp[kZstd]         = std::make_shared<CompressProfile>(
                 kZstd,
