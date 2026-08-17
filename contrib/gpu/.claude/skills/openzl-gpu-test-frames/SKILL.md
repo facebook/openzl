@@ -7,7 +7,8 @@ description: How to mint real OpenZL frames and chunks for GPU decoder tests usi
 
 `contrib/gpu/testkit` mints **real** OpenZL frames by driving the actual encoder, so every frame/chunk header and checksum is correct by construction — it never hand-serializes header bytes. Use it for all GPU-decoder test fixtures instead of crafting bytes by hand.
 
-- **Buck target:** `//openzl/dev/contrib/gpu/testkit:testkit` (add to your `cpp_unittest` `deps`).
+- **Buck dep:** add a *relative* dep to `testkit` (e.g. `../../testkit:testkit` from
+  `src/decompress/BUCK`) — absolute `//openzl/dev/...` deps are forbidden in OpenZL.
 - **Namespace:** `openzl::gpu::testkit`.
 - **Headers:** `frame_factory.h`, `frame_verifier.h`, `multichunk_frame.h`.
 
@@ -127,8 +128,9 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     deps = [
         "fbsource//third-party/googletest:gtest",
-        "//openzl/dev/contrib/gpu/testkit:testkit",
-        "//openzl/dev/cpp:openzl_cpp",
+        # ../ depth is relative to YOUR package; these are for contrib/gpu/src/<area>/
+        "../../testkit:testkit",
+        "../../../../cpp:openzl_cpp",
     ],
 )
 ```
