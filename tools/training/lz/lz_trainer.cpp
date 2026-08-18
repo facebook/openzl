@@ -9,6 +9,7 @@
 #include "openzl/zl_reflection.h"
 #include "tools/logger/Logger.h"
 #include "tools/training/graph_mutation/graph_mutation_utils.h"
+#include "tools/training/train_exceptions.h"
 #include "tools/training/utils/pareto_combination.h"
 
 namespace openzl {
@@ -156,9 +157,23 @@ void LzTrainer::train(
         return std::move(*compressorGenFunc(serialized, ""));
     };
 
+    auto compressor = makeCompressor();
+
     // 1. Find LZ graph instances
-    auto compressor     = makeCompressor();
     const auto lzGraphs = findLzGraphs(compressor);
+    // Check format version is sufficient for LZ training
+    if (!lzGraphs.empty()) {
+        const auto formatVersion =
+                compressor.getParameter(CParam::FormatVersion);
+        const int minFormatVersion =
+                ZL_Compressor_Node_getMinVersion(compressor.get(), ZL_NODE_LZ);
+        if (formatVersion < minFormatVersion) {
+            throw FormatVersionUnsupportedError(
+                    "LZ training requires format version >= "
+                    + std::to_string(minFormatVersion) + "; target version "
+                    + std::to_string(formatVersion) + " is unsupported");
+        }
+    }
     Logger::log(
             VERBOSE1, "Found ", lzGraphs.size(), " LZ graphs in compressor");
 
