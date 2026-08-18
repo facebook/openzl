@@ -22,10 +22,6 @@
 #include "openzl/zl_data.h"
 #include "openzl/zl_graph_api.h"
 
-#define ENTROPY_HISTORAM_PID 246
-
-#define ENTROPY_HUF_CTABLE_PID 247
-
 typedef const HUF_CElt* HufCTable;
 ZL_RESULT_DECLARE_TYPE(HufCTable);
 
@@ -587,6 +583,12 @@ typedef enum {
     EBM_any,
 } EntropyBackendMode;
 
+typedef enum {
+    HM_huf0,
+    HM_pivco,
+    HM_any,
+} HuffmanMode;
+
 /// Resolves EBM_any to a concrete mode and returns the entropy compressed
 /// size
 static size_t resolveMode(
@@ -729,6 +731,25 @@ static size_t getMinGainBytes(const ZL_Graph* graph, size_t contentSize)
     return ZL_MAX(minGainBytes, (contentSize / 100) * minGainPct);
 }
 
+static ZL_NodeID huffmanNode(HuffmanMode mode, int formatVersion)
+{
+    if (formatVersion < 27) {
+        // PivCo-Huffman not yet supported
+        mode = HM_huf0;
+    }
+    switch (mode) {
+        // Default to Huf0 for now, this will be swapped in a future diff.
+        case HM_any:
+        case HM_huf0:
+            return (ZL_NodeID){ ZL_PrivateStandardNodeID_huffman_v2 };
+        case HM_pivco:
+            return (ZL_NodeID){ ZL_PrivateStandardNodeID_pivco_huffman };
+        default:
+            ZL_ASSERT(false, "Invalid Huffman mode");
+            return ZL_NODE_ILLEGAL;
+    }
+}
+
 /**
  * Entropy compresses a single chunk by selecting the most efficient backend
  * allowed by the mode.
@@ -737,7 +758,8 @@ static ZL_Report entropyCompressChunk(
         ZL_Graph* gctx,
         ZL_Edge* chunk,
         EntropyBackendMode mode,
-        size_t minGainBytes)
+        size_t minGainBytes,
+        HuffmanMode hufMode)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     ZL_Input const* input = ZL_Edge_getData(chunk);
@@ -869,14 +891,12 @@ static ZL_Report entropyCompressChunk(
     }
 
     if (mode == EBM_huf) {
+        ZL_NodeID node = huffmanNode(
+                hufMode, ZL_Graph_getCParam(gctx, ZL_CParam_formatVersion));
         ZL_TRY_LET(
                 ZL_EdgeList,
                 streams,
-                runNode_withParams(
-                        chunk,
-                        (ZL_NodeID){ ZL_PrivateStandardNodeID_huffman_v2 },
-                        histogram,
-                        hufCTable));
+                runNode_withParams(chunk, node, histogram, hufCTable));
         ZL_ASSERT_EQ(streams.nbEdges, 2);
         // TODO(T267366720): Improve Huffman header encoding.
         // Bitpack is fast but leaves a lot on the table, however FSE is too
@@ -906,8 +926,11 @@ static ZL_Report entropyCompressChunk(
     }
 }
 
-static ZL_Report
-entropyDynamicGraph(ZL_Graph* gctx, ZL_Edge* sctx, EntropyBackendMode mode)
+static ZL_Report entropyDynamicGraph(
+        ZL_Graph* gctx,
+        ZL_Edge* sctx,
+        EntropyBackendMode mode,
+        HuffmanMode hufMode)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
 
@@ -927,7 +950,7 @@ entropyDynamicGraph(ZL_Graph* gctx, ZL_Edge* sctx, EntropyBackendMode mode)
         const size_t scaledMinGainBytes =
                 (minGainBytes * chunkSize) / contentSize;
         ZL_ERR_IF_ERR(entropyCompressChunk(
-                gctx, chunks.edges[i], mode, scaledMinGainBytes));
+                gctx, chunks.edges[i], mode, scaledMinGainBytes, hufMode));
     }
     return ZL_returnSuccess();
 }
@@ -998,11 +1021,14 @@ ZL_Report EI_fseDynamicGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
         ZL_ASSERT_EQ(streams.nbEdges, 1);
         return ZL_Edge_setDestination(streams.edges[0], ZL_GRAPH_STORE);
     }
-    return entropyDynamicGraph(gctx, input, EBM_fse);
+    return entropyDynamicGraph(gctx, input, EBM_fse, HM_any);
 }
 
-ZL_Report
-EI_huffmanDynamicGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
+static ZL_Report EI_huffmanDynamicGraphImpl(
+        ZL_Graph* gctx,
+        ZL_Edge* inputs[],
+        size_t nbIns,
+        HuffmanMode hufMode)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(gctx);
     ZL_ERR_IF(nbIns != 1, graph_invalidNumInputs);
@@ -1019,7 +1045,25 @@ EI_huffmanDynamicGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
         ZL_ASSERT_EQ(streams.nbEdges, 1);
         return ZL_Edge_setDestination(streams.edges[0], ZL_GRAPH_STORE);
     }
-    return entropyDynamicGraph(gctx, input, EBM_huf);
+    return entropyDynamicGraph(gctx, input, EBM_huf, hufMode);
+}
+
+ZL_Report
+EI_huffmanDynamicGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
+{
+    return EI_huffmanDynamicGraphImpl(gctx, inputs, nbIns, HM_any);
+}
+
+ZL_Report
+EI_huffmanDynamicGraphHuf0(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
+{
+    return EI_huffmanDynamicGraphImpl(gctx, inputs, nbIns, HM_huf0);
+}
+
+ZL_Report
+EI_huffmanDynamicGraphPivco(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
+{
+    return EI_huffmanDynamicGraphImpl(gctx, inputs, nbIns, HM_pivco);
 }
 
 ZL_Report
@@ -1037,7 +1081,7 @@ EI_entropyDynamicGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns)
         ZL_GraphID const graph = EI_selector_entropy(gctx, input);
         return ZL_Edge_setDestination(input, graph);
     }
-    return entropyDynamicGraph(gctx, input, EBM_any);
+    return entropyDynamicGraph(gctx, input, EBM_any, HM_any);
 }
 
 ZL_Report ZL_Edge_setEntropyDestination(

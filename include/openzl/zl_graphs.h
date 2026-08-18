@@ -15,6 +15,8 @@ typedef enum {
 
     ZL_StandardGraphID_fse,
     ZL_StandardGraphID_huffman,
+    ZL_StandardGraphID_huffman_huf0,
+    ZL_StandardGraphID_huffman_pivco,
     ZL_StandardGraphID_entropy,
     ZL_StandardGraphID_constant,
 

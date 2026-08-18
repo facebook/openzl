@@ -494,11 +494,10 @@ static ZL_Report setEntropyDestinationOrOverride(
     const ZL_GraphID override =
             getGraph(gctx, customGraphs, overrideParam, ZL_GRAPH_ILLEGAL);
     if (override.gid != ZL_GRAPH_ILLEGAL.gid) {
-        ZL_ERR_IF_ERR(ZL_Edge_setDestination(edge, override));
-    } else {
-        ZL_ERR_IF_ERR(ZL_Edge_setEntropyDestination(
-                edge, entropyGraph, minGainForHuffmanBytes, -1));
+        entropyGraph = override;
     }
+    ZL_ERR_IF_ERR(ZL_Edge_setEntropyDestination(
+            edge, entropyGraph, minGainForHuffmanBytes, -1));
     return ZL_returnSuccess();
 }
 
