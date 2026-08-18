@@ -4,8 +4,9 @@ This is an implementation of PivCo-Huffman coding from Marcin Zukowski.
 The code is based on ideas from:
 
 - [The paper](https://arxiv.org/abs/2606.05765)
-- [The repo](https://github.com/MarcinZukowski/pivco-huffman)
-- [Ryg's blog](https://fgiesen.wordpress.com/2026/06/21/pivco-huffman-merge-operations/)
+- [The repo](https://github.com/MarcinZukowski/pivco-huffman), including both the code and discussion on the Issues
+- [Ryg's blog](https://fgiesen.wordpress.com/2026/06/21/pivco-huffman-merge-operations/) and ideas he contributed to the upstream repo.
+- Ideas from [Dougall Johnson](https://github.com/dougallj) contributed to the upstream repo.
 
 OpenZL re-implements PivCo-Huffman instead of using the upstream repo for several reasons:
 
