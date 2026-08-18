@@ -77,9 +77,7 @@ AVX2_INLINE void mergeVectorVectorBlock(
 {
     ptrdiff_t lhsCur = (ptrdiff_t)*lhsIdx;
     ptrdiff_t rhsCur = (ptrdiff_t)*rhsIdx;
-#    ifdef __clang__
-#        pragma clang loop unroll(full)
-#    endif
+    ZL_UNROLL_LOOP(16)
     for (size_t offset = 0; offset < kBlockSize; offset += 16) {
         uint16_t mask;
         ZL_memcpy(&mask, bitmap + offset / 8, sizeof(mask));
@@ -119,9 +117,7 @@ AVX2_INLINE void mergeConstantVectorBlock(
         size_t kBlockSize)
 {
     size_t rhsCur = *rhsIdx;
-#    ifdef __clang__
-#        pragma clang loop unroll(full)
-#    endif
+    ZL_UNROLL_LOOP(16)
     for (size_t offset = 0; offset < kBlockSize; offset += 16) {
         uint16_t mask;
         ZL_memcpy(&mask, bitmap + offset / 8, sizeof(mask));

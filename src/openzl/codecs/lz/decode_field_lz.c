@@ -201,8 +201,8 @@ ZL_FORCE_INLINE ZL_Report ZL_FieldLz_decompress_impl2(
             // We want loop unrolling, but this is triggering a compiler bug in
             // alias analysis.
             // See T195077417 & https://github.com/llvm/llvm-project/pull/100130
-#if defined(__clang__) && !defined(__APPLE__)
-#    pragma clang loop unroll_count(4)
+#if !defined(__APPLE__)
+            ZL_UNROLL_LOOP(4)
 #endif
             for (size_t u = 0; u < kUnroll; ++u) {
                 uint64_t const token  = tokens >> (16 * u);
