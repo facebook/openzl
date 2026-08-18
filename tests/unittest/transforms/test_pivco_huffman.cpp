@@ -37,6 +37,7 @@ std::vector<EncodeArch> supportedEncodeArchs()
     std::vector<EncodeArch> const archs = {
         { "generic", &ZL_PivCoHuffmanEncode_generic },
         { "avx2", &ZL_PivCoHuffmanEncode_avx2 },
+        { "arm", &ZL_PivCoHuffmanEncode_arm },
         { "avx512", &ZL_PivCoHuffmanEncode_avx512 },
     };
     for (auto const& arch : archs) {
@@ -54,6 +55,7 @@ std::vector<DecodeArch> supportedDecodeArchs()
     std::vector<DecodeArch> const archs = {
         { "generic", &ZL_PivCoHuffmanDecode_generic },
         { "avx2", &ZL_PivCoHuffmanDecode_avx2 },
+        { "arm", &ZL_PivCoHuffmanDecode_arm },
         { "avx512", &ZL_PivCoHuffmanDecode_avx512 },
     };
     for (auto const& arch : archs) {

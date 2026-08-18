@@ -35,6 +35,9 @@ const ZL_PivCoHuffmanDecode* ZL_PivCoHuffmanDecode_select(
     if (ZL_PivCoHuffmanDecode_avx2.supported(cpuid)) {
         return &ZL_PivCoHuffmanDecode_avx2;
     }
+    if (ZL_PivCoHuffmanDecode_arm.supported(cpuid)) {
+        return &ZL_PivCoHuffmanDecode_arm;
+    }
     return &ZL_PivCoHuffmanDecode_generic;
 }
 

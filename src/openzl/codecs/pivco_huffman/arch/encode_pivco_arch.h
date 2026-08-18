@@ -102,6 +102,7 @@ const ZL_PivCoHuffmanEncode* ZL_PivCoHuffmanEncode_select(
 
 extern const ZL_PivCoHuffmanEncode ZL_PivCoHuffmanEncode_generic;
 extern const ZL_PivCoHuffmanEncode ZL_PivCoHuffmanEncode_avx2;
+extern const ZL_PivCoHuffmanEncode ZL_PivCoHuffmanEncode_arm;
 extern const ZL_PivCoHuffmanEncode ZL_PivCoHuffmanEncode_avx512;
 
 ZL_END_C_DECLS

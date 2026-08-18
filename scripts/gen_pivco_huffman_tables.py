@@ -48,6 +48,10 @@ def partition_lo16(mask: int) -> list[int]:
     # Low-half gather control for the 16-wide partition: right ranks (set lanes)
     # packed forward at the front, left ranks (unset lanes) packed reversed at the
     # far back; the gap in between is filled by the high-half control.
+    #
+    # The first 8 bytes double as an 8-wide vtbl1_u8 compress control: the unset
+    # lanes never reach below index 8, so bytes [popcount, 8) are always 0x80,
+    # which is out of range for an 8-byte table and therefore gathers zero.
     out = [0x80] * 16
     pos = 0
     for lane in range(8):
@@ -136,32 +140,30 @@ def merge_hi_ctrl() -> list[list[int]]:
     return [merge_hi_ctrl8(mask) for mask in range(256)]
 
 
-def neon_expand8(mask: int, lhs_base: int, rhs_base: int) -> list[int]:
-    lhs = lhs_base
-    rhs = rhs_base
-    out = []
-    for bit in range(8):
-        if (mask & (1 << bit)) != 0:
-            out.append(rhs)
-            rhs += 1
+def neon_merge_shuf_pair(mask: int) -> tuple[list[int], list[int]]:
+    shuf0 = [0] * 16
+    shuf1 = [0] * 16
+    pop = 0
+    for lane in range(8):
+        if (mask & (1 << lane)) != 0:
+            shuf0[lane] = pop
+            shuf1[lane + 8] = (-pop) & 0xFF
+            pop += 1
         else:
-            out.append(lhs)
-            lhs += 1
-    return out
+            value = -16 - lane + pop
+            shuf0[lane] = value & 0xFF
+            shuf1[lane + 8] = (8 - value) & 0xFF
+    for lane in range(8):
+        shuf0[lane + 8] = pop
+    return shuf0, shuf1
 
 
-def neon_expand8_table(rhs_base: int) -> list[list[int]]:
-    return [neon_expand8(mask, lhs_base=0, rhs_base=rhs_base) for mask in range(256)]
+def neon_merge_shuf0() -> list[list[int]]:
+    return [neon_merge_shuf_pair(mask)[0] for mask in range(256)]
 
 
-def neon_expand8_pre() -> list[list[list[int]]]:
-    return [
-        [
-            neon_expand8(mask, lhs_base=8 - prior_ones, rhs_base=16 + prior_ones)
-            for mask in range(256)
-        ]
-        for prior_ones in range(9)
-    ]
+def neon_merge_shuf1() -> list[list[int]]:
+    return [neon_merge_shuf_pair(mask)[1] for mask in range(256)]
 
 
 def avx512_unpack_permute(depth: int) -> list[int]:
@@ -215,22 +217,6 @@ def format_u8_table_2d(name: str, rows: list[list[int]], align: int) -> str:
     )
 
 
-def format_u8_table_3d(name: str, planes: list[list[list[int]]], align: int) -> str:
-    plane_len = len(planes[0])
-    row_len = len(planes[0][0])
-    formatted_planes = []
-    for plane in planes:
-        rows = ",\n".join("        " + format_u8_row(row) for row in plane)
-        formatted_planes.append(f"    {{\n{rows}\n    }}")
-    body = ",\n".join(formatted_planes)
-    return (
-        f"static const ZL_ALIGNED({align}) uint8_t "
-        f"{name}[{len(planes)}][{plane_len}][{row_len}] = {{\n"
-        f"{body},\n"
-        "};"
-    )
-
-
 def render_header(path: str, body: str) -> str:
     guard = header_guard(path)
     return f"""// Copyright (c) Meta Platforms, Inc. and affiliates.
@@ -256,6 +242,29 @@ ZL_END_C_DECLS
 """
 
 
+def render_common_tables() -> str:
+    # Arch-neutral tables: byte-shuffle controls over a 16-lane register, which
+    # pshufb and vqtbl1q_u8 consume identically, plus the lane counts that index
+    # them.
+    body = "\n\n".join(
+        [
+            format_u8_table_1d(
+                "ZL_kPivCoHuffmanNotPopcount8", zeros_counts(), align=64
+            ),
+            format_u8_table_2d("ZL_kPivCoHuffmanPartitionLo", partition_lo(), align=16),
+            format_u8_table_2d(
+                "ZL_kPivCoHuffmanPartitionHiPadded",
+                partition_hi_padded(),
+                align=32,
+            ),
+        ]
+    )
+    return render_header(
+        "src/openzl/codecs/pivco_huffman/arch/common_pivco_tables.h",
+        body,
+    )
+
+
 def render_avx2_tables() -> str:
     body = "\n\n".join(
         [
@@ -265,17 +274,8 @@ def render_avx2_tables() -> str:
             format_u8_table_2d(
                 "ZL_kPivCoHuffmanMergeHiCtrl", merge_hi_ctrl(), align=16
             ),
-            format_u8_table_1d(
-                "ZL_kPivCoHuffmanNotPopcount8", zeros_counts(), align=16
-            ),
             format_u8_table_2d(
                 "ZL_kPivCoHuffmanCompressU16Pair", compress_u16_pair(0x80), align=32
-            ),
-            format_u8_table_2d("ZL_kPivCoHuffmanPartitionLo", partition_lo(), align=16),
-            format_u8_table_2d(
-                "ZL_kPivCoHuffmanPartitionHiPadded",
-                partition_hi_padded(),
-                align=32,
             ),
         ]
     )
@@ -289,28 +289,15 @@ def render_neon_tables() -> str:
     body = "\n\n".join(
         [
             format_u8_table_1d("ZL_kPivCoHuffmanNeonPopcount", popcounts(), align=64),
-            format_u8_table_1d(
-                "ZL_kPivCoHuffmanNeonZeroCount", zeros_counts(), align=64
+            format_u8_table_2d(
+                "ZL_kPivCoHuffmanNeonMergeShuf0",
+                neon_merge_shuf0(),
+                align=16,
             ),
             format_u8_table_2d(
-                "ZL_kPivCoHuffmanNeonCompressU16",
-                compress_u16_pair(0xFF),
-                align=32,
-            ),
-            format_u8_table_2d(
-                "ZL_kPivCoHuffmanNeonExpand8",
-                neon_expand8_table(rhs_base=8),
-                align=32,
-            ),
-            format_u8_table_2d(
-                "ZL_kPivCoHuffmanNeonExpand8Q",
-                neon_expand8_table(rhs_base=16),
-                align=32,
-            ),
-            format_u8_table_3d(
-                "ZL_kPivCoHuffmanNeonExpand8Pre",
-                neon_expand8_pre(),
-                align=64,
+                "ZL_kPivCoHuffmanNeonMergeShuf1",
+                neon_merge_shuf1(),
+                align=16,
             ),
         ]
     )
@@ -343,6 +330,7 @@ def render_avx512_tables() -> str:
 
 def main() -> None:
     outputs = {
+        "src/openzl/codecs/pivco_huffman/arch/common_pivco_tables.h": render_common_tables(),
         "src/openzl/codecs/pivco_huffman/arch/common_pivco_avx2_tables.h": render_avx2_tables(),
         "src/openzl/codecs/pivco_huffman/arch/common_pivco_neon_tables.h": render_neon_tables(),
         "src/openzl/codecs/pivco_huffman/arch/common_pivco_avx512_tables.h": render_avx512_tables(),

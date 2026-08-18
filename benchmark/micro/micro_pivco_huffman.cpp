@@ -34,6 +34,7 @@ std::vector<EncodeArch> supportedEncodeArchs()
         { "generic", &ZL_PivCoHuffmanEncode_generic },
         { "avx512", &ZL_PivCoHuffmanEncode_avx512 },
         { "avx2", &ZL_PivCoHuffmanEncode_avx2 },
+        { "arm", &ZL_PivCoHuffmanEncode_arm },
     };
     for (auto const& arch : archs) {
         if (arch.kernels->supported(&cpuid)) {
@@ -51,6 +52,7 @@ std::vector<DecodeArch> supportedDecodeArchs()
         { "generic", &ZL_PivCoHuffmanDecode_generic },
         { "avx512", &ZL_PivCoHuffmanDecode_avx512 },
         { "avx2", &ZL_PivCoHuffmanDecode_avx2 },
+        { "arm", &ZL_PivCoHuffmanDecode_arm },
     };
     for (auto const& arch : archs) {
         if (arch.kernels->supported(&cpuid)) {

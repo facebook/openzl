@@ -8,6 +8,7 @@
 #    include <string.h>
 
 #    include "common_pivco_avx2_tables.h"
+#    include "common_pivco_tables.h"
 #    include "openzl/shared/bits.h"
 #    include "openzl/shared/mem.h"
 
