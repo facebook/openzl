@@ -27,6 +27,18 @@ void addLzLocalParams(LocalParams& lp, const Parameters& params)
     if (params.windowLog.has_value()) {
         lp.addIntParam(ZL_LzParam_windowLog, params.windowLog.value());
     }
+    if (params.strategy.has_value()) {
+        lp.addIntParam(ZL_LzParam_strategy, params.strategy.value());
+    }
+    if (params.hashLog1.has_value()) {
+        lp.addIntParam(ZL_LzParam_hashLog1, params.hashLog1.value());
+    }
+    if (params.hashLog2.has_value()) {
+        lp.addIntParam(ZL_LzParam_hashLog2, params.hashLog2.value());
+    }
+    if (params.hashLength.has_value()) {
+        lp.addIntParam(ZL_LzParam_hashLength, params.hashLength.value());
+    }
 }
 } // namespace detail
 
@@ -55,6 +67,14 @@ struct Lz : public Node {
         poly::optional<int> acceleration;
         /// Optionally override the maximum lookback window log
         poly::optional<int> windowLog;
+        /// Optionally override the strategy
+        poly::optional<ZL_LzStrategy> strategy;
+        /// Optionally override hashLog1
+        poly::optional<int> hashLog1;
+        /// Optionally override hashLog2
+        poly::optional<int> hashLog2;
+        /// Optionally override hashLength
+        poly::optional<int> hashLength;
     };
 
     Lz() {}

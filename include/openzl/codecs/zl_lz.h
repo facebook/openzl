@@ -34,8 +34,16 @@ extern "C" {
 /// - The match length is >= 2^16 and (ml % 2^16 < min_match_length)
 #define ZL_LZ_MIN_MATCH_LENGTH_METADATA_ID 77
 
+typedef enum {
+    ZL_LzStrategy_fast = 1,
+    ZL_LzStrategy_doubleFast,
+} ZL_LzStrategy;
+
 /**
  * Parameters that control the behavior of ZL_NODE_LZ and ZL_GRAPH_LZ.
+ *
+ * Parameters will be clamped to their min & max values where relevant (see
+ * below).
  */
 typedef enum {
     /**
@@ -45,6 +53,8 @@ typedef enum {
      * The compression level controls the default parameters and successor
      * graphs. If compression level has no effect on parameters or successor
      * graphs that are explicitly overridden.
+     *
+     * @note 0 means use the default value.
      */
     ZL_LzParam_compressionLevel = 1,
 
@@ -55,7 +65,7 @@ typedef enum {
      * from the compression level. If the compression level is >= 0,
      * then it defaults to 1. Otherwise it defaults to -compression_level.
      *
-     * @note This parameter is clamped to 1 if set to a lower value.
+     * @note 0 means use the default value of 1.
      */
     ZL_LzParam_acceleration = 100,
 
@@ -66,12 +76,46 @@ typedef enum {
      * The default value is set depending on the compression level and source
      * size, and is capped at the source size.
      *
+     * @note 0 means use the default value.
+     *
      * @note If the window size is <= 64K, then LZ will use 16-bit offsets
      * rather than 32-bit offsets.
-     * @note currently, this value will be clamped between 10 and 28, but this
-     * is subject to change.
      */
     ZL_LzParam_windowLog = 101,
+
+    /**
+     * The ZL_LzStrategy to use for compression.
+     *
+     * @note 0 means use the default value.
+     */
+    ZL_LzParam_strategy = 102,
+
+    /**
+     * The log2 of the primary hash table in LZ match finding. Higher values use
+     * more memory, but potentially improve compression.
+     *
+     * @note 0 means use the default value.
+     */
+    ZL_LzParam_hashLog1 = 103,
+
+    /**
+     * The log2 of the secondary hash table in LZ match finding. Higher values
+     * use more memory, but potentially improve compression.
+     *
+     * @note 0 means use the default value.
+     * @note This will be ignored if the strategy doesn't use the secondary
+     * table.
+     */
+    ZL_LzParam_hashLog2 = 104,
+
+    /**
+     * The number of bytes to hash in match finding hash tables. This is
+     * effectively the minimum match length that the match finder searches for
+     * (though it may find shorter matches by happenstance).
+     *
+     * @note 0 means use the default value.
+     */
+    ZL_LzParam_hashLength = 105,
 
     /**
      * If set, the customGraph at this index is used to compress the literals,
@@ -112,6 +156,27 @@ typedef enum {
      */
     ZL_LzParam_muxLengthsGraphIdx = 1004,
 } ZL_LzParam;
+
+#define ZL_LZPARAM_WINDOWLOG_MIN 10
+#define ZL_LZPARAM_WINDOWLOG_MAX 28
+
+#define ZL_LZPARAM_ACCELERATION_MIN 1
+#define ZL_LZPARAM_ACCELERATION_MAX 10000
+
+#define ZL_LZPARAM_HASHLOG1_MIN 10
+#define ZL_LZPARAM_HASHLOG1_MAX 23
+
+#define ZL_LZPARAM_HASHLOG2_MIN 10
+#define ZL_LZPARAM_HASHLOG2_MAX 23
+
+#define ZL_LZPARAM_STRATEGY_MIN ((int)ZL_LzStrategy_fast)
+#define ZL_LZPARAM_STRATEGY_MAX ((int)ZL_LzStrategy_doubleFast)
+
+#define ZL_LZPARAM_HASHLENGTH_MIN 4
+#define ZL_LZPARAM_HASHLENGTH_MAX 7
+
+#define ZL_LZPARAM_COMPRESSIONLEVEL_MIN (-ZL_LZPARAM_ACCELERATION_MAX)
+#define ZL_LZPARAM_COMPRESSIONLEVEL_MAX 4
 
 #if defined(__cplusplus)
 }

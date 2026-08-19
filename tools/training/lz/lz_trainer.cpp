@@ -66,16 +66,19 @@ std::vector<std::string> findLzGraphs(const Compressor& compressor)
 /**
  * @returns The parameters to try for a single LZ backend graph.
  *
- * TODO: This is a placeholder. It sweeps the acceleration, which trades ratio
- * for compression speed, because that is the parameter with the clearest
- * tradeoff. It should also explore the window log and the successor graphs for
- * the literals, offsets and lengths streams. Note that sweeping the
- * compression level is not worthwhile on its own: every level >= 0 currently
- * produces identical output, and a level < 0 is just another way of setting
- * the acceleration.
+ * TODO: Switch to use a genetic algorithm rather than brute force.
+ * We're currently not searching hashLog1 and hashLog2 because it would
+ * expand the search space to be unreasonably large. This is expected to
+ * get the majority of the interesting search space, however.
  */
 std::vector<graphs::Lz::Parameters> candidateParameters()
 {
+    const std::vector<poly::optional<int>> levels = {
+        poly::nullopt, { 1 }, { 2 }, { 3 }, { 4 },
+    };
+    const std::vector<poly::optional<int>> hashLengths = {
+        poly::nullopt, { 4 }, { 5 }, { 6 }, { 7 },
+    };
     const std::vector<poly::optional<int>> accelerations = {
         poly::nullopt, { 2 }, { 3 }, { 5 }, { 7 },
     };
@@ -105,21 +108,29 @@ std::vector<graphs::Lz::Parameters> candidateParameters()
     };
 
     std::vector<graphs::Lz::Parameters> candidates;
-    for (auto acceleration : accelerations) {
-        for (auto windowLog : windowLogs) {
-            for (auto literalsGraph : literalsGraphs) {
-                for (auto offsetsGraph : offsetsGraphs) {
-                    for (auto muxedBytesGraph : muxedBytesGraphs) {
-                        for (auto overflowLengthsGraph :
-                             overflowLengthsGraphs) {
-                            graphs::Lz::Parameters params;
-                            params.nodeParams.acceleration = acceleration;
-                            params.nodeParams.windowLog    = windowLog;
-                            params.literalsGraph           = literalsGraph;
-                            params.offsetsGraph            = offsetsGraph;
-                            params.muxedBytesGraph         = muxedBytesGraph;
-                            params.overflowLengthsGraph = overflowLengthsGraph;
-                            candidates.push_back(std::move(params));
+    for (auto level : levels) {
+        for (auto acceleration : accelerations) {
+            for (auto windowLog : windowLogs) {
+                for (auto hashLength : hashLengths) {
+                    for (auto literalsGraph : literalsGraphs) {
+                        for (auto offsetsGraph : offsetsGraphs) {
+                            for (auto muxedBytesGraph : muxedBytesGraphs) {
+                                for (auto overflowLengthsGraph :
+                                     overflowLengthsGraphs) {
+                                    graphs::Lz::Parameters params;
+                                    params.nodeParams.compressionLevel = level;
+                                    params.nodeParams.acceleration =
+                                            acceleration;
+                                    params.nodeParams.windowLog  = windowLog;
+                                    params.nodeParams.hashLength = hashLength;
+                                    params.literalsGraph   = literalsGraph;
+                                    params.offsetsGraph    = offsetsGraph;
+                                    params.muxedBytesGraph = muxedBytesGraph;
+                                    params.overflowLengthsGraph =
+                                            overflowLengthsGraph;
+                                    candidates.push_back(std::move(params));
+                                }
+                            }
                         }
                     }
                 }

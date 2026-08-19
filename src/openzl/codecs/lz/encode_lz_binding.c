@@ -135,43 +135,62 @@ ZL_Report EI_fieldLz(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     return ZL_returnValue(5);
 }
 
-static int getCompressionLevelEncoder(const ZL_Encoder* eictx)
+static ZL_LzParameters getLzParams(const ZL_Encoder* eictx, size_t srcSize)
 {
-    const ZL_IntParam compressionLevel =
-            ZL_Encoder_getLocalIntParam(eictx, ZL_LzParam_compressionLevel);
-    if (compressionLevel.paramId == ZL_LP_INVALID_PARAMID) {
-        return ZL_Encoder_getCParam(eictx, ZL_CParam_compressionLevel);
-    } else {
-        return compressionLevel.paramValue;
+    const ZL_LocalIntParams intParams = ZL_Encoder_getLocalIntParams(eictx);
+
+    int level                 = 0;
+    ZL_LzParameters overrides = { 0 };
+
+    for (size_t i = 0; i < intParams.nbIntParams; ++i) {
+        const int value = intParams.intParams[i].paramValue;
+        switch (intParams.intParams[i].paramId) {
+            case ZL_LzParam_compressionLevel:
+                level = value;
+                break;
+            case ZL_LzParam_acceleration:
+                overrides.acceleration = (uint32_t)value;
+                break;
+            case ZL_LzParam_windowLog:
+                overrides.windowLog = (uint32_t)value;
+                break;
+            case ZL_LzParam_strategy:
+                overrides.strategy = (ZL_LzStrategy)value;
+                break;
+            case ZL_LzParam_hashLog1:
+                overrides.hashLog1 = (uint32_t)value;
+                break;
+            case ZL_LzParam_hashLog2:
+                overrides.hashLog2 = (uint32_t)value;
+                break;
+            case ZL_LzParam_hashLength:
+                overrides.hashLength = (uint32_t)value;
+                break;
+            default:
+                continue;
+        }
     }
-}
-
-static int getAcceleration(const ZL_Encoder* eictx)
-{
-    const ZL_IntParam acceleration =
-            ZL_Encoder_getLocalIntParam(eictx, ZL_LzParam_acceleration);
-    if (acceleration.paramId == ZL_LP_INVALID_PARAMID) {
-        const int compressionLevel = getCompressionLevelEncoder(eictx);
-        return compressionLevel < 0 ? -compressionLevel : 1;
-    } else {
-        return ZL_MAX(acceleration.paramValue, 1);
-    }
-}
-
-static uint32_t getWindowLog(const ZL_Encoder* eictx, size_t srcSize)
-{
-    const ZL_IntParam windowLogParam =
-            ZL_Encoder_getLocalIntParam(eictx, ZL_LzParam_windowLog);
-
-    int windowLog = ZL_LZ_MAX_WINDOW_LOG;
-    if (windowLogParam.paramId != ZL_LP_INVALID_PARAMID) {
-        windowLog = windowLogParam.paramValue;
+    if (level == 0) {
+        level = ZL_Encoder_getCParam(eictx, ZL_CParam_compressionLevel);
     }
 
-    windowLog = ZL_MIN(windowLog, ZL_nextPow2(srcSize));
+    ZL_LzParameters params = ZL_LzParameters_default(level, srcSize);
+#define ZL_LZPARAMETERS_OVERRIDE(field)     \
+    do {                                    \
+        if (overrides.field != 0) {         \
+            params.field = overrides.field; \
+        }                                   \
+    } while (0)
+    ZL_LZPARAMETERS_OVERRIDE(strategy);
+    ZL_LZPARAMETERS_OVERRIDE(windowLog);
+    ZL_LZPARAMETERS_OVERRIDE(hashLog1);
+    ZL_LZPARAMETERS_OVERRIDE(hashLog2);
+    ZL_LZPARAMETERS_OVERRIDE(hashLength);
+    ZL_LZPARAMETERS_OVERRIDE(acceleration);
+#undef ZL_LZPARAMETERS_OVERRIDE
 
-    return (uint32_t)ZL_MAX(
-            ZL_LZ_MIN_WINDOW_LOG, ZL_MIN(windowLog, ZL_LZ_MAX_WINDOW_LOG));
+    ZL_LzParameters_adjust(&params, srcSize);
+    return params;
 }
 
 ZL_Report EI_lz(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
@@ -192,9 +211,9 @@ ZL_Report EI_lz(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
 
     size_t const maxNumSeq = ZL_Lz_maxNumSequences(srcSize);
     // Offsets are up to than 2^windowLog-1; use 32-bits when they won't fit u16
-    const uint32_t windowLog = getWindowLog(eictx, srcSize);
+    const ZL_LzParameters params = getLzParams(eictx, srcSize);
     const size_t offsetEltWidth =
-            (windowLog > 16) ? sizeof(uint32_t) : sizeof(uint16_t);
+            (params.windowLog > 16) ? sizeof(uint32_t) : sizeof(uint16_t);
 
     // Create output streams
     size_t const literalsCapacity = srcSize + ZL_LZ_LIT_OVER_LENGTH;
@@ -213,10 +232,9 @@ ZL_Report EI_lz(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     ZL_ERR_IF_NULL(matchLengths, allocation);
 
     // Allocate hash table from scratch space
-    size_t const hashTableSize =
-            ZS_FastTable_tableSize(ZL_Lz_tableLog(windowLog));
-    void* hashTableMem = ZL_Encoder_getScratchSpace(eictx, hashTableSize);
-    ZL_ERR_IF_NULL(hashTableMem, allocation);
+    size_t const scratchSize = ZL_Lz_scratchBytes(&params);
+    void* scratchMem         = ZL_Encoder_getScratchSpace(eictx, scratchSize);
+    ZL_ERR_IF_NULL(scratchMem, allocation);
 
     ZL_Lz_OutSequences dst = {
         .literals         = (uint8_t*)ZL_Output_ptr(literals),
@@ -235,9 +253,8 @@ ZL_Report EI_lz(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
             &dst,
             (const uint8_t*)ZL_Input_ptr(in),
             srcSize,
-            hashTableMem,
-            windowLog,
-            getAcceleration(eictx));
+            scratchMem,
+            &params);
 
     // Write the original size as a varint codec header
     uint8_t header[ZL_VARINT_LENGTH_64];

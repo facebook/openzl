@@ -24,11 +24,20 @@ class LzComponent : public OpenZLComponent {
     {
         std::vector<NodeID> nodes;
         nodes.push_back(ZL_NODE_LZ);
-        LocalParams params;
-        params.addIntParam(ZL_LzParam_compressionLevel, -2);
-        nodes.push_back(compressor.parameterizeNode(
-                ZL_NODE_LZ,
-                NodeParameters{ .localParams = std::move(params) }));
+        {
+            LocalParams params;
+            params.addIntParam(ZL_LzParam_compressionLevel, -2);
+            nodes.push_back(compressor.parameterizeNode(
+                    ZL_NODE_LZ,
+                    NodeParameters{ .localParams = std::move(params) }));
+        }
+        {
+            LocalParams params;
+            params.addIntParam(ZL_LzParam_compressionLevel, 3);
+            nodes.push_back(compressor.parameterizeNode(
+                    ZL_NODE_LZ,
+                    NodeParameters{ .localParams = std::move(params) }));
+        }
         return nodes;
     }
 
@@ -86,6 +95,15 @@ class LzComponent : public OpenZLComponent {
             maybeSetParam(params, gen, ZL_LzParam_compressionLevel, -10, 10);
             maybeSetParam(params, gen, ZL_LzParam_acceleration, -10, 100);
             maybeSetParam(params, gen, ZL_LzParam_windowLog, 10, 28);
+            maybeSetParam(
+                    params,
+                    gen,
+                    ZL_LzParam_strategy,
+                    ZL_LZPARAM_STRATEGY_MIN,
+                    ZL_LZPARAM_STRATEGY_MAX);
+            maybeSetParam(params, gen, ZL_LzParam_hashLog1, 10, 18);
+            maybeSetParam(params, gen, ZL_LzParam_hashLog2, 10, 18);
+            maybeSetParam(params, gen, ZL_LzParam_hashLength, 4, 7);
 
             maybeOverrideSuccessor(
                     params, successors, gen, ZL_LzParam_literalsGraphIdx);
@@ -168,10 +186,12 @@ class LzComponent : public OpenZLComponent {
             size_t numInputs;
             int compressionLevel;
         };
-        constexpr std::array<Param, 6> kParams = {
+        constexpr std::array<Param, 9> kParams = {
             Param{ 1000, 200, 1 },  Param{ 10000, 50, 1 },
             Param{ 100000, 10, 1 }, Param{ 1000, 200, -1 },
             Param{ 10000, 50, -1 }, Param{ 100000, 10, -1 },
+            Param{ 1000, 200, 3 },  Param{ 10000, 50, 3 },
+            Param{ 100000, 10, 3 },
         };
 
         std::vector<Benchmark> benchmarks;
