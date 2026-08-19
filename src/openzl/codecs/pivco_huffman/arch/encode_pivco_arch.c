@@ -11,8 +11,8 @@
 // This file is written for clarity, not speed. It is used for correctness
 // testing and as the fallback on hardware without a specialized kernel, which
 // is not expected to run this code in practice. The architecture-specific
-// kernels (x86, arm, avx512) are the fast paths and MUST produce byte-identical
-// bitmaps to the code here.
+// kernels (avx2, arm, avx512) are the fast paths and MUST produce
+// byte-identical bitmaps to the code here.
 //
 // Every bitmap is packed little-endian, least-significant-bit first -- exactly
 // the layout ZS_BitCStreamFF writes -- so we lean on that primitive instead of
@@ -31,6 +31,9 @@ const ZL_PivCoHuffmanEncode* ZL_PivCoHuffmanEncode_select(
 
     if (ZL_PivCoHuffmanEncode_avx512.supported(cpuid)) {
         return &ZL_PivCoHuffmanEncode_avx512;
+    }
+    if (ZL_PivCoHuffmanEncode_avx2.supported(cpuid)) {
+        return &ZL_PivCoHuffmanEncode_avx2;
     }
     return &ZL_PivCoHuffmanEncode_generic;
 }

@@ -11,7 +11,7 @@
 // This file is written for clarity, not speed. It is used for correctness
 // testing and as the fallback on hardware without a specialized kernel, which
 // is not expected to run this code in practice. The architecture-specific
-// kernels (x86, arm, avx512) are the fast paths and MUST decode the exact same
+// kernels (avx2, arm, avx512) are the fast paths and MUST decode the exact same
 // bitmaps as the code here.
 //
 // Every bitmap is packed little-endian, least-significant-bit first -- exactly
@@ -31,6 +31,9 @@ const ZL_PivCoHuffmanDecode* ZL_PivCoHuffmanDecode_select(
 
     if (ZL_PivCoHuffmanDecode_avx512.supported(cpuid)) {
         return &ZL_PivCoHuffmanDecode_avx512;
+    }
+    if (ZL_PivCoHuffmanDecode_avx2.supported(cpuid)) {
+        return &ZL_PivCoHuffmanDecode_avx2;
     }
     return &ZL_PivCoHuffmanDecode_generic;
 }
