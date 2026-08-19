@@ -534,9 +534,8 @@ ZL_FORCE_INLINE ZL_LzError ZL_Lz_decode_fastLoop(
         assert(seq <= seqLimit);
         assert(litPos <= litLimit);
         assert(outPos <= outLimit);
-#ifdef __clang__
-#    pragma clang loop unroll(full)
-#endif
+        assert(ZL_Lz_kUnroll == 1);
+        ZL_UNROLL_LOOP(1)
         for (size_t u = 0; u < ZL_Lz_kUnroll; ++u) {
             assert((size_t)seq < numSeqs);
             assert((size_t)litPos <= state->src.numLiterals);

@@ -156,9 +156,7 @@ ZL_AVX512_INLINE size_t mergeVectorImpl(
     const size_t kUnroll  = 256;
     const size_t outLimit = outSize & ~(kUnroll - 1);
     for (; bitOffset < outLimit; bitOffset += kUnroll) {
-#    ifdef __clang__
-#        pragma clang loop unroll(full)
-#    endif
+        ZL_UNROLL_LOOP(4)
         for (size_t u = 0; u < kUnroll; u += 64) {
             const uint64_t bits  = ZL_readLE64(bitmap + bitOffset / 8 + u / 8);
             const __m512i merged = mergeVectorBlock(

@@ -358,6 +358,16 @@ typedef __m128i __m128i_u;
 #    define ZL_HAS_IEEE_754 0
 #endif
 
+#define ZL_PRAGMA(x) _Pragma(#x)
+
+#ifdef __clang__
+#    define ZL_UNROLL_LOOP(n) ZL_PRAGMA(clang loop unroll_count(n))
+#elif defined(__GNUC__)
+#    define ZL_UNROLL_LOOP(n) ZL_PRAGMA(GCC unroll n)
+#else
+#    define ZL_UNROLL_LOOP(n)
+#endif
+
 ZL_END_C_DECLS
 
 #endif // ZS_COMMON_PORTABILITY_H
