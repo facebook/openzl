@@ -160,6 +160,8 @@ const InternalGraphDesc GR_standardGraphs[ZL_PrivateStandardGraphID_end] = {
     REGISTER_MIGRAPH(ZL_StandardGraphID_store, MIGRAPH_STORE, 200),
     REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_fse, "!zl.fse", ZL_Type_serial, EI_fseDynamicGraph, 200),
     REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_huffman, "!zl.huffman", ZL_Type_serial | ZL_Type_struct | ZL_Type_numeric, EI_huffmanDynamicGraph, 200),
+    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_huffman_huf0, "!zl.huffman_huf0", ZL_Type_serial | ZL_Type_struct | ZL_Type_numeric, EI_huffmanDynamicGraphHuf0, 200),
+    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_huffman_pivco, "!zl.huffman_pivco", ZL_Type_serial | ZL_Type_struct | ZL_Type_numeric, EI_huffmanDynamicGraphPivco, 200),
     REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_entropy, "!zl.entropy", ZL_Type_serial | ZL_Type_struct | ZL_Type_numeric, EI_entropyDynamicGraph, 200),
     REGISTER_SELECTOR(ZL_StandardGraphID_constant, "!zl.constant", SI_selector_constant, ZL_Type_serial | ZL_Type_struct | ZL_Type_numeric, 200),
     REGISTER_STATIC_GRAPH(ZL_StandardGraphID_zstd, "!zl.zstd", ZL_Type_serial, ZL_PrivateStandardNodeID_zstd, _1_SUCCESSOR(ZL_PrivateStandardGraphID_serial_store), 200 ),

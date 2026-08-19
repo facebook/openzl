@@ -7,6 +7,7 @@
 #include <limits.h>
 #include <string.h>
 
+#include "openzl/codecs/entropy/encode_entropy_binding.h" // ENTROPY_HISTORAM_PID
 #include "openzl/codecs/pivco_huffman/common_pivco_kernel.h"
 #include "openzl/codecs/pivco_huffman/encode_pivco_kernel.h"
 #include "openzl/fse/huf.h"
@@ -31,20 +32,30 @@ static ZL_Report buildWeights(
     if (srcSize == 0) {
         return ZL_returnValue(0);
     }
-    ZL_ERR_IF_NULL(src, node_invalid_input);
-    ZL_ERR_IF_GT(
-            srcSize,
-            UINT_MAX,
-            node_invalid_input,
-            "PivCo-Huffman input is too large to histogram");
 
+    // Reuse the histogram the entropy graph already computed when it hands one
+    // down as a parameter, instead of recomputing it from the input.
     ZL_Histogram8 hist;
-    ZL_Histogram_init(&hist.base, 255);
-    ZL_Histogram_build(&hist.base, src, srcSize, 1);
+    const ZL_Histogram* histogram;
+    ZL_RefParam const param =
+            ZL_Encoder_getLocalParam(eictx, ENTROPY_HISTORAM_PID);
+    if (param.paramRef != NULL) {
+        histogram = (const ZL_Histogram*)param.paramRef;
+    } else {
+        ZL_ERR_IF_NULL(src, node_invalid_input);
+        ZL_ERR_IF_GT(
+                srcSize,
+                UINT_MAX,
+                node_invalid_input,
+                "PivCo-Huffman input is too large to histogram");
+        ZL_Histogram_init(&hist.base, 255);
+        ZL_Histogram_build(&hist.base, src, srcSize, 1);
+        histogram = &hist.base;
+    }
 
-    const uint32_t maxSymbol    = hist.base.maxSymbol;
-    const size_t cardinality    = hist.base.cardinality;
-    const uint32_t* const count = hist.base.count;
+    const uint32_t maxSymbol    = histogram->maxSymbol;
+    const size_t cardinality    = histogram->cardinality;
+    const uint32_t* const count = histogram->count;
 
     *weightsSize = (size_t)maxSymbol + 1;
     if (cardinality == 1) {
@@ -52,16 +63,31 @@ static ZL_Report buildWeights(
         return ZL_returnValue(0);
     }
 
-    HUF_CREATE_STATIC_CTABLE(ctable, HUF_SYMBOLVALUE_MAX);
-    unsigned tableLog =
-            HUF_optimalTableLog(ZL_PIVCO_MAX_TABLE_LOG, srcSize, maxSymbol);
-    const size_t hufRet = HUF_buildCTable(ctable, count, maxSymbol, tableLog);
-    ZL_ERR_IF(
-            HUF_isError(hufRet),
-            GENERIC,
-            "HUF_buildCTable failed: %s",
-            HUF_getErrorName(hufRet));
-    tableLog = (unsigned)hufRet;
+    // Reuse the CTable the entropy graph already built when it hands one down
+    // as a parameter, instead of rebuilding it. Its first element encodes the
+    // tableLog. The entropy binding caps the tableLog at HUF_TABLELOG_DEFAULT,
+    // which is within ZL_PIVCO_MAX_TABLE_LOG, so the table is valid here.
+    HUF_CREATE_STATIC_CTABLE(builtCtable, HUF_SYMBOLVALUE_MAX);
+    const HUF_CElt* ctable;
+    unsigned tableLog;
+    ZL_RefParam const ctableParam =
+            ZL_Encoder_getLocalParam(eictx, ENTROPY_HUF_CTABLE_PID);
+    if (ctableParam.paramRef != NULL) {
+        ctable   = (const HUF_CElt*)ctableParam.paramRef;
+        tableLog = (unsigned)ctable[0];
+    } else {
+        tableLog =
+                HUF_optimalTableLog(ZL_PIVCO_MAX_TABLE_LOG, srcSize, maxSymbol);
+        const size_t hufRet =
+                HUF_buildCTable(builtCtable, count, maxSymbol, tableLog);
+        ZL_ERR_IF(
+                HUF_isError(hufRet),
+                GENERIC,
+                "HUF_buildCTable failed: %s",
+                HUF_getErrorName(hufRet));
+        tableLog = (unsigned)hufRet;
+        ctable   = builtCtable;
+    }
     ZL_ERR_IF_GT(tableLog, ZL_PIVCO_MAX_TABLE_LOG, GENERIC);
 
     for (unsigned symbol = 0; symbol <= maxSymbol; ++symbol) {

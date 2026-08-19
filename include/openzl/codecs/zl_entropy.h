@@ -50,6 +50,23 @@ ZL_Report ZL_Edge_setEntropyDestination(
         int minGainBytes,
         int minGainPct);
 
+/**
+ * Specifically opts into HUF0 style Huffman encoding.
+ * Generally not recommended, but useful for testing.
+ *
+ * This graph will likely be removed in the future.
+ */
+#define ZL_GRAPH_HUFFMAN_HUF0 ZL_MAKE_GRAPH_ID(ZL_StandardGraphID_huffman_huf0)
+
+/**
+ * Specifically opts into PivCo Huffman encoding.
+ * Generally not recommended, but useful for testing.
+ *
+ * This graph will likely be removed in the future.
+ */
+#define ZL_GRAPH_HUFFMAN_PIVCO \
+    ZL_MAKE_GRAPH_ID(ZL_StandardGraphID_huffman_pivco)
+
 #if defined(__cplusplus)
 }
 #endif

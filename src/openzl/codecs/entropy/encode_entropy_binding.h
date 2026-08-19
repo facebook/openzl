@@ -7,6 +7,14 @@
 #include "openzl/shared/portability.h"
 #include "openzl/zl_ctransform.h" // ZL_Encoder
 
+// Ref-param IDs the entropy dynamic graph uses to hand precomputed state down
+// to the entropy nodes it drives, so the node can skip recomputing it. The
+// histogram param carries a `ZL_Histogram const*`; the ctable param a
+// `HUF_CElt const*`. Consumed by nodes outside this codec (e.g. pivco_huffman),
+// so they live in the header rather than the binding's .c file.
+#define ENTROPY_HISTORAM_PID 246
+#define ENTROPY_HUF_CTABLE_PID 247
+
 ZL_BEGIN_C_DECLS
 
 ZL_Report EI_fse_v2(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
@@ -23,6 +31,10 @@ EI_huffman_typed(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 ZL_Report EI_fseDynamicGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns);
 ZL_Report
 EI_huffmanDynamicGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns);
+ZL_Report
+EI_huffmanDynamicGraphHuf0(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns);
+ZL_Report
+EI_huffmanDynamicGraphPivco(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns);
 ZL_Report
 EI_entropyDynamicGraph(ZL_Graph* gctx, ZL_Edge* inputs[], size_t nbIns);
 
