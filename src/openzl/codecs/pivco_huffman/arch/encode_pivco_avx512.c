@@ -72,9 +72,14 @@ ZL_AVX512_INLINE size_t partitionImpl(
             ones += blockOnes;
         }
         if (kPartitionLhs) {
-            // ~bits selects the left child; in a full 64-lane block every
-            // inverted bit is a valid lane, so no extra masking is needed.
-            _mm512_mask_compressstoreu_epi8(lhs + zeros, ~bits, rankVec);
+            // A second comparison rather than ~bits: complementing a mask
+            // register at -O3 drives LLVM 19's DAGCombiner into a
+            // non-converging visitXOR/combineBitcastToBoolVector loop, so the
+            // TU never finishes compiling. On unsigned lanes LT == ~GE.
+            // TODO: T286065866 - revert once the codegen bug is fixed.
+            const __mmask64 lhsBits =
+                    _mm512_cmp_epu8_mask(rankVec, threshold, _MM_CMPINT_LT);
+            _mm512_mask_compressstoreu_epi8(lhs + zeros, lhsBits, rankVec);
             zeros += 64 - blockOnes;
         }
     }
@@ -96,10 +101,11 @@ ZL_AVX512_INLINE size_t partitionImpl(
             ones += blockOnes;
         }
         if (kPartitionLhs) {
-            // For the tail, restrict the left child to valid lanes as well,
-            // otherwise the padding lanes (which are 0-bits) would be stored.
-            _mm512_mask_compressstoreu_epi8(
-                    lhs + zeros, ~bits & valid, rankVec);
+            // Restricted to the valid lanes, otherwise the zeroed padding
+            // lanes would compare LT and be stored.
+            const __mmask64 lhsBits = _mm512_mask_cmp_epu8_mask(
+                    valid, rankVec, threshold, _MM_CMPINT_LT);
+            _mm512_mask_compressstoreu_epi8(lhs + zeros, lhsBits, rankVec);
             zeros += lanes - blockOnes;
         }
     }
