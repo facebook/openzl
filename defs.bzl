@@ -132,6 +132,13 @@ _ZS_SRC_FILE_COMPILER_FLAGS_CLANG = {
     ],
 }
 
+_ZS_NO_JUMP_TABLE_SRCS = [
+    "src/openzl/codecs/pivco_huffman/arch/decode_pivco_avx2.c",
+    "src/openzl/codecs/pivco_huffman/arch/decode_pivco_avx512.c",
+    "src/openzl/codecs/pivco_huffman/arch/encode_pivco_avx2.c",
+    "src/openzl/codecs/pivco_huffman/arch/encode_pivco_avx512.c",
+]
+
 # Convert flags for MSVC when needed
 _ZS_COMPILER_FLAGS = select({
     "DEFAULT": _ZS_COMPILER_FLAGS_CLANG,
@@ -221,6 +228,13 @@ def _zs_src_file_compiler_flags(src):
             flags += _ZS_DEV_C_COMPILER_FLAGS
     elif src.endswith(".cpp"):
         flags += _ZS_CXX_COMPILER_FLAGS
+
+    # BOLT cannot analyze the jump tables generated for these dispatchers.
+    if src in _ZS_NO_JUMP_TABLE_SRCS:
+        flags += select({
+            "DEFAULT": ["-fno-jump-tables"],
+            "ovr_config//compiler:msvc": [],
+        })
 
     flags += _ZS_SRC_FILE_COMPILER_FLAGS.get(src, [])
 
