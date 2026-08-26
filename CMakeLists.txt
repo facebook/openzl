@@ -32,8 +32,17 @@ option(OPENZL_BUILD_CUSTOM_PARSERS "Builds the custom_parsers subdirectory" ON)
 option(OPENZL_BUILD_TOOLS "Builds the tools subdirectory" ON)
 option(OPENZL_BUILD_CLI "Build the cli subdirectory" ON)
 option(OPENZL_BUILD_EXAMPLES "Build the examples subdirectory" ON)
+option(OPENZL_BUILD_WASM "Builds WASM binding (requires Emscripten)" OFF)
 
 set(OPENZL_SUPPORT_SHARED_LIBRARY "${OPENZL_BUILD_SHARED_LIBS}")
+
+# ---- Emscripten ----
+# OpenZL currently requires a 64-bit platform. 32-bit is unsupported,
+# so Emscripten builds must use wasm64.
+if(EMSCRIPTEN)
+    add_compile_options(-sMEMORY64=1)
+    add_link_options(-sMEMORY64=1 -sWASM_BIGINT=1)
+endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -206,6 +215,12 @@ set_property(TARGET openzl PROPERTY VERSION ${PACKAGE_VERSION})
 apply_openzl_compile_options_to_target(openzl)
 
 target_link_libraries(openzl PUBLIC openzl_deps)
+
+# Keep shared profile graph builders independent of CLI dependencies for WASM.
+add_library(openzl_profile_graphs cli/utils/profile_graphs.cpp)
+target_include_directories(openzl_profile_graphs PUBLIC ${PROJECT_SOURCE_DIR})
+target_link_libraries(openzl_profile_graphs PUBLIC openzl)
+apply_openzl_compile_options_to_target(openzl_profile_graphs)
 
 # order matters. dependencies first
 if (OPENZL_BUILD_TESTS)

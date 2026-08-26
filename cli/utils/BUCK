@@ -15,6 +15,15 @@ zs_cxxlibrary(
 )
 
 zs_cxxlibrary(
+    name = "profile_graphs",
+    srcs = ["profile_graphs.cpp"],
+    headers = ["profile_graphs.h"],
+    exported_deps = [
+        "../..:zstronglib",
+    ],
+)
+
+zs_cxxlibrary(
     name = "utils",
     srcs = [
         "compress_profiles.cpp",
@@ -40,6 +49,7 @@ zs_cxxlibrary(
         "../../tools/sddl2/assembler:lib",
         "../../tools/sddl2/compiler:lib",
         "../../tools/training/ace:automated_compressor_explorer",
+        ":profile_graphs",
     ],
     exported_deps = [
         ":cli_util",

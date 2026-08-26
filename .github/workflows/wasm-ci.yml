@@ -1,0 +1,49 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+# cmake-ci already compiles tools/wasm/src/openzl_wasm.cpp natively and runs
+# its gtest. This workflow verifies that Emscripten produces a WASM artifact.
+
+name: wasm-ci
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'tools/wasm/**'
+      - 'src/**'
+      - 'include/**'
+      - '**/CMakeLists.txt'
+      - '.github/workflows/wasm-ci.yml'
+  pull_request:
+    branches: [dev, master, actionsTest]
+    paths:
+      - 'tools/wasm/**'
+      - 'src/**'
+      - 'include/**'
+      - '**/CMakeLists.txt'
+      - '.github/workflows/wasm-ci.yml'
+  workflow_dispatch: {}
+
+jobs:
+  wasm-build:
+    name: WASM build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          # Pinned stable emsdk version for reproducible WASM builds.
+          # Keep in sync if openzl/dev upgrades its emscripten toolchain.
+          version: 4.0.19
+          actions-cache-folder: emsdk-cache
+
+      - name: Configure
+        run: emcmake cmake -DOPENZL_BUILD_WASM=ON -B build-wasm
+
+      - name: Build
+        run: cmake --build build-wasm --target openzl_wasm -j$(getconf _NPROCESSORS_ONLN)
+
+      - name: Check WASM artifact
+        run: test -f build-wasm/tools/wasm/openzl.wasm

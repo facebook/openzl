@@ -1,10 +1,10 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-file(GLOB utils_sources
-    CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+# Keep utils sources explicit since GLOB can lead to duplicate
+# symbols (it will pull in parse.cpp (owned by cli_util))
 
-file(GLOB utils_headers
-    CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
+set(utils_sources compress_profiles.cpp util.cpp)
+set(utils_headers compress_profiles.h util.h)
 
 # Lightweight parsing utilities (no heavy dependencies)
 add_library(cli_util parse.cpp)
@@ -13,7 +13,9 @@ target_include_directories(cli_util
 apply_openzl_compile_options_to_target(cli_util)
 
 # Full utils library (heavy dependencies)
-add_library(utils ${utils_sources})
+# profile_graphs.cpp is built as openzl_profile_graphs and parse.cpp as cli_util,
+# so they must not be globbed into utils to avoid duplicate symbols.
+add_library(utils compress_profiles.cpp util.cpp)
 
 target_include_directories(utils
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
@@ -26,6 +28,7 @@ target_link_libraries(utils
     PUBLIC
     cli_util
     openzl
+    openzl_profile_graphs
     openzl_cpp
     csv_parser
     sddl_profile
