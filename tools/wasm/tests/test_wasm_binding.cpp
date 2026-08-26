@@ -84,6 +84,51 @@ ZL_ErrorCode decompress(
     return code;
 }
 
+struct BenchCompress {
+    ZL_ErrorCode code;
+    std::vector<uint8_t> frame;
+    double ms;
+};
+
+BenchCompress benchmarkCompress(
+        const std::vector<uint8_t>& src,
+        const std::vector<uint8_t>& compressor,
+        size_t iterations)
+{
+    uint8_t* buf      = nullptr;
+    size_t size       = 0;
+    double ms         = 0;
+    ZL_ErrorCode code = openzl_wasm_benchmarkCompress(
+            compressor.data(),
+            compressor.size(),
+            src.empty() ? nullptr : src.data(),
+            src.size(),
+            iterations,
+            &buf,
+            &size,
+            &ms);
+    if (code != ZL_ErrorCode_no_error) {
+        EXPECT_EQ(buf, nullptr);
+        return { code, {}, ms };
+    }
+    return { code, copyAndFree(buf, size), ms };
+}
+
+struct BenchDecompress {
+    ZL_ErrorCode code;
+    double ms;
+};
+
+BenchDecompress benchmarkDecompress(
+        const std::vector<uint8_t>& frame,
+        size_t iterations)
+{
+    double ms         = 0;
+    ZL_ErrorCode code = openzl_wasm_benchmarkDecompress(
+            frame.data(), frame.size(), iterations, &ms);
+    return { code, ms };
+}
+
 std::vector<uint8_t> makeSerialData(size_t size)
 {
     constexpr std::string_view kPattern = "hello openzl serial data ";
@@ -162,11 +207,88 @@ TEST(WasmBindingTest, EmptyRoundTrip)
     expectRoundTrip({}, OPENZL_WASM_PROFILE_SERIAL);
 }
 
+TEST(WasmBindingTest, BenchmarkTimesBothDirections)
+{
+    const std::vector<uint8_t> src = makeSerialData(4096);
+    std::vector<uint8_t> compressor;
+    ASSERT_EQ(
+            serializedCompressor(OPENZL_WASM_PROFILE_SERIAL, &compressor),
+            ZL_ErrorCode_no_error);
+
+    const BenchCompress bench = benchmarkCompress(src, compressor, 2);
+    ASSERT_EQ(bench.code, ZL_ErrorCode_no_error)
+            << openzl_wasm_errorString(bench.code);
+    EXPECT_GE(bench.ms, 0.0); // timing is too machine-dependent to bound
+
+    // The frame it hands back must be a real one, so a caller timing both
+    // directions needs no extra compression to get something to decompress.
+    std::vector<uint8_t> frame;
+    ASSERT_EQ(compress(src, compressor, &frame), ZL_ErrorCode_no_error);
+    EXPECT_EQ(bench.frame, frame);
+
+    std::vector<uint8_t> decompressed;
+    ASSERT_EQ(decompress(bench.frame, &decompressed), ZL_ErrorCode_no_error);
+    EXPECT_EQ(decompressed, src);
+
+    const BenchDecompress d = benchmarkDecompress(bench.frame, 2);
+    ASSERT_EQ(d.code, ZL_ErrorCode_no_error) << openzl_wasm_errorString(d.code);
+    EXPECT_GE(d.ms, 0.0);
+}
+
+TEST(WasmBindingTest, BenchmarkRejectsOutOfRangeIterations)
+{
+    const std::vector<uint8_t> src = makeSerialData(1024);
+    std::vector<uint8_t> compressor;
+    ASSERT_EQ(
+            serializedCompressor(OPENZL_WASM_PROFILE_SERIAL, &compressor),
+            ZL_ErrorCode_no_error);
+
+    // Out-of-range counts are rejected rather than clamped, so the count a
+    // caller passes is always the count that ran. js/wasm_api.js clamps before
+    // calling, so it never trips this.
+    EXPECT_EQ(
+            benchmarkCompress(src, compressor, 0).code,
+            ZL_ErrorCode_parameter_invalid);
+    EXPECT_EQ(
+            benchmarkCompress(
+                    src, compressor, OPENZL_WASM_BENCHMARK_MAX_ITERATIONS + 1)
+                    .code,
+            ZL_ErrorCode_parameter_invalid);
+    EXPECT_EQ(
+            benchmarkCompress(src, compressor, 1).code, ZL_ErrorCode_no_error);
+    EXPECT_EQ(
+            benchmarkCompress(
+                    src, compressor, OPENZL_WASM_BENCHMARK_MAX_ITERATIONS)
+                    .code,
+            ZL_ErrorCode_no_error);
+
+    // benchmarkDecompress carries its own copy of the check.
+    std::vector<uint8_t> frame;
+    ASSERT_EQ(compress(src, compressor, &frame), ZL_ErrorCode_no_error);
+    EXPECT_EQ(
+            benchmarkDecompress(frame, 0).code, ZL_ErrorCode_parameter_invalid);
+    EXPECT_EQ(
+            benchmarkDecompress(frame, OPENZL_WASM_BENCHMARK_MAX_ITERATIONS + 1)
+                    .code,
+            ZL_ErrorCode_parameter_invalid);
+    EXPECT_EQ(benchmarkDecompress(frame, 1).code, ZL_ErrorCode_no_error);
+    EXPECT_EQ(
+            benchmarkDecompress(frame, OPENZL_WASM_BENCHMARK_MAX_ITERATIONS)
+                    .code,
+            ZL_ErrorCode_no_error);
+}
+
+TEST(WasmBindingTest, ExposesMaxBenchmarkIterations)
+{
+    EXPECT_EQ(
+            openzl_wasm_maxBenchmarkIterations(),
+            OPENZL_WASM_BENCHMARK_MAX_ITERATIONS);
+}
+
 TEST(WasmBindingTest, ProfileEnumMatchesTable)
 {
-    // The enum keys the profile table, and js/wasm_api.js mirrors the same
-    // numbering with nothing checking it. If this fails, the JS probably needs
-    // the same edit.
+    // The enum keys the profile table, and js/wasm_api.js validates its mirror
+    // against that table when the module initializes.
     EXPECT_STREQ(openzl_wasm_profileName(OPENZL_WASM_PROFILE_SERIAL), "serial");
     EXPECT_STREQ(openzl_wasm_profileName(OPENZL_WASM_PROFILE_U8), "u8");
     EXPECT_STREQ(openzl_wasm_profileName(OPENZL_WASM_PROFILE_I8), "i8");
@@ -196,4 +318,26 @@ TEST(WasmBindingTest, RejectsUnknownProfile)
     EXPECT_NE(serializedCompressor(bad, &compressor), ZL_ErrorCode_no_error);
     EXPECT_TRUE(compressor.empty());
     EXPECT_EQ(openzl_wasm_profileName(bad), nullptr);
+}
+
+TEST(WasmBindingTest, RejectsGarbage)
+{
+    const std::vector<uint8_t> garbage(64, 0xAB);
+    const std::vector<uint8_t> src = makeSerialData(128);
+
+    // A garbage compressor, and a garbage frame in each of the three calls
+    // that read one. The helpers assert that no buffer comes back.
+    std::vector<uint8_t> output;
+    EXPECT_NE(compress(src, garbage, &output), ZL_ErrorCode_no_error);
+    EXPECT_TRUE(output.empty());
+    EXPECT_NE(decompress(garbage, &output), ZL_ErrorCode_no_error);
+    EXPECT_TRUE(output.empty());
+    EXPECT_NE(benchmarkCompress(src, garbage, 2).code, ZL_ErrorCode_no_error);
+    EXPECT_NE(benchmarkDecompress(garbage, 2).code, ZL_ErrorCode_no_error);
+
+    size_t size = 0;
+    EXPECT_NE(
+            openzl_wasm_getDecompressedSize(
+                    garbage.data(), garbage.size(), &size),
+            ZL_ErrorCode_no_error);
 }

@@ -15,6 +15,8 @@ extern "C" {
 void* openzl_wasm_malloc(size_t size);
 void openzl_wasm_free(void* buf);
 
+#define OPENZL_WASM_BENCHMARK_MAX_ITERATIONS 1000
+
 /**
  * Returns the string descriptor for a ZL_ErrorCode.
  */
@@ -44,6 +46,11 @@ typedef enum {
  * Exposed so language bindings can derive their profile tables from this.
  */
 const char* openzl_wasm_profileName(openzl_wasm_Profile profile);
+
+/**
+ * @returns The maximum iteration count accepted by the benchmark functions.
+ */
+int openzl_wasm_maxBenchmarkIterations(void);
 
 /**
  * Serializes the graph for @p profile.
@@ -110,6 +117,46 @@ ZL_ErrorCode openzl_wasm_decompress(
         size_t srcSize,
         uint8_t** outBuf,
         size_t* outSize);
+
+/**
+ * Benchmarks compression reusing one deserialized compressor and one CCtx
+ * throughout.
+ *
+ * @param iterations  Number of iterations to run. Must be between 1 and
+ *                    OPENZL_WASM_BENCHMARK_MAX_ITERATIONS, anything outside
+ *                    that returns ZL_ErrorCode_parameter_invalid.
+ * @param outBuf      On success, an owned frame that needs to be released with
+ *                    openzl_wasm_free().
+ * @param outSize     Frame size.
+ * @param outMs       Total milliseconds across all iterations.
+ * @returns           ZL_ErrorCode_no_error on success.
+ */
+ZL_ErrorCode openzl_wasm_benchmarkCompress(
+        const uint8_t* compressor,
+        size_t compressorSize,
+        const uint8_t* src,
+        size_t srcSize,
+        size_t iterations,
+        uint8_t** outBuf,
+        size_t* outSize,
+        double* outMs);
+
+/**
+ * Benchmarks decompression reusing one DCtx.
+ *
+ * @param src         Compressed frame, as produced by openzl_wasm_compress().
+ * @param srcSize     Size of @p src.
+ * @param iterations  Number of iterations to run. Must be between 1 and
+ *                    OPENZL_WASM_BENCHMARK_MAX_ITERATIONS, anything outside
+ *                    that returns ZL_ErrorCode_parameter_invalid.
+ * @param outMs       Total milliseconds across all iterations.
+ * @returns           ZL_ErrorCode_no_error on success.
+ */
+ZL_ErrorCode openzl_wasm_benchmarkDecompress(
+        const uint8_t* src,
+        size_t srcSize,
+        size_t iterations,
+        double* outMs);
 
 #if defined(__cplusplus)
 } // extern "C"
