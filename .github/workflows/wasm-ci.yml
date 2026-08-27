@@ -39,6 +39,13 @@ jobs:
           version: 4.0.19
           actions-cache-folder: emsdk-cache
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Pin Node.js 24 interpreter
+        run: echo "OPENZL_NODE=$(command -v node)" >> "$GITHUB_ENV"
+
       - name: Configure
         run: emcmake cmake -DOPENZL_BUILD_WASM=ON -B build-wasm
 
@@ -47,3 +54,10 @@ jobs:
 
       - name: Check WASM artifact
         run: test -f build-wasm/tools/wasm/openzl.wasm
+
+      # Artifact is built on demand and copied next to wasm_api.js so
+      # `import openzlModule from './openzl.js'` resolves in both browser and Node.
+      - name: Run wasm_api.js integration tests
+        run: |
+          cp build-wasm/tools/wasm/openzl.{js,wasm} tools/wasm/js/
+          "$OPENZL_NODE" --test tools/wasm/js/tests/wasm_api.test.js
