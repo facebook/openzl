@@ -1,5 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+#include <chrono>
 #include <cstdint>
 #include <cstdlib>
 #include <memory>
@@ -171,6 +172,19 @@ ZL_ErrorCode tryCompress(
     return ZL_ErrorCode_no_error;
 }
 
+double nowMs()
+{
+#if defined(__EMSCRIPTEN__)
+    return emscripten_get_now();
+#else
+    // Native build, so the gtest can run without Emscripten. Use
+    // std::chrono::steady_clock for portability (Windows doesn't have
+    // CLOCK_MONOTONIC / clock_gettime).
+    auto now = std::chrono::steady_clock::now().time_since_epoch();
+    return std::chrono::duration<double, std::milli>(now).count();
+#endif
+}
+
 } // namespace
 
 EMSCRIPTEN_KEEPALIVE
@@ -189,6 +203,12 @@ EMSCRIPTEN_KEEPALIVE
 const char* openzl_wasm_errorString(ZL_ErrorCode code)
 {
     return ZL_ErrorCode_toString(code);
+}
+
+EMSCRIPTEN_KEEPALIVE
+int openzl_wasm_maxBenchmarkIterations(void)
+{
+    return OPENZL_WASM_BENCHMARK_MAX_ITERATIONS;
 }
 
 EMSCRIPTEN_KEEPALIVE
@@ -352,5 +372,171 @@ ZL_ErrorCode openzl_wasm_decompress(
 
     *outBuf  = buf.release();
     *outSize = ZL_validResult(r);
+    return ZL_ErrorCode_no_error;
+}
+
+EMSCRIPTEN_KEEPALIVE
+ZL_ErrorCode openzl_wasm_benchmarkCompress(
+        const uint8_t* compressor,
+        size_t compressorSize,
+        const uint8_t* src,
+        size_t srcSize,
+        size_t iterations,
+        uint8_t** outBuf,
+        size_t* outSize,
+        double* outMs)
+{
+    if (!outBuf || !outSize || !outMs) {
+        return ZL_ErrorCode_parameter_invalid;
+    }
+    *outBuf  = nullptr;
+    *outSize = 0;
+    *outMs   = 0;
+    if (!compressor || compressorSize == 0) {
+        return ZL_ErrorCode_parameter_invalid;
+    }
+    if (srcSize != 0 && !src) {
+        return ZL_ErrorCode_parameter_invalid;
+    }
+    // Rejected out of bound iterations, js side clamps it so this should not be
+    // triggered
+    if (iterations < 1 || iterations > OPENZL_WASM_BENCHMARK_MAX_ITERATIONS) {
+        return ZL_ErrorCode_parameter_invalid;
+    }
+
+    CompressorPtr comp;
+    ZL_ErrorCode code = deserializeCompressor(compressor, compressorSize, comp);
+    if (code != ZL_ErrorCode_no_error) {
+        return code;
+    }
+
+    // Deserialized once and reffed once, so the loop times compression
+    // alone.
+    CCtxPtr cctx{ ZL_CCtx_create() };
+    if (!cctx) {
+        return ZL_ErrorCode_allocation;
+    }
+
+    // Everything (including compressors) gets reset between compression
+    // sessions by default, need to include sticky flag otherwise second
+    // iteration of benchmark would be measuring something completely different.
+    ZL_Report sticky =
+            ZL_CCtx_setParameter(cctx.get(), ZL_CParam_stickyParameters, 1);
+    if (ZL_isError(sticky)) {
+        return ZL_errorCode(sticky);
+    }
+    ZL_Report ref = ZL_CCtx_refCompressor(cctx.get(), comp.get());
+    if (ZL_isError(ref)) {
+        return ZL_errorCode(ref);
+    }
+
+    const size_t capacity = ZL_compressBound(srcSize);
+    BufferPtr buf         = allocBuffer(capacity);
+    if (!buf) {
+        return ZL_ErrorCode_allocation;
+    }
+
+    // A run before the clock starts gives the size to compare against, and
+    // warms whatever the first call would otherwise pay for.
+    ZL_Report first =
+            ZL_CCtx_compress(cctx.get(), buf.get(), capacity, src, srcSize);
+    if (ZL_isError(first)) {
+        return ZL_errorCode(first);
+    }
+    const size_t compressedSize = ZL_validResult(first);
+
+    size_t lastSize    = 0;
+    const double start = nowMs();
+    for (size_t i = 0; i < iterations; i++) {
+        ZL_Report r =
+                ZL_CCtx_compress(cctx.get(), buf.get(), capacity, src, srcSize);
+        if (ZL_isError(r)) {
+            code = ZL_errorCode(r);
+            break;
+        }
+        lastSize = ZL_validResult(r);
+    }
+    const double elapsed = nowMs() - start;
+
+    if (code != ZL_ErrorCode_no_error) {
+        return code;
+    }
+    // Compared after the clock stops, so the check costs nothing measured.
+    if (lastSize != compressedSize) {
+        return ZL_ErrorCode_GENERIC;
+    }
+
+    // `buf` holds the last iteration's frame, which the check above proved
+    // identical in size to the first, ownership moves to the caller.
+    *outBuf  = buf.release();
+    *outSize = compressedSize;
+    *outMs   = elapsed;
+    return ZL_ErrorCode_no_error;
+}
+
+EMSCRIPTEN_KEEPALIVE
+ZL_ErrorCode openzl_wasm_benchmarkDecompress(
+        const uint8_t* src,
+        size_t srcSize,
+        size_t iterations,
+        double* outMs)
+{
+    if (!outMs) {
+        return ZL_ErrorCode_parameter_invalid;
+    }
+    *outMs = 0;
+    if (!src) {
+        return ZL_ErrorCode_parameter_invalid;
+    }
+    if (iterations < 1 || iterations > OPENZL_WASM_BENCHMARK_MAX_ITERATIONS) {
+        return ZL_ErrorCode_parameter_invalid;
+    }
+
+    size_t capacity = 0;
+    ZL_ErrorCode code =
+            openzl_wasm_getDecompressedSize(src, srcSize, &capacity);
+    if (code != ZL_ErrorCode_no_error) {
+        return code;
+    }
+
+    BufferPtr buf = allocBuffer(capacity);
+    if (!buf) {
+        return ZL_ErrorCode_allocation;
+    }
+    DCtxPtr dctx{ ZL_DCtx_create() };
+    if (!dctx) {
+        return ZL_ErrorCode_allocation;
+    }
+
+    // Warm the decompression context before timing to exclude first-call costs.
+    ZL_Report first =
+            ZL_DCtx_decompress(dctx.get(), buf.get(), capacity, src, srcSize);
+    if (ZL_isError(first)) {
+        return ZL_errorCode(first);
+    }
+
+    size_t lastSize    = 0;
+    const double start = nowMs();
+    for (size_t i = 0; i < iterations; i++) {
+        ZL_Report r = ZL_DCtx_decompress(
+                dctx.get(), buf.get(), capacity, src, srcSize);
+        if (ZL_isError(r)) {
+            code = ZL_errorCode(r);
+            break;
+        }
+        lastSize = ZL_validResult(r);
+    }
+    const double elapsed = nowMs() - start;
+
+    if (code != ZL_ErrorCode_no_error) {
+        return code;
+    }
+    // The frame header promised this size, anything else means a bad round
+    // trip.
+    if (lastSize != capacity) {
+        return ZL_ErrorCode_GENERIC;
+    }
+
+    *outMs = elapsed;
     return ZL_ErrorCode_no_error;
 }
