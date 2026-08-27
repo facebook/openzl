@@ -1,0 +1,35 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("../../defs.bzl", "zs_library", "zs_unittest")
+
+oncall("data_compression")
+
+# Native target - C only, JS lives in js/ for frontend consumption.
+zs_library(
+    name = "wasm",
+    srcs = [
+        "src/openzl_wasm.cpp",
+    ],
+    headers = [
+        "src/openzl_wasm.h",
+    ],
+    deps = [
+        "../../cli/utils:profile_graphs",
+    ],
+    exported_deps = [
+        "../..:public_headers",
+        "../..:zstronglib",
+    ],
+)
+
+# Native gtest - validates profile table + compress/decompress roundtrip
+# without Emscripten. Also runs under CMake as `ctest -R WasmBinding`.
+zs_unittest(
+    name = "test_wasm_binding",
+    srcs = [
+        "tests/test_wasm_binding.cpp",
+    ],
+    deps = [
+        ":wasm",
+    ],
+)

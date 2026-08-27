@@ -1,6 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "cli/utils/compress_profiles.h"
+#include "cli/utils/profile_graphs.h"
 #include "cli/utils/util.h"
 
 #include <string.h>
@@ -8,7 +9,6 @@
 #include <limits>
 
 #include "openzl/codecs/zl_conversion.h"
-#include "openzl/codecs/zl_lz.h"
 #include "openzl/codecs/zl_mlselector.h"
 #include "openzl/codecs/zl_sddl2.h"
 #include "openzl/codecs/zl_segmenters.h"
@@ -171,20 +171,13 @@ static std::string makeProfileDescription(bool isSigned, size_t bitWidth)
 static ZL_GraphID
 buildIntProfile(ZL_Compressor* comp, void* opaque, const ProfileArgs& args)
 {
-    auto* d          = static_cast<IntProfileData*>(opaque);
-    size_t bitWidth  = d->eltByteWidth * 8;
-    ZL_GraphID graph = ZL_GRAPH_FIELD_LZ;
-    if (d->isSigned) {
-        graph = ZL_Compressor_registerStaticGraph_fromNode1o(
-                comp, ZL_NODE_ZIGZAG, graph);
+    if (!opaque) {
+        return ZL_GRAPH_ILLEGAL;
     }
-    graph = ZL_Compressor_buildACEGraphWithDefault(comp, graph);
-    graph = ZL_Compressor_registerStaticGraph_fromNode1o(
-            comp, ZL_Node_interpretAsLE(bitWidth), graph);
+    const auto& d = *static_cast<const IntProfileData*>(opaque);
     size_t chunkSize =
             args.chunkSize().value_or(ZL_DEFAULT_SEGMENTER_CHUNK_BYTE_SIZE);
-    return ZL_Compressor_buildNumFromSerialSegmenter(
-            comp, d->eltByteWidth, chunkSize, graph);
+    return profiles::buildIntGraph(comp, d.eltByteWidth, d.isSigned, chunkSize);
 }
 
 static void addIntProfile(
@@ -320,12 +313,9 @@ compressProfiles()
                 kSerialName,
                 "Serial data (aka raw bytes)",
                 [](ZL_Compressor* compressor, void*, const ProfileArgs& args) {
-                    ZL_GraphID inner = ZL_Compressor_buildACEGraphWithDefault(
-                            compressor, ZL_GRAPH_LZ);
                     size_t chunkSize = args.chunkSize().value_or(
                             ZL_DEFAULT_SEGMENTER_CHUNK_BYTE_SIZE);
-                    return ZL_Compressor_buildSerialSegmenter(
-                            compressor, chunkSize, inner);
+                    return profiles::buildSerialGraph(compressor, chunkSize);
                 },
                 nullptr,
                 true);
