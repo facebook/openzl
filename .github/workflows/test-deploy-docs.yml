@@ -23,12 +23,12 @@ jobs:
         with:
           node-version: lts/*
           cache: 'yarn'
-          cache-dependency-path: ${{github.workspace}}/tools/visualization_app
+          cache-dependency-path: ${{github.workspace}}/tools/yarn.lock
       - name: Install yarn dependencies
-        working-directory: ${{github.workspace}}/tools/visualization_app
-        run: yarn
-      - name: Build vite
-        working-directory: ${{github.workspace}}/tools/visualization_app
+        working-directory: ${{github.workspace}}/tools
+        run: yarn --frozen-lockfile
+      - name: Build web tools
+        working-directory: ${{github.workspace}}/tools
         run: yarn build
       - name: Setup Pages
         uses: actions/configure-pages@v5

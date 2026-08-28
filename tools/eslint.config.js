@@ -11,7 +11,12 @@ import {defineConfig} from 'eslint/config';
 
 export default defineConfig([
   {
-    ignores: ['node_modules/', 'dist/'],
+    ignores: ['**/node_modules/**', '**/dist/**'],
+  },
+  {
+    settings: {
+      react: {version: 'detect'},
+    },
   },
   {
     files: ['**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
@@ -25,9 +30,15 @@ export default defineConfig([
   {...pluginReact.configs.flat['jsx-runtime'], files: ['**/*.{jsx,tsx}']},
   {
     files: ['**/*.json'],
-    ignores: ['package.json', 'tsconfig.app.json', 'tsconfig.node.json'],
+    ignores: ['**/package.json', '**/tsconfig*.json'],
     plugins: {json},
     language: 'json/json',
+    extends: ['json/recommended'],
+  },
+  {
+    files: ['**/tsconfig*.json'],
+    plugins: {json},
+    language: 'json/jsonc',
     extends: ['json/recommended'],
   },
   {

@@ -42,20 +42,24 @@ class Stamp:
     def compute_stamp(self) -> str:
         h = hashlib.sha256()
 
-        for source_dir in self._sources:
-            if not source_dir.exists():
+        for source_path in self._sources:
+            if not source_path.exists():
                 continue
-            for root, dirs, files in os.walk(source_dir, topdown=True):
+            if source_path.is_file():
+                with open(source_path, "rb") as source_file:
+                    h.update(source_file.read())
+                continue
+            for root, dirs, files in os.walk(source_path, topdown=True):
                 for d in list(dirs):
                     path = Path(root) / d
                     if path in self._excludes:
                         dirs.remove(d)
-                for f in files:
-                    path = Path(root) / f
+                for file_name in files:
+                    path = Path(root) / file_name
                     if path in self._excludes:
                         continue
-                    with open(path, "rb") as f:
-                        h.update(f.read())
+                    with open(path, "rb") as source_file:
+                        h.update(source_file.read())
 
         return f"sha256={h.hexdigest()}"
 
@@ -87,6 +91,13 @@ class WebToolConfig:
                        (e.g. "tools/trace"). This must match the Vite `base` option
                        for the tool (e.g. base: "/tools/trace").
         dist_relative: Relative path from src dir to built output (default "dist").
+        source_dependencies_relative: Additional source files or directories,
+                                      relative to the tool source directory, that
+                                      should invalidate this tool's build stamp.
+                                      Narrower than the `tools:web_workspace_srcs`
+                                      Buck filegroup on purpose: an extra entry here
+                                      costs a redundant build, so only real build
+                                      inputs belong.
         skip_env_vars: Env vars that, when set to "1", skip this tool's build.
                        OPENZL_SKIP_WEB_TOOLS_BUILD skips every tool; a tool may
                        list additional vars to skip only itself.
@@ -96,6 +107,7 @@ class WebToolConfig:
     src_relative: str
     output_subdir: str
     dist_relative: str = "dist"
+    source_dependencies_relative: tuple[str, ...] = ()
     skip_env_vars: tuple[str, ...] = ()
 
 
@@ -109,6 +121,14 @@ WEB_TOOLS: list[WebToolConfig] = [
         name="trace visualizer",
         src_relative="../../../tools/visualization_app",
         output_subdir="tools/trace",
+        source_dependencies_relative=(
+            "../package.json",
+            "../tsconfig.base.json",
+            "../web_common/package.json",
+            "../web_common/src",
+            "../web_common/tsconfig.json",
+            "../yarn.lock",
+        ),
         skip_env_vars=("OPENZL_SKIP_WEB_TOOLS_BUILD",),
     ),
 ]
@@ -128,6 +148,14 @@ class WebToolBuilder:
             f"(configured as '{tool.src_relative}' relative to docs_dir). "
             f"Check WEB_TOOLS registry and that the directory is present."
         )
+        source_dependencies = [
+            self._src_dir / relative for relative in tool.source_dependencies_relative
+        ]
+        for source_dependency in source_dependencies:
+            assert source_dependency.exists(), (
+                f"Web tool '{tool.name}' source dependency does not exist: "
+                f"{source_dependency}"
+            )
         # Build dir is where we store the stamp file; mirrors the output_subdir
         # structure to keep stamps per-tool isolated.
         self._build_dir = Path(build_directory) / tool.output_subdir
@@ -138,7 +166,7 @@ class WebToolBuilder:
                 break
         self._stamp = Stamp(
             self._build_dir / "stamp.txt",
-            [self._src_dir],
+            [self._src_dir, *source_dependencies],
             [
                 self._src_dir / "node_modules",
                 self._src_dir / tool.dist_relative,

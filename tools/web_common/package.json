@@ -1,0 +1,15 @@
+{
+  "name": "@openzl/web-common",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "yarn typecheck",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "test:run": "vitest run --passWithNoTests"
+  }
+}

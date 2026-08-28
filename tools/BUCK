@@ -1,9 +1,26 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup")
 load("../defs.bzl", "relative_headers", "zs_cxxbinary", "zs_cxxlibrary", "zs_library", "zs_unittest")
 
 oncall("data_compression")
+
+# Yarn workspace root files shared by every web tool. package.json, yarn.lock and
+# tsconfig.base.json are genuine build inputs (see WebToolConfig.source_dependencies_relative);
+# the lint/format configs are listed too so that dependents get rescheduled on any
+# workspace-root change, which is cheaper than missing one.
+buck_filegroup(
+    name = "web_workspace_srcs",
+    srcs = [
+        ".prettierignore",
+        ".prettierrc",
+        "eslint.config.js",
+        "package.json",
+        "tsconfig.base.json",
+        "yarn.lock",
+    ],
+)
 
 zs_cxxlibrary(
     name = "arg",
@@ -59,12 +76,7 @@ zs_cxxlibrary(
     headers = ["zstrong_json.h"],
     compiler_flags = ["-Wno-float-equal"],
     strict_conversions = False,
-    deps = [
-        "//folly:base64",
-        "//folly:file_util",
-        "//folly:memory",
-        "//folly/lang:bits",
-    ],
+    deps = [],
     exported_deps = [
         "..:zstronglib",
         ":zstrong_cpp",

@@ -42,6 +42,7 @@ def test_web_tool_config_defaults():
         output_subdir="tools/test",
     )
     assert cfg.dist_relative == "dist"
+    assert cfg.source_dependencies_relative == ()
     assert cfg.skip_env_vars == ()
 
 
@@ -57,6 +58,20 @@ def test_web_tools_registry_has_trace_visualizer():
         assert tool.name
         assert tool.src_relative
         assert tool.output_subdir.startswith("tools/")
+
+
+def test_trace_visualizer_tracks_shared_build_inputs():
+    trace_visualizer = next(
+        tool for tool in WEB_TOOLS if tool.output_subdir == "tools/trace"
+    )
+    assert set(trace_visualizer.source_dependencies_relative) == {
+        "../package.json",
+        "../tsconfig.base.json",
+        "../web_common/package.json",
+        "../web_common/src",
+        "../web_common/tsconfig.json",
+        "../yarn.lock",
+    }
 
 
 def test_web_tools_registry_skip_env_vars_contain_generic():
@@ -161,6 +176,41 @@ def test_web_tool_builder_build_successfully(tmp_path: Path):
         mock_call.assert_not_called()
 
 
+def test_web_tool_builder_rebuilds_when_shared_source_changes(tmp_path: Path):
+    docs_dir = tmp_path / "docs"
+    docs_dir.mkdir()
+    site_dir = tmp_path / "site"
+    site_dir.mkdir()
+    build_dir = tmp_path / "build"
+
+    tool_src = docs_dir / "tool_src"
+    tool_src.mkdir()
+    (tool_src / "file.txt").write_text("tool")
+    (tool_src / "dist").mkdir()
+    (tool_src / "dist" / "index.html").write_text("built")
+
+    shared_src = docs_dir / "shared"
+    shared_src.mkdir()
+    shared_file = shared_src / "component.tsx"
+    shared_file.write_text("first version")
+
+    tool = WebToolConfig(
+        name="my tool",
+        src_relative="tool_src",
+        output_subdir="tools/my_tool",
+        source_dependencies_relative=("../shared",),
+    )
+    builder = WebToolBuilder(FakeConfig(docs_dir, site_dir), str(build_dir), tool)
+
+    with patch("mkdocs_openzl.plugin.check_call"):
+        builder.build()
+
+    shared_file.write_text("second version")
+    with patch("mkdocs_openzl.plugin.check_call") as mock_call:
+        builder.build()
+        assert mock_call.call_count == 2
+
+
 def test_web_tool_builder_respects_skip_env(tmp_path: Path, monkeypatch):
     docs_dir = tmp_path / "docs"
     docs_dir.mkdir()
@@ -214,6 +264,21 @@ def test_openzl_plugin_builds_all_tools(tmp_path: Path):
         dist = src / tool.dist_relative
         dist.mkdir(exist_ok=True)
         (dist / "index.html").write_text(f"<html>{tool.name}</html>")
+        for relative in tool.source_dependencies_relative:
+            dependency = (src / relative).resolve()
+            dependency.parent.mkdir(parents=True, exist_ok=True)
+            if dependency.name in {
+                "package.json",
+                "tsconfig.base.json",
+                "tsconfig.json",
+                "yarn.lock",
+            }:
+                dependency.write_text(f"source dependency for {tool.name}")
+            else:
+                dependency.mkdir(parents=True, exist_ok=True)
+                (dependency / "src.txt").write_text(
+                    f"source dependency for {tool.name}"
+                )
 
     config = FakeConfig(docs_dir, site_dir)
 

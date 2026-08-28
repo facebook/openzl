@@ -1,0 +1,16 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup")
+
+oncall("data_compression")
+
+buck_filegroup(
+    name = "package_srcs",
+    srcs = glob(
+        ["**/*"],
+        exclude = [
+            "node_modules/**",
+            "dist/**",
+        ],
+    ),
+)

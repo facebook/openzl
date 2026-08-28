@@ -1,0 +1,9 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../node_modules/.tmp/web-common.tsbuildinfo",
+    "erasableSyntaxOnly": true,
+    "types": []
+  },
+  "include": ["src"]
+}

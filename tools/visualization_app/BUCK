@@ -1,74 +1,11 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-load("@bazel_skylib//lib:shell.bzl", "shell")
-load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup", "buck_genrule", "buck_sh_binary", "buck_sh_test")
-load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
+load("../web_tool.bzl", "web_tool")
 
 oncall("data_compression")
 
-BRANCH_NAME = read_package_value("directory_branching.branch_name")  # Gets "dev" or "prod" from the path
-
-buck_filegroup(
-    name = "app_srcs",
-    # Exclude installed deps / build output so they don't bloat the test target's
-    # input graph (node_modules is also gitignored).
-    srcs = glob(
-        ["**/*"],
-        exclude = [
-            "node_modules/**",
-            "dist/**",
-            "dist-ssr/**",
-        ],
-    ),
-)
-
-buck_genrule(
-    name = "yarn-build",
-    out = "yarn-build.sh",
-    cmd = (
-        "echo -e {0} > $OUT && chmod +x $OUT".format(
-            shell.quote(
-                "\n".join([
-                    "#!/bin/sh",
-                    "pushd \\$(hg root)/fbcode/openzl/{}/tools/visualization_app".format(BRANCH_NAME),
-                    "yarn build",
-                    "popd",
-                ])
-            )
-        )
-    ),
-)
-
-buck_sh_binary(
-    name = "visualization-app-build",
-    main = ":yarn-build",
-)
-
-buck_genrule(
-    name = "yarn-test",
-    # Declares the app sources as inputs so target determination schedules
-    # this test when any src/test file changes. The script reads them at
-    # runtime via `yarn test:run`, which Buck's graph cannot infer on its own.
-    srcs = [":app_srcs"],
-    out = "yarn-test.sh",
-    cmd = (
-        "echo -e {0} > $OUT && chmod +x $OUT".format(
-            shell.quote(
-                "\n".join([
-                    "#!/bin/sh",
-                    "cd \\$(dirname \\$0)",
-                    "cd \\$(hg root)/fbcode/openzl/{}/tools/visualization_app".format(BRANCH_NAME),
-                    "yarn install",
-                    "yarn test:run",
-                ])
-            )
-        )
-    ),
-)
-
-# Runs `yarn test:run` (Vitest) inside the visualization_app directory.
-buck_sh_test(
-    name = "visualization-app-tests",
-    labels = ci.labels(ci.remove(ci.aarch64())),
-    test = ":yarn-test",
+web_tool(
+    name = "visualization-app",
+    shared_srcs = ["../web_common:package_srcs"],
+    workspace_package = "@openzl/visualization-app",
 )

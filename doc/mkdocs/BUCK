@@ -63,7 +63,11 @@ buck_sh_test(
         # Inject fake dependencies to ensure the test triggers on changes to the library and web tools.
         # When adding a new web tool, add its :app_srcs target here so doc tests run on changes.
         "../..:zstronglib",  # @manual
+        # Shared workspace manifests and packages are build inputs for every tool,
+        # so changing them must reschedule this test too.
+        "../../tools:web_workspace_srcs",  # @manual
         "../../tools/visualization_app:app_srcs",  # @manual
+        "../../tools/web_common:package_srcs",  # @manual
         # Doxygen binary must be explicitly declared as a dependency to be materialized in remote execution
         "fbsource//third-party/doxygen:doxygen",  # @manual
     ],
