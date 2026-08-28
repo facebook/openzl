@@ -4,6 +4,7 @@ import hashlib
 import os
 import shlex
 import shutil
+from dataclasses import dataclass
 from pathlib import Path
 from subprocess import check_call
 from typing import List, Optional
@@ -73,46 +74,98 @@ class Stamp:
         self._write_stamp(stamp)
 
 
-class StreamdumpBuilder:
-    def __init__(self, config: MkDocsConfig, build_directory: str):
+@dataclass(frozen=True)
+class WebToolConfig:
+    """
+    Configuration for a single web tool embedded in the docs site.
+
+    Attributes:
+        name: Human readable name used in logs.
+        src_relative: Path to the tool source directory, relative to docs_dir
+                      (e.g. "../../../tools/visualization_app").
+        output_subdir: Subdirectory inside site_dir where the built assets are copied
+                       (e.g. "tools/trace"). This must match the Vite `base` option
+                       for the tool (e.g. base: "/tools/trace").
+        dist_relative: Relative path from src dir to built output (default "dist").
+        skip_env_vars: Env vars that, when set to "1", skip this tool's build.
+                       OPENZL_SKIP_WEB_TOOLS_BUILD skips every tool; a tool may
+                       list additional vars to skip only itself.
+    """
+
+    name: str
+    src_relative: str
+    output_subdir: str
+    dist_relative: str = "dist"
+    skip_env_vars: tuple[str, ...] = ()
+
+
+# Registry of all web tools that should be built and copied into the site.
+# To add a new tool:
+#   1. Add a new WebToolConfig entry here pointing at its source dir and output subdir.
+#   2. Set its Vite config `base` to "/<output_subdir>" (e.g. "/tools/my_tool").
+#   3. Add a navigation entry in mkdocs.yml under Tools.
+WEB_TOOLS: list[WebToolConfig] = [
+    WebToolConfig(
+        name="trace visualizer",
+        src_relative="../../../tools/visualization_app",
+        output_subdir="tools/trace",
+        skip_env_vars=("OPENZL_SKIP_WEB_TOOLS_BUILD",),
+    ),
+]
+
+
+class WebToolBuilder:
+    """
+    Builds one web tool and copies its output into the docs site.
+    """
+
+    def __init__(self, config: MkDocsConfig, build_directory: str, tool: WebToolConfig):
         self._config = config
-        self._src_dir = Path(config.docs_dir) / "../../../tools/visualization_app"
-        assert self._src_dir.exists()
-        self._build_dir = Path(build_directory) / "tools" / "trace"
-        self._skip_build = os.getenv("OPENZL_SKIP_VISUALIZER_BUILD", "") == "1"
+        self._tool = tool
+        self._src_dir = Path(config.docs_dir) / tool.src_relative
+        assert self._src_dir.exists(), (
+            f"Web tool '{tool.name}' source directory does not exist: {self._src_dir} "
+            f"(configured as '{tool.src_relative}' relative to docs_dir). "
+            f"Check WEB_TOOLS registry and that the directory is present."
+        )
+        # Build dir is where we store the stamp file; mirrors the output_subdir
+        # structure to keep stamps per-tool isolated.
+        self._build_dir = Path(build_directory) / tool.output_subdir
+        self._skip_reason: str | None = None
+        for env_var in tool.skip_env_vars:
+            if os.getenv(env_var, "") == "1":
+                self._skip_reason = f"{env_var} is set"
+                break
         self._stamp = Stamp(
             self._build_dir / "stamp.txt",
             [self._src_dir],
             [
                 self._src_dir / "node_modules",
-                self._src_dir / "dist",
+                self._src_dir / tool.dist_relative,
             ],
         )
 
     def build(self) -> None:
-        """
-        Build the visualization app
-        """
-        if self._skip_build:
-            print(
-                "Skipping trace visualizer build (OPENZL_SKIP_VISUALIZER_BUILD is set)"
-            )
+        if self._skip_reason is not None:
+            print(f"Skipping {self._tool.name} build ({self._skip_reason})")
             return
 
         stamp = self._stamp.compute_stamp()
+        dist_dir = self._src_dir / self._tool.dist_relative
 
-        if self._stamp.needs_rebuild(stamp) or not (self._src_dir / "dist").exists():
-            print("Building trace visualizer...")
+        if self._stamp.needs_rebuild(stamp) or not dist_dir.exists():
+            print(f"Building {self._tool.name}...")
             check_call(["yarn"], cwd=self._src_dir)
             check_call(["yarn", "build"], cwd=self._src_dir)
         else:
-            print("Skipping trace visualizer build because the sources haven't changed")
+            print(
+                f"Skipping {self._tool.name} build because the sources haven't changed"
+            )
 
-        # copy the visualization app to the docs directory
-        site_dir = Path(self._config.site_dir) / "tools" / "trace"
+        site_dir = Path(self._config.site_dir) / self._tool.output_subdir
         shutil.rmtree(site_dir, ignore_errors=True)
         shutil.copytree(
-            self._src_dir / "dist",
+            dist_dir,
             site_dir,
         )
 
@@ -170,4 +223,5 @@ class OpenZLPlugin(mkdocs.plugins.BasePlugin[OpenZLConfig]):
         PythonBuilder(config, self.config.build_directory).build()
 
     def on_post_build(self, config: MkDocsConfig) -> None:
-        StreamdumpBuilder(config, self.config.build_directory).build()
+        for tool in WEB_TOOLS:
+            WebToolBuilder(config, self.config.build_directory, tool).build()

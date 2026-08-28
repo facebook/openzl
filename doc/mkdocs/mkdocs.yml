@@ -123,6 +123,7 @@ nav:
       - Version: api/py/version.md
     - Names: api/names.md
   - Tools:
+    - Overview: tools/index.md
     - Trace Visualizer: tools/trace
   - Blog:
     - blog/index.md

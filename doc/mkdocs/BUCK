@@ -50,9 +50,9 @@ buck_sh_test(
     name = "static_docs_test",
     env = {
         "DOXYGEN_PATH": "$(location fbsource//third-party/doxygen:doxygen)",
-        # Skip building the trace visualizer in tests since it requires external network access
-        # to fetch npm packages, which is not available in remote execution
-        "OPENZL_SKIP_VISUALIZER_BUILD": "1",
+        # Skip building web tools in tests since they require external network access
+        # to fetch npm packages, which is not available in remote execution.
+        "OPENZL_SKIP_WEB_TOOLS_BUILD": "1",
     },
     labels = ci.labels(ci.remove(ci.aarch64())),
     test = ":static_docs",
@@ -60,7 +60,8 @@ buck_sh_test(
         ":static_docs_build_script",
         # Depend on all files under doc/ to ensure the test triggers on changes to the docs
         ":doc_srcs",
-        # Inject fake dependencies to ensure the test triggers on changes to the library and visualization app
+        # Inject fake dependencies to ensure the test triggers on changes to the library and web tools.
+        # When adding a new web tool, add its :app_srcs target here so doc tests run on changes.
         "../..:zstronglib",  # @manual
         "../../tools/visualization_app:app_srcs",  # @manual
         # Doxygen binary must be explicitly declared as a dependency to be materialized in remote execution
