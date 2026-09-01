@@ -140,13 +140,14 @@ ZL_Report replaceTokens(
         InStream& strs)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(dictx);
-    size_t idx           = 0;
-    uint64_t mask        = bitmask[idx];
-    uint32_t skipped     = 0;
-    char const* tokenEnd = src.data();
+    size_t idx               = 0;
+    uint64_t mask            = bitmask[idx];
+    uint32_t skipped         = 0;
+    char const* tokenEnd     = src.data();
+    char const* const srcEnd = src.data() + src.size();
     char const* fastEnd;
     if (src.size() > 32) {
-        fastEnd = src.end() - 31;
+        fastEnd = srcEnd - 31;
     } else {
         fastEnd = src.data();
     }
@@ -156,8 +157,8 @@ ZL_Report replaceTokens(
             ++idx;
             if (idx == kBitmaskSize) {
                 // Copy the JSON suffix over
-                memcpy(out, tokenEnd, (src.end() - tokenEnd));
-                out += (src.end() - tokenEnd);
+                memcpy(out, tokenEnd, (srcEnd - tokenEnd));
+                out += (srcEnd - tokenEnd);
                 break;
             }
             mask    = bitmask[idx];
