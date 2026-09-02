@@ -1,6 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <algorithm>
+#include <chrono>
 #include <memory>
 #include <string_view>
 #include <vector>
@@ -182,17 +183,17 @@ std::vector<ACECompressor> selectAceCandidates(
 }
 
 /// @returns The ACE run configuration described by @p trainParams.
+/// @param maxTime Time budget for this run.
 AutomatedCompressorExplorer::Parameters aceParameters(
         const TrainParams& trainParams,
-        uint32_t formatVersion)
+        uint32_t formatVersion,
+        poly::optional<std::chrono::seconds> maxTime)
 {
     AutomatedCompressorExplorer::Parameters params{
         .numThreads = trainParams.threads.value_or(
                 std::thread::hardware_concurrency() / 2),
     };
-    if (trainParams.maxTimeSecs.has_value()) {
-        params.maxTime = std::chrono::seconds(*trainParams.maxTimeSecs);
-    }
+    params.maxTime       = maxTime;
     params.formatVersion = formatVersion;
     return params;
 }
@@ -283,6 +284,14 @@ std::vector<SerializedCompressorInternal> ACETrainer::train(
     MergedParetoFrontier::BackendGraphMutationsMap candidates;
     std::vector<std::unique_ptr<BackendGraphMutation>> checkPointMutations;
 
+    // One budget for the whole phase: each graph builds its own explorer, so
+    // an unshared deadline is spent once per graph.
+    poly::optional<std::chrono::steady_clock::time_point> deadline;
+    if (trainParams.maxTimeSecs.has_value()) {
+        deadline = std::chrono::steady_clock::now()
+                + std::chrono::seconds(*trainParams.maxTimeSecs);
+    }
+
     size_t graphIdx        = 0;
     const size_t numGraphs = autoBackendGraphs.size();
     for (const auto& backendGraph : autoBackendGraphs) {
@@ -320,8 +329,32 @@ std::vector<SerializedCompressorInternal> ACETrainer::train(
             continue;
         }
 
+        // An equal share of what is left, so early graphs cannot drain the
+        // budget. Unused time rolls forward to the graphs after this one.
+        poly::optional<std::chrono::seconds> maxTime;
+        if (deadline.has_value() && !skipTraining_) {
+            // Rounded up: seconds granularity truncates a short remainder away.
+            const auto remaining = std::chrono::ceil<std::chrono::seconds>(
+                    *deadline - std::chrono::steady_clock::now());
+            if (remaining <= std::chrono::seconds(0)) {
+                Logger::log_c(
+                        INFO,
+                        "Stopping ACE training early at graph %zu / %zu. Exceeded max time of %zu s.",
+                        graphIdx,
+                        numGraphs,
+                        *trainParams.maxTimeSecs);
+                break;
+            }
+            const auto graphsLeft = numGraphs - graphIdx + 1;
+            maxTime               = std::chrono::seconds(
+                    std::max<int64_t>(
+                            1,
+                            (remaining.count() + int64_t(graphsLeft) - 1)
+                                    / int64_t(graphsLeft)));
+        }
+
         AutomatedCompressorExplorer ace(
-                flattened, aceParameters(trainParams, formatVersion));
+                flattened, aceParameters(trainParams, formatVersion, maxTime));
         if (savedAceState.has_value()) {
             ace.loadPopulation(*savedAceState);
         }

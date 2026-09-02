@@ -1,6 +1,8 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <algorithm>
+#include <array>
+#include <chrono>
 #include <numeric>
 #include <random>
 #include <string>
@@ -10,6 +12,7 @@
 
 #include "openzl/cpp/CCtx.hpp"
 #include "openzl/cpp/codecs/ACE.hpp"
+#include "openzl/zl_compressor.h"
 #include "tools/training/ace/ace.h"
 #include "tools/training/ace/ace_compressor.h"
 #include "tools/training/ace/ace_mutate.h"
@@ -47,6 +50,59 @@ std::pair<std::string, std::vector<uint32_t>> tripleDeltaStringData()
         lengths.push_back(uint32_t(s.size()));
     }
     return { std::move(content), std::move(lengths) };
+}
+
+/// Trains @p numGraphs ACE graphs, one per field of a struct input, each graph
+/// seeing @p recordsPerGraph records, under a total budget of @p maxTimeSecs.
+/// @returns How long the whole training call took.
+std::chrono::milliseconds
+timeAceTraining(size_t numGraphs, size_t recordsPerGraph, size_t maxTimeSecs)
+{
+    std::vector<uint64_t> data(numGraphs * recordsPerGraph);
+    std::iota(data.begin(), data.end(), 0);
+    undelta(data);
+
+    std::vector<Input> inputsVec;
+    inputsVec.push_back(
+            Input::refSerial(data.data(), data.size() * sizeof(data[0])));
+    std::vector<MultiInput> multiInputs;
+    multiInputs.emplace_back(std::move(inputsVec));
+
+    auto compressorGenFunc = [](poly::string_view serialized,
+                                poly::string_view bundle = "") {
+        auto compressor = std::make_unique<Compressor>();
+        compressor->deserialize(serialized, bundle);
+        return compressor;
+    };
+
+    Compressor compressor;
+    std::vector<size_t> fieldSizes(numGraphs, sizeof(uint64_t));
+    std::vector<ZL_GraphID> fieldGraphs;
+    fieldGraphs.reserve(numGraphs);
+    for (size_t i = 0; i < numGraphs; ++i) {
+        fieldGraphs.push_back(graphs::ACE()(compressor));
+    }
+    compressor.selectStartingGraph(ZL_Compressor_registerSplitByStructGraph(
+            compressor.get(),
+            fieldSizes.data(),
+            fieldGraphs.data(),
+            fieldSizes.size()));
+    compressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+
+    TrainParams trainParams = {
+        .compressorGenFunc = compressorGenFunc,
+        .threads           = 1,
+        .maxTimeSecs       = maxTimeSecs,
+    };
+
+    ACETrainer trainer;
+    const auto start = std::chrono::steady_clock::now();
+    auto results =
+            trainer.train(multiInputs, compressor.serialize(), trainParams);
+    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - start);
+    EXPECT_FALSE(results.empty());
+    return elapsed;
 }
 } // namespace
 
@@ -333,6 +389,31 @@ TEST(ACETrainerTest, NoSaveAceStateProducesSmallerCompressor)
             << "Compressed data sizes should be identical since both come from "
                "the same training run: "
             << compressedWith.size() << " vs " << compressedWithout.size();
+}
+
+TEST(ACETrainerTest, MaxTimeSecsIsSharedAcrossAceGraphs)
+{
+    constexpr size_t kNumGraphs   = 8;
+    constexpr size_t kMaxTimeSecs = 2;
+    // Enough records that a single generation outlasts the budget, so an
+    // unshared budget costs a full generation per graph.
+    constexpr size_t kRecordsPerGraph = 16384;
+
+    // The budget only stops training between generations, and one generation
+    // can outrun it on a slow machine, so a wall-clock bound would flake.
+    // Compare against a one-graph run over the same records per graph instead:
+    // shared, the cost stays near the one-graph cost; unshared, it multiplies
+    // by the graph count.
+    const auto oneGraph = timeAceTraining(1, kRecordsPerGraph, kMaxTimeSecs);
+    const auto allGraphs =
+            timeAceTraining(kNumGraphs, kRecordsPerGraph, kMaxTimeSecs);
+
+    // Half of what an unshared budget would cost.
+    const auto budget = oneGraph * int64_t(kNumGraphs) / 2;
+    EXPECT_LT(allGraphs, budget)
+            << "ACE training over " << kNumGraphs << " graphs took "
+            << allGraphs.count() << "ms, against " << oneGraph.count()
+            << "ms for one graph, for a budget of " << kMaxTimeSecs << "s";
 }
 
 } // namespace tests
