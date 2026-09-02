@@ -351,7 +351,7 @@ std::vector<SerializedCompressorInternal> ACETrainer::train(
             applyMutations(makeCompressor, checkPointMutations).serialize());
 
     MergedParetoFrontier frontier(
-            makeCompressor, std::move(candidates), inputs, trainParams.threads);
+            makeCompressor, std::move(candidates), inputs, trainParams);
     return frontier.paretoFrontier();
 }
 

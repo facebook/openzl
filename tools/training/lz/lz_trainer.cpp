@@ -200,7 +200,7 @@ void LzTrainer::train(
             std::move(makeCompressor),
             std::move(candidates),
             inputs,
-            trainParams.threads);
+            trainParams);
 }
 
 std::vector<SerializedCompressorInternal> LzTrainer::paretoFrontier() const

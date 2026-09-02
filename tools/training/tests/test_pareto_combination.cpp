@@ -365,7 +365,7 @@ TEST_F(MergedParetoFrontierTest, KeepsOnlyParetoOptimalCandidates)
             [this] { return makeCompressor(); },
             makeCandidates({ 1, 19 }),
             inputs,
-            uint32_t(1));
+            TrainParams{ .threads = 1 });
 
     // A higher zstd level is smaller but slower, so at most both survive
     ASSERT_FALSE(frontier.selections().empty());
@@ -398,7 +398,7 @@ TEST_F(MergedParetoFrontierTest, BenchmarksCandidatesOnMultipleThreads)
             [this] { return makeCompressor(); },
             makeCandidates({ 1, 3, 6, 9, 12, 15, 19 }),
             inputs,
-            uint32_t(4));
+            TrainParams{ .threads = 4 });
 
     ASSERT_FALSE(frontier.selections().empty());
     auto compressors = frontier.paretoFrontier();
@@ -425,7 +425,7 @@ TEST_F(MergedParetoFrontierTest, BenchmarksTheReplacementGraph)
             [this] { return makeCompressor(); },
             std::move(candidates),
             inputs,
-            uint32_t(1));
+            TrainParams{ .threads = 1 });
 
     // Each candidate must be measured as the graph it installs, not as the
     // graph it replaces: storing and compressing cannot look alike.
@@ -442,7 +442,10 @@ TEST_F(MergedParetoFrontierTest, UnmutatedWhenThereAreNoCandidates)
     auto inputs     = makeInputs(data);
 
     MergedParetoFrontier frontier(
-            [this] { return makeCompressor(); }, {}, inputs, uint32_t(1));
+            [this] { return makeCompressor(); },
+            {},
+            inputs,
+            TrainParams{ .threads = 1 });
 
     ASSERT_EQ(frontier.selections().size(), 1u);
     EXPECT_TRUE(frontier.selections()[0].choices().empty());

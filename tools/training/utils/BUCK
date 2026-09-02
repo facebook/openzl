@@ -85,6 +85,7 @@ cpp_library(
     headers = relative_headers(["pareto_combination.h"]),
     header_namespace = "",
     exported_deps = [
+        "..:train_common",
         "../..:logger",
         "../../../cpp:openzl_cpp",
         "../sample_collection:sample_collection",

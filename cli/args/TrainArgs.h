@@ -133,6 +133,12 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
                 true,
                 "Target format version for training. If not provided, defaults "
                 "to the maximum supported format version.");
+        parser.addCommandFlag(
+                cmd(),
+                kMaxNumCandidates,
+                0,
+                true,
+                "Maximum number of trained candidates to produce when --pareto-frontier is set");
     }
 
     explicit TrainArgs(const arg::ParsedArgs& parsed)
@@ -220,6 +226,15 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
         if (parsed.cmdHasFlag(cmd(), kParetoFrontier)) {
             trainParams.paretoFrontier = true;
         }
+        auto maxNumCandidates = parsed.cmdFlag(cmd(), kMaxNumCandidates);
+        if (maxNumCandidates) {
+            trainParams.maxNumCandidates =
+                    util::checkedstoul(maxNumCandidates.value());
+            if (trainParams.maxNumCandidates < 10) {
+                throw InvalidArgsException(
+                        "Must set --max-num-candidates to at least 10");
+            }
+        }
 
         trainParams.noAceSuccessors =
                 parsed.cmdHasFlag(cmd(), kNoAceSuccessors);
@@ -280,18 +295,19 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
     inline static const std::string kDictBundleOutput = "dict-bundle-output";
 
     // Train Params
-    inline static const std::string kTrainer         = "trainer";
-    inline static const std::string kThreads         = "threads";
-    inline static const std::string kNumSamples      = "num-samples";
-    inline static const std::string kUseAllSamples   = "use-all-samples";
-    inline static const std::string kNoAceSuccessors = "no-ace-successors";
-    inline static const std::string kNoClustering    = "no-clustering";
-    inline static const std::string kMaxTimeSecs     = "max-time-secs";
-    inline static const std::string kMaxFileSizeMb   = "max-file-size-mb";
-    inline static const std::string kMaxTotalSizeMb  = "max-total-size-mb";
-    inline static const std::string kParetoFrontier  = "pareto-frontier";
-    inline static const std::string kSaveAceState    = "save-ace-state";
-    inline static const std::string kFormatVersion   = "format-version";
+    inline static const std::string kTrainer          = "trainer";
+    inline static const std::string kThreads          = "threads";
+    inline static const std::string kNumSamples       = "num-samples";
+    inline static const std::string kUseAllSamples    = "use-all-samples";
+    inline static const std::string kNoAceSuccessors  = "no-ace-successors";
+    inline static const std::string kNoClustering     = "no-clustering";
+    inline static const std::string kMaxTimeSecs      = "max-time-secs";
+    inline static const std::string kMaxFileSizeMb    = "max-file-size-mb";
+    inline static const std::string kMaxTotalSizeMb   = "max-total-size-mb";
+    inline static const std::string kParetoFrontier   = "pareto-frontier";
+    inline static const std::string kSaveAceState     = "save-ace-state";
+    inline static const std::string kFormatVersion    = "format-version";
+    inline static const std::string kMaxNumCandidates = "max-num-candidates";
 };
 
 } // namespace openzl::cli

@@ -13,6 +13,7 @@
 #include "openzl/cpp/poly/Optional.hpp"
 #include "openzl/cpp/poly/Span.hpp"
 
+#include "tools/training/train_params.h"
 #include "tools/training/utils/benchmark.h"
 #include "tools/training/utils/mutation.h"
 #include "tools/training/utils/serialized_compressor_internal.h"
@@ -129,14 +130,12 @@ class MergedParetoFrontier {
      * backend graph name.
      * @param inputs The samples to benchmark on. These are the inputs to the
      * whole compressor, not to the individual backend graphs.
-     * @param threads The number of threads to use, defaults to half the
-     * hardware concurrency.
      */
     MergedParetoFrontier(
             std::function<Compressor()> makeCompressor,
             BackendGraphMutationsMap candidates,
             poly::span<const MultiInput> inputs,
-            poly::optional<uint32_t> threads = poly::nullopt);
+            const TrainParams& params);
 
     std::vector<SerializedCompressorInternal> paretoFrontier() const;
 

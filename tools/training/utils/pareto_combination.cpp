@@ -19,10 +19,10 @@ namespace training {
 using namespace openzl::tools::logger;
 
 namespace {
+const size_t kDefaultNumFinalParetoCandidates = 100;
 
 // TODO: Make these hyperparameters training args
 const size_t kNumIntermediateFrontierCandidates = 1000;
-const size_t kNumFinalParetoCandidates          = 100;
 
 /**
  * Merges 2 vectors of candidates getting all combinations. Then filters out
@@ -186,21 +186,23 @@ MergedParetoFrontier::MergedParetoFrontier(
         std::function<Compressor()> makeCompressor,
         BackendGraphMutationsMap candidates,
         poly::span<const MultiInput> inputs,
-        poly::optional<uint32_t> threads)
+        const TrainParams& params)
         : makeCompressor_(std::move(makeCompressor)),
           candidates_(std::move(candidates))
 {
     ThreadPool threadPool(
             std::max<size_t>(
                     1,
-                    threads.value_or(std::thread::hardware_concurrency() / 2)));
+                    params.threads.value_or(
+                            std::thread::hardware_concurrency() / 2)));
 
     auto selections = getBackendGraphSelections(
             makeCompressor_, candidates_, inputs, threadPool);
 
-    auto frontier = combineCandidates(selections, threadPool);
-    paretoFrontier_ =
-            pruneCandidates(std::move(frontier), kNumFinalParetoCandidates);
+    auto frontier   = combineCandidates(selections, threadPool);
+    paretoFrontier_ = pruneCandidates(
+            std::move(frontier),
+            params.maxNumCandidates.value_or(kDefaultNumFinalParetoCandidates));
     std::sort(paretoFrontier_.begin(), paretoFrontier_.end());
     if (paretoFrontier_.empty()) {
         paretoFrontier_.emplace_back();

@@ -35,6 +35,10 @@ struct TrainParams {
     poly::optional<size_t> maxTotalSizeMb;
     bool paretoFrontier{ false };
     bool saveAceState{ false };
+    /// Prune down to to this number of candidates.
+    /// NOTE: This currently only prunes per-trainer, because we don't currently
+    /// have a final pareto-optimal filtering step for all candidates.
+    poly::optional<size_t> maxNumCandidates;
 };
 
 } // namespace openzl::training
