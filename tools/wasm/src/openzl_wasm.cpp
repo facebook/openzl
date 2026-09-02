@@ -4,11 +4,22 @@
 #include <cstdint>
 #include <cstdlib>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "cli/utils/profile_graphs.h"
+#include "custom_parsers/dependency_registration.h"
+#include "tools/training/train.h"
+#include "tools/training/utils/utils.h"
 #include "tools/wasm/src/openzl_wasm.h"
 
-#include "openzl/shared/mem.h" // ZL_memcpy
+#include "openzl/cpp/CParam.hpp"
+#include "openzl/cpp/Compressor.hpp"
+#include "openzl/cpp/Exception.hpp"
+#include "openzl/cpp/Input.hpp"
+#include "openzl/cpp/poly/StringView.hpp"
+#include "openzl/shared/mem.h"      // ZL_memcpy
+#include "openzl/zl_common_types.h" // ZL_TernaryParam
 #include "openzl/zl_compress.h"
 #include "openzl/zl_compressor.h"
 #include "openzl/zl_compressor_serialization.h"
@@ -148,6 +159,15 @@ ZL_ErrorCode deserializeCompressor(
     return ZL_ErrorCode_no_error;
 }
 
+// Turn on permissive mode to allow fallback to a generic backend instead of
+// failing
+ZL_ErrorCode setPermissive(ZL_CCtx* cctx)
+{
+    ZL_Report r = ZL_CCtx_setParameter(
+            cctx, ZL_CParam_permissiveCompression, ZL_TernaryParam_enable);
+    return ZL_isError(r) ? ZL_errorCode(r) : ZL_ErrorCode_no_error;
+}
+
 ZL_ErrorCode tryCompress(
         ZL_Compressor* comp,
         const uint8_t* src,
@@ -160,6 +180,10 @@ ZL_ErrorCode tryCompress(
     if (!cctx) {
         return ZL_ErrorCode_allocation;
     }
+    ZL_ErrorCode permissive = setPermissive(cctx.get());
+    if (permissive != ZL_ErrorCode_no_error) {
+        return permissive;
+    }
     ZL_Report ref = ZL_CCtx_refCompressor(cctx.get(), comp);
     if (ZL_isError(ref)) {
         return ZL_errorCode(ref);
@@ -170,6 +194,17 @@ ZL_ErrorCode tryCompress(
     }
     *written = ZL_validResult(cr);
     return ZL_ErrorCode_no_error;
+}
+
+// Emscripten only has the workers it pre-spawned, and asking for a thread
+// beyond that pool deadlocks a blocked caller, so an over-large request is
+// clamped
+size_t clampTrainThreads(size_t threads)
+{
+    if (threads == 0 || threads > OPENZL_WASM_TRAIN_MAX_THREADS) {
+        return OPENZL_WASM_TRAIN_MAX_THREADS;
+    }
+    return threads;
 }
 
 double nowMs()
@@ -263,6 +298,87 @@ ZL_ErrorCode openzl_wasm_getSerializedCompressor(
     *outBuf  = buf.release();
     *outSize = outSz;
     return ZL_ErrorCode_no_error;
+}
+
+EMSCRIPTEN_KEEPALIVE
+ZL_ErrorCode openzl_wasm_train(
+        const uint8_t* compressor,
+        size_t compressorSize,
+        const uint8_t* src,
+        size_t srcSize,
+        size_t threads,
+        size_t maxTimeSecs,
+        uint8_t** outBuf,
+        size_t* outSize)
+{
+    if (!outBuf || !outSize) {
+        return ZL_ErrorCode_parameter_invalid;
+    }
+    *outBuf  = nullptr;
+    *outSize = 0;
+    if (!compressor || compressorSize == 0) {
+        return ZL_ErrorCode_parameter_invalid;
+    }
+    // Unlike compress, an empty sample is not a degenerate case to handle but
+    // an input the trainer cannot learn anything from.
+    if (!src || srcSize == 0) {
+        return ZL_ErrorCode_parameter_invalid;
+    }
+
+    // Everything below is the exception-throwing C++ training API, so the
+    // whole body sits inside a catch that maps back onto the C ABI.
+    try {
+        const std::unique_ptr<openzl::Compressor> comp =
+                openzl::custom_parsers::createCompressorFromSerialized(
+                        openzl::poly::string_view(
+                                reinterpret_cast<const char*>(compressor),
+                                compressorSize),
+                        {});
+
+        // Format version is mandatory, use latest supported for WASM.
+        comp->setParameter(
+                openzl::CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+
+        // The sample is always wrapped as serial, for every profile. This
+        // matches the CLI.
+        openzl::training::MultiInput sample;
+        sample.add(openzl::Input::refSerial(src, srcSize));
+
+        const openzl::training::TrainParams trainParams{
+            .compressorGenFunc =
+                    openzl::custom_parsers::createCompressorFromSerialized,
+            .threads     = static_cast<uint32_t>(clampTrainThreads(threads)),
+            .maxTimeSecs = maxTimeSecs == 0
+                    ? static_cast<size_t>(
+                              OPENZL_WASM_TRAIN_DEFAULT_MAX_TIME_SECS)
+                    : maxTimeSecs,
+        };
+
+        // train() reports "nothing to train" by throwing, so a successful
+        // return always carries at least one candidate. paretoFrontier is off,
+        // so it carries exactly one.
+        const std::vector<openzl::training::TrainedCandidate> candidates =
+                openzl::training::train({ sample }, *comp, trainParams);
+        if (candidates.empty()) {
+            return ZL_ErrorCode_GENERIC;
+        }
+        const std::string& serialized = candidates.front().serializedCompressor;
+
+        BufferPtr buf = allocBuffer(serialized.size());
+        if (!buf) {
+            return ZL_ErrorCode_allocation;
+        }
+        ZL_memcpy(buf.get(), serialized.data(), serialized.size());
+
+        *outBuf  = buf.release();
+        *outSize = serialized.size();
+        return ZL_ErrorCode_no_error;
+    } catch (const openzl::Exception& e) {
+        const auto code = e.code();
+        return code ? *code : ZL_ErrorCode_GENERIC;
+    } catch (...) {
+        return ZL_ErrorCode_GENERIC;
+    }
 }
 
 EMSCRIPTEN_KEEPALIVE
@@ -424,6 +540,12 @@ ZL_ErrorCode openzl_wasm_benchmarkCompress(
             ZL_CCtx_setParameter(cctx.get(), ZL_CParam_stickyParameters, 1);
     if (ZL_isError(sticky)) {
         return ZL_errorCode(sticky);
+    }
+    // Matches tryCompress, so the benchmark measures the same configuration
+    // openzl_wasm_compress() would use.
+    ZL_ErrorCode permissive = setPermissive(cctx.get());
+    if (permissive != ZL_ErrorCode_no_error) {
+        return permissive;
     }
     ZL_Report ref = ZL_CCtx_refCompressor(cctx.get(), comp.get());
     if (ZL_isError(ref)) {

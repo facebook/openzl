@@ -4,7 +4,9 @@
 #include <vector>
 
 #include "tools/logger/Logger.h"
-#include "tools/ml_selector/ml_selector_trainer.h"
+#ifndef __EMSCRIPTEN__
+#    include "tools/ml_selector/ml_selector_trainer.h"
+#endif
 #include "tools/training/ace/ace.h"
 #include "tools/training/clustering/clustering_graph_trainer.h"
 #include "tools/training/dict/base_dict_trainer.h"
@@ -91,11 +93,13 @@ std::vector<TrainedCandidate> train(
         }
     }
 
+#ifndef __EMSCRIPTEN__
     if (graph_mutation::hasTargetGraph(compressor, ML_SELECTOR_GRAPH_NAME)) {
         serializedTrainedCompressors.clear();
         serializedTrainedCompressors.push_back(
                 trainMLSelectorGraph(inputs, compressor, trainParams));
     }
+#endif
 
     // Dict training: for each serialized candidate, deserialize, train
     // dicts, re-serialize with bundleID + dictIDs in CBOR.

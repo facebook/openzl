@@ -5,23 +5,28 @@
 set(OPENZL_WASM_SOURCE src/openzl_wasm.cpp)
 
 if(NOT EMSCRIPTEN)
-  # openzl_wasm_lib is used only for native testing in non-Emscripten builds
-  add_library(openzl_wasm_lib STATIC ${OPENZL_WASM_SOURCE})
-
-  target_include_directories(openzl_wasm_lib PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../..
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src
-  )
-
-  target_link_libraries(openzl_wasm_lib PRIVATE openzl openzl_profile_graphs)
-  apply_openzl_compile_options_to_target(openzl_wasm_lib)
-
   # Native test - runs under both `buck test` and, with
   # -DOPENZL_BUILD_TESTS=ON, `ctest -R WasmBinding`. gtest_discover_tests
   # registers the gtest names, not the executable name, so the ctest filter
   # matches the suites.
   if(OPENZL_BUILD_TESTS)
+    add_library(openzl_wasm_lib STATIC ${OPENZL_WASM_SOURCE})
+
+    target_include_directories(openzl_wasm_lib PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/../..
+      ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+      ${CMAKE_CURRENT_SOURCE_DIR}/../../src
+    )
+
+    target_link_libraries(openzl_wasm_lib
+      PRIVATE
+        openzl
+        openzl_profile_graphs
+        tools_training
+        custom_parsers
+    )
+    apply_openzl_compile_options_to_target(openzl_wasm_lib)
+
     add_executable(test_wasm_binding tests/test_wasm_binding.cpp)
     target_include_directories(test_wasm_binding PRIVATE
       ${CMAKE_CURRENT_SOURCE_DIR}/../..
@@ -57,19 +62,41 @@ target_include_directories(openzl_wasm PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../../src
 )
 
-target_link_libraries(openzl_wasm PRIVATE openzl openzl_profile_graphs)
+target_link_libraries(openzl_wasm
+  PRIVATE
+    openzl
+    openzl_profile_graphs
+    tools_training
+    custom_parsers
+)
 
-# -sMEMORY64=1 / -sWASM_BIGINT=1 are set globally in the top-level file so
-# every object, including the core library, uses the wasm64 ABI.
+# Emscripten pre-spawns its worker pool at startup. Creating a thread beyond
+# the pool has to round-trip through the main thread's event loop, which
+# deadlocks when that thread is blocked, so the binding never asks for more
+# than this and the pool is sized up front.
+set(OPENZL_WASM_PTHREAD_POOL_SIZE 4 CACHE STRING
+  "Workers pre-allocated for the WASM trainer thread pool")
+
+# -sMEMORY64=1 / -sWASM_BIGINT=1 / -fexceptions / -pthread are set globally in
+# the top-level file so every object, including the core library and the
+# training tools, uses the wasm64 ABI, can unwind, and can spawn threads.
 target_compile_options(openzl_wasm PRIVATE -O3)
+target_compile_definitions(openzl_wasm PRIVATE
+  OPENZL_WASM_TRAIN_MAX_THREADS=${OPENZL_WASM_PTHREAD_POOL_SIZE})
 target_link_options(openzl_wasm PRIVATE
   -O3                        # optimise the linked wasm
   -sWASM=1                   # emit wasm, not asm.js
   -sALLOW_MEMORY_GROWTH=1    # heap can grow; JS must re-read mod.HEAPU8
   -sINITIAL_MEMORY=32MB      # starting heap size
+  # Reserve extra stack space for ACE. If a future candidate goes deeper than
+  # 4 MB, training will abort with a stack overflow, and the fix
+  # is to raise these numbers.
+  -sSTACK_SIZE=4MB
+  -sDEFAULT_PTHREAD_STACK_SIZE=4MB
   -sMODULARIZE=1             # export a factory function, not globals
   -sEXPORT_ES6=1             # emit an ES module
   -sEXPORT_NAME=openzlModule # name of the factory; js/wasm_api.js imports this
+  -sPTHREAD_POOL_SIZE=${OPENZL_WASM_PTHREAD_POOL_SIZE}
   # Nothing to list: every entry point, the allocator included, exports itself
   # via EMSCRIPTEN_KEEPALIVE. The empty value overrides the _main default.
   -sEXPORTED_FUNCTIONS=

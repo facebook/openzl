@@ -24,22 +24,24 @@ if (OPENZL_BUILD_TRAINING_TOOLS)
   target_include_directories(tools_training PUBLIC ${PROJECT_SOURCE_DIR})
   target_compile_definitions(tools_training PUBLIC ZDICT_STATIC_LINKING_ONLY)
   apply_openzl_compile_options_to_target(tools_training)
-    target_link_libraries(
-        tools_training
-        PUBLIC
-            openzl
-            openzl_cpp
-            tools_io
-            logger
-            ml_selector)
-    add_dependencies(
-        tools_training
-        openzl
-        openzl_cpp
-        tools_io
-        logger
-        ml_selector
-        xgboost_external)
+  target_link_libraries(
+      tools_training
+      PUBLIC
+          openzl
+          openzl_cpp
+          tools_io
+          logger)
+  add_dependencies(
+      tools_training
+      openzl
+      openzl_cpp
+      tools_io
+      logger)
+
+  if (OPENZL_BUILD_ML_SELECTOR)
+    target_link_libraries(tools_training PUBLIC ml_selector)
+    add_dependencies(tools_training ml_selector xgboost_external)
+  endif()
 
   if (OPENZL_BUILD_TESTS AND OPENZL_ALLOW_INTROSPECTION)
     file(
@@ -53,7 +55,9 @@ if (OPENZL_BUILD_TRAINING_TOOLS)
         CONFIGURE_DEPENDS
         "${CMAKE_CURRENT_LIST_DIR}/tests/*.h")
     add_executable(test_training ${test_training_srcs} ${test_training_headers})
-    add_dependencies(test_training xgboost_external)
+    if (OPENZL_BUILD_ML_SELECTOR)
+      add_dependencies(test_training xgboost_external)
+    endif()
     target_link_libraries(
         test_training
         PRIVATE

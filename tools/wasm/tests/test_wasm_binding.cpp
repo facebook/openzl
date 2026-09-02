@@ -38,6 +38,40 @@ ZL_ErrorCode serializedCompressor(
     return code;
 }
 
+// The trainers spend whatever wall-clock budget they are given, so the tests
+// pass an explicit one rather than inheriting the much larger default.
+constexpr size_t kTestTrainMaxTimeSecs = 5;
+
+ZL_ErrorCode train(
+        const std::vector<uint8_t>& compressor,
+        const std::vector<uint8_t>& src,
+        std::vector<uint8_t>* out)
+{
+    if (!out) {
+        return ZL_ErrorCode_parameter_invalid;
+    }
+    out->clear();
+    uint8_t* buf      = nullptr;
+    size_t size       = 0;
+    ZL_ErrorCode code = openzl_wasm_train(
+            compressor.empty() ? nullptr : compressor.data(),
+            compressor.size(),
+            src.empty() ? nullptr : src.data(),
+            src.size(),
+            // 0 asks for the default pool, so the tests cover the thread count
+            // real callers get rather than a single-threaded special case.
+            /* threads */ 0,
+            kTestTrainMaxTimeSecs,
+            &buf,
+            &size);
+    if (code != ZL_ErrorCode_no_error) {
+        EXPECT_EQ(buf, nullptr);
+        return code;
+    }
+    *out = copyAndFree(buf, size);
+    return code;
+}
+
 ZL_ErrorCode compress(
         const std::vector<uint8_t>& src,
         const std::vector<uint8_t>& compressor,
@@ -205,6 +239,119 @@ TEST(WasmBindingTest, SignedIntRoundTrip)
 TEST(WasmBindingTest, EmptyRoundTrip)
 {
     expectRoundTrip({}, OPENZL_WASM_PROFILE_SERIAL);
+}
+
+TEST(WasmBindingTest, TrainedCompressorRoundTrips)
+{
+    const std::vector<uint8_t> src = makeSerialData(4096);
+
+    std::vector<uint8_t> base;
+    ASSERT_EQ(
+            serializedCompressor(OPENZL_WASM_PROFILE_SERIAL, &base),
+            ZL_ErrorCode_no_error);
+
+    std::vector<uint8_t> trained;
+    const ZL_ErrorCode trainCode = train(base, src, &trained);
+    ASSERT_EQ(trainCode, ZL_ErrorCode_no_error)
+            << openzl_wasm_errorString(trainCode);
+    EXPECT_FALSE(trained.empty());
+
+    // Training takes and returns the same kind of bytes, so its output feeds
+    // the ordinary compress path and could be trained again.
+    std::vector<uint8_t> frame;
+    const ZL_ErrorCode compCode = compress(src, trained, &frame);
+    ASSERT_EQ(compCode, ZL_ErrorCode_no_error)
+            << openzl_wasm_errorString(compCode);
+    EXPECT_LT(frame.size(), src.size());
+
+    // Decompression takes no compressor, so a peer that never trained can
+    // still read the frame.
+    std::vector<uint8_t> dec;
+    const ZL_ErrorCode decCode = decompress(frame, &dec);
+    ASSERT_EQ(decCode, ZL_ErrorCode_no_error)
+            << openzl_wasm_errorString(decCode);
+    EXPECT_EQ(dec, src);
+}
+
+// Same as above for an integer profile. The sample is still serial bytes:
+// the int graph's segmenter converts them to typed streams the trainers
+// learn from, so the input side needs no profile.
+TEST(WasmBindingTest, TrainedIntCompressorRoundTrips)
+{
+    const std::vector<uint8_t> src = makeIntData(4, 1024, false);
+
+    std::vector<uint8_t> base;
+    ASSERT_EQ(
+            serializedCompressor(OPENZL_WASM_PROFILE_U32, &base),
+            ZL_ErrorCode_no_error);
+
+    std::vector<uint8_t> trained;
+    const ZL_ErrorCode trainCode = train(base, src, &trained);
+    ASSERT_EQ(trainCode, ZL_ErrorCode_no_error)
+            << openzl_wasm_errorString(trainCode);
+    EXPECT_FALSE(trained.empty());
+
+    std::vector<uint8_t> frame;
+    const ZL_ErrorCode compCode = compress(src, trained, &frame);
+    ASSERT_EQ(compCode, ZL_ErrorCode_no_error)
+            << openzl_wasm_errorString(compCode);
+    EXPECT_LT(frame.size(), src.size());
+
+    std::vector<uint8_t> dec;
+    const ZL_ErrorCode decCode = decompress(frame, &dec);
+    ASSERT_EQ(decCode, ZL_ErrorCode_no_error)
+            << openzl_wasm_errorString(decCode);
+    EXPECT_EQ(dec, src);
+}
+
+TEST(WasmBindingTest, TrainRejectsBadInput)
+{
+    const std::vector<uint8_t> src = makeSerialData(1024);
+    std::vector<uint8_t> base;
+    ASSERT_EQ(
+            serializedCompressor(OPENZL_WASM_PROFILE_SERIAL, &base),
+            ZL_ErrorCode_no_error);
+
+    // Every rejection below is cheap: none of them reach the trainers.
+    std::vector<uint8_t> trained;
+
+    // Unlike compress, an empty sample is rejected rather than handled: there
+    // is nothing to train on.
+    EXPECT_EQ(train(base, {}, &trained), ZL_ErrorCode_parameter_invalid);
+    EXPECT_TRUE(trained.empty());
+
+    EXPECT_EQ(train({}, src, &trained), ZL_ErrorCode_parameter_invalid);
+    EXPECT_TRUE(trained.empty());
+
+    const std::vector<uint8_t> garbage(64, 0xAB);
+    EXPECT_NE(train(garbage, src, &trained), ZL_ErrorCode_no_error);
+    EXPECT_TRUE(trained.empty());
+
+    uint8_t* buf = nullptr;
+    size_t size  = 0;
+    EXPECT_EQ(
+            openzl_wasm_train(
+                    base.data(),
+                    base.size(),
+                    src.data(),
+                    src.size(),
+                    1,
+                    kTestTrainMaxTimeSecs,
+                    nullptr,
+                    &size),
+            ZL_ErrorCode_parameter_invalid);
+    EXPECT_EQ(
+            openzl_wasm_train(
+                    base.data(),
+                    base.size(),
+                    src.data(),
+                    src.size(),
+                    1,
+                    kTestTrainMaxTimeSecs,
+                    &buf,
+                    nullptr),
+            ZL_ErrorCode_parameter_invalid);
+    EXPECT_EQ(buf, nullptr);
 }
 
 TEST(WasmBindingTest, BenchmarkTimesBothDirections)
