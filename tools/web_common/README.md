@@ -1,7 +1,8 @@
 # OpenZL Web Common
 
-Reusable non-visual code for web tools embedded in the OpenZL documentation site.
+Reusable code and UI primitives for web tools embedded in the OpenZL documentation site.
 
-The package is intentionally minimal until multiple tools expose a concrete shared abstraction. Tool-specific components, styling, and application shells should remain in their owning apps.
+Keep tool-specific components, styling, and application shells in their owning apps.
+Put stable primitives intended for reuse across tools in this package.
 
-Add shared utilities here only when they have a demonstrated consumer in more than one tool. Import them from `@openzl/web-common`.
+Import shared utilities and components from `@openzl/web-common`.

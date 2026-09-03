@@ -1,7 +1,7 @@
 {
   "extends": "../tsconfig.vite-node.json",
   "compilerOptions": {
-    "tsBuildInfoFile": "../node_modules/.tmp/visualization-node.tsbuildinfo"
+    "tsBuildInfoFile": "../node_modules/.tmp/compression-playground-node.tsbuildinfo"
   },
   "include": ["vite.config.ts"]
 }

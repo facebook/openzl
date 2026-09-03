@@ -6,6 +6,5 @@ oncall("data_compression")
 
 web_tool(
     name = "visualization-app",
-    shared_srcs = ["../web_common:package_srcs"],
     workspace_package = "@openzl/visualization-app",
 )
