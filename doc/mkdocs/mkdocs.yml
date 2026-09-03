@@ -125,6 +125,7 @@ nav:
   - Tools:
     - Overview: tools/index.md
     - Trace Visualizer: tools/trace
+    - Compression Playground: tools/playground
   - Blog:
     - blog/index.md
 

@@ -1,0 +1,11 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("../web_tool.bzl", "web_tool")
+
+oncall("data_compression")
+
+web_tool(
+    name = "compression-playground",
+    shared_srcs = ["../web_common:package_srcs"],
+    workspace_package = "@openzl/compression-playground",
+)
