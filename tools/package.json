@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "workspaces": [
+    "compression_playground",
     "visualization_app",
     "web_common"
   ],
@@ -39,6 +40,7 @@
     "typescript": "5.8.3",
     "typescript-eslint": "8.45.0",
     "vite": "7.3.2",
+    "vite-tsconfig-paths": "5.1.4",
     "vitest": "4.1.6"
   },
   "resolutions": {
