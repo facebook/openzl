@@ -1,0 +1,25 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup")
+
+oncall("data_compression")
+
+# Yarn workspace root files shared by every web tool. package.json, yarn.lock and
+# tsconfig.base.json are genuine build inputs (see WebToolConfig.source_dependencies_relative);
+# the lint/format configs are listed too so that dependents get rescheduled on any
+# workspace-root change, which is cheaper than missing one.
+buck_filegroup(
+    name = "web_workspace_srcs",
+    srcs = [
+        ".prettierignore",
+        ".prettierrc",
+        "eslint.config.js",
+        "package.json",
+        "tsconfig.base.json",
+        "tsconfig.react-app.json",
+        "tsconfig.vite-node.json",
+        "tsconfig.vitest.json",
+        "vite.base.ts",
+        "yarn.lock",
+    ],
+)
