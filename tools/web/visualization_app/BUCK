@@ -1,0 +1,10 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("../web_tool.bzl", "web_tool")
+
+oncall("data_compression")
+
+web_tool(
+    name = "visualization-app",
+    workspace_package = "@openzl/visualization-app",
+)

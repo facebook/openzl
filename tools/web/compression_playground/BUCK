@@ -5,7 +5,7 @@ load("../web_tool.bzl", "web_tool")
 oncall("data_compression")
 
 web_tool(
-    name = "visualization-app",
+    name = "compression-playground",
     shared_srcs = ["../web_common:package_srcs"],
-    workspace_package = "@openzl/visualization-app",
+    workspace_package = "@openzl/compression-playground",
 )

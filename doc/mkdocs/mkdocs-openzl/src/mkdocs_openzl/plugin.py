@@ -86,7 +86,7 @@ class WebToolConfig:
     Attributes:
         name: Human readable name used in logs.
         src_relative: Path to the tool source directory, relative to docs_dir
-                      (e.g. "../../../tools/visualization_app").
+                      (e.g. "../../../tools/web/visualization_app").
         output_subdir: Subdirectory inside site_dir where the built assets are copied
                        (e.g. "tools/trace"). This must match the Vite `base` option
                        for the tool (e.g. base: "/tools/trace").
@@ -94,7 +94,7 @@ class WebToolConfig:
         source_dependencies_relative: Additional source files or directories,
                                       relative to the tool source directory, that
                                       should invalidate this tool's build stamp.
-                                      Narrower than the `tools:web_workspace_srcs`
+                                      Narrower than the `tools/web:web_workspace_srcs`
                                       Buck filegroup on purpose: an extra entry here
                                       costs a redundant build, so only real build
                                       inputs belong.
@@ -111,24 +111,50 @@ class WebToolConfig:
     skip_env_vars: tuple[str, ...] = ()
 
 
+# Workspace-root build inputs every tool depends on. Listed once so a new shared
+# file only has to be added in one place.
+_WORKSPACE_INPUTS: tuple[str, ...] = (
+    "../package.json",
+    "../tsconfig.base.json",
+    "../tsconfig.react-app.json",
+    "../tsconfig.vite-node.json",
+    "../tsconfig.vitest.json",
+    "../vite.base.ts",
+    "../yarn.lock",
+)
+
+# Only for tools that import from @openzl/web-common. A tool adding that import
+# also needs the dependency in its package.json and `shared_srcs` in its BUCK file.
+_WEB_COMMON_INPUTS: tuple[str, ...] = (
+    "../web_common/package.json",
+    "../web_common/src",
+    "../web_common/tsconfig.json",
+)
+
+
 # Registry of all web tools that should be built and copied into the site.
 # To add a new tool:
-#   1. Add a new WebToolConfig entry here pointing at its source dir and output subdir.
-#   2. Set its Vite config `base` to "/<output_subdir>" (e.g. "/tools/my_tool").
-#   3. Add a navigation entry in mkdocs.yml under Tools.
+#   1. Register its directory in the `workspaces` list in `tools/web/package.json`.
+#   2. Give it a BUCK file calling `web_tool()` (see `tools/web/web_tool.bzl`).
+#   3. Add its `:app_srcs` to the `static_docs_test` deps in `doc/mkdocs/BUCK`,
+#      so the docs test reruns when the tool changes.
+#   4. Add a new WebToolConfig entry here pointing at its source dir and output subdir.
+#   5. Set its Vite config `base` to "/<output_subdir>" (e.g. "/tools/my_tool").
+#   6. Add a navigation entry in mkdocs.yml under Tools.
+#   7. Add a section for it in doc/tools/index.md, the Tools landing page.
 WEB_TOOLS: list[WebToolConfig] = [
     WebToolConfig(
         name="trace visualizer",
-        src_relative="../../../tools/visualization_app",
+        src_relative="../../../tools/web/visualization_app",
         output_subdir="tools/trace",
-        source_dependencies_relative=(
-            "../package.json",
-            "../tsconfig.base.json",
-            "../web_common/package.json",
-            "../web_common/src",
-            "../web_common/tsconfig.json",
-            "../yarn.lock",
-        ),
+        source_dependencies_relative=_WORKSPACE_INPUTS,
+        skip_env_vars=("OPENZL_SKIP_WEB_TOOLS_BUILD",),
+    ),
+    WebToolConfig(
+        name="compression playground",
+        src_relative="../../../tools/web/compression_playground",
+        output_subdir="tools/playground",
+        source_dependencies_relative=_WORKSPACE_INPUTS + _WEB_COMMON_INPUTS,
         skip_env_vars=("OPENZL_SKIP_WEB_TOOLS_BUILD",),
     ),
 ]

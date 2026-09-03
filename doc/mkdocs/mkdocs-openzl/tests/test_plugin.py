@@ -5,6 +5,8 @@ from unittest.mock import patch
 
 import pytest
 from mkdocs_openzl.plugin import (
+    _WEB_COMMON_INPUTS,
+    _WORKSPACE_INPUTS,
     OpenZLConfig,
     OpenZLPlugin,
     PythonBuilder,
@@ -26,7 +28,7 @@ class FakeConfig:
 def _deep_docs_dir(tmp_path: Path) -> Path:
     """
     Returns a docs_dir nested 3 levels inside tmp_path, so a production
-    src_relative like "../../../tools/visualization_app" resolves *inside*
+    src_relative like "../../../tools/web/visualization_app" resolves *inside*
     tmp_path. A shallow tmp_path/docs would resolve to /tmp/pytest-of-USER/tools/...,
     which is shared across tests and races when they run in parallel.
     """
@@ -46,10 +48,10 @@ def test_web_tool_config_defaults():
     assert cfg.skip_env_vars == ()
 
 
-def test_web_tools_registry_has_trace_visualizer():
-    assert len(WEB_TOOLS) >= 1
+def test_web_tools_registry_has_expected_tools():
     output_dirs = [t.output_subdir for t in WEB_TOOLS]
     assert "tools/trace" in output_dirs
+    assert "tools/playground" in output_dirs
 
     # output_subdir determines the published URL, so two tools must not share one
     assert len(output_dirs) == len(set(output_dirs))
@@ -60,18 +62,48 @@ def test_web_tools_registry_has_trace_visualizer():
         assert tool.output_subdir.startswith("tools/")
 
 
+def test_workspace_inputs_list_every_shared_root_file():
+    # Spelled out rather than derived, so dropping an entry from the constant
+    # fails here instead of silently un-tracking a shared build input. Keep in
+    # sync with the `web_workspace_srcs` filegroup in tools/BUCK.
+    assert set(_WORKSPACE_INPUTS) == {
+        "../package.json",
+        "../tsconfig.base.json",
+        "../tsconfig.react-app.json",
+        "../tsconfig.vite-node.json",
+        "../tsconfig.vitest.json",
+        "../vite.base.ts",
+        "../yarn.lock",
+    }
+    assert set(_WEB_COMMON_INPUTS) == {
+        "../web_common/package.json",
+        "../web_common/src",
+        "../web_common/tsconfig.json",
+    }
+
+
 def test_trace_visualizer_tracks_shared_build_inputs():
     trace_visualizer = next(
         tool for tool in WEB_TOOLS if tool.output_subdir == "tools/trace"
     )
-    assert set(trace_visualizer.source_dependencies_relative) == {
-        "../package.json",
-        "../tsconfig.base.json",
-        "../web_common/package.json",
-        "../web_common/src",
-        "../web_common/tsconfig.json",
-        "../yarn.lock",
-    }
+    assert trace_visualizer.source_dependencies_relative == _WORKSPACE_INPUTS
+
+
+def test_compression_playground_tracks_web_common_build_inputs():
+    compression_playground = next(
+        tool for tool in WEB_TOOLS if tool.output_subdir == "tools/playground"
+    )
+    assert compression_playground.source_dependencies_relative == (
+        _WORKSPACE_INPUTS + _WEB_COMMON_INPUTS
+    )
+
+
+def test_every_web_tool_tracks_workspace_build_inputs():
+    # Files at the workspace root feed every tool's build, so each registry entry
+    # must list them. A tool may also track package-specific inputs.
+    workspace_inputs = set(_WORKSPACE_INPUTS)
+    for tool in WEB_TOOLS:
+        assert workspace_inputs <= set(tool.source_dependencies_relative), tool.name
 
 
 def test_web_tools_registry_skip_env_vars_contain_generic():

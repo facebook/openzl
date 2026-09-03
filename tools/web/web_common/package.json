@@ -11,5 +11,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "lint": "eslint .",
     "test:run": "vitest run --passWithNoTests"
+  },
+  "peerDependencies": {
+    "react": "19.1.1"
   }
 }

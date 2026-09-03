@@ -281,7 +281,7 @@ The visualization is fully interactive. More usage details are available via the
     The visualizer is a static webpage.
     It does not access the network nor write any cookies.
     Your data will NOT be shared anywhere.
-    The code for this webpage is available [here](https://github.com/facebook/openzl/tree/release/tools/visualization_app).
+    The code for this webpage is available [here](https://github.com/facebook/openzl/tree/release/tools/web/visualization_app).
 
 ## Next steps
 

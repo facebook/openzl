@@ -1,0 +1,44 @@
+/* Copyright (c) Meta Platforms, Inc. and affiliates. */
+
+/* Colors match visualization_app so the two tools do not render with different
+   palettes when switched between in the docs nav. */
+
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  height: 100%;
+
+  color-scheme: light dark;
+  color: #212121;
+  background-color: #ffffff;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background-color: #ffffff;
+  color: #212121;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: #bfc1c6;
+    background-color: #1f2129;
+  }
+
+  body {
+    background-color: #1f2129;
+    color: #bfc1c6;
+  }
+}

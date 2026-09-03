@@ -1,0 +1,20 @@
+{
+  "name": "@openzl/compression-playground",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@openzl/web-common": "0.0.0",
+    "react": "19.1.1",
+    "react-dom": "19.1.1"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  // Mixin, not a standalone config: list it after a tool's tsconfig.app.json in
+  // an `extends` array so the test types win over the app's `types: []`.
+  "compilerOptions": {
+    "types": ["vitest/globals", "node"]
+  }
+}

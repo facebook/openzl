@@ -1,3 +1,3 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-export {};
+export {Banner} from './components/Banner';
