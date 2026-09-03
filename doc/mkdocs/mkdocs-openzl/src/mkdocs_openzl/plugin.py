@@ -1,6 +1,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import hashlib
+import json
 import os
 import shlex
 import shutil
@@ -91,13 +92,6 @@ class WebToolConfig:
                        (e.g. "tools/trace"). This must match the Vite `base` option
                        for the tool (e.g. base: "/tools/trace").
         dist_relative: Relative path from src dir to built output (default "dist").
-        source_dependencies_relative: Additional source files or directories,
-                                      relative to the tool source directory, that
-                                      should invalidate this tool's build stamp.
-                                      Narrower than the `tools/web:web_workspace_srcs`
-                                      Buck filegroup on purpose: an extra entry here
-                                      costs a redundant build, so only real build
-                                      inputs belong.
         skip_env_vars: Env vars that, when set to "1", skip this tool's build.
                        OPENZL_SKIP_WEB_TOOLS_BUILD skips every tool; a tool may
                        list additional vars to skip only itself.
@@ -107,38 +101,93 @@ class WebToolConfig:
     src_relative: str
     output_subdir: str
     dist_relative: str = "dist"
-    source_dependencies_relative: tuple[str, ...] = ()
     skip_env_vars: tuple[str, ...] = ()
 
 
-# Workspace-root build inputs every tool depends on. Listed once so a new shared
-# file only has to be added in one place.
-_WORKSPACE_INPUTS: tuple[str, ...] = (
-    "../package.json",
-    "../tsconfig.base.json",
-    "../tsconfig.react-app.json",
-    "../tsconfig.vite-node.json",
-    "../tsconfig.vitest.json",
-    "../vite.base.ts",
-    "../yarn.lock",
-)
+def _workspace_root_inputs(workspace_dir: Path) -> List[Path]:
+    """Every file at the workspace root; `tools/web/` holds nothing else.
 
-# Only for tools that import from @openzl/web-common. A tool adding that import
-# also needs the dependency in its package.json and `shared_srcs` in its BUCK file.
-_WEB_COMMON_INPUTS: tuple[str, ...] = (
-    "../web_common/package.json",
-    "../web_common/src",
-    "../web_common/tsconfig.json",
-)
+    `web_workspace_srcs` in `tools/web/BUCK` globs the same directory with the
+    same `BUCK` exclusion; keep the two in step. Lint configs are included even
+    though they do not change the built output — a rare redundant rebuild beats
+    maintaining the list in two languages.
+    """
+    return sorted(
+        path
+        for path in workspace_dir.iterdir()
+        if path.is_file() and path.name != "BUCK"
+    )
+
+
+_WORKSPACE_PACKAGE_EXCLUDES: tuple[str, ...] = ("node_modules", "dist", "dist-ssr")
+
+# `peerDependencies` is absent on purpose: a peer dep is supplied by whoever
+# consumes the package, so it is not built from these sources.
+_WORKSPACE_DEPENDENCY_FIELDS: tuple[str, ...] = ("dependencies", "devDependencies")
+
+
+def _read_json(path: Path) -> dict:
+    with open(path, "r") as json_file:
+        return json.load(json_file)
+
+
+def _workspace_packages(workspace_dir: Path) -> dict[str, Path]:
+    """Maps every Yarn workspace package name to its directory.
+
+    Raises on a bad manifest rather than returning a partial index: a dropped
+    package is a dropped build input, which ships a stale page silently.
+    """
+    manifest_path = workspace_dir / "package.json"
+    packages: dict[str, Path] = {}
+    for entry in _read_json(manifest_path)["workspaces"]:
+        if any(character in entry for character in "*?["):
+            raise ValueError(
+                f"Glob workspace pattern {entry!r} in {manifest_path} is not "
+                f"supported; members must sit one level below the root."
+            )
+        member = workspace_dir / entry
+        packages[_read_json(member / "package.json")["name"]] = member
+    return packages
+
+
+def _dependency_packages(tool_dir: Path, workspace_dir: Path) -> List[Path]:
+    """Workspace packages this tool builds against, transitively.
+
+    Read from the tool's own `package.json`, which Yarn already requires it to
+    keep accurate. Registry packages are skipped: they live in `node_modules`
+    and are pinned by `yarn.lock`, which the root inputs already hash.
+    """
+    packages = _workspace_packages(workspace_dir)
+    tool_resolved = tool_dir.resolve()
+    if tool_resolved not in {member.resolve() for member in packages.values()}:
+        raise ValueError(
+            f"{tool_dir} is not listed in the `workspaces` array of "
+            f"{workspace_dir / 'package.json'}"
+        )
+
+    found: dict[Path, None] = {}
+    pending = [tool_dir]
+    while pending:
+        manifest = _read_json(pending.pop() / "package.json")
+        for field in _WORKSPACE_DEPENDENCY_FIELDS:
+            for name in manifest.get(field, {}):
+                member = packages.get(name)
+                if member is None:
+                    continue
+                resolved = member.resolve()
+                if resolved == tool_resolved or resolved in found:
+                    continue
+                found[resolved] = None
+                pending.append(member)
+    return sorted(found)
 
 
 # Registry of all web tools that should be built and copied into the site.
 # To add a new tool:
 #   1. Register its directory in the `workspaces` list in `tools/web/package.json`.
 #   2. Give it a BUCK file calling `web_tool()` (see `tools/web/web_tool.bzl`).
-#   3. Add its `:app_srcs` to the `static_docs_test` deps in `doc/mkdocs/BUCK`,
-#      so the docs test reruns when the tool changes.
-#   4. Add a new WebToolConfig entry here pointing at its source dir and output subdir.
+#   3. Add its `:app_srcs` to the `static_docs_test` deps in `doc/mkdocs/BUCK`.
+#   4. Add a WebToolConfig entry here with its source dir and output subdir.
 #   5. Set its Vite config `base` to "/<output_subdir>" (e.g. "/tools/my_tool").
 #   6. Add a navigation entry in mkdocs.yml under Tools.
 #   7. Add a section for it in doc/tools/index.md, the Tools landing page.
@@ -147,14 +196,12 @@ WEB_TOOLS: list[WebToolConfig] = [
         name="trace visualizer",
         src_relative="../../../tools/web/visualization_app",
         output_subdir="tools/trace",
-        source_dependencies_relative=_WORKSPACE_INPUTS,
         skip_env_vars=("OPENZL_SKIP_WEB_TOOLS_BUILD",),
     ),
     WebToolConfig(
         name="compression playground",
         src_relative="../../../tools/web/compression_playground",
         output_subdir="tools/playground",
-        source_dependencies_relative=_WORKSPACE_INPUTS + _WEB_COMMON_INPUTS,
         skip_env_vars=("OPENZL_SKIP_WEB_TOOLS_BUILD",),
     ),
 ]
@@ -174,14 +221,8 @@ class WebToolBuilder:
             f"(configured as '{tool.src_relative}' relative to docs_dir). "
             f"Check WEB_TOOLS registry and that the directory is present."
         )
-        source_dependencies = [
-            self._src_dir / relative for relative in tool.source_dependencies_relative
-        ]
-        for source_dependency in source_dependencies:
-            assert source_dependency.exists(), (
-                f"Web tool '{tool.name}' source dependency does not exist: "
-                f"{source_dependency}"
-            )
+        workspace_dir = self._src_dir.parent
+        dependency_packages = _dependency_packages(self._src_dir, workspace_dir)
         # Build dir is where we store the stamp file; mirrors the output_subdir
         # structure to keep stamps per-tool isolated.
         self._build_dir = Path(build_directory) / tool.output_subdir
@@ -192,10 +233,19 @@ class WebToolBuilder:
                 break
         self._stamp = Stamp(
             self._build_dir / "stamp.txt",
-            [self._src_dir, *source_dependencies],
+            [
+                self._src_dir,
+                *_workspace_root_inputs(workspace_dir),
+                *dependency_packages,
+            ],
             [
                 self._src_dir / "node_modules",
                 self._src_dir / tool.dist_relative,
+                *(
+                    package / excluded
+                    for package in dependency_packages
+                    for excluded in _WORKSPACE_PACKAGE_EXCLUDES
+                ),
             ],
         )
 
