@@ -1,0 +1,31 @@
+/* Copyright (c) Meta Platforms, Inc. and affiliates. */
+
+.app {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  text-align: center;
+  background-color: #ffffff;
+}
+
+.title {
+  font-size: 2.25rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: #212121;
+  line-height: 1.2;
+}
+
+@media (prefers-color-scheme: dark) {
+  .app {
+    background-color: #1f2129;
+  }
+
+  .title {
+    color: #bfc1c6;
+  }
+}
