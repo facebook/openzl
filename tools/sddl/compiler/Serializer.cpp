@@ -2,6 +2,7 @@
 
 #include "tools/sddl/compiler/Serializer.h"
 
+#include <exception>
 #include <iomanip>
 
 #include "openzl/cpp/Compressor.hpp"
@@ -20,8 +21,19 @@ namespace {
 
 void log_json(std::ostream& log, const poly::string_view& ser)
 {
-    const auto json = Compressor::convertSerializedToJson(ser);
-    auto sv         = poly::string_view{ json };
+    std::string json;
+    try {
+        json = Compressor::convertSerializedToJson(ser);
+    } catch (const std::exception& ex) {
+        // The JSON rendering is debug-only output. A source containing
+        // non-ASCII bytes (e.g. in a comment) is embedded verbatim in the
+        // compiled output for error reporting, but cannot be represented as
+        // JSON; that must not abort compilation.
+        log << "<failed to render serialized CBOR as JSON: " << ex.what()
+            << ">" << std::endl;
+        return;
+    }
+    auto sv = poly::string_view{ json };
 
     log << "Serialized JSON:" << std::endl;
 
@@ -128,8 +140,15 @@ std::string Serializer::serialize(const ASTVec& ast, const Source& source) const
                 + A1C_ErrorType_getString(error.type));
     }
 
-    log_json(log_(2), ser);
-    log_serialized(log_(1), ser);
+    // The debug logs below are only produced at sufficiently high verbosity;
+    // don't run the (potentially failing) JSON rendering when they won't be
+    // emitted.
+    if (log_.enabled(2)) {
+        log_json(log_(2), ser);
+    }
+    if (log_.enabled(1)) {
+        log_serialized(log_(1), ser);
+    }
 
     return ser;
 }
