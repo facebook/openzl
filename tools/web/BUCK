@@ -1,0 +1,20 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup")
+
+oncall("data_compression")
+
+# Every file here is a build input for every web tool, so there is no list to
+# maintain. `plugin.py:_workspace_root_inputs` applies the same rule for the
+# MkDocs build stamp; keep the two in step. `BUCK` declares the targets rather
+# than feeding `yarn build`.
+buck_filegroup(
+    name = "web_workspace_srcs",
+    srcs = glob(
+        [
+            "*",
+            ".*",
+        ],
+        exclude = ["BUCK"],
+    ),
+)

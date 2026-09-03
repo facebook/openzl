@@ -163,7 +163,7 @@ export async function createOpenZL(options = {}) {
       );
     if (isNotFound) {
       throw new Error(
-        'openzl.js not found next to wasm_api.js — build with: emcmake cmake -DOPENZL_BUILD_WASM=ON -B build-wasm && cmake --build build-wasm --target openzl_wasm && cp build-wasm/tools/wasm/openzl.{js,wasm} tools/wasm/js/ (and tools/visualization_app/public/ for the viz app). Original: ' +
+        'openzl.js not found next to wasm_api.js — build with: emcmake cmake -DOPENZL_BUILD_WASM=ON -B build-wasm && cmake --build build-wasm --target openzl_wasm && cp build-wasm/tools/wasm/openzl.{js,wasm} tools/wasm/js/ (and tools/web/visualization_app/public/ for the viz app). Original: ' +
           msg,
         { cause: e },
       );

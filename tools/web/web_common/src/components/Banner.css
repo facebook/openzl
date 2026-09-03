@@ -1,0 +1,23 @@
+/* Copyright (c) Meta Platforms, Inc. and affiliates. */
+
+.banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background-color: #fff3cd;
+  border: 1px solid #ffe69c;
+  border-radius: 8px;
+  color: #664d03;
+  font-size: 1rem;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  .banner {
+    background-color: #332701;
+    border-color: #665500;
+    color: #ffec99;
+  }
+}

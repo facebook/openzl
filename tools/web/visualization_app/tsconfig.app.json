@@ -1,0 +1,7 @@
+{
+  "extends": "../tsconfig.react-app.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../node_modules/.tmp/visualization-app.tsbuildinfo"
+  },
+  "include": ["src"]
+}

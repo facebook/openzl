@@ -1,8 +1,6 @@
 {
-  "extends": "../tsconfig.base.json",
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "tsBuildInfoFile": "../node_modules/.tmp/visualization-node.tsbuildinfo",
-
     // Vite's config runs under Node, not in the browser, so it targets a newer
     // runtime and drops the DOM libs the base config provides.
     "target": "ES2022",
@@ -10,6 +8,5 @@
 
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true
-  },
-  "include": ["vite.config.ts"]
+  }
 }
