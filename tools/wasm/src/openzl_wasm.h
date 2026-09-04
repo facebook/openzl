@@ -18,6 +18,25 @@ void openzl_wasm_free(void* buf);
 #define OPENZL_WASM_BENCHMARK_MAX_ITERATIONS 1000
 
 /**
+ * Default time budget for training. Some searches can ignore this, so training
+ * can run longer.
+ *
+ * More time allows for a slightly better compressor with diminishing returns.
+ */
+#define OPENZL_WASM_TRAIN_DEFAULT_MAX_TIME_SECS 300
+
+/**
+ * Max threads the trainer will use.
+ *
+ * When building for wasm, CMake sets this to the number of workers created
+ * at startup (OPENZL_WASM_PTHREAD_POOL_SIZE). Workers can't be added later
+ * without freezing the page, so asking for more just gives you the max.
+ */
+#ifndef OPENZL_WASM_TRAIN_MAX_THREADS
+#    define OPENZL_WASM_TRAIN_MAX_THREADS 4
+#endif
+
+/**
  * Returns the string descriptor for a ZL_ErrorCode.
  */
 const char* openzl_wasm_errorString(ZL_ErrorCode code);
@@ -70,8 +89,47 @@ ZL_ErrorCode openzl_wasm_getSerializedCompressor(
         size_t* outSize);
 
 /**
+ * Trains @p compressor on @p src and serializes the result.
+ *
+ * Trains a compressor on data, resulting compressor can be used in
+ * openzl_wasm_compress() or openzl_wasm_benchmarkCompress().
+ *
+ * The compressor must have a trainable graph. A compressor with no trainable
+ * graph is an error, not a no-op.
+ *
+ * @param compressor      Serialized compressor to train
+ * @param compressorSize  Size of @p compressor.
+ * @param src             Sample to train on. Must be non-NULL and non-empty.
+ * @param srcSize         Size of @p src.
+ * @param threads         Size of the trainer's thread pool. Clamped to
+ *                        OPENZL_WASM_TRAIN_MAX_THREADS, which is also the
+ *                        default when 0 is passed.
+ * @param maxTimeSecs     Wall-clock budget, or 0 for
+ *                        OPENZL_WASM_TRAIN_DEFAULT_MAX_TIME_SECS. The trainers
+ *                        spend whatever budget they are given, so this sets
+ *                        the duration of the call rather than bounding it.
+ * @param outBuf          On success, an owned buffer of serialized bytes,
+ *                        release with openzl_wasm_free().
+ * @param outSize         On success, the length of @p outBuf.
+ * @returns               ZL_ErrorCode_no_error on success.
+ */
+ZL_ErrorCode openzl_wasm_train(
+        const uint8_t* compressor,
+        size_t compressorSize,
+        const uint8_t* src,
+        size_t srcSize,
+        size_t threads,
+        size_t maxTimeSecs,
+        uint8_t** outBuf,
+        size_t* outSize);
+
+/**
  * Compresses @p src with the compressor serialized in @p compressor, as
  * returned by openzl_wasm_getSerializedCompressor().
+ *
+ * @note Compression is permissive: a stage that rejects @p src falls back to a
+ *       generic backend and the call still succeeds, at a worse ratio, rather
+ *       than returning an error.
  *
  * @param compressor      Serialized compressor bytes.
  * @param compressorSize  Size of @p compressor.
