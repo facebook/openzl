@@ -1,8 +1,0 @@
-{
-  "extends": "./tsconfig.app.json",
-  "compilerOptions": {
-    "tsBuildInfoFile": "../node_modules/.tmp/visualization-test.tsbuildinfo",
-    "types": ["vitest/globals", "node"]
-  },
-  "include": ["tests", "src/vite-env.d.ts"]
-}
