@@ -20,8 +20,7 @@ extern "C" {
 
 // Numeric
 // Input : 1 stream of numeric data
-// Result : compresses a stream of numeric data using a GBT model to select the
-// best compression algorithm based on stream
+// Result : compresses numeric data using the default fixed-size field graph
 #define ZL_GRAPH_NUMERIC ZL_MAKE_GRAPH_ID(ZL_StandardGraphID_select_numeric)
 
 #if defined(__cplusplus)

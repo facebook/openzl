@@ -66,6 +66,36 @@ list(FILTER test_compress_srcs EXCLUDE REGEX ".*/compress/graphs/sddl2/.*")
 list(FILTER test_compress_headers EXCLUDE REGEX ".*/compress/graphs/sddl2/.*")
 add_zs_test(test_compress ${test_compress_srcs} ${test_compress_headers})
 
+include(CheckCXXSourceCompiles)
+check_cxx_source_compiles(
+    "int main(int argc, char**) {
+        unsigned __int128 value = static_cast<unsigned __int128>(1) << 100;
+        return static_cast<int>(value / static_cast<unsigned>(argc));
+    }"
+    OPENZL_TEST_COMPILER_HAS_INT128_DIVISION)
+target_compile_definitions(test_compress PRIVATE
+    OPENZL_TEST_COMPILER_HAS_INT128_DIVISION=$<BOOL:${OPENZL_TEST_COMPILER_HAS_INT128_DIVISION}>)
+# Fallback-only toolchains exercise the portable implementation through
+# test_compress. On native-capable hosts, build a second target that forces the
+# fallback while retaining native 128-bit arithmetic as a reference.
+if (OPENZL_TEST_COMPILER_HAS_INT128_DIVISION)
+    add_executable(test_transformer_wide_arith_fallback
+        ${CMAKE_CURRENT_LIST_DIR}/compress/test_transformer_wide_arith.cpp
+        ${OPENZL_SRC_DIR}/openzl/common/logging.c
+        ${OPENZL_SRC_DIR}/openzl/compress/selectors/transformer/wide_arith.c)
+    target_compile_definitions(test_transformer_wide_arith_fallback
+        PRIVATE
+            OPENZL_TEST_COMPILER_HAS_INT128_DIVISION=1
+            TRS_WIDE_FORCE_FALLBACK=1)
+    target_link_libraries(test_transformer_wide_arith_fallback
+        PRIVATE
+            openzl_deps
+            GTest::gtest_main)
+    apply_openzl_compile_options_to_target(test_transformer_wide_arith_fallback)
+    gtest_discover_tests(test_transformer_wide_arith_fallback
+        TEST_PREFIX "Fallback.")
+endif()
+
 file(GLOB_RECURSE test_decompress_srcs CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_LIST_DIR}/decompress/*.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/decompress/*.c")
