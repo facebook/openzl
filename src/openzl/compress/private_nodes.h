@@ -225,6 +225,28 @@ typedef enum {
 
     ZL_PrivateStandardGraphID_compress_small_lengths,
 
+    ZL_PrivateStandardGraphID_transformer_delta_int,
+    ZL_PrivateStandardGraphID_transformer_range_pack,
+    ZL_PrivateStandardGraphID_transformer_divide_by_gcd,
+    ZL_PrivateStandardGraphID_transformer_tokenize_numeric,
+    ZL_PrivateStandardGraphID_transformer_tokenize_numeric_sorted,
+    ZL_PrivateStandardGraphID_transformer_sparse_num,
+
+    ZL_PrivateStandardGraphID_transformer_static_core,
+    ZL_PrivateStandardGraphID_transformer_static_delta,
+    ZL_PrivateStandardGraphID_transformer_static_range_pack,
+    ZL_PrivateStandardGraphID_transformer_static_range_pack_delta,
+    ZL_PrivateStandardGraphID_transformer_static_zigzag,
+    ZL_PrivateStandardGraphID_transformer_static_gcd,
+    ZL_PrivateStandardGraphID_transformer_static_index,
+    ZL_PrivateStandardGraphID_transformer_static_tok_sorted,
+    ZL_PrivateStandardGraphID_transformer_static_delta_tok,
+    ZL_PrivateStandardGraphID_transformer_static_tok_mono,
+    ZL_PrivateStandardGraphID_transformer_static_delta_tok_mono,
+    ZL_PrivateStandardGraphID_transformer_static_tok_mono_lz,
+    ZL_PrivateStandardGraphID_transformer_static_delta_tok_mono_lz,
+    ZL_PrivateStandardGraphID_transformer_static_fallback,
+
     ZL_PrivateStandardGraphID_end // last id, used to detect out-of-bound enum
                                   // values
 } ZL_PrivateStandardGraphID;
@@ -338,6 +360,52 @@ typedef enum {
     {                                      \
         ZL_PrivateStandardGraphID_transpose_split \
     }
+
+#define ZL_GRAPH_TRANSFORMER_DELTA_INT \
+    ZL_MAKE_GRAPH_ID(ZL_PrivateStandardGraphID_transformer_delta_int)
+#define ZL_GRAPH_TRANSFORMER_RANGE_PACK \
+    ZL_MAKE_GRAPH_ID(ZL_PrivateStandardGraphID_transformer_range_pack)
+#define ZL_GRAPH_TRANSFORMER_DIVIDE_BY_GCD \
+    ZL_MAKE_GRAPH_ID(ZL_PrivateStandardGraphID_transformer_divide_by_gcd)
+#define ZL_GRAPH_TRANSFORMER_TOKENIZE_NUMERIC \
+    ZL_MAKE_GRAPH_ID(ZL_PrivateStandardGraphID_transformer_tokenize_numeric)
+#define ZL_GRAPH_TRANSFORMER_TOKENIZE_NUMERIC_SORTED \
+    ZL_MAKE_GRAPH_ID( \
+            ZL_PrivateStandardGraphID_transformer_tokenize_numeric_sorted)
+#define ZL_GRAPH_TRANSFORMER_SPARSE_NUM \
+    ZL_MAKE_GRAPH_ID(ZL_PrivateStandardGraphID_transformer_sparse_num)
+
+#define ZL_GRAPH_TRANSFORMER_STATIC_CORE_SELECTOR \
+    ZL_MAKE_GRAPH_ID(ZL_PrivateStandardGraphID_transformer_static_core)
+#define ZL_GRAPH_TRANSFORMER_STATIC_DELTA \
+    ZL_MAKE_GRAPH_ID(ZL_PrivateStandardGraphID_transformer_static_delta)
+#define ZL_GRAPH_TRANSFORMER_STATIC_RANGE_PACK \
+    ZL_MAKE_GRAPH_ID(ZL_PrivateStandardGraphID_transformer_static_range_pack)
+#define ZL_GRAPH_TRANSFORMER_STATIC_RANGE_PACK_DELTA \
+    ZL_MAKE_GRAPH_ID( \
+            ZL_PrivateStandardGraphID_transformer_static_range_pack_delta)
+#define ZL_GRAPH_TRANSFORMER_STATIC_ZIGZAG \
+    ZL_MAKE_GRAPH_ID(ZL_PrivateStandardGraphID_transformer_static_zigzag)
+#define ZL_GRAPH_TRANSFORMER_STATIC_GCD \
+    ZL_MAKE_GRAPH_ID(ZL_PrivateStandardGraphID_transformer_static_gcd)
+#define ZL_GRAPH_TRANSFORMER_STATIC_INDEX_SELECTOR \
+    ZL_MAKE_GRAPH_ID(ZL_PrivateStandardGraphID_transformer_static_index)
+#define ZL_GRAPH_TRANSFORMER_STATIC_TOK_SORTED \
+    ZL_MAKE_GRAPH_ID(ZL_PrivateStandardGraphID_transformer_static_tok_sorted)
+#define ZL_GRAPH_TRANSFORMER_STATIC_DELTA_TOK \
+    ZL_MAKE_GRAPH_ID(ZL_PrivateStandardGraphID_transformer_static_delta_tok)
+#define ZL_GRAPH_TRANSFORMER_STATIC_TOK_MONO \
+    ZL_MAKE_GRAPH_ID(ZL_PrivateStandardGraphID_transformer_static_tok_mono)
+#define ZL_GRAPH_TRANSFORMER_STATIC_DELTA_TOK_MONO \
+    ZL_MAKE_GRAPH_ID( \
+            ZL_PrivateStandardGraphID_transformer_static_delta_tok_mono)
+#define ZL_GRAPH_TRANSFORMER_STATIC_TOK_MONO_LZ \
+    ZL_MAKE_GRAPH_ID(ZL_PrivateStandardGraphID_transformer_static_tok_mono_lz)
+#define ZL_GRAPH_TRANSFORMER_STATIC_DELTA_TOK_MONO_LZ \
+    ZL_MAKE_GRAPH_ID( \
+            ZL_PrivateStandardGraphID_transformer_static_delta_tok_mono_lz)
+#define ZL_GRAPH_TRANSFORMER_STATIC_FALLBACK \
+    ZL_MAKE_GRAPH_ID(ZL_PrivateStandardGraphID_transformer_static_fallback)
 
 // clang-format on
 
