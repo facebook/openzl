@@ -148,7 +148,6 @@ ZL_GraphID saoProfile(Compressor& compressor)
 
 struct IntProfileData {
     size_t eltByteWidth;
-    bool isSigned;
 };
 
 static std::string makeProfileName(const std::string& signage, size_t bitWidth)
@@ -177,7 +176,7 @@ buildIntProfile(ZL_Compressor* comp, void* opaque, const ProfileArgs& args)
     const auto& d = *static_cast<const IntProfileData*>(opaque);
     size_t chunkSize =
             args.chunkSize().value_or(ZL_DEFAULT_SEGMENTER_CHUNK_BYTE_SIZE);
-    return profiles::buildIntGraph(comp, d.eltByteWidth, d.isSigned, chunkSize);
+    return profiles::buildIntGraph(comp, d.eltByteWidth, false, chunkSize);
 }
 
 static void addIntProfile(
@@ -185,12 +184,14 @@ static void addIntProfile(
         bool isSigned,
         size_t bitWidth)
 {
+    // Signedness affects only profile metadata; signed and unsigned profiles
+    // intentionally use the same bit-preserving numeric graph.
     std::string signage     = isSigned ? "i" : "u";
     std::string name        = makeProfileName(signage, bitWidth);
     std::string description = makeProfileDescription(isSigned, bitWidth);
 
-    auto data = std::make_shared<IntProfileData>(
-            IntProfileData{ bitWidth / 8, isSigned });
+    auto data =
+            std::make_shared<IntProfileData>(IntProfileData{ bitWidth / 8 });
 
     mp[name] = std::make_shared<CompressProfile>(
             name, description, buildIntProfile, std::move(data), true);

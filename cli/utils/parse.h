@@ -46,5 +46,11 @@ unsigned long checkedstoul(const std::string& str);
 long long checkedstoll(const std::string& str);
 unsigned long long checkedstoull(const std::string& str);
 
+/**
+ * Convert a complete base-10 string to an int without accepting size suffixes.
+ * @throws InvalidArgsException if the string is invalid or out of range.
+ */
+int checkedstoiExact(const std::string& str);
+
 } // namespace util
 } // namespace openzl::cli
