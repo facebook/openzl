@@ -45,9 +45,10 @@ void adjustResults(const ACECompressor& gene, std::vector<float>& results)
 /* static */ std::vector<float> AutomatedCompressorExplorer::computeFitness(
         const ACECompressor& gene,
         poly::span<const Input> inputs,
-        uint32_t formatVersion)
+        uint32_t formatVersion,
+        int compressionLevel)
 {
-    auto result = gene.benchmark(inputs, formatVersion);
+    auto result = gene.benchmark(inputs, formatVersion, compressionLevel);
     if (!result.has_value()) {
         return std::vector<float>(3, std::numeric_limits<float>::infinity());
     }
@@ -59,7 +60,7 @@ void adjustResults(const ACECompressor& gene, std::vector<float>& results)
 std::vector<float> AutomatedCompressorExplorer::computeFitness(
         const ACECompressor& gene)
 {
-    return computeFitness(gene, inputs_, formatVersion_);
+    return computeFitness(gene, inputs_, formatVersion_, compressionLevel_);
 }
 
 std::vector<std::vector<float>> AutomatedCompressorExplorer::computeFitness(
@@ -78,9 +79,13 @@ std::vector<std::vector<float>> AutomatedCompressorExplorer::computeFitness(
                 continue;
             }
         }
-        futures.emplace_back(threadPool_.run(
-                [&inputs = inputs_, &gene, formatVersion = formatVersion_] {
-                    return computeFitness(gene, inputs, formatVersion);
+        futures.emplace_back(
+                threadPool_.run([&inputs = inputs_,
+                                 &gene,
+                                 formatVersion    = formatVersion_,
+                                 compressionLevel = compressionLevel_] {
+                    return computeFitness(
+                            gene, inputs, formatVersion, compressionLevel);
                 }));
     }
 

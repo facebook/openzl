@@ -54,19 +54,32 @@ typedef struct {
 #define ZL_ESTIMATE_CARDINALITY_MAX (1u << 31)
 
 /**
- * Returns an estimate of the cardinality of the stream.
+ * Cardinality estimator variants:
  *
- * @param src Must be nbElts*eltSize bytes.
- * @param cardinalityEarlyExit The maximum interesting cardinality. If the
- * estimator sees that the cardinality is larger than this, it is free to
- * stop early and report any value >= cardinalityEarlyExit. We also use this
- * to select table sizes & implementations to tune the algorithm for speed.
- * It will be automatically adjusted down to respect the bounds that `nbElts`
- * and `eltSize` place on the cardinality.
+ * - `ZL_estimateCardinality_fixed()` is the optimized choice for a packed
+ *   array of native unsigned integers. `eltSize` must be 1, 2, 4, or 8.
+ * - `ZL_estimateCardinality_variable()` accepts a separate pointer and size
+ *   for every element. Use it only when element sizes or locations vary.
+ * - `ZL_estimateCardinality_hashed()` is a low-level escape hatch for derived
+ *   elements that cannot be represented by either layout. Prefer the other
+ *   variants when they apply.
  *
- * NOTE: The implementation is much faster for cardinalityEarlyExit <= 64K.
- * You should only select a large value if you really care about cardinalities
- * > 64K.
+ * The fixed and variable variants accept `cardinalityEarlyExit`, the maximum
+ * interesting cardinality. They may stop early and report any value greater
+ * than or equal to this limit. Pass `ZL_ESTIMATE_CARDINALITY_ANY` when the
+ * full range is relevant. The limit also selects internal table sizes and is
+ * adjusted down to respect known bounds such as `nbElts`.
+ *
+ * The implementation is much faster when `cardinalityEarlyExit` is at most
+ * `ZL_ESTIMATE_CARDINALITY_16BITS`. Request a larger limit only when estimates
+ * above 64K are useful to the caller.
+ */
+
+/**
+ * Estimates the cardinality of `nbElts` packed native unsigned integers.
+ *
+ * `src` must point to `nbElts * eltSize` readable bytes and be suitably
+ * aligned for unsigned integers of width `eltSize`.
  */
 ZL_CardinalityEstimate ZL_estimateCardinality_fixed(
         void const* src,
@@ -75,18 +88,54 @@ ZL_CardinalityEstimate ZL_estimateCardinality_fixed(
         uint64_t cardinalityEarlyExit);
 
 /**
- * Returns an estimate of the cardinality of the elements in the variable-sized
- * stream. See @ZL_estimateCardinality_fixed.
+ * Estimates the cardinality of elements with independent locations and sizes.
  *
  * @param srcs The source pointers. `srcs[i]` must have length `eltSizes[i]`.
  * @param eltSizes The sizes.
- * @param nbElts The size of `srcs` and `eltSizes.
+ * @param nbElts The number of entries in `srcs` and `eltSizes`.
  */
 ZL_CardinalityEstimate ZL_estimateCardinality_variable(
         void const* const* srcs,
         size_t const* eltSizes,
         size_t nbElts,
         uint64_t cardinalityEarlyExit);
+
+typedef uint64_t (*ZL_CardinalityHashFn)(void* state, size_t index);
+
+/**
+ * Estimates cardinality from caller-defined hashes of derived elements.
+ *
+ * This is the low-level variant for inputs such as overlapping windows whose
+ * logical elements are not directly described by the fixed or variable APIs.
+ * The callbacks receive `state` and an element index. They must return stable,
+ * well-distributed hashes, and equal logical elements must produce equal
+ * 64-bit hashes. The selected callback is invoked `nbHashes` times in
+ * increasing index order and may update `state` while iterating. Both
+ * callbacks must be non-null when `nbHashes` is non-zero.
+ *
+ * For compatibility-sensitive callers, the hashing representation and both
+ * callbacks are part of the feature definition: changing either can change
+ * the deterministic estimate. `linearCountHash` is used when
+ * `cardinalityUpperBound` is at most 64K; `hyperLogLogHash` is used otherwise.
+ * `nbHashes` may be smaller than `cardinalityUpperBound` when the caller has
+ * already removed duplicate elements.
+ *
+ * Unlike the fixed and variable APIs, the LinearCount path always uses 8192
+ * buckets rather than selecting a table size from the bound. LinearCount
+ * corrections are rounded to the nearest integer, while full HyperLogLog
+ * estimates are truncated. These distinctions are part of this estimator's
+ * compatibility contract.
+ *
+ * The result is capped at `cardinalityUpperBound`. If the LinearCount table
+ * saturates, its raw result is the lower-bound sentinel 8192 rather than an
+ * accurate estimate or the caller's upper bound.
+ */
+uint64_t ZL_estimateCardinality_hashed(
+        void* state,
+        size_t nbHashes,
+        size_t cardinalityUpperBound,
+        ZL_CardinalityHashFn linearCountHash,
+        ZL_CardinalityHashFn hyperLogLogHash);
 
 /// A summary of what we estimate the dimensionality is.
 typedef enum {

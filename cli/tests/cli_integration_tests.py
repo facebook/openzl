@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import struct
 import sys
 import tempfile
 import unittest
@@ -307,10 +308,6 @@ class NumericSegmentationTest(unittest.TestCase):
     """
 
     def setUp(self) -> None:
-        import shutil
-        import struct
-        import tempfile
-
         self.tmpdir = tempfile.mkdtemp()
         self.addCleanup(lambda: shutil.rmtree(self.tmpdir, True))
 
@@ -319,19 +316,30 @@ class NumericSegmentationTest(unittest.TestCase):
         self.test_files: dict[str, dict] = {}
         target_bytes = 2 * 1000 * 1000  # 2 MB
         configs = [
-            ("u8", "B", 1, "u8"),
-            ("le-u16", "H", 2, "le-u16"),
-            ("le-i32", "i", 4, "le-i32"),
-            ("le-u64", "Q", 8, "le-u64"),
+            ("u8", "<", "B", 1),
+            ("le-u16", "<", "H", 2),
+            ("le-i32", "<", "i", 4),
+            ("le-u64", "<", "Q", 8),
+            ("be-u16", ">", "H", 2),
+            ("be-i16", ">", "h", 2),
+            ("be-u32", ">", "I", 4),
+            ("be-i32", ">", "i", 4),
+            ("be-u64", ">", "Q", 8),
+            ("be-i64", ">", "q", 8),
         ]
-        for profile, fmt, elt_size, name in configs:
+        for profile, endian, fmt, elt_size in configs:
             n = target_bytes // elt_size
-            max_val = 2 ** (elt_size * 8)
-            data = struct.pack(f"<{n}{fmt}", *[i % max_val for i in range(n)])
-            path = os.path.join(self.tmpdir, f"{name}.bin")
+            if fmt.islower():
+                max_val = 2 ** (elt_size * 8 - 1)
+                values = [(i % max_val) - max_val // 2 for i in range(n)]
+            else:
+                max_val = 2 ** (elt_size * 8)
+                values = [i % max_val for i in range(n)]
+            data = struct.pack(f"{endian}{n}{fmt}", *values)
+            path = os.path.join(self.tmpdir, f"{profile}.bin")
             with open(path, "wb") as f:
                 f.write(data)
-            self.test_files[name] = {
+            self.test_files[profile] = {
                 "path": path,
                 "profile": profile,
                 "size": len(data),
@@ -380,6 +388,74 @@ class NumericSegmentationTest(unittest.TestCase):
                     info["path"],
                     extra_args="--chunk-size 1M",
                 )
+
+
+class CompressionLevelTest(unittest.TestCase):
+    """Test explicit compression levels in the compress command."""
+
+    def setUp(self) -> None:
+        self.tmpdir = tempfile.mkdtemp()
+        self.addCleanup(lambda: shutil.rmtree(self.tmpdir, True))
+
+        values = list(range(16384)) * 4
+        self.input_path = os.path.join(self.tmpdir, "u32.bin")
+        with open(self.input_path, "wb") as f:
+            f.write(struct.pack(f"<{len(values)}I", *values))
+
+    def _compress_and_round_trip(
+        self,
+        profile: str,
+        level: int,
+        extra_args: str = "",
+        output_suffix: str = "",
+    ) -> str:
+        compressed_path = os.path.join(
+            self.tmpdir, f"{profile}-level-{level}{output_suffix}.zl"
+        )
+        decompressed_path = compressed_path + ".rt"
+        execute_compress(
+            file_to_compress_path=self.input_path,
+            compressor_info=CompressorInfo(
+                compressor_str=profile,
+                compressor_type=CompressorType.PROFILE,
+            ),
+            compressed_file_path=compressed_path,
+            extra_args=f"--level {level} {extra_args}",
+        )
+        execute_decompress(
+            compressed_file_path=compressed_path,
+            decompressed_file_path=decompressed_path,
+        )
+        self.assertTrue(file_contents_match(self.input_path, decompressed_path))
+        return compressed_path
+
+    def test_compression_level(self) -> None:
+        zstd_level_1 = self._compress_and_round_trip("zstd", 1)
+        zstd_level_19 = self._compress_and_round_trip("zstd", 19)
+        with open(zstd_level_1, "rb") as level_1_file:
+            with open(zstd_level_19, "rb") as level_19_file:
+                self.assertNotEqual(level_1_file.read(), level_19_file.read())
+
+        numeric_level_7 = self._compress_and_round_trip("le-u32", 7)
+        numeric_level_7_trained = self._compress_and_round_trip(
+            "le-u32",
+            7,
+            "--train-inline --train-inline-test-limit 1",
+            "-train-inline",
+        )
+        self.assertLessEqual(
+            os.path.getsize(numeric_level_7_trained),
+            os.path.getsize(numeric_level_7),
+        )
+
+        invalid_output = os.path.join(self.tmpdir, "invalid-level.zl")
+        self.assertNotEqual(
+            command_utils.execute_command(
+                f"compress {self.input_path} --profile le-u32 "
+                f"--level invalid -o {invalid_output}"
+            ),
+            0,
+        )
 
 
 class SerialSegmentationTest(unittest.TestCase):
