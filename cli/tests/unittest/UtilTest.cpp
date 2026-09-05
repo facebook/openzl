@@ -56,6 +56,17 @@ TEST(UtilTest, StoiOverflow)
     EXPECT_THROW(checkedstoi("3G"), InvalidArgsException);
 }
 
+TEST(UtilTest, StoiExact)
+{
+    EXPECT_EQ(checkedstoiExact("0"), 0);
+    EXPECT_EQ(checkedstoiExact("42"), 42);
+    EXPECT_EQ(checkedstoiExact("-1"), -1);
+    EXPECT_THROW(checkedstoiExact("1K"), InvalidArgsException);
+    EXPECT_THROW(checkedstoiExact("1foo"), InvalidArgsException);
+    EXPECT_THROW(checkedstoiExact(""), InvalidArgsException);
+    EXPECT_THROW(checkedstoiExact("2147483648"), InvalidArgsException);
+}
+
 TEST(UtilTest, StoulDecimalSuffixes)
 {
     EXPECT_EQ(checkedstoul("1K"), 1000UL);

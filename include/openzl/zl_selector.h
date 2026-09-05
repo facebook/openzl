@@ -307,6 +307,13 @@ ZL_Report ZL_Selector_setSuccessorParams(
  */
 int ZL_Selector_getCParam(const ZL_Selector* selCtx, ZL_CParam gparam);
 
+/**
+ * Determines whether @p nodeid is supported given the applied global
+ * compression parameters. Notably, `ZL_CParam_formatVersion` determines
+ * whether a node is valid for the selected encoding version.
+ */
+bool ZL_Selector_isNodeSupported(const ZL_Selector* selCtx, ZL_NodeID nodeid);
+
 /* Targeted consultation request of one Local Int parameter.
  * Retrieves the parameter of requested @paramId.
  * If the requested parameter is not present, will return

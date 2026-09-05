@@ -220,10 +220,12 @@ class ACECompressor {
 
     /// @returns The benchmark result of the compressor on the @p inputs or
     /// poly::nullopt if the compressor fails to compress (including when it
-    /// requires a newer format version than @p formatVersion).
+    /// requires a newer format version than @p formatVersion). The candidate
+    /// is evaluated using @p compressionLevel.
     poly::optional<ACECompressionResult> benchmark(
             poly::span<const Input> inputs,
-            uint32_t formatVersion) const;
+            uint32_t formatVersion,
+            int compressionLevel) const;
 
    private:
     uint64_t computeHash() const;

@@ -18,8 +18,9 @@ using namespace tools::logger;
 const uint64_t kDefaultMaxSingleSampleSize = 150 * 1024 * 1024; /* 150MiB */
 const uint64_t kDefaultMaxTotalSize        = 300 * 1024 * 1024; /* 300MiB */
 
-int cmdTrain(const TrainArgs& args)
+CmdTrainResult cmdTrainWithResult(const TrainArgs& args)
 {
+    CmdTrainResult result{};
     if (!args.output) {
         throw InvalidArgsException(
                 "No output specified. Please provide a path to save the trained compressor to.");
@@ -171,6 +172,9 @@ int cmdTrain(const TrainArgs& args)
             if (i != 0) {
                 throw std::logic_error("Must only have one trained compressor");
             }
+            result.trainedCompressorImprovesRatio =
+                    trainedBenchmark.compressionRatio
+                    > untrainedBenchmark.compressionRatio;
             // Output file is already open
             args.output->write(candidate.serializedCompressor);
             args.output->close();
@@ -190,7 +194,12 @@ int cmdTrain(const TrainArgs& args)
         resultsCsv->close();
     }
 
-    return 0;
+    return result;
+}
+
+int cmdTrain(const TrainArgs& args)
+{
+    return cmdTrainWithResult(args).exitCode;
 }
 
 } // namespace openzl::cli

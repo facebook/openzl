@@ -679,15 +679,15 @@ std::string ACECompressor::prettyPrint() const
 
 poly::optional<ACECompressionResult> ACECompressor::benchmark(
         poly::span<const Input> inputs,
-        uint32_t formatVersion) const
+        uint32_t formatVersion,
+        int compressionLevel) const
 {
     Compressor compressor;
-    // TODO(terrelln): Allow parameterization
     compressor.selectStartingGraph(build(compressor));
-    // Format version is carried on the compressor, however benchmark builds the
-    // compressor from an empty compressor. So the format version must be set
-    // here.
+    // Candidate benchmarks use a fresh compressor, so restore the global
+    // parameters that affect graph availability and selector decisions.
     compressor.setParameter(CParam::FormatVersion, formatVersion);
+    compressor.setParameter(CParam::CompressionLevel, compressionLevel);
     return openzl::training::benchmark(compressor, inputs);
 }
 } // namespace training
