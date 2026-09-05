@@ -131,6 +131,48 @@ void testEstimateVariable()
     }
 }
 
+uint64_t cardinalityTestHash(void* state, size_t index)
+{
+    return ((uint64_t const*)state)[index];
+}
+
+uint64_t cardinalitySaturatingLinearHash(void* state, size_t index)
+{
+    (void)state;
+    constexpr size_t bucketLog = 13;
+    return (uint64_t)index
+            << (std::numeric_limits<uint64_t>::digits - bucketLog);
+}
+
+TEST(EstimateTest, HashedEstimatesCallerDefinedElements)
+{
+    constexpr uint64_t highBit     = uint64_t{ 1 } << 63;
+    std::array<uint64_t, 4> hashes = { 0, highBit, 0, highBit };
+
+    EXPECT_EQ(
+            ZL_estimateCardinality_hashed(
+                    hashes.data(),
+                    hashes.size(),
+                    hashes.size(),
+                    cardinalityTestHash,
+                    cardinalityTestHash),
+            2);
+}
+
+TEST(EstimateTest, HashedPreservesLinearCountSaturationSentinel)
+{
+    constexpr size_t bucketCount = size_t{ 1 } << 13;
+
+    EXPECT_EQ(
+            ZL_estimateCardinality_hashed(
+                    nullptr,
+                    bucketCount,
+                    ZL_ESTIMATE_CARDINALITY_16BITS,
+                    cardinalitySaturatingLinearHash,
+                    cardinalitySaturatingLinearHash),
+            bucketCount);
+}
+
 template <typename Int>
 void testComputeUnsignedRange()
 {

@@ -230,6 +230,20 @@ custom_unittest(
 )
 
 custom_unittest(
+    name = "compression_level_test",
+    command = [
+        "$(location :integration_test_bin)",
+        "$(location ..:zli)",
+        "CompressionLevelTest.test_compression_level",
+    ],
+    type = "simple",
+    deps = [
+        "..:zli",
+        ":integration_test_bin",
+    ],
+)
+
+custom_unittest(
     name = "serial_segmentation_default_test",
     command = [
         "$(location :integration_test_bin)",

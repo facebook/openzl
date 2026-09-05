@@ -38,6 +38,13 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
                 "Compress with the given serialized compressor file.");
         parser.addCommandFlag(
                 cmd(),
+                kLevel,
+                'l',
+                true,
+                "Compression level (default: 6; higher favors compression "
+                "ratio).");
+        parser.addCommandFlag(
+                cmd(),
                 kTrainInline,
                 0,
                 false,
@@ -98,15 +105,19 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
             : GlobalArgs(parsed), ProfileArgs(parsed)
     {
         // Create the compressor
-        std::string bundleData;
         auto bundlePath = parsed.cmdFlag(cmd(), kDictBundle);
         if (bundlePath) {
             tools::io::InputFile bundleInput(bundlePath.value());
-            bundleData = bundleInput.contents();
+            dictBundleData = bundleInput.contents();
         }
         setVerbosityLevel(verbosity);
         setCompressor(createCompressorFromArgs(
-                *this, parsed.cmdFlag(cmd(), kCompressor), bundleData));
+                *this, parsed.cmdFlag(cmd(), kCompressor), dictBundleData));
+
+        const auto levelArg = parsed.cmdFlag(cmd(), kLevel);
+        if (levelArg) {
+            compressionLevel = util::checkedstoiExact(levelArg.value());
+        }
 
         // Get the input and output files
         auto inputPath = parsed.cmdPositional(cmd(), kInput);
@@ -145,7 +156,7 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
     static Cmd cmd()
     {
         return Cmd::COMPRESS;
-    };
+    }
 
     std::shared_ptr<tools::io::Input> input;
     std::shared_ptr<tools::io::Output> output;
@@ -158,12 +169,15 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
     bool strict           = false;
     bool streamPreview    = true;
     bool storeOnExpansion = true;
+    std::optional<int> compressionLevel;
+    std::string dictBundleData;
 
    private:
     inline static const std::string kInput      = "input";
     inline static const std::string kOutput     = "output";
     inline static const std::string kForce      = "force";
     inline static const std::string kCompressor = "compressor";
+    inline static const std::string kLevel      = "level";
 
     inline static const std::string kVerbose     = "verbose";
     inline static const std::string kRecursive   = "recursive";

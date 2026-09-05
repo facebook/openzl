@@ -45,7 +45,8 @@ struct BenchmarkArgs : public GlobalArgs, public ProfileArgs {
                 kLevel,
                 'l',
                 true,
-                "Benchmark the given compression level.");
+                "Compression level (default: 6; higher favors compression "
+                "ratio).");
         parser.addCommandFlag(
                 cmd(), kNumIters, 'n', true, "Number of benchmark iterations.");
         parser.addCommandFlag(
@@ -88,7 +89,7 @@ struct BenchmarkArgs : public GlobalArgs, public ProfileArgs {
         }
         auto levelArg = parsed.cmdFlag(cmd(), kLevel);
         if (levelArg) {
-            level = util::checkedstoi(levelArg.value());
+            level = util::checkedstoiExact(levelArg.value());
         }
         auto numItersArg = parsed.cmdFlag(cmd(), kNumIters);
         if (numItersArg) {

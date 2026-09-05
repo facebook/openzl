@@ -12,6 +12,7 @@
 #include "openzl/cpp/codecs/ACE.hpp"
 #include "tools/training/ace/ace.h"
 #include "tools/training/ace/ace_compressor.h"
+#include "tools/training/ace/ace_compressors.h"
 #include "tools/training/ace/ace_mutate.h"
 #include "tools/training/ace/ace_sampling.h"
 #include "tools/training/ace/automated_compressor_explorer.h"
@@ -96,6 +97,26 @@ TEST_F(ACETest, FormatVersionMustBeSet)
             Exception);
 }
 
+TEST_F(ACETest, BenchmarkUsesCompressionLevel)
+{
+    const auto data       = tripleDeltaData();
+    const auto input      = Input::refNumeric(poly::span<const uint64_t>(data));
+    const auto compressor = buildCompressGenericCompressor();
+
+    const auto defaultResult =
+            compressor.benchmark({ &input, 1 }, ZL_MAX_FORMAT_VERSION, 0);
+    const auto highLevelResult =
+            compressor.benchmark({ &input, 1 }, ZL_MAX_FORMAT_VERSION, 7);
+
+    ASSERT_TRUE(defaultResult.has_value());
+    ASSERT_TRUE(highLevelResult.has_value());
+    EXPECT_NE(defaultResult->compressedSize, highLevelResult->compressedSize);
+
+    params.compressionLevel = 7;
+    AutomatedCompressorExplorer ace({ &input, 1 }, params);
+    EXPECT_EQ(ace.compressionLevel(), 7);
+}
+
 TEST_F(ACETest, CompressesAtAllFormatVersions)
 {
     // A compressor trained for a specific, non-default format version must
@@ -113,7 +134,8 @@ TEST_F(ACETest, CompressesAtAllFormatVersions)
 
         EXPECT_EQ(ace->formatVersion(), version);
 
-        auto result = solution.benchmark(ace->inputs(), version);
+        auto result = solution.benchmark(
+                ace->inputs(), version, ace->compressionLevel());
         ASSERT_TRUE(result.has_value());
         ASSERT_GT(result->compressedSize, 0u);
     }
@@ -171,7 +193,8 @@ TEST_F(ACETest, TripleDeltaNumeric)
     auto data     = tripleDeltaData();
     auto input    = Input::refNumeric(poly::span<const uint64_t>(data));
     auto solution = runOnInput(input);
-    auto result   = solution.benchmark(ace->inputs(), ZL_MAX_FORMAT_VERSION);
+    auto result   = solution.benchmark(
+            ace->inputs(), ZL_MAX_FORMAT_VERSION, ace->compressionLevel());
     ASSERT_TRUE(result.has_value());
     ASSERT_LE(result->compressedSize, 90);
 }
@@ -181,7 +204,8 @@ TEST_F(ACETest, TripleDeltaSerial)
     auto data  = tripleDeltaData();
     auto input = Input::refSerial(data.data(), data.size() * sizeof(data[0]));
     auto solution = runOnInput(input);
-    auto result   = solution.benchmark(ace->inputs(), ZL_MAX_FORMAT_VERSION);
+    auto result   = solution.benchmark(
+            ace->inputs(), ZL_MAX_FORMAT_VERSION, ace->compressionLevel());
     ASSERT_TRUE(result.has_value());
     ASSERT_LE(result->compressedSize, 90);
 }
@@ -191,7 +215,8 @@ TEST_F(ACETest, TripleDeltaStruct)
     auto data     = tripleDeltaData();
     auto input    = Input::refStruct(poly::span<const uint64_t>(data));
     auto solution = runOnInput(input);
-    auto result   = solution.benchmark(ace->inputs(), ZL_MAX_FORMAT_VERSION);
+    auto result   = solution.benchmark(
+            ace->inputs(), ZL_MAX_FORMAT_VERSION, ace->compressionLevel());
     ASSERT_TRUE(result.has_value());
     ASSERT_LE(result->compressedSize, 90);
 }
@@ -201,7 +226,8 @@ TEST_F(ACETest, TripleDeltaString)
     auto [content, lengths] = tripleDeltaStringData();
     auto input              = Input::refString(content, lengths);
     auto solution           = runOnInput(input);
-    auto result = solution.benchmark(ace->inputs(), ZL_MAX_FORMAT_VERSION);
+    auto result             = solution.benchmark(
+            ace->inputs(), ZL_MAX_FORMAT_VERSION, ace->compressionLevel());
     ASSERT_TRUE(result.has_value());
     ASSERT_LE(result->compressedSize, 110);
 }
@@ -211,7 +237,8 @@ TEST_F(ACETest, savePopulation)
     auto data  = tripleDeltaData();
     auto input = Input::refSerial(data.data(), data.size() * sizeof(data[0]));
     auto solution = runOnInput(input);
-    auto result   = solution.benchmark(ace->inputs(), ZL_MAX_FORMAT_VERSION);
+    auto result   = solution.benchmark(
+            ace->inputs(), ZL_MAX_FORMAT_VERSION, ace->compressionLevel());
     ASSERT_TRUE(result.has_value());
     ASSERT_LE(result->compressedSize, 90);
     auto snapshot = ace->savePopulation();
@@ -224,8 +251,8 @@ TEST_F(ACETest, savePopulation)
     // Initial population doesn't have a good solution
     {
         auto solution2 = ace2.solution()[0].first;
-        auto result2 =
-                solution2.benchmark(ace->inputs(), ZL_MAX_FORMAT_VERSION);
+        auto result2   = solution2.benchmark(
+                ace->inputs(), ZL_MAX_FORMAT_VERSION, ace->compressionLevel());
         ASSERT_TRUE(result2.has_value());
         ASSERT_GT(result2->compressedSize, 90);
         ASSERT_NE(solution, solution2);
@@ -235,8 +262,8 @@ TEST_F(ACETest, savePopulation)
     ace2.loadPopulation(snapshot);
     {
         auto solution2 = ace2.solution()[0].first;
-        auto result2 =
-                solution2.benchmark(ace->inputs(), ZL_MAX_FORMAT_VERSION);
+        auto result2   = solution2.benchmark(
+                ace->inputs(), ZL_MAX_FORMAT_VERSION, ace->compressionLevel());
         ASSERT_TRUE(result2.has_value());
         ASSERT_LE(result2->compressedSize, 90);
     }
