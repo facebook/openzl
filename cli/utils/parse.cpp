@@ -101,6 +101,27 @@ int checkedstoi(const std::string& str)
         return std::stoi(s, pos);
     });
 }
+
+int checkedstoiExact(const std::string& str)
+{
+    if (str.empty()) {
+        throw InvalidArgsException("Integer string must not be empty.");
+    }
+    size_t pos = 0;
+    int value;
+    try {
+        value = std::stoi(str, &pos);
+    } catch (const std::invalid_argument&) {
+        throw InvalidArgsException("Not a valid integer: '" + str + "'.");
+    } catch (const std::out_of_range&) {
+        throw InvalidArgsException("Value out of range: '" + str + "'.");
+    }
+    if (pos != str.size()) {
+        throw InvalidArgsException("Not a valid integer: '" + str + "'.");
+    }
+    return value;
+}
+
 long checkedstol(const std::string& str)
 {
     return checkedInner(str, [](const std::string& s, size_t* pos) {

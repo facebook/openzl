@@ -31,6 +31,13 @@ Now let's try to compress a file of numbers. We have preconfigured profile calle
 ./zli compress --profile le-i32 examples/getting_started/sample_inputs/era5_ints.bin --output era5_ints.le_i32.zl
 ```
 
+Compression defaults to level 6. To opt into the newer Transformer-based
+numeric selector, request level 7 or higher:
+
+```sh
+./zli compress --profile le-i32 --level 7 examples/getting_started/sample_inputs/era5_ints.bin --output era5_ints.le_i32.zl
+```
+
 For comparison, we can try compressing the same output with serial.
 
 ```sh

@@ -159,7 +159,12 @@ std::vector<ACECompressor> selectAceCandidates(
     std::vector<ACECompressor> candidates;
     for (auto&& [candidate, _] : solutions) {
         // Drop candidates which cannot compress at the target format version
-        if (!candidate.benchmark(inputs, ace.formatVersion()).has_value()) {
+        if (!candidate
+                     .benchmark(
+                             inputs,
+                             ace.formatVersion(),
+                             ace.compressionLevel())
+                     .has_value()) {
             continue;
         }
         candidates.push_back(std::move(candidate));
@@ -172,7 +177,9 @@ std::vector<ACECompressor> selectAceCandidates(
                 WARNINGS,
                 "No solution found that meets speed constraints: Falling back to store");
         auto store = buildStoreCompressor();
-        if (!store.benchmark(inputs, ace.formatVersion()).has_value()) {
+        if (!store.benchmark(
+                          inputs, ace.formatVersion(), ace.compressionLevel())
+                     .has_value()) {
             throw Exception(
                     "Store compressor failed to compress at the target format version");
         }
@@ -184,7 +191,8 @@ std::vector<ACECompressor> selectAceCandidates(
 /// @returns The ACE run configuration described by @p trainParams.
 AutomatedCompressorExplorer::Parameters aceParameters(
         const TrainParams& trainParams,
-        uint32_t formatVersion)
+        uint32_t formatVersion,
+        int compressionLevel)
 {
     AutomatedCompressorExplorer::Parameters params{
         .numThreads = trainParams.threads.value_or(
@@ -193,7 +201,8 @@ AutomatedCompressorExplorer::Parameters aceParameters(
     if (trainParams.maxTimeSecs.has_value()) {
         params.maxTime = std::chrono::seconds(*trainParams.maxTimeSecs);
     }
-    params.formatVersion = formatVersion;
+    params.formatVersion    = formatVersion;
+    params.compressionLevel = compressionLevel;
     return params;
 }
 
@@ -279,6 +288,8 @@ std::vector<SerializedCompressorInternal> ACETrainer::train(
             collectInputStreamsForGraphs(inputs, autoBackendGraphs, cctx);
     const auto formatVersion = static_cast<uint32_t>(
             compressor.getParameter(CParam::FormatVersion));
+    const int compressionLevel =
+            compressor.getParameter(CParam::CompressionLevel);
 
     MergedParetoFrontier::BackendGraphMutationsMap candidates;
     std::vector<std::unique_ptr<BackendGraphMutation>> checkPointMutations;
@@ -321,7 +332,8 @@ std::vector<SerializedCompressorInternal> ACETrainer::train(
         }
 
         AutomatedCompressorExplorer ace(
-                flattened, aceParameters(trainParams, formatVersion));
+                flattened,
+                aceParameters(trainParams, formatVersion, compressionLevel));
         if (savedAceState.has_value()) {
             ace.loadPopulation(*savedAceState);
         }

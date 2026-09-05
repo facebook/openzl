@@ -33,6 +33,16 @@ class ProfileArgs {
         return chunkSize_;
     }
 
+    const poly::optional<int>& requestedCompressionLevel() const
+    {
+        return requestedCompressionLevel_;
+    }
+
+    void setRequestedCompressionLevel(int compressionLevel)
+    {
+        requestedCompressionLevel_ = compressionLevel;
+    }
+
     const poly::optional<std::string>& name() const
     {
         return name_;
@@ -75,6 +85,7 @@ class ProfileArgs {
 
     poly::optional<std::string> name_;
     poly::optional<size_t> chunkSize_;
+    poly::optional<int> requestedCompressionLevel_;
     int verbosityLevel_{ 3 };
     // Arbitrary (K,V) arguments provided on the command line.
     std::map<std::string, std::string> argmap_;

@@ -9,9 +9,11 @@
 #include <limits>
 
 #include "openzl/codecs/zl_conversion.h"
+#include "openzl/codecs/zl_generic.h"
 #include "openzl/codecs/zl_mlselector.h"
 #include "openzl/codecs/zl_sddl2.h"
 #include "openzl/codecs/zl_segmenters.h"
+#include "openzl/common/assertion.h"
 #include "openzl/cpp/Exception.hpp"
 #include "openzl/openzl.hpp"
 #include "openzl/zl_compressor.h"
@@ -67,9 +69,11 @@ ProfileArgs::ProfileArgs(const arg::ParsedArgs& parsed)
 }
 
 namespace {
-ZL_GraphID saoProfile(Compressor& compressor)
+ZL_GraphID saoProfile(Compressor& compressor, const ProfileArgs& args)
 {
-    compressor.setParameter(CParam::CompressionLevel, 1);
+    constexpr int kTransformerMinCompressionLevel = 7;
+    int const compressionLevel = args.requestedCompressionLevel().value_or(1);
+    compressor.setParameter(CParam::CompressionLevel, compressionLevel);
     /* The SAO format consists of a header,
      * which is 28 bytes for the dirSilesia/sao sample specifically,
      * followed by an array of structures, each one describing a star.
@@ -99,30 +103,47 @@ ZL_GraphID saoProfile(Compressor& compressor)
      * Real*4 XRPM      R.A. proper motion (radians per year)
      * Real*4 XDPM      Dec. proper motion (radians per year)
      */
-    ZL_GraphID sra0 = graphs::ACE(
-            nodes::ConvertStructToNumLE()(
-                    compressor,
-                    nodes::DeltaInt()(
-                            compressor, graphs::FieldLz()(compressor))))(
-            compressor);
-    ZL_GraphID sdec0 = graphs::ACE(
-            nodes::TransposeSplit()(compressor, graphs::Zstd()(compressor)))(
-            compressor);
-    ZL_GraphID token_compress = nodes::TokenizeStruct()(
-            compressor,
-            graphs::FieldLz()(compressor),
-            graphs::FieldLz()(compressor));
-    ZL_GraphID num_huffman = nodes::ConvertStructToNumLE()(
-            compressor,
-            nodes::TokenizeNumeric(/* sort */ false)(
-                    compressor,
-                    graphs::Huffman()(compressor),
-                    graphs::Huffman()(compressor)));
+    ZL_GraphID sra0;
+    ZL_GraphID sdec0;
+    ZL_GraphID is;
+    ZL_GraphID mag;
+    ZL_GraphID xrpm;
+    ZL_GraphID xdpm;
+    if (compressionLevel >= kTransformerMinCompressionLevel) {
+        ZL_GraphID numeric =
+                nodes::ConvertStructToNumLE()(compressor, ZL_GRAPH_NUMERIC);
+        sra0  = graphs::ACE(numeric)(compressor);
+        sdec0 = graphs::ACE(numeric)(compressor);
+        is    = graphs::ACE(numeric)(compressor);
+        mag   = graphs::ACE(numeric)(compressor);
+        xrpm  = graphs::ACE(numeric)(compressor);
+        xdpm  = graphs::ACE(numeric)(compressor);
+    } else {
+        sra0 = graphs::ACE(
+                nodes::ConvertStructToNumLE()(
+                        compressor,
+                        nodes::DeltaInt()(
+                                compressor, graphs::FieldLz()(compressor))))(
+                compressor);
+        sdec0 = graphs::ACE(
+                nodes::TransposeSplit()(
+                        compressor, graphs::Zstd()(compressor)))(compressor);
+        ZL_GraphID token_compress = nodes::TokenizeStruct()(
+                compressor,
+                graphs::FieldLz()(compressor),
+                graphs::FieldLz()(compressor));
+        ZL_GraphID num_huffman = nodes::ConvertStructToNumLE()(
+                compressor,
+                nodes::TokenizeNumeric(/* sort */ false)(
+                        compressor,
+                        graphs::Huffman()(compressor),
+                        graphs::Huffman()(compressor)));
 
-    ZL_GraphID is   = graphs::ACE(num_huffman)(compressor);
-    ZL_GraphID mag  = graphs::ACE(num_huffman)(compressor);
-    ZL_GraphID xrpm = graphs::ACE(token_compress)(compressor);
-    ZL_GraphID xdpm = graphs::ACE(token_compress)(compressor);
+        is   = graphs::ACE(num_huffman)(compressor);
+        mag  = graphs::ACE(num_huffman)(compressor);
+        xrpm = graphs::ACE(token_compress)(compressor);
+        xdpm = graphs::ACE(token_compress)(compressor);
+    }
 
     const std::array<size_t, 6> fieldSizes      = { 8, 8, 2, 2, 4, 4 };
     const std::array<ZL_GraphID, 6> fieldGraphs = { sra0, sdec0, is,
@@ -148,24 +169,30 @@ ZL_GraphID saoProfile(Compressor& compressor)
 
 struct IntProfileData {
     size_t eltByteWidth;
-    bool isSigned;
+    ZL_NodeID conversionNode;
 };
 
-static std::string makeProfileName(const std::string& signage, size_t bitWidth)
+enum class IntSignedness { SIGNED, UNSIGNED };
+enum class IntEndianness { LITTLE, BIG };
+
+static std::string
+makeProfileName(const std::string& signage, size_t bitWidth, bool isBigEndian)
 {
     if (bitWidth == 8) {
         return signage + "8";
     }
-    return "le-" + signage + std::to_string(bitWidth);
+    return (isBigEndian ? "be-" : "le-") + signage + std::to_string(bitWidth);
 }
 
-static std::string makeProfileDescription(bool isSigned, size_t bitWidth)
+static std::string
+makeProfileDescription(bool isSigned, size_t bitWidth, bool isBigEndian)
 {
     if (bitWidth == 8) {
         return (isSigned ? "Signed " : "Unsigned ") + std::string("8-bit data");
     }
-    return std::string("Little-endian ") + (isSigned ? "signed " : "unsigned ")
-            + std::to_string(bitWidth) + "-bit data";
+    return std::string(isBigEndian ? "Big-endian " : "Little-endian ")
+            + (isSigned ? "signed " : "unsigned ") + std::to_string(bitWidth)
+            + "-bit data";
 }
 
 static ZL_GraphID
@@ -175,22 +202,40 @@ buildIntProfile(ZL_Compressor* comp, void* opaque, const ProfileArgs& args)
         return ZL_GRAPH_ILLEGAL;
     }
     const auto& d = *static_cast<const IntProfileData*>(opaque);
-    size_t chunkSize =
+    ZL_GraphID graph =
+            ZL_Compressor_buildACEGraphWithDefault(comp, ZL_GRAPH_NUMERIC);
+    graph = ZL_Compressor_registerStaticGraph_fromNode1o(
+            comp, d.conversionNode, graph);
+    const size_t chunkSize =
             args.chunkSize().value_or(ZL_DEFAULT_SEGMENTER_CHUNK_BYTE_SIZE);
-    return profiles::buildIntGraph(comp, d.eltByteWidth, d.isSigned, chunkSize);
+    return ZL_Compressor_buildNumFromSerialSegmenter(
+            comp, d.eltByteWidth, chunkSize, graph);
 }
 
 static void addIntProfile(
         std::map<std::string, std::shared_ptr<CompressProfile>>& mp,
-        bool isSigned,
-        size_t bitWidth)
+        IntSignedness signedness,
+        size_t bitWidth,
+        IntEndianness endianness = IntEndianness::LITTLE)
 {
-    std::string signage     = isSigned ? "i" : "u";
-    std::string name        = makeProfileName(signage, bitWidth);
-    std::string description = makeProfileDescription(isSigned, bitWidth);
+    // Signedness affects only profile metadata; signed and unsigned profiles
+    // intentionally use the same bit-preserving numeric graph.
+    bool const isSigned    = signedness == IntSignedness::SIGNED;
+    bool const isBigEndian = endianness == IntEndianness::BIG;
+    // Byte order is meaningless for 8-bit values; register them once without
+    // an endian prefix rather than creating duplicate little- and big-endian
+    // aliases.
+    ZL_ASSERT_OR(bitWidth != 8, !isBigEndian);
+    const std::string signage = isSigned ? "i" : "u";
+    const std::string name    = makeProfileName(signage, bitWidth, isBigEndian);
+    const std::string description =
+            makeProfileDescription(isSigned, bitWidth, isBigEndian);
+    const ZL_NodeID conversionNode = isBigEndian
+            ? ZL_Node_convertSerialToNumBE(bitWidth)
+            : ZL_Node_convertSerialToNumLE(bitWidth);
 
     auto data = std::make_shared<IntProfileData>(
-            IntProfileData{ bitWidth / 8, isSigned });
+            IntProfileData{ bitWidth / 8, conversionNode });
 
     mp[name] = std::make_shared<CompressProfile>(
             name, description, buildIntProfile, std::move(data), true);
@@ -379,14 +424,20 @@ compressProfiles()
                 nullptr,
                 true);
 
-        addIntProfile(mp, true, 8);
-        addIntProfile(mp, false, 8);
-        addIntProfile(mp, true, 16);
-        addIntProfile(mp, false, 16);
-        addIntProfile(mp, true, 32);
-        addIntProfile(mp, false, 32);
-        addIntProfile(mp, true, 64);
-        addIntProfile(mp, false, 64);
+        addIntProfile(mp, IntSignedness::SIGNED, 8);
+        addIntProfile(mp, IntSignedness::UNSIGNED, 8);
+        addIntProfile(mp, IntSignedness::SIGNED, 16);
+        addIntProfile(mp, IntSignedness::UNSIGNED, 16);
+        addIntProfile(mp, IntSignedness::SIGNED, 32);
+        addIntProfile(mp, IntSignedness::UNSIGNED, 32);
+        addIntProfile(mp, IntSignedness::SIGNED, 64);
+        addIntProfile(mp, IntSignedness::UNSIGNED, 64);
+        addIntProfile(mp, IntSignedness::SIGNED, 16, IntEndianness::BIG);
+        addIntProfile(mp, IntSignedness::UNSIGNED, 16, IntEndianness::BIG);
+        addIntProfile(mp, IntSignedness::SIGNED, 32, IntEndianness::BIG);
+        addIntProfile(mp, IntSignedness::UNSIGNED, 32, IntEndianness::BIG);
+        addIntProfile(mp, IntSignedness::SIGNED, 64, IntEndianness::BIG);
+        addIntProfile(mp, IntSignedness::UNSIGNED, 64, IntEndianness::BIG);
 
         std::string kParquetName = "parquet";
         mp[kParquetName]         = std::make_shared<CompressProfile>(
@@ -477,9 +528,9 @@ compressProfiles()
         mp[kSAOName]         = std::make_shared<CompressProfile>(
                 kSAOName,
                 "SAO format from the Silesia corpus",
-                [](ZL_Compressor* comp, void*, const ProfileArgs&) {
+                [](ZL_Compressor* comp, void*, const ProfileArgs& args) {
                     CompressorRef compressor(comp);
-                    return saoProfile(compressor);
+                    return saoProfile(compressor, args);
                 });
 
         std::string kGenericNumericName = "numeric-ml-selector-64";

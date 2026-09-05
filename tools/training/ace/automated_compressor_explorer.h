@@ -57,6 +57,8 @@ class AutomatedCompressorExplorer : public GeneticAlgorithm<ACECompressor> {
         /// Target format version. Must be set explicitly; a value of 0 is
         /// rejected at construction.
         uint32_t formatVersion{ 0 };
+        /// Global compression level used while benchmarking candidates.
+        int compressionLevel{ 0 };
     };
 
     /**
@@ -82,6 +84,7 @@ class AutomatedCompressorExplorer : public GeneticAlgorithm<ACECompressor> {
             : Base(params),
               inputs_(std::move(inputs)),
               formatVersion_(params.formatVersion),
+              compressionLevel_(params.compressionLevel),
               threadPool_(params.numThreads),
               crossover_(rng(), inputType(), formatVersion_),
               mutate_(rng(), inputType(), formatVersion_)
@@ -130,6 +133,11 @@ class AutomatedCompressorExplorer : public GeneticAlgorithm<ACECompressor> {
         return formatVersion_;
     }
 
+    int compressionLevel() const
+    {
+        return compressionLevel_;
+    }
+
     /**
      * Saves the current population to a string.
      */
@@ -173,10 +181,12 @@ class AutomatedCompressorExplorer : public GeneticAlgorithm<ACECompressor> {
     static std::vector<float> computeFitness(
             const ACECompressor& compressor,
             poly::span<const Input> inputs,
-            uint32_t formatVersion);
+            uint32_t formatVersion,
+            int compressionLevel);
 
     poly::span<const Input> inputs_;
     uint32_t formatVersion_;
+    int compressionLevel_;
     ThreadPool threadPool_;
     ACECrossover crossover_;
     ACEMutate mutate_;
