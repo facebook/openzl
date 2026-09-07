@@ -48,7 +48,10 @@ target_link_libraries(custom_parsers
     parquet_graph
     shared_components
 )
-add_dependencies(custom_parsers openzl openzl_cpp xgboost_external)
+add_dependencies(custom_parsers openzl openzl_cpp)
+if(TARGET xgboost_external)
+    add_dependencies(custom_parsers xgboost_external)
+endif()
 apply_openzl_compile_options_to_target(custom_parsers
     csv_parser
     parquet_graph

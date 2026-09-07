@@ -38,8 +38,10 @@ if (OPENZL_BUILD_TRAINING_TOOLS)
         openzl_cpp
         tools_io
         logger
-        ml_selector
-        xgboost_external)
+        ml_selector)
+    if(TARGET xgboost_external)
+        add_dependencies(tools_training xgboost_external)
+    endif()
 
   if (OPENZL_BUILD_TESTS AND OPENZL_ALLOW_INTROSPECTION)
     file(
@@ -53,7 +55,9 @@ if (OPENZL_BUILD_TRAINING_TOOLS)
         CONFIGURE_DEPENDS
         "${CMAKE_CURRENT_LIST_DIR}/tests/*.h")
     add_executable(test_training ${test_training_srcs} ${test_training_headers})
-    add_dependencies(test_training xgboost_external)
+    if(TARGET xgboost_external)
+        add_dependencies(test_training xgboost_external)
+    endif()
     target_link_libraries(
         test_training
         PRIVATE
