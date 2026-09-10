@@ -1,6 +1,8 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-import {Box, Heading, Text, VStack} from '@chakra-ui/react';
+import {VStack} from '@chakra-ui/react';
+import StepCard from './StepCard.tsx';
+import UploadCard from './UploadCard.tsx';
 
 interface SetupStep {
   number: number;
@@ -9,11 +11,6 @@ interface SetupStep {
 }
 
 const SETUP_STEPS: readonly SetupStep[] = [
-  {
-    number: 1,
-    title: 'Choose your data',
-    subtitle: 'Choose data to compress, files are not uploaded to a server',
-  },
   {
     number: 2,
     title: 'Configure the run',
@@ -26,52 +23,17 @@ const SETUP_STEPS: readonly SetupStep[] = [
   },
 ];
 
-export default function SetupColumn() {
+interface SetupColumnProps {
+  file: File | null;
+  onFileChange: (file: File | null) => void;
+}
+
+export default function SetupColumn({file, onFileChange}: SetupColumnProps) {
   return (
     <VStack gap="20px" width={{base: '100%', lg: '520px'}} flexShrink={0} align="stretch">
+      <UploadCard file={file} onFileChange={onFileChange} />
       {SETUP_STEPS.map((step) => (
-        <Box
-          key={step.number}
-          as="section"
-          aria-labelledby={`step-${step.number}-title`}
-          bg="pg.surface"
-          borderWidth="1px"
-          borderColor="pg.border"
-          borderRadius="12px"
-          p="24px">
-          <VStack gap="6px" align="stretch">
-            <Box display="flex" alignItems="center" gap="10px">
-              <Box
-                aria-hidden="true"
-                display="inline-flex"
-                alignItems="center"
-                justifyContent="center"
-                boxSize="24px"
-                borderRadius="full"
-                bg="pg.ink"
-                color="pg.onInk"
-                fontSize="12px"
-                fontWeight="bold"
-                lineHeight="1">
-                {step.number}
-              </Box>
-              <Heading
-                id={`step-${step.number}-title`}
-                as="h2"
-                flex="1"
-                color="pg.ink"
-                fontSize="18px"
-                fontWeight="bold"
-                lineHeight="1.3"
-                m={0}>
-                {step.title}
-              </Heading>
-            </Box>
-            <Text color="pg.secondary" fontSize="13px" lineHeight="1.4" m={0}>
-              {step.subtitle}
-            </Text>
-          </VStack>
-        </Box>
+        <StepCard key={step.number} number={step.number} title={step.title} subtitle={step.subtitle} />
       ))}
     </VStack>
   );
