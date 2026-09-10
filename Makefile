@@ -153,15 +153,15 @@ ML_SELECTOR_CXXOBJS := $(call cxx_objs,$(ML_SELECTOR_DIR))
 # ML selector files depend on xgboost headers
 $(ML_SELECTOR_COBJS) $(ML_SELECTOR_CXXOBJS): | $(XGBOOST_HEADER)
 
-XGBOOST_INCLUDE_PATHS := -Ideps/xgboost/include -Ideps/xgboost/dmlc-core/include -DDMLC_LOG_STACK_TRACE=0
+ML_SELECTOR_CPPFLAGS := -Ideps/xgboost/include -Ideps/xgboost/dmlc-core/include -DDMLC_LOG_STACK_TRACE=0 -DOPENZL_HAS_ML_SELECTOR_TRAINER=1
 
 # Add flags for cross platform compatibility for Windows
 zli: LDFLAGS += $(XGBOOST_LDFLAGS)
-zli: CPPFLAGS += $(XGBOOST_INCLUDE_PATHS) -DZDICT_STATIC_LINKING_ONLY
+zli: CPPFLAGS += $(ML_SELECTOR_CPPFLAGS) -DZDICT_STATIC_LINKING_ONLY
 zli: LDLIBS += $(XGBOOST_LDLIBS)
 
 gtests: LDFLAGS += $(XGBOOST_LDFLAGS)
-gtests: CPPFLAGS += $(XGBOOST_INCLUDE_PATHS) -DZDICT_STATIC_LINKING_ONLY
+gtests: CPPFLAGS += $(ML_SELECTOR_CPPFLAGS) -DZDICT_STATIC_LINKING_ONLY
 gtests: LDLIBS += $(XGBOOST_LDLIBS)
 
 $(eval $(call cxx_program,zli, \

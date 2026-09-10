@@ -12,6 +12,9 @@ zs_cxxlibrary(
     headers = [
         "train.h",
     ],
+    preprocessor_flags = [
+        "-DOPENZL_HAS_ML_SELECTOR_TRAINER=1",
+    ],
     deps = [
         "../../custom_parsers:custom_parsers",
         "../ml_selector:ml_selector_trainer",

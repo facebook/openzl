@@ -154,6 +154,17 @@ Node.js 24 supports Memory64 by default. Do not pass
 `--experimental-wasm-memory64` or `--experimental-wasm-table64`. Node 24
 rejects those obsolete flags.
 
+The build also applies `-pthread`, because the compressor trainers fan work out
+over a thread pool. Two consequences:
+
+* **Browsers must serve the page cross-origin isolated.** Threads need
+  `SharedArrayBuffer`, which requires `Cross-Origin-Opener-Policy: same-origin`
+  and `Cross-Origin-Embedder-Policy: require-corp` response headers. Without
+  them the module fails to instantiate. Node needs no equivalent setup.
+* **`-sPTHREAD_POOL_SIZE` bounds the trainers.** Emscripten pre-spawns that many
+  workers at startup. To get more threads, override with
+  `-DOPENZL_WASM_PTHREAD_POOL_SIZE=N` at configure time.
+
 ### Test
 
 The generated files must be next to `wasm_api.js` so its relative imports
