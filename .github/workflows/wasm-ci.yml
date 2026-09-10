@@ -10,6 +10,13 @@ on:
     branches: [dev]
     paths:
       - 'tools/wasm/**'
+      # The binding links the training tools and the CLI's profile graphs.
+      - 'tools/training/**'
+      - 'tools/io/**'
+      - 'tools/logger/**'
+      - 'cli/utils/profile_graphs.*'
+      - 'custom_parsers/**'
+      - 'cpp/**'
       - 'src/**'
       - 'include/**'
       - '**/CMakeLists.txt'
@@ -18,6 +25,13 @@ on:
     branches: [dev, master, actionsTest]
     paths:
       - 'tools/wasm/**'
+      # The binding links the training tools and the CLI's profile graphs.
+      - 'tools/training/**'
+      - 'tools/io/**'
+      - 'tools/logger/**'
+      - 'cli/utils/profile_graphs.*'
+      - 'custom_parsers/**'
+      - 'cpp/**'
       - 'src/**'
       - 'include/**'
       - '**/CMakeLists.txt'

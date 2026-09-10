@@ -4,7 +4,9 @@
 #include <vector>
 
 #include "tools/logger/Logger.h"
-#include "tools/ml_selector/ml_selector_trainer.h"
+#if defined(OPENZL_HAS_ML_SELECTOR_TRAINER)
+#    include "tools/ml_selector/ml_selector_trainer.h"
+#endif
 #include "tools/training/ace/ace.h"
 #include "tools/training/clustering/clustering_graph_trainer.h"
 #include "tools/training/dict/base_dict_trainer.h"
@@ -34,6 +36,13 @@ std::vector<TrainedCandidate> train(
         throw FormatVersionUnsupportedError(
                 "Compressor format version is not set.");
     }
+
+#if !defined(OPENZL_HAS_ML_SELECTOR_TRAINER)
+    if (graph_mutation::hasTargetGraph(compressor, "zl.ml_selector")) {
+        throw NoTrainableGraphError(
+                "ML selector training is not available in this build.");
+    }
+#endif
 
     // Try compressing with the base graph to train. This is not exhaustive
     // because function graphs may select different nodes for other inputs.
@@ -91,11 +100,13 @@ std::vector<TrainedCandidate> train(
         }
     }
 
+#if defined(OPENZL_HAS_ML_SELECTOR_TRAINER)
     if (graph_mutation::hasTargetGraph(compressor, ML_SELECTOR_GRAPH_NAME)) {
         serializedTrainedCompressors.clear();
         serializedTrainedCompressors.push_back(
                 trainMLSelectorGraph(inputs, compressor, trainParams));
     }
+#endif
 
     // Dict training: for each serialized candidate, deserialize, train
     // dicts, re-serialize with bundleID + dictIDs in CBOR.

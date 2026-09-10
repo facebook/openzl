@@ -42,6 +42,13 @@ set(OPENZL_SUPPORT_SHARED_LIBRARY "${OPENZL_BUILD_SHARED_LIBS}")
 if(EMSCRIPTEN)
     add_compile_options(-sMEMORY64=1)
     add_link_options(-sMEMORY64=1 -sWASM_BIGINT=1)
+
+    # Training throws across the binding and uses std::thread, so these flags
+    # must apply to every object linked into the WASM artifact.
+    if(OPENZL_BUILD_WASM)
+        add_compile_options(-fexceptions -pthread)
+        add_link_options(-fexceptions -pthread)
+    endif()
 endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

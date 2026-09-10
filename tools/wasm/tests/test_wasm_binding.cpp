@@ -39,6 +39,57 @@ ZL_ErrorCode serializedCompressor(
     return code;
 }
 
+// The trainers spend whatever wall-clock budget they are given, so the tests
+// pass an explicit one rather than inheriting the much larger default.
+constexpr size_t kTestTrainMaxTimeSecs = 5;
+
+openzl_wasm_TrainOptions testTrainOptions(bool paretoFrontier)
+{
+    // Zeroed, so every option not set below stays at its default
+    openzl_wasm_TrainOptions options{};
+    // threads is left at its default, so the tests cover the thread count real
+    // callers get rather than a single-threaded special case.
+    options.maxTimeSecs    = kTestTrainMaxTimeSecs;
+    options.paretoFrontier = paretoFrontier ? 1 : 0;
+    return options;
+}
+
+// Collects every compressor training produced, releasing each owned buffer.
+// Single-compressor callers pass paretoFrontier=false and use front().
+ZL_ErrorCode train(
+        const std::vector<uint8_t>& compressor,
+        const std::vector<uint8_t>& src,
+        const openzl_wasm_TrainOptions& options,
+        std::vector<std::vector<uint8_t>>* out)
+{
+    if (!out) {
+        return ZL_ErrorCode_parameter_invalid;
+    }
+    out->clear();
+    uint8_t* bufs[OPENZL_WASM_TRAIN_PARETO_CANDIDATES] = {};
+    size_t sizes[OPENZL_WASM_TRAIN_PARETO_CANDIDATES]  = {};
+    size_t count                                       = 0;
+    ZL_ErrorCode code                                  = openzl_wasm_train(
+            compressor.empty() ? nullptr : compressor.data(),
+            compressor.size(),
+            src.empty() ? nullptr : src.data(),
+            src.size(),
+            &options,
+            bufs,
+            sizes,
+            OPENZL_WASM_TRAIN_PARETO_CANDIDATES,
+            &count);
+    if (code != ZL_ErrorCode_no_error) {
+        EXPECT_EQ(count, 0u);
+        return code;
+    }
+    out->reserve(count);
+    for (size_t i = 0; i < count; ++i) {
+        out->push_back(copyAndFree(bufs[i], sizes[i]));
+    }
+    return code;
+}
+
 ZL_ErrorCode compress(
         const std::vector<uint8_t>& src,
         const std::vector<uint8_t>& compressor,
@@ -180,6 +231,58 @@ void expectRoundTrip(
     EXPECT_EQ(dec, src);
 }
 
+// Trains from the profile's base and checks the result round-trips
+void expectTrainedRoundTrip(
+        const std::vector<uint8_t>& src,
+        openzl_wasm_Profile profile,
+        bool paretoFrontier)
+{
+    SCOPED_TRACE(openzl_wasm_profileName(profile));
+
+    std::vector<uint8_t> base;
+    ASSERT_EQ(serializedCompressor(profile, &base), ZL_ErrorCode_no_error);
+
+    std::vector<std::vector<uint8_t>> frontier;
+    const ZL_ErrorCode trainCode =
+            train(base, src, testTrainOptions(paretoFrontier), &frontier);
+    ASSERT_EQ(trainCode, ZL_ErrorCode_no_error)
+            << openzl_wasm_errorString(trainCode);
+
+    // The frontier's size depends on the data, so the only guarantees are
+    // that training produced something and stayed within the caller's array.
+    ASSERT_FALSE(frontier.empty());
+    if (paretoFrontier) {
+        ASSERT_LE(frontier.size(), size_t(OPENZL_WASM_TRAIN_PARETO_CANDIDATES));
+    } else {
+        ASSERT_EQ(frontier.size(), 1u);
+    }
+
+    // Every compressor training produced is usable, not just the first.
+    for (size_t i = 0; i < frontier.size(); ++i) {
+        SCOPED_TRACE(i);
+        ASSERT_FALSE(frontier[i].empty());
+
+        std::vector<uint8_t> frame;
+        const ZL_ErrorCode compCode = compress(src, frontier[i], &frame);
+        ASSERT_EQ(compCode, ZL_ErrorCode_no_error)
+                << openzl_wasm_errorString(compCode);
+
+        // The frontier spans to the speed-optimal end, where a compressor is
+        // barely more than store and the frame can come out larger than the
+        // input, so only the best-ratio end is required to compress. It is
+        // first because the frontier is ordered by compressed size.
+        if (i == 0) {
+            EXPECT_LT(frame.size(), src.size());
+        }
+
+        std::vector<uint8_t> dec;
+        const ZL_ErrorCode decCode = decompress(frame, &dec);
+        ASSERT_EQ(decCode, ZL_ErrorCode_no_error)
+                << openzl_wasm_errorString(decCode);
+        EXPECT_EQ(dec, src);
+    }
+}
+
 } // namespace
 
 TEST(WasmBindingTest, SerialRoundTrip)
@@ -234,6 +337,157 @@ TEST(WasmBindingTest, SignednessDoesNotChangeNumericGraph)
 TEST(WasmBindingTest, EmptyRoundTrip)
 {
     expectRoundTrip({}, OPENZL_WASM_PROFILE_SERIAL);
+}
+
+TEST(WasmBindingTest, TrainedCompressorRoundTrips)
+{
+    expectTrainedRoundTrip(
+            makeSerialData(4096), OPENZL_WASM_PROFILE_SERIAL, false);
+}
+
+TEST(WasmBindingTest, TrainedIntCompressorRoundTrips)
+{
+    expectTrainedRoundTrip(
+            makeIntData(4, 1024, false), OPENZL_WASM_PROFILE_U32, false);
+}
+
+TEST(WasmBindingTest, ParetoTrainedCompressorsAllRoundTrip)
+{
+    expectTrainedRoundTrip(
+            makeSerialData(4096), OPENZL_WASM_PROFILE_SERIAL, true);
+}
+
+TEST(WasmBindingTest, ParetoTrainedIntCompressorsAllRoundTrip)
+{
+    expectTrainedRoundTrip(
+            makeIntData(4, 1024, false), OPENZL_WASM_PROFILE_U32, true);
+}
+
+TEST(WasmBindingTest, TrainRejectsBadInput)
+{
+    const std::vector<uint8_t> src = makeSerialData(1024);
+    std::vector<uint8_t> base;
+    ASSERT_EQ(
+            serializedCompressor(OPENZL_WASM_PROFILE_SERIAL, &base),
+            ZL_ErrorCode_no_error);
+
+    // Every rejection below is cheap: none of them reach the trainers.
+    std::vector<std::vector<uint8_t>> trained;
+    const openzl_wasm_TrainOptions singleOptions =
+            testTrainOptions(/* paretoFrontier */ false);
+
+    // Unlike compress, an empty sample is rejected rather than handled: there
+    // is nothing to train on.
+    EXPECT_EQ(
+            train(base, {}, singleOptions, &trained),
+            ZL_ErrorCode_parameter_invalid);
+    EXPECT_TRUE(trained.empty());
+
+    EXPECT_EQ(
+            train({}, src, singleOptions, &trained),
+            ZL_ErrorCode_parameter_invalid);
+    EXPECT_TRUE(trained.empty());
+
+    const std::vector<uint8_t> garbage(64, 0xAB);
+    EXPECT_NE(
+            train(garbage, src, singleOptions, &trained),
+            ZL_ErrorCode_no_error);
+    EXPECT_TRUE(trained.empty());
+
+    // Each of the three outputs is required, so omitting any one is rejected,
+    // as is an output array with no room in it.
+    uint8_t* bufs[OPENZL_WASM_TRAIN_PARETO_CANDIDATES] = {};
+    size_t sizes[OPENZL_WASM_TRAIN_PARETO_CANDIDATES]  = {};
+    size_t count                                       = 0;
+    EXPECT_EQ(
+            openzl_wasm_train(
+                    base.data(),
+                    base.size(),
+                    src.data(),
+                    src.size(),
+                    &singleOptions,
+                    nullptr,
+                    sizes,
+                    OPENZL_WASM_TRAIN_PARETO_CANDIDATES,
+                    &count),
+            ZL_ErrorCode_parameter_invalid);
+    EXPECT_EQ(
+            openzl_wasm_train(
+                    base.data(),
+                    base.size(),
+                    src.data(),
+                    src.size(),
+                    &singleOptions,
+                    bufs,
+                    nullptr,
+                    OPENZL_WASM_TRAIN_PARETO_CANDIDATES,
+                    &count),
+            ZL_ErrorCode_parameter_invalid);
+    EXPECT_EQ(
+            openzl_wasm_train(
+                    base.data(),
+                    base.size(),
+                    src.data(),
+                    src.size(),
+                    &singleOptions,
+                    bufs,
+                    sizes,
+                    OPENZL_WASM_TRAIN_PARETO_CANDIDATES,
+                    nullptr),
+            ZL_ErrorCode_parameter_invalid);
+    EXPECT_EQ(
+            openzl_wasm_train(
+                    base.data(),
+                    base.size(),
+                    src.data(),
+                    src.size(),
+                    &singleOptions,
+                    bufs,
+                    sizes,
+                    0,
+                    &count),
+            ZL_ErrorCode_parameter_invalid);
+    EXPECT_EQ(count, 0u);
+}
+
+// The frontier normally runs to several compressors, so a caller with a
+// shorter array is the case that used to write past its end.
+TEST(WasmBindingTest, TrainHonoursOutCapacity)
+{
+    const std::vector<uint8_t> src = makeSerialData(4096);
+    std::vector<uint8_t> base;
+    ASSERT_EQ(
+            serializedCompressor(OPENZL_WASM_PROFILE_SERIAL, &base),
+            ZL_ErrorCode_no_error);
+
+    const openzl_wasm_TrainOptions options =
+            testTrainOptions(/* paretoFrontier */ true);
+
+    // Deliberately shorter than the frontier, with a guard entry after it
+    // that must stay untouched.
+    constexpr size_t kCapacity   = 1;
+    uint8_t* bufs[kCapacity + 1] = {};
+    size_t sizes[kCapacity + 1]  = {};
+    size_t count                 = 0;
+    const ZL_ErrorCode code      = openzl_wasm_train(
+            base.data(),
+            base.size(),
+            src.data(),
+            src.size(),
+            &options,
+            bufs,
+            sizes,
+            kCapacity,
+            &count);
+    ASSERT_EQ(code, ZL_ErrorCode_no_error) << openzl_wasm_errorString(code);
+    EXPECT_EQ(count, kCapacity);
+    EXPECT_EQ(bufs[kCapacity], nullptr);
+    EXPECT_EQ(sizes[kCapacity], 0u);
+
+    for (size_t i = 0; i < count; ++i) {
+        EXPECT_NE(bufs[i], nullptr);
+        openzl_wasm_free(bufs[i]);
+    }
 }
 
 TEST(WasmBindingTest, BenchmarkTimesBothDirections)
