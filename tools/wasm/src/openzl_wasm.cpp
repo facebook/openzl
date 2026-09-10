@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <memory>
@@ -34,6 +35,21 @@
 #    include <emscripten/emscripten.h>
 #else
 #    define EMSCRIPTEN_KEEPALIVE
+#endif
+
+#if defined(__EMSCRIPTEN__)
+// Keep the JavaScript memory access constants synchronized with the wasm ABI.
+static_assert(sizeof(size_t) == 8);
+static_assert(sizeof(void*) == 8);
+static_assert(sizeof(double) == 8);
+static_assert(sizeof(int) == 4);
+static_assert(sizeof(openzl_wasm_TrainOptions) == 40);
+static_assert(offsetof(openzl_wasm_TrainOptions, threads) == 0);
+static_assert(offsetof(openzl_wasm_TrainOptions, maxTimeSecs) == 8);
+static_assert(offsetof(openzl_wasm_TrainOptions, paretoFrontier) == 16);
+static_assert(offsetof(openzl_wasm_TrainOptions, maxNumCandidates) == 24);
+static_assert(offsetof(openzl_wasm_TrainOptions, noAceSuccessors) == 32);
+static_assert(offsetof(openzl_wasm_TrainOptions, noClustering) == 36);
 #endif
 
 namespace {

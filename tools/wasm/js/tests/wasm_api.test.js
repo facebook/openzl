@@ -1,15 +1,15 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
-import { describe, it, before } from 'node:test';
+import {describe, it, before} from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import {existsSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
 
-import { createOpenZL, Profile } from '../wasm_api.js';
+import {createOpenZL, Profile} from '../wasm_api.js';
 
 const wasmUrl = new URL('../openzl.wasm', import.meta.url);
 const jsUrl = new URL('../openzl.js', import.meta.url);
-const hasArtifact =
-  existsSync(fileURLToPath(wasmUrl)) && existsSync(fileURLToPath(jsUrl));
+const hasArtifact = existsSync(fileURLToPath(wasmUrl)) && existsSync(fileURLToPath(jsUrl));
+const TEST_TRAIN_MAX_TIME_SECS = 5; // Mirrors native C++ test time
 
 describe('Profile', () => {
   it('is defined and frozen when the module loads', () => {
@@ -97,13 +97,95 @@ describe('wasm_api', () => {
 
   it('validates Uint8Array inputs', () => {
     const comp = zl.getSerializedCompressor(Profile.SERIAL);
+    assert.throws(() => zl.train('not bytes', comp), /expects Uint8Array/);
+    assert.throws(() => zl.train(new Uint8Array(10), 'not comp'), /expects.*compressor/);
     assert.throws(() => zl.compress('not bytes', comp), /expects Uint8Array/);
-    assert.throws(
-      () => zl.compress(new Uint8Array(10), 'not comp'),
-      /expects.*compressor/,
-    );
+    assert.throws(() => zl.compress(new Uint8Array(10), 'not comp'), /expects.*compressor/);
     assert.throws(() => zl.decompress('bad'), /expects Uint8Array/);
     assert.throws(() => zl.benchmark('bad', comp), /expects Uint8Array/);
+  });
+
+  it('validates training inputs', () => {
+    const comp = zl.getSerializedCompressor(Profile.SERIAL);
+    assert.throws(() => zl.train(new Uint8Array(0), comp), /non-empty data/);
+    assert.throws(() => zl.train(new Uint8Array(10), new Uint8Array(0)), /non-empty serialized compressor/);
+
+    const oversized = new Proxy(new Uint8Array(1), {
+      get(target, property) {
+        return property === 'length' ? 150 * 1024 * 1024 : Reflect.get(target, property);
+      },
+    });
+    assert.throws(() => zl.train(oversized, comp), /smaller than 150 MiB/);
+
+    // Train options are coerced to non-negative integers for the u64 ABI, so
+    // non-finite or non-numeric values throw a clear error naming the field.
+    for (const bad of [NaN, Infinity, '4', true]) {
+      assert.throws(() => zl.train(new Uint8Array(10), comp, {threads: bad}), /threads/);
+      assert.throws(() => zl.train(new Uint8Array(10), comp, {maxTimeSecs: bad}), /maxTimeSecs/);
+      assert.throws(
+        () =>
+          zl.train(new Uint8Array(10), comp, {
+            paretoFrontier: true,
+            maxNumCandidates: bad,
+          }),
+        /maxNumCandidates/,
+      );
+    }
+
+    assert.throws(
+      () =>
+        zl.train(new Uint8Array(10), comp, {
+          paretoFrontier: true,
+          maxNumCandidates: 26,
+        }),
+      /maxNumCandidates must be at most 25/,
+    );
+  });
+
+  it('trains a compressor that can roundtrip data', () => {
+    const src = new Uint8Array(1024);
+    for (let i = 0; i < src.length; i++) src[i] = 97 + (i % 10);
+    const base = zl.getSerializedCompressor(Profile.SERIAL);
+    // Without paretoFrontier the trainer returns exactly one compressor.
+    const [trained] = zl.train(src, base, {
+      maxTimeSecs: TEST_TRAIN_MAX_TIME_SECS,
+    });
+    assert.ok(trained.length > 0);
+
+    const frame = zl.compress(src, trained);
+    assert.deepEqual(zl.decompress(frame), src);
+  });
+
+  it('reports native training errors', () => {
+    assert.throws(
+      () => zl.train(new Uint8Array(10), new Uint8Array([1, 2, 3])),
+      (error) => Number.isInteger(error.code),
+    );
+  });
+
+  it('paretoFrontier returns a frontier of usable compressors', () => {
+    const src = new Uint8Array(1024);
+    for (let i = 0; i < src.length; i++) src[i] = 97 + (i % 10);
+    const base = zl.getSerializedCompressor(Profile.SERIAL);
+
+    const frontier = zl.train(src, base, {
+      maxTimeSecs: TEST_TRAIN_MAX_TIME_SECS,
+      paretoFrontier: true,
+      maxNumCandidates: 25,
+    });
+    assert.ok(Array.isArray(frontier));
+    // The frontier's size depends on the data, so the only guarantees are that
+    // training produced something and stayed within the candidate limit.
+    assert.ok(frontier.length >= 1);
+    assert.ok(frontier.length <= 25);
+
+    // Every compressor on the frontier is usable, not just the first. Sizes are
+    // not asserted: the speed-optimal end can emit more bytes than it was given.
+    for (const compressor of frontier) {
+      assert.ok(compressor instanceof Uint8Array);
+      assert.ok(compressor.length > 0);
+      assert.deepEqual(zl.decompress(zl.compress(src, compressor)), src);
+    }
   });
 
   it('benchmark compresses and decompresses data and returns expected metrics', () => {
@@ -120,16 +202,11 @@ describe('wasm_api', () => {
     assert.ok(r.compressMBps > 0);
     assert.ok(r.decompressMBps > 0);
     assert.ok(Number.isFinite(r.compressMBps) || r.compressMBps === Infinity);
-    assert.ok(
-      Number.isFinite(r.decompressMBps) || r.decompressMBps === Infinity,
-    );
+    assert.ok(Number.isFinite(r.decompressMBps) || r.decompressMBps === Infinity);
     assert.ok(Number.isInteger(zl.maxBenchmarkIterations));
     assert.ok(zl.maxBenchmarkIterations >= 1);
     assert.equal(zl.benchmark(src, comp, 0).iterations, 1);
-    assert.equal(
-      zl.benchmark(src, comp, zl.maxBenchmarkIterations + 1).iterations,
-      zl.maxBenchmarkIterations,
-    );
+    assert.equal(zl.benchmark(src, comp, zl.maxBenchmarkIterations + 1).iterations, zl.maxBenchmarkIterations);
     assert.equal(zl.benchmark(src, comp, 1.9).iterations, 1);
   });
 });

@@ -19,12 +19,126 @@ const PTR_BYTES = 8;
 const DOUBLE_BYTES = 8;
 
 const DEFAULT_BENCHMARK_ITERATIONS = 10;
+const MAX_TRAIN_SAMPLE_BYTES = 150 * 1024 * 1024;
+const MAX_TRAIN_CANDIDATES = 25;
+
+// sizeof(openzl_wasm_TrainOptions). The build sets -sMEMORY64=1, so size_t is
+// 8 bytes while int stays 4, which leaves padding after paretoFrontier.
+const TRAIN_OPTIONS_BYTES = 40;
+
+// Coerces a train option to a non-negative integer for the u64 ABI
+function toU64(value, name, max) {
+  if (value === undefined || value === null) {
+    return 0n;
+  }
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new Error(`${name} must be a finite number, got ${String(value)}`);
+  }
+  const normalized = Math.max(0, Math.floor(value));
+  if (max !== undefined && normalized > max) {
+    throw new Error(`${name} must be at most ${max}, got ${String(value)}`);
+  }
+  return BigInt(normalized);
+}
+
+// Populates an already-allocated openzl_wasm_TrainOptions. Zeroing first
+// leaves padding and unset fields at 0, which C reads as "use the default".
+function writeTrainOptions(mod, ptr, options) {
+  const maxNumCandidates = options.paretoFrontier
+    ? toU64(options.maxNumCandidates, 'maxNumCandidates', MAX_TRAIN_CANDIDATES)
+    : 0n;
+  mod.HEAPU8.fill(0, ptr, ptr + TRAIN_OPTIONS_BYTES);
+  const u64 = (offset) => Math.floor((ptr + offset) / 8);
+  mod.HEAPU64[u64(0)] = toU64(options.threads, 'threads'); // threads
+  mod.HEAPU64[u64(8)] = toU64(options.maxTimeSecs, 'maxTimeSecs'); // maxTimeSecs
+  mod.HEAPU8[ptr + 16] = options.paretoFrontier ? 1 : 0; // paretoFrontier
+  mod.HEAPU64[u64(24)] = maxNumCandidates; // maxNumCandidates if pareto frontier is on
+  mod.HEAPU8[ptr + 32] = options.noAceSuccessors ? 1 : 0; // noAceSuccessors
+  mod.HEAPU8[ptr + 36] = options.noClustering ? 1 : 0; // noClustering
+  return maxNumCandidates;
+}
+
+// Runs one training call and returns every compressor it produced, ordered
+// best ratio first.
+function runTraining(mod, mem, minCandidates, data, compressor, options) {
+  if (!(data instanceof Uint8Array)) {
+    throw new Error('train expects Uint8Array');
+  }
+  if (!(compressor instanceof Uint8Array)) {
+    throw new Error('train expects a serialized compressor Uint8Array');
+  }
+  if (data.length === 0) {
+    throw new Error('train expects non-empty data');
+  }
+  if (data.length >= MAX_TRAIN_SAMPLE_BYTES) {
+    throw new Error('train sample must be smaller than 150 MiB');
+  }
+  if (compressor.length === 0) {
+    throw new Error('train expects a non-empty serialized compressor');
+  }
+  // The native side writes at most this many entries and drops the rest, so
+  // the arrays and the capacity it is told about must agree. A larger request
+  // gets a larger array; a smaller one still needs the floor because native
+  // training raises smaller pruning limits to that value.
+  // Validated up front so the out-arrays and the count handed to native agree
+  // on an integer, and invalid input throws before the out-arrays are allocated.
+  let compPtr = 0;
+  let srcPtr = 0;
+  let optsPtr = 0;
+  let outBufs = 0;
+  let outSizes = 0;
+  let outCount = 0;
+  const bufPtrs = [];
+  try {
+    optsPtr = mem.malloc(TRAIN_OPTIONS_BYTES);
+    const maxNumCandidates = writeTrainOptions(mod, optsPtr, options);
+    const capacity = Math.max(minCandidates, Number(maxNumCandidates));
+    compPtr = mem.writeBytes(compressor);
+    srcPtr = mem.writeBytes(data);
+    outBufs = mem.malloc(PTR_BYTES * capacity);
+    outSizes = mem.malloc(SIZE_T_BYTES * capacity);
+    outCount = mem.malloc(SIZE_T_BYTES);
+
+    const code = mod._openzl_wasm_train(
+      mem.toWasm64(compPtr),
+      mem.toWasm64(compressor.length),
+      mem.toWasm64(srcPtr),
+      mem.toWasm64(data.length),
+      mem.toWasm64(optsPtr),
+      mem.toWasm64(outBufs),
+      mem.toWasm64(outSizes),
+      mem.toWasm64(capacity),
+      mem.toWasm64(outCount),
+    );
+    if (code !== 0) {
+      throwWasmError(mem, code, 'train failed');
+    }
+
+    // Reading past the arrays would hand free() garbage pointers, so trust the
+    // allocation rather than the reported count if they ever disagree.
+    const count = Math.min(mem.readSizeT(outCount), capacity);
+    // Take ownership of every buffer before any read can throw, so the finally
+    // block releases all of them.
+    for (let i = 0; i < count; i++) {
+      bufPtrs.push(mem.readPointer(outBufs + i * PTR_BYTES));
+    }
+    return bufPtrs.map((ptr, i) => mem.readBytes(ptr, mem.readSizeT(outSizes + i * SIZE_T_BYTES)));
+  } finally {
+    for (const ptr of bufPtrs) {
+      mem.free(ptr);
+    }
+    mem.free(compPtr);
+    mem.free(srcPtr);
+    mem.free(optsPtr);
+    mem.free(outBufs);
+    mem.free(outSizes);
+    mem.free(outCount);
+  }
+}
 
 function clampIterations(n, maxIterations) {
   if (typeof n !== 'number' || !Number.isFinite(n)) {
-    throw new Error(
-      `benchmark iterations must be a finite number, got ${String(n)} — expected 1..${maxIterations}`,
-    );
+    throw new Error(`benchmark iterations must be a finite number, got ${String(n)} — expected 1..${maxIterations}`);
   }
   return Math.min(Math.max(1, Math.floor(n)), maxIterations);
 }
@@ -35,9 +149,7 @@ const BYTES_PER_MB = 1000 * 1000;
 // Convert total bytes and elapsed milliseconds to decimal MB/s. A zero
 // duration produces Infinity.
 function mbPerSec(bytes, iterations, ms) {
-  return ms > 0
-    ? (bytes * iterations) / (ms / MS_PER_S) / BYTES_PER_MB
-    : Infinity;
+  return ms > 0 ? (bytes * iterations) / (ms / MS_PER_S) / BYTES_PER_MB : Infinity;
 }
 
 // ABI ownership: JS allocates and frees input buffers and out-parameter
@@ -81,7 +193,6 @@ function createMemory(mod) {
     },
 
     // Reads a pointer-width out-param as a Number. WASM build is wasm64-only
-    // (OpenZL static-asserts sizeof(size_t)==8), so HEAPU64 must exist.
     readPointer(ptr) {
       if (!mod.HEAPU64) {
         throw new Error(
@@ -98,9 +209,7 @@ function createMemory(mod) {
 
     readDouble(ptr) {
       if (!mod.HEAPF64) {
-        throw new Error(
-          'HEAPF64 is missing — expected HEAPF64 in EXPORTED_RUNTIME_METHODS.',
-        );
+        throw new Error('HEAPF64 is missing — expected HEAPF64 in EXPORTED_RUNTIME_METHODS.');
       }
       return mod.HEAPF64[Math.floor(ptr / 8)];
     },
@@ -133,10 +242,7 @@ function loadProfiles(mod) {
 
 function profileTablesMatch(left, right) {
   const names = Object.keys(left);
-  return (
-    names.length === Object.keys(right).length &&
-    names.every((name) => left[name] === right[name])
-  );
+  return names.length === Object.keys(right).length && names.every((name) => left[name] === right[name]);
 }
 
 function verifyProfiles(profiles) {
@@ -153,7 +259,7 @@ function verifyProfiles(profiles) {
 export async function createOpenZL(options = {}) {
   let openzlModule;
   try {
-    ({ default: openzlModule } = await import('./openzl.js'));
+    ({default: openzlModule} = await import('./openzl.js'));
   } catch (e) {
     const msg = e?.message ?? String(e);
     const isNotFound =
@@ -165,10 +271,10 @@ export async function createOpenZL(options = {}) {
       throw new Error(
         'openzl.js not found next to wasm_api.js — build with: emcmake cmake -DOPENZL_BUILD_WASM=ON -B build-wasm && cmake --build build-wasm --target openzl_wasm && cp build-wasm/tools/wasm/openzl.{js,wasm} tools/wasm/js/ (and tools/visualization_app/public/ for the viz app). Original: ' +
           msg,
-        { cause: e },
+        {cause: e},
       );
     }
-    throw new Error(`Failed to load openzl.js: ${msg}`, { cause: e });
+    throw new Error(`Failed to load openzl.js: ${msg}`, {cause: e});
   }
   const {
     wasmUrl = new URL('./openzl.wasm', import.meta.url).href,
@@ -176,15 +282,19 @@ export async function createOpenZL(options = {}) {
     ...moduleOptions
   } = options;
   const locateFile =
-    customLocateFile ??
-    ((path, prefix = '') =>
-      path.endsWith('.wasm') ? wasmUrl : `${prefix}${path}`);
-  const mod = await openzlModule({ ...moduleOptions, locateFile });
+    customLocateFile ?? ((path, prefix = '') => (path.endsWith('.wasm') ? wasmUrl : `${prefix}${path}`));
+  const mod = await openzlModule({...moduleOptions, locateFile});
   const maxBenchmarkIterations = mod._openzl_wasm_maxBenchmarkIterations();
   if (!Number.isInteger(maxBenchmarkIterations) || maxBenchmarkIterations < 1) {
     throw new Error(
       `OpenZL WASM module exposed an invalid maximum benchmark iteration count: ${String(maxBenchmarkIterations)}`,
     );
+  }
+  // Floor for the training out-parameter arrays. Read from the module rather
+  // than restated here, so it tracks OPENZL_WASM_TRAIN_PARETO_CANDIDATES.
+  const trainParetoCandidates = mod._openzl_wasm_trainParetoCandidates();
+  if (!Number.isInteger(trainParetoCandidates) || trainParetoCandidates < 1) {
+    throw new Error(`OpenZL WASM module exposed an invalid Pareto candidate count: ${String(trainParetoCandidates)}`);
   }
   const profiles = loadProfiles(mod);
   verifyProfiles(profiles);
@@ -196,14 +306,16 @@ export async function createOpenZL(options = {}) {
       return maxBenchmarkIterations;
     },
 
+    get trainParetoCandidates() {
+      return trainParetoCandidates;
+    },
+
     // Returns the serialized compressor for a built-in profile,
     // cached per-profile (copy-on-read) so repeated calls reuse it.
     // Exposed since we want users to be able to download compressors.
     getSerializedCompressor(profile) {
       if (!Object.values(profiles).includes(profile)) {
-        throw new Error(
-          `unknown profile ${profile}; use one of the Profile constants`,
-        );
+        throw new Error(`unknown profile ${profile}; use one of the Profile constants`);
       }
       const cached = compressorCache.get(profile);
       if (cached) {
@@ -216,17 +328,9 @@ export async function createOpenZL(options = {}) {
         // C writes its result through the buffer address and its length.
         outBuf = mem.malloc(PTR_BYTES);
         outSize = mem.malloc(SIZE_T_BYTES);
-        const code = mod._openzl_wasm_getSerializedCompressor(
-          profile,
-          mem.toWasm64(outBuf),
-          mem.toWasm64(outSize),
-        );
+        const code = mod._openzl_wasm_getSerializedCompressor(profile, mem.toWasm64(outBuf), mem.toWasm64(outSize));
         if (code !== 0) {
-          throwWasmError(
-            mem,
-            code,
-            `failed to build compressor for profile ${profile}`,
-          );
+          throwWasmError(mem, code, `failed to build compressor for profile ${profile}`);
         }
         // On success outBuf is non-NULL even for a zero-length result.
         bufPtr = mem.readPointer(outBuf);
@@ -238,6 +342,13 @@ export async function createOpenZL(options = {}) {
         mem.free(outBuf);
         mem.free(outSize);
       }
+    },
+
+    // Trains compressors, ordered best ratio first. One by default. If
+    // options.paretoFrontier is set, will return a frontier that trades compression ratio
+    // against speed. Frontier entries are not all guaranteed to compress.
+    train(data, compressor, options = {}) {
+      return runTraining(mod, mem, trainParetoCandidates, data, compressor, options);
     },
 
     compress(data, compressor) {
