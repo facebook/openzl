@@ -2,7 +2,7 @@
 
 This project uses [Vite](https://vitejs.dev/) and [TypeScript](http://www.typescriptlang.org/) [React](https://react.dev/).
 
-The app is part of the Yarn workspace in `dev/tools`. Shared non-visual code can be added to `@openzl/web-common` when a concrete reuse case emerges; UI components remain local to each tool. Run `yarn install`, `yarn build`, and `yarn test:run` from `dev/tools`.
+The app is part of the Yarn workspace in `dev/tools/web`. Shared non-visual code can be added to `@openzl/web-common` when a concrete reuse case emerges; UI components remain local to each tool. Run `yarn install`, `yarn build`, and `yarn test:run` from `dev/tools/web`.
 
 ## Package Versioning
 

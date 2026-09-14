@@ -28,7 +28,7 @@ class FakeConfig:
 def _deep_docs_dir(tmp_path: Path) -> Path:
     """
     Returns a docs_dir nested 3 levels inside tmp_path, so a production
-    src_relative like "../../../tools/visualization_app" resolves *inside*
+    src_relative like "../../../tools/web/visualization_app" resolves *inside*
     tmp_path. A shallow tmp_path/docs would resolve to /tmp/pytest-of-USER/tools/...,
     which is shared across tests and races when they run in parallel.
     """
@@ -65,7 +65,7 @@ def test_web_tools_registry_has_expected_tools():
 def test_workspace_inputs_list_every_shared_root_file():
     # Spelled out rather than derived, so dropping an entry from the constant
     # fails here instead of silently un-tracking a shared build input. Keep in
-    # sync with the `web_workspace_srcs` filegroup in tools/BUCK.
+    # sync with the `web_workspace_srcs` filegroup in tools/web/BUCK.
     assert set(_WORKSPACE_INPUTS) == {
         "../package.json",
         "../tsconfig.base.json",
