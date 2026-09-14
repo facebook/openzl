@@ -289,8 +289,38 @@ ZL_INLINE bool ZL_addressIsPoisoned(const void* ptr)
 #    define ZL_HAS_BMI2 0
 #endif
 
+#if defined(__aarch64__) && defined(__ARM_NEON)
+#    define ZL_HAS_NEON 1
+#else
+#    define ZL_HAS_NEON 0
+#endif
+
+#if ZL_HAS_NEON && defined(__ARM_FEATURE_DOTPROD)
+#    define ZL_HAS_NEON_DOTPROD 1
+#else
+#    define ZL_HAS_NEON_DOTPROD 0
+#endif
+
+#if ZL_HAS_NEON_DOTPROD && defined(__ARM_FEATURE_MATMUL_INT8)
+#    define ZL_HAS_NEON_I8MM 1
+#else
+#    define ZL_HAS_NEON_I8MM 0
+#endif
+
 #if defined(__aarch64__) && defined(__ARM_FEATURE_SVE) \
-        && defined(__ARM_FEATURE_SVE2_BITPERM) && ZL_HAS_INCLUDE(<arm_sve.h>)
+        && ZL_HAS_INCLUDE(<arm_sve.h>)
+#    define ZL_HAS_SVE 1
+#else
+#    define ZL_HAS_SVE 0
+#endif
+
+#if ZL_HAS_SVE && defined(__ARM_FEATURE_SVE2)
+#    define ZL_HAS_SVE2 1
+#else
+#    define ZL_HAS_SVE2 0
+#endif
+
+#if ZL_HAS_SVE2 && defined(__ARM_FEATURE_SVE2_BITPERM)
 #    define ZL_HAS_SVE2_BITPERM 1
 #else
 #    define ZL_HAS_SVE2_BITPERM 0
