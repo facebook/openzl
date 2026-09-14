@@ -177,7 +177,7 @@ class ExceptionBuilder {
         return std::move(*this);
     }
 
-    Exception build() && noexcept;
+    Exception build() &&;
 
    private:
     poly::string_view msg_;

@@ -53,6 +53,17 @@ static std::vector<std::string> generateString(uint32_t seed)
     return data;
 }
 
+static ZL_GraphID buildBruteForceGraph(
+        ZL_Compressor* cgraph,
+        const ZL_GraphID* successors,
+        size_t numSuccessors)
+{
+    const auto res = ZL_Compressor_buildBruteForceSelectorGraph(
+            cgraph, successors, numSuccessors);
+    EXPECT_FALSE(ZL_RES_isError(res));
+    return ZL_RES_isError(res) ? ZL_GRAPH_ILLEGAL : ZL_RES_value(res);
+}
+
 static ZL_Report routeInputsToCustomGraphs(
         ZL_Graph* graph,
         ZL_Edge* inputs[],
@@ -216,7 +227,7 @@ TEST_F(BruteForceSelectorTest, testNumeric)
                            ZL_GRAPH_FIELD_LZ,
                            ZL_GRAPH_BITPACK,
                            ZL_GRAPH_RANGE_PACK_ZSTD };
-    const auto gid     = ZL_Compressor_registerBruteForceSelectorGraph(
+    const auto gid     = buildBruteForceGraph(
             cgraph_, succs, sizeof(succs) / sizeof(succs[0]));
 
     roundTripWithGid(data, gid, CacheHitCheck::Required);
@@ -229,8 +240,7 @@ TEST_F(BruteForceSelectorTest, testSelectedGraphReusesTrialResult)
     auto* data   = ZL_TypedRef_createNumeric(
             dataVec.data(), sizeof(dataVec[0]), dataVec.size());
     const ZL_GraphID successor = ZL_GRAPH_COMPRESS_GENERIC;
-    const auto gid             = ZL_Compressor_registerBruteForceSelectorGraph(
-            cgraph_, &successor, 1);
+    const auto gid             = buildBruteForceGraph(cgraph_, &successor, 1);
 
     roundTripWithGid(data, gid, CacheHitCheck::Required);
     ZL_TypedRef_free(data);
@@ -247,8 +257,7 @@ TEST_F(BruteForceSelectorTest, testCompressionWithoutTryGraphClearsCacheStats)
     ASSERT_NE(data, nullptr);
 
     const ZL_GraphID successor = ZL_GRAPH_COMPRESS_GENERIC;
-    const ZL_GraphID selector  = ZL_Compressor_registerBruteForceSelectorGraph(
-            cgraph_, &successor, 1);
+    const ZL_GraphID selector  = buildBruteForceGraph(cgraph_, &successor, 1);
     ASSERT_TRUE(ZL_GraphID_isValid(selector));
     ZL_REQUIRE_SUCCESS(ZL_Compressor_selectStartingGraphID(cgraph_, selector));
     ZL_REQUIRE_SUCCESS(ZL_CCtx_refCompressor(cctx_, cgraph_));
@@ -285,8 +294,7 @@ TEST_F(BruteForceSelectorTest, testAutomaticCacheBudgetControlsCaching)
             &ZL_TypedRef_free);
     ASSERT_NE(data, nullptr);
     const ZL_GraphID successor = ZL_GRAPH_COMPRESS_GENERIC;
-    const ZL_GraphID selector  = ZL_Compressor_registerBruteForceSelectorGraph(
-            cgraph_, &successor, 1);
+    const ZL_GraphID selector  = buildBruteForceGraph(cgraph_, &successor, 1);
     ASSERT_TRUE(ZL_GraphID_isValid(selector));
     ZL_REQUIRE_SUCCESS(ZL_Compressor_selectStartingGraphID(cgraph_, selector));
     ZL_REQUIRE_SUCCESS(ZL_CCtx_refCompressor(cctx_, cgraph_));
@@ -389,8 +397,7 @@ TEST_F(BruteForceSelectorTest, testAutomaticCacheDisablePreservesAttachedCache)
             &ZL_TypedRef_free);
     ASSERT_NE(data, nullptr);
     const ZL_GraphID successor = ZL_GRAPH_COMPRESS_GENERIC;
-    const ZL_GraphID selector  = ZL_Compressor_registerBruteForceSelectorGraph(
-            cgraph_, &successor, 1);
+    const ZL_GraphID selector  = buildBruteForceGraph(cgraph_, &successor, 1);
     ASSERT_TRUE(ZL_GraphID_isValid(selector));
     ZL_REQUIRE_SUCCESS(ZL_Compressor_selectStartingGraphID(cgraph_, selector));
     ZL_REQUIRE_SUCCESS(ZL_CCtx_refCompressor(cctx_, cgraph_));
@@ -421,8 +428,8 @@ TEST_F(BruteForceSelectorTest, testCacheIsInactiveAfterSelectedGraphSubtree)
     auto* data   = ZL_TypedRef_createNumeric(
             dataVec.data(), sizeof(dataVec[0]), dataVec.size());
     const ZL_GraphID selectedGraph = ZL_GRAPH_HUFFMAN;
-    const ZL_GraphID selector = ZL_Compressor_registerBruteForceSelectorGraph(
-            cgraph_, &selectedGraph, 1);
+    const ZL_GraphID selector =
+            buildBruteForceGraph(cgraph_, &selectedGraph, 1);
 
     const size_t inputSize = ZL_Input_contentSize(data);
     std::string selectorOutput(ZL_compressBound(inputSize), '\0');
@@ -476,8 +483,8 @@ TEST_F(BruteForceSelectorTest, testCacheAccumulatesAcrossTryGraphSubtrees)
     ASSERT_NE(data, nullptr);
 
     const ZL_GraphID selectedGraph = ZL_GRAPH_HUFFMAN;
-    const ZL_GraphID selector = ZL_Compressor_registerBruteForceSelectorGraph(
-            cgraph_, &selectedGraph, 1);
+    const ZL_GraphID selector =
+            buildBruteForceGraph(cgraph_, &selectedGraph, 1);
     ASSERT_TRUE(ZL_GraphID_isValid(selector));
 
     const size_t inputSize = ZL_Input_contentSize(data.get());
@@ -531,8 +538,7 @@ TEST_F(BruteForceSelectorTest, testPrivateCacheIsResetBetweenChunks)
     ASSERT_NE(chunkInput, nullptr);
 
     const ZL_GraphID successor = ZL_GRAPH_COMPRESS_GENERIC;
-    const ZL_GraphID selector  = ZL_Compressor_registerBruteForceSelectorGraph(
-            cgraph_, &successor, 1);
+    const ZL_GraphID selector  = buildBruteForceGraph(cgraph_, &successor, 1);
     ASSERT_TRUE(ZL_GraphID_isValid(selector));
     ZL_REQUIRE_SUCCESS(ZL_Compressor_selectStartingGraphID(cgraph_, selector));
     ZL_REQUIRE_SUCCESS(ZL_CCtx_refCompressor(cctx_, cgraph_));
@@ -656,7 +662,7 @@ TEST_F(BruteForceSelectorTest, testString)
         customStringGraph,
         (ZL_GraphID){ ZL_PrivateStandardGraphID_string_compress }
     };
-    const auto gid = ZL_Compressor_registerBruteForceSelectorGraph(
+    const auto gid = buildBruteForceGraph(
             cgraph_, succs, sizeof(succs) / sizeof(succs[0]));
 
     roundTripWithGid(data, gid, CacheHitCheck::Skipped);

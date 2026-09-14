@@ -24,6 +24,7 @@
 #include "openzl/compress/segmenters/segmenter_serial.h"  // SEGM_serial_desc
 #include "openzl/compress/selector.h" // SelectorCtx, ZL_SelectorFn, SelCtx_* functions
 #include "openzl/compress/selectors/ml/ml_selector_graph.h" // ZL_MLSel_dynGraph, ZL_MLSel_materialize
+#include "openzl/compress/selectors/selector_brute_force.h" // SI_selector_brute_force
 #include "openzl/compress/selectors/selector_compress.h" // SI_selector_compress, SI_selector_compress_* functions
 #include "openzl/compress/selectors/selector_constant.h" // SI_selector_constant
 #include "openzl/compress/selectors/selector_genericLZ.h" // SI_selector_genericLZ
@@ -194,6 +195,7 @@ const InternalGraphDesc GR_standardGraphs[ZL_PrivateStandardGraphID_end] = {
     REGISTER_STATIC_GRAPH(ZL_StandardGraphID_lz4, "!zl.lz4", ZL_Type_serial, ZL_PrivateStandardNodeID_lz4, _1_SUCCESSOR(ZL_PrivateStandardGraphID_serial_store), 200),
     REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_partition_bitpack, "!zl.partition_bitpack", ZL_Type_numeric, EI_partitionBitpackDynGraph, 200),
     REGISTER_DYNAMIC_GRAPH_WITH_MATERIALIZER(ZL_StandardGraphID_ml_selector,"!zl.ml_selector", ZL_Type_numeric, ZL_MLSel_dynGraph, ZL_MLSel_materialize, ZL_NOOP_DEMATERIALIZE, 203),
+    REGISTER_SELECTOR(ZL_StandardGraphID_brute_force, "!zl.brute_force", SI_selector_brute_force, ZL_Type_any, 205),
     REGISTER_MIGRAPH(ZL_PrivateStandardGraphID_merge_sorted, MIGRAPH_MERGE_SORTED, 200),
     REGISTER_MIGRAPH(ZL_PrivateStandardGraphID_transpose_split, MIGRAPH_TRANSPOSE_SPLIT, 200),
 

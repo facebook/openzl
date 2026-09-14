@@ -332,6 +332,57 @@ class TestOpenzlSys(TestCase):
         inputs = [ext.Input(ext.Type.Numeric, data)]
         self._round_trip(compressor, inputs)
 
+    def test_brute_force(self) -> None:
+        compressor = ext.Compressor()
+        compressor.set_parameter(ext.CParam.FormatVersion, ext.MAX_FORMAT_VERSION)
+        brute_force = ext.graphs.BruteForce(
+            successors=[
+                ext.graphs.Zstd()(compressor),
+                ext.graphs.Entropy()(compressor),
+                ext.graphs.Store()(compressor),
+            ]
+        )
+        compressor.select_starting_graph(brute_force(compressor))
+
+        data = np.array([7] * 10000, dtype=np.uint32)
+        inputs = [ext.Input(ext.Type.Numeric, data)]
+        compressed = self._round_trip(compressor, inputs)
+
+        # BruteForce parameterizes a standard graph, so it is serializable
+        serialized = compressor.serialize()
+        deserialized = ext.Compressor()
+        deps = deserialized.get_unmet_dependencies(serialized)
+        assert len(deps.graph_names) == 0
+        assert len(deps.node_names) == 0
+        deserialized.deserialize(serialized)
+        self.assertEqual(compressed, self._round_trip(deserialized, inputs))
+
+    def test_brute_force_in_function_graph(self) -> None:
+        compressor = ext.Compressor()
+        compressor.set_parameter(ext.CParam.FormatVersion, ext.MAX_FORMAT_VERSION)
+
+        class BruteForceFunctionGraph(ext.FunctionGraph):
+            def function_graph_description(self) -> ext.FunctionGraphDescription:
+                return ext.FunctionGraphDescription(
+                    name="brute_force_function_graph",
+                    input_type_masks=[ext.TypeMask.Numeric],
+                )
+
+            def graph(self, state: ext.GraphState) -> None:
+                ext.graphs.BruteForce(
+                    successors=[
+                        ext.graphs.Entropy().base_graph,
+                        ext.graphs.Store().base_graph,
+                    ]
+                ).set_destination(state.edges[0])
+
+        graph = compressor.register_function_graph(BruteForceFunctionGraph())
+        compressor.select_starting_graph(graph)
+
+        data = np.array([7] * 10000, dtype=np.uint32)
+        inputs = [ext.Input(ext.Type.Numeric, data)]
+        self._round_trip(compressor, inputs)
+
     def test_quantize_offsets(self) -> None:
         compressor = ext.Compressor()
         compressor.set_parameter(ext.CParam.FormatVersion, 15)
