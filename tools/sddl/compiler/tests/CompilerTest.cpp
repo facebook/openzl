@@ -81,4 +81,24 @@ TEST_F(CompilerTest, UnaryNegation)
     expect_success(prog);
 }
 
+TEST_F(CompilerTest, NonAsciiByteInSourceDoesNotCrash)
+{
+    // A non-ASCII byte anywhere in the source (comments included) is embedded
+    // verbatim in the compiled output for debug info. Rendering that debug info
+    // as JSON used to throw and abort the compiler because the JSON encoder
+    // rejects bytes >= 0x80; compilation itself must succeed regardless of the
+    // requested verbosity.
+    const auto prog = std::string{ "# caf\xc3\xa9\n: Float32LE[_rem / 4]" };
+    expect_success(prog);
+}
+
+TEST_F(CompilerTest, NonAsciiByteInSourceAtDefaultVerbosityDoesNotCrash)
+{
+    // Same as above, but with the default verbosity (0), which is what the
+    // `sddl_compiler` CLI and the `zli --profile sddl` path use.
+    const auto prog = std::string{ "# caf\xc3\xa9\n: Float32LE[_rem / 4]" };
+    const Compiler compiler{};
+    EXPECT_NO_THROW(compiler.compile(prog, "[local_input]"));
+}
+
 } // namespace openzl::sddl::tests

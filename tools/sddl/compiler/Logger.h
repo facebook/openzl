@@ -16,6 +16,13 @@ class Logger {
 
     std::ostream& operator()(int level) const;
 
+    /**
+     * Whether a message logged at the given verbosity @p level would be
+     * emitted (i.e. whether `operator()(level)` returns the real output
+     * stream rather than a no-op sink).
+     */
+    bool enabled(int level) const noexcept { return level <= verbosity_; }
+
    private:
     std::ostream& os_;
 
