@@ -49,6 +49,8 @@ typedef enum {
 
     ZL_StandardGraphID_transformer_numeric,
 
+    ZL_StandardGraphID_brute_force,
+
     ZL_StandardGraphID_public_end // last id, used to detect end of public
                                   // range
 } ZL_StandardGraphID;

@@ -134,11 +134,15 @@ class SelectorRun {
             throw std::bad_alloc{};
         }
 
-        const ZL_GraphID selector =
-                ZL_Compressor_registerBruteForceSelectorGraph(
-                        compressor_.get(),
-                        scenario.successors,
-                        scenario.nbSuccessors);
+        const auto selectorResult = ZL_Compressor_buildBruteForceSelectorGraph(
+                compressor_.get(), scenario.successors, scenario.nbSuccessors);
+        if (ZL_RES_isError(selectorResult)) {
+            throw std::runtime_error{
+                std::string{ "Failed building brute-force graph, " }
+                + ZL_E_str(ZL_RES_error(selectorResult))
+            };
+        }
+        const ZL_GraphID selector = ZL_RES_value(selectorResult);
         utils::ZS2_unwrap(
                 ZL_Compressor_selectStartingGraphID(
                         compressor_.get(), selector),

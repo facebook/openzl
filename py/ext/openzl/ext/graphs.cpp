@@ -169,7 +169,8 @@ void registerBitpackGraph(nb::module_& g)
 
 void registerBruteForceGraph(nb::module_& g)
 {
-    // TODO(terrelln): Hook it up once C++ is ready
+    registerGraph<graphs::BruteForce>(g, "BruteForce")
+            .def(nb::init<std::vector<GraphID>>(), nb::arg("successors"));
 }
 
 void registerCompressGraph(nb::module_& g)
