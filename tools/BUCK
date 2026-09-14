@@ -18,6 +18,10 @@ buck_filegroup(
         "eslint.config.js",
         "package.json",
         "tsconfig.base.json",
+        "tsconfig.react-app.json",
+        "tsconfig.vite-node.json",
+        "tsconfig.vitest.json",
+        "vite.base.ts",
         "yarn.lock",
     ],
 )
