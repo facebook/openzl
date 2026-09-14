@@ -13,6 +13,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@openzl/web-common": "0.0.0",
     "@chakra-ui/react": "3.27.0",
     "@dagrejs/dagre": "1.1.4",
     "@emotion/react": "11.14.0",
