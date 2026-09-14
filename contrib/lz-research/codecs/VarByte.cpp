@@ -209,33 +209,86 @@ class VarByteCoder {
         return baseLUT_[control] + value;
     }
 
+    void decode4(
+            uint16_t* __restrict out,
+            std::pair<uint32_t, uint32_t> e0,
+            std::pair<uint32_t, uint32_t> e1,
+            const uint8_t* __restrict bytes,
+            size_t& bitsConsumed) const
+    {
+        const size_t bytesOffset = bitsConsumed / 8;
+        const size_t bitsOffset  = bitsConsumed % 8;
+
+        uint64_t data       = ZL_readLE64(bytes + bytesOffset) >> bitsOffset;
+        const uint64_t mask = uint64_t(e0.second) | (uint64_t(e1.second) << 32);
+        const uint64_t base = uint64_t(e0.first) | (uint64_t(e1.first) << 32);
+
+        const int bitsNeeded = __builtin_popcountll(mask);
+        if (ZL_LIKELY(bitsNeeded <= 56) || bitsOffset == 0) {
+            ZL_writeLE64(out, base + utils::bitDeposit(data, mask));
+        } else {
+            data |= uint64_t(bytes[bytesOffset + 8]) << (64 - bitsOffset);
+            ZL_writeLE64(out, base + utils::bitDeposit(data, mask));
+        }
+        bitsConsumed += bitsNeeded;
+    }
+
     void decode8xU16(
             uint16_t* out,
             const uint8_t* control,
             const uint8_t* bytes,
             size_t& bitsConsumed) const
     {
-        for (size_t i = 0; i < 2; ++i) {
-            const size_t bytesOffset = bitsConsumed / 8;
-            const size_t bitsOffset  = bitsConsumed % 8;
+        const auto e0 = combined2xLUTU16_[control[0]];
+        const auto e1 = combined2xLUTU16_[control[1]];
+        const auto e2 = combined2xLUTU16_[control[2]];
+        const auto e3 = combined2xLUTU16_[control[3]];
+        decode4(out, e0, e1, bytes, bitsConsumed);
+        decode4(out + 4, e2, e3, bytes, bitsConsumed);
+    }
 
-            uint64_t data = ZL_readLE64(bytes + bytesOffset) >> bitsOffset;
+    template <typename UInt>
+    void decode8(
+            UInt* __restrict out,
+            size_t outIdx,
+            const uint8_t* __restrict control,
+            const uint8_t* __restrict bytes,
+            size_t& bitsConsumed) const
 
-            const uint8_t c0    = control[2 * i + 0];
-            const uint8_t c1    = control[2 * i + 1];
-            const uint64_t mask = uint64_t(mask2xLUTU16_[c0])
-                    | (uint64_t(mask2xLUTU16_[c1]) << 32);
-            const uint64_t base = uint64_t(base2xLUTU16_[c0])
-                    | (uint64_t(base2xLUTU16_[c1]) << 32);
-
-            const int bitsNeeded = __builtin_popcountll(mask);
-            if (ZL_LIKELY(bitsNeeded <= 56) || bitsOffset == 0) {
-                ZL_writeLE64(out + 4 * i, base + utils::bitDeposit(data, mask));
+    {
+        size_t const controlIdx = outIdx / 2;
+        if constexpr (1 && sizeof(UInt) == 2) {
+            decode8xU16(
+                    &out[outIdx], control + controlIdx, bytes, bitsConsumed);
+        } else {
+#if ZL_ARCH_X86_64
+            auto outVec0 = decode4(
+                    control[controlIdx + 0],
+                    control[controlIdx + 1],
+                    _mm_loadu_si128((__m128i_u const*)&bytes[bitsConsumed / 8]),
+                    bitsConsumed);
+            auto outVec1 = decode4(
+                    control[controlIdx + 2],
+                    control[controlIdx + 3],
+                    _mm_loadu_si128((__m128i_u const*)&bytes[bitsConsumed / 8]),
+                    bitsConsumed);
+            if constexpr (sizeof(UInt) == 4) {
+                _mm_storeu_si128((__m128i_u*)&out[outIdx + 0], outVec0);
+                _mm_storeu_si128((__m128i_u*)&out[outIdx + 4], outVec1);
             } else {
-                data |= uint64_t(bytes[bytesOffset + 8]) << (64 - bitsOffset);
-                ZL_writeLE64(out + 4 * i, base + utils::bitDeposit(data, mask));
+                auto const outVec = _mm_packus_epi32(outVec0, outVec1);
+                _mm_storeu_si128((__m128i_u*)&out[outIdx], outVec);
             }
-            bitsConsumed += bitsNeeded;
+#else
+            for (size_t i = 0; i < 8; ++i) {
+                uint8_t const ctrl =
+                        (control[outIdx / 2] >> (i % 2 == 0 ? 0 : 4)) % 16;
+                out[outIdx + i] =
+                        decode1(ctrl,
+                                safeRead(bytes.subspan(bitsConsumed / 8)),
+                                bitsConsumed);
+            }
+#endif
         }
     }
 
@@ -258,54 +311,21 @@ class VarByteCoder {
         size_t outIdx           = 0;
         size_t constexpr kLimit = 16 + (sizeof(UInt) == 2 ? 8 : 16);
         if (bytes.size() >= kLimit) {
+            // Unrolling this loop to 16x makes it ~1% faster.
+            // Consider doing that when productionizing.
             size_t const bitsLimit = 8 * (bytes.size() - kLimit);
             size_t const outLimit  = out.size() - 8;
             while (bitsConsumed < bitsLimit && outIdx < outLimit) {
-                size_t const controlIdx = outIdx / 2;
                 // fprintf(
                 //     stderr,
                 //     "bitsConsumed = %zu | limit = %zu | outIdx = %zu |
                 //     ctrlIdx = %zu\n", bitsConsumed, bitsLimit, outIdx,
                 //     controlIdx);
-                if constexpr (1 && sizeof(UInt) == 2) {
-                    decode8xU16(
-                            &out[outIdx],
-                            control.data() + controlIdx,
-                            bytes.data(),
-                            bitsConsumed);
-                } else {
-#if ZL_ARCH_X86_64
-                    auto outVec0 = decode4(
-                            control[controlIdx + 0],
-                            control[controlIdx + 1],
-                            _mm_loadu_si128(
-                                    (__m128i_u const*)&bytes[bitsConsumed / 8]),
-                            bitsConsumed);
-                    auto outVec1 = decode4(
-                            control[controlIdx + 2],
-                            control[controlIdx + 3],
-                            _mm_loadu_si128(
-                                    (__m128i_u const*)&bytes[bitsConsumed / 8]),
-                            bitsConsumed);
-                    if constexpr (sizeof(UInt) == 4) {
-                        _mm_storeu_si128((__m128i_u*)&out[outIdx + 0], outVec0);
-                        _mm_storeu_si128((__m128i_u*)&out[outIdx + 4], outVec1);
-                    } else {
-                        auto const outVec = _mm_packus_epi32(outVec0, outVec1);
-                        _mm_storeu_si128((__m128i_u*)&out[outIdx], outVec);
-                    }
-#else
-                    for (size_t i = 0; i < 8; ++i) {
-                        uint8_t const ctrl =
-                                (control[outIdx / 2] >> (i % 2 == 0 ? 0 : 4))
-                                % 16;
-                        out[outIdx + i] = decode1(
-                                ctrl,
-                                safeRead(bytes.subspan(bitsConsumed / 8)),
-                                bitsConsumed);
-                    }
-#endif
-                }
+                decode8(out.data(),
+                        outIdx,
+                        control.data(),
+                        bytes.data(),
+                        bitsConsumed);
                 outIdx += 8;
             }
         }
@@ -628,6 +648,22 @@ class VarByteCoder {
             makeBaseLUT()) };
     static constexpr std::array<uint32_t, 256> mask2xLUTU16_{ expandLUTU16(
             makeMaskLUT()) };
+
+    template <size_t N>
+    static constexpr std::array<std::pair<uint32_t, uint32_t>, N> combineLUT(
+            const std::array<uint32_t, N>& a,
+            const std::array<uint32_t, N>& b)
+    {
+        std::array<std::pair<uint32_t, uint32_t>, N> out;
+        for (size_t i = 0; i < N; ++i) {
+            out[i] = { a[i], b[i] };
+        }
+        return out;
+    }
+
+    static constexpr auto combined2xLUTU16_{
+        combineLUT(base2xLUTU16_, mask2xLUTU16_)
+    };
 };
 
 using VarByteCoder16 =
