@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../node_modules/.tmp/web-common.tsbuildinfo",
+    "jsx": "react-jsx",
+    "erasableSyntaxOnly": false,
+    "types": []
+  },
+  "include": ["src"]
+}

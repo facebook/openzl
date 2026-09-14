@@ -1,0 +1,33 @@
+/* Copyright (c) Meta Platforms, Inc. and affiliates. */
+
+.toolbar-button {
+  background: none;
+  border: none;
+  margin: 0 5px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.toolbar-button-text {
+  color: #bdccc8;
+  font-family: 'Gabarito', sans-serif;
+  font-size: 15px;
+}
+
+.toolbar-button-text:hover {
+  color: #ffffff;
+}
+
+.toolbar-button:hover {
+  text-decoration: none;
+}
+
+.toolbar-icons {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.toolbar-icons .toolbar-button {
+  margin: 0 1px;
+}

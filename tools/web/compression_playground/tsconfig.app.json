@@ -1,0 +1,7 @@
+{
+  "extends": "../tsconfig.react-app.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../node_modules/.tmp/compression-playground.tsbuildinfo"
+  },
+  "include": ["src"]
+}

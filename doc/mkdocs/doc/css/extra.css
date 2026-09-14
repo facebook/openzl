@@ -22,3 +22,270 @@
     height: 2.0rem;
     width: 2.0rem;
 }
+
+.md-main:has(.openzl-tools-landing) {
+    background: var(--md-default-bg-color);
+}
+
+.md-main__inner:has(.openzl-tools-landing) {
+    max-width: none;
+}
+
+.md-content__inner:has(> .openzl-tools-landing) {
+    margin: 0;
+    padding: 0;
+}
+
+.md-content__inner:has(> .openzl-tools-landing)::before {
+    display: none;
+}
+
+.openzl-tools-landing,
+.openzl-tools-landing * {
+    box-sizing: border-box;
+}
+
+/* Surfaces and accents that have no Material equivalent. Text colours use the
+ * theme's own variables instead, so they flip with the scheme on their own. */
+.openzl-tools-landing {
+    --openzl-card-bg: #fafafa;
+    --openzl-card-border: #e2e8f0;
+    --openzl-card-shadow: 0 4px 12px rgba(15, 23, 42, 0.02);
+    --openzl-surface-bg: #fff;
+    --openzl-badge-bg: #eff6ff;
+    --openzl-badge-fg: #1e40af;
+    --openzl-track-bg: #f1f5f9;
+    --openzl-track-fill: #1e40af;
+    --openzl-button-bg: var(--md-primary-fg-color);
+    --openzl-button-bg-hover: var(--md-primary-fg-color--dark);
+
+    color: var(--md-default-fg-color);
+    margin: 0;
+    min-height: calc(100vh - 85px);
+    padding: 32px 64px 64px;
+    width: 100%;
+}
+
+[data-md-color-scheme="slate"] .openzl-tools-landing {
+    --openzl-card-bg: var(--md-code-bg-color);
+    --openzl-card-border: var(--md-default-fg-color--lightest);
+    --openzl-card-shadow: none;
+    --openzl-surface-bg: var(--md-default-bg-color);
+    --openzl-badge-bg: rgba(96, 165, 250, 0.16);
+    --openzl-badge-fg: #93c5fd;
+    --openzl-track-bg: var(--md-default-fg-color--lightest);
+    --openzl-track-fill: #60a5fa;
+    /* The brand green is too dark to read against the slate background, so
+     * step one shade lighter and let hover fall back to the base shade. */
+    --openzl-button-bg: var(--md-primary-fg-color--light);
+    --openzl-button-bg-hover: var(--md-primary-fg-color);
+}
+
+.openzl-tools-landing__intro {
+    margin-bottom: 48px;
+}
+
+.openzl-tools-landing__intro h1 {
+    color: var(--md-default-fg-color);
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: normal;
+    line-height: normal;
+    margin: 0 0 6px;
+}
+
+.openzl-tools-landing__intro p {
+    color: var(--md-default-fg-color--light);
+    font-size: 18px;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.openzl-tools-grid {
+    align-items: start;
+    display: grid;
+    gap: 32px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.openzl-tool-card {
+    background: var(--openzl-card-bg);
+    border: 1px solid var(--openzl-card-border);
+    border-radius: 16px;
+    box-shadow: var(--openzl-card-shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 32px;
+}
+
+.openzl-tool-card__copy {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.openzl-tool-card__copy h2 {
+    color: var(--md-default-fg-color);
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: normal;
+    line-height: normal;
+    margin: 0;
+}
+
+.openzl-tool-card__copy p {
+    color: var(--md-default-fg-color--light);
+    font-size: 15px;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.openzl-tool-card__trace-preview {
+    height: 186px;
+}
+
+.openzl-benchmark-preview {
+    background: var(--openzl-surface-bg);
+    border: 1px solid var(--openzl-card-border);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: 191px;
+    padding: 16px;
+}
+
+.openzl-benchmark-preview__label {
+    color: var(--md-default-fg-color--light);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: normal;
+    text-transform: uppercase;
+}
+
+.openzl-benchmark-preview__metric {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.openzl-benchmark-preview__row {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+}
+
+.openzl-benchmark-preview__badge {
+    background: var(--openzl-badge-bg);
+    border-radius: 6px;
+    color: var(--openzl-badge-fg);
+    font-family: var(--md-code-font-family);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: normal;
+    padding: 4px 10px;
+}
+
+.openzl-benchmark-preview__ratio {
+    color: var(--md-default-fg-color);
+    font-family: var(--md-code-font-family);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: normal;
+}
+
+.openzl-benchmark-preview__ratio span {
+    color: var(--md-default-fg-color--light);
+}
+
+.openzl-benchmark-preview__track {
+    background: var(--openzl-track-bg);
+    border-radius: 4px;
+    height: 8px;
+    overflow: hidden;
+}
+
+.openzl-benchmark-preview__track span {
+    background: var(--openzl-track-fill);
+    display: block;
+    height: 100%;
+    width: 41%;
+}
+
+.openzl-tools-landing .openzl-tool-card__button {
+    align-items: center;
+    align-self: flex-start;
+    background: var(--openzl-button-bg);
+    border-radius: 8px;
+    color: var(--md-primary-bg-color);
+    display: inline-flex;
+    font-size: 14px;
+    font-weight: 600;
+    gap: 8px;
+    justify-content: center;
+    line-height: normal;
+    padding: 12px 24px;
+    transition: background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.openzl-tools-landing .openzl-tool-card__button:hover,
+.openzl-tools-landing .openzl-tool-card__button:focus {
+    background: var(--openzl-button-bg-hover);
+    color: var(--md-primary-bg-color);
+}
+
+.openzl-tools-landing .openzl-tool-card__button:focus-visible {
+    box-shadow: 0 0 0 3px var(--md-primary-fg-color--light);
+    outline: none;
+}
+
+.openzl-tools-landing .openzl-tool-card__button svg {
+    fill: none;
+    height: 16px;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.5;
+    width: 16px;
+}
+
+@media screen and (max-width: 59.984375em) {
+    .openzl-tools-landing {
+        padding: 24px 24px 48px;
+    }
+}
+
+@media screen and (max-width: 44.984375em) {
+    .openzl-tools-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .openzl-tool-card__trace-preview {
+        display: none;
+    }
+}
+
+@media screen and (max-width: 29.984375em) {
+    .openzl-tools-landing {
+        padding: 24px 16px 48px;
+    }
+
+    .openzl-tools-landing__intro {
+        margin-bottom: 32px;
+    }
+
+    .openzl-tools-landing__intro h1 {
+        font-size: 32px;
+    }
+
+    .openzl-tool-card {
+        padding: 24px;
+    }
+
+    .openzl-benchmark-preview__row {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+    }
+}
