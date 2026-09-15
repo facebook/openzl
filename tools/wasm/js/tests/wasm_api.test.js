@@ -28,6 +28,10 @@ describe('Profile', () => {
 
 describe('wasm_api', () => {
   let zl;
+  const trainProgressEvents = [];
+  const benchmarkProgressEvents = [];
+  let handleTrainingProgress = (progress, message) => trainProgressEvents.push({progress, message});
+  let handleBenchmarkProgress = (progress, message) => benchmarkProgressEvents.push({progress, message});
 
   before(async () => {
     if (!hasArtifact) {
@@ -35,7 +39,10 @@ describe('wasm_api', () => {
         'openzl.wasm/js not found next to wasm_api.js — build with: emcmake cmake -DOPENZL_BUILD_WASM=ON -B build-wasm && cmake --build build-wasm --target openzl_wasm && cp build-wasm/tools/wasm/openzl.{js,wasm} fbcode/openzl/dev/tools/wasm/js/ (or tools/wasm/js/ in OSS). Skipping would hide missing coverage, so this fails fast instead.',
       );
     }
-    zl = await createOpenZL();
+    zl = await createOpenZL({
+      onTrainingProgress: (progress, message) => handleTrainingProgress(progress, message),
+      onBenchmarkProgress: (progress, message) => handleBenchmarkProgress(progress, message),
+    });
   });
 
   it('accepts repeated initialization with the same profile table', async () => {
@@ -143,6 +150,7 @@ describe('wasm_api', () => {
   });
 
   it('trains a compressor that can roundtrip data', () => {
+    trainProgressEvents.length = 0;
     const src = new Uint8Array(1024);
     for (let i = 0; i < src.length; i++) src[i] = 97 + (i % 10);
     const base = zl.getSerializedCompressor(Profile.SERIAL);
@@ -151,9 +159,46 @@ describe('wasm_api', () => {
       maxTimeSecs: TEST_TRAIN_MAX_TIME_SECS,
     });
     assert.ok(trained.length > 0);
+    assert.ok(trainProgressEvents.length > 0);
+    for (const event of trainProgressEvents) {
+      //verify that we are getting progress updates when training
+      assert.equal(typeof event.message, 'string');
+      assert.ok(event.progress >= 0 && event.progress <= 1);
+    }
+    const aceEvents = trainProgressEvents.filter(({message}) => message.startsWith('Training ACE graph'));
+    assert.ok(aceEvents.length > 2);
+    assert.ok(aceEvents.every(({message}) => message === 'Training ACE graph 1 / 1: ACE progress'));
+    const aceProgress = aceEvents.map(({progress}) => progress);
+    for (let i = 1; i < aceProgress.length; i++) {
+      assert.ok(aceProgress[i] >= aceProgress[i - 1]);
+    }
 
     const frame = zl.compress(src, trained);
     assert.deepEqual(zl.decompress(frame), src);
+  });
+
+  it('continues training if the progress callback throws', () => {
+    const src = new Uint8Array(1024);
+    for (let i = 0; i < src.length; i++) src[i] = 97 + (i % 10);
+    const base = zl.getSerializedCompressor(Profile.SERIAL);
+    const stderrMessages = [];
+    const originalConsoleError = console.error;
+    console.error = (message) => stderrMessages.push(message);
+    handleTrainingProgress = () => {
+      throw new Error('UI callback failed');
+    };
+
+    try {
+      const trained = zl.train(src, base, {
+        maxTimeSecs: TEST_TRAIN_MAX_TIME_SECS,
+      });
+      assert.ok(trained.length > 0);
+    } finally {
+      handleTrainingProgress = (progress, message) => trainProgressEvents.push({progress, message});
+      console.error = originalConsoleError;
+    }
+
+    assert.ok(stderrMessages.some((message) => message.includes('UI callback failed')));
   });
 
   it('reports native training errors', () => {
@@ -192,7 +237,21 @@ describe('wasm_api', () => {
     const src = new Uint8Array(2048);
     for (let i = 0; i < src.length; i++) src[i] = i & 0xff;
     const comp = zl.getSerializedCompressor(Profile.SERIAL);
+    benchmarkProgressEvents.length = 0;
     const r = zl.benchmark(src, comp, 2);
+    assert.deepEqual(
+      benchmarkProgressEvents.map(({progress}) => progress),
+      [0.25, 0.5, 0.75, 1],
+    );
+    assert.deepEqual(
+      benchmarkProgressEvents.map(({message}) => message),
+      [
+        'Benchmarking compression',
+        'Benchmarking compression',
+        'Benchmarking decompression',
+        'Benchmarking decompression',
+      ],
+    );
     assert.equal(r.iterations, 2);
     assert.equal(r.srcSize, src.length);
     assert.ok(r.compressedSize > 0);

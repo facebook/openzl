@@ -279,11 +279,46 @@ export async function createOpenZL(options = {}) {
   const {
     wasmUrl = new URL('./openzl.wasm', import.meta.url).href,
     locateFile: customLocateFile,
+    onTrainingProgress,
+    onBenchmarkProgress,
     ...moduleOptions
   } = options;
+  if (onTrainingProgress !== undefined && typeof onTrainingProgress !== 'function') {
+    throw new Error('onTrainingProgress must be a function');
+  }
+  if (onBenchmarkProgress !== undefined && typeof onBenchmarkProgress !== 'function') {
+    throw new Error('onBenchmarkProgress must be a function');
+  }
   const locateFile =
     customLocateFile ?? ((path, prefix = '') => (path.endsWith('.wasm') ? wasmUrl : `${prefix}${path}`));
-  const mod = await openzlModule({...moduleOptions, locateFile});
+  let trainProgressCallback;
+  // Forward train progress and messages to the user-provided callback.
+  if (onTrainingProgress !== undefined) {
+    trainProgressCallback = (event) => {
+      try {
+        onTrainingProgress(event.progress, event.message);
+      } catch (error) {
+        console.error(`OpenZL onTrainingProgress callback failed: ${error?.message ?? String(error)}`);
+      }
+    };
+  }
+  let benchmarkProgressCallback;
+  // Forward benchmark progress and messages to the user-provided callback.
+  if (onBenchmarkProgress !== undefined) {
+    benchmarkProgressCallback = (event) => {
+      try {
+        onBenchmarkProgress(event.progress, event.message);
+      } catch (error) {
+        console.error(`OpenZL onBenchmarkProgress callback failed: ${error?.message ?? String(error)}`);
+      }
+    };
+  }
+  const mod = await openzlModule({
+    ...moduleOptions,
+    locateFile,
+    __openzlTrainProgressCallback: trainProgressCallback,
+    __openzlBenchmarkProgressCallback: benchmarkProgressCallback,
+  });
   const maxBenchmarkIterations = mod._openzl_wasm_maxBenchmarkIterations();
   if (!Number.isInteger(maxBenchmarkIterations) || maxBenchmarkIterations < 1) {
     throw new Error(
