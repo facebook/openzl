@@ -76,6 +76,10 @@ export interface OpenZL {
 export interface OpenZLOptions {
   wasmUrl?: string | URL;
   locateFile?: (path: string, prefix?: string) => string | URL;
+  /** Receives numeric progress and its message from this module's training calls. */
+  onTrainingProgress?: (progress: number, message: string) => void;
+  /** Receives numeric progress and its message from this module's benchmark calls. */
+  onBenchmarkProgress?: (progress: number, message: string) => void;
   [option: string]: unknown;
 }
 
