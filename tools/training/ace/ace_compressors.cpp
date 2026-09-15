@@ -11,61 +11,16 @@
 namespace openzl {
 namespace training {
 namespace {
-std::string getName(GraphID graph)
-{
-    Compressor compressor;
-    auto name = ZL_Compressor_Graph_getName(compressor.get(), graph);
-    if (name == nullptr) {
-        throw Exception("Unknown graph!");
-    }
-    return name;
-}
-
-std::string getName(NodeID node)
-{
-    Compressor compressor;
-    auto name = ZL_Compressor_Node_getName(compressor.get(), node);
-    if (name == nullptr) {
-        throw Exception("Unknown node!");
-    }
-    return name;
-}
-
 template <typename NodeT>
 ACENode buildNode(const NodeT& node)
 {
-    assert(NodeT::metadata.inputs.size() == 1);
-    std::vector<Type> outputTypes;
-    outputTypes.reserve(
-            NodeT::metadata.singletonOutputs.size()
-            + NodeT::metadata.variableOutputs.size());
-    for (const auto& meta : NodeT::metadata.singletonOutputs) {
-        outputTypes.push_back(meta.type);
-    }
-    for (const auto& meta : NodeT::metadata.variableOutputs) {
-        outputTypes.push_back(meta.type);
-    }
-    Compressor compressor;
-    const unsigned minFormatVersion =
-            ZL_Compressor_Node_getMinVersion(compressor.get(), NodeT::node);
-    return ACENode{
-        .name             = getName(NodeT::node),
-        .params           = node.parameters(),
-        .inputType        = NodeT::metadata.inputs[0].type,
-        .outputTypes      = std::move(outputTypes),
-        .minFormatVersion = minFormatVersion,
-    };
+    return ACENode(node);
 }
 
 template <typename GraphT>
 ACEGraph buildGraph(const GraphT& graph)
 {
-    static_assert(GraphT::metadata.inputs.size() == 1);
-    return ACEGraph{
-        .name          = getName(GraphT::graph),
-        .params        = graph.parameters(),
-        .inputTypeMask = GraphT::metadata.inputs[0].typeMask,
-    };
+    return ACEGraph(graph);
 }
 
 std::vector<ACENode> makeAllNodes()
