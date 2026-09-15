@@ -11,6 +11,28 @@
 
 namespace openzl::tools::logger {
 
+namespace {
+// Function-local storage avoids exposing mutable state at namespace scope.
+ProgressCallback& progressCallback()
+{
+    // Keep each coordinator thread's callback separate. Logger progress calls
+    // must still be serialized because the displayed progress state is shared.
+    static thread_local ProgressCallback callback{};
+    return callback;
+}
+
+} // namespace
+
+void Logger::setProgressCallback(ProgressCallback callback)
+{
+    progressCallback() = callback;
+}
+
+ProgressCallback Logger::getProgressCallback()
+{
+    return progressCallback();
+}
+
 bool Logger::stderrIsTTY()
 {
 #if defined(_WIN32)

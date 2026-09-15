@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <string>
+#include <vector>
 
 #include "tools/logger/Logger.h"
 
@@ -19,11 +20,29 @@ constexpr const char* kClearToEol = "\033[K";
 // must advance it by exactly one.
 constexpr double kHalfCell = 0.5 / progressBarWidth;
 
+struct CapturedProgress {
+    double progress;
+    std::string message;
+};
+
+std::vector<CapturedProgress>*& progressEventSink()
+{
+    static thread_local std::vector<CapturedProgress>* events{};
+    return events;
+}
+
+void captureProgress(const double& progress, const std::string& message)
+{
+    progressEventSink()->push_back({ progress, message });
+}
+
 class LoggerTest : public ::testing::Test {
    protected:
     void SetUp() override
     {
         setIsTTY(false);
+        Logger::setProgressCallback({});
+        progressEventSink() = &events_;
         ::testing::internal::CaptureStderr();
     }
 
@@ -31,6 +50,8 @@ class LoggerTest : public ::testing::Test {
     {
         // Leave nothing captured behind, even if the test failed early.
         (void)::testing::internal::GetCapturedStderr();
+        Logger::setProgressCallback({});
+        progressEventSink() = nullptr;
     }
 
     void setIsTTY(bool isTTY)
@@ -72,6 +93,11 @@ class LoggerTest : public ::testing::Test {
         EXPECT_EQ(captured(), updateOutput("hello 42"));
     }
 
+    ProgressCallback progressCallback()
+    {
+        return { captureProgress };
+    }
+
     void checkRepeatedUpdateIsNotRewritten()
     {
         Logger::update(INFO, "same message");
@@ -110,7 +136,44 @@ class LoggerTest : public ::testing::Test {
 
    private:
     bool isTTY_{ false };
+
+   protected:
+    std::vector<CapturedProgress> events_;
 };
+
+TEST_F(LoggerTest, ProgressCallbackReceivesUnthrottledProgress)
+{
+    Logger::setProgressCallback(progressCallback());
+    Logger::logProgress(INFO, 0.5, "step %d", 1);
+    (void)captured();
+    Logger::logProgress(INFO, 0.5 + kHalfCell, "step %d", 2);
+
+    ASSERT_EQ(events_.size(), 2u);
+    EXPECT_DOUBLE_EQ(events_[1].progress, 0.5 + kHalfCell);
+    EXPECT_EQ(events_[1].message, "step 2");
+    EXPECT_EQ(captured(), "");
+}
+
+TEST_F(LoggerTest, EmptyProgressMessageReusesCurrentMessageUntilFinalize)
+{
+    Logger::setProgressCallback(progressCallback());
+    Logger::logProgress(INFO, 0.25, "working");
+    (void)captured();
+
+    Logger::logProgress(INFO, 0.5, "");
+
+    ASSERT_EQ(events_.size(), 2u);
+    EXPECT_EQ(events_.back().message, "working");
+    EXPECT_NE(captured().find("working"), std::string::npos);
+
+    Logger::finalizeProgress(INFO);
+    Logger::logProgress(INFO, 0.75, "");
+
+    ASSERT_EQ(events_.size(), 3u);
+    EXPECT_EQ(events_.back().message, "");
+    EXPECT_EQ(captured().find("working"), std::string::npos);
+    Logger::finalizeProgress(INFO);
+}
 
 TEST_F(LoggerTest, UpdateWritesTheMessageOnTTY)
 {

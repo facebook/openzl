@@ -63,6 +63,10 @@ class Logger {
         return global_verbosity;
     }
 
+    // Progress callbacks are thread-local, but progress reporting is not
+    // thread-safe. Callers must serialize calls to logProgress().
+    static void setProgressCallback(ProgressCallback callback);
+
     /**
      * Overrides the auto-detected TTY status of stderr. Exposed for tests, so
      * that they can exercise both the TTY and the non-TTY code paths.
@@ -184,9 +188,22 @@ class Logger {
         // On a non-TTY every redraw costs a whole new line, so wait until the
         // bar gains or loses an '=' before spending one. A TTY redraws the
         // line in place, so there it is not worth withholding an update.
-        const int filled = progressBarFilled(progress);
-        if (!instance().is_tty && instance().progress_line_active
-            && filled == progressBarFilled(instance().progress_value)) {
+        const ProgressCallback callback = getProgressCallback();
+        const int filled                = progressBarFilled(progress);
+        const bool skipRedraw           = !instance().is_tty
+                && instance().progress_line_active
+                && filled == progressBarFilled(instance().progress_value);
+        if (skipRedraw && !callback) {
+            return;
+        }
+
+        // Build the user message part
+        const std::string userMsg = formatToString(format, args...);
+
+        if (callback) {
+            callback.invoke(progress, userMsg);
+        }
+        if (skipRedraw) {
             return;
         }
 
@@ -195,9 +212,6 @@ class Logger {
         // Store current progress information for re-printing
         instance().progress_level = level;
         instance().progress_value = progress;
-
-        // Build the user message part
-        const std::string userMsg = formatToString(format, args...);
 
         // Build the progress message
         char progressBar[progressBarWidth + 3]; // progressBarWidth + 2 for ends
@@ -230,6 +244,7 @@ class Logger {
         finalizeUpdate(level);
         instance().progress_line_active = false;
         instance().progress_value       = 0.0;
+        instance().progress_user_message.clear();
     }
 
    private:
@@ -243,10 +258,30 @@ class Logger {
     // keeps non-TTY output free of duplicated progress lines.
     std::optional<std::string> previous_update_message;
     bool is_tty;
+    std::string progress_user_message;
+
+    // Allows callers to receive progress updates in addition to normal CLI
+    // output.
+    struct ProgressCallback {
+        void (*callback)(double progress, const std::string& message){};
+
+        explicit operator bool() const
+        {
+            return callback != nullptr;
+        }
+
+        void invoke(double progress, const std::string& message) const
+        {
+            if (callback != nullptr) {
+                callback(progress, message);
+            }
+        }
+    };
 
     static bool stderrIsTTY();
 
     static bool shouldLog(LogLevel level);
+    static ProgressCallback getProgressCallback();
     static void updateLine(const std::string& message);
     static void finalizeUpdateLine();
     static void clearLine();
