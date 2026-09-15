@@ -146,7 +146,7 @@ ExceptionBuilder&& ExceptionBuilder::addErrorContext<ZL_Graph>(
     }
 }
 
-Exception ExceptionBuilder::build() && noexcept
+Exception ExceptionBuilder::build() &&
 {
     return Exception(msg_, error_, errorContext_, std::move(location_));
 }
