@@ -85,13 +85,13 @@ Consuming an **Array** consumes the inner field a number of times, equal to the 
 
 ##### Records
 
-A **Record** is a sequential collection of **Fields**. A Record is declared by listing its member fields as a comma-separated list between curly braces:
+A **Record** is a sequential collection of **Fields**. A Record is declared by listing its member fields between curly braces, one per line (newline- or semicolon-separated, like any other statements):
 
 ```
 Row = {
-  Byte,
-  Byte,
-  UInt32LE[8],
+  Byte
+  Byte
+  UInt32LE[8]
 }
 ```
 
@@ -99,9 +99,9 @@ A member field of type `T` in a record can be expressed in the following three w
 
 ```
 {
-  T,       # Bare field, implies the consumption of the field
-  : T,     # An instruction to consume the field, equivalent to the previous
-  var : T, # Consumption of the field, with the result assigned to a variable
+  T       # Bare field, implies the consumption of the field
+  : T     # An instruction to consume the field, equivalent to the previous
+  var : T # Consumption of the field, with the result assigned to a variable
 }
 ```
 
@@ -112,8 +112,8 @@ The return value of consuming a Record is a scope object, which contains variabl
 !!! example
     ```
     Header = {
-      magic : UInt32LE,
-      size : UInt32LE,
+      magic : UInt32LE
+      size : UInt32LE
     }
 
     hdr : Header
