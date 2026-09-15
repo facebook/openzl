@@ -1,10 +1,17 @@
 /* Copyright (c) Meta Platforms, Inc. and affiliates. */
 
+/* The design is set in Inter, and a font named in a theme token is only a
+   string until something loads it. Weights match those used in the Figma
+   frame: regular, semibold, bold, extrabold. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+
 /* Colors match visualization_app so the two tools do not render with different
    palettes when switched between in the docs nav. */
 
+/* Deliberately no `font-family` here. This file is unlayered, so it would beat
+   Chakra's layered preflight and override `theme.ts`'s font tokens -- which is
+   how headings and body copy ended up in different fonts. */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   height: 100%;
