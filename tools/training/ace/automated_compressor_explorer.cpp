@@ -8,6 +8,7 @@
 #include "openzl/common/a1cbor_helpers.h"
 #include "openzl/common/allocation.h"
 #include "openzl/shared/a1cbor.h"
+#include "tools/logger/Logger.h"
 
 namespace openzl {
 namespace training {
@@ -103,6 +104,8 @@ std::vector<std::vector<float>> AutomatedCompressorExplorer::computeFitness(
             ++cache->second.first;
         }
         results.push_back(std::move(result));
+
+        tools::logger::Logger::logProgress(tools::logger::INFO, progress(), "");
     }
     return results;
 }
