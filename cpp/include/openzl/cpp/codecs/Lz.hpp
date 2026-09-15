@@ -39,6 +39,9 @@ void addLzLocalParams(LocalParams& lp, const Parameters& params)
     if (params.hashLength.has_value()) {
         lp.addIntParam(ZL_LzParam_hashLength, params.hashLength.value());
     }
+    if (params.searchLog.has_value()) {
+        lp.addIntParam(ZL_LzParam_searchLog, params.searchLog.value());
+    }
 }
 } // namespace detail
 
@@ -75,6 +78,8 @@ struct Lz : public Node {
         poly::optional<int> hashLog2;
         /// Optionally override hashLength
         poly::optional<int> hashLength;
+        /// Optionally override searchLog
+        poly::optional<int> searchLog;
     };
 
     Lz() {}
