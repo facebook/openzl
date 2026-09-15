@@ -7,6 +7,7 @@
 #include "openzl/cpp/poly/Optional.hpp"
 #include "openzl/cpp/poly/StringView.hpp"
 #include "openzl/openzl.hpp"
+#include "openzl/zl_reflection.h"
 #include "tools/training/ace/ace_utils.h"
 #include "tools/training/utils/benchmark.h"
 #include "tools/training/utils/utils.h"
@@ -17,16 +18,65 @@ namespace training {
 struct ACENode {
     std::string name;
     poly::optional<NodeParameters> params;
-    Type inputType;
+    Type inputType{};
     std::vector<Type> outputTypes;
     /// Minimum format version this node requires; 0 means unconstrained.
     unsigned minFormatVersion{ 0 };
+
+    ACENode() = default;
+
+    /// Build a node from a node struct defined in openzl/cpp/codecs/
+    template <typename NodeT>
+    explicit ACENode(const NodeT& node)
+            : params(node.parameters()),
+              inputType(NodeT::metadata.inputs[0].type)
+    {
+        assert(NodeT::metadata.inputs.size() == 1);
+        outputTypes.reserve(
+                NodeT::metadata.singletonOutputs.size()
+                + NodeT::metadata.variableOutputs.size());
+        for (const auto& meta : NodeT::metadata.singletonOutputs) {
+            outputTypes.push_back(meta.type);
+        }
+        for (const auto& meta : NodeT::metadata.variableOutputs) {
+            outputTypes.push_back(meta.type);
+        }
+        Compressor compressor;
+        const auto* nodeName =
+                ZL_Compressor_Node_getName(compressor.get(), NodeT::node);
+        if (nodeName == nullptr) {
+            throw Exception("Unknown node!");
+        }
+
+        name = nodeName;
+        minFormatVersion =
+                ZL_Compressor_Node_getMinVersion(compressor.get(), NodeT::node);
+    }
 };
 
 struct ACEGraph {
     std::string name;
     poly::optional<GraphParameters> params;
-    TypeMask inputTypeMask;
+    TypeMask inputTypeMask{ TypeMask::None };
+
+    ACEGraph() = default;
+
+    /// Build a graph from a graph struct defined in openzl/cpp/codecs/
+    template <typename GraphT>
+    explicit ACEGraph(const GraphT& graph)
+            : params(graph.parameters()),
+              inputTypeMask(GraphT::metadata.inputs[0].typeMask)
+    {
+        static_assert(GraphT::metadata.inputs.size() == 1);
+        Compressor compressor;
+        const auto* graphName =
+                ZL_Compressor_Graph_getName(compressor.get(), GraphT::graph);
+        if (graphName == nullptr) {
+            throw Exception("Unknown graph!");
+        }
+
+        name = graphName;
+    }
 };
 
 class ACECompressor;
