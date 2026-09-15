@@ -2,6 +2,8 @@
 #ifndef ZSTRONG_COMPRESS_MATCH_FINDER_ROW_TABLE_H
 #define ZSTRONG_COMPRESS_MATCH_FINDER_ROW_TABLE_H
 
+#include <string.h>
+
 #include "openzl/codecs/common/count.h"
 #include "openzl/common/assertion.h"
 #include "openzl/shared/hash.h"

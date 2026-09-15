@@ -35,6 +35,7 @@ typedef struct {
     uint32_t hashLog2;      //< Log size of the secondary hash table
     uint32_t hashLength;    //< Number of source bytes to hash in tables
     uint32_t acceleration;  //< Only search one in acceleration positions
+    uint32_t searchLog;     //< Log2 candidates per search (row-table only)
 } ZL_LzParameters;
 
 /// @returns The default parameters for the @p level and @p srcSize.
