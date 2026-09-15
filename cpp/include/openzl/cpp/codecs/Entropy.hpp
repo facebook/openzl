@@ -44,5 +44,29 @@ class Fse : public SimpleGraph<Fse> {
     };
 };
 
+class HuffmanPivCo : public SimpleGraph<HuffmanPivCo> {
+   public:
+    static constexpr GraphID graph = ZL_GRAPH_HUFFMAN_PIVCO;
+
+    static constexpr GraphMetadata<1> metadata = {
+        .inputs      = { InputMetadata{ .typeMask = TypeMask::Serial
+                                           | TypeMask::Struct
+                                           | TypeMask::Numeric } },
+        .description = "Compress the input using PivCo Huffman",
+    };
+};
+
+class HuffmanHuf0 : public SimpleGraph<HuffmanHuf0> {
+   public:
+    static constexpr GraphID graph = ZL_GRAPH_HUFFMAN_HUF0;
+
+    static constexpr GraphMetadata<1> metadata = {
+        .inputs      = { InputMetadata{ .typeMask = TypeMask::Serial
+                                           | TypeMask::Struct
+                                           | TypeMask::Numeric } },
+        .description = "Compress the input using Huf0 Huffman",
+    };
+};
+
 } // namespace graphs
 } // namespace openzl
