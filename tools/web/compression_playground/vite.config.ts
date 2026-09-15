@@ -11,4 +11,5 @@ export default createWebToolConfig({
       replacement: fileURLToPath(new URL('./public/OpenZL_logo.png', import.meta.url)),
     },
   ],
+  testSetupFiles: ['./tests/setup.ts'],
 });

@@ -48,6 +48,15 @@ const playgroundConfig = defineConfig({
           faint: {value: {base: '#667385', _osDark: '#94a3b8'}},
           accent: {value: {base: '#2563eb', _osDark: '#60a5fa'}},
           success: {value: {base: '#059669', _osDark: '#34d399'}},
+
+          // Step 2/3 controls. The run button is indigo rather than the blue
+          // accent, and the training note pairs the accent wash with a blue
+          // border instead of the neutral one.
+          // The dark variant is darker than Figma's #6366f1: that only reaches
+          // 4.47:1 behind the button's 14px bold white label.
+          primary: {value: {base: '#4f46e5', _osDark: '#5b54ee'}},
+          primaryHover: {value: {base: '#4338ca', _osDark: '#4f46e5'}},
+          infoBorder: {value: {base: '#bfdbfe', _osDark: '#2f4a6b'}},
         },
       },
     },
