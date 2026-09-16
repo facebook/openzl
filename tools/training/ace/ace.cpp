@@ -216,7 +216,7 @@ void runTraining(
         Logger::logProgress(
                 INFO,
                 ace.progress(),
-                "Training ACE graph %u / %u: ACE progress",
+                "Training ACE graph %zu / %zu: ACE progress",
                 graphIdx,
                 numGraphs);
         if (ace.finished()) {

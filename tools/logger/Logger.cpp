@@ -11,6 +11,11 @@
 
 namespace openzl::tools::logger {
 
+void Logger::setProgressCallback(ProgressCallback callback)
+{
+    instance().progress_callback = callback;
+}
+
 bool Logger::stderrIsTTY()
 {
 #if defined(_WIN32)

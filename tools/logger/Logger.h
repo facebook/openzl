@@ -31,6 +31,11 @@ const int progressBarWidth = 50;
  */
 class Logger {
    public:
+    // Allows callers to receive progress updates in addition to normal CLI
+    // output.
+    using ProgressCallback =
+            void (*)(double progress, const std::string& message);
+
     static Logger& instance()
     {
         static Logger instance_;
@@ -62,6 +67,10 @@ class Logger {
     {
         return global_verbosity;
     }
+
+    // Progress reporting is not thread-safe. Callers must serialize calls to
+    // logProgress().
+    static void setProgressCallback(ProgressCallback callback);
 
     /**
      * Overrides the auto-detected TTY status of stderr. Exposed for tests, so
@@ -184,9 +193,22 @@ class Logger {
         // On a non-TTY every redraw costs a whole new line, so wait until the
         // bar gains or loses an '=' before spending one. A TTY redraws the
         // line in place, so there it is not worth withholding an update.
-        const int filled = progressBarFilled(progress);
-        if (!instance().is_tty && instance().progress_line_active
-            && filled == progressBarFilled(instance().progress_value)) {
+        const ProgressCallback callback = instance().progress_callback;
+        const int filled                = progressBarFilled(progress);
+        const bool skipRedraw           = !instance().is_tty
+                && instance().progress_line_active
+                && filled == progressBarFilled(instance().progress_value);
+        if (skipRedraw && !callback) {
+            return;
+        }
+
+        // Build the user message part
+        const std::string userMsg = formatToString(format, args...);
+
+        if (callback) {
+            callback(progress, userMsg);
+        }
+        if (skipRedraw) {
             return;
         }
 
@@ -195,9 +217,6 @@ class Logger {
         // Store current progress information for re-printing
         instance().progress_level = level;
         instance().progress_value = progress;
-
-        // Build the user message part
-        const std::string userMsg = formatToString(format, args...);
 
         // Build the progress message
         char progressBar[progressBarWidth + 3]; // progressBarWidth + 2 for ends
@@ -243,6 +262,7 @@ class Logger {
     // keeps non-TTY output free of duplicated progress lines.
     std::optional<std::string> previous_update_message;
     bool is_tty;
+    ProgressCallback progress_callback{ nullptr };
 
     static bool stderrIsTTY();
 
