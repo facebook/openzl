@@ -30,6 +30,11 @@ class ProtoSerializer {
         cctx_.refCompressor(compressor_);
     }
 
+    void setCompressionLevel(int level)
+    {
+        cctx_.setParameter(CParam::CompressionLevel, level);
+    }
+
     Compressor* getCompressor()
     {
         return &compressor_;

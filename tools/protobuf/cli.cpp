@@ -49,6 +49,10 @@ std::string kProto       = "proto";
 std::string kDescriptor  = "descriptor";
 std::string kProtoPath   = "proto-path";
 std::string kMessageType = "message-type";
+std::string kCompressionLevel = "compression-level";
+std::string kTrainer          = "trainer";
+std::string kThreads          = "threads";
+std::string kMaxTimeSecs      = "max-time-secs";
 
 enum Cmd : int {
     UNSPECIFIED = 0,
@@ -94,6 +98,18 @@ std::string ext(Protocol protocol)
             return "json";
     }
     throw std::runtime_error("Invalid protocol!");
+}
+
+training::ClusteringTrainer parseTrainer(const std::string& trainer)
+{
+    if (trainer == "greedy") {
+        return training::ClusteringTrainer::Greedy;
+    } else if (trainer == "bottom-up") {
+        return training::ClusteringTrainer::BottomUp;
+    } else if (trainer == "full-split") {
+        return training::ClusteringTrainer::FullSplit;
+    }
+    throw std::runtime_error("Unrecognized trainer: " + trainer);
 }
 
 /**
@@ -190,6 +206,10 @@ class BenchmarkArgs : public Args {
             numIters =
                     std::stoi(args.cmdFlag(Cmd::BENCHMARK, kNumIters).value());
         }
+        if (args.cmdHasFlag(Cmd::BENCHMARK, kCompressionLevel)) {
+            serializer.setCompressionLevel(std::stoi(
+                    args.cmdFlag(Cmd::BENCHMARK, kCompressionLevel).value()));
+        }
     }
 
     size_t numIters = 10;
@@ -204,6 +224,10 @@ class SerializeArgs : public Args {
 
         check  = args.cmdHasFlag(Cmd::SERIALIZE, kCheck);
         output = args.cmdFlag(Cmd::SERIALIZE, kOutput);
+        if (args.cmdHasFlag(Cmd::SERIALIZE, kCompressionLevel)) {
+            serializer.setCompressionLevel(std::stoi(
+                    args.cmdFlag(Cmd::SERIALIZE, kCompressionLevel).value()));
+        }
     }
 
     Protocol outputType;
@@ -217,8 +241,21 @@ class TrainArgs : public Args {
     {
         output = std::make_unique<tools::io::OutputFile>(
                 args.cmdRequiredFlag(Cmd::TRAIN, kOutput));
+        if (args.cmdHasFlag(Cmd::TRAIN, kTrainer)) {
+            trainParams.clusteringTrainer =
+                    parseTrainer(args.cmdFlag(Cmd::TRAIN, kTrainer).value());
+        }
+        if (args.cmdHasFlag(Cmd::TRAIN, kThreads)) {
+            trainParams.threads =
+                    std::stoul(args.cmdFlag(Cmd::TRAIN, kThreads).value());
+        }
+        if (args.cmdHasFlag(Cmd::TRAIN, kMaxTimeSecs)) {
+            trainParams.maxTimeSecs =
+                    std::stoul(args.cmdFlag(Cmd::TRAIN, kMaxTimeSecs).value());
+        }
     }
     std::unique_ptr<tools::io::OutputFile> output;
+    training::TrainParams trainParams;
 };
 
 void updateResults(
@@ -364,7 +401,7 @@ int handleTrain(TrainArgs args)
 
     auto compressor = args.serializer.getCompressor();
 
-    auto params = training::TrainParams();
+    auto params = args.trainParams;
     params.compressorGenFunc =
             openzl::custom_parsers::createCompressorFromSerialized;
 
@@ -443,6 +480,12 @@ int main(int argc, char** argv)
             'c',
             false,
             "Check if serialization round trip is correct.");
+    parser.addCommandFlag(
+            Cmd::SERIALIZE,
+            kCompressionLevel,
+            'l',
+            true,
+            "OpenZL compression level to use for ZL serialization.");
 
     // benchmark
     parser.addCommand(Cmd::BENCHMARK, "benchmark", 'b');
@@ -452,6 +495,12 @@ int main(int argc, char** argv)
             'n',
             true,
             "The number of iterations to run for each file.");
+    parser.addCommandFlag(
+            Cmd::BENCHMARK,
+            kCompressionLevel,
+            'l',
+            true,
+            "OpenZL compression level to use for ZL serialization.");
 
     // train
     parser.addCommand(Cmd::TRAIN, "train", 't');
@@ -461,6 +510,24 @@ int main(int argc, char** argv)
             'o',
             true,
             "The output trained compressor file");
+    parser.addCommandFlag(
+            Cmd::TRAIN,
+            kTrainer,
+            0,
+            true,
+            "The trainer to use for training (greedy|bottom-up|full-split).");
+    parser.addCommandFlag(
+            Cmd::TRAIN,
+            kThreads,
+            0,
+            true,
+            "Number of training worker threads.");
+    parser.addCommandFlag(
+            Cmd::TRAIN,
+            kMaxTimeSecs,
+            0,
+            true,
+            "Maximum training time in seconds.");
 
     auto args = parser.parse(argc, argv);
 
