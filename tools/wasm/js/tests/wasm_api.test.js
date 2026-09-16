@@ -62,6 +62,12 @@ describe('wasm_api', () => {
     assert.notEqual(c1[0], c2[0]);
   });
 
+  it('includes the requested compression level in the serialized compressor', () => {
+    const levelOne = zl.getSerializedCompressor(Profile.SERIAL, 1);
+    const levelNine = zl.getSerializedCompressor(Profile.SERIAL, 9);
+    assert.notDeepEqual(levelOne, levelNine);
+  });
+
   it('all profiles produce a compressor', () => {
     for (const p of Object.values(Profile)) {
       const c = zl.getSerializedCompressor(p);
@@ -72,6 +78,13 @@ describe('wasm_api', () => {
   it('rejects unknown profile', () => {
     assert.throws(() => zl.getSerializedCompressor(99), /unknown profile/);
     assert.throws(() => zl.getSerializedCompressor(-1), /unknown profile/);
+  });
+
+  it('validates compression levels', () => {
+    assert.doesNotThrow(() => zl.getSerializedCompressor(Profile.SERIAL));
+    for (const level of [-1, 0, 20, 1.5, NaN, null]) {
+      assert.throws(() => zl.getSerializedCompressor(Profile.SERIAL, level), /compressionLevel/);
+    }
   });
 
   it('roundtrips serial data', () => {
