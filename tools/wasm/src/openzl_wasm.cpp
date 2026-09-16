@@ -12,6 +12,7 @@
 
 #include "cli/utils/profile_graphs.h"
 #include "custom_parsers/dependency_registration.h"
+#include "tools/logger/Logger.h"
 #include "tools/training/train.h"
 #include "tools/training/utils/utils.h"
 #include "tools/wasm/src/openzl_wasm.h"
@@ -33,6 +34,44 @@
 
 #if defined(__EMSCRIPTEN__)
 #    include <emscripten/emscripten.h>
+
+// clang-format off
+EM_JS(int, openzl_wasm_has_train_progress_callback, (), {
+    return typeof Module['__openzlTrainProgressCallback'] === 'function';
+});
+
+EM_JS(void,
+      openzl_wasm_emit_train_progress,
+      (double progress, const char* message),
+      {
+          const messagePtr = Number(message);
+          if (!Number.isSafeInteger(messagePtr)) {
+              throw new RangeError('OpenZL progress message pointer exceeds JavaScript\'s safe integer range');
+          }
+          Module['__openzlTrainProgressCallback']({
+              progress,
+              message: UTF8ToString(messagePtr),
+          });
+      });
+
+EM_JS(int, openzl_wasm_has_benchmark_progress_callback, (), {
+    return typeof Module['__openzlBenchmarkProgressCallback'] === 'function';
+});
+
+EM_JS(void,
+      openzl_wasm_emit_benchmark_progress,
+      (double progress, const char* message),
+      {
+          const messagePtr = Number(message);
+          if (!Number.isSafeInteger(messagePtr)) {
+              throw new RangeError('OpenZL progress message pointer exceeds JavaScript\'s safe integer range');
+          }
+          Module['__openzlBenchmarkProgressCallback']({
+              progress,
+              message: UTF8ToString(messagePtr),
+          });
+      });
+// clang-format on
 #else
 #    define EMSCRIPTEN_KEEPALIVE
 #endif
@@ -83,6 +122,67 @@ struct FreeDeleter {
     }
 };
 using BufferPtr = std::unique_ptr<uint8_t, FreeDeleter>;
+
+#if defined(__EMSCRIPTEN__)
+void forwardTrainingProgress(double progress, const std::string& message)
+{
+    openzl_wasm_emit_train_progress(progress, message.c_str());
+}
+
+void forwardBenchmarkProgress(double progress, const std::string& message)
+{
+    openzl_wasm_emit_benchmark_progress(progress, message.c_str());
+}
+#endif
+
+openzl::tools::logger::Logger::ProgressCallback
+makeWasmTrainingProgressCallback()
+{
+#if defined(__EMSCRIPTEN__)
+    if (openzl_wasm_has_train_progress_callback()) {
+        return forwardTrainingProgress;
+    }
+#endif
+    return nullptr;
+}
+
+openzl::tools::logger::Logger::ProgressCallback
+makeWasmBenchmarkProgressCallback()
+{
+#if defined(__EMSCRIPTEN__)
+    if (openzl_wasm_has_benchmark_progress_callback()) {
+        return forwardBenchmarkProgress;
+    }
+#endif
+    return nullptr;
+}
+
+class ScopedProgressCallback {
+   public:
+    explicit ScopedProgressCallback(
+            openzl::tools::logger::Logger::ProgressCallback callback)
+            : active_(callback != nullptr)
+    {
+        if (active_) {
+            openzl::tools::logger::Logger::setProgressCallback(callback);
+        }
+    }
+
+    ~ScopedProgressCallback()
+    {
+        if (active_) {
+            openzl::tools::logger::Logger::setProgressCallback(nullptr);
+        }
+    }
+
+    ScopedProgressCallback(const ScopedProgressCallback&)            = delete;
+    ScopedProgressCallback& operator=(const ScopedProgressCallback&) = delete;
+    ScopedProgressCallback(ScopedProgressCallback&&)                 = delete;
+    ScopedProgressCallback& operator=(ScopedProgressCallback&&)      = delete;
+
+   private:
+    bool active_;
+};
 
 BufferPtr allocBuffer(size_t size)
 {
@@ -315,6 +415,10 @@ ZL_ErrorCode runTraining(
                     static_cast<size_t>(OPENZL_WASM_TRAIN_PARETO_CANDIDATES));
         }
 
+        // Set logger callback
+        const ScopedProgressCallback progressCallback{
+            makeWasmTrainingProgressCallback()
+        };
         // train() reports "nothing to train" by throwing, so a successful
         // return always carries at least one candidate.
         const std::vector<openzl::training::TrainedCandidate> candidates =
@@ -700,18 +804,26 @@ ZL_ErrorCode openzl_wasm_benchmarkCompress(
     }
     const size_t compressedSize = ZL_validResult(first);
 
-    size_t lastSize    = 0;
-    const double start = nowMs();
+    const auto progressCallback = makeWasmBenchmarkProgressCallback();
+    size_t lastSize             = 0;
+    double elapsed              = 0;
     for (size_t i = 0; i < iterations; i++) {
+        const double iterationStart = nowMs();
         ZL_Report r =
                 ZL_CCtx_compress(cctx.get(), buf.get(), capacity, src, srcSize);
+        elapsed += nowMs() - iterationStart;
         if (ZL_isError(r)) {
             code = ZL_errorCode(r);
             break;
         }
         lastSize = ZL_validResult(r);
+        if (progressCallback != nullptr) {
+            // Limit compress progress to just 0 to 0.5
+            progressCallback(
+                    0.5 * (static_cast<double>(i + 1) / iterations),
+                    "Benchmarking compression");
+        }
     }
-    const double elapsed = nowMs() - start;
 
     if (code != ZL_ErrorCode_no_error) {
         return code;
@@ -770,18 +882,26 @@ ZL_ErrorCode openzl_wasm_benchmarkDecompress(
         return ZL_errorCode(first);
     }
 
-    size_t lastSize    = 0;
-    const double start = nowMs();
+    const auto progressCallback = makeWasmBenchmarkProgressCallback();
+    size_t lastSize             = 0;
+    double elapsed              = 0;
     for (size_t i = 0; i < iterations; i++) {
-        ZL_Report r = ZL_DCtx_decompress(
+        const double iterationStart = nowMs();
+        ZL_Report r                 = ZL_DCtx_decompress(
                 dctx.get(), buf.get(), capacity, src, srcSize);
+        elapsed += nowMs() - iterationStart;
         if (ZL_isError(r)) {
             code = ZL_errorCode(r);
             break;
         }
         lastSize = ZL_validResult(r);
+        if (progressCallback != nullptr) {
+            // Limit the decompress progress to be from 0.5 to 1
+            progressCallback(
+                    0.5 + (0.5 * (static_cast<double>(i + 1) / iterations)),
+                    "Benchmarking decompression");
+        }
     }
-    const double elapsed = nowMs() - start;
 
     if (code != ZL_ErrorCode_no_error) {
         return code;

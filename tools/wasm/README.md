@@ -12,6 +12,22 @@ const zl = await createOpenZL()
 TypeScript projects use the accompanying `js/wasm_api.d.ts` declarations; the
 runtime wrapper remains plain JavaScript and requires no TypeScript build step.
 
+Progress is scoped to calls made by this module instance:
+
+```js
+const zl = await createOpenZL({
+  onTrainingProgress(progress, message) {
+    console.log(`Training ${Math.round(progress * 100)}%: ${message}`)
+  },
+  onBenchmarkProgress(progress, message) {
+    console.log(`Benchmarking ${Math.round(progress * 100)}%: ${message}`)
+  },
+})
+```
+
+Browser applications should create the module in a Web Worker and forward
+these events to the UI with `postMessage`, since `train()` is synchronous.
+
 ### 1. Serial profile – arbitrary bytes
 
 Best for blobs, text, JSON, etc. No element-width assumption.
@@ -137,7 +153,10 @@ source emsdk/emsdk_env.sh
 ### WASM artifact
 
 ```bash
-emcmake cmake -DOPENZL_BUILD_WASM=ON -B build-wasm
+emcmake cmake \
+  -DOPENZL_BUILD_WASM=ON \
+  -DCMAKE_BUILD_TYPE=MinSizeRel \
+  -B build-wasm
 cmake --build build-wasm --target openzl_wasm --parallel
 ```
 
@@ -161,9 +180,10 @@ over a thread pool. Two consequences:
   `SharedArrayBuffer`, which requires `Cross-Origin-Opener-Policy: same-origin`
   and `Cross-Origin-Embedder-Policy: require-corp` response headers. Without
   them the module fails to instantiate. Node needs no equivalent setup.
-* **`-sPTHREAD_POOL_SIZE` bounds the trainers.** Emscripten pre-spawns that many
-  workers at startup. To get more threads, override with
-  `-DOPENZL_WASM_PTHREAD_POOL_SIZE=N` at configure time.
+* **`-sPTHREAD_POOL_SIZE` bounds the trainers.** Emscripten pre-spawns four
+  workers by default. Training uses that pool unless an explicit `threads`
+  option requests fewer workers. To change the compiled capacity, configure
+  with `-DOPENZL_WASM_PTHREAD_POOL_SIZE=N`.
 
 ### Test
 
