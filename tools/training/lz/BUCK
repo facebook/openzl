@@ -6,8 +6,16 @@ oncall("data_compression")
 cpp_library(
     # @autodeps-skip
     name = "lz_trainer",
-    srcs = ["lz_trainer.cpp"],
-    headers = relative_headers(["lz_trainer.h"]),
+    srcs = [
+        "lz_compressor.cpp",
+        "lz_genetic_algorithm.cpp",
+        "lz_trainer.cpp",
+    ],
+    headers = relative_headers([
+        "lz_compressor.h",
+        "lz_genetic_algorithm.h",
+        "lz_trainer.h",
+    ]),
     header_namespace = "",
     deps = [
         "../../..:zstronglib",
@@ -16,7 +24,11 @@ cpp_library(
         "..:train_common",
         "../..:logger",
         "../../../cpp:openzl_cpp",
+        "../ace:automated_compressor_explorer",
         "../graph_mutation:graph_mutation",
+        "../sample_collection:sample_collection",
+        "../utils:benchmark",
+        "../utils:genetic_algorithm",
         "../utils:mutation",
         "../utils:pareto_combination",
         "../utils:training_utils",

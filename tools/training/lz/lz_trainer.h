@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <chrono>
+
 #include "openzl/openzl.hpp"
 
 #include "openzl/cpp/codecs/Lz.hpp"
@@ -47,6 +49,23 @@ class LzTrainer {
    private:
     poly::optional<MergedParetoFrontier> paretoFrontier_;
 };
+
+/*******************************
+ * Helpers exposed for testing *
+ *******************************/
+
+/**
+ * @returns An even share of the time left before @p deadline for each of the
+ * @p graphsRemaining LZ graphs still to be trained, or null if there is no
+ * deadline.
+ *
+ * Recomputing the share before each graph hands the time that the graphs before
+ * it didn't need to the graphs after it. Never less than a second, so that the
+ * last graphs are still tuned once the deadline has passed.
+ */
+poly::optional<std::chrono::seconds> timeShare(
+        const poly::optional<std::chrono::steady_clock::time_point>& deadline,
+        size_t graphsRemaining);
 
 } // namespace training
 } // namespace openzl
