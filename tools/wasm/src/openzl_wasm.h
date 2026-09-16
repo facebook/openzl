@@ -77,14 +77,17 @@ int openzl_wasm_maxBenchmarkIterations(void);
  * The serialized compressor is pinned to ZL_MAX_FORMAT_VERSION, so it should
  * not be persisted across builds.
  *
- * @param profile  openzl_wasm_Profile that user wants to use
- * @param outBuf   On success, an owned buffer of serialized bytes, release
- *                 with openzl_wasm_free().
- * @param outSize  On success, the length of @p outBuf.
- * @returns        ZL_ErrorCode_no_error on success.
+ * @param profile           openzl_wasm_Profile that user wants to use.
+ * @param compressionLevel  Compression level for compressor, if set to 0 will
+ *                          use OpenZL's current default.
+ * @param outBuf            On success, an owned buffer of serialized bytes,
+ *                          release with openzl_wasm_free().
+ * @param outSize           On success, the length of @p outBuf.
+ * @returns                 ZL_ErrorCode_no_error on success.
  */
 ZL_ErrorCode openzl_wasm_getSerializedCompressor(
         openzl_wasm_Profile profile,
+        int compressionLevel,
         uint8_t** outBuf,
         size_t* outSize);
 

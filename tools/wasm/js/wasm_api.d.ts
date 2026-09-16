@@ -60,7 +60,8 @@ export interface OpenZL {
   readonly maxBenchmarkIterations: number;
   readonly trainParetoCandidates: number;
 
-  getSerializedCompressor(profile: ProfileValue): Uint8Array;
+  /** Returns a serialized compressor at the requested level, or uses OpenZL's current default when omitted. */
+  getSerializedCompressor(profile: ProfileValue, compressionLevel?: number): Uint8Array;
 
   /**
    * Train runs synchronously and may run for several minutes. Browser callers
