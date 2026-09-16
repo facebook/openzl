@@ -178,6 +178,7 @@ uint64_t LzCompressor::hash() const
     h.update(params.nodeParams.hashLog1);
     h.update(params.nodeParams.hashLog2);
     h.update(params.nodeParams.hashLength);
+    h.update(params.nodeParams.searchLog);
     h.update(params.minGainForEntropyBytes);
     h.update(params.minGainForEntropyPct);
     h.update(literalsGraph);

@@ -104,7 +104,7 @@ LzCompressor randomLzCompressor(std::mt19937_64& rng)
 
 poly::span<const LzField> lzFields()
 {
-    static const std::array<LzField, 14> fields = {
+    static const std::array<LzField, 15> fields = {
         LZ_FIELD(
                 params.nodeParams.compressionLevel,
                 randomInt(
@@ -135,6 +135,12 @@ poly::span<const LzField> lzFields()
                         rng,
                         ZL_LZPARAM_HASHLENGTH_MIN,
                         ZL_LZPARAM_HASHLENGTH_MAX)),
+        LZ_FIELD(
+                params.nodeParams.searchLog,
+                randomInt(
+                        rng,
+                        ZL_LZPARAM_SEARCHLOG_MIN,
+                        ZL_LZPARAM_SEARCHLOG_MAX)),
         LZ_FIELD(
                 params.minGainForEntropyBytes,
                 randomLogInt(rng, kMaxMinGainForEntropyBytesLog)),

@@ -35,6 +35,7 @@ typedef struct {
     uint32_t hashLog2;      //< Log size of the secondary hash table
     uint32_t hashLength;    //< Number of source bytes to hash in tables
     uint32_t acceleration;  //< Only search one in acceleration positions
+    uint32_t searchLog;     //< Log2 candidates per search (row-table only)
 } ZL_LzParameters;
 
 /// @returns The default parameters for the @p level and @p srcSize.
@@ -64,11 +65,10 @@ size_t ZL_Lz_scratchBytes(const ZL_LzParameters* params);
  *   - dst->offsets, dst->literalLengths, dst->matchLengths:
  *     at least ZL_Lz_maxNumSequences(srcSize) elements each
  *
- * hashTableMem must point to at least
- * ZS_FastTable_tableSize(ZL_LZ_TABLE_LOG) bytes of writable memory.
- *
  * dst->numLiterals and dst->numSequences are set to the number of
  * output literals and sequences respectively.
+ *
+ * @param scratch scratch space of size `ZL_Lz_scratchBytes(params)`
  */
 void ZL_Lz_encode(
         ZL_Lz_OutSequences* dst,

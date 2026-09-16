@@ -37,6 +37,9 @@ extern "C" {
 typedef enum {
     ZL_LzStrategy_fast = 1,
     ZL_LzStrategy_doubleFast,
+    ZL_LzStrategy_greedy,
+    ZL_LzStrategy_lazy,
+    ZL_LzStrategy_lazy2,
 } ZL_LzStrategy;
 
 /**
@@ -86,6 +89,10 @@ typedef enum {
     /**
      * The ZL_LzStrategy to use for compression.
      *
+     * The greedy, lazy & lazy2 strategies search several match candidates per
+     * position in a single table, so they ignore ZL_LzParam_hashLog2 and are
+     * controlled by ZL_LzParam_searchLog instead.
+     *
      * @note 0 means use the default value.
      */
     ZL_LzParam_strategy = 102,
@@ -116,6 +123,16 @@ typedef enum {
      * @note 0 means use the default value.
      */
     ZL_LzParam_hashLength = 105,
+
+    /**
+     * The log2 of the number of match candidates examined at each searched
+     * position. Higher values improve compression at the cost of speed.
+     *
+     * @note 0 means use the default value.
+     * @note This is only used by the greedy, lazy & lazy2 strategies. The
+     * other strategies keep a single candidate per hash table entry.
+     */
+    ZL_LzParam_searchLog = 106,
 
     /**
      * If set, the customGraph at this index is used to compress the literals,
@@ -189,13 +206,17 @@ typedef enum {
 #define ZL_LZPARAM_HASHLOG2_MAX 23
 
 #define ZL_LZPARAM_STRATEGY_MIN ((int)ZL_LzStrategy_fast)
-#define ZL_LZPARAM_STRATEGY_MAX ((int)ZL_LzStrategy_doubleFast)
+#define ZL_LZPARAM_STRATEGY_MAX ((int)ZL_LzStrategy_lazy2)
 
 #define ZL_LZPARAM_HASHLENGTH_MIN 4
 #define ZL_LZPARAM_HASHLENGTH_MAX 7
 
+// The match finder holds 16 candidates per hash table entry.
+#define ZL_LZPARAM_SEARCHLOG_MIN 1
+#define ZL_LZPARAM_SEARCHLOG_MAX 4
+
 #define ZL_LZPARAM_COMPRESSIONLEVEL_MIN (-ZL_LZPARAM_ACCELERATION_MAX)
-#define ZL_LZPARAM_COMPRESSIONLEVEL_MAX 4
+#define ZL_LZPARAM_COMPRESSIONLEVEL_MAX 7
 
 #if defined(__cplusplus)
 }

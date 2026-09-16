@@ -166,6 +166,9 @@ static ZL_LzParameters getLzParams(const ZL_Encoder* eictx, size_t srcSize)
             case ZL_LzParam_hashLength:
                 overrides.hashLength = (uint32_t)value;
                 break;
+            case ZL_LzParam_searchLog:
+                overrides.searchLog = (uint32_t)value;
+                break;
             default:
                 continue;
         }
@@ -187,6 +190,7 @@ static ZL_LzParameters getLzParams(const ZL_Encoder* eictx, size_t srcSize)
     ZL_LZPARAMETERS_OVERRIDE(hashLog2);
     ZL_LZPARAMETERS_OVERRIDE(hashLength);
     ZL_LZPARAMETERS_OVERRIDE(acceleration);
+    ZL_LZPARAMETERS_OVERRIDE(searchLog);
 #undef ZL_LZPARAMETERS_OVERRIDE
 
     ZL_LzParameters_adjust(&params, srcSize);
