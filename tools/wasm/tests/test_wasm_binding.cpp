@@ -30,7 +30,7 @@ ZL_ErrorCode serializedCompressor(
     uint8_t* buf = nullptr;
     size_t size  = 0;
     ZL_ErrorCode code =
-            openzl_wasm_getSerializedCompressor(profile, &buf, &size);
+            openzl_wasm_getSerializedCompressor(profile, 0, &buf, &size);
     if (code != ZL_ErrorCode_no_error) {
         EXPECT_EQ(buf, nullptr);
         return code;
@@ -337,6 +337,37 @@ TEST(WasmBindingTest, SignednessDoesNotChangeNumericGraph)
 TEST(WasmBindingTest, EmptyRoundTrip)
 {
     expectRoundTrip({}, OPENZL_WASM_PROFILE_SERIAL);
+}
+
+TEST(WasmBindingTest, CompressionLevelIsSerialized)
+{
+    uint8_t* levelOneBuf  = nullptr;
+    size_t levelOneSize   = 0;
+    uint8_t* levelNineBuf = nullptr;
+    size_t levelNineSize  = 0;
+
+    ASSERT_EQ(
+            openzl_wasm_getSerializedCompressor(
+                    OPENZL_WASM_PROFILE_SERIAL, 1, &levelOneBuf, &levelOneSize),
+            ZL_ErrorCode_no_error);
+    ASSERT_EQ(
+            openzl_wasm_getSerializedCompressor(
+                    OPENZL_WASM_PROFILE_SERIAL,
+                    9,
+                    &levelNineBuf,
+                    &levelNineSize),
+            ZL_ErrorCode_no_error);
+
+    EXPECT_NE(
+            copyAndFree(levelOneBuf, levelOneSize),
+            copyAndFree(levelNineBuf, levelNineSize));
+
+    uint8_t* invalidBuf = nullptr;
+    size_t invalidSize  = 0;
+    EXPECT_EQ(
+            openzl_wasm_getSerializedCompressor(
+                    OPENZL_WASM_PROFILE_SERIAL, -1, &invalidBuf, &invalidSize),
+            ZL_ErrorCode_parameter_invalid);
 }
 
 TEST(WasmBindingTest, TrainedCompressorRoundTrips)

@@ -346,13 +346,21 @@ export async function createOpenZL(options = {}) {
     },
 
     // Returns the serialized compressor for a built-in profile,
-    // cached per-profile (copy-on-read) so repeated calls reuse it.
+    // cached per-profile + level (copy-on-read) so repeated calls reuse it.
     // Exposed since we want users to be able to download compressors.
-    getSerializedCompressor(profile) {
+    getSerializedCompressor(profile, compressionLevel) {
       if (!Object.values(profiles).includes(profile)) {
         throw new Error(`unknown profile ${profile}; use one of the Profile constants`);
       }
-      const cached = compressorCache.get(profile);
+      if (
+        compressionLevel !== undefined &&
+        (!Number.isInteger(compressionLevel) || compressionLevel < 1 || compressionLevel > 9)
+      ) {
+        // 1 to 9 is the typical range for OpenZL, may be updated if levels change
+        throw new Error(`compressionLevel must be an integer from 1 to 9, got ${String(compressionLevel)}`);
+      }
+      const cacheKey = `${profile}:${compressionLevel ?? 'default'}`;
+      const cached = compressorCache.get(cacheKey);
       if (cached) {
         return cached.slice();
       }
@@ -363,14 +371,19 @@ export async function createOpenZL(options = {}) {
         // C writes its result through the buffer address and its length.
         outBuf = mem.malloc(PTR_BYTES);
         outSize = mem.malloc(SIZE_T_BYTES);
-        const code = mod._openzl_wasm_getSerializedCompressor(profile, mem.toWasm64(outBuf), mem.toWasm64(outSize));
+        const code = mod._openzl_wasm_getSerializedCompressor(
+          profile,
+          compressionLevel ?? 0,
+          mem.toWasm64(outBuf),
+          mem.toWasm64(outSize),
+        );
         if (code !== 0) {
           throwWasmError(mem, code, `failed to build compressor for profile ${profile}`);
         }
         // On success outBuf is non-NULL even for a zero-length result.
         bufPtr = mem.readPointer(outBuf);
         const bytes = mem.readBytes(bufPtr, mem.readSizeT(outSize));
-        compressorCache.set(profile, bytes.slice());
+        compressorCache.set(cacheKey, bytes.slice());
         return bytes;
       } finally {
         mem.free(bufPtr);
