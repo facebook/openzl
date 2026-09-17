@@ -485,8 +485,10 @@ struct StackArena_s {
     void* primaryBuffer;
     size_t pBuffCapacity;
     size_t pBuffUsed;
-    size_t wouldHaveNeeded; // Tracks amount of memory allocated outside of
-                            // @primaryBuffer
+    size_t wouldHaveNeeded; // Amount allocated outside of @primaryBuffer
+                            // during the current session, i.e. how much larger
+                            // @primaryBuffer should have been. Reset when the
+                            // next session sizes the buffer from it.
     size_t sessionUsage;    // Tracks amount of memory requested from this arena
                             // before a reset
     size_t wasted;          // pBuffCapacity * nbTimesUsedWastefully,
@@ -522,9 +524,11 @@ static void* ALLOC_StackArena_malloc(Arena* arena, size_t requestSize)
     size_t const neededSize       = size + (alignment - 1);
     pba->sessionUsage += neededSize;
 
-    if ((pba->pBuffUsed == 0) /* first request in session */
-        && ((pBuffAvailable < neededSize) /* insufficient capacity for first request */
-            || (pBuffAvailable < pba->wouldHaveNeeded) /* insufficient capacity for previous session */)) {
+    /* On the first request of a session, resize the primary buffer if it is
+     * too small to serve that request, or if the previous session had to
+     * spill into the heap backup. */
+    if ((pba->pBuffUsed == 0)
+        && ((pBuffAvailable < neededSize) || (pba->wouldHaveNeeded > 0))) {
         /* let's resize the primary buffer, which is too small */
         ZL_free(pba->primaryBuffer);
         // We are going to reuse primaryBuffer for all future allocation in this
@@ -534,21 +538,27 @@ static void* ALLOC_StackArena_malloc(Arena* arena, size_t requestSize)
         static const size_t pBuffSizeMin =
                 4080; // could become a compilation constant in the future
         static const size_t pBuffSizeMax = ALLOC_STACK_SIZE_MAX;
+        /* The previous session needed its whole buffer plus whatever spilled
+         * to the backup. Consuming @wouldHaveNeeded here, rather than carrying
+         * it forward, is what lets the buffer shrink again: a session that did
+         * not spill leaves it at 0, so the next one keeps (or sizes down) the
+         * current buffer instead of re-growing to a stale high-water mark. */
+        size_t const prevSessionNeed =
+                pba->pBuffCapacity + pba->wouldHaveNeeded;
         size_t const toAllocate =
-                ZL_MAX(ZL_MAX(pba->wouldHaveNeeded, neededSize), pBuffSizeMin);
+                ZL_MAX(ZL_MAX(prevSessionNeed, neededSize), pBuffSizeMin);
+        pba->wouldHaveNeeded = 0;
         if (toAllocate <= pBuffSizeMax) {
             pba->primaryBuffer = ZL_malloc(toAllocate);
         } else {
             /* request too large : do not allocate primaryBuffer
              * request will be taken care of by HeapArena backup */
-            pba->primaryBuffer   = NULL;
-            pba->wouldHaveNeeded = ZL_MIN(pba->wouldHaveNeeded, pBuffSizeMax);
+            pba->primaryBuffer = NULL;
         }
         if (pba->primaryBuffer) {
             ZL_poisonMemory(pba->primaryBuffer, toAllocate);
-            pba->pBuffCapacity   = toAllocate;
-            pba->pBuffUsed       = neededSize;
-            pba->wouldHaveNeeded = toAllocate;
+            pba->pBuffCapacity = toAllocate;
+            pba->pBuffUsed     = neededSize;
             ZL_ASSERT_EQ(
                     (size_t)pba->primaryBuffer % alignment,
                     0); /* note : this alignment method will have to change if
@@ -558,10 +568,9 @@ static void* ALLOC_StackArena_malloc(Arena* arena, size_t requestSize)
             return pba->primaryBuffer;
         }
         /* allocation failed */
-        pba->pBuffCapacity   = 0;
-        pba->pBuffUsed       = 0;
-        pBuffAvailable       = 0;
-        pba->wouldHaveNeeded = 0;
+        pba->pBuffCapacity = 0;
+        pba->pBuffUsed     = 0;
+        pBuffAvailable     = 0;
     }
 
     /* second+ request, or allocation of primary buffer failed */
@@ -586,7 +595,6 @@ static void* ALLOC_StackArena_malloc(Arena* arena, size_t requestSize)
     /* not enough space in primaryBuffer :
      * assign backup heap memory for this session
      * and track necessary space, for next session */
-    ZL_ASSERT_GE(pba->wouldHaveNeeded, pba->pBuffCapacity);
     pba->wouldHaveNeeded += neededSize;
     return ALLOC_Arena_malloc(&pba->heapBackup.base, requestSize);
 }

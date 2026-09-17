@@ -522,4 +522,42 @@ INSTANTIATE_TEST_SUITE_P(
         pbufferTests,
         [](auto p) { return p.param->name(); });
 
+// StackArena promises that a Primary Buffer oversized by one exceptional
+// session is sized back down to suit the general case. Its owner (e.g. a
+// pooled ZL_CCtx) may live for the lifetime of the process, so a buffer that
+// stays pinned at the high-water mark is retained memory that is never
+// reclaimed.
+TEST(StackArenaSizingTest, primaryBufferShrinksAfterOneExceptionalSession)
+{
+    Arena* const arena = ALLOC_StackArena_create();
+    ASSERT_NE(arena, nullptr);
+
+    constexpr size_t kExceptionalAlloc = 16u << 20;
+    constexpr size_t kTypicalAlloc     = 1024;
+    // Every under-using session adds pBuffCapacity to the `wasted` counter and
+    // a size-down needs that to exceed PBUFF_SIZEDOWN_THRESHOLD (1GiB), so at
+    // 16MiB a halving takes ~65 sessions. This affords two of them.
+    constexpr size_t kTypicalSessions = 256;
+
+    ALLOC_Arena_malloc(arena, kExceptionalAlloc);
+    const size_t exceptionalSize = ALLOC_Arena_memAllocated(arena);
+    ALLOC_Arena_freeAll(arena);
+    ASSERT_GE(exceptionalSize, kExceptionalAlloc);
+
+    for (size_t i = 0; i < kTypicalSessions; i++) {
+        ALLOC_Arena_malloc(arena, kTypicalAlloc);
+        ALLOC_Arena_freeAll(arena);
+    }
+
+    // Measure from inside a session: a re-grow happens on the first allocation
+    // after freeAll, so measuring between sessions would miss it.
+    ALLOC_Arena_malloc(arena, kTypicalAlloc);
+    const size_t steadyStateSize = ALLOC_Arena_memAllocated(arena);
+    ALLOC_Arena_freeAll(arena);
+
+    EXPECT_LE(steadyStateSize, exceptionalSize / 2);
+
+    ALLOC_Arena_freeArena(arena);
+}
+
 } // namespace

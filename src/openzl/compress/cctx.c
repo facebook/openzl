@@ -2182,6 +2182,16 @@ size_t CCTX_streamMemory(ZL_CCtx const* cctx)
     return RTGM_streamMemory(&cctx->rtgraph);
 }
 
+size_t CCTX_arenaMemory(ZL_CCtx const* cctx)
+{
+    if (cctx == NULL)
+        return 0;
+    return ALLOC_Arena_memAllocated(cctx->sessionArena)
+            + ALLOC_Arena_memAllocated(cctx->chunkArena)
+            + ALLOC_Arena_memAllocated(cctx->graphArena)
+            + ALLOC_Arena_memAllocated(cctx->codecArena);
+}
+
 static ZL_RESULT_OF(ZL_GraphPerformance) CCTX_tryGraphInternal(
         ZL_CCtx* cctx,
         void* dst,

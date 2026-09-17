@@ -696,6 +696,19 @@ bool CCTX_isNodeSupported(const ZL_CCtx* cctx, ZL_NodeID nodeid);
 size_t CCTX_streamMemory(const ZL_CCtx* cctx);
 
 /**
+ * @brief Total capacity retained by the context's arenas.
+ *
+ * @param cctx The compression context, or NULL
+ *
+ * @return Bytes held by the session, chunk, graph and codec arenas
+ *
+ * @note Unlike CCTX_streamMemory, this counts capacity the arenas keep in
+ * reserve between sessions, so it stays non-zero once a compression has run
+ * and is only released by CCTX_free.
+ */
+size_t CCTX_arenaMemory(const ZL_CCtx* cctx);
+
+/**
  * @brief runs a Graph and all its sub-graphs within cctx.
  *
  * This will populate the RT Manager, which tracks creation of Nodes and
