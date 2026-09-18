@@ -167,6 +167,9 @@ size_t CodecCache_getDefaultMaxBytes(void);
 /** Frees the cache and all owned entries. Accepts NULL. */
 void CodecCache_free(ZL_CodecOutputCache* cache);
 
+/** Returns memory currently retained by @p cache. Accepts NULL. */
+size_t CodecCache_sizeof(const ZL_CodecOutputCache* cache);
+
 /** Removes all entries and clears all counters. Accepts NULL. */
 void CodecCache_reset(ZL_CodecOutputCache* cache);
 
