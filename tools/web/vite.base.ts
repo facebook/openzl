@@ -24,14 +24,16 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 export function createWebToolConfig(options: {
   base: string;
   testAlias?: {find: RegExp; replacement: string}[];
+  testSetupFiles?: string[];
 }) {
   return defineConfig({
     base: options.base,
     plugins: [react(), tsconfigPaths()],
-    ...(options.testAlias
+    ...(options.testAlias || options.testSetupFiles
       ? {
           test: {
-            alias: options.testAlias,
+            ...(options.testAlias ? {alias: options.testAlias} : {}),
+            ...(options.testSetupFiles ? {setupFiles: options.testSetupFiles} : {}),
           },
         }
       : {}),
