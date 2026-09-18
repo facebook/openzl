@@ -204,6 +204,7 @@ constexpr Profile kProfiles[OPENZL_WASM_PROFILE_COUNT] = {
 
 ZL_ErrorCode buildProfileCompressor(
         openzl_wasm_Profile profile,
+        int compressionLevel,
         CompressorPtr& out)
 {
     out.reset();
@@ -242,6 +243,17 @@ ZL_ErrorCode buildProfileCompressor(
     ZL_Report sel = ZL_Compressor_selectStartingGraphID(comp.get(), graph);
     if (ZL_isError(sel)) {
         return ZL_errorCode(sel);
+    }
+
+    if (compressionLevel != 0) {
+        if (compressionLevel < 1 || compressionLevel > 9) {
+            return ZL_ErrorCode_parameter_invalid;
+        }
+        r = ZL_Compressor_setParameter(
+                comp.get(), ZL_CParam_compressionLevel, compressionLevel);
+        if (ZL_isError(r)) {
+            return ZL_errorCode(r);
+        }
     }
 
     out = std::move(comp);
@@ -500,6 +512,7 @@ const char* openzl_wasm_profileName(openzl_wasm_Profile profile)
 EMSCRIPTEN_KEEPALIVE
 ZL_ErrorCode openzl_wasm_getSerializedCompressor(
         openzl_wasm_Profile profile,
+        int compressionLevel,
         uint8_t** outBuf,
         size_t* outSize)
 {
@@ -510,7 +523,7 @@ ZL_ErrorCode openzl_wasm_getSerializedCompressor(
     *outSize = 0;
 
     CompressorPtr comp;
-    ZL_ErrorCode code = buildProfileCompressor(profile, comp);
+    ZL_ErrorCode code = buildProfileCompressor(profile, compressionLevel, comp);
     if (code != ZL_ErrorCode_no_error) {
         return code;
     }

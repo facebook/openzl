@@ -2,14 +2,20 @@
 
 import {Box, Heading, Text, VStack} from '@chakra-ui/react';
 import {LuArrowRight, LuChartLine, LuChartSpline, LuMicroscope, LuMonitor} from 'react-icons/lu';
+import {isRunInProgress, type RunState} from '../benchmarkTypes.ts';
 
 const HOW_IT_WORKS_STEPS = ['Choose your data.', 'Pick compressors to compare.', 'Run the benchmark.'];
 
-export default function ResultsPanel() {
+interface ResultsPanelProps {
+  runState: RunState;
+}
+
+export default function ResultsPanel({runState}: ResultsPanelProps) {
   return (
     <Box
       as="section"
       aria-labelledby="results-title"
+      aria-busy={isRunInProgress(runState)}
       flex="1"
       minW={0}
       alignSelf={{base: 'stretch', lg: 'flex-start'}}
