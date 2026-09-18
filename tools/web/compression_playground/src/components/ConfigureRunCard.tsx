@@ -1,6 +1,5 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-import {useRef, useState} from 'react';
 import {
   Box,
   Button,
@@ -39,6 +38,7 @@ import {
   type OpenZlRow,
 } from '../compressors.ts';
 import {isBrowserSupportedProfile, profileDescription} from '../wasmProfiles.ts';
+import type {CompressorRows} from '../useCompressorRows.ts';
 
 /**
  * Split in two because `Partial<CompressorRow>` over a union distributes into
@@ -66,6 +66,12 @@ interface OpenZlRowProps {
   row: OpenZlRow;
   position: number;
   onPatch: PatchOpenZlRow;
+}
+
+interface ConfigureRunCardProps {
+  compressors: CompressorRows;
+  iterations: number;
+  onIterationsChange: (iterations: number) => void;
 }
 
 function OpenZlOptions({row, position, onPatch}: OpenZlRowProps) {
@@ -369,39 +375,27 @@ function CompressorRowCard({
   );
 }
 
-export default function ConfigureRunCard() {
-  const [rows, setRows] = useState<readonly CompressorRow[]>(() => [
-    createCompressorRow(1, 'OpenZL'),
-    createCompressorRow(2, 'zstd'),
-    createCompressorRow(3, 'gzip'),
-  ]);
-  const nextId = useRef(4);
-  const [iterations, setIterations] = useState(ITERATIONS_DEFAULT);
-
+export default function ConfigureRunCard({
+  compressors: {rows, setRows, addRow, removeRow},
+  iterations,
+  onIterationsChange,
+}: ConfigureRunCardProps) {
   const patchRow: PatchRow = (id, patch) => {
-    setRows((prev) => prev.map((row) => (row.id === id ? {...row, ...patch} : row)));
+    setRows((current) => current.map((row) => (row.id === id ? {...row, ...patch} : row)));
   };
 
   // Narrows before spreading, so the OpenZL-only fields can only ever land on
   // a row that actually has them.
   const patchOpenZlRow: PatchOpenZlRow = (id, patch) => {
-    setRows((prev) => prev.map((row) => (row.id === id && row.compressor === 'OpenZL' ? {...row, ...patch} : row)));
+    setRows((current) =>
+      current.map((row) => (row.id === id && row.compressor === 'OpenZL' ? {...row, ...patch} : row)),
+    );
   };
 
   const changeCompressor = (id: number, compressor: CompressorName) => {
     // A fresh row resets the dependent fields: a zstd level of 19 is not a
     // valid OpenZL level, and a profile means nothing to gzip.
-    setRows((prev) => prev.map((row) => (row.id === id ? createCompressorRow(id, compressor) : row)));
-  };
-
-  const addRow = () => {
-    const row = createCompressorRow(nextId.current, 'OpenZL');
-    nextId.current += 1;
-    setRows((prev) => [...prev, row]);
-  };
-
-  const removeRow = (id: number) => {
-    setRows((prev) => prev.filter((row) => row.id !== id));
+    setRows((current) => current.map((row) => (row.id === id ? createCompressorRow(id, compressor) : row)));
   };
 
   return (
@@ -469,7 +463,7 @@ export default function ConfigureRunCard() {
             max={ITERATIONS_MAX}
             step={1}
             value={[iterations]}
-            onValueChange={(details) => setIterations(details.value[0] ?? ITERATIONS_DEFAULT)}
+            onValueChange={(details) => onIterationsChange(details.value[0] ?? ITERATIONS_DEFAULT)}
             width="100%">
             {/* The thumb is named through this label: zag always sets
                 aria-labelledby to the label id, which shadows aria-label. */}

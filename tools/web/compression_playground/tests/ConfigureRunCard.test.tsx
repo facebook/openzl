@@ -5,17 +5,20 @@ import '@testing-library/jest-dom/vitest';
 import {describe, it, expect, afterEach} from 'vitest';
 import {fireEvent, render, screen, cleanup, within, waitFor, type RenderOptions} from '@testing-library/react';
 import {ChakraProvider} from '@chakra-ui/react';
-import React from 'react';
+import React, {useState} from 'react';
 import ConfigureRunCard from '../src/components/ConfigureRunCard.tsx';
 import {
   GZIP_DEFAULT_LEVEL,
+  ITERATIONS_DEFAULT,
   OPENZL_PROFILES,
   OPENZL_PROFILE_DESCRIPTIONS,
   ZSTD_DEFAULT_LEVEL,
   createCompressorRow,
   tickLabelLeft,
+  type CompressorRow,
 } from '../src/compressors.ts';
 import {isBrowserSupportedProfile, profileDescription} from '../src/wasmProfiles.ts';
+import {useCompressorRows} from '../src/useCompressorRows.ts';
 import {playgroundSystem} from '../src/theme.ts';
 
 function renderWithPlaygroundTheme(ui: React.ReactElement, options?: Omit<RenderOptions, 'wrapper'>) {
@@ -23,6 +26,23 @@ function renderWithPlaygroundTheme(ui: React.ReactElement, options?: Omit<Render
     wrapper: ({children}) => <ChakraProvider value={playgroundSystem}>{children}</ChakraProvider>,
     ...options,
   });
+}
+
+function ControlledConfigureRunCard({initialRows}: {initialRows?: readonly CompressorRow[]}) {
+  // The same hook App drives the card with, so these tests exercise the real
+  // row and id handling rather than a stand-in.
+  const compressors = useCompressorRows(initialRows);
+  const [iterations, setIterations] = useState(ITERATIONS_DEFAULT);
+  return (
+    <>
+      <ConfigureRunCard compressors={compressors} iterations={iterations} onIterationsChange={setIterations} />
+      <output data-testid="compressor-ids">{compressors.rows.map((row) => row.id).join(',')}</output>
+    </>
+  );
+}
+
+function renderConfigureRunCard(initialRows?: readonly CompressorRow[]) {
+  return renderWithPlaygroundTheme(<ControlledConfigureRunCard initialRows={initialRows} />);
 }
 
 function optionValues(select: HTMLElement): string[] {
@@ -37,7 +57,7 @@ describe('ConfigureRunCard', () => {
   });
 
   it('renders the default OpenZL, zstd and gzip rows', () => {
-    renderWithPlaygroundTheme(<ConfigureRunCard />);
+    renderConfigureRunCard();
 
     expect(screen.getByText('COMPRESSOR')).toBeInTheDocument();
     expect(screen.getByText('LEVEL / PROFILE')).toBeInTheDocument();
@@ -51,7 +71,7 @@ describe('ConfigureRunCard', () => {
   });
 
   it('keeps the dropdown arrow inside the positioned control', () => {
-    renderWithPlaygroundTheme(<ConfigureRunCard />);
+    renderConfigureRunCard();
 
     const trigger = screen.getByRole('combobox', {name: 'Level or profile for row 1'});
     // The chevron must sit beside the trigger, not in it: nested in the
@@ -61,7 +81,7 @@ describe('ConfigureRunCard', () => {
   });
 
   it('offers every compressor and OpenZL profile', async () => {
-    renderWithPlaygroundTheme(<ConfigureRunCard />);
+    renderConfigureRunCard();
 
     expect(optionValues(screen.getByRole('combobox', {name: 'Compressor for row 1'}))).toEqual([
       'OpenZL',
@@ -79,7 +99,7 @@ describe('ConfigureRunCard', () => {
   });
 
   it('explains each profile when hovered in the list', async () => {
-    renderWithPlaygroundTheme(<ConfigureRunCard />);
+    renderConfigureRunCard();
 
     fireEvent.click(screen.getByRole('combobox', {name: 'Level or profile for row 1'}));
     const listbox = await screen.findByRole('listbox');
@@ -93,7 +113,7 @@ describe('ConfigureRunCard', () => {
   });
 
   it('ranges levels per compressor with OpenZL defaulting to 6', () => {
-    renderWithPlaygroundTheme(<ConfigureRunCard />);
+    renderConfigureRunCard();
 
     const openZlLevel = screen.getByRole('combobox', {name: 'OpenZL level for row 1'});
     expect(optionValues(openZlLevel).map(Number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
@@ -118,7 +138,7 @@ describe('ConfigureRunCard', () => {
     // zag drives the listbox with aria-activedescendant, so options never take
     // focus and the hover tooltip is unreachable by keyboard. Each option
     // points at its description instead.
-    renderWithPlaygroundTheme(<ConfigureRunCard />);
+    renderConfigureRunCard();
     fireEvent.click(screen.getByRole('combobox', {name: 'Level or profile for row 1'}));
     const listbox = await screen.findByRole('listbox');
 
@@ -132,7 +152,7 @@ describe('ConfigureRunCard', () => {
   it('keeps each option name free of its description', async () => {
     // The description lives outside the listbox: nested in an option it would
     // join the accessible name and "csv" would read as the whole sentence.
-    renderWithPlaygroundTheme(<ConfigureRunCard />);
+    renderConfigureRunCard();
     fireEvent.click(screen.getByRole('combobox', {name: 'Level or profile for row 1'}));
     const listbox = await screen.findByRole('listbox');
 
@@ -140,7 +160,7 @@ describe('ConfigureRunCard', () => {
   });
 
   it('selects a profile from the list', async () => {
-    renderWithPlaygroundTheme(<ConfigureRunCard />);
+    renderConfigureRunCard();
 
     fireEvent.click(screen.getByRole('combobox', {name: 'Level or profile for row 1'}));
     const listbox = await screen.findByRole('listbox');
@@ -152,7 +172,7 @@ describe('ConfigureRunCard', () => {
   });
 
   it('lists the profiles the browser cannot run but refuses to select them', async () => {
-    renderWithPlaygroundTheme(<ConfigureRunCard />);
+    renderConfigureRunCard();
 
     fireEvent.click(screen.getByRole('combobox', {name: 'Level or profile for row 1'}));
     const listbox = await screen.findByRole('listbox');
@@ -169,7 +189,7 @@ describe('ConfigureRunCard', () => {
   });
 
   it('offers only the candidate counts the trainer honours', () => {
-    renderWithPlaygroundTheme(<ConfigureRunCard />);
+    renderConfigureRunCard();
 
     // Asserted as bounds rather than against the constant: the binding raises
     // anything under 6 and throws over 25, so an option outside that window is
@@ -182,7 +202,7 @@ describe('ConfigureRunCard', () => {
   });
 
   it('swaps the second dropdown when the compressor changes', () => {
-    renderWithPlaygroundTheme(<ConfigureRunCard />);
+    renderConfigureRunCard();
 
     fireEvent.change(screen.getByRole('combobox', {name: 'Compressor for row 2'}), {
       target: {value: 'OpenZL'},
@@ -201,7 +221,7 @@ describe('ConfigureRunCard', () => {
   });
 
   it('resets dependent fields when the compressor changes', () => {
-    renderWithPlaygroundTheme(<ConfigureRunCard />);
+    renderConfigureRunCard();
 
     fireEvent.change(screen.getByRole('combobox', {name: 'Level or profile for row 2'}), {
       target: {value: '19'},
@@ -216,17 +236,23 @@ describe('ConfigureRunCard', () => {
   });
 
   it('adds and removes compressor rows', () => {
-    renderWithPlaygroundTheme(<ConfigureRunCard />);
+    renderConfigureRunCard();
 
     fireEvent.click(screen.getByRole('button', {name: 'Add compressor'}));
     expect(screen.getByRole('combobox', {name: 'Compressor for row 4'})).toHaveValue('OpenZL');
+    expect(screen.getByTestId('compressor-ids')).toHaveTextContent(/^1,2,3,4$/);
 
     fireEvent.click(screen.getByRole('button', {name: 'Remove row 4'}));
     expect(screen.queryByRole('combobox', {name: 'Compressor for row 4'})).not.toBeInTheDocument();
+    expect(screen.getByTestId('compressor-ids')).toHaveTextContent(/^1,2,3$/);
+
+    fireEvent.click(screen.getByRole('button', {name: 'Add compressor'}));
+    expect(screen.getByRole('combobox', {name: 'Compressor for row 4'})).toHaveValue('OpenZL');
+    expect(screen.getByTestId('compressor-ids')).toHaveTextContent(/^1,2,3,5$/);
   });
 
   it('keeps at least one row', () => {
-    renderWithPlaygroundTheme(<ConfigureRunCard />);
+    renderConfigureRunCard();
 
     fireEvent.click(screen.getByRole('button', {name: 'Remove row 3'}));
     fireEvent.click(screen.getByRole('button', {name: 'Remove row 2'}));
@@ -234,7 +260,7 @@ describe('ConfigureRunCard', () => {
   });
 
   it('collapses the OpenZL options section', () => {
-    renderWithPlaygroundTheme(<ConfigureRunCard />);
+    renderConfigureRunCard();
     const toggle = screen.getByRole('button', {name: 'OpenZL options for row 1'});
 
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
@@ -247,7 +273,7 @@ describe('ConfigureRunCard', () => {
   });
 
   it('disables the candidate count while training is off', async () => {
-    renderWithPlaygroundTheme(<ConfigureRunCard />);
+    renderConfigureRunCard();
     const train = screen.getByRole('checkbox', {name: 'TRAIN'});
     const candidates = screen.getByRole('combobox', {name: 'Number of trained candidates for row 1'});
 
@@ -273,6 +299,17 @@ describe('ConfigureRunCard', () => {
     expect(createCompressorRow(1, 'OpenZL').trainRequested).toBe(true);
   });
 
+  it('locks training off for a pytorch row', () => {
+    // Injected rather than picked: the picker refuses pytorch, so this covers
+    // the lock as the backstop it now is for rows built elsewhere.
+    renderConfigureRunCard([{...createCompressorRow(1, 'OpenZL'), profile: 'pytorch'}]);
+
+    const train = screen.getByRole('checkbox', {name: 'TRAIN'});
+    expect(train).toBeDisabled();
+    expect(train.closest('label')).toHaveAttribute('data-state', 'unchecked');
+    expect(screen.getByText('Training is not supported for the pytorch profile')).toBeInTheDocument();
+  });
+
   it('pins tick labels to the dot travel with the thumb inset', () => {
     // Endpoints sit one half-thumb in from each edge; midpoints are
     // proportional to their value, matching the contain-alignment travel.
@@ -283,7 +320,7 @@ describe('ConfigureRunCard', () => {
   });
 
   it('adjusts the iteration count with the slider', async () => {
-    renderWithPlaygroundTheme(<ConfigureRunCard />);
+    renderConfigureRunCard();
     // The thumb stays visibility-hidden under jsdom, where the size
     // measurement that unhides it never completes, so it can only be queried
     // unnamed; the label association is asserted explicitly instead.
