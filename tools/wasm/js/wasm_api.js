@@ -255,8 +255,7 @@ function verifyProfiles(profiles) {
     );
   }
 }
-
-export async function createOpenZL(options = {}) {
+async function loadOpenZLModule(options = {}) {
   let openzlModule;
   try {
     ({default: openzlModule} = await import('./openzl.js'));
@@ -313,18 +312,34 @@ export async function createOpenZL(options = {}) {
       }
     };
   }
-  const mod = await openzlModule({
+  return openzlModule({
     ...moduleOptions,
     locateFile,
     __openzlTrainProgressCallback: trainProgressCallback,
     __openzlBenchmarkProgressCallback: benchmarkProgressCallback,
   });
+}
+
+function readMaxBenchmarkIterations(mod) {
   const maxBenchmarkIterations = mod._openzl_wasm_maxBenchmarkIterations();
   if (!Number.isInteger(maxBenchmarkIterations) || maxBenchmarkIterations < 1) {
     throw new Error(
       `OpenZL WASM module exposed an invalid maximum benchmark iteration count: ${String(maxBenchmarkIterations)}`,
     );
   }
+  return maxBenchmarkIterations;
+}
+
+// Live ceiling for benchmark iterations, for callers that cap counts without
+// holding an OpenZL instance (e.g. the playground's JS-codec benchmarks).
+export async function getOpenZLMaxIterations(options = {}) {
+  const mod = await loadOpenZLModule(options);
+  return readMaxBenchmarkIterations(mod);
+}
+
+export async function createOpenZL(options = {}) {
+  const mod = await loadOpenZLModule(options);
+  const maxBenchmarkIterations = readMaxBenchmarkIterations(mod);
   // Floor for the training out-parameter arrays. Read from the module rather
   // than restated here, so it tracks OPENZL_WASM_TRAIN_PARETO_CANDIDATES.
   const trainParetoCandidates = mod._openzl_wasm_trainParetoCandidates();

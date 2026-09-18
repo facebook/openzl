@@ -15,6 +15,11 @@ export declare const Profile: {
 
 export type ProfileValue = (typeof Profile)[keyof typeof Profile];
 
+/**
+ * Browser benchmark result. Speed reflects the WebAssembly
+ * implementation and may differ substantially from native performance.
+ * Compression ratios are directly comparable with native results.
+ */
 export interface BenchmarkResult {
   iterations: number;
   srcSize: number;
@@ -85,3 +90,6 @@ export interface OpenZLOptions {
 }
 
 export declare function createOpenZL(options?: OpenZLOptions): Promise<OpenZL>;
+
+/** Live benchmark-iteration ceiling from the WASM module, without holding an OpenZL instance. */
+export declare function getOpenZLMaxIterations(options?: OpenZLOptions): Promise<number>;
