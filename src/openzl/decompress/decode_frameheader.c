@@ -434,6 +434,15 @@ void ZL_FrameInfo_free(ZL_FrameInfo* zfi)
     ZL_free(zfi);
 }
 
+static size_t ZL_FrameInfo_sizeof(const ZL_FrameInfo* zfi)
+{
+    if (zfi == NULL)
+        return 0;
+    return sizeof(*zfi) + zfi->nbOutputs * sizeof(*zfi->types)
+            + zfi->nbOutputs * sizeof(*zfi->decompressedSizes)
+            + zfi->nbOutputs * sizeof(*zfi->numElts) + zfi->commentSize;
+}
+
 ZL_Report ZL_FrameInfo_getFormatVersion(const ZL_FrameInfo* zfi)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
@@ -666,6 +675,19 @@ void DFH_destroy(DFH_Struct* dfh)
     VECTOR_DESTROY(dfh->regenDistances);
     ZL_FrameInfo_free(dfh->frameinfo);
     dfh->frameinfo = NULL;
+}
+
+size_t DFH_sizeof(const DFH_Struct* dfh)
+{
+    if (dfh == NULL) {
+        return 0;
+    }
+    return VECTOR_CAPACITY(dfh->storedStreamSizes)
+            * VECTOR_ELEMENT_SIZE(dfh->storedStreamSizes)
+            + VECTOR_CAPACITY(dfh->regenDistances)
+            * VECTOR_ELEMENT_SIZE(dfh->regenDistances)
+            + VECTOR_CAPACITY(dfh->nodes) * VECTOR_ELEMENT_SIZE(dfh->nodes)
+            + ZL_FrameInfo_sizeof(dfh->frameinfo);
 }
 
 // Public Symbol

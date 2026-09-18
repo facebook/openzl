@@ -195,6 +195,20 @@ void ZL_DCtx_free(ZL_DCtx* dctx)
     ZL_free(dctx);
 }
 
+size_t ZL_DCtx_sizeof(const ZL_DCtx* dctx)
+{
+    if (dctx == NULL) {
+        return 0;
+    }
+    return sizeof(*dctx) + DFH_sizeof(&dctx->dfh)
+            + ALLOC_Arena_memAllocated(dctx->dtm.allocator)
+            + ALLOC_Arena_memAllocated(dctx->fusion.arena)
+            + ALLOC_Arena_memAllocated(dctx->decoderWkspArena)
+            + ALLOC_Arena_memAllocated(dctx->fusionWkspArena)
+            + ALLOC_Arena_memAllocated(dctx->streamArena)
+            + ALLOC_Arena_memAllocated(dctx->chunkArena);
+}
+
 ZL_Report DCTX_registerDecoderFusion(
         ZL_DCtx* dctx,
         const ZL_DecoderFusionDesc* fusion)

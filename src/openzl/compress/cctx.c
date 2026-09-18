@@ -121,6 +121,14 @@ static void CCTX_TransformHeaders_destroy(CCTX_TransformHeaders* headers)
     VECTOR_DESTROY(headers->sentHeaderStream);
 }
 
+static size_t CCTX_TransformHeaders_sizeof(const CCTX_TransformHeaders* headers)
+{
+    return VECTOR_CAPACITY(headers->stagingHeaderStream)
+            * VECTOR_ELEMENT_SIZE(headers->stagingHeaderStream)
+            + VECTOR_CAPACITY(headers->sentHeaderStream)
+            * VECTOR_ELEMENT_SIZE(headers->sentHeaderStream);
+}
+
 // --------------------------
 // CCtx Lifetime management
 // --------------------------
@@ -2190,6 +2198,26 @@ size_t CCTX_arenaMemory(ZL_CCtx const* cctx)
             + ALLOC_Arena_memAllocated(cctx->chunkArena)
             + ALLOC_Arena_memAllocated(cctx->graphArena)
             + ALLOC_Arena_memAllocated(cctx->codecArena);
+}
+
+static size_t RTGM_sizeof(const RTGraph* rtgraph)
+{
+    return VECTOR_CAPACITY(rtgraph->nodes) * VECTOR_ELEMENT_SIZE(rtgraph->nodes)
+            + VECTOR_CAPACITY(rtgraph->streams)
+            * VECTOR_ELEMENT_SIZE(rtgraph->streams)
+            + ALLOC_Arena_memAllocated(rtgraph->rtsidsArena)
+            + ALLOC_Arena_memAllocated(rtgraph->streamArena);
+}
+
+size_t CCTX_sizeof(const ZL_CCtx* cctx)
+{
+    if (cctx == NULL) {
+        return 0;
+    }
+    return sizeof(*cctx) + RTGM_sizeof(&cctx->rtgraph)
+            + CCTX_TransformHeaders_sizeof(&cctx->trHeaders)
+            + CodecCache_sizeof(cctx->tryGraphCodecOutputCache)
+            + CCTX_arenaMemory(cctx);
 }
 
 static ZL_RESULT_OF(ZL_GraphPerformance) CCTX_tryGraphInternal(
