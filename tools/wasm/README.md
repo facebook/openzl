@@ -12,6 +12,9 @@ const zl = await createOpenZL()
 TypeScript projects use the accompanying `js/wasm_api.d.ts` declarations; the
 runtime wrapper remains plain JavaScript and requires no TypeScript build step.
 
+`getSerializedCompressor(profile, compressionLevel?)` accepts an optional
+compression level from 1 to 9. Omit it to use OpenZL's current default.
+
 Progress is scoped to calls made by this module instance:
 
 ```js
@@ -37,6 +40,7 @@ Best for blobs, text, JSON, etc. No element-width assumption.
 const fileBytes = new TextEncoder().encode("hello world, hello world, ...")
 
 // This is session-scoped and version-locked — re-fetch on page load, don't persist.
+// Omit the optional compression level to use OpenZL’s default
 const serialCompressor = zl.getSerializedCompressor(Profile.SERIAL)
 const compressed = zl.compress(fileBytes, serialCompressor)
 const decompressed = zl.decompress(compressed)
@@ -58,6 +62,7 @@ values.forEach((v, i) => view.setUint32(i * 4, v, /* littleEndian */ true))
 
 // Other widths: U16 -> 2 bytes + setUint16, I32 -> setInt32, U64 -> setBigUint64, etc.
 // The Profile you pick must match the width/encoding you used.
+// Omit the optional compression level to use OpenZL’s default
 const u32Compressor = zl.getSerializedCompressor(Profile.U32)
 const compressed = zl.compress(u32LEBytes, u32Compressor)
 const decompressedBytes = zl.decompress(compressed)
@@ -98,6 +103,7 @@ const roundtripped = Array.from({ length: decompressedBytes.length / 4 },
 // }
 
 const data = new TextEncoder().encode("some repeated data...".repeat(1000))
+// Omit the optional compression level to use OpenZL’s default
 const compressor = zl.getSerializedCompressor(Profile.SERIAL)
 
 console.log(`maximum benchmark iterations: ${zl.maxBenchmarkIterations}`)
