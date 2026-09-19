@@ -48,6 +48,8 @@ sddl2_vm_test
 # WASM binding artifacts
 *.wasm
 /tools/wasm/js/openzl.*
+# Staged into the tool's public/ by the docs deploy so Vite serves it.
+/tools/web/compression_playground/public/openzl.*
 
 # dependencies
 /deps/*
