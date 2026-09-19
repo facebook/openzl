@@ -10,8 +10,54 @@ on:
       - dev
 
 jobs:
+  # This should be synced to the "wasm" job in deploy-docs.yml
+  wasm:
+    name: Build WASM artifact
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      # Restoring the artifact is what keeps a docs-only change off the
+      # Emscripten toolchain entirely; the key covers everything the binding
+      # links, mirroring the path filters in wasm-ci.yml.
+      - name: Cache WASM artifact
+        id: wasm-cache
+        uses: actions/cache@v4
+        with:
+          path: build-wasm/tools/wasm
+          key: >-
+            openzl-wasm-${{runner.os}}-emsdk4.0.19-${{hashFiles(
+            'tools/wasm/**', 'tools/training/**', 'tools/io/**',
+            'tools/logger/**', 'cli/utils/profile_graphs.*',
+            'custom_parsers/**', 'cpp/**', 'src/**', 'include/**',
+            '**/CMakeLists.txt')}}
+      - name: Set up Emscripten
+        if: steps.wasm-cache.outputs.cache-hit != 'true'
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          # Keep in sync with wasm-ci.yml.
+          version: 4.0.19
+          actions-cache-folder: emsdk-cache
+      - name: Configure
+        if: steps.wasm-cache.outputs.cache-hit != 'true'
+        # MinSizeRel because this build is shipped: the default empty build type
+        # optimises for nothing and the module is already tens of megabytes.
+        run: emcmake cmake -DOPENZL_BUILD_WASM=ON -DCMAKE_BUILD_TYPE=MinSizeRel -B build-wasm
+      - name: Build
+        if: steps.wasm-cache.outputs.cache-hit != 'true'
+        run: cmake --build build-wasm --target openzl_wasm -j$(getconf _NPROCESSORS_ONLN)
+      - name: Upload WASM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openzl-wasm
+          path: |
+            build-wasm/tools/wasm/openzl.js
+            build-wasm/tools/wasm/openzl.wasm
+          retention-days: 1
+
   # This should be synced to the "build" step in deploy-docs.yml
   build:
+    needs: wasm
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -24,6 +70,16 @@ jobs:
           node-version: lts/*
           cache: 'yarn'
           cache-dependency-path: ${{github.workspace}}/tools/web/yarn.lock
+      # Two destinations, because the artifact is consumed twice: the JS glue
+      # has to sit next to wasm_api.js for its relative import to resolve when
+      # Vite bundles, and the .wasm has to be served, which means public/.
+      - name: Download WASM artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: openzl-wasm
+          path: ${{github.workspace}}/tools/wasm/js
+      - name: Stage WASM artifact for the playground
+        run: cp tools/wasm/js/openzl.js tools/wasm/js/openzl.wasm tools/web/compression_playground/public/
       - name: Install yarn dependencies
         working-directory: ${{github.workspace}}/tools/web
         run: yarn --frozen-lockfile
