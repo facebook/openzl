@@ -88,7 +88,7 @@ std::vector<std::vector<poly::optional<CompressionResult>>> joinBenchmarks(
                 if (error == nullptr) {
                     error = std::current_exception();
                 }
-                graphResults.push_back(poly::nullopt);
+                graphResults.emplace_back(poly::nullopt);
             }
         }
         results.push_back(std::move(graphResults));
