@@ -6,8 +6,6 @@
 
 #include "openzl/common/allocation.h"
 #include "openzl/common/materializer_ctx.h" // struct ZL_Materializer_s
-#include "openzl/dict/bundle.h"
-#include "openzl/dict/dict.h"
 #include "openzl/dict/dict_constants.h"
 #include "openzl/shared/xxhash.h"
 #include "openzl/zl_errors.h"
