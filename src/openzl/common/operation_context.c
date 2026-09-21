@@ -34,6 +34,22 @@ void ZL_OC_destroy(ZL_OperationContext* opCtx)
     memset(opCtx, 0, sizeof(*opCtx));
 }
 
+size_t ZL_OC_sizeof(const ZL_OperationContext* opCtx)
+{
+    if (opCtx == NULL) {
+        return 0;
+    }
+    size_t size = VECTOR_SIZEOF(opCtx->errorInfos)
+            + VECTOR_SIZEOF(opCtx->warnings)
+            + (opCtx->defaultScopeContext == NULL
+                       ? 0
+                       : sizeof(*opCtx->defaultScopeContext));
+    for (size_t i = 0; i < VECTOR_SIZE(opCtx->errorInfos); i++) {
+        size += ZL_DEE_sizeof(VECTOR_AT(opCtx->errorInfos, i));
+    }
+    return size;
+}
+
 void ZL_OC_startOperation(ZL_OperationContext* opCtx, ZL_Operation op)
 {
     if (opCtx == NULL) {

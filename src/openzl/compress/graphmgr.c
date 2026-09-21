@@ -104,6 +104,17 @@ void GM_free(GraphsMgr* gm)
     ZL_free(gm);
 }
 
+size_t GM_sizeof(const GraphsMgr* gm)
+{
+    if (gm == NULL) {
+        return 0;
+    }
+    return sizeof(*gm) + VECTOR_SIZEOF(gm->gdv) + GraphMap_sizeof(&gm->nameMap)
+            + ZL_OpaquePtrRegistry_sizeof(&gm->opaquePtrs)
+            + ALLOC_Arena_memAllocated(gm->allocator)
+            + ALLOC_Arena_memAllocated(gm->scratchAllocator);
+}
+
 void GM_setCDictMgr(GraphsMgr* gm, CDictMgr* cdictMgr)
 {
     ZL_ASSERT_NN(gm);

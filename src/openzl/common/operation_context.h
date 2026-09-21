@@ -65,6 +65,9 @@ void ZL_OC_init(ZL_OperationContext* opCtx);
 /// Releases the resources owned by the @p opCtx.
 void ZL_OC_destroy(ZL_OperationContext* opCtx);
 
+/// Returns memory currently retained by @p opCtx. Accepts NULL.
+size_t ZL_OC_sizeof(const ZL_OperationContext* opCtx);
+
 /// Mark the start of an operation, and reset the operation context.
 void ZL_OC_startOperation(ZL_OperationContext* opCtx, ZL_Operation op);
 

@@ -223,6 +223,18 @@ void ZL_DEE_free(ZL_DynamicErrorInfo* info)
     free(info);
 }
 
+size_t ZL_DEE_sizeof(const ZL_DynamicErrorInfo* info)
+{
+    if (info == NULL) {
+        return 0;
+    }
+    return sizeof(*info) + VECTOR_SIZEOF(info->messageBuffer)
+            + VECTOR_SIZEOF(info->stackFrames)
+            + (info->cachedErrorString == NULL
+                       ? 0
+                       : strlen(info->cachedErrorString) + 1);
+}
+
 void ZL_EE_free(ZL_ErrorInfo ei)
 {
     ZL_DynamicErrorInfo* info = ZL_EE_dy(ei);

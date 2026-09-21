@@ -18,6 +18,10 @@ void DIZSTD_freeDCtx(void* state)
 {
     ZSTD_freeDCtx(state);
 }
+size_t DIZSTD_sizeofDCtx(const void* state)
+{
+    return state == NULL ? 0 : ZSTD_sizeof_DCtx((const ZSTD_DCtx*)state);
+}
 
 static bool useMagicless(ZL_Decoder const* dictx)
 {

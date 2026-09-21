@@ -50,6 +50,17 @@ void CTM_destroy(CNodes_manager* ctm)
     ZL_zeroes(ctm, sizeof(*ctm));
 }
 
+size_t CTM_sizeof(const CNodes_manager* ctm)
+{
+    if (ctm == NULL) {
+        return 0;
+    }
+    return VECTOR_SIZEOF(ctm->cnodes)
+            + ZL_OpaquePtrRegistry_sizeof(&ctm->opaquePtrs)
+            + ALLOC_Arena_memAllocated(ctm->allocator)
+            + ALLOC_Arena_memAllocated(ctm->scratchAllocator);
+}
+
 void CTM_reset(CNodes_manager* ctm)
 {
     ZL_DLOG(FRAME, "CTM_reset");

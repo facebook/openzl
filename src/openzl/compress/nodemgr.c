@@ -41,6 +41,14 @@ void NM_destroy(Nodes_manager* nmgr)
     NodeMap_destroy(&nmgr->nameMap);
 }
 
+size_t NM_sizeof(const Nodes_manager* nmgr)
+{
+    if (nmgr == NULL) {
+        return 0;
+    }
+    return CTM_sizeof(&nmgr->ctm) + NodeMap_sizeof(&nmgr->nameMap);
+}
+
 /* Implementation notes :
  * Using ID ranges to determine in which category (or manager) is stored a Node.
  * - Standard Nodes

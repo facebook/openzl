@@ -84,6 +84,13 @@ ZL_DCtx* ZL_DCtx_create(void);
 void ZL_DCtx_free(ZL_DCtx* dctx);
 
 /**
+ * @brief Returns the memory currently retained by @p dctx.
+ *
+ * @return 0 when @p dctx is NULL.
+ */
+size_t ZL_DCtx_sizeof(const ZL_DCtx* dctx);
+
+/**
  * @brief Attach a dict loader to the decompression context.
  *
  * The dict loader is referenced (not owned) by the DCtx. The caller must

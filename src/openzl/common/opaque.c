@@ -31,6 +31,14 @@ void ZL_OpaquePtrRegistry_reset(ZL_OpaquePtrRegistry* registry)
     ZL_OpaquePtrRegistry_init(registry);
 }
 
+size_t ZL_OpaquePtrRegistry_sizeof(const ZL_OpaquePtrRegistry* registry)
+{
+    if (registry == NULL) {
+        return 0;
+    }
+    return VECTOR_SIZEOF(registry->ptrs);
+}
+
 ZL_Report ZL_OpaquePtrRegistry_register(
         ZL_OpaquePtrRegistry* registry,
         ZL_OpaquePtr opaque)
