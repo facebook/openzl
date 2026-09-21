@@ -24,6 +24,28 @@ jobs:
           node-version: lts/*
           cache: 'yarn'
           cache-dependency-path: ${{github.workspace}}/tools/web/yarn.lock
+      # The playground loads the OpenZL engine as WASM. That artifact is
+      # gitignored, and wasm-ci.yml builds it only to run its own tests, so the
+      # deploy has to produce its own copy before Vite bundles the web tools.
+      # Keep the emsdk version in sync with wasm-ci.yml.
+      - name: Set up Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 4.0.19
+          actions-cache-folder: emsdk-cache
+      - name: Build WASM artifact
+        run: |
+            emcmake cmake -DOPENZL_BUILD_WASM=ON -B build-wasm
+            cmake --build build-wasm --target openzl_wasm -j$(getconf _NPROCESSORS_ONLN)
+      - name: Stage WASM artifact
+        # `wasm_api.js` resolves `./openzl.js` relative to itself. The explicit
+        # checks keep a staging failure from reaching Pages as a site whose
+        # engine silently 404s -- nothing imports the artifact yet, so until the
+        # run seam lands a missing copy would otherwise deploy green.
+        run: |
+            cp build-wasm/tools/wasm/openzl.{js,wasm} tools/wasm/js/
+            test -f tools/wasm/js/openzl.js
+            test -f tools/wasm/js/openzl.wasm
       - name: Install yarn dependencies
         working-directory: ${{github.workspace}}/tools/web
         run: yarn --frozen-lockfile
