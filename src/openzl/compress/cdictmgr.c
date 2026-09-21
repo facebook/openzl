@@ -139,6 +139,15 @@ void CDictMgr_destroy(CDictMgr* mgr)
     memset(mgr, 0, sizeof(*mgr));
 }
 
+size_t CDictMgr_sizeof(const CDictMgr* mgr)
+{
+    if (mgr == NULL) {
+        return 0;
+    }
+    return ALLOC_Arena_memAllocated(mgr->arena)
+            + ALLOC_Arena_memAllocated(mgr->scratchArena);
+}
+
 /* ================================================================
  * Internal: cache a parsed dict (or return the existing cached copy)
  * ================================================================ */

@@ -322,6 +322,8 @@ ZL_DynamicErrorInfo* ZL_DEE_create(void);
 void ZL_EE_free(ZL_ErrorInfo ei);
 void ZL_DEE_free(ZL_DynamicErrorInfo* info);
 
+size_t ZL_DEE_sizeof(const ZL_DynamicErrorInfo* info);
+
 /// Clear the ZL_ErrorInfo object for reuse.
 void ZL_EE_clear(ZL_ErrorInfo ei);
 void ZL_DEE_clear(ZL_DynamicErrorInfo* info);

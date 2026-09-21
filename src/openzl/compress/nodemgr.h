@@ -28,6 +28,9 @@ typedef struct {
 ZL_Report NM_init(Nodes_manager* nmgr, ZL_OperationContext* opCtx);
 void NM_destroy(Nodes_manager* nmgr);
 
+/** Returns memory currently retained by @p nmgr. Accepts NULL. */
+size_t NM_sizeof(const Nodes_manager* nmgr);
+
 // Write Accessors
 
 ZL_RESULT_OF(ZL_NodeID)

@@ -21,6 +21,20 @@ void TRS_destroy(CachedStates* trs)
     CachedStatesMap_destroy(&trs->states);
 }
 
+size_t TRS_sizeof(const CachedStates* trs)
+{
+    if (trs == NULL) {
+        return 0;
+    }
+    size_t size               = CachedStatesMap_sizeof(&trs->states);
+    CachedStatesMap_Iter iter = CachedStatesMap_iter(&trs->states);
+    for (CachedStatesMap_Entry const* entry;
+         (entry = CachedStatesMap_Iter_next(&iter));) {
+        size += ZL_CodecStateManager_sizeof(&entry->key, entry->val);
+    }
+    return size;
+}
+
 void* TRS_getCodecState(CachedStates* trs, const CNode* cnode)
 {
     ZL_ASSERT_NN(cnode);

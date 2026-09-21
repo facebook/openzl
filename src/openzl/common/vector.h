@@ -140,6 +140,13 @@ ZL_BEGIN_C_DECLS
 #define VECTOR_ELEMENT_SIZE(vec) (sizeof(*(vec)._typed.data))
 
 /*
+ * VECTOR_SIZEOF:
+ * Return the size in bytes of the vector's retained storage.
+ */
+#define VECTOR_SIZEOF(vec) \
+    GenericVector_sizeof(VECTOR_GENERIC_POINTER(vec), VECTOR_ELEMENT_SIZE(vec))
+
+/*
  * VECTOR_INIT:
  * Initializes `vec` to an empty vector with a maximum capacity of
  * `max_capacity` elements.
@@ -359,6 +366,15 @@ ZL_INLINE size_t GenericVector_size(GenericVector const* vec)
 ZL_INLINE size_t GenericVector_capacity(GenericVector const* vec)
 {
     return vec->capacity;
+}
+
+ZL_INLINE size_t
+GenericVector_sizeof(GenericVector const* vec, size_t elementSize)
+{
+    if (vec == NULL) {
+        return 0;
+    }
+    return vec->capacity * elementSize;
 }
 
 ZL_INLINE void* GenericVector_data(GenericVector const* vec)

@@ -79,6 +79,9 @@ void DFH_init(DFH_Struct* dfh);
 /// Destroys the @p dfh and releases its resources
 void DFH_destroy(DFH_Struct* dfh);
 
+/** Returns memory currently retained by @p dfh. Accepts NULL. */
+size_t DFH_sizeof(const DFH_Struct* dfh);
+
 /**
  * Deep-copies @p frameInfo into @p dfh.
  *

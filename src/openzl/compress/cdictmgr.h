@@ -85,6 +85,9 @@ ZL_Report CDictMgr_init(
  */
 void CDictMgr_destroy(CDictMgr* mgr);
 
+/** Returns memory currently retained by @p mgr. Accepts NULL. */
+size_t CDictMgr_sizeof(const CDictMgr* mgr);
+
 /**
  * Parse a serialized fat bundle, cache each constituent dict, and set the
  * bundleID. This should be called *once* per CDictMgr, since the compressor can

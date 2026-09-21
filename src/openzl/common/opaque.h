@@ -19,6 +19,9 @@ void ZL_OpaquePtrRegistry_init(ZL_OpaquePtrRegistry* registry);
 void ZL_OpaquePtrRegistry_destroy(ZL_OpaquePtrRegistry* registry);
 void ZL_OpaquePtrRegistry_reset(ZL_OpaquePtrRegistry* registry);
 
+/** Returns memory currently retained by @p registry. Accepts NULL. */
+size_t ZL_OpaquePtrRegistry_sizeof(const ZL_OpaquePtrRegistry* registry);
+
 ZL_Report ZL_OpaquePtrRegistry_register(
         ZL_OpaquePtrRegistry* registry,
         ZL_OpaquePtr ptr);

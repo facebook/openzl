@@ -19,6 +19,9 @@ typedef struct CDictMgr_s CDictMgr; // forward declaration
 GraphsMgr* GM_create(const Nodes_manager* nmgr);
 void GM_free(GraphsMgr* gm);
 
+/** Returns memory currently retained by @p gm. Accepts NULL. */
+size_t GM_sizeof(const GraphsMgr* gm);
+
 /**
  * Populate the graph manager with a pointer to the compressor's CDictMgr,
  * for management of MParam objects.
