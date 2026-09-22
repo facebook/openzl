@@ -255,8 +255,6 @@ class Logger {
     // ANSI terminal control sequences
     static constexpr const char* CLEAR_TO_EOL = "\033[K";
 
-    static constexpr int PADDING_SIZE = 80;
-
     // The last message written by update(), or nullopt if the update line has
     // since been cleared or finalized. Repeating a message is a no-op, which
     // keeps non-TTY output free of duplicated progress lines.

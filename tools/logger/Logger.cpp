@@ -69,11 +69,7 @@ void Logger::clearLine()
         return;
     }
     logger.previous_update_message.reset();
-    fprintf(stderr, "\r");
-    for (int i = 0; i < PADDING_SIZE; ++i) {
-        fprintf(stderr, " ");
-    }
-    fprintf(stderr, "\r");
+    fprintf(stderr, "\r%s", CLEAR_TO_EOL);
     fflush(stderr);
 }
 

@@ -237,6 +237,28 @@ TEST_F(LoggerTest, LogCRedrawsTheProgressLineOnTTY)
     Logger::finalizeProgress(INFO);
 }
 
+// The progress line can be arbitrarily long, so clearing it must not depend on
+// its length: whatever is left behind shows up past the end of the shorter log
+// line that overwrites it.
+TEST_F(LoggerTest, LogCClearsAProgressLineLongerThanTheLogLineOnTTY)
+{
+    setIsTTY(true);
+
+    const std::string longMessage(2 * progressBarWidth, 'x');
+    Logger::logProgress(INFO, 0.5, "%s", longMessage.c_str());
+    const std::string progressMessage = Logger::instance().progress_message;
+    ASSERT_EQ(captured(), updateOutput(progressMessage));
+
+    Logger::log_c(INFO, "short");
+
+    EXPECT_EQ(
+            captured(),
+            "\r" + std::string(kClearToEol) + "short\n"
+                    + updateOutput(progressMessage));
+
+    Logger::finalizeProgress(INFO);
+}
+
 TEST_F(LoggerTest, UpdateBelowVerbosityWritesNothing)
 {
     Logger::instance().setGlobalLoggerVerbosity(WARNINGS);
