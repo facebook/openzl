@@ -7,6 +7,8 @@
 #include "openzl/codecs/rolz/encode_rolz_kernel.h"
 #include "openzl/decompress/internal.h"
 
+#include "rolz_test_data.h"
+
 namespace {
 std::string const kLoremIpsum = R"(
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. In molestie mattis purus, et blandit arcu luctus vitae. In ut neque nisl. Ut et augue mattis, euismod dui ut, rutrum sem. Pellentesque semper a nibh eu laoreet. Sed ac vestibulum mauris, id tempus felis. Fusce id ex quis lectus ultrices lacinia. Nulla tortor felis, aliquet vitae ligula sit amet, ornare tincidunt felis. Integer consectetur sagittis justo id convallis. Aenean suscipit maximus nisi, a pellentesque libero tincidunt sed. Curabitur pharetra sem risus, ut aliquam nulla pretium vel. Nam orci tellus, fringilla et nisl in, rutrum maximus odio. Integer nulla sapien, finibus at nibh nec, dignissim euismod diam. Duis at mauris ipsum. Ut volutpat bibendum viverra. Nam nec fermentum ipsum.
@@ -79,4 +81,20 @@ TEST(RolzTest, zeros)
 {
     testRoundtrip("000000000000000000000000000000000");
 }
+
+// This malformed O1 frame exhausts one literal cluster while another cluster
+// still has data. The test fails if decompression reads past that cluster.
+// Pre-fix, the over-read is only reliably observable under AddressSanitizer.
+TEST(RolzTest, craftedFrameFailsCleanly)
+{
+    std::string decompressed;
+    decompressed.resize(8u << 20);
+    ZL_Report report = ZL_rolzDecompress(
+            &decompressed[0],
+            decompressed.size(),
+            rolz_test_data::kOobReadFrame,
+            sizeof(rolz_test_data::kOobReadFrame));
+    ASSERT_TRUE(ZL_isError(report));
+}
+
 } // namespace
