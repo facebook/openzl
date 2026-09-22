@@ -15,6 +15,9 @@
 #define ENTROPY_HISTORAM_PID 246
 #define ENTROPY_HUF_CTABLE_PID 247
 
+/// Format version where PivCo Huffman was introduced.
+#define ZL_HUFFMAN_PIVCO_MIN_FORMAT_VERSION 27
+
 ZL_BEGIN_C_DECLS
 
 ZL_Report EI_fse_v2(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
