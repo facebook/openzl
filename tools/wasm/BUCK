@@ -1,5 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup")
 load("../../defs.bzl", "zs_library", "zs_unittest")
 
 oncall("data_compression")
@@ -34,4 +35,24 @@ zs_unittest(
     deps = [
         ":wasm",
     ],
+)
+
+# The JS wrapper, declared so the web tools that import it can depend on it.
+# Globbed rather than enumerated, because a list is the same omission this
+# target exists to fix: a file added to js/ later would go undeclared again.
+#
+# Emscripten's output (`js/openzl.*`) is excluded because it lands in this
+# directory on any machine that has built the binding -- gitignored, and an
+# input to nothing. js/tests/ is excluded because no web tool ships or runs it,
+# so carrying it here would only rebuild the playground and the docs on a file
+# neither reads.
+buck_filegroup(
+    name = "js_srcs",
+    srcs = glob(
+        ["js/**/*"],
+        exclude = [
+            "js/openzl.*",
+            "js/tests/**",
+        ],
+    ),
 )
