@@ -124,3 +124,8 @@ jobs:
       - name: build
         run: |
             ./doc/mkdocs/github_pages_build_script.py
+      # Cross-origin isolation, and so the module itself, rests on Vite having
+      # rewritten this src against the tool's base. Nothing else would catch it
+      # regressing: the page renders fine, and only fails when a run starts.
+      - name: Check the isolation worker is referenced under the tool's base
+        run: grep -q '"/tools/playground/cross-origin-isolation-sw.js"' doc/mkdocs/build/tools/playground/index.html
