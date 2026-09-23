@@ -49,10 +49,16 @@ static ZL_Report computeFHBound(
     ZL_ASSERT_LE(
             ZL_varintSize(ZL_runtimeNodeInputLimit(ZL_MAX_FORMAT_VERSION)), 2);
 
-    const size_t bound = 4 + (numInputs * 5) + ZL_varintSize(nbTransforms)
-            + ZL_varintSize(nbBuffs - 1) + (nbBuffs * 4) + (nbTransforms * 22)
-            + (nbRegens * 4) + 4 + 4 + ((nbTransforms + 7) / 8) + 1
-            + (nbTransforms * 3);
+    // V21+: per input, the frame header spends:
+    // - a byteSize varint
+    // - a numElts varint (for String inputs),
+    // - 2 bits of type, rounded up here to a whole byte.
+    const size_t perInputBound = 2 * ZL_VARINT_LENGTH_64 + 1;
+
+    const size_t bound = 4 + (numInputs * perInputBound)
+            + ZL_varintSize(nbTransforms) + ZL_varintSize(nbBuffs - 1)
+            + (nbBuffs * 4) + (nbTransforms * 22) + (nbRegens * 4) + 4 + 4
+            + ((nbTransforms + 7) / 8) + 1 + (nbTransforms * 3);
     return ZL_returnValue(bound);
 }
 
