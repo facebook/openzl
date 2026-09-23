@@ -5,10 +5,16 @@ import {Box, Flex} from '@chakra-ui/react';
 import {Banner, ToolHeader} from '@openzl/web-common';
 import ResultsPanel from './components/ResultsPanel.tsx';
 import SetupColumn from './components/SetupColumn.tsx';
+import {toCompressorConfig, type RunConfig, type RunState} from './benchmarkTypes.ts';
+import {ITERATIONS_DEFAULT} from './compressors.ts';
+import {useCompressorRows} from './useCompressorRows.ts';
 import logoUrl from '/OpenZL_logo.png?url';
 
 /** Content width of the Figma frame (node 29:4) the setup and results columns sit in. */
 const CONTENT_MAX_WIDTH = '1223px';
+
+/** The only state a run can be in until the run seam lands, hence `onRun={null}` below. */
+const IDLE_RUN_STATE: RunState = {status: 'idle'};
 
 /**
  * Without this, a file released anywhere but the drop zone makes the browser
@@ -37,9 +43,17 @@ function useBlockStrayFileDrops() {
 }
 
 export default function App() {
-  // The file lives here rather than in UploadCard because the run seam needs it:
-  // step 3 gates its button on having one, and it becomes RunConfig.input.
   const [file, setFile] = useState<File | null>(null);
+  const compressors = useCompressorRows();
+  const [iterations, setIterations] = useState(ITERATIONS_DEFAULT);
+  const runConfig: RunConfig | null =
+    file === null
+      ? null
+      : {
+          input: file,
+          compressors: compressors.rows.map(toCompressorConfig),
+          iterations,
+        };
   useBlockStrayFileDrops();
 
   return (
@@ -61,8 +75,18 @@ export default function App() {
           pt="24px"
           pb="40px"
           direction={{base: 'column', lg: 'row'}}>
-          <SetupColumn file={file} onFileChange={setFile} />
-          <ResultsPanel />
+          <SetupColumn
+            file={file}
+            onFileChange={setFile}
+            compressors={compressors}
+            iterations={iterations}
+            onIterationsChange={setIterations}
+            runConfig={runConfig}
+            runState={IDLE_RUN_STATE}
+            onRun={null}
+            onTrySample={null}
+          />
+          <ResultsPanel runState={IDLE_RUN_STATE} />
         </Flex>
       </Flex>
     </Flex>
