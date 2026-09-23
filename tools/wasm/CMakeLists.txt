@@ -96,11 +96,20 @@ set(OPENZL_WASM_PTHREAD_POOL_SIZE 4 CACHE STRING
 # -sMEMORY64=1 / -sWASM_BIGINT=1 / -fexceptions / -pthread are set globally in
 # the top-level file so every object, including the core library and the
 # training tools, uses the wasm64 ABI, can unwind, and can spawn threads.
-target_compile_options(openzl_wasm PRIVATE -O3)
+#
+# `-g` is here for speed, not debugging: emcc skips binaryen's post-link pass
+# when DWARF has to survive, and that pass costs this workload about a quarter
+# of its compression throughput. Whoever ships the artifact strips the DWARF
+# back out -- see the docs deploy. Stated rather than inherited from
+# OpenZLCompilerUnix.cmake, which adds `-g` to Release for native profiling:
+# removing it there is a reasonable cleanup and must not silently slow this
+# module down.
+target_compile_options(openzl_wasm PRIVATE -O3 -g)
 target_compile_definitions(openzl_wasm PRIVATE
   OPENZL_WASM_TRAIN_MAX_THREADS=${OPENZL_WASM_PTHREAD_POOL_SIZE})
 target_link_options(openzl_wasm PRIVATE
   -O3                        # optimise the linked wasm
+  -g                         # keeps binaryen's post-link pass off; see above
   -sWASM=1                   # emit wasm, not asm.js
   -sALLOW_MEMORY_GROWTH=1    # heap can grow; JS must re-read mod.HEAPU8
   -sINITIAL_MEMORY=32MB      # starting heap size

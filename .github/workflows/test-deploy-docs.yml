@@ -9,9 +9,84 @@ on:
     branches:
       - dev
 
+# Bumping Emscripten means editing this and the matching line in wasm-ci.yml;
+# a workflow-level env cannot reach across files. The two deploy workflows at
+# least move together.
+env:
+  EMSDK_VERSION: 4.0.19
+
 jobs:
+  # This should be synced to the "wasm" job in deploy-docs.yml
+  wasm:
+    name: Build WASM artifact
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      # Restoring the artifact is what keeps a docs-only change off the
+      # Emscripten toolchain entirely. The key covers everything the binding
+      # links -- the set wasm-ci.yml filters on, `**/CMakeLists.txt` included,
+      # kept deliberately broad so the two cannot drift apart -- plus two things
+      # that shape the artifact without being linked into it: build-scripts/cmake,
+      # which decides the compile flags, and both deploy workflows.
+      #
+      # Both files rather than just this one: the keys have to be identical for
+      # a pull request to restore what the branch build already compiled.
+      - name: Cache WASM artifact
+        id: wasm-cache
+        uses: actions/cache@v4
+        with:
+          path: build-wasm/tools/wasm
+          key: >-
+            openzl-wasm-${{runner.os}}-emsdk${{env.EMSDK_VERSION}}-${{hashFiles(
+            'tools/wasm/**', 'tools/training/**', 'tools/io/**',
+            'tools/logger/**', 'cli/utils/profile_graphs.*',
+            'custom_parsers/**', 'cpp/**', 'src/**', 'include/**',
+            '**/CMakeLists.txt', 'build-scripts/cmake/**',
+            '.github/workflows/deploy-docs.yml',
+            '.github/workflows/test-deploy-docs.yml')}}
+      - name: Set up Emscripten
+        if: steps.wasm-cache.outputs.cache-hit != 'true'
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: ${{env.EMSDK_VERSION}}
+          actions-cache-folder: emsdk-cache
+      - name: Configure
+        if: steps.wasm-cache.outputs.cache-hit != 'true'
+        # The build type only reaches the libraries the binding links, since
+        # tools/wasm/CMakeLists.txt pins the artifact itself to -O3. Release
+        # rather than MinSizeRel: the playground exists to report MB/s, and -Os
+        # costs about 14% of compression throughput.
+        run: emcmake cmake -DOPENZL_BUILD_WASM=ON -DCMAKE_BUILD_TYPE=Release -B build-wasm
+      - name: Build
+        if: steps.wasm-cache.outputs.cache-hit != 'true'
+        run: cmake --build build-wasm --target openzl_wasm -j$(getconf _NPROCESSORS_ONLN)
+      # Release inherits `-g` from build-scripts/cmake/OpenZLCompilerUnix.cmake,
+      # which is 40 of the 45 MB it produces. Worth stripping for that alone,
+      # but the DWARF is also load-bearing: emcc skips binaryen's post-link pass
+      # when debug info has to survive, and on this workload that pass costs
+      # about a quarter of the compression throughput. So the module is built
+      # with debug info, kept out of that pass, and stripped afterwards.
+      #
+      # It follows that removing that `-g` upstream would quietly cost the
+      # deployed tool 25%, with nothing here to notice -- so
+      # tools/wasm/CMakeLists.txt states `-g` on the target rather than
+      # inheriting it, and this step is what undoes it again.
+      - name: Strip debug info
+        if: steps.wasm-cache.outputs.cache-hit != 'true'
+        run: emstrip --strip-debug build-wasm/tools/wasm/openzl.wasm
+      - name: Upload WASM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openzl-wasm
+          path: |
+            build-wasm/tools/wasm/openzl.js
+            build-wasm/tools/wasm/openzl.wasm
+          retention-days: 1
+
   # This should be synced to the "build" step in deploy-docs.yml
   build:
+    needs: wasm
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -24,6 +99,15 @@ jobs:
           node-version: lts/*
           cache: 'yarn'
           cache-dependency-path: ${{github.workspace}}/tools/web/yarn.lock
+      # Next to wasm_api.js, which is the only place it is needed: that module
+      # imports the glue relatively and locates the binary with
+      # `new URL('./openzl.wasm', import.meta.url)`, which Vite resolves at
+      # build time and re-emits under assets/ with a content hash.
+      - name: Download WASM artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: openzl-wasm
+          path: ${{github.workspace}}/tools/wasm/js
       - name: Install yarn dependencies
         working-directory: ${{github.workspace}}/tools/web
         run: yarn --frozen-lockfile
