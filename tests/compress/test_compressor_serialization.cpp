@@ -1,12 +1,15 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <iomanip>
 
 #include "openzl/zl_compressor_serialization.h"
+#include "openzl/zl_version.h"
 
 #include "openzl/common/a1cbor_helpers.h"
+#include "openzl/common/allocation.h"
 #include "openzl/common/logging.h"
 #include "openzl/compress/private_nodes.h"
 #include "openzl/cpp/Compressor.hpp"
@@ -318,6 +321,58 @@ TEST_F(CompressorSerializationTest,
     auto deps = get_deps(serialize(compressor), nullptr);
 
     EXPECT_FALSE(ZL_UniqueID_isValid(&deps.bundle_id.id));
+}
+
+TEST_F(CompressorSerializationTest,
+       DeserializationRejectsCompressorFromNewerLibraryVersion)
+{
+    auto compressor = compressor_.get();
+    auto zstd_gid   = ZL_Compressor_registerZstdGraph_withLevel(compressor, 1);
+    ZL_REQUIRE_SUCCESS(
+            ZL_Compressor_selectStartingGraphID(compressor, zstd_gid));
+    auto ser = serialize(compressor);
+
+    std::unique_ptr<Arena, decltype(&ALLOC_Arena_freeArena)> arena{
+        ALLOC_HeapArena_create(), ALLOC_Arena_freeArena
+    };
+    A1C_Decoder decoder;
+    A1C_Decoder_init(&decoder, A1C_Arena_wrap(arena.get()), {});
+    A1C_Item* root = A1C_Decoder_decode(
+            &decoder,
+            reinterpret_cast<const uint8_t*>(ser->data()),
+            ser->size());
+    ASSERT_NE(root, nullptr);
+    A1C_Item* version = A1C_Map_get_cstr(&root->map, "version");
+    ASSERT_NE(version, nullptr);
+    // Edit version of serialized compressor in CBOR
+    A1C_Item_int64(version, ZL_LIBRARY_VERSION_NUMBER + 1);
+    std::string newer(A1C_Item_encodedSize(root), '\0');
+    ASSERT_EQ(
+            A1C_Item_encode(
+                    root,
+                    reinterpret_cast<uint8_t*>(newer.data()),
+                    newer.size(),
+                    nullptr),
+            newer.size());
+
+    std::unique_ptr<
+            ZL_CompressorDeserializer,
+            ZL_CompressorDeserializer_Deleter>
+            deserializer{ ZL_CompressorDeserializer_create() };
+    auto report = ZL_CompressorDeserializer_deserialize(
+            deserializer.get(),
+            materialized_.get(),
+            newer.data(),
+            newer.size(),
+            nullptr,
+            0);
+
+    ASSERT_TRUE(ZL_isError(report));
+    EXPECT_EQ(ZL_RES_code(report), ZL_ErrorCode_formatVersion_unsupported);
+    EXPECT_THAT(
+            ZL_CompressorDeserializer_getErrorContextString(
+                    deserializer.get(), report),
+            HasSubstr("requires library version"));
 }
 
 TEST_F(CompressorSerializationTest, RejectsMismatchedFatBundle)
