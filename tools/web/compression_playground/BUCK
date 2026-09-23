@@ -6,6 +6,11 @@ oncall("data_compression")
 
 web_tool(
     name = "compression-playground",
-    shared_srcs = ["../web_common:package_srcs"],
+    shared_srcs = [
+        "../web_common:package_srcs",
+        # `src/` imports the WASM wrapper from outside the Yarn workspace, so
+        # nothing else in the graph carries that dependency.
+        "../../wasm:js_srcs",
+    ],
     workspace_package = "@openzl/compression-playground",
 )
