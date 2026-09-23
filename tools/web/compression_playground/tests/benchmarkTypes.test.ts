@@ -100,6 +100,20 @@ describe('buildJobs', () => {
     expect(rejected).toEqual([{rowId: 1, message: 'The parquet profile has no browser build'}]);
   });
 
+  it('reports a row with no levels rather than letting it vanish from the run', () => {
+    // The picker allows an empty row, so this arrives from the UI: without it
+    // the row would contribute no job and nothing would say why.
+    const {jobs, rejected} = buildJobs(
+      runWith([
+        {rowId: 1, compressor: 'zstd', levels: []},
+        {rowId: 2, compressor: 'gzip', levels: [6]},
+      ]),
+    );
+
+    expect(jobs.map((job) => job.rowId)).toEqual([2]);
+    expect(rejected).toEqual([{rowId: 1, message: 'No levels selected'}]);
+  });
+
   it('rejects a row once however many levels it would have expanded into', () => {
     const {jobs, rejected} = buildJobs(
       runWith([{rowId: 1, compressor: 'OpenZL', levels: [1, 6, 9], profile: 'csv', training: null}]),

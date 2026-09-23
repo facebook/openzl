@@ -3,9 +3,10 @@
 import {useRef, useState} from 'react';
 import {
   createCompressorRow,
+  evenlySpacedLevels,
   type CompressorName,
   type CompressorRow,
-  type CompressorRowBase,
+  type LeveledRowBase,
   type OpenZlRow,
 } from './compressors.ts';
 
@@ -22,7 +23,10 @@ function defaultRows(): readonly CompressorRow[] {
  * Neither carries `id`: that is the argument selecting the row, so a patch
  * holding one could only ever disagree with it.
  */
-export type PatchRow = (id: number, patch: Omit<Partial<CompressorRowBase>, 'id'>) => void;
+// `LeveledRowBase`, not `CompressorRowBase`: the base carries only `id` now
+// that `level` belongs to the OpenZL variant, and `Omit<Partial<{id}>, 'id'>`
+// is `{}`, which TypeScript hands to anything. The only caller patches levels.
+export type PatchRow = (id: number, patch: Omit<Partial<LeveledRowBase>, 'id'>) => void;
 export type PatchOpenZlRow = (id: number, patch: Omit<Partial<OpenZlRow>, 'id'>) => void;
 
 export interface CompressorRows {
@@ -63,16 +67,39 @@ export function useCompressorRows(initialRows?: readonly CompressorRow[]): Compr
       setRows((current) => current.map((row) => (row.id === id ? {...row, ...patch} : row)));
     },
     // Narrows before spreading, so the OpenZL-only fields can only ever land
-    // on a row that actually has them.
+    // on a row that actually has them. A candidate count also reaches the
+    // other rows: it is how many points an OpenZL row contributes, and the
+    // codecs are only comparable if the rest contribute the same number.
     patchOpenZlRow: (id, patch) => {
       setRows((current) =>
-        current.map((row) => (row.id === id && row.compressor === 'OpenZL' ? {...row, ...patch} : row)),
+        current.map((row) => {
+          if (row.id === id && row.compressor === 'OpenZL') {
+            return {...row, ...patch};
+          }
+          if (patch.candidates !== undefined && row.compressor !== 'OpenZL') {
+            return {...row, levels: evenlySpacedLevels(row.compressor, patch.candidates)};
+          }
+          return row;
+        }),
       );
     },
     changeCompressor: (id: number, compressor: CompressorName) => {
       // A fresh row resets the dependent fields: a zstd level of 19 is not a
-      // valid OpenZL level, and a profile means nothing to gzip.
-      setRows((current) => current.map((row) => (row.id === id ? createCompressorRow(id, compressor) : row)));
+      // valid OpenZL level, and a profile means nothing to gzip. A new leveled
+      // row joins at whatever count the OpenZL rows are training for, so it is
+      // not the odd one out.
+      setRows((current) => {
+        const candidates = current.find((row) => row.compressor === 'OpenZL')?.candidates;
+        return current.map((row) => {
+          if (row.id !== id) {
+            return row;
+          }
+          const fresh = createCompressorRow(id, compressor);
+          return fresh.compressor !== 'OpenZL' && candidates !== undefined
+            ? {...fresh, levels: evenlySpacedLevels(fresh.compressor, candidates)}
+            : fresh;
+        });
+      });
     },
   };
 }
