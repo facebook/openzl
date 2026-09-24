@@ -1,6 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import {createSystem, defaultConfig, defineConfig} from '@chakra-ui/react';
+import type {CompressorName} from './compressors.ts';
 
 /**
  * Compression Playground palette, sourced from the Figma file. Components
@@ -64,8 +65,7 @@ const playgroundConfig = defineConfig({
           noticeBorder: {value: {base: '#ccdef7', _osDark: '#2f4a6b'}},
           noticeFg: {value: {base: '#2e4066', _osDark: '#cbd9f0'}},
 
-          // One colour per codec, carried by its legend chip, its series on the
-          // charts and its ratio bar, so the three always agree.
+          // One colour per codec, reached through `CODEC_COLOR` below.
           openzl: {value: {base: '#10b981', _osDark: '#34d399'}},
           zstd: {value: {base: '#3b82f6', _osDark: '#60a5fa'}},
           gzip: {value: {base: '#f97316', _osDark: '#fb923c'}},
@@ -105,3 +105,14 @@ const playgroundConfig = defineConfig({
 });
 
 export const playgroundSystem = createSystem(defaultConfig, playgroundConfig);
+
+/**
+ * The one place a codec's colour is named. The table, the charts and the
+ * legend all read it from here, which is what keeps a row and its series the
+ * same colour in both schemes.
+ */
+export const CODEC_COLOR: Record<CompressorName, string> = {
+  OpenZL: 'pg.openzl',
+  zstd: 'pg.zstd',
+  gzip: 'pg.gzip',
+};

@@ -25,6 +25,7 @@ import {
   type SortDirection,
   type SortKey,
 } from '../measurements.ts';
+import {CODEC_COLOR} from '../theme.ts';
 
 /**
  * Shared by the header and every row, so the columns line up without a grid.
@@ -43,13 +44,9 @@ const COLUMNS = [
   {key: 'decompressMBps', label: 'DECOMPRESS', width: '17.5%', sortable: true},
 ] as const;
 
-const TABLE_MIN_WIDTH = '680px';
-
-const CODEC_COLOR: Record<CompressorName, string> = {
-  OpenZL: 'pg.openzl',
-  zstd: 'pg.zstd',
-  gzip: 'pg.gzip',
-};
+// The frame's own columns come to 830px, and the group rows carry ranges like
+// `15.7 KB - 23.9 KB` that collide with the next cell below that.
+const TABLE_MIN_WIDTH = '830px';
 
 const TAG_COLOR: Record<FrontierTag, {bg: string; fg: string}> = {
   'max ratio': {bg: 'pg.tagRatioBg', fg: 'pg.tagRatioFg'},
