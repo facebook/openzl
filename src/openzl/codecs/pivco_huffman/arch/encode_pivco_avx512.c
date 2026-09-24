@@ -32,6 +32,23 @@ ZL_AVX512_INLINE __mmask64 tailMask64(size_t lanes)
 }
 
 /**
+ * Compresses the @p mask lanes of @p v to the front and writes them to @p dst.
+ *
+ * Always stores a full 64 bytes, so it over-writes up to 64 - popcount(@p mask)
+ * bytes past the compressed run; callers must have that much slop.
+ *
+ * Deliberately NOT `_mm512_mask_compressstoreu_epi8`: Zen 4 implements
+ * `vpcompressb` with a memory destination in microcode at ~485 uops / ~170
+ * cycles, versus ~2 uops for the register form plus a full-width store. Using
+ * the store form made the AVX-512 partition kernels ~14x slower than AVX2 and
+ * slower than the scalar reference.
+ */
+ZL_AVX512_INLINE void compressStore64(uint8_t* dst, __mmask64 mask, __m512i v)
+{
+    _mm512_storeu_si512((void*)dst, _mm512_maskz_compress_epi8(mask, v));
+}
+
+/**
  * @param kPartitionLhs/kPartitionRhs Compile-time flags (always passed as
  * literals so the branches fold away) selecting which child streams to produce.
  * They are used instead of testing `lhs == NULL` / `rhs == NULL` because
@@ -40,6 +57,9 @@ ZL_AVX512_INLINE __mmask64 tailMask64(size_t lanes)
  *
  * @note Writes whole 64-bit words to @p bitmap, so the final word may spill up
  * to 7 bytes past `(numRanks + 7) / 8`; covered by SLOP.
+ *
+ * @note Each child store is a full 64 bytes (see compressStore64), so @p lhs
+ * and @p rhs spill up to 64 bytes past their rank counts; covered by SLOP.
  */
 ZL_AVX512_INLINE size_t partitionImpl(
         uint8_t* bitmap,
@@ -68,7 +88,7 @@ ZL_AVX512_INLINE size_t partitionImpl(
         if (kPartitionRhs) {
             // Compress-store gathers the masked lanes into a contiguous run,
             // appending this block's right-child ranks after the previous ones.
-            _mm512_mask_compressstoreu_epi8(rhs + ones, bits, rankVec);
+            compressStore64(rhs + ones, bits, rankVec);
             ones += blockOnes;
         }
         if (kPartitionLhs) {
@@ -79,7 +99,7 @@ ZL_AVX512_INLINE size_t partitionImpl(
             // TODO: T286065866 - revert once the codegen bug is fixed.
             const __mmask64 lhsBits =
                     _mm512_cmp_epu8_mask(rankVec, threshold, _MM_CMPINT_LT);
-            _mm512_mask_compressstoreu_epi8(lhs + zeros, lhsBits, rankVec);
+            compressStore64(lhs + zeros, lhsBits, rankVec);
             zeros += 64 - blockOnes;
         }
     }
@@ -97,7 +117,7 @@ ZL_AVX512_INLINE size_t partitionImpl(
 
         const size_t blockOnes = (size_t)ZL_popcount64((uint64_t)bits);
         if (kPartitionRhs) {
-            _mm512_mask_compressstoreu_epi8(rhs + ones, bits, rankVec);
+            compressStore64(rhs + ones, bits, rankVec);
             ones += blockOnes;
         }
         if (kPartitionLhs) {
@@ -105,7 +125,7 @@ ZL_AVX512_INLINE size_t partitionImpl(
             // lanes would compare LT and be stored.
             const __mmask64 lhsBits = _mm512_mask_cmp_epu8_mask(
                     valid, rankVec, threshold, _MM_CMPINT_LT);
-            _mm512_mask_compressstoreu_epi8(lhs + zeros, lhsBits, rankVec);
+            compressStore64(lhs + zeros, lhsBits, rankVec);
             zeros += lanes - blockOnes;
         }
     }
@@ -162,10 +182,10 @@ loadRankIndices64(const uint8_t* ranks, uint8_t rankBegin)
 
 // Each packFlatDepthBlockN bit-packs 64 depth-N rank indices (LSB-first) into
 // 8*N output bytes. Callers may pass fewer than 64 valid ranks for the tail:
-// the block still reads 64 and writes 8*N bytes (relying on input/output slop).
-// The valid ranks occupy the low bits; any over-read ranks land in the high
-// bits, past the caller's valid bit count -- harmless, since those trailing
-// bits are never read.
+// the block still reads 64 ranks and writes a full 64 bytes (relying on
+// input/output slop). The valid ranks occupy the low bits; any over-read ranks
+// land in the high bits, past the caller's valid bit count -- harmless, since
+// those trailing bits are never read.
 
 ZL_AVX512_INLINE void
 packFlatDepthBlock1(uint8_t* out, const uint8_t* ranks, uint8_t rankBegin)
@@ -257,7 +277,7 @@ ZL_AVX512_INLINE __mmask64 packBytesToOctets64StoreMask(const size_t kDepth)
         {                                                                 \
             const __m512i indices  = loadRankIndices64(ranks, rankBegin); \
             const __m512i octets64 = packBytesToOctets64(indices, DEPTH); \
-            _mm512_mask_compressstoreu_epi8(                              \
+            compressStore64(                                              \
                     out, packBytesToOctets64StoreMask(DEPTH), octets64);  \
         }
 
