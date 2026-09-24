@@ -22,6 +22,19 @@ function getMaxIterations(): Promise<number> {
   return maxIterations;
 }
 
+// `init()` is not idempotent: it re-enters the module's own initialiser while
+// its wait promise, resolved once at import, returns immediately. The third of
+// those leaves the module permanently unable to read a frame back, so it is
+// called once and the promise shared. Same shape as `getMaxIterations` above.
+let zstdInit: Promise<void> | undefined;
+function zstdReady(): Promise<void> {
+  zstdInit ??= initZstd().catch((error: unknown) => {
+    zstdInit = undefined;
+    throw error;
+  });
+  return zstdInit;
+}
+
 async function benchmarkCodec(
   data: Uint8Array,
   iterations: number,
@@ -96,7 +109,7 @@ export async function benchmarkZstd(data: Uint8Array, level: number, iterations:
     throw new Error('zstd level must be an integer from 1 to 19');
   }
   // Setup stays outside benchmarkCodec's timed region, so its cost is not measured.
-  await initZstd();
+  await zstdReady();
   return benchmarkCodec(
     data,
     iterations,
