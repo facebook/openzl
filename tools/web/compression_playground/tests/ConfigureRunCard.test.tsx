@@ -8,11 +8,10 @@ import {ChakraProvider} from '@chakra-ui/react';
 import React, {useState} from 'react';
 import ConfigureRunCard from '../src/components/ConfigureRunCard.tsx';
 import {
-  GZIP_DEFAULT_LEVEL,
   ITERATIONS_DEFAULT,
   OPENZL_PROFILES,
   OPENZL_PROFILE_DESCRIPTIONS,
-  ZSTD_DEFAULT_LEVEL,
+  defaultLevelsFor,
   createCompressorRow,
   tickLabelLeft,
   type CompressorRow,
@@ -46,6 +45,31 @@ function renderConfigureRunCard(initialRows?: readonly CompressorRow[]) {
   return renderWithPlaygroundTheme(<ControlledConfigureRunCard initialRows={initialRows} />);
 }
 
+/**
+ * Opens a row's levels popover and returns a scope for its own content. Two
+ * rows' popovers can be open at once, so the scope comes from the trigger's
+ * aria-controls rather than from whichever content mounted first.
+ */
+/**
+ * The trigger's accessible name leads with its visible text ("6 levels"), so
+ * it changes as levels are picked. Match the row instead of the whole name.
+ */
+function levelsTrigger(position: number): HTMLElement {
+  return screen.getByRole('button', {name: new RegExp(`, row ${String(position)}$`)});
+}
+
+async function openLevels(position: number) {
+  const trigger = levelsTrigger(position);
+  fireEvent.click(trigger);
+  const id = trigger.getAttribute('aria-controls') ?? '';
+  const content = await waitFor(() => {
+    const element = document.getElementById(id);
+    expect(element).not.toBeNull();
+    return element as HTMLElement;
+  });
+  return within(content);
+}
+
 function optionValues(select: HTMLElement): string[] {
   return within(select)
     .getAllByRole('option')
@@ -66,9 +90,9 @@ describe('ConfigureRunCard', () => {
     expect(screen.getByRole('combobox', {name: 'Compressor for row 1'})).toHaveValue('OpenZL');
     expect(screen.getByRole('combobox', {name: 'Level or profile for row 1'})).toHaveTextContent('serial');
     expect(screen.getByRole('combobox', {name: 'Compressor for row 2'})).toHaveValue('zstd');
-    expect(screen.getByRole('combobox', {name: 'Level or profile for row 2'})).toHaveValue('5');
+    expect(levelsTrigger(2)).toHaveTextContent('6 levels');
     expect(screen.getByRole('combobox', {name: 'Compressor for row 3'})).toHaveValue('gzip');
-    expect(screen.getByRole('combobox', {name: 'Level or profile for row 3'})).toHaveValue('5');
+    expect(levelsTrigger(3)).toHaveTextContent('6 levels');
   });
 
   it('keeps the dropdown arrow inside the positioned control', () => {
@@ -105,6 +129,26 @@ describe('ConfigureRunCard', () => {
     expect(listed.slice(firstUnrunnable).some((p) => isBrowserSupportedProfile(p as OpenZlProfile))).toBe(false);
   });
 
+  it('names the levels trigger with the text a voice user can see', async () => {
+    // WCAG 2.5.3: a static aria-label would override "6 levels" and leave
+    // someone saying it with nothing to activate.
+    renderConfigureRunCard();
+
+    expect(levelsTrigger(2)).toHaveAccessibleName('6 levels, row 2');
+    expect(levelsTrigger(2)).toHaveTextContent('6 levels');
+
+    const levels = await openLevels(2);
+    fireEvent.click(levels.getAllByRole('checkbox')[0]);
+    await waitFor(() => {
+      expect(levelsTrigger(2)).toHaveAccessibleName('5 levels, row 2');
+    });
+  });
+
+  it('keeps the trigger chevron out of the accessible name', async () => {
+    renderConfigureRunCard();
+    expect(levelsTrigger(2).querySelector('[aria-hidden="true"] svg')).not.toBeNull();
+  });
+
   it('heads the unavailable profiles so the greyed half is not a mystery', async () => {
     renderConfigureRunCard();
 
@@ -134,13 +178,63 @@ describe('ConfigureRunCard', () => {
     expect(optionValues(openZlLevel).map(Number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
     expect(openZlLevel).toHaveValue('6');
     expect(within(openZlLevel).getByRole('option', {name: '6 (default)'})).toBeInTheDocument();
+  });
 
-    expect(optionValues(screen.getByRole('combobox', {name: 'Level or profile for row 2'})).map(Number)).toEqual([
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-    ]);
-    expect(optionValues(screen.getByRole('combobox', {name: 'Level or profile for row 3'})).map(Number)).toEqual([
-      1, 2, 3, 4, 5, 6, 7, 8, 9,
-    ]);
+  it('offers every level of the compressor in the picker, six of them chosen', async () => {
+    renderConfigureRunCard();
+
+    const zstd = (await openLevels(2)).getAllByRole('checkbox');
+    expect(zstd).toHaveLength(19);
+    expect(zstd.filter((box) => (box as HTMLInputElement).checked)).toHaveLength(6);
+
+    const gzip = (await openLevels(3)).getAllByRole('checkbox');
+    expect(gzip).toHaveLength(9);
+    expect(gzip.filter((box) => (box as HTMLInputElement).checked)).toHaveLength(6);
+  });
+
+  it('clears every level and says the row measures nothing', async () => {
+    // `None` that leaves one box ticked reads as broken, so the empty row is
+    // allowed and flagged instead: the trigger says so, points at the message
+    // with `aria-describedby`, and `buildJobs` rejects the row if a run
+    // reaches it.
+    renderConfigureRunCard();
+
+    const levels = await openLevels(3);
+    fireEvent.click(levels.getByText('None'));
+
+    await waitFor(() => {
+      expect(levelsTrigger(3)).toHaveTextContent('No levels');
+    });
+    expect(levels.getAllByRole('checkbox').filter((box) => (box as HTMLInputElement).checked)).toHaveLength(0);
+    expect(levelsTrigger(3)).toHaveAttribute('aria-invalid', 'true');
+    expect(levelsTrigger(3)).toHaveAccessibleDescription('Pick at least one level to measure');
+  });
+
+  it('groups the level checkboxes under the compressor they belong to', async () => {
+    // Without it a screen reader announces "Level 1, checkbox" with none of
+    // the context the heading above the list gives everyone else.
+    renderConfigureRunCard();
+
+    const levels = await openLevels(3);
+    expect(levels.getByRole('group', {name: 'gzip levels'})).toBeInTheDocument();
+  });
+
+  it('selects and clears levels from the picker', async () => {
+    renderConfigureRunCard();
+
+    const levels = await openLevels(3);
+
+    fireEvent.click(levels.getByText('All'));
+    await waitFor(() => {
+      expect(levelsTrigger(3)).toHaveTextContent('9 levels');
+    });
+
+    // The checkbox machine notifies parents asynchronously, so wait for the
+    // count rather than asserting straight after the click.
+    fireEvent.click(levels.getByRole('checkbox', {name: 'Level 1'}));
+    await waitFor(() => {
+      expect(levelsTrigger(3)).toHaveTextContent('8 levels');
+    });
   });
 
   it('describes every OpenZL profile', () => {
@@ -229,25 +323,71 @@ describe('ConfigureRunCard', () => {
     fireEvent.change(screen.getByRole('combobox', {name: 'Compressor for row 1'}), {
       target: {value: 'gzip'},
     });
-    expect(optionValues(screen.getByRole('combobox', {name: 'Level or profile for row 1'})).map(Number)).toEqual([
-      1, 2, 3, 4, 5, 6, 7, 8, 9,
-    ]);
+    expect(levelsTrigger(1)).toHaveTextContent('6 levels');
     expect(screen.queryByRole('combobox', {name: 'OpenZL level for row 1'})).not.toBeInTheDocument();
   });
 
-  it('resets dependent fields when the compressor changes', () => {
+  it('resets dependent fields when the compressor changes', async () => {
     renderConfigureRunCard();
 
-    fireEvent.change(screen.getByRole('combobox', {name: 'Level or profile for row 2'}), {
-      target: {value: '19'},
+    const levels = await openLevels(2);
+    fireEvent.click(levels.getByRole('checkbox', {name: 'Level 19'}));
+    await waitFor(() => {
+      expect(levelsTrigger(2)).toHaveTextContent('5 levels');
     });
-    expect(screen.getByRole('combobox', {name: 'Level or profile for row 2'})).toHaveValue('19');
 
-    // 19 is not a valid gzip level, so the row falls back to the default.
+    // gzip has no level 19, so the row falls back to its own default set.
     fireEvent.change(screen.getByRole('combobox', {name: 'Compressor for row 2'}), {
       target: {value: 'gzip'},
     });
-    expect(screen.getByRole('combobox', {name: 'Level or profile for row 2'})).toHaveValue('5');
+    expect(levelsTrigger(2)).toHaveTextContent('6 levels');
+  });
+
+  it('matches the level count to the trained candidate count', async () => {
+    renderConfigureRunCard();
+
+    fireEvent.change(screen.getByRole('combobox', {name: 'Number of trained candidates for row 1'}), {
+      target: {value: '7'},
+    });
+
+    // An OpenZL row contributes one point per trained candidate, so the other
+    // codecs have to contribute the same number to be comparable.
+    await waitFor(() => {
+      expect(levelsTrigger(2)).toHaveTextContent('7 levels');
+    });
+    expect(levelsTrigger(3)).toHaveTextContent('7 levels');
+
+    const zstd = (await openLevels(2)).getAllByRole('checkbox');
+    expect(zstd.filter((box) => (box as HTMLInputElement).checked)).toHaveLength(7);
+  });
+
+  it('clamps the level count to what the compressor offers', async () => {
+    renderConfigureRunCard();
+
+    fireEvent.change(screen.getByRole('combobox', {name: 'Number of trained candidates for row 1'}), {
+      target: {value: '25'},
+    });
+
+    // zstd stops at 19 and gzip at 9, so past that the codecs stop matching
+    // rather than the count being padded with repeats.
+    await waitFor(() => {
+      expect(levelsTrigger(2)).toHaveTextContent('19 levels');
+    });
+    expect(levelsTrigger(3)).toHaveTextContent('9 levels');
+  });
+
+  it('gives a newly switched row the count the others are using', async () => {
+    renderConfigureRunCard();
+
+    fireEvent.change(screen.getByRole('combobox', {name: 'Number of trained candidates for row 1'}), {
+      target: {value: '8'},
+    });
+    await waitFor(() => {
+      expect(levelsTrigger(2)).toHaveTextContent('8 levels');
+    });
+
+    fireEvent.change(screen.getByRole('combobox', {name: 'Compressor for row 3'}), {target: {value: 'zstd'}});
+    expect(levelsTrigger(3)).toHaveTextContent('8 levels');
   });
 
   it('adds and removes compressor rows', () => {
@@ -309,8 +449,8 @@ describe('ConfigureRunCard', () => {
     // `toEqual` rather than `toMatchObject`: the point is that nothing extra is
     // there. Reading `.trainRequested` off these rows is now a compile error,
     // so this only guards the runtime shape the run seam will consume.
-    expect(createCompressorRow(2, 'zstd')).toEqual({id: 2, compressor: 'zstd', level: ZSTD_DEFAULT_LEVEL});
-    expect(createCompressorRow(3, 'gzip')).toEqual({id: 3, compressor: 'gzip', level: GZIP_DEFAULT_LEVEL});
+    expect(createCompressorRow(2, 'zstd')).toEqual({id: 2, compressor: 'zstd', levels: defaultLevelsFor('zstd')});
+    expect(createCompressorRow(3, 'gzip')).toEqual({id: 3, compressor: 'gzip', levels: defaultLevelsFor('gzip')});
     expect(createCompressorRow(1, 'OpenZL').trainRequested).toBe(true);
   });
 
