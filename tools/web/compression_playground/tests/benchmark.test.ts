@@ -3,6 +3,7 @@
 import {beforeAll, describe, expect, it, vi} from 'vitest';
 import {getOpenZLMaxIterations} from '../../../wasm/js/wasm_api.js';
 import {benchmarkGzip, benchmarkOpenZL, benchmarkZstd} from '../src/benchmark.ts';
+import {ITERATIONS_MAX} from '../src/compressors.ts';
 
 const {mockGetOpenZLMaxIterations, mockInitZstd} = vi.hoisted(() => ({
   mockGetOpenZLMaxIterations: vi.fn(() => Promise.resolve(3)),
@@ -66,15 +67,18 @@ describe('benchmarkGzip', () => {
     await expect(benchmarkGzip(data, 6, max + 100)).resolves.toMatchObject({iterations: max});
   });
 
-  it('retries loading the iteration limit after a failure', async () => {
+  it('caps itself without the limit when it will not load, and retries next time', async () => {
+    // The ceiling is the only thing gzip wants from the OpenZL module, so a
+    // module that will not load costs the live cap, not the measurement. The
+    // memo is cleared on the way out, so the next call goes and asks again.
     vi.resetModules();
     mockGetOpenZLMaxIterations.mockReset();
     mockGetOpenZLMaxIterations.mockRejectedValueOnce(new Error('temporary load failure')).mockResolvedValue(3);
     const {benchmarkGzip: freshBenchmarkGzip} = await import('../src/benchmark.ts');
     const data = sampleData();
 
-    await expect(freshBenchmarkGzip(data, 6, 1)).rejects.toThrow('temporary load failure');
-    await expect(freshBenchmarkGzip(data, 6, 1)).resolves.toMatchObject({iterations: 1});
+    await expect(freshBenchmarkGzip(data, 6, 20)).resolves.toMatchObject({iterations: ITERATIONS_MAX});
+    await expect(freshBenchmarkGzip(data, 6, 20)).resolves.toMatchObject({iterations: 3});
     expect(mockGetOpenZLMaxIterations).toHaveBeenCalledTimes(2);
   });
 });
