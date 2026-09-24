@@ -2,14 +2,71 @@
 
 import {Box, Heading, Text, VStack} from '@chakra-ui/react';
 import {LuArrowRight, LuChartLine, LuChartSpline, LuMicroscope, LuMonitor} from 'react-icons/lu';
+import {isRunInProgress, type BenchmarkJob, type RunState} from '../benchmarkTypes.ts';
+import {resultsOf} from '../measurements.ts';
+import {WASM_PROFILE} from '../wasmProfiles.ts';
+import MeasurementsTable from './MeasurementsTable.tsx';
 
 const HOW_IT_WORKS_STEPS = ['Choose your data.', 'Pick compressors to compare.', 'Run the benchmark.'];
 
-export default function ResultsPanel() {
+interface ResultsPanelProps {
+  runState: RunState;
+}
+
+function statusLine(runState: RunState): string | null {
+  switch (runState.status) {
+    case 'idle':
+      return null;
+    case 'loading':
+      return 'Loading the OpenZL module…';
+    case 'running':
+      return `Running ${String(runState.completedJobs)} of ${String(runState.totalJobs)}…`;
+    case 'completed':
+      return `${String(runState.results.length)} measured`;
+    case 'error':
+      return `Run failed: ${runState.message}`;
+  }
+}
+
+/** `idle` and `loading` carry no outcome, so there is nothing to list yet. */
+function outcomeOf(runState: RunState) {
+  return runState.status === 'idle' || runState.status === 'loading' ? null : runState;
+}
+
+function describeJob(job: BenchmarkJob): string {
+  if (job.compressor !== 'OpenZL') {
+    return `${job.compressor} ${String(job.level)}`;
+  }
+  // `job.profile` crossed the seam as the binding's numeric enum, so read the
+  // name back off the same table that put it there.
+  const name = Object.entries(WASM_PROFILE).find(([, value]) => value === job.profile)?.[0] ?? String(job.profile);
+  return `${job.compressor} ${name} / ${String(job.level)}`;
+}
+
+/** Jobs that produced no measurement; the table has no row shape for these. */
+function FailureList({runState}: ResultsPanelProps) {
+  const outcome = outcomeOf(runState);
+  if (outcome === null || outcome.failures.length === 0) {
+    return null;
+  }
+  return (
+    <VStack as="ul" gap="6px" align="stretch" m={0} p={0} listStyleType="none">
+      {outcome.failures.map((failure) => (
+        <Text as="li" key={failure.job.id} color="pg.danger" fontSize="13px" m={0}>
+          {describeJob(failure.job)}: {failure.message}
+        </Text>
+      ))}
+    </VStack>
+  );
+}
+
+export default function ResultsPanel({runState}: ResultsPanelProps) {
+  const hasResults = resultsOf(runState).length > 0;
   return (
     <Box
       as="section"
       aria-labelledby="results-title"
+      aria-busy={isRunInProgress(runState)}
       flex="1"
       minW={0}
       alignSelf={{base: 'stretch', lg: 'flex-start'}}
@@ -23,36 +80,72 @@ export default function ResultsPanel() {
           Results
         </Heading>
 
-        <Box
-          display="flex"
-          alignItems="center"
-          gap="16px"
-          bg="pg.canvas"
-          borderWidth="1px"
-          borderColor="pg.border"
-          borderRadius="8px"
-          p="20px">
+        {/* Rendered even when it says nothing, so a screen reader has the
+            region before the text arrives: one added at the same moment as its
+            own text usually goes unannounced. `srOnly` takes it out of the
+            column's flow rather than leaving a gap where no line is. A failure
+            interrupts instead of waiting for a pause, hence `assertive`. */}
+        <Text
+          role="status"
+          aria-live={runState.status === 'error' ? 'assertive' : 'polite'}
+          srOnly={statusLine(runState) === null}
+          color="pg.ink"
+          fontSize="13px"
+          fontWeight="semibold"
+          m={0}>
+          {statusLine(runState)}
+        </Text>
+        <MeasurementsTable runState={runState} />
+        <FailureList runState={runState} />
+
+        {hasResults && (
           <Box
-            aria-hidden="true"
-            display="inline-flex"
-            alignItems="center"
-            justifyContent="center"
-            boxSize="40px"
-            flexShrink={0}
-            borderRadius="full"
-            bg="pg.chip"
-            color="pg.faint">
-            <LuChartLine size={20} />
+            as="aside"
+            aria-label="WebAssembly speed notice"
+            bg="pg.callout"
+            borderWidth="1px"
+            borderColor="pg.noticeBorder"
+            borderRadius="8px"
+            px="16px"
+            py="12px">
+            <Text color="pg.noticeFg" fontSize="13px" lineHeight="1.4" m={0}>
+              ⚡ Speeds shown here are different from running locally because we are using WebAssembly.
+            </Text>
           </Box>
-          <VStack gap="2px" flex="1" minW={0} align="stretch">
-            <Text color="pg.ink" fontSize="15px" fontWeight="bold" m={0}>
-              No results yet
-            </Text>
-            <Text color="pg.secondary" fontSize="14px" lineHeight="1.4" m={0}>
-              Select your data to compress or hit &ldquo;Try a 5 MB sample&rdquo; to see the playground work.
-            </Text>
-          </VStack>
-        </Box>
+        )}
+
+        {!hasResults && (
+          <Box
+            display="flex"
+            alignItems="center"
+            gap="16px"
+            bg="pg.canvas"
+            borderWidth="1px"
+            borderColor="pg.border"
+            borderRadius="8px"
+            p="20px">
+            <Box
+              aria-hidden="true"
+              display="inline-flex"
+              alignItems="center"
+              justifyContent="center"
+              boxSize="40px"
+              flexShrink={0}
+              borderRadius="full"
+              bg="pg.chip"
+              color="pg.faint">
+              <LuChartLine size={20} />
+            </Box>
+            <VStack gap="2px" flex="1" minW={0} align="stretch">
+              <Text color="pg.ink" fontSize="15px" fontWeight="bold" m={0}>
+                No results yet
+              </Text>
+              <Text color="pg.secondary" fontSize="14px" lineHeight="1.4" m={0}>
+                Select your data to compress or hit &ldquo;Try a 5 MB sample&rdquo; to see the playground work.
+              </Text>
+            </VStack>
+          </Box>
+        )}
 
         <VStack gap="16px" align="stretch">
           <Heading

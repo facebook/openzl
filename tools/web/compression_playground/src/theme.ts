@@ -48,6 +48,7 @@ const playgroundConfig = defineConfig({
           faint: {value: {base: '#667385', _osDark: '#94a3b8'}},
           accent: {value: {base: '#2563eb', _osDark: '#60a5fa'}},
           success: {value: {base: '#059669', _osDark: '#34d399'}},
+          danger: {value: {base: '#b91c1c', _osDark: '#fca5a5'}},
 
           // Step 2/3 controls. The run button is indigo rather than the blue
           // accent, and the training note pairs the accent wash with a blue
@@ -57,6 +58,36 @@ const playgroundConfig = defineConfig({
           primary: {value: {base: '#4f46e5', _osDark: '#5b54ee'}},
           primaryHover: {value: {base: '#4338ca', _osDark: '#4f46e5'}},
           infoBorder: {value: {base: '#bfdbfe', _osDark: '#2f4a6b'}},
+
+          // The WebAssembly-speed notice under the measurements. It sits on
+          // `pg.callout`, which the design already uses at the same value.
+          noticeBorder: {value: {base: '#ccdef7', _osDark: '#2f4a6b'}},
+          noticeFg: {value: {base: '#2e4066', _osDark: '#cbd9f0'}},
+
+          // One colour per codec, carried by its legend chip, its series on the
+          // charts and its ratio bar, so the three always agree.
+          openzl: {value: {base: '#10b981', _osDark: '#34d399'}},
+          zstd: {value: {base: '#3b82f6', _osDark: '#60a5fa'}},
+          gzip: {value: {base: '#f97316', _osDark: '#fb923c'}},
+
+          // Measurements table. The speed bars keep a fixed colour each while
+          // the ratio bar takes the codec's, which is what ties a row to its
+          // series on the charts.
+          groupRow: {value: {base: '#f8fafc', _osDark: '#2e323d'}},
+          barTrack: {value: {base: '#f1f5f9', _osDark: '#3a3f4b'}},
+          barCompress: {value: {base: '#2563eb', _osDark: '#60a5fa'}},
+          barDecompress: {value: {base: '#8b5cf6', _osDark: '#a78bfa'}},
+
+          // Frontier tags. `tagRatioFg` is darker than Figma's #16a34a for the
+          // same reason `pg.muted` is: that value reaches only 3.00:1 on the
+          // wash behind it, and the tag is 11px. Dark foregrounds are lifted
+          // off Figma's too, which were picked against a light background.
+          tagRatioBg: {value: {base: '#dcfce7', _osDark: '#14432a'}},
+          tagRatioFg: {value: {base: '#15803d', _osDark: '#6ee7a8'}},
+          tagBalancedBg: {value: {base: '#fff7ed', _osDark: '#43290f'}},
+          tagBalancedFg: {value: {base: '#c2410c', _osDark: '#fdba74'}},
+          tagSpeedBg: {value: {base: '#eff6ff', _osDark: '#1e3a5f'}},
+          tagSpeedFg: {value: {base: '#1d4ed8', _osDark: '#93c5fd'}},
         },
       },
     },
