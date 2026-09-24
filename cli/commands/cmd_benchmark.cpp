@@ -67,13 +67,16 @@ BenchmarkResult updateResults(
  */
 CCtx createCompressionContext(
         const Compressor& compressor,
+        int formatVersion,
         const std::optional<int>& level,
         bool strict)
 {
     // create compression context
     CCtx cctx;
 
-    cctx.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+    // CCtx parameters take precedence over the Compressor's, so the requested
+    // format version has to be mirrored here to take effect.
+    cctx.setParameter(CParam::FormatVersion, formatVersion);
     cctx.setParameter(CParam::StickyParameters, 1);
     if (!strict) {
         cctx.setParameter(CParam::PermissiveCompression, 1);
@@ -100,7 +103,7 @@ BenchmarkResult runCompressionBenchmarks(const BenchmarkArgs& args)
 
     // create compressor, context, and decompression context
     auto cctx = createCompressionContext(
-            *args.compressor(), args.level, args.strict);
+            *args.compressor(), args.formatVersion, args.level, args.strict);
     std::optional<FatBundleDictLoader> fatBundleLoader;
     DCtx dctx;
 
