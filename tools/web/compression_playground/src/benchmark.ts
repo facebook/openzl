@@ -3,6 +3,7 @@
 import {compress as compressZstd, decompress as decompressZstd, init as initZstd} from '@bokuweb/zstd-wasm';
 import {gzipSync, gunzipSync, type GzipOptions} from 'fflate';
 import {getOpenZLMaxIterations} from '../../../wasm/js/wasm_api.js';
+import {ITERATIONS_MAX} from './compressors.ts';
 import type {BenchmarkResult, OpenZL} from '../../../wasm/js/wasm_api.js';
 
 export type {BenchmarkResult};
@@ -48,8 +49,12 @@ async function benchmarkCodec(
     throw new Error(`benchmark iterations must be a finite number, got ${String(iterations)}`);
   }
   // Same ceiling as the native path (clampIterations in wasm_api.js), read live
-  // from the module so the two cannot drift apart.
-  const runs = Math.min(Math.max(1, Math.floor(iterations)), await getMaxIterations());
+  // from the module so the two cannot drift apart. zstd and gzip need nothing
+  // else from that module, so a load failure falls back to the slider's own
+  // maximum rather than taking them down with it -- it is the smaller of the
+  // two, so the ceiling it stands in for cannot be exceeded either way.
+  const ceiling = await getMaxIterations().catch(() => ITERATIONS_MAX);
+  const runs = Math.min(Math.max(1, Math.floor(iterations)), ceiling);
 
   // untimed compression warmup
   let compressed = await compress(data);
