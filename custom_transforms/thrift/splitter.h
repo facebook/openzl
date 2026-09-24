@@ -8,6 +8,7 @@
 #include "custom_transforms/thrift/thrift_errors.h"
 #include "openzl/zl_errors.h"
 
+#include <folly/lang/CheckedMath.h>
 #include <type_traits>
 
 namespace zstrong::thrift {
@@ -401,6 +402,12 @@ class DBaseParser {
             self_.derived().writeValue(val);
         }
 
+        ZL_FORCE_INLINE_ATTR void unchecked()
+        {
+            auto const val = rs_.readValue<Value>();
+            self_.derived().writeValueUnchecked(val);
+        }
+
        private:
         DBaseParser& self_;
         ReadStream& rs_;
@@ -455,8 +462,21 @@ class DBaseParser {
     void unparsePrimitiveListBody(const PT::Iterator& elemIt, size_t numElts)
     {
         UnparseValue<Value> unparseValue(this, elemIt);
-        // Skip reserve() because ws_ is a FixedWriteStream
         static_assert(std::is_same_v<decltype(ws_), FixedWriteStream&>);
+        if constexpr (std::is_arithmetic_v<Value>) {
+            // If the whole body fits, write each element without a per-element
+            // bounds check.
+            constexpr size_t maxBytes =
+                    Derived::template maxWriteBytes<Value>();
+            size_t writeBytes = 0;
+            if (folly::checked_mul(&writeBytes, numElts, maxBytes)
+                && ws_.canWrite(writeBytes)) {
+                for (size_t i = 0; i < numElts; ++i) {
+                    unparseValue.unchecked();
+                }
+                return;
+            }
+        }
         for (size_t i = 0; i < numElts; ++i) {
             unparseValue();
         }
@@ -501,8 +521,23 @@ class DBaseParser {
     {
         UnparseValue<Key> unparseKey(this, keyIt);
         UnparseValue<Value> unparseValue(this, valueIt);
-        // Skip reserve() because ws_ is a FixedWriteStream
         static_assert(std::is_same_v<decltype(ws_), FixedWriteStream&>);
+        if constexpr (
+                std::is_arithmetic_v<Key> && std::is_arithmetic_v<Value>) {
+            // If the whole body fits, write each element without a per-element
+            // bounds check.
+            constexpr size_t maxBytes = Derived::template maxWriteBytes<Key>()
+                    + Derived::template maxWriteBytes<Value>();
+            size_t writeBytes = 0;
+            if (folly::checked_mul(&writeBytes, numElts, maxBytes)
+                && ws_.canWrite(writeBytes)) {
+                for (size_t i = 0; i < numElts; ++i) {
+                    unparseKey.unchecked();
+                    unparseValue.unchecked();
+                }
+                return;
+            }
+        }
         for (size_t i = 0; i < numElts; ++i) {
             unparseKey();
             unparseValue();

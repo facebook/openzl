@@ -174,6 +174,39 @@ class BaseWriteStream {
         }
     }
 
+    // Like writeValue() but skips the reserve() bounds check. The caller must
+    // guarantee there is room for sizeof(Value) more bytes.
+    template <typename Value>
+    ZL_FORCE_INLINE_ATTR void writeValueUnchecked(Value val)
+    {
+        static_assert(folly::kIsLittleEndian);
+        std::copy(
+                (const uint8_t*)(&val),
+                (const uint8_t*)(&val) + sizeof(Value),
+                derived().wptr());
+        derived().commit(sizeof(Value));
+    }
+
+    // Like writeVarint() but skips the reserve() bounds check. The caller must
+    // guarantee there is room for ZL_VARINT_FAST_OVERWRITE_{32,64} more bytes.
+    template <typename UInt>
+    ZL_FORCE_INLINE_ATTR void writeVarintUnchecked(UInt val)
+    {
+        static_assert(std::is_integral_v<UInt> && !std::is_signed_v<UInt>);
+        assert(derived().width() == 1);
+        if constexpr (sizeof(UInt) > 4) {
+            size_t const commitSize =
+                    ZL_varintEncode64Fast(val, derived().wptr());
+            assert(commitSize <= ZL_VARINT_LENGTH_64);
+            derived().commit(commitSize);
+        } else {
+            size_t const commitSize =
+                    ZL_varintEncode32Fast(val, derived().wptr());
+            assert(commitSize <= ZL_VARINT_LENGTH_32);
+            derived().commit(commitSize);
+        }
+    }
+
     std::string repr() const
     {
         std::vector<uint8_t> const vec = derived().asVec();
@@ -376,6 +409,13 @@ class FixedWriteStream : public detail::BaseWriteStream<FixedWriteStream> {
         if (n > size_t(end_ - ptr_)) {
             throw std::runtime_error{ "Not enough space in buffer" };
         }
+    }
+
+    // True if there is room to write @p n more bytes without overflowing.
+    ZL_FORCE_INLINE_ATTR bool canWrite(size_t n) const
+    {
+        assert(ptr_ <= end_);
+        return n <= size_t(end_ - ptr_);
     }
 
     // Note: invalidated by commit() and all write.*() methods
