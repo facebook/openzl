@@ -193,4 +193,12 @@ describe('ResultsPanel', () => {
     // The notice is about numbers on screen, and there are none.
     expect(screen.queryByText(/WebAssembly/)).not.toBeInTheDocument();
   });
+
+  it('still says the count in the live region once the run is over', () => {
+    // The pill says it on screen, but a region that empties announces nothing,
+    // so a screen reader would hear no end to `Running 1 of 2…`.
+    renderWithPlaygroundTheme(<ResultsPanel runState={completed(TWO_ZSTD_LEVELS)} />);
+
+    expect(screen.getByRole('status')).toHaveTextContent('2 measured');
+  });
 });
