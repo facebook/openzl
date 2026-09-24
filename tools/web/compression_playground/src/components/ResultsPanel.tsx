@@ -1,9 +1,11 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-import {Box, Heading, Table, Text, VStack} from '@chakra-ui/react';
+import {Box, Heading, Text, VStack} from '@chakra-ui/react';
 import {LuArrowRight, LuChartLine, LuChartSpline, LuMicroscope, LuMonitor} from 'react-icons/lu';
 import {isRunInProgress, type BenchmarkJob, type RunState} from '../benchmarkTypes.ts';
+import {resultsOf} from '../measurements.ts';
 import {WASM_PROFILE} from '../wasmProfiles.ts';
+import MeasurementsTable from './MeasurementsTable.tsx';
 
 const HOW_IT_WORKS_STEPS = ['Choose your data.', 'Pick compressors to compare.', 'Run the benchmark.'];
 
@@ -31,11 +33,6 @@ function outcomeOf(runState: RunState) {
   return runState.status === 'idle' || runState.status === 'loading' ? null : runState;
 }
 
-function hasMeasurements(runState: RunState): boolean {
-  const outcome = outcomeOf(runState);
-  return outcome !== null && (outcome.results.length > 0 || outcome.failures.length > 0);
-}
-
 function describeJob(job: BenchmarkJob): string {
   if (job.compressor !== 'OpenZL') {
     return `${job.compressor} ${String(job.level)}`;
@@ -46,53 +43,25 @@ function describeJob(job: BenchmarkJob): string {
   return `${job.compressor} ${name} / ${String(job.level)}`;
 }
 
-/**
- * NOT THE SHIPPING UI. A placeholder the measurements table replaces whole, and
- * the only way to see that a run really happens in a worker -- nothing below
- * this layer can be tested without a browser. It has none of the grouping,
- * sorting, bars or tags the design calls for, and is not laid out to any frame.
- */
-function MeasurementList({runState}: ResultsPanelProps) {
+/** Jobs that produced no measurement; the table has no row shape for these. */
+function FailureList({runState}: ResultsPanelProps) {
   const outcome = outcomeOf(runState);
-  if (outcome === null) {
+  if (outcome === null || outcome.failures.length === 0) {
     return null;
   }
   return (
-    <Table.Root size="sm">
-      <Table.Header>
-        <Table.Row>
-          <Table.ColumnHeader>Codec</Table.ColumnHeader>
-          <Table.ColumnHeader>Compressed</Table.ColumnHeader>
-          <Table.ColumnHeader>Ratio</Table.ColumnHeader>
-          <Table.ColumnHeader>Compress</Table.ColumnHeader>
-          <Table.ColumnHeader>Decompress</Table.ColumnHeader>
-        </Table.Row>
-      </Table.Header>
-      <Table.Body>
-        {outcome.results.map((result) => (
-          // A trained job posts one result per candidate, all carrying its id.
-          <Table.Row key={`${result.job.id}-${String(result.candidate?.index ?? 0)}`}>
-            <Table.Cell>{describeJob(result.job)}</Table.Cell>
-            <Table.Cell>{result.compressedSize.toLocaleString()} B</Table.Cell>
-            <Table.Cell>{result.ratio.toFixed(2)}×</Table.Cell>
-            <Table.Cell>{Math.round(result.compressMBps)} MB/s</Table.Cell>
-            <Table.Cell>{Math.round(result.decompressMBps)} MB/s</Table.Cell>
-          </Table.Row>
-        ))}
-        {outcome.failures.map((failure) => (
-          <Table.Row key={failure.job.id}>
-            <Table.Cell>{describeJob(failure.job)}</Table.Cell>
-            <Table.Cell colSpan={4} color="pg.secondary">
-              {failure.message}
-            </Table.Cell>
-          </Table.Row>
-        ))}
-      </Table.Body>
-    </Table.Root>
+    <VStack as="ul" gap="6px" align="stretch" m={0} p={0} listStyleType="none">
+      {outcome.failures.map((failure) => (
+        <Text as="li" key={failure.job.id} color="pg.danger" fontSize="13px" m={0}>
+          {describeJob(failure.job)}: {failure.message}
+        </Text>
+      ))}
+    </VStack>
   );
 }
 
 export default function ResultsPanel({runState}: ResultsPanelProps) {
+  const hasResults = resultsOf(runState).length > 0;
   return (
     <Box
       as="section"
@@ -126,11 +95,26 @@ export default function ResultsPanel({runState}: ResultsPanelProps) {
           m={0}>
           {statusLine(runState)}
         </Text>
-        {hasMeasurements(runState) && <MeasurementList runState={runState} />}
+        <MeasurementsTable runState={runState} />
+        <FailureList runState={runState} />
 
-        {/* Only while there is nothing to show: otherwise the page says it has
-            no results directly under the ones it just listed. */}
-        {!hasMeasurements(runState) && (
+        {hasResults && (
+          <Box
+            as="aside"
+            aria-label="WebAssembly speed notice"
+            bg="pg.callout"
+            borderWidth="1px"
+            borderColor="pg.noticeBorder"
+            borderRadius="8px"
+            px="16px"
+            py="12px">
+            <Text color="pg.noticeFg" fontSize="13px" lineHeight="1.4" m={0}>
+              ⚡ Speeds shown here are different from running locally because we are using WebAssembly.
+            </Text>
+          </Box>
+        )}
+
+        {!hasResults && (
           <Box
             display="flex"
             alignItems="center"
