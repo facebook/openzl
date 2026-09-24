@@ -69,6 +69,32 @@ class ReadStream {
         return val;
     }
 
+    /// @returns true if at least @p numElts values of type @p Value can be
+    /// read from the stream without running past its end. Overflow-safe.
+    template <typename Value>
+    ZL_FORCE_INLINE_ATTR bool canReadValues(size_t numElts) const
+    {
+        return numElts <= buf_.size() / sizeof(Value);
+    }
+
+    ZL_FORCE_INLINE_ATTR size_t bytesRemaining() const
+    {
+        return buf_.size();
+    }
+
+    /// Reads a value of type @p Value without bounds-checking.
+    /// @pre The caller has verified that sizeof(Value) bytes remain (e.g. via
+    ///      canReadValues() or bytesRemaining()).
+    template <typename Value>
+    ZL_FORCE_INLINE_ATTR Value readValueUnchecked()
+    {
+        static_assert(folly::kIsLittleEndian);
+        Value val;
+        std::memcpy(&val, buf_.start(), sizeof(Value));
+        buf_ = { buf_.start() + sizeof(Value), buf_.end() };
+        return val;
+    }
+
     ZL_FORCE_INLINE_ATTR uint64_t readVarint()
     {
         const uint8_t* ptr = buf_.data();
