@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-import {Fragment, useRef, useState} from 'react';
+import {Fragment} from 'react';
 import {
   Box,
   Button,
@@ -29,29 +29,16 @@ import {
   OPENZL_LEVELS,
   OPENZL_PROFILES,
   TRAINED_CANDIDATE_COUNTS,
-  createCompressorRow,
   isTrainableProfile,
   levelsFor,
   tickLabelLeft,
   type CompressorName,
   type CompressorRow,
-  type CompressorRowBase,
   type OpenZlProfile,
   type OpenZlRow,
 } from '../compressors.ts';
+import type {CompressorRows, PatchOpenZlRow, PatchRow} from '../useCompressorRows.ts';
 import {isBrowserSupportedProfile, profileDescription} from '../wasmProfiles.ts';
-
-/**
- * Split in two because `Partial<CompressorRow>` over a union distributes into
- * `Partial<OpenZlRow> | Partial<ZstdRow> | ...`, which no longer spreads back
- * into a row without a cast. Keeping them separate also says which fields any
- * row has and which only an OpenZL row does.
- *
- * Neither carries `id`: that is the argument selecting the row, so a patch
- * holding one could only ever disagree with it.
- */
-type PatchRow = (id: number, patch: Omit<Partial<CompressorRowBase>, 'id'>) => void;
-type PatchOpenZlRow = (id: number, patch: Omit<Partial<OpenZlRow>, 'id'>) => void;
 
 interface CompressorRowProps {
   row: CompressorRow;
@@ -67,6 +54,12 @@ interface OpenZlRowProps {
   row: OpenZlRow;
   position: number;
   onPatch: PatchOpenZlRow;
+}
+
+interface ConfigureRunCardProps {
+  compressors: CompressorRows;
+  iterations: number;
+  onIterationsChange: (iterations: number) => void;
 }
 
 function OpenZlOptions({row, position, onPatch}: OpenZlRowProps) {
@@ -407,41 +400,11 @@ function CompressorRowCard({
   );
 }
 
-export default function ConfigureRunCard() {
-  const [rows, setRows] = useState<readonly CompressorRow[]>(() => [
-    createCompressorRow(1, 'OpenZL'),
-    createCompressorRow(2, 'zstd'),
-    createCompressorRow(3, 'gzip'),
-  ]);
-  const nextId = useRef(4);
-  const [iterations, setIterations] = useState(ITERATIONS_DEFAULT);
-
-  const patchRow: PatchRow = (id, patch) => {
-    setRows((prev) => prev.map((row) => (row.id === id ? {...row, ...patch} : row)));
-  };
-
-  // Narrows before spreading, so the OpenZL-only fields can only ever land on
-  // a row that actually has them.
-  const patchOpenZlRow: PatchOpenZlRow = (id, patch) => {
-    setRows((prev) => prev.map((row) => (row.id === id && row.compressor === 'OpenZL' ? {...row, ...patch} : row)));
-  };
-
-  const changeCompressor = (id: number, compressor: CompressorName) => {
-    // A fresh row resets the dependent fields: a zstd level of 19 is not a
-    // valid OpenZL level, and a profile means nothing to gzip.
-    setRows((prev) => prev.map((row) => (row.id === id ? createCompressorRow(id, compressor) : row)));
-  };
-
-  const addRow = () => {
-    const row = createCompressorRow(nextId.current, 'OpenZL');
-    nextId.current += 1;
-    setRows((prev) => [...prev, row]);
-  };
-
-  const removeRow = (id: number) => {
-    setRows((prev) => prev.filter((row) => row.id !== id));
-  };
-
+export default function ConfigureRunCard({
+  compressors: {rows, addRow, removeRow, patchRow, patchOpenZlRow, changeCompressor},
+  iterations,
+  onIterationsChange,
+}: ConfigureRunCardProps) {
   return (
     <StepCard number={2} title="Configure the run" subtitle="Select which compressors to compare">
       <VStack gap="10px" align="stretch">
@@ -507,7 +470,7 @@ export default function ConfigureRunCard() {
             max={ITERATIONS_MAX}
             step={1}
             value={[iterations]}
-            onValueChange={(details) => setIterations(details.value[0] ?? ITERATIONS_DEFAULT)}
+            onValueChange={(details) => onIterationsChange(details.value[0] ?? ITERATIONS_DEFAULT)}
             width="100%">
             {/* The thumb is named through this label: zag always sets
                 aria-labelledby to the label id, which shadows aria-label. */}
