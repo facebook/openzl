@@ -3,11 +3,20 @@
 import {Box, Button} from '@chakra-ui/react';
 import {LuPlay} from 'react-icons/lu';
 import StepCard from './StepCard.tsx';
+import {isRunInProgress, type RunConfig, type RunState} from '../benchmarkTypes.ts';
 
-export default function RunBenchmarkCard() {
-  // Disabled until the run seam lands, which turns the chosen file plus the
-  // step 2 settings into a `RunConfig`. The design shows both enabled; an
-  // enabled button that silently does nothing reads as broken instead.
+interface RunBenchmarkCardProps {
+  runConfig: RunConfig | null;
+  runState: RunState;
+  onRun: ((config: RunConfig) => void) | null;
+  onTrySample: (() => void) | null;
+}
+
+export default function RunBenchmarkCard({runConfig, runState, onRun, onTrySample}: RunBenchmarkCardProps) {
+  const isBusy = isRunInProgress(runState);
+  const canRun = runConfig !== null && onRun !== null && !isBusy;
+  const canTrySample = onTrySample !== null && !isBusy;
+
   return (
     <StepCard number={3} title="Run the benchmark" subtitle="Measure ratio and speed for every compressor you selected">
       <Box display="flex" gap="12px" alignItems="center">
@@ -23,7 +32,12 @@ export default function RunBenchmarkCard() {
           py="12px"
           borderRadius="8px"
           _hover={{bg: 'pg.primaryHover'}}
-          disabled>
+          disabled={!canRun}
+          onClick={() => {
+            if (canRun) {
+              onRun(runConfig);
+            }
+          }}>
           <LuPlay aria-hidden="true" />
           Run benchmark
         </Button>
@@ -41,7 +55,8 @@ export default function RunBenchmarkCard() {
           py="12px"
           borderRadius="8px"
           _hover={{bg: 'pg.canvas'}}
-          disabled>
+          disabled={!canTrySample}
+          onClick={onTrySample ?? undefined}>
           Try a 5 MB sample
         </Button>
       </Box>
