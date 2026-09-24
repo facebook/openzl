@@ -11,8 +11,14 @@ import {runBenchmark} from './runBenchmark.ts';
 import {useCompressorRows} from './useCompressorRows.ts';
 import logoUrl from '/OpenZL_logo.png?url';
 
-/** Content width of the Figma frame (node 29:4) the setup and results columns sit in. */
-const CONTENT_MAX_WIDTH = '1223px';
+/**
+ * The Figma frame the two columns sit in (node 151:2), with its own padding.
+ * These are load-bearing rather than cosmetic: the setup column is a fixed
+ * 520px, so everything narrower comes off the results column, and below about
+ * 1400px the measurements table no longer fits beside it.
+ */
+const CONTENT_MAX_WIDTH = '1590px';
+const CONTENT_PADDING_X = '64px';
 
 /**
  * Without this, a file released anywhere but the drop zone makes the browser
@@ -65,7 +71,7 @@ export default function App() {
         {/* The docs site publishes every land, so the page is reachable while
             parts of it are still stubs. It runs now; what it shows afterwards
             is the placeholder below. */}
-        <Box width="100%" maxW={CONTENT_MAX_WIDTH} px="32px" pt="24px">
+        <Box width="100%" maxW={CONTENT_MAX_WIDTH} px={CONTENT_PADDING_X} pt="24px">
           <Banner>Work in progress — the results view is a placeholder</Banner>
         </Box>
         <Flex
@@ -73,7 +79,7 @@ export default function App() {
           gap="24px"
           width="100%"
           maxW={CONTENT_MAX_WIDTH}
-          px="32px"
+          px={CONTENT_PADDING_X}
           pt="24px"
           pb="40px"
           direction={{base: 'column', lg: 'row'}}>
