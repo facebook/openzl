@@ -182,6 +182,38 @@ export function peaksOf(results: readonly JobResult[]): Peaks {
   };
 }
 
+export interface RunSummary {
+  /** Absent when nothing was measured, which is the only source for it. */
+  readonly srcSize: number | null;
+  readonly succeeded: number;
+  readonly failed: number;
+}
+
+/**
+ * What a finished run amounts to, counted in compressor rows rather than jobs.
+ * A row is what the reader added, and the design words it that way; jobs would
+ * double-count a row that was expanded across six levels.
+ *
+ * A row counts as failed only when it produced nothing at all. One level of six
+ * failing leaves the row succeeded, and the failure list under the table names
+ * it. Rows rejected before becoming jobs are in neither count -- nothing
+ * carries them this far.
+ */
+export function runSummary(runState: RunState): RunSummary | null {
+  if (runState.status !== 'completed') {
+    return null;
+  }
+  const succeeded = new Set(runState.results.map((result) => result.job.rowId));
+  const failed = new Set(
+    runState.failures.map((failure) => failure.job.rowId).filter((rowId) => !succeeded.has(rowId)),
+  );
+  return {
+    srcSize: runState.results[0]?.srcSize ?? null,
+    succeeded: succeeded.size,
+    failed: failed.size,
+  };
+}
+
 /** `idle` and `loading` carry no outcome yet. */
 export function resultsOf(runState: RunState): readonly JobResult[] {
   return runState.status === 'idle' || runState.status === 'loading' ? [] : runState.results;

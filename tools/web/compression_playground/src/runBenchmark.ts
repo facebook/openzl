@@ -57,6 +57,7 @@ export function runBenchmark(config: RunConfig, onState: (state: RunState) => vo
   const results: JobResult[] = [];
   const failures: JobFailure[] = [];
   let totalJobs = 0;
+  let step: number | null = null;
 
   const runWorker = getWorker();
   // `onMessage` and `onError` are function declarations below, so they are
@@ -98,6 +99,7 @@ export function runBenchmark(config: RunConfig, onState: (state: RunState) => vo
     totalJobs,
     results: [...results],
     failures: [...failures],
+    step,
   });
 
   function onMessage(event: MessageEvent<WorkerMessage>) {
@@ -115,11 +117,21 @@ export function runBenchmark(config: RunConfig, onState: (state: RunState) => vo
         }
         onState(progress());
         return;
+      case 'step':
+        step = message.fraction;
+        onState(progress());
+        return;
       case 'result':
+        // A job that reported its way through is done reporting.
+        step = null;
         results.push(message.result);
         onState(progress());
         return;
       case 'failure':
+        // Done reporting too, and it is already counted. Left standing, a
+        // training job that died at 90% would lend that 90% to the next
+        // job's share of the bar.
+        step = null;
         failures.push(message.failure);
         onState(progress());
         return;

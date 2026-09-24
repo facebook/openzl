@@ -13,8 +13,21 @@ type Emit = (message: WorkerMessage) => void;
  */
 let modulePromise: Promise<OpenZL> | undefined;
 
+/**
+ * Where the module's training progress goes. The module outlives a run and the
+ * callback is fixed at construction, so it reports to whoever is running now
+ * rather than to the run that happened to load it.
+ */
+let reportStep: ((fraction: number) => void) | null = null;
+
 function loadOpenZL(): Promise<OpenZL> {
-  modulePromise ??= createOpenZL().catch((error: unknown) => {
+  modulePromise ??= createOpenZL({
+    // The callback's message is the trainer's own, and says things like
+    // `Training ACE graph 1 / 1`, so only the fraction is carried out.
+    onTrainingProgress: (fraction: number) => {
+      reportStep?.(fraction);
+    },
+  }).catch((error: unknown) => {
     modulePromise = undefined;
     throw error;
   });
@@ -86,6 +99,39 @@ export async function measureRun(config: RunConfig, post: Emit): Promise<void> {
     }
   }
 
+  // `train()` is synchronous, so these are posted from inside the call that
+  // blocks this thread. They reach the page because `postMessage` queues on
+  // the receiving side rather than needing this one to yield.
+  reportStep = (fraction) => {
+    post({type: 'step', fraction});
+  };
+  try {
+    await runJobs(jobs, data, openzl, openzlError, post);
+  } finally {
+    reportStep = null;
+  }
+
+  post({type: 'finished'});
+}
+
+/**
+ * One job at a time, deliberately. These are speed measurements taken with a
+ * wall clock, so two of them running at once contend for cores and memory
+ * bandwidth and both come back low -- by an amount that depends on what else
+ * happened to be running. Compression is bandwidth-bound, so this is not a
+ * small effect, and the numbers stop being reproducible.
+ *
+ * What it costs is bounded: on the 5 MB sample the twelve level jobs come to
+ * about 11 seconds in total, against minutes for one training job, which is
+ * not something running them side by side would help with.
+ */
+async function runJobs(
+  jobs: readonly BenchmarkJob[],
+  data: Uint8Array,
+  openzl: OpenZL | null,
+  openzlError: unknown,
+  post: Emit,
+): Promise<void> {
   for (const job of jobs) {
     try {
       if (job.compressor === 'OpenZL' && openzlError !== undefined) {
@@ -100,6 +146,4 @@ export async function measureRun(config: RunConfig, post: Emit): Promise<void> {
       post({type: 'failure', failure: {job, message: error instanceof Error ? error.message : String(error)}});
     }
   }
-
-  post({type: 'finished'});
 }

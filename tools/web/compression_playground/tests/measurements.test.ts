@@ -11,6 +11,7 @@ import {
   groupMeasurements,
   peaksOf,
   rowDetail,
+  runSummary,
   sortGroups,
 } from '../src/measurements.ts';
 import type {BenchmarkJob, JobResult} from '../src/benchmarkTypes.ts';
@@ -142,6 +143,61 @@ describe('rowDetail', () => {
     expect(rowDetail(result({compressor: 'OpenZL', profile: 5}, {candidate: {index: 1, total: 3}}))).toBe('-');
     expect(rowDetail(result({compressor: 'OpenZL', profile: 5}))).toBe('le-u32');
     expect(rowDetail(result({compressor: 'zstd', level: 9}))).toBe('Level 9');
+  });
+});
+
+describe('runSummary', () => {
+  const job = (rowId: number, level: number) => result({compressor: 'zstd', rowId, level}, {srcSize: 5_000_000}).job;
+
+  it('has nothing to say until the run finishes', () => {
+    expect(runSummary({status: 'idle'})).toBeNull();
+    expect(
+      runSummary({status: 'running', completedJobs: 1, totalJobs: 2, results: [], failures: [], step: null}),
+    ).toBeNull();
+  });
+
+  it('counts compressor rows, not the jobs they expanded into', () => {
+    const summary = runSummary({
+      status: 'completed',
+      results: [
+        result({compressor: 'zstd', rowId: 2, level: 1}, {srcSize: 5_000_000}),
+        result({compressor: 'zstd', rowId: 2, level: 9}, {srcSize: 5_000_000}),
+        result({compressor: 'gzip', rowId: 3, level: 6}, {srcSize: 5_000_000}),
+      ],
+      failures: [],
+    });
+    expect(summary).toEqual({srcSize: 5_000_000, succeeded: 2, failed: 0});
+  });
+
+  it('keeps a row that lost one level out of the failed count', () => {
+    // The failure list under the table names it; the row still produced.
+    const summary = runSummary({
+      status: 'completed',
+      results: [result({compressor: 'zstd', rowId: 2, level: 1}, {srcSize: 100})],
+      failures: [{job: job(2, 19), message: 'out of memory'}],
+    });
+    expect(summary).toMatchObject({succeeded: 1, failed: 0});
+  });
+
+  it('counts a row that produced nothing as failed, once', () => {
+    const summary = runSummary({
+      status: 'completed',
+      results: [result({compressor: 'gzip', rowId: 3, level: 6}, {srcSize: 100})],
+      failures: [
+        {job: job(2, 1), message: 'boom'},
+        {job: job(2, 9), message: 'boom'},
+      ],
+    });
+    expect(summary).toMatchObject({succeeded: 1, failed: 1});
+  });
+
+  it('has no size to report when nothing was measured', () => {
+    const summary = runSummary({
+      status: 'completed',
+      results: [],
+      failures: [{job: job(2, 1), message: 'boom'}],
+    });
+    expect(summary).toEqual({srcSize: null, succeeded: 0, failed: 1});
   });
 });
 

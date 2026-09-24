@@ -126,6 +126,14 @@ export interface RunningRunState extends RunOutcome {
   readonly status: 'running';
   readonly completedJobs: number;
   readonly totalJobs: number;
+  /**
+   * How far the current job is through a step of its own work, 0 to 1, when
+   * it can say. Only training reports: it is one job that runs for minutes,
+   * so without this the job counter sits on the same number for the whole of
+   * it. A trained job takes more than one step and each reports from 0, so
+   * this can fall back before the job is done.
+   */
+  readonly step: number | null;
 }
 
 export interface CompletedRunState extends RunOutcome {
@@ -150,6 +158,7 @@ export type RunState = IdleRunState | LoadingRunState | RunningRunState | Comple
 export type WorkerMessage =
   | {readonly type: 'loading'}
   | {readonly type: 'started'; readonly totalJobs: number; readonly rejected: readonly RejectedCompressor[]}
+  | {readonly type: 'step'; readonly fraction: number}
   | {readonly type: 'result'; readonly result: JobResult}
   | {readonly type: 'failure'; readonly failure: JobFailure}
   | {readonly type: 'finished'}

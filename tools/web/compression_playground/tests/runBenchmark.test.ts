@@ -109,6 +109,27 @@ describe('runBenchmark', () => {
     expect(states.at(-1)).toMatchObject({completedJobs: 1});
   });
 
+  it("drops a job's step once it stops reporting, however it stopped", async () => {
+    const {runBenchmark} = await freshModule();
+    const states: RunState[] = [];
+
+    runBenchmark(config, (state) => states.push(state));
+    const [worker] = FakeWorker.instances;
+    worker.emit('message', {data: {type: 'started', totalJobs: 2, rejected: []}});
+
+    worker.emit('message', {data: {type: 'step', fraction: 0.9}});
+    expect(states.at(-1)).toMatchObject({step: 0.9});
+
+    worker.emit('message', {data: {type: 'result', result: {job: {id: 'openzl-6'}, candidate: null}}});
+    expect(states.at(-1)).toMatchObject({step: null});
+
+    // A job that died partway through reporting has stopped too. Left
+    // standing, its 90% would lend itself to the next job's share of the bar.
+    worker.emit('message', {data: {type: 'step', fraction: 0.9}});
+    worker.emit('message', {data: {type: 'failure', failure: {job: {id: 'zstd-1'}, message: 'stopped'}}});
+    expect(states.at(-1)).toMatchObject({step: null});
+  });
+
   it('keeps one worker across runs that end normally', async () => {
     // Instantiating the module costs megabytes, so it outlives a single run.
     const {runBenchmark} = await freshModule();

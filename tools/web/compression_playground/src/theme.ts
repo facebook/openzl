@@ -49,6 +49,9 @@ const playgroundConfig = defineConfig({
           faint: {value: {base: '#667385', _osDark: '#94a3b8'}},
           accent: {value: {base: '#2563eb', _osDark: '#60a5fa'}},
           success: {value: {base: '#059669', _osDark: '#34d399'}},
+          // `pg.success` as 13px text reaches only 3.77:1 on white, so the
+          // done line takes the darker green the design already specifies.
+          successText: {value: {base: '#065f46', _osDark: '#6ee7a8'}},
           danger: {value: {base: '#b91c1c', _osDark: '#fca5a5'}},
 
           // Step 2/3 controls. The run button is indigo rather than the blue
@@ -58,6 +61,11 @@ const playgroundConfig = defineConfig({
           // 4.47:1 behind the button's 14px bold white label.
           primary: {value: {base: '#4f46e5', _osDark: '#5b54ee'}},
           primaryHover: {value: {base: '#4338ca', _osDark: '#4f46e5'}},
+          // The run button while it works. Figma's #93c5fd carries bold white
+          // at 1.80:1, and 14px bold is not large text, so this is darkened to
+          // 4.94:1 -- which also keeps the button itself at 3:1 against the
+          // card, the threshold for a shape rather than a label.
+          primaryBusy: {value: {base: '#426fbe', _osDark: '#3f63a8'}},
           infoBorder: {value: {base: '#bfdbfe', _osDark: '#2f4a6b'}},
 
           // The WebAssembly-speed notice under the measurements. It sits on
