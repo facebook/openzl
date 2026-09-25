@@ -1,10 +1,14 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-import {useEffect, useState} from 'react';
+import {useCallback, useEffect, useState} from 'react';
 import {Box, Flex} from '@chakra-ui/react';
 import {Banner, ToolHeader} from '@openzl/web-common';
 import ResultsPanel from './components/ResultsPanel.tsx';
 import SetupColumn from './components/SetupColumn.tsx';
+import {toCompressorConfig, type RunConfig, type RunState} from './benchmarkTypes.ts';
+import {ITERATIONS_DEFAULT} from './compressors.ts';
+import {runBenchmark} from './runBenchmark.ts';
+import {useCompressorRows} from './useCompressorRows.ts';
 import logoUrl from '/OpenZL_logo.png?url';
 
 /** Content width of the Figma frame (node 29:4) the setup and results columns sit in. */
@@ -37,20 +41,32 @@ function useBlockStrayFileDrops() {
 }
 
 export default function App() {
-  // The file lives here rather than in UploadCard because the run seam needs it:
-  // step 3 gates its button on having one, and it becomes RunConfig.input.
   const [file, setFile] = useState<File | null>(null);
+  const compressors = useCompressorRows();
+  const [iterations, setIterations] = useState(ITERATIONS_DEFAULT);
+  const [runState, setRunState] = useState<RunState>({status: 'idle'});
+  const onRun = useCallback((config: RunConfig) => {
+    runBenchmark(config, setRunState);
+  }, []);
+  const runConfig: RunConfig | null =
+    file === null
+      ? null
+      : {
+          input: file,
+          compressors: compressors.rows.map(toCompressorConfig),
+          iterations,
+        };
   useBlockStrayFileDrops();
 
   return (
     <Flex direction="column" minH="100vh" bg="pg.pageBg">
       <ToolHeader title="Compression Playground" logoSrc={logoUrl} />
       <Flex as="main" flex="1" direction="column" align="center" bg="pg.pageBg">
-        {/* The docs site publishes every land, so the page is reachable well
-            before the run seam exists. Without this the setup UI looks like a
-            finished tool that silently does nothing. */}
+        {/* The docs site publishes every land, so the page is reachable while
+            parts of it are still stubs. It runs now; what it shows afterwards
+            is the placeholder below. */}
         <Box width="100%" maxW={CONTENT_MAX_WIDTH} px="32px" pt="24px">
-          <Banner>Work in progress — benchmarking is not wired up yet</Banner>
+          <Banner>Work in progress — the results view is a placeholder</Banner>
         </Box>
         <Flex
           align="flex-start"
@@ -61,8 +77,18 @@ export default function App() {
           pt="24px"
           pb="40px"
           direction={{base: 'column', lg: 'row'}}>
-          <SetupColumn file={file} onFileChange={setFile} />
-          <ResultsPanel />
+          <SetupColumn
+            file={file}
+            onFileChange={setFile}
+            compressors={compressors}
+            iterations={iterations}
+            onIterationsChange={setIterations}
+            runConfig={runConfig}
+            runState={runState}
+            onRun={onRun}
+            onTrySample={null}
+          />
+          <ResultsPanel runState={runState} />
         </Flex>
       </Flex>
     </Flex>
