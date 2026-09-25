@@ -94,8 +94,38 @@ export const GZIP_LEVELS = range(1, 9);
 export const TRAINED_CANDIDATE_COUNTS = range(6, 25);
 
 export const OPENZL_DEFAULT_LEVEL = 6;
-export const ZSTD_DEFAULT_LEVEL = 5;
-export const GZIP_DEFAULT_LEVEL = 5;
+
+/**
+ * `count` levels spread across the compressor's range, so a row contributes as
+ * many points as an OpenZL row contributes trained candidates.
+ *
+ * Rounding lands twice on the same level when the range is tight, so the set
+ * deduplicates and the fill tops it back up. That also clamps: gzip has nine
+ * levels and zstd nineteen, so asking for more than the range holds returns
+ * the whole range and the codecs stop matching.
+ *
+ * Even spacing by level number is not even spacing on a log-log chart, so this
+ * is worth revisiting once there are real curves to look at.
+ */
+export function evenlySpacedLevels(compressor: 'zstd' | 'gzip', count: number): readonly number[] {
+  const all = levelsFor(compressor);
+  // The step below divides by `count - 1`, which is the gap count rather than
+  // the point count, so one point has no gap to divide by.
+  if (count <= 1) {
+    return all.slice(0, 1);
+  }
+  const picked = new Set<number>();
+  for (let index = 0; index < count; index += 1) {
+    picked.add(all[Math.round((index * (all.length - 1)) / (count - 1))]);
+  }
+  for (const level of all) {
+    if (picked.size >= count) {
+      break;
+    }
+    picked.add(level);
+  }
+  return [...picked].sort((a, b) => a - b);
+}
 export const DEFAULT_OPENZL_PROFILE: OpenZlProfile = 'serial';
 export const DEFAULT_TRAINED_CANDIDATES = 6;
 
@@ -110,21 +140,21 @@ export function levelsFor(compressor: CompressorName): readonly number[] {
   }
 }
 
-export function defaultLevelFor(compressor: CompressorName): number {
-  switch (compressor) {
-    case 'OpenZL':
-      return OPENZL_DEFAULT_LEVEL;
-    case 'zstd':
-      return ZSTD_DEFAULT_LEVEL;
-    case 'gzip':
-      return GZIP_DEFAULT_LEVEL;
-  }
+export function defaultLevelsFor(compressor: 'zstd' | 'gzip'): readonly number[] {
+  return evenlySpacedLevels(compressor, DEFAULT_TRAINED_CANDIDATES);
 }
 
 export interface CompressorRowBase {
   id: number;
-  /** Range depends on the compressor; see `levelsFor`. */
-  level: number;
+}
+
+/**
+ * One measurement per selected level, which is what gives zstd and gzip a
+ * curve on the charts rather than a point. OpenZL is not one of these: its
+ * several measurements come from training, so it carries a single level.
+ */
+export interface LeveledRowBase extends CompressorRowBase {
+  levels: readonly number[];
 }
 
 /**
@@ -135,6 +165,8 @@ export interface CompressorRowBase {
  */
 export interface OpenZlRow extends CompressorRowBase {
   compressor: 'OpenZL';
+  /** Range depends on the compressor; see `levelsFor`. */
+  level: number;
   profile: OpenZlProfile;
   /** What the user asked for, not what will happen: see `isTrainableProfile`. */
   trainRequested: boolean;
@@ -143,11 +175,11 @@ export interface OpenZlRow extends CompressorRowBase {
 }
 
 /** Kept apart from `GzipRow` despite matching today, so either can gain options. */
-export interface ZstdRow extends CompressorRowBase {
+export interface ZstdRow extends LeveledRowBase {
   compressor: 'zstd';
 }
 
-export interface GzipRow extends CompressorRowBase {
+export interface GzipRow extends LeveledRowBase {
   compressor: 'gzip';
 }
 
@@ -156,19 +188,18 @@ export type CompressorRow = OpenZlRow | ZstdRow | GzipRow;
 export function createCompressorRow(id: number, compressor: 'OpenZL'): OpenZlRow;
 export function createCompressorRow(id: number, compressor: CompressorName): CompressorRow;
 export function createCompressorRow(id: number, compressor: CompressorName): CompressorRow {
-  const level = defaultLevelFor(compressor);
   if (compressor === 'OpenZL') {
     return {
       id,
       compressor,
-      level,
+      level: OPENZL_DEFAULT_LEVEL,
       profile: DEFAULT_OPENZL_PROFILE,
       trainRequested: true,
       candidates: DEFAULT_TRAINED_CANDIDATES,
       optionsOpen: true,
     };
   }
-  return {id, compressor, level};
+  return {id, compressor, levels: defaultLevelsFor(compressor)};
 }
 
 export const ITERATIONS_MIN = 1;
