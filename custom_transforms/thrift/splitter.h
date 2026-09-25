@@ -454,9 +454,20 @@ class DBaseParser {
     template <typename Value>
     void unparsePrimitiveListBody(const PT::Iterator& elemIt, size_t numElts)
     {
-        UnparseValue<Value> unparseValue(this, elemIt);
         // Skip reserve() because ws_ is a FixedWriteStream
         static_assert(std::is_same_v<decltype(ws_), FixedWriteStream&>);
+        // Fast path for fixed-width elements: verify the whole run fits once,
+        // then read each element without a per-element bounds check.
+        if constexpr (std::is_arithmetic_v<Value>) {
+            ReadStream& rs = elemIt.stream();
+            if (rs.canReadValues<Value>(numElts)) {
+                for (size_t i = 0; i < numElts; ++i) {
+                    derived().writeValue(rs.readValueUnchecked<Value>());
+                }
+                return;
+            }
+        }
+        UnparseValue<Value> unparseValue(this, elemIt);
         for (size_t i = 0; i < numElts; ++i) {
             unparseValue();
         }
@@ -499,10 +510,30 @@ class DBaseParser {
             const PT::Iterator& valueIt,
             size_t numElts)
     {
-        UnparseValue<Key> unparseKey(this, keyIt);
-        UnparseValue<Value> unparseValue(this, valueIt);
         // Skip reserve() because ws_ is a FixedWriteStream
         static_assert(std::is_same_v<decltype(ws_), FixedWriteStream&>);
+        // Fast path for fixed-width keys and values: verify the whole run fits
+        // once, then read without a per-element bounds check. Keys and values
+        // may share one interleaved stream (e.g. map<i32, i32>).
+        if constexpr (
+                std::is_arithmetic_v<Key> && std::is_arithmetic_v<Value>) {
+            ReadStream& keyRs   = keyIt.stream();
+            ReadStream& valueRs = valueIt.stream();
+            const bool fits     = (&keyRs == &valueRs)
+                        ? numElts <= keyRs.bytesRemaining()
+                                    / (sizeof(Key) + sizeof(Value))
+                        : keyRs.canReadValues<Key>(numElts)
+                            && valueRs.canReadValues<Value>(numElts);
+            if (fits) {
+                for (size_t i = 0; i < numElts; ++i) {
+                    derived().writeValue(keyRs.readValueUnchecked<Key>());
+                    derived().writeValue(valueRs.readValueUnchecked<Value>());
+                }
+                return;
+            }
+        }
+        UnparseValue<Key> unparseKey(this, keyIt);
+        UnparseValue<Value> unparseValue(this, valueIt);
         for (size_t i = 0; i < numElts; ++i) {
             unparseKey();
             unparseValue();
