@@ -5,6 +5,7 @@
 #include <string>
 
 #include "openzl/zl_unique_id.h"
+#include "tests/datagen/DataGen.h"
 
 #include "sha_vec.h"
 
@@ -12,7 +13,7 @@ using namespace ::testing;
 
 namespace openzl::tests {
 
-TEST(Sha256Test, Validity)
+TEST(UniqueIDTest, Validity)
 {
     ZL_UniqueID zero1;
     for (size_t i = 0; i < 32; ++i) {
@@ -36,7 +37,7 @@ TEST(Sha256Test, Validity)
     ASSERT_FALSE(ZL_UniqueID_isValid(nullptr));
 }
 
-TEST(Sha256Test, SanityCheck)
+TEST(UniqueIDTest, SanityCheck)
 {
     std::vector<std::string_view> inputs = {
         "",
@@ -66,7 +67,7 @@ TEST(Sha256Test, SanityCheck)
     }
 }
 
-TEST(Sha256Test, NISTVectors)
+TEST(UniqueIDTest, NISTVectors)
 {
     for (size_t i = 0; i < NIST_testVectorSet.nbVectors; ++i) {
         ZL_UniqueID expected;
@@ -75,6 +76,64 @@ TEST(Sha256Test, NISTVectors)
                 NIST_testVectorSet.vectors[i].input,
                 NIST_testVectorSet.vectors[i].inputLen);
         ASSERT_TRUE(ZL_UniqueID_eq(&actual, &expected));
+    }
+}
+
+TEST(UniqueIDTest, SignificantBytes)
+{
+    ZL_UniqueID zero = ZL_UniqueID_zero();
+    EXPECT_EQ(ZL_UniqueID_significantBytes(&zero), 0u);
+
+    // Single byte at position 0
+    ZL_UniqueID one = ZL_UniqueID_fromU32(0x00000042);
+    EXPECT_EQ(ZL_UniqueID_significantBytes(&one), 1u);
+
+    // Non-zero bytes 0-1
+    ZL_UniqueID two = ZL_UniqueID_fromU16(UINT16_MAX);
+    EXPECT_EQ(ZL_UniqueID_significantBytes(&two), 2u);
+
+    // Non-zero at position 4 (bytes 0-4 significant, 5-31 zero)
+    ZL_UniqueID five = ZL_UniqueID_fromU64(0x0100000000);
+    EXPECT_EQ(ZL_UniqueID_significantBytes(&five), 5u);
+
+    // Non-zero byte at the very end
+    ZL_UniqueID full = ZL_UniqueID_zero();
+    full.bytes[31]   = 0xFF;
+    EXPECT_EQ(ZL_UniqueID_significantBytes(&full), 32u);
+
+    // Sparse: bytes 0 and 3 non-zero, rest zero
+    ZL_UniqueID sparse = ZL_UniqueID_fromU32(0x02000001);
+    EXPECT_EQ(ZL_UniqueID_significantBytes(&sparse), 4u);
+}
+
+TEST(UniqueIDTest, IntRoundtrip)
+{
+    datagen::DataGen dg;
+    std::vector<uint16_t> input16 =
+            dg.randVector<uint16_t>("uint16s", 0, UINT16_MAX, 1000);
+    for (auto i : input16) {
+        ZL_UniqueID id = ZL_UniqueID_fromU16(i);
+        auto r16       = ZL_UniqueID_toU16(&id);
+        ASSERT_FALSE(ZL_RES_isError(r16));
+        ASSERT_EQ(ZL_RES_value(r16), i);
+    }
+
+    std::vector<uint32_t> input32 =
+            dg.randVector<uint32_t>("uint32s", 0, UINT32_MAX, 1000);
+    for (auto i : input32) {
+        ZL_UniqueID id = ZL_UniqueID_fromU32(i);
+        auto r32       = ZL_UniqueID_toU32(&id);
+        ASSERT_FALSE(ZL_RES_isError(r32));
+        ASSERT_EQ(ZL_RES_value(r32), i);
+    }
+
+    std::vector<uint64_t> input64 =
+            dg.randVector<uint64_t>("uint64s", 0, UINT64_MAX, 1000);
+    for (auto i : input64) {
+        ZL_UniqueID id = ZL_UniqueID_fromU64(i);
+        auto r64       = ZL_UniqueID_toU64(&id);
+        ASSERT_FALSE(ZL_RES_isError(r64));
+        ASSERT_EQ(ZL_RES_value(r64), i);
     }
 }
 

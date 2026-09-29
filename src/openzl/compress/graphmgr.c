@@ -6,18 +6,20 @@
 #include "openzl/common/limits.h"    // ZL_ENCODER_GRAPH_LIMIT constant
 #include "openzl/common/logging.h" // ZL_DLOG, STR_REPLACE_NULL for logging and debugging
 #include "openzl/common/map.h" // ZL_DECLARE_PREDEF_MAP_TYPE, GraphMap for name-to-GraphID mapping
+#include "openzl/common/materializer_ctx.h" // struct ZL_Materializer_s
 #include "openzl/common/opaque.h" // ZL_OpaquePtrRegistry for managing opaque pointers
+#include "openzl/compress/cdictmgr.h" // CDictMgr, CDictMgr_materializeMParam, CDictMgr_getMParam
 #include "openzl/compress/cgraph.h" // CNODE_getName, CNode definitions, graph context functions
 #include "openzl/compress/graph_registry.h" // ZL_PrivateStandardGraphID_end, GR_standardGraphs, InternalGraphDesc
 #include "openzl/compress/implicit_conversion.h" // ICONV_isCompatible for type checking
 #include "openzl/compress/localparams.h" // LP_transferLocalParams for parameter management
-#include "openzl/compress/materializer.h" // MPM_* functions for materializer operations
 #include "openzl/compress/name.h" // ZL_Name_*, ZS2_Name_* for graph name handling
 #include "openzl/shared/mem.h" // ZL_malloc, ZL_free, ZL_memcpy memory utilities
 #include "openzl/shared/overflow.h" // ZL_overflowMulST for integer overflow checks
 #include "openzl/zl_ctransform.h" // ZL_MaterializerDesc, ZL_Materializer for materialization
 #include "openzl/zl_opaque_types.h" // Opaque type definitions used by the API
 #include "openzl/zl_reflection.h" // ZL_MIGraphDesc and type reflection utilities
+#include "openzl/zl_unique_id.h" // ZL_UniqueID_isValid, ZL_UniqueID_computeSHA256
 
 /* ===   State Management   === */
 
@@ -33,8 +35,10 @@ struct GraphsMgr_s {
     Arena* scratchAllocator;
     const Nodes_manager* nmgr;
     ZL_OpaquePtrRegistry opaquePtrs;
-    MaterializedParamMap materializedParams;
     ZL_OperationContext* opCtx;
+    /// Non-owning pointer to the compressor's CDictMgr, used to materialize and
+    /// cache MParam objects at registration. Set via GM_setCDictMgr().
+    CDictMgr* cdictMgr;
 }; // note: typedef'd to GraphsMgr
 
 static ZL_Report GM_fillStandardGraphsCallback(
@@ -78,8 +82,6 @@ GraphsMgr* GM_create(const Nodes_manager* nmgr)
         GM_free(gm);
         return NULL;
     }
-    gm->materializedParams =
-            MaterializedParamMap_create(ZL_ENCODER_GRAPH_LIMIT);
     VECTOR_INIT(gm->gdv, ZL_ENCODER_GRAPH_LIMIT);
     gm->nameMap = GraphMap_create(ZL_ENCODER_GRAPH_LIMIT);
     if (ZL_isError(GM_fillStandardGraphs(gm))) {
@@ -94,14 +96,71 @@ void GM_free(GraphsMgr* gm)
 {
     if (gm == NULL)
         return;
-    MPM_dematerializeAllParams(&gm->materializedParams);
-    MaterializedParamMap_destroy(&gm->materializedParams);
     ZL_OpaquePtrRegistry_destroy(&gm->opaquePtrs);
     VECTOR_DESTROY(gm->gdv);
     GraphMap_destroy(&gm->nameMap);
     ALLOC_Arena_freeArena(gm->scratchAllocator);
     ALLOC_Arena_freeArena(gm->allocator);
     ZL_free(gm);
+}
+
+void GM_setCDictMgr(GraphsMgr* gm, CDictMgr* cdictMgr)
+{
+    ZL_ASSERT_NN(gm);
+    gm->cdictMgr = cdictMgr;
+}
+
+/**
+ * Materializes the @p mparam blob (if provided) using @p mparamMat via the
+ * compressor's CDictMgr, storing the resulting object into @p mparamObj and
+ * replacing @p mparam with the CDictMgr-owned copy (guaranteed lifetime).
+ * No-op when no MParam content is supplied. Mirrors the node path in
+ * CTM_registerCNode (cnodes.c).
+ */
+static ZL_Report GM_materializeMParam(
+        GraphsMgr* gm,
+        ZL_MParam* mparam,
+        const ZL_MaterializerDesc* mparamMat,
+        const void** mparamObj)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(gm->opCtx);
+    *mparamObj = NULL;
+    if (mparam->content == NULL && mparam->size == 0) {
+        return ZL_returnSuccess();
+    }
+    ZL_ERR_IF_NULL(
+            gm->cdictMgr,
+            logicError,
+            "Gm must have a non-null pointer to CDictMgr");
+    ZL_ERR_IF_NULL(
+            mparam->content,
+            graph_invalid,
+            "MParam must have non-null content");
+    ZL_ERR_IF_EQ(
+            mparam->size,
+            0,
+            graph_invalid,
+            "Non-null MParam must have non-zero size");
+    ZL_ERR_IF(
+            mparamMat->materializeFn == NULL
+                    || mparamMat->dematerializeFn == NULL,
+            graph_invalid,
+            "MParam materializer must declare both a materialize and dematerialize function");
+
+    // Assign a content-derived ID when none was provided.
+    if (!ZL_UniqueID_isValid(&mparam->mparamID.id)) {
+        mparam->mparamID.id =
+                ZL_UniqueID_computeSHA256(mparam->content, mparam->size);
+    }
+
+    ZL_TRY_LET_CONST(
+            ZL_ConstVoidPtr,
+            obj,
+            CDictMgr_materializeMParam(gm->cdictMgr, *mparam, mparamMat));
+    *mparamObj = obj;
+    // Replace with the cached copy that has a guaranteed lifetime.
+    *mparam = *CDictMgr_getMParam(gm->cdictMgr, mparam->mparamID);
+    return ZL_returnSuccess();
 }
 
 /* ===   Indexing scheme   === */
@@ -304,6 +363,7 @@ static ZL_RESULT_OF(ZL_GraphID) GM_registerInternalGraph(
     gdi.baseGraphID       = originalGraphID;
     gdi.originalGraphType = originalGraphType;
     gdi.migd              = *migd;
+    gdi.mparamObj         = NULL;
     ZL_ERR_IF_ERR(GM_transferTypes(
             gm,
             migd->inputTypeMasks,
@@ -319,21 +379,9 @@ static ZL_RESULT_OF(ZL_GraphID) GM_registerInternalGraph(
 
     // do materialization here
     ZL_ERR_IF_ERR(GM_transferLocalParameters(gm, &gdi.migd.localParams));
-    // Materialize params if materializer is provided (with deduplication)
-    if (migd->materializer.materializeFn != NULL) {
-        // Validate provided params don't contain the paramId reserved for the
-        // materializer
-        ZL_ERR_IF_ERR(MPM_validateMaterializedParamId(
-                &gdi.migd.localParams, migd->materializer.paramId));
-        // Add the materialized object to refParams
-        ZL_ERR_IF_ERR(MPM_addOrReuseMaterializedParam(
-                gm->allocator,
-                gm->scratchAllocator,
-                &gm->materializedParams,
-                gm->opCtx,
-                &gdi.migd.localParams,
-                &migd->materializer));
-    }
+    // Materialize the compression-only MParam blob (if any) via CDictMgr.
+    ZL_ERR_IF_ERR(GM_materializeMParam(
+            gm, &gdi.migd.mparam, &gdi.migd.mparamMat, &gdi.mparamObj));
 
     if (ppSize == 0) {
         // No need to transfer, just copy the pointer
@@ -408,7 +456,6 @@ GM_registerTypedSelectorGraph(GraphsMgr* gm, const ZL_SelectorDesc* tsd)
         .customGraphs   = tsd->customGraphs,
         .nbCustomGraphs = tsd->nbCustomGraphs,
         .localParams    = tsd->localParams,
-        .materializer   = tsd->materializer,
         .opaque         = { .ptr = tsd->opaque.ptr },
     };
     return GM_registerInternalGraph(
@@ -577,6 +624,16 @@ ZL_Report GM_overrideGraphParams(
         migd->localParams = *gp->localParams;
         ZL_ERR_IF_ERR(GM_transferLocalParameters(gm, &migd->localParams));
     }
+    if (gp->mparam.content != NULL || gp->mparam.size != 0) {
+        // Re-materialize the MParam blob using the materializer that was
+        // inherited from the base graph at parameterization time.
+        migd->mparam = gp->mparam;
+        ZL_ERR_IF_ERR(GM_materializeMParam(
+                gm,
+                &migd->mparam,
+                &migd->mparamMat,
+                &VECTOR_AT(gm->gdv, lid).mparamObj));
+    }
     if (gp->name) {
         ZL_ERR(parameter_invalid, "Cannot replace the name of a graph");
     }
@@ -652,9 +709,9 @@ static ZL_Report GM_checkInputTypesAreCompatible(
             graph_invalid,
             "Graphs have different number of inputs");
     for (size_t i = 0; i < meta0.nbInputs; ++i) {
-        ZL_ERR_IF_EQ(
-                meta0.inputTypeMasks[i] & meta1.inputTypeMasks[i],
-                0,
+        ZL_ERR_IF_NOT(
+                ICONV_isCompatible(
+                        meta0.inputTypeMasks[i], meta1.inputTypeMasks[i]),
                 graph_invalid,
                 "Input %zu types are not compatible",
                 i);
@@ -693,16 +750,37 @@ GM_overrideBaseGraph(GraphsMgr* gm, ZL_GraphID graph, ZL_GraphID newBaseGraph)
     // Validate that newBaseGraph does not depend on graph
     ZL_ERR_IF_ERR(GM_checkDoesNotDependOn(
             gm, /* needle */ graph, /* haystack */ newBaseGraph));
-    // Set the new base graph and check for infinite loops
-    VECTOR_AT(gm->gdv, lid).baseGraphID = newBaseGraph;
 
-    // Clear the custom graphs, custom nodes, and local params
-    VECTOR_AT(gm->gdv, lid).migd.customGraphs   = NULL;
-    VECTOR_AT(gm->gdv, lid).migd.nbCustomGraphs = 0;
-    VECTOR_AT(gm->gdv, lid).migd.customNodes    = NULL;
-    VECTOR_AT(gm->gdv, lid).migd.nbCustomNodes  = 0;
-    ZL_LocalParams* localParams = &VECTOR_AT(gm->gdv, lid).migd.localParams;
-    memset(localParams, 0, sizeof(*localParams));
+    // A parameterized graph is registered with its own copy of the description
+    // it was created from, and that copy is what runs at compression time.
+    // Adopt the new base's description, otherwise the override would only be
+    // visible to serialization, which rebuilds the graph from baseGraphID.
+    const ZL_FunctionGraphDesc* const newBaseDesc =
+            GM_getMultiInputGraphDesc(gm, newBaseGraph);
+    ZL_ERR_IF_NULL(
+            newBaseDesc,
+            graph_invalid,
+            "New base graph is not a function graph");
+
+    // The graph keeps only its own name. Everything else now comes from the
+    // new base, including its custom graphs, custom nodes and local params,
+    // which it may need to run: a static graph, for example, is driven by its
+    // custom nodes. This matches what deserialization rebuilds, since
+    // GM_registerParameterizedGraph keeps the base's when no override is given.
+    // The new base is already registered, so everything its description points
+    // at is owned by this manager's arena or is static, and outlives it. There
+    // is nothing to transfer.
+    ZL_FunctionGraphDesc migd = *newBaseDesc;
+    migd.name                 = VECTOR_AT(gm->gdv, lid).migd.name;
+    const void* mparamObj     = NULL;
+    ZL_ERR_IF_ERR(GM_materializeMParam(
+            gm, &migd.mparam, &migd.mparamMat, &mparamObj));
+
+    // Commit only once everything that can fail has succeeded
+    VECTOR_AT(gm->gdv, lid).migd         = migd;
+    VECTOR_AT(gm->gdv, lid).mparamObj    = mparamObj;
+    VECTOR_AT(gm->gdv, lid).privateParam = GM_getPrivateParam(gm, newBaseGraph);
+    VECTOR_AT(gm->gdv, lid).baseGraphID  = newBaseGraph;
 
     return ZL_returnSuccess();
 }
@@ -740,6 +818,9 @@ GM_registerParameterizedGraph(
         } else {
             segDesc.name = ZL_Name_prefix(&baseMeta.name);
         }
+        if (desc->mparam.content != NULL || desc->mparam.size != 0) {
+            segDesc.mparam = desc->mparam;
+        }
 
         // Keep originalGraphType as segmenter, use baseGraphID to indicate
         // parameterization
@@ -776,6 +857,9 @@ GM_registerParameterizedGraph(
         // graph needs a new non-anchor name.
         ZL_Name name = GM_getGraphMetadata(gm, desc->graph).name;
         miDesc.name  = ZL_Name_prefix(&name);
+    }
+    if (desc->mparam.content != NULL || desc->mparam.size != 0) {
+        miDesc.mparam = desc->mparam;
     }
 
     return GM_registerInternalGraph(
@@ -830,6 +914,7 @@ static ZL_RESULT_OF(ZL_GraphID) GM_registerSegmenter_internal(
     gdi.baseGraphID       = originalGraphID;
     gdi.originalGraphType = originalGraphType;
     gdi.segDesc           = *segDesc;
+    gdi.mparamObj         = NULL;
     ZL_ERR_IF_ERR(GM_transferTypes(
             gm,
             segDesc->inputTypeMasks,
@@ -842,21 +927,9 @@ static ZL_RESULT_OF(ZL_GraphID) GM_registerSegmenter_internal(
             &gdi.segDesc.customGraphs));
 
     ZL_ERR_IF_ERR(GM_transferLocalParameters(gm, &gdi.segDesc.localParams));
-    // Materialize params if materializer is provided (with deduplication)
-    if (segDesc->materializer.materializeFn != NULL) {
-        // Validate provided params don't contain the paramId reserved for
-        // the materializer
-        ZL_ERR_IF_ERR(MPM_validateMaterializedParamId(
-                &gdi.segDesc.localParams, segDesc->materializer.paramId));
-        // Add the materialized object to refParams
-        ZL_ERR_IF_ERR(MPM_addOrReuseMaterializedParam(
-                gm->allocator,
-                gm->scratchAllocator,
-                &gm->materializedParams,
-                gm->opCtx,
-                &gdi.segDesc.localParams,
-                &segDesc->materializer));
-    }
+    // Materialize the compression-only MParam blob (if any) via CDictMgr.
+    ZL_ERR_IF_ERR(GM_materializeMParam(
+            gm, &gdi.segDesc.mparam, &gdi.segDesc.mparamMat, &gdi.mparamObj));
 
     if (ppSize == 0) {
         // No need to transfer, just copy the pointer
@@ -1105,6 +1178,19 @@ const ZL_SegmenterDesc* GM_getSegmenterDesc(
     return &VECTOR_AT(gm->gdv, lgid).segDesc;
 }
 
+const void* GM_getGraphMParamObj(const GraphsMgr* gm, ZL_GraphID graphid)
+{
+    if (GR_isStandardGraph(graphid)) {
+        // Standard graphs never carry an MParam.
+        return NULL;
+    }
+    ZL_IDType const lgid = GM_GraphID_to_lgid(graphid);
+    ZL_ASSERT_NN(gm);
+    if (lgid >= VECTOR_SIZE(gm->gdv))
+        return NULL;
+    return VECTOR_AT(gm->gdv, lgid).mparamObj;
+}
+
 GraphType_e GM_graphType(const GraphsMgr* gm, ZL_GraphID graphid)
 {
     if (GR_isStandardGraph(graphid)) {
@@ -1152,9 +1238,10 @@ const void* GM_getPrivateParam(const GraphsMgr* gm, ZL_GraphID graphid)
 {
     if (GR_isStandardGraph(graphid)) {
         ZL_ASSERT(GR_isStandardGraph(graphid));
-        if (GR_standardGraphs[graphid.gid].type == GR_segmenter)
-            return NULL; /* segmenters have no private params */
-        ZL_ASSERT_EQ(GR_standardGraphs[graphid.gid].type, GR_dynamicGraph);
+        if (GR_standardGraphs[graphid.gid].type != GR_dynamicGraph) {
+            /* store & segmenters have no private params */
+            return NULL;
+        }
         return GR_standardGraphs[graphid.gid].gdi.privateParam;
     }
     ZL_ASSERT_NN(gm);

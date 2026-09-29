@@ -3,7 +3,10 @@
 #pragma once
 #include <cstdint>
 #include <functional>
+#include <memory>
+#include <string>
 #include "openzl/cpp/Compressor.hpp"
+#include "openzl/cpp/Exception.hpp"
 #include "openzl/cpp/poly/Optional.hpp"
 
 namespace openzl::training {
@@ -14,22 +17,32 @@ enum ClusteringTrainer {
     FullSplit,
 };
 
+using CompressorGenFn = std::function<
+        std::unique_ptr<Compressor>(poly::string_view, poly::string_view)>;
+
 struct TrainParams {
-    std::function<std::unique_ptr<Compressor>(poly::string_view)>
-            compressorGenFunc; /* The function the trainer uses to create the
-                                  compressor. Must handle
-                                  dependency registration. This function must be
-                                  defined. */
+    /**
+     * The function the trainer uses to create the compressor. Must handle
+     * dependency registration. This function must be defined.
+     */
+    CompressorGenFn compressorGenFunc;
     poly::optional<uint32_t> threads;
     poly::optional<ClusteringTrainer> clusteringTrainer;
     poly::optional<size_t> numSamples;
     bool noAceSuccessors{ false };
     bool noClustering{ false };
+    bool dictTraining{ false };
     poly::optional<size_t> maxTimeSecs;
     poly::optional<size_t> maxFileSizeMb;
     poly::optional<size_t> maxTotalSizeMb;
     bool paretoFrontier{ false };
     bool saveAceState{ false };
+    /// Existing bundle required by compressors supplied to the trainer.
+    std::shared_ptr<const std::string> dictBundleData;
+    /// Prune down to to this number of candidates.
+    /// NOTE: This currently only prunes per-trainer, because we don't currently
+    /// have a final pareto-optimal filtering step for all candidates.
+    poly::optional<size_t> maxNumCandidates;
 };
 
 } // namespace openzl::training

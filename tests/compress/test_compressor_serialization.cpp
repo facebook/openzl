@@ -9,7 +9,9 @@
 #include "openzl/common/a1cbor_helpers.h"
 #include "openzl/common/logging.h"
 #include "openzl/compress/private_nodes.h"
+#include "openzl/cpp/Compressor.hpp"
 #include "openzl/cpp/Exception.hpp"
+#include "openzl/dict/dict_constants.h"
 
 #include "tests/datagen/random_producer/PRNGWrapper.h"
 #include "tests/datagen/structures/CompressorProducer.h"
@@ -170,7 +172,8 @@ std::shared_ptr<const std::string_view> convert_to_json(
 
 void deserialize(
         const std::shared_ptr<const std::string_view>& serialized,
-        ZL_Compressor* const materialized)
+        ZL_Compressor* const materialized,
+        const std::vector<uint8_t>& fatBundle = {})
 {
     std::unique_ptr<
             ZL_CompressorDeserializer,
@@ -180,7 +183,9 @@ void deserialize(
             deserializer.get(),
             materialized,
             serialized->data(),
-            serialized->size());
+            serialized->size(),
+            fatBundle.empty() ? nullptr : fatBundle.data(),
+            fatBundle.size());
     if (ZL_RES_isError(des_res)) {
         const auto msg = ZL_CompressorDeserializer_getErrorContextString(
                 deserializer.get(), des_res);
@@ -223,7 +228,8 @@ ZL_CompressorDeserializer_Dependencies get_deps(
 
 std::string roundtrip(
         const ZL_Compressor* const compressor,
-        ZL_Compressor* const materialized)
+        ZL_Compressor* const materialized,
+        const std::vector<uint8_t>& fatBundle = {})
 {
     auto ser      = serialize(compressor);
     auto ser_json = serialize_to_json(compressor);
@@ -232,7 +238,7 @@ std::string roundtrip(
 
     EXPECT_EQ(*ser_json, *json);
 
-    deserialize(ser, materialized);
+    deserialize(ser, materialized, fatBundle);
     return std::string{ *json };
 }
 
@@ -301,19 +307,66 @@ TEST_F(CompressorSerializationTest, Roundtrip)
     roundtrip(compressor, materialized_.get());
 }
 
+TEST_F(CompressorSerializationTest,
+       DependenciesUseNullBundleIDWhenNoBundleRequired)
+{
+    auto compressor = compressor_.get();
+    auto zstd_gid   = ZL_Compressor_registerZstdGraph_withLevel(compressor, 1);
+    ZL_REQUIRE_SUCCESS(
+            ZL_Compressor_selectStartingGraphID(compressor, zstd_gid));
+
+    auto deps = get_deps(serialize(compressor), nullptr);
+
+    EXPECT_FALSE(ZL_UniqueID_isValid(&deps.bundle_id.id));
+}
+
+TEST_F(CompressorSerializationTest, RejectsMismatchedFatBundle)
+{
+    auto compressorProducer = makeCompressorProducer();
+    for (uint32_t i = 0; i < 1000; i++) {
+        auto result = compressorProducer.make_multi(1, 1);
+        if (result.fatBundle.empty()) {
+            continue;
+        }
+
+        auto serialized  = serialize(result.full[0].get());
+        auto wrongBundle = result.fatBundle;
+        wrongBundle[4] ^= 0xff;
+
+        std::unique_ptr<
+                ZL_CompressorDeserializer,
+                ZL_CompressorDeserializer_Deleter>
+                deserializer{ ZL_CompressorDeserializer_create() };
+        ZL_Report report = ZL_CompressorDeserializer_deserialize(
+                deserializer.get(),
+                materialized_.get(),
+                serialized->data(),
+                serialized->size(),
+                wrongBundle.data(),
+                wrongBundle.size());
+
+        EXPECT_TRUE(ZL_isError(report));
+        EXPECT_EQ(ZL_Compressor_getDictBundleID(materialized_.get()), nullptr);
+        return;
+    }
+
+    FAIL() << "CompressorProducer did not generate a dict-backed compressor";
+}
+
 TEST_F(CompressorSerializationTest, RoundtripRandomGraphs)
 {
     auto compressorProducer = makeCompressorProducer();
     for (uint32_t i = 0; i < 1000; i++) {
-        auto compressors   = compressorProducer.make_multi(1, 3);
-        auto original      = std::move(compressors.first[0]);
-        auto intermediate1 = std::move(compressors.second[0]);
-        auto intermediate2 = std::move(compressors.second[1]);
-        auto final         = std::move(compressors.second[2]);
+        auto result        = compressorProducer.make_multi(1, 3);
+        auto original      = std::move(result.full[0]);
+        auto intermediate1 = std::move(result.base[0]);
+        auto intermediate2 = std::move(result.base[1]);
+        auto final         = std::move(result.base[2]);
+        const auto& fb     = result.fatBundle;
 
-        auto json1 = roundtrip(original.get(), intermediate1.get());
-        auto json2 = roundtrip(intermediate1.get(), intermediate2.get());
-        auto json3 = roundtrip(intermediate2.get(), final.get());
+        auto json1 = roundtrip(original.get(), intermediate1.get(), fb);
+        auto json2 = roundtrip(intermediate1.get(), intermediate2.get(), fb);
+        auto json3 = roundtrip(intermediate2.get(), final.get(), fb);
         (void)json1;
         (void)json2;
         (void)json3;
@@ -332,8 +385,6 @@ TEST_F(CompressorSerializationTest, GetDepsWithNULL)
         (void)json;
         auto deps = get_deps(ser, NULL);
         (void)deps;
-        // std::cerr << *json << std::endl;
-        // std::cerr << std::endl;
     }
 }
 
@@ -347,8 +398,6 @@ TEST_F(CompressorSerializationTest, GetDepsWithCompressor)
         (void)json;
         auto deps = get_deps(ser, compressor_.get());
         (void)deps;
-        // std::cerr << *json << std::endl;
-        // std::cerr << std::endl;
     }
 }
 

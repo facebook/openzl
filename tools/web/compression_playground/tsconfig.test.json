@@ -1,0 +1,7 @@
+{
+  "extends": ["./tsconfig.app.json", "../tsconfig.vitest.json"],
+  "compilerOptions": {
+    "tsBuildInfoFile": "../node_modules/.tmp/compression-playground-test.tsbuildinfo"
+  },
+  "include": ["tests", "src/vite-env.d.ts"]
+}

@@ -576,6 +576,8 @@ ZL_Report configurableDecode(
     }
 }
 
+} // namespace
+
 ZL_Report configurableEncodeCompact(
         ZL_Encoder* eictx,
         const ZL_Input* in) noexcept
@@ -619,6 +621,8 @@ ZL_Report configurableDecodeBinary(
             variableSrcs,
             nbVariableSrcs);
 }
+
+namespace {
 
 std::array<
         ZL_Type,

@@ -1396,16 +1396,24 @@ size_t testRoundTripImpl(
     cctx.setParameter(CParam::FormatVersion, formatVersion);
     cctx.selectStartingGraph(graph, params);
 
-    auto csize        = cctx.compress(compressed, inputs);
-    auto decompressed = dctx.decompress({ compressed.data(), csize });
+    auto csize = cctx.compress(compressed, inputs);
 
-    if (decompressed.size() != inputs.size()) {
-        throw std::runtime_error("Corruption: Wrong number of outputs");
-    }
-    for (size_t i = 0; i < inputs.size(); ++i) {
-        if (decompressed[i] != inputs[i]) {
-            throw std::runtime_error("Corruption: Output mismatch");
+    try {
+        auto decompressed = dctx.decompress({ compressed.data(), csize });
+
+        // Crash on corruption: This is always a problem and exceptions
+        // shouldn't be caught.
+        ZL_REQUIRE_EQ(
+                decompressed.size(),
+                inputs.size(),
+                "Corruption: Wrong number of outputs");
+        for (size_t i = 0; i < inputs.size(); ++i) {
+            ZL_REQUIRE(
+                    decompressed[i] == inputs[i],
+                    "Corruption: Output mismatch");
         }
+    } catch (const std::exception& e) {
+        ZL_REQUIRE_FAIL("Decompression failed: ", e.what());
     }
 
     return csize;

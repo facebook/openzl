@@ -1,6 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <random>
+#include <string_view>
 
 #include <gtest/gtest.h>
 
@@ -121,7 +122,11 @@ void testRoundTripContext(const std::string& input)
         EXPECT_EQ(ZL_RC_avail(&compressedRC), 0u);
         output.resize(ZL_WC_size(&outputWC));
 
-        EXPECT_EQ(output, input.empty() ? input : input.substr(1));
+        std::string_view expected = input;
+        if (!expected.empty()) {
+            expected.remove_prefix(1);
+        }
+        EXPECT_EQ(output, expected);
     }
 
     {

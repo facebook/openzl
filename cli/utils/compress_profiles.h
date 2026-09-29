@@ -33,6 +33,16 @@ class ProfileArgs {
         return chunkSize_;
     }
 
+    const poly::optional<int>& requestedCompressionLevel() const
+    {
+        return requestedCompressionLevel_;
+    }
+
+    void setRequestedCompressionLevel(int compressionLevel)
+    {
+        requestedCompressionLevel_ = compressionLevel;
+    }
+
     const poly::optional<std::string>& name() const
     {
         return name_;
@@ -41,6 +51,19 @@ class ProfileArgs {
     const std::map<std::string, std::string>& map() const
     {
         return argmap_;
+    }
+
+    // CLI log level (0=NOTHING .. 3=INFO (default) .. 7=EVERYTHING), mirroring
+    // GlobalArgs::verbosity. Profiles that drive a sub-tool with its own log
+    // level (e.g. the SDDL2 compiler) map this onto that tool's scale.
+    int verbosityLevel() const
+    {
+        return verbosityLevel_;
+    }
+
+    void setVerbosityLevel(int verbosityLevel)
+    {
+        verbosityLevel_ = verbosityLevel;
     }
 
     const std::shared_ptr<Compressor>& compressor() const
@@ -62,6 +85,8 @@ class ProfileArgs {
 
     poly::optional<std::string> name_;
     poly::optional<size_t> chunkSize_;
+    poly::optional<int> requestedCompressionLevel_;
+    int verbosityLevel_{ 3 };
     // Arbitrary (K,V) arguments provided on the command line.
     std::map<std::string, std::string> argmap_;
 };

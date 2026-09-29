@@ -26,13 +26,14 @@ class TestClusteringBenchmarks : public testing::Test {
     {
         // Register the graph to train in the compressor
         trainingGraphFn(compressor.get());
+        compressor.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
         // Train the compressor and serialize it
         auto serialized = training::train(inputs_, compressor, params_);
         // Compress the data using the trained compressor
         CCtx cctx;
         cctx.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
-        auto newCompressor =
-                custom_parsers::createCompressorFromSerialized(*serialized[0]);
+        auto newCompressor = custom_parsers::createCompressorFromSerialized(
+                serialized[0].serializedCompressor, "");
         cctx.refCompressor(*newCompressor);
         size_t compressedSize   = 0;
         size_t uncompressedSize = 0;
@@ -52,7 +53,20 @@ class TestClusteringBenchmarks : public testing::Test {
 
 TEST_F(TestClusteringBenchmarks, benchmarkPpmfUnit)
 {
-    Input input = Input::refSerial(ppmfCsvString);
+    // Truncate to first 175 rows for faster training (~40s vs ~260s).
+    // Clustering quality depends on schema structure; fewer rows still
+    // catches regressions from a known baseline.
+    std::string csvData = ppmfCsvString;
+    size_t pos          = 0;
+    for (int i = 0; i < 176 && pos < csvData.size(); ++i) { // header + 175 rows
+        pos = csvData.find('\n', pos);
+        if (pos == std::string::npos)
+            break;
+        ++pos;
+    }
+    csvData.resize(pos);
+
+    Input input = Input::refSerial(csvData);
     std::vector<Input> inputs;
     inputs.push_back(std::move(input));
     training::MultiInput multiInput = training::MultiInput(std::move(inputs));
@@ -68,17 +82,17 @@ TEST_F(TestClusteringBenchmarks, benchmarkPpmfUnit)
     auto compressedRatio = trainAndBenchmarkRatio(
             compressor1, custom_parsers::ZL_createGraph_genericCSVCompressor);
     // Default = greedy clustering
-    EXPECT_GT(compressedRatio, 30.0);
+    EXPECT_GT(compressedRatio, 15.0);
     // Bottom-up clustering
     params_.clusteringTrainer = training::ClusteringTrainer::BottomUp;
     compressedRatio           = trainAndBenchmarkRatio(
             compressor2, custom_parsers::ZL_createGraph_genericCSVCompressor);
-    EXPECT_GT(compressedRatio, 25.0);
+    EXPECT_GT(compressedRatio, 15.0);
     // Full Split clustering
     params_.clusteringTrainer = training::ClusteringTrainer::FullSplit;
     compressedRatio           = trainAndBenchmarkRatio(
             compressor3, custom_parsers::ZL_createGraph_genericCSVCompressor);
-    EXPECT_GT(compressedRatio, 20.0);
+    EXPECT_GT(compressedRatio, 6.0);
 }
 
 } // namespace

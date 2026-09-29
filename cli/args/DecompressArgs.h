@@ -46,6 +46,12 @@ class DecompressArgs : GlobalArgs {
                 0,
                 false,
                 "Omit stream preview data from the trace CBOR output. Requires --trace.");
+        parser.addCommandFlag(
+                cmd(),
+                kDictBundle,
+                'D',
+                true,
+                "Path to a fat dict bundle (.zd) file to load for decompression.");
     }
 
     explicit DecompressArgs(const arg::ParsedArgs& parsed) : GlobalArgs(parsed)
@@ -76,6 +82,7 @@ class DecompressArgs : GlobalArgs {
 
         traceStreamsDir = parsed.cmdFlag(cmd(), kTraceStreamsDir);
         streamPreview   = !parsed.cmdHasFlag(cmd(), kNoStreamPreview);
+        dictBundlePath  = parsed.cmdFlag(cmd(), kDictBundle);
 
         if (!streamPreview && !traceOutput) {
             throw InvalidArgsException(
@@ -94,6 +101,7 @@ class DecompressArgs : GlobalArgs {
     std::shared_ptr<tools::io::Output> traceOutput;
     std::optional<std::string> traceStreamsDir;
     bool streamPreview = true;
+    std::optional<std::string> dictBundlePath;
 
    private:
     inline static const std::string kInput           = "input";
@@ -102,6 +110,7 @@ class DecompressArgs : GlobalArgs {
     inline static const std::string kTrace           = "trace";
     inline static const std::string kTraceStreamsDir = "trace-streams-dir";
     inline static const std::string kNoStreamPreview = "no-stream-preview";
+    inline static const std::string kDictBundle      = "dict-bundle";
 };
 
 } // namespace openzl::cli

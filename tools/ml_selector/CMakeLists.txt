@@ -67,6 +67,8 @@ if(OPENZL_BUILD_ML_SELECTOR)
         IMPORTED_LOCATION
             ${XGBOOST_LIB_DIR}/${XGBOOST_LIB_NAME}
         INTERFACE_INCLUDE_DIRECTORIES ${XGBOOST_INSTALL_DIR}/include
+        INTERFACE_SYSTEM_INCLUDE_DIRECTORIES ${XGBOOST_INSTALL_DIR}/include
+        INTERFACE_COMPILE_DEFINITIONS "DMLC_LOG_STACK_TRACE=0"
     )
     add_dependencies(xgboost xgboost_external)
 
@@ -80,6 +82,8 @@ if(OPENZL_BUILD_ML_SELECTOR)
         IMPORTED_LOCATION
             ${XGBOOST_LIB_DIR}/${DMLC_LIB_NAME}
         INTERFACE_INCLUDE_DIRECTORIES ${XGBOOST_INSTALL_DIR}/include
+        INTERFACE_SYSTEM_INCLUDE_DIRECTORIES ${XGBOOST_INSTALL_DIR}/include
+        INTERFACE_COMPILE_DEFINITIONS "DMLC_LOG_STACK_TRACE=0"
     )
     add_dependencies(dmlc xgboost_external)
 
@@ -91,9 +95,12 @@ if(OPENZL_BUILD_ML_SELECTOR)
     )
 
     target_include_directories(ml_selector
+        SYSTEM PUBLIC
+            ${XGBOOST_INSTALL_DIR}/include
+    )
+    target_include_directories(ml_selector
         PUBLIC
             ${PROJECT_SOURCE_DIR}
-            ${XGBOOST_INSTALL_DIR}/include
     )
 
     # Disable DMLC stack trace to avoid dependency on execinfo.h

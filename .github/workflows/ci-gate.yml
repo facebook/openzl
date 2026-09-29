@@ -1,0 +1,21 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Lightweight always-triggered job that can be used as the sole Required Check
+# in branch protection. This prevents docs-only PRs from being blocked when
+# paths-filtered workflows are skipped (GitHub does not report a status for
+# skipped workflows, causing Required Checks to hang).
+
+name: ci-gate
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev, master, actionsTest]
+
+jobs:
+  ci-gate:
+    name: CI Gate
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "CI gate passed."

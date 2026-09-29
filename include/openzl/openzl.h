@@ -4,6 +4,7 @@
 #define OPENZL_OPENZL_H
 
 #include "openzl/zl_buffer.h"                   // IWYU pragma: export
+#include "openzl/zl_codec_output_cache.h"       // IWYU pragma: export
 #include "openzl/zl_common_types.h"             // IWYU pragma: export
 #include "openzl/zl_compress.h"                 // IWYU pragma: export
 #include "openzl/zl_compressor.h"               // IWYU pragma: export

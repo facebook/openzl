@@ -14,6 +14,7 @@ zs_unittest(
         "../../../tests:utils",
         "../../../tests/datagen:datagen",
         "../../training:train",
+        "../../training/graph_mutation:graph_mutation",
         "fbsource//third-party/googletest:gtest",
     ],
 )

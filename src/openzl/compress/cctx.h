@@ -6,9 +6,12 @@
 #include "openzl/compress/encode_frameheader.h" // EFH_FrameInfo, GraphInfo
 #include "openzl/compress/rtgraphs.h"           // RTNodeID
 #include "openzl/shared/portability.h"
-#include "openzl/zl_compress.h" // ZL_CCtx, ZL_GraphFn, ZL_Report
+#include "openzl/zl_codec_output_cache.h" // ZL_CodecOutputCache
+#include "openzl/zl_compress.h"           // ZL_CCtx, ZL_GraphFn, ZL_Report
 
 ZL_BEGIN_C_DECLS
+
+struct CodecCache_Stats;
 
 /**
  * @brief Create a new compression context.
@@ -203,6 +206,14 @@ ZL_Report CCTX_setAppliedParameters(ZL_CCtx* cctx);
 int CCTX_getAppliedGParam(const ZL_CCtx* cctx, ZL_CParam gcparam);
 
 /**
+ * @brief Get the depth at which the active segmenter started.
+ *
+ * @return 0 if no segmenter has started in the current compression session,
+ * otherwise the graph execution depth of the active segmenter.
+ */
+unsigned CCTX_getSegmenterDepth(const ZL_CCtx* cctx);
+
+/**
  * @brief Add transform header data to the compression context.
  *
  * This function adds header information for a specific transform to the
@@ -225,6 +236,24 @@ int CCTX_getAppliedGParam(const ZL_CCtx* cctx, ZL_CParam gcparam);
  * @see RTNodeID for runtime node identification
  */
 ZL_Report CCTX_sendTrHeader(ZL_CCtx* cctx, RTNodeID rtnodeid, ZL_RBuffer trh);
+
+/** Returns the transform header staged for @p rtnodeid, or an empty buffer. */
+ZL_RBuffer CCTX_getNodeHeader(const ZL_CCtx* cctx, RTNodeID rtnodeid);
+
+/** Returns the codec output cache active for @p cctx, if any. */
+ZL_CodecOutputCache* CCTX_getCodecOutputCache(const ZL_CCtx* cctx);
+
+/**
+ * Returns cumulative private tryGraph cache statistics for the most recently
+ * completed chunk. All tryGraph subtrees in a chunk share entries and
+ * counters. Caller-attached caches must be queried directly.
+ */
+void CCTX_getLastChunkTryGraphCacheStats(
+        struct CodecCache_Stats* stats,
+        const ZL_CCtx* cctx);
+
+/** Enables internal private tryGraph cache statistics collection. */
+void CCTX_setTryGraphCacheStatsEnabled(ZL_CCtx* cctx, bool enabled);
 
 /**
  * @brief Start the compression process with the provided input data.
@@ -408,6 +437,28 @@ ZL_Data* CCTX_refContentIntoNewStream(
         size_t eltCount,
         ZL_Data const* src,
         size_t offsetBytes);
+
+typedef ZL_Data* CCTX_DataPtr;
+ZL_RESULT_DECLARE_TYPE(CCTX_DataPtr);
+
+/**
+ * Create a committed output stream that references an immutable external
+ * buffer without taking ownership of it.
+ *
+ * The stream type is determined by @p outcomeID. The buffer must remain valid
+ * and immutable for the lifetime of the returned stream.
+ *
+ * @return The created stream, or the error reported while creating and
+ * registering it.
+ */
+ZL_RESULT_OF(CCTX_DataPtr)
+CCTX_refConstBufferIntoNewStream(
+        ZL_CCtx* cctx,
+        RTNodeID rtnodeid,
+        int outcomeID,
+        size_t eltWidth,
+        size_t eltCount,
+        const void* src);
 
 /**
  * @brief Commit the actual sizes of output streams produced by a transform
@@ -645,6 +696,19 @@ bool CCTX_isNodeSupported(const ZL_CCtx* cctx, ZL_NodeID nodeid);
 size_t CCTX_streamMemory(const ZL_CCtx* cctx);
 
 /**
+ * @brief Total capacity retained by the context's arenas.
+ *
+ * @param cctx The compression context, or NULL
+ *
+ * @return Bytes held by the session, chunk, graph and codec arenas
+ *
+ * @note Unlike CCTX_streamMemory, this counts capacity the arenas keep in
+ * reserve between sessions, so it stays non-zero once a compression has run
+ * and is only released by CCTX_free.
+ */
+size_t CCTX_arenaMemory(const ZL_CCtx* cctx);
+
+/**
  * @brief runs a Graph and all its sub-graphs within cctx.
  *
  * This will populate the RT Manager, which tracks creation of Nodes and
@@ -779,7 +843,7 @@ ZL_Report CCTX_compressInputs_withGraphSet(
 
 ZL_RESULT_OF(ZL_GraphPerformance)
 CCTX_tryGraph(
-        const ZL_CCtx* parentCCtx,
+        ZL_CCtx* parentCCtx,
         const ZL_Input* inputs[],
         size_t numInputs,
         Arena* wkspArena,

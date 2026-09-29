@@ -20,7 +20,8 @@ void checkOutput(const std::string& path, bool force);
  */
 std::unique_ptr<Compressor> createCompressorFromArgs(
         const ProfileArgs& profileArgs,
-        const std::optional<std::string>& compressorPath);
+        const std::optional<std::string>& compressorPath,
+        poly::string_view bundleData = "");
 
 } // namespace cli
 } // namespace openzl

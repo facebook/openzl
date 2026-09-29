@@ -294,7 +294,9 @@ ZL_DecoderFusion_runCodec(ZL_DecoderFusion* state, size_t idx)
     ZL_ERR_IF_GE(idx, state->numCodecs, logicError);
     const DFH_NodeInfo* nodeInfo = state->nodeInfos[idx];
     ZL_ERR_IF_ERR(DCTX_runDecoder(
-            state->dctx, nodeInfo, /* withinFusedDecoder */ true));
+            state->dctx,
+            nodeInfo,
+            /* withinFusedDecoder */ true));
 
     const ZL_IDType inputEndIdx =
             nodeInfo->inputStreamBaseIdx + nodeInfo->numInputStreams;

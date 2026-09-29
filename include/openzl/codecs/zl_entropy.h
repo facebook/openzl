@@ -3,6 +3,7 @@
 #ifndef ZSTRONG_CODECS_ENTROPY_H
 #define ZSTRONG_CODECS_ENTROPY_H
 
+#include "openzl/zl_graph_api.h"
 #include "openzl/zl_graphs.h"
 
 #if defined(__cplusplus)
@@ -19,6 +20,52 @@ extern "C" {
 // decompression speed requirements. Supports both serialized & 2-byte struct
 // inputs
 #define ZL_GRAPH_ENTROPY ZL_MAKE_GRAPH_ID(ZL_StandardGraphID_entropy)
+
+/**
+ * If provided to an entropy graph, ZL_GRAPH_STORE will be selected unless
+ * using entropy compression saves at least this many bytes. If unset, the
+ * entropy graph will use a small default value of its choosing.
+ */
+#define ZL_ENTROPY_MIN_GAIN_BYTES_PID 66
+
+/**
+ * If provided to an entropy graph, ZL_GRAPH_STORE will be selected unless
+ * using entropy compression saves at least this percent of the input size. If
+ * unset, the entropy graph will use a small default value of its choosing.
+ */
+#define ZL_ENTROPY_MIN_GAIN_PCT_PID 80
+
+/**
+ * Sets the destination of @p edge to @p entropyGraph with the parameters
+ * @p minGainBytes and @p minGainPct.
+ *
+ * @param minGainBytes The value for ZL_ENTROPY_MIN_GAIN_BYTES_PID or < 0 to
+ * leave unset.
+ * @param minGainPct The value for ZL_ENTROPY_MIN_GAIN_PCT_PID or < 0 to leave
+ * unset.
+ */
+ZL_Report ZL_Edge_setEntropyDestination(
+        ZL_Edge* edge,
+        ZL_GraphID entropyGraph,
+        int minGainBytes,
+        int minGainPct);
+
+/**
+ * Specifically opts into HUF0 style Huffman encoding.
+ * Generally not recommended, but useful for testing.
+ *
+ * This graph will likely be removed in the future.
+ */
+#define ZL_GRAPH_HUFFMAN_HUF0 ZL_MAKE_GRAPH_ID(ZL_StandardGraphID_huffman_huf0)
+
+/**
+ * Specifically opts into PivCo Huffman encoding.
+ * Generally not recommended, but useful for testing.
+ *
+ * This graph will likely be removed in the future.
+ */
+#define ZL_GRAPH_HUFFMAN_PIVCO \
+    ZL_MAKE_GRAPH_ID(ZL_StandardGraphID_huffman_pivco)
 
 #if defined(__cplusplus)
 }

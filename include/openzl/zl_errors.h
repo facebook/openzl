@@ -12,6 +12,7 @@
 
 #include <assert.h>
 #include <stddef.h> // size_t
+#include <stdint.h>
 
 #include "openzl/zl_common_types.h"  // ZL_VoidPtr, ZL_ConstVoidPtr
 #include "openzl/zl_errors_types.h"  // ZL_ErrorCode
@@ -198,6 +199,10 @@ ZL_RESULT_DECLARE_TYPE(ZL_GraphID);
 ZL_RESULT_DECLARE_TYPE(ZL_NodeID);
 ZL_RESULT_DECLARE_TYPE(ZL_VoidPtr);
 ZL_RESULT_DECLARE_TYPE(ZL_ConstVoidPtr);
+
+ZL_RESULT_DECLARE_TYPE(uint16_t);
+ZL_RESULT_DECLARE_TYPE(uint32_t);
+ZL_RESULT_DECLARE_TYPE(uint64_t);
 
 /*-*********************************************
  *  ZL_Report type

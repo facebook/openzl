@@ -23,6 +23,15 @@ class DecoderState {
     DecoderState(const DecoderState&)            = delete;
     DecoderState& operator=(const DecoderState&) = delete;
 
+    ZL_Decoder* get()
+    {
+        return decoder_;
+    }
+    const ZL_Decoder* get() const
+    {
+        return decoder_;
+    }
+
     poly::span<const InputRef> singletonInputs() const
     {
         return singletonInputs_;

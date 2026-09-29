@@ -14,7 +14,6 @@
 #include "openzl/codecs/common/bitstream/ff_bitstream.h"
 #include "openzl/common/assertion.h"
 #include "openzl/shared/bits.h"
-#include "openzl/shared/data_stats.h"
 #include "openzl/shared/histogram.h"
 #include "openzl/shared/mem.h"
 #include "openzl/shared/portability.h"

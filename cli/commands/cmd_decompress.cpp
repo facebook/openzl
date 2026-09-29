@@ -11,6 +11,9 @@
 
 #include "openzl/cpp/DCtx.hpp"
 #include "openzl/cpp/Exception.hpp"
+#include "openzl/cpp/FatBundleDictLoader.hpp"
+
+#include "tools/io/InputFile.h"
 
 namespace openzl::cli {
 constexpr size_t BYTES_TO_MB = 1000 * 1000;
@@ -86,6 +89,19 @@ int cmdDecompress(const DecompressArgs& args)
 
     DCtx dctx;
 
+    // If a fat dict bundle was provided, create a loader and attach it.
+    std::unique_ptr<FatBundleDictLoader> fatBundleLoader = nullptr;
+    if (args.dictBundlePath) {
+        tools::io::InputFile dictBundleInput(*args.dictBundlePath);
+        fatBundleLoader = std::make_unique<FatBundleDictLoader>();
+        fatBundleLoader->loadFatBundle(dictBundleInput.contents());
+        dctx.refDictLoader(*fatBundleLoader);
+        Logger::log(
+                VERBOSE1,
+                "Loaded dict bundle from ",
+                args.dictBundlePath->c_str());
+    }
+
     if (args.traceOutput) {
         args.traceOutput->open();
         Logger::log(
@@ -132,6 +148,7 @@ int cmdDecompress(const DecompressArgs& args)
     if (args.traceOutput) {
         writeTrace(dctx, args);
     }
+
     return 0;
 }
 

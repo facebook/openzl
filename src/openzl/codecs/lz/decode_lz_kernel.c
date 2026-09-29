@@ -373,6 +373,7 @@ static ZL_LzError ZL_Lz_decode_sequence(
     assert((size_t)*outPos <= dstSize);
     assert(*litPos <= numLiterals);
 
+    // Must handle integer overflow for these values
     ptrdiff_t const litLen = (ptrdiff_t)ZL_readN(
             (const uint8_t*)literalLengths + seq * literalLengthsEltWidth,
             (size_t)literalLengthsEltWidth);
@@ -384,10 +385,10 @@ static ZL_LzError ZL_Lz_decode_sequence(
             (size_t)matchLengthsEltWidth);
 
     // Copy literals
-    if (*litPos + litLen > numLiterals) {
+    if (litLen > numLiterals - *litPos) {
         return ZL_LzError_notEnoughLiterals;
     }
-    if (*outPos + litLen > (ptrdiff_t)dstSize) {
+    if (litLen < 0 || litLen > (ptrdiff_t)dstSize - *outPos) {
         return ZL_LzError_literalLengthTooLarge;
     }
     if (litLen > 0) {
@@ -400,12 +401,12 @@ static ZL_LzError ZL_Lz_decode_sequence(
     if (offset == 0) {
         return ZL_LzError_offsetZero;
     }
-    if (offset > *outPos) {
+    if (offset > *outPos || offset < 0) {
         return ZL_LzError_offsetTooLarge;
     }
 
     // Copy match (byte-by-byte to handle overlapping matches)
-    if (*outPos + matchLen > (ptrdiff_t)dstSize) {
+    if (matchLen < 0 || matchLen > (ptrdiff_t)dstSize - *outPos) {
         return ZL_LzError_matchLengthTooLarge;
     }
     for (ptrdiff_t i = 0; i < matchLen; ++i) {
@@ -482,6 +483,16 @@ typedef struct {
     ptrdiff_t litLimit;
 } ZL_Lz_DecodeState;
 
+ZL_FORCE_INLINE ptrdiff_t
+loadOffset(const void* offs, ptrdiff_t seq, size_t offWidth)
+{
+    if (offWidth == sizeof(uint16_t)) {
+        return ((const uint16_t*)offs)[seq];
+    }
+    ZL_ASSERT_EQ(offWidth, sizeof(uint32_t));
+    return ((const uint32_t*)offs)[seq];
+}
+
 /**
  * The hot LZ decoding loop.
  *
@@ -489,24 +500,24 @@ typedef struct {
  * @pre state->outPos <= dstSize - ZL_Lz_kOutSlop
  * @pre state->litPos <= state->litLimit
  *
- * NOTE: This is force outlined because the loop is tight on registers. If there
- * is a function call in the loop body, then the compiler has to worry about
- * callee saved registers, and spills more variables to the stack. So force
- * outline the hot loop and also ensure that every function it calls is force
- * inlined.
+ * NOTE: This is force inlined into width-specific force-outlined wrappers
+ * because the loop is tight on registers. If there is a function call in the
+ * loop body, then the compiler has to worry about callee saved registers, and
+ * spills more variables to the stack.
  *
  * NOTE: This kernel uses ptrdiff_t rather than pointers to avoid UB with
  * pointers, which are only valid within the buffer and one past the end.
  */
-ZL_FORCE_NOINLINE ZL_LzError ZL_Lz_decode_u16Loop(
+ZL_FORCE_INLINE ZL_LzError ZL_Lz_decode_fastLoop(
         uint8_t* const dst,
         size_t dstSize,
-        ZL_Lz_DecodeState* state)
+        ZL_Lz_DecodeState* state,
+        size_t offWidth)
 {
     uint8_t* const out              = dst;
     const size_t numSeqs            = state->src.numSequences;
     const uint8_t* const lits       = state->src.literals;
-    const uint16_t* const offs      = state->src.offsets;
+    const void* const offs          = state->src.offsets;
     const uint16_t* const litLens   = state->src.literalLengths;
     const uint16_t* const matchLens = state->src.matchLengths;
 
@@ -523,17 +534,22 @@ ZL_FORCE_NOINLINE ZL_LzError ZL_Lz_decode_u16Loop(
         assert(seq <= seqLimit);
         assert(litPos <= litLimit);
         assert(outPos <= outLimit);
-#ifdef __clang__
-#    pragma clang loop unroll(full)
-#endif
+        assert(ZL_Lz_kUnroll == 1);
+        ZL_UNROLL_LOOP(1)
         for (size_t u = 0; u < ZL_Lz_kUnroll; ++u) {
             assert((size_t)seq < numSeqs);
             assert((size_t)litPos <= state->src.numLiterals);
             assert((size_t)outPos <= dstSize);
 
+            // These values are capped at 64K
+            // We validated the source size is <= PTRDIFF_MAX - 2 * UINT16_MAX
+            // before calling this loop to guarantee no overflow when adding
+            // to outPos.
             const ptrdiff_t litLen   = litLens[seq];
             const ptrdiff_t matchLen = matchLens[seq];
-            const ptrdiff_t offset   = offs[seq];
+            const ptrdiff_t offset   = loadOffset(offs, seq, offWidth);
+            assert(sizeof(ptrdiff_t) > offWidth);
+            assert(litLen >= 0 && matchLen >= 0 && offset >= 0);
 
             const ptrdiff_t outMatch = outPos + litLen;
             const ptrdiff_t outNext  = outMatch + matchLen;
@@ -586,10 +602,30 @@ _exit:
     return ZL_LzError_ok;
 }
 
-static ZL_LzError ZL_Lz_decode_u16(
+ZL_FORCE_NOINLINE ZL_LzError ZL_Lz_decode_u16Loop(
         uint8_t* const dst,
         size_t dstSize,
-        const ZL_Lz_InSequences* src)
+        ZL_Lz_DecodeState* state)
+{
+    return ZL_Lz_decode_fastLoop(dst, dstSize, state, sizeof(uint16_t));
+}
+
+ZL_FORCE_NOINLINE ZL_LzError ZL_Lz_decode_u32Loop(
+        uint8_t* const dst,
+        size_t dstSize,
+        ZL_Lz_DecodeState* state)
+{
+    return ZL_Lz_decode_fastLoop(dst, dstSize, state, sizeof(uint32_t));
+}
+
+typedef ZL_LzError (
+        *ZL_Lz_LoopFn)(uint8_t* dst, size_t dstSize, ZL_Lz_DecodeState* state);
+
+static ZL_LzError ZL_Lz_decode_typed(
+        uint8_t* const dst,
+        size_t dstSize,
+        const ZL_Lz_InSequences* src,
+        ZL_Lz_LoopFn loopFn)
 {
     ZL_Lz_DecodeState state = {
         .src      = *src,
@@ -634,7 +670,7 @@ static ZL_LzError ZL_Lz_decode_u16(
         }
         if (state.outPos <= outLimit && state.litPos <= state.litLimit
             && state.seq <= seqLimit) {
-            const ZL_LzError err = ZL_Lz_decode_u16Loop(dst, dstSize, &state);
+            const ZL_LzError err = loopFn(dst, dstSize, &state);
             if (err != ZL_LzError_ok) {
                 return err;
             }
@@ -648,11 +684,10 @@ static ZL_LzError ZL_Lz_decode_u16(
         }
 
         if (state.seq < numSeqs) {
-            // Execute a single sequence. We need to do it here because
-            // ZL_Lz_decode_u16Loop may be exactly one sequence short of hitting
-            // a limit, so we need to execute one before transferring the
-            // literals (if that was the limiting factor), otherwise we will
-            // infinite loop.
+            // Execute a single sequence. The loop function may be exactly one
+            // sequence short of hitting a limit, so we need to execute one
+            // before transferring the literals (if that was the limiting
+            // factor), otherwise we will infinite loop.
             //
             // Then, after transferring literals, this code also handles the
             // trailing sequences.
@@ -670,7 +705,6 @@ static ZL_LzError ZL_Lz_decode_u16(
         }
     }
 
-    // Copy the remaining literals
     return ZL_Lz_decode_lastLiterals(
             dst, dstSize, &state.src, state.outPos, state.litPos);
 }
@@ -678,10 +712,18 @@ static ZL_LzError ZL_Lz_decode_u16(
 ZL_LzError
 ZL_Lz_decode(uint8_t* dst, size_t dstSize, const ZL_Lz_InSequences* src)
 {
+    const size_t maxSeqLenU16 = 2 * UINT16_MAX;
     // Optimize for cases that the encoder actually produces
     if (src->offsetsEltWidth == 2 && src->literalLengthsEltWidth == 2
-        && src->matchLengthsEltWidth == 2) {
-        return ZL_Lz_decode_u16(dst, dstSize, src);
+        && src->matchLengthsEltWidth == 2
+        && dstSize <= PTRDIFF_MAX - maxSeqLenU16 /* no overflow in outPos */) {
+        return ZL_Lz_decode_typed(dst, dstSize, src, ZL_Lz_decode_u16Loop);
+    }
+    if (src->offsetsEltWidth == 4 && src->literalLengthsEltWidth == 2
+        && src->matchLengthsEltWidth == 2
+        && dstSize <= PTRDIFF_MAX - maxSeqLenU16 /* no overflow in outPos */
+        && sizeof(ptrdiff_t) == 8 /* offset must be non-negative*/) {
+        return ZL_Lz_decode_typed(dst, dstSize, src, ZL_Lz_decode_u32Loop);
     }
 
     // Generic fallback to handle any width to allow us to update the encoder

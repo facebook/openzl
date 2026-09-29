@@ -15,12 +15,7 @@
 #include "openzl/zl_data.h"                   // ZL_DataID
 #include "openzl/zl_errors.h"                 // ZL_Report
 
-typedef struct {
-    int mId;
-    int mValue;
-} IntMeta;
-
-DECLARE_VECTOR_TYPE(IntMeta)
+DECLARE_VECTOR_TYPE(Stream_IntMetadata)
 
 struct Stream_s { // exposed publicly as ZL_Data
     ZL_Refcount buffer;
@@ -33,9 +28,11 @@ struct Stream_s { // exposed publicly as ZL_Data
     size_t bufferUsed;      // in bytes
     ZL_Refcount stringLens; // ZL_Type_string only.
     int writeCommitted;
-    size_t lastCommmited;     // tracks the eltCount of most recent commit
-    VECTOR(IntMeta) intMetas; // Metadata (arbitrary ID+Ints)
+    size_t lastCommmited; // tracks the eltCount of most recent commit
+    VECTOR(Stream_IntMetadata) intMetas; // Metadata (arbitrary ID+Ints)
     Arena* alloc;
+    bool codecCacheKeyHashValid;
+    uint64_t codecCacheKeyHash;
 };
 
 struct ZL_Input_s {
@@ -45,6 +42,14 @@ struct ZL_Input_s {
 struct ZL_Output_s {
     Stream data;
 };
+
+static void STREAM_invalidateCodecCacheKeyHash(Stream* stream)
+{
+    if (stream == NULL) {
+        return;
+    }
+    stream->codecCacheKeyHashValid = false;
+}
 
 // ================================
 // Allocation & lifetime management
@@ -402,6 +407,7 @@ ZL_Report STREAM_refStreamWithoutRefCount(Stream* s, const Stream* ref)
     ZL_ASSERT_NN(ref);
     ZL_ASSERT(ref->writeCommitted);
     ZL_ERR_IF(s->writeCommitted, stream_wrongInit, "Stream already committed");
+    STREAM_invalidateCodecCacheKeyHash(s);
     s->type           = ref->type;
     s->eltCount       = ref->eltCount;
     s->eltWidth       = ref->eltWidth;
@@ -417,7 +423,7 @@ ZL_Report STREAM_refStreamWithoutRefCount(Stream* s, const Stream* ref)
         return ZL_REPORT_ERROR(allocation, "Failed to reserve metadata");
     }
     for (size_t pos = 0; pos < meta_size; pos++) {
-        IntMeta e = VECTOR_AT(ref->intMetas, pos);
+        Stream_IntMetadata e = VECTOR_AT(ref->intMetas, pos);
         if (!VECTOR_PUSHBACK(s->intMetas, e)) {
             return ZL_REPORT_ERROR(allocation, "Failed to copy metadata");
         }
@@ -431,6 +437,11 @@ ZL_Report STREAM_refStreamWithoutRefCount(Stream* s, const Stream* ref)
     // Turn our buffers into immutable references
     ZL_Refcount_constify(&s->buffer);
     ZL_Refcount_constify(&s->stringLens);
+
+    uint64_t hash;
+    if (STREAM_getCodecCacheKeyHash(ref, &hash)) {
+        STREAM_setCodecCacheKeyHash(s, hash);
+    }
 
     return ZL_returnSuccess();
 }
@@ -518,6 +529,8 @@ ZL_Report STREAM_refStreamSliceWithoutRefCount(
     ZL_ERR_IF_ERR(STREAM_refStreamWithoutRefCount(dst, src));
     if (eltCount == STREAM_eltCount(src))
         return ZL_returnSuccess();
+
+    STREAM_invalidateCodecCacheKeyHash(dst);
 
     if (STREAM_type(src) == ZL_Type_string) {
         return STREAM_refStreamStringSlice(dst, src, startingEltNum, eltCount);
@@ -699,6 +712,7 @@ void* STREAM_wPtr(Stream* s)
 {
     if (s == NULL || ZL_Refcount_null(&s->buffer))
         return NULL;
+    STREAM_invalidateCodecCacheKeyHash(s);
     void* basePtr = ZL_Refcount_getMut(&s->buffer);
     ZL_ASSERT_LE(s->bufferUsed, s->bufferCapacity);
     return (char*)basePtr + s->bufferUsed;
@@ -832,6 +846,7 @@ ZL_Report STREAM_commit(Stream* s, size_t eltCount)
             s->eltsCapacity,
             stream_wrongInit,
             "Stream capacity too small");
+    STREAM_invalidateCodecCacheKeyHash(s);
     if (s->type == ZL_Type_string) {
         return STREAM_commitStrings(s, eltCount);
     }
@@ -877,6 +892,7 @@ uint32_t* STREAM_wStringLens(Stream* stream)
 void STREAM_clear(Stream* s)
 {
     ZL_ASSERT_NN(s);
+    STREAM_invalidateCodecCacheKeyHash(s);
     s->writeCommitted = 0;
     s->eltCount       = 0;
     s->lastCommmited  = 0;
@@ -1011,7 +1027,7 @@ static ZL_Report STREAM_copyIntMetas(Stream* dst, const Stream* src)
             VECTOR_RESERVE(dst->intMetas, meta_size), meta_size, allocation);
 
     for (size_t pos = 0; pos < meta_size; pos++) {
-        IntMeta e = VECTOR_AT(src->intMetas, pos);
+        Stream_IntMetadata e = VECTOR_AT(src->intMetas, pos);
         ZL_ERR_IF_NOT(VECTOR_PUSHBACK(dst->intMetas, e), allocation);
     }
 
@@ -1058,6 +1074,7 @@ ZL_Report STREAM_consume(Stream* data, size_t eltCount)
     ZL_ERR_IF_GT(eltCount, STREAM_eltCount(data), parameter_invalid);
     if (STREAM_type(data) == ZL_Type_string)
         return STREAM_consumeStrings(data, eltCount);
+    STREAM_invalidateCodecCacheKeyHash(data);
     size_t eltSize    = STREAM_eltWidth(data);
     data->buffer._ptr = (char*)data->buffer._ptr + (eltCount * eltSize);
     data->eltCount -= eltCount;
@@ -1070,12 +1087,12 @@ ZL_Report STREAM_consume(Stream* data, size_t eltCount)
 // findIntMeta() :
 // @return index of the Int Metadata of provided @id
 // @return -1 if not found
-static int findIntMeta(VECTOR(IntMeta) m, int id)
+static int findIntMeta(VECTOR(Stream_IntMetadata) m, int id)
 {
     size_t const nbIntMetas = VECTOR_SIZE(m);
     // Scan backward, find latest .id if multiple present
     for (int pos = (int)nbIntMetas - 1; pos >= 0; pos--) {
-        if (VECTOR_DATA(m)[pos].mId == id)
+        if (VECTOR_DATA(m)[pos].id == id)
             return pos;
     }
     // not found
@@ -1093,9 +1110,30 @@ ZL_Report STREAM_setIntMetadata(Stream* s, int mId, int mValue)
             streamParameter_invalid,
             "Int Metadata ID already present");
     ZL_ERR_IF_NOT(
-            VECTOR_PUSHBACK(s->intMetas, ((IntMeta){ mId, mValue })),
+            VECTOR_PUSHBACK(
+                    s->intMetas,
+                    ((Stream_IntMetadata){ .id = mId, .value = mValue })),
             allocation);
+    STREAM_invalidateCodecCacheKeyHash(s);
     return ZL_returnSuccess();
+}
+
+void STREAM_setCodecCacheKeyHash(Stream* s, uint64_t hash)
+{
+    ZL_ASSERT_NN(s);
+    s->codecCacheKeyHash      = hash;
+    s->codecCacheKeyHashValid = true;
+}
+
+bool STREAM_getCodecCacheKeyHash(const Stream* s, uint64_t* hash)
+{
+    ZL_ASSERT_NN(s);
+    ZL_ASSERT_NN(hash);
+    if (!s->codecCacheKeyHashValid) {
+        return false;
+    }
+    *hash = s->codecCacheKeyHash;
+    return true;
 }
 
 #define ZL_INTMETADATA_NOT_PRESENT (-1)
@@ -1110,8 +1148,39 @@ ZL_IntMetadata STREAM_getIntMetadata(const Stream* s, int mId)
         };
     return (ZL_IntMetadata){
         .isPresent = 1,
-        .mValue    = VECTOR_DATA(s->intMetas)[idx].mValue,
+        .mValue    = VECTOR_DATA(s->intMetas)[idx].value,
     };
+}
+
+size_t STREAM_numIntMetadata(const Stream* s)
+{
+    ZL_ASSERT_NN(s);
+    return VECTOR_SIZE(s->intMetas);
+}
+
+ZL_Report STREAM_copyIntMetadata(
+        Stream_IntMetadata* dst,
+        const Stream* src,
+        size_t expectedEntries)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ASSERT_NN(src);
+    ZL_ERR_IF_NE(
+            expectedEntries,
+            VECTOR_SIZE(src->intMetas),
+            streamParameter_invalid,
+            "Metadata entry count does not match the stream");
+    if (expectedEntries == 0) {
+        return ZL_returnSuccess();
+    }
+    ZL_ERR_IF_NULL(
+            dst,
+            streamParameter_invalid,
+            "Metadata destination is NULL for a non-empty stream");
+    for (size_t i = 0; i < expectedEntries; ++i) {
+        dst[i] = VECTOR_AT(src->intMetas, i);
+    }
+    return ZL_returnSuccess();
 }
 
 int STREAM_hasBuffer(const Stream* s)

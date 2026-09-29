@@ -6,6 +6,16 @@
 
 namespace openzl::cli {
 
+struct CmdTrainResult {
+    bool trainedCompressorImprovesRatio;
+};
+
+/**
+ * Train a compression profile, write it to a file, and return its benchmark
+ * comparison with the untrained compressor.
+ */
+CmdTrainResult cmdTrainWithResult(const TrainArgs& args);
+
 /*
  * Train a compression profile and write it to a file.
  *

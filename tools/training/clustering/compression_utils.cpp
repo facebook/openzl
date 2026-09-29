@@ -196,11 +196,11 @@ std::future<SizeTimePair> CompressionUtils::tryCompress(
                                 fPtr) {
             return compressSample(*ccPtr, *fPtr, samples_.at(i));
         };
-        futures.emplace_back(threadPool_->run(task, configPtr, funcPtr));
+        futures.emplace_back(threadPool_.run(task, configPtr, funcPtr));
     }
     auto futuresPtr = std::make_shared<std::vector<std::future<SizeTimePair>>>(
             std::move(futures));
-    return threadPool_->run([futuresPtr]() {
+    return threadPool_.run([futuresPtr]() {
         SizeTimePair result{};
         for (auto& future : *futuresPtr) {
             result = result + future.get();

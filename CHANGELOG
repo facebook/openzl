@@ -1,3 +1,28 @@
+v0.3.0 (2026-09-24)
+Frame format max version 27 (was 24)
+- PivCo Huffman codec, wired into the entropy graphs
+- LZ codec: multiple speed targets, faster than zstd
+- Transformer for high-level numeric selection
+- New standard sparse_num codec, with dominant-symbol decode
+- The brute force selector graph is now serializable
+- Codec output cache: codec outputs are memoized and reused across trials
+- Legacy GBT numeric selector is retired
+- New mparam API, for graphs and segmenters
+- ZL_UniqueID conversion helpers for U16/U32/U64
+- C++: convert an exception back into an error
+
+v0.2.0 (2026-05-13)
+Frame format max version 24 (was 22)
+- New codecs: LZ, partition, sentinel, mux_lengths, split_byrange, bitsplit_top8/_fp/_bf16
+- New standard graphs: ZL_GRAPH_LZ, ZL_GRAPH_PARTITION_BITPACK, lz4
+- Materialized params: public API, CBOR serialization
+- Automatic segmentation of large numeric inputs and the serial profile
+- Unified public and private error handling; new parsing error category
+- All OpenZL components are now serializable
+- SDDL v2 automatic chunking, updated SDDL VM runtime
+- Codecs and nodes now declare a minimum library version
+- Removed zl_cgraph.h, zl_stream.h and zl_dyngraph.h; public headers are C99-clean
+
 v0.1.0 (2025-10-06)
 Initial release
 

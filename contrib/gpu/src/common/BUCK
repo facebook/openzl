@@ -1,0 +1,75 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("../../../../defs.bzl", "relative_headers")
+
+oncall("data_compression")
+
+# Shared CUDA error-check macros for GPU host code.
+cpp_library(
+    name = "cuda_error",
+    headers = relative_headers(["cuda_error.cuh"]),
+    header_namespace = "",
+    exported_external_deps = [("cuda", None, "cuda-lazy")],
+)
+
+# Generic CUDA RAII helpers (owning device pointers, timing events, stream-ordered
+# scratch) shared by the device-staging harness and the benchmark driver.
+cpp_library(
+    name = "cuda_raii",
+    headers = relative_headers(["cuda_raii.cuh"]),
+    header_namespace = "",
+    exported_deps = [":cuda_error"],
+    exported_external_deps = [("cuda", None, "cuda-lazy")],
+)
+
+# Kernel launch/occupancy helpers (grid sizing, occupancy metadata) for GPU host
+# code; kernel-agnostic.
+cpp_library(
+    name = "cuda_launch",
+    headers = relative_headers(["cuda_launch.cuh"]),
+    header_namespace = "",
+    exported_deps = [":cuda_error"],
+    exported_external_deps = [("cuda", None, "cuda-lazy")],
+)
+
+# Balanced-segment preprocessing (host split + device staging) shared by GPU
+# decode kernels; codec-agnostic (templated on the chunk descriptor).
+cpp_library(
+    name = "segment_plan",
+    headers = relative_headers(["segment_plan.cuh"]),
+    header_namespace = "",
+    exported_deps = [
+        ":cuda_error",
+        ":cuda_raii",
+    ],
+    exported_external_deps = [("cuda", None, "cuda-lazy")],
+)
+
+cpp_library(
+    name = "cuda_error_relative_headers",
+    headers = relative_headers(["cuda_error.cuh"]),
+    header_namespace = "",
+    exported_deps = [],
+    exported_external_deps = [("cuda", None, "cuda-lazy")],
+)
+
+cpp_library(
+    name = "cuda_raii_relative_headers",
+    headers = relative_headers(["cuda_raii.cuh"]),
+    header_namespace = "",
+    exported_deps = [
+        ":cuda_error_relative_headers",
+        ":cuda_raii",
+    ],
+    exported_external_deps = [("cuda", None, "cuda-lazy")],
+)
+
+# CPU metadata contract shared by codec planners and the decode scheduler.
+cpp_library(
+    # @autodeps-skip
+    name = "codec_decode_planning",
+    headers = relative_headers(["codec_decode_planning.hpp"]),
+    header_namespace = "",
+    exported_deps = ["../../../..:zstronglib"],
+)

@@ -15,6 +15,8 @@ typedef enum {
 
     ZL_StandardGraphID_fse,
     ZL_StandardGraphID_huffman,
+    ZL_StandardGraphID_huffman_huf0,
+    ZL_StandardGraphID_huffman_pivco,
     ZL_StandardGraphID_entropy,
     ZL_StandardGraphID_constant,
 
@@ -44,6 +46,10 @@ typedef enum {
     ZL_StandardGraphID_lz,
 
     ZL_StandardGraphID_segment_serial,
+
+    ZL_StandardGraphID_transformer_numeric,
+
+    ZL_StandardGraphID_brute_force,
 
     ZL_StandardGraphID_public_end // last id, used to detect end of public
                                   // range

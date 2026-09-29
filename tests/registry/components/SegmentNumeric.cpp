@@ -4,7 +4,6 @@
 #include "openzl/zl_version.h"
 #include "tests/registry/OpenZLComponents.h"
 #include "tests/registry/OpenZLInput.h"
-#include "tests/utils.h"
 
 namespace openzl::tests::components {
 namespace {

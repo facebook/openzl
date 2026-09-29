@@ -87,18 +87,27 @@ struct ZL_FunctionGraphDesc {
     size_t nbCustomNodes;           // Must be zero when customNodes==NULL
     ZL_LocalParams localParams;
     /**
-     * Optional materializer descriptor for materialized local params.
-     * If both materializeFn and dematerializeFn are non-null, the materializer
-     * will be used to create materialized objects from local params.
-     */
-    ZL_MaterializerDesc materializer;
-    /**
      * Optionally an opaque pointer that can be queried with
      * ZL_Graph_getOpaquePtr().
      * OpenZL unconditionally takes ownership of this pointer, even if
      * registration fails, and it lives for the lifetime of the compressor.
      */
     ZL_OpaquePtr opaque;
+    /**
+     * Optional materializer for compression-only materialized parameters
+     * (MParams). If materializeFn is non-null, it will be called during
+     * compressor deserialization to create the materialized object from
+     * the serialized MParam blob. Unlike dicts, MParams are NOT required
+     * at decompression time.
+     */
+    ZL_MaterializerDesc mparamMat;
+    /**
+     * Optional MParam associated with this graph. The provided content blob
+     * will be materialized as dictated by @p mparamMat . OpenZL will not take
+     * ownership of the content provided. The caller is free to free the buffer
+     * anytime after registering the graph.
+     */
+    ZL_MParam mparam;
 };
 
 /**
@@ -146,6 +155,19 @@ int ZL_Graph_getCParam(const ZL_Graph* gctx, ZL_CParam gparam);
 /* Consultation requests for Local parameters */
 ZL_IntParam ZL_Graph_getLocalIntParam(const ZL_Graph* gctx, int intParamId);
 ZL_RefParam ZL_Graph_getLocalRefParam(const ZL_Graph* gctx, int refParamId);
+/**
+ * Bulk consultation request of *all* Local Parameters. This can be useful when
+ * one is trying to access all the Local Parameters at once for a codec using
+ * the encoder.
+ */
+const ZL_LocalParams* ZL_Graph_getLocalParams(const ZL_Graph* gctx);
+
+/**
+ * @returns The materialized MParam object associated with this graph, if
+ * there is one. Otherwise NULL. MParams are compression-only resources
+ * that are not required at decompression time.
+ */
+const void* ZL_Graph_getMParam(const ZL_Graph* gctx);
 
 /**
  * Determines whether @nodeid is supported given the applied global parameters

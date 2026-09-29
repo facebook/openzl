@@ -489,6 +489,64 @@ class AnonymousRecordRule : public GrammarRule {
     }
 };
 
+/**
+ * Parses a general `<expr> @ <name>` annotation postfix, attaching the named
+ * annotation to the annotated node. Multiple annotations may be chained onto a
+ * single record. Currently annotations may only be applied to records.
+ */
+class AnnotationRule : public GrammarRule {
+   public:
+    explicit AnnotationRule()
+            : GrammarRule(
+                      Symbol::AT,
+                      Precedence::ACCESS,
+                      std::vector<ArgType>({ ArgType::EXPR, ArgType::EXPR }),
+                      /* has_lhs_arg */ true)
+    {
+    }
+
+   private:
+    ASTPtr do_gen(ASTPtr op, ArgsVec args) const override
+    {
+        auto& annotated = args.at(0);
+        auto& name_node = args.at(1);
+
+        const auto* name_var = name_node->as_var();
+        if (name_var == nullptr) {
+            throw ParseError(
+                    some(op).loc(), "Annotation name must be an identifier.");
+        }
+        const auto& name = name_var->name();
+
+        // The annotated expression is either a bare record (anonymous record)
+        // or an ASSIGN(name, record) produced by RecordRule (named record).
+        const auto* assign  = annotated->as_op();
+        const bool is_named = assign != nullptr && assign->op() == Op::ASSIGN;
+        const ASTRecord* record = is_named ? assign->args().at(1)->as_record()
+                                           : annotated->as_record();
+        if (record == nullptr) {
+            throw ParseError(
+                    some(op).loc(),
+                    "Annotation '@" + name
+                            + "' can only be applied to a record.");
+        }
+
+        // Rebuild the record with the annotation added, keeping the AST
+        // immutable (grammar annotations are known at parse time). Chained
+        // annotations accumulate: copy the existing set and add this name.
+        GrammarAnnotations annotations = record->annotations();
+        annotations.names.insert(name);
+        auto new_record = Codegen{ record->loc() }.record(
+                record->params(), record->fields(), std::move(annotations));
+
+        if (is_named) {
+            return Codegen{ annotated->loc() }.assign(
+                    assign->args().at(0), std::move(new_record));
+        }
+        return new_record;
+    }
+};
+
 class CallRule : public GrammarRule {
    public:
     explicit CallRule()
@@ -553,6 +611,36 @@ class WhenRule : public GrammarRule {
     }
 };
 
+/**
+ * Helper: parses the inner argument list of a builtin function call and
+ * verifies the expected arity. Returns the inner args. Throws ParseError on
+ * shape mismatch.
+ */
+const ASTVec& expect_builtin_func_args(
+        const ASTPtr& op,
+        Symbol sym,
+        const ASTPtr& paren_list,
+        size_t expected_arity)
+{
+    const auto* list = some(paren_list).as_list();
+    if (list == nullptr) {
+        throw ParseError(
+                some(op).loc(),
+                std::string{ sym_to_repr_str(sym) }
+                        + "() requires a paren list.");
+    }
+
+    const auto& inner_args = list->nodes();
+    if (inner_args.size() != expected_arity) {
+        throw ParseError(
+                some(op).loc(),
+                std::string{ sym_to_repr_str(sym) } + "() requires exactly "
+                        + std::to_string(expected_arity) + " argument"
+                        + (expected_arity == 1 ? "" : "s") + ".");
+    }
+    return inner_args;
+}
+
 class BuiltinFuncRule : public GrammarRule {
    public:
     explicit BuiltinFuncRule(Symbol sym, Op result_op)
@@ -567,28 +655,37 @@ class BuiltinFuncRule : public GrammarRule {
    private:
     ASTPtr do_gen(ASTPtr op, ArgsVec args) const override
     {
-        auto& paren_list = args.at(0);
-        const auto* list = some(paren_list).as_list();
-        if (list == nullptr) {
-            throw ParseError(
-                    some(op).loc(),
-                    std::string{ sym_to_repr_str(this->sym()) }
-                            + "() requires a paren list.");
-        }
-
-        const auto& inner_args = list->nodes();
-        if (inner_args.size() != 1) {
-            throw ParseError(
-                    some(op).loc(),
-                    std::string{ sym_to_repr_str(this->sym()) }
-                            + "() requires exactly 1 argument.");
-        }
-
+        const auto& inner_args =
+                expect_builtin_func_args(op, this->sym(), args.at(0), 1);
         return std::make_shared<ASTOp>(
                 op->loc(), result_op_, ArgsVec{ inner_args.at(0) });
     }
 
     const Op result_op_;
+};
+
+class BetweenRule : public GrammarRule {
+   public:
+    BetweenRule()
+            : GrammarRule(
+                      Symbol::BETWEEN,
+                      Precedence::ACCESS,
+                      std::vector<ArgType>({ ArgType::LIST_PAREN }))
+    {
+    }
+
+   private:
+    ASTPtr do_gen(ASTPtr op, ArgsVec args) const override
+    {
+        const auto& inner_args =
+                expect_builtin_func_args(op, this->sym(), args.at(0), 3);
+        const auto& loc   = op->loc();
+        const auto& low   = inner_args[0];
+        const auto& value = inner_args[1];
+        const auto& high  = inner_args[2];
+
+        return Codegen{ loc }.between(low, value, high);
+    }
 };
 
 template <typename RuleT, typename... Args>
@@ -612,11 +709,15 @@ const std::vector<std::unique_ptr<const GrammarRule>> grammar_rules{ []() {
     add_rule<AnonymousRecordRule>(r);
     add_rule<BytesRule>(r);
 
+    // Annotations
+    add_rule<AnnotationRule>(r);
+
     // Ops
     add_rule<UnaryOpRule>(r, Symbol::EXPECT, Precedence::ASSIGNMENT);
     add_rule<BuiltinFuncRule>(r, Symbol::SIZEOF, Op::SIZEOF);
     add_rule<WhenRule>(r);
     add_rule<BuiltinFuncRule>(r, Symbol::ABS, Op::ABS);
+    add_rule<BetweenRule>(r);
 
     add_rule<BinaryOpRule>(r, Symbol::ASSIGN, Precedence::ASSIGNMENT);
     add_rule<BinaryOpRule>(r, Symbol::ASSUME, Precedence::ASSIGNMENT);

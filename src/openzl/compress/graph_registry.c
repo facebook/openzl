@@ -23,17 +23,20 @@
 #include "openzl/compress/segmenters/segmenter_numeric.h" // SEGM_numeric_desc
 #include "openzl/compress/segmenters/segmenter_serial.h"  // SEGM_serial_desc
 #include "openzl/compress/selector.h" // SelectorCtx, ZL_SelectorFn, SelCtx_* functions
-#include "openzl/compress/selectors/ml/ml_selector_graph.h" // ZL_MLSel_dynGraph
+#include "openzl/compress/selectors/ml/ml_selector_graph.h" // ZL_MLSel_dynGraph, ZL_MLSel_materialize
+#include "openzl/compress/selectors/selector_brute_force.h" // SI_selector_brute_force
 #include "openzl/compress/selectors/selector_compress.h" // SI_selector_compress, SI_selector_compress_* functions
 #include "openzl/compress/selectors/selector_constant.h" // SI_selector_constant
 #include "openzl/compress/selectors/selector_genericLZ.h" // SI_selector_genericLZ
 #include "openzl/compress/selectors/selector_numeric.h"   // SI_selector_numeric
 #include "openzl/compress/selectors/selector_store.h" // SI_selector_store, MIGRAPH_STORE
-#include "openzl/shared/utils.h"                      // ZL_ARRAY_SIZE macro
-#include "openzl/zl_data.h"   // ZL_Type definitions and data structures
+#include "openzl/compress/selectors/transformer/static_selectors.h"
+#include "openzl/shared/utils.h" // ZL_ARRAY_SIZE macro
+#include "openzl/zl_data.h"      // ZL_Type definitions and data structures
 #include "openzl/zl_errors.h" // ZL_TRY_LET, ZL_ERR_IF_* error handling macros
 #include "openzl/zl_graph_api.h"    // ZL_Graph_*, ZL_Edge_* API functions
 #include "openzl/zl_localParams.h"  // ZL_LocalParams structure and functions
+#include "openzl/zl_materializer.h" // ZL_NOOP_DEMATERIALIZE, ZL_MaterializerDesc
 #include "openzl/zl_opaque_types.h" // Opaque type definitions used by the API
 
 #define _1_SUCCESSOR(s) (const ZL_GraphID[]){ { s } }, 1
@@ -46,7 +49,8 @@
 // because these sources are not considered "constant" by the C standard.
 // For the same reason, they can't be checked at compile using static_assert(),
 // but are checked at runtime (in debug mode) with GR_validate().
-#define REGISTER_STATIC_GRAPH(id, _gname, intype, hnid, dstlist) \
+#define REGISTER_STATIC_GRAPH(                             \
+        id, _gname, intype, hnid, dstlist, _reqLibVersion) \
     [id] = {                                                                 \
         .type = GR_dynamicGraph,                                             \
         .gdi  = {                                                            \
@@ -60,10 +64,11 @@
                 .customGraphs     = dstlist,                                 \
             },                                                               \
             .baseGraphID = ZL_GRAPH_ILLEGAL,                                 \
+            .minLibraryVersion = (_reqLibVersion),                            \
         },                                                                   \
     }
 
-#define REGISTER_SELECTOR(id, _sname, _selectF, _intypes) \
+#define REGISTER_SELECTOR(id, _sname, _selectF, _intypes, _reqLibVersion) \
     [id] = {                                                           \
         .type = GR_dynamicGraph,                                       \
         .gdi  = {                                                      \
@@ -75,10 +80,11 @@
             },                                                         \
             .privateParam = &(GR_SelectorFunction){ _selectF},         \
             .baseGraphID = ZL_GRAPH_ILLEGAL,                           \
+            .minLibraryVersion = (_reqLibVersion),                      \
         },                                                             \
     }
 
-#define REGISTER_DYNAMIC_GRAPH(id, _gname, _intype, _graph_f) \
+#define REGISTER_DYNAMIC_GRAPH(id, _gname, _intype, _graph_f, _reqLibVersion) \
     [id] = {                                                                \
         .type = GR_dynamicGraph,                                            \
         .gdi  = {                                                           \
@@ -89,28 +95,51 @@
                 .nbInputs         = 1,                                      \
             },                                                              \
             .baseGraphID = ZL_GRAPH_ILLEGAL,                                \
+            .minLibraryVersion = (_reqLibVersion),                           \
         },                                                                  \
     }
 
-#define REGISTER_MIGRAPH(id, _gdesc) \
+#define REGISTER_DYNAMIC_GRAPH_WITH_MATERIALIZER(                        \
+        id, _gname, _intype, _graph_f, _matFn, _dematFn, _reqLibVersion) \
+    [id] = {                                                                \
+        .type = GR_dynamicGraph,                                            \
+        .gdi  = {                                                           \
+            .migd = {                                                       \
+                .name             = (_gname),                               \
+                .graph_f          = (_graph_f),                             \
+                .inputTypeMasks   = (const ZL_Type[]){ _intype },           \
+                .nbInputs         = 1,                                      \
+                .mparamMat        = {                                       \
+                    .materializeFn   = (_matFn),                            \
+                    .dematerializeFn = (_dematFn),                          \
+                },                                                          \
+            },                                                              \
+            .baseGraphID = ZL_GRAPH_ILLEGAL,                                \
+            .minLibraryVersion = (_reqLibVersion),                           \
+        },                                                                  \
+    }
+
+#define REGISTER_MIGRAPH(id, _gdesc, _reqLibVersion) \
     [id] = {                                  \
         .type = GR_dynamicGraph,              \
         .gdi  = {                             \
             .migd = _gdesc,                   \
             .baseGraphID = ZL_GRAPH_ILLEGAL,  \
+            .minLibraryVersion = (_reqLibVersion), \
         },                                    \
     }
 
-#define REGISTER_SEGMENTER(id, _sdesc) \
+#define REGISTER_SEGMENTER(id, _sdesc, _reqLibVersion) \
     [id] = {                                 \
         .type = GR_segmenter,                \
         .gdi  = {                            \
             .segDesc = _sdesc,               \
             .baseGraphID = ZL_GRAPH_ILLEGAL, \
+            .minLibraryVersion = (_reqLibVersion), \
         },                                   \
     }
 
-#define REGISTER_SPECIAL(id, _name, _type) \
+#define REGISTER_SPECIAL(id, _name, _type, _reqLibVersion) \
     [id] = {                                                              \
         .type = _type,                                                    \
         .gdi  = {                                                         \
@@ -120,92 +149,133 @@
                 .nbInputs         = 1,                                    \
             },                                                            \
             .baseGraphID = ZL_GRAPH_ILLEGAL,                              \
+            .minLibraryVersion = (_reqLibVersion),                         \
         },                                                                \
     }
+
+/* First library version recognizing the Transformer graphs. */
+#define TRANSFORMER_NUMERIC_MIN_LIBRARY_VERSION 205
 
 // clang-format off
 const InternalGraphDesc GR_standardGraphs[ZL_PrivateStandardGraphID_end] = {
     // note: serial_store is effectively a special action
-    REGISTER_SPECIAL(ZL_PrivateStandardGraphID_serial_store, "!zl.private.serial_store", GR_store ),
+    REGISTER_SPECIAL(ZL_PrivateStandardGraphID_serial_store, "!zl.private.serial_store", GR_store, 200 ),
 
     // Public graphs
-    REGISTER_MIGRAPH(ZL_StandardGraphID_store, MIGRAPH_STORE),
-    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_fse, "!zl.fse", ZL_Type_serial, EI_fseDynamicGraph),
-    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_huffman, "!zl.huffman", ZL_Type_serial | ZL_Type_struct | ZL_Type_numeric, EI_huffmanDynamicGraph),
-    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_entropy, "!zl.entropy", ZL_Type_serial | ZL_Type_struct | ZL_Type_numeric, EI_entropyDynamicGraph),
-    REGISTER_SELECTOR(ZL_StandardGraphID_constant, "!zl.constant", SI_selector_constant, ZL_Type_serial | ZL_Type_struct | ZL_Type_numeric),
-    REGISTER_STATIC_GRAPH(ZL_StandardGraphID_zstd, "!zl.zstd", ZL_Type_serial, ZL_PrivateStandardNodeID_zstd, _1_SUCCESSOR(ZL_PrivateStandardGraphID_serial_store) ),
-    REGISTER_SELECTOR(ZL_StandardGraphID_bitpack, "!zl.bitpack", SI_selector_bitpack, ZL_Type_serial | ZL_Type_numeric),
-    REGISTER_STATIC_GRAPH(ZL_StandardGraphID_flatpack, "!zl.flatpack", ZL_Type_serial, ZL_PrivateStandardNodeID_flatpack, _2_SUCCESSORS(ZL_PrivateStandardGraphID_serial_store, ZL_PrivateStandardGraphID_serial_store) ),
-    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_field_lz, "!zl.field_lz", ZL_Type_struct | ZL_Type_numeric, EI_fieldLzDynGraph),
-    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_lz, "!zl.lz", ZL_Type_serial, EI_lzDynGraph),
-    REGISTER_MIGRAPH(ZL_StandardGraphID_compress_generic, MIGRAPH_COMPRESS),
-    REGISTER_SELECTOR(ZL_StandardGraphID_select_generic_lz_backend, "!zl.select_generic_lz_backend", SI_selector_genericLZ, ZL_Type_serial),
-    REGISTER_SEGMENTER(ZL_StandardGraphID_segment_numeric, SEGM_NUMERIC_DESC),
-    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_interpret_num8_compress,  "!zl.private.interpret_num8_compress",  ZL_Type_serial, ZL_StandardNodeID_convert_serial_to_num8,     _1_SUCCESSOR(ZL_PrivateStandardGraphID_numeric_compress)),
-    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_interpret_num16_compress, "!zl.private.interpret_num16_compress", ZL_Type_serial, ZL_StandardNodeID_convert_serial_to_num_le16, _1_SUCCESSOR(ZL_PrivateStandardGraphID_numeric_compress)),
-    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_interpret_num32_compress, "!zl.private.interpret_num32_compress", ZL_Type_serial, ZL_StandardNodeID_convert_serial_to_num_le32, _1_SUCCESSOR(ZL_PrivateStandardGraphID_numeric_compress)),
-    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_interpret_num64_compress, "!zl.private.interpret_num64_compress", ZL_Type_serial, ZL_StandardNodeID_convert_serial_to_num_le64, _1_SUCCESSOR(ZL_PrivateStandardGraphID_numeric_compress)),
-    REGISTER_SEGMENTER(ZL_StandardGraphID_segment_num8_from_serial,  SEGM_NUM_FROM_SERIAL_DESC(1, 8,  ZL_PrivateStandardGraphID_interpret_num8_compress)),
-    REGISTER_SEGMENTER(ZL_StandardGraphID_segment_num16_from_serial, SEGM_NUM_FROM_SERIAL_DESC(2, 16, ZL_PrivateStandardGraphID_interpret_num16_compress)),
-    REGISTER_SEGMENTER(ZL_StandardGraphID_segment_num32_from_serial, SEGM_NUM_FROM_SERIAL_DESC(4, 32, ZL_PrivateStandardGraphID_interpret_num32_compress)),
-    REGISTER_SEGMENTER(ZL_StandardGraphID_segment_num64_from_serial, SEGM_NUM_FROM_SERIAL_DESC(8, 64, ZL_PrivateStandardGraphID_interpret_num64_compress)),
-    REGISTER_SEGMENTER(ZL_StandardGraphID_segment_serial, SEGM_SERIAL_DESC),
-    REGISTER_SELECTOR(ZL_StandardGraphID_select_numeric, "!zl.select_numeric", SI_selector_numeric, ZL_Type_numeric),
-    REGISTER_MIGRAPH(ZL_StandardGraphID_clustering, MIGRAPH_CLUSTERING),
-    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_simple_data_description_language, "!zl.sddl", ZL_Type_serial, ZL_SDDL_dynGraph),
-    REGISTER_SEGMENTER(ZL_StandardGraphID_simple_data_description_language_v2, SEGM_SDDL2_DESC),
-    REGISTER_MIGRAPH(ZL_StandardGraphID_try_parse_int, MIGRAPH_TRY_PARSE_INT),
-    REGISTER_STATIC_GRAPH(ZL_StandardGraphID_lz4, "!zl.lz4", ZL_Type_serial, ZL_PrivateStandardNodeID_lz4, _1_SUCCESSOR(ZL_PrivateStandardGraphID_serial_store)),
-    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_partition_bitpack, "!zl.partition_bitpack", ZL_Type_numeric, EI_partitionBitpackDynGraph),
-    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_ml_selector,"!zl.ml_selector", ZL_Type_numeric, ZL_MLSel_dynGraph),
-    REGISTER_MIGRAPH(ZL_PrivateStandardGraphID_merge_sorted, MIGRAPH_MERGE_SORTED),
-    REGISTER_MIGRAPH(ZL_PrivateStandardGraphID_transpose_split, MIGRAPH_TRANSPOSE_SPLIT),
+    REGISTER_MIGRAPH(ZL_StandardGraphID_store, MIGRAPH_STORE, 200),
+    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_fse, "!zl.fse", ZL_Type_serial, EI_fseDynamicGraph, 200),
+    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_huffman, "!zl.huffman", ZL_Type_serial | ZL_Type_struct | ZL_Type_numeric, EI_huffmanDynamicGraph, 200),
+    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_huffman_huf0, "!zl.huffman_huf0", ZL_Type_serial | ZL_Type_struct | ZL_Type_numeric, EI_huffmanDynamicGraphHuf0, 200),
+    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_huffman_pivco, "!zl.huffman_pivco", ZL_Type_serial | ZL_Type_struct | ZL_Type_numeric, EI_huffmanDynamicGraphPivco, 200),
+    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_entropy, "!zl.entropy", ZL_Type_serial | ZL_Type_struct | ZL_Type_numeric, EI_entropyDynamicGraph, 200),
+    REGISTER_SELECTOR(ZL_StandardGraphID_constant, "!zl.constant", SI_selector_constant, ZL_Type_serial | ZL_Type_struct | ZL_Type_numeric, 200),
+    REGISTER_STATIC_GRAPH(ZL_StandardGraphID_zstd, "!zl.zstd", ZL_Type_serial, ZL_PrivateStandardNodeID_zstd, _1_SUCCESSOR(ZL_PrivateStandardGraphID_serial_store), 200 ),
+    REGISTER_SELECTOR(ZL_StandardGraphID_bitpack, "!zl.bitpack", SI_selector_bitpack, ZL_Type_serial | ZL_Type_numeric, 200),
+    REGISTER_STATIC_GRAPH(ZL_StandardGraphID_flatpack, "!zl.flatpack", ZL_Type_serial, ZL_PrivateStandardNodeID_flatpack, _2_SUCCESSORS(ZL_PrivateStandardGraphID_serial_store, ZL_PrivateStandardGraphID_serial_store), 200 ),
+    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_field_lz, "!zl.field_lz", ZL_Type_struct | ZL_Type_numeric, EI_fieldLzDynGraph, 200),
+    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_lz, "!zl.lz", ZL_Type_serial, EI_lzDynGraph, 204),
+    REGISTER_MIGRAPH(ZL_StandardGraphID_compress_generic, MIGRAPH_COMPRESS, 200),
+    REGISTER_SELECTOR(ZL_StandardGraphID_select_generic_lz_backend, "!zl.select_generic_lz_backend", SI_selector_genericLZ, ZL_Type_serial, 200),
+    REGISTER_SEGMENTER(ZL_StandardGraphID_segment_numeric, SEGM_NUMERIC_DESC, 200),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_interpret_num8_compress,  "!zl.private.interpret_num8_compress",  ZL_Type_serial, ZL_StandardNodeID_convert_serial_to_num8,     _1_SUCCESSOR(ZL_PrivateStandardGraphID_numeric_compress), 200),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_interpret_num16_compress, "!zl.private.interpret_num16_compress", ZL_Type_serial, ZL_StandardNodeID_convert_serial_to_num_le16, _1_SUCCESSOR(ZL_PrivateStandardGraphID_numeric_compress), 200),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_interpret_num32_compress, "!zl.private.interpret_num32_compress", ZL_Type_serial, ZL_StandardNodeID_convert_serial_to_num_le32, _1_SUCCESSOR(ZL_PrivateStandardGraphID_numeric_compress), 200),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_interpret_num64_compress, "!zl.private.interpret_num64_compress", ZL_Type_serial, ZL_StandardNodeID_convert_serial_to_num_le64, _1_SUCCESSOR(ZL_PrivateStandardGraphID_numeric_compress), 200),
+    REGISTER_SEGMENTER(ZL_StandardGraphID_segment_num8_from_serial,  SEGM_NUM_FROM_SERIAL_DESC(1, 8,  ZL_PrivateStandardGraphID_interpret_num8_compress), 200),
+    REGISTER_SEGMENTER(ZL_StandardGraphID_segment_num16_from_serial, SEGM_NUM_FROM_SERIAL_DESC(2, 16, ZL_PrivateStandardGraphID_interpret_num16_compress), 200),
+    REGISTER_SEGMENTER(ZL_StandardGraphID_segment_num32_from_serial, SEGM_NUM_FROM_SERIAL_DESC(4, 32, ZL_PrivateStandardGraphID_interpret_num32_compress), 200),
+    REGISTER_SEGMENTER(ZL_StandardGraphID_segment_num64_from_serial, SEGM_NUM_FROM_SERIAL_DESC(8, 64, ZL_PrivateStandardGraphID_interpret_num64_compress), 200),
+    REGISTER_SEGMENTER(ZL_StandardGraphID_segment_serial, SEGM_SERIAL_DESC, 200),
+    REGISTER_SELECTOR(ZL_StandardGraphID_select_numeric, "!zl.select_numeric", SI_selector_numeric, ZL_Type_numeric, 200),
+    REGISTER_MIGRAPH(ZL_StandardGraphID_transformer_numeric, MIGRAPH_TRANSFORMER_NUMERIC, TRANSFORMER_NUMERIC_MIN_LIBRARY_VERSION),
+    REGISTER_MIGRAPH(ZL_StandardGraphID_clustering, MIGRAPH_CLUSTERING, 200),
+    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_simple_data_description_language, "!zl.sddl", ZL_Type_serial, ZL_SDDL_dynGraph, 200),
+    REGISTER_SEGMENTER(ZL_StandardGraphID_simple_data_description_language_v2, SEGM_SDDL2_DESC, 200),
+    REGISTER_MIGRAPH(ZL_StandardGraphID_try_parse_int, MIGRAPH_TRY_PARSE_INT, 200),
+    REGISTER_STATIC_GRAPH(ZL_StandardGraphID_lz4, "!zl.lz4", ZL_Type_serial, ZL_PrivateStandardNodeID_lz4, _1_SUCCESSOR(ZL_PrivateStandardGraphID_serial_store), 200),
+    REGISTER_DYNAMIC_GRAPH(ZL_StandardGraphID_partition_bitpack, "!zl.partition_bitpack", ZL_Type_numeric, EI_partitionBitpackDynGraph, 200),
+    REGISTER_DYNAMIC_GRAPH_WITH_MATERIALIZER(ZL_StandardGraphID_ml_selector,"!zl.ml_selector", ZL_Type_numeric, ZL_MLSel_dynGraph, ZL_MLSel_materialize, ZL_NOOP_DEMATERIALIZE, 203),
+    REGISTER_SELECTOR(ZL_StandardGraphID_brute_force, "!zl.brute_force", SI_selector_brute_force, ZL_Type_any, 205),
+    REGISTER_MIGRAPH(ZL_PrivateStandardGraphID_merge_sorted, MIGRAPH_MERGE_SORTED, 200),
+    REGISTER_MIGRAPH(ZL_PrivateStandardGraphID_transpose_split, MIGRAPH_TRANSPOSE_SPLIT, 200),
 
     // Private graphs
-    REGISTER_SELECTOR(ZL_PrivateStandardGraphID_store1, "!zl.private.store1", SI_selector_store, ZL_Type_any),
-    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_string_store, "!zl.private.string_store", ZL_Type_string, ZL_StandardNodeID_separate_string_components, _2_SUCCESSORS(ZL_PrivateStandardGraphID_serial_store, ZL_PrivateStandardGraphID_serial_store) ),
+    REGISTER_SELECTOR(ZL_PrivateStandardGraphID_store1, "!zl.private.store1", SI_selector_store, ZL_Type_any, 200),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_string_store, "!zl.private.string_store", ZL_Type_string, ZL_StandardNodeID_separate_string_components, _2_SUCCESSORS(ZL_PrivateStandardGraphID_serial_store, ZL_PrivateStandardGraphID_serial_store), 200 ),
 
-    REGISTER_SELECTOR(ZL_PrivateStandardGraphID_compress1, "!zl.private.compress2", SI_selector_compress, ZL_Type_any),
-    REGISTER_SELECTOR(ZL_PrivateStandardGraphID_serial_compress, "!zl.private.serial_compress", SI_selector_compress_serial, ZL_Type_serial),
-    REGISTER_SELECTOR(ZL_PrivateStandardGraphID_struct_compress, "!zl.private.struct_compress", SI_selector_compress_struct, ZL_Type_struct),
-    REGISTER_SELECTOR(ZL_PrivateStandardGraphID_numeric_compress, "!zl.private.numeric_compress", SI_selector_compress_numeric, ZL_Type_numeric),
-    REGISTER_SELECTOR(ZL_PrivateStandardGraphID_string_compress, "!zl.private.string_compress", SI_selector_compress_string, ZL_Type_string),
-    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_string_separate_compress, "!zl.private.string_separate_compress", ZL_Type_string, ZL_StandardNodeID_separate_string_components, _2_SUCCESSORS(ZL_PrivateStandardGraphID_serial_compress, ZL_PrivateStandardGraphID_numeric_compress) ),
+    REGISTER_SELECTOR(ZL_PrivateStandardGraphID_compress1, "!zl.private.compress2", SI_selector_compress, ZL_Type_any, 200),
+    REGISTER_SELECTOR(ZL_PrivateStandardGraphID_serial_compress, "!zl.private.serial_compress", SI_selector_compress_serial, ZL_Type_serial, 200),
+    REGISTER_SELECTOR(ZL_PrivateStandardGraphID_struct_compress, "!zl.private.struct_compress", SI_selector_compress_struct, ZL_Type_struct, 200),
+    REGISTER_SELECTOR(ZL_PrivateStandardGraphID_numeric_compress, "!zl.private.numeric_compress", SI_selector_compress_numeric, ZL_Type_numeric, 200),
+    REGISTER_SELECTOR(ZL_PrivateStandardGraphID_string_compress, "!zl.private.string_compress", SI_selector_compress_string, ZL_Type_string, 200),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_string_separate_compress, "!zl.private.string_separate_compress", ZL_Type_string, ZL_StandardNodeID_separate_string_components, _2_SUCCESSORS(ZL_PrivateStandardGraphID_serial_compress, ZL_PrivateStandardGraphID_numeric_compress), 200 ),
 
-    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_bitpack_serial, "!zl.private.bitpack_serial", ZL_Type_serial, ZL_PrivateStandardNodeID_bitpack_serial, _1_SUCCESSOR(ZL_PrivateStandardGraphID_serial_store) ),
-    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_bitpack_int, "!zl.private.bitpack_int", ZL_Type_numeric, ZL_PrivateStandardNodeID_bitpack_int, _1_SUCCESSOR(ZL_PrivateStandardGraphID_serial_store) ),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_bitpack_serial, "!zl.private.bitpack_serial", ZL_Type_serial, ZL_PrivateStandardNodeID_bitpack_serial, _1_SUCCESSOR(ZL_PrivateStandardGraphID_serial_store), 200 ),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_bitpack_int, "!zl.private.bitpack_int", ZL_Type_numeric, ZL_PrivateStandardNodeID_bitpack_int, _1_SUCCESSOR(ZL_PrivateStandardGraphID_serial_store), 200 ),
 
-    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_constant_serial, "!zl.private.constant_serial", ZL_Type_serial, ZL_PrivateStandardNodeID_constant_serial, _1_SUCCESSOR(ZL_PrivateStandardGraphID_serial_store) ),
-    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_constant_fixed, "!zl.private.constant_fixed", ZL_Type_struct, ZL_PrivateStandardNodeID_constant_fixed, _1_SUCCESSOR(ZL_PrivateStandardGraphID_serial_store) ),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_constant_serial, "!zl.private.constant_serial", ZL_Type_serial, ZL_PrivateStandardNodeID_constant_serial, _1_SUCCESSOR(ZL_PrivateStandardGraphID_serial_store), 200 ),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_constant_fixed, "!zl.private.constant_fixed", ZL_Type_struct, ZL_PrivateStandardNodeID_constant_fixed, _1_SUCCESSOR(ZL_PrivateStandardGraphID_serial_store), 200 ),
 
-    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_fse_ncount, "!zl.private.fse_ncount", ZL_Type_numeric, ZL_PrivateStandardNodeID_fse_ncount, _1_SUCCESSOR(ZL_PrivateStandardGraphID_serial_store) ),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_fse_ncount, "!zl.private.fse_ncount", ZL_Type_numeric, ZL_PrivateStandardNodeID_fse_ncount, _1_SUCCESSOR(ZL_PrivateStandardGraphID_serial_store), 200 ),
 
-    REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_field_lz_literals, "!zl.private.field_lz_literals", ZL_Type_struct, EI_fieldLzLiteralsDynGraph),
-    REGISTER_SELECTOR(ZL_PrivateStandardGraphID_field_lz_literals_channel, "!zl.private.field_lz_literals_channel", SI_fieldLzLiteralsChannelSelector, ZL_Type_serial),
+    REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_field_lz_literals, "!zl.private.field_lz_literals", ZL_Type_struct, EI_fieldLzLiteralsDynGraph, 200),
+    REGISTER_SELECTOR(ZL_PrivateStandardGraphID_field_lz_literals_channel, "!zl.private.field_lz_literals_channel", SI_fieldLzLiteralsChannelSelector, ZL_Type_serial, 200),
 
-    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_delta_huffman_internal, "!zl.private.delta_huffman_internal", ZL_Type_numeric, ZL_StandardNodeID_delta_int, _1_SUCCESSOR(ZL_StandardGraphID_huffman) ),
-    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_delta_flatpack_internal, "!zl.private.flatpack_internal", ZL_Type_numeric, ZL_StandardNodeID_delta_int, _1_SUCCESSOR(ZL_StandardGraphID_flatpack) ),
-    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_delta_zstd_internal, "!zl.private.zstd_internal", ZL_Type_numeric, ZL_StandardNodeID_delta_int, _1_SUCCESSOR(ZL_StandardGraphID_zstd) ),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_delta_huffman_internal, "!zl.private.delta_huffman_internal", ZL_Type_numeric, ZL_StandardNodeID_delta_int, _1_SUCCESSOR(ZL_StandardGraphID_huffman), 200 ),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_delta_flatpack_internal, "!zl.private.flatpack_internal", ZL_Type_numeric, ZL_StandardNodeID_delta_int, _1_SUCCESSOR(ZL_StandardGraphID_flatpack), 200 ),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_delta_zstd_internal, "!zl.private.zstd_internal", ZL_Type_numeric, ZL_StandardNodeID_delta_int, _1_SUCCESSOR(ZL_StandardGraphID_zstd), 200 ),
 
-    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_delta_huffman, "!zl.private.delta_huffman", ZL_Type_serial, ZL_StandardNodeID_convert_serial_to_num8, _1_SUCCESSOR(ZL_PrivateStandardGraphID_delta_huffman_internal) ),
-    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_delta_flatpack, "!zl.private.delta_flatpack", ZL_Type_serial, ZL_StandardNodeID_convert_serial_to_num8, _1_SUCCESSOR(ZL_PrivateStandardGraphID_delta_flatpack_internal) ),
-    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_delta_zstd, "!zl.private.delta_zstd", ZL_Type_serial, ZL_StandardNodeID_convert_serial_to_num8, _1_SUCCESSOR(ZL_PrivateStandardGraphID_delta_zstd_internal) ),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_delta_huffman, "!zl.private.delta_huffman", ZL_Type_serial, ZL_StandardNodeID_convert_serial_to_num8, _1_SUCCESSOR(ZL_PrivateStandardGraphID_delta_huffman_internal), 200 ),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_delta_flatpack, "!zl.private.delta_flatpack", ZL_Type_serial, ZL_StandardNodeID_convert_serial_to_num8, _1_SUCCESSOR(ZL_PrivateStandardGraphID_delta_flatpack_internal), 200 ),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_delta_zstd, "!zl.private.delta_zstd", ZL_Type_serial, ZL_StandardNodeID_convert_serial_to_num8, _1_SUCCESSOR(ZL_PrivateStandardGraphID_delta_zstd_internal), 200 ),
 
-    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_delta_field_lz, "!zl.private.delta_field_lz", ZL_Type_numeric, ZL_StandardNodeID_delta_int, _1_SUCCESSOR(ZL_StandardGraphID_field_lz) ),
-    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_range_pack, "!zl.private.range_pack", ZL_Type_numeric, ZL_StandardNodeID_range_pack, _1_SUCCESSOR(ZL_StandardGraphID_field_lz) ),
-    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_range_pack_zstd, "!zl.private.range_pack_zstd", ZL_Type_numeric, ZL_StandardNodeID_range_pack, _1_SUCCESSOR(ZL_StandardGraphID_zstd) ),
-    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_tokenize_delta_field_lz, "!zl.private.tokenize_delta_field_lz", ZL_Type_numeric, ZL_PrivateStandardNodeID_tokenize_sorted, _2_SUCCESSORS(ZL_PrivateStandardGraphID_delta_field_lz, ZL_StandardGraphID_field_lz) ),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_delta_field_lz, "!zl.private.delta_field_lz", ZL_Type_numeric, ZL_StandardNodeID_delta_int, _1_SUCCESSOR(ZL_StandardGraphID_field_lz), 200 ),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_range_pack, "!zl.private.range_pack", ZL_Type_numeric, ZL_StandardNodeID_range_pack, _1_SUCCESSOR(ZL_StandardGraphID_field_lz), 200 ),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_range_pack_zstd, "!zl.private.range_pack_zstd", ZL_Type_numeric, ZL_StandardNodeID_range_pack, _1_SUCCESSOR(ZL_StandardGraphID_zstd), 200 ),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_tokenize_delta_field_lz, "!zl.private.tokenize_delta_field_lz", ZL_Type_numeric, ZL_PrivateStandardNodeID_tokenize_sorted, _2_SUCCESSORS(ZL_PrivateStandardGraphID_delta_field_lz, ZL_StandardGraphID_field_lz), 200 ),
 
-    REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_split_serial, "!zl.private.split_serial", ZL_Type_serial, ZL_splitFnGraph),
-    REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_split_struct, "!zl.private.split_struct", ZL_Type_struct, ZL_splitFnGraph),
-    REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_split_numeric, "!zl.private.split_numeric", ZL_Type_numeric, ZL_splitFnGraph),
-    REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_split_string, "!zl.private.split_string", ZL_Type_string, ZL_splitFnGraph),
-    REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_sddl2_chunk, "!zl.private.sddl2_chunk", ZL_Type_serial, SDDL2_replayChunk),
+    REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_split_serial, "!zl.private.split_serial", ZL_Type_serial, ZL_splitFnGraph, 200),
+    REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_split_struct, "!zl.private.split_struct", ZL_Type_struct, ZL_splitFnGraph, 200),
+    REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_split_numeric, "!zl.private.split_numeric", ZL_Type_numeric, ZL_splitFnGraph, 200),
+    REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_split_string, "!zl.private.split_string", ZL_Type_string, ZL_splitFnGraph, 200),
+    REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_sddl2_chunk, "!zl.private.sddl2_chunk", ZL_Type_serial, SDDL2_replayChunk, 200),
 
-    REGISTER_MIGRAPH(ZL_PrivateStandardGraphID_n_to_n, MIGRAPH_N_TO_N),
+    REGISTER_MIGRAPH(ZL_PrivateStandardGraphID_n_to_n, MIGRAPH_N_TO_N, 200),
     
-    REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_compress_small_lengths, "!zl.compress_small_lengths", ZL_Type_numeric, ZL_compressSmallLengthsGraph),
+    REGISTER_DYNAMIC_GRAPH(ZL_PrivateStandardGraphID_compress_small_lengths, "!zl.compress_small_lengths", ZL_Type_numeric, ZL_compressSmallLengthsGraph, 200),
+
+    /*
+     * Model-selected transform wrappers re-enter the Transformer selector so
+     * the model can build transform chains; selector_numeric.c bounds that
+     * recursion.
+     * The static fallback family may re-enter its core selector after a
+     * transform, but static_core_select.c applies a separate depth ceiling.
+     * It never re-enters the model selector.
+     * Each composition has its own ID because selectors return registered
+     * graphs rather than parameterized graph descriptors.
+     */
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_transformer_delta_int, "!zl.private.transformer_delta_int", ZL_Type_numeric, ZL_StandardNodeID_delta_int, _1_SUCCESSOR(ZL_PrivateStandardGraphID_transformer_numeric1), TRANSFORMER_NUMERIC_MIN_LIBRARY_VERSION),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_transformer_range_pack, "!zl.private.transformer_range_pack", ZL_Type_numeric, ZL_StandardNodeID_range_pack, _1_SUCCESSOR(ZL_PrivateStandardGraphID_transformer_numeric1), TRANSFORMER_NUMERIC_MIN_LIBRARY_VERSION),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_transformer_divide_by_gcd, "!zl.private.transformer_divide_by_gcd", ZL_Type_numeric, ZL_StandardNodeID_divide_by, _1_SUCCESSOR(ZL_PrivateStandardGraphID_transformer_numeric1), TRANSFORMER_NUMERIC_MIN_LIBRARY_VERSION),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_transformer_tokenize_numeric, "!zl.private.transformer_tokenize_numeric", ZL_Type_numeric, ZL_StandardNodeID_tokenize_numeric, _2_SUCCESSORS(ZL_PrivateStandardGraphID_transformer_numeric1, ZL_PrivateStandardGraphID_transformer_numeric1), TRANSFORMER_NUMERIC_MIN_LIBRARY_VERSION),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_transformer_tokenize_numeric_sorted, "!zl.private.transformer_tokenize_numeric_sorted", ZL_Type_numeric, ZL_PrivateStandardNodeID_tokenize_sorted, _2_SUCCESSORS(ZL_PrivateStandardGraphID_transformer_numeric1, ZL_PrivateStandardGraphID_transformer_numeric1), TRANSFORMER_NUMERIC_MIN_LIBRARY_VERSION),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_transformer_sparse_num, "!zl.private.transformer_sparse_num", ZL_Type_numeric, ZL_StandardNodeID_sparse_num, _2_SUCCESSORS(ZL_PrivateStandardGraphID_transformer_numeric1, ZL_PrivateStandardGraphID_transformer_numeric1), TRANSFORMER_NUMERIC_MIN_LIBRARY_VERSION),
+
+    REGISTER_SELECTOR(ZL_PrivateStandardGraphID_transformer_static_core, "!zl.private.transformer_static_core", SI_transformer_static_core_select, ZL_Type_numeric, TRANSFORMER_NUMERIC_MIN_LIBRARY_VERSION),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_transformer_static_delta, "!zl.private.transformer_static_delta", ZL_Type_numeric, ZL_StandardNodeID_delta_int, _1_SUCCESSOR(ZL_PrivateStandardGraphID_transformer_static_core), TRANSFORMER_NUMERIC_MIN_LIBRARY_VERSION),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_transformer_static_range_pack, "!zl.private.transformer_static_range_pack", ZL_Type_numeric, ZL_StandardNodeID_range_pack, _1_SUCCESSOR(ZL_PrivateStandardGraphID_transformer_static_core), TRANSFORMER_NUMERIC_MIN_LIBRARY_VERSION),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_transformer_static_range_pack_delta, "!zl.private.transformer_static_range_pack_delta", ZL_Type_numeric, ZL_StandardNodeID_range_pack, _1_SUCCESSOR(ZL_PrivateStandardGraphID_transformer_static_delta), TRANSFORMER_NUMERIC_MIN_LIBRARY_VERSION),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_transformer_static_zigzag, "!zl.private.transformer_static_zigzag", ZL_Type_numeric, ZL_StandardNodeID_zigzag, _1_SUCCESSOR(ZL_PrivateStandardGraphID_transformer_static_core), TRANSFORMER_NUMERIC_MIN_LIBRARY_VERSION),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_transformer_static_gcd, "!zl.private.transformer_static_gcd", ZL_Type_numeric, ZL_StandardNodeID_divide_by, _1_SUCCESSOR(ZL_PrivateStandardGraphID_transformer_static_range_pack), TRANSFORMER_NUMERIC_MIN_LIBRARY_VERSION),
+    REGISTER_SELECTOR(ZL_PrivateStandardGraphID_transformer_static_index, "!zl.private.transformer_static_index", SI_transformer_static_index_select, ZL_Type_numeric, TRANSFORMER_NUMERIC_MIN_LIBRARY_VERSION),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_transformer_static_tok_sorted, "!zl.private.transformer_static_tok_sorted", ZL_Type_numeric, ZL_PrivateStandardNodeID_tokenize_sorted, _2_SUCCESSORS(ZL_PrivateStandardGraphID_transformer_static_delta, ZL_PrivateStandardGraphID_transformer_static_index), TRANSFORMER_NUMERIC_MIN_LIBRARY_VERSION),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_transformer_static_delta_tok, "!zl.private.transformer_static_delta_tok", ZL_Type_numeric, ZL_StandardNodeID_delta_int, _1_SUCCESSOR(ZL_PrivateStandardGraphID_transformer_static_tok_sorted), TRANSFORMER_NUMERIC_MIN_LIBRARY_VERSION),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_transformer_static_tok_mono, "!zl.private.transformer_static_tok_mono", ZL_Type_numeric, ZL_PrivateStandardNodeID_tokenize_sorted, _2_SUCCESSORS(ZL_StandardGraphID_zstd, ZL_StandardGraphID_entropy), TRANSFORMER_NUMERIC_MIN_LIBRARY_VERSION),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_transformer_static_delta_tok_mono, "!zl.private.transformer_static_delta_tok_mono", ZL_Type_numeric, ZL_StandardNodeID_delta_int, _1_SUCCESSOR(ZL_PrivateStandardGraphID_transformer_static_tok_mono), TRANSFORMER_NUMERIC_MIN_LIBRARY_VERSION),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_transformer_static_tok_mono_lz, "!zl.private.transformer_static_tok_mono_lz", ZL_Type_numeric, ZL_PrivateStandardNodeID_tokenize_sorted, _2_SUCCESSORS(ZL_StandardGraphID_zstd, ZL_StandardGraphID_zstd), TRANSFORMER_NUMERIC_MIN_LIBRARY_VERSION),
+    REGISTER_STATIC_GRAPH(ZL_PrivateStandardGraphID_transformer_static_delta_tok_mono_lz, "!zl.private.transformer_static_delta_tok_mono_lz", ZL_Type_numeric, ZL_StandardNodeID_delta_int, _1_SUCCESSOR(ZL_PrivateStandardGraphID_transformer_static_tok_mono_lz), TRANSFORMER_NUMERIC_MIN_LIBRARY_VERSION),
+    REGISTER_SELECTOR(ZL_PrivateStandardGraphID_transformer_static_fallback, "!zl.private.transformer_static_fallback", SI_transformer_static_fallback_select, ZL_Type_numeric, TRANSFORMER_NUMERIC_MIN_LIBRARY_VERSION),
+    REGISTER_SELECTOR(ZL_PrivateStandardGraphID_transformer_numeric1, "!zl.private.transformer_numeric1", SI_transformer_numeric_select, ZL_Type_numeric, TRANSFORMER_NUMERIC_MIN_LIBRARY_VERSION),
 };
 // clang-format on
 

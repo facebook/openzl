@@ -329,6 +329,22 @@ ZL_Report ZL_Compressor_Node_getDictIndex(
         ZL_NodeID node);
 
 /**
+ * @returns The minimum library version to deserialize a compressor containing
+ * this node, or an error if the node is not a valid standard node.
+ */
+ZL_Report ZL_Compressor_Node_getMinLibraryVersion(
+        const ZL_Compressor* compressor,
+        ZL_NodeID node);
+
+/**
+ * @returns The minimum library version to deserialize a compressor containing
+ * this standard graph, or an error if the graph ID is out of bounds.
+ */
+ZL_Report ZL_Compressor_Graph_getMinLibraryVersion(
+        const ZL_Compressor* compressor,
+        ZL_GraphID gid);
+
+/**
  * @returns The MParam ID associated with the @p node or ZL_MPARAM_ID_NULL if no
  * MParam is associated.
  */
@@ -351,6 +367,22 @@ const ZL_MParam* ZL_Compressor_Node_getMParam(
 const void* ZL_Compressor_Node_getMParamObj(
         ZL_Compressor const* cgraph,
         ZL_NodeID node);
+
+/**
+ * @returns A pointer to the *unmaterialized* MParam associated with the @p
+ * graph, or NULL if no MParam is associated.
+ */
+const ZL_MParam* ZL_Compressor_Graph_getMParam(
+        ZL_Compressor const* cgraph,
+        ZL_GraphID graph);
+
+/**
+ * @returns The *materialized* Mparam object associated with the @p graph or
+ * NULL if no MParam is associated.
+ */
+const void* ZL_Compressor_Graph_getMParamObj(
+        ZL_Compressor const* cgraph,
+        ZL_GraphID graph);
 
 /**
  * @returns The number of unique MParam blobs stored in the @p compressor.

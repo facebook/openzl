@@ -10,7 +10,7 @@
 ZL_BEGIN_C_DECLS
 
 /// Need at least this many elements
-#define ZL_MUX_LONG_SLOP_ELTS 16
+#define ZL_MUX_LONG_SLOP_ELTS 128
 
 /// Encode literal lengths and match lengths into muxed bytes with overflow.
 ///

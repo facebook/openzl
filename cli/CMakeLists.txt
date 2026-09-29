@@ -10,7 +10,7 @@ add_subdirectory(args)
 add_subdirectory(commands)
 add_subdirectory(utils)
 
-if (BUILD_TESTS)
+if (OPENZL_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 
@@ -36,7 +36,10 @@ add_dependencies(zli
     commands
     utils
     logger
-    xgboost_external
 )
+
+if(TARGET xgboost_external)
+    add_dependencies(zli xgboost_external)
+endif()
 
 apply_openzl_compile_options_to_target(zli)

@@ -75,7 +75,7 @@ ifndef SKIP_BUILDDEPS_CHECK
   endif
 
   # Check if xgboost headers are being built
-  XGBOOST_TARGETS := zli gtests test all cli_test
+  XGBOOST_TARGETS := zli gtests test all test-cli
   BUILDING_XGBOOST_TARGETS := $(filter $(XGBOOST_TARGETS),$(MAKECMDGOALS))
   ifeq ($(MAKECMDGOALS),)
     # If no targets are specified, assume we're building everything
@@ -153,15 +153,15 @@ ML_SELECTOR_CXXOBJS := $(call cxx_objs,$(ML_SELECTOR_DIR))
 # ML selector files depend on xgboost headers
 $(ML_SELECTOR_COBJS) $(ML_SELECTOR_CXXOBJS): | $(XGBOOST_HEADER)
 
-XGBOOST_INCLUDE_PATHS := -Ideps/xgboost/include -Ideps/xgboost/dmlc-core/include # xgboost headers
+ML_SELECTOR_CPPFLAGS := -Ideps/xgboost/include -Ideps/xgboost/dmlc-core/include -DDMLC_LOG_STACK_TRACE=0 -DOPENZL_HAS_ML_SELECTOR_TRAINER=1
 
 # Add flags for cross platform compatibility for Windows
 zli: LDFLAGS += $(XGBOOST_LDFLAGS)
-zli: CPPFLAGS += $(XGBOOST_INCLUDE_PATHS)
+zli: CPPFLAGS += $(ML_SELECTOR_CPPFLAGS) -DZDICT_STATIC_LINKING_ONLY
 zli: LDLIBS += $(XGBOOST_LDLIBS)
 
 gtests: LDFLAGS += $(XGBOOST_LDFLAGS)
-gtests: CPPFLAGS += $(XGBOOST_INCLUDE_PATHS)
+gtests: CPPFLAGS += $(ML_SELECTOR_CPPFLAGS) -DZDICT_STATIC_LINKING_ONLY
 gtests: LDLIBS += $(XGBOOST_LDLIBS)
 
 $(eval $(call cxx_program,zli, \
@@ -193,7 +193,7 @@ $(eval $(call cxx_program,zli, \
 examples: zs2_pipeline zs2_trygraph zs2_selector zs2_struct zs2_round_trip
 
 .PHONY: test
-test : gtests zs2_test
+test : gtests test-zs2 test-cli
 	$(EXEC_PREFIX) ./gtests
 
 # Python bindings for openzl.ext module (required for ML tests)
@@ -202,9 +202,17 @@ python-bindings:
 	@echo "Building and installing openzl Python bindings..."
 	pip install --quiet py/
 
-.PHONY: cli_test
-cli_test: zli python-bindings
+.PHONY: test-cli
+test-cli: zli
 	cd cli/tests && python3 cli_integration_tests.py ../../zli
+
+.PHONY: test-train
+test-train: zli
+	cd cli/tests && python3 cli_train_tests.py ../../zli
+
+.PHONY: test-formats
+test-formats: zli
+	cd cli/tests && python3 cli_formats_tests.py ../../zli
 
 .PHONY: check-python-format
 check-python-format:
@@ -214,8 +222,8 @@ check-python-format:
 fix-python-format:
 	@./scripts/check_python_format.sh --fix
 
-.PHONY: zs2_test
-zs2_test : examples
+.PHONY: test-zs2
+test-zs2 : examples
 	$(EXEC_PREFIX) ./zs2_pipeline
 	$(EXEC_PREFIX) ./zs2_trygraph
 
@@ -242,7 +250,7 @@ GTEST_FILEO += $(filter %Test.o,$(CXX_FILE_OBJS))
 GTEST_FILTER_LIST := VersionTest.o NoIntrospectionTest.o
 GTEST_FILEO := $(filter-out $(GTEST_FILTER_LIST),$(GTEST_FILEO))
 
-ALL_TEST_OBJS := $(patsubst %.cpp,%.o,$(foreach dir,$(TESTSDIRS) $(ML_SELECTOR_TESTS_DIR),$(wildcard $(dir)/*.cpp)))
+ALL_TEST_OBJS := $(patsubst %.cpp,%.o,$(foreach dir,$(TESTSDIRS) $(CLI_TEST_DIRS) $(ML_SELECTOR_TESTS_DIR),$(wildcard $(dir)/*.cpp)))
 GTEST_OBJS := $(foreach name,$(GTEST_FILEO),$(filter %/$(name),$(ALL_TEST_OBJS)))
 
 # Other module objects used in gtests
@@ -256,7 +264,6 @@ SERIALIZATION_TEST_OBJS := \
 	tests/serialization/GraphBuilderUtils.o
 TEST_REGISTRY_SRCS = $(wildcard $(addsuffix /*.cpp, $(TEST_REGISTRY_DIRS)))
 TEST_REGISTRY_OBJS = $(patsubst %.cpp,%.o,$(TEST_REGISTRY_SRCS))
-CLI_TEST_OBJS := $(filter-out %/test_%.o test_%.o,$(foreach DIR,$(CLI_TEST_DIRS),$(call cxx_objs,$(DIR))))
 ZLCPP_TEST_OBJS := $(call cxx_objs,$(ZLCPP_TEST_DIR))
 
 ALL_GTESTS_OBJS := \
@@ -271,7 +278,6 @@ ALL_GTESTS_OBJS := \
 	$(GTEST_OBJS) \
 	$(ZLCPP_TEST_OBJS) \
 	$(CLI_CXXOBJS) \
-	$(CLI_TEST_OBJS) \
 	$(ARG_CXXOBJS) \
 	$(LOGGER_CXXOBJS) \
 	$(CUSTOM_PARSERS_COBJS) \

@@ -94,15 +94,12 @@ ZL_GraphID SI_selector_compress_numeric(
         const ZL_GraphID* customGraphs,
         size_t nbCustomGraphs)
 {
+    /* Preserve the private numeric-compress graph as a compatibility shim. */
     ZL_ASSERT_EQ(ZL_Input_type(inputStream), ZL_Type_numeric);
     (void)selCtx;
     (void)customGraphs;
     (void)nbCustomGraphs;
-    // There is no generic graph for numeric streams yet.
-    // This will likely evolve in the future.
-    // For the time being, defer to Fixed-size fields,
-    // which will likely employ FieldLZ.
-    return ZL_GRAPH_STRUCT_COMPRESS;
+    return ZL_GRAPH_NUMERIC;
 }
 
 ZL_GraphID SI_selector_compress_string(

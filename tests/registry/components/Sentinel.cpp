@@ -98,6 +98,9 @@ class SentinelNumComponent : public OpenZLComponent {
             uint64_t& sentinel) const
     {
         auto node = ZL_Compressor_Graph_getHeadNode(compressor.get(), graphID);
+        if (node == ZL_NODE_ILLEGAL) {
+            throw std::runtime_error("Invalid graph ID");
+        }
         auto localParams =
                 ZL_Compressor_Node_getLocalParams(compressor.get(), node);
 
@@ -109,7 +112,9 @@ class SentinelNumComponent : public OpenZLComponent {
                 auto* data   = static_cast<const size_t*>(cp.paramPtr);
                 size_t count = cp.paramSize / sizeof(size_t);
                 indices.assign(data, data + count);
-            } else if (cp.paramId == ZL_SENTINEL_VALUE_PID) {
+            } else if (
+                    cp.paramId == ZL_SENTINEL_VALUE_PID
+                    && cp.paramSize == sizeof(uint64_t)) {
                 sentinel = *static_cast<const uint64_t*>(cp.paramPtr);
             }
         }

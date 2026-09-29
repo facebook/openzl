@@ -5,6 +5,24 @@
 namespace openzl::sddl2::tests {
 namespace {
 class SemanticAnalyzerTest : public CompilerTest {};
+
+const ASTRecord* find_record(const ASTVec& ast, const std::string& name)
+{
+    for (const auto& node : ast) {
+        auto op = node->as_op();
+        if (!op || (op->op() != Op::ASSIGN && op->op() != Op::ASSUME)) {
+            continue;
+        }
+        auto var = op->args()[0]->as_var();
+        if (!var || var->name() != name) {
+            continue;
+        }
+        if (auto rec = op->args()[1]->as_record()) {
+            return rec;
+        }
+    }
+    return nullptr;
+}
 } // namespace
 
 TEST_F(SemanticAnalyzerTest, UndefinedVar)
@@ -330,7 +348,8 @@ TEST_F(SemanticAnalyzerTest, WhenBlockInRecordWithFieldReference)
         : Data
     )";
 
-    expect_error(prog, "Undefined variable");
+    // TODO: code generation should succeed
+    expect_error(prog, "Scan records are not yet supported.");
 }
 
 TEST_F(SemanticAnalyzerTest, AbsFieldType)
@@ -339,6 +358,13 @@ TEST_F(SemanticAnalyzerTest, AbsFieldType)
         tmp = abs(Int32LE)
     )";
     expect_error(prog, "numeric");
+}
+
+TEST_F(SemanticAnalyzerTest, BetweenFieldType)
+{
+    expect_error("tmp = between(Int32LE, 0, 10)\n", "numeric");
+    expect_error("tmp = between(0, Int32LE, 10)\n", "numeric");
+    expect_error("tmp = between(0, 5, Int32LE)\n", "numeric");
 }
 
 TEST_F(SemanticAnalyzerTest, MemberAccessOnConditionalField)
@@ -369,6 +395,51 @@ TEST_F(SemanticAnalyzerTest, MemberAccessOnNonConditionalField)
     )";
 
     expect_success(prog);
+}
+
+TEST_F(SemanticAnalyzerTest, MemberAccessOnScanRecord)
+{
+    const auto prog = R"(
+        record Data() {
+            n: Int32LE,
+            data: Bytes(n + 1)
+        }
+        d: Data
+        expect d.n == 0
+    )";
+    expect_error(prog, "Member access not supported on scan records");
+}
+
+TEST_F(SemanticAnalyzerTest, MemberAccessOnFieldConditionalScanRecord)
+{
+    const auto prog = R"(
+        record Data() {
+            flags: UInt8,
+            when flags == 1 {
+                optional: Int32LE
+            }
+        }
+        d: Data
+        expect d.flags == 0
+    )";
+    expect_error(prog, "Member access not supported on scan records");
+}
+
+TEST_F(SemanticAnalyzerTest, MemberAccessOnNestedScanRecord)
+{
+    const auto prog = R"(
+        record Inner() {
+            n: Int32LE,
+            data: Bytes(n)
+        }
+        record Outer() {
+            head: Int32LE,
+            inner: Inner
+        }
+        o: Outer
+        expect o.head == 0
+    )";
+    expect_error(prog, "Member access not supported on scan records");
 }
 
 TEST_F(SemanticAnalyzerTest, AutoSizedArrayAsLastExpression)
@@ -433,5 +504,248 @@ TEST_F(SemanticAnalyzerTest, ConsumeAfterWhenBlockWithAutoSizedArray)
         : Int32LE
     )";
     expect_error(prog, "Auto-sized array must be last statement");
+}
+
+// ---------------------------------------------------------------------------
+// requires_scan classification
+// ---------------------------------------------------------------------------
+
+TEST_F(SemanticAnalyzerTest, InstantParseSimple)
+{
+    const auto prog = R"(
+        record Foo() {
+            x: Int32LE,
+            y: Int16LE
+        }
+    )";
+    auto ast        = compiler_->compile_ast(prog, "[local_input]");
+    EXPECT_FALSE(find_record(ast, "Foo")->inferred_annotations().requires_scan);
+}
+
+TEST_F(SemanticAnalyzerTest, InstantParseWithParam)
+{
+    const auto prog = R"(
+        record Foo(N) {
+            data: Bytes(N)
+        }
+    )";
+    auto ast        = compiler_->compile_ast(prog, "[local_input]");
+    EXPECT_FALSE(find_record(ast, "Foo")->inferred_annotations().requires_scan);
+}
+
+TEST_F(SemanticAnalyzerTest, ScanSimple)
+{
+    const auto prog = R"(
+        record Foo() {
+            n: Int32LE,
+            data: Bytes(n + 1)
+        }
+    )";
+    auto ast        = compiler_->compile_ast(prog, "[local_input]");
+    EXPECT_TRUE(find_record(ast, "Foo")->inferred_annotations().requires_scan);
+}
+
+TEST_F(SemanticAnalyzerTest, RequiresScanConditional)
+{
+    const auto prog = R"(
+        record Foo() {
+            flags: UInt8,
+            when flags == 1 {
+                optional: UInt16LE
+            }
+        }
+    )";
+    auto ast        = compiler_->compile_ast(prog, "[local_input]");
+    EXPECT_TRUE(find_record(ast, "Foo")->inferred_annotations().requires_scan);
+}
+
+TEST_F(SemanticAnalyzerTest, RequiresScanNested)
+{
+    const auto prog = R"(
+        record Inner() {
+            n: Int32LE,
+            data: Bytes(n)
+        }
+        record Outer() {
+            inner: Inner[5]
+        }
+    )";
+    auto ast        = compiler_->compile_ast(prog, "[local_input]");
+    EXPECT_TRUE(
+            find_record(ast, "Inner")->inferred_annotations().requires_scan);
+    EXPECT_TRUE(
+            find_record(ast, "Outer")->inferred_annotations().requires_scan);
+}
+
+TEST_F(SemanticAnalyzerTest, RequiresScanNestedConditional)
+{
+    const auto prog = R"(
+        record Inner() {
+            n: Int32LE,
+            data: Bytes(n)
+        }
+        record Outer(flags) {
+            when flags == 1 {
+                inner: Inner[5]
+            }
+        }
+        flags: UInt8
+    )";
+    auto ast        = compiler_->compile_ast(prog, "[local_input]");
+    EXPECT_TRUE(
+            find_record(ast, "Inner")->inferred_annotations().requires_scan);
+    EXPECT_TRUE(
+            find_record(ast, "Outer")->inferred_annotations().requires_scan);
+}
+
+TEST_F(SemanticAnalyzerTest, RequiresScanOuter)
+{
+    const auto prog = R"(
+        record Inner(N) {
+            head: Int32LE,
+            data: Bytes(N)
+        }
+        record Outer() {
+            n: Int32LE,
+            inner: Inner(n)
+        }
+    )";
+    auto ast        = compiler_->compile_ast(prog, "[local_input]");
+    EXPECT_TRUE(
+            find_record(ast, "Outer")->inferred_annotations().requires_scan);
+    EXPECT_FALSE(
+            find_record(ast, "Inner")->inferred_annotations().requires_scan);
+}
+
+TEST_F(SemanticAnalyzerTest, TypeCheckReferencedFields)
+{
+    const auto prog = R"(
+        record Inner(N) {
+            head: Int32LE,
+            data: Bytes(N)
+        }
+        record Outer() {
+            inner: Inner(5),
+            when inner == 1 {
+                n: Int32LE
+            }
+        }
+    )";
+    expect_error(prog, "numeric");
+}
+
+// ---------------------------------------------------------------------------
+// Grammar annotations (@name)
+// ---------------------------------------------------------------------------
+
+TEST_F(SemanticAnalyzerTest, GrammarAnnotationAttached)
+{
+    const auto prog = R"(
+        record Foo() {
+            x: Int32LE
+        } @some_annotation
+    )";
+    auto ast        = compiler_->compile_ast(prog, "[local_input]");
+    const auto* foo = find_record(ast, "Foo");
+    EXPECT_TRUE(foo->annotations().has("some_annotation"));
+}
+
+TEST_F(SemanticAnalyzerTest, MultipleGrammarAnnotationsOnOneRecord)
+{
+    const auto prog = R"(
+        record Foo() {
+            x: Int32LE
+        } @first @second
+    )";
+    auto ast        = compiler_->compile_ast(prog, "[local_input]");
+    const auto* foo = find_record(ast, "Foo");
+    EXPECT_TRUE(foo->annotations().has("first"));
+    EXPECT_TRUE(foo->annotations().has("second"));
+}
+
+TEST_F(SemanticAnalyzerTest, GrammarAnnotationOnAnonymousRecord)
+{
+    const auto prog = R"(
+        entry: record() { id: Int32LE } @some_annotation
+        expect entry.id == 0
+    )";
+    expect_success(prog);
+}
+
+// ---------------------------------------------------------------------------
+// @instant_parse annotation
+// ---------------------------------------------------------------------------
+
+TEST_F(SemanticAnalyzerTest, InstantParseAnnotationAccepted)
+{
+    const auto prog = R"(
+        record Foo() {
+            x: Int32LE,
+            y: Int16LE
+        } @instant_parse
+    )";
+    expect_success(prog);
+}
+
+TEST_F(SemanticAnalyzerTest, InstantParseAnnotationConditionalOnParamAccepted)
+{
+    const auto prog = R"(
+        record Foo(flag) {
+            x: Int32LE,
+            when flag == 1 {
+                y: UInt16LE
+            }
+        } @instant_parse
+    )";
+    expect_success(prog);
+}
+
+TEST_F(SemanticAnalyzerTest, InstantParseAnnotationRejectsScanRecord)
+{
+    const auto prog = R"(
+        record Foo() {
+            n: Int32LE,
+            data: Bytes(n)
+        } @instant_parse
+    )";
+    expect_error(prog, "not instant-parse");
+}
+
+TEST_F(SemanticAnalyzerTest, InstantParseAnnotationRejectsConditionalScan)
+{
+    const auto prog = R"(
+        record Foo() {
+            flags: UInt8,
+            when flags == 1 {
+                optional: UInt16LE
+            }
+        } @instant_parse
+    )";
+    expect_error(prog, "not instant-parse");
+}
+
+TEST_F(SemanticAnalyzerTest, InstantParseAnnotationRejectsTransitiveScan)
+{
+    const auto prog = R"(
+        record Inner() {
+            n: Int32LE,
+            data: Bytes(n)
+        }
+        record Outer() {
+            inner: Inner[5]
+        } @instant_parse
+    )";
+    expect_error(prog, "not instant-parse");
+}
+
+TEST_F(SemanticAnalyzerTest, InstantParseAnnotationOnAnonymousScanRecord)
+{
+    const auto prog = R"(
+        : record() {
+            n: Int32LE,
+            data: Bytes(n)
+        } @instant_parse
+    )";
+    expect_error(prog, "not instant-parse");
 }
 } // namespace openzl::sddl2::tests

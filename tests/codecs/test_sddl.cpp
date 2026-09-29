@@ -6,6 +6,7 @@
 
 #include "openzl/compress/graphs/sddl/simple_data_description_language.h"
 #include "openzl/compress/graphs/sddl/simple_data_description_language_source_code.h"
+#include "openzl/zl_portability.h"
 
 #include "openzl/zl_reflection.h"
 
@@ -62,7 +63,9 @@ std::string iota(size_t len)
     return ret;
 }
 
-std::ostream& operator<<(std::ostream& os, const ZL_SDDL_Instructions& instrs)
+ZL_UNUSED_ATTR std::ostream& operator<<(
+        std::ostream& os,
+        const ZL_SDDL_Instructions& instrs)
 {
     static const std::map<ZL_Type, const char*> zl_type_names{
         { ZL_Type_serial, "ZL_Type_serial" },

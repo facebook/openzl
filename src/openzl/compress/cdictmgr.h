@@ -34,7 +34,7 @@ typedef const ZL_Dict* CDictMgr_DictPtr;
 
 typedef struct {
     ZL_UniqueID id;
-    ZL_MaterializerDesc2 matDesc;
+    ZL_MaterializerDesc matDesc;
 } CDictMgr_DictKey;
 
 size_t CDictMgr_DictMap_hash(const CDictMgr_DictKey* key);
@@ -123,7 +123,7 @@ CDictMgr_loadDict(
 const ZL_Dict* CDictMgr_findDict(
         const CDictMgr* mgr,
         const ZL_DictID* id,
-        const ZL_MaterializerDesc2* matDesc);
+        const ZL_MaterializerDesc* matDesc);
 
 /**
  * Should be called before CDictMgr_loadFatBundle() if the loaded bundle's ID is
@@ -160,7 +160,7 @@ ZL_RESULT_OF(ZL_ConstVoidPtr)
 CDictMgr_materializeMParam(
         CDictMgr* mgr,
         ZL_MParam mparam,
-        const ZL_MaterializerDesc2* matDesc);
+        const ZL_MaterializerDesc* matDesc);
 
 ZL_END_C_DECLS
 

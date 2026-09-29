@@ -12,13 +12,17 @@ cpp_library(
     srcs = glob([
         "src/**/*.cpp",
     ]),
-    headers = public_headers(glob([
-        "include/**/*.hpp",
-    ])),
+    headers = public_headers(
+        glob([
+            "include/**/*.hpp",
+        ])
+    ),
     header_namespace = "",
-    private_headers = private_headers(glob([
-        "src/**/*.hpp",
-    ])),
+    private_headers = private_headers(
+        glob([
+            "src/**/*.hpp",
+        ])
+    ),
     exported_deps = [
         "..:zstronglib",
     ],

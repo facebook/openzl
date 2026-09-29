@@ -4,9 +4,11 @@
 
 #include <memory>
 #include <sstream>
+#include <string>
 
 #include "custom_parsers/dependency_registration.h"
 #include "openzl/cpp/Compressor.hpp"
+#include "openzl/zl_version.h"
 
 #include "tools/io/InputSetBuilder.h"
 #include "tools/io/OutputFile.h"
@@ -84,6 +86,17 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
                 "Skip clustering during training.");
         parser.addCommandFlag(
                 cmd(),
+                kDictBundleOutput,
+                'O',
+                true,
+                "Path to write the trained dictionary bundle (.zd) to. Providing "
+                "this flag opts in to dictionary training: the trained compressor "
+                "will reference dictionaries stored in this bundle. Without it, no "
+                "dictionary is trained and a standalone compressor is produced. "
+                "With --pareto-frontier this is treated as a directory, one "
+                "<i>.zd per candidate.");
+        parser.addCommandFlag(
+                cmd(),
                 kMaxTimeSecs,
                 0,
                 true,
@@ -114,6 +127,19 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
                 0,
                 false,
                 "Save the ACE state as a local parameter in the trained compressor.");
+        parser.addCommandFlag(
+                cmd(),
+                kFormatVersion,
+                0,
+                true,
+                "Target format version for training. If not provided, defaults "
+                "to the maximum supported format version.");
+        parser.addCommandFlag(
+                cmd(),
+                kMaxNumCandidates,
+                0,
+                true,
+                "Maximum number of trained candidates to produce when --pareto-frontier is set");
     }
 
     explicit TrainArgs(const arg::ParsedArgs& parsed)
@@ -122,11 +148,27 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
         // Create the compressor
         setCompressor(createCompressorFromArgs(
                 *this, parsed.cmdFlag(cmd(), kCompressor)));
+        auto formatVersion = parsed.cmdFlag(cmd(), kFormatVersion);
+        if (formatVersion) {
+            compressor()->setParameter(
+                    CParam::FormatVersion,
+                    util::checkedstoi(formatVersion.value()));
+        } else {
+            applyDefaultFormatVersion();
+        }
         auto outputPath = parsed.cmdFlag(cmd(), kOutput);
         if (outputPath) {
             checkOutput(outputPath.value(), parsed.cmdHasFlag(cmd(), kForce));
             output = std::make_unique<tools::io::OutputFile>(
                     std::move(outputPath).value());
+        }
+        auto dictBundleOutputPath = parsed.cmdFlag(cmd(), kDictBundleOutput);
+        if (dictBundleOutputPath) {
+            checkOutput(
+                    dictBundleOutputPath.value(),
+                    parsed.cmdHasFlag(cmd(), kForce));
+            dictBundleOutput = std::make_shared<tools::io::OutputFile>(
+                    std::move(dictBundleOutputPath).value());
         }
         auto sampleDir = parsed.cmdFlag(cmd(), kSampleDir);
         inputs         = tools::io::InputSetBuilder(recursive)
@@ -185,12 +227,27 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
         if (parsed.cmdHasFlag(cmd(), kParetoFrontier)) {
             trainParams.paretoFrontier = true;
         }
+        auto maxNumCandidates = parsed.cmdFlag(cmd(), kMaxNumCandidates);
+        if (maxNumCandidates) {
+            trainParams.maxNumCandidates =
+                    util::checkedstoul(maxNumCandidates.value());
+            if (trainParams.maxNumCandidates < 10) {
+                throw InvalidArgsException(
+                        "Must set --max-num-candidates to at least 10");
+            }
+        }
 
         trainParams.noAceSuccessors =
                 parsed.cmdHasFlag(cmd(), kNoAceSuccessors);
 
         trainParams.noClustering = parsed.cmdHasFlag(cmd(), kNoClustering);
         trainParams.saveAceState = parsed.cmdHasFlag(cmd(), kSaveAceState);
+
+        // Dictionary training is opt-in: it runs only when the user explicitly
+        // requests a bundle output path, so we never produce a surprise .zd
+        // file. In Pareto mode the bundle output is treated as a directory
+        // (one <i>.zd per candidate), mirroring the compressor output.
+        trainParams.dictTraining = (dictBundleOutput != nullptr);
         trainParams.compressorGenFunc =
                 custom_parsers::createCompressorFromSerialized;
     }
@@ -200,6 +257,11 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
             const std::shared_ptr<Compressor>& compressor)
             : GlobalArgs(globalArgs), ProfileArgs(compressor)
     {
+        // Inline training (e.g. `compress --train-inline`) produces a
+        // standalone compressor only; dictionary training is opt-in via
+        // --dict-bundle-output.
+        applyDefaultFormatVersion();
+        trainParams.dictTraining = false;
         trainParams.compressorGenFunc =
                 custom_parsers::createCompressorFromSerialized;
     }
@@ -211,29 +273,43 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
 
     std::shared_ptr<tools::io::InputSet> inputs;
     std::shared_ptr<tools::io::Output> output;
+    std::shared_ptr<tools::io::Output> dictBundleOutput;
+    std::string dictBundleData;
 
     bool useAllSamples{};
     training::TrainParams trainParams;
 
    private:
+    // The trained (and serialized) compressor must carry a format version so
+    // that downstream training can target it. Default to the maximum supported
+    // version when the compressor does not already specify one.
+    void applyDefaultFormatVersion()
+    {
+        compressor()->setParameter(
+                CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+    }
+
     inline static const std::string kSampleDir  = "sample-dir";
     inline static const std::string kCompressor = "compressor";
 
-    inline static const std::string kOutput = "output";
-    inline static const std::string kForce  = "force";
+    inline static const std::string kOutput           = "output";
+    inline static const std::string kForce            = "force";
+    inline static const std::string kDictBundleOutput = "dict-bundle-output";
 
     // Train Params
-    inline static const std::string kTrainer         = "trainer";
-    inline static const std::string kThreads         = "threads";
-    inline static const std::string kNumSamples      = "num-samples";
-    inline static const std::string kUseAllSamples   = "use-all-samples";
-    inline static const std::string kNoAceSuccessors = "no-ace-successors";
-    inline static const std::string kNoClustering    = "no-clustering";
-    inline static const std::string kMaxTimeSecs     = "max-time-secs";
-    inline static const std::string kMaxFileSizeMb   = "max-file-size-mb";
-    inline static const std::string kMaxTotalSizeMb  = "max-total-size-mb";
-    inline static const std::string kParetoFrontier  = "pareto-frontier";
-    inline static const std::string kSaveAceState    = "save-ace-state";
+    inline static const std::string kTrainer          = "trainer";
+    inline static const std::string kThreads          = "threads";
+    inline static const std::string kNumSamples       = "num-samples";
+    inline static const std::string kUseAllSamples    = "use-all-samples";
+    inline static const std::string kNoAceSuccessors  = "no-ace-successors";
+    inline static const std::string kNoClustering     = "no-clustering";
+    inline static const std::string kMaxTimeSecs      = "max-time-secs";
+    inline static const std::string kMaxFileSizeMb    = "max-file-size-mb";
+    inline static const std::string kMaxTotalSizeMb   = "max-total-size-mb";
+    inline static const std::string kParetoFrontier   = "pareto-frontier";
+    inline static const std::string kSaveAceState     = "save-ace-state";
+    inline static const std::string kFormatVersion    = "format-version";
+    inline static const std::string kMaxNumCandidates = "max-num-candidates";
 };
 
 } // namespace openzl::cli

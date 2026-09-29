@@ -164,6 +164,9 @@ class MuxLengthsComponent : public OpenZLComponent {
         // Extract match_length_bias from the graph's parameters.
         auto headNode =
                 ZL_Compressor_Graph_getHeadNode(compressor.get(), graphID);
+        if (headNode == ZL_NODE_ILLEGAL) {
+            throw std::runtime_error("Invalid graph ID");
+        }
         auto localParams =
                 ZL_Compressor_Node_getLocalParams(compressor.get(), headNode);
         unsigned splitPoint      = 4;

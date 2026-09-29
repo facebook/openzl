@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "openzl/common/assertion.h"
 #include "openzl/dict/dict.h"
 #include "openzl/dict/dict_constants.h"
 #include "openzl/fse/common/mem.h"
@@ -112,6 +113,15 @@ BundleInfo_pack(void* dst, size_t dstCapacity, const ZL_BundleInfo* info)
     return ZL_returnValue(packedSize);
 }
 
+ZL_BundleID ZL_DictBundle_genBundleID(const ZL_DictID* dictIDs, size_t numDicts)
+{
+    ZL_ASSERT(dictIDs != NULL || numDicts == 0);
+    ZL_BundleID result;
+    result.id =
+            ZL_UniqueID_computeSHA256(dictIDs, numDicts * ZL_UNIQUE_ID_SIZE);
+    return result;
+}
+
 /* ================================================================
  * ZL_DictBundle_packFatBundle
  * ================================================================ */
@@ -165,10 +175,11 @@ ZL_Report ZL_DictBundle_packFatBundle(
     }
 
     /* Generate bundleID as SHA256 of the dictID array */
-    unsigned char* const dictIDArray = bundleIDSlot + ZL_UNIQUE_ID_SIZE + 1 + 4;
-    ZL_UniqueID const bundleHash     = ZL_UniqueID_computeSHA256(
-            dictIDArray, numDicts * ZL_UNIQUE_ID_SIZE);
-    ZL_UniqueID_write(bundleIDSlot, &bundleHash);
+    ZL_DictID* const dictIDArray =
+            (ZL_DictID*)(bundleIDSlot + ZL_UNIQUE_ID_SIZE + 1 + 4);
+    ZL_BundleID const bundleHash =
+            ZL_DictBundle_genBundleID(dictIDArray, numDicts);
+    ZL_UniqueID_write(bundleIDSlot, &bundleHash.id);
 
     /* Append each packed dict blob */
     for (size_t i = 0; i < numDicts; i++) {
@@ -177,97 +188,4 @@ ZL_Report ZL_DictBundle_packFatBundle(
     }
 
     return ZL_returnValue(totalSize);
-}
-
-/* ================================================================
- * ZL_DictBundle_parseFatBundle
- * ================================================================ */
-
-ZL_RESULT_OF(ZL_DictBundleConstPtr)
-ZL_DictBundle_parseFatBundle(
-        const void* bundleContent,
-        size_t bundleSize,
-        Arena* allocator)
-{
-    ZL_RESULT_DECLARE_SCOPE(ZL_DictBundleConstPtr, NULL);
-    /* Allocate the bundle struct */
-    ZL_DictBundle* bundle = (ZL_DictBundle*)ALLOC_Arena_malloc(
-            allocator, sizeof(ZL_DictBundle));
-    ZL_ERR_IF_NULL(bundle, allocation);
-
-    ZL_RESULT_OF(ZL_BundleInfo)
-    infoResult = ZL_BundleInfo_parse(bundleContent, bundleSize);
-    ZL_ERR_IF_ERR(infoResult);
-    bundle->info = ZL_RES_value(infoResult);
-    if (bundle->info.numDicts != 0) {
-        ZL_DictID* dictIDs = (ZL_DictID*)ALLOC_Arena_malloc(
-                allocator, bundle->info.numDicts * sizeof(ZL_DictID));
-        ZL_ERR_IF_NULL(dictIDs, allocation);
-        memcpy(dictIDs,
-               bundle->info.dictIDs,
-               bundle->info.numDicts * sizeof(ZL_DictID));
-        bundle->info.dictIDs = dictIDs;
-    }
-
-    ZL_ERR_IF_NE(
-            (int)bundle->info.isFatBundle,
-            1,
-            dict_corruption,
-            "expected isFatBundle=1 for fat bundle");
-
-    /* Allocate the dicts pointer array */
-    if (bundle->info.numDicts > 0) {
-        bundle->dicts = (const ZL_Dict**)ALLOC_Arena_malloc(
-                allocator, bundle->info.numDicts * sizeof(const ZL_Dict*));
-        ZL_ERR_IF_NULL(
-                bundle->dicts,
-                allocation,
-                "failed to allocate dicts array for %zu dicts",
-                bundle->info.numDicts);
-    } else {
-        bundle->dicts = NULL;
-    }
-
-    size_t totalConsumed = bundle->info.packedSize;
-    size_t remaining     = bundleSize - totalConsumed;
-    const unsigned char* p =
-            (const unsigned char*)bundleContent + totalConsumed;
-
-    for (size_t i = 0; i < bundle->info.numDicts; i++) {
-        ZL_RESULT_OF(ZL_ParsedDict) dictResult = ZL_Dict_parse(p, remaining);
-        ZL_ERR_IF_ERR(dictResult);
-
-        ZL_ParsedDict const parsed = ZL_RES_value(dictResult);
-
-        /* Validate that this dict's ID matches the declared ID in the info */
-        ZL_ERR_IF_NOT(
-                ZL_UniqueID_eq(&parsed.dictID.id, &bundle->info.dictIDs[i].id),
-                dict_corruption,
-                "fat bundle dict[%zu] ID does not match declared dictID",
-                i);
-
-        /* Allocate and populate a ZL_Dict from the parsed wire data */
-        ZL_Dict* dict =
-                (ZL_Dict*)ALLOC_Arena_calloc(allocator, sizeof(ZL_Dict));
-        ZL_ERR_IF_NULL(dict, allocation, "failed to allocate ZL_Dict[%zu]", i);
-        dict->dictID             = parsed.dictID;
-        dict->materializingCodec = parsed.materializingCodec;
-        dict->isCustomCodec      = parsed.isCustomCodec;
-        dict->packedSize         = parsed.packedSize;
-
-        size_t allocSize = (parsed.contentSize == 0) ? 1 : parsed.contentSize;
-        void* dictObj    = ALLOC_Arena_malloc(allocator, allocSize);
-        ZL_ERR_IF_NULL(dictObj, allocation);
-        memcpy(dictObj, parsed.dictContent, parsed.contentSize);
-        dict->dictObj    = dictObj; // TODO: materialize
-        bundle->dicts[i] = dict;
-
-        size_t const dictWireSize = parsed.packedSize;
-        p += dictWireSize;
-        remaining -= dictWireSize;
-        totalConsumed += dictWireSize;
-    }
-    bundle->packedSize = totalConsumed;
-
-    return ZL_RESULT_WRAP_VALUE(ZL_DictBundleConstPtr, bundle);
 }

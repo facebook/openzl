@@ -32,7 +32,7 @@ def version_fuzzer(name):
                 "opt-ubsan-security",
             ],
             # The derived test name
-            ftest_name = ("VersionTest", name[len(prefix):]),
+            ftest_name = ("VersionTest", name[len(prefix) :]),
             # All the fuzzers are defined in this file
             srcs = ["VersionFuzzer.cpp"],
             metadata = Metadata(

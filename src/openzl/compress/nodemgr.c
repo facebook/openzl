@@ -153,6 +153,42 @@ NM_parameterizeNode(Nodes_manager* nmgr, const ZL_ParameterizedNodeDesc* desc)
             ZL_NodeID, NM_NodeID_fromCNodeID(ZL_RES_value(cnodeidResult)));
 }
 
+ZL_Report NM_overrideNodeParams(
+        Nodes_manager* nmgr,
+        ZL_NodeID node,
+        const ZL_NodeParameters* np)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(nmgr->opCtx);
+    ZL_ASSERT_NN(nmgr);
+    ZL_ASSERT_NN(np);
+
+    ZL_ERR_IF(
+            NM_isStandardNode(node),
+            node_invalid,
+            "Cannot replace standard node");
+
+    const CNodeID cnodeID = NM_CNodeID_fromNodeID(node);
+    ZL_ERR_IF_GE(
+            cnodeID.cnid,
+            CTM_nbCNodes(&nmgr->ctm),
+            node_invalid,
+            "Node must be registered");
+    const CNode* const cnode = CTM_getCNode(&nmgr->ctm, cnodeID);
+    ZL_ASSERT_NN(cnode);
+    ZL_ERR_IF_EQ(
+            cnode->baseNodeID.nid,
+            ZL_NODE_ILLEGAL.nid,
+            node_invalid,
+            "Node must be parameterized");
+    ZL_ERR_IF_NE(cnode->nodetype, node_internalTransform, node_invalid);
+
+    if (np->name) {
+        ZL_ERR(parameter_invalid, "Cannot replace the name of a node");
+    }
+    ZL_ERR_IF_ERR(CTM_overrideNodeParams(&nmgr->ctm, cnodeID, np));
+    return ZL_returnSuccess();
+}
+
 const CNode* NM_getCNode(const Nodes_manager* nmgr, ZL_NodeID nodeid)
 {
     if (NM_isStandardNode(nodeid)) {

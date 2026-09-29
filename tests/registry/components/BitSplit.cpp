@@ -101,6 +101,9 @@ class BitSplitComponent : public OpenZLComponent {
     {
         auto nodeID =
                 ZL_Compressor_Graph_getHeadNode(compressor.get(), graphID);
+        if (nodeID == ZL_NODE_ILLEGAL) {
+            throw std::runtime_error("Invalid graph ID");
+        }
         auto params =
                 ZL_Compressor_Node_getLocalParams(compressor.get(), nodeID);
         if (params.copyParams.nbCopyParams != 1) {

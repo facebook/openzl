@@ -28,7 +28,7 @@ class Exception : public std::runtime_error {
     /// @see ExceptionBuilder
     Exception(
             poly::string_view msg,
-            poly::optional<ZL_ErrorCode> code,
+            poly::optional<ZL_Error> error,
             poly::string_view errorContext,
             poly::source_location location);
 
@@ -37,9 +37,72 @@ class Exception : public std::runtime_error {
         return msg_;
     }
 
-    const poly::optional<ZL_ErrorCode>& code() const noexcept
+    poly::optional<ZL_ErrorCode> code() const noexcept
     {
-        return code_;
+        if (error_) {
+            return ZL_E_code(error_.value());
+        } else {
+            return {};
+        }
+    }
+
+    template <typename Ctx>
+    ZL_Error toError(
+            Ctx* ctx,
+            poly::source_location this_location =
+                    poly::source_location::current()) const noexcept
+    {
+        if (!error_) {
+            return ZL_E_create(
+                    nullptr,
+                    ZL_GET_DEFAULT_ERROR_CONTEXT(ctx),
+                    location_.file_name(),
+                    location_.function_name(),
+                    location_.line(),
+                    ZL_ErrorCode_GENERIC,
+                    "C++ OpenZL Exception: %s",
+                    what());
+        }
+        auto e            = error_.value();
+        const auto* opCtx = ZL_GET_OPERATION_CONTEXT(ctx);
+        if (ZL_OperationContext_ownsError(opCtx, &e)) {
+            e = ZL_E_addFrame(
+                    nullptr,
+                    e,
+                    ZL_EE_EMPTY,
+                    location_.file_name(),
+                    location_.function_name(),
+                    location_.line(),
+                    "Converting to C++ OpenZL Exception: %s",
+                    msg_.c_str());
+            e = ZL_E_addFrame(
+                    nullptr,
+                    e,
+                    ZL_EE_EMPTY,
+                    this_location.file_name(),
+                    this_location.function_name(),
+                    this_location.line(),
+                    "Converting back to ZL_Error");
+        } else {
+            ZL_E_clearInfo(&e);
+        }
+        return e;
+    }
+
+    template <typename Ctx>
+    ZL_Error toError(
+            Ctx& ctx,
+            poly::source_location this_location =
+                    poly::source_location::current()) const noexcept
+    {
+        return toError(ctx.get(), std::move(this_location));
+    }
+
+    ZL_Error toError(
+            poly::source_location this_location =
+                    poly::source_location::current()) const noexcept
+    {
+        return toError((ZL_CCtx*)nullptr, std::move(this_location));
     }
 
     poly::string_view errorContext() const noexcept
@@ -54,7 +117,7 @@ class Exception : public std::runtime_error {
 
    private:
     std::string msg_;
-    poly::optional<ZL_ErrorCode> code_;
+    poly::optional<ZL_Error> error_;
     std::string errorContext_;
     poly::source_location location_;
 };
@@ -114,7 +177,7 @@ class ExceptionBuilder {
         return std::move(*this);
     }
 
-    Exception build() && noexcept;
+    Exception build() &&;
 
    private:
     poly::string_view msg_;

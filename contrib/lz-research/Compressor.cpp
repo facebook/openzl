@@ -801,10 +801,11 @@ nlohmann::json OpenZLCompressor::train(
         inputs.push_back(std::move(input));
     }
     training::TrainParams params;
-    params.compressorGenFunc = [this](poly::string_view serialized) {
+    params.compressorGenFunc = [this](poly::string_view serialized,
+                                      poly::string_view fatBundle) {
         auto compressor = std::make_unique<openzl::Compressor>();
         configure(*compressor);
-        compressor->deserialize(serialized);
+        compressor->deserialize(serialized, fatBundle);
         return compressor;
     };
     params.paretoFrontier = true;
@@ -814,7 +815,8 @@ nlohmann::json OpenZLCompressor::train(
 
     nlohmann::json out = nlohmann::json::array();
     for (size_t idx = 0; idx < compressors.size(); ++idx) {
-        out.push_back(makeConfig(std::to_string(idx), *compressors[idx]));
+        out.push_back(makeConfig(
+                std::to_string(idx), compressors[idx].serializedCompressor));
     }
 
     return out;

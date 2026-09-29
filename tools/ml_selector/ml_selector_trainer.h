@@ -5,6 +5,7 @@
 #include <vector>
 #include "openzl/cpp/Compressor.hpp"
 #include "tools/training/train_params.h"
+#include "tools/training/utils/serialized_compressor_internal.h"
 #include "tools/training/utils/utils.h"
 
 namespace openzl::training {
@@ -25,7 +26,7 @@ extern const std::string ML_SELECTOR_GRAPH_NAME;
  *
  * @returns a trained serialized compressor
  **/
-std::shared_ptr<const std::string_view> trainMLSelectorGraph(
+SerializedCompressorInternal trainMLSelectorGraph(
         const std::vector<MultiInput>& inputs,
         Compressor& compressor,
         const TrainParams& trainParams);

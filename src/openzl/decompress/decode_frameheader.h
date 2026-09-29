@@ -41,6 +41,10 @@ typedef struct {
      */
     uint32_t numInputStreams;
     /**
+     * Dict bundle offset from chunk header (ZL_DICT_INDEX_NONE if unset)
+     */
+    uint32_t dictIdx;
+    /**
      * If this node is fused, a pointer to the fusion descriptor.
      * @note Set by the dctx after decoding the frame header.
      */
@@ -74,6 +78,17 @@ void DFH_init(DFH_Struct* dfh);
 
 /// Destroys the @p dfh and releases its resources
 void DFH_destroy(DFH_Struct* dfh);
+
+/**
+ * Deep-copies @p frameInfo into @p dfh.
+ *
+ * @p dfh must have been initialized with DFH_init().
+ * @p opCtx receives any error details generated while copying.
+ */
+ZL_Report DFH_setFrameInfo(
+        DFH_Struct* dfh,
+        const ZL_FrameInfo* frameInfo,
+        ZL_OperationContext* opCtx);
 
 /**
  * Decode the frame header starting at @src

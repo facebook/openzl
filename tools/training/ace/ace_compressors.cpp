@@ -11,57 +11,16 @@
 namespace openzl {
 namespace training {
 namespace {
-std::string getName(GraphID graph)
-{
-    Compressor compressor;
-    auto name = ZL_Compressor_Graph_getName(compressor.get(), graph);
-    if (name == nullptr) {
-        throw Exception("Unknown graph!");
-    }
-    return name;
-}
-
-std::string getName(NodeID node)
-{
-    Compressor compressor;
-    auto name = ZL_Compressor_Node_getName(compressor.get(), node);
-    if (name == nullptr) {
-        throw Exception("Unknown node!");
-    }
-    return name;
-}
-
 template <typename NodeT>
 ACENode buildNode(const NodeT& node)
 {
-    assert(NodeT::metadata.inputs.size() == 1);
-    std::vector<Type> outputTypes;
-    outputTypes.reserve(
-            NodeT::metadata.singletonOutputs.size()
-            + NodeT::metadata.variableOutputs.size());
-    for (const auto& meta : NodeT::metadata.singletonOutputs) {
-        outputTypes.push_back(meta.type);
-    }
-    for (const auto& meta : NodeT::metadata.variableOutputs) {
-        outputTypes.push_back(meta.type);
-    }
-    return ACENode{
-        .name        = getName(NodeT::node),
-        .params      = node.parameters(),
-        .inputType   = NodeT::metadata.inputs[0].type,
-        .outputTypes = std::move(outputTypes),
-    };
+    return ACENode(node);
 }
 
 template <typename GraphT>
 ACEGraph buildGraph(const GraphT& graph)
 {
-    static_assert(GraphT::metadata.inputs.size() == 1);
-    return ACEGraph{
-        .name          = getName(GraphT::graph),
-        .params        = graph.parameters(),
-        .inputTypeMask = GraphT::metadata.inputs[0].typeMask,
-    };
+    return ACEGraph(graph);
 }
 
 std::vector<ACENode> makeAllNodes()
@@ -114,6 +73,7 @@ std::vector<ACEGraph> makeAllGraphs()
 {
     std::vector<ACEGraph> g;
     g.push_back(buildGraph(graphs::Compress{}));
+    g.push_back(buildGraph(graphs::TransformerNumeric{}));
     g.push_back(buildGraph(graphs::Entropy{}));
     g.push_back(buildGraph(graphs::Bitpack{}));
     g.push_back(buildGraph(graphs::Constant{}));
@@ -137,6 +97,7 @@ std::vector<ACECompressor> makePrebuiltNumericCompressors()
         compressors.emplace_back(graph);
     }
 
+    ACECompressor transformer(buildGraph(graphs::TransformerNumeric{}));
     ACECompressor fieldLz(buildGraph(graphs::FieldLz{}));
     ACECompressor zstd(buildGraph(graphs::Zstd{}));
     ACECompressor transpose(buildNode(nodes::TransposeSplit{}), { zstd });
@@ -173,6 +134,7 @@ std::vector<ACECompressor> makePrebuiltNumericCompressors()
     ACECompressor quantizeLengths(
             buildNode(nodes::QuantizeOffsets{}), { fse, store });
     std::vector<ACECompressor> prebuilt = {
+        transformer,
         fieldLz,
         zstd,
         transpose,
@@ -308,7 +270,12 @@ poly::span<const ACEGraph> getAllGraphs()
     return *graphs;
 }
 
-poly::span<const ACENode> getNodesComptabileWith(Type inputType)
+// Returns the type-compatible nodes further restricted to those usable at
+// @p formatVersion (nodes with minFormatVersion 0 are treated as
+// unconstrained).
+std::vector<ACENode> getNodesComptabileWith(
+        Type inputType,
+        uint32_t formatVersion)
 {
     static auto nodes = new std::unordered_map<Type, std::vector<ACENode>>([] {
         std::unordered_map<Type, std::vector<ACENode>> m;
@@ -322,7 +289,13 @@ poly::span<const ACENode> getNodesComptabileWith(Type inputType)
         }
         return m;
     }());
-    return nodes->at(inputType);
+    std::vector<ACENode> compatible;
+    for (const auto& n : nodes->at(inputType)) {
+        if (n.minFormatVersion == 0 || n.minFormatVersion <= formatVersion) {
+            compatible.push_back(n);
+        }
+    }
+    return compatible;
 }
 
 poly::span<const ACEGraph> getGraphsComptabileWith(Type inputType)
@@ -367,26 +340,43 @@ ACECompressor buildRandomGraphCompressor(std::mt19937_64& rng, Type inputType)
             randomChoice(rng, getGraphsComptabileWith(inputType)));
 }
 
-ACECompressor
-buildRandomNodeCompressor(std::mt19937_64& rng, Type inputType, size_t maxDepth)
+ACECompressor buildRandomNodeCompressor(
+        std::mt19937_64& rng,
+        Type inputType,
+        uint32_t formatVersion,
+        size_t maxDepth)
 {
     if (maxDepth == 0) {
         return buildRandomGraphCompressor(rng, inputType);
     }
-    auto node = randomChoice(rng, getNodesComptabileWith(inputType));
+    const auto compatible = getNodesComptabileWith(inputType, formatVersion);
+    if (compatible.empty()) {
+        // No node is available at the target format version; fall back to a
+        // single graph.
+        return buildRandomGraphCompressor(rng, inputType);
+    }
+    auto node = randomChoice(
+            rng,
+            poly::span<const ACENode>(compatible.data(), compatible.size()));
     assert(isCompatible(node.inputType, inputType));
     std::vector<std::unique_ptr<ACECompressor>> successors;
     successors.reserve(node.outputTypes.size());
     for (size_t i = 0; i < node.outputTypes.size(); ++i) {
         successors.push_back(
                 std::make_unique<ACECompressor>(buildRandomCompressor(
-                        rng, node.outputTypes[i], maxDepth - 1)));
+                        rng,
+                        node.outputTypes[i],
+                        formatVersion,
+                        maxDepth - 1)));
     }
     return ACENodeCompressor(std::move(node), std::move(successors));
 }
 
-ACECompressor
-buildRandomCompressor(std::mt19937_64& rng, Type inputType, size_t maxDepth)
+ACECompressor buildRandomCompressor(
+        std::mt19937_64& rng,
+        Type inputType,
+        uint32_t formatVersion,
+        size_t maxDepth)
 {
     std::bernoulli_distribution dist(0.5);
     if (dist(rng)) {
@@ -394,8 +384,8 @@ buildRandomCompressor(std::mt19937_64& rng, Type inputType, size_t maxDepth)
         assert(compressor.acceptsInputType(inputType));
         return compressor;
     } else {
-        auto compressor =
-                buildRandomNodeCompressor(rng, inputType, maxDepth - 1);
+        auto compressor = buildRandomNodeCompressor(
+                rng, inputType, formatVersion, maxDepth - 1);
         assert(compressor.acceptsInputType(inputType));
         return compressor;
     }

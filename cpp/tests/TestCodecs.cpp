@@ -1,6 +1,8 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <climits>
+#include <utility>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -9,6 +11,18 @@
 
 using namespace ::testing;
 namespace openzl {
+namespace {
+
+std::vector<std::pair<int, int>> collectIntParams(const LocalParams& params)
+{
+    std::vector<std::pair<int, int>> result;
+    for (const auto& param : params.getIntParams()) {
+        result.emplace_back(param.paramId, param.paramValue);
+    }
+    return result;
+}
+
+} // namespace
 
 class TestCodecs : public testing::Test {
    public:
@@ -46,6 +60,101 @@ TEST_F(TestCodecs, lz4_hc)
     auto graph = graphs::Lz4(9).parameterize(compressor_);
     compressor_.selectStartingGraph(graph);
     auto compressed = testRoundTrip(compressor_, Input::refSerial(data));
+}
+
+TEST_F(TestCodecs, lzParameters)
+{
+    const auto muxLengthsGraph =
+            nodes::MuxLengths{}(compressor_, graphs::Store::graph);
+    const graphs::Lz lz(
+            graphs::Lz::Parameters{
+                    .nodeParams =
+                            graphs::Lz::NodeParams{
+                                    .compressionLevel = -1,
+                                    .acceleration     = 2,
+                                    .windowLog        = 16,
+                                    .strategy         = ZL_LzStrategy_fast,
+                                    .hashLog1         = 15,
+                                    .hashLog2         = 17,
+                                    .hashLength       = 5,
+                                    .searchLog        = 3,
+                            },
+                    .literalsGraph          = graphs::Store::graph,
+                    .offsetsGraph           = graphs::Store::graph,
+                    .muxedBytesGraph        = graphs::Store::graph,
+                    .overflowLengthsGraph   = graphs::Store::graph,
+                    .muxLengthsGraph        = muxLengthsGraph,
+                    .minGainForEntropyBytes = 42,
+                    .minGainForEntropyPct   = 43,
+            });
+
+    const auto graphParameters = lz.parameters();
+    ASSERT_TRUE(graphParameters.has_value());
+    ASSERT_TRUE(graphParameters->localParams.has_value());
+    ASSERT_TRUE(graphParameters->customGraphs.has_value());
+
+    const std::vector<std::pair<int, int>> expectedIntParams{
+        { ZL_LzParam_compressionLevel, -1 },
+        { ZL_LzParam_acceleration, 2 },
+        { ZL_LzParam_windowLog, 16 },
+        { ZL_LzParam_strategy, ZL_LzStrategy_fast },
+        { ZL_LzParam_hashLog1, 15 },
+        { ZL_LzParam_hashLog2, 17 },
+        { ZL_LzParam_hashLength, 5 },
+        { ZL_LzParam_searchLog, 3 },
+        { ZL_LzParam_literalsGraphIdx, 0 },
+        { ZL_LzParam_offsetsGraphIdx, 1 },
+        { ZL_LzParam_muxedBytesGraphIdx, 2 },
+        { ZL_LzParam_overflowLengthsGraphIdx, 3 },
+        { ZL_LzParam_muxLengthsGraphIdx, 4 },
+        { ZL_LzParam_minGainForEntropyBytes, 42 },
+        { ZL_LzParam_minGainForEntropyPct, 43 },
+    };
+    EXPECT_EQ(
+            collectIntParams(*graphParameters->localParams), expectedIntParams);
+
+    const std::vector<GraphID> expectedCustomGraphs{
+        graphs::Store::graph, graphs::Store::graph, graphs::Store::graph,
+        graphs::Store::graph, muxLengthsGraph,
+    };
+    EXPECT_EQ(*graphParameters->customGraphs, expectedCustomGraphs);
+
+    std::string data(10000, 'a');
+    auto graph = lz.parameterize(compressor_);
+    compressor_.selectStartingGraph(graph);
+    auto compressed = testRoundTrip(compressor_, Input::refSerial(data));
+}
+
+TEST_F(TestCodecs, lzNodeParameters)
+{
+    const nodes::Lz lz(
+            nodes::Lz::Parameters{
+                    .compressionLevel = 3,
+                    .acceleration     = 4,
+                    .windowLog        = 17,
+                    .strategy         = ZL_LzStrategy_lazy2,
+                    .hashLog1         = 14,
+                    .hashLog2         = 16,
+                    .hashLength       = 6,
+                    .searchLog        = 4,
+            });
+
+    const auto nodeParameters = lz.parameters();
+    ASSERT_TRUE(nodeParameters.has_value());
+    ASSERT_TRUE(nodeParameters->localParams.has_value());
+
+    const std::vector<std::pair<int, int>> expectedIntParams{
+        { ZL_LzParam_compressionLevel, 3 },
+        { ZL_LzParam_acceleration, 4 },
+        { ZL_LzParam_windowLog, 17 },
+        { ZL_LzParam_strategy, ZL_LzStrategy_lazy2 },
+        { ZL_LzParam_hashLog1, 14 },
+        { ZL_LzParam_hashLog2, 16 },
+        { ZL_LzParam_hashLength, 6 },
+        { ZL_LzParam_searchLog, 4 },
+    };
+    EXPECT_EQ(
+            collectIntParams(*nodeParameters->localParams), expectedIntParams);
 }
 
 TEST_F(TestCodecs, segmentSerial_defaultChunkSize)

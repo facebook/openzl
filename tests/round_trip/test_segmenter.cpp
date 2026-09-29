@@ -24,6 +24,7 @@
 #include "openzl/zl_graph_api.h"  // ZL_FunctionGraphDesc
 #include "openzl/zl_input.h"
 #include "openzl/zl_opaque_types.h"
+#include "openzl/zl_portability.h"
 #include "openzl/zl_segmenter.h"
 #include "openzl/zl_selector.h"
 #include "openzl/zl_version.h" // ZL_MIN_FORMAT_VERSION
@@ -239,7 +240,9 @@ static ZL_GraphID permissiveGraph_asGraphF(ZL_Compressor* cgraph) noexcept
     return permissiveGraph(cgraph, g_failingGraph_forPermissive);
 }
 
-static size_t permissiveTest(ZL_GraphFn graphf, const char* testName)
+ZL_UNUSED_ATTR static size_t permissiveTest(
+        ZL_GraphFn graphf,
+        const char* testName)
 {
     printf("\n=========================== \n");
     printf(" Testing Permissive Mode \n");
@@ -347,7 +350,8 @@ PARSER_Result PARSER_analyzeChunk(PARSER_State* ps, const ZL_Input* input)
  * in this case it justs check that it received the expected value.
  * Input: Same as Segmenter ==> 1 Serial stream
  */
-ZL_Report test_PrivateGraphFn(ZL_Graph* graph, const void* payload)
+ZL_UNUSED_ATTR ZL_Report
+test_PrivateGraphFn(ZL_Graph* graph, const void* payload)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
     PARSER_State ps = *(const PARSER_State*)payload;
@@ -803,6 +807,64 @@ static ZL_SegmenterDesc const failingIncompleteSegmenter = {
     .numInputs      = 1,
 };
 
+static ZL_Report alwaysFailGraph(
+        ZL_Graph* graph,
+        ZL_Edge* inputs[],
+        size_t nbInputs) ZL_NOEXCEPT_FUNC_PTR
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+    (void)inputs;
+    (void)nbInputs;
+    ZL_ERR(node_invalid_input, "intentional test failure");
+}
+
+ZL_Report permissiveChunkSegmenterFn(ZL_Segmenter* sctx)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(sctx);
+    ZL_ERR_IF_NE(ZL_Segmenter_numInputs(sctx), 1, node_invalid_input);
+    const ZL_Input* const input = ZL_Segmenter_getInput(sctx, 0);
+    ZL_ERR_IF_NULL(input, node_invalid_input);
+
+    ZL_GraphIDList const customGraphs = ZL_Segmenter_getCustomGraphs(sctx);
+    ZL_ERR_IF_NE(customGraphs.nbGraphIDs, 1, graphParameter_invalid);
+
+    size_t const numElts = ZL_Input_numElts(input);
+    return ZL_Segmenter_processChunk(
+            sctx, &numElts, 1, customGraphs.graphids[0], NULL);
+}
+
+static ZL_GraphID registerSegmenterWithFailingChunkGraph(
+        ZL_Compressor* compressor) noexcept
+{
+    ZL_Report const setr = ZL_Compressor_setParameter(
+            compressor, ZL_CParam_formatVersion, g_testVersion);
+    if (ZL_isError(setr))
+        abort();
+
+    ZL_Type const inType                 = ZL_Type_serial;
+    ZL_FunctionGraphDesc const graphDesc = {
+        .name           = "Always Fail",
+        .graph_f        = alwaysFailGraph,
+        .inputTypeMasks = &inType,
+        .nbInputs       = 1,
+    };
+
+    ZL_GraphID const permissiveChunkSuccessor =
+            ZL_Compressor_registerFunctionGraph(compressor, &graphDesc);
+    ZL_Type const segmenterInputTypeMasks[]         = { ZL_Type_serial };
+    ZL_SegmenterDesc const permissiveChunkSegmenter = {
+        .name            = "Segmenter with failing chunk graph",
+        .segmenterFn     = permissiveChunkSegmenterFn,
+        .inputTypeMasks  = segmenterInputTypeMasks,
+        .numInputs       = 1,
+        .customGraphs    = &permissiveChunkSuccessor,
+        .numCustomGraphs = 1,
+    };
+
+    return ZL_Compressor_registerSegmenter(
+            compressor, &permissiveChunkSegmenter);
+}
+
 TEST(Segmenter, input_incomplete)
 {
     // Custom segmenter without customGraphs: no single-chunk fallback
@@ -810,6 +872,30 @@ TEST(Segmenter, input_incomplete)
         return;
     g_segmenterDescPtr = &failingIncompleteSegmenter;
     (void)cFailTest(registerSegmenter, g_segmenterDescPtr->name);
+}
+
+TEST(Segmenter, permissive_graphThenIncompleteSegmenter)
+{
+    // This reproduces the graph shape where an outer graph redirects full input
+    // to a segmenter, the segmenter resets the runtime graph, and permissive
+    // fallback above the segmenter must fail cleanly instead of dereferencing
+    // the stale runtime stream IDs that existed before the segmenter reset.
+    if (g_testVersion < ZL_CHUNK_VERSION_MIN)
+        return;
+    g_segmenterDescPtr           = &failingIncompleteSegmenter;
+    g_failingGraph_forPermissive = registerGraphAndSegmenter;
+    (void)cFailTest(
+            permissiveGraph_asGraphF,
+            "permissive_graphThenIncompleteSegmenter");
+}
+
+TEST(Segmenter, permissive_insideSegmenterChunk)
+{
+    if (g_testVersion < ZL_CHUNK_VERSION_MIN)
+        return;
+    (void)permissiveTest(
+            registerSegmenterWithFailingChunkGraph,
+            "permissive inside segmenter chunk");
 }
 
 /* =======   Codec precedes segmenter (must fail)  ======== */

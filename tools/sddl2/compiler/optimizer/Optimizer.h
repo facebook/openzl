@@ -18,6 +18,7 @@ class Optimizer {
     ASTVec optimize(const ASTVec& ast) const;
 
    private:
+    const detail::Logger& log_;
     std::vector<std::unique_ptr<const OptimizationPass>> passes_;
 };
 

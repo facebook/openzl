@@ -368,6 +368,28 @@ TEST_F(ParserTest, WhenBlockAST)
     expect_ast(prog, expected);
 }
 
+TEST_F(ParserTest, BetweenAST)
+{
+    const auto prog = R"(
+        expect between(1, 2, 3)
+    )";
+
+    const auto cg       = Codegen();
+    const auto expected = std::vector<ASTPtr>({
+            cg.expect(cg.between(cg.num(1), cg.num(2), cg.num(3))),
+    });
+    expect_ast(prog, expected);
+}
+
+TEST_F(ParserTest, BetweenWrongArity)
+{
+    expect_error(
+            "expect between(1, 2)\n", "between() requires exactly 3 arguments");
+    expect_error(
+            "expect between(1, 2, 3, 4)\n",
+            "between() requires exactly 3 arguments");
+}
+
 TEST_F(ParserTest, WhenBlockInRecordAST)
 {
     const auto prog = R"(
@@ -399,6 +421,37 @@ TEST_F(ParserTest, WhenBlockInRecordAST)
             cg.consume(cg.call(cg.var("Data"), ArgVec{ cg.num(1) })),
     });
     expect_ast(prog, expected);
+}
+
+TEST_F(ParserTest, AnnotationOnNonRecord)
+{
+    const auto prog = R"(
+        x = 5 @some_annotation
+    )";
+    expect_error(prog, "can only be applied to a record");
+}
+
+TEST_F(ParserTest, AnnotationNameRequiresIdentifier)
+{
+    const auto prog = R"(
+        record Foo() {
+            x: Int32LE
+        } @ 5
+    )";
+    expect_error(prog, "Annotation name must be an identifier");
+}
+
+TEST_F(ParserTest, AnnotationAllowsSpaceAfterSigil)
+{
+    // `@ name` (with a space) must tokenize and parse the same as `@name`.
+    const auto prog = R"(
+        record Foo() {
+            x: Int32LE
+        } @ some_annotation
+    )";
+    EXPECT_NO_THROW(compiler_->compile_ast(prog, "[local_input]"))
+            << "Compiler debug logs:\n"
+            << logs_.str();
 }
 
 } // namespace openzl::sddl2::tests

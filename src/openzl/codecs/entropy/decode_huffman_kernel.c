@@ -169,11 +169,13 @@ ZL_FORCE_INLINE ZL_Report ZS_largeHuffmanDecodeX4_body(
         uint16_t* const limit = dsts[4] - kUnroll;
         int endSignal         = 1;
         for (; endSignal & (ptrs[3] < limit);) {
-            for (int i = 0; i < 4; ++i) {
-                for (int u = 0; u < kUnroll; ++u) {
+            for (int u = 0; u < kUnroll; ++u) {
+                for (int i = 0; i < 4; ++i) {
                     *ptrs[i]++ = ZS_largeHuffmanDecodeSymbol(
                             &dstreams[i], dtable, tableLog);
                 }
+            }
+            for (int i = 0; i < 4; ++i) {
                 endSignal &=
                         (BIT_reloadDStream(&dstreams[i])
                          == BIT_DStream_unfinished);

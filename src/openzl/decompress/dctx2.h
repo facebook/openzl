@@ -3,7 +3,6 @@
 #ifndef ZSTRONG_DECOMPRESS_DCTX2_H
 #define ZSTRONG_DECOMPRESS_DCTX2_H
 
-#include "openzl/common/wire_format.h"            // PublicTransformInfo
 #include "openzl/decompress/decode_frameheader.h" // DFH_Struct
 #include "openzl/shared/portability.h"
 #include "openzl/zl_data.h"         // ZL_Type
@@ -57,6 +56,15 @@ ZL_Data* DCTX_newStreamFromStreamRef(
 size_t ZL_DCtx_getNumStreams(const ZL_DCtx* dctx);
 
 const ZL_Data* ZL_DCtx_getConstStream(const ZL_DCtx* dctx, ZL_IDType streamID);
+
+/**
+ * @returns The decoder node that produces @p streamID, or ZL_PRODUCER_STORE
+ * when the stream is stored in the frame.
+ * @pre @p streamID is less than ZL_DCtx_getNumStreams(@p dctx).
+ */
+ZL_IDType DCTX_getStreamProducerNodeIdx(
+        const ZL_DCtx* dctx,
+        ZL_IDType streamID);
 
 /**
  * @pre Can only be called during an active decompression,
@@ -165,6 +173,47 @@ ZL_Report DCTX_registerDecoderFusion(
 /// Remove all registered decoder fusions from the decompression context.
 /// @see ZL_DecoderFusionState_clearFusions()
 void DCTX_clearDecoderFusions(ZL_DCtx* dctx);
+
+/**
+ * Initializes a newly created decompression context from frame metadata.
+ * The context owns an independent copy of @p frameInfo.
+ */
+ZL_Report DCTX_initFromFrameInfo(ZL_DCtx* dctx, const ZL_FrameInfo* frameInfo);
+
+typedef struct {
+    size_t chunkHeaderSize;
+    size_t chunkSize;
+} DCTX_FrameChunkInfo;
+ZL_RESULT_DECLARE_TYPE(DCTX_FrameChunkInfo);
+
+/**
+ * Prepares one chunk without running its decoders.
+ *
+ * @p dctx must first be initialized.
+ * @returns The prepared chunk metadata, or an error.
+ */
+ZL_RESULT_OF(DCTX_FrameChunkInfo)
+DCTX_prepareFrameChunk(
+        ZL_DCtx* dctx,
+        const void* framePtr,
+        size_t frameSize,
+        size_t chunkOffset);
+
+/**
+ * Prepares one chunk from a separately readable formal chunk header.
+ *
+ * Stream references are bound against @p chunkRef, whose contents are not
+ * accessed. Payload and checksum validation are left to the caller.
+ * @p dctx must first be initialized.
+ * @returns Success, or an errors if the stream layout exceeds @p chunkSize
+ * or an error from decoding the header.
+ */
+ZL_Report DCTX_prepareFrameChunkFromHeader(
+        ZL_DCtx* dctx,
+        const void* chunkHeader,
+        size_t chunkHeaderSize,
+        const void* chunkRef,
+        size_t chunkSize);
 
 ZL_END_C_DECLS
 

@@ -2,6 +2,7 @@
 
 #include <benchmark/benchmark.h>
 
+#include "openzl/common/debug.h"
 #include "openzl/cpp/CCtx.hpp"
 #include "openzl/cpp/Compressor.hpp"
 #include "openzl/cpp/DCtx.hpp"
@@ -100,6 +101,26 @@ class ComponentBenchmark {
     }
 
    private:
+    // Decompresses @p compressed and crashes if it does not round trip back to
+    // @p inputs. Called only during benchmark setup, so it does not affect the
+    // measured compress/decompress speeds.
+    static void validateRoundTrip(
+            DCtx& dctx,
+            poly::span<const Input> inputs,
+            poly::string_view compressed)
+    {
+        const auto regenerated = dctx.decompress(compressed);
+        ZL_REQUIRE_EQ(
+                regenerated.size(),
+                inputs.size(),
+                "Round trip validation failed: wrong number of outputs");
+        for (size_t i = 0; i < inputs.size(); ++i) {
+            ZL_REQUIRE(
+                    regenerated[i] == inputs[i],
+                    "Round trip validation failed: output mismatch");
+        }
+    }
+
     void setParameters(CCtx& cctx) const
     {
         cctx.refCompressor(compressor_);
@@ -133,6 +154,9 @@ class ComponentBenchmark {
             benchmarkInputs.push_back(std::move(inputs));
         }
 
+        DCtx dctx;
+        component_->registerComponent(dctx);
+
         std::string compressed(compressBound, '\0');
         size_t totalCompressedSize = 0;
         for (size_t i = 0; i < benchmarks_.size(); ++i) {
@@ -141,6 +165,7 @@ class ComponentBenchmark {
                 cctx.selectStartingGraph(benchmark.graph);
                 const size_t cSize = cctx.compress(compressed, input);
                 totalCompressedSize += cSize;
+                validateRoundTrip(dctx, input, { compressed.data(), cSize });
             }
         }
 
@@ -192,8 +217,10 @@ class ComponentBenchmark {
         std::vector<CompressedFrame> frames;
         for (size_t i = 0; i < benchmarks_.size(); ++i) {
             for (const auto& input : benchmarkInputs[i]) {
-                frames.push_back(compressFrame(
-                        cctx, benchmarks_[i].graph, input, compressBuffer));
+                auto frame = compressFrame(
+                        cctx, benchmarks_[i].graph, input, compressBuffer);
+                validateRoundTrip(dctx, input, frame.data);
+                frames.push_back(std::move(frame));
             }
         }
         size_t totalCompressedSize = 0;
@@ -244,12 +271,16 @@ class ComponentBenchmark {
             totalSrcSize += input->sizeBytes();
         }
 
+        DCtx dctx;
+        component_->registerComponent(dctx);
+
         std::string compressed(compressBound, '\0');
         size_t totalCompressedSize = 0;
         for (const auto& input : inputs) {
             cctx.selectStartingGraph(benchmark.graph);
             const size_t cSize = cctx.compress(compressed, input);
             totalCompressedSize += cSize;
+            validateRoundTrip(dctx, input, { compressed.data(), cSize });
         }
 
         for (auto _ : state) {
@@ -292,8 +323,9 @@ class ComponentBenchmark {
         std::vector<CompressedFrame> frames;
         frames.reserve(inputs.size());
         for (const auto& input : inputs) {
-            frames.push_back(
-                    compressFrame(cctx, bm.graph, input, compressBuffer));
+            auto frame = compressFrame(cctx, bm.graph, input, compressBuffer);
+            validateRoundTrip(dctx, input, frame.data);
+            frames.push_back(std::move(frame));
         }
         size_t totalCompressedSize = 0;
         for (const auto& frame : frames) {

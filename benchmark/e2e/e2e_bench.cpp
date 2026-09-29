@@ -18,6 +18,7 @@
 #include "benchmark/e2e/e2e_compressor.h"
 #include "benchmark/e2e/e2e_fieldlz.h"
 #include "benchmark/e2e/e2e_json_extract.h"
+#include "benchmark/e2e/e2e_ml_selector.h"
 #include "benchmark/e2e/e2e_parse.h"
 #include "benchmark/e2e/e2e_sao.h"
 #include "benchmark/e2e/e2e_splitByStruct.h"
@@ -30,6 +31,10 @@
 #include "openzl/zl_public_nodes.h"
 
 namespace zstrong::bench::e2e {
+
+namespace codec_output_cache {
+void registerBenchmarks();
+}
 
 void E2EBenchmarkTestcase::registerBenchmarks()
 {
@@ -617,6 +622,8 @@ void registerE2EBenchmarks()
     thrift::registerBenchmarks();
     json_extract::registerBenchmarks();
     parse::registerBenchmarks();
+    ml_selector::registerMLSelectorBenchmarks();
+    codec_output_cache::registerBenchmarks();
 }
 
 } // namespace zstrong::bench::e2e

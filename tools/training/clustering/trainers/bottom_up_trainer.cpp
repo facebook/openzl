@@ -35,7 +35,7 @@ ClusteringConfigBuilder BottomUpTrainer::buildTrainedFullSplitConfig(
                     cUtils.getBestClusterInfo(tags, type, width, metadata);
             return clusterInfo;
         };
-        futures.emplace_back(this->threadPool_->run(task));
+        futures.emplace_back(this->threadPool_.run(task));
     }
     size_t clusterIdx = 0;
     for (auto& future : futures) {
@@ -135,7 +135,7 @@ ClusteringConfigBuilder BottomUpTrainer::getTrainedClusteringConfig(
                                 typeInfo.second,
                                 i);
                     };
-            candidateFutures.emplace_back(this->threadPool_->run(task));
+            candidateFutures.emplace_back(this->threadPool_.run(task));
         }
         std::vector<std::future<SizeTimePair>> costFutures;
         std::vector<ClusteringConfigBuilder> candidates;

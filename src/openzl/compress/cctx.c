@@ -16,16 +16,16 @@
 #include "openzl/compress/cctx.h"               // ZS2_CCtx_*
 #include "openzl/compress/cgraph.h"             // CGRAPH_*
 #include "openzl/compress/cnode.h"              // CNODE_*
+#include "openzl/compress/codec_output_cache.h" // ZL_CodecOutputCache
 #include "openzl/compress/dyngraph_interface.h" // GCtx
 #include "openzl/compress/enc_interface.h"      // ENC_*
 #include "openzl/compress/gcparams.h"           // GCParams
 #include "openzl/compress/implicit_conversion.h" // ICONV_implicitConversionNodeID
-#include "openzl/compress/localparams.h"         // LP_getLocalRefParam
-#include "openzl/compress/materializer.h"        // OnTheFlyMaterialization
 #include "openzl/compress/private_nodes.h"       // ZL_GRAPH_SERIAL_STORE
 #include "openzl/compress/rtgraphs.h"            // RTGraph, RTStreamID
 #include "openzl/compress/segmenter.h"           // SEGM_*
 #include "openzl/compress/trStates.h"            // TrStates
+#include "openzl/dict/dict_constants.h"          // ZL_DICT_INDEX_NONE
 #include "openzl/zl_buffer.h"                    // ZL_RBuffer
 #include "openzl/zl_compress.h"
 #include "openzl/zl_compressor.h"
@@ -131,19 +131,23 @@ struct ZL_CCtx_s {
     ZL_Compressor* internal_cgraph;
     RTGraph rtgraph;
     CachedStates cachedCodecStates; // @note valid for single-thread only
-    GCParams requestedGCParams;     // User selection, at CCtx level
-    GCParams appliedGCParams;       // Employed at compression time;
-                                    // CCtx > Compressor > default
+    ZL_CodecOutputCache* attachedCodecOutputCache; // borrowed
+    ZL_CodecOutputCache* tryGraphCodecOutputCache; // owned; lazily allocated
+    size_t tryGraphCodecOutputCacheMaxBytes; // 0 disables automatic caching
+    bool tryGraphCodecOutputCacheActive;
+    bool tryGraphCodecOutputCacheStatsEnabled;
+    GCParams requestedGCParams; // User selection, at CCtx level
+    GCParams appliedGCParams;   // Employed at compression time;
+                                // CCtx > Compressor > default
     /// Comment to be added to the header. Is not added when size is 0.
     ZL_Comment comment;
     CCTX_TransformHeaders trHeaders;
     /* These Arenas presume single-thread execution.
      * For parallel execution, it will have to be replaced by Arena Pools */
-    Arena* codecArena;      // Codec lifetime
-    Arena* graphArena;      // Graph Lifetime
-    Arena* chunkArena;      // Chunk Lifetime
-    Arena* sessionArena;    // Entire compression lifetime
-    Arena* matScratchArena; // Scratch space for materializers
+    Arena* codecArena;   // Codec lifetime
+    Arena* graphArena;   // Graph Lifetime
+    Arena* chunkArena;   // Chunk Lifetime
+    Arena* sessionArena; // Entire compression lifetime
     const ZL_TypedRef** inputs;
     unsigned nbInputs;
     int numSegments;         // number of segments in the current frame
@@ -152,6 +156,7 @@ struct ZL_CCtx_s {
     size_t currentFrameSize; // already written into dstBuffer
     ZL_OperationContext opCtx;
     int inBackupMode; // tracks when graph is in backup mode, to avoid looping
+    unsigned segmenterDepth; // 0 until a segmenter starts, then its depth
 };
 
 static ZL_Report CCTX_init(ZL_CCtx* cctx)
@@ -161,20 +166,19 @@ static ZL_Report CCTX_init(ZL_CCtx* cctx)
 
     ZL_OC_init(&cctx->opCtx);
 
-    cctx->codecArena      = ALLOC_StackArena_create();
-    cctx->graphArena      = ALLOC_StackArena_create();
-    cctx->chunkArena      = ALLOC_StackArena_create();
-    cctx->sessionArena    = ALLOC_StackArena_create();
-    cctx->matScratchArena = ALLOC_StackArena_create();
+    cctx->codecArena   = ALLOC_StackArena_create();
+    cctx->graphArena   = ALLOC_StackArena_create();
+    cctx->chunkArena   = ALLOC_StackArena_create();
+    cctx->sessionArena = ALLOC_StackArena_create();
     ZL_ERR_IF(
             cctx->graphArena == NULL || cctx->codecArena == NULL
-                    || cctx->chunkArena == NULL || cctx->sessionArena == NULL
-                    || cctx->matScratchArena == NULL,
+                    || cctx->chunkArena == NULL || cctx->sessionArena == NULL,
             allocation);
 
     ZL_ERR_IF_ERR(RTGM_init(&cctx->rtgraph));
     TRS_init(&cctx->cachedCodecStates);
     CCTX_TransformHeaders_init(&cctx->trHeaders);
+    cctx->tryGraphCodecOutputCacheMaxBytes = 0;
 
     return ZL_returnSuccess();
 }
@@ -197,6 +201,13 @@ void CCTX_cleanChunk(ZL_CCtx* cctx)
     RTGM_reset(&cctx->rtgraph);
     CCTX_TransformHeaders_reset(&cctx->trHeaders);
     ALLOC_Arena_freeAll(cctx->chunkArena);
+    /* The RTGraph reset above releases referenced outputs before private cache
+     * entries are cleared. */
+    if (cctx->tryGraphCodecOutputCache != NULL) {
+        CodecCache_resetPreservingCompletedStats(
+                cctx->tryGraphCodecOutputCache);
+    }
+    cctx->tryGraphCodecOutputCacheActive = false;
 }
 
 // clean context, in order to re-use it
@@ -204,8 +215,9 @@ void CCTX_clean(ZL_CCtx* cctx)
 {
     CCTX_cleanChunk(cctx);
     ALLOC_Arena_freeAll(cctx->sessionArena);
-    cctx->comment.size = 0;
-    cctx->comment.data = NULL;
+    cctx->comment.size   = 0;
+    cctx->comment.data   = NULL;
+    cctx->segmenterDepth = 0;
     ZL_ASSERT_EQ(ALLOC_Arena_memUsed(cctx->codecArena), 0);
     ZL_ASSERT_EQ(ALLOC_Arena_memUsed(cctx->graphArena), 0);
     ZL_ASSERT_EQ(ALLOC_Arena_memUsed(cctx->chunkArena), 0);
@@ -216,13 +228,13 @@ void CCTX_free(ZL_CCtx* cctx)
     if (cctx == NULL)
         return;
     TRS_destroy(&cctx->cachedCodecStates);
+    CodecCache_free(cctx->tryGraphCodecOutputCache);
     ZL_Compressor_free(cctx->internal_cgraph);
     RTGM_destroy(&cctx->rtgraph);
     CCTX_TransformHeaders_destroy(&cctx->trHeaders);
     ALLOC_Arena_freeArena(cctx->codecArena);
     ALLOC_Arena_freeArena(cctx->graphArena);
     ALLOC_Arena_freeArena(cctx->chunkArena);
-    ALLOC_Arena_freeArena(cctx->matScratchArena);
     ALLOC_Arena_freeArena(cctx->sessionArena);
     ZL_OC_destroy(&cctx->opCtx);
     ZL_free(cctx);
@@ -294,6 +306,12 @@ int CCTX_getAppliedGParam(const ZL_CCtx* cctx, ZL_CParam gcparam)
 {
     ZL_ASSERT_NN(cctx);
     return GCParams_getParameter(&cctx->appliedGCParams, gcparam);
+}
+
+unsigned CCTX_getSegmenterDepth(const ZL_CCtx* cctx)
+{
+    ZL_ASSERT_NN(cctx);
+    return cctx->segmenterDepth;
 }
 
 int CCTX_isGraphSet(const ZL_CCtx* cctx)
@@ -416,6 +434,113 @@ ZL_Report CCTX_sendTrHeader(ZL_CCtx* cctx, RTNodeID rtnodeid, ZL_RBuffer trh)
     return ZL_returnSuccess();
 }
 
+ZL_RBuffer CCTX_getNodeHeader(const ZL_CCtx* cctx, RTNodeID rtnodeid)
+{
+    ZL_ASSERT_NN(cctx);
+    const NodeHeaderSegment segment =
+            RTGM_nodeHeaderSegment(&cctx->rtgraph, rtnodeid);
+    if (segment.len == 0) {
+        return (ZL_RBuffer){ NULL, 0 };
+    }
+    const uint8_t* const headers =
+            VECTOR_DATA(cctx->trHeaders.stagingHeaderStream);
+    ZL_ASSERT_NN(headers);
+    return (ZL_RBuffer){ headers + segment.startPos, segment.len };
+}
+
+ZL_CodecOutputCache* CCTX_getCodecOutputCache(const ZL_CCtx* cctx)
+{
+    ZL_ASSERT_NN(cctx);
+    if (cctx->attachedCodecOutputCache != NULL) {
+        return cctx->attachedCodecOutputCache;
+    }
+    return cctx->tryGraphCodecOutputCacheActive ? cctx->tryGraphCodecOutputCache
+                                                : NULL;
+}
+
+void CCTX_getLastChunkTryGraphCacheStats(
+        CodecCache_Stats* stats,
+        const ZL_CCtx* cctx)
+{
+    ZL_ASSERT_NN(stats);
+    ZL_ASSERT_NN(cctx);
+    if (!cctx->tryGraphCodecOutputCacheStatsEnabled
+        || cctx->tryGraphCodecOutputCache == NULL) {
+        *stats = (CodecCache_Stats){ 0 };
+        return;
+    }
+    *stats = CodecCache_getLastCompletedStats(cctx->tryGraphCodecOutputCache);
+}
+
+void CCTX_setTryGraphCacheStatsEnabled(ZL_CCtx* cctx, bool enabled)
+{
+    ZL_ASSERT_NN(cctx);
+    cctx->tryGraphCodecOutputCacheStatsEnabled = enabled;
+    if (cctx->tryGraphCodecOutputCache != NULL) {
+        CodecCache_setStatsEnabled(cctx->tryGraphCodecOutputCache, enabled);
+    }
+}
+
+ZL_Report ZL_CCtx_setTryGraphCacheBudget(ZL_CCtx* cctx, size_t maxBytes)
+{
+    ZL_ASSERT_NN(cctx);
+    CodecCache_free(cctx->tryGraphCodecOutputCache);
+    cctx->tryGraphCodecOutputCache         = NULL;
+    cctx->tryGraphCodecOutputCacheActive   = false;
+    cctx->tryGraphCodecOutputCacheMaxBytes = maxBytes;
+    return ZL_returnSuccess();
+}
+
+ZL_Report ZL_CCtx_setCodecOutputCache(ZL_CCtx* cctx, ZL_CodecOutputCache* cache)
+{
+    ZL_ASSERT_NN(cctx);
+    cctx->attachedCodecOutputCache = cache;
+    return ZL_returnSuccess();
+}
+
+static ZL_CodecOutputCache* CCTX_enableTryGraphCodecOutputCache(ZL_CCtx* cctx)
+{
+    ZL_ASSERT_NN(cctx);
+    if (cctx->attachedCodecOutputCache != NULL) {
+        return cctx->attachedCodecOutputCache;
+    }
+    if (cctx->tryGraphCodecOutputCacheMaxBytes == 0) {
+        return NULL;
+    }
+    if (cctx->tryGraphCodecOutputCache == NULL) {
+        cctx->tryGraphCodecOutputCache =
+                CodecCache_create(cctx->tryGraphCodecOutputCacheMaxBytes);
+        if (cctx->tryGraphCodecOutputCache != NULL) {
+            CodecCache_setStatsEnabled(
+                    cctx->tryGraphCodecOutputCache,
+                    cctx->tryGraphCodecOutputCacheStatsEnabled);
+        }
+    }
+    cctx->tryGraphCodecOutputCacheActive =
+            cctx->tryGraphCodecOutputCache != NULL;
+    if (cctx->tryGraphCodecOutputCacheActive) {
+        CodecCache_setInsertionsEnabled(cctx->tryGraphCodecOutputCache, true);
+    }
+    return cctx->tryGraphCodecOutputCache;
+}
+
+static void CCTX_disableTryGraphCodecOutputCacheInsertions(ZL_CCtx* cctx)
+{
+    ZL_ASSERT_NN(cctx);
+    if (cctx->attachedCodecOutputCache == NULL
+        && cctx->tryGraphCodecOutputCacheActive) {
+        CodecCache_setInsertionsEnabled(cctx->tryGraphCodecOutputCache, false);
+    }
+}
+
+static void CCTX_finishTryGraphCodecOutputCache(ZL_CCtx* cctx)
+{
+    ZL_ASSERT_NN(cctx);
+    ZL_ASSERT(cctx->tryGraphCodecOutputCacheActive);
+    ZL_ASSERT_NN(cctx->tryGraphCodecOutputCache);
+    cctx->tryGraphCodecOutputCacheActive = false;
+}
+
 // --------------------------
 // Actions
 // --------------------------
@@ -484,40 +609,6 @@ static ZL_Report CCTX_runCNode_wParams(
         *rtnid = tmp;
     }
 
-    // Perform on-the-fly materialization if needed
-    // Skip if params already contain the materialized param (already
-    // materialized at registration time)
-    OneshotMaterializationResult matRes = {
-        .materializedObj = NULL,
-    };
-    if (lparams != NULL) {
-        matRes.modifiedParams = *lparams;
-        if (cnode->transformDesc.publicDesc.materializer.materializeFn
-            != NULL) {
-            // Check if the materialized param already exists
-            ZL_RefParam existingParam = LP_getLocalRefParam(
-                    lparams,
-                    cnode->transformDesc.publicDesc.materializer.paramId);
-            ZL_ERR_IF_NE(
-                    existingParam.paramId,
-                    ZL_LP_INVALID_PARAMID,
-                    node_invalid_input,
-                    "Node runtime params cannot use the materialized param ID");
-
-            // Param doesn't exist, perform on-the-fly materialization
-            ZL_RESULT_OF(OneshotMaterializationResult)
-            res = MPM_materializeOneshot(
-                    cctx->sessionArena,
-                    cctx->matScratchArena,
-                    ZL_CCtx_getOperationContext(cctx),
-                    lparams,
-                    &cnode->transformDesc.publicDesc.materializer);
-            ZL_ERR_IF_ERR(res);
-            matRes  = ZL_RES_value(res);
-            lparams = &matRes.modifiedParams;
-        }
-    }
-
     ZL_Report nbOuts;
     nbOuts = ENC_runTransform(
             &cnode->transformDesc,
@@ -526,14 +617,10 @@ static ZL_Report CCTX_runCNode_wParams(
             nodeid,
             *rtnid,
             cnode,
-            lparams, // potentially modified by materialization
+            lparams,
             cctx,
             cctx->codecArena,
             &cctx->cachedCodecStates);
-
-    // Clean up on-the-fly materialized params (must happen before error
-    // check)
-    MPM_dematerializeOneshot(cctx->sessionArena, &matRes);
 
     ZL_ERR_IF_ERR(
             nbOuts,
@@ -881,6 +968,7 @@ static ZL_Graph GCTX_init(ZL_CCtx* cctx, const ZL_FunctionGraphDesc* dgd)
         .rtsids        = VECTOR_EMPTY(ZL_ENCODER_GRAPH_LIMIT),
         .status        = ZL_returnSuccess(),
         .dgd           = dgd,
+        .graphid       = ZL_GRAPH_ILLEGAL,
         .graphArena    = cctx->graphArena,
         .chunkArena    = cctx->chunkArena,
     };
@@ -910,7 +998,8 @@ static ZL_Report CCTX_runSegmenter(
         ZL_GraphID graphid,
         const ZL_RuntimeGraphParameters* rgp,
         const RTStreamID* rtsids,
-        size_t nbInputs)
+        size_t nbInputs,
+        unsigned depth)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
 
@@ -949,39 +1038,12 @@ static ZL_Report CCTX_runSegmenter(
     // we don't want to create Nodes in front of the Segmenter.
 
     // Insert runtime parameters if needed
-    OneshotMaterializationResult segMatRes = {
-        .materializedObj = NULL,
-    };
     if (rgp) {
         ALLOC_ARENA_MALLOC_CHECKED(
                 ZL_SegmenterDesc, migd, 1, cctx->sessionArena);
         *migd = *segDesc;
         if (rgp->localParams) {
-            // Perform on-the-fly materialization if needed
-            if (segDesc->materializer.materializeFn != NULL) {
-                // Check if the materialized param already exists
-                ZL_RefParam existingParam = LP_getLocalRefParam(
-                        rgp->localParams, segDesc->materializer.paramId);
-                ZL_ERR_IF_NE(
-                        existingParam.paramId,
-                        ZL_LP_INVALID_PARAMID,
-                        node_invalid_input,
-                        "Segmenter runtime params cannot use the materialized param ID");
-
-                // Param doesn't exist, perform on-the-fly materialization
-                ZL_RESULT_OF(OneshotMaterializationResult)
-                res = MPM_materializeOneshot(
-                        cctx->sessionArena,
-                        cctx->matScratchArena,
-                        ZL_CCtx_getOperationContext(cctx),
-                        rgp->localParams,
-                        &segDesc->materializer);
-                ZL_ERR_IF_ERR(res);
-                segMatRes         = ZL_RES_value(res);
-                migd->localParams = segMatRes.modifiedParams;
-            } else {
-                migd->localParams = *rgp->localParams;
-            }
+            migd->localParams = *rgp->localParams;
         }
         if (rgp->customGraphs) {
             migd->customGraphs    = rgp->customGraphs;
@@ -996,14 +1058,13 @@ static ZL_Report CCTX_runSegmenter(
             cctx,
             &cctx->rtgraph,
             cctx->sessionArena,
-            cctx->chunkArena);
+            cctx->chunkArena,
+            graphid);
     CWAYPOINT(on_segmenterEncode_start, segmenterCtx, /* placeholder */ NULL);
-    ZL_Report const r = SEGM_runSegmenter(segmenterCtx);
+    cctx->segmenterDepth = depth;
+    ZL_Report const r    = SEGM_runSegmenter(segmenterCtx);
 
     CWAYPOINT(on_segmenterEncode_end, segmenterCtx, r);
-
-    // Maybe clean up on-the-fly materialized params
-    MPM_dematerializeOneshot(cctx->sessionArena, &segMatRes);
 
     return r;
 }
@@ -1022,6 +1083,7 @@ static ZL_Report CCTX_runGraphDesc(
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(cctx);
     ZL_ASSERT_NN(cctx);
+    const bool tryGraphCacheWasActive = cctx->tryGraphCodecOutputCacheActive;
     ZL_DLOG(BLOCK,
             "CCTX_runGraphDesc on graph '%s(%zu)' with %zu inputs",
             STR_REPLACE_NULL(migd->name),
@@ -1039,6 +1101,7 @@ static ZL_Report CCTX_runGraphDesc(
     ZL_Graph graphCtx     = GCTX_init(cctx, migd);
     graphCtx.privateParam = privateParam;
     graphCtx.depth        = depth;
+    graphCtx.graphid      = graphid;
 
     for (unsigned n = 0; n < nbInputs; n++) {
         const ZL_Report ret =
@@ -1059,6 +1122,16 @@ static ZL_Report CCTX_runGraphDesc(
     // Note: graphArena was already reset within CCTX_runGraph_internal
     ZL_free(inputsArray);
     GCTX_destroy(&graphCtx);
+
+    /* Successors currently run synchronously and depth-first inside
+     * CCTX_runGraph_internal(). Therefore a private cache activated by this
+     * graph has served the complete selected successor subtree when that call
+     * returns. If graph execution stops being depth-first, this lifetime
+     * boundary must be revisited. Cached storage remains alive until
+     * CCTX_cleanChunk() because replayed output streams reference it. */
+    if (!tryGraphCacheWasActive && cctx->tryGraphCodecOutputCacheActive) {
+        CCTX_finishTryGraphCodecOutputCache(cctx);
+    }
 
     return dgr;
 }
@@ -1134,39 +1207,12 @@ static ZL_Report CCTX_runSupervisedGraphID_internal(
 
     // Now run the selected Graph, inserting runtime parameters if needed
     ZL_ASSERT_EQ(CGRAPH_graphType(cctx->cgraph, graphid), gt_miGraph);
-    OneshotMaterializationResult graphMatRes = {
-        .materializedObj = NULL,
-    };
     if (rgp) {
         ALLOC_ARENA_MALLOC_CHECKED(
                 ZL_FunctionGraphDesc, migd, 1, cctx->graphArena);
         *migd = *dstGd;
         if (rgp->localParams) {
-            // Perform on-the-fly materialization if needed
-            if (dstGd->materializer.materializeFn != NULL) {
-                // Check if the materialized param already exists
-                ZL_RefParam existingParam = LP_getLocalRefParam(
-                        rgp->localParams, dstGd->materializer.paramId);
-                ZL_ERR_IF_NE(
-                        existingParam.paramId,
-                        ZL_LP_INVALID_PARAMID,
-                        node_invalid_input,
-                        "Graph runtime params cannot use the materialized param ID");
-
-                // Param doesn't exist, perform on-the-fly materialization
-                ZL_RESULT_OF(OneshotMaterializationResult)
-                res = MPM_materializeOneshot(
-                        cctx->sessionArena,
-                        cctx->matScratchArena,
-                        ZL_CCtx_getOperationContext(cctx),
-                        rgp->localParams,
-                        &dstGd->materializer);
-                ZL_ERR_IF_ERR(res);
-                graphMatRes       = ZL_RES_value(res);
-                migd->localParams = graphMatRes.modifiedParams;
-            } else {
-                migd->localParams = *rgp->localParams;
-            }
+            migd->localParams = *rgp->localParams;
         }
         if (rgp->customGraphs) {
             migd->customGraphs   = rgp->customGraphs;
@@ -1186,9 +1232,6 @@ static ZL_Report CCTX_runSupervisedGraphID_internal(
             rtsids,
             nbInputs,
             depth);
-
-    // Maybe clean up on-the-fly materialized params
-    MPM_dematerializeOneshot(cctx->sessionArena, &graphMatRes);
 
     return graphResult;
 }
@@ -1287,6 +1330,18 @@ static ZL_Report CCTX_runSuccessor_internal(
     if (backupMode != ZL_TernaryParam_enable || cctx->inBackupMode) {
         return outcome;
     }
+    if (cctx->segmenterDepth != 0 && depth <= cctx->segmenterDepth) {
+        /* Permissive fallback above a Segmenter is not currently supported:
+         * fallback graphs currently do not Segment,
+         * and we can't take the risk to attempt compressing a huge Segment.
+         */
+        ZL_ERR_IF_ERR(
+                outcome,
+                "Permissive fallback above a Segmenter is not supported "
+                "(depth=%u, segmenterDepth=%u)",
+                depth,
+                cctx->segmenterDepth);
+    }
 
     ZL_E_log(ZL_RES_error(outcome), ZL_LOG_LVL_V);
     // Report the error as a warning
@@ -1337,14 +1392,18 @@ ZL_Report CCTX_runSuccessor(
                depth);
     }
     ZL_DLOG(BLOCK, "CCTX_runSuccessor (graphid=%u)", graphid.gid);
+    // A segmenter is allowed if it is not run inside a segmenter, and not run
+    // after nodes are executed.
     int const isSegmentable =
             (rtInputs[0].rtsid == 0 && nbInputs == cctx->nbInputs
-             && cctx->numSegments == 0);
+             && cctx->numSegments == 0 && cctx->segmenterDepth == 0
+             && RTGM_getNbNodes(&cctx->rtgraph) == 0);
 
     // Segmenter
     if (CGRAPH_graphType(cctx->cgraph, graphid) == gt_segmenter) {
         if (isSegmentable) {
-            return CCTX_runSegmenter(cctx, graphid, rgp, rtInputs, nbInputs);
+            return CCTX_runSegmenter(
+                    cctx, graphid, rgp, rtInputs, nbInputs, depth);
         }
         ZL_ERR(graph_invalid, "Segmenter can only be used on full input");
     }
@@ -1379,6 +1438,12 @@ CCTX_startCompression(ZL_CCtx* cctx, const ZL_Data* inputs[], size_t nbInputs)
     ZL_ASSERT_NN(cctx);
     ZL_ASSERT_NN(inputs);
 
+    // Clear any private cache state left by an interrupted prior compression.
+    if (cctx->tryGraphCodecOutputCache != NULL) {
+        CodecCache_reset(cctx->tryGraphCodecOutputCache);
+    }
+    cctx->tryGraphCodecOutputCacheActive = false;
+
     /* Current library limitation :
      * Compression requires attaching a Compressor.
      * So this section should only be reached after a Compressor is set.
@@ -1403,8 +1468,9 @@ CCTX_startCompression(ZL_CCtx* cctx, const ZL_Data* inputs[], size_t nbInputs)
     cctx->inputs = ZL_codemodDatasAsInputs(inputs);
     ZL_ERR_IF_LT(nbInputs, 1, successor_invalidNumInputs);
     ZL_ASSERT_LT(nbInputs, INT_MAX);
-    cctx->nbInputs    = (unsigned)nbInputs;
-    cctx->numSegments = 0;
+    cctx->nbInputs       = (unsigned)nbInputs;
+    cctx->numSegments    = 0;
+    cctx->segmenterDepth = 0;
     ALLOC_ARENA_MALLOC_CHECKED(
             RTStreamID, rtsids, nbInputs, cctx->sessionArena);
     for (size_t n = 0; n < nbInputs; n++) {
@@ -1538,6 +1604,36 @@ ZL_Data* CCTX_refContentIntoNewStream(
     return RTGM_getWStream(&cctx->rtgraph, newRTStreamID);
 }
 
+ZL_RESULT_OF(CCTX_DataPtr)
+CCTX_refConstBufferIntoNewStream(
+        ZL_CCtx* cctx,
+        RTNodeID rtnodeid,
+        int outcomeID,
+        size_t eltWidth,
+        size_t nbElts,
+        const void* src)
+{
+    ZL_RESULT_DECLARE_SCOPE(CCTX_DataPtr, cctx);
+    ZL_DLOG(BLOCK,
+            "CCTX_refConstBufferIntoNewStream (rtnodeid = %u)",
+            rtnodeid.rtnid);
+
+    const CNode* const cnode = RTGM_getCNode(&cctx->rtgraph, rtnodeid);
+    ZL_TRY_LET(
+            RTStreamID,
+            newRTStreamID,
+            RTGM_refConstBufferIntoNewStream(
+                    &cctx->rtgraph,
+                    rtnodeid,
+                    outcomeID,
+                    CNODE_isVO(cnode, outcomeID),
+                    CNODE_getOutStreamType(cnode, outcomeID),
+                    eltWidth,
+                    nbElts,
+                    src));
+    return ZL_WRAP_VALUE(RTGM_getWStream(&cctx->rtgraph, newRTStreamID));
+}
+
 ZL_Report CCTX_setOutBufferSizes(
         ZL_CCtx* cctx,
         RTNodeID rtnodeid,
@@ -1629,6 +1725,11 @@ static ZL_Report CCTX_writeChunkHeader(
         .hasCompressedChecksum =
                 CCTX_getAppliedGParam(cctx, ZL_CParam_compressedChecksum)
                 != ZL_TernaryParam_disable,
+        .hasBundleID =
+                (formatVersion >= ZL_MATERIALIZED_DICT_VERSION_MIN
+                 && CCTX_getCGraph(cctx) != NULL
+                 && ZL_Compressor_getDictBundleID(CCTX_getCGraph(cctx))
+                         != NULL),
     };
     return EFH_writeChunkHeader(dst, dstCapacity, &info, gi, formatVersion);
 }
@@ -1855,6 +1956,11 @@ CCTX_flushChunk(ZL_CCtx* cctx, const ZL_Data* inputs[], size_t nbInputs)
     cctx->currentFrameSize = frameSize;
     ++cctx->numSegments;
 
+    if (cctx->tryGraphCodecOutputCacheStatsEnabled
+        && cctx->tryGraphCodecOutputCache != NULL) {
+        CodecCache_captureCompletedStats(cctx->tryGraphCodecOutputCache);
+    }
+
     return ZL_returnValue(frameSize - startFrameSize);
 }
 
@@ -1897,6 +2003,8 @@ ZL_Report CCTX_getFinalGraph(ZL_CCtx* cctx, GraphInfo* gip)
     ALLOC_ARENA_MALLOC_CHECKED(size_t, nbVOs, nbTransforms, cctx->chunkArena);
     ALLOC_ARENA_MALLOC_CHECKED(
             size_t, nbTrInputs, nbTransforms, cctx->chunkArena);
+    ALLOC_ARENA_MALLOC_CHECKED(
+            uint32_t, dictIdxs, nbTransforms, cctx->chunkArena);
     ALLOC_ARENA_CALLOC_CHECKED(
             ZL_RBuffer, buffs, nbStreamsMax, cctx->chunkArena);
     ALLOC_ARENA_MALLOC_CHECKED(
@@ -1906,6 +2014,7 @@ ZL_Report CCTX_getFinalGraph(ZL_CCtx* cctx, GraphInfo* gip)
     gip->trHSizes    = trHSizes;
     gip->nbVOs       = nbVOs;
     gip->nbTrInputs  = nbTrInputs;
+    gip->dictIdxs    = dictIdxs;
     gip->storedBuffs = buffs;
     gip->inputDescs  = inputDescs;
 
@@ -1935,6 +2044,7 @@ ZL_Report CCTX_getFinalGraph(ZL_CCtx* cctx, GraphInfo* gip)
         nbVOs[n] = RTGM_getNbOutStreams(&cctx->rtgraph, rtnid)
                 - CNODE_getNbOut1s(cnode);
         nbTrInputs[n] = RTGM_getNbInStreams(&cctx->rtgraph, rtnid);
+        dictIdxs[n]   = CNODE_getDictIndex(cnode);
         nbDistances += nbTrInputs[n];
         ZL_DLOG(BLOCK,
                 "CCTX_getFinalGraph: stage %u uses Transform ID %u ",
@@ -1997,6 +2107,11 @@ ZL_CCtx* CCTX_createDerivedCCtx(const ZL_CCtx* originalCCtx)
         return NULL;
     }
     GCParams_copy(&cctx->requestedGCParams, &originalCCtx->requestedGCParams);
+    cctx->attachedCodecOutputCache = CCTX_getCodecOutputCache(originalCCtx);
+    cctx->tryGraphCodecOutputCacheMaxBytes =
+            originalCCtx->tryGraphCodecOutputCacheMaxBytes;
+    cctx->tryGraphCodecOutputCacheStatsEnabled =
+            originalCCtx->tryGraphCodecOutputCacheStatsEnabled;
     return cctx;
 }
 
@@ -2067,6 +2182,16 @@ size_t CCTX_streamMemory(ZL_CCtx const* cctx)
     return RTGM_streamMemory(&cctx->rtgraph);
 }
 
+size_t CCTX_arenaMemory(ZL_CCtx const* cctx)
+{
+    if (cctx == NULL)
+        return 0;
+    return ALLOC_Arena_memAllocated(cctx->sessionArena)
+            + ALLOC_Arena_memAllocated(cctx->chunkArena)
+            + ALLOC_Arena_memAllocated(cctx->graphArena)
+            + ALLOC_Arena_memAllocated(cctx->codecArena);
+}
+
 static ZL_RESULT_OF(ZL_GraphPerformance) CCTX_tryGraphInternal(
         ZL_CCtx* cctx,
         void* dst,
@@ -2100,7 +2225,7 @@ static ZL_RESULT_OF(ZL_GraphPerformance) CCTX_tryGraphInternal(
 
 ZL_RESULT_OF(ZL_GraphPerformance)
 CCTX_tryGraph(
-        const ZL_CCtx* parentCCtx,
+        ZL_CCtx* parentCCtx,
         const ZL_Input* inputs[],
         size_t numInputs,
         Arena* wkspArena,
@@ -2121,14 +2246,22 @@ CCTX_tryGraph(
     void* const dst          = ALLOC_Arena_malloc(wkspArena, dstCapacity);
     ZL_ERR_IF_NULL(dst, allocation);
 
+    // Derived contexts borrow this cache. Allocation failure only disables the
+    // optimization; it must not change tryGraph behavior.
+    (void)CCTX_enableTryGraphCodecOutputCache(parentCCtx);
+
     ZL_CCtx* cctx = CCTX_createDerivedCCtx(parentCCtx);
-    ZL_ERR_IF_NULL(cctx, allocation);
+    if (cctx == NULL) {
+        CCTX_disableTryGraphCodecOutputCacheInsertions(parentCCtx);
+        ZL_ERR(allocation);
+    }
 
     ZL_RESULT_OF(ZL_GraphPerformance)
     result = CCTX_tryGraphInternal(
             cctx, dst, dstCapacity, inputs, numInputs, graph, params);
 
     CCTX_free(cctx);
+    CCTX_disableTryGraphCodecOutputCacheInsertions(parentCCtx);
 
     return result;
 }

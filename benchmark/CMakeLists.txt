@@ -41,6 +41,7 @@ add_executable(openzl_benchmark
 target_link_libraries(openzl_benchmark
     PUBLIC
         openzl
+        openzl_test_support
         fileio
         benchmark::benchmark
         fmt::fmt

@@ -4,7 +4,7 @@
 #include "custom_transforms/thrift/tests/util.h"     // @manual
 #include "custom_transforms/thrift/thrift_parsers.h" // @manual
 
-#include "security/lionhead/utils/lib_ftest/enable_sfdp_thrift.h"
+#include "security/lionhead/utils/lib_ftest/enable_sfdp_thrift.h" // IWYU pragma: keep
 
 // Must be included after enable_sfdp_thrift.h
 

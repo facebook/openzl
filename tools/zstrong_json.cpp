@@ -6,7 +6,6 @@
 #include <mutex>
 
 #include <folly/FileUtil.h>
-#include <folly/Memory.h>
 #include <folly/base64.h>
 #include <folly/lang/Bits.h>
 

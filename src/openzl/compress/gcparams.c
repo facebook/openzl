@@ -59,6 +59,22 @@ const GCParamToName GCParams_kAllParams[] = {
     { ZL_CParam_minStreamSize, { (const char*[]){ "minStreamSize" }, 1 } }
 };
 
+static ZL_Report setTernaryParam(ZL_TernaryParam* param, int value)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    switch (value) {
+        case ZL_TernaryParam_enable:
+        case ZL_TernaryParam_disable:
+        case ZL_TernaryParam_auto:
+            *param = (ZL_TernaryParam)value;
+            return ZL_returnSuccess();
+        default:
+            ZL_ERR(compressionParameter_invalid,
+                   "Ternary param value invalid: %d",
+                   value);
+    }
+}
+
 ZL_Report
 GCParams_setParameter(GCParams* gcparams, ZL_CParam paramId, int value)
 {
@@ -77,19 +93,18 @@ GCParams_setParameter(GCParams* gcparams, ZL_CParam paramId, int value)
             gcparams->decompressionLevel = value;
             break;
         case ZL_CParam_permissiveCompression:
-            // TODO (@Cyan): provide bounds
-            gcparams->permissiveCompression = (ZL_TernaryParam)value;
+            ZL_ERR_IF_ERR(
+                    setTernaryParam(&gcparams->permissiveCompression, value));
             break;
         case ZL_CParam_compressedChecksum:
-            // TODO (@Cyan): provide bounds
-            gcparams->compressedChecksum = (ZL_TernaryParam)value;
+            ZL_ERR_IF_ERR(
+                    setTernaryParam(&gcparams->compressedChecksum, value));
             break;
         case ZL_CParam_contentChecksum:
-            // TODO (@Cyan): provide bounds
-            gcparams->contentChecksum = (ZL_TernaryParam)value;
+            ZL_ERR_IF_ERR(setTernaryParam(&gcparams->contentChecksum, value));
             break;
         case ZL_CParam_storeOnExpansion:
-            gcparams->storeOnExpansion = (ZL_TernaryParam)value;
+            ZL_ERR_IF_ERR(setTernaryParam(&gcparams->storeOnExpansion, value));
             break;
         case ZL_CParam_minStreamSize:
             // TODO (@Cyan): provide bounds

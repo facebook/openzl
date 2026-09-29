@@ -3,6 +3,7 @@
 #include "openzl/zl_compressor_serialization.h"
 
 #include "openzl/zl_compressor.h"
+#include "openzl/zl_dict.h"
 #include "openzl/zl_reflection.h"
 
 #include "openzl/shared/a1cbor.h"
@@ -21,15 +22,17 @@
 
 #include "openzl/zl_materializer.h"
 
+#include "openzl/zl_unique_id.h"
+
 static ZL_RESULT_OF(StringView)
-        cs_hexEncodeMParamID(Arena* const arena, const ZL_MParamID* id)
+        cs_hexEncodeUniqueID(Arena* const arena, const ZL_UniqueID* uid)
 {
     ZL_RESULT_DECLARE_SCOPE(StringView, NULL);
-    const size_t encSize = sizeof(id->id.bytes) * 2;
+    const size_t encSize = sizeof(uid->bytes) * 2;
     char* buf            = ALLOC_Arena_malloc(arena, encSize + 1);
     ZL_ERR_IF_NULL(buf, allocation);
-    for (size_t i = 0; i < sizeof(id->id.bytes); i++) {
-        const uint8_t byte = id->id.bytes[i];
+    for (size_t i = 0; i < sizeof(uid->bytes); i++) {
+        const uint8_t byte = uid->bytes[i];
         buf[i * 2]         = "0123456789abcdef"[byte >> 4];
         buf[i * 2 + 1]     = "0123456789abcdef"[byte & 0x0f];
     }
@@ -37,19 +40,23 @@ static ZL_RESULT_OF(StringView)
     return ZL_WRAP_VALUE(StringView_init(buf, encSize));
 }
 
-ZL_RESULT_DECLARE_TYPE(ZL_MParamID);
+ZL_RESULT_DECLARE_TYPE(ZL_UniqueID);
+ZL_RESULT_DECLARE_TYPE(ZL_BundleID);
 
-static ZL_RESULT_OF(ZL_MParamID) cs_hexDecodeMParamID(const StringView sv)
+static ZL_RESULT_OF(ZL_BundleID)
+        cs_extractDictBundleIDOrNull(const A1C_Item* root);
+
+static ZL_RESULT_OF(ZL_UniqueID) cs_hexDecodeUniqueID(const StringView sv)
 {
-    ZL_RESULT_DECLARE_SCOPE(ZL_MParamID, NULL);
-    ZL_MParamID decoded;
+    ZL_RESULT_DECLARE_SCOPE(ZL_UniqueID, NULL);
+    ZL_UniqueID decoded;
     memset(&decoded, 0, sizeof(decoded));
     ZL_ERR_IF_NE(
             sv.size,
-            sizeof(decoded.id.bytes) * 2,
+            sizeof(decoded.bytes) * 2,
             corruption,
-            "Failed to hex-decode mparam ID: wrong length");
-    for (size_t i = 0; i < sizeof(decoded.id.bytes); i++) {
+            "Failed to hex-decode ZL_UniqueID: wrong length");
+    for (size_t i = 0; i < sizeof(decoded.bytes); i++) {
         const char hi = sv.data[i * 2];
         const char lo = sv.data[i * 2 + 1];
         uint8_t nib_hi, nib_lo;
@@ -60,7 +67,7 @@ static ZL_RESULT_OF(ZL_MParamID) cs_hexDecodeMParamID(const StringView sv)
         } else if (hi >= 'A' && hi <= 'F') {
             nib_hi = (uint8_t)(hi - 'A' + 10);
         } else {
-            ZL_ERR(corruption, "Invalid hex char in mparam ID");
+            ZL_ERR(corruption, "Invalid hex char in unique ID");
         }
         if (lo >= '0' && lo <= '9') {
             nib_lo = (uint8_t)(lo - '0');
@@ -69,9 +76,9 @@ static ZL_RESULT_OF(ZL_MParamID) cs_hexDecodeMParamID(const StringView sv)
         } else if (lo >= 'A' && lo <= 'F') {
             nib_lo = (uint8_t)(lo - 'A' + 10);
         } else {
-            ZL_ERR(corruption, "Invalid hex char in mparam ID");
+            ZL_ERR(corruption, "Invalid hex char in unique ID");
         }
-        decoded.id.bytes[i] = (uint8_t)((nib_hi << 4) | nib_lo);
+        decoded.bytes[i] = (uint8_t)((nib_hi << 4) | nib_lo);
     }
     return ZL_WRAP_VALUE(decoded);
 }
@@ -313,7 +320,7 @@ static ZL_RESULT_OF(CompressorSerializer_ParamSet)
                 const ZL_LocalParams* const lp)
 {
     ZL_RESULT_DECLARE_SCOPE(CompressorSerializer_ParamSet, opCtx);
-    CompressorSerializer_ParamSet ps;
+    CompressorSerializer_ParamSet ps = { 0 };
     CompressorSerializer_ParamSet_init(&ps);
 
     ZL_Report result =
@@ -350,6 +357,7 @@ typedef struct {
     StringView base_node_name;
     StringView param_set_name;
     StringView mparam_id;
+    StringView dict_id;
 } CompressorSerializer_Node;
 
 ////////////////////////////////////////
@@ -372,6 +380,7 @@ typedef struct {
     VECTOR(StringView) successor_graphs;
 
     StringView param_set_name;
+    StringView mparam_id;
 } CompressorSerializer_Graph;
 
 static void CompressorSerializer_Graph_destroy(CompressorSerializer_Graph* g)
@@ -687,8 +696,8 @@ static ZL_Report CompressorSerializer_serializeGraph_cb(
 
     CompressorSerializer_Graph* info;
     {
-        CompressorSerializer_GraphMap_Entry entry;
-        entry.key = name_sv;
+        CompressorSerializer_GraphMap_Entry entry = { 0 };
+        entry.key                                 = name_sv;
         CompressorSerializer_GraphMap_Insert insert =
                 CompressorSerializer_GraphMap_insert(&state->graphs, &entry);
         ZL_ERR_IF(
@@ -851,6 +860,27 @@ static ZL_Report CompressorSerializer_serializeGraph_cb(
         info->param_set_name = StringView_init(NULL, 0);
     }
 
+    {
+        const ZL_MParam* const mparam = ZL_Compressor_Graph_getMParam(c, gid);
+        if (mparam != NULL && ZL_MParamID_hasValue(&mparam->mparamID)) {
+            ZL_TRY_LET_CONST(
+                    StringView,
+                    mparam_id_sv,
+                    cs_hexEncodeUniqueID(state->arena, &mparam->mparamID.id));
+            ZL_ERR_IF_NULL(
+                    CompressorSerializer_MParamMap_find(
+                            &state->mparams, &mparam_id_sv),
+                    logicError,
+                    "Graph '%.*s' references mparam ID '%.*s' which was not "
+                    "recorded in the mparams map",
+                    (int)info->graph_name.size,
+                    info->graph_name.data,
+                    (int)mparam_id_sv.size,
+                    mparam_id_sv.data);
+            info->mparam_id = mparam_id_sv;
+        }
+    }
+
     return ZL_returnSuccess();
 }
 
@@ -929,7 +959,7 @@ static ZL_Report CompressorSerializer_serializeNode_cb(
             ZL_TRY_LET_CONST(
                     StringView,
                     mparam_id_sv,
-                    cs_hexEncodeMParamID(state->arena, &mid));
+                    cs_hexEncodeUniqueID(state->arena, &mid.id));
             ZL_ERR_IF_NULL(
                     CompressorSerializer_MParamMap_find(
                             &state->mparams, &mparam_id_sv),
@@ -941,6 +971,17 @@ static ZL_Report CompressorSerializer_serializeNode_cb(
                     (int)mparam_id_sv.size,
                     mparam_id_sv.data);
             info.mparam_id = mparam_id_sv;
+        }
+    }
+
+    {
+        ZL_DictID did = ZL_Compressor_Node_getDictID(c, nid);
+        if (ZL_UniqueID_isValid(&did.id)) {
+            ZL_TRY_LET_CONST(
+                    StringView,
+                    dict_id_sv,
+                    cs_hexEncodeUniqueID(state->arena, &did.id));
+            info.dict_id = dict_id_sv;
         }
     }
 
@@ -1112,7 +1153,7 @@ static ZL_Report ZL_CompressorSerializer_encodeNode(
 
     A1C_Item_string_refStringView(node_key_item, entry->key);
     const A1C_MapBuilder node_builder =
-            A1C_Item_map_builder(node_val_item, 3, &state->a1c_arena);
+            A1C_Item_map_builder(node_val_item, 4, &state->a1c_arena);
 
     {
         A1C_MAP_TRY_ADD(pair, node_builder);
@@ -1128,8 +1169,14 @@ static ZL_Report ZL_CompressorSerializer_encodeNode(
 
     if (info->mparam_id.size > 0) {
         A1C_MAP_TRY_ADD(pair, node_builder);
-        A1C_Item_string_refCStr(&pair->key, "mparam");
+        A1C_Item_string_refCStr(&pair->key, "mparam_id");
         A1C_Item_string_refStringView(&pair->val, info->mparam_id);
+    }
+
+    if (info->dict_id.size > 0) {
+        A1C_MAP_TRY_ADD(pair, node_builder);
+        A1C_Item_string_refCStr(&pair->key, "dict_id");
+        A1C_Item_string_refStringView(&pair->val, info->dict_id);
     }
 
     return ZL_returnSuccess();
@@ -1183,6 +1230,9 @@ static ZL_Report ZL_CompressorSerializer_encodeGraph(
             ZL_ERR(GENERIC,
                    "Invalid graph type for graph \"%s\"!",
                    info->graph_name);
+    }
+    if (info->mparam_id.size > 0) {
+        num_pairs += 1; // mparam_id
     }
 
     A1C_Item_string_refStringView(key, entry->key);
@@ -1280,6 +1330,12 @@ static ZL_Report ZL_CompressorSerializer_encodeGraph(
         }
     }
 
+    if (info->mparam_id.size > 0) {
+        A1C_MAP_TRY_ADD(pair, builder);
+        A1C_Item_string_refCStr(&pair->key, "mparam_id");
+        A1C_Item_string_refStringView(&pair->val, info->mparam_id);
+    }
+
     ZL_ERR_IF_NE(val->map.size, num_pairs, logicError);
 
     return ZL_returnSuccess();
@@ -1313,7 +1369,7 @@ static ZL_Report recordMParam_cb(void* opaque, const ZL_MParam* mparam)
     ZL_TRY_LET_CONST(
             StringView,
             key,
-            cs_hexEncodeMParamID(state->arena, &mparam->mparamID));
+            cs_hexEncodeUniqueID(state->arena, &mparam->mparamID.id));
 
     const CompressorSerializer_MParamMap_Entry entry =
             (CompressorSerializer_MParamMap_Entry){
@@ -1550,7 +1606,7 @@ static ZL_Report ZL_CompressorSerializer_serializeInner(
     A1C_Item* global_params;
     {
         const A1C_MapBuilder root_map_builder =
-                A1C_Item_map_builder(state->root, 7, &state->a1c_arena);
+                A1C_Item_map_builder(state->root, 8, &state->a1c_arena);
         {
             A1C_MAP_TRY_ADD(pair, root_map_builder);
             A1C_Item_string_refCStr(&pair->key, "version");
@@ -1585,6 +1641,16 @@ static ZL_Report ZL_CompressorSerializer_serializeInner(
             A1C_MAP_TRY_ADD(pair, root_map_builder);
             A1C_Item_string_refCStr(&pair->key, "global_params");
             global_params = &pair->val;
+        }
+        const ZL_BundleID* bundleID = ZL_Compressor_getDictBundleID(c);
+        if (bundleID != NULL) {
+            A1C_MAP_TRY_ADD(pair, root_map_builder);
+            A1C_Item_string_refCStr(&pair->key, "dict_bundle_id");
+            ZL_TRY_LET_CONST(
+                    StringView,
+                    bundle_id_sv,
+                    cs_hexEncodeUniqueID(state->arena, &bundleID->id));
+            A1C_Item_string_refStringView(&pair->val, bundle_id_sv);
         }
     }
 
@@ -2365,10 +2431,10 @@ static ZL_Report ZL_CompressorDeserializer_tryBuildNode(
                     &base_local_params,
                     NULL));
 
-    // Read optional "mparam" field (hex string key) and look up the
+    // Read optional "mparam_id" field (hex string key) and look up the
     // corresponding entry from the pre-parsed mparams map.
     ZL_MParam mparam            = { .mparamID = ZL_MPARAM_ID_NULL };
-    const A1C_Item* mparam_item = A1C_Map_get_cstr(&val_map, "mparam");
+    const A1C_Item* mparam_item = A1C_Map_get_cstr(&val_map, "mparam_id");
     if (mparam_item != NULL) {
         A1C_TRY_EXTRACT_STRING(mparam_key_str, mparam_item);
         const StringView mparam_key_sv = StringView_initFromA1C(mparam_key_str);
@@ -2383,11 +2449,37 @@ static ZL_Report ZL_CompressorDeserializer_tryBuildNode(
         mparam = mp_entry->val;
     }
 
+    ZL_DictID dictID          = ZL_DICT_ID_NULL;
+    const A1C_Item* dict_item = A1C_Map_get_cstr(&val_map, "dict_id");
+    if (dict_item != NULL) {
+        A1C_TRY_EXTRACT_STRING(dict_key_str, dict_item);
+        const StringView dict_key_sv = StringView_initFromA1C(dict_key_str);
+        ZL_TRY_LET_CONST(
+                ZL_UniqueID,
+                decoded_dict_uid,
+                cs_hexDecodeUniqueID(dict_key_sv));
+        const ZL_DictID decoded_dict_id = { .id = decoded_dict_uid };
+        dictID                          = decoded_dict_id;
+    }
+
+    // Preserve the node's registered name prefix (e.g. "zl.trainable.zstd")
+    // across the round-trip. Without an explicit name the framework would
+    // derive the name from the base node's prefix, dropping any custom name
+    // the node carried (which downstream consumers, such as dict training,
+    // rely on to identify nodes). The serialized key is the node's unique
+    // name ("prefix#id"); strip the "#id" fragment to recover the prefix.
+    ZL_TRY_LET_CONST(
+            StringView,
+            node_name_prefix,
+            mk_sv_strip_name_fragment(state->arena, ser_name_unterm));
+
     const ZL_NodeID node_id = ZL_Compressor_registerParameterizedNode(
             compressor,
             &(const ZL_ParameterizedNodeDesc){
+                    .name        = node_name_prefix.data,
                     .node        = base_nid,
                     .localParams = &local_params,
+                    .dictID      = dictID,
                     .mparam      = mparam,
             });
     ZL_ERR_IF_EQ(node_id.nid, ZL_NODE_ILLEGAL.nid, corruption);
@@ -2687,6 +2779,26 @@ static ZL_Report ZL_CompressorDeserializer_tryBuildGraph(
                 graphs[i] = gid;
             }
 
+            // Read optional "mparam_id" field (hex string key) and look up the
+            // corresponding entry from the pre-parsed mparams map.
+            ZL_MParam mparam = { .mparamID = ZL_MPARAM_ID_NULL };
+            const A1C_Item* mparam_item =
+                    A1C_Map_get_cstr(&val_map, "mparam_id");
+            if (mparam_item != NULL) {
+                A1C_TRY_EXTRACT_STRING(mparam_key_str, mparam_item);
+                const StringView mparam_key_sv =
+                        StringView_initFromA1C(mparam_key_str);
+
+                const CompressorDeserializer_MParamMap_Entry* const mp_entry =
+                        CompressorDeserializer_MParamMap_find(
+                                &state->mparams_map, &mparam_key_sv);
+                ZL_ERR_IF_NULL(
+                        mp_entry,
+                        corruption,
+                        "Graph references mparam ID not found in mparams section");
+                mparam = mp_entry->val;
+            }
+
             const ZL_ParameterizedGraphDesc graph_desc =
                     (ZL_ParameterizedGraphDesc){
                         .name           = new_graph_name_base.data,
@@ -2696,6 +2808,7 @@ static ZL_Report ZL_CompressorDeserializer_tryBuildGraph(
                         .customNodes    = nodes,
                         .nbCustomNodes  = num_nodes,
                         .localParams    = &local_params,
+                        .mparam         = mparam,
                     };
             const ZL_GraphID gid = ZL_Compressor_registerParameterizedGraph(
                     compressor, &graph_desc);
@@ -3145,7 +3258,33 @@ static ZL_RESULT_OF(ZL_CompressorDeserializer_Dependencies)
     deps.num_graphs  = num_graphs;
     deps.node_names  = node_names;
     deps.num_nodes   = num_nodes;
+
+    ZL_TRY_SET(
+            ZL_BundleID,
+            deps.bundle_id,
+            cs_extractDictBundleIDOrNull(state->root));
+
     return ZL_WRAP_VALUE(deps);
+}
+
+static ZL_RESULT_OF(ZL_BundleID)
+        cs_extractDictBundleIDOrNull(const A1C_Item* const root)
+{
+    ZL_RESULT_DECLARE_SCOPE(ZL_BundleID, NULL);
+    ZL_BundleID bundle_id = ZL_BUNDLE_ID_NULL;
+
+    A1C_TRY_EXTRACT_MAP(root_map, root);
+    const A1C_Item* const bundle_item =
+            A1C_Map_get_cstr(&root_map, "dict_bundle_id");
+    if (bundle_item == NULL) {
+        return ZL_WRAP_VALUE(bundle_id);
+    }
+
+    A1C_TRY_EXTRACT_STRING(bundle_str, bundle_item);
+    const StringView bundle_sv = StringView_initFromA1C(bundle_str);
+    ZL_TRY_LET_CONST(ZL_UniqueID, decoded_uid, cs_hexDecodeUniqueID(bundle_sv));
+    bundle_id.id = decoded_uid;
+    return ZL_WRAP_VALUE(bundle_id);
 }
 
 static ZL_Report ZL_CompressorDeserializer_decode(
@@ -3259,7 +3398,9 @@ static ZL_Report ZL_CompressorDeserializer_setupMParams(
         A1C_TRY_EXTRACT_STRING(key_str, &pair->key);
         const StringView key_sv = StringView_initFromA1C(key_str);
 
-        ZL_TRY_LET_CONST(ZL_MParamID, decoded_id, cs_hexDecodeMParamID(key_sv));
+        ZL_TRY_LET_CONST(
+                ZL_UniqueID, decoded_uid, cs_hexDecodeUniqueID(key_sv));
+        const ZL_MParamID decoded_id = { .id = decoded_uid };
 
         A1C_TRY_EXTRACT_BYTES(blob, &pair->val);
 
@@ -3359,7 +3500,9 @@ ZL_Report ZL_CompressorDeserializer_deserialize(
         ZL_CompressorDeserializer* const state,
         ZL_Compressor* const compressor,
         const void* const serialized_ptr,
-        const size_t serialized_size)
+        const size_t serialized_size,
+        const void* fatBundle,
+        size_t fatBundleSize)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(state);
     ZL_ERR_IF_NULL(state, GENERIC);
@@ -3388,6 +3531,30 @@ ZL_Report ZL_CompressorDeserializer_deserialize(
 
     ZL_ERR_IF_ERR(ZL_CompressorDeserializer_setupGraphs(
             state, ZL_CompressorDeserializer_tryBuildGraph));
+
+    // Load the fat bundle if requested
+    {
+        ZL_TRY_LET_CONST(
+                ZL_BundleID,
+                bundle_id,
+                cs_extractDictBundleIDOrNull(state->root));
+        if (ZL_UniqueID_isValid(&bundle_id.id)) {
+            ZL_ERR_IF_NULL(
+                    fatBundle,
+                    GENERIC,
+                    "Serialized compressor requires a dict bundle, but none was provided");
+            ZL_TRY_LET_CONST(
+                    ZL_BundleInfo,
+                    bundle_info,
+                    ZL_BundleInfo_parse(fatBundle, fatBundleSize));
+            ZL_ERR_IF_NOT(
+                    ZL_UniqueID_eq(&bundle_info.bundleID.id, &bundle_id.id),
+                    corruption,
+                    "Serialized bundle ID does not match the ID of the passed fat bundle");
+            ZL_ERR_IF_ERR(ZL_Compressor_loadDictBundle(
+                    compressor, fatBundle, fatBundleSize));
+        }
+    }
 
     ZL_ERR_IF_ERR(
             ZL_CompressorDeserializer_setStartingGraph(state, compressor));

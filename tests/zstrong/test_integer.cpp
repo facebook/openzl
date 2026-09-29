@@ -1,7 +1,9 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <array>
+#include <cstdint>
 #include <random>
+#include <string>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -12,6 +14,22 @@
 
 namespace openzl {
 namespace tests {
+namespace {
+
+template <typename T>
+std::string makeIntegerSelectorInput()
+{
+    std::vector<T> values(4096);
+    for (size_t i = 0; i < values.size(); ++i) {
+        values[i] = static_cast<T>((i / 7) % 251);
+    }
+    return std::string(
+            reinterpret_cast<const char*>(values.data()),
+            values.size() * sizeof(values[0]));
+}
+
+} // namespace
+
 TEST_F(IntegerTest, ConvertIntToToken1)
 {
     testNode(ZL_NODE_CONVERT_NUM_TO_TOKEN, 1);
@@ -139,6 +157,89 @@ TEST_F(IntegerTest, IntegerSelector)
     testGraph(ZL_GRAPH_NUMERIC, 2);
     testGraph(ZL_GRAPH_NUMERIC, 4);
     testGraph(ZL_GRAPH_NUMERIC, 8);
+}
+
+TEST_F(IntegerTest, TransformerSelector)
+{
+    testGraph(ZL_GRAPH_TRANSFORMER_NUMERIC, 1);
+    testGraph(ZL_GRAPH_TRANSFORMER_NUMERIC, 2);
+    testGraph(ZL_GRAPH_TRANSFORMER_NUMERIC, 4);
+    testGraph(ZL_GRAPH_TRANSFORMER_NUMERIC, 8);
+}
+
+TEST_F(IntegerTest, IntegerSelectorRoundTripsAtRepresentativeCompressionLevels)
+{
+    for (int const compressionLevel : { 6, 7 }) {
+        for (size_t const eltWidth : { 1, 2, 4, 8 }) {
+            SCOPED_TRACE(
+                    ::testing::Message()
+                    << "compressionLevel=" << compressionLevel
+                    << ", eltWidth=" << eltWidth);
+            reset();
+            setLevels(compressionLevel);
+            finalizeGraph(ZL_GRAPH_NUMERIC, eltWidth);
+
+            std::string data;
+            switch (eltWidth) {
+                case 1:
+                    data = makeIntegerSelectorInput<uint8_t>();
+                    break;
+                case 2:
+                    data = makeIntegerSelectorInput<uint16_t>();
+                    break;
+                case 4:
+                    data = makeIntegerSelectorInput<uint32_t>();
+                    break;
+                case 8:
+                    data = makeIntegerSelectorInput<uint64_t>();
+                    break;
+                default:
+                    FAIL() << "Unexpected element width: " << eltWidth;
+            }
+            testRoundTrip(data);
+        }
+    }
+}
+
+TEST_F(IntegerTest, TransformerSelectorRoundTripsOlderFormats)
+{
+    {
+        SCOPED_TRACE("formatVersion=10");
+        reset();
+        setLevels(7);
+        setFormatVersion(10);
+        finalizeGraph(ZL_GRAPH_NUMERIC, 8);
+        testRoundTrip(std::string(1024 * sizeof(uint64_t), '\0'));
+    }
+    {
+        SCOPED_TRACE("formatVersion=15");
+        reset();
+        setLevels(7);
+        setFormatVersion(15);
+        finalizeGraph(ZL_GRAPH_NUMERIC, 8);
+        std::array<uint64_t, 8> const values = {
+            0, 256, 512, 768, 1024, 1280, 1536, 1792,
+        };
+        testRoundTrip(
+                std::string_view(
+                        reinterpret_cast<const char*>(values.data()),
+                        sizeof(values)));
+    }
+    {
+        SCOPED_TRACE("formatVersion=25");
+        reset();
+        setLevels(7);
+        setFormatVersion(25);
+        finalizeGraph(ZL_GRAPH_NUMERIC, 8);
+        std::array<uint64_t, 1024> sparseValues = {};
+        for (size_t i = 0; i < sparseValues.size(); i += 97) {
+            sparseValues[i] = i + 1;
+        }
+        testRoundTrip(
+                std::string_view(
+                        reinterpret_cast<const char*>(sparseValues.data()),
+                        sizeof(sparseValues)));
+    }
 }
 
 TEST_F(IntegerTest, Range)

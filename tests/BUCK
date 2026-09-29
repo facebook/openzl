@@ -67,6 +67,7 @@ zs_unittest(
     supports_static_listing = False,
     deps = [
         "..:compress",
+        "..:decompress",
         "..:dict",
         "../cpp:openzl_cpp",
         "datagen:datagen",
@@ -81,13 +82,15 @@ zs_unittest(
         ["round_trip/**/*.cpp"],
         exclude = ["round_trip/test_mlselector.cpp"],
     ),
-    headers = glob(["round_trip/**/*.h"]) + [
+    headers = glob(["round_trip/**/*.h"])
+    + [
         "compress/graphs/sddl2/utils.h",
     ],
     labels = cross_platform_labels(),
     deps = [
         "..:compress",
         "..:decompress",
+        "..:dict",
         "../cpp:openzl_cpp",
         "datagen:datagen",
         "fbsource//third-party/zstd:zstd",
@@ -203,7 +206,6 @@ zs_cxxbinary(
     name = "benchmark_bitstream",
     srcs = ["unittest/common/test_bitstream.cpp"],
     compiler_flags = [
-        "-mbmi2",
         "-DBENCHMARK_BITSTREAM",
     ],
     deps = [
@@ -298,7 +300,8 @@ zs_fuzzers(
         ("LargeInputTest", "FuzzSerialTransform"),
         ("LargeInputTest", "FuzzSerialGraph"),
     ],
-    deps = FUZZER_DEPS + [
+    deps = FUZZER_DEPS
+    + [
         "datagen:custom_nodes",
     ],
 )
@@ -359,7 +362,8 @@ zs_fuzzers(
         ("MultiInputTest", "FuzzClusterRoundTrip"),
         ("MLSelectorMultiInputTest", "FuzzMLSelectorRoundTrip"),
     ],
-    deps = FUZZER_DEPS + [
+    deps = FUZZER_DEPS
+    + [
         ":ml_selector_utils",
     ],
 )

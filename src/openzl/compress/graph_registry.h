@@ -52,6 +52,15 @@ typedef struct {
     /// This field records that reference to the graph from which this graph
     /// was created. Set to ZL_GRAPH_ILLEGAL when there is no such graph.
     ZL_GraphID baseGraphID;
+    /// The minimum library version required for compressor deserializers to
+    /// recognize this graph and use this component for compression in the
+    /// expected manner.
+    unsigned minLibraryVersion;
+    /// The materialized MParam object associated with this graph or segmenter,
+    /// or NULL when none. Produced at registration from the descriptor's
+    /// mparam blob via the compressor's CDictMgr, and exposed at runtime
+    /// through ZL_Graph_getMParam() / ZL_Segmenter_getMParam().
+    const void* mparamObj;
 } Graph_Desc_internal;
 
 typedef struct {

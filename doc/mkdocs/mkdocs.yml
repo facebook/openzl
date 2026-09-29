@@ -40,6 +40,7 @@ nav:
         - Core Concepts: sddl/core-concepts.md
         - Conditional Fields: sddl/conditional-fields.md
         - Validation: sddl/validation.md
+        - Instant-Parse: sddl/instant-parse.md
         - Examples: sddl/examples.md
         - Quick Reference: sddl/reference.md
       - North Star (v0.6):
@@ -122,7 +123,9 @@ nav:
       - Version: api/py/version.md
     - Names: api/names.md
   - Tools:
+    - Overview: tools/index.md
     - Trace Visualizer: tools/trace
+    - Compression Playground: tools/playground
   - Blog:
     - blog/index.md
 

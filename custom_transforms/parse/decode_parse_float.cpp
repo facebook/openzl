@@ -18,6 +18,8 @@ size_t constexpr maxStrLen(double)
 
 class StreamAppender {
    public:
+    using value_type = char;
+
     explicit StreamAppender(ZL_Output* stream)
             : buffer_((char*)ZL_Output_ptr(stream))
     {
@@ -27,6 +29,11 @@ class StreamAppender {
     {
         std::memcpy(buffer_ + idx_, ptr, length);
         idx_ += length;
+    }
+
+    void append(std::string_view sv)
+    {
+        append(sv.data(), sv.size());
     }
 
     void push_back(char c)
@@ -42,7 +49,7 @@ class StreamAppender {
     }
 
    private:
-    char* buffer_;
+    char* buffer_{ nullptr };
     size_t idx_{ 0 };
     size_t prev_{ 0 };
 };

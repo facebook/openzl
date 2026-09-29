@@ -3,6 +3,8 @@
 #pragma once
 
 #include <memory>
+#include <set>
+#include <string>
 #include <vector>
 
 #include "openzl/shared/a1cbor.h"
@@ -199,9 +201,47 @@ class ASTVar : public ASTConverted {
     bool is_last_reference_ = false;
 };
 
+/**
+ * Annotations written by the author in source via `@`-syntax (e.g.
+ * `@instant_parse`) and attached to the node by the parser. An open set: any
+ * identifier may be applied, and multiple annotations may be attached to a
+ * single node. Consumers act on the specific names they recognize.
+ */
+struct GrammarAnnotations {
+    std::set<std::string> names;
+
+    bool has(const std::string_view& name) const
+    {
+        return names.count(std::string(name)) > 0;
+    }
+};
+
+/**
+ * Facts inferred by post-parse passes (semantic analyzer, etc.) and read by
+ * later passes (codegen). Attached to every ASTField via
+ * `inferred_annotations()`. Add new fields here rather than to individual node
+ * subclasses so passes can share state without changing AST shape.
+ */
+struct InferredAnnotations {
+    bool requires_scan = false;
+};
+
 class ASTField : public ASTConverted {
    public:
     using ASTConverted::ASTConverted;
+
+    InferredAnnotations& inferred_annotations() const
+    {
+        return inferred_annotations_;
+    }
+
+   protected:
+    // Prints any set inferred annotations, one labeled line per set flag.
+    // No-op when nothing is set, so callers can invoke it unconditionally.
+    void print_inferred_annotations(std::ostream& os, size_t indent) const;
+
+   private:
+    mutable InferredAnnotations inferred_annotations_;
 };
 
 class ASTBuiltinField : public ASTField {
@@ -246,7 +286,10 @@ class ASTBytes : public ASTField {
 
 class ASTRecord : public ASTField {
    public:
-    explicit ASTRecord(const ASTPtr& params, const ASTPtr& fields);
+    explicit ASTRecord(
+            const ASTPtr& params,
+            const ASTPtr& fields,
+            GrammarAnnotations annotations = {});
 
     const ASTRecord* as_record() const override;
 
@@ -260,6 +303,11 @@ class ASTRecord : public ASTField {
     const ASTVec& params() const;
     const ASTVec& fields() const;
 
+    const GrammarAnnotations& annotations() const
+    {
+        return annotations_;
+    }
+
    private:
     static ASTVec extract_fields(
             const SourceLocation& loc,
@@ -271,6 +319,7 @@ class ASTRecord : public ASTField {
 
     const ASTVec params_;
     const ASTVec fields_;
+    const GrammarAnnotations annotations_;
 };
 
 class ASTCall : public ASTField {
@@ -426,6 +475,14 @@ class Codegen {
         return op(Op::ABS, std::move(arg));
     }
 
+    ASTPtr between(ASTPtr low, ASTPtr val, ASTPtr high) const
+    {
+        auto low_op  = op(Op::LE, std::move(low), val);
+        auto high_op = op(Op::LE, std::move(val), std::move(high));
+
+        return op(Op::LOG_AND, std::move(low_op), std::move(high_op));
+    }
+
     ASTPtr assign(ASTPtr lhs, ASTPtr rhs) const
     {
         return op(Op::ASSIGN, std::move(lhs), std::move(rhs));
@@ -493,30 +550,51 @@ class Codegen {
         return std::make_shared<ASTBuiltinField>(loc_, sym);
     }
 
-    ASTPtr array(ASTPtr field, ASTPtr len) const
+    ASTPtr array(ASTPtr field, ASTPtr len, InferredAnnotations inferred = {})
+            const
     {
-        return std::make_shared<ASTArray>(std::move(field), std::move(len));
+        auto node =
+                std::make_shared<ASTArray>(std::move(field), std::move(len));
+        node->inferred_annotations() = inferred;
+        return node;
     }
 
-    ASTPtr array(ASTPtr field) const
+    ASTPtr array(ASTPtr field, InferredAnnotations inferred = {}) const
     {
-        return std::make_shared<ASTArray>(std::move(field));
+        auto node = std::make_shared<ASTArray>(std::move(field));
+        node->inferred_annotations() = inferred;
+        return node;
     }
 
-    ASTPtr bytes(ASTPtr len) const
+    ASTPtr bytes(ASTPtr len, InferredAnnotations inferred = {}) const
     {
-        return std::make_shared<ASTBytes>(loc_, paren_list({ std::move(len) }));
+        auto node = std::make_shared<ASTBytes>(
+                loc_, paren_list({ std::move(len) }));
+        node->inferred_annotations() = inferred;
+        return node;
     }
 
-    ASTPtr record(ASTVec params, ASTVec fields) const
+    ASTPtr record(
+            ASTVec params,
+            ASTVec fields,
+            GrammarAnnotations annotations = {},
+            InferredAnnotations inferred   = {}) const
     {
-        return std::make_shared<ASTRecord>(
-                paren_list(std::move(params)), curly_list(std::move(fields)));
+        auto node = std::make_shared<ASTRecord>(
+                paren_list(std::move(params)),
+                curly_list(std::move(fields)),
+                std::move(annotations));
+        node->inferred_annotations() = inferred;
+        return node;
     }
 
-    ASTPtr call(ASTPtr target, ASTVec args) const
+    ASTPtr call(ASTPtr target, ASTVec args, InferredAnnotations inferred = {})
+            const
     {
-        return std::make_shared<ASTCall>(std::move(target), std::move(args));
+        auto node =
+                std::make_shared<ASTCall>(std::move(target), std::move(args));
+        node->inferred_annotations() = inferred;
+        return node;
     }
 
     ASTPtr when(ASTPtr condition, ASTVec body) const

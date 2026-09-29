@@ -368,14 +368,15 @@ ZL_FORCE_NOINLINE void extractTokens(
         std::string_view src,
         uint64_t const* bitmask)
 {
-    size_t idx           = 0;
-    int64_t mask         = (int64_t)bitmask[idx];
-    uint32_t skipped     = 0;
-    char const* tokenEnd = src.data();
-    Token prev           = Token(0);
+    size_t idx               = 0;
+    int64_t mask             = (int64_t)bitmask[idx];
+    uint32_t skipped         = 0;
+    char const* tokenEnd     = src.data();
+    char const* const srcEnd = src.data() + src.size();
+    Token prev               = Token(0);
     char const* fastEnd;
     if (src.size() > 32) {
-        fastEnd = src.end() - 31;
+        fastEnd = srcEnd - 31;
     } else {
         fastEnd = src.data();
     }
@@ -385,8 +386,7 @@ ZL_FORCE_NOINLINE void extractTokens(
             ++idx;
             if (idx == kBitmaskSize) {
                 // Push the final JSON
-                extracted.pushJson<false>(
-                        std::string_view{ tokenEnd, src.end() });
+                extracted.pushJson<false>(std::string_view{ tokenEnd, srcEnd });
                 goto end;
             }
             mask    = (int64_t)bitmask[idx];
@@ -411,7 +411,7 @@ ZL_FORCE_NOINLINE void extractTokens(
                 extracted.pushJson<false>(std::string_view{ tokenEnd, start });
                 // The token extends to the end of the input
                 dispatchToken<false>(
-                        extracted, std::string_view{ start, src.end() });
+                        extracted, std::string_view{ start, srcEnd });
                 goto end;
             }
             mask    = (int64_t)bitmask[idx];

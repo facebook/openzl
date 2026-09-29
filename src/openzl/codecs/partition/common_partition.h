@@ -62,6 +62,10 @@ typedef struct {
 /// The maximum partition size where encode & decode can unroll the loop 4 times
 /// when reading and writing the offset bits.
 #define ZL_PARTITION_MAX_PARTITION_SIZE_FOR_UNROLL4 (1u << 14)
+/// The maximum partition size where encode & decode can unroll the loop 2 times
+/// when reading and writing the offset bits.
+/// 2 * 28 + 7 = 63 bits, which fits in the 63-bit bitstream accumulator.
+#define ZL_PARTITION_MAX_PARTITION_SIZE_FOR_UNROLL2 (1u << 28)
 
 /// Header flag bits for the partition codec header byte.
 /// Bits [1:0]: log2(element width in bytes).
@@ -74,6 +78,13 @@ typedef struct {
 #define ZL_PARTITION_HEADER_UNUSED_BIT 0x10
 /// Bit 5: all partition sizes are powers of 2.
 #define ZL_PARTITION_HEADER_IS_POW2_BIT 0x20
+
+/// Instead of operating on raw values, bucket values by dropping low bits up to
+/// PB_LINEAR_THRESHOLD, then use power-of-two buckets above that.
+#define PB_PRECISION_LOSS 4
+#define PB_LINEAR_THRESHOLD_LOG 16
+#define PB_LINEAR_THRESHOLD (1u << PB_LINEAR_THRESHOLD_LOG)
+#define PB_LINEAR_BUCKETS (PB_LINEAR_THRESHOLD >> PB_PRECISION_LOSS)
 
 /// Parse partition parameters from a codec header buffer.
 /// For presets, @p partitionSizesBuffer is unused and params->partitionSizes

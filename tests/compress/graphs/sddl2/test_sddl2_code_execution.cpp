@@ -37,6 +37,19 @@ class SDDL2CodeExecutionTest : public SDDL2TestBase {
                 expected_segment_sizes);
     }
 
+    template <typename T>
+    void expect_failure(
+            const std::string& code,
+            const std::vector<T>& input,
+            SDDL2_Error expected_error)
+    {
+        EXPECT_EQ(
+                run(code,
+                    reinterpret_cast<const uint8_t*>(input.data()),
+                    input.size() * sizeof(T)),
+                expected_error);
+    }
+
    private:
     void expect_success(
             const std::string& code,
@@ -692,6 +705,93 @@ TEST_F(SDDL2CodeExecutionTest, BitwiseOperations)
         expect (~0) == -1
     )";
 
+    expect_success(prog, input, expected_sizes);
+}
+
+// ============================================================================
+// Between Built-in
+// ============================================================================
+
+TEST_F(SDDL2CodeExecutionTest, BetweenConstantsAllInRange)
+{
+    const auto prog = R"(
+        expect between(0, 5, 10)
+        expect between(-5, 0, 5)
+        expect between(0, 0, 0)
+        expect between(-100, -50, -1)
+    )";
+    expect_success(prog, std::vector<uint8_t>{}, {});
+}
+
+TEST_F(SDDL2CodeExecutionTest, BetweenRuntimeValuesInRange)
+{
+    const std::vector<size_t> expected_sizes = { 4 };
+    const std::vector<uint8_t> input         = {
+        0x32,
+        0x00,
+        0x00,
+        0x00, // x = 50
+    };
+
+    const auto prog = R"(
+        x: Int32LE
+        expect between(0, x, 100)
+    )";
+    expect_success(prog, input, expected_sizes);
+}
+
+TEST_F(SDDL2CodeExecutionTest, BetweenRuntimeValuesAtBoundaries)
+{
+    const std::vector<size_t> expected_sizes = { 4, 4 };
+    const std::vector<uint8_t> input         = {
+        0x00, 0x00, 0x00, 0x00, // lo = 0
+        0x64, 0x00, 0x00, 0x00, // hi = 100
+    };
+
+    const auto prog = R"(
+        lo: Int32LE
+        hi: Int32LE
+        # val == lo
+        expect between(lo, lo, hi)
+        # val == hi
+        expect between(lo, hi, hi)
+    )";
+    expect_success(prog, input, expected_sizes);
+}
+
+TEST_F(SDDL2CodeExecutionTest, BetweenRuntimeValueBelowRangeFails)
+{
+    const std::vector<uint8_t> input = { 0xFF, 0xFF, 0xFF, 0xFF };
+    const auto prog                  = R"(
+        x: Int32LE
+        expect between(0, x, 100)
+    )";
+    expect_failure(prog, input, SDDL2_VALIDATION_FAILED);
+}
+
+TEST_F(SDDL2CodeExecutionTest, BetweenRuntimeValueAboveRangeFails)
+{
+    const std::vector<uint8_t> input = { 0x65, 0x00, 0x00, 0x00 };
+    const auto prog                  = R"(
+        x: Int32LE
+        expect between(0, x, 100)
+    )";
+    expect_failure(prog, input, SDDL2_VALIDATION_FAILED);
+}
+
+TEST_F(SDDL2CodeExecutionTest, BetweenWithExpressions)
+{
+    const std::vector<size_t> expected_sizes = { 4, 4 };
+    const std::vector<uint8_t> input         = {
+        0x05, 0x00, 0x00, 0x00, // a = 5
+        0x03, 0x00, 0x00, 0x00, // b = 3
+    };
+    // Exercises that lo/val/hi can be arbitrary numeric expressions.
+    const auto prog = R"(
+        a: Int32LE
+        b: Int32LE
+        expect between(b - 1, a - b, a + b)
+    )";
     expect_success(prog, input, expected_sizes);
 }
 

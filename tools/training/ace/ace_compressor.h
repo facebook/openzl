@@ -7,7 +7,9 @@
 #include "openzl/cpp/poly/Optional.hpp"
 #include "openzl/cpp/poly/StringView.hpp"
 #include "openzl/openzl.hpp"
+#include "openzl/zl_reflection.h"
 #include "tools/training/ace/ace_utils.h"
+#include "tools/training/utils/benchmark.h"
 #include "tools/training/utils/utils.h"
 
 namespace openzl {
@@ -16,14 +18,65 @@ namespace training {
 struct ACENode {
     std::string name;
     poly::optional<NodeParameters> params;
-    Type inputType;
+    Type inputType{};
     std::vector<Type> outputTypes;
+    /// Minimum format version this node requires; 0 means unconstrained.
+    unsigned minFormatVersion{ 0 };
+
+    ACENode() = default;
+
+    /// Build a node from a node struct defined in openzl/cpp/codecs/
+    template <typename NodeT>
+    explicit ACENode(const NodeT& node)
+            : params(node.parameters()),
+              inputType(NodeT::metadata.inputs[0].type)
+    {
+        assert(NodeT::metadata.inputs.size() == 1);
+        outputTypes.reserve(
+                NodeT::metadata.singletonOutputs.size()
+                + NodeT::metadata.variableOutputs.size());
+        for (const auto& meta : NodeT::metadata.singletonOutputs) {
+            outputTypes.push_back(meta.type);
+        }
+        for (const auto& meta : NodeT::metadata.variableOutputs) {
+            outputTypes.push_back(meta.type);
+        }
+        Compressor compressor;
+        const auto* nodeName =
+                ZL_Compressor_Node_getName(compressor.get(), NodeT::node);
+        if (nodeName == nullptr) {
+            throw Exception("Unknown node!");
+        }
+
+        name = nodeName;
+        minFormatVersion =
+                ZL_Compressor_Node_getMinVersion(compressor.get(), NodeT::node);
+    }
 };
 
 struct ACEGraph {
     std::string name;
     poly::optional<GraphParameters> params;
-    TypeMask inputTypeMask;
+    TypeMask inputTypeMask{ TypeMask::None };
+
+    ACEGraph() = default;
+
+    /// Build a graph from a graph struct defined in openzl/cpp/codecs/
+    template <typename GraphT>
+    explicit ACEGraph(const GraphT& graph)
+            : params(graph.parameters()),
+              inputTypeMask(GraphT::metadata.inputs[0].typeMask)
+    {
+        static_assert(GraphT::metadata.inputs.size() == 1);
+        Compressor compressor;
+        const auto* graphName =
+                ZL_Compressor_Graph_getName(compressor.get(), GraphT::graph);
+        if (graphName == nullptr) {
+            throw Exception("Unknown graph!");
+        }
+
+        name = graphName;
+    }
 };
 
 class ACECompressor;
@@ -67,62 +120,7 @@ struct ACEGraphCompressor {
     GraphID build(Compressor& compressor) const;
 };
 
-struct ACECompressionResult {
-    size_t originalSize{ 0 };
-    size_t compressedSize{ 0 };
-    std::chrono::nanoseconds compressionTime{ 0 };
-    std::chrono::nanoseconds decompressionTime{ 0 };
-
-    float compressionRatio() const
-    {
-        return (float)originalSize / compressedSize;
-    }
-
-    float compressionSpeedMBps() const
-    {
-        return ((float)originalSize * 1000.0) / compressionTime.count();
-    }
-
-    float decompressionSpeedMBps() const
-    {
-        return ((float)originalSize * 1000.0) / decompressionTime.count();
-    }
-
-    std::vector<float> asFloatVector() const
-    {
-        return {
-            compressionRatio(),
-            compressionSpeedMBps(),
-            decompressionSpeedMBps(),
-        };
-    }
-
-    bool operator<(const ACECompressionResult& other) const
-    {
-        return std::tie(compressedSize, compressionTime, decompressionTime)
-                < std::tie(
-                        other.compressedSize,
-                        other.compressionTime,
-                        other.decompressionTime);
-    }
-
-    ACECompressionResult& operator+=(const ACECompressionResult& other)
-    {
-        originalSize += other.originalSize;
-        compressedSize += other.compressedSize;
-        compressionTime += other.compressionTime;
-        decompressionTime += other.decompressionTime;
-        return *this;
-    }
-};
-
-poly::optional<ACECompressionResult> benchmark(
-        const Compressor& compressor,
-        poly::span<const Input> inputs);
-
-poly::optional<ACECompressionResult> benchmark(
-        const Compressor& compressor,
-        poly::span<const poly::span<const Input>> inputs);
+using ACECompressionResult = CompressionResult;
 
 /// A compressor built by ACE that can either be a ACENodeCompressor or
 /// ACEGraphCompressor.
@@ -271,9 +269,13 @@ class ACECompressor {
     }
 
     /// @returns The benchmark result of the compressor on the @p inputs or
-    /// poly::nullopt if the compressor fails to compress.
+    /// poly::nullopt if the compressor fails to compress (including when it
+    /// requires a newer format version than @p formatVersion). The candidate
+    /// is evaluated using @p compressionLevel.
     poly::optional<ACECompressionResult> benchmark(
-            poly::span<const Input> inputs) const;
+            poly::span<const Input> inputs,
+            uint32_t formatVersion,
+            int compressionLevel) const;
 
    private:
     uint64_t computeHash() const;

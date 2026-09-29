@@ -4,27 +4,24 @@
 
 #include <cassert>
 #include <cstring>
-
-#include "openzl/zl_compressor.h"
-#include "openzl/zl_ctransform.h"
-#include "openzl/zl_graph_api.h"
-#include "openzl/zl_reflection.h"
+#include <vector>
 
 #include "openzl/common/errors_internal.h"
 #include "openzl/common/wire_format.h"
 #include "openzl/dict/bundle.h"
 #include "openzl/dict/dict.h"
 #include "openzl/dict/dict_constants.h"
+#include "openzl/zl_compressor.h"
+#include "openzl/zl_ctransform.h"
+#include "openzl/zl_graph_api.h"
+#include "openzl/zl_materializer.h"
+#include "openzl/zl_reflection.h"
 
 #include "tests/datagen/DataGen.h"
 
 using namespace ::testing;
 
 namespace openzl {
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 static ZL_RESULT_OF(ZL_VoidPtr) mockDictMaterialize(
         ZL_Materializer* matCtx,
@@ -72,7 +69,6 @@ static ZL_DictID makeNullDictID()
     return id;
 }
 
-/// Build a packed dict wire buffer using datagen-produced content.
 static std::vector<uint8_t> buildPackedDict(
         const std::vector<uint8_t>& content,
         ZL_DictID dictID,
@@ -91,40 +87,38 @@ static std::vector<uint8_t> buildPackedDict(
     return buf;
 }
 
-/// Pack multiple dicts into a fat bundle.
 static std::vector<uint8_t> packFatBundle(
         const std::vector<std::vector<uint8_t>>& dicts)
 {
     std::vector<const void*> dictPtrs;
     std::vector<size_t> dictSizes;
     size_t totalDictBytes = 0;
-    for (auto& d : dicts) {
-        dictPtrs.push_back(d.data());
-        dictSizes.push_back(d.size());
-        totalDictBytes += d.size();
+    for (const auto& dict : dicts) {
+        dictPtrs.push_back(dict.data());
+        dictSizes.push_back(dict.size());
+        totalDictBytes += dict.size();
     }
 
-    size_t bufSize = ZL_BUNDLE_HEADER_SIZE + dicts.size() * ZL_UNIQUE_ID_SIZE
-            + totalDictBytes;
+    size_t const bufSize = ZL_BUNDLE_HEADER_SIZE
+            + dicts.size() * ZL_UNIQUE_ID_SIZE + totalDictBytes;
     std::vector<uint8_t> buf(bufSize);
 
-    ZL_Report r = ZL_DictBundle_packFatBundle(
+    ZL_Report report = ZL_DictBundle_packFatBundle(
             buf.data(),
             buf.size(),
             dicts.empty() ? nullptr : dictPtrs.data(),
             dicts.empty() ? nullptr : dictSizes.data(),
             dicts.size());
-    EXPECT_FALSE(ZL_isError(r));
-    buf.resize(ZL_validResult(r));
+    EXPECT_FALSE(ZL_isError(report));
+    buf.resize(ZL_validResult(report));
     return buf;
 }
 
-/// Register a minimal passthrough node, optionally with a dictID.
 static ZL_NodeID
 registerPassthroughNode(ZL_Compressor* comp, const char* name, ZL_DictID dictID)
 {
-    const ZL_Type inputType  = ZL_Type_serial;
-    const ZL_Type outputType = ZL_Type_serial;
+    static const ZL_Type inputType  = ZL_Type_serial;
+    static const ZL_Type outputType = ZL_Type_serial;
 
     ZL_MIEncoderDesc desc;
     std::memset(&desc, 0, sizeof(desc));
@@ -143,10 +137,6 @@ registerPassthroughNode(ZL_Compressor* comp, const char* name, ZL_DictID dictID)
     return ZL_RES_value(res);
 }
 
-// ---------------------------------------------------------------------------
-// Test fixture
-// ---------------------------------------------------------------------------
-
 class DictIndexValidationTest : public ::testing::Test {
    protected:
     void SetUp() override
@@ -160,13 +150,11 @@ class DictIndexValidationTest : public ::testing::Test {
         ZL_Compressor_free(comp_);
     }
 
-    /// Generate random dict content bytes using datagen.
     std::vector<uint8_t> randomContent(const char* name, size_t size = 32)
     {
         return dg_.randVector<uint8_t>(name, 0, 255, size);
     }
 
-    /// Register a simple graph (does NOT select or validate).
     ZL_GraphID registerSimpleGraph(ZL_NodeID headNode)
     {
         ZL_GraphID gid = ZL_Compressor_registerStaticGraph_fromNode1o(
@@ -178,10 +166,6 @@ class DictIndexValidationTest : public ::testing::Test {
     ZL_Compressor* comp_ = nullptr;
     tests::datagen::DataGen dg_;
 };
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
 
 TEST_F(DictIndexValidationTest, NoBundleLoaded_ValidationFails)
 {
@@ -197,9 +181,7 @@ TEST_F(DictIndexValidationTest, NoBundleLoaded_ValidationFails)
 
     // If a node has a dictID and no bundle is loaded, validate returns an
     // error.
-    ZL_Report r = ZL_Compressor_validate(comp_, gid);
-    EXPECT_TRUE(ZL_isError(r));
-
+    EXPECT_TRUE(ZL_isError(ZL_Compressor_validate(comp_, gid)));
     // The node without a dict should return an error from getDictIndex
     EXPECT_TRUE(ZL_isError(ZL_Compressor_Node_getDictIndex(comp_, nodeNone)));
 }
@@ -233,8 +215,7 @@ TEST_F(DictIndexValidationTest, MultipleDictNodes_IndicesMatchBundleOrder)
     ZL_REQUIRE_SUCCESS(
             ZL_Compressor_loadDictBundle(comp_, fatBuf.data(), fatBuf.size()));
 
-    ZL_Report r = ZL_Compressor_validate(comp_, gid);
-    ASSERT_FALSE(ZL_isError(r));
+    ASSERT_FALSE(ZL_isError(ZL_Compressor_validate(comp_, gid)));
 
     ZL_Report r0 = ZL_Compressor_Node_getDictIndex(comp_, node0);
     ZL_Report r1 = ZL_Compressor_Node_getDictIndex(comp_, node1);
@@ -264,7 +245,7 @@ TEST_F(DictIndexValidationTest, MissingDictInBundle_ValidationFails)
             comp_, nodes, 2, ZL_GRAPH_STORE);
     EXPECT_TRUE(ZL_GraphID_isValid(gid));
 
-    // Load a bundle that does NOT contain all the dictsb the node needs
+    // Load a bundle that does NOT contain all the dicts the node needs
     auto content = randomContent("otherContent");
     auto packed  = buildPackedDict(content, otherDictID);
     auto fatBuf  = packFatBundle({ packed });
@@ -272,8 +253,7 @@ TEST_F(DictIndexValidationTest, MissingDictInBundle_ValidationFails)
     ZL_REQUIRE_SUCCESS(
             ZL_Compressor_loadDictBundle(comp_, fatBuf.data(), fatBuf.size()));
 
-    ZL_Report r = ZL_Compressor_validate(comp_, gid);
-    EXPECT_TRUE(ZL_isError(r));
+    EXPECT_TRUE(ZL_isError(ZL_Compressor_validate(comp_, gid)));
 }
 
 } // namespace openzl

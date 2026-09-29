@@ -22,8 +22,8 @@ zs_cxxlibrary(
         ":ml_features",
     ],
     exported_external_deps = [
-        ("xgboost", None, "xgboost-cpp"),
         ("xgboost", None, "dmlc"),
+        ("xgboost", None, "xgboost-cpp"),
     ],
 )
 

@@ -90,9 +90,14 @@ size_t ZL_OC_numErrors(const ZL_OperationContext* opCtx);
 size_t ZL_OC_numWarnings(const ZL_OperationContext* opCtx);
 
 /// @returns The current error info or NULL if there is no error.
-ZL_DynamicErrorInfo const* ZL_OC_getError(
-        ZL_OperationContext const* opCtx,
-        ZL_ErrorCode opCode);
+/// Mostly for tests...
+ZL_DynamicErrorInfo const* ZL_OC_getLastError(ZL_OperationContext const* opCtx);
+
+/// @returns a pointer to the error info for the given error if this operation
+///          context owns the provided error, NULL otherwise.
+ZL_DynamicErrorInfo const* ZL_OC_findError(
+        const ZL_OperationContext* opCtx,
+        ZL_Error error);
 
 /// @returns The idx'th warning stored in the context.
 ZL_Error ZL_OC_getWarning(ZL_OperationContext const* opCtx, size_t idx);
@@ -102,7 +107,7 @@ ZL_Error_Array ZL_OC_getWarnings(ZL_OperationContext const* opCtx);
 /// @returns The context string for the provided error, if that error is
 /// managed by this operation context. Otherwise returns NULL.
 const char* ZL_OC_getErrorContextString(
-        const ZL_OperationContext* cctx,
+        const ZL_OperationContext* opCtx,
         ZL_Error error);
 
 /// @returns The default scope context that points to this operation context.

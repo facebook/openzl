@@ -241,6 +241,19 @@ RTGM_refContentIntoNewStream(
         const ZL_Data* ref,
         size_t offsetBytes);
 
+/** Create a runtime output stream that references an immutable external buffer.
+ */
+ZL_RESULT_OF(RTStreamID)
+RTGM_refConstBufferIntoNewStream(
+        RTGraph* rtgraph,
+        RTNodeID rtnodeid,
+        int outcomeID,
+        int isVO,
+        ZL_Type streamtype,
+        size_t eltWidth,
+        size_t eltCount,
+        const void* ref);
+
 // RTGM_storeStream() :
 // Tag the stream to be stored into final frame at collection stage.
 // @rtsid must be valid

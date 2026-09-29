@@ -3,6 +3,7 @@
 #include "openzl/cpp/DCtx.hpp"
 
 #include "openzl/cpp/CustomDecoder.hpp"
+#include "openzl/cpp/DictLoader.hpp"
 #include "openzl/cpp/Exception.hpp"
 #include "openzl/cpp/FrameInfo.hpp"
 #include "openzl/cpp/Output.hpp"
@@ -94,6 +95,11 @@ void DCtx::registerCustomDecoder(const ZL_MIDecoderDesc& desc)
 void DCtx::registerCustomDecoder(std::shared_ptr<CustomDecoder> decoder)
 {
     CustomDecoder::registerCustomDecoder(*this, std::move(decoder));
+}
+
+void DCtx::refDictLoader(DictLoader& loader)
+{
+    ZL_DCtx_refDictLoader(get(), loader.get());
 }
 
 poly::string_view DCtx::getErrorContextString(ZL_Error error) const

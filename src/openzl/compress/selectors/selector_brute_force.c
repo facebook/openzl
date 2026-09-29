@@ -2,8 +2,11 @@
 
 #include "openzl/compress/selectors/selector_brute_force.h"
 
+#include "openzl/codecs/zl_brute_force_selector.h"
 #include "openzl/common/assertion.h"
 #include "openzl/common/errors_internal.h"
+#include "openzl/compress/implicit_conversion.h"
+#include "openzl/zl_compressor.h"
 #include "openzl/zl_selector.h"
 
 ZL_GraphID SI_selector_brute_force(
@@ -14,15 +17,9 @@ ZL_GraphID SI_selector_brute_force(
 {
     ZL_ASSERT_NN(selCtx);
     ZL_ASSERT_NN(inputStream);
-    ZL_ASSERT_NN(customGraphs);
-    ZL_ASSERT_GT(nbCustomGraphs, 0);
+    ZL_ASSERT(nbCustomGraphs == 0 || customGraphs != NULL);
 
     const ZL_Type inputType = ZL_Input_type(inputStream);
-    // make sure the input can be piped into the graph
-    for (size_t i = 0; i < nbCustomGraphs; ++i) {
-        ZL_GraphID gid = customGraphs[i];
-        ZL_ASSERT(ZL_Selector_getInput0MaskForGraph(selCtx, gid) & inputType);
-    }
 
     // brute force all graphs
     size_t bestSize = ZL_Input_contentSize(inputStream);
@@ -31,6 +28,14 @@ ZL_GraphID SI_selector_brute_force(
     }
     int64_t bestIdx = -1;
     for (size_t i = 0; i < nbCustomGraphs; ++i) {
+        // Skip successors that can't be fed the input type, since the
+        // successor list is user-provided and isn't validated at registration.
+        if (!ICONV_isCompatible(
+                    inputType,
+                    ZL_Selector_getInput0MaskForGraph(
+                            selCtx, customGraphs[i]))) {
+            continue;
+        }
         ZL_GraphReport gr =
                 ZL_Selector_tryGraph(selCtx, inputStream, customGraphs[i]);
         if (ZL_isError(gr.finalCompressedSize)) {
@@ -49,18 +54,22 @@ ZL_GraphID SI_selector_brute_force(
     return customGraphs[bestIdx];
 }
 
-ZL_GraphID ZL_Compressor_registerBruteForceSelectorGraph(
+ZL_RESULT_OF(ZL_GraphID)
+ZL_Compressor_buildBruteForceSelectorGraph(
         ZL_Compressor* cgraph,
         const ZL_GraphID* successors,
         size_t numSuccessors)
 {
-    const ZL_SelectorDesc desc = {
-        .selector_f   = SI_selector_brute_force,
-        .inStreamType = ZL_Type_serial | ZL_Type_numeric | ZL_Type_struct
-                | ZL_Type_string,
+    ZL_RESULT_DECLARE_SCOPE(ZL_GraphID, cgraph);
+    ZL_ERR_IF_EQ(
+            numSuccessors,
+            0,
+            parameter_invalid,
+            "brute force selector requires at least one successor");
+    const ZL_GraphParameters params = {
         .customGraphs   = successors,
         .nbCustomGraphs = numSuccessors,
-        .name           = "brute_force selector",
     };
-    return ZL_Compressor_registerSelectorGraph(cgraph, &desc);
+    return ZL_Compressor_parameterizeGraph(
+            cgraph, ZL_GRAPH_BRUTE_FORCE, &params);
 }

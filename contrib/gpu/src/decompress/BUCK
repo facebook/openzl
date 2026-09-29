@@ -1,0 +1,104 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
+load("@fbcode_macros//build_defs/lib:re_test_utils.bzl", "re_test_utils")
+load("@fbsource//tools/build_defs:testpilot_defs.bzl", "tpx_labels")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
+load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
+load("//tools/build/buck:nvcc_flags.bzl", "get_nvcc_arch_args")
+load("../../../../defs.bzl", "relative_headers")
+
+oncall("data_compression")
+
+cpp_library(
+    # @autodeps-skip
+    name = "decompress",
+    srcs = ["gpu_decompress.cpp"],
+    headers = relative_headers([
+        "gpu_decompress.h",
+        "gpu_decompress.hpp",
+    ]),
+    header_namespace = "",
+    deps = [
+        "../planning:decode_planner",
+    ],
+    exported_deps = [
+        "../../../..:zstronglib",
+        "../../../../cpp:openzl_cpp",
+    ],
+    external_deps = ["cuda"],
+)
+
+cpp_unittest(
+    # @autodeps-skip
+    name = "gpu_decompress_test",
+    srcs = ["tests/GpuDecompressTest.cpp"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "../../testkit:testkit",
+        "fbsource//third-party/googletest:gtest",
+        ":decompress",
+    ],
+)
+
+# Temporary full-frame D2H discovery path. Keep its GPU-dependent coverage
+# separate so both the implementation and test can be removed together.
+cpp_unittest(
+    # @autodeps-skip
+    name = "gpu_decompress_full_copy_test",
+    srcs = ["tests/GpuDecompressFullCopyTest.cu"],
+    keep_gpu_sections = True,
+    labels = [tpx_labels.serialize]
+    + ci.labels(
+        ci.replace({ci.linux(ci.dev()): ci.linux(ci.mode("fbcode//mode/dev-nosan"))}),
+        ci.remove(ci.linux(ci.coverage(ci.mode("fbcode//mode/dev-cov")))),
+    ),
+    network_access = network_access_utils.none(),
+    nvcc_flags = get_nvcc_arch_args() + ["-lineinfo"],
+    remote_execution = re_test_utils.remote_execution(
+        platform = "gpu-remote-execution",
+        use_case = "tpx-default",
+    ),
+    target_compatible_with = sanitizers.sanitizer_enabled(
+        no = [],
+        yes = ["ovr_config//:none"],
+    ),
+    deps = [
+        "../../testkit:testkit",
+        "../common:cuda_raii",
+        "fbsource//third-party/googletest:gtest",
+        ":decompress",
+    ],
+    external_deps = [("cuda", None, "cuda-lazy")],
+)
+
+cpp_unittest(
+    # @autodeps-skip
+    name = "gpu_decompress_preparation_test",
+    srcs = ["tests/GpuDecompressPreparationTest.cpp"],
+    keep_gpu_sections = True,
+    labels = [tpx_labels.serialize]
+    + ci.labels(
+        ci.replace({ci.linux(ci.dev()): ci.linux(ci.mode("fbcode//mode/dev-nosan"))}),
+        ci.remove(ci.linux(ci.coverage(ci.mode("fbcode//mode/dev-cov")))),
+    ),
+    network_access = network_access_utils.none(),
+    nvcc_flags = get_nvcc_arch_args() + ["-lineinfo"],
+    remote_execution = re_test_utils.remote_execution(
+        platform = "gpu-remote-execution",
+        use_case = "tpx-default",
+    ),
+    target_compatible_with = sanitizers.sanitizer_enabled(
+        no = [],
+        yes = ["ovr_config//:none"],
+    ),
+    deps = [
+        "../../testkit:testkit_relative_headers",
+        "../common:cuda_raii_relative_headers",
+        "fbsource//third-party/googletest:gtest",
+        ":decompress",
+    ],
+    external_deps = [("cuda", None, "cuda-lazy")],
+)

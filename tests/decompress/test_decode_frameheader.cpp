@@ -3,9 +3,11 @@
 #include <gtest/gtest.h>
 #include <numeric>
 #include <random>
+#include <string_view>
 
 #include "openzl/common/assertion.h"
 #include "openzl/common/errors_internal.h"
+#include "openzl/decompress/dctx2.h"
 #include "openzl/zl_compress.h"
 #include "openzl/zl_compressor.h"
 #include "tests/utils.h" // @manual
@@ -14,7 +16,10 @@ using namespace ::testing;
 
 // push @nbInputs random serial strings of size @inputSizeEach through a concat
 // + zstd graph
-static std::string randomCompress(size_t nbInputs, size_t inputSizeEach)
+static std::string randomCompress(
+        size_t nbInputs,
+        size_t inputSizeEach,
+        std::string_view comment = {})
 {
     // TODO(T210132483): use generalized rand input generator
     const auto genRand = [](size_t size, long seed) -> std::string {
@@ -62,6 +67,10 @@ static std::string randomCompress(size_t nbInputs, size_t inputSizeEach)
 
     ZL_REQUIRE_SUCCESS(ZL_Compressor_selectStartingGraphID(cgraph, gid));
     ZL_REQUIRE_SUCCESS(ZL_CCtx_refCompressor(cctx, cgraph));
+    if (!comment.empty()) {
+        ZL_REQUIRE_SUCCESS(
+                ZL_CCtx_addHeaderComment(cctx, comment.data(), comment.size()));
+    }
 
     // TODO(T210132483): add to ZStrongTest fixture
     ZL_Report const r = ZL_CCtx_compressMultiTypedRef(
@@ -104,4 +113,53 @@ TEST(DecodeFrameheaderTest, NbOutputsTest)
     rep             = ZL_getNumOutputs(c10.data(), c10.size());
     EXPECT_EQ(ZL_isError(rep), false);
     ASSERT_EQ(ZL_validResult(rep), 10ul);
+}
+
+TEST(DecodeFrameheaderTest, InitDCtxOwnsIndependentFrameMetadataCopy)
+{
+    constexpr size_t kNumOutputs        = 3;
+    constexpr size_t kOutputSize        = 4000;
+    constexpr std::string_view kComment = "copied frame metadata";
+    std::string compressed = randomCompress(kNumOutputs, kOutputSize, kComment);
+    ZL_FrameInfo* frameInfo =
+            ZL_FrameInfo_create(compressed.data(), compressed.size());
+    ASSERT_NE(frameInfo, nullptr);
+
+    ZL_DCtx* dctx = ZL_DCtx_create();
+    ASSERT_NE(dctx, nullptr);
+    ZL_Report const setResult = DCTX_initFromFrameInfo(dctx, frameInfo);
+    ZL_FrameInfo_free(frameInfo);
+
+    // This fails under ASAN if DCTX_initFromFrameInfo borrows or shallow-copies
+    // dynamically allocated frame metadata from the now-freed source.
+    EXPECT_FALSE(ZL_isError(setResult));
+    if (!ZL_isError(setResult)) {
+        DFH_Struct const* dfh = DCtx_getFrameHeader(dctx);
+        ASSERT_NE(dfh, nullptr);
+        EXPECT_EQ(dfh->formatVersion, ZL_MAX_FORMAT_VERSION);
+        EXPECT_EQ(
+                ZL_validResult(ZL_FrameInfo_getNumOutputs(dfh->frameinfo)),
+                kNumOutputs);
+        for (size_t output = 0; output < kNumOutputs; ++output) {
+            EXPECT_EQ(
+                    ZL_validResult(ZL_FrameInfo_getOutputType(
+                            dfh->frameinfo, static_cast<int>(output))),
+                    ZL_Type_serial);
+            EXPECT_EQ(
+                    ZL_validResult(ZL_FrameInfo_getDecompressedSize(
+                            dfh->frameinfo, static_cast<int>(output))),
+                    kOutputSize);
+            EXPECT_EQ(
+                    ZL_validResult(ZL_FrameInfo_getNumElts(
+                            dfh->frameinfo, static_cast<int>(output))),
+                    kOutputSize);
+        }
+        ZL_Comment const comment =
+                ZL_RES_value(ZL_FrameInfo_getComment(dfh->frameinfo));
+        EXPECT_EQ(
+                std::string_view(
+                        static_cast<const char*>(comment.data), comment.size),
+                kComment);
+    }
+    ZL_DCtx_free(dctx);
 }

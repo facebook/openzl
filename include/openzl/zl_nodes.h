@@ -95,6 +95,9 @@ typedef enum {
 
     ZL_StandardNodeID_mux_lengths,
 
+    ZL_StandardNodeID_sparse_num,
+    ZL_StandardNodeID_sparse_num_auto,
+
     ZL_StandardNodeID_public_end // last id, used to detect end of public range
 } ZL_StandardNodeID;
 

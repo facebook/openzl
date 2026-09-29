@@ -1,0 +1,14 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
+
+oncall("data_compression")
+
+python_binary(
+    name = "sparse_num_bench",
+    main_function = ".sparse_num_bench.main",
+    main_src = "sparse_num_bench.py",
+    deps = [
+        "//security/frameworks/python/exec:subprocess",
+    ],
+)

@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 
-#include "cli/utils/util.h"
+#include "cli/utils/parse.h"
 
 using namespace openzl::cli::util;
 using openzl::cli::InvalidArgsException;
@@ -54,6 +54,17 @@ TEST(UtilTest, StoiInvalidSuffix)
 TEST(UtilTest, StoiOverflow)
 {
     EXPECT_THROW(checkedstoi("3G"), InvalidArgsException);
+}
+
+TEST(UtilTest, StoiExact)
+{
+    EXPECT_EQ(checkedstoiExact("0"), 0);
+    EXPECT_EQ(checkedstoiExact("42"), 42);
+    EXPECT_EQ(checkedstoiExact("-1"), -1);
+    EXPECT_THROW(checkedstoiExact("1K"), InvalidArgsException);
+    EXPECT_THROW(checkedstoiExact("1foo"), InvalidArgsException);
+    EXPECT_THROW(checkedstoiExact(""), InvalidArgsException);
+    EXPECT_THROW(checkedstoiExact("2147483648"), InvalidArgsException);
 }
 
 TEST(UtilTest, StoulDecimalSuffixes)

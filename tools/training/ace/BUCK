@@ -10,16 +10,13 @@ cpp_library(
     name = "automated_compressor_explorer",
     srcs = [
         "ace.cpp",
-        "ace_combination.cpp",
         "ace_compressor.cpp",
         "ace_compressors.cpp",
         "ace_utils.cpp",
         "automated_compressor_explorer.cpp",
-        "crowding_distance_selector.cpp",
     ],
     headers = relative_headers([
         "ace.h",
-        "ace_combination.h",
         "ace_compressor.h",
         "ace_compressors.h",
         "ace_crossover.h",
@@ -27,11 +24,12 @@ cpp_library(
         "ace_sampling.h",
         "ace_utils.h",
         "automated_compressor_explorer.h",
-        "crowding_distance_selector.h",
     ]),
     header_namespace = "",
     deps = [
         "../../..:zstronglib",
+        "../utils:mutation",
+        "../utils:pareto_combination",
     ],
     exported_deps = [
         "..:train_common",
@@ -40,6 +38,7 @@ cpp_library(
         "../../../custom_parsers:custom_parsers",
         "../graph_mutation:graph_mutation",
         "../sample_collection:sample_collection",
+        "../utils:benchmark",
         "../utils:genetic_algorithm",
         "../utils:training_utils",
     ],

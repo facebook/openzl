@@ -3,6 +3,7 @@
 #ifndef ZSTRONG_CODECS_ZSTD_H
 #define ZSTRONG_CODECS_ZSTD_H
 
+#include "openzl/zl_errors.h"
 #include "openzl/zl_graphs.h"
 #include "openzl/zl_opaque_types.h"
 
@@ -16,6 +17,10 @@ extern "C" {
 ZL_GraphID ZL_Compressor_registerZstdGraph_withLevel(
         ZL_Compressor* cgraph,
         int compressionLevel);
+
+/// @return A trainable zstd graph with the default compression level
+ZL_RESULT_OF(ZL_GraphID)
+ZL_Compressor_buildTrainableZstdGraph(ZL_Compressor* cgraph);
 
 #if defined(__cplusplus)
 }

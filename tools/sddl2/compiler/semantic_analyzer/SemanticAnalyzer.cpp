@@ -22,8 +22,8 @@ enum class TypeKind {
 };
 
 struct Type {
-    TypeKind kind           = TypeKind::NONE;
-    const ASTNode* type_def = nullptr;
+    TypeKind kind            = TypeKind::NONE;
+    const ASTField* type_def = nullptr;
 };
 
 void expectNumeric(const SourceLocation& loc, const Type& t)
@@ -80,6 +80,24 @@ Type assumedType(const Type& field_type)
     return Type{ TypeKind::NONE };
 }
 
+// Per-scope analyzer state. Saved/restored at scope boundaries (record
+// bodies, member-access lookups).
+struct ScopeContext {
+    // Symbol table: every name currently in scope mapped to its type.
+    std::unordered_map<std::string, Type> var_types;
+
+    // Set of names of fields in the current record. Used to detect scan
+    // records.
+    std::unordered_set<std::string> current_record_fields;
+    bool requires_scan = false;
+
+    void clear()
+    {
+        current_record_fields.clear();
+        requires_scan = false;
+    }
+};
+
 class SemanticAnalyzerImpl {
    public:
     explicit SemanticAnalyzerImpl(const detail::Logger& logger) : log_(logger)
@@ -97,7 +115,9 @@ class SemanticAnalyzerImpl {
    private:
     // Data members
     const detail::Logger& log_;
-    std::unordered_map<std::string, Type> var_types_;
+    ScopeContext scope_;
+    // Tracks across the entire AST (not per-scope), so it lives outside
+    // ScopeContext.
     bool auto_sized_consumed_ = false;
 
     // Analysis methods
@@ -134,11 +154,14 @@ class SemanticAnalyzerImpl {
 
     Type analyze(const ASTVar& var)
     {
-        auto it = var_types_.find(var.name());
-        if (it == var_types_.end()) {
+        auto it = scope_.var_types.find(var.name());
+        if (it == scope_.var_types.end()) {
             throw SemanticError(
                     var.loc(), "Undefined variable: '" + var.name() + "'");
         }
+        if (scope_.current_record_fields.count(var.name()) > 0) {
+            scope_.requires_scan = true;
+        };
         return it->second;
     }
 
@@ -150,7 +173,11 @@ class SemanticAnalyzerImpl {
 
     Type analyze(const ASTArray& array)
     {
-        expectFieldType(array.field()->loc(), analyzeNode(array.field()));
+        auto element_type = analyzeNode(array.field());
+        expectFieldType(array.field()->loc(), element_type);
+        if (element_type.type_def->inferred_annotations().requires_scan) {
+            scope_.requires_scan = true;
+        }
         if (array.len()) {
             expectNumeric(array.len()->loc(), analyzeNode(array.len()));
         } else {
@@ -165,14 +192,25 @@ class SemanticAnalyzerImpl {
         if (!var) {
             throw SemanticError(field.loc(), "Field name must be a variable.");
         }
-        expectFieldType(field.type()->loc(), analyzeNode(field.type()));
+        auto t = analyzeNode(field.type());
+        expectFieldType(field.type()->loc(), t);
+        scope_.current_record_fields.insert(var->name());
+        scope_.var_types[var->name()] = assumedType(t);
+
+        // Transitivity: a field whose type is itself a requires-scan
+        // record or array makes the enclosing record requires-scan too.
+        if (t.type_def->inferred_annotations().requires_scan) {
+            scope_.requires_scan = true;
+        }
         return Type{ TypeKind::NONE };
     }
 
     Type analyze(const ASTRecord& record)
     {
+        auto saved = scope_;
+        scope_.clear();
+
         // Validate params are variable names and introduce them as NUMERIC
-        auto saved_vars = var_types_;
         for (const auto& param : record.params()) {
             const auto* var = param->as_var();
             if (!var) {
@@ -180,7 +218,7 @@ class SemanticAnalyzerImpl {
                         param->loc(),
                         "Record parameter must be a variable name.");
             }
-            var_types_[var->name()] = Type{ TypeKind::NUMERIC };
+            scope_.var_types[var->name()] = Type{ TypeKind::NUMERIC };
         }
 
         // Validate all fields
@@ -188,7 +226,16 @@ class SemanticAnalyzerImpl {
             analyzeNode(field);
         }
 
-        var_types_ = std::move(saved_vars);
+        record.inferred_annotations().requires_scan = scope_.requires_scan;
+        scope_                                      = std::move(saved);
+
+        if (record.annotations().has(kInstantParse)
+            && record.inferred_annotations().requires_scan) {
+            throw SemanticError(
+                    record.loc(),
+                    "Record is annotated @instant_parse but is not instant-parse "
+                    "(its layout depends on parsed data).");
+        }
 
         return Type{ TypeKind::RECORD, &record };
     }
@@ -277,12 +324,12 @@ class SemanticAnalyzerImpl {
     Type analyzeAssign(const ASTOp& op)
     {
         auto var = someVar(op.args()[0]);
-        if (var_types_.count(var->name()) > 0) {
+        if (scope_.var_types.count(var->name()) > 0) {
             throw SemanticError(
                     var->loc(),
                     "Variable '" + var->name() + "' already defined.");
         }
-        var_types_[var->name()] = analyzeNode(op.args()[1]);
+        scope_.var_types[var->name()] = analyzeNode(op.args()[1]);
         return Type{ TypeKind::NONE };
     }
 
@@ -294,12 +341,12 @@ class SemanticAnalyzerImpl {
 
         // Assign the var to the assumed type
         auto var = someVar(op.args()[0]);
-        if (var_types_.count(var->name()) > 0) {
+        if (scope_.var_types.count(var->name()) > 0) {
             throw SemanticError(
                     var->loc(),
                     "Variable '" + var->name() + "' already defined.");
         }
-        var_types_[var->name()] = assumedType(field_type);
+        scope_.var_types[var->name()] = assumedType(field_type);
 
         return Type{ TypeKind::NONE };
     }
@@ -327,7 +374,7 @@ class SemanticAnalyzerImpl {
 
     Type analyzeMember(const ASTOp& op)
     {
-        auto saved_vars = var_types_;
+        auto saved = scope_;
         // Check that the LHS is a consumed record
         auto lhs_type = analyzeNode(op.args()[0]);
         if (lhs_type.kind != TypeKind::CONSUMED_RECORD) {
@@ -336,13 +383,20 @@ class SemanticAnalyzerImpl {
                     "LHS of member access is not a record.");
         }
 
-        // Check that the RHS is a valid field name return the consumed type
-        auto* record           = lhs_type.type_def->as_record();
+        auto* record = lhs_type.type_def->as_record();
+        if (record->inferred_annotations().requires_scan) {
+            throw SemanticError(
+                    op.args()[0]->loc(),
+                    "Member access not supported on scan records.");
+        }
+
+        // Check that the RHS is a valid field name and return the consumed type
         const auto& field_name = someVar(op.args()[1])->name();
 
         // Add the record params to scope
         for (const auto& param : record->params()) {
-            var_types_[param->as_var()->name()] = Type{ TypeKind::NUMERIC };
+            scope_.var_types[param->as_var()->name()] =
+                    Type{ TypeKind::NUMERIC };
         }
 
         // Find the field
@@ -352,7 +406,7 @@ class SemanticAnalyzerImpl {
                     op.args()[1]->loc(),
                     "Field '" + field_name + "' not a valid record field.");
         }
-        var_types_ = std::move(saved_vars);
+        scope_ = std::move(saved);
         return *found_type;
     }
 

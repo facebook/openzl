@@ -37,7 +37,7 @@ ClusteringConfigBuilder FullSplitTrainer::getTrainedClusteringConfig(
                     splitCluster, type, width, metadata);
             return clusterInfo;
         };
-        futures.emplace_back(this->threadPool_->run(task));
+        futures.emplace_back(this->threadPool_.run(task));
     }
     size_t clusterIdx = 0;
     for (auto& future : futures) {

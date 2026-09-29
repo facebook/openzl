@@ -7,9 +7,11 @@
 #include "openzl/cpp/CParam.hpp"
 #include "openzl/cpp/LocalParams.hpp"
 #include "openzl/cpp/detail/NonNullUniqueCPtr.hpp"
+#include "openzl/cpp/poly/Optional.hpp"
 #include "openzl/zl_ctransform.h"
 #include "openzl/zl_errors.h"
 #include "openzl/zl_opaque_types.h"
+#include "openzl/zl_unique_id.h"
 
 namespace openzl {
 class CustomEncoder;
@@ -23,11 +25,15 @@ using GraphID = ZL_GraphID;
 struct StaticGraphParameters {
     poly::optional<std::string> name;
     poly::optional<LocalParams> localParams;
+
+    ZL_StaticGraphParameters toC() const;
 };
 
 struct NodeParameters {
     poly::optional<std::string> name;
     poly::optional<LocalParams> localParams;
+
+    ZL_NodeParameters toC() const;
 };
 
 struct GraphParameters {
@@ -35,6 +41,8 @@ struct GraphParameters {
     poly::optional<std::vector<GraphID>> customGraphs;
     poly::optional<std::vector<NodeID>> customNodes;
     poly::optional<LocalParams> localParams;
+
+    ZL_GraphParameters toC() const;
 };
 
 class Compressor {
@@ -146,15 +154,19 @@ class Compressor {
     static std::string convertSerializedToJson(poly::string_view serialized);
 
     /// Ingests @p serialized and materializes the compressor it represents
-    /// into this compressor.
+    /// into this compressor. If the compressor requires a dict bundle, pass it
+    /// as a "fat" bundle via @p fatBundle.
     ///
     /// @note consult zl_compressor_serialization.h for discussion of the
     ///       semantics of this operation.
-    void deserialize(poly::string_view serialized);
+    void deserialize(
+            poly::string_view serialized,
+            poly::string_view fatBundle = {});
 
     struct UnmetDependencies {
         std::vector<std::string> graphNames;
         std::vector<std::string> nodeNames;
+        poly::optional<ZL_BundleID> bundleID{};
     };
 
     /// Compares the serialized compressor in @p serialized against the state

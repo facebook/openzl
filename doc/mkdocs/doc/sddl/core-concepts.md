@@ -109,6 +109,29 @@ When you need a one-off record structure without defining a named type, use an a
 
 This is useful for simple groupings where a named record would add unnecessary boilerplate.
 
+### Annotations
+
+A record can be annotated with `@name` after its closing brace; multiple annotations may be chained.
+
+```sddl
+record Header(payload_size) {
+  magic: Bytes(4),
+  payload: Bytes(payload_size)
+} @first @second
+```
+
+
+The `@instant_parse` annotation makes the compiler verify that the record's layout is computable from parameters and constants alone:
+
+```sddl
+record Header(payload_size) {
+  magic: Bytes(4),
+  payload: Bytes(payload_size)
+} @instant_parse
+```
+
+See [Instant-Parse](instant-parse.md) for details.
+
 ## Arrays
 
 ### Fixed-Size Arrays
@@ -175,7 +198,7 @@ row_bytes = 4 * ((width + 3) / 4)
 
 ## Built-in Functions
 
-SDDL provides two built-in functions:
+SDDL provides three built-in functions:
 
 **`sizeof`** returns the size in bytes of a type. Only works on types with statically known sizes:
 
@@ -189,6 +212,13 @@ expect sizeof(StarEntry(STNUM, MPROP, NMAG)) == header.NBENT
 ```sddl
 count = abs(header.signed_count)
 magnitudes: Int16LE[abs(NMAG)]
+```
+
+**`between(l, x, h)`** returns `1` if `l <= x <= h` and `0` otherwise. Useful inside `expect` for range checks:
+
+```sddl
+expect between(1, header.version, 3)
+expect between(0, count, max_count)
 ```
 
 ## Comments

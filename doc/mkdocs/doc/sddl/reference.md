@@ -83,6 +83,15 @@ record Name(COND) {
 expect condition
 ```
 
+### Annotations
+
+```sddl
+record Name() { ... } @instant_parse   # error if the record is not instant-parse
+record Name() { ... } @a @b            # multiple annotations may be chained
+```
+
+See [Instant-Parse](instant-parse.md) for details.
+
 ## Operators
 
 ### Arithmetic
@@ -113,6 +122,7 @@ expect condition
 |----------|-------------|
 | `sizeof(Type)` | Size in bytes (static types only) |
 | `abs(expr)` | Absolute value |
+| `between(l, x, h)` | `1` if `l <= x <= h`, else `0` |
 
 ## Comments
 

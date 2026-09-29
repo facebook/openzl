@@ -20,6 +20,7 @@
 #include "openzl/zl_compress.h"     // ZL_CCtx
 #include "openzl/zl_errors.h"       // ZL_Report, ZL_ErrorCode
 #include "openzl/zl_localParams.h"  // ZL_LocalParams
+#include "openzl/zl_materializer.h" // ZL_MParam
 #include "openzl/zl_opaque_types.h" // ZL_GraphID, ZL_Compressor
 #include "openzl/zl_portability.h"  // ZL_NOEXCEPT_FUNC_PTR
 #include "openzl/zl_public_nodes.h"
@@ -412,6 +413,9 @@ typedef struct ZL_GraphParameters_s {
     size_t nbCustomNodes;
     /// NULL means don't override
     const ZL_LocalParams* localParams;
+    /// Optional MParam blob to (re)materialize on the target graph. Empty
+    /// content means don't override the graph's MParam.
+    ZL_MParam mparam;
 } ZL_GraphParameters;
 
 /**
@@ -446,6 +450,10 @@ typedef struct {
     size_t nbCustomNodes;
     /// NULL means don't override
     const ZL_LocalParams* localParams;
+    /// Optional per-instance MParam blob. It is materialized at registration
+    /// using the base graph's materializer (mparamMat). Empty content means no
+    /// MParam.
+    ZL_MParam mparam;
 } ZL_ParameterizedGraphDesc;
 
 /**

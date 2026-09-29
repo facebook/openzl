@@ -53,7 +53,8 @@ ZL_Segmenter* SEGM_init(
         ZL_CCtx* cctx,
         RTGraph* rtgm,
         Arena* sessionArena,
-        Arena* chunkArena);
+        Arena* chunkArena,
+        ZL_GraphID graphid);
 
 /**
  * @brief Execute the segmenter function to process all input data.

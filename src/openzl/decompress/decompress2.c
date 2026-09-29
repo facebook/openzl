@@ -19,11 +19,14 @@
 #include "openzl/decompress/dictx.h"       // struct ZL_Decoder_s
 #include "openzl/decompress/dtransforms.h" // DTransforms_manager, TransformID
 #include "openzl/decompress/gdparams.h"
-#include "openzl/shared/mem.h"    // ZL_readLE32, etc.
-#include "openzl/shared/xxhash.h" // XXH3_64bits
-#include "openzl/zl_buffer.h"     // ZL_RBuffer
+#include "openzl/dict/dict_constants.h" // ZL_DICT_INDEX_NONE
+#include "openzl/shared/mem.h"          // ZL_readLE32, etc.
+#include "openzl/shared/xxhash.h"       // XXH3_64bits
+#include "openzl/zl_buffer.h"           // ZL_RBuffer
 #include "openzl/zl_data.h"
 #include "openzl/zl_decompress.h" // ZL_TypedDecoderDesc
+#include "openzl/zl_dict.h"       // ZL_Dict, ZL_DictBundle
+#include "openzl/zl_dictloader.h" // ZL_DictLoader_fetchDictBundle
 #include "openzl/zl_dtransform.h" //
 #include "openzl/zl_errors.h"
 #include "openzl/zl_opaque_types.h" // ZL_IDType
@@ -86,8 +89,10 @@ struct ZL_DCtx_s {
     Arena* fusionWkspArena;
     Arena* streamArena;
     ZL_OperationContext opCtx;
-    GDParams requestedGDParams; // As user-selected at DCtx level
-    GDParams appliedGDParams;   // Used at decompression time; DCtx > default
+    GDParams requestedGDParams;  // As user-selected at DCtx level
+    GDParams appliedGDParams;    // Used at decompression time; DCtx > default
+    ZL_DictLoader* dictLoader;   // Referenced, not owned
+    const ZL_DictBundle* bundle; // Current frame's resolved bundle, or NULL
 }; // typedef'd to ZL_DCtx within zs2_decompress.h
 
 // --------------------------
@@ -202,6 +207,12 @@ void DCTX_clearDecoderFusions(ZL_DCtx* dctx)
     ZL_DecoderFusionState_clearFusions(&dctx->fusion);
 }
 
+void ZL_DCtx_refDictLoader(ZL_DCtx* dctx, ZL_DictLoader* loader)
+{
+    ZL_ASSERT_NN(dctx);
+    dctx->dictLoader = loader;
+}
+
 ZL_Report ZL_DCtx_setParameter(ZL_DCtx* dctx, ZL_DParam gdparam, int value)
 {
     ZL_ASSERT_NN(dctx);
@@ -259,6 +270,15 @@ const ZL_Data* ZL_DCtx_getConstStream(const ZL_DCtx* dctx, ZL_IDType streamID)
         return NULL;
     }
     return dctx->dataInfo.ptr[streamID].data;
+}
+
+ZL_IDType DCTX_getStreamProducerNodeIdx(const ZL_DCtx* dctx, ZL_IDType streamID)
+{
+    if (dctx == NULL || dctx->dataInfo.ptr == NULL
+        || streamID >= dctx->dataInfo.size) {
+        return ZL_PRODUCER_STORE;
+    }
+    return dctx->dataInfo.ptr[streamID].producerNodeIdx;
 }
 
 ZL_Report ZL_DCtx_registerPipeDecoder(
@@ -1513,6 +1533,26 @@ ZL_Report DCTX_runDecoder(
             trName,
             dt->miGraphDesc.CTid,
             nodeInfo->nbRegens);
+
+    uint32_t const dictIdx = nodeInfo->dictIdx;
+    const void* ddict      = NULL;
+    /* Resolve dict from bundle if this transform uses a dictionary */
+    if (dictIdx != ZL_DICT_INDEX_NONE) {
+        ZL_ASSERT_NN(dctx->bundle);
+        ZL_ERR_IF(
+                dictIdx >= dctx->bundle->info.numDicts,
+                corruption,
+                "dictIdx %u out of range (bundle has %zu dicts)",
+                (unsigned)dictIdx,
+                dctx->bundle->info.numDicts);
+        ZL_ERR_IF_NULL(
+                dctx->bundle->dicts[dictIdx]->dictObj,
+                dict_materialization,
+                "Dict at index %u has not been materialized",
+                (unsigned)dictIdx);
+        ddict = dctx->bundle->dicts[dictIdx]->dictObj;
+    }
+
     struct ZL_Decoder_s diState = {
         .dctx           = dctx,
         .dt             = dt,
@@ -1521,6 +1561,7 @@ ZL_Report DCTX_runDecoder(
         .regensID       = regensID,
         .nbRegens       = nodeInfo->nbRegens,
         .thContent      = thContent,
+        .ddict          = ddict,
     };
     ZL_ERR_IF_NULL(
             diState.statePtr,
@@ -1542,7 +1583,7 @@ ZL_Report DCTX_runDecoder(
 
     IF_DWAYPOINT_ENABLED(on_codecDecode_end, &diState)
     {
-        VECTOR_CONST_POINTERS(ZL_Data) odata;
+        VECTOR_CONST_POINTERS(ZL_Data) odata = { 0 };
         VECTOR_INIT(odata, nodeInfo->nbRegens);
         for (size_t n = 0; n < nodeInfo->nbRegens; n++) {
             const ZL_Data* d     = dctx->dataInfo.ptr[regensID[n]].data;
@@ -1740,27 +1781,36 @@ static void cleanAllBuffers(ZL_DCtx* dctx)
     cleanChunkBuffers(dctx);
 }
 
-// -------------------------------------
-// Main decompression functions
-// -------------------------------------
 /**
- * @return size of chunk, read from frame
+ * Populates @p dctx to prepare for decoding the chunk beginning at @p
+ * alreadyConsumed in
+ * @p framePtr.
+ *
+ * Clears chunk-scoped buffers, decodes the chunk header and stored streams,
+ * reads the optional content checksum into @p expectedContentHash, and
+ * validates the optional compressed checksum before decoders run.
+ *
+ * @param dctx Decompression context to populate for the chunk.
+ * @param framePtr Beginning of the frame buffer.
+ * @param frameSize Size of @p framePtr in bytes.
+ * @param alreadyConsumed Number of frame bytes consumed before this chunk.
+ * @param expectedContentHash Output content checksum, or 0 when absent.
+ * @return DCTX_FrameChunkInfo metadata for the prepared chunk.
  */
-static ZL_Report ZL_DCtx_decompressChunk(
+static ZL_RESULT_OF(DCTX_FrameChunkInfo) setupChunkDecode(
         ZL_DCtx* dctx,
-        size_t nbOutputs,
         const void* framePtr,
         size_t frameSize,
-        size_t alreadyConsumed)
+        size_t alreadyConsumed,
+        uint32_t* expectedContentHash)
 {
-    ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
+    ZL_RESULT_DECLARE_SCOPE(DCTX_FrameChunkInfo, dctx);
     size_t consumedSize = alreadyConsumed;
     ZL_DLOG(BLOCK,
-            "ZL_DCtx_decompressChunk (frameSize=%zu, consumedSize=%zu)",
+            "setupChunkDecode (frameSize=%zu, consumedSize=%zu)",
             frameSize,
             consumedSize);
     ZL_ASSERT_NN(dctx);
-    ZL_Data** outputs = dctx->outputs;
 
     // We clean at the beginning instead of the end
     // in case `DCTX_preserveStreams` is set,
@@ -1786,12 +1836,13 @@ static ZL_Report ZL_DCtx_decompressChunk(
     // If present, verify the compressed checksum before running decoders.
     // Assuming we aren't handling malicious inputs, this ensures that we
     // are running on valid data before we run the decoders.
-    uint32_t expectedContentHash = 0;
+    *expectedContentHash = 0;
 
     if (FrameInfo_hasContentChecksum(dctx->dfh.frameinfo)) {
         ZL_ERR_IF_LT(frameSize, consumedSize + 4, srcSize_tooSmall);
-        expectedContentHash = ZL_readCE32((const char*)framePtr + consumedSize);
-        ZL_DLOG(SEQ, "stored contentHash: %08X", expectedContentHash);
+        *expectedContentHash =
+                ZL_readCE32((const char*)framePtr + consumedSize);
+        ZL_DLOG(SEQ, "stored contentHash: %08X", *expectedContentHash);
         consumedSize += 4;
     }
 
@@ -1829,6 +1880,96 @@ static ZL_Report ZL_DCtx_decompressChunk(
 #endif
         consumedSize += 4;
     }
+
+    DCTX_FrameChunkInfo const chunkInfo = {
+        .chunkHeaderSize = chunkHeaderSize,
+        .chunkSize       = consumedSize - alreadyConsumed,
+    };
+    return ZL_WRAP_VALUE(chunkInfo);
+}
+
+ZL_RESULT_OF(DCTX_FrameChunkInfo)
+DCTX_prepareFrameChunk(
+        ZL_DCtx* dctx,
+        const void* framePtr,
+        size_t frameSize,
+        size_t chunkOffset)
+{
+    ZL_RESULT_DECLARE_SCOPE(DCTX_FrameChunkInfo, dctx);
+    ZL_ASSERT_NN(dctx);
+
+    // Parse-only setup has no output buffers. Temporarily hide final outputs
+    // so fillStoredStreams skips output-backed append optimizations.
+    size_t const nbOutputs = dctx->nbOutputs;
+    dctx->nbOutputs        = 0;
+
+    uint32_t dummyHash = 0;
+    ZL_RESULT_OF(DCTX_FrameChunkInfo)
+    const chunkResult = setupChunkDecode(
+            dctx, framePtr, frameSize, chunkOffset, &dummyHash);
+
+    dctx->nbOutputs = nbOutputs;
+    ZL_ERR_IF_ERR(chunkResult);
+    return chunkResult;
+}
+
+ZL_Report DCTX_prepareFrameChunkFromHeader(
+        ZL_DCtx* dctx,
+        const void* chunkHeader,
+        size_t chunkHeaderSize,
+        const void* chunkRef,
+        size_t chunkSize)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
+    ZL_ASSERT_NN(dctx);
+    ZL_ASSERT_NN(chunkHeader);
+    ZL_ASSERT_NN(chunkRef);
+
+    // We clean at the beginning instead of the end
+    // in case `DCTX_preserveStreams` is set,
+    // requiring to preserve some results for StreamDump2
+    cleanChunkBuffers(dctx);
+
+    ZL_TRY_LET(
+            size_t,
+            decodedChunkHeaderSize,
+            DFH_decodeChunkHeader(&dctx->dfh, chunkHeader, chunkHeaderSize));
+
+    size_t const nbOutputs        = dctx->nbOutputs;
+    dctx->nbOutputs               = 0;
+    ZL_Report const streamsResult = fillStoredStreams(
+            dctx, chunkRef, chunkSize, decodedChunkHeaderSize);
+
+    dctx->nbOutputs = nbOutputs;
+    ZL_ERR_IF_ERR(streamsResult);
+    return ZL_returnSuccess();
+}
+// -------------------------------------
+// Main decompression functions
+// -------------------------------------
+/**
+ * @return size of chunk, read from frame
+ */
+static ZL_Report ZL_DCtx_decompressChunk(
+        ZL_DCtx* dctx,
+        size_t nbOutputs,
+        const void* framePtr,
+        size_t frameSize,
+        size_t alreadyConsumed)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
+    ZL_Data** outputs            = dctx->outputs;
+    uint32_t expectedContentHash = 0;
+    ZL_TRY_LET(
+            DCTX_FrameChunkInfo,
+            chunkInfo,
+            setupChunkDecode(
+                    dctx,
+                    framePtr,
+                    frameSize,
+                    alreadyConsumed,
+                    &expectedContentHash));
+    size_t const chunkSize = chunkInfo.chunkSize;
 
     // start the decompression process.
     ZL_ERR_IF_ERR(runDecoders(dctx));
@@ -1881,8 +2022,7 @@ static ZL_Report ZL_DCtx_decompressChunk(
 #endif
     }
 
-    ZL_ASSERT_GE(consumedSize, alreadyConsumed);
-    return ZL_returnValue(consumedSize - alreadyConsumed);
+    return ZL_returnValue(chunkSize);
 }
 
 ZL_Report ZL_DCtx_decompressMultiTBuffer(
@@ -1924,6 +2064,24 @@ ZL_Report ZL_DCtx_decompressMultiTBuffer(
             consumed,
             decodeFrameHeader(dctx, framePtr, frameSize, nbOutputs));
     ZL_DLOG(SEQ, "decoded frame header, of size %zu bytes", consumed);
+    dctx->bundle = NULL;
+    {
+        const ZL_BundleID* const bundleID =
+                ZL_FrameInfo_getBundleID(dctx->dfh.frameinfo);
+        if (bundleID != NULL) {
+            ZL_ERR_IF_NULL(
+                    dctx->dictLoader,
+                    dictNoRecord,
+                    "Frame references a dict bundle but no dict loader is attached");
+            ZL_RESULT_OF(ZL_DictBundleConstPtr)
+            bundleRes =
+                    ZL_DictLoader_fetchDictBundle(dctx->dictLoader, bundleID);
+            ZL_ERR_IF_ERR(
+                    bundleRes,
+                    "Could not fetch dict bundle required by the frame");
+            dctx->bundle = ZL_RES_value(bundleRes);
+        }
+    }
 
     // check buffers in outputs objects
     for (size_t n = 0; n < nbOutputs; n++) {
@@ -2283,4 +2441,15 @@ ZL_Report ZL_DCtx_detachAllDecompressIntrospectionHooks(ZL_DCtx* dctx)
             sizeof(oc->decompressIntrospectionHooks));
     oc->hasDecompressionHooks = false;
     return ZL_returnSuccess();
+}
+
+ZL_Report DCTX_initFromFrameInfo(ZL_DCtx* dctx, const ZL_FrameInfo* frameInfo)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
+    ZL_ASSERT_NN(dctx);
+    ZL_TRY_LET(size_t, nbOutputs, ZL_FrameInfo_getNumOutputs(frameInfo));
+    ZL_ERR_IF_ERR(DFH_setFrameInfo(
+            &dctx->dfh, frameInfo, ZL_DCtx_getOperationContext(dctx)));
+    dctx->nbOutputs = nbOutputs;
+    return DCtx_setAppliedParameters(dctx);
 }

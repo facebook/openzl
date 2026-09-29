@@ -7,6 +7,8 @@
 #include "openzl/shared/portability.h"
 #include "openzl/zl_dtransform.h"
 
+ZL_BEGIN_C_DECLS
+
 ZL_Report DI_zstd(ZL_Decoder* dictx, const ZL_Input* ins[]);
 
 /* state management */
@@ -28,5 +30,7 @@ void DIZSTD_freeDCtx(void* state);
         .trStateMgr.stateAlloc = DIZSTD_createDCtx,          \
         .trStateMgr.stateFree  = DIZSTD_freeDCtx,            \
     }
+
+ZL_END_C_DECLS
 
 #endif // ZSTRONG_TRANSFORMS_ZSTD_DECODE_ZSTD_BINDING_H

@@ -115,6 +115,8 @@ std::optional<std::vector<std::string>> generateCorpus(std::string_view harness)
         return generateFuzzDeserializeAndCompressSimpleCorpus();
     } else if (harness == "FuzzDeserializeAndCompressRandom") {
         return generateFuzzDeserializeAndCompressRandomCorpus();
+    } else if (harness == "FuzzDeserializeAndCompressSimpleRestricted") {
+        return std::vector<std::string>{};
     } else if (harness == "FuzzRandomGraphsSerializesAndCompresses") {
         return std::vector<std::string>{};
     } else if (harness == "FuzzRandomCompressorDeserializesSuccessfully") {

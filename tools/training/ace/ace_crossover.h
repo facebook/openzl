@@ -13,8 +13,8 @@ namespace training {
 /// a comination of their traits.
 class ACECrossover {
    public:
-    ACECrossover(std::mt19937_64& rng, Type inputType)
-            : rng_(rng), inputType_(inputType)
+    ACECrossover(std::mt19937_64& rng, Type inputType, uint32_t formatVersion)
+            : rng_(rng), inputType_(inputType), formatVersion_(formatVersion)
     {
     }
 
@@ -44,7 +44,7 @@ class ACECrossover {
                 return std::move(*child);
             }
         }
-        return ACEMutate(rng_, inputType_)(recipient);
+        return ACEMutate(rng_, inputType_, formatVersion_)(recipient);
     }
 
     ACECompressor getRandomComponent(const ACECompressor& donor)
@@ -88,6 +88,7 @@ class ACECrossover {
 
     std::mt19937_64& rng_;
     Type inputType_;
+    uint32_t formatVersion_;
 };
 
 } // namespace training

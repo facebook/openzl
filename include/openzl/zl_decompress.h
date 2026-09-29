@@ -84,6 +84,14 @@ ZL_DCtx* ZL_DCtx_create(void);
 void ZL_DCtx_free(ZL_DCtx* dctx);
 
 /**
+ * @brief Attach a dict loader to the decompression context.
+ *
+ * The dict loader is referenced (not owned) by the DCtx. The caller must
+ * ensure the dict loader outlives the DCtx.
+ */
+void ZL_DCtx_refDictLoader(ZL_DCtx* dctx, ZL_DictLoader* loader);
+
+/**
  * @brief Global decompression parameters.
  */
 typedef enum {
@@ -359,6 +367,14 @@ ZL_RESULT_DECLARE_TYPE(ZL_Comment);
  * returns a comment with `size == 0`. The buffer returned is owned by @p zfi
  */
 ZL_RESULT_OF(ZL_Comment) ZL_FrameInfo_getComment(const ZL_FrameInfo* zfi);
+
+/**
+ * @brief Gets the dict bundle ID referenced by the frame, if any.
+ *
+ * @returns A pointer to the bundle ID stored in @p zfi, or NULL if the frame
+ * does not reference a dict bundle.
+ */
+const ZL_BundleID* ZL_FrameInfo_getBundleID(const ZL_FrameInfo* zfi);
 
 // ----------------------------------------------------
 // Decompression of Typed content

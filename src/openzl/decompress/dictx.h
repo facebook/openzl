@@ -48,6 +48,7 @@ struct ZL_Decoder_s {
     const ZL_IDType* regensID;
     size_t nbRegens;
     ZL_RBuffer thContent;
+    const void* ddict; // materialized dict object (NULL if none)
 }; // typedef'd to ZL_Decoder within "zs2_dtransform.h"
 
 ZL_Decoder* DI_createDICtx(ZL_DCtx* dctx);

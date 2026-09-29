@@ -248,4 +248,20 @@ TEST_F(OptimizerTest, AbsConstFold)
     expect_ast(prog, expected);
 }
 
+TEST_F(OptimizerTest, BetweenConstFold)
+{
+    const auto prog     = R"(
+        expect between(0, 5, 10) == 1
+        expect between(0, -1, 10) == 0
+        expect between(0, 11, 10) == 0
+        expect between(5, 5, 5) == 1
+    )";
+    const auto cg       = Codegen();
+    const auto expected = std::vector<ASTPtr>({ cg.expect(cg.num(1)),
+                                                cg.expect(cg.num(1)),
+                                                cg.expect(cg.num(1)),
+                                                cg.expect(cg.num(1)) });
+    expect_ast(prog, expected);
+}
+
 } // namespace openzl::sddl2::tests

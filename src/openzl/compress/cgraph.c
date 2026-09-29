@@ -1,7 +1,8 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "openzl/compress/cgraph.h"
-#include "openzl/common/allocation.h" // ZL_malloc, ZL_free
+#include "openzl/codecs/encoder_registry.h" // ER_standardNodes, STANDARD_ENCODERS_NB
+#include "openzl/common/allocation.h"       // ZL_malloc, ZL_free
 #include "openzl/common/assertion.h"
 #include "openzl/common/errors_internal.h" // ZS2_RET_IF_ERR
 #include "openzl/common/opaque.h"
@@ -68,6 +69,7 @@ ZL_Compressor* ZL_Compressor_create(void)
     }
     // Back-populate CDictMgr pointers
     cgraph->nmgr.ctm.cdictMgr = &cgraph->cdictMgr;
+    GM_setCDictMgr(cgraph->gm, &cgraph->cdictMgr);
 
 #if ZL_ENABLE_ASSERT
     // In debug mode, runtime check on the configuration of the Standard Graphs
@@ -839,6 +841,7 @@ ZL_Compressor_parameterizeGraph(
         .customNodes    = params->customNodes,
         .nbCustomNodes  = params->nbCustomNodes,
         .localParams    = params->localParams,
+        .mparam         = params->mparam,
     };
     return GM_registerParameterizedGraph(compressor->gm, &desc);
 }
@@ -855,6 +858,21 @@ ZL_Report ZL_Compressor_overrideGraphParams(
             "Graph must be registered in compressor");
 
     ZL_ERR_IF_ERR(GM_overrideGraphParams(compressor->gm, graph, gp));
+    return ZL_returnSuccess();
+}
+
+ZL_Report ZL_Compressor_overrideNodeParams(
+        ZL_Compressor* compressor,
+        ZL_NodeID node,
+        const ZL_NodeParameters* np)
+{
+    ZL_RESULT_DECLARE_SCOPE(size_t, compressor);
+    ZL_ERR_IF_NULL(
+            NM_getCNode(&compressor->nmgr, node),
+            node_invalid,
+            "Node must be registered in compressor");
+
+    ZL_ERR_IF_ERR(NM_overrideNodeParams(&compressor->nmgr, node, np));
     return ZL_returnSuccess();
 }
 
@@ -879,6 +897,7 @@ ZL_GraphID ZL_Compressor_registerParameterizedGraph(
         .customNodes    = desc->customNodes,
         .nbCustomNodes  = desc->nbCustomNodes,
         .localParams    = desc->localParams,
+        .mparam         = desc->mparam,
     };
     ZL_RESULT_OF(ZL_GraphID)
     graphidResult =
@@ -996,6 +1015,14 @@ const ZL_SegmenterDesc* CGRAPH_getSegmenterDesc(
 {
     ZL_ASSERT_NN(compressor);
     return GM_getSegmenterDesc(compressor->gm, graphid);
+}
+
+const void* CGRAPH_getGraphMParamObj(
+        const ZL_Compressor* compressor,
+        ZL_GraphID graphid)
+{
+    ZL_ASSERT_NN(compressor);
+    return GM_getGraphMParamObj(compressor->gm, graphid);
 }
 
 const void* CGRAPH_graphPrivateParam(
@@ -1153,6 +1180,40 @@ ZL_LocalParams ZL_Compressor_Graph_getLocalParams(
         ZL_GraphID graphid)
 {
     return GM_getGraphMetadata(compressor->gm, graphid).localParams;
+}
+
+// Returns a pointer to the graph's MParam descriptor (blob + id), handling both
+// function graphs and segmenters, or NULL when the graph is invalid. Mirrors
+// reading cnode->transformDesc.publicDesc.mparam on the node side.
+static const ZL_MParam* getGraphMParamPtr(
+        const ZL_Compressor* cgraph,
+        ZL_GraphID graph)
+{
+    const ZL_FunctionGraphDesc* migd =
+            CGRAPH_getMultiInputGraphDesc(cgraph, graph);
+    if (migd != NULL)
+        return &migd->mparam;
+    const ZL_SegmenterDesc* segDesc = CGRAPH_getSegmenterDesc(cgraph, graph);
+    if (segDesc != NULL)
+        return &segDesc->mparam;
+    return NULL;
+}
+
+const ZL_MParam* ZL_Compressor_Graph_getMParam(
+        ZL_Compressor const* cgraph,
+        ZL_GraphID graph)
+{
+    const ZL_MParam* mp = getGraphMParamPtr(cgraph, graph);
+    if (mp == NULL || !ZL_UniqueID_isValid(&mp->mparamID.id))
+        return NULL;
+    return mp;
+}
+
+const void* ZL_Compressor_Graph_getMParamObj(
+        ZL_Compressor const* cgraph,
+        ZL_GraphID graph)
+{
+    return CGRAPH_getGraphMParamObj(cgraph, graph);
 }
 
 size_t ZL_Compressor_Node_getNumInputs(
@@ -1328,8 +1389,10 @@ ZL_Report CGraph_resolveDictIndices(ZL_Compressor* cgraph)
             continue;
 
         const ZL_UniqueID* dictUID = &cnode->transformDesc.publicDesc.dictID.id;
-        if (!ZL_UniqueID_isValid(dictUID))
+        if (!ZL_UniqueID_isValid(dictUID)) {
+            CTM_setDictIndex(ctm, cnodeID, ZL_DICT_INDEX_NONE);
             continue;
+        }
 
         // This CNode requires a dictionary — resolve its bundle index
         ZL_ERR_IF_NULL(
@@ -1339,7 +1402,7 @@ ZL_Report CGraph_resolveDictIndices(ZL_Compressor* cgraph)
                 CNODE_getName(cnode));
 
         bool found = false;
-        for (size_t j = 0; j < bundle->info.numDicts; ++j) {
+        for (uint32_t j = 0; j < bundle->info.numDicts; ++j) {
             if (ZL_UniqueID_eq(dictUID, &bundle->info.dictIDs[j].id)) {
                 CTM_setDictIndex(ctm, cnodeID, j);
                 found = true;
@@ -1359,11 +1422,43 @@ ZL_Report ZL_Compressor_Node_getDictIndex(
         ZL_Compressor const* cgraph,
         ZL_NodeID node)
 {
-    size_t index = CNODE_getDictIndex(CGRAPH_getCNode(cgraph, node));
+    uint32_t index = CNODE_getDictIndex(CGRAPH_getCNode(cgraph, node));
     if (index == ZL_DICT_INDEX_NONE) {
         return ZL_returnError(ZL_ErrorCode_dictNoRecord);
     }
     return ZL_returnValue(index);
+}
+
+ZL_Report ZL_Compressor_Node_getMinLibraryVersion(
+        const ZL_Compressor* compressor,
+        ZL_NodeID node)
+{
+    (void)compressor;
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_GE(
+            node.nid,
+            STANDARD_ENCODERS_NB,
+            parameter_invalid,
+            "node ID out of bounds");
+    ZL_ERR_IF(
+            ER_standardNodes[node.nid].nodetype == node_illegal,
+            node_invalid,
+            "node is not a valid standard node");
+    return ZL_returnValue(ER_standardNodes[node.nid].minLibraryVersion);
+}
+
+ZL_Report ZL_Compressor_Graph_getMinLibraryVersion(
+        const ZL_Compressor* compressor,
+        ZL_GraphID gid)
+{
+    (void)compressor;
+    ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
+    ZL_ERR_IF_GE(
+            gid.gid,
+            ZL_PrivateStandardGraphID_end,
+            parameter_invalid,
+            "graph ID out of bounds");
+    return ZL_returnValue(GR_standardGraphs[gid.gid].gdi.minLibraryVersion);
 }
 
 const void* CGRAPH_getDictObj(const ZL_Compressor* cgraph, size_t dictOffset)

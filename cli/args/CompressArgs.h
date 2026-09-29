@@ -38,6 +38,13 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
                 "Compress with the given serialized compressor file.");
         parser.addCommandFlag(
                 cmd(),
+                kLevel,
+                'l',
+                true,
+                "Compression level (default: 6; higher favors compression "
+                "ratio).");
+        parser.addCommandFlag(
+                cmd(),
                 kTrainInline,
                 0,
                 false,
@@ -86,14 +93,31 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
                 0,
                 false,
                 "Disable anti-inflation guard (do not replace expanding chunks with STORE).");
+        parser.addCommandFlag(
+                cmd(),
+                kDictBundle,
+                'D',
+                true,
+                "Path to a fat dict bundle (.zd) file to load for compression.");
     }
 
     explicit CompressArgs(const arg::ParsedArgs& parsed)
             : GlobalArgs(parsed), ProfileArgs(parsed)
     {
         // Create the compressor
+        auto bundlePath = parsed.cmdFlag(cmd(), kDictBundle);
+        if (bundlePath) {
+            tools::io::InputFile bundleInput(bundlePath.value());
+            dictBundleData = bundleInput.contents();
+        }
+        setVerbosityLevel(verbosity);
+        const auto levelArg = parsed.cmdFlag(cmd(), kLevel);
+        if (levelArg) {
+            compressionLevel = util::checkedstoiExact(levelArg.value());
+            setRequestedCompressionLevel(compressionLevel.value());
+        }
         setCompressor(createCompressorFromArgs(
-                *this, parsed.cmdFlag(cmd(), kCompressor)));
+                *this, parsed.cmdFlag(cmd(), kCompressor), dictBundleData));
 
         // Get the input and output files
         auto inputPath = parsed.cmdPositional(cmd(), kInput);
@@ -132,7 +156,7 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
     static Cmd cmd()
     {
         return Cmd::COMPRESS;
-    };
+    }
 
     std::shared_ptr<tools::io::Input> input;
     std::shared_ptr<tools::io::Output> output;
@@ -145,12 +169,15 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
     bool strict           = false;
     bool streamPreview    = true;
     bool storeOnExpansion = true;
+    std::optional<int> compressionLevel;
+    std::string dictBundleData;
 
    private:
     inline static const std::string kInput      = "input";
     inline static const std::string kOutput     = "output";
     inline static const std::string kForce      = "force";
     inline static const std::string kCompressor = "compressor";
+    inline static const std::string kLevel      = "level";
 
     inline static const std::string kVerbose     = "verbose";
     inline static const std::string kRecursive   = "recursive";
@@ -164,6 +191,7 @@ struct CompressArgs : public GlobalArgs, public ProfileArgs {
     inline static const std::string kStoreOnExpansion = "store-on-expansion";
     inline static const std::string kNoStoreOnExpansion =
             "no-store-on-expansion";
+    inline static const std::string kDictBundle = "dict-bundle";
 };
 
 } // namespace openzl::cli

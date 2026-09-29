@@ -897,8 +897,7 @@ std::vector<double> pyDecompressMeasureSpeedMultiple(
         return zstrong::measureDecompressionSpeeds(
                 std::move(compressedStrings));
     } else {
-        return zstrong::measureDecompressionSpeeds(
-                std::move(compressedStrings), *graph);
+        return zstrong::measureDecompressionSpeeds(compressedStrings, *graph);
     }
 }
 

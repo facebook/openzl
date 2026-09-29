@@ -11,7 +11,7 @@ namespace openzl::training {
 /**
  * @brief Create a CCtx for training the compressor. The cctx is configured
  * so that if training is called multiple times, the parameters will not be
- * reset.
+ * reset. Targets ZL_MAX_FORMAT_VERSION.
  */
 CCtx refCCtxForTraining(const Compressor& compressor);
 
@@ -42,6 +42,12 @@ class MultiInput {
         return inputs_.get();
     }
 
+    /**
+     * @brief Returns maximum compressed size after compression using these
+     * inputs.
+     */
+    size_t compressBound() const;
+
     // Adds input while not owning the buffer the input references
     void add(Input&& input)
     {
@@ -66,5 +72,49 @@ class MultiInput {
  * each input is serial in @p inputs.
  */
 std::vector<MultiInput> inputSetToMultiInputs(tools::io::InputSet& inputs);
+
+/**
+ * @brief Returns whether @p compressor is compatible with its configured
+ * format version for every sample in @p inputs.
+ *
+ * It is the caller's responsibility to configure the compressor's format
+ * version, select its starting graph, and provide inputs that exercise every
+ * graph path whose compatibility must be tested. Compression errors unrelated
+ * to format compatibility are ignored.
+ */
+bool compressorIsFormatCompatible(
+        const Compressor& compressor,
+        const std::vector<MultiInput>& inputs);
+
+/**
+ * @brief Filter @p graphs down to those able to compress @p inputs at the
+ * target @p formatVersion.
+ *
+ * Each candidate graph is used to compress every sample in @p inputs. A graph
+ * is filtered out if any compression reports a format-version incompatibility.
+ * Supported graphs are returned in their original order.
+ *
+ * It is the caller's responsibility to provide inputs capable of exercising
+ * every graph path whose format-version compatibility must be tested. A graph
+ * that is incompatible with @p formatVersion may be retained if @p inputs do
+ * not exercise the incompatible path.
+ *
+ * @throws Exception if @p formatVersion is less than ZL_MIN_FORMAT_VERSION.
+ *
+ * Standard graphs follow the guidelines which are required for this function to
+ * work. Custom graphs are also required to follow these guidelines. These are
+ * that graphs must either:
+ * - Always select the same nodes and may not work on older format versions.
+ * - Dynamically select which nodes to run, in which case they should be
+ * format-version aware, meaning they should never execute a codec which
+ * requires a format version above the library's format version.
+ *
+ * If these guidelines are not followed, the function may not correctly filter
+ * out the graph.
+ */
+std::vector<GraphID> filterGraphsByFormatVersion(
+        Compressor& compressor,
+        const std::vector<GraphID>& graphs,
+        const std::vector<MultiInput>& inputs);
 
 } // namespace openzl::training

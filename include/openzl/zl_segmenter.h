@@ -91,18 +91,27 @@ typedef struct {
     size_t numCustomGraphs;         // Must be zero when customGraphs==NULL
     ZL_LocalParams localParams;
     /**
-     * Optional materializer descriptor for materialized local params.
-     * If both materializeFn and dematerializeFn are non-null, the materializer
-     * will be used to create materialized objects from local params.
-     */
-    ZL_MaterializerDesc materializer;
-    /**
      * Optionally an opaque pointer that can be queried with
      * ZL_Graph_getOpaquePtr().
      * OpenZL unconditionally takes ownership of this pointer, even if
      * registration fails, and it lives for the lifetime of the compressor.
      */
     ZL_OpaquePtr opaque;
+    /**
+     * Optional materializer for compression-only materialized parameters
+     * (MParams). If materializeFn is non-null, it will be called during
+     * compressor deserialization to create the materialized object from
+     * the serialized MParam blob. Unlike dicts, MParams are NOT required
+     * at decompression time.
+     */
+    ZL_MaterializerDesc mparamMat;
+    /**
+     * Optional MParam associated with this segmenter. The provided content
+     * blob will be materialized as dictated by @p mparamMat . OpenZL will not
+     * take ownership of the content provided. The caller is free to free the
+     * buffer anytime after registering the segmenter.
+     */
+    ZL_MParam mparam;
 } ZL_SegmenterDesc;
 
 /**
@@ -192,6 +201,13 @@ ZL_IntParam ZL_Segmenter_getLocalIntParam(
 ZL_RefParam ZL_Segmenter_getLocalRefParam(
         const ZL_Segmenter* segCtx,
         int refParamId);
+
+/**
+ * @returns The materialized MParam object associated with this segmenter, if
+ * there is one. Otherwise NULL. MParams are compression-only resources
+ * that are not required at decompression time.
+ */
+const void* ZL_Segmenter_getMParam(const ZL_Segmenter* segCtx);
 
 /**
  * @brief Retrieve the list of custom successor graphs available to this

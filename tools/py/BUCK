@@ -61,7 +61,7 @@ python_library(
     base_module = "",
     deps = [
         "fbsource//third-party/pypi/pandas:pandas",
+        "fbsource//third-party/pypi/xgboost:xgboost",
         ":zstrong_json",
     ],
-    external_deps = ["xgboost"],
 )

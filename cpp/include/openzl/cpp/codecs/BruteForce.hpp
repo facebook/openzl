@@ -2,46 +2,57 @@
 
 #pragma once
 
+#include <initializer_list>
+#include <utility>
+#include <vector>
+
 #include "openzl/codecs/zl_brute_force_selector.h"
 #include "openzl/cpp/Compressor.hpp"
-#include "openzl/cpp/FunctionGraph.hpp"
+#include "openzl/cpp/Exception.hpp"
+#include "openzl/cpp/codecs/Graph.hpp"
 #include "openzl/cpp/codecs/Metadata.hpp"
 
 namespace openzl {
 namespace graphs {
 
-struct BruteForce {
-    // TODO(terrelln): Make serializable & expose the GraphID & parameters
-    // static constexpr GraphID graph = ZL_GRAPH_BRUTE_FORCE;
+class BruteForce : public Graph {
+   public:
+    static constexpr GraphID graph = ZL_GRAPH_BRUTE_FORCE;
 
-    // // TODO(terrelln): Work with multi-input graphs
-    // static constexpr GraphMetadata<1> metadata = {
-    //     .inputs = { InputMetadata{ .typeMask = TypeMask::Any } },
-    //     .description =
-    //             "Try each successor graph and choose the one that produces "
-    //             "the smallest compressed size"
-    // };
+    // TODO(terrelln): Work with multi-input graphs
+    static constexpr GraphMetadata<1> metadata = {
+        .inputs = { InputMetadata{ .typeMask = TypeMask::Any } },
+        .description =
+                "Try each successor graph and choose the one that "
+                "produces the smallest compressed size",
+    };
 
-    // GraphID operator()() const
-    // {
-    //     return graph;
-    // }
+    explicit BruteForce(std::vector<GraphID> successors)
+            : successors_(std::move(successors))
+    {
+        if (successors_.empty()) {
+            throw Exception("BruteForce requires at least one successor");
+        }
+    }
 
-    // GraphParameters params(poly::span<const GraphID> successors) const;
+    explicit BruteForce(std::initializer_list<GraphID> successors)
+            : BruteForce(std::vector<GraphID>(successors))
+    {
+    }
 
-    // GraphID operator()(
-    //         Compressor& compressor,
-    //         poly::span<const GraphID> successors) const
-    // {
-    //     return compressor.parameterizeGraph(graph, params(successors));
-    // }
+    GraphID baseGraph() const override
+    {
+        return graph;
+    }
 
-    // void operator()(Edge& edge, poly::span<const GraphID> successors) const
-    // {
-    //     edge.setDestination(graph, params(successors));
-    // }
+    poly::optional<GraphParameters> parameters() const override
+    {
+        return GraphParameters{ .customGraphs = successors_ };
+    }
+
+   private:
+    std::vector<GraphID> successors_;
 };
-inline constexpr BruteForce brute_force;
 
 } // namespace graphs
 } // namespace openzl

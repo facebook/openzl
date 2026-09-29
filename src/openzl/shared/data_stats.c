@@ -5,7 +5,6 @@
 #include "openzl/shared/bits.h"
 #include "openzl/shared/data_stats.h"
 #include "openzl/shared/histogram.h"
-#include "openzl/shared/portability.h" // ZL_UNUSED
 #include "openzl/shared/utils.h"
 #include "openzl/shared/varint.h"
 
@@ -209,7 +208,7 @@ unsigned int const* DataStatsU8_getHistogram(DataStatsU8* stats)
     RETURN_OR_CALC_LAZY(stats, histogram, DataStatsU8_calcHistogram(stats));
 }
 
-static ZL_UNUSED void DataStatsU8_calcDeltaHistogram(DataStatsU8* stats)
+static ZL_UNUSED_ATTR void DataStatsU8_calcDeltaHistogram(DataStatsU8* stats)
 {
     if (!stats->histogramInitialized) {
         DataStatsU8_calcHistograms(stats);
@@ -289,13 +288,22 @@ size_t DataStatsU8_estimateHuffmanSizeFast(DataStatsU8* stats, bool delta)
 {
     double entropy = delta ? DataStatsU8_getDeltaEntropy(stats)
                            : DataStatsU8_getEntropy(stats);
-    if (entropy > 7) {
-        return stats->srcSize;
-    }
-    entropy = ZL_MAX(
-            entropy,
-            1); // We need at least one bit if we have more than one symbol
-    return (size_t)((entropy * (double)stats->srcSize) / 8);
+    // We need at least one bit if we have more than one symbol
+    entropy = ZL_MAX(entropy, 1);
+
+    const size_t symbolsSize = (size_t)((entropy * (double)stats->srcSize)) / 8;
+
+    // Account for Huffman codec header. Use an upper-bound given that we've
+    // significantly under-estimated the symbolsSize.
+    size_t const headerSize = 9;
+
+    // Estimate the table size as the min of 5-bits per non-zero symbol, or
+    // 4-bits per symbol.
+    const size_t tableBitsC = 5u * DataStatsU8_getCardinality(stats);
+    const size_t tableBitsM = 4u * (DataStatsU8_getMaxElt(stats) + 1u);
+    const size_t tableSize  = (ZL_MIN(tableBitsC, tableBitsM) + 7u) / 8u;
+
+    return headerSize + tableSize + symbolsSize;
 }
 
 static size_t DataStatsU8_estimateBitpackedSize(DataStatsU8* stats)

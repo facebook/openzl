@@ -1,0 +1,110 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbcode_macros//build_defs/lib:re_test_utils.bzl", "re_test_utils")
+load("@fbsource//tools/build_defs:testpilot_defs.bzl", "tpx_labels")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
+load("//tools/build/buck:nvcc_flags.bzl", "get_nvcc_arch_args")
+load("../../../../../defs.bzl", "relative_headers")
+
+oncall("data_compression")
+
+# GPU decode kernel for the bfloat16 float_deconstruct codec.
+cpp_library(
+    # @autodeps-skip
+    name = "decode_float_deconstruct_bf16",
+    srcs = ["decode_float_deconstruct_bf16.cu"],
+    headers = relative_headers(["decode_float_deconstruct_bf16.cuh"]),
+    header_namespace = "",
+    nvcc_flags = get_nvcc_arch_args() + ["-lineinfo"],
+    deps = [
+        "../../common:cuda_error",
+        "../../common:cuda_raii",
+    ],
+    exported_deps = [
+        "../../common:cuda_launch",
+        "../../common:segment_plan",
+    ],
+    exported_external_deps = [("cuda", None, "cuda-lazy")],
+)
+
+# Header-only float_deconstruct-specific device staging shared by the benchmark
+# and the differential test. The generic benchmark driver lives in
+# ../../bench:gpu_bench.
+cpp_library(
+    # @autodeps-skip
+    name = "gpu_chunk_harness",
+    headers = relative_headers(["gpu_chunk_harness.cuh"]),
+    header_namespace = "",
+    exported_deps = [
+        "../../common:cuda_error",
+        "../../common:cuda_raii",
+        ":decode_float_deconstruct_bf16",
+    ],
+    exported_external_deps = [("cuda", None, "cuda-lazy")],
+)
+
+# Kernel-only throughput benchmark (bandwidth, %peak, latency, occupancy).
+cpp_binary(
+    # @autodeps-skip
+    name = "bench_decode_bf16",
+    srcs = ["bench/bench_decode_bf16.cu"],
+    nvcc_flags = get_nvcc_arch_args() + ["-lineinfo"],
+    deps = [
+        "../../../../..:zstronglib",
+        "../../bench:gpu_bench",
+        "../../common:cuda_error",
+        ":decode_float_deconstruct_bf16",
+        ":gpu_chunk_harness",
+    ],
+    external_deps = [("cuda", None, "cuda-lazy")],
+)
+
+# Differential correctness test: GPU decode vs OpenZL's own decoder, over real
+# frames minted + reflected by contrib/gpu/testkit.
+cpp_unittest(
+    # @autodeps-skip
+    name = "decode_bf16_test",
+    srcs = ["tests/DecodeBf16Test.cu"],
+    labels = [tpx_labels.serialize],
+    network_access = network_access_utils.none(),
+    nvcc_flags = get_nvcc_arch_args() + ["-lineinfo"],
+    remote_execution = re_test_utils.remote_execution(
+        platform = "gpu-remote-execution",
+        use_case = "tpx-default",
+    ),
+    deps = [
+        "../../../../..:zstronglib",
+        "../../../../../cpp:openzl_cpp",
+        "../../../testkit:testkit",
+        "../../common:cuda_error",
+        "fbsource//third-party/googletest:gtest",
+        ":decode_float_deconstruct_bf16",
+        ":gpu_chunk_harness",
+    ],
+    external_deps = [("cuda", None, "cuda-lazy")],
+)
+
+# CPU output sizing for every float_deconstruct wire variant.
+cpp_library(
+    # @autodeps-skip
+    name = "plan_float_deconstruct_output",
+    srcs = ["plan_float_deconstruct_output.cpp"],
+    headers = relative_headers(["plan_float_deconstruct_output.hpp"]),
+    header_namespace = "",
+    deps = ["../../../../..:zstronglib"],
+    exported_deps = ["../../common:codec_decode_planning"],
+)
+
+cpp_unittest(
+    # @autodeps-skip
+    name = "plan_float_deconstruct_output_test",
+    srcs = ["tests/PlanFloatDeconstructOutputTest.cpp"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        ":plan_float_deconstruct_output",
+    ],
+)

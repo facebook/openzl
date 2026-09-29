@@ -3,6 +3,7 @@
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup", "buck_genrule", "buck_sh_test")
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
+load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
 
 oncall("data_compression")
 
@@ -28,14 +29,19 @@ buck_genrule(
     name = "static_docs",
     out = "static_docs.sh",
     cmd = (
-        "echo -e {0} > $OUT && chmod +x $OUT"
-            .format(shell.quote("\n".join([
-            "#!/bin/bash",
-            "SCRIPT=\\$(readlink -f $0)",
-            "SCRIPTPATH=\\$(dirname $SCRIPT)",
-            "cd $SCRIPTPATH",
-            "$(location :static_docs_build_script) --pwd \\$(hg root)/fbcode/openzl/{}/doc/mkdocs --use-system-python-extension --test".format(BRANCH_NAME),
-        ])))
+        "echo -e {0} > $OUT && chmod +x $OUT".format(
+            shell.quote(
+                "\n".join([
+                    "#!/bin/bash",
+                    "SCRIPT=\\$(readlink -f $0)",
+                    "SCRIPTPATH=\\$(dirname $SCRIPT)",
+                    "cd $SCRIPTPATH",
+                    "$(location :static_docs_build_script) --pwd \\$(hg root)/fbcode/openzl/{}/doc/mkdocs --use-system-python-extension --test".format(
+                        BRANCH_NAME,
+                    ),
+                ]),
+            ),
+        )
     ),
 )
 
@@ -44,18 +50,25 @@ buck_sh_test(
     name = "static_docs_test",
     env = {
         "DOXYGEN_PATH": "$(location fbsource//third-party/doxygen:doxygen)",
-        # Skip building the trace visualizer in tests since it requires external network access
-        # to fetch npm packages, which is not available in remote execution
-        "OPENZL_SKIP_VISUALIZER_BUILD": "1",
+        # Skip building web tools in tests since they require external network access
+        # to fetch npm packages, which is not available in remote execution.
+        "OPENZL_SKIP_WEB_TOOLS_BUILD": "1",
     },
+    labels = ci.labels(ci.remove(ci.aarch64())),
     test = ":static_docs",
     deps = [
         ":static_docs_build_script",
         # Depend on all files under doc/ to ensure the test triggers on changes to the docs
         ":doc_srcs",
-        # Inject fake dependencies to ensure the test triggers on changes to the library and visualization app
+        # Inject fake dependencies to ensure the test triggers on changes to the library and web tools.
+        # When adding a new web tool, add its :app_srcs target here so doc tests run on changes.
         "../..:zstronglib",  # @manual
-        "../../tools/visualization_app:app_srcs",  # @manual
+        # Shared workspace manifests and packages are build inputs for every tool,
+        # so changing them must reschedule this test too.
+        "../../tools/web:web_workspace_srcs",  # @manual
+        "../../tools/web/compression_playground:app_srcs",  # @manual
+        "../../tools/web/visualization_app:app_srcs",  # @manual
+        "../../tools/web/web_common:package_srcs",  # @manual
         # Doxygen binary must be explicitly declared as a dependency to be materialized in remote execution
         "fbsource//third-party/doxygen:doxygen",  # @manual
     ],
@@ -66,7 +79,6 @@ python_binary(
     name = "mkdocs",
     main_function = "mkdocs.__main__.cli",
     par_style = "xar",
-    py_version = "3.12",
     deps = [
         "../../py:openzl",  # @manual
         "fbsource//third-party/pypi/mkdocs:mkdocs",

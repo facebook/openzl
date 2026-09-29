@@ -84,6 +84,12 @@ int ZL_Selector_getCParam(const ZL_Selector* selCtx, ZL_CParam gparam)
     return CCTX_getAppliedGParam(selCtx->cctx, gparam);
 }
 
+bool ZL_Selector_isNodeSupported(const ZL_Selector* selCtx, ZL_NodeID nodeid)
+{
+    ZL_ASSERT_NN(selCtx);
+    return CCTX_isNodeSupported(selCtx->cctx, nodeid);
+}
+
 ZL_LocalIntParams ZL_Selector_getLocalIntParams(const ZL_Selector* selCtx)
 {
     ZL_ASSERT_NN(selCtx);

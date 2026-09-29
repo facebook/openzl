@@ -54,7 +54,7 @@ class CompressionUtils {
             const std::vector<MultiInput>& samples,
             const std::vector<ZL_GraphID>& successors,
             const std::vector<ZL_NodeID>& clusteringCodecs,
-            const std::shared_ptr<ThreadPool>& threadPool)
+            ThreadPool& threadPool)
             : compressor_(compressor),
               samples_(std::move(samples)),
               successors_(successors),
@@ -124,7 +124,7 @@ class CompressionUtils {
     const std::vector<ZL_GraphID> successors_;
     const std::vector<ZL_NodeID> clusteringCodecs_;
     static constexpr int compressBoundFactor_ = 2;
-    const std::shared_ptr<ThreadPool> threadPool_;
+    ThreadPool& threadPool_;
 
     std::map<ZL_Type, std::vector<size_t>> typeToClusteringCodecIdxsMap_;
     const std::vector<ZL_Type> kInputTypes_ = {

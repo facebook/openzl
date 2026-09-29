@@ -1,0 +1,77 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+# cmake-ci already compiles tools/wasm/src/openzl_wasm.cpp natively and runs
+# its gtest. This workflow verifies that Emscripten produces a WASM artifact.
+
+name: wasm-ci
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'tools/wasm/**'
+      # The binding links the training tools and the CLI's profile graphs.
+      - 'tools/training/**'
+      - 'tools/io/**'
+      - 'tools/logger/**'
+      - 'cli/utils/profile_graphs.*'
+      - 'custom_parsers/**'
+      - 'cpp/**'
+      - 'src/**'
+      - 'include/**'
+      - '**/CMakeLists.txt'
+      - '.github/workflows/wasm-ci.yml'
+  pull_request:
+    branches: [dev, master, actionsTest]
+    paths:
+      - 'tools/wasm/**'
+      # The binding links the training tools and the CLI's profile graphs.
+      - 'tools/training/**'
+      - 'tools/io/**'
+      - 'tools/logger/**'
+      - 'cli/utils/profile_graphs.*'
+      - 'custom_parsers/**'
+      - 'cpp/**'
+      - 'src/**'
+      - 'include/**'
+      - '**/CMakeLists.txt'
+      - '.github/workflows/wasm-ci.yml'
+  workflow_dispatch: {}
+
+jobs:
+  wasm-build:
+    name: WASM build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          # Pinned stable emsdk version for reproducible WASM builds.
+          # Keep in sync if openzl/dev upgrades its emscripten toolchain.
+          version: 4.0.19
+          actions-cache-folder: emsdk-cache
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Pin Node.js 24 interpreter
+        run: echo "OPENZL_NODE=$(command -v node)" >> "$GITHUB_ENV"
+
+      - name: Configure
+        run: emcmake cmake -DOPENZL_BUILD_WASM=ON -B build-wasm
+
+      - name: Build
+        run: cmake --build build-wasm --target openzl_wasm -j$(getconf _NPROCESSORS_ONLN)
+
+      - name: Check WASM artifact
+        run: test -f build-wasm/tools/wasm/openzl.wasm
+
+      # Artifact is built on demand and copied next to wasm_api.js so
+      # `import openzlModule from './openzl.js'` resolves in both browser and Node.
+      - name: Run wasm_api.js integration tests
+        run: |
+          cp build-wasm/tools/wasm/openzl.{js,wasm} tools/wasm/js/
+          "$OPENZL_NODE" --test tools/wasm/js/tests/wasm_api.test.js

@@ -31,6 +31,8 @@ typedef struct {
     const InputDesc* inputDescs; /**< Array of input stream's properties */
     size_t numInputs;
     ZL_Comment comment;
+    const ZL_BundleID* bundleID; /**< vZL_MATERIALIZED_DICT_VERSION_MIN+:
+                                    dict bundle ID, or NULL */
 } EFH_FrameInfo;
 
 /**
@@ -65,6 +67,7 @@ typedef struct {
     const size_t* trHSizes;   /**< Array of transform header sizes (bytes) */
     const size_t* nbVOs;      /**< Array of output counts per transform */
     const size_t* nbTrInputs; /**< Array of input counts per transform */
+    const uint32_t* dictIdxs; /**< Array of dict bundle offsets per transform */
     const uint32_t*
             distances;  /**< Array of dependency distances between transforms */
     size_t nbDistances; /**< Number of dependency distance entries */

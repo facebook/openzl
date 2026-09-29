@@ -322,6 +322,16 @@ const void* ZL_Decoder_getOpaquePtr(const ZL_Decoder* dictx);
  */
 void* ZL_Decoder_getState(const ZL_Decoder* dictx);
 
+/**
+ * @returns The materialized dictionary object resolved for this node from the
+ *          dict loader attached to the active DCtx, if there is one, otherwise
+ *          NULL.
+ *
+ * NOTE: If the frame format < ZL_MATERIALIZED_DICT_VERSION_MIN, this will
+ * necessarily return NULL.
+ */
+const void* ZL_Decoder_getMaterializedDict(const ZL_Decoder* dictx);
+
 #if defined(__cplusplus)
 } // extern "C"
 #endif

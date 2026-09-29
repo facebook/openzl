@@ -6,6 +6,7 @@
 #include "openzl/common/stream.h" // STREAM_*
 #include "openzl/common/vector.h"
 #include "openzl/compress/cctx.h"        // CCTX_*
+#include "openzl/compress/cgraph.h"      // CGRAPH_getGraphMParamObj
 #include "openzl/compress/localparams.h" // LP_*
 #include "openzl/compress/rtgraphs.h"
 #include "openzl/zl_data.h"   // ZL_Data, ZL_Type
@@ -25,6 +26,7 @@ struct ZL_Segmenter_s {
     size_t numChunks;
     Arena* sessionArena;
     Arena* chunkArena;
+    ZL_GraphID graphid;
 };
 
 /**
@@ -51,7 +53,8 @@ ZL_Segmenter* SEGM_init(
         ZL_CCtx* cctx,
         RTGraph* rtgm,
         Arena* sessionArena,
-        Arena* chunkArena)
+        Arena* chunkArena,
+        ZL_GraphID graphid)
 {
     ZL_DLOG(BLOCK, "SEGM_init");
     ZL_Segmenter* seg = ALLOC_Arena_malloc(sessionArena, sizeof(ZL_Segmenter));
@@ -63,6 +66,7 @@ ZL_Segmenter* SEGM_init(
     seg->rtgm         = rtgm;
     seg->sessionArena = sessionArena;
     seg->chunkArena   = chunkArena;
+    seg->graphid      = graphid;
     ZL_ASSERT_EQ(nbInputs, VECTOR_SIZE(rtgm->streams));
     seg->nbInputs = nbInputs;
     seg->inputs = ALLOC_Arena_malloc(sessionArena, nbInputs * sizeof(ZL_Data*));
@@ -158,6 +162,13 @@ const ZL_LocalParams* ZL_Segmenter_getLocalParams(const ZL_Segmenter* segCtx)
 {
     ZL_ASSERT_NN(segCtx);
     return &segCtx->segDesc->localParams;
+}
+
+const void* ZL_Segmenter_getMParam(const ZL_Segmenter* segCtx)
+{
+    ZL_ASSERT_NN(segCtx);
+    return CGRAPH_getGraphMParamObj(
+            CCTX_getCGraph(segCtx->cctx), segCtx->graphid);
 }
 
 /* Consultation request for Custom Successor Graphs */
@@ -260,8 +271,8 @@ void* ZL_Segmenter_getScratchSpace(ZL_Segmenter* segCtx, size_t size)
  * RTGraph Reset Strategy: Calls RTGM_reset() before each chunk to ensure
  * clean state, then registers chunk inputs as new runtime streams.
  *
- * Protection Level: Uses depth=1 for graph execution, providing the highest
- * protection level that still allows graphs to make redirection decisions.
+ * Protection Level: Chunk graphs run below the segmenter's depth, while still
+ * allowing graphs to make redirection decisions.
  *
  * Cleanup Pattern: Manual cleanup with proper STREAM_free() calls to handle
  * reference counting, followed by CCTX_cleanChunk() for context cleanup.
@@ -319,8 +330,8 @@ ZL_Report ZL_Segmenter_processChunk(
     }
 
     // Run the starting Graph on the Inputs
-    // This is depth 1, which is the highest level of protection,
-    // allowing the Graph to make redirection decisions if need be.
+    // Run the chunk graph below the segmenter's graph depth, allowing the Graph
+    // to make redirection decisions if need be.
     // Note: depth==0 means "unprotected"
     ZL_ERR_IF_ERR(CCTX_runSuccessor(
             cctx,
@@ -328,7 +339,7 @@ ZL_Report ZL_Segmenter_processChunk(
             rGraphParams,
             rtsids,
             numInputs,
-            /* depth */ 1));
+            CCTX_getSegmenterDepth(cctx) + 1));
 
     ZL_Report r = CCTX_flushChunk(cctx, (void*)chunkInputs, numInputs);
     segCtx->numChunks++;

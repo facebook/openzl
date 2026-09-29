@@ -295,6 +295,10 @@ ZL_FORCE_INLINE size_t ZS_execExperimentalSequence2(
             uint8_t** litPtr = lits->o1LitsByContext[ctx];
             if (litPtr == NULL)
                 return 0;
+            uint8_t* const litEnd =
+                    lits->o1LitsEndByCluster[litPtr - lits->o1LitsByCluster];
+            if (*litPtr >= litEnd)
+                return 0;
             op[l] = ctx = **litPtr;
             ++*litPtr;
         }
@@ -363,8 +367,7 @@ ZL_FORCE_INLINE size_t ZS_execExperimentalSequence2(
         }
     } else {
         if (seq.matchType == ZS_mt_lz) {
-            ZL_ASSERT_GT(seq.matchCode, 0);
-            if (seq.matchCode > (size_t)(op - ostart))
+            if (seq.matchCode == 0 || seq.matchCode > (size_t)(op - ostart))
                 return 0;
             match = op - seq.matchCode;
             matchLength += kLzMinLength;
@@ -374,11 +377,18 @@ ZL_FORCE_INLINE size_t ZS_execExperimentalSequence2(
             ZL_ASSERT(
                     seq.matchType == ZS_mt_rep0 || seq.matchType == ZS_mt_rep);
             uint32_t const rep = seq.matchCode;
-            ZL_ASSERT_LT(rep & 3, 3); // 3 isn't allowed
+            if ((rep & 3) == 3)
+                return 0;
             uint32_t const prevOff = reps->reps[rep & 3];
-            ZL_ASSERT_NE(prevOff, 0);
+            if (prevOff == 0)
+                return 0;
             uint32_t const offset =
                     rep == 0 ? prevOff : prevOff + (rep >> 2) - REP_SUB;
+            // ZS_rep_update assumes a rep0 code carries no offset delta.
+            if ((rep & 3) == 0 && offset != prevOff)
+                return 0;
+            if (offset == 0 || offset > (size_t)(op - ostart))
+                return 0;
             *reps = ZS_rep_update(reps, rep, offset, seq.matchLength);
             ZL_DLOG(SEQ, "mpos=%u off=%u", (uint32_t)(op - ostart), offset);
             match = op - offset;
@@ -465,6 +475,10 @@ ZL_FORCE_INLINE size_t ZS_execExperimentalSequence(
             uint8_t** litPtr = lits->o1LitsByContext[ctx];
             if (litPtr == NULL)
                 return 0;
+            uint8_t* const litEnd =
+                    lits->o1LitsEndByCluster[litPtr - lits->o1LitsByCluster];
+            if (*litPtr >= litEnd)
+                return 0;
             op[l] = ctx = **litPtr;
             ++*litPtr;
         }
@@ -520,11 +534,18 @@ ZL_FORCE_INLINE size_t ZS_execExperimentalSequence(
         case ZS_mt_rep0:
         case ZS_mt_rep: {
             uint32_t const rep = seq.matchCode;
-            ZL_ASSERT_LT(rep & 3, 3); // 3 isn't allowed
+            if ((rep & 3) == 3)
+                return 0;
             uint32_t const prevOff = reps->reps[rep & 3];
-            ZL_ASSERT_NE(prevOff, 0);
+            if (prevOff == 0)
+                return 0;
             uint32_t const offset =
                     rep == 0 ? prevOff : prevOff + (rep >> 2) - REP_SUB;
+            // ZS_rep_update assumes a rep0 code carries no offset delta.
+            if ((rep & 3) == 0 && offset != prevOff)
+                return 0;
+            if (offset == 0 || offset > (size_t)(op - ostart))
+                return 0;
             *reps = ZS_rep_update(reps, rep, offset, seq.matchLength);
             ZL_DLOG(SEQ, "mpos=%u off=%u", (uint32_t)(op - ostart), offset);
             match = op - offset;
@@ -754,7 +775,6 @@ static ZL_Report ZS_experimentalDecoder_decompress(
     mcs = NULL;
 
     size_t const lastLiterals = lits.numLits - lits.litsConsumed;
-    uint8_t* const litsEnd    = lits.lits + lits.numLits;
     if (lastLiterals > (size_t)(oend - op))
         goto _error;
     if (lits.o1) {
@@ -763,7 +783,9 @@ static ZL_Report ZS_experimentalDecoder_decompress(
             uint8_t** litPtr = lits.o1LitsByContext[context];
             if (litPtr == NULL)
                 goto _error;
-            if (*litPtr >= litsEnd)
+            uint8_t* const litEnd =
+                    lits.o1LitsEndByCluster[litPtr - lits.o1LitsByCluster];
+            if (*litPtr >= litEnd)
                 goto _error;
             op[l] = context = **litPtr;
             ++*litPtr;

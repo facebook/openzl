@@ -3,6 +3,7 @@
 #include "openzl/codecs/partition/decode_partition_kernel.h"
 
 #include "openzl/codecs/common/bitstream/ff_bitstream.h"
+#include "openzl/shared/mem.h"
 #include "openzl/zl_errors.h"
 
 /// The bitstream accumulator holds 63 bits, and after a reload up to 7 bits
@@ -54,7 +55,6 @@ ZL_writeValue(void* dst, size_t index, uint64_t value, size_t eltWidth)
             break;
     }
 }
-
 ZL_Report ZL_partitionDecode(
         void* dst,
         size_t eltWidth,

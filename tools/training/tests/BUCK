@@ -1,6 +1,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
 load("../../../defs.bzl", "relative_headers")
 
 oncall("data_compression")
@@ -10,19 +11,25 @@ cpp_unittest(
     name = "test_training",
     srcs = [
         "test_ace.cpp",
-        "test_ace_combination.cpp",
+        "test_benchmark.cpp",
         "test_clustering.cpp",
         "test_clustering_benchmarks.cpp",
         "test_clustering_config_builder.cpp",
+        "test_dict_training.cpp",
         "test_genetic_algorithm.cpp",
+        "test_lz_trainer.cpp",
+        "test_pareto_combination.cpp",
         "test_sample_collection.cpp",
         "test_sample_limiter.cpp",
         "test_thread_pool.cpp",
+        "test_train.cpp",
+        "test_utils.cpp",
     ],
     headers = relative_headers([
         "benchmark_files/ppmf_unit_segment.h",
     ]),
     header_namespace = "",
+    network_access = network_access_utils.none(),
     deps = [
         "..:train",
         "../../..:zstronglib",
@@ -33,7 +40,11 @@ cpp_unittest(
         "../clustering:clustering_graph_trainer",
         "../clustering:train_api",
         "../clustering:training_clustering",
+        "../dict:base_dict_trainer",
+        "../lz:lz_trainer",
+        "../utils:benchmark",
         "../utils:genetic_algorithm",
+        "../utils:pareto_combination",
         "../utils:training_utils",
     ],
 )

@@ -35,13 +35,15 @@ void checkOutput(const std::string& path, bool force)
 
 std::unique_ptr<Compressor> createCompressorFromArgs(
         const ProfileArgs& profileArgs,
-        const std::optional<std::string>& compressorPath)
+        const std::optional<std::string>& compressorPath,
+        poly::string_view bundleData)
 {
     if (profileArgs.name() && compressorPath) {
         throw InvalidArgsException(
                 "Both compressor profile and serialized compressor specified. Please provide only one.");
     }
 
+    std::unique_ptr<Compressor> compressor;
     if (profileArgs.name()) {
         if (profileArgs.chunkSize()) {
             const auto profileName = profileArgs.name().value();
@@ -54,18 +56,25 @@ std::unique_ptr<Compressor> createCompressorFromArgs(
                                 + "' does not support --chunk-size; ignoring the flag.");
             }
         }
-        return util::createCompressorFromProfile(profileArgs);
-    }
-
-    if (compressorPath) {
+        compressor = util::createCompressorFromProfile(profileArgs);
+    } else if (compressorPath) {
         auto compressorInput =
                 std::make_shared<tools::io::InputFile>(compressorPath.value());
-        return custom_parsers::createCompressorFromSerialized(
-                compressorInput->contents());
+        compressor = custom_parsers::createCompressorFromSerialized(
+                compressorInput->contents(), bundleData);
+    } else {
+        throw InvalidArgsException(
+                "No compressor profile or serialized compressor specified.");
     }
 
-    throw InvalidArgsException(
-            "No compressor profile or serialized compressor specified.");
+    /* Apply the command-line level after profile creation so it overrides the
+     * profile's compression level. */
+    if (profileArgs.requestedCompressionLevel()) {
+        compressor->setParameter(
+                CParam::CompressionLevel,
+                profileArgs.requestedCompressionLevel().value());
+    }
+    return compressor;
 }
 } // namespace cli
 } // namespace openzl

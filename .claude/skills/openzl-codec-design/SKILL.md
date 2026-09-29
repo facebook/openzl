@@ -177,10 +177,11 @@ See `cpp/include/openzl/cpp/codecs/Zigzag.hpp` for a simple example, `cpp/includ
 1. Add `#include "openzl/codecs/{codec}/encode_{codec}_binding.h"`
 2. Add entry to `ER_standardNodes[]`:
 ```c
-REGISTER_TRANSFORM(ZL_StandardNodeID_{codec}, ZL_StandardTransformID_{codec}, ZL_MAX_FORMAT_VERSION, EI_CODEC),
+// REGISTER_TRANSFORM(NodeID, TransformID, minFormatVer, minLibraryVer, EI_MACRO)
+REGISTER_TRANSFORM(ZL_StandardNodeID_{codec}, ZL_StandardTransformID_{codec}, 26, 202, EI_CODEC),
 ```
 
-NOTE: Do not use the macro `ZL_MAX_FORMAT_VERSION`, use the current value of that macro! This value tells OpenZL the minimum format version that is required to use this codec, which for new codecs is the current maximum format version.
+NOTE: Hard-code the **current numeric values** of `ZL_MAX_FORMAT_VERSION` and `ZL_LIBRARY_VERSION_NUMBER` (e.g., `26, 202`) — do NOT pass the macros themselves. These pin the minimum format/library version required to use this codec; using the macros would silently widen support every time they bump (see `ACR_explicit_format_version_in_registrations`).
 
 ### Decoder Registry (`src/openzl/codecs/decoder_registry.c`)
 

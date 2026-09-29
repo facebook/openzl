@@ -7,6 +7,119 @@
 #include "openzl/shared/bits.h"
 #include "openzl/shared/mem.h"
 
+#if ZL_HAS_SVE2_BITPERM
+#    include <arm_sve.h>
+
+static size_t ZL_muxLengthsEncode_2_sve(
+        uint8_t* muxedOut,
+        uint16_t* longOut,
+        const uint16_t* literalLengths,
+        const uint16_t* matchLengths,
+        size_t numElements,
+        unsigned splitPoint,
+        unsigned matchLengthBias)
+{
+    const uint16_t llMask = (uint16_t)((1u << splitPoint) - 1);
+    const uint16_t mlMask = (uint16_t)((1u << (8 - splitPoint)) - 1);
+
+    // Process a full vector worth of u16 lengths per iteration. SVE compact
+    // only supports u32+ element widths, so the mux byte path stays u16 and
+    // each half is widened to u32 for compacting the variable-length longOut
+    // stream.
+    const svuint16_t llMaskV = svdup_n_u16(llMask);
+    const svuint16_t mlMaskV = svdup_n_u16(mlMask);
+    const svuint16_t biasV   = svdup_n_u16((uint16_t)matchLengthBias);
+    const svuint16_t shiftV  = svdup_n_u16((uint16_t)splitPoint);
+
+    // Keep the vector loop to fixed 16-bit lane blocks. That avoids a
+    // per-iteration tail predicate in the hot loop; the final partial block
+    // uses scalar code.
+    const size_t lanes  = svcnth();
+    const size_t end    = numElements - (numElements % lanes);
+    const svbool_t pg   = svptrue_b16();
+    const svbool_t pg32 = svptrue_b32();
+    size_t count        = 0;
+    size_t i            = 0;
+
+    for (; i < end; i += lanes) {
+        // Load ll/ml pairs as u16 lanes:
+        //   ll = [ll0, ll1, ...]
+        //   ml = [ml0, ml1, ...] - matchLengthBias
+        const svuint16_t ll = svld1_u16(pg, literalLengths + i);
+        const svuint16_t ml =
+                svsub_u16_x(pg, svld1_u16(pg, matchLengths + i), biasV);
+
+        // Token lanes are the saturated field values stored in the mux byte:
+        //   llTok = min(ll, llMask)
+        //   mlTok = min(ml, mlMask)
+        // The final byte is llTok | (mlTok << splitPoint). svst1b_u16 writes
+        // only the low byte of each active u16 lane.
+        const svuint16_t llTok = svmin_u16_x(pg, ll, llMaskV);
+        const svuint16_t mlTok = svmin_u16_x(pg, ml, mlMaskV);
+        const svuint16_t mux =
+                svorr_u16_x(pg, llTok, svlsl_u16_x(pg, mlTok, shiftV));
+        svst1b_u16(pg, muxedOut + i, mux);
+
+        // Overflow semantics match the scalar path: a value overflows when it
+        // is >= the mask, and the long stream stores value - mask. Keep mux
+        // generation in u16 lanes, but compute overflow compaction directly in
+        // u32 halves to avoid b16 predicate unpack/flag conversion.
+        // TODO: this whole widening loop can be avoided if svcompact_u16
+        // existed. It's coming to GCC, so any day now...
+#    define ZL_MUX_LENGTHS_COMPACT_HALF(ll32, ml32)                         \
+        do {                                                                \
+            const svbool_t llOverflow = svcmpge_n_u32(pg32, ll32, llMask);  \
+            const svbool_t mlOverflow = svcmpge_n_u32(pg32, ml32, mlMask);  \
+            const svuint32_t llExtra  = svsub_n_u32_x(pg32, ll32, llMask);  \
+            const svuint32_t mlExtra  = svsub_n_u32_x(pg32, ml32, mlMask);  \
+            const svuint32_t extra01  = svzip1_u32(llExtra, mlExtra);       \
+            const svuint32_t extra23  = svzip2_u32(llExtra, mlExtra);       \
+            const svbool_t overflow01 = svzip1_b32(llOverflow, mlOverflow); \
+            const svbool_t overflow23 = svzip2_b32(llOverflow, mlOverflow); \
+            svst1h_u32(                                                     \
+                    pg32,                                                   \
+                    longOut + count,                                        \
+                    svcompact_u32(overflow01, extra01));                    \
+            count += svcntp_b32(pg32, overflow01);                          \
+            svst1h_u32(                                                     \
+                    pg32,                                                   \
+                    longOut + count,                                        \
+                    svcompact_u32(overflow23, extra23));                    \
+            count += svcntp_b32(pg32, overflow23);                          \
+        } while (0)
+
+        ZL_MUX_LENGTHS_COMPACT_HALF(svunpklo_u32(ll), svunpklo_u32(ml));
+        ZL_MUX_LENGTHS_COMPACT_HALF(svunpkhi_u32(ll), svunpkhi_u32(ml));
+#    undef ZL_MUX_LENGTHS_COMPACT_HALF
+    }
+
+    // Scalar tail for elements that do not fit in a full SVE block.
+    for (; i < numElements; ++i) {
+        const uint16_t ll = literalLengths[i];
+        const uint16_t ml = matchLengths[i] - (uint16_t)matchLengthBias;
+        uint8_t mux       = 0;
+
+        if (ll >= llMask) {
+            mux              = (uint8_t)llMask;
+            longOut[count++] = (uint16_t)(ll - llMask);
+        } else {
+            mux = (uint8_t)ll;
+        }
+
+        if (ml >= mlMask) {
+            mux |= (uint8_t)(mlMask << splitPoint);
+            longOut[count++] = (uint16_t)(ml - mlMask);
+        } else {
+            mux |= (uint8_t)(ml << splitPoint);
+        }
+
+        muxedOut[i] = mux;
+    }
+
+    return count;
+}
+#endif /* ZL_HAS_SVE2_BITPERM */
+
 #if ZL_HAS_AVX2
 
 static size_t ZL_muxLengthsEncode_2(
@@ -274,7 +387,18 @@ size_t ZL_muxLengthsEncode(
     ZL_ASSERT_LE(splitPoint, 8);
     ZL_ASSERT_LE(matchLengthBias, 15);
 
-#if ZL_HAS_AVX2
+#if ZL_HAS_SVE2_BITPERM
+    if (eltWidth == 2) {
+        return ZL_muxLengthsEncode_2_sve(
+                muxedOut,
+                (uint16_t*)longOut,
+                (const uint16_t*)literalLengths,
+                (const uint16_t*)matchLengths,
+                numElements,
+                splitPoint,
+                matchLengthBias);
+    }
+#elif ZL_HAS_AVX2
     if (eltWidth == 2) {
         return ZL_muxLengthsEncode_2(
                 muxedOut,

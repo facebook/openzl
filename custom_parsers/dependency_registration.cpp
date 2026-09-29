@@ -57,12 +57,15 @@ void processDependencies(Compressor& compressor, poly::string_view serialized)
         }
     }
 }
+
 std::unique_ptr<Compressor> createCompressorFromSerialized(
-        poly::string_view serialized)
+        poly::string_view serialized,
+        poly::string_view fatBundle)
 {
     auto compressor = std::make_unique<Compressor>();
     processDependencies(*compressor, serialized);
-    compressor->deserialize(serialized);
+    compressor->deserialize(serialized, fatBundle);
     return compressor;
 }
+
 } // namespace openzl::custom_parsers

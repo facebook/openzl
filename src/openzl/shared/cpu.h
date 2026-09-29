@@ -201,6 +201,13 @@ B(avx512vl, 31)
 #define C(name, bit) X(name, f7c, bit)
 C(prefetchwt1, 0)
 C(avx512vbmi, 1)
+C(avx512vbmi2, 6)
+C(vaes, 9)
+C(vpclmulqdq, 10)
+C(avx512vnni, 11)
+C(avx512bitalg, 12)
+C(avx512vpopcntdq, 14)
+C(rdpid, 22)
 #undef C
 
 #undef X

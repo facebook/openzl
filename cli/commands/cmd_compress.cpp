@@ -44,9 +44,8 @@ int validateCompressArgs(const CompressArgs& args)
  * @note currently this method trains using the default trainer defined in
  *       tools/training/clustering/train_api.cpp.
  *
- * @return 0 on success, non-zero on failure.
  */
-int trainCompressorOnSampleFile(CompressArgs& args)
+void trainCompressorOnSampleFile(CompressArgs& args)
 {
     Logger::log(
             VERBOSE1,
@@ -61,8 +60,30 @@ int trainCompressorOnSampleFile(CompressArgs& args)
     auto compressorOutput =
             std::make_shared<tools::io::OutputBuffer>(compressorData);
 
+    if (args.compressionLevel.has_value()) {
+        args.compressor()->setParameter(
+                CParam::CompressionLevel, args.compressionLevel.value());
+    }
+
+    auto trainingCompressor = custom_parsers::createCompressorFromSerialized(
+            args.compressor()->serialize(), args.dictBundleData);
+
     // Construct args for training
-    TrainArgs trainArgs(args, args.compressor());
+    TrainArgs trainArgs(args, std::move(trainingCompressor));
+    trainArgs.dictBundleData = args.dictBundleData;
+    const auto inputDictBundle =
+            std::make_shared<const std::string>(args.dictBundleData);
+    trainArgs.trainParams.dictBundleData = inputDictBundle;
+    trainArgs.trainParams.compressorGenFunc =
+            [inputDictBundle](
+                    poly::string_view serialized,
+                    poly::string_view candidateBundle) {
+                const poly::string_view bundle = candidateBundle.empty()
+                        ? poly::string_view(*inputDictBundle)
+                        : candidateBundle;
+                return custom_parsers::createCompressorFromSerialized(
+                        serialized, bundle);
+            };
     trainArgs.inputs =
             std::make_unique<tools::io::InputSetStatic>(std::move(inputVec));
     trainArgs.output = compressorOutput;
@@ -71,17 +92,19 @@ int trainCompressorOnSampleFile(CompressArgs& args)
     }
 
     // Train the compressor
-    int result = cmdTrain(trainArgs);
-    if (result != 0) {
-        return result;
+    CmdTrainResult const trainResult = cmdTrainWithResult(trainArgs);
+    if (!trainResult.trainedCompressorImprovesRatio) {
+        Logger::log(
+                INFO,
+                "Inline training did not improve compression ratio; using the untrained compressor.");
+        return;
     }
 
     // Save the trained compressor
     args.setCompressor(
             custom_parsers::createCompressorFromSerialized(
-                    compressorOutput->to_input()->contents()));
-
-    return result;
+                    compressorOutput->to_input()->contents(),
+                    *inputDictBundle));
 }
 
 void writeTrace(CCtx& cctx, const CompressArgs& args)
@@ -134,6 +157,10 @@ int performCompression(const CompressArgs& args)
     }
     if (!args.storeOnExpansion) {
         cctx.setParameter(CParam::StoreOnExpansion, ZL_TernaryParam_disable);
+    }
+    if (args.compressionLevel.has_value()) {
+        cctx.setParameter(
+                CParam::CompressionLevel, args.compressionLevel.value());
     }
     cctx.refCompressor(*args.compressor());
     if (args.traceOutput) {
@@ -218,10 +245,7 @@ int cmdCompress(CompressArgs args)
     }
 
     if (args.trainInline) {
-        int trainResult = trainCompressorOnSampleFile(args);
-        if (trainResult != 0) {
-            return trainResult;
-        }
+        trainCompressorOnSampleFile(args);
     }
     return performCompression(args);
 }

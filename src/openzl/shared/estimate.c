@@ -11,6 +11,7 @@
 #include "openzl/shared/bits.h"
 #include "openzl/shared/data_stats.h"
 #include "openzl/shared/hash.h"
+#include "openzl/shared/mem.h"
 #include "openzl/shared/portability.h"
 #include "openzl/shared/utils.h"
 #include "openzl/shared/xxhash.h"
@@ -19,6 +20,12 @@ typedef struct {
     size_t sizeLog;
     uint8_t* bits;
 } LinearCount;
+
+static double LinearCount_estimateValue(size_t nbZeros, size_t nbBuckets)
+{
+    ZL_ASSERT_NE(nbZeros, 0);
+    return (double)nbBuckets * log((double)nbBuckets / (double)nbZeros);
+}
 
 static ZL_CardinalityEstimate LinearCount_estimateImpl(
         size_t nbZeros,
@@ -36,7 +43,7 @@ static ZL_CardinalityEstimate LinearCount_estimateImpl(
         estimate.estimateUpperBound = (uint64_t)-1;
     } else {
         double const cardinality =
-                (double)nbBuckets * log((double)nbBuckets / (double)nbZeros);
+                LinearCount_estimateValue(nbZeros, nbBuckets);
         double const t = (double)cardinality / (double)nbBuckets;
         // Double our error because calculating error from the estimated
         // cardinality isn't quite right. Also, never report less than 10%
@@ -63,7 +70,7 @@ static void LinearCount_init(LinearCount* lc, uint8_t* bits, size_t sizeLog)
     memset(lc->bits, 0, (size_t)1 << sizeLog);
 }
 
-static size_t LinearCount_hash(uint64_t value)
+static uint64_t LinearCount_hash(uint64_t value)
 {
     // A pure multiplication overestimates when the values are dense.
     // E.g. cardinality=32K of 2-byte values. This is because consecutive
@@ -75,13 +82,13 @@ static size_t LinearCount_hash(uint64_t value)
     // For now, I've preferred a more accurate estimate at the cost of slower
     // speed, but we could decide to accept overestimates in the densely packed
     // values scenario.
-    size_t const hash = value * 0x9E3779B185EBCA87ULL;
+    uint64_t const hash = value * 0x9E3779B185EBCA87ULL;
     return hash ^ (hash << 47);
 }
 
-static void LinearCount_bump(LinearCount* lc, size_t hash)
+static void LinearCount_bump(LinearCount* lc, uint64_t hash)
 {
-    size_t const index = hash >> (sizeof(hash) * 8 - lc->sizeLog);
+    size_t const index = (size_t)(hash >> (sizeof(hash) * 8 - lc->sizeLog));
     lc->bits[index]    = 1;
 }
 
@@ -111,7 +118,7 @@ static void TinyLinearCount_init(TinyLinearCount* tlc)
 {
     tlc->bits = 0;
 }
-static void TinyLinearCount_bump(TinyLinearCount* vlc, size_t hash)
+static void TinyLinearCount_bump(TinyLinearCount* vlc, uint64_t hash)
 {
     uint64_t const bit    = hash >> (sizeof(hash) * 8 - 8);
     uint64_t const update = (uint64_t)1 << (bit & 0x3F);
@@ -148,15 +155,19 @@ static void HyperLogLog_init(HyperLogLog* hll)
     memset(hll->buckets, 0, sizeof(hll->buckets));
 }
 
-static size_t HyperLogLog_hash(uint64_t value)
+static uint64_t HyperLogLog_hash(uint64_t value)
 {
-    return XXH3_64bits(&value, sizeof(value));
+    /* Preserve historical little-endian hashes while making estimates
+     * deterministic across host byte orders. */
+    uint8_t littleEndian[sizeof(value)];
+    ZL_writeLE64(littleEndian, value);
+    return XXH3_64bits(littleEndian, sizeof(littleEndian));
 }
 
-static void HyperLogLog_bump(HyperLogLog* hll, size_t hash)
+static void HyperLogLog_bump(HyperLogLog* hll, uint64_t hash)
 {
-    size_t const bucket = hash >> (sizeof(hash) * 8 - HLL_BUCKET_LOG);
-    size_t const update = hash & ~(hash - 1);
+    size_t const bucket = (size_t)(hash >> (sizeof(hash) * 8 - HLL_BUCKET_LOG));
+    uint64_t const update = hash & ~(hash - 1);
     hll->buckets[bucket] |= (uint32_t)update;
 }
 
@@ -302,6 +313,14 @@ ZL_FORCE_INLINE ZL_CardinalityEstimate ZS_estimateHLL_internal(
     return HyperLogLog_estimate(&hll);
 }
 
+static size_t ZS_estimateLinearSizeLog(uint64_t cardinalityEarlyExit)
+{
+    size_t const highBit = (size_t)ZL_highbit32((uint32_t)cardinalityEarlyExit);
+    size_t const nbBits =
+            ZL_isPow2((uint32_t)cardinalityEarlyExit) ? highBit : highBit + 1;
+    return ZL_MAX(5, ZL_MIN(nbBits, 13));
+}
+
 ZL_FORCE_INLINE ZL_CardinalityEstimate ZS_estimate_internal(
         void const* src,
         size_t nbElts,
@@ -329,12 +348,7 @@ ZL_FORCE_INLINE ZL_CardinalityEstimate ZS_estimate_internal(
         // The speed loss is likey from worse codegen than an actual fundamental
         // limitation, so it should be able to be gained back another way.
         uint8_t bits[1 << 13];
-        size_t const highBit =
-                (size_t)ZL_highbit32((uint32_t)cardinalityEarlyExit);
-        size_t const nbBits  = ZL_isPow2((uint32_t)cardinalityEarlyExit)
-                 ? highBit
-                 : highBit + 1;
-        size_t const sizeLog = ZL_MAX(5, ZL_MIN(nbBits, 13));
+        size_t const sizeLog = ZS_estimateLinearSizeLog(cardinalityEarlyExit);
         return ZS_estimateLinear_internal(
                 src, nbElts, cardinalityEarlyExit, bits, sizeLog, kEltSize);
     }
@@ -456,6 +470,78 @@ ZL_CardinalityEstimate ZL_estimateCardinality_fixed(
     return ZS_CardinalityEstimate_fixup(estimate, upperBound);
 }
 
+enum {
+    HASHED_LINEAR_COUNT_SIZE_LOG = 13,
+    HASHED_LINEAR_COUNT_BUCKETS  = 1 << HASHED_LINEAR_COUNT_SIZE_LOG,
+};
+
+/*
+ * The hashed estimator's trained feature contract rounds LinearCount to the
+ * nearest integer. The general structured estimator intentionally truncates.
+ */
+static uint64_t LinearCount_estimateRounded(size_t nbZeros, size_t nbBuckets)
+{
+    if (nbZeros == 0) {
+        /*
+         * This scalar API cannot represent an unknown estimate. Preserve its
+         * compatibility contract by returning the occupied-bucket lower bound
+         * when LinearCount saturates.
+         */
+        return nbBuckets;
+    }
+    return (uint64_t)(LinearCount_estimateValue(nbZeros, nbBuckets) + 0.5);
+}
+
+uint64_t ZL_estimateCardinality_hashed(
+        void* state,
+        size_t nbHashes,
+        size_t cardinalityUpperBound,
+        ZL_CardinalityHashFn linearCountHash,
+        ZL_CardinalityHashFn hyperLogLogHash)
+{
+    if (nbHashes == 0 || cardinalityUpperBound == 0)
+        return 0;
+
+    ZL_ASSERT(linearCountHash != NULL);
+    ZL_ASSERT(hyperLogLogHash != NULL);
+
+    uint64_t estimate;
+    if (cardinalityUpperBound <= ZL_ESTIMATE_CARDINALITY_16BITS) {
+        /*
+         * Keep a fixed 8192-bucket sketch. Unlike the fixed and variable APIs,
+         * the hashed estimate must not vary its sketch size with the bound.
+         */
+        uint8_t bits[HASHED_LINEAR_COUNT_BUCKETS];
+        LinearCount count;
+        LinearCount_init(&count, bits, HASHED_LINEAR_COUNT_SIZE_LOG);
+        for (size_t i = 0; i < nbHashes; ++i) {
+            LinearCount_bump(&count, linearCountHash(state, i));
+        }
+        estimate = LinearCount_estimateRounded(
+                LinearCount_nbZeros(&count), HASHED_LINEAR_COUNT_BUCKETS);
+    } else {
+        HyperLogLog hll;
+        HyperLogLog_init(&hll);
+        for (size_t i = 0; i < nbHashes; ++i) {
+            HyperLogLog_bump(&hll, hyperLogLogHash(state, i));
+        }
+        size_t const nbZeros = HyperLogLog_nbZeros(&hll);
+        /*
+         * Preserve the trained conversion policy: the LinearCount correction
+         * rounds to nearest, while the full HLL estimate truncates.
+         */
+        estimate = nbZeros > 0
+                ? LinearCount_estimateRounded(nbZeros, HLL_NB_BUCKETS)
+                : HyperLogLog_estimateImpl(
+                          HLL_NB_BUCKETS,
+                          HyperLogLog_harmonicMean(&hll),
+                          HLL_ALPHA)
+                          .estimate;
+    }
+
+    return ZL_MIN(estimate, cardinalityUpperBound);
+}
+
 static ZL_CardinalityEstimate ZS_estimateLinear_variable_internal(
         void const* const* srcs,
         size_t const* eltSizes,
@@ -507,12 +593,7 @@ ZL_CardinalityEstimate ZL_estimateCardinality_variable(
     }
     if (cardinalityEarlyExit <= ZL_ESTIMATE_CARDINALITY_16BITS) {
         uint8_t bits[1 << 13];
-        size_t const highBit =
-                (size_t)ZL_highbit32((uint32_t)cardinalityEarlyExit);
-        size_t const nbBits  = ZL_isPow2((uint32_t)cardinalityEarlyExit)
-                 ? highBit
-                 : highBit + 1;
-        size_t const sizeLog = ZL_MAX(5, ZL_MIN(nbBits, 13));
+        size_t const sizeLog = ZS_estimateLinearSizeLog(cardinalityEarlyExit);
         estimate             = ZS_estimateLinear_variable_internal(
                 srcs, eltSizes, nbElts, cardinalityEarlyExit, bits, sizeLog);
     } else {

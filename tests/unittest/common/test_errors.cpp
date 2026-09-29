@@ -73,16 +73,12 @@ TEST(ErrorsTest, retIfs)
             switch (path) {
                 case 0:
                     return ZL_RESULT_WRAP_VALUE(Foo, kFoo);
-                    break;
                 case 1:
                     ZL_ERR(GENERIC, "fail! %d", 1234);
-                    break;
                 case 2:
                     ZL_ERR(GENERIC, "fail!");
-                    break;
                 case 3:
                     ZL_ERR(GENERIC);
-                    break;
                 default:
                     throw std::runtime_error("!");
             }
@@ -596,9 +592,7 @@ TEST(ErrorsTest, ErrorInfoWorks)
 
         // Check that the fields are set as expected
         EXPECT_NE(ZL_E_dy(error), nullptr);
-        EXPECT_EQ(
-                ZL_E_dy(error),
-                ZL_OC_getError(&opCtx, ZL_ErrorCode_corruption));
+        EXPECT_EQ(ZL_E_dy(error), ZL_OC_getLastError(&opCtx));
         EXPECT_EQ(ZL_EE_code(error._info), ZL_ErrorCode_corruption);
         EXPECT_EQ(ZL_EE_message(error._info), std::string("MyFmtString 350"));
         EXPECT_EQ(ZL_EE_nbStackFrames(error._info), size_t(1));
@@ -676,9 +670,7 @@ TEST(ErrorsTest, ErrorInfoWorks)
                 350);
 
         EXPECT_NE(ZL_E_dy(error), nullptr);
-        EXPECT_EQ(
-                ZL_E_dy(error),
-                ZL_OC_getError(&opCtx, ZL_ErrorCode_allocation));
+        EXPECT_EQ(ZL_E_dy(error), ZL_OC_getLastError(&opCtx));
         EXPECT_EQ(ZL_EE_code(error._info), ZL_ErrorCode_allocation);
         EXPECT_EQ(ZL_EE_message(error._info), std::string("MyFmtString 350"));
         EXPECT_EQ(ZL_EE_nbStackFrames(error._info), size_t(1));
@@ -822,13 +814,10 @@ TEST(ErrorsTest, StaticErrorInfo)
             switch (path) {
                 case 0:
                     ZL_ERR(corruption);
-                    break;
                 case 1:
                     ZL_ERR(corruption, "BeepBeep!");
-                    break;
                 case 2:
                     ZL_ERR(corruption, "BeepBeep %d", 1234);
-                    break;
                 default:
                     throw std::runtime_error("!");
             }

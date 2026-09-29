@@ -8,7 +8,6 @@
 #include "openzl/common/vector.h"
 #include "openzl/compress/cnode.h"          // CNode
 #include "openzl/compress/compress_types.h" // InternalTransform_Desc
-#include "openzl/compress/materializer.h"   // MaterializedParamMap
 #include "openzl/shared/portability.h"
 
 ZL_BEGIN_C_DECLS
@@ -27,7 +26,6 @@ typedef struct CNodes_manager_s {
     Arena* allocator;
     Arena* scratchAllocator;
     struct CDictMgr_s* cdictMgr;
-    MaterializedParamMap materializedParams;
     ZL_OperationContext* opCtx; // Non-owning pointer to error context
 } CNodes_manager;
 
@@ -79,12 +77,17 @@ CTM_registerStandardTransform(
 
 /// Sets the dict index for a CNode. Used during validation to resolve
 /// the dict's position within the compressor's bundle.
-void CTM_setDictIndex(CNodes_manager* ctm, CNodeID id, size_t index);
+void CTM_setDictIndex(CNodes_manager* ctm, CNodeID id, uint32_t index);
+
+ZL_Report CTM_overrideNodeParams(
+        CNodes_manager* ctm,
+        CNodeID id,
+        const ZL_NodeParameters* np);
 
 /**
  * Rolls back the registration of @p id
  * @warning This only works when @p id was the last node registered. If local
- * params are transferred or a materialized param created, it will not be freed.
+ * params are transferred, they will not be freed.
  */
 void CTM_rollback(CNodes_manager* ctm, CNodeID id);
 

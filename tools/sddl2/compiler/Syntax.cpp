@@ -78,6 +78,7 @@ static const std::map<Symbol, poly::string_view> syms_to_debug_strs{
     { Symbol::DIV, "DIV" },
     { Symbol::MOD, "MOD" },
     { Symbol::ABS, "ABS" },
+    { Symbol::BETWEEN, "BETWEEN" },
 
     { Symbol::BIT_AND, "BIT_AND" },
     { Symbol::BIT_OR, "BIT_OR" },
@@ -118,6 +119,8 @@ static const std::map<Symbol, poly::string_view> syms_to_debug_strs{
     { Symbol::RECORD, "RECORD" },
 
     { Symbol::WHEN, "WHEN" },
+
+    { Symbol::AT, "AT" },
 };
 
 poly::string_view sym_to_debug_str(Symbol sym)
@@ -152,6 +155,7 @@ const std::vector<std::pair<poly::string_view, Symbol>> strs_to_syms{
     { "/", Symbol::DIV },
     { "%", Symbol::MOD },
     { "abs", Symbol::ABS },
+    { "between", Symbol::BETWEEN },
     { "&&", Symbol::LOG_AND },
     { "||", Symbol::LOG_OR },
     { "!", Symbol::LOG_NOT },
@@ -191,6 +195,8 @@ const std::vector<std::pair<poly::string_view, Symbol>> strs_to_syms{
 
     { "record", Symbol::RECORD },
     { "when", Symbol::WHEN },
+
+    { "@", Symbol::AT },
 };
 
 /* These symbols can't actually be accessed via these names. */

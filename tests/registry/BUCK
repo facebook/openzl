@@ -28,7 +28,8 @@ zs_cxxlibrary(
     name = "openzl_components",
     srcs = [
         "OpenZLComponents.cpp",
-    ] + glob([
+    ]
+    + glob([
         "components/*.cpp",
     ]),
     headers = ["OpenZLComponents.h"],

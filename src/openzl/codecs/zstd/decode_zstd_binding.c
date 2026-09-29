@@ -97,8 +97,10 @@ ZL_Report DI_zstd(ZL_Decoder* dictx, ZL_Input const* ins[])
             ZL_ERR(logicError, "Zstd unable to set parameter!");
         }
     }
-    size_t const dSize = ZSTD_decompressDCtx(
-            dctx, ZL_Output_ptr(out), dstSize, src, srcSize);
+    const ZSTD_DDict* ddict =
+            (const ZSTD_DDict*)ZL_Decoder_getMaterializedDict(dictx);
+    size_t const dSize = ZSTD_decompress_usingDDict(
+            dctx, ZL_Output_ptr(out), dstSize, src, srcSize, ddict);
     ZL_ERR_IF(
             ZSTD_isError(dSize),
             corruption,

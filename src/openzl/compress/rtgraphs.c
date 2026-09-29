@@ -221,6 +221,48 @@ static ZL_DataID RTGM_genStreamID(RTGraph* rtgraph)
     return (ZL_DataID){ rtgraph->nextStreamUniqueID++ };
 }
 
+static ZL_RESULT_OF(RTStreamID) RTGM_reserveOutputStreamSlot(
+        RTGraph* rtgraph,
+        const RTNode* rtnode,
+        int outcomeID,
+        int isVO)
+{
+    // RTGraph does not retain an operation context for error propagation.
+    ZL_RESULT_DECLARE_SCOPE(RTStreamID, NULL);
+    ZL_IDType rtsid;
+    if (!isVO) {
+        ZL_ERR_IF_GE(
+                rtnode->startOutRtsids + (ZL_IDType)outcomeID,
+                VECTOR_SIZE(rtgraph->streams),
+                successor_invalid,
+                "attempted to provide an invalid Successor");
+        rtsid = rtnode->startOutRtsids + (ZL_IDType)outcomeID;
+    } else {
+        ZL_DLOG(SEQ, "adding a VO Stream");
+        rtsid = (ZL_IDType)VECTOR_SIZE(rtgraph->streams);
+        ZL_ERR_IF(
+                VECTOR_RESIZE(rtgraph->streams, rtsid + 1) <= rtsid,
+                allocation);
+    }
+    return ZL_WRAP_VALUE((RTStreamID){ rtsid });
+}
+
+static RTStreamID RTGM_registerOutputStream(
+        RTGraph* rtgraph,
+        RTNode* rtnode,
+        RTStreamID rtstreamid,
+        int outcomeID,
+        ZL_Data* stream)
+{
+    RT_CStream* const rtStream = &VECTOR_AT(rtgraph->streams, rtstreamid.rtsid);
+    ZL_ASSERT_NULL(rtStream->stream);
+    rtStream->stream = stream;
+    ZL_ASSERT_GE(outcomeID, 0);
+    rtStream->outcomeID = (ZL_IDType)outcomeID;
+    rtnode->nbOutStreams++;
+    return rtstreamid;
+}
+
 ZL_RESULT_OF(RTStreamID)
 RTGM_addStream(
         RTGraph* rtgraph,
@@ -235,30 +277,14 @@ RTGM_addStream(
     ZL_DLOG(BLOCK, "RTGM_addStream (outcomeID=%i)", outcomeID);
     ZL_ASSERT_NN(rtgraph);
     RTNode* const rtnode = &VECTOR_AT(rtgraph->nodes, rtnodeid.rtnid);
-    ZL_IDType rtsid;
-    if (!isVO) {
-        // Singleton output
-        // space for Singleton is presumed already reserved
-        ZL_ASSERT_NN(rtnode);
-        ZL_ERR_IF_GE(
-                rtnode->startOutRtsids + (ZL_IDType)outcomeID,
-                VECTOR_SIZE(rtgraph->streams),
-                successor_invalid,
-                "attempted to provide an invalid Successor");
-        rtsid = rtnode->startOutRtsids + (ZL_IDType)outcomeID;
-    } else { // (isVO)
-        // Variable output
-        // Add one output to the Graph, after the reserved Singletons
-        // Note : requires serialized stream creation (no concurrency)
-        ZL_DLOG(SEQ, "adding a VO Stream");
-        rtsid = (ZL_IDType)VECTOR_SIZE(rtgraph->streams);
-        ZL_ERR_IF(
-                VECTOR_RESIZE(rtgraph->streams, rtsid + 1) <= rtsid,
-                allocation);
-    }
+    ZL_RESULT_OF(RTStreamID)
+    const wrappedRTStreamID =
+            RTGM_reserveOutputStreamSlot(rtgraph, rtnode, outcomeID, isVO);
+    ZL_ERR_IF_ERR(wrappedRTStreamID);
+    const RTStreamID rtstreamid = ZL_RES_value(wrappedRTStreamID);
 
-    ZL_DLOG(SEQ, "new RT_stream at ID : %u", rtsid);
-    RT_CStream* const rtStream = &VECTOR_AT(rtgraph->streams, rtsid);
+    ZL_DLOG(SEQ, "new RT_stream at ID : %u", rtstreamid.rtsid);
+    RT_CStream* const rtStream = &VECTOR_AT(rtgraph->streams, rtstreamid.rtsid);
     ZL_ERR_IF_NN(
             rtStream->stream,
             streamParameter_invalid,
@@ -275,11 +301,8 @@ RTGM_addStream(
         ZL_ERR_IF_ERR(report);
     }
 
-    rtStream->stream = stream;
-    ZL_ASSERT_GE(outcomeID, 0);
-    rtStream->outcomeID = (ZL_IDType)outcomeID;
-    rtnode->nbOutStreams++;
-    return ZL_WRAP_VALUE((RTStreamID){ rtsid });
+    return ZL_WRAP_VALUE(RTGM_registerOutputStream(
+            rtgraph, rtnode, rtstreamid, outcomeID, stream));
 }
 
 // maps Input to internal Stream
@@ -301,13 +324,6 @@ RTGM_refInput(RTGraph* rtgraph, const ZL_Data* stream)
             (RTStreamID){ (ZL_IDType)(VECTOR_SIZE(rtgraph->streams) - 1) });
 }
 
-// Note : this method is very similar to RTGM_addStream
-// It mostly differs in what it does when it's successful,
-// aka STREAM_reference() vs STREAM_reserve().
-// But STREAM_reserve() can fail, while STREAM_reference() doesn't,
-// which changes the return pattern.
-// Nonetheless, there might be ways to share code between the 2 methods,
-// since they share so much in common.
 ZL_RESULT_OF(RTStreamID)
 RTGM_refContentIntoNewStream(
         RTGraph* rtgraph,
@@ -324,27 +340,11 @@ RTGM_refContentIntoNewStream(
     ZL_DLOG(BLOCK, "RTGM_refContentIntoNewStream");
     ZL_ASSERT_NN(rtgraph);
     RTNode* const rtnode = &VECTOR_AT(rtgraph->nodes, rtnodeid.rtnid);
-    ZL_IDType rtsid;
-    if (!isVO) {
-        // Singleton output
-        // should be already reserved
-        ZL_ASSERT_NN(rtnode);
-        ZL_ERR_IF_GE(
-                rtnode->startOutRtsids + (ZL_IDType)outcomeID,
-                VECTOR_SIZE(rtgraph->streams),
-                successor_invalid,
-                "attempted to provide an invalid Successor");
-        rtsid = rtnode->startOutRtsids + (ZL_IDType)outcomeID;
-    } else { // isVO
-        // Variable output
-        // Add one output to the Graph, after the pre-reserved Singletons
-        // Note : requires serialized stream creation (no concurrency)
-        ZL_DLOG(SEQ, "adding a VO Stream");
-        rtsid = (ZL_IDType)VECTOR_SIZE(rtgraph->streams);
-        ZL_ERR_IF(
-                VECTOR_RESIZE(rtgraph->streams, rtsid + 1) <= rtsid,
-                allocation);
-    }
+    ZL_RESULT_OF(RTStreamID)
+    const wrappedRTStreamID =
+            RTGM_reserveOutputStreamSlot(rtgraph, rtnode, outcomeID, isVO);
+    ZL_ERR_IF_ERR(wrappedRTStreamID);
+    const RTStreamID rtstreamid = ZL_RES_value(wrappedRTStreamID);
 
     ZL_Data* const stream = STREAM_createInArena(
             rtgraph->streamArena, RTGM_genStreamID(rtgraph));
@@ -356,13 +356,43 @@ RTGM_refContentIntoNewStream(
         ZL_ERR_IF_ERR(err);
     }
 
-    RT_CStream* const rtStream = &VECTOR_AT(rtgraph->streams, rtsid);
-    ZL_ASSERT_NULL(rtStream->stream); // should be empty
-    rtStream->stream = stream;
-    ZL_ASSERT_GE(outcomeID, 0);
-    rtStream->outcomeID = (ZL_IDType)outcomeID;
-    rtnode->nbOutStreams++;
-    return ZL_WRAP_VALUE((RTStreamID){ rtsid });
+    return ZL_WRAP_VALUE(RTGM_registerOutputStream(
+            rtgraph, rtnode, rtstreamid, outcomeID, stream));
+}
+
+ZL_RESULT_OF(RTStreamID)
+RTGM_refConstBufferIntoNewStream(
+        RTGraph* rtgraph,
+        RTNodeID rtnodeid,
+        int outcomeID,
+        int isVO,
+        ZL_Type streamtype,
+        size_t eltWidth,
+        size_t nbElts,
+        const void* src)
+{
+    ZL_RESULT_DECLARE_SCOPE(RTStreamID, NULL);
+    ZL_DLOG(BLOCK, "RTGM_refConstBufferIntoNewStream");
+    ZL_ASSERT_NN(rtgraph);
+    RTNode* const rtnode = &VECTOR_AT(rtgraph->nodes, rtnodeid.rtnid);
+    ZL_RESULT_OF(RTStreamID)
+    const wrappedRTStreamID =
+            RTGM_reserveOutputStreamSlot(rtgraph, rtnode, outcomeID, isVO);
+    ZL_ERR_IF_ERR(wrappedRTStreamID);
+    const RTStreamID rtstreamid = ZL_RES_value(wrappedRTStreamID);
+
+    ZL_Data* const stream = STREAM_createInArena(
+            rtgraph->streamArena, RTGM_genStreamID(rtgraph));
+    ZL_ERR_IF_NULL(stream, allocation, "Failed creating stream");
+    ZL_Report const report =
+            STREAM_refConstBuffer(stream, src, streamtype, eltWidth, nbElts);
+    if (ZL_isError(report)) {
+        STREAM_free(stream);
+        ZL_ERR_IF_ERR(report);
+    }
+
+    return ZL_WRAP_VALUE(RTGM_registerOutputStream(
+            rtgraph, rtnode, rtstreamid, outcomeID, stream));
 }
 
 void RTGM_storeStream(RTGraph* rtgraph, RTStreamID rtstreamid)

@@ -295,10 +295,6 @@ void ZL_E_changeErrorCode(ZL_Error* err, ZL_ErrorCode code);
         }                                                                    \
     } while (0)
 
-// Clear out the error info pointer to help avoid errors when the context object
-// has been freed.
-void ZL_E_clearInfo(ZL_Error* err);
-
 /*********************
  * The ZL_ErrorFrame *
  *********************/

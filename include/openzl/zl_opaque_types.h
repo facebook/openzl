@@ -85,6 +85,7 @@ typedef struct ZL_Edge_s ZL_Edge;
 typedef struct ZL_GraphParameters_s ZL_RuntimeGraphParameters;
 typedef struct ZL_Segmenter_s ZL_Segmenter;
 typedef struct ZL_DictLoader_s ZL_DictLoader;
+typedef struct ZL_FatBundleDictLoader_s ZL_FatBundleDictLoader;
 
 // Generic List construction macro (C99)
 #define ZL_LIST_SIZE(_type, ...) \

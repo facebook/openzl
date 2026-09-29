@@ -1,0 +1,113 @@
+/* Copyright (c) Meta Platforms, Inc. and affiliates. */
+
+@import url('https://fonts.googleapis.com/css2?family=Gabarito:wght@400;500;600;700&display=swap');
+
+.tool-header {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0 16px;
+  background: #23554a;
+  color: #ffffff;
+  font-family: 'Gabarito', sans-serif;
+}
+
+.tool-header *,
+.tool-header *::before,
+.tool-header *::after {
+  box-sizing: border-box;
+}
+
+.tool-header__top-row,
+.tool-header__bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tool-header__top-row {
+  height: 48px;
+}
+
+.tool-header__bottom-row {
+  height: 40px;
+}
+
+.tool-header__identity,
+.tool-header__utility-actions,
+.tool-header__navigation,
+.tool-header__primary-action {
+  display: flex;
+  align-items: center;
+}
+
+.tool-header__identity {
+  min-width: 0;
+  gap: 16px;
+}
+
+.tool-header__logo-link {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  border-radius: 4px;
+}
+
+.tool-header__logo-link:focus-visible,
+.tool-header__nav-link:focus-visible {
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
+.tool-header__logo {
+  display: block;
+  width: auto;
+  height: 40px;
+}
+
+/* Declared rather than inherited: visualization_app sets a global `h1` font,
+ * which would otherwise beat the inherited value. */
+.tool-header__title {
+  margin: 0;
+  color: #ffffff;
+  font-family: 'Gabarito', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.875rem;
+}
+
+/* Both action slots opt out of shrinking; without it the flex row compresses
+ * the buttons before it compresses the nav. */
+.tool-header__utility-actions,
+.tool-header__primary-action {
+  flex: 0 0 auto;
+}
+
+.tool-header__utility-actions {
+  gap: 0;
+}
+
+.tool-header__navigation {
+  gap: 16px;
+}
+
+.tool-header__nav-item {
+  margin: 0 5px;
+  border-radius: 4px;
+}
+
+.tool-header__nav-link {
+  color: #bdccc8;
+  font-family: 'Gabarito', sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  text-decoration: none;
+}
+
+.tool-header__nav-link:hover {
+  color: #ffffff;
+}
+
+@media (max-width: 767px) {
+  .tool-header__navigation {
+    display: none;
+  }
+}

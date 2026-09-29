@@ -210,6 +210,7 @@ void registerMicroBenchmarks()
     registerFeatureGenIntegerBench<uint16_t>(1 << 20);
     registerFeatureGenIntegerBench<uint32_t>(1 << 20);
     registerFeatureGenIntegerBench<uint64_t>(1 << 20);
+    registerPivCoHuffmanBenchmarks();
 }
 
 } // namespace zstrong::bench::micro

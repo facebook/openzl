@@ -16,8 +16,12 @@ class ACEMutate {
     ACEMutate(
             std::mt19937_64& rng,
             Type inputType,
+            uint32_t formatVersion,
             size_t maxDepth = kDefaultMaxDepth)
-            : rng_(rng), inputType_(inputType), maxDepth_(maxDepth)
+            : rng_(rng),
+              inputType_(inputType),
+              formatVersion_(formatVersion),
+              maxDepth_(maxDepth)
     {
     }
 
@@ -68,7 +72,8 @@ class ACEMutate {
         if (depth > maxDepth_) {
             return buildRandomGraphCompressor(rng_, inputType);
         } else {
-            return buildRandomCompressor(rng_, inputType, maxDepth_ - depth);
+            return buildRandomCompressor(
+                    rng_, inputType, formatVersion_, maxDepth_ - depth);
         }
     }
 
@@ -107,7 +112,12 @@ class ACEMutate {
             return randomSimpleCompressor(inputType);
         }
         ACEReservoirSampler<const ACENode> sampler(rng_);
-        for (const auto& node : getNodesComptabileWith(inputType)) {
+        // Bind to a named local: getNodesComptabileWith returns a vector by
+        // value, and the sampler stores pointers into it that are dereferenced
+        // after the loop.
+        const auto compatibleNodes =
+                getNodesComptabileWith(inputType, formatVersion_);
+        for (const auto& node : compatibleNodes) {
             if (node.outputTypes.size() == 1
                 && compressor.acceptsInputType(node.outputTypes[0])) {
                 sampler.update(node);
@@ -122,6 +132,7 @@ class ACEMutate {
 
     std::mt19937_64& rng_;
     Type inputType_;
+    uint32_t formatVersion_;
     size_t maxDepth_;
 };
 

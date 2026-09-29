@@ -11,8 +11,7 @@ class Trainer {
    public:
     Trainer(int maxThreads = std::thread::hardware_concurrency(),
             poly::optional<size_t> maxTimeSecs = std::nullopt)
-            : threadPool_(std::make_shared<ThreadPool>(maxThreads)),
-              maxTimeSecs_(maxTimeSecs)
+            : threadPool_(maxThreads), maxTimeSecs_(maxTimeSecs)
     {
     }
     virtual ~Trainer() = default;
@@ -26,7 +25,7 @@ class Trainer {
                     typeToDefaultSuccessorIdxMap) = 0;
 
    protected:
-    std::shared_ptr<ThreadPool> threadPool_;
+    ThreadPool threadPool_;
     poly::optional<size_t> maxTimeSecs_;
 };
 } // namespace openzl::training

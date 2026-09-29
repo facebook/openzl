@@ -1,0 +1,19 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("@fbcode_macros//build_defs:python_pytest.bzl", "python_pytest")
+load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
+
+oncall("data_compression")
+
+python_pytest(
+    # @autodeps-skip
+    name = "test_mkdocs_openzl",
+    srcs = [
+        "test_plugin.py",
+    ],
+    labels = ci.labels(ci.remove(ci.aarch64())),
+    deps = [
+        "../src:mkdocs_openzl",
+        "fbsource//third-party/pypi/pytest:pytest",
+    ],
+)
