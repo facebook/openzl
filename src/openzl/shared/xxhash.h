@@ -35,8 +35,7 @@
 
 #include "openzl/shared/zs_xxhash.h"
 // disable clang-format on this third-party include
-// @lint-ignore LINTIGNORE
-// @lint-ignore-every CLANGFORMAT (see T115674339)
+// @nolint
 // clang-format off
 
 /*!
