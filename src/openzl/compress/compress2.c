@@ -28,6 +28,11 @@ void ZL_CCtx_free(ZL_CCtx* cctx)
     CCTX_free(cctx);
 }
 
+size_t ZL_CCtx_sizeof(const ZL_CCtx* cctx)
+{
+    return CCTX_sizeof(cctx);
+}
+
 /**
  * Requires: applied parameters set
  */

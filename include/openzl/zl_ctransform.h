@@ -37,8 +37,7 @@ extern "C" {
  * Note: currently, a single state is created per Transform.
  * It is then re-used across all compatible nodes present in the Graph.
  *
- * A Transform's state is identified by its 3 components,
- * @stateAlloc, @stateFree and @optionalStateID.
+ * A Transform's state is identified by its state manager fields.
  * If 2 Transforms share the exact same State definition,
  * it's assumed they are compatible and share the same state.
  *
@@ -55,6 +54,9 @@ extern "C" {
  * but across all cgraph that a same ZL_CCtx* might reference.
  * It's up to the user to ensure ID unicity. When in doubt, do not use the
  * caching system, prefer creating a new state from within the transform.
+ *
+ * @stateSizeof is optional and reports memory retained by a cached state.
+ * If it is NULL, the cached state contributes 0 bytes to context size APIs.
  */
 
 // Note : these prototypes do not support trampoline allocation functions.
@@ -62,13 +64,26 @@ extern "C" {
 // new prototypes and special care.
 typedef void* (*ZL_CodecStateAlloc)(void)ZL_NOEXCEPT_FUNC_PTR;
 typedef void (*ZL_CodecStateFree)(void* state) ZL_NOEXCEPT_FUNC_PTR;
+typedef size_t (*ZL_CodecStateSizeof)(const void* state) ZL_NOEXCEPT_FUNC_PTR;
 
 typedef struct {
     ZL_CodecStateAlloc stateAlloc;
     ZL_CodecStateFree stateFree;
     size_t optionalStateID; // Optional. Automatically replaced by @transform_f
                             // as a key when none provided.
+    ZL_CodecStateSizeof stateSizeof;
 } ZL_CodecStateManager;
+
+ZL_INLINE size_t ZL_CodecStateManager_sizeof(
+        const ZL_CodecStateManager* stateManager,
+        const void* state)
+{
+    if (stateManager == NULL || stateManager->stateSizeof == NULL
+        || state == NULL) {
+        return 0;
+    }
+    return stateManager->stateSizeof(state);
+}
 
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
 _Static_assert(

@@ -709,6 +709,13 @@ size_t CCTX_streamMemory(const ZL_CCtx* cctx);
 size_t CCTX_arenaMemory(const ZL_CCtx* cctx);
 
 /**
+ * @brief Returns the memory currently retained by @p cctx.
+ *
+ * @return 0 when @p cctx is NULL.
+ */
+size_t CCTX_sizeof(const ZL_CCtx* cctx);
+
+/**
  * @brief runs a Graph and all its sub-graphs within cctx.
  *
  * This will populate the RT Manager, which tracks creation of Nodes and

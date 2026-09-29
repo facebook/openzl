@@ -14,21 +14,24 @@ ZL_Report DI_zstd(ZL_Decoder* dictx, const ZL_Input* ins[]);
 /* state management */
 void* DIZSTD_createDCtx(void);
 void DIZSTD_freeDCtx(void* state);
+size_t DIZSTD_sizeofDCtx(const void* state);
 
-#define DI_ZSTD(id)                                 \
-    {                                               \
-        .transform_f           = DI_zstd,           \
-        .name                  = "zstd",            \
-        .trStateMgr.stateAlloc = DIZSTD_createDCtx, \
-        .trStateMgr.stateFree  = DIZSTD_freeDCtx,   \
+#define DI_ZSTD(id)                                  \
+    {                                                \
+        .transform_f            = DI_zstd,           \
+        .name                   = "zstd",            \
+        .trStateMgr.stateAlloc  = DIZSTD_createDCtx, \
+        .trStateMgr.stateFree   = DIZSTD_freeDCtx,   \
+        .trStateMgr.stateSizeof = DIZSTD_sizeofDCtx, \
     }
 
-#define DI_ZSTD_FIXED(id)                                    \
-    {                                                        \
-        .transform_f           = DI_zstd,                    \
-        .name                  = "zstd_for_fixedSizeFields", \
-        .trStateMgr.stateAlloc = DIZSTD_createDCtx,          \
-        .trStateMgr.stateFree  = DIZSTD_freeDCtx,            \
+#define DI_ZSTD_FIXED(id)                                     \
+    {                                                         \
+        .transform_f            = DI_zstd,                    \
+        .name                   = "zstd_for_fixedSizeFields", \
+        .trStateMgr.stateAlloc  = DIZSTD_createDCtx,          \
+        .trStateMgr.stateFree   = DIZSTD_freeDCtx,            \
+        .trStateMgr.stateSizeof = DIZSTD_sizeofDCtx,          \
     }
 
 ZL_END_C_DECLS

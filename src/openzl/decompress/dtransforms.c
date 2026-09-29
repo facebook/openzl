@@ -63,6 +63,28 @@ void DTM_destroy(DTransforms_manager* dtm)
     dtm->allocator = NULL;
 }
 
+size_t DTM_sizeof(const DTransforms_manager* dtm)
+{
+    if (dtm == NULL) {
+        return 0;
+    }
+    size_t size = DTransformMap_sizeof(&dtm->dtmap)
+            + ZL_OpaquePtrRegistry_sizeof(&dtm->opaquePtrs)
+            + ALLOC_Arena_memAllocated(dtm->allocator);
+    for (size_t u = 0; u < ZL_StandardTransformID_end; u++) {
+        size += ZL_CodecStateManager_sizeof(
+                DT_getTransformStateMgr(&SDecoders_array[u].dtr),
+                dtm->states[u]);
+    }
+    DTransformMap_Iter iter = DTransformMap_iter(&dtm->dtmap);
+    for (DTransformMap_Entry const* entry;
+         (entry = DTransformMap_Iter_next(&iter));) {
+        size += ZL_CodecStateManager_sizeof(
+                DT_getTransformStateMgr(&entry->val), entry->val.state);
+    }
+    return size;
+}
+
 static ZL_Report DTM_storeTransformName(
         DTransforms_manager* dtm,
         const char** namePtr)

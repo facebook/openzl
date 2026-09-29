@@ -20,6 +20,9 @@ void TRS_init(CachedStates* trs);
 
 void TRS_destroy(CachedStates* trs);
 
+/** Returns memory currently retained by @p trs. Accepts NULL. */
+size_t TRS_sizeof(const CachedStates* trs);
+
 // Accessors
 
 /* look for a cached state for @cnode,

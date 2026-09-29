@@ -77,6 +77,13 @@ ZL_Compressor* ZL_Compressor_create(void);
 void ZL_Compressor_free(ZL_Compressor* compressor);
 
 /**
+ * @brief Returns memory currently retained by @p compressor.
+ *
+ * @return 0 when @p compressor is NULL.
+ */
+size_t ZL_Compressor_sizeof(const ZL_Compressor* compressor);
+
+/**
  * @}
  */
 

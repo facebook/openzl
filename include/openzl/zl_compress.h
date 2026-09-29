@@ -97,6 +97,13 @@ ZL_INLINE size_t ZL_compressBound(size_t totalSrcSizeInBytes)
 ZL_CCtx* ZL_CCtx_create(void);
 void ZL_CCtx_free(ZL_CCtx* cctx);
 
+/**
+ * @brief Returns the memory currently retained by @p cctx.
+ *
+ * @return 0 when @p cctx is NULL.
+ */
+size_t ZL_CCtx_sizeof(const ZL_CCtx* cctx);
+
 /// The list of global compression parameters
 typedef enum {
     /// Only meaningful at CCtx level (ignored at CGraph level)

@@ -35,6 +35,9 @@ ZL_Report CTM_init(CNodes_manager* ctm, ZL_OperationContext* opCtx);
 
 void CTM_destroy(CNodes_manager* ctm);
 
+/** Returns memory currently retained by @p ctm. Accepts NULL. */
+size_t CTM_sizeof(const CNodes_manager* ctm);
+
 /* Note: used to be called from runtime CCtx Node manager
  * which doesn't exist anymore.
  * So this reset capability is currently unused

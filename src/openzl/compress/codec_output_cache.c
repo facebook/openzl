@@ -430,6 +430,14 @@ void CodecCache_free(ZL_CodecOutputCache* cache)
     ZL_free(cache);
 }
 
+size_t CodecCache_sizeof(const ZL_CodecOutputCache* cache)
+{
+    if (cache == NULL) {
+        return 0;
+    }
+    return sizeof(*cache) + ALLOC_Arena_memAllocated(cache->cacheArena);
+}
+
 static void CodecCache_resetCurrent(ZL_CodecOutputCache* cache)
 {
     ZL_ASSERT_NN(cache);

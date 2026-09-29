@@ -90,6 +90,15 @@ void ZL_Compressor_free(ZL_Compressor* cgraph)
     ZL_free(cgraph);
 }
 
+size_t ZL_Compressor_sizeof(const ZL_Compressor* cgraph)
+{
+    if (cgraph == NULL) {
+        return 0;
+    }
+    return sizeof(*cgraph) + NM_sizeof(&cgraph->nmgr) + GM_sizeof(cgraph->gm)
+            + ZL_OC_sizeof(&cgraph->opCtx) + CDictMgr_sizeof(&cgraph->cdictMgr);
+}
+
 ZL_Report
 ZL_Compressor_setParameter(ZL_Compressor* cgraph, ZL_CParam gcparam, int value)
 {

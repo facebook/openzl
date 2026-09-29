@@ -21,6 +21,7 @@ ZL_Report EI_zstd(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns);
 /* state management */
 void* EIZSTD_createCCtx(void);
 void EIZSTD_freeCCtx(void* state);
+size_t EIZSTD_sizeofCCtx(const void* state);
 
 /* CDict materializer for dict-backed zstd compression */
 ZL_RESULT_OF(ZL_VoidPtr)
@@ -37,17 +38,19 @@ void EIZSTD_dematerializeCDict(ZL_Materializer* matCtx, void* materialized);
         .name                    = "!zl.private.zstd",        \
         .trStateMgr.stateAlloc   = EIZSTD_createCCtx,         \
         .trStateMgr.stateFree    = EIZSTD_freeCCtx,           \
+        .trStateMgr.stateSizeof  = EIZSTD_sizeofCCtx,         \
         .dictMat.materializeFn   = EIZSTD_materializeCDict,   \
         .dictMat.dematerializeFn = EIZSTD_dematerializeCDict, \
     }
 
-#define EI_ZSTD_FIXED(id)                                             \
-    {                                                                 \
-        .gd                    = FIXED_ENTROPY_GRAPH(id),             \
-        .transform_f           = EI_zstd,                             \
-        .name                  = "!zl.private.zstd_fixed_deprecated", \
-        .trStateMgr.stateAlloc = EIZSTD_createCCtx,                   \
-        .trStateMgr.stateFree  = EIZSTD_freeCCtx,                     \
+#define EI_ZSTD_FIXED(id)                                              \
+    {                                                                  \
+        .gd                     = FIXED_ENTROPY_GRAPH(id),             \
+        .transform_f            = EI_zstd,                             \
+        .name                   = "!zl.private.zstd_fixed_deprecated", \
+        .trStateMgr.stateAlloc  = EIZSTD_createCCtx,                   \
+        .trStateMgr.stateFree   = EIZSTD_freeCCtx,                     \
+        .trStateMgr.stateSizeof = EIZSTD_sizeofCCtx,                   \
     }
 
 ZL_END_C_DECLS

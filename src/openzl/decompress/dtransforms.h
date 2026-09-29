@@ -102,6 +102,9 @@ ZL_Report DTM_init(
 
 void DTM_destroy(DTransforms_manager* dtm);
 
+/** Returns memory currently retained by @p dtm. Accepts NULL. */
+size_t DTM_sizeof(const DTransforms_manager* dtm);
+
 // Accessors
 
 /* Note :

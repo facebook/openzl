@@ -146,6 +146,14 @@ ZL_BEGIN_C_DECLS
         return GenericTable_capacity(&table->table_);                          \
     }                                                                          \
                                                                                \
+    ZL_TABLE_INLINE size_t Table_##_sizeof(Table_ const* table)                \
+    {                                                                          \
+        if (table == NULL) {                                                   \
+            return 0;                                                          \
+        }                                                                      \
+        return GenericTable_sizeof(&table->table_, kPolicy_);                  \
+    }                                                                          \
+                                                                               \
     ZL_TABLE_INLINE size_t Table_##_maxCapacity(Table_ const* table)           \
     {                                                                          \
         return GenericTable_maxCapacity(&table->table_);                       \
@@ -597,6 +605,17 @@ ZL_TABLE_FORCE_INLINE uint32_t GenericTable_reserveChainIndex(
 ZL_TABLE_INLINE uint32_t GenericTable_getTableSize(GenericTable const* table)
 {
     return table->tableMask == 0 ? 0 : table->tableMask + 1;
+}
+
+ZL_TABLE_INLINE size_t GenericTable_sizeof(
+        GenericTable const* table,
+        GenericTable_Policy const kPolicy)
+{
+    if (table == NULL) {
+        return 0;
+    }
+    return (size_t)GenericTable_getTableSize(table) * kPolicy.kBucketSize
+            + (size_t)table->chainCapacity * kPolicy.kBucketSize;
 }
 
 ZL_TABLE_INLINE void GenericTable_clear(
