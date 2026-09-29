@@ -186,6 +186,8 @@ This would be impossible in a traditional compressor like Zstandard, but OpenZL'
         | Zstd lvl=1           |             31.39 |                    1,568 |                      3,063 |
         | Zstd lvl=7           |             35.00 |                      227 |                      3,184 |
         | Zstd lvl=19          |             42.41 |                        1 |                      3,483 |
+        | Lz4 lvl=1            |              8.83 |                    1,772 |                      8,730 |
+        | Lz4 lvl=5            |              9.74 |                      210 |                     10,342 |
 
 ## How to Use It
 
