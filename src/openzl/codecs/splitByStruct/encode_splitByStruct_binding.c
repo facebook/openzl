@@ -10,7 +10,6 @@
 #include "openzl/compress/private_nodes.h" // ZS2_NODE_SPLITBYSTRUCT_TRANSFORM
 #include "openzl/zl_ctransform.h"
 #include "openzl/zl_data.h"
-#include "openzl/zl_graph_api.h"
 #include "openzl/zl_selector.h" // ZL_SelectorDesc
 
 static size_t sum(const size_t array_st[], size_t arr_size)
