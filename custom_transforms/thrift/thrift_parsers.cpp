@@ -169,8 +169,8 @@ TType getClusterType(const LogicalCluster& cluster, const WriteStreamSet& wss)
         if (ws.type() != type) {
             throw std::runtime_error{ fmt::format(
                     "Cluster mixes different stream types: {} and {}",
-                    ws.type(),
-                    type) };
+                    fmt::underlying(ws.type()),
+                    fmt::underlying(type)) };
         }
     }
     return type;

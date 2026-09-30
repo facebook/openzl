@@ -6,8 +6,8 @@
 #include <folly/Conv.h>
 #include <folly/container/F14Map.h>
 #include <folly/container/F14Set.h>
-#include <folly/dynamic.h>
-#include <folly/json.h>
+#include <folly/json/dynamic.h>
+#include <folly/json/json.h>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -109,9 +109,9 @@ void BaseConfig::validate() const
             if (info.type != it->second) {
                 throw std::runtime_error{ fmt::format(
                         "Types for logical stream {} don't match! Expected {}, got {}",
-                        info.id,
-                        it->second,
-                        info.type) };
+                        fmt::underlying(info.id),
+                        fmt::underlying(it->second),
+                        fmt::underlying(info.type)) };
             }
         }
     }
@@ -194,7 +194,8 @@ std::vector<ThriftPath> BaseConfig::getClusterPaths(size_t clusterIdx) const
             paths.push_back(inversePathMap.at(id));
         } catch (std::out_of_range&) {
             throw std::out_of_range{ fmt::format(
-                    "Couldn't find path for logical id {}", id) };
+                    "Couldn't find path for logical id {}",
+                    fmt::underlying(id)) };
         }
     }
     return paths;
@@ -214,8 +215,8 @@ TType BaseConfig::getClusterType(size_t clusterIdx) const
     if (illegal != paths.end()) {
         throw std::runtime_error{ fmt::format(
                 "Cluster contains streams of multiple TTypes: {} and {}",
-                first,
-                pathMap_.at(*illegal).type) };
+                fmt::underlying(first),
+                fmt::underlying(pathMap_.at(*illegal).type)) };
     }
     return first;
 }
@@ -280,7 +281,7 @@ void EncoderConfig::validate() const
                 && !validateThriftNodeId(id, minFormatVersion_)) {
                 throw std::runtime_error{ fmt::format(
                         "Special ThriftNodeId {} is not supported by format version {}",
-                        id,
+                        fmt::underlying(id),
                         minFormatVersion_) };
             }
         }
@@ -516,8 +517,8 @@ void EncoderConfigBuilder::addPathToCluster(
     if (!cluster.idList.empty() && pathType != clusterType) {
         throw std::runtime_error{ fmt::format(
                 "Cannot add path of TType {} to a cluster of TType {}",
-                pathType,
-                clusterType) };
+                fmt::underlying(pathType),
+                fmt::underlying(clusterType)) };
     }
     cluster.idList.push_back(id);
 }
@@ -547,7 +548,7 @@ void EncoderConfigBuilder::setRootType(TType type)
     if (std::find(collectionTypes.begin(), collectionTypes.end(), type)
         == collectionTypes.end()) {
         throw std::runtime_error{ fmt::format(
-                "Unexpected root TType {}", type) };
+                "Unexpected root TType {}", fmt::underlying(type)) };
     }
     rootType_ = type;
 }

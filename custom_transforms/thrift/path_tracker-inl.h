@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <fmt/format.h>
+
 #include "custom_transforms/thrift/thrift_errors.h" // @manual
 
 namespace zstrong::thrift {
@@ -196,11 +198,11 @@ void PathTracker<StreamSetType>::Node::checkType(TType t) const
         throw ThriftParserUserError(
                 fmt::format(
                         "Node (id {}) has type {} ({}) but is being accessed with type {} ({})!",
-                        id(),
+                        fmt::underlying(id()),
                         thriftTypeToString(type()),
-                        type(),
+                        fmt::underlying(type()),
                         thriftTypeToString(t),
-                        t));
+                        fmt::underlying(t)));
     }
 }
 

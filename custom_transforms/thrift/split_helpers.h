@@ -11,6 +11,8 @@
 #include "openzl/common/errors_internal.h"          // @manual
 #include "openzl/shared/varint.h"                   // @manual
 
+#include <fmt/format.h>
+
 #include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/io/Cursor.h>
@@ -234,7 +236,7 @@ class WriteStream : public detail::BaseWriteStream<WriteStream> {
             // Note: It is not possible to create an EncoderConfig that throws
             // here with the provided construction API.
             throw InvalidConfigError{ fmt::format(
-                    "Invalid WriteStream type {}", type_) };
+                    "Invalid WriteStream type {}", fmt::underlying(type_)) };
         }
     }
 

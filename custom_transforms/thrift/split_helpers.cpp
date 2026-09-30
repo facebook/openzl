@@ -186,7 +186,8 @@ ReadStreamSet::ReadStreamSet(
                     break;
                 default:
                     throw std::runtime_error{ fmt::format(
-                            "Unexpected Zstrong stream type: {}", type) };
+                            "Unexpected Zstrong stream type: {}",
+                            fmt::underlying(type)) };
             }
         }
 
@@ -210,14 +211,18 @@ std::string WriteStreamSet::repr() const
 {
     std::stringstream ss;
     for (const auto& [id, stream] : singletonStreams_) {
-        ss << fmt::format("Singleton {}: {}", id, stream.repr()) << std::endl;
+        ss << fmt::format(
+                "Singleton {}: {}", fmt::underlying(id), stream.repr())
+           << std::endl;
     }
     for (const auto& [id, stream] : variableStreams_) {
-        ss << fmt::format("Variable Content {}: {}", id, stream.repr())
+        ss << fmt::format(
+                "Variable Content {}: {}", fmt::underlying(id), stream.repr())
            << std::endl;
     }
     for (const auto& [id, stream] : variableStringLengthStreams_) {
-        ss << fmt::format("Variable Lengths {}: {}", id, stream.repr())
+        ss << fmt::format(
+                "Variable Lengths {}: {}", fmt::underlying(id), stream.repr())
            << std::endl;
     }
     return ss.str();

@@ -80,7 +80,7 @@ BinaryParser::parseListHeader(const BinaryParser::PT::Iterator& current)
     const auto size = readValue<uint32_t>();
     writeValue<uint32_t>(current.lengths(), size);
 
-    debug("List header: size {}, type {}", size, elemType);
+    debug("List header: size {}, type {}", size, fmt::underlying(elemType));
     return { .size = size, .elemType = elemType };
 }
 
@@ -99,7 +99,7 @@ DBinaryParser::unparseListHeader(const DBinaryParser::PT::Iterator& current)
     debug("List header: size {}, type {} ({})",
           size,
           thriftTypeToString(elemType),
-          elemType);
+          fmt::underlying(elemType));
     return { .size = size, .elemType = elemType };
 }
 
@@ -123,9 +123,9 @@ BinaryParser::parseMapHeader(const BinaryParser::PT::Iterator& current)
     debug("Map header: size {}, keyType {} ({}), valueType {} ({})",
           size,
           thriftTypeToString(keyType),
-          keyType,
+          fmt::underlying(keyType),
           thriftTypeToString(valueType),
-          valueType);
+          fmt::underlying(valueType));
     return { .size = size, .keyType = keyType, .valueType = valueType };
 }
 
@@ -148,8 +148,8 @@ DBinaryParser::unparseMapHeader(const DBinaryParser::PT::Iterator& current)
 
     debug("Map header: size {}, keyType {}, valueType {}",
           size,
-          keyType,
-          valueType);
+          fmt::underlying(keyType),
+          fmt::underlying(valueType));
     return { .size = size, .keyType = keyType, .valueType = valueType };
 }
 
@@ -177,7 +177,7 @@ ZL_FORCE_INLINE_ATTR BinaryParser::PT::Iterator BinaryParser::parseFieldHeader(
 
     auto field_it = struct_it.child(id, type);
 
-    debug("Field header: type {}, id {}", type, rawId);
+    debug("Field header: type {}, id {}", fmt::underlying(type), rawId);
     return field_it;
 }
 
@@ -206,7 +206,7 @@ DBinaryParser::unparseFieldHeader(
     const auto id = ThriftNodeId(rawId);
     auto field_it = struct_it.child(id, type);
 
-    debug("Field header: type {}, id {}", type, rawId);
+    debug("Field header: type {}, id {}", fmt::underlying(type), rawId);
     return field_it;
 }
 
@@ -218,7 +218,7 @@ void BinaryParser::advance(const BinaryParser::PT::Iterator& current)
           rs_.pos(),
           current.pathStr(),
           thriftTypeToString(type),
-          type,
+          fmt::underlying(type),
           (int32_t)id);
     switch (type) {
         case TType::T_BOOL: {
@@ -306,7 +306,7 @@ void DBinaryParser::advance(const DBinaryParser::PT::Iterator& current)
           ws_.nbytes(),
           current.pathStr(),
           thriftTypeToString(type),
-          type,
+          fmt::underlying(type),
           (int32_t)id);
     switch (type) {
         case TType::T_BOOL: {
