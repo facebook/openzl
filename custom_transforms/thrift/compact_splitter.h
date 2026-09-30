@@ -60,6 +60,12 @@ class DCompactParser : public DBaseParser<DCompactParser> {
     template <typename Value>
     void writeValue(Value val);
 
+    template <typename Value>
+    void writeValueUnchecked(Value val);
+
+    template <typename Value>
+    static constexpr size_t maxWriteBytes();
+
     inline static constexpr uint64_t zigzagEncode(int64_t n);
     inline static constexpr uint32_t zigzagEncode(int32_t n);
     inline static constexpr uint8_t unparseBool(uint8_t byte);
@@ -164,6 +170,36 @@ ZL_FORCE_INLINE_ATTR void DCompactParser::writeValue(Value val)
         } else {
             ws_.writeVarint(val);
         }
+    }
+}
+
+template <typename Value>
+ZL_FORCE_INLINE_ATTR void DCompactParser::writeValueUnchecked(Value val)
+{
+    assert(ws_.width() == 1);
+    static_assert(std::is_arithmetic_v<Value>);
+    if constexpr (sizeof(Value) == 1 || std::is_floating_point_v<Value>) {
+        ws_.writeValueUnchecked(folly::Endian::big(val));
+    } else {
+        assert(sizeof(Value) > 1 && std::is_integral_v<Value>);
+        if constexpr (std::is_signed_v<Value>) {
+            ws_.writeVarintUnchecked(zigzagEncode(val));
+        } else {
+            ws_.writeVarintUnchecked(val);
+        }
+    }
+}
+
+template <typename Value>
+constexpr size_t DCompactParser::maxWriteBytes()
+{
+    static_assert(std::is_arithmetic_v<Value>);
+    if constexpr (sizeof(Value) == 1 || std::is_floating_point_v<Value>) {
+        return sizeof(Value);
+    } else if constexpr (sizeof(Value) > 4) {
+        return ZL_VARINT_FAST_OVERWRITE_64;
+    } else {
+        return ZL_VARINT_FAST_OVERWRITE_32;
     }
 }
 

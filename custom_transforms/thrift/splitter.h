@@ -8,6 +8,7 @@
 #include "custom_transforms/thrift/thrift_errors.h"
 #include "openzl/zl_errors.h"
 
+#include <folly/lang/CheckedMath.h>
 #include <type_traits>
 
 namespace zstrong::thrift {
@@ -454,15 +455,21 @@ class DBaseParser {
     template <typename Value>
     void unparsePrimitiveListBody(const PT::Iterator& elemIt, size_t numElts)
     {
-        // Skip reserve() because ws_ is a FixedWriteStream
         static_assert(std::is_same_v<decltype(ws_), FixedWriteStream&>);
-        // Fast path for fixed-width elements: verify the whole run fits once,
-        // then read each element without a per-element bounds check.
+        // Fast path for fixed-width elements: verify the whole run fits once
+        // on both the read and write sides, then move each element without a
+        // per-element bounds check.
         if constexpr (std::is_arithmetic_v<Value>) {
             ReadStream& rs = elemIt.stream();
-            if (rs.canReadValues<Value>(numElts)) {
+            constexpr size_t maxBytes =
+                    Derived::template maxWriteBytes<Value>();
+            size_t writeBytes = 0;
+            if (rs.canReadValues<Value>(numElts)
+                && folly::checked_mul(&writeBytes, numElts, maxBytes)
+                && ws_.canWrite(writeBytes)) {
                 for (size_t i = 0; i < numElts; ++i) {
-                    derived().writeValue(rs.readValueUnchecked<Value>());
+                    derived().writeValueUnchecked(
+                            rs.readValueUnchecked<Value>());
                 }
                 return;
             }
@@ -510,24 +517,30 @@ class DBaseParser {
             const PT::Iterator& valueIt,
             size_t numElts)
     {
-        // Skip reserve() because ws_ is a FixedWriteStream
         static_assert(std::is_same_v<decltype(ws_), FixedWriteStream&>);
         // Fast path for fixed-width keys and values: verify the whole run fits
-        // once, then read without a per-element bounds check. Keys and values
-        // may share one interleaved stream (e.g. map<i32, i32>).
+        // once on both the read and write sides, then move without a
+        // per-element bounds check. Keys and values may share one interleaved
+        // stream (e.g. map<i32, i32>).
         if constexpr (
                 std::is_arithmetic_v<Key> && std::is_arithmetic_v<Value>) {
-            ReadStream& keyRs   = keyIt.stream();
-            ReadStream& valueRs = valueIt.stream();
-            const bool fits     = (&keyRs == &valueRs)
-                        ? numElts <= keyRs.bytesRemaining()
+            ReadStream& keyRs         = keyIt.stream();
+            ReadStream& valueRs       = valueIt.stream();
+            const bool fits           = (&keyRs == &valueRs)
+                              ? numElts <= keyRs.bytesRemaining()
                                     / (sizeof(Key) + sizeof(Value))
-                        : keyRs.canReadValues<Key>(numElts)
+                              : keyRs.canReadValues<Key>(numElts)
                             && valueRs.canReadValues<Value>(numElts);
-            if (fits) {
+            constexpr size_t maxBytes = Derived::template maxWriteBytes<Key>()
+                    + Derived::template maxWriteBytes<Value>();
+            size_t writeBytes = 0;
+            if (fits && folly::checked_mul(&writeBytes, numElts, maxBytes)
+                && ws_.canWrite(writeBytes)) {
                 for (size_t i = 0; i < numElts; ++i) {
-                    derived().writeValue(keyRs.readValueUnchecked<Key>());
-                    derived().writeValue(valueRs.readValueUnchecked<Value>());
+                    derived().writeValueUnchecked(
+                            keyRs.readValueUnchecked<Key>());
+                    derived().writeValueUnchecked(
+                            valueRs.readValueUnchecked<Value>());
                 }
                 return;
             }

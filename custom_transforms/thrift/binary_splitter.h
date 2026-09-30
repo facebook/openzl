@@ -52,6 +52,12 @@ class DBinaryParser : public DBaseParser<DBinaryParser> {
 
     template <typename Value>
     void writeValue(Value val);
+
+    template <typename Value>
+    void writeValueUnchecked(Value val);
+
+    template <typename Value>
+    static constexpr size_t maxWriteBytes();
 };
 
 template <typename Value>
@@ -66,6 +72,20 @@ ZL_FORCE_INLINE_ATTR void DBinaryParser::writeValue(Value val)
 {
     assert(ws_.width() == 1);
     ws_.writeValue(folly::Endian::big(val));
+}
+
+template <typename Value>
+ZL_FORCE_INLINE_ATTR void DBinaryParser::writeValueUnchecked(Value val)
+{
+    assert(ws_.width() == 1);
+    ws_.writeValueUnchecked(folly::Endian::big(val));
+}
+
+template <typename Value>
+constexpr size_t DBinaryParser::maxWriteBytes()
+{
+    static_assert(std::is_arithmetic_v<Value>);
+    return sizeof(Value);
 }
 
 ZL_FORCE_INLINE_ATTR ListInfo
