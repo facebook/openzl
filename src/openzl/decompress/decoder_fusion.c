@@ -60,6 +60,14 @@ static ZL_Report ZL_DecoderFusionDesc_validate(
     return ZL_returnSuccess();
 }
 
+// Validation allocates, so allocation failure is not a logic error
+static bool ZL_DecoderFusionDesc_isValidOrAllocFailure(
+        const ZL_DecoderFusionDesc* fusion)
+{
+    const ZL_Report valid = ZL_DecoderFusionDesc_validate(fusion);
+    return !ZL_isError(valid) || ZL_errorCode(valid) == ZL_ErrorCode_allocation;
+}
+
 static ZL_Report ZL_DecoderFusionState_buildMap(ZL_DecoderFusionState* state)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(NULL);
@@ -70,8 +78,9 @@ static ZL_Report ZL_DecoderFusionState_buildMap(ZL_DecoderFusionState* state)
 
     ZL_IDType begin = 0;
     for (size_t i = 0; i < state->numCodecFusions; ++i) {
-        ZL_ASSERT_SUCCESS(
-                ZL_DecoderFusionDesc_validate(&state->codecFusions[i]),
+        ZL_ASSERT(
+                ZL_DecoderFusionDesc_isValidOrAllocFailure(
+                        &state->codecFusions[i]),
                 "Must already be validated");
         if (i == 0) {
             continue;
