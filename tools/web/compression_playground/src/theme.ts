@@ -48,6 +48,7 @@ const playgroundConfig = defineConfig({
           faint: {value: {base: '#667385', _osDark: '#94a3b8'}},
           accent: {value: {base: '#2563eb', _osDark: '#60a5fa'}},
           success: {value: {base: '#059669', _osDark: '#34d399'}},
+          danger: {value: {base: '#b91c1c', _osDark: '#fca5a5'}},
 
           // Step 2/3 controls. The run button is indigo rather than the blue
           // accent, and the training note pairs the accent wash with a blue
