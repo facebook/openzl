@@ -303,6 +303,123 @@ def test_web_tool_builder_fails_fast_on_missing_src(tmp_path: Path):
         WebToolBuilder(config, str(tmp_path / "build"), missing_tool)
 
 
+def test_web_tool_builder_fails_fast_on_a_missing_extra_input(tmp_path: Path):
+    docs_dir = tmp_path / "docs"
+    _create_workspace(docs_dir, {"tool_src": {"name": "@test/tool"}})
+    site_dir = tmp_path / "site"
+    site_dir.mkdir()
+
+    tool = WebToolConfig(
+        name="my tool",
+        src_relative="tool_src",
+        output_subdir="tools/my_tool",
+        extra_inputs=("nonexistent_wrapper",),
+    )
+
+    # `Stamp` skips a path that is not there, so a typo would leave the input
+    # undeclared and the stamp quietly wrong.
+    with pytest.raises(ValueError, match="build input that does not exist"):
+        WebToolBuilder(FakeConfig(docs_dir, site_dir), str(tmp_path / "build"), tool)
+
+
+def test_web_tool_builder_rebuilds_when_an_extra_input_changes(tmp_path: Path):
+    docs_dir = tmp_path / "docs"
+    _create_workspace(docs_dir, {"tool_src": {"name": "@test/tool"}})
+    site_dir = tmp_path / "site"
+    site_dir.mkdir()
+
+    tool_src = docs_dir / "tool_src"
+    (tool_src / "file.txt").write_text("tool")
+    (tool_src / "dist").mkdir()
+    (tool_src / "dist" / "index.html").write_text("built")
+
+    # Outside the workspace, so nothing derived from its manifests reaches it.
+    wrapper = docs_dir / "wrapper"
+    wrapper.mkdir()
+    wrapper_api = wrapper / "api.js"
+    wrapper_api.write_text("first version")
+
+    tool = WebToolConfig(
+        name="my tool",
+        src_relative="tool_src",
+        output_subdir="tools/my_tool",
+        extra_inputs=("wrapper",),
+    )
+    builder = WebToolBuilder(
+        FakeConfig(docs_dir, site_dir), str(tmp_path / "build"), tool
+    )
+
+    with patch("mkdocs_openzl.plugin.check_call"):
+        builder.build()
+
+    # Unchanged: the stamp holds and the tool is not rebuilt.
+    with patch("mkdocs_openzl.plugin.check_call") as mock_call:
+        builder.build()
+        assert mock_call.call_count == 0
+
+    wrapper_api.write_text("second version")
+    with patch("mkdocs_openzl.plugin.check_call") as mock_call:
+        builder.build()
+        assert mock_call.call_count == 2
+
+    # A file added to the directory later counts too, which is why the whole
+    # directory is declared rather than the files in it.
+    (wrapper / "api.d.ts").write_text("types")
+    with patch("mkdocs_openzl.plugin.check_call") as mock_call:
+        builder.build()
+        assert mock_call.call_count == 2
+
+
+def test_web_tool_builder_ignores_tests_under_an_extra_input(tmp_path: Path):
+    docs_dir = tmp_path / "docs"
+    _create_workspace(docs_dir, {"tool_src": {"name": "@test/tool"}})
+    site_dir = tmp_path / "site"
+    site_dir.mkdir()
+
+    tool_src = docs_dir / "tool_src"
+    (tool_src / "file.txt").write_text("tool")
+    (tool_src / "dist").mkdir()
+    (tool_src / "dist" / "index.html").write_text("built")
+
+    wrapper = docs_dir / "wrapper"
+    (wrapper / "tests").mkdir(parents=True)
+    (wrapper / "api.js").write_text("wrapper")
+    wrapper_test = wrapper / "tests" / "api.test.js"
+    wrapper_test.write_text("first version")
+
+    tool = WebToolConfig(
+        name="my tool",
+        src_relative="tool_src",
+        output_subdir="tools/my_tool",
+        extra_inputs=("wrapper",),
+    )
+    builder = WebToolBuilder(
+        FakeConfig(docs_dir, site_dir), str(tmp_path / "build"), tool
+    )
+    with patch("mkdocs_openzl.plugin.check_call"):
+        builder.build()
+
+    # The Buck filegroup leaves these out because no web tool runs them, and
+    # the stamp has to agree or the page rebuilds on a file it never reads.
+    wrapper_test.write_text("second version")
+    with patch("mkdocs_openzl.plugin.check_call") as mock_call:
+        builder.build()
+        assert mock_call.call_count == 0
+
+    # The rest of the directory still counts.
+    (wrapper / "api.js").write_text("changed")
+    with patch("mkdocs_openzl.plugin.check_call") as mock_call:
+        builder.build()
+        assert mock_call.call_count == 2
+
+
+def test_the_playground_declares_the_wasm_wrapper():
+    # The registry entry is the whole fix; a WEB_TOOLS edit that drops it would
+    # otherwise only show up as a stale page.
+    playground = next(t for t in WEB_TOOLS if t.output_subdir == "tools/playground")
+    assert playground.extra_inputs == ("../../../tools/wasm/js",)
+
+
 def test_web_tool_builder_build_successfully(tmp_path: Path):
     docs_dir = tmp_path / "docs"
     _create_workspace(docs_dir, {"my_tool_src": {"name": "@test/my-tool"}})
@@ -530,6 +647,13 @@ def test_openzl_plugin_builds_all_tools(tmp_path: Path):
         dist = src / tool.dist_relative
         dist.mkdir(exist_ok=True)
         (dist / "index.html").write_text(f"<html>{tool.name}</html>")
+        for relative in tool.extra_inputs:
+            extra = (Path(docs_dir) / relative).resolve()
+            assert str(extra).startswith(str(tmp_path)), (
+                f"extra input for {tool.name} leaked to {extra}, outside {tmp_path}"
+            )
+            extra.mkdir(parents=True, exist_ok=True)
+            (extra / "wrapper.js").write_text(f"wrapper for {tool.name}")
 
     config = FakeConfig(docs_dir, site_dir)
 

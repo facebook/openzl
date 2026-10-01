@@ -95,6 +95,10 @@ class WebToolConfig:
         skip_env_vars: Env vars that, when set to "1", skip this tool's build.
                        OPENZL_SKIP_WEB_TOOLS_BUILD skips every tool; a tool may
                        list additional vars to skip only itself.
+        extra_inputs: Paths the tool builds against that the workspace graph
+                      cannot reach, relative to docs_dir like `src_relative`.
+                      Directories are hashed whole, less
+                      `_EXTRA_INPUT_EXCLUDES`.
     """
 
     name: str
@@ -102,6 +106,7 @@ class WebToolConfig:
     output_subdir: str
     dist_relative: str = "dist"
     skip_env_vars: tuple[str, ...] = ()
+    extra_inputs: tuple[str, ...] = ()
 
 
 def _workspace_root_inputs(workspace_dir: Path) -> List[Path]:
@@ -120,6 +125,10 @@ def _workspace_root_inputs(workspace_dir: Path) -> List[Path]:
 
 
 _WORKSPACE_PACKAGE_EXCLUDES: tuple[str, ...] = ("node_modules", "dist", "dist-ssr")
+
+# Skipped in every `extra_inputs` directory, to agree with the Buck filegroup
+# that leaves them out for the reason spelled out in `tools/wasm/BUCK`.
+_EXTRA_INPUT_EXCLUDES: tuple[str, ...] = ("tests",)
 
 # `peerDependencies` is absent on purpose: a peer dep is supplied by whoever
 # consumes the package, so it is not built from these sources.
@@ -219,6 +228,13 @@ WEB_TOOLS: list[WebToolConfig] = [
         src_relative="../../../tools/web/compression_playground",
         output_subdir="tools/playground",
         skip_env_vars=("OPENZL_SKIP_WEB_TOOLS_BUILD",),
+        # The WASM wrapper, which the playground's `src/` imports by relative
+        # path out of the workspace. `tools/wasm/js/package.json` has no
+        # `name`, so the directory is not a workspace member and
+        # `_dependency_packages` cannot see it. Unlike `tools/wasm:js_srcs`
+        # this keeps Emscripten's output, because the built page is made of
+        # the artifact.
+        extra_inputs=("../../../tools/wasm/js",),
     ),
 ]
 
@@ -239,6 +255,19 @@ class WebToolBuilder:
         )
         workspace_dir = self._src_dir.parent
         dependency_packages = _dependency_packages(self._src_dir, workspace_dir)
+        # `Stamp` silently ignores a path that does not exist, so a typo here
+        # would drop an input. Not an `assert`: `python -O` strips those, and
+        # this has to fire wherever the docs are built.
+        extra_inputs = []
+        for relative in tool.extra_inputs:
+            extra_input = Path(config.docs_dir) / relative
+            if not extra_input.exists():
+                raise ValueError(
+                    f"Web tool '{tool.name}' declares a build input that does not "
+                    f"exist: {extra_input} (configured as '{relative}' relative to "
+                    f"docs_dir). Check the WEB_TOOLS registry."
+                )
+            extra_inputs.append(extra_input)
         # Build dir is where we store the stamp file; mirrors the output_subdir
         # structure to keep stamps per-tool isolated.
         self._build_dir = Path(build_directory) / tool.output_subdir
@@ -253,6 +282,7 @@ class WebToolBuilder:
                 self._src_dir,
                 *_workspace_root_inputs(workspace_dir),
                 *dependency_packages,
+                *extra_inputs,
             ],
             [
                 # The tool is a workspace package too, so it gets the same
@@ -263,6 +293,11 @@ class WebToolBuilder:
                     package / excluded
                     for package in (self._src_dir, *dependency_packages)
                     for excluded in _WORKSPACE_PACKAGE_EXCLUDES
+                ),
+                *(
+                    extra_input / excluded
+                    for extra_input in extra_inputs
+                    for excluded in _EXTRA_INPUT_EXCLUDES
                 ),
             ],
         )
