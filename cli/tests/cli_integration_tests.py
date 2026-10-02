@@ -1,8 +1,11 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
+import csv
+import ntpath
 import os
 import shutil
 import struct
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -129,6 +132,70 @@ class BenchmarkCsvCompressionTest(_BenchmarkBaseTest):
 
     def test_benchmark(self):
         self.benchmark()
+
+
+class BenchmarkOutputCsvTest(unittest.TestCase):
+    """Test the per-input rows written by benchmark --output-csv."""
+
+    def setUp(self) -> None:
+        self.tmpdir = tempfile.mkdtemp()
+        self.addCleanup(lambda: shutil.rmtree(self.tmpdir, True))
+        self.input_dir = os.path.join(self.tmpdir, "input")
+        os.makedirs(self.input_dir)
+
+    def _write_input(self, name: str, data: bytes) -> str:
+        path = os.path.join(self.input_dir, name)
+        with open(path, "wb") as f:
+            f.write(data)
+        return path
+
+    def _benchmark_rows(self, input_path: str) -> list[dict[str, str]]:
+        csv_path = os.path.join(self.tmpdir, "benchmark.csv")
+        subprocess.run(
+            [
+                command_utils.CLI_CPP,
+                "benchmark",
+                input_path,
+                "--profile",
+                "serial",
+                "--num-iters",
+                "1",
+                "--output-csv",
+                csv_path,
+            ],
+            check=True,
+        )
+        with open(csv_path, newline="") as f:
+            return list(csv.DictReader(f))
+
+    def test_each_row_reports_its_own_ratio_and_path(self):
+        self._write_input("zeros.bin", bytes(100_000))
+        self._write_input("noise.bin", os.urandom(100_000))
+
+        rows = self._benchmark_rows(self.input_dir)
+
+        # A native Windows zli reports Windows paths, which may mix "/" and "\\".
+        self.assertCountEqual(
+            [ntpath.basename(row["path"]) for row in rows],
+            ["zeros.bin", "noise.bin"],
+        )
+        for row in rows:
+            self.assertAlmostEqual(
+                float(row["compressionRatio"]),
+                int(row["srcSize"]) / int(row["compressedSize"]),
+                delta=float(row["compressionRatio"]) * 1e-5,
+            )
+
+    @unittest.skipIf(
+        sys.platform in ("win32", "cygwin", "msys"),
+        'Windows filenames cannot contain "',
+    )
+    def test_path_with_separator_and_quote_round_trips(self):
+        path = self._write_input('a,"b".bin', bytes(1000))
+
+        rows = self._benchmark_rows(path)
+
+        self.assertEqual([row["path"] for row in rows], [path])
 
 
 class TraceTest(_CompressDecompressBaseTest):

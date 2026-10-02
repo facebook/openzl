@@ -62,6 +62,12 @@ class MultiInput {
         add(openzl::Input::refSerial(input->contents()));
     }
 
+    /// The io inputs added with add(std::shared_ptr<tools::io::Input>).
+    const std::vector<std::shared_ptr<tools::io::Input>>& inputSources() const
+    {
+        return inputSources_;
+    }
+
    private:
     std::vector<std::shared_ptr<tools::io::Input>> inputSources_;
     std::shared_ptr<std::vector<Input>> inputs_;
