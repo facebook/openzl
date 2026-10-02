@@ -202,6 +202,34 @@ custom_unittest(
 )
 
 custom_unittest(
+    name = "benchmark_output_csv_ratio_and_path_test",
+    command = [
+        "$(location :integration_test_bin)",
+        "$(location ..:zli)",
+        "BenchmarkOutputCsvTest.test_each_row_reports_its_own_ratio_and_path",
+    ],
+    type = "simple",
+    deps = [
+        "..:zli",
+        ":integration_test_bin",
+    ],
+)
+
+custom_unittest(
+    name = "benchmark_output_csv_quoted_path_test",
+    command = [
+        "$(location :integration_test_bin)",
+        "$(location ..:zli)",
+        "BenchmarkOutputCsvTest.test_path_with_separator_and_quote_round_trips",
+    ],
+    type = "simple",
+    deps = [
+        "..:zli",
+        ":integration_test_bin",
+    ],
+)
+
+custom_unittest(
     name = "numeric_segmentation_roundtrip_test",
     command = [
         "$(location :integration_test_bin)",
