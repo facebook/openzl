@@ -1,12 +1,13 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-import {Fragment, useRef, useState} from 'react';
+import {Fragment} from 'react';
 import {
   Box,
   Button,
   Checkbox,
   IconButton,
   NativeSelect,
+  Popover,
   Portal,
   Select,
   Slider,
@@ -29,29 +30,18 @@ import {
   OPENZL_LEVELS,
   OPENZL_PROFILES,
   TRAINED_CANDIDATE_COUNTS,
-  createCompressorRow,
   isTrainableProfile,
   levelsFor,
   tickLabelLeft,
   type CompressorName,
   type CompressorRow,
-  type CompressorRowBase,
   type OpenZlProfile,
+  type GzipRow,
   type OpenZlRow,
+  type ZstdRow,
 } from '../compressors.ts';
+import type {CompressorRows, PatchOpenZlRow, PatchRow} from '../useCompressorRows.ts';
 import {isBrowserSupportedProfile, profileDescription} from '../wasmProfiles.ts';
-
-/**
- * Split in two because `Partial<CompressorRow>` over a union distributes into
- * `Partial<OpenZlRow> | Partial<ZstdRow> | ...`, which no longer spreads back
- * into a row without a cast. Keeping them separate also says which fields any
- * row has and which only an OpenZL row does.
- *
- * Neither carries `id`: that is the argument selecting the row, so a patch
- * holding one could only ever disagree with it.
- */
-type PatchRow = (id: number, patch: Omit<Partial<CompressorRowBase>, 'id'>) => void;
-type PatchOpenZlRow = (id: number, patch: Omit<Partial<OpenZlRow>, 'id'>) => void;
 
 interface CompressorRowProps {
   row: CompressorRow;
@@ -67,6 +57,12 @@ interface OpenZlRowProps {
   row: OpenZlRow;
   position: number;
   onPatch: PatchOpenZlRow;
+}
+
+interface ConfigureRunCardProps {
+  compressors: CompressorRows;
+  iterations: number;
+  onIterationsChange: (iterations: number) => void;
 }
 
 function OpenZlOptions({row, position, onPatch}: OpenZlRowProps) {
@@ -321,6 +317,122 @@ function ProfileSelect({row, position, onPatch}: OpenZlRowProps) {
   );
 }
 
+/** The id of the message below, so the trigger can point at what is wrong. */
+function levelsErrorId(rowId: number): string {
+  return `row-${rowId}-levels-error`;
+}
+
+/**
+ * The levels a zstd or gzip row will be measured at. A multi-select rather than
+ * a dropdown because each level is one point on the charts, so a row is a curve
+ * rather than a value; the trigger reports the count for the same reason.
+ *
+ * Clearing every level is allowed and flagged rather than prevented: a picker
+ * whose `None` leaves one box ticked reads as broken, and the row has to be
+ * emptied before a single level can be chosen without unticking five first.
+ */
+function LevelsPicker({row, position, onPatch}: {row: ZstdRow | GzipRow; position: number; onPatch: PatchRow}) {
+  const all = levelsFor(row.compressor);
+  const selected = new Set(row.levels);
+  const empty = row.levels.length === 0;
+  const levelsLabel = empty ? 'No levels' : row.levels.length === 1 ? '1 level' : `${String(row.levels.length)} levels`;
+  const setLevels = (levels: readonly number[]) => {
+    onPatch(row.id, {levels: [...levels].sort((a, b) => a - b)});
+  };
+
+  return (
+    <Popover.Root positioning={{placement: 'bottom-end'}}>
+      <Popover.Trigger asChild>
+        <Button
+          // The count leads so the accessible name contains the visible text:
+          // a voice-control user says what they can see. A static label would
+          // override it and leave them with nothing to say.
+          aria-label={`${levelsLabel}, row ${position}`}
+          aria-invalid={empty || undefined}
+          aria-describedby={empty ? levelsErrorId(row.id) : undefined}
+          width="140px"
+          flexShrink={0}
+          height="36px"
+          px="12px"
+          justifyContent="space-between"
+          fontSize="14px"
+          fontWeight="normal"
+          color={empty ? 'pg.danger' : 'pg.ink'}
+          bg="pg.surface"
+          borderWidth="1px"
+          borderColor={empty ? 'pg.danger' : 'pg.border'}
+          borderRadius="6px"
+          _hover={{bg: 'pg.surface'}}>
+          {levelsLabel}
+          <Box as="span" aria-hidden="true" display="inline-flex">
+            <LuChevronDown size={12} />
+          </Box>
+        </Button>
+      </Popover.Trigger>
+      <Portal>
+        <Popover.Positioner>
+          <Popover.Content width="220px" maxH="260px" overflowY="auto">
+            <Box
+              display="flex"
+              alignItems="center"
+              justifyContent="space-between"
+              px="12px"
+              py="10px"
+              borderBottomWidth="1px"
+              borderColor="pg.border">
+              <Text fontSize="11px" fontWeight="bold" color="pg.secondary" textTransform="uppercase" m={0}>
+                {row.compressor} levels
+              </Text>
+              <Box display="flex" gap="8px">
+                <chakra.button
+                  type="button"
+                  fontSize="12px"
+                  fontWeight="medium"
+                  color="pg.accent"
+                  onClick={() => setLevels(all)}>
+                  All
+                </chakra.button>
+                <chakra.button
+                  type="button"
+                  fontSize="12px"
+                  fontWeight="medium"
+                  color="pg.accent"
+                  onClick={() => setLevels([])}>
+                  None
+                </chakra.button>
+              </Box>
+            </Box>
+            {/* A column, because `Checkbox.Root` is inline-flex: as direct
+                children of the content they stretched, and inside a plain box
+                they would sit two to a line. */}
+            <Box role="group" aria-label={`${row.compressor} levels`} display="flex" flexDirection="column">
+              {all.map((level) => {
+                const checked = selected.has(level);
+                return (
+                  <Checkbox.Root
+                    key={level}
+                    px="12px"
+                    py="8px"
+                    checked={checked}
+                    onCheckedChange={() =>
+                      setLevels(checked ? row.levels.filter((l) => l !== level) : [...row.levels, level])
+                    }>
+                    <Checkbox.HiddenInput />
+                    <Checkbox.Control />
+                    <Checkbox.Label fontSize="13px" fontWeight="normal" color="pg.ink">
+                      Level {level}
+                    </Checkbox.Label>
+                  </Checkbox.Root>
+                );
+              })}
+            </Box>
+          </Popover.Content>
+        </Popover.Positioner>
+      </Portal>
+    </Popover.Root>
+  );
+}
+
 function CompressorRowCard({
   row,
   position,
@@ -366,27 +478,7 @@ function CompressorRowCard({
         {row.compressor === 'OpenZL' ? (
           <ProfileSelect row={row} position={position} onPatch={onPatchOpenZl} />
         ) : (
-          <NativeSelect.Root width="100px" flexShrink={0}>
-            <NativeSelect.Field
-              aria-label={`Level or profile for row ${position}`}
-              height="36px"
-              fontSize="14px"
-              color="pg.ink"
-              bg="pg.surface"
-              borderColor="pg.border"
-              borderRadius="6px"
-              value={row.level}
-              onChange={(event) => {
-                onPatch(row.id, {level: Number(event.target.value)});
-              }}>
-              {levelsFor(row.compressor).map((level) => (
-                <option key={level} value={level}>
-                  {level}
-                </option>
-              ))}
-            </NativeSelect.Field>
-            <NativeSelect.Indicator />
-          </NativeSelect.Root>
+          <LevelsPicker row={row} position={position} onPatch={onPatch} />
         )}
 
         <IconButton
@@ -402,46 +494,22 @@ function CompressorRowCard({
         </IconButton>
       </Box>
 
+      {row.compressor !== 'OpenZL' && row.levels.length === 0 && (
+        <Text id={levelsErrorId(row.id)} color="pg.danger" fontSize="11px" m={0}>
+          Pick at least one level to measure
+        </Text>
+      )}
+
       {row.compressor === 'OpenZL' && <OpenZlOptions row={row} position={position} onPatch={onPatchOpenZl} />}
     </Box>
   );
 }
 
-export default function ConfigureRunCard() {
-  const [rows, setRows] = useState<readonly CompressorRow[]>(() => [
-    createCompressorRow(1, 'OpenZL'),
-    createCompressorRow(2, 'zstd'),
-    createCompressorRow(3, 'gzip'),
-  ]);
-  const nextId = useRef(4);
-  const [iterations, setIterations] = useState(ITERATIONS_DEFAULT);
-
-  const patchRow: PatchRow = (id, patch) => {
-    setRows((prev) => prev.map((row) => (row.id === id ? {...row, ...patch} : row)));
-  };
-
-  // Narrows before spreading, so the OpenZL-only fields can only ever land on
-  // a row that actually has them.
-  const patchOpenZlRow: PatchOpenZlRow = (id, patch) => {
-    setRows((prev) => prev.map((row) => (row.id === id && row.compressor === 'OpenZL' ? {...row, ...patch} : row)));
-  };
-
-  const changeCompressor = (id: number, compressor: CompressorName) => {
-    // A fresh row resets the dependent fields: a zstd level of 19 is not a
-    // valid OpenZL level, and a profile means nothing to gzip.
-    setRows((prev) => prev.map((row) => (row.id === id ? createCompressorRow(id, compressor) : row)));
-  };
-
-  const addRow = () => {
-    const row = createCompressorRow(nextId.current, 'OpenZL');
-    nextId.current += 1;
-    setRows((prev) => [...prev, row]);
-  };
-
-  const removeRow = (id: number) => {
-    setRows((prev) => prev.filter((row) => row.id !== id));
-  };
-
+export default function ConfigureRunCard({
+  compressors: {rows, addRow, removeRow, patchRow, patchOpenZlRow, changeCompressor},
+  iterations,
+  onIterationsChange,
+}: ConfigureRunCardProps) {
   return (
     <StepCard number={2} title="Configure the run" subtitle="Select which compressors to compare">
       <VStack gap="10px" align="stretch">
@@ -507,7 +575,7 @@ export default function ConfigureRunCard() {
             max={ITERATIONS_MAX}
             step={1}
             value={[iterations]}
-            onValueChange={(details) => setIterations(details.value[0] ?? ITERATIONS_DEFAULT)}
+            onValueChange={(details) => onIterationsChange(details.value[0] ?? ITERATIONS_DEFAULT)}
             width="100%">
             {/* The thumb is named through this label: zag always sets
                 aria-labelledby to the label id, which shadows aria-label. */}
