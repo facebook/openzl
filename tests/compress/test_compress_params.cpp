@@ -85,6 +85,47 @@ TEST_F(CompressParamsTest, permissiveCompression)
     ZL_DCtx_free(dctx);
 }
 
+TEST_F(CompressParamsTest, warningsAreClearedBetweenTypedRefCompressions)
+{
+    auto input = getData<uint16_t>(1001);
+    auto size  = input.size() * sizeof(uint16_t);
+    std::string compressed(ZL_compressBound(size), '\0');
+
+    auto cctx   = ZL_CCtx_create();
+    auto cgraph = ZL_Compressor_create();
+
+    // Set up a graph that will fail if we don't have permissive compression
+    auto graph = ZL_Compressor_registerStaticGraph_fromNode1o(
+            cgraph, ZL_NODE_INTERPRET_AS_LE32, ZL_GRAPH_COMPRESS_GENERIC);
+    ZL_REQUIRE_SUCCESS(ZL_Compressor_setParameter(
+            cgraph, ZL_CParam_formatVersion, ZL_MAX_FORMAT_VERSION));
+    ZL_REQUIRE_SUCCESS(ZL_Compressor_selectStartingGraphID(cgraph, graph));
+
+    auto compressOnce = [&](ZL_TernaryParam permissive) {
+        ZL_REQUIRE_SUCCESS(ZL_CCtx_setParameter(
+                cctx, ZL_CParam_permissiveCompression, permissive));
+        ZL_REQUIRE_SUCCESS(ZL_CCtx_refCompressor(cctx, cgraph));
+        auto typedRef = ZL_TypedRef_createSerial(input.data(), size);
+        auto res      = ZL_CCtx_compressTypedRef(
+                cctx, compressed.data(), compressed.size(), typedRef);
+        ZL_TypedRef_free(typedRef);
+        return res;
+    };
+
+    // Each permissive compression reports only its own warning
+    for (int i = 0; i < 2; ++i) {
+        EXPECT_FALSE(ZL_isError(compressOnce(ZL_TernaryParam_enable)));
+        EXPECT_EQ(ZL_CCtx_getWarnings(cctx).size, (size_t)1);
+    }
+
+    // A strict compression fails without inheriting the earlier warnings
+    EXPECT_TRUE(ZL_isError(compressOnce(ZL_TernaryParam_disable)));
+    EXPECT_EQ(ZL_CCtx_getWarnings(cctx).size, (size_t)0);
+
+    ZL_CCtx_free(cctx);
+    ZL_Compressor_free(cgraph);
+}
+
 TEST_F(CompressParamsTest, strToParam)
 {
     ASSERT_EQ(
