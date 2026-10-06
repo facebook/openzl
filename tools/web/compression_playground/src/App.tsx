@@ -1,20 +1,18 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-import {useEffect, useState} from 'react';
+import {useCallback, useEffect, useState} from 'react';
 import {Box, Flex} from '@chakra-ui/react';
 import {Banner, ToolHeader} from '@openzl/web-common';
 import ResultsPanel from './components/ResultsPanel.tsx';
 import SetupColumn from './components/SetupColumn.tsx';
-import {toCompressorConfig, type RunConfig, type RunState} from './benchmarkTypes.ts';
+import {toCompressorConfig, type CompressorConfig, type RunConfig, type RunState} from './benchmarkTypes.ts';
 import {ITERATIONS_DEFAULT} from './compressors.ts';
+import {runBenchmark} from './runBenchmark.ts';
 import {useCompressorRows} from './useCompressorRows.ts';
 import logoUrl from '/OpenZL_logo.png?url';
 
 /** Content width of the Figma frame (node 29:4) the setup and results columns sit in. */
 const CONTENT_MAX_WIDTH = '1223px';
-
-/** The only state a run can be in until the run seam lands, hence `onRun={null}` below. */
-const IDLE_RUN_STATE: RunState = {status: 'idle'};
 
 /**
  * Without this, a file released anywhere but the drop zone makes the browser
@@ -42,16 +40,47 @@ function useBlockStrayFileDrops() {
   }, []);
 }
 
+/** "row 3", "rows 2 and 3", "rows 1, 2 and 3", numbered as step 2 numbers them. */
+function describeRows(positions: readonly number[]): string {
+  if (positions.length === 1) {
+    return `row ${String(positions[0])}`;
+  }
+  return `rows ${positions.slice(0, -1).join(', ')} and ${String(positions[positions.length - 1])}`;
+}
+
+/**
+ * Why Run is unavailable, if it is. A zstd or gzip row with no levels would
+ * drop out of the run with nothing on the page to say so, so Run waits until
+ * it has one.
+ */
+function runBlockersFor(file: File | null, compressors: readonly CompressorConfig[]): string[] {
+  const blockers: string[] = [];
+  if (file === null) {
+    blockers.push('Choose a file in step 1 to run the benchmark.');
+  }
+  const emptyRows = compressors.flatMap((config, index) => (config.levels.length === 0 ? [index + 1] : []));
+  if (emptyRows.length > 0) {
+    blockers.push(`Pick at least one level for ${describeRows(emptyRows)}.`);
+  }
+  return blockers;
+}
+
 export default function App() {
   const [file, setFile] = useState<File | null>(null);
   const compressors = useCompressorRows();
   const [iterations, setIterations] = useState(ITERATIONS_DEFAULT);
+  const [runState, setRunState] = useState<RunState>({status: 'idle'});
+  const onRun = useCallback((config: RunConfig) => {
+    runBenchmark(config, setRunState);
+  }, []);
+  const compressorConfigs = compressors.rows.map(toCompressorConfig);
+  const runBlockers = runBlockersFor(file, compressorConfigs);
   const runConfig: RunConfig | null =
-    file === null
+    file === null || runBlockers.length > 0
       ? null
       : {
           input: file,
-          compressors: compressors.rows.map(toCompressorConfig),
+          compressors: compressorConfigs,
           iterations,
         };
   useBlockStrayFileDrops();
@@ -60,11 +89,11 @@ export default function App() {
     <Flex direction="column" minH="100vh" bg="pg.pageBg">
       <ToolHeader title="Compression Playground" logoSrc={logoUrl} />
       <Flex as="main" flex="1" direction="column" align="center" bg="pg.pageBg">
-        {/* The docs site publishes every land, so the page is reachable well
-            before the run seam exists. Without this the setup UI looks like a
-            finished tool that silently does nothing. */}
+        {/* The docs site publishes every land, so the page is reachable while
+            parts of it are still stubs. It runs now; what it shows afterwards
+            is the placeholder below. */}
         <Box width="100%" maxW={CONTENT_MAX_WIDTH} px="32px" pt="24px">
-          <Banner>Work in progress — benchmarking is not wired up yet</Banner>
+          <Banner>Work in progress — the results view is a placeholder</Banner>
         </Box>
         <Flex
           align="flex-start"
@@ -82,11 +111,12 @@ export default function App() {
             iterations={iterations}
             onIterationsChange={setIterations}
             runConfig={runConfig}
-            runState={IDLE_RUN_STATE}
-            onRun={null}
+            runState={runState}
+            onRun={onRun}
             onTrySample={null}
+            runBlockers={runBlockers}
           />
-          <ResultsPanel runState={IDLE_RUN_STATE} />
+          <ResultsPanel runState={runState} />
         </Flex>
       </Flex>
     </Flex>

@@ -3,7 +3,7 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 import {describe, it, expect, afterEach} from 'vitest';
-import {render, screen, cleanup, fireEvent, within, type RenderOptions} from '@testing-library/react';
+import {render, screen, cleanup, fireEvent, within, waitFor, type RenderOptions} from '@testing-library/react';
 import {ChakraProvider} from '@chakra-ui/react';
 import React from 'react';
 import App from '../src/App.tsx';
@@ -64,6 +64,37 @@ describe('Compression Playground', () => {
 
     expect(screen.queryByText('dataset.bin')).not.toBeInTheDocument();
     expect(screen.getByText('Drag & drop a file here')).toBeInTheDocument();
+  });
+
+  it('holds Run back while a zstd or gzip row has no levels, and says why', async () => {
+    // Such a row would drop out of the run with nothing on the page to say so.
+    renderWithPlaygroundTheme(<App />);
+    const run = screen.getByRole('button', {name: 'Run benchmark'});
+    expect(run).toHaveAttribute('aria-disabled', 'true');
+    expect(run).toHaveAccessibleDescription('Choose a file in step 1 to run the benchmark.');
+
+    fireEvent.change(screen.getByLabelText(/browse your computer/), {
+      target: {files: [new File(['x'], 'data.bin')]},
+    });
+    expect(run).not.toHaveAttribute('aria-disabled');
+    expect(run).not.toHaveAttribute('aria-describedby');
+
+    const trigger = screen.getByRole('button', {name: /, row 3$/});
+    fireEvent.click(trigger);
+    const levels = within(
+      await waitFor(() => document.getElementById(trigger.getAttribute('aria-controls') ?? '') as HTMLElement),
+    );
+    fireEvent.click(levels.getByText('None'));
+    await waitFor(() => {
+      expect(run).toHaveAttribute('aria-disabled', 'true');
+    });
+    expect(run).toHaveAccessibleDescription('Pick at least one level for row 3.');
+
+    fireEvent.click(levels.getByRole('checkbox', {name: 'Level 1'}));
+    await waitFor(() => {
+      expect(run).not.toHaveAttribute('aria-disabled');
+    });
+    expect(run).not.toHaveAttribute('aria-describedby');
   });
 
   it('renders the static Results panel', () => {

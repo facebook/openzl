@@ -17,6 +17,7 @@ interface SetupColumnProps {
   runState: RunState;
   onRun: ((config: RunConfig) => void) | null;
   onTrySample: (() => void) | null;
+  runBlockers: readonly string[];
 }
 
 export default function SetupColumn({
@@ -29,12 +30,19 @@ export default function SetupColumn({
   runState,
   onRun,
   onTrySample,
+  runBlockers,
 }: SetupColumnProps) {
   return (
     <VStack gap="20px" width={{base: '100%', lg: '520px'}} flexShrink={0} align="stretch">
       <UploadCard file={file} onFileChange={onFileChange} />
       <ConfigureRunCard compressors={compressors} iterations={iterations} onIterationsChange={onIterationsChange} />
-      <RunBenchmarkCard runConfig={runConfig} runState={runState} onRun={onRun} onTrySample={onTrySample} />
+      <RunBenchmarkCard
+        runConfig={runConfig}
+        runState={runState}
+        onRun={onRun}
+        onTrySample={onTrySample}
+        runBlockers={runBlockers}
+      />
     </VStack>
   );
 }
