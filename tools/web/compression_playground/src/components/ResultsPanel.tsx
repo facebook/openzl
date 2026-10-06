@@ -2,7 +2,11 @@
 
 import {Box, Heading, Text, VStack} from '@chakra-ui/react';
 import {LuArrowRight, LuChartLine, LuChartSpline, LuMicroscope, LuMonitor} from 'react-icons/lu';
-import {isRunInProgress, type RunState} from '../benchmarkTypes.ts';
+import {isRunInProgress, type BenchmarkJob, type Candidate, type RunState} from '../benchmarkTypes.ts';
+import {formatBytes, resultsOf} from '../measurements.ts';
+import {WASM_PROFILE} from '../wasmProfiles.ts';
+import MeasurementsTable from './MeasurementsTable.tsx';
+import RatioSpeedCharts from './RatioSpeedCharts.tsx';
 
 const HOW_IT_WORKS_STEPS = ['Choose your data.', 'Pick compressors to compare.', 'Run the benchmark.'];
 
@@ -10,7 +14,79 @@ interface ResultsPanelProps {
   runState: RunState;
 }
 
+function statusLine(runState: RunState): string | null {
+  switch (runState.status) {
+    case 'idle':
+      return null;
+    case 'loading':
+      return 'Loading the OpenZL module…';
+    case 'running':
+      return `Running ${String(runState.completedJobs)} of ${String(runState.totalJobs)}…`;
+    case 'completed':
+      return `${String(runState.results.length)} measured`;
+    case 'error':
+      return `Run failed: ${runState.message}`;
+  }
+}
+
+function Pill({children, bg, color}: {children: string; bg: string; color: string}) {
+  return (
+    <Box bg={bg} color={color} px="12px" py="4px" borderRadius="100px" fontSize="12px" fontWeight="semibold">
+      {children}
+    </Box>
+  );
+}
+
+/** `idle` and `loading` carry no outcome, so there is nothing to list yet. */
+function outcomeOf(runState: RunState) {
+  return runState.status === 'idle' || runState.status === 'loading' ? null : runState;
+}
+
+function describeJob(job: BenchmarkJob): string {
+  if (job.compressor !== 'OpenZL') {
+    return `${job.compressor} ${String(job.level)}`;
+  }
+  // `job.profile` crossed the seam as the binding's numeric enum, so read the
+  // name back off the same table that put it there.
+  const name = Object.entries(WASM_PROFILE).find(([, value]) => value === job.profile)?.[0] ?? String(job.profile);
+  return `${job.compressor} ${name} / ${String(job.level)}`;
+}
+
+/** A trained job's failures share its description, so the candidate tells them apart. */
+function describeMeasurement(job: BenchmarkJob, candidate: Candidate | null): string {
+  return candidate === null
+    ? describeJob(job)
+    : `${describeJob(job)}, candidate ${String(candidate.index)} of ${String(candidate.total)}`;
+}
+
+/**
+ * Jobs, or single candidates of a trained one, that produced no measurement;
+ * the table has no row shape for these.
+ */
+function FailureList({runState}: ResultsPanelProps) {
+  const outcome = outcomeOf(runState);
+  if (outcome === null || outcome.failures.length === 0) {
+    return null;
+  }
+  return (
+    <VStack as="ul" gap="6px" align="stretch" m={0} p={0} listStyleType="none">
+      {outcome.failures.map((failure) => (
+        <Text
+          as="li"
+          key={`${failure.job.id}-${String(failure.candidate?.index ?? 0)}`}
+          color="pg.danger"
+          fontSize="13px"
+          m={0}>
+          {describeMeasurement(failure.job, failure.candidate)}: {failure.message}
+        </Text>
+      ))}
+    </VStack>
+  );
+}
+
 export default function ResultsPanel({runState}: ResultsPanelProps) {
+  const results = resultsOf(runState);
+  const hasResults = results.length > 0;
   return (
     <Box
       as="section"
@@ -25,40 +101,90 @@ export default function ResultsPanel({runState}: ResultsPanelProps) {
       borderRadius="12px"
       p="32px">
       <VStack gap="24px" align="stretch">
-        <Heading id="results-title" as="h2" color="pg.ink" fontSize="20px" fontWeight="extrabold" m={0}>
-          Results
-        </Heading>
-
-        <Box
-          display="flex"
-          alignItems="center"
-          gap="16px"
-          bg="pg.canvas"
-          borderWidth="1px"
-          borderColor="pg.border"
-          borderRadius="8px"
-          p="20px">
-          <Box
-            aria-hidden="true"
-            display="inline-flex"
-            alignItems="center"
-            justifyContent="center"
-            boxSize="40px"
-            flexShrink={0}
-            borderRadius="full"
-            bg="pg.chip"
-            color="pg.faint">
-            <LuChartLine size={20} />
-          </Box>
-          <VStack gap="2px" flex="1" minW={0} align="stretch">
-            <Text color="pg.ink" fontSize="15px" fontWeight="bold" m={0}>
-              No results yet
-            </Text>
-            <Text color="pg.secondary" fontSize="14px" lineHeight="1.4" m={0}>
-              Select your data to compress or hit &ldquo;Try a 5 MB sample&rdquo; to see the playground work.
-            </Text>
-          </VStack>
+        <Box display="flex" alignItems="center" justifyContent="space-between" gap="12px">
+          <Heading id="results-title" as="h2" color="pg.ink" fontSize="20px" fontWeight="extrabold" m={0}>
+            Results
+          </Heading>
+          {results.length > 0 && (
+            <Box display="flex" gap="8px">
+              <Pill bg="pg.chip" color="pg.secondary">{`${formatBytes(results[0].srcSize)} input`}</Pill>
+              <Pill bg="pg.accentBg" color="pg.tagSpeedFg">{`${String(results.length)} measured`}</Pill>
+            </Box>
+          )}
         </Box>
+
+        {/* Rendered even when it says nothing, so a screen reader has the
+            region before the text arrives: one added at the same moment as its
+            own text usually goes unannounced. `srOnly` takes it out of the
+            column's flow rather than leaving a gap where no line is. A failure
+            interrupts instead of waiting for a pause, hence `assertive`.
+
+            `completed` with results is the one state whose line is for the
+            region only: the pill above says the same thing, and a region that
+            goes from `Running 12 of 13…` to empty announces nothing at all.
+            Without results there is no pill, so the line stays on screen. */}
+        <Text
+          role="status"
+          aria-live={runState.status === 'error' ? 'assertive' : 'polite'}
+          srOnly={statusLine(runState) === null || (runState.status === 'completed' && results.length > 0)}
+          color="pg.ink"
+          fontSize="13px"
+          fontWeight="semibold"
+          m={0}>
+          {statusLine(runState)}
+        </Text>
+        {hasResults && <RatioSpeedCharts results={results} />}
+        <MeasurementsTable runState={runState} />
+        <FailureList runState={runState} />
+
+        {hasResults && (
+          <Box
+            as="aside"
+            aria-label="WebAssembly speed notice"
+            bg="pg.callout"
+            borderWidth="1px"
+            borderColor="pg.noticeBorder"
+            borderRadius="8px"
+            px="16px"
+            py="12px">
+            <Text color="pg.noticeFg" fontSize="13px" lineHeight="1.4" m={0}>
+              ⚡ Speeds shown here are different from running locally because we are using WebAssembly.
+            </Text>
+          </Box>
+        )}
+
+        {!hasResults && (
+          <Box
+            display="flex"
+            alignItems="center"
+            gap="16px"
+            bg="pg.canvas"
+            borderWidth="1px"
+            borderColor="pg.border"
+            borderRadius="8px"
+            p="20px">
+            <Box
+              aria-hidden="true"
+              display="inline-flex"
+              alignItems="center"
+              justifyContent="center"
+              boxSize="40px"
+              flexShrink={0}
+              borderRadius="full"
+              bg="pg.chip"
+              color="pg.faint">
+              <LuChartLine size={20} />
+            </Box>
+            <VStack gap="2px" flex="1" minW={0} align="stretch">
+              <Text color="pg.ink" fontSize="15px" fontWeight="bold" m={0}>
+                No results yet
+              </Text>
+              <Text color="pg.secondary" fontSize="14px" lineHeight="1.4" m={0}>
+                Select your data to compress or hit &ldquo;Try a 5 MB sample&rdquo; to see the playground work.
+              </Text>
+            </VStack>
+          </Box>
+        )}
 
         <VStack gap="16px" align="stretch">
           <Heading
