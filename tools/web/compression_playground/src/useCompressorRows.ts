@@ -5,7 +5,7 @@ import {
   createCompressorRow,
   type CompressorName,
   type CompressorRow,
-  type CompressorRowBase,
+  type LeveledRowBase,
   type OpenZlRow,
 } from './compressors.ts';
 
@@ -22,7 +22,10 @@ function defaultRows(): readonly CompressorRow[] {
  * Neither carries `id`: that is the argument selecting the row, so a patch
  * holding one could only ever disagree with it.
  */
-export type PatchRow = (id: number, patch: Omit<Partial<CompressorRowBase>, 'id'>) => void;
+// `LeveledRowBase`, not `CompressorRowBase`: the base carries only `id` now
+// that `level` belongs to the OpenZL variant, and `Omit<Partial<{id}>, 'id'>`
+// is `{}`, which TypeScript hands to anything. The only caller patches levels.
+export type PatchRow = (id: number, patch: Omit<Partial<LeveledRowBase>, 'id'>) => void;
 export type PatchOpenZlRow = (id: number, patch: Omit<Partial<OpenZlRow>, 'id'>) => void;
 
 export interface CompressorRows {
