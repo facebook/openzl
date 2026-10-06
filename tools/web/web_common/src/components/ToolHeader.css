@@ -1,6 +1,9 @@
 /* Copyright (c) Meta Platforms, Inc. and affiliates. */
 
-@import url('https://fonts.googleapis.com/css2?family=Gabarito:wght@400;500;600;700&display=swap');
+@import '@fontsource/gabarito/400.css';
+@import '@fontsource/gabarito/500.css';
+@import '@fontsource/gabarito/600.css';
+@import '@fontsource/gabarito/700.css';
 
 .tool-header {
   box-sizing: border-box;

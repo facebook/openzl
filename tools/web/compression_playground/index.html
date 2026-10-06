@@ -4,9 +4,15 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'" />
     <link rel="icon" type="image/png" href="/OpenZL_logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OpenZL Compression Playground</title>
+    <!-- Classic, not a module: it has to run before anything reaches for
+         SharedArrayBuffer, and it reloads the page on first visit. -->
+    <script src="/cross-origin-isolation-sw.js"></script>
   </head>
   <body>
     <div id="root"></div>

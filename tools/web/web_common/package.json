@@ -12,6 +12,9 @@
     "lint": "eslint .",
     "test:run": "vitest run --passWithNoTests"
   },
+  "dependencies": {
+    "@fontsource/gabarito": "5.3.0"
+  },
   "peerDependencies": {
     "react": "19.1.1"
   }

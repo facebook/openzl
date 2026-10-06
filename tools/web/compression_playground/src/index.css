@@ -2,8 +2,12 @@
 
 /* The design is set in Inter, and a font named in a theme token is only a
    string until something loads it. Weights match those used in the Figma
-   frame: regular, semibold, bold, extrabold. */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+   frame: regular, semibold, bold, extrabold. Self-hosted because the CSP in
+   index.html only allows same-origin fonts. */
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource/inter/800.css';
 
 /* Colors match visualization_app so the two tools do not render with different
    palettes when switched between in the docs nav. */

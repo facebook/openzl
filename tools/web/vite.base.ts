@@ -1,6 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import {defineConfig} from 'vitest/config';
+import type {PluginOption} from 'vite';
 import react from '@vitejs/plugin-react';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
@@ -25,10 +26,11 @@ export function createWebToolConfig(options: {
   base: string;
   testAlias?: {find: RegExp; replacement: string}[];
   testSetupFiles?: string[];
+  plugins?: PluginOption[];
 }) {
   return defineConfig({
     base: options.base,
-    plugins: [react(), tsconfigPaths()],
+    plugins: [react(), tsconfigPaths(), ...(options.plugins ?? [])],
     ...(options.testAlias || options.testSetupFiles
       ? {
           test: {
