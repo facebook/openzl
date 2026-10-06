@@ -96,3 +96,10 @@ add_dependencies(
     tools_training
     shared_components
 )
+
+# BinaryFILE ITCH parser: only standard nodes, no custom decoder.
+add_executable(itch itch.cpp)
+target_link_libraries(itch PRIVATE openzl)
+if(OPENZL_BUILD_TESTS)
+    add_test(NAME itch_example_round_trip COMMAND itch --self-test)
+endif()
