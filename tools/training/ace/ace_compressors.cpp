@@ -83,6 +83,12 @@ std::vector<ACEGraph> makeAllGraphs()
     for (int level = -5; level < 10; ++level) {
         g.push_back(buildGraph(graphs::Zstd{ level }));
     }
+    for (int level : { 1, 3, 6, 9, 12 }) {
+        g.push_back(buildGraph(graphs::Lz4{ level }));
+    }
+    for (int level : { -3, 1, 3, 6, 9 }) {
+        g.push_back(buildGraph(graphs::Lz{ level }));
+    }
     g.push_back(buildGraph(graphs::Flatpack{}));
     g.push_back(buildGraph(graphs::Store{}));
     return g;
@@ -101,6 +107,8 @@ std::vector<ACECompressor> makePrebuiltNumericCompressors()
     ACECompressor fieldLz(buildGraph(graphs::FieldLz{}));
     ACECompressor zstd(buildGraph(graphs::Zstd{}));
     ACECompressor transpose(buildNode(nodes::TransposeSplit{}), { zstd });
+    ACECompressor lz4(buildGraph(graphs::Lz4{}));
+    ACECompressor lz(buildGraph(graphs::Lz{}));
     ACECompressor deltaFieldLz(buildNode(nodes::DeltaInt{}), { fieldLz });
     ACECompressor deltaTranspose(buildNode(nodes::DeltaInt{}), { transpose });
     ACECompressor tokenizeSortedFieldLz(
@@ -138,6 +146,8 @@ std::vector<ACECompressor> makePrebuiltNumericCompressors()
         fieldLz,
         zstd,
         transpose,
+        lz4,
+        lz,
         deltaFieldLz,
         deltaTranspose,
         tokenizeSortedFieldLz,
@@ -170,10 +180,14 @@ std::vector<ACECompressor> makePrebuiltStructCompressors()
     ACECompressor transpose(buildNode(nodes::TransposeSplit{}), { zstd });
     ACECompressor tokenizeFieldLz(
             buildNode(nodes::TokenizeStruct{}), { transpose, fieldLz });
+    ACECompressor lz4(buildGraph(graphs::Lz4{}));
+    ACECompressor lz(buildGraph(graphs::Lz{}));
 
     compressors.push_back(zstd);
     compressors.push_back(transpose);
     compressors.push_back(tokenizeFieldLz);
+    compressors.push_back(lz4);
+    compressors.push_back(lz);
 
     for (const auto& compressor : makePrebuiltNumericCompressors()) {
         compressors.push_back(ACECompressor(
