@@ -18,6 +18,13 @@ zs_cxxlibrary(
     name = "profile_graphs",
     srcs = ["profile_graphs.cpp"],
     headers = ["profile_graphs.h"],
+    deps = [
+        "../../cpp:openzl_cpp",
+        "../../custom_parsers:pytorch_model_parser",
+        "../../custom_parsers/csv:csv_parser",
+        "../../custom_parsers/parquet:parquet_graph",
+        "../../custom_parsers/shared_components:clustering",
+    ],
     exported_deps = [
         "../..:zstronglib",
     ],
