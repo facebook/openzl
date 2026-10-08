@@ -3,9 +3,10 @@
 import {Box, Heading, Text, VStack} from '@chakra-ui/react';
 import {LuArrowRight, LuChartLine, LuChartSpline, LuMicroscope, LuMonitor} from 'react-icons/lu';
 import {isRunInProgress, type BenchmarkJob, type Candidate, type RunState} from '../benchmarkTypes.ts';
-import {resultsOf} from '../measurements.ts';
+import {formatBytes, resultsOf} from '../measurements.ts';
 import {WASM_PROFILE} from '../wasmProfiles.ts';
 import MeasurementsTable from './MeasurementsTable.tsx';
+import RatioSpeedCharts from './RatioSpeedCharts.tsx';
 
 const HOW_IT_WORKS_STEPS = ['Choose your data.', 'Pick compressors to compare.', 'Run the benchmark.'];
 
@@ -26,6 +27,14 @@ function statusLine(runState: RunState): string | null {
     case 'error':
       return `Run failed: ${runState.message}`;
   }
+}
+
+function Pill({children, bg, color}: {children: string; bg: string; color: string}) {
+  return (
+    <Box bg={bg} color={color} px="12px" py="4px" borderRadius="100px" fontSize="12px" fontWeight="semibold">
+      {children}
+    </Box>
+  );
 }
 
 /** `idle` and `loading` carry no outcome, so there is nothing to list yet. */
@@ -76,7 +85,8 @@ function FailureList({runState}: ResultsPanelProps) {
 }
 
 export default function ResultsPanel({runState}: ResultsPanelProps) {
-  const hasResults = resultsOf(runState).length > 0;
+  const results = resultsOf(runState);
+  const hasResults = results.length > 0;
   return (
     <Box
       as="section"
@@ -91,25 +101,39 @@ export default function ResultsPanel({runState}: ResultsPanelProps) {
       borderRadius="12px"
       p="32px">
       <VStack gap="24px" align="stretch">
-        <Heading id="results-title" as="h2" color="pg.ink" fontSize="20px" fontWeight="extrabold" m={0}>
-          Results
-        </Heading>
+        <Box display="flex" alignItems="center" justifyContent="space-between" gap="12px">
+          <Heading id="results-title" as="h2" color="pg.ink" fontSize="20px" fontWeight="extrabold" m={0}>
+            Results
+          </Heading>
+          {results.length > 0 && (
+            <Box display="flex" gap="8px">
+              <Pill bg="pg.chip" color="pg.secondary">{`${formatBytes(results[0].srcSize)} input`}</Pill>
+              <Pill bg="pg.accentBg" color="pg.tagSpeedFg">{`${String(results.length)} measured`}</Pill>
+            </Box>
+          )}
+        </Box>
 
         {/* Rendered even when it says nothing, so a screen reader has the
             region before the text arrives: one added at the same moment as its
             own text usually goes unannounced. `srOnly` takes it out of the
             column's flow rather than leaving a gap where no line is. A failure
-            interrupts instead of waiting for a pause, hence `assertive`. */}
+            interrupts instead of waiting for a pause, hence `assertive`.
+
+            `completed` with results is the one state whose line is for the
+            region only: the pill above says the same thing, and a region that
+            goes from `Running 12 of 13…` to empty announces nothing at all.
+            Without results there is no pill, so the line stays on screen. */}
         <Text
           role="status"
           aria-live={runState.status === 'error' ? 'assertive' : 'polite'}
-          srOnly={statusLine(runState) === null}
+          srOnly={statusLine(runState) === null || (runState.status === 'completed' && results.length > 0)}
           color="pg.ink"
           fontSize="13px"
           fontWeight="semibold"
           m={0}>
           {statusLine(runState)}
         </Text>
+        {hasResults && <RatioSpeedCharts results={results} />}
         <MeasurementsTable runState={runState} />
         <FailureList runState={runState} />
 
