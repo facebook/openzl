@@ -1,7 +1,15 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import {createWebToolConfig} from '../vite.base.ts';
+import {existsSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
+
+// Emscripten's output, which only a WASM build produces: the GitHub workflows
+// run one before the docs, but the internal docs build does not. Without it the
+// worker bundle cannot resolve `wasm_api.js`'s dynamic import of it and fails,
+// so it is left for the browser to request, as the main bundle already leaves
+// it -- and `wasm_api.js` says what is missing when that request fails.
+const hasWasmArtifact = existsSync(fileURLToPath(new URL('../../wasm/js/openzl.js', import.meta.url)));
 
 const config = createWebToolConfig({
   base: '/tools/playground',
@@ -19,7 +27,10 @@ export default {
   // The benchmark worker is spawned with `{type: 'module'}`, so the build has
   // to emit it as one. The default IIFE output does not match and its imports
   // fail once built, though the dev server serves it either way.
-  worker: {format: 'es' as const},
+  worker: {
+    format: 'es' as const,
+    ...(hasWasmArtifact ? {} : {rollupOptions: {external: [/\/openzl\.js$/]}}),
+  },
   // Left unbundled so Vite's `new URL(..., import.meta.url)` transform runs
   // on it: esbuild's prebundling does not, and the wasm URL then points at a
   // file that is not there. The dev server answers those with the SPA
