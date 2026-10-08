@@ -7,9 +7,9 @@ import {WASM_PROFILE} from './wasmProfiles.ts';
 interface CompressorConfigBase {
   readonly rowId: number;
   /**
-   * One measurement per level. A row selects a single level today, but the
-   * design sweeps several per compressor so each contributes a curve rather
-   * than a point, so the plural shape is what crosses the worker boundary.
+   * One measurement per level: several for a zstd or gzip row, so it
+   * contributes a curve rather than a point, and one for an OpenZL row, whose
+   * several measurements come from training instead.
    */
   readonly levels: readonly number[];
 }
@@ -142,7 +142,10 @@ export function toCompressorConfig(row: CompressorRow): CompressorConfig {
       };
     case 'zstd':
     case 'gzip':
-      return {rowId: row.id, compressor: row.compressor, levels: [row.level]};
+      // Already the set the user picked, so it crosses unchanged. Sorted, since
+      // the charts join consecutive points into a curve and the table lists
+      // them in order, and the picker cannot be relied on for that.
+      return {rowId: row.id, compressor: row.compressor, levels: [...row.levels].sort((a, b) => a - b)};
     default:
       return assertNever(row);
   }
@@ -171,6 +174,15 @@ export function buildJobs(config: RunConfig): RunPlan {
   const rejected: RejectedCompressor[] = [];
 
   for (const compressor of config.compressors) {
+    // Reported rather than dropped, the same as a profile with no browser
+    // build: a row that contributes nothing and says nothing reads as a
+    // benchmark that lost it. The picker lets a row be emptied, so this is
+    // reachable from the UI rather than only from a config built elsewhere.
+    if (compressor.levels.length === 0) {
+      rejected.push({rowId: compressor.rowId, message: 'No levels selected'});
+      continue;
+    }
+
     const base = (level: number) => ({
       id: `${compressor.rowId}-${compressor.compressor}-${level}`,
       rowId: compressor.rowId,
