@@ -166,6 +166,70 @@ describe('runBenchmark', () => {
     expect(FakeWorker.instances[1].posted).toHaveLength(1);
   });
 
+  it("drops a job's step once it stops reporting, however it stopped", async () => {
+    const {runBenchmark} = await freshModule();
+    const states: RunState[] = [];
+
+    runBenchmark(config, (state) => states.push(state));
+    const [worker] = FakeWorker.instances;
+    worker.emit('message', {data: {type: 'started', totalJobs: 2, rejected: []}});
+
+    worker.emit('message', {data: {type: 'step', fraction: 0.9}});
+    expect(states.at(-1)).toMatchObject({step: 0.9});
+
+    worker.emit('message', {data: {type: 'result', result: {job: {id: 'openzl-6'}, candidate: null}}});
+    expect(states.at(-1)).toMatchObject({step: null});
+
+    // A job that died partway through reporting has stopped too. Left
+    // standing, its 90% would lend itself to the next job's share of the bar.
+    worker.emit('message', {data: {type: 'step', fraction: 0.9}});
+    worker.emit('message', {
+      data: {type: 'failure', failure: {job: {id: 'zstd-1'}, candidate: null, message: 'stopped'}},
+    });
+    expect(states.at(-1)).toMatchObject({step: null});
+  });
+
+  it("keeps a trained job's step until its last candidate is in", async () => {
+    // Training comes first and its candidates are measured after, so dropping
+    // the step at the first one would take back what the bar already showed.
+    const {runBenchmark} = await freshModule();
+    const states: RunState[] = [];
+    const job = {id: 'openzl-6'};
+
+    runBenchmark(config, (state) => states.push(state));
+    const [worker] = FakeWorker.instances;
+    worker.emit('message', {data: {type: 'started', totalJobs: 2, rejected: []}});
+    worker.emit('message', {data: {type: 'step', fraction: 0.9}});
+
+    worker.emit('message', {data: {type: 'result', result: {job, candidate: {index: 1, total: 3}}}});
+    expect(states.at(-1)).toMatchObject({step: 0.9});
+    worker.emit('message', {
+      data: {type: 'failure', failure: {job, candidate: {index: 2, total: 3}, message: 'candidate 2 threw'}},
+    });
+    expect(states.at(-1)).toMatchObject({step: 0.9});
+
+    worker.emit('message', {data: {type: 'result', result: {job, candidate: {index: 3, total: 3}}}});
+    expect(states.at(-1)).toMatchObject({step: null});
+  });
+
+  it('keeps a step inside its own job, whatever the trainer reports', async () => {
+    // Past 1 it would run the bar into the next job's share.
+    const {runBenchmark} = await freshModule();
+    const states: RunState[] = [];
+
+    runBenchmark(config, (state) => states.push(state));
+    const [worker] = FakeWorker.instances;
+    worker.emit('message', {data: {type: 'started', totalJobs: 2, rejected: []}});
+
+    worker.emit('message', {data: {type: 'step', fraction: 1.7}});
+    expect(states.at(-1)).toMatchObject({step: 1});
+    worker.emit('message', {data: {type: 'step', fraction: -0.2}});
+    expect(states.at(-1)).toMatchObject({step: 0});
+    worker.emit('message', {data: {type: 'step', fraction: 0.4}});
+    worker.emit('message', {data: {type: 'step', fraction: Number.NaN}});
+    expect(states.at(-1)).toMatchObject({step: 0.4});
+  });
+
   it('keeps one worker across runs that end normally', async () => {
     // Instantiating the module costs megabytes, so it outlives a single run.
     const {runBenchmark} = await freshModule();
