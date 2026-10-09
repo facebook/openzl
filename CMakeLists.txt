@@ -21,6 +21,7 @@ option(OPENZL_BUILD_PARQUET_TOOLS "Build with parquet tools" OFF)
 option(OPENZL_BUILD_PYTHON_EXT "Build Python extension" ${OPENZL_BUILD_ALL})
 option(OPENZL_BUILD_PYTHON_EXT_TESTS "Build Python extension tests" ${OPENZL_BUILD_TESTS})
 option(OPENZL_ALLOW_INTROSPECTION "Allow introspection" ON)
+option(OPENZL_ENABLE_STDERR_LOGGING "Use stderr as the default log sink" ON)
 option(OPENZL_INSTALL "Install OpenZL" ON)
 option(OPENZL_CPP_INSTALL "Install C++ bindings" ${OPENZL_INSTALL})
 option(OPENZL_BUILD_PYTHON_DEMO "Build openzl_demo Python extension" ${OPENZL_BUILD_ALL})
@@ -149,6 +150,7 @@ include(OpenZLFunctions)
 
 include(openzl-deps)
 include(OpenZLConfigChecks)
+set(ZL_ENABLE_STDERR_LOGGING ${OPENZL_ENABLE_STDERR_LOGGING})
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/build-scripts/cmake/zl_config.h.cmake
     ${CMAKE_CURRENT_BINARY_DIR}/include/openzl/zl_config.h
