@@ -1,6 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "openzl/codecs/bitSplit/encode_bitSplit_kernel.h"
+#include "openzl/shared/portability.h"
 
 #include <assert.h> /* assert */
 #include <string.h>
@@ -157,6 +158,243 @@ bitSplit_fp64(void* const dstPtrs[], size_t nbElts, const void* src)
         sign[e]     = (uint8_t)((value >> 63) & 0x1);      /* bit 63 */
     }
 }
+
+#if ZL_HAS_NEON
+
+#    include <arm_neon.h>
+
+/*
+ * Extract the sign+exponent fields from eight IEEE-754 double-precision values
+ * packed in four uint64x2_t vectors.
+ *
+ * The shuffle table selects the two most significant bytes of each 64-bit
+ * element (containing the sign bit and the 11-bit exponent) using two
+ * table lookups. The extracted 16-bit sign+exponent values are returned as
+ * a uint16x8_t, ready for the subsequent bit-splitting stage.
+ */
+static inline uint16x8_t
+sign_exponent_u64x8(uint64x2_t v0, uint64x2_t v1, uint64x2_t v2, uint64x2_t v3)
+{
+    uint32x4_t vlo =
+            vuzp2q_u32(vreinterpretq_u32_u64(v0), vreinterpretq_u32_u64(v1));
+    uint32x4_t vhi =
+            vuzp2q_u32(vreinterpretq_u32_u64(v2), vreinterpretq_u32_u64(v3));
+
+    return vuzp2q_u16(vreinterpretq_u16_u32(vlo), vreinterpretq_u16_u32(vhi));
+}
+
+/*
+ * Specialized encoder for bf16 pattern:
+ * - srcEltWidth is 2 (uint16_t)
+ * - 3 streams with bitWidths {7, 8, 1}
+ * - All dstEltWidths are 1 (uint8_t)
+ *
+ * bf16 layout: [mantissa:7][exponent:8][sign:1] = 16 bits
+ */
+static inline void
+bitSplit_bf16_neon(void* const dstPtrs[], size_t nbElts, const void* src)
+{
+    uint8_t* restrict const mantissa     = (uint8_t*)dstPtrs[0];
+    uint8_t* restrict const exponent     = (uint8_t*)dstPtrs[1];
+    uint8_t* restrict const sign         = (uint8_t*)dstPtrs[2];
+    const uint16_t* restrict const src16 = (const uint16_t*)src;
+
+    size_t e = 0;
+    for (; e + 32 < nbElts; e += 32) {
+        uint16x8_t const v0 = vld1q_u16(src16 + e + 0);
+        uint16x8_t const v1 = vld1q_u16(src16 + e + 8);
+        uint16x8_t const v2 = vld1q_u16(src16 + e + 16);
+        uint16x8_t const v3 = vld1q_u16(src16 + e + 24);
+
+        uint8x16x2_t const vms0 =
+                vuzpq_u8(vreinterpretq_u8_u16(v0), vreinterpretq_u8_u16(v1));
+        uint8x16x2_t const vms1 =
+                vuzpq_u8(vreinterpretq_u8_u16(v2), vreinterpretq_u8_u16(v3));
+
+        uint8x16x2_t ve, vm, vs;
+        ve.val[0] = vaddhn_high_u16(vaddhn_u16(v0, v0), v1, v1);
+        ve.val[1] = vaddhn_high_u16(vaddhn_u16(v2, v2), v3, v3);
+        vm.val[0] = vandq_u8(vms0.val[0], vdupq_n_u8(0x7F));
+        vm.val[1] = vandq_u8(vms1.val[0], vdupq_n_u8(0x7F));
+        vs.val[0] = vshrq_n_u8(vms0.val[1], 7);
+        vs.val[1] = vshrq_n_u8(vms1.val[1], 7);
+
+        vst1q_u8_x2(exponent + e, ve);
+        vst1q_u8_x2(mantissa + e, vm);
+        vst1q_u8_x2(sign + e, vs);
+    }
+
+    ZL_UNROLL_LOOP(1)
+    for (; e < nbElts; e++) {
+        uint16_t const value = src16[e];
+        mantissa[e]          = (uint8_t)(value & 0x7F);         /* bits 0-6 */
+        exponent[e]          = (uint8_t)((value >> 7) & 0xFF);  /* bits 7-14 */
+        sign[e]              = (uint8_t)((value >> 15) & 0x01); /* bit 15 */
+    }
+}
+
+/*
+ * Specialized encoder for fp16 pattern:
+ * - srcEltWidth is 2 (uint16_t)
+ * - 3 streams with bitWidths {10, 5, 1}
+ * - dstEltWidths are {2, 1, 1} (uint16_t, uint8_t, uint8_t)
+ *
+ * fp16 layout: [mantissa:10][exponent:5][sign:1] = 16 bits
+ */
+static inline void
+bitSplit_fp16_neon(void* const dstPtrs[], size_t nbElts, const void* src)
+{
+    uint16_t* restrict const mantissa    = (uint16_t*)dstPtrs[0];
+    uint8_t* restrict const exponent     = (uint8_t*)dstPtrs[1];
+    uint8_t* restrict const sign         = (uint8_t*)dstPtrs[2];
+    const uint16_t* restrict const src16 = (const uint16_t*)src;
+
+    size_t e = 0;
+    for (; e + 32 < nbElts; e += 32) {
+        uint16x8_t const v0 = vld1q_u16(src16 + e + 0);
+        uint16x8_t const v1 = vld1q_u16(src16 + e + 8);
+        uint16x8_t const v2 = vld1q_u16(src16 + e + 16);
+        uint16x8_t const v3 = vld1q_u16(src16 + e + 24);
+
+        uint8x16_t const ves0 =
+                vuzp2q_u8(vreinterpretq_u8_u16(v0), vreinterpretq_u8_u16(v1));
+        uint8x16_t const ves1 =
+                vuzp2q_u8(vreinterpretq_u8_u16(v2), vreinterpretq_u8_u16(v3));
+
+        uint8x16x2_t ve, vs;
+        ve.val[0] = vandq_u8(vshrq_n_u8(ves0, 2), vdupq_n_u8(0x1F));
+        ve.val[1] = vandq_u8(vshrq_n_u8(ves1, 2), vdupq_n_u8(0x1F));
+        vs.val[0] = vshrq_n_u8(ves0, 7);
+        vs.val[1] = vshrq_n_u8(ves1, 7);
+
+        vst1q_u16(mantissa + e + 0, vandq_u16(v0, vdupq_n_u16(0x3FF)));
+        vst1q_u16(mantissa + e + 8, vandq_u16(v1, vdupq_n_u16(0x3FF)));
+        vst1q_u16(mantissa + e + 16, vandq_u16(v2, vdupq_n_u16(0x3FF)));
+        vst1q_u16(mantissa + e + 24, vandq_u16(v3, vdupq_n_u16(0x3FF)));
+        vst1q_u8_x2(exponent + e, ve);
+        vst1q_u8_x2(sign + e, vs);
+    }
+
+    ZL_UNROLL_LOOP(1)
+    for (; e < nbElts; e++) {
+        uint16_t const value = src16[e];
+        mantissa[e]          = (uint16_t)(value & 0x3FF);       /* bits 0-9 */
+        exponent[e]          = (uint8_t)((value >> 10) & 0x1F); /* bits 10-14 */
+        sign[e]              = (uint8_t)((value >> 15) & 0x1);  /* bit 15 */
+    }
+}
+
+/*
+ * Specialized encoder for fp32 pattern:
+ * - srcEltWidth is 4 (uint32_t)
+ * - 3 streams with bitWidths {23, 8, 1}
+ * - dstEltWidths are {4, 1, 1} (uint32_t, uint8_t, uint8_t)
+ *
+ * fp32 layout: [mantissa:23][exponent:8][sign:1] = 32 bits
+ */
+static inline void
+bitSplit_fp32_neon(void* const dstPtrs[], size_t nbElts, const void* src)
+{
+    uint32_t* restrict const mantissa    = (uint32_t*)dstPtrs[0];
+    uint8_t* restrict const exponent     = (uint8_t*)dstPtrs[1];
+    uint8_t* restrict const sign         = (uint8_t*)dstPtrs[2];
+    const uint32_t* restrict const src32 = (const uint32_t*)src;
+    uint32x4_t const mantmask            = vdupq_n_u32(0x7FFFFF);
+
+    size_t e = 0;
+    for (; e + 16 < nbElts; e += 16) {
+        uint32x4_t const v0 = vld1q_u32(src32 + e + 0);
+        uint32x4_t const v1 = vld1q_u32(src32 + e + 4);
+        uint32x4_t const v2 = vld1q_u32(src32 + e + 8);
+        uint32x4_t const v3 = vld1q_u32(src32 + e + 12);
+
+        uint16x8_t const v01 = vuzp2q_u16(
+                vreinterpretq_u16_u32(v0), vreinterpretq_u16_u32(v1));
+        uint16x8_t const v23 = vuzp2q_u16(
+                vreinterpretq_u16_u32(v2), vreinterpretq_u16_u32(v3));
+
+        uint8x16_t const ves0  = vreinterpretq_u8_u16(vshrq_n_u16(v01, 7));
+        uint8x16_t const ves1  = vreinterpretq_u8_u16(vshrq_n_u16(v23, 7));
+        uint8x16x2_t const ves = vuzpq_u8(ves0, ves1);
+
+        vst1q_u32(mantissa + e + 0, vandq_u32(v0, mantmask));
+        vst1q_u32(mantissa + e + 4, vandq_u32(v1, mantmask));
+        vst1q_u32(mantissa + e + 8, vandq_u32(v2, mantmask));
+        vst1q_u32(mantissa + e + 12, vandq_u32(v3, mantmask));
+        vst1q_u8(exponent + e, ves.val[0]);
+        vst1q_u8(sign + e, ves.val[1]);
+    }
+
+    ZL_UNROLL_LOOP(1)
+    for (; e < nbElts; e++) {
+        uint32_t const value = src32[e];
+        mantissa[e]          = (uint32_t)(value & 0x7FFFFF);    /* bits 0-22 */
+        exponent[e]          = (uint8_t)((value >> 23) & 0xFF); /* bits 23-30 */
+        sign[e]              = (uint8_t)((value >> 31) & 0x1);  /* bit 31 */
+    }
+}
+
+/*
+ * Specialized encoder for fp64 pattern:
+ * - srcEltWidth is 8 (uint64_t)
+ * - 3 streams with bitWidths {52, 11, 1}
+ * - dstEltWidths are {8, 2, 1} (uint64_t, uint16_t, uint8_t)
+ *
+ * fp64 layout: [mantissa:52][exponent:11][sign:1] = 64 bits
+ */
+static inline void
+bitSplit_fp64_neon(void* const dstPtrs[], size_t nbElts, const void* src)
+{
+    uint64_t* restrict const mantissa    = (uint64_t*)dstPtrs[0];
+    uint16_t* restrict const exponent    = (uint16_t*)dstPtrs[1];
+    uint8_t* restrict const sign         = (uint8_t*)dstPtrs[2];
+    const uint64_t* restrict const src64 = (const uint64_t*)src;
+    uint64x2_t const mantmask            = vdupq_n_u64(0xFFFFFFFFFFFFF);
+
+    size_t e = 0;
+    for (; e + 16 < nbElts; e += 16) {
+        uint64x2_t const v0 = vld1q_u64(src64 + e + 0);
+        uint64x2_t const v1 = vld1q_u64(src64 + e + 2);
+        uint64x2_t const v2 = vld1q_u64(src64 + e + 4);
+        uint64x2_t const v3 = vld1q_u64(src64 + e + 6);
+        uint64x2_t const v4 = vld1q_u64(src64 + e + 8);
+        uint64x2_t const v5 = vld1q_u64(src64 + e + 10);
+        uint64x2_t const v6 = vld1q_u64(src64 + e + 12);
+        uint64x2_t const v7 = vld1q_u64(src64 + e + 14);
+
+        uint16x8_t const ves0 = sign_exponent_u64x8(v0, v1, v2, v3);
+        uint16x8_t const ves1 = sign_exponent_u64x8(v4, v5, v6, v7);
+
+        uint16x8_t const ve0 =
+                vandq_u16(vshrq_n_u16(ves0, 4), vdupq_n_u16(0x7FF));
+        uint16x8_t const ve1 =
+                vandq_u16(vshrq_n_u16(ves1, 4), vdupq_n_u16(0x7FF));
+        uint8x16_t const vs = vuzp2q_u8(
+                vreinterpretq_u8_u16(ves0), vreinterpretq_u8_u16(ves1));
+
+        vst1q_u64(mantissa + e + 0, vandq_u64(v0, mantmask));
+        vst1q_u64(mantissa + e + 2, vandq_u64(v1, mantmask));
+        vst1q_u64(mantissa + e + 4, vandq_u64(v2, mantmask));
+        vst1q_u64(mantissa + e + 6, vandq_u64(v3, mantmask));
+        vst1q_u64(mantissa + e + 8, vandq_u64(v4, mantmask));
+        vst1q_u64(mantissa + e + 10, vandq_u64(v5, mantmask));
+        vst1q_u64(mantissa + e + 12, vandq_u64(v6, mantmask));
+        vst1q_u64(mantissa + e + 14, vandq_u64(v7, mantmask));
+        vst1q_u16(exponent + e + 0, ve0);
+        vst1q_u16(exponent + e + 8, ve1);
+        vst1q_u8(sign + e, vshrq_n_u8(vs, 7));
+    }
+
+    ZL_UNROLL_LOOP(1)
+    for (; e < nbElts; e++) {
+        uint64_t const value = src64[e];
+        mantissa[e] = (uint64_t)(value & 0xFFFFFFFFFFFFF); /* bits 0-51 */
+        exponent[e] = (uint16_t)((value >> 52) & 0x7FF);   /* bits 52-62 */
+        sign[e]     = (uint8_t)((value >> 63) & 0x1);      /* bit 63 */
+    }
+}
+
+#endif // ZL_HAS_NEON
 
 /*
  * Check if parameters match the bf16 encode pattern:
@@ -382,19 +620,35 @@ void ZL_bitSplitEncode(
 
     /* Check for specialized patterns and dispatch */
     if (isEncodeBf16Pattern(srcEltWidth, dstEltWidths, bitWidths, nbWidths)) {
+#if ZL_HAS_NEON
+        bitSplit_bf16_neon(dstPtrs, nbElts, src);
+#else
         bitSplit_bf16(dstPtrs, nbElts, src);
+#endif
         return;
     }
     if (isEncodeFp16Pattern(srcEltWidth, dstEltWidths, bitWidths, nbWidths)) {
+#if ZL_HAS_NEON
+        bitSplit_fp16_neon(dstPtrs, nbElts, src);
+#else
         bitSplit_fp16(dstPtrs, nbElts, src);
+#endif
         return;
     }
     if (isEncodeFp32Pattern(srcEltWidth, dstEltWidths, bitWidths, nbWidths)) {
+#if ZL_HAS_NEON
+        bitSplit_fp32_neon(dstPtrs, nbElts, src);
+#else
         bitSplit_fp32(dstPtrs, nbElts, src);
+#endif
         return;
     }
     if (isEncodeFp64Pattern(srcEltWidth, dstEltWidths, bitWidths, nbWidths)) {
+#if ZL_HAS_NEON
+        bitSplit_fp64_neon(dstPtrs, nbElts, src);
+#else
         bitSplit_fp64(dstPtrs, nbElts, src);
+#endif
         return;
     }
 
