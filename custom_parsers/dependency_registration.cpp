@@ -9,6 +9,7 @@
 #include "custom_parsers/csv/csv_profile.h"
 #include "custom_parsers/dependency_registration.h"
 #include "custom_parsers/parquet/parquet_graph.h"
+#include "custom_parsers/safetensors/safetensors_parser.h"
 
 namespace openzl::custom_parsers {
 
@@ -39,6 +40,18 @@ void processDependencies(Compressor& compressor, poly::string_view serialized)
                         ZL_createGraph_genericCSVCompressor(compressor.get());
                 if (csvResult == ZL_GRAPH_ILLEGAL) {
                     throw std::runtime_error("Failed to create CSV graph");
+                }
+                madeProgress = true;
+            } else if (
+                    graphName == "Safetensors Parser"
+                    || graphName == "Safetensors Segmenter") {
+                const auto result = ZL_Safetensors_registerGraph(
+                        compressor.get(), ZL_SAFETENSORS_DEFAULT_CHUNK_SIZE);
+                if (ZL_RES_isError(result)) {
+                    throw std::runtime_error(
+                            std::string("Failed to create safetensors graph: ")
+                            + ZL_Compressor_getErrorContextString_fromError(
+                                    compressor.get(), ZL_RES_error(result)));
                 }
                 madeProgress = true;
             } else {

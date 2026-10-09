@@ -1,0 +1,40 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("../../../defs.bzl", "zs_fuzzers", "zs_library", "zs_unittest")
+
+oncall("data_compression")
+
+zs_library(
+    name = "safetensors_builder",
+    headers = ["safetensors_builder.h"],
+)
+
+zs_unittest(
+    name = "test",
+    srcs = [
+        "safetensors_test.cpp",
+    ],
+    deps = [
+        "..:safetensors_parser",
+        "../..:custom_parsers",
+        "../../../cpp:openzl_cpp",
+        ":safetensors_builder",
+    ],
+)
+
+zs_fuzzers(
+    srcs = [
+        "SafetensorsFuzzer.cpp",
+    ],
+    ftest_names = [
+        ("SafetensorsTest", "RandomInputFuzzer"),
+        ("SafetensorsTest", "StructuredInputFuzzer"),
+    ],
+    deps = [
+        "..:safetensors_parser",
+        "../../../cpp:openzl_cpp",
+        "../../../tests/datagen:datagen",
+        "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
+        ":safetensors_builder",
+    ],
+)
