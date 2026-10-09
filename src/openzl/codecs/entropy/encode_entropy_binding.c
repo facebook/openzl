@@ -539,6 +539,13 @@ EI_huffman_typed(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     return ZL_returnValue(1);
 }
 
+// Chunking of 8-bit inputs, see chunkInputStream()
+#define EI_CHUNK_SIZE ((size_t)1 << 15)
+#define EI_MIN_SIZE_TO_CHUNK ((size_t)100000)
+
+#define EI_SAMPLED_CHUNK_RATIO 32
+#define EI_MIN_SAMPLED_CHUNKS 3
+
 /**
  * Splits the input into chunks to entropy compress independently.
  *
@@ -557,8 +564,8 @@ static ZL_RESULT_OF(ZL_EdgeList)
     // library to match behavior. 16-bit uses larger chunks to amortize its much
     // larger statistics table. We should look into tuning these.
     bool const is16              = ZL_Input_eltWidth(input) == 2;
-    size_t const kChunkSize      = is16 ? (size_t)1 << 18 : (size_t)1 << 15;
-    size_t const kMinSizeToChunk = is16 ? 400000 : 100000;
+    size_t const kChunkSize      = is16 ? (size_t)1 << 18 : EI_CHUNK_SIZE;
+    size_t const kMinSizeToChunk = is16 ? 400000 : EI_MIN_SIZE_TO_CHUNK;
     if (nbElts < kMinSizeToChunk) {
         ZL_EdgeList out = { .edges = sctx, .nbEdges = 1 };
         return ZL_WRAP_VALUE(out);
@@ -928,6 +935,42 @@ static ZL_Report entropyCompressChunk(
     }
 }
 
+/**
+ * Inputs large enough to be chunked are stored whole when evenly spaced chunks,
+ * one out of EI_SAMPLED_CHUNK_RATIO but at least the first, middle and last,
+ * cannot gain half of @p minGainBytes (scaled to the chunk) even at their
+ * order-0 entropy, which bounds every backend. Each chunk would then most
+ * likely be stored anyway, at the cost of one stream per chunk, and of
+ * reassembling them at decompression. The margin keeps inputs whose unsampled
+ * chunks are compressible on the chunked path.
+ */
+static bool sampledChunksAreIncompressible(
+        const ZL_Input* input,
+        size_t minGainBytes)
+{
+    const size_t size = ZL_Input_contentSize(input);
+    if (ZL_Input_eltWidth(input) != 1 || size < EI_MIN_SIZE_TO_CHUNK) {
+        return false;
+    }
+    const uint8_t* const src  = (const uint8_t*)ZL_Input_ptr(input);
+    const size_t minChunkGain = minGainBytes * EI_CHUNK_SIZE / size;
+    const size_t nbSamples =
+            ZL_MAX(size / EI_CHUNK_SIZE / EI_SAMPLED_CHUNK_RATIO,
+                   (size_t)EI_MIN_SAMPLED_CHUNKS);
+    const uint64_t lastStart = size - EI_CHUNK_SIZE;
+    for (size_t i = 0; i < nbSamples; ++i) {
+        const size_t start = (size_t)(lastStart * i / (nbSamples - 1));
+        DataStatsU8 stats;
+        DataStatsU8_init(&stats, src + start, EI_CHUNK_SIZE);
+        const double entropySize =
+                DataStatsU8_getEntropy(&stats) * (double)EI_CHUNK_SIZE / 8;
+        if (entropySize + (double)minChunkGain / 2 <= (double)EI_CHUNK_SIZE) {
+            return false;
+        }
+    }
+    return true;
+}
+
 static ZL_Report entropyDynamicGraph(
         ZL_Graph* gctx,
         ZL_Edge* sctx,
@@ -943,6 +986,9 @@ static ZL_Report entropyDynamicGraph(
     }
 
     const size_t minGainBytes = getMinGainBytes(gctx, contentSize);
+    if (sampledChunksAreIncompressible(ZL_Edge_getData(sctx), minGainBytes)) {
+        return ZL_Edge_setDestination(sctx, ZL_GRAPH_STORE);
+    }
 
     ZL_TRY_LET(ZL_EdgeList, chunks, chunkInputStream(gctx, &sctx));
     for (size_t i = 0; i < chunks.nbEdges; ++i) {

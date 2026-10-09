@@ -38,6 +38,34 @@ class InflationControlTest : public ::testing::Test {
         return ZL_validResult(report);
     }
 
+    // Helper to compress data split into 2 interleaved byte fields: the first
+    // one goes to @p firstFieldGraph, the second one to FSE.
+    size_t compressByteFields(
+            void* dst,
+            size_t dstCapacity,
+            const std::vector<uint8_t>& src,
+            ZL_GraphID firstFieldGraph)
+    {
+        ZL_Compressor* const compressor = ZL_Compressor_create();
+        const size_t fieldSizes[2]      = { 1, 1 };
+        const ZL_GraphID fieldGraphs[2] = { firstFieldGraph, ZL_GRAPH_FSE };
+        const ZL_GraphID graph = ZL_Compressor_registerSplitByStructGraph(
+                compressor, fieldSizes, fieldGraphs, 2);
+        ZL_CCtx* const cctx = ZL_CCtx_create();
+        EXPECT_FALSE(ZL_isError(ZL_CCtx_setParameter(
+                cctx, ZL_CParam_formatVersion, ZL_MAX_FORMAT_VERSION)));
+        EXPECT_FALSE(ZL_isError(ZL_CCtx_selectStartingGraphID(
+                cctx, compressor, graph, nullptr)));
+
+        const ZL_Report report = ZL_CCtx_compress(
+                cctx, dst, dstCapacity, src.data(), src.size());
+        EXPECT_FALSE(ZL_isError(report));
+
+        ZL_CCtx_free(cctx);
+        ZL_Compressor_free(compressor);
+        return ZL_validResult(report);
+    }
+
     // Helper to decompress data
     size_t
     decompress(void* dst, size_t dstCapacity, void const* src, size_t srcSize)
@@ -274,6 +302,68 @@ TEST_F(InflationControlTest, SmallRandomDataMatchesStore)
             huffmanSize);
 
     ASSERT_EQ(dSize, inputSize);
+    EXPECT_EQ(input, decompressed);
+}
+
+// Inputs large enough to be cut into chunks are stored whole when they are
+// incompressible, so that they cost exactly as much as STORE, even next to
+// other streams, like the low byte of float16 weights next to their high byte.
+TEST_F(InflationControlTest, LargeRandomFieldMatchesStore)
+{
+    const size_t inputSize = 1 << 21;
+    auto input             = generateRandomData(inputSize, 7);
+    for (size_t i = 1; i < inputSize; i += 2) {
+        input[i] &= 3;
+    }
+    std::vector<uint8_t> compressed(ZL_compressBound(inputSize));
+
+    const size_t storeSize = compressByteFields(
+            compressed.data(), compressed.size(), input, ZL_GRAPH_STORE);
+
+    for (const ZL_GraphID graph :
+         { ZL_GRAPH_FSE, ZL_GRAPH_HUFFMAN, ZL_GRAPH_ENTROPY }) {
+        const size_t cSize = compressByteFields(
+                compressed.data(), compressed.size(), input, graph);
+        EXPECT_EQ(cSize, storeSize) << "graph " << graph.gid;
+
+        std::vector<uint8_t> decompressed(inputSize);
+        ASSERT_EQ(
+                decompress(
+                        decompressed.data(),
+                        decompressed.size(),
+                        compressed.data(),
+                        cSize),
+                inputSize);
+        EXPECT_EQ(input, decompressed);
+    }
+}
+
+// A single compressible region is enough to keep large inputs compressed.
+TEST_F(InflationControlTest, LargePartlyCompressibleDataStillCompresses)
+{
+    const size_t inputSize = 1 << 20;
+    auto input             = generateRandomData(inputSize, 11);
+    for (size_t i = inputSize / 2; i < inputSize; ++i) {
+        input[i] &= 3;
+    }
+    std::vector<uint8_t> compressed(ZL_compressBound(inputSize));
+
+    const size_t cSize = compress(
+            compressed.data(),
+            compressed.size(),
+            input.data(),
+            input.size(),
+            ZL_GRAPH_FSE);
+
+    EXPECT_LT(cSize, inputSize * 0.7);
+    std::vector<uint8_t> decompressed(inputSize);
+    ASSERT_EQ(
+            decompress(
+                    decompressed.data(),
+                    decompressed.size(),
+                    compressed.data(),
+                    cSize),
+            inputSize);
     EXPECT_EQ(input, decompressed);
 }
 
