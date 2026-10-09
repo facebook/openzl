@@ -13,6 +13,8 @@
 
 #cmakedefine01 ZL_ALLOW_INTROSPECTION
 
+#cmakedefine01 ZL_ENABLE_STDERR_LOGGING
+
 #cmakedefine01 ZL_HAVE_X86_64_ASM
 
 #endif

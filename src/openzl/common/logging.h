@@ -14,6 +14,7 @@
 
 #include "openzl/common/debug_level.h"
 #include "openzl/shared/portability.h"
+#include "openzl/zl_logging.h"
 
 ZL_BEGIN_C_DECLS
 
