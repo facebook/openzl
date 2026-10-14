@@ -146,6 +146,11 @@ jobs:
       # regressing: the page renders fine, and only fails when a run starts.
       - name: Check the isolation worker is referenced under the tool's base
         run: grep -q '"/tools/playground/cross-origin-isolation-sw.js"' doc/mkdocs/build/tools/playground/index.html
+      # Without the artifact, the playground's vite.config.ts leaves the module
+      # for the browser to fetch, so the build passes and the page only fails
+      # once a run starts. Both halves of it have to be in the site.
+      - name: Check the WASM module is in the playground build
+        run: ls doc/mkdocs/build/tools/playground/assets/openzl-*.js doc/mkdocs/build/tools/playground/assets/openzl-*.wasm
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
