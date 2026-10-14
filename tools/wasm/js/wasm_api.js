@@ -1,18 +1,5 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-// Defined at module load and validated against the native table by createOpenZL().
-export const Profile = Object.freeze({
-  SERIAL: 0,
-  U8: 1,
-  I8: 2,
-  U16: 3,
-  I16: 4,
-  U32: 5,
-  I32: 6,
-  U64: 7,
-  I64: 8,
-});
-
 // The build sets -sMEMORY64=1, so size_t and pointers are 8 bytes.
 const SIZE_T_BYTES = 8;
 const PTR_BYTES = 8;
@@ -228,33 +215,38 @@ function throwWasmError(mem, code, fallback) {
   throw err;
 }
 
-function loadProfiles(mod) {
-  const profiles = {};
+function loadProfileMetadata(mod) {
+  const profiles = [];
   for (let value = 0; ; value++) {
     // wasm64 pointers are returned as bigint, Emscripten helpers use Number offsets.
     const namePtr = Number(mod._openzl_wasm_profileName(value));
     if (!namePtr) {
       return Object.freeze(profiles);
     }
-    profiles[mod.UTF8ToString(namePtr).toUpperCase()] = value;
+    const descriptionPtr = Number(mod._openzl_wasm_profileDescription(value));
+    if (!descriptionPtr) {
+      throw new Error(`OpenZL WASM profile ${value} has no description`);
+    }
+    profiles.push(Object.freeze({
+      value,
+      name: mod.UTF8ToString(namePtr),
+      description: mod.UTF8ToString(descriptionPtr),
+      isSupported: mod._openzl_wasm_profileIsSupported(value) !== 0,
+      isTrainable: mod._openzl_wasm_profileIsTrainable(value) !== 0,
+    }));
   }
 }
 
-function profileTablesMatch(left, right) {
-  const names = Object.keys(left);
-  return names.length === Object.keys(right).length && names.every((name) => left[name] === right[name]);
-}
-
-function verifyProfiles(profiles) {
-  if (Object.keys(profiles).length === 0) {
+function verifyProfiles(metadata) {
+  if (metadata.length === 0) {
     throw new Error('OpenZL WASM module exposed an empty profile table');
   }
-  if (!profileTablesMatch(Profile, profiles)) {
-    throw new Error(
-      `OpenZL WASM profile table does not match the Profile export: expected ${JSON.stringify(Profile)}, got ${JSON.stringify(profiles)}`,
-    );
+  // Callers select profiles by name, so names must be unique.
+  if (new Set(metadata.map(({name}) => name)).size !== metadata.length) {
+    throw new Error('OpenZL WASM module exposed duplicate profile names');
   }
 }
+
 async function loadOpenZLModule(options = {}) {
   let openzlModule;
   try {
@@ -346,12 +338,15 @@ export async function createOpenZL(options = {}) {
   if (!Number.isInteger(trainParetoCandidates) || trainParetoCandidates < 1) {
     throw new Error(`OpenZL WASM module exposed an invalid Pareto candidate count: ${String(trainParetoCandidates)}`);
   }
-  const profiles = loadProfiles(mod);
-  verifyProfiles(profiles);
+  const metadata = loadProfileMetadata(mod);
+  verifyProfiles(metadata);
+  // Numeric IDs index the native table and stay internal; callers use names.
+  const profiles = Object.freeze(metadata.map(({value, ...profile}) => Object.freeze(profile)));
   const mem = createMemory(mod);
   const compressorCache = new Map();
 
   return {
+    profiles,
     get maxBenchmarkIterations() {
       return maxBenchmarkIterations;
     },
@@ -360,13 +355,21 @@ export async function createOpenZL(options = {}) {
       return trainParetoCandidates;
     },
 
-    // Returns the serialized compressor for a built-in profile,
+    // Returns the serialized compressor for a profile name (e.g. 'le-u32'),
     // cached per-profile + level (copy-on-read) so repeated calls reuse it.
     // Exposed since we want users to be able to download compressors.
+    // TODO: Remove numeric IDs once the playground selects profiles by name.
     getSerializedCompressor(profile, compressionLevel) {
-      if (!Object.values(profiles).includes(profile)) {
-        throw new Error(`unknown profile ${profile}; use one of the Profile constants`);
+      const entry = metadata.find((entry) => (typeof profile === 'string' ? entry.name : entry.value) === profile);
+      if (!entry) {
+        throw new Error(
+          `unknown profile ${String(profile)}; available: ${metadata.filter(({isSupported}) => isSupported).map(({name}) => name).join(', ')}`,
+        );
       }
+      if (!entry.isSupported) {
+        throw new Error(`profile ${entry.name} is not supported by this WASM build`);
+      }
+      const value = entry.value;
       if (
         compressionLevel !== undefined &&
         (!Number.isInteger(compressionLevel) || compressionLevel < 1 || compressionLevel > 9)
@@ -374,7 +377,7 @@ export async function createOpenZL(options = {}) {
         // 1 to 9 is the typical range for OpenZL, may be updated if levels change
         throw new Error(`compressionLevel must be an integer from 1 to 9, got ${String(compressionLevel)}`);
       }
-      const cacheKey = `${profile}:${compressionLevel ?? 'default'}`;
+      const cacheKey = `${value}:${compressionLevel ?? 'default'}`;
       const cached = compressorCache.get(cacheKey);
       if (cached) {
         return cached.slice();
@@ -387,13 +390,13 @@ export async function createOpenZL(options = {}) {
         outBuf = mem.malloc(PTR_BYTES);
         outSize = mem.malloc(SIZE_T_BYTES);
         const code = mod._openzl_wasm_getSerializedCompressor(
-          profile,
+          value,
           compressionLevel ?? 0,
           mem.toWasm64(outBuf),
           mem.toWasm64(outSize),
         );
         if (code !== 0) {
-          throwWasmError(mem, code, `failed to build compressor for profile ${profile}`);
+          throwWasmError(mem, code, `failed to build compressor for profile ${entry.name}`);
         }
         // On success outBuf is non-NULL even for a zero-length result.
         bufPtr = mem.readPointer(outBuf);

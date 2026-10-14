@@ -1,19 +1,21 @@
 # OpenZL WASM Binding
 
-Compression in the browser for `serial` and fixed-width integers (`u8`, `i8`, `u16`, `i16`, `u32`, `i32`, `u64`, `i64`).
+Compression in the browser for `serial` and little-endian fixed-width integers (`u8`, `i8`, `le-u16`, `le-i16`, `le-u32`, `le-i32`, `le-u64`, `le-i64`).
 
 ## How to Use
 
 ```js
-import { createOpenZL, Profile } from './js/wasm_api.js'
+import { createOpenZL } from './js/wasm_api.js'
 const zl = await createOpenZL()
 ```
 
 TypeScript projects use the accompanying `js/wasm_api.d.ts` declarations; the
 runtime wrapper remains plain JavaScript and requires no TypeScript build step.
 
-`getSerializedCompressor(profile, compressionLevel?)` accepts an optional
-compression level from 1 to 9. Omit it to use OpenZL's current default.
+`getSerializedCompressor(profile, compressionLevel?)` takes a zli profile name
+(e.g. `'serial'`, `'le-u32'`) and an optional compression level from 1 to 9.
+Omit the level to use OpenZL's current default. `zl.profiles` lists every
+profile with its description and whether this build supports and can train it.
 
 Progress is scoped to calls made by this module instance:
 
@@ -41,7 +43,7 @@ const fileBytes = new TextEncoder().encode("hello world, hello world, ...")
 
 // This is session-scoped and version-locked — re-fetch on page load, don't persist.
 // Omit the optional compression level to use OpenZL’s default
-const serialCompressor = zl.getSerializedCompressor(Profile.SERIAL)
+const serialCompressor = zl.getSerializedCompressor('serial')
 const compressed = zl.compress(fileBytes, serialCompressor)
 const decompressed = zl.decompress(compressed)
 
@@ -55,15 +57,15 @@ The WASM layer expects **little-endian** elements of the exact width.
 // Input: JS numbers as u32
 const values = [100, 200, 300, 400, 100, 200, 300]
 
-// Encode to little-endian bytes: 4 bytes per element for U32
+// Encode to little-endian bytes: 4 bytes per element for le-u32
 const u32LEBytes = new Uint8Array(values.length * 4)
 const view = new DataView(u32LEBytes.buffer)
 values.forEach((v, i) => view.setUint32(i * 4, v, /* littleEndian */ true))
 
-// Other widths: U16 -> 2 bytes + setUint16, I32 -> setInt32, U64 -> setBigUint64, etc.
-// The Profile you pick must match the width/encoding you used.
+// Other widths: le-u16 -> 2 bytes + setUint16, le-i32 -> setInt32, le-u64 -> setBigUint64, etc.
+// The profile you pick must match the width/encoding you used.
 // Omit the optional compression level to use OpenZL’s default
-const u32Compressor = zl.getSerializedCompressor(Profile.U32)
+const u32Compressor = zl.getSerializedCompressor('le-u32')
 const compressed = zl.compress(u32LEBytes, u32Compressor)
 const decompressedBytes = zl.decompress(compressed)
 
@@ -104,7 +106,7 @@ const roundtripped = Array.from({ length: decompressedBytes.length / 4 },
 
 const data = new TextEncoder().encode("some repeated data...".repeat(1000))
 // Omit the optional compression level to use OpenZL’s default
-const compressor = zl.getSerializedCompressor(Profile.SERIAL)
+const compressor = zl.getSerializedCompressor('serial')
 
 console.log(`maximum benchmark iterations: ${zl.maxBenchmarkIterations}`)
 const stats = zl.benchmark(data, compressor, 10)
@@ -118,8 +120,9 @@ console.log(`decompress: ${stats.decompressMBps.toFixed(1)} MB/s`)
 ```
 ## Implementation details
 
-* **Profiles:** The JavaScript `Profile` object is available when the module
-  loads. `createOpenZL()` validates it against the C++ `kProfiles[]` table.
+* **Profiles:** `createOpenZL()` reads the profile list from the C++ table, so
+  profiles added there need no JavaScript change. The numeric IDs are internal;
+  callers select profiles by name.
 
 * **Buffer ownership:** C++ manages OpenZL handles such as `ZL_Compressor` and
   `ZL_CCtx` with `unique_ptr` deleters that call the corresponding `*_free`

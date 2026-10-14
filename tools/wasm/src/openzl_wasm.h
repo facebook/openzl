@@ -42,29 +42,54 @@ void openzl_wasm_free(void* buf);
 const char* openzl_wasm_errorString(ZL_ErrorCode code);
 
 /**
- * Compressor profiles that the current wasm build offers.
+ * Profile catalog, including profiles not supported by the current WASM build.
  *
- * These values key the profile table in openzl_wasm.cpp, and is mirrored in
- * js/wasm_api.js.
+ * These values index kProfiles in openzl_wasm.cpp, whose names match zli's and
+ * key openzl::profiles::getProfileDescription().
  */
 typedef enum {
-    OPENZL_WASM_PROFILE_SERIAL = 0,
-    OPENZL_WASM_PROFILE_U8     = 1,
-    OPENZL_WASM_PROFILE_I8     = 2,
-    OPENZL_WASM_PROFILE_U16    = 3,
-    OPENZL_WASM_PROFILE_I16    = 4,
-    OPENZL_WASM_PROFILE_U32    = 5,
-    OPENZL_WASM_PROFILE_I32    = 6,
-    OPENZL_WASM_PROFILE_U64    = 7,
-    OPENZL_WASM_PROFILE_I64    = 8,
+    OPENZL_WASM_PROFILE_SERIAL                 = 0,
+    OPENZL_WASM_PROFILE_U8                     = 1,
+    OPENZL_WASM_PROFILE_I8                     = 2,
+    OPENZL_WASM_PROFILE_LE_U16                 = 3,
+    OPENZL_WASM_PROFILE_LE_I16                 = 4,
+    OPENZL_WASM_PROFILE_LE_U32                 = 5,
+    OPENZL_WASM_PROFILE_LE_I32                 = 6,
+    OPENZL_WASM_PROFILE_LE_U64                 = 7,
+    OPENZL_WASM_PROFILE_LE_I64                 = 8,
+    OPENZL_WASM_PROFILE_BE_I16                 = 9,
+    OPENZL_WASM_PROFILE_BE_I32                 = 10,
+    OPENZL_WASM_PROFILE_BE_I64                 = 11,
+    OPENZL_WASM_PROFILE_BE_U16                 = 12,
+    OPENZL_WASM_PROFILE_BE_U32                 = 13,
+    OPENZL_WASM_PROFILE_BE_U64                 = 14,
+    OPENZL_WASM_PROFILE_CSV                    = 15,
+    OPENZL_WASM_PROFILE_LZ                     = 16,
+    OPENZL_WASM_PROFILE_NUMERIC_ML_SELECTOR_64 = 17,
+    OPENZL_WASM_PROFILE_PARQUET                = 18,
+    OPENZL_WASM_PROFILE_PYTORCH                = 19,
+    OPENZL_WASM_PROFILE_SAO                    = 20,
+    OPENZL_WASM_PROFILE_SDDL                   = 21,
+    OPENZL_WASM_PROFILE_SDDL2                  = 22,
+    OPENZL_WASM_PROFILE_ZSTD                   = 23,
     OPENZL_WASM_PROFILE_COUNT
 } openzl_wasm_Profile;
 
 /**
- * @returns The name of @p profile, e.g. "u32", or NULL if it is out of range.
- * Exposed so language bindings can derive their profile tables from this.
+ * @returns The name of @p profile, e.g. "le-u32", or NULL if it is out of
+ * range. Exposed so language bindings can derive their profile tables from
+ * this.
  */
 const char* openzl_wasm_profileName(openzl_wasm_Profile profile);
+
+/** Returns profile help text, or NULL if it is out of range or undescribed. */
+const char* openzl_wasm_profileDescription(openzl_wasm_Profile profile);
+
+/** Returns 1 if the current WASM build supports the profile, or 0 otherwise. */
+int openzl_wasm_profileIsSupported(openzl_wasm_Profile profile);
+
+/** Returns 1 if the profile supports training, or 0 otherwise. */
+int openzl_wasm_profileIsTrainable(openzl_wasm_Profile profile);
 
 /**
  * @returns The maximum iteration count accepted by the benchmark functions.

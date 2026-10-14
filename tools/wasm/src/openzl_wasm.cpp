@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <memory>
 #include <new>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -17,6 +18,7 @@
 #include "tools/training/utils/utils.h"
 #include "tools/wasm/src/openzl_wasm.h"
 
+#include "openzl/codecs/zl_illegal.h"
 #include "openzl/cpp/CParam.hpp"
 #include "openzl/cpp/Compressor.hpp"
 #include "openzl/cpp/Exception.hpp"
@@ -192,15 +194,78 @@ BufferPtr allocBuffer(size_t size)
 }
 
 struct Profile {
-    const char* name;
-    size_t eltByteWidth;
+    const char* name; // keys openzl::profiles::getProfileDescription().
+    bool isTrainable;
+    bool isWasmSupported;
 };
 
-// Indexed by openzl_wasm_Profile ordering must match
+// Indexed by openzl_wasm_Profile, ordering must match
 constexpr Profile kProfiles[OPENZL_WASM_PROFILE_COUNT] = {
-    { "serial", 0 }, { "u8", 1 },  { "i8", 1 },  { "u16", 2 }, { "i16", 2 },
-    { "u32", 4 },    { "i32", 4 }, { "u64", 8 }, { "i64", 8 },
+    { "serial", true, true },   { "u8", true, true },
+    { "i8", true, true },       { "le-u16", true, true },
+    { "le-i16", true, true },   { "le-u32", true, true },
+    { "le-i32", true, true },   { "le-u64", true, true },
+    { "le-i64", true, true },   { "be-i16", true, false },
+    { "be-i32", true, false },  { "be-i64", true, false },
+    { "be-u16", true, false },  { "be-u32", true, false },
+    { "be-u64", true, false },  { "csv", true, false },
+    { "lz", true, false },      { "numeric-ml-selector-64", true, false },
+    { "parquet", true, false }, { "pytorch", false, false },
+    { "sao", true, false },     { "sddl", true, false },
+    { "sddl2", true, false },   { "zstd", true, false },
 };
+
+ZL_GraphID buildLEIntGraph(ZL_Compressor* comp, size_t eltByteWidth)
+{
+    return openzl::profiles::buildIntGraph(
+            comp,
+            eltByteWidth,
+            ZL_Node_interpretAsLE(eltByteWidth * 8),
+            ZL_DEFAULT_SEGMENTER_CHUNK_BYTE_SIZE);
+}
+
+// Profiles built here must be marked isWasmSupported in kProfiles, and vice
+// vers. WasmBindingTest.ProfileEnumMatchesTable checks they agree.
+ZL_GraphID buildProfileGraph(ZL_Compressor* comp, openzl_wasm_Profile profile)
+{
+    switch (profile) {
+        case OPENZL_WASM_PROFILE_SERIAL:
+            return openzl::profiles::buildSerialGraph(
+                    comp, ZL_DEFAULT_SEGMENTER_CHUNK_BYTE_SIZE);
+        case OPENZL_WASM_PROFILE_U8:
+        case OPENZL_WASM_PROFILE_I8:
+            return buildLEIntGraph(comp, 1);
+        case OPENZL_WASM_PROFILE_LE_U16:
+        case OPENZL_WASM_PROFILE_LE_I16:
+            return buildLEIntGraph(comp, 2);
+        case OPENZL_WASM_PROFILE_LE_U32:
+        case OPENZL_WASM_PROFILE_LE_I32:
+            return buildLEIntGraph(comp, 4);
+        case OPENZL_WASM_PROFILE_LE_U64:
+        case OPENZL_WASM_PROFILE_LE_I64:
+            return buildLEIntGraph(comp, 8);
+        // TODO: Add support for additional profiles, including profiles that
+        // use custom parser graphs.
+        case OPENZL_WASM_PROFILE_BE_I16:
+        case OPENZL_WASM_PROFILE_BE_I32:
+        case OPENZL_WASM_PROFILE_BE_I64:
+        case OPENZL_WASM_PROFILE_BE_U16:
+        case OPENZL_WASM_PROFILE_BE_U32:
+        case OPENZL_WASM_PROFILE_BE_U64:
+        case OPENZL_WASM_PROFILE_CSV:
+        case OPENZL_WASM_PROFILE_LZ:
+        case OPENZL_WASM_PROFILE_NUMERIC_ML_SELECTOR_64:
+        case OPENZL_WASM_PROFILE_PARQUET:
+        case OPENZL_WASM_PROFILE_PYTORCH:
+        case OPENZL_WASM_PROFILE_SAO:
+        case OPENZL_WASM_PROFILE_SDDL:
+        case OPENZL_WASM_PROFILE_SDDL2:
+        case OPENZL_WASM_PROFILE_ZSTD:
+        case OPENZL_WASM_PROFILE_COUNT:
+            break;
+    }
+    return ZL_GRAPH_ILLEGAL;
+}
 
 ZL_ErrorCode buildProfileCompressor(
         openzl_wasm_Profile profile,
@@ -212,7 +277,6 @@ ZL_ErrorCode buildProfileCompressor(
     if (profile < 0 || profile >= OPENZL_WASM_PROFILE_COUNT) {
         return ZL_ErrorCode_invalidName;
     }
-    const Profile& profileDef = kProfiles[profile];
 
     CompressorPtr comp{ ZL_Compressor_create() };
     if (!comp) {
@@ -226,16 +290,7 @@ ZL_ErrorCode buildProfileCompressor(
         return ZL_errorCode(r);
     }
 
-    // TODO: Add support for additional profiles, including profiles that use
-    // custom parser graphs.
-    ZL_GraphID graph = profile == OPENZL_WASM_PROFILE_SERIAL
-            ? openzl::profiles::buildSerialGraph(
-                      comp.get(), ZL_DEFAULT_SEGMENTER_CHUNK_BYTE_SIZE)
-            : openzl::profiles::buildIntGraph(
-                      comp.get(),
-                      profileDef.eltByteWidth,
-                      ZL_Node_interpretAsLE(profileDef.eltByteWidth * 8),
-                      ZL_DEFAULT_SEGMENTER_CHUNK_BYTE_SIZE);
+    ZL_GraphID graph = buildProfileGraph(comp.get(), profile);
     if (!ZL_GraphID_isValid(graph)) {
         return ZL_ErrorCode_graph_invalid;
     }
@@ -507,6 +562,38 @@ const char* openzl_wasm_profileName(openzl_wasm_Profile profile)
         return nullptr;
     }
     return kProfiles[profile].name;
+}
+
+EMSCRIPTEN_KEEPALIVE
+const char* openzl_wasm_profileDescription(openzl_wasm_Profile profile)
+{
+    if (profile < 0 || profile >= OPENZL_WASM_PROFILE_COUNT) {
+        return nullptr;
+    }
+    const Profile& profileDef = kProfiles[profile];
+    try {
+        return openzl::profiles::getProfileDescription(profileDef.name).c_str();
+    } catch (const std::out_of_range&) {
+        return nullptr;
+    }
+}
+
+EMSCRIPTEN_KEEPALIVE
+int openzl_wasm_profileIsSupported(openzl_wasm_Profile profile)
+{
+    if (profile < 0 || profile >= OPENZL_WASM_PROFILE_COUNT) {
+        return 0;
+    }
+    return kProfiles[profile].isWasmSupported;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int openzl_wasm_profileIsTrainable(openzl_wasm_Profile profile)
+{
+    if (profile < 0 || profile >= OPENZL_WASM_PROFILE_COUNT) {
+        return 0;
+    }
+    return kProfiles[profile].isTrainable;
 }
 
 EMSCRIPTEN_KEEPALIVE

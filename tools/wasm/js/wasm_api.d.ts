@@ -1,19 +1,17 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-/** Defined when the module loads and validated when createOpenZL() resolves. */
-export declare const Profile: {
-  readonly SERIAL: 0;
-  readonly U8: 1;
-  readonly I8: 2;
-  readonly U16: 3;
-  readonly I16: 4;
-  readonly U32: 5;
-  readonly I32: 6;
-  readonly U64: 7;
-  readonly I64: 8;
-};
+/** @deprecated Numeric profile IDs; select profiles by name instead. */
+export type ProfileValue = number;
 
-export type ProfileValue = (typeof Profile)[keyof typeof Profile];
+export interface ProfileMetadata {
+  /** The zli profile name, e.g. 'le-u32'; pass it to getSerializedCompressor. */
+  readonly name: string;
+  readonly description: string;
+  /** Whether the loaded WASM build can build this profile's compressor. */
+  readonly isSupported: boolean;
+  /** Whether the profile supports training, independent of WASM support. */
+  readonly isTrainable: boolean;
+}
 
 /**
  * Browser benchmark result. Speed reflects the WebAssembly
@@ -62,11 +60,15 @@ export interface TrainOptions {
 }
 
 export interface OpenZL {
+  readonly profiles: readonly ProfileMetadata[];
   readonly maxBenchmarkIterations: number;
   readonly trainParetoCandidates: number;
 
-  /** Returns a serialized compressor at the requested level, or uses OpenZL's current default when omitted. */
-  getSerializedCompressor(profile: ProfileValue, compressionLevel?: number): Uint8Array;
+  /**
+   * Returns a serialized compressor for a profile name (e.g. 'serial'), at
+   * the requested level, or OpenZL's current default level when omitted.
+   */
+  getSerializedCompressor(profile: string | ProfileValue, compressionLevel?: number): Uint8Array;
 
   /**
    * Train runs synchronously and may run for several minutes. Browser callers

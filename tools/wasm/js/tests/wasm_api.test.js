@@ -4,27 +4,12 @@ import assert from 'node:assert/strict';
 import {existsSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 
-import {createOpenZL, Profile} from '../wasm_api.js';
+import {createOpenZL} from '../wasm_api.js';
 
 const wasmUrl = new URL('../openzl.wasm', import.meta.url);
 const jsUrl = new URL('../openzl.js', import.meta.url);
 const hasArtifact = existsSync(fileURLToPath(wasmUrl)) && existsSync(fileURLToPath(jsUrl));
 const TEST_TRAIN_MAX_TIME_SECS = 5; // Mirrors native C++ test time
-
-describe('Profile', () => {
-  it('is defined and frozen when the module loads', () => {
-    assert.ok(Object.isFrozen(Profile));
-    assert.equal(Profile.SERIAL, 0);
-    assert.equal(Profile.U8, 1);
-    assert.equal(Profile.I8, 2);
-    assert.equal(Profile.U16, 3);
-    assert.equal(Profile.I16, 4);
-    assert.equal(Profile.U32, 5);
-    assert.equal(Profile.I32, 6);
-    assert.equal(Profile.U64, 7);
-    assert.equal(Profile.I64, 8);
-  });
-});
 
 describe('wasm_api', () => {
   let zl;
@@ -47,50 +32,104 @@ describe('wasm_api', () => {
 
   it('accepts repeated initialization with the same profile table', async () => {
     const second = await createOpenZL();
-    const compressor = second.getSerializedCompressor(Profile.SERIAL);
+    const compressor = second.getSerializedCompressor('serial');
     assert.ok(compressor.length > 0);
   });
 
+  it('rejects a WASM table with duplicate profile names', async () => {
+    await assert.rejects(createOpenZL({
+      onRuntimeInitialized() {
+        const profileName = this._openzl_wasm_profileName;
+        this._openzl_wasm_profileName = (value) => profileName(value === 1 ? 0 : value);
+      },
+    }), /duplicate profile names/);
+  });
+
+  it('marks the profiles this build supports as trainable', () => {
+    const supported = zl.profiles.filter(({isSupported}) => isSupported);
+    assert.deepEqual(supported.map(({name}) => name).sort(), [
+      'i8',
+      'le-i16',
+      'le-i32',
+      'le-i64',
+      'le-u16',
+      'le-u32',
+      'le-u64',
+      'serial',
+      'u8',
+    ]);
+    for (const profile of supported) {
+      assert.equal(profile.isTrainable, true, profile.name);
+    }
+  });
+
   it('getSerializedCompressor returns non-empty bytes and is cached copy-on-read', () => {
-    const c1 = zl.getSerializedCompressor(Profile.SERIAL);
+    const c1 = zl.getSerializedCompressor('serial');
     assert.ok(c1 instanceof Uint8Array);
     assert.ok(c1.length > 0);
     const orig = c1.slice();
     c1[0] ^= 0xff;
-    const c2 = zl.getSerializedCompressor(Profile.SERIAL);
+    const c2 = zl.getSerializedCompressor('serial');
     assert.deepEqual(c2, orig);
     assert.notEqual(c1[0], c2[0]);
   });
 
   it('includes the requested compression level in the serialized compressor', () => {
-    const levelOne = zl.getSerializedCompressor(Profile.SERIAL, 1);
-    const levelNine = zl.getSerializedCompressor(Profile.SERIAL, 9);
+    const levelOne = zl.getSerializedCompressor('serial', 1);
+    const levelNine = zl.getSerializedCompressor('serial', 9);
     assert.notDeepEqual(levelOne, levelNine);
   });
 
-  it('all profiles produce a compressor', () => {
-    for (const p of Object.values(Profile)) {
-      const c = zl.getSerializedCompressor(p);
-      assert.ok(c.length > 0, `profile ${p} should produce compressor`);
+  it('all supported profiles produce a compressor by name', () => {
+    for (const {name} of zl.profiles.filter(({isSupported}) => isSupported)) {
+      const c = zl.getSerializedCompressor(name);
+      assert.ok(c.length > 0, `profile ${name} should produce compressor`);
     }
+  });
+
+  it('lists unsupported profiles and rejects compressor creation', () => {
+    const unsupported = zl.profiles.filter(({isSupported}) => !isSupported);
+    assert.ok(unsupported.length > 0);
+    for (const profile of unsupported) {
+      assert.throws(() => zl.getSerializedCompressor(profile.name), /not supported by this WASM build/);
+    }
+  });
+
+  it('exposes immutable profile metadata on the existing instance', () => {
+    const profiles = zl.profiles;
+    assert.ok(Object.isFrozen(profiles));
+    for (const profile of profiles) {
+      assert.ok(Object.isFrozen(profile));
+      assert.ok(profile.description.length > 0);
+      if (profile.isSupported) {
+        assert.ok(zl.getSerializedCompressor(profile.name).length > 0);
+      }
+    }
+    assert.deepEqual(profiles[0], {
+      name: 'serial',
+      description: 'Serial data (aka raw bytes)',
+      isSupported: true,
+      isTrainable: true,
+    });
   });
 
   it('rejects unknown profile', () => {
     assert.throws(() => zl.getSerializedCompressor(99), /unknown profile/);
     assert.throws(() => zl.getSerializedCompressor(-1), /unknown profile/);
+    assert.throws(() => zl.getSerializedCompressor('not-a-profile'), /unknown profile not-a-profile; available: serial, /);
   });
 
   it('validates compression levels', () => {
-    assert.doesNotThrow(() => zl.getSerializedCompressor(Profile.SERIAL));
+    assert.doesNotThrow(() => zl.getSerializedCompressor('serial'));
     for (const level of [-1, 0, 20, 1.5, NaN, null]) {
-      assert.throws(() => zl.getSerializedCompressor(Profile.SERIAL, level), /compressionLevel/);
+      assert.throws(() => zl.getSerializedCompressor('serial', level), /compressionLevel/);
     }
   });
 
   it('roundtrips serial data', () => {
     const src = new Uint8Array(4096);
     for (let i = 0; i < src.length; i++) src[i] = 97 + (i % 10);
-    const comp = zl.getSerializedCompressor(Profile.SERIAL);
+    const comp = zl.getSerializedCompressor('serial');
     const frame = zl.compress(src, comp);
     assert.ok(frame.length > 0);
     const out = zl.decompress(frame);
@@ -102,21 +141,21 @@ describe('wasm_api', () => {
     const src = new Uint8Array(count * 4);
     const view = new DataView(src.buffer);
     for (let i = 0; i < count; i++) view.setUint32(i * 4, i * 12345, true);
-    const comp = zl.getSerializedCompressor(Profile.U32);
+    const comp = zl.getSerializedCompressor('le-u32');
     const frame = zl.compress(src, comp);
     const out = zl.decompress(frame);
     assert.deepEqual(out, src);
   });
 
   it('roundtrips empty input', () => {
-    const comp = zl.getSerializedCompressor(Profile.SERIAL);
+    const comp = zl.getSerializedCompressor('serial');
     const frame = zl.compress(new Uint8Array(0), comp);
     const out = zl.decompress(frame);
     assert.equal(out.length, 0);
   });
 
   it('validates Uint8Array inputs', () => {
-    const comp = zl.getSerializedCompressor(Profile.SERIAL);
+    const comp = zl.getSerializedCompressor('serial');
     assert.throws(() => zl.train('not bytes', comp), /expects Uint8Array/);
     assert.throws(() => zl.train(new Uint8Array(10), 'not comp'), /expects.*compressor/);
     assert.throws(() => zl.compress('not bytes', comp), /expects Uint8Array/);
@@ -126,7 +165,7 @@ describe('wasm_api', () => {
   });
 
   it('validates training inputs', () => {
-    const comp = zl.getSerializedCompressor(Profile.SERIAL);
+    const comp = zl.getSerializedCompressor('serial');
     assert.throws(() => zl.train(new Uint8Array(0), comp), /non-empty data/);
     assert.throws(() => zl.train(new Uint8Array(10), new Uint8Array(0)), /non-empty serialized compressor/);
 
@@ -166,7 +205,7 @@ describe('wasm_api', () => {
     trainProgressEvents.length = 0;
     const src = new Uint8Array(1024);
     for (let i = 0; i < src.length; i++) src[i] = 97 + (i % 10);
-    const base = zl.getSerializedCompressor(Profile.SERIAL);
+    const base = zl.getSerializedCompressor('serial');
     // Without paretoFrontier the trainer returns exactly one compressor.
     const [trained] = zl.train(src, base, {
       maxTimeSecs: TEST_TRAIN_MAX_TIME_SECS,
@@ -193,7 +232,7 @@ describe('wasm_api', () => {
   it('continues training if the progress callback throws', () => {
     const src = new Uint8Array(1024);
     for (let i = 0; i < src.length; i++) src[i] = 97 + (i % 10);
-    const base = zl.getSerializedCompressor(Profile.SERIAL);
+    const base = zl.getSerializedCompressor('serial');
     const stderrMessages = [];
     const originalConsoleError = console.error;
     console.error = (message) => stderrMessages.push(message);
@@ -224,7 +263,7 @@ describe('wasm_api', () => {
   it('paretoFrontier returns a frontier of usable compressors', () => {
     const src = new Uint8Array(1024);
     for (let i = 0; i < src.length; i++) src[i] = 97 + (i % 10);
-    const base = zl.getSerializedCompressor(Profile.SERIAL);
+    const base = zl.getSerializedCompressor('serial');
 
     const frontier = zl.train(src, base, {
       maxTimeSecs: TEST_TRAIN_MAX_TIME_SECS,
@@ -249,7 +288,7 @@ describe('wasm_api', () => {
   it('benchmark compresses and decompresses data and returns expected metrics', () => {
     const src = new Uint8Array(2048);
     for (let i = 0; i < src.length; i++) src[i] = i & 0xff;
-    const comp = zl.getSerializedCompressor(Profile.SERIAL);
+    const comp = zl.getSerializedCompressor('serial');
     benchmarkProgressEvents.length = 0;
     const r = zl.benchmark(src, comp, 2);
     assert.deepEqual(

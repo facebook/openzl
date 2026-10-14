@@ -3,10 +3,17 @@
 #pragma once
 
 #include <cstddef>
+#include <string>
 
 #include "openzl/zl_opaque_types.h"
 
 namespace openzl::profiles {
+
+/**
+ * @returns The help text for the profile @p name.
+ * @throws std::out_of_range if @p name is not a known profile.
+ */
+const std::string& getProfileDescription(const std::string& name);
 
 /**
  * Builds an graph that uses LZ by default and wraps it in a serial

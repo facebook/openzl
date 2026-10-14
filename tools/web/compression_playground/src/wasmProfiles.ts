@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-import type {Profile, ProfileValue} from '../../../wasm/js/wasm_api.js';
+import type {ProfileValue} from '../../../wasm/js/wasm_api.js';
 import {OPENZL_PROFILE_DESCRIPTIONS, type OpenZlProfile} from './compressors.ts';
 
 /**
@@ -8,23 +8,18 @@ import {OPENZL_PROFILE_DESCRIPTIONS, type OpenZlProfile} from './compressors.ts'
  * (`kProfiles` in openzl_wasm.cpp). The other fifteen map to null and cannot
  * run here, for reasons that differ -- see `REASON_FOR` below.
  *
- * `satisfies` ties each value to the binding's own enum, so renumbering
- * `kProfiles` breaks the build rather than benchmarking the wrong type. The
- * reference stays type-only on purpose: importing `Profile` as a value would
- * make Vite resolve its dynamic `import('./openzl.js')`, a build artifact.
- *
- * The binding assumes little-endian, hence `le-u16` collapsing to `U16`.
+ * Values are the binding's numeric profile IDs (`openzl_wasm_Profile`).
  */
 export const WASM_PROFILE: Record<OpenZlProfile, ProfileValue | null> = {
-  serial: 0 satisfies (typeof Profile)['SERIAL'],
-  u8: 1 satisfies (typeof Profile)['U8'],
-  i8: 2 satisfies (typeof Profile)['I8'],
-  'le-u16': 3 satisfies (typeof Profile)['U16'],
-  'le-i16': 4 satisfies (typeof Profile)['I16'],
-  'le-u32': 5 satisfies (typeof Profile)['U32'],
-  'le-i32': 6 satisfies (typeof Profile)['I32'],
-  'le-u64': 7 satisfies (typeof Profile)['U64'],
-  'le-i64': 8 satisfies (typeof Profile)['I64'],
+  serial: 0,
+  u8: 1,
+  i8: 2,
+  'le-u16': 3,
+  'le-i16': 4,
+  'le-u32': 5,
+  'le-i32': 6,
+  'le-u64': 7,
+  'le-i64': 8,
   'be-i16': null,
   'be-i32': null,
   'be-i64': null,

@@ -32,8 +32,12 @@ zs_unittest(
     name = "test_wasm_binding",
     srcs = [
         "tests/test_wasm_binding.cpp",
+        "tests/test_wasm_profiles.cpp",
     ],
     deps = [
+        "..:arg",
+        "../../cli/utils:utils",
+        "../../cpp:openzl_cpp",
         ":wasm",
     ],
 )

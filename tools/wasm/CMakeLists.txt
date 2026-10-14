@@ -49,6 +49,11 @@ if(NOT EMSCRIPTEN)
         openzl
         GTest::gtest_main
     )
+    if(OPENZL_BUILD_CLI)
+      # Enable additional test to verify if wasm and zli are out of sync only when cli is also enabled
+      target_sources(test_wasm_binding PRIVATE tests/test_wasm_profiles.cpp)
+      target_link_libraries(test_wasm_binding PRIVATE utils)
+    endif()
     apply_openzl_compile_options_to_target(test_wasm_binding)
     gtest_discover_tests(test_wasm_binding)
   endif()

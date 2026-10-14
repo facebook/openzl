@@ -26,6 +26,7 @@ target_include_directories(utils
 
 target_link_libraries(utils
     PUBLIC
+    arg
     cli_util
     openzl
     openzl_profile_graphs
