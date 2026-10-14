@@ -69,6 +69,7 @@ function OpenZlOptions({row, position, onPatch}: OpenZlRowProps) {
   // A backstop for rows that arrive from elsewhere: the picker already refuses
   // pytorch, which the browser cannot run at all.
   const canTrain = isTrainableProfile(row.profile);
+  const isTraining = row.trainRequested && canTrain;
   return (
     <Box borderRadius="6px" overflow="hidden">
       <chakra.button
@@ -102,24 +103,45 @@ function OpenZlOptions({row, position, onPatch}: OpenZlRowProps) {
               <Text color="pg.faint" fontSize="11px" fontWeight="semibold" m={0}>
                 LEVEL
               </Text>
-              <NativeSelect.Root width="120px" flexShrink={0}>
-                <NativeSelect.Field
-                  aria-label={`OpenZL level for row ${position}`}
-                  height="32px"
-                  fontSize="13px"
-                  bg="pg.surface"
-                  borderColor="pg.border"
-                  borderRadius="6px"
-                  value={row.level}
-                  onChange={(event) => onPatch(row.id, {level: Number(event.target.value)})}>
-                  {OPENZL_LEVELS.map((level) => (
-                    <option key={level} value={level}>
-                      {level === OPENZL_DEFAULT_LEVEL ? `${level} (default)` : level}
-                    </option>
-                  ))}
-                </NativeSelect.Field>
-                <NativeSelect.Indicator />
-              </NativeSelect.Root>
+              <Tooltip.Root openDelay={200} disabled={!isTraining} positioning={{placement: 'top', gutter: 8}}>
+                <Tooltip.Trigger asChild>
+                  <NativeSelect.Root
+                    role="group"
+                    aria-label={`OpenZL level for row ${position}`}
+                    tabIndex={isTraining ? 0 : -1}
+                    width="120px"
+                    flexShrink={0}
+                    disabled={isTraining}>
+                    <NativeSelect.Field
+                      aria-label={`OpenZL level for row ${position}`}
+                      height="32px"
+                      fontSize="13px"
+                      bg="pg.surface"
+                      borderColor="pg.border"
+                      borderRadius="6px"
+                      _disabled={{pointerEvents: 'none'}}
+                      value={row.level}
+                      onChange={(event) => onPatch(row.id, {level: Number(event.target.value)})}>
+                      {OPENZL_LEVELS.map((level) => (
+                        <option key={level} value={level}>
+                          {level === OPENZL_DEFAULT_LEVEL ? `${level} (default)` : level}
+                        </option>
+                      ))}
+                    </NativeSelect.Field>
+                    <NativeSelect.Indicator />
+                  </NativeSelect.Root>
+                </Tooltip.Trigger>
+                <Portal>
+                  <Tooltip.Positioner>
+                    <Tooltip.Content>
+                      <Tooltip.Arrow>
+                        <Tooltip.ArrowTip />
+                      </Tooltip.Arrow>
+                      Compression level has no effect while training is on.
+                    </Tooltip.Content>
+                  </Tooltip.Positioner>
+                </Portal>
+              </Tooltip.Root>
             </Box>
 
             <Box display="flex" alignItems="center" justifyContent="space-between" gap="8px">

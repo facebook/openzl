@@ -4,6 +4,7 @@
 import '@testing-library/jest-dom/vitest';
 import {describe, it, expect, afterEach} from 'vitest';
 import {fireEvent, render, screen, cleanup, within, waitFor, type RenderOptions} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import {ChakraProvider} from '@chakra-ui/react';
 import React, {useState} from 'react';
 import ConfigureRunCard from '../src/components/ConfigureRunCard.tsx';
@@ -401,6 +402,35 @@ describe('ConfigureRunCard', () => {
     expect(screen.getByRole('combobox', {name: 'OpenZL level for row 1'})).toBeInTheDocument();
   });
 
+  it('only allows changing the OpenZL level while training is off', async () => {
+    const user = userEvent.setup();
+    renderConfigureRunCard();
+    const train = screen.getByRole('checkbox', {name: 'TRAIN'});
+    const level = screen.getByRole('combobox', {name: 'OpenZL level for row 1'});
+
+    // Unable to change level if training is on
+    expect(train).toBeChecked();
+    expect(level).toBeDisabled();
+    expect(levelsTrigger(2)).toBeEnabled();
+    expect(levelsTrigger(3)).toBeEnabled();
+    await user.selectOptions(level, '3');
+    expect(level).toHaveValue('6');
+
+    // able to update level is training is off
+    fireEvent.click(train);
+    await waitFor(() => expect(level).toBeEnabled());
+    await user.selectOptions(level, '3');
+    expect(level).toHaveValue('3');
+
+    // toggling on training again does not cause any issues
+    fireEvent.click(train);
+    await waitFor(() => expect(level).toBeDisabled());
+    await user.selectOptions(level, '9');
+    expect(level).toHaveValue('3');
+    expect(levelsTrigger(2)).toBeEnabled();
+    expect(levelsTrigger(3)).toBeEnabled();
+  });
+
   it('disables the candidate count while training is off', async () => {
     renderConfigureRunCard();
     const train = screen.getByRole('checkbox', {name: 'TRAIN'});
@@ -436,6 +466,7 @@ describe('ConfigureRunCard', () => {
     const train = screen.getByRole('checkbox', {name: 'TRAIN'});
     expect(train).toBeDisabled();
     expect(train.closest('label')).toHaveAttribute('data-state', 'unchecked');
+    expect(screen.getByRole('combobox', {name: 'OpenZL level for row 1'})).toBeEnabled();
     expect(screen.getByText('Training is not supported for the pytorch profile')).toBeInTheDocument();
   });
 
