@@ -30,6 +30,7 @@ apply_openzl_compile_options_to_target(pytorch_model_parser)
 # Add subdirectories
 add_subdirectory(csv)
 add_subdirectory(parquet)
+add_subdirectory(safetensors)
 add_subdirectory(sddl)
 add_subdirectory(shared_components)
 
@@ -45,11 +46,13 @@ target_link_libraries(custom_parsers
     openzl_cpp
     csv_parser
     parquet_graph
+    safetensors_parser
     shared_components
 )
 add_dependencies(custom_parsers openzl openzl_cpp)
 apply_openzl_compile_options_to_target(custom_parsers
     csv_parser
     parquet_graph
+    safetensors_parser
     shared_components
 )
