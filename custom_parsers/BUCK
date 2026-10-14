@@ -16,7 +16,9 @@ zs_library(
         "..:zstronglib",
         "../cpp:openzl_cpp",
         "csv:csv_parser",
+        "gguf:gguf_parser",
         "parquet:parquet_graph",
+        "safetensors:safetensors_parser",
         "shared_components:clustering",
     ],
 )
