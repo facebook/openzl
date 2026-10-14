@@ -1,6 +1,14 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-import type {JobFailure, JobResult, RunConfig, RunState, WorkerMessage, WorkerRequest} from './benchmarkTypes.ts';
+import type {
+  Candidate,
+  JobFailure,
+  JobResult,
+  RunConfig,
+  RunState,
+  WorkerMessage,
+  WorkerRequest,
+} from './benchmarkTypes.ts';
 
 /**
  * Drives a run on a worker and folds what comes back into `RunState`.
@@ -32,6 +40,11 @@ interface ActiveRun {
 }
 
 let activeRun: ActiveRun | undefined;
+
+/** The last measurement a job posts: its only one, or its frontier's last candidate. */
+function endsJob(candidate: Candidate | null): boolean {
+  return candidate === null || candidate.index === candidate.total;
+}
 
 function detach(run: ActiveRun): void {
   run.worker.removeEventListener('message', run.onMessage);
@@ -69,6 +82,7 @@ export function runBenchmark(config: RunConfig, onState: (state: RunState) => vo
   const results: JobResult[] = [];
   const failures: JobFailure[] = [];
   let totalJobs = 0;
+  let step: number | null = null;
 
   const runWorker = getWorker();
   // `onMessage` and `onError` are function declarations below, so they are
@@ -114,6 +128,7 @@ export function runBenchmark(config: RunConfig, onState: (state: RunState) => vo
     totalJobs,
     results: [...results],
     failures: [...failures],
+    step,
   });
 
   function onMessage(event: MessageEvent<WorkerMessage>) {
@@ -131,11 +146,32 @@ export function runBenchmark(config: RunConfig, onState: (state: RunState) => vo
         }
         onState(progress());
         return;
+      case 'step':
+        // The fraction is the trainer's own. Kept inside 0 to 1 so it can only
+        // move the bar across this job's share, never into the next one's.
+        if (Number.isFinite(message.fraction)) {
+          step = Math.min(1, Math.max(0, message.fraction));
+          onState(progress());
+        }
+        return;
       case 'result':
+        // Done reporting once its last measurement lands. A trained job posts
+        // one per candidate after training, and dropping the step at the first
+        // would take back the training the bar has already shown.
+        if (endsJob(message.result.candidate)) {
+          step = null;
+        }
         results.push(message.result);
         onState(progress());
         return;
       case 'failure':
+        // Done reporting too, and it is already counted. Left standing, a
+        // training job that died at 90% would lend that 90% to the next
+        // job's share of the bar. A candidate that failed with siblings still
+        // to come leaves its job reporting.
+        if (endsJob(message.failure.candidate)) {
+          step = null;
+        }
         failures.push(message.failure);
         onState(progress());
         return;

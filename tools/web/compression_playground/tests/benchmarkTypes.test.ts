@@ -55,7 +55,7 @@ describe('isRunInProgress', () => {
   const cases: readonly [RunState, boolean][] = [
     [{status: 'idle'}, false],
     [{status: 'loading'}, true],
-    [{status: 'running', completedJobs: 0, totalJobs: 1, results: [], failures: []}, true],
+    [{status: 'running', completedJobs: 0, totalJobs: 1, results: [], failures: [], step: null}, true],
     [{status: 'completed', results: [], failures: []}, false],
     [{status: 'error', message: 'failed', results: [], failures: []}, false],
   ];
