@@ -12,7 +12,6 @@
 #include "openzl/codecs/zl_generic.h"
 #include "openzl/codecs/zl_mlselector.h"
 #include "openzl/codecs/zl_sddl2.h"
-#include "openzl/codecs/zl_segmenters.h"
 #include "openzl/common/assertion.h"
 #include "openzl/cpp/Exception.hpp"
 #include "openzl/openzl.hpp"
@@ -374,12 +373,9 @@ compressProfiles()
                 kLz,
                 "Trainable LZ compressor",
                 [](ZL_Compressor* compressor, void*, const ProfileArgs& args) {
-                    CompressorRef c(compressor);
-                    ZL_GraphID inner = graphs::Lz{}(c);
                     size_t chunkSize = args.chunkSize().value_or(
                             ZL_DEFAULT_SEGMENTER_CHUNK_BYTE_SIZE);
-                    return ZL_Compressor_buildSerialSegmenter(
-                            compressor, chunkSize, inner);
+                    return profiles::buildLzGraph(compressor, chunkSize);
                 },
                 nullptr,
                 true);
@@ -389,8 +385,7 @@ compressProfiles()
                 kZstd,
                 "Use this profile to train a Zstd dict",
                 [](ZL_Compressor* compressor, void*, const ProfileArgs&) {
-                    return ZL_RES_value(
-                            ZL_Compressor_buildTrainableZstdGraph(compressor));
+                    return profiles::buildZstdGraph(compressor);
                 },
                 nullptr,
                 false);
@@ -400,7 +395,7 @@ compressProfiles()
                 kPytorchName,
                 "Pytorch model generated from torch.save(). Training is not supported.",
                 [](ZL_Compressor* comp, void*, const ProfileArgs&) {
-                    return ZS2_createGraph_pytorchModelCompressor(comp);
+                    return profiles::buildPytorchGraph(comp);
                 });
 
         std::string kCsvName = "csv";
@@ -421,9 +416,7 @@ compressProfiles()
                         }
                         sep = str[0];
                     }
-                    return openzl::custom_parsers::
-                            ZL_createGraph_genericCSVCompressorWithOptions(
-                                    comp, chunkSize, true, sep, false);
+                    return profiles::buildCsvGraph(comp, chunkSize, sep);
                 },
                 nullptr,
                 true);
@@ -469,7 +462,6 @@ compressProfiles()
                 kParquetName,
                 "Parquet in the canonical format (no compression, plain encoding)",
                 [](ZL_Compressor* comp, void*, const ProfileArgs& args) {
-                    auto clustering = ZS2_createGraph_genericClustering(comp);
                     const size_t chunkSize = args.chunkSize().value_or(
                             custom_parsers::kDefaultChunkSize);
                     if (chunkSize > static_cast<size_t>(
@@ -480,8 +472,7 @@ compressProfiles()
                                         std::numeric_limits<int>::max())
                                 + " bytes.");
                     }
-                    return ZL_Parquet_registerGraph_withChunkSize(
-                            comp, clustering, static_cast<int>(chunkSize));
+                    return profiles::buildParquetGraph(comp, chunkSize);
                 },
                 nullptr,
                 true);

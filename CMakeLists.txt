@@ -223,11 +223,31 @@ apply_openzl_compile_options_to_target(openzl)
 
 target_link_libraries(openzl PUBLIC openzl_deps)
 
-# Keep shared profile graph builders independent of CLI dependencies for WASM.
-add_library(openzl_profile_graphs cli/utils/profile_graphs.cpp)
-target_include_directories(openzl_profile_graphs PUBLIC ${PROJECT_SOURCE_DIR})
-target_link_libraries(openzl_profile_graphs PUBLIC openzl)
-apply_openzl_compile_options_to_target(openzl_profile_graphs)
+# Shared profile graph builders used by both the CLI and wasm. Defined here
+# rather than under cli/ because wasm needs them even when the CLI is off.
+# Native WASM binding tests also use these builders.
+if (OPENZL_BUILD_CLI
+    OR OPENZL_BUILD_WASM
+    OR (OPENZL_BUILD_TESTS AND NOT EMSCRIPTEN))
+    if (NOT OPENZL_BUILD_CPP OR NOT OPENZL_BUILD_CUSTOM_PARSERS)
+        message(FATAL_ERROR
+            "Shared profile graphs for the CLI, WASM, or native WASM binding tests "
+            "require OPENZL_BUILD_CPP=ON and OPENZL_BUILD_CUSTOM_PARSERS=ON.")
+    endif()
+
+    add_library(openzl_profile_graphs cli/utils/profile_graphs.cpp)
+    target_include_directories(openzl_profile_graphs PUBLIC ${PROJECT_SOURCE_DIR})
+    target_link_libraries(
+        openzl_profile_graphs
+        PUBLIC
+            openzl
+            openzl_cpp
+            csv_parser
+            parquet_graph
+            shared_components
+            pytorch_model_parser)
+    apply_openzl_compile_options_to_target(openzl_profile_graphs)
+endif()
 
 # order matters. dependencies first
 if (OPENZL_BUILD_TESTS)
