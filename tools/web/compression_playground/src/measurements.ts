@@ -172,6 +172,14 @@ export function runSummary(runState: RunState): RunSummary | null {
 }
 
 /** `idle` and `loading` carry no outcome yet. */
+/**
+ * Tells apart every measurement of a run. The job id alone does not: a trained
+ * job posts one result per candidate, all carrying its id.
+ */
+export function measurementKey(measurement: Pick<JobResult, 'job' | 'candidate'>): string {
+  return `${measurement.job.id}-${String(measurement.candidate?.index ?? 0)}`;
+}
+
 export function resultsOf(runState: RunState): readonly JobResult[] {
   return runState.status === 'idle' || runState.status === 'loading' ? [] : runState.results;
 }

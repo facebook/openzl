@@ -2,6 +2,7 @@
 
 import type {CompressorName} from './compressors.ts';
 import type {JobResult} from './benchmarkTypes.ts';
+import {measurementKey} from './measurements.ts';
 
 /** One codec's points on a ratio-against-speed chart, in the run's order. */
 export interface Series {
@@ -13,6 +14,8 @@ export interface ChartPoint {
   readonly x: number;
   readonly y: number;
   readonly label: string;
+  /** The measurement's `measurementKey`, so a table row can find its point. */
+  readonly key: string;
 }
 
 /** Which throughput a chart plots; the ratio is always the other axis. */
@@ -29,7 +32,7 @@ export function buildSeries(results: readonly JobResult[], axis: SpeedAxis): rea
     if (!plottable(result[axis]) || !plottable(result.ratio)) {
       continue;
     }
-    const point = {x: result[axis], y: result.ratio, label: pointLabel(result)};
+    const point = {x: result[axis], y: result.ratio, label: pointLabel(result), key: measurementKey(result)};
     const points = byCodec.get(result.job.compressor);
     if (points === undefined) {
       byCodec.set(result.job.compressor, [point]);

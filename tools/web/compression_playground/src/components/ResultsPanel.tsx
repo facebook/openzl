@@ -1,9 +1,10 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+import {useState} from 'react';
 import {Box, Heading, Text, VStack} from '@chakra-ui/react';
 import {LuArrowRight, LuChartLine, LuChartSpline, LuMicroscope, LuMonitor} from 'react-icons/lu';
 import {isRunInProgress, type BenchmarkJob, type Candidate, type RunState} from '../benchmarkTypes.ts';
-import {formatBytes, resultsOf} from '../measurements.ts';
+import {formatBytes, measurementKey, resultsOf} from '../measurements.ts';
 import {WASM_PROFILE} from '../wasmProfiles.ts';
 import MeasurementsTable from './MeasurementsTable.tsx';
 import RatioSpeedCharts from './RatioSpeedCharts.tsx';
@@ -71,12 +72,7 @@ function FailureList({runState}: ResultsPanelProps) {
   return (
     <VStack as="ul" gap="6px" align="stretch" m={0} p={0} listStyleType="none">
       {outcome.failures.map((failure) => (
-        <Text
-          as="li"
-          key={`${failure.job.id}-${String(failure.candidate?.index ?? 0)}`}
-          color="pg.danger"
-          fontSize="13px"
-          m={0}>
+        <Text as="li" key={measurementKey(failure)} color="pg.danger" fontSize="13px" m={0}>
           {describeMeasurement(failure.job, failure.candidate)}: {failure.message}
         </Text>
       ))}
@@ -85,6 +81,8 @@ function FailureList({runState}: ResultsPanelProps) {
 }
 
 export default function ResultsPanel({runState}: ResultsPanelProps) {
+  // The `measurementKey` of the table row under the pointer, picked out on the charts.
+  const [highlighted, setHighlighted] = useState<string | null>(null);
   const results = resultsOf(runState);
   const hasResults = results.length > 0;
   return (
@@ -133,8 +131,8 @@ export default function ResultsPanel({runState}: ResultsPanelProps) {
           m={0}>
           {statusLine(runState)}
         </Text>
-        {hasResults && <RatioSpeedCharts results={results} />}
-        <MeasurementsTable runState={runState} />
+        {hasResults && <RatioSpeedCharts results={results} highlighted={highlighted} />}
+        <MeasurementsTable runState={runState} onHighlight={setHighlighted} />
         <FailureList runState={runState} />
 
         {hasResults && (

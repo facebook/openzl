@@ -3,9 +3,10 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 import {afterEach, beforeAll, describe, expect, it} from 'vitest';
-import {cleanup, render, screen, waitFor, within} from '@testing-library/react';
+import {cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import {ChakraProvider} from '@chakra-ui/react';
 import RatioSpeedCharts from '../src/components/RatioSpeedCharts.tsx';
+import ResultsPanel from '../src/components/ResultsPanel.tsx';
 import {playgroundSystem} from '../src/theme.ts';
 import type {BenchmarkJob, JobResult} from '../src/benchmarkTypes.ts';
 
@@ -50,10 +51,10 @@ const RESULTS = [
   result({compressor: 'gzip', rowId: 3, level: 6}, {ratio: 342, compressMBps: 162}),
 ];
 
-function renderCharts(results = RESULTS) {
+function renderCharts(results = RESULTS, highlighted: string | null = null) {
   return render(
     <ChakraProvider value={playgroundSystem}>
-      <RatioSpeedCharts results={results} />
+      <RatioSpeedCharts results={results} highlighted={highlighted} />
     </ChakraProvider>,
   );
 }
@@ -63,8 +64,8 @@ function renderCharts(results = RESULTS) {
  * the SVG waits for it first. Without this a check that nothing is painted
  * would pass on a plot that has not rendered yet.
  */
-async function renderPlotted(results = RESULTS) {
-  const rendered = renderCharts(results);
+async function renderPlotted(results = RESULTS, highlighted: string | null = null) {
+  const rendered = renderCharts(results, highlighted);
   await waitFor(() => {
     expect(rendered.container.querySelectorAll('.recharts-scatter-symbol').length).toBeGreaterThan(0);
   });
@@ -118,6 +119,50 @@ describe('RatioSpeedCharts', () => {
     ]);
 
     expect(painted.filter((value) => value?.startsWith('#'))).toEqual([]);
+  });
+
+  it('picks out the highlighted measurement on both charts, in its codec colour', async () => {
+    // Every job here has id `j`, so the second OpenZL candidate is `j-2`.
+    const {container} = await renderPlotted(RESULTS, 'j-2');
+
+    const rings = [...container.querySelectorAll('.highlighted-point')];
+    expect(rings).toHaveLength(2);
+    const openzl = container.querySelector('.recharts-scatter-symbol path')?.getAttribute('fill');
+    expect(rings.map((ring) => ring.getAttribute('fill'))).toEqual([openzl, openzl]);
+  });
+
+  it('picks out nothing when no row is highlighted', async () => {
+    const {container} = await renderPlotted();
+    expect(container.querySelectorAll('.highlighted-point')).toHaveLength(0);
+  });
+
+  it('highlights the point of the table row under the pointer, until it leaves', async () => {
+    const results = [
+      result({compressor: 'zstd', id: 'z1', level: 1}, {ratio: 3, compressMBps: 500}),
+      result({compressor: 'gzip', id: 'g6', level: 6}, {ratio: 5, compressMBps: 50}),
+    ];
+    const {container} = render(
+      <ChakraProvider value={playgroundSystem}>
+        <ResultsPanel runState={{status: 'completed', results, failures: []}} />
+      </ChakraProvider>,
+    );
+    await waitFor(() => {
+      expect(container.querySelectorAll('.recharts-scatter-symbol').length).toBeGreaterThan(0);
+    });
+
+    const gzipRow = screen.getByRole('row', {name: /gzip/});
+    fireEvent.mouseEnter(gzipRow);
+    await waitFor(() => {
+      expect(container.querySelectorAll('.highlighted-point')).toHaveLength(2);
+    });
+    const ring = container.querySelector('.highlighted-point');
+    const gzipFill = [...container.querySelectorAll('.recharts-scatter-symbol path')]
+      .map((node) => node.getAttribute('fill'))
+      .find((fill) => fill?.includes('gzip'));
+    expect(ring?.getAttribute('fill')).toBe(gzipFill);
+
+    fireEvent.mouseLeave(gzipRow);
+    expect(container.querySelectorAll('.highlighted-point')).toHaveLength(0);
   });
 
   it('places points on a log scale rather than a linear one', async () => {

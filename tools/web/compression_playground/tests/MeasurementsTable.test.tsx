@@ -2,7 +2,7 @@
 
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import {afterEach, describe, expect, it} from 'vitest';
+import {afterEach, describe, expect, it, vi} from 'vitest';
 import {cleanup, fireEvent, render, screen, within, type RenderOptions} from '@testing-library/react';
 import {ChakraProvider} from '@chakra-ui/react';
 import React from 'react';
@@ -61,6 +61,17 @@ const MIXED = [
 afterEach(cleanup);
 
 describe('MeasurementsTable', () => {
+  it('reports the measurement under the pointer, and null once it leaves', () => {
+    const onHighlight = vi.fn();
+    renderWithPlaygroundTheme(<MeasurementsTable runState={completed(TWO_ZSTD_LEVELS)} onHighlight={onHighlight} />);
+
+    const row = screen.getByRole('row', {name: /Level 9/});
+    fireEvent.mouseEnter(row);
+    fireEvent.mouseLeave(row);
+
+    expect(onHighlight.mock.calls).toEqual([['zstd-9-0'], [null]]);
+  });
+
   it('renders nothing before a run has produced anything', () => {
     const {container} = renderWithPlaygroundTheme(<MeasurementsTable runState={{status: 'idle'}} />);
     expect(container).toBeEmptyDOMElement();

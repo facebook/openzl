@@ -11,6 +11,7 @@ import {
   logDomain,
   logTicks,
   type ChartPoint,
+  type Series,
   type SpeedAxis,
 } from '../charts.ts';
 import {formatRatio, formatSpeed} from '../measurements.ts';
@@ -23,14 +24,15 @@ import {CODEC_COLOR} from '../theme.ts';
  * charts still follow the scheme instead of carrying their own hex.
  */
 function useChartColors() {
-  const [openzl, zstd, gzip, line, label] = useToken('colors', [
+  const [openzl, zstd, gzip, line, label, surface] = useToken('colors', [
     CODEC_COLOR.OpenZL,
     CODEC_COLOR.zstd,
     CODEC_COLOR.gzip,
     'pg.border',
     'pg.faint',
+    'pg.surface',
   ]);
-  return {codec: {OpenZL: openzl, zstd, gzip} satisfies Record<CompressorName, string>, line, label};
+  return {codec: {OpenZL: openzl, zstd, gzip} satisfies Record<CompressorName, string>, line, label, surface};
 }
 
 function PointTooltip({active, payload}: {active?: boolean; payload?: {payload: ChartPoint}[]}) {
@@ -50,13 +52,39 @@ function PointTooltip({active, payload}: {active?: boolean; payload?: {payload: 
   );
 }
 
-/** The plot itself, and the only part of the charts that needs recharts. */
-export default function ScatterPlot({results, axis}: {results: readonly JobResult[]; axis: SpeedAxis}) {
-  const {codec, line, label} = useChartColors();
+/** The point for `key` and the codec whose colour it takes, if it is plotted. */
+function findPoint(
+  series: readonly Series[],
+  key: string | null,
+): {point: ChartPoint; compressor: CompressorName} | null {
+  for (const one of series) {
+    const point = one.points.find((candidate) => candidate.key === key);
+    if (point !== undefined) {
+      return {point, compressor: one.compressor};
+    }
+  }
+  return null;
+}
+
+/**
+ * The plot itself, and the only part of the charts that needs recharts.
+ * `highlighted` is the `measurementKey` of the table row under the pointer.
+ */
+export default function ScatterPlot({
+  results,
+  axis,
+  highlighted,
+}: {
+  results: readonly JobResult[];
+  axis: SpeedAxis;
+  highlighted: string | null;
+}) {
+  const {codec, line, label, surface} = useChartColors();
   const tickStyle = {fill: label, fontSize: 11};
   const series = buildSeries(results, axis);
   const xDomain = logDomain(results.map((result) => result[axis]));
   const yDomain = logDomain(results.map((result) => result.ratio));
+  const spot = findPoint(series, highlighted);
 
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -93,6 +121,26 @@ export default function ScatterPlot({results, axis}: {results: readonly JobResul
             line={{stroke: codec[one.compressor], strokeWidth: 1.5}}
           />
         ))}
+        {/* Drawn again on top of every series, so a point under its neighbours
+            still shows. The ring is the card's colour, to part it from them. */}
+        {spot !== null && (
+          <Scatter
+            data={[spot.point]}
+            isAnimationActive={false}
+            legendType="none"
+            shape={({cx, cy}: {cx?: number; cy?: number}) => (
+              <circle
+                className="highlighted-point"
+                cx={cx}
+                cy={cy}
+                r={7}
+                fill={codec[spot.compressor]}
+                stroke={surface}
+                strokeWidth={2.5}
+              />
+            )}
+          />
+        )}
       </ScatterChart>
     </ResponsiveContainer>
   );

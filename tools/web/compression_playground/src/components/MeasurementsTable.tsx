@@ -9,6 +9,7 @@ import {
   formatRatio,
   formatSpeed,
   frontierTag,
+  measurementKey,
   peaksOf,
   rowDetail,
   resultsOf,
@@ -136,14 +137,26 @@ function CandidateRank({result}: {result: JobResult}) {
 }
 
 /** One measurement and its bars. */
-function MeasurementRow({row, peaks}: {row: JobResult; peaks: Peaks}) {
+function MeasurementRow({
+  row,
+  peaks,
+  onHighlight,
+}: {
+  row: JobResult;
+  peaks: Peaks;
+  onHighlight?: (key: string | null) => void;
+}) {
   const color = CODEC_COLOR[row.job.compressor];
   const cell = {px: '12px', py: '10px', borderBottomWidth: '1px', borderColor: 'pg.border'} as const;
   // Both identifying cells are row headers, so a screen reader moving across
   // the numbers hears which codec and which setting they belong to.
   const header = {...cell, scope: 'row', textAlign: 'left', fontWeight: 'normal'} as const;
   return (
-    <Box as="tr">
+    <Box
+      as="tr"
+      _hover={{bg: 'pg.canvas'}}
+      onMouseEnter={() => onHighlight?.(measurementKey(row))}
+      onMouseLeave={() => onHighlight?.(null)}>
       <chakra.th {...header}>
         <Box display="flex" alignItems="center" gap="8px">
           <Box aria-hidden="true" boxSize="8px" borderRadius="full" bg={color} flexShrink={0} />
@@ -211,7 +224,14 @@ function nextSort(current: Sort, key: SortKey): Sort {
   return {key, direction: FIRST_DIRECTION[key]};
 }
 
-export default function MeasurementsTable({runState}: {runState: RunState}) {
+/** `onHighlight` hears the `measurementKey` of the row under the pointer, or null once it leaves. */
+export default function MeasurementsTable({
+  runState,
+  onHighlight,
+}: {
+  runState: RunState;
+  onHighlight?: (key: string | null) => void;
+}) {
   const [sort, setSort] = useState<Sort>(DEFAULT_SORT);
 
   const results = resultsOf(runState);
@@ -288,8 +308,7 @@ export default function MeasurementsTable({runState}: {runState: RunState}) {
           </Box>
           <Box as="tbody">
             {rows.map((row) => (
-              // A trained job posts one result per candidate, all carrying its id.
-              <MeasurementRow key={`${row.job.id}-${String(row.candidate?.index ?? 0)}`} row={row} peaks={peaks} />
+              <MeasurementRow key={measurementKey(row)} row={row} peaks={peaks} onHighlight={onHighlight} />
             ))}
           </Box>
         </Box>

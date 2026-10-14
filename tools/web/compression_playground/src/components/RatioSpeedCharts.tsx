@@ -29,7 +29,14 @@ const AXES = [
   },
 ] as const satisfies readonly {axis: SpeedAxis; title: string; subtitle: string; xLabel: string}[];
 
-function Chart({results, axis, xLabel}: {results: readonly JobResult[]; axis: SpeedAxis; xLabel: string}) {
+interface ChartProps {
+  results: readonly JobResult[];
+  axis: SpeedAxis;
+  xLabel: string;
+  highlighted: string | null;
+}
+
+function Chart({results, axis, xLabel, highlighted}: ChartProps) {
   return (
     <Box display="flex" alignItems="stretch" gap="2px">
       <Text
@@ -44,7 +51,7 @@ function Chart({results, axis, xLabel}: {results: readonly JobResult[]; axis: Sp
       <Box flex="1" minW={0}>
         <Box height="200px" width="100%">
           <Suspense fallback={null}>
-            <ScatterPlot results={results} axis={axis} />
+            <ScatterPlot results={results} axis={axis} highlighted={highlighted} />
           </Suspense>
         </Box>
         <Text fontSize="10px" color="pg.faint" textAlign="center" m={0}>
@@ -82,7 +89,14 @@ function LegendChip({compressor, count}: {compressor: CompressorName; count: num
   );
 }
 
-export default function RatioSpeedCharts({results}: {results: readonly JobResult[]}) {
+/** `highlighted` is the `measurementKey` of the point to pick out on both charts. */
+export default function RatioSpeedCharts({
+  results,
+  highlighted = null,
+}: {
+  results: readonly JobResult[];
+  highlighted?: string | null;
+}) {
   if (results.length === 0) {
     return null;
   }
@@ -127,7 +141,7 @@ export default function RatioSpeedCharts({results}: {results: readonly JobResult
                   {chart.subtitle}
                 </Text>
               </VStack>
-              <Chart results={results} axis={chart.axis} xLabel={chart.xLabel} />
+              <Chart results={results} axis={chart.axis} xLabel={chart.xLabel} highlighted={highlighted} />
             </VStack>
           </Box>
         ))}
