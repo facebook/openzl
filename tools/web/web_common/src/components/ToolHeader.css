@@ -28,7 +28,9 @@
   height: 48px;
 }
 
+/* Positions the narrow-screen menu list, so it hangs from the header's edge. */
 .tool-header__bottom-row {
+  position: relative;
   height: 40px;
 }
 
@@ -53,7 +55,8 @@
 }
 
 .tool-header__logo-link:focus-visible,
-.tool-header__nav-link:focus-visible {
+.tool-header__nav-link:focus-visible,
+.tool-header__menu-button:focus-visible {
   box-shadow: 0 0 0 2px #ffffff;
 }
 
@@ -106,8 +109,61 @@
   color: #ffffff;
 }
 
+.tool-header__menu {
+  display: none;
+}
+
+.tool-header__menu-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 4px;
+  color: #bdccc8;
+  font-size: 15px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.tool-header__menu-button::-webkit-details-marker {
+  display: none;
+}
+
+.tool-header__menu-button::after {
+  content: '\25BE';
+  font-size: 12px;
+}
+
+.tool-header__menu[open] .tool-header__menu-button::after {
+  content: '\25B4';
+}
+
+.tool-header__menu-button:hover,
+.tool-header__menu[open] .tool-header__menu-button {
+  color: #ffffff;
+}
+
+.tool-header__menu-list {
+  display: flex;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 10;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 200px;
+  padding: 12px 11px;
+  border-radius: 0 0 4px 4px;
+  background: #23554a;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 25%);
+}
+
+/* Matches Chakra's `md` breakpoint, which is where the old nav hid. */
 @media (max-width: 767px) {
   .tool-header__navigation {
     display: none;
+  }
+
+  .tool-header__menu {
+    display: block;
   }
 }

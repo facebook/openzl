@@ -23,6 +23,16 @@ export interface ToolHeaderProps {
   primaryAction?: ReactNode;
 }
 
+function NavigationLinks({navigation}: {navigation: readonly ToolHeaderLink[]}) {
+  return navigation.map(({label, href}) => (
+    <div className="tool-header__nav-item" key={label}>
+      <a className="tool-header__nav-link" href={href}>
+        {label}
+      </a>
+    </div>
+  ));
+}
+
 export function ToolHeader({
   title,
   logoSrc,
@@ -44,14 +54,16 @@ export function ToolHeader({
       </div>
       <div className="tool-header__bottom-row">
         <nav className="tool-header__navigation" aria-label="OpenZL">
-          {navigation.map(({label, href}) => (
-            <div className="tool-header__nav-item" key={label}>
-              <a className="tool-header__nav-link" href={href}>
-                {label}
-              </a>
-            </div>
-          ))}
+          <NavigationLinks navigation={navigation} />
         </nav>
+        {/* Stands in for the row of links on narrow screens, where they do not
+            fit. Only one of the two is displayed at any width. */}
+        <details className="tool-header__menu">
+          <summary className="tool-header__menu-button">MENU</summary>
+          <nav className="tool-header__menu-list" aria-label="OpenZL">
+            <NavigationLinks navigation={navigation} />
+          </nav>
+        </details>
         {primaryAction != null && <div className="tool-header__primary-action">{primaryAction}</div>}
       </div>
     </header>
