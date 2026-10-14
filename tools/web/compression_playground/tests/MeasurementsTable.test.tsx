@@ -219,4 +219,28 @@ describe('ResultsPanel', () => {
     // The notice is about numbers on screen, and there are none.
     expect(screen.queryByText(/WebAssembly/)).not.toBeInTheDocument();
   });
+
+  it('still says the count in the live region once the run is over', () => {
+    // The pill says it on screen, but a region that empties announces nothing,
+    // so a screen reader would hear no end to `Running 1 of 2…`.
+    renderWithPlaygroundTheme(<ResultsPanel runState={completed(TWO_ZSTD_LEVELS)} />);
+
+    expect(screen.getByRole('status')).toHaveTextContent('2 measured');
+  });
+
+  it('shows the finished line on screen when there is no pill to say it', () => {
+    // The pill only appears with results, so a run that measured nothing would
+    // otherwise end with nothing on the page saying it ended.
+    const {rerender} = renderWithPlaygroundTheme(<ResultsPanel runState={completed(TWO_ZSTD_LEVELS)} />);
+    // `srOnly` hides by taking the element out of flow; with the pill, it is.
+    expect(getComputedStyle(screen.getByRole('status')).position).toBe('absolute');
+
+    rerender(
+      <ChakraProvider value={playgroundSystem}>
+        <ResultsPanel runState={completed([])} />
+      </ChakraProvider>,
+    );
+    expect(screen.getByRole('status')).toHaveTextContent('0 measured');
+    expect(getComputedStyle(screen.getByRole('status')).position).not.toBe('absolute');
+  });
 });
