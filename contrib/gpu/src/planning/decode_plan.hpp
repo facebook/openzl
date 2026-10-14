@@ -4,10 +4,10 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <span>
 #include <vector>
 
 #include "contrib/gpu/src/common/codec_decode_planning.hpp"
+#include "openzl/cpp/poly/Span.hpp"
 
 namespace openzl::gpu {
 
@@ -33,7 +33,10 @@ struct IndexRange {
     size_t begin;
     size_t count;
 
-    bool operator==(const IndexRange&) const = default;
+    bool operator==(const IndexRange& other) const
+    {
+        return begin == other.begin && count == other.count;
+    }
 };
 
 /**
@@ -43,7 +46,10 @@ struct ByteRange {
     size_t offset;
     size_t size;
 
-    bool operator==(const ByteRange&) const = default;
+    bool operator==(const ByteRange& other) const
+    {
+        return offset == other.offset && size == other.size;
+    }
 };
 
 /**
@@ -57,7 +63,10 @@ struct ChunkNodeId {
     /// Chunk-local node index in the chunk's decoder execution order.
     ZL_IDType nodeIndex;
 
-    bool operator==(const ChunkNodeId&) const = default;
+    bool operator==(const ChunkNodeId& other) const
+    {
+        return chunkIndex == other.chunkIndex && nodeIndex == other.nodeIndex;
+    }
 };
 
 /// Where a stream's bytes are stored.
@@ -136,7 +145,10 @@ struct PlannedChunk {
     /// Number of frame outputs this chunk contributes.
     size_t numOutputs;
 
-    bool operator==(const PlannedChunk&) const = default;
+    bool operator==(const PlannedChunk& other) const
+    {
+        return streams == other.streams && numOutputs == other.numOutputs;
+    }
 };
 
 /**
@@ -163,28 +175,28 @@ struct DecodePlan {
     std::vector<PlannedChunk> chunks;
 
     /// Input streams of @p run, in decoder argument order.
-    std::span<const PlannedStreamIndex> inputsOf(
+    poly::span<const PlannedStreamIndex> inputsOf(
             const PlannedCodecRun& run) const
     {
         return slice(streamIndices, run.inputs);
     }
 
     /// Output streams of @p run, in regenerated-stream order.
-    std::span<const PlannedStreamIndex> outputsOf(
+    poly::span<const PlannedStreamIndex> outputsOf(
             const PlannedCodecRun& run) const
     {
         return slice(streamIndices, run.outputs);
     }
 
     /// Producer runs @p run must wait for, each appearing at most once.
-    std::span<const PlannedRunIndex> dependenciesOf(
+    poly::span<const PlannedRunIndex> dependenciesOf(
             const PlannedCodecRun& run) const
     {
         return slice(runIndices, run.dependencies);
     }
 
     /// Streams of chunk @p chunkIndex, in chunk-local slot order.
-    std::span<const PlannedStream> streamsOf(size_t chunkIndex) const
+    poly::span<const PlannedStream> streamsOf(size_t chunkIndex) const
     {
         return slice(streams, chunks.at(chunkIndex).streams);
     }
@@ -220,11 +232,11 @@ struct DecodePlan {
 
    private:
     template <typename T>
-    static std::span<const T> slice(
+    static poly::span<const T> slice(
             const std::vector<T>& values,
             IndexRange range)
     {
-        return std::span{ values }.subspan(range.begin, range.count);
+        return poly::span<const T>{ values }.subspan(range.begin, range.count);
     }
 };
 

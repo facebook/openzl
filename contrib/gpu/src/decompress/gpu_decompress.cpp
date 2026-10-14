@@ -4,7 +4,6 @@
 
 #include <cstddef>
 #include <new>
-#include <span>
 #include <string_view>
 #include <vector>
 
@@ -13,6 +12,7 @@
 #include "openzl/common/errors_internal.h"
 #include "openzl/cpp/DCtx.hpp"
 #include "openzl/cpp/FrameInfo.hpp"
+#include "openzl/cpp/poly/Span.hpp"
 #include "openzl/decompress/dctx2.h"
 #include "openzl/shared/overflow.h"
 #include "openzl/zl_decompress.h"
@@ -22,7 +22,7 @@ namespace openzl::gpu {
 
 namespace {
 
-std::string_view asStringView(std::span<const std::byte> bytes)
+std::string_view asStringView(poly::span<const std::byte> bytes)
 {
     return {
         reinterpret_cast<const char*>(bytes.data()),
@@ -31,12 +31,12 @@ std::string_view asStringView(std::span<const std::byte> bytes)
 }
 
 struct DeviceToHostCopy {
-    std::span<std::byte> dst_h;
+    poly::span<std::byte> dst_h;
     const std::byte* src_d;
 };
 
 ZL_Report copyDeviceToHostAndSynchronize(
-        std::span<const DeviceToHostCopy> copies,
+        poly::span<const DeviceToHostCopy> copies,
         ZL_GPU_Stream stream,
         ZL_OperationContext* opCtx)
 {
@@ -85,7 +85,7 @@ ZL_Report copyDeviceToHostAndSynchronize(
 namespace {
 
 struct StagedChunkHeader {
-    std::span<const std::byte> bytes_h;
+    poly::span<const std::byte> bytes_h;
     size_t frameHeaderIdx;
 };
 
@@ -93,13 +93,13 @@ struct StagedHeaders {
     // TODO(maxmandina): Explore context-owned pinned staging if header-copy
     // latency becomes worth amortizing.
     std::vector<std::byte> storage_h;
-    std::vector<std::span<const std::byte>> frameHeaders_h;
+    std::vector<poly::span<const std::byte>> frameHeaders_h;
     std::vector<StagedChunkHeader> chunkHeaders_h;
 };
 
 ZL_Report copyHeadersToHost(
-        std::span<const GPUFrameHeaderForChunks> frameHeaders,
-        std::span<const GPUChunk> chunks,
+        poly::span<const GPUFrameHeaderForChunks> frameHeaders,
+        poly::span<const GPUChunk> chunks,
         ZL_GPU_Stream stream,
         StagedHeaders& stagedHeaders)
 {
@@ -142,10 +142,11 @@ ZL_Report copyHeadersToHost(
     for (const GPUFrameHeaderForChunks& frameHeader : frameHeaders) {
         copies.push_back(
                 {
-                        .dst_h = std::span<std::byte>{ stagedHeaders.storage_h }
-                                         .subspan(
-                                                 dstOffset,
-                                                 frameHeader.frameHeaderSize),
+                        .dst_h =
+                                poly::span<std::byte>{ stagedHeaders.storage_h }
+                                        .subspan(
+                                                dstOffset,
+                                                frameHeader.frameHeaderSize),
                         .src_d = static_cast<const std::byte*>(
                                 frameHeader.frameHeader_d),
                 });
@@ -154,10 +155,11 @@ ZL_Report copyHeadersToHost(
     for (const GPUChunk& chunk : chunks) {
         copies.push_back(
                 {
-                        .dst_h = std::span<std::byte>{ stagedHeaders.storage_h }
-                                         .subspan(
-                                                 dstOffset,
-                                                 chunk.chunkHeaderSize),
+                        .dst_h =
+                                poly::span<std::byte>{ stagedHeaders.storage_h }
+                                        .subspan(
+                                                dstOffset,
+                                                chunk.chunkHeaderSize),
                         .src_d = static_cast<const std::byte*>(chunk.chunk_d),
                 });
         dstOffset += chunk.chunkHeaderSize;
@@ -174,7 +176,7 @@ ZL_Report copyHeadersToHost(
         headerOffset += frameHeader.frameHeaderSize;
     }
     for (const GPUChunk& chunk : chunks) {
-        std::span<const std::byte> const headerBytes_h{
+        poly::span<const std::byte> const headerBytes_h{
             stagedHeaders.storage_h.data() + headerOffset,
             chunk.chunkHeaderSize,
         };
@@ -191,7 +193,7 @@ ZL_Report copyHeadersToHost(
 
 ZL_Report createDctxsForChunks(
         const StagedHeaders& stagedHeaders,
-        std::span<const GPUChunk> chunks,
+        poly::span<const GPUChunk> chunks,
         std::vector<PreparedGPUChunk>& preparedChunks)
 {
     // No shared DCTX exists until each per-chunk context is created.
@@ -199,7 +201,7 @@ ZL_Report createDctxsForChunks(
 
     std::vector<FrameInfo> frameInfos;
     frameInfos.reserve(stagedHeaders.frameHeaders_h.size());
-    for (std::span<const std::byte> frameHeader_h :
+    for (poly::span<const std::byte> frameHeader_h :
          stagedHeaders.frameHeaders_h) {
         frameInfos.emplace_back(asStringView(frameHeader_h));
     }
@@ -252,7 +254,7 @@ ZL_Report createDctxsForChunks(
 }
 
 ZL_Report copyTransformHeadersToHost(
-        std::span<PreparedGPUChunk> preparedChunks,
+        poly::span<PreparedGPUChunk> preparedChunks,
         ZL_GPU_Stream stream)
 {
     ZL_DCtx* const dctx = preparedChunks.empty()
@@ -297,8 +299,8 @@ ZL_Report copyTransformHeadersToHost(
 } // namespace
 
 ZL_Report prepareChunksForPlanning(
-        std::span<const GPUFrameHeaderForChunks> frameHeaders,
-        std::span<const GPUChunk> chunks,
+        poly::span<const GPUFrameHeaderForChunks> frameHeaders,
+        poly::span<const GPUChunk> chunks,
         std::vector<PreparedGPUChunk>& preparedChunks,
         ZL_GPU_Stream stream)
 {
@@ -328,8 +330,8 @@ ZL_Report prepareChunksForPlanning(
 ZL_Report decompressChunks(
         void*,
         size_t,
-        std::span<const GPUFrameHeaderForChunks> frameHeaders,
-        std::span<const GPUChunk> chunks,
+        poly::span<const GPUFrameHeaderForChunks> frameHeaders,
+        poly::span<const GPUChunk> chunks,
         ZL_GPU_Stream stream)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
@@ -358,7 +360,7 @@ ZL_Report decompressChunks(
 
 ZL_Report collectGPUChunksFromFrame(
         const void* src_d,
-        std::span<const std::byte> src_h,
+        poly::span<const std::byte> src_h,
         std::vector<GPUChunk>& chunks,
         std::vector<GPUFrameHeaderForChunks>& frameHeaders)
 {
@@ -433,7 +435,7 @@ namespace {
 
 // temporary until we can replace with jump table
 ZL_Report collectGPUChunksFromFullCopy(
-        std::span<const std::byte> src_d,
+        poly::span<const std::byte> src_d,
         ZL_GPU_Stream stream,
         std::vector<GPUChunk>& chunks,
         std::vector<GPUFrameHeaderForChunks>& frameHeaders)
@@ -448,7 +450,7 @@ ZL_Report collectGPUChunksFromFullCopy(
         .src_d = src_d.data(),
     };
     ZL_ERR_IF_ERR(copyDeviceToHostAndSynchronize(
-            std::span<const DeviceToHostCopy>{ &copy, 1 }, stream, nullptr));
+            poly::span<const DeviceToHostCopy>{ &copy, 1 }, stream, nullptr));
 
     return collectGPUChunksFromFrame(src_d.data(), src_h, chunks, frameHeaders);
 }
@@ -456,7 +458,7 @@ ZL_Report collectGPUChunksFromFullCopy(
 } // namespace
 
 ZL_Report collectGPUChunks(
-        std::span<const std::byte> src_d,
+        poly::span<const std::byte> src_d,
         ZL_GPU_Stream stream,
         std::vector<GPUChunk>& chunks,
         std::vector<GPUFrameHeaderForChunks>& frameHeaders)
@@ -479,7 +481,7 @@ extern "C" ZL_Report ZL_GPU_decompress(
         std::vector<openzl::gpu::GPUChunk> chunks;
         std::vector<openzl::gpu::GPUFrameHeaderForChunks> frameHeaders;
         ZL_Report const collectResult = openzl::gpu::collectGPUChunks(
-                std::span<const std::byte>{
+                openzl::poly::span<const std::byte>{
                         static_cast<const std::byte*>(src_d),
                         srcSize,
                 },

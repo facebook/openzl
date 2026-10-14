@@ -8,6 +8,7 @@
 
 #include "contrib/gpu/src/codecs/constant/plan_constant_output.hpp"
 #include "openzl/common/wire_format.h"
+#include "openzl/cpp/poly/Span.hpp"
 
 namespace openzl::gpu {
 namespace {
@@ -101,7 +102,7 @@ TEST(PlanConstantOutputTest, RejectsOutputCapacityOverflow)
         },
         .frameFormatVersion = 21,
         .codecHeader_h =
-                std::span<const std::byte>{ codecHeader_h }.first(headerSize),
+                poly::span<const std::byte>{ codecHeader_h }.first(headerSize),
     };
     std::array<CodecDecodeOutputPlan, 1> outputs{};
 

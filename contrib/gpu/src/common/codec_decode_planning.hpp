@@ -5,9 +5,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
-#include <span>
 
 #include "openzl/common/wire_format.h"
+#include "openzl/cpp/poly/Span.hpp"
 #include "openzl/zl_data.h"
 #include "openzl/zl_errors.h"
 #include "openzl/zl_opaque_types.h"
@@ -99,7 +99,7 @@ struct CodecDecodePlanningContext {
     /// Frame format version governing the transform and header semantics.
     uint32_t frameFormatVersion;
     /// Host-readable codec-private transform header for this node.
-    std::span<const std::byte> codecHeader_h;
+    poly::span<const std::byte> codecHeader_h;
 };
 
 /**
@@ -114,8 +114,8 @@ struct CodecDecodePlanningContext {
  */
 using CodecDecodePlanningFn = ZL_Report(
         const CodecDecodePlanningContext& codec,
-        std::span<const StreamPlanningInput> inputs,
-        std::span<CodecDecodeOutputPlan> outputs,
+        poly::span<const StreamPlanningInput> inputs,
+        poly::span<CodecDecodeOutputPlan> outputs,
         ZL_OperationContext* opCtx);
 
 } // namespace openzl::gpu

@@ -4,7 +4,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <span>
 #include <string>
 #include <vector>
 
@@ -14,6 +13,7 @@
 #include "contrib/gpu/src/common/cuda_raii.cuh"
 #include "contrib/gpu/src/decompress/gpu_decompress.hpp"
 #include "contrib/gpu/testkit/multichunk_frame.h"
+#include "openzl/cpp/poly/Span.hpp"
 #include "openzl/openzl.hpp"
 
 namespace openzl {
@@ -42,7 +42,7 @@ std::string makeTwoChunkFrame()
             input);
 }
 
-std::span<const std::byte> bytes(const std::string& frame)
+poly::span<const std::byte> bytes(const std::string& frame)
 {
     return {
         reinterpret_cast<const std::byte*>(frame.data()),

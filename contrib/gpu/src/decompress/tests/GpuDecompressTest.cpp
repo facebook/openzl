@@ -5,13 +5,13 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <span>
 #include <string>
 #include <vector>
 
 #include "contrib/gpu/src/decompress/gpu_decompress.hpp"
 #include "contrib/gpu/testkit/frame_verifier.h"
 #include "contrib/gpu/testkit/multichunk_frame.h"
+#include "openzl/cpp/poly/Span.hpp"
 #include "openzl/openzl.hpp"
 #include "openzl/zl_decompress.h"
 #include "openzl/zl_version.h"
@@ -57,7 +57,7 @@ std::string makeLegacyFrame()
     return cctx.compressOne(Input::refSerial(input));
 }
 
-std::span<const std::byte> bytes(const std::string& frame)
+poly::span<const std::byte> bytes(const std::string& frame)
 {
     return {
         reinterpret_cast<const std::byte*>(frame.data()),

@@ -4,7 +4,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <span>
 #include <string>
 #include <vector>
 
@@ -15,6 +14,7 @@
 #include "contrib/gpu/src/decompress/gpu_decompress.hpp"
 #include "contrib/gpu/testkit/frame_verifier.h"
 #include "contrib/gpu/testkit/multichunk_frame.h"
+#include "openzl/cpp/poly/Span.hpp"
 #include "openzl/decompress/dctx2.h"
 #include "openzl/openzl.hpp"
 
@@ -47,7 +47,7 @@ std::string makeTwoChunkFrame()
             input);
 }
 
-std::span<const std::byte> bytes(const std::string& frame)
+poly::span<const std::byte> bytes(const std::string& frame)
 {
     return {
         reinterpret_cast<const std::byte*>(frame.data()),
@@ -163,8 +163,9 @@ TEST(GPUDecompressPreparationTest, ClearsOutputOnFailure)
     };
 
     ZL_Report const result = gpu::prepareChunksForPlanning(
-            std::span{ &invalidFrameHeader, 1 },
-            std::span<const gpu::GPUChunk>{},
+            poly::span<const gpu::GPUFrameHeaderForChunks>{ &invalidFrameHeader,
+                                                            1 },
+            poly::span<const gpu::GPUChunk>{},
             preparedChunks,
             nullptr);
 

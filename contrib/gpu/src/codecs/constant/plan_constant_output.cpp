@@ -9,6 +9,7 @@
 
 #include "openzl/common/errors_internal.h"
 #include "openzl/common/wire_format.h"
+#include "openzl/cpp/poly/Span.hpp"
 #include "openzl/shared/overflow.h"
 #include "openzl/shared/varint.h"
 
@@ -16,8 +17,8 @@ namespace openzl::gpu {
 
 ZL_Report planConstantOutputs(
         const CodecDecodePlanningContext& codec,
-        std::span<const StreamPlanningInput> inputs,
-        std::span<CodecDecodeOutputPlan> outputs,
+        poly::span<const StreamPlanningInput> inputs,
+        poly::span<CodecDecodeOutputPlan> outputs,
         ZL_OperationContext* opCtx)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(opCtx);

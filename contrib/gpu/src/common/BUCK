@@ -71,5 +71,8 @@ cpp_library(
     name = "codec_decode_planning",
     headers = relative_headers(["codec_decode_planning.hpp"]),
     header_namespace = "",
-    exported_deps = ["../../../..:zstronglib"],
+    exported_deps = [
+        "../../../..:zstronglib",
+        "../../../../cpp:openzl_cpp",
+    ],
 )

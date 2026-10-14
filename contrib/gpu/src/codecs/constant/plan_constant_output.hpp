@@ -3,6 +3,7 @@
 #pragma once
 
 #include "contrib/gpu/src/common/codec_decode_planning.hpp"
+#include "openzl/cpp/poly/Span.hpp"
 
 namespace openzl::gpu {
 
@@ -19,8 +20,8 @@ namespace openzl::gpu {
  */
 ZL_Report planConstantOutputs(
         const CodecDecodePlanningContext& codec,
-        std::span<const StreamPlanningInput> inputs,
-        std::span<CodecDecodeOutputPlan> outputs,
+        poly::span<const StreamPlanningInput> inputs,
+        poly::span<CodecDecodeOutputPlan> outputs,
         ZL_OperationContext* opCtx);
 
 } // namespace openzl::gpu

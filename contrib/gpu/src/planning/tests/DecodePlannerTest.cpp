@@ -7,7 +7,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -18,6 +17,7 @@
 #include "contrib/gpu/testkit/multichunk_frame.h"
 #include "openzl/cpp/DCtx.hpp"
 #include "openzl/cpp/FrameInfo.hpp"
+#include "openzl/cpp/poly/Span.hpp"
 #include "openzl/decompress/dctx2.h"
 #include "openzl/openzl.hpp"
 #include "openzl/zl_common_types.h"
@@ -105,7 +105,7 @@ class PreparedHostFrame {
         }
     }
 
-    std::span<const PreparedGpuChunkView> views() const
+    poly::span<const PreparedGpuChunkView> views() const
     {
         return views_;
     }
@@ -388,7 +388,7 @@ TEST(DecodePlannerTest, MatchesThePreparedProducerMapSlotForSlot)
     ASSERT_EQ(plan.chunks.size(), kChunkSizes.size());
     for (size_t chunkIndex = 0; chunkIndex < plan.chunks.size(); ++chunkIndex) {
         const ZL_DCtx* const dctx = prepared.views()[chunkIndex].dctx;
-        const std::span<const PlannedStream> streams =
+        const poly::span<const PlannedStream> streams =
                 plan.streamsOf(chunkIndex);
         size_t storedCount = 0;
         for (size_t slot = 0; slot < streams.size(); ++slot) {

@@ -7,12 +7,12 @@
 #include <cstdint>
 #include <limits>
 #include <new>
-#include <span>
 #include <utility>
 #include <vector>
 
 #include "contrib/gpu/src/planning/codec_decode_registry.hpp"
 #include "openzl/common/wire_format.h"
+#include "openzl/cpp/poly/Span.hpp"
 #include "openzl/decompress/dctx2.h"
 #include "openzl/shared/overflow.h"
 #include "openzl/zl_data.h"
@@ -435,7 +435,7 @@ class ChunkPlanner {
             ZL_ERR(corruption);
         }
         for (const uint32_t regenDistance :
-             std::span<const uint32_t>{ regenDistances, node.nbRegens }) {
+             poly::span<const uint32_t>{ regenDistances, node.nbRegens }) {
             size_t streamSlot;
             ZL_ERR_IF(
                     ZL_overflowAddST(inputEnd, regenDistance, &streamSlot),
@@ -640,7 +640,7 @@ class ChunkPlanner {
 } // namespace
 
 ZL_Report planDecode(
-        std::span<const PreparedGpuChunkView> chunks,
+        poly::span<const PreparedGpuChunkView> chunks,
         DecodePlan& plan)
 {
     ZL_DCtx* const dctx = chunks.empty() ? nullptr : chunks.front().dctx;

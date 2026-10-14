@@ -3,9 +3,9 @@
 #pragma once
 
 #include <cstddef>
-#include <span>
 
 #include "contrib/gpu/src/planning/decode_plan.hpp"
+#include "openzl/cpp/poly/Span.hpp"
 
 namespace openzl::gpu {
 
@@ -21,7 +21,7 @@ struct PreparedGpuChunkView {
     /// Non-null prepared context with frame, producer, and stream metadata.
     ZL_DCtx* dctx;
     /// Host-staged codec headers indexed by each node's offset and size.
-    std::span<const std::byte> transformHeaders_h;
+    poly::span<const std::byte> transformHeaders_h;
 };
 
 /**
@@ -43,7 +43,7 @@ struct PreparedGpuChunkView {
  * error encountered while planning the batch.
  */
 ZL_Report planDecode(
-        std::span<const PreparedGpuChunkView> chunks,
+        poly::span<const PreparedGpuChunkView> chunks,
         DecodePlan& plan);
 
 } // namespace openzl::gpu

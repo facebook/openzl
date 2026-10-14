@@ -3,11 +3,11 @@
 #pragma once
 
 #include <cstddef>
-#include <span>
 #include <vector>
 
 #include "contrib/gpu/src/decompress/gpu_decompress.h"
 #include "openzl/cpp/DCtx.hpp"
+#include "openzl/cpp/poly/Span.hpp"
 #include "openzl/zl_errors.h"
 
 namespace openzl::gpu {
@@ -54,8 +54,8 @@ struct PreparedGPUChunk {
  * @p preparedChunks is cleared before preparation and populated on success.
  */
 ZL_Report prepareChunksForPlanning(
-        std::span<const GPUFrameHeaderForChunks> frameHeaders,
-        std::span<const GPUChunk> chunks,
+        poly::span<const GPUFrameHeaderForChunks> frameHeaders,
+        poly::span<const GPUChunk> chunks,
         std::vector<PreparedGPUChunk>& preparedChunks,
         ZL_GPU_Stream stream);
 
@@ -76,7 +76,7 @@ ZL_Report prepareChunksForPlanning(
  */
 ZL_Report collectGPUChunksFromFrame(
         const void* src_d,
-        std::span<const std::byte> src_h,
+        poly::span<const std::byte> src_h,
         std::vector<GPUChunk>& chunks,
         std::vector<GPUFrameHeaderForChunks>& frameHeaders);
 
@@ -94,7 +94,7 @@ ZL_Report collectGPUChunksFromFrame(
  * @returns The compressed frame size on success, or an error.
  */
 ZL_Report collectGPUChunks(
-        std::span<const std::byte> src_d,
+        poly::span<const std::byte> src_d,
         ZL_GPU_Stream stream,
         std::vector<GPUChunk>& chunks,
         std::vector<GPUFrameHeaderForChunks>& frameHeaders);
@@ -115,8 +115,8 @@ ZL_Report collectGPUChunks(
 ZL_Report decompressChunks(
         void* dst_d,
         size_t dstCapacity,
-        std::span<const GPUFrameHeaderForChunks> frameHeaders,
-        std::span<const GPUChunk> chunks,
+        poly::span<const GPUFrameHeaderForChunks> frameHeaders,
+        poly::span<const GPUChunk> chunks,
         ZL_GPU_Stream stream);
 
 } // namespace openzl::gpu
