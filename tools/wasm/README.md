@@ -136,7 +136,7 @@ console.log(`decompress: ${stats.decompressMBps.toFixed(1)} MB/s`)
 ### Prerequisites
 
 * CMake 3.20.2 or newer
-* Emscripten SDK 4.0.19
+* Emscripten SDK 4.0.19, the version CI pins in `.github/workflows/build-wasm.yml`
 * Node.js 24 to run the integration tests
 
 ```bash
