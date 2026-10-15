@@ -25,6 +25,7 @@ describe('toCompressorConfig', () => {
       compressor: 'OpenZL',
       levels: [6],
       profile: 'serial',
+      profileArg: '',
       training: {paretoFrontier: true, candidates: 7},
     });
   });
@@ -84,18 +85,48 @@ describe('buildJobs', () => {
     expect(new Set(jobs.map((job) => job.id)).size).toBe(3);
   });
 
-  it('maps UI profile names onto the WASM enum', () => {
+  it('carries the OpenZL profile by name, for the backend to map', () => {
     const {
       jobs: [job],
-    } = buildJobs(runWith([{rowId: 1, compressor: 'OpenZL', levels: [6], profile: 'le-u32', training: null}]));
-    // le-u32 is U32 = 5; the binding assumes little-endian so the prefix drops.
-    expect(job).toMatchObject({compressor: 'OpenZL', profile: 5, level: 6});
+    } = buildJobs(
+      runWith([{rowId: 1, compressor: 'OpenZL', levels: [6], profile: 'le-u32', profileArg: '', training: null}]),
+    );
+    // The browser maps it onto the binding's enum where it measures; the
+    // desktop app has profiles that enum has no value for.
+    expect(job).toMatchObject({compressor: 'OpenZL', profile: 'le-u32', level: 6});
+  });
+
+  it('keeps the profiles the browser cannot build when the desktop app runs them', () => {
+    const {jobs, rejected} = buildJobs(
+      runWith([
+        {rowId: 1, compressor: 'OpenZL', levels: [6], profile: 'csv', profileArg: ';', training: null},
+        {rowId: 2, compressor: 'gzip', levels: [6]},
+      ]),
+      {desktop: true},
+    );
+
+    expect(rejected).toEqual([]);
+    expect(jobs[0]).toMatchObject({compressor: 'OpenZL', profile: 'csv', profileArg: ';'});
+    expect(jobs.map((job) => job.rowId)).toEqual([1, 2]);
+  });
+
+  it('reports the profiles the desktop app cannot run either', () => {
+    const {jobs, rejected} = buildJobs(
+      runWith([
+        {rowId: 1, compressor: 'OpenZL', levels: [6], profile: 'sddl', profileArg: '', training: null},
+        {rowId: 2, compressor: 'gzip', levels: [6]},
+      ]),
+      {desktop: true},
+    );
+
+    expect(jobs.map((job) => job.rowId)).toEqual([2]);
+    expect(rejected).toEqual([{rowId: 1, message: 'The sddl profile cannot run in the desktop app yet'}]);
   });
 
   it('reports OpenZL profiles the browser cannot build instead of skipping them', () => {
     const {jobs, rejected} = buildJobs(
       runWith([
-        {rowId: 1, compressor: 'OpenZL', levels: [6], profile: 'parquet', training: null},
+        {rowId: 1, compressor: 'OpenZL', levels: [6], profile: 'parquet', profileArg: '', training: null},
         {rowId: 2, compressor: 'gzip', levels: [6]},
       ]),
     );
@@ -120,7 +151,7 @@ describe('buildJobs', () => {
 
   it('rejects a row once however many levels it would have expanded into', () => {
     const {jobs, rejected} = buildJobs(
-      runWith([{rowId: 1, compressor: 'OpenZL', levels: [1, 6, 9], profile: 'csv', training: null}]),
+      runWith([{rowId: 1, compressor: 'OpenZL', levels: [1, 6, 9], profile: 'csv', profileArg: '', training: null}]),
     );
 
     expect(jobs).toEqual([]);
@@ -135,6 +166,7 @@ describe('buildJobs', () => {
           compressor: 'OpenZL',
           levels: [1, 6],
           profile: 'serial',
+          profileArg: '',
           training: {paretoFrontier: true, candidates: 12},
         },
       ]),
