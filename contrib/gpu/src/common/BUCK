@@ -1,6 +1,8 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
 load("../../../../defs.bzl", "relative_headers")
 
 oncall("data_compression")
@@ -63,6 +65,38 @@ cpp_library(
         ":cuda_raii",
     ],
     exported_external_deps = [("cuda", None, "cuda-lazy")],
+)
+
+# Host C++ error helpers. Device code reports errors through status arrays.
+cpp_library(
+    # @autodeps-skip
+    name = "errors",
+    srcs = ["errors.cpp"],
+    headers = relative_headers(["errors.hpp"]),
+    header_namespace = "",
+    deps = ["../../../..:zstronglib"],
+    exported_deps = ["../../../../cpp:openzl_cpp"],
+)
+
+cpp_unittest(
+    # @autodeps-skip
+    name = "errors_test",
+    srcs = ["tests/ErrorsTest.cpp"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "../../../../cpp:openzl_cpp",
+        "fbsource//third-party/googletest:gtest",
+        ":error_testing",
+        ":errors",
+    ],
+)
+
+cpp_library(
+    # @autodeps-skip
+    name = "error_testing",
+    headers = relative_headers(["tests/error_testing.hpp"]),
+    header_namespace = "",
+    exported_deps = ["../../../../cpp:openzl_cpp"],
 )
 
 # CPU metadata contract shared by codec planners and the decode scheduler.
