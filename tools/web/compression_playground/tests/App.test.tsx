@@ -8,6 +8,9 @@ import {ChakraProvider} from '@chakra-ui/react';
 import React from 'react';
 import App from '../src/App.tsx';
 import {playgroundSystem} from '../src/theme.ts';
+import * as benchmark from '../src/runBenchmark.ts';
+import {setWasmProfiles} from '../src/wasmProfiles.ts';
+import {TEST_PROFILES} from './setup.ts';
 
 function renderWithPlaygroundTheme(ui: React.ReactElement, options?: Omit<RenderOptions, 'wrapper'>) {
   return render(ui, {
@@ -39,6 +42,8 @@ beforeEach(() => {
 // across tests (which would make queries match duplicate elements).
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
+  setWasmProfiles(TEST_PROFILES);
   vi.unstubAllGlobals();
 });
 
@@ -132,6 +137,49 @@ describe('Compression Playground', () => {
     expect(screen.getByText(/What the charts say/)).toBeInTheDocument();
     expect(screen.getByText(/Train an OpenZL compressor/)).toBeInTheDocument();
     expect(screen.getByText('Get large files? Use the desktop app.')).toBeInTheDocument();
+  });
+
+  it('waits for profiles before running and preserves the training request', async () => {
+    setWasmProfiles([]);
+    let finishLoading!: () => void;
+    const profiles = new Promise<typeof TEST_PROFILES>((resolve) => {
+      finishLoading = () => {
+        setWasmProfiles(TEST_PROFILES);
+        resolve(TEST_PROFILES);
+      };
+    });
+    const discovery = vi.mocked(benchmark.getBenchmarkProfiles);
+    discovery.mockClear();
+    discovery.mockReturnValueOnce(profiles);
+    const runBenchmark = vi.spyOn(benchmark, 'runBenchmark').mockImplementation(() => undefined);
+
+    renderWithPlaygroundTheme(<App />);
+    fireEvent.change(screen.getByLabelText(/browse your computer/), {
+      target: {files: [new File(['x'], 'data.bin')]},
+    });
+    const run = screen.getByRole('button', {name: 'Run benchmark'});
+    expect(run).not.toHaveAttribute('aria-disabled');
+    expect(run).toBeDisabled();
+    expect(screen.queryByText('Loading compression profiles…')).not.toBeInTheDocument();
+    expect(screen.getByRole('checkbox', {name: 'TRAIN'})).toBeDisabled();
+    fireEvent.click(run);
+    expect(runBenchmark).not.toHaveBeenCalled();
+    finishLoading();
+    await waitFor(() => {
+      expect(screen.getByRole('checkbox', {name: 'TRAIN'})).toBeChecked();
+      expect(run).toBeEnabled();
+    });
+    fireEvent.click(run);
+    expect(runBenchmark).toHaveBeenCalledWith(
+      expect.objectContaining({
+        compressors: expect.arrayContaining([
+          expect.objectContaining({profile: 'serial', training: {paretoFrontier: true, candidates: 6}}),
+        ]),
+      }),
+      expect.any(Function),
+    );
+    expect(discovery).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('does not show the unsupported-browser message', () => {

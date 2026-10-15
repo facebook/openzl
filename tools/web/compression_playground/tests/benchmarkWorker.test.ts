@@ -28,7 +28,7 @@ async function loadWorker() {
   return {
     posted,
     send: (config: RunConfig) => {
-      onMessage?.({data: {config}} as MessageEvent);
+      onMessage?.({data: {type: 'benchmarkRequest', config}} as MessageEvent);
     },
   };
 }

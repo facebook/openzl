@@ -29,15 +29,16 @@ describe('toCompressorConfig', () => {
     });
   });
 
-  it('refuses training for a profile the CLI cannot train', () => {
-    // Reachable only from a row built outside the picker, which disables
-    // pytorch: the row keeps the request so the setting survives the trip,
-    // and the config it produces is what has to be honest.
+  it('preserves training requests and validates capability when building jobs', () => {
     const row = createCompressorRow(7, 'OpenZL');
-    row.profile = 'pytorch';
+    row.profile = 'fixed_profile';
     row.trainRequested = true;
 
-    expect(toCompressorConfig(row)).toMatchObject({training: null});
+    const config = toCompressorConfig(row);
+    expect(config).toMatchObject({training: {paretoFrontier: true, candidates: 6}});
+    expect(buildJobs(runWith([config])).jobs).toEqual([
+      expect.objectContaining({profile: 'fixed_profile', training: null}),
+    ]);
   });
 
   it('drops the candidate count when the row is not training', () => {
@@ -84,12 +85,11 @@ describe('buildJobs', () => {
     expect(new Set(jobs.map((job) => job.id)).size).toBe(3);
   });
 
-  it('maps UI profile names onto the WASM enum', () => {
+  it('carries profile names unchanged into jobs', () => {
     const {
       jobs: [job],
     } = buildJobs(runWith([{rowId: 1, compressor: 'OpenZL', levels: [6], profile: 'le-u32', training: null}]));
-    // le-u32 is U32 = 5; the binding assumes little-endian so the prefix drops.
-    expect(job).toMatchObject({compressor: 'OpenZL', profile: 5, level: 6});
+    expect(job).toMatchObject({compressor: 'OpenZL', profile: 'le-u32', level: 6});
   });
 
   it('reports OpenZL profiles the browser cannot build instead of skipping them', () => {

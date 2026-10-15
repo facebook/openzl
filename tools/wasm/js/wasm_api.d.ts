@@ -1,8 +1,5 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-/** @deprecated Numeric profile IDs; select profiles by name instead. */
-export type ProfileValue = number;
-
 export interface ProfileMetadata {
   /** The zli profile name, e.g. 'le-u32'; pass it to getSerializedCompressor. */
   readonly name: string;
@@ -68,7 +65,7 @@ export interface OpenZL {
    * Returns a serialized compressor for a profile name (e.g. 'serial'), at
    * the requested level, or OpenZL's current default level when omitted.
    */
-  getSerializedCompressor(profile: string | ProfileValue, compressionLevel?: number): Uint8Array;
+  getSerializedCompressor(profile: string, compressionLevel?: number): Uint8Array;
 
   /**
    * Train runs synchronously and may run for several minutes. Browser callers

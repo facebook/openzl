@@ -3,6 +3,7 @@
 import {createOpenZL, type OpenZL} from '../../../wasm/js/wasm_api.js';
 import {benchmarkGzip, benchmarkOpenZL, benchmarkZstd} from './benchmark.ts';
 import {buildJobs, type BenchmarkJob, type RunConfig, type WorkerMessage} from './benchmarkTypes.ts';
+import {setWasmProfiles} from './wasmProfiles.ts';
 
 /** Where a message goes. The worker posts; a test collects. */
 type Emit = (message: WorkerMessage) => void;
@@ -26,17 +27,22 @@ let modulePromise: Promise<OpenZL> | undefined;
  */
 let reportStep: ((fraction: number) => void) | null = null;
 
-function loadOpenZL(): Promise<OpenZL> {
+export function loadOpenZL(): Promise<OpenZL> {
   modulePromise ??= createOpenZL({
     // The callback's message is the trainer's own, and says things like
     // `Training ACE graph 1 / 1`, so only the fraction is carried out.
     onTrainingProgress: (fraction: number) => {
       reportStep?.(fraction);
     },
-  }).catch((error: unknown) => {
-    modulePromise = undefined;
-    throw error;
-  });
+  })
+    .then((openzl) => {
+      setWasmProfiles(openzl.profiles);
+      return openzl;
+    })
+    .catch((error: unknown) => {
+      modulePromise = undefined;
+      throw error;
+    });
   return modulePromise;
 }
 
@@ -97,22 +103,22 @@ async function* measure(job: BenchmarkJob, data: Uint8Array, openzl: OpenZL | nu
 export async function measureRun(config: RunConfig, post: Emit): Promise<void> {
   post({type: 'loading'});
   const data = new Uint8Array(await config.input.arrayBuffer());
-  const {jobs, rejected} = buildJobs(config);
-  post({type: 'started', totalJobs: jobs.length, rejected});
-
   // Awaited here so the cost is paid once, but a failure is carried into the
   // loop rather than thrown out of the run: zstd and gzip need nothing from
   // this module, and the whole point of the per-job catch below is that one
   // compressor going down does not take the others with it.
   let openzl: OpenZL | null = null;
   let openzlError: unknown;
-  if (jobs.some((job) => job.compressor === 'OpenZL')) {
+  if (config.compressors.some((compressor) => compressor.compressor === 'OpenZL' && compressor.levels.length > 0)) {
     try {
       openzl = await loadOpenZL();
     } catch (error) {
       openzlError = error;
     }
   }
+  // buildJobs depends on the profile metadata loaded from wasm
+  const {jobs, rejected} = buildJobs(config);
+  post({type: 'started', totalJobs: jobs.length, rejected});
 
   // `train()` is synchronous, so these are posted from inside the call that
   // blocks this thread. They reach the page because `postMessage` queues on

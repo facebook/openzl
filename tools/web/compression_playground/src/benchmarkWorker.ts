@@ -2,7 +2,7 @@
 
 /// <reference lib="webworker" />
 
-import {measureRun} from './measureRun.ts';
+import {loadOpenZL, measureRun} from './measureRun.ts';
 import type {WorkerRequest} from './benchmarkTypes.ts';
 
 /**
@@ -18,9 +18,20 @@ import type {WorkerRequest} from './benchmarkTypes.ts';
  * worker; everything here is the message boundary.
  */
 self.addEventListener('message', (event: MessageEvent<WorkerRequest>) => {
-  void measureRun(event.data.config, (message) => {
-    self.postMessage(message);
-  }).catch((error: unknown) => {
-    self.postMessage({type: 'failed', message: error instanceof Error ? error.message : String(error)});
-  });
+  if (event.data.type === 'profilesRequest') {
+    void loadOpenZL()
+      .then((openzl) => self.postMessage({type: 'profiles', profiles: openzl.profiles}))
+      .catch((error: unknown) => {
+        self.postMessage({type: 'profilesFailed', message: error instanceof Error ? error.message : String(error)});
+      });
+    return;
+  } else if (event.data.type === 'benchmarkRequest') {
+    void measureRun(event.data.config, (message) => {
+      self.postMessage(message);
+    }).catch((error: unknown) => {
+      self.postMessage({type: 'failed', message: error instanceof Error ? error.message : String(error)});
+    });
+  } else {
+    self.postMessage({type: 'failed', message: 'Received malformed worker message'});
+  }
 });
