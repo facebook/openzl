@@ -74,10 +74,26 @@ export function isBrowserSupportedProfile(profile: OpenZlProfile): boolean {
   return WASM_PROFILE[profile] !== null;
 }
 
-/** The profile's help text, plus why it is unselectable when it is. */
-export function profileDescription(profile: OpenZlProfile): string {
+/**
+ * The desktop app runs the CLI, so it has every profile but these. The sddl
+ * profiles need a description file, which the page has no way to pick yet, and
+ * the CLI lists numeric-ml-selector-64 as a placeholder.
+ */
+const DESKTOP_REASON_FOR: Partial<Record<OpenZlProfile, string>> = {
+  sddl: 'Cannot run in the desktop app yet: needs a description file, which this app cannot pick.',
+  sddl2: 'Cannot run in the desktop app yet: needs a description file, which this app cannot pick.',
+  'numeric-ml-selector-64': 'Cannot run in the desktop app yet: the CLI lists it as a placeholder.',
+};
+
+/** Whether the build runs `profile`: the desktop app when `desktop`, otherwise the browser. */
+export function isSupportedProfile(profile: OpenZlProfile, {desktop = false}: {desktop?: boolean} = {}): boolean {
+  return desktop ? DESKTOP_REASON_FOR[profile] === undefined : isBrowserSupportedProfile(profile);
+}
+
+/** The profile's help text, plus why it is unselectable in that build when it is. */
+export function profileDescription(profile: OpenZlProfile, {desktop = false}: {desktop?: boolean} = {}): string {
   const description = OPENZL_PROFILE_DESCRIPTIONS[profile];
-  const reason = REASON_FOR[profile];
+  const reason = (desktop ? DESKTOP_REASON_FOR : REASON_FOR)[profile];
   if (reason === undefined) {
     return description;
   }

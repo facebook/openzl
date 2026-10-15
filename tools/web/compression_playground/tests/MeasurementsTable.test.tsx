@@ -35,7 +35,8 @@ function result(job: Partial<BenchmarkJob> & Pick<BenchmarkJob, 'compressor'>, m
       rowId: 1,
       level: 1,
       iterations: 1,
-      profile: 0,
+      profile: 'serial',
+      profileArg: '',
       training: null,
       ...job,
     } as BenchmarkJob,
@@ -163,9 +164,9 @@ describe('MeasurementsTable', () => {
     renderWithPlaygroundTheme(
       <MeasurementsTable
         runState={completed([
-          result({compressor: 'OpenZL', rowId: 1, profile: 0}, {candidate: {index: 1, total: 3}}),
-          result({compressor: 'OpenZL', rowId: 1, profile: 0}, {candidate: {index: 2, total: 3}}),
-          result({compressor: 'OpenZL', rowId: 1, profile: 0}, {candidate: {index: 3, total: 3}}),
+          result({compressor: 'OpenZL', rowId: 1, profile: 'serial'}, {candidate: {index: 1, total: 3}}),
+          result({compressor: 'OpenZL', rowId: 1, profile: 'serial'}, {candidate: {index: 2, total: 3}}),
+          result({compressor: 'OpenZL', rowId: 1, profile: 'serial'}, {candidate: {index: 3, total: 3}}),
         ])}
       />,
     );
@@ -179,7 +180,9 @@ describe('MeasurementsTable', () => {
   it('says a lone trained candidate was trained, and on which profile', () => {
     renderWithPlaygroundTheme(
       <MeasurementsTable
-        runState={completed([result({compressor: 'OpenZL', rowId: 1, profile: 5}, {candidate: {index: 1, total: 1}})])}
+        runState={completed([
+          result({compressor: 'OpenZL', rowId: 1, profile: 'le-u32'}, {candidate: {index: 1, total: 1}}),
+        ])}
       />,
     );
 
@@ -201,6 +204,13 @@ describe('ResultsPanel', () => {
     expect(screen.queryByText('No results yet')).not.toBeInTheDocument();
     expect(screen.getByRole('table', {name: 'Measurements'})).toBeInTheDocument();
     expect(screen.getByText(/WebAssembly/)).toBeInTheDocument();
+  });
+
+  it('does not say the speeds are WebAssembly ones in the desktop app, which measures natively', () => {
+    renderWithPlaygroundTheme(<ResultsPanel runState={completed(TWO_ZSTD_LEVELS)} desktop />);
+
+    expect(screen.getByRole('table', {name: 'Measurements'})).toBeInTheDocument();
+    expect(screen.queryByText(/WebAssembly/)).not.toBeInTheDocument();
   });
 
   it('keeps the empty state when every job failed, and says which', () => {

@@ -1,7 +1,15 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import {describe, expect, it} from 'vitest';
-import {evenlySpacedLevels, levelsFor} from '../src/compressors.ts';
+import {
+  DEFAULT_TRAINED_CANDIDATES,
+  DESKTOP_DEFAULT_TRAINED_CANDIDATES,
+  DESKTOP_TRAINED_CANDIDATE_COUNTS,
+  TRAINED_CANDIDATE_COUNTS,
+  createCompressorRow,
+  evenlySpacedLevels,
+  levelsFor,
+} from '../src/compressors.ts';
 
 describe('evenlySpacedLevels', () => {
   it('spreads the asked-for count across the range', () => {
@@ -38,5 +46,21 @@ describe('evenlySpacedLevels', () => {
     // whole range rather than repeating a level.
     expect(evenlySpacedLevels('gzip', 25)).toEqual(levelsFor('gzip'));
     expect(evenlySpacedLevels('zstd', 25)).toEqual(levelsFor('zstd'));
+  });
+});
+
+describe('createCompressorRow', () => {
+  it('starts an OpenZL row on the trainer floor of the backend it will run on', () => {
+    // `zli train` refuses fewer than 10 candidates; the browser's trainer
+    // raises anything under 6 instead.
+    expect(createCompressorRow(1, 'OpenZL')).toMatchObject({candidates: DEFAULT_TRAINED_CANDIDATES, profileArg: ''});
+    expect(createCompressorRow(1, 'OpenZL', true)).toMatchObject({candidates: DESKTOP_DEFAULT_TRAINED_CANDIDATES});
+  });
+
+  it('offers only counts the default of each backend is among', () => {
+    expect(TRAINED_CANDIDATE_COUNTS).toContain(DEFAULT_TRAINED_CANDIDATES);
+    expect(DESKTOP_TRAINED_CANDIDATE_COUNTS).toContain(DESKTOP_DEFAULT_TRAINED_CANDIDATES);
+    expect(Math.min(...DESKTOP_TRAINED_CANDIDATE_COUNTS)).toBe(10);
+    expect(Math.max(...DESKTOP_TRAINED_CANDIDATE_COUNTS)).toBe(Math.max(...TRAINED_CANDIDATE_COUNTS));
   });
 });
