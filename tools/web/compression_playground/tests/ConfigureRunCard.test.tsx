@@ -10,8 +10,8 @@ import React, {useState} from 'react';
 import ConfigureRunCard from '../src/components/ConfigureRunCard.tsx';
 import {
   ITERATIONS_DEFAULT,
-  OPENZL_PROFILES,
-  OPENZL_PROFILE_DESCRIPTIONS,
+  getOpenZlProfiles,
+  getOpenZlProfileDescriptions,
   defaultLevelsFor,
   createCompressorRow,
   tickLabelLeft,
@@ -124,7 +124,7 @@ describe('ConfigureRunCard', () => {
     // Every profile is offered, but runnable ones first: `be-*` sorts to the
     // front alphabetically, so the CLI's own order opened on seven greyed-out
     // rows before the first selectable one.
-    expect([...listed].sort()).toEqual([...OPENZL_PROFILES].sort());
+    expect([...listed].sort()).toEqual([...getOpenZlProfiles()].sort());
     const firstUnrunnable = listed.findIndex((p) => !isBrowserSupportedProfile(p as OpenZlProfile));
     expect(listed.slice(0, firstUnrunnable).every((p) => isBrowserSupportedProfile(p as OpenZlProfile))).toBe(true);
     expect(listed.slice(firstUnrunnable).some((p) => isBrowserSupportedProfile(p as OpenZlProfile))).toBe(false);
@@ -239,8 +239,8 @@ describe('ConfigureRunCard', () => {
   });
 
   it('describes every OpenZL profile', () => {
-    for (const profile of OPENZL_PROFILES) {
-      expect(OPENZL_PROFILE_DESCRIPTIONS[profile].length).toBeGreaterThan(0);
+    for (const profile of getOpenZlProfiles()) {
+      expect(getOpenZlProfileDescriptions()[profile].length).toBeGreaterThan(0);
     }
   });
 
@@ -252,10 +252,10 @@ describe('ConfigureRunCard', () => {
     fireEvent.click(screen.getByRole('combobox', {name: 'Level or profile for row 1'}));
     const listbox = await screen.findByRole('listbox');
 
-    for (const profile of OPENZL_PROFILES) {
+    for (const profile of getOpenZlProfiles()) {
       const describedBy = within(listbox).getByRole('option', {name: profile}).getAttribute('aria-describedby');
       expect(describedBy).toBeTruthy();
-      expect(document.getElementById(describedBy ?? '')).toHaveTextContent(OPENZL_PROFILE_DESCRIPTIONS[profile]);
+      expect(document.getElementById(describedBy ?? '')).toHaveTextContent(getOpenZlProfileDescriptions()[profile]);
     }
   });
 
@@ -287,7 +287,7 @@ describe('ConfigureRunCard', () => {
     fireEvent.click(screen.getByRole('combobox', {name: 'Level or profile for row 1'}));
     const listbox = await screen.findByRole('listbox');
 
-    for (const profile of OPENZL_PROFILES.filter((name) => !isBrowserSupportedProfile(name))) {
+    for (const profile of getOpenZlProfiles().filter((name) => !isBrowserSupportedProfile(name))) {
       expect(within(listbox).getByRole('option', {name: profile})).toHaveAttribute('aria-disabled', 'true');
     }
 

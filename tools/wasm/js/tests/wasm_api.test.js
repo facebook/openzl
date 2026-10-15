@@ -114,8 +114,7 @@ describe('wasm_api', () => {
   });
 
   it('rejects unknown profile', () => {
-    assert.throws(() => zl.getSerializedCompressor(99), /unknown profile/);
-    assert.throws(() => zl.getSerializedCompressor(-1), /unknown profile/);
+    assert.throws(() => zl.getSerializedCompressor(0), /profile must be a profile name string/);
     assert.throws(() => zl.getSerializedCompressor('not-a-profile'), /unknown profile not-a-profile; available: serial, /);
   });
 
