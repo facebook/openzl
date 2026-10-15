@@ -1,0 +1,22 @@
+{
+  // Type-checks the unit tests. The Electron code is CommonJS, typed by the
+  // .d.cts files beside it.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "types": ["vitest/globals", "node"]
+  },
+  "include": ["tests", "electron/**/*.d.cts", "vitest.config.ts"]
+}
