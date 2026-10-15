@@ -6,6 +6,7 @@ import {LuCircleAlert, LuCircleCheck, LuLoaderCircle, LuPlay} from 'react-icons/
 import StepCard from './StepCard.tsx';
 import {isRunInProgress, type RunConfig, type RunState} from '../benchmarkTypes.ts';
 import {formatBytes, runSummary, type RunSummary} from '../measurements.ts';
+import {TRY_SAMPLE_LABEL} from '../sample.ts';
 
 /**
  * How far through the run, and what it is doing. A training job runs for
@@ -133,7 +134,7 @@ export default function RunBenchmarkCard({
           _hover={{bg: 'pg.canvas'}}
           disabled={!canTrySample}
           onClick={onTrySample ?? undefined}>
-          Try a 5 MB sample
+          {TRY_SAMPLE_LABEL}
         </Button>
       </Box>
       {/* The tooltip only opens on hover or focus, so the reason is also kept
