@@ -1,0 +1,62 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+# cmake-ci does not set OPENZL_BUILD_GPU, so it skips contrib/gpu. This
+# workflow verifies that contrib/gpu builds as C++17. GitHub-hosted runners
+# have no GPU, and the contrib/gpu tests do not skip without one, so this
+# workflow does not run them.
+
+name: gpu-ci
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'contrib/gpu/**'
+      # openzl_gpu links the core and the C++ bindings. The testkit uses
+      # tests/utils.h and openzl_test_support.
+      - 'src/**'
+      - 'include/**'
+      - 'cpp/**'
+      - 'tests/**'
+      - '**/CMakeLists.txt'
+      - '**.cmake'
+      - '.github/workflows/gpu-ci.yml'
+  pull_request:
+    branches: [dev, master, actionsTest]
+    paths:
+      - 'contrib/gpu/**'
+      # openzl_gpu links the core and the C++ bindings. The testkit uses
+      # tests/utils.h and openzl_test_support.
+      - 'src/**'
+      - 'include/**'
+      - 'cpp/**'
+      - 'tests/**'
+      - '**/CMakeLists.txt'
+      - '**.cmake'
+      - '.github/workflows/gpu-ci.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  gpu-build:
+    name: GPU build
+    # The NVIDIA apt repository below is for Ubuntu 24.04.
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install CUDA
+        run: |
+          wget -q https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
+          sudo dpkg -i cuda-keyring_1.1-1_all.deb
+          sudo apt-get update
+          sudo apt-get install -y cuda-nvcc-12-8 cuda-cudart-dev-12-8
+
+      - name: Configure
+        run: cmake -DOPENZL_BUILD_GPU=ON -DOPENZL_BUILD_TESTS=ON -DCMAKE_CUDA_COMPILER=/usr/local/cuda-12.8/bin/nvcc -B build-gpu
+
+      - name: Build
+        run: cmake --build build-gpu -j$(getconf _NPROCESSORS_ONLN)

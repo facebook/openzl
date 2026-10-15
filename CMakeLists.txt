@@ -33,6 +33,7 @@ option(OPENZL_BUILD_TOOLS "Builds the tools subdirectory" ON)
 option(OPENZL_BUILD_CLI "Build the cli subdirectory" ON)
 option(OPENZL_BUILD_EXAMPLES "Build the examples subdirectory" ON)
 option(OPENZL_BUILD_WASM "Builds WASM binding (requires Emscripten)" OFF)
+option(OPENZL_BUILD_GPU "Builds the CUDA GPU decoder in contrib/gpu (requires the CUDA Toolkit)" OFF)
 
 set(OPENZL_SUPPORT_SHARED_LIBRARY "${OPENZL_BUILD_SHARED_LIBS}")
 
@@ -295,6 +296,10 @@ endif()
 
 if (OPENZL_BUILD_PYTHON_DEMO)
     add_subdirectory(contrib/openzl-demo)
+endif()
+
+if (OPENZL_BUILD_GPU)
+    add_subdirectory(contrib/gpu)
 endif()
 
 if (OPENZL_INSTALL)
