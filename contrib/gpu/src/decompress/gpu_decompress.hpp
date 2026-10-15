@@ -8,7 +8,6 @@
 #include "contrib/gpu/src/decompress/gpu_decompress.h"
 #include "openzl/cpp/DCtx.hpp"
 #include "openzl/cpp/poly/Span.hpp"
-#include "openzl/zl_errors.h"
 
 namespace openzl::gpu {
 
@@ -51,12 +50,12 @@ struct PreparedGPUChunk {
  * Copies frame, formal chunk, and transform headers to host and prepares one
  * DCTX per chunk.
  * Stored-stream references remain bound to the device addresses in @p chunks.
- * @p preparedChunks is cleared before preparation and populated on success.
+ * @returns One prepared chunk per entry of @p chunks, in the same order.
+ * @throws openzl::Exception on error.
  */
-ZL_Report prepareChunksForPlanning(
+std::vector<PreparedGPUChunk> prepareChunksForPlanning(
         poly::span<const GPUFrameHeaderForChunks> frameHeaders,
         poly::span<const GPUChunk> chunks,
-        std::vector<PreparedGPUChunk>& preparedChunks,
         ZL_GPU_Stream stream);
 
 /**
@@ -70,11 +69,12 @@ ZL_Report prepareChunksForPlanning(
  * error.
  * @param frameHeaders Output containing the frame-header descriptor referenced
  * by the appended chunks. Appended on success and unchanged on error.
- * @returns The compressed frame size on success, or an error.
+ * @returns The compressed frame size.
+ * @throws openzl::Exception on error.
  *
  * @note Only frame format version 21 and newer is supported.
  */
-ZL_Report collectGPUChunksFromFrame(
+size_t collectGPUChunksFromFrame(
         const void* src_d,
         poly::span<const std::byte> src_h,
         std::vector<GPUChunk>& chunks,
@@ -91,9 +91,10 @@ ZL_Report collectGPUChunksFromFrame(
  * @param frameHeaders Output containing the frame-header descriptor referenced
  * by the appended chunks. Appended on success and unchanged on error. Its
  * pointer remains valid only while @p src_d remains valid.
- * @returns The compressed frame size on success, or an error.
+ * @returns The compressed frame size.
+ * @throws openzl::Exception on error.
  */
-ZL_Report collectGPUChunks(
+size_t collectGPUChunks(
         poly::span<const std::byte> src_d,
         ZL_GPU_Stream stream,
         std::vector<GPUChunk>& chunks,
@@ -110,9 +111,10 @@ ZL_Report collectGPUChunks(
  * frame-header indices must refer to @p frameHeaders, and all referenced device
  * storage must remain valid until the enqueued work has completed on @p stream.
  * @param stream CUDA stream on which decompression is enqueued.
- * @returns The decompressed size on success, or an error.
+ * @returns The decompressed size.
+ * @throws openzl::Exception on error.
  */
-ZL_Report decompressChunks(
+size_t decompressChunks(
         void* dst_d,
         size_t dstCapacity,
         poly::span<const GPUFrameHeaderForChunks> frameHeaders,

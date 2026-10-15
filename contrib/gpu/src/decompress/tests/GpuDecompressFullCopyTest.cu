@@ -66,19 +66,17 @@ TEST(GPUDecompressFullCopyTest, MatchesDirectHostEnumeration)
 
     std::vector<gpu::GPUChunk> expected;
     std::vector<gpu::GPUFrameHeaderForChunks> expectedFrameHeaders;
-    ZL_Report const expectedResult = gpu::collectGPUChunksFromFrame(
+    const size_t expectedSize = gpu::collectGPUChunksFromFrame(
             deviceFrame_d.get(), bytes(frame), expected, expectedFrameHeaders);
-    ASSERT_FALSE(ZL_isError(expectedResult));
 
     std::vector<gpu::GPUChunk> actual;
     std::vector<gpu::GPUFrameHeaderForChunks> actualFrameHeaders;
-    ZL_Report const actualResult = gpu::collectGPUChunks(
+    const size_t actualSize = gpu::collectGPUChunks(
             { deviceFrame_d.get(), frame.size() },
             nullptr,
             actual,
             actualFrameHeaders);
-    ASSERT_FALSE(ZL_isError(actualResult));
-    EXPECT_EQ(ZL_validResult(actualResult), ZL_validResult(expectedResult));
+    EXPECT_EQ(actualSize, expectedSize);
     ASSERT_EQ(actualFrameHeaders.size(), expectedFrameHeaders.size());
     ASSERT_EQ(actualFrameHeaders.size(), 1);
     EXPECT_EQ(

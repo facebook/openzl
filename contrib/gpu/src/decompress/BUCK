@@ -23,6 +23,7 @@ cpp_library(
     | {"gpu_decompress.h": "gpu_decompress.h", "gpu_decompress.hpp": "gpu_decompress.hpp"},
     header_namespace = "",
     deps = [
+        "../common:errors",
         "../planning:decode_planner",
     ],
     exported_deps = [
@@ -39,6 +40,7 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     deps = [
         "../../testkit:testkit",
+        "../common:error_testing",
         "fbsource//third-party/googletest:gtest",
         ":decompress",
     ],
@@ -98,6 +100,7 @@ cpp_unittest(
     deps = [
         "../../testkit:testkit_relative_headers",
         "../common:cuda_raii_relative_headers",
+        "../common:error_testing",
         "fbsource//third-party/googletest:gtest",
         ":decompress",
     ],
