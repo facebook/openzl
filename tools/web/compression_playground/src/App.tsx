@@ -8,8 +8,11 @@ import SetupColumn from './components/SetupColumn.tsx';
 import UnsupportedBrowser from './components/UnsupportedBrowser.tsx';
 import {toCompressorConfig, type CompressorConfig, type RunConfig, type RunState} from './benchmarkTypes.ts';
 import {ITERATIONS_DEFAULT} from './compressors.ts';
+import {desktopBridge, type OpenZLDesktopBridge} from './desktop.ts';
 import {detectEngineSupport, engineBlocker, isolationSettled} from './engineSupport.ts';
 import {runBenchmark} from './runBenchmark.ts';
+import {runDesktopBenchmark} from './runDesktopBenchmark.ts';
+import {makeSample} from './sample.ts';
 import {useCompressorRows} from './useCompressorRows.ts';
 import logoUrl from '/OpenZL_logo.png?url';
 
@@ -65,28 +68,36 @@ function describeRows(positions: readonly number[]): string {
 }
 
 /**
- * Why Run is unavailable, if it is. A zstd or gzip row with no levels would
- * drop out of the run with nothing on the page to say so, so Run waits until
- * it has one.
+ * What stands in the way of the compressors running at all. A zstd or gzip row
+ * with no levels would drop out of the run with nothing on the page to say so,
+ * so Run waits until it has one.
  */
-function runBlockersFor(file: File | null, compressors: readonly CompressorConfig[]): string[] {
-  const blockers: string[] = [];
-  if (file === null) {
-    blockers.push('Choose a file in step 1 to run the benchmark.');
-  }
+function configBlockersFor(compressors: readonly CompressorConfig[]): string[] {
   const emptyRows = compressors.flatMap((config, index) => (config.levels.length === 0 ? [index + 1] : []));
-  if (emptyRows.length > 0) {
-    blockers.push(`Pick at least one level for ${describeRows(emptyRows)}.`);
-  }
-  return blockers;
+  return emptyRows.length > 0 ? [`Pick at least one level for ${describeRows(emptyRows)}.`] : [];
+}
+
+/** Why Run is unavailable, if it is, in the order to fix it. */
+function runBlockersFor(file: File | null, compressors: readonly CompressorConfig[]): string[] {
+  return [
+    ...(file === null ? ['Choose a file in step 1 to run the benchmark.'] : []),
+    ...configBlockersFor(compressors),
+  ];
 }
 
 export default function App() {
+  // The desktop app measures with `zli` instead of the WASM worker. Both feed
+  // the same `RunState`, so nothing past `onRun` knows which one ran.
+  const bridge = desktopBridge();
+  const desktop = bridge !== undefined;
   // Lazy initializer rather than a call in the body: nothing detection reports
   // can change while the page is open, so it should run once per mount rather
   // than once per render.
   const [support] = useState(detectEngineSupport);
-  const blocker = engineBlocker(support);
+  // None of the engine gates apply to the desktop app, which never loads the
+  // module. They would fail there anyway: app:// cannot host the isolation
+  // worker, so `threads` always reads false.
+  const blocker = desktop ? null : engineBlocker(support);
   const [settled, setSettled] = useState(false);
   useEffect(() => {
     void isolationSettled().then(() => {
@@ -101,12 +112,27 @@ export default function App() {
 
   return (
     <Flex direction="column" minH="100vh" bg="pg.pageBg">
-      <ToolHeader title="Compression Playground" logoSrc={logoUrl} />
+      <ToolHeader
+        title="Compression Playground"
+        logoSrc={logoUrl}
+        {...(desktop
+          ? {
+              // The page is served from app://, where the header's relative
+              // links point nowhere.
+              homeHref: 'https://openzl.org/',
+              navigation: [
+                {label: 'HOME', href: 'https://openzl.org/'},
+                {label: 'API REFERENCE', href: 'https://openzl.org/api/c/compressor/'},
+                {label: 'GETTING STARTED', href: 'https://openzl.org/getting-started/quick-start/'},
+              ],
+            }
+          : {})}
+      />
       {/* The header stays up on the unsupported path. It is the site
           navigation, and it is the only way off this screen. */}
       <Flex as="main" flex="1" direction="column" align="center" bg="pg.pageBg">
         {awaitingIsolation ? null : blocker === null ? (
-          <Playground />
+          <Playground bridge={bridge} />
         ) : (
           <Box width="100%" maxW={MESSAGE_MAX_WIDTH} px="32px" pt={{base: '32px', md: '96px'}} pb="40px">
             <UnsupportedBrowser blocker={blocker} />
@@ -118,15 +144,24 @@ export default function App() {
 }
 
 /** Owns the run setup, so none of it exists on the blocked path, where nothing could use it. */
-function Playground() {
+function Playground({bridge}: {bridge: OpenZLDesktopBridge | undefined}) {
   const [file, setFile] = useState<File | null>(null);
-  const compressors = useCompressorRows();
+  const desktop = bridge !== undefined;
+  const compressors = useCompressorRows({desktop});
   const [iterations, setIterations] = useState(ITERATIONS_DEFAULT);
   const [runState, setRunState] = useState<RunState>({status: 'idle'});
-  const onRun = useCallback((config: RunConfig) => {
-    runBenchmark(config, setRunState);
-  }, []);
+  const onRun = useCallback(
+    (config: RunConfig) => {
+      if (bridge === undefined) {
+        runBenchmark(config, setRunState);
+      } else {
+        runDesktopBenchmark(config, bridge, setRunState);
+      }
+    },
+    [bridge],
+  );
   const compressorConfigs = compressors.rows.map(toCompressorConfig);
+  const configBlockers = configBlockersFor(compressorConfigs);
   const runBlockers = runBlockersFor(file, compressorConfigs);
   const runConfig: RunConfig | null =
     file === null || runBlockers.length > 0
@@ -135,6 +170,16 @@ function Playground() {
           input: file,
           compressors: compressorConfigs,
           iterations,
+        };
+  // The sample stands in for the file, so it runs even with none chosen -- but
+  // not with a row Run would refuse.
+  const onTrySample =
+    bridge === undefined || configBlockers.length > 0
+      ? null
+      : () => {
+          const sample = makeSample();
+          setFile(sample);
+          onRun({input: sample, compressors: compressorConfigs, iterations});
         };
   useBlockStrayFileDrops();
 
@@ -157,10 +202,11 @@ function Playground() {
         runConfig={runConfig}
         runState={runState}
         onRun={onRun}
-        onTrySample={null}
+        onTrySample={onTrySample}
         runBlockers={runBlockers}
+        desktop={desktop}
       />
-      <ResultsPanel runState={runState} />
+      <ResultsPanel runState={runState} desktop={desktop} />
     </Flex>
   );
 }
