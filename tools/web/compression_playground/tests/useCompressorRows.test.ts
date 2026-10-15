@@ -27,7 +27,7 @@ describe('useCompressorRows', () => {
   });
 
   it('seeds the counter above whatever it was handed', () => {
-    const {result} = renderHook(() => useCompressorRows([createCompressorRow(7, 'zstd')]));
+    const {result} = renderHook(() => useCompressorRows({initialRows: [createCompressorRow(7, 'zstd')]}));
 
     act(() => {
       result.current.addRow();
@@ -81,5 +81,22 @@ describe('useCompressorRows', () => {
     const rebuilt = result.current.rows[0] as OpenZlRow;
     expect(rebuilt.id).toBe(1);
     expect(rebuilt.optionsOpen).toBe(fresh.optionsOpen);
+  });
+
+  it('gives every OpenZL row the desktop trainer floor, including ones added or switched to later', () => {
+    const {result} = renderHook(() => useCompressorRows({desktop: true}));
+    const candidates = () =>
+      result.current.rows.flatMap((row) => (row.compressor === 'OpenZL' ? [row.candidates] : []));
+
+    expect(candidates()).toEqual([10]);
+
+    act(() => {
+      result.current.addRow();
+    });
+    act(() => {
+      result.current.changeCompressor(2, 'OpenZL');
+    });
+
+    expect(candidates()).toEqual([10, 10, 10]);
   });
 });

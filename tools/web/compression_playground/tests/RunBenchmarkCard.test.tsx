@@ -181,13 +181,13 @@ describe('RunBenchmarkCard', () => {
     );
 
     expect(screen.getByRole('button', {name: 'Run benchmark'})).toBeDisabled();
-    expect(screen.getByRole('button', {name: 'Try a 5 MB sample'})).toBeDisabled();
+    expect(screen.getByRole('button', {name: 'Try a 4.2 MB sample'})).toBeDisabled();
   });
 
   it('passes the current configuration to the run handler', () => {
     const config: RunConfig = {
       input: new File(['data'], 'data.bin'),
-      compressors: [{rowId: 1, compressor: 'OpenZL', levels: [6], profile: 'serial', training: null}],
+      compressors: [{rowId: 1, compressor: 'OpenZL', levels: [6], profile: 'serial', profileArg: '', training: null}],
       iterations: 5,
     };
     const onRun = vi.fn();
@@ -203,7 +203,7 @@ describe('RunBenchmarkCard', () => {
     );
 
     fireEvent.click(screen.getByRole('button', {name: 'Run benchmark'}));
-    fireEvent.click(screen.getByRole('button', {name: 'Try a 5 MB sample'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Try a 4.2 MB sample'}));
 
     expect(onRun).toHaveBeenCalledWith(config);
     expect(onTrySample).toHaveBeenCalledOnce();
@@ -212,7 +212,7 @@ describe('RunBenchmarkCard', () => {
   it('disables actions while a run is loading', () => {
     const config: RunConfig = {
       input: new File(['data'], 'data.bin'),
-      compressors: [{rowId: 1, compressor: 'OpenZL', levels: [6], profile: 'serial', training: null}],
+      compressors: [{rowId: 1, compressor: 'OpenZL', levels: [6], profile: 'serial', profileArg: '', training: null}],
       iterations: 5,
     };
     renderWithPlaygroundTheme(
@@ -227,7 +227,7 @@ describe('RunBenchmarkCard', () => {
 
     // Loading is already part of the run, so the button is the running one.
     expect(screen.getByRole('button', {name: 'Running…'})).toBeDisabled();
-    expect(screen.getByRole('button', {name: 'Try a 5 MB sample'})).toBeDisabled();
+    expect(screen.getByRole('button', {name: 'Try a 4.2 MB sample'})).toBeDisabled();
   });
 
   it('says what to fix while Run is unavailable, on focus and to a screen reader', async () => {
