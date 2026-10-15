@@ -2,6 +2,7 @@
 
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("../../../defs.bzl", "relative_headers")
+load("../../wasm/wasm_flags.bzl", "openzl_wasm_compiler_flags")
 
 oncall("data_compression")
 
@@ -36,6 +37,7 @@ cpp_library(
         ]
     },
     header_namespace = "",
+    compiler_flags = openzl_wasm_compiler_flags(),
     deps = [
         "../../..:zstronglib",
         "../utils:mutation",

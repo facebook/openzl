@@ -7,6 +7,12 @@ set -euo pipefail
 PWD="$(pwd)"
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
+if [[ "${OPENZL_SKIP_WEB_TOOLS_BUILD:-}" != "1" ]]; then
+    wasm="$(cd ../../tools/wasm && buck2 build @//mode/opt :openzl_wasm --show-full-simple-output)"
+    [[ -n "$wasm" ]] || { echo "error: could not find :openzl_wasm output path" >&2; exit 1; }
+    cp -f "$wasm/openzl.js" "$wasm/openzl.wasm" ../../tools/wasm/js/
+fi
+
 buck2 run @//mode/opt :static_docs_build_script\[standalone\] -- \
     --pwd "$PWD" \
     --use-system-python-extension \
