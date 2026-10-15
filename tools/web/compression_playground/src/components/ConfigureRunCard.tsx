@@ -6,6 +6,7 @@ import {
   Button,
   Checkbox,
   IconButton,
+  Input,
   NativeSelect,
   Popover,
   Portal,
@@ -28,6 +29,7 @@ import {
   ITERATIONS_THUMB_HALF_PX,
   OPENZL_DEFAULT_LEVEL,
   OPENZL_LEVELS,
+  DESKTOP_TRAINED_CANDIDATE_COUNTS,
   OPENZL_PROFILES,
   TRAINED_CANDIDATE_COUNTS,
   isTrainableProfile,
@@ -41,7 +43,7 @@ import {
   type ZstdRow,
 } from '../compressors.ts';
 import type {CompressorRows, PatchOpenZlRow, PatchRow} from '../useCompressorRows.ts';
-import {isBrowserSupportedProfile, profileDescription} from '../wasmProfiles.ts';
+import {isSupportedProfile, profileDescription} from '../wasmProfiles.ts';
 
 interface CompressorRowProps {
   row: CompressorRow;
@@ -51,25 +53,33 @@ interface CompressorRowProps {
   onPatchOpenZl: PatchOpenZlRow;
   onCompressorChange: (id: number, compressor: CompressorName) => void;
   onRemove: (id: number) => void;
+  desktop: boolean;
 }
 
 interface OpenZlRowProps {
   row: OpenZlRow;
   position: number;
   onPatch: PatchOpenZlRow;
+  desktop: boolean;
 }
 
 interface ConfigureRunCardProps {
   compressors: CompressorRows;
   iterations: number;
   onIterationsChange: (iterations: number) => void;
+  /** The desktop app, which runs the CLI's profiles and trains from 10 candidates. */
+  desktop?: boolean;
 }
 
-function OpenZlOptions({row, position, onPatch}: OpenZlRowProps) {
+/** Profiles the desktop app runs whose `zli` profile takes a value after `--profile-arg`. */
+const PROFILES_WITH_ARGUMENT: readonly OpenZlProfile[] = ['csv'];
+
+function OpenZlOptions({row, position, onPatch, desktop}: OpenZlRowProps) {
   // A backstop for rows that arrive from elsewhere: the picker already refuses
   // pytorch, which the browser cannot run at all.
   const canTrain = isTrainableProfile(row.profile);
   const isTraining = row.trainRequested && canTrain;
+  const candidateCounts = desktop ? DESKTOP_TRAINED_CANDIDATE_COUNTS : TRAINED_CANDIDATE_COUNTS;
   return (
     <Box borderRadius="6px" overflow="hidden">
       <chakra.button
@@ -176,7 +186,7 @@ function OpenZlOptions({row, position, onPatch}: OpenZlRowProps) {
                     borderRadius="6px"
                     value={row.candidates}
                     onChange={(event) => onPatch(row.id, {candidates: Number(event.target.value)})}>
-                    {TRAINED_CANDIDATE_COUNTS.map((count) => (
+                    {candidateCounts.map((count) => (
                       <option key={count} value={count}>
                         {count}
                       </option>
@@ -186,6 +196,24 @@ function OpenZlOptions({row, position, onPatch}: OpenZlRowProps) {
                 </NativeSelect.Root>
               </Box>
             </Box>
+
+            {desktop && PROFILES_WITH_ARGUMENT.includes(row.profile) && (
+              <Box display="flex" gap="8px" alignItems="center">
+                <Text color="pg.faint" fontSize="11px" fontWeight="semibold" flexShrink={0} m={0}>
+                  PROFILE ARGUMENT
+                </Text>
+                <Input
+                  aria-label={`Profile argument for row ${position}`}
+                  value={row.profileArg}
+                  onChange={(event) => onPatch(row.id, {profileArg: event.target.value})}
+                  height="32px"
+                  fontSize="12px"
+                  bg="pg.surface"
+                  borderColor="pg.border"
+                  placeholder="separator (optional)"
+                />
+              </Box>
+            )}
 
             <Box
               display="flex"
@@ -215,22 +243,26 @@ function OpenZlOptions({row, position, onPatch}: OpenZlRowProps) {
 
 /**
  * Runnable profiles first, the rest after, alphabetical within each group.
- * Both groups are derived from `isBrowserSupportedProfile`, so a profile added
- * to `OPENZL_PROFILES` sorts itself -- there is no second list to keep in step.
+ * Both groups are derived from `isSupportedProfile`, so a profile added to
+ * `OPENZL_PROFILES` sorts itself -- there is no second list to keep in step.
  *
- * Ordering rather than the CLI's own: most of the list cannot run here, and
- * `be-*` sorts to the front alphabetically, so the plain order opened on seven
- * greyed-out rows before the first selectable one.
+ * Ordering rather than the CLI's own: most of the list cannot run in the
+ * browser, and `be-*` sorts to the front alphabetically, so the plain order
+ * opened on seven greyed-out rows before the first selectable one.
  */
-const RUNNABLE_PROFILES = OPENZL_PROFILES.filter(isBrowserSupportedProfile);
-const UNRUNNABLE_PROFILES = OPENZL_PROFILES.filter((profile) => !isBrowserSupportedProfile(profile));
+function groupedProfiles(desktop: boolean) {
+  const runnable = OPENZL_PROFILES.filter((profile) => isSupportedProfile(profile, {desktop}));
+  const collection = createListCollection<OpenZlProfile>({
+    items: [...runnable, ...OPENZL_PROFILES.filter((profile) => !isSupportedProfile(profile, {desktop}))],
+    // Listed but unselectable, so the picker cannot produce a run the backend
+    // would have to drop on the floor.
+    isItemDisabled: (profile) => !isSupportedProfile(profile, {desktop}),
+  });
+  return {collection, runnableCount: runnable.length};
+}
 
-const profileCollection = createListCollection<OpenZlProfile>({
-  items: [...RUNNABLE_PROFILES, ...UNRUNNABLE_PROFILES],
-  // Listed but unselectable, so the picker cannot produce a run the worker
-  // would have to drop on the floor.
-  isItemDisabled: (profile) => !isBrowserSupportedProfile(profile),
-});
+const BROWSER_PROFILES = groupedProfiles(false);
+const DESKTOP_PROFILES = groupedProfiles(true);
 
 /**
  * Ids for the hidden descriptions the options point at. Scoped per row because
@@ -240,10 +272,12 @@ function profileDescriptionId(rowId: number, profile: OpenZlProfile): string {
   return `row-${rowId}-profile-${profile}-description`;
 }
 
-function ProfileSelect({row, position, onPatch}: OpenZlRowProps) {
+function ProfileSelect({row, position, onPatch, desktop}: OpenZlRowProps) {
+  const {collection, runnableCount} = desktop ? DESKTOP_PROFILES : BROWSER_PROFILES;
+  const describe = (profile: OpenZlProfile) => profileDescription(profile, {desktop});
   return (
     <Select.Root
-      collection={profileCollection}
+      collection={collection}
       size="sm"
       width="100px"
       flexShrink={0}
@@ -260,7 +294,8 @@ function ProfileSelect({row, position, onPatch}: OpenZlRowProps) {
           // `trainRequested` is left alone: an untrainable profile is honoured
           // where the row is read, so passing through one cannot cost the row a
           // setting it would never get back.
-          onPatch(row.id, {profile: next as OpenZlProfile});
+          // The argument belongs to the profile it was typed for.
+          onPatch(row.id, {profile: next as OpenZlProfile, profileArg: ''});
         }
       }}>
       <Select.Label srOnly>Level or profile for row {position}</Select.Label>
@@ -277,12 +312,12 @@ function ProfileSelect({row, position, onPatch}: OpenZlRowProps) {
       </Select.Control>
       <Select.Positioner>
         <Select.Content color="pg.ink">
-          {profileCollection.items.map((profile, index) => (
+          {collection.items.map((profile, index) => (
             <Fragment key={profile}>
               {/* One heading, before the first profile that cannot run. Without
                   it the greyed half reads as broken rather than unavailable,
                   and the reason is only reachable by hovering each one. */}
-              {index === RUNNABLE_PROFILES.length && (
+              {index === runnableCount && index < collection.items.length && (
                 <Box
                   px="8px"
                   pt="8px"
@@ -294,7 +329,7 @@ function ProfileSelect({row, position, onPatch}: OpenZlRowProps) {
                   fontSize="11px"
                   fontWeight="semibold"
                   textTransform="uppercase">
-                  Not available in the browser
+                  {desktop ? 'Not available in the desktop app' : 'Not available in the browser'}
                 </Box>
               )}
               <Select.Item
@@ -315,7 +350,7 @@ function ProfileSelect({row, position, onPatch}: OpenZlRowProps) {
                         <Tooltip.Arrow>
                           <Tooltip.ArrowTip />
                         </Tooltip.Arrow>
-                        {profileDescription(profile)}
+                        {describe(profile)}
                       </Tooltip.Content>
                     </Tooltip.Positioner>
                   </Portal>
@@ -329,9 +364,9 @@ function ProfileSelect({row, position, onPatch}: OpenZlRowProps) {
       {/* Outside the listbox on purpose: nested in an option these would join
           its accessible name, so "csv" would read as the whole help sentence. */}
       <Box srOnly>
-        {profileCollection.items.map((profile) => (
+        {collection.items.map((profile) => (
           <Box as="span" key={profile} id={profileDescriptionId(row.id, profile)}>
-            {profileDescription(profile)}
+            {describe(profile)}
           </Box>
         ))}
       </Box>
@@ -463,6 +498,7 @@ function CompressorRowCard({
   onPatchOpenZl,
   onCompressorChange,
   onRemove,
+  desktop,
 }: CompressorRowProps) {
   return (
     <Box
@@ -498,7 +534,7 @@ function CompressorRowCard({
         </NativeSelect.Root>
 
         {row.compressor === 'OpenZL' ? (
-          <ProfileSelect row={row} position={position} onPatch={onPatchOpenZl} />
+          <ProfileSelect row={row} position={position} onPatch={onPatchOpenZl} desktop={desktop} />
         ) : (
           <LevelsPicker row={row} position={position} onPatch={onPatch} />
         )}
@@ -522,7 +558,9 @@ function CompressorRowCard({
         </Text>
       )}
 
-      {row.compressor === 'OpenZL' && <OpenZlOptions row={row} position={position} onPatch={onPatchOpenZl} />}
+      {row.compressor === 'OpenZL' && (
+        <OpenZlOptions row={row} position={position} onPatch={onPatchOpenZl} desktop={desktop} />
+      )}
     </Box>
   );
 }
@@ -531,6 +569,7 @@ export default function ConfigureRunCard({
   compressors: {rows, addRow, removeRow, patchRow, patchOpenZlRow, changeCompressor},
   iterations,
   onIterationsChange,
+  desktop = false,
 }: ConfigureRunCardProps) {
   return (
     <StepCard number={2} title="Configure the run" subtitle="Select which compressors to compare">
@@ -554,6 +593,7 @@ export default function ConfigureRunCard({
             onPatchOpenZl={patchOpenZlRow}
             onCompressorChange={changeCompressor}
             onRemove={removeRow}
+            desktop={desktop}
           />
         ))}
       </VStack>

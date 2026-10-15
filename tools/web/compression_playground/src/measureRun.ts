@@ -3,6 +3,7 @@
 import {createOpenZL, type OpenZL} from '../../../wasm/js/wasm_api.js';
 import {benchmarkGzip, benchmarkOpenZL, benchmarkZstd} from './benchmark.ts';
 import {buildJobs, type BenchmarkJob, type RunConfig, type WorkerMessage} from './benchmarkTypes.ts';
+import {WASM_PROFILE} from './wasmProfiles.ts';
 
 /** Where a message goes. The worker posts; a test collects. */
 type Emit = (message: WorkerMessage) => void;
@@ -55,7 +56,13 @@ async function* measure(job: BenchmarkJob, data: Uint8Array, openzl: OpenZL | nu
       if (openzl === null) {
         throw new Error('the OpenZL module is not loaded');
       }
-      const base = openzl.getSerializedCompressor(job.profile, job.level);
+      const profile = WASM_PROFILE[job.profile];
+      if (profile === null) {
+        // `buildJobs` rejects these for the browser, so this only guards a job
+        // built some other way.
+        throw new Error(`The ${job.profile} profile has no browser build`);
+      }
+      const base = openzl.getSerializedCompressor(profile, job.level);
       if (job.training === null) {
         yield {
           type: 'result',

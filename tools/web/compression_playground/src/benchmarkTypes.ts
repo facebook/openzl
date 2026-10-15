@@ -1,8 +1,8 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-import type {BenchmarkResult as BenchmarkMetrics, ProfileValue} from '../../../wasm/js/wasm_api.js';
+import type {BenchmarkResult as BenchmarkMetrics} from '../../../wasm/js/wasm_api.js';
 import {isTrainableProfile, type CompressorRow, type OpenZlProfile} from './compressors.ts';
-import {WASM_PROFILE} from './wasmProfiles.ts';
+import {isSupportedProfile} from './wasmProfiles.ts';
 
 interface CompressorConfigBase {
   readonly rowId: number;
@@ -46,6 +46,8 @@ export interface TrainingConfig {
 export interface OpenZlCompressorConfig extends CompressorConfigBase {
   readonly compressor: 'OpenZL';
   readonly profile: OpenZlProfile;
+  /** Forwarded to `zli` as `--profile-arg`; the browser has nothing to do with it. */
+  readonly profileArg: string;
   readonly training: TrainingConfig | null;
 }
 
@@ -74,7 +76,13 @@ interface BenchmarkJobBase {
 
 export interface OpenZlBenchmarkJob extends BenchmarkJobBase {
   readonly compressor: 'OpenZL';
-  readonly profile: ProfileValue;
+  /**
+   * The profile by name, so a measurement can say what it ran at whichever
+   * backend produced it. The browser maps it to the binding's numeric enum
+   * where it measures; the desktop app has profiles that enum has no value for.
+   */
+  readonly profile: OpenZlProfile;
+  readonly profileArg: string;
   readonly training: TrainingConfig | null;
 }
 
@@ -186,6 +194,7 @@ export function toCompressorConfig(row: CompressorRow): CompressorConfig {
         compressor: row.compressor,
         levels: [row.level],
         profile: row.profile,
+        profileArg: row.profileArg,
         // The request is kept as the user left it and honoured here, so
         // passing through an untrainable profile cannot cost the row a setting
         // it would never get back.
@@ -222,8 +231,11 @@ export interface RunPlan {
 /**
  * Flattens the run into one job per compressor per level, which is the unit the
  * worker measures and the unit `totalJobs` counts.
+ *
+ * `desktop` plans for the desktop app, which runs the CLI's profiles rather
+ * than the browser's. A profile the build cannot run is rejected, not run.
  */
-export function buildJobs(config: RunConfig): RunPlan {
+export function buildJobs(config: RunConfig, {desktop = false}: {desktop?: boolean} = {}): RunPlan {
   const jobs: BenchmarkJob[] = [];
   const rejected: RejectedCompressor[] = [];
 
@@ -246,18 +258,25 @@ export function buildJobs(config: RunConfig): RunPlan {
 
     switch (compressor.compressor) {
       case 'OpenZL': {
-        const profile = WASM_PROFILE[compressor.profile];
-        if (profile === null) {
+        if (!isSupportedProfile(compressor.profile, {desktop})) {
           // The picker refuses these profiles, so this is a backstop for a
           // config assembled anywhere else.
           rejected.push({
             rowId: compressor.rowId,
-            message: `The ${compressor.profile} profile has no browser build`,
+            message: desktop
+              ? `The ${compressor.profile} profile cannot run in the desktop app yet`
+              : `The ${compressor.profile} profile has no browser build`,
           });
           break;
         }
         for (const level of compressor.levels) {
-          jobs.push({...base(level), compressor: 'OpenZL', profile, training: compressor.training});
+          jobs.push({
+            ...base(level),
+            compressor: 'OpenZL',
+            profile: compressor.profile,
+            profileArg: compressor.profileArg,
+            training: compressor.training,
+          });
         }
         break;
       }

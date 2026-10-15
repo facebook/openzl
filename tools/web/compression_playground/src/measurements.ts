@@ -1,7 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import type {JobResult, RunState} from './benchmarkTypes.ts';
-import {WASM_PROFILE} from './wasmProfiles.ts';
 
 /**
  * Columns the table can be ordered by. `codec` ascending is the order the run
@@ -50,24 +49,16 @@ export function frontierTag(index: number, total: number): FrontierTag | null {
   return total >= 3 && index === Math.ceil(total / 2) ? 'balanced' : null;
 }
 
-function profileName(result: JobResult): string | null {
-  if (result.job.compressor !== 'OpenZL') {
-    return null;
-  }
-  const profile = result.job.profile;
-  return Object.entries(WASM_PROFILE).find(([, value]) => value === profile)?.[0] ?? null;
-}
-
 /**
  * What one measurement ran at, for the `LEVEL / PROFILE` column: the profile
  * for OpenZL, marked when it was trained, and the level otherwise. Every row
  * says this for itself, since sorting can put any two rows next to each other.
  */
 export function rowDetail(result: JobResult): string {
-  const name = profileName(result);
-  if (name === null) {
+  if (result.job.compressor !== 'OpenZL') {
     return `Level ${String(result.job.level)}`;
   }
+  const name = result.job.profile;
   return result.candidate === null ? name : `trained · ${name}`;
 }
 
