@@ -87,6 +87,16 @@ CmdTrainResult cmdTrainWithResult(const TrainArgs& args)
 
     // Benchmark the untrained compressor
     BenchmarkArgs benchmarkArgs(args, args.compressor());
+    benchmarkArgs.numIters = args.benchmarkNumIters;
+    if (!args.benchmarkOutputDir.empty()) {
+        if (std::filesystem::exists(args.benchmarkOutputDir)
+            && !std::filesystem::is_directory(args.benchmarkOutputDir)) {
+            throw InvalidArgsException(
+                    "--benchmark-output-dir must point to a directory: "
+                    + args.benchmarkOutputDir);
+        }
+        std::filesystem::create_directories(args.benchmarkOutputDir);
+    }
     benchmarkArgs.inputs = training::inputSetToMultiInputs(*filteredInputsPtr);
     benchmarkArgs.dictBundleData = args.dictBundleData;
     Logger::log(INFO, "Benchmarking untrained compressor...");
@@ -129,6 +139,12 @@ CmdTrainResult cmdTrainWithResult(const TrainArgs& args)
                 candidate.serializedCompressor, fatBundle));
         benchmarkArgs.dictBundleData =
                 fatBundle.empty() ? args.dictBundleData : fatBundle;
+        if (!args.benchmarkOutputDir.empty()) {
+            const auto csvPath = std::filesystem::path(args.benchmarkOutputDir)
+                    / (std::to_string(i) + ".csv");
+            benchmarkArgs.outputCsv =
+                    std::make_unique<tools::io::OutputFile>(csvPath.string());
+        }
 
         if (!args.trainParams.paretoFrontier) {
             Logger::log(INFO, "Benchmarking trained compressor...");

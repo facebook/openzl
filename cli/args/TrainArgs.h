@@ -44,6 +44,18 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
                 "Output file path for the trained compressor.");
         parser.addCommandFlag(
                 cmd(), kForce, 'f', false, "Overwrite output file.");
+        parser.addCommandFlag(
+                cmd(),
+                kBenchmarkNumIters,
+                0,
+                true,
+                "Number of benchmark iterations (default: 10).");
+        parser.addCommandFlag(
+                cmd(),
+                kBenchmarkOutputDir,
+                0,
+                true,
+                "Output directory for CSV-formatted benchmark statistics");
 
         // Train Params
         parser.addCommandFlag(
@@ -162,6 +174,13 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
             output = std::make_unique<tools::io::OutputFile>(
                     std::move(outputPath).value());
         }
+        auto benchmarkNumItersArg = parsed.cmdFlag(cmd(), kBenchmarkNumIters);
+        if (benchmarkNumItersArg) {
+            benchmarkNumIters =
+                    util::checkedstoul(benchmarkNumItersArg.value());
+        }
+        benchmarkOutputDir =
+                parsed.cmdFlag(cmd(), kBenchmarkOutputDir).value_or("");
         auto dictBundleOutputPath = parsed.cmdFlag(cmd(), kDictBundleOutput);
         if (dictBundleOutputPath) {
             checkOutput(
@@ -275,6 +294,8 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
     std::shared_ptr<tools::io::Output> output;
     std::shared_ptr<tools::io::Output> dictBundleOutput;
     std::string dictBundleData;
+    size_t benchmarkNumIters = 10;
+    std::string benchmarkOutputDir;
 
     bool useAllSamples{};
     training::TrainParams trainParams;
@@ -292,9 +313,12 @@ class TrainArgs : public GlobalArgs, public ProfileArgs {
     inline static const std::string kSampleDir  = "sample-dir";
     inline static const std::string kCompressor = "compressor";
 
-    inline static const std::string kOutput           = "output";
-    inline static const std::string kForce            = "force";
-    inline static const std::string kDictBundleOutput = "dict-bundle-output";
+    inline static const std::string kOutput            = "output";
+    inline static const std::string kForce             = "force";
+    inline static const std::string kDictBundleOutput  = "dict-bundle-output";
+    inline static const std::string kBenchmarkNumIters = "benchmark-num-iters";
+    inline static const std::string kBenchmarkOutputDir =
+            "benchmark-output-dir";
 
     // Train Params
     inline static const std::string kTrainer          = "trainer";

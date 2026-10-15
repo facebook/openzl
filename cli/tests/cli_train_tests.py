@@ -8,6 +8,7 @@ chunking, inline training, ML selectors, etc.). They are NOT part of `make test`
 because they are slow. Run them explicitly via `make test-train`.
 """
 
+import csv
 import os
 import shutil
 import struct
@@ -358,6 +359,50 @@ class U8TrainTest(_TrainBaseTest):
         Test the train, compress, and decompress workflow for u8 profile.
         """
         self.train_compress_decompress()
+
+    def test_benchmark_num_iters_and_output_dir(self):
+        csv_dir = os.path.join(self.output_dir_path, "benchmark.csv")
+        expected_rows = [
+            (os.path.normpath(sample.orig_file_path), "2")
+            for sample in self.input_samples
+        ]
+        for pareto in (False, True):
+            output_path = os.path.join(self.output_dir_path, f"trained-{pareto}")
+            execute_train(
+                compressor_info=self.training_compressor_info,
+                uncompressed_dir=input_dir_path(self.input_dir_name),
+                trained_compressor_path=output_path,
+                extra_args=(
+                    f"--benchmark-num-iters 2 --benchmark-output-dir {csv_dir} "
+                    "--use-all-samples --threads 1 "
+                    + ("--pareto-frontier --max-num-candidates 10" if pareto else "")
+                ),
+            )
+            csv_names = ["0.csv"]
+            if pareto:
+                csv_names = [
+                    os.path.splitext(name)[0] + ".csv"
+                    for name in os.listdir(output_path)
+                    if name.endswith(".zc")
+                ]
+                self.assertGreater(len(csv_names), 1)
+            self.assertCountEqual(os.listdir(csv_dir), csv_names)
+            for name in csv_names:
+                with open(os.path.join(csv_dir, name), newline="") as f:
+                    rows = list(csv.DictReader(f))
+                self.assertCountEqual(
+                    [(os.path.normpath(row["path"]), row["iters"]) for row in rows],
+                    expected_rows,
+                )
+
+    def test_benchmark_output_dir_rejects_file(self):
+        with tempfile.NamedTemporaryFile() as f, self.assertRaises(ValueError):
+            execute_train(
+                compressor_info=self.training_compressor_info,
+                uncompressed_dir=input_dir_path(self.input_dir_name),
+                trained_compressor_path=self.compressor_info.compressor_str,
+                extra_args=f"--benchmark-output-dir {f.name}",
+            )
 
 
 class SDDL2TrainTest(_TrainBaseTest):

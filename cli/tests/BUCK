@@ -388,7 +388,7 @@ custom_unittest(
     command = [
         "$(location :train_test_bin)",
         "$(location ..:zli)",
-        "U8TrainTest.test_train_compress_decompress",
+        "U8TrainTest",
     ],
     type = "simple",
     deps = [
