@@ -1,8 +1,8 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import {describe, expect, it} from 'vitest';
-import {OPENZL_PROFILES} from '../src/compressors.ts';
-import {WASM_PROFILE, isBrowserSupportedProfile, profileDescription} from '../src/wasmProfiles.ts';
+import {OPENZL_PROFILE_DESCRIPTIONS, OPENZL_PROFILES} from '../src/compressors.ts';
+import {WASM_PROFILE, isBrowserSupportedProfile, isSupportedProfile, profileDescription} from '../src/wasmProfiles.ts';
 
 describe('WASM_PROFILE', () => {
   it('maps exactly the profiles the binding builds', () => {
@@ -59,5 +59,22 @@ describe('profileDescription', () => {
 
   it('leaves a usable profile to its own help text', () => {
     expect(profileDescription('serial')).toBe('Serial data (aka raw bytes)');
+  });
+});
+
+describe('in the desktop app', () => {
+  it('runs every profile but the ones it cannot supply an input for', () => {
+    expect(OPENZL_PROFILES.filter((profile) => !isSupportedProfile(profile, {desktop: true}))).toEqual([
+      'numeric-ml-selector-64',
+      'sddl',
+      'sddl2',
+    ]);
+  });
+
+  it('explains those in desktop terms, and leaves the rest to their help text', () => {
+    expect(profileDescription('sddl', {desktop: true})).toMatch(
+      /Cannot run in the desktop app yet: needs a description file/,
+    );
+    expect(profileDescription('parquet', {desktop: true})).toBe(OPENZL_PROFILE_DESCRIPTIONS.parquet);
   });
 });
