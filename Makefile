@@ -113,7 +113,7 @@ $(eval $(call cxx_program,zli, \
 	$(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A) $(LIBDMLC_A)))
 
 .PHONY: examples
-examples: zs2_pipeline zs2_trygraph zs2_selector zs2_struct zs2_round_trip
+examples: zs2_pipeline zs2_trygraph zs2_selector zs2_struct zs2_round_trip itch
 
 .PHONY: test
 test : gtests test-zs2 test-cli
@@ -368,3 +368,6 @@ $(LIBDMLC_A): $(LIBXGBOOST_A)
 
 # Empty rule: stops make searching implicit rules for each dependency source (~100 failed stat() each)
 $(filter-out $(ZSTD_HEADER) $(LZ4_HEADER) $(GTEST_HEADERS) $(XGBOOST_HEADER),$(ZSTD_SRCS) $(LZ4_SRCS) $(GTEST_SRCS) $(XGBOOST_SRCS)): ;
+
+itch:
+$(eval $(call cxx_program_shared_o,itch,examples/itch.o $(LIBOBJS),$(LIBZSTD_A) $(LIBLZ4_A)))
