@@ -7,6 +7,12 @@ import {act, render, screen, cleanup, fireEvent, within, waitFor, type RenderOpt
 import {ChakraProvider} from '@chakra-ui/react';
 import React from 'react';
 import App from '../src/App.tsx';
+import type {
+  BenchmarkEvent,
+  BenchmarkRequest,
+  BenchmarkResult,
+} from '../../../desktop/compression_playground/electron/native-worker.cjs';
+import type {OpenZLDesktopBridge} from '../src/desktop.ts';
 import {playgroundSystem} from '../src/theme.ts';
 
 function renderWithPlaygroundTheme(ui: React.ReactElement, options?: Omit<RenderOptions, 'wrapper'>) {
@@ -234,5 +240,156 @@ describe('on a page that is not cross-origin isolated', () => {
     // The worker gave up without reloading, so the page stays unisolated.
     settle();
     expect(await screen.findByRole('alert')).toBeInTheDocument();
+  });
+});
+
+/**
+ * A backend that answers every row the page sends: one measurement each, and
+ * three candidates for a row that asked for training.
+ */
+function answeringBridge(getPathForFile: OpenZLDesktopBridge['getPathForFile'] = () => '/tmp/dataset.bin') {
+  const startBenchmark = vi.fn((request: BenchmarkRequest, onEvent?: (event: BenchmarkEvent) => void) => {
+    const all: BenchmarkResult[] = [];
+    for (const row of request.compressors) {
+      const trained = row.compressor === 'OpenZL' && row.trainRequested;
+      const rowResults = Array.from({length: trained ? 3 : 1}, (_, candidate) => ({
+        rowId: row.id,
+        label: `row ${String(row.id)}`,
+        candidate,
+        iterations: request.iterations,
+        srcSize: 5_000_000,
+        compressedSize: 1_000_000,
+        ratio: 5,
+        compressMs: 10,
+        decompressMs: 5,
+        compressMBps: 100,
+        decompressMBps: 200,
+      }));
+      all.push(...rowResults);
+      onEvent?.({type: 'partial', results: rowResults});
+    }
+    return {results: Promise.resolve(all), cancel: vi.fn()};
+  });
+  window.openzlDesktop = {startBenchmark, getPathForFile};
+  return startBenchmark;
+}
+
+describe('Compression Playground in the desktop app', () => {
+  afterEach(() => {
+    cleanup();
+    delete window.openzlDesktop;
+    // Only the sample test needs it; see there.
+    delete (File.prototype as {arrayBuffer?: unknown}).arrayBuffer;
+  });
+
+  it('runs the chosen file through the desktop backend and reports it like any other run', async () => {
+    const startBenchmark = answeringBridge();
+    renderWithPlaygroundTheme(<App />);
+    fireEvent.change(screen.getByLabelText(/browse your computer/), {
+      target: {files: [new File(['x'], 'dataset.bin')]},
+    });
+    fireEvent.click(screen.getByRole('button', {name: 'Run benchmark'}));
+
+    // The same done line the browser's run ends on: nothing past the executor
+    // knows which backend measured.
+    expect(await screen.findByText(/Done — 5\.0 MB · 3 succeeded, 0 failed/)).toBeInTheDocument();
+    // Those numbers came from native zli, so the browser's WebAssembly caveat
+    // would be wrong beside them.
+    expect(screen.getByRole('table', {name: 'Measurements'})).toBeInTheDocument();
+    expect(screen.queryByText(/WebAssembly/)).not.toBeInTheDocument();
+    expect(startBenchmark).toHaveBeenCalledTimes(1);
+    const [request] = startBenchmark.mock.calls[0];
+    expect(request).toMatchObject({input: {path: '/tmp/dataset.bin'}, iterations: 5});
+    // One row per compressor per level: OpenZL, six zstd levels, six gzip.
+    expect(request.compressors).toHaveLength(13);
+    expect(request.compressors[0]).toEqual({
+      id: 0,
+      compressor: 'OpenZL',
+      level: 6,
+      profile: 'serial',
+      trainRequested: true,
+      // The desktop trainer's floor, not the browser's.
+      candidates: 10,
+      profileArg: '',
+    });
+  });
+
+  it('runs the 5 MB sample without a file being chosen', async () => {
+    // jsdom's File cannot be read as bytes, which is how a file with no path
+    // reaches the backend, so teach it the one method that takes.
+    Object.defineProperty(File.prototype, 'arrayBuffer', {
+      configurable: true,
+      value(this: Blob) {
+        return new Promise<ArrayBuffer>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            resolve(reader.result as ArrayBuffer);
+          };
+          reader.onerror = () => {
+            reject(reader.error);
+          };
+          reader.readAsArrayBuffer(this);
+        });
+      },
+    });
+    // No path for it: it was made here, not picked from disk.
+    const startBenchmark = answeringBridge(() => '');
+    renderWithPlaygroundTheme(<App />);
+    const sample = screen.getByRole('button', {name: 'Try a 5 MB sample'});
+    expect(sample).toBeEnabled();
+
+    fireEvent.click(sample);
+
+    expect(await screen.findByText(/3 succeeded, 0 failed/)).toBeInTheDocument();
+    const [request] = startBenchmark.mock.calls[0];
+    expect(request.input).toHaveProperty('data');
+    expect((request.input as {data: Uint8Array}).data).toHaveLength(5_000_000);
+    // And it is the file now chosen, so Run repeats it.
+    expect(within(screen.getByTestId('upload-dropzone')).getByText('sample.txt')).toBeInTheDocument();
+  });
+
+  it('holds the sample back while a row has no levels, as it does Run', async () => {
+    answeringBridge();
+    renderWithPlaygroundTheme(<App />);
+    const trigger = screen.getByRole('button', {name: /, row 3$/});
+    fireEvent.click(trigger);
+    const levels = within(
+      await waitFor(() => document.getElementById(trigger.getAttribute('aria-controls') ?? '') as HTMLElement),
+    );
+    fireEvent.click(levels.getByText('None'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', {name: 'Try a 5 MB sample'})).toBeDisabled();
+    });
+  });
+
+  it('shows the CLI’s profiles and links the header off the app:// origin', () => {
+    answeringBridge();
+    renderWithPlaygroundTheme(<App />);
+
+    expect(screen.getByRole('link', {name: 'API REFERENCE'})).toHaveAttribute(
+      'href',
+      'https://openzl.org/api/c/compressor/',
+    );
+    expect(screen.getByRole('link', {name: 'OpenZL home'})).toHaveAttribute('href', 'https://openzl.org/');
+  });
+
+  it('runs where the browser playground would be blocked', () => {
+    // app:// cannot host the isolation worker, so the page is never isolated,
+    // and the desktop app never loads the WASM module that would need it.
+    stubWebAssembly(false);
+    stubIsolation(false);
+    answeringBridge();
+    renderWithPlaygroundTheme(<App />);
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', {level: 2, name: 'Choose your data'})).toBeInTheDocument();
+  });
+
+  it('does not recommend the desktop app to someone already in it', () => {
+    answeringBridge();
+    renderWithPlaygroundTheme(<App />);
+
+    expect(screen.queryByText(/Use the desktop app/)).not.toBeInTheDocument();
   });
 });

@@ -9,8 +9,12 @@ import {
   type OpenZlRow,
 } from './compressors.ts';
 
-function defaultRows(): readonly CompressorRow[] {
-  return [createCompressorRow(1, 'OpenZL'), createCompressorRow(2, 'zstd'), createCompressorRow(3, 'gzip')];
+function defaultRows(desktop: boolean): readonly CompressorRow[] {
+  return [
+    createCompressorRow(1, 'OpenZL', desktop),
+    createCompressorRow(2, 'zstd', desktop),
+    createCompressorRow(3, 'gzip', desktop),
+  ];
 }
 
 /**
@@ -46,9 +50,15 @@ export interface CompressorRows {
  * comes back on its result, so reusing a removed row's id would attach a
  * finished measurement to whatever row took its place. The counter therefore
  * starts above the highest id it was seeded with and only ever climbs.
+ *
+ * `desktop` rows start with the desktop app's defaults: its `zli` trains from
+ * a higher floor of candidates than the browser's trainer does.
  */
-export function useCompressorRows(initialRows?: readonly CompressorRow[]): CompressorRows {
-  const [rows, setRows] = useState<readonly CompressorRow[]>(() => initialRows ?? defaultRows());
+export function useCompressorRows({
+  initialRows,
+  desktop = false,
+}: {initialRows?: readonly CompressorRow[]; desktop?: boolean} = {}): CompressorRows {
+  const [rows, setRows] = useState<readonly CompressorRow[]>(() => initialRows ?? defaultRows(desktop));
   // Seeded with 0 because `Math.max()` over an empty list is -Infinity.
   const nextId = useRef(Math.max(0, ...rows.map((row) => row.id)) + 1);
 
@@ -57,7 +67,7 @@ export function useCompressorRows(initialRows?: readonly CompressorRow[]): Compr
     addRow: () => {
       const id = nextId.current;
       nextId.current += 1;
-      setRows((current) => [...current, createCompressorRow(id, 'OpenZL')]);
+      setRows((current) => [...current, createCompressorRow(id, 'OpenZL', desktop)]);
     },
     removeRow: (id: number) => {
       setRows((current) => current.filter((row) => row.id !== id));
@@ -75,7 +85,7 @@ export function useCompressorRows(initialRows?: readonly CompressorRow[]): Compr
     changeCompressor: (id: number, compressor: CompressorName) => {
       // A fresh row resets the dependent fields: a zstd level of 19 is not a
       // valid OpenZL level, and a profile means nothing to gzip.
-      setRows((current) => current.map((row) => (row.id === id ? createCompressorRow(id, compressor) : row)));
+      setRows((current) => current.map((row) => (row.id === id ? createCompressorRow(id, compressor, desktop) : row)));
     },
   };
 }
