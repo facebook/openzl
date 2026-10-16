@@ -38,6 +38,16 @@ jobs:
             qemu: qemu-aarch64-static
             os: ubuntu-22.04
             cxxflags: ""
+          # Compiles the I8MM NEON code paths (QEMU emulates them)
+          - name: ARM64 armv8.6-a
+            cc_pkg: gcc-aarch64-linux-gnu
+            cxx_pkg: g++-aarch64-linux-gnu
+            compiler_prefix: aarch64-linux-gnu-
+            qemu_pkg: qemu-system-arm
+            qemu: qemu-aarch64-static
+            os: ubuntu-22.04
+            cflags: "-march=armv8.6-a"
+            cxxflags: "-march=armv8.6-a"
           - name: PPC64LE
             cc_pkg: gcc-powerpc64le-linux-gnu
             cxx_pkg: g++-powerpc64le-linux-gnu
@@ -79,4 +89,4 @@ jobs:
           echo "EXEC_PREFIX: $(which $EXEC_PREFIX)"
           $EXEC_PREFIX --version
       - name: Run tests
-        run: CFLAGS=-O2 make test V=1
+        run: CFLAGS="-O2 ${{ matrix.cflags }}" make test V=1

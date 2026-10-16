@@ -54,6 +54,7 @@ jobs:
             extra_flags: "-Werror"
             cmake_version: "3.20.2"
             build_only: true
+          # Apple Silicon: compiles the NEON DotProd code paths (build only, not executed)
           - name: "CMake macOS"
             os: macos-latest
             build_mode: dev
