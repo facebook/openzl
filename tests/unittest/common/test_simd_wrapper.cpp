@@ -95,15 +95,41 @@ TEST_F(SimdWrapperTest, And_128)
 
 TEST_F(SimdWrapperTest, Mask8_128)
 {
-    std::array<uint8_t, 16> data = { 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00,
-                                     0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF,
-                                     0x00, 0x00, 0x00, 0x00 };
-    auto v1                      = ZL_Vec128_read(&data[0]);
-    auto f1                      = ZL_Vec128Fallback_read(&data[0]);
-    auto vMask                   = ZL_Vec128_mask8(v1);
-    auto fMask                   = ZL_Vec128Fallback_mask8(f1);
-    EXPECT_EQ(vMask, fMask);
-    EXPECT_EQ(vMask, 0x0F0F);
+    std::array<uint8_t, 16> data;
+
+    // Check every output bit individually.
+    for (size_t bit = 0; bit < 16; ++bit) {
+        data.fill(0);
+        data[bit] = 0x80;
+
+        auto v1    = ZL_Vec128_read(&data[0]);
+        auto f1    = ZL_Vec128Fallback_read(&data[0]);
+        auto vMask = ZL_Vec128_mask8(v1);
+        auto fMask = ZL_Vec128Fallback_mask8(f1);
+
+        EXPECT_EQ(vMask, fMask);
+        EXPECT_EQ(vMask, 1u << bit);
+    }
+
+    // Check random byte patterns with a simple deterministic PRNG.
+    uint32_t seed = 0xDEADBEEF;
+    for (size_t n = 0; n < 128; ++n) {
+        ZL_VecMask refMask = 0;
+
+        for (size_t i = 0; i < 16; ++i) {
+            seed    = seed * 1664525 + 1013904223;
+            data[i] = seed >> 24;
+            refMask |= (ZL_VecMask)(data[i] >> 7) << i;
+        }
+
+        auto v1    = ZL_Vec128_read(&data[0]);
+        auto f1    = ZL_Vec128Fallback_read(&data[0]);
+        auto vMask = ZL_Vec128_mask8(v1);
+        auto fMask = ZL_Vec128Fallback_mask8(f1);
+
+        EXPECT_EQ(vMask, fMask);
+        EXPECT_EQ(vMask, refMask);
+    }
 }
 
 TEST_F(SimdWrapperTest, ReadAndWrite_256)
@@ -161,17 +187,41 @@ TEST_F(SimdWrapperTest, And_256)
 
 TEST_F(SimdWrapperTest, Mask8_256)
 {
-    std::array<uint8_t, 32> data = { 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00,
-                                     0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF,
-                                     0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF,
-                                     0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00,
-                                     0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00 };
-    auto v1                      = ZL_Vec256_read(&data[0]);
-    auto f1                      = ZL_Vec256Fallback_read(&data[0]);
-    auto vMask                   = ZL_Vec256_mask8(v1);
-    auto fMask                   = ZL_Vec256Fallback_mask8(f1);
-    EXPECT_EQ(vMask, fMask);
-    EXPECT_EQ(vMask, 0x0F0F0F0F);
+    std::array<uint8_t, 32> data;
+
+    // Check every output bit individually.
+    for (size_t bit = 0; bit < 32; ++bit) {
+        data.fill(0);
+        data[bit] = 0x80;
+
+        auto v1    = ZL_Vec256_read(&data[0]);
+        auto f1    = ZL_Vec256Fallback_read(&data[0]);
+        auto vMask = ZL_Vec256_mask8(v1);
+        auto fMask = ZL_Vec256Fallback_mask8(f1);
+
+        EXPECT_EQ(vMask, fMask);
+        EXPECT_EQ(vMask, 1u << bit);
+    }
+
+    // Check random byte patterns with a simple deterministic PRNG.
+    uint32_t seed = 0xDEADBEEF;
+    for (size_t n = 0; n < 128; ++n) {
+        ZL_VecMask refMask = 0;
+
+        for (size_t i = 0; i < 32; ++i) {
+            seed    = seed * 1664525 + 1013904223;
+            data[i] = seed >> 24;
+            refMask |= (ZL_VecMask)(data[i] >> 7) << i;
+        }
+
+        auto v1    = ZL_Vec256_read(&data[0]);
+        auto f1    = ZL_Vec256Fallback_read(&data[0]);
+        auto vMask = ZL_Vec256_mask8(v1);
+        auto fMask = ZL_Vec256Fallback_mask8(f1);
+
+        EXPECT_EQ(vMask, fMask);
+        EXPECT_EQ(vMask, refMask);
+    }
 }
 
 TEST_F(SimdWrapperTest, VecMask_next)
