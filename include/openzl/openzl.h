@@ -18,6 +18,7 @@
 #include "openzl/zl_graph_api.h"                // IWYU pragma: export
 #include "openzl/zl_input.h"                    // IWYU pragma: export
 #include "openzl/zl_localParams.h"              // IWYU pragma: export
+#include "openzl/zl_logging.h"                  // IWYU pragma: export
 #include "openzl/zl_nodes.h"                    // IWYU pragma: export
 #include "openzl/zl_opaque_types.h"             // IWYU pragma: export
 #include "openzl/zl_output.h"                   // IWYU pragma: export

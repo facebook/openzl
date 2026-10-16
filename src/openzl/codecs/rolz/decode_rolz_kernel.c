@@ -6,6 +6,8 @@
 #include "openzl/shared/bits.h"
 #include "openzl/shared/utils.h"
 
+#include <string.h>
+
 ZL_Report ZL_rolzDecompress(
         void* dst,
         size_t dstCapacity,
@@ -71,13 +73,12 @@ static void stars(uint32_t* hist, size_t n)
 {
     size_t const sum       = total(hist);
     size_t const kMaxStars = 512;
+    char line[513];
     for (size_t i = 0; i < n; ++i) {
-        ZL_RLOG(V, "%2u: ", (uint32_t)i);
         size_t const stars = (hist[i] * kMaxStars) / sum;
-        for (size_t s = 0; s < stars; ++s) {
-            putc('*', stderr);
-        }
-        putc('\n', stderr);
+        memset(line, '*', stars);
+        line[stars] = '\0';
+        ZL_RLOG(V, "%2u: %s\n", (uint32_t)i, line);
     }
 }
 
