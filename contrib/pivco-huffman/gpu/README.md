@@ -88,9 +88,10 @@ Decode has two throughput regimes:
   that schedule, then CUDA kernels process the tree node-by-node across all
   blocks. Real broad-tree files currently decode at ~100-190 GiB/s.
 
-Encode has a fast path for the narrow three-symbol shape and a
-correctness-oriented generic path that is much slower and is optimized for
-differential testing rather than peak throughput.
+Encode keeps the narrow three-symbol fast path and the correctness-oriented
+recursive fallback. Eligible generic blocks also have a bounded cooperative
+path. See [the measured encoder evidence](COOPERATIVE_ENCODER.md) for its
+supported sizes, workspace cost, timing scope and qualification limits.
 
 Decode throughput is measured over decompressed bytes with CUDA events and
 excludes bulk H2D/D2H transfers. See `BENCHMARKS.md` for the latest checked-in
@@ -258,7 +259,25 @@ timing prints on the cascade path for diagnostics. Both are off by default.
 
 ## Encode Strategy
 
-Encode has a generic path and a fast path.
+### Cooperative Encoder
+
+The cooperative CUDA path supports schedulable trees with `tableLog <= 12`,
+64 KiB blocks and at most 256 blocks (16 MiB). The existing three-symbol
+encoder takes precedence. Other shapes, HIP and legacy-sized scratch retain
+the recursive fallback.
+
+Each CTA partitions and packs one block using warp histograms and CUB scans;
+a device scan and copy compact the output. CPU wire bytes are preserved.
+Scratch grows from roughly 2x to 4x block-rounded input size. The query cannot
+inspect weights, so eligible sizes reserve that scratch even when the
+specialized path is selected.
+
+The cooperative path rejects overlapping or misaligned buffers. Caller-owned
+storage and the host context must survive stream completion. No allocation or
+host stream fence is added. HIP excludes CUB; pre-SM70 CUDA uses shared atomics
+instead of warp matching.
+
+### Existing Paths
 
 The generic encoder is the correctness/oracle implementation:
 
@@ -269,8 +288,8 @@ The generic encoder is the correctness/oracle implementation:
 3. `encodeEmitKernel` reruns the recursive stable partitions and emits the exact
    CPU preorder bitstream for each block.
 
-This generic path is intentionally simple and currently optimized for
-differential testing rather than peak throughput.
+This generic path remains the differential reference for unsupported shapes
+and workspace configurations.
 
 The optimized three-symbol path is selected for the same root-constant plus
 one-bit-leaf tree shape and block sizes from 1 KiB through 64 KiB. It is designed
@@ -292,7 +311,9 @@ produces byte-identical CPU wire output and offsets.
 
 Empty input produces an empty bitstream and a single zero offset. Constant-input
 contexts with `tableLog == 0` produce zero encoded bytes and repeated zero
-offsets.
+offsets. Constant encoding rejects absent symbols; empty async calls clear
+the total-size result. The CPU-wire regression covers the full-block terminal
+rank overflow on both chunk and cascade decode paths.
 
 ## CPU Block Indexer
 
@@ -315,10 +336,15 @@ The GPU tests compare:
 - the optimized fast path, including a partial final block
 - scheduled decode across mixed node kinds (flat, vector/vector,
   constant/vector, constant/constant)
+- cooperative tails, maximum grid, legacy workspace and fallback behavior
+- concurrent streams, poisoned workspace reuse, and empty async output
+- independent CPU-wire decoding at the full-block rank boundary
 
-The unit tests use small inputs, so they exercise the fast paths and the
-chunk-in-shared decoder; the scheduled cascade is exercised by the large-input
-benchmark.
+The tests exercise fast paths, the chunk-in-shared decoder, and larger inputs
+that select the scheduled cascade. The benchmark provides separate timings.
+The [standalone CMake recipe](COOPERATIVE_ENCODER.md#reproduce) builds these
+tests without the internal Buck environment and provides a manual old-decoder
+regression target.
 
 Run the unit tests with:
 

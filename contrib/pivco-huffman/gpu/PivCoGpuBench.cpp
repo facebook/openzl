@@ -383,6 +383,13 @@ std::array<uint32_t, 256> syntheticCounts(const std::string& name)
     if (name == "zipfian") {
         return zipfianCounts();
     }
+    if (name == "three_sym_50_25_25") {
+        std::array<uint32_t, 256> counts{};
+        counts[0] = 2;
+        counts[1] = 1;
+        counts[2] = 1;
+        return counts;
+    }
     if (name == "sparse_4") {
         return equalCounts(4);
     }
@@ -419,10 +426,11 @@ std::array<uint32_t, 256> syntheticCounts(const std::string& name)
 std::vector<std::string> syntheticNames()
 {
     return {
-        "proba80",  "proba50",   "proba14",   "proba02",    "bell_s10",
-        "bell_s30", "bell_s80",  "uniform",   "english",    "zipfian",
-        "sparse_4", "sparse_16", "geometric", "two_sym_eq", "two_sym_90/10",
-        "flat_M3",  "flat_M5",   "flat_M6",   "flat_M7",
+        "proba80",   "proba50",    "proba14",       "proba02",
+        "bell_s10",  "bell_s30",   "bell_s80",      "uniform",
+        "english",   "zipfian",    "sparse_4",      "sparse_16",
+        "geometric", "two_sym_eq", "two_sym_90/10", "flat_M3",
+        "flat_M5",   "flat_M6",    "flat_M7",       "three_sym_50_25_25",
     };
 }
 
@@ -808,6 +816,48 @@ Result runDataset(const Args& args, const DatasetInput& input)
             "copy encoded size");
     if (gpuEncodedSize != encoded.bytes.size()) {
         throw std::runtime_error("GPU encoded size differs from CPU size");
+    }
+
+    // Verify the encoder itself, rather than only its output size. These
+    // transfers and comparisons are deliberately outside CUDA-event timing.
+    std::vector<uint8_t> gpuEncoded(gpuEncodedSize);
+    std::vector<uint64_t> gpuOffsets(numOffsets);
+    if (!gpuEncoded.empty()) {
+        checkCuda(
+                cudaMemcpy(
+                        gpuEncoded.data(),
+                        gpuEncoded_d,
+                        gpuEncoded.size(),
+                        cudaMemcpyDeviceToHost),
+                "copy encoded bytes for verification");
+    }
+    checkCuda(
+            cudaMemcpy(
+                    gpuOffsets.data(),
+                    gpuOffsets_d,
+                    gpuOffsets.size() * sizeof(uint64_t),
+                    cudaMemcpyDeviceToHost),
+            "copy encoded offsets for verification");
+    if (gpuEncoded != encoded.bytes || gpuOffsets != encoded.offsets) {
+        throw std::runtime_error(
+                "GPU encoded bytes or offsets differ from CPU");
+    }
+    std::vector<uint8_t> cpuDecoded(input.data.size());
+    std::vector<uint8_t> cpuScratch(ZL_PivCoHuffmanDecode_scratchBytes(
+            input.data.size(), args.blockSize));
+    if (!ZL_PivCoHuffman_decode(
+                cpuDecoded.data(),
+                cpuDecoded.size(),
+                cpuScratch.data(),
+                cpuScratch.size(),
+                weights.bytes.data(),
+                weights.bytes.size(),
+                gpuEncoded.data(),
+                gpuEncoded.size(),
+                args.blockSize,
+                &ZL_PivCoHuffmanDecode_generic)
+        || cpuDecoded != input.data) {
+        throw std::runtime_error("CPU decode of GPU encoded bytes failed");
     }
 
     std::vector<uint8_t> decoded(input.data.size());
