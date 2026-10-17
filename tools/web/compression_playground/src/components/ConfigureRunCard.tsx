@@ -40,7 +40,7 @@ import {
   type OpenZlRow,
   type ZstdRow,
 } from '../compressors.ts';
-import type {CompressorRows, PatchOpenZlRow, PatchRow} from '../useCompressorRows.ts';
+import type {CompressorRows, PatchRow} from '../useCompressorRows.ts';
 import {isBrowserSupportedProfile, profileDescription} from '../wasmProfiles.ts';
 
 interface CompressorRowProps {
@@ -48,7 +48,6 @@ interface CompressorRowProps {
   position: number;
   canRemove: boolean;
   onPatch: PatchRow;
-  onPatchOpenZl: PatchOpenZlRow;
   onCompressorChange: (id: number, compressor: CompressorName) => void;
   onRemove: (id: number) => void;
 }
@@ -56,7 +55,7 @@ interface CompressorRowProps {
 interface OpenZlRowProps {
   row: OpenZlRow;
   position: number;
-  onPatch: PatchOpenZlRow;
+  onPatch: PatchRow;
 }
 
 interface ConfigureRunCardProps {
@@ -87,7 +86,7 @@ function OpenZlOptions({row, position, onPatch}: OpenZlRowProps) {
         cursor="pointer"
         aria-expanded={row.optionsOpen}
         aria-label={`OpenZL options for row ${position}`}
-        onClick={() => onPatch(row.id, {optionsOpen: !row.optionsOpen})}>
+        onClick={() => onPatch(row.id, row.compressor, {optionsOpen: !row.optionsOpen})}>
         <Box aria-hidden="true" color="pg.secondary">
           {row.optionsOpen ? <LuChevronDown size={10} /> : <LuChevronRight size={10} />}
         </Box>
@@ -121,7 +120,7 @@ function OpenZlOptions({row, position, onPatch}: OpenZlRowProps) {
                       borderRadius="6px"
                       _disabled={{pointerEvents: 'none'}}
                       value={row.level}
-                      onChange={(event) => onPatch(row.id, {level: Number(event.target.value)})}>
+                      onChange={(event) => onPatch(row.id, row.compressor, {level: Number(event.target.value)})}>
                       {OPENZL_LEVELS.map((level) => (
                         <option key={level} value={level}>
                           {level === OPENZL_DEFAULT_LEVEL ? `${level} (default)` : level}
@@ -148,7 +147,9 @@ function OpenZlOptions({row, position, onPatch}: OpenZlRowProps) {
               <Checkbox.Root
                 checked={row.trainRequested && canTrain}
                 disabled={!canTrain}
-                onCheckedChange={(details) => onPatch(row.id, {trainRequested: details.checked === true})}>
+                onCheckedChange={(details) =>
+                  onPatch(row.id, row.compressor, {trainRequested: details.checked === true})
+                }>
                 <Checkbox.HiddenInput />
                 <Checkbox.Control
                   boxSize="16px"
@@ -175,7 +176,7 @@ function OpenZlOptions({row, position, onPatch}: OpenZlRowProps) {
                     borderColor="pg.border"
                     borderRadius="6px"
                     value={row.candidates}
-                    onChange={(event) => onPatch(row.id, {candidates: Number(event.target.value)})}>
+                    onChange={(event) => onPatch(row.id, row.compressor, {candidates: Number(event.target.value)})}>
                     {TRAINED_CANDIDATE_COUNTS.map((count) => (
                       <option key={count} value={count}>
                         {count}
@@ -260,7 +261,7 @@ function ProfileSelect({row, position, onPatch}: OpenZlRowProps) {
           // `trainRequested` is left alone: an untrainable profile is honoured
           // where the row is read, so passing through one cannot cost the row a
           // setting it would never get back.
-          onPatch(row.id, {profile: next as OpenZlProfile});
+          onPatch(row.id, row.compressor, {profile: next as OpenZlProfile});
         }
       }}>
       <Select.Label srOnly>Level or profile for row {position}</Select.Label>
@@ -359,7 +360,7 @@ function LevelsPicker({row, position, onPatch}: {row: ZstdRow | GzipRow; positio
   const empty = row.levels.length === 0;
   const levelsLabel = empty ? 'No levels' : row.levels.length === 1 ? '1 level' : `${String(row.levels.length)} levels`;
   const setLevels = (levels: readonly number[]) => {
-    onPatch(row.id, {levels: [...levels].sort((a, b) => a - b)});
+    onPatch(row.id, row.compressor, {levels: [...levels].sort((a, b) => a - b)});
   };
 
   return (
@@ -455,15 +456,7 @@ function LevelsPicker({row, position, onPatch}: {row: ZstdRow | GzipRow; positio
   );
 }
 
-function CompressorRowCard({
-  row,
-  position,
-  canRemove,
-  onPatch,
-  onPatchOpenZl,
-  onCompressorChange,
-  onRemove,
-}: CompressorRowProps) {
+function CompressorRowCard({row, position, canRemove, onPatch, onCompressorChange, onRemove}: CompressorRowProps) {
   return (
     <Box
       bg="pg.canvas"
@@ -498,7 +491,7 @@ function CompressorRowCard({
         </NativeSelect.Root>
 
         {row.compressor === 'OpenZL' ? (
-          <ProfileSelect row={row} position={position} onPatch={onPatchOpenZl} />
+          <ProfileSelect row={row} position={position} onPatch={onPatch} />
         ) : (
           <LevelsPicker row={row} position={position} onPatch={onPatch} />
         )}
@@ -522,13 +515,13 @@ function CompressorRowCard({
         </Text>
       )}
 
-      {row.compressor === 'OpenZL' && <OpenZlOptions row={row} position={position} onPatch={onPatchOpenZl} />}
+      {row.compressor === 'OpenZL' && <OpenZlOptions row={row} position={position} onPatch={onPatch} />}
     </Box>
   );
 }
 
 export default function ConfigureRunCard({
-  compressors: {rows, addRow, removeRow, patchRow, patchOpenZlRow, changeCompressor},
+  compressors: {rows, addRow, removeRow, patchRow, changeCompressor},
   iterations,
   onIterationsChange,
 }: ConfigureRunCardProps) {
@@ -551,7 +544,6 @@ export default function ConfigureRunCard({
             position={index + 1}
             canRemove={rows.length > 1}
             onPatch={patchRow}
-            onPatchOpenZl={patchOpenZlRow}
             onCompressorChange={changeCompressor}
             onRemove={removeRow}
           />

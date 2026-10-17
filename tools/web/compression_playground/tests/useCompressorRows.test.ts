@@ -41,7 +41,7 @@ describe('useCompressorRows', () => {
     const before = result.current.rows;
 
     act(() => {
-      result.current.patchOpenZlRow(1, {optionsOpen: true});
+      result.current.patchRow(1, 'OpenZL', {optionsOpen: true});
     });
 
     const after = result.current.rows;
@@ -50,15 +50,25 @@ describe('useCompressorRows', () => {
   });
 
   it('refuses OpenZL-only fields on a row that has none', () => {
-    // Row 2 is zstd. Without the narrowing the patch would graft a `profile`
-    // onto it and the row would no longer match its own variant.
+    // Row 2 is zstd. Without the compressor check the patch would graft a
+    // `profile` onto it and the row would no longer match its own variant.
     const {result} = renderHook(() => useCompressorRows());
 
     act(() => {
-      result.current.patchOpenZlRow(2, {profile: 'le-u32'});
+      result.current.patchRow(2, 'OpenZL', {profile: 'le-u32'});
     });
 
     expect(result.current.rows[1]).not.toHaveProperty('profile');
+  });
+
+  it('patches the levels of a zstd row', () => {
+    const {result} = renderHook(() => useCompressorRows());
+
+    act(() => {
+      result.current.patchRow(2, 'zstd', {levels: [3]});
+    });
+
+    expect(result.current.rows[1]).toEqual({id: 2, compressor: 'zstd', levels: [3]});
   });
 
   it('rebuilds a row from defaults when its compressor changes', () => {
@@ -69,7 +79,7 @@ describe('useCompressorRows', () => {
     const fresh = createCompressorRow(1, 'OpenZL') as OpenZlRow;
     act(() => {
       // Away from the default, so a merge would be visible and a rebuild not.
-      result.current.patchOpenZlRow(1, {optionsOpen: !fresh.optionsOpen});
+      result.current.patchRow(1, 'OpenZL', {optionsOpen: !fresh.optionsOpen});
     });
     act(() => {
       result.current.changeCompressor(1, 'zstd');

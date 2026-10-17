@@ -1,39 +1,35 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import {useRef, useState} from 'react';
-import {
-  createCompressorRow,
-  type CompressorName,
-  type CompressorRow,
-  type LeveledRowBase,
-  type OpenZlRow,
-} from './compressors.ts';
+import {createCompressorRow, type CompressorName, type CompressorRow} from './compressors.ts';
 
 function defaultRows(): readonly CompressorRow[] {
   return [createCompressorRow(1, 'OpenZL'), createCompressorRow(2, 'zstd'), createCompressorRow(3, 'gzip')];
 }
 
 /**
- * Split in two because `Partial<CompressorRow>` over a union distributes into
- * `Partial<OpenZlRow> | Partial<ZstdRow> | ...`, which no longer spreads back
- * into a row without a cast. Keeping them separate also says which fields any
- * row has and which only an OpenZL row does.
+ * The fields a patch may change on a row of compressor `C`, so an OpenZL-only
+ * field such as `profile` cannot be handed to a zstd or gzip row.
  *
- * Neither carries `id`: that is the argument selecting the row, so a patch
- * holding one could only ever disagree with it.
+ * Neither `id` nor `compressor` can be patched: `id` is the argument selecting
+ * the row, and a new compressor needs a rebuilt row (`changeCompressor`).
  */
-// `LeveledRowBase`, not `CompressorRowBase`: the base carries only `id` now
-// that `level` belongs to the OpenZL variant, and `Omit<Partial<{id}>, 'id'>`
-// is `{}`, which TypeScript hands to anything. The only caller patches levels.
-export type PatchRow = (id: number, patch: Omit<Partial<LeveledRowBase>, 'id'>) => void;
-export type PatchOpenZlRow = (id: number, patch: Omit<Partial<OpenZlRow>, 'id'>) => void;
+export type RowPatch<C extends CompressorName> = Omit<
+  Partial<Extract<CompressorRow, {compressor: C}>>,
+  'id' | 'compressor'
+>;
 
+/** Names the row's compressor as well as its id, so the patch can be typed by it. */
+export type PatchRow = (
+  ...args:
+    | [id: number, compressor: 'OpenZL', patch: RowPatch<'OpenZL'>]
+    | [id: number, compressor: 'zstd' | 'gzip', patch: RowPatch<'zstd' | 'gzip'>]
+) => void;
 export interface CompressorRows {
   readonly rows: readonly CompressorRow[];
   readonly addRow: () => void;
   readonly removeRow: (id: number) => void;
   readonly patchRow: PatchRow;
-  readonly patchOpenZlRow: PatchOpenZlRow;
   readonly changeCompressor: (id: number, compressor: CompressorName) => void;
 }
 
@@ -62,14 +58,11 @@ export function useCompressorRows(initialRows?: readonly CompressorRow[]): Compr
     removeRow: (id: number) => {
       setRows((current) => current.filter((row) => row.id !== id));
     },
-    patchRow: (id, patch) => {
-      setRows((current) => current.map((row) => (row.id === id ? {...row, ...patch} : row)));
-    },
-    // Narrows before spreading, so the OpenZL-only fields can only ever land
-    // on a row that actually has them.
-    patchOpenZlRow: (id, patch) => {
+    // Matches on the compressor too, so the patch only ever lands on a row of
+    // the variant it was typed against.
+    patchRow: (id, compressor, patch) => {
       setRows((current) =>
-        current.map((row) => (row.id === id && row.compressor === 'OpenZL' ? {...row, ...patch} : row)),
+        current.map((row) => (row.id === id && row.compressor === compressor ? {...row, ...patch} : row)),
       );
     },
     changeCompressor: (id: number, compressor: CompressorName) => {
