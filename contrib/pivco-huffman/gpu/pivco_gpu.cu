@@ -9,6 +9,7 @@
 
 #include <cuda_runtime.h>
 
+#include "contrib/pivco-huffman/gpu/pivco_gpu_cooperative.cuh"
 #include "contrib/pivco-huffman/gpu/pivco_gpu_tree.h"
 
 namespace {
@@ -215,6 +216,21 @@ setStatus(PivCoGpuStatus* status, PivCoGpuStatusCode code, uint64_t detail)
     if (atomicCAS(&status->code, PIVCO_GPU_STATUS_OK, code)
         == PIVCO_GPU_STATUS_OK) {
         status->detail = detail;
+    }
+}
+
+__global__ void validateConstantEncodeKernel(
+        const uint8_t* src,
+        size_t srcSize,
+        uint8_t symbol,
+        PivCoGpuStatus* status)
+{
+    for (size_t i = size_t(blockIdx.x) * blockDim.x + threadIdx.x; i < srcSize;
+         i += size_t(gridDim.x) * blockDim.x) {
+        if (src[i] != symbol) {
+            setStatus(status, PIVCO_GPU_STATUS_MISSING_SYMBOL, src[i]);
+            return;
+        }
     }
 }
 
@@ -3036,7 +3052,15 @@ inline uint32_t chunkTdOutputsFor(size_t dstSize)
 
 extern "C" size_t pivcoGpuEncodeWorkspaceBytes(size_t srcSize, size_t blockSize)
 {
-    return workspaceBytesFor(srcSize, blockSize);
+    size_t bytes = workspaceBytesFor(srcSize, blockSize);
+#if !defined(__HIPCC__)
+    const size_t cooperativeBytes =
+            cooperativeEncodeWorkspaceBytes(srcSize, blockSize);
+    if (cooperativeBytes != SIZE_MAX && cooperativeBytes > bytes) {
+        bytes = cooperativeBytes;
+    }
+#endif
+    return bytes;
 }
 
 extern "C" size_t pivcoGpuDecodeWorkspaceBytes(size_t dstSize, size_t blockSize)
@@ -3071,15 +3095,32 @@ cudaError_t pivcoGpuEncodeAsync(
         return cudaErrorInvalidValue;
     }
     if (srcSize == 0) {
-        return cudaMemsetAsync(offsets_d, 0, sizeof(uint64_t), stream);
+        const cudaError_t err =
+                cudaMemsetAsync(offsets_d, 0, sizeof(uint64_t), stream);
+        if (err != cudaSuccess) {
+            return err;
+        }
+        return cudaMemsetAsync(totalSize_d, 0, sizeof(uint64_t), stream);
     }
     if (src_d == nullptr) {
         return cudaErrorInvalidValue;
     }
 
     if (context->hostTree.tableLog == 0) {
-        cudaError_t err =
-                cudaMemsetAsync(totalSize_d, 0, sizeof(uint64_t), stream);
+        // Validate symbols even when the encoded payload is empty.
+        const size_t validationBlocks = srcSize / 256 + (srcSize % 256 != 0);
+        const unsigned validationGrid = static_cast<unsigned>(
+                validationBlocks < 256 ? validationBlocks : 256);
+        validateConstantEncodeKernel<<<validationGrid, 256, 0, stream>>>(
+                static_cast<const uint8_t*>(src_d),
+                srcSize,
+                context->hostTree.rankToSymbol[0],
+                status_d);
+        cudaError_t err = cudaGetLastError();
+        if (err != cudaSuccess) {
+            return err;
+        }
+        err = cudaMemsetAsync(totalSize_d, 0, sizeof(uint64_t), stream);
         if (err != cudaSuccess) {
             return err;
         }
@@ -3091,6 +3132,26 @@ cudaError_t pivcoGpuEncodeAsync(
         || workspaceBytes < workspaceBytesFor(srcSize, blockSize)) {
         return cudaErrorInvalidValue;
     }
+
+#if !defined(__HIPCC__)
+    // Preserve the specialized three-symbol encoder. Existing callers with
+    // legacy-sized workspace still take the recursive path below.
+    if (!canUseFastRootConstFlat1Encode(context->hostTree, blockSize)
+        && canUseCooperativeEncode(
+                *context, srcSize, blockSize, workspaceBytes)) {
+        return launchCooperativeEncode(
+                context,
+                dst_d,
+                dstCapacity,
+                offsets_d,
+                src_d,
+                srcSize,
+                workspace_d,
+                status_d,
+                totalSize_d,
+                stream);
+    }
+#endif
 
     auto* const tree_d = static_cast<PivCoGpuTree*>(workspace_d);
     auto* const blockWorkspace =

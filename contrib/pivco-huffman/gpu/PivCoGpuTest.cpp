@@ -1,11 +1,13 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+#include "contrib/pivco-huffman/gpu/pivco_gpu.cuh"
 #include "contrib/pivco-huffman/gpu/pivco_gpu.h"
 
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <sstream>
 #include <vector>
 
 #include <cuda_runtime.h>
@@ -984,6 +986,435 @@ TEST(PivCoGpuTest, GpuDecodeRejectsBadOffsets)
     EXPECT_TRUE(ZL_isError(report));
 
     pivcoGpuContextDestroy(context);
+}
+
+size_t legacyEncodeWorkspaceBytes(size_t size, size_t blockSize)
+{
+    const size_t blocks = (size + blockSize - 1) / blockSize;
+    return ((sizeof(PivCoGpuTree) + 7) / 8) * 8 + 2 * blocks * blockSize;
+}
+
+void checkCooperativeEncoding(
+        const std::vector<uint8_t>& weights,
+        const std::vector<uint8_t>& data,
+        bool legacyWorkspace = false,
+        bool disableSchedule = false)
+{
+    constexpr size_t kBlockSize = 64 * 1024;
+    std::ostringstream weightTrace;
+    for (size_t symbol = 0; symbol < weights.size(); ++symbol) {
+        if (weights[symbol]) {
+            weightTrace << symbol << ':' << unsigned(weights[symbol]) << ',';
+        }
+    }
+    SCOPED_TRACE(
+            ::testing::Message() << "inputBytes=" << data.size()
+                                 << " legacyWorkspace=" << legacyWorkspace
+                                 << " disableSchedule=" << disableSchedule
+                                 << " weights=" << weightTrace.str());
+    const Encoded expected = cpuEncode(weights, data, kBlockSize);
+    std::unique_ptr<PivCoGpuContext, decltype(&pivcoGpuContextDestroy)> context(
+            createContext(weights), pivcoGpuContextDestroy);
+    ASSERT_NE(context.get(), nullptr);
+    SCOPED_TRACE(
+            ::testing::Message()
+            << "tableLog=" << context->hostTree.tableLog
+            << " fastMode=" << unsigned(context->hostTree.fastMode)
+            << " scheduleNodes=" << context->decodeSchedule.nodeCount);
+    if (disableSchedule) {
+        context->decodeSchedule.enabled = 0;
+    }
+    DeviceBuffer<uint8_t> src, encoded, decoded, workspace;
+    DeviceBuffer<uint64_t> offsets;
+    copyToDevice(src, data);
+    ASSERT_EQ(
+            cudaSuccess,
+            encoded.reset(
+                    ZL_PivCoHuffmanEncode_bound(data.size(), kBlockSize)
+                    + PIVCO_GPU_DECODE_SRC_SLOP));
+    ASSERT_EQ(cudaSuccess, offsets.reset(expected.offsets.size()));
+    const size_t workspaceBytes = legacyWorkspace
+            ? legacyEncodeWorkspaceBytes(data.size(), kBlockSize)
+            : pivcoGpuEncodeWorkspaceBytes(data.size(), kBlockSize);
+    ASSERT_EQ(cudaSuccess, workspace.reset(workspaceBytes));
+    const ZL_Report report = pivcoGpuEncode(
+            context.get(),
+            encoded.get(),
+            encoded.size() - PIVCO_GPU_DECODE_SRC_SLOP,
+            offsets.get(),
+            offsets.size(),
+            src.get(),
+            data.size(),
+            kBlockSize,
+            workspace.get(),
+            workspace.size(),
+            nullptr);
+    ASSERT_FALSE(ZL_isError(report));
+    ASSERT_EQ(ZL_validResult(report), expected.bytes.size());
+    const auto actual = copyBytesFromDevice(encoded, expected.bytes.size());
+    EXPECT_EQ(actual, expected.bytes);
+    EXPECT_EQ(
+            copyOffsetsFromDevice(offsets, expected.offsets.size()),
+            expected.offsets);
+    EXPECT_EQ(cpuDecode(weights, actual, data.size(), kBlockSize), data);
+    if (!disableSchedule) {
+        ASSERT_EQ(
+                cudaSuccess,
+                decoded.reset(data.size() + PIVCO_GPU_DECODE_DST_SLOP));
+        ASSERT_EQ(
+                cudaSuccess,
+                workspace.reset(
+                        pivcoGpuDecodeWorkspaceBytes(data.size(), kBlockSize)));
+        const ZL_Report decodedReport = pivcoGpuDecode(
+                context.get(),
+                decoded.get(),
+                data.size(),
+                encoded.get(),
+                actual.size(),
+                offsets.get(),
+                offsets.size(),
+                kBlockSize,
+                workspace.get(),
+                workspace.size(),
+                nullptr);
+        ASSERT_FALSE(ZL_isError(decodedReport));
+        EXPECT_EQ(copyBytesFromDevice(decoded, data.size()), data);
+    }
+}
+
+TEST(PivCoGpuTest, CooperativeEncodeMatchesCpuWireAndGpuDecode)
+{
+    const std::vector<uint8_t> weights{ 4, 3, 2, 1, 1 };
+    for (size_t bytes : { size_t{ 1 },
+                          size_t{ 33 },
+                          size_t{ 65535 },
+                          size_t{ 65536 },
+                          size_t{ 65537 },
+                          size_t{ 262161 } }) {
+        SCOPED_TRACE(bytes);
+        checkCooperativeEncoding(weights, makeDataForWeights(weights, bytes));
+    }
+    // Flat roots and sparse high symbol values also use native rank order.
+    const std::vector<uint8_t> flat(256, 1);
+    checkCooperativeEncoding(flat, makeDataForWeights(flat, 65536 + 17));
+    std::vector<uint8_t> sparse(256);
+    sparse[5]   = 4;
+    sparse[128] = 3;
+    sparse[200] = 2;
+    sparse[254] = 1;
+    sparse[255] = 1;
+    checkCooperativeEncoding(sparse, makeDataForWeights(sparse, 65536 + 31));
+    // Zero-count subtrees still have the same alignment/count fields.
+    checkCooperativeEncoding(weights, std::vector<uint8_t>(65536 + 65, 4));
+}
+
+TEST(PivCoGpuTest, CooperativeEncodeMixedNodesAndDeepTree)
+{
+    for (const auto& weights : findScheduledCoverageWeights()) {
+        checkCooperativeEncoding(
+                weights, makeDataForWeights(weights, 2 * 65536 + 19));
+    }
+    const std::vector<uint8_t> deep{ 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 1 };
+    checkCooperativeEncoding(deep, makeDataForWeights(deep, 65536 + 3));
+}
+
+TEST(PivCoGpuTest, CooperativeEncodeMaximumGridAndLegacyFallback)
+{
+    const std::vector<uint8_t> weights{ 4, 3, 2, 1, 1 };
+    checkCooperativeEncoding(weights, makeDataForWeights(weights, 256 * 65536));
+    checkCooperativeEncoding(
+            weights, makeDataForWeights(weights, 65536 + 7), true);
+    // A disabled/new schedule shape falls back to the existing tree encoder.
+    checkCooperativeEncoding(
+            weights, makeDataForWeights(weights, 65536 + 7), false, true);
+    // Above the bounded cooperative grid the workspace query and encoder
+    // retain their legacy behavior. A flat tree keeps this control inexpensive.
+    const std::vector<uint8_t> flat{ 1, 1 };
+    checkCooperativeEncoding(flat, makeDataForWeights(flat, 256 * 65536 + 1));
+}
+
+TEST(PivCoGpuTest, CooperativeEncodeRejectsMissingSymbolAndSmallCapacity)
+{
+    constexpr size_t kBlockSize = 64 * 1024;
+    const std::vector<uint8_t> weights{ 4, 3, 2, 1, 1 };
+    auto data              = makeDataForWeights(weights, kBlockSize + 17);
+    const Encoded expected = cpuEncode(weights, data, kBlockSize);
+    std::unique_ptr<PivCoGpuContext, decltype(&pivcoGpuContextDestroy)> context(
+            createContext(weights), pivcoGpuContextDestroy);
+    ASSERT_NE(context.get(), nullptr);
+    DeviceBuffer<uint8_t> src, encoded, workspace;
+    DeviceBuffer<uint64_t> offsets;
+    copyToDevice(src, data);
+    ASSERT_EQ(cudaSuccess, encoded.reset(expected.bytes.size()));
+    ASSERT_EQ(cudaSuccess, offsets.reset(expected.offsets.size()));
+    ASSERT_EQ(
+            cudaSuccess,
+            workspace.reset(
+                    pivcoGpuEncodeWorkspaceBytes(data.size(), kBlockSize)));
+    auto encode =
+            [&](size_t capacity, size_t offsetCount, size_t scratchBytes) {
+                return pivcoGpuEncode(
+                        context.get(),
+                        encoded.get(),
+                        capacity,
+                        offsets.get(),
+                        offsetCount,
+                        src.get(),
+                        data.size(),
+                        kBlockSize,
+                        workspace.get(),
+                        scratchBytes,
+                        nullptr);
+            };
+    EXPECT_TRUE(ZL_isError(encode(
+            expected.bytes.size() - 1, offsets.size(), workspace.size())));
+    EXPECT_TRUE(ZL_isError(
+            encode(encoded.size(), offsets.size() - 1, workspace.size())));
+    EXPECT_TRUE(ZL_isError(
+            encode(encoded.size(),
+                   offsets.size(),
+                   legacyEncodeWorkspaceBytes(data.size(), kBlockSize) - 1)));
+    data.back() = 255;
+    copyToDevice(src, data);
+    EXPECT_TRUE(ZL_isError(
+            encode(encoded.size(), offsets.size(), workspace.size())));
+}
+
+#if !defined(__HIPCC__)
+TEST(PivCoGpuTest, CooperativeEncodeRejectsAliasedWorkspace)
+{
+    constexpr size_t kBlockSize = 64 * 1024;
+    const std::vector<uint8_t> weights{ 4, 3, 2, 1, 1 };
+    const auto data = makeDataForWeights(weights, kBlockSize + 3);
+    std::unique_ptr<PivCoGpuContext, decltype(&pivcoGpuContextDestroy)> context(
+            createContext(weights), pivcoGpuContextDestroy);
+    ASSERT_NE(context.get(), nullptr);
+    DeviceBuffer<uint8_t> src, encoded, workspace;
+    copyToDevice(src, data);
+    ASSERT_EQ(
+            cudaSuccess,
+            encoded.reset(
+                    ZL_PivCoHuffmanEncode_bound(data.size(), kBlockSize)));
+    ASSERT_EQ(
+            cudaSuccess,
+            workspace.reset(
+                    pivcoGpuEncodeWorkspaceBytes(data.size(), kBlockSize)));
+    const ZL_Report report = pivcoGpuEncode(
+            context.get(),
+            encoded.get(),
+            encoded.size(),
+            reinterpret_cast<uint64_t*>(workspace.get()),
+            3,
+            src.get(),
+            data.size(),
+            kBlockSize,
+            workspace.get(),
+            workspace.size(),
+            nullptr);
+    EXPECT_TRUE(ZL_isError(report));
+}
+#endif
+
+TEST(PivCoGpuTest, CooperativeDispatchKeepsEmptyAndValidatesConstantInput)
+{
+    constexpr size_t kBlockSize = 64 * 1024;
+    std::vector<uint8_t> weights(6);
+    weights[5] = 1;
+    std::unique_ptr<PivCoGpuContext, decltype(&pivcoGpuContextDestroy)> context(
+            createContext(weights), pivcoGpuContextDestroy);
+    ASSERT_NE(context.get(), nullptr);
+    DeviceBuffer<uint8_t> src, encoded;
+    DeviceBuffer<uint64_t> offsets;
+    ASSERT_EQ(cudaSuccess, encoded.reset(1));
+    ASSERT_EQ(cudaSuccess, offsets.reset(2));
+    ASSERT_EQ(pivcoGpuEncodeWorkspaceBytes(0, kBlockSize), 0);
+    const ZL_Report empty = pivcoGpuEncode(
+            context.get(),
+            encoded.get(),
+            encoded.size(),
+            offsets.get(),
+            offsets.size(),
+            nullptr,
+            0,
+            kBlockSize,
+            nullptr,
+            0,
+            nullptr);
+    ASSERT_FALSE(ZL_isError(empty));
+    EXPECT_EQ(ZL_validResult(empty), 0);
+    EXPECT_EQ(copyOffsetsFromDevice(offsets, 1), std::vector<uint64_t>{ 0 });
+    std::vector<uint8_t> data(4097, 5);
+    copyToDevice(src, data);
+    const auto encode = [&] {
+        return pivcoGpuEncode(
+                context.get(),
+                encoded.get(),
+                encoded.size(),
+                offsets.get(),
+                offsets.size(),
+                src.get(),
+                data.size(),
+                kBlockSize,
+                nullptr,
+                0,
+                nullptr);
+    };
+    const ZL_Report constant = encode();
+    ASSERT_FALSE(ZL_isError(constant));
+    EXPECT_EQ(ZL_validResult(constant), 0);
+    EXPECT_EQ(
+            copyOffsetsFromDevice(offsets, 2), std::vector<uint64_t>({ 0, 0 }));
+    data.back() = 4;
+    copyToDevice(src, data);
+    EXPECT_TRUE(ZL_isError(encode()));
+}
+
+TEST(PivCoGpuTest, CooperativeAsyncStreamsAndPoisonedWorkspaceReuse)
+{
+    constexpr size_t kBlockSize = 64 * 1024;
+    const std::vector<uint8_t> weights{ 4, 3, 2, 1, 1 };
+    std::unique_ptr<PivCoGpuContext, decltype(&pivcoGpuContextDestroy)> context(
+            createContext(weights), pivcoGpuContextDestroy);
+    ASSERT_NE(context.get(), nullptr);
+    std::vector<uint8_t> data[2] = {
+        makeDataForWeights(weights, 3 * kBlockSize + 17),
+        makeDataForWeights(weights, 2 * kBlockSize + 31)
+    };
+    DeviceBuffer<uint8_t> src[2], encoded[2], workspace[2];
+    DeviceBuffer<uint64_t> offsets[2], total[2];
+    DeviceBuffer<PivCoGpuStatus> status[2];
+    // Destroy handles before buffers/context, including on an ASSERT return.
+    struct Handles {
+        cudaStream_t streams[2]{};
+        cudaEvent_t events[2]{};
+        ~Handles()
+        {
+            for (unsigned i = 0; i < 2; ++i) {
+                if (streams[i]) {
+                    (void)cudaStreamSynchronize(streams[i]);
+                }
+                if (events[i]) {
+                    (void)cudaEventDestroy(events[i]);
+                }
+                if (streams[i]) {
+                    (void)cudaStreamDestroy(streams[i]);
+                }
+            }
+        }
+    } handles;
+    for (unsigned i = 0; i < 2; ++i) {
+        copyToDevice(src[i], data[i]);
+        ASSERT_EQ(
+                cudaSuccess,
+                encoded[i].reset(ZL_PivCoHuffmanEncode_bound(
+                        data[i].size(), kBlockSize)));
+        ASSERT_EQ(
+                cudaSuccess,
+                workspace[i].reset(pivcoGpuEncodeWorkspaceBytes(
+                        data[i].size(), kBlockSize)));
+        ASSERT_EQ(
+                cudaSuccess,
+                offsets[i].reset(
+                        (data[i].size() + kBlockSize - 1) / kBlockSize + 1));
+        ASSERT_EQ(cudaSuccess, total[i].reset(1));
+        ASSERT_EQ(cudaSuccess, status[i].reset(1));
+        ASSERT_EQ(
+                cudaSuccess,
+                cudaStreamCreateWithFlags(
+                        &handles.streams[i], cudaStreamNonBlocking));
+        ASSERT_EQ(
+                cudaSuccess,
+                cudaEventCreateWithFlags(
+                        &handles.events[i], cudaEventDisableTiming));
+    }
+    for (unsigned round = 0; round < 3; ++round) {
+        SCOPED_TRACE(round);
+        Encoded expected[2];
+        for (unsigned i = 0; i < 2; ++i) {
+            if (round == 1) {
+                data[i].resize(i == 0 ? 33 : kBlockSize - 1);
+            } else if (round == 2) {
+                data[i].clear();
+            }
+            expected[i]       = data[i].empty()
+                          ? Encoded{ {}, { 0 } }
+                          : cpuEncode(weights, data[i], kBlockSize);
+            const auto stream = handles.streams[i];
+            ASSERT_EQ(
+                    cudaSuccess,
+                    cudaMemsetAsync(
+                            workspace[i].get(),
+                            0xa5,
+                            workspace[i].size(),
+                            stream));
+            ASSERT_EQ(
+                    cudaSuccess,
+                    cudaMemsetAsync(
+                            status[i].get(),
+                            0,
+                            sizeof(PivCoGpuStatus),
+                            stream));
+            ASSERT_EQ(
+                    cudaSuccess,
+                    cudaMemsetAsync(
+                            total[i].get(), 0xa5, sizeof(uint64_t), stream));
+            ASSERT_EQ(
+                    cudaSuccess,
+                    pivcoGpuEncodeAsync(
+                            context.get(),
+                            encoded[i].get(),
+                            encoded[i].size(),
+                            offsets[i].get(),
+                            offsets[i].size(),
+                            src[i].get(),
+                            data[i].size(),
+                            kBlockSize,
+                            workspace[i].get(),
+                            workspace[i].size(),
+                            status[i].get(),
+                            total[i].get(),
+                            stream));
+            ASSERT_EQ(cudaSuccess, cudaEventRecord(handles.events[i], stream));
+        }
+        // Both disjoint streams have been submitted before either host wait.
+        for (unsigned i = 0; i < 2; ++i) {
+            ASSERT_EQ(cudaSuccess, cudaEventSynchronize(handles.events[i]));
+            PivCoGpuStatus actualStatus{};
+            uint64_t actualSize = 0;
+            ASSERT_EQ(
+                    cudaSuccess,
+                    cudaMemcpy(
+                            &actualStatus,
+                            status[i].get(),
+                            sizeof(actualStatus),
+                            cudaMemcpyDeviceToHost));
+            ASSERT_EQ(
+                    cudaSuccess,
+                    cudaMemcpy(
+                            &actualSize,
+                            total[i].get(),
+                            sizeof(actualSize),
+                            cudaMemcpyDeviceToHost));
+            ASSERT_EQ(actualStatus.code, PIVCO_GPU_STATUS_OK);
+            ASSERT_EQ(actualSize, expected[i].bytes.size());
+            const auto actualBytes =
+                    copyBytesFromDevice(encoded[i], size_t(actualSize));
+            EXPECT_EQ(actualBytes, expected[i].bytes);
+            EXPECT_EQ(
+                    copyOffsetsFromDevice(
+                            offsets[i], expected[i].offsets.size()),
+                    expected[i].offsets);
+            if (!data[i].empty()) {
+                EXPECT_EQ(
+                        cpuDecode(
+                                weights,
+                                actualBytes,
+                                data[i].size(),
+                                kBlockSize),
+                        data[i]);
+            }
+        }
+    }
 }
 
 TEST(PivCoGpuTest, CooperativeDecodeCpuWireFullBlockAllOnes)

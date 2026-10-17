@@ -1,0 +1,390 @@
+{
+  "schema": "openzl.pivcoCooperativeBenchmark/v1",
+  "baseline": "55410503c2190d5e67469875d26e2972d969c586",
+  "publicationDraft": false,
+  "decoderDependency": "13dacc13c906db81cb957bf1bf993cfd59f05690",
+  "decoderOnlyQualification": {
+    "device": "RTX 3080 Ti",
+    "testsPassed": 12,
+    "encoderOptimizationPresent": false,
+    "hardwareDisclaimer": "Non-stock hardware: CPU power-limited for thermals; RTX 3080 Ti power budget increased with a more conservative clock curve; RTX 3060 connected through a PCIe x1 link. Exact tuning values were not recorded. These workstation measurements are not stock-hardware expectations."
+  },
+  "environment": "WSL2 Linux binaries on Windows",
+  "cpu": "AMD Ryzen 9 3900X 12-Core Processor",
+  "cudaCompiler": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2026 NVIDIA Corporation\nBuilt on Fri_May_08_10:53:34_AM_PDT_2026\nCuda compilation tools, release 13.2, V13.2.86\nBuild cuda_13.2.r13.2/compiler.37953736_0",
+  "hostCompiler": "g++ (conda-forge gcc 13.3.0-2) 13.3.0",
+  "driver": [
+    "NVIDIA GeForce RTX 3060, 616.56",
+    "NVIDIA GeForce RTX 3080 Ti, 616.56"
+  ],
+  "hardwareDisclaimer": "Non-stock hardware: CPU power-limited for thermals; RTX 3080 Ti power budget increased with a more conservative clock curve; RTX 3060 connected through a PCIe x1 link. Exact tuning values were not recorded. These workstation measurements are not stock-hardware expectations.",
+  "timingScope": "CUDA-event interval around encode Async and status/total resets; includes stream-ordered context H2D upload and kernels; excludes bulk payload H2D/D2H, context construction and allocations",
+  "blockBytes": 65536,
+  "iterationsPerInvocation": 7,
+  "order": [
+    "baseline",
+    "candidate",
+    "candidate",
+    "baseline"
+  ],
+  "aggregation": "Arithmetic mean of two invocation medians; not a pooled median",
+  "precision": "Upstream benchmark prints milliseconds to four decimal places",
+  "scope": "Synthetic device-resident PivCo block microbenchmark; no archive/application or stock-hardware claim",
+  "sourceSha256": {
+    "contrib/pivco-huffman/gpu/pivco_gpu.cu": "aeb450ffeee0ba0a62c36aed7d2b708818cb8f4117c759fc9f1a9b11d83f29f4",
+    "contrib/pivco-huffman/gpu/pivco_gpu_cooperative.cuh": "2bf44487d87adbfd7842342b765883701113ededf026eca02977a66cc3df19a9",
+    "contrib/pivco-huffman/gpu/PivCoGpuBench.cpp": "0cfa3f504c1bba9a9a34ee344e1b2fe2f2e2c96baa393be901bb4f82c134abfd",
+    "contrib/pivco-huffman/gpu/PivCoGpuTest.cpp": "e0feee68fa7031b236518da9a7dd3f7a7831923534a667fd6f4a75c163f7686d",
+    "contrib/pivco-huffman/gpu/CMakeLists.txt": "1a0deb76f55a1bbf63019a030bc6d458b281b50ec942eacfb16079ed543231a9"
+  },
+  "correctness": [
+    {
+      "device": "rtx-3080-ti",
+      "check": "tests",
+      "passedTests": 19,
+      "expectedFailure": false
+    },
+    {
+      "device": "rtx-3080-ti",
+      "check": "baseline-tests",
+      "passedTests": 11,
+      "expectedFailure": false
+    },
+    {
+      "device": "rtx-3080-ti",
+      "check": "index-tests",
+      "passedTests": 8,
+      "expectedFailure": false
+    },
+    {
+      "device": "rtx-3080-ti",
+      "check": "regression-baseline",
+      "passedTests": 0,
+      "expectedFailure": true
+    },
+    {
+      "device": "rtx-3080-ti",
+      "check": "regression-cascade",
+      "passedTests": 1,
+      "expectedFailure": false
+    },
+    {
+      "device": "rtx-3060",
+      "check": "tests",
+      "passedTests": 19,
+      "expectedFailure": false
+    },
+    {
+      "device": "rtx-3060",
+      "check": "baseline-tests",
+      "passedTests": 11,
+      "expectedFailure": false
+    },
+    {
+      "device": "rtx-3060",
+      "check": "index-tests",
+      "passedTests": 8,
+      "expectedFailure": false
+    },
+    {
+      "device": "rtx-3060",
+      "check": "regression-baseline",
+      "passedTests": 0,
+      "expectedFailure": true
+    },
+    {
+      "device": "rtx-3060",
+      "check": "regression-cascade",
+      "passedTests": 1,
+      "expectedFailure": false
+    }
+  ],
+  "rows": [
+    {
+      "device": "RTX 3060",
+      "fixture": "english",
+      "inputBytes": 4194304,
+      "compressedBytes": 2224930,
+      "baselineInvocationMedianMs": [
+        42.2748,
+        42.2871
+      ],
+      "candidateInvocationMedianMs": [
+        0.9134,
+        0.9134
+      ],
+      "baselineMeanOfMediansMs": 42.280950000000004,
+      "candidateMeanOfMediansMs": 0.9134,
+      "speedup": 46.28963214363915,
+      "fullEncodedBytesAndOffsetsMatchCpu": true,
+      "independentCpuRecovery": true,
+      "hardwareDisclaimer": "Non-stock hardware: CPU power-limited for thermals; RTX 3080 Ti power budget increased with a more conservative clock curve; RTX 3060 connected through a PCIe x1 link. Exact tuning values were not recorded. These workstation measurements are not stock-hardware expectations."
+    },
+    {
+      "device": "RTX 3060",
+      "fixture": "geometric",
+      "inputBytes": 4194304,
+      "compressedBytes": 1112897,
+      "baselineInvocationMedianMs": [
+        34.3552,
+        31.4696
+      ],
+      "candidateInvocationMedianMs": [
+        0.7639,
+        0.7578
+      ],
+      "baselineMeanOfMediansMs": 32.912400000000005,
+      "candidateMeanOfMediansMs": 0.76085,
+      "speedup": 43.25740947624368,
+      "fullEncodedBytesAndOffsetsMatchCpu": true,
+      "independentCpuRecovery": true,
+      "hardwareDisclaimer": "Non-stock hardware: CPU power-limited for thermals; RTX 3080 Ti power budget increased with a more conservative clock curve; RTX 3060 connected through a PCIe x1 link. Exact tuning values were not recorded. These workstation measurements are not stock-hardware expectations."
+    },
+    {
+      "device": "RTX 3060",
+      "fixture": "three_sym_50_25_25",
+      "inputBytes": 4194304,
+      "compressedBytes": 786629,
+      "baselineInvocationMedianMs": [
+        0.1393,
+        0.1382
+      ],
+      "candidateInvocationMedianMs": [
+        0.1423,
+        0.1403
+      ],
+      "baselineMeanOfMediansMs": 0.13874999999999998,
+      "candidateMeanOfMediansMs": 0.1413,
+      "speedup": 0.9819532908704881,
+      "fullEncodedBytesAndOffsetsMatchCpu": true,
+      "independentCpuRecovery": true,
+      "hardwareDisclaimer": "Non-stock hardware: CPU power-limited for thermals; RTX 3080 Ti power budget increased with a more conservative clock curve; RTX 3060 connected through a PCIe x1 link. Exact tuning values were not recorded. These workstation measurements are not stock-hardware expectations."
+    },
+    {
+      "device": "RTX 3060",
+      "fixture": "two_sym_eq",
+      "inputBytes": 4194304,
+      "compressedBytes": 524288,
+      "baselineInvocationMedianMs": [
+        19.7908,
+        19.797
+      ],
+      "candidateInvocationMedianMs": [
+        0.4557,
+        0.4526
+      ],
+      "baselineMeanOfMediansMs": 19.7939,
+      "candidateMeanOfMediansMs": 0.45415,
+      "speedup": 43.584498513706926,
+      "fullEncodedBytesAndOffsetsMatchCpu": true,
+      "independentCpuRecovery": true,
+      "hardwareDisclaimer": "Non-stock hardware: CPU power-limited for thermals; RTX 3080 Ti power budget increased with a more conservative clock curve; RTX 3060 connected through a PCIe x1 link. Exact tuning values were not recorded. These workstation measurements are not stock-hardware expectations."
+    },
+    {
+      "device": "RTX 3060",
+      "fixture": "uniform",
+      "inputBytes": 4194304,
+      "compressedBytes": 4194304,
+      "baselineInvocationMedianMs": [
+        30.4128,
+        30.4456
+      ],
+      "candidateInvocationMedianMs": [
+        0.5048,
+        0.5048
+      ],
+      "baselineMeanOfMediansMs": 30.4292,
+      "candidateMeanOfMediansMs": 0.5048,
+      "speedup": 60.2797147385103,
+      "fullEncodedBytesAndOffsetsMatchCpu": true,
+      "independentCpuRecovery": true,
+      "hardwareDisclaimer": "Non-stock hardware: CPU power-limited for thermals; RTX 3080 Ti power budget increased with a more conservative clock curve; RTX 3060 connected through a PCIe x1 link. Exact tuning values were not recorded. These workstation measurements are not stock-hardware expectations."
+    },
+    {
+      "device": "RTX 3060",
+      "fixture": "zipfian",
+      "inputBytes": 4194304,
+      "compressedBytes": 3283601,
+      "baselineInvocationMedianMs": [
+        57.0982,
+        59.6992
+      ],
+      "candidateInvocationMedianMs": [
+        1.28,
+        1.281
+      ],
+      "baselineMeanOfMediansMs": 58.3987,
+      "candidateMeanOfMediansMs": 1.2805,
+      "speedup": 45.606169465052716,
+      "fullEncodedBytesAndOffsetsMatchCpu": true,
+      "independentCpuRecovery": true,
+      "hardwareDisclaimer": "Non-stock hardware: CPU power-limited for thermals; RTX 3080 Ti power budget increased with a more conservative clock curve; RTX 3060 connected through a PCIe x1 link. Exact tuning values were not recorded. These workstation measurements are not stock-hardware expectations."
+    },
+    {
+      "device": "RTX 3080 Ti",
+      "fixture": "english",
+      "inputBytes": 4194304,
+      "compressedBytes": 2224930,
+      "baselineInvocationMedianMs": [
+        39.849,
+        39.8683
+      ],
+      "candidateInvocationMedianMs": [
+        0.7094,
+        0.7125
+      ],
+      "baselineMeanOfMediansMs": 39.85865,
+      "candidateMeanOfMediansMs": 0.71095,
+      "speedup": 56.063928546311274,
+      "fullEncodedBytesAndOffsetsMatchCpu": true,
+      "independentCpuRecovery": true,
+      "hardwareDisclaimer": "Non-stock hardware: CPU power-limited for thermals; RTX 3080 Ti power budget increased with a more conservative clock curve; RTX 3060 connected through a PCIe x1 link. Exact tuning values were not recorded. These workstation measurements are not stock-hardware expectations."
+    },
+    {
+      "device": "RTX 3080 Ti",
+      "fixture": "geometric",
+      "inputBytes": 4194304,
+      "compressedBytes": 1112897,
+      "baselineInvocationMedianMs": [
+        29.9725,
+        29.9989
+      ],
+      "candidateInvocationMedianMs": [
+        0.5969,
+        0.5898
+      ],
+      "baselineMeanOfMediansMs": 29.9857,
+      "candidateMeanOfMediansMs": 0.59335,
+      "speedup": 50.53627707086879,
+      "fullEncodedBytesAndOffsetsMatchCpu": true,
+      "independentCpuRecovery": true,
+      "hardwareDisclaimer": "Non-stock hardware: CPU power-limited for thermals; RTX 3080 Ti power budget increased with a more conservative clock curve; RTX 3060 connected through a PCIe x1 link. Exact tuning values were not recorded. These workstation measurements are not stock-hardware expectations."
+    },
+    {
+      "device": "RTX 3080 Ti",
+      "fixture": "three_sym_50_25_25",
+      "inputBytes": 4194304,
+      "compressedBytes": 786629,
+      "baselineInvocationMedianMs": [
+        0.0798,
+        0.0758
+      ],
+      "candidateInvocationMedianMs": [
+        0.0809,
+        0.0809
+      ],
+      "baselineMeanOfMediansMs": 0.07780000000000001,
+      "candidateMeanOfMediansMs": 0.0809,
+      "speedup": 0.96168108776267,
+      "fullEncodedBytesAndOffsetsMatchCpu": true,
+      "independentCpuRecovery": true,
+      "hardwareDisclaimer": "Non-stock hardware: CPU power-limited for thermals; RTX 3080 Ti power budget increased with a more conservative clock curve; RTX 3060 connected through a PCIe x1 link. Exact tuning values were not recorded. These workstation measurements are not stock-hardware expectations."
+    },
+    {
+      "device": "RTX 3080 Ti",
+      "fixture": "two_sym_eq",
+      "inputBytes": 4194304,
+      "compressedBytes": 524288,
+      "baselineInvocationMedianMs": [
+        18.9348,
+        18.9645
+      ],
+      "candidateInvocationMedianMs": [
+        0.4236,
+        0.3686
+      ],
+      "baselineMeanOfMediansMs": 18.94965,
+      "candidateMeanOfMediansMs": 0.3961,
+      "speedup": 47.840570562989136,
+      "fullEncodedBytesAndOffsetsMatchCpu": true,
+      "independentCpuRecovery": true,
+      "hardwareDisclaimer": "Non-stock hardware: CPU power-limited for thermals; RTX 3080 Ti power budget increased with a more conservative clock curve; RTX 3060 connected through a PCIe x1 link. Exact tuning values were not recorded. These workstation measurements are not stock-hardware expectations."
+    },
+    {
+      "device": "RTX 3080 Ti",
+      "fixture": "uniform",
+      "inputBytes": 4194304,
+      "compressedBytes": 4194304,
+      "baselineInvocationMedianMs": [
+        29.2741,
+        29.2925
+      ],
+      "candidateInvocationMedianMs": [
+        0.3881,
+        0.384
+      ],
+      "baselineMeanOfMediansMs": 29.2833,
+      "candidateMeanOfMediansMs": 0.38605,
+      "speedup": 75.85364590079006,
+      "fullEncodedBytesAndOffsetsMatchCpu": true,
+      "independentCpuRecovery": true,
+      "hardwareDisclaimer": "Non-stock hardware: CPU power-limited for thermals; RTX 3080 Ti power budget increased with a more conservative clock curve; RTX 3060 connected through a PCIe x1 link. Exact tuning values were not recorded. These workstation measurements are not stock-hardware expectations."
+    },
+    {
+      "device": "RTX 3080 Ti",
+      "fixture": "zipfian",
+      "inputBytes": 4194304,
+      "compressedBytes": 3283601,
+      "baselineInvocationMedianMs": [
+        53.855,
+        53.6494
+      ],
+      "candidateInvocationMedianMs": [
+        0.9708,
+        0.9718
+      ],
+      "baselineMeanOfMediansMs": 53.7522,
+      "candidateMeanOfMediansMs": 0.9713,
+      "speedup": 55.340471532997014,
+      "fullEncodedBytesAndOffsetsMatchCpu": true,
+      "independentCpuRecovery": true,
+      "hardwareDisclaimer": "Non-stock hardware: CPU power-limited for thermals; RTX 3080 Ti power budget increased with a more conservative clock curve; RTX 3060 connected through a PCIe x1 link. Exact tuning values were not recorded. These workstation measurements are not stock-hardware expectations."
+    }
+  ],
+  "encoderWorkspace": [
+    {
+      "inputBytes": 65536,
+      "baselineBytes": 132624,
+      "candidateBytes": 274696,
+      "hardwareDisclaimer": "Non-stock hardware: CPU power-limited for thermals; RTX 3080 Ti power budget increased with a more conservative clock curve; RTX 3060 connected through a PCIe x1 link. Exact tuning values were not recorded. These workstation measurements are not stock-hardware expectations."
+    },
+    {
+      "inputBytes": 4194304,
+      "baselineBytes": 8390160,
+      "candidateBytes": 16790272,
+      "hardwareDisclaimer": "Non-stock hardware: CPU power-limited for thermals; RTX 3080 Ti power budget increased with a more conservative clock curve; RTX 3060 connected through a PCIe x1 link. Exact tuning values were not recorded. These workstation measurements are not stock-hardware expectations."
+    },
+    {
+      "inputBytes": 16777216,
+      "baselineBytes": 33555984,
+      "candidateBytes": 67123456,
+      "hardwareDisclaimer": "Non-stock hardware: CPU power-limited for thermals; RTX 3080 Ti power budget increased with a more conservative clock curve; RTX 3060 connected through a PCIe x1 link. Exact tuning values were not recorded. These workstation measurements are not stock-hardware expectations."
+    },
+    {
+      "inputBytes": 16777217,
+      "baselineBytes": 33687056,
+      "candidateBytes": 33687056,
+      "hardwareDisclaimer": "Non-stock hardware: CPU power-limited for thermals; RTX 3080 Ti power budget increased with a more conservative clock curve; RTX 3060 connected through a PCIe x1 link. Exact tuning values were not recorded. These workstation measurements are not stock-hardware expectations."
+    }
+  ],
+  "sanitizers": {
+    "device": "RTX 3080 Ti",
+    "version": "2026.1.0.0",
+    "cudaRedistPackageVersion": "13.2.23",
+    "memcheck": {
+      "tests": 8,
+      "errors": 0
+    },
+    "racecheck": {
+      "tests": 7,
+      "errors": 0,
+      "warnings": 0
+    },
+    "synccheck": {
+      "tests": 7,
+      "errors": 0
+    },
+    "note": "Race/sync exclude the maximum-grid test; memcheck includes it"
+  },
+  "authorship": "This was entirely vibe-coded by an LLM. I am not in a position to tell you if this is a useful contribution, unfortunately. Exercise caution accordingly."
+}
