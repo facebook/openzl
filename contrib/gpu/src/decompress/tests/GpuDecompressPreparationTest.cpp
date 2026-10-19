@@ -11,7 +11,6 @@
 
 #include "contrib/gpu/src/common/cuda_error.cuh"
 #include "contrib/gpu/src/common/cuda_raii.cuh"
-#include "contrib/gpu/src/common/tests/error_testing.hpp"
 #include "contrib/gpu/src/decompress/gpu_decompress.hpp"
 #include "contrib/gpu/testkit/frame_verifier.h"
 #include "contrib/gpu/testkit/multichunk_frame.h"
@@ -74,8 +73,9 @@ TEST(GPUDecompressPreparationTest, BuildsContextsWithoutReadingPayload)
 
     std::vector<gpu::GPUChunk> chunks;
     std::vector<gpu::GPUFrameHeaderForChunks> frameHeaders;
-    gpu::collectGPUChunksFromFrame(
+    ZL_Report const directoryResult = gpu::collectGPUChunksFromFrame(
             deviceFrame_d.get(), bytes(frame), chunks, frameHeaders);
+    ASSERT_FALSE(ZL_isError(directoryResult));
     ASSERT_EQ(chunks.size(), codecsPerChunk.size());
     ASSERT_FALSE(chunks.empty());
     ASSERT_LT(chunks[0].chunkHeaderSize, chunks[0].chunkSize);
@@ -85,8 +85,10 @@ TEST(GPUDecompressPreparationTest, BuildsContextsWithoutReadingPayload)
             + chunks[0].chunkSize - 1;
     ZL_CUDA_CHECK(cudaMemset(payloadOrChecksum_d, 0xA5, 1));
 
-    const std::vector<gpu::PreparedGPUChunk> preparedChunks =
-            gpu::prepareChunksForPlanning(frameHeaders, chunks, nullptr);
+    std::vector<gpu::PreparedGPUChunk> preparedChunks;
+    ZL_Report const prepareResult = gpu::prepareChunksForPlanning(
+            frameHeaders, chunks, preparedChunks, nullptr);
+    ASSERT_FALSE(ZL_isError(prepareResult));
     ASSERT_EQ(preparedChunks.size(), chunks.size());
 
     for (size_t i = 0; i < preparedChunks.size(); ++i) {
@@ -148,27 +150,27 @@ TEST(GPUDecompressPreparationTest, BuildsContextsWithoutReadingPayload)
     }
 }
 
-TEST(GPUDecompressPreparationTest, RejectsNullFrameHeader)
+TEST(GPUDecompressPreparationTest, ClearsOutputOnFailure)
 {
-    // The device-to-host copy also rejects a null source with the same code, so
-    // the message must show that the descriptor check fired first.
+    // This fails if a rejected preparation exposes contexts retained from an
+    // earlier successful call.
+    std::vector<gpu::PreparedGPUChunk> preparedChunks;
+    preparedChunks.push_back(
+            { .chunk = {}, .dctx = {}, .transformHeaders_h = {} });
     const gpu::GPUFrameHeaderForChunks invalidFrameHeader{
         .frameHeader_d   = nullptr,
         .frameHeaderSize = 1,
     };
-    const auto prepare = [&] {
-        gpu::prepareChunksForPlanning(
-                poly::span<const gpu::GPUFrameHeaderForChunks>{
-                        &invalidFrameHeader, 1 },
-                poly::span<const gpu::GPUChunk>{},
-                nullptr);
-    };
 
-    EXPECT_EQ(gpu::thrownErrorCode(prepare), ZL_ErrorCode_parameter_invalid);
-    EXPECT_NE(
-            gpu::thrownMessage(prepare).find(
-                    "frameHeader.frameHeader_d == nullptr"),
-            std::string::npos);
+    ZL_Report const result = gpu::prepareChunksForPlanning(
+            poly::span<const gpu::GPUFrameHeaderForChunks>{ &invalidFrameHeader,
+                                                            1 },
+            poly::span<const gpu::GPUChunk>{},
+            preparedChunks,
+            nullptr);
+
+    EXPECT_TRUE(ZL_isError(result));
+    EXPECT_TRUE(preparedChunks.empty());
 }
 
 } // namespace

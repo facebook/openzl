@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-#include "contrib/gpu/src/common/tests/error_testing.hpp"
 #include "contrib/gpu/src/decompress/gpu_decompress.hpp"
 #include "contrib/gpu/testkit/frame_verifier.h"
 #include "contrib/gpu/testkit/multichunk_frame.h"
@@ -83,15 +82,16 @@ TEST(GPUDecompressTest, CollectGPUChunksFromFrameEnumeratesEveryChunk)
     std::vector<gpu::GPUChunk> chunks;
     std::vector<gpu::GPUFrameHeaderForChunks> frameHeaders;
 
-    EXPECT_EQ(
-            gpu::collectGPUChunksFromFrame(
-                    deviceFrame.data(), bytes(frame), chunks, frameHeaders),
-            frame.size());
+    ZL_Report const result = gpu::collectGPUChunksFromFrame(
+            deviceFrame.data(), bytes(frame), chunks, frameHeaders);
+    ASSERT_FALSE(ZL_isError(result));
+    EXPECT_EQ(ZL_validResult(result), frame.size());
     ASSERT_EQ(chunks.size(), 2);
     ASSERT_EQ(frameHeaders.size(), 1);
 
-    size_t const frameHeaderSize =
-            unwrap(ZL_getHeaderSize(frame.data(), frame.size()));
+    ZL_Report const headerResult = ZL_getHeaderSize(frame.data(), frame.size());
+    ASSERT_FALSE(ZL_isError(headerResult));
+    size_t const frameHeaderSize = ZL_validResult(headerResult);
     EXPECT_EQ(frameHeaders[0].frameHeader_d, deviceFrame.data());
     EXPECT_EQ(frameHeaders[0].frameHeaderSize, frameHeaderSize);
 
@@ -118,10 +118,12 @@ TEST(GPUDecompressTest, CollectGPUChunksFromFrameAppendsToExistingBatch)
     std::vector<gpu::GPUChunk> chunks;
     std::vector<gpu::GPUFrameHeaderForChunks> frameHeaders;
 
-    gpu::collectGPUChunksFromFrame(
+    ZL_Report const firstResult = gpu::collectGPUChunksFromFrame(
             firstDeviceFrame.data(), bytes(frame), chunks, frameHeaders);
-    gpu::collectGPUChunksFromFrame(
+    ASSERT_FALSE(ZL_isError(firstResult));
+    ZL_Report const secondResult = gpu::collectGPUChunksFromFrame(
             secondDeviceFrame.data(), bytes(frame), chunks, frameHeaders);
+    ASSERT_FALSE(ZL_isError(secondResult));
 
     ASSERT_EQ(frameHeaders.size(), 2);
     EXPECT_EQ(frameHeaders[0].frameHeader_d, firstDeviceFrame.data());
@@ -132,8 +134,9 @@ TEST(GPUDecompressTest, CollectGPUChunksFromFrameAppendsToExistingBatch)
     EXPECT_EQ(chunks[2].frameHeaderIdx, 1);
     EXPECT_EQ(chunks[3].frameHeaderIdx, 1);
 
-    size_t const frameHeaderSize =
-            unwrap(ZL_getHeaderSize(frame.data(), frame.size()));
+    ZL_Report const headerResult = ZL_getHeaderSize(frame.data(), frame.size());
+    ASSERT_FALSE(ZL_isError(headerResult));
+    size_t const frameHeaderSize = ZL_validResult(headerResult);
     EXPECT_EQ(chunks[0].chunk_d, firstDeviceFrame.data() + frameHeaderSize);
     EXPECT_EQ(chunks[2].chunk_d, secondDeviceFrame.data() + frameHeaderSize);
 }
@@ -158,12 +161,10 @@ TEST(GPUDecompressTest, DecompressChunksRejectsUnknownFrameHeader)
         },
     };
 
-    EXPECT_EQ(
-            gpu::thrownErrorCode([&] {
-                gpu::decompressChunks(
-                        nullptr, 0, frameHeaders, chunks, nullptr);
-            }),
-            ZL_ErrorCode_parameter_invalid);
+    ZL_Report const result =
+            gpu::decompressChunks(nullptr, 0, frameHeaders, chunks, nullptr);
+
+    EXPECT_EQ(ZL_errorCode(result), ZL_ErrorCode_parameter_invalid);
 }
 
 TEST(GPUDecompressTest, CApiRejectsImpossibleSourceSize)
@@ -186,12 +187,10 @@ TEST(GPUDecompressTest, CollectGPUChunksFromFrameRejectsLegacyFormat)
     std::vector<gpu::GPUChunk> chunks;
     std::vector<gpu::GPUFrameHeaderForChunks> frameHeaders;
 
-    EXPECT_EQ(
-            gpu::thrownErrorCode([&] {
-                gpu::collectGPUChunksFromFrame(
-                        deviceFrame.data(), bytes(frame), chunks, frameHeaders);
-            }),
-            ZL_ErrorCode_formatVersion_unsupported);
+    ZL_Report const result = gpu::collectGPUChunksFromFrame(
+            deviceFrame.data(), bytes(frame), chunks, frameHeaders);
+
+    EXPECT_EQ(ZL_errorCode(result), ZL_ErrorCode_formatVersion_unsupported);
     EXPECT_TRUE(chunks.empty());
     EXPECT_TRUE(frameHeaders.empty());
 }
@@ -220,12 +219,10 @@ TEST(GPUDecompressTest, CollectGPUChunksFromFrameRejectsTrailingBytes)
         expectedFrameHeader
     };
 
-    EXPECT_EQ(
-            gpu::thrownErrorCode([&] {
-                gpu::collectGPUChunksFromFrame(
-                        deviceFrame.data(), bytes(frame), chunks, frameHeaders);
-            }),
-            ZL_ErrorCode_srcSize_tooLarge);
+    ZL_Report const result = gpu::collectGPUChunksFromFrame(
+            deviceFrame.data(), bytes(frame), chunks, frameHeaders);
+
+    EXPECT_EQ(ZL_errorCode(result), ZL_ErrorCode_srcSize_tooLarge);
     ASSERT_EQ(chunks.size(), 1);
     EXPECT_EQ(chunks[0].frameHeaderIdx, expectedChunk.frameHeaderIdx);
     EXPECT_EQ(chunks[0].chunk_d, expectedChunk.chunk_d);
@@ -249,12 +246,10 @@ TEST(GPUDecompressTest, CollectGPUChunksFromFrameRejectsMissingEndMarker)
     std::vector<gpu::GPUChunk> chunks;
     std::vector<gpu::GPUFrameHeaderForChunks> frameHeaders;
 
-    EXPECT_EQ(
-            gpu::thrownErrorCode([&] {
-                gpu::collectGPUChunksFromFrame(
-                        deviceFrame.data(), bytes(frame), chunks, frameHeaders);
-            }),
-            ZL_ErrorCode_srcSize_tooSmall);
+    ZL_Report const result = gpu::collectGPUChunksFromFrame(
+            deviceFrame.data(), bytes(frame), chunks, frameHeaders);
+
+    EXPECT_EQ(ZL_errorCode(result), ZL_ErrorCode_srcSize_tooSmall);
     EXPECT_TRUE(chunks.empty());
     EXPECT_TRUE(frameHeaders.empty());
 }
