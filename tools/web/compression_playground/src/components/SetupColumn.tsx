@@ -4,11 +4,11 @@ import {VStack} from '@chakra-ui/react';
 import ConfigureRunCard from './ConfigureRunCard.tsx';
 import RunBenchmarkCard from './RunBenchmarkCard.tsx';
 import UploadCard from './UploadCard.tsx';
-import type {RunConfig, RunState} from '../benchmarkTypes.ts';
+import type {RunConfig, RunInput, RunState} from '../benchmarkTypes.ts';
 import type {CompressorRows} from '../useCompressorRows.ts';
 
 interface SetupColumnProps {
-  file: File | null;
+  file: RunInput | null;
   onFileChange: (file: File | null) => void;
   compressors: CompressorRows;
   iterations: number;
@@ -18,6 +18,8 @@ interface SetupColumnProps {
   onRun: ((config: RunConfig) => void) | null;
   onTrySample: (() => void) | null;
   runBlockers: readonly string[];
+  /** The desktop app; see `ConfigureRunCard`. */
+  desktop?: boolean;
 }
 
 export default function SetupColumn({
@@ -31,11 +33,17 @@ export default function SetupColumn({
   onRun,
   onTrySample,
   runBlockers,
+  desktop = false,
 }: SetupColumnProps) {
   return (
     <VStack gap="20px" width={{base: '100%', lg: '520px'}} flexShrink={0} align="stretch">
       <UploadCard file={file} onFileChange={onFileChange} />
-      <ConfigureRunCard compressors={compressors} iterations={iterations} onIterationsChange={onIterationsChange} />
+      <ConfigureRunCard
+        compressors={compressors}
+        iterations={iterations}
+        onIterationsChange={onIterationsChange}
+        desktop={desktop}
+      />
       <RunBenchmarkCard
         runConfig={runConfig}
         runState={runState}

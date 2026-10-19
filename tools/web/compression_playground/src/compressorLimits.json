@@ -1,0 +1,4 @@
+{
+  "maxLevel": {"OpenZL": 9, "zstd": 19, "gzip": 9},
+  "trainedCandidates": {"browserMin": 6, "desktopMin": 10, "max": 25}
+}
