@@ -1,6 +1,8 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
 load("../../../../defs.bzl", "relative_headers")
 
 oncall("data_compression")
@@ -63,6 +65,24 @@ cpp_library(
         ":cuda_raii",
     ],
     exported_external_deps = [("cuda", None, "cuda-lazy")],
+)
+
+cpp_library(
+    name = "result",
+    headers = relative_headers(["result.hpp"]),
+    header_namespace = "",
+    exported_deps = ["../../../..:zstronglib"],
+)
+
+cpp_unittest(
+    name = "result_test",
+    srcs = ["tests/ResultTest.cpp"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "../../../..:zstronglib",
+        "fbsource//third-party/googletest:gtest",
+        ":result",
+    ],
 )
 
 # CPU metadata contract shared by codec planners and the decode scheduler.
