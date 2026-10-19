@@ -29,21 +29,39 @@ function renderWithPlaygroundTheme(ui: React.ReactElement, options?: Omit<Render
   });
 }
 
-function ControlledConfigureRunCard({initialRows}: {initialRows?: readonly CompressorRow[]}) {
+function ControlledConfigureRunCard({
+  initialRows,
+  desktop = false,
+}: {
+  initialRows?: readonly CompressorRow[];
+  desktop?: boolean;
+}) {
   // The same hook App drives the card with, so these tests exercise the real
   // row and id handling rather than a stand-in.
-  const compressors = useCompressorRows(initialRows);
+  const compressors = useCompressorRows({initialRows, desktop});
   const [iterations, setIterations] = useState(ITERATIONS_DEFAULT);
   return (
     <>
-      <ConfigureRunCard compressors={compressors} iterations={iterations} onIterationsChange={setIterations} />
+      <ConfigureRunCard
+        compressors={compressors}
+        iterations={iterations}
+        onIterationsChange={setIterations}
+        desktop={desktop}
+      />
       <output data-testid="compressor-ids">{compressors.rows.map((row) => row.id).join(',')}</output>
+      <output data-testid="profile-args">
+        {compressors.rows.map((row) => (row.compressor === 'OpenZL' ? row.profileArg : '-')).join('|')}
+      </output>
     </>
   );
 }
 
 function renderConfigureRunCard(initialRows?: readonly CompressorRow[]) {
   return renderWithPlaygroundTheme(<ControlledConfigureRunCard initialRows={initialRows} />);
+}
+
+function renderDesktopConfigureRunCard(initialRows?: readonly CompressorRow[]) {
+  return renderWithPlaygroundTheme(<ControlledConfigureRunCard initialRows={initialRows} desktop />);
 }
 
 /**
@@ -309,6 +327,88 @@ describe('ConfigureRunCard', () => {
     expect(counts.at(0)).toBe(6);
     expect(counts.at(-1)).toBe(25);
     expect(candidates).toHaveValue('6');
+  });
+
+  describe('in the desktop app', () => {
+    it('greys out only the profiles it cannot run, under their own heading', async () => {
+      renderDesktopConfigureRunCard();
+
+      fireEvent.click(screen.getByRole('combobox', {name: 'Level or profile for row 1'}));
+      const listbox = await screen.findByRole('listbox');
+
+      expect(within(listbox).getByText('Not available in the desktop app')).toBeInTheDocument();
+      expect(within(listbox).queryByText('Not available in the browser')).not.toBeInTheDocument();
+      for (const profile of OPENZL_PROFILES) {
+        const disabled = ['sddl', 'sddl2', 'numeric-ml-selector-64'].includes(profile);
+        const option = within(listbox).getByRole('option', {name: profile});
+        if (disabled) {
+          expect(option).toHaveAttribute('aria-disabled', 'true');
+        } else {
+          expect(option).not.toHaveAttribute('aria-disabled', 'true');
+        }
+      }
+
+      fireEvent.click(within(listbox).getByRole('option', {name: 'parquet'}));
+
+      await waitFor(() => {
+        expect(screen.getByRole('combobox', {name: 'Level or profile for row 1'})).toHaveTextContent('parquet');
+      });
+    });
+
+    it('describes a profile without saying it cannot run', async () => {
+      renderDesktopConfigureRunCard();
+
+      fireEvent.click(screen.getByRole('combobox', {name: 'Level or profile for row 1'}));
+      const listbox = await screen.findByRole('listbox');
+      fireEvent.focus(within(listbox).getByRole('option', {name: 'parquet'}));
+
+      expect(document.getElementById(`row-1-profile-parquet-description`)).toHaveTextContent(
+        OPENZL_PROFILE_DESCRIPTIONS.parquet,
+      );
+      expect(document.getElementById(`row-1-profile-parquet-description`)).not.toHaveTextContent(
+        'Cannot run in the browser',
+      );
+    });
+
+    it('offers the candidate counts `zli train` accepts, from 10', () => {
+      renderDesktopConfigureRunCard();
+
+      const candidates = screen.getByRole('combobox', {name: 'Number of trained candidates for row 1'});
+      const counts = optionValues(candidates).map(Number);
+      expect(counts.at(0)).toBe(10);
+      expect(counts.at(-1)).toBe(25);
+      expect(candidates).toHaveValue('10');
+    });
+
+    it('takes a profile argument for csv, and drops it with the profile', async () => {
+      renderDesktopConfigureRunCard();
+      const argument = () => screen.queryByRole('textbox', {name: 'Profile argument for row 1'});
+      expect(argument()).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('combobox', {name: 'Level or profile for row 1'}));
+      fireEvent.click(within(await screen.findByRole('listbox')).getByRole('option', {name: 'csv'}));
+      await waitFor(() => {
+        expect(argument()).toHaveAttribute('placeholder', 'separator (optional)');
+      });
+
+      fireEvent.change(screen.getByRole('textbox', {name: 'Profile argument for row 1'}), {target: {value: ';'}});
+      expect(screen.getByTestId('profile-args')).toHaveTextContent(';|-|-');
+
+      // A profile without an argument must not inherit the one typed for csv.
+      fireEvent.click(screen.getByRole('combobox', {name: 'Level or profile for row 1'}));
+      fireEvent.click(within(await screen.findByRole('listbox')).getByRole('option', {name: 'serial'}));
+      await waitFor(() => {
+        expect(argument()).not.toBeInTheDocument();
+      });
+      expect(screen.getByTestId('profile-args')).toHaveTextContent('|-|-');
+      expect(screen.getByTestId('profile-args')).not.toHaveTextContent(';');
+    });
+
+    it('keeps the argument field out of the browser, where nothing could read it', async () => {
+      renderConfigureRunCard([{...createCompressorRow(1, 'OpenZL'), profile: 'csv' as OpenZlProfile}]);
+
+      expect(screen.queryByRole('textbox', {name: 'Profile argument for row 1'})).not.toBeInTheDocument();
+    });
   });
 
   it('swaps the second dropdown when the compressor changes', () => {

@@ -1,0 +1,206 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+# The compression playground's unit tests, and its Electron desktop app built
+# and smoke-tested on Linux, macOS and Windows: native zli and zstd-benchmark,
+# the window's security settings, cancellation, and the packaged app.
+
+name: desktop-playground
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'tools/web/compression_playground/**'
+      - 'tools/desktop/compression_playground/**'
+      - 'tools/web/package.json'
+      - 'tools/web/yarn.lock'
+      # The app drives zli: its arguments, its CSV and the candidates
+      # `zli train` writes are the interface the desktop backend reads.
+      - 'cli/**'
+      - 'tools/training/**'
+      # The sample the app bundles, which the smoke test trains on.
+      - 'examples/getting_started/sample_inputs/era5_ints.bin'
+      - '.github/workflows/desktop-playground-ci.yml'
+  pull_request:
+    branches: [dev, master, actionsTest]
+    paths:
+      - 'tools/web/compression_playground/**'
+      - 'tools/desktop/compression_playground/**'
+      - 'tools/web/package.json'
+      - 'tools/web/yarn.lock'
+      - 'cli/**'
+      - 'tools/training/**'
+      - 'examples/getting_started/sample_inputs/era5_ints.bin'
+      - '.github/workflows/desktop-playground-ci.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+# Bumping Emscripten means editing this and the matching lines in
+# test-deploy-docs.yml, deploy-docs.yml and wasm-ci.yml.
+env:
+  EMSDK_VERSION: 4.0.19
+
+jobs:
+  unit:
+    name: Typecheck, lint and unit tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/web/compression_playground
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'yarn'
+          cache-dependency-path: |
+            tools/web/yarn.lock
+            tools/desktop/compression_playground/yarn.lock
+      - name: Install yarn dependencies
+        working-directory: tools/web
+        run: yarn --frozen-lockfile
+      - run: yarn tsc -b
+      - run: yarn lint
+      - run: yarn test:run
+      - name: Install the desktop app's yarn dependencies
+        working-directory: tools/desktop/compression_playground
+        # Nothing here launches Electron.
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+        run: yarn --frozen-lockfile
+      - name: Desktop app typecheck, lint and unit tests
+        working-directory: tools/desktop/compression_playground
+        run: yarn typecheck && yarn lint && yarn test:run
+
+  # Synced with the "wasm" job in test-deploy-docs.yml, cache key included, so
+  # a build either workflow made is restored here. The desktop app never loads
+  # the module, but the renderer cannot be bundled without it.
+  wasm:
+    name: Build WASM artifact
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache WASM artifact
+        id: wasm-cache
+        uses: actions/cache@v4
+        with:
+          path: build-wasm/tools/wasm
+          key: >-
+            openzl-wasm-${{runner.os}}-emsdk${{env.EMSDK_VERSION}}-${{hashFiles(
+            'tools/wasm/**', 'tools/training/**', 'tools/io/**',
+            'tools/logger/**', 'cli/utils/profile_graphs.*',
+            'custom_parsers/**', 'cpp/**', 'src/**', 'include/**',
+            '**/CMakeLists.txt', 'build-scripts/cmake/**',
+            '.github/workflows/deploy-docs.yml',
+            '.github/workflows/test-deploy-docs.yml')}}
+      - name: Set up Emscripten
+        if: steps.wasm-cache.outputs.cache-hit != 'true'
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: ${{env.EMSDK_VERSION}}
+          actions-cache-folder: emsdk-cache
+      - name: Configure
+        if: steps.wasm-cache.outputs.cache-hit != 'true'
+        run: emcmake cmake -DOPENZL_BUILD_WASM=ON -DCMAKE_BUILD_TYPE=Release -B build-wasm
+      - name: Build
+        if: steps.wasm-cache.outputs.cache-hit != 'true'
+        run: cmake --build build-wasm --target openzl_wasm -j$(getconf _NPROCESSORS_ONLN)
+      - name: Strip debug info
+        if: steps.wasm-cache.outputs.cache-hit != 'true'
+        run: emstrip --strip-debug build-wasm/tools/wasm/openzl.wasm
+      - name: Upload WASM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openzl-wasm
+          path: |
+            build-wasm/tools/wasm/openzl.js
+            build-wasm/tools/wasm/openzl.wasm
+          if-no-files-found: error
+          retention-days: 1
+
+  desktop:
+    name: Desktop app (${{ matrix.name }})
+    needs: wasm
+    runs-on: ${{ matrix.os }}
+    # Training the bundled sample dominates: about 7 minutes on a devserver
+    # with 4 training threads, longer on a hosted runner.
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            os: ubuntu-latest
+            # Electron needs a display; the runners have Xvfb.
+            display: xvfb-run --auto-servernum
+            cancellation: true
+          - name: macOS
+            os: macos-latest
+            display: ''
+            cancellation: true
+          # The cancellation smoke test finds zli with `ps`, so it is
+          # Linux and macOS only.
+          - name: Windows
+            os: windows-2025
+            display: ''
+            cancellation: false
+    defaults:
+      run:
+        shell: bash
+        working-directory: tools/desktop/compression_playground
+    env:
+      CMAKE_BUILD_PARALLEL_LEVEL: 4
+      # No signing identity on the runner; an ad hoc signature is enough to launch.
+      CSC_IDENTITY_AUTO_DISCOVERY: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'yarn'
+          cache-dependency-path: |
+            tools/web/yarn.lock
+            tools/desktop/compression_playground/yarn.lock
+      - name: Download WASM artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: openzl-wasm
+          path: tools/wasm/js
+      # The renderer is the web playground, so both installs are needed.
+      - name: Install the web workspace's yarn dependencies
+        working-directory: tools/web
+        run: yarn --frozen-lockfile
+      - name: Install the desktop app's yarn dependencies
+        run: yarn --frozen-lockfile
+      # Ubuntu 24.04 blocks the unprivileged user namespaces Chromium's sandbox
+      # uses. Lifting that keeps the renderer sandboxed, as it is for users,
+      # rather than launching with --no-sandbox.
+      # OpenZL builds on Windows with clang-cl, as in windows-ci.yml.
+      - name: Use clang-cl
+        if: runner.os == 'Windows'
+        run: |
+          echo "CMAKE_GENERATOR=Visual Studio 18 2026" >> "$GITHUB_ENV"
+          echo "CMAKE_GENERATOR_TOOLSET=ClangCL" >> "$GITHUB_ENV"
+      - name: Allow Chromium's sandbox
+        if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      # Each step runs a test script directly once everything it needs is
+      # built, rather than the test:* scripts, which rebuild first.
+      - name: Build zli and zstd-benchmark
+        run: yarn build:native
+      - name: Native benchmark smoke test
+        run: node electron/tests/native-training-smoke.cjs
+      - name: Build renderer
+        run: yarn build:renderer
+      - name: Window security smoke test
+        run: ${{ matrix.display }} npx electron electron/tests/window-security-smoke.cjs
+      - name: Cancellation smoke test
+        if: matrix.cancellation
+        run: ${{ matrix.display }} node electron/tests/cancellation-smoke.cjs
+      - name: Package
+        run: npx electron-builder --dir --publish never
+      - name: Packaged app smoke test
+        run: ${{ matrix.display }} node electron/tests/packaged-app-smoke.cjs
