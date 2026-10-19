@@ -3,15 +3,14 @@
 #include <cuda_runtime_api.h>
 
 #include <cstddef>
+#include <memory>
 #include <new>
-#include <string_view>
 #include <vector>
 
 #include "contrib/gpu/src/decompress/gpu_decompress.hpp"
 #include "contrib/gpu/src/planning/decode_planner.hpp"
 #include "openzl/common/errors_internal.h"
 #include "openzl/cpp/DCtx.hpp"
-#include "openzl/cpp/FrameInfo.hpp"
 #include "openzl/cpp/poly/Span.hpp"
 #include "openzl/decompress/dctx2.h"
 #include "openzl/shared/overflow.h"
@@ -22,13 +21,10 @@ namespace openzl::gpu {
 
 namespace {
 
-std::string_view asStringView(poly::span<const std::byte> bytes)
-{
-    return {
-        reinterpret_cast<const char*>(bytes.data()),
-        bytes.size(),
-    };
-}
+// openzl::FrameInfo reports a corrupt header by throwing, and this code must
+// not throw.
+using FrameInfoPtr =
+        std::unique_ptr<ZL_FrameInfo, decltype(&ZL_FrameInfo_free)>;
 
 struct DeviceToHostCopy {
     poly::span<std::byte> dst_h;
@@ -90,6 +86,17 @@ struct StagedChunkHeader {
 };
 
 struct StagedHeaders {
+    // frameHeaders_h and chunkHeaders_h point into storage_h. A move keeps the
+    // vector's buffer, so the spans stay valid, but a copy would leave them
+    // pointing into the source object. Only move construction is used, so
+    // assignment stays deleted.
+    StagedHeaders()                                = default;
+    StagedHeaders(const StagedHeaders&)            = delete;
+    StagedHeaders& operator=(const StagedHeaders&) = delete;
+    StagedHeaders(StagedHeaders&&)                 = default;
+    StagedHeaders& operator=(StagedHeaders&&)      = delete;
+    ~StagedHeaders()                               = default;
+
     // TODO(maxmandina): Explore context-owned pinned staging if header-copy
     // latency becomes worth amortizing.
     std::vector<std::byte> storage_h;
@@ -97,11 +104,10 @@ struct StagedHeaders {
     std::vector<StagedChunkHeader> chunkHeaders_h;
 };
 
-ZL_Report copyHeadersToHost(
+Result<StagedHeaders> copyHeadersToHost(
         poly::span<const GPUFrameHeaderForChunks> frameHeaders,
         poly::span<const GPUChunk> chunks,
-        ZL_GPU_Stream stream,
-        StagedHeaders& stagedHeaders)
+        ZL_GPU_Stream stream)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
 
@@ -129,11 +135,13 @@ ZL_Report copyHeadersToHost(
                 allocation);
     }
 
+    StagedHeaders stagedHeaders;
     stagedHeaders.frameHeaders_h.reserve(frameHeaders.size());
     stagedHeaders.chunkHeaders_h.reserve(chunks.size());
 
     // Allocate the host buffer before starting copies or creating views into
     // it, so its address cannot move.
+    ZL_ERR_IF_GT(stagingSize, stagedHeaders.storage_h.max_size(), allocation);
     stagedHeaders.storage_h.resize(stagingSize);
 
     std::vector<DeviceToHostCopy> copies;
@@ -188,22 +196,26 @@ ZL_Report copyHeadersToHost(
         headerOffset += chunk.chunkHeaderSize;
     }
 
-    return ZL_returnSuccess();
+    return stagedHeaders;
 }
 
-ZL_Report createDctxsForChunks(
+Result<std::vector<PreparedGPUChunk>> createDctxsForChunks(
         const StagedHeaders& stagedHeaders,
-        poly::span<const GPUChunk> chunks,
-        std::vector<PreparedGPUChunk>& preparedChunks)
+        poly::span<const GPUChunk> chunks)
 {
     // No shared DCTX exists until each per-chunk context is created.
     ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
 
-    std::vector<FrameInfo> frameInfos;
+    std::vector<FrameInfoPtr> frameInfos;
     frameInfos.reserve(stagedHeaders.frameHeaders_h.size());
     for (poly::span<const std::byte> frameHeader_h :
          stagedHeaders.frameHeaders_h) {
-        frameInfos.emplace_back(asStringView(frameHeader_h));
+        FrameInfoPtr frameInfo{
+            ZL_FrameInfo_create(frameHeader_h.data(), frameHeader_h.size()),
+            ZL_FrameInfo_free,
+        };
+        ZL_ERR_IF_NULL(frameInfo.get(), corruption);
+        frameInfos.push_back(std::move(frameInfo));
     }
 
     ZL_ERR_IF_NE(stagedHeaders.chunkHeaders_h.size(), chunks.size(), GENERIC);
@@ -214,33 +226,22 @@ ZL_Report createDctxsForChunks(
         const StagedChunkHeader& chunkHeader = *chunkHeaderIt++;
         DCtx dctx;
 
-        ZL_Report const setParameterResult = ZL_DCtx_setParameter(
+        ZL_ERR_IF_ERR(ZL_DCtx_setParameter(
                 dctx.get(),
                 ZL_DParam_enableCodecFusion,
-                ZL_TernaryParam_disable);
-        if (ZL_isError(setParameterResult)) {
-            return setParameterResult;
-        }
-
+                ZL_TernaryParam_disable));
         ZL_ERR_IF_GE(
                 chunkHeader.frameHeaderIdx,
                 frameInfos.size(),
                 parameter_invalid);
-        ZL_Report const initResult = DCTX_initFromFrameInfo(
-                dctx.get(), frameInfos.at(chunkHeader.frameHeaderIdx).get());
-        if (ZL_isError(initResult)) {
-            return initResult;
-        }
-
-        ZL_Report const prepareResult = DCTX_prepareFrameChunkFromHeader(
+        ZL_ERR_IF_ERR(DCTX_initFromFrameInfo(
+                dctx.get(), frameInfos.at(chunkHeader.frameHeaderIdx).get()));
+        ZL_ERR_IF_ERR(DCTX_prepareFrameChunkFromHeader(
                 dctx.get(),
                 chunkHeader.bytes_h.data(),
                 chunkHeader.bytes_h.size(),
                 chunk.chunk_d,
-                chunk.chunkSize);
-        if (ZL_isError(prepareResult)) {
-            return prepareResult;
-        }
+                chunk.chunkSize));
 
         result.push_back(
                 {
@@ -249,8 +250,7 @@ ZL_Report createDctxsForChunks(
                 });
     }
 
-    preparedChunks = std::move(result);
-    return ZL_returnSuccess();
+    return result;
 }
 
 ZL_Report copyTransformHeadersToHost(
@@ -298,33 +298,24 @@ ZL_Report copyTransformHeadersToHost(
 
 } // namespace
 
-ZL_Report prepareChunksForPlanning(
+Result<std::vector<PreparedGPUChunk>> prepareChunksForPlanning(
         poly::span<const GPUFrameHeaderForChunks> frameHeaders,
         poly::span<const GPUChunk> chunks,
-        std::vector<PreparedGPUChunk>& preparedChunks,
         ZL_GPU_Stream stream)
 {
-    preparedChunks.clear();
     ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
-    StagedHeaders stagedHeaders;
-    ZL_Report const copyResult =
-            copyHeadersToHost(frameHeaders, chunks, stream, stagedHeaders);
-    if (ZL_isError(copyResult)) {
-        return copyResult;
+    Result<StagedHeaders> const stagedHeaders =
+            copyHeadersToHost(frameHeaders, chunks, stream);
+    if (stagedHeaders.isError()) {
+        return stagedHeaders.report();
     }
-    std::vector<PreparedGPUChunk> result;
-    ZL_Report const createResult =
-            createDctxsForChunks(stagedHeaders, chunks, result);
-    if (ZL_isError(createResult)) {
-        return createResult;
+    Result<std::vector<PreparedGPUChunk>> result =
+            createDctxsForChunks(stagedHeaders.value(), chunks);
+    if (result.isError()) {
+        return result.report();
     }
-    ZL_Report const copyTransformHeadersResult =
-            copyTransformHeadersToHost(result, stream);
-    if (ZL_isError(copyTransformHeadersResult)) {
-        return copyTransformHeadersResult;
-    }
-    preparedChunks = std::move(result);
-    return ZL_returnSuccess();
+    ZL_ERR_IF_ERR(copyTransformHeadersToHost(result.value(), stream));
+    return result;
 }
 
 ZL_Report decompressChunks(
@@ -335,12 +326,13 @@ ZL_Report decompressChunks(
         ZL_GPU_Stream stream)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
-    std::vector<PreparedGPUChunk> preparedChunks;
-    ZL_Report const prepareResult = prepareChunksForPlanning(
-            frameHeaders, chunks, preparedChunks, stream);
-    if (ZL_isError(prepareResult)) {
-        return prepareResult;
+    Result<std::vector<PreparedGPUChunk>> prepareResult =
+            prepareChunksForPlanning(frameHeaders, chunks, stream);
+    if (prepareResult.isError()) {
+        return prepareResult.report();
     }
+    std::vector<PreparedGPUChunk> preparedChunks =
+            std::move(prepareResult).value();
     std::vector<PreparedGpuChunkView> chunkViews;
     chunkViews.reserve(preparedChunks.size());
     for (PreparedGPUChunk& prepared : preparedChunks) {
@@ -351,40 +343,30 @@ ZL_Report decompressChunks(
                 });
     }
     DecodePlan plan;
-    ZL_Report const planResult = planDecode(chunkViews, plan);
+    ZL_Report planResult = planDecode(chunkViews, plan);
     if (ZL_isError(planResult)) {
+        // Clear the info pointer because it points into a dctx in
+        // preparedChunks
+        ZL_RES_clearInfo(planResult);
         return planResult;
     }
     ZL_ERR(GENERIC, "GPU decompression is not implemented");
 }
 
-ZL_Report collectGPUChunksFromFrame(
-        const void* src_d,
+namespace {
+
+/** Returns the chunks of a frame whose header ends at @p frameHeaderSize. */
+Result<std::vector<GPUChunk>> parseChunkDirectory(
+        const ZL_FrameInfo* frameInfo,
+        const std::byte* frame_d,
         poly::span<const std::byte> src_h,
-        std::vector<GPUChunk>& chunks,
-        std::vector<GPUFrameHeaderForChunks>& frameHeaders)
+        size_t frameHeaderSize,
+        size_t frameHeaderIdx)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
-    ZL_TRY_LET_CONST(
-            size_t,
-            frameHeaderSize,
-            ZL_getHeaderSize(src_h.data(), src_h.size()));
-
-    FrameInfo frameInfo{ asStringView(src_h) };
-    size_t const formatVersion = frameInfo.formatVersion();
-    ZL_ERR_IF_LT(
-            formatVersion, ZL_CHUNK_VERSION_MIN, formatVersion_unsupported);
-
     DCtx dctx;
+    ZL_ERR_IF_ERR(DCTX_initFromFrameInfo(dctx.get(), frameInfo));
 
-    ZL_ERR_IF_ERR(DCTX_initFromFrameInfo(dctx.get(), frameInfo.get()));
-
-    const std::byte* const frame_d = static_cast<const std::byte*>(src_d);
-    const GPUFrameHeaderForChunks collectedFrameHeader{
-        .frameHeader_d   = frame_d,
-        .frameHeaderSize = frameHeaderSize,
-    };
-    size_t const frameHeaderIdx = frameHeaders.size();
     std::vector<GPUChunk> collectedChunks;
     // look for first chunk after frame header ends
     size_t chunkOffset = frameHeaderSize;
@@ -418,6 +400,44 @@ ZL_Report collectGPUChunksFromFrame(
         chunkOffset += chunkInfo.chunkSize;
     }
     ZL_ERR_IF_NE(chunkOffset, src_h.size(), srcSize_tooLarge);
+    return collectedChunks;
+}
+
+} // namespace
+
+ZL_Report collectGPUChunksFromFrame(
+        const void* src_d,
+        poly::span<const std::byte> src_h,
+        std::vector<GPUChunk>& chunks,
+        std::vector<GPUFrameHeaderForChunks>& frameHeaders)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
+    ZL_TRY_LET_CONST(
+            size_t,
+            frameHeaderSize,
+            ZL_getHeaderSize(src_h.data(), src_h.size()));
+
+    FrameInfoPtr const frameInfo{
+        ZL_FrameInfo_create(src_h.data(), src_h.size()),
+        ZL_FrameInfo_free,
+    };
+    ZL_ERR_IF_NULL(frameInfo.get(), corruption);
+    ZL_TRY_LET_CONST(
+            size_t,
+            formatVersion,
+            ZL_FrameInfo_getFormatVersion(frameInfo.get()));
+    ZL_ERR_IF_LT(
+            formatVersion, ZL_CHUNK_VERSION_MIN, formatVersion_unsupported);
+
+    const std::byte* const frame_d = static_cast<const std::byte*>(src_d);
+    Result<std::vector<GPUChunk>> const collected = parseChunkDirectory(
+            frameInfo.get(),
+            frame_d,
+            src_h,
+            frameHeaderSize,
+            frameHeaders.size());
+    ZL_ERR_IF_ERR(collected.report());
+    const std::vector<GPUChunk>& collectedChunks = collected.value();
 
     ZL_ERR_IF_EQ(frameHeaders.size(), frameHeaders.max_size(), allocation);
     ZL_ERR_IF_GT(
@@ -426,9 +446,13 @@ ZL_Report collectGPUChunksFromFrame(
             allocation);
     frameHeaders.reserve(frameHeaders.size() + 1);
     chunks.reserve(chunks.size() + collectedChunks.size());
-    frameHeaders.push_back(collectedFrameHeader);
+    frameHeaders.push_back(
+            {
+                    .frameHeader_d   = frame_d,
+                    .frameHeaderSize = frameHeaderSize,
+            });
     chunks.insert(chunks.end(), collectedChunks.begin(), collectedChunks.end());
-    return ZL_returnValue(chunkOffset);
+    return ZL_returnValue(src_h.size());
 }
 
 namespace {
