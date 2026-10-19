@@ -593,37 +593,34 @@ static void* ALLOC_StackArena_malloc(Arena* arena, size_t requestSize)
             pba->primaryBuffer = NULL;
         }
         if (pba->primaryBuffer) {
+            /* the first slice is assigned below, like any other */
             ZL_poisonMemory(pba->primaryBuffer, toAllocate);
             pba->pBuffCapacity = toAllocate;
-            pba->pBuffUsed     = neededSize;
-            ZL_ASSERT_EQ(
-                    (size_t)pba->primaryBuffer % alignment,
-                    0); /* note : this alignment method will have to change if
-                           requested alignment is larger than base allocation of
-                           primaryBuffer */
-            ALLOC_StackArena_trackMalloc(pba, pba->primaryBuffer, requestSize);
-            return pba->primaryBuffer;
+            pBuffAvailable     = toAllocate;
+        } else {
+            /* allocation failed */
+            pba->pBuffCapacity = 0;
+            pBuffAvailable     = 0;
         }
-        /* allocation failed */
-        pba->pBuffCapacity = 0;
-        pba->pBuffUsed     = 0;
-        pBuffAvailable     = 0;
+        pba->pBuffUsed = 0;
     }
 
-    /* second+ request, or allocation of primary buffer failed */
     if (pBuffAvailable >= neededSize) {
-        /* enough space in primary buffer -> assign a slice */
-        size_t const start = ((pba->pBuffUsed + (alignment - 1)) / alignment)
-                * alignment; /* ensure start position is properly aligned */
+        /* enough space in primary buffer -> assign a slice.
+         * Align the slice's address, not its offset: malloc() only promises
+         * alignof(max_align_t), which is 8 under Emscripten, so primaryBuffer
+         * itself may be misaligned. @neededSize reserves the (alignment - 1)
+         * bytes this can skip. */
+        uintptr_t const base = (uintptr_t)pba->primaryBuffer;
+        size_t const start =
+                (size_t)(((base + pba->pBuffUsed + (alignment - 1)) / alignment)
+                                 * alignment
+                         - base);
         ZL_ASSERT_GE(start, pba->pBuffUsed);
         ZL_ASSERT_LE(start + size, pba->pBuffCapacity);
         ZL_ASSERT_NN(pba->primaryBuffer);
-        ZL_ASSERT_EQ(
-                (size_t)pba->primaryBuffer % alignment,
-                0); /* note : this alignment method will have to change if
-                       requested alignment is larger than base allocation of
-                       primaryBuffer */
-        void* const r  = (char*)pba->primaryBuffer + start;
+        void* const r = (char*)pba->primaryBuffer + start;
+        ZL_ASSERT_EQ((size_t)r % alignment, 0);
         pba->pBuffUsed = start + size;
         ALLOC_StackArena_trackMalloc(pba, r, requestSize);
         return r;

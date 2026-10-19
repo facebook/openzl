@@ -1,8 +1,10 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <gtest/gtest.h>
+#include <cstdint>
 #include <random>
 #include <tuple>
+#include <vector>
 #include "openzl/common/allocation.h"
 
 namespace {
@@ -556,6 +558,30 @@ TEST(StackArenaSizingTest, primaryBufferShrinksAfterOneExceptionalSession)
     ALLOC_Arena_freeAll(arena);
 
     EXPECT_LE(steadyStateSize, exceptionalSize / 2);
+
+    ALLOC_Arena_freeArena(arena);
+}
+
+// StackArena hands out 16-byte aligned slices whatever malloc() returns for
+// the Primary Buffer. Emscripten's malloc() only aligns to 8, so the
+// alignment has to come from the slice's address rather than its offset.
+TEST(StackArenaAlignmentTest, slicesAre16ByteAligned)
+{
+    Arena* const arena = ALLOC_StackArena_create();
+    ASSERT_NE(arena, nullptr);
+
+    // Odd sizes, so each slice ends off-alignment and the next must round up.
+    // The first allocation of a session is the one that creates the buffer.
+    const std::vector<size_t> sizes{ 1, 3, 17, 100, 4095 };
+    for (int session = 0; session < 2; session++) {
+        for (const size_t size : sizes) {
+            const void* const ptr = ALLOC_Arena_malloc(arena, size);
+            ASSERT_NE(ptr, nullptr);
+            EXPECT_EQ(reinterpret_cast<uintptr_t>(ptr) % 16, 0u)
+                    << "size " << size << ", session " << session;
+        }
+        ALLOC_Arena_freeAll(arena);
+    }
 
     ALLOC_Arena_freeArena(arena);
 }
