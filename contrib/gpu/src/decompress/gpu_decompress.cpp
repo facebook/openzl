@@ -342,13 +342,9 @@ ZL_Report decompressChunks(
                         .transformHeaders_h = prepared.transformHeaders_h,
                 });
     }
-    DecodePlan plan;
-    ZL_Report planResult = planDecode(chunkViews, plan);
-    if (ZL_isError(planResult)) {
-        // Clear the info pointer because it points into a dctx in
-        // preparedChunks
-        ZL_RES_clearInfo(planResult);
-        return planResult;
+    Result<DecodePlan> const planResult = planDecode(chunkViews);
+    if (planResult.isError()) {
+        return planResult.report();
     }
     ZL_ERR(GENERIC, "GPU decompression is not implemented");
 }
