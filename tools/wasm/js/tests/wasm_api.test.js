@@ -46,7 +46,7 @@ describe('wasm_api', () => {
   });
 
   it('marks the profiles this build supports as trainable', () => {
-    const supported = zl.profiles.filter(({isSupported}) => isSupported);
+    const supported = zl.profiles.filter(({isWasmSupported}) => isWasmSupported);
     assert.deepEqual(supported.map(({name}) => name).sort(), [
       'i8',
       'le-i16',
@@ -60,6 +60,7 @@ describe('wasm_api', () => {
     ]);
     for (const profile of supported) {
       assert.equal(profile.isTrainable, true, profile.name);
+      assert.equal(profile.wasmUnsupportedReason, undefined, profile.name);
     }
   });
 
@@ -81,16 +82,17 @@ describe('wasm_api', () => {
   });
 
   it('all supported profiles produce a compressor by name', () => {
-    for (const {name} of zl.profiles.filter(({isSupported}) => isSupported)) {
+    for (const {name} of zl.profiles.filter(({isWasmSupported}) => isWasmSupported)) {
       const c = zl.getSerializedCompressor(name);
       assert.ok(c.length > 0, `profile ${name} should produce compressor`);
     }
   });
 
   it('lists unsupported profiles and rejects compressor creation', () => {
-    const unsupported = zl.profiles.filter(({isSupported}) => !isSupported);
+    const unsupported = zl.profiles.filter(({isWasmSupported}) => !isWasmSupported);
     assert.ok(unsupported.length > 0);
     for (const profile of unsupported) {
+      assert.ok(profile.wasmUnsupportedReason.startsWith('Cannot run in the browser:'), profile.name);
       assert.throws(() => zl.getSerializedCompressor(profile.name), /not supported by this WASM build/);
     }
   });
@@ -101,21 +103,21 @@ describe('wasm_api', () => {
     for (const profile of profiles) {
       assert.ok(Object.isFrozen(profile));
       assert.ok(profile.description.length > 0);
-      if (profile.isSupported) {
+      if (profile.isWasmSupported) {
         assert.ok(zl.getSerializedCompressor(profile.name).length > 0);
       }
     }
     assert.deepEqual(profiles[0], {
       name: 'serial',
       description: 'Serial data (aka raw bytes)',
-      isSupported: true,
+      isWasmSupported: true,
+      wasmUnsupportedReason: undefined,
       isTrainable: true,
     });
   });
 
   it('rejects unknown profile', () => {
-    assert.throws(() => zl.getSerializedCompressor(99), /unknown profile/);
-    assert.throws(() => zl.getSerializedCompressor(-1), /unknown profile/);
+    assert.throws(() => zl.getSerializedCompressor(0), /profile must be a profile name string/);
     assert.throws(() => zl.getSerializedCompressor('not-a-profile'), /unknown profile not-a-profile; available: serial, /);
   });
 

@@ -1,60 +1,66 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import {describe, expect, it} from 'vitest';
-import {OPENZL_PROFILES} from '../src/compressors.ts';
-import {WASM_PROFILE, isBrowserSupportedProfile, profileDescription} from '../src/wasmProfiles.ts';
+import {getOpenZlProfiles} from '../src/compressors.ts';
+import {
+  isBrowserSupportedProfile,
+  isTrainableProfile,
+  profileDescription,
+  setWasmProfiles,
+} from '../src/wasmProfiles.ts';
+import {TEST_PROFILES} from './setup.ts';
 
-describe('WASM_PROFILE', () => {
+describe('isBrowserSupportedProfile', () => {
   it('maps exactly the profiles the binding builds', () => {
-    // Mirrors kProfiles in openzl_wasm.cpp: serial plus fixed-width integers.
-    expect(OPENZL_PROFILES.filter(isBrowserSupportedProfile)).toEqual([
-      'i8',
-      'le-i16',
-      'le-i32',
-      'le-i64',
+    // The fixture includes a profile beyond the binding's convenience constants.
+    expect(getOpenZlProfiles().filter(isBrowserSupportedProfile)).toEqual([
+      'fixed_profile',
+      'future_profile',
       'le-u16',
       'le-u32',
-      'le-u64',
       'serial',
-      'u8',
     ]);
+    expect(isTrainableProfile('fixed_profile')).toBe(false);
   });
 
-  it('lists every profile the CLI registers', () => {
-    // 24 in `compressProfiles()`. This list is hand-copied and has gone stale
-    // once already, so the count is pinned until it can be derived.
-    expect(OPENZL_PROFILES).toHaveLength(24);
-    expect(OPENZL_PROFILES.filter((p) => !isBrowserSupportedProfile(p))).toHaveLength(15);
+  it('lists every profile supplied by the loaded build', () => {
+    expect(getOpenZlProfiles()).toHaveLength(11);
+    expect(getOpenZlProfiles().filter((p) => !isBrowserSupportedProfile(p))).toHaveLength(6);
   });
 
-  it('says why for every profile it cannot run', () => {
-    // `REASON_FOR` is a separate, partial table, so a profile added as `null`
-    // here would otherwise be greyed out with nothing explaining it.
-    const unrunnable = OPENZL_PROFILES.filter((profile) => !isBrowserSupportedProfile(profile));
-    expect(unrunnable.filter((profile) => !profileDescription(profile).includes('Cannot run in the browser'))).toEqual(
-      [],
-    );
-  });
-
-  it('numbers them as the binding does', () => {
-    // The enum values themselves are checked at compile time; this pins the
-    // little-endian collapse, which the names alone do not give away.
-    expect(WASM_PROFILE['le-u16']).toBe(3);
-    expect(WASM_PROFILE.serial).toBe(0);
+  it('says why for every profile that supplies a reason', () => {
+    for (const profile of TEST_PROFILES) {
+      if ('wasmUnsupportedReason' in profile) {
+        expect(profileDescription(profile.name)).toContain(profile.wasmUnsupportedReason);
+      }
+    }
   });
 });
 
 describe('profileDescription', () => {
+  it('handles an unknown profile', () => {
+    expect(profileDescription('unknown_profile')).toBe('');
+  });
+
+  it('handles profiles before metadata has loaded', () => {
+    setWasmProfiles([]);
+    try {
+      expect(profileDescription('serial')).toBe('');
+    } finally {
+      setWasmProfiles(TEST_PROFILES);
+    }
+  });
+
   it.each([
-    ['parquet', /needs a custom parser graph\.$/],
-    // Not a parser-graph gap: `buildProfileCompressor` hardcodes
-    // `ZL_Node_interpretAsLE`, so there is no endianness to add support for.
-    ['be-u32', /little-endian only\.$/],
-    // Blocked at the UI, not just the binding -- there is nowhere to attach a
-    // `--profile-arg` path.
-    ['sddl2', /needs a description file/],
-  ] as const)('gives %s its own reason for being unpickable', (profile, pattern) => {
-    expect(profileDescription(profile)).toMatch(pattern);
+    ['parquet', 'Cannot run in the browser: needs a custom parser graph.'],
+    ['be-u32', 'Cannot run in the browser: the binding reads numbers little-endian only.'],
+    ['sddl2', 'Cannot run in the browser: needs a description file, which this page cannot supply.'],
+  ])('explains why %s is unpickable', (profile, reason) => {
+    expect(profileDescription(profile)).toContain(`. ${reason}`);
+  });
+
+  it('leaves the description unchanged when no reason is supplied', () => {
+    expect(profileDescription('unsupported_profile')).toBe('Profile unavailable in this WASM build');
   });
 
   it('leaves a usable profile to its own help text', () => {

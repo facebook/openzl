@@ -28,7 +28,7 @@ function result(
     decompressMBps: 200,
     candidate: null,
     ...metrics,
-    job: {id: 'j', rowId: 1, level: 1, iterations: 1, profile: 0, training: null, ...job} as BenchmarkJob,
+    job: {id: 'j', rowId: 1, level: 1, iterations: 1, profile: 'serial', training: null, ...job} as BenchmarkJob,
   };
 }
 
@@ -99,10 +99,10 @@ describe('formatting', () => {
 describe('rowDetail', () => {
   it('says on every row what produced it, trained candidates included', () => {
     // Sorting can put any two rows side by side, so none can lean on another.
-    expect(rowDetail(result({compressor: 'OpenZL', profile: 5}, {candidate: {index: 1, total: 3}}))).toBe(
+    expect(rowDetail(result({compressor: 'OpenZL', profile: 'le-u32'}, {candidate: {index: 1, total: 3}}))).toBe(
       'trained · le-u32',
     );
-    expect(rowDetail(result({compressor: 'OpenZL', profile: 5}))).toBe('le-u32');
+    expect(rowDetail(result({compressor: 'OpenZL', profile: 'le-u32'}))).toBe('le-u32');
     expect(rowDetail(result({compressor: 'zstd', level: 9}))).toBe('Level 9');
   });
 });

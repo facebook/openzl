@@ -4,7 +4,6 @@ import {Box, Heading, Text, VStack} from '@chakra-ui/react';
 import {LuArrowRight, LuChartLine, LuChartSpline, LuMicroscope, LuMonitor} from 'react-icons/lu';
 import {isRunInProgress, type BenchmarkJob, type Candidate, type RunState} from '../benchmarkTypes.ts';
 import {formatBytes, resultsOf} from '../measurements.ts';
-import {WASM_PROFILE} from '../wasmProfiles.ts';
 import MeasurementsTable from './MeasurementsTable.tsx';
 import RatioSpeedCharts from './RatioSpeedCharts.tsx';
 
@@ -46,10 +45,7 @@ function describeJob(job: BenchmarkJob): string {
   if (job.compressor !== 'OpenZL') {
     return `${job.compressor} ${String(job.level)}`;
   }
-  // `job.profile` crossed the seam as the binding's numeric enum, so read the
-  // name back off the same table that put it there.
-  const name = Object.entries(WASM_PROFILE).find(([, value]) => value === job.profile)?.[0] ?? String(job.profile);
-  return `${job.compressor} ${name} / ${String(job.level)}`;
+  return `${job.compressor} ${job.profile} / ${String(job.level)}`;
 }
 
 /** A trained job's failures share its description, so the candidate tells them apart. */

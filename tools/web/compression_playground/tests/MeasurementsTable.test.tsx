@@ -35,7 +35,7 @@ function result(job: Partial<BenchmarkJob> & Pick<BenchmarkJob, 'compressor'>, m
       rowId: 1,
       level: 1,
       iterations: 1,
-      profile: 0,
+      profile: 'serial',
       training: null,
       ...job,
     } as BenchmarkJob,
@@ -163,9 +163,9 @@ describe('MeasurementsTable', () => {
     renderWithPlaygroundTheme(
       <MeasurementsTable
         runState={completed([
-          result({compressor: 'OpenZL', rowId: 1, profile: 0}, {candidate: {index: 1, total: 3}}),
-          result({compressor: 'OpenZL', rowId: 1, profile: 0}, {candidate: {index: 2, total: 3}}),
-          result({compressor: 'OpenZL', rowId: 1, profile: 0}, {candidate: {index: 3, total: 3}}),
+          result({compressor: 'OpenZL', rowId: 1, profile: 'serial'}, {candidate: {index: 1, total: 3}}),
+          result({compressor: 'OpenZL', rowId: 1, profile: 'serial'}, {candidate: {index: 2, total: 3}}),
+          result({compressor: 'OpenZL', rowId: 1, profile: 'serial'}, {candidate: {index: 3, total: 3}}),
         ])}
       />,
     );
@@ -179,7 +179,9 @@ describe('MeasurementsTable', () => {
   it('says a lone trained candidate was trained, and on which profile', () => {
     renderWithPlaygroundTheme(
       <MeasurementsTable
-        runState={completed([result({compressor: 'OpenZL', rowId: 1, profile: 5}, {candidate: {index: 1, total: 1}})])}
+        runState={completed([
+          result({compressor: 'OpenZL', rowId: 1, profile: 'le-u32'}, {candidate: {index: 1, total: 1}}),
+        ])}
       />,
     );
 

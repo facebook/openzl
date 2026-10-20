@@ -1,7 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import type {JobResult, RunState} from './benchmarkTypes.ts';
-import {WASM_PROFILE} from './wasmProfiles.ts';
 
 /**
  * Columns the table can be ordered by. `codec` ascending is the order the run
@@ -54,8 +53,7 @@ function profileName(result: JobResult): string | null {
   if (result.job.compressor !== 'OpenZL') {
     return null;
   }
-  const profile = result.job.profile;
-  return Object.entries(WASM_PROFILE).find(([, value]) => value === profile)?.[0] ?? null;
+  return result.job.profile;
 }
 
 /**

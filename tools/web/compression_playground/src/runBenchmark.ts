@@ -9,6 +9,8 @@ import type {
   WorkerMessage,
   WorkerRequest,
 } from './benchmarkTypes.ts';
+import type {ProfileMetadata} from '../../../wasm/js/wasm_api.js';
+import {setWasmProfiles} from './wasmProfiles.ts';
 
 /**
  * Drives a run on a worker and folds what comes back into `RunState`.
@@ -19,10 +21,54 @@ import type {
  * and the next run pays for the module again.
  */
 let worker: Worker | undefined;
+let profilesPromise: Promise<readonly ProfileMetadata[]> | undefined;
+let cancelProfiles: ((message: string) => void) | undefined;
 
 function getWorker(): Worker {
   worker ??= new Worker(new URL('./benchmarkWorker.ts', import.meta.url), {type: 'module'});
   return worker;
+}
+
+/** Reads profiles once and keeps the metadata on the UI side. */
+export async function getBenchmarkProfiles(): Promise<readonly ProfileMetadata[]> {
+  if (profilesPromise !== undefined) {
+    return profilesPromise;
+  }
+  const current = getWorker();
+  const promise = new Promise<readonly ProfileMetadata[]>((resolveProfiles, rejectProfiles) => {
+    function cleanup() {
+      current.removeEventListener('message', onMessage);
+      current.removeEventListener('error', onError);
+      cancelProfiles = undefined;
+    }
+    function onMessage(event: MessageEvent<WorkerMessage>) {
+      if (event.data.type === 'profiles') {
+        cleanup();
+        setWasmProfiles(event.data.profiles);
+        resolveProfiles(event.data.profiles);
+      } else if (event.data.type === 'profilesFailed') {
+        cancelProfiles?.(event.data.message);
+      }
+    }
+    function onError(event: ErrorEvent) {
+      cancelRun(event.message || 'the benchmark worker stopped');
+    }
+    cancelProfiles = (message) => {
+      cleanup();
+      profilesPromise = undefined;
+      rejectProfiles(new Error(message));
+    };
+    current.addEventListener('message', onMessage);
+    current.addEventListener('error', onError);
+  });
+  profilesPromise = promise;
+  try {
+    const request: WorkerRequest = {type: 'profilesRequest'};
+    current.postMessage(request);
+  } catch (error) {
+    cancelProfiles?.(error instanceof Error ? error.message : String(error));
+  }
+  return promise;
 }
 
 /**
@@ -58,6 +104,7 @@ function detach(run: ActiveRun): void {
 
 /** Discards the worker, which is the only way to stop a run in progress. */
 export function cancelRun(message = 'the run was cancelled'): void {
+  cancelProfiles?.(message);
   worker?.terminate();
   worker = undefined;
   // A terminated worker sends nothing more, so the run has to be ended here or
@@ -195,6 +242,6 @@ export function runBenchmark(config: RunConfig, onState: (state: RunState) => vo
   activeRun = thisRun;
   runWorker.addEventListener('message', onMessage);
   runWorker.addEventListener('error', onError);
-  const request: WorkerRequest = {config};
+  const request: WorkerRequest = {type: 'benchmarkRequest', config};
   runWorker.postMessage(request);
 }

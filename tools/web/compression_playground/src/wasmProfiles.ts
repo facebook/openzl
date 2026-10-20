@@ -1,88 +1,45 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-import type {ProfileValue} from '../../../wasm/js/wasm_api.js';
-import {OPENZL_PROFILE_DESCRIPTIONS, type OpenZlProfile} from './compressors.ts';
+import type {ProfileMetadata} from '../../../wasm/js/wasm_api.js';
+import type {OpenZlProfile} from './compressors.ts';
 
-/**
- * The UI lists the CLI's profiles; the WASM binding implements nine of them
- * (`kProfiles` in openzl_wasm.cpp). The other fifteen map to null and cannot
- * run here, for reasons that differ -- see `REASON_FOR` below.
- *
- * Values are the binding's numeric profile IDs (`openzl_wasm_Profile`).
- */
-export const WASM_PROFILE: Record<OpenZlProfile, ProfileValue | null> = {
-  serial: 0,
-  u8: 1,
-  i8: 2,
-  'le-u16': 3,
-  'le-i16': 4,
-  'le-u32': 5,
-  'le-i32': 6,
-  'le-u64': 7,
-  'le-i64': 8,
-  'be-i16': null,
-  'be-i32': null,
-  'be-i64': null,
-  'be-u16': null,
-  'be-u32': null,
-  'be-u64': null,
-  csv: null,
-  lz: null,
-  'numeric-ml-selector-64': null,
-  parquet: null,
-  pytorch: null,
-  sao: null,
-  sddl: null,
-  sddl2: null,
-  zstd: null,
-};
+/** Metadata from the benchmark worker; looking up labels does not load WASM. */
+let profiles: readonly ProfileMetadata[] = [];
 
-/**
- * Why a profile cannot run here, for the ones that cannot. Kept apart from
- * `WASM_PROFILE` because the reasons are not interchangeable: saying a
- * big-endian profile needs a parser graph would send someone off to write one,
- * when the binding has no endianness to fix.
- */
-// Not annotated `Record<string, string>`: that would make a misspelled key
-// below type-check and render as "undefined" in the tooltip.
-const UNSUPPORTED_REASON = {
-  BIG_ENDIAN: 'Cannot run in the browser: the binding reads numbers little-endian only.',
-  PARSER_GRAPH: 'Cannot run in the browser: needs a custom parser graph.',
-  DESCRIPTION_FILE: 'Cannot run in the browser: needs a description file, which this page cannot supply.',
-  UNIMPLEMENTED: 'Cannot run in the browser: the binding does not implement it.',
-} as const;
+let profileNames: readonly string[] = [];
+let profileDescriptions: Readonly<Record<string, string>> = {};
 
-const REASON_FOR: Partial<Record<OpenZlProfile, string>> = {
-  'be-i16': UNSUPPORTED_REASON.BIG_ENDIAN,
-  'be-i32': UNSUPPORTED_REASON.BIG_ENDIAN,
-  'be-i64': UNSUPPORTED_REASON.BIG_ENDIAN,
-  'be-u16': UNSUPPORTED_REASON.BIG_ENDIAN,
-  'be-u32': UNSUPPORTED_REASON.BIG_ENDIAN,
-  'be-u64': UNSUPPORTED_REASON.BIG_ENDIAN,
-  csv: UNSUPPORTED_REASON.PARSER_GRAPH,
-  lz: UNSUPPORTED_REASON.PARSER_GRAPH,
-  parquet: UNSUPPORTED_REASON.PARSER_GRAPH,
-  pytorch: UNSUPPORTED_REASON.PARSER_GRAPH,
-  sao: UNSUPPORTED_REASON.PARSER_GRAPH,
-  zstd: UNSUPPORTED_REASON.PARSER_GRAPH,
-  sddl: UNSUPPORTED_REASON.DESCRIPTION_FILE,
-  sddl2: UNSUPPORTED_REASON.DESCRIPTION_FILE,
-  'numeric-ml-selector-64': UNSUPPORTED_REASON.UNIMPLEMENTED,
-};
+export function setWasmProfiles(metadata: readonly ProfileMetadata[]): void {
+  profiles = metadata;
+  profileNames = metadata.map(({name}) => name).sort();
+  profileDescriptions = Object.fromEntries(metadata.map(({name, description}) => [name, description]));
+}
 
-export function isBrowserSupportedProfile(profile: OpenZlProfile): boolean {
-  return WASM_PROFILE[profile] !== null;
+export function getOpenZlProfiles(): readonly string[] {
+  return profileNames;
+}
+
+export function getOpenZlProfileDescriptions(): Readonly<Record<string, string>> {
+  return profileDescriptions;
+}
+
+export function isBrowserSupportedProfile(name: string): boolean {
+  return profiles.find((profile) => profile.name === name)?.isWasmSupported === true;
+}
+
+/** Whether the loaded WASM build can run and train this profile. */
+export function isTrainableProfile(name: string): boolean {
+  const profile = profiles.find((profile) => profile.name === name);
+  return profile?.isWasmSupported === true && profile.isTrainable;
 }
 
 /** The profile's help text, plus why it is unselectable when it is. */
 export function profileDescription(profile: OpenZlProfile): string {
-  const description = OPENZL_PROFILE_DESCRIPTIONS[profile];
-  const reason = REASON_FOR[profile];
-  if (reason === undefined) {
+  const description = profileDescriptions[profile] ?? '';
+  const reason = profiles.find((entry) => entry.name === profile)?.wasmUnsupportedReason;
+  if (isBrowserSupportedProfile(profile) || reason === undefined) {
     return description;
   }
-  // Most descriptions are noun phrases with no full stop, so the reason needs
-  // one supplied or the two run together as a single sentence.
   const sentence = description.endsWith('.') ? description : `${description}.`;
   return `${sentence} ${reason}`;
 }
