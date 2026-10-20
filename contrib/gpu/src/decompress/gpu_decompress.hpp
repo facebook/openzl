@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <vector>
 
+#include "contrib/gpu/src/common/result.hpp"
 #include "contrib/gpu/src/decompress/gpu_decompress.h"
 #include "openzl/cpp/DCtx.hpp"
 #include "openzl/cpp/poly/Span.hpp"
@@ -51,12 +52,13 @@ struct PreparedGPUChunk {
  * Copies frame, formal chunk, and transform headers to host and prepares one
  * DCTX per chunk.
  * Stored-stream references remain bound to the device addresses in @p chunks.
- * @p preparedChunks is cleared before preparation and populated on success.
+ * @returns One prepared chunk per entry of @p chunks, in the same order, or an
+ * error.
+ * @throws std::bad_alloc or openzl::Exception if an allocation fails.
  */
-ZL_Report prepareChunksForPlanning(
+Result<std::vector<PreparedGPUChunk>> prepareChunksForPlanning(
         poly::span<const GPUFrameHeaderForChunks> frameHeaders,
         poly::span<const GPUChunk> chunks,
-        std::vector<PreparedGPUChunk>& preparedChunks,
         ZL_GPU_Stream stream);
 
 /**
@@ -71,6 +73,7 @@ ZL_Report prepareChunksForPlanning(
  * @param frameHeaders Output containing the frame-header descriptor referenced
  * by the appended chunks. Appended on success and unchanged on error.
  * @returns The compressed frame size on success, or an error.
+ * @throws std::bad_alloc or openzl::Exception if an allocation fails.
  *
  * @note Only frame format version 21 and newer is supported.
  */
@@ -92,6 +95,7 @@ ZL_Report collectGPUChunksFromFrame(
  * by the appended chunks. Appended on success and unchanged on error. Its
  * pointer remains valid only while @p src_d remains valid.
  * @returns The compressed frame size on success, or an error.
+ * @throws std::bad_alloc or openzl::Exception if an allocation fails.
  */
 ZL_Report collectGPUChunks(
         poly::span<const std::byte> src_d,
@@ -111,6 +115,7 @@ ZL_Report collectGPUChunks(
  * storage must remain valid until the enqueued work has completed on @p stream.
  * @param stream CUDA stream on which decompression is enqueued.
  * @returns The decompressed size on success, or an error.
+ * @throws std::bad_alloc or openzl::Exception if an allocation fails.
  */
 ZL_Report decompressChunks(
         void* dst_d,

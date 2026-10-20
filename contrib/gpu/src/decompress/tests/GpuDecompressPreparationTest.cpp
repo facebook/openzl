@@ -14,6 +14,7 @@
 #include "contrib/gpu/src/decompress/gpu_decompress.hpp"
 #include "contrib/gpu/testkit/frame_verifier.h"
 #include "contrib/gpu/testkit/multichunk_frame.h"
+#include "openzl/common/errors_internal.h"
 #include "openzl/cpp/poly/Span.hpp"
 #include "openzl/decompress/dctx2.h"
 #include "openzl/openzl.hpp"
@@ -85,10 +86,11 @@ TEST(GPUDecompressPreparationTest, BuildsContextsWithoutReadingPayload)
             + chunks[0].chunkSize - 1;
     ZL_CUDA_CHECK(cudaMemset(payloadOrChecksum_d, 0xA5, 1));
 
-    std::vector<gpu::PreparedGPUChunk> preparedChunks;
-    ZL_Report const prepareResult = gpu::prepareChunksForPlanning(
-            frameHeaders, chunks, preparedChunks, nullptr);
-    ASSERT_FALSE(ZL_isError(prepareResult));
+    const gpu::Result<std::vector<gpu::PreparedGPUChunk>> prepareResult =
+            gpu::prepareChunksForPlanning(frameHeaders, chunks, nullptr);
+    ASSERT_FALSE(prepareResult.isError());
+    const std::vector<gpu::PreparedGPUChunk>& preparedChunks =
+            prepareResult.value();
     ASSERT_EQ(preparedChunks.size(), chunks.size());
 
     for (size_t i = 0; i < preparedChunks.size(); ++i) {
@@ -150,27 +152,85 @@ TEST(GPUDecompressPreparationTest, BuildsContextsWithoutReadingPayload)
     }
 }
 
-TEST(GPUDecompressPreparationTest, ClearsOutputOnFailure)
+TEST(GPUDecompressPreparationTest, RejectsNullFrameHeader)
 {
-    // This fails if a rejected preparation exposes contexts retained from an
-    // earlier successful call.
-    std::vector<gpu::PreparedGPUChunk> preparedChunks;
-    preparedChunks.push_back(
-            { .chunk = {}, .dctx = {}, .transformHeaders_h = {} });
+    // The device-to-host copy also rejects a null source with the same code, so
+    // the message must show that the descriptor check fired first.
     const gpu::GPUFrameHeaderForChunks invalidFrameHeader{
         .frameHeader_d   = nullptr,
         .frameHeaderSize = 1,
     };
 
-    ZL_Report const result = gpu::prepareChunksForPlanning(
-            poly::span<const gpu::GPUFrameHeaderForChunks>{ &invalidFrameHeader,
-                                                            1 },
-            poly::span<const gpu::GPUChunk>{},
-            preparedChunks,
-            nullptr);
+    const gpu::Result<std::vector<gpu::PreparedGPUChunk>> result =
+            gpu::prepareChunksForPlanning(
+                    poly::span<const gpu::GPUFrameHeaderForChunks>{
+                            &invalidFrameHeader, 1 },
+                    poly::span<const gpu::GPUChunk>{},
+                    nullptr);
 
-    EXPECT_TRUE(ZL_isError(result));
-    EXPECT_TRUE(preparedChunks.empty());
+    ASSERT_TRUE(result.isError());
+    const ZL_Report report = result.report();
+    EXPECT_EQ(ZL_errorCode(report), ZL_ErrorCode_parameter_invalid);
+    const std::string message{ ZL_E_str(ZL_RES_error(report)) };
+    EXPECT_NE(
+            message.find("frameHeader.frameHeader_d == nullptr"),
+            std::string::npos)
+            << message;
+}
+
+gpu::DevicePtr<std::byte> copyToDevice(const std::string& frame)
+{
+    gpu::DevicePtr<std::byte> frame_d =
+            gpu::deviceAlloc<std::byte>(frame.size());
+    ZL_CUDA_CHECK(cudaMemcpy(
+            frame_d.get(), frame.data(), frame.size(), cudaMemcpyHostToDevice));
+    return frame_d;
+}
+
+TEST(GPUDecompressPreparationTest, RejectsTruncatedFrameHeader)
+{
+    // This fails if a frame-header descriptor that is too short to parse
+    // throws instead of returning corruption.
+    const std::string frame                  = makeTwoChunkFrame();
+    const gpu::DevicePtr<std::byte> frame_d  = copyToDevice(frame);
+    const gpu::GPUFrameHeaderForChunks magic = {
+        .frameHeader_d   = frame_d.get(),
+        .frameHeaderSize = 4,
+    };
+
+    const gpu::Result<std::vector<gpu::PreparedGPUChunk>> result =
+            gpu::prepareChunksForPlanning(
+                    poly::span<const gpu::GPUFrameHeaderForChunks>{ &magic, 1 },
+                    poly::span<const gpu::GPUChunk>{},
+                    nullptr);
+
+    ASSERT_TRUE(result.isError());
+    EXPECT_EQ(ZL_errorCode(result.report()), ZL_ErrorCode_corruption);
+}
+
+TEST(GPUDecompressPreparationTest, DropsPlanningErrorInfo)
+{
+    // Chunk 0 uses Bitpack, which has no GPU planner. The planning error keeps
+    // its info in that chunk's DCTX, which decompressChunks frees before it
+    // returns. This fails if the C++ or the C API returns an error that still
+    // points into that DCTX.
+    const std::string frame                 = makeTwoChunkFrame();
+    const gpu::DevicePtr<std::byte> frame_d = copyToDevice(frame);
+    std::vector<gpu::GPUChunk> chunks;
+    std::vector<gpu::GPUFrameHeaderForChunks> frameHeaders;
+    ASSERT_FALSE(ZL_isError(
+            gpu::collectGPUChunksFromFrame(
+                    frame_d.get(), bytes(frame), chunks, frameHeaders)));
+
+    ZL_Report const result =
+            gpu::decompressChunks(nullptr, 0, frameHeaders, chunks, nullptr);
+    ZL_Report const cResult =
+            ZL_GPU_decompress(nullptr, 0, frame_d.get(), frame.size(), nullptr);
+
+    EXPECT_EQ(ZL_errorCode(result), ZL_ErrorCode_temporaryLibraryLimitation);
+    EXPECT_EQ(ZL_E_dy(ZL_RES_error(result)), nullptr);
+    EXPECT_EQ(ZL_errorCode(cResult), ZL_ErrorCode_temporaryLibraryLimitation);
+    EXPECT_EQ(ZL_E_dy(ZL_RES_error(cResult)), nullptr);
 }
 
 } // namespace
