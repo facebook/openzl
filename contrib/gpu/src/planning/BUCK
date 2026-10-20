@@ -40,7 +40,10 @@ cpp_library(
         "../../../..:zstronglib",
         ":codec_decode_registry",
     ],
-    exported_deps = [":decode_plan"],
+    exported_deps = [
+        "../common:result",
+        ":decode_plan",
+    ],
 )
 
 cpp_unittest(
