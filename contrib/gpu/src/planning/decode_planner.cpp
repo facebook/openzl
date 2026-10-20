@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <limits>
 #include <new>
-#include <utility>
+#include <optional>
 #include <vector>
 
 #include "contrib/gpu/src/planning/codec_decode_registry.hpp"
@@ -22,6 +22,9 @@
 namespace openzl::gpu {
 namespace {
 
+ZL_RESULT_DECLARE_TYPE(IndexRange);
+ZL_RESULT_DECLARE_TYPE(ByteRange);
+
 /**
  * Adds one prepared chunk to a batch-wide decode plan.
  *
@@ -29,23 +32,23 @@ namespace {
  * can use without reading stream payloads or allocating device buffers. It
  * validates the frame's stream graph, asks each codec planner for its output
  * shape and storage size, and records the order and storage relationships
- * needed to run the decoders later. @c planDecode builds into a temporary plan,
- * so an error leaves the caller's plan unchanged.
+ * needed to run the decoders later.
  *
  * Terminology used here:
  * - A node is a decoder call described by the frame.
- * - A run is the plan's record of one node's decoder call. It identifies the
- *   codec, its inputs and outputs, and the runs that must finish first.
+ * - A codec run is the plan's record of one node's decoder call. It identifies
+ *   the codec, its inputs and outputs, and the codec runs that must finish
+ *   first.
  * - A stream is data stored in the frame or produced by a node.
  * - A slot is a stream's position within one chunk. Slot numbering starts at
  *   zero for each chunk, so a slot is not a batch-wide index. Every slot has
  *   one entry in @c DecodePlan::streams.
- * - A producer is the run that writes a stream. Stored streams have no
- *   producing run.
- * - A consumer is the one run that reads a stream. Final outputs have no
+ * - A producer is the codec run that writes a stream. Stored streams have no
+ *   producing codec run.
+ * - A consumer is the one codec run that reads a stream. Final outputs have no
  *   consumer.
- * - A dependency is a run that must finish because it produced one of another
- *   run's inputs.
+ * - A dependency is a codec run that must finish because it produced one of
+ *   another codec run's inputs.
  *
  * Streams keep two different kinds of size information. @c StreamShape
  * describes the logical data: its type, element count, and element width.
@@ -54,9 +57,9 @@ namespace {
  *
  *
  * The plan uses flat arrays. A chunk's @c streams range selects its entries in
- * @c DecodePlan::streams. A run's @c inputs and @c outputs ranges select stream
- * indexes in @c DecodePlan::streamIndices. Its @c dependencies range selects
- * producer run indexes in @c DecodePlan::runIndices.
+ * @c DecodePlan::streams. A codec run's @c inputs and @c outputs ranges select
+ * stream indexes in @c DecodePlan::streamIndices. Its @c dependencies range
+ * selects producer codec run indexes in @c DecodePlan::codecRunIndices.
  *
  * A chunk's final outputs are its last slots in reverse order: output zero is
  * the last slot, output one is the slot before it, and so on. An arena-backed
@@ -96,10 +99,9 @@ class ChunkPlanner {
             ZL_ERR(logicError);
         }
         const DFH_Struct& header = *header_;
-        size_t numOutputs        = 0;
 
         // Step 1: Validate the prepared chunk metadata and output range.
-        ZL_ERR_IF_ERR(validateHeader(header, numOutputs));
+        ZL_TRY_LET_CONST(size_t, numOutputs, validateHeader(header));
 
         // Step 2: Reserve one stream record for every slot.
         ZL_ERR_IF_ERR(reserveChunkSlots());
@@ -144,11 +146,6 @@ class ChunkPlanner {
         ZL_ERR_IF(
                 ZL_overflowAddST(plan_.streams.size(), numStreams_, &end),
                 integerOverflow);
-        // The largest index is reserved so kNoStream stays distinct.
-        ZL_ERR_IF_GE(
-                end,
-                static_cast<size_t>(kNoStream),
-                temporaryLibraryLimitation);
         chunkBase_ = plan_.streams.size();
         plan_.streams.resize(end);
         return ZL_returnSuccess();
@@ -174,10 +171,11 @@ class ChunkPlanner {
      * Validates the prepared chunk counts and final-output range.
      *
      * Reads node and output metadata from @p header and the prepared stream
-     * count from @c numStreams_. Writes the validated output count to
-     * @p numOutputs.
+     * count from @c numStreams_.
+     *
+     * @returns The validated output count.
      */
-    ZL_Report validateHeader(const DFH_Struct& header, size_t& numOutputs) const
+    ZL_Report validateHeader(const DFH_Struct& header) const
     {
         ZL_RESULT_DECLARE_SCOPE_REPORT(&dctx_);
 
@@ -194,8 +192,7 @@ class ChunkPlanner {
                 outputCount,
                 ZL_FrameInfo_getNumOutputs(header.frameinfo));
         ZL_ERR_IF_GT(outputCount, numStreams_, corruption);
-        numOutputs = outputCount;
-        return ZL_returnSuccess();
+        return ZL_returnValue(outputCount);
     }
 
     /**
@@ -299,10 +296,6 @@ class ChunkPlanner {
 
         // Step 1: Validate the node index.
         ZL_ERR_IF_GE(nodeIndex, VECTOR_SIZE(header.nodes), corruption);
-        ZL_ERR_IF_GE(
-                plan_.codecRuns.size(),
-                static_cast<size_t>(kNoRun),
-                temporaryLibraryLimitation);
 
         // Step 2: Find the planner for the node's transform.
         const DFH_NodeInfo* const nodes = VECTOR_DATA(header.nodes);
@@ -316,39 +309,35 @@ class ChunkPlanner {
             ZL_ERR(temporaryLibraryLimitation);
         }
 
-        size_t inputEnd = 0;
-
         // Step 3: Validate the range of streams entering the node.
-        ZL_ERR_IF_ERR(validateNodeInputRange(node, inputEnd));
-        // This node's run will be appended at this index.
-        const auto runIndex =
-                static_cast<PlannedRunIndex>(plan_.codecRuns.size());
-
-        IndexRange inputs{};
+        ZL_TRY_LET_CONST(size_t, inputEnd, validateNodeInputRange(node));
+        // This node's codec run will be appended at this index.
+        const auto codecRunIndex =
+                static_cast<PlannedCodecRunIndex>(plan_.codecRuns.size());
 
         // Step 4: Collect inputs in decoder argument order.
-        ZL_ERR_IF_ERR(collectInputProperties(node, runIndex, inputEnd, inputs));
+        ZL_TRY_LET_CONST(
+                IndexRange,
+                inputs,
+                collectInputProperties(node, codecRunIndex, inputEnd));
 
         // Step 5: Find and validate the node's output slots.
         ZL_ERR_IF_ERR(resolveOutputSlots(node, nodeIndex, inputEnd));
 
-        ByteRange codecHeader{};
-
         // Step 6: Find the node's codec header in the staged headers.
-        ZL_ERR_IF_ERR(resolveCodecHeader(node, codecHeader));
+        ZL_TRY_LET_CONST(ByteRange, codecHeader, resolveCodecHeader(node));
 
         // Step 7: Ask the codec planner for each output's properties.
         ZL_ERR_IF_ERR(planCodecOutputs(
                 node, header.formatVersion, *planner, codecHeader));
 
-        IndexRange outputs{};
-
         // Step 8: Validate and record the output streams.
-        ZL_ERR_IF_ERR(writeOutputStreams(runIndex, inputs, outputs));
+        ZL_TRY_LET_CONST(
+                IndexRange, outputs, writeOutputStreams(codecRunIndex, inputs));
 
-        // Step 9: Record the runs that produced the inputs, then record this
-        // run.
-        ZL_ERR_IF_ERR(recordDependenciesAndRun(
+        // Step 9: Record the codec runs that produced the inputs, then record
+        // this codec run.
+        ZL_ERR_IF_ERR(recordDependenciesAndCodecRun(
                 nodeIndex, node.trpid, codecHeader, inputs, outputs));
         return ZL_returnSuccess();
     }
@@ -356,10 +345,9 @@ class ChunkPlanner {
     /**
      * Validates the node's contiguous input-stream range.
      *
-     * Writes the exclusive end slot to @p inputEnd.
+     * @returns The exclusive end slot.
      */
-    ZL_Report validateNodeInputRange(const DFH_NodeInfo& node, size_t& inputEnd)
-            const
+    ZL_Report validateNodeInputRange(const DFH_NodeInfo& node) const
     {
         ZL_RESULT_DECLARE_SCOPE_REPORT(&dctx_);
 
@@ -367,28 +355,30 @@ class ChunkPlanner {
         const size_t numInputs = node.numInputStreams;
         ZL_ERR_IF_GT(inputBase, numStreams_, corruption);
         ZL_ERR_IF_GT(numInputs, numStreams_ - inputBase, corruption);
-        inputEnd = inputBase + numInputs;
-        return ZL_returnSuccess();
+        return ZL_returnValue(inputBase + numInputs);
     }
 
     /**
      * Collects the node's stream inputs in decoder argument order.
      *
-     * Records stored inputs when needed, marks @p consumingRun as their
-     * consumer, appends their indexes to @c plan_.streamIndices, and writes the
-     * new range to @p inputs. It also rebuilds @c planningInputs_.
+     * Records stored inputs when needed, marks @p consumingCodecRun as their
+     * consumer, appends their indexes to @c plan_.streamIndices, and rebuilds
+     * @c planningInputs_.
+     *
+     * @returns The new range in @c plan_.streamIndices.
      */
-    ZL_Report collectInputProperties(
+    ZL_RESULT_OF(IndexRange)
+    collectInputProperties(
             const DFH_NodeInfo& node,
-            PlannedRunIndex consumingRun,
-            size_t inputEnd,
-            IndexRange& inputs)
+            PlannedCodecRunIndex consumingCodecRun,
+            size_t inputEnd)
     {
-        ZL_RESULT_DECLARE_SCOPE_REPORT(&dctx_);
+        ZL_RESULT_DECLARE_SCOPE(IndexRange, &dctx_);
 
         const size_t numInputs = node.numInputStreams;
         planningInputs_.clear();
         planningInputs_.reserve(numInputs);
+        IndexRange inputs{};
         inputs.begin = plan_.streamIndices.size();
         inputs.count = numInputs;
         for (size_t inputIndex = 0; inputIndex < numInputs; ++inputIndex) {
@@ -400,8 +390,8 @@ class ChunkPlanner {
             const PlannedStreamIndex index = streamIndexOf(streamSlot);
             PlannedStream& planned         = plan_.streams.at(index);
             // Each stream can enter only one node.
-            ZL_ERR_IF_NE(planned.consumer, kNoRun, corruption);
-            planned.consumer = consumingRun;
+            ZL_ERR_IF(planned.consumerCodecRun.has_value(), corruption);
+            planned.consumerCodecRun = consumingCodecRun;
             plan_.streamIndices.push_back(index);
             planningInputs_.push_back(
                     {
@@ -409,7 +399,7 @@ class ChunkPlanner {
                             .availableStorage = planned.storageSize,
                     });
         }
-        return ZL_returnSuccess();
+        return ZL_WRAP_VALUE(inputs);
     }
 
     /**
@@ -465,22 +455,20 @@ class ChunkPlanner {
      * Checks that the header fits in the staged headers and returns its offset
      * and size.
      */
-    ZL_Report resolveCodecHeader(
-            const DFH_NodeInfo& node,
-            ByteRange& codecHeader) const
+    ZL_RESULT_OF(ByteRange) resolveCodecHeader(const DFH_NodeInfo& node) const
     {
-        ZL_RESULT_DECLARE_SCOPE_REPORT(&dctx_);
+        ZL_RESULT_DECLARE_SCOPE(ByteRange, &dctx_);
 
         size_t headerEnd;
         ZL_ERR_IF(
                 ZL_overflowAddST(node.trhStart, node.trhSize, &headerEnd),
                 integerOverflow);
         ZL_ERR_IF_GT(headerEnd, chunk_.transformHeaders_h.size(), corruption);
-        codecHeader = {
+        const ByteRange codecHeader{
             .offset = node.trhStart,
             .size   = node.trhSize,
         };
-        return ZL_returnSuccess();
+        return ZL_WRAP_VALUE(codecHeader);
     }
 
     /**
@@ -515,16 +503,17 @@ class ChunkPlanner {
     /**
      * Validates and records the node's output streams.
      *
-     * Sets @p runIndex as each output's producer, appends the output indexes to
-     * @c plan_.streamIndices, and writes the new range to @p outputs.
+     * Sets @p codecRunIndex as each output's producer and appends the output
+     * indexes to @c plan_.streamIndices.
+     *
+     * @returns The new range in @c plan_.streamIndices.
      */
-    ZL_Report writeOutputStreams(
-            PlannedRunIndex runIndex,
-            IndexRange inputs,
-            IndexRange& outputs)
+    ZL_RESULT_OF(IndexRange)
+    writeOutputStreams(PlannedCodecRunIndex codecRunIndex, IndexRange inputs)
     {
-        ZL_RESULT_DECLARE_SCOPE_REPORT(&dctx_);
+        ZL_RESULT_DECLARE_SCOPE(IndexRange, &dctx_);
 
+        IndexRange outputs{};
         outputs.begin = plan_.streamIndices.size();
         outputs.count = outputSlots_.size();
         for (size_t outputIndex = 0; outputIndex < outputSlots_.size();
@@ -532,8 +521,8 @@ class ChunkPlanner {
             const ZL_IDType slot                = outputSlots_[outputIndex];
             const CodecDecodeOutputPlan& output = outputPlans_.at(outputIndex);
 
-            PlannedStreamIndex aliasStream = kNoStream;
-            size_t aliasOffset             = 0;
+            std::optional<PlannedStreamIndex> aliasStream;
+            size_t aliasOffset = 0;
 
             // Check that an alias fits in its input, then record the backing
             // stream and byte offset.
@@ -560,27 +549,27 @@ class ChunkPlanner {
             ZL_ERR_IF_ERR(writeStream(
                     slot,
                     PlannedStream{
-                            .shape        = output.shape,
-                            .storageSize  = output.storageSize,
-                            .storageClass = aliasStream == kNoStream
-                                    ? StorageClass::StreamArena
-                                    : StorageClass::StreamRef,
-                            .producer     = runIndex,
-                            .aliasStream  = aliasStream,
-                            .aliasOffset  = aliasOffset,
+                            .shape            = output.shape,
+                            .storageSize      = output.storageSize,
+                            .storageClass     = aliasStream.has_value()
+                                        ? StorageClass::StreamRef
+                                        : StorageClass::StreamArena,
+                            .producerCodecRun = codecRunIndex,
+                            .aliasStream      = aliasStream,
+                            .aliasOffset      = aliasOffset,
                     }));
             plan_.streamIndices.push_back(streamIndexOf(slot));
         }
-        return ZL_returnSuccess();
+        return ZL_WRAP_VALUE(outputs);
     }
 
     /**
      * Records the codec run after its input and output streams are written.
      *
-     * Stored inputs have no producing run. When two inputs come from the same
-     * run, the dependency list includes that run once.
+     * Stored inputs have no producing codec run. When two inputs come from the
+     * same codec run, the dependency list includes that codec run once.
      */
-    ZL_Report recordDependenciesAndRun(
+    ZL_Report recordDependenciesAndCodecRun(
             ZL_IDType nodeIndex,
             PublicTransformInfo transform,
             ByteRange codecHeader,
@@ -589,24 +578,25 @@ class ChunkPlanner {
     {
         ZL_RESULT_DECLARE_SCOPE_REPORT(&dctx_);
 
-        // New dependencies start here in runIndices.
-        const size_t dependencyBegin = plan_.runIndices.size();
+        // New dependencies start here in codecRunIndices.
+        const size_t dependencyBegin = plan_.codecRunIndices.size();
         for (size_t offset = 0; offset < inputs.count; ++offset) {
             const PlannedStreamIndex input =
                     plan_.streamIndices.at(inputs.begin + offset);
-            const PlannedRunIndex producer = plan_.streams.at(input).producer;
-            // Add each run that produced an input once.
-            if (producer != kNoRun
+            const std::optional<PlannedCodecRunIndex> producerCodecRun =
+                    plan_.streams.at(input).producerCodecRun;
+            // Add each codec run that produced an input once.
+            if (producerCodecRun.has_value()
                 && std::find(
-                           plan_.runIndices.begin() + dependencyBegin,
-                           plan_.runIndices.end(),
-                           producer)
-                        == plan_.runIndices.end()) {
-                plan_.runIndices.push_back(producer);
+                           plan_.codecRunIndices.begin() + dependencyBegin,
+                           plan_.codecRunIndices.end(),
+                           *producerCodecRun)
+                        == plan_.codecRunIndices.end()) {
+                plan_.codecRunIndices.push_back(*producerCodecRun);
             }
         }
 
-        // Store the ranges for this run's inputs, outputs, and dependencies.
+        // Store this codec run's input, output, and dependency ranges.
         plan_.codecRuns.push_back(
                 {
                         .chunkNode    = { .chunkIndex = chunkIndex_,
@@ -616,7 +606,7 @@ class ChunkPlanner {
                         .inputs       = inputs,
                         .outputs      = outputs,
                         .dependencies = { .begin = dependencyBegin,
-                                          .count = plan_.runIndices.size()
+                                          .count = plan_.codecRunIndices.size()
                                                   - dependencyBegin },
                 });
         return ZL_returnSuccess();
@@ -639,9 +629,7 @@ class ChunkPlanner {
 
 } // namespace
 
-ZL_Report planDecode(
-        poly::span<const PreparedGpuChunkView> chunks,
-        DecodePlan& plan)
+Result<DecodePlan> planDecode(poly::span<const PreparedGpuChunkView> chunks)
 {
     ZL_DCtx* const dctx = chunks.empty() ? nullptr : chunks.front().dctx;
     ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
@@ -649,19 +637,14 @@ ZL_Report planDecode(
         ZL_ERR_IF_NULL(chunk.dctx, parameter_invalid);
     }
     try {
-        // Step 1: Build a temporary plan so an error leaves plan unchanged.
         DecodePlan result;
         result.chunks.reserve(chunks.size());
 
-        // Step 2: Add each chunk to the plan.
         for (size_t chunkIndex = 0; chunkIndex < chunks.size(); ++chunkIndex) {
             ChunkPlanner planner{ chunkIndex, chunks[chunkIndex], result };
             ZL_ERR_IF_ERR(planner.planChunk());
         }
-
-        // Step 3: Replace plan only after every chunk succeeds.
-        plan = std::move(result);
-        return ZL_returnSuccess();
+        return result;
     } catch (const std::bad_alloc&) {
         ZL_ERR(allocation);
     }

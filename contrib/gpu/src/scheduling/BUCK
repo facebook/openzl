@@ -1,0 +1,35 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
+load("../../../../defs.bzl", "relative_headers")
+
+oncall("data_compression")
+
+cpp_library(
+    # @autodeps-skip
+    name = "work_schedule",
+    srcs = ["work_schedule.cpp"],
+    headers = relative_headers(["work_schedule.hpp"]),
+    header_namespace = "",
+    exported_deps = [
+        "../../../..:zstronglib",
+        "../common:result",
+        "../planning:decode_plan",
+    ],
+)
+
+cpp_unittest(
+    # @autodeps-skip
+    name = "work_schedule_test",
+    srcs = ["tests/WorkScheduleTest.cpp"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "../../../..:zstronglib",
+        "../../testkit:testkit",
+        "../planning:decode_planner",
+        "fbsource//third-party/googletest:gtest",
+        ":work_schedule",
+    ],
+)
