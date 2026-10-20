@@ -39,7 +39,7 @@ function result(
     decompressMBps: 200,
     candidate: null,
     ...metrics,
-    job: {id: 'j', rowId: 1, level: 1, iterations: 1, profile: 0, training: null, ...job} as BenchmarkJob,
+    job: {id: 'j', rowId: 1, level: 1, iterations: 1, profile: 'serial', training: null, ...job} as BenchmarkJob,
   };
 }
 

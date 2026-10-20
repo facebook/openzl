@@ -1,6 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-import {Fragment} from 'react';
+import {Fragment, useEffect, useMemo, useState} from 'react';
+import {getBenchmarkProfiles} from '../runBenchmark.ts';
 import {
   Box,
   Button,
@@ -28,7 +29,7 @@ import {
   ITERATIONS_THUMB_HALF_PX,
   OPENZL_DEFAULT_LEVEL,
   OPENZL_LEVELS,
-  OPENZL_PROFILES,
+  getOpenZlProfiles,
   TRAINED_CANDIDATE_COUNTS,
   isTrainableProfile,
   levelsFor,
@@ -59,6 +60,7 @@ interface OpenZlRowProps {
 }
 
 interface ConfigureRunCardProps {
+  onProfilesReady?: (ready: boolean) => void;
   compressors: CompressorRows;
   iterations: number;
   onIterationsChange: (iterations: number) => void;
@@ -215,35 +217,40 @@ function OpenZlOptions({row, position, onPatch}: OpenZlRowProps) {
 }
 
 /**
- * Runnable profiles first, the rest after, alphabetical within each group.
- * Both groups are derived from `isBrowserSupportedProfile`, so a profile added
- * to `OPENZL_PROFILES` sorts itself -- there is no second list to keep in step.
- *
- * Ordering rather than the CLI's own: most of the list cannot run here, and
- * `be-*` sorts to the front alphabetically, so the plain order opened on seven
- * greyed-out rows before the first selectable one.
- */
-const RUNNABLE_PROFILES = OPENZL_PROFILES.filter(isBrowserSupportedProfile);
-const UNRUNNABLE_PROFILES = OPENZL_PROFILES.filter((profile) => !isBrowserSupportedProfile(profile));
-
-const profileCollection = createListCollection<OpenZlProfile>({
-  items: [...RUNNABLE_PROFILES, ...UNRUNNABLE_PROFILES],
-  // Listed but unselectable, so the picker cannot produce a run the worker
-  // would have to drop on the floor.
-  isItemDisabled: (profile) => !isBrowserSupportedProfile(profile),
-});
-
-/**
- * Ids for the hidden descriptions the options point at. Scoped per row because
- * ids must be unique and every row renders its own listbox.
+ * Ids for the tool tip text description. Scoped per row because ids must be unique
+ * and every row renders its own listbox.
  */
 function profileDescriptionId(rowId: number, profile: OpenZlProfile): string {
   return `row-${rowId}-profile-${profile}-description`;
 }
 
 function ProfileSelect({row, position, onPatch}: OpenZlRowProps) {
+  const profiles = getOpenZlProfiles();
+  /**
+   * Runnable profiles first, the rest after, alphabetical within each group.
+   * Both groups are derived from `isBrowserSupportedProfile`, so new profiles
+   * sort themselves -- there is no second list to keep in step.
+   *
+   * Ordering rather than the CLI's own: most of the list cannot run here, and
+   * `be-*` sorts to the front alphabetically, so the plain order opened on seven
+   * greyed-out rows before the first selectable one.
+   */
+  const {runnableProfiles, profileCollection} = useMemo(() => {
+    const runnableProfiles = profiles.filter(isBrowserSupportedProfile).sort();
+    const unrunnableProfiles = profiles.filter((profile) => !isBrowserSupportedProfile(profile)).sort();
+
+    const profileCollection = createListCollection<OpenZlProfile>({
+      items: [...runnableProfiles, ...unrunnableProfiles],
+      // Listed but unselectable, so the picker cannot produce a run the worker
+      // would have to drop on the floor.
+      isItemDisabled: (profile) => !isBrowserSupportedProfile(profile),
+    });
+    return {runnableProfiles, profileCollection};
+  }, [profiles]);
+
   return (
     <Select.Root
+      disabled={profiles.length === 0}
       collection={profileCollection}
       size="sm"
       width="100px"
@@ -258,9 +265,8 @@ function ProfileSelect({row, position, onPatch}: OpenZlRowProps) {
       onValueChange={(details) => {
         const [next] = details.value;
         if (next != null) {
-          // `trainRequested` is left alone: an untrainable profile is honoured
-          // where the row is read, so passing through one cannot cost the row a
-          // setting it would never get back.
+          // buildJobs checks training capability, preserve trainRequested so
+          // switching back to a trainable profile restores the user's setting.
           onPatch(row.id, row.compressor, {profile: next as OpenZlProfile});
         }
       }}>
@@ -283,7 +289,7 @@ function ProfileSelect({row, position, onPatch}: OpenZlRowProps) {
               {/* One heading, before the first profile that cannot run. Without
                   it the greyed half reads as broken rather than unavailable,
                   and the reason is only reachable by hovering each one. */}
-              {index === RUNNABLE_PROFILES.length && (
+              {index === runnableProfiles.length && (
                 <Box
                   px="8px"
                   pt="8px"
@@ -524,10 +530,31 @@ export default function ConfigureRunCard({
   compressors: {rows, addRow, removeRow, patchRow, changeCompressor},
   iterations,
   onIterationsChange,
+  onProfilesReady,
 }: ConfigureRunCardProps) {
+  const [profileStatus, setProfileStatus] = useState<'loading' | 'ready' | Error>('loading');
+  useEffect(() => {
+    let active = true;
+    getBenchmarkProfiles()
+      .then(() => {
+        if (active) {
+          setProfileStatus('ready');
+          onProfilesReady?.(true);
+        }
+      })
+      .catch((error: unknown) => {
+        if (active) setProfileStatus(error instanceof Error ? error : new Error(String(error)));
+      });
+    return () => {
+      active = false;
+    };
+  }, [onProfilesReady]);
   return (
     <StepCard number={2} title="Configure the run" subtitle="Select which compressors to compare">
-      <VStack gap="10px" align="stretch">
+      <VStack gap="10px" align="stretch" aria-busy={profileStatus === 'loading'}>
+        {profileStatus instanceof Error && (
+          <Text role="alert">Unable to load compression profiles: {profileStatus.message}</Text>
+        )}
         <Box display="flex" gap="8px" height="20px" alignItems="start">
           <Text flex="1" color="pg.faint" fontSize="11px" fontWeight="semibold" m={0}>
             COMPRESSOR

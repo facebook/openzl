@@ -5,6 +5,7 @@ import {toCompressorConfig} from '../src/benchmarkTypes.ts';
 import {createCompressorRow} from '../src/compressors.ts';
 import type {BenchmarkResult} from '../../../wasm/js/wasm_api.js';
 import type {WorkerMessage} from '../src/benchmarkTypes.ts';
+import {TEST_PROFILES} from './setup.ts';
 
 const CANDIDATES = 3;
 
@@ -30,6 +31,7 @@ vi.mock('../../../wasm/js/wasm_api.js', () => ({
   getOpenZLMaxIterations: () => Promise.resolve(10),
   createOpenZL: () =>
     Promise.resolve({
+      profiles: TEST_PROFILES,
       maxBenchmarkIterations: 10,
       trainParetoCandidates: 6,
       getSerializedCompressor: () => new Uint8Array([1]),

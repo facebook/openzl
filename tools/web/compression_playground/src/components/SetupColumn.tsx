@@ -1,6 +1,8 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import {VStack} from '@chakra-ui/react';
+import {useState} from 'react';
+import {getOpenZlProfiles} from '../compressors.ts';
 import ConfigureRunCard from './ConfigureRunCard.tsx';
 import RunBenchmarkCard from './RunBenchmarkCard.tsx';
 import UploadCard from './UploadCard.tsx';
@@ -32,15 +34,21 @@ export default function SetupColumn({
   onTrySample,
   runBlockers,
 }: SetupColumnProps) {
+  const [profilesReady, setProfilesReady] = useState(getOpenZlProfiles().length > 0);
   return (
     <VStack gap="20px" width={{base: '100%', lg: '520px'}} flexShrink={0} align="stretch">
       <UploadCard file={file} onFileChange={onFileChange} />
-      <ConfigureRunCard compressors={compressors} iterations={iterations} onIterationsChange={onIterationsChange} />
+      <ConfigureRunCard
+        compressors={compressors}
+        iterations={iterations}
+        onIterationsChange={onIterationsChange}
+        onProfilesReady={setProfilesReady}
+      />
       <RunBenchmarkCard
         runConfig={runConfig}
         runState={runState}
-        onRun={onRun}
-        onTrySample={onTrySample}
+        onRun={profilesReady || compressors.rows.every((row) => row.compressor !== 'OpenZL') ? onRun : null}
+        onTrySample={profilesReady ? onTrySample : null}
         runBlockers={runBlockers}
       />
     </VStack>

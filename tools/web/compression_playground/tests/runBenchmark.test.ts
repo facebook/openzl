@@ -45,7 +45,7 @@ async function freshModule() {
   vi.resetModules();
   FakeWorker.instances = [];
   vi.stubGlobal('Worker', FakeWorker);
-  return import('../src/runBenchmark.ts');
+  return vi.importActual<typeof import('../src/runBenchmark.ts')>('../src/runBenchmark.ts');
 }
 
 afterEach(() => {
@@ -53,6 +53,93 @@ afterEach(() => {
 });
 
 describe('runBenchmark', () => {
+  it('requests profiles once and caches them on the UI side', async () => {
+    const {getBenchmarkProfiles, runBenchmark, cancelRun} = await freshModule();
+    const first = getBenchmarkProfiles();
+    const second = getBenchmarkProfiles();
+    const profiles = [
+      {name: 'future_profile', description: 'From the loaded build', isWasmSupported: true, isTrainable: true},
+    ];
+    const [worker] = FakeWorker.instances;
+    expect(worker.posted).toEqual([{type: 'profilesRequest'}]);
+    worker.emit('message', {data: {type: 'profiles', profiles}});
+    expect(await first).toEqual(profiles);
+    const {isBrowserSupportedProfile} = await import('../src/wasmProfiles.ts');
+    expect(isBrowserSupportedProfile('future_profile')).toBe(true);
+    expect(await second).toBe(await first);
+    expect(await getBenchmarkProfiles()).toBe(await first);
+    expect(worker.listeners.get('message')).toHaveLength(0);
+    expect(worker.listeners.get('error')).toHaveLength(0);
+
+    runBenchmark(config, () => undefined);
+    expect(FakeWorker.instances).toHaveLength(1);
+    expect(worker.posted).toEqual([{type: 'profilesRequest'}, {type: 'benchmarkRequest', config}]);
+    cancelRun();
+    expect(await getBenchmarkProfiles()).toBe(await first);
+    expect(FakeWorker.instances).toHaveLength(1);
+  });
+
+  it('retries failed profile discovery without discarding the benchmark worker', async () => {
+    const {getBenchmarkProfiles} = await freshModule();
+    const first = getBenchmarkProfiles();
+    const rejected = expect(first).rejects.toThrow('WASM unavailable');
+    const [worker] = FakeWorker.instances;
+    worker.emit('message', {data: {type: 'profilesFailed', message: 'WASM unavailable'}});
+    await rejected;
+    const retry = getBenchmarkProfiles();
+    worker.emit('message', {data: {type: 'profiles', profiles: []}});
+    expect(await retry).toEqual([]);
+    expect(FakeWorker.instances).toHaveLength(1);
+    expect(worker.posted).toEqual([{type: 'profilesRequest'}, {type: 'profilesRequest'}]);
+  });
+
+  it('keeps an active benchmark running when posting a profile request fails', async () => {
+    const {getBenchmarkProfiles, runBenchmark} = await freshModule();
+    const states: RunState[] = [];
+    runBenchmark(config, (state) => states.push(state));
+    const [worker] = FakeWorker.instances;
+    vi.spyOn(worker, 'postMessage').mockImplementationOnce(() => {
+      throw new Error('Unable to send profile request');
+    });
+
+    await expect(getBenchmarkProfiles()).rejects.toThrow('Unable to send profile request');
+    expect(worker.terminated).toBe(false);
+    expect(states.at(-1)).toMatchObject({status: 'loading'});
+
+    const retry = getBenchmarkProfiles();
+    worker.emit('message', {data: {type: 'profiles', profiles: []}});
+    expect(await retry).toEqual([]);
+    expect(FakeWorker.instances).toHaveLength(1);
+
+    worker.emit('message', {data: {type: 'finished'}});
+    expect(states.at(-1)).toMatchObject({status: 'completed'});
+  });
+
+  it('rejects pending profile discovery on cancellation and reloads on a new worker', async () => {
+    const {getBenchmarkProfiles, cancelRun} = await freshModule();
+    const first = getBenchmarkProfiles();
+    const rejected = expect(first).rejects.toThrow('the run was cancelled');
+    cancelRun();
+    await rejected;
+    expect(FakeWorker.instances[0].terminated).toBe(true);
+    const retry = getBenchmarkProfiles();
+    FakeWorker.instances[1].emit('message', {data: {type: 'profiles', profiles: []}});
+    expect(await retry).toEqual([]);
+    expect(FakeWorker.instances).toHaveLength(2);
+  });
+
+  it('discards a worker that crashes during profile discovery', async () => {
+    const {getBenchmarkProfiles} = await freshModule();
+    const first = getBenchmarkProfiles();
+    const rejected = expect(first).rejects.toThrow('worker exploded');
+    FakeWorker.instances[0].emit('error', {message: 'worker exploded'});
+    await rejected;
+    expect(FakeWorker.instances[0].terminated).toBe(true);
+    const retry = getBenchmarkProfiles();
+    FakeWorker.instances[1].emit('message', {data: {type: 'profiles', profiles: []}});
+    expect(await retry).toEqual([]);
+  });
+
   it('reports itself busy before the worker has said anything', async () => {
     // The run button disables off this state. Messages carry no run id, so a
     // second press in the gap would put two runs on one worker and each

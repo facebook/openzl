@@ -3,81 +3,9 @@
 export const COMPRESSOR_NAMES = ['OpenZL', 'zstd', 'gzip'] as const;
 export type CompressorName = (typeof COMPRESSOR_NAMES)[number];
 
-/**
- * Every profile the OpenZL CLI registers, in the order `zli list-profiles`
- * prints them -- `compressProfiles()` is a `std::map`, so that is alphabetical.
- *
- * Hand-copied, and it has already gone stale once: this list was transcribed
- * from a `list-profiles` dump taken before the big-endian profiles landed, and
- * stayed ten short without anything noticing. Deriving it needs
- * `compressProfiles()` reachable from JS, which it is not -- the WASM module
- * only exposes the nine it implements. Until then, adding a profile to
- * `cli/utils/compress_profiles.cpp` means adding it here too.
- */
-export const OPENZL_PROFILES = [
-  'be-i16',
-  'be-i32',
-  'be-i64',
-  'be-u16',
-  'be-u32',
-  'be-u64',
-  'csv',
-  'i8',
-  'le-i16',
-  'le-i32',
-  'le-i64',
-  'le-u16',
-  'le-u32',
-  'le-u64',
-  'lz',
-  'numeric-ml-selector-64',
-  'parquet',
-  'pytorch',
-  'sao',
-  'sddl',
-  'sddl2',
-  'serial',
-  'u8',
-  'zstd',
-] as const;
-export type OpenZlProfile = (typeof OPENZL_PROFILES)[number];
+export type OpenZlProfile = string;
 
-/** Help text for each profile, shown in the profile picker's tooltips. */
-export const OPENZL_PROFILE_DESCRIPTIONS: Record<OpenZlProfile, string> = {
-  'be-i16': 'Big-endian signed 16-bit data',
-  'be-i32': 'Big-endian signed 32-bit data',
-  'be-i64': 'Big-endian signed 64-bit data',
-  'be-u16': 'Big-endian unsigned 16-bit data',
-  'be-u32': 'Big-endian unsigned 32-bit data',
-  'be-u64': 'Big-endian unsigned 64-bit data',
-  csv: 'CSV. Pass optional non-comma separator with --profile-arg <char>.',
-  i8: 'Signed 8-bit data',
-  'le-i16': 'Little-endian signed 16-bit data',
-  'le-i32': 'Little-endian signed 32-bit data',
-  'le-i64': 'Little-endian signed 64-bit data',
-  'le-u16': 'Little-endian unsigned 16-bit data',
-  'le-u32': 'Little-endian unsigned 32-bit data',
-  'le-u64': 'Little-endian unsigned 64-bit data',
-  lz: 'Trainable LZ compressor',
-  'numeric-ml-selector-64': '64 bit numeric data using ml selectors (Placeholder)',
-  parquet: 'Parquet in the canonical format (no compression, plain encoding)',
-  pytorch: 'Pytorch model generated from torch.save(). Training is not supported.',
-  sao: 'SAO format from the Silesia corpus',
-  sddl: 'Data that can be parsed using the Simple Data Description Language. Pass a path to the data description file with --profile-arg.',
-  sddl2:
-    'Data that can be parsed using Simple Data Description Language v2 (https://openzl.org/sddl/). Pass a path to the description file with --profile-arg.',
-  serial: 'Serial data (aka raw bytes)',
-  u8: 'Unsigned 8-bit data',
-  zstd: 'Use this profile to train a Zstd dict',
-};
-
-/**
- * The CLI cannot train a pytorch model -- its own profile description says so --
- * so neither the picker nor a run built from a row may ask for it.
- */
-export function isTrainableProfile(profile: OpenZlProfile): boolean {
-  return profile !== 'pytorch';
-}
+export {getOpenZlProfiles, getOpenZlProfileDescriptions, isTrainableProfile} from './wasmProfiles.ts';
 
 function range(min: number, max: number): readonly number[] {
   return Array.from({length: max - min + 1}, (_, index) => min + index);

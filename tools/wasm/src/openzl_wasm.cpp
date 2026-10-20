@@ -194,25 +194,47 @@ BufferPtr allocBuffer(size_t size)
 }
 
 struct Profile {
-    const char* name; // keys openzl::profiles::getProfileDescription().
-    bool isTrainable;
-    bool isWasmSupported;
+    const char* name{}; // keys openzl::profiles::getProfileDescription().
+    bool isTrainable{};
+    bool isWasmSupported{};
+    const char* wasmUnsupportedReason = nullptr;
 };
+
+constexpr const char* kBigEndianReason =
+        "Cannot run in the browser: the binding reads numbers little-endian only.";
+constexpr const char* kParserGraphReason =
+        "Cannot run in the browser: needs a custom parser graph.";
+constexpr const char* kDescriptionFileReason =
+        "Cannot run in the browser: needs a description file, which this page cannot supply.";
+constexpr const char* kUnimplementedReason =
+        "Cannot run in the browser: the wasm binding does not implement it.";
 
 // Indexed by openzl_wasm_Profile, ordering must match
 constexpr Profile kProfiles[OPENZL_WASM_PROFILE_COUNT] = {
-    { "serial", true, true },   { "u8", true, true },
-    { "i8", true, true },       { "le-u16", true, true },
-    { "le-i16", true, true },   { "le-u32", true, true },
-    { "le-i32", true, true },   { "le-u64", true, true },
-    { "le-i64", true, true },   { "be-i16", true, false },
-    { "be-i32", true, false },  { "be-i64", true, false },
-    { "be-u16", true, false },  { "be-u32", true, false },
-    { "be-u64", true, false },  { "csv", true, false },
-    { "lz", true, false },      { "numeric-ml-selector-64", true, false },
-    { "parquet", true, false }, { "pytorch", false, false },
-    { "sao", true, false },     { "sddl", true, false },
-    { "sddl2", true, false },   { "zstd", true, false },
+    { "serial", true, true },
+    { "u8", true, true },
+    { "i8", true, true },
+    { "le-u16", true, true },
+    { "le-i16", true, true },
+    { "le-u32", true, true },
+    { "le-i32", true, true },
+    { "le-u64", true, true },
+    { "le-i64", true, true },
+    { "be-i16", true, false, kBigEndianReason },
+    { "be-i32", true, false, kBigEndianReason },
+    { "be-i64", true, false, kBigEndianReason },
+    { "be-u16", true, false, kBigEndianReason },
+    { "be-u32", true, false, kBigEndianReason },
+    { "be-u64", true, false, kBigEndianReason },
+    { "csv", true, false, kParserGraphReason },
+    { "lz", true, false, kParserGraphReason },
+    { "numeric-ml-selector-64", true, false, kUnimplementedReason },
+    { "parquet", true, false, kParserGraphReason },
+    { "pytorch", false, false, kParserGraphReason },
+    { "sao", true, false, kParserGraphReason },
+    { "sddl", true, false, kDescriptionFileReason },
+    { "sddl2", true, false, kDescriptionFileReason },
+    { "zstd", true, false, kParserGraphReason },
 };
 
 ZL_GraphID buildLEIntGraph(ZL_Compressor* comp, size_t eltByteWidth)
@@ -585,6 +607,15 @@ int openzl_wasm_profileIsSupported(openzl_wasm_Profile profile)
         return 0;
     }
     return kProfiles[profile].isWasmSupported;
+}
+
+EMSCRIPTEN_KEEPALIVE
+const char* openzl_wasm_profileUnsupportedReason(openzl_wasm_Profile profile)
+{
+    if (profile < 0 || profile >= OPENZL_WASM_PROFILE_COUNT) {
+        return nullptr;
+    }
+    return kProfiles[profile].wasmUnsupportedReason;
 }
 
 EMSCRIPTEN_KEEPALIVE

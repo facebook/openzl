@@ -1,8 +1,8 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-import type {BenchmarkResult as BenchmarkMetrics, ProfileValue} from '../../../wasm/js/wasm_api.js';
-import {isTrainableProfile, type CompressorRow, type OpenZlProfile} from './compressors.ts';
-import {WASM_PROFILE} from './wasmProfiles.ts';
+import type {BenchmarkResult as BenchmarkMetrics, ProfileMetadata} from '../../../wasm/js/wasm_api.js';
+import {getOpenZlProfiles, isTrainableProfile, type CompressorRow, type OpenZlProfile} from './compressors.ts';
+import {isBrowserSupportedProfile} from './wasmProfiles.ts';
 
 interface CompressorConfigBase {
   readonly rowId: number;
@@ -74,7 +74,7 @@ interface BenchmarkJobBase {
 
 export interface OpenZlBenchmarkJob extends BenchmarkJobBase {
   readonly compressor: 'OpenZL';
-  readonly profile: ProfileValue;
+  readonly profile: OpenZlProfile;
   readonly training: TrainingConfig | null;
 }
 
@@ -167,12 +167,12 @@ export type WorkerMessage =
   | {readonly type: 'result'; readonly result: JobResult}
   | {readonly type: 'failure'; readonly failure: JobFailure}
   | {readonly type: 'finished'}
-  | {readonly type: 'failed'; readonly message: string};
+  | {readonly type: 'failed'; readonly message: string}
+  | {readonly type: 'profiles'; readonly profiles: readonly ProfileMetadata[]}
+  | {readonly type: 'profilesFailed'; readonly message: string};
 
 /** What the page sends in. The `File` rides along, since it clones. */
-export interface WorkerRequest {
-  readonly config: RunConfig;
-}
+export type WorkerRequest = {readonly config: RunConfig; type: 'benchmarkRequest'} | {readonly type: 'profilesRequest'};
 
 function assertNever(value: never): never {
   throw new Error(`Unexpected value: ${String(value)}`);
@@ -186,13 +186,7 @@ export function toCompressorConfig(row: CompressorRow): CompressorConfig {
         compressor: row.compressor,
         levels: [row.level],
         profile: row.profile,
-        // The request is kept as the user left it and honoured here, so
-        // passing through an untrainable profile cannot cost the row a setting
-        // it would never get back.
-        training:
-          row.trainRequested && isTrainableProfile(row.profile)
-            ? {paretoFrontier: true, candidates: row.candidates}
-            : null,
+        training: row.trainRequested ? {paretoFrontier: true, candidates: row.candidates} : null,
       };
     case 'zstd':
     case 'gzip':
@@ -246,8 +240,10 @@ export function buildJobs(config: RunConfig): RunPlan {
 
     switch (compressor.compressor) {
       case 'OpenZL': {
-        const profile = WASM_PROFILE[compressor.profile];
-        if (profile === null) {
+        const profile = compressor.profile;
+        // With no profiles loaded the jobs still go out, so each reports why
+        // the module failed rather than being rejected here.
+        if (getOpenZlProfiles().length > 0 && !isBrowserSupportedProfile(profile)) {
           // The picker refuses these profiles, so this is a backstop for a
           // config assembled anywhere else.
           rejected.push({
@@ -257,7 +253,10 @@ export function buildJobs(config: RunConfig): RunPlan {
           break;
         }
         for (const level of compressor.levels) {
-          jobs.push({...base(level), compressor: 'OpenZL', profile, training: compressor.training});
+          // Apply training capability here without discarding the user's request,
+          // so switching back to a trainable profile restores their setting.
+          const training = isTrainableProfile(compressor.profile) ? compressor.training : null;
+          jobs.push({...base(level), compressor: 'OpenZL', profile, training});
         }
         break;
       }

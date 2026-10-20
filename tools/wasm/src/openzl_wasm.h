@@ -88,6 +88,9 @@ const char* openzl_wasm_profileDescription(openzl_wasm_Profile profile);
 /** Returns 1 if the current WASM build supports the profile, or 0 otherwise. */
 int openzl_wasm_profileIsSupported(openzl_wasm_Profile profile);
 
+/** Returns the browser limitation, or NULL if supported or out of range. */
+const char* openzl_wasm_profileUnsupportedReason(openzl_wasm_Profile profile);
+
 /** Returns 1 if the profile supports training, or 0 otherwise. */
 int openzl_wasm_profileIsTrainable(openzl_wasm_Profile profile);
 

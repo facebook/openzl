@@ -642,11 +642,15 @@ TEST(WasmBindingTest, ProfileEnumMatchesTable)
         // isWasmSupported drifting from it in either direction.
         std::vector<uint8_t> compressor;
         const ZL_ErrorCode code = serializedCompressor(profile, &compressor);
+        const char* reason      = openzl_wasm_profileUnsupportedReason(profile);
         if (openzl_wasm_profileIsSupported(profile)) {
+            EXPECT_EQ(reason, nullptr);
             EXPECT_EQ(code, ZL_ErrorCode_no_error)
                     << openzl_wasm_errorString(code);
             EXPECT_FALSE(compressor.empty());
         } else {
+            ASSERT_NE(reason, nullptr);
+            EXPECT_NE(reason[0], '\0');
             EXPECT_EQ(code, ZL_ErrorCode_graph_invalid);
             EXPECT_TRUE(compressor.empty());
         }
@@ -666,6 +670,7 @@ TEST(WasmBindingTest, RejectsUnknownProfile)
     EXPECT_EQ(openzl_wasm_profileName(bad), nullptr);
     EXPECT_EQ(openzl_wasm_profileDescription(bad), nullptr);
     EXPECT_EQ(openzl_wasm_profileIsSupported(bad), 0);
+    EXPECT_EQ(openzl_wasm_profileUnsupportedReason(bad), nullptr);
     EXPECT_EQ(openzl_wasm_profileIsTrainable(bad), 0);
 }
 

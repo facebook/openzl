@@ -227,11 +227,13 @@ function loadProfileMetadata(mod) {
     if (!descriptionPtr) {
       throw new Error(`OpenZL WASM profile ${value} has no description`);
     }
+    const reasonPtr = Number(mod._openzl_wasm_profileUnsupportedReason(value));
     profiles.push(Object.freeze({
       value,
       name: mod.UTF8ToString(namePtr),
       description: mod.UTF8ToString(descriptionPtr),
-      isSupported: mod._openzl_wasm_profileIsSupported(value) !== 0,
+      isWasmSupported: mod._openzl_wasm_profileIsSupported(value) !== 0,
+      wasmUnsupportedReason: reasonPtr ? mod.UTF8ToString(reasonPtr) : undefined,
       isTrainable: mod._openzl_wasm_profileIsTrainable(value) !== 0,
     }));
   }
@@ -358,15 +360,17 @@ export async function createOpenZL(options = {}) {
     // Returns the serialized compressor for a profile name (e.g. 'le-u32'),
     // cached per-profile + level (copy-on-read) so repeated calls reuse it.
     // Exposed since we want users to be able to download compressors.
-    // TODO: Remove numeric IDs once the playground selects profiles by name.
     getSerializedCompressor(profile, compressionLevel) {
-      const entry = metadata.find((entry) => (typeof profile === 'string' ? entry.name : entry.value) === profile);
+      if (typeof profile !== 'string') {
+        throw new Error(`profile must be a profile name string, got ${String(profile)}`);
+      }
+      const entry = metadata.find(({name}) => name === profile);
       if (!entry) {
         throw new Error(
-          `unknown profile ${String(profile)}; available: ${metadata.filter(({isSupported}) => isSupported).map(({name}) => name).join(', ')}`,
+          `unknown profile ${profile}; available: ${metadata.filter(({isWasmSupported}) => isWasmSupported).map(({name}) => name).join(', ')}`,
         );
       }
-      if (!entry.isSupported) {
+      if (!entry.isWasmSupported) {
         throw new Error(`profile ${entry.name} is not supported by this WASM build`);
       }
       const value = entry.value;
