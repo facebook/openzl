@@ -7,6 +7,7 @@
 #include <string_view>
 #include <vector>
 
+#include "custom_parsers/dependency_registration.h"
 #include "tools/wasm/src/openzl_wasm.h"
 
 namespace {
@@ -191,7 +192,11 @@ std::vector<uint8_t> makeSerialData(size_t size)
     return out;
 }
 
-std::vector<uint8_t> makeIntData(size_t eltWidth, size_t count, bool isSigned)
+std::vector<uint8_t> makeIntData(
+        size_t eltWidth,
+        size_t count,
+        bool isSigned,
+        bool isBigEndian = false)
 {
     std::vector<uint8_t> out;
     out.reserve(count * eltWidth);
@@ -199,8 +204,24 @@ std::vector<uint8_t> makeIntData(size_t eltWidth, size_t count, bool isSigned)
         const int64_t value = isSigned ? static_cast<int64_t>(i % 200) - 100
                                        : static_cast<int64_t>(i % 200);
         for (size_t b = 0; b < eltWidth; ++b) {
-            out.push_back(static_cast<uint8_t>((value >> (b * 8)) & 0xFF));
+            const size_t byteIndex = isBigEndian ? eltWidth - b - 1 : b;
+            out.push_back(
+                    static_cast<uint8_t>(
+                            (static_cast<uint64_t>(value) >> (byteIndex * 8))
+                            & 0xFF));
         }
+    }
+    return out;
+}
+
+std::vector<uint8_t> makeCsvData(size_t rows)
+{
+    const std::string header = "id,name,value\n";
+    std::vector<uint8_t> out(header.begin(), header.end());
+    for (size_t i = 0; i < rows; ++i) {
+        const std::string row = std::to_string(i % 100) + ",item"
+                + std::to_string(i % 10) + "," + std::to_string(i % 50) + "\n";
+        out.insert(out.end(), row.begin(), row.end());
     }
     return out;
 }
@@ -285,6 +306,30 @@ void expectTrainedRoundTrip(
     }
 }
 
+struct IntProfileCase {
+    openzl_wasm_Profile profile;
+    size_t width;
+    bool isSigned;
+    bool isBigEndian;
+};
+
+constexpr IntProfileCase kIntProfiles[] = {
+    { OPENZL_WASM_PROFILE_U8, 1, false, false },
+    { OPENZL_WASM_PROFILE_I8, 1, true, false },
+    { OPENZL_WASM_PROFILE_LE_U16, 2, false, false },
+    { OPENZL_WASM_PROFILE_LE_I16, 2, true, false },
+    { OPENZL_WASM_PROFILE_LE_U32, 4, false, false },
+    { OPENZL_WASM_PROFILE_LE_I32, 4, true, false },
+    { OPENZL_WASM_PROFILE_LE_U64, 8, false, false },
+    { OPENZL_WASM_PROFILE_LE_I64, 8, true, false },
+    { OPENZL_WASM_PROFILE_BE_U16, 2, false, true },
+    { OPENZL_WASM_PROFILE_BE_I16, 2, true, true },
+    { OPENZL_WASM_PROFILE_BE_U32, 4, false, true },
+    { OPENZL_WASM_PROFILE_BE_I32, 4, true, true },
+    { OPENZL_WASM_PROFILE_BE_U64, 8, false, true },
+    { OPENZL_WASM_PROFILE_BE_I64, 8, true, true },
+};
+
 } // namespace
 
 TEST(WasmBindingTest, SerialRoundTrip)
@@ -292,35 +337,57 @@ TEST(WasmBindingTest, SerialRoundTrip)
     expectRoundTrip(makeSerialData(4096), OPENZL_WASM_PROFILE_SERIAL);
 }
 
-TEST(WasmBindingTest, UnsignedIntRoundTrip)
+TEST(WasmBindingTest, LzRoundTrip)
 {
-    expectRoundTrip(makeIntData(1, 1024, false), OPENZL_WASM_PROFILE_U8);
-    expectRoundTrip(makeIntData(2, 1024, false), OPENZL_WASM_PROFILE_LE_U16);
-    expectRoundTrip(makeIntData(4, 1024, false), OPENZL_WASM_PROFILE_LE_U32);
-    expectRoundTrip(makeIntData(8, 1024, false), OPENZL_WASM_PROFILE_LE_U64);
+    expectRoundTrip(makeSerialData(4096), OPENZL_WASM_PROFILE_LZ);
 }
 
-TEST(WasmBindingTest, SignedIntRoundTrip)
+TEST(WasmBindingTest, ZstdRoundTrip)
 {
-    expectRoundTrip(makeIntData(1, 1024, true), OPENZL_WASM_PROFILE_I8);
-    expectRoundTrip(makeIntData(2, 1024, true), OPENZL_WASM_PROFILE_LE_I16);
-    expectRoundTrip(makeIntData(4, 1024, true), OPENZL_WASM_PROFILE_LE_I32);
-    expectRoundTrip(makeIntData(8, 1024, true), OPENZL_WASM_PROFILE_LE_I64);
+    expectRoundTrip(makeSerialData(4096), OPENZL_WASM_PROFILE_ZSTD);
+}
+
+TEST(WasmBindingTest, CsvRoundTrip)
+{
+    expectRoundTrip(makeCsvData(1024), OPENZL_WASM_PROFILE_CSV);
+}
+
+TEST(WasmBindingTest, ParquetSerializedCompressorLoads)
+{
+    std::vector<uint8_t> bytes;
+    ASSERT_EQ(
+            serializedCompressor(OPENZL_WASM_PROFILE_PARQUET, &bytes),
+            ZL_ErrorCode_no_error);
+    ASSERT_FALSE(bytes.empty());
+    const std::string serialized(bytes.begin(), bytes.end());
+    const auto compressor =
+            openzl::custom_parsers::createCompressorFromSerialized(
+                    serialized, "");
+    EXPECT_TRUE(ZL_GraphID_isValid(compressor->getStartingGraph()));
+}
+
+TEST(WasmBindingTest, IntProfilesRoundTrip)
+{
+    for (const auto& test : kIntProfiles) {
+        expectRoundTrip(
+                makeIntData(test.width, 1024, test.isSigned, test.isBigEndian),
+                test.profile);
+    }
 }
 
 TEST(WasmBindingTest, SignednessDoesNotChangeNumericGraph)
 {
     constexpr openzl_wasm_Profile kUnsignedProfiles[] = {
-        OPENZL_WASM_PROFILE_U8,
-        OPENZL_WASM_PROFILE_LE_U16,
-        OPENZL_WASM_PROFILE_LE_U32,
-        OPENZL_WASM_PROFILE_LE_U64,
+        OPENZL_WASM_PROFILE_U8,     OPENZL_WASM_PROFILE_LE_U16,
+        OPENZL_WASM_PROFILE_LE_U32, OPENZL_WASM_PROFILE_LE_U64,
+        OPENZL_WASM_PROFILE_BE_U16, OPENZL_WASM_PROFILE_BE_U32,
+        OPENZL_WASM_PROFILE_BE_U64,
     };
     constexpr openzl_wasm_Profile kSignedProfiles[] = {
-        OPENZL_WASM_PROFILE_I8,
-        OPENZL_WASM_PROFILE_LE_I16,
-        OPENZL_WASM_PROFILE_LE_I32,
-        OPENZL_WASM_PROFILE_LE_I64,
+        OPENZL_WASM_PROFILE_I8,     OPENZL_WASM_PROFILE_LE_I16,
+        OPENZL_WASM_PROFILE_LE_I32, OPENZL_WASM_PROFILE_LE_I64,
+        OPENZL_WASM_PROFILE_BE_I16, OPENZL_WASM_PROFILE_BE_I32,
+        OPENZL_WASM_PROFILE_BE_I64,
     };
 
     for (size_t i = 0; i < std::size(kUnsignedProfiles); ++i) {
@@ -378,25 +445,47 @@ TEST(WasmBindingTest, TrainedCompressorRoundTrips)
             makeSerialData(4096), OPENZL_WASM_PROFILE_SERIAL, false);
 }
 
+TEST(WasmBindingTest, TrainedLzCompressorRoundTrips)
+{
+    expectTrainedRoundTrip(makeSerialData(4096), OPENZL_WASM_PROFILE_LZ, false);
+}
+
+TEST(WasmBindingTest, CsvTrainingFailsWithExistingDependencyRegistration)
+{
+    EXPECT_EQ(openzl_wasm_profileIsTrainable(OPENZL_WASM_PROFILE_CSV), 0);
+    std::vector<uint8_t> base;
+    ASSERT_EQ(
+            serializedCompressor(OPENZL_WASM_PROFILE_CSV, &base),
+            ZL_ErrorCode_no_error);
+    std::vector<std::vector<uint8_t>> trained;
+    EXPECT_EQ(
+            train(base, makeCsvData(1024), testTrainOptions(false), &trained),
+            ZL_ErrorCode_GENERIC);
+    EXPECT_TRUE(trained.empty());
+}
+
+TEST(WasmBindingTest, ZstdTrainingIsUnavailableWithoutDictionaryBundles)
+{
+    EXPECT_EQ(openzl_wasm_profileIsTrainable(OPENZL_WASM_PROFILE_ZSTD), 0);
+    std::vector<uint8_t> base;
+    ASSERT_EQ(
+            serializedCompressor(OPENZL_WASM_PROFILE_ZSTD, &base),
+            ZL_ErrorCode_no_error);
+    std::vector<std::vector<uint8_t>> trained;
+    EXPECT_EQ(
+            train(base,
+                  makeSerialData(4096),
+                  testTrainOptions(false),
+                  &trained),
+            ZL_ErrorCode_GENERIC);
+    EXPECT_TRUE(trained.empty());
+}
+
 TEST(WasmBindingTest, TrainedIntCompressorRoundTrips)
 {
-    const struct {
-        openzl_wasm_Profile profile;
-        size_t width;
-        bool isSigned;
-    } cases[] = {
-        { OPENZL_WASM_PROFILE_U8, 1, false },
-        { OPENZL_WASM_PROFILE_I8, 1, true },
-        { OPENZL_WASM_PROFILE_LE_U16, 2, false },
-        { OPENZL_WASM_PROFILE_LE_I16, 2, true },
-        { OPENZL_WASM_PROFILE_LE_U32, 4, false },
-        { OPENZL_WASM_PROFILE_LE_I32, 4, true },
-        { OPENZL_WASM_PROFILE_LE_U64, 8, false },
-        { OPENZL_WASM_PROFILE_LE_I64, 8, true },
-    };
-    for (const auto& test : cases) {
+    for (const auto& test : kIntProfiles) {
         expectTrainedRoundTrip(
-                makeIntData(test.width, 1024, test.isSigned),
+                makeIntData(test.width, 1024, test.isSigned, test.isBigEndian),
                 test.profile,
                 false);
     }
@@ -631,6 +720,23 @@ TEST(WasmBindingTest, ProfileEnumMatchesTable)
     EXPECT_STREQ(openzl_wasm_profileName(OPENZL_WASM_PROFILE_LE_I32), "le-i32");
     EXPECT_STREQ(openzl_wasm_profileName(OPENZL_WASM_PROFILE_LE_U64), "le-u64");
     EXPECT_STREQ(openzl_wasm_profileName(OPENZL_WASM_PROFILE_LE_I64), "le-i64");
+    EXPECT_STREQ(openzl_wasm_profileName(OPENZL_WASM_PROFILE_LZ), "lz");
+    EXPECT_STREQ(openzl_wasm_profileName(OPENZL_WASM_PROFILE_ZSTD), "zstd");
+    EXPECT_EQ(openzl_wasm_profileIsTrainable(OPENZL_WASM_PROFILE_ZSTD), 0);
+    EXPECT_STREQ(openzl_wasm_profileName(OPENZL_WASM_PROFILE_CSV), "csv");
+    EXPECT_STREQ(
+            openzl_wasm_profileName(OPENZL_WASM_PROFILE_PARQUET), "parquet");
+    EXPECT_STREQ(
+            openzl_wasm_profileName(OPENZL_WASM_PROFILE_PYTORCH), "pytorch");
+    EXPECT_EQ(openzl_wasm_profileIsSupported(OPENZL_WASM_PROFILE_PYTORCH), 0);
+    EXPECT_EQ(openzl_wasm_profileIsTrainable(OPENZL_WASM_PROFILE_PYTORCH), 0);
+
+    EXPECT_STREQ(openzl_wasm_profileName(OPENZL_WASM_PROFILE_BE_U16), "be-u16");
+    EXPECT_STREQ(openzl_wasm_profileName(OPENZL_WASM_PROFILE_BE_I16), "be-i16");
+    EXPECT_STREQ(openzl_wasm_profileName(OPENZL_WASM_PROFILE_BE_U32), "be-u32");
+    EXPECT_STREQ(openzl_wasm_profileName(OPENZL_WASM_PROFILE_BE_I32), "be-i32");
+    EXPECT_STREQ(openzl_wasm_profileName(OPENZL_WASM_PROFILE_BE_U64), "be-u64");
+    EXPECT_STREQ(openzl_wasm_profileName(OPENZL_WASM_PROFILE_BE_I64), "be-i64");
 
     // Every value must have a row, or the table has a value-initialized gap.
     for (int i = 0; i < OPENZL_WASM_PROFILE_COUNT; ++i) {

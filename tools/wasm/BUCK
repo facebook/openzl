@@ -38,6 +38,7 @@ zs_unittest(
         "..:arg",
         "../../cli/utils:utils",
         "../../cpp:openzl_cpp",
+        "../../custom_parsers:custom_parsers",
         ":wasm",
     ],
 )

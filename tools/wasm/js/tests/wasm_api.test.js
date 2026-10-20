@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 import {describe, it, before} from 'node:test';
 import assert from 'node:assert/strict';
-import {existsSync} from 'node:fs';
+import {existsSync, readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 
 import {createOpenZL} from '../wasm_api.js';
@@ -45,9 +45,16 @@ describe('wasm_api', () => {
     }), /duplicate profile names/);
   });
 
-  it('marks the profiles this build supports as trainable', () => {
+  it('reports support and training capabilities for the expanded profile catalog', () => {
     const supported = zl.profiles.filter(({isWasmSupported}) => isWasmSupported);
     assert.deepEqual(supported.map(({name}) => name).sort(), [
+      'be-i16',
+      'be-i32',
+      'be-i64',
+      'be-u16',
+      'be-u32',
+      'be-u64',
+      'csv',
       'i8',
       'le-i16',
       'le-i32',
@@ -55,11 +62,14 @@ describe('wasm_api', () => {
       'le-u16',
       'le-u32',
       'le-u64',
+      'lz',
+      'parquet',
       'serial',
       'u8',
+      'zstd',
     ]);
     for (const profile of supported) {
-      assert.equal(profile.isTrainable, true, profile.name);
+      assert.equal(profile.isTrainable, profile.name !== 'csv' && profile.name !== 'zstd', profile.name);
       assert.equal(profile.wasmUnsupportedReason, undefined, profile.name);
     }
   });
@@ -138,15 +148,191 @@ describe('wasm_api', () => {
     assert.deepEqual(out, src);
   });
 
-  it('roundtrips u32 little-endian ints', () => {
-    const count = 1024;
-    const src = new Uint8Array(count * 4);
+  function roundTrip(profile, src) {
+    const compressor = zl.getSerializedCompressor(profile);
+    assert.deepEqual(zl.decompress(zl.compress(src, compressor)), src);
+  }
+
+  function trainedRoundTrip(profile, src) {
+    const base = zl.getSerializedCompressor(profile);
+    const candidates = zl.train(src, base, {maxTimeSecs: TEST_TRAIN_MAX_TIME_SECS});
+    assert.equal(candidates.length, 1);
+    for (const trained of candidates) {
+      assert.ok(trained.length > 0);
+      assert.deepEqual(zl.decompress(zl.compress(src, trained)), src);
+    }
+  }
+
+  function integerSample(width, setter, signed, littleEndian) {
+    const src = new Uint8Array(1024 * width);
     const view = new DataView(src.buffer);
-    for (let i = 0; i < count; i++) view.setUint32(i * 4, i * 12345, true);
-    const comp = zl.getSerializedCompressor('le-u32');
-    const frame = zl.compress(src, comp);
-    const out = zl.decompress(frame);
-    assert.deepEqual(out, src);
+    for (let i = 0; i < 1024; i++) {
+      const value = (i % 200) - (signed ? 100 : 0);
+      view[setter](i * width, width === 8 ? BigInt(value) : value, littleEndian);
+    }
+    return src;
+  }
+
+  function csvSample() {
+    let csv = 'id,name,value\n';
+    for (let i = 0; i < 1024; i++) csv += `${i % 100},item${i % 10},${i % 50}\n`;
+    return new TextEncoder().encode(csv);
+  }
+
+  function parquetSample() {
+    return new Uint8Array(readFileSync(new URL(
+      '../../../../cli/tests/sample_files/parquet/simple.parquet', import.meta.url,
+    )));
+  }
+
+  it('roundtrips u8', () => {
+    roundTrip('u8', integerSample(1, 'setUint8', false, true));
+  });
+
+  it('trains u8 and roundtrips the trained compressor', () => {
+    trainedRoundTrip('u8', integerSample(1, 'setUint8', false, true));
+  });
+
+  it('roundtrips i8', () => {
+    roundTrip('i8', integerSample(1, 'setInt8', true, true));
+  });
+
+  it('trains i8 and roundtrips the trained compressor', () => {
+    trainedRoundTrip('i8', integerSample(1, 'setInt8', true, true));
+  });
+
+  it('roundtrips le-u16', () => {
+    roundTrip('le-u16', integerSample(2, 'setUint16', false, true));
+  });
+
+  it('trains le-u16 and roundtrips the trained compressor', () => {
+    trainedRoundTrip('le-u16', integerSample(2, 'setUint16', false, true));
+  });
+
+  it('roundtrips le-i16', () => {
+    roundTrip('le-i16', integerSample(2, 'setInt16', true, true));
+  });
+
+  it('trains le-i16 and roundtrips the trained compressor', () => {
+    trainedRoundTrip('le-i16', integerSample(2, 'setInt16', true, true));
+  });
+
+  it('roundtrips le-u32', () => {
+    roundTrip('le-u32', integerSample(4, 'setUint32', false, true));
+  });
+
+  it('trains le-u32 and roundtrips the trained compressor', () => {
+    trainedRoundTrip('le-u32', integerSample(4, 'setUint32', false, true));
+  });
+
+  it('roundtrips le-i32', () => {
+    roundTrip('le-i32', integerSample(4, 'setInt32', true, true));
+  });
+
+  it('trains le-i32 and roundtrips the trained compressor', () => {
+    trainedRoundTrip('le-i32', integerSample(4, 'setInt32', true, true));
+  });
+
+  it('roundtrips le-u64', () => {
+    roundTrip('le-u64', integerSample(8, 'setBigUint64', false, true));
+  });
+
+  it('trains le-u64 and roundtrips the trained compressor', () => {
+    trainedRoundTrip('le-u64', integerSample(8, 'setBigUint64', false, true));
+  });
+
+  it('roundtrips le-i64', () => {
+    roundTrip('le-i64', integerSample(8, 'setBigInt64', true, true));
+  });
+
+  it('trains le-i64 and roundtrips the trained compressor', () => {
+    trainedRoundTrip('le-i64', integerSample(8, 'setBigInt64', true, true));
+  });
+
+  it('roundtrips be-u16', () => {
+    roundTrip('be-u16', integerSample(2, 'setUint16', false, false));
+  });
+
+  it('trains be-u16 and roundtrips the trained compressor', () => {
+    trainedRoundTrip('be-u16', integerSample(2, 'setUint16', false, false));
+  });
+
+  it('roundtrips be-i16', () => {
+    roundTrip('be-i16', integerSample(2, 'setInt16', true, false));
+  });
+
+  it('trains be-i16 and roundtrips the trained compressor', () => {
+    trainedRoundTrip('be-i16', integerSample(2, 'setInt16', true, false));
+  });
+
+  it('roundtrips be-u32', () => {
+    roundTrip('be-u32', integerSample(4, 'setUint32', false, false));
+  });
+
+  it('trains be-u32 and roundtrips the trained compressor', () => {
+    trainedRoundTrip('be-u32', integerSample(4, 'setUint32', false, false));
+  });
+
+  it('roundtrips be-i32', () => {
+    roundTrip('be-i32', integerSample(4, 'setInt32', true, false));
+  });
+
+  it('trains be-i32 and roundtrips the trained compressor', () => {
+    trainedRoundTrip('be-i32', integerSample(4, 'setInt32', true, false));
+  });
+
+  it('roundtrips be-u64', () => {
+    roundTrip('be-u64', integerSample(8, 'setBigUint64', false, false));
+  });
+
+  it('trains be-u64 and roundtrips the trained compressor', () => {
+    trainedRoundTrip('be-u64', integerSample(8, 'setBigUint64', false, false));
+  });
+
+  it('roundtrips be-i64', () => {
+    roundTrip('be-i64', integerSample(8, 'setBigInt64', true, false));
+  });
+
+  it('trains be-i64 and roundtrips the trained compressor', () => {
+    trainedRoundTrip('be-i64', integerSample(8, 'setBigInt64', true, false));
+  });
+
+  it('roundtrips lz', () => {
+    roundTrip('lz', csvSample());
+  });
+
+  it('trains lz and roundtrips the trained compressor', () => {
+    trainedRoundTrip('lz', csvSample());
+  });
+
+  it('roundtrips zstd', () => {
+    roundTrip('zstd', csvSample());
+  });
+
+  it('reports Zstd training as unavailable without dictionary bundles', () => {
+    assert.equal(zl.profiles.find(({name}) => name === 'zstd').isTrainable, false);
+    assert.throws(() => zl.train(csvSample(), zl.getSerializedCompressor('zstd'), {
+      maxTimeSecs: TEST_TRAIN_MAX_TIME_SECS,
+    }), {code: 1});
+  });
+
+  it('roundtrips csv', () => {
+    roundTrip('csv', csvSample());
+  });
+
+  it('records the CSV training failure with the existing dependency registration', () => {
+    assert.equal(zl.profiles.find(({name}) => name === 'csv').isTrainable, false);
+    assert.throws(() => zl.train(csvSample(), zl.getSerializedCompressor('csv'), {
+      maxTimeSecs: TEST_TRAIN_MAX_TIME_SECS,
+    }), {code: 1});
+  });
+
+  it('roundtrips parquet', () => {
+    roundTrip('parquet', parquetSample());
+  });
+
+  it('trains parquet and roundtrips the trained compressor', () => {
+    trainedRoundTrip('parquet', parquetSample());
   });
 
   it('roundtrips empty input', () => {
@@ -203,7 +389,7 @@ describe('wasm_api', () => {
     );
   });
 
-  it('trains a compressor that can roundtrip data', () => {
+  it('trains serial and roundtrips the trained compressor', () => {
     trainProgressEvents.length = 0;
     const src = new Uint8Array(1024);
     for (let i = 0; i < src.length; i++) src[i] = 97 + (i % 10);

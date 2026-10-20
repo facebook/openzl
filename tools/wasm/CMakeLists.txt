@@ -47,6 +47,7 @@ if(NOT EMSCRIPTEN)
       PRIVATE
         openzl_wasm_lib
         openzl
+        custom_parsers
         GTest::gtest_main
     )
     if(OPENZL_BUILD_CLI)

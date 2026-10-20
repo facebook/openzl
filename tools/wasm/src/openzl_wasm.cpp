@@ -200,8 +200,6 @@ struct Profile {
     const char* wasmUnsupportedReason = nullptr;
 };
 
-constexpr const char* kBigEndianReason =
-        "Cannot run in the browser: the binding reads numbers little-endian only.";
 constexpr const char* kParserGraphReason =
         "Cannot run in the browser: needs a custom parser graph.";
 constexpr const char* kDescriptionFileReason =
@@ -220,29 +218,33 @@ constexpr Profile kProfiles[OPENZL_WASM_PROFILE_COUNT] = {
     { "le-i32", true, true },
     { "le-u64", true, true },
     { "le-i64", true, true },
-    { "be-i16", true, false, kBigEndianReason },
-    { "be-i32", true, false, kBigEndianReason },
-    { "be-i64", true, false, kBigEndianReason },
-    { "be-u16", true, false, kBigEndianReason },
-    { "be-u32", true, false, kBigEndianReason },
-    { "be-u64", true, false, kBigEndianReason },
-    { "csv", true, false, kParserGraphReason },
-    { "lz", true, false, kParserGraphReason },
+    { "be-i16", true, true },
+    { "be-i32", true, true },
+    { "be-i64", true, true },
+    { "be-u16", true, true },
+    { "be-u32", true, true },
+    { "be-u64", true, true },
+    { "csv", false, true },
+    { "lz", true, true },
     { "numeric-ml-selector-64", true, false, kUnimplementedReason },
-    { "parquet", true, false, kParserGraphReason },
+    { "parquet", true, true },
     { "pytorch", false, false, kParserGraphReason },
     { "sao", true, false, kParserGraphReason },
     { "sddl", true, false, kDescriptionFileReason },
     { "sddl2", true, false, kDescriptionFileReason },
-    { "zstd", true, false, kParserGraphReason },
+    { "zstd", false, true },
 };
 
-ZL_GraphID buildLEIntGraph(ZL_Compressor* comp, size_t eltByteWidth)
+ZL_GraphID buildIntGraph(
+        ZL_Compressor* comp,
+        size_t eltByteWidth,
+        bool isBigEndian = false)
 {
     return openzl::profiles::buildIntGraph(
             comp,
             eltByteWidth,
-            ZL_Node_interpretAsLE(eltByteWidth * 8),
+            isBigEndian ? ZL_Node_convertSerialToNumBE(eltByteWidth * 8)
+                        : ZL_Node_convertSerialToNumLE(eltByteWidth * 8),
             ZL_DEFAULT_SEGMENTER_CHUNK_BYTE_SIZE);
 }
 
@@ -256,33 +258,38 @@ ZL_GraphID buildProfileGraph(ZL_Compressor* comp, openzl_wasm_Profile profile)
                     comp, ZL_DEFAULT_SEGMENTER_CHUNK_BYTE_SIZE);
         case OPENZL_WASM_PROFILE_U8:
         case OPENZL_WASM_PROFILE_I8:
-            return buildLEIntGraph(comp, 1);
+            return buildIntGraph(comp, 1);
         case OPENZL_WASM_PROFILE_LE_U16:
         case OPENZL_WASM_PROFILE_LE_I16:
-            return buildLEIntGraph(comp, 2);
+            return buildIntGraph(comp, 2);
         case OPENZL_WASM_PROFILE_LE_U32:
         case OPENZL_WASM_PROFILE_LE_I32:
-            return buildLEIntGraph(comp, 4);
+            return buildIntGraph(comp, 4);
         case OPENZL_WASM_PROFILE_LE_U64:
         case OPENZL_WASM_PROFILE_LE_I64:
-            return buildLEIntGraph(comp, 8);
-        // TODO: Add support for additional profiles, including profiles that
-        // use custom parser graphs.
+            return buildIntGraph(comp, 8);
         case OPENZL_WASM_PROFILE_BE_I16:
-        case OPENZL_WASM_PROFILE_BE_I32:
-        case OPENZL_WASM_PROFILE_BE_I64:
         case OPENZL_WASM_PROFILE_BE_U16:
+            return buildIntGraph(comp, 2, true);
+        case OPENZL_WASM_PROFILE_BE_I32:
         case OPENZL_WASM_PROFILE_BE_U32:
+            return buildIntGraph(comp, 4, true);
+        case OPENZL_WASM_PROFILE_BE_I64:
         case OPENZL_WASM_PROFILE_BE_U64:
+            return buildIntGraph(comp, 8, true);
         case OPENZL_WASM_PROFILE_CSV:
+            return openzl::profiles::buildCsvGraph(comp);
         case OPENZL_WASM_PROFILE_LZ:
-        case OPENZL_WASM_PROFILE_NUMERIC_ML_SELECTOR_64:
+            return openzl::profiles::buildLzGraph(comp);
         case OPENZL_WASM_PROFILE_PARQUET:
+            return openzl::profiles::buildParquetGraph(comp);
+        case OPENZL_WASM_PROFILE_ZSTD:
+            return openzl::profiles::buildZstdGraph(comp);
+        case OPENZL_WASM_PROFILE_NUMERIC_ML_SELECTOR_64:
         case OPENZL_WASM_PROFILE_PYTORCH:
         case OPENZL_WASM_PROFILE_SAO:
         case OPENZL_WASM_PROFILE_SDDL:
         case OPENZL_WASM_PROFILE_SDDL2:
-        case OPENZL_WASM_PROFILE_ZSTD:
         case OPENZL_WASM_PROFILE_COUNT:
             break;
     }

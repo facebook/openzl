@@ -1,6 +1,6 @@
 # OpenZL WASM Binding
 
-Compression in the browser for `serial` and little-endian fixed-width integers (`u8`, `i8`, `le-u16`, `le-i16`, `le-u32`, `le-i32`, `le-u64`, `le-i64`).
+Compression in the browser for `serial`, signed and unsigned fixed-width integers in little-endian or big-endian byte order, `lz`, `zstd`, and format parsers (`csv`, `parquet`).
 
 ## How to Use
 
@@ -33,7 +33,12 @@ const zl = await createOpenZL({
 Browser applications should create the module in a Web Worker and forward
 these events to the UI with `postMessage`, since `train()` is synchronous.
 
-### 1. Serial profile – arbitrary bytes
+### 1. Profiles
+
+Pick a profile matching your input. Compressors are session-scoped and
+version-locked — re-fetch on page load, don't persist.
+
+#### Arbitrary bytes – `serial`, `lz`, `zstd`
 
 Best for blobs, text, JSON, etc. No element-width assumption.
 
@@ -44,15 +49,19 @@ const fileBytes = new TextEncoder().encode("hello world, hello world, ...")
 // This is session-scoped and version-locked — re-fetch on page load, don't persist.
 // Omit the optional compression level to use OpenZL’s default
 const serialCompressor = zl.getSerializedCompressor('serial')
+// Or: 'lz', 'zstd'
 const compressed = zl.compress(fileBytes, serialCompressor)
 const decompressed = zl.decompress(compressed)
 
 console.log(new TextDecoder().decode(decompressed)) // "hello world, ..."
 ```
 
-### 2. Integer profiles – fixed-width little-endian elements
+#### Fixed-width integers
 
-The WASM layer expects **little-endian** elements of the exact width.
+`le-u16`/`le-i16`, `le-u32`/`le-i32`, and `le-u64`/`le-i64` expect **little-endian** elements. Use `be-u16`/`be-i16`, `be-u32`/`be-i32`, or `be-u64`/`be-i64` for
+**big-endian** elements. `u8`/`i8` work with either byte order:
+an 8-bit integer occupies one byte, so there is no byte order to reverse
+and no separate `be-u8`/`be-i8` profile.
 ```js
 // Input: JS numbers as u32
 const values = [100, 200, 300, 400, 100, 200, 300]
@@ -76,7 +85,36 @@ const roundtripped = Array.from({ length: decompressedBytes.length / 4 },
 )
 ```
 
-### 3. Benchmark – measure throughput
+For big-endian input, pass `false` to the `DataView` setters and getters,
+and select the matching profile, for example
+`zl.getSerializedCompressor('be-u32')`.
+
+#### Structured formats – `csv`, `parquet`
+
+Use input matching the selected format. Malformed or unsupported input
+may be rejected:
+
+* `csv`: CSV bytes with a header row (comma-separated by default).
+* `parquet`: a Parquet file in the canonical format (no compression, plain
+  encoding).
+
+CSV and Parquet use the CLI's default chunk size of 20 MB. Check `zl.profiles`
+for each profile's support and training capabilities.
+
+CSV training is disabled for the MVP because deserializing its dependency graph
+registers duplicate clustering graphs. CSV compression remains available.
+
+Zstd compression remains available. Dictionary training is disabled for the
+MVP because the WASM API does not support dictionary bundles.
+
+```js
+// Input: valid CSV bytes as Uint8Array
+const csvCompressor = zl.getSerializedCompressor('csv')
+const compressed = zl.compress(csvBytes, csvCompressor)
+const decompressedBytes = zl.decompress(compressed)
+```
+
+### 2. Benchmark – measure throughput
 
 `benchmark()` compresses and decompresses in a tight loop inside WASM (no JS copy overhead between steps) and reports timing.
 
@@ -120,9 +158,9 @@ console.log(`decompress: ${stats.decompressMBps.toFixed(1)} MB/s`)
 ```
 ## Implementation details
 
-* **Profiles:** `createOpenZL()` reads the profile list from the C++ table, so
-  profiles added there need no JavaScript change. The numeric IDs are internal;
-  callers select profiles by name.
+* **Profiles:** `zl.profiles` lists names, descriptions, `isWasmSupported`,
+  `wasmUnsupportedReason`, and `isTrainable` from the loaded WASM build,
+  so profiles added in C++ need no JavaScript change. Callers select profiles by name.
 
 * **Buffer ownership:** C++ manages OpenZL handles such as `ZL_Compressor` and
   `ZL_CCtx` with `unique_ptr` deleters that call the corresponding `*_free`
