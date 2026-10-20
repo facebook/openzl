@@ -477,6 +477,7 @@ cpp_library(
     exported_deps = [
         "custom_parsers:pytorch_model_parser",  # @manual
         "custom_parsers:zip_lexer",  # @manual
+        "custom_parsers/shared_components:clustering",  # @manual
         "custom_transforms/json_extract:json_extract",  # @manual
         "custom_transforms/parse:parse",  # @manual
         "custom_transforms/thrift:thrift_lib",  # @manual
