@@ -11,6 +11,7 @@
 #include "contrib/gpu/src/decompress/gpu_decompress.hpp"
 #include "contrib/gpu/testkit/frame_verifier.h"
 #include "contrib/gpu/testkit/multichunk_frame.h"
+#include "openzl/common/errors_internal.h"
 #include "openzl/cpp/poly/Span.hpp"
 #include "openzl/openzl.hpp"
 #include "openzl/zl_decompress.h"
@@ -252,6 +253,47 @@ TEST(GPUDecompressTest, CollectGPUChunksFromFrameRejectsMissingEndMarker)
     EXPECT_EQ(ZL_errorCode(result), ZL_ErrorCode_srcSize_tooSmall);
     EXPECT_TRUE(chunks.empty());
     EXPECT_TRUE(frameHeaders.empty());
+}
+
+TEST(GPUDecompressTest, CollectGPUChunksFromFrameDropsChunkParserErrorInfo)
+{
+    // The chunk parser keeps an error's info in its DCTX, which
+    // collectGPUChunksFromFrame frees before it returns. This fails if the
+    // returned error still points into that DCTX.
+    std::string frame            = makeTwoChunkFrameWithMultiCodecChunk();
+    ZL_Report const headerResult = ZL_getHeaderSize(frame.data(), frame.size());
+    ASSERT_FALSE(ZL_isError(headerResult));
+    frame.resize(ZL_validResult(headerResult) + 2);
+    std::vector<std::byte> deviceFrame(frame.size());
+    std::vector<gpu::GPUChunk> chunks;
+    std::vector<gpu::GPUFrameHeaderForChunks> frameHeaders;
+
+    ZL_Report const result = gpu::collectGPUChunksFromFrame(
+            deviceFrame.data(), bytes(frame), chunks, frameHeaders);
+
+    ASSERT_TRUE(ZL_isError(result));
+    EXPECT_EQ(ZL_E_dy(ZL_RES_error(result)), nullptr);
+}
+
+TEST(GPUDecompressTest, PrepareChunksRejectsImpossibleStagingSize)
+{
+    // This fails if a header size that no host buffer can hold throws instead
+    // of returning an error.
+    std::byte sentinel{};
+    const gpu::GPUFrameHeaderForChunks frameHeader{
+        .frameHeader_d   = &sentinel,
+        .frameHeaderSize = std::numeric_limits<size_t>::max(),
+    };
+
+    const gpu::Result<std::vector<gpu::PreparedGPUChunk>> result =
+            gpu::prepareChunksForPlanning(
+                    poly::span<const gpu::GPUFrameHeaderForChunks>{
+                            &frameHeader, 1 },
+                    poly::span<const gpu::GPUChunk>{},
+                    nullptr);
+
+    ASSERT_TRUE(result.isError());
+    EXPECT_EQ(ZL_errorCode(result.report()), ZL_ErrorCode_allocation);
 }
 
 } // namespace

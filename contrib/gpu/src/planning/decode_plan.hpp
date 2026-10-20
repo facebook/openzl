@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 #include "contrib/gpu/src/common/codec_decode_planning.hpp"
@@ -21,12 +22,6 @@ using PlannedStreamIndex = size_t;
 
 /// Position of a codec run in @c DecodePlan::codecRuns.
 using PlannedRunIndex = size_t;
-
-/// Absence of a stream reference.
-inline constexpr PlannedStreamIndex kNoStream = SIZE_MAX;
-
-/// Absence of a codec run reference.
-inline constexpr PlannedRunIndex kNoRun = SIZE_MAX;
 
 /// A contiguous range in one of the plan's arrays.
 struct IndexRange {
@@ -97,12 +92,12 @@ struct PlannedStream {
     StreamStorageSize storageSize{};
     /// Where the stream's bytes are stored.
     StorageClass storageClass = StorageClass::Unreached;
-    /// Producing codec run, or @c kNoRun for a stream stored in the frame.
-    PlannedRunIndex producer = kNoRun;
-    /// Consuming codec run, or @c kNoRun when no run consumes this stream.
-    PlannedRunIndex consumer = kNoRun;
+    /// Producing codec run, or nullopt for a stream stored in the frame.
+    std::optional<PlannedRunIndex> producer;
+    /// Consuming codec run, or nullopt when no run consumes this stream.
+    std::optional<PlannedRunIndex> consumer;
     /// Backing stream, set only for @c StreamRef.
-    PlannedStreamIndex aliasStream = kNoStream;
+    std::optional<PlannedStreamIndex> aliasStream;
     /// Byte offset in the backing stream.
     size_t aliasOffset = 0;
 

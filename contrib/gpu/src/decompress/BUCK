@@ -28,6 +28,7 @@ cpp_library(
     exported_deps = [
         "../../../..:zstronglib",
         "../../../../cpp:openzl_cpp",
+        "../common:result",
     ],
     external_deps = ["cuda"],
 )
