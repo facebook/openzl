@@ -121,7 +121,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - name: Upload artifact (for manual workflow runs)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: openzl-cli-windows-x64
           path: release\openzl-cli-windows-x64.exe
