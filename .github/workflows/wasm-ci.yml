@@ -56,7 +56,7 @@ jobs:
           version: 4.0.19
           actions-cache-folder: emsdk-cache
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
 
