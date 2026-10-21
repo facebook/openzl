@@ -204,7 +204,7 @@ ALL_GTESTS_OBJS := \
 # Objects wait for the headers of the dependencies they include, which are fetched on demand
 $(call mcm_order_deps,$(C_OBJS) $(CPP_OBJS),$(ZSTD_HEADER) $(LZ4_HEADER))
 $(call mcm_order_deps,$(call objs_below,tools/ml_selector),$(XGBOOST_HEADER))
-$(call mcm_order_deps,$(filter tests/% %/tests/%,$(ALL_GTESTS_OBJS)),$(GTEST_HEADERS))
+$(call mcm_order_deps,$(foreach o,$(ALL_GTESTS_OBJS),$(if $(findstring /tests/,/$(o)),$(o))),$(GTEST_HEADERS))
 
 gtests: $(LIBGTEST_A) $(LIBZSTD_A) $(LIBLZ4_A) $(LIBXGBOOST_A)
 gtests: CPPFLAGS += -Ideps/googletest/googletest/include
