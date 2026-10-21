@@ -107,7 +107,7 @@ jobs:
       # `new URL('./openzl.wasm', import.meta.url)`, which Vite resolves at
       # build time and re-emits under assets/ with a content hash.
       - name: Download WASM artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: openzl-wasm
           path: ${{github.workspace}}/tools/wasm/js
