@@ -83,7 +83,10 @@ std::vector<ACEGraph> makeAllGraphs()
     for (int level = -5; level < 10; ++level) {
         g.push_back(buildGraph(graphs::Zstd{ level }));
     }
-    for (int level : { 1, 3, 6, 9, 12 }) {
+    // LZ4 HC above level 6 is slow on repetitive numeric data
+    // (level 9 compresses at about 6 MB/s). Each ACE generation waits for
+    // its slowest candidate.
+    for (int level : { 1, 3, 6 }) {
         g.push_back(buildGraph(graphs::Lz4{ level }));
     }
     for (int level : { -3, 1, 3, 6, 9 }) {
