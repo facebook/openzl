@@ -132,7 +132,10 @@ ZL_Report typedTransform(ZL_Encoder* eictx, ZL_Input const* input) noexcept
 }
 
 template <typename Kernel>
-ZL_NodeID registerCTransform(ZL_Compressor* cgraph, ZL_IDType transformID)
+ZL_NodeID registerCTransform(
+        ZL_Compressor* cgraph,
+        ZL_IDType transformID,
+        char const* name = nullptr)
 {
     using KernelReturnType = std::invoke_result_t<Kernel, std::string_view&>;
     std::array<ZL_Type, 1 + std::tuple_size_v<KernelReturnType>> outStreamTypes;
@@ -147,6 +150,7 @@ ZL_NodeID registerCTransform(ZL_Compressor* cgraph, ZL_IDType transformID)
                         .nbOutStreams = outStreamTypes.size(),
                 },
                 .transform_f = typedTransform<Kernel>,
+                .name = name,
         };
     return ZL_Compressor_registerTypedEncoder(cgraph, &desc);
 }
@@ -378,7 +382,8 @@ ZL_NodeID ZS2_ThriftKernel_registerCTransformArrayI64(
         }
     };
 
-    return registerCTransform<Transform>(cgraph, transformID);
+    return registerCTransform<Transform>(
+            cgraph, transformID, "!zl_custom.thrift_kernel_array_i64");
 }
 
 /// Input: Thrift Compact list<i32>
