@@ -96,3 +96,10 @@ add_dependencies(
     tools_training
     shared_components
 )
+
+# Databento MBP-10 parser: standard codecs only, universal decoder.
+add_executable(mbp10 mbp10.cpp)
+target_link_libraries(mbp10 PRIVATE openzl)
+if(OPENZL_BUILD_TESTS)
+    add_test(NAME mbp10_example_round_trip COMMAND mbp10 --self-test)
+endif()
