@@ -34,7 +34,7 @@ jobs:
       # a pull request to restore what the branch build already compiled.
       - name: Cache WASM artifact
         id: wasm-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: build-wasm/tools/wasm
           key: >-
