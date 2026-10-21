@@ -76,7 +76,7 @@ jobs:
         if: steps.wasm-cache.outputs.cache-hit != 'true'
         run: emstrip --strip-debug build-wasm/tools/wasm/openzl.wasm
       - name: Upload WASM artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: openzl-wasm
           path: |

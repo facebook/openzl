@@ -26,7 +26,7 @@ jobs:
     - name: Check metadata
       run: pipx run twine check contrib/openzl-demo/dist/*
 
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: dist-sdist
         path: contrib/openzl-demo/dist/*.tar.gz
@@ -58,7 +58,7 @@ jobs:
       shell: bash
 
     - name: Upload wheels
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         path: wheelhouse/*.whl
         name: dist-${{ matrix.os }}
