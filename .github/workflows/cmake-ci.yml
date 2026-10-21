@@ -74,7 +74,7 @@ jobs:
             build_only: true
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install specific CMake version
         if: ${{ matrix.cmake_version != '' }}
@@ -142,7 +142,7 @@ jobs:
     name: CMake Install Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Test CMake installation
         run: ./build-scripts/cmake/tests/test-install.py
 
@@ -151,7 +151,7 @@ jobs:
     name: CMake Tarball Build Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Test tarball build scenario
         run: |
           # Simulate tarball environment by removing git repo and deps

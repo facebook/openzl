@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       # Restoring the artifact is what keeps a docs-only change off the
       # Emscripten toolchain entirely. The key covers everything the binding
       # links -- the set wasm-ci.yml filters on, `**/CMakeLists.txt` included,
@@ -93,7 +93,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
       - name: Set up Node

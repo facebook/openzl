@@ -42,7 +42,7 @@ jobs:
     name: Basic Build & Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build and run basic tests
         run: |
           make all V=1
@@ -74,7 +74,7 @@ jobs:
             os: macos-latest
             flags: "-Werror -Wgnu-anonymous-struct -DNDEBUG"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Show compiler info
         if: ${{ matrix.show_compiler }}
         run: cc -v
@@ -133,7 +133,7 @@ jobs:
             cxx: clang++-15
             flags: "-Werror -Wgnu-anonymous-struct -DZS_ENABLE_CLANG_PRAGMA"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build
         env:
           CC: ${{ matrix.cc }}
@@ -164,7 +164,7 @@ jobs:
             cxxflags: "-std=gnu++1z"
             flags: "-Werror"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build
         env:
           CC: ${{ matrix.cc }}
@@ -183,7 +183,7 @@ jobs:
     name: Basic Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Run tests
         run: make test
 
@@ -192,7 +192,7 @@ jobs:
     name: C99 Compatibility
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Verify public headers compile under strict C99
         run: CC=clang make c99_compat
 
@@ -205,7 +205,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Check that multiconf.make rebuilds exactly what changed
         run: build-scripts/make/tests/run_tests.sh
       - name: Check that fetch_dep.sh gets dependencies each possible way
@@ -218,7 +218,7 @@ jobs:
     name: CLI Training & Format Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -246,7 +246,7 @@ jobs:
             cc: clang
             show_compiler: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Show compiler info
         if: ${{ matrix.show_compiler }}
         run: |
@@ -266,7 +266,7 @@ jobs:
     name: Code Quality (clang-format)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Run clang-format style check
         uses: jidicula/clang-format-action@6cd220de46c89139a0365edae93eee8eb30ca8fe # v4.16.0
         with:
@@ -279,7 +279,7 @@ jobs:
     name: Code Quality (ruff)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
