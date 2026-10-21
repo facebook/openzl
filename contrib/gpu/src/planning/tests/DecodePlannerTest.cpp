@@ -196,19 +196,19 @@ std::string makeTwoInputFloatFrame()
     return cctx.compress(inputs);
 }
 
-PlannedRunIndex
-findRun(const DecodePlan& plan, size_t chunkIndex, ZL_IDType transformId)
+PlannedCodecRunIndex
+findCodecRun(const DecodePlan& plan, size_t chunkIndex, ZL_IDType transformId)
 {
-    std::optional<PlannedRunIndex> found;
+    std::optional<PlannedCodecRunIndex> found;
     for (size_t index = 0; index < plan.codecRuns.size(); ++index) {
-        const PlannedCodecRun& run = plan.codecRuns.at(index);
-        if (run.chunkNode.chunkIndex == chunkIndex
-            && run.transform.trt == trt_standard
-            && run.transform.trid == transformId) {
+        const PlannedCodecRun& codecRun = plan.codecRuns.at(index);
+        if (codecRun.chunkNode.chunkIndex == chunkIndex
+            && codecRun.transform.trt == trt_standard
+            && codecRun.transform.trid == transformId) {
             if (found.has_value()) {
                 throw Exception("planned codec run is not unique");
             }
-            found = static_cast<PlannedRunIndex>(index);
+            found = index;
         }
     }
     if (!found.has_value()) {
@@ -217,23 +217,23 @@ findRun(const DecodePlan& plan, size_t chunkIndex, ZL_IDType transformId)
     return *found;
 }
 
-/// The decoder runs in each chunk of the float test frames.
-struct ChunkRuns {
-    PlannedRunIndex conversion;
-    PlannedRunIndex constant;
-    PlannedRunIndex floatDeconstruct;
+/// Codec runs in each chunk of the float test frames.
+struct ChunkCodecRuns {
+    PlannedCodecRunIndex conversion;
+    PlannedCodecRunIndex constant;
+    PlannedCodecRunIndex floatDeconstruct;
 };
 
-ChunkRuns findChunkRuns(const DecodePlan& plan, size_t chunkIndex)
+ChunkCodecRuns findChunkCodecRuns(const DecodePlan& plan, size_t chunkIndex)
 {
     return {
-        .conversion =
-                findRun(plan,
-                        chunkIndex,
-                        ZL_StandardTransformID_convert_struct_to_serial),
-        .constant = findRun(
+        .conversion = findCodecRun(
+                plan,
+                chunkIndex,
+                ZL_StandardTransformID_convert_struct_to_serial),
+        .constant = findCodecRun(
                 plan, chunkIndex, ZL_StandardTransformID_constant_serial),
-        .floatDeconstruct = findRun(
+        .floatDeconstruct = findCodecRun(
                 plan, chunkIndex, ZL_StandardTransformID_float_deconstruct),
     };
 }
@@ -259,11 +259,12 @@ TEST(DecodePlannerTest, PlansCrossChunkDependenciesOnce)
     ASSERT_EQ(plan.codecRuns.size(), 6);
     ASSERT_EQ(plan.chunks.size(), kChunkSizes.size());
     for (size_t chunkIndex = 0; chunkIndex < kChunkSizes.size(); ++chunkIndex) {
-        const ChunkRuns runs              = findChunkRuns(plan, chunkIndex);
-        const PlannedCodecRun& conversion = plan.codecRuns.at(runs.conversion);
-        const PlannedCodecRun& constant   = plan.codecRuns.at(runs.constant);
+        const ChunkCodecRuns codecRuns = findChunkCodecRuns(plan, chunkIndex);
+        const PlannedCodecRun& conversion =
+                plan.codecRuns.at(codecRuns.conversion);
+        const PlannedCodecRun& constant = plan.codecRuns.at(codecRuns.constant);
         const PlannedCodecRun& floatDeconstruct =
-                plan.codecRuns.at(runs.floatDeconstruct);
+                plan.codecRuns.at(codecRuns.floatDeconstruct);
 
         ASSERT_EQ(conversion.inputs.count, 1);
         ASSERT_EQ(conversion.outputs.count, 1);
@@ -277,7 +278,7 @@ TEST(DecodePlannerTest, PlansCrossChunkDependenciesOnce)
         EXPECT_EQ(
                 conversionOutput.storageSize.dataBytes,
                 kChunkSizes[chunkIndex] * 3);
-        EXPECT_EQ(conversionOutput.producer, runs.conversion);
+        EXPECT_EQ(conversionOutput.producerCodecRun, codecRuns.conversion);
         EXPECT_EQ(conversionOutput.storageClass, StorageClass::StreamRef);
         // The alias must fit in its backing stream.
         ASSERT_TRUE(conversionOutput.aliasStream.has_value());
@@ -297,7 +298,7 @@ TEST(DecodePlannerTest, PlansCrossChunkDependenciesOnce)
         EXPECT_EQ(
                 storedInput.storageSize.dataBytes, kChunkSizes[chunkIndex] * 3);
         EXPECT_EQ(storedInput.storageSize.stringLengthsBytes, 0);
-        EXPECT_FALSE(storedInput.producer.has_value());
+        EXPECT_FALSE(storedInput.producerCodecRun.has_value());
         EXPECT_FALSE(storedInput.aliasStream.has_value());
 
         ASSERT_EQ(constant.outputs.count, 1);
@@ -308,7 +309,7 @@ TEST(DecodePlannerTest, PlansCrossChunkDependenciesOnce)
         EXPECT_EQ(constantOutput.shape.type, ZL_Type_serial);
         EXPECT_EQ(
                 constantOutput.storageSize.dataBytes, kChunkSizes[chunkIndex]);
-        EXPECT_EQ(constantOutput.producer, runs.constant);
+        EXPECT_EQ(constantOutput.producerCodecRun, codecRuns.constant);
         EXPECT_EQ(constantOutput.storageClass, StorageClass::StreamArena);
 
         ASSERT_EQ(floatDeconstruct.inputs.count, 2);
@@ -316,13 +317,14 @@ TEST(DecodePlannerTest, PlansCrossChunkDependenciesOnce)
         EXPECT_EQ(plan.inputsOf(floatDeconstruct)[0], conversionOutputIndex);
         EXPECT_EQ(plan.inputsOf(floatDeconstruct)[1], constantOutputIndex);
         ASSERT_EQ(floatDeconstruct.dependencies.count, 2);
-        EXPECT_EQ(plan.dependenciesOf(floatDeconstruct)[0], runs.conversion);
-        EXPECT_EQ(plan.dependenciesOf(floatDeconstruct)[1], runs.constant);
+        EXPECT_EQ(
+                plan.dependenciesOf(floatDeconstruct)[0], codecRuns.conversion);
+        EXPECT_EQ(plan.dependenciesOf(floatDeconstruct)[1], codecRuns.constant);
 
         const PlannedStreamIndex floatOutputIndex =
                 plan.outputsOf(floatDeconstruct)[0];
         const PlannedStream& floatOutput = plan.streams.at(floatOutputIndex);
-        EXPECT_EQ(floatOutput.producer, runs.floatDeconstruct);
+        EXPECT_EQ(floatOutput.producerCodecRun, codecRuns.floatDeconstruct);
         EXPECT_EQ(floatOutput.shape.type, ZL_Type_numeric);
         EXPECT_EQ(floatOutput.shape.eltWidth, 4);
         EXPECT_EQ(
@@ -337,12 +339,14 @@ TEST(DecodePlannerTest, PlansCrossChunkDependenciesOnce)
         // Each codec header must fit in this chunk's staged headers.
         const size_t stagedBytes =
                 prepared.views()[chunkIndex].transformHeaders_h.size();
-        for (const PlannedRunIndex run :
-             { runs.conversion, runs.constant, runs.floatDeconstruct }) {
-            const ByteRange header = plan.codecRuns.at(run).codecHeader;
+        for (const PlannedCodecRunIndex codecRun :
+             { codecRuns.conversion,
+               codecRuns.constant,
+               codecRuns.floatDeconstruct }) {
+            const ByteRange header = plan.codecRuns.at(codecRun).codecHeader;
             EXPECT_LE(header.offset + header.size, stagedBytes);
         }
-        EXPECT_GT(plan.codecRuns.at(runs.constant).codecHeader.size, 0);
+        EXPECT_GT(plan.codecRuns.at(codecRuns.constant).codecHeader.size, 0);
     }
 }
 
@@ -389,7 +393,7 @@ TEST(DecodePlannerTest, MatchesThePreparedProducerMapSlotForSlot)
             if (producer == ZL_PRODUCER_STORE) {
                 ++storedCount;
                 EXPECT_EQ(stream.storageClass, StorageClass::Stored);
-                EXPECT_FALSE(stream.producer.has_value());
+                EXPECT_FALSE(stream.producerCodecRun.has_value());
                 const ZL_Data* const data = ZL_DCtx_getConstStream(
                         dctx, static_cast<ZL_IDType>(slot));
                 ASSERT_NE(data, nullptr);
@@ -399,9 +403,9 @@ TEST(DecodePlannerTest, MatchesThePreparedProducerMapSlotForSlot)
                         ZL_Data_contentSize(data),
                         stream.storageSize.dataBytes);
             } else {
-                ASSERT_TRUE(stream.producer.has_value());
+                ASSERT_TRUE(stream.producerCodecRun.has_value());
                 EXPECT_EQ(
-                        plan.codecRuns.at(*stream.producer).chunkNode,
+                        plan.codecRuns.at(*stream.producerCodecRun).chunkNode,
                         (ChunkNodeId{ chunkIndex, producer }));
             }
         }
@@ -440,8 +444,8 @@ TEST(DecodePlannerTest, PlanOutlivesThePreparedChunks)
 
     ASSERT_EQ(plan.chunks.size(), kChunkSizes.size());
     size_t headerBytes = 0;
-    for (const PlannedCodecRun& run : plan.codecRuns) {
-        headerBytes += run.codecHeader.size;
+    for (const PlannedCodecRun& codecRun : plan.codecRuns) {
+        headerBytes += codecRun.codecHeader.size;
     }
     EXPECT_GT(headerBytes, 0);
     EXPECT_EQ(
@@ -481,48 +485,53 @@ TEST(DecodePlannerTest, PlansAStoredFinalOutputForTerminalCopy)
     EXPECT_EQ(output.storageClass, StorageClass::Stored);
     EXPECT_EQ(output.shape.type, ZL_Type_serial);
     EXPECT_EQ(output.storageSize.dataBytes, 1000);
-    EXPECT_FALSE(output.producer.has_value());
+    EXPECT_FALSE(output.producerCodecRun.has_value());
     EXPECT_FALSE(output.aliasStream.has_value());
 }
 
 TEST(DecodePlannerTest, RecordsOneConsumerPerConsumedStream)
 {
-    // This fails if an input does not name its consuming run or if two runs
-    // consume the same stream.
+    // This fails if an input does not name its consuming codec run or if two
+    // codec runs consume the same stream.
     PreparedHostFrame prepared{ makeFloatFrame() };
     const DecodePlan plan = planOrThrow(prepared.views());
 
-    const auto consumerOf = [&plan](PlannedStreamIndex stream) {
-        return plan.streams.at(stream).consumer;
+    const auto consumerCodecRunOf = [&plan](PlannedStreamIndex stream) {
+        return plan.streams.at(stream).consumerCodecRun;
     };
     for (size_t chunkIndex = 0; chunkIndex < kChunkSizes.size(); ++chunkIndex) {
-        const ChunkRuns runs              = findChunkRuns(plan, chunkIndex);
-        const PlannedCodecRun& conversion = plan.codecRuns.at(runs.conversion);
-        const PlannedCodecRun& constant   = plan.codecRuns.at(runs.constant);
+        const ChunkCodecRuns codecRuns = findChunkCodecRuns(plan, chunkIndex);
+        const PlannedCodecRun& conversion =
+                plan.codecRuns.at(codecRuns.conversion);
+        const PlannedCodecRun& constant = plan.codecRuns.at(codecRuns.constant);
         const PlannedCodecRun& floatDeconstruct =
-                plan.codecRuns.at(runs.floatDeconstruct);
+                plan.codecRuns.at(codecRuns.floatDeconstruct);
 
         ASSERT_EQ(conversion.inputs.count, 1);
         ASSERT_EQ(constant.inputs.count, 1);
         ASSERT_EQ(floatDeconstruct.inputs.count, 2);
         ASSERT_EQ(floatDeconstruct.outputs.count, 1);
-        EXPECT_EQ(consumerOf(plan.inputsOf(conversion)[0]), runs.conversion);
-        EXPECT_EQ(consumerOf(plan.inputsOf(constant)[0]), runs.constant);
         EXPECT_EQ(
-                consumerOf(plan.inputsOf(floatDeconstruct)[0]),
-                runs.floatDeconstruct);
+                consumerCodecRunOf(plan.inputsOf(conversion)[0]),
+                codecRuns.conversion);
         EXPECT_EQ(
-                consumerOf(plan.inputsOf(floatDeconstruct)[1]),
-                runs.floatDeconstruct);
-        EXPECT_FALSE(
-                consumerOf(plan.outputsOf(floatDeconstruct)[0]).has_value());
+                consumerCodecRunOf(plan.inputsOf(constant)[0]),
+                codecRuns.constant);
+        EXPECT_EQ(
+                consumerCodecRunOf(plan.inputsOf(floatDeconstruct)[0]),
+                codecRuns.floatDeconstruct);
+        EXPECT_EQ(
+                consumerCodecRunOf(plan.inputsOf(floatDeconstruct)[1]),
+                codecRuns.floatDeconstruct);
+        EXPECT_FALSE(consumerCodecRunOf(plan.outputsOf(floatDeconstruct)[0])
+                             .has_value());
     }
 }
 
 TEST(DecodePlannerTest, RecordsCodecRunsInFrameExecutionOrder)
 {
-    // This fails if runs follow output traversal order instead of decoder
-    // execution order.
+    // This fails if codec runs follow output traversal order instead of
+    // decoder execution order.
     PreparedHostFrame prepared{ makeTwoInputFloatFrame() };
     const DecodePlan plan = planOrThrow(prepared.views());
 

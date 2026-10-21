@@ -21,12 +21,19 @@ namespace openzl::gpu {
 using PlannedStreamIndex = size_t;
 
 /// Position of a codec run in @c DecodePlan::codecRuns.
-using PlannedRunIndex = size_t;
+using PlannedCodecRunIndex = size_t;
 
 /// A contiguous range in one of the plan's arrays.
 struct IndexRange {
     size_t begin;
     size_t count;
+
+    /// Whether the range lies within an array of @p size elements. Avoids
+    /// computing begin + count, which can overflow.
+    bool fitsIn(size_t size) const
+    {
+        return begin <= size && count <= size - begin;
+    }
 
     bool operator==(const IndexRange& other) const
     {
@@ -82,8 +89,8 @@ enum class StorageClass : uint32_t {
  * Plan data for one stream slot.
  *
  * The plan has one record for every slot declared by each chunk. A stream has
- * at most one consumer, so its producer and consumer define how long its
- * storage must remain valid.
+ * at most one consumer codec run, so its producer and consumer codec runs
+ * define how long its storage must remain valid.
  */
 struct PlannedStream {
     /// Logical type and element layout available to consumers.
@@ -92,10 +99,10 @@ struct PlannedStream {
     StreamStorageSize storageSize{};
     /// Where the stream's bytes are stored.
     StorageClass storageClass = StorageClass::Unreached;
-    /// Producing codec run, or nullopt for a stream stored in the frame.
-    std::optional<PlannedRunIndex> producer;
-    /// Consuming codec run, or nullopt when no run consumes this stream.
-    std::optional<PlannedRunIndex> consumer;
+    /// Producing codec run. Empty for a frame-stored stream.
+    std::optional<PlannedCodecRunIndex> producerCodecRun;
+    /// Consuming codec run. Empty when no codec run consumes the stream.
+    std::optional<PlannedCodecRunIndex> consumerCodecRun;
     /// Backing stream, set only for @c StreamRef.
     std::optional<PlannedStreamIndex> aliasStream;
     /// Byte offset in the backing stream.
@@ -108,10 +115,10 @@ struct PlannedStream {
  * Plan data for one decoder call.
  *
  * Inputs are in decoder argument order. Outputs are in regenerated-stream
- * order. Dependencies list each run that produced an input at most once.
+ * order. Dependencies list each codec run that produced an input at most once.
  */
 struct PlannedCodecRun {
-    /// Chunk and node for this run.
+    /// Chunk and node for this codec run.
     ChunkNodeId chunkNode;
     /// Transform used to select the decoder and read its metadata.
     PublicTransformInfo transform;
@@ -121,7 +128,8 @@ struct PlannedCodecRun {
     IndexRange inputs;
     /// Output indexes in @c DecodePlan::streamIndices.
     IndexRange outputs;
-    /// Runs that produced the inputs, stored in @c DecodePlan::runIndices.
+    /// Codec runs that produced the inputs, stored in
+    /// @c DecodePlan::codecRunIndices.
     IndexRange dependencies;
 
     bool operator==(const PlannedCodecRun&) const = delete;
@@ -154,8 +162,9 @@ struct PlannedChunk {
  *
  * Streams are grouped by chunk and, within a chunk, indexed by wire slot.
  * Codec runs are grouped by chunk in chunk execution order.
- * A final @c Destination stream is written directly by its producer; a final
- * @c Stored or @c StreamRef stream must be copied to the caller's output.
+ * A final @c Destination stream is written directly by its producer codec run;
+ * a final @c Stored or @c StreamRef stream must be copied to the caller's
+ * output.
  */
 struct DecodePlan {
     /// Stream metadata, grouped by chunk and slot-indexed within each chunk.
@@ -164,30 +173,30 @@ struct DecodePlan {
     std::vector<PlannedCodecRun> codecRuns;
     /// Input and output stream indexes used by @c PlannedCodecRun.
     std::vector<PlannedStreamIndex> streamIndices;
-    /// Producer run indexes used by @c PlannedCodecRun.
-    std::vector<PlannedRunIndex> runIndices;
+    /// Producer codec run indexes used by @c PlannedCodecRun.
+    std::vector<PlannedCodecRunIndex> codecRunIndices;
     /// One entry per input chunk, in batch order.
     std::vector<PlannedChunk> chunks;
 
-    /// Input streams of @p run, in decoder argument order.
+    /// Input streams of @p codecRun, in decoder argument order.
     poly::span<const PlannedStreamIndex> inputsOf(
-            const PlannedCodecRun& run) const
+            const PlannedCodecRun& codecRun) const
     {
-        return slice(streamIndices, run.inputs);
+        return slice(streamIndices, codecRun.inputs);
     }
 
-    /// Output streams of @p run, in regenerated-stream order.
+    /// Output streams of @p codecRun, in regenerated-stream order.
     poly::span<const PlannedStreamIndex> outputsOf(
-            const PlannedCodecRun& run) const
+            const PlannedCodecRun& codecRun) const
     {
-        return slice(streamIndices, run.outputs);
+        return slice(streamIndices, codecRun.outputs);
     }
 
-    /// Producer runs @p run must wait for, each appearing at most once.
-    poly::span<const PlannedRunIndex> dependenciesOf(
-            const PlannedCodecRun& run) const
+    /// Producer codec runs @p codecRun waits for, each appearing at most once.
+    poly::span<const PlannedCodecRunIndex> dependenciesOf(
+            const PlannedCodecRun& codecRun) const
     {
-        return slice(runIndices, run.dependencies);
+        return slice(codecRunIndices, codecRun.dependencies);
     }
 
     /// Streams of chunk @p chunkIndex, in chunk-local slot order.
