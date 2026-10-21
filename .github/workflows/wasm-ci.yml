@@ -49,7 +49,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: mymindstorm/setup-emsdk@v14
+      - uses: emscripten-core/setup-emsdk@v16
         with:
           # Pinned stable emsdk version for reproducible WASM builds.
           # Keep in sync if openzl/dev upgrades its emscripten toolchain.

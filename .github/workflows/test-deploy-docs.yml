@@ -47,7 +47,7 @@ jobs:
             '.github/workflows/test-deploy-docs.yml')}}
       - name: Set up Emscripten
         if: steps.wasm-cache.outputs.cache-hit != 'true'
-        uses: mymindstorm/setup-emsdk@v14
+        uses: emscripten-core/setup-emsdk@v16
         with:
           version: ${{env.EMSDK_VERSION}}
           actions-cache-folder: emsdk-cache
