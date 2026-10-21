@@ -395,7 +395,7 @@ extern "C" ZL_Report ZS2_DCtx_registerParseInt64(
     ZL_TypedDecoderDesc desc = {
         .gd          = graph,
         .transform_f = zstrong::parseDecodeInt<int64_t>,
-        .name        = "parse int64",
+        .name        = "zl_custom.parse_int64",
     };
     return ZL_DCtx_registerTypedDecoder(dctx, &desc);
 }
