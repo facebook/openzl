@@ -506,7 +506,7 @@ ZL_NodeID ZS2_Compressor_registerJsonExtract(
     ZL_TypedEncoderDesc desc = {
         .gd          = graph,
         .transform_f = zstrong::jsonExtractEncode,
-        .name        = "json extract",
+        .name        = "!zl_custom.json_extract",
     };
     return ZL_Compressor_registerTypedEncoder(cgraph, &desc);
 }

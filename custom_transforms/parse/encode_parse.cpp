@@ -371,7 +371,7 @@ ZL_NodeID ZS2_Compressor_registerParseInt64(
     ZL_TypedEncoderDesc desc = {
         .gd          = graph,
         .transform_f = zstrong::parseEncode<int64_t>,
-        .name        = "parse int64",
+        .name        = "!zl_custom.parse_int64",
     };
     return ZL_Compressor_registerTypedEncoder(cgraph, &desc);
 }

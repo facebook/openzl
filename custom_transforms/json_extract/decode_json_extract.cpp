@@ -267,7 +267,7 @@ ZL_Report ZS2_DCtx_registerJsonExtract(ZL_DCtx* dctx, ZL_IDType transformID)
     ZL_TypedDecoderDesc desc = {
         .gd          = graph,
         .transform_f = zstrong::jsonExtractDecode,
-        .name        = "json extract",
+        .name        = "zl_custom.json_extract",
     };
     return ZL_DCtx_registerTypedDecoder(dctx, &desc);
 }
