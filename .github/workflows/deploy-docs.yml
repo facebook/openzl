@@ -152,9 +152,10 @@ jobs:
       - name: Check the WASM module is in the playground build
         run: ls doc/mkdocs/build/tools/playground/assets/openzl-*.js doc/mkdocs/build/tools/playground/assets/openzl-*.wasm
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: './doc/mkdocs/build/'
+          include-hidden-files: true
 
 
   deploy:
