@@ -20,7 +20,7 @@ void StringWriter::write(const std::string& val)
 void StringWriter::init()
 {
     bufs_.clear();
-    bufs_.emplace_back(std::string(initLen_, 0));
+    bufs_.emplace_back(initLen_, 0);
     idx_ = 0;
     pos_ = 0;
 }
@@ -44,7 +44,7 @@ void StringWriter::grow()
         init();
         return;
     }
-    bufs_.emplace_back(std::string(2 * bufs_[idx_].size(), 0));
+    bufs_.emplace_back(2 * bufs_[idx_].size(), 0);
     bufs_[idx_].resize(pos_);
     idx_++;
     pos_ = 0;
