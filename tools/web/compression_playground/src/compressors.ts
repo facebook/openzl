@@ -1,5 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+import {maxLevel, trainedCandidates} from './compressorLimits.json';
+
 export const COMPRESSOR_NAMES = ['OpenZL', 'zstd', 'gzip'] as const;
 export type CompressorName = (typeof COMPRESSOR_NAMES)[number];
 
@@ -11,15 +13,15 @@ function range(min: number, max: number): readonly number[] {
   return Array.from({length: max - min + 1}, (_, index) => min + index);
 }
 
-export const OPENZL_LEVELS = range(1, 9);
-export const ZSTD_LEVELS = range(1, 19);
-export const GZIP_LEVELS = range(1, 9);
+export const OPENZL_LEVELS = range(1, maxLevel.OpenZL);
+export const ZSTD_LEVELS = range(1, maxLevel.zstd);
+export const GZIP_LEVELS = range(1, maxLevel.gzip);
 /**
  * The window the WASM trainer honours: it silently raises anything below
  * `OPENZL_WASM_TRAIN_PARETO_CANDIDATES` (6, the floor of its pruning) and
  * throws above `MAX_TRAIN_CANDIDATES` (25, which bounds its allocations).
  */
-export const TRAINED_CANDIDATE_COUNTS = range(6, 25);
+export const TRAINED_CANDIDATE_COUNTS = range(trainedCandidates.browserMin, trainedCandidates.max);
 
 export const OPENZL_DEFAULT_LEVEL = 6;
 
