@@ -13,6 +13,9 @@ zs_library(
     headers = glob(
         ["*.h"],
     ),
+    deps = [
+        "../shared_components:tensor_components",
+    ],
     exported_deps = [
         "../..:zstronglib",
     ],

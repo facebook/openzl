@@ -15,6 +15,7 @@ target_include_directories(safetensors_parser PRIVATE
     ${PROJECT_SOURCE_DIR})
 target_link_libraries(safetensors_parser
     openzl
+    shared_components
 )
 
 add_dependencies(safetensors_parser openzl)

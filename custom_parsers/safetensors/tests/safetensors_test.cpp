@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <cstring>
 #include <string>
 #include <string_view>
@@ -12,6 +13,8 @@
 #include "custom_parsers/safetensors/safetensors_lexer.h"
 #include "custom_parsers/safetensors/safetensors_parser.h"
 #include "custom_parsers/safetensors/tests/safetensors_builder.h"
+#include "custom_parsers/shared_components/tensor_chunker.h"
+#include "custom_parsers/shared_components/tensor_graphs.h"
 #include "openzl/cpp/CompressIntrospectionHooks.hpp"
 #include "openzl/openzl.hpp"
 #include "openzl/zl_reflection.h"
@@ -422,7 +425,7 @@ class ChunkRecorder : public CompressIntrospectionHooks {
 
 TEST_F(SafetensorsCompressorTest, CapsTheNumberOfSegmentsPerChunk)
 {
-    const size_t kMaxSegmentsPerChunk = 256; // ST_MAX_SEGMENTS_PER_CHUNK
+    const size_t kMaxSegmentsPerChunk = 256; // TC_MAX_SEGMENTS_PER_CHUNK
     const size_t tensorBytes          = 16 << 10;
     std::vector<TensorSpec> tensors;
     tensors.reserve(kMaxSegmentsPerChunk);
@@ -635,16 +638,246 @@ TEST_F(SafetensorsCompressorTest, SendsOnlyLowCardinalityTensorsToTransformer)
     EXPECT_GT(onMask.count, 0u) << "graphs seen: " << onMask.seen;
 }
 
+/// bfloat16 values taking 3 values, as group scales often do.
+std::string fewValuesBf16(size_t nbElts)
+{
+    const uint16_t values[] = { 0x3c80, 0x3d00, 0x3d40 };
+    std::string bytes;
+    uint32_t state = 1;
+    for (size_t i = 0; i < nbElts; ++i) {
+        state                = state * 1664525u + 1013904223u;
+        const uint16_t value = values[(state >> 16) % 3];
+        bytes += (char)(value & 0xff);
+        bytes += (char)(value >> 8);
+    }
+    return bytes;
+}
+
+TEST_F(SafetensorsCompressorTest, KeepsGroupScalesAwayFromTransformer)
+{
+    const auto scales    = fewValuesBf16(32 * 512);
+    const auto quantized = buildSafetensors(
+            {
+                    { "l.qweight",
+                      "I32",
+                      { 64, 512 },
+                      pseudoRandomBytes(131072, 1) },
+                    { "l.scales", "BF16", { 32, 512 }, scales },
+                    { "m.biases", "BF16", { 32, 512 }, scales },
+                    { "n.weight_scale", "BF16", { 32, 512 }, scales },
+                    // Mixture-of-experts layers of MLX stack their experts.
+                    { "e.switch_mlp.up_proj.scales",
+                      "BF16",
+                      { 2, 16, 512 },
+                      scales },
+            });
+    const auto weights =
+            buildSafetensors({ { "l.weight", "BF16", { 32, 512 }, scales } });
+    useChunkSize(ZL_SAFETENSORS_DEFAULT_CHUNK_SIZE);
+    GraphCounter onQuantized("transformer_numeric");
+    GraphCounter onWeights("transformer_numeric");
+
+    attachHooks(onQuantized);
+    expectRoundTrip(quantized);
+    attachHooks(onWeights);
+    expectRoundTrip(weights);
+
+    EXPECT_EQ(onQuantized.count, 0u) << "graphs seen: " << onQuantized.seen;
+    EXPECT_GT(onWeights.count, 0u) << "graphs seen: " << onWeights.seen;
+}
+
+/// Counts the runs of @p node.
+class NodeCounter : public CompressIntrospectionHooks {
+   public:
+    explicit NodeCounter(ZL_NodeID node) : node_(node) {}
+
+    void on_codecEncode_start(
+            ZL_Encoder*,
+            const ZL_Compressor*,
+            ZL_NodeID nid,
+            const ZL_Input*[],
+            size_t) override
+    {
+        count += nid.nid == node_.nid;
+    }
+
+    size_t count = 0;
+
+   private:
+    ZL_NodeID node_;
+};
+
+TEST_F(SafetensorsCompressorTest, CodesPackedValuesAsBytes)
+{
+    const auto packed    = pseudoRandomBytes(131072, 1);
+    const auto quantized = buildSafetensors(
+            {
+                    { "l.qweight", "I32", { 64, 512 }, packed },
+                    { "m.weight_packed", "I32", { 64, 512 }, packed },
+                    // MLX stores packed values as uint32.
+                    { "n.weight", "U32", { 64, 512 }, packed },
+            });
+    const auto integers =
+            buildSafetensors({ { "n.weight", "I32", { 64, 512 }, packed } });
+    useChunkSize(ZL_SAFETENSORS_DEFAULT_CHUNK_SIZE);
+    NodeCounter onQuantized(ZL_NODE_INTERPRET_AS_LE32);
+    NodeCounter onIntegers(ZL_NODE_INTERPRET_AS_LE32);
+
+    attachHooks(onQuantized);
+    expectRoundTrip(quantized);
+    attachHooks(onIntegers);
+    expectRoundTrip(integers);
+
+    EXPECT_EQ(onQuantized.count, 0u);
+    EXPECT_GT(onIntegers.count, 0u);
+}
+
+/// A format with an 8-byte header followed by a single tensor of 16-bit
+/// integers.
+struct FakeToken {
+    const char* ptr;
+    size_t size;
+    bool isTensor;
+};
+
+ZL_Report lexFakeFormat(
+        const void* src,
+        size_t srcSize,
+        void* tokens,
+        size_t,
+        ZL_ErrorContext*)
+{
+    if (srcSize <= 8) {
+        return ZL_returnError(ZL_ErrorCode_graph_parser_malformedInput);
+    }
+    if (tokens != nullptr) {
+        const auto* const ptr = static_cast<const char*>(src);
+        auto* const out       = static_cast<FakeToken*>(tokens);
+        out[0]                = { ptr, 8, false };
+        out[1]                = { ptr + 8, srcSize - 8, true };
+    }
+    return ZL_returnValue(2);
+}
+
+ZL_TensorInfo describeFakeToken(const void* token, size_t)
+{
+    const auto& t = *static_cast<const FakeToken*>(token);
+    if (!t.isTensor) {
+        return ZL_TensorInfo{ t.ptr, t.size, ZL_TensorClass_header, 1 };
+    }
+    return ZL_TensorInfo{ t.ptr, t.size, ZL_TensorClass_int16, 2 };
+}
+
+const ZL_TensorFormat kFakeFormat = {
+    .name             = "fake",
+    .defaultChunkSize = ZL_SAFETENSORS_DEFAULT_CHUNK_SIZE,
+    .tokenSize        = sizeof(FakeToken),
+    .lex              = lexFakeFormat,
+    .describe         = describeFakeToken,
+};
+
+ZL_Report segmentFakeFormat(ZL_Segmenter* sctx)
+{
+    return ZL_TensorChunker_segment(sctx, &kFakeFormat);
+}
+
+TEST_F(SafetensorsCompressorTest, SendsTagsUnknownToTheCompressorToRaw)
+{
+    // Like a compressor serialized before ZL_TensorClass_int16 was added.
+    const ZL_GraphID successors[2] = { ZL_GRAPH_ZSTD,
+                                       ZL_GRAPH_COMPRESS_GENERIC };
+    const auto gid                 = ZL_TensorChunker_registerSegmenter(
+            compressor_.get(),
+            "!Fake Segmenter",
+            segmentFakeFormat,
+            ZL_SAFETENSORS_DEFAULT_CHUNK_SIZE,
+            "!Fake Parser",
+            successors,
+            2);
+    ASSERT_FALSE(ZL_RES_isError(gid));
+    compressor_.selectStartingGraph(ZL_RES_value(gid));
+
+    expectRoundTrip(std::string(8, 'h') + pseudoRandomBytes(10000, 3));
+}
+
+/// Counts so many tokens that the sizes of their buffers wrap around to a few
+/// bytes.
+ZL_Report countTooManyFakeTokens(
+        const void*,
+        size_t,
+        void* tokens,
+        size_t,
+        ZL_ErrorContext*)
+{
+    if (tokens != nullptr) {
+        ADD_FAILURE() << "tokens lexed into buffers of wrapped sizes";
+        return ZL_returnValue(0);
+    }
+    return ZL_returnValue(SIZE_MAX / 4 + 2);
+}
+
+const ZL_TensorFormat kTooManyTokensFormat = {
+    .name             = "fake",
+    .defaultChunkSize = ZL_SAFETENSORS_DEFAULT_CHUNK_SIZE,
+    .tokenSize        = sizeof(FakeToken),
+    .lex              = countTooManyFakeTokens,
+    .describe         = describeFakeToken,
+};
+
+ZL_Report segmentTooManyTokens(ZL_Segmenter* sctx)
+{
+    return ZL_TensorChunker_segment(sctx, &kTooManyTokensFormat);
+}
+
+TEST_F(SafetensorsCompressorTest, FallsBackWhenTokenBuffersWouldOverflow)
+{
+    const ZL_GraphID successors[2] = { ZL_GRAPH_ZSTD,
+                                       ZL_GRAPH_COMPRESS_GENERIC };
+    const auto gid                 = ZL_TensorChunker_registerSegmenter(
+            compressor_.get(),
+            "!Fake Segmenter",
+            segmentTooManyTokens,
+            ZL_SAFETENSORS_DEFAULT_CHUNK_SIZE,
+            "!Fake Parser",
+            successors,
+            2);
+    ASSERT_FALSE(ZL_RES_isError(gid));
+    compressor_.selectStartingGraph(ZL_RES_value(gid));
+
+    expectRoundTrip(std::string(8, 'h') + pseudoRandomBytes(10000, 3));
+
+    const auto warnings = get_warning_strings(cctx_);
+    ASSERT_EQ(warnings.size(), 1u);
+    EXPECT_NE(warnings[0].second.find("not parsed as fake"), std::string::npos)
+            << warnings[0].second;
+}
+
 TEST_F(SafetensorsCompressorTest, SerializedCompressorCanBeReloaded)
 {
+    // Shifts the names of the graphs registered after it, unless anchored.
+    ZL_Compressor_registerZstdGraph_withLevel(compressor_.get(), 5);
     useChunkSize(ZL_SAFETENSORS_DEFAULT_CHUNK_SIZE);
+    // Debug builds log the dependencies left unresolved.
+    ::testing::internal::CaptureStderr();
     const auto reloaded =
             createCompressorFromSerialized(compressor_.serialize(), "");
+    const std::string log = ::testing::internal::GetCapturedStderr();
     CCtx cctx;
     cctx.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
     cctx.refCompressor(*reloaded);
     const auto input = buildSafetensors(mixedDtypeTensors());
     EXPECT_EQ(dctx_.decompressSerial(cctx.compressSerial(input)), input);
+    EXPECT_EQ(log.find("unresolved"), std::string::npos) << log;
+}
+
+TEST(TensorGraphsTest, Scale16GraphIsRegisteredOncePerCompressor)
+{
+    Compressor compressor;
+    const auto first  = ZL_TensorGraphs_registerScale16Graph(compressor.get());
+    const auto second = ZL_TensorGraphs_registerScale16Graph(compressor.get());
+    ASSERT_FALSE(ZL_RES_isError(first));
+    ASSERT_FALSE(ZL_RES_isError(second));
+    EXPECT_EQ(ZL_RES_value(first).gid, ZL_RES_value(second).gid);
 }
 
 } // namespace

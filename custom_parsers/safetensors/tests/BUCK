@@ -18,6 +18,7 @@ zs_unittest(
         "..:safetensors_parser",
         "../..:custom_parsers",
         "../../../cpp:openzl_cpp",
+        "../../shared_components:tensor_components",
         ":safetensors_builder",
     ],
 )

@@ -46,6 +46,7 @@ zs_cxxlibrary(
         "../../custom_parsers:custom_parsers",
         "../../custom_parsers:pytorch_model_parser",
         "../../custom_parsers/csv:csv_parser",
+        "../../custom_parsers/gguf:gguf_parser",
         "../../custom_parsers/parquet:parquet_graph",
         "../../custom_parsers/safetensors:safetensors_parser",
         "../../custom_parsers/sddl:profile",

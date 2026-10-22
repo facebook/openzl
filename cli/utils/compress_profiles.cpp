@@ -20,6 +20,7 @@
 
 #include "custom_parsers/csv/csv_profile.h"
 #include "custom_parsers/dependency_registration.h"
+#include "custom_parsers/gguf/gguf_parser.h"
 #include "custom_parsers/parquet/parquet_graph.h"
 #include "custom_parsers/pytorch_model_parser.h"
 #include "custom_parsers/safetensors/safetensors_parser.h"
@@ -426,6 +427,27 @@ compressProfiles()
                         throw InvalidArgsException(
                                 std::string(
                                         "Failed to build the safetensors profile: ")
+                                + ZL_Compressor_getErrorContextString_fromError(
+                                        comp, ZL_RES_error(graph)));
+                    }
+                    return ZL_RES_value(graph);
+                },
+                nullptr,
+                true);
+
+        std::string kGGUFName = "gguf";
+        mp[kGGUFName]         = std::make_shared<CompressProfile>(
+                kGGUFName,
+                "GGUF model file (llama.cpp). Quantized weights gain a few percent over zstd, but decompress slower.",
+                [](ZL_Compressor* comp, void*, const ProfileArgs& args) {
+                    const auto graph = ZL_GGUF_registerGraph(
+                            comp,
+                            args.chunkSize().value_or(
+                                    ZL_GGUF_DEFAULT_CHUNK_SIZE));
+                    if (ZL_RES_isError(graph)) {
+                        throw InvalidArgsException(
+                                std::string(
+                                        "Failed to build the gguf profile: ")
                                 + ZL_Compressor_getErrorContextString_fromError(
                                         comp, ZL_RES_error(graph)));
                     }

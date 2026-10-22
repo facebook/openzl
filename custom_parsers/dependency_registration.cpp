@@ -8,8 +8,10 @@
 
 #include "custom_parsers/csv/csv_profile.h"
 #include "custom_parsers/dependency_registration.h"
+#include "custom_parsers/gguf/gguf_parser.h"
 #include "custom_parsers/parquet/parquet_graph.h"
 #include "custom_parsers/safetensors/safetensors_parser.h"
+#include "custom_parsers/shared_components/tensor_graphs.h"
 
 namespace openzl::custom_parsers {
 
@@ -55,6 +57,28 @@ void processDependencies(Compressor& compressor, poly::string_view serialized)
                 if (ZL_RES_isError(result)) {
                     throw std::runtime_error(
                             std::string("Failed to create safetensors graph: ")
+                            + ZL_Compressor_getErrorContextString_fromError(
+                                    compressor.get(), ZL_RES_error(result)));
+                }
+                madeProgress = true;
+            } else if (
+                    graphName == "GGUF Parser"
+                    || graphName == "GGUF Segmenter") {
+                const auto result = ZL_GGUF_registerGraph(
+                        compressor.get(), ZL_GGUF_DEFAULT_CHUNK_SIZE);
+                if (ZL_RES_isError(result)) {
+                    throw std::runtime_error(
+                            std::string("Failed to create GGUF graph: ")
+                            + ZL_Compressor_getErrorContextString_fromError(
+                                    compressor.get(), ZL_RES_error(result)));
+                }
+                madeProgress = true;
+            } else if (graphName == "Tensor Scale16") {
+                const auto result =
+                        ZL_TensorGraphs_registerScale16Graph(compressor.get());
+                if (ZL_RES_isError(result)) {
+                    throw std::runtime_error(
+                            std::string("Failed to create the scale graph: ")
                             + ZL_Compressor_getErrorContextString_fromError(
                                     compressor.get(), ZL_RES_error(result)));
                 }
