@@ -11,6 +11,7 @@ load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
 load("@fbsource//xplat/security/lionhead:defs.bzl", "ALL_EMPLOYEES", "Interaction", "Metadata", "Priv", "Reachability", "Severity")
 load("@fbsource//xplat/security/lionhead/build_defs:generic_harness.bzl", "generic_lionhead_harness")
 load("//security/lionhead/harnesses:defs.bzl", "cpp_lionhead_harness")
+load("tools/wasm/wasm_flags.bzl", "openzl_wasm_compiler_flags")
 
 # Labels that should be added to tests that pass cross-platform
 def cross_platform_labels():
@@ -247,6 +248,8 @@ def _add_zs_compiler_flags(kwargs, strict_conversions = True, float_equal = True
     # Add dev or release compiler flags (already converted for MSVC via select)
     if not _is_release():
         compiler_flags += _ZS_DEV_COMPILER_FLAGS
+
+    compiler_flags += openzl_wasm_compiler_flags()
 
     # Add the original compiler flags from kwargs
     compiler_flags += kwargs.get("compiler_flags", [])

@@ -44,6 +44,14 @@ Then run:
 ./github_pages_build_script build
 ```
 
+Set `OPENZL_SKIP_WEB_TOOLS_BUILD=1` to build the docs without the trace visualizer
+and compression playground. This also skips the internal WASM build and avoids
+fetching npm packages for the web tools:
+
+```
+OPENZL_SKIP_WEB_TOOLS_BUILD=1 ./static_docs_build_script build
+```
+
 ## Deploying
 
 This site will be deployed to GitHub pages at https://facebook.github.io/openzl auotmatically. It will also be automatically deployed to an internal site.

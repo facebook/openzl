@@ -2,6 +2,7 @@
 
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("../../../defs.bzl", "relative_headers", "zs_cxxlibrary")
+load("../../wasm/wasm_flags.bzl", "openzl_wasm_compiler_flags")
 
 oncall("data_compression")
 
@@ -49,6 +50,7 @@ cpp_library(
     srcs = ["crowding_distance_selector.cpp"],
     headers = relative_headers(["crowding_distance_selector.h"]) | {"crowding_distance_selector.h": "crowding_distance_selector.h"},
     header_namespace = "",
+    compiler_flags = openzl_wasm_compiler_flags(),
     exported_deps = [
         "../../../cpp:openzl_cpp",
     ],
@@ -60,6 +62,7 @@ cpp_library(
     srcs = ["benchmark.cpp"],
     headers = relative_headers(["benchmark.h"]) | {"benchmark.h": "benchmark.h"},
     header_namespace = "",
+    compiler_flags = openzl_wasm_compiler_flags(),
     labels = ["autodeps2_generated"],
     exported_deps = [
         "../../../cpp:openzl_cpp",
@@ -73,6 +76,7 @@ cpp_library(
     srcs = ["mutation.cpp"],
     headers = relative_headers(["mutation.h"]) | {"mutation.h": "mutation.h"},
     header_namespace = "",
+    compiler_flags = openzl_wasm_compiler_flags(),
     labels = ["autodeps2_generated"],
     exported_deps = [
         "..:train_common",
@@ -88,6 +92,7 @@ cpp_library(
     srcs = ["pareto_combination.cpp"],
     headers = relative_headers(["pareto_combination.h"]) | {"pareto_combination.h": "pareto_combination.h"},
     header_namespace = "",
+    compiler_flags = openzl_wasm_compiler_flags(),
     exported_deps = [
         "..:train_common",
         "../..:logger",
