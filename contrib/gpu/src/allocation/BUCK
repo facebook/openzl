@@ -20,6 +20,34 @@ cpp_library(
     ],
 )
 
+cpp_library(
+    # @autodeps-skip
+    name = "monotonic_layout",
+    srcs = ["monotonic_layout.cpp"],
+    headers = relative_headers([
+        "allocation_layout.hpp",
+        "monotonic_layout.hpp",
+    ]),
+    header_namespace = "",
+    exported_deps = [
+        "../../../..:zstronglib",
+        "../common:result",
+        ":storage_requirements",
+    ],
+)
+
+cpp_unittest(
+    # @autodeps-skip
+    name = "monotonic_layout_test",
+    srcs = ["tests/MonotonicLayoutTest.cpp"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "../../../..:zstronglib",
+        "fbsource//third-party/googletest:gtest",
+        ":monotonic_layout",
+    ],
+)
+
 cpp_unittest(
     # @autodeps-skip
     name = "storage_requirements_test",
