@@ -39,6 +39,10 @@ struct PreparedGpuChunkView {
  * directly to the caller's output. A final @c Stored or @c StreamRef stream
  * keeps its class and must be copied to the caller's output.
  *
+ * A codec output that a codec planner offers as an alias stays an alias only
+ * if a numeric view would start at an address aligned to its width. Otherwise
+ * the codec run materializes it, as core copies such a view.
+ *
  * Checks each final output against the frame header, as core does when it
  * appends chunk outputs: every chunk must have the frame's number of outputs,
  * every chunk's contribution must have the frame's output type and one element

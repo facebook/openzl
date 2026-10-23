@@ -56,7 +56,11 @@ class PerInputGraph final : public FunctionGraph {
 
 class PreparedHostFrame {
    public:
-    explicit PreparedHostFrame(std::string frame) : frame_(std::move(frame))
+    /// Prepares @p frame, placed @p shift bytes past an aligned allocation so
+    /// tests can choose the alignment of its stored streams.
+    explicit PreparedHostFrame(std::string frame, size_t shift = 0)
+            : storage_(std::string(shift, '\0') + std::move(frame)),
+              frame_(std::string_view{ storage_ }.substr(shift))
     {
         FrameInfo frameInfo{ std::string_view{ frame_ } };
         size_t offset =
@@ -113,7 +117,8 @@ class PreparedHostFrame {
     }
 
    private:
-    std::string frame_;
+    std::string storage_;
+    std::string_view frame_;
     std::vector<DCtx> dctxs_;
     std::vector<std::pair<size_t, size_t>> transformHeaders_;
     std::vector<PreparedGpuChunkView> views_;
@@ -453,11 +458,47 @@ TEST(DecodePlannerTest, PlanOutlivesThePreparedChunks)
             StorageClass::Destination);
 }
 
+/// @returns The address of the stored input of the codec run that produces
+/// the first final output of @p plan.
+uintptr_t storedInputAddressOfFinalOutput(
+        const DecodePlan& plan,
+        const PreparedHostFrame& prepared)
+{
+    const PlannedStream& output = plan.streams.at(plan.finalOutputOf(0, 0));
+    const PlannedCodecRun& producer =
+            plan.codecRuns.at(*output.producerCodecRun);
+    const PlannedStreamIndex input = plan.inputsOf(producer).front();
+    const ZL_Data* const data      = ZL_DCtx_getConstStream(
+            prepared.views().front().dctx, plan.slotOf(0, input));
+    return reinterpret_cast<uintptr_t>(ZL_Data_rPtr(data));
+}
+
+/**
+ * @returns The shift that places the stored input of the float view in
+ * @c makeReferencedOutputFrame at a multiple of 4 bytes, or not, as
+ * @p aligned asks.
+ */
+size_t shiftForStoredFloatInput(bool aligned)
+{
+    for (size_t shift = 0; shift < sizeof(float); ++shift) {
+        const PreparedHostFrame prepared{ makeReferencedOutputFrame(), shift };
+        const DecodePlan plan = planOrThrow(prepared.views());
+        const bool isAligned =
+                storedInputAddressOfFinalOutput(plan, prepared) % sizeof(float)
+                == 0;
+        if (isAligned == aligned) {
+            return shift;
+        }
+    }
+    throw std::runtime_error("no shift gives the requested alignment");
+}
+
 TEST(DecodePlannerTest, PlansAReferencedFinalOutputForTerminalCopy)
 {
     // This fails if a referenced final output is rejected or loses the source
     // range that must be copied to the caller's output.
-    PreparedHostFrame prepared{ makeReferencedOutputFrame() };
+    PreparedHostFrame prepared{ makeReferencedOutputFrame(),
+                                shiftForStoredFloatInput(true) };
     const DecodePlan plan = planOrThrow(prepared.views());
 
     ASSERT_EQ(plan.chunks.size(), 1);
@@ -471,6 +512,19 @@ TEST(DecodePlannerTest, PlansAReferencedFinalOutputForTerminalCopy)
     EXPECT_EQ(
             output.storageSize.stringLengthsBytes,
             backing.storageSize.stringLengthsBytes);
+}
+
+TEST(DecodePlannerTest, MaterializesANumericViewOfAMisalignedStoredStream)
+{
+    // This fails if a float view aliases stored bytes at an address that is
+    // not a multiple of 4, which core avoids by copying.
+    PreparedHostFrame prepared{ makeReferencedOutputFrame(),
+                                shiftForStoredFloatInput(false) };
+    const DecodePlan plan = planOrThrow(prepared.views());
+
+    const PlannedStream& output = plan.streams.at(plan.finalOutputOf(0, 0));
+    EXPECT_EQ(output.storageClass, StorageClass::Destination);
+    EXPECT_FALSE(output.aliasStream.has_value());
 }
 
 TEST(DecodePlannerTest, PlansAStoredFinalOutputForTerminalCopy)

@@ -516,6 +516,38 @@ class ChunkPlanner {
      *
      * @returns The new range in @c plan_.streamIndices.
      */
+    /**
+     * Reports whether a view of @p backing at @p offsetBytes starts at an
+     * address that suits @p shape.
+     *
+     * Core aliases a numeric view only when its address is a multiple of its
+     * element width. A stored owner has a fixed address in the frame. A
+     * workspace owner gets the alignment of its widest alias from
+     * @c buildDecodeStorageRequirements, so only the offset decides.
+     */
+    bool isAlignedView(
+            PlannedStreamIndex backing,
+            size_t offsetBytes,
+            const StreamShape& shape) const
+    {
+        if (shape.type != ZL_Type_numeric || shape.eltWidth <= 1) {
+            return true;
+        }
+        PlannedStreamIndex owner = backing;
+        size_t offset            = offsetBytes;
+        while (plan_.streams.at(owner).storageClass
+               == StorageClass::StreamRef) {
+            offset += plan_.streams.at(owner).aliasOffset;
+            owner = *plan_.streams.at(owner).aliasStream;
+        }
+        if (plan_.streams.at(owner).storageClass == StorageClass::Stored) {
+            const ZL_Data* const data = ZL_DCtx_getConstStream(
+                    &dctx_, static_cast<ZL_IDType>(owner - chunkBase_));
+            offset += reinterpret_cast<uintptr_t>(ZL_Data_rPtr(data));
+        }
+        return offset % shape.eltWidth == 0;
+    }
+
     ZL_RESULT_OF(IndexRange)
     writeOutputStreams(PlannedCodecRunIndex codecRunIndex, IndexRange inputs)
     {
@@ -552,6 +584,12 @@ class ChunkPlanner {
                 aliasStream =
                         plan_.streamIndices.at(inputs.begin + local.inputIndex);
                 aliasOffset = local.offsetBytes;
+                // Core copies a numeric view that would be misaligned, so the
+                // codec run materializes this output instead of aliasing.
+                if (!isAlignedView(*aliasStream, aliasOffset, output.shape)) {
+                    aliasStream.reset();
+                    aliasOffset = 0;
+                }
             }
 
             ZL_ERR_IF_ERR(writeStream(
