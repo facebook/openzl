@@ -114,7 +114,10 @@ ZL_Report collectGPUChunks(
  * frame-header indices must refer to @p frameHeaders, and all referenced device
  * storage must remain valid until the enqueued work has completed on @p stream.
  * @param stream CUDA stream on which decompression is enqueued.
- * @returns The decompressed size on success, or an error.
+ * @returns The decompressed size on success, or an error. An empty batch
+ * returns @c parameter_invalid. The planner cannot yet combine frames, so a
+ * batch with chunks of more than one frame returns
+ * @c temporaryLibraryLimitation.
  * @throws std::bad_alloc or openzl::Exception if an allocation fails.
  */
 ZL_Report decompressChunks(
