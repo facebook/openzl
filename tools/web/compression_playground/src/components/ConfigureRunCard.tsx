@@ -253,10 +253,10 @@ function ProfileSelect({row, position, onPatch}: OpenZlRowProps) {
       disabled={profiles.length === 0}
       collection={profileCollection}
       size="sm"
-      width="100px"
+      width="140px"
       flexShrink={0}
       // Chakra defaults this to `sameWidth`, which pins the listbox to the
-      // trigger's 100px: the group heading then wraps onto four lines and
+      // trigger's 140px: the group heading wraps and
       // `numeric-ml-selector-64` breaks mid-word. Off, the popper sizes it to
       // `max-content`, so the widest row decides and nothing has to be pinned
       // to the trigger's width by hand.
@@ -270,7 +270,7 @@ function ProfileSelect({row, position, onPatch}: OpenZlRowProps) {
           onPatch(row.id, row.compressor, {profile: next as OpenZlProfile});
         }
       }}>
-      <Select.Label srOnly>Level or profile for row {position}</Select.Label>
+      <Select.Label srOnly>Profile for row {position}</Select.Label>
       {/* The indicator group must sit beside the trigger inside the control:
           it is absolutely positioned and the control is the only positioned
           ancestor — nested in the trigger, the arrow flies off-box. */}
@@ -475,38 +475,55 @@ function CompressorRowCard({row, position, canRemove, onPatch, onCompressorChang
       display="flex"
       flexDirection="column"
       gap="4px">
-      <Box display="flex" gap="8px" alignItems="center">
-        <NativeSelect.Root flex="1" minW={0}>
-          <NativeSelect.Field
-            aria-label={`Compressor for row ${position}`}
-            height="36px"
-            fontSize="14px"
-            color="pg.ink"
-            bg="pg.surface"
-            borderColor="pg.border"
-            borderRadius="6px"
-            value={row.compressor}
-            onChange={(event) => onCompressorChange(row.id, event.target.value as CompressorName)}>
-            {COMPRESSOR_NAMES.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </NativeSelect.Field>
-          <NativeSelect.Indicator />
-        </NativeSelect.Root>
+      <Box display="flex" gap="8px" alignItems="end">
+        <VStack flex="1" minW={0} gap="6px" align="stretch">
+          <chakra.label
+            htmlFor={`row-${row.id}-compressor`}
+            color="pg.faint"
+            fontSize="11px"
+            fontWeight="semibold"
+            m={0}>
+            COMPRESSOR
+          </chakra.label>
+          <NativeSelect.Root>
+            <NativeSelect.Field
+              id={`row-${row.id}-compressor`}
+              aria-label={`Compressor for row ${position}`}
+              height="36px"
+              fontSize="14px"
+              color="pg.ink"
+              bg="pg.surface"
+              borderColor="pg.border"
+              borderRadius="6px"
+              value={row.compressor}
+              onChange={(event) => onCompressorChange(row.id, event.target.value as CompressorName)}>
+              {COMPRESSOR_NAMES.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </NativeSelect.Field>
+            <NativeSelect.Indicator />
+          </NativeSelect.Root>
+        </VStack>
 
-        {row.compressor === 'OpenZL' ? (
-          <ProfileSelect row={row} position={position} onPatch={onPatch} />
-        ) : (
-          <LevelsPicker row={row} position={position} onPatch={onPatch} />
-        )}
+        <VStack gap="6px" align="stretch" flexShrink={0}>
+          <Text color="pg.faint" fontSize="11px" fontWeight="semibold" m={0}>
+            {row.compressor === 'OpenZL' ? 'PROFILE' : 'LEVEL'}
+          </Text>
+          {row.compressor === 'OpenZL' ? (
+            <ProfileSelect row={row} position={position} onPatch={onPatch} />
+          ) : (
+            <LevelsPicker row={row} position={position} onPatch={onPatch} />
+          )}
+        </VStack>
 
         <IconButton
           aria-label={`Remove row ${position}`}
           variant="ghost"
           size="2xs"
           flexShrink={0}
+          mb="6px"
           color="pg.muted"
           _hover={{color: 'pg.accent'}}
           disabled={!canRemove}
@@ -555,15 +572,6 @@ export default function ConfigureRunCard({
         {profileStatus instanceof Error && (
           <Text role="alert">Unable to load compression profiles: {profileStatus.message}</Text>
         )}
-        <Box display="flex" gap="8px" height="20px" alignItems="start">
-          <Text flex="1" color="pg.faint" fontSize="11px" fontWeight="semibold" m={0}>
-            COMPRESSOR
-          </Text>
-          {/* Spans the level dropdown plus the delete button it sits above. */}
-          <Text width="132px" flexShrink={0} color="pg.faint" fontSize="11px" fontWeight="semibold" m={0}>
-            LEVEL / PROFILE
-          </Text>
-        </Box>
         {rows.map((row, index) => (
           <CompressorRowCard
             key={row.id}

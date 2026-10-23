@@ -27,6 +27,9 @@ import type {CompressorName} from './compressors.ts';
  * headings, which are too small to qualify for the large-text threshold.
  */
 const playgroundConfig = defineConfig({
+  globalCss: {
+    html: {scrollbarGutter: 'stable'},
+  },
   theme: {
     semanticTokens: {
       colors: {

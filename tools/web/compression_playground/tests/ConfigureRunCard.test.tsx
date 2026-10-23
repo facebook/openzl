@@ -85,11 +85,19 @@ describe('ConfigureRunCard', () => {
   it('renders the default OpenZL, zstd and gzip rows', () => {
     renderConfigureRunCard();
 
-    expect(screen.getByText('COMPRESSOR')).toBeInTheDocument();
-    expect(screen.getByText('LEVEL / PROFILE')).toBeInTheDocument();
+    const optionsToggle = screen.getByRole('button', {name: 'OpenZL options for row 1'});
+    if (optionsToggle.getAttribute('aria-expanded') === 'false') {
+      fireEvent.click(optionsToggle);
+    }
+
+    expect(screen.getAllByText('COMPRESSOR')).toHaveLength(3);
+    expect(screen.getByText('PROFILE')).toBeInTheDocument();
+    // zstd and gzip each have a LEVEL label. The expanded OpenZL options add a third, note
+    // that if the OpenZL options panel is collapsed, only two LEVEl labels remain
+    expect(screen.getAllByText('LEVEL')).toHaveLength(3);
 
     expect(screen.getByRole('combobox', {name: 'Compressor for row 1'})).toHaveValue('OpenZL');
-    expect(screen.getByRole('combobox', {name: 'Level or profile for row 1'})).toHaveTextContent('serial');
+    expect(screen.getByRole('combobox', {name: 'Profile for row 1'})).toHaveTextContent('serial');
     expect(screen.getByRole('combobox', {name: 'Compressor for row 2'})).toHaveValue('zstd');
     expect(levelsTrigger(2)).toHaveTextContent('6 levels');
     expect(screen.getByRole('combobox', {name: 'Compressor for row 3'})).toHaveValue('gzip');
@@ -99,7 +107,7 @@ describe('ConfigureRunCard', () => {
   it('keeps the dropdown arrow inside the positioned control', () => {
     renderConfigureRunCard();
 
-    const trigger = screen.getByRole('combobox', {name: 'Level or profile for row 1'});
+    const trigger = screen.getByRole('combobox', {name: 'Profile for row 1'});
     // The chevron must sit beside the trigger, not in it: nested in the
     // trigger it positions against a distant ancestor and vanishes.
     expect(trigger.querySelector('svg')).toBeNull();
@@ -115,7 +123,7 @@ describe('ConfigureRunCard', () => {
       'gzip',
     ]);
 
-    fireEvent.click(screen.getByRole('combobox', {name: 'Level or profile for row 1'}));
+    fireEvent.click(screen.getByRole('combobox', {name: 'Profile for row 1'}));
     const listbox = await screen.findByRole('listbox');
     const listed = within(listbox)
       .getAllByRole('option')
@@ -153,7 +161,7 @@ describe('ConfigureRunCard', () => {
   it('heads the unavailable profiles so the greyed half is not a mystery', async () => {
     renderConfigureRunCard();
 
-    fireEvent.click(screen.getByRole('combobox', {name: 'Level or profile for row 1'}));
+    fireEvent.click(screen.getByRole('combobox', {name: 'Profile for row 1'}));
     const listbox = await screen.findByRole('listbox');
     expect(within(listbox).getByText('Not available in the browser')).toBeInTheDocument();
   });
@@ -161,7 +169,7 @@ describe('ConfigureRunCard', () => {
   it('explains each profile when hovered in the list', async () => {
     renderConfigureRunCard();
 
-    fireEvent.click(screen.getByRole('combobox', {name: 'Level or profile for row 1'}));
+    fireEvent.click(screen.getByRole('combobox', {name: 'Profile for row 1'}));
     const listbox = await screen.findByRole('listbox');
     const option = within(listbox).getByRole('option', {name: 'parquet'});
 
@@ -249,7 +257,7 @@ describe('ConfigureRunCard', () => {
     // focus and the hover tooltip is unreachable by keyboard. Each option
     // points at its description instead.
     renderConfigureRunCard();
-    fireEvent.click(screen.getByRole('combobox', {name: 'Level or profile for row 1'}));
+    fireEvent.click(screen.getByRole('combobox', {name: 'Profile for row 1'}));
     const listbox = await screen.findByRole('listbox');
 
     for (const profile of getOpenZlProfiles()) {
@@ -263,7 +271,7 @@ describe('ConfigureRunCard', () => {
     // The description lives outside the listbox: nested in an option it would
     // join the accessible name and "csv" would read as the whole sentence.
     renderConfigureRunCard();
-    fireEvent.click(screen.getByRole('combobox', {name: 'Level or profile for row 1'}));
+    fireEvent.click(screen.getByRole('combobox', {name: 'Profile for row 1'}));
     const listbox = await screen.findByRole('listbox');
 
     expect(within(listbox).getByRole('option', {name: 'csv'})).toBeInTheDocument();
@@ -272,19 +280,19 @@ describe('ConfigureRunCard', () => {
   it('selects a profile from the list', async () => {
     renderConfigureRunCard();
 
-    fireEvent.click(screen.getByRole('combobox', {name: 'Level or profile for row 1'}));
+    fireEvent.click(screen.getByRole('combobox', {name: 'Profile for row 1'}));
     const listbox = await screen.findByRole('listbox');
     fireEvent.click(within(listbox).getByRole('option', {name: 'le-u32'}));
 
     await waitFor(() => {
-      expect(screen.getByRole('combobox', {name: 'Level or profile for row 1'})).toHaveTextContent('le-u32');
+      expect(screen.getByRole('combobox', {name: 'Profile for row 1'})).toHaveTextContent('le-u32');
     });
   });
 
   it('lists the profiles the browser cannot run but refuses to select them', async () => {
     renderConfigureRunCard();
 
-    fireEvent.click(screen.getByRole('combobox', {name: 'Level or profile for row 1'}));
+    fireEvent.click(screen.getByRole('combobox', {name: 'Profile for row 1'}));
     const listbox = await screen.findByRole('listbox');
 
     for (const profile of getOpenZlProfiles().filter((name) => !isBrowserSupportedProfile(name))) {
@@ -295,7 +303,7 @@ describe('ConfigureRunCard', () => {
 
     // Still the default: a profile with no WASM compressor must not become a
     // run the worker would then have to drop.
-    expect(screen.getByRole('combobox', {name: 'Level or profile for row 1'})).toHaveTextContent('serial');
+    expect(screen.getByRole('combobox', {name: 'Profile for row 1'})).toHaveTextContent('serial');
   });
 
   it('offers only the candidate counts the trainer honours', () => {
@@ -317,7 +325,7 @@ describe('ConfigureRunCard', () => {
     fireEvent.change(screen.getByRole('combobox', {name: 'Compressor for row 2'}), {
       target: {value: 'OpenZL'},
     });
-    expect(screen.getByRole('combobox', {name: 'Level or profile for row 2'})).toHaveTextContent('serial');
+    expect(screen.getByRole('combobox', {name: 'Profile for row 2'})).toHaveTextContent('serial');
     // Two OpenZL rows now, each with its own TRAIN checkbox.
     expect(screen.getAllByRole('checkbox', {name: 'TRAIN'})).toHaveLength(2);
 
