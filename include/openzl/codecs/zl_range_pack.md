@@ -8,5 +8,8 @@ A single numeric input.
 ### Outputs
 A single numeric output.
 
+### Parameters
+`ZL_RANGE_PACK_MAX_SUBTRACTED_PID`, or `ZL_Compressor_registerRangePackNode()`, bounds the subtracted value: the codec subtracts the smaller of this bound and the minimal element. With 0, it only narrows the values, which keeps their bit fields in place.
+
 ### Use Cases
 This codec is useful for compressing numeric data that has a range of values that can be represented with a smaller number of bytes.

@@ -8,6 +8,7 @@
 
 #include <gtest/gtest.h>
 
+#include "openzl/codecs/zl_range_pack.h"
 #include "openzl/compress/private_nodes.h"
 #include "openzl/zl_opaque_types.h"
 #include "tests/zstrong/test_integer_fixture.h"
@@ -248,6 +249,34 @@ TEST_F(IntegerTest, Range)
     testNode(ZL_NODE_RANGE_PACK, 2);
     testNode(ZL_NODE_RANGE_PACK, 4);
     testNode(ZL_NODE_RANGE_PACK, 8);
+}
+
+TEST_F(IntegerTest, RangePackSubtractsAtMostItsBound)
+{
+    std::vector<uint32_t> values(1000);
+    for (size_t i = 0; i < values.size(); ++i) {
+        values[i] = 1000 + (uint32_t)(i % 200);
+    }
+    const std::string data(
+            reinterpret_cast<const char*>(values.data()), values.size() * 4);
+    auto packedSize = [&](uint64_t maxSubtracted) {
+        reset();
+        finalizeGraph(
+                ZL_Compressor_registerStaticGraph_fromNode1o(
+                        cgraph_,
+                        ZL_Compressor_registerRangePackNode(
+                                cgraph_, maxSubtracted),
+                        ZL_GRAPH_STORE),
+                4);
+        testRoundTrip(data);
+        return ZL_validResult(compress(data).first);
+    };
+
+    // Values from 1000 to 1199 need 2 bytes, and 1 byte once 1000 is removed.
+    EXPECT_GT(packedSize(0), values.size() * 2);
+    EXPECT_LT(packedSize(1000), values.size() * 2);
+    // A bound above the minimum subtracts the minimum.
+    EXPECT_EQ(packedSize(5000), packedSize(1000));
 }
 
 TEST_F(IntegerTest, MergeSorted)
