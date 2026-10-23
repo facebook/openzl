@@ -1,5 +1,10 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+#include <algorithm>
+#include <cstring>
+#include <limits>
+#include <vector>
+
 #include <gtest/gtest.h>
 
 #include "openzl/codecs/divide_by/decode_divide_by_binding.h"
@@ -186,5 +191,88 @@ TYPED_TEST(GcdGraphTest, roundTripEmptyInput)
             input.data(),
             input.size() * sizeof(TypeParam),
             sizeof(TypeParam));
+}
+
+// Decoding must reject quotients that overflow once multiplied by the divisor
+TYPED_TEST(GcdGraphTest, rejectsOverflowingQuotients)
+{
+    using T                 = TypeParam;
+    uint64_t const kDivisor = 15;
+    T const maxQuotient     = (T)(std::numeric_limits<T>::max() / kDivisor);
+    std::vector<T> input(64);
+    for (size_t i = 0; i < input.size(); i++) {
+        input[i] = (T)((i % 16) * kDivisor);
+    }
+
+    // divide_by -> store, without checksums, so that quotients can be edited
+    ZL_CCtx* const cctx    = ZL_CCtx_create();
+    ZL_Compressor* const c = ZL_Compressor_create();
+    ZL_REQUIRE_SUCCESS(ZL_Compressor_initUsingGraphFn(
+            c, [](ZL_Compressor* cgraph) noexcept -> ZL_GraphID {
+                return ZL_Compressor_registerStaticGraph_fromNode1o(
+                        cgraph,
+                        ZL_Compressor_registerDivideByNode(cgraph, 15),
+                        ZL_GRAPH_STORE);
+            }));
+    ZL_REQUIRE_SUCCESS(ZL_CCtx_refCompressor(cctx, c));
+    ZL_REQUIRE_SUCCESS(ZL_CCtx_setParameter(
+            cctx, ZL_CParam_formatVersion, ZL_MAX_FORMAT_VERSION));
+    ZL_REQUIRE_SUCCESS(ZL_CCtx_setParameter(
+            cctx, ZL_CParam_storeOnExpansion, ZL_TernaryParam_disable));
+    ZL_REQUIRE_SUCCESS(ZL_CCtx_setParameter(
+            cctx, ZL_CParam_contentChecksum, ZL_TernaryParam_disable));
+    ZL_REQUIRE_SUCCESS(ZL_CCtx_setParameter(
+            cctx, ZL_CParam_compressedChecksum, ZL_TernaryParam_disable));
+    ZL_TypedRef* const tref =
+            ZL_TypedRef_createNumeric(input.data(), sizeof(T), input.size());
+    std::vector<uint8_t> frame(ZL_compressBound(input.size() * sizeof(T)));
+    ZL_Report const cr =
+            ZL_CCtx_compressTypedRef(cctx, frame.data(), frame.size(), tref);
+    ZL_REQUIRE_SUCCESS(cr);
+    frame.resize(ZL_validResult(cr));
+    ZL_TypedRef_free(tref);
+    ZL_Compressor_free(c);
+    ZL_CCtx_free(cctx);
+
+    // Locate the stored quotients 0..15 in the frame
+    std::vector<T> firstQuotients(16);
+    for (size_t i = 0; i < firstQuotients.size(); i++) {
+        firstQuotients[i] = (T)i;
+    }
+    auto const* const pattern = (const uint8_t*)firstQuotients.data();
+    auto const found          = std::search(
+            frame.begin(),
+            frame.end(),
+            pattern,
+            pattern + firstQuotients.size() * sizeof(T));
+    ASSERT_NE(found, frame.end());
+    uint8_t* const quotient5 = &*found + 5 * sizeof(T);
+
+    ZL_DCtx* const dctx = ZL_DCtx_create();
+    std::vector<T> output(input.size());
+    auto decompress = [&]() {
+        ZL_OutputInfo outInfo = {};
+        return ZL_DCtx_decompressTyped(
+                dctx,
+                &outInfo,
+                output.data(),
+                output.size() * sizeof(T),
+                frame.data(),
+                frame.size());
+    };
+
+    // The largest valid quotient is accepted
+    memcpy(quotient5, &maxQuotient, sizeof(T));
+    ZL_REQUIRE_SUCCESS(decompress());
+    EXPECT_EQ(output[5], (T)(maxQuotient * kDivisor));
+
+    // One more overflows, and is rejected
+    T const tooLarge = (T)(maxQuotient + 1);
+    memcpy(quotient5, &tooLarge, sizeof(T));
+    ZL_Report const r = decompress();
+    ASSERT_TRUE(ZL_isError(r));
+    EXPECT_EQ(ZL_errorCode(r), ZL_ErrorCode_node_invalid_input);
+
+    ZL_DCtx_free(dctx);
 }
 } // namespace

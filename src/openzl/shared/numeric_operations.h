@@ -14,7 +14,9 @@ uint64_t NUMOP_sumArray32(const uint32_t array[], size_t arraySize);
 
 size_t NUMOP_findMaxST(const size_t array[], size_t arraySize);
 uint8_t NUMOP_findMaxU8(const uint8_t array[], size_t arraySize);
+uint16_t NUMOP_findMaxU16(const uint16_t array[], size_t arraySize);
 uint32_t NUMOP_findMaxArr32(const uint32_t array32[], size_t arraySize);
+uint64_t NUMOP_findMaxU64(const uint64_t array[], size_t arraySize);
 
 int NUMOP_underLimit(const unsigned array[], size_t arraySize, unsigned limit);
 int NUMOP_underLimitU8(const uint8_t arr8[], size_t arraySize, unsigned limit);

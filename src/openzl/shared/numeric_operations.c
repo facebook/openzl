@@ -59,6 +59,18 @@ uint8_t NUMOP_findMaxU8(const uint8_t array[], size_t arraySize)
     return max;
 }
 
+uint16_t NUMOP_findMaxU16(const uint16_t array[], size_t arraySize)
+{
+    if (arraySize)
+        ZL_ASSERT_NN(array);
+    uint16_t max = 0;
+    for (size_t n = 0; n < arraySize; n++) {
+        if (max < array[n])
+            max = array[n];
+    }
+    return max;
+}
+
 uint32_t NUMOP_findMaxArr32(const uint32_t array32[], size_t arraySize)
 {
     if (arraySize)
@@ -67,6 +79,18 @@ uint32_t NUMOP_findMaxArr32(const uint32_t array32[], size_t arraySize)
     for (size_t n = 0; n < arraySize; n++) {
         if (max < array32[n])
             max = array32[n];
+    }
+    return max;
+}
+
+uint64_t NUMOP_findMaxU64(const uint64_t array[], size_t arraySize)
+{
+    if (arraySize)
+        ZL_ASSERT_NN(array);
+    uint64_t max = 0;
+    for (size_t n = 0; n < arraySize; n++) {
+        if (max < array[n])
+            max = array[n];
     }
     return max;
 }

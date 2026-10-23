@@ -3,7 +3,8 @@
 #include "decode_divide_by_binding.h"
 #include "decode_divide_by_kernel.h"
 #include "openzl/common/assertion.h"
-#include "openzl/shared/varint.h" // ZL_varintDecode64Strict
+#include "openzl/shared/numeric_operations.h" // NUMOP_findMax*
+#include "openzl/shared/varint.h"             // ZL_varintDecode64Strict
 
 #include <limits.h> // UCHAR_MAX, USHRT_MAX, UINT_MAX, ULLONG_MAX
 
@@ -33,41 +34,36 @@ ZL_Report DI_divide_by_int(ZL_Decoder* dictx, const ZL_Input* ins[])
             &headerPtr, (const uint8_t*)header.start + header.size);
     ZL_TRY_LET(uint64_t, divisor, varint);
     ZL_ERR_IF_EQ(divisor, 0, node_invalid_input, "Attempt to divide by 0");
+    // Quotients must not overflow once multiplied by the divisor.
+    // Checking their maximum, rather than each quotient in a loop that exits
+    // on error, lets the compiler vectorize the check.
     switch (intWidth) {
         case 1:
             ZL_ERR_IF_GT(divisor, UCHAR_MAX, node_invalid_input);
-            for (size_t i = 0; i < nbElts; ++i) {
-                ZL_ERR_IF_GT(
-                        ((const uint8_t*)quotients)[i],
-                        UCHAR_MAX / divisor,
-                        node_invalid_input);
-            }
+            ZL_ERR_IF_GT(
+                    NUMOP_findMaxU8((const uint8_t*)quotients, nbElts),
+                    UCHAR_MAX / divisor,
+                    node_invalid_input);
             break;
         case 2:
             ZL_ERR_IF_GT(divisor, USHRT_MAX, node_invalid_input);
-            for (size_t i = 0; i < nbElts; ++i) {
-                ZL_ERR_IF_GT(
-                        ((const uint16_t*)quotients)[i],
-                        USHRT_MAX / divisor,
-                        node_invalid_input);
-            }
+            ZL_ERR_IF_GT(
+                    NUMOP_findMaxU16((const uint16_t*)quotients, nbElts),
+                    USHRT_MAX / divisor,
+                    node_invalid_input);
             break;
         case 4:
             ZL_ERR_IF_GT(divisor, UINT_MAX, node_invalid_input);
-            for (size_t i = 0; i < nbElts; ++i) {
-                ZL_ERR_IF_GT(
-                        ((const uint32_t*)quotients)[i],
-                        UINT_MAX / divisor,
-                        node_invalid_input);
-            }
+            ZL_ERR_IF_GT(
+                    NUMOP_findMaxArr32((const uint32_t*)quotients, nbElts),
+                    UINT_MAX / divisor,
+                    node_invalid_input);
             break;
         case 8:
-            for (size_t i = 0; i < nbElts; ++i) {
-                ZL_ERR_IF_GT(
-                        ((const uint64_t*)quotients)[i],
-                        ULLONG_MAX / divisor,
-                        node_invalid_input);
-            }
+            ZL_ERR_IF_GT(
+                    NUMOP_findMaxU64((const uint64_t*)quotients, nbElts),
+                    ULLONG_MAX / divisor,
+                    node_invalid_input);
             break;
         default:
             ZL_ASSERT_FAIL("Unsupported int width");
