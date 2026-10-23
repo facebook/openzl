@@ -102,6 +102,7 @@ class ChunkPlanner {
 
         // Step 1: Validate the prepared chunk metadata and output range.
         ZL_TRY_LET_CONST(size_t, numOutputs, validateHeader(header));
+        numOutputs_ = numOutputs;
 
         // Step 2: Reserve one stream record for every slot.
         ZL_ERR_IF_ERR(reserveChunkSlots());
@@ -355,6 +356,13 @@ class ChunkPlanner {
         const size_t numInputs = node.numInputStreams;
         ZL_ERR_IF_GT(inputBase, numStreams_, corruption);
         ZL_ERR_IF_GT(numInputs, numStreams_ - inputBase, corruption);
+        // Core rejects a graph in which a codec run reads a final output.
+        ZL_ERR_IF_GT(
+                inputBase + numInputs,
+                numStreams_ - numOutputs_,
+                graph_invalid,
+                "Graph inconsistency: Output stream depends on another output "
+                "stream");
         return ZL_returnValue(inputBase + numInputs);
     }
 
@@ -619,6 +627,7 @@ class ChunkPlanner {
     DecodePlan& plan_;
     /// Number of wire slots this chunk declares.
     size_t numStreams_;
+    size_t numOutputs_ = 0;
     /// Index in @c plan_.streams of this chunk's slot zero.
     size_t chunkBase_ = 0;
     // Reuse this scratch space for every node in the chunk.
@@ -627,14 +636,108 @@ class ChunkPlanner {
     std::vector<CodecDecodeOutputPlan> outputPlans_;
 };
 
+/** Checks that every chunk in @p chunks belongs to the same frame. */
+ZL_Report checkOneFrame(poly::span<const PreparedGpuChunkView> chunks)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
+    for (const PreparedGpuChunkView& chunk : chunks) {
+        ZL_ERR_IF_NE(
+                chunk.frameIndex,
+                chunks.front().frameIndex,
+                temporaryLibraryLimitation,
+                "planDecode: a plan holds the chunks of one frame");
+    }
+    return ZL_returnSuccess();
+}
+
+/**
+ * Checks every final output against the frame header, as core does when it
+ * appends each chunk's output.
+ *
+ * Every chunk must have the same number of final outputs. Each chunk's
+ * contribution must have the frame's output type and the same element width
+ * as the first chunk's, a numeric output must have a width that core accepts,
+ * and the contributions must add up to the frame's declared size. @p plan
+ * holds at least one chunk.
+ */
+ZL_Report checkFinalOutputsAgainstFrame(
+        const DecodePlan& plan,
+        const ZL_FrameInfo* frameInfo)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
+    for (size_t outputIndex = 0; outputIndex < plan.chunks.at(0).numOutputs;
+         ++outputIndex) {
+        const int outputId = static_cast<int>(outputIndex);
+        ZL_TRY_LET_CONST(
+                size_t,
+                expectedType,
+                ZL_FrameInfo_getOutputType(frameInfo, outputId));
+        ZL_TRY_LET_CONST(
+                size_t,
+                declaredSize,
+                ZL_FrameInfo_getDecompressedSize(frameInfo, outputId));
+        const size_t eltWidth =
+                plan.streams.at(plan.finalOutputOf(0, outputIndex))
+                        .shape.eltWidth;
+        // Core accepts only these widths for numeric streams.
+        ZL_ERR_IF(
+                expectedType == ZL_Type_numeric && eltWidth != 1
+                        && eltWidth != 2 && eltWidth != 4 && eltWidth != 8,
+                streamParameter_invalid,
+                "Numeric must be width 1, 2, 4, or 8");
+        size_t totalSize = 0;
+        for (size_t chunkIndex = 0; chunkIndex < plan.chunks.size();
+             ++chunkIndex) {
+            ZL_ERR_IF_NE(
+                    plan.chunks.at(chunkIndex).numOutputs,
+                    plan.chunks.at(0).numOutputs,
+                    corruption,
+                    "Chunks disagree on the number of final outputs");
+            const PlannedStream& output = plan.streams.at(
+                    plan.finalOutputOf(chunkIndex, outputIndex));
+            ZL_ERR_IF_NE(
+                    output.shape.type,
+                    expectedType,
+                    corruption,
+                    "Final stream type mismatch");
+            ZL_ERR_IF_NE(
+                    output.shape.eltWidth,
+                    eltWidth,
+                    corruption,
+                    "Final stream element width mismatch");
+            ZL_ERR_IF(
+                    ZL_overflowAddST(
+                            totalSize,
+                            output.storageSize.dataBytes,
+                            &totalSize),
+                    integerOverflow);
+        }
+        ZL_ERR_IF_NE(
+                totalSize,
+                declaredSize,
+                corruption,
+                "Regenerated size for an output is incorrect");
+    }
+    return ZL_returnSuccess();
+}
+
 } // namespace
 
 Result<DecodePlan> planDecode(poly::span<const PreparedGpuChunkView> chunks)
 {
     ZL_DCtx* const dctx = chunks.empty() ? nullptr : chunks.front().dctx;
     ZL_RESULT_DECLARE_SCOPE_REPORT(dctx);
+    ZL_ERR_IF(
+            chunks.empty(), parameter_invalid, "planDecode: no chunks to plan");
     for (const PreparedGpuChunkView& chunk : chunks) {
         ZL_ERR_IF_NULL(chunk.dctx, parameter_invalid);
+    }
+    // The frame checks run without a context, and their reports are returned
+    // unchanged. Forwarding them would move their messages into the context,
+    // which Result<T> drops.
+    const ZL_Report oneFrame = checkOneFrame(chunks);
+    if (ZL_isError(oneFrame)) {
+        return oneFrame;
     }
     try {
         DecodePlan result;
@@ -643,6 +746,15 @@ Result<DecodePlan> planDecode(poly::span<const PreparedGpuChunkView> chunks)
         for (size_t chunkIndex = 0; chunkIndex < chunks.size(); ++chunkIndex) {
             ChunkPlanner planner{ chunkIndex, chunks[chunkIndex], result };
             ZL_ERR_IF_ERR(planner.planChunk());
+        }
+        const DFH_Struct* const header = DCtx_getFrameHeader(dctx);
+        if (header == nullptr) {
+            ZL_ERR(logicError);
+        }
+        const ZL_Report frameCheck =
+                checkFinalOutputsAgainstFrame(result, header->frameinfo);
+        if (ZL_isError(frameCheck)) {
+            return frameCheck;
         }
         return result;
     } catch (const std::bad_alloc&) {

@@ -586,5 +586,133 @@ TEST(DecodePlannerTest, RejectsNullDecodeContext)
             ZL_ErrorCode_parameter_invalid);
 }
 
+TEST(DecodePlannerTest, RejectsAnEmptyChunkList)
+{
+    // This fails if planning no chunks returns an empty plan, which would
+    // decode nothing and report success.
+    EXPECT_EQ(
+            ZL_errorCode(planDecode({}).report()),
+            ZL_ErrorCode_parameter_invalid);
+}
+
+TEST(DecodePlannerTest, RejectsChunksOfMoreThanOneFrame)
+{
+    // This fails if chunks of two frames share one plan, where their final
+    // outputs would share output indexes and land in the same buffers.
+    PreparedHostFrame first{ makeStoredOutputFrame() };
+    PreparedHostFrame second{ makeStoredOutputFrame() };
+    std::vector<PreparedGpuChunkView> chunks{
+        first.views().front(),
+        second.views().front(),
+    };
+    chunks.back().frameIndex = 1;
+
+    EXPECT_EQ(
+            ZL_errorCode(planDecode(chunks).report()),
+            ZL_ErrorCode_temporaryLibraryLimitation);
+}
+
+/// @returns The message of the error that planning @p chunks returns.
+std::string planErrorMessage(poly::span<const PreparedGpuChunkView> chunks)
+{
+    return ZL_E_str(ZL_RES_error(planDecode(chunks).report()));
+}
+
+TEST(DecodePlannerTest, RejectsFinalOutputOfTheWrongType)
+{
+    // This fails if a chunk's final output can have a type other than the
+    // frame's output type, which core rejects.
+    PreparedHostFrame serial{ makeStoredOutputFrame() };
+    PreparedHostFrame numeric{ makeReferencedOutputFrame() };
+    const std::vector<PreparedGpuChunkView> chunks{
+        serial.views().front(),
+        numeric.views().front(),
+    };
+
+    EXPECT_EQ(
+            ZL_errorCode(planDecode(chunks).report()), ZL_ErrorCode_corruption);
+    EXPECT_NE(
+            planErrorMessage(chunks).find("Final stream type mismatch"),
+            std::string::npos);
+}
+
+std::string makeStoredInt16Frame()
+{
+    std::vector<int16_t> values(1000, 7);
+    Compressor compressor;
+    return testkit::makeFrameWithGraph(
+            compressor,
+            graphs::Store{}(),
+            Input::refNumeric<int16_t>(values.data(), values.size()));
+}
+
+TEST(DecodePlannerTest, RejectsChunksWithDifferentOutputCounts)
+{
+    // This fails if a chunk with more final outputs than the first chunk is
+    // accepted, which would check the wrong streams against the frame header.
+    PreparedHostFrame oneOutput{ makeStoredOutputFrame() };
+    PreparedHostFrame twoOutputs{ makeTwoInputFloatFrame() };
+    const std::vector<PreparedGpuChunkView> chunks{
+        oneOutput.views().front(),
+        twoOutputs.views().front(),
+    };
+
+    EXPECT_EQ(
+            ZL_errorCode(planDecode(chunks).report()), ZL_ErrorCode_corruption);
+    EXPECT_NE(
+            planErrorMessage(chunks).find("disagree on the number of final"),
+            std::string::npos);
+}
+
+TEST(DecodePlannerTest, RejectsFinalOutputWithAnotherElementWidth)
+{
+    // This fails if one final output can have a different element width in
+    // each chunk, which core rejects when it appends the chunks.
+    PreparedHostFrame wide{ makeReferencedOutputFrame() };
+    PreparedHostFrame narrow{ makeStoredInt16Frame() };
+    const std::vector<PreparedGpuChunkView> chunks{
+        wide.views().front(),
+        narrow.views().front(),
+    };
+
+    EXPECT_EQ(
+            ZL_errorCode(planDecode(chunks).report()), ZL_ErrorCode_corruption);
+    EXPECT_NE(
+            planErrorMessage(chunks).find("element width mismatch"),
+            std::string::npos);
+}
+
+TEST(DecodePlannerTest, RejectsFinalOutputsLargerThanTheFrameDeclares)
+{
+    // This fails if the chunks' outputs can add up to more than the frame's
+    // declared size, which core rejects.
+    PreparedHostFrame prepared{ makeStoredOutputFrame() };
+    const std::vector<PreparedGpuChunkView> chunks{
+        prepared.views().front(),
+        prepared.views().front(),
+    };
+
+    EXPECT_EQ(
+            ZL_errorCode(planDecode(chunks).report()), ZL_ErrorCode_corruption);
+    EXPECT_NE(
+            planErrorMessage(chunks).find("Regenerated size"),
+            std::string::npos);
+}
+
+TEST(DecodePlannerTest, RejectsFinalOutputsSmallerThanTheFrameDeclares)
+{
+    // This fails if a partial chunk list is accepted, which core rejects as
+    // corruption because the outputs fall short of the declared size.
+    PreparedHostFrame prepared{ makeFloatFrame() };
+    ASSERT_GT(prepared.views().size(), 1);
+    const std::vector<PreparedGpuChunkView> chunks{ prepared.views().front() };
+
+    EXPECT_EQ(
+            ZL_errorCode(planDecode(chunks).report()), ZL_ErrorCode_corruption);
+    EXPECT_NE(
+            planErrorMessage(chunks).find("Regenerated size"),
+            std::string::npos);
+}
+
 } // namespace
 } // namespace openzl::gpu

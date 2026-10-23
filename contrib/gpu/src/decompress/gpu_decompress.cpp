@@ -340,6 +340,7 @@ ZL_Report decompressChunks(
                 {
                         .dctx               = prepared.dctx.get(),
                         .transformHeaders_h = prepared.transformHeaders_h,
+                        .frameIndex         = prepared.chunk.frameHeaderIdx,
                 });
     }
     Result<DecodePlan> const planResult = planDecode(chunkViews);
@@ -434,6 +435,8 @@ ZL_Report collectGPUChunksFromFrame(
             frameHeaders.size());
     ZL_ERR_IF_ERR(collected.report());
     const std::vector<GPUChunk>& collectedChunks = collected.value();
+    // The compressor writes at least one chunk, even for an empty input.
+    ZL_ERR_IF(collectedChunks.empty(), corruption, "Frame has no chunks");
 
     ZL_ERR_IF_EQ(frameHeaders.size(), frameHeaders.max_size(), allocation);
     ZL_ERR_IF_GT(
