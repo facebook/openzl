@@ -79,10 +79,11 @@ ZL_FORCE_INLINE void ZS_splitTransposeDecode_impl(
     }
 
 ZS_GEN_SPLIT_TRANSPOSE_DECODE(2)
+ZS_GEN_SPLIT_TRANSPOSE_DECODE(3)
 ZS_GEN_SPLIT_TRANSPOSE_DECODE(4)
 ZS_GEN_SPLIT_TRANSPOSE_DECODE(8)
 
-/// Handles all unoptimized eltWidth values (e.g. not 1, 2, 4, 8)
+/// Handles all unoptimized eltWidth values (e.g. not 1, 2, 3, 4, 8)
 static ZL_TRANSPOSE_DEC_NOINLINE void ZS_splitTransposeDecode_generic(
         uint8_t* restrict dst,
         uint8_t const* restrict* src,
@@ -168,6 +169,52 @@ static __m256i getPermuteMask(void)
 static size_t nbEltsToVectorize(size_t nbElts, size_t eltsPerIter)
 {
     return (nbElts / eltsPerIter) * eltsPerIter;
+}
+
+/// Optimized version for 3 byte transpose with AVX2.
+/// Each iteration rejoins 16 elements, and builds each of the 3 output vectors
+/// from the 3 input vectors with 128-bit shuffles.
+static ZL_TRANSPOSE_DEC_NOINLINE void ZS_splitTransposeDecode_3_avx2(
+        uint8_t* restrict dst,
+        const uint8_t* restrict* src,
+        size_t nbElts)
+{
+    size_t const kEltsPerIter = 16;
+    size_t const prefix = nbElts - nbEltsToVectorize(nbElts, kEltsPerIter);
+
+    if (prefix) {
+        ZS_splitTransposeDecode_3(dst, src, prefix);
+    }
+
+    // Output byte k is byte k % 3 of element k / 3. Shuffle masks pick it in
+    // the input vector of that rank, 0x80 clears the other bytes.
+    __m128i masks[3][3];
+    for (size_t v = 0; v < 3; ++v) {
+        for (size_t r = 0; r < 3; ++r) {
+            uint8_t bytes[16];
+            for (size_t j = 0; j < 16; ++j) {
+                size_t const k = 16 * v + j;
+                bytes[j]       = k % 3 == r ? (uint8_t)(k / 3) : 0x80;
+            }
+            masks[v][r] = _mm_loadu_si128((__m128i_u const*)bytes);
+        }
+    }
+    uint8_t const* const localSrc[3] = { src[0], src[1], src[2] };
+
+    for (size_t elt = prefix; elt < nbElts; elt += kEltsPerIter) {
+        __m128i in[3];
+        for (size_t r = 0; r < 3; ++r) {
+            in[r] = _mm_loadu_si128((__m128i_u const*)&localSrc[r][elt]);
+        }
+        for (size_t v = 0; v < 3; ++v) {
+            __m128i const out = _mm_or_si128(
+                    _mm_or_si128(
+                            _mm_shuffle_epi8(in[0], masks[v][0]),
+                            _mm_shuffle_epi8(in[1], masks[v][1])),
+                    _mm_shuffle_epi8(in[2], masks[v][2]));
+            _mm_storeu_si128((__m128i_u*)&dst[3 * elt + 16 * v], out);
+        }
+    }
 }
 
 /// Optimized version for 8 byte transpose with AVX2
@@ -302,6 +349,9 @@ void ZS_splitTransposeDecode(
         case 2:
             ZS_splitTransposeDecode_2_avx2(dst, src, nbElts);
             break;
+        case 3:
+            ZS_splitTransposeDecode_3_avx2(dst, src, nbElts);
+            break;
         case 4:
             ZS_splitTransposeDecode_4_avx2(dst, src, nbElts);
             break;
@@ -318,6 +368,9 @@ void ZS_splitTransposeDecode(
             break;
         case 2:
             ZS_splitTransposeDecode_2(dst, src, nbElts);
+            break;
+        case 3:
+            ZS_splitTransposeDecode_3(dst, src, nbElts);
             break;
         case 4:
             ZS_splitTransposeDecode_4(dst, src, nbElts);

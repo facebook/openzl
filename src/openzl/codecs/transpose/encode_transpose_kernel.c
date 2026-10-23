@@ -94,6 +94,7 @@ void ZS_splitTransposeEncode_impl(
     }
 
 ZS_GEN_SPLIT_TRANSPOSE_ENCODE(2)
+ZS_GEN_SPLIT_TRANSPOSE_ENCODE(3)
 ZS_GEN_SPLIT_TRANSPOSE_ENCODE(4)
 ZS_GEN_SPLIT_TRANSPOSE_ENCODE(8)
 
@@ -300,6 +301,62 @@ static ZL_TRANSPOSE_ENC_NOINLINE void ZS_splitTransposeEncode_4_avx2(
 }
 
 // ====================================================
+// AVX2 Transpose Split 3 - Implementation
+// ====================================================
+
+/// Optimized version for 3 byte split transpose with AVX2.
+/// Each iteration loads 16 elements in 3 vectors, and gathers the bytes of
+/// each rank from these 3 vectors with 128-bit shuffles.
+ZL_FORCE_NOINLINE void ZS_splitTransposeEncode_3_avx2(
+        uint8_t** restrict dst,
+        uint8_t const* restrict src,
+        size_t const nbElts)
+{
+    size_t const kBytesPerElt = 3;
+    size_t const kEltsPerIter = 16;
+    size_t const nbIter       = nbElts / kEltsPerIter;
+    size_t const prefix       = nbElts - nbIter * kEltsPerIter;
+
+    if (prefix) {
+        ZS_splitTransposeEncode_3(dst, src, prefix);
+    }
+
+    // The byte of rank r of element j is source byte 3j + r, which is in input
+    // vector (3j + r) / 16. Shuffle masks pick it there, 0x80 clears the
+    // other bytes.
+    __m128i masks[3][3];
+    for (size_t r = 0; r < 3; ++r) {
+        for (size_t v = 0; v < 3; ++v) {
+            uint8_t bytes[16];
+            for (size_t j = 0; j < 16; ++j) {
+                size_t const pos = 3 * j + r;
+                bytes[j]         = pos / 16 == v ? (uint8_t)(pos % 16) : 0x80;
+            }
+            masks[r][v] = _mm_loadu_si128((__m128i_u const*)bytes);
+        }
+    }
+    uint8_t* nextDst[3] = { dst[0] + prefix, dst[1] + prefix, dst[2] + prefix };
+    uint8_t const* nextSrc = src + prefix * kBytesPerElt;
+
+    for (size_t i = 0; i < nbIter; ++i) {
+        __m128i in[3];
+        for (size_t v = 0; v < 3; ++v) {
+            in[v] = _mm_loadu_si128((__m128i_u const*)(nextSrc + 16 * v));
+        }
+        for (size_t r = 0; r < 3; ++r) {
+            __m128i const out = _mm_or_si128(
+                    _mm_or_si128(
+                            _mm_shuffle_epi8(in[0], masks[r][0]),
+                            _mm_shuffle_epi8(in[1], masks[r][1])),
+                    _mm_shuffle_epi8(in[2], masks[r][2]));
+            _mm_storeu_si128((__m128i_u*)nextDst[r], out);
+            nextDst[r] += kEltsPerIter;
+        }
+        nextSrc += kEltsPerIter * kBytesPerElt;
+    }
+}
+
+// ====================================================
 // AVX2 Transpose Split 8 - Implementation
 // ====================================================
 
@@ -483,6 +540,9 @@ void ZS_splitTransposeEncode(
         case 2:
             ZS_splitTransposeEncode_2_avx2(dst, src, nbElts);
             break;
+        case 3:
+            ZS_splitTransposeEncode_3_avx2(dst, src, nbElts);
+            break;
         case 4:
             ZS_splitTransposeEncode_4_avx2(dst, src, nbElts);
             break;
@@ -500,6 +560,9 @@ void ZS_splitTransposeEncode(
             break;
         case 2:
             ZS_splitTransposeEncode_2(dst, src, nbElts);
+            break;
+        case 3:
+            ZS_splitTransposeEncode_3(dst, src, nbElts);
             break;
         case 4:
             ZS_splitTransposeEncode_4(dst, src, nbElts);
