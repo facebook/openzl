@@ -234,7 +234,7 @@ size_t HUF_compress4X_repeat(void* dst, size_t dstSize,
  *  Same as HUF_buildCTable(), but using externally allocated scratch buffer.
  * `workSpace` must be aligned on 4-bytes boundaries, and its size must be >= HUF_CTABLE_WORKSPACE_SIZE.
  */
-#define HUF_CTABLE_WORKSPACE_SIZE_U32 (2*HUF_SYMBOLVALUE_MAX +1 +1)
+#define HUF_CTABLE_WORKSPACE_SIZE_U32 ((4 * (HUF_SYMBOLVALUE_MAX + 1)) + 192)
 #define HUF_CTABLE_WORKSPACE_SIZE (HUF_CTABLE_WORKSPACE_SIZE_U32 * sizeof(unsigned))
 size_t HUF_buildCTable_wksp (HUF_CElt* tree,
                        const unsigned* count, U32 maxSymbolValue, U32 maxNbBits,

@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <cstdint>
 #include <cstring>
 #include <numeric>
 #include <string>
@@ -817,10 +819,12 @@ TEST_F(GGUFCompressorTest, RoutesEachFieldToTheGraphOfItsKind)
         return std::string(
                 ZL_Compressor_Graph_getName(compressor_.get(), graph));
     };
+    const auto scale16 = compressor_.getGraph("Tensor Scale16");
+    ASSERT_TRUE(scale16.has_value());
     const auto graphOf = [&](FieldKind kind) {
         switch (kind) {
             case FieldKind::f16:
-                return graphName(ZL_GRAPH_HUFFMAN);
+                return graphName(*scale16);
             case FieldKind::f8:
                 return graphName(ZL_GRAPH_FSE);
             case FieldKind::quants:
@@ -842,16 +846,249 @@ TEST_F(GGUFCompressorTest, RoutesEachFieldToTheGraphOfItsKind)
     }
 }
 
+/// A TQ2_0 tensor of rows of @p rowBlocks blocks, whose quantized values are
+/// zero and whose blocks have the scales @p scales.
+std::string ternaryFileWithScales(
+        const std::vector<uint16_t>& scales,
+        size_t rowBlocks)
+{
+    size_t blockElts = 0, blockBytes = 0;
+    EXPECT_TRUE(ZL_GGUF_typeLayout(ZL_GGUFType_tq2_0, &blockElts, &blockBytes));
+    std::string blocks(scales.size() * blockBytes, '\0');
+    for (size_t i = 0; i < scales.size(); ++i) {
+        // TQ2_0 blocks end with their scale.
+        char* const end = &blocks[(i + 1) * blockBytes];
+        end[-2]         = (char)(scales[i] & 0xFF);
+        end[-1]         = (char)(scales[i] >> 8);
+    }
+    return buildGGUF(
+            { { "w",
+                ZL_GGUFType_tq2_0,
+                { blockElts * rowBlocks, scales.size() / rowBlocks },
+                blocks } });
+}
+
+/// @p nbScales pseudo-random scales taking @p nbValues values.
+std::vector<uint16_t>
+pseudoRandomScales(size_t nbScales, uint32_t nbValues, uint32_t seed)
+{
+    std::vector<uint16_t> scales;
+    scales.reserve(nbScales);
+    uint32_t state = seed;
+    for (size_t i = 0; i < nbScales; ++i) {
+        state = state * 1664525 + 1013904223;
+        scales.push_back((uint16_t)(0x1000 + (state >> 8) % nbValues));
+    }
+    return scales;
+}
+
+constexpr size_t kRowBlocks = 256;
+
+/// One scale per row, for @p nbRows rows.
+std::vector<uint16_t> scalesSharedByRows(size_t nbRows)
+{
+    std::vector<uint16_t> scales;
+    for (size_t r = 0; r < nbRows; ++r) {
+        scales.insert(scales.end(), kRowBlocks, (uint16_t)(0x2000 + 7 * r));
+    }
+    return scales;
+}
+
+/// The same pseudo-random row of scales, @p nbRows times.
+std::vector<uint16_t> scalesRepeatingEveryRow(size_t nbRows)
+{
+    const auto row = pseudoRandomScales(kRowBlocks, 4096, 1);
+    std::vector<uint16_t> scales;
+    for (size_t r = 0; r < nbRows; ++r) {
+        scales.insert(scales.end(), row.begin(), row.end());
+    }
+    return scales;
+}
+
+/// @p nbScales pseudo-random scales taking 16 values from 0x1c00 to 0x1e2b,
+/// with pseudo-random signs if @p withSigns.
+std::vector<uint16_t>
+largeScales(size_t nbScales, bool withSigns, uint32_t seed)
+{
+    auto scales = pseudoRandomScales(nbScales, withSigns ? 32 : 16, seed);
+    for (auto& scale : scales) {
+        const uint32_t k = scale - 0x1000u;
+        scale = (uint16_t)((k & 16) << 11 | (0x1c00 + 37 * (k & 15)));
+    }
+    return scales;
+}
+
+/// @p nbScales scales, each pseudo-random one twice in a row.
+std::vector<uint16_t> duplicatedScales(size_t nbScales)
+{
+    std::vector<uint16_t> scales;
+    for (uint16_t scale : pseudoRandomScales(nbScales / 2, 4096, 2)) {
+        scales.insert(scales.end(), 2, scale);
+    }
+    return scales;
+}
+
+TEST_F(GGUFCompressorTest, CodesScalesSharedByARowInLessThanOneBitEach)
+{
+    // Ternary models share a scale per row or per tensor, which 16-bit
+    // Huffman cannot code in less than one bit per scale.
+    const auto scales = scalesSharedByRows(128);
+    useChunkSize(ZL_GGUF_DEFAULT_CHUNK_SIZE);
+
+    const size_t compressedSize =
+            expectRoundTrip(ternaryFileWithScales(scales, kRowBlocks));
+
+    EXPECT_LT(compressedSize, scales.size() / 8);
+}
+
+TEST_F(GGUFCompressorTest, CodesScalesRepeatingEveryRowInLessThanOneBitEach)
+{
+    // No scale repeats the previous one: only the period of a row shows.
+    const auto scales = scalesRepeatingEveryRow(400);
+    useChunkSize(ZL_GGUF_DEFAULT_CHUNK_SIZE);
+
+    const size_t compressedSize =
+            expectRoundTrip(ternaryFileWithScales(scales, kRowBlocks));
+
+    EXPECT_LT(compressedSize, scales.size() / 8);
+}
+
+TEST_F(GGUFCompressorTest, CodesDuplicatedScalesInLessThanUnduplicatedOnes)
+{
+    // Scales duplicated by a conversion from groups twice larger take many
+    // values: repeating them only pays off over the whole tensor.
+    const size_t nbScales = 400 * kRowBlocks;
+    useChunkSize(ZL_GGUF_DEFAULT_CHUNK_SIZE);
+
+    const size_t duplicatedSize = expectRoundTrip(
+            ternaryFileWithScales(duplicatedScales(nbScales), kRowBlocks));
+    const size_t unduplicatedSize = expectRoundTrip(ternaryFileWithScales(
+            pseudoRandomScales(nbScales, 4096, 3), kRowBlocks));
+
+    EXPECT_LT(duplicatedSize, unduplicatedSize * 4 / 5);
+}
+
+TEST_F(GGUFCompressorTest, CodesScalesTakingFewValuesInLessThanTwoBitsEach)
+{
+    // Few values repeat often by chance alone, where zstd takes about 3 bits
+    // per scale.
+    const auto scales = pseudoRandomScales(400 * kRowBlocks, 3, 4);
+    useChunkSize(ZL_GGUF_DEFAULT_CHUNK_SIZE);
+
+    const size_t compressedSize =
+            expectRoundTrip(ternaryFileWithScales(scales, kRowBlocks));
+
+    EXPECT_LT(compressedSize, scales.size() * 2 / 8);
+}
+
+/// Compressed size of float16 @p scales, as split from their blocks, coded by
+/// @p graph of @p compressor.
+size_t codedScalesSize(
+        Compressor& compressor,
+        ZL_GraphID graph,
+        const std::vector<uint16_t>& scales)
+{
+    compressor.selectStartingGraph(graph);
+    CCtx cctx;
+    cctx.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+    cctx.refCompressor(compressor);
+    return cctx.compressOne(Input::refStruct(scales.data(), scales.size()))
+            .size();
+}
+
+TEST_F(GGUFCompressorTest, ScaleSelectorPicksTheSmallestCandidate)
+{
+    // The candidates of the selector, each the smallest on some patterns.
+    Compressor candidates;
+    const size_t byteSizes[2]      = { 1, 1 };
+    const ZL_GraphID byteGraphs[2] = { ZL_GRAPH_FSE, ZL_GRAPH_FSE };
+    const ZL_GraphID graphs[]      = {
+        ZL_GRAPH_HUFFMAN,
+        ZL_Compressor_registerSplitByStructGraph(
+                candidates.get(), byteSizes, byteGraphs, 2),
+        ZL_Compressor_registerZstdGraph_withLevel(candidates.get(), 3),
+    };
+    const size_t nbScales = 400 * kRowBlocks;
+    const std::vector<std::pair<std::string, std::vector<uint16_t>>>
+            patterns = {
+                { "shared by a row", scalesSharedByRows(128) },
+                { "repeating every row", scalesRepeatingEveryRow(400) },
+                { "duplicated", duplicatedScales(nbScales) },
+                { "many values for their number",
+                  pseudoRandomScales(20000, 4096, 5) },
+                { "3 values", pseudoRandomScales(nbScales, 3, 4) },
+                { "300 values", pseudoRandomScales(nbScales, 300, 6) },
+                { "constant", std::vector<uint16_t>(nbScales, 0x3c00) },
+                // Huffman bitpacks or stores small fields of large scales.
+                { "few large values", largeScales(1000, false, 8) },
+                { "few signed values", largeScales(4000, true, 9) },
+            };
+    useChunkSize(ZL_GGUF_DEFAULT_CHUNK_SIZE);
+    const auto selector = compressor_.getGraph("Tensor Scale16");
+    ASSERT_TRUE(selector.has_value());
+
+    for (const auto& [what, scales] : patterns) {
+        size_t smallest = SIZE_MAX;
+        for (const ZL_GraphID graph : graphs) {
+            smallest = std::min(
+                    smallest, codedScalesSize(candidates, graph, scales));
+        }
+        EXPECT_EQ(codedScalesSize(compressor_, *selector, scales), smallest)
+                << what;
+    }
+}
+
+TEST_F(GGUFCompressorTest, ScaleSelectorRejectsOtherCandidates)
+{
+    // A serialized compressor can give the selector other candidates.
+    useChunkSize(ZL_GGUF_DEFAULT_CHUNK_SIZE);
+    const auto selector = compressor_.getGraph("Tensor Scale16");
+    ASSERT_TRUE(selector.has_value());
+    compressor_.selectStartingGraph(compressor_.parameterizeGraph(
+            *selector, { .customGraphs = { { ZL_GRAPH_STORE } } }));
+    cctx_.setParameter(CParam::FormatVersion, formatVersion_);
+    cctx_.refCompressor(compressor_);
+
+    EXPECT_THROW(cctx_.compressSerial(pseudoRandomBytes(4096, 1)), Exception);
+}
+
+TEST_F(GGUFCompressorTest, ScaleSelectorCodesInputsOtherThan16BitScales)
+{
+    // A custom compressor can give the selector any serial or struct input.
+    useChunkSize(ZL_GGUF_DEFAULT_CHUNK_SIZE);
+    const auto selector = compressor_.getGraph("Tensor Scale16");
+    ASSERT_TRUE(selector.has_value());
+    compressor_.selectStartingGraph(*selector);
+    const auto scales = pseudoRandomScales(100000, 200, 7);
+    const std::vector<uint32_t> wideScales(scales.begin(), scales.end());
+    const auto wideInput =
+            Input::refStruct(wideScales.data(), wideScales.size());
+
+    expectRoundTrip(
+            std::string_view(
+                    reinterpret_cast<const char*>(scales.data()),
+                    2 * scales.size() - 1));
+    cctx_.setParameter(CParam::FormatVersion, formatVersion_);
+    cctx_.refCompressor(compressor_);
+    EXPECT_TRUE(dctx_.decompressOne(cctx_.compressOne(wideInput)) == wideInput);
+}
+
 TEST_F(GGUFCompressorTest, SerializedCompressorCanBeReloaded)
 {
+    // Shifts the names of the graphs registered after it, unless anchored.
+    ZL_Compressor_registerZstdGraph_withLevel(compressor_.get(), 5);
     useChunkSize(ZL_GGUF_DEFAULT_CHUNK_SIZE);
+    // Debug builds log the dependencies left unresolved.
+    ::testing::internal::CaptureStderr();
     const auto reloaded =
             createCompressorFromSerialized(compressor_.serialize(), "");
+    const std::string log = ::testing::internal::GetCapturedStderr();
     CCtx cctx;
     cctx.setParameter(CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
     cctx.refCompressor(*reloaded);
     const auto input = buildGGUF(mixedTypeTensors());
     EXPECT_EQ(dctx_.decompressSerial(cctx.compressSerial(input)), input);
+    EXPECT_EQ(log.find("unresolved"), std::string::npos) << log;
 }
 
 } // namespace

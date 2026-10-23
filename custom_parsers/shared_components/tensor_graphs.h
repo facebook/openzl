@@ -27,6 +27,7 @@ typedef enum {
     ZL_TensorClass_f64,
     ZL_TensorClass_atypical16, // low-cardinality 16-bit floats
     ZL_TensorClass_atypical32, // low-cardinality 32-bit floats
+    ZL_TensorClass_scale16, // float16 or bfloat16 scales of quantized weights
     ZL_TensorClass_count,
 } ZL_TensorClass;
 
@@ -42,10 +43,19 @@ ZL_TensorClass ZL_TensorGraphs_refineClass(
         size_t size,
         uint32_t* sample);
 
+/// Registers the graph of the float16 or bfloat16 scales of quantized
+/// weights, which chooses a codec per input. Later calls on the same
+/// compressor return the same graph.
+ZL_RESULT_OF(ZL_GraphID)
+ZL_TensorGraphs_registerScale16Graph(ZL_Compressor* compressor);
+
 /// Fills @p successors with the default graph of each class. They are ACE
-/// graphs, so that training can replace them.
+/// graphs, so that training can replace them. @p scale16 is the graph of
+/// ZL_TensorGraphs_registerScale16Graph(), which parsers can also use inside
+/// quantized blocks.
 void ZL_TensorGraphs_buildSuccessors(
         ZL_Compressor* compressor,
+        ZL_GraphID scale16,
         ZL_GraphID successors[ZL_TensorClass_count]);
 
 ZL_END_C_DECLS

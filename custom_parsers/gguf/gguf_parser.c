@@ -184,13 +184,13 @@ static ZL_Report GG_segmenterFn(ZL_Segmenter* sctx)
  * ------------------------------------------------------------------------ */
 
 /// Quantized values and sub-block scales are nearly uniform bytes, where the
-/// Huffman stage of zstd beats FSE; float16 scales are coded as 16-bit symbols;
-/// 8-bit float scales take few values, where FSE beats Huffman.
-static ZL_GraphID GG_fieldGraph(GG_FieldKind kind)
+/// Huffman stage of zstd beats FSE; 8-bit float scales take few values, where
+/// FSE beats Huffman.
+static ZL_GraphID GG_fieldGraph(GG_FieldKind kind, ZL_GraphID scale16)
 {
     switch (kind) {
         case GG_f16:
-            return ZL_GRAPH_HUFFMAN;
+            return scale16;
         case GG_f8:
             return ZL_GRAPH_FSE;
         case GG_q:
@@ -201,11 +201,12 @@ static ZL_GraphID GG_fieldGraph(GG_FieldKind kind)
 
 static ZL_GraphID GG_blockSuccessor(
         ZL_Compressor* compressor,
-        const GG_BlockLayout* layout)
+        const GG_BlockLayout* layout,
+        ZL_GraphID scale16)
 {
     ZL_GraphID fieldGraphs[GG_MAX_FIELDS];
     for (size_t i = 0; i < layout->nbFields; ++i) {
-        fieldGraphs[i] = GG_fieldGraph(layout->kinds[i]);
+        fieldGraphs[i] = GG_fieldGraph(layout->kinds[i], scale16);
     }
     return ZL_Compressor_buildACEGraphWithDefault(
             compressor,
@@ -216,15 +217,20 @@ static ZL_GraphID GG_blockSuccessor(
 ZL_RESULT_OF(ZL_GraphID)
 ZL_GGUF_registerGraph(ZL_Compressor* compressor, size_t chunkSizeMax)
 {
+    ZL_RESULT_DECLARE_SCOPE(ZL_GraphID, compressor);
+    ZL_TRY_LET(
+            ZL_GraphID,
+            scale16,
+            ZL_TensorGraphs_registerScale16Graph(compressor));
     ZL_GraphID successors[GG_NB_SUCCESSORS];
-    ZL_TensorGraphs_buildSuccessors(compressor, successors);
+    ZL_TensorGraphs_buildSuccessors(compressor, scale16, successors);
     for (size_t i = ZL_TensorClass_count; i < GG_NB_SUCCESSORS; ++i) {
         successors[i] = successors[ZL_TensorClass_raw];
     }
     for (size_t i = 0; i < GG_NB_BLOCK_LAYOUTS; ++i) {
         ZL_ASSERT_LT(kBlockLayouts[i].type, ZL_GGUFType_limit);
         successors[GG_FIRST_BLOCK_SUCCESSOR + kBlockLayouts[i].type] =
-                GG_blockSuccessor(compressor, &kBlockLayouts[i]);
+                GG_blockSuccessor(compressor, &kBlockLayouts[i], scale16);
     }
     return ZL_TensorChunker_registerSegmenter(
             compressor,

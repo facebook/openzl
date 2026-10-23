@@ -2,7 +2,9 @@
 
 #include "custom_parsers/safetensors/safetensors_parser.h"
 
+#include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "custom_parsers/safetensors/safetensors_lexer.h"
 #include "custom_parsers/shared_components/tensor_chunker.h"
@@ -41,6 +43,41 @@ static ZL_TensorClass ST_classOf(ZL_SafetensorsDtype dtype)
     }
 }
 
+static bool ST_nameEndsWith(const ZL_SafetensorsToken* t, const char* suffix)
+{
+    const size_t n = strlen(suffix);
+    return t->nameSize >= n
+            && memcmp(t->name + t->nameSize - n, suffix, n) == 0;
+}
+
+/// Quantized formats name their tensors after their role: `scales` (GPTQ, AWQ,
+/// MLX), `biases` (MLX) and `weight_scale` (compressed-tensors) are scales of
+/// groups of values; `qweight` (GPTQ, AWQ), `weight_packed`
+/// (compressed-tensors) and `weight` (MLX) hold values of a few bits packed in
+/// 32-bit words, which are coded as bytes. MLX stores them as uint32 and the
+/// other formats as int32, so an int32 `weight` keeps the class of its dtype.
+/// These names are a best-effort guess: a tensor named alike for another role
+/// is only compressed less well, never lossily.
+static ZL_TensorClass ST_tensorClassOf(const ZL_SafetensorsToken* t)
+{
+    const bool is16 = t->dtype == ZL_SafetensorsDtype_f16
+            || t->dtype == ZL_SafetensorsDtype_bf16;
+    const bool isU32 = t->dtype == ZL_SafetensorsDtype_u32;
+    const bool is32  = isU32 || t->dtype == ZL_SafetensorsDtype_i32;
+    if (is16 && t->ndims >= 2
+        && (ST_nameEndsWith(t, ".scales") || ST_nameEndsWith(t, ".biases")
+            || ST_nameEndsWith(t, ".weight_scale"))) {
+        return ZL_TensorClass_scale16;
+    }
+    if ((is32
+         && (ST_nameEndsWith(t, ".qweight")
+             || ST_nameEndsWith(t, ".weight_packed")))
+        || (isU32 && ST_nameEndsWith(t, ".weight"))) {
+        return ZL_TensorClass_int8;
+    }
+    return ST_classOf(t->dtype);
+}
+
 /// Split granularity: whole rows when they are small enough, else elements.
 static size_t ST_splitAlign(const ZL_SafetensorsToken* t, size_t chunkSizeMax)
 {
@@ -77,7 +114,7 @@ static ZL_TensorInfo ST_describe(const void* token, size_t chunkSizeMax)
         case ZL_SafetensorsTokenType_tensor:
             return (ZL_TensorInfo){ t->ptr,
                                     t->size,
-                                    ST_classOf(t->dtype),
+                                    ST_tensorClassOf(t),
                                     ST_splitAlign(t, chunkSizeMax) };
         case ZL_SafetensorsTokenType_gap:
         default:
@@ -101,8 +138,13 @@ static ZL_Report ST_segmenterFn(ZL_Segmenter* sctx)
 ZL_RESULT_OF(ZL_GraphID)
 ZL_Safetensors_registerGraph(ZL_Compressor* compressor, size_t chunkSizeMax)
 {
+    ZL_RESULT_DECLARE_SCOPE(ZL_GraphID, compressor);
+    ZL_TRY_LET(
+            ZL_GraphID,
+            scale16,
+            ZL_TensorGraphs_registerScale16Graph(compressor));
     ZL_GraphID successors[ZL_TensorClass_count];
-    ZL_TensorGraphs_buildSuccessors(compressor, successors);
+    ZL_TensorGraphs_buildSuccessors(compressor, scale16, successors);
     return ZL_TensorChunker_registerSegmenter(
             compressor,
             "!Safetensors Segmenter",

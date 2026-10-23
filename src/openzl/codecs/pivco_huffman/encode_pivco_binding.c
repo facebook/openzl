@@ -65,7 +65,7 @@ static ZL_Report buildWeights(
 
     // Reuse the CTable the entropy graph already built when it hands one down
     // as a parameter, instead of rebuilding it. Its first element encodes the
-    // tableLog. The entropy binding caps the tableLog at HUF_TABLELOG_DEFAULT,
+    // tableLog. The entropy binding caps the tableLog at HUF_TABLELOG_MAX,
     // which is within ZL_PIVCO_MAX_TABLE_LOG, so the table is valid here.
     HUF_CREATE_STATIC_CTABLE(builtCtable, HUF_SYMBOLVALUE_MAX);
     const HUF_CElt* ctable;

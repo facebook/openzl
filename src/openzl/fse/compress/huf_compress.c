@@ -478,7 +478,7 @@ typedef struct {
     U16 curr;
 } rankPos;
 
-typedef nodeElt huffNodeTable[HUF_CTABLE_WORKSPACE_SIZE_U32];
+typedef nodeElt huffNodeTable[2 * (HUF_SYMBOLVALUE_MAX + 1)];
 
 /* Number of buckets available for HUF_sort() */
 #define RANK_POSITION_TABLE_SIZE 192
@@ -737,6 +737,7 @@ HUF_buildCTable_wksp(HUF_CElt* CTable, const unsigned* count, U32 maxSymbolValue
     nodeElt* const huffNode = huffNode0+1;
     int nonNullRank;
 
+    HUF_STATIC_ASSERT(HUF_CTABLE_WORKSPACE_SIZE >= sizeof(HUF_buildCTable_wksp_tables));
     DEBUGLOG(5, "HUF_buildCTable_wksp (alphabet size = %u)", maxSymbolValue+1);
 
     /* safety checks */

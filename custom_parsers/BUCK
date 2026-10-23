@@ -20,6 +20,7 @@ zs_library(
         "parquet:parquet_graph",
         "safetensors:safetensors_parser",
         "shared_components:clustering",
+        "shared_components:tensor_components",
     ],
 )
 

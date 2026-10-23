@@ -36,6 +36,35 @@ extern "C" {
 #define ZL_ENTROPY_MIN_GAIN_PCT_PID 80
 
 /**
+ * If provided to an entropy graph, byte inputs larger than this many bytes,
+ * between 2^15 and 2^26, are cut into chunks of this size, each coded with its
+ * own statistics. Larger chunks spend less on headers when statistics are
+ * homogeneous, smaller ones follow changing statistics. Huffman codes chunks
+ * of at most 128 KiB: ZL_GRAPH_HUFFMAN caps its chunks at this size, and
+ * larger chunks of ZL_GRAPH_ENTROPY are not coded with Huffman. If unset, the
+ * entropy graph uses chunks of its choosing. Inputs of 2-byte elements keep
+ * their default chunks. Format versions below 15 ignore it.
+ */
+#define ZL_ENTROPY_CHUNK_SIZE_PID 81
+
+/**
+ * If provided to an entropy graph, the maximum table log of FSE, between 9 and
+ * 12. Larger tables code wide alphabets with rare symbols more accurately, at
+ * the cost of a larger header and decoding table. If unset, the entropy graph
+ * uses a default of its choosing. Format versions below 15 ignore it.
+ */
+#define ZL_ENTROPY_FSE_MAX_TABLE_LOG_PID 82
+
+/**
+ * If provided to an entropy graph, the maximum length of the codes of byte
+ * Huffman, 11 or 12. 12-bit codes double the decoding table and slow decoding
+ * down, so they are only used where they make a chunk at least 1/512 (~0.2%)
+ * smaller. If unset, codes have at most 11 bits. Format versions below 15
+ * ignore it.
+ */
+#define ZL_ENTROPY_HUFFMAN_MAX_TABLE_LOG_PID 83
+
+/**
  * Sets the destination of @p edge to @p entropyGraph with the parameters
  * @p minGainBytes and @p minGainPct.
  *
