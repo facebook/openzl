@@ -82,6 +82,129 @@ ZL_BEGIN_C_DECLS
 #    endif
 #endif
 
+/*!
+ * @internal
+ * @def ZL_COMPILER_GUARD_1(var1)
+ * @def ZL_COMPILER_GUARD_2(var1, var2)
+ * @def ZL_COMPILER_GUARD_3(var1, var2, var3)
+ * @def ZL_COMPILER_GUARD_4(var1, var2, var3, var4)
+ * @brief Prevents unwanted optimizations involving the specified variables.
+ *
+ * On GCC and Clang, these macros use an empty inline assembly statement with
+ * read/write register constraints. This forces each variable into a general
+ * purpose register and marks its value as modified from the compiler's point
+ * of view, while emitting no instructions.
+ *
+ * The guards can be used to inhibit optimizations such as constant folding,
+ * value propagation, or unwanted autovectorization where those transformations
+ * are undesirable.
+ *
+ * The numbered variants allow multiple variables to participate in the same
+ * inline assembly statement.
+ *
+ * Using a multi-variable guard is not necessarily equivalent to applying the
+ * single-variable guard repeatedly. In the multi-variable form, all operands
+ * belong to the same asm statement and are therefore simultaneously visible
+ * to the compiler and register allocator at that point. Separate guards form
+ * separate optimization barriers, which may allow different scheduling or
+ * register reuse between them.
+ */
+#if defined(__GNUC__) || defined(__clang__)
+#    define ZL_COMPILER_GUARD_1(var1) __asm__("" : "+r"(var1))
+#    define ZL_COMPILER_GUARD_2(var1, var2) __asm__("" : "+r"(var1), "+r"(var2))
+#    define ZL_COMPILER_GUARD_3(var1, var2, var3) \
+        __asm__("" : "+r"(var1), "+r"(var2), "+r"(var3))
+#    define ZL_COMPILER_GUARD_4(var1, var2, var3, var4) \
+        __asm__("" : "+r"(var1), "+r"(var2), "+r"(var3), "+r"(var4))
+#else
+#    define ZL_COMPILER_GUARD_1(var1) ((void)0)
+#    define ZL_COMPILER_GUARD_2(var1, var2) ((void)0)
+#    define ZL_COMPILER_GUARD_3(var1, var2, var3) ((void)0)
+#    define ZL_COMPILER_GUARD_4(var1, var2, var3, var4) ((void)0)
+#endif
+
+/*!
+ * @internal
+ * @def ZL_COMPILER_GUARD_NEON_1(var1)
+ * @def ZL_COMPILER_GUARD_NEON_2(var1, var2)
+ * @def ZL_COMPILER_GUARD_NEON_3(var1, var2, var3)
+ * @def ZL_COMPILER_GUARD_NEON_4(var1, var2, var3, var4)
+ * @brief Prevents unwanted optimizations involving the specified Neon
+ * variables.
+ *
+ * These macros use an empty inline assembly statement with read/write SIMD
+ * register constraints. This forces each variable into an FP/SIMD register
+ * and marks its value as modified from the compiler's point of view, while
+ * emitting no instructions.
+ */
+#if defined(__GNUC__) || defined(__clang__)
+#    define ZL_COMPILER_GUARD_NEON_1(var1) __asm__("" : "+w"(var1))
+#    define ZL_COMPILER_GUARD_NEON_2(var1, var2) \
+        __asm__("" : "+w"(var1), "+w"(var2))
+#    define ZL_COMPILER_GUARD_NEON_3(var1, var2, var3) \
+        __asm__("" : "+w"(var1), "+w"(var2), "+w"(var3))
+#    define ZL_COMPILER_GUARD_NEON_4(var1, var2, var3, var4) \
+        __asm__("" : "+w"(var1), "+w"(var2), "+w"(var3), "+w"(var4))
+#else
+#    define ZL_COMPILER_GUARD_NEON_1(var1) ((void)0)
+#    define ZL_COMPILER_GUARD_NEON_2(var1, var2) ((void)0)
+#    define ZL_COMPILER_GUARD_NEON_3(var1, var2, var3) ((void)0)
+#    define ZL_COMPILER_GUARD_NEON_4(var1, var2, var3, var4) ((void)0)
+#endif
+
+/*!
+ * @internal
+ * @brief Compiler-specific variants of the compiler guards.
+ *
+ * These aliases are intended for optimization workarounds which are specific
+ * to GCC or Clang, allowing the affected call site to document which compiler
+ * requires the guard.
+ */
+#if defined(__clang__)
+#    define ZL_COMPILER_GUARD_CLANG_1 ZL_COMPILER_GUARD_1
+#    define ZL_COMPILER_GUARD_CLANG_2 ZL_COMPILER_GUARD_2
+#    define ZL_COMPILER_GUARD_CLANG_3 ZL_COMPILER_GUARD_3
+#    define ZL_COMPILER_GUARD_CLANG_4 ZL_COMPILER_GUARD_4
+#else
+#    define ZL_COMPILER_GUARD_CLANG_1(var1) ((void)0)
+#    define ZL_COMPILER_GUARD_CLANG_2(var1, var2) ((void)0)
+#    define ZL_COMPILER_GUARD_CLANG_3(var1, var2, var3) ((void)0)
+#    define ZL_COMPILER_GUARD_CLANG_4(var1, var2, var3, var4) ((void)0)
+#endif
+#if defined(__clang__) && defined(__aarch64__)
+#    define ZL_COMPILER_GUARD_CLANG_NEON_1 ZL_COMPILER_GUARD_NEON_1
+#    define ZL_COMPILER_GUARD_CLANG_NEON_2 ZL_COMPILER_GUARD_NEON_2
+#    define ZL_COMPILER_GUARD_CLANG_NEON_3 ZL_COMPILER_GUARD_NEON_3
+#    define ZL_COMPILER_GUARD_CLANG_NEON_4 ZL_COMPILER_GUARD_NEON_4
+#else
+#    define ZL_COMPILER_GUARD_CLANG_NEON_1(var1) ((void)0)
+#    define ZL_COMPILER_GUARD_CLANG_NEON_2(var1, var2) ((void)0)
+#    define ZL_COMPILER_GUARD_CLANG_NEON_3(var1, var2, var3) ((void)0)
+#    define ZL_COMPILER_GUARD_CLANG_NEON_4(var1, var2, var3, var4) ((void)0)
+#endif
+#if defined(__GNUC__) && !defined(__clang__)
+#    define ZL_COMPILER_GUARD_GCC_1 ZL_COMPILER_GUARD_1
+#    define ZL_COMPILER_GUARD_GCC_2 ZL_COMPILER_GUARD_2
+#    define ZL_COMPILER_GUARD_GCC_3 ZL_COMPILER_GUARD_3
+#    define ZL_COMPILER_GUARD_GCC_4 ZL_COMPILER_GUARD_4
+#else
+#    define ZL_COMPILER_GUARD_GCC_1(var1) ((void)0)
+#    define ZL_COMPILER_GUARD_GCC_2(var1, var2) ((void)0)
+#    define ZL_COMPILER_GUARD_GCC_3(var1, var2, var3) ((void)0)
+#    define ZL_COMPILER_GUARD_GCC_4(var1, var2, var3, var4) ((void)0)
+#endif
+#if defined(__GNUC__) && !defined(__clang__) && defined(__aarch64__)
+#    define ZL_COMPILER_GUARD_GCC_NEON_1 ZL_COMPILER_GUARD_NEON_1
+#    define ZL_COMPILER_GUARD_GCC_NEON_2 ZL_COMPILER_GUARD_NEON_2
+#    define ZL_COMPILER_GUARD_GCC_NEON_3 ZL_COMPILER_GUARD_NEON_3
+#    define ZL_COMPILER_GUARD_GCC_NEON_4 ZL_COMPILER_GUARD_NEON_4
+#else
+#    define ZL_COMPILER_GUARD_GCC_NEON_1(var1) ((void)0)
+#    define ZL_COMPILER_GUARD_GCC_NEON_2(var1, var2) ((void)0)
+#    define ZL_COMPILER_GUARD_GCC_NEON_3(var1, var2, var3) ((void)0)
+#    define ZL_COMPILER_GUARD_GCC_NEON_4(var1, var2, var3, var4) ((void)0)
+#endif
+
 #if defined(__GNUC__) || defined(__clang__)
 #    define ZL_PREFETCH_L1(ptr) \
         __builtin_prefetch((ptr), 0 /* rw==read */, 3 /* locality */)
