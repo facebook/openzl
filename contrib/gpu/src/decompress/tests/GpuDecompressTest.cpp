@@ -196,6 +196,29 @@ TEST(GPUDecompressTest, CollectGPUChunksFromFrameRejectsLegacyFormat)
     EXPECT_TRUE(frameHeaders.empty());
 }
 
+TEST(GPUDecompressTest, CollectGPUChunksFromFrameRejectsFrameWithoutChunks)
+{
+    // This test verifies that a frame with no chunks is rejected; it fails if
+    // a frame whose header declares output becomes an empty batch that
+    // decodes nothing and reports success.
+    const std::string fullFrame = makeTwoChunkFrameWithMultiCodecChunk();
+    ZL_Report const headerResult =
+            ZL_getHeaderSize(fullFrame.data(), fullFrame.size());
+    ASSERT_FALSE(ZL_isError(headerResult));
+    std::string frame = fullFrame.substr(0, ZL_validResult(headerResult));
+    frame.push_back('\0');
+    std::vector<std::byte> deviceFrame(frame.size());
+    std::vector<gpu::GPUChunk> chunks;
+    std::vector<gpu::GPUFrameHeaderForChunks> frameHeaders;
+
+    ZL_Report const result = gpu::collectGPUChunksFromFrame(
+            deviceFrame.data(), bytes(frame), chunks, frameHeaders);
+
+    EXPECT_EQ(ZL_errorCode(result), ZL_ErrorCode_corruption);
+    EXPECT_TRUE(chunks.empty());
+    EXPECT_TRUE(frameHeaders.empty());
+}
+
 TEST(GPUDecompressTest, CollectGPUChunksFromFrameRejectsTrailingBytes)
 {
     // This test verifies that enumeration consumes exactly one frame and only
