@@ -21,9 +21,9 @@ cpp_unittest(
     srcs = ["test_zstrong_json.cpp"],
     deps = [
         "..:zstrong_json",  # @manual
-        "//folly:file_util",
-        "//folly:memory",
-        "//folly/testing:test_util",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:memory",
+        "fbsource//xplat/folly/testing:test_util",
     ],
 )
 
@@ -36,8 +36,8 @@ cpp_unittest(
     deps = [
         "..:zstrong_ml",  # @manual
         "../..:zstronglib",  # @manual
-        "//folly:base64",
-        "//folly:dynamic",
+        "fbsource//xplat/folly:base64",
+        "fbsource//xplat/folly:dynamic",
     ],
 )
 

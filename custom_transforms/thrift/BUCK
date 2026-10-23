@@ -36,17 +36,17 @@ cpp_library(
         "-Werror=switch",
     ],
     deps = [
+        "fbsource//xplat/folly:json",
+        "fbsource//xplat/folly/container:f14_hash",
         "third-party//boost:boost_sort",
-        "//folly:json",
-        "//folly/container:f14_hash",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
         "../..:zstronglib",
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly:scope_guard",
+        "fbsource//xplat/folly/io:iobuf",
         ":thrift_parse_config_schema-cpp2-types",
-        "//folly:range",
-        "//folly:scope_guard",
-        "//folly/io:iobuf",
     ],
 )
 

@@ -46,11 +46,12 @@ zs_cxxlibrary(
     strict_conversions = False,
     deps = [],
     exported_deps = [
+        "fbsource//xplat/folly:base64",
+        "fbsource//xplat/folly:dynamic",
+        "fbsource//xplat/folly:synchronized",
+        "fbsource//xplat/folly/json:dynamic",
         "gbt_predictor:zstrong_gbt_predictor",
         ":zstrong_cpp",
-        "//folly:base64",
-        "//folly:dynamic",
-        "//folly:synchronized",
     ],
 )
 
@@ -63,12 +64,13 @@ zs_cxxlibrary(
     deps = [],
     exported_deps = [
         "..:zstronglib",
+        "fbsource//xplat/folly:base64",
+        "fbsource//xplat/folly:dynamic",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:memory",
+        "fbsource//xplat/folly/json:dynamic",
+        "fbsource//xplat/folly/lang:bits",
         ":zstrong_cpp",
-        "//folly:base64",
-        "//folly:dynamic",
-        "//folly:file_util",
-        "//folly:memory",
-        "//folly/lang:bits",
     ],
 )
 

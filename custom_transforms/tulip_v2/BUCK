@@ -23,9 +23,9 @@ cpp_library(
         "../..:zstronglib",
         "../thrift/kernels:decode_thrift_binding",
         "../thrift/kernels:encode_thrift_binding",
-        "//folly:range",
-        "//folly:scope_guard",
-        "//folly/io:iobuf",
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly:scope_guard",
+        "fbsource//xplat/folly/io:iobuf",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
 )
@@ -37,8 +37,8 @@ cpp_binary(
     deps = [
         "../..:zstronglib",
         "../../tools:zstrong_cpp",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/init:init",
         ":tulip_v2",
-        "//folly:file_util",
-        "//folly/init:init",
     ],
 )

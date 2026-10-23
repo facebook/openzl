@@ -11,6 +11,6 @@ cpp_binary(
     srcs = ["thrift_config_builder.cpp"],
     deps = [
         "../../custom_transforms/thrift:thrift_lib",
-        "//folly:base64",
+        "fbsource//xplat/folly:base64",
     ],
 )

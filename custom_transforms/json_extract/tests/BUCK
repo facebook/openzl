@@ -12,8 +12,8 @@ cpp_library(
     headers = relative_headers(["json_extract_test_data.h"]),
     header_namespace = "",
     exported_deps = [
-        "//folly:dynamic",
-        "//folly:json",
+        "fbsource//xplat/folly:dynamic",
+        "fbsource//xplat/folly:json",
     ],
 )
 

@@ -20,7 +20,7 @@ cpp_library(
     | {"encode_parse.h": "encode_parse.h"},
     header_namespace = "",
     deps = [
-        "//folly:conv",
+        "fbsource//xplat/folly:conv",
     ],
     exported_deps = [
         "../..:zstronglib",

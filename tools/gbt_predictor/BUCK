@@ -14,7 +14,7 @@ zs_cxxlibrary(
         "../..:zstronglib",
     ],
     exported_deps = [
-        "//folly:dynamic",
-        "//folly/json:dynamic",
+        "fbsource//xplat/folly:dynamic",
+        "fbsource//xplat/folly/json:dynamic",
     ],
 )

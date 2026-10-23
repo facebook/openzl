@@ -33,10 +33,10 @@ cpp_library(
         "../../../tests/datagen:datagen",
         "../../../tools:zstrong_cpp",
         "../../thrift/kernels/tests:thrift_kernel_test_utils",
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly:subprocess",
+        "fbsource//xplat/folly/io:iobuf",
         ":tulip_v2_data-cpp2-types",
-        "//folly:range",
-        "//folly:subprocess",
-        "//folly/io:iobuf",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
 )
@@ -47,8 +47,8 @@ cpp_unittest(
     deps = [
         "..:tulip_v2",
         "../../..:zstronglib",
+        "fbsource//xplat/folly:conv",
         ":tulip_v2_data_utils",
-        "//folly:conv",
     ],
 )
 
@@ -56,9 +56,9 @@ cpp_binary(
     name = "fuzz_tulip_v2_generator",
     srcs = ["fuzz_tulip_v2_generator.cpp"],
     deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:string",
         ":tulip_v2_data_utils",
-        "//folly:file_util",
-        "//folly:string",
     ],
     external_deps = [
         ("openssl", None, "crypto"),

@@ -12,7 +12,7 @@ cpp_binary(
     deps = [
         "..:zstronglib",
         "../tools:zstrong_json",
-        "//folly:file_util",
+        "fbsource//xplat/folly:file_util",
     ],
 )
 

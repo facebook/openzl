@@ -13,7 +13,7 @@ cpp_library(
     headers = relative_headers(["parse_test_data.h"]),
     header_namespace = "",
     deps = [
-        "//folly:conv",
+        "fbsource//xplat/folly:conv",
     ],
 )
 
@@ -24,8 +24,8 @@ cpp_unittest(
         "..:parse",
         "../../..:zstronglib",
         "../../../tools:zstrong_cpp",
+        "fbsource//xplat/folly:conv",
         ":parse_test_data",
-        "//folly:conv",
     ],
 )
 

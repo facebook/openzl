@@ -13,8 +13,8 @@ cpp_binary(
         "..:utils",
         "../datagen:datagen",
         "../registry:openzl_components",
-        "//folly:file_util",
-        "//folly:string",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:string",
     ],
     external_deps = [
         ("openssl", None, "crypto"),

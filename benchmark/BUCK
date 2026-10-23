@@ -73,11 +73,11 @@ zs_cxxbinary(
         "../tools:zstrong_ml",
         "fbsource//third-party/benchmark:benchmark",
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:demangle",
+        "fbsource//xplat/folly:dynamic",
+        "fbsource//xplat/folly:json",
         "fbsource//xplat/tools/cxx:resources",
         "unitBench:sao_graph",
-        "//folly:demangle",
-        "//folly:dynamic",
-        "//folly:json",
     ],
 )
 

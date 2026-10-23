@@ -230,7 +230,7 @@ zs_cxxbinary(
     deps = [
         "..:zstronglib",
         "../tools:fileio",
-        "//folly/init:init",
+        "fbsource//xplat/folly/init:init",
     ],
 )
 

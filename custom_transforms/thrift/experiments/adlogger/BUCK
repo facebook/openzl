@@ -10,10 +10,10 @@ cpp_binary(
         "parse_batch_file.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly/io:iobuf",
         "//admarket/adlogger/parser/if:if-cpp2-types",
         "//admarket/training_data/feature_store/common:feature_store_serialization",
-        "//folly:file_util",
-        "//folly:range",
-        "//folly/io:iobuf",
     ],
 )

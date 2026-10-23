@@ -55,8 +55,8 @@ cpp_binary(
     deps = [
         "..:zstronglib",
         "../tools:zstrong_cpp",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/init:init",
         ":pytorch_model_parser",
-        "//folly:file_util",
-        "//folly/init:init",
     ],
 )

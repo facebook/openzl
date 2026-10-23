@@ -41,9 +41,9 @@ cpp_library(
     header_namespace = "",
     exported_deps = [
         "../../..:compress",
+        "fbsource//xplat/folly/memory:uninitialized_memory_hacks",
         ":encode_thrift_kernel",
         ":thrift_kernel_utils",
-        "//folly/memory:uninitialized_memory_hacks",
     ],
 )
 
@@ -54,8 +54,8 @@ cpp_library(
     header_namespace = "",
     exported_deps = [
         "../../..:decompress",
+        "fbsource//xplat/folly/memory:uninitialized_memory_hacks",
         ":decode_thrift_kernel",
         ":thrift_kernel_utils",
-        "//folly/memory:uninitialized_memory_hacks",
     ],
 )

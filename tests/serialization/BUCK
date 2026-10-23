@@ -66,9 +66,9 @@ zs_cxxbinary(
         "../../cpp:openzl_cpp",
         "../datagen:datagen",
         "../registry:openzl_components",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:string",
         ":graph_builder",
-        "//folly:file_util",
-        "//folly:string",
     ],
     external_deps = [
         ("openssl", None, "crypto"),
