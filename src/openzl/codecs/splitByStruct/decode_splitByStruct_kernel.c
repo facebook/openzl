@@ -80,6 +80,84 @@ static size_t rejoin_max8(
     return dstSize;
 }
 
+/// Copies @p nbElts fields of @p fieldSize bytes from @p src to @p dst, one
+/// every @p stride bytes. Common sizes are copied with constant-size memcpy().
+static void copyField(
+        char* restrict dst,
+        size_t stride,
+        const char* restrict src,
+        size_t fieldSize,
+        size_t nbElts)
+{
+#define ZS_COPY_FIELD(size)                                 \
+    for (size_t e = 0; e < nbElts; e++) {                   \
+        memcpy(dst + e * stride, src + e * (size), (size)); \
+    }
+    switch (fieldSize) {
+        case 1:
+            ZS_COPY_FIELD(1);
+            break;
+        case 2:
+            ZS_COPY_FIELD(2);
+            break;
+        case 4:
+            ZS_COPY_FIELD(4);
+            break;
+        case 8:
+            ZS_COPY_FIELD(8);
+            break;
+        case 12:
+            ZS_COPY_FIELD(12);
+            break;
+        case 16:
+            ZS_COPY_FIELD(16);
+            break;
+        case 32:
+            ZS_COPY_FIELD(32);
+            break;
+        case 64:
+            ZS_COPY_FIELD(64);
+            break;
+        case 128:
+            ZS_COPY_FIELD(128);
+            break;
+        default:
+            ZS_COPY_FIELD(fieldSize);
+            break;
+    }
+#undef ZS_COPY_FIELD
+}
+
+/// Rejoins the fields one by one, over blocks of structures small enough for
+/// the block of @p dst to stay in cache between fields.
+static void rejoin_byField(
+        void* restrict dst,
+        const void* restrict srcs[],
+        const size_t fieldSizes[],
+        size_t nbFields,
+        size_t structSize,
+        size_t nbElts)
+{
+    if (structSize == 0) {
+        return;
+    }
+    size_t const blockElts = structSize < 16384 ? 16384 / structSize : 1;
+    for (size_t start = 0; start < nbElts; start += blockElts) {
+        size_t const n =
+                nbElts - start < blockElts ? nbElts - start : blockElts;
+        size_t offset = 0;
+        for (size_t f = 0; f < nbFields; f++) {
+            copyField(
+                    (char*)dst + start * structSize + offset,
+                    structSize,
+                    (const char*)srcs[f] + start * fieldSizes[f],
+                    fieldSizes[f],
+                    n);
+            offset += fieldSizes[f];
+        }
+    }
+}
+
 size_t ZS_dispatchArrayFixedSizeStruct_decode(
         void* restrict dst,
         size_t dstCapacity,
@@ -118,23 +196,6 @@ size_t ZS_dispatchArrayFixedSizeStruct_decode(
                 dst, dstCapacity, srcs, fieldSizes, nbFields, nbElts);
     }
 
-    // Generic variant (slower)
-    size_t pos = 0;
-    for (size_t e = 0; e < nbElts; e++) {
-        for (size_t f = 0; f < nbFields; f++) {
-            size_t const fs = fieldSizes[f];
-            // Note : generic variant employs memcpy() directly.
-            // Speed can be improved with specialized variants,
-            // like `_max8`, using static size copies.
-            // Note 2 : In the future,
-            // this is an ideal scenario for JIT compilers.
-            // The nb and length of each copy is known beforehand,
-            // so creating the exact sequence on instructions for each loop
-            // looks plausible.
-            memcpy((char*)dst + pos, (const char*)srcs[f] + e * fs, fs);
-            pos += fs;
-        }
-    }
-    assert(pos == dstSize);
+    rejoin_byField(dst, srcs, fieldSizes, nbFields, structSize, nbElts);
     return dstSize;
 }

@@ -2,6 +2,7 @@
 
 #include "openzl/codecs/splitByStruct/decode_splitByStruct_binding.h" // DI_splitByStruct
 #include "openzl/codecs/splitByStruct/decode_splitByStruct_kernel.h" // ZS_dispatchArrayFixedSizeStruct_decode
+#include "openzl/codecs/transpose/decode_transpose_kernel.h" // ZS_splitTransposeDecode
 #include "openzl/common/assertion.h"
 #include "openzl/common/logging.h"   // ZL_DLOG
 #include "openzl/decompress/dictx.h" // ZL_Decoder_getScratchSpace
@@ -28,6 +29,7 @@ ZL_Report DI_splitByStruct(
     ZL_ASSERT_GT(nbInFields, 0);
 
     size_t structSize   = 0;
+    bool byteFields     = true;
     size_t const nbElts = ZL_Input_numElts(inFields[0]);
     for (size_t n = 0; n < nbInFields; n++) {
         ZL_ASSERT_NN(inFields[n]);
@@ -42,10 +44,22 @@ ZL_Report DI_splitByStruct(
                 corruption,
                 "DI_splitByStruct decoder can only work if all input streams have same nb of elts");
         structSize += ZL_Input_eltWidth(inFields[n]);
+        byteFields &= ZL_Input_eltWidth(inFields[n]) == 1;
     }
     size_t const dstSize = nbElts * structSize;
     ZL_Output* const out = ZL_Decoder_create1OutStream(dictx, dstSize, 1);
     ZL_ERR_IF_NULL(out, allocation);
+
+    // Fields of 1 byte each: a transpose, which has vectorized variants
+    if (byteFields && (nbInFields == 2 || nbInFields == 4 || nbInFields == 8)) {
+        const uint8_t* bytes[8];
+        for (size_t n = 0; n < nbInFields; n++) {
+            bytes[n] = (const uint8_t*)ZL_Input_ptr(inFields[n]);
+        }
+        ZS_splitTransposeDecode(ZL_Output_ptr(out), bytes, nbElts, nbInFields);
+        ZL_ERR_IF_ERR(ZL_Output_commit(out, dstSize));
+        return ZL_returnSuccess();
+    }
 
     // Note : could employ a workspace instead, when available
     size_t* const fieldSizes =

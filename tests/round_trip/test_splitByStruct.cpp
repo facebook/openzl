@@ -5,9 +5,12 @@
 // standard C
 #include <stdio.h> // printf
 
+#include <vector>
+
 // Zstrong
 #include "openzl/common/debug.h" // ZL_REQUIRE
 #include "openzl/zl_compress.h"
+#include "openzl/zl_compressor.h"
 #include "openzl/zl_decompress.h" // ZL_decompress
 
 namespace {
@@ -199,6 +202,82 @@ TEST(SplitByStruct, test_splitByStruct_33)
             splitGraph_struct_8_1_4_2_3_15,
             "splitByStruct test, structure size is 33 bytes",
             33 * 4);
+}
+
+/* Each field byte takes 3 values, so that FSE shrinks the fields and the frame
+ * keeps the split: with stored fields, the frame stores the whole input
+ * instead, and the decoder never runs. */
+static void fieldsRoundTrip(
+        const std::vector<size_t>& fieldSizes,
+        size_t nbStructs)
+{
+    std::vector<uint8_t> input;
+    for (size_t s = 0; s < nbStructs; s++) {
+        for (size_t f = 0; f < fieldSizes.size(); f++) {
+            for (size_t b = 0; b < fieldSizes[f]; b++) {
+                input.push_back((uint8_t)(16 * f + (s * 7 + b) % 3));
+            }
+        }
+    }
+    ZL_Compressor* const compressor = ZL_Compressor_create();
+    ZL_REQUIRE_NN(compressor);
+    ZL_REQUIRE(!ZL_isError(ZL_Compressor_setParameter(
+            compressor, ZL_CParam_formatVersion, ZL_MAX_FORMAT_VERSION)));
+    const std::vector<ZL_GraphID> successors(fieldSizes.size(), ZL_GRAPH_FSE);
+    const ZL_GraphID graph = ZL_Compressor_registerSplitByStructGraph(
+            compressor,
+            fieldSizes.data(),
+            successors.data(),
+            fieldSizes.size());
+    ZL_REQUIRE(!ZL_isError(
+            ZL_Compressor_selectStartingGraphID(compressor, graph)));
+    ZL_CCtx* const cctx = ZL_CCtx_create();
+    ZL_REQUIRE_NN(cctx);
+    ZL_REQUIRE(!ZL_isError(ZL_CCtx_refCompressor(cctx, compressor)));
+    std::vector<uint8_t> compressed(ZL_compressBound(input.size()));
+    const ZL_Report cr = ZL_CCtx_compress(
+            cctx,
+            compressed.data(),
+            compressed.size(),
+            input.data(),
+            input.size());
+    ZL_REQUIRE(!ZL_isError(cr));
+    EXPECT_LT(ZL_validResult(cr), input.size() / 2)
+            << fieldSizes.size() << " fields";
+
+    std::vector<uint8_t> decompressed(input.size());
+    const ZL_Report dr = ZL_decompress(
+            decompressed.data(),
+            decompressed.size(),
+            compressed.data(),
+            ZL_validResult(cr));
+    ZL_REQUIRE(!ZL_isError(dr));
+    EXPECT_EQ(decompressed, input) << fieldSizes.size() << " fields";
+    ZL_CCtx_free(cctx);
+    ZL_Compressor_free(compressor);
+}
+
+TEST(SplitByStruct, test_splitByStruct_byteFields)
+{
+    // Sizes beyond whole vectors and between them
+    for (size_t nbFields : { 2, 3, 4, 8 }) {
+        const std::vector<size_t> fieldSizes(nbFields, 1);
+        fieldsRoundTrip(fieldSizes, 1007);
+        fieldsRoundTrip(fieldSizes, 4096);
+    }
+}
+
+TEST(SplitByStruct, test_splitByStruct_wideFields)
+{
+    // Several blocks of structures and a partial one
+    for (size_t nbStructs : { 1007, 4096 }) {
+        fieldsRoundTrip({ 2, 32 }, nbStructs);
+        fieldsRoundTrip({ 2, 2, 12, 128 }, nbStructs);
+        fieldsRoundTrip({ 8, 1, 4, 2, 3, 15 }, nbStructs);
+        fieldsRoundTrip({ 64, 16, 9 }, nbStructs);
+    }
+    // Structures larger than a block
+    fieldsRoundTrip({ 20000, 1 }, 3);
 }
 
 TEST(SplitByStruct, test_splitByStruct_invalidInputSize)
