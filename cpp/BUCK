@@ -4,6 +4,7 @@
 
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("../defs.bzl", "private_headers", "public_headers")
+load("../tools/wasm/wasm_flags.bzl", "openzl_wasm_compiler_flags")
 
 oncall("data_compression")
 
@@ -39,6 +40,7 @@ cpp_library(
             "src/**/*.hpp",
         ])
     ),
+    compiler_flags = openzl_wasm_compiler_flags(),
     exported_deps = [
         "..:zstronglib",
     ],

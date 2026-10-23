@@ -16,6 +16,12 @@ zs_cxxlibrary(
         "tools/training/dict/zstd_dict_trainer.h": "zstd_dict_trainer.h",
         "zstd_dict_trainer.h": "zstd_dict_trainer.h",
     },
+    # Zstd's advanced dictionary-training declarations require this macro.
+    # The fbcode dependency supplies it automatically; the WASM dependency does not.
+    preprocessor_flags = select({
+        "DEFAULT": [],
+        "ovr_config//runtime:wasm": ["-DZDICT_STATIC_LINKING_ONLY"],
+    }),
     deps = [
         "../..:logger",
         "../../../cpp:openzl_cpp",

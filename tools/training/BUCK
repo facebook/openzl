@@ -10,18 +10,22 @@ zs_cxxlibrary(
         "train.cpp",
     ],
     headers = {"tools/training/train.h": "train.h", "train.h": "train.h"},
-    preprocessor_flags = [
-        "-DOPENZL_HAS_ML_SELECTOR_TRAINER=1",
-    ],
+    # ML selector training depends on XGBoost, which has no supported WASM build.
+    preprocessor_flags = select({
+        "DEFAULT": ["-DOPENZL_HAS_ML_SELECTOR_TRAINER=1"],
+        "ovr_config//runtime:wasm": [],
+    }),
     deps = [
         "../../custom_parsers:custom_parsers",
-        "../ml_selector:ml_selector_trainer",
         "ace:automated_compressor_explorer",
         "clustering:clustering_graph_trainer",
         "dict:base_dict_trainer",
         "graph_mutation:graph_mutation",
         "lz:lz_trainer",
-    ],
+    ] + select({
+        "DEFAULT": ["../ml_selector:ml_selector_trainer"],
+        "ovr_config//runtime:wasm": [],
+    }),
     exported_deps = [
         "..:logger",
         "utils:training_utils",
