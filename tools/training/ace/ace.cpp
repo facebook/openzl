@@ -8,7 +8,6 @@
 
 #include "openzl/cpp/Compressor.hpp"
 
-#include "openzl/compress/cgraph.h"
 #include "openzl/zl_reflection.h"
 #include "tools/logger/Logger.h"
 #include "tools/training/ace/ace.h"
