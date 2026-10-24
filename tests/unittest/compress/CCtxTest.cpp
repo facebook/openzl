@@ -12,7 +12,6 @@
 #include "openzl/compress/cctx.h"
 #include "openzl/openzl.hpp"
 #include "openzl/shared/portability.h"
-#include "openzl/zl_config.h"
 #include "openzl/zl_ctransform.h"
 #include "openzl/zl_dtransform.h"
 #include "openzl/zl_input.h"
