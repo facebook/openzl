@@ -34,6 +34,7 @@ cpp_library(
     ],
     headers = relative_headers([
         "pivco_gpu.cuh",
+        "pivco_gpu_cooperative.cuh",
         "pivco_gpu.h",
         "pivco_gpu_tree.h",
     ]),
