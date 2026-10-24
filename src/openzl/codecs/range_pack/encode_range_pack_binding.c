@@ -19,7 +19,11 @@ ZL_Report EI_rangePack(ZL_Encoder* eictx, const ZL_Input* ins[], size_t nbIns)
     const ZL_Input* in    = ins[0];
     void const* src       = ZL_Input_ptr(in);
     size_t const srcWidth = ZL_Input_eltWidth(in);
-    size_t const nbElts   = ZL_Input_numElts(in);
+    ZL_ERR_IF_NOT(
+            srcWidth == 1 || srcWidth == 2 || srcWidth == 4 || srcWidth == 8,
+            node_invalid_input,
+            "range_pack requires 1, 2, 4, or 8-byte numeric elements");
+    size_t const nbElts = ZL_Input_numElts(in);
     ZL_ElementRange const range =
             ZL_computeUnsignedRange(src, nbElts, srcWidth);
     const size_t dstWidth = NUMOP_numericWidthForValue(range.max - range.min);
