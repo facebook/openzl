@@ -7,6 +7,7 @@
 
 #include "contrib/gpu/src/common/result.hpp"
 #include "contrib/gpu/src/decompress/gpu_decompress.h"
+#include "contrib/gpu/src/device/device.hpp"
 #include "openzl/cpp/DCtx.hpp"
 #include "openzl/cpp/poly/Span.hpp"
 #include "openzl/zl_errors.h"
@@ -25,7 +26,7 @@ struct GPUFrameHeaderForChunks {
  * Non-owning metadata for one compressed chunk in device memory.
  *
  * @p chunk_d refers into a device allocation owned by the caller. Its storage
- * must remain valid until work using this descriptor has completed on its CUDA
+ * must remain valid until work using this descriptor has completed on its
  * stream. @p frameHeaderIdx identifies the frame-header descriptor supplied
  * alongside this chunk.
  */
@@ -52,14 +53,17 @@ struct PreparedGPUChunk {
  * Copies frame, formal chunk, and transform headers to host and prepares one
  * DCTX per chunk.
  * Stored-stream references remain bound to the device addresses in @p chunks.
+ * @param stream Stream of the device whose memory holds @p frameHeaders and
+ * @p chunks. The copies run on it, and they are synchronized before this
+ * function returns.
  * @returns One prepared chunk per entry of @p chunks, in the same order, or an
  * error.
  * @throws std::bad_alloc or openzl::Exception if an allocation fails.
  */
 Result<std::vector<PreparedGPUChunk>> prepareChunksForPlanning(
+        const Stream& stream,
         poly::span<const GPUFrameHeaderForChunks> frameHeaders,
-        poly::span<const GPUChunk> chunks,
-        ZL_GPU_Stream stream);
+        poly::span<const GPUChunk> chunks);
 
 /**
  * Enumerates the chunks in one host-readable frame. A temporary solution until
@@ -86,9 +90,10 @@ ZL_Report collectGPUChunksFromFrame(
 /**
  * Copies one device frame to host and enumerates its chunks.
  *
+ * @param stream Stream of the device whose memory holds @p src_d. The
+ * device-to-host copy runs on it and is synchronized before this function
+ * returns.
  * @param src_d Device allocation containing one complete compressed frame.
- * @param stream CUDA stream used for the device-to-host copy. The copy is
- * synchronized before this function returns.
  * @param chunks Output descriptors. Appended on success and unchanged on
  * error. Their pointers remain valid only while @p src_d remains valid.
  * @param frameHeaders Output containing the frame-header descriptor referenced
@@ -98,14 +103,16 @@ ZL_Report collectGPUChunksFromFrame(
  * @throws std::bad_alloc or openzl::Exception if an allocation fails.
  */
 ZL_Report collectGPUChunks(
+        const Stream& stream,
         poly::span<const std::byte> src_d,
-        ZL_GPU_Stream stream,
         std::vector<GPUChunk>& chunks,
         std::vector<GPUFrameHeaderForChunks>& frameHeaders);
 
 /**
  * Decompresses independently prepared chunks on @p stream.
  *
+ * @param stream Stream of the device whose memory holds @p dst_d and every
+ * chunk. Decompression is enqueued on it.
  * @param dst_d Device allocation that receives decompressed output.
  * @param dstCapacity Capacity of @p dst_d in bytes.
  * @param frameHeaders Non-owning frame-header descriptors referenced by
@@ -113,7 +120,6 @@ ZL_Report collectGPUChunks(
  * @param chunks Non-owning descriptors for the chunks to decompress. All
  * frame-header indices must refer to @p frameHeaders, and all referenced device
  * storage must remain valid until the enqueued work has completed on @p stream.
- * @param stream CUDA stream on which decompression is enqueued.
  * @returns The decompressed size on success, or an error. An empty batch
  * returns @c parameter_invalid. The planner cannot yet combine frames, so a
  * batch with chunks of more than one frame returns
@@ -121,10 +127,10 @@ ZL_Report collectGPUChunks(
  * @throws std::bad_alloc or openzl::Exception if an allocation fails.
  */
 ZL_Report decompressChunks(
+        const Stream& stream,
         void* dst_d,
         size_t dstCapacity,
         poly::span<const GPUFrameHeaderForChunks> frameHeaders,
-        poly::span<const GPUChunk> chunks,
-        ZL_GPU_Stream stream);
+        poly::span<const GPUChunk> chunks);
 
 } // namespace openzl::gpu

@@ -50,6 +50,28 @@ cpp_library(
     exported_deps = [":testkit"],
 )
 
+# Test device whose memory is host memory, so CPU tests can run the host code
+# that reads device memory.
+cpp_library(
+    # @autodeps-skip
+    name = "host_memory_device",
+    srcs = ["host_memory_device.cpp"],
+    headers = relative_headers(["host_memory_device.h"]),
+    header_namespace = "",
+    exported_deps = ["../src/device:device"],
+)
+
+cpp_unittest(
+    # @autodeps-skip
+    name = "host_memory_device_test",
+    srcs = ["tests/HostMemoryDeviceTest.cpp"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        ":host_memory_device",
+    ],
+)
+
 cpp_unittest(
     # @autodeps-skip
     name = "frame_factory_test",

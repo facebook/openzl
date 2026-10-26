@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -12,6 +13,7 @@
 #include "contrib/gpu/src/common/cuda_error.cuh"
 #include "contrib/gpu/src/common/cuda_raii.cuh"
 #include "contrib/gpu/src/decompress/gpu_decompress.hpp"
+#include "contrib/gpu/src/device/cuda_device.hpp"
 #include "contrib/gpu/testkit/multichunk_frame.h"
 #include "openzl/cpp/poly/Span.hpp"
 #include "openzl/openzl.hpp"
@@ -72,9 +74,11 @@ TEST(GPUDecompressFullCopyTest, MatchesDirectHostEnumeration)
 
     std::vector<gpu::GPUChunk> actual;
     std::vector<gpu::GPUFrameHeaderForChunks> actualFrameHeaders;
+    const std::unique_ptr<gpu::Device> device = gpu::makeCurrentCudaDevice();
+    ASSERT_NE(device, nullptr);
     ZL_Report const actualResult = gpu::collectGPUChunks(
+            device->defaultStream(),
             { deviceFrame_d.get(), frame.size() },
-            nullptr,
             actual,
             actualFrameHeaders);
     ASSERT_FALSE(ZL_isError(actualResult));

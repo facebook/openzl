@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -12,6 +13,7 @@
 #include "contrib/gpu/src/common/cuda_error.cuh"
 #include "contrib/gpu/src/common/cuda_raii.cuh"
 #include "contrib/gpu/src/decompress/gpu_decompress.hpp"
+#include "contrib/gpu/src/device/cuda_device.hpp"
 #include "contrib/gpu/testkit/frame_verifier.h"
 #include "contrib/gpu/testkit/multichunk_frame.h"
 #include "openzl/common/errors_internal.h"
@@ -24,6 +26,13 @@ namespace tests {
 namespace {
 
 constexpr size_t kEltsPerChunk = 20000;
+
+gpu::Stream defaultCudaStream()
+{
+    static const std::unique_ptr<gpu::Device> device =
+            gpu::makeCurrentCudaDevice();
+    return device->defaultStream();
+}
 
 std::string makeTwoChunkFrame()
 {
@@ -87,7 +96,8 @@ TEST(GPUDecompressPreparationTest, BuildsContextsWithoutReadingPayload)
     ZL_CUDA_CHECK(cudaMemset(payloadOrChecksum_d, 0xA5, 1));
 
     const gpu::Result<std::vector<gpu::PreparedGPUChunk>> prepareResult =
-            gpu::prepareChunksForPlanning(frameHeaders, chunks, nullptr);
+            gpu::prepareChunksForPlanning(
+                    defaultCudaStream(), frameHeaders, chunks);
     ASSERT_FALSE(prepareResult.isError());
     const std::vector<gpu::PreparedGPUChunk>& preparedChunks =
             prepareResult.value();
@@ -163,10 +173,10 @@ TEST(GPUDecompressPreparationTest, RejectsNullFrameHeader)
 
     const gpu::Result<std::vector<gpu::PreparedGPUChunk>> result =
             gpu::prepareChunksForPlanning(
+                    defaultCudaStream(),
                     poly::span<const gpu::GPUFrameHeaderForChunks>{
                             &invalidFrameHeader, 1 },
-                    poly::span<const gpu::GPUChunk>{},
-                    nullptr);
+                    poly::span<const gpu::GPUChunk>{});
 
     ASSERT_TRUE(result.isError());
     const ZL_Report report = result.report();
@@ -200,9 +210,9 @@ TEST(GPUDecompressPreparationTest, RejectsTruncatedFrameHeader)
 
     const gpu::Result<std::vector<gpu::PreparedGPUChunk>> result =
             gpu::prepareChunksForPlanning(
+                    defaultCudaStream(),
                     poly::span<const gpu::GPUFrameHeaderForChunks>{ &magic, 1 },
-                    poly::span<const gpu::GPUChunk>{},
-                    nullptr);
+                    poly::span<const gpu::GPUChunk>{});
 
     ASSERT_TRUE(result.isError());
     EXPECT_EQ(ZL_errorCode(result.report()), ZL_ErrorCode_corruption);
@@ -222,8 +232,8 @@ TEST(GPUDecompressPreparationTest, DropsPlanningErrorInfo)
             gpu::collectGPUChunksFromFrame(
                     frame_d.get(), bytes(frame), chunks, frameHeaders)));
 
-    ZL_Report const result =
-            gpu::decompressChunks(nullptr, 0, frameHeaders, chunks, nullptr);
+    ZL_Report const result = gpu::decompressChunks(
+            defaultCudaStream(), nullptr, 0, frameHeaders, chunks);
     ZL_Report const cResult =
             ZL_GPU_decompress(nullptr, 0, frame_d.get(), frame.size(), nullptr);
 

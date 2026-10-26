@@ -23,14 +23,15 @@ cpp_library(
     | {"gpu_decompress.h": "gpu_decompress.h", "gpu_decompress.hpp": "gpu_decompress.hpp"},
     header_namespace = "",
     deps = [
+        "../device:cuda_device",
         "../planning:decode_planner",
     ],
     exported_deps = [
         "../../../..:zstronglib",
         "../../../../cpp:openzl_cpp",
         "../common:result",
+        "../device:device",
     ],
-    external_deps = ["cuda"],
 )
 
 cpp_unittest(
@@ -39,6 +40,7 @@ cpp_unittest(
     srcs = ["tests/GpuDecompressTest.cpp"],
     network_access = network_access_utils.none(),
     deps = [
+        "../../testkit:host_memory_device",
         "../../testkit:testkit",
         "fbsource//third-party/googletest:gtest",
         ":decompress",
@@ -70,6 +72,7 @@ cpp_unittest(
     deps = [
         "../../testkit:testkit",
         "../common:cuda_raii",
+        "../device:cuda_device",
         "fbsource//third-party/googletest:gtest",
         ":decompress",
     ],
@@ -99,6 +102,7 @@ cpp_unittest(
     deps = [
         "../../testkit:testkit_relative_headers",
         "../common:cuda_raii_relative_headers",
+        "../device:cuda_device",
         "fbsource//third-party/googletest:gtest",
         ":decompress",
     ],

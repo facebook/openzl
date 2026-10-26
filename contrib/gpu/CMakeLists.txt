@@ -8,7 +8,8 @@ endif()
 enable_language(CUDA)
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-find_package(CUDAToolkit REQUIRED)
+# The CUDA device calls cudaStreamGetDevice, which CUDA 12.8 added.
+find_package(CUDAToolkit 12.8 REQUIRED)
 add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:-lineinfo>)
 
 # Every source under src/ joins openzl_gpu, except sources in a tests/

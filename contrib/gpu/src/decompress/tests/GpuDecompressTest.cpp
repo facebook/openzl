@@ -5,11 +5,13 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "contrib/gpu/src/decompress/gpu_decompress.hpp"
 #include "contrib/gpu/testkit/frame_verifier.h"
+#include "contrib/gpu/testkit/host_memory_device.h"
 #include "contrib/gpu/testkit/multichunk_frame.h"
 #include "openzl/common/errors_internal.h"
 #include "openzl/cpp/poly/Span.hpp"
@@ -22,6 +24,19 @@ namespace tests {
 namespace {
 
 constexpr size_t kEltsPerChunk = 20000;
+
+/** A test device backed by host memory; these tests run without a GPU. */
+gpu::Device& hostDevice()
+{
+    static const std::unique_ptr<gpu::Device> device =
+            gpu::testkit::makeHostMemoryDevice();
+    return *device;
+}
+
+gpu::Stream hostStream()
+{
+    return hostDevice().defaultStream();
+}
 
 std::string makeTwoChunkFrameWithMultiCodecChunk()
 {
@@ -162,8 +177,8 @@ TEST(GPUDecompressTest, DecompressChunksRejectsUnknownFrameHeader)
         },
     };
 
-    ZL_Report const result =
-            gpu::decompressChunks(nullptr, 0, frameHeaders, chunks, nullptr);
+    ZL_Report const result = gpu::decompressChunks(
+            hostStream(), nullptr, 0, frameHeaders, chunks);
 
     EXPECT_EQ(ZL_errorCode(result), ZL_ErrorCode_parameter_invalid);
 }
@@ -177,6 +192,24 @@ TEST(GPUDecompressTest, CApiRejectsImpossibleSourceSize)
             nullptr, 0, nullptr, std::numeric_limits<size_t>::max(), nullptr);
 
     EXPECT_EQ(ZL_errorCode(result), ZL_ErrorCode_srcSize_tooLarge);
+}
+
+TEST(GPUDecompressTest, PlansFrameOnHostDevice)
+{
+    // Chunk 0 uses Bitpack, which has no GPU planner, so decoding stops at
+    // planning. This test runs without a GPU, so it fails if any step before
+    // planning calls the CUDA runtime instead of the device it receives.
+    const std::string frame = makeTwoChunkFrameWithMultiCodecChunk();
+    std::vector<gpu::GPUChunk> chunks;
+    std::vector<gpu::GPUFrameHeaderForChunks> frameHeaders;
+    ASSERT_FALSE(ZL_isError(
+            gpu::collectGPUChunks(
+                    hostStream(), bytes(frame), chunks, frameHeaders)));
+
+    ZL_Report const result = gpu::decompressChunks(
+            hostStream(), nullptr, 0, frameHeaders, chunks);
+
+    EXPECT_EQ(ZL_errorCode(result), ZL_ErrorCode_temporaryLibraryLimitation);
 }
 
 TEST(GPUDecompressTest, CollectGPUChunksFromFrameRejectsLegacyFormat)
@@ -310,10 +343,10 @@ TEST(GPUDecompressTest, PrepareChunksRejectsImpossibleStagingSize)
 
     const gpu::Result<std::vector<gpu::PreparedGPUChunk>> result =
             gpu::prepareChunksForPlanning(
+                    hostStream(),
                     poly::span<const gpu::GPUFrameHeaderForChunks>{
                             &frameHeader, 1 },
-                    poly::span<const gpu::GPUChunk>{},
-                    nullptr);
+                    poly::span<const gpu::GPUChunk>{});
 
     ASSERT_TRUE(result.isError());
     EXPECT_EQ(ZL_errorCode(result.report()), ZL_ErrorCode_allocation);
