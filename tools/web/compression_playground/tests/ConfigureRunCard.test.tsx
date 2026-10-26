@@ -47,7 +47,7 @@ function renderConfigureRunCard(initialRows?: readonly CompressorRow[]) {
 }
 
 /**
- * The trigger's accessible name leads with its visible text ("6 levels"), so
+ * The trigger's accessible name leads with its visible text ("1, 5, 8"), so
  * it changes as levels are picked. Match the row instead of the whole name.
  */
 function levelsTrigger(position: number): HTMLElement {
@@ -99,9 +99,9 @@ describe('ConfigureRunCard', () => {
     expect(screen.getByRole('combobox', {name: 'Compressor for row 1'})).toHaveValue('OpenZL');
     expect(screen.getByRole('combobox', {name: 'Profile for row 1'})).toHaveTextContent('serial');
     expect(screen.getByRole('combobox', {name: 'Compressor for row 2'})).toHaveValue('zstd');
-    expect(levelsTrigger(2)).toHaveTextContent('6 levels');
+    expect(levelsTrigger(2)).toHaveTextContent('1, 5, 8, 12, 15, 19');
     expect(screen.getByRole('combobox', {name: 'Compressor for row 3'})).toHaveValue('gzip');
-    expect(levelsTrigger(3)).toHaveTextContent('6 levels');
+    expect(levelsTrigger(3)).toHaveTextContent('1, 3, 4, 6, 7, 9');
   });
 
   it('keeps the dropdown arrow inside the positioned control', () => {
@@ -160,17 +160,62 @@ describe('ConfigureRunCard', () => {
   });
 
   it('names the levels trigger with the text a voice user can see', async () => {
-    // WCAG 2.5.3: a static aria-label would override "6 levels" and leave
+    // WCAG 2.5.3: a static aria-label would override the selected levels and leave
     // someone saying it with nothing to activate.
     renderConfigureRunCard();
 
-    expect(levelsTrigger(2)).toHaveAccessibleName('6 levels, row 2');
-    expect(levelsTrigger(2)).toHaveTextContent('6 levels');
+    expect(levelsTrigger(2)).toHaveAccessibleName('1, 5, 8, 12, 15, 19, row 2');
+    expect(levelsTrigger(2)).toHaveTextContent('1, 5, 8, 12, 15, 19');
 
     const levels = await openLevels(2);
     fireEvent.click(levels.getAllByRole('checkbox')[0]);
     await waitFor(() => {
-      expect(levelsTrigger(2)).toHaveAccessibleName('5 levels, row 2');
+      expect(levelsTrigger(2)).toHaveAccessibleName('5, 8, 12, 15, 19, row 2');
+    });
+  });
+
+  it('shows the chosen level after clearing and selecting one level', async () => {
+    renderConfigureRunCard();
+
+    const levels = await openLevels(3);
+    fireEvent.click(levels.getByText('None'));
+    await waitFor(() => expect(levelsTrigger(3)).toHaveTextContent('No levels'));
+    fireEvent.click(levels.getByRole('checkbox', {name: 'Level 6'}));
+
+    await waitFor(() => expect(levelsTrigger(3)).toHaveTextContent(/^6$/));
+    expect(levelsTrigger(3)).toHaveAccessibleName('6, row 3');
+    expect(levelsTrigger(3)).not.toHaveAttribute('aria-invalid');
+  });
+
+  it.each(['hover', 'focus'])('shows the full selected levels on %s', async (interaction) => {
+    renderConfigureRunCard();
+    const trigger = levelsTrigger(2);
+
+    if (interaction === 'hover') {
+      fireEvent.pointerOver(trigger);
+    } else {
+      fireEvent.focus(trigger);
+    }
+
+    const tip = await screen.findByRole('tooltip');
+    expect(tip).toHaveTextContent(/^1, 5, 8, 12, 15, 19$/);
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('returns focus to the level button when the dropdown is dismissed', async () => {
+    const user = userEvent.setup();
+    renderConfigureRunCard();
+    const trigger = levelsTrigger(2);
+
+    await user.click(trigger);
+    await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'true'));
+    const dialog = await screen.findByRole('dialog');
+    await waitFor(() => expect(dialog).toContainElement(document.activeElement as HTMLElement));
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => {
+      expect(trigger).toHaveAttribute('aria-expanded', 'false');
+      expect(trigger).toHaveFocus();
     });
   });
 
@@ -256,14 +301,14 @@ describe('ConfigureRunCard', () => {
 
     fireEvent.click(levels.getByText('All'));
     await waitFor(() => {
-      expect(levelsTrigger(3)).toHaveTextContent('9 levels');
+      expect(levelsTrigger(3)).toHaveTextContent('1, 2, 3, 4, 5, 6, 7, 8, 9');
     });
 
     // The checkbox machine notifies parents asynchronously, so wait for the
-    // count rather than asserting straight after the click.
+    // selection rather than asserting straight after the click.
     fireEvent.click(levels.getByRole('checkbox', {name: 'Level 1'}));
     await waitFor(() => {
-      expect(levelsTrigger(3)).toHaveTextContent('8 levels');
+      expect(levelsTrigger(3)).toHaveTextContent('2, 3, 4, 5, 6, 7, 8, 9');
     });
   });
 
@@ -353,7 +398,7 @@ describe('ConfigureRunCard', () => {
     fireEvent.change(screen.getByRole('combobox', {name: 'Compressor for row 1'}), {
       target: {value: 'gzip'},
     });
-    expect(levelsTrigger(1)).toHaveTextContent('6 levels');
+    expect(levelsTrigger(1)).toHaveTextContent('1, 3, 4, 6, 7, 9');
     expect(screen.queryByRole('combobox', {name: 'OpenZL level for row 1'})).not.toBeInTheDocument();
   });
 
@@ -363,14 +408,14 @@ describe('ConfigureRunCard', () => {
     const levels = await openLevels(2);
     fireEvent.click(levels.getByRole('checkbox', {name: 'Level 19'}));
     await waitFor(() => {
-      expect(levelsTrigger(2)).toHaveTextContent('5 levels');
+      expect(levelsTrigger(2)).toHaveTextContent('1, 5, 8, 12, 15');
     });
 
     // gzip has no level 19, so the row falls back to its own default set.
     fireEvent.change(screen.getByRole('combobox', {name: 'Compressor for row 2'}), {
       target: {value: 'gzip'},
     });
-    expect(levelsTrigger(2)).toHaveTextContent('6 levels');
+    expect(levelsTrigger(2)).toHaveTextContent('1, 3, 4, 6, 7, 9');
   });
 
   it('leaves the other rows alone when the trained candidate count changes', async () => {
@@ -381,7 +426,7 @@ describe('ConfigureRunCard', () => {
     const levels = await openLevels(2);
     fireEvent.click(levels.getByRole('checkbox', {name: 'Level 19'}));
     await waitFor(() => {
-      expect(levelsTrigger(2)).toHaveTextContent('5 levels');
+      expect(levelsTrigger(2)).toHaveTextContent('1, 5, 8, 12, 15');
     });
 
     fireEvent.change(screen.getByRole('combobox', {name: 'Number of trained candidates for row 1'}), {
@@ -389,9 +434,9 @@ describe('ConfigureRunCard', () => {
     });
     expect(screen.getByRole('combobox', {name: 'Number of trained candidates for row 1'})).toHaveValue('12');
 
-    expect(levelsTrigger(2)).toHaveTextContent('5 levels');
+    expect(levelsTrigger(2)).toHaveTextContent('1, 5, 8, 12, 15');
     expect(levels.getByRole('checkbox', {name: 'Level 19'})).not.toBeChecked();
-    expect(levelsTrigger(3)).toHaveTextContent('6 levels');
+    expect(levelsTrigger(3)).toHaveTextContent('1, 3, 4, 6, 7, 9');
   });
 
   it('adds and removes compressor rows', () => {
