@@ -17,6 +17,7 @@ import {
   VStack,
   chakra,
   createListCollection,
+  useSlotRecipe,
 } from '@chakra-ui/react';
 import {LuChevronDown, LuChevronRight, LuInfo, LuPlus, LuX} from 'react-icons/lu';
 import StepCard from './StepCard.tsx';
@@ -67,6 +68,7 @@ interface ConfigureRunCardProps {
 }
 
 function OpenZlOptions({row, position, onPatch}: OpenZlRowProps) {
+  const helperTooltip = useSlotRecipe({key: 'helperTooltip'})();
   // A backstop for rows that arrive from elsewhere: the picker already refuses
   // pytorch, which the browser cannot run at all.
   const canTrain = isTrainableProfile(row.profile);
@@ -134,9 +136,9 @@ function OpenZlOptions({row, position, onPatch}: OpenZlRowProps) {
                 </Tooltip.Trigger>
                 <Portal>
                   <Tooltip.Positioner>
-                    <Tooltip.Content>
+                    <Tooltip.Content css={helperTooltip.content}>
                       <Tooltip.Arrow>
-                        <Tooltip.ArrowTip />
+                        <Tooltip.ArrowTip css={helperTooltip.arrowTip} />
                       </Tooltip.Arrow>
                       Compression level has no effect while training is on.
                     </Tooltip.Content>
@@ -205,7 +207,7 @@ function OpenZlOptions({row, position, onPatch}: OpenZlRowProps) {
               </Box>
               <Text color="pg.secondary" fontSize="11px" lineHeight="1.4" m={0}>
                 {canTrain
-                  ? 'Training learns a compressor from your data'
+                  ? 'Training builds a compression graph optimized for your data, using the selected profile as a starting point. This can take a while.'
                   : `Training is not supported for the ${row.profile} profile`}
               </Text>
             </Box>
@@ -225,6 +227,8 @@ function profileDescriptionId(rowId: number, profile: OpenZlProfile): string {
 }
 
 function ProfileSelect({row, position, onPatch}: OpenZlRowProps) {
+  const helperTooltip = useSlotRecipe({key: 'helperTooltip'})();
+  const triggerId = `row-${row.id}-profile-trigger`;
   const profiles = getOpenZlProfiles();
   /**
    * Runnable profiles first, the rest after, alphabetical within each group.
@@ -250,6 +254,7 @@ function ProfileSelect({row, position, onPatch}: OpenZlRowProps) {
 
   return (
     <Select.Root
+      ids={{trigger: triggerId}}
       disabled={profiles.length === 0}
       collection={profileCollection}
       size="sm"
@@ -274,14 +279,28 @@ function ProfileSelect({row, position, onPatch}: OpenZlRowProps) {
       {/* The indicator group must sit beside the trigger inside the control:
           it is absolutely positioned and the control is the only positioned
           ancestor — nested in the trigger, the arrow flies off-box. */}
-      <Select.Control>
-        <Select.Trigger bg="pg.surface" borderColor="pg.border" borderRadius="6px" px="12px" color="pg.ink">
-          <Select.ValueText />
-        </Select.Trigger>
-        <Select.IndicatorGroup>
-          <Select.Indicator />
-        </Select.IndicatorGroup>
-      </Select.Control>
+      <Tooltip.Root ids={{trigger: triggerId}} openDelay={200} positioning={{placement: 'top', gutter: 8}}>
+        <Select.Control>
+          <Tooltip.Trigger asChild>
+            <Select.Trigger bg="pg.surface" borderColor="pg.border" borderRadius="6px" px="12px" color="pg.ink">
+              <Select.ValueText />
+            </Select.Trigger>
+          </Tooltip.Trigger>
+          <Select.IndicatorGroup>
+            <Select.Indicator />
+          </Select.IndicatorGroup>
+        </Select.Control>
+        <Portal>
+          <Tooltip.Positioner>
+            <Tooltip.Content css={helperTooltip.content}>
+              <Tooltip.Arrow>
+                <Tooltip.ArrowTip css={helperTooltip.arrowTip} />
+              </Tooltip.Arrow>
+              Match the profile to your data so OpenZL can use its structure for better compression.
+            </Tooltip.Content>
+          </Tooltip.Positioner>
+        </Portal>
+      </Tooltip.Root>
       <Select.Positioner>
         <Select.Content color="pg.ink">
           {profileCollection.items.map((profile, index) => (
@@ -318,9 +337,9 @@ function ProfileSelect({row, position, onPatch}: OpenZlRowProps) {
                     be clipped by its overflow. */}
                   <Portal>
                     <Tooltip.Positioner>
-                      <Tooltip.Content>
+                      <Tooltip.Content css={helperTooltip.content}>
                         <Tooltip.Arrow>
-                          <Tooltip.ArrowTip />
+                          <Tooltip.ArrowTip css={helperTooltip.arrowTip} />
                         </Tooltip.Arrow>
                         {profileDescription(profile)}
                       </Tooltip.Content>

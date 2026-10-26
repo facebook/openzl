@@ -114,6 +114,27 @@ describe('ConfigureRunCard', () => {
     expect(trigger.parentElement?.querySelector('svg')).not.toBeNull();
   });
 
+  it('describes the profile picker on keyboard focus and restores focus after closing it', async () => {
+    const user = userEvent.setup();
+    renderConfigureRunCard();
+    const trigger = screen.getByRole('combobox', {name: 'Profile for row 1'});
+
+    await user.tab();
+    await user.tab();
+    expect(trigger).toHaveFocus();
+    await waitFor(() => {
+      expect(trigger).toHaveAccessibleDescription(
+        'Match the profile to your data so OpenZL can use its structure for better compression.',
+      );
+    });
+
+    await user.keyboard('{ArrowDown}');
+    const listbox = await screen.findByRole('listbox');
+    await waitFor(() => expect(listbox).toHaveFocus());
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
   it('offers every compressor and OpenZL profile', async () => {
     renderConfigureRunCard();
 

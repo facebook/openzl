@@ -313,10 +313,6 @@ export default function MeasurementsTable({
           </Box>
         </Box>
       </Box>
-      <Text color="pg.faint" fontSize="12px" lineHeight="1.4" px="4px" m={0}>
-        A point is on the frontier when nothing else beats it on ratio, compression speed and decompression speed at the
-        same time.
-      </Text>
     </Box>
   );
 }
