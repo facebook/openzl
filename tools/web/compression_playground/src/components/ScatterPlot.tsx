@@ -78,21 +78,27 @@ function findPoint(
 /**
  * The plot itself, and the only part of the charts that needs recharts.
  * `highlighted` is the `measurementKey` of the table row under the pointer.
+ * `hidden` holds the codecs switched off in the legend.
  */
 export default function ScatterPlot({
   results,
   axis,
   highlighted,
+  hidden,
 }: {
   results: readonly JobResult[];
   axis: SpeedAxis;
   highlighted: string | null;
+  hidden: ReadonlySet<CompressorName>;
 }) {
   const {codec, line, label, surface} = useChartColors();
   const tickStyle = {fill: label, fontSize: 11};
-  const series = buildSeries(results, axis);
-  const xDomain = logDomain(results.map((result) => result[axis]));
-  const yDomain = logDomain(results.map((result) => result.ratio));
+  const series = buildSeries(results, axis).filter((one) => !hidden.has(one.compressor));
+  // The axes fit what is still shown, so hiding OpenZL's far-off points lets
+  // zstd and gzip spread out.
+  const shown = results.filter((result) => !hidden.has(result.job.compressor));
+  const xDomain = logDomain(shown.map((result) => result[axis]));
+  const yDomain = logDomain(shown.map((result) => result.ratio));
   const spot = findPoint(series, highlighted);
 
   return (

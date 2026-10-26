@@ -102,10 +102,8 @@ describe('RatioSpeedCharts', () => {
 
   it('counts each codec once in the legend, however many rows produced it', () => {
     renderCharts();
-    const legend = screen.getByText('OpenZL').closest('div');
-    expect(legend).not.toBeNull();
-    expect(within(legend as HTMLElement).getByText('2')).toBeInTheDocument();
-    expect(within(screen.getByText('gzip').closest('div') as HTMLElement).getByText('1')).toBeInTheDocument();
+    expect(within(screen.getByRole('button', {name: /OpenZL/})).getByText('2')).toBeInTheDocument();
+    expect(within(screen.getByRole('button', {name: /gzip/})).getByText('1')).toBeInTheDocument();
   });
 
   it('takes every colour from the theme, so the scheme can change them', async () => {
@@ -224,6 +222,91 @@ describe('RatioSpeedCharts', () => {
       </ChakraProvider>,
     );
     expect(container.querySelectorAll('.highlighted-point')).toHaveLength(0);
+  });
+
+  it('offers every codec as a toggle, all shown to begin with', () => {
+    renderCharts();
+    const group = screen.getByRole('group', {name: 'Codecs shown on the charts'});
+    const chips = within(group).getAllByRole('button');
+    expect(chips.map((chip) => chip.textContent)).toEqual(['OpenZL2', 'zstd1', 'gzip1']);
+    for (const chip of chips) {
+      expect(chip).toHaveAttribute('aria-pressed', 'true');
+    }
+  });
+
+  it('hides a codec on both charts when its chip is clicked, and shows it again', async () => {
+    const {container} = await renderPlotted();
+    const gzip = screen.getByRole('button', {name: /gzip/});
+
+    fireEvent.click(gzip);
+    expect(gzip).toHaveAttribute('aria-pressed', 'false');
+    // gzip has one point on each chart.
+    await waitFor(() => {
+      expect(container.querySelectorAll('.recharts-scatter-symbol')).toHaveLength(6);
+    });
+
+    fireEvent.click(gzip);
+    expect(gzip).toHaveAttribute('aria-pressed', 'true');
+    await waitFor(() => {
+      expect(container.querySelectorAll('.recharts-scatter-symbol')).toHaveLength(8);
+    });
+  });
+
+  it('fits the axes to the codecs still shown', async () => {
+    await renderPlotted();
+    // OpenZL's 15235x is the only ratio past 10k, so the 10k tick goes with it.
+    expect(screen.getAllByText('10k×')).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole('button', {name: /OpenZL/}));
+    await waitFor(() => {
+      expect(screen.queryAllByText('10k×')).toHaveLength(0);
+    });
+  });
+
+  it('says how to get the points back when every codec is hidden', async () => {
+    const {container} = await renderPlotted();
+    for (const chip of screen.getAllByRole('button')) {
+      fireEvent.click(chip);
+    }
+    expect(container.querySelectorAll('.recharts-scatter-symbol')).toHaveLength(0);
+    expect(screen.getAllByText('Every codec is hidden. Click one below to show it.')).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole('button', {name: /zstd/}));
+    await waitFor(() => {
+      expect(container.querySelectorAll('.recharts-scatter-symbol')).toHaveLength(2);
+    });
+    expect(screen.queryByText('Every codec is hidden. Click one below to show it.')).not.toBeInTheDocument();
+  });
+
+  it('picks out nothing for a highlighted row whose codec is hidden', async () => {
+    const {container} = await renderPlotted(RESULTS, 'j-2');
+    expect(container.querySelectorAll('.highlighted-point')).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole('button', {name: /OpenZL/}));
+    await waitFor(() => {
+      expect(container.querySelectorAll('.highlighted-point')).toHaveLength(0);
+    });
+  });
+
+  it('keeps every row in the table when a codec is hidden from the charts', async () => {
+    const results = [
+      result({compressor: 'zstd', id: 'z1', level: 1}, {ratio: 3, compressMBps: 500}),
+      result({compressor: 'gzip', id: 'g6', level: 6}, {ratio: 5, compressMBps: 50}),
+    ];
+    const {container} = render(
+      <ChakraProvider value={playgroundSystem}>
+        <ResultsPanel runState={{status: 'completed', results, failures: []}} />
+      </ChakraProvider>,
+    );
+    await waitFor(() => {
+      expect(container.querySelectorAll('.recharts-scatter-symbol').length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(screen.getByRole('button', {name: /gzip/}));
+    await waitFor(() => {
+      expect(container.querySelectorAll('.recharts-scatter-symbol')).toHaveLength(2);
+    });
+    expect(screen.getByRole('row', {name: /gzip/})).toBeInTheDocument();
   });
 
   it('places points on a log scale rather than a linear one', async () => {
