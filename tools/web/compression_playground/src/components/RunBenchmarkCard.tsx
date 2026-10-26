@@ -133,7 +133,7 @@ export default function RunBenchmarkCard({
           _hover={{bg: 'pg.canvas'}}
           disabled={!canTrySample}
           onClick={onTrySample ?? undefined}>
-          Try a 5 MB sample
+          Try a sample
         </Button>
       </Box>
       {/* The tooltip only opens on hover or focus, so the reason is also kept

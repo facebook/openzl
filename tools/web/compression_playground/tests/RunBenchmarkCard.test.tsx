@@ -181,7 +181,7 @@ describe('RunBenchmarkCard', () => {
     );
 
     expect(screen.getByRole('button', {name: 'Run benchmark'})).toBeDisabled();
-    expect(screen.getByRole('button', {name: 'Try a 5 MB sample'})).toBeDisabled();
+    expect(screen.getByRole('button', {name: 'Try a sample'})).toBeDisabled();
   });
 
   it('passes the current configuration to the run handler', () => {
@@ -203,7 +203,7 @@ describe('RunBenchmarkCard', () => {
     );
 
     fireEvent.click(screen.getByRole('button', {name: 'Run benchmark'}));
-    fireEvent.click(screen.getByRole('button', {name: 'Try a 5 MB sample'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Try a sample'}));
 
     expect(onRun).toHaveBeenCalledWith(config);
     expect(onTrySample).toHaveBeenCalledOnce();
@@ -227,7 +227,7 @@ describe('RunBenchmarkCard', () => {
 
     // Loading is already part of the run, so the button is the running one.
     expect(screen.getByRole('button', {name: 'Running…'})).toBeDisabled();
-    expect(screen.getByRole('button', {name: 'Try a 5 MB sample'})).toBeDisabled();
+    expect(screen.getByRole('button', {name: 'Try a sample'})).toBeDisabled();
   });
 
   it('says what to fix while Run is unavailable, on focus and to a screen reader', async () => {

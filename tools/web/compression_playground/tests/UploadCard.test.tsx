@@ -37,7 +37,7 @@ describe('UploadCard', () => {
     // Scoped to the drop zone: the live region repeats the name and size.
     const dropzone = within(screen.getByTestId('upload-dropzone'));
     expect(dropzone.getByText('sample.bin')).toBeInTheDocument();
-    // Decimal units, so this stays consistent with the "Try a 5 MB sample" copy.
+    // Decimal units, so a 5,000,000-byte file reads back as 5 MB rather than 4.8.
     expect(dropzone.getByText(/5 MB/)).toBeInTheDocument();
     expect(dropzone.getByText('Choose another file')).toBeInTheDocument();
   });

@@ -8,8 +8,8 @@ import StepCard from './StepCard.tsx';
 const FILE_SIZE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB'] as const;
 
 /**
- * Decimal units, not binary ones: the sample button next to this card promises
- * "5 MB", and a 5,000,000-byte file has to read back as 5 MB rather than 4.8.
+ * Decimal units, not binary ones, to match how operating systems report file
+ * sizes: a 5,000,000-byte file reads back as 5 MB rather than 4.8.
  */
 function formatFileSize(bytes: number): string {
   let size = bytes;

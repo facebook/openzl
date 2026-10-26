@@ -133,7 +133,7 @@ describe('Compression Playground', () => {
     renderWithPlaygroundTheme(<App />);
     expect(screen.getByRole('heading', {level: 2, name: 'Results'})).toBeInTheDocument();
     expect(screen.getByText('No results yet')).toBeInTheDocument();
-    expect(screen.getByText(/Try a 5 MB sample.*to see the playground work/)).toBeInTheDocument();
+    expect(screen.getByText(/Try a sample.*to see the playground work/)).toBeInTheDocument();
     expect(screen.getByRole('heading', {level: 3, name: 'How it works'})).toBeInTheDocument();
     expect(screen.getByText('Choose your data.')).toBeInTheDocument();
     expect(screen.getByRole('heading', {level: 3, name: 'Reading the results'})).toBeInTheDocument();
