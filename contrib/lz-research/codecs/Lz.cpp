@@ -245,9 +245,6 @@ inline bool valueFits(uint32_t val, uint32_t bytes)
 inline length_t
 matchLength(uint8_t const* match, uint8_t const* ip, uint8_t const* iend)
 {
-    if (0) {
-        return ZS_count(ip, match, iend);
-    }
     const size_t offset = 0;
     if (0) {
         const uint64_t x = ZL_readLE64(match);

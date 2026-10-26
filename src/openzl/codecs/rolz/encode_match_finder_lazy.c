@@ -711,11 +711,6 @@ static ZS_Lz2Match ZS_lz2_findBestMatch(
         uint8_t const* ip,
         uint8_t const* iend)
 {
-    if (0) {
-        return ZS_lz2_findBestMatch2(
-                lz2, window, ip, iend, lz2->rowLog, lz2->minLength);
-    }
-
     if (lz2->rowLog == 4) {
         switch (lz2->minLength) {
             case 5:

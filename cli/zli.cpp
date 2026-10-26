@@ -175,5 +175,4 @@ int main(int argc, char** argv)
         Logger::log(ERRORS, "Unhandled Exception:\n\t", e.what());
         return 1;
     }
-    return 1;
 }
