@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-import {createSystem, defaultConfig, defineConfig} from '@chakra-ui/react';
+import {createSystem, defaultConfig, defineConfig, defineSlotRecipe} from '@chakra-ui/react';
 import type {CompressorName} from './compressors.ts';
 
 /**
@@ -31,6 +31,29 @@ const playgroundConfig = defineConfig({
     html: {scrollbarGutter: 'stable'},
   },
   theme: {
+    slotRecipes: {
+      helperTooltip: defineSlotRecipe({
+        slots: ['trigger', 'positioner', 'content', 'arrow', 'arrowTip'],
+        base: {
+          content: {
+            '--tooltip-bg': 'colors.pg.ink',
+            bg: 'var(--tooltip-bg)',
+            color: 'pg.onInk',
+            borderWidth: '1px',
+            borderColor: 'pg.ink',
+            borderRadius: '6px',
+            px: '10px',
+            py: '8px',
+            maxW: '300px',
+            fontSize: '12px',
+            fontWeight: 'normal',
+            lineHeight: '1.5',
+            boxShadow: 'md',
+          },
+          arrowTip: {borderColor: 'pg.ink'},
+        },
+      }),
+    },
     semanticTokens: {
       colors: {
         pg: {

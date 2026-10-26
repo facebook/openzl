@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import {useId} from 'react';
-import {Box, Button, Portal, Text, Tooltip, VStack, chakra} from '@chakra-ui/react';
+import {Box, Button, Portal, Text, Tooltip, VStack, chakra, useSlotRecipe} from '@chakra-ui/react';
 import {LuCircleAlert, LuCircleCheck, LuLoaderCircle, LuPlay} from 'react-icons/lu';
 import StepCard from './StepCard.tsx';
 import {isRunInProgress, type RunConfig, type RunState} from '../benchmarkTypes.ts';
@@ -60,6 +60,7 @@ export default function RunBenchmarkCard({
   onTrySample,
   runBlockers,
 }: RunBenchmarkCardProps) {
+  const helperTooltip = useSlotRecipe({key: 'helperTooltip'})();
   const isBusy = isRunInProgress(runState);
   const canRun = runConfig !== null && onRun !== null && !isBusy;
   const canTrySample = onTrySample !== null && !isBusy;
@@ -108,9 +109,9 @@ export default function RunBenchmarkCard({
           </Tooltip.Trigger>
           <Portal>
             <Tooltip.Positioner>
-              <Tooltip.Content>
+              <Tooltip.Content css={helperTooltip.content}>
                 <Tooltip.Arrow>
-                  <Tooltip.ArrowTip />
+                  <Tooltip.ArrowTip css={helperTooltip.arrowTip} />
                 </Tooltip.Arrow>
                 {blockedReason}
               </Tooltip.Content>

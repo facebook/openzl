@@ -117,7 +117,8 @@ export default function RatioSpeedCharts({
           Ratio vs. speed
         </Heading>
         <Text color="pg.secondary" fontSize="13px" m={0}>
-          Higher and further right is better · hover to get more details
+          These charts compare compression ratio against speed. Points toward the top right offer the best combination
+          of compression ratio and speed. Hover over a point to see details.
         </Text>
       </VStack>
 
