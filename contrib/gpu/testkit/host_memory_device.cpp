@@ -10,6 +10,9 @@ namespace openzl::gpu::testkit {
 namespace {
 
 class HostMemoryDevice final : public Device {
+   public:
+    HostMemoryDevice() : Device(DecodeKernelTable{}) {}
+
    protected:
     ZL_Report doCopyToHostAndSynchronize(
             poly::span<const DeviceToHostCopy> copies,

@@ -4,7 +4,9 @@
 
 #include <cstddef>
 #include <optional>
+#include <vector>
 
+#include "contrib/gpu/src/common/codec_decode_execution.hpp"
 #include "openzl/cpp/poly/Span.hpp"
 #include "openzl/zl_errors.h"
 
@@ -54,6 +56,24 @@ class Stream {
     ZL_Report copyToHostAndSynchronize(
             poly::span<const DeviceToHostCopy> copies) const;
 
+    /**
+     * Enqueues the decode of @p runs with @p kernel, and returns without
+     * waiting for the device.
+     *
+     * @p kernel comes from this device's @c chooseDecodeBatches, and @p runs
+     * are the runs of that batch with addresses. Host memory that @p runs
+     * references may be reused when this returns. Device buffers must stay
+     * valid until the work on this stream completes.
+     *
+     * @returns Success, or a kernel's error, after which earlier work may still
+     * be running, so the caller must synchronize this stream before freeing its
+     * buffers. A kernel's @c temporaryLibraryLimitation becomes
+     * @c transform_executionFailure.
+     */
+    ZL_Report decodeBatch(
+            const DecodeKernel& kernel,
+            poly::span<const BoundCodecRun> runs) const;
+
    private:
     friend class Device;
 
@@ -70,12 +90,17 @@ class Stream {
  * The device-runtime operations that the host decode code needs.
  *
  * The host code calls no device runtime directly. Each runtime implements the
- * protected @c do* methods, so supporting another runtime does not change the
- * host code. Host code enqueues work through a @c Stream of the device.
+ * protected @c do* methods and passes its kernel table to the constructor, so
+ * supporting another runtime does not change the host code. Host code enqueues
+ * work through a @c Stream of the device.
  */
 class Device {
    public:
-    virtual ~Device() = default;
+    Device(const Device&)            = delete;
+    Device& operator=(const Device&) = delete;
+    Device(Device&&)                 = delete;
+    Device& operator=(Device&&)      = delete;
+    virtual ~Device()                = default;
 
     /// The runtime's default stream, which always belongs to this device.
     Stream defaultStream() noexcept
@@ -94,7 +119,29 @@ class Device {
      */
     ZL_Report wrapStream(void* native, std::optional<Stream>& stream);
 
+    /**
+     * Chooses the first kernel in this device's table that accepts each run,
+     * and groups the runs that choose the same kernel into one batch, as the
+     * free function @c chooseDecodeBatches does.
+     *
+     * Reads no device memory, so binding can choose every kernel before any
+     * memory is allocated. The chosen kernels live as long as this device.
+     *
+     * @param batches Receives the batches on success, and is unchanged on
+     * error.
+     * @returns Success, or @c temporaryLibraryLimitation if no kernel accepts a
+     * run, so the caller can decode on the CPU instead.
+     * @throws std::bad_alloc if an allocation fails.
+     */
+    ZL_Report chooseDecodeBatches(
+            poly::span<const CodecRunInfo> runs,
+            std::vector<DecodeBatch>& batches) const;
+
    protected:
+    /// @p decodeKernels lists this runtime's kernels for each codec. It does
+    /// not change after construction.
+    explicit Device(DecodeKernelTable decodeKernels) noexcept;
+
     /**
      * Checks that @p native, a non-null native stream, belongs to this device.
      * The default accepts every stream, for runtimes that cannot tell.
@@ -107,8 +154,16 @@ class Device {
             poly::span<const DeviceToHostCopy> copies,
             void* native) = 0;
 
+    // Runs the kernel. A runtime can override it to add work around each batch.
+    virtual ZL_Report doDecodeBatch(
+            const DecodeKernel& kernel,
+            poly::span<const BoundCodecRun> runs,
+            void* native);
+
    private:
     friend class Stream;
+
+    DecodeKernelTable decodeKernels_;
 };
 
 } // namespace openzl::gpu
