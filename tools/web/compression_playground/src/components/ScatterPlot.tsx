@@ -90,7 +90,7 @@ export default function ScatterPlot({
 }) {
   const {codec, line, label, surface} = useChartColors();
   const tickStyle = {fill: label, fontSize: 11};
-  const series = buildSeries(results, axis);
+  const series = [...buildSeries(results, axis).entries()].map(([key, one]) => ({...one, key}));
   const xDomain = logDomain(results.map((result) => result[axis]));
   const yDomain = logDomain(results.map((result) => result.ratio));
   const spot = findPoint(series, highlighted);
@@ -121,9 +121,9 @@ export default function ScatterPlot({
           width={44}
         />
         <Tooltip content={<PointTooltip />} cursor={{strokeDasharray: '3 3'}} />
-        {[...series.entries()].map(([key, one]) => (
+        {series.map((one) => (
           <Scatter
-            key={key}
+            key={one.key}
             name={one.compressor}
             data={[...one.points]}
             fill={codec[one.compressor]}
