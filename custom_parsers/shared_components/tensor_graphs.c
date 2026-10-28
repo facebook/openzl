@@ -25,7 +25,7 @@
 #include "openzl/zl_selector.h"
 
 ZL_STATIC_ASSERT(
-        ZL_TensorClass_scale16 == 12,
+        ZL_TensorClass_fp8 == 13,
         "ZL_TensorClass is append-only: serialized compressors rely on it");
 
 // A float tensor is atypical when an evenly spaced sample of its elements has
@@ -386,6 +386,22 @@ ZL_TensorGraphs_registerScale16Graph(ZL_Compressor* compressor)
     return ZL_Compressor_registerSelectorGraph2(compressor, &desc);
 }
 
+/// 8-bit floats take most of their 256 values with statistics that hold over
+/// a tensor, so FSE codes them in large chunks with an accurate table.
+static ZL_GraphID TG_fp8Graph(ZL_Compressor* compressor)
+{
+    const ZL_IntParam params[2] = {
+        { ZL_ENTROPY_CHUNK_SIZE_PID, 1 << 19 },
+        { ZL_ENTROPY_FSE_MAX_TABLE_LOG_PID, 12 },
+    };
+    const ZL_LocalParams localParams     = { .intParams = { params, 2 } };
+    const ZL_ParameterizedGraphDesc desc = {
+        .graph       = ZL_GRAPH_FSE,
+        .localParams = &localParams,
+    };
+    return ZL_Compressor_registerParameterizedGraph(compressor, &desc);
+}
+
 /// Trainable successor for numeric data of width @p interpretNode.
 static ZL_GraphID TG_numericSuccessor(
         ZL_Compressor* compressor,
@@ -460,6 +476,8 @@ void ZL_TensorGraphs_buildSuccessors(
             compressor,
             ZL_NODE_INTERPRET_AS_LE32,
             ZL_GRAPH_TRANSFORMER_NUMERIC);
+    successors[ZL_TensorClass_fp8] = ZL_Compressor_buildACEGraphWithDefault(
+            compressor, TG_fp8Graph(compressor));
     successors[ZL_TensorClass_scale16] = ZL_Compressor_buildACEGraphWithDefault(
             compressor,
             ZL_Compressor_registerStaticGraph_fromNode1o(

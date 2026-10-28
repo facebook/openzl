@@ -28,6 +28,7 @@ typedef enum {
     ZL_TensorClass_atypical16, // low-cardinality 16-bit floats
     ZL_TensorClass_atypical32, // low-cardinality 32-bit floats
     ZL_TensorClass_scale16, // float16 or bfloat16 scales of quantized weights
+    ZL_TensorClass_fp8,     // 8-bit floats
     ZL_TensorClass_count,
 } ZL_TensorClass;
 

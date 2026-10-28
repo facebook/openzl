@@ -2,8 +2,10 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <random>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -730,6 +732,31 @@ TEST_F(SafetensorsCompressorTest, CodesPackedValuesAsBytes)
 
     EXPECT_EQ(onQuantized.count, 0u);
     EXPECT_GT(onIntegers.count, 0u);
+}
+
+/// Bytes of a rounded Gaussian: most of the 256 values, with homogeneous
+/// statistics, like 8-bit float weights.
+std::string gaussianBytes(size_t size)
+{
+    std::mt19937 rng(42);
+    std::normal_distribution<double> dist(0, 30);
+    std::string bytes(size, '\0');
+    for (auto& b : bytes) {
+        const double v = std::round(dist(rng));
+        b              = (char)(int8_t)std::max(-127.0, std::min(127.0, v));
+    }
+    return bytes;
+}
+
+TEST_F(SafetensorsCompressorTest, CodesFp8TensorsBetterThanBytes)
+{
+    const auto bytes = gaussianBytes(1 << 20);
+    const auto fp8 =
+            buildSafetensors({ { "w", "F8_E4M3", { 1024, 1024 }, bytes } });
+    const auto u8 = buildSafetensors({ { "w", "U8", { 1024, 1024 }, bytes } });
+    useChunkSize(ZL_SAFETENSORS_DEFAULT_CHUNK_SIZE);
+
+    EXPECT_LT(expectRoundTrip(fp8), expectRoundTrip(u8));
 }
 
 /// A format with an 8-byte header followed by a single tensor of 16-bit

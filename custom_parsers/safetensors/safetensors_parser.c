@@ -17,9 +17,10 @@ static ZL_TensorClass ST_classOf(ZL_SafetensorsDtype dtype)
         case ZL_SafetensorsDtype_bool:
         case ZL_SafetensorsDtype_u8:
         case ZL_SafetensorsDtype_i8:
+            return ZL_TensorClass_int8;
         case ZL_SafetensorsDtype_f8_e4m3:
         case ZL_SafetensorsDtype_f8_e5m2:
-            return ZL_TensorClass_int8;
+            return ZL_TensorClass_fp8;
         case ZL_SafetensorsDtype_i16:
         case ZL_SafetensorsDtype_u16:
             return ZL_TensorClass_int16;
