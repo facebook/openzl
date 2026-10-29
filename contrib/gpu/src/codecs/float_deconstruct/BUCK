@@ -3,9 +3,11 @@
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs/lib:re_test_utils.bzl", "re_test_utils")
 load("@fbsource//tools/build_defs:testpilot_defs.bzl", "tpx_labels")
 load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
+load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
 load("//tools/build/buck:nvcc_flags.bzl", "get_nvcc_arch_args")
 load("../../../../../defs.bzl", "relative_headers")
 
@@ -33,6 +35,52 @@ cpp_library(
         "../../common:codec_decode_execution",
         ":float_deconstruct_bf16",
     ],
+)
+
+# The decode kernels of float_deconstruct for the CUDA runtime.
+cpp_library(
+    # @autodeps-skip
+    name = "decode_float_deconstruct_cuda",
+    srcs = ["decode_float_deconstruct_cuda.cpp"],
+    headers = relative_headers(["decode_float_deconstruct_cuda.hpp"]),
+    header_namespace = "",
+    deps = [
+        "../../../../..:zstronglib",
+        ":decode_float_deconstruct_bf16",
+        ":decode_float_deconstruct_binding",
+    ],
+    exported_deps = ["../../common:codec_decode_execution"],
+    external_deps = [("cuda", None, "cuda-lazy")],
+)
+
+cpp_unittest(
+    # @autodeps-skip
+    name = "decode_float_deconstruct_cuda_test",
+    srcs = ["tests/DecodeFloatDeconstructCudaTest.cpp"],
+    keep_gpu_sections = True,
+    labels = [tpx_labels.serialize]
+    + ci.labels(
+        ci.replace({ci.linux(ci.dev()): ci.linux(ci.mode("fbcode//mode/dev-nosan"))}),
+        ci.remove(ci.linux(ci.coverage(ci.mode("fbcode//mode/dev-cov")))),
+    ),
+    network_access = network_access_utils.none(),
+    remote_execution = re_test_utils.remote_execution(
+        platform = "gpu-remote-execution",
+        use_case = "tpx-default",
+    ),
+    target_compatible_with = sanitizers.sanitizer_enabled(
+        no = [],
+        yes = ["ovr_config//:none"],
+    ),
+    deps = [
+        "../../common:cuda_error",
+        "../../common:cuda_raii",
+        "../../device:cuda_device",
+        "fbsource//third-party/googletest:gtest",
+        ":bf16_test_frames",
+        ":decode_float_deconstruct_cuda",
+    ],
+    external_deps = [("cuda", None, "cuda-lazy")],
 )
 
 # Encoded bf16 float_deconstruct streams from real frames, for decoder tests.

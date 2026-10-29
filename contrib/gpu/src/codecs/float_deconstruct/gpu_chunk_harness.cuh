@@ -55,12 +55,24 @@ inline std::vector<HostChunk> toHostChunks(
     return views;
 }
 
-// Stages a batch of chunks onto the device and owns all the device memory:
-// per-chunk exponent/signFrac/dst buffers plus the FloatDeconChunk descriptor
-// array that bf16DeconDecode consumes. Frees everything on destruction
+// Where DeviceChunkSet places each chunk's buffers inside their allocations,
+// so that tests and benchmarks can decode misaligned addresses. Zero offsets
+// give the alignment of cudaMalloc.
+struct ChunkOffsets {
+    size_t exponentBytes = 0;
+    size_t signFracBytes = 0;
+    size_t dstElts       = 0;
+};
+
+// Stages a batch of chunks onto the device and owns all the device memory: the
+// per-chunk exponent/signFrac/dst buffers that the FloatDeconChunk descriptors
+// point into. Frees everything on destruction.
 class DeviceChunkSet {
    public:
-    explicit DeviceChunkSet(const std::vector<HostChunk>& chunks)
+    explicit DeviceChunkSet(
+            const std::vector<HostChunk>& chunks,
+            ChunkOffsets offsets = {})
+            : offsets_(offsets)
     {
         numInBatch_ = (uint32_t)chunks.size();
         sizes_.resize(numInBatch_);
@@ -73,31 +85,26 @@ class DeviceChunkSet {
             const size_t nb = chunks[c].nbElts;
             sizes_[c]       = nb;
             if (nb) {
-                dExp_[c] = deviceAlloc<uint8_t>(nb);
-                dSf_[c]  = deviceAlloc<uint8_t>(nb);
-                dDst_[c] = deviceAlloc<uint16_t>(nb);
+                dExp_[c] = deviceAlloc<uint8_t>(nb + offsets.exponentBytes);
+                dSf_[c]  = deviceAlloc<uint8_t>(nb + offsets.signFracBytes);
+                dDst_[c] = deviceAlloc<uint16_t>(nb + offsets.dstElts);
                 ZL_CUDA_CHECK(cudaMemcpy(
-                        dExp_[c].get(),
+                        dExp_[c].get() + offsets.exponentBytes,
                         chunks[c].exponent,
                         nb,
                         cudaMemcpyHostToDevice));
                 ZL_CUDA_CHECK(cudaMemcpy(
-                        dSf_[c].get(),
+                        dSf_[c].get() + offsets.signFracBytes,
                         chunks[c].signFrac,
                         nb,
                         cudaMemcpyHostToDevice));
+                hostChunks_[c] = { dExp_[c].get() + offsets.exponentBytes,
+                                   dSf_[c].get() + offsets.signFracBytes,
+                                   dDst_[c].get() + offsets.dstElts,
+                                   nb };
+            } else {
+                hostChunks_[c] = { nullptr, nullptr, nullptr, 0 };
             }
-            hostChunks_[c] = {
-                dExp_[c].get(), dSf_[c].get(), dDst_[c].get(), nb
-            };
-        }
-        if (numInBatch_) {
-            dChunks_ = deviceAlloc<FloatDeconChunk>(numInBatch_);
-            ZL_CUDA_CHECK(cudaMemcpy(
-                    dChunks_.get(),
-                    hostChunks_.data(),
-                    numInBatch_ * sizeof(FloatDeconChunk),
-                    cudaMemcpyHostToDevice));
         }
     }
 
@@ -110,13 +117,9 @@ class DeviceChunkSet {
     {
         return numInBatch_;
     }
-    const FloatDeconChunk* deviceChunks() const
-    {
-        return dChunks_.get();
-    }
 
-    // Host-side descriptor array (device pointers + sizes), for launchers that
-    // partition on the host such as bf16DeconDecodeUnified.
+    // Host-side descriptor array (device pointers + sizes), which
+    // bf16DeconDecode and Bf16DecodePlan split into segments on the host.
     const std::vector<FloatDeconChunk>& hostChunks() const
     {
         return hostChunks_;
@@ -131,7 +134,7 @@ class DeviceChunkSet {
         if (sizes_[c]) {
             ZL_CUDA_CHECK(cudaMemcpy(
                     out.data(),
-                    dDst_[c].get(),
+                    dDst_[c].get() + offsets_.dstElts,
                     sizes_[c] * sizeof(uint16_t),
                     cudaMemcpyDeviceToHost));
         }
@@ -139,12 +142,12 @@ class DeviceChunkSet {
     }
 
    private:
+    ChunkOffsets offsets_;
     uint32_t numInBatch_ = 0;
     std::vector<size_t> sizes_;
     std::vector<DevicePtr<uint8_t>> dExp_, dSf_;
     std::vector<DevicePtr<uint16_t>> dDst_;
     std::vector<FloatDeconChunk> hostChunks_;
-    DevicePtr<FloatDeconChunk> dChunks_;
 };
 
 } // namespace openzl::gpu

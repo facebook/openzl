@@ -106,43 +106,22 @@ OwnedHostChunk extractBf16Chunk(const std::string& frame)
     return out;
 }
 
-// Stages the streams, runs `launch` (which selects the decode kernel), and
-// writes the per-chunk host outputs to `outs`.
-template <typename LaunchFn>
-void gpuDecode(
+// Stages the streams at `offsets`, decodes them with bf16DeconDecode, and
+// returns each chunk's host output.
+std::vector<std::vector<uint16_t>> gpuDecode(
         const std::vector<OwnedHostChunk>& chunks,
-        std::vector<std::vector<uint16_t>>& outs,
-        LaunchFn&& launch)
+        size_t maxSegElts,
+        ChunkOffsets offsets = {})
 {
-    DeviceChunkSet dev(toHostChunks(chunks));
-
-    launch(dev);
+    DeviceChunkSet dev(toHostChunks(chunks), offsets);
+    bf16DeconDecode(dev.hostChunks().data(), dev.numInBatch(), maxSegElts, 0);
     ZL_CUDA_CHECK(cudaDeviceSynchronize());
 
-    outs.resize(dev.numInBatch());
+    std::vector<std::vector<uint16_t>> outs(dev.numInBatch());
     for (uint32_t c = 0; c < dev.numInBatch(); ++c) {
         outs[c] = dev.download(c);
     }
-}
-
-void gpuDecodeNaive(
-        const std::vector<OwnedHostChunk>& chunks,
-        std::vector<std::vector<uint16_t>>& outs)
-{
-    gpuDecode(chunks, outs, [](DeviceChunkSet& dev) {
-        bf16DeconDecode(dev.numInBatch(), dev.deviceChunks(), 0);
-    });
-}
-
-void gpuDecodeUnified(
-        const std::vector<OwnedHostChunk>& chunks,
-        std::vector<std::vector<uint16_t>>& outs,
-        size_t maxSegElts)
-{
-    gpuDecode(chunks, outs, [maxSegElts](DeviceChunkSet& dev) {
-        bf16DeconDecodeUnified(
-                dev.hostChunks().data(), dev.numInBatch(), maxSegElts, 0);
-    });
+    return outs;
 }
 
 // The GPU decode of the real OpenZL-encoded streams must reproduce the original
@@ -163,93 +142,146 @@ void expectMatches(
                     Input::refNumeric<uint16_t>(vals.data(), vals.size())));
 }
 
+/** Real streams of several single-chunk frames of the given sizes. */
+struct Bf16Frames {
+    Bf16Frames(const std::vector<size_t>& sizes, unsigned seed)
+    {
+        for (size_t k = 0; k < sizes.size(); ++k) {
+            vals.push_back(makeBf16(sizes[k], (unsigned)(k + seed)));
+            frames.push_back(mintBf16Frame(vals.back()));
+            streams.push_back(extractBf16Chunk(frames.back()));
+            EXPECT_EQ(streams.back().exponent.size(), sizes[k]);
+        }
+    }
+
+    void expectDecoded(const std::vector<std::vector<uint16_t>>& gpu) const
+    {
+        ASSERT_EQ(gpu.size(), vals.size());
+        for (size_t k = 0; k < vals.size(); ++k) {
+            expectMatches(frames[k], gpu[k], vals[k]);
+        }
+    }
+
+    std::vector<std::vector<uint16_t>> vals;
+    std::vector<std::string> frames;
+    std::vector<OwnedHostChunk> streams;
+};
+
+const std::vector<size_t> kUnevenSizes = { 50000, 1, 200000, 12345, 7 };
+
+// A single chunk whose size is not a multiple of the vector width, with a small
+// segment size that forces many segments plus a ragged tail: exercises both the
+// vectorized body and the scalar tail.
 TEST(DecodeBf16Test, SingleChunkMatchesOpenZLDecoder)
 {
-    const std::vector<uint16_t> vals = makeBf16(100000, 1);
-    const std::string frame          = mintBf16Frame(vals);
+    const Bf16Frames frames({ 100002 }, 3);
 
-    const OwnedHostChunk s = extractBf16Chunk(frame);
-    ASSERT_EQ(s.exponent.size(), vals.size());
-    ASSERT_EQ(s.signFrac.size(), vals.size());
-
-    std::vector<std::vector<uint16_t>> gpu;
-    gpuDecodeNaive({ s }, gpu);
-    expectMatches(frame, gpu[0], vals);
+    frames.expectDecoded(gpuDecode(frames.streams, 4096));
 }
 
-// Exercises the multi-chunk (batched) path with real, unevenly-sized streams by
-// minting several single-chunk frames and decoding them in one kernel call.
+// Uneven chunks with a small segment size: the big chunk peels into many
+// segments while tiny chunks stay whole, and several sizes are not a multiple
+// of the vector width. Checks that segments alias the right output offsets.
 TEST(DecodeBf16Test, MultiChunkBatchMatchesOpenZLDecoder)
 {
-    const std::vector<size_t> sizes = { 50000, 1, 200000, 12345, 7 };
-    std::vector<std::vector<uint16_t>> vals;
-    std::vector<std::string> frames;
-    std::vector<OwnedHostChunk> streams;
-    for (size_t k = 0; k < sizes.size(); ++k) {
-        vals.push_back(makeBf16(sizes[k], (unsigned)(k + 10)));
-        frames.push_back(mintBf16Frame(vals.back()));
-        streams.push_back(extractBf16Chunk(frames.back()));
-        ASSERT_EQ(streams.back().exponent.size(), sizes[k]);
-    }
-    std::vector<std::vector<uint16_t>> gpu;
-    gpuDecodeNaive(streams, gpu);
-    for (size_t k = 0; k < sizes.size(); ++k) {
-        expectMatches(frames[k], gpu[k], vals[k]);
+    const Bf16Frames frames(kUnevenSizes, 20);
+
+    frames.expectDecoded(gpuDecode(frames.streams, 4096));
+}
+
+// The production default segment size.
+TEST(DecodeBf16Test, DefaultSegSizeMatchesOpenZLDecoder)
+{
+    const Bf16Frames frames({ 300000 }, 4);
+
+    frames.expectDecoded(gpuDecode(frames.streams, kBf16DefaultMaxSegElts));
+}
+
+// Inputs stored in a frame start at any offset, and a later chunk's output can
+// start at any 2-byte boundary. Every segment here is misaligned for the
+// vector loads and stores. This fails if such a segment takes the vector path,
+// or if the element path decodes a wrong value.
+TEST(DecodeBf16Test, MisalignedChunksMatchOpenZLDecoder)
+{
+    const Bf16Frames frames(kUnevenSizes, 30);
+    const ChunkOffsets offsets{ .exponentBytes = 1,
+                                .signFracBytes = 3,
+                                .dstElts       = 1 };
+
+    frames.expectDecoded(gpuDecode(frames.streams, 4096, offsets));
+}
+
+// Each case misaligns one address and keeps the other two aligned. This fails
+// if any one of them is not checked before a segment takes the vector path.
+TEST(DecodeBf16Test, EachMisalignedAddressTakesTheElementPath)
+{
+    const Bf16Frames frames(kUnevenSizes, 40);
+    const ChunkOffsets cases[] = {
+        { .exponentBytes = 1, .signFracBytes = 0, .dstElts = 0 },
+        { .exponentBytes = 0, .signFracBytes = 1, .dstElts = 0 },
+        { .exponentBytes = 0, .signFracBytes = 0, .dstElts = 1 },
+    };
+
+    for (const ChunkOffsets& offsets : cases) {
+        SCOPED_TRACE(
+                "exponent +" + std::to_string(offsets.exponentBytes)
+                + ", signFrac +" + std::to_string(offsets.signFracBytes)
+                + ", dst +" + std::to_string(offsets.dstElts));
+        frames.expectDecoded(gpuDecode(frames.streams, 4096, offsets));
     }
 }
 
-// Unified decode of a single chunk whose size is not a multiple of the vector
-// width, with a small segment size that forces many segments plus a ragged
-// tail: exercises both the vectorized body and the scalar tail.
-TEST(DecodeBf16Test, UnifiedSingleChunkMatchesOpenZLDecoder)
+// This fails if an empty batch launches a kernel or reads its null chunk
+// array.
+TEST(DecodeBf16Test, EmptyBatchLaunchesNothing)
 {
-    const std::vector<uint16_t> vals = makeBf16(100002, 3);
-    const std::string frame          = mintBf16Frame(vals);
+    bf16DeconDecode(nullptr, 0, 4096, 0);
+    const Bf16DecodePlan plan(nullptr, 0, 4096);
+    plan.launch(0);
 
-    const OwnedHostChunk s = extractBf16Chunk(frame);
-    ASSERT_EQ(s.exponent.size(), vals.size());
-    ASSERT_EQ(s.signFrac.size(), vals.size());
-
-    std::vector<std::vector<uint16_t>> gpu;
-    gpuDecodeUnified({ s }, gpu, 4096);
-    expectMatches(frame, gpu[0], vals);
+    ZL_CUDA_CHECK(cudaDeviceSynchronize());
+    EXPECT_EQ(cudaGetLastError(), cudaSuccess);
 }
 
-// Unified decode over uneven chunks with a small segment size: the big chunk
-// peels into many segments while tiny chunks stay whole, and several sizes are
-// not a multiple of the vector width. Checks segments alias the right output
-// offsets.
-TEST(DecodeBf16Test, UnifiedMultiChunkMatchesOpenZLDecoder)
+// An empty stream has no storage. This fails if a chunk with no elements stops
+// the batch, or shifts the chunks after it.
+TEST(DecodeBf16Test, ZeroLengthChunkInABatch)
 {
-    const std::vector<size_t> sizes = { 50000, 1, 200000, 12345, 7 };
-    std::vector<std::vector<uint16_t>> vals;
-    std::vector<std::string> frames;
-    std::vector<OwnedHostChunk> streams;
-    for (size_t k = 0; k < sizes.size(); ++k) {
-        vals.push_back(makeBf16(sizes[k], (unsigned)(k + 20)));
-        frames.push_back(mintBf16Frame(vals.back()));
-        streams.push_back(extractBf16Chunk(frames.back()));
-        ASSERT_EQ(streams.back().exponent.size(), sizes[k]);
-    }
-    std::vector<std::vector<uint16_t>> gpu;
-    gpuDecodeUnified(streams, gpu, 4096);
-    for (size_t k = 0; k < sizes.size(); ++k) {
-        expectMatches(frames[k], gpu[k], vals[k]);
-    }
+    const Bf16Frames frames({ 1000, 7 }, 50);
+    const std::vector<OwnedHostChunk> chunks{ frames.streams[0],
+                                              OwnedHostChunk{},
+                                              frames.streams[1] };
+
+    const std::vector<std::vector<uint16_t>> gpu = gpuDecode(chunks, 4096);
+
+    ASSERT_EQ(gpu.size(), 3);
+    expectMatches(frames.frames[0], gpu[0], frames.vals[0]);
+    EXPECT_TRUE(gpu[1].empty());
+    expectMatches(frames.frames[1], gpu[2], frames.vals[1]);
 }
 
-// Unified decode with the production default segment size.
-TEST(DecodeBf16Test, UnifiedDefaultSegSizeMatchesOpenZLDecoder)
+// A plan keeps its segments on the device, so a caller can launch it again.
+// This fails if the second launch skips a chunk or reads stale segments.
+TEST(DecodeBf16Test, PlanDecodesAgainOnASecondLaunch)
 {
-    const std::vector<uint16_t> vals = makeBf16(300000, 4);
-    const std::string frame          = mintBf16Frame(vals);
+    const Bf16Frames frames(kUnevenSizes, 60);
+    const DeviceChunkSet dev(toHostChunks(frames.streams));
+    const Bf16DecodePlan plan(dev.hostChunks().data(), dev.numInBatch(), 4096);
+    plan.launch(0);
+    ZL_CUDA_CHECK(cudaDeviceSynchronize());
+    for (const FloatDeconChunk& chunk : dev.hostChunks()) {
+        ZL_CUDA_CHECK(
+                cudaMemset(chunk.dst, 0xFF, chunk.nbElts * sizeof(uint16_t)));
+    }
 
-    const OwnedHostChunk s = extractBf16Chunk(frame);
-    ASSERT_EQ(s.exponent.size(), vals.size());
+    plan.launch(0);
+    ZL_CUDA_CHECK(cudaDeviceSynchronize());
 
-    std::vector<std::vector<uint16_t>> gpu;
-    gpuDecodeUnified({ s }, gpu, kUnifiedDefaultMaxSegElts);
-    expectMatches(frame, gpu[0], vals);
+    std::vector<std::vector<uint16_t>> gpu(dev.numInBatch());
+    for (uint32_t c = 0; c < dev.numInBatch(); ++c) {
+        gpu[c] = dev.download(c);
+    }
+    frames.expectDecoded(gpu);
 }
 
 } // namespace

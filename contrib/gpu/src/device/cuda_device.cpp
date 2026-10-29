@@ -7,6 +7,7 @@
 #include <memory>
 #include <new>
 
+#include "contrib/gpu/src/device/cuda_kernel_table.hpp"
 #include "openzl/common/errors_internal.h"
 
 static_assert(
@@ -69,7 +70,7 @@ ZL_Report copyToHostOnCurrentDevice(
 
 class CudaDevice final : public Device {
    public:
-    CudaDevice() : Device(DecodeKernelTable{}) {}
+    CudaDevice() : Device(cudaKernelTable()) {}
 
    protected:
     ZL_Report doCheckStream(void* native) override
@@ -135,7 +136,12 @@ class CudaDevice final : public Device {
 
 std::unique_ptr<Device> makeCurrentCudaDevice()
 {
-    return std::unique_ptr<Device>{ new (std::nothrow) CudaDevice{} };
+    // The constructor builds the kernel table, which can throw.
+    try {
+        return std::make_unique<CudaDevice>();
+    } catch (const std::bad_alloc&) {
+        return nullptr;
+    }
 }
 
 } // namespace openzl::gpu
