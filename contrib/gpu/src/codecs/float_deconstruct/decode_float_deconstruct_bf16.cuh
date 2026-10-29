@@ -7,45 +7,11 @@
 
 #include <cuda_runtime.h>
 
+#include "contrib/gpu/src/codecs/float_deconstruct/float_deconstruct_bf16.hpp"
 #include "contrib/gpu/src/common/cuda_launch.cuh"
 #include "contrib/gpu/src/common/segment_plan.cuh"
 
 namespace openzl::gpu {
-
-// Describes one bf16 float-deconstruct chunk. All pointers are device pointers.
-// The vectorized paths (bf16DeconDecodeVec and the unified decode) require
-// exponent and signFrac 4-byte aligned and dst 8-byte aligned; cudaMalloc'd
-// buffers and unified segment starts satisfy this by construction.
-struct FloatDeconChunk {
-    const uint8_t* exponent;
-    const uint8_t* signFrac;
-    uint16_t* dst;
-    size_t nbElts;
-
-    // Peels the first min(n, nbElts) elements off as a new segment and advances
-    // *this past them, advancing device pointers only (no data copy).
-    FloatDeconChunk peel(size_t n)
-    {
-        n                   = n < nbElts ? n : nbElts;
-        FloatDeconChunk seg = *this;
-        seg.nbElts          = n;
-        exponent += n;
-        signFrac += n;
-        dst += n;
-        nbElts -= n;
-        return seg;
-    }
-};
-
-// Canonical single element decode
-__host__ __device__ __forceinline__ uint16_t
-decodeBf16Elt(uint8_t exponent, uint8_t signFrac)
-{
-    const uint16_t sign  = (uint16_t)(signFrac << 15);
-    const uint16_t expnt = (uint16_t)(exponent << 7);
-    const uint16_t frac  = (uint16_t)(signFrac >> 1);
-    return sign | expnt | frac;
-}
 
 // Maximum chunks per bf16DeconDecode call. numInBatch maps to gridDim.y, which
 // CUDA caps at 65535; a caller (or binding) with more chunks must split the
