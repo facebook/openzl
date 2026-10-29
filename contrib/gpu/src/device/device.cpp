@@ -2,6 +2,9 @@
 
 #include "contrib/gpu/src/device/device.hpp"
 
+#include <utility>
+
+#include "contrib/gpu/src/device/decode_dispatch.hpp"
 #include "openzl/common/errors_internal.h"
 
 namespace openzl::gpu {
@@ -20,6 +23,18 @@ ZL_Report Stream::copyToHostAndSynchronize(
     return device().doCopyToHostAndSynchronize(copies, native_);
 }
 
+ZL_Report Stream::decodeBatch(
+        const DecodeKernel& kernel,
+        poly::span<const BoundCodecRun> runs) const
+{
+    return device().doDecodeBatch(kernel, runs, native_);
+}
+
+Device::Device(DecodeKernelTable decodeKernels) noexcept
+        : decodeKernels_{ std::move(decodeKernels) }
+{
+}
+
 ZL_Report Device::wrapStream(void* native, std::optional<Stream>& stream)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
@@ -30,9 +45,24 @@ ZL_Report Device::wrapStream(void* native, std::optional<Stream>& stream)
     return ZL_returnSuccess();
 }
 
+ZL_Report Device::chooseDecodeBatches(
+        poly::span<const CodecRunInfo> runs,
+        std::vector<DecodeBatch>& batches) const
+{
+    return openzl::gpu::chooseDecodeBatches(decodeKernels_, runs, batches);
+}
+
 ZL_Report Device::doCheckStream(void*)
 {
     return ZL_returnSuccess();
+}
+
+ZL_Report Device::doDecodeBatch(
+        const DecodeKernel& kernel,
+        poly::span<const BoundCodecRun> runs,
+        void* native)
+{
+    return decodeBatchWith(kernel, runs, native);
 }
 
 } // namespace openzl::gpu

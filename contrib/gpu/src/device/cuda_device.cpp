@@ -68,6 +68,9 @@ ZL_Report copyToHostOnCurrentDevice(
 }
 
 class CudaDevice final : public Device {
+   public:
+    CudaDevice() : Device(DecodeKernelTable{}) {}
+
    protected:
     ZL_Report doCheckStream(void* native) override
     {
@@ -110,6 +113,21 @@ class CudaDevice final : public Device {
     {
         return copyToHostOnCurrentDevice(
                 copies, static_cast<cudaStream_t>(native));
+    }
+
+    ZL_Report doDecodeBatch(
+            const DecodeKernel& kernel,
+            poly::span<const BoundCodecRun> runs,
+            void* native) override
+    {
+        // Clears only an error that the batch set. An error that the caller
+        // left pending before the call stays for the caller.
+        cudaError_t const pending = cudaPeekAtLastError();
+        ZL_Report const result    = Device::doDecodeBatch(kernel, runs, native);
+        if (cudaPeekAtLastError() != pending) {
+            clearLastError();
+        }
+        return result;
     }
 };
 

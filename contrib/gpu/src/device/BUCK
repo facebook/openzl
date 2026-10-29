@@ -18,9 +18,34 @@ cpp_library(
     srcs = ["device.cpp"],
     headers = relative_headers(["device.hpp"]),
     header_namespace = "",
+    deps = [":decode_dispatch"],
     exported_deps = [
         "../../../..:zstronglib",
         "../../../../cpp:openzl_cpp",
+        "../common:codec_decode_execution",
+    ],
+)
+
+# Selects a kernel for each codec run and batches runs by kernel. Every runtime
+# shares it.
+cpp_library(
+    # @autodeps-skip
+    name = "decode_dispatch",
+    srcs = ["decode_dispatch.cpp"],
+    headers = relative_headers(["decode_dispatch.hpp"]),
+    header_namespace = "",
+    deps = ["../../../..:zstronglib"],
+    exported_deps = ["../common:codec_decode_execution"],
+)
+
+cpp_unittest(
+    # @autodeps-skip
+    name = "decode_dispatch_test",
+    srcs = ["tests/DecodeDispatchTest.cpp"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        ":decode_dispatch",
     ],
 )
 

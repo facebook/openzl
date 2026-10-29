@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "contrib/gpu/testkit/host_memory_device.h"
+#include "openzl/common/wire_format.h"
 
 namespace openzl::gpu::testkit {
 namespace {
@@ -66,6 +67,22 @@ TEST(HostMemoryDeviceTest, RejectsANonEmptyRegionWithANullAddress)
             ZL_errorCode(nullDestinationResult),
             ZL_ErrorCode_parameter_invalid);
     EXPECT_EQ(destination, untouched);
+}
+
+TEST(HostMemoryDeviceTest, DecodesNothing)
+{
+    // This fails if the test device reports success for a codec run, even one
+    // that a real device decodes.
+    CodecRunInfo run;
+    run.transform = { trt_standard, ZL_StandardTransformID_float_deconstruct };
+    const std::unique_ptr<Device> device = makeHostMemoryDevice();
+    ASSERT_NE(device, nullptr);
+    std::vector<DecodeBatch> batches;
+
+    ZL_Report const result = device->chooseDecodeBatches(
+            poly::span<const CodecRunInfo>{ &run, 1 }, batches);
+
+    EXPECT_EQ(ZL_errorCode(result), ZL_ErrorCode_temporaryLibraryLimitation);
 }
 
 } // namespace

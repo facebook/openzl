@@ -40,6 +40,13 @@ void CUDART_CB holdStream(void*)
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
+int currentDevice()
+{
+    int device = 0;
+    ZL_CUDA_CHECK(cudaGetDevice(&device));
+    return device;
+}
+
 TEST(CudaDeviceTest, CopiesEveryNonEmptyRegion)
 {
     // The destination is pinned and the stream is busy, so each copy runs
@@ -74,6 +81,56 @@ TEST(CudaDeviceTest, CopiesEveryNonEmptyRegion)
 
     ASSERT_FALSE(ZL_isError(result));
     EXPECT_EQ(std::vector<std::byte>(actual.begin(), actual.end()), expected);
+}
+
+TEST(CudaDeviceTest, RejectsCodecsThatItDoesNotImplement)
+{
+    // No runtime implements custom transforms, and the CUDA device has no
+    // constant decoder. This fails if the device chooses a kernel for a run
+    // that it cannot decode, or changes the caller's current device.
+    const int callerDevice               = currentDevice();
+    const std::unique_ptr<Device> device = makeCurrentCudaDevice();
+    ASSERT_NE(device, nullptr);
+    for (const PublicTransformInfo transform :
+         { PublicTransformInfo{ trt_custom, 0 },
+           PublicTransformInfo{ trt_standard,
+                                ZL_StandardTransformID_constant_serial } }) {
+        CodecRunInfo run;
+        run.transform = transform;
+        std::vector<DecodeBatch> batches;
+
+        ZL_Report const result = device->chooseDecodeBatches(
+                poly::span<const CodecRunInfo>{ &run, 1 }, batches);
+
+        EXPECT_EQ(ZL_errorCode(result), ZL_ErrorCode_temporaryLibraryLimitation)
+                << transform.trid;
+    }
+    EXPECT_EQ(currentDevice(), callerDevice);
+}
+
+ZL_Report failWithoutCudaCall(poly::span<const BoundCodecRun>, void*)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
+    ZL_ERR(transform_executionFailure, "injected failure");
+}
+
+TEST(CudaDeviceTest, KeepsAnErrorThatTheCallerLeftPending)
+{
+    // The kernel fails without a CUDA call. This fails if the device clears an
+    // error that it did not cause. A dev build links a separate CUDA runtime,
+    // with its own pending error, into each library, so only a build with one
+    // runtime, such as opt, can catch that.
+    const DecodeKernel failing{ "failing", nullptr, failWithoutCudaCall };
+    const BoundCodecRun run{};
+    const std::unique_ptr<Device> device = makeCurrentCudaDevice();
+    ASSERT_NE(device, nullptr);
+    ASSERT_EQ(cudaSetDevice(-1), cudaErrorInvalidDevice);
+
+    ZL_Report const result = device->defaultStream().decodeBatch(
+            failing, poly::span<const BoundCodecRun>{ &run, 1 });
+
+    EXPECT_EQ(ZL_errorCode(result), ZL_ErrorCode_transform_executionFailure);
+    EXPECT_EQ(cudaGetLastError(), cudaErrorInvalidDevice);
 }
 
 TEST(CudaDeviceTest, WrapsAStreamOfTheCurrentDevice)

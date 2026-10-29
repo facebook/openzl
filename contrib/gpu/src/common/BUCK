@@ -85,6 +85,16 @@ cpp_unittest(
     ],
 )
 
+# Contract between the executor and each runtime's decode kernels: codec runs
+# with device addresses, and the kernels that decode them.
+cpp_library(
+    # @autodeps-skip
+    name = "codec_decode_execution",
+    headers = relative_headers(["codec_decode_execution.hpp"]),
+    header_namespace = "",
+    exported_deps = [":codec_decode_planning"],
+)
+
 # CPU metadata contract shared by codec planners and the decode scheduler.
 cpp_library(
     # @autodeps-skip
