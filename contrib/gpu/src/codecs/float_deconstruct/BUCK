@@ -51,6 +51,7 @@ cpp_binary(
     # @autodeps-skip
     name = "bench_decode_bf16",
     srcs = ["bench/bench_decode_bf16.cu"],
+    keep_gpu_sections = True,
     nvcc_flags = get_nvcc_arch_args() + ["-lineinfo"],
     deps = [
         "../../../../..:zstronglib",
@@ -68,6 +69,7 @@ cpp_unittest(
     # @autodeps-skip
     name = "decode_bf16_test",
     srcs = ["tests/DecodeBf16Test.cu"],
+    keep_gpu_sections = True,
     labels = [tpx_labels.serialize],
     network_access = network_access_utils.none(),
     nvcc_flags = get_nvcc_arch_args() + ["-lineinfo"],
