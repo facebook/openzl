@@ -99,7 +99,10 @@ ZL_Report typedTransform(ZL_Decoder* dictx, ZL_Input const* src[]) noexcept
 }
 
 template <typename Kernel>
-ZL_Report registerDTransform(ZL_DCtx* dctx, ZL_IDType transformID)
+ZL_Report registerDTransform(
+        ZL_DCtx* dctx,
+        ZL_IDType transformID,
+        char const* name = nullptr)
 {
     using InputStreams = typename Kernel::InputStreams;
     std::array<ZL_Type, 1 + std::tuple_size_v<InputStreams>> outStreamTypes;
@@ -114,6 +117,7 @@ ZL_Report registerDTransform(ZL_DCtx* dctx, ZL_IDType transformID)
                         .nbOutStreams = outStreamTypes.size(),
                 },
                 .transform_f = typedTransform<Kernel>,
+                .name = name,
         };
     return ZL_DCtx_registerTypedDecoder(dctx, &desc);
 }
@@ -354,7 +358,8 @@ ZL_Report ZS2_ThriftKernel_registerDTransformArrayI64(
         }
     };
 
-    return registerDTransform<Transform>(dctx_, transformID);
+    return registerDTransform<Transform>(
+            dctx_, transformID, "zl_custom.thrift_kernel_array_i64");
 }
 
 ZL_Report ZS2_ThriftKernel_registerDTransformArrayI32(
