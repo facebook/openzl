@@ -5,7 +5,9 @@
 #include <stddef.h>
 #include <chrono>
 
+#include "openzl/cpp/CCtx.hpp"
 #include "openzl/cpp/Compressor.hpp"
+#include "openzl/cpp/DCtx.hpp"
 #include "openzl/cpp/Input.hpp"
 #include "openzl/cpp/poly/Optional.hpp"
 #include "openzl/cpp/poly/Span.hpp"
@@ -111,6 +113,19 @@ poly::optional<CompressionResult> benchmark(
         const Compressor& compressor,
         poly::span<const Input> inputs,
         poly::string_view dictBundleData = {});
+
+/**
+ * Same as the overload above without dictionaries, but with the caller's
+ * @p cctx and @p dctx. A caller that keeps its contexts across calls times
+ * each input with warm contexts.
+ *
+ * @returns the compression results, or poly::nullopt on failure
+ */
+poly::optional<CompressionResult> benchmark(
+        CCtx& cctx,
+        DCtx& dctx,
+        const Compressor& compressor,
+        poly::span<const Input> inputs);
 
 } // namespace training
 } // namespace openzl

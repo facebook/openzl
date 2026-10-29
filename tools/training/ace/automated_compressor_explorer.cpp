@@ -2,7 +2,10 @@
 
 #include "tools/training/ace/automated_compressor_explorer.h"
 
+#include <algorithm>
 #include <chrono>
+#include <functional>
+#include <memory>
 #include <vector>
 
 #include "openzl/common/a1cbor_helpers.h"
@@ -40,15 +43,11 @@ void adjustResults(const ACECompressor& gene, std::vector<float>& results)
         results[i] += std::max<float>(numComponents, delta);
     }
 }
-} // namespace
 
-/* static */ std::vector<float> AutomatedCompressorExplorer::computeFitness(
+std::vector<float> fitnessFromResult(
         const ACECompressor& gene,
-        poly::span<const Input> inputs,
-        uint32_t formatVersion,
-        int compressionLevel)
+        const poly::optional<ACECompressionResult>& result)
 {
-    auto result = gene.benchmark(inputs, formatVersion, compressionLevel);
     if (!result.has_value()) {
         return std::vector<float>(3, std::numeric_limits<float>::infinity());
     }
@@ -57,44 +56,129 @@ void adjustResults(const ACECompressor& gene, std::vector<float>& results)
     return fitness;
 }
 
+/// The bytes that `benchmark()` compresses for @p input. For a String input,
+/// that includes the string lengths.
+size_t benchmarkBytes(const Input& input)
+{
+    size_t bytes = input.contentSize();
+    if (input.type() == Type::String) {
+        bytes += input.numElts() * sizeof(uint32_t);
+    }
+    return bytes;
+}
+
+/// Benchmarks @p batch with contexts that the calling thread keeps across
+/// calls, so that only a thread's first benchmark runs on cold contexts.
+poly::optional<ACECompressionResult> benchmarkOnThreadContexts(
+        const Compressor& compressor,
+        poly::span<const Input> batch)
+{
+    thread_local CCtx cctx;
+    thread_local DCtx dctx;
+    return benchmark(cctx, dctx, compressor, batch);
+}
+} // namespace
+
+/* static */ std::vector<poly::span<const Input>>
+AutomatedCompressorExplorer::splitInputs(
+        poly::span<const Input> inputs,
+        size_t numBatches)
+{
+    size_t totalBytes = 0;
+    for (const auto& input : inputs) {
+        totalBytes += benchmarkBytes(input);
+    }
+    numBatches = std::clamp<size_t>(
+            totalBytes / kMinBatchBytes, 1, std::max<size_t>(numBatches, 1));
+
+    // Batch k ends before the first input that starts at or after k /
+    // numBatches of the total bytes.
+    std::vector<poly::span<const Input>> batches;
+    size_t begin = 0;
+    size_t bytes = 0;
+    size_t batch = 1;
+    for (size_t i = 0; i < inputs.size(); ++i) {
+        if (i > begin && batch < numBatches
+            && bytes * numBatches >= batch * totalBytes) {
+            batches.push_back(inputs.subspan(begin, i - begin));
+            begin = i;
+            while (batch < numBatches
+                   && bytes * numBatches >= batch * totalBytes) {
+                ++batch;
+            }
+        }
+        bytes += benchmarkBytes(inputs[i]);
+    }
+    if (begin < inputs.size()) {
+        batches.push_back(inputs.subspan(begin, inputs.size() - begin));
+    }
+    return batches;
+}
+
 std::vector<float> AutomatedCompressorExplorer::computeFitness(
         const ACECompressor& gene)
 {
-    return computeFitness(gene, inputs_, formatVersion_, compressionLevel_);
+    return fitnessFromResult(
+            gene, gene.benchmark(inputs_, formatVersion_, compressionLevel_));
 }
 
 std::vector<std::vector<float>> AutomatedCompressorExplorer::computeFitness(
         poly::span<const ACECompressor> genes)
 {
-    std::vector<std::future<std::vector<float>>> futures;
-    futures.reserve(genes.size());
+    struct GeneEval {
+        std::reference_wrapper<const ACECompressor> gene;
+        poly::optional<std::vector<float>> cachedFitness;
+        std::vector<std::future<poly::optional<ACECompressionResult>>>
+                batchResults;
+    };
+    // A gene that reuses its cached fitness gets no tasks. An uncached gene,
+    // or a cached gene picked to run again, gets one task per input batch.
+    std::vector<GeneEval> evals;
+    evals.reserve(genes.size());
     for (const auto& gene : genes) {
+        auto& eval = evals.emplace_back(
+                GeneEval{ std::cref(gene), poly::nullopt, {} });
         auto cache = cachedFitness_.find(gene.hash());
         if (cache != cachedFitness_.end()) {
             std::uniform_int_distribution<size_t> dist(0, cache->second.first);
             if (dist(rng()) != 0) {
-                std::promise<std::vector<float>> promise;
-                promise.set_value(cache->second.second);
-                futures.emplace_back(promise.get_future());
+                eval.cachedFitness = cache->second.second;
                 continue;
             }
         }
-        futures.emplace_back(
-                threadPool_.run([&inputs = inputs_,
-                                 &gene,
-                                 formatVersion    = formatVersion_,
-                                 compressionLevel = compressionLevel_] {
-                    return computeFitness(
-                            gene, inputs, formatVersion, compressionLevel);
-                }));
+        // The gene's batch tasks share one compressor. Each task holds a
+        // reference, so the compressor outlives this call if it throws.
+        const std::shared_ptr<const Compressor> compressor =
+                std::make_shared<Compressor>(gene.buildBenchmarkCompressor(
+                        formatVersion_, compressionLevel_));
+        eval.batchResults.reserve(inputBatches_.size());
+        for (const auto& batch : inputBatches_) {
+            eval.batchResults.emplace_back(threadPool_.run([compressor, batch] {
+                return benchmarkOnThreadContexts(*compressor, batch);
+            }));
+        }
     }
 
     std::vector<std::vector<float>> results;
     results.reserve(genes.size());
-    for (size_t i = 0; i < genes.size(); ++i) {
-        auto result            = futures[i].get();
+    for (auto& eval : evals) {
+        std::vector<float> result;
+        if (eval.cachedFitness.has_value()) {
+            result = std::move(*eval.cachedFitness);
+        } else {
+            poly::optional<ACECompressionResult> total = ACECompressionResult{};
+            for (auto& future : eval.batchResults) {
+                auto batchResult = future.get();
+                if (!batchResult.has_value()) {
+                    total = poly::nullopt;
+                } else if (total.has_value()) {
+                    *total += *batchResult;
+                }
+            }
+            result = fitnessFromResult(eval.gene.get(), total);
+        }
         auto [cache, inserted] = cachedFitness_.emplace(
-                genes[i].hash(), std::make_pair(1, result));
+                eval.gene.get().hash(), std::make_pair(1, result));
         if (!inserted) {
             for (size_t j = 0; j < result.size(); ++j) {
                 cache->second.second[j] =

@@ -327,6 +327,38 @@ TEST_F(ACETest, savePopulation)
     // instability, since it might not be Pareto-optimal in the new benchmark.
 }
 
+TEST_F(ACETest, InputBatchesKeepCompressedSize)
+{
+    // Inputs of about 600 KB, about 4.7 MB in total, so that the batch path
+    // makes one batch for each of the 4 threads.
+    constexpr size_t kNumInputs = 8;
+    std::vector<std::vector<uint64_t>> datas;
+    datas.reserve(kNumInputs);
+    for (size_t i = 0; i < kNumInputs; ++i) {
+        std::vector<uint64_t> data(70000 + 1000 * i, i);
+        undelta(data);
+        datas.push_back(std::move(data));
+    }
+    std::vector<Input> inputs;
+    inputs.reserve(datas.size());
+    for (const auto& data : datas) {
+        inputs.push_back(
+                Input::refSerial(data.data(), data.size() * sizeof(data[0])));
+    }
+    AutomatedCompressorExplorer explorer(inputs, params);
+    const auto genes = getPrebuiltCompressors(Type::Serial);
+
+    const auto batch = explorer.computeFitness(genes);
+
+    // Only the compressed size, at index 0, is deterministic. Indices 1 and 2
+    // are measured compression and decompression times.
+    ASSERT_EQ(batch.size(), genes.size());
+    for (size_t i = 0; i < genes.size(); ++i) {
+        EXPECT_EQ(batch[i][0], explorer.computeFitness(genes[i])[0])
+                << genes[i].prettyPrint();
+    }
+}
+
 TEST_F(ACETest, maxTimeWorks)
 {
     auto data  = tripleDeltaData();

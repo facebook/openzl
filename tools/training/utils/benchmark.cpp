@@ -10,21 +10,13 @@
 
 namespace openzl {
 namespace training {
-
-poly::optional<CompressionResult> benchmark(
+namespace {
+poly::optional<CompressionResult> benchmarkWithContexts(
+        CCtx& cctx,
+        DCtx& dctx,
         const Compressor& compressor,
-        poly::span<const MultiInput> inputs,
-        poly::string_view dictBundleData)
+        poly::span<const MultiInput> inputs)
 {
-    CCtx cctx;
-    std::unique_ptr<FatBundleDictLoader> dictLoader;
-    DCtx dctx;
-    if (!dictBundleData.empty()) {
-        dictLoader = std::make_unique<FatBundleDictLoader>();
-        dictLoader->loadFatBundle(dictBundleData);
-        dctx.refDictLoader(*dictLoader);
-    }
-
     CompressionResult result{};
     for (const auto& input : inputs) {
         // TODO: For non-string inputs pre-reserve IO buffers
@@ -45,7 +37,7 @@ poly::optional<CompressionResult> benchmark(
         if (roundTripped.size() != input->size()) {
             throw Exception("Bad round trip!");
         }
-        for (size_t i = 0; i < input->size(); ++i) {
+        for (size_t i = 0; i < roundTripped.size(); ++i) {
             if (roundTripped[i] != input->at(i)) {
                 throw std::runtime_error("Bad round trip!");
             }
@@ -70,10 +62,7 @@ poly::optional<CompressionResult> benchmark(
     return result;
 }
 
-poly::optional<CompressionResult> benchmark(
-        const Compressor& compressor,
-        poly::span<const Input> inputs,
-        poly::string_view dictBundleData)
+std::vector<MultiInput> toMultiInputs(poly::span<const Input> inputs)
 {
     std::vector<MultiInput> multiInputs;
     multiInputs.reserve(inputs.size());
@@ -82,7 +71,43 @@ poly::optional<CompressionResult> benchmark(
         multiInput.add(InputRef{ const_cast<ZL_Input*>(input.get()) });
         multiInputs.push_back(std::move(multiInput));
     }
+    return multiInputs;
+}
+} // namespace
+
+poly::optional<CompressionResult> benchmark(
+        const Compressor& compressor,
+        poly::span<const MultiInput> inputs,
+        poly::string_view dictBundleData)
+{
+    CCtx cctx;
+    std::unique_ptr<FatBundleDictLoader> dictLoader;
+    DCtx dctx;
+    if (!dictBundleData.empty()) {
+        dictLoader = std::make_unique<FatBundleDictLoader>();
+        dictLoader->loadFatBundle(dictBundleData);
+        dctx.refDictLoader(*dictLoader);
+    }
+    return benchmarkWithContexts(cctx, dctx, compressor, inputs);
+}
+
+poly::optional<CompressionResult> benchmark(
+        const Compressor& compressor,
+        poly::span<const Input> inputs,
+        poly::string_view dictBundleData)
+{
+    const auto multiInputs = toMultiInputs(inputs);
     return benchmark(compressor, multiInputs, dictBundleData);
+}
+
+poly::optional<CompressionResult> benchmark(
+        CCtx& cctx,
+        DCtx& dctx,
+        const Compressor& compressor,
+        poly::span<const Input> inputs)
+{
+    const auto multiInputs = toMultiInputs(inputs);
+    return benchmarkWithContexts(cctx, dctx, compressor, multiInputs);
 }
 } // namespace training
 } // namespace openzl

@@ -277,6 +277,12 @@ class ACECompressor {
             uint32_t formatVersion,
             int compressionLevel) const;
 
+    /// @returns The compressor that benchmark() runs, which several threads
+    /// can share.
+    Compressor buildBenchmarkCompressor(
+            uint32_t formatVersion,
+            int compressionLevel) const;
+
    private:
     uint64_t computeHash() const;
 

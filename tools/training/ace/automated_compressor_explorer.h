@@ -97,6 +97,7 @@ class AutomatedCompressorExplorer : public GeneticAlgorithm<ACECompressor> {
                 throw Exception("All inputs must have the same type");
             }
         }
+        inputBatches_ = splitInputs(inputs_, params.numThreads);
     }
 
     AutomatedCompressorExplorer(
@@ -178,13 +179,26 @@ class AutomatedCompressorExplorer : public GeneticAlgorithm<ACECompressor> {
     static constexpr size_t kAceStateParamId = 592;
 
    private:
-    static std::vector<float> computeFitness(
-            const ACECompressor& compressor,
+    /// Small input sets get fewer batches, so that no batch holds much less
+    /// than this.
+    static constexpr size_t kMinBatchBytes = size_t(1) << 20;
+
+    /**
+     * Splits @p inputs into at most @p numBatches batches of contiguous whole
+     * inputs, with about the same number of the bytes that `benchmark()`
+     * compresses in each batch. Uses fewer batches when a batch would hold
+     * less than about kMinBatchBytes.
+     */
+    static std::vector<poly::span<const Input>> splitInputs(
             poly::span<const Input> inputs,
-            uint32_t formatVersion,
-            int compressionLevel);
+            size_t numBatches);
 
     poly::span<const Input> inputs_;
+    /// Each gene benchmarks every batch as its own thread pool task, about one
+    /// batch per thread, so one slow gene does not leave the other threads
+    /// idle for a whole generation. Batches hold whole inputs, so they do not
+    /// change the compressed sizes.
+    std::vector<poly::span<const Input>> inputBatches_;
     uint32_t formatVersion_;
     int compressionLevel_;
     ThreadPool threadPool_;

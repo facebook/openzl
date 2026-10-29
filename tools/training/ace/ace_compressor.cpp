@@ -682,13 +682,21 @@ poly::optional<ACECompressionResult> ACECompressor::benchmark(
         uint32_t formatVersion,
         int compressionLevel) const
 {
+    return openzl::training::benchmark(
+            buildBenchmarkCompressor(formatVersion, compressionLevel), inputs);
+}
+
+Compressor ACECompressor::buildBenchmarkCompressor(
+        uint32_t formatVersion,
+        int compressionLevel) const
+{
     Compressor compressor;
     compressor.selectStartingGraph(build(compressor));
     // Candidate benchmarks use a fresh compressor, so restore the global
     // parameters that affect graph availability and selector decisions.
     compressor.setParameter(CParam::FormatVersion, formatVersion);
     compressor.setParameter(CParam::CompressionLevel, compressionLevel);
-    return openzl::training::benchmark(compressor, inputs);
+    return compressor;
 }
 } // namespace training
 } // namespace openzl
