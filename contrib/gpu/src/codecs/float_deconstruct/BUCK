@@ -11,6 +11,58 @@ load("../../../../../defs.bzl", "relative_headers")
 
 oncall("data_compression")
 
+# bf16 chunk descriptor and element decode, free of CUDA headers so that host
+# code shares them with the kernels.
+cpp_library(
+    # @autodeps-skip
+    name = "float_deconstruct_bf16",
+    headers = relative_headers(["float_deconstruct_bf16.hpp"]),
+    header_namespace = "",
+)
+
+# Checks whether a float_deconstruct codec run fits a kernel, and builds the
+# kernel's arguments. The kernels of every runtime share this code.
+cpp_library(
+    # @autodeps-skip
+    name = "decode_float_deconstruct_binding",
+    srcs = ["decode_float_deconstruct_binding.cpp"],
+    headers = relative_headers(["decode_float_deconstruct_binding.hpp"]),
+    header_namespace = "",
+    deps = ["../../../../..:zstronglib"],
+    exported_deps = [
+        "../../common:codec_decode_execution",
+        ":float_deconstruct_bf16",
+    ],
+)
+
+# Encoded bf16 float_deconstruct streams from real frames, for decoder tests.
+cpp_library(
+    # @autodeps-skip
+    name = "bf16_test_frames",
+    srcs = ["tests/bf16_test_frames.cpp"],
+    headers = relative_headers(["tests/bf16_test_frames.h"]),
+    header_namespace = "",
+    deps = [
+        "../../../../..:zstronglib",
+        "../../../../../cpp:openzl_cpp",
+        "../../../testkit:testkit",
+        "fbsource//third-party/googletest:gtest",
+    ],
+)
+
+cpp_unittest(
+    # @autodeps-skip
+    name = "decode_float_deconstruct_binding_test",
+    srcs = ["tests/DecodeFloatDeconstructBindingTest.cpp"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "../../../../..:zstronglib",
+        "fbsource//third-party/googletest:gtest",
+        ":bf16_test_frames",
+        ":decode_float_deconstruct_binding",
+    ],
+)
+
 # GPU decode kernel for the bfloat16 float_deconstruct codec.
 cpp_library(
     # @autodeps-skip
@@ -26,6 +78,7 @@ cpp_library(
     exported_deps = [
         "../../common:cuda_launch",
         "../../common:segment_plan",
+        ":float_deconstruct_bf16",
     ],
     exported_external_deps = [("cuda", None, "cuda-lazy")],
 )
