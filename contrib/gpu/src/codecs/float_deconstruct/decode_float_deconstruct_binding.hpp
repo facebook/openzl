@@ -16,11 +16,11 @@ namespace openzl::gpu {
 bool isBf16CodecRun(const CodecRunInfo& run);
 
 /**
- * Describes @p run as a bf16 float_deconstruct chunk.
+ * Describes the arrays of @p run for the bf16 kernel.
  *
- * @returns The chunk, or no value if @p run fails @c isBf16CodecRun, or has
- * elements and a null address.
+ * @returns The descriptor, or no value if @p run fails @c isBf16CodecRun, or
+ * has elements and a null address.
  */
-std::optional<FloatDeconChunk> asBf16CodecRun(const BoundCodecRun& run);
+std::optional<Bf16DeconElementRange> asBf16CodecRun(const BoundCodecRun& run);
 
 } // namespace openzl::gpu

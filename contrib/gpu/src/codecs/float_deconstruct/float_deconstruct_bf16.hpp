@@ -15,28 +15,29 @@
 
 namespace openzl::gpu {
 
-// Describes one bf16 float-deconstruct chunk. All pointers are device pointers.
-// dst must be 2-byte aligned. bf16DeconDecode uses vector loads and stores when
-// exponent and signFrac are 4-byte aligned and dst is 8-byte aligned, and
-// element loads and stores otherwise.
-struct FloatDeconChunk {
+// Describes the arrays of one bf16 float_deconstruct codec run, or of one
+// slice of it. All pointers are device pointers. dst must be 2-byte aligned.
+// bf16DeconDecode uses vector loads and stores when exponent and signFrac are
+// 4-byte aligned and dst is 8-byte aligned, and element loads and stores
+// otherwise.
+struct Bf16DeconElementRange {
     const uint8_t* exponent;
     const uint8_t* signFrac;
     uint16_t* dst;
     size_t nbElts;
 
-    // Peels the first min(n, nbElts) elements off as a new segment and advances
+    // Peels the first min(n, nbElts) elements off as a new slice and advances
     // *this past them, advancing device pointers only (no data copy).
-    FloatDeconChunk peel(size_t n)
+    Bf16DeconElementRange peel(size_t n)
     {
-        n                   = n < nbElts ? n : nbElts;
-        FloatDeconChunk seg = *this;
-        seg.nbElts          = n;
+        n                           = n < nbElts ? n : nbElts;
+        Bf16DeconElementRange slice = *this;
+        slice.nbElts                = n;
         exponent += n;
         signFrac += n;
         dst += n;
         nbElts -= n;
-        return seg;
+        return slice;
     }
 };
 

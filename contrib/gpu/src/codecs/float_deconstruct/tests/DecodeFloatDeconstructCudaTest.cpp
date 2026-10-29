@@ -192,7 +192,7 @@ TEST(DecodeFloatDeconstructCudaTest, DecodesMisalignedRuns)
 {
     // Inputs stored in a frame start at any offset, and a later chunk's output
     // can start at any 2-byte boundary. This fails if the kernel rejects such a
-    // run, or if a misaligned segment takes the vector path.
+    // run, or if a misaligned slice takes the vector path.
     const DecodeKernel& kernel = kernelNamed("float_deconstruct.bf16.cuda");
     const RunBatch batch{ kUnevenSizes, { 1, 3, 2, 1, 3 }, 2 };
     for (const BoundCodecRun& run : batch.runs) {

@@ -11,7 +11,7 @@
 #include "contrib/gpu/src/common/cuda_error.cuh"
 #include "contrib/gpu/src/common/cuda_launch.cuh"
 #include "contrib/gpu/src/common/cuda_raii.cuh"
-#include "contrib/gpu/src/common/segment_plan.cuh"
+#include "contrib/gpu/src/common/slice_plan.cuh"
 
 namespace openzl::gpu {
 
@@ -33,8 +33,8 @@ __device__ __forceinline__ ushort4 joinVec4(uchar4 e, uchar4 s)
 }
 
 // Whether every address of `c` is aligned for the vector loads and stores of
-// decodeChunkVec.
-__device__ __forceinline__ bool isVecAligned(const FloatDeconChunk& c)
+// decodeSliceVec.
+__device__ __forceinline__ bool isVecAligned(const Bf16DeconElementRange& c)
 {
     const uintptr_t inputs = reinterpret_cast<uintptr_t>(c.exponent)
             | reinterpret_cast<uintptr_t>(c.signFrac);
@@ -42,15 +42,16 @@ __device__ __forceinline__ bool isVecAligned(const FloatDeconChunk& c)
             && reinterpret_cast<uintptr_t>(c.dst) % alignof(ushort4) == 0;
 }
 
-// Vectorized decode of one chunk: the threads [start, start+stride, ...) cover
-// the chunk, each handling kVec elements per step via wide transactions (uchar4
-// in, ushort4 out) so both input streams and the output move in wide, fully-
-// coalesced transactions. The main loop is unrolled by kUnroll so several
-// independent loads from each stream are in flight before the stores, hiding
-// DRAM latency (memory-level parallelism). A remainder loop and then a scalar
-// tail (last nbElts % kVec) finish the chunk. Requires isVecAligned(c).
+// Vectorized decode of one slice: the threads [start, start+stride, ...)
+// cover the slice, each handling kVec elements per step via wide transactions
+// (uchar4 in, ushort4 out) so both input streams and the output move in wide,
+// fully coalesced transactions. The main loop is unrolled by kUnroll so
+// several independent loads from each stream are in flight before the stores,
+// hiding DRAM latency (memory-level parallelism). A remainder loop and then a
+// scalar tail (last nbElts % kVec) finish the slice. Requires
+// isVecAligned(c).
 __device__ __forceinline__ void
-decodeChunkVec(const FloatDeconChunk& c, size_t start, size_t stride)
+decodeSliceVec(const Bf16DeconElementRange& c, size_t start, size_t stride)
 {
     // Misaligned vector loads and stores are UB on CUDA.
     assert(isVecAligned(c));
@@ -83,113 +84,119 @@ decodeChunkVec(const FloatDeconChunk& c, size_t start, size_t stride)
     }
 }
 
-// Element-by-element decode of one chunk, for addresses that decodeChunkVec
+// Element-by-element decode of one slice, for addresses that decodeSliceVec
 // cannot use. Consecutive threads touch consecutive elements, so the accesses
 // stay coalesced.
 __device__ __forceinline__ void
-decodeChunkScalar(const FloatDeconChunk& c, size_t start, size_t stride)
+decodeSliceScalar(const Bf16DeconElementRange& c, size_t start, size_t stride)
 {
     for (size_t i = start; i < c.nbElts; i += stride) {
         c.dst[i] = decodeBf16Elt(c.exponent[i], c.signFrac[i]);
     }
 }
 
-// The host has split the input into equal-sized segments (each a contiguous
-// run of one chunk); one block owns a segment and grid-strides over the segment
-// array, so equal segments balance the work. A 1D grid means numSegs has no
-// gridDim.y cap.
-__global__ void decodeSegmentsKernel(
-        const FloatDeconChunk* __restrict__ segments,
-        uint32_t numSegs)
+// The host has split the input into equal-sized slices (each a contiguous
+// part of one range); one block owns a slice and grid-strides over the
+// slice array, so equal slices balance the work. A 1D grid means numSlices
+// has no gridDim.y cap.
+__global__ void decodeSlicesKernel(
+        const Bf16DeconElementRange* __restrict__ slices,
+        uint32_t numSlices)
 {
-    for (uint32_t s = blockIdx.x; s < numSegs; s += gridDim.x) {
-        // Every thread of the block reads the same segment, so the whole block
+    for (uint32_t s = blockIdx.x; s < numSlices; s += gridDim.x) {
+        // Every thread of the block reads the same slice, so the whole block
         // takes the same branch.
-        const FloatDeconChunk segment = segments[s];
-        if (isVecAligned(segment)) {
-            decodeChunkVec(segment, threadIdx.x, blockDim.x);
+        const Bf16DeconElementRange slice = slices[s];
+        if (isVecAligned(slice)) {
+            decodeSliceVec(slice, threadIdx.x, blockDim.x);
         } else {
-            decodeChunkScalar(segment, threadIdx.x, blockDim.x);
+            decodeSliceScalar(slice, threadIdx.x, blockDim.x);
         }
     }
 }
 
-// Throws unless maxSegElts is a positive multiple of kVec, so that every
-// segment of a chunk keeps the alignment of the chunk's start.
-void validateMaxSegElts(size_t maxSegElts)
+// Throws unless maxSliceElts is a positive multiple of kVec, so that every
+// slice of a range keeps the alignment of the range's start.
+void validateMaxSliceElts(size_t maxSliceElts)
 {
-    if (maxSegElts == 0 || maxSegElts % kVec != 0) {
+    if (maxSliceElts == 0 || maxSliceElts % kVec != 0) {
         throw std::runtime_error(
-                "bf16 decode: maxSegElts " + std::to_string(maxSegElts)
+                "bf16 decode: maxSliceElts " + std::to_string(maxSliceElts)
                 + " must be a positive multiple of " + std::to_string(kVec));
     }
 }
 
-// Sizes a 1D grid that fills the GPU (capped at numSegs) and launches the
-// decode kernel over the staged segment array.
-void launchSegments(
-        const FloatDeconChunk* segs_d,
-        uint32_t numSegs,
+// Sizes a 1D grid that fills the GPU (capped at numSlices) and launches the
+// decode kernel over the staged slice array.
+void launchSlices(
+        const Bf16DeconElementRange* slices_d,
+        uint32_t numSlices,
         cudaStream_t stream)
 {
     const uint32_t target =
-            fillGpuGrid((const void*)decodeSegmentsKernel, kThreads);
-    const uint32_t grid = (uint32_t)std::min<size_t>(numSegs, target);
+            fillGpuGrid((const void*)decodeSlicesKernel, kThreads);
+    const uint32_t grid = (uint32_t)std::min<size_t>(numSlices, target);
     ZL_CUDA_CHECK(launchKernel(
-            decodeSegmentsKernel, grid, kThreads, 0, stream, segs_d, numSegs));
+            decodeSlicesKernel,
+            grid,
+            kThreads,
+            0,
+            stream,
+            slices_d,
+            numSlices));
 }
 
 } // namespace
 
-// segAlignElts = kVec keeps every segment start at the alignment of its
-// chunk's start.
+// sliceAlignElts = kVec keeps every slice start at the alignment of its
+// range's start.
 Bf16DecodePlan::Bf16DecodePlan(
-        const FloatDeconChunk* chunks_h,
-        uint32_t numInBatch,
-        size_t maxSegElts)
-        : plan_(chunks_h, numInBatch, maxSegElts, kVec)
+        const Bf16DeconElementRange* ranges_h,
+        uint32_t numRanges,
+        size_t maxSliceElts)
+        : plan_(ranges_h, numRanges, maxSliceElts, kVec)
 {
 }
 
 void Bf16DecodePlan::launch(cudaStream_t stream) const
 {
-    if (plan_.numSegs() == 0) {
+    if (plan_.numSlices() == 0) {
         return;
     }
-    launchSegments(plan_.deviceSegments(), plan_.numSegs(), stream);
+    launchSlices(plan_.deviceSlices(), plan_.numSlices(), stream);
 }
 
 void bf16DeconDecode(
-        const FloatDeconChunk* chunks_h,
-        uint32_t numInBatch,
-        size_t maxSegElts,
+        const Bf16DeconElementRange* ranges_h,
+        uint32_t numRanges,
+        size_t maxSliceElts,
         cudaStream_t stream)
 {
-    if (numInBatch == 0) {
+    if (numRanges == 0) {
         return;
     }
-    validateMaxSegElts(maxSegElts);
-    const std::vector<FloatDeconChunk> segs =
-            rechunk(chunks_h, numInBatch, maxSegElts);
-    if (segs.empty()) {
+    validateMaxSliceElts(maxSliceElts);
+    const std::vector<Bf16DeconElementRange> slices =
+            splitIntoSlices(ranges_h, numRanges, maxSliceElts);
+    if (slices.empty()) {
         return;
     }
-    const uint32_t numSegs = (uint32_t)segs.size();
+    const uint32_t numSlices = (uint32_t)slices.size();
 
     // Stream-ordered scratch so the one-shot path stays async and leak-free.
-    StreamScratch<FloatDeconChunk> segs_d(numSegs, stream);
+    StreamScratch<Bf16DeconElementRange> slices_d(numSlices, stream);
     ZL_CUDA_CHECK(cudaMemcpyAsync(
-            segs_d.get(),
-            segs.data(),
-            (size_t)numSegs * sizeof(FloatDeconChunk),
+            slices_d.get(),
+            slices.data(),
+            (size_t)numSlices * sizeof(Bf16DeconElementRange),
             cudaMemcpyHostToDevice,
             stream));
-    launchSegments(segs_d.get(), numSegs, stream);
+    launchSlices(slices_d.get(), numSlices, stream);
 }
 
 KernelLaunchInfo bf16DeconDecodeLaunchInfo()
 {
-    return launchInfoFor((const void*)decodeSegmentsKernel, kThreads);
+    return launchInfoFor((const void*)decodeSlicesKernel, kThreads);
 }
 
 } // namespace openzl::gpu

@@ -13,7 +13,7 @@ namespace openzl::gpu {
  * `float_deconstruct.bf16.cuda` runs `bf16DeconDecode`, which balances work
  * across runs. It needs a 2-byte-aligned destination, which the layout
  * guarantees, and takes inputs at any offset, such as inputs stored in a
- * frame. Each segment of a run uses vector loads and stores when its addresses
+ * frame. Each slice of a run uses vector loads and stores when its addresses
  * are aligned for them.
  */
 poly::span<const DecodeKernel> floatDeconstructCudaKernels();

@@ -25,28 +25,28 @@ bool acceptsRun(const CodecRunInfo& run)
 }
 
 /**
- * The host chunk descriptors of @p runs, or no value if a run has an address
+ * The host descriptors of @p runs, or no value if a run has an address
  * that the kernel cannot use.
  *
  * The kernel stores bf16 values with 2-byte stores. The layout aligns every
  * destination for them, so an odd destination is a caller's bug.
  * @throws std::bad_alloc if an allocation fails.
  */
-std::optional<std::vector<FloatDeconChunk>> chunksOf(
+std::optional<std::vector<Bf16DeconElementRange>> elementRangesOf(
         poly::span<const BoundCodecRun> runs)
 {
-    std::vector<FloatDeconChunk> chunks;
-    chunks.reserve(runs.size());
+    std::vector<Bf16DeconElementRange> ranges;
+    ranges.reserve(runs.size());
     for (const BoundCodecRun& run : runs) {
-        const std::optional<FloatDeconChunk> chunk = asBf16CodecRun(run);
-        if (!chunk.has_value()
-            || reinterpret_cast<uintptr_t>(chunk->dst) % alignof(uint16_t)
+        const std::optional<Bf16DeconElementRange> range = asBf16CodecRun(run);
+        if (!range.has_value()
+            || reinterpret_cast<uintptr_t>(range->dst) % alignof(uint16_t)
                     != 0) {
             return std::nullopt;
         }
-        chunks.push_back(*chunk);
+        ranges.push_back(*range);
     }
-    return chunks;
+    return ranges;
 }
 
 /**
@@ -71,21 +71,21 @@ ZL_Report decodeRuns(poly::span<const BoundCodecRun> runs, void* stream)
 {
     ZL_RESULT_DECLARE_SCOPE_REPORT(nullptr);
     ZL_ERR_IF_GT(runs.size(), std::numeric_limits<uint32_t>::max(), allocation);
-    std::optional<std::vector<FloatDeconChunk>> chunks;
+    std::optional<std::vector<Bf16DeconElementRange>> ranges;
     try {
-        chunks = chunksOf(runs);
+        ranges = elementRangesOf(runs);
     } catch (const std::bad_alloc&) {
         ZL_ERR(allocation, "float_deconstruct.bf16.cuda: allocation failed");
     }
     ZL_ERR_IF(
-            !chunks.has_value(),
+            !ranges.has_value(),
             parameter_invalid,
             "float_deconstruct.bf16.cuda: a run has a null or odd address");
     return reportLaunch("float_deconstruct.bf16.cuda", [&] {
         bf16DeconDecode(
-                chunks->data(),
-                static_cast<uint32_t>(chunks->size()),
-                kBf16DefaultMaxSegElts,
+                ranges->data(),
+                static_cast<uint32_t>(ranges->size()),
+                kBf16DefaultMaxSliceElts,
                 static_cast<cudaStream_t>(stream));
     });
 }

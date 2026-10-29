@@ -60,7 +60,7 @@ bool isBf16CodecRun(const CodecRunInfo& run)
             && hasBf16Storage(run.inputs[0], run.inputs[1], run.outputs[0]);
 }
 
-std::optional<FloatDeconChunk> asBf16CodecRun(const BoundCodecRun& run)
+std::optional<Bf16DeconElementRange> asBf16CodecRun(const BoundCodecRun& run)
 {
     if (!isBf16CodecRun(run.info) || run.inputs.size() != 2
         || run.outputs.size() != 1) {
@@ -75,7 +75,7 @@ std::optional<FloatDeconChunk> asBf16CodecRun(const BoundCodecRun& run)
             || output.data_d == nullptr)) {
         return std::nullopt;
     }
-    return FloatDeconChunk{
+    return Bf16DeconElementRange{
         .exponent = static_cast<const uint8_t*>(exponent.data_d),
         .signFrac = static_cast<const uint8_t*>(signFrac.data_d),
         .dst      = static_cast<uint16_t*>(output.data_d),

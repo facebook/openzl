@@ -35,11 +35,12 @@ cpp_library(
     exported_external_deps = [("cuda", None, "cuda-lazy")],
 )
 
-# Balanced-segment preprocessing (host split + device staging) shared by GPU
-# decode kernels; codec-agnostic (templated on the chunk descriptor).
+# Splits element ranges into equal slices on the host and stages the slice
+# descriptors on the device, for element-wise decode kernels. Codec-agnostic:
+# templated on the element range descriptor.
 cpp_library(
-    name = "segment_plan",
-    headers = relative_headers(["segment_plan.cuh"]),
+    name = "slice_plan",
+    headers = relative_headers(["slice_plan.cuh"]),
     header_namespace = "",
     exported_deps = [
         ":cuda_error",

@@ -79,25 +79,26 @@ struct Bf16RunFixture {
 
 TEST(DecodeFloatDeconstructBindingTest, DescribesBoundBf16Run)
 {
-    // This fails if a valid run is rejected, or if its chunk swaps the two
+    // This fails if a valid run is rejected, or if its descriptor swaps the two
     // inputs or takes the wrong element count.
     const std::vector<uint16_t> values = test::makeBf16Values(1000, 1);
     Bf16RunFixture fixture{ values };
     ASSERT_EQ(fixture.exponent.size(), values.size());
 
-    const std::optional<FloatDeconChunk> chunk = asBf16CodecRun(fixture.run);
+    const std::optional<Bf16DeconElementRange> range =
+            asBf16CodecRun(fixture.run);
 
-    ASSERT_TRUE(chunk.has_value());
-    EXPECT_EQ(chunk->exponent, fixture.exponent.data());
-    EXPECT_EQ(chunk->signFrac, fixture.signFrac.data());
-    EXPECT_EQ(chunk->dst, fixture.output.data());
-    EXPECT_EQ(chunk->nbElts, values.size());
+    ASSERT_TRUE(range.has_value());
+    EXPECT_EQ(range->exponent, fixture.exponent.data());
+    EXPECT_EQ(range->signFrac, fixture.signFrac.data());
+    EXPECT_EQ(range->dst, fixture.output.data());
+    EXPECT_EQ(range->nbElts, values.size());
 }
 
 TEST(DecodeFloatDeconstructBindingTest, RejectsRunsItCannotDecode)
 {
     // Each case breaks one property of a valid run. This fails if any of them
-    // is still described as a bf16 chunk.
+    // is still described as a bf16 run.
     const std::vector<uint16_t> values = test::makeBf16Values(1000, 2);
     const std::byte f32Header[1]       = { std::byte{
             FLTDECON_ElementType_float32 } };
@@ -217,10 +218,11 @@ TEST(DecodeFloatDeconstructBindingTest, AcceptsAnEmptyRunWithNullAddresses)
     fixture.outputInfo[0].storageSize   = {};
     fixture.outputs[0].data_d           = nullptr;
 
-    const std::optional<FloatDeconChunk> chunk = asBf16CodecRun(fixture.run);
+    const std::optional<Bf16DeconElementRange> range =
+            asBf16CodecRun(fixture.run);
 
-    ASSERT_TRUE(chunk.has_value());
-    EXPECT_EQ(chunk->nbElts, 0);
+    ASSERT_TRUE(range.has_value());
+    EXPECT_EQ(range->nbElts, 0);
 }
 
 } // namespace

@@ -13,7 +13,7 @@ load("../../../../../defs.bzl", "relative_headers")
 
 oncall("data_compression")
 
-# bf16 chunk descriptor and element decode, free of CUDA headers so that host
+# bf16 run descriptor and element decode, free of CUDA headers so that host
 # code shares them with the kernels.
 cpp_library(
     # @autodeps-skip
@@ -125,7 +125,7 @@ cpp_library(
     ],
     exported_deps = [
         "../../common:cuda_launch",
-        "../../common:segment_plan",
+        "../../common:slice_plan",
         ":float_deconstruct_bf16",
     ],
     exported_external_deps = [("cuda", None, "cuda-lazy")],
@@ -136,8 +136,8 @@ cpp_library(
 # ../../bench:gpu_bench.
 cpp_library(
     # @autodeps-skip
-    name = "gpu_chunk_harness",
-    headers = relative_headers(["gpu_chunk_harness.cuh"]),
+    name = "bf16_decon_element_ranges",
+    headers = relative_headers(["bf16_decon_element_ranges.cuh"]),
     header_namespace = "",
     exported_deps = [
         "../../common:cuda_error",
@@ -158,8 +158,8 @@ cpp_binary(
         "../../../../..:zstronglib",
         "../../bench:gpu_bench",
         "../../common:cuda_error",
+        ":bf16_decon_element_ranges",
         ":decode_float_deconstruct_bf16",
-        ":gpu_chunk_harness",
     ],
     external_deps = [("cuda", None, "cuda-lazy")],
 )
@@ -184,8 +184,8 @@ cpp_unittest(
         "../../../testkit:testkit",
         "../../common:cuda_error",
         "fbsource//third-party/googletest:gtest",
+        ":bf16_decon_element_ranges",
         ":decode_float_deconstruct_bf16",
-        ":gpu_chunk_harness",
     ],
     external_deps = [("cuda", None, "cuda-lazy")],
 )
