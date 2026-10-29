@@ -52,10 +52,19 @@ cpp_unittest(
 cpp_library(
     # @autodeps-skip
     name = "cuda_device",
-    srcs = ["cuda_device.cpp"],
-    headers = relative_headers(["cuda_device.hpp"]),
+    srcs = [
+        "cuda_device.cpp",
+        "cuda_kernel_table.cpp",
+    ],
+    headers = relative_headers([
+        "cuda_kernel_table.hpp",
+        "cuda_device.hpp",
+    ]),
     header_namespace = "",
-    deps = ["../../../..:zstronglib"],
+    deps = [
+        "../../../..:zstronglib",
+        "../codecs/float_deconstruct:decode_float_deconstruct_cuda",
+    ],
     exported_deps = [":device"],
     external_deps = [("cuda", None, "cuda-lazy")],
 )

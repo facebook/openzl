@@ -16,9 +16,9 @@
 namespace openzl::gpu {
 
 // Describes one bf16 float-deconstruct chunk. All pointers are device pointers.
-// The vectorized paths (bf16DeconDecodeVec and the unified decode) require
-// exponent and signFrac 4-byte aligned and dst 8-byte aligned; cudaMalloc'd
-// buffers and unified segment starts satisfy this by construction.
+// dst must be 2-byte aligned. bf16DeconDecode uses vector loads and stores when
+// exponent and signFrac are 4-byte aligned and dst is 8-byte aligned, and
+// element loads and stores otherwise.
 struct FloatDeconChunk {
     const uint8_t* exponent;
     const uint8_t* signFrac;

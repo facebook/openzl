@@ -11,6 +11,8 @@
 // conventions (ZL_ prefix, uppercase). Throw-based so it works in the
 // benchmark's main and reports a failure under gtest. ZL_CUDA_CHECK wraps a
 // CUDA call; ZL_CUDA_CHECK_LAST checks cudaGetLastError after a kernel launch.
+// Library code launches with launchKernel (cuda_launch.cuh) instead, because
+// cudaGetLastError also reports an error that the caller left pending.
 
 namespace openzl::gpu {
 

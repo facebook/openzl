@@ -2,13 +2,15 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
+#include <utility>
 
 #include <cuda_runtime.h>
 
 #include "contrib/gpu/src/common/cuda_error.cuh"
 
-// Grid sizing and occupancy metadata for GPU kernel launches.
+// Grid sizing, occupancy metadata, and checked launches for GPU kernels.
 
 namespace openzl::gpu {
 
@@ -41,6 +43,26 @@ inline KernelLaunchInfo launchInfoFor(const void* kernel, int blockSize)
     ZL_CUDA_CHECK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
             &maxActiveBlocksPerSM, kernel, blockSize, 0));
     return { blockSize, maxActiveBlocksPerSM };
+}
+
+// Launches `kernel` on `stream` and returns the status of this launch only. A
+// `<<<...>>>` launch reports only through cudaGetLastError, which also returns,
+// and clears, an error that the caller left pending.
+template <typename... Params, typename... Args>
+cudaError_t launchKernel(
+        void (*kernel)(Params...),
+        dim3 grid,
+        dim3 block,
+        size_t sharedMemBytes,
+        cudaStream_t stream,
+        Args&&... args)
+{
+    cudaLaunchConfig_t config{};
+    config.gridDim          = grid;
+    config.blockDim         = block;
+    config.dynamicSmemBytes = sharedMemBytes;
+    config.stream           = stream;
+    return cudaLaunchKernelEx(&config, kernel, std::forward<Args>(args)...);
 }
 
 } // namespace openzl::gpu
