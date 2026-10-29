@@ -17,18 +17,23 @@ cpp_library(
         "frame_factory.cpp",
         "frame_verifier.cpp",
         "multichunk_frame.cpp",
+        "nimble_graph.cpp",
     ],
     headers = relative_headers([
+        "bytes.h",
         "frame_factory.h",
         "frame_verifier.h",
         "multichunk_frame.h",
+        "nimble_graph.h",
     ])
     | {
         header: header
         for header in [
+            "bytes.h",
             "frame_factory.h",
             "frame_verifier.h",
             "multichunk_frame.h",
+            "nimble_graph.h",
         ]
     },
     header_namespace = "",
@@ -42,9 +47,11 @@ cpp_library(
 cpp_library(
     name = "testkit_relative_headers",
     headers = relative_headers([
+        "bytes.h",
         "frame_factory.h",
         "frame_verifier.h",
         "multichunk_frame.h",
+        "nimble_graph.h",
     ]),
     header_namespace = "",
     exported_deps = [":testkit"],
@@ -89,6 +96,19 @@ cpp_unittest(
     # @autodeps-skip
     name = "multichunk_frame_test",
     srcs = ["tests/MultiChunkFrameTest.cpp"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "../../..:zstronglib",
+        "../../../cpp:openzl_cpp",
+        "fbsource//third-party/googletest:gtest",
+        ":testkit",
+    ],
+)
+
+cpp_unittest(
+    # @autodeps-skip
+    name = "nimble_graph_test",
+    srcs = ["tests/NimbleGraphTest.cpp"],
     network_access = network_access_utils.none(),
     deps = [
         "../../..:zstronglib",
