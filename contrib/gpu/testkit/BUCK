@@ -98,6 +98,19 @@ cpp_unittest(
 
 cpp_unittest(
     # @autodeps-skip
+    name = "frame_verifier_test",
+    srcs = ["tests/FrameVerifierTest.cpp"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "../../..:zstronglib",
+        "../../../cpp:openzl_cpp",
+        "fbsource//third-party/googletest:gtest",
+        ":testkit",
+    ],
+)
+
+cpp_unittest(
+    # @autodeps-skip
     name = "multichunk_frame_test",
     srcs = ["tests/MultiChunkFrameTest.cpp"],
     network_access = network_access_utils.none(),
