@@ -31,9 +31,9 @@ constexpr int kDisableMinStreamSize = -1;
 //                        Belt-and-suspenders here: it did not affect the
 //                        float_deconstruct case alone, but matters for graphs
 //                        with small intermediate streams feeding real backends.
-void applyFidelityParams(openzl::CCtx& cctx)
+void applyFidelityParams(openzl::CCtx& cctx, int formatVersion)
 {
-    cctx.setParameter(openzl::CParam::FormatVersion, ZL_MAX_FORMAT_VERSION);
+    cctx.setParameter(openzl::CParam::FormatVersion, formatVersion);
     cctx.setParameter(
             openzl::CParam::StoreOnExpansion, ZL_TernaryParam_disable);
     cctx.setParameter(openzl::CParam::MinStreamSize, kDisableMinStreamSize);
@@ -53,13 +53,14 @@ size_t unguardedCompressBound(const openzl::Input& input)
 std::string makeFrameWithGraph(
         openzl::Compressor& compressor,
         openzl::GraphID startGraph,
-        const openzl::Input& input)
+        const openzl::Input& input,
+        int formatVersion)
 {
     compressor.selectStartingGraph(startGraph);
 
     openzl::CCtx cctx;
     cctx.refCompressor(compressor);
-    applyFidelityParams(cctx);
+    applyFidelityParams(cctx, formatVersion);
     std::string frame(unguardedCompressBound(input), '\0');
     frame.resize(
             cctx.compress(frame, poly::span<const openzl::Input>(&input, 1)));

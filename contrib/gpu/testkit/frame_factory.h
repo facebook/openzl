@@ -18,11 +18,12 @@ namespace openzl::gpu::testkit {
 // Core minter. Applies the CParams needed to keep hand-picked codecs from being
 // silently replaced by a raw STORE backup (see frame_factory.cpp), selects
 // `startGraph` (which the caller must have already built on `compressor`), and
-// compresses `input` into a frame. Returns the frame bytes.
+// compresses `input` into a frame at `formatVersion`. Returns the frame bytes.
 std::string makeFrameWithGraph(
         openzl::Compressor& compressor,
         openzl::GraphID startGraph,
-        const openzl::Input& input);
+        const openzl::Input& input,
+        int formatVersion = ZL_MAX_FORMAT_VERSION);
 
 // Convenience: build a static graph that routes `node`'s outputs all to STORE
 // (via the canonical buildTrivialGraph helper), then mint a frame for `input`.
