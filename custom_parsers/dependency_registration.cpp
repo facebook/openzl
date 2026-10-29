@@ -9,6 +9,7 @@
 #include "custom_parsers/csv/csv_profile.h"
 #include "custom_parsers/dependency_registration.h"
 #include "custom_parsers/gguf/gguf_parser.h"
+#include "custom_parsers/numpy/numpy_parser.h"
 #include "custom_parsers/parquet/parquet_graph.h"
 #include "custom_parsers/safetensors/safetensors_parser.h"
 #include "custom_parsers/shared_components/tensor_graphs.h"
@@ -69,6 +70,18 @@ void processDependencies(Compressor& compressor, poly::string_view serialized)
                 if (ZL_RES_isError(result)) {
                     throw std::runtime_error(
                             std::string("Failed to create GGUF graph: ")
+                            + ZL_Compressor_getErrorContextString_fromError(
+                                    compressor.get(), ZL_RES_error(result)));
+                }
+                madeProgress = true;
+            } else if (
+                    graphName == "NumPy Parser"
+                    || graphName == "NumPy Segmenter") {
+                const auto result = ZL_NumPy_registerGraph(
+                        compressor.get(), ZL_NUMPY_DEFAULT_CHUNK_SIZE);
+                if (ZL_RES_isError(result)) {
+                    throw std::runtime_error(
+                            std::string("Failed to create NumPy graph: ")
                             + ZL_Compressor_getErrorContextString_fromError(
                                     compressor.get(), ZL_RES_error(result)));
                 }
