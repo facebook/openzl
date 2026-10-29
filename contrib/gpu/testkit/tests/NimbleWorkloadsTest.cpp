@@ -57,6 +57,8 @@ TEST(NimbleWorkloadsTest, generateFrameReturnsExactlyTheRequestedBytes)
         { .type = NimbleNumericType::U32,
           .pattern =
                   PinnedValues{ .base = 0, .range = 1000, .cardinality = 20 } },
+        { .type    = NimbleNumericType::F32,
+          .pattern = PlannedFloats{ .literals = RandomFloatBits{} } },
     };
 
     for (const WorkloadSpec& spec : specs) {
@@ -102,6 +104,16 @@ TEST(NimbleWorkloadsTest, rejectsPatternsThatDoNotMatchTheType)
                     {
                             .type    = NimbleNumericType::U32,
                             .pattern = FloatNormal{ .mean = 0, .stddev = 1 },
+                    },
+                    10),
+            std::invalid_argument);
+    EXPECT_THROW(
+            generateValues(
+                    {
+                            .type = NimbleNumericType::U64,
+                            .pattern =
+                                    PlannedFloats{ .literals =
+                                                           RandomFloatBits{} },
                     },
                     10),
             std::invalid_argument);

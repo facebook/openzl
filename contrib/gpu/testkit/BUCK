@@ -3,6 +3,7 @@
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
+load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
 load("../../../defs.bzl", "relative_headers")
 
 oncall("data_compression")
@@ -14,6 +15,8 @@ cpp_library(
     # @autodeps-skip
     name = "testkit",
     srcs = [
+        "f32_ladder.cpp",
+        "float_parses.cpp",
         "frame_factory.cpp",
         "frame_verifier.cpp",
         "multichunk_frame.cpp",
@@ -22,6 +25,8 @@ cpp_library(
     ],
     headers = relative_headers([
         "bytes.h",
+        "f32_ladder.h",
+        "float_parses.h",
         "frame_factory.h",
         "frame_verifier.h",
         "multichunk_frame.h",
@@ -32,6 +37,8 @@ cpp_library(
         header: header
         for header in [
             "bytes.h",
+            "f32_ladder.h",
+            "float_parses.h",
             "frame_factory.h",
             "frame_verifier.h",
             "multichunk_frame.h",
@@ -51,6 +58,8 @@ cpp_library(
     name = "testkit_relative_headers",
     headers = relative_headers([
         "bytes.h",
+        "f32_ladder.h",
+        "float_parses.h",
         "frame_factory.h",
         "frame_verifier.h",
         "multichunk_frame.h",
@@ -91,6 +100,64 @@ cpp_unittest(
     deps = [
         "../../..:zstronglib",
         "../../../cpp:openzl_cpp",
+        "fbsource//third-party/googletest:gtest",
+        ":testkit",
+    ],
+)
+
+# Helpers that the ladder's graph tests share.
+cpp_library(
+    # @autodeps-skip
+    name = "f32_ladder_test_util",
+    headers = relative_headers(["tests/f32_ladder_test_util.h"]),
+    header_namespace = "",
+    exported_deps = [
+        "fbsource//third-party/googletest:gtest",
+        ":testkit",
+    ],
+)
+
+cpp_unittest(
+    # @autodeps-skip
+    name = "f32_ladder_test",
+    srcs = ["tests/F32LadderTest.cpp"],
+    network_access = network_access_utils.none(),
+    supports_static_listing = False,
+    deps = [
+        "../../../cpp:openzl_cpp",
+        "fbsource//third-party/googletest:gtest",
+        ":f32_ladder_test_util",
+        ":testkit",
+    ],
+)
+
+# Checks that Nimble's numeric graph still writes each ladder step's graph. Core
+# selector heuristics choose that graph, so a heuristic change in core can fail
+# this test with nothing wrong. CI skips it. Run it by hand when the ladder is
+# regenerated or the census changes.
+cpp_unittest(
+    # @autodeps-skip
+    name = "f32_ladder_nimble_test",
+    srcs = ["tests/F32LadderNimbleTest.cpp"],
+    labels = [
+        "manual",
+        ci.skip_target(),
+    ],
+    network_access = network_access_utils.none(),
+    supports_static_listing = False,
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        ":f32_ladder_test_util",
+        ":testkit",
+    ],
+)
+
+cpp_unittest(
+    # @autodeps-skip
+    name = "float_parses_test",
+    srcs = ["tests/FloatParsesTest.cpp"],
+    network_access = network_access_utils.none(),
+    deps = [
         "fbsource//third-party/googletest:gtest",
         ":testkit",
     ],

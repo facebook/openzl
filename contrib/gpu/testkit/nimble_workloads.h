@@ -8,6 +8,7 @@
 #include <variant>
 #include <vector>
 
+#include "contrib/gpu/testkit/float_parses.h"
 #include "contrib/gpu/testkit/nimble_graph.h"
 
 // Seeded synthetic leaf streams for GPU decoder tests and benchmarks that need
@@ -38,7 +39,13 @@ struct PinnedValues {
     uint64_t cardinality;
 };
 
-using WorkloadPattern = std::variant<FloatNormal, PinnedValues>;
+using WorkloadPattern = std::variant<
+        FloatNormal,
+        PinnedValues,
+        PlannedFloats,
+        GapAlphabetFloats,
+        WideAlphabetFloats,
+        CopyStreamFloats>;
 
 // The shape of one leaf stream, which Nimble writes with its Trivial
 // encoding.

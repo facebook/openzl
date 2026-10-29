@@ -90,6 +90,14 @@ class TableBuilder {
                          weights.begin(), weights.end()) };
     }
 
+    // The planned-parse floats draw everything per frame, and their writers
+    // check their parameters against the frame size.
+    template <typename FloatParse>
+    ColumnTables operator()(const FloatParse& /* p */) const
+    {
+        return {};
+    }
+
    private:
     size_t width_;
     std::mt19937_64 rng_;
@@ -129,6 +137,13 @@ class FrameWriter {
         } else {
             writeAlphabet(p);
         }
+    }
+
+    // The planned-parse floats write the whole frame in one call.
+    template <typename FloatParse>
+    void operator()(const FloatParse& p)
+    {
+        out_ = writeFloats(p, numElts_, rng_);
     }
 
    private:
