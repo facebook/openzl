@@ -17,10 +17,22 @@ zs_library(
         "../cpp:openzl_cpp",
         "csv:csv_parser",
         "gguf:gguf_parser",
+        "numpy:numpy_parser",
         "parquet:parquet_graph",
         "safetensors:safetensors_parser",
         "shared_components:clustering",
         "shared_components:tensor_components",
+    ],
+)
+
+cpp_library(
+    # @autodeps-skip
+    name = "pickle_lexer",
+    srcs = ["pickle_lexer.c"],
+    headers = relative_headers(["pickle_lexer.h"]) | {"pickle_lexer.h": "pickle_lexer.h"},
+    header_namespace = "",
+    deps = [
+        "..:zstronglib",
     ],
 )
 
