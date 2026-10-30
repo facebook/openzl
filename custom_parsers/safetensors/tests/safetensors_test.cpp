@@ -801,6 +801,104 @@ TEST_F(SafetensorsCompressorTest, CodesUpcastFloat32NearTheir16BitSize)
     EXPECT_LT(bf16Size, nativeSize / 2);
 }
 
+TEST_F(SafetensorsCompressorTest, CodesFloat32FromBfloat16AsBfloat16)
+{
+    const std::vector<uint64_t> shape = { 64, 512 };
+    const std::string f32             = gaussianF32(64 * 512, 0xffff);
+    std::string bf16;
+    for (size_t i = 0; i < f32.size(); i += 4) {
+        bf16.append(f32, i + 2, 2);
+    }
+    std::string almost = f32;
+    almost[4 * 1000]   = 1;
+    // 40 values over a range of 117 bfloat16 values.
+    std::string narrow(4 * 256, '\0');
+    for (size_t i = 0; i < 256; ++i) {
+        const uint32_t bits = (0x3F80u + 3 * (uint32_t)(i % 40)) << 16;
+        memcpy(&narrow[4 * i], &bits, 4);
+    }
+    useChunkSize(ZL_SAFETENSORS_DEFAULT_CHUNK_SIZE);
+
+    const size_t bf16Size =
+            expectRoundTrip(buildSafetensors({ { "w", "BF16", shape, bf16 } }));
+    const size_t f32Size =
+            expectRoundTrip(buildSafetensors({ { "w", "F32", shape, f32 } }));
+    // A single low bit set sends the tensor to the float32 graph.
+    const size_t almostSize = expectRoundTrip(
+            buildSafetensors({ { "w", "F32", shape, almost } }));
+
+    // A range below 256 values would not fit the bfloat16 graph.
+    expectRoundTrip(buildSafetensors({ { "n", "F32", { 256 }, narrow } }));
+
+    EXPECT_LE(f32Size, bf16Size + 32);
+    EXPECT_GT(almostSize, f32Size);
+}
+
+/// @p f32 with the 13 low bits of the fraction cleared in rows [first, last) of
+/// @p cols values, as rows of float16 weights never updated in float32 keep.
+std::string
+withFloat16Rows(std::string f32, size_t cols, size_t first, size_t last)
+{
+    for (size_t i = first * cols; i < last * cols; ++i) {
+        uint32_t bits;
+        memcpy(&bits, &f32[4 * i], 4);
+        bits &= ~0x1fffu;
+        memcpy(&f32[4 * i], &bits, 4);
+    }
+    return f32;
+}
+
+TEST_F(SafetensorsCompressorTest, CodesFloat16RowsOfFloat32TensorsApart)
+{
+    const size_t rows = 256, cols = 512;
+    const std::string native = gaussianF32(rows * cols, 0);
+    const std::string mixed  = withFloat16Rows(native, cols, 64, 128);
+    useChunkSize(ZL_SAFETENSORS_DEFAULT_CHUNK_SIZE);
+    NodeCounter onNative(ZL_NODE_DISPATCH);
+    NodeCounter onMixed(ZL_NODE_DISPATCH);
+    NodeCounter onOneRow(ZL_NODE_DISPATCH);
+    NodeCounter onFlat(ZL_NODE_DISPATCH);
+
+    attachHooks(onNative);
+    const size_t nativeSize = expectRoundTrip(
+            buildSafetensors({ { "w", "F32", { rows, cols }, native } }));
+    attachHooks(onMixed);
+    const size_t mixedSize = expectRoundTrip(
+            buildSafetensors({ { "w", "F32", { rows, cols }, mixed } }));
+    // Too few float16 values to pay for the split.
+    attachHooks(onOneRow);
+    expectRoundTrip(buildSafetensors(
+            { { "w",
+                "F32",
+                { rows, cols },
+                withFloat16Rows(native, cols, 0, 1) } }));
+    // Without rows from the parser, the tensor is not split.
+    attachHooks(onFlat);
+    expectRoundTrip(
+            buildSafetensors({ { "w", "F32", { rows * cols }, mixed } }));
+
+    EXPECT_EQ(onNative.count, 0u);
+    EXPECT_GT(onMixed.count, 0u);
+    EXPECT_EQ(onOneRow.count, 0u);
+    EXPECT_EQ(onFlat.count, 0u);
+    // Most of the 13 zero bits of each float16 value are saved.
+    const size_t zeroBytes = 64 * cols * 13 / 8;
+    EXPECT_LT(mixedSize, nativeSize - zeroBytes * 9 / 10);
+}
+
+TEST_F(SafetensorsCompressorTest, TransposesTheBytesOfFloat16Tensors)
+{
+    const auto f16 = buildSafetensors(
+            { { "w", "F16", { 64, 512 }, pseudoRandomBytes(65536, 1) } });
+    useChunkSize(ZL_SAFETENSORS_DEFAULT_CHUNK_SIZE);
+    NodeCounter onF16(ZL_NODE_TRANSPOSE_SPLIT);
+
+    attachHooks(onF16);
+    expectRoundTrip(f16);
+
+    EXPECT_GT(onF16.count, 0u);
+}
+
 /// A format with an 8-byte header followed by a single tensor of 16-bit
 /// integers.
 struct FakeToken {

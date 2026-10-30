@@ -8,9 +8,12 @@
 
 #include "openzl/codecs/zl_ace.h"
 #include "openzl/codecs/zl_conversion.h"
+#include "openzl/codecs/zl_dispatch.h"
+#include "openzl/codecs/zl_divide_by.h"
 #include "openzl/codecs/zl_entropy.h"
 #include "openzl/codecs/zl_float_deconstruct.h"
 #include "openzl/codecs/zl_generic.h"
+#include "openzl/codecs/zl_range_pack.h"
 #include "openzl/codecs/zl_split_by_struct.h"
 #include "openzl/codecs/zl_store.h"
 #include "openzl/codecs/zl_transformer.h"
@@ -454,17 +457,252 @@ static ZL_GraphID TG_floatSuccessor(
 }
 
 /// float16 keeps 2 mantissa bits next to sign and exponent in its high byte,
-/// so it is split by byte. The low byte is noise in native float16 weights,
-/// where FSE falls back to raw storage at no cost, but weights converted from
-/// bfloat16 leave its 3 lowest bits at zero.
+/// so its bytes are transposed into 2 streams. The low byte is noise in native
+/// float16 weights, where FSE falls back to raw storage at no cost, but weights
+/// converted from bfloat16 leave its 3 lowest bits at zero.
 static ZL_GraphID TG_f16Successor(ZL_Compressor* compressor)
 {
-    const size_t fieldSizes[2]     = { 1, 1 };
-    const ZL_GraphID byteGraphs[2] = { ZL_GRAPH_FSE, ZL_GRAPH_FSE };
     return ZL_Compressor_buildACEGraphWithDefault(
             compressor,
-            ZL_Compressor_registerSplitByStructGraph(
-                    compressor, fieldSizes, byteGraphs, 2));
+            ZL_Compressor_registerStaticGraph_fromNode1o(
+                    compressor,
+                    ZL_NODE_CONVERT_SERIAL_TO_STRUCT2,
+                    ZL_Compressor_registerTransposeSplitGraph(
+                            compressor, ZL_GRAPH_FSE)));
+}
+
+enum { TG_upcast32_bf16, TG_upcast32_fraction, TG_UPCAST32_NB };
+
+/// Sends float32 values whose 16 low bits are all zero, as bfloat16 values
+/// converted to float32 are, to the bfloat16 graph.
+static ZL_GraphID TG_selectUpcast32(
+        const ZL_Selector* selector,
+        const ZL_Input* input,
+        const ZL_GraphID* candidates,
+        size_t nbCandidates)
+{
+    (void)selector;
+    // A serialized compressor can replace the candidates.
+    if (nbCandidates != TG_UPCAST32_NB) {
+        return ZL_GRAPH_ILLEGAL;
+    }
+    const uint8_t* const src = (const uint8_t*)ZL_Input_ptr(input);
+    const size_t size        = ZL_Input_contentSize(input);
+    if (size == 0 || size % 4 != 0) {
+        return candidates[TG_upcast32_fraction];
+    }
+    uint32_t min = UINT16_MAX;
+    uint32_t max = 0;
+    for (size_t pos = 0; pos < size; pos += 4) {
+        const uint32_t value = ZL_readLE32(src + pos);
+        if ((value & 0xFFFF) != 0) {
+            return candidates[TG_upcast32_fraction];
+        }
+        min = ZL_MIN(min, value >> 16);
+        max = ZL_MAX(max, value >> 16);
+    }
+    // range_pack narrows ranges below 256 to 8 bits, which the bfloat16 graph
+    // does not take.
+    if (max - min < 256) {
+        return candidates[TG_upcast32_fraction];
+    }
+    return candidates[TG_upcast32_bf16];
+}
+
+ZL_RESULT_OF(ZL_GraphID)
+ZL_TensorGraphs_registerUpcast32Graph(ZL_Compressor* compressor)
+{
+    // Serialized compressors refer to selectors by name, so this one is
+    // anchored, and registered once per compressor.
+    const ZL_GraphID existing =
+            ZL_Compressor_getGraph(compressor, "Tensor Upcast32");
+    if (existing.gid != ZL_GRAPH_ILLEGAL.gid) {
+        return ZL_RESULT_WRAP_VALUE(ZL_GraphID, existing);
+    }
+    // Dividing by 2^16 leaves the bfloat16 values, which range_pack narrows to
+    // 16 bits after subtracting the smallest one.
+    const ZL_GraphID bf16 = ZL_Compressor_registerStaticGraph_fromNode1o(
+            compressor,
+            ZL_NODE_RANGE_PACK,
+            ZL_Compressor_registerStaticGraph_fromNode(
+                    compressor,
+                    ZL_NODE_BFLOAT16_DECONSTRUCT,
+                    ZL_GRAPHLIST(ZL_GRAPH_STORE, ZL_GRAPH_FSE)));
+    const ZL_GraphID candidates[TG_UPCAST32_NB] = {
+        [TG_upcast32_bf16] = ZL_Compressor_registerStaticGraph_fromNode1o(
+                compressor,
+                ZL_NODE_INTERPRET_AS_LE32,
+                ZL_Compressor_registerStaticGraph_fromNode1o(
+                        compressor,
+                        ZL_Compressor_registerDivideByNode(compressor, 1 << 16),
+                        bf16)),
+        // The zeros of the fraction are in its low bytes, entropy coded one by
+        // one, which would only slow down native float32, where these bytes
+        // are noise.
+        [TG_upcast32_fraction] = TG_floatSuccessor(
+                compressor,
+                ZL_NODE_INTERPRET_AS_LE32,
+                ZL_NODE_FLOAT32_DECONSTRUCT,
+                ZL_Compressor_registerTransposeSplitGraph(
+                        compressor, ZL_GRAPH_FSE)),
+    };
+    const ZL_SelectorDesc desc = {
+        .selector_f     = TG_selectUpcast32,
+        .inStreamType   = ZL_Type_serial,
+        .customGraphs   = candidates,
+        .nbCustomGraphs = TG_UPCAST32_NB,
+        .name           = "!Tensor Upcast32",
+    };
+    return ZL_Compressor_registerSelectorGraph2(compressor, &desc);
+}
+
+/// Rows narrower than this are never split by precision.
+#define TG_ROWS_MIN_ROW_SIZE 64
+/// Rows of float16 values are split apart when they hold at least this many
+/// values, each saving about 13 bits, far more than the dispatch costs.
+#define TG_ROWS_MIN_UPCAST_VALUES 4096
+
+enum { TG_rows32_native, TG_rows32_upcast, TG_ROWS32_NB };
+
+/// The scan of a native float32 row stops at its first value, whose 13 low bits
+/// are all zero only once in 8192.
+static bool TG_isUpcastRow(const uint8_t* row, size_t rowSize)
+{
+    for (size_t pos = 0; pos < rowSize; pos += 4) {
+        if ((ZL_readLE32(row + pos) & TG_UPCAST_ZERO_BITS) != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/// Fine-tuning in float32 only updates the rows it uses, e.g. the embeddings of
+/// the tokens and positions found in its data: the others keep the float16
+/// values of the original weights. They form long runs, dispatched as such.
+static ZL_Report
+TG_rows32GraphFn(ZL_Graph* graph, ZL_Edge* inputs[], size_t nbInputs)
+{
+    ZL_RESULT_DECLARE_SCOPE_REPORT(graph);
+    ZL_ERR_IF_NE(nbInputs, 1, graph_invalidNumInputs);
+    const ZL_GraphIDList graphs = ZL_Graph_getCustomGraphs(graph);
+    // A serialized compressor can replace the custom graphs.
+    ZL_ERR_IF_NE(graphs.nbGraphIDs, TG_ROWS32_NB, graph_invalid);
+    ZL_Edge* const edge         = inputs[0];
+    const ZL_Input* const input = ZL_Edge_getData(edge);
+    const uint8_t* const src    = (const uint8_t*)ZL_Input_ptr(input);
+    const size_t size           = ZL_Input_contentSize(input);
+    const ZL_IntMetadata row =
+            ZL_Input_getIntMetadata(input, ZL_TENSOR_ROW_SIZE_METADATA_ID);
+    const size_t rowSize =
+            row.isPresent && row.mValue > 0 ? (size_t)row.mValue : size;
+    if (rowSize < TG_ROWS_MIN_ROW_SIZE || rowSize % 4 != 0
+        || size % rowSize != 0 || size / rowSize < 2) {
+        return ZL_Edge_setDestination(edge, graphs.graphids[TG_rows32_native]);
+    }
+    const size_t nbRows = size / rowSize;
+    size_t* const sizes =
+            (size_t*)ZL_Graph_getScratchSpace(graph, nbRows * sizeof(size_t));
+    unsigned* const tags = (unsigned*)ZL_Graph_getScratchSpace(
+            graph, nbRows * sizeof(unsigned));
+    ZL_ERR_IF_NULL(sizes, allocation);
+    ZL_ERR_IF_NULL(tags, allocation);
+    size_t nbRuns       = 0;
+    size_t nbUpcastRows = 0;
+    for (size_t r = 0; r < nbRows; ++r) {
+        const unsigned tag = TG_isUpcastRow(src + r * rowSize, rowSize)
+                ? TG_rows32_upcast
+                : TG_rows32_native;
+        nbUpcastRows += tag == TG_rows32_upcast;
+        if (nbRuns > 0 && tags[nbRuns - 1] == tag) {
+            sizes[nbRuns - 1] += rowSize;
+            continue;
+        }
+        sizes[nbRuns] = rowSize;
+        tags[nbRuns]  = tag;
+        ++nbRuns;
+    }
+    if (nbUpcastRows * (rowSize / 4) < TG_ROWS_MIN_UPCAST_VALUES) {
+        return ZL_Edge_setDestination(edge, graphs.graphids[TG_rows32_native]);
+    }
+    if (nbUpcastRows == nbRows) {
+        return ZL_Edge_setDestination(edge, graphs.graphids[TG_rows32_upcast]);
+    }
+    const ZL_DispatchInstructions instructions = {
+        .segmentSizes = sizes,
+        .tags         = tags,
+        .nbSegments   = nbRuns,
+        .nbTags       = TG_ROWS32_NB,
+    };
+    ZL_TRY_LET(
+            ZL_EdgeList, streams, ZL_Edge_runDispatchNode(edge, &instructions));
+    ZL_ASSERT_EQ(streams.nbEdges, 2 + TG_ROWS32_NB);
+    // The tags and sizes of the runs take a few bytes per run.
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(streams.edges[0], ZL_GRAPH_STORE));
+    ZL_ERR_IF_ERR(ZL_Edge_setDestination(streams.edges[1], ZL_GRAPH_STORE));
+    for (size_t t = 0; t < TG_ROWS32_NB; ++t) {
+        ZL_ERR_IF_ERR(ZL_Edge_setDestination(
+                streams.edges[2 + t], graphs.graphids[t]));
+    }
+    return ZL_returnSuccess();
+}
+
+ZL_RESULT_OF(ZL_GraphID)
+ZL_TensorGraphs_registerRows32Graph(ZL_Compressor* compressor)
+{
+    ZL_RESULT_DECLARE_SCOPE(ZL_GraphID, compressor);
+    // Serialized compressors refer to function graphs by name, so this one is
+    // anchored, and registered once per compressor.
+    const ZL_GraphID existing =
+            ZL_Compressor_getGraph(compressor, "Tensor Rows32");
+    if (existing.gid != ZL_GRAPH_ILLEGAL.gid) {
+        return ZL_RESULT_WRAP_VALUE(ZL_GraphID, existing);
+    }
+    ZL_TRY_LET_CONST(
+            ZL_GraphID,
+            upcast,
+            ZL_TensorGraphs_registerUpcast32Graph(compressor));
+    const ZL_GraphID graphs[TG_ROWS32_NB] = {
+        [TG_rows32_native] = ZL_Compressor_registerStaticGraph_fromNode1o(
+                compressor,
+                ZL_NODE_INTERPRET_AS_LE32,
+                ZL_Compressor_registerStaticGraph_fromNode(
+                        compressor,
+                        ZL_NODE_FLOAT32_DECONSTRUCT,
+                        ZL_GRAPHLIST(ZL_GRAPH_STORE, ZL_GRAPH_FSE))),
+        [TG_rows32_upcast] = upcast,
+    };
+    const ZL_Type inputType         = ZL_Type_serial;
+    const ZL_FunctionGraphDesc desc = {
+        .name           = "!Tensor Rows32",
+        .graph_f        = TG_rows32GraphFn,
+        .inputTypeMasks = &inputType,
+        .nbInputs       = 1,
+        .customGraphs   = graphs,
+        .nbCustomGraphs = TG_ROWS32_NB,
+    };
+    return ZL_Compressor_registerFunctionGraph2(compressor, &desc);
+}
+
+/// The float32 graph routes the rows of a tensor by precision to @p native and
+/// @p upcast, the graphs of whole native and upcast tensors.
+static ZL_GraphID
+TG_f32Successor(ZL_Compressor* compressor, ZL_GraphID native, ZL_GraphID upcast)
+{
+    const ZL_RESULT_OF(ZL_GraphID) rows32 =
+            ZL_TensorGraphs_registerRows32Graph(compressor);
+    if (ZL_RES_isError(rows32) || upcast.gid == ZL_GRAPH_ILLEGAL.gid) {
+        return ZL_GRAPH_ILLEGAL;
+    }
+    const ZL_GraphID graphs[TG_ROWS32_NB] = {
+        [TG_rows32_native] = native,
+        [TG_rows32_upcast] = upcast,
+    };
+    const ZL_ParameterizedGraphDesc desc = {
+        .graph          = ZL_RES_value(rows32),
+        .customGraphs   = graphs,
+        .nbCustomGraphs = TG_ROWS32_NB,
+    };
+    return ZL_Compressor_registerParameterizedGraph(compressor, &desc);
 }
 
 void ZL_TensorGraphs_buildSuccessors(
@@ -492,11 +730,6 @@ void ZL_TensorGraphs_buildSuccessors(
             ZL_NODE_INTERPRET_AS_LE16,
             ZL_NODE_BFLOAT16_DECONSTRUCT,
             ZL_GRAPH_STORE);
-    successors[ZL_TensorClass_f32] = TG_floatSuccessor(
-            compressor,
-            ZL_NODE_INTERPRET_AS_LE32,
-            ZL_NODE_FLOAT32_DECONSTRUCT,
-            ZL_GRAPH_STORE);
     successors[ZL_TensorClass_f64] = TG_numericSuccessor(
             compressor, ZL_NODE_INTERPRET_AS_LE64, ZL_GRAPH_COMPRESS_GENERIC);
     successors[ZL_TensorClass_atypical16] = TG_numericSuccessor(
@@ -513,12 +746,19 @@ void ZL_TensorGraphs_buildSuccessors(
             compressor,
             ZL_Compressor_registerStaticGraph_fromNode1o(
                     compressor, ZL_NODE_CONVERT_SERIAL_TO_STRUCT2, scale16));
-    // The zeros of the fraction are in its low bytes, entropy coded one by one,
-    // which would only slow down native float32, where these bytes are noise.
-    successors[ZL_TensorClass_upcast32] = TG_floatSuccessor(
+    // Errors leave an illegal graph, which the parser registration rejects.
+    const ZL_RESULT_OF(ZL_GraphID) upcast32 =
+            ZL_TensorGraphs_registerUpcast32Graph(compressor);
+    successors[ZL_TensorClass_upcast32] = ZL_RES_isError(upcast32)
+            ? ZL_GRAPH_ILLEGAL
+            : ZL_Compressor_buildACEGraphWithDefault(
+                      compressor, ZL_RES_value(upcast32));
+    successors[ZL_TensorClass_f32]      = TG_f32Successor(
             compressor,
-            ZL_NODE_INTERPRET_AS_LE32,
-            ZL_NODE_FLOAT32_DECONSTRUCT,
-            ZL_Compressor_registerTransposeSplitGraph(
-                    compressor, ZL_GRAPH_FSE));
+            TG_floatSuccessor(
+                    compressor,
+                    ZL_NODE_INTERPRET_AS_LE32,
+                    ZL_NODE_FLOAT32_DECONSTRUCT,
+                    ZL_GRAPH_STORE),
+            successors[ZL_TensorClass_upcast32]);
 }
