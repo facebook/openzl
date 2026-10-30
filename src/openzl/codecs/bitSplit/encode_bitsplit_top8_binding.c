@@ -27,26 +27,32 @@ static uint64_t findMaxValue(const void* src, size_t eltWidth, size_t nbElts)
     switch (eltWidth) {
         case 1: {
             const uint8_t* p = (const uint8_t*)src;
+            uint8_t max8     = 0;
             for (size_t i = 0; i < nbElts; i++) {
-                if (p[i] > maxVal)
-                    maxVal = p[i];
+                if (p[i] > max8)
+                    max8 = p[i];
             }
+            maxVal = max8;
             break;
         }
         case 2: {
             const uint16_t* p = (const uint16_t*)src;
+            uint16_t max16    = 0;
             for (size_t i = 0; i < nbElts; i++) {
-                if (p[i] > maxVal)
-                    maxVal = p[i];
+                if (p[i] > max16)
+                    max16 = p[i];
             }
+            maxVal = max16;
             break;
         }
         case 4: {
             const uint32_t* p = (const uint32_t*)src;
+            uint32_t max32    = 0;
             for (size_t i = 0; i < nbElts; i++) {
-                if (p[i] > maxVal)
-                    maxVal = p[i];
+                if (p[i] > max32)
+                    max32 = p[i];
             }
+            maxVal = max32;
             break;
         }
         case 8: {
