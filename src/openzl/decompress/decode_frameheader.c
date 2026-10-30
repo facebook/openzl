@@ -96,11 +96,12 @@ static ZL_Report DFH_decodeNbOutputs(
         }
         return ZL_returnValue(nbOutputs);
     } else { // format >= ZL_CHUNK_VERSION_MIN
-        ZL_ERR_IF_LT(cSize, *consumedPtr + 1 + 4, srcSize_tooSmall);
+        ZL_ERR_IF_LT(cSize, *consumedPtr + 1, srcSize_tooSmall);
         uint8_t token1 = ((const uint8_t*)cSrc)[*consumedPtr];
         *consumedPtr += 1;
         size_t nbOutputs = (size_t)(token1 & 15);
         if (nbOutputs == 15) {
+            ZL_ERR_IF_LT(cSize, *consumedPtr + 1, srcSize_tooSmall);
             uint8_t token2 = ((const uint8_t*)cSrc)[*consumedPtr];
             *consumedPtr += 1;
             nbOutputs = ((size_t)token2 << 4) + ((size_t)token1 >> 4) + 15;

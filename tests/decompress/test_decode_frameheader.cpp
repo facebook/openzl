@@ -115,6 +115,28 @@ TEST(DecodeFrameheaderTest, NbOutputsTest)
     ASSERT_EQ(ZL_validResult(rep), 10ul);
 }
 
+TEST(DecodeFrameheaderTest, FrameInfoNeedsOnlyTheFrameHeader)
+{
+    // A caller can read the frame header alone, for example from device
+    // memory. This fails if decoding the header reads past its end.
+    for (size_t const nbOutputs : { 1, 3, 15 }) {
+        std::string const compressed = randomCompress(nbOutputs, 100);
+        ZL_Report const headerSize =
+                ZL_getHeaderSize(compressed.data(), compressed.size());
+        ASSERT_FALSE(ZL_isError(headerSize));
+
+        ZL_FrameInfo* const exact = ZL_FrameInfo_create(
+                compressed.data(), ZL_validResult(headerSize));
+        ZL_FrameInfo* const truncated = ZL_FrameInfo_create(
+                compressed.data(), ZL_validResult(headerSize) - 1);
+
+        EXPECT_NE(exact, nullptr) << nbOutputs << " outputs";
+        EXPECT_EQ(truncated, nullptr) << nbOutputs << " outputs";
+        ZL_FrameInfo_free(exact);
+        ZL_FrameInfo_free(truncated);
+    }
+}
+
 TEST(DecodeFrameheaderTest, InitDCtxOwnsIndependentFrameMetadataCopy)
 {
     constexpr size_t kNumOutputs        = 3;
