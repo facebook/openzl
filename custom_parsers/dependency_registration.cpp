@@ -9,6 +9,7 @@
 #include "custom_parsers/csv/csv_profile.h"
 #include "custom_parsers/dependency_registration.h"
 #include "custom_parsers/gguf/gguf_parser.h"
+#include "custom_parsers/onnx/onnx_parser.h"
 #include "custom_parsers/parquet/parquet_graph.h"
 #include "custom_parsers/safetensors/safetensors_parser.h"
 #include "custom_parsers/shared_components/tensor_graphs.h"
@@ -73,12 +74,34 @@ void processDependencies(Compressor& compressor, poly::string_view serialized)
                                     compressor.get(), ZL_RES_error(result)));
                 }
                 madeProgress = true;
+            } else if (
+                    graphName == "ONNX Parser"
+                    || graphName == "ONNX Segmenter") {
+                const auto result = ZL_ONNX_registerGraph(
+                        compressor.get(), ZL_ONNX_DEFAULT_CHUNK_SIZE);
+                if (ZL_RES_isError(result)) {
+                    throw std::runtime_error(
+                            std::string("Failed to create ONNX graph: ")
+                            + ZL_Compressor_getErrorContextString_fromError(
+                                    compressor.get(), ZL_RES_error(result)));
+                }
+                madeProgress = true;
             } else if (graphName == "Tensor Scale16") {
                 const auto result =
                         ZL_TensorGraphs_registerScale16Graph(compressor.get());
                 if (ZL_RES_isError(result)) {
                     throw std::runtime_error(
                             std::string("Failed to create the scale graph: ")
+                            + ZL_Compressor_getErrorContextString_fromError(
+                                    compressor.get(), ZL_RES_error(result)));
+                }
+                madeProgress = true;
+            } else if (graphName == "Tensor Upcast32") {
+                const auto result =
+                        ZL_TensorGraphs_registerUpcast32Graph(compressor.get());
+                if (ZL_RES_isError(result)) {
+                    throw std::runtime_error(
+                            std::string("Failed to create the upcast graph: ")
                             + ZL_Compressor_getErrorContextString_fromError(
                                     compressor.get(), ZL_RES_error(result)));
                 }
