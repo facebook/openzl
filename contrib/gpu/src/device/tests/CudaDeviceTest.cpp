@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <memory>
 #include <optional>
@@ -131,6 +132,159 @@ TEST(CudaDeviceTest, KeepsAnErrorThatTheCallerLeftPending)
 
     EXPECT_EQ(ZL_errorCode(result), ZL_ErrorCode_transform_executionFailure);
     EXPECT_EQ(cudaGetLastError(), cudaErrorInvalidDevice);
+}
+
+/// Copies 4 bytes at @p source_d to host memory on @p native and waits.
+std::vector<uint8_t> readFourBytes(
+        const std::byte* source_d,
+        cudaStream_t native)
+{
+    std::vector<uint8_t> bytes(4);
+    ZL_CUDA_CHECK(cudaMemcpyAsync(
+            bytes.data(), source_d, 4, cudaMemcpyDeviceToHost, native));
+    ZL_CUDA_CHECK(cudaStreamSynchronize(native));
+    return bytes;
+}
+
+TEST(CudaDeviceTest, BranchesStartAfterTheWorkOfTheirStream)
+{
+    // The stream is busy when the memset and the fork are enqueued. This fails
+    // if a branch copies the buffer before the memset that came before the
+    // fork.
+    cudaStream_t native = nullptr;
+    ZL_CUDA_CHECK(cudaStreamCreateWithFlags(&native, cudaStreamNonBlocking));
+    const std::unique_ptr<CUstream_st, StreamDestroy> streamOwner{ native };
+    const std::unique_ptr<Device> device = makeCurrentCudaDevice();
+    ASSERT_NE(device, nullptr);
+    std::optional<Stream> stream;
+    ASSERT_FALSE(ZL_isError(device->wrapStream(native, stream)));
+    const DevicePtr<std::byte> source_d = deviceAlloc<std::byte>(4);
+    const DevicePtr<std::byte> copies_d = deviceAlloc<std::byte>(8);
+    ZL_CUDA_CHECK(cudaMemset(source_d.get(), 0, 4));
+    ZL_CUDA_CHECK(cudaMemset(copies_d.get(), 0, 8));
+    ZL_CUDA_CHECK(cudaLaunchHostFunc(native, holdStream, nullptr));
+    ZL_CUDA_CHECK(cudaMemsetAsync(source_d.get(), 7, 4, native));
+    std::vector<Stream> branches;
+
+    ASSERT_FALSE(ZL_isError(stream->fork(2, branches)));
+    for (size_t i = 0; i < branches.size(); ++i) {
+        ZL_CUDA_CHECK(cudaMemcpyAsync(
+                copies_d.get() + 4 * i,
+                source_d.get(),
+                4,
+                cudaMemcpyDeviceToDevice,
+                static_cast<cudaStream_t>(branches[i].native())));
+    }
+    ASSERT_FALSE(ZL_isError(stream->join(branches)));
+
+    EXPECT_EQ(
+            readFourBytes(copies_d.get(), native), std::vector<uint8_t>(4, 7));
+    EXPECT_EQ(
+            readFourBytes(copies_d.get() + 4, native),
+            std::vector<uint8_t>(4, 7));
+}
+
+TEST(CudaDeviceTest, StreamWaitsForEveryBranchAfterJoin)
+{
+    // The second branch is busy when its memset is enqueued. This fails if
+    // work on the stream after the join runs before that memset.
+    cudaStream_t native = nullptr;
+    ZL_CUDA_CHECK(cudaStreamCreateWithFlags(&native, cudaStreamNonBlocking));
+    const std::unique_ptr<CUstream_st, StreamDestroy> streamOwner{ native };
+    const std::unique_ptr<Device> device = makeCurrentCudaDevice();
+    ASSERT_NE(device, nullptr);
+    std::optional<Stream> stream;
+    ASSERT_FALSE(ZL_isError(device->wrapStream(native, stream)));
+    const DevicePtr<std::byte> outputs_d = deviceAlloc<std::byte>(8);
+    ZL_CUDA_CHECK(cudaMemset(outputs_d.get(), 0, 8));
+    std::vector<Stream> branches;
+
+    ASSERT_FALSE(ZL_isError(stream->fork(2, branches)));
+    const auto first  = static_cast<cudaStream_t>(branches[0].native());
+    const auto second = static_cast<cudaStream_t>(branches[1].native());
+    ZL_CUDA_CHECK(cudaMemsetAsync(outputs_d.get(), 8, 4, first));
+    ZL_CUDA_CHECK(cudaLaunchHostFunc(second, holdStream, nullptr));
+    ZL_CUDA_CHECK(cudaMemsetAsync(outputs_d.get() + 4, 9, 4, second));
+    ASSERT_FALSE(ZL_isError(stream->join(branches)));
+
+    EXPECT_EQ(
+            readFourBytes(outputs_d.get(), native), std::vector<uint8_t>(4, 8));
+    EXPECT_EQ(
+            readFourBytes(outputs_d.get() + 4, native),
+            std::vector<uint8_t>(4, 9));
+}
+
+TEST(CudaDeviceTest, AllocatesCopiesAndFreesInStreamOrder)
+{
+    // Every operation is enqueued while the stream is busy, and both frees
+    // are enqueued before the only wait. This fails if an allocation is
+    // misaligned, if a device-to-device copy moves the wrong bytes, if a copy
+    // of 0 bytes reaches the runtime, or if an operation leaves stream order.
+    constexpr size_t kSize      = 4096;
+    constexpr size_t kAlignment = 16;
+    std::byte* pinned_h         = nullptr;
+    ZL_CUDA_CHECK(cudaMallocHost(&pinned_h, 2 * kSize));
+    const std::unique_ptr<std::byte, PinnedFree> host{ pinned_h };
+    const poly::span<std::byte> expected{ host.get(), kSize };
+    const poly::span<std::byte> actual{ host.get() + kSize, kSize };
+    for (size_t i = 0; i < kSize; ++i) {
+        expected[i] = static_cast<std::byte>(i * 7);
+        actual[i]   = std::byte{ 0 };
+    }
+    cudaStream_t native = nullptr;
+    ZL_CUDA_CHECK(cudaStreamCreateWithFlags(&native, cudaStreamNonBlocking));
+    const std::unique_ptr<CUstream_st, StreamDestroy> streamOwner{ native };
+    const std::unique_ptr<Device> device = makeCurrentCudaDevice();
+    ASSERT_NE(device, nullptr);
+    std::optional<Stream> stream;
+    ASSERT_FALSE(ZL_isError(device->wrapStream(native, stream)));
+    ZL_CUDA_CHECK(cudaLaunchHostFunc(native, holdStream, nullptr));
+    void* source_d      = nullptr;
+    void* destination_d = nullptr;
+    ASSERT_FALSE(ZL_isError(stream->allocate(kSize, kAlignment, source_d)));
+    ASSERT_FALSE(
+            ZL_isError(stream->allocate(kSize, kAlignment, destination_d)));
+    EXPECT_EQ(reinterpret_cast<uintptr_t>(source_d) % kAlignment, 0);
+    EXPECT_EQ(reinterpret_cast<uintptr_t>(destination_d) % kAlignment, 0);
+    ZL_CUDA_CHECK(cudaMemcpyAsync(
+            source_d, expected.data(), kSize, cudaMemcpyHostToDevice, native));
+    const std::vector<DeviceToDeviceCopy> copies{
+        { .dst_d = static_cast<std::byte*>(destination_d),
+          .src_d = static_cast<const std::byte*>(source_d),
+          .size  = kSize },
+        { .dst_d = nullptr, .src_d = nullptr, .size = 0 },
+    };
+
+    ASSERT_FALSE(ZL_isError(stream->copyDeviceToDevice(copies)));
+    stream->deallocate(source_d);
+    ZL_CUDA_CHECK(cudaMemcpyAsync(
+            actual.data(),
+            destination_d,
+            kSize,
+            cudaMemcpyDeviceToHost,
+            native));
+    stream->deallocate(destination_d);
+    ZL_CUDA_CHECK(cudaStreamSynchronize(native));
+
+    EXPECT_EQ(
+            std::vector<std::byte>(actual.begin(), actual.end()),
+            std::vector<std::byte>(expected.begin(), expected.end()));
+}
+
+TEST(CudaDeviceTest, AllocatesNothingForZeroBytes)
+{
+    // This fails if a 0-byte allocation reaches the runtime or leaves a
+    // non-null address that a later free would pass to the runtime.
+    const std::unique_ptr<Device> device = makeCurrentCudaDevice();
+    ASSERT_NE(device, nullptr);
+    const Stream stream = device->defaultStream();
+    int sentinel        = 0;
+    void* ptr_d         = &sentinel;
+
+    ASSERT_FALSE(ZL_isError(stream.allocate(0, 16, ptr_d)));
+
+    EXPECT_EQ(ptr_d, nullptr);
+    stream.deallocate(ptr_d);
 }
 
 TEST(CudaDeviceTest, WrapsAStreamOfTheCurrentDevice)
