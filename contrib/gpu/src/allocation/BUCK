@@ -36,6 +36,54 @@ cpp_library(
     ],
 )
 
+cpp_library(
+    # @autodeps-skip
+    name = "arena_addresses",
+    srcs = ["arena_addresses.cpp"],
+    headers = relative_headers(["arena_addresses.hpp"]),
+    header_namespace = "",
+    deps = ["../../../..:zstronglib"],
+    exported_deps = [":monotonic_layout"],
+)
+
+cpp_unittest(
+    # @autodeps-skip
+    name = "arena_addresses_test",
+    srcs = ["tests/ArenaAddressesTest.cpp"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "../../../..:zstronglib",
+        "fbsource//third-party/googletest:gtest",
+        ":arena_addresses",
+    ],
+)
+
+cpp_library(
+    # @autodeps-skip
+    name = "decode_resources",
+    srcs = ["decode_resources.cpp"],
+    headers = relative_headers(["decode_resources.hpp"]),
+    header_namespace = "",
+    deps = ["../../../..:zstronglib"],
+    exported_deps = [
+        "../common:result",
+        "../device:device",
+        ":arena_addresses",
+    ],
+)
+
+cpp_unittest(
+    # @autodeps-skip
+    name = "decode_resources_test",
+    srcs = ["tests/DecodeResourcesTest.cpp"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "../../../..:zstronglib",
+        "fbsource//third-party/googletest:gtest",
+        ":decode_resources",
+    ],
+)
+
 cpp_unittest(
     # @autodeps-skip
     name = "monotonic_layout_test",
