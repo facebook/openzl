@@ -88,8 +88,9 @@ struct StorageLifetime {
 };
 
 /**
- * One stream region that needs storage, described independently of its final
- * address.
+ * One stream region that needs storage, described independently of its stream
+ * and its final address. @c ExecutionRequirements::streamRequirements finds the
+ * requirements of each stream.
  *
  * A workspace region may be placed anywhere in its arena. A destination region
  * follows the core output layout instead: each final output has its own
@@ -99,8 +100,6 @@ struct StorageLifetime {
  * after another in list order.
  */
 struct StorageRequirement {
-    /// Stream whose storage this requirement describes.
-    PlannedStreamIndex stream{};
     /// Addressable region of the stream.
     StreamRegion region{};
     /// Arena in which the region must be placed.
@@ -128,6 +127,29 @@ struct StorageRequirement {
     size_t alignment{ 1 };
 };
 
+/**
+ * The requirements that place one stream's regions, as indexes into
+ * @c ExecutionRequirements::requirements.
+ *
+ * A region has no requirement when it holds zero bytes, when its data is
+ * stored in the frame, or when it views another stream's data. For a final
+ * output, the data index names its destination region.
+ */
+struct StreamRequirements {
+    /// Requirement of the stream's data.
+    std::optional<size_t> data;
+    /// Requirement of a string stream's lengths.
+    std::optional<size_t> stringLengths;
+
+    /// The requirement of @p region: @c data or @c stringLengths.
+    std::optional<size_t>& of(StreamRegion region);
+
+    bool operator==(const StreamRequirements& other) const
+    {
+        return data == other.data && stringLengths == other.stringLengths;
+    }
+};
+
 /** Every storage requirement of a planned decode, before placement. */
 struct ExecutionRequirements {
     /**
@@ -136,6 +158,9 @@ struct ExecutionRequirements {
      * order.
      */
     std::vector<StorageRequirement> requirements;
+    /// The requirements that place each stream's regions, indexed by
+    /// @c PlannedStreamIndex.
+    std::vector<StreamRequirements> streamRequirements;
 };
 
 /**

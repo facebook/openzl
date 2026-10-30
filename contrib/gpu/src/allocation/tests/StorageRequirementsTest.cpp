@@ -134,6 +134,16 @@ ExecutionRequirements storageRequirementsOrThrow(const DecodePlan& plan)
     return std::move(result).value();
 }
 
+/// @returns The index of the requirement that places @p region of @p stream.
+std::optional<size_t> requirementOf(
+        const ExecutionRequirements& requirements,
+        PlannedStreamIndex stream,
+        StreamRegion region = StreamRegion::Data)
+{
+    StreamRequirements indexes = requirements.streamRequirements.at(stream);
+    return indexes.of(region);
+}
+
 DecodePlan makeChainPlan()
 {
     DecodePlan plan;
@@ -185,9 +195,56 @@ TEST(StorageRequirementsTest, IncludesOnlyMaterializedStorageRegions)
 
     ASSERT_EQ(requirements.requirements.size(), 2);
     EXPECT_EQ(requirements.requirements.at(0).arena, ArenaClass::Destination);
-    EXPECT_EQ(requirements.requirements.at(0).stream, final);
+    EXPECT_EQ(requirementOf(requirements, final), 0);
     EXPECT_EQ(requirements.requirements.at(1).arena, ArenaClass::StreamArena);
-    EXPECT_EQ(requirements.requirements.at(1).stream, middle);
+    EXPECT_EQ(requirementOf(requirements, middle), 1);
+}
+
+TEST(StorageRequirementsTest, IndexesTheRequirementsOfEachStream)
+{
+    // This fails if a stream's entry names the wrong requirement, misses one,
+    // or names one for a region that has no requirement: an empty stream, a
+    // stored stream, or a view of another stream's data.
+    DecodePlan plan;
+    const PlannedStreamIndex source =
+            addStream(plan, StorageClass::Stored, std::nullopt, 300);
+    const PlannedCodecRunIndex first = addCodecRun(plan, {});
+    const PlannedStreamIndex empty =
+            addStream(plan, StorageClass::StreamArena, first, 0);
+    const PlannedStreamIndex middle =
+            addStream(plan, StorageClass::StreamArena, first, 100);
+    setOutputs(plan, first, { empty, middle });
+
+    const PlannedCodecRunIndex second = addCodecRun(plan, { first });
+    const PlannedStreamIndex view =
+            addStream(plan, StorageClass::StreamRef, second, 100, 1, 0, middle);
+    const PlannedStreamIndex final = addStream(
+            plan,
+            StorageClass::Destination,
+            second,
+            12,
+            1,
+            8,
+            std::nullopt,
+            ZL_Type_string);
+    setOutputs(plan, second, { view, final });
+
+    consume(plan, first, source);
+    consume(plan, second, middle);
+    setChunk(plan, 1);
+
+    const ExecutionRequirements requirements = storageRequirementsOrThrow(plan);
+
+    // Destination regions come first, then workspace regions in stream order.
+    // source, empty, and view keep empty entries.
+    std::vector<StreamRequirements> expected(plan.streams.size());
+    expected.at(final)  = { .data = 0, .stringLengths = 1 };
+    expected.at(middle) = { .data = 2 };
+    EXPECT_EQ(requirements.streamRequirements, expected);
+    ASSERT_EQ(requirements.requirements.size(), 3);
+    EXPECT_EQ(requirements.requirements.at(0).size, 12);
+    EXPECT_EQ(requirements.requirements.at(1).size, 8);
+    EXPECT_EQ(requirements.requirements.at(2).size, 100);
 }
 
 TEST(StorageRequirementsTest, BoundsWorkspaceLifetimeByProducerAndConsumer)
@@ -369,7 +426,7 @@ TEST(StorageRequirementsTest, AlignsWorkspaceForTheAliasesThatReadIt)
     const ExecutionRequirements requirements = storageRequirementsOrThrow(plan);
 
     ASSERT_EQ(requirements.requirements.size(), 1);
-    EXPECT_EQ(requirements.requirements.at(0).stream, bytes);
+    EXPECT_EQ(requirementOf(requirements, bytes), 0);
     EXPECT_EQ(requirements.requirements.at(0).alignment, alignof(uint32_t));
 }
 
@@ -406,7 +463,7 @@ TEST(StorageRequirementsTest, ExtendsTheOwnerThroughAnAliasChain)
     const ExecutionRequirements requirements = storageRequirementsOrThrow(plan);
 
     ASSERT_EQ(requirements.requirements.size(), 2);
-    EXPECT_EQ(requirements.requirements.at(0).stream, owner);
+    EXPECT_EQ(requirementOf(requirements, owner), 0);
     const StorageLifetime expected{
         .firstUse = DecodeExecutionStage::codecRun(source),
         .lastUse  = DecodeExecutionStage::codecRun(consumer),
@@ -437,7 +494,7 @@ TEST(StorageRequirementsTest, GivesNoWorkspaceToAnAliasOfAStoredStream)
     const ExecutionRequirements requirements = storageRequirementsOrThrow(plan);
 
     ASSERT_EQ(requirements.requirements.size(), 1);
-    EXPECT_EQ(requirements.requirements.at(0).stream, output);
+    EXPECT_EQ(requirementOf(requirements, output), 0);
 }
 
 TEST(StorageRequirementsTest, PlacesStringLengthsSeparately)
@@ -496,8 +553,9 @@ TEST(StorageRequirementsTest, PlacesLengthsForAliasedStringStream)
     const ExecutionRequirements requirements = storageRequirementsOrThrow(plan);
 
     ASSERT_EQ(requirements.requirements.size(), 2);
-    EXPECT_EQ(requirements.requirements.at(0).stream, backing);
-    EXPECT_EQ(requirements.requirements.at(1).stream, alias);
+    EXPECT_EQ(requirementOf(requirements, backing), 0);
+    EXPECT_EQ(
+            requirementOf(requirements, alias, StreamRegion::StringLengths), 1);
     EXPECT_EQ(
             requirements.requirements.at(1).region,
             StreamRegion::StringLengths);
@@ -516,7 +574,7 @@ TEST(StorageRequirementsTest, CreatesDestinationForStoredFinalOutput)
 
     ASSERT_EQ(requirements.requirements.size(), 1);
     EXPECT_EQ(requirements.requirements.at(0).arena, ArenaClass::Destination);
-    EXPECT_EQ(requirements.requirements.at(0).stream, output);
+    EXPECT_EQ(requirementOf(requirements, output), 0);
     EXPECT_EQ(requirements.requirements.at(0).size, 300);
 }
 
@@ -539,19 +597,18 @@ TEST(StorageRequirementsTest, OrdersDestinationsByFinalOutputThenChunk)
 
     const ExecutionRequirements requirements = storageRequirementsOrThrow(plan);
 
-    std::vector<std::pair<PlannedStreamIndex, std::optional<size_t>>> actual;
-    actual.reserve(requirements.requirements.size());
+    const std::vector<std::optional<size_t>> order{
+        requirementOf(requirements, chunk0Output0),
+        requirementOf(requirements, chunk1Output0),
+        requirementOf(requirements, chunk0Output1),
+        requirementOf(requirements, chunk1Output1),
+    };
+    EXPECT_EQ(order, (std::vector<std::optional<size_t>>{ 0, 1, 2, 3 }));
+    std::vector<std::optional<size_t>> finalOutputs;
     for (const StorageRequirement& requirement : requirements.requirements) {
-        actual.emplace_back(requirement.stream, requirement.finalOutput);
+        finalOutputs.push_back(requirement.finalOutput);
     }
-    const std::vector<std::pair<PlannedStreamIndex, std::optional<size_t>>>
-            expected{
-                { chunk0Output0, 0 },
-                { chunk1Output0, 0 },
-                { chunk0Output1, 1 },
-                { chunk1Output1, 1 },
-            };
-    EXPECT_EQ(actual, expected);
+    EXPECT_EQ(finalOutputs, (std::vector<std::optional<size_t>>{ 0, 0, 1, 1 }));
 }
 
 TEST(StorageRequirementsTest, TiesStringLengthsToTheirFinalOutput)
@@ -573,8 +630,10 @@ TEST(StorageRequirementsTest, TiesStringLengthsToTheirFinalOutput)
     const ExecutionRequirements requirements = storageRequirementsOrThrow(plan);
 
     ASSERT_EQ(requirements.requirements.size(), 2);
+    EXPECT_EQ(
+            requirementOf(requirements, output, StreamRegion::StringLengths),
+            1);
     const StorageRequirement& lengths = requirements.requirements.at(1);
-    EXPECT_EQ(lengths.stream, output);
     EXPECT_EQ(lengths.region, StreamRegion::StringLengths);
     EXPECT_EQ(lengths.arena, ArenaClass::Destination);
     EXPECT_EQ(lengths.finalOutput, 0);
@@ -681,11 +740,15 @@ TEST(StorageRequirementsTest, WritesFinalAliasLengthsToTheDestination)
 
     const ExecutionRequirements requirements = storageRequirementsOrThrow(plan);
 
-    for (const StorageRequirement& requirement : requirements.requirements) {
-        EXPECT_FALSE(
-                requirement.stream == output
-                && requirement.arena == ArenaClass::StreamArena)
-                << "final alias has a workspace region";
+    for (const std::optional<size_t> index :
+         { requirementOf(requirements, output),
+           requirementOf(requirements, output, StreamRegion::StringLengths) }) {
+        if (index.has_value()) {
+            EXPECT_NE(
+                    requirements.requirements.at(*index).arena,
+                    ArenaClass::StreamArena)
+                    << "final alias has a workspace region";
+        }
     }
     ASSERT_EQ(requirements.requirements.size(), 3);
     EXPECT_EQ(
@@ -715,7 +778,7 @@ TEST(StorageRequirementsTest, KeepsReferencedFinalOutputBackingUntilDecodeEnd)
 
     ASSERT_EQ(requirements.requirements.size(), 2);
     EXPECT_EQ(requirements.requirements.at(0).arena, ArenaClass::Destination);
-    EXPECT_EQ(requirements.requirements.at(1).stream, backing);
+    EXPECT_EQ(requirementOf(requirements, backing), 1);
     const StorageLifetime expected{
         .firstUse = DecodeExecutionStage::codecRun(source),
         .lastUse  = DecodeExecutionStage::decodeEnd(),

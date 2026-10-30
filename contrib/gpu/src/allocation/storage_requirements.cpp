@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include "openzl/common/assertion.h"
 #include "openzl/shared/mem.h"
 
 namespace openzl::gpu {
@@ -81,18 +82,22 @@ std::vector<StorageLifetime> deriveProducedStreamLifetimes(
 }
 
 /**
- * Adds a non-empty storage region to @p requirements.
+ * Adds a non-empty region of @p stream to @p requirements, and records its
+ * index for @p stream.
  *
  * A zero-byte region does not need address placement, so this function omits
  * it.
  */
 void addStorageRequirement(
         ExecutionRequirements& requirements,
+        PlannedStreamIndex stream,
         const StorageRequirement& requirement)
 {
     if (requirement.size == 0) {
         return;
     }
+    requirements.streamRequirements.at(stream).of(requirement.region) =
+            requirements.requirements.size();
     requirements.requirements.push_back(requirement);
 }
 
@@ -264,6 +269,7 @@ ExecutionRequirements buildRequirements(const DecodePlan& plan)
             deriveProducedStreamLifetimes(plan);
 
     ExecutionRequirements requirements;
+    requirements.streamRequirements.resize(plan.streams.size());
 
     const StorageLifetime wholeDecodeLifetime{
         .firstUse = DecodeExecutionStage::decodeStart(),
@@ -295,8 +301,8 @@ ExecutionRequirements buildRequirements(const DecodePlan& plan)
             // adds nothing for them.
             addStorageRequirement(
                     requirements,
+                    outputStreamIndex,
                     {
-                            .stream      = outputStreamIndex,
                             .region      = StreamRegion::Data,
                             .arena       = ArenaClass::Destination,
                             .finalOutput = outputIndex,
@@ -307,8 +313,8 @@ ExecutionRequirements buildRequirements(const DecodePlan& plan)
                     });
             addStorageRequirement(
                     requirements,
+                    outputStreamIndex,
                     {
-                            .stream      = outputStreamIndex,
                             .region      = StreamRegion::StringLengths,
                             .arena       = ArenaClass::Destination,
                             .finalOutput = outputIndex,
@@ -340,8 +346,8 @@ ExecutionRequirements buildRequirements(const DecodePlan& plan)
         if (plannedStream.storageClass == StorageClass::StreamArena) {
             addStorageRequirement(
                     requirements,
+                    streamIndex,
                     {
-                            .stream    = streamIndex,
                             .region    = StreamRegion::Data,
                             .arena     = ArenaClass::StreamArena,
                             .lifetime  = streamLifetimes.at(streamIndex),
@@ -357,8 +363,8 @@ ExecutionRequirements buildRequirements(const DecodePlan& plan)
         if (!isFinalOutput.at(streamIndex)) {
             addStorageRequirement(
                     requirements,
+                    streamIndex,
                     {
-                            .stream   = streamIndex,
                             .region   = StreamRegion::StringLengths,
                             .arena    = ArenaClass::StreamArena,
                             .lifetime = lengthLifetimes.at(streamIndex),
@@ -372,6 +378,19 @@ ExecutionRequirements buildRequirements(const DecodePlan& plan)
 }
 
 } // namespace
+
+std::optional<size_t>& StreamRequirements::of(StreamRegion region)
+{
+    // No default case, so a new region is a -Wswitch warning here.
+    switch (region) {
+        case StreamRegion::Data:
+            return data;
+        case StreamRegion::StringLengths:
+            return stringLengths;
+    }
+    ZL_ASSERT_FAIL("Unknown stream region");
+    return data;
+}
 
 Result<ExecutionRequirements> buildDecodeStorageRequirements(
         const DecodePlan& plan)

@@ -12,7 +12,10 @@ cpp_library(
     name = "decode_plan",
     headers = relative_headers(["decode_plan.hpp"]),
     header_namespace = "",
-    exported_deps = ["../common:codec_decode_planning"],
+    exported_deps = [
+        "../../../..:zstronglib",
+        "../common:codec_decode_planning",
+    ],
 )
 
 cpp_library(

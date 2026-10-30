@@ -2,12 +2,14 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <vector>
 
 #include "contrib/gpu/src/common/codec_decode_planning.hpp"
+#include "openzl/common/assertion.h"
 #include "openzl/cpp/poly/Span.hpp"
 
 namespace openzl::gpu {
@@ -232,6 +234,28 @@ struct DecodePlan {
     {
         return static_cast<ZL_IDType>(
                 stream - chunks.at(chunkIndex).streams.begin);
+    }
+
+    /**
+     * Chunk that @p stream belongs to. @p stream must be below
+     * @c streams.size().
+     *
+     * The chunk ranges start at stream 0, and each one starts where the
+     * previous one ends, so the chunk is the last one whose range begins at
+     * or before @p stream.
+     */
+    size_t chunkOf(PlannedStreamIndex stream) const
+    {
+        ZL_ASSERT_LT(stream, streams.size());
+        const auto after = std::upper_bound(
+                chunks.begin(),
+                chunks.end(),
+                stream,
+                [](PlannedStreamIndex s, const PlannedChunk& chunk) {
+                    return s < chunk.streams.begin;
+                });
+        ZL_ASSERT(after != chunks.begin());
+        return static_cast<size_t>(after - chunks.begin()) - 1;
     }
 
    private:

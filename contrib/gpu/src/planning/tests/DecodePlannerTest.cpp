@@ -373,6 +373,23 @@ TEST(DecodePlannerTest, IndexesEveryWireSlotOfEveryChunk)
     EXPECT_EQ(expectedBegin, plan.streams.size());
 }
 
+TEST(DecodePlannerTest, FindsTheChunkOfEveryStream)
+{
+    // This fails if chunkOf gives a stream at a range boundary to the chunk
+    // next to its own.
+    PreparedHostFrame prepared{ makeFloatFrame() };
+    const DecodePlan plan = planOrThrow(prepared.views());
+
+    ASSERT_GT(plan.chunks.size(), 1);
+    for (size_t chunkIndex = 0; chunkIndex < plan.chunks.size(); ++chunkIndex) {
+        const IndexRange range = plan.chunks.at(chunkIndex).streams;
+        for (PlannedStreamIndex s = range.begin; s < range.begin + range.count;
+             ++s) {
+            EXPECT_EQ(plan.chunkOf(s), chunkIndex) << "stream " << s;
+        }
+    }
+}
+
 TEST(DecodePlannerTest, MatchesThePreparedProducerMapSlotForSlot)
 {
     // This fails if a stream is stored at the wrong slot, has the wrong storage
